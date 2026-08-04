@@ -43,7 +43,11 @@ defmodule Taxvision.Contracts.AccountingMonth do
     payload: %{company_id: :id, period: :period, diff: :string},
     # Diff niesie dane firmy zestawione z rejestrami publicznymi. Do logu idzie
     # hash: dowód, że rozjazd był i jaki, bez trzymania treści na zawsze.
-    retain: %{diff: :hash}
+    retain: %{diff: :hash},
+    # Dwa rozjazdy w tym samym miesiącu to **jeden** fakt, więc jedno
+    # powiadomienie. To jest decyzja process ownera zapisana w kontrakcie, a nie
+    # szczegół implementacji handlera — i wymaga potwierdzenia na warsztacie.
+    identity: [:company_id, :period]
 
   event :monthly_tasks_generated,
     label: "Utworzono taski z szablonu na nowy miesiąc",
@@ -84,29 +88,35 @@ defmodule Taxvision.Contracts.AccountingMonth do
 
   # --- proces ---
 
-  # **Jeden proces, nie cztery.** Pierwsza wersja deklarowała tylko otwarcie, a
-  # zdarzenia faz 3.2-3.4 zostały poza procesem — i test to wyłapał, bo okno
-  # "never observed" nie miało skąd wziąć cadence.
+  # **Jeden proces, cztery fazy — i tylko między fazami jest kolejność.**
   #
-  # Warsztat mówi wprost: "to jest jeden długi proces: od weryfikacji
-  # rejestrowej na początku miesiąca po zamknięcie miesiąca"; faza 3.1 jest
-  # bramką otwierającą, a 3.2-3.4 to kroki steppera (sekcja 3, plus niezmiennik
-  # agregatu AccountingMonth z sekcji 12). Rozbicie na cztery procesy byłoby
-  # naszym pomysłem, nie ich modelem.
+  # Warsztat mówi: "to jest jeden długi proces: od weryfikacji rejestrowej na
+  # początku miesiąca po zamknięcie miesiąca", faza 3.1 jest bramką otwierającą,
+  # 3.2-3.4 to kroki steppera. I zaraz potem: "fazy nie są w pełni sekwencyjne
+  # … sekwencyjne są bramki" — bez pozytywnej weryfikacji miesiąc się nie
+  # otwiera, bez wyciągu nie ma meczowania, bez meczowania nie ma eksportu.
+  #
+  # Dlatego kolejność jest zadeklarowana między fazami, a wewnątrz fazy nie ma
+  # jej wcale. Na tym stoi wykrywanie krawędzi wstecznych, więc to nie jest
+  # kosmetyka: check może być tylko tak prawdziwy jak model, na którym stoi.
   process :accounting_month,
     label: "Cykl miesięczny księgowy",
-    events: [
-      :data_completeness_confirmed,
-      :registry_status_checked,
-      :registry_check_logged,
-      :registry_data_consistent,
-      :registry_discrepancy_detected,
-      :monthly_tasks_generated,
-      :accounting_month_opened,
-      :discrepancy_notification_sent,
-      :bank_statement_received,
-      :turnover_matched_with_invoice,
-      :month_closed
+    stages: [
+      otwarcie: [
+        :data_completeness_confirmed,
+        :registry_status_checked,
+        :registry_check_logged,
+        :registry_data_consistent,
+        :registry_discrepancy_detected,
+        :discrepancy_notification_sent
+      ],
+      taski: [
+        :monthly_tasks_generated,
+        :accounting_month_opened
+      ],
+      gromadzenie: [:bank_statement_received],
+      meczowanie: [:turnover_matched_with_invoice],
+      wynik: [:month_closed]
     ],
     # Zablokowanie na rozjeździe jest stanem końcowym tak samo jak zamknięcie
     # miesiąca: proces się skończył, tylko nie tak, jak chcieliśmy.
@@ -147,7 +157,9 @@ defmodule Taxvision.Contracts.AccountingMonth do
       registries: %{legal_form: "JDG", vat_status: "czynny", vies_status: "aktywny"}
     },
     command: {:open_month, %{company_id: "c-1", period: "2026-07"}},
-    then: [:data_completeness_confirmed, :registry_status_checked, :registry_check_logged, :registry_data_consistent]
+    # Tylko to zdarzenie jest treścią tej reguły. `then:` znaczy "wśród
+    # wyemitowanych, w tej kolejności" — nie "dokładnie te".
+    then: [:registry_data_consistent]
 
   example "rozjazd statusu VAT — blokada i powiadomienie zamiast otwarcia",
     rule: :month_opens_only_on_consistent_registry,
@@ -157,7 +169,7 @@ defmodule Taxvision.Contracts.AccountingMonth do
       registries: %{legal_form: "JDG", vat_status: "wykreślony", vies_status: "aktywny"}
     },
     command: {:open_month, %{company_id: "c-1", period: "2026-07"}},
-    then: [:data_completeness_confirmed, :registry_status_checked, :registry_check_logged, :registry_discrepancy_detected]
+    then: [:registry_discrepancy_detected]
 
   example "brak potwierdzenia kompletu danych — komenda odrzucona",
     rule: :month_opens_only_on_consistent_registry,

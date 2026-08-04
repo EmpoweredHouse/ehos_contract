@@ -43,8 +43,7 @@ defmodule Taxvision.Notifications.OnRegistryDiscrepancyDetected do
     contract: Taxvision.Contracts.AccountingMonth,
     event: :registry_discrepancy_detected,
     publishes: [:discrepancy_notification_sent],
-    async: true,
-    idempotency_key: [:company_id, :period]
+    async: true
 
   import Ecto.Query
 

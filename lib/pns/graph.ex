@@ -153,15 +153,65 @@ defmodule PNS.Graph do
     end
   end
 
-  def to_mermaid(overlay) do
-    lines =
-      for edge <- overlay do
-        arrow = if edge.async, do: "-. async .->", else: "-->"
-        note = "#{edge.count}x #{edge.state}"
-        "    #{edge.from} #{arrow}|#{note}| #{edge.to}"
+  @doc """
+  Diagram nakładki.
+
+  Węzły są wypisywane **wszystkie**, także te bez żadnej krawędzi. Pierwsza
+  wersja rysowała tylko krawędzie i przy jedenastu zadeklarowanych zdarzeniach
+  pokazywała pięć — czyli niezaimplementowane fazy były niewidoczne dokładnie w
+  narzędziu, które ma pokazywać, czego nie ma. Dla widoku *declared vs observed*
+  to nie jest kosmetyka, a błąd.
+  """
+  def to_mermaid(overlay, opts \\ []) do
+    static = static()
+    # Stan węzła bierze się z liczników zdarzeń, **nie z krawędzi**. Pierwsza
+    # wersja czytała go z krawędzi i pokazywała trzy zaobserwowane zdarzenia
+    # jako martwe — bo nikt na nie nie subskrybuje, więc nie występują w żadnej
+    # krawędzi. Zdarzenie może być zaobserwowane bez ani jednej krawędzi i to
+    # jest normalny przypadek, nie wyjątek.
+    observed = observed(opts).nodes
+
+    nodes =
+      for node <- static.nodes do
+        entry = Map.get(observed, to_string(node.event))
+        state = if entry, do: "confirmed", else: "dead"
+        {node.event, state, node.label, entry && entry.count}
       end
 
-    Enum.join(["flowchart LR" | lines], "\n")
+    node_lines =
+      for {event, _state, label, count} <- nodes do
+        suffix = if count, do: " (#{count}x)", else: ""
+        ~s(    #{event}["#{label}#{suffix}"])
+      end
+
+    edge_lines =
+      for edge <- overlay do
+        # `-. tekst .->` i `|etykieta|` wykluczają się w składni mermaida —
+        # dla strzałki kropkowanej wszystko idzie w pipe'y.
+        {arrow, label} =
+          if edge.async,
+            do: {"-.->", "#{edge.count}x async"},
+            else: {"-->", "#{edge.count}x"}
+
+        "    #{edge.from} #{arrow}|#{label}| #{edge.to}"
+      end
+
+    class_lines =
+      nodes
+      |> Enum.group_by(fn {_e, state, _l, _c} -> state end, fn {e, _s, _l, _c} -> e end)
+      |> Enum.map(fn {state, events} -> "    class #{Enum.join(events, ",")} #{state}" end)
+
+    Enum.join(
+      ["flowchart LR"] ++
+        node_lines ++
+        edge_lines ++
+        class_lines ++
+        [
+          "    classDef confirmed fill:#c8e6c9,stroke:#2e7d32,color:#000",
+          "    classDef dead fill:#eeeeee,stroke:#9e9e9e,color:#616161,stroke-dasharray: 4 3"
+        ],
+      "\n"
+    )
   end
 
   def to_text(overlay) do

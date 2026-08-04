@@ -16,7 +16,6 @@ defmodule PNS.Handler do
     event = Keyword.fetch!(opts, :event)
     publishes = Keyword.get(opts, :publishes, [])
     async = Keyword.get(opts, :async, false)
-    idempotency_key = Keyword.get(opts, :idempotency_key)
 
     # Wymuszenie kolejności kompilacji: bez tego kontrakt mógłby jeszcze nie
     # istnieć, a sprawdzenie niżej zamilkłoby zamiast zadziałać.
@@ -42,19 +41,13 @@ defmodule PNS.Handler do
       )
     end
 
-    if async and is_nil(idempotency_key) do
+    if async and is_nil(contract.event(event).identity) do
       bail!(
         caller,
-        "handler asynchroniczny musi zadeklarować `idempotency_key:` — Oban daje " <>
-          "at-least-once, więc to zdarzenie przyjdzie drugi raz (notatki §4)"
-      )
-    end
-
-    for field <- List.wrap(idempotency_key), not Map.has_key?(contract.event(event).payload, field) do
-      bail!(
-        caller,
-        "`idempotency_key: #{inspect(field)}` nie jest polem payloadu zdarzenia " <>
-          "#{inspect(event)}. Zadeklarowane pola: #{inspect(Map.keys(contract.event(event).payload))}"
+        "handler asynchroniczny wymaga, żeby zdarzenie #{inspect(event)} miało w kontrakcie " <>
+          "`identity:`. Oban daje at-least-once, więc to zdarzenie przyjdzie drugi raz, a " <>
+          "pytanie \"co czyni dwa wystąpienia tym samym faktem\" jest pytaniem do process " <>
+          "ownera, nie do handlera. Dopisz `identity:` w #{inspect(contract)}."
       )
     end
 
@@ -68,8 +61,7 @@ defmodule PNS.Handler do
           contract: unquote(contract),
           event: unquote(event),
           publishes: unquote(publishes),
-          async: unquote(async),
-          idempotency_key: unquote(idempotency_key)
+          async: unquote(async)
         }
       end
     end

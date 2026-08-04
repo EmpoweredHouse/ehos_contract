@@ -94,7 +94,7 @@ poniżej trzeba było wymyślić, żeby to się skompilowało:
 | **Ścieżki błędów.** „Blokada i powiadomienie" jest w P1; co przy niedostępnym rejestrze, nie ma nigdzie | `unavailable_looks_like`: zawieszenie, nie negatywna weryfikacja | Warsztat — to jest pytanie prawne, nie techniczne |
 | **Klucze idempotencji.** Brak w całym warsztacie | `company_id` + `period` | My, ale wymaga potwierdzenia |
 | **Stany terminalne.** Stepper nie mówi, co kończy proces | Zablokowanie na rozjeździe jest terminalne tak samo jak zamknięcie miesiąca | Process owner |
-| **Kolejność liniowa.** Warsztat daje DAG i mówi wprost „fazy nie są w pełni sekwencyjne"; kontrakt chce listy | Zlinearyzowane ręcznie. **Od tego zależy wykrywanie krawędzi wstecznych**, więc to nie jest kosmetyka | Otwarte — patrz niżej |
+| **Kolejność.** Warsztat daje DAG i mówi wprost „fazy nie są w pełni sekwencyjne"; pierwsza wersja kontraktu chciała płaskiej listy | Format zmieniony: `stages:` — kolejność między fazami, brak twierdzeń wewnątrz fazy | Rozwiązane, patrz niżej |
 | **Deadline 25 dni** | Wzięty z przykładu w notatkach, **nie z warsztatu** | Warsztat. Jedyna liczba w tym kontrakcie bez źródła |
 | **Reguła autoryzacyjna** | Wywnioskowana z HS28 i z tego, że aktorem fazy 3.1 jest Księgowa | Warsztat |
 | **Komendy** | `RetriggerVerification` z warsztatu pominięta | Do dołożenia przy pętli ponowienia |
@@ -103,10 +103,37 @@ Wniosek jest zgodny z ADR §1 i mocniejszy, niż się spodziewałem: **z warszta
 i to ta łatwiejsza część.** Nazwy i przepływ są darmowe. Typy, ścieżki błędów, niezmienniki i idempotencja to
 druga sesja z klientem, nie praca programisty.
 
-Jedna rzecz do rozstrzygnięcia w modelu: **kontrakt wymaga liniowej listy zdarzeń procesu, a warsztat
-opisuje graf z równoległością.** Dziś kolejność jest w `process events:` i służy wykrywaniu krawędzi
-wstecznych. Jeśli fazy naprawdę biegną równolegle — a warsztat mówi, że tak: KSeF ciągnie ciągle, meczowanie
-doszywa na bieżąco — to liniowa lista jest kłamstwem, a check krawędzi wstecznych stoi na kłamstwie.
+## Trzy poprawki formatu po pierwszym przebiegu
+
+Rdzeń DSL wytrzymał kontakt z prawdziwą domeną — sześć typów deklaracji, `@before_compile`, hash wersji.
+Ale trzy rzeczy w formacie były źle postawione i są już poprawione.
+
+**Idempotencja wróciła do kontraktu.** Klucz siedział na handlerze (`idempotency_key:`), co było zgodne z
+notatkami §4 i **sprzeczne z ADR §9–10**, który mówi wprost, że idempotencja jest własnością kontraktu.
+Rację ma ADR, z dwóch powodów. Pytanie „dwa rozjazdy w jednym miesiącu to jedno powiadomienie czy dwa"
+należy do process ownera, a on czyta kontrakt, nie moduły handlerów. I tożsamość faktu jest jedna, a
+handlerów tego samego zdarzenia może być wiele — trzymana na handlerze rozjeżdżałaby się między nimi.
+
+Teraz zdarzenie deklaruje `identity: [:company_id, :period]`, a handler asynchroniczny bez tego się nie
+kompiluje — z komunikatem odsyłającym do kontraktu. Doszły dwie bramki: pole z `identity` musi istnieć w
+payloadzie i nie może być usuwane przez `retain: :drop`, bo klucz zniknąłby razem z nim.
+**Do zmiany w notatkach §4.**
+
+**Przykłady pinują regułę, nie całe wyjście funkcji.** `then:` znaczy teraz „wśród wyemitowanych zdarzeń,
+w tej kolejności", nie „dokładnie te". Wcześniej przykład reguły *„bez zgodnej weryfikacji miesiąc się nie
+otwiera"* wymieniał cztery zdarzenia, z czego trzy nie miały z tą regułą nic wspólnego — dodanie jednego
+zdarzenia do przepływu wywalało wszystkie przykłady tej reguły, choć reguła się nie zmieniła. Przy
+pięćdziesięciu regułach to maszyna do fałszywych alarmów, czyli do wyłączenia testów. Po poprawce przykłady
+tej reguły wymieniają jedno zdarzenie i **czytają się jak reguła**.
+
+**Kolejność jest między fazami, nie między zdarzeniami.** Zamiast płaskiej listy `events:` proces deklaruje
+`stages:`. Warsztat mówi jedno i drugie: *„to jest jeden długi proces"* oraz *„fazy nie są w pełni
+sekwencyjne … sekwencyjne są **bramki**"*. Liniowa lista była naszym pomysłem podanym jako model klienta —
+a na niej stało wykrywanie krawędzi wstecznych, czyli trigger przeglądu §15. Teraz krawędź wsteczna liczy
+się po fazach: dwa zdarzenia tej samej fazy nigdy nią nie są, bo kontrakt nie twierdzi nic o ich kolejności.
+`events:` zostaje jako skrót dla procesu bez bramek i znaczy dokładnie tyle: jedna faza, zero twierdzeń.
+
+**Do zmiany w notatkach §1:** `stages:` i `identity:` w przykładzie DSL, oraz słownik typów payloadu.
 
 ## Dashboard — co wyszło, zanim cokolwiek narysowaliśmy
 
@@ -123,9 +150,32 @@ opóźnieniu.** Trzeci stan, nie dwa — *zadeklarowane i nieobserwowane* to nie
 binarce, i nakładka klasyfikuje je jako `:historical`, nie `:drift`. Bez tej kolumny każdy deploy usuwający
 zdarzenie produkuje fałszywe alarmy.
 
+**Renderer diagramu miał dwa błędy, które widać tylko na wyjściu.** Pierwsza wersja rysowała wyłącznie
+krawędzie, więc z jedenastu zadeklarowanych zdarzeń pokazywała pięć — niezaimplementowane fazy były
+niewidoczne dokładnie w narzędziu, które ma pokazywać, czego nie ma. Po poprawce trzy zdarzenia wyszły jako
+martwe, choć były w logu: brałem stan węzła z krawędzi, a `data_completeness_confirmed` nie ma żadnej
+krawędzi, bo nikt na nie nie subskrybuje. **Zdarzenie może być zaobserwowane bez ani jednej krawędzi** i to
+jest normalny przypadek. Stan węzła idzie z liczników zdarzeń, stan krawędzi z `causation_id`.
+
+**Trzy zdarzenia otwierające wiszą bez strzałek — i to jest prawda, która wygląda na błąd.** Emituje je
+jedna funkcja decyzyjna jako rodzeństwo jednej komendy, więc nie ma między nimi przyczynowości i graf
+słusznie jej nie rysuje. Dla process ownera wygląda to jednak na trzy niepowiązane fakty. Kandydat na
+czwarty rodzaj krawędzi w nakładce: „w tej samej komendzie", rysowany z `correlation_id`.
+
 **Graf jest dekoracją, lista nie.** 11 zdarzeń daje 3 krawędzie i diagram nie powiedział nic, czego nie
 mówiła posortowana lista. Notatki §9 mają rację, że domyślnym widokiem jest lista rozbieżności. Diagram
 zaczyna zarabiać przy kilkudziesięciu krawędziach, czyli nie w pilocie.
+
+**Wypis przez potok psuł polskie znaki.** `mix pns.graph --mermaid > plik.mmd` zamieniał `ł` (U+0142) na
+`B` (0x42): Erlang trzyma stdout w latin1, kiedy wyjście nie jest terminalem, i przycina każdy kodepoint do
+bajtu. Etykiety zdarzeń są po polsku, bo to język klienta — więc to nie kosmetyka, a uszkodzony artefakt.
+Oba zadania wymuszają teraz `encoding: :unicode`, a `pns.graph` ma `--output`, które pisze plik przez
+`File.write!`. Diagram w `doc/graf-nakladki.png` jest generowany tak:
+
+```bash
+mix pns.graph --overlay --mermaid --output doc/graf-nakladki.mmd
+mmdc -i doc/graf-nakladki.mmd -o doc/graf-nakladki.png -b white -s 3
+```
 
 ## Graf z kontraktu — czy to ma szanse
 
@@ -163,8 +213,11 @@ lib/taxvision/    aplikacja klienta
 
 ## Do decyzji
 
-1. **Liniowa lista zdarzeń procesu przeciw grafowi z równoległością.** Pytanie do modelu, nie do kodu.
-2. **Job w locie jako trzeci stan nakładki.** Wpływa na schemat dashboardu, więc lepiej teraz.
-3. **§18 w rekordzie twierdzi mocniej, niż dowozi.** Jedna linia do poprawienia.
-4. **Idempotencja powiadomień:** dwa rozjazdy w jednym miesiącu to jedno powiadomienie czy dwa?
-5. **Deadline 25 dni** nie ma źródła w warsztacie.
+1. **Idempotencja powiadomień.** Kontrakt mówi teraz `identity: [:company_id, :period]`, czyli dwa rozjazdy
+   w jednym miesiącu to jedno powiadomienie. To moje założenie i wymaga potwierdzenia na warsztacie.
+2. **Job w locie jako trzeci stan nakładki.** Wpływa na schemat dashboardu, więc lepiej teraz niż potem.
+3. **Krawędź „w tej samej komendzie"** z `correlation_id` — bez niej graf jest prawdziwy i nieczytelny.
+4. **Deadline 25 dni** nie ma źródła w warsztacie.
+5. **Trzy zmiany do przeniesienia do rekordu:** `identity` w notatkach §4 (dziś sprzeczne z ADR §9-10),
+   `stages` i słownik typów w notatkach §1, oraz jedno zdanie w §18 o tym, że przykład jest testem przez
+   generator, nie sam z siebie.

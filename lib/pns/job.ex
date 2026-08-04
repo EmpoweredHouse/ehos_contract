@@ -34,7 +34,7 @@ defmodule PNS.Job do
       causation_id: args["causation_id"],
       actor: args["actor"],
       attempt: attempt,
-      idempotency_key: idempotency_key(meta, args, payload)
+      idempotency_key: idempotency_key(event_def, args, payload)
     }
 
     started = System.monotonic_time(:microsecond)
@@ -69,15 +69,18 @@ defmodule PNS.Job do
     end
   end
 
-  defp idempotency_key(%{idempotency_key: nil}, args, _payload), do: args["event_id"]
+  # Klucz idempotencji pochodzi z `identity:` **zdarzenia w kontrakcie**, nie z
+  # deklaracji handlera. Tożsamość faktu jest jedna, a handlerów tego samego
+  # zdarzenia może być wiele — trzymana na handlerze rozjeżdżałaby się między nimi.
+  defp idempotency_key(%{identity: nil}, args, _payload), do: args["event_id"]
 
-  defp idempotency_key(%{idempotency_key: fields}, args, payload) do
+  defp idempotency_key(%{identity: fields, name: name}, _args, payload) do
     values =
-      fields
-      |> List.wrap()
-      |> Enum.map(fn field -> Map.get(payload, field) || Map.get(payload, to_string(field)) end)
+      Enum.map(fields, fn field ->
+        Map.get(payload, field) || Map.get(payload, to_string(field))
+      end)
 
-    Enum.join([args["event_type"] | values], ":")
+    Enum.join([name | values], ":")
   end
 
   defp resolve!("Elixir." <> _ = name), do: String.to_existing_atom(name)

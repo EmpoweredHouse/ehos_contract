@@ -17,6 +17,11 @@ defmodule Mix.Tasks.Pns.Check do
 
   @impl Mix.Task
   def run(_args) do
+    # Erlang trzyma stdout w latin1, kiedy wyjście nie jest terminalem, więc
+    # `mix pns.check > raport.txt` przycina każdy kodepoint do bajtu: `ł` wychodzi
+    # jako `B`. Etykiety zdarzeń są po polsku, bo to język klienta.
+    :io.setopts(:standard_io, encoding: :unicode)
+
     Mix.Task.run("compile")
     Application.load(:pns_prototype)
     PNS.Registry.load!()
@@ -90,36 +95,39 @@ defmodule Mix.Tasks.Pns.Check do
   end
 
   # Trigger przeglądu §15, wprost: "belongs in `mix pns.check` from the start".
-  # Moduł subskrybujący zdarzenie leżące za jego własnym udziałem to krawędź
-  # wsteczna — sygnatura wyciekającej kompensacji. Jedna jest normalna, rosnąca
-  # liczba znaczy, że decyzja się nie sprawdza.
+  # Moduł subskrybujący zdarzenie z **późniejszej fazy** niż ta, do której sam
+  # publikuje, to krawędź wsteczna — sygnatura wyciekającej kompensacji. Jedna
+  # jest normalna, rosnąca liczba znaczy, że decyzja się nie sprawdza.
+  #
+  # Liczone po fazach, nie po pozycji zdarzenia w liście: wewnątrz fazy kontrakt
+  # nie twierdzi nic o kolejności, więc dwa zdarzenia tej samej fazy nigdy nie
+  # są krawędzią wsteczną. Wersja licząca po pozycji dawała fałszywe alarmy tam,
+  # gdzie warsztat wprost mówi o równoległości.
   defp check_backward_edges(findings) do
-    positions =
+    stage_of =
       for contract <- PNS.Registry.contracts(),
           process <- contract.processes(),
-          {event, index} <- Enum.with_index(process.events),
+          {{stage, events}, index} <- Enum.with_index(process.stages),
+          event <- events,
           into: %{} do
-        {event, {process.name, index}}
+        {event, {process.name, index, stage}}
       end
 
     PNS.Registry.handlers()
     |> Enum.group_by(& &1.module)
     |> Enum.reduce(findings, fn {module, handlers}, acc ->
-      subscribed = for h <- handlers, pos = positions[h.event], do: pos
-      published = for h <- handlers, e <- h.publishes, pos = positions[e], do: pos
+      subscribed = for h <- handlers, pos = stage_of[h.event], do: pos
+      published = for h <- handlers, e <- h.publishes, pos = stage_of[e], do: pos
 
       backward =
-        for {process, sub_index} <- subscribed,
-            {^process, pub_index} <- published,
+        for {process, sub_index, sub_stage} <- subscribed,
+            {^process, pub_index, pub_stage} <- published,
             sub_index > pub_index,
-            do: {process, pub_index, sub_index}
+            do: "#{process}: publikuje w #{pub_stage}, subskrybuje w #{sub_stage}"
 
       case backward do
-        [] ->
-          acc
-
-        edges ->
-          [{:warn, "krawędź wsteczna: #{inspect(module)} publikuje na pozycji #{inspect(Enum.map(edges, &elem(&1, 1)))} i subskrybuje dalej #{inspect(Enum.map(edges, &elem(&1, 2)))}"} | acc]
+        [] -> acc
+        edges -> [{:warn, "krawędź wsteczna w #{inspect(module)} — #{Enum.join(edges, "; ")}"} | acc]
       end
     end)
   end

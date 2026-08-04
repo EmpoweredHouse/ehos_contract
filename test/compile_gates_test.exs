@@ -57,32 +57,19 @@ defmodule PNS.CompileGatesTest do
       )
     end
 
-    test "asynchroniczny bez klucza idempotencji nie kompiluje się" do
+    test "asynchroniczny na zdarzeniu bez `identity` w kontrakcie nie kompiluje się" do
+      # Pytanie "co czyni dwa wystąpienia tym samym faktem" należy do process
+      # ownera, więc komunikat odsyła do kontraktu, nie do handlera.
       refute_compiles(
         """
-        defmodule Reject.AsyncWithoutIdempotency do
+        defmodule Reject.AsyncOnEventWithoutIdentity do
           use PNS.Handler,
             contract: Taxvision.Contracts.AccountingMonth,
-            event: :registry_discrepancy_detected,
+            event: :registry_data_consistent,
             async: true
         end
         """,
-        "musi zadeklarować `idempotency_key:`"
-      )
-    end
-
-    test "klucz idempotencji wskazujący pole spoza payloadu nie kompiluje się" do
-      refute_compiles(
-        """
-        defmodule Reject.BadIdempotencyKey do
-          use PNS.Handler,
-            contract: Taxvision.Contracts.AccountingMonth,
-            event: :registry_discrepancy_detected,
-            async: true,
-            idempotency_key: [:nie_ma_takiego_pola]
-        end
-        """,
-        "nie jest polem payloadu"
+        "wymaga, żeby zdarzenie"
       )
     end
   end
@@ -139,6 +126,54 @@ defmodule PNS.CompileGatesTest do
         """,
         "którego nie ma w kontrakcie"
       )
+    end
+
+    test "identity na pole spoza payloadu nie kompiluje się" do
+      refute_compiles(
+        """
+        defmodule Reject.IdentityUnknownField do
+          use PNS.Contract
+
+          event :cos_sie_stalo,
+            label: "Coś",
+            payload: %{id: :id},
+            identity: [:nie_ma_mnie]
+        end
+        """,
+        "`identity` wskazuje pole"
+      )
+    end
+
+    test "identity na polu usuwanym przez retain nie kompiluje się" do
+      # Klucz idempotencji zniknąłby razem z polem.
+      refute_compiles(
+        """
+        defmodule Reject.IdentityOnDroppedField do
+          use PNS.Contract
+
+          event :cos_sie_stalo,
+            label: "Coś",
+            payload: %{id: :id, tekst: :string},
+            retain: %{tekst: :drop},
+            identity: [:tekst]
+        end
+        """,
+        "`retain: :drop`"
+      )
+    end
+
+    test "proces z `stages:` i `events:` naraz nie przechodzi" do
+      assert_raise ArgumentError, ~r/`stages:` albo `events:`, nie oba/, fn ->
+        Code.compile_string("""
+        defmodule Reject.ProcessWithBoth do
+          use PNS.Contract
+
+          event :a, label: "A", payload: %{id: :id}
+
+          process :p, label: "P", events: [:a], stages: [x: [:a]]
+        end
+        """)
+      end
     end
 
     test "retain na pole spoza payloadu nie kompiluje się" do

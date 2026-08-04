@@ -107,7 +107,8 @@ defmodule PNS.GraphTest do
 
     assert mermaid =~ "flowchart LR"
     assert mermaid =~ "registry_data_consistent"
-    assert mermaid =~ "confirmed"
-    assert mermaid =~ "-. async .->"
+    assert mermaid =~ "classDef confirmed"
+    assert mermaid =~ "month_closed[\""
+    assert mermaid =~ "-.->|" and mermaid =~ "async"
   end
 end

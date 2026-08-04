@@ -85,7 +85,11 @@ defmodule PNS.Contract do
 
   @doc false
   def build_event(name, opts) do
-    validate_keys!(opts, [:label, :owner, :payload, :retain, :depends_on], "event #{inspect(name)}")
+    validate_keys!(
+      opts,
+      [:label, :owner, :payload, :retain, :depends_on, :identity],
+      "event #{inspect(name)}"
+    )
 
     %{
       name: name,
@@ -93,18 +97,57 @@ defmodule PNS.Contract do
       owner: Keyword.get(opts, :owner),
       payload: Keyword.get(opts, :payload, %{}),
       retain: Keyword.get(opts, :retain, %{}),
-      depends_on: Keyword.get(opts, :depends_on)
+      depends_on: Keyword.get(opts, :depends_on),
+      # `identity` mówi, **co czyni dwa wystąpienia tego zdarzenia tym samym
+      # faktem biznesowym**. Stąd bierze się klucz idempotencji.
+      #
+      # Siedzi na zdarzeniu, nie na handlerze, i to jest poprawka wobec
+      # pierwszej wersji: "dwa rozjazdy w jednym miesiącu to jedno
+      # powiadomienie czy dwa" jest pytaniem do process ownera, a nie do
+      # programisty piszącego handler. ADR §9-10 mówi wprost, że idempotencja
+      # jest własnością kontraktu; notatki §4 mówiły, że handlera. Rację ma ADR.
+      #
+      # Konsekwencja jest też praktyczna: tożsamość faktu jest jedna, a
+      # handlerów tego samego zdarzenia może być wiele. Trzymana na handlerze
+      # rozjeżdżałaby się między nimi.
+      identity: opts |> Keyword.get(:identity) |> then(&(&1 && List.wrap(&1)))
     }
   end
 
   @doc false
   def build_process(name, opts) do
-    validate_keys!(opts, [:label, :events, :terminal, :cadence, :deadline], "process #{inspect(name)}")
+    validate_keys!(
+      opts,
+      [:label, :events, :stages, :terminal, :cadence, :deadline],
+      "process #{inspect(name)}"
+    )
+
+    where = "process #{inspect(name)}"
+
+    # **Sekwencyjne są bramki, nie zdarzenia.**
+    #
+    # Pierwsza wersja miała płaską, uporządkowaną listę `events:` i na tej
+    # kolejności stało wykrywanie krawędzi wstecznych. Tylko że warsztat mówi
+    # wprost: "fazy nie są w pełni sekwencyjne … sekwencyjne są bramki" — KSeF
+    # ciągnie ciągle, meczowanie doszywa na bieżąco. Liniowa lista była naszym
+    # pomysłem podanym jako model klienta, a check stał na tym pomyśle.
+    #
+    # `stages:` deklaruje kolejność **między** fazami i nie twierdzi nic o
+    # kolejności wewnątrz fazy. `events:` zostaje jako skrót dla procesu bez
+    # bramek i znaczy dokładnie tyle: jedna faza, zero twierdzeń o kolejności.
+    stages =
+      case {Keyword.fetch(opts, :stages), Keyword.fetch(opts, :events)} do
+        {{:ok, stages}, :error} -> stages
+        {:error, {:ok, events}} -> [all: events]
+        {{:ok, _}, {:ok, _}} -> raise ArgumentError, "#{where}: `stages:` albo `events:`, nie oba"
+        {:error, :error} -> raise ArgumentError, "#{where}: brakuje `stages:` albo `events:`"
+      end
 
     %{
       name: name,
-      label: fetch!(opts, :label, "process #{inspect(name)}"),
-      events: fetch!(opts, :events, "process #{inspect(name)}"),
+      label: fetch!(opts, :label, where),
+      stages: stages,
+      events: Enum.flat_map(stages, fn {_stage, events} -> events end),
       terminal: Keyword.get(opts, :terminal, []),
       # cadence: co jak często instancja jest należna — z tego liczy się okno
       # "never observed". Bez tego miesięczne zamknięcie czyta się jako
@@ -308,6 +351,16 @@ defmodule PNS.Contract do
 
     for e <- events, {field, _policy} <- e.retain, not Map.has_key?(e.payload, field) do
       bail!(env, "zdarzenie #{inspect(e.name)}: `retain` wskazuje pole #{inspect(field)}, którego nie ma w `payload`")
+    end
+
+    for e <- events, field <- e.identity || [] do
+      Map.has_key?(e.payload, field) ||
+        bail!(env, "zdarzenie #{inspect(e.name)}: `identity` wskazuje pole #{inspect(field)}, którego nie ma w `payload`")
+
+      # Pole usuwane z payloadu nie może współtworzyć tożsamości faktu — klucz
+      # idempotencji zniknąłby razem z nim.
+      Map.get(e.retain, field) == :drop &&
+        bail!(env, "zdarzenie #{inspect(e.name)}: pole #{inspect(field)} jest w `identity` i jednocześnie `retain: :drop`")
     end
 
     :ok

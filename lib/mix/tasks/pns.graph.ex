@@ -15,7 +15,15 @@ defmodule Mix.Tasks.Pns.Graph do
 
   @impl Mix.Task
   def run(args) do
-    {opts, _} = OptionParser.parse!(args, strict: [overlay: :boolean, mermaid: :boolean, since: :string])
+    # Erlang trzyma stdout w latin1, kiedy wyjście nie jest terminalem, więc
+    # `mix pns.check > raport.txt` przycina każdy kodepoint do bajtu: `ł` wychodzi
+    # jako `B`. Etykiety zdarzeń są po polsku, bo to język klienta.
+    :io.setopts(:standard_io, encoding: :unicode)
+
+    {opts, _} =
+      OptionParser.parse!(args,
+        strict: [overlay: :boolean, mermaid: :boolean, since: :string, output: :string]
+      )
 
     if opts[:overlay] do
       Mix.Task.run("app.start")
@@ -27,6 +35,22 @@ defmodule Mix.Tasks.Pns.Graph do
     PNS.Registry.load!()
 
     if opts[:overlay], do: overlay(opts), else: static(opts)
+  end
+
+  # Erlang przestawia stdout na latin1, kiedy wyjście nie jest terminalem, więc
+  # `mix pns.graph --mermaid > plik.mmd` psuje każdy polski znak: `ł` (U+0142)
+  # wychodzi jako `B` (0x42). Nazwy zdarzeń są po polsku, bo to język klienta,
+  # więc to nie jest kosmetyka. `--output` pisze plik przez `File.write!`, które
+  # zawsze zapisuje UTF-8.
+  defp emit_output(text, opts) do
+    case opts[:output] do
+      nil ->
+        Mix.shell().info(text)
+
+      path ->
+        File.write!(path, text)
+        Mix.shell().info("zapisano: #{path}")
+    end
   end
 
   defp static(opts) do
@@ -42,7 +66,7 @@ defmodule Mix.Tasks.Pns.Graph do
           "    #{edge.from} #{arrow} #{edge.to}"
         end
 
-      Mix.shell().info(Enum.join(["flowchart LR" | edges], "\n"))
+      emit_output(Enum.join(["flowchart LR" | edges], "\n"), opts)
     else
       for node <- graph.nodes do
         marks = [node.terminal? && "terminalne", node.depends_on && "zależy od #{node.depends_on}"]
@@ -65,7 +89,7 @@ defmodule Mix.Tasks.Pns.Graph do
     overlay = PNS.Graph.overlay(since: since)
 
     if opts[:mermaid] do
-      Mix.shell().info(PNS.Graph.to_mermaid(overlay))
+      emit_output(PNS.Graph.to_mermaid(overlay), opts)
     else
       Mix.shell().info("Nakładka declared vs observed:\n")
       Mix.shell().info(PNS.Graph.to_text(overlay))
