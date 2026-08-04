@@ -92,6 +92,7 @@ defmodule PNS.Graph do
   def overlay(opts \\ []) do
     static = static()
     observed = observed(opts)
+    in_flight = in_flight_by_handler()
 
     declared_edges = MapSet.new(static.edges, &{to_string(&1.from), to_string(&1.to)})
     current_versions = MapSet.new(static.nodes, & &1.contract_version)
@@ -101,13 +102,25 @@ defmodule PNS.Graph do
         key = {to_string(edge.from), to_string(edge.to)}
         count = Map.get(observed.edges, key, 0)
 
+        waiting = Map.get(in_flight, inspect(edge.handler), 0)
+
         %{
           from: edge.from,
           to: edge.to,
           handler: edge.handler,
           async: edge.async,
           count: count,
-          state: if(count > 0, do: :confirmed, else: :dead)
+          in_flight: waiting,
+          # Trzeci stan, nie dwa. Job czekający w kolejce wygląda w logu
+          # dokładnie jak ścieżka, która nigdy nie działa — a to jest różnica
+          # między "zepsute" i "za chwilę". Bez tego nakładka kłamie przy każdym
+          # normalnym opóźnieniu, a dashboardowi przestaje się wierzyć.
+          state:
+            cond do
+              count > 0 -> :confirmed
+              waiting > 0 -> :in_flight
+              true -> :dead
+            end
         }
       end
 
@@ -122,11 +135,56 @@ defmodule PNS.Graph do
           handler: nil,
           async: nil,
           count: count,
+          in_flight: 0,
           state: if(historical?, do: :historical, else: :drift)
         }
       end
 
     from_declared ++ from_observed
+  end
+
+  @doc """
+  Joby czekające w kolejce, per handler. Stan `available`/`scheduled`/
+  `executing`/`retryable` znaczy "jeszcze nie", a nie "nigdy".
+  """
+  def in_flight_by_handler do
+    repo = repo()
+
+    from(j in Oban.Job,
+      where: j.state in ["available", "scheduled", "executing", "retryable"],
+      group_by: fragment("?->>'handler'", j.args),
+      select: {fragment("?->>'handler'", j.args), count(j.id)}
+    )
+    |> repo.all()
+    |> Map.new()
+  end
+
+  @doc """
+  Zdarzenia, które powstały z **tej samej komendy** — wspólne `correlation_id`
+  i brak przyczyny.
+
+  To nie jest przyczynowość i nie wolno tego mieszać z krawędziami z
+  `causation_id`: żadne z nich nie spowodowało żadnego, spowodowała je ta sama
+  komenda. Ale bez tego trzy zdarzenia otwierające miesiąc wiszą na diagramie
+  bez połączeń i wyglądają na błąd dla osoby, dla której ten widok powstaje.
+  """
+  def command_siblings(opts \\ []) do
+    repo = repo()
+    since = Keyword.get(opts, :since)
+
+    from(e in Event, as: :event, where: is_nil(e.causation_id))
+    |> maybe_since(since)
+    |> select([event: e], {e.correlation_id, e.type, e.occurred_at})
+    |> repo.all()
+    |> Enum.group_by(fn {correlation, _type, _at} -> correlation end)
+    |> Enum.flat_map(fn {_correlation, rows} ->
+      rows
+      |> Enum.sort_by(fn {_c, _t, at} -> at end)
+      |> Enum.map(fn {_c, type, _at} -> type end)
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.map(fn [from, to] -> {from, to} end)
+    end)
+    |> Enum.frequencies()
   end
 
   @doc """
@@ -139,8 +197,14 @@ defmodule PNS.Graph do
   """
   def declared_never_observed(opts \\ []) do
     observed = observed(opts)
+    pending = pending_events()
 
-    for node <- static().nodes, not Map.has_key?(observed.nodes, to_string(node.event)) do
+    for node <- static().nodes,
+        not Map.has_key?(observed.nodes, to_string(node.event)),
+        # Zdarzenie, które wyprodukuje job czekający w kolejce, **nie jest**
+        # martwą ścieżką. Bez tego lista i stan krawędzi mówiłyby dwie różne
+        # rzeczy o tym samym zdarzeniu.
+        node.event not in pending do
       process = Enum.find(node.contract.processes(), &(node.event in &1.events ++ &1.terminal))
 
       %{
@@ -151,6 +215,16 @@ defmodule PNS.Graph do
         cadence: process && process.cadence
       }
     end
+  end
+
+  @doc "Zdarzenia, które wyprodukują joby czekające w kolejce."
+  def pending_events do
+    waiting = in_flight_by_handler()
+
+    for handler <- Registry.handlers(),
+        Map.get(waiting, inspect(handler.module), 0) > 0,
+        event <- handler.publishes,
+        do: event
   end
 
   @doc """
@@ -170,11 +244,19 @@ defmodule PNS.Graph do
     # krawędzi. Zdarzenie może być zaobserwowane bez ani jednej krawędzi i to
     # jest normalny przypadek, nie wyjątek.
     observed = observed(opts).nodes
+    pending = pending_events()
 
     nodes =
       for node <- static.nodes do
         entry = Map.get(observed, to_string(node.event))
-        state = if entry, do: "confirmed", else: "dead"
+
+        state =
+          cond do
+            entry -> "confirmed"
+            node.event in pending -> "in_flight"
+            true -> "dead"
+          end
+
         {node.event, state, node.label, entry && entry.count}
       end
 
@@ -182,6 +264,14 @@ defmodule PNS.Graph do
       for {event, _state, label, count} <- nodes do
         suffix = if count, do: " (#{count}x)", else: ""
         ~s(    #{event}["#{label}#{suffix}"])
+      end
+
+    sibling_lines =
+      for {{from, to}, count} <- command_siblings(opts) do
+        # Kropkowana linia **bez grotu** i z jawnym podpisem. Gdyby wyglądała
+        # jak strzałka, ktoś przeczyta ją jako przyczynowość i zbuduje na tym
+        # logikę.
+        "    #{from} -. #{count}x ta sama komenda .- #{to}"
       end
 
     edge_lines =
@@ -204,10 +294,12 @@ defmodule PNS.Graph do
     Enum.join(
       ["flowchart LR"] ++
         node_lines ++
+        sibling_lines ++
         edge_lines ++
         class_lines ++
         [
           "    classDef confirmed fill:#c8e6c9,stroke:#2e7d32,color:#000",
+          "    classDef in_flight fill:#fff3c4,stroke:#f9a825,color:#000",
           "    classDef dead fill:#eeeeee,stroke:#9e9e9e,color:#616161,stroke-dasharray: 4 3"
         ],
       "\n"
@@ -220,7 +312,8 @@ defmodule PNS.Graph do
     |> Enum.map_join("\n", fn edge ->
       mode = if edge.async, do: "async", else: "sync "
       state = edge.state |> Atom.to_string() |> String.pad_trailing(10)
-      "  #{state} #{mode}  #{edge.from} -> #{edge.to}  (#{edge.count}x)"
+      queue = if Map.get(edge, :in_flight, 0) > 0, do: ", #{edge.in_flight} w kolejce", else: ""
+      "  #{state} #{mode}  #{edge.from} -> #{edge.to}  (#{edge.count}x#{queue})"
     end)
   end
 

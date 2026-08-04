@@ -44,10 +44,16 @@ defmodule Taxvision.Contracts.AccountingMonth do
     # Diff niesie dane firmy zestawione z rejestrami publicznymi. Do logu idzie
     # hash: dowód, że rozjazd był i jaki, bez trzymania treści na zawsze.
     retain: %{diff: :hash},
-    # Dwa rozjazdy w tym samym miesiącu to **jeden** fakt, więc jedno
-    # powiadomienie. To jest decyzja process ownera zapisana w kontrakcie, a nie
-    # szczegół implementacji handlera — i wymaga potwierdzenia na warsztacie.
-    identity: [:company_id, :period]
+    # Tożsamość faktu obejmuje **treść** rozjazdu, nie tylko firmę i miesiąc.
+    # Wersja bez `diff` miała dziurę, której się nie widzi: gdy 1 lipca rozjazd
+    # jest na statusie VAT, a 5 lipca na formie prawnej, drugi problem zostałby
+    # połknięty przez klucz pierwszego. Ten sam rozjazd = jedno powiadomienie,
+    # inny rozjazd = nowe.
+    #
+    # `diff` jest hashowany przez `retain`, i to jest tu zaletą: klucz jest
+    # deterministyczny, więc idempotencja działa, a jednocześnie nie zawiera
+    # danych firmy zestawionych z rejestrami.
+    identity: [:company_id, :period, :diff]
 
   event :monthly_tasks_generated,
     label: "Utworzono taski z szablonu na nowy miesiąc",
@@ -125,7 +131,12 @@ defmodule Taxvision.Contracts.AccountingMonth do
     # [WF 00:34:40]. Z tego liczy się okno "never observed" — bez cadence
     # miesięczny proces czyta się jako martwy szósty dzień po ostatnim przebiegu.
     cadence: {1, :month},
-    deadline: {25, :day}
+    deadline: {25, :day},
+    # 25. to prawdziwy ustawowy termin JPK_V7, więc liczba jest prawdopodobna —
+    # ale **nikt z TaxVision jej nie podał**, a termin wysyłki deklaracji to nie
+    # to samo co termin zamknięcia prac w biurze. Dopóki process owner nie
+    # potwierdzi, to zdarzenie nie liczy się do raportu dowodowego.
+    unverified: [:deadline]
 
   # --- assercja ---
 

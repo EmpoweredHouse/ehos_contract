@@ -100,6 +100,40 @@ defmodule PNS.GraphTest do
            "bez `contract_version` każdy deploy usuwający zdarzenie produkuje fałszywy drift"
   end
 
+  test "job czekający w kolejce to :in_flight, nie :dead" do
+    Application.put_env(:pns_prototype, Taxvision.Adapters.RegistryLookup.Fake,
+      responses: %{"c-1" => {:ok, %{legal_form: "JDG", vat_status: "wykreślony", vies_status: "aktywny"}}}
+    )
+
+    on_exit(fn -> Application.delete_env(:pns_prototype, Taxvision.Adapters.RegistryLookup.Fake) end)
+
+    {:ok, _} = Taxvision.Api.open_month(accountant("c-1"), %{company_id: "c-1", period: "2026-07"})
+
+    # Job jest wstawiony i nieuruchomiony — dokładnie ta chwila, w której
+    # dashboard bez trzeciego stanu twierdziłby, że ścieżka nigdy nie działa.
+    edge =
+      PNS.Graph.overlay()
+      |> Enum.find(&(&1.to == :discrepancy_notification_sent))
+
+    assert edge.state == :in_flight
+    assert edge.count == 0
+    assert edge.in_flight == 1
+  end
+
+  test "zdarzenia z jednej komendy są rodzeństwem, nie łańcuchem" do
+    {:ok, _} = Taxvision.Api.open_month(accountant("c-1"), %{company_id: "c-1", period: "2026-07"})
+
+    siblings = PNS.Graph.command_siblings()
+
+    # Trzy zdarzenia otwierające plus wynik weryfikacji: brak przyczyny, wspólna
+    # korelacja. Żadne nie spowodowało żadnego.
+    assert siblings[{"data_completeness_confirmed", "registry_status_checked"}] == 1
+    assert siblings[{"registry_status_checked", "registry_check_logged"}] == 1
+
+    # A to jest prawdziwa przyczynowość i nie może trafić do rodzeństwa.
+    refute Map.has_key?(siblings, {"registry_data_consistent", "monthly_tasks_generated"})
+  end
+
   test "mermaid wychodzi z nakładki, nie z osobnego pliku" do
     {:ok, _} = Taxvision.Api.open_month(accountant("c-1"), %{company_id: "c-1", period: "2026-07"})
 
@@ -110,5 +144,6 @@ defmodule PNS.GraphTest do
     assert mermaid =~ "classDef confirmed"
     assert mermaid =~ "month_closed[\""
     assert mermaid =~ "-.->|" and mermaid =~ "async"
+    assert mermaid =~ "ta sama komenda"
   end
 end

@@ -140,11 +140,19 @@ się po fazach: dwa zdarzenia tej samej fazy nigdy nią nie są, bo kontrakt nie
 Nakładka jest policzalna dwoma zapytaniami: węzły z `pns_events`, krawędzie z self-joina po `causation_id`.
 Nic więcej nie trzeba zapisywać, żeby odtworzyć faktyczny przebieg.
 
-**Job w locie wygląda dokładnie jak martwa ścieżka.** Po trzech przebiegach nakładka pokazała
-`registry_discrepancy_detected -> discrepancy_notification_sent` jako `dead (0x)` — choć trzeci przebieg
-wszedł w tę gałąź. Job czekał w kolejce. Po `Oban.drain_queue` krawędź przeszła w `confirmed (1x)`.
-**To jest pierwszy realny wymóg dashboardu: bez stanu kolejki w nakładce dashboard kłamie przy każdym
-opóźnieniu.** Trzeci stan, nie dwa — *zadeklarowane i nieobserwowane* to nie to samo co *w drodze*.
+**Job w locie wyglądał dokładnie jak martwa ścieżka — poprawione.** Po trzech przebiegach nakładka
+pokazywała `registry_discrepancy_detected -> discrepancy_notification_sent` jako `dead (0x)`, choć przebieg
+wszedł w tę gałąź; job czekał w kolejce. Bez tego dashboard kłamałby przy każdym normalnym opóźnieniu.
+
+Nakładka ma teraz **cztery stany**: `confirmed`, `in_flight`, `dead`, `historical`. `in_flight` czyta stan
+kolejki Obana, a lista *zadeklarowane, nigdy nie zaobserwowane* pomija zdarzenia, które wyprodukuje job
+czekający w kolejce — bo inaczej lista i stan krawędzi mówiłyby dwie różne rzeczy o tym samym zdarzeniu.
+
+**Rodzeństwo jednej komendy dostało własny rodzaj krawędzi.** Trzy zdarzenia otwierające miesiąc nie mają
+między sobą przyczynowości — powstają razem, z jednej komendy — więc wisiały na diagramie bez połączeń i
+wyglądały na błąd. Rysowane są teraz linią **kropkowaną bez grotu**, z podpisem „ta sama komenda", liczone
+po `correlation_id` przy `causation_id IS NULL`. Osobny styl jest tu istotny: gdyby wyglądały jak strzałki,
+ktoś przeczytałby je jako przyczynowość i zbudował na tym logikę.
 
 **`contract_version` robi to, po co jest.** Test wstawia zdarzenie pod wersją kontraktu, której już nie ma w
 binarce, i nakładka klasyfikuje je jako `:historical`, nie `:drift`. Bez tej kolumny każdy deploy usuwający
@@ -211,13 +219,30 @@ lib/taxvision/    aplikacja klienta
   adapters/       behaviour + fake
 ```
 
-## Do decyzji
+## Rozstrzygnięte 4 sierpnia
 
-1. **Idempotencja powiadomień.** Kontrakt mówi teraz `identity: [:company_id, :period]`, czyli dwa rozjazdy
-   w jednym miesiącu to jedno powiadomienie. To moje założenie i wymaga potwierdzenia na warsztacie.
-2. **Job w locie jako trzeci stan nakładki.** Wpływa na schemat dashboardu, więc lepiej teraz niż potem.
-3. **Krawędź „w tej samej komendzie"** z `correlation_id` — bez niej graf jest prawdziwy i nieczytelny.
-4. **Deadline 25 dni** nie ma źródła w warsztacie.
-5. **Trzy zmiany do przeniesienia do rekordu:** `identity` w notatkach §4 (dziś sprzeczne z ADR §9-10),
-   `stages` i słownik typów w notatkach §1, oraz jedno zdanie w §18 o tym, że przykład jest testem przez
-   generator, nie sam z siebie.
+| Pytanie | Decyzja |
+|---|---|
+| Powtórzony rozjazd w tym samym miesiącu | `identity: [:company_id, :period, :diff]` — ten sam rozjazd nie spamuje, inny daje nowe powiadomienie. Wersja bez `diff` połykała drugi, inny problem |
+| Job w kolejce w nakładce | Trzeci stan `in_flight`, wdrożony teraz, bo po zbudowaniu ekranów byłby zmianą modelu danych |
+| Krawędź „ta sama komenda" | Rysowana, ale kropkowaną linią bez grotu i z jawnym podpisem |
+| Termin 25 dni | Zostaje z `unverified: [:deadline]`; `pns.check` zgłasza to za każdym przebiegiem i deklaracja nie liczy się do raportu dowodowego |
+
+## Czego w pakiecie nie ma, a jest w rekordzie
+
+`lib/pns` to 1263 linie, które dowodzą tego, po co powstały. Cztery luki, w kolejności wagi:
+
+1. **Monitor zaległych procesów i ocena assercji `trace`.** Jedno i drugie jest zadeklarowane w kontrakcie i
+   **nieczytane przez nikogo**. To jest produkt: „faktura, która miała pójść, nie poszła, i nic nie
+   zawiodło" wykrywa się dokładnie tym. Prototyp dowiózł instalację, nie produkt.
+2. **Typy payloadu nie są sprawdzane.** Kontrakt mówi `task_count: :integer` i nic tego nie pilnuje.
+   Notatki §6 wymieniają payload conformance jako w pełni generowalny test.
+3. **Awaria handlera synchronicznego nie zostawia śladu** — transakcja cofa wiersz obsługi razem ze
+   zdarzeniem. Formalnie poprawne, diagnostycznie puste.
+4. **Brak ochrony przed cyklem w runtime.** `pns.check` widzi krawędź wsteczną, ale nic nie zatrzyma
+   rekurencji A→B→A.
+
+Drobniejsze, realne: `version/0` liczy hash przez `term_to_binary`, więc aktualizacja OTP mogłaby zmienić
+`contract_version` bez zmiany kontraktu; kolejność handlerów synchronicznych zależy od kolejności skanu
+modułów; `PNS.Job` rozwiązuje handler po nazwie modułu, więc zmiana nazwy przy jobach w kolejce wysypuje je
+trwale; `retain` działa tylko na płaskim payloadzie; brak telemetrii i cienkiego user-managementu.

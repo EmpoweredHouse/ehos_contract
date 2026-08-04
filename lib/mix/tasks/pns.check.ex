@@ -34,6 +34,7 @@ defmodule Mix.Tasks.Pns.Check do
       |> check_backward_edges()
       |> check_retain_on_free_text()
       |> check_no_vendor_in_config()
+      |> check_unverified_declarations()
 
     report(findings)
   end
@@ -149,6 +150,21 @@ defmodule Mix.Tasks.Pns.Check do
         reduce: findings do
       acc ->
         [{:info, "#{inspect(event.name)}.#{field} to wolny tekst bez `retain` — trafi do logu dosłownie"} | acc]
+    end
+  end
+
+  # Deklaracje, których process owner nie potwierdził. Nie błąd — świadomy stan
+  # przejściowy. Ale musi być widoczny za każdym przebiegiem, bo fałszywa
+  # metryka jest gorsza niż jej brak: to metryka, którą produkt sprzedaje.
+  defp check_unverified_declarations(findings) do
+    for contract <- PNS.Registry.contracts(),
+        process <- contract.processes(),
+        field <- process.unverified,
+        reduce: findings do
+      acc ->
+        [{:warn,
+          "proces #{inspect(process.name)}: `#{field}` = #{inspect(Map.get(process, field))} " <>
+            "nie jest potwierdzone przez process ownera — nie liczy się do raportu dowodowego"} | acc]
     end
   end
 

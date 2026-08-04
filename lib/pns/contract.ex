@@ -118,7 +118,7 @@ defmodule PNS.Contract do
   def build_process(name, opts) do
     validate_keys!(
       opts,
-      [:label, :events, :stages, :terminal, :cadence, :deadline],
+      [:label, :events, :stages, :terminal, :cadence, :deadline, :unverified],
       "process #{inspect(name)}"
     )
 
@@ -153,7 +153,12 @@ defmodule PNS.Contract do
       # "never observed". Bez tego miesięczne zamknięcie czyta się jako
       # martwa ścieżka szósty dzień po ostatnim przebiegu (notatki §9).
       cadence: Keyword.get(opts, :cadence),
-      deadline: Keyword.get(opts, :deadline)
+      deadline: Keyword.get(opts, :deadline),
+      # Deklaracje, których **nie potwierdził process owner**. Zostają w
+      # kontrakcie, bo bez nich mechanizm nie ma czego pilnować, ale nie mogą
+      # liczyć się do raportu dowodowego: fałszywa metryka jest gorsza niż jej
+      # brak, bo to metryka, którą produkt sprzedaje.
+      unverified: Keyword.get(opts, :unverified, [])
     }
   end
 
