@@ -311,12 +311,15 @@ defmodule PNS.Graph do
             true -> "dead"
           end
 
-        {node.event, state, node.label, entry && entry.count}
+        {node.event, state, node.label, entry}
       end
 
     node_lines =
-      for {event, _state, label, count} <- nodes do
-        suffix = if count, do: " (#{count}x)", else: ""
+      for {event, _state, label, entry} <- nodes do
+        # Wystąpienia i przebiegi obok siebie także na diagramie. Sam licznik
+        # wystąpień na obrazku jest tą samą półprawdą co w raporcie tekstowym,
+        # a obrazek ogląda więcej osób.
+        suffix = if entry, do: " (#{entry.count}x, #{przebiegi(entry.instances)})", else: ""
         ~s(    #{event}["#{label}#{suffix}"])
       end
 
@@ -332,10 +335,15 @@ defmodule PNS.Graph do
       for edge <- overlay do
         # `-. tekst .->` i `|etykieta|` wykluczają się w składni mermaida —
         # dla strzałki kropkowanej wszystko idzie w pipe'y.
+        # Ułamek, nie sama liczba: „3x" nie odróżnia trzech przebiegów, które
+        # przeszły, od jednego, który przeszedł trzy razy — a przy pięciu
+        # przebiegach różnica między 3/5 a 5/5 jest całą informacją.
+        runs = "#{edge.instances}/#{edge.of_instances} przebiegów"
+
         {arrow, label} =
           if edge.async,
-            do: {"-.->", "#{edge.count}x async"},
-            else: {"-->", "#{edge.count}x"}
+            do: {"-.->", "#{edge.count}x async · #{runs}"},
+            else: {"-->", "#{edge.count}x · #{runs}"}
 
         "    #{edge.from} #{arrow}|#{label}| #{edge.to}"
       end
@@ -381,6 +389,15 @@ defmodule PNS.Graph do
       "  #{state} #{mode}  #{edge.from} -> #{edge.to}  (#{edge.count}x, #{runs}#{queue})"
     end)
   end
+
+  # Etykiety czyta klient, a „2 przebiegów" na slajdzie wygląda jak literówka
+  # w narzędziu, które ma budzić zaufanie do liczb.
+  defp przebiegi(1), do: "1 przebieg"
+
+  defp przebiegi(n) when rem(n, 10) in 2..4 and rem(n, 100) not in 12..14,
+    do: "#{n} przebiegi"
+
+  defp przebiegi(n), do: "#{n} przebiegów"
 
   defp terminal?(event) do
     Enum.any?(event.contract.processes(), &(event.name in &1.terminal))

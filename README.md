@@ -185,6 +185,14 @@ mix pns.graph --overlay --mermaid --output doc/graf-nakladki.mmd
 mmdc -i doc/graf-nakladki.mmd -o doc/graf-nakladki.png -b white -s 3
 ```
 
+Jeśli `mmdc` zgłosi brak `chrome-headless-shell` w konkretnej wersji, a w `~/.cache/puppeteer/` leży
+inna — wskaż mu ją zamiast pobierać drugą przeglądarkę:
+`mmdc … -p <(echo '{"executablePath":"'"$HOME"'/.cache/puppeteer/chrome-headless-shell/<wersja>/chrome-headless-shell-mac-arm64/chrome-headless-shell"}')`
+
+Diagram w repo jest generowany z **danych demonstracyjnych**, nie z prawdziwego przebiegu: pięć firm w
+jednym miesiącu, trzy przechodzą weryfikację, dwie idą w blokadę, kolejka zatrzymana. Bez zatrzymanej
+kolejki czwarty stan nakładki nie miałby czego pokazać.
+
 ## Graf z kontraktu — czy to ma szanse
 
 Ma, z jednym zastrzeżeniem, które warto znać.
