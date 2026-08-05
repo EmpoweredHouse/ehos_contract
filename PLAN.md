@@ -388,9 +388,22 @@ Trzy rzeczy rozstrzygnięte przy okazji:
   odbiorcę i inne pytanie.
 - **`trace` jest jedyną deklaracją bez `label`** — więc nazwa techniczna byłaby wszystkim, co można wypisać,
   a `month_opens_or_is_blocked` w raporcie dla księgowej oblewa kryterium. Raport składa **zdanie z etykiet
-  zdarzeń**, czyli ze słów, które klient już zatwierdził. **Do rozstrzygnięcia przez process ownera, nie
-  przez nas:** czy chce assercje *nazywać*, czy złożone zdanie wystarcza. Dopisanie `label` do `trace` to
-  zmiana DSL i nie robię jej pod wygodę raportu.
+  zdarzeń**, czyli ze słów, które klient już zatwierdził.
+
+  **Rozstrzygnięte 5 sierpnia: `label` do `trace` nie wchodzi.** `trace` ma już nazwę
+  (`trace :month_opens_or_is_blocked do`), brakuje mu etykiety klienckiej — i to jest różnica, która decyduje.
+  Etykieta zdarzenia **dodaje fakt**, którego nie ma nigdzie indziej: żaden silnik nie wyprowadzi „Otwarto
+  miesiąc księgowy” z `accounting_month_opened`, więc nie ma z czego dryfować. Etykieta assercji
+  **powtarzałaby fakt już w pełni wyrażony** przez `from`/`eventually`/`within`/`or_else` — czyli drugą
+  edytowalną reprezentację jednej rzeczy. Zmień `within: {2, :day}` na `{5, :day}` i proza dalej mówi „w ciągu
+  dwóch dni”, a **nic tego nie łapie**. To jest argument, którym ADR §2 odrzuca zewnętrzny format dokumentacji
+  jako źródło, obrócony na nasz własny DSL. Zdanie składane jest wyprowadzone, więc **nie może skłamać**.
+
+  Czego assercja faktycznie nie umie powiedzieć, to **dlaczego ją ustalono** — „bo urząd liczy termin od
+  otwarcia" `[WF 00:34:40]`. Tego w mechanice nie ma, nie da się wyprowadzić i nie ma z czego dryfować. Słowo
+  na to **już istnieje**: `source:`, dziś tylko na `rule`. Rozszerzenie kosztuje zero nowych słów, `label`
+  kosztowałoby jedno. **Nie dopisane** — obie nasze assercje pochodzą z warsztatu i żadna nie ma zapisanego
+  pochodzenia, a czy process owner ma uzasadnienia warte zapisania, to pytanie warsztatowe.
 - **Raport wymagał `until:`**, którego nie miało nic. Samo `since` znaczy „od X do teraz", więc lipcowy
   raport wygenerowany we wrześniu zawierałby sierpień — a dowód, który zmienia się przy ponownym wydruku,
   nie jest dowodem. Doszło do `PNS.Graph`, `PNS.Trace` i `PNS.Deployment`.
@@ -456,8 +469,9 @@ Gałąź **`docs/pns-record-corrections-etap-1`** w repo kontekstu, jeden commit
 cztery poprawki z etapów 1.1–1.2 plus nowy kształt `event`/`process` i sprostowanie do triggera ADR §15
 („jedno zdarzenie w dwóch procesach" nie jest błędem kompilacji, a rzeczą niewyrażalną).
 
-**Druga partia — z etapów 1.3–1.7 — jest nierozliczona.** Sprawdzone 5 sierpnia w kodzie, nie z pamięci,
-w kolejności wagi:
+**Druga partia — z etapów 1.3–1.7 — dopisana 5 sierpnia jako `9897c91` na tej samej gałęzi.** Dwa commity,
+jeden przegląd, i podział widoczny w treści: co kod obalił (1–3) wobec tego, czego rekord żądał jako dowodu
+(4–5). Sprawdzone w kodzie, nie z pamięci, w kolejności wagi:
 
 1. **ADR „What would falsify this", ostatni bullet, jest dziś w połowie nieprawdziwy.** Mówi, że `trace`
    i `deadline` nie mają czytelnika. 1.5 dał czytelnika `trace`; **`deadline` nadal go nie ma** i to jest
@@ -470,8 +484,8 @@ w kolejności wagi:
 3. **ADR §16–17, tabela „What ships": `Dashboard — inside the engine`.** 1.7 rozdzielił dane od zdań, bo
    silnik nie wie, w jakim języku czyta jego odbiorca. Albo dashboard w silniku dostaje **szew na renderer
    klienta**, albo raport dowodowy — pozycja **komercyjna** w tej samej sekcji — jest artefaktem klienta.
-   Dziś w kodzie jest to drugie i nie było decyzją, tylko konsekwencją. Do tego `Consequences` żąda
-   etykiet biznesowych obok nazw technicznych, a **`trace` jest jedyną deklaracją bez `label`**.
+   Dziś w kodzie jest to drugie i nie było decyzją, tylko konsekwencją. **Zapisane jako piąte otwarte
+   pytanie ADR-a, nie jako fakt** — decyzja jest tania teraz i droga, kiedy klient wypuści własny raport.
 4. **ADR §5–6, trigger „Not before the split is validated": dowód jest.** 1.3b — dwa zapytania na jedno
    otwarcie miesiąca, liczone telemetrią, i `exports: []` czyniące join **niewyrażalnym**. `Consequences`
    „Query counts rise" ma liczbę zamiast przymiotnika.
@@ -500,9 +514,13 @@ Gałąź `backup-polskie-opisy` **usunięta 5 sierpnia** po sprawdzeniu, że wsz
 
 **Etap 1 zamknięty w całości.** 1.1–1.7. Brama uniwersalności przeszła, `trace` przestał być dekoracją, a różnica
 declared vs observed okazała się sygnałem — 50 przebiegów daje jedną linię raportu, a wszystkie pięć
-kształtów procesu jest obsłużonych. **Dalej: etap 2** — obietnice kontraktu, które dziś są dekoracją. Otwarte z etapu 1: 1.5b (werdykt
-`:suspended`), sprzątanie języka w `lib/pns/`, oraz decyzja process ownera o `label` dla `trace`. 1.5b (werdykt `:suspended`) czeka na log
-niedostępności zależności; sprzątanie języka w `lib/pns/` jest osobnym zadaniem, patrz wyżej.
+kształtów procesu jest obsłużonych. **Dalej: etap 2** — obietnice kontraktu, które dziś są dekoracją. Otwarte z etapu 1: **1.5b** (werdykt
+`:suspended`, czeka na log niedostępności zależności) i **sprzątanie języka w `lib/pns/`** (osobne zadanie,
+patrz wyżej). Rekord rozliczony w całości — dwa commity na `docs/pns-record-corrections-etap-1`.
+
+Zamknięte 5 sierpnia bez zmiany w DSL: **`label` dla `trace` nie wchodzi** — powód przy 1.7. Do process
+ownera zostaje jedna rzecz z etapu 1, węższa niż się wydawała: **potwierdzenie, że `within` obowiązuje także
+`or_else`.**
 
 Kod zostaje w tym repo i przenosi się do repozytorium pilota, gdy ono powstanie; struktura jest już taka, że
 to `git mv`.
