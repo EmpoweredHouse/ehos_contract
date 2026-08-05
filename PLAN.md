@@ -192,12 +192,15 @@ czego nie mówiła posortowana lista. Bez alertów, bez stanu na żywo, bez czeg
 **Zablokowane do rozstrzygnięcia:** notatki §9 mówią *„live, not a report … monitors eventually want alerts"*,
 co jest w napięciu z zawężeniem zakresu. Etapy 1–3 są od tego niezależne.
 
-## Dług wobec rekordu
+## Rekord: co czeka na przegląd
 
-Gałąź `docs/pns-record-corrections-etap-1` w repo kontekstu czeka na przegląd i **jedna jej linia jest już
-nieaktualna**: notatka do ADR §15 mówi, że „jedno zdarzenie w dwóch procesach" jest teraz błędem
-kompilacji. Po przeniesieniu `process:` na zdarzenie (5 sierpnia) jest **niewyrażalne**, co jest mocniejsze.
-Do dopisania przy scalaniu tamtej gałęzi, razem z nowym kształtem `event`/`process` w notatkach §1.
+Gałąź **`docs/pns-record-corrections-etap-1`** w repo kontekstu, jeden commit, **niewypchnięta**. Zawiera
+cztery poprawki z etapów 1.1–1.2 plus nowy kształt `event`/`process` i sprostowanie do triggera ADR §15
+(„jedno zdarzenie w dwóch procesach" nie jest błędem kompilacji, a rzeczą niewyrażalną). Dług spłacony.
+
+**Uwaga przy odgałęzianiu od tego repozytorium:** decyzji 008 ani notatek technologicznych **nie ma na
+`main`** — żyją wyłącznie na `docs/pns-architecture-adr`, która bywa przepisywana. Gałąź odbita od niej
+osierocieje po każdym rebase i wymaga `rebase --onto`. Zdarzyło się to raz, 5 sierpnia.
 
 ## Kolejność
 

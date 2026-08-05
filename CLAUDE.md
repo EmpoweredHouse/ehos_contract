@@ -55,8 +55,15 @@ przełącznika granice są dokumentacją. Postgres słucha na **5433**.
   `label`, opisy `example`, `source`, moduledoki i komentarze. Nazwy faz przeciekły raz na polski,
   bo reguła mówiła tylko o etykietach — a faza jest **identyfikatorem**: idzie do `pns.check`, do grafu
   i do hasha `version/0`.
+- **Komunikaty commitów po angielsku**, z tej samej reguły: `git log` czyta recenzent, nigdy klient.
+  Dwanaście pierwszych commitów jest po polsku i **zostaje** — historia sprzed reguły nie jest przepisywana,
+  bo te wiadomości niosą uzasadnienia decyzji i tłumaczenie ich hurtem gubi więcej, niż porządkuje.
 - Przy pisaniu do pliku pamiętaj o `encoding: :unicode` — Erlang trzyma stdout w latin1, kiedy wyjście
   nie jest terminalem, i psuje każdy polski znak.
+- **W skryptach powłoki nie licz na dzielenie na słowa.** Shell to zsh, a zsh **nie dzieli** nierozdzielonych
+  rozwinięć — `for x in $LISTA` daje jedną iterację z całą listą w jednym argumencie, nie N iteracji. Raz
+  wystarczyło, żeby `git cherry-pick` dostał siedem SHA-ów jako jeden argument, padł, a stojące po nim
+  `git commit --amend` przepisało nie ten commit, co miało. Pętle po SHA-ach pisz jawnie albo przez tablice.
 - **Nazwy zdarzeń pochodzą z warsztatu**, nie z wyobraźni. Źródło:
   `~/Projects/ai/taxvision-process-native/workshop_output/02-event-storming.md`.
 
