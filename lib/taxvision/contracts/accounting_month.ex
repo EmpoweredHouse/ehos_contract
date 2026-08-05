@@ -19,7 +19,12 @@ defmodule Taxvision.Contracts.AccountingMonth do
   event :data_completeness_confirmed,
     label: "Potwierdzono komplet danych historycznych",
     owner: Taxvision.RegistryCheck,
-    payload: %{company_id: :id, period: :period, confirmed_by: :string}
+    # Nie ma tu `confirmed_by`. Kto potwierdził, wie **silnik** — `actor` jest
+    # kolumną logu, niesioną przez każde zdarzenie, przechodzącą przez
+    # `causation` i przez granicę joba. Pole w payloadzie powielałoby tę samą
+    # prawdę w drugim miejscu, a dwa źródła prawdy o jednym fakcie rozjeżdżają
+    # się dokładnie wtedy, kiedy są potrzebne do audytu.
+    payload: %{company_id: :id, period: :period}
 
   event :registry_status_checked,
     label: "Sprawdzono status w CEIDG/KRS, białym rejestrze VAT i VIES",

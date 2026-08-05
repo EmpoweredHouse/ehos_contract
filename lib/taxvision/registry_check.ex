@@ -32,7 +32,7 @@ defmodule Taxvision.RegistryCheck do
 
       true ->
         prefix = [
-          PNS.event(:data_completeness_confirmed, Map.put(base, :confirmed_by, input[:actor] || "unknown")),
+          PNS.event(:data_completeness_confirmed, base),
           PNS.event(:registry_status_checked, Map.put(base, :checked_at, checked_at)),
           PNS.event(:registry_check_logged, Map.put(base, :checked_at, checked_at))
         ]

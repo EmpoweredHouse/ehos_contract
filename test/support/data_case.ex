@@ -24,11 +24,22 @@ defmodule Taxvision.DataCase do
   @doc "Token dla dev/testów. Prawdziwy provider nie oddaje sekretu do podpisu."
   def token(claims), do: PNS.Auth.LocalToken.sign(claims)
 
+  # `sub` jest **nieprzezroczystym, stabilnym identyfikatorem**, nie mailem.
+  # Pierwsza wersja fikstury wpisywała tu adres e-mail i przez to każde
+  # zdarzenie w logu niosło dane osobowe w kolumnie `actor` — mimo że szew był
+  # zaprojektowany poprawnie. Mail się zmienia przy zmianie nazwiska, `sub` nie,
+  # więc mail w tej roli psuje też ciągłość audytu.
+  @accountant_sub "018f2a3c-7b4e-7c21-9d55-0a1b2c3d4e5f"
+  @client_sub "018f2a3c-9d10-7f88-b402-6e7f8a9b0c1d"
+
+  def accountant_sub, do: @accountant_sub
+  def client_sub, do: @client_sub
+
   def accountant(company_id \\ "c-1"),
-    do: token(%{"sub" => "ksiegowa@biuro.example", "company_id" => company_id, "roles" => ["accounting"]})
+    do: token(%{"sub" => @accountant_sub, "company_id" => company_id, "roles" => ["accounting"]})
 
   def client(company_id \\ "c-1"),
-    do: token(%{"sub" => "klient@firma.example", "company_id" => company_id, "roles" => ["client"]})
+    do: token(%{"sub" => @client_sub, "company_id" => company_id, "roles" => ["client"]})
 
   def events_of(type) do
     name = to_string(type)

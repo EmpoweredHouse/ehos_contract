@@ -83,7 +83,15 @@ defmodule UniversalityGate.TreatmentEpisode do
   event :treatment_plan_approved,
     label: "Zatwierdzono plan leczenia",
     owner: UniversalityGate.Planning,
-    payload: %{episode_id: :id, session_count: :integer, approved_by: :string}
+    # `approved_by` zostaje w payloadzie i **nie jest** duplikatem `actor` —
+    # to jest granica, którą warto umieć postawić. `actor` mówi, kto wykonał
+    # operację w systemie; tu chodzi o to, kto **firmuje plan leczenia**, co
+    # jest faktem o odpowiedzialności zawodowej. Rejestratorka wprowadzająca
+    # plan w imieniu lekarza to dwie różne osoby w tym samym zdarzeniu.
+    #
+    # Typ `:id`, nie `:string`: identyfikator osoby, nie jej imię wpisane
+    # ręcznie. Ta różnica decyduje, czy do logu trafiają dane osobowe.
+    payload: %{episode_id: :id, session_count: :integer, approved_by: :id}
 
   # --- realizacja ---
 

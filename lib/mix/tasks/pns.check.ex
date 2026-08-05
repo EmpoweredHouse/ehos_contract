@@ -29,6 +29,7 @@ defmodule Mix.Tasks.Pns.Check do
     findings =
       []
       |> check_events_have_handlers()
+      |> check_owners_exist()
       |> check_rule_functions_exist()
       |> check_traces_resolve()
       |> check_backward_edges()
@@ -61,6 +62,33 @@ defmodule Mix.Tasks.Pns.Check do
             [{:info, "zdarzenie #{inspect(event.name)} bez handlera i nieoznaczone jako terminalne (#{inspect(event.contract)})"} | acc]
         end
     end
+  end
+
+  # `owner` był jedyną deklaracją zdarzenia, której **nie czytał żaden
+  # mechanizm** — jedno miejsce przepisywało ją do węzła grafu i na tym koniec.
+  # Skutek: kontrakt wskazywał właściciela, którego modułu nigdy nie było, a
+  # kompilacja i check przechodziły. Deklaracja, której nikt nie sprawdza, jest
+  # komentarzem w składni Elixira.
+  #
+  # `info`, nie błąd: właściciel niezaimplementowanej jeszcze fazy to normalny
+  # stan w trakcie wdrożenia, dokładnie jak zdarzenie bez handlera.
+  #
+  # Zgrupowane **po module, nie po zdarzeniu**, i to nie jest kosmetyka. Wersja
+  # per zdarzenie dawała czternaście linii na dwa kontrakty, z czego dziesięć
+  # powtarzało tę samą informację. Tak zaczynał check retencji, zanim wyszło, że
+  # check krzyczący na wszystko jest wyłączany w ciągu tygodnia.
+  defp check_owners_exist(findings) do
+    PNS.Registry.declared_events()
+    |> Enum.reject(&is_nil(&1.owner))
+    |> Enum.reject(&Code.ensure_loaded?(&1.owner))
+    |> Enum.group_by(& &1.owner, & &1.name)
+    |> Enum.reduce(findings, fn {owner, events}, acc ->
+      ile = if length(events) == 1, do: "1 zdarzenia", else: "#{length(events)} zdarzeń"
+
+      [{:info,
+        "właściciel #{inspect(owner)} nie istnieje jako moduł, a jest zadeklarowany dla " <>
+          "#{ile}: #{inspect(events)}"} | acc]
+    end)
   end
 
   # `rule` wskazuje MFA, więc nikt nie sprawdzi za nas, że funkcja istnieje.

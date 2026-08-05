@@ -58,7 +58,10 @@ defmodule Taxvision.IdentitySeamTest do
 
       assert [opened] = events_of(:accounting_month_opened)
       assert opened.correlation_id == correlation_id
-      assert opened.actor == "ksiegowa@biuro.example"
+      # `actor` niesie `sub` z tokenu — nieprzezroczysty identyfikator, nie mail.
+      # To jedyne miejsce, w którym log zapisuje, kto to zrobił; payload już
+      # tego nie duplikuje.
+      assert opened.actor == accountant_sub()
     end
   end
 
