@@ -73,7 +73,7 @@ defmodule PNS.DispatchTest do
       PNS.emit(AccountingMonth, :registry_discrepancy_detected, %{
         company_id: @company,
         period: @period,
-        diff: "vat_status: Abilia=czynny, rejestry=wykreślony"
+        diff: "vat_status: ours=active, registries=struck-off"
       })
 
     assert [job] = all_enqueued(worker: PNS.Job)
@@ -88,7 +88,7 @@ defmodule PNS.DispatchTest do
   end
 
   test "the retain policy applies to the job arguments too, not only to the log" do
-    diff = "vat_status: Abilia=czynny, rejestry=wykreślony"
+    diff = "vat_status: ours=active, registries=struck-off"
 
     {:ok, event} =
       PNS.emit(AccountingMonth, :registry_discrepancy_detected, %{

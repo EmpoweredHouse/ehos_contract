@@ -42,6 +42,11 @@ wygenerowana z `PNS.Contract.schema/0`, a nie pisana ręcznie.
 `--warnings-as-errors` jest konieczne: `boundary` raportuje naruszenia jako ostrzeżenia, więc bez tego
 przełącznika granice są dokumentacją. Postgres słucha na **5433**.
 
+**Trzy reguły z tego pliku są w `mix check` bramami, nie opisem**: granice (`boundary` +
+`--warnings-as-errors`), referencja kluczy (`pns.docs --check`) i **język kodu**
+(`test/language_test.exs`). Każda z nich trafiła tam dlatego, że wcześniej stała tu jako zdanie
+i została złamana.
+
 ## Konwencje, które łatwo złamać
 
 - **`boundary`: moduły procesowe są rodzeństwem, nie hierarchią.** Dostęp do cudzych tabel wymaga jawnego
@@ -52,17 +57,24 @@ przełącznika granice są dokumentacją. Postgres słucha na **5433**.
   handler, nie bibliotekę.
 - **Nazwy zdarzeń to literały.** Publikacja dynamiczna jest nielegalna, bo od tego zależy, czy graf statyczny
   jest faktem, czy heurystyką.
-- **Kod jest po angielsku. Bez wyjątków w `lib/pns/`.** To dotyczy wszystkiego: nazw modułów, funkcji,
-  zmiennych, moduledoków, komentarzy, komunikatów błędów i stringów wypisywanych na wyjście. `lib/pns/`
-  ma szansę awansować do biblioteki na hex, a biblioteka z polskimi komunikatami błędów jest biblioteką
-  dla jednego kraju. To samo dotyczy testów i fikstur, bo one też pojadą z pakietem.
-- **Po polsku jest wyłącznie to, co klient czyta zdaniami**, i tylko w deklaracjach kontraktu:
-  `label`, opisy `example`, `source`, `unavailable_looks_like`. To trafia na ekran dla księgowej i na
-  głos process ownerowi, więc musi być w jego języku. Nic więcej.
+- **Kod jest po angielsku — i od 6 sierpnia pilnuje tego `test/language_test.exs`, nie ten akapit.**
+  Ta reguła stała tu wcześniej i była łamana w 54 plikach, więc nie jest już opisem, tylko bramą.
+  Zasada, którą egzekwuje: **polski jest legalny wyłącznie w jednolinijkowym stringu, w pliku z listy
+  `@files_with_polish_content`.** Wszędzie indziej zabroniony — komentarze, heredoki (czyli moduledoki
+  i `@doc`), identyfikatory, atomy. Zakres: `lib/`, `test/`, `config/`, `priv/repo/migrations/`,
+  `docs/` i `mix.exs`.
+- **Po polsku jest wyłącznie to, co klient czyta zdaniami**: `label`, opisy `example`, `source`,
+  `unavailable_looks_like` w kontrakcie, raport dla księgowej, nazwy tasków, temat maila. Dopisanie
+  pliku do allowlisty wymaga **powodu**, który jest drukowany przy błędzie testu; wpis, którego plik
+  przestał potrzebować, oblewa test — inaczej lista tylko rośnie i przestaje cokolwiek znaczyć.
+- **Brama ma dwie sieci i druga przecieka, co jest zapisane w niej samej.** Diakrytyki łapie dokładnie;
+  polszczyzna bez nich idzie przez listę słów, która nigdy nie będzie kompletna — `rejestry` przeszło
+  przez pełny sweep właśnie dlatego. Słowa dopisuje się, kiedy coś się prześlizgnie.
 - **Dokumentacja repo — `README.md`, `PLAN.md`, ten plik — zostaje po polsku.** To nie jest kod i nie
-  jedzie z pakietem.
+  jedzie z pakietem, więc brama ich nie skanuje.
 - **Publiczne funkcje w `lib/pns/` mają `@doc` i `@spec`.** Bez tego pakiet nie ma dokumentacji ani
-  kontraktu typów, a `dialyzer` nie ma czego sprawdzać.
+  kontraktu typów, a `dialyzer` nie ma czego sprawdzać. To jeszcze **nie jest** bramą — sprawdzone
+  jednorazowo skryptem 5 sierpnia, do zamknięcia testem tą samą drogą, co język.
 - Wcześniejsza wersja tej reguły mówiła „identyfikatory po angielsku, moduledoki i komentarze po polsku"
   i to był błąd, który zdążył się rozlać po `lib/pns/`. **Poprawianie wstecz jest osobnym zadaniem** —
   patrz `PLAN.md`, bo jest sprzężone z assercjami testów bram kompilacyjnych.

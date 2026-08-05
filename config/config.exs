@@ -2,12 +2,13 @@ import Config
 
 config :pns_prototype,
   ecto_repos: [Taxvision.Repo],
-  # PNS czyta repo z konfiguracji, nie referencją do modułu — dzięki temu
-  # pakiet nie zależy od aplikacji klienta w czasie kompilacji.
+  # PNS reads the repo from configuration rather than through a module
+  # reference — that is what keeps the package from depending on the client
+  # application at compile time.
   repo: Taxvision.Repo,
-  # Szew tożsamości: implementacja weryfikatora jest wymienna. Dziś lokalny
-  # HMAC, docelowo `oidcc` przeciw kupionemu providerowi. Kod domenowy nie
-  # wie, która to jest.
+  # The identity seam: the verifier implementation is swappable. Today a local
+  # HMAC, eventually `oidcc` against a bought provider. Domain code does not
+  # know which one it is.
   auth_verifier: PNS.Auth.LocalToken
 
 config :pns_prototype, Taxvision.Repo,
@@ -22,8 +23,9 @@ config :pns_prototype, Oban,
   queues: [events: 10]
 
 config :pns_prototype, PNS.Auth.LocalToken,
-  # Sekret dev-only. Prawdziwy provider nie oddaje sekretu do podpisu —
-  # silnik waliduje podpis publicznym kluczem z JWKS i nie umie wystawić tokenu.
-  secret: "dev-only-secret-nie-do-produkcji"
+  # A dev-only secret. A real provider does not hand out its signing secret —
+  # the engine validates the signature with a public key from JWKS and cannot
+  # issue a token at all.
+  secret: "dev-only-secret-not-for-production"
 
 import_config "#{config_env()}.exs"

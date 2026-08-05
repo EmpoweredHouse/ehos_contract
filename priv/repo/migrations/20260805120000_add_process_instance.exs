@@ -3,17 +3,17 @@ defmodule Taxvision.Repo.Migrations.AddProcessInstance do
 
   def change do
     alter table(:pns_events) do
-      # Tożsamość przebiegu, policzona przy emisji z pól zadeklarowanych w
-      # `instance:`. Liczenie jej w zapytaniu z payloadu byłoby możliwe, ale
-      # wiązałoby każdą kwerendę z **dzisiejszą** wersją kontraktu — a log
-      # obejmuje każdą wersję od pierwszego deployu. To ten sam argument, który
-      # posadził tu `contract_version`.
+      # Run identity, computed at emit time from the fields declared in
+      # `instance:`. Computing it in a query from the payload would be possible,
+      # but it would tie every query to **today's** contract version — and the log
+      # spans every version since the first deploy. That is the same argument that
+      # put `contract_version` here.
       add :process, :string
       add :instance_id, :string
     end
 
-    # Po tym idzie każde zapytanie per przebieg: assercja `trace`, licznik
-    # instancji na krawędzi, lista zdarzeń jednego przebiegu.
+    # Every per-run query runs on this: the `trace` assertion, the instance
+    # counter on an edge, the list of one run's events.
     create index(:pns_events, [:instance_id])
     create index(:pns_events, [:process, :instance_id])
   end

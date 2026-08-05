@@ -7,8 +7,8 @@ defmodule PnsPrototype.MixProject do
       version: "0.1.0",
       elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
-      # Granice modułów wymuszone w czasie kompilacji, od pierwszego commita
-      # (ADR §5-6). Bez tego wpisu `use Boundary` jest tylko dokumentacją.
+      # Module boundaries enforced at compile time, from the first commit
+      # (ADR §5-6). Without this entry `use Boundary` is only documentation.
       compilers: [:boundary] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
@@ -16,8 +16,8 @@ defmodule PnsPrototype.MixProject do
     ]
   end
 
-  # `mix check` uruchamia testy, a te wymagają MIX_ENV=test. Bez tego alias
-  # wywala się na tym, że `mix test` nie działa w dev.
+  # `mix check` runs the tests, and those need MIX_ENV=test. Without this the
+  # alias fails on `mix test` not working in dev.
   def cli, do: [preferred_envs: [check: :test]]
 
   def application do
@@ -45,12 +45,12 @@ defmodule PnsPrototype.MixProject do
       "ecto.setup": ["ecto.create", "ecto.migrate"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
-      # Jedna komenda, która musi przechodzić. `--warnings-as-errors` jest tu
-      # konieczne: `boundary` raportuje naruszenia jako ostrzeżenia, więc bez
-      # tego przełącznika granice są dokumentacją, a nie wymuszeniem.
-      # `pns.docs --check` jest tu z tego samego powodu, co `--warnings-as-errors`:
-      # bez niego referencja kluczy w `docs/contract.md` jest dokumentacją, która
-      # może kłamać, a nie generowanym artefaktem.
+      # The one command that has to pass. `--warnings-as-errors` is necessary
+      # here: `boundary` reports violations as warnings, so without that switch
+      # the boundaries are documentation rather than enforcement.
+      # `pns.docs --check` is here for the same reason: without it the key
+      # reference in `docs/contract.md` is documentation that can lie, rather
+      # than a generated artifact.
       check: ["compile --force --warnings-as-errors", "pns.check", "pns.docs --check", "test"]
     ]
   end

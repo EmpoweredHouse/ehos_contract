@@ -2,16 +2,16 @@ defmodule Taxvision.Repo.Migrations.CreateTaxvisionModuleTables do
   use Ecto.Migration
 
   @moduledoc """
-  Jedna baza, ale **tabele są prywatne dla modułu**. Nie ma wspólnego schematu,
-  nie ma joinów międzymodułowych i nie ma widoków nad tabelami innego modułu.
+  One database, but **the tables are private to their module**. There is no shared
+  schema, no cross-module joins and no views over another module's tables.
 
-  Prefiks nazwy jest tu dokumentacją własności, nie ozdobą: gdy ktoś napisze
-  join z `taxvision_tasks` do `taxvision_notifications`, ma to wyglądać źle już
-  w SQL-u, a nie tylko w raporcie z `boundary`.
+  The name prefix documents ownership rather than decorating: when somebody writes
+  a join from `taxvision_tasks` to `taxvision_notifications`, it is meant to look
+  wrong in the SQL already, not only in a `boundary` report.
   """
 
   def change do
-    # Własność: Taxvision.Tasks
+    # Owned by: Taxvision.Tasks
     create table(:taxvision_tasks, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :company_id, :string, null: false
@@ -23,7 +23,7 @@ defmodule Taxvision.Repo.Migrations.CreateTaxvisionModuleTables do
 
     create index(:taxvision_tasks, [:company_id, :period])
 
-    # Własność: Taxvision.AccountingMonth
+    # Owned by: Taxvision.AccountingMonth
     create table(:taxvision_accounting_months, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :company_id, :string, null: false
@@ -34,7 +34,7 @@ defmodule Taxvision.Repo.Migrations.CreateTaxvisionModuleTables do
 
     create unique_index(:taxvision_accounting_months, [:company_id, :period])
 
-    # Własność: Taxvision.Notifications
+    # Owned by: Taxvision.Notifications
     create table(:taxvision_notifications, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :company_id, :string, null: false

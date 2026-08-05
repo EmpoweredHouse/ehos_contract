@@ -2,20 +2,19 @@ defmodule Taxvision.Repo.Migrations.CreatePeriods do
   use Ecto.Migration
 
   @moduledoc """
-  Okres rozliczeniowy przestaje być stringiem i staje się wierszem.
+  An accounting period stops being a string and becomes a row.
 
-  Zysk nie jest taki, jak się wydaje na pierwszy rzut oka — „jeden okres
-  istnieje" daje też unikalny indeks na kolumnie tekstowej. Prawdziwy zysk to
-  **kanonizacja**: przy jednym wierszu na okres `"2026-7"` obok `"2026-07"`
-  przestaje być możliwe, a nie tylko niezalecane.
+  The gain is not the obvious one — "one period exists" is also what a unique
+  index on a text column buys. The real gain is **canonicalisation**: with one row
+  per period, `"2026-7"` beside `"2026-07"` stops being possible rather than
+  merely discouraged.
 
-  Zakres dat jest tym, po co ta tabela naprawdę istnieje: dwa różne moduły
-  potrzebują tej samej odpowiedzi na pytanie „do kiedy trwa lipiec", a joiny
-  międzymodułowe są zabronione.
+  The date range is what this table really exists for: two different modules need
+  the same answer to "when does July end", and cross-module joins are forbidden.
   """
 
   def change do
-    # Własność: Taxvision.Periods
+    # Owned by: Taxvision.Periods
     create table(:taxvision_periods, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :name, :string, null: false
@@ -23,12 +22,12 @@ defmodule Taxvision.Repo.Migrations.CreatePeriods do
       add :ends_on, :date, null: false
     end
 
-    # Kanonizacja jest tutaj, nie w konwencji nazewniczej.
+    # Canonicalisation lives here, not in a naming convention.
     create unique_index(:taxvision_periods, [:name])
 
-    # Dwa moduły, ta sama odpowiedź, dwie kopie. Duplikacja jest **strategiczna
-    # i ma nazwane źródło prawdy** (`Taxvision.Periods`) — nie jest wspólną
-    # tabelą i nie jest joinem.
+    # Two modules, the same answer, two copies. The duplication is **strategic and
+    # has a named source of truth** (`Taxvision.Periods`) — it is neither a shared
+    # table nor a join.
     alter table(:taxvision_tasks) do
       add :due_on, :date
     end

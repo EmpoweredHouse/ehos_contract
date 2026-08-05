@@ -6,8 +6,8 @@ defmodule Taxvision.Repo.Migrations.CreateEventLog do
       add :id, :binary_id, primary_key: true
       add :type, :string, null: false
       add :contract, :string, null: false
-      # Bez tej kolumny każdy deploy, który usuwa zdarzenie, produkuje fałszywe
-      # alarmy w nakładce. Tanie teraz, niemożliwe do dopisania później.
+      # Without this column, every deploy that removes an event produces false
+      # alarms in the overlay. Cheap now, impossible to add later.
       add :contract_version, :string, null: false
       add :correlation_id, :binary_id, null: false
       add :causation_id, :binary_id
@@ -18,8 +18,8 @@ defmodule Taxvision.Repo.Migrations.CreateEventLog do
 
     create index(:pns_events, [:type])
     create index(:pns_events, [:correlation_id])
-    # Krawędź zaobserwowana to `causation_id` — po tym idzie zapytanie
-    # odtwarzające faktyczny graf.
+    # An observed edge is a `causation_id` — this is what the query
+    # reconstructing the actual graph runs on.
     create index(:pns_events, [:causation_id])
     create index(:pns_events, [:occurred_at])
 

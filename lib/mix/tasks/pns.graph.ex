@@ -39,7 +39,7 @@ defmodule Mix.Tasks.Pns.Graph do
 
   # Erlang switches stdout to latin1 when the output is not a terminal, so
   # `mix pns.graph --mermaid > file.mmd` corrupts every non-ASCII character:
-  # `ł` (U+0142) comes out as `B` (0x42). Event labels are in the client's
+  # U+0142 comes out as byte 0x42. Event labels are written in the client's
   # language, so this is not cosmetic. `--output` writes through `File.write!`,
   # which always writes UTF-8.
   defp emit_output(text, opts) do

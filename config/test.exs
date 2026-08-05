@@ -5,8 +5,8 @@ config :pns_prototype, Taxvision.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: 10
 
-# Joby nie wykonują się same. Testy sprawdzają, że job został wstawiony
-# w tej samej transakcji, i uruchamiają go jawnie.
+# Jobs do not run by themselves. The tests check that a job was inserted in the
+# same transaction, and run it explicitly.
 config :pns_prototype, Oban, testing: :manual
 
 config :logger, level: :warning
