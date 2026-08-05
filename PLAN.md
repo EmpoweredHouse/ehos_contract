@@ -21,7 +21,8 @@ nieprzejechanych ścieżek per przebieg**.
 
 | Luka | Waga |
 | --- | --- |
-| `deadline` i `cadence` są zadeklarowane i **nie czyta ich nikt** | to jest produkt |
+| `deadline` procesu jest zadeklarowany i **nie czyta go nikt** — jedyni czytelnicy to filtr, który go wyrzuca, i renderer, który by go wypisał; `deadline_at` w `PNS.Trace` pochodzi z `within`, czyli z innej deklaracji | to jest produkt |
+| `cadence` jest **przenoszona**, ale nikt nie liczy z niej okna — mechanizm „never observed" z notatek §9 nadal nie istnieje | to jest produkt |
 | Typy payloadu nie są sprawdzane; kontrakt mówi `:integer` i nic nie pilnuje | obietnica kontraktu |
 | Awaria handlera synchronicznego nie zostawia śladu | diagnostyka |
 
@@ -453,11 +454,47 @@ co jest w napięciu z zawężeniem zakresu. Etapy 1–3 są od tego niezależne.
 
 Gałąź **`docs/pns-record-corrections-etap-1`** w repo kontekstu, jeden commit, **niewypchnięta**. Zawiera
 cztery poprawki z etapów 1.1–1.2 plus nowy kształt `event`/`process` i sprostowanie do triggera ADR §15
-(„jedno zdarzenie w dwóch procesach" nie jest błędem kompilacji, a rzeczą niewyrażalną). Dług spłacony.
+(„jedno zdarzenie w dwóch procesach" nie jest błędem kompilacji, a rzeczą niewyrażalną).
+
+**Druga partia — z etapów 1.3–1.7 — jest nierozliczona.** Sprawdzone 5 sierpnia w kodzie, nie z pamięci,
+w kolejności wagi:
+
+1. **ADR „What would falsify this", ostatni bullet, jest dziś w połowie nieprawdziwy.** Mówi, że `trace`
+   i `deadline` nie mają czytelnika. 1.5 dał czytelnika `trace`; **`deadline` nadal go nie ma** i to jest
+   sprawdzalne — patrz tabela luk wyżej. Poprawka mówi „połowa zrobiona, i wiemy która", nie „zrobione”.
+2. **ADR „What we are betting on", zakład declared-vs-observed: liczba jest, zabezpieczenia są nie te.**
+   1.4 dał liczbę (50 → 1, 49+1 → 0). Ale akapit wymienia `cadence` i `contract_version` jako to, co
+   trzyma fałszywe pozytywy w ryzach, a **cadence nie stosuje się do procesu zdarzeniowego** (poprawione
+   w §15, nie w tym akapicie) i **`contract_version` nie obejmuje usuniętego handlera** (1.6). Doszły dwa
+   źródła, których rekord nie zna wcale: **zero przebiegów** i **job w kolejce**. Zabezpieczeń jest cztery.
+3. **ADR §16–17, tabela „What ships": `Dashboard — inside the engine`.** 1.7 rozdzielił dane od zdań, bo
+   silnik nie wie, w jakim języku czyta jego odbiorca. Albo dashboard w silniku dostaje **szew na renderer
+   klienta**, albo raport dowodowy — pozycja **komercyjna** w tej samej sekcji — jest artefaktem klienta.
+   Dziś w kodzie jest to drugie i nie było decyzją, tylko konsekwencją. Do tego `Consequences` żąda
+   etykiet biznesowych obok nazw technicznych, a **`trace` jest jedyną deklaracją bez `label`**.
+4. **ADR §5–6, trigger „Not before the split is validated": dowód jest.** 1.3b — dwa zapytania na jedno
+   otwarcie miesiąca, liczone telemetrią, i `exports: []` czyniące join **niewyrażalnym**. `Consequences`
+   „Query counts rise" ma liczbę zamiast przymiotnika.
+5. **ADR §15, trigger „compensation smearing": dostarczony, i ważniejsze jest jak.** Wykrywanie krawędzi
+   wstecznych było prywatną funkcją zadania mixa **bez testu** — trigger przeglądu decyzji provisional stał
+   na sprawdzeniu, którego nikt nie sprawdzał. Przeniesione do `PNS.Check`. Natomiast „nesting is still
+   unenforced" **zostaje prawdą**: 1.3 pokrył pięć kształtów i zagnieżdżenia nie było wśród nich — to do
+   potwierdzenia, nie do zmiany.
+
+Notatki, nie ADR: §9 version skew (usunięty handler), §9 „navigation is per-process, never global" wobec
+braku zawężenia w `PNS.Graph`, §9 okno „never observed" bez implementacji, §14 N+1 jako liczba, §5 o
+`basis:` i licznikach w dwóch wymiarach.
+
+Jedno otwarte pytanie **zwężone, nie zamknięte**: „what the evidence report says about a period whose
+definitions changed" — okres jest teraz wierszem z zakresem dat, a okno raportu jest na `occurred_at`, nie
+na okresie.
 
 **Uwaga przy odgałęzianiu od tego repozytorium:** decyzji 008 ani notatek technologicznych **nie ma na
 `main`** — żyją wyłącznie na `docs/pns-architecture-adr`, która bywa przepisywana. Gałąź odbita od niej
 osierocieje po każdym rebase i wymaga `rebase --onto`. Zdarzyło się to raz, 5 sierpnia.
+
+Gałąź `backup-polskie-opisy` **usunięta 5 sierpnia** po sprawdzeniu, że wszystkie siedem drzew jest w
+`main` i że commit `c54becb` ma niezmieniony SHA.
 
 ## Kolejność
 
