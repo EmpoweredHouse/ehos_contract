@@ -71,8 +71,12 @@ Co brama pokazała, w kolejności ważności:
   nie deklaruje reguł i zostawia §18 nieprzetestowane na drugiej domenie, albo dochodzi jedna czysta funkcja
   decyzyjna. Wybrane drugie. Do poprawki w opisie zakresu 1.2 w rekordzie.
 - **`owner:` może wskazywać moduł, którego nie ma, i nikt tego nie sprawdza.** Widoczne już wcześniej
-  (`Taxvision.Matching`), potwierdzone na drugim kontrakcie. Kandydat na `info` w `pns.check`, nie na bramę:
-  właściciel niezaimplementowanej fazy to normalny stan.
+  (`Taxvision.Matching`), potwierdzone na drugim kontrakcie. ✅ **zrobione 5 sierpnia** — `info` w
+  `pns.check`, zgrupowane po module, nie po zdarzeniu.
+- **`:period` jest jedynym typem w słowniku, który nie jest uniwersalny.** Brama tego nie złapała, bo
+  sprawdza, czy trzeba **dopisać** słowo, a nie czy któreś jest zbędne. Dowód: kontrakt medyczny ma
+  czternaście pól w payloadach i nie używa `:period` ani razu. To „miesiąc księgowy" przebrany za typ
+  ogólny. Rozstrzygnięte — wypada, szczegóły przy 2.2.
 - **`PNS.Graph` nie ma zawężenia do procesu ani kontraktu.** Drugi kontrakt ujawnił ukryte założenie „jest
   tylko jeden" — `graph_test` liczył węzły globalnie. Notatki §9 mówią wprost „navigation is per-process,
   never global", więc to jest luka, nie preferencja. Należy do 1.7/etapu 4, nie tutaj.
@@ -85,16 +89,44 @@ Co brama pokazała, w kolejności ważności:
   fikstury nie widzi i pokazuje jedno ostrzeżenie. **Do rozstrzygnięcia:** czy raport dowodowy ma umieć
   wykluczyć przestrzeń nazw z konfiguracji silnika. Nie z DSL — to byłoby nowe słowo.
 
-**1.3 Kształty procesu, zasymulowane.** Fazy 3.2–3.4 dostają kontrakt, handlery i moduły, **bez** parsera
-MT940, bez KSeF, bez produkcyjnego parowania. Wyciąg to lista obrotów podana wprost, parowanie to zgodność
-kwoty i daty. Cel: instancja żyjąca tygodniami, zdarzenie tego samego typu wiele razy w jednej instancji, krok
-który się cofa, zdarzenie wchodzące bez komendy, dwa moduły potrzebujące tych samych danych.
+**1.3 Kształty procesu, zasymulowane.** Cel: instancja żyjąca tygodniami, zdarzenie tego samego typu wiele
+razy w jednej instancji, krok który się cofa, zdarzenie wchodzące bez komendy, dwa moduły potrzebujące tych
+samych danych.
 *Odbiór:* instancja przechodzi cztery fazy; `pns.check` zgłasza krawędź wsteczną przy domykaniu pary i nie
 zgłasza jej tam, gdzie jej nie ma. Koszt 2–3 dni.
+
+**Przeskalowane 5 sierpnia: celem są kształty, nie fazy TaxVision.** Pierwsza wersja tego punktu mówiła
+„fazy 3.2–3.4 dostają kontrakt, handlery i moduły" i to jest pomylenie pojazdu z celem — dodatkowo
+najdroższego z dostępnych pojazdów. Kształty, które da się wymusić na kontrakcie syntetycznym, idą na
+kontrakt syntetyczny, gdzie nie kosztują ani jednej decyzji domenowej. TaxVision wchodzi tam, gdzie inaczej
+się nie da, i przy prawdziwym materiale, nie przy moich założeniach o KSeF.
+
+**Tabela `periods` po stronie TaxVision — rozstrzygnięte 5 sierpnia, należy tutaj.** Okres przestaje być
+stringiem `"2026-07"` i staje się wierszem: identyfikator, nazwa, zakres dat od–do. Zysk nie jest taki, jak
+się na pierwszy rzut oka wydaje — „jeden period istnieje" daje też unikalny indeks na kolumnie tekstowej, a
+sam wiersz nie gwarantuje, że dwa zdarzenia wskażą ten sam. Prawdziwy zysk to **kanonizacja**: przy kluczu
+obcym `"2026-7"` obok `"2026-07"` przestaje być możliwe, a nie tylko niezalecane. Zamyka też dziurę, którą
+miałby okres jako data — `2026-07-15` jest poprawną datą i cichym drugim przebiegiem tego samego miesiąca.
+
+To jest **dobre miejsce na kształt „dwa moduły potrzebujące tych samych danych"** i lepsze niż przykład
+wymyślony: `period` występuje w zdarzeniach należących do `RegistryCheck`, `Tasks`, `AccountingMonth`,
+`Notifications` i docelowo `Matching`, więc każdy z nich musi ten okres rozwiązać. ADR §5–6 zabrania joinów
+międzymodułowych, a `wiki/pns/modular-design.md` daje odpowiedź: strategiczna duplikacja z nazwanym źródłem
+prawdy, nie wspólna tabela. Czyli budowanie tego nie jest objazdem, tylko realizacją punktu z listy.
+
+**Kolejność wobec etapu 1: 1.5 i 1.4 idą przed 1.3** (ustalone 5 sierpnia). Powód: `trace`, `deadline` i
+`cadence` są zadeklarowane i **nie czyta ich żaden mechanizm w runtime** — sprawdzone, nie z pamięci. To
+jest produkt, a 1.1 i 1.2 były jego warunkiem wstępnym. 1.3 wymaga decyzji domenowych i materiału
+klienckiego; 1.4 i 1.5 nie wymagają ani jednej linijki TaxVision, bo oba kontrakty już deklarują assercje.
 
 **1.4 Behawioralna weryfikacja ścieżek, per instancja.**
 *Odbiór:* przy 50 przebiegach, z których żaden nie wszedł w gałąź blokującą, raport pokazuje jedną
 nieprzejechaną ścieżkę. Przy jednym przebiegu w tę gałąź — zero.
+
+**Symulować wolumen, nie proces.** Plan produktowy chce falsyfikacji na 50 zasymulowanych przebiegach i ma
+rację co do taniości, ale nie nazywa wady: proces, który sam zaprojektuję, wyprodukuje dokładnie ten sygnał,
+który w niego wpiszę. Te 50 przebiegów idzie więc przez **istniejący kontrakt z warsztatu**, nie przez fazy,
+które sam dopiszę. Kształt pochodzi wtedy z sesji z klientem, a losowe są tylko dane.
 
 **1.5 Ocena assercji `trace`.** Per instancja, cztery werdykty: spełniona, naruszona, zawieszona (okno
 niedostępności adaptera), w toku.
@@ -117,6 +149,21 @@ Check w `emit` przenosi wykrycie z produkcji do pierwszego testu, kilkanaście l
 (notatki §2) przesuwa je jeszcze wcześniej, ale jest optymalizacją momentu, nie warunkiem poprawności.
 
 **2.2 Walidacja payloadu przeciw zadeklarowanym typom**, plus generowane testy zgodności.
+
+**Wyrzucenie `:period` ze słownika typów należy tutaj** — rozstrzygnięte 5 sierpnia. `:id`, `:timestamp`,
+`:enum`, `:string`, `:integer` mówią o kształcie danych; `:period` mówi o księgowości, czyli biblioteka
+wie coś o domenie klienta. Okres staje się zwykłym `:id`, a czym jest — wie aplikacja klienta.
+
+Kolejność jest tu istotna i wynika z kosztu: dziś klucz przebiegu brzmi `accounting_month|c-1|2026-07` i
+człowiek czyta z niego wszystko. Po zmianie na identyfikatory brzmi `accounting_month|<uuid>|<uuid>`, a
+**„odtwarzalny z samego logu" było jawną własnością projektową klucza przebiegu** — do odczytania dowodu
+trzeba będzie drugiej bazy. Zrobione przed 2.2 oznacza zapłacenie tej ceny bez niczego w zamian, bo typy
+nadal niczego nie pilnują. Zrobione razem z 2.2 — `:id` faktycznie znaczy „identyfikator" na poziomie
+castowania, nie tylko w dokumentacji.
+
+Przy okazji do domknięcia: `:integer` jest używane w obu kontraktach i nie ma go w udokumentowanym
+słowniku, a notatki §1 pokazują w przykładzie `:uuid` i `:decimal`, których nie ma nigdzie. Słownik ma
+jedno źródło prawdy — `PNS.Contract.vocabulary/0` — i reszta ma się z nim zgadzać.
 
 **2.3 Ślad po awarii handlera synchronicznego.** Transakcja cofa wiersz obsługi razem ze zdarzeniem, więc
 najciekawsza awaria jest niewidoczna. Zapis poza transakcją albo telemetria.
@@ -145,8 +192,10 @@ czego nie mówiła posortowana lista. Bez alertów, bez stanu na żywo, bez czeg
 **Zablokowane do rozstrzygnięcia:** notatki §9 mówią *„live, not a report … monitors eventually want alerts"*,
 co jest w napięciu z zawężeniem zakresu. Etapy 1–3 są od tego niezależne.
 
-## Zaczynając
+## Kolejność
 
-Od 1.1, potem natychmiast 1.2 — dopóki brama uniwersalności nie przejdzie, każdy kolejny etap jest budowany na
-niesprawdzonym założeniu. Kod zostaje w tym repo i przenosi się do repozytorium pilota, gdy ono powstanie;
-struktura jest już taka, że to `git mv`.
+1.1 i 1.2 zamknięte — brama uniwersalności przeszła, więc etapy 1.3+ nie stoją już na niesprawdzonym
+założeniu. **Dalej: 1.5, potem 1.4, potem 1.3**, z powodów zapisanych przy 1.3.
+
+Kod zostaje w tym repo i przenosi się do repozytorium pilota, gdy ono powstanie; struktura jest już taka, że
+to `git mv`.
