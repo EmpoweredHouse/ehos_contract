@@ -403,6 +403,17 @@ defmodule PNS.Contract do
 
     validate_membership!(env, events, processes)
 
+    # Brama dopasowana do tego, co ocena assercji **umie policzyć**. Bez niej
+    # `within: {1, :month}` przechodziło kompilację i wywalało się w runtime,
+    # czyli u klienta — a jedno źródło prawdy o jednostkach siedzi w
+    # `PNS.Duration`, żeby brama nie mogła się rozjechać z arytmetyką.
+    for t <- traces, not is_nil(t.within) do
+      {_n, unit} = t.within
+
+      unit in PNS.Duration.units() ||
+        bail!(env, "trace #{inspect(t.name)}: `within` — #{PNS.Duration.message(unit)}")
+    end
+
     for t <- traces, ev <- Enum.reject([t.from, t.eventually, t.or_else], &is_nil/1), ev not in names do
       bail!(env, "trace #{inspect(t.name)} wymienia zdarzenie #{inspect(ev)}, którego nie ma w kontrakcie")
     end

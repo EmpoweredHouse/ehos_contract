@@ -1,6 +1,19 @@
 defmodule PNS.Auth.Actor do
-  @moduledoc "Kto wykonuje operację. Zrekonstruowany z tokenu, nigdy z bazy silnika."
-  defstruct [:subject, :company_id, roles: []]
+  @moduledoc """
+  Kto wykonuje operację. Zrekonstruowany z tokenu, nigdy z bazy silnika.
+
+  **`claims` jest workiem i to jest celowe.** Pierwsza wersja miała tu
+  `company_id` jako pole struktury — czyli silnik wiedział, że aktorzy należą do
+  **firm**. Przychodnia ma placówki, szpital oddziały, spedycja terminale.
+  Encja klienta wpisana w pakiet jest dokładnie tym, czego biblioteka nie ma
+  prawa wiedzieć, a przeszło to niezauważone, bo brama uniwersalności to
+  kontrakt plus fake'i — a szew tożsamości nie jest częścią kontraktu.
+
+  Silnik czyta z tokenu dokładnie dwie rzeczy: **kto** (`subject`) i **co mu
+  wolno** (`roles`, poziom 2). Wszystko inne przechodzi surowo w `claims` i
+  interpretuje to kod domenowy, bo tylko on wie, czym jest najemca.
+  """
+  defstruct [:subject, roles: [], claims: %{}]
 end
 
 defmodule PNS.Auth.Verifier do
@@ -46,10 +59,10 @@ defmodule PNS.Auth.LocalToken do
       {:ok,
        %Actor{
          subject: claims["sub"],
-         company_id: claims["company_id"],
          # Role zostają stringami. `String.to_atom` na danych z tokenu byłoby
          # wektorem na wyczerpanie tablicy atomów — atomy nie są zwalniane.
-         roles: claims["roles"] || []
+         roles: claims["roles"] || [],
+         claims: claims
        }}
     else
       _ -> {:error, :invalid_token}

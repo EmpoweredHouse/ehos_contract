@@ -116,6 +116,10 @@ defmodule Mix.Tasks.Pns.Graph do
       Mix.shell().info("\nNieprzejechane ścieżki — proces #{inspect(report.process)}:")
 
       case report do
+        %{basis: :no_paths} ->
+          # Milczenie o takim procesie byłoby ciszą udającą zdrowie.
+          Mix.shell().info("  kontrakt nie deklaruje ani jednej ścieżki dla tego procesu")
+
         %{basis: :no_runs} ->
           # Zero przebiegów to brak podstawy, nie zielony ani czerwony raport.
           Mix.shell().info("  brak przebiegów w logu — nie ma czego oceniać")

@@ -74,7 +74,9 @@ defmodule Taxvision.Api do
       period: period,
       actor: actor.subject,
       actor_roles: actor.roles,
-      actor_company: actor.company_id,
+      # Najemca czytany z claimu przez **kod domenowy**, nie ze struktury
+      # silnika: „czyja to firma" jest pytaniem TaxVision, nie PNS-a.
+      actor_company: actor.claims["company_id"],
       completeness_confirmed: true,
       checked_at: DateTime.utc_now() |> DateTime.to_iso8601(),
       abilia: %{legal_form: "JDG", vat_status: "czynny"},

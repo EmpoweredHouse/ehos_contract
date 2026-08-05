@@ -11,7 +11,9 @@ defmodule PNS.UniversalityGateTest do
   poniżej pinuje słownik, więc kryterium jest sprawdzane, a nie deklarowane.
   """
 
-  use ExUnit.Case, async: true
+  # `DataCase`, nie `ExUnit.Case`: od 5 sierpnia brama sprawdza także
+  # **mechanizmy**, nie tylko słownik — a te potrzebują logu zdarzeń.
+  use Taxvision.DataCase, async: false
 
   @contract UniversalityGate.TreatmentEpisode
   @taxvision Taxvision.Contracts.AccountingMonth
@@ -123,6 +125,61 @@ defmodule PNS.UniversalityGateTest do
       PNS.Registry.load!()
       assert @contract in PNS.Registry.contracts()
       assert @taxvision in PNS.Registry.contracts()
+    end
+  end
+
+  describe "brama obejmuje mechanizmy, nie tylko słownik" do
+    # To jest poprawka do samej bramy, znaleziona 5 sierpnia. Kryterium 1.2
+    # dowodziło, że DSL **opisze** drugą domenę — nie że silnik na niej
+    # **zadziała**. `PNS.Trace` i `PNS.Conformance` dostawały z tego kontraktu
+    # puste listy, więc ich uniwersalność była nieprzetestowana.
+    #
+    # Emisja zdarzeń nie łamie zakresu 1.2: handlerów nadal nie ma, a emisja to
+    # nie handler.
+
+    # Zwraca zdarzenie, bo `occurred_at` nadaje **silnik** w chwili emisji, a nie
+    # pole `received_at` z payloadu. Assercja liczy się od znacznika z logu i
+    # test musi liczyć od tego samego, inaczej mierzy coś innego.
+    defp skierowanie(epizod) do
+      PNS.emit!(@contract, :referral_received, %{
+        episode_id: epizod,
+        patient_id: "p-1",
+        referral_code: "sk-1",
+        received_at: DateTime.utc_now() |> DateTime.to_iso8601()
+      })
+    end
+
+    test "assercja drugiej domeny jest spełniona przez or_else, tym samym kodem" do
+      skierowanie("ep-1")
+
+      PNS.emit!(@contract, :payer_eligibility_denied, %{episode_id: "ep-1", reason: "uprawnienie wygasłe"})
+
+      assert [w] = PNS.Trace.evaluate(@contract, :referral_reaches_a_decision)
+      assert w.verdict == :satisfied
+      assert w.via == :or_else
+      assert w.instance_id == "treatment_episode|ep-1"
+    end
+
+    test "assercja drugiej domeny umie zostać naruszona" do
+      zdarzenie = skierowanie("ep-2")
+
+      # `within: {3, :day}` — skierowanie bez rozstrzygnięcia po czterech dniach.
+      pozniej = DateTime.add(zdarzenie.occurred_at, 4, :day)
+
+      assert [w] = PNS.Trace.evaluate(@contract, :referral_reaches_a_decision, now: pozniej)
+      assert w.verdict == :violated
+    end
+
+    test "proces bez ani jednej zadeklarowanej ścieżki jest w raporcie, nie milczy" do
+      # Kontrakt medyczny nie ma handlerów, więc nie ma krawędzi. Wersja
+      # grupująca raport po krawędziach pomijała go w całości — a nieobecność
+      # czyta się jako „nie ma o czym mówić".
+      raporty = PNS.Conformance.untraversed_paths()
+      medyczny = Enum.find(raporty, &(&1.process == :treatment_episode))
+
+      assert medyczny, "cały proces drugiej domeny był w raporcie nieobecny"
+      assert medyczny.basis == :no_paths
+      assert medyczny.paths == 0
     end
   end
 

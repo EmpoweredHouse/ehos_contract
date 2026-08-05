@@ -43,30 +43,52 @@ defmodule PNS.Conformance do
   bez jednego i drugiego liczba nieprzejechanych ścieżek nie ma znaczenia.
   """
   def untraversed_paths(opts \\ []) do
-    Graph.overlay(opts)
-    # Tylko krawędzie **zadeklarowane**. Zaobserwowane-niezadeklarowane to drift,
-    # czyli inne pytanie ekranu, i mieszanie ich w jednej liście robi z raportu
-    # worek.
-    |> Enum.filter(& &1.handler)
-    |> Enum.group_by(& &1.process)
-    |> Enum.map(&report/1)
+    krawedzie =
+      Graph.overlay(opts)
+      # Tylko krawędzie **zadeklarowane**. Zaobserwowane-niezadeklarowane to drift,
+      # czyli inne pytanie ekranu, i mieszanie ich w jednej liście robi z raportu
+      # worek.
+      |> Enum.filter(& &1.handler)
+      |> Enum.group_by(& &1.process)
+
+    # Iteracja po **procesach z rejestru**, nie po krawędziach z logu. Wersja
+    # grupująca po krawędziach pomijała proces, który nie ma ani jednego
+    # handlera — czyli cały kontrakt bramy uniwersalności był w raporcie
+    # **nieobecny**. A nieobecność czyta się jako „nie ma o czym mówić", i to
+    # jest ta sama cisza udająca zdrowie, którą ten produkt ma wykrywać.
+    for contract <- PNS.Registry.contracts(), process <- contract.processes() do
+      report(contract, process, Map.get(krawedzie, process.name, []))
+    end
     |> Enum.sort_by(&to_string(&1.process))
   end
 
-  defp report({process, edges}) do
-    runs = edges |> Enum.map(& &1.of_instances) |> Enum.max(fn -> 0 end)
-    waiting = Enum.filter(edges, &(&1.in_flight > 0))
+  # Proces bez ani jednej zadeklarowanej ścieżki. Może mieć przebiegi — i wtedy
+  # to jest znalezisko samo w sobie: zdarzenia lecą, a nic nie jest podłączone.
+  defp report(contract, process, []) do
+    %{
+      process: process.name,
+      contract: contract,
+      paths: 0,
+      instances: 0,
+      basis: :no_paths,
+      untraversed: [],
+      in_flight: []
+    }
+  end
+
+  defp report(contract, process, edges) do
+    runs = edges |> Enum.map(& &1.of_instances) |> Enum.max()
 
     %{
-      process: process,
-      contract: edges |> List.first() |> Map.get(:contract),
+      process: process.name,
+      contract: contract,
       # Mianownik dla samego znaleziska: „2 z 3 nieprzejechane" znaczy co innego
       # niż „2 z 40". Liczony tutaj, nie w drukarce, bo to część odpowiedzi.
       paths: length(edges),
       instances: runs,
       basis: if(runs > 0, do: :runs, else: :no_runs),
       untraversed: if(runs > 0, do: Enum.filter(edges, &untraversed?/1), else: []),
-      in_flight: waiting
+      in_flight: Enum.filter(edges, &(&1.in_flight > 0))
     }
   end
 

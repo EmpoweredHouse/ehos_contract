@@ -6,7 +6,7 @@ tylko tu jest aktualizowany stan.
 
 ## Stan na 5 sierpnia
 
-90 testów, `mix check` przechodzi. Ostrzeżenia są **dwa** i oba są celowe: `deadline` TaxVision bez
+94 testy, `mix check` przechodzi. Ostrzeżenia są **dwa** i oba są celowe: `deadline` TaxVision bez
 potwierdzenia process ownera oraz `deadline` z fikstury bramy uniwersalności, która jest wymyślona w całości.
 Samo `mix pns.check` w środowisku dev pokazuje jedno — fikstura żyje w `test/support/`.
 
@@ -54,6 +54,11 @@ kontrakt plus fake'i, bez implementacji.
 Domena medyczna jest naturalnym wyborem, bo Rehmed startuje 10.08 — ale **materiału warsztatowego z Rehmed
 jeszcze nie ma**, więc ten kontrakt jest świadomie wymyślony i jest tak oznaczony w pliku. Testuje
 **słownik DSL, nie wiedzę o domenie**.
+**Poprawka do samej bramy, 5 sierpnia:** kryterium „zero nowych słów" dowodzi, że DSL **opisze** inną
+domenę — nie że silnik na niej **zadziała**. `PNS.Trace` i `PNS.Conformance`, zbudowane po przejściu bramy,
+dostawały z kontraktu medycznego puste listy, więc ich uniwersalność była nieprzetestowana. **Brama obejmuje
+od teraz mechanizmy, nie tylko słownik** — inaczej ten sam dryf wróci przy 1.6 i 1.7.
+
 *Odbiór:* **zero nowych słów w DSL.** **Spełnione** — `UniversalityGate.TreatmentEpisode`
 (`test/support/`, nie drzewo klienta, nie trafia do repo kontekstu) opisuje epizod leczenia od skierowania
 do zamknięcia bez ani jednego nowego słowa. Kryterium jest teraz **pinowane testem**, nie deklarowane:
@@ -89,6 +94,25 @@ Co brama pokazała, w kolejności ważności:
   własność, dzięki której „graf pochodzi z binarki, która działa". Samo `mix pns.check` (środowisko dev)
   fikstury nie widzi i pokazuje jedno ostrzeżenie. **Do rozstrzygnięcia:** czy raport dowodowy ma umieć
   wykluczyć przestrzeń nazw z konfiguracji silnika. Nie z DSL — to byłoby nowe słowo.
+
+### Dryf sprawdzony przed 1.3, 5 sierpnia
+
+Pytanie brzmiało: czy kontrakt nie dryfuje w stronę kontraktu pod TaxVision. **Słownik nie dryfuje.
+Dryfowały mechanizmy i krawędzie silnika** — trzy znaleziska, wszystkie naprawione:
+
+- **`PNS.Auth.Actor` miał `company_id`** jako pole struktury, czyli silnik wiedział, że aktorzy należą do
+  **firm**. Przychodnia ma placówki, spedycja terminale. Umknęło, bo brama to kontrakt plus fake'i, a szew
+  tożsamości nie jest częścią kontraktu. Teraz `claims: %{}` i najemcę czyta kod domenowy.
+- **`within: {1, :month}` kompilowało się i wywalało w runtime.** DSL przyjmował jednostkę, której ocena nie
+  umiała policzyć. Niewidoczne, bo **oba** kontrakty liczą w dniach — pisząc fikstórę medyczną
+  bezrefleksyjnie skopiowałem nawyk TaxVision, choć dla epizodu leczenia `{3, :month}` jest naturalniejsze
+  niż `{90, :day}`. Jednostki mają teraz jedno źródło prawdy (`PNS.Duration`) dla bramy i dla arytmetyki.
+- **Raport ścieżek pomijał proces bez handlerów w całości**, czyli cały kontrakt bramy uniwersalności był
+  nieobecny — a nieobecność czyta się jako „nie ma o czym mówić". Teraz `basis: :no_paths`.
+
+Zostało zapisane, nie naprawione: **runtime pakietu mówi po polsku** (`to_text`, etykiety mermaida,
+komunikaty błędów kompilacji). To inna oś uniwersalności niż DSL-owa — bez znaczenia dla tego pilota, realny
+problem dla paczki na hex. Do etapu 3, razem z wydzieleniem `packages/pns_core`.
 
 **1.3 Kształty procesu, zasymulowane.** Cel: instancja żyjąca tygodniami, zdarzenie tego samego typu wiele
 razy w jednej instancji, krok który się cofa, zdarzenie wchodzące bez komendy, dwa moduły potrzebujące tych

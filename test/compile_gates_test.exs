@@ -278,6 +278,30 @@ defmodule PNS.CompileGatesTest do
       )
     end
 
+    test "trace z jednostką kalendarzową w `within` nie kompiluje się" do
+      # Wcześniej przechodziło kompilację i wywalało się w runtime, przy ocenie
+      # assercji — czyli u klienta. Brama i arytmetyka mają jedno źródło prawdy
+      # o jednostkach, żeby nie mogły się rozjechać.
+      refute_compiles(
+        """
+        defmodule Reject.TraceWithCalendarUnit do
+          use PNS.Contract
+
+          event :a, label: "A", payload: %{sprawa_id: :id}, process: :p
+          event :b, label: "B", payload: %{sprawa_id: :id}, process: :p
+
+          process :p, label: "P", instance: [:sprawa_id]
+
+          trace :w_miesiac do
+            from :a
+            eventually :b, within: {1, :month}
+          end
+        end
+        """,
+        "nieobsługiwana jednostka czasu :month"
+      )
+    end
+
     test "trace rozciągnięty na dwa procesy nie kompiluje się" do
       # Assercja liczy się w obrębie jednego przebiegu, a każdy proces ma własną
       # tożsamość przebiegu.

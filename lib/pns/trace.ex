@@ -132,7 +132,7 @@ defmodule PNS.Trace do
   defp count(verdicts, fun), do: Enum.count(verdicts, fun)
 
   defp verdict(trace, instance_id, from_at, by_type, now) do
-    deadline_at = trace.within && shift(from_at, trace.within)
+    deadline_at = trace.within && PNS.Duration.shift(from_at, trace.within)
     hit = fn name -> name && first_at_or_after(by_type[to_string(name)], from_at) end
 
     eventually_at = hit.(trace.eventually)
@@ -172,23 +172,6 @@ defmodule PNS.Trace do
     times
     |> Enum.filter(&(DateTime.compare(&1, from_at) != :lt))
     |> Enum.min(DateTime, fn -> nil end)
-  end
-
-  # `:day` jako 86 400 sekund, bo log jest w UTC — w strefie z czasem letnim
-  # trzeba by przesuwać po kalendarzu, nie po sekundach.
-  @seconds %{second: 1, minute: 60, hour: 3600, day: 86_400}
-
-  defp shift(at, {n, unit}) do
-    case Map.fetch(@seconds, unit) do
-      {:ok, s} ->
-        DateTime.add(at, n * s, :second)
-
-      :error ->
-        raise ArgumentError,
-              "trace: `within: {#{n}, #{inspect(unit)}}` — nieobsługiwana jednostka. " <>
-                "Dozwolone: #{inspect(Map.keys(@seconds))}. Jednostki kalendarzowe wymagają " <>
-                "przesuwania po kalendarzu, nie po sekundach, i nie ma ich tu celowo."
-    end
   end
 
   defp occurrences(contract, trace, opts) do
