@@ -25,7 +25,8 @@ defmodule PNS do
       Instance,
       Job,
       Payload,
-      Registry
+      Registry,
+      Trace
     ]
 
   @doc "Zamiar wyemitowania zdarzenia, zwracany przez czystą funkcję decyzyjną."

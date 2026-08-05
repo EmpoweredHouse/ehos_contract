@@ -6,20 +6,20 @@ tylko tu jest aktualizowany stan.
 
 ## Stan na 5 sierpnia
 
-69 testów, `mix check` przechodzi. Ostrzeżenia są **dwa** i oba są celowe: `deadline` TaxVision bez
+84 testy, `mix check` przechodzi. Ostrzeżenia są **dwa** i oba są celowe: `deadline` TaxVision bez
 potwierdzenia process ownera oraz `deadline` z fikstury bramy uniwersalności, która jest wymyślona w całości.
 Samo `mix pns.check` w środowisku dev pokazuje jedno — fikstura żyje w `test/support/`.
 
 Działa: kontrakt jako moduł Elixira z bramami kompilacyjnymi, dispatch po granicy transakcji, log zdarzeń,
 `boundary`, szew tożsamości, nakładka declared vs observed z czterema stanami, **tożsamość instancji procesu
 i liczniki w dwóch wymiarach (wystąpienia i przebiegi)**, **drugi kontrakt z obcej domeny bez ani jednego
-nowego słowa w DSL**.
+nowego słowa w DSL**, **ocena assercji `trace` per przebieg — trzy werdykty z czterech**.
 
 **Nie działa, bo nie zostało zbudowane — i to jest produkt:**
 
 | Luka | Waga |
 | --- | --- |
-| `trace` i `deadline` są zadeklarowane i **nie czyta ich nikt** | to jest produkt |
+| `deadline` i `cadence` są zadeklarowane i **nie czyta ich nikt** | to jest produkt |
 | Typy payloadu nie są sprawdzane; kontrakt mówi `:integer` i nic nie pilnuje | obietnica kontraktu |
 | Awaria handlera synchronicznego nie zostawia śladu | diagnostyka |
 
@@ -128,10 +128,44 @@ rację co do taniości, ale nie nazywa wady: proces, który sam zaprojektuję, w
 który w niego wpiszę. Te 50 przebiegów idzie więc przez **istniejący kontrakt z warsztatu**, nie przez fazy,
 które sam dopiszę. Kształt pochodzi wtedy z sesji z klientem, a losowe są tylko dane.
 
-**1.5 Ocena assercji `trace`.** Per instancja, cztery werdykty: spełniona, naruszona, zawieszona (okno
-niedostępności adaptera), w toku.
-*Odbiór:* przy zablokowanym miesiącu assercja jest **spełniona przez `or_else`**, nie naruszona — blokada to
-poprawne zakończenie, tylko nie takie, jak chcieliśmy.
+**1.5 Ocena assercji `trace`. ✅ zrobione 5 sierpnia — trzy werdykty z czterech.** Per instancja.
+*Odbiór:* **spełnione.** `PNS.Trace`, `test/trace_test.exs`, i widać to na prawdziwych danych:
+`mix pns.trace` na pięciu przebiegach mówi „spełniona 5/5, 3 przez eventually, 2 przez or_else". Dwie
+zablokowane firmy są **spełnione**, nie naruszone.
+
+To jest pierwszy moment, w którym cokolwiek w runtime **czyta** `trace`. Do teraz assercja była prozą w
+składni Elixira.
+
+Trzy decyzje semantyczne, każda przypięta testem, bo każdą da się zepsuć w drugą stronę bez łamania
+niczego innego:
+
+- **Okno liczy się od pierwszego wystąpienia `from`, nie od ostatniego.** Inaczej proces uciekałby przed
+  terminem w nieskończoność, emitując `from` ponownie — a przy ponownym sprawdzeniu rejestrów to nie jest
+  przypadek teoretyczny.
+- **`within` obowiązuje także `or_else`.** Inaczej termin jest bezużyteczny: proces zakończony poprawnie
+  trzy miesiące po terminie byłby „spełniony". **Do potwierdzenia przez process ownera** — to jedyna
+  decyzja w tym etapie, która należy do niego, nie do nas.
+- **Przebieg bez `from` nie jest oceniany wcale.** Ani spełniony, ani naruszony — nie ma o czym orzekać.
+  Liczenie go jako naruszenia zrobiłoby alarm z każdej niezaczętej sprawy. Symetrycznie: zero przebiegów
+  to brak podstawy do orzekania, nie zielony raport.
+
+Wyszło przy okazji: **`or_else` produkowane handlerem asynchronicznym jest `pending`, dopóki job stoi w
+kolejce** — ta sama lekcja, co czwarty stan nakładki. Koszt jest nazwany: job zaklinowany dłużej niż okno
+policzy się jako naruszenie, i to jest poprawne, bo powiadomienie faktycznie nie poszło.
+
+**1.5b Czwarty werdykt: `:suspended`.** Nie da się go policzyć, bo **nic w systemie nie zapisuje, że
+zależność zewnętrzna była niedostępna** — `unavailable_looks_like` jest dziś zdaniem, którego nikt nie
+czyta. Do tego czasu awaria rejestru w oknie assercji liczy się jako naruszenie, czyli obwiniamy klienta za
+cudzy serwer.
+
+Warunek wstępny jest po stronie silnika i mały: log obserwacji niedostępności per `external`, zapisywany
+przez adapter na szwie, który już istnieje. Świadomie **obserwacje, nie przedziały** — adapter wie tylko,
+że jedno wywołanie padło, a nie kiedy usługa wróciła. Zawieszona = w oknie assercji jest obserwacja
+niedostępności zależności, od której zależy któreś zdarzenie tej ścieżki (`depends_on`).
+
+Przy okazji do rozstrzygnięcia: **assercja bez `within` jest niefalsyfikowalna** — nie da się jej naruszyć,
+więc jest dekoracją. Kandydat na `info` w `pns.check`; dziś obie nasze assercje mają `within`, więc byłoby
+zero znalezisk.
 
 **1.6 Wersja kontraktu jako pierwszoklasowa odpowiedź.** Która wersja wdrożona, od kiedy, jakie wersje w logu,
 co się zmieniło.
@@ -204,8 +238,9 @@ osierocieje po każdym rebase i wymaga `rebase --onto`. Zdarzyło się to raz, 5
 
 ## Kolejność
 
-1.1 i 1.2 zamknięte — brama uniwersalności przeszła, więc etapy 1.3+ nie stoją już na niesprawdzonym
-założeniu. **Dalej: 1.5, potem 1.4, potem 1.3**, z powodów zapisanych przy 1.3.
+1.1, 1.2 i 1.5 zamknięte. Brama uniwersalności przeszła, więc etapy 1.3+ nie stoją już na niesprawdzonym
+założeniu, a `trace` przestał być dekoracją. **Dalej: 1.4, potem 1.3**, z powodów zapisanych przy 1.3.
+1.5b (werdykt `:suspended`) czeka na log niedostępności zależności.
 
 Kod zostaje w tym repo i przenosi się do repozytorium pilota, gdy ono powstanie; struktura jest już taka, że
 to `git mv`.

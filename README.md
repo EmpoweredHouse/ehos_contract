@@ -16,6 +16,8 @@ docker compose up -d && mix deps.get && mix ecto.setup && mix check
 mix pns.graph                # graf statyczny z rejestru
 mix pns.graph --overlay      # nałożony na log zdarzeń
 mix pns.graph --mermaid      # diagram
+mix pns.trace                # ocena assercji `trace` z logu, per przebieg
+mix pns.trace --instances    # to samo z pojedynczymi przebiegami (widok do debugowania)
 mix pns.check                # sprawdzenia całoprogramowe
 ```
 
@@ -350,11 +352,9 @@ nie preferencja — należy do etapu 1.7.
 
 `lib/pns` to 1263 linie, które dowodzą tego, po co powstały. Cztery luki, w kolejności wagi:
 
-1. **Monitor zaległych procesów i ocena assercji `trace`.** Jedno i drugie jest zadeklarowane w kontrakcie i
-   **nieczytane przez nikogo**. To jest produkt: „faktura, która miała pójść, nie poszła, i nic nie
-   zawiodło" wykrywa się dokładnie tym. Prototyp dowiózł instalację, nie produkt. *Od 5 sierpnia jest na
-   czym to postawić — tożsamość przebiegu jest w logu i zapytania per przebieg działają. Sama ocena to
-   etap 1.5.*
+1. **Monitor zaległych procesów.** `deadline` i `cadence` są zadeklarowane w kontrakcie i **nieczytane przez
+   nikogo**. To jest produkt: „faktura, która miała pójść, nie poszła, i nic nie zawiodło" wykrywa się
+   dokładnie tym. *Ocena `trace` — zrobiona 5 sierpnia, `PNS.Trace`. Monitor terminów zostaje.*
 2. **Typy payloadu nie są sprawdzane.** Kontrakt mówi `task_count: :integer` i nic tego nie pilnuje.
    Notatki §6 wymieniają payload conformance jako w pełni generowalny test.
 3. **Awaria handlera synchronicznego nie zostawia śladu** — transakcja cofa wiersz obsługi razem ze
