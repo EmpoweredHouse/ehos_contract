@@ -218,6 +218,8 @@ lib/taxvision/    aplikacja klienta
   authorization.ex     czysta funkcja: reguła domenowa
   tasks.ex, accounting_month.ex, notifications.ex    moduły z własnymi tabelami
   adapters/       behaviour + fake
+test/support/
+  universality_gate/   drugi kontrakt, WYMYŚLONY — brama uniwersalności, nie klient
 ```
 
 ## Instancja procesu — co zmieniło się 5 sierpnia
@@ -248,6 +250,43 @@ zdarzeń, wykryte kompilatorem, nie przeglądem.
 **Zdarzenia sprzed tego etapu nie dostaną tożsamości przebiegu wstecz.** Kolumny są nullowalne, a raport
 pisze przy nich „bez tożsamości przebiegu", nie „0 przebiegów" — bo drugie czytałoby się jako cisza, a to
 jest historia. Ten sam problem, który przy wersjach kontraktu rozwiązuje stan `:historical`.
+
+## Brama uniwersalności — przeszła, i co przy okazji pokazała
+
+Do 5 sierpnia dowód na to, że DSL nie jest księgowy, brzmiał *„jeden kontrakt, jedna domena, jeden autor"* —
+czyli nie był dowodem. `UniversalityGate.TreatmentEpisode` w `test/support/` opisuje epizod leczenia od
+skierowania do zamknięcia. **Ani jednego nowego słowa w DSL.**
+
+Ten kontrakt jest **wymyślony w całości** i ma to napisane w pierwszej linii moduledoca. Warsztatu z Rehmed
+jeszcze nie ma; gdyby ten plik udawał kontekst kliencki, byłby dokładnie tym rodzajem zmyślonej wiedzy o
+domenie, którą PNS ma wykrywać u innych. Nie jest drzewem klienta i nie idzie do repozytorium kontekstu.
+
+**Kryterium jest teraz testem, nie zdaniem.** `PNS.Contract.vocabulary/0` wystawia słownik maszynowo, a test
+porównuje go z literałem. Dopisanie do DSL słowa specyficznego dla domeny — na czele z `population`, jedynym,
+które ten test kiedykolwiek oblało — wywala go tego samego dnia, a nie przy przeglądzie za kwartał.
+
+Cztery rzeczy wyszły przy okazji i żadna nie jest brakującym słowem:
+
+**`cadence` nie ma zastosowania do procesu zdarzeniowego.** Miesiąc księgowy jest należny co miesiąc; epizod
+leczenia nie jest należny nigdy — zaczyna się, kiedy wpłynie skierowanie. Słowo jest opcjonalne, więc DSL
+przechodzi. Ale okno *„never observed"* liczy się właśnie z kadencji, więc dla procesów zdarzeniowych nie ma
+skąd wziąć długości i spada na fallback z zaobserwowanych odstępów. Notatki §9 traktują ten fallback jako
+przypadek brzegowy — **dla całej klasy procesów jest stanem normalnym.**
+
+**„Kontrakt plus fake'i, bez implementacji" nie jest osiągalne, jeśli kontrakt ma regułę.** Brama §18 wymaga
+przykładu, przykład wskazuje MFA, `pns.check` sprawdza, że funkcja istnieje. Albo kontrakt bramy nie
+deklaruje reguł — i wtedy §18 zostaje nieprzetestowane na drugiej domenie — albo dochodzi jedna czysta
+funkcja decyzyjna. Doszła jedna, i to jest poprawka do opisu zakresu, nie do bramy.
+
+**`identity` i `instance` razem uniosły kształt, którego TaxVision nie ma.** Dziesięć wizyt w jednym epizodzie
+to dziesięć faktów w jednym przebiegu: `identity: [:episode_id, :session_no]` przy `instance: [:episode_id]`.
+Gdyby to było jedno pojęcie, jedno z dwóch byłoby nie do wyrażenia — i to jest najlepszy wynik tej bramy,
+bo rozdzielenie zrobiono dzień wcześniej z zupełnie innego powodu.
+
+**Drugi kontrakt natychmiast ujawnił ukryte założenie „jest tylko jeden".** `graph_test` liczył węzły grafu
+statycznego globalnie i porównywał z liczbą zdarzeń jednego kontraktu. `PNS.Graph` nie ma zawężenia ani do
+procesu, ani do kontraktu, a notatki §9 mówią wprost *„navigation is per-process, never global"*. To luka,
+nie preferencja — należy do etapu 1.7.
 
 ## Rozstrzygnięte 4 sierpnia
 

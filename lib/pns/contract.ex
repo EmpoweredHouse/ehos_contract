@@ -9,6 +9,36 @@ defmodule PNS.Contract do
   Brama z ADR §18 jest tutaj: **reguła bez przykładu nie kompiluje się.**
   """
 
+  @event_keys [:label, :owner, :payload, :retain, :depends_on, :identity]
+  @process_keys [:label, :events, :stages, :terminal, :instance, :cadence, :deadline, :unverified]
+  @external_keys [:label, :expected_latency, :unavailable_looks_like]
+  @rule_keys [:label, :function, :source]
+  @example_keys [:rule, :given, :command, :then, :rejected_with]
+  @trace_keys [:from, :eventually, :within, :or_else]
+
+  @doc """
+  Cały słownik DSL, maszynowo.
+
+  Istnieje po to, żeby **brama uniwersalności dała się przypiąć testem**.
+  Kryterium etapu 1.2 brzmi „zero nowych słów, żeby opisać inną domenę", a
+  kryterium, którego nikt nie sprawdza, jest zdaniem w prozie. Test pinuje tę
+  mapę; dopisanie do DSL słowa specyficznego dla domeny wywala go tego samego
+  dnia, a nie przy przeglądzie za kwartał.
+
+  Stąd też bierze się zapis, dlaczego **nie ma `population`** — jedyne słowo,
+  które ten test oblało, i jedyne, które ma tendencję do powrotu.
+  """
+  def vocabulary do
+    %{
+      event: @event_keys,
+      process: @process_keys,
+      external: @external_keys,
+      rule: @rule_keys,
+      example: @example_keys,
+      trace: @trace_keys
+    }
+  end
+
   @doc false
   defmacro __using__(_opts) do
     quote do
@@ -85,11 +115,7 @@ defmodule PNS.Contract do
 
   @doc false
   def build_event(name, opts) do
-    validate_keys!(
-      opts,
-      [:label, :owner, :payload, :retain, :depends_on, :identity],
-      "event #{inspect(name)}"
-    )
+    validate_keys!(opts, @event_keys, "event #{inspect(name)}")
 
     %{
       name: name,
@@ -116,11 +142,7 @@ defmodule PNS.Contract do
 
   @doc false
   def build_process(name, opts) do
-    validate_keys!(
-      opts,
-      [:label, :events, :stages, :terminal, :instance, :cadence, :deadline, :unverified],
-      "process #{inspect(name)}"
-    )
+    validate_keys!(opts, @process_keys, "process #{inspect(name)}")
 
     where = "process #{inspect(name)}"
 
@@ -175,7 +197,7 @@ defmodule PNS.Contract do
 
   @doc false
   def build_external(name, opts) do
-    validate_keys!(opts, [:label, :expected_latency, :unavailable_looks_like], "external #{inspect(name)}")
+    validate_keys!(opts, @external_keys, "external #{inspect(name)}")
 
     %{
       name: name,
@@ -187,7 +209,7 @@ defmodule PNS.Contract do
 
   @doc false
   def build_rule(name, opts) do
-    validate_keys!(opts, [:label, :function, :source], "rule #{inspect(name)}")
+    validate_keys!(opts, @rule_keys, "rule #{inspect(name)}")
     mfa = fetch!(opts, :function, "rule #{inspect(name)}")
 
     case mfa do
@@ -211,7 +233,7 @@ defmodule PNS.Contract do
 
   @doc false
   def build_example(description, opts) do
-    validate_keys!(opts, [:rule, :given, :command, :then, :rejected_with], "example #{inspect(description)}")
+    validate_keys!(opts, @example_keys, "example #{inspect(description)}")
 
     outcome =
       case {Keyword.fetch(opts, :then), Keyword.fetch(opts, :rejected_with)} do

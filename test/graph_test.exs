@@ -14,7 +14,11 @@ defmodule PNS.GraphTest do
   test "graf statyczny pochodzi z rejestru, czyli z binarki" do
     graph = PNS.Graph.static()
 
-    assert length(graph.nodes) == length(AccountingMonth.events())
+    # Rejestr skanuje **całą binarkę**, a od etapu 1.2 są w niej dwa kontrakty:
+    # ten i fikstura bramy uniwersalności. Liczenie węzłów bez zawężenia do
+    # kontraktu było ukrytym założeniem „jest tylko jeden".
+    nasze = Enum.filter(graph.nodes, &(&1.contract == AccountingMonth))
+    assert length(nasze) == length(AccountingMonth.events())
 
     edges = MapSet.new(graph.edges, &{&1.from, &1.to})
     assert MapSet.member?(edges, {:registry_data_consistent, :monthly_tasks_generated})

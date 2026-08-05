@@ -6,10 +6,14 @@ tylko tu jest aktualizowany stan.
 
 ## Stan na 5 sierpnia
 
-55 testów, `mix check` przechodzi, jedno celowe ostrzeżenie (`deadline` bez potwierdzenia process ownera).
+69 testów, `mix check` przechodzi. Ostrzeżenia są **dwa** i oba są celowe: `deadline` TaxVision bez
+potwierdzenia process ownera oraz `deadline` z fikstury bramy uniwersalności, która jest wymyślona w całości.
+Samo `mix pns.check` w środowisku dev pokazuje jedno — fikstura żyje w `test/support/`.
+
 Działa: kontrakt jako moduł Elixira z bramami kompilacyjnymi, dispatch po granicy transakcji, log zdarzeń,
 `boundary`, szew tożsamości, nakładka declared vs observed z czterema stanami, **tożsamość instancji procesu
-i liczniki w dwóch wymiarach (wystąpienia i przebiegi)**.
+i liczniki w dwóch wymiarach (wystąpienia i przebiegi)**, **drugi kontrakt z obcej domeny bez ani jednego
+nowego słowa w DSL**.
 
 **Nie działa, bo nie zostało zbudowane — i to jest produkt:**
 
@@ -43,16 +47,43 @@ Wyszło przy okazji, w kolejności ważności:
   „bez tożsamości przebiegu", nie „0 przebiegów". To ten sam problem, który przy wersjach kontraktu
   rozwiązuje stan `:historical`.
 
-**1.2 Brama uniwersalności.** Drugi kontrakt z innej domeny, wyłącznie kontrakt plus fake'i, bez implementacji.
+**1.2 Brama uniwersalności. ✅ zrobione 5 sierpnia — PRZESZŁA.** Drugi kontrakt z innej domeny, wyłącznie
+kontrakt plus fake'i, bez implementacji.
 
 Domena medyczna jest naturalnym wyborem, bo Rehmed startuje 10.08 — ale **materiału warsztatowego z Rehmed
-jeszcze nie ma**, więc ten kontrakt jest świadomie wymyślony i musi być tak oznaczony w pliku. Testuje
-**słownik DSL, nie wiedzę o domenie**: chodzi o to, czy `event`, `process`, `stage`, `trace`, `instance`,
-`identity`, `cadence`, `deadline` wystarczają do opisania procesu, który nie ma nic wspólnego z księgowością.
-Nie może wyglądać na kontekst kliencki ani trafić do repo kontekstu.
-*Odbiór:* **zero nowych słów w DSL.** Jeśli trzeba dopisać choćby jedno słowo specyficzne dla domeny, DSL jest
-źle zaprojektowany i etapy 1.3+ są do przepisania. Dlatego to jest tutaj, a nie na końcu — dziś nie mamy
-żadnego dowodu na uniwersalność: jeden kontrakt, jedna domena, jeden autor.
+jeszcze nie ma**, więc ten kontrakt jest świadomie wymyślony i jest tak oznaczony w pliku. Testuje
+**słownik DSL, nie wiedzę o domenie**.
+*Odbiór:* **zero nowych słów w DSL.** **Spełnione** — `UniversalityGate.TreatmentEpisode`
+(`test/support/`, nie drzewo klienta, nie trafia do repo kontekstu) opisuje epizod leczenia od skierowania
+do zamknięcia bez ani jednego nowego słowa. Kryterium jest teraz **pinowane testem**, nie deklarowane:
+`PNS.Contract.vocabulary/0` wystawia słownik maszynowo, a `test/universality_gate_test.exs` porównuje go z
+literałem. Dopisanie `population:` wywala ten test tego samego dnia.
+
+Co brama pokazała, w kolejności ważności:
+
+- **`cadence` nie ma zastosowania do procesu zdarzeniowego.** Epizod leczenia nie jest należny nigdy —
+  zaczyna się, kiedy wpłynie skierowanie. Słowa nie brakuje, bo `cadence` jest opcjonalna. Ale mechanizm,
+  który na niej stoi — okno „never observed" — nie ma dla takiego procesu skąd wziąć długości i spada na
+  fallback z zaobserwowanych odstępów. Notatki §9 traktują ten fallback jako przypadek brzegowy; dla
+  procesów zdarzeniowych jest **stanem normalnym**. Do poprawki w rekordzie.
+- **„Kontrakt plus fake'i, bez implementacji" nie jest osiągalne, jeśli kontrakt ma regułę.** Brama §18
+  wymaga przykładu, przykład wskazuje MFA, a `pns.check` sprawdza, że funkcja istnieje. Albo kontrakt bramy
+  nie deklaruje reguł i zostawia §18 nieprzetestowane na drugiej domenie, albo dochodzi jedna czysta funkcja
+  decyzyjna. Wybrane drugie. Do poprawki w opisie zakresu 1.2 w rekordzie.
+- **`owner:` może wskazywać moduł, którego nie ma, i nikt tego nie sprawdza.** Widoczne już wcześniej
+  (`Taxvision.Matching`), potwierdzone na drugim kontrakcie. Kandydat na `info` w `pns.check`, nie na bramę:
+  właściciel niezaimplementowanej fazy to normalny stan.
+- **`PNS.Graph` nie ma zawężenia do procesu ani kontraktu.** Drugi kontrakt ujawnił ukryte założenie „jest
+  tylko jeden" — `graph_test` liczył węzły globalnie. Notatki §9 mówią wprost „navigation is per-process,
+  never global", więc to jest luka, nie preferencja. Należy do 1.7/etapu 4, nie tutaj.
+- **`identity` i `instance` razem uniosły kształt, którego TaxVision nie ma.** Dziesięć wizyt w jednym
+  epizodzie to dziesięć faktów w jednym przebiegu — `identity: [:episode_id, :session_no]` przy
+  `instance: [:episode_id]`. Gdyby to było jedno pojęcie, jedno z dwóch byłoby nie do wyrażenia.
+- **`mix check` pokazuje teraz dwa ostrzeżenia, nie jedno.** Drugie pochodzi z wymyślonego `deadline` w
+  fiksturze. Rejestr skanuje całą binarkę, a w środowisku testowym fikstura w niej jest — to ta sama
+  własność, dzięki której „graf pochodzi z binarki, która działa". Samo `mix pns.check` (środowisko dev)
+  fikstury nie widzi i pokazuje jedno ostrzeżenie. **Do rozstrzygnięcia:** czy raport dowodowy ma umieć
+  wykluczyć przestrzeń nazw z konfiguracji silnika. Nie z DSL — to byłoby nowe słowo.
 
 **1.3 Kształty procesu, zasymulowane.** Fazy 3.2–3.4 dostają kontrakt, handlery i moduły, **bez** parsera
 MT940, bez KSeF, bez produkcyjnego parowania. Wyciąg to lista obrotów podana wprost, parowanie to zgodność
