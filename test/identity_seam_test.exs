@@ -1,10 +1,10 @@
 defmodule Taxvision.IdentitySeamTest do
   @moduledoc """
-  Trzy poziomy IAM na jednej ścieżce żądania, każdy z inną odpowiedzią.
+  Three IAM levels on one request path, each with a different answer.
 
-  Test numer trzy jest tu całym twierdzeniem: gdyby dał się przejść
-  konfiguracją providera tożsamości, poziomy nie byłyby rozdzielone i cała
-  wartość byłaby kupiona.
+  The third level is the whole claim here: if it could be satisfied by an identity
+  provider's configuration, the levels would not be separated and the whole value
+  would be bought.
   """
 
   use Taxvision.DataCase, async: false
@@ -12,20 +12,20 @@ defmodule Taxvision.IdentitySeamTest do
 
   @params %{company_id: "c-1", period: "2026-07"}
 
-  describe "poziom 1 — uwierzytelnienie, kupione" do
-    test "bez tokenu: odmowa" do
+  describe "level 1 — authentication, bought" do
+    test "no token: refused" do
       assert {:error, :unauthenticated} = Taxvision.Api.open_month(nil, @params)
     end
 
-    test "token podpisany niewłaściwym kluczem: odmowa" do
+    test "a token signed with the wrong key: refused" do
       forged =
-        Base.url_encode64(~s({"sub":"ktos","roles":["accounting"]}), padding: false) <>
-          "." <> Base.url_encode64("nieprawidlowy-podpis", padding: false)
+        Base.url_encode64(~s({"sub":"someone","roles":["accounting"]}), padding: false) <>
+          "." <> Base.url_encode64("an-invalid-signature", padding: false)
 
       assert {:error, :unauthenticated} = Taxvision.Api.open_month(forged, @params)
     end
 
-    test "token z doklejonym claimem: odmowa, bo podpis nie pasuje" do
+    test "a token with an appended claim: refused, because the signature does not match" do
       valid = accountant("c-1")
       [body, mac] = String.split(valid, ".")
       {:ok, decoded} = Base.url_decode64(body, padding: false)
@@ -36,37 +36,38 @@ defmodule Taxvision.IdentitySeamTest do
     end
   end
 
-  describe "poziom 2 — entitlement, kupione, jeden claim z tokenu" do
-    test "token bez roli accounting: odmowa przed kodem domenowym" do
+  describe "level 2 — entitlement, bought, one claim from the token" do
+    test "a token without the accounting role: refused before any domain code" do
       assert {:error, :forbidden} = Taxvision.Api.open_month(client("c-1"), @params)
 
-      # Weryfikowane brakiem wiersza w logu, nie treścią odpowiedzi. Gdyby
-      # odcięcie nastąpiło za późno, zdarzenie już by istniało.
+      # Verified by the absence of a row in the log rather than by the content of
+      # the response. If the cut-off happened too late, the event would exist.
       assert Repo.aggregate(PNS.Event, :count) == 0
     end
   end
 
-  describe "poziom 3 — reguła domenowa, nasza, w kontrakcie" do
-    test "księgowa innej firmy: odrzucenie z powodem, nie 403 od providera" do
-      # Rola jest, entitlement przechodzi. Zatrzymuje reguła, która wie, czym
-      # jest firma i miesiąc — czego provider tożsamości nie wie.
+  describe "level 3 — the domain rule, ours, in the contract" do
+    test "another company's accountant: a rejection with a reason, not a 403 from the provider" do
+      # The role is there and entitlement passes. What stops it is the rule that
+      # knows what a company and a month are — which the identity provider does
+      # not.
       assert {:error, :not_this_company} = Taxvision.Api.open_month(accountant("c-2"), @params)
     end
 
-    test "księgowa własnej firmy: miesiąc się otwiera" do
+    test "the company's own accountant: the month opens" do
       assert {:ok, correlation_id} = Taxvision.Api.open_month(accountant("c-1"), @params)
 
       assert [opened] = events_of(:accounting_month_opened)
       assert opened.correlation_id == correlation_id
-      # `actor` niesie `sub` z tokenu — nieprzezroczysty identyfikator, nie mail.
-      # To jedyne miejsce, w którym log zapisuje, kto to zrobił; payload już
-      # tego nie duplikuje.
+      # `actor` carries the `sub` from the token — an opaque identifier, not an
+      # email. This is the only place the log records who did it; the payload no
+      # longer duplicates that.
       assert opened.actor == accountant_sub()
     end
   end
 
-  describe "struktura szwu" do
-    test "silnik nie ma tabeli z credentialami" do
+  describe "the structure of the seam" do
+    test "the engine has no credentials table" do
       tables =
         Repo.query!("select table_name from information_schema.tables where table_schema = 'public'")
         |> Map.get(:rows)
@@ -74,31 +75,31 @@ defmodule Taxvision.IdentitySeamTest do
 
       for table <- tables, column <- columns(table) do
         refute column in ~w(password password_hash hashed_password encrypted_password secret credential),
-               "tabela #{table} ma kolumnę #{column} — szew złamany, silnik trzyma credentiale"
+               "table #{table} has a #{column} column — the seam is broken, the engine holds credentials"
       end
     end
 
-    test "żaden moduł domenowy nie woła podpisywania tokenów" do
-      # `sign/1` jest pierwszą rzeczą, która znika przy podmianie na
-      # prawdziwego providera. Jeśli domena jej woła, podmiana będzie
-      # przepisaniem, a nie zmianą konfiguracji.
+    test "no domain module calls token signing" do
+      # `sign/1` is the first thing to disappear when a real provider takes over.
+      # If the domain calls it, the swap becomes a rewrite rather than a
+      # configuration change.
       callers = callers_of(:pns_prototype, {PNS.Auth.LocalToken, :sign, 1})
 
-      # Kontrola dodatnia. Bez niej ten test przechodziłby pusto, gdyby detektor
-      # przestał działać — a test, który zawsze przechodzi, jest gorszy niż jego
-      # brak. `Taxvision.DataCase` woła `sign/1` i musi być widoczny.
+      # A positive control. Without it this test would pass vacuously if the
+      # detector stopped working — and a test that always passes is worse than no
+      # test. `Taxvision.DataCase` calls `sign/1` and has to be visible.
       assert Taxvision.DataCase in callers,
-             "detektor wywołań nie działa — nie widzi nawet znanego wołającego"
+             "the call detector is not working — it cannot even see a known caller"
 
       domain = callers -- [PNS.Auth.LocalToken, Taxvision.DataCase]
-      assert domain == [], "podpisywanie tokenów woła kod domenowy: #{inspect(domain)}"
+      assert domain == [], "domain code calls token signing: #{inspect(domain)}"
     end
 
-    test "konfiguracja silnika nie zawiera nazwy vendora" do
+    test "the engine's configuration contains no vendor name" do
       config = :pns_prototype |> Application.get_all_env() |> inspect() |> String.downcase()
 
       for vendor <- ~w(zitadel keycloak workos auth0 okta authentik fusionauth) do
-        refute config =~ vendor, "nazwa vendora #{vendor} w konfiguracji silnika"
+        refute config =~ vendor, "vendor name #{vendor} in the engine's configuration"
       end
     end
   end
@@ -112,10 +113,10 @@ defmodule Taxvision.IdentitySeamTest do
     |> List.flatten()
   end
 
-  # Chodzenie po formach abstrakcyjnych Erlanga wprost. Pierwsza wersja szła
-  # przez `:erl_syntax_lib.fold/3` z `rescue` na końcu — i `rescue` zjadał to,
-  # że modułu nie ma, przez co test przechodził pusto. Kontrola dodatnia wyżej
-  # to wyłapała.
+  # Walking Erlang's abstract forms directly. The first version went through
+  # `:erl_syntax_lib.fold/3` with a `rescue` at the end — and the `rescue`
+  # swallowed a missing module, so the test passed vacuously. The positive control
+  # above caught it.
   defp callers_of(app, mfa) do
     {:ok, modules} = :application.get_key(app, :modules)
 

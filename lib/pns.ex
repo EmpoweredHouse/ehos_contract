@@ -1,11 +1,11 @@
 defmodule PNS do
   @moduledoc """
-  Powierzchnia publiczna pakietu.
+  The package's public surface.
 
-  To, co byłoby pakietem hex `pns_core` — trzymane w `lib/pns/` obok aplikacji
-  klienta w `lib/taxvision/`, granica pilnowana przez `boundary` od pierwszego
-  commita. Struktura jest ta, którą notatki §15 przewidują dla pierwszego
-  klienta, więc przeniesienie obok repozytorium klienta jest `git mv`.
+  What would be the `pns_core` hex package — kept in `lib/pns/` beside the client
+  application in `lib/taxvision/`, with the boundary enforced by `boundary` from
+  the first commit. The structure is the one notes §15 foresee for the first
+  client, so moving it out beside the client's repository is a `git mv`.
   """
 
   use Boundary,
@@ -32,7 +32,8 @@ defmodule PNS do
       Trace
     ]
 
-  @doc "Zamiar wyemitowania zdarzenia, zwracany przez czystą funkcję decyzyjną."
+  @doc "An intention to emit an event, returned by a pure decision function."
+  @spec event(atom(), map()) :: PNS.Emission.t()
   def event(name, payload \\ %{}), do: %PNS.Emission{name: name, payload: payload}
 
   defdelegate emit(contract, type, payload, ctx \\ %{}), to: PNS.Emitter

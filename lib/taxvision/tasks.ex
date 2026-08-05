@@ -1,18 +1,19 @@
 defmodule Taxvision.Tasks do
   @moduledoc """
-  Taski miesięczne. Moduł **posiada swoje tabele** i nikt inny ich nie tyka
+  Monthly tasks. This module **owns its own tables** and nobody else touches them
   (ADR §5-6).
 
-  Żadnych joinów do tabel innych modułów i żadnych widoków nad nimi. Zakaz
-  podnosi liczbę zapytań, a wygenerowany kod nie zauważy pięciuset — dlatego
-  N+1 jest nazwanym ryzykiem, nie niespodzianką (notatki §14).
+  No joins to another module's tables and no views over them. The prohibition
+  raises the query count, and generated code will not notice five hundred — which
+  is why N+1 is a named risk rather than a surprise (notes §14).
   """
 
   use Boundary,
     deps: [PNS, Taxvision.Repo, Taxvision.Contracts, Taxvision.Periods],
     exports: [Task]
 
-  @doc "Szablon zadań dla formy prawnej. Zmiany obowiązują od kolejnego miesiąca (P3)."
+  @doc "The task template for a legal form. Changes take effect from the next month (P3)."
+  @spec template(String.t()) :: [String.t()]
   def template("JDG"),
     do: ["Pobrać wyciągi", "Skompletować faktury KSeF", "Zaksięgować dokumenty", "Wysłać deklarację"]
 
@@ -30,8 +31,8 @@ defmodule Taxvision.Tasks.Task do
     field :period, :string
     field :name, :string
     field :status, :string, default: "open"
-    # Kopia z `Taxvision.Periods`, nie join do niego. Duplikacja strategiczna:
-    # nazwane źródło prawdy jest jedno, kopii może być wiele.
+    # A copy from `Taxvision.Periods`, not a join to it. Strategic duplication:
+    # there is one named source of truth and there may be many copies.
     field :due_on, :date
     field :inserted_at, :utc_datetime_usec
   end
@@ -39,14 +40,14 @@ end
 
 defmodule Taxvision.Tasks.OnRegistryDataConsistent do
   @moduledoc """
-  Handler **synchroniczny**: dotyka wyłącznie własnych tabel w tej samej bazie,
-  więc idzie w transakcji zmiany stanu.
+  A **synchronous** handler: it touches only its own tables in the same database,
+  so it runs inside the state change's transaction.
 
-  Gdyby rzucił, cała transakcja się cofa i wołający dostaje błąd. To jest
-  poprawne dokładnie dlatego, że tu nie ma żadnego I/O na zewnątrz: nie ma
-  czego ponawiać, bo nic się nie stało. Ten sam mechanizm zastosowany do
-  wysyłki maila pozwoliłby pobocznej sprawie zawetować operację biznesową — i
-  dlatego takie handlery nie mogą być synchroniczne.
+  If it raised, the whole transaction would roll back and the caller would get an
+  error. That is correct precisely because there is no outside I/O here: there is
+  nothing to retry, because nothing happened. The same mechanism applied to
+  sending mail would let a side concern veto a business operation — which is why
+  such handlers cannot be synchronous.
   """
 
   use PNS.Handler,
@@ -60,10 +61,10 @@ defmodule Taxvision.Tasks.OnRegistryDataConsistent do
   def handle(%{company_id: company_id, period: period}, _ctx) do
     names = Taxvision.Tasks.template("JDG")
     now = DateTime.utc_now()
-    # **Wywołanie funkcji, nie join.** Zakaz joinów międzymodułowych kosztuje
-    # dokładnie to jedno zapytanie i tyle jest w nim prawdy: nie da się go
-    # obejść, bo `Taxvision.Periods` nie eksportuje swojego schematu.
-    okres = Taxvision.Periods.fetch!(period)
+    # **A function call, not a join.** The no-cross-module-join rule costs exactly
+    # this one query, and that is the whole truth of it: it cannot be worked
+    # around, because `Taxvision.Periods` does not export its schema.
+    accounting_period = Taxvision.Periods.fetch!(period)
 
     entries =
       for name <- names do
@@ -73,7 +74,7 @@ defmodule Taxvision.Tasks.OnRegistryDataConsistent do
           period: period,
           name: name,
           status: "open",
-          due_on: okres.ends_on,
+          due_on: accounting_period.ends_on,
           inserted_at: now
         }
       end

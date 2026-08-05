@@ -1,7 +1,8 @@
 defmodule Taxvision.Notifications do
   @moduledoc """
-  Powiadomienia. Z warsztatu (sekcja 12, HS1, HS26): encja w bazie, log
-  dostarczeń, **kwoty nigdy w treści maila**, krytyczne wymagają potwierdzenia.
+  Notifications. From the workshop (section 12, HS1, HS26): an entity in the
+  database, a delivery log, **amounts never in the body of an email**, and
+  critical ones requiring acknowledgement.
   """
 
   use Boundary,
@@ -20,8 +21,9 @@ defmodule Taxvision.Notifications.Notification do
     field :period, :string
     field :recipient, :string
     field :subject, :string
-    # Odsyłacz, nie treść: diff siedzi w logu zdarzeń, tutaj jest tylko jego
-    # odcisk. To jednocześnie reguła z warsztatu i skutek `retain: %{diff: :hash}`.
+    # A reference, not the content: the diff lives in the event log and only its
+    # fingerprint is here. That is both a workshop rule and the consequence of
+    # `retain: %{diff: :hash}`.
     field :body_ref, :string
     field :idempotency_key, :string
     field :sent_at, :utc_datetime_usec
@@ -30,13 +32,13 @@ end
 
 defmodule Taxvision.Notifications.OnRegistryDiscrepancyDetected do
   @moduledoc """
-  Handler **asynchroniczny**: wychodzi na zewnątrz (mail), więc nie ma prawa
-  siedzieć w transakcji. Idzie przez Obana, wstawiony w tej samej transakcji co
-  zmiana stanu — outbox darmo.
+  An **asynchronous** handler: it reaches outside (email), so it has no business
+  sitting inside a transaction. It goes through Oban, inserted in the same
+  transaction as the state change — an outbox for free.
 
-  Oban daje at-least-once, więc to zdarzenie **przyjdzie drugi raz**.
-  Idempotencja jest tu warunkiem poprawności, nie dobrą praktyką, i dlatego
-  makro handlera nie pozwoliło zadeklarować `async: true` bez klucza.
+  Oban gives at-least-once, so this event **will arrive a second time**.
+  Idempotency here is a correctness condition rather than a good practice, which
+  is why the handler macro refused `async: true` without a key.
   """
 
   use PNS.Handler,
@@ -55,9 +57,9 @@ defmodule Taxvision.Notifications.OnRegistryDiscrepancyDetected do
   def handle(%{company_id: company_id, period: period} = payload, ctx) do
     key = ctx.idempotency_key
 
-    # Sprawdzenie idempotencji na własnej tabeli. Ograniczenie tej metody jest
-    # nazwane, nie zamiecione: dosięga własnych tabel i liczników wywołań
-    # mocków, i nic więcej (notatki §6).
+    # The idempotency check against this module's own table. The limit of that
+    # method is named rather than swept away: it reaches its own tables and mock
+    # call counters, and nothing more (notes §6).
     if Taxvision.Repo.exists?(from n in Notification, where: n.idempotency_key == ^key) do
       :ok
     else
@@ -71,7 +73,7 @@ defmodule Taxvision.Notifications.OnRegistryDiscrepancyDetected do
             period: period,
             recipient: recipient,
             subject: "Rozjazd danych rejestrowych — miesiąc #{period} zablokowany",
-            body_ref: Map.get(payload, :diff) || "brak",
+            body_ref: Map.get(payload, :diff) || "none",
             idempotency_key: key,
             sent_at: now
           }

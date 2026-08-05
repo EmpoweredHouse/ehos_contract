@@ -1,13 +1,13 @@
 defmodule Mix.Tasks.Pns.Graph do
-  @shortdoc "Graf zdarzeń: statyczny, a z --overlay nałożony na log"
+  @shortdoc "The event graph: static, and with --overlay laid over the log"
 
   @moduledoc """
-  Graf statyczny pochodzi z rejestru, czyli z binarki, która działa.
-  Z `--overlay` dochodzą liczniki z logu i stany krawędzi.
+  The static graph comes from the registry, that is, from the binary that runs.
+  With `--overlay` it gains the counters from the log and the edge states.
 
-  `--mermaid` wypisuje diagram. To jest zarodek dashboardu — dane bez ekranu,
-  celowo w tej kolejności: najpierw sprawdzić, czy różnica jest sygnałem, potem
-  ją rysować.
+  `--mermaid` prints a diagram. This is the seed of the dashboard — data without a
+  screen, deliberately in that order: first check whether the difference is
+  signal, then draw it.
   """
 
   use Boundary, classify_to: PNS
@@ -15,9 +15,9 @@ defmodule Mix.Tasks.Pns.Graph do
 
   @impl Mix.Task
   def run(args) do
-    # Erlang trzyma stdout w latin1, kiedy wyjście nie jest terminalem, więc
-    # `mix pns.check > raport.txt` przycina każdy kodepoint do bajtu: `ł` wychodzi
-    # jako `B`. Etykiety zdarzeń są po polsku, bo to język klienta.
+    # Erlang keeps stdout in latin1 when the output is not a terminal, so
+    # `mix pns.graph > graph.txt` truncates every codepoint to a byte. Event
+    # labels come from the contract and are written in the client's language.
     :io.setopts(:standard_io, encoding: :unicode)
 
     {opts, _} =
@@ -37,11 +37,11 @@ defmodule Mix.Tasks.Pns.Graph do
     if opts[:overlay], do: overlay(opts), else: static(opts)
   end
 
-  # Erlang przestawia stdout na latin1, kiedy wyjście nie jest terminalem, więc
-  # `mix pns.graph --mermaid > plik.mmd` psuje każdy polski znak: `ł` (U+0142)
-  # wychodzi jako `B` (0x42). Nazwy zdarzeń są po polsku, bo to język klienta,
-  # więc to nie jest kosmetyka. `--output` pisze plik przez `File.write!`, które
-  # zawsze zapisuje UTF-8.
+  # Erlang switches stdout to latin1 when the output is not a terminal, so
+  # `mix pns.graph --mermaid > file.mmd` corrupts every non-ASCII character:
+  # `ł` (U+0142) comes out as `B` (0x42). Event labels are in the client's
+  # language, so this is not cosmetic. `--output` writes through `File.write!`,
+  # which always writes UTF-8.
   defp emit_output(text, opts) do
     case opts[:output] do
       nil ->
@@ -49,15 +49,15 @@ defmodule Mix.Tasks.Pns.Graph do
 
       path ->
         File.write!(path, text)
-        Mix.shell().info("zapisano: #{path}")
+        Mix.shell().info("written: #{path}")
     end
   end
 
   defp static(opts) do
     graph = PNS.Graph.static()
 
-    Mix.shell().info("Zdarzenia zadeklarowane: #{length(graph.nodes)}")
-    Mix.shell().info("Krawędzie z rejestru handlerów: #{length(graph.edges)}\n")
+    Mix.shell().info("Declared events: #{length(graph.nodes)}")
+    Mix.shell().info("Edges from the handler registry: #{length(graph.edges)}\n")
 
     if opts[:mermaid] do
       edges =
@@ -69,7 +69,7 @@ defmodule Mix.Tasks.Pns.Graph do
       emit_output(Enum.join(["flowchart LR" | edges], "\n"), opts)
     else
       for node <- graph.nodes do
-        marks = [node.terminal? && "terminalne", node.depends_on && "zależy od #{node.depends_on}"]
+        marks = [node.terminal? && "terminal", node.depends_on && "depends on #{node.depends_on}"]
         suffix = marks |> Enum.filter(& &1) |> Enum.join(", ")
         suffix = if suffix == "", do: "", else: "  [#{suffix}]"
         Mix.shell().info("  #{node.event}  — #{node.label}#{suffix}")
@@ -91,8 +91,8 @@ defmodule Mix.Tasks.Pns.Graph do
     if opts[:mermaid] do
       emit_output(PNS.Graph.to_mermaid(overlay), opts)
     else
-      wersje()
-      Mix.shell().info("\nNakładka declared vs observed:\n")
+      versions()
+      Mix.shell().info("\nDeclared versus observed overlay:\n")
       Mix.shell().info(PNS.Graph.to_text(overlay))
 
       paths(since)
@@ -100,75 +100,93 @@ defmodule Mix.Tasks.Pns.Graph do
       dead = PNS.Graph.declared_never_observed(since: since)
 
       if dead != [] do
-        Mix.shell().info("\nZadeklarowane, nigdy nie zaobserwowane:")
+        Mix.shell().info("\nDeclared, never observed:")
 
         for event <- dead do
-          window = if event.cadence, do: "cykl #{inspect(event.cadence)}", else: "brak cadence — okno zgadywane"
+          window =
+            if event.cadence,
+              do: "cycle #{inspect(event.cadence)}",
+              else: "no cadence — window guessed"
+
           Mix.shell().info("  #{event.event}  — #{event.label}  [#{window}]")
         end
       end
     end
   end
 
-  # Czwarte z czterech pytań ekranu: która wersja wdrożona, od kiedy, jakie
-  # wersje w logu i co się zmieniło.
-  defp wersje do
+  # The fourth of the screen's four questions: which version is deployed, since
+  # when, which versions the log holds, and what changed.
+  defp versions do
     for contract <- PNS.Registry.contracts() do
       r = PNS.Deployment.report(contract)
 
-      od = if r.deployed.since, do: DateTime.to_iso8601(r.deployed.since), else: "nic jeszcze nie wyemitowano"
+      since =
+        if r.deployed.since, do: DateTime.to_iso8601(r.deployed.since), else: "nothing emitted yet"
 
       Mix.shell().info("#{inspect(contract)}")
-      Mix.shell().info("  kontrakt #{r.deployed.contract_version}, obwodowanie #{r.deployed.wiring_version || "niezapisane"} — od #{od}")
+
+      Mix.shell().info(
+        "  contract #{r.deployed.contract_version}, wiring " <>
+          "#{r.deployed.wiring_version || "not recorded"} — since #{since}"
+      )
 
       case r.in_log do
-        [] -> Mix.shell().info("  log pusty")
-        wersje -> Mix.shell().info("  wersji w logu: #{length(wersje)}, zdarzeń z innych wersji niż wdrożona: #{r.from_earlier_versions}")
+        [] ->
+          Mix.shell().info("  log empty")
+
+        in_log ->
+          Mix.shell().info(
+            "  versions in the log: #{length(in_log)}, " <>
+              "events from versions other than the deployed one: #{r.from_earlier_versions}"
+          )
       end
 
       case r.changed do
         nil ->
-          Mix.shell().info("  jedno zapisane wdrożenie — nie ma z czym porównać")
+          Mix.shell().info("  one recorded deployment — nothing to compare against")
 
-        z ->
+        change ->
           Mix.shell().info(
-            "  ostatnia zmiana: zdarzenia +#{length(z.events_added)}/-#{length(z.events_removed)}, " <>
-              "ścieżki +#{length(z.paths_added)}/-#{length(z.paths_removed)}"
+            "  last change: events +#{length(change.events_added)}/-#{length(change.events_removed)}, " <>
+              "paths +#{length(change.paths_added)}/-#{length(change.paths_removed)}"
           )
       end
     end
   end
 
-  # Pierwsze z czterech pytań ekranu, liczone **per przebieg**: które
-  # zadeklarowane ścieżki nie zostały przejechane przez żaden przebieg.
+  # The first of the screen's four questions, counted **per run**: which declared
+  # paths no run has taken.
   defp paths(since) do
     for report <- PNS.Conformance.untraversed_paths(since: since) do
-      Mix.shell().info("\nNieprzejechane ścieżki — proces #{inspect(report.process)}:")
+      Mix.shell().info("\nUntraversed paths — process #{inspect(report.process)}:")
 
       case report do
         %{basis: :no_paths} ->
-          # Milczenie o takim procesie byłoby ciszą udającą zdrowie.
-          Mix.shell().info("  kontrakt nie deklaruje ani jednej ścieżki dla tego procesu")
+          # Staying silent about such a process would be silence pretending to be
+          # health.
+          Mix.shell().info("  the contract declares no path at all for this process")
 
         %{basis: :no_runs} ->
-          # Zero przebiegów to brak podstawy, nie zielony ani czerwony raport.
-          Mix.shell().info("  brak przebiegów w logu — nie ma czego oceniać")
+          # Zero runs is no basis, neither a green nor a red report.
+          Mix.shell().info("  no runs in the log — nothing to judge")
 
         %{untraversed: [], in_flight: []} ->
-          Mix.shell().info("  wszystkie #{report.paths} ścieżek przejechane (#{report.instances} przebiegów)")
+          Mix.shell().info("  all #{report.paths} paths traversed (#{report.instances} runs)")
 
         %{untraversed: untraversed} ->
-          Mix.shell().info("  #{length(untraversed)} z #{report.paths} nieprzejechanych, #{report.instances} przebiegów w logu")
+          Mix.shell().info(
+            "  #{length(untraversed)} of #{report.paths} untraversed, " <>
+              "#{report.instances} runs in the log"
+          )
 
           for edge <- untraversed do
             Mix.shell().info("    #{edge.from} -> #{edge.to}   (#{inspect(edge.handler)})")
           end
 
           for edge <- report.in_flight do
-            Mix.shell().info("    #{edge.from} -> #{edge.to}   — #{edge.in_flight} w kolejce, czyli jeszcze nie")
+            Mix.shell().info("    #{edge.from} -> #{edge.to}   — #{edge.in_flight} queued, so not yet")
           end
       end
     end
   end
-
 end

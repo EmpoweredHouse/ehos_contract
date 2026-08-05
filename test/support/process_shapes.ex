@@ -1,15 +1,15 @@
 defmodule ProcessShapes do
   @moduledoc """
-  **Stanowisko badawcze, nie domena.** Patrz `ProcessShapes.Rig`.
+  **A test rig, not a domain.** See `ProcessShapes.Rig`.
 
-  Własna granica, a nie podczepienie pod `Taxvision`: kształty procesu mają być
-  sprawdzone **bez** dostępu do czegokolwiek klienckiego, inaczej dowód byłby
-  wart tyle, co dowód przeprowadzony w środku pierwszej domeny.
+  Its own boundary rather than hanging off `Taxvision`: process shapes are meant
+  to be checked **without** access to anything belonging to the client, otherwise
+  the proof would be worth as much as one carried out inside the first domain.
 
-  Repo bierze się **z konfiguracji**, nie referencją do modułu klienta —
-  dokładnie jak w `PNS.Emitter`. Pierwsza wersja wskazywała `Taxvision.Repo`
-  wprost i `boundary` ją odrzucił, słusznie: fikstura silnika nie ma prawa
-  sięgać do drzewa klienta, choćby po samo repo.
+  The repo comes **from configuration**, not from a reference to a client module —
+  exactly as in `PNS.Emitter`. The first version named `Taxvision.Repo` directly
+  and `boundary` rejected it, rightly: an engine fixture has no business reaching
+  into the client tree, not even for the repo.
   """
 
   use Boundary,

@@ -1,83 +1,90 @@
 defmodule Taxvision.ReportTest do
   @moduledoc """
-  Etap 1.7: **raport zgodności za okres.**
+  Stage 1.7: **the conformance report for a period.**
 
-  Kryterium odbioru ma dwie części i druga jest twarda:
+  The acceptance criterion has two parts and the second is the hard one:
 
-  1. czytelny bez tłumaczenia, co znaczą kolumny,
-  2. **nie zawiera `deadline` oznaczonego `unverified`.**
+  1. readable without explaining what the columns mean,
+  2. **it does not contain a `deadline` marked `unverified`.**
 
-  Druga jest mierzalna i jest pierwszym blokiem poniżej. Pierwsza jest z natury
-  miękka, ale da się przypiąć od strony przeciwnej: w raporcie nie ma ani jednej
-  nazwy technicznej zdarzenia, bo każda jest zastąpiona etykietą z kontraktu.
+  The second is measurable and is the first block below. The first is soft by
+  nature, but it can be pinned from the opposite side: the report contains not a
+  single technical event name, because every one is replaced by a label from the
+  contract.
+
+  The Polish strings asserted on below are the report's own output — this is the
+  one artifact an accountant reads, so its sentences are in their language. See
+  `Taxvision.Report`.
   """
 
   use Taxvision.DataCase, async: false
   use Oban.Testing, repo: Taxvision.Repo
 
-  alias Taxvision.Contracts.AccountingMonth, as: Umowa
+  alias Taxvision.Contracts.AccountingMonth, as: Contract
 
-  @zgodne %{legal_form: "JDG", vat_status: "czynny", vies_status: "aktywny"}
-  @rozjazd %{legal_form: "JDG", vat_status: "wykreślony", vies_status: "aktywny"}
+  @consistent %{legal_form: "JDG", vat_status: "czynny", vies_status: "aktywny"}
+  @divergent %{legal_form: "JDG", vat_status: "wykreślony", vies_status: "aktywny"}
 
-  defp rejestry(mapa) do
-    Application.put_env(:pns_prototype, Taxvision.Adapters.RegistryLookup.Fake, responses: mapa)
+  defp registries(responses) do
+    Application.put_env(:pns_prototype, Taxvision.Adapters.RegistryLookup.Fake, responses: responses)
     on_exit(fn -> Application.delete_env(:pns_prototype, Taxvision.Adapters.RegistryLookup.Fake) end)
   end
 
-  defp otworz(firma, okres \\ "2026-07") do
-    {:ok, _} = Taxvision.Api.open_month(accountant(firma), %{company_id: firma, period: okres})
+  defp open_month(company, period \\ "2026-07") do
+    {:ok, _} = Taxvision.Api.open_month(accountant(company), %{company_id: company, period: period})
   end
 
-  defp dane(opts \\ []), do: PNS.Conformance.report(Umowa, opts)
-  defp tekst(opts \\ []), do: opts |> dane() |> Taxvision.Report.render()
+  defp data(opts \\ []), do: PNS.Conformance.report(Contract, opts)
+  defp text(opts \\ []), do: opts |> data() |> Taxvision.Report.render()
 
-  describe "kryterium odbioru: bez niepotwierdzonych deklaracji" do
-    test "termin oznaczony `unverified` nie trafia do danych raportu" do
-      # `deadline: {25, :day}` jest w kontrakcie z `unverified: [:deadline]`, bo
-      # liczba jest prawdopodobna, ale **nikt z TaxVision jej nie podał**.
-      assert :deadline in Umowa.process(:accounting_month).unverified
+  describe "acceptance criterion: no unconfirmed declarations" do
+    test "a deadline marked `unverified` does not reach the report's data" do
+      # `deadline: {25, :day}` sits in the contract with `unverified: [:deadline]`,
+      # because the number is plausible but **nobody from TaxVision supplied it**.
+      assert :deadline in Contract.process(:accounting_month).unverified
 
-      [proces] = dane().processes
-      klucze = Enum.map(proces.declarations, & &1.key)
+      [process] = data().processes
+      keys = Enum.map(process.declarations, & &1.key)
 
-      refute :deadline in klucze,
-             "niepotwierdzona deklaracja w raporcie dowodowym czyta się jako zmierzona — " <>
-               "a fałszywa metryka jest gorsza niż jej brak, bo to metryka, którą produkt sprzedaje"
+      refute :deadline in keys,
+             "an unconfirmed declaration in an evidence report reads as measured — " <>
+               "and a false metric is worse than a missing one, because it is the metric the product sells"
 
-      # Kadencja jest potwierdzona warsztatem [WF 00:34:40], więc zostaje.
-      assert :cadence in klucze
+      # The cadence is confirmed by the workshop [WF 00:34:40], so it stays.
+      assert :cadence in keys
     end
 
-    test "termin nie trafia też do wyrenderowanego tekstu" do
-      refute tekst() =~ "Termin"
-      refute tekst() =~ "25"
+    test "the deadline does not reach the rendered text either" do
+      refute text() =~ "Termin"
+      refute text() =~ "25"
     end
 
-    test "gdyby termin został potwierdzony, pojawiłby się" do
-      # Dowód, że filtr działa na `unverified`, a nie po prostu nie umie wypisać
-      # terminu. Bez tego pierwszy test przechodziłby także przy zepsutym filtrze.
-      proces = Umowa.process(:accounting_month)
-      potwierdzony = %{proces | unverified: []}
+    test "if the deadline were confirmed, it would appear" do
+      # Proof that the filter acts on `unverified` rather than simply being unable
+      # to print a deadline. Without this the first test would also pass with a
+      # broken filter.
+      process = Contract.process(:accounting_month)
+      confirmed = %{process | unverified: []}
 
-      refute Enum.any?(PNS.Conformance.verified_declarations(proces), &(&1.key == :deadline))
-      assert Enum.any?(PNS.Conformance.verified_declarations(potwierdzony), &(&1.key == :deadline))
+      refute Enum.any?(PNS.Conformance.verified_declarations(process), &(&1.key == :deadline))
+      assert Enum.any?(PNS.Conformance.verified_declarations(confirmed), &(&1.key == :deadline))
     end
   end
 
-  describe "kryterium odbioru: czytelny bez tłumaczenia" do
+  describe "acceptance criterion: readable without explanation" do
     setup do
-      rejestry(%{"c-1" => {:ok, @zgodne}, "c-2" => {:ok, @rozjazd}})
-      otworz("c-1")
-      otworz("c-2")
+      registries(%{"c-1" => {:ok, @consistent}, "c-2" => {:ok, @divergent}})
+      open_month("c-1")
+      open_month("c-2")
       Oban.drain_queue(queue: :events)
       :ok
     end
 
-    test "kroki są nazwane etykietami biznesowymi, nie nazwami zdarzeń" do
-      t = tekst()
+    test "the steps are named with business labels, not with event names" do
+      t = text()
 
-      # Assercja jest zdaniem złożonym z etykiet, bo `trace` nie ma `label`.
+      # The assertion is a sentence composed of labels, because `trace` has no
+      # `label`.
       assert t =~ "po „Potwierdzono komplet danych historycznych”"
       assert t =~ "następuje „Otwarto miesiąc księgowy”"
 
@@ -85,15 +92,15 @@ defmodule Taxvision.ReportTest do
       refute t =~ "accounting_month_opened"
     end
 
-    test "spełnienie przez ścieżkę awaryjną jest nazwane zgodnością, nie wyjątkiem" do
-      # Blokada miesiąca jest poprawnym zakończeniem. Raport, który nazwałby ją
-      # problemem, zostałby wyłączony po pierwszym miesiącu.
-      assert tekst() =~ "Dotrzymane we wszystkich 2 przebiegach"
-      assert tekst() =~ "zgodne z ustaleniem"
+    test "satisfaction through the fallback path is named conformance, not an exception" do
+      # Blocking the month is a correct ending. A report that called it a problem
+      # would be switched off after the first month.
+      assert text() =~ "Dotrzymane we wszystkich 2 przebiegach"
+      assert text() =~ "zgodne z ustaleniem"
     end
 
-    test "cztery pytania ekranu są w jednym artefakcie" do
-      t = tekst()
+    test "the screen's four questions are in one artifact" do
+      t = text()
 
       assert t =~ "USTALENIA"
       assert t =~ "Wersja ustaleń"
@@ -102,67 +109,67 @@ defmodule Taxvision.ReportTest do
       assert t =~ "ROZBIEŻNOŚCI"
     end
 
-    test "brak rozbieżności jest zdaniem, nie pustą sekcją" do
-      assert tekst() =~ "Brak: nic nie zaszło poza ustaleniami"
+    test "the absence of divergence is a sentence, not an empty section" do
+      assert text() =~ "Brak: nic nie zaszło poza ustaleniami"
     end
   end
 
-  describe "raport jest za okres" do
-    test "okno odcina przebiegi spoza okresu" do
-      otworz("c-1", "2026-06")
-      otworz("c-2", "2026-07")
+  describe "the report is for a period" do
+    test "the window cuts off runs from outside the period" do
+      open_month("c-1", "2026-06")
+      open_month("c-2", "2026-07")
 
-      wszystko = dane()
-      lipiec = dane(since: ~U[2026-08-05 00:00:00.000000Z])
+      everything = data()
+      recent = data(since: ~U[2026-08-05 00:00:00.000000Z])
 
-      [p_wszystko] = wszystko.processes
-      [p_lipiec] = lipiec.processes
+      [p_everything] = everything.processes
+      [p_recent] = recent.processes
 
-      assert p_wszystko.runs == 2
-      assert p_lipiec.runs == 2
+      assert p_everything.runs == 2
+      assert p_recent.runs == 2
 
-      # Okno w przyszłości nie może zawierać niczego — dowód, że granica działa,
-      # a nie że jest ignorowana.
-      pusty = dane(since: ~U[2027-01-01 00:00:00.000000Z])
-      [p_pusty] = pusty.processes
+      # A window in the future cannot contain anything — proof that the bound
+      # works rather than being ignored.
+      empty = data(since: ~U[2027-01-01 00:00:00.000000Z])
+      [p_empty] = empty.processes
 
-      assert p_pusty.runs == 0
+      assert p_empty.runs == 0
     end
 
-    test "okres bez przebiegów mówi „nie ma czego oceniać”, nie „wszystko dobrze”" do
-      otworz("c-1")
+    test "a period with no runs says \"there is nothing to judge\", not \"all is well\"" do
+      open_month("c-1")
 
-      t = tekst(since: ~U[2027-01-01 00:00:00.000000Z])
+      t = text(since: ~U[2027-01-01 00:00:00.000000Z])
 
       assert t =~ "nie było ani jednego przebiegu"
       refute t =~ "Wszystkie ustalone kroki zostały"
     end
 
-    test "nagłówek nazywa okres, którego raport dotyczy" do
-      t = tekst(since: ~U[2026-07-01 00:00:00.000000Z], until: ~U[2026-07-31 23:59:59.000000Z])
+    test "the header names the period the report is about" do
+      t = text(since: ~U[2026-07-01 00:00:00.000000Z], until: ~U[2026-07-31 23:59:59.000000Z])
       assert t =~ "2026-07-01 – 2026-07-31"
     end
   end
 
-  describe "rozbieżność jest przypisana do właściwego kontraktu" do
-    test "drift wchodzi do raportu tego kontraktu, którego zdarzenie go wywołało" do
-      otworz("c-1")
+  describe "drift is attributed to the right contract" do
+    test "drift enters the report of the contract whose event caused it" do
+      open_month("c-1")
 
       Repo.insert!(%PNS.Event{
-        type: "zdarzenie_spoza_ustalen",
-        contract: inspect(Umowa),
-        contract_version: Umowa.version(),
+        type: "event_outside_the_agreement",
+        contract: inspect(Contract),
+        contract_version: Contract.version(),
         correlation_id: Ecto.UUID.generate(),
         causation_id: List.first(events_of(:accounting_month_opened)).id,
         payload: %{},
         occurred_at: DateTime.utc_now()
       })
 
-      assert [rozbieznosc] = dane().drift
-      assert rozbieznosc.to == "zdarzenie_spoza_ustalen"
-      assert rozbieznosc.from_label == "Otwarto miesiąc księgowy"
+      assert [divergence] = data().drift
+      assert divergence.to == "event_outside_the_agreement"
+      assert divergence.from_label == "Otwarto miesiąc księgowy"
 
-      # Raport innego kontraktu nie ma prawa tego zobaczyć.
+      # Another contract's report has no business seeing this.
       assert PNS.Conformance.report(UniversalityGate.TreatmentEpisode).drift == []
     end
   end

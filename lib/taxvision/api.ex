@@ -1,29 +1,30 @@
 defmodule Taxvision.Api do
   @moduledoc """
-  Krawędź żądania. Tu przechodzą **trzy poziomy IAM**, każdy dając inną
-  odpowiedź — i to jest cały test tego, czy szew jest postawiony w dobrym
-  miejscu.
+  The request edge. **Three IAM levels** pass through here, each giving a
+  different answer — and that is the whole test of whether the seam is in the
+  right place.
 
-  | Poziom | Kto właścicielem | Odpowiedź przy odmowie |
+  | Level | Who owns it | Answer on refusal |
   |---|---|---|
-  | Uwierzytelnienie — kto to jest | kupione | `:unauthenticated` |
-  | Entitlement — czy dosięga API księgowego | kupione, claim z tokenu | `:forbidden`, **przed** kodem domenowym |
-  | Reguła domenowa — czy może otworzyć **ten** miesiąc | nasze, reguła w kontrakcie | odrzucenie z powodem, zapisany przypadek |
+  | Authentication — who is this | bought | `:unauthenticated` |
+  | Entitlement — can they reach the accounting API | bought, a claim from the token | `:forbidden`, **before** any domain code |
+  | Domain rule — may they open **this** month | ours, a rule in the contract | a rejection with a reason, a recorded case |
 
-  Trzeci wiersz jest tym, o co idzie gra. Gdyby dał się przejść konfiguracją
-  providera, poziomy nie byłyby rozdzielone i cała wartość byłaby kupiona.
+  The third row is what the game is about. If it could be satisfied by a
+  provider's configuration, the levels would not be separated and the whole value
+  would be bought.
 
-  To jest odpowiednik pipeline'u Phoenixa, napisany bez Phoenixa. Warstwa web nie
-  pokazuje w tym wycinku nic spornego, a REST przeciw GraphQL jest w decyzji 008
-  wciąż otwarte — budowanie API przesądzałoby otwartą decyzję. Podmiana jest
-  mechaniczna: `authenticate` i `entitle` to dwa plugi, `open_month` to akcja
-  kontrolera.
+  This is the equivalent of a Phoenix pipeline, written without Phoenix. The web
+  layer shows nothing contentious in this slice, and REST versus GraphQL is still
+  open in decision 008 — building the API would settle an open decision. The swap
+  is mechanical: `authenticate` and `entitle` are two plugs, `open_month` is a
+  controller action.
 
-  Zwróć uwagę, czego tu **nie** ma: dostępu do `Taxvision.Tasks`,
-  `Taxvision.Notifications` ani `Taxvision.AccountingMonth`. Krawędź emituje
-  zdarzenie i na tym kończy się jej wiedza o tym, co się dalej dzieje. Gdyby
-  wołała te moduły wprost, `boundary` by ją zatrzymał — i to jest ta różnica
-  między architekturą event-driven a nazwaniem czegoś event-driven.
+  Note what is **not** here: access to `Taxvision.Tasks`,
+  `Taxvision.Notifications` or `Taxvision.AccountingMonth`. The edge emits an
+  event, and that is where its knowledge of what happens next ends. If it called
+  those modules directly, `boundary` would stop it — and that is the difference
+  between an event-driven architecture and calling something event-driven.
   """
 
   use Boundary,
@@ -38,7 +39,9 @@ defmodule Taxvision.Api do
 
   alias Taxvision.Contracts.AccountingMonth
 
-  @doc "Otwiera miesiąc księgowy. Zwraca `{:ok, correlation_id}` albo powód odmowy."
+  @doc "Opens an accounting month. Returns `{:ok, correlation_id}` or a reason for refusal."
+  @spec open_month(String.t(), %{company_id: String.t(), period: String.t()}) ::
+          {:ok, Ecto.UUID.t()} | {:error, term()}
   def open_month(token, %{company_id: company_id, period: period}) do
     with {:ok, actor} <- authenticate(token),
          :ok <- entitle(actor),
@@ -61,9 +64,9 @@ defmodule Taxvision.Api do
   end
 
   defp entitle(actor) do
-    # Jeden claim, zero sieci. Odcięcie następuje tutaj, więc żadne zdarzenie
-    # nie trafia do logu — i to jest sprawdzalne brakiem wiersza, nie treścią
-    # odpowiedzi.
+    # One claim, no network. The cut-off happens here, so no event reaches the
+    # log — and that is checkable by the absence of a row rather than by the
+    # content of a response.
     if PNS.Auth.entitled?(actor, :accounting), do: :ok, else: {:error, :forbidden}
   end
 
@@ -74,8 +77,8 @@ defmodule Taxvision.Api do
       period: period,
       actor: actor.subject,
       actor_roles: actor.roles,
-      # Najemca czytany z claimu przez **kod domenowy**, nie ze struktury
-      # silnika: „czyja to firma" jest pytaniem TaxVision, nie PNS-a.
+      # The tenant is read from a claim by **domain code**, not from an engine
+      # struct: "whose company is this" is a TaxVision question, not a PNS one.
       actor_company: actor.claims["company_id"],
       completeness_confirmed: true,
       checked_at: DateTime.utc_now() |> DateTime.to_iso8601(),

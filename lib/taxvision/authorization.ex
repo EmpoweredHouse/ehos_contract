@@ -1,23 +1,23 @@
 defmodule Taxvision.Authorization do
   @moduledoc """
-  **Trzeci poziom IAM: reguła domenowa. Nasza, nie kupiona.**
+  **The third IAM level: the domain rule. Ours, not bought.**
 
-  Provider tożsamości odpowiada, kto to jest (poziom 1), i czy ta osoba dosięga
-  API księgowego w ogóle (poziom 2, grant roli jako claim). Tego niżej nie
-  wyrazi żadną konfiguracją, bo nie wie, czym jest miesiąc księgowy ani czyja
-  jest firma.
+  The identity provider answers who this is (level 1) and whether that person can
+  reach the accounting API at all (level 2, a role grant as a claim). It cannot
+  express what is below in any configuration, because it does not know what an
+  accounting month is or whose company this is.
 
-  Dlatego reguła siedzi w kontrakcie jako `rule` z przykładami, dokładnie jak
-  każda inna reguła biznesowa — i tak samo jest testowana. Gdyby dała się
-  zapisać jako polityka w panelu providera, szew byłby postawiony w złym
-  miejscu.
+  So the rule sits in the contract as a `rule` with examples, exactly like any
+  other business rule — and is tested the same way. If it could be written as a
+  policy in the provider's console, the seam would be in the wrong place.
 
-  Czysta funkcja, zero dostępu do bazy, zero wiedzy o tokenach.
+  A pure function: no database access, no knowledge of tokens.
   """
 
   use Boundary, deps: [], exports: []
 
-  @doc "Miesiąc otwiera księgowa przypisana do tej firmy."
+  @doc "The month is opened by the accountant assigned to that company."
+  @spec authorize_open_month(map()) :: :ok | {:error, atom()}
   def authorize_open_month(%{command: :open_month} = input) do
     roles = input[:actor_roles] || []
 

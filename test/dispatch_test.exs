@@ -1,9 +1,9 @@
 defmodule PNS.DispatchTest do
   @moduledoc """
-  Podział dispatchu po granicy transakcji (ADR §9-10, notatki §4).
+  Dispatch split along the transaction boundary (ADR §9-10, notes §4).
 
-  To jest twierdzenie, którego proza nie rozstrzyga: albo semantyka awarii jest
-  taka, jak zapisano, albo nie jest.
+  This is a claim prose cannot settle: either the failure semantics are as
+  recorded, or they are not.
   """
 
   use Taxvision.DataCase, async: false
@@ -14,12 +14,12 @@ defmodule PNS.DispatchTest do
   @company "c-1"
   @period "2026-07"
 
-  test "emit zapisuje zdarzenie, uruchamia handler synchroniczny i kolejkuje async — jedna transakcja" do
+  test "emit writes the event, runs the sync handler and queues the async one — one transaction" do
     {:ok, _} =
       PNS.emit(AccountingMonth, :registry_data_consistent, %{company_id: @company, period: @period})
 
-    # Handler synchroniczny dopisał swoje w tej samej transakcji, a jego
-    # publikacja pociągnęła kolejny handler synchroniczny.
+    # The synchronous handler added its own rows in the same transaction, and its
+    # publication pulled in a further synchronous handler.
     assert [_] = events_of(:registry_data_consistent)
     assert [tasks_event] = events_of(:monthly_tasks_generated)
     assert [_] = events_of(:accounting_month_opened)
@@ -29,7 +29,7 @@ defmodule PNS.DispatchTest do
     assert Repo.aggregate(Taxvision.AccountingMonth.Month, :count) == 1
   end
 
-  test "łańcuch przyczynowy i korelacja idą przez wszystkie zdarzenia" do
+  test "the causation chain and the correlation run through every event" do
     {:ok, root} =
       PNS.emit(AccountingMonth, :registry_data_consistent, %{company_id: @company, period: @period})
 
@@ -39,25 +39,25 @@ defmodule PNS.DispatchTest do
     assert tasks.correlation_id == root.correlation_id
     assert opened.correlation_id == root.correlation_id
     assert tasks.causation_id == root.id
-    # Przyczyną otwarcia miesiąca jest wygenerowanie tasków, nie zgodność
-    # rejestrów. Bez tego graf zaobserwowany byłby płaski.
+    # The cause of the month opening is the tasks being generated, not the
+    # registries agreeing. Without this the observed graph would be flat.
     assert opened.causation_id == tasks.id
   end
 
-  test "handler synchroniczny, który rzuci, cofa wszystko — brak zdarzenia, brak joba" do
-    # Zdarzenie zadeklarowane, którego handler celowo wysadzam podmieniając
-    # szablon na coś, co wywali insert.
+  test "a synchronous handler that raises rolls everything back — no event, no job" do
+    # A declared event whose handler is blown up on purpose by feeding it
+    # something that breaks the insert.
     assert_raise Postgrex.Error, fn ->
       PNS.emit(AccountingMonth, :registry_data_consistent, %{
         company_id: @company,
-        # `period` dłuższy niż kolumna łamie ograniczenie w tabeli tasków, czyli
-        # handler synchroniczny rzuca w środku transakcji.
+        # A `period` longer than the column breaks a constraint in the tasks
+        # table, so the synchronous handler raises inside the transaction.
         #
-        # Wcześniej to samo robiło `period: nil`, ale odkąd `period` jest polem
-        # instancji, null jest odrzucany **przed** wejściem do handlera — i to
-        # jest poprawna kolejność: zdarzenie bez tożsamości przebiegu nie ma
-        # prawa trafić do logu. Sprawdzana jest tu awaria handlera, więc awaria
-        # musi pochodzić z handlera.
+        # `period: nil` used to do the same, but since `period` is an instance
+        # field a null is rejected **before** the handler is reached — and that is
+        # the correct order: an event with no run identity has no business
+        # reaching the log. What is under test here is a handler failure, so the
+        # failure has to come from the handler.
         period: String.duplicate("x", 300)
       })
     end
@@ -68,7 +68,7 @@ defmodule PNS.DispatchTest do
     assert all_enqueued() == []
   end
 
-  test "handler asynchroniczny dostaje joba wstawionego w tej samej transakcji" do
+  test "the asynchronous handler gets a job inserted in the same transaction" do
     {:ok, event} =
       PNS.emit(AccountingMonth, :registry_discrepancy_detected, %{
         company_id: @company,
@@ -78,16 +78,16 @@ defmodule PNS.DispatchTest do
 
     assert [job] = all_enqueued(worker: PNS.Job)
     assert job.args["handler"] == "Taxvision.Notifications.OnRegistryDiscrepancyDetected"
-    # Korelacja zserializowana do argumentów — bez tego łańcuch urywa się na
-    # granicy procesu BEAM-a (notatki §3).
+    # Correlation serialised into the arguments — without it the chain breaks at
+    # the BEAM process boundary (notes §3).
     assert job.args["correlation_id"] == event.correlation_id
     assert job.args["causation_id"] == event.id
 
-    # Handler synchroniczny nie odpalił: to nie jego zdarzenie.
+    # The synchronous handler did not fire: this is not its event.
     assert Repo.aggregate(Taxvision.Tasks.Task, :count) == 0
   end
 
-  test "polityka retain obowiązuje też w argumentach joba, nie tylko w logu" do
+  test "the retain policy applies to the job arguments too, not only to the log" do
     diff = "vat_status: Abilia=czynny, rejestry=wykreślony"
 
     {:ok, event} =
@@ -100,19 +100,19 @@ defmodule PNS.DispatchTest do
     assert [job] = all_enqueued(worker: PNS.Job)
 
     assert String.starts_with?(event.payload["diff"], "sha256:")
-    # To jest ta rzecz, która wyszła dopiero w kodzie: gdyby handler dostawał
-    # pełną wartość, wyciekłaby przez `oban_jobs` — tabelę, której `retain` nie
-    # obejmuje. Polityka obchodzona przez kolejkę wygląda na spełnioną.
+    # This is the thing that only came out in code: if the handler received the
+    # full value, it would leak through `oban_jobs` — a table `retain` does not
+    # cover. A policy the queue walks around looks satisfied.
     assert String.starts_with?(job.args["payload"]["diff"], "sha256:")
     refute job.args["payload"]["diff"] == diff
   end
 
-  test "handler asynchroniczny uruchomiony dwa razy nie robi nic drugi raz" do
+  test "an asynchronous handler run twice does nothing the second time" do
     {:ok, _} =
       PNS.emit(AccountingMonth, :registry_discrepancy_detected, %{
         company_id: @company,
         period: @period,
-        diff: "rozjazd"
+        diff: "a divergence"
       })
 
     [job] = all_enqueued(worker: PNS.Job)
@@ -124,13 +124,13 @@ defmodule PNS.DispatchTest do
     assert :ok = perform_job(PNS.Job, job.args)
     assert Repo.aggregate(Taxvision.Notifications.Notification, :count) == after_first
 
-    # Zdarzenie o wysłanym powiadomieniu poszło raz, nie dwa.
+    # The notification-sent event went out once, not twice.
     assert [_] = events_of(:discrepancy_notification_sent)
   end
 
-  test "publikacja zdarzenia spoza kontraktu jest odrzucana w runtime" do
-    assert_raise ArgumentError, ~r/nie deklaruje zdarzenia/, fn ->
-      PNS.emit(AccountingMonth, :zdarzenie_ktorego_nie_ma, %{})
+  test "publishing an event outside the contract is rejected at run time" do
+    assert_raise ArgumentError, ~r/does not declare event/, fn ->
+      PNS.emit(AccountingMonth, :no_such_event, %{})
     end
   end
 end

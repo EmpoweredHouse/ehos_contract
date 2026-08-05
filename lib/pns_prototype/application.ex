@@ -13,13 +13,13 @@ defmodule PnsPrototype.Application do
 
     result = Supervisor.start_link(children, strategy: :one_for_one, name: PnsPrototype.Supervisor)
 
-    # Skan rejestru przy boocie. Graf pochodzi z binarki, która faktycznie
-    # działa — nie z pliku obok niej.
+    # The registry scan at boot. The graph comes from the binary that actually
+    # runs — not from a file beside it.
     PNS.Registry.load!()
 
-    # Zapis wdrożonej wersji: co jest zadeklarowane i od kiedy obowiązuje.
-    # Bez tego nie da się odróżnić historii od driftu dla **ścieżek**, bo
-    # `version/0` haszuje kontrakt, a ścieżki pochodzą z handlerów.
+    # Recording the deployed version: what is declared and since when it applies.
+    # Without it, history cannot be separated from drift for **paths**, because
+    # `version/0` hashes the contract while paths come from handlers.
     PNS.Deployment.record!()
 
     result

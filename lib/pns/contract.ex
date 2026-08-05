@@ -1,12 +1,12 @@
 defmodule PNS.Contract do
   @moduledoc """
-  Kontrakt jako moduł Elixira (ADR §2, notatki §1).
+  The contract as an Elixir module (ADR §2, notes §1).
 
-  Deklaracje akumulują się w atrybutach modułu, a `@before_compile` generuje
-  funkcje zapytań wołane w dwóch różnych momentach: w czasie kompilacji przez
-  makro handlera i w runtime przez zapytania conformance.
+  Declarations accumulate in module attributes, and `@before_compile` generates
+  the query functions. Those are called at two different moments: at compile time
+  by the handler macro, and at run time by the conformance queries.
 
-  Brama z ADR §18 jest tutaj: **reguła bez przykładu nie kompiluje się.**
+  The gate from ADR §18 lives here: **a rule with no example does not compile.**
   """
 
   # One source of truth for the DSL surface: which keys exist, which are
@@ -53,6 +53,9 @@ defmodule PNS.Contract do
   @rule_keys @schema.rule.required ++ @schema.rule.optional
   @example_keys @schema.example.required ++ @schema.example.optional
 
+  @typedoc "A declaration kind: the name of one DSL construct."
+  @type declaration :: :event | :process | :external | :rule | :example | :trace
+
   @doc """
   The DSL surface as data: keys per declaration, which are required, and the
   fallback for each omitted optional key.
@@ -61,22 +64,22 @@ defmodule PNS.Contract do
   written by hand. A hand-written key table is a second source of truth, and
   every one of those in this project has eventually disagreed with the code.
   """
-  @spec schema() :: map()
+  @spec schema() :: %{declaration() => map()}
   def schema, do: @schema
 
   @doc """
-  Cały słownik DSL, maszynowo — wyprowadzony z `schema/0`.
+  The whole DSL vocabulary as data, derived from `schema/0`.
 
-  Istnieje po to, żeby **brama uniwersalności dała się przypiąć testem**.
-  Kryterium etapu 1.2 brzmi „zero nowych słów, żeby opisać inną domenę", a
-  kryterium, którego nikt nie sprawdza, jest zdaniem w prozie. Test pinuje tę
-  mapę; dopisanie do DSL słowa specyficznego dla domeny wywala go tego samego
-  dnia, a nie przy przeglądzie za kwartał.
+  Exists so the **universality gate can be pinned by a test**. The stage 1.2
+  criterion reads "zero new words to describe another domain", and a criterion
+  nobody checks is a sentence in prose. A test pins this map, so adding a
+  domain-specific word to the DSL breaks it the same day rather than at a review
+  next quarter.
 
-  Stąd też bierze się zapis, dlaczego **nie ma `population`** — jedyne słowo,
-  które ten test oblało, i jedyne, które ma tendencję do powrotu.
+  It is also where the record of why there is **no `population`** lives — the one
+  word that failed that test, and the one that tends to come back.
   """
-  @spec vocabulary() :: %{atom() => [atom()]}
+  @spec vocabulary() :: %{declaration() => [atom()]}
   def vocabulary do
     Map.new(@schema, fn {declaration, keys} -> {declaration, keys.required ++ keys.optional} end)
   end
@@ -97,21 +100,21 @@ defmodule PNS.Contract do
     end
   end
 
-  @doc "Zdarzenie: fakt, który zaszedł. Nazwa w czasie przeszłym."
+  @doc "An event: a fact that happened. Named in the past tense."
   defmacro event(name, opts) do
     quote bind_quoted: [name: name, opts: opts] do
       @pns_events PNS.Contract.build_event(name, opts)
     end
   end
 
-  @doc "Proces: jednostka nawigacji dashboardu i jednostka podziału kontraktu."
+  @doc "A process: the dashboard's navigation unit and the contract's unit of division."
   defmacro process(name, opts) do
     quote bind_quoted: [name: name, opts: opts] do
       @pns_processes PNS.Contract.build_process(name, opts)
     end
   end
 
-  @doc "Zależność zewnętrzna, nazwana faktem biznesowym, nie vendorem (ADR §11-12)."
+  @doc "An external dependency, named after the business fact rather than the vendor (ADR §11-12)."
   defmacro external(name, opts) do
     quote bind_quoted: [name: name, opts: opts] do
       @pns_externals PNS.Contract.build_external(name, opts)
@@ -119,11 +122,11 @@ defmodule PNS.Contract do
   end
 
   @doc """
-  Reguła wskazuje **jedną czystą funkcję i nic więcej**, przez MFA.
+  A rule names **one pure function and nothing else**, through an MFA tuple.
 
-  MFA, nie capture: capture zrobiłby z kontraktu zależność kompilacyjną od
-  domeny, a handlery zależą od kontraktu — więc każda zmiana domeny
-  rekompilowałaby wszystkie handlery.
+  MFA rather than a capture: a capture would make the contract a compile-time
+  dependency of the domain, and handlers depend on the contract — so every domain
+  change would recompile every handler.
   """
   defmacro rule(name, opts) do
     quote bind_quoted: [name: name, opts: opts] do
@@ -132,8 +135,8 @@ defmodule PNS.Contract do
   end
 
   @doc """
-  Przykład przypina regułę przypadkiem, który da się przeczytać na głos
-  process ownerowi i wykonać jako test.
+  An example pins a rule with a case that can be read aloud to the process owner
+  and executed as a test.
   """
   defmacro example(description, opts) do
     quote bind_quoted: [description: description, opts: opts] do
@@ -142,8 +145,8 @@ defmodule PNS.Contract do
   end
 
   @doc """
-  Assercja nad zaobserwowanym przebiegiem. Blok jest rozbierany w czasie
-  kompilacji, więc `from`/`eventually`/`or_else` nie istnieją w runtime.
+  An assertion over an observed run. The block is taken apart at compile time, so
+  `from`/`eventually`/`or_else` do not exist at run time.
   """
   defmacro trace(name, do: block) do
     steps = trace_steps(block)
@@ -153,9 +156,10 @@ defmodule PNS.Contract do
     end
   end
 
-  # --- budowanie deklaracji (wołane w czasie kompilacji kontraktu) ---
+  # --- building declarations (called while the contract compiles) ---
 
   @doc false
+  @spec build_event(atom(), keyword()) :: map()
   def build_event(name, opts) do
     validate_keys!(opts, @event_keys, "event #{inspect(name)}")
 
@@ -166,39 +170,40 @@ defmodule PNS.Contract do
       payload: Keyword.get(opts, :payload, %{}),
       retain: Keyword.get(opts, :retain, %{}),
       depends_on: Keyword.get(opts, :depends_on),
-      # `identity` mówi, **co czyni dwa wystąpienia tego zdarzenia tym samym
-      # faktem biznesowym**. Stąd bierze się klucz idempotencji.
+      # `identity` says **what makes two occurrences of this event the same
+      # business fact**. The idempotency key comes from it.
       #
-      # Siedzi na zdarzeniu, nie na handlerze, i to jest poprawka wobec
-      # pierwszej wersji: "dwa rozjazdy w jednym miesiącu to jedno
-      # powiadomienie czy dwa" jest pytaniem do process ownera, a nie do
-      # programisty piszącego handler. ADR §9-10 mówi wprost, że idempotencja
-      # jest własnością kontraktu; notatki §4 mówiły, że handlera. Rację ma ADR.
+      # It sits on the event rather than on the handler, and that is a correction
+      # to the first version: "are two divergences in one month one notification
+      # or two" is a question for the process owner, not for the developer writing
+      # the handler. ADR §9-10 states outright that idempotency is a property of
+      # the contract; the notes said it was the handler's. The ADR is right.
       #
-      # Konsekwencja jest też praktyczna: tożsamość faktu jest jedna, a
-      # handlerów tego samego zdarzenia może być wiele. Trzymana na handlerze
-      # rozjeżdżałaby się między nimi.
+      # There is a practical consequence too: a fact has one identity, while one
+      # event can have many handlers. Held on the handler it would drift between
+      # them.
       identity: opts |> Keyword.get(:identity) |> then(&(&1 && List.wrap(&1))),
-      # **Gdzie to zdarzenie siedzi w procesie — na zdarzeniu, nie na procesie.**
+      # **Where this event sits in the process — on the event, not on the process.**
       #
-      # Pierwsza wersja miała odwrotnie: proces wymieniał swoje zdarzenia w
-      # `stages:`, więc każda nazwa zdarzenia była w kontrakcie napisana dwa
-      # razy, a dodanie zdarzenia wymagało dwóch edycji w miejscach oddalonych
-      # o sto linii. Reguła jest ta sama, co przy `identity` i `instance`:
-      # deklaracja idzie tam, gdzie jest jedna. Faza jest jedna na zdarzenie.
+      # The first version had it the other way round: a process listed its events
+      # in `stages:`, so every event name was written twice in the contract, and
+      # adding an event took two edits a hundred lines apart. The rule is the same
+      # one as for `identity` and `instance`: a declaration goes where there is
+      # one of it. There is one stage per event.
       #
-      # Efekt uboczny jest lepszy niż sama czytelność: „zdarzenie należy do co
-      # najwyżej jednego procesu" przestaje być bramą kompilacyjną, a staje się
-      # rzeczą niewyrażalną. To był warunek stopu z ADR §15.
+      # The side effect is better than the readability: "an event belongs to at
+      # most one process" stops being a compile-time gate and becomes something
+      # inexpressible. That was a stop condition in ADR §15.
       process: Keyword.get(opts, :process),
       stage: Keyword.get(opts, :stage),
-      # `terminal: true` — na tym zdarzeniu proces się kończy. Też własność
-      # zdarzenia, a nie listy trzymanej gdzie indziej.
+      # `terminal: true` — the process ends on this event. Also a property of the
+      # event rather than of a list kept somewhere else.
       terminal: Keyword.get(opts, :terminal, false)
     }
   end
 
   @doc false
+  @spec build_process(atom(), keyword()) :: map()
   def build_process(name, opts) do
     validate_keys!(opts, @process_keys, "process #{inspect(name)}")
 
@@ -207,48 +212,50 @@ defmodule PNS.Contract do
     %{
       name: name,
       label: fetch!(opts, :label, where),
-      # **Sekwencyjne są bramki, nie zdarzenia** — i to jest jedyna rzecz, którą
-      # `stages:` deklaruje: kolejność **między** fazami. O kolejności wewnątrz
-      # fazy kontrakt nie twierdzi nic.
+      # **Gates are sequential, events are not** — and that is the only thing
+      # `stages:` declares: the order **between** stages. The contract claims
+      # nothing about order within a stage.
       #
-      # Warsztat mówi wprost: "fazy nie są w pełni sekwencyjne … sekwencyjne są
-      # bramki" — KSeF ciągnie ciągle, meczowanie doszywa na bieżąco. Pierwsza
-      # wersja miała płaską, uporządkowaną listę zdarzeń i na tej kolejności
-      # stało wykrywanie krawędzi wstecznych, czyli check egzekwował nasz pomysł
-      # podany jako model klienta.
+      # The workshop says it outright: the stages are not fully sequential, the
+      # gates are. KSeF pulls continuously and matching is stitched on as it goes.
+      # The first version had a flat ordered list of events, and backward-edge
+      # detection rested on that order — so the check enforced our idea presented
+      # as the client's model.
       #
-      # Które zdarzenie jest w której fazie, mówi samo zdarzenie. Tutaj zostaje
-      # wyłącznie porządek faz, bo to jest jedyna rzecz, której zdarzenie o
-      # sobie powiedzieć nie może.
+      # Which event is in which stage is said by the event itself. What is left
+      # here is only the order of stages, because that is the one thing an event
+      # cannot say about itself.
       #
-      # Brak `stages:` znaczy dokładnie tyle: jedna faza, zero twierdzeń o
-      # kolejności. Wtedy zdarzenia tego procesu nie podają `stage:`.
+      # No `stages:` means exactly this: one stage, and zero claims about order.
+      # Events of such a process then give no `stage:`.
       stages: Keyword.get(opts, :stages, []),
-      # `instance` nazywa pola payloadu, które mówią, **do którego przebiegu**
-      # należy zdarzenie. Jest wymagane, bo obie rzeczy, które czynią z tego
-      # produkt, liczą się w obrębie przebiegu: assercja `trace` i nakładka
-      # declared vs observed. Proces bez tożsamości przebiegu jest procesem, o
-      # którym PNS umie powiedzieć tylko „jakieś zdarzenie tego typu zaszło" —
-      # czyli dokładnie ten stan, który etap 1.1 naprawia.
+      # `instance` names the payload fields that say **which run** an event
+      # belongs to. It is required, because both of the things that make this a
+      # product are counted within a run: the `trace` assertion and the
+      # declared-versus-observed overlay. A process with no run identity is one
+      # PNS can only describe as "some event of this type happened" — which is
+      # exactly the state stage 1.1 fixed.
       #
-      # Siedzi na procesie, nie na zdarzeniu, i to jest inne pytanie niż
-      # `identity`: tożsamość faktu należy do faktu, tożsamość przebiegu do
-      # procesu. Powtórzona na każdym zdarzeniu rozjeżdżałaby się między nimi.
+      # It sits on the process rather than on the event, and that is a different
+      # question from `identity`: a fact's identity belongs to the fact, a run's
+      # identity to the process. Repeated on every event it would drift between
+      # them.
       instance: opts |> fetch!(:instance, where) |> List.wrap(),
-      # cadence: co jak często instancja jest należna — z tego liczy się okno
-      # "never observed". Bez tego miesięczne zamknięcie czyta się jako
-      # martwa ścieżka szósty dzień po ostatnim przebiegu (notatki §9).
+      # cadence: how often an instance is due — the "never observed" window is
+      # computed from it. Without one, a monthly closing reads as a dead path six
+      # days after the last run (notes §9).
       cadence: Keyword.get(opts, :cadence),
       deadline: Keyword.get(opts, :deadline),
-      # Deklaracje, których **nie potwierdził process owner**. Zostają w
-      # kontrakcie, bo bez nich mechanizm nie ma czego pilnować, ale nie mogą
-      # liczyć się do raportu dowodowego: fałszywa metryka jest gorsza niż jej
-      # brak, bo to metryka, którą produkt sprzedaje.
+      # Declarations the **process owner has not confirmed**. They stay in the
+      # contract, because without them the mechanism has nothing to watch, but
+      # they must not count towards the evidence report: a false metric is worse
+      # than a missing one, because it is a metric the product sells.
       unverified: Keyword.get(opts, :unverified, [])
     }
   end
 
   @doc false
+  @spec build_external(atom(), keyword()) :: map()
   def build_external(name, opts) do
     validate_keys!(opts, @external_keys, "external #{inspect(name)}")
 
@@ -261,6 +268,7 @@ defmodule PNS.Contract do
   end
 
   @doc false
+  @spec build_rule(atom(), keyword()) :: map()
   def build_rule(name, opts) do
     validate_keys!(opts, @rule_keys, "rule #{inspect(name)}")
     mfa = fetch!(opts, :function, "rule #{inspect(name)}")
@@ -271,9 +279,9 @@ defmodule PNS.Contract do
 
       other ->
         raise ArgumentError,
-              "rule #{inspect(name)}: `function:` musi być krotką MFA {Modul, :funkcja, arnosc}, " <>
-                "dostałem #{inspect(other)}. Capture (&Mod.fun/1) jest zabroniony — zrobiłby " <>
-                "z kontraktu zależność kompilacyjną od domeny."
+              "rule #{inspect(name)}: `function:` must be an MFA tuple {Module, :function, arity}, " <>
+                "got #{inspect(other)}. A capture (&Mod.fun/1) is forbidden — it would make the " <>
+                "contract a compile-time dependency of the domain."
     end
 
     %{
@@ -285,15 +293,25 @@ defmodule PNS.Contract do
   end
 
   @doc false
+  @spec build_example(String.t(), keyword()) :: map()
   def build_example(description, opts) do
     validate_keys!(opts, @example_keys, "example #{inspect(description)}")
 
     outcome =
       case {Keyword.fetch(opts, :then), Keyword.fetch(opts, :rejected_with)} do
-        {{:ok, events}, :error} -> {:emits, events}
-        {:error, {:ok, reason}} -> {:rejected, reason}
-        {{:ok, _}, {:ok, _}} -> raise ArgumentError, "example #{inspect(description)}: `then:` albo `rejected_with:`, nie oba"
-        {:error, :error} -> raise ArgumentError, "example #{inspect(description)}: brakuje `then:` albo `rejected_with:`"
+        {{:ok, events}, :error} ->
+          {:emits, events}
+
+        {:error, {:ok, reason}} ->
+          {:rejected, reason}
+
+        {{:ok, _}, {:ok, _}} ->
+          raise ArgumentError,
+                "example #{inspect(description)}: `then:` or `rejected_with:`, not both"
+
+        {:error, :error} ->
+          raise ArgumentError,
+                "example #{inspect(description)}: missing `then:` or `rejected_with:`"
       end
 
     %{
@@ -305,20 +323,23 @@ defmodule PNS.Contract do
     }
   end
 
+  @spec fetch!(keyword(), atom(), String.t()) :: term()
   defp fetch!(opts, key, where) do
     case Keyword.fetch(opts, key) do
       {:ok, value} -> value
-      :error -> raise ArgumentError, "#{where}: brakuje wymaganego `#{key}:`"
+      :error -> raise ArgumentError, "#{where}: missing required `#{key}:`"
     end
   end
 
+  @spec validate_keys!(keyword(), [atom()], String.t()) :: :ok
   defp validate_keys!(opts, allowed, where) do
     case Keyword.keys(opts) -- allowed do
       [] -> :ok
-      extra -> raise ArgumentError, "#{where}: nieznane klucze #{inspect(extra)}, dozwolone #{inspect(allowed)}"
+      extra -> raise ArgumentError, "#{where}: unknown keys #{inspect(extra)}, allowed #{inspect(allowed)}"
     end
   end
 
+  @spec trace_steps(Macro.t()) :: map()
   defp trace_steps(block) do
     exprs =
       case block do
@@ -341,11 +362,12 @@ defmodule PNS.Contract do
 
       other, _acc ->
         raise ArgumentError,
-              "trace: nieznana instrukcja #{Macro.to_string(other)}. Dozwolone: from/1, eventually/1-2, or_else/1"
+              "trace: unknown instruction #{Macro.to_string(other)}. " <>
+                "Allowed: from/1, eventually/1-2, or_else/1"
     end)
   end
 
-  # --- generowanie funkcji zapytań ---
+  # --- generating the query functions ---
 
   @doc false
   defmacro __before_compile__(env) do
@@ -366,25 +388,42 @@ defmodule PNS.Contract do
       |> binary_part(0, 12)
 
     quote do
+      @doc false
       def __pns_contract__, do: true
 
+      @doc "Every declared event, in declaration order."
+      @spec events() :: [map()]
       def events, do: unquote(Macro.escape(events))
+
+      @doc "The names of every declared event."
+      @spec event_names() :: [atom()]
       def event_names, do: unquote(Enum.map(events, & &1.name))
+
+      @doc "Whether this contract declares an event under that name."
+      @spec event?(atom()) :: boolean()
       def event?(name), do: name in unquote(Enum.map(events, & &1.name))
 
+      @doc "One declared event by name. Raises when the contract does not declare it."
+      @spec event(atom()) :: map()
       def event(name) do
         Enum.find(events(), &(&1.name == name)) ||
-          raise ArgumentError, "#{inspect(__MODULE__)}: nie ma zdarzenia #{inspect(name)}"
+          raise ArgumentError, "#{inspect(__MODULE__)}: no such event #{inspect(name)}"
       end
 
+      @doc "Every declared process, in declaration order."
+      @spec processes() :: [map()]
       def processes, do: unquote(Macro.escape(processes))
+
+      @doc "One declared process by name, or `nil`."
+      @spec process(atom()) :: map() | nil
       def process(name), do: Enum.find(processes(), &(&1.name == name))
 
       @doc """
-      Proces, do którego należy zdarzenie — czyli to, z czego bierze się jego
-      tożsamość przebiegu. Zdarzenie wskazuje **jeden** proces, więc odpowiedź
-      jest jednoznaczna z konstrukcji, a nie dzięki sprawdzeniu.
+      The process an event belongs to — that is, where its run identity comes
+      from. An event names **one** process, so the answer is unambiguous by
+      construction rather than thanks to a check.
       """
+      @spec process_of(atom()) :: map() | nil
       def process_of(event_name) do
         case Enum.find(events(), &(&1.name == event_name)) do
           %{process: nil} -> nil
@@ -393,35 +432,59 @@ defmodule PNS.Contract do
         end
       end
 
-      @doc "Zdarzenia należące do procesu. Odwrotność `process_of/1`."
+      @doc "The events belonging to a process. The inverse of `process_of/1`."
+      @spec events_of(atom()) :: [map()]
       def events_of(process_name), do: Enum.filter(events(), &(&1.process == process_name))
 
+      @doc "Every declared trace assertion."
+      @spec traces() :: [map()]
       def traces, do: unquote(Macro.escape(traces))
+
+      @doc "Every declared external dependency."
+      @spec externals() :: [map()]
       def externals, do: unquote(Macro.escape(externals))
+
+      @doc "One declared external dependency by name, or `nil`."
+      @spec external(atom()) :: map() | nil
       def external(name), do: Enum.find(externals(), &(&1.name == name))
+
+      @doc "Every declared rule."
+      @spec rules() :: [map()]
       def rules, do: unquote(Macro.escape(rules))
+
+      @doc "One declared rule by name, or `nil`."
+      @spec rule(atom()) :: map() | nil
       def rule(name), do: Enum.find(rules(), &(&1.name == name))
+
+      @doc "Every declared example."
+      @spec examples() :: [map()]
       def examples, do: unquote(Macro.escape(examples))
+
+      @doc "The examples pinning one rule."
+      @spec examples_for(atom()) :: [map()]
       def examples_for(rule_name), do: Enum.filter(examples(), &(&1.rule == rule_name))
 
       @doc """
-      Hash wszystkich deklaracji, policzony w czasie kompilacji. To jest
-      `contract_version` stemplowany na każdym zdarzeniu — nie da się go
-      zapomnieć ani utrzymywać ręcznie.
+      A hash of every declaration, computed at compile time. This is the
+      `contract_version` stamped on every event — it cannot be forgotten or
+      maintained by hand.
       """
+      @spec version() :: String.t()
       def version, do: unquote(version)
     end
   end
 
+  @spec attr(Macro.Env.t(), atom()) :: [map()]
   defp attr(env, name), do: env.module |> Module.get_attribute(name) |> Enum.reverse()
 
+  @spec validate!(Macro.Env.t(), [map()], [map()], [map()], [map()], [map()], [map()]) :: :ok
   defp validate!(env, events, processes, traces, externals, rules, examples) do
     names = Enum.map(events, & &1.name)
 
     dupes = names -- Enum.uniq(names)
-    dupes == [] || bail!(env, "zdarzenia zadeklarowane dwa razy: #{inspect(Enum.uniq(dupes))}")
+    dupes == [] || bail!(env, "events declared twice: #{inspect(Enum.uniq(dupes))}")
 
-    # ADR §18, brama kompilacyjna: reguła bez przykładu nie kompiluje się.
+    # ADR §18, the compile gate: a rule with no example does not compile.
     rules_without_examples =
       rules
       |> Enum.filter(fn rule -> not Enum.any?(examples, &(&1.rule == rule.name)) end)
@@ -430,9 +493,9 @@ defmodule PNS.Contract do
     rules_without_examples == [] ||
       bail!(
         env,
-        "reguła bez przykładu nie kompiluje się (ADR §18): #{inspect(rules_without_examples)}. " <>
-          "Reguła bez przykładu to zdanie w prozie — dopisz przynajmniej jeden `example`, " <>
-          "który da się przeczytać na głos process ownerowi."
+        "a rule with no example does not compile (ADR §18): #{inspect(rules_without_examples)}. " <>
+          "A rule with no example is a sentence in prose — add at least one `example` that can " <>
+          "be read aloud to the process owner."
       )
 
     orphan_examples =
@@ -441,7 +504,7 @@ defmodule PNS.Contract do
       |> Enum.map(& &1.description)
 
     orphan_examples == [] ||
-      bail!(env, "przykłady wskazujące nieistniejącą regułę: #{inspect(orphan_examples)}")
+      bail!(env, "examples pointing at a rule that does not exist: #{inspect(orphan_examples)}")
 
     # `from` and `eventually` are the assertion. Without `eventually` a trace
     # compiles and evaluates to nonsense: nothing can ever satisfy it, so every
@@ -458,10 +521,10 @@ defmodule PNS.Contract do
 
     validate_membership!(env, events, processes)
 
-    # Brama dopasowana do tego, co ocena assercji **umie policzyć**. Bez niej
-    # `within: {1, :month}` przechodziło kompilację i wywalało się w runtime,
-    # czyli u klienta — a jedno źródło prawdy o jednostkach siedzi w
-    # `PNS.Duration`, żeby brama nie mogła się rozjechać z arytmetyką.
+    # A gate matched to what assertion evaluation **can actually compute**.
+    # Without it `within: {1, :month}` passed compilation and blew up at run
+    # time, which means at the client's — and the single source of truth about
+    # units lives in `PNS.Duration` so the gate cannot drift from the arithmetic.
     for t <- traces, not is_nil(t.within) do
       {_n, unit} = t.within
 
@@ -470,7 +533,7 @@ defmodule PNS.Contract do
     end
 
     for t <- traces, ev <- Enum.reject([t.from, t.eventually, t.or_else], &is_nil/1), ev not in names do
-      bail!(env, "trace #{inspect(t.name)} wymienia zdarzenie #{inspect(ev)}, którego nie ma w kontrakcie")
+      bail!(env, "trace #{inspect(t.name)} names event #{inspect(ev)}, which the contract does not declare")
     end
 
     validate_instances!(env, events, processes, traces)
@@ -478,29 +541,46 @@ defmodule PNS.Contract do
     external_names = Enum.map(externals, & &1.name)
 
     for e <- events, not is_nil(e.depends_on), e.depends_on not in external_names do
-      bail!(env, "zdarzenie #{inspect(e.name)} deklaruje `depends_on: #{inspect(e.depends_on)}`, którego nie ma w `external`")
+      bail!(
+        env,
+        "event #{inspect(e.name)} declares `depends_on: #{inspect(e.depends_on)}`, " <>
+          "which is not declared as an `external`"
+      )
     end
 
     for e <- events, {field, _policy} <- e.retain, not Map.has_key?(e.payload, field) do
-      bail!(env, "zdarzenie #{inspect(e.name)}: `retain` wskazuje pole #{inspect(field)}, którego nie ma w `payload`")
+      bail!(
+        env,
+        "event #{inspect(e.name)}: `retain` names field #{inspect(field)}, " <>
+          "which is not in `payload`"
+      )
     end
 
     for e <- events, field <- e.identity || [] do
       Map.has_key?(e.payload, field) ||
-        bail!(env, "zdarzenie #{inspect(e.name)}: `identity` wskazuje pole #{inspect(field)}, którego nie ma w `payload`")
+        bail!(
+          env,
+          "event #{inspect(e.name)}: `identity` names field #{inspect(field)}, " <>
+            "which is not in `payload`"
+        )
 
-      # Pole usuwane z payloadu nie może współtworzyć tożsamości faktu — klucz
-      # idempotencji zniknąłby razem z nim.
+      # A field dropped from the payload cannot take part in a fact's identity —
+      # the idempotency key would disappear along with it.
       Map.get(e.retain, field) == :drop &&
-        bail!(env, "zdarzenie #{inspect(e.name)}: pole #{inspect(field)} jest w `identity` i jednocześnie `retain: :drop`")
+        bail!(
+          env,
+          "event #{inspect(e.name)}: field #{inspect(field)} is in `identity` and " <>
+            "`retain: :drop` at the same time"
+        )
     end
 
     :ok
   end
 
-  # Przynależność zdarzenia do procesu i do fazy. Deklaruje ją samo zdarzenie,
-  # więc tutaj sprawdzamy tylko, czy wskazuje na coś, co istnieje, i czy nie
-  # zostawia procesu bez odpowiedzi na pytanie „w której to fazie".
+  # An event's membership of a process and of a stage. The event declares it, so
+  # all that is checked here is whether it points at something that exists, and
+  # whether it leaves the process without an answer to "which stage is this".
+  @spec validate_membership!(Macro.Env.t(), [map()], [map()]) :: :ok
   defp validate_membership!(env, events, processes) do
     by_process = Map.new(processes, &{&1.name, &1})
 
@@ -509,15 +589,15 @@ defmodule PNS.Contract do
         is_nil(e.process) and not is_nil(e.stage) ->
           bail!(
             env,
-            "zdarzenie #{inspect(e.name)} podaje `stage: #{inspect(e.stage)}` bez `process:`. " <>
-              "Faza jest fazą jakiegoś procesu."
+            "event #{inspect(e.name)} gives `stage: #{inspect(e.stage)}` with no `process:`. " <>
+              "A stage is a stage of some process."
           )
 
         is_nil(e.process) and e.terminal ->
           bail!(
             env,
-            "zdarzenie #{inspect(e.name)} jest `terminal: true` bez `process:`. " <>
-              "Terminalne znaczy „tu kończy się proces”, więc trzeba powiedzieć który."
+            "event #{inspect(e.name)} is `terminal: true` with no `process:`. " <>
+              "Terminal means \"the process ends here\", so it has to say which one."
           )
 
         is_nil(e.process) ->
@@ -526,8 +606,8 @@ defmodule PNS.Contract do
         not Map.has_key?(by_process, e.process) ->
           bail!(
             env,
-            "zdarzenie #{inspect(e.name)} deklaruje `process: #{inspect(e.process)}`, " <>
-              "którego nie ma w kontrakcie"
+            "event #{inspect(e.name)} declares `process: #{inspect(e.process)}`, " <>
+              "which the contract does not declare"
           )
 
         true ->
@@ -538,30 +618,31 @@ defmodule PNS.Contract do
     :ok
   end
 
+  @spec validate_stage!(Macro.Env.t(), map(), map()) :: :ok
   defp validate_stage!(env, event, process) do
     cond do
       process.stages == [] and not is_nil(event.stage) ->
         bail!(
           env,
-          "zdarzenie #{inspect(event.name)} podaje `stage: #{inspect(event.stage)}`, ale proces " <>
-            "#{inspect(process.name)} nie deklaruje żadnych faz. Proces bez `stages:` to jedna " <>
-            "faza i zero twierdzeń o kolejności."
+          "event #{inspect(event.name)} gives `stage: #{inspect(event.stage)}`, but process " <>
+            "#{inspect(process.name)} declares no stages. A process with no `stages:` is one " <>
+            "stage and zero claims about order."
         )
 
       process.stages != [] and is_nil(event.stage) ->
         bail!(
           env,
-          "zdarzenie #{inspect(event.name)} należy do procesu #{inspect(process.name)}, który " <>
-            "deklaruje fazy #{inspect(process.stages)}, ale nie mówi, w której z nich jest. " <>
-            "Na kolejności faz stoi wykrywanie krawędzi wstecznych, więc zdarzenie bez fazy " <>
-            "byłoby dziurą w tym checku, a nie brakiem ozdobnika."
+          "event #{inspect(event.name)} belongs to process #{inspect(process.name)}, which " <>
+            "declares stages #{inspect(process.stages)}, but does not say which one it is in. " <>
+            "Backward-edge detection rests on the order of stages, so an event with no stage " <>
+            "would be a hole in that check rather than a missing ornament."
         )
 
       not is_nil(event.stage) and event.stage not in process.stages ->
         bail!(
           env,
-          "zdarzenie #{inspect(event.name)} podaje `stage: #{inspect(event.stage)}`, której proces " <>
-            "#{inspect(process.name)} nie deklaruje. Zadeklarowane fazy: #{inspect(process.stages)}"
+          "event #{inspect(event.name)} gives `stage: #{inspect(event.stage)}`, which process " <>
+            "#{inspect(process.name)} does not declare. Declared stages: #{inspect(process.stages)}"
         )
 
       true ->
@@ -569,41 +650,44 @@ defmodule PNS.Contract do
     end
   end
 
-  # Dwie bramy wokół tożsamości przebiegu. Obie z jednej własności:
-  # `instance_id` liczony przy emisji ma być jednoznaczny i odtwarzalny z
-  # samego logu, a w logu jest na niego jedna kolumna.
+  # Two gates around run identity. Both follow from one property: the
+  # `instance_id` computed at emit time has to be unambiguous and reproducible
+  # from the log alone, and the log has one column for it.
   #
-  # Trzeciej bramy tu już nie ma i to jest wynik przeniesienia `process:` na
-  # zdarzenie: „zdarzenie należy do co najwyżej jednego procesu" było
-  # sprawdzeniem, a stało się rzeczą **niewyrażalną**. To warunek stopu z
-  # ADR §15 („stop if processes nest or one event belongs to two") załatwiony
-  # kształtem deklaracji, a nie checkiem.
+  # A third gate is no longer here, and that is the result of moving `process:`
+  # onto the event: "an event belongs to at most one process" used to be a check
+  # and has become something **inexpressible**. That is the stop condition from
+  # ADR §15 ("stop if processes nest or one event belongs to two") settled by the
+  # shape of the declaration rather than by a check.
+  @spec validate_instances!(Macro.Env.t(), [map()], [map()], [map()]) :: :ok
   defp validate_instances!(env, events, processes, traces) do
     by_process = Map.new(processes, &{&1.name, &1})
     process_of = fn ev -> Enum.find_value(events, &(&1.name == ev && &1.process)) end
 
-    # 1. Każde zdarzenie procesu niesie pola instancji — i nie gubi ich po drodze.
+    # 1. Every event of a process carries the instance fields — and does not lose
+    #    them on the way.
     for e <- events, p = e.process && Map.get(by_process, e.process), field <- p.instance do
       Map.has_key?(e.payload, field) ||
         bail!(
           env,
-          "proces #{inspect(p.name)} deklaruje `instance: #{inspect(p.instance)}`, ale zdarzenie " <>
-            "#{inspect(e.name)} nie ma w payloadzie pola #{inspect(field)}. Bez niego nie da się " <>
-            "powiedzieć, do którego przebiegu to zdarzenie należy — a wtedy assercja `trace` " <>
-            "dopasuje je do dowolnego innego przebiegu."
+          "process #{inspect(p.name)} declares `instance: #{inspect(p.instance)}`, but event " <>
+            "#{inspect(e.name)} has no #{inspect(field)} field in its payload. Without it there " <>
+            "is no way to say which run this event belongs to — and then a `trace` assertion " <>
+            "will match it against any other run."
         )
 
       Map.get(e.retain, field) == :drop &&
         bail!(
           env,
-          "zdarzenie #{inspect(e.name)}: pole #{inspect(field)} współtworzy tożsamość przebiegu " <>
-            "procesu #{inspect(p.name)} i jednocześnie ma `retain: :drop`. Tożsamość przebiegu " <>
-            "jest liczona z payloadu po zastosowaniu `retain`, więc zniknęłaby razem z polem."
+          "event #{inspect(e.name)}: field #{inspect(field)} takes part in the run identity of " <>
+            "process #{inspect(p.name)} and has `retain: :drop` at the same time. Run identity " <>
+            "is computed from the payload after `retain` is applied, so it would disappear along " <>
+            "with the field."
         )
     end
 
-    # 2. Assercja liczy się w jednym przebiegu, więc nie może rozciągać się na
-    # dwa procesy — bo każdy z nich ma inną tożsamość przebiegu.
+    # 2. An assertion is counted within one run, so it cannot span two processes
+    #    — each of them has a different run identity.
     for t <- traces do
       trace_events = Enum.reject([t.from, t.eventually, t.or_else], &is_nil/1)
       homeless = Enum.filter(trace_events, &is_nil(process_of.(&1)))
@@ -611,8 +695,8 @@ defmodule PNS.Contract do
       homeless == [] ||
         bail!(
           env,
-          "trace #{inspect(t.name)} wymienia zdarzenia spoza jakiegokolwiek procesu: " <>
-            "#{inspect(homeless)}. Nie ma przebiegu, w którym dałoby się tę assercję policzyć."
+          "trace #{inspect(t.name)} names events outside any process: #{inspect(homeless)}. " <>
+            "There is no run in which this assertion could be counted."
         )
 
       case trace_events |> Enum.map(process_of) |> Enum.uniq() do
@@ -622,8 +706,8 @@ defmodule PNS.Contract do
         many ->
           bail!(
             env,
-            "trace #{inspect(t.name)} rozciąga się na procesy #{inspect(many)}. Assercja liczy się " <>
-              "w obrębie jednego przebiegu, a każdy proces ma własną tożsamość przebiegu."
+            "trace #{inspect(t.name)} spans processes #{inspect(many)}. An assertion is counted " <>
+              "within one run, and every process has its own run identity."
           )
       end
     end
@@ -631,6 +715,7 @@ defmodule PNS.Contract do
     :ok
   end
 
+  @spec bail!(Macro.Env.t(), String.t()) :: no_return()
   defp bail!(env, message) do
     raise CompileError, file: env.file, line: env.line, description: message
   end

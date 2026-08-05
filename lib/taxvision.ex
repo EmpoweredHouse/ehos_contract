@@ -1,14 +1,15 @@
 defmodule Taxvision do
   @moduledoc """
-  Aplikacja klienta. To, co jest specyficzne dla TaxVision — a wszystko, co nie
-  jest, ląduje w `lib/pns/`. Ta jedna reguła jest całą dyscypliną tego
-  prototypu (notatki §15, krok 1).
+  The client application. Whatever is specific to TaxVision — and whatever is not
+  lands in `lib/pns/`. That one rule is the whole discipline of this prototype
+  (notes §15, step 1).
 
-  Topologia granic jest tu treścią, nie ozdobą. Każdy moduł procesowy jest
-  **osobną granicą** i rodzeństwem pozostałych, więc dostęp do cudzych tabel
-  wymaga jawnego `deps` — którego nikt nie wpisze przez przypadek. `boundary`
-  odrzucił pierwszą wersję, w której `Taxvision` zależał od własnych dzieci, i
-  miał rację: to była hierarchia udająca granicę.
+  The topology of the boundaries is content here rather than ornament. Every
+  process module is a **separate boundary** and a sibling of the others, so
+  reaching another module's tables requires an explicit `deps` — which nobody
+  writes by accident. `boundary` rejected the first version, in which `Taxvision`
+  depended on its own children, and it was right: that was a hierarchy pretending
+  to be a boundary.
   """
 
   use Boundary, deps: [PNS], exports: []

@@ -1,32 +1,41 @@
 defmodule PNS.Check do
   @moduledoc """
-  Sprawdzenia **statyczne**: kontrakt przeciw binarce, bez ani jednego zapytania
-  do logu.
+  **Static** checks: the contract against the binary, without a single query
+  against the log.
 
-  Plan produktowy rozdziela dwie połowy weryfikacji i to rozdzielenie ma
-  konsekwencję dla kodu: ta połowa należy do CI, jest tania i natychmiastowa, i
-  **nie potrzebuje interfejsu**. Druga połowa, behawioralna, mieszka w
-  `PNS.Conformance` i czyta log.
+  The product plan separates the two halves of verification, and that separation
+  has a consequence for the code: this half belongs to CI, is cheap and immediate,
+  and **needs no interface**. The other half, the behavioural one, lives in
+  `PNS.Conformance` and reads the log.
 
-  Logika przeniesiona tutaj z zadania mixa, bo tam była funkcją prywatną — czyli
-  **logiką bez testu**. Sprawdzenie, którego nikt nie sprawdza, cicho przestaje
-  działać, a to jest akurat sprawdzenie, na którym stoi trigger przeglądu ADR §15.
-  Reszta `mix pns.check` powinna pójść tą samą drogą; zapisane w `PLAN.md`.
+  The logic was moved here out of the mix task, where it was a private function —
+  that is, **logic with no test**. A check nobody checks quietly stops working,
+  and this happens to be the check the ADR §15 review trigger rests on. The rest
+  of `mix pns.check` should follow the same route; recorded in `PLAN.md`.
   """
+
+  @typedoc "One module subscribing upstream of where it publishes."
+  @type backward_edge :: %{
+          module: module(),
+          process: atom(),
+          publishes_in: atom(),
+          subscribes_in: atom()
+        }
 
   @doc """
-  Krawędzie wsteczne: moduł, który **subskrybuje zdarzenie z późniejszej fazy**
-  niż ta, do której sam publikuje.
+  Backward edges: a module that **subscribes to an event from a later stage** than
+  the one it publishes into.
 
-  To jest sygnatura wyciekającej kompensacji i wprost nazwany trigger przeglądu
-  z ADR §15: jedna krawędź wsteczna jest normalna, rosnąca liczba znaczy, że
-  decyzja „procesy obserwowane, nie kierowane" się nie sprawdza.
+  This is the signature of compensation smearing and an explicitly named review
+  trigger from ADR §15: one backward edge is normal, a growing count means the
+  decision "processes watched, not steered" is not holding.
 
-  Liczone **po fazach, nie po pozycji zdarzenia w liście**: wewnątrz fazy
-  kontrakt nie twierdzi nic o kolejności, więc dwa zdarzenia tej samej fazy
-  nigdy nie są krawędzią wsteczną. Wersja licząca po pozycji dawała fałszywe
-  alarmy dokładnie tam, gdzie warsztat mówi o równoległości.
+  Counted **by stage, not by an event's position in a list**: within a stage the
+  contract claims nothing about order, so two events of the same stage are never a
+  backward edge. The version that counted by position produced false alarms
+  exactly where the workshop talks about things happening in parallel.
   """
+  @spec backward_edges() :: [backward_edge()]
   def backward_edges do
     stage_of = stage_index()
 
@@ -45,8 +54,9 @@ defmodule PNS.Check do
     |> Enum.sort_by(&{to_string(&1.module), to_string(&1.process)})
   end
 
-  # Faza zdarzenia jest na zdarzeniu, a proces trzyma tylko porządek faz — więc
-  # pozycję liczy się indeksem fazy w tym porządku.
+  # An event's stage is on the event, and the process holds only the order of
+  # stages — so position is the index of the stage in that order.
+  @spec stage_index() :: %{atom() => {atom(), non_neg_integer(), atom()}}
   defp stage_index do
     for event <- PNS.Registry.declared_events(),
         process = event.process && event.contract.process(event.process),

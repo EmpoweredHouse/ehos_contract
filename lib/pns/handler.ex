@@ -1,10 +1,10 @@
 defmodule PNS.Handler do
   @moduledoc """
-  Wymuszenie w czasie kompilacji (ADR §5-6, notatki §2).
+  Compile-time enforcement (ADR §5-6, notes §2).
 
-  Sprawdzenia dzieją się **w ciele makra, nie w `quote`** — to tworzy
-  zależność kompilacyjną, która każe kompilatorowi wziąć kontrakt pierwszy,
-  a `__CALLER__` daje file i line wskazujące na handler, nie na bibliotekę.
+  The checks happen **in the macro body, not in `quote`** — that creates a compile
+  dependency which makes the compiler take the contract first, and `__CALLER__`
+  gives a file and line pointing at the handler rather than at the library.
   """
 
   @callback handle(payload :: map(), ctx :: map()) :: :ok | {:ok, list()} | {:error, term()}
@@ -17,37 +17,37 @@ defmodule PNS.Handler do
     publishes = Keyword.get(opts, :publishes, [])
     async = Keyword.get(opts, :async, false)
 
-    # Wymuszenie kolejności kompilacji: bez tego kontrakt mógłby jeszcze nie
-    # istnieć, a sprawdzenie niżej zamilkłoby zamiast zadziałać.
+    # Forcing compilation order: without this the contract might not exist yet,
+    # and the check below would fall silent instead of firing.
     Code.ensure_compiled!(contract)
 
     unless function_exported?(contract, :__pns_contract__, 0) do
-      bail!(caller, "#{inspect(contract)} nie jest kontraktem PNS (brak `use PNS.Contract`)")
+      bail!(caller, "#{inspect(contract)} is not a PNS contract (no `use PNS.Contract`)")
     end
 
     unless contract.event?(event) do
       bail!(
         caller,
-        "handler deklaruje zdarzenie #{inspect(event)}, którego nie ma w kontrakcie " <>
-          "#{inspect(contract)}. Zadeklarowane zdarzenia: #{inspect(contract.event_names())}"
+        "handler declares event #{inspect(event)}, which contract #{inspect(contract)} does not " <>
+          "declare. Declared events: #{inspect(contract.event_names())}"
       )
     end
 
     for published <- publishes, not contract.event?(published) do
       bail!(
         caller,
-        "handler deklaruje `publishes: #{inspect(published)}`, czego nie ma w kontrakcie " <>
-          "#{inspect(contract)}"
+        "handler declares `publishes: #{inspect(published)}`, which contract " <>
+          "#{inspect(contract)} does not declare"
       )
     end
 
     if async and is_nil(contract.event(event).identity) do
       bail!(
         caller,
-        "handler asynchroniczny wymaga, żeby zdarzenie #{inspect(event)} miało w kontrakcie " <>
-          "`identity:`. Oban daje at-least-once, więc to zdarzenie przyjdzie drugi raz, a " <>
-          "pytanie \"co czyni dwa wystąpienia tym samym faktem\" jest pytaniem do process " <>
-          "ownera, nie do handlera. Dopisz `identity:` w #{inspect(contract)}."
+        "an asynchronous handler requires event #{inspect(event)} to declare `identity:` in the " <>
+          "contract. Oban gives at-least-once, so this event will arrive a second time, and the " <>
+          "question \"what makes two occurrences the same fact\" is one for the process owner, " <>
+          "not for the handler. Add `identity:` in #{inspect(contract)}."
       )
     end
 
@@ -67,6 +67,7 @@ defmodule PNS.Handler do
     end
   end
 
+  @spec bail!(Macro.Env.t(), String.t()) :: no_return()
   defp bail!(caller, message) do
     raise CompileError, file: caller.file, line: caller.line, description: message
   end

@@ -1,32 +1,32 @@
 defmodule PNS.Instance do
   @moduledoc """
-  Tożsamość **jednego przebiegu** procesu.
+  The identity of **one run** of a process.
 
-  `identity` odpowiada na pytanie „co czyni dwa wystąpienia **tym samym
-  faktem**". `instance` odpowiada na inne: „co czyni dwa zdarzenia częścią
-  **tego samego przebiegu**". Pierwsze siedzi na zdarzeniu, drugie na procesie,
-  bo przebieg jest własnością procesu, a nie pojedynczego faktu.
+  `identity` answers "what makes two occurrences **the same fact**". `instance`
+  answers a different question: "what makes two events part of **the same run**".
+  The first sits on the event, the second on the process, because a run is a
+  property of the process rather than of a single fact.
 
-  Powód jest techniczny, nie sprawozdawczy. Assercja `trace` mówi „po X
-  ostatecznie Y"; bez tożsamości przebiegu Y znalezione dla innej firmy i innego
-  miesiąca zalicza się jako spełnienie. Ta sama dziura jest w licznikach:
-  krawędź przejechana 49 razy przez jedną firmę wygląda identycznie jak
-  przejechana raz przez 49 — a różnica między nimi to cisza, po którą ten
-  produkt istnieje.
+  The reason is technical, not presentational. A `trace` assertion says "after X,
+  eventually Y"; without run identity a Y found for another company in another
+  month counts as satisfaction. The same hole is in the counters: an edge
+  traversed 49 times by one company looks identical to one traversed once by 49 —
+  and the difference between them is the silence this product exists for.
 
-  Klucz jest liczony z payloadu **po zastosowaniu `retain`**, więc jest
-  odtwarzalny z samego logu. Nazwa procesu jest jego pierwszym segmentem: dwa
-  procesy mogą mieć zbieżne wartości pól i bez prefiksu ich przebiegi
-  zlewałyby się w jeden.
+  The key is computed from the payload **after `retain` is applied**, so it is
+  reproducible from the log alone. The process name is its first segment: two
+  processes can have coinciding field values, and without the prefix their runs
+  would merge into one.
   """
 
   @separator "|"
   @escaped "%7C"
 
   @doc """
-  Zwraca `{nazwa_procesu, instance_id}` dla zdarzenia, albo `{nil, nil}`, kiedy
-  zdarzenie nie należy do żadnego procesu.
+  Returns `{process_name, instance_id}` for an event, or `{nil, nil}` when the
+  event belongs to no process.
   """
+  @spec key(module(), atom(), map()) :: {String.t(), String.t()} | {nil, nil}
   def key(contract, event_name, payload) do
     case contract.process_of(event_name) do
       nil -> {nil, nil}
@@ -34,6 +34,7 @@ defmodule PNS.Instance do
     end
   end
 
+  @spec encode(map(), atom(), map()) :: String.t()
   defp encode(process, event_name, payload) do
     values =
       Enum.map(process.instance, fn field ->
@@ -42,20 +43,22 @@ defmodule PNS.Instance do
             value |> to_string() |> String.replace(@separator, @escaped)
 
           :error ->
-            # Brama kompilacyjna gwarantuje, że pole jest **zadeklarowane** w
-            # payloadzie. Że zostało faktycznie podane, gwarantuje dopiero to
-            # sprawdzenie — a bez niego zdarzenie wpadałoby do logu z pustym
-            # segmentem klucza i cicho zlewało się z przebiegiem innej firmy.
+            # The compile gate guarantees the field is **declared** in the
+            # payload. That it was actually supplied is only guaranteed by this
+            # check — and without it the event would land in the log with an
+            # empty key segment and quietly merge with another company's run.
             raise ArgumentError,
-                  "zdarzenie #{inspect(event_name)} nie niesie pola instancji #{inspect(field)}, " <>
-                    "a proces #{inspect(process.name)} deklaruje `instance: #{inspect(process.instance)}`. " <>
-                    "Bez tego pola nie da się powiedzieć, do którego przebiegu należy to zdarzenie."
+                  "event #{inspect(event_name)} does not carry instance field #{inspect(field)}, " <>
+                    "and process #{inspect(process.name)} declares " <>
+                    "`instance: #{inspect(process.instance)}`. Without that field there is no way " <>
+                    "to say which run this event belongs to."
         end
       end)
 
     Enum.join([to_string(process.name) | values], @separator)
   end
 
+  @spec fetch(map(), atom()) :: {:ok, term()} | :error
   defp fetch(payload, field) do
     case Map.get(payload, field, Map.get(payload, to_string(field))) do
       nil -> :error

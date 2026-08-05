@@ -1,22 +1,21 @@
 defmodule Taxvision.Repo do
   @moduledoc """
-  Jedno Postgres, jedna transakcja (ADR §5-6).
+  One Postgres, one transaction (ADR §5-6).
 
-  Tu leży też szkielet **odłożonego** checka własności danych. Decyzja 008
-  odkłada wymuszanie granic z CI na runtime, a przegląd postawił warunek:
-  odroczenie jest bezpieczne tylko, jeśli check da się dopisać później.
+  This is also where the skeleton of the **deferred** data-ownership check lives.
+  Decision 008 defers enforcing boundaries from CI to run time, and the review set
+  a condition: the deferral is only safe if the check can be added later.
 
-  Sprawdzone 4 sierpnia na Ecto 3.14.1: da się. `prepare_query/3` dostaje cały
-  `%Ecto.Query{}` przed wykonaniem, więc wszystkie dotknięte tabele wychodzą
-  strukturalnie z `from` i `joins` — bez parsowania SQL-a. Retrofit to
-  nadpisanie jednego callbacku, nie zmiana tego, jak moduły sięgają do repo.
+  Checked on 4 August against Ecto 3.14.1: it can. `prepare_query/3` receives the
+  whole `%Ecto.Query{}` before execution, so every touched table comes out
+  structurally from `from` and `joins` — without parsing SQL. Retrofitting means
+  overriding one callback, not changing how modules reach the repo.
 
-  Ograniczenie, które trzeba znać: hook **nie** odpala się dla
-  `insert/2`, `update/2`, `delete/2` na changesecie ani dla surowego SQL-a.
-  Pierwsze wymaga nazwania schematu innego modułu, więc widzi to `boundary` w
-  czasie kompilacji. Drugie jest jedynym prawdziwie niewidocznym wejściem — i
-  dokładnie tym przypadkiem, który przegląd odłożył argumentem, że modele
-  generują idiomatyczny Ecto, nie SQL w stringach.
+  A limit worth knowing: the hook does **not** fire for `insert/2`, `update/2` or
+  `delete/2` on a changeset, nor for raw SQL. The first requires naming another
+  module's schema, so `boundary` catches it at compile time. The second is the one
+  genuinely invisible entrance — and exactly the case the review deferred on the
+  argument that models generate idiomatic Ecto rather than SQL in strings.
   """
 
   use Boundary, deps: [], exports: []
@@ -32,11 +31,12 @@ defmodule Taxvision.Repo do
   end
 
   @doc """
-  Tabele dotknięte przez zapytanie. Pułapka, która cicho psuje ten check:
-  nazwa tabeli joina nie siedzi w `source` — join zwraca `{nil, ModulSchematu}`,
-  więc bez `__schema__(:source)` join wygląda na `nil` i check milczy właśnie
-  tam, gdzie ma krzyczeć.
+  The tables a query touches. The trap that quietly breaks this check: a join's
+  table name is not in `source` — a join returns `{nil, SchemaModule}`, so without
+  `__schema__(:source)` a join looks like `nil` and the check falls silent exactly
+  where it is meant to shout.
   """
+  @spec tables(Ecto.Query.t()) :: [String.t()]
   def tables(%Ecto.Query{} = query) do
     [query.from.source | Enum.map(query.joins, & &1.source)]
     |> Enum.map(&source_to_table/1)

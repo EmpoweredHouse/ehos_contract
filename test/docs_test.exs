@@ -1,22 +1,22 @@
 defmodule PNS.DocsTest do
   @moduledoc """
-  `docs/contract.md` opisuje DSL, więc jest **drugim źródłem prawdy o tym samym**
-  — a to jest dokładnie ta awaria, którą ten produkt wykrywa u innych. W jeden
-  dzień znaleźliśmy cztery takie rozjazdy między rekordem a kodem, w tym przykład
-  DSL w notatkach §1 używający typów, których w słowniku nie ma.
+  `docs/contract.md` describes the DSL, so it is **a second source of truth about
+  the same thing** — which is exactly the failure this product detects in others.
+  In one day we found four such divergences between the record and the code,
+  including a DSL example in notes §1 using types that are not in the vocabulary.
 
-  Te testy są mechanizmem, który pozwala temu plikowi istnieć. Trzy rzeczy:
+  These tests are the mechanism that lets that file exist. Three things:
 
-  1. **Przykład z dokumentacji się kompiluje.** Nie jest ilustracją, jest
-     fikstórą. Ta sama zasada, którą kontrakt stosuje do reguł, zastosowana do
-     własnej dokumentacji.
-  2. **Każdy klucz DSL-a jest w dokumencie opisany.** Dopisanie klucza bez
-     opisania go wywala test.
-  3. **Każda brama z tabeli „co się nie skompiluje" ma test.** Tabela obiecuje
-     błąd kompilacji; test dowodzi, że obietnica jest prawdziwa.
+  1. **The example from the documentation compiles.** It is not an illustration,
+     it is a fixture. The same rule the contract applies to rules, applied to its
+     own documentation.
+  2. **Every DSL key is described in the document.** Adding a key without
+     describing it breaks a test.
+  3. **Every gate in the "what refuses to compile" table has a test.** The table
+     promises a compile error; the test proves the promise is true.
 
-  Generowany blok referencji pilnuje się sam — `mix pns.docs --check` w `mix
-  check` wywala build, jeśli jest nieaktualny.
+  The generated reference block guards itself — `mix pns.docs --check` in
+  `mix check` breaks the build if it is out of date.
   """
 
   use ExUnit.Case, async: true
@@ -27,65 +27,66 @@ defmodule PNS.DocsTest do
     {:ok, doc: File.read!(@path)}
   end
 
-  describe "przykład jest fikstórą, nie ilustracją" do
-    test "każdy blok kodu z kontraktem w dokumentacji się kompiluje", %{doc: doc} do
-      kontrakty = bloki_z_kontraktem(doc)
+  describe "the example is a fixture, not an illustration" do
+    test "every contract code block in the documentation compiles", %{doc: doc} do
+      contracts = contract_blocks(doc)
 
-      assert kontrakty != [],
-             "dokumentacja bez ani jednego kompilowalnego przykładu nie jest sprawdzana przez nic"
+      assert contracts != [],
+             "documentation with no compilable example at all is checked by nothing"
 
-      for {kod, index} <- Enum.with_index(kontrakty) do
-        # Jeśli to rzuci, dokumentacja skłamała o tym, co się kompiluje.
-        assert [_ | _] = Code.compile_string(kod),
-               "blok ##{index} z #{@path} nie kompiluje się"
+      for {code, index} <- Enum.with_index(contracts) do
+        # If this raises, the documentation lied about what compiles.
+        assert [_ | _] = Code.compile_string(code),
+               "block ##{index} from #{@path} does not compile"
       end
     end
   end
 
-  describe "słownik i dokument nie mogą się rozjechać" do
-    test "każdy klucz z `PNS.Contract.schema/0` jest w dokumencie wymieniony", %{doc: doc} do
-      brakujace =
-        for {deklaracja, klucze} <- PNS.Contract.vocabulary(),
-            klucz <- klucze,
-            not String.contains?(doc, "`#{klucz}`"),
-            do: {deklaracja, klucz}
+  describe "the vocabulary and the document cannot drift apart" do
+    test "every key from `PNS.Contract.schema/0` is named in the document", %{doc: doc} do
+      missing =
+        for {declaration, keys} <- PNS.Contract.vocabulary(),
+            key <- keys,
+            not String.contains?(doc, "`#{key}`"),
+            do: {declaration, key}
 
-      assert brakujace == [],
-             "klucze DSL-a nieopisane w #{@path}: #{inspect(brakujace)}. " <>
-               "Dopisanie słowa do DSL bez opisania go zostawia dokument, który kłamie przez pominięcie."
+      assert missing == [],
+             "DSL keys undescribed in #{@path}: #{inspect(missing)}. " <>
+               "Adding a word to the DSL without describing it leaves a document that lies by omission."
     end
 
-    test "każda deklaracja ma sekcję w referencji", %{doc: doc} do
-      for deklaracja <- Map.keys(PNS.Contract.vocabulary()) do
-        assert String.contains?(doc, "### `#{deklaracja}`"),
-               "brak sekcji referencji dla `#{deklaracja}`"
+    test "every declaration has a section in the reference", %{doc: doc} do
+      for declaration <- Map.keys(PNS.Contract.vocabulary()) do
+        assert String.contains?(doc, "### `#{declaration}`"),
+               "no reference section for `#{declaration}`"
       end
     end
   end
 
-  describe "tabela bram obiecuje błąd kompilacji" do
-    test "liczba wierszy tabeli nie przekracza liczby testów bram", %{doc: doc} do
-      # Słabszy warunek niż mapowanie jeden-do-jednego, ale sprawdzalny i łapie
-      # przypadek, który naprawdę grozi: dopisanie do tabeli obietnicy, której
-      # nikt nie dowiódł.
-      obietnice = wiersze_tabeli_bram(doc)
-      testy = testy_bram()
+  describe "the gate table promises a compile error" do
+    test "the table has no more rows than there are gate tests", %{doc: doc} do
+      # A weaker condition than a one-to-one mapping, but checkable, and it catches
+      # the case that actually threatens: adding a promise to the table that nobody
+      # has proven.
+      promises = gate_table_rows(doc)
+      tests = gate_tests()
 
-      assert obietnice > 0
-      assert obietnice <= testy,
-             "tabela „co się nie skompiluje” obiecuje #{obietnice} bram, a testów bram jest #{testy}. " <>
-               "Obietnica bez testu to zdanie w prozie."
+      assert promises > 0
+
+      assert promises <= tests,
+             "the \"what refuses to compile\" table promises #{promises} gates, and there are " <>
+               "#{tests} gate tests. A promise with no test is a sentence in prose."
     end
   end
 
-  defp bloki_z_kontraktem(doc) do
+  defp contract_blocks(doc) do
     ~r/```elixir\n(.*?)```/s
     |> Regex.scan(doc, capture: :all_but_first)
     |> Enum.map(&List.first/1)
     |> Enum.filter(&String.contains?(&1, "use PNS.Contract"))
   end
 
-  defp wiersze_tabeli_bram(doc) do
+  defp gate_table_rows(doc) do
     doc
     |> String.split("## What refuses to compile", parts: 2)
     |> List.last()
@@ -93,11 +94,11 @@ defmodule PNS.DocsTest do
     |> List.first()
     |> String.split("\n")
     |> Enum.count(&String.match?(&1, ~r/^\| .* \| .* \|$/))
-    # minus nagłówek i separator
+    # minus the header and the separator
     |> Kernel.-(2)
   end
 
-  defp testy_bram do
+  defp gate_tests do
     "test/compile_gates_test.exs"
     |> File.read!()
     |> then(&Regex.scan(~r/^\s+test "/m, &1))

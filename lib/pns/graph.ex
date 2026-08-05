@@ -1,18 +1,18 @@
 defmodule PNS.Graph do
   @moduledoc """
-  Graf statyczny, graf zaobserwowany i ich nałożenie (notatki §5, §9).
+  The static graph, the observed graph, and their overlay (notes §5, §9).
 
-  Graf statyczny = możliwe (nadzbiór). Graf zaobserwowany = faktyczne
-  (podzbiór, ważony). **Iloczyn tych dwóch jest produktem.**
+  Static graph = possible (a superset). Observed graph = actual (a weighted
+  subset). **The join of the two is the product.**
 
-  Nakładka nie jest sumą dwóch grafów. Każda krawędź ma stan i dwa niezależne
-  wymiary: wolumen i zdrowie. Krawędź, która odpaliła 50 000 razy, i taka, która
-  odpaliła dwa razy, wyglądają identycznie w renderowaniu trójstanowym — stąd
-  grubość osobno.
+  The overlay is not a union of two graphs. Every edge has a state and two
+  independent dimensions: volume and health. An edge that fired 50 000 times and
+  one that fired twice look identical in a three-state rendering — hence thickness
+  separately.
 
-  Ten moduł **nie rysuje dashboardu**. Produkuje dane, na których dashboard
-  stanie, i dzięki temu można sprawdzić, czy różnica jest sygnałem, czy szumem,
-  zanim ktokolwiek narysuje pierwszy ekran.
+  This module **does not draw a dashboard**. It produces the data a dashboard
+  would stand on, which makes it possible to check whether the difference is
+  signal or noise before anyone draws the first screen.
   """
 
   import Ecto.Query
@@ -24,9 +24,11 @@ defmodule PNS.Graph do
   @no_traffic %{count: 0, instances: 0}
 
   @doc """
-  Graf z deklaracji: węzły to zdarzenia z kontraktów, krawędzie z rejestru
-  handlerów. Pochodzi z binarki, która działa, nie z pliku obok.
+  The graph from the declarations: nodes are the contracts' events, edges come
+  from the handler registry. It comes from the binary that runs, not from a file
+  beside it.
   """
+  @spec static() :: %{nodes: [map()], edges: [map()]}
   def static do
     nodes =
       for event <- Registry.declared_events() do
@@ -49,27 +51,28 @@ defmodule PNS.Graph do
   end
 
   @doc """
-  Graf z logu. Krawędź obserwowana to `causation_id` — zdarzenie, które
-  powstało z innego zdarzenia. Nic więcej nie trzeba zapisywać, żeby odtworzyć
-  faktyczny przebieg.
+  The graph from the log. An observed edge is a `causation_id` — an event that
+  came out of another event. Nothing more has to be recorded to reconstruct what
+  actually ran.
 
-  Każdy licznik ma **dwa wymiary: wystąpienia i przebiegi**. To nie jest ta
-  sama liczba i różnica między nimi jest sygnałem: krawędź przejechana 49 razy
-  przez jedną firmę i przejechana raz przez 49 firm mają identyczny licznik
-  wystąpień, a mówią coś przeciwnego. Wersja licząca tylko wystąpienia ukrywała
-  ciszę dokładnie tam, gdzie klientów jest wielu.
+  Every counter has **two dimensions: occurrences and runs**. These are not the
+  same number, and the difference between them is signal: an edge traversed 49
+  times by one company and one traversed once by 49 companies have an identical
+  occurrence count while saying opposite things. The version counting only
+  occurrences hid silence exactly where there are many clients.
 
-  `instance:` zawęża do jednego przebiegu — z tego korzysta ocena assercji.
+  `instance:` narrows to a single run — assertion evaluation uses that.
   """
+  @spec observed(keyword()) :: %{nodes: map(), edges: map(), processes: map()}
   def observed(opts \\ []) do
     repo = repo()
 
     events = base_query(opts)
 
-    # Grupowanie po samym typie, nie po parze typ+wersja: przebieg trwający
-    # przez deploy ma zdarzenia pod dwiema wersjami kontraktu, więc suma
-    # `DISTINCT` po grupach policzyłaby go dwa razy. Wersje schodzą do
-    # `array_agg`, bo są zbiorem, a nie wymiarem grupowania.
+    # Grouping by the type alone rather than by the type+version pair: a run
+    # spanning a deploy has events under two contract versions, so a sum of
+    # `DISTINCT` per group would count it twice. Versions go into `array_agg`,
+    # because they are a set rather than a grouping dimension.
     node_counts =
       events
       |> group_by([event: e], e.type)
@@ -96,14 +99,16 @@ defmodule PNS.Graph do
   end
 
   @doc """
-  Ile **odrębnych przebiegów** danego procesu widział log. To jest mianownik,
-  bez którego licznik na krawędzi nic nie znaczy: „3 przejazdy" przy trzech
-  przebiegach to komplet, a przy pięćdziesięciu to cisza czterdziestu siedmiu.
+  How many **distinct runs** of each process the log has seen. This is the
+  denominator without which a counter on an edge means nothing: "3 traversals"
+  against three runs is complete, and against fifty it is the silence of
+  forty-seven.
 
-  Świadomie jest to **liczba, nie lista**. Które konkretnie przebiegi milczą,
-  to pytanie o konkretną firmę i należy do aplikacji klienta; PNS odpowiada na
-  pytanie o ścieżkę.
+  Deliberately a **count, not a list**. Which particular runs are silent is a
+  question about a specific company and belongs to the client application; PNS
+  answers the question about the path.
   """
+  @spec process_instances(keyword()) :: %{String.t() => non_neg_integer()}
   def process_instances(opts \\ []) do
     repo = repo()
 
@@ -116,6 +121,7 @@ defmodule PNS.Graph do
     |> Map.new()
   end
 
+  @spec base_query(keyword()) :: Ecto.Query.t()
   defp base_query(opts) do
     from(e in Event, as: :event)
     |> maybe_since(Keyword.get(opts, :since))
@@ -124,19 +130,20 @@ defmodule PNS.Graph do
   end
 
   @doc """
-  Nałożenie. Trzy stany plus czwarty, który jest całym powodem, dla którego
-  `contract_version` siedzi na zdarzeniu:
+  The overlay. Three states plus a fourth, which is the whole reason
+  `contract_version` sits on the event:
 
-  | Stan | Znaczenie |
+  | State | Meaning |
   |---|---|
-  | `:confirmed` | zadeklarowane i zaobserwowane |
-  | `:dead` | zadeklarowane, nigdy nie zaobserwowane — martwa ścieżka albo nieprzetestowana |
-  | `:drift` | zaobserwowane, niezadeklarowane |
-  | `:historical` | zaobserwowane pod inną wersją kontraktu — legalna historia, **nie** drift |
+  | `:confirmed` | declared and observed |
+  | `:dead` | declared, never observed — a dead path or an untested one |
+  | `:drift` | observed, not declared |
+  | `:historical` | observed under a different contract version — legitimate history, **not** drift |
 
-  Bez czwartego stanu każdy deploy, który usuwa zdarzenie, produkuje fałszywe
-  alarmy, a dashboardowi przestaje się wierzyć w ciągu dwóch releasów.
+  Without the fourth state, every deploy that removes an event produces false
+  alarms, and the dashboard stops being believed within two releases.
   """
+  @spec overlay(keyword()) :: [map()]
   def overlay(opts \\ []) do
     static = static()
     observed = observed(opts)
@@ -159,21 +166,21 @@ defmodule PNS.Graph do
           to: edge.to,
           handler: edge.handler,
           async: edge.async,
-          # Proces i kontrakt krawędzi biorą się z jej **celu**: to zdarzenie,
-          # które ma powstać, więc to jego przebieg jest tu mianownikiem.
+          # An edge's process and contract come from its **target**: that is the
+          # event meant to appear, so its run is the denominator here.
           process: node && node.process,
           contract: node && node.contract,
           count: count,
-          # Ile przebiegów tę krawędź przejechało i ile ich w ogóle było.
-          # Sam licznik wystąpień nie odróżnia „wszyscy przeszli" od „jeden
-          # przeszedł pięćdziesiąt razy, reszta milczy".
+          # How many runs took this edge, and how many runs there were at all. An
+          # occurrence count alone does not separate "everybody went through"
+          # from "one went through fifty times and the rest are silent".
           instances: instances,
           of_instances: Map.get(observed.processes, to_string(node && node.process), 0),
           in_flight: waiting,
-          # Trzeci stan, nie dwa. Job czekający w kolejce wygląda w logu
-          # dokładnie jak ścieżka, która nigdy nie działa — a to jest różnica
-          # między "zepsute" i "za chwilę". Bez tego nakładka kłamie przy każdym
-          # normalnym opóźnieniu, a dashboardowi przestaje się wierzyć.
+          # A third state, not two. A job waiting in the queue looks in the log
+          # exactly like a path that never works — and that is the difference
+          # between "broken" and "in a moment". Without it the overlay lies on
+          # every ordinary delay, and the dashboard stops being believed.
           state:
             cond do
               count > 0 -> :confirmed
@@ -187,19 +194,19 @@ defmodule PNS.Graph do
 
     from_observed =
       for {{from, to}, traffic} <- observed.edges, not MapSet.member?(declared_edges, {from, to}) do
-        # **Pytanie jest o krawędź, nie o wersję kontraktu.** Wcześniej stan brało
-        # się z `contract_version` zdarzenia docelowego, co jest przybliżeniem i
-        # ma dziurę: usunięcie handlera zmienia graf, nie zmieniając ani jednej
-        # wersji, więc legalnie przejechana ścieżka wychodziła jako `:drift`.
-        # Zapisane wdrożenia odpowiadają wprost: czy ta krawędź kiedykolwiek była
-        # zadeklarowana.
+        # **The question is about the edge, not about the contract version.**
+        # Previously the state came from the target event's `contract_version`,
+        # which is an approximation and has a hole: removing a handler changes the
+        # graph without changing a single version, so a legitimately traversed
+        # path came out as `:drift`. Recorded deployments answer directly: was
+        # this edge ever declared.
         declared_before? =
           Enum.any?(contracts, &PNS.Deployment.declared_edge?(&1, {from, to}))
 
         versions = get_in(observed.nodes, [to, :versions]) || []
-        # Fallback dla logu starszego niż tabela wdrożeń. Jawny, nie cichy:
-        # raport, który zgaduje bez powiedzenia tego, jest gorszy od raportu,
-        # który przyznaje się do luki.
+        # A fallback for a log older than the deployments table. Explicit, not
+        # silent: a report that guesses without saying so is worse than one that
+        # admits the gap.
         historical? = declared_before? or Enum.all?(versions, &(not MapSet.member?(current_versions, &1)))
 
         %{
@@ -221,9 +228,10 @@ defmodule PNS.Graph do
   end
 
   @doc """
-  Joby czekające w kolejce, per handler. Stan `available`/`scheduled`/
-  `executing`/`retryable` znaczy "jeszcze nie", a nie "nigdy".
+  Jobs waiting in the queue, per handler. The states `available`/`scheduled`/
+  `executing`/`retryable` mean "not yet", not "never".
   """
+  @spec in_flight_by_handler() :: %{String.t() => non_neg_integer()}
   def in_flight_by_handler do
     repo = repo()
 
@@ -237,14 +245,15 @@ defmodule PNS.Graph do
   end
 
   @doc """
-  Zdarzenia, które powstały z **tej samej komendy** — wspólne `correlation_id`
-  i brak przyczyny.
+  Events that came out of **the same command** — a shared `correlation_id` and no
+  cause.
 
-  To nie jest przyczynowość i nie wolno tego mieszać z krawędziami z
-  `causation_id`: żadne z nich nie spowodowało żadnego, spowodowała je ta sama
-  komenda. Ale bez tego trzy zdarzenia otwierające miesiąc wiszą na diagramie
-  bez połączeń i wyglądają na błąd dla osoby, dla której ten widok powstaje.
+  This is not causation and must not be mixed with the edges from `causation_id`:
+  none of them caused another, the same command caused all of them. But without it
+  the three events that open a month hang on the diagram unconnected and look like
+  a bug to the very person this view exists for.
   """
+  @spec command_siblings(keyword()) :: %{{String.t(), String.t()} => non_neg_integer()}
   def command_siblings(opts \\ []) do
     repo = repo()
     since = Keyword.get(opts, :since)
@@ -265,22 +274,23 @@ defmodule PNS.Graph do
   end
 
   @doc """
-  Zdarzenia zadeklarowane i nigdy nie zaobserwowane.
+  Events that are declared and were never observed.
 
-  Okno jest tu słabym punktem i trzeba to powiedzieć wprost: prawidłowo
-  pochodzi z `cadence:` procesu — instancja jest brakująca, kiedy minął cykl
-  bez niej, nie kiedy minęło dowolne okno. Miesięczne zamknięcie flagowane jako
-  martwe po tygodniu to szum, który zabija zaufanie do całego widoku.
+  The window is the weak point here and it has to be said outright: properly it
+  comes from the process's `cadence:` — an instance is missing once a cycle has
+  passed without one, not once an arbitrary window has. A monthly closing flagged
+  dead after a week is noise that kills trust in the whole view.
   """
+  @spec declared_never_observed(keyword()) :: [map()]
   def declared_never_observed(opts \\ []) do
     observed = observed(opts)
     pending = pending_events()
 
     for node <- static().nodes,
         not Map.has_key?(observed.nodes, to_string(node.event)),
-        # Zdarzenie, które wyprodukuje job czekający w kolejce, **nie jest**
-        # martwą ścieżką. Bez tego lista i stan krawędzi mówiłyby dwie różne
-        # rzeczy o tym samym zdarzeniu.
+        # An event that a queued job will produce is **not** a dead path. Without
+        # this the list and the edge state would say two different things about
+        # the same event.
         node.event not in pending do
       %{
         event: node.event,
@@ -292,7 +302,8 @@ defmodule PNS.Graph do
     end
   end
 
-  @doc "Zdarzenia, które wyprodukują joby czekające w kolejce."
+  @doc "Events that queued jobs are going to produce."
+  @spec pending_events() :: [atom()]
   def pending_events do
     waiting = in_flight_by_handler()
 
@@ -303,21 +314,22 @@ defmodule PNS.Graph do
   end
 
   @doc """
-  Diagram nakładki.
+  The overlay as a diagram.
 
-  Węzły są wypisywane **wszystkie**, także te bez żadnej krawędzi. Pierwsza
-  wersja rysowała tylko krawędzie i przy jedenastu zadeklarowanych zdarzeniach
-  pokazywała pięć — czyli niezaimplementowane fazy były niewidoczne dokładnie w
-  narzędziu, które ma pokazywać, czego nie ma. Dla widoku *declared vs observed*
-  to nie jest kosmetyka, a błąd.
+  **Every** node is printed, including those with no edges at all. The first
+  version drew only edges and showed five of eleven declared events — so
+  unimplemented stages were invisible in exactly the tool meant to show what is
+  missing. For a *declared versus observed* view that is a bug, not a cosmetic
+  detail.
   """
+  @spec to_mermaid([map()], keyword()) :: String.t()
   def to_mermaid(overlay, opts \\ []) do
     static = static()
-    # Stan węzła bierze się z liczników zdarzeń, **nie z krawędzi**. Pierwsza
-    # wersja czytała go z krawędzi i pokazywała trzy zaobserwowane zdarzenia
-    # jako martwe — bo nikt na nie nie subskrybuje, więc nie występują w żadnej
-    # krawędzi. Zdarzenie może być zaobserwowane bez ani jednej krawędzi i to
-    # jest normalny przypadek, nie wyjątek.
+    # A node's state comes from the event counters, **not from the edges**. The
+    # first version read it from the edges and showed three observed events as
+    # dead — because nothing subscribes to them, so they appear in no edge. An
+    # event can be observed with no edge at all, and that is an ordinary case
+    # rather than an exception.
     observed = observed(opts).nodes
     pending = pending_events()
 
@@ -337,34 +349,34 @@ defmodule PNS.Graph do
 
     node_lines =
       for {event, _state, label, entry} <- nodes do
-        # Wystąpienia i przebiegi obok siebie także na diagramie. Sam licznik
-        # wystąpień na obrazku jest tą samą półprawdą co w raporcie tekstowym,
-        # a obrazek ogląda więcej osób.
-        suffix = if entry, do: " (#{entry.count}x, #{przebiegi(entry.instances)})", else: ""
+        # Occurrences and runs side by side on the diagram too. An occurrence
+        # count alone in a picture is the same half-truth as in the text report,
+        # and more people look at the picture.
+        suffix = if entry, do: " (#{entry.count}x, #{runs(entry.instances)})", else: ""
         ~s(    #{event}["#{label}#{suffix}"])
       end
 
     sibling_lines =
       for {{from, to}, count} <- command_siblings(opts) do
-        # Kropkowana linia **bez grotu** i z jawnym podpisem. Gdyby wyglądała
-        # jak strzałka, ktoś przeczyta ją jako przyczynowość i zbuduje na tym
-        # logikę.
-        "    #{from} -. #{count}x ta sama komenda .- #{to}"
+        # A dotted line **with no arrowhead** and an explicit caption. If it
+        # looked like an arrow, somebody would read it as causation and build
+        # logic on top of it.
+        "    #{from} -. #{count}x same command .- #{to}"
       end
 
     edge_lines =
       for edge <- overlay do
-        # `-. tekst .->` i `|etykieta|` wykluczają się w składni mermaida —
-        # dla strzałki kropkowanej wszystko idzie w pipe'y.
-        # Ułamek, nie sama liczba: „3x" nie odróżnia trzech przebiegów, które
-        # przeszły, od jednego, który przeszedł trzy razy — a przy pięciu
-        # przebiegach różnica między 3/5 a 5/5 jest całą informacją.
-        runs = "#{edge.instances}/#{edge.of_instances} przebiegów"
+        # `-. text .->` and `|label|` are mutually exclusive in mermaid syntax —
+        # for a dotted arrow everything goes into the pipes.
+        # A fraction rather than a bare number: "3x" does not separate three runs
+        # that went through from one that went through three times — and with
+        # five runs, the difference between 3/5 and 5/5 is the whole information.
+        traversals = "#{edge.instances}/#{edge.of_instances} runs"
 
         {arrow, label} =
           if edge.async,
-            do: {"-.->", "#{edge.count}x async · #{runs}"},
-            else: {"-->", "#{edge.count}x · #{runs}"}
+            do: {"-.->", "#{edge.count}x async · #{traversals}"},
+            else: {"-->", "#{edge.count}x · #{traversals}"}
 
         "    #{edge.from} #{arrow}|#{label}| #{edge.to}"
       end
@@ -389,47 +401,46 @@ defmodule PNS.Graph do
     )
   end
 
+  @doc "The overlay as one line per edge, for a terminal."
+  @spec to_text([map()]) :: String.t()
   def to_text(overlay) do
     overlay
     |> Enum.sort_by(&{&1.state, -&1.count})
     |> Enum.map_join("\n", fn edge ->
       mode = if edge.async, do: "async", else: "sync "
       state = edge.state |> Atom.to_string() |> String.pad_trailing(10)
-      queue = if Map.get(edge, :in_flight, 0) > 0, do: ", #{edge.in_flight} w kolejce", else: ""
-      # Dwa wymiary obok siebie, bo osobno każdy z nich kłamie.
+      queue = if Map.get(edge, :in_flight, 0) > 0, do: ", #{edge.in_flight} queued", else: ""
+      # Both dimensions side by side, because on its own each of them lies.
       #
-      # Zdarzenie zapisane, zanim jego proces zadeklarował `instance:`, nie ma
-      # tożsamości przebiegu i już jej nie dostanie. „0 przebiegów" przy
-      # niezerowym liczniku wystąpień czytałoby się jako cisza, a to jest
-      # historia — ten sam problem, który przy wersjach kontraktu rozwiązuje
-      # stan `:historical`.
-      runs =
+      # An event written before its process declared `instance:` has no run
+      # identity and will never get one. "0 runs" against a non-zero occurrence
+      # count would read as silence, and this is history — the same problem the
+      # `:historical` state solves for contract versions.
+      traversals =
         if edge.count > 0 and edge.instances == 0,
-          do: "bez tożsamości przebiegu",
-          else: "#{edge.instances}/#{edge.of_instances} przebiegów"
-      "  #{state} #{mode}  #{edge.from} -> #{edge.to}  (#{edge.count}x, #{runs}#{queue})"
+          do: "no run identity",
+          else: "#{edge.instances}/#{edge.of_instances} runs"
+
+      "  #{state} #{mode}  #{edge.from} -> #{edge.to}  (#{edge.count}x, #{traversals}#{queue})"
     end)
   end
 
-  # Etykiety czyta klient, a „2 przebiegów" na slajdzie wygląda jak literówka
-  # w narzędziu, które ma budzić zaufanie do liczb.
-  defp przebiegi(1), do: "1 przebieg"
+  @spec runs(non_neg_integer()) :: String.t()
+  defp runs(1), do: "1 run"
+  defp runs(n), do: "#{n} runs"
 
-  defp przebiegi(n) when rem(n, 10) in 2..4 and rem(n, 100) not in 12..14,
-    do: "#{n} przebiegi"
-
-  defp przebiegi(n), do: "#{n} przebiegów"
-
+  @spec maybe_since(Ecto.Query.t(), DateTime.t() | nil) :: Ecto.Query.t()
   defp maybe_since(query, nil), do: query
   defp maybe_since(query, since), do: where(query, [event: e], e.occurred_at >= ^since)
 
-  # Raport dowodowy jest **za okres**, więc potrzebuje obu granic. Samo `since`
-  # znaczy „od X do teraz", czyli lipcowy raport wygenerowany we wrześniu
-  # zawierałby sierpień — a dowód, który zmienia się przy ponownym wydruku, nie
-  # jest dowodem.
+  # The evidence report is **for a period**, so it needs both bounds. `since`
+  # alone means "from X until now", so a July report regenerated in September
+  # would include August — and a proof that changes when reprinted is not a proof.
+  @spec maybe_until(Ecto.Query.t(), DateTime.t() | nil) :: Ecto.Query.t()
   defp maybe_until(query, nil), do: query
   defp maybe_until(query, until), do: where(query, [event: e], e.occurred_at <= ^until)
 
+  @spec maybe_instance(Ecto.Query.t(), String.t() | nil) :: Ecto.Query.t()
   defp maybe_instance(query, nil), do: query
   defp maybe_instance(query, id), do: where(query, [event: e], e.instance_id == ^id)
 

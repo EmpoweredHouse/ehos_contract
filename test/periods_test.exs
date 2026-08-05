@@ -1,15 +1,15 @@
 defmodule Taxvision.PeriodsTest do
   @moduledoc """
-  Etap 1.3b: **dwa moduły potrzebujące tych samych danych.**
+  Stage 1.3b: **two modules needing the same data.**
 
-  Ostatni z pięciu kształtów i jedyny, którego nie dało się sprawdzić na
-  stanowisku badawczym: na fikstórze zduplikowałbym dane ze „nazwanym źródłem
-  prawdy” i ogłosił sukces, nie dowiadując się niczego. Potrzebne było realne
-  ciśnienie — `period` żyje w zdarzeniach pięciu modułów TaxVision, a joiny
-  międzymodułowe są zabronione.
+  The last of the five shapes and the only one that could not be exercised on the
+  rig: on a fixture I would have duplicated data with a "named source of truth"
+  and declared success without learning anything. Real pressure was needed — a
+  `period` lives in the events of five TaxVision modules, and cross-module joins
+  are forbidden.
 
-  Tu rozstrzyga się też wątpliwość z planu produktowego: **czy zakaz joinów
-  międzymodułowych jest znośny.**
+  This is also where the product plan's doubt gets settled: **whether the no-join
+  rule is bearable.**
   """
 
   use Taxvision.DataCase, async: false
@@ -17,58 +17,58 @@ defmodule Taxvision.PeriodsTest do
   alias Taxvision.AccountingMonth.Month
   alias Taxvision.Tasks.Task
 
-  @okres "2026-07"
+  @period "2026-07"
 
-  defp otworz(firma) do
-    {:ok, _} = Taxvision.Api.open_month(accountant(firma), %{company_id: firma, period: @okres})
+  defp open_month(company) do
+    {:ok, _} = Taxvision.Api.open_month(accountant(company), %{company_id: company, period: @period})
   end
 
-  describe "kanonizacja" do
-    test "okres jest wierszem, więc nie da się zaksięgować w okresie, który nie istnieje" do
-      # To jest cały zysk z zamiany stringu na wiersz. `\"2026-7\"` obok
-      # `\"2026-07\"` przestaje być możliwe, a nie tylko niezalecane.
+  describe "canonicalisation" do
+    test "a period is a row, so nothing can be booked into a period that does not exist" do
+      # This is the whole gain from turning a string into a row. `"2026-7"` beside
+      # `"2026-07"` stops being possible rather than merely discouraged.
       assert_raise ArgumentError, ~r/no period named "2026-13"/, fn ->
         Taxvision.Api.open_month(accountant("c-1"), %{company_id: "c-1", period: "2026-13"})
       end
     end
 
-    test "zakres dat wychodzi z nazwy raz, w jednym miejscu" do
-      okres = Taxvision.Periods.fetch!(@okres)
+    test "the date range is derived from the name once, in one place" do
+      period = Taxvision.Periods.fetch!(@period)
 
-      assert okres.starts_on == ~D[2026-07-01]
-      assert okres.ends_on == ~D[2026-07-31]
+      assert period.starts_on == ~D[2026-07-01]
+      assert period.ends_on == ~D[2026-07-31]
     end
 
-    test "założenie tego samego okresu dwa razy daje jeden wiersz" do
-      przed = Taxvision.Periods.fetch!(@okres)
-      assert Taxvision.Periods.ensure!(@okres) == przed
-    end
-  end
-
-  describe "dwa moduły, ta sama odpowiedź, jedno źródło" do
-    test "taski i miesiąc dostają tę samą datę, każdy do własnej tabeli" do
-      otworz("c-1")
-
-      okres = Taxvision.Periods.fetch!(@okres)
-      [miesiac] = Repo.all(Month)
-      taski = Repo.all(Task)
-
-      assert miesiac.closes_on == okres.ends_on
-      assert taski != []
-      assert Enum.all?(taski, &(&1.due_on == okres.ends_on))
-
-      # Dwie kopie tej samej prawdy, w dwóch prywatnych tabelach. To jest
-      # **duplikacja strategiczna**, nie wspólna tabela: źródło prawdy jest
-      # jedno i jest nazwane.
-      assert miesiac.closes_on == List.first(taski).due_on
+    test "creating the same period twice gives one row" do
+      before = Taxvision.Periods.fetch!(@period)
+      assert Taxvision.Periods.ensure!(@period) == before
     end
   end
 
-  describe "cena zakazu joinów, zmierzona" do
-    test "każdy moduł płaci własnym zapytaniem — i tyle wynosi N+1" do
-      # Notatki §14 nazywają N+1 ryzykiem, nie niespodzianką. Tu jest zmierzone,
-      # a nie opowiedziane: dwa moduły potrzebują tej samej odpowiedzi i żaden
-      # nie może skorzystać z zapytania drugiego, bo nie wolno im się widzieć.
+  describe "two modules, the same answer, one source" do
+    test "the tasks and the month get the same date, each into its own table" do
+      open_month("c-1")
+
+      period = Taxvision.Periods.fetch!(@period)
+      [month] = Repo.all(Month)
+      tasks = Repo.all(Task)
+
+      assert month.closes_on == period.ends_on
+      assert length(tasks) == 4
+      assert Enum.all?(tasks, &(&1.due_on == period.ends_on))
+
+      # Two copies of the same truth, in two private tables. This is **strategic
+      # duplication**, not a shared table: there is one source of truth and it is
+      # named.
+      assert month.closes_on == List.first(tasks).due_on
+    end
+  end
+
+  describe "the price of the no-join rule, measured" do
+    test "every module pays with its own query — and that is what N+1 amounts to here" do
+      # Notes §14 call N+1 a risk rather than a surprise. Here it is measured
+      # rather than described: two modules need the same answer and neither can use
+      # the other's query, because they are not allowed to see each other.
       me = self()
 
       :telemetry.attach(
@@ -82,19 +82,19 @@ defmodule Taxvision.PeriodsTest do
 
       on_exit(fn -> :telemetry.detach("periods-counter") end)
 
-      otworz("c-1")
+      open_month("c-1")
 
-      assert policz_zapytania() == 2,
-             "jedno zapytanie na moduł: Taxvision.Tasks i Taxvision.AccountingMonth. " <>
-               "Gdyby było jedno, ktoś przekazuje sobie dane bokiem; gdyby więcej, " <>
-               "N+1 rośnie szybciej, niż notatki §14 przewidują"
+      assert count_queries() == 2,
+             "one query per module: Taxvision.Tasks and Taxvision.AccountingMonth. " <>
+               "If there were one, somebody is passing data around the side; if there " <>
+               "were more, N+1 grows faster than notes §14 predict"
     end
 
-    defp policz_zapytania(licznik \\ 0) do
+    defp count_queries(counter \\ 0) do
       receive do
-        :period_query -> policz_zapytania(licznik + 1)
+        :period_query -> count_queries(counter + 1)
       after
-        50 -> licznik
+        50 -> counter
       end
     end
   end

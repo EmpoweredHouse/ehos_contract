@@ -1,11 +1,11 @@
 defmodule Taxvision.Contracts do
   @moduledoc """
-  Kontrakty, po jednym na proces (notatki §1).
+  Contracts, one per process (notes §1).
 
-  Jednostką podziału jest **proces**: jest już pierwszoklasowy, jest jednostką
-  nawigacji dashboardu i jest tym, co produkuje warsztat. Handler zależy
-  kompilacyjnie od dokładnie jednego kontraktu, więc dodanie zdarzenia
-  rekompiluje handlery tego jednego procesu, a nie wszystkie.
+  The unit of division is the **process**: it is already first-class, it is the
+  dashboard's navigation unit, and it is what the workshop produces. A handler
+  has a compile dependency on exactly one contract, so adding an event recompiles
+  the handlers of that one process rather than all of them.
   """
 
   use Boundary, deps: [PNS], exports: [AccountingMonth]

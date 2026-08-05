@@ -1,11 +1,10 @@
 defmodule PNS.CompileGatesTest do
   @moduledoc """
-  Najbardziej przekonujące artefakty z całej listy: rzeczy, które **nie
-  kompilują się**.
+  The most convincing artifacts on the whole list: things that **do not compile**.
 
-  Test przez `Code.compile_string/1` z asercją na wyjątek. Jeśli któryś z tych
-  testów kiedyś przestanie przechodzić, znaczy, że wymuszenie zamieniło się w
-  konwencję — czyli w nic.
+  Tested through `Code.compile_string/1` with an assertion on the exception. If one
+  of these tests ever stops passing, it means the enforcement turned into a
+  convention — that is, into nothing.
   """
 
   use ExUnit.Case, async: true
@@ -16,50 +15,48 @@ defmodule PNS.CompileGatesTest do
         Code.compile_string(source)
       end
 
-    message = Exception.message(error) <> collected_diagnostics()
+    message = Exception.message(error)
 
     assert message =~ expected_fragment or
              error.description =~ expected_fragment,
            """
-           kod się nie skompilował, ale nie z tego powodu.
-           oczekiwany fragment: #{inspect(expected_fragment)}
-           dostałem: #{message}
+           the code failed to compile, but not for this reason.
+           expected fragment: #{inspect(expected_fragment)}
+           got: #{message}
            """
   end
 
-  defp collected_diagnostics, do: ""
-
   describe "handler" do
-    test "na nieistniejące zdarzenie nie kompiluje się" do
+    test "on an event that does not exist does not compile" do
       refute_compiles(
         """
         defmodule Reject.HandlerOnUnknownEvent do
           use PNS.Handler,
             contract: Taxvision.Contracts.AccountingMonth,
-            event: :zdarzenie_ktorego_nie_ma
+            event: :no_such_event
         end
         """,
-        "którego nie ma w kontrakcie"
+        "which contract"
       )
     end
 
-    test "publikujący zdarzenie spoza kontraktu nie kompiluje się" do
+    test "publishing an event outside the contract does not compile" do
       refute_compiles(
         """
         defmodule Reject.HandlerPublishingUnknown do
           use PNS.Handler,
             contract: Taxvision.Contracts.AccountingMonth,
             event: :registry_data_consistent,
-            publishes: [:wymyslone_zdarzenie]
+            publishes: [:invented_event]
         end
         """,
-        "czego nie ma w kontrakcie"
+        "declares `publishes:"
       )
     end
 
-    test "asynchroniczny na zdarzeniu bez `identity` w kontrakcie nie kompiluje się" do
-      # Pytanie "co czyni dwa wystąpienia tym samym faktem" należy do process
-      # ownera, więc komunikat odsyła do kontraktu, nie do handlera.
+    test "asynchronous on an event without `identity` in the contract does not compile" do
+      # The question "what makes two occurrences the same fact" belongs to the
+      # process owner, so the message points at the contract, not at the handler.
       refute_compiles(
         """
         defmodule Reject.AsyncOnEventWithoutIdentity do
@@ -69,48 +66,48 @@ defmodule PNS.CompileGatesTest do
             async: true
         end
         """,
-        "wymaga, żeby zdarzenie"
+        "requires event"
       )
     end
   end
 
-  describe "kontrakt" do
-    test "reguła bez przykładu nie kompiluje się (ADR §18)" do
+  describe "contract" do
+    test "a rule with no example does not compile (ADR §18)" do
       refute_compiles(
         """
         defmodule Reject.RuleWithoutExample do
           use PNS.Contract
 
-          event :cos_sie_stalo, label: "Coś", payload: %{id: :string}
+          event :something_happened, label: "Something", payload: %{id: :string}
 
-          rule :regula_bez_przykladu,
-            label: "Reguła, której nikt nie przypiął przykładem",
+          rule :rule_with_no_example,
+            label: "A rule nobody pinned with an example",
             function: {String, :length, 1}
         end
         """,
-        "reguła bez przykładu nie kompiluje się"
+        "a rule with no example does not compile"
       )
     end
 
-    test "capture zamiast MFA nie przechodzi" do
-      assert_raise ArgumentError, ~r/musi być krotką MFA/, fn ->
+    test "a capture instead of an MFA is refused" do
+      assert_raise ArgumentError, ~r/must be an MFA tuple/, fn ->
         Code.compile_string("""
         defmodule Reject.RuleWithCapture do
           use PNS.Contract
 
-          event :cos_sie_stalo, label: "Coś", payload: %{id: :string}
+          event :something_happened, label: "Something", payload: %{id: :string}
 
-          rule :regula,
-            label: "Reguła z capture",
+          rule :some_rule,
+            label: "A rule with a capture",
             function: &String.length/1
 
-          example "przykład", rule: :regula, command: {:x, %{}}, then: []
+          example "an example", rule: :some_rule, command: {:x, %{}}, then: []
         end
         """)
       end
     end
 
-    test "trace na nieistniejące zdarzenie nie kompiluje się" do
+    test "a trace on an event that does not exist does not compile" do
       refute_compiles(
         """
         defmodule Reject.TraceOnUnknownEvent do
@@ -118,52 +115,52 @@ defmodule PNS.CompileGatesTest do
 
           event :start, label: "Start", payload: %{id: :string}
 
-          trace :gdzies_dojdzie do
+          trace :gets_somewhere do
             from :start
-            eventually :nie_ma_mnie, within: {1, :day}
+            eventually :not_here, within: {1, :day}
           end
         end
         """,
-        "którego nie ma w kontrakcie"
+        "which the contract does not declare"
       )
     end
 
-    test "identity na pole spoza payloadu nie kompiluje się" do
+    test "identity on a field outside the payload does not compile" do
       refute_compiles(
         """
         defmodule Reject.IdentityUnknownField do
           use PNS.Contract
 
-          event :cos_sie_stalo,
-            label: "Coś",
+          event :something_happened,
+            label: "Something",
             payload: %{id: :id},
-            identity: [:nie_ma_mnie]
+            identity: [:not_here]
         end
         """,
-        "`identity` wskazuje pole"
+        "`identity` names field"
       )
     end
 
-    test "identity na polu usuwanym przez retain nie kompiluje się" do
-      # Klucz idempotencji zniknąłby razem z polem.
+    test "identity on a field dropped by retain does not compile" do
+      # The idempotency key would disappear along with the field.
       refute_compiles(
         """
         defmodule Reject.IdentityOnDroppedField do
           use PNS.Contract
 
-          event :cos_sie_stalo,
-            label: "Coś",
-            payload: %{id: :id, tekst: :string},
-            retain: %{tekst: :drop},
-            identity: [:tekst]
+          event :something_happened,
+            label: "Something",
+            payload: %{id: :id, note: :string},
+            retain: %{note: :drop},
+            identity: [:note]
         end
         """,
         "`retain: :drop`"
       )
     end
 
-    test "proces bez `instance:` nie kompiluje się" do
-      assert_raise ArgumentError, ~r/brakuje wymaganego `instance:`/, fn ->
+    test "a process without `instance:` does not compile" do
+      assert_raise ArgumentError, ~r/missing required `instance:`/, fn ->
         Code.compile_string("""
         defmodule Reject.ProcessWithoutInstance do
           use PNS.Contract
@@ -176,158 +173,158 @@ defmodule PNS.CompileGatesTest do
       end
     end
 
-    test "zdarzenie procesu bez pola instancji w payloadzie nie kompiluje się" do
-      # Bez tego pola nie da się powiedzieć, do którego przebiegu zdarzenie
-      # należy — a wtedy assercja dopasuje je do dowolnego innego przebiegu.
+    test "an event of a process without the instance field in its payload does not compile" do
+      # Without that field there is no way to say which run the event belongs to —
+      # and then the assertion will match it against any other run.
       refute_compiles(
         """
         defmodule Reject.EventWithoutInstanceField do
           use PNS.Contract
 
-          event :a, label: "A", payload: %{sprawa_id: :id}, process: :p
-          event :b, label: "B", payload: %{cos_innego: :id}, process: :p
+          event :a, label: "A", payload: %{case_id: :id}, process: :p
+          event :b, label: "B", payload: %{something_else: :id}, process: :p
 
-          process :p, label: "P", instance: [:sprawa_id]
+          process :p, label: "P", instance: [:case_id]
         end
         """,
-        "nie ma w payloadzie pola :sprawa_id"
+        "has no :case_id field in its payload"
       )
     end
 
-    test "pole instancji usuwane przez retain nie kompiluje się" do
-      # Tożsamość przebiegu jest liczona z payloadu po `retain`, więc zniknęłaby
-      # razem z polem.
+    test "an instance field dropped by retain does not compile" do
+      # Run identity is computed from the payload after `retain`, so it would
+      # disappear along with the field.
       refute_compiles(
         """
         defmodule Reject.InstanceOnDroppedField do
           use PNS.Contract
 
-          event :a, label: "A", payload: %{sprawa_id: :id}, retain: %{sprawa_id: :drop}, process: :p
+          event :a, label: "A", payload: %{case_id: :id}, retain: %{case_id: :drop}, process: :p
 
-          process :p, label: "P", instance: [:sprawa_id]
+          process :p, label: "P", instance: [:case_id]
         end
         """,
-        "współtworzy tożsamość przebiegu"
+        "takes part in the run identity"
       )
     end
 
-    # Brama „zdarzenie w dwóch procesach" **zniknęła i to jest wynik, nie regres**.
-    # Odkąd `process:` jest pojedynczym kluczem na zdarzeniu, dwa procesy na
-    # jednym zdarzeniu przestały być czymś, co da się napisać. Warunek stopu z
-    # ADR §15 jest teraz załatwiony kształtem deklaracji, a nie sprawdzeniem —
-    # a rzeczy niewyrażalnej nie da się przypiąć testem.
+    # The "an event in two processes" gate **is gone, and that is a result rather
+    # than a regression**. Since `process:` is a single key on the event, two
+    # processes on one event stopped being something that can be written. The stop
+    # condition from ADR §15 is now settled by the shape of the declaration rather
+    # than by a check — and something inexpressible cannot be pinned by a test.
 
-    test "zdarzenie wskazujące nieistniejący proces nie kompiluje się" do
+    test "an event naming a process that does not exist does not compile" do
       refute_compiles(
         """
         defmodule Reject.EventWithUnknownProcess do
           use PNS.Contract
 
-          event :a, label: "A", payload: %{sprawa_id: :id}, process: :nie_ma_mnie
+          event :a, label: "A", payload: %{case_id: :id}, process: :not_here
 
-          process :p, label: "P", instance: [:sprawa_id]
+          process :p, label: "P", instance: [:case_id]
         end
         """,
-        "którego nie ma w kontrakcie"
+        "which the contract does not declare"
       )
     end
 
-    test "zdarzenie w procesie z fazami, ale bez `stage:`, nie kompiluje się" do
-      # Na kolejności faz stoi wykrywanie krawędzi wstecznych, więc zdarzenie
-      # bez fazy byłoby dziurą w checku, a nie brakiem ozdobnika.
+    test "an event in a staged process with no `stage:` does not compile" do
+      # Backward-edge detection rests on the order of stages, so an event with no
+      # stage would be a hole in the check rather than a missing ornament.
       refute_compiles(
         """
         defmodule Reject.EventWithoutStage do
           use PNS.Contract
 
-          event :a, label: "A", payload: %{sprawa_id: :id}, process: :p, stage: :pierwsza
-          event :b, label: "B", payload: %{sprawa_id: :id}, process: :p
+          event :a, label: "A", payload: %{case_id: :id}, process: :p, stage: :first
+          event :b, label: "B", payload: %{case_id: :id}, process: :p
 
-          process :p, label: "P", stages: [:pierwsza, :druga], instance: [:sprawa_id]
+          process :p, label: "P", stages: [:first, :second], instance: [:case_id]
         end
         """,
-        "nie mówi, w której z nich jest"
+        "does not say which one it is in"
       )
     end
 
-    test "zdarzenie w fazie, której proces nie deklaruje, nie kompiluje się" do
+    test "an event in a stage the process does not declare does not compile" do
       refute_compiles(
         """
         defmodule Reject.EventInUnknownStage do
           use PNS.Contract
 
-          event :a, label: "A", payload: %{sprawa_id: :id}, process: :p, stage: :wymyslona
+          event :a, label: "A", payload: %{case_id: :id}, process: :p, stage: :invented
 
-          process :p, label: "P", stages: [:pierwsza, :druga], instance: [:sprawa_id]
+          process :p, label: "P", stages: [:first, :second], instance: [:case_id]
         end
         """,
-        "której proces"
+        "which process"
       )
     end
 
-    test "`stage:` bez `process:` nie kompiluje się" do
+    test "`stage:` without `process:` does not compile" do
       refute_compiles(
         """
         defmodule Reject.StageWithoutProcess do
           use PNS.Contract
 
-          event :a, label: "A", payload: %{id: :id}, stage: :gdzies
+          event :a, label: "A", payload: %{id: :id}, stage: :somewhere
         end
         """,
-        "bez `process:`"
+        "with no `process:`"
       )
     end
 
-    test "trace z jednostką kalendarzową w `within` nie kompiluje się" do
-      # Wcześniej przechodziło kompilację i wywalało się w runtime, przy ocenie
-      # assercji — czyli u klienta. Brama i arytmetyka mają jedno źródło prawdy
-      # o jednostkach, żeby nie mogły się rozjechać.
+    test "a trace with a calendar unit in `within` does not compile" do
+      # It used to pass compilation and blow up at run time, during assertion
+      # evaluation — that is, at the client's. The gate and the arithmetic share
+      # one source of truth about units so they cannot drift apart.
       refute_compiles(
         """
         defmodule Reject.TraceWithCalendarUnit do
           use PNS.Contract
 
-          event :a, label: "A", payload: %{sprawa_id: :id}, process: :p
-          event :b, label: "B", payload: %{sprawa_id: :id}, process: :p
+          event :a, label: "A", payload: %{case_id: :id}, process: :p
+          event :b, label: "B", payload: %{case_id: :id}, process: :p
 
-          process :p, label: "P", instance: [:sprawa_id]
+          process :p, label: "P", instance: [:case_id]
 
-          trace :w_miesiac do
+          trace :within_a_month do
             from :a
             eventually :b, within: {1, :month}
           end
         end
         """,
-        "nieobsługiwana jednostka czasu :month"
+        "unsupported time unit :month"
       )
     end
 
-    test "trace rozciągnięty na dwa procesy nie kompiluje się" do
-      # Assercja liczy się w obrębie jednego przebiegu, a każdy proces ma własną
-      # tożsamość przebiegu.
+    test "a trace spanning two processes does not compile" do
+      # An assertion is counted within one run, and every process has its own run
+      # identity.
       refute_compiles(
         """
         defmodule Reject.TraceAcrossProcesses do
           use PNS.Contract
 
-          event :a, label: "A", payload: %{sprawa_id: :id}, process: :p1
-          event :b, label: "B", payload: %{przesylka_id: :id}, process: :p2
+          event :a, label: "A", payload: %{case_id: :id}, process: :p1
+          event :b, label: "B", payload: %{shipment_id: :id}, process: :p2
 
-          process :p1, label: "P1", instance: [:sprawa_id]
-          process :p2, label: "P2", instance: [:przesylka_id]
+          process :p1, label: "P1", instance: [:case_id]
+          process :p2, label: "P2", instance: [:shipment_id]
 
-          trace :przez_dwa_procesy do
+          trace :across_two_processes do
             from :a
             eventually :b, within: {1, :day}
           end
         end
         """,
-        "rozciąga się na procesy"
+        "spans processes"
       )
     end
 
-    test "proces nie przyjmuje już `events:` — zdarzenia deklarują przynależność same" do
-      assert_raise ArgumentError, ~r/nieznane klucze \[:events\]/, fn ->
+    test "a process no longer accepts `events:` — events declare their own membership" do
+      assert_raise ArgumentError, ~r/unknown keys \[:events\]/, fn ->
         Code.compile_string("""
         defmodule Reject.ProcessListingEvents do
           use PNS.Contract
@@ -340,19 +337,19 @@ defmodule PNS.CompileGatesTest do
       end
     end
 
-    test "retain na pole spoza payloadu nie kompiluje się" do
+    test "retain on a field outside the payload does not compile" do
       refute_compiles(
         """
         defmodule Reject.RetainUnknownField do
           use PNS.Contract
 
-          event :cos_sie_stalo,
-            label: "Coś",
+          event :something_happened,
+            label: "Something",
             payload: %{id: :string},
-            retain: %{nieistniejace: :hash}
+            retain: %{no_such_field: :hash}
         end
         """,
-        "którego nie ma w `payload`"
+        "which is not in `payload`"
       )
     end
   end

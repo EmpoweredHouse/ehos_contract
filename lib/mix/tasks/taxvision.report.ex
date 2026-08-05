@@ -1,13 +1,14 @@
 defmodule Mix.Tasks.Taxvision.Report do
-  @shortdoc "Raport zgodności za okres — cztery pytania, jedna strona"
+  @shortdoc "The conformance report for a period — four questions, one page"
 
   @moduledoc """
-  Składa cztery pytania ekranu w jeden artefakt dla klienta.
+  Assembles the screen's four questions into one artifact for the client.
 
-  Zadanie jest **w drzewie klienta**, nie w `pns.*`, i to jest ta sama granica,
-  co przy renderowaniu: silnik produkuje dane, aplikacja klienta produkuje ekran.
-  Pozostałe zadania — `pns.graph`, `pns.trace`, `pns.check` — są widokami dla
-  programisty i zostają, bo mają innego odbiorcę i inne pytanie.
+  This task is **in the client tree**, not in `pns.*`, and that is the same
+  boundary as for rendering: the engine produces the data, the client application
+  produces the screen. The other tasks — `pns.graph`, `pns.trace`, `pns.check` —
+  are developer views and stay where they are, because they have a different
+  reader and answer a different question.
 
       mix taxvision.report --since 2026-07-01T00:00:00Z --until 2026-07-31T23:59:59Z
   """
@@ -17,8 +18,8 @@ defmodule Mix.Tasks.Taxvision.Report do
 
   @impl Mix.Task
   def run(args) do
-    # Erlang trzyma stdout w latin1, kiedy wyjście nie jest terminalem, a ten
-    # raport jest po polsku i bywa przekierowywany do pliku.
+    # Erlang keeps stdout in latin1 when the output is not a terminal, and this
+    # report is in Polish and does get redirected to a file.
     :io.setopts(:standard_io, encoding: :unicode)
 
     {opts, _} = OptionParser.parse!(args, strict: [since: :string, until: :string, output: :string])
@@ -26,11 +27,11 @@ defmodule Mix.Tasks.Taxvision.Report do
     Mix.Task.run("app.start")
     PNS.Registry.load!()
 
-    okres = [since: czas(opts[:since]), until: czas(opts[:until])]
+    period = [since: at(opts[:since]), until: at(opts[:until])]
 
     text =
       PNS.Registry.contracts()
-      |> Enum.map(&(&1 |> PNS.Conformance.report(okres) |> Taxvision.Report.render()))
+      |> Enum.map(&(&1 |> PNS.Conformance.report(period) |> Taxvision.Report.render()))
       |> Enum.join("\n")
 
     case opts[:output] do
@@ -38,18 +39,18 @@ defmodule Mix.Tasks.Taxvision.Report do
         Mix.shell().info(text)
 
       path ->
-        # `File.write!` zawsze zapisuje UTF-8; przekierowanie przez potok nie.
+        # `File.write!` always writes UTF-8; redirecting through a pipe does not.
         File.write!(path, text)
-        Mix.shell().info("zapisano: #{path}")
+        Mix.shell().info("written: #{path}")
     end
   end
 
-  defp czas(nil), do: nil
+  defp at(nil), do: nil
 
-  defp czas(value) do
+  defp at(value) do
     case DateTime.from_iso8601(value) do
       {:ok, at, _} -> at
-      _ -> Mix.raise("--since i --until wymagają daty ISO8601, np. 2026-07-01T00:00:00Z")
+      _ -> Mix.raise("--since and --until need an ISO8601 date, e.g. 2026-07-01T00:00:00Z")
     end
   end
 end

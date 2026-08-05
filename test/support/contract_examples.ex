@@ -1,8 +1,8 @@
 defmodule ContractExamples do
   @moduledoc """
-  Wykonanie jednego `example` z kontraktu. Wspólne dla wszystkich kontraktów,
-  bo „przykład jest testem" ma być własnością DSL-a, a nie własnością
-  TaxVision — brama uniwersalności sprawdza między innymi to.
+  Executes one `example` from a contract. Shared by every contract, because
+  "an example is a test" is meant to be a property of the DSL rather than of
+  TaxVision — which is one of the things the universality gate checks.
   """
 
   use Boundary, deps: [], exports: []
@@ -27,27 +27,27 @@ defmodule ContractExamples do
 
       {:emits, expected} ->
         emissions = apply(module, function, [input])
-        assert is_list(emissions), "oczekiwano listy zamiarów, dostałem #{inspect(emissions)}"
+        assert is_list(emissions), "expected a list of intentions, got #{inspect(emissions)}"
         emitted = Enum.map(emissions, & &1.name)
 
-        # **Podciąg, nie równość.** Pierwsza wersja wymagała, żeby przykład
-        # wymienił wszystko, co funkcja emituje — więc przykład reguły
-        # "bez zgodnej weryfikacji miesiąc się nie otwiera" pinował cztery
-        # zdarzenia, z czego trzy nie miały z tą regułą nic wspólnego. Dodanie
-        # jednego zdarzenia do przepływu wywalało wszystkie przykłady tej
-        # reguły, choć reguła się nie zmieniła. Przy pięćdziesięciu regułach to
-        # maszyna do fałszywych alarmów, czyli do wyłączenia testów.
+        # **A subsequence, not equality.** The first version required an example to
+        # list everything the function emits — so the example for the rule "without
+        # a consistent registry check the month does not open" pinned four events,
+        # three of which had nothing to do with that rule. Adding one event to the
+        # flow broke every example of that rule, although the rule had not changed.
+        # At fifty rules that is a machine for false alarms, that is, for switching
+        # the tests off.
         assert subsequence?(expected, emitted),
                """
-               przykład wymaga, żeby wśród wyemitowanych zdarzeń wystąpiły — w tej kolejności:
+               the example requires these events to appear among those emitted, in this order:
                  #{inspect(expected)}
-               a funkcja wyemitowała:
+               and the function emitted:
                  #{inspect(emitted)}
                """
     end
   end
 
-  # Czy `expected` występuje w `emitted` w tej kolejności, niekoniecznie obok siebie.
+  # Whether `expected` occurs in `emitted` in that order, not necessarily adjacent.
   defp subsequence?([], _emitted), do: true
   defp subsequence?(_expected, []), do: false
   defp subsequence?([head | tail], [head | rest]), do: subsequence?(tail, rest)

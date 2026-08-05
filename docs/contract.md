@@ -28,18 +28,18 @@ defmodule Docs.MinimalContract do
   use PNS.Contract
 
   event :case_opened,
-    label: "Sprawa otwarta",
+    label: "Case opened",
     payload: %{case_id: :id},
     process: :handling
 
   event :case_closed,
-    label: "Sprawa zamknięta",
+    label: "Case closed",
     payload: %{case_id: :id},
     process: :handling,
     terminal: true
 
   process :handling,
-    label: "Obsługa sprawy",
+    label: "Case handling",
     instance: [:case_id]
 end
 ```

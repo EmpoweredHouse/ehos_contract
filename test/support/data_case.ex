@@ -19,33 +19,33 @@ defmodule Taxvision.DataCase do
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
     PNS.Registry.load!()
 
-    # Wdrożenia zapisuje **boot aplikacji**, czyli poza sandboxem — te wiersze
-    # commitują się do bazy testowej na stałe i przeciekłyby do każdego testu,
-    # który cokolwiek o wdrożeniach twierdzi. Czyszczenie idzie wewnątrz
-    # transakcji sandboxa, więc cofa się po teście, a zachowanie produkcyjne
-    # zostaje nietknięte: tam zapis przy boocie jest właśnie tym, co ma być.
+    # Deployments are written by the **application boot**, that is, outside the
+    # sandbox — those rows commit to the test database permanently and would leak
+    # into every test that claims anything about deployments. The cleanup runs
+    # inside the sandbox transaction, so it rolls back after the test, and
+    # production behaviour is untouched: there, writing at boot is exactly right.
     Taxvision.Repo.delete_all(PNS.Deployment)
 
-    # Okres jest **kanonicznym wierszem**, a nie stringiem parsowanym w locie, więc
-    # musi istnieć, zanim ktokolwiek cokolwiek w nim zaksięguje. W produkcji
-    # zakłada go admin albo harmonogram; tutaj zakłada go setup, bo wymaganie tego
-    # od każdego testu osobno dodałoby szumu bez sygnału.
+    # A period is a **canonical row**, not a string parsed on the fly, so it has to
+    # exist before anything can be booked into it. In production an admin or a
+    # schedule creates it; here the setup does, because requiring it of every test
+    # separately would add noise without signal.
     #
-    # Że to wymaganie faktycznie obowiązuje, pilnuje jeden test w
-    # `periods_test.exs` — i tylko on zakłada okres sam.
-    for miesiac <- ~w(2026-05 2026-06 2026-07 2026-08), do: Taxvision.Periods.ensure!(miesiac)
+    # That the requirement actually holds is guarded by one test in
+    # `periods_test.exs` — and only that one creates a period itself.
+    for month <- ~w(2026-05 2026-06 2026-07 2026-08), do: Taxvision.Periods.ensure!(month)
 
     :ok
   end
 
-  @doc "Token dla dev/testów. Prawdziwy provider nie oddaje sekretu do podpisu."
+  @doc "A token for dev and tests. A real provider does not hand out its signing secret."
   def token(claims), do: PNS.Auth.LocalToken.sign(claims)
 
-  # `sub` jest **nieprzezroczystym, stabilnym identyfikatorem**, nie mailem.
-  # Pierwsza wersja fikstury wpisywała tu adres e-mail i przez to każde
-  # zdarzenie w logu niosło dane osobowe w kolumnie `actor` — mimo że szew był
-  # zaprojektowany poprawnie. Mail się zmienia przy zmianie nazwiska, `sub` nie,
-  # więc mail w tej roli psuje też ciągłość audytu.
+  # `sub` is an **opaque, stable identifier**, not an email address. The first
+  # version of this fixture put an email here, and because of that every event in
+  # the log carried personal data in the `actor` column — even though the seam was
+  # designed correctly. An email changes when somebody changes their name and a
+  # `sub` does not, so an email in this role also breaks audit continuity.
   @accountant_sub "018f2a3c-7b4e-7c21-9d55-0a1b2c3d4e5f"
   @client_sub "018f2a3c-9d10-7f88-b402-6e7f8a9b0c1d"
 
@@ -58,7 +58,7 @@ defmodule Taxvision.DataCase do
   def client(company_id \\ "c-1"),
     do: token(%{"sub" => @client_sub, "company_id" => company_id, "roles" => ["client"]})
 
-  @doc "Kanoniczny okres. Zakładany w setupie, bo bez niego nie da się otworzyć miesiąca."
+  @doc "A canonical period. Created in setup, because without one no month can be opened."
   def period!(name), do: Taxvision.Periods.ensure!(name)
 
   def events_of(type) do

@@ -1,16 +1,16 @@
 defmodule PNS.Job do
   @moduledoc """
-  Worker Obana uruchamiający jeden handler asynchroniczny.
+  The Oban worker that runs one asynchronous handler.
 
-  Oban daje at-least-once, więc to zdarzenie **przyjdzie drugi raz**.
-  Idempotencja nie jest tu dobrą praktyką, a warunkiem poprawności — dlatego
-  makro handlera nie pozwala zadeklarować `async: true` bez klucza.
+  Oban gives at-least-once, so this event **will arrive a second time**.
+  Idempotency here is not a good practice but a correctness condition — which is
+  why the handler macro refuses `async: true` without a key.
 
-  Świadomie **nie** owijam całości w transakcję. Handler asynchroniczny
-  istnieje właśnie po to, żeby robić I/O na zewnątrz, a transakcja wokół I/O
-  trzyma połączenie z puli przez cały czas trwania wywołania. Cena jest ta, że
-  awaria między efektem a zapisem obsługi daje powtórkę — i po to jest klucz
-  idempotencji.
+  The whole thing is deliberately **not** wrapped in a transaction. An
+  asynchronous handler exists precisely to do I/O against the outside world, and a
+  transaction around I/O holds a pooled connection for the duration of the call.
+  The price is that a failure between the effect and the handling row produces a
+  repeat — and that is what the idempotency key is for.
   """
 
   use Oban.Worker, queue: :events, max_attempts: 3
@@ -27,9 +27,10 @@ defmodule PNS.Job do
     payload = PNS.Payload.cast(event_def, args["payload"])
 
     ctx = %{
-      # Pułapka z notatek §3, tu domknięta: job leci w innym procesie BEAM-a,
-      # więc korelacja musi być zserializowana do argumentów. Bez tego łańcuch
-      # urywa się na granicy, którą przechodzą najciekawsze procesy.
+      # The trap from notes §3, closed here: the job runs in a different BEAM
+      # process, so correlation has to be serialised into its arguments. Without
+      # that the chain breaks at the boundary the most interesting processes
+      # cross.
       correlation_id: args["correlation_id"],
       causation_id: args["causation_id"],
       actor: args["actor"],
@@ -69,9 +70,11 @@ defmodule PNS.Job do
     end
   end
 
-  # Klucz idempotencji pochodzi z `identity:` **zdarzenia w kontrakcie**, nie z
-  # deklaracji handlera. Tożsamość faktu jest jedna, a handlerów tego samego
-  # zdarzenia może być wiele — trzymana na handlerze rozjeżdżałaby się między nimi.
+  # The idempotency key comes from the `identity:` of **the event in the
+  # contract**, not from the handler's declaration. A fact has one identity, while
+  # one event can have many handlers — held on the handler it would drift between
+  # them.
+  @spec idempotency_key(map(), map(), map()) :: String.t()
   defp idempotency_key(%{identity: nil}, args, _payload), do: args["event_id"]
 
   defp idempotency_key(%{identity: fields, name: name}, _args, payload) do
@@ -83,6 +86,7 @@ defmodule PNS.Job do
     Enum.join([name | values], ":")
   end
 
+  @spec resolve!(String.t()) :: module()
   defp resolve!("Elixir." <> _ = name), do: String.to_existing_atom(name)
   defp resolve!(name), do: String.to_existing_atom("Elixir." <> name)
 

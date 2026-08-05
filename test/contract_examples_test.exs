@@ -1,18 +1,18 @@
 defmodule Taxvision.ContractExamplesTest do
   @moduledoc """
-  **Przykład z kontraktu JEST testem** (ADR §18, notatki §6).
+  **An example from the contract IS a test** (ADR §18, notes §6).
 
-  Nie ma tu ani jednego napisanego ręcznie przypadku. Testy poniżej są
-  generowane z deklaracji `example` w czasie kompilacji tego pliku — więc gdy
-  process owner poprawi przykład w kontrakcie, poprawia się test, a nie jego
-  opis.
+  There is not a single hand-written case here. The tests below are generated from
+  the `example` declarations while this file compiles — so when the process owner
+  corrects an example in the contract, the test changes rather than a description
+  of it.
 
-  To jest też miejsce, w którym §18 okazuje się słabszy, niż brzmi, i warto to
-  zapisać: kontrakt trzyma **MFA, nie capture**, żeby nie zależeć od domeny w
-  czasie kompilacji. Skutek jest taki, że rozwiązanie funkcji następuje w
-  runtime testu, a nie przy kompilacji kontraktu. Brama "reguła bez przykładu
-  się nie kompiluje" jest prawdziwa; "przykład jest testem" jest prawdziwe
-  dopiero z tym generatorem. Rekord twierdzi jedno, dowozi półtora.
+  This is also where §18 turns out to be weaker than it sounds, and that is worth
+  recording: the contract holds an **MFA, not a capture**, so as not to depend on
+  the domain at compile time. The consequence is that the function is resolved at
+  test run time rather than while the contract compiles. The gate "a rule with no
+  example does not compile" is true; "an example is a test" is only true with this
+  generator. The record claims one thing and delivers one and a half.
   """
 
   use ExUnit.Case, async: true
@@ -24,17 +24,17 @@ defmodule Taxvision.ContractExamplesTest do
     @rule @contract.rule(example.rule)
 
     test "#{example.rule}: #{example.description} (##{index})" do
-      # Przekazane jako argument, nie rozwinięte w ciele testu: literał w `case`
-      # pozwalałby typecheckerowi uznać pozostałe gałęzie za nieosiągalne i
-      # zasypać wyjście ostrzeżeniami.
+      # Passed as an argument rather than expanded in the test body: a literal in
+      # the `case` would let the typechecker treat the other branches as
+      # unreachable and bury the output in warnings.
       ContractExamples.run(@example, @rule)
     end
   end
 
-  test "każda reguła ma przynajmniej jeden przykład — brama §18 działa" do
+  test "every rule has at least one example — the §18 gate works" do
     for rule <- @contract.rules() do
       assert @contract.examples_for(rule.name) != [],
-             "reguła #{inspect(rule.name)} bez przykładu przeszła kompilację, a nie powinna"
+             "rule #{inspect(rule.name)} compiled with no example, and should not have"
     end
   end
 end

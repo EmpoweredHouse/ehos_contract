@@ -1,13 +1,13 @@
 defmodule PNS.Trace do
   @moduledoc """
-  Ocena assercji `trace` **per przebieg**.
+  Evaluation of `trace` assertions **per run**.
 
-  To jest pierwszy moment, w którym cokolwiek w runtime **czyta** `trace`. Do
-  teraz assercja była zadeklarowana w kontrakcie i sprawdzana wyłącznie pod tym
-  kątem, czy nazwy zdarzeń istnieją — czyli była prozą w składni Elixira. Log
-  wiedział, co się stało; nikt nie pytał, czy to zgadza się z umową.
+  This is the first moment anything at run time **reads** a `trace`. Until now an
+  assertion was declared in the contract and checked only for whether its event
+  names existed — that is, it was prose in Elixir syntax. The log knew what
+  happened; nobody asked whether that agreed with the contract.
 
-  Assercja czyta się tak:
+  An assertion reads like this:
 
       trace :month_opens_or_is_blocked do
         from :data_completeness_confirmed
@@ -15,56 +15,58 @@ defmodule PNS.Trace do
         or_else :discrepancy_notification_sent
       end
 
-  *„Po potwierdzeniu kompletu danych, w ciągu dwóch dni miesiąc się otwiera albo
-  idzie powiadomienie o rozjeździe."*
+  *"After the data set is confirmed complete, within two days the month either
+  opens or a divergence notification goes out."*
 
-  ## Trzy werdykty, i czwarty którego jeszcze nie ma
+  ## Three verdicts, and a fourth that does not exist yet
 
-  | Werdykt | Znaczenie |
+  | Verdict | Meaning |
   |---|---|
-  | `:satisfied` | doszło do `eventually` **albo** do `or_else` w oknie |
-  | `:violated` | okno minęło i nie doszło do żadnego z nich |
-  | `:pending` | okno jeszcze nie minęło — nic jeszcze nie wiadomo |
+  | `:satisfied` | `eventually` **or** `or_else` occurred inside the window |
+  | `:violated` | the window passed and neither occurred |
+  | `:pending` | the window has not passed yet — nothing is known |
 
-  **`:satisfied` niesie `via:`** — `:eventually` albo `:or_else`. To jest cała
-  subtelność tej assercji i najłatwiej ją zepsuć: zablokowanie miesiąca jest
-  **poprawnym zakończeniem**, tylko nie takim, jak chcieliśmy. Werdykt musi
-  brzmieć „spełniona", a raport ma umieć powiedzieć, którą drogą — bo narzędzie
-  krzyczące na każdy poprawnie zablokowany miesiąc zostanie wyłączone w tydzień.
+  **`:satisfied` carries `via:`** — `:eventually` or `:or_else`. That is the whole
+  subtlety of this assertion and the easiest thing to get wrong: blocking the
+  month is a **correct ending**, just not the one we wanted. The verdict has to
+  read "satisfied", and the report has to be able to say by which route — because
+  a tool that shouts about every correctly blocked month gets switched off within
+  a week.
 
-  Czwartego werdyktu — `:suspended`, okno niedostępności adaptera — **tu nie ma i
-  nie da się go policzyć**: nic w systemie nie zapisuje, że zależność zewnętrzna
-  była niedostępna. `unavailable_looks_like` w kontrakcie jest dziś zdaniem,
-  którego nikt nie czyta. Szczegóły i warunek wstępny — w `PLAN.md`, etap 1.5b.
-  Do tego czasu awaria rejestru w oknie assercji policzy się jako `:violated`,
-  czyli obwinimy klienta za cudzy serwer. To jest znane i zapisane, nie ukryte.
+  The fourth verdict — `:suspended`, an adapter's unavailability window — is
+  **not here and cannot be computed**: nothing in the system records that an
+  external dependency was unavailable. `unavailable_looks_like` in the contract is
+  a sentence nobody reads today. Details and the prerequisite are in `PLAN.md`,
+  stage 1.5b. Until then a registry outage inside an assertion window counts as
+  `:violated`, which blames the client for someone else's server. That is known
+  and recorded, not hidden.
 
-  ## Trzy decyzje, które mają zęby
+  ## Three decisions with teeth
 
-  **Okno liczy się od pierwszego wystąpienia `from`, nie od ostatniego.** Gdyby
-  od ostatniego, proces mógłby uciekać przed terminem w nieskończoność, po prostu
-  emitując `from` ponownie — assercja nie dałaby się naruszyć. Przy ponownym
-  sprawdzeniu rejestrów to nie jest przypadek teoretyczny.
+  **The window runs from the first occurrence of `from`, not from the last.** If
+  it ran from the last, a process could outrun its own deadline forever by simply
+  emitting `from` again — the assertion could never be violated. Where a check
+  gets repeated, that is not a theoretical case.
 
-  **`within` obowiązuje także `or_else`.** „W ciągu dwóch dni X albo Y" znaczy, że
-  oba mają się zmieścić. Wariant, w którym `or_else` nie ma terminu, czyni termin
-  bezużytecznym: proces zakończony poprawnie, ale trzy miesiące później, byłby
-  „spełniony". To jest jednak **decyzja process ownera**, nie nasza, i pierwsza
-  do potwierdzenia przy tej assercji.
+  **`within` binds `or_else` as well.** "Within two days, X or Y" means both are
+  meant to fit. The variant where `or_else` has no deadline makes the deadline
+  useless: a process that ended correctly but three months later would be
+  "satisfied". This one is the **process owner's decision**, not ours, and is the
+  first thing to confirm about this assertion.
 
-  **Assercja jest warunkowa: przebieg bez `from` nie jest oceniany.** Nie jest ani
-  spełniony, ani naruszony — nie ma o czym orzekać. Liczenie go jako naruszenia
-  zrobiłoby z każdej niezaczętej sprawy alarm.
+  **The assertion is conditional: a run with no `from` is not evaluated.** It is
+  neither satisfied nor violated — there is nothing to judge. Counting it as a
+  violation would raise an alarm for every case not yet started.
 
-  ## Granica raportu
+  ## The boundary of the report
 
-  `evaluate/3` zwraca werdykty **per przebieg**, bo tylko tak da się je policzyć
-  poprawnie i tylko tak da się je przetestować. Notatki §9 przewidują też widok
-  jednego przebiegu — do debugowania, „co się stało z fakturą 4712".
+  `evaluate/3` returns verdicts **per run**, because that is the only way to count
+  them correctly and the only way to test them. Notes §9 also foresee a
+  single-run view — for debugging, "what happened to invoice 4712".
 
-  Ale **raport agreguje do liczb** (`summary/1`). „Która firma nie ma otwartego
-  lipca" jest pytaniem o stan biznesu i należy do aplikacji klienta; PNS
-  odpowiada na pytanie o assercję.
+  But **the report aggregates to numbers** (`summary/1`). "Which company has no
+  open July" is a question about the state of the business and belongs to the
+  client application; PNS answers the question about the assertion.
   """
 
   import Ecto.Query
@@ -73,16 +75,27 @@ defmodule PNS.Trace do
 
   alias PNS.Event
 
-  @doc """
-  Werdykty dla wszystkich przebiegów, w których doszło do `from` tej assercji.
+  @typedoc "One run's verdict for one assertion."
+  @type verdict :: %{
+          instance_id: String.t(),
+          verdict: :satisfied | :violated | :pending,
+          via: :eventually | :or_else | nil,
+          from_at: DateTime.t(),
+          deadline_at: DateTime.t() | nil,
+          resolved_at: DateTime.t() | nil
+        }
 
-  `now:` pozwala ocenić assercję w zadanym momencie — bez tego różnica między
-  `:pending` i `:violated` nie dałaby się przetestować.
+  @doc """
+  Verdicts for every run in which this assertion's `from` occurred.
+
+  `now:` allows the assertion to be evaluated at a given moment — without it the
+  difference between `:pending` and `:violated` could not be tested.
   """
+  @spec evaluate(module(), atom(), keyword()) :: [verdict()]
   def evaluate(contract, trace_name, opts \\ []) do
     trace =
       Enum.find(contract.traces(), &(&1.name == trace_name)) ||
-        raise ArgumentError, "#{inspect(contract)} nie deklaruje assercji #{inspect(trace_name)}"
+        raise ArgumentError, "#{inspect(contract)} does not declare assertion #{inspect(trace_name)}"
 
     now = Keyword.get(opts, :now) || DateTime.utc_now()
     from_type = to_string(trace.from)
@@ -91,7 +104,7 @@ defmodule PNS.Trace do
     |> occurrences(trace, opts)
     |> Enum.flat_map(fn {instance_id, by_type} ->
       case Map.get(by_type, from_type) do
-        # Przebieg bez `from` nie jest oceniany — assercja jest warunkowa.
+        # A run with no `from` is not evaluated — the assertion is conditional.
         nil -> []
         times -> [verdict(trace, instance_id, Enum.min(times, DateTime), by_type, now)]
       end
@@ -99,7 +112,8 @@ defmodule PNS.Trace do
     |> Enum.sort_by(& &1.from_at, DateTime)
   end
 
-  @doc "Werdykty dla każdej assercji z każdego zarejestrowanego kontraktu."
+  @doc "Verdicts for every assertion of every registered contract."
+  @spec evaluate_all(keyword()) :: [%{contract: module(), trace: atom(), verdicts: [verdict()]}]
   def evaluate_all(opts \\ []) do
     for contract <- PNS.Registry.contracts(), trace <- contract.traces() do
       %{
@@ -111,13 +125,14 @@ defmodule PNS.Trace do
   end
 
   @doc """
-  Zwinięcie werdyktów do liczb — to jest kształt, który idzie do raportu.
+  Verdicts collapsed to numbers — this is the shape that goes into the report.
 
-  `satisfied` rozbite po `via`, bo „spełniona przez `or_else`" to inna
-  informacja biznesowa niż „spełniona przez `eventually`", mimo tego samego
-  werdyktu: w obu przypadkach umowa jest dotrzymana, ale w jednym miesiąc się
-  otworzył, a w drugim stanął.
+  `satisfied` is broken down by `via`, because "satisfied through `or_else`" is
+  different business information from "satisfied through `eventually`" despite the
+  identical verdict: in both cases the agreement was kept, but in one the month
+  opened and in the other it stalled.
   """
+  @spec summary([verdict()]) :: map()
   def summary(verdicts) do
     %{
       satisfied: count(verdicts, &(&1.verdict == :satisfied)),
@@ -129,8 +144,10 @@ defmodule PNS.Trace do
     }
   end
 
+  @spec count([verdict()], (verdict() -> boolean())) :: non_neg_integer()
   defp count(verdicts, fun), do: Enum.count(verdicts, fun)
 
+  @spec verdict(map(), String.t(), DateTime.t(), map(), DateTime.t()) :: verdict()
   defp verdict(trace, instance_id, from_at, by_type, now) do
     deadline_at = trace.within && PNS.Duration.shift(from_at, trace.within)
     hit = fn name -> name && first_at_or_after(by_type[to_string(name)], from_at) end
@@ -156,16 +173,19 @@ defmodule PNS.Trace do
     }
   end
 
+  @spec in_window?(DateTime.t() | nil, DateTime.t() | nil) :: boolean()
   defp in_window?(nil, _deadline_at), do: false
-  # Assercja bez `within` nie ma terminu, więc nie da się jej naruszyć — dowolne
-  # wystąpienie ją spełnia. Taka assercja jest niefalsyfikowalna i to jest
-  # zapisane w PLAN.md jako kandydat na `info` w `pns.check`.
+  # An assertion with no `within` has no deadline, so it cannot be violated — any
+  # occurrence satisfies it. Such an assertion is unfalsifiable, and that is
+  # recorded in PLAN.md as a candidate for an `info` in `pns.check`.
   defp in_window?(_at, nil), do: true
   defp in_window?(at, deadline_at), do: DateTime.compare(at, deadline_at) != :gt
 
+  @spec pending?(DateTime.t() | nil, DateTime.t()) :: boolean()
   defp pending?(nil, _now), do: true
   defp pending?(deadline_at, now), do: DateTime.compare(now, deadline_at) == :lt
 
+  @spec first_at_or_after([DateTime.t()] | nil, DateTime.t()) :: DateTime.t() | nil
   defp first_at_or_after(nil, _from_at), do: nil
 
   defp first_at_or_after(times, from_at) do
@@ -174,6 +194,7 @@ defmodule PNS.Trace do
     |> Enum.min(DateTime, fn -> nil end)
   end
 
+  @spec occurrences(module(), map(), keyword()) :: %{String.t() => %{String.t() => [DateTime.t()]}}
   defp occurrences(contract, trace, opts) do
     types =
       [trace.from, trace.eventually, trace.or_else]
@@ -199,12 +220,15 @@ defmodule PNS.Trace do
     end)
   end
 
+  @spec maybe_since(Ecto.Query.t(), DateTime.t() | nil) :: Ecto.Query.t()
   defp maybe_since(query, nil), do: query
   defp maybe_since(query, since), do: where(query, [e], e.occurred_at >= ^since)
 
+  @spec maybe_until(Ecto.Query.t(), DateTime.t() | nil) :: Ecto.Query.t()
   defp maybe_until(query, nil), do: query
   defp maybe_until(query, until), do: where(query, [e], e.occurred_at <= ^until)
 
+  @spec maybe_instance(Ecto.Query.t(), String.t() | nil) :: Ecto.Query.t()
   defp maybe_instance(query, nil), do: query
   defp maybe_instance(query, id), do: where(query, [e], e.instance_id == ^id)
 

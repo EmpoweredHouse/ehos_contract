@@ -1,36 +1,33 @@
 defmodule PNS.Conformance do
   @moduledoc """
-  Odpowiedzi na cztery pytania ekranu, liczone z kontraktu i logu.
+  The answers to the screen's four questions, computed from the contract and the log.
 
-  Dziś jedno: **które zadeklarowane ścieżki nigdy nie zostały przejechane.**
-  Pozostałe trzy — nieudeklarowane przejścia, naruszone assercje (`PNS.Trace`) i
-  wersja kontraktu — dołożą 1.6 i 1.7. Ten moduł jest miejscem, w którym się
-  zbiegną, żeby raport nie powstał jako czwarte zadanie mixa obok trzech innych.
+  This module is where they converge, so that the report did not appear as a
+  fourth mix task beside three others.
 
-  ## Dlaczego to nie jest po prostu `state: :dead` z nakładki
+  ## Why this is not simply `state: :dead` from the overlay
 
-  Nakładka odpowiada per **krawędź** i per **typ zdarzenia**: „ta krawędź ma
-  zero przejazdów". Raport musi odpowiadać per **przebieg**, bo to jest jedyna
-  odpowiedź, która przy wielu klientach cokolwiek znaczy. I musi nie kłamać w
-  dwóch sytuacjach, w których łatwo skłamać:
+  The overlay answers per **edge** and per **event type**: "this edge has zero
+  traversals". The report has to answer per **run**, because that is the only
+  answer that means anything once there are many clients. And it has to avoid
+  lying in the two situations where lying is easy:
 
-  **Zero przebiegów to brak podstawy do orzekania, nie trzy nieprzejechane
-  ścieżki.** Proces, który nigdy nie ruszył, ma wszystkie krawędzie
-  nieprzejechane — i wypisanie ich jako znalezisk zamienia „nie ma danych" w
-  „mamy trzy problemy". To ta sama zasada, na której stoi ocena assercji:
-  bez `from` nie ma czego oceniać. Dlatego przy zerze przebiegów raport mówi
-  `basis: :no_runs` i **pustą** listę.
+  **Zero runs is no basis for a verdict, not three untraversed paths.** A process
+  that never started has every edge untraversed — and listing them as findings
+  turns "no data" into "we have three problems". This is the same rule assertion
+  evaluation rests on: with no `from` there is nothing to judge. So with zero runs
+  the report says `basis: :no_runs` and an **empty** list.
 
-  **Job czekający w kolejce to „jeszcze nie", nie „nigdy".** Ścieżka, której
-  zdarzenie wyprodukuje job stojący w kolejce, jest wypisana osobno, a nie jako
-  nieprzejechana. Bez tego raport kłamałby przy każdym normalnym opóźnieniu — i
-  to jest lekcja, którą nakładka odrobiła jako czwarty stan.
+  **A job waiting in the queue is "not yet", not "never".** A path whose event
+  will be produced by a queued job is listed separately rather than as
+  untraversed. Without that the report would lie on every ordinary delay — and
+  that is the lesson the overlay learned as its fourth state.
 
-  ## Granica
+  ## The boundary
 
-  Raport mówi o **ścieżkach**, nie o firmach. Jeśli 47 z 50 przebiegów nie
-  przeszło ścieżką, znalezieniem jest ścieżka i liczba; które to przebiegi, jest
-  pytaniem o stan biznesu i należy do aplikacji klienta.
+  The report talks about **paths**, not about companies. If 47 of 50 runs did not
+  take a path, the finding is the path and the number; which runs those were is a
+  question about the state of the business and belongs to the client application.
   """
 
   alias PNS.{Deployment, Graph, Trace}
@@ -164,34 +161,36 @@ defmodule PNS.Conformance do
   end
 
   @doc """
-  Ścieżki zadeklarowane w kontrakcie, którymi **nie przeszedł żaden przebieg**,
-  pogrupowane po procesie.
+  Paths declared in the contract that **no run has taken**, grouped by process.
 
-  Zwraca też mianownik (`instances`) i osobno ścieżki czekające w kolejce, bo
-  bez jednego i drugiego liczba nieprzejechanych ścieżek nie ma znaczenia.
+  Also returns the denominator (`instances`) and, separately, the paths waiting in
+  the queue, because without both of those the count of untraversed paths means
+  nothing.
   """
+  @spec untraversed_paths(keyword()) :: [map()]
   def untraversed_paths(opts \\ []) do
-    krawedzie =
+    edges =
       Graph.overlay(opts)
-      # Tylko krawędzie **zadeklarowane**. Zaobserwowane-niezadeklarowane to drift,
-      # czyli inne pytanie ekranu, i mieszanie ich w jednej liście robi z raportu
-      # worek.
+      # Only **declared** edges. Observed-but-undeclared is drift, which is a
+      # different question on the screen, and mixing them into one list turns the
+      # report into a bag.
       |> Enum.filter(& &1.handler)
       |> Enum.group_by(& &1.process)
 
-    # Iteracja po **procesach z rejestru**, nie po krawędziach z logu. Wersja
-    # grupująca po krawędziach pomijała proces, który nie ma ani jednego
-    # handlera — czyli cały kontrakt bramy uniwersalności był w raporcie
-    # **nieobecny**. A nieobecność czyta się jako „nie ma o czym mówić", i to
-    # jest ta sama cisza udająca zdrowie, którą ten produkt ma wykrywać.
+    # Iterating over **processes from the registry**, not over edges from the log.
+    # The version that grouped by edges skipped a process with no handlers at all
+    # — so the whole universality gate contract was **absent** from the report.
+    # And absence reads as "there is nothing to discuss", which is the same
+    # silence-pretending-to-be-health this product is meant to detect.
     for contract <- PNS.Registry.contracts(), process <- contract.processes() do
-      report(contract, process, Map.get(krawedzie, process.name, []))
+      report(contract, process, Map.get(edges, process.name, []))
     end
     |> Enum.sort_by(&to_string(&1.process))
   end
 
-  # Proces bez ani jednej zadeklarowanej ścieżki. Może mieć przebiegi — i wtedy
-  # to jest znalezisko samo w sobie: zdarzenia lecą, a nic nie jest podłączone.
+  # A process with no declared path at all. It may still have runs — and then that
+  # is a finding in itself: events are flowing and nothing is wired up.
+  @spec report(module(), map(), [map()]) :: map()
   defp report(contract, process, []) do
     %{
       process: process.name,
@@ -210,8 +209,9 @@ defmodule PNS.Conformance do
     %{
       process: process.name,
       contract: contract,
-      # Mianownik dla samego znaleziska: „2 z 3 nieprzejechane" znaczy co innego
-      # niż „2 z 40". Liczony tutaj, nie w drukarce, bo to część odpowiedzi.
+      # The denominator for the finding itself: "2 of 3 untraversed" means
+      # something different from "2 of 40". Computed here rather than in the
+      # renderer, because it is part of the answer.
       paths: length(edges),
       instances: runs,
       basis: if(runs > 0, do: :runs, else: :no_runs),
@@ -220,8 +220,9 @@ defmodule PNS.Conformance do
     }
   end
 
-  # Nieprzejechana znaczy: **zero przebiegów** nią przeszło i nic na nią nie
-  # czeka w kolejce. Licznik przebiegów, nie wystąpień — bo to jest jedyna
-  # liczba, która przy wielu klientach odróżnia ciszę od braku ruchu.
+  # Untraversed means: **zero runs** took it and nothing is waiting for it in the
+  # queue. A count of runs rather than of occurrences — because that is the only
+  # number that separates silence from low traffic once there are many clients.
+  @spec untraversed?(map()) :: boolean()
   defp untraversed?(edge), do: edge.instances == 0 and edge.in_flight == 0
 end

@@ -1,25 +1,26 @@
 defmodule Taxvision.RegistryCheck do
   @moduledoc """
-  Logika biznesowa jest czystą funkcją: komenda wchodzi, błąd albo lista
-  zdarzeń wychodzi. Efekty uboczne żyją tylko w handlerach.
+  The business logic is a pure function: a command goes in, an error or a list of
+  events comes out. Side effects live only in handlers.
 
-  Testowalne bez żadnego setupu — i to jest kształt, który model generuje
-  najpewniej: ograniczone wejście, jawne reguły, jawne wyjście, brak środowiska.
+  Testable with no setup at all — and that is the shape a model generates most
+  reliably: bounded input, explicit rules, explicit output, no environment.
 
-  Adapter rejestrów jest wołany **poza** tą funkcją. Gdyby był w środku,
-  sprawdzenie nie umiałoby odróżnić "złamaliśmy regułę" od "rejestr był
-  niedostępny", a dla klienta księgowego to jest całe pytanie (ADR §11-12).
+  The registry adapter is called **outside** this function. If it were inside, the
+  check could not separate "we broke the rule" from "the registry was down", and
+  for an accounting client that is the whole question (ADR §11-12).
   """
 
   use Boundary, deps: [PNS], exports: []
 
   @doc """
-  Polityka P1 z warsztatu: kiedy zaczyna się miesiąc, sprawdź rejestry; kiedy
-  dane zgodne, wygeneruj taski; kiedy niezgodne, zablokuj i powiadom.
+  Policy P1 from the workshop: when a month starts, check the registries; when the
+  data agrees, generate the tasks; when it does not, block and notify.
 
-  Warunkiem wstawienia szablonu jest brak rozjazdu statusu prawnego
-  [WF 00:35:41].
+  The precondition for inserting the template is the absence of a legal-status
+  divergence [WF 00:35:41].
   """
+  @spec decide(map()) :: [PNS.Emission.t()] | {:error, atom()}
   def decide(%{command: :open_month} = input) do
     %{company_id: company_id, period: period} = input
 
@@ -42,14 +43,15 @@ defmodule Taxvision.RegistryCheck do
             prefix ++ [PNS.event(:registry_data_consistent, base)]
 
           differences ->
-            # System pokazuje diff "to mamy w Abilii, to mówią systemy"
-            # [WF 00:32:27].
+            # The system shows a diff: "this is what we hold, this is what the
+            # registries say" [WF 00:32:27].
             prefix ++ [PNS.event(:registry_discrepancy_detected, Map.put(base, :diff, render(differences)))]
         end
     end
   end
 
-  @doc "Rozjazdy między tym, co mamy u siebie, a tym, co mówią rejestry."
+  @doc "Divergences between what we hold locally and what the registries say."
+  @spec diff(map(), map()) :: [{atom(), term(), term()}]
   def diff(abilia, registries) do
     for {field, registry_field} <- [legal_form: :legal_form, vat_status: :vat_status],
         ours = Map.get(abilia, field),

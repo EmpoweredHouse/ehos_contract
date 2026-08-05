@@ -1,11 +1,11 @@
 defmodule Taxvision.AccountingMonth do
   @moduledoc """
-  Agregat rdzenia z sekcji 12 warsztatu: stepper Gromadzenie -> Meczowanie ->
-  Wynik, otwarcie warunkowane pozytywną weryfikacją rejestrową, każdy krok ma
-  deadline, rozliczenie miesiąc w tył.
+  The core aggregate from section 12 of the workshop: a Collection -> Matching ->
+  Result stepper, opening conditional on a positive registry check, a deadline on
+  every step, and settlement one month behind.
 
-  W tym wycinku zaimplementowane jest wyłącznie otwarcie. Kroki 3.2-3.4 są
-  zadeklarowane w kontrakcie i nieobsłużone — celowo.
+  Only the opening is implemented in this slice. The later steps are declared in
+  the contract and unhandled — deliberately.
   """
 
   use Boundary,
@@ -23,9 +23,9 @@ defmodule Taxvision.AccountingMonth.Month do
     field :company_id, :string
     field :period, :string
     field :status, :string
-    # Ta sama odpowiedź co `Taxvision.Tasks.Task.due_on`, z tego samego źródła,
-    # w drugiej kopii. To jest kształt „dwa moduły potrzebujące tych samych
-    # danych" — i cena zakazu joinów: drugie zapytanie o ten sam okres.
+    # The same answer as `Taxvision.Tasks.Task.due_on`, from the same source, in a
+    # second copy. This is the "two modules needing the same data" shape — and the
+    # price of the no-join rule: a second query for the same period.
     field :closes_on, :date
     field :opened_at, :utc_datetime_usec
   end
@@ -33,9 +33,9 @@ end
 
 defmodule Taxvision.AccountingMonth.OnMonthlyTasksGenerated do
   @moduledoc """
-  Handler synchroniczny. Kolejność z warsztatu jest tu istotna i nieprzypadkowa:
-  taski powstają **przed** otwarciem miesiąca (`najpierw checki, potem taski`,
-  a otwarcie na końcu) — więc miesiąc bez tasków nie istnieje.
+  A synchronous handler. The order from the workshop matters here and is not
+  accidental: tasks are created **before** the month opens (checks first, then
+  tasks, and the opening last) — so a month without tasks does not exist.
   """
 
   use PNS.Handler,
@@ -47,13 +47,13 @@ defmodule Taxvision.AccountingMonth.OnMonthlyTasksGenerated do
 
   @impl PNS.Handler
   def handle(%{company_id: company_id, period: period}, _ctx) do
-    okres = Taxvision.Periods.fetch!(period)
+    accounting_period = Taxvision.Periods.fetch!(period)
 
     Taxvision.Repo.insert!(%Month{
       company_id: company_id,
       period: period,
       status: "open",
-      closes_on: okres.ends_on,
+      closes_on: accounting_period.ends_on,
       opened_at: DateTime.utc_now()
     })
 

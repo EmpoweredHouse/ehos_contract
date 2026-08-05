@@ -1,76 +1,80 @@
 defmodule Taxvision.Report do
   @moduledoc """
-  Raport zgodności za okres — cztery pytania, jedna strona, po polsku.
+  The conformance report for a period — four questions, one page, in Polish.
 
-  **Renderowanie jest po stronie klienta, nie silnika, i to nie jest detal.**
-  `PNS.Conformance.report/2` produkuje dane; ten moduł zamienia je w zdania.
-  Silnik nie może wiedzieć, w jakim języku czyta jego odbiorca — a ten raport
-  czyta księgowa, nie programista. Gdyby nagłówki generował pakiet, byłyby po
-  angielsku obok polskich etykiet z kontraktu, czyli artefakt dowodowy byłby
-  dwujęzyczny bez powodu.
+  **Rendering is the client's job, not the engine's, and that is not a detail.**
+  `PNS.Conformance.report/2` produces the data; this module turns it into
+  sentences. The engine cannot know what language its reader speaks — and this
+  report is read by an accountant, not a programmer. If the package generated the
+  headings, they would be English beside Polish labels from the contract, that is,
+  the evidence artifact would be bilingual for no reason.
 
-  Jedyne polskie zdania w danych to `label` z kontraktu i one są tu treścią:
-  „Potwierdzono komplet danych historycznych", nie `data_completeness_confirmed`.
-  Kryterium odbioru brzmi „czytelny bez tłumaczenia, co znaczą kolumny", więc
-  nazwa techniczna pojawia się wyłącznie jako dopisek, nigdy sama.
+  This is why this module is the one place where output strings are Polish. Every
+  identifier, comment and doc here is English like the rest of the codebase; only
+  what the accountant reads is not.
 
-  Czego tu **nie ma**: deklaracji, których nie potwierdził process owner. Filtr
-  jest w `PNS.Conformance`, nie tutaj, bo to reguła o dowodzie, a nie o
-  formatowaniu — ale konsekwencja jest widoczna właśnie tutaj: w raporcie za
-  lipiec nie znajdziesz terminu 25 dni, bo nikt z TaxVision go nie potwierdził.
+  What is **not** here: declarations the process owner has not confirmed. The
+  filter lives in `PNS.Conformance`, not here, because it is a rule about evidence
+  rather than about formatting — but the consequence is visible right here: in the
+  July report you will not find the 25-day deadline, because nobody from TaxVision
+  confirmed it.
   """
 
   use Boundary, deps: [PNS], exports: []
 
-  @doc "Raport dla jednego kontraktu za okres, jako tekst do wypisania."
+  @doc "The report for one contract over a period, as text to print."
   @spec render(map()) :: String.t()
   def render(report) do
     [
-      naglowek(report),
-      wdrozenie(report.deployment),
-      Enum.map(report.processes, &proces/1),
+      header(report),
+      deployment(report.deployment),
+      Enum.map(report.processes, &process/1),
       drift(report.drift)
     ]
     |> List.flatten()
     |> Enum.join("\n")
   end
 
-  defp naglowek(report) do
+  @spec header(map()) :: [String.t()]
+  defp header(report) do
     [
-      "RAPORT ZGODNOŚCI — #{okres(report.period)}",
+      "RAPORT ZGODNOŚCI — #{period(report.period)}",
       "Czy wdrożony kod robi to, co mówi ustalony proces.",
       ""
     ]
   end
 
-  defp okres(%{since: nil, until: nil}), do: "cały log"
-  defp okres(%{since: since, until: nil}), do: "od #{dzien(since)}"
-  defp okres(%{since: nil, until: until}), do: "do #{dzien(until)}"
-  defp okres(%{since: since, until: until}), do: "#{dzien(since)} – #{dzien(until)}"
+  @spec period(map()) :: String.t()
+  defp period(%{since: nil, until: nil}), do: "cały log"
+  defp period(%{since: since, until: nil}), do: "od #{day(since)}"
+  defp period(%{since: nil, until: until}), do: "do #{day(until)}"
+  defp period(%{since: since, until: until}), do: "#{day(since)} – #{day(until)}"
 
-  defp dzien(at), do: at |> DateTime.to_date() |> Date.to_string()
+  @spec day(DateTime.t()) :: String.t()
+  defp day(at), do: at |> DateTime.to_date() |> Date.to_string()
 
-  defp wdrozenie(deployment) do
-    od =
+  @spec deployment(map()) :: [String.t()]
+  defp deployment(deployment) do
+    since =
       case deployment.deployed.since do
         nil -> "nic jeszcze nie zaszło pod tą wersją"
-        at -> "obowiązuje od #{dzien(at)}"
+        at -> "obowiązuje od #{day(at)}"
       end
 
-    zmiana =
+    change =
       case deployment.changed do
         nil ->
           []
 
-        z ->
+        c ->
           [
             "  Od poprzedniej wersji: " <>
-              "nowych zdarzeń #{length(z.events_added)}, usuniętych #{length(z.events_removed)}, " <>
-              "nowych ścieżek #{length(z.paths_added)}, usuniętych #{length(z.paths_removed)}."
+              "nowych zdarzeń #{length(c.events_added)}, usuniętych #{length(c.events_removed)}, " <>
+              "nowych ścieżek #{length(c.paths_added)}, usuniętych #{length(c.paths_removed)}."
           ]
       end
 
-    starsze =
+    earlier =
       if deployment.from_earlier_versions > 0 do
         [
           "  Zdarzeń z wcześniejszych wersji ustaleń: #{deployment.from_earlier_versions}. " <>
@@ -80,92 +84,101 @@ defmodule Taxvision.Report do
         []
       end
 
-    ["USTALENIA", "  Wersja ustaleń #{deployment.deployed.contract_version}, #{od}."] ++
-      zmiana ++ starsze ++ [""]
+    ["USTALENIA", "  Wersja ustaleń #{deployment.deployed.contract_version}, #{since}."] ++
+      change ++ earlier ++ [""]
   end
 
-  defp proces(p) do
+  @spec process(map()) :: [String.t()]
+  defp process(p) do
     ["PROCES: #{p.label}", "  Przebiegów w tym okresie: #{p.runs}."] ++
-      deklaracje(p.declarations) ++
-      sciezki(p) ++
-      assercje(p.assertions) ++
+      declarations(p.declarations) ++
+      paths(p) ++
+      assertions(p.assertions) ++
       [""]
   end
 
-  # Tylko potwierdzone. Termin 25 dni tu nie wystąpi, dopóki go nikt nie potwierdzi.
-  defp deklaracje([]), do: []
+  # Confirmed declarations only. The 25-day deadline will not appear here until
+  # somebody confirms it.
+  @spec declarations([map()]) :: [String.t()]
+  defp declarations([]), do: []
 
-  defp deklaracje(declarations) do
-    for %{key: key, value: value} <- declarations do
+  defp declarations(declared) do
+    for %{key: key, value: value} <- declared do
       case key do
-        :cadence -> "  Należny: co #{ilosc(value)}."
-        :deadline -> "  Termin: #{ilosc(value)} od rozpoczęcia."
+        :cadence -> "  Należny: co #{amount(value)}."
+        :deadline -> "  Termin: #{amount(value)} od rozpoczęcia."
       end
     end
   end
 
-  defp ilosc({1, :month}), do: "miesiąc"
-  defp ilosc({n, :month}), do: "#{n} miesiące"
-  defp ilosc({1, :day}), do: "dzień"
-  defp ilosc({n, :day}), do: "#{n} dni"
-  defp ilosc({n, unit}), do: "#{n} #{unit}"
+  @spec amount({pos_integer(), atom()}) :: String.t()
+  defp amount({1, :month}), do: "miesiąc"
+  defp amount({n, :month}), do: "#{n} miesiące"
+  defp amount({1, :day}), do: "dzień"
+  defp amount({n, :day}), do: "#{n} dni"
+  defp amount({n, unit}), do: "#{n} #{unit}"
 
-  defp sciezki(%{runs: 0}) do
+  @spec paths(map()) :: [String.t()]
+  defp paths(%{runs: 0}) do
     ["  Ustalonych kroków nie da się ocenić: w tym okresie nie było ani jednego przebiegu."]
   end
 
-  defp sciezki(p) do
-    nieprzejechane =
+  defp paths(p) do
+    untraversed =
       case p.untraversed do
         [] ->
           ["  Wszystkie ustalone kroki zostały w tym okresie wykonane."]
 
-        kroki ->
+        steps ->
           ["  Ustalone kroki, których nie wykonano ani razu:"] ++
-            for k <- kroki, do: "    · #{krok(k)}"
+            for s <- steps, do: "    · #{step(s)}"
       end
 
-    czekajace =
-      for k <- p.in_flight do
-        "    · #{krok(k)} — w trakcie, #{k.in_flight} w kolejce"
+    waiting =
+      for s <- p.in_flight do
+        "    · #{step(s)} — w trakcie, #{s.in_flight} w kolejce"
       end
 
-    nieprzejechane ++ czekajace
+    untraversed ++ waiting
   end
 
-  # Etykiety biznesowe, nazwa techniczna tylko jako dopisek. Kryterium odbioru:
-  # czytelne bez tłumaczenia, co znaczą kolumny.
-  defp krok(k), do: "#{k.from_label} → #{k.to_label}"
+  # Business labels, with the technical name only as an aside. The acceptance
+  # criterion: readable without explaining what the columns mean.
+  @spec step(map()) :: String.t()
+  defp step(s), do: "#{s.from_label} → #{s.to_label}"
 
-  defp assercje([]), do: []
+  @spec assertions([map()]) :: [String.t()]
+  defp assertions([]), do: []
 
-  defp assercje(assertions) do
-    Enum.flat_map(assertions, &assercja/1)
+  defp assertions(list) do
+    Enum.flat_map(list, &assertion/1)
   end
 
-  # Zdanie, nie nazwa. `trace` jest jedyną deklaracją bez `label`, więc nazwa
-  # techniczna byłaby wszystkim, co można by wypisać — a raport dla księgowej,
-  # który mówi `month_opens_or_is_blocked`, nie spełnia kryterium „czytelny bez
-  # tłumaczenia".
-  defp assercja(a) do
-    albo = if a.or_else_label, do: ", albo „#{a.or_else_label}”", else: ""
-    okno = if a.within, do: " w ciągu #{ilosc(a.within)}", else: ""
+  # A sentence, not a name. `trace` is the one declaration without a `label`, so a
+  # technical name is all that could be printed — and a report for an accountant
+  # that says `month_opens_or_is_blocked` does not meet the "readable without
+  # explanation" criterion.
+  @spec assertion(map()) :: [String.t()]
+  defp assertion(a) do
+    alternative = if a.or_else_label, do: ", albo „#{a.or_else_label}”", else: ""
+    window = if a.within, do: " w ciągu #{amount(a.within)}", else: ""
 
     [
-      "  Ustalenie: po „#{a.from_label}”#{okno} następuje „#{a.eventually_label}”#{albo}.",
-      "    #{wynik(a)}"
+      "  Ustalenie: po „#{a.from_label}”#{window} następuje „#{a.eventually_label}”#{alternative}.",
+      "    #{outcome(a)}"
     ]
   end
 
-  defp wynik(a) do
-    droga =
+  @spec outcome(map()) :: String.t()
+  defp outcome(a) do
+    via =
       if a.satisfied_via_or_else > 0 do
         " (w tym #{a.satisfied_via_or_else} przez drugie z tych zakończeń, co jest zgodne z ustaleniem)"
       else
         ""
       end
 
-    stan =
+    state =
       cond do
         a.instances == 0 -> "W tym okresie nie było przebiegu, na którym dałoby się to sprawdzić."
         a.violated > 0 -> "NIEDOTRZYMANE w #{a.violated} z #{a.instances} przebiegów."
@@ -173,9 +186,10 @@ defmodule Taxvision.Report do
         true -> "Dotrzymane we wszystkich #{a.instances} przebiegach."
       end
 
-    stan <> droga
+    state <> via
   end
 
+  @spec drift([map()]) :: [String.t()]
   defp drift([]), do: ["ROZBIEŻNOŚCI", "  Brak: nic nie zaszło poza ustaleniami.", ""]
 
   defp drift(edges) do

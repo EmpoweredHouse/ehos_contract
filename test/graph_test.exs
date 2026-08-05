@@ -1,24 +1,26 @@
 defmodule PNS.GraphTest do
   @moduledoc """
-  Czy z kontraktu da się zrobić graf i czy nakładka na log ma sens.
+  Whether a graph can be built from the contract, and whether overlaying it on the
+  log makes sense.
 
-  To jest pytanie „czy to ma szanse" postawione jako test, a nie jako opinia.
-  Dashboardu nie ma i celowo nie będzie w tym kroku — najpierw sprawdzić, czy
-  różnica jest sygnałem.
+  This is the question "does this have a chance" put as a test rather than as an
+  opinion. There is no dashboard and deliberately will not be one at this step —
+  first check whether the difference is signal.
   """
 
   use Taxvision.DataCase, async: false
 
   alias Taxvision.Contracts.AccountingMonth
 
-  test "graf statyczny pochodzi z rejestru, czyli z binarki" do
+  test "the static graph comes from the registry, that is, from the binary" do
     graph = PNS.Graph.static()
 
-    # Rejestr skanuje **całą binarkę**, a od etapu 1.2 są w niej dwa kontrakty:
-    # ten i fikstura bramy uniwersalności. Liczenie węzłów bez zawężenia do
-    # kontraktu było ukrytym założeniem „jest tylko jeden".
-    nasze = Enum.filter(graph.nodes, &(&1.contract == AccountingMonth))
-    assert length(nasze) == length(AccountingMonth.events())
+    # The registry scans the **whole binary**, and since stage 1.2 there are two
+    # contracts in it: this one and the universality gate fixture. Counting nodes
+    # without narrowing to a contract was the hidden assumption "there is only
+    # one".
+    ours = Enum.filter(graph.nodes, &(&1.contract == AccountingMonth))
+    assert length(ours) == length(AccountingMonth.events())
 
     edges = MapSet.new(graph.edges, &{&1.from, &1.to})
     assert MapSet.member?(edges, {:registry_data_consistent, :monthly_tasks_generated})
@@ -29,14 +31,14 @@ defmodule PNS.GraphTest do
     assert Enum.map(async, & &1.from) == [:registry_discrepancy_detected]
   end
 
-  test "przed jakimkolwiek przebiegiem wszystko jest martwe, nic nie jest driftem" do
+  test "before any run everything is dead and nothing is drift" do
     overlay = PNS.Graph.overlay()
 
     assert Enum.all?(overlay, &(&1.state == :dead))
     assert Enum.all?(overlay, &(&1.count == 0))
   end
 
-  test "po przebiegu krawędzie przechodzą w confirmed, a niewykonane zostają martwe" do
+  test "after a run the edges become confirmed and the untaken ones stay dead" do
     {:ok, _} = Taxvision.Api.open_month(accountant("c-1"), %{company_id: "c-1", period: "2026-07"})
 
     overlay = PNS.Graph.overlay()
@@ -45,12 +47,12 @@ defmodule PNS.GraphTest do
     assert by_edge[{:registry_data_consistent, :monthly_tasks_generated}].state == :confirmed
     assert by_edge[{:monthly_tasks_generated, :accounting_month_opened}].state == :confirmed
 
-    # Ścieżka rozjazdu nie została przejechana — i to jest właśnie ta
-    # informacja, po którą się tu przychodzi.
+    # The divergence path was not traversed — and that is exactly the information
+    # this view exists for.
     assert by_edge[{:registry_discrepancy_detected, :discrepancy_notification_sent}].state == :dead
   end
 
-  test "wolumen jest wymiarem osobnym od stanu" do
+  test "volume is a dimension separate from state" do
     for period <- ["2026-05", "2026-06", "2026-07"] do
       {:ok, _} = Taxvision.Api.open_month(accountant("c-1"), %{company_id: "c-1", period: period})
     end
@@ -62,7 +64,7 @@ defmodule PNS.GraphTest do
     assert edge.count == 3
   end
 
-  test "zdarzenia faz 3.2-3.4 są zadeklarowane i nigdy nie zaobserwowane" do
+  test "the events of the later stages are declared and never observed" do
     {:ok, _} = Taxvision.Api.open_month(accountant("c-1"), %{company_id: "c-1", period: "2026-07"})
 
     dead = PNS.Graph.declared_never_observed() |> Enum.map(& &1.event)
@@ -75,22 +77,22 @@ defmodule PNS.GraphTest do
     refute :monthly_tasks_generated in dead
   end
 
-  test "cadence jest tym, z czego liczy się okno — i jest zadeklarowana" do
+  test "cadence is what the window is computed from — and it is declared" do
     [entry] = PNS.Graph.declared_never_observed() |> Enum.filter(&(&1.event == :month_closed))
 
     assert entry.process == :accounting_month
     assert entry.cadence == {1, :month}
   end
 
-  test "zdarzenie pod inną wersją kontraktu to historia, nie drift" do
+  test "an event under a different contract version is history, not drift" do
     {:ok, _} = Taxvision.Api.open_month(accountant("c-1"), %{company_id: "c-1", period: "2026-07"})
 
-    # Symulacja deployu, który usunął zdarzenie: wiersz w logu pod wersją
-    # kontraktu, której już nie ma w binarce.
+    # Simulating a deploy that removed an event: a row in the log under a contract
+    # version that is no longer in the binary.
     Repo.insert!(%PNS.Event{
-      type: "zdarzenie_z_zeszlego_miesiaca",
+      type: "event_from_last_month",
       contract: inspect(AccountingMonth),
-      contract_version: "wersja_ktorej_juz_nie_ma",
+      contract_version: "version_that_is_gone",
       correlation_id: Ecto.UUID.generate(),
       causation_id: List.first(events_of(:accounting_month_opened)).id,
       payload: %{},
@@ -98,13 +100,13 @@ defmodule PNS.GraphTest do
     })
 
     overlay = PNS.Graph.overlay()
-    entry = Enum.find(overlay, &(&1.to == "zdarzenie_z_zeszlego_miesiaca"))
+    entry = Enum.find(overlay, &(&1.to == "event_from_last_month"))
 
     assert entry.state == :historical,
-           "bez `contract_version` każdy deploy usuwający zdarzenie produkuje fałszywy drift"
+           "without `contract_version` every deploy that removes an event produces false drift"
   end
 
-  test "job czekający w kolejce to :in_flight, nie :dead" do
+  test "a job waiting in the queue is :in_flight, not :dead" do
     Application.put_env(:pns_prototype, Taxvision.Adapters.RegistryLookup.Fake,
       responses: %{"c-1" => {:ok, %{legal_form: "JDG", vat_status: "wykreślony", vies_status: "aktywny"}}}
     )
@@ -113,8 +115,8 @@ defmodule PNS.GraphTest do
 
     {:ok, _} = Taxvision.Api.open_month(accountant("c-1"), %{company_id: "c-1", period: "2026-07"})
 
-    # Job jest wstawiony i nieuruchomiony — dokładnie ta chwila, w której
-    # dashboard bez trzeciego stanu twierdziłby, że ścieżka nigdy nie działa.
+    # The job is inserted and not run — exactly the moment at which a dashboard
+    # without the third state would claim the path never works.
     edge =
       PNS.Graph.overlay()
       |> Enum.find(&(&1.to == :discrepancy_notification_sent))
@@ -124,21 +126,21 @@ defmodule PNS.GraphTest do
     assert edge.in_flight == 1
   end
 
-  test "zdarzenia z jednej komendy są rodzeństwem, nie łańcuchem" do
+  test "events from one command are siblings, not a chain" do
     {:ok, _} = Taxvision.Api.open_month(accountant("c-1"), %{company_id: "c-1", period: "2026-07"})
 
     siblings = PNS.Graph.command_siblings()
 
-    # Trzy zdarzenia otwierające plus wynik weryfikacji: brak przyczyny, wspólna
-    # korelacja. Żadne nie spowodowało żadnego.
+    # The three opening events plus the check's result: no cause, a shared
+    # correlation. None of them caused another.
     assert siblings[{"data_completeness_confirmed", "registry_status_checked"}] == 1
     assert siblings[{"registry_status_checked", "registry_check_logged"}] == 1
 
-    # A to jest prawdziwa przyczynowość i nie może trafić do rodzeństwa.
+    # And this is real causation, which must not end up among the siblings.
     refute Map.has_key?(siblings, {"registry_data_consistent", "monthly_tasks_generated"})
   end
 
-  test "mermaid wychodzi z nakładki, nie z osobnego pliku" do
+  test "mermaid comes out of the overlay, not out of a separate file" do
     {:ok, _} = Taxvision.Api.open_month(accountant("c-1"), %{company_id: "c-1", period: "2026-07"})
 
     mermaid = PNS.Graph.overlay() |> PNS.Graph.to_mermaid()
@@ -148,6 +150,6 @@ defmodule PNS.GraphTest do
     assert mermaid =~ "classDef confirmed"
     assert mermaid =~ "month_closed[\""
     assert mermaid =~ "-.->|" and mermaid =~ "async"
-    assert mermaid =~ "ta sama komenda"
+    assert mermaid =~ "same command"
   end
 end
