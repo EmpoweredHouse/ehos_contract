@@ -119,6 +119,7 @@ defmodule PNS.Graph do
   defp base_query(opts) do
     from(e in Event, as: :event)
     |> maybe_since(Keyword.get(opts, :since))
+    |> maybe_until(Keyword.get(opts, :until))
     |> maybe_instance(Keyword.get(opts, :instance))
   end
 
@@ -421,6 +422,13 @@ defmodule PNS.Graph do
 
   defp maybe_since(query, nil), do: query
   defp maybe_since(query, since), do: where(query, [event: e], e.occurred_at >= ^since)
+
+  # Raport dowodowy jest **za okres**, więc potrzebuje obu granic. Samo `since`
+  # znaczy „od X do teraz", czyli lipcowy raport wygenerowany we wrześniu
+  # zawierałby sierpień — a dowód, który zmienia się przy ponownym wydruku, nie
+  # jest dowodem.
+  defp maybe_until(query, nil), do: query
+  defp maybe_until(query, until), do: where(query, [event: e], e.occurred_at <= ^until)
 
   defp maybe_instance(query, nil), do: query
   defp maybe_instance(query, id), do: where(query, [event: e], e.instance_id == ^id)

@@ -147,11 +147,11 @@ defmodule PNS.Deployment do
   deployment that has emitted nothing yet has `since: nil`, which is honest: it
   is deployed and unproven.
   """
-  @spec report(module()) :: map()
-  def report(contract) do
+  @spec report(module(), keyword()) :: map()
+  def report(contract, opts \\ []) do
     recorded = all(contract)
     current = Enum.find(recorded, &(&1.contract_version == contract.version()))
-    in_log = versions_in_log(contract)
+    in_log = versions_in_log(contract, opts)
 
     %{
       contract: contract,
@@ -171,23 +171,31 @@ defmodule PNS.Deployment do
   end
 
   @doc "Contract versions present in the log, with counts and time ranges."
-  @spec versions_in_log(module()) :: [map()]
-  def versions_in_log(contract) do
+  @spec versions_in_log(module(), keyword()) :: [map()]
+  def versions_in_log(contract, opts \\ []) do
     name = inspect(contract)
 
-    repo().all(
-      from e in PNS.Event,
-        where: e.contract == ^name,
-        group_by: e.contract_version,
-        order_by: [asc: min(e.occurred_at)],
-        select: %{
-          contract_version: e.contract_version,
-          events: count(e.id),
-          first_at: min(e.occurred_at),
-          last_at: max(e.occurred_at)
-        }
-    )
+    # Built by composition rather than with `is_nil(^since) or ...`: Ecto refuses
+    # to compare a field with a pinned nil, and rightly so — the comparison would
+    # silently be neither true nor false.
+    from(e in PNS.Event, where: e.contract == ^name)
+    |> bound(:>=, Keyword.get(opts, :since))
+    |> bound(:<=, Keyword.get(opts, :until))
+    |> group_by([e], e.contract_version)
+    |> order_by([e], asc: min(e.occurred_at))
+    |> select([e], %{
+      contract_version: e.contract_version,
+      events: count(e.id),
+      first_at: min(e.occurred_at),
+      last_at: max(e.occurred_at)
+    })
+    |> repo().all()
   end
+
+  @spec bound(Ecto.Query.t(), :>= | :<=, DateTime.t() | nil) :: Ecto.Query.t()
+  defp bound(query, _direction, nil), do: query
+  defp bound(query, :>=, at), do: where(query, [e], e.occurred_at >= ^at)
+  defp bound(query, :<=, at), do: where(query, [e], e.occurred_at <= ^at)
 
   @spec last_change([t()]) :: change() | nil
   defp last_change([_ | _] = recorded) do

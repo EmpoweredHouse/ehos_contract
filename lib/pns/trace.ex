@@ -190,6 +190,7 @@ defmodule PNS.Trace do
 
     query
     |> maybe_since(Keyword.get(opts, :since))
+    |> maybe_until(Keyword.get(opts, :until))
     |> maybe_instance(Keyword.get(opts, :instance))
     |> repo().all()
     |> Enum.group_by(fn {instance, _t, _at} -> instance end, fn {_i, type, at} -> {type, at} end)
@@ -200,6 +201,9 @@ defmodule PNS.Trace do
 
   defp maybe_since(query, nil), do: query
   defp maybe_since(query, since), do: where(query, [e], e.occurred_at >= ^since)
+
+  defp maybe_until(query, nil), do: query
+  defp maybe_until(query, until), do: where(query, [e], e.occurred_at <= ^until)
 
   defp maybe_instance(query, nil), do: query
   defp maybe_instance(query, id), do: where(query, [e], e.instance_id == ^id)

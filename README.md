@@ -20,7 +20,13 @@ mix pns.trace                # ocena assercji `trace` z logu, per przebieg
 mix pns.trace --instances    # to samo z pojedynczymi przebiegami (widok do debugowania)
 mix pns.check                # sprawdzenia całoprogramowe
 mix pns.docs                 # regeneracja referencji kluczy w docs/contract.md
+mix taxvision.report         # raport zgodności za okres — cztery pytania, jedna strona
+mix taxvision.report --since 2026-07-01T00:00:00Z --until 2026-07-31T23:59:59Z
 ```
+
+Raport jest **w drzewie klienta**, nie w `pns.*`, i to jest ta sama granica, co wszędzie: silnik produkuje
+dane (`PNS.Conformance.report/2`), aplikacja klienta produkuje zdania (`Taxvision.Report`). Silnik nie wie,
+w jakim języku czyta jego odbiorca.
 
 **Jak napisać kontrakt: [`docs/contract.md`](docs/contract.md)** — po angielsku, bo to dokumentacja
 pakietu, nie repo. Referencja kluczy jest generowana z `PNS.Contract.schema/0`, przykład jest

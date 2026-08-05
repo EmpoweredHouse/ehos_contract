@@ -6,7 +6,7 @@ tylko tu jest aktualizowany stan.
 
 ## Stan na 5 sierpnia
 
-122 testy, `mix check` przechodzi. Ostrzeżenia są **trzy** i wszystkie celowe: `deadline` TaxVision bez
+133 testy, `mix check` przechodzi. Ostrzeżenia są **trzy** i wszystkie celowe: `deadline` TaxVision bez
 potwierdzenia process ownera, `deadline` z wymyślonej fikstury bramy uniwersalności, oraz **krawędź wsteczna
 w stanowisku badawczym kształtów — która jest kryterium odbioru 1.3, więc jej brak byłby regresem.**
 Samo `mix pns.check` w środowisku dev pokazuje jedno — fikstury żyją w `test/support/`.
@@ -351,8 +351,52 @@ Dwie rzeczy przy okazji:
   przeciekały do każdego testu. Czyszczone w setupie, wewnątrz transakcji sandboxa; zachowanie produkcyjne
   nietknięte.
 
-**1.7 Raport zgodności za okres.** Cztery pytania, jedna strona, etykiety biznesowe.
-*Odbiór:* czytelny bez tłumaczenia, co znaczą kolumny, i nie zawiera `deadline` oznaczonego `unverified`.
+**1.7 Raport zgodności za okres. ✅ zrobione 5 sierpnia — ETAP 1 ZAMKNIĘTY.**
+*Odbiór:* **spełnione.** `PNS.Conformance.report/2` (dane) plus `Taxvision.Report.render/1` (zdania),
+`mix taxvision.report`, `test/report_test.exs`.
+
+Cztery pytania w jednym artefakcie, po polsku, zdaniami:
+
+```
+RAPORT ZGODNOŚCI — 2026-07-01 – 2026-07-31
+USTALENIA
+  Wersja ustaleń 7c229c333c21, obowiązuje od 2026-08-05.
+PROCES: Cykl miesięczny księgowy
+  Przebiegów w tym okresie: 5.
+  Należny: co miesiąc.
+  Wszystkie ustalone kroki zostały w tym okresie wykonane.
+  Ustalenie: po „Potwierdzono komplet danych historycznych" w ciągu 2 dni następuje
+            „Otwarto miesiąc księgowy", albo „Wysłano powiadomienie o rozjeździe…".
+    Dotrzymane we wszystkich 5 przebiegach. (w tym 2 przez drugie z tych zakończeń…)
+ROZBIEŻNOŚCI
+  Brak: nic nie zaszło poza ustaleniami.
+```
+
+**Termin 25 dni w raporcie nie występuje** i to jest twarda część kryterium. Filtr siedzi w
+`PNS.Conformance.verified_declarations/1`, publicznej — bo reguła, której nie da się przetestować wprost,
+jest regułą, która cicho przestaje obowiązywać. Test dowodzi obu stron: z `unverified: [:deadline]` termin
+nie wychodzi, a po jego zdjęciu wychodzi. Bez tej drugiej połowy pierwsza przechodziłaby też przy zepsutym
+filtrze.
+
+Trzy rzeczy rozstrzygnięte przy okazji:
+
+- **Renderowanie jest po stronie klienta, nie silnika.** `PNS.Conformance` produkuje dane, `Taxvision.Report`
+  zamienia je w zdania. Silnik nie wie, w jakim języku czyta jego odbiorca — a ten raport czyta księgowa.
+  Gdyby nagłówki generował pakiet, artefakt dowodowy byłby dwujęzyczny bez powodu. Zadanie mixa też jest
+  w drzewie klienta (`mix taxvision.report`); `pns.graph`, `pns.trace` i `pns.check` zostają, bo mają innego
+  odbiorcę i inne pytanie.
+- **`trace` jest jedyną deklaracją bez `label`** — więc nazwa techniczna byłaby wszystkim, co można wypisać,
+  a `month_opens_or_is_blocked` w raporcie dla księgowej oblewa kryterium. Raport składa **zdanie z etykiet
+  zdarzeń**, czyli ze słów, które klient już zatwierdził. **Do rozstrzygnięcia przez process ownera, nie
+  przez nas:** czy chce assercje *nazywać*, czy złożone zdanie wystarcza. Dopisanie `label` do `trace` to
+  zmiana DSL i nie robię jej pod wygodę raportu.
+- **Raport wymagał `until:`**, którego nie miało nic. Samo `since` znaczy „od X do teraz", więc lipcowy
+  raport wygenerowany we wrześniu zawierałby sierpień — a dowód, który zmienia się przy ponownym wydruku,
+  nie jest dowodem. Doszło do `PNS.Graph`, `PNS.Trace` i `PNS.Deployment`.
+
+Przy okazji jeden błąd wart nazwania: `versions_in_log` filtrowałem przez `is_nil(^since) or ...`, co Ecto
+słusznie odrzuca — porównanie pola z przypiętym `nil` nie jest ani prawdą, ani fałszem. Zapytanie składa się
+teraz przez kompozycję, jak w `PNS.Graph`.
 
 ## Etap 2 — obietnice kontraktu, które dziś są dekoracją
 
@@ -417,10 +461,10 @@ osierocieje po każdym rebase i wymaga `rebase --onto`. Zdarzyło się to raz, 5
 
 ## Kolejność
 
-1.1–1.6 zamknięte — **cały etap 1 poza 1.7**. Brama uniwersalności przeszła, `trace` przestał być dekoracją, a różnica
+**Etap 1 zamknięty w całości.** 1.1–1.7. Brama uniwersalności przeszła, `trace` przestał być dekoracją, a różnica
 declared vs observed okazała się sygnałem — 50 przebiegów daje jedną linię raportu, a wszystkie pięć
-kształtów procesu jest obsłużonych. **Dalej: 1.7** — cztery pytania na jednej stronie; wszystkie cztery odpowiedzi już istnieją i `mix pns.graph
---overlay` pokazuje je razem, więc 1.7 jest złożeniem, nie budową. 1.5b (werdykt `:suspended`) czeka na log
+kształtów procesu jest obsłużonych. **Dalej: etap 2** — obietnice kontraktu, które dziś są dekoracją. Otwarte z etapu 1: 1.5b (werdykt
+`:suspended`), sprzątanie języka w `lib/pns/`, oraz decyzja process ownera o `label` dla `trace`. 1.5b (werdykt `:suspended`) czeka na log
 niedostępności zależności; sprzątanie języka w `lib/pns/` jest osobnym zadaniem, patrz wyżej.
 
 Kod zostaje w tym repo i przenosi się do repozytorium pilota, gdy ono powstanie; struktura jest już taka, że

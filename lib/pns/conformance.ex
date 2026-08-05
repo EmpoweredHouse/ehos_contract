@@ -33,7 +33,135 @@ defmodule PNS.Conformance do
   pytaniem o stan biznesu i należy do aplikacji klienta.
   """
 
-  alias PNS.Graph
+  alias PNS.{Deployment, Graph, Trace}
+
+  @doc """
+  All four of the screen's questions for one contract over a period, as data.
+
+  This module produces the answers; it does not render them. The wording of a
+  client-facing report belongs to the client application, because the engine
+  cannot know the language its readers speak — every business string in here
+  comes from the contract's own `label`, which is the one place written in the
+  client's language.
+
+  ## `unverified` declarations are omitted, not marked
+
+  A process declaration the process owner has not confirmed **does not appear**.
+  `mix pns.check` warns about it on every run, which is right for a developer
+  check, but an evidence report is a different artifact with a different reader:
+  a number the client never agreed to, printed next to numbers they did, reads as
+  measured. A false metric is worse than a missing one when it is the metric the
+  product sells.
+  """
+  @spec report(module(), keyword()) :: map()
+  def report(contract, opts \\ []) do
+    paths = untraversed_paths(opts)
+    nodes = Graph.static().nodes
+    labels = Map.new(nodes, &{to_string(&1.event), &1.label})
+    declared_by = Map.new(nodes, &{to_string(&1.event), &1.contract})
+
+    %{
+      contract: contract,
+      period: %{since: Keyword.get(opts, :since), until: Keyword.get(opts, :until)},
+      deployment: Deployment.report(contract, opts),
+      processes:
+        for process <- contract.processes() do
+          answers = Enum.find(paths, &(&1.process == process.name))
+
+          %{
+            process: process.name,
+            label: process.label,
+            runs: (answers && answers.instances) || 0,
+            declarations: verified_declarations(process),
+            untraversed: label_edges(answers && answers.untraversed, labels),
+            in_flight: label_edges(answers && answers.in_flight, labels),
+            assertions: assertions(contract, process, labels, opts)
+          }
+        end,
+      drift: drift(contract, labels, declared_by, opts)
+    }
+  end
+
+  @doc """
+  Process declarations that may appear in an evidence report: those the process
+  owner has confirmed.
+
+  Public because it is the rule the acceptance criterion of stage 1.7 is about,
+  and a rule that cannot be tested directly is a rule that quietly stops
+  applying. `unverified` lists what is excluded.
+  """
+  @spec verified_declarations(map()) :: [%{key: atom(), value: term()}]
+  def verified_declarations(process) do
+    for key <- [:cadence, :deadline],
+        key not in process.unverified,
+        value = Map.get(process, key),
+        not is_nil(value) do
+      %{key: key, value: value}
+    end
+  end
+
+  # **An assertion is reported as the sentence the process owner confirmed**, not
+  # as its name. `trace` is the one declaration without a `label`, so a technical
+  # atom is all a name could contribute — and a client-facing report that prints
+  # `month_opens_or_is_blocked` fails the criterion of being readable without
+  # explanation.
+  #
+  # Composing it from the event labels is not a workaround: those labels are the
+  # words the client already agreed to, and the sentence they compose is the
+  # assertion. Whether the process owner also wants to *name* assertions is a
+  # question for the workshop, not for us — recorded in PLAN.md rather than
+  # answered by adding a key.
+  @spec assertions(module(), map(), map(), keyword()) :: [map()]
+  defp assertions(contract, process, labels, opts) do
+    for trace <- contract.traces(), contract.process_of(trace.from).name == process.name do
+      verdicts = Trace.evaluate(contract, trace.name, opts)
+      label = fn name -> name && Map.get(labels, to_string(name), to_string(name)) end
+
+      %{
+        trace: trace.name,
+        from_label: label.(trace.from),
+        eventually_label: label.(trace.eventually),
+        or_else_label: label.(trace.or_else),
+        within: trace.within
+      }
+      |> Map.merge(Trace.summary(verdicts))
+    end
+  end
+
+  # A drift edge has no contract of its own: its **target** is undeclared, which
+  # is what makes it drift, so there is nothing there to attribute. Its
+  # **source** is declared, and that is what attributes the finding — otherwise
+  # every contract's report would list every other contract's drift.
+  @spec drift(module(), map(), map(), keyword()) :: [map()]
+  defp drift(contract, labels, declared_by, opts) do
+    for edge <- Graph.overlay(opts),
+        edge.state == :drift,
+        Map.get(declared_by, to_string(edge.from)) == contract do
+      %{
+        from: to_string(edge.from),
+        to: to_string(edge.to),
+        from_label: labels[to_string(edge.from)],
+        to_label: labels[to_string(edge.to)],
+        count: edge.count
+      }
+    end
+  end
+
+  @spec label_edges([map()] | nil, map()) :: [map()]
+  defp label_edges(nil, _labels), do: []
+
+  defp label_edges(edges, labels) do
+    for edge <- edges do
+      %{
+        from: edge.from,
+        to: edge.to,
+        from_label: labels[to_string(edge.from)],
+        to_label: labels[to_string(edge.to)],
+        async: edge.async,
+        in_flight: edge.in_flight
+      }
+    end
+  end
 
   @doc """
   Ścieżki zadeklarowane w kontrakcie, którymi **nie przeszedł żaden przebieg**,
