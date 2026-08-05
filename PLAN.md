@@ -26,8 +26,13 @@ pola instancji. Powód jest techniczny, nie sprawozdawczy — bez tego „eventu
 przebiegu.
 *Odbiór:* assercja policzona dla dwóch równoległych przebiegów nie myli ich zdarzeń.
 
-**1.2 Brama uniwersalności.** Drugi kontrakt z innej domeny (medyczna — Rehmed startuje 10.08), wyłącznie
-kontrakt plus fake'i, bez implementacji.
+**1.2 Brama uniwersalności.** Drugi kontrakt z innej domeny, wyłącznie kontrakt plus fake'i, bez implementacji.
+
+Domena medyczna jest naturalnym wyborem, bo Rehmed startuje 10.08 — ale **materiału warsztatowego z Rehmed
+jeszcze nie ma**, więc ten kontrakt jest świadomie wymyślony i musi być tak oznaczony w pliku. Testuje
+**słownik DSL, nie wiedzę o domenie**: chodzi o to, czy `event`, `process`, `stage`, `trace`, `instance`,
+`identity`, `cadence`, `deadline` wystarczają do opisania procesu, który nie ma nic wspólnego z księgowością.
+Nie może wyglądać na kontekst kliencki ani trafić do repo kontekstu.
 *Odbiór:* **zero nowych słów w DSL.** Jeśli trzeba dopisać choćby jedno słowo specyficzne dla domeny, DSL jest
 źle zaprojektowany i etapy 1.3+ są do przepisania. Dlatego to jest tutaj, a nie na końcu — dziś nie mamy
 żadnego dowodu na uniwersalność: jeden kontrakt, jedna domena, jeden autor.
