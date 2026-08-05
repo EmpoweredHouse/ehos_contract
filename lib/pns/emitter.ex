@@ -189,6 +189,11 @@ defmodule PNS.Emitter do
       # A handler may return further intentions — they go in the same transaction.
       case result do
         {:ok, emissions} when is_list(emissions) ->
+          # Before emitting, not after: an undeclared emission must not reach the log
+          # at all, or the graph it contradicts is already wrong by the time anyone
+          # finds out.
+          PNS.Handler.verify_publications!(handler, emissions)
+
           Enum.each(emissions, fn %PNS.Emission{name: name, payload: p} ->
             do_emit(repo, contract, name, p, ctx)
           end)

@@ -29,6 +29,15 @@ defmodule ProcessShapes.Rig do
   **built here on purpose**, together with three controls that are **not** backward
   edges. The mere fact that the check finds a case constructed for it proves
   nothing — the proof is that it does not find one in the other three.
+
+  ## Also used for engine mechanisms that need a handler
+
+  Shapes were the first use rather than the only one. Stage 2.1 needs a handler that
+  emits something it did not declare, and that cannot live in a client tree: it is
+  broken code on purpose, and no domain should be asked to carry an example of a bug.
+  `OnItemReviewed` and `OnItemEscalated` do that, one per dispatch path, and both
+  declare `publishes: []` so they contribute **no edges** — the graph, the wiring
+  version and every path report stay exactly as they were.
   """
 
   use PNS.Contract
@@ -85,6 +94,24 @@ defmodule ProcessShapes.Rig do
     process: :pairing,
     stage: :resolution,
     terminal: true
+
+  # The two below exist for stage 2.1 rather than for a shape. Nothing in the rig
+  # emits them; the tests that need an undeclared emission drive them directly.
+  event :item_reviewed,
+    label: "Item reviewed",
+    owner: ProcessShapes.Resolution,
+    payload: %{case_id: :id, item_no: :integer},
+    identity: [:case_id, :item_no],
+    process: :pairing,
+    stage: :resolution
+
+  event :item_escalated,
+    label: "Item escalated",
+    owner: ProcessShapes.Resolution,
+    payload: %{case_id: :id, item_no: :integer},
+    identity: [:case_id, :item_no],
+    process: :pairing,
+    stage: :resolution
 
   process :pairing,
     label: "Item pairing",
@@ -227,6 +254,64 @@ defmodule ProcessShapes.Matching.OnItemPaired do
     if ProcessShapes.Matching.closable?(case_id) do
       paired = ProcessShapes.Matching.count(case_id, "item_paired")
       {:ok, [PNS.event(:case_closed, %{case_id: case_id, paired: paired})]}
+    else
+      :ok
+    end
+  end
+end
+
+defmodule ProcessShapes.Resolution.OnItemReviewed do
+  @moduledoc """
+  **Deliberately broken, for stage 2.1: emits what it never declared.**
+
+  `publishes: []` and yet it returns an `item_paired`. Both compilation and
+  `mix pns.check` accept this, because each checks a different thing: the compile
+  gate verifies that every name in `publishes:` exists in the contract, and the
+  check reasons about declarations rather than about what a function body returns.
+  Only the runtime half catches it.
+
+  **Whether it violates depends on the payload**, which is the point rather than
+  convenience. A handler that always violated would leave the negative case
+  untested — and the negative case is the one worth having: the same handler,
+  emitting nothing, must not raise. Otherwise a check that fired on any handler
+  return at all would pass the positive test too.
+  """
+
+  use PNS.Handler,
+    contract: ProcessShapes.Rig,
+    event: :item_reviewed,
+    publishes: []
+
+  @impl PNS.Handler
+  def handle(%{case_id: case_id, item_no: item_no}, _ctx) do
+    if item_no > 0 do
+      {:ok, [PNS.event(:item_paired, %{case_id: case_id, item_no: item_no})]}
+    else
+      :ok
+    end
+  end
+end
+
+defmodule ProcessShapes.Resolution.OnItemEscalated do
+  @moduledoc """
+  The same violation as `OnItemReviewed`, on the **other** dispatch path.
+
+  Two fixtures rather than one because a single rule reached from two call sites is
+  exactly the thing that drifts, so each path has to be pinned separately. And they
+  cannot share an event: the synchronous handler rolls the transaction back, so a
+  queued job on the same event would never get to run.
+  """
+
+  use PNS.Handler,
+    contract: ProcessShapes.Rig,
+    event: :item_escalated,
+    publishes: [],
+    async: true
+
+  @impl PNS.Handler
+  def handle(%{case_id: case_id, item_no: item_no}, _ctx) do
+    if item_no > 0 do
+      {:ok, [PNS.event(:item_paired, %{case_id: case_id, item_no: item_no})]}
     else
       :ok
     end

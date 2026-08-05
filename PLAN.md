@@ -4,9 +4,9 @@ Zakres produktu, uzasadnienie i lista zmian w rekordzie żyją w
 `~/Projects/ai/empowered-house-context/output/20260804-pns-product-plan.md`. **Ten plik to lista roboty** i
 tylko tu jest aktualizowany stan.
 
-## Stan na 5 sierpnia
+## Stan na 6 sierpnia
 
-133 testy, `mix check` przechodzi. Ostrzeżenia są **trzy** i wszystkie celowe: `deadline` TaxVision bez
+141 testów, `mix check` przechodzi. Ostrzeżenia są **trzy** i wszystkie celowe: `deadline` TaxVision bez
 potwierdzenia process ownera, `deadline` z wymyślonej fikstury bramy uniwersalności, oraz **krawędź wsteczna
 w stanowisku badawczym kształtów — która jest kryterium odbioru 1.3, więc jej brak byłby regresem.**
 Samo `mix pns.check` w środowisku dev pokazuje jedno — fikstury żyją w `test/support/`.
@@ -15,7 +15,7 @@ Działa: kontrakt jako moduł Elixira z bramami kompilacyjnymi, dispatch po gran
 `boundary`, szew tożsamości, nakładka declared vs observed z czterema stanami, **tożsamość instancji procesu
 i liczniki w dwóch wymiarach (wystąpienia i przebiegi)**, **drugi kontrakt z obcej domeny bez ani jednego
 nowego słowa w DSL**, **ocena assercji `trace` per przebieg — trzy werdykty z czterech**, **raport
-nieprzejechanych ścieżek per przebieg**.
+nieprzejechanych ścieżek per przebieg**, **`publishes:` wiąże handler w runtime, nie tylko opisuje**.
 
 **Nie działa, bo nie zostało zbudowane — i to jest produkt:**
 
@@ -424,10 +424,41 @@ teraz przez kompozycję, jak w `PNS.Graph`.
 
 ## Etap 2 — obietnice kontraktu, które dziś są dekoracją
 
-**2.1 Handler emituje tylko to, co zadeklarował.** Dziś `emitter` i `job` nie znają `publishes`, więc handler
-może zadeklarować `[:x]`, wyemitować `:y` i przejść kompilację oraz `pns.check`, o ile `:y` jest w kontrakcie.
-Check w `emit` przenosi wykrycie z produkcji do pierwszego testu, kilkanaście linii. Tracer kompilacji
-(notatki §2) przesuwa je jeszcze wcześniej, ale jest optymalizacją momentu, nie warunkiem poprawności.
+**2.1 Handler emituje tylko to, co zadeklarował. ✅ zrobione 6 sierpnia.**
+`PNS.Handler.verify_publications!/2`, `test/publications_test.exs`. 141 testów.
+
+Reguła mieszka w `PNS.Handler`, nie w `PNS.Emitter` — bo tam już siedzi jej kompilacyjna połowa, a
+**deklaracja sprawdzana w jednym pliku i dotrzymywana w drugim to gotowy rozjazd.** Wołana z dwóch miejsc:
+[emitter.ex:190](lib/pns/emitter.ex:190) i [job.ex:45](lib/pns/job.ex:45).
+
+**Sprzężenie z 1.6, którego ten punkt wcześniej nie nazywał.** `wiring_version` liczy się z `publishes:`
+([deployment.ex:214](lib/pns/deployment.ex:214)), więc tożsamość wdrożenia była haszem deklaracji, których
+nikt nie weryfikował. Handler emitujący poza deklaracją produkował krawędź, której w żadnym zapisanym
+obwodowaniu nie ma — i raport nazywał to driftem, **poprawnie w formie i z fałszywego powodu.**
+
+**Jedna reguła, dwie konsekwencje — po granicy transakcji, nie po preferencji.** Synchronicznie: rzuca,
+transakcja się cofa, w logu nie ma ani emisji, ani zdarzenia, które ją wywołało. W kolejce: łapie się tam,
+gdzie każda inna awaria handlera, ląduje w `event_handlings` z komunikatem, a **zdarzenie wywołujące zostaje**
+— bo job leci poza transakcją, świadomie, i fakt, który go wywołał, pozostaje faktem. Sprawdzenie idzie
+**przed** emisją, nie po: gdyby po, graf byłby już sprzeczny z logiem, kiedy ktokolwiek się dowie.
+
+Naruszenie **nie może być stanem danych, tylko defektem kodu** — i deklaracja, i emitowana nazwa są w
+handlerze statyczne. Dlatego wywala się na pierwszym teście, który handler przejedzie, i to jest cała
+wartość: przenosi wykrycie z produkcji do CI.
+
+Fikstury (`OnItemReviewed`, `OnItemEscalated`) są w rigu, bo **złamany kod na potrzeby testu nie ma prawa
+stać w drzewie klienta** — żadna domena nie powinna nosić przykładu buga. Oba deklarują `publishes: []`, więc
+nie wnoszą **ani jednej krawędzi**: graf, `wiring_version` i raporty ścieżek zostają nietknięte. Dwie
+fikstury, nie jedna, bo jedna reguła wołana z dwóch miejsc to dokładnie to, co się rozjeżdża — i nie mogą
+dzielić zdarzenia, skoro synchroniczna cofa transakcję, w której stałby job.
+
+Naruszenie zależy od payloadu, a nie jest bezwarunkowe, i to nie jest wygoda: **ten sam handler emitujący nic
+nie może rzucać.** Bez tej kontroli sprawdzenie reagujące na dowolny return handlera przeszłoby test
+pozytywny. Zweryfikowane odwrotnie — po zneutralizowaniu reguły pada **cztery z ośmiu** testów, czyli
+dokładnie te, które o naruszeniu cokolwiek twierdzą.
+
+Zostaje na później: tracer kompilacji (notatki §2) przesunąłby wykrycie jeszcze wcześniej, ale to
+optymalizacja momentu, nie warunek poprawności.
 
 **2.2 Walidacja payloadu przeciw zadeklarowanym typom**, plus generowane testy zgodności.
 

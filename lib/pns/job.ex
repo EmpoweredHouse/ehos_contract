@@ -43,10 +43,21 @@ defmodule PNS.Job do
     {status, error, emissions} =
       try do
         case handler.handle(payload, ctx) do
-          :ok -> {"ok", nil, []}
-          {:ok, list} when is_list(list) -> {"ok", nil, list}
-          {:ok, _} -> {"ok", nil, []}
-          {:error, reason} -> {"error", inspect(reason), []}
+          :ok ->
+            {"ok", nil, []}
+
+          {:ok, list} when is_list(list) ->
+            # Inside the `try`, so an undeclared emission lands where every other
+            # handler failure lands — recorded against the event with its message —
+            # instead of crashing after the handling row has already claimed success.
+            PNS.Handler.verify_publications!(meta, list)
+            {"ok", nil, list}
+
+          {:ok, _} ->
+            {"ok", nil, []}
+
+          {:error, reason} ->
+            {"error", inspect(reason), []}
         end
       rescue
         e -> {"error", Exception.message(e), []}
