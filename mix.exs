@@ -48,7 +48,10 @@ defmodule PnsPrototype.MixProject do
       # Jedna komenda, która musi przechodzić. `--warnings-as-errors` jest tu
       # konieczne: `boundary` raportuje naruszenia jako ostrzeżenia, więc bez
       # tego przełącznika granice są dokumentacją, a nie wymuszeniem.
-      check: ["compile --force --warnings-as-errors", "pns.check", "test"]
+      # `pns.docs --check` jest tu z tego samego powodu, co `--warnings-as-errors`:
+      # bez niego referencja kluczy w `docs/contract.md` jest dokumentacją, która
+      # może kłamać, a nie generowanym artefaktem.
+      check: ["compile --force --warnings-as-errors", "pns.check", "pns.docs --check", "test"]
     ]
   end
 end

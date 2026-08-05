@@ -10,6 +10,7 @@ przez `boundary` od pierwszego commita.
 | --- | --- |
 | Plan pracy, etapy, kryteria odbioru | [`PLAN.md`](PLAN.md) |
 | Stan faktyczny, luki, co wyszło z prototypu | [`README.md`](README.md) |
+| **Jak napisać kontrakt** — klucze, wymagane/opcjonalne, co się nie skompiluje | [`docs/contract.md`](docs/contract.md) |
 | Decyzja architektoniczna | `~/Projects/ai/empowered-house-context/decisions/008-pns-runtime-architecture.md` |
 | Kształty kodu, schematy, pułapki | `~/Projects/ai/empowered-house-context/output/20260801-pns-architecture-adr/technology-notes.md` |
 | Zakres produktu i uzasadnienie | `~/Projects/ai/empowered-house-context/output/20260804-pns-product-plan.md` |
@@ -35,7 +36,9 @@ aplikacji klienta.
 docker compose up -d && mix ecto.setup && mix check
 ```
 
-`mix check` to `compile --force --warnings-as-errors`, `pns.check` i `test`. **Musi przechodzić.**
+`mix check` to `compile --force --warnings-as-errors`, `pns.check`, `pns.docs --check` i `test`.
+**Musi przechodzić.** `pns.docs --check` pilnuje, że referencja kluczy w `docs/contract.md` jest
+wygenerowana z `PNS.Contract.schema/0`, a nie pisana ręcznie.
 `--warnings-as-errors` jest konieczne: `boundary` raportuje naruszenia jako ostrzeżenia, więc bez tego
 przełącznika granice są dokumentacją. Postgres słucha na **5433**.
 

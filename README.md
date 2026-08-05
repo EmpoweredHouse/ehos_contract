@@ -19,7 +19,14 @@ mix pns.graph --mermaid      # diagram
 mix pns.trace                # ocena assercji `trace` z logu, per przebieg
 mix pns.trace --instances    # to samo z pojedynczymi przebiegami (widok do debugowania)
 mix pns.check                # sprawdzenia całoprogramowe
+mix pns.docs                 # regeneracja referencji kluczy w docs/contract.md
 ```
+
+**Jak napisać kontrakt: [`docs/contract.md`](docs/contract.md)** — po angielsku, bo to dokumentacja
+pakietu, nie repo. Referencja kluczy jest generowana z `PNS.Contract.schema/0`, przykład jest
+kompilowany testem, a tabela „co się nie skompiluje" ma pokrycie w testach bram. Trzy mechanizmy, bo
+ręcznie pisana dokumentacja DSL-a jest drugim źródłem prawdy — czyli dokładnie tą awarią, którą ten
+produkt wykrywa u innych.
 
 Postgres słucha na **5433**, nie 5432 — lokalny Postgres bywa zajęty, a to ma stać na czystej maszynie bez
 pytania, co jeszcze nasłuchuje.

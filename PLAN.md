@@ -6,7 +6,7 @@ tylko tu jest aktualizowany stan.
 
 ## Stan na 5 sierpnia
 
-118 testów, `mix check` przechodzi. Ostrzeżenia są **trzy** i wszystkie celowe: `deadline` TaxVision bez
+122 testy, `mix check` przechodzi. Ostrzeżenia są **trzy** i wszystkie celowe: `deadline` TaxVision bez
 potwierdzenia process ownera, `deadline` z wymyślonej fikstury bramy uniwersalności, oraz **krawędź wsteczna
 w stanowisku badawczym kształtów — która jest kryterium odbioru 1.3, więc jej brak byłby regresem.**
 Samo `mix pns.check` w środowisku dev pokazuje jedno — fikstury żyją w `test/support/`.
@@ -96,7 +96,29 @@ Co brama pokazała, w kolejności ważności:
   fikstury nie widzi i pokazuje jedno ostrzeżenie. **Do rozstrzygnięcia:** czy raport dowodowy ma umieć
   wykluczyć przestrzeń nazw z konfiguracji silnika. Nie z DSL — to byłoby nowe słowo.
 
-### Dług: język kodu w `lib/pns/`
+### Dokumentacja kontraktu — zrobione 5 sierpnia
+
+`docs/contract.md`, po angielsku, bo to dokumentacja pakietu. Trzy mechanizmy anty-driftowe, bo bez nich
+ręcznie pisany opis DSL-a jest **drugim źródłem prawdy** — a dziś znaleźliśmy cztery takie rozjazdy między
+rekordem a kodem, w tym przykład DSL w notatkach §1 z typami, których w słowniku nie ma:
+
+1. **Referencja kluczy jest generowana** z `PNS.Contract.schema/0` przez `mix pns.docs`. `--check` w
+   `mix check` wywala build, gdy blok jest nieaktualny. Sprawdzone: podmiana jednej wartości domyślnej w
+   dokumencie zatrzymuje bramę.
+2. **Przykład jest fikstórą, nie ilustracją** — test kompiluje każdy blok kodu z kontraktem z tego pliku.
+   Ta sama zasada, którą kontrakt stosuje do reguł, zastosowana do własnej dokumentacji.
+3. **Każdy klucz DSL-a musi być w dokumencie wymieniony**, a tabela „co się nie skompiluje" nie może
+   obiecywać więcej bram, niż jest testów bram.
+
+Przy okazji `schema/0` zastąpiła sześć osobnych list kluczy jednym źródłem, z którego wyprowadza się
+`vocabulary/0` **i** walidacja nieznanych kluczy. Wcześniej były to dwie rzeczy do rozjechania się.
+
+I wyszła z tego jedna brama: **`trace` bez `from` albo bez `eventually` się nie kompiluje.** Wcześniej
+kompilował się i produkował bezsens — nic nie mogło go spełnić, więc każdy przebieg wychodził jako
+naruszony po upływie okna. Schema wymusiła nazwanie, co jest wymagane, i wtedy stało się widać, że
+wymaganie nie było egzekwowane.
+
+## Dług: język kodu w `lib/pns/`
 
 Reguła poprawiona 5 sierpnia — **kod po angielsku, bez wyjątków w `lib/pns/`**, bo to kandydat na pakiet na
 hex. Poprzednia wersja mówiła „moduledoki i komentarze po polsku" i to zdążyło się rozlać.

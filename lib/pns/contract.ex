@@ -9,15 +9,63 @@ defmodule PNS.Contract do
   Brama z ADR §18 jest tutaj: **reguła bez przykładu nie kompiluje się.**
   """
 
-  @event_keys [:label, :owner, :payload, :retain, :depends_on, :identity, :process, :stage, :terminal]
-  @process_keys [:label, :stages, :instance, :cadence, :deadline, :unverified]
-  @external_keys [:label, :expected_latency, :unavailable_looks_like]
-  @rule_keys [:label, :function, :source]
-  @example_keys [:rule, :given, :command, :then, :rejected_with]
-  @trace_keys [:from, :eventually, :within, :or_else]
+  # One source of truth for the DSL surface: which keys exist, which are
+  # required, and what an omitted key falls back to. Everything else reads from
+  # here — the key validation below, `vocabulary/0`, and the generated reference
+  # in `docs/contract.md`. Two lists would be two things to drift apart, which is
+  # the failure this product exists to detect.
+  @schema %{
+    event: %{
+      required: [:label],
+      optional: [:owner, :payload, :retain, :depends_on, :identity, :process, :stage, :terminal],
+      defaults: %{payload: %{}, retain: %{}, terminal: false}
+    },
+    process: %{
+      required: [:label, :instance],
+      optional: [:stages, :cadence, :deadline, :unverified],
+      defaults: %{stages: [], unverified: []}
+    },
+    external: %{
+      required: [:label],
+      optional: [:expected_latency, :unavailable_looks_like],
+      defaults: %{}
+    },
+    rule: %{
+      required: [:label, :function],
+      optional: [:source],
+      defaults: %{}
+    },
+    example: %{
+      required: [:rule, :command],
+      optional: [:given, :then, :rejected_with],
+      defaults: %{given: %{}}
+    },
+    trace: %{
+      required: [:from, :eventually],
+      optional: [:within, :or_else],
+      defaults: %{}
+    }
+  }
+
+  @event_keys @schema.event.required ++ @schema.event.optional
+  @process_keys @schema.process.required ++ @schema.process.optional
+  @external_keys @schema.external.required ++ @schema.external.optional
+  @rule_keys @schema.rule.required ++ @schema.rule.optional
+  @example_keys @schema.example.required ++ @schema.example.optional
 
   @doc """
-  Cały słownik DSL, maszynowo.
+  The DSL surface as data: keys per declaration, which are required, and the
+  fallback for each omitted optional key.
+
+  Exists so the reference in `docs/contract.md` can be generated rather than
+  written by hand. A hand-written key table is a second source of truth, and
+  every one of those in this project has eventually disagreed with the code.
+  """
+  @spec schema() :: map()
+  def schema, do: @schema
+
+  @doc """
+  Cały słownik DSL, maszynowo — wyprowadzony z `schema/0`.
 
   Istnieje po to, żeby **brama uniwersalności dała się przypiąć testem**.
   Kryterium etapu 1.2 brzmi „zero nowych słów, żeby opisać inną domenę", a
@@ -28,15 +76,9 @@ defmodule PNS.Contract do
   Stąd też bierze się zapis, dlaczego **nie ma `population`** — jedyne słowo,
   które ten test oblało, i jedyne, które ma tendencję do powrotu.
   """
+  @spec vocabulary() :: %{atom() => [atom()]}
   def vocabulary do
-    %{
-      event: @event_keys,
-      process: @process_keys,
-      external: @external_keys,
-      rule: @rule_keys,
-      example: @example_keys,
-      trace: @trace_keys
-    }
+    Map.new(@schema, fn {declaration, keys} -> {declaration, keys.required ++ keys.optional} end)
   end
 
   @doc false
@@ -400,6 +442,19 @@ defmodule PNS.Contract do
 
     orphan_examples == [] ||
       bail!(env, "przykłady wskazujące nieistniejącą regułę: #{inspect(orphan_examples)}")
+
+    # `from` and `eventually` are the assertion. Without `eventually` a trace
+    # compiles and evaluates to nonsense: nothing can ever satisfy it, so every
+    # run is violated once its window passes. Declaring the requirement in the
+    # schema and not enforcing it would be the same decoration this project keeps
+    # finding elsewhere.
+    for t <- traces, key <- PNS.Contract.schema().trace.required, is_nil(Map.get(t, key)) do
+      bail!(
+        env,
+        "trace #{inspect(t.name)}: missing `#{key}`. A trace states \"after X, eventually Y\"; " <>
+          "without both halves there is nothing an observed run could satisfy."
+      )
+    end
 
     validate_membership!(env, events, processes)
 
