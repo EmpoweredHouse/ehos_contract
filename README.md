@@ -135,6 +135,47 @@ się po fazach: dwa zdarzenia tej samej fazy nigdy nią nie są, bo kontrakt nie
 
 **Do zmiany w notatkach §1:** `stages:` i `identity:` w przykładzie DSL, oraz słownik typów payloadu.
 
+## Czwarta poprawka formatu: przynależność deklaruje zdarzenie, nie proces
+
+Wyszła z pytania „po co w ogóle jest `process`" zadanego przy czytaniu kontraktu — czyli z czytelności, nie
+z awarii. Ale odpowiedź okazała się mocniejsza niż kosmetyczna.
+
+Było tak, że proces wymieniał swoje zdarzenia w `stages:`, więc **każda nazwa zdarzenia była w kontrakcie
+napisana dwa razy**: raz w `event`, raz w liście fazy. Jedenaście zdarzeń to dwadzieścia dwie wzmianki,
+dodanie zdarzenia to dwie edycje oddalone o sto linii, a czytając `event` nie wiedziałeś, gdzie ono siedzi.
+
+Teraz zdarzenie mówi o sobie samo:
+
+```elixir
+event :month_closed,
+  label: "Zamknięto miesiąc księgowy",
+  payload: %{company_id: :id, period: :period},
+  process: :accounting_month,
+  stage: :closing,
+  terminal: true
+
+process :accounting_month,
+  label: "Cykl miesięczny księgowy",
+  stages: [:verification, :opening, :collection, :matching, :closing],
+  instance: [:company_id, :period],
+  cadence: {1, :month}
+```
+
+Podział przebiega po pytaniu **„ilu tego jest"** — tej samej regule, która rozstrzygnęła `identity` kontra
+`instance`. Faza i terminalność są jedne na zdarzenie, więc idą na zdarzenie. Kadencja, termin i tożsamość
+przebiegu są jedne na proces. W `process` zostaje **porządek faz**, bo to jedyna rzecz, której zdarzenie nie
+może o sobie powiedzieć.
+
+**Jedna brama kompilacyjna przez to zniknęła i to jest wynik, nie regres.** „Zdarzenie należy do co najwyżej
+jednego procesu" było sprawdzeniem — przy pojedynczym kluczu `process:` stało się **niewyrażalne**. To jest
+warunek stopu z ADR §15 (*„stop if processes nest or one event belongs to two"*) załatwiony kształtem
+deklaracji zamiast checkiem. **Do poprawienia w rekordzie**, bo notatka z 5 sierpnia mówi jeszcze „błąd
+kompilacji".
+
+W zamian doszły trzy bramy pilnujące nowego kształtu: zdarzenie nie wskaże nieistniejącego procesu ani
+nieistniejącej fazy, a zdarzenie w procesie z fazami musi powiedzieć, w której jest — bo inaczej byłoby
+dziurą w wykrywaniu krawędzi wstecznych. `events:` zniknęło z `process` całkowicie.
+
 ## Dashboard — co wyszło, zanim cokolwiek narysowaliśmy
 
 Nakładka jest policzalna dwoma zapytaniami: węzły z `pns_events`, krawędzie z self-joina po `causation_id`.

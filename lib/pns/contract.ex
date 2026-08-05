@@ -9,8 +9,8 @@ defmodule PNS.Contract do
   Brama z ADR §18 jest tutaj: **reguła bez przykładu nie kompiluje się.**
   """
 
-  @event_keys [:label, :owner, :payload, :retain, :depends_on, :identity]
-  @process_keys [:label, :events, :stages, :terminal, :instance, :cadence, :deadline, :unverified]
+  @event_keys [:label, :owner, :payload, :retain, :depends_on, :identity, :process, :stage, :terminal]
+  @process_keys [:label, :stages, :instance, :cadence, :deadline, :unverified]
   @external_keys [:label, :expected_latency, :unavailable_looks_like]
   @rule_keys [:label, :function, :source]
   @example_keys [:rule, :given, :command, :then, :rejected_with]
@@ -136,7 +136,23 @@ defmodule PNS.Contract do
       # Konsekwencja jest też praktyczna: tożsamość faktu jest jedna, a
       # handlerów tego samego zdarzenia może być wiele. Trzymana na handlerze
       # rozjeżdżałaby się między nimi.
-      identity: opts |> Keyword.get(:identity) |> then(&(&1 && List.wrap(&1)))
+      identity: opts |> Keyword.get(:identity) |> then(&(&1 && List.wrap(&1))),
+      # **Gdzie to zdarzenie siedzi w procesie — na zdarzeniu, nie na procesie.**
+      #
+      # Pierwsza wersja miała odwrotnie: proces wymieniał swoje zdarzenia w
+      # `stages:`, więc każda nazwa zdarzenia była w kontrakcie napisana dwa
+      # razy, a dodanie zdarzenia wymagało dwóch edycji w miejscach oddalonych
+      # o sto linii. Reguła jest ta sama, co przy `identity` i `instance`:
+      # deklaracja idzie tam, gdzie jest jedna. Faza jest jedna na zdarzenie.
+      #
+      # Efekt uboczny jest lepszy niż sama czytelność: „zdarzenie należy do co
+      # najwyżej jednego procesu" przestaje być bramą kompilacyjną, a staje się
+      # rzeczą niewyrażalną. To był warunek stopu z ADR §15.
+      process: Keyword.get(opts, :process),
+      stage: Keyword.get(opts, :stage),
+      # `terminal: true` — na tym zdarzeniu proces się kończy. Też własność
+      # zdarzenia, a nie listy trzymanej gdzie indziej.
+      terminal: Keyword.get(opts, :terminal, false)
     }
   end
 
@@ -146,31 +162,26 @@ defmodule PNS.Contract do
 
     where = "process #{inspect(name)}"
 
-    # **Sekwencyjne są bramki, nie zdarzenia.**
-    #
-    # Pierwsza wersja miała płaską, uporządkowaną listę `events:` i na tej
-    # kolejności stało wykrywanie krawędzi wstecznych. Tylko że warsztat mówi
-    # wprost: "fazy nie są w pełni sekwencyjne … sekwencyjne są bramki" — KSeF
-    # ciągnie ciągle, meczowanie doszywa na bieżąco. Liniowa lista była naszym
-    # pomysłem podanym jako model klienta, a check stał na tym pomyśle.
-    #
-    # `stages:` deklaruje kolejność **między** fazami i nie twierdzi nic o
-    # kolejności wewnątrz fazy. `events:` zostaje jako skrót dla procesu bez
-    # bramek i znaczy dokładnie tyle: jedna faza, zero twierdzeń o kolejności.
-    stages =
-      case {Keyword.fetch(opts, :stages), Keyword.fetch(opts, :events)} do
-        {{:ok, stages}, :error} -> stages
-        {:error, {:ok, events}} -> [all: events]
-        {{:ok, _}, {:ok, _}} -> raise ArgumentError, "#{where}: `stages:` albo `events:`, nie oba"
-        {:error, :error} -> raise ArgumentError, "#{where}: brakuje `stages:` albo `events:`"
-      end
-
     %{
       name: name,
       label: fetch!(opts, :label, where),
-      stages: stages,
-      events: Enum.flat_map(stages, fn {_stage, events} -> events end),
-      terminal: Keyword.get(opts, :terminal, []),
+      # **Sekwencyjne są bramki, nie zdarzenia** — i to jest jedyna rzecz, którą
+      # `stages:` deklaruje: kolejność **między** fazami. O kolejności wewnątrz
+      # fazy kontrakt nie twierdzi nic.
+      #
+      # Warsztat mówi wprost: "fazy nie są w pełni sekwencyjne … sekwencyjne są
+      # bramki" — KSeF ciągnie ciągle, meczowanie doszywa na bieżąco. Pierwsza
+      # wersja miała płaską, uporządkowaną listę zdarzeń i na tej kolejności
+      # stało wykrywanie krawędzi wstecznych, czyli check egzekwował nasz pomysł
+      # podany jako model klienta.
+      #
+      # Które zdarzenie jest w której fazie, mówi samo zdarzenie. Tutaj zostaje
+      # wyłącznie porządek faz, bo to jest jedyna rzecz, której zdarzenie o
+      # sobie powiedzieć nie może.
+      #
+      # Brak `stages:` znaczy dokładnie tyle: jedna faza, zero twierdzeń o
+      # kolejności. Wtedy zdarzenia tego procesu nie podają `stage:`.
+      stages: Keyword.get(opts, :stages, []),
       # `instance` nazywa pola payloadu, które mówią, **do którego przebiegu**
       # należy zdarzenie. Jest wymagane, bo obie rzeczy, które czynią z tego
       # produkt, liczą się w obrębie przebiegu: assercja `trace` i nakładka
@@ -329,12 +340,19 @@ defmodule PNS.Contract do
 
       @doc """
       Proces, do którego należy zdarzenie — czyli to, z czego bierze się jego
-      tożsamość przebiegu. Zdarzenie w dwóch procesach nie kompiluje się, więc
-      odpowiedź jest jednoznaczna.
+      tożsamość przebiegu. Zdarzenie wskazuje **jeden** proces, więc odpowiedź
+      jest jednoznaczna z konstrukcji, a nie dzięki sprawdzeniu.
       """
       def process_of(event_name) do
-        Enum.find(processes(), &(event_name in &1.events ++ &1.terminal))
+        case Enum.find(events(), &(&1.name == event_name)) do
+          %{process: nil} -> nil
+          %{process: name} -> process(name)
+          nil -> nil
+        end
       end
+
+      @doc "Zdarzenia należące do procesu. Odwrotność `process_of/1`."
+      def events_of(process_name), do: Enum.filter(events(), &(&1.process == process_name))
 
       def traces, do: unquote(Macro.escape(traces))
       def externals, do: unquote(Macro.escape(externals))
@@ -383,9 +401,7 @@ defmodule PNS.Contract do
     orphan_examples == [] ||
       bail!(env, "przykłady wskazujące nieistniejącą regułę: #{inspect(orphan_examples)}")
 
-    for p <- processes, ev <- p.events ++ p.terminal, ev not in names do
-      bail!(env, "proces #{inspect(p.name)} wymienia zdarzenie #{inspect(ev)}, którego nie ma w kontrakcie")
-    end
+    validate_membership!(env, events, processes)
 
     for t <- traces, ev <- Enum.reject([t.from, t.eventually, t.or_else], &is_nil/1), ev not in names do
       bail!(env, "trace #{inspect(t.name)} wymienia zdarzenie #{inspect(ev)}, którego nie ma w kontrakcie")
@@ -416,52 +432,115 @@ defmodule PNS.Contract do
     :ok
   end
 
-  # Trzy bramy, wszystkie z jednego powodu: `instance_id` liczony w czasie
-  # emisji ma być jednoznaczny i odtwarzalny z samego logu.
+  # Przynależność zdarzenia do procesu i do fazy. Deklaruje ją samo zdarzenie,
+  # więc tutaj sprawdzamy tylko, czy wskazuje na coś, co istnieje, i czy nie
+  # zostawia procesu bez odpowiedzi na pytanie „w której to fazie".
+  defp validate_membership!(env, events, processes) do
+    by_process = Map.new(processes, &{&1.name, &1})
+
+    for e <- events do
+      cond do
+        is_nil(e.process) and not is_nil(e.stage) ->
+          bail!(
+            env,
+            "zdarzenie #{inspect(e.name)} podaje `stage: #{inspect(e.stage)}` bez `process:`. " <>
+              "Faza jest fazą jakiegoś procesu."
+          )
+
+        is_nil(e.process) and e.terminal ->
+          bail!(
+            env,
+            "zdarzenie #{inspect(e.name)} jest `terminal: true` bez `process:`. " <>
+              "Terminalne znaczy „tu kończy się proces”, więc trzeba powiedzieć który."
+          )
+
+        is_nil(e.process) ->
+          :ok
+
+        not Map.has_key?(by_process, e.process) ->
+          bail!(
+            env,
+            "zdarzenie #{inspect(e.name)} deklaruje `process: #{inspect(e.process)}`, " <>
+              "którego nie ma w kontrakcie"
+          )
+
+        true ->
+          validate_stage!(env, e, Map.fetch!(by_process, e.process))
+      end
+    end
+
+    :ok
+  end
+
+  defp validate_stage!(env, event, process) do
+    cond do
+      process.stages == [] and not is_nil(event.stage) ->
+        bail!(
+          env,
+          "zdarzenie #{inspect(event.name)} podaje `stage: #{inspect(event.stage)}`, ale proces " <>
+            "#{inspect(process.name)} nie deklaruje żadnych faz. Proces bez `stages:` to jedna " <>
+            "faza i zero twierdzeń o kolejności."
+        )
+
+      process.stages != [] and is_nil(event.stage) ->
+        bail!(
+          env,
+          "zdarzenie #{inspect(event.name)} należy do procesu #{inspect(process.name)}, który " <>
+            "deklaruje fazy #{inspect(process.stages)}, ale nie mówi, w której z nich jest. " <>
+            "Na kolejności faz stoi wykrywanie krawędzi wstecznych, więc zdarzenie bez fazy " <>
+            "byłoby dziurą w tym checku, a nie brakiem ozdobnika."
+        )
+
+      not is_nil(event.stage) and event.stage not in process.stages ->
+        bail!(
+          env,
+          "zdarzenie #{inspect(event.name)} podaje `stage: #{inspect(event.stage)}`, której proces " <>
+            "#{inspect(process.name)} nie deklaruje. Zadeklarowane fazy: #{inspect(process.stages)}"
+        )
+
+      true ->
+        :ok
+    end
+  end
+
+  # Dwie bramy wokół tożsamości przebiegu. Obie z jednej własności:
+  # `instance_id` liczony przy emisji ma być jednoznaczny i odtwarzalny z
+  # samego logu, a w logu jest na niego jedna kolumna.
+  #
+  # Trzeciej bramy tu już nie ma i to jest wynik przeniesienia `process:` na
+  # zdarzenie: „zdarzenie należy do co najwyżej jednego procesu" było
+  # sprawdzeniem, a stało się rzeczą **niewyrażalną**. To warunek stopu z
+  # ADR §15 („stop if processes nest or one event belongs to two") załatwiony
+  # kształtem deklaracji, a nie checkiem.
   defp validate_instances!(env, events, processes, traces) do
-    by_name = Map.new(events, &{&1.name, &1})
-    process_of = fn ev -> Enum.filter(processes, &(ev in &1.events ++ &1.terminal)) end
+    by_process = Map.new(processes, &{&1.name, &1})
+    process_of = fn ev -> Enum.find_value(events, &(&1.name == ev && &1.process)) end
 
     # 1. Każde zdarzenie procesu niesie pola instancji — i nie gubi ich po drodze.
-    for p <- processes, ev <- p.events ++ p.terminal, field <- p.instance do
-      event = Map.fetch!(by_name, ev)
-
-      Map.has_key?(event.payload, field) ||
+    for e <- events, p = e.process && Map.get(by_process, e.process), field <- p.instance do
+      Map.has_key?(e.payload, field) ||
         bail!(
           env,
           "proces #{inspect(p.name)} deklaruje `instance: #{inspect(p.instance)}`, ale zdarzenie " <>
-            "#{inspect(ev)} nie ma w payloadzie pola #{inspect(field)}. Bez niego nie da się " <>
+            "#{inspect(e.name)} nie ma w payloadzie pola #{inspect(field)}. Bez niego nie da się " <>
             "powiedzieć, do którego przebiegu to zdarzenie należy — a wtedy assercja `trace` " <>
             "dopasuje je do dowolnego innego przebiegu."
         )
 
-      Map.get(event.retain, field) == :drop &&
+      Map.get(e.retain, field) == :drop &&
         bail!(
           env,
-          "zdarzenie #{inspect(ev)}: pole #{inspect(field)} współtworzy tożsamość przebiegu " <>
+          "zdarzenie #{inspect(e.name)}: pole #{inspect(field)} współtworzy tożsamość przebiegu " <>
             "procesu #{inspect(p.name)} i jednocześnie ma `retain: :drop`. Tożsamość przebiegu " <>
             "jest liczona z payloadu po zastosowaniu `retain`, więc zniknęłaby razem z polem."
         )
     end
 
-    # 2. Zdarzenie należy do co najwyżej jednego procesu. To jest warunek stopu
-    # z ADR §15 („stop if processes nest or one event belongs to two") zrobiony
-    # mechanicznie: przy dwóch procesach zdarzenie ma dwie tożsamości przebiegu,
-    # a w logu jest na to jedna kolumna. Cicha wersja tego wybrałaby jedną z nich.
-    for e <- events, [_, _ | _] = many <- [process_of.(e.name)] do
-      bail!(
-        env,
-        "zdarzenie #{inspect(e.name)} należy do dwóch procesów: #{inspect(Enum.map(many, & &1.name))}. " <>
-          "Każdy z nich ma własną tożsamość przebiegu, więc nie ma jednej odpowiedzi na pytanie, " <>
-          "w którym przebiegu to zdarzenie zaszło (ADR §15, warunek stopu dla modelu procesu jako wiersza)."
-      )
-    end
-
-    # 3. Assercja liczy się w jednym przebiegu, więc nie może rozciągać się na
+    # 2. Assercja liczy się w jednym przebiegu, więc nie może rozciągać się na
     # dwa procesy — bo każdy z nich ma inną tożsamość przebiegu.
     for t <- traces do
       trace_events = Enum.reject([t.from, t.eventually, t.or_else], &is_nil/1)
-      homeless = Enum.filter(trace_events, &(process_of.(&1) == []))
+      homeless = Enum.filter(trace_events, &is_nil(process_of.(&1)))
 
       homeless == [] ||
         bail!(
@@ -470,7 +549,7 @@ defmodule PNS.Contract do
             "#{inspect(homeless)}. Nie ma przebiegu, w którym dałoby się tę assercję policzyć."
         )
 
-      case trace_events |> Enum.flat_map(process_of) |> Enum.map(& &1.name) |> Enum.uniq() do
+      case trace_events |> Enum.map(process_of) |> Enum.uniq() do
         [_one] ->
           :ok
 

@@ -26,8 +26,8 @@ defmodule PNS.UniversalityGateTest do
       # `population` było jedynym słowem, które ten test oblało, i ma tendencję
       # do powrotu. Nie ma go tu i to jest celowe.
       assert PNS.Contract.vocabulary() == %{
-               event: [:label, :owner, :payload, :retain, :depends_on, :identity],
-               process: [:label, :events, :stages, :terminal, :instance, :cadence, :deadline, :unverified],
+               event: [:label, :owner, :payload, :retain, :depends_on, :identity, :process, :stage, :terminal],
+               process: [:label, :stages, :instance, :cadence, :deadline, :unverified],
                external: [:label, :expected_latency, :unavailable_looks_like],
                rule: [:label, :function, :source],
                example: [:rule, :given, :command, :then, :rejected_with],

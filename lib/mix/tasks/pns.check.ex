@@ -45,7 +45,7 @@ defmodule Mix.Tasks.Pns.Check do
     for event <- PNS.Registry.declared_events(), reduce: findings do
       acc ->
         handlers = PNS.Registry.handlers_for(event.name)
-        terminal? = Enum.any?(event.contract.processes(), &(event.name in &1.terminal))
+        terminal? = event.terminal
 
         cond do
           handlers != [] ->
@@ -133,13 +133,14 @@ defmodule Mix.Tasks.Pns.Check do
   # są krawędzią wsteczną. Wersja licząca po pozycji dawała fałszywe alarmy tam,
   # gdzie warsztat wprost mówi o równoległości.
   defp check_backward_edges(findings) do
+    # Faza zdarzenia jest teraz na zdarzeniu, a proces trzyma tylko porządek
+    # faz — więc pozycję liczy się indeksem fazy w tym porządku.
     stage_of =
-      for contract <- PNS.Registry.contracts(),
-          process <- contract.processes(),
-          {{stage, events}, index} <- Enum.with_index(process.stages),
-          event <- events,
+      for event <- PNS.Registry.declared_events(),
+          process = event.process && event.contract.process(event.process),
+          index = Enum.find_index(process.stages, &(&1 == event.stage)),
           into: %{} do
-        {event, {process.name, index, stage}}
+        {event.name, {process.name, index, event.stage}}
       end
 
     PNS.Registry.handlers()

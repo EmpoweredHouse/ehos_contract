@@ -192,6 +192,13 @@ czego nie mówiła posortowana lista. Bez alertów, bez stanu na żywo, bez czeg
 **Zablokowane do rozstrzygnięcia:** notatki §9 mówią *„live, not a report … monitors eventually want alerts"*,
 co jest w napięciu z zawężeniem zakresu. Etapy 1–3 są od tego niezależne.
 
+## Dług wobec rekordu
+
+Gałąź `docs/pns-record-corrections-etap-1` w repo kontekstu czeka na przegląd i **jedna jej linia jest już
+nieaktualna**: notatka do ADR §15 mówi, że „jedno zdarzenie w dwóch procesach" jest teraz błędem
+kompilacji. Po przeniesieniu `process:` na zdarzenie (5 sierpnia) jest **niewyrażalne**, co jest mocniejsze.
+Do dopisania przy scalaniu tamtej gałęzi, razem z nowym kształtem `event`/`process` w notatkach §1.
+
 ## Kolejność
 
 1.1 i 1.2 zamknięte — brama uniwersalności przeszła, więc etapy 1.3+ nie stoją już na niesprawdzonym

@@ -49,23 +49,31 @@ defmodule UniversalityGate.TreatmentEpisode do
     # Zdarzenie wchodzące **bez komendy**: skierowanie przychodzi z zewnątrz,
     # nikt go u nas nie wywołał. Payload musi więc nieść tożsamość przebiegu
     # sam z siebie — nie ma komendy, z której dałoby się ją dobrać.
-    payload: %{episode_id: :id, patient_id: :id, referral_code: :id, received_at: :timestamp}
+    payload: %{episode_id: :id, patient_id: :id, referral_code: :id, received_at: :timestamp},
+    process: :treatment_episode,
+    stage: :qualification
 
   event :patient_identity_confirmed,
     label: "Potwierdzono tożsamość pacjenta",
     owner: UniversalityGate.Admissions,
-    payload: %{episode_id: :id, patient_id: :id, document_type: :enum}
+    payload: %{episode_id: :id, patient_id: :id, document_type: :enum},
+    process: :treatment_episode,
+    stage: :qualification
 
   event :payer_eligibility_checked,
     label: "Sprawdzono uprawnienie do świadczenia w rejestrze płatnika",
     owner: UniversalityGate.Admissions,
     depends_on: :payer_registry,
-    payload: %{episode_id: :id, checked_at: :timestamp}
+    payload: %{episode_id: :id, checked_at: :timestamp},
+    process: :treatment_episode,
+    stage: :qualification
 
   event :payer_eligibility_confirmed,
     label: "Uprawnienie do świadczenia potwierdzone",
     owner: UniversalityGate.Admissions,
-    payload: %{episode_id: :id, scope: :enum}
+    payload: %{episode_id: :id, scope: :enum},
+    process: :treatment_episode,
+    stage: :qualification
 
   event :payer_eligibility_denied,
     label: "Odmowa uprawnienia do świadczenia",
@@ -76,7 +84,10 @@ defmodule UniversalityGate.TreatmentEpisode do
     retain: %{reason: :hash},
     # Ta sama odmowa nie mnoży faktów, inna owszem — dokładnie ten kształt, co
     # `diff` przy rozjeździe rejestrowym.
-    identity: [:episode_id, :reason]
+    identity: [:episode_id, :reason],
+    process: :treatment_episode,
+    stage: :qualification,
+    terminal: true
 
   # --- plan ---
 
@@ -91,7 +102,9 @@ defmodule UniversalityGate.TreatmentEpisode do
     #
     # Typ `:id`, nie `:string`: identyfikator osoby, nie jej imię wpisane
     # ręcznie. Ta różnica decyduje, czy do logu trafiają dane osobowe.
-    payload: %{episode_id: :id, session_count: :integer, approved_by: :id}
+    payload: %{episode_id: :id, session_count: :integer, approved_by: :id},
+    process: :treatment_episode,
+    stage: :plan
 
   # --- realizacja ---
 
@@ -104,47 +117,42 @@ defmodule UniversalityGate.TreatmentEpisode do
     # dziesięć faktów w jednym epizodzie, a nie dziesięć epizodów ani jeden
     # fakt powtórzony. Bez tego rozdzielenia jedno z dwóch byłoby nie do
     # wyrażenia.
-    identity: [:episode_id, :session_no]
+    identity: [:episode_id, :session_no],
+    process: :treatment_episode,
+    stage: :treatment
 
   event :session_missed,
     label: "Pacjent nie stawił się na wizytę",
     owner: UniversalityGate.Sessions,
     payload: %{episode_id: :id, session_no: :integer, noted_at: :timestamp},
-    identity: [:episode_id, :session_no]
+    identity: [:episode_id, :session_no],
+    process: :treatment_episode,
+    stage: :treatment
 
   # --- zamknięcie ---
 
   event :episode_closed,
     label: "Zamknięto epizod leczenia",
     owner: UniversalityGate.Sessions,
-    payload: %{episode_id: :id, outcome: :enum}
+    payload: %{episode_id: :id, outcome: :enum},
+    process: :treatment_episode,
+    stage: :closing,
+    terminal: true
 
   event :episode_abandoned,
     label: "Przerwano epizod leczenia",
     owner: UniversalityGate.Sessions,
     payload: %{episode_id: :id, reason: :string},
-    retain: %{reason: :hash}
+    retain: %{reason: :hash},
+    process: :treatment_episode,
+    stage: :closing,
+    terminal: true
 
   # --- proces ---
 
   process :treatment_episode,
     label: "Epizod leczenia: od skierowania do zamknięcia",
-    stages: [
-      qualification: [
-        :referral_received,
-        :patient_identity_confirmed,
-        :payer_eligibility_checked,
-        :payer_eligibility_confirmed,
-        :payer_eligibility_denied
-      ],
-      plan: [:treatment_plan_approved],
-      treatment: [:session_completed, :session_missed],
-      closing: [:episode_closed, :episode_abandoned]
-    ],
-    # Odmowa płatnika kończy proces tak samo jak zamknięcie epizodu: skończył
-    # się, tylko nie tak, jak chcieliśmy. Ten sam kształt co zablokowanie
-    # miesiąca na rozjeździe.
-    terminal: [:episode_closed, :episode_abandoned, :payer_eligibility_denied],
+    stages: [:qualification, :plan, :treatment, :closing],
     # Jeden przebieg to jeden epizod. Jedno pole wystarcza, bo epizod jest
     # nadawany, a nie składany z firmy i okresu — i to jest różnica wobec
     # TaxVision, którą DSL obsłużył bez zmiany.

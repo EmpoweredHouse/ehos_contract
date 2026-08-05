@@ -170,7 +170,7 @@ defmodule PNS.CompileGatesTest do
 
           event :a, label: "A", payload: %{id: :id}
 
-          process :p, label: "P", events: [:a]
+          process :p, label: "P"
         end
         """)
       end
@@ -184,10 +184,10 @@ defmodule PNS.CompileGatesTest do
         defmodule Reject.EventWithoutInstanceField do
           use PNS.Contract
 
-          event :a, label: "A", payload: %{sprawa_id: :id}
-          event :b, label: "B", payload: %{cos_innego: :id}
+          event :a, label: "A", payload: %{sprawa_id: :id}, process: :p
+          event :b, label: "B", payload: %{cos_innego: :id}, process: :p
 
-          process :p, label: "P", events: [:a, :b], instance: [:sprawa_id]
+          process :p, label: "P", instance: [:sprawa_id]
         end
         """,
         "nie ma w payloadzie pola :sprawa_id"
@@ -202,30 +202,79 @@ defmodule PNS.CompileGatesTest do
         defmodule Reject.InstanceOnDroppedField do
           use PNS.Contract
 
-          event :a, label: "A", payload: %{sprawa_id: :id}, retain: %{sprawa_id: :drop}
+          event :a, label: "A", payload: %{sprawa_id: :id}, retain: %{sprawa_id: :drop}, process: :p
 
-          process :p, label: "P", events: [:a], instance: [:sprawa_id]
+          process :p, label: "P", instance: [:sprawa_id]
         end
         """,
         "współtworzy tożsamość przebiegu"
       )
     end
 
-    test "zdarzenie należące do dwóch procesów nie kompiluje się (ADR §15)" do
-      # Dwa procesy to dwie tożsamości przebiegu, a w logu jest na to jedna
-      # kolumna. Cicha wersja tego wybrałaby jedną z nich.
+    # Brama „zdarzenie w dwóch procesach" **zniknęła i to jest wynik, nie regres**.
+    # Odkąd `process:` jest pojedynczym kluczem na zdarzeniu, dwa procesy na
+    # jednym zdarzeniu przestały być czymś, co da się napisać. Warunek stopu z
+    # ADR §15 jest teraz załatwiony kształtem deklaracji, a nie sprawdzeniem —
+    # a rzeczy niewyrażalnej nie da się przypiąć testem.
+
+    test "zdarzenie wskazujące nieistniejący proces nie kompiluje się" do
       refute_compiles(
         """
-        defmodule Reject.EventInTwoProcesses do
+        defmodule Reject.EventWithUnknownProcess do
           use PNS.Contract
 
-          event :a, label: "A", payload: %{sprawa_id: :id}
+          event :a, label: "A", payload: %{sprawa_id: :id}, process: :nie_ma_mnie
 
-          process :p1, label: "P1", events: [:a], instance: [:sprawa_id]
-          process :p2, label: "P2", events: [:a], instance: [:sprawa_id]
+          process :p, label: "P", instance: [:sprawa_id]
         end
         """,
-        "należy do dwóch procesów"
+        "którego nie ma w kontrakcie"
+      )
+    end
+
+    test "zdarzenie w procesie z fazami, ale bez `stage:`, nie kompiluje się" do
+      # Na kolejności faz stoi wykrywanie krawędzi wstecznych, więc zdarzenie
+      # bez fazy byłoby dziurą w checku, a nie brakiem ozdobnika.
+      refute_compiles(
+        """
+        defmodule Reject.EventWithoutStage do
+          use PNS.Contract
+
+          event :a, label: "A", payload: %{sprawa_id: :id}, process: :p, stage: :pierwsza
+          event :b, label: "B", payload: %{sprawa_id: :id}, process: :p
+
+          process :p, label: "P", stages: [:pierwsza, :druga], instance: [:sprawa_id]
+        end
+        """,
+        "nie mówi, w której z nich jest"
+      )
+    end
+
+    test "zdarzenie w fazie, której proces nie deklaruje, nie kompiluje się" do
+      refute_compiles(
+        """
+        defmodule Reject.EventInUnknownStage do
+          use PNS.Contract
+
+          event :a, label: "A", payload: %{sprawa_id: :id}, process: :p, stage: :wymyslona
+
+          process :p, label: "P", stages: [:pierwsza, :druga], instance: [:sprawa_id]
+        end
+        """,
+        "której proces"
+      )
+    end
+
+    test "`stage:` bez `process:` nie kompiluje się" do
+      refute_compiles(
+        """
+        defmodule Reject.StageWithoutProcess do
+          use PNS.Contract
+
+          event :a, label: "A", payload: %{id: :id}, stage: :gdzies
+        end
+        """,
+        "bez `process:`"
       )
     end
 
@@ -237,11 +286,11 @@ defmodule PNS.CompileGatesTest do
         defmodule Reject.TraceAcrossProcesses do
           use PNS.Contract
 
-          event :a, label: "A", payload: %{sprawa_id: :id}
-          event :b, label: "B", payload: %{przesylka_id: :id}
+          event :a, label: "A", payload: %{sprawa_id: :id}, process: :p1
+          event :b, label: "B", payload: %{przesylka_id: :id}, process: :p2
 
-          process :p1, label: "P1", events: [:a], instance: [:sprawa_id]
-          process :p2, label: "P2", events: [:b], instance: [:przesylka_id]
+          process :p1, label: "P1", instance: [:sprawa_id]
+          process :p2, label: "P2", instance: [:przesylka_id]
 
           trace :przez_dwa_procesy do
             from :a
@@ -253,15 +302,15 @@ defmodule PNS.CompileGatesTest do
       )
     end
 
-    test "proces z `stages:` i `events:` naraz nie przechodzi" do
-      assert_raise ArgumentError, ~r/`stages:` albo `events:`, nie oba/, fn ->
+    test "proces nie przyjmuje już `events:` — zdarzenia deklarują przynależność same" do
+      assert_raise ArgumentError, ~r/nieznane klucze \[:events\]/, fn ->
         Code.compile_string("""
-        defmodule Reject.ProcessWithBoth do
+        defmodule Reject.ProcessListingEvents do
           use PNS.Contract
 
           event :a, label: "A", payload: %{id: :id}
 
-          process :p, label: "P", events: [:a], stages: [x: [:a]]
+          process :p, label: "P", events: [:a], instance: [:id]
         end
         """)
       end

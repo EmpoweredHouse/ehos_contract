@@ -24,23 +24,31 @@ defmodule Taxvision.Contracts.AccountingMonth do
     # `causation` i przez granicę joba. Pole w payloadzie powielałoby tę samą
     # prawdę w drugim miejscu, a dwa źródła prawdy o jednym fakcie rozjeżdżają
     # się dokładnie wtedy, kiedy są potrzebne do audytu.
-    payload: %{company_id: :id, period: :period}
+    payload: %{company_id: :id, period: :period},
+    process: :accounting_month,
+    stage: :verification
 
   event :registry_status_checked,
     label: "Sprawdzono status w CEIDG/KRS, białym rejestrze VAT i VIES",
     owner: Taxvision.RegistryCheck,
     depends_on: :registries,
-    payload: %{company_id: :id, period: :period, checked_at: :timestamp}
+    payload: %{company_id: :id, period: :period, checked_at: :timestamp},
+    process: :accounting_month,
+    stage: :verification
 
   event :registry_check_logged,
     label: "Zapisano datę ostatniego sprawdzenia rejestrów",
     owner: Taxvision.RegistryCheck,
-    payload: %{company_id: :id, period: :period, checked_at: :timestamp}
+    payload: %{company_id: :id, period: :period, checked_at: :timestamp},
+    process: :accounting_month,
+    stage: :verification
 
   event :registry_data_consistent,
     label: "Dane firmy zgadzają się z rejestrami",
     owner: Taxvision.RegistryCheck,
-    payload: %{company_id: :id, period: :period}
+    payload: %{company_id: :id, period: :period},
+    process: :accounting_month,
+    stage: :verification
 
   event :registry_discrepancy_detected,
     label: "Dane firmy nie zgadzają się z rejestrami",
@@ -58,22 +66,31 @@ defmodule Taxvision.Contracts.AccountingMonth do
     # `diff` jest hashowany przez `retain`, i to jest tu zaletą: klucz jest
     # deterministyczny, więc idempotencja działa, a jednocześnie nie zawiera
     # danych firmy zestawionych z rejestrami.
-    identity: [:company_id, :period, :diff]
+    identity: [:company_id, :period, :diff],
+    process: :accounting_month,
+    stage: :verification
 
   event :monthly_tasks_generated,
     label: "Utworzono taski z szablonu na nowy miesiąc",
     owner: Taxvision.Tasks,
-    payload: %{company_id: :id, period: :period, task_count: :integer}
+    payload: %{company_id: :id, period: :period, task_count: :integer},
+    process: :accounting_month,
+    stage: :opening
 
   event :accounting_month_opened,
     label: "Otwarto miesiąc księgowy",
     owner: Taxvision.AccountingMonth,
-    payload: %{company_id: :id, period: :period}
+    payload: %{company_id: :id, period: :period},
+    process: :accounting_month,
+    stage: :opening
 
   event :discrepancy_notification_sent,
     label: "Wysłano powiadomienie o rozjeździe do księgowej i klienta",
     owner: Taxvision.Notifications,
-    payload: %{company_id: :id, period: :period, recipients: :integer}
+    payload: %{company_id: :id, period: :period, recipients: :integer},
+    process: :accounting_month,
+    stage: :verification,
+    terminal: true
 
   # --- fazy 3.2-3.4: zadeklarowane, celowo niezaimplementowane ---
   #
@@ -85,7 +102,9 @@ defmodule Taxvision.Contracts.AccountingMonth do
   event :bank_statement_received,
     label: "Otrzymano wyciąg bankowy (MT940/CSV; PDF nie wchodzi)",
     owner: Taxvision.Matching,
-    payload: %{company_id: :id, period: :period, format: :enum}
+    payload: %{company_id: :id, period: :period, format: :enum},
+    process: :accounting_month,
+    stage: :collection
 
   event :turnover_matched_with_invoice,
     label: "Sparowano obrót z fakturą",
@@ -94,12 +113,17 @@ defmodule Taxvision.Contracts.AccountingMonth do
     # niego sparowany obrót nie mówi, do którego miesiąca należy, więc
     # meczowanie z lipca liczyłoby się jako postęp w przebiegu sierpniowym.
     # To jedyne zdarzenie w tym kontrakcie, które bramy nie przeszło.
-    payload: %{company_id: :id, period: :period, turnover_id: :id, invoice_id: :id}
+    payload: %{company_id: :id, period: :period, turnover_id: :id, invoice_id: :id},
+    process: :accounting_month,
+    stage: :matching
 
   event :month_closed,
     label: "Zamknięto miesiąc księgowy",
     owner: Taxvision.AccountingMonth,
-    payload: %{company_id: :id, period: :period}
+    payload: %{company_id: :id, period: :period},
+    process: :accounting_month,
+    stage: :closing,
+    terminal: true
 
   # --- proces ---
 
@@ -114,31 +138,19 @@ defmodule Taxvision.Contracts.AccountingMonth do
   # Dlatego kolejność jest zadeklarowana między fazami, a wewnątrz fazy nie ma
   # jej wcale. Na tym stoi wykrywanie krawędzi wstecznych, więc to nie jest
   # kosmetyka: check może być tylko tak prawdziwy jak model, na którym stoi.
+  #
+  # **Proces nie wymienia swoich zdarzeń** — każde zdarzenie samo mówi, do
+  # którego procesu i do której fazy należy. Poprzednia wersja miała tu listę
+  # jedenastu nazw, czyli każdą nazwę zdarzenia w kontrakcie napisaną dwa razy.
   process :accounting_month,
     label: "Cykl miesięczny księgowy",
     # Nazwy faz są **identyfikatorami, nie etykietami** — idą do `pns.check`,
     # do grafu i do klucza wersji kontraktu, więc są po angielsku jak reszta
     # kodu. Po polsku jest to, co czyta klient: `label` i opisy przykładów.
-    stages: [
-      verification: [
-        :data_completeness_confirmed,
-        :registry_status_checked,
-        :registry_check_logged,
-        :registry_data_consistent,
-        :registry_discrepancy_detected,
-        :discrepancy_notification_sent
-      ],
-      opening: [
-        :monthly_tasks_generated,
-        :accounting_month_opened
-      ],
-      collection: [:bank_statement_received],
-      matching: [:turnover_matched_with_invoice],
-      closing: [:month_closed]
-    ],
-    # Zablokowanie na rozjeździe jest stanem końcowym tak samo jak zamknięcie
-    # miesiąca: proces się skończył, tylko nie tak, jak chcieliśmy.
-    terminal: [:month_closed, :discrepancy_notification_sent],
+    #
+    # Zostaje tu wyłącznie **porządek** faz, bo to jedyna rzecz, której
+    # zdarzenie nie może powiedzieć o sobie samo.
+    stages: [:verification, :opening, :collection, :matching, :closing],
     # Jeden przebieg to **jedna firma w jednym miesiącu**. To ten sam klucz, po
     # którym warsztat mówi o rozliczeniu ("rozliczany jest miesiąc w tył"), i
     # to jest granica, w której liczy się assercja: otwarcie miesiąca dla c-2

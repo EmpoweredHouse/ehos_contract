@@ -41,7 +41,7 @@ defmodule PNS.Graph do
           depends_on: event.depends_on,
           process: process && process.name,
           cadence: process && process.cadence,
-          terminal?: terminal?(event)
+          terminal?: event.terminal
         }
       end
 
@@ -398,10 +398,6 @@ defmodule PNS.Graph do
     do: "#{n} przebiegi"
 
   defp przebiegi(n), do: "#{n} przebiegów"
-
-  defp terminal?(event) do
-    Enum.any?(event.contract.processes(), &(event.name in &1.terminal))
-  end
 
   defp maybe_since(query, nil), do: query
   defp maybe_since(query, since), do: where(query, [event: e], e.occurred_at >= ^since)
