@@ -119,25 +119,34 @@ kompilował się i produkował bezsens — nic nie mogło go spełnić, więc ka
 naruszony po upływie okna. Schema wymusiła nazwanie, co jest wymagane, i wtedy stało się widać, że
 wymaganie nie było egzekwowane.
 
-## Dług: język kodu w `lib/pns/`
+## Język kodu — ✅ spłacone 5 sierpnia
 
-Reguła poprawiona 5 sierpnia — **kod po angielsku, bez wyjątków w `lib/pns/`**, bo to kandydat na pakiet na
-hex. Poprzednia wersja mówiła „moduledoki i komentarze po polsku" i to zdążyło się rozlać.
+**Cały kod jest po angielsku.** 54 pliki, jeden commit, bo inaczej się nie dało: bramy kompilacyjne są
+przypięte testami asertującymi na fragmenty własnych komunikatów, więc zmiana komunikatu bez testu wywala
+bramę, a zmiana testu bez komunikatu nie pinuje niczego.
 
-Sprzątanie wstecz jest **osobnym zadaniem i nie jest kosmetyką**, bo jest sprzężone z testami. Zakres,
-policzony:
+Granicę wyznacza **kto czyta string**, nie katalog:
 
-| Co | Ile |
-| --- | --- |
-| Pliki w `lib/pns/` i `lib/mix/` z polskimi moduledokami, komentarzami albo komunikatami | 14 |
-| Polskie nazwy w kodzie pakietu (`przebiegi/1`, zmienna `krawedzie`) | 2 |
-| Assercje bram kompilacyjnych przypięte do **polskich fragmentów komunikatów** | ~27 w 21 testach |
+- Po angielsku wszystko, co czyta programista albo kompilator — `lib/pns/`, drzewo klienta, zadania mixa,
+  fikstury i testy. Fikstury, bo jadą z pakietem; testy, bo biblioteka z komunikatami bram w jednym języku
+  jest biblioteką dla jednego kraju.
+- Po polsku zostają cztery rzeczy, wszystkie **treść, nie kod**: `label`, `source`, opisy `example` i
+  `unavailable_looks_like` w kontrakcie; raport dla księgowej; nazwy tasków i temat powiadomienia.
+  Dokumentacja repo też zostaje — nie jedzie z pakietem.
 
-Ostatni wiersz jest powodem, dla którego to nie jest szukaj-i-zamień: zmiana komunikatu `CompileError`
-wywala test, który go pinuje. Do zrobienia jednym przebiegiem, z testami w tym samym commicie.
+Dwie rzeczy wyszły przy okazji i są warte więcej niż samo sprzątanie:
 
-Przy okazji: **`@doc` i `@spec` na publicznych funkcjach `lib/pns/`** — dziś brakuje ich niemal wszędzie,
-więc pakiet nie ma dokumentacji ani kontraktu typów, a `dialyzer` nie ma czego sprawdzać.
+- **Polska odmiana liczebnika w grafie zniknęła w całości.** Istniała, żeby nie wypisać „2 przebiegów" na
+  diagramie — trzy klauzule arytmetyki na `rem(n, 100)`. Przy angielskim wyjściu silnika zwija się do
+  `1 run` / `n runs`. Cała kategoria problemu „gramatyka w bibliotece" nie została rozwiązana, tylko
+  **usunięta**, i to jest lepszy argument za regułą niż sama reguła.
+- **Fikstura bramy uniwersalności jest teraz po angielsku, a kontrakt TaxVision obok niej po polsku** — i to
+  nie jest niespójność. Reguła koduje pytanie „czy człowiek czyta ten string jako zdanie w swoim języku".
+  Wymyślony epizod leczenia nie ma process ownera ani klienta. Kontrakt TaxVision ma obu.
+
+**`@doc` i `@spec` na wszystkich publicznych funkcjach `lib/pns/`** — zrobione w tym samym commicie, razem z
+`@type` dla kształtów opisanych wcześniej tylko prozą (`PNS.Trace.verdict`, `PNS.Registry.handler`,
+`PNS.Duration.t`, `PNS.Contract.declaration`).
 
 ## Dryf sprawdzony przed 1.3, 5 sierpnia
 
@@ -154,9 +163,10 @@ Dryfowały mechanizmy i krawędzie silnika** — trzy znaleziska, wszystkie napr
 - **Raport ścieżek pomijał proces bez handlerów w całości**, czyli cały kontrakt bramy uniwersalności był
   nieobecny — a nieobecność czyta się jako „nie ma o czym mówić". Teraz `basis: :no_paths`.
 
-Zostało zapisane, nie naprawione: **runtime pakietu mówi po polsku** (`to_text`, etykiety mermaida,
-komunikaty błędów kompilacji). To inna oś uniwersalności niż DSL-owa — bez znaczenia dla tego pilota, realny
-problem dla paczki na hex. Do etapu 3, razem z wydzieleniem `packages/pns_core`.
+Znalezione tutaj i **naprawione tego samego dnia**: runtime pakietu mówił po polsku (`to_text`, etykiety
+mermaida, komunikaty błędów kompilacji). To inna oś uniwersalności niż DSL-owa — bez znaczenia dla tego
+pilota, blokująca dla paczki na hex. Patrz „Język kodu" niżej; do etapu 3 zostaje samo wydzielenie
+`packages/pns_core`.
 
 **1.3 Kształty procesu, zasymulowane.** Cel: instancja żyjąca tygodniami, zdarzenie tego samego typu wiele
 razy w jednej instancji, krok który się cofa, zdarzenie wchodzące bez komendy, dwa moduły potrzebujące tych
@@ -514,9 +524,11 @@ Gałąź `backup-polskie-opisy` **usunięta 5 sierpnia** po sprawdzeniu, że wsz
 
 **Etap 1 zamknięty w całości.** 1.1–1.7. Brama uniwersalności przeszła, `trace` przestał być dekoracją, a różnica
 declared vs observed okazała się sygnałem — 50 przebiegów daje jedną linię raportu, a wszystkie pięć
-kształtów procesu jest obsłużonych. **Dalej: etap 2** — obietnice kontraktu, które dziś są dekoracją. Otwarte z etapu 1: **1.5b** (werdykt
-`:suspended`, czeka na log niedostępności zależności) i **sprzątanie języka w `lib/pns/`** (osobne zadanie,
-patrz wyżej). Rekord rozliczony w całości — dwa commity na `docs/pns-record-corrections-etap-1`.
+kształtów procesu jest obsłużonych. **Dalej: etap 2** — obietnice kontraktu, które dziś są dekoracją.
+
+Z etapu 1 zostaje otwarte **jedno**: **1.5b**, werdykt `:suspended`, czekający na log niedostępności
+zależności. Język kodu spłacony 5 sierpnia (`a0ec986`), rekord rozliczony w całości — dwa commity na
+`docs/pns-record-corrections-etap-1`.
 
 Zamknięte 5 sierpnia bez zmiany w DSL: **`label` dla `trace` nie wchodzi** — powód przy 1.7. Do process
 ownera zostaje jedna rzecz z etapu 1, węższa niż się wydawała: **potwierdzenie, że `within` obowiązuje także
