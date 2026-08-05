@@ -49,8 +49,14 @@ przełącznika granice są dokumentacją. Postgres słucha na **5433**.
   handler, nie bibliotekę.
 - **Nazwy zdarzeń to literały.** Publikacja dynamiczna jest nielegalna, bo od tego zależy, czy graf statyczny
   jest faktem, czy heurystyką.
-- **Etykiety po polsku**, bo to język klienta. Przy pisaniu do pliku pamiętaj o `encoding: :unicode` —
-  Erlang trzyma stdout w latin1, kiedy wyjście nie jest terminalem, i psuje każdy polski znak.
+- **Identyfikatory po angielsku, treść dla klienta po polsku — granica idzie po tym, kto to czyta.**
+  Po angielsku jest wszystko, co jest nazwą w kodzie: zdarzenia, procesy, **nazwy faz w `stages:`**,
+  `trace`, `rule`, `external`, moduły, pola payloadu. Po polsku jest to, co klient czyta zdaniami:
+  `label`, opisy `example`, `source`, moduledoki i komentarze. Nazwy faz przeciekły raz na polski,
+  bo reguła mówiła tylko o etykietach — a faza jest **identyfikatorem**: idzie do `pns.check`, do grafu
+  i do hasha `version/0`.
+- Przy pisaniu do pliku pamiętaj o `encoding: :unicode` — Erlang trzyma stdout w latin1, kiedy wyjście
+  nie jest terminalem, i psuje każdy polski znak.
 - **Nazwy zdarzeń pochodzą z warsztatu**, nie z wyobraźni. Źródło:
   `~/Projects/ai/taxvision-process-native/workshop_output/02-event-storming.md`.
 

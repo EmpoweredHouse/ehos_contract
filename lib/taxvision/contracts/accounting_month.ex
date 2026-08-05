@@ -111,8 +111,11 @@ defmodule Taxvision.Contracts.AccountingMonth do
   # kosmetyka: check może być tylko tak prawdziwy jak model, na którym stoi.
   process :accounting_month,
     label: "Cykl miesięczny księgowy",
+    # Nazwy faz są **identyfikatorami, nie etykietami** — idą do `pns.check`,
+    # do grafu i do klucza wersji kontraktu, więc są po angielsku jak reszta
+    # kodu. Po polsku jest to, co czyta klient: `label` i opisy przykładów.
     stages: [
-      otwarcie: [
+      verification: [
         :data_completeness_confirmed,
         :registry_status_checked,
         :registry_check_logged,
@@ -120,13 +123,13 @@ defmodule Taxvision.Contracts.AccountingMonth do
         :registry_discrepancy_detected,
         :discrepancy_notification_sent
       ],
-      taski: [
+      opening: [
         :monthly_tasks_generated,
         :accounting_month_opened
       ],
-      gromadzenie: [:bank_statement_received],
-      meczowanie: [:turnover_matched_with_invoice],
-      wynik: [:month_closed]
+      collection: [:bank_statement_received],
+      matching: [:turnover_matched_with_invoice],
+      closing: [:month_closed]
     ],
     # Zablokowanie na rozjeździe jest stanem końcowym tak samo jak zamknięcie
     # miesiąca: proces się skończył, tylko nie tak, jak chcieliśmy.

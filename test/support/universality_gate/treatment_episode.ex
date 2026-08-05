@@ -122,7 +122,7 @@ defmodule UniversalityGate.TreatmentEpisode do
   process :treatment_episode,
     label: "Epizod leczenia: od skierowania do zamknięcia",
     stages: [
-      kwalifikacja: [
+      qualification: [
         :referral_received,
         :patient_identity_confirmed,
         :payer_eligibility_checked,
@@ -130,8 +130,8 @@ defmodule UniversalityGate.TreatmentEpisode do
         :payer_eligibility_denied
       ],
       plan: [:treatment_plan_approved],
-      realizacja: [:session_completed, :session_missed],
-      zamkniecie: [:episode_closed, :episode_abandoned]
+      treatment: [:session_completed, :session_missed],
+      closing: [:episode_closed, :episode_abandoned]
     ],
     # Odmowa płatnika kończy proces tak samo jak zamknięcie epizodu: skończył
     # się, tylko nie tak, jak chcieliśmy. Ten sam kształt co zablokowanie
