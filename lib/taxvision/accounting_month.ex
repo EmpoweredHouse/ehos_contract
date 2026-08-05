@@ -9,7 +9,7 @@ defmodule Taxvision.AccountingMonth do
   """
 
   use Boundary,
-    deps: [PNS, Taxvision.Repo, Taxvision.Contracts],
+    deps: [PNS, Taxvision.Repo, Taxvision.Contracts, Taxvision.Periods],
     exports: [Month]
 end
 
@@ -23,6 +23,10 @@ defmodule Taxvision.AccountingMonth.Month do
     field :company_id, :string
     field :period, :string
     field :status, :string
+    # Ta sama odpowiedź co `Taxvision.Tasks.Task.due_on`, z tego samego źródła,
+    # w drugiej kopii. To jest kształt „dwa moduły potrzebujące tych samych
+    # danych" — i cena zakazu joinów: drugie zapytanie o ten sam okres.
+    field :closes_on, :date
     field :opened_at, :utc_datetime_usec
   end
 end
@@ -43,10 +47,13 @@ defmodule Taxvision.AccountingMonth.OnMonthlyTasksGenerated do
 
   @impl PNS.Handler
   def handle(%{company_id: company_id, period: period}, _ctx) do
+    okres = Taxvision.Periods.fetch!(period)
+
     Taxvision.Repo.insert!(%Month{
       company_id: company_id,
       period: period,
       status: "open",
+      closes_on: okres.ends_on,
       opened_at: DateTime.utc_now()
     })
 

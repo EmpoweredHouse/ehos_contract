@@ -9,7 +9,7 @@ defmodule Taxvision.Tasks do
   """
 
   use Boundary,
-    deps: [PNS, Taxvision.Repo, Taxvision.Contracts],
+    deps: [PNS, Taxvision.Repo, Taxvision.Contracts, Taxvision.Periods],
     exports: [Task]
 
   @doc "Szablon zadań dla formy prawnej. Zmiany obowiązują od kolejnego miesiąca (P3)."
@@ -30,6 +30,9 @@ defmodule Taxvision.Tasks.Task do
     field :period, :string
     field :name, :string
     field :status, :string, default: "open"
+    # Kopia z `Taxvision.Periods`, nie join do niego. Duplikacja strategiczna:
+    # nazwane źródło prawdy jest jedno, kopii może być wiele.
+    field :due_on, :date
     field :inserted_at, :utc_datetime_usec
   end
 end
@@ -57,6 +60,10 @@ defmodule Taxvision.Tasks.OnRegistryDataConsistent do
   def handle(%{company_id: company_id, period: period}, _ctx) do
     names = Taxvision.Tasks.template("JDG")
     now = DateTime.utc_now()
+    # **Wywołanie funkcji, nie join.** Zakaz joinów międzymodułowych kosztuje
+    # dokładnie to jedno zapytanie i tyle jest w nim prawdy: nie da się go
+    # obejść, bo `Taxvision.Periods` nie eksportuje swojego schematu.
+    okres = Taxvision.Periods.fetch!(period)
 
     entries =
       for name <- names do
@@ -66,6 +73,7 @@ defmodule Taxvision.Tasks.OnRegistryDataConsistent do
           period: period,
           name: name,
           status: "open",
+          due_on: okres.ends_on,
           inserted_at: now
         }
       end

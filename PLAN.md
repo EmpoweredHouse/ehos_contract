@@ -6,7 +6,7 @@ tylko tu jest aktualizowany stan.
 
 ## Stan na 5 sierpnia
 
-102 testy, `mix check` przechodzi. Ostrzeżenia są **trzy** i wszystkie celowe: `deadline` TaxVision bez
+107 testów, `mix check` przechodzi. Ostrzeżenia są **trzy** i wszystkie celowe: `deadline` TaxVision bez
 potwierdzenia process ownera, `deadline` z wymyślonej fikstury bramy uniwersalności, oraz **krawędź wsteczna
 w stanowisku badawczym kształtów — która jest kryterium odbioru 1.3, więc jej brak byłby regresem.**
 Samo `mix pns.check` w środowisku dev pokazuje jedno — fikstury żyją w `test/support/`.
@@ -96,7 +96,27 @@ Co brama pokazała, w kolejności ważności:
   fikstury nie widzi i pokazuje jedno ostrzeżenie. **Do rozstrzygnięcia:** czy raport dowodowy ma umieć
   wykluczyć przestrzeń nazw z konfiguracji silnika. Nie z DSL — to byłoby nowe słowo.
 
-### Dryf sprawdzony przed 1.3, 5 sierpnia
+### Dług: język kodu w `lib/pns/`
+
+Reguła poprawiona 5 sierpnia — **kod po angielsku, bez wyjątków w `lib/pns/`**, bo to kandydat na pakiet na
+hex. Poprzednia wersja mówiła „moduledoki i komentarze po polsku" i to zdążyło się rozlać.
+
+Sprzątanie wstecz jest **osobnym zadaniem i nie jest kosmetyką**, bo jest sprzężone z testami. Zakres,
+policzony:
+
+| Co | Ile |
+| --- | --- |
+| Pliki w `lib/pns/` i `lib/mix/` z polskimi moduledokami, komentarzami albo komunikatami | 14 |
+| Polskie nazwy w kodzie pakietu (`przebiegi/1`, zmienna `krawedzie`) | 2 |
+| Assercje bram kompilacyjnych przypięte do **polskich fragmentów komunikatów** | ~27 w 21 testach |
+
+Ostatni wiersz jest powodem, dla którego to nie jest szukaj-i-zamień: zmiana komunikatu `CompileError`
+wywala test, który go pinuje. Do zrobienia jednym przebiegiem, z testami w tym samym commicie.
+
+Przy okazji: **`@doc` i `@spec` na publicznych funkcjach `lib/pns/`** — dziś brakuje ich niemal wszędzie,
+więc pakiet nie ma dokumentacji ani kontraktu typów, a `dialyzer` nie ma czego sprawdzać.
+
+## Dryf sprawdzony przed 1.3, 5 sierpnia
 
 Pytanie brzmiało: czy kontrakt nie dryfuje w stronę kontraktu pod TaxVision. **Słownik nie dryfuje.
 Dryfowały mechanizmy i krawędzie silnika** — trzy znaleziska, wszystkie naprawione:
@@ -152,11 +172,26 @@ Wyszło przy okazji:
 - **Aktor jako `nil` nie odróżnia „import" od „nie wiemy kto".** Sensowna wersja postulatu „każde zdarzenie
   ma aktora" to nie „wymagany", a **„nigdy cisza"** — jawny aktor systemowy. Do rozstrzygnięcia.
 
-**1.3b Dwa moduły potrzebujące tych samych danych.** Ostatni kształt wymagający realnego ciśnienia
-domenowego: na fikstórze zduplikowałbym dane ze „nazwanym źródłem prawdy" i ogłosił sukces, nie dowiadując
-się niczego. Nośnikiem jest **tabela `periods`** (rozstrzygnięte wyżej): `period` żyje w zdarzeniach pięciu
-modułów TaxVision, a joiny międzymodułowe są zabronione, więc doktryna strategicznej duplikacji dostaje
-pierwszy prawdziwy test. Tu też rozstrzyga się wątpliwość „czy zakaz joinów jest znośny".
+**1.3b Dwa moduły potrzebujące tych samych danych. ✅ zrobione 5 sierpnia.** Nośnikiem jest tabela
+`taxvision_periods`: okres przestaje być stringiem i staje się wierszem z zakresem dat.
+
+**Zakaz joinów międzymodułowych jest znośny, i jego cena jest zmierzona, nie opowiedziana.** `Taxvision.Tasks`
+ustawia `due_on`, `Taxvision.AccountingMonth` ustawia `closes_on`, oba z tego samego okresu — i **każdy płaci
+własnym zapytaniem**. Test liczy je telemetrią Ecto: dokładnie dwa trafienia w `taxvision_periods` na jedno
+otwarcie miesiąca. Notatki §14 nazywają N+1 ryzykiem, nie niespodzianką; teraz jest liczbą.
+
+Mechanizm, który to trzyma, jest mocniejszy niż zakaz: **`Taxvision.Periods` ma `exports: []`**, więc schemat
+`Period` jest nieosiągalny z zewnątrz i join do niego jest **niewyrażalny**, a nie zabroniony. Ten sam ruch,
+który zamienił „zdarzenie w dwóch procesach" ze sprawdzenia w niemożliwość. Rodzeństwo dostaje `fetch!/1` —
+wywołanie funkcji, nie join.
+
+Kanonizacja zadziałała natychmiast i widać to w testach: **nie da się zaksięgować w okresie, który nie
+istnieje.** 23 testy padły przy pierwszym uruchomieniu, bo otwierały miesiąc bez kanonicznego okresu. To nie
+był regres, a wymaganie, którego wcześniej nie było — okresy zakłada teraz setup, a jeden test pilnuje, że
+wymaganie faktycznie obowiązuje.
+
+Nie zmieniałem payloadów na `period_id`: to należy do 2.2 razem z wyrzuceniem `:period` ze słownika typów, bo
+przed 2.2 płacimy czytelnością klucza przebiegu bez niczego w zamian. Zapisane wyżej.
 
 **Kształt „instancja żyjąca tygodniami"** jest pokryty testami okna assercji (`{2, :day}`, `{3, :day}`) i
 **nie wymagał niczego od silnika** — log jest append-only, a `instance_id` grupuje niezależnie od upływu
@@ -324,9 +359,10 @@ osierocieje po każdym rebase i wymaga `rebase --onto`. Zdarzyło się to raz, 5
 
 ## Kolejność
 
-1.1, 1.2, 1.4 i 1.5 zamknięte. Brama uniwersalności przeszła, `trace` przestał być dekoracją, a różnica
-declared vs observed okazała się sygnałem — 50 przebiegów daje jedną linię raportu. **Dalej: 1.3**, potem
-1.6 i 1.7. 1.5b (werdykt `:suspended`) czeka na log niedostępności zależności.
+1.1, 1.2, 1.3, 1.4 i 1.5 zamknięte — **cały etap 1 poza 1.6 i 1.7**. Brama uniwersalności przeszła, `trace` przestał być dekoracją, a różnica
+declared vs observed okazała się sygnałem — 50 przebiegów daje jedną linię raportu, a wszystkie pięć
+kształtów procesu jest obsłużonych. **Dalej: 1.6, potem 1.7.** 1.5b (werdykt `:suspended`) czeka na log
+niedostępności zależności; sprzątanie języka w `lib/pns/` jest osobnym zadaniem, patrz wyżej.
 
 Kod zostaje w tym repo i przenosi się do repozytorium pilota, gdy ono powstanie; struktura jest już taka, że
 to `git mv`.

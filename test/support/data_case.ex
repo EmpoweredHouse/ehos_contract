@@ -18,6 +18,16 @@ defmodule Taxvision.DataCase do
     pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Taxvision.Repo, shared: not tags[:async])
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
     PNS.Registry.load!()
+
+    # Okres jest **kanonicznym wierszem**, a nie stringiem parsowanym w locie, więc
+    # musi istnieć, zanim ktokolwiek cokolwiek w nim zaksięguje. W produkcji
+    # zakłada go admin albo harmonogram; tutaj zakłada go setup, bo wymaganie tego
+    # od każdego testu osobno dodałoby szumu bez sygnału.
+    #
+    # Że to wymaganie faktycznie obowiązuje, pilnuje jeden test w
+    # `periods_test.exs` — i tylko on zakłada okres sam.
+    for miesiac <- ~w(2026-05 2026-06 2026-07 2026-08), do: Taxvision.Periods.ensure!(miesiac)
+
     :ok
   end
 
@@ -40,6 +50,9 @@ defmodule Taxvision.DataCase do
 
   def client(company_id \\ "c-1"),
     do: token(%{"sub" => @client_sub, "company_id" => company_id, "roles" => ["client"]})
+
+  @doc "Kanoniczny okres. Zakładany w setupie, bo bez niego nie da się otworzyć miesiąca."
+  def period!(name), do: Taxvision.Periods.ensure!(name)
 
   def events_of(type) do
     name = to_string(type)

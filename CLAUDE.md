@@ -49,12 +49,20 @@ przełącznika granice są dokumentacją. Postgres słucha na **5433**.
   handler, nie bibliotekę.
 - **Nazwy zdarzeń to literały.** Publikacja dynamiczna jest nielegalna, bo od tego zależy, czy graf statyczny
   jest faktem, czy heurystyką.
-- **Identyfikatory po angielsku, treść dla klienta po polsku — granica idzie po tym, kto to czyta.**
-  Po angielsku jest wszystko, co jest nazwą w kodzie: zdarzenia, procesy, **nazwy faz w `stages:`**,
-  `trace`, `rule`, `external`, moduły, pola payloadu. Po polsku jest to, co klient czyta zdaniami:
-  `label`, opisy `example`, `source`, moduledoki i komentarze. Nazwy faz przeciekły raz na polski,
-  bo reguła mówiła tylko o etykietach — a faza jest **identyfikatorem**: idzie do `pns.check`, do grafu
-  i do hasha `version/0`.
+- **Kod jest po angielsku. Bez wyjątków w `lib/pns/`.** To dotyczy wszystkiego: nazw modułów, funkcji,
+  zmiennych, moduledoków, komentarzy, komunikatów błędów i stringów wypisywanych na wyjście. `lib/pns/`
+  ma szansę awansować do biblioteki na hex, a biblioteka z polskimi komunikatami błędów jest biblioteką
+  dla jednego kraju. To samo dotyczy testów i fikstur, bo one też pojadą z pakietem.
+- **Po polsku jest wyłącznie to, co klient czyta zdaniami**, i tylko w deklaracjach kontraktu:
+  `label`, opisy `example`, `source`, `unavailable_looks_like`. To trafia na ekran dla księgowej i na
+  głos process ownerowi, więc musi być w jego języku. Nic więcej.
+- **Dokumentacja repo — `README.md`, `PLAN.md`, ten plik — zostaje po polsku.** To nie jest kod i nie
+  jedzie z pakietem.
+- **Publiczne funkcje w `lib/pns/` mają `@doc` i `@spec`.** Bez tego pakiet nie ma dokumentacji ani
+  kontraktu typów, a `dialyzer` nie ma czego sprawdzać.
+- Wcześniejsza wersja tej reguły mówiła „identyfikatory po angielsku, moduledoki i komentarze po polsku"
+  i to był błąd, który zdążył się rozlać po `lib/pns/`. **Poprawianie wstecz jest osobnym zadaniem** —
+  patrz `PLAN.md`, bo jest sprzężone z assercjami testów bram kompilacyjnych.
 - **Komunikaty commitów po angielsku**, z tej samej reguły: `git log` czyta recenzent, nigdy klient.
   Dwanaście pierwszych commitów jest po polsku i **zostaje** — historia sprzed reguły nie jest przepisywana,
   bo te wiadomości niosą uzasadnienia decyzji i tłumaczenie ich hurtem gubi więcej, niż porządkuje.
