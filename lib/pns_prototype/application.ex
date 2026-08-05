@@ -17,6 +17,11 @@ defmodule PnsPrototype.Application do
     # działa — nie z pliku obok niej.
     PNS.Registry.load!()
 
+    # Zapis wdrożonej wersji: co jest zadeklarowane i od kiedy obowiązuje.
+    # Bez tego nie da się odróżnić historii od driftu dla **ścieżek**, bo
+    # `version/0` haszuje kontrakt, a ścieżki pochodzą z handlerów.
+    PNS.Deployment.record!()
+
     result
   end
 end

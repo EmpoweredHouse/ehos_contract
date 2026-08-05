@@ -91,7 +91,8 @@ defmodule Mix.Tasks.Pns.Graph do
     if opts[:mermaid] do
       emit_output(PNS.Graph.to_mermaid(overlay), opts)
     else
-      Mix.shell().info("Nakładka declared vs observed:\n")
+      wersje()
+      Mix.shell().info("\nNakładka declared vs observed:\n")
       Mix.shell().info(PNS.Graph.to_text(overlay))
 
       paths(since)
@@ -105,6 +106,35 @@ defmodule Mix.Tasks.Pns.Graph do
           window = if event.cadence, do: "cykl #{inspect(event.cadence)}", else: "brak cadence — okno zgadywane"
           Mix.shell().info("  #{event.event}  — #{event.label}  [#{window}]")
         end
+      end
+    end
+  end
+
+  # Czwarte z czterech pytań ekranu: która wersja wdrożona, od kiedy, jakie
+  # wersje w logu i co się zmieniło.
+  defp wersje do
+    for contract <- PNS.Registry.contracts() do
+      r = PNS.Deployment.report(contract)
+
+      od = if r.deployed.since, do: DateTime.to_iso8601(r.deployed.since), else: "nic jeszcze nie wyemitowano"
+
+      Mix.shell().info("#{inspect(contract)}")
+      Mix.shell().info("  kontrakt #{r.deployed.contract_version}, obwodowanie #{r.deployed.wiring_version || "niezapisane"} — od #{od}")
+
+      case r.in_log do
+        [] -> Mix.shell().info("  log pusty")
+        wersje -> Mix.shell().info("  wersji w logu: #{length(wersje)}, zdarzeń z innych wersji niż wdrożona: #{r.from_earlier_versions}")
+      end
+
+      case r.changed do
+        nil ->
+          Mix.shell().info("  jedno zapisane wdrożenie — nie ma z czym porównać")
+
+        z ->
+          Mix.shell().info(
+            "  ostatnia zmiana: zdarzenia +#{length(z.events_added)}/-#{length(z.events_removed)}, " <>
+              "ścieżki +#{length(z.paths_added)}/-#{length(z.paths_removed)}"
+          )
       end
     end
   end

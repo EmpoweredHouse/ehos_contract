@@ -182,10 +182,24 @@ defmodule PNS.Graph do
         }
       end
 
+    contracts = Registry.contracts()
+
     from_observed =
       for {{from, to}, traffic} <- observed.edges, not MapSet.member?(declared_edges, {from, to}) do
+        # **Pytanie jest o krawędź, nie o wersję kontraktu.** Wcześniej stan brało
+        # się z `contract_version` zdarzenia docelowego, co jest przybliżeniem i
+        # ma dziurę: usunięcie handlera zmienia graf, nie zmieniając ani jednej
+        # wersji, więc legalnie przejechana ścieżka wychodziła jako `:drift`.
+        # Zapisane wdrożenia odpowiadają wprost: czy ta krawędź kiedykolwiek była
+        # zadeklarowana.
+        declared_before? =
+          Enum.any?(contracts, &PNS.Deployment.declared_edge?(&1, {from, to}))
+
         versions = get_in(observed.nodes, [to, :versions]) || []
-        historical? = Enum.all?(versions, &(not MapSet.member?(current_versions, &1)))
+        # Fallback dla logu starszego niż tabela wdrożeń. Jawny, nie cichy:
+        # raport, który zgaduje bez powiedzenia tego, jest gorszy od raportu,
+        # który przyznaje się do luki.
+        historical? = declared_before? or Enum.all?(versions, &(not MapSet.member?(current_versions, &1)))
 
         %{
           from: from,

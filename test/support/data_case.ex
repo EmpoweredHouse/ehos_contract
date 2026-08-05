@@ -19,6 +19,13 @@ defmodule Taxvision.DataCase do
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
     PNS.Registry.load!()
 
+    # Wdrożenia zapisuje **boot aplikacji**, czyli poza sandboxem — te wiersze
+    # commitują się do bazy testowej na stałe i przeciekłyby do każdego testu,
+    # który cokolwiek o wdrożeniach twierdzi. Czyszczenie idzie wewnątrz
+    # transakcji sandboxa, więc cofa się po teście, a zachowanie produkcyjne
+    # zostaje nietknięte: tam zapis przy boocie jest właśnie tym, co ma być.
+    Taxvision.Repo.delete_all(PNS.Deployment)
+
     # Okres jest **kanonicznym wierszem**, a nie stringiem parsowanym w locie, więc
     # musi istnieć, zanim ktokolwiek cokolwiek w nim zaksięguje. W produkcji
     # zakłada go admin albo harmonogram; tutaj zakłada go setup, bo wymaganie tego

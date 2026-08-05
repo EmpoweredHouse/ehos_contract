@@ -6,7 +6,7 @@ tylko tu jest aktualizowany stan.
 
 ## Stan na 5 sierpnia
 
-107 testów, `mix check` przechodzi. Ostrzeżenia są **trzy** i wszystkie celowe: `deadline` TaxVision bez
+118 testów, `mix check` przechodzi. Ostrzeżenia są **trzy** i wszystkie celowe: `deadline` TaxVision bez
 potwierdzenia process ownera, `deadline` z wymyślonej fikstury bramy uniwersalności, oraz **krawędź wsteczna
 w stanowisku badawczym kształtów — która jest kryterium odbioru 1.3, więc jej brak byłby regresem.**
 Samo `mix pns.check` w środowisku dev pokazuje jedno — fikstury żyją w `test/support/`.
@@ -288,10 +288,46 @@ Przy okazji do rozstrzygnięcia: **assercja bez `within` jest niefalsyfikowalna*
 więc jest dekoracją. Kandydat na `info` w `pns.check`; dziś obie nasze assercje mają `within`, więc byłoby
 zero znalezisk.
 
-**1.6 Wersja kontraktu jako pierwszoklasowa odpowiedź.** Która wersja wdrożona, od kiedy, jakie wersje w logu,
-co się zmieniło.
-*Odbiór:* po zmianie kontraktu raport mówi, które ścieżki są nowe, które zniknęły i które zdarzenia pochodzą z
-poprzedniej wersji — **bez ani jednego fałszywego driftu.**
+**1.6 Wersja kontraktu jako pierwszoklasowa odpowiedź. ✅ zrobione 5 sierpnia.**
+*Odbiór:* **spełnione.** `PNS.Deployment`, `test/deployment_test.exs`. Raport mówi, co wdrożone, od kiedy,
+jakie wersje są w logu, ile zdarzeń pochodzi z innych wersji, oraz co się zmieniło — osobno zdarzenia,
+osobno ścieżki.
+
+**Najważniejsze wyszło z ostatniej części kryterium („bez ani jednego fałszywego driftu") i było prawdziwą
+dziurą, nie hipotetyczną.**
+
+`version/0` haszuje **deklaracje kontraktu**. Ścieżki pochodzą z `publishes:` **handlerów**, których w tym
+haszu nie ma. Skutek: usunięcie handlera zmienia graf, nie zmieniając ani jednej wersji stemplowanej
+gdziekolwiek — więc nakładka widziała krawędź zaobserwowaną i już niezadeklarowaną, sprawdzała, że wersja
+kontraktu jest wciąż aktualna, i orzekała **drift** dla ścieżki, która była legalnie zadeklarowana, kiedy
+przejechała.
+
+Notatki §9 mówią, że skew wersji „handled by `contract_version` on the event", i podają przykład z
+**usuniętym zdarzeniem** — ten działa, bo usunięcie zdarzenia bumpuje wersję. Przypadku z usuniętym
+**handlerem** rekord nie rozważa. **Do poprawki w rekordzie.**
+
+Rozwiązanie: **wdrożenie ma dwie tożsamości.** `contract_version` to umowa, `wiring_version` to kod. Refaktor
+rusza jedną i nie rusza drugiej, a to jest dokładnie rozróżnienie, na którym klientowi zależy.
+
+Kształt zapisu: jeden wiersz na odrębne obwodowanie, przy boocie. **Nic per zdarzenie** — koszt to jeden
+insert na deploy, a nie kolumna na każdym zdarzeniu, i log zostaje tym, czym był. Pytanie o drift zadaje się
+teraz wprost krawędzi („czy była kiedykolwiek zadeklarowana"), a nie przez wersję zdarzenia docelowego.
+
+Cena jest nazwana, nie ukryta: log starszy niż tabela wdrożeń nie ma czym się wylegitymować i wraca do starej
+heurystyki po `contract_version`. Jawnie, bo raport, który zgaduje bez powiedzenia tego, jest gorszy od
+raportu, który przyznaje się do luki.
+
+Dwie rzeczy przy okazji:
+
+- **`since` to pierwsze zdarzenie pod wdrożoną wersją, nie moment deployu.** Silnik nie jest o deployach
+  informowany, tylko je obserwuje. Wdrożenie, które nic nie wyemitowało, ma `since: nil` — wdrożone i
+  niedowiedzione, co jest uczciwsze niż data, której nie znamy.
+- **Hash obwodowania jest kanoniczny z konstrukcji** — z posortowanych stringów, nie z `term_to_binary`.
+  `version/0` nadal ma tę wadę (luka 2.4, aktualizacja OTP może przekwalifikować historię) i `PNS.Deployment`
+  jest wzorem dla tamtej poprawki.
+- **Zapis przy boocie idzie poza sandboxem**, więc w środowisku testowym wiersze commitowały się na stałe i
+  przeciekały do każdego testu. Czyszczone w setupie, wewnątrz transakcji sandboxa; zachowanie produkcyjne
+  nietknięte.
 
 **1.7 Raport zgodności za okres.** Cztery pytania, jedna strona, etykiety biznesowe.
 *Odbiór:* czytelny bez tłumaczenia, co znaczą kolumny, i nie zawiera `deadline` oznaczonego `unverified`.
@@ -359,9 +395,10 @@ osierocieje po każdym rebase i wymaga `rebase --onto`. Zdarzyło się to raz, 5
 
 ## Kolejność
 
-1.1, 1.2, 1.3, 1.4 i 1.5 zamknięte — **cały etap 1 poza 1.6 i 1.7**. Brama uniwersalności przeszła, `trace` przestał być dekoracją, a różnica
+1.1–1.6 zamknięte — **cały etap 1 poza 1.7**. Brama uniwersalności przeszła, `trace` przestał być dekoracją, a różnica
 declared vs observed okazała się sygnałem — 50 przebiegów daje jedną linię raportu, a wszystkie pięć
-kształtów procesu jest obsłużonych. **Dalej: 1.6, potem 1.7.** 1.5b (werdykt `:suspended`) czeka na log
+kształtów procesu jest obsłużonych. **Dalej: 1.7** — cztery pytania na jednej stronie; wszystkie cztery odpowiedzi już istnieją i `mix pns.graph
+--overlay` pokazuje je razem, więc 1.7 jest złożeniem, nie budową. 1.5b (werdykt `:suspended`) czeka na log
 niedostępności zależności; sprzątanie języka w `lib/pns/` jest osobnym zadaniem, patrz wyżej.
 
 Kod zostaje w tym repo i przenosi się do repozytorium pilota, gdy ono powstanie; struktura jest już taka, że
