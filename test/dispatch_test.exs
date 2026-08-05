@@ -50,9 +50,15 @@ defmodule PNS.DispatchTest do
     assert_raise Postgrex.Error, fn ->
       PNS.emit(AccountingMonth, :registry_data_consistent, %{
         company_id: @company,
-        # `period` z null-em łamie ograniczenie NOT NULL w tabeli tasków,
-        # czyli handler synchroniczny rzuca w środku transakcji.
-        period: nil
+        # `period` dłuższy niż kolumna łamie ograniczenie w tabeli tasków, czyli
+        # handler synchroniczny rzuca w środku transakcji.
+        #
+        # Wcześniej to samo robiło `period: nil`, ale odkąd `period` jest polem
+        # instancji, null jest odrzucany **przed** wejściem do handlera — i to
+        # jest poprawna kolejność: zdarzenie bez tożsamości przebiegu nie ma
+        # prawa trafić do logu. Sprawdzana jest tu awaria handlera, więc awaria
+        # musi pochodzić z handlera.
+        period: String.duplicate("x", 300)
       })
     end
 

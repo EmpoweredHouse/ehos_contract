@@ -21,6 +21,8 @@ defmodule PNS.Graph do
 
   alias PNS.{Event, Registry}
 
+  @no_traffic %{count: 0, instances: 0}
+
   @doc """
   Graf z deklaracji: węzły to zdarzenia z kontraktów, krawędzie z rejestru
   handlerów. Pochodzi z binarki, która działa, nie z pliku obok.
@@ -28,6 +30,8 @@ defmodule PNS.Graph do
   def static do
     nodes =
       for event <- Registry.declared_events() do
+        process = event.contract.process_of(event.name)
+
         %{
           event: event.name,
           label: event.label,
@@ -35,6 +39,8 @@ defmodule PNS.Graph do
           contract: event.contract,
           contract_version: event.contract.version(),
           depends_on: event.depends_on,
+          process: process && process.name,
+          cadence: process && process.cadence,
           terminal?: terminal?(event)
         }
       end
@@ -46,33 +52,74 @@ defmodule PNS.Graph do
   Graf z logu. Krawędź obserwowana to `causation_id` — zdarzenie, które
   powstało z innego zdarzenia. Nic więcej nie trzeba zapisywać, żeby odtworzyć
   faktyczny przebieg.
+
+  Każdy licznik ma **dwa wymiary: wystąpienia i przebiegi**. To nie jest ta
+  sama liczba i różnica między nimi jest sygnałem: krawędź przejechana 49 razy
+  przez jedną firmę i przejechana raz przez 49 firm mają identyczny licznik
+  wystąpień, a mówią coś przeciwnego. Wersja licząca tylko wystąpienia ukrywała
+  ciszę dokładnie tam, gdzie klientów jest wielu.
+
+  `instance:` zawęża do jednego przebiegu — z tego korzysta ocena assercji.
   """
   def observed(opts \\ []) do
     repo = repo()
-    since = Keyword.get(opts, :since)
 
-    events = from(e in Event, as: :event) |> maybe_since(since)
+    events = base_query(opts)
 
+    # Grupowanie po samym typie, nie po parze typ+wersja: przebieg trwający
+    # przez deploy ma zdarzenia pod dwiema wersjami kontraktu, więc suma
+    # `DISTINCT` po grupach policzyłaby go dwa razy. Wersje schodzą do
+    # `array_agg`, bo są zbiorem, a nie wymiarem grupowania.
     node_counts =
       events
-      |> group_by([event: e], [e.type, e.contract_version])
-      |> select([event: e], {e.type, e.contract_version, count(e.id)})
+      |> group_by([event: e], e.type)
+      |> select([event: e], {
+        e.type,
+        count(e.id),
+        count(e.instance_id, :distinct),
+        fragment("array_agg(DISTINCT ?)", e.contract_version)
+      })
       |> repo.all()
-      |> Enum.reduce(%{}, fn {type, version, count}, acc ->
-        Map.update(acc, type, %{count: count, versions: [version]}, fn existing ->
-          %{count: existing.count + count, versions: [version | existing.versions]}
-        end)
+      |> Map.new(fn {type, count, instances, versions} ->
+        {type, %{count: count, instances: instances, versions: versions}}
       end)
 
     edge_counts =
       events
       |> join(:inner, [event: e], parent in Event, on: e.causation_id == parent.id, as: :parent)
       |> group_by([event: e, parent: p], [p.type, e.type])
-      |> select([event: e, parent: p], {p.type, e.type, count(e.id)})
+      |> select([event: e, parent: p], {p.type, e.type, count(e.id), count(e.instance_id, :distinct)})
       |> repo.all()
-      |> Map.new(fn {from, to, count} -> {{from, to}, count} end)
+      |> Map.new(fn {from, to, count, instances} -> {{from, to}, %{count: count, instances: instances}} end)
 
-    %{nodes: node_counts, edges: edge_counts}
+    %{nodes: node_counts, edges: edge_counts, processes: process_instances(opts)}
+  end
+
+  @doc """
+  Ile **odrębnych przebiegów** danego procesu widział log. To jest mianownik,
+  bez którego licznik na krawędzi nic nie znaczy: „3 przejazdy" przy trzech
+  przebiegach to komplet, a przy pięćdziesięciu to cisza czterdziestu siedmiu.
+
+  Świadomie jest to **liczba, nie lista**. Które konkretnie przebiegi milczą,
+  to pytanie o konkretną firmę i należy do aplikacji klienta; PNS odpowiada na
+  pytanie o ścieżkę.
+  """
+  def process_instances(opts \\ []) do
+    repo = repo()
+
+    opts
+    |> base_query()
+    |> where([event: e], not is_nil(e.instance_id))
+    |> group_by([event: e], e.process)
+    |> select([event: e], {e.process, count(e.instance_id, :distinct)})
+    |> repo.all()
+    |> Map.new()
+  end
+
+  defp base_query(opts) do
+    from(e in Event, as: :event)
+    |> maybe_since(Keyword.get(opts, :since))
+    |> maybe_instance(Keyword.get(opts, :instance))
   end
 
   @doc """
@@ -96,13 +143,15 @@ defmodule PNS.Graph do
 
     declared_edges = MapSet.new(static.edges, &{to_string(&1.from), to_string(&1.to)})
     current_versions = MapSet.new(static.nodes, & &1.contract_version)
+    process_of = Map.new(static.nodes, &{to_string(&1.event), &1.process})
 
     from_declared =
       for edge <- static.edges do
         key = {to_string(edge.from), to_string(edge.to)}
-        count = Map.get(observed.edges, key, 0)
+        %{count: count, instances: instances} = Map.get(observed.edges, key, @no_traffic)
 
         waiting = Map.get(in_flight, inspect(edge.handler), 0)
+        process = process_of[to_string(edge.to)]
 
         %{
           from: edge.from,
@@ -110,6 +159,11 @@ defmodule PNS.Graph do
           handler: edge.handler,
           async: edge.async,
           count: count,
+          # Ile przebiegów tę krawędź przejechało i ile ich w ogóle było.
+          # Sam licznik wystąpień nie odróżnia „wszyscy przeszli" od „jeden
+          # przeszedł pięćdziesiąt razy, reszta milczy".
+          instances: instances,
+          of_instances: Map.get(observed.processes, to_string(process), 0),
           in_flight: waiting,
           # Trzeci stan, nie dwa. Job czekający w kolejce wygląda w logu
           # dokładnie jak ścieżka, która nigdy nie działa — a to jest różnica
@@ -125,7 +179,7 @@ defmodule PNS.Graph do
       end
 
     from_observed =
-      for {{from, to}, count} <- observed.edges, not MapSet.member?(declared_edges, {from, to}) do
+      for {{from, to}, traffic} <- observed.edges, not MapSet.member?(declared_edges, {from, to}) do
         versions = get_in(observed.nodes, [to, :versions]) || []
         historical? = Enum.all?(versions, &(not MapSet.member?(current_versions, &1)))
 
@@ -134,7 +188,9 @@ defmodule PNS.Graph do
           to: to,
           handler: nil,
           async: nil,
-          count: count,
+          count: traffic.count,
+          instances: traffic.instances,
+          of_instances: 0,
           in_flight: 0,
           state: if(historical?, do: :historical, else: :drift)
         }
@@ -205,14 +261,12 @@ defmodule PNS.Graph do
         # martwą ścieżką. Bez tego lista i stan krawędzi mówiłyby dwie różne
         # rzeczy o tym samym zdarzeniu.
         node.event not in pending do
-      process = Enum.find(node.contract.processes(), &(node.event in &1.events ++ &1.terminal))
-
       %{
         event: node.event,
         label: node.label,
         contract: node.contract,
-        process: process && process.name,
-        cadence: process && process.cadence
+        process: node.process,
+        cadence: node.cadence
       }
     end
   end
@@ -313,7 +367,18 @@ defmodule PNS.Graph do
       mode = if edge.async, do: "async", else: "sync "
       state = edge.state |> Atom.to_string() |> String.pad_trailing(10)
       queue = if Map.get(edge, :in_flight, 0) > 0, do: ", #{edge.in_flight} w kolejce", else: ""
-      "  #{state} #{mode}  #{edge.from} -> #{edge.to}  (#{edge.count}x#{queue})"
+      # Dwa wymiary obok siebie, bo osobno każdy z nich kłamie.
+      #
+      # Zdarzenie zapisane, zanim jego proces zadeklarował `instance:`, nie ma
+      # tożsamości przebiegu i już jej nie dostanie. „0 przebiegów" przy
+      # niezerowym liczniku wystąpień czytałoby się jako cisza, a to jest
+      # historia — ten sam problem, który przy wersjach kontraktu rozwiązuje
+      # stan `:historical`.
+      runs =
+        if edge.count > 0 and edge.instances == 0,
+          do: "bez tożsamości przebiegu",
+          else: "#{edge.instances}/#{edge.of_instances} przebiegów"
+      "  #{state} #{mode}  #{edge.from} -> #{edge.to}  (#{edge.count}x, #{runs}#{queue})"
     end)
   end
 
@@ -323,6 +388,9 @@ defmodule PNS.Graph do
 
   defp maybe_since(query, nil), do: query
   defp maybe_since(query, since), do: where(query, [event: e], e.occurred_at >= ^since)
+
+  defp maybe_instance(query, nil), do: query
+  defp maybe_instance(query, id), do: where(query, [event: e], e.instance_id == ^id)
 
   defp repo, do: @repo
 end

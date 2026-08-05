@@ -17,6 +17,11 @@ defmodule PNS.Event do
     field :type, :string
     field :contract, :string
     field :contract_version, :string
+    # Do którego przebiegu należy to zdarzenie. `correlation_id` odpowiada na
+    # inne pytanie — „z której komendy" — i jest per żądanie, więc miesiąc
+    # otwierany dwoma komendami ma dwie korelacje i jeden przebieg.
+    field :process, :string
+    field :instance_id, :string
     field :correlation_id, :binary_id
     field :causation_id, :binary_id
     field :payload, :map

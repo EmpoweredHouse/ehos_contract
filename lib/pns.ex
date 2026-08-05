@@ -22,6 +22,7 @@ defmodule PNS do
       EventHandling,
       Graph,
       Handler,
+      Instance,
       Job,
       Payload,
       Registry

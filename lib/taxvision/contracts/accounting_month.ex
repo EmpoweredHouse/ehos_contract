@@ -85,7 +85,11 @@ defmodule Taxvision.Contracts.AccountingMonth do
   event :turnover_matched_with_invoice,
     label: "Sparowano obrót z fakturą",
     owner: Taxvision.Matching,
-    payload: %{company_id: :id, turnover_id: :id, invoice_id: :id}
+    # `period` dołożony przez bramę instancji i **nie jest kosmetyką**: bez
+    # niego sparowany obrót nie mówi, do którego miesiąca należy, więc
+    # meczowanie z lipca liczyłoby się jako postęp w przebiegu sierpniowym.
+    # To jedyne zdarzenie w tym kontrakcie, które bramy nie przeszło.
+    payload: %{company_id: :id, period: :period, turnover_id: :id, invoice_id: :id}
 
   event :month_closed,
     label: "Zamknięto miesiąc księgowy",
@@ -127,6 +131,11 @@ defmodule Taxvision.Contracts.AccountingMonth do
     # Zablokowanie na rozjeździe jest stanem końcowym tak samo jak zamknięcie
     # miesiąca: proces się skończył, tylko nie tak, jak chcieliśmy.
     terminal: [:month_closed, :discrepancy_notification_sent],
+    # Jeden przebieg to **jedna firma w jednym miesiącu**. To ten sam klucz, po
+    # którym warsztat mówi o rozliczeniu ("rozliczany jest miesiąc w tył"), i
+    # to jest granica, w której liczy się assercja: otwarcie miesiąca dla c-2
+    # nie zalicza niczego przebiegowi c-1.
+    instance: [:company_id, :period],
     # Rozliczany jest miesiąc w tył, a sprawdzenie 1. dnia miesiąca wystarczy
     # [WF 00:34:40]. Z tego liczy się okno "never observed" — bez cadence
     # miesięczny proces czyta się jako martwy szósty dzień po ostatnim przebiegu.

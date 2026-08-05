@@ -113,12 +113,19 @@ defmodule PNS.Emitter do
     # Konsekwencja jest jawna i należy do kontraktu, nie do kodu: jeśli handler
     # potrzebuje surowej wartości, to pole nie może mieć `:hash`.
     stored = apply_retain(payload, event_def)
+    cast_payload = Payload.cast(event_def, stored)
+
+    # Liczona z payloadu **po** `retain`, więc klucz przebiegu jest odtwarzalny
+    # z samego logu — a nie tylko z logu plus wiedzy, co odpadło po drodze.
+    {process, instance_id} = PNS.Instance.key(contract, type, cast_payload)
 
     event =
       repo.insert!(%Event{
         type: to_string(type),
         contract: inspect(contract),
         contract_version: contract.version(),
+        process: process,
+        instance_id: instance_id,
         correlation_id: correlation_id,
         causation_id: ctx[:causation_id],
         payload: Payload.to_storage(stored),
@@ -133,8 +140,6 @@ defmodule PNS.Emitter do
       causation_id: event.id,
       actor: ctx[:actor]
     }
-
-    cast_payload = Payload.cast(event_def, stored)
 
     dispatch_sync(repo, contract, type, cast_payload, child_ctx, event)
     dispatch_async(type, cast_payload, child_ctx, event)

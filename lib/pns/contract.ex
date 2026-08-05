@@ -118,7 +118,7 @@ defmodule PNS.Contract do
   def build_process(name, opts) do
     validate_keys!(
       opts,
-      [:label, :events, :stages, :terminal, :cadence, :deadline, :unverified],
+      [:label, :events, :stages, :terminal, :instance, :cadence, :deadline, :unverified],
       "process #{inspect(name)}"
     )
 
@@ -149,6 +149,17 @@ defmodule PNS.Contract do
       stages: stages,
       events: Enum.flat_map(stages, fn {_stage, events} -> events end),
       terminal: Keyword.get(opts, :terminal, []),
+      # `instance` nazywa pola payloadu, które mówią, **do którego przebiegu**
+      # należy zdarzenie. Jest wymagane, bo obie rzeczy, które czynią z tego
+      # produkt, liczą się w obrębie przebiegu: assercja `trace` i nakładka
+      # declared vs observed. Proces bez tożsamości przebiegu jest procesem, o
+      # którym PNS umie powiedzieć tylko „jakieś zdarzenie tego typu zaszło" —
+      # czyli dokładnie ten stan, który etap 1.1 naprawia.
+      #
+      # Siedzi na procesie, nie na zdarzeniu, i to jest inne pytanie niż
+      # `identity`: tożsamość faktu należy do faktu, tożsamość przebiegu do
+      # procesu. Powtórzona na każdym zdarzeniu rozjeżdżałaby się między nimi.
+      instance: opts |> fetch!(:instance, where) |> List.wrap(),
       # cadence: co jak często instancja jest należna — z tego liczy się okno
       # "never observed". Bez tego miesięczne zamknięcie czyta się jako
       # martwa ścieżka szósty dzień po ostatnim przebiegu (notatki §9).
@@ -293,6 +304,16 @@ defmodule PNS.Contract do
 
       def processes, do: unquote(Macro.escape(processes))
       def process(name), do: Enum.find(processes(), &(&1.name == name))
+
+      @doc """
+      Proces, do którego należy zdarzenie — czyli to, z czego bierze się jego
+      tożsamość przebiegu. Zdarzenie w dwóch procesach nie kompiluje się, więc
+      odpowiedź jest jednoznaczna.
+      """
+      def process_of(event_name) do
+        Enum.find(processes(), &(event_name in &1.events ++ &1.terminal))
+      end
+
       def traces, do: unquote(Macro.escape(traces))
       def externals, do: unquote(Macro.escape(externals))
       def external(name), do: Enum.find(externals(), &(&1.name == name))
@@ -348,6 +369,8 @@ defmodule PNS.Contract do
       bail!(env, "trace #{inspect(t.name)} wymienia zdarzenie #{inspect(ev)}, którego nie ma w kontrakcie")
     end
 
+    validate_instances!(env, events, processes, traces)
+
     external_names = Enum.map(externals, & &1.name)
 
     for e <- events, not is_nil(e.depends_on), e.depends_on not in external_names do
@@ -366,6 +389,76 @@ defmodule PNS.Contract do
       # idempotencji zniknąłby razem z nim.
       Map.get(e.retain, field) == :drop &&
         bail!(env, "zdarzenie #{inspect(e.name)}: pole #{inspect(field)} jest w `identity` i jednocześnie `retain: :drop`")
+    end
+
+    :ok
+  end
+
+  # Trzy bramy, wszystkie z jednego powodu: `instance_id` liczony w czasie
+  # emisji ma być jednoznaczny i odtwarzalny z samego logu.
+  defp validate_instances!(env, events, processes, traces) do
+    by_name = Map.new(events, &{&1.name, &1})
+    process_of = fn ev -> Enum.filter(processes, &(ev in &1.events ++ &1.terminal)) end
+
+    # 1. Każde zdarzenie procesu niesie pola instancji — i nie gubi ich po drodze.
+    for p <- processes, ev <- p.events ++ p.terminal, field <- p.instance do
+      event = Map.fetch!(by_name, ev)
+
+      Map.has_key?(event.payload, field) ||
+        bail!(
+          env,
+          "proces #{inspect(p.name)} deklaruje `instance: #{inspect(p.instance)}`, ale zdarzenie " <>
+            "#{inspect(ev)} nie ma w payloadzie pola #{inspect(field)}. Bez niego nie da się " <>
+            "powiedzieć, do którego przebiegu to zdarzenie należy — a wtedy assercja `trace` " <>
+            "dopasuje je do dowolnego innego przebiegu."
+        )
+
+      Map.get(event.retain, field) == :drop &&
+        bail!(
+          env,
+          "zdarzenie #{inspect(ev)}: pole #{inspect(field)} współtworzy tożsamość przebiegu " <>
+            "procesu #{inspect(p.name)} i jednocześnie ma `retain: :drop`. Tożsamość przebiegu " <>
+            "jest liczona z payloadu po zastosowaniu `retain`, więc zniknęłaby razem z polem."
+        )
+    end
+
+    # 2. Zdarzenie należy do co najwyżej jednego procesu. To jest warunek stopu
+    # z ADR §15 („stop if processes nest or one event belongs to two") zrobiony
+    # mechanicznie: przy dwóch procesach zdarzenie ma dwie tożsamości przebiegu,
+    # a w logu jest na to jedna kolumna. Cicha wersja tego wybrałaby jedną z nich.
+    for e <- events, [_, _ | _] = many <- [process_of.(e.name)] do
+      bail!(
+        env,
+        "zdarzenie #{inspect(e.name)} należy do dwóch procesów: #{inspect(Enum.map(many, & &1.name))}. " <>
+          "Każdy z nich ma własną tożsamość przebiegu, więc nie ma jednej odpowiedzi na pytanie, " <>
+          "w którym przebiegu to zdarzenie zaszło (ADR §15, warunek stopu dla modelu procesu jako wiersza)."
+      )
+    end
+
+    # 3. Assercja liczy się w jednym przebiegu, więc nie może rozciągać się na
+    # dwa procesy — bo każdy z nich ma inną tożsamość przebiegu.
+    for t <- traces do
+      trace_events = Enum.reject([t.from, t.eventually, t.or_else], &is_nil/1)
+      homeless = Enum.filter(trace_events, &(process_of.(&1) == []))
+
+      homeless == [] ||
+        bail!(
+          env,
+          "trace #{inspect(t.name)} wymienia zdarzenia spoza jakiegokolwiek procesu: " <>
+            "#{inspect(homeless)}. Nie ma przebiegu, w którym dałoby się tę assercję policzyć."
+        )
+
+      case trace_events |> Enum.flat_map(process_of) |> Enum.map(& &1.name) |> Enum.uniq() do
+        [_one] ->
+          :ok
+
+        many ->
+          bail!(
+            env,
+            "trace #{inspect(t.name)} rozciąga się na procesy #{inspect(many)}. Assercja liczy się " <>
+              "w obrębie jednego przebiegu, a każdy proces ma własną tożsamość przebiegu."
+          )
+      end
     end
 
     :ok

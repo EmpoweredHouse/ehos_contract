@@ -162,6 +162,97 @@ defmodule PNS.CompileGatesTest do
       )
     end
 
+    test "proces bez `instance:` nie kompiluje się" do
+      assert_raise ArgumentError, ~r/brakuje wymaganego `instance:`/, fn ->
+        Code.compile_string("""
+        defmodule Reject.ProcessWithoutInstance do
+          use PNS.Contract
+
+          event :a, label: "A", payload: %{id: :id}
+
+          process :p, label: "P", events: [:a]
+        end
+        """)
+      end
+    end
+
+    test "zdarzenie procesu bez pola instancji w payloadzie nie kompiluje się" do
+      # Bez tego pola nie da się powiedzieć, do którego przebiegu zdarzenie
+      # należy — a wtedy assercja dopasuje je do dowolnego innego przebiegu.
+      refute_compiles(
+        """
+        defmodule Reject.EventWithoutInstanceField do
+          use PNS.Contract
+
+          event :a, label: "A", payload: %{sprawa_id: :id}
+          event :b, label: "B", payload: %{cos_innego: :id}
+
+          process :p, label: "P", events: [:a, :b], instance: [:sprawa_id]
+        end
+        """,
+        "nie ma w payloadzie pola :sprawa_id"
+      )
+    end
+
+    test "pole instancji usuwane przez retain nie kompiluje się" do
+      # Tożsamość przebiegu jest liczona z payloadu po `retain`, więc zniknęłaby
+      # razem z polem.
+      refute_compiles(
+        """
+        defmodule Reject.InstanceOnDroppedField do
+          use PNS.Contract
+
+          event :a, label: "A", payload: %{sprawa_id: :id}, retain: %{sprawa_id: :drop}
+
+          process :p, label: "P", events: [:a], instance: [:sprawa_id]
+        end
+        """,
+        "współtworzy tożsamość przebiegu"
+      )
+    end
+
+    test "zdarzenie należące do dwóch procesów nie kompiluje się (ADR §15)" do
+      # Dwa procesy to dwie tożsamości przebiegu, a w logu jest na to jedna
+      # kolumna. Cicha wersja tego wybrałaby jedną z nich.
+      refute_compiles(
+        """
+        defmodule Reject.EventInTwoProcesses do
+          use PNS.Contract
+
+          event :a, label: "A", payload: %{sprawa_id: :id}
+
+          process :p1, label: "P1", events: [:a], instance: [:sprawa_id]
+          process :p2, label: "P2", events: [:a], instance: [:sprawa_id]
+        end
+        """,
+        "należy do dwóch procesów"
+      )
+    end
+
+    test "trace rozciągnięty na dwa procesy nie kompiluje się" do
+      # Assercja liczy się w obrębie jednego przebiegu, a każdy proces ma własną
+      # tożsamość przebiegu.
+      refute_compiles(
+        """
+        defmodule Reject.TraceAcrossProcesses do
+          use PNS.Contract
+
+          event :a, label: "A", payload: %{sprawa_id: :id}
+          event :b, label: "B", payload: %{przesylka_id: :id}
+
+          process :p1, label: "P1", events: [:a], instance: [:sprawa_id]
+          process :p2, label: "P2", events: [:b], instance: [:przesylka_id]
+
+          trace :przez_dwa_procesy do
+            from :a
+            eventually :b, within: {1, :day}
+          end
+        end
+        """,
+        "rozciąga się na procesy"
+      )
+    end
+
     test "proces z `stages:` i `events:` naraz nie przechodzi" do
       assert_raise ArgumentError, ~r/`stages:` albo `events:`, nie oba/, fn ->
         Code.compile_string("""

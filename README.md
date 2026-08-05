@@ -209,6 +209,7 @@ lib/pns/          to, co będzie pakietem hex
   event.ex        log zdarzeń i log obsług
   job.ex          worker Obana, korelacja przez granicę procesu
   auth.ex         szew tożsamości: behaviour + lokalny HMAC
+  instance.ex     tożsamość przebiegu: klucz z `instance:`, liczony przy emisji
   graph.ex        statyczny, zaobserwowany, nałożenie
 lib/taxvision/    aplikacja klienta
   contracts/      kontrakt na proces
@@ -218,6 +219,35 @@ lib/taxvision/    aplikacja klienta
   tasks.ex, accounting_month.ex, notifications.ex    moduły z własnymi tabelami
   adapters/       behaviour + fake
 ```
+
+## Instancja procesu — co zmieniło się 5 sierpnia
+
+`identity` odpowiada na pytanie „co czyni dwa wystąpienia **tym samym faktem**". Brakowało odpowiedzi na
+inne: „co czyni dwa zdarzenia częścią **tego samego przebiegu**". Proces deklaruje teraz
+`instance: [:company_id, :period]`, a każde jego zdarzenie musi te pola nieść — inaczej się nie kompiluje.
+
+**To nie jest pole sprawozdawcze.** Bez niego assercja *„po potwierdzeniu kompletu danych miesiąc się
+otwiera"* jest prawdziwa globalnie, kiedy otworzył się **czyjkolwiek** miesiąc. Test dwóch równoległych
+przebiegów pokazuje to wprost: c-1 się otwiera, c-2 idzie w blokadę, a licznik per typ zdarzenia zalicza oba.
+
+**Liczniki mają dwa wymiary i osobno każdy kłamie.** Krawędź przejechana 49 razy przez jedną firmę i raz
+przez 49 firm miały identyczny licznik. Nakładka podaje teraz wystąpienia, przebiegi i mianownik — ile
+przebiegów procesu w ogóle było. Świadomie jest to **liczba, nie lista**: które przebiegi milczą, to pytanie
+o konkretną firmę i należy do aplikacji klienta.
+
+**Dwie bramy wyszły z jednej kolumny w logu.** `instance_id` jest jedno na zdarzenie, więc zdarzenie
+należące do dwóch procesów nie ma jednej tożsamości przebiegu — i nie kompiluje się. To jest warunek stopu
+z ADR §15 („*stop if processes nest or one event belongs to two*") zrobiony mechanicznie, zamiast czekać na
+przegląd. Z tego samego powodu `trace` nie może rozciągać się na dwa procesy.
+
+**Brama zapłaciła za siebie przy pierwszym uruchomieniu.** `turnover_matched_with_invoice` niosło
+`company_id`, `turnover_id` i `invoice_id`, ale nie `period` — więc sparowany obrót nie mówił, do którego
+miesiąca należy, i meczowanie z lipca liczyłoby się jako postęp w przebiegu sierpniowym. Jedno z jedenastu
+zdarzeń, wykryte kompilatorem, nie przeglądem.
+
+**Zdarzenia sprzed tego etapu nie dostaną tożsamości przebiegu wstecz.** Kolumny są nullowalne, a raport
+pisze przy nich „bez tożsamości przebiegu", nie „0 przebiegów" — bo drugie czytałoby się jako cisza, a to
+jest historia. Ten sam problem, który przy wersjach kontraktu rozwiązuje stan `:historical`.
 
 ## Rozstrzygnięte 4 sierpnia
 
@@ -234,7 +264,9 @@ lib/taxvision/    aplikacja klienta
 
 1. **Monitor zaległych procesów i ocena assercji `trace`.** Jedno i drugie jest zadeklarowane w kontrakcie i
    **nieczytane przez nikogo**. To jest produkt: „faktura, która miała pójść, nie poszła, i nic nie
-   zawiodło" wykrywa się dokładnie tym. Prototyp dowiózł instalację, nie produkt.
+   zawiodło" wykrywa się dokładnie tym. Prototyp dowiózł instalację, nie produkt. *Od 5 sierpnia jest na
+   czym to postawić — tożsamość przebiegu jest w logu i zapytania per przebieg działają. Sama ocena to
+   etap 1.5.*
 2. **Typy payloadu nie są sprawdzane.** Kontrakt mówi `task_count: :integer` i nic tego nie pilnuje.
    Notatki §6 wymieniają payload conformance jako w pełni generowalny test.
 3. **Awaria handlera synchronicznego nie zostawia śladu** — transakcja cofa wiersz obsługi razem ze

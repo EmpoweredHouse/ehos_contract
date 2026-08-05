@@ -4,27 +4,44 @@ Zakres produktu, uzasadnienie i lista zmian w rekordzie żyją w
 `~/Projects/ai/empowered-house-context/output/20260804-pns-product-plan.md`. **Ten plik to lista roboty** i
 tylko tu jest aktualizowany stan.
 
-## Stan na 4 sierpnia
+## Stan na 5 sierpnia
 
-42 testy, `mix check` przechodzi, jedno celowe ostrzeżenie (`deadline` bez potwierdzenia process ownera).
+55 testów, `mix check` przechodzi, jedno celowe ostrzeżenie (`deadline` bez potwierdzenia process ownera).
 Działa: kontrakt jako moduł Elixira z bramami kompilacyjnymi, dispatch po granicy transakcji, log zdarzeń,
-`boundary`, szew tożsamości, nakładka declared vs observed z czterema stanami.
+`boundary`, szew tożsamości, nakładka declared vs observed z czterema stanami, **tożsamość instancji procesu
+i liczniki w dwóch wymiarach (wystąpienia i przebiegi)**.
 
 **Nie działa, bo nie zostało zbudowane — i to jest produkt:**
 
 | Luka | Waga |
 | --- | --- |
 | `trace` i `deadline` są zadeklarowane i **nie czyta ich nikt** | to jest produkt |
-| Nie istnieje pojęcie **instancji procesu** — nakładka liczy per typ zdarzenia | blokuje produkt |
 | Typy payloadu nie są sprawdzane; kontrakt mówi `:integer` i nic nie pilnuje | obietnica kontraktu |
 | Awaria handlera synchronicznego nie zostawia śladu | diagnostyka |
 
 ## Etap 1 — rdzeń weryfikacji
 
-**1.1 Instancja procesu.** `instance: [...]` w DSL, brama kompilacyjna: każde zdarzenie procesu musi nieść
-pola instancji. Powód jest techniczny, nie sprawozdawczy — bez tego „eventually Y" dopasuje Y z innego
-przebiegu.
-*Odbiór:* assercja policzona dla dwóch równoległych przebiegów nie myli ich zdarzeń.
+**1.1 Instancja procesu. ✅ zrobione 5 sierpnia.** `instance: [...]` w DSL, brama kompilacyjna: każde
+zdarzenie procesu musi nieść pola instancji. Powód jest techniczny, nie sprawozdawczy — bez tego
+„eventually Y" dopasuje Y z innego przebiegu.
+*Odbiór:* assercja policzona dla dwóch równoległych przebiegów nie myli ich zdarzeń. **Spełnione** —
+`test/instance_test.exs`, przebieg c-1 otwiera miesiąc, c-2 nie, i licznik per typ zdarzenia zaliczyłby oba.
+
+Wyszło przy okazji, w kolejności ważności:
+
+- `instance:` jest **wymagane na każdym procesie**, nie opcjonalne. Obie rzeczy, które czynią z tego produkt
+  — ocena `trace` i nakładka — liczą się w obrębie przebiegu, więc brama opcjonalna byłaby dokumentacją.
+- **Zdarzenie w dwóch procesach nie kompiluje się.** To warunek stopu z ADR §15 zrobiony mechanicznie: dwa
+  procesy to dwie tożsamości przebiegu, a w logu jest na to jedna kolumna.
+- **`trace` rozciągnięty na dwa procesy nie kompiluje się** z tego samego powodu.
+- Brama znalazła jedno zdarzenie: `turnover_matched_with_invoice` nie miało `period`, więc meczowanie z lipca
+  liczyłoby się jako postęp w sierpniu. Dopisane.
+- Liczniki mają **dwa wymiary**: wystąpienia i przebiegi, plus mianownik „ile przebiegów w ogóle było".
+  Krawędź przejechana 49 razy przez jedną firmę i raz przez 49 firm miały wcześniej identyczny licznik.
+  Świadomie **liczba, nie lista** — które przebiegi milczą, to pytanie o konkretną firmę.
+- Zdarzenia zapisane przed tym etapem nie mają tożsamości przebiegu i już jej nie dostaną; raport pisze
+  „bez tożsamości przebiegu", nie „0 przebiegów". To ten sam problem, który przy wersjach kontraktu
+  rozwiązuje stan `:historical`.
 
 **1.2 Brama uniwersalności.** Drugi kontrakt z innej domeny, wyłącznie kontrakt plus fake'i, bez implementacji.
 
