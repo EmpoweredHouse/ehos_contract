@@ -113,6 +113,18 @@ defmodule ProcessShapes.Rig do
     process: :pairing,
     stage: :resolution
 
+  # For stage 2.3. In `intake` rather than `resolution` deliberately: its handler
+  # publishes into `matching`, and from `resolution` that would be a second backward
+  # edge — which would quietly break the acceptance criterion of 1.3 by making the
+  # count two.
+  event :item_flagged,
+    label: "Item flagged for review",
+    owner: ProcessShapes.Intake,
+    payload: %{case_id: :id, item_no: :integer},
+    identity: [:case_id, :item_no],
+    process: :pairing,
+    stage: :intake
+
   process :pairing,
     label: "Item pairing",
     stages: [:intake, :matching, :resolution],
@@ -254,6 +266,36 @@ defmodule ProcessShapes.Matching.OnItemPaired do
     if ProcessShapes.Matching.closable?(case_id) do
       paired = ProcessShapes.Matching.count(case_id, "item_paired")
       {:ok, [PNS.event(:case_closed, %{case_id: case_id, paired: paired})]}
+    else
+      :ok
+    end
+  end
+end
+
+defmodule ProcessShapes.Intake.OnItemFlagged do
+  @moduledoc """
+  **Fails on purpose, for stage 2.3: a synchronous handler that raises.**
+
+  It declares a path it never takes, because it dies first. That combination is the
+  whole point: the edge is declared, never observed, and the reason is a defect — so
+  a path report that only knows "declared, never observed" describes it as a dead or
+  untested path, which sends a developer's bug to the process owner as a question
+  about their process.
+
+  Whether it raises depends on the payload, for the same reason as the stage 2.1
+  fixtures: the control is the same handler **not** failing, and without it a test
+  could pass against a mechanism that recorded a failure for every handler call.
+  """
+
+  use PNS.Handler,
+    contract: ProcessShapes.Rig,
+    event: :item_flagged,
+    publishes: [:pairing_unresolved]
+
+  @impl PNS.Handler
+  def handle(%{item_no: item_no}, _ctx) do
+    if item_no > 0 do
+      raise RuntimeError, "the review desk is unreachable"
     else
       :ok
     end

@@ -139,8 +139,26 @@ defmodule Taxvision.Report do
         "    · #{step(s)} — w trakcie, #{s.in_flight} w kolejce"
       end
 
-    untraversed ++ waiting
+    # Separate from "never done", because it is a different finding for a different
+    # reader: there the question is whether the step is still agreed, here it is that
+    # the code is broken. Merging them puts a bug in front of the client as a
+    # question about their process.
+    failing =
+      case p.failing do
+        [] ->
+          []
+
+        steps ->
+          ["  Ustalone kroki, które są próbowane i się nie udają:"] ++
+            for s <- steps, do: "    · #{step(s)} — nie udało się w #{runs(s.failing)}"
+      end
+
+    untraversed ++ waiting ++ failing
   end
+
+  @spec runs(pos_integer()) :: String.t()
+  defp runs(1), do: "1 przebiegu"
+  defp runs(n), do: "#{n} przebiegach"
 
   # Business labels, with the technical name only as an aside. The acceptance
   # criterion: readable without explaining what the columns mean.

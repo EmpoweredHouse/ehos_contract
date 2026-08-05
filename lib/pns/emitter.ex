@@ -57,17 +57,15 @@ defmodule PNS.Emitter do
 
   A synchronous handler that raises takes down the whole transaction — and that is
   only correct because such handlers are confined to derived state in the same
-  database. There is nothing to retry, because nothing happened.
+  database. There is nothing to retry, because nothing happened. What it leaves
+  behind is a `PNS.HandlerFailure`, written after the rollback rather than inside it.
   """
   @spec emit(module(), atom(), map(), map()) :: {:ok, Event.t()} | {:error, term()}
   def emit(contract, type, payload, ctx \\ %{}) do
     repo = repo()
+    ctx = Map.put_new_lazy(ctx, :correlation_id, &Ecto.UUID.generate/0)
 
-    if repo.in_transaction?() do
-      {:ok, do_emit(repo, contract, type, payload, ctx)}
-    else
-      repo.transaction(fn -> do_emit(repo, contract, type, payload, ctx) end)
-    end
+    in_own_transaction(repo, fn -> do_emit(repo, contract, type, payload, ctx) end)
   end
 
   @doc "Like `emit/4`, but returns the event or raises."
@@ -101,7 +99,38 @@ defmodule PNS.Emitter do
       end)
     end
 
-    if repo.in_transaction?(), do: {:ok, run.()}, else: repo.transaction(run)
+    in_own_transaction(repo, run)
+  end
+
+  # The failure trace is written **here** and not where the failure is noticed,
+  # because that code runs inside the transaction that is about to disappear. By the
+  # time this frame rescues, the rollback has happened and the connection is free, so
+  # a plain insert commits — no second connection, no task, nothing writing around
+  # the sandbox in tests.
+  #
+  # When the caller opened the transaction, this never gets a turn: the exception
+  # goes into their transaction, and the trace is theirs to write. Stated in
+  # `PNS.HandlerFailure` rather than worked around, because a durable write from
+  # inside somebody else's doomed transaction is not possible on one connection.
+  @spec in_own_transaction(module(), (-> term())) :: {:ok, term()} | {:error, term()}
+  defp in_own_transaction(repo, run) do
+    own? = not repo.in_transaction?()
+
+    try do
+      if own?, do: repo.transaction(run), else: {:ok, run.()}
+    rescue
+      failure in PNS.SyncHandlerError ->
+        # Recorded only when the transaction was ours. Inside somebody else's, this
+        # insert would roll back with theirs — so it is skipped rather than written
+        # and lost.
+        if own?, do: PNS.HandlerFailure.record!(failure)
+
+        # Unwrapped in **both** cases. The wrapper carries context to the recorder
+        # and stops here: a caller keeps seeing the exception the handler raised,
+        # with the stacktrace that points at the handler. Letting it out would make
+        # a diagnostic mechanism a breaking change in every caller's error handling.
+        reraise failure.original, failure.stacktrace
+    end
   end
 
   @spec do_emit(module(), module(), atom(), map(), map()) :: Event.t()
@@ -172,10 +201,49 @@ defmodule PNS.Emitter do
         try do
           handler.module.handle(payload, ctx)
         rescue
+          already in PNS.SyncHandlerError ->
+            # A handler further down the chain failed and is already described. This
+            # handler did not fail — it emitted, and something downstream died. Left
+            # unguarded, the wrapping would attribute the fault to whoever is highest
+            # in the chain and emit one telemetry event per frame for one failure.
+            reraise already, __STACKTRACE__
+
           error ->
-            # The handling row disappears along with the transaction — and that
-            # is correct: nothing happened, so the log must not claim it did.
-            reraise error, __STACKTRACE__
+            # The handling row disappears along with the transaction — and that is
+            # correct: nothing happened, so the log must not claim it did. What is
+            # not correct is that it used to disappear leaving nothing at all, which
+            # is the gap ADR §13 found by building this layer.
+            #
+            # Telemetry first, because it is the only half that works when the
+            # caller owns the transaction. Error collection belongs to the client's
+            # tooling; this is the seam it attaches to.
+            :telemetry.execute(
+              [:pns, :handler, :exception],
+              %{duration_us: System.monotonic_time(:microsecond) - started},
+              %{
+                handler: handler.module,
+                contract: contract,
+                event_type: type,
+                instance_id: event.instance_id,
+                correlation_id: ctx.correlation_id,
+                kind: :error,
+                reason: error,
+                stacktrace: __STACKTRACE__
+              }
+            )
+
+            # Wrapped rather than reraised bare: the frame that can durably write
+            # this is outside the transaction and knows none of the context.
+            reraise PNS.SyncHandlerError.exception(
+                      handler: handler.module,
+                      contract: contract,
+                      event_type: type,
+                      correlation_id: ctx.correlation_id,
+                      instance_id: event.instance_id,
+                      original: error,
+                      stacktrace: __STACKTRACE__
+                    ),
+                    __STACKTRACE__
         end
 
       repo.insert!(%EventHandling{

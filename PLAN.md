@@ -6,7 +6,7 @@ tylko tu jest aktualizowany stan.
 
 ## Stan na 6 sierpnia
 
-150 testów, `mix check` przechodzi. Ostrzeżenia są **trzy** i wszystkie celowe: `deadline` TaxVision bez
+162 testy, `mix check` przechodzi. Ostrzeżenia są **trzy** i wszystkie celowe: `deadline` TaxVision bez
 potwierdzenia process ownera, `deadline` z wymyślonej fikstury bramy uniwersalności, oraz **krawędź wsteczna
 w stanowisku badawczym kształtów — która jest kryterium odbioru 1.3, więc jej brak byłby regresem.**
 Samo `mix pns.check` w środowisku dev pokazuje jedno — fikstury żyją w `test/support/`.
@@ -16,7 +16,8 @@ Działa: kontrakt jako moduł Elixira z bramami kompilacyjnymi, dispatch po gran
 i liczniki w dwóch wymiarach (wystąpienia i przebiegi)**, **drugi kontrakt z obcej domeny bez ani jednego
 nowego słowa w DSL**, **ocena assercji `trace` per przebieg — trzy werdykty z czterech**, **raport
 nieprzejechanych ścieżek per przebieg**, **`publishes:` wiąże handler w runtime, nie tylko opisuje**,
-**obie tożsamości wdrożenia haszują się kanonicznie, z jednego źródła**.
+**obie tożsamości wdrożenia haszują się kanonicznie, z jednego źródła**, **awaria handlera synchronicznego
+zostawia ślad, a raport odróżnia „próbowane i nie udaje się" od „nigdy nie próbowano"**.
 
 **Nie działa, bo nie zostało zbudowane — i to jest produkt:**
 
@@ -25,7 +26,6 @@ nieprzejechanych ścieżek per przebieg**, **`publishes:` wiąże handler w runt
 | `deadline` procesu jest zadeklarowany i **nie czyta go nikt** — jedyni czytelnicy to filtr, który go wyrzuca, i renderer, który by go wypisał; `deadline_at` w `PNS.Trace` pochodzi z `within`, czyli z innej deklaracji | to jest produkt |
 | `cadence` jest **przenoszona**, ale nikt nie liczy z niej okna — mechanizm „never observed" z notatek §9 nadal nie istnieje | to jest produkt |
 | Typy payloadu nie są sprawdzane; kontrakt mówi `:integer` i nic nie pilnuje | obietnica kontraktu |
-| Awaria handlera synchronicznego nie zostawia śladu | diagnostyka |
 
 ## Etap 1 — rdzeń weryfikacji
 
@@ -478,8 +478,63 @@ Przy okazji do domknięcia: `:integer` jest używane w obu kontraktach i nie ma 
 słowniku, a notatki §1 pokazują w przykładzie `:uuid` i `:decimal`, których nie ma nigdzie. Słownik ma
 jedno źródło prawdy — `PNS.Contract.vocabulary/0` — i reszta ma się z nim zgadzać.
 
-**2.3 Ślad po awarii handlera synchronicznego.** Transakcja cofa wiersz obsługi razem ze zdarzeniem, więc
-najciekawsza awaria jest niewidoczna. Zapis poza transakcją albo telemetria.
+**2.3 Ślad po awarii handlera synchronicznego. ✅ zrobione 6 sierpnia.** `PNS.HandlerFailure`,
+`PNS.SyncHandlerError`, `test/handler_failure_test.exs`. 162 testy.
+
+Plan mówił „zapis poza transakcją **albo** telemetria". Weszły **oba i z różnych powodów**: telemetria, bo
+zbieranie błędów należy do narzędzi klienta (`[:pns, :handler, :exception]` z handlerem, przebiegiem i
+stacktrace'em), a trwały wiersz, bo **telemetria istnieje tylko tam, gdzie ktoś skonfigurował kolektor**, a
+luka z ADR §13 jest o **artefakcie**, nie o observability.
+
+**Kryterium ma dwie połowy, które się przeciągają, i obie są przypięte.** Awaria jest zapisana **i cofnięcie
+zostaje w mocy** — zapisanie okupione osłabieniem rollbacku wymieniłoby lukę diagnostyczną na log, który
+kłamie, że fakt zaszedł, choć praca się nie wykonała.
+
+**Osobna tabela, nie status na `pns_event_handlings`, i nie z wygody.** Każdy inny wiersz w logu mówi o czymś,
+co zaszło; ten mówi o czymś **próbowanym, co nie zaszło** — więc nie ma na co wskazać, bo zdarzenie zostało
+cofnięte i nigdy nie istniało. Klucza obcego nie ma i to jest decyzja, nie przeoczenie. Tym, co przeżywa
+rollback, jest `correlation_id`, generowany przed otwarciem transakcji, i to on jest uchwytem.
+
+**Gdzie zapis, bo to była cała trudność.** Nie tam, gdzie awaria jest zauważona — ten kod siedzi w skazanej
+transakcji, więc jego insert cofnąłby się razem z nią. Zapis idzie w **najbardziej zewnętrznej ramce
+emittera**, tej, która transakcję otwarła, **po** rollbacku, kiedy połączenie jest znowu wolne. Żadnego
+drugiego połączenia, żadnego `Task`, żadnego pisania obok sandboxa w testach — a to ostatnie miało już
+kiedyś cenę przy `PNS.Deployment.record!`.
+
+**Wrapper jest transportem i nie wychodzi do wołającego.** Ramka, która wie *który handler padł na którym
+przebiegu*, jest głęboko w transakcji, która zaraz zniknie; ramka, która umie trwale zapisać, nie wie nic —
+kontekst musi odbyć podróż. Ale pierwsza wersja przepuszczała `PNS.SyncHandlerError` na zewnątrz i **jeden
+test to złapał**: wołający zamiast `ArgumentError` handlera dostawał wyjątek silnika. To byłaby zmiana
+łamiąca obsługę błędów u każdego klienta, wprowadzona jako efekt uboczny mechanizmu diagnostycznego. Teraz
+emitter odwija i rzuca **oryginał z oryginalnym stacktrace'em** — samo `reraise original, __STACKTRACE__`
+wskazywałoby bibliotekę, co jest gorsze niż brak wrappera, więc stacktrace jedzie w polu.
+
+**Podwójne zawinięcie.** Emisja handlera odpala następny handler, więc `rescue` ramki wyżej zawinęłoby już
+zawinięty błąd i przypisało awarię **nie temu handlerowi**, plus jedno zdarzenie telemetrii na ramkę. Osobna
+klauzula na `PNS.SyncHandlerError` przepuszcza go bez zmian.
+
+**Tabela ma czytelnika od pierwszego commita**, bo inaczej jest kolejną deklaracją, której nikt nie czyta — a
+etap 2 istnieje po to, żeby takie usuwać. `PNS.Conformance` odróżnia **„nigdy nie próbowano" od „próbowane i
+nie udaje się"**: „zadeklarowane, nigdy nie zaobserwowane" czyta się jako martwy albo nieprzetestowany krok, a
+dla handlera, który leci i pada w każdym przebiegu, **oba odczyty są fałszywe** i idą do złej osoby. Ścieżka z
+padającym handlerem wypada z listy nieprzejechanych i wchodzi na własną. To trzeci wariant jednego błędu:
+raport nie ma prawa zamieniać *braku odpowiedzi* na *odpowiedź „nie"*.
+
+Liczy **przebiegi, nie awarie** — handler ponowiony czterdzieści razy dla jednego klienta to jeden padający
+przebieg. `coalesce` wymagało jawnego rzutowania, bo `instance_id` jest tekstem, a `id` uuidem, i Postgres
+słusznie odmawia zamiast wybrać po cichu.
+
+**Limit nazwany, nie obejściony:** kiedy transakcję otwarł wołający, silnik nie dostaje swojej kolejki —
+wyjątek wchodzi w ich transakcję i ślad jest ich do zapisania. Trwały zapis z wnętrza czyjejś skazanej
+transakcji nie jest na jednym połączeniu możliwy. Przypięte testem, żeby limit był własnością, a nie
+niespodzianką.
+
+Fikstura `OnItemFlagged` jest w `intake`, **nie w `resolution`**, choć tam byłaby naturalniejsza: publikuje do
+`matching`, więc z `resolution` byłaby **drugą krawędzią wsteczną** i po cichu zepsułaby kryterium odbioru
+1.3, zmieniając liczbę z jednej na dwie. Sprawdzone: `pns.check` nadal zgłasza jedną.
+
+Zweryfikowane odwrotnie: po wyłączeniu zapisu padają **trzy z dwudziestu trzech** testów w tych dwóch
+plikach — dokładnie te, które o śladzie cokolwiek twierdzą.
 
 **2.4 Cztery rzeczy odpornościowe.** Ochrona przed cyklem w runtime; zdefiniowana albo zabroniona kolejność
 dwóch handlerów synchronicznych na jednym zdarzeniu; łagodne odrzucenie joba po znikniętym handlerze.

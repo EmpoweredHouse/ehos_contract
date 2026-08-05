@@ -23,6 +23,14 @@ defmodule PNS.Conformance do
   untraversed. Without that the report would lie on every ordinary delay — and
   that is the lesson the overlay learned as its fourth state.
 
+  **A path being attempted and failing is not a dead path.** "Declared, never
+  observed" reads as a dead contract or an untested path, and for a handler that
+  runs and crashes on every run both readings are wrong — the path is wired,
+  exercised and broken, which is the opposite finding and goes to a different
+  person. So an untraversed path carries how many runs its handler failed on
+  (`PNS.HandlerFailure`). This is the third variant of one mistake: the report must
+  not turn *no answer* into *the answer is no*.
+
   ## The boundary
 
   The report talks about **paths**, not about companies. If 47 of 50 runs did not
@@ -30,7 +38,7 @@ defmodule PNS.Conformance do
   question about the state of the business and belongs to the client application.
   """
 
-  alias PNS.{Deployment, Graph, Trace}
+  alias PNS.{Deployment, Graph, HandlerFailure, Trace}
 
   @doc """
   All four of the screen's questions for one contract over a period, as data.
@@ -72,6 +80,7 @@ defmodule PNS.Conformance do
             declarations: verified_declarations(process),
             untraversed: label_edges(answers && answers.untraversed, labels),
             in_flight: label_edges(answers && answers.in_flight, labels),
+            failing: label_edges(answers && answers.failing, labels),
             assertions: assertions(contract, process, labels, opts)
           }
         end,
@@ -155,7 +164,8 @@ defmodule PNS.Conformance do
         from_label: labels[to_string(edge.from)],
         to_label: labels[to_string(edge.to)],
         async: edge.async,
-        in_flight: edge.in_flight
+        in_flight: edge.in_flight,
+        failing: edge.failing
       }
     end
   end
@@ -169,12 +179,15 @@ defmodule PNS.Conformance do
   """
   @spec untraversed_paths(keyword()) :: [map()]
   def untraversed_paths(opts \\ []) do
+    failures = HandlerFailure.runs_by_handler(opts)
+
     edges =
       Graph.overlay(opts)
       # Only **declared** edges. Observed-but-undeclared is drift, which is a
       # different question on the screen, and mixing them into one list turns the
       # report into a bag.
       |> Enum.filter(& &1.handler)
+      |> Enum.map(&Map.put(&1, :failing, Map.get(failures, inspect(&1.handler), 0)))
       |> Enum.group_by(& &1.process)
 
     # Iterating over **processes from the registry**, not over edges from the log.
@@ -199,12 +212,14 @@ defmodule PNS.Conformance do
       instances: 0,
       basis: :no_paths,
       untraversed: [],
-      in_flight: []
+      in_flight: [],
+      failing: []
     }
   end
 
   defp report(contract, process, edges) do
     runs = edges |> Enum.map(& &1.of_instances) |> Enum.max()
+    unobserved = if runs > 0, do: Enum.filter(edges, &untraversed?/1), else: []
 
     %{
       process: process.name,
@@ -215,8 +230,14 @@ defmodule PNS.Conformance do
       paths: length(edges),
       instances: runs,
       basis: if(runs > 0, do: :runs, else: :no_runs),
-      untraversed: if(runs > 0, do: Enum.filter(edges, &untraversed?/1), else: []),
-      in_flight: Enum.filter(edges, &(&1.in_flight > 0))
+      # A path whose handler is failing is **not** in the untraversed list. It is a
+      # different finding with a different reader: untraversed asks the process
+      # owner whether the path is still agreed, failing tells a developer their code
+      # is broken. Leaving it in both would put a bug in front of the client as a
+      # question about their process.
+      untraversed: Enum.reject(unobserved, &(&1.failing > 0)),
+      in_flight: Enum.filter(edges, &(&1.in_flight > 0)),
+      failing: Enum.filter(unobserved, &(&1.failing > 0))
     }
   end
 

@@ -173,4 +173,75 @@ defmodule Taxvision.ReportTest do
       assert PNS.Conformance.report(UniversalityGate.TreatmentEpisode).drift == []
     end
   end
+
+  describe "a failing step reads as a failure, not as a step nobody took" do
+    setup do
+      registries(%{"c-1" => {:ok, @consistent}})
+      open_month("c-1")
+      Oban.drain_queue(queue: :events)
+      :ok
+    end
+
+    test "the sentence says it is being attempted and not succeeding" do
+      # Rendering is pure, so the failing branch is exercised with the shape it is
+      # contracted to accept rather than by breaking a TaxVision handler. No client
+      # handler fails today, and making one fail to reach a renderer branch would be
+      # changing the domain to suit a test.
+      report = data()
+      [process | rest] = report.processes
+
+      failing = %{
+        from: :accounting_month_opened,
+        to: :month_closed,
+        from_label: "Otwarto miesiąc księgowy",
+        to_label: "Zamknięto miesiąc księgowy",
+        async: false,
+        in_flight: 0,
+        failing: 2
+      }
+
+      text =
+        %{report | processes: [%{process | failing: [failing]} | rest]}
+        |> Taxvision.Report.render()
+
+      assert text =~ "Ustalone kroki, które są próbowane i się nie udają:"
+      assert text =~ "Otwarto miesiąc księgowy → Zamknięto miesiąc księgowy"
+      assert text =~ "nie udało się w 2 przebiegach"
+
+      # **One edge, one section.** The untraversed section is legitimately present
+      # here too — only the consistent branch ran, so the divergent path really was
+      # never taken — which is exactly why the assertion has to be about this edge
+      # rather than about the section existing. An earlier version of this test
+      # asserted the section was absent and was simply wrong about the domain.
+      occurrences =
+        text
+        |> String.split("Otwarto miesiąc księgowy → Zamknięto miesiąc księgowy")
+        |> length()
+        |> Kernel.-(1)
+
+      assert occurrences == 1,
+             "the same edge in two sections says two different things about one finding"
+    end
+
+    test "one failing run is singular, because a report is read aloud" do
+      report = data()
+      [process | rest] = report.processes
+
+      failing = %{
+        from: :accounting_month_opened,
+        to: :month_closed,
+        from_label: "Otwarto miesiąc księgowy",
+        to_label: "Zamknięto miesiąc księgowy",
+        async: false,
+        in_flight: 0,
+        failing: 1
+      }
+
+      text =
+        %{report | processes: [%{process | failing: [failing]} | rest]}
+        |> Taxvision.Report.render()
+
+      assert text =~ "nie udało się w 1 przebiegu"
+    end
+  end
 end
