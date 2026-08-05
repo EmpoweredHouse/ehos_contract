@@ -380,12 +380,19 @@ defmodule PNS.Contract do
 
     validate!(env, events, processes, traces, externals, rules, examples)
 
+    # Through `PNS.Digest` rather than `:erlang.term_to_binary/1`: this value is
+    # compared against versions written into the log weeks ago, so it must not move
+    # for any reason other than the agreement moving. See that module for what is
+    # insignificant here and what is not.
     version =
-      [events, processes, traces, externals, rules, examples]
-      |> :erlang.term_to_binary()
-      |> then(&:crypto.hash(:sha256, &1))
-      |> Base.encode16(case: :lower)
-      |> binary_part(0, 12)
+      PNS.Digest.hash_groups(
+        events: events,
+        processes: processes,
+        traces: traces,
+        externals: externals,
+        rules: rules,
+        examples: examples
+      )
 
     quote do
       @doc false

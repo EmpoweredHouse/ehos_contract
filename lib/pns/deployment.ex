@@ -33,10 +33,11 @@ defmodule PNS.Deployment do
   documented rather than silent, because a report that guesses without saying so
   is worse than one that admits the gap.
 
-  The wiring hash is built from sorted strings, so it is canonical by
-  construction. `version/0` still uses `:erlang.term_to_binary/1` and is
-  therefore vulnerable to an OTP upgrade reclassifying history — a known gap
-  filed as stage 2.4, and this module is what the fix should look like.
+  Both hashes now come from `PNS.Digest`, so neither depends on term encoding,
+  module load order or OTP release. That was originally true here and not of
+  `version/0`, which used `:erlang.term_to_binary/1` — an OTP upgrade could have
+  reclassified the whole log as belonging to an older agreement. Fixed by moving
+  both to one canonical form rather than by hardening one of them.
   """
 
   use Ecto.Schema
@@ -82,7 +83,10 @@ defmodule PNS.Deployment do
           id: Ecto.UUID.generate(),
           contract: inspect(contract),
           contract_version: contract.version(),
-          wiring_version: digest(edges),
+          # Sorted above, so the list order carries no meaning by the time it gets
+          # here — which is the one case where `PNS.Digest` needs the caller's help,
+          # since it preserves list order on purpose.
+          wiring_version: PNS.Digest.hash(edges),
           events: events,
           edges: edges,
           first_seen_at: now
@@ -218,17 +222,6 @@ defmodule PNS.Deployment do
 
   @spec edge_label(atom() | String.t(), atom() | String.t()) :: String.t()
   defp edge_label(from, to), do: "#{from}->#{to}"
-
-  # Sorted strings in, so the same wiring always hashes the same way regardless
-  # of module load order or OTP version.
-  @spec digest([String.t()]) :: String.t()
-  defp digest(labels) do
-    labels
-    |> Enum.join("\n")
-    |> then(&:crypto.hash(:sha256, &1))
-    |> Base.encode16(case: :lower)
-    |> binary_part(0, 12)
-  end
 
   defp repo, do: @repo
 end

@@ -6,7 +6,7 @@ tylko tu jest aktualizowany stan.
 
 ## Stan na 6 sierpnia
 
-141 testów, `mix check` przechodzi. Ostrzeżenia są **trzy** i wszystkie celowe: `deadline` TaxVision bez
+150 testów, `mix check` przechodzi. Ostrzeżenia są **trzy** i wszystkie celowe: `deadline` TaxVision bez
 potwierdzenia process ownera, `deadline` z wymyślonej fikstury bramy uniwersalności, oraz **krawędź wsteczna
 w stanowisku badawczym kształtów — która jest kryterium odbioru 1.3, więc jej brak byłby regresem.**
 Samo `mix pns.check` w środowisku dev pokazuje jedno — fikstury żyją w `test/support/`.
@@ -15,7 +15,8 @@ Działa: kontrakt jako moduł Elixira z bramami kompilacyjnymi, dispatch po gran
 `boundary`, szew tożsamości, nakładka declared vs observed z czterema stanami, **tożsamość instancji procesu
 i liczniki w dwóch wymiarach (wystąpienia i przebiegi)**, **drugi kontrakt z obcej domeny bez ani jednego
 nowego słowa w DSL**, **ocena assercji `trace` per przebieg — trzy werdykty z czterech**, **raport
-nieprzejechanych ścieżek per przebieg**, **`publishes:` wiąże handler w runtime, nie tylko opisuje**.
+nieprzejechanych ścieżek per przebieg**, **`publishes:` wiąże handler w runtime, nie tylko opisuje**,
+**obie tożsamości wdrożenia haszują się kanonicznie, z jednego źródła**.
 
 **Nie działa, bo nie zostało zbudowane — i to jest produkt:**
 
@@ -481,8 +482,39 @@ jedno źródło prawdy — `PNS.Contract.vocabulary/0` — i reszta ma się z ni
 najciekawsza awaria jest niewidoczna. Zapis poza transakcją albo telemetria.
 
 **2.4 Cztery rzeczy odpornościowe.** Ochrona przed cyklem w runtime; zdefiniowana albo zabroniona kolejność
-dwóch handlerów synchronicznych na jednym zdarzeniu; **kanoniczny hash `version/0`** (dziś aktualizacja OTP
-może przekwalifikować całą historię na `historical`); łagodne odrzucenie joba po znikniętym handlerze.
+dwóch handlerów synchronicznych na jednym zdarzeniu; łagodne odrzucenie joba po znikniętym handlerze.
+
+**Kanoniczny hash — ✅ zrobione 6 sierpnia, wyciągnięte przed 2.2.** `PNS.Digest`, `test/digest_test.exs`.
+Powód wyciągnięcia: 1.6 i 1.7 właśnie oparły klasyfikację historii na `contract_version`, więc luka
+przestała być hipotetyczna — zaczęła podpierać raport dowodowy.
+
+**Groźniejszy z dwóch defektów nie był tym, który miał w planie nazwę.** Aktualizacja OTP to zdarzenie, które
+ktoś zauważa. **Przestawienie dwóch bloków `event` w pliku to zwykła edycja** — a `term_to_binary` liczył z
+listy w kolejności deklaracji, więc wersja się ruszała, mimo że ustalenia nie. Kolejność deklaracji jest teraz
+nieistotna, bo kontrakt jest **zbiorem** deklaracji, nie ciągiem.
+
+Rozróżnienie, na którym stoi cały moduł: **kolekcje deklaracji sortujemy, wartości wewnątrz deklaracji nie.**
+`instance: [:company_id, :period]` i odwrotność to dwa różne ustalenia, bo klucz przebiegu to te wartości
+złączone w kolejności — posortowanie zrównałoby dwa różne klucze. To samo `stages:`, bo kolejność faz
+decyduje, czy krawędź jest wsteczna.
+
+Sortowanie idzie po kanonicznej postaci **całej** deklaracji, nie po kluczu `name`. Dzięki temu moduł nie
+musi wiedzieć, który klucz nazywa deklarację, i nie ma grupy, której trzeba go nauczyć — `example` nie ma
+`name` i to przestało być przypadkiem szczególnym.
+
+`PNS.Deployment` liczy teraz z tego samego źródła, więc **obie tożsamości wdrożenia mają jedną kanoniczną
+postać**, a nie jedną dobrą i jedną utwardzoną. Krawędzie są tam sortowane przed haszowaniem — to jedyne
+miejsce, gdzie `PNS.Digest` potrzebuje pomocy wołającego, bo kolejność listy zachowuje świadomie.
+
+**Cena zapłacona raz, jawnie: wersja skoczyła `7c229c333c21` → `0343089e9d75`.** Czyli poprawka wykonała
+dokładnie to przeklasyfikowanie, któremu zapobiega — jednorazowo i celowo. Raport powie „zdarzeń z
+wcześniejszych wersji ustaleń: N, to legalna historia", co jest uczciwe. **Konsekwencja dla harmonogramu:
+to musiało wejść, zanim log klienta ma historię wartą zachowania**, i dlatego nie czekało na 2.2.
+
+Fikstury (`Ordered`, `Reordered`, `Changed`) stoją **w pliku `.exs`**, bo rejestr skanuje listę modułów
+aplikacji, a moduły z `.exs` w niej nie są — więc są niewidoczne dla grafu, tabeli wdrożeń i każdego raportu
+ścieżek. Sprawdzone: `pns.check` pokazuje nadal 18 informacji i trzy kontrakty w rejestrze. Kontrakt, który
+istnieje tylko po to, żeby go zahaszować, nie ma prawa wyjść w raporcie klienta jako proces bez przebiegów.
 
 **2.5 Telemetria.** `:telemetry` emitowana tutaj; zbieranie, wykresy i alerty należą do GCP i Datadoga.
 
