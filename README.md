@@ -271,6 +271,7 @@ lib/taxvision/    aplikacja klienta
   adapters/       behaviour + fake
 test/support/
   universality_gate/   drugi kontrakt, WYMYŚLONY — brama uniwersalności, nie klient
+  process_shapes/      stanowisko badawcze kształtów procesu — NIE domena
 ```
 
 ## Instancja procesu — co zmieniło się 5 sierpnia

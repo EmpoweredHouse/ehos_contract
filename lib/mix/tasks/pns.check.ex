@@ -123,42 +123,14 @@ defmodule Mix.Tasks.Pns.Check do
     end
   end
 
-  # Trigger przeglądu §15, wprost: "belongs in `mix pns.check` from the start".
-  # Moduł subskrybujący zdarzenie z **późniejszej fazy** niż ta, do której sam
-  # publikuje, to krawędź wsteczna — sygnatura wyciekającej kompensacji. Jedna
-  # jest normalna, rosnąca liczba znaczy, że decyzja się nie sprawdza.
-  #
-  # Liczone po fazach, nie po pozycji zdarzenia w liście: wewnątrz fazy kontrakt
-  # nie twierdzi nic o kolejności, więc dwa zdarzenia tej samej fazy nigdy nie
-  # są krawędzią wsteczną. Wersja licząca po pozycji dawała fałszywe alarmy tam,
-  # gdzie warsztat wprost mówi o równoległości.
+  # Logika siedzi w `PNS.Check`, nie tutaj: jako funkcja prywatna zadania mixa
+  # była logiką bez testu, a to jest sprawdzenie, na którym stoi trigger
+  # przeglądu ADR §15.
   defp check_backward_edges(findings) do
-    # Faza zdarzenia jest teraz na zdarzeniu, a proces trzyma tylko porządek
-    # faz — więc pozycję liczy się indeksem fazy w tym porządku.
-    stage_of =
-      for event <- PNS.Registry.declared_events(),
-          process = event.process && event.contract.process(event.process),
-          index = Enum.find_index(process.stages, &(&1 == event.stage)),
-          into: %{} do
-        {event.name, {process.name, index, event.stage}}
-      end
-
-    PNS.Registry.handlers()
-    |> Enum.group_by(& &1.module)
-    |> Enum.reduce(findings, fn {module, handlers}, acc ->
-      subscribed = for h <- handlers, pos = stage_of[h.event], do: pos
-      published = for h <- handlers, e <- h.publishes, pos = stage_of[e], do: pos
-
-      backward =
-        for {process, sub_index, sub_stage} <- subscribed,
-            {^process, pub_index, pub_stage} <- published,
-            sub_index > pub_index,
-            do: "#{process}: publikuje w #{pub_stage}, subskrybuje w #{sub_stage}"
-
-      case backward do
-        [] -> acc
-        edges -> [{:warn, "krawędź wsteczna w #{inspect(module)} — #{Enum.join(edges, "; ")}"} | acc]
-      end
+    Enum.reduce(PNS.Check.backward_edges(), findings, fn edge, acc ->
+      [{:warn,
+        "krawędź wsteczna w #{inspect(edge.module)} — #{edge.process}: " <>
+          "publikuje w #{edge.publishes_in}, subskrybuje w #{edge.subscribes_in}"} | acc]
     end)
   end
 

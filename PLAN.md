@@ -6,9 +6,10 @@ tylko tu jest aktualizowany stan.
 
 ## Stan na 5 sierpnia
 
-94 testy, `mix check` przechodzi. Ostrzeżenia są **dwa** i oba są celowe: `deadline` TaxVision bez
-potwierdzenia process ownera oraz `deadline` z fikstury bramy uniwersalności, która jest wymyślona w całości.
-Samo `mix pns.check` w środowisku dev pokazuje jedno — fikstura żyje w `test/support/`.
+102 testy, `mix check` przechodzi. Ostrzeżenia są **trzy** i wszystkie celowe: `deadline` TaxVision bez
+potwierdzenia process ownera, `deadline` z wymyślonej fikstury bramy uniwersalności, oraz **krawędź wsteczna
+w stanowisku badawczym kształtów — która jest kryterium odbioru 1.3, więc jej brak byłby regresem.**
+Samo `mix pns.check` w środowisku dev pokazuje jedno — fikstury żyją w `test/support/`.
 
 Działa: kontrakt jako moduł Elixira z bramami kompilacyjnymi, dispatch po granicy transakcji, log zdarzeń,
 `boundary`, szew tożsamości, nakładka declared vs observed z czterema stanami, **tożsamość instancji procesu
@@ -117,8 +118,49 @@ problem dla paczki na hex. Do etapu 3, razem z wydzieleniem `packages/pns_core`.
 **1.3 Kształty procesu, zasymulowane.** Cel: instancja żyjąca tygodniami, zdarzenie tego samego typu wiele
 razy w jednej instancji, krok który się cofa, zdarzenie wchodzące bez komendy, dwa moduły potrzebujące tych
 samych danych.
-*Odbiór:* instancja przechodzi cztery fazy; `pns.check` zgłasza krawędź wsteczną przy domykaniu pary i nie
-zgłasza jej tam, gdzie jej nie ma. Koszt 2–3 dni.
+*Odbiór:* `pns.check` zgłasza krawędź wsteczną przy domykaniu pary i nie zgłasza jej tam, gdzie jej nie ma.
+
+**1.3a ✅ zrobione 5 sierpnia — trzy kształty z pięciu.** `ProcessShapes.Rig` w `test/support/`, jawnie
+**nie domena**: nazwy bezbarwne (`item`, `case`, `pairing`), bo gdyby brzmiały jak księgowość albo medycyna,
+ktoś przeczytałby je jako wiedzę o czyimś procesie.
+
+Osobna fikstura, a nie handlery dopięte do kontraktu bramy uniwersalności — ten drugi jest artefaktem 1.2 i
+jego wartość polega na tym, że jest kontraktem **bez** implementacji; jest też jedyną fikstórą, na której da
+się sprawdzić raport dla procesu bez ani jednej ścieżki. Dopięcie handlerów zabrałoby oba pokrycia.
+
+*Odbiór spełniony, i ważniejsza jest druga połowa:* check zgłasza **jedną** krawędź wsteczną
+(`OnClarificationAnswered`: subskrybuje w `resolution`, publikuje do `matching`) i **milczy na trzech
+kontrolach**, które publikują do przodu. Sam fakt, że check znajduje przypadek zbudowany pod niego, nie
+dowodzi niczego — dowodem jest milczenie na kontrolach.
+
+Kształty pokryte: **krok, który się cofa** (w checku i w runtime — para domyka się po wyjaśnieniu),
+**to samo zdarzenie wiele razy w jednym przebiegu** (trzy pozycje = trzy fakty, jeden przebieg),
+**zdarzenie wchodzące bez komendy** (bez aktora, bez przyczyny, a z tożsamością przebiegu).
+
+Wyszło przy okazji:
+
+- **Wykrywanie krawędzi wstecznych było logiką bez testu** — funkcją prywatną zadania mixa. Przeniesione do
+  `PNS.Check`, bo sprawdzenie, którego nikt nie sprawdza, cicho przestaje działać, a na tym stoi trigger
+  przeglądu ADR §15. **Reszta `mix pns.check` to nadal ~180 linii logiki całoprogramowej bez ani jednego
+  testu** — do przeniesienia tą samą drogą.
+- **Indirekcja `defp repo, do: @repo` w `PNS.Emitter` jest nośna, nie stylistyczna.** `@repo.aggregate(...)`
+  rozwija atrybut do **literału modułu** w pozycji wywołania, więc `boundary` widzi referencję i odrzuca ją.
+  Przez zmienną — nie widzi. To jest jedyny powód, dla którego `PNS` ma `deps: []`.
+- **`clarification_requested` nie ma handlera i nie jest terminalne**, bo jego kontynuacja przychodzi z
+  zewnątrz. Daje linię `info` i to jest uczciwe: nie ma w DSL słowa „czeka na świat zewnętrzny" i **nie
+  wolno go dopisać** — to byłoby nowe słowo pod jeden przypadek.
+- **Aktor jako `nil` nie odróżnia „import" od „nie wiemy kto".** Sensowna wersja postulatu „każde zdarzenie
+  ma aktora" to nie „wymagany", a **„nigdy cisza"** — jawny aktor systemowy. Do rozstrzygnięcia.
+
+**1.3b Dwa moduły potrzebujące tych samych danych.** Ostatni kształt wymagający realnego ciśnienia
+domenowego: na fikstórze zduplikowałbym dane ze „nazwanym źródłem prawdy" i ogłosił sukces, nie dowiadując
+się niczego. Nośnikiem jest **tabela `periods`** (rozstrzygnięte wyżej): `period` żyje w zdarzeniach pięciu
+modułów TaxVision, a joiny międzymodułowe są zabronione, więc doktryna strategicznej duplikacji dostaje
+pierwszy prawdziwy test. Tu też rozstrzyga się wątpliwość „czy zakaz joinów jest znośny".
+
+**Kształt „instancja żyjąca tygodniami"** jest pokryty testami okna assercji (`{2, :day}`, `{3, :day}`) i
+**nie wymagał niczego od silnika** — log jest append-only, a `instance_id` grupuje niezależnie od upływu
+czasu. Zapisane, żeby nie budować pod niego zegara na niby.
 
 **Przeskalowane 5 sierpnia: celem są kształty, nie fazy TaxVision.** Pierwsza wersja tego punktu mówiła
 „fazy 3.2–3.4 dostają kontrakt, handlery i moduły" i to jest pomylenie pojazdu z celem — dodatkowo

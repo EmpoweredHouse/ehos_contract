@@ -15,6 +15,7 @@ defmodule PNS do
       Auth.Actor,
       Auth.Verifier,
       Auth.LocalToken,
+      Check,
       Conformance,
       Contract,
       Emission,
