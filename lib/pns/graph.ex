@@ -143,7 +143,7 @@ defmodule PNS.Graph do
 
     declared_edges = MapSet.new(static.edges, &{to_string(&1.from), to_string(&1.to)})
     current_versions = MapSet.new(static.nodes, & &1.contract_version)
-    process_of = Map.new(static.nodes, &{to_string(&1.event), &1.process})
+    node_of = Map.new(static.nodes, &{to_string(&1.event), &1})
 
     from_declared =
       for edge <- static.edges do
@@ -151,19 +151,23 @@ defmodule PNS.Graph do
         %{count: count, instances: instances} = Map.get(observed.edges, key, @no_traffic)
 
         waiting = Map.get(in_flight, inspect(edge.handler), 0)
-        process = process_of[to_string(edge.to)]
+        node = node_of[to_string(edge.to)]
 
         %{
           from: edge.from,
           to: edge.to,
           handler: edge.handler,
           async: edge.async,
+          # Proces i kontrakt krawędzi biorą się z jej **celu**: to zdarzenie,
+          # które ma powstać, więc to jego przebieg jest tu mianownikiem.
+          process: node && node.process,
+          contract: node && node.contract,
           count: count,
           # Ile przebiegów tę krawędź przejechało i ile ich w ogóle było.
           # Sam licznik wystąpień nie odróżnia „wszyscy przeszli" od „jeden
           # przeszedł pięćdziesiąt razy, reszta milczy".
           instances: instances,
-          of_instances: Map.get(observed.processes, to_string(process), 0),
+          of_instances: Map.get(observed.processes, to_string(node && node.process), 0),
           in_flight: waiting,
           # Trzeci stan, nie dwa. Job czekający w kolejce wygląda w logu
           # dokładnie jak ścieżka, która nigdy nie działa — a to jest różnica
@@ -188,6 +192,8 @@ defmodule PNS.Graph do
           to: to,
           handler: nil,
           async: nil,
+          process: nil,
+          contract: nil,
           count: traffic.count,
           instances: traffic.instances,
           of_instances: 0,

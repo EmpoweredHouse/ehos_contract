@@ -94,6 +94,8 @@ defmodule Mix.Tasks.Pns.Graph do
       Mix.shell().info("Nakładka declared vs observed:\n")
       Mix.shell().info(PNS.Graph.to_text(overlay))
 
+      paths(since)
+
       dead = PNS.Graph.declared_never_observed(since: since)
 
       if dead != [] do
@@ -106,4 +108,33 @@ defmodule Mix.Tasks.Pns.Graph do
       end
     end
   end
+
+  # Pierwsze z czterech pytań ekranu, liczone **per przebieg**: które
+  # zadeklarowane ścieżki nie zostały przejechane przez żaden przebieg.
+  defp paths(since) do
+    for report <- PNS.Conformance.untraversed_paths(since: since) do
+      Mix.shell().info("\nNieprzejechane ścieżki — proces #{inspect(report.process)}:")
+
+      case report do
+        %{basis: :no_runs} ->
+          # Zero przebiegów to brak podstawy, nie zielony ani czerwony raport.
+          Mix.shell().info("  brak przebiegów w logu — nie ma czego oceniać")
+
+        %{untraversed: [], in_flight: []} ->
+          Mix.shell().info("  wszystkie #{report.paths} ścieżek przejechane (#{report.instances} przebiegów)")
+
+        %{untraversed: untraversed} ->
+          Mix.shell().info("  #{length(untraversed)} z #{report.paths} nieprzejechanych, #{report.instances} przebiegów w logu")
+
+          for edge <- untraversed do
+            Mix.shell().info("    #{edge.from} -> #{edge.to}   (#{inspect(edge.handler)})")
+          end
+
+          for edge <- report.in_flight do
+            Mix.shell().info("    #{edge.from} -> #{edge.to}   — #{edge.in_flight} w kolejce, czyli jeszcze nie")
+          end
+      end
+    end
+  end
+
 end

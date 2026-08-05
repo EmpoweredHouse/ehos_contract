@@ -6,14 +6,15 @@ tylko tu jest aktualizowany stan.
 
 ## Stan na 5 sierpnia
 
-84 testy, `mix check` przechodzi. Ostrzeżenia są **dwa** i oba są celowe: `deadline` TaxVision bez
+90 testów, `mix check` przechodzi. Ostrzeżenia są **dwa** i oba są celowe: `deadline` TaxVision bez
 potwierdzenia process ownera oraz `deadline` z fikstury bramy uniwersalności, która jest wymyślona w całości.
 Samo `mix pns.check` w środowisku dev pokazuje jedno — fikstura żyje w `test/support/`.
 
 Działa: kontrakt jako moduł Elixira z bramami kompilacyjnymi, dispatch po granicy transakcji, log zdarzeń,
 `boundary`, szew tożsamości, nakładka declared vs observed z czterema stanami, **tożsamość instancji procesu
 i liczniki w dwóch wymiarach (wystąpienia i przebiegi)**, **drugi kontrakt z obcej domeny bez ani jednego
-nowego słowa w DSL**, **ocena assercji `trace` per przebieg — trzy werdykty z czterech**.
+nowego słowa w DSL**, **ocena assercji `trace` per przebieg — trzy werdykty z czterech**, **raport
+nieprzejechanych ścieżek per przebieg**.
 
 **Nie działa, bo nie zostało zbudowane — i to jest produkt:**
 
@@ -119,9 +120,28 @@ prawdy, nie wspólna tabela. Czyli budowanie tego nie jest objazdem, tylko reali
 jest produkt, a 1.1 i 1.2 były jego warunkiem wstępnym. 1.3 wymaga decyzji domenowych i materiału
 klienckiego; 1.4 i 1.5 nie wymagają ani jednej linijki TaxVision, bo oba kontrakty już deklarują assercje.
 
-**1.4 Behawioralna weryfikacja ścieżek, per instancja.**
-*Odbiór:* przy 50 przebiegach, z których żaden nie wszedł w gałąź blokującą, raport pokazuje jedną
-nieprzejechaną ścieżkę. Przy jednym przebiegu w tę gałąź — zero.
+**1.4 Behawioralna weryfikacja ścieżek, per instancja. ✅ zrobione 5 sierpnia.**
+*Odbiór:* **spełnione.** `PNS.Conformance.untraversed_paths/1`, `test/conformance_test.exs`: 50 przebiegów
+zgodnych → dokładnie **jedna** nieprzejechana ścieżka. 49 zgodnych plus jeden rozjazd → **zero**.
+
+To jest jednocześnie odpowiedź na warunek falsyfikacji z ADR-a: **różnica declared vs observed jest
+sygnałem, nie szumem.** Pięćdziesiąt przebiegów daje jedną linię raportu. Gdyby dawało pięćdziesiąt albo
+trzy, odpowiedź brzmiałaby odwrotnie.
+
+`PNS.Conformance` jest miejscem, w którym zbiegną się cztery pytania ekranu — dziś odpowiada na pierwsze.
+Dzięki temu 1.7 nie powstanie jako czwarte zadanie mixa obok trzech innych.
+
+Dwie sytuacje, w których raport łatwo skłamie, obie przypięte testem:
+
+- **Zero przebiegów to brak podstawy, nie trzy znaleziska.** Proces, który nigdy nie ruszył, ma wszystkie
+  ścieżki nieprzejechane; wypisanie ich zamienia „nie ma danych" w „mamy trzy problemy". Raport mówi
+  `basis: :no_runs` i pustą listę — ta sama zasada, na której stoi ocena assercji.
+- **Job w kolejce to „jeszcze nie", nie „nigdy".** Wypisywany osobno, nie jako nieprzejechany. Bez tego
+  raport kłamie przy każdym normalnym opóźnieniu.
+
+Liczy **przebiegi, nie wystąpienia** — bo tylko ta liczba przy wielu klientach odróżnia ciszę od braku
+ruchu. Wolumen w teście jest symulowany, ale **proces nie**: przebiegi idą przez kontrakt z warsztatu, a nie
+przez fazy dopisane pod kryterium odbioru.
 
 **Symulować wolumen, nie proces.** Plan produktowy chce falsyfikacji na 50 zasymulowanych przebiegach i ma
 rację co do taniości, ale nie nazywa wady: proces, który sam zaprojektuję, wyprodukuje dokładnie ten sygnał,
@@ -238,9 +258,9 @@ osierocieje po każdym rebase i wymaga `rebase --onto`. Zdarzyło się to raz, 5
 
 ## Kolejność
 
-1.1, 1.2 i 1.5 zamknięte. Brama uniwersalności przeszła, więc etapy 1.3+ nie stoją już na niesprawdzonym
-założeniu, a `trace` przestał być dekoracją. **Dalej: 1.4, potem 1.3**, z powodów zapisanych przy 1.3.
-1.5b (werdykt `:suspended`) czeka na log niedostępności zależności.
+1.1, 1.2, 1.4 i 1.5 zamknięte. Brama uniwersalności przeszła, `trace` przestał być dekoracją, a różnica
+declared vs observed okazała się sygnałem — 50 przebiegów daje jedną linię raportu. **Dalej: 1.3**, potem
+1.6 i 1.7. 1.5b (werdykt `:suspended`) czeka na log niedostępności zależności.
 
 Kod zostaje w tym repo i przenosi się do repozytorium pilota, gdy ono powstanie; struktura jest już taka, że
 to `git mv`.
