@@ -1,0 +1,560 @@
+---
+type: Resource
+title: PNS runtime and platform architecture
+tags:
+  - decision
+  - architecture
+  - pns
+owner: operator
+status: proposed
+author: Emil
+accepted_by: Emil — pending
+coherence_reviewer: Michał — reviewed 2026-08-03, objections open
+reviewers: Michał, Kamil, Filip — reviewed 2026-08-03, objections open; Karol — pending
+last_updated: 2026-08-05
+source_of_truth: company-os
+load_policy: reference
+related:
+  - /decisions/README.md
+  - /decisions/004-empoweredhouse-leadership-accountability.md
+  - /decisions/005-adopt-empoweredhouse-strategy.md
+  - /decisions/006-end-rafal-slosarz-collaboration.md
+  - /decisions/007-filip-kozlowski-joins-pns-team.md
+  - /wiki/pns/charter.md
+  - /wiki/pns/modular-design.md
+  - /wiki/pns/event-driven-doctrine.md
+  - /strategy/thesis.md
+  - /output/design-rationale.md
+  - /output/technology-notes.md
+  - /output/review-2026-08-03.md
+  - /wiki/sources/2026-08-03-adr-pns-review-isolation-edd-problem.md
+  - /output/20260804-pns-prototype-plan.md
+---
+
+> **Przeniesione z repozytorium kontekstu 6 sierpnia 2026, bez zmian w treści.**
+>
+> To jest dokument projektowy i jego przegląd — szczegóły, kształty kodu, odrzucone alternatywy.
+> **Nie jest rekordem decyzji.** Rekord żyje w
+> `~/Projects/ai/empowered-house-context/decisions/008-pns-runtime-architecture.md` i jest jednostronicową
+> propozycją, która deleguje walidację tutaj. Decyzja wróci tam jako osobny rekord, kiedy będzie wynik.
+>
+> Odwołania `§N` w kodzie i w `PLAN.md` wskazują na numerowane decyzje w
+> [008-pns-runtime-architecture.md](008-pns-runtime-architecture.md).
+
+# PNS runtime and platform architecture
+
+**Read this to decide whether the idea is right.** It states the problem, the approach, the thirteen
+decisions and what each one beat, what we are betting on, and what would prove us wrong. No code.
+
+| If your question is | Read |
+| --- | --- |
+| Is this idea right? Should we do it? | this record |
+| Why is it like this? What did each decision beat? | [design rationale](design-rationale.md) |
+| How is it built? What does it look like? | [technology notes](technology-notes.md) |
+
+## Decision authority
+
+Emil's record, written out of the design sessions of 31 July and 1 August 2026, passing through the ADR
+gate in [decision 004](~/Projects/ai/empowered-house-context/decisions/004-empoweredhouse-leadership-accountability.md).
+
+**Author and accepter are the same person, so the review is the only independent gate.** It is therefore
+not optional: no material implementation begins before all four reviewers have been through it and their
+objections are either answered here or recorded as accepted risk. Each seat is asked a different question
+and the answers are not interchangeable.
+
+| Reviewer | The question they are the right person to answer | State |
+| --- | --- | --- |
+| **Michał** | Does it cohere with the technology direction and Shugyo, and do the trade-offs hold? The accountable review from decision 004 | Reviewed 3 August; objections addressed below |
+| **Kamil** | Does the harness survive contact with engineering practice, or does it get worked around? | Reviewed 3 August |
+| **Filip** | Can one person carry a client project end to end on this? He is the one who will | Reviewed 3 August |
+| **Karol** | Is the evidence artifact what a buyer actually asks for, and does the open-source and commercial split hold in front of a client? | **Not yet — three questions for him are in [the review record](review-2026-08-03.md)** |
+
+Authorship deviates from [decision 006](~/Projects/ai/empowered-house-context/decisions/006-end-rafal-slosarz-collaboration.md), which put the architecture
+recommendation with Michał. This direction is Emil's own initiative and he carries it; 006's line on
+authorship should be amended when this record is accepted rather than left contradicting practice.
+
+**Review state.** The 3 August review contested the direction on nothing. It asked for a problem statement,
+per-decision reasoning and less length — all three addressed — and raised one gap, that a generated module
+can reach data it was never granted, which is answered in [§5–6](#b-runtime) as a deferral with a trigger
+rather than a commitment. Nine open questions were then decided the same evening. Four remain, below.
+
+## Problem
+
+**Nobody can tell whether the software a company runs still does what the company agreed it would
+do — and when it stops, nothing fails.**
+
+Companies run on software that does not match how they work, because bespoke software used to be too
+expensive. AI changed that. But cheap code produces more code than anyone can read: nobody knows whether
+what was built matches what was agreed, or what the next change breaks. And the business keeps
+changing — a statute, a renegotiated contract, a new step, an exception that becomes the rule.
+
+Our tools check the code, not the agreement. Tests say a module works. Review says the code looks sensible.
+Monitoring says the server is up. None of them notice that an invoice which should have been filed was
+never filed, because nothing failed — the code never ran.
+
+```mermaid
+flowchart LR
+    subgraph asks["What a company wants to know about its software"]
+        Q1["Does this piece work?"]
+        Q2["Is the server up?"]
+        Q3["Is it still doing<br/>what we agreed?"]
+    end
+
+    Q1 --> T["Tests, CI"]
+    Q2 --> M["Monitoring, APM"]
+    Q3 -.-> X["nothing answers this"]
+
+    T --> OK1["answered"]
+    M --> OK2["answered"]
+    X --> BAD["The filing that should have gone<br/>never went. No error, no alert,<br/>every dashboard green."]
+```
+
+The third question is the one nobody can answer, and it is the only one the client actually cares about.
+
+**Not the problem: making generated code good.** That is a race between model vendors and we would lose it,
+deservedly. Assume the code is cheap, plentiful, and of unknown quality — that is the premise, not the
+complaint. The question is what you can still promise a company under that premise, and the answer is not
+"the code is right". It is "you can see whether it is doing what you agreed, and you find out when it
+isn't."
+
+## The approach
+
+A workshop turns the client's process into a contract. The contract generates the software and the tests.
+Then the two are compared, continuously: what the contract says should happen against what the event log
+recorded. **That difference is the product.**
+
+```mermaid
+flowchart LR
+    W["Workshop<br/>with the people<br/>who do the work"] --> C["Contract<br/>authorised, versioned,<br/>in the client's repo"]
+    C --> G["Generated<br/>structure, tests, API"]
+    G --> R["Running system"]
+    R --> L[("Event log<br/>what actually happened")]
+    C --> D{"Declared<br/>vs<br/>observed"}
+    L --> D
+    D --> P["The difference.<br/>This is the product."]
+```
+
+The control loop in other words: the contract is the setpoint, the event log is the measurement, and the
+generated code between them is the plant — **a black box on purpose.** Nothing here inspects it. Measuring
+an engine does not mean modelling the inertia of every piston to derive angular velocity at the output; you
+measure the commanded pedal angle and the observed shaft speed, and look at how the two curves sit against
+each other.
+
+Everything downstream reads one artifact, and none of it is edited:
+
+```mermaid
+flowchart LR
+    C["Contract<br/>events · processes · rules · examples"]
+    C --> S["Module structure"]
+    C --> T["Tests<br/>examples for rules,<br/>declarations for structure"]
+    C --> A["API<br/>what a frontend may call"]
+    C --> G["Registry<br/>the event graph"]
+    C --> D["Docs and diagrams"]
+    C --> V["Conformance queries"]
+```
+
+What the client gets, in order: a **workshop** producing a process map, glossary and — for every rule — a
+case that worked and a case that went wrong, in their language and agreed by them. A **contract** in their
+repo. A **template** that already runs, and one command that deploys it. A **harness** of CI checks that
+enforce the structure and teach it. **Generation** that is deterministic for structure and stochastic only
+for decision functions, each written against a case the client already approved. And a **dashboard** where
+declared meets observed: before a change ships you see what it affects, after it you see whether it works,
+and the client sees where reality drifted.
+
+## Decisions
+
+Thirteen, in five groups, to be proven on one bounded process before anything is generalised. Each states
+what it commits to and what it beat; the argument behind each is in
+[design rationale](design-rationale.md#why-each-decision).
+
+### A. Workshop to running software
+
+**1. The contract originates in a facilitated workshop, with the client in the room** — leaving with
+**examples**, not only policies: per policy, one case that worked and one that went wrong, with real
+numbers.
+*Instead of:* generating from the workshop graph. Discovery-grade output carries no invariants, error paths
+or types, so a generator invents them differently each run.
+
+**2. The contract is code, in the client's repository.** One artifact is the compile-time registry, the
+generation input, the source of tests and the reference for observed behaviour. Developers edit it, the
+process owner approves its content, enforced with `CODEOWNERS`.
+*Instead of:* a third-party documentation format as the source. Two editable representations of the same
+thing diverge — the drift this product exists to detect, reproduced in our own toolchain.
+
+**3. Generation is layered; only small parts are stochastic.** Contract reviewed by a human — the one
+mandatory gate. Structure deterministic. Only decision functions go to a model, one at a time, each with
+its test already present.
+*Instead of:* one model pass over the whole application. A stochastic step without an acceptance criterion
+is ordinary code generation with extra steps.
+
+**4. Generated and hand-written code are physically separated**, and migrations are append-only.
+*Instead of:* regenerating in place. Generated code is a fork the moment someone edits it.
+
+### B. Runtime
+
+**5–6. One Phoenix app, one Postgres, one module per process owning its own tables**, with `boundary`
+enforcing it at compile time from the first commit. No cross-module joins and no views over another
+module's tables. Duplicated data only where one copy is the named source of truth.
+*Instead of:* umbrellas, which separate without enforcing, or services, which make transactional enqueue
+impossible — and instead of one shared schema, which grows with every feature and forces edits to
+functions that already worked.
+
+Ownership is enforced in **CI, not at runtime** — deliberately, for now. See
+[Review triggers](#review-triggers).
+
+**7–8. Events are facts, commands are intentions, and the log of them is append-only, written in the state
+change's transaction.** Every event carries `correlation_id`, `causation_id` and its contract version —
+none of which can be retrofitted. The payload is declared in the contract, stored as JSON, and read
+defensively. Retention persists by default. **The log lives with the client**, and its schema assumes
+nothing about where it lives.
+*Instead of:* CRUD-shaped mutations, which leave nothing to subscribe to or assert on — and instead of the
+job table as the record, since a queue holds what was scheduled rather than what occurred.
+
+**9–10. Dispatch is split by the transaction boundary, not by developer preference**, and idempotency is a
+contract property — **the event declares which payload fields make two occurrences the same fact**, and the
+key must include what distinguishes facts, not only what groups them. No external broker; `Phoenix.PubSub` and `GenStage` are rejected for anything the
+contract asserts on, because both lose events silently.
+*Instead of:* everything through Oban, which breaks read-after-write, or everything synchronous, where a
+handler sending mail can roll back a business transaction.
+
+**11–12. External systems are adapters, the contract declares the dependency, and swapping is separate
+from configuring.** Events are named after the business fact, never the vendor.
+*Instead of:* calling vendors from domain code, after which a check cannot tell "we broke the rule" from
+"the ministry was down" — for an accounting client, the whole question.
+
+### C. Verification and method
+
+**13. Three layers, each answering a different question.**
+
+| Layer | Question | Where |
+| --- | --- | --- |
+| Contract | What is supposed to happen? | Agreed with the client |
+| Unit tests | Does this piece work, and which piece is broken? | CI, generated from the contract |
+| Event log | Is the live system still doing what was agreed? | Production |
+
+One gap in the third layer, found by building it: a synchronous handler that raises rolls back its handling
+row along with the event, so the most interesting failure leaves no trace in the artifact that exists to make
+failures visible. Correct by the transaction rules and useless for diagnosis. Named in
+[technology notes §4](technology-notes.md#4-delivery).
+
+**Closed on 6 August, and closing it turned out to be a question for the first layer rather than the third.**
+The failure is recorded and the rollback stands — recording it by weakening the rollback would have traded a
+diagnosis gap for a log that claims a fact occurred when the work did not. It is a separate table with no
+foreign key to the log, because there is nothing to reference: the event was rolled back and never existed, so
+this row says *attempted and did not happen*, which is not a statement any other row in the log makes. What
+survives a rollback is the correlation id, generated before the transaction opened.
+
+The part worth carrying into the record is what the gap turned out to be about. A path whose handler crashes on
+every run is reported by the conformance layer as **declared and never observed** — a dead contract or an
+untested path, which is what §13's third layer is for. Both readings are false, and worse, they send a
+developer's defect to the process owner as a question about their process. So the trace is not only for
+diagnosis: the report needs it to tell *never attempted* from *attempted and failing*, and without it the
+product's own output is wrong on its own terms. That is the third instance of one rule — after zero runs and
+queued work — that a report must not turn *no answer* into *the answer is no*.
+
+*Instead of:* tests as the whole verification story. A unit test cannot see an invoice that was never
+filed, because nothing failed.
+
+**14. The harness enforces structure, teaches the method, and stays out of modelling.** Knowledge is pushed
+as far up the ladder as it will go — compiler error, then CI check, then generator default, then skill.
+Whether something should be an event, or a module should split, is not enforced: those are workshop
+judgements, and a linter with opinions about them gets disabled within a month. Decomposition is therefore
+the first **skill**, built on [modular design](~/Projects/ai/empowered-house-context/wiki/pns/modular-design.md).
+*Instead of:* a harness with opinions about modelling. A check that is sometimes wrong about a judgement
+call costs more than the judgement call.
+
+### D. What ships
+
+**15. The contract knows about processes, not only events. Version one watches them; it does not steer
+them.** *Provisional — see [Review triggers](#review-triggers).* A process is a row with a deadline, an
+expected cadence and **a declared run identity**. When one derails, **a person decides**, and their decision
+is issued as a command that emits events, so every exception becomes a recorded case.
+
+*Corrected while building it.* "A row with a deadline and an expected cadence" was incomplete in both
+halves. Run identity is missing and is not optional: `trace` asserts *after X, eventually Y*, and without
+it a Y from someone else's run counts as satisfaction — so the assertion has nothing to stand on, and the
+overlay counters hide the silence of every run but the loudest. It is declared as `instance:` on the
+process and required. Cadence, in turn, is real but **not universal**: an event-driven process has none,
+which the second-domain contract established. See
+[technology notes §1](technology-notes.md#1-the-contract-and-the-code-it-governs).
+*Instead of:* sequence, branching and compensation declared in the contract — a workflow language,
+maintained before we know whether two clients need the same one.
+
+**16–17. Almost nothing is generated. The template is the first client application, and what ships is hex
+packages that install into any Phoenix application.** What gets deployed is several applications:
+
+| Application | What it is | v1 |
+| --- | --- | --- |
+| Identity | Users, authentication, SSO. **Bought, not written**, behind a protocol seam; vendor and topology open | separate |
+| Engine | Contract, modules, event log. Headless, exposes an API generated from the contract | separate |
+| Dashboard | Declared against observed | **inside the engine** |
+| Frontends | Where the client's staff work. Possibly built by another party | separate, later |
+
+```mermaid
+flowchart TB
+    subgraph outside["Outside the engine"]
+        ID["Identity<br/>bought, WorkOS wrapped"]
+        F1["Frontend"]
+        F2["Another frontend<br/>possibly someone else's"]
+    end
+
+    subgraph eng["Engine — one app, one Postgres, one transaction"]
+        API["API<br/>generated from the contract"]
+        MOD["Modules<br/>each owning its own tables"]
+        LOG[("Event log")]
+        DASH["Dashboard"]
+    end
+
+    F1 --> API
+    F2 --> API
+    F1 -.- ID
+    F2 -.- ID
+    ID -. "identity assertion" .-> API
+    API --> MOD
+    MOD --> LOG
+    LOG --> DASH
+```
+
+Two things the picture is there to make hard to misread. **The API is the only way in**, so what an
+application may do is enforced server-side — a frontend written by someone else is not trusted. And
+**several applications, one transaction**: the box that must hold a state change and its event together is
+the engine, which is the whole of what §5–6 protects.
+
+**Open, and it was answered by accident rather than decided — where the evidence report is rendered.**
+"Dashboard: declared against observed, inside the engine" is a statement about topology, and building the
+report on 5 August turned it into a question about language. The engine can produce the four answers as data.
+It cannot produce the sentences: this report is read by an accountant, so its headings are Polish, and a
+package cannot know its reader's language without either shipping every client's locale or emitting English
+headings beside Polish contract labels in one evidence artifact. The prototype resolved this by putting
+rendering in the client tree, which works and was **a consequence of writing the code, not a decision**. Two
+ways to settle it, and they differ in what gets sold:
+
+1. **The dashboard stays inside the engine and grows a rendering seam** the client application supplies —
+   the same shape as the identity seam. The engine keeps the screen; the client owns the words.
+2. **The engine ships the data and the evidence report is a client-side artifact.** Then the report listed
+   under Commercial below is *not* an engine deliverable, and the open-source "basic dashboard" is a
+   developer-facing view — which is what `pns.graph`, `pns.trace` and `pns.check` already are.
+
+Today the code is (2) without having chosen it. **Decide before the pilot has a screen**, because (1) is
+cheap to build early and expensive to retrofit once a client ships its own report.
+
+*Instead of:* extracting a template up front, or a metadata-driven configurable product as Twenty and Open
+Mercato do — which means competing on volume of pre-poured concrete against projects that have more of it.
+
+Open source: contract library, generators, base modules, basic dashboard. Commercial: the workshop, hosted
+conformance history, the evidence report. **The generator is built when something gets copied twice, not on
+a date.**
+
+### E. Rules and examples
+
+**18. The contract states rules by example, not in a rule language.** A rule names one pure function;
+examples pin it. An example is readable aloud to the process owner, **becomes the test** — through a
+generator, since the contract holds an MFA rather than a capture and resolves the function at test time —
+rather than describing one, is a specification a model can be held to, and cannot express the general rule — which is the
+feature, since the rule stays in code and the contract stays out of language territory. **Enforced: a rule
+with no example does not compile.**
+*Instead of:* a declarative rule language. Prose is not executable, so something has to translate each
+constraint into a test; and a notation expressive enough for real rules is a programming language with
+worse tooling.
+
+## What we are betting on
+
+Four things could be untrue, and each would be fatal in a different way. This is the list a reviewer should
+argue with.
+
+**A real process owner will read examples and correct them.** If examples end up written by developers
+alone and the owner never reads one, the Authority property rests on a signature, the "plausible but wrong
+rule" risk has no mitigation left, and §18 has bought a test suite rather than a contract. **This is the bet
+that decides whether any of it is a product.** It is also measurable from the first workshop: thirty
+examples and zero corrections means nobody read them.
+
+**The declared-versus-observed diff is signal, not noise.** If the dashboard opens on fifty false positives
+nobody opens it twice, and the conformance join is the product. Cadence and the contract version exist
+specifically to keep the false-positive rate down; whether that is enough is unproven.
+
+*Measured on 5 August, and the two things named here as the mitigation were the wrong two.* Fifty conformant
+runs produce **one** line of report; forty-nine plus one run through the blocking branch produce **none**. So
+the diff is signal at this volume, on the workshop contract rather than on paths invented to satisfy the
+criterion — that part of the bet holds. But neither mitigation credited above survived contact with code.
+Cadence **does not apply to an event-driven process** at all (§15), and the contract version **does not cover
+a removed handler**: paths come from handlers, handlers are not hashed into the contract version, so deleting
+one produced drift for a path that was legitimately declared when it ran. That took a second deployment
+identity to fix — the contract version is the agreement, a wiring version is the code. Two further sources of
+false positives came out of building the report and appear nowhere in this record: **a process with zero runs**
+has every path untraversed, so listing them turns "no data" into findings, and **work still queued** is *not
+yet* rather than *never*, which is the same lesson as the fourth overlay state reaching a second consumer.
+Four mitigations, then, two of them unknown when this was written — which is the argument for measuring the
+false-positive rate on a real log rather than reasoning about what keeps it down.
+
+**Generated code plus this harness beats a competent team using commodity AI, measurably.** If it does not,
+we are selling process, and the honest response is to stop.
+
+**One bounded process generalises.** If the process row is the wrong abstraction — processes that nest, one
+event belonging to two — every contract written afterwards compounds the cost.
+
+## What we are not claiming
+
+Stated because each of these has been read into a version of this proposal at some point.
+
+- **Nothing about the quality of generated code.** The premise is that it is of unknown quality.
+- **No isolation guarantee.** A shared BEAM node is not a security boundary; the event bus is a modularity
+  mechanism, not a control one. Cross-module confinement at runtime is deferred, not promised.
+- **No moat from DDD or event-driven design.** Both are commodity. The contract and the conformance join are
+  the parts that are not.
+- **Nothing here authorises** a distributed runtime, a proprietary generator, a marketplace or a sandbox.
+
+## Consequences
+
+- The package is developed inside the first client application from the first commit.
+- Correlation ids, the event log, boundaries, the contract version and the generated/hand-written split
+  must exist from the first commit; they cannot be retrofitted across deployed client repos. Everything
+  else is reversible.
+- Cross-cutting reports, admin panels, ordering and pagination get harder. The event log is the intended
+  reporting substrate, and this cost lands directly on back-office clients.
+- Query counts rise. Boundary APIs must be plural by default.
+- The contract is client-facing, so it needs business labels alongside technical event names.
+- Retention bounds the conformance window: the client-facing promise cannot outrun what is on disk.
+
+## Decided, and still open
+
+| Decided 3 August | |
+| --- | --- |
+| Pilot | TaxVision first, Rehmed in parallel afterwards |
+| Retention | Persist by default; volume handled by a purge job |
+| Log location | With the client; we read it |
+| Screens | Engine headless behind an API; frontends separate, possibly someone else's |
+| Identity | Separate application, bought rather than written |
+| Failure handling | A person decides; the decision is a command |
+| Example size | No limit; measure whether the owner corrects anything |
+| Cross-module confinement | Deferred on evidence, with a trigger |
+| Event shape change | Narrowed to the evidence report |
+
+**Tested in code on 4 August**, on one bounded TaxVision process — the review's own recommendation. Confirmed:
+contract as an Elixir module, the failure semantics of the transaction-boundary split, three separable IAM
+levels without buying a provider, `contract_version` separating history from drift, and the Ecto hook that
+makes the §5–6 deferral safe. Corrected in the record as a result: where idempotency is declared (§9–10 was
+right, the notes were not), what §18 actually delivers, order between gates rather than between events, a
+fourth overlay state for queued work, retention across every store, and a canonical contract hash.
+
+The prototype also proved the workshop output is discovery-grade rather than generation-grade, with a number
+attached: roughly 40% of the contract came from the workshop document, and the missing part — payload shapes,
+error paths, invariants, idempotency — is the part that needs the client rather than a developer. That is an
+argument for a second workshop session, or for changing how the first one is run.
+
+Four questions are open, with the reasoning in
+[design rationale](design-rationale.md#the-open-questions-and-why-they-are-open):
+the positive argument for event-driven design to an outside audience; REST against GraphQL for the API;
+what the evidence report says about a period whose definitions changed; and the prior-art pass on verifying
+generated code against a specification. Karol's review is the outstanding procedural item.
+
+**Stage 1 of the prototype closed on 5 August** — run identity, the universality gate, five process shapes,
+untraversed paths, trace evaluation, two deployment identities, the report. It added a fifth open question and
+narrowed a sixth:
+
+- **Where the evidence report is rendered** — engine with a client-supplied rendering seam, or engine data
+  with the report as a client artifact. Stated in full under §16–17. The code answered it as a side effect and
+  that is not the same as deciding it.
+- *Narrowed:* the period whose definitions changed. A period is now a row with a date range rather than a
+  string, and the report's window runs on `occurred_at` rather than on the period — so the question is about a
+  **changed row**, not about ambiguous parsing. Still open, and smaller.
+
+One question turned out not to need the record's attention, and it is worth saying why so it does not come
+back. A trace assertion is the only declaration with an identifier and no client-facing label, which reads
+like a gap against the consequence that "the contract is client-facing, so it needs business labels alongside
+technical event names". It is not one. An event's label carries a fact nothing else expresses — no engine
+derives *"Otwarto miesiąc księgowy"* from `accounting_month_opened`, so there is nothing for it to drift from.
+A label on an assertion would **restate** what `from`, `eventually`, `within` and `or_else` already say in
+full, which is a second editable representation of one thing: change the window and the prose still claims the
+old one, with nothing to catch it. That is the argument §2 makes against a documentation format as the source,
+turned on our own DSL. The report therefore composes the sentence from event labels, which cannot lie because
+it is derived. What an assertion genuinely cannot express is **why it was agreed** — and the word for that
+already exists as `source:` on a rule, so extending it costs no new vocabulary. Not added: neither assertion
+has an origin worth recording yet, and whether the process owner has one is a workshop question.
+
+## Review triggers
+
+What would reopen the two provisional decisions. Provisional decisions otherwise have nowhere to record
+what would falsify them, which is why this section exists.
+
+**§15 — processes watched but not steered.**
+
+- *Compensation smearing.* A module subscribing to an event downstream of its own participation is a
+  backward edge. One is normal; a growing count means the decision is failing. Belongs in `mix pns.check`
+  from the start. **Built on 5 August, and the part worth recording is where it had been living.** Detection
+  was a private function of a mix task with no test — so the trigger for reopening a provisional decision
+  rested on a check nobody checked, which is the failure mode this whole section exists to avoid. It is now a
+  tested function of the engine, pinned from both sides: it reports the one backward edge on a synthetic rig
+  and **stays silent on three controls that publish forward**. The silence is the evidence; a check finding
+  the case built for it proves nothing.
+- *A second implementation needs the same shape.* One hand-written steering module is learning; two with
+  the same structure justifies generalising.
+- *The process row is the wrong idea.* Stop if processes nest or one event belongs to two. **The second
+  half is no longer expressible.** Run identity is one column on the event, so an event in two processes
+  would have two answers to "which run was this". That was first enforced as a compile-time check; the check
+  was then removed because the declaration shape absorbed it — an event names a single `process:`, so there
+  is nothing left to check. This half of the trigger can therefore no longer fire, which is a stronger
+  outcome than catching it. **Nesting is still unenforced**, and is now the only live half — confirmed on
+  5 August rather than left implicit: five process shapes were exercised on a synthetic rig, and nesting was
+  not among them, so nothing has yet pushed on this half either way.
+- *Review point.* Revisit once the pilot is in production and the log has real data.
+
+**§5–6 — ownership enforced in CI rather than at runtime.**
+
+- *One observed violation.* The first time a module in a real client repository is found touching another
+  module's tables, build the runtime check. One case, not a pattern — the argument for deferring is that it
+  has never happened.
+- *A technical owner asks for it.* When one does, in a real conversation, that is the demand signal this
+  decision currently lacks.
+- *Nobody reads every diff any more.* Past roughly half a dozen generated modules per client, the pilot
+  argument stops holding.
+- *Not before the split is validated.* A check can only be as right as the boundary it enforces, and
+  enforcing a wrong split turns a design problem into a production incident. **First real evidence, 5 August:
+  the split survived the case built to strain it, and the cost is a number rather than an adjective.** Two
+  modules needed the same period; each pays its own query, and Ecto telemetry counts exactly two hits on the
+  owning table per month opening. The consequence below that says "query counts rise" now has a figure. More
+  useful than the measurement: confinement holds better as an impossibility than as a rule. The owning module
+  exports nothing, so its schema is unreachable and a join to it is **inexpressible** — the same move that
+  retired the "one event in two processes" check. A sibling gets a function call. That narrows what a runtime
+  check would still be for, since the entrance it guards is raw SQL, not idiomatic Ecto.
+- *Done 4 August — the deferral is safe.* `prepare_query/3` receives the whole `%Ecto.Query{}` before
+  execution, so every touched table comes out structurally from `from` and `joins`; retrofitting the check
+  means overriding one callback, not changing how modules reach the repo. Two limits worth knowing: the hook
+  does not fire for `insert/update/delete` on a changeset — those name another module's schema, which
+  `boundary` catches at compile time — and it does not see raw SQL, which is the one genuinely invisible
+  entrance and the case this deferral rests on models generating idiomatic Ecto.
+
+## What would falsify this
+
+- A technical owner cannot operate the result without the core team.
+- The contract costs more to maintain than the drift it catches, and teams let it rot.
+- The declared-versus-observed diff is mostly noise, so nobody opens the dashboard twice.
+- Generated code plus harness is not measurably better than a competent team using commodity AI.
+- Examples end up written by developers alone and the process owner never reads one.
+- Boundary discipline makes back-office reporting so awkward that clients route around it.
+- The first implementation is late because the architecture became the project.
+- **Version one detects drift in edges and fails to detect a process that never started.** The two
+  mechanisms that answer the question this product exists for — the stalled-process monitor and trace
+  evaluation — are the last things built, so it is entirely possible to ship working plumbing and no product.
+  The 4 August prototype did exactly that: contract, dispatch, log, boundaries and the overlay all work, and
+  `trace` plus `deadline` are declared and read by nothing.
+
+  **Half answered on 5 August, and which half matters more than the fact.** Trace evaluation exists: three
+  verdicts of four per run, and two assertions that were prose in Elixir syntax now have a reader. Untraversed
+  declared paths are reported per run. The stalled-process monitor is **not** built, and the reason is not
+  sequencing — the declarations it would rest on still have no reader. A process `deadline` is read by exactly
+  two things: the filter that keeps unconfirmed declarations out of the evidence report, and the client-side
+  renderer that would print it. The `deadline` inside trace evaluation is computed from `within`, a different
+  declaration on a different object. `cadence` is carried out of the graph as a field and no window is
+  computed from it, so the "never observed" mechanism of
+  [notes §9](technology-notes.md#9-dashboard) does not exist yet.
+  So this bullet stays, narrowed: the risk was that both mechanisms arrive last and neither lands. One landed.
+
+## Supersedes
+
+No decision record. This is the first architecture record to pass the decision-004 gate, and it lands
+inside the boundaries [decision 005](~/Projects/ai/empowered-house-context/decisions/005-adopt-empoweredhouse-strategy.md) and
+[decision 006](~/Projects/ai/empowered-house-context/decisions/006-end-rafal-slosarz-collaboration.md) already fixed rather than moving them.
+
+`wiki/pns/coherence-layer.md` and `wiki/pns/ears-requirements-format.md` remain `draft` and describe July
+hypotheses this record narrows — verification from inside the running system rather than from outside it as
+a black box. §18 is what took over the job EARS was doing.

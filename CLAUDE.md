@@ -11,12 +11,26 @@ przez `boundary` od pierwszego commita.
 | Plan pracy, etapy, kryteria odbioru | [`PLAN.md`](PLAN.md) |
 | Stan faktyczny, luki, co wyszło z prototypu | [`README.md`](README.md) |
 | **Jak napisać kontrakt** — klucze, wymagane/opcjonalne, co się nie skompiluje | [`docs/contract.md`](docs/contract.md) |
-| Decyzja architektoniczna | `~/Projects/ai/empowered-house-context/decisions/008-pns-runtime-architecture.md` |
-| Kształty kodu, schematy, pułapki | `~/Projects/ai/empowered-house-context/output/20260801-pns-architecture-adr/technology-notes.md` |
+| **Pełny rekord projektowy, 18 decyzji, `§N` z komentarzy w kodzie** | [`docs/adr/008-pns-runtime-architecture.md`](docs/adr/008-pns-runtime-architecture.md) |
+| Co każda decyzja pobiła, odrzucone alternatywy | [`docs/adr/design-rationale.md`](docs/adr/design-rationale.md) |
+| Kształty kodu, schematy, pułapki, wybory bibliotek | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |
+| Przegląd zespołu z 3 sierpnia | [`docs/adr/review-2026-08-03.md`](docs/adr/review-2026-08-03.md) |
+| Propozycja sprzedażowa i warunki oceny, dwie strony | `~/Projects/ai/empowered-house-context/decisions/008-pns-runtime-architecture.md` |
 | Zakres produktu i uzasadnienie | `~/Projects/ai/empowered-house-context/output/20260804-pns-product-plan.md` |
 
-Repo kontekstu jest **źródłem prawdy dla decyzji**. Jeśli kod pokaże, że rekord się myli — a to się już
-zdarzyło dwa razy — poprawka idzie do rekordu, nie do komentarza w kodzie.
+**Pakiet projektowy przeniesiono tutaj 6 sierpnia** z repozytorium kontekstu, bez zmian w treści. Tam został
+dwustronicowy rekord: idea, zakres, warunki oceny, stan recenzji. Podział jest po przeznaczeniu — tam się
+sprzedaje pomysł i zapada decyzja, tutaj leży dowód.
+
+Z tego wynika, gdzie co poprawiać:
+
+- **Szczegół implementacyjny** — `docs/adr/technology-notes.md`, na miejscu, jednym commitem.
+- **Decyzja albo warunek oceny** — nie tutaj. Ustalenie ląduje w `PLAN.md` jako wniosek, a do rekordu w repo
+  kontekstu wraca **przy zamknięciu etapu**, nie przy każdej zmianie.
+- Rekord jest **świadomie z tyłu**. Gdy rekord i `PLAN.md` się różnią, nowszy jest `PLAN.md`.
+
+Rekord mylił się już dwa razy i oba razy wyszło to przy pisaniu kodu. Jeśli myli się znowu, poprawka idzie do
+rekordu — nie do komentarza obchodzącego problem.
 
 ## Jedno pytanie, na które ten produkt odpowiada
 
