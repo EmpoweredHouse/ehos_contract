@@ -26,7 +26,7 @@ related:
   - /strategy/thesis.md
   - /output/design-rationale.md
   - /output/technology-notes.md
-  - /output/review-2026-08-03.md
+  - ~/Projects/ai/empowered-house-context/output/20260803-adr-008-review.md
   - /wiki/sources/2026-08-03-adr-pns-review-isolation-edd-problem.md
   - /output/20260804-pns-prototype-plan.md
 ---
@@ -67,7 +67,7 @@ and the answers are not interchangeable.
 | **Michał** | Does it cohere with the technology direction and Shugyo, and do the trade-offs hold? The accountable review from decision 004 | Reviewed 3 August; objections addressed below |
 | **Kamil** | Does the harness survive contact with engineering practice, or does it get worked around? | Reviewed 3 August |
 | **Filip** | Can one person carry a client project end to end on this? He is the one who will | Reviewed 3 August |
-| **Karol** | Is the evidence artifact what a buyer actually asks for, and does the open-source and commercial split hold in front of a client? | **Not yet — three questions for him are in [the review record](review-2026-08-03.md)** |
+| **Karol** | Is the evidence artifact what a buyer actually asks for, and does the open-source and commercial split hold in front of a client? | **Not yet — three questions for him are in [the review record](~/Projects/ai/empowered-house-context/output/20260803-adr-008-review.md)** |
 
 Authorship deviates from [decision 006](~/Projects/ai/empowered-house-context/decisions/006-end-rafal-slosarz-collaboration.md), which put the architecture
 recommendation with Michał. This direction is Emil's own initiative and he carries it; 006's line on

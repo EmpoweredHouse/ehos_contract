@@ -9,7 +9,7 @@ load_policy: task
 related:
   - /decisions/008-pns-runtime-architecture.md
   - ~/Projects/ai/pns_prototype/docs/adr/technology-notes.md
-  - ~/Projects/ai/pns_prototype/docs/adr/review-2026-08-03.md
+  - ~/Projects/ai/empowered-house-context/output/20260803-adr-008-review.md
   - /output/20260804-pns-identity-service.md
   - /wiki/pns/modular-design.md
   - /wiki/pns/event-driven-doctrine.md

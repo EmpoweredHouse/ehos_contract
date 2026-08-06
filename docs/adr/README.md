@@ -35,7 +35,7 @@ kept growing and kept being unreadable.
 | Why is it like this? | [design-rationale.md](design-rationale.md) — the argument decision by decision, plus vocabulary, the DDD relationship, alternatives in full, and why the open questions are open | ~570 lines |
 | How is it built? What does it look like? | [technology-notes.md](technology-notes.md) — contract DSL, compile-time enforcement, log schema, delivery, conformance, testing, generation, dashboard, adapters, configuration, prior art, libraries, packaging | ~800 lines |
 
-Alongside them, [review-2026-08-03.md](review-2026-08-03.md) holds the 3 August review and the deliberation
+Alongside them, [review-2026-08-03.md](~/Projects/ai/empowered-house-context/output/20260803-adr-008-review.md) holds the 3 August review and the deliberation
 behind the nine decisions taken that evening — what was weighed and rejected, not a second copy of the
 decisions.
 
@@ -93,4 +93,4 @@ generated from it.
 
 The record is `proposed`, not accepted, and author and accepter are the same person — so the review is the
 only independent gate. Three of four reviewers have been through it; Karol has not, and the three
-questions for him are in [review-2026-08-03](review-2026-08-03.md).
+questions for him are in [review-2026-08-03](~/Projects/ai/empowered-house-context/output/20260803-adr-008-review.md).

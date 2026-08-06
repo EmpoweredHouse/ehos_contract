@@ -574,6 +574,6 @@ catches it.
 
 **Prior art on constraining and verifying generated code against a specification.** A task rather than a
 question — five named directions, an owner and a timebox are in
-[review-2026-08-03](review-2026-08-03.md#prior-art--five-directions-owner-filip). Conformance checking is
+[review-2026-08-03](~/Projects/ai/empowered-house-context/output/20260803-adr-008-review.md#prior-art--five-directions-owner-filip). Conformance checking is
 the one that could change the design: declared-versus-observed is an established academic field with
 algorithms and thirty years of literature, and this record does not engage it.

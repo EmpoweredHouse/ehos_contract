@@ -14,7 +14,7 @@ przez `boundary` od pierwszego commita.
 | **Pełny rekord projektowy, 18 decyzji, `§N` z komentarzy w kodzie** | [`docs/adr/008-pns-runtime-architecture.md`](docs/adr/008-pns-runtime-architecture.md) |
 | Co każda decyzja pobiła, odrzucone alternatywy | [`docs/adr/design-rationale.md`](docs/adr/design-rationale.md) |
 | Kształty kodu, schematy, pułapki, wybory bibliotek | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |
-| Przegląd zespołu z 3 sierpnia | [`docs/adr/review-2026-08-03.md`](docs/adr/review-2026-08-03.md) |
+| Przegląd zespołu z 3 sierpnia | `~/Projects/ai/empowered-house-context/output/20260803-adr-008-review.md` — **został w repo kontekstu**, bo mówi o luce mocy i ekonomii wdrożeń |
 | Propozycja sprzedażowa i warunki oceny, dwie strony | `~/Projects/ai/empowered-house-context/decisions/008-pns-runtime-architecture.md` |
 | Zakres produktu i uzasadnienie | `~/Projects/ai/empowered-house-context/output/20260804-pns-product-plan.md` |
 
