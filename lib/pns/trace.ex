@@ -18,13 +18,14 @@ defmodule PNS.Trace do
   *"After the data set is confirmed complete, within two days the month either
   opens or a divergence notification goes out."*
 
-  ## Three verdicts, and a fourth that does not exist yet
+  ## Four verdicts
 
   | Verdict | Meaning |
   |---|---|
   | `:satisfied` | `eventually` **or** `or_else` occurred inside the window |
   | `:violated` | the window passed and neither occurred |
   | `:pending` | the window has not passed yet — nothing is known |
+  | `:suspended` | the window passed, and a dependency this path needs was seen unavailable inside it |
 
   **`:satisfied` carries `via:`** — `:eventually` or `:or_else`. That is the whole
   subtlety of this assertion and the easiest thing to get wrong: blocking the
@@ -33,13 +34,16 @@ defmodule PNS.Trace do
   a tool that shouts about every correctly blocked month gets switched off within
   a week.
 
-  The fourth verdict — `:suspended`, an adapter's unavailability window — is
-  **not here and cannot be computed**: nothing in the system records that an
-  external dependency was unavailable. `unavailable_looks_like` in the contract is
-  a sentence nobody reads today. Details and the prerequisite are in `PLAN.md`,
-  stage 1.5b. Until then a registry outage inside an assertion window counts as
-  `:violated`, which blames the client for someone else's server. That is known
-  and recorded, not hidden.
+  **`:suspended` only ever replaces `:violated`.** It never touches `:satisfied` — a run
+  that ended correctly ended correctly, whatever was down at the time — and it never
+  touches `:pending`, because there is still time. So it removes a finding from the report
+  and adds nothing, which is why the recording behind it (`PNS.Dependency`) is deliberately
+  reluctant: over-recording unavailability would quietly stop reporting real problems.
+
+  **Which dependency counts is narrow: the ones declared by the events that did not
+  arrive.** `from` already happened, so whatever it needed was working. What blocked the
+  run is whatever `eventually` or `or_else` depends on. Taking the union of the whole
+  contract's dependencies would suspend a run because something unrelated was down.
 
   ## Three decisions with teeth
 
@@ -78,7 +82,7 @@ defmodule PNS.Trace do
   @typedoc "One run's verdict for one assertion."
   @type verdict :: %{
           instance_id: String.t(),
-          verdict: :satisfied | :violated | :pending,
+          verdict: :satisfied | :violated | :pending | :suspended,
           via: :eventually | :or_else | nil,
           from_at: DateTime.t(),
           deadline_at: DateTime.t() | nil,
@@ -100,13 +104,20 @@ defmodule PNS.Trace do
     now = Keyword.get(opts, :now) || DateTime.utc_now()
     from_type = to_string(trace.from)
 
+    # One query for the whole evaluation rather than one per run: an assertion is judged
+    # per run, and a query per run would make the report cost grow with the client's
+    # traffic. Deliberately **not** bounded by `opts` — an outage is dated by when it was
+    # observed, and a report for July has to see an outage observed in July even when the
+    # window it asks about was opened by an event from June.
+    outages = awaited_outages(contract, trace)
+
     contract
     |> occurrences(trace, opts)
     |> Enum.flat_map(fn {instance_id, by_type} ->
       case Map.get(by_type, from_type) do
         # A run with no `from` is not evaluated — the assertion is conditional.
         nil -> []
-        times -> [verdict(trace, instance_id, Enum.min(times, DateTime), by_type, now)]
+        times -> [verdict(trace, instance_id, Enum.min(times, DateTime), by_type, now, outages)]
       end
     end)
     |> Enum.sort_by(& &1.from_at, DateTime)
@@ -140,6 +151,10 @@ defmodule PNS.Trace do
       satisfied_via_or_else: count(verdicts, &(&1.via == :or_else)),
       violated: count(verdicts, &(&1.verdict == :violated)),
       pending: count(verdicts, &(&1.verdict == :pending)),
+      # Reported separately and never folded into `violated`, which would be the obvious
+      # shortcut and the wrong one: these runs are the ones the client is **not**
+      # answerable for, so merging them back would undo the whole point of the verdict.
+      suspended: count(verdicts, &(&1.verdict == :suspended)),
       instances: length(verdicts)
     }
   end
@@ -147,8 +162,8 @@ defmodule PNS.Trace do
   @spec count([verdict()], (verdict() -> boolean())) :: non_neg_integer()
   defp count(verdicts, fun), do: Enum.count(verdicts, fun)
 
-  @spec verdict(map(), String.t(), DateTime.t(), map(), DateTime.t()) :: verdict()
-  defp verdict(trace, instance_id, from_at, by_type, now) do
+  @spec verdict(map(), String.t(), DateTime.t(), map(), DateTime.t(), [DateTime.t()]) :: verdict()
+  defp verdict(trace, instance_id, from_at, by_type, now, outages) do
     deadline_at = trace.within && PNS.Duration.shift(from_at, trace.within)
     hit = fn name -> name && first_at_or_after(by_type[to_string(name)], from_at) end
 
@@ -160,6 +175,9 @@ defmodule PNS.Trace do
         in_window?(eventually_at, deadline_at) -> {:satisfied, :eventually, eventually_at}
         in_window?(or_else_at, deadline_at) -> {:satisfied, :or_else, or_else_at}
         pending?(deadline_at, now) -> {:pending, nil, nil}
+        # Last, so a suspension can only ever take the place of a violation. Reached only
+        # when the window has passed and nothing arrived.
+        suspended?(outages, from_at, deadline_at) -> {:suspended, nil, nil}
         true -> {:violated, nil, nil}
       end
 
@@ -171,6 +189,37 @@ defmodule PNS.Trace do
       deadline_at: deadline_at,
       resolved_at: at
     }
+  end
+
+  # The unavailability moments that could explain **this** assertion failing: the ones
+  # belonging to dependencies declared by the events that were awaited and did not arrive.
+  #
+  # `from` is left out on purpose. It happened, so whatever it depends on was working — and
+  # including it would suspend runs on the strength of an outage that demonstrably did not
+  # stop anything. Taking every dependency in the contract would be worse still: a run
+  # would be excused because something it never touched was down.
+  @spec awaited_outages(module(), map()) :: [DateTime.t()]
+  defp awaited_outages(contract, trace) do
+    observed = PNS.Dependency.observations_by_external(contract)
+
+    for name <- [trace.eventually, trace.or_else],
+        name != nil,
+        external = contract.event(name).depends_on,
+        external != nil,
+        at <- Map.get(observed, to_string(external), []) do
+      at
+    end
+  end
+
+  # An assertion with no `within` never reaches this — it cannot be violated, so there is
+  # nothing for a suspension to take the place of.
+  @spec suspended?([DateTime.t()], DateTime.t(), DateTime.t() | nil) :: boolean()
+  defp suspended?(_outages, _from_at, nil), do: false
+
+  defp suspended?(outages, from_at, deadline_at) do
+    Enum.any?(outages, fn at ->
+      DateTime.compare(at, from_at) != :lt and DateTime.compare(at, deadline_at) != :gt
+    end)
   end
 
   @spec in_window?(DateTime.t() | nil, DateTime.t() | nil) :: boolean()

@@ -7,7 +7,7 @@ aktualizowany stan.
 
 ## Stan na 6 sierpnia
 
-207 testów, `mix check` przechodzi. Ostrzeżenia są **cztery i wszystkie celowe**:
+221 testów, `mix check` przechodzi. Ostrzeżenia są **cztery i wszystkie celowe**:
 
 1. `deadline` TaxVision bez potwierdzenia process ownera,
 2. `deadline` z wymyślonej fikstury bramy uniwersalności,
@@ -20,7 +20,7 @@ jedno, bo fikstury żyją w `test/support/`.
 Działa: kontrakt jako moduł Elixira z bramami kompilacyjnymi, dispatch po granicy transakcji, log zdarzeń,
 `boundary`, szew tożsamości, nakładka declared vs observed z czterema stanami, **tożsamość instancji procesu
 i liczniki w dwóch wymiarach (wystąpienia i przebiegi)**, **drugi kontrakt z obcej domeny bez ani jednego
-nowego słowa w DSL**, **ocena assercji `trace` per przebieg — trzy werdykty z czterech**, **raport
+nowego słowa w DSL**, **ocena assercji `trace` per przebieg — cztery werdykty z czterech**, **raport
 nieprzejechanych ścieżek per przebieg**, **`publishes:` wiąże handler w runtime, nie tylko opisuje**,
 **obie tożsamości wdrożenia haszują się kanonicznie, z jednego źródła**, **awaria handlera synchronicznego
 zostawia ślad, a raport odróżnia „próbowane i nie udaje się" od „nigdy nie próbowano"**, **cykl w runtime
@@ -318,19 +318,45 @@ Wyszło przy okazji: **`or_else` produkowane handlerem asynchronicznym jest `pen
 kolejce** — ta sama lekcja, co czwarty stan nakładki. Koszt jest nazwany: job zaklinowany dłużej niż okno
 policzy się jako naruszenie, i to jest poprawne, bo powiadomienie faktycznie nie poszło.
 
-**1.5b Czwarty werdykt: `:suspended`.** Nie da się go policzyć, bo **nic w systemie nie zapisuje, że
-zależność zewnętrzna była niedostępna** — `unavailable_looks_like` jest dziś zdaniem, którego nikt nie
-czyta. Do tego czasu awaria rejestru w oknie assercji liczy się jako naruszenie, czyli obwiniamy klienta za
-cudzy serwer.
+**1.5b Czwarty werdykt: `:suspended`. ✅ zrobione 6 sierpnia.** `PNS.Dependency`,
+`test/dependency_test.exs`. 221 testów.
 
-Warunek wstępny jest po stronie silnika i mały: log obserwacji niedostępności per `external`, zapisywany
-przez adapter na szwie, który już istnieje. Świadomie **obserwacje, nie przedziały** — adapter wie tylko,
-że jedno wywołanie padło, a nie kiedy usługa wróciła. Zawieszona = w oknie assercji jest obserwacja
-niedostępności zależności, od której zależy któreś zdarzenie tej ścieżki (`depends_on`).
+`external` i `unavailable_looks_like` były w kontrakcie od pierwszego dnia i **nikt ich nie czytał**. Dziś
+mają czytelnika: awaria zależności w oknie assercji nie jest już naruszeniem.
 
-Przy okazji do rozstrzygnięcia: **assercja bez `within` jest niefalsyfikowalna** — nie da się jej naruszyć,
-więc jest dekoracją. Kandydat na `info` w `pns.check`; dziś obie nasze assercje mają `within`, więc byłoby
-zero znalezisk.
+**Dlaczego to najdroższy fałszywy pozytyw, jaki ten produkt umie wyprodukować.** Bez tego raport mówi
+klientowi, że złamał własne ustalenie, kiedy leżał **czyjś serwer**. Jedyny majątek tego artefaktu to bycie
+wiarygodnym — jedno takie znalezisko przed księgową i raport przestaje być czytany.
+
+**Reguła doboru zależności jest wąska i to jest istotne: liczą się te, które deklarują zdarzenia, jakie
+nie przyszły.** `from` już się stało, więc to, od czego ono zależy, działało. Suma wszystkich zależności
+kontraktu byłaby gorsza — przebieg dostawałby rozgrzeszenie, bo padło coś, czego nigdy nie dotknął.
+
+**Zawieszenie zastępuje wyłącznie naruszenie.** Nigdy nie rusza `:satisfied` — przebieg zakończony poprawnie
+jest zakończony poprawnie, cokolwiek wtedy leżało — ani `:pending`, bo jest jeszcze czas. Oba kierunki
+przypięte testem, bo drugi jest z tych, których nikt nie pomyśli sprawdzić.
+
+**Nadmierne zapisywanie jest groźniejsze niż niedostateczne, i to zdecydowało o API.** Zawieszenie **zabiera**
+znalezisko z raportu, więc mechanizm zapisujący niedostępność hojnie po cichu przestałby raportować prawdziwe
+problemy — awaria w kierunku, którego nikt nie zauważa, czyli odwrotnie niż cała reszta tego silnika. Dlatego
+`PNS.Dependency.observe/3` zapisuje **wyłącznie** to, co adapter stwierdza wprost (`{:error, :unavailable}`);
+`{:error, :timeout}` przechodzi bez zapisu, dopóki ktoś nie zdecyduje inaczej **w adapterze**.
+
+Zapis jest **owinięty, nie do zapamiętania** — ten sam kształt co `PNS.Telemetry.handler_span/2`, z tego
+samego powodu: reguła, do której nikt nie jest zmuszony, wygasa.
+
+**Obserwacje, nie przedziały.** Adapter wie, że jedno wywołanie padło. Nigdy nie wie, kiedy usługa wróciła,
+bo nikt mu tego nie mówi — dowiedzenie się wymaga dopytywania, czyli health-checkera, czyli innego produktu.
+Nic nie jest kluczowane przebiegiem: **rejestr nie leży jednej firmie**, leży wszystkim naraz, i test tego
+pilnuje (jedna awaria zawiesza oba przebiegi).
+
+**TaxVision nie umie wyprodukować zawieszenia, i to jest znalezisko, nie brak fikstury.** Jego jedyna
+zadeklarowana zależność — rejestry publiczne — jest konsultowana przez krawędź żądania **przed pierwszą
+emisją**, więc okno nigdy nie otwiera się, gdy zależność jest w grze. Ten werdykt ma znaczenie dla procesów,
+których **następnik** sięga na zewnątrz, nie tych, których poprzednik. Demonstracja jest więc na rigu, który
+jest jawnie nie-domeną — i **nie dopisałem `external :mail` do kontraktu klienta**, choć powiadomienie
+faktycznie zależy od poczty: `unavailable_looks_like` jest polskim zdaniem, które **czyta klient**, a
+wymyślanie go za niego to dokładnie ta zmyślona wiedza o domenie, którą PNS ma wykrywać u innych.
 
 **1.6 Wersja kontraktu jako pierwszoklasowa odpowiedź. ✅ zrobione 5 sierpnia.**
 *Odbiór:* **spełnione.** `PNS.Deployment`, `test/deployment_test.exs`. Raport mówi, co wdrożone, od kiedy,
@@ -882,10 +908,8 @@ wiąże handler, słownik typów jest zamknięty, wartości są walidowane, awar
 jest zatrzymany na obu ścieżkach, a telemetria emituje to, czego nie widzi nikt inny. Ze 42 testów na starcie
 etapu zrobiło się **206**.
 
-Otwarte pozostają **dwie rzeczy i żadna nie jest robotą inżynierską do wzięcia z półki**:
+Otwarte pozostaje **jedna rzecz, i nie jest robotą inżynierską** — jest decyzją:
 
-- **1.5b, werdykt `:suspended`** — czeka na log obserwacji niedostępności zależności zewnętrznych. Dziś
-  awaria rejestru w oknie assercji liczy się jako naruszenie, czyli obwiniamy klienta za cudzy serwer.
 - **Gdzie renderuje się raport dowodowy** — piąte otwarte pytanie ADR-a. Kod odpowiedział mimochodem
   (drzewo klienta), a to nie to samo co rozstrzygnięcie.
 

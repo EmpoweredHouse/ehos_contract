@@ -244,4 +244,45 @@ defmodule Taxvision.ReportTest do
       assert text =~ "nie udało się w 1 przebiegu"
     end
   end
+
+  describe "a suspended run reads as somebody else's outage" do
+    setup do
+      registries(%{"c-1" => {:ok, @consistent}})
+      open_month("c-1")
+      Oban.drain_queue(queue: :events)
+      :ok
+    end
+
+    test "it is named as a suspension and kept out of the breaches" do
+      # Rendering is pure, so the branch is exercised with the shape it is contracted to
+      # accept. TaxVision itself cannot produce a suspension — its one dependency is
+      # consulted before the assertion window opens — which is recorded in PLAN.md and is
+      # why the verdict is exercised end to end on the shapes rig instead.
+      report = data()
+      [process | rest] = report.processes
+      [assertion | others] = process.assertions
+
+      suspended = %{assertion | instances: 3, satisfied: 1, violated: 0, suspended: 2}
+
+      text =
+        %{report | processes: [%{process | assertions: [suspended | others]} | rest]}
+        |> Taxvision.Report.render()
+
+      assert text =~ "Zawieszone: 2 przebiegach"
+      assert text =~ "zależność zewnętrzna była niedostępna"
+
+      # The sentence has to say whose problem it is not. Without that clause a reader sees
+      # a number next to an assertion and reads it as a fault.
+      assert text =~ "nie jest niedotrzymanie po stronie klienta"
+
+      # And it must not be reported as a breach.
+      refute text =~ "NIEDOTRZYMANE"
+    end
+
+    test "no suspensions means no sentence at all" do
+      # The control. A report that mentions suspensions when there are none teaches a
+      # reader to skip the line.
+      refute text() =~ "Zawieszone"
+    end
+  end
 end

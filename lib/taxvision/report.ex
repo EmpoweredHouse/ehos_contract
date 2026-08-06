@@ -204,7 +204,19 @@ defmodule Taxvision.Report do
         true -> "Dotrzymane we wszystkich #{a.instances} przebiegach."
       end
 
-    state <> via
+    state <> via <> suspended(a)
+  end
+
+  # Named as somebody else's outage, not as the client's problem, and **not** counted among
+  # the breaches. This is the whole value of the fourth verdict: without it these runs read
+  # as "you broke your own agreement" when what happened is that a system you depend on
+  # stopped answering.
+  @spec suspended(map()) :: String.t()
+  defp suspended(%{suspended: 0}), do: ""
+
+  defp suspended(a) do
+    " Zawieszone: #{runs(a.suspended)} — w oknie ustalenia zależność zewnętrzna była " <>
+      "niedostępna, więc to nie jest niedotrzymanie po stronie klienta."
   end
 
   @spec drift([map()]) :: [String.t()]

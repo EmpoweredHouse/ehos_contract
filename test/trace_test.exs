@@ -80,6 +80,9 @@ defmodule PNS.TraceTest do
                satisfied_via_or_else: 1,
                violated: 0,
                pending: 0,
+               # Since stage 1.5b. Reported separately and never folded into `violated`,
+               # because a suspended run is the one the client is not answerable for.
+               suspended: 0,
                instances: 2
              }
     end
@@ -192,7 +195,15 @@ defmodule PNS.TraceTest do
       all = PNS.Trace.evaluate_all()
       names = Enum.map(all, & &1.trace) |> Enum.sort()
 
-      assert names == [:episode_reaches_an_end, :month_opens_or_is_blocked, :referral_reaches_a_decision]
+      # Three contracts now, the third being the shapes rig — which is where the
+      # `:suspended` verdict is exercised, because TaxVision's one dependency is consulted
+      # before its assertion window opens.
+      assert names == [
+               :episode_reaches_an_end,
+               :month_opens_or_is_blocked,
+               :referral_reaches_a_decision,
+               :submission_reaches_inspection
+             ]
 
       # The medical contract has no implementation, so its assertions have no runs
       # to judge — and that is zero verdicts, not zero violations.

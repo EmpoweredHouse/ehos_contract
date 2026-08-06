@@ -154,7 +154,7 @@ visible rather than implied.
 | `owner` | Which module owns this fact. | `mix pns.check` reports an owner that does not exist as a module — as `info`, because the owner of an unimplemented phase is a normal state |
 | `retain` | Per field: `:persist` (default), `:hash`, `:drop`. Applied **once, before anything else**, so what comes out is the only version in the system — log, handlers and job arguments alike. A retention policy the queue can bypass looks satisfied and is not. | `PNS.Emitter` |
 | `identity` | What makes two occurrences **the same fact**. This is the idempotency key. It must include what *distinguishes* facts, not only what groups them. | `PNS.Job`; an asynchronous handler on an event without it does not compile |
-| `depends_on` | Which `external` this fact relies on. | compile gate; the runtime answer does not exist yet — see *Known decoration* |
+| `depends_on` | Which `external` this fact relies on. | compile gate, and `PNS.Trace`: if this dependency was seen unavailable inside an assertion window, the run is `:suspended` rather than in breach |
 | `process` | Which run this fact belongs to. A single key, so belonging to two processes is not expressible. | `PNS.Instance`, `PNS.Graph`, `PNS.Check` |
 | `stage` | Which phase of that process. | backward-edge detection in `PNS.Check` |
 | `terminal` | The process ends here. Being blocked counts: a run that ended badly still ended. | `mix pns.check`, `PNS.Graph` |
@@ -297,12 +297,13 @@ reference that hides its gaps is worse than one that admits them.
 | `deadline` | declared; no stalled-run monitor exists |
 | `cadence` | declared; the "never observed" window is not computed from it |
 | `external`'s `expected_latency` | declared; nothing measures latency |
-| `external`'s `unavailable_looks_like` | declared; becomes real with the fourth assertion verdict, `:suspended` |
-| `depends_on` at runtime | the compile gate works; the conformance answer does not exist |
+| `external`'s `unavailable_looks_like` | **no longer decoration since 6 August** — `depends_on` plus an unavailability observation produces the fourth assertion verdict, `:suspended`. The sentence itself is still only read by a person |
+| `depends_on` at runtime | **read since 6 August**: it decides which dependency's outage can suspend an assertion. Nothing yet measures whether a dependency is slow, only whether it was seen unavailable |
 | `:enum`'s set | the type is enforced as "a name"; which names are legal is not declarable |
 
-One row left this table on 6 August: payload types were decoration and are now enforced
-at emit time. What survives of that gap is the row above — `:enum` can be checked as a
+Three rows left this table on 6 August: payload types are enforced at emit time, and
+`depends_on` together with `unavailable_looks_like` now produce the `:suspended` verdict
+instead of describing one. What survives of that gap is the row above — `:enum` can be checked as a
 name and not as a member of a set, because the set has nowhere to be written down.
 
 ## Two things the contract deliberately does not carry

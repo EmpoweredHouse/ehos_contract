@@ -189,6 +189,40 @@ defmodule ProcessShapes.Rig do
     process: :pairing,
     stage: :intake
 
+  # For stage 1.5b: an assertion whose consequent depends on the outside world.
+  #
+  # It is here rather than on the TaxVision contract because **that contract cannot produce
+  # a suspension**: its one declared dependency, the public registries, is consulted by the
+  # request edge *before* the first event is emitted, so the window never opens while the
+  # dependency is in play. That is a finding about where this verdict matters — processes
+  # whose **consequent** reaches outside, not whose precondition does — and not a gap in
+  # the fixture.
+  event :item_submitted,
+    label: "Item submitted for inspection",
+    owner: ProcessShapes.Intake,
+    payload: %{case_id: :id, item_no: :integer},
+    identity: [:case_id, :item_no],
+    process: :pairing,
+    stage: :intake
+
+  event :item_inspected,
+    label: "Item inspected",
+    owner: ProcessShapes.Matching,
+    depends_on: :inspection_service,
+    payload: %{case_id: :id, item_no: :integer},
+    identity: [:case_id, :item_no],
+    process: :pairing,
+    stage: :matching
+
+  external :inspection_service,
+    label: "Inspection service",
+    unavailable_looks_like: "a timeout, or a reply with no verdict in it"
+
+  trace :submission_reaches_inspection do
+    from :item_submitted
+    eventually :item_inspected, within: {1, :day}
+  end
+
   process :pairing,
     label: "Item pairing",
     stages: [:intake, :matching, :resolution],

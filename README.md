@@ -87,7 +87,8 @@ lib/pns/                 silnik — 3718 linii, przyszły pakiet
   event.ex               log zdarzeń i log obsług
   job.ex                 worker Obana, korelacja przez granicę procesu
   instance.ex            tożsamość przebiegu z `instance:`, liczona przy emisji
-  trace.ex               ocena assercji per przebieg — trzy werdykty z czterech
+  trace.ex               ocena assercji per przebieg — cztery werdykty
+  dependency.ex          obserwacje niedostępności zależności; czytelnik `unavailable_looks_like`
   conformance.ex         cztery pytania ekranu jako dane
   deployment.ex          dwie tożsamości wdrożenia: kontrakt i obwodowanie
   digest.ex              kanoniczna postać deklaracji, wspólna dla obu haszy
