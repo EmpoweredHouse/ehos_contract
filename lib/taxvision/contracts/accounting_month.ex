@@ -29,7 +29,7 @@ defmodule Taxvision.Contracts.AccountingMonth do
     # causation and across the job boundary. A payload field would duplicate the
     # same truth in a second place, and two sources of truth about one fact drift
     # apart exactly when they are needed for an audit.
-    payload: %{company_id: :id, period: :period},
+    payload: %{company_id: :id, period: :id},
     process: :accounting_month,
     stage: :verification
 
@@ -37,28 +37,28 @@ defmodule Taxvision.Contracts.AccountingMonth do
     label: "Sprawdzono status w CEIDG/KRS, białym rejestrze VAT i VIES",
     owner: Taxvision.RegistryCheck,
     depends_on: :registries,
-    payload: %{company_id: :id, period: :period, checked_at: :timestamp},
+    payload: %{company_id: :id, period: :id, checked_at: :timestamp},
     process: :accounting_month,
     stage: :verification
 
   event :registry_check_logged,
     label: "Zapisano datę ostatniego sprawdzenia rejestrów",
     owner: Taxvision.RegistryCheck,
-    payload: %{company_id: :id, period: :period, checked_at: :timestamp},
+    payload: %{company_id: :id, period: :id, checked_at: :timestamp},
     process: :accounting_month,
     stage: :verification
 
   event :registry_data_consistent,
     label: "Dane firmy zgadzają się z rejestrami",
     owner: Taxvision.RegistryCheck,
-    payload: %{company_id: :id, period: :period},
+    payload: %{company_id: :id, period: :id},
     process: :accounting_month,
     stage: :verification
 
   event :registry_discrepancy_detected,
     label: "Dane firmy nie zgadzają się z rejestrami",
     owner: Taxvision.RegistryCheck,
-    payload: %{company_id: :id, period: :period, diff: :string},
+    payload: %{company_id: :id, period: :id, diff: :string},
     # The diff carries the company's data set against the public registries. A
     # hash goes to the log: proof that a divergence happened and which one,
     # without keeping the content forever.
@@ -79,21 +79,21 @@ defmodule Taxvision.Contracts.AccountingMonth do
   event :monthly_tasks_generated,
     label: "Utworzono taski z szablonu na nowy miesiąc",
     owner: Taxvision.Tasks,
-    payload: %{company_id: :id, period: :period, task_count: :integer},
+    payload: %{company_id: :id, period: :id, task_count: :integer},
     process: :accounting_month,
     stage: :opening
 
   event :accounting_month_opened,
     label: "Otwarto miesiąc księgowy",
     owner: Taxvision.AccountingMonth,
-    payload: %{company_id: :id, period: :period},
+    payload: %{company_id: :id, period: :id},
     process: :accounting_month,
     stage: :opening
 
   event :discrepancy_notification_sent,
     label: "Wysłano powiadomienie o rozjeździe do księgowej i klienta",
     owner: Taxvision.Notifications,
-    payload: %{company_id: :id, period: :period, recipients: :integer},
+    payload: %{company_id: :id, period: :id, recipients: :integer},
     process: :accounting_month,
     stage: :verification,
     terminal: true
@@ -108,7 +108,7 @@ defmodule Taxvision.Contracts.AccountingMonth do
   event :bank_statement_received,
     label: "Otrzymano wyciąg bankowy (MT940/CSV; PDF nie wchodzi)",
     owner: Taxvision.Matching,
-    payload: %{company_id: :id, period: :period, format: :enum},
+    payload: %{company_id: :id, period: :id, format: :enum},
     process: :accounting_month,
     stage: :collection
 
@@ -119,14 +119,14 @@ defmodule Taxvision.Contracts.AccountingMonth do
     # a matched turnover does not say which month it belongs to, so matching from
     # July would count as progress in the August run. This is the only event in
     # this contract that failed that gate.
-    payload: %{company_id: :id, period: :period, turnover_id: :id, invoice_id: :id},
+    payload: %{company_id: :id, period: :id, turnover_id: :id, invoice_id: :id},
     process: :accounting_month,
     stage: :matching
 
   event :month_closed,
     label: "Zamknięto miesiąc księgowy",
     owner: Taxvision.AccountingMonth,
-    payload: %{company_id: :id, period: :period},
+    payload: %{company_id: :id, period: :id},
     process: :accounting_month,
     stage: :closing,
     terminal: true

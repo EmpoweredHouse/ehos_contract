@@ -58,6 +58,25 @@ defmodule Mix.Tasks.Pns.Docs do
   end
 
   defp reference do
+    declarations() <> "\n" <> payload_types()
+  end
+
+  # Generated for the same reason as the key table: this is a **closed** set, and a
+  # hand-written copy of a closed set is the first place a sixth type appears
+  # undocumented.
+  defp payload_types do
+    rows = Enum.map_join(PNS.Contract.payload_types(), "\n", &"| `#{inspect(&1)}` |")
+
+    """
+    ### payload types
+
+    | Type |
+    | --- |
+    #{rows}
+    """
+  end
+
+  defp declarations do
     schema = PNS.Contract.schema()
 
     order = [:event, :process, :trace, :external, :rule, :example]

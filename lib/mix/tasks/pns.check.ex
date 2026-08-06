@@ -156,8 +156,10 @@ defmodule Mix.Tasks.Pns.Check do
   # The first version flagged every `:string` field and produced 33 notices for 11
   # events, including every `company_id`. A check that shouts about everything
   # gets switched off within a week. Signal requires the contract to **separate an
-  # identifier from free text** — so `:id`, `:period`, `:timestamp` and `:enum` are
-  # separate types, and `:string` means "text a human typed".
+  # identifier from free text** — so `:id`, `:timestamp`, `:integer` and `:enum` are
+  # separate types, and `:string` means "text a human typed". This is the second
+  # reader of the payload type vocabulary and the reason `:string` cannot become a
+  # catch-all: see `PNS.Contract.payload_types/0`.
   defp check_retain_on_free_text(findings) do
     for event <- PNS.Registry.declared_events(),
         {field, type} <- event.payload,

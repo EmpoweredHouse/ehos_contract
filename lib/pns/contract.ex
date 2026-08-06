@@ -47,6 +47,29 @@ defmodule PNS.Contract do
     }
   }
 
+  # The payload type vocabulary, closed on purpose.
+  #
+  # Every one of these says something about the **shape of a value**, and nothing
+  # about anybody's business. That is the whole property: a library whose type
+  # vocabulary knows what an accounting period is, is a library that knows one
+  # client's domain — and the universality gate cannot catch it, because that gate
+  # asks whether a word had to be **added** to describe a second domain, never
+  # whether one is surplus. `:period` lived here for two days and was found by
+  # counting: the medical contract has fourteen payload fields and uses it zero
+  # times. It is an accounting month wearing the costume of a general type.
+  #
+  # The set is closed rather than advisory because the alternative is not a
+  # convention, it is nothing: before this gate any atom was a legal type, so
+  # removing `:period` would have been undone by the next person who found it
+  # convenient. A closed set makes the domain leak a compile error.
+  #
+  # `:string` means text a human typed, and it is the only member with a second
+  # reader: the retention check in `mix pns.check` reports a `:string` field with no
+  # `retain` policy. That check only produces signal because identifiers are a
+  # different type — its first version flagged every `:string` and produced 33
+  # notices for 11 events, including every `company_id`.
+  @payload_types [:id, :string, :integer, :timestamp, :enum]
+
   @event_keys @schema.event.required ++ @schema.event.optional
   @process_keys @schema.process.required ++ @schema.process.optional
   @external_keys @schema.external.required ++ @schema.external.optional
@@ -66,6 +89,18 @@ defmodule PNS.Contract do
   """
   @spec schema() :: %{declaration() => map()}
   def schema, do: @schema
+
+  @doc """
+  The legal payload types, in the order they are documented.
+
+  A closed set, and closed is the point: each member describes the shape of a value
+  and none of them knows anything about a business. Public because the reference in
+  `docs/contract.md` is generated from it and a test pins it against a literal — a
+  domain-specific type added here fails that test the same day rather than at a
+  review next quarter.
+  """
+  @spec payload_types() :: [atom()]
+  def payload_types, do: @payload_types
 
   @doc """
   The whole DSL vocabulary as data, derived from `schema/0`.
@@ -544,6 +579,7 @@ defmodule PNS.Contract do
     end
 
     validate_instances!(env, events, processes, traces)
+    validate_payload_types!(env, events)
 
     external_names = Enum.map(externals, & &1.name)
 
@@ -666,6 +702,33 @@ defmodule PNS.Contract do
   # and has become something **inexpressible**. That is the stop condition from
   # ADR §15 ("stop if processes nest or one event belongs to two") settled by the
   # shape of the declaration rather than by a check.
+  # A payload field must declare one of the types in `payload_types/0`.
+  #
+  # The gate exists so the vocabulary is a closed set rather than a habit. Before it,
+  # any atom compiled — which is why `:period` could be introduced, describe an
+  # accounting month, and look exactly like a general type. The universality gate
+  # could not catch that: it asks whether describing a second domain forced a **new**
+  # word, never whether one of the existing words is surplus.
+  #
+  # It also caught two nonexistent types that had been sitting in a documented DSL
+  # example: `:uuid` and `:decimal`, neither of which any contract ever used.
+  @spec validate_payload_types!(Macro.Env.t(), [map()]) :: :ok
+  defp validate_payload_types!(env, events) do
+    for e <- events, {field, type} <- e.payload, type not in @payload_types do
+      bail!(
+        env,
+        "event #{inspect(e.name)} declares `#{field}: #{inspect(type)}`, which is not a payload " <>
+          "type. Legal types are #{inspect(@payload_types)} and the set is closed on purpose: " <>
+          "each one describes the shape of a value, so a type that knows what a business calls " <>
+          "something is a library that knows one client's domain. If #{inspect(type)} names a " <>
+          "thing rather than a shape, it is `:id` — what the thing *is* belongs to the client's " <>
+          "application, not here."
+      )
+    end
+
+    :ok
+  end
+
   @spec validate_instances!(Macro.Env.t(), [map()], [map()], [map()]) :: :ok
   defp validate_instances!(env, events, processes, traces) do
     by_process = Map.new(processes, &{&1.name, &1})

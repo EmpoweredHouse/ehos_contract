@@ -352,5 +352,43 @@ defmodule PNS.CompileGatesTest do
         "which is not in `payload`"
       )
     end
+
+    test "a payload type outside the closed set does not compile" do
+      # `:period` specifically, because it is the one that got in. It looked like a
+      # general type, named an accounting month, and no gate existed to stop it —
+      # before this one, any atom was a legal type.
+      refute_compiles(
+        """
+        defmodule Reject.DomainSpecificPayloadType do
+          use PNS.Contract
+
+          event :month_opened,
+            label: "Month opened",
+            payload: %{company_id: :id, period: :period}
+        end
+        """,
+        "which is not a payload type"
+      )
+    end
+
+    test "the refusal says what to write instead, because the answer is not obvious" do
+      # A type naming a thing collapses to `:id`, and what the thing *is* belongs to
+      # the client's application. Without that sentence the error tells somebody their
+      # word is wrong and leaves them to guess, which is how a gate gets worked around
+      # rather than obeyed.
+      error =
+        assert_raise CompileError, fn ->
+          Code.compile_string("""
+          defmodule Reject.UnhelpfulTypeError do
+            use PNS.Contract
+
+            event :thing_happened, label: "Thing", payload: %{id: :invoice_number}
+          end
+          """)
+        end
+
+      assert error.description =~ "it is `:id`"
+      assert error.description =~ inspect(PNS.Contract.payload_types())
+    end
   end
 end

@@ -26,7 +26,7 @@ defmodule Taxvision.Contract.Invoicing do
   event :invoice_issued,
     label: "Faktura wystawiona",
     owner: Taxvision.Invoicing,
-    payload: %{invoice_id: :uuid, amount: :decimal, client_id: :uuid}
+    payload: %{invoice_id: :id, amount: :integer, client_id: :id}
 
   event :filing_rejected_by_authority,
     label: "Urząd odrzucił zgłoszenie",
@@ -152,9 +152,18 @@ the same day rather than surfacing at a quarterly review.
 
 **Payload types must separate identifiers from free text**, because one mechanism depends on it. With
 `:string` for everything the retention check reported every `company_id` and produced 33 findings on 11
-events, which is a check that gets switched off within a week. `:id`, `:period`, `:timestamp` and `:enum` are
+events, which is a check that gets switched off within a week. `:id`, `:timestamp`, `:integer` and `:enum` are
 distinct types and **`:string` means text a human typed** — the only kind the retention check reacts to.
 Seven findings on the same contract, one of them real: an email address heading into the log verbatim.
+
+*Corrected 6 August: the set is closed and `:period` is not in it.* This paragraph used to list `:period` as
+one of the identifier-ish types, and that was the whole problem — it read as a shape while naming a thing an
+accountant recognises. The universality gate could not catch it, because that gate asks whether describing a
+second domain forced a **new** word and never whether an existing one is surplus; counting caught it instead,
+since the medical contract has fourteen payload fields and used `:period` zero times. A period is now `:id`,
+and what the identifier refers to is the client application's business. The legal set is
+`PNS.Contract.payload_types/0` and a compile gate closes it, because before that gate any atom was a legal
+type — so removing the word without closing the set would have been undone by whoever next found it handy.
 
 `unverified` lists declarations the **process owner has not confirmed**. They stay in the contract, because
 without them the mechanism has nothing to watch, but they cannot count toward the evidence report: a false

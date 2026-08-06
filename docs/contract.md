@@ -128,6 +128,16 @@ Generated from `PNS.Contract.schema/0` by `mix pns.docs`. Do not edit by hand �
 | `given` | no | `%{}` |
 | `then` | no | `nil` |
 | `rejected_with` | no | `nil` |
+
+### payload types
+
+| Type |
+| --- |
+| `:id` |
+| `:string` |
+| `:integer` |
+| `:timestamp` |
+| `:enum` |
 <!-- pns:reference:end -->
 
 ## What each key means, and which mechanism needs it
@@ -140,7 +150,7 @@ visible rather than implied.
 | Key | Meaning | Read by |
 | --- | --- | --- |
 | `label` | The business name. `invoice_issued` means nothing to an accountant, and the accountant is who confirms the process. **Written in the client's language** — the only place where that is true. | the client-facing report |
-| `payload` | Field name to type. The engine casts keys back to atoms after a JSON round trip through the queue and the database, so synchronous and asynchronous handlers see one shape. | `PNS.Payload`, three compile gates, the retention check |
+| `payload` | Field name to type, from the closed set above — see *Payload types*. The engine casts keys back to atoms after a JSON round trip through the queue and the database, so synchronous and asynchronous handlers see one shape. | `PNS.Payload`, four compile gates, the retention check |
 | `owner` | Which module owns this fact. | `mix pns.check` reports an owner that does not exist as a module — as `info`, because the owner of an unimplemented phase is a normal state |
 | `retain` | Per field: `:persist` (default), `:hash`, `:drop`. Applied **once, before anything else**, so what comes out is the only version in the system — log, handlers and job arguments alike. A retention policy the queue can bypass looks satisfied and is not. | `PNS.Emitter` |
 | `identity` | What makes two occurrences **the same fact**. This is the idempotency key. It must include what *distinguishes* facts, not only what groups them. | `PNS.Job`; an asynchronous handler on an event without it does not compile |
@@ -148,6 +158,28 @@ visible rather than implied.
 | `process` | Which run this fact belongs to. A single key, so belonging to two processes is not expressible. | `PNS.Instance`, `PNS.Graph`, `PNS.Check` |
 | `stage` | Which phase of that process. | backward-edge detection in `PNS.Check` |
 | `terminal` | The process ends here. Being blocked counts: a run that ended badly still ended. | `mix pns.check`, `PNS.Graph` |
+
+#### Payload types
+
+**Every type says something about the shape of a value and nothing about anybody's
+business, and the set is closed so it stays that way.** A type that names a thing an
+accountant recognises is this library knowing one client's domain — and that is not a
+matter of taste, it is what makes the library a library.
+
+| Type | Means | Note |
+| --- | --- | --- |
+| `:id` | An identifier of something. | What it identifies is the client application's business, not ours. A period, an invoice, a patient — all `:id` here |
+| `:string` | **Text a human typed.** | The only type the retention check reacts to: a `:string` field with no `retain` policy reaches the log verbatim |
+| `:integer` | A whole number: a count, an amount. | |
+| `:timestamp` | A point in time. | |
+| `:enum` | One of a fixed set. | The set itself is not declared — a known gap, listed under *Known decoration* |
+
+There is no `:period`, and it was here for two days. It looked like a general type and
+named an accounting month, which is exactly the failure this table exists to prevent.
+The universality gate did not catch it, because that gate asks whether describing a
+second domain forced a **new** word, never whether one of the existing words is
+surplus — counting caught it: the second contract has fourteen payload fields and used
+`:period` zero times. **If your type names a thing rather than a shape, it is `:id`.**
 
 ### `process`
 
@@ -216,6 +248,7 @@ write.
 | Refused | Why |
 | --- | --- |
 | An unknown key in any declaration | the vocabulary is fixed; a new word is a design decision, not a convenience |
+| A `payload` field with a type outside the closed set | a type that names a thing rather than a shape is the library knowing one client's domain |
 | `rule` without an `example` | a rule without a case is prose |
 | `rule` with a capture instead of an MFA tuple | it would make the contract depend on the domain at compile time |
 | `trace` naming an event that does not exist | the assertion could never be evaluated |

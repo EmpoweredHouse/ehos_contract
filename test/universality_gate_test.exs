@@ -41,6 +41,35 @@ defmodule PNS.UniversalityGateTest do
              }
     end
 
+    test "no payload type knows what anybody's business calls a thing" do
+      # The other half of the criterion, and the half the gate itself cannot see.
+      # "Zero new words" asks whether describing a second domain forced something to
+      # be **added**; it is blind to a word that is already there and should not be.
+      # `:period` passed the vocabulary test for two days while naming an accounting
+      # month, and counting found it: the medical contract has fourteen payload
+      # fields and used it zero times.
+      #
+      # Pinned as a literal, so adding a domain-specific type fails here the same
+      # day. If a type below stops looking like a shape, the type goes — not the test.
+      assert PNS.Contract.payload_types() == [:id, :string, :integer, :timestamp, :enum]
+    end
+
+    test "neither contract uses a type outside the closed set" do
+      # The gate is a compile error, so this cannot fail without the build already
+      # being red. It is here for the direction the gate does not cover: it counts
+      # **which** types each domain actually needed, and a type no contract has ever
+      # used is a candidate for removal on the same argument that removed `:period`.
+      used =
+        for contract <- [@taxvision, @contract],
+            event <- contract.events(),
+            {_field, type} <- event.payload,
+            uniq: true,
+            do: type
+
+      assert used -- PNS.Contract.payload_types() == []
+      assert :period not in used
+    end
+
     test "both domains use the same set of macros and neither has its own" do
       macros =
         PNS.Contract.__info__(:macros)

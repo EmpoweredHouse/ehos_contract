@@ -7,7 +7,7 @@ aktualizowany stan.
 
 ## Stan na 6 sierpnia
 
-162 testy, `mix check` przechodzi. Ostrzeżenia są **trzy** i wszystkie celowe: `deadline` TaxVision bez
+166 testów, `mix check` przechodzi. Ostrzeżenia są **trzy** i wszystkie celowe: `deadline` TaxVision bez
 potwierdzenia process ownera, `deadline` z wymyślonej fikstury bramy uniwersalności, oraz **krawędź wsteczna
 w stanowisku badawczym kształtów — która jest kryterium odbioru 1.3, więc jej brak byłby regresem.**
 Samo `mix pns.check` w środowisku dev pokazuje jedno — fikstury żyją w `test/support/`.
@@ -26,7 +26,7 @@ zostawia ślad, a raport odróżnia „próbowane i nie udaje się" od „nigdy 
 | --- | --- |
 | `deadline` procesu jest zadeklarowany i **nie czyta go nikt** — jedyni czytelnicy to filtr, który go wyrzuca, i renderer, który by go wypisał; `deadline_at` w `PNS.Trace` pochodzi z `within`, czyli z innej deklaracji | to jest produkt |
 | `cadence` jest **przenoszona**, ale nikt nie liczy z niej okna — mechanizm „never observed" z notatek §9 nadal nie istnieje | to jest produkt |
-| Typy payloadu nie są sprawdzane; kontrakt mówi `:integer` i nic nie pilnuje | obietnica kontraktu |
+| Typy payloadu nie są **castowane** — brama kompilacyjna pilnuje, że typ jest legalny, ale `PNS.Payload` nie sprawdza wartości | obietnica kontraktu |
 
 ## Etap 1 — rdzeń weryfikacji
 
@@ -86,7 +86,7 @@ Co brama pokazała, w kolejności ważności:
 - **`:period` jest jedynym typem w słowniku, który nie jest uniwersalny.** Brama tego nie złapała, bo
   sprawdza, czy trzeba **dopisać** słowo, a nie czy któreś jest zbędne. Dowód: kontrakt medyczny ma
   czternaście pól w payloadach i nie używa `:period` ani razu. To „miesiąc księgowy" przebrany za typ
-  ogólny. Rozstrzygnięte — wypada, szczegóły przy 2.2.
+  ogólny. ✅ **wypadł 6 sierpnia** — szczegóły przy 2.2a, w tym wniosek o samej bramie.
 - **`PNS.Graph` nie ma zawężenia do procesu ani kontraktu.** Drugi kontrakt ujawnił ukryte założenie „jest
   tylko jeden" — `graph_test` liczył węzły globalnie. Notatki §9 mówią wprost „navigation is per-process,
   never global", więc to jest luka, nie preferencja. Należy do 1.7/etapu 4, nie tutaj.
@@ -462,22 +462,39 @@ dokładnie te, które o naruszeniu cokolwiek twierdzą.
 Zostaje na później: tracer kompilacji (notatki §2) przesunąłby wykrycie jeszcze wcześniej, ale to
 optymalizacja momentu, nie warunek poprawności.
 
-**2.2 Walidacja payloadu przeciw zadeklarowanym typom**, plus generowane testy zgodności.
+**2.2a Wyrzucenie `:period` ze słownika typów. ✅ zrobione 6 sierpnia.** `PNS.Contract.payload_types/0`,
+`test/compile_gates_test.exs`, `test/universality_gate_test.exs`. 166 testów.
 
-**Wyrzucenie `:period` ze słownika typów należy tutaj** — rozstrzygnięte 5 sierpnia. `:id`, `:timestamp`,
-`:enum`, `:string`, `:integer` mówią o kształcie danych; `:period` mówi o księgowości, czyli biblioteka
-wie coś o domenie klienta. Okres staje się zwykłym `:id`, a czym jest — wie aplikacja klienta.
+**Najpierw trzeba było słownik stworzyć, a nie tylko z niego usunąć.** Sprawdzone, nie założone: **żadna
+walidacja typów nie istniała** — dowolny atom kompilował się jako typ payloadu. Samo przepisanie
+`period: :period` na `period: :id` w jedenastu miejscach byłoby więc kosmetyką **odwracalną przez przypadek**,
+bo nic nie stałoby na drodze następnej osobie, której `:period` będzie wygodne. Słownik jest teraz **zbiorem
+zamkniętym**, a wyjście z niego jest błędem kompilacji: `[:id, :string, :integer, :timestamp, :enum]`.
 
-Kolejność jest tu istotna i wynika z kosztu: dziś klucz przebiegu brzmi `accounting_month|c-1|2026-07` i
-człowiek czyta z niego wszystko. Po zmianie na identyfikatory brzmi `accounting_month|<uuid>|<uuid>`, a
-**„odtwarzalny z samego logu" było jawną własnością projektową klucza przebiegu** — do odczytania dowodu
-trzeba będzie drugiej bazy. Zrobione przed 2.2 oznacza zapłacenie tej ceny bez niczego w zamian, bo typy
-nadal niczego nie pilnują. Zrobione razem z 2.2 — `:id` faktycznie znaczy „identyfikator" na poziomie
-castowania, nie tylko w dokumentacji.
+**Czego brama uniwersalności nie umie zobaczyć — i to jest wniosek o samej bramie.** Kryterium „zero nowych
+słów" pyta, czy opisanie drugiej domeny wymusiło **dodanie** słowa. Jest **konstrukcyjnie niewidoma** na
+słowo, które już jest, a być nie powinno. `:period` przechodził ten test dwa dni. Znalazło go **liczenie**:
+kontrakt medyczny ma czternaście pól payloadu i nie użył go ani razu. Brama ma teraz drugą połowę — literał
+z typami, przypięty tym samym mechanizmem, co słownik kluczy.
 
-Przy okazji do domknięcia: `:integer` jest używane w obu kontraktach i nie ma go w udokumentowanym
-słowniku, a notatki §1 pokazują w przykładzie `:uuid` i `:decimal`, których nie ma nigdzie. Słownik ma
-jedno źródło prawdy — `PNS.Contract.vocabulary/0` — i reszta ma się z nim zgadzać.
+**Cena, której `PLAN.md` się bał, nie dotyczy tej połowy.** Wcześniejsza wersja tego punktu wiązała usunięcie
+`:period` z walidacją typów, bo klucz przebiegu miał zmienić się z `accounting_month|c-1|2026-07` na
+`|<uuid>|<uuid>`, a „odtwarzalny z samego logu" było jawną własnością projektową. To jednak dwie różne
+zmiany, i pomyliłem je: **wyrzucenie typu ze słownika nie rusza wartości.** Sprawdzone po zmianie — klucz
+nadal brzmi `accounting_month|c-1|2026-07`. Przejście na `period_id` jako uuid to osobna decyzja klienta i
+ona nadal ma czekać na 2.2b.
+
+Komunikat błędu mówi, **co napisać zamiast** — „jeśli nazywa rzecz, a nie kształt, to jest `:id`" — i to jest
+przypięte osobnym testem. Brama, która mówi tylko „twoje słowo jest złe", jest bramą, którą się obchodzi.
+
+Domknięte przy okazji: `:integer` był używany piętnaście razy i **nie było go w udokumentowanym słowniku**;
+notatki §1 pokazywały w przykładzie DSL-a `:uuid` i `:decimal`, **których nigdy nie było**. Referencja typów
+jest teraz generowana przez `mix pns.docs` z tego samego źródła, co brama — bo ręcznie pisana kopia zbioru
+zamkniętego jest pierwszym miejscem, w którym pojawia się szósty typ bez dokumentacji.
+
+**2.2b Walidacja payloadu przeciw zadeklarowanym typom**, plus generowane testy zgodności. Dziś `:id` znaczy
+„identyfikator" w dokumentacji i w bramie kompilacyjnej, ale **nie na poziomie castowania** — `PNS.Payload`
+zamienia klucze i nie patrzy na typy. Do tego należy decyzja klienta o `period_id`.
 
 **2.3 Ślad po awarii handlera synchronicznego. ✅ zrobione 6 sierpnia.** `PNS.HandlerFailure`,
 `PNS.SyncHandlerError`, `test/handler_failure_test.exs`. 162 testy.
