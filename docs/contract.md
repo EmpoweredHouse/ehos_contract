@@ -206,7 +206,7 @@ surplus — counting caught it: the second contract has fourteen payload fields 
 | `label` | The business name of the run. | the report |
 | `instance` | Payload fields that say **which run** an event belongs to. Required, because both things that make this a product — assertion evaluation and the declared-versus-observed overlay — are counted within a run. | `PNS.Instance`, `PNS.Trace`, `PNS.Conformance` |
 | `stages` | The order **between** phases, and nothing about order inside one. Omit it and the process has one phase and makes no claim about sequence; its events then carry no `stage`. | `PNS.Check` |
-| `cadence` | How often a run is due. Only meaningful for calendar-driven processes — an event-driven one has none. | nothing yet — see *Known decoration* |
+| `cadence` | How often a run is due. Only meaningful for calendar-driven processes — an event-driven one has none. | the report, for the declaration itself — see *Known decoration* for what still does not read it |
 | `deadline` | How long a run may take. | nothing yet — see *Known decoration* |
 | `unverified` | Declarations the **process owner has not confirmed**. They stay, because the mechanism needs something to watch, but they must not count toward the evidence report: a false metric is worse than a missing one when it is the metric the product sells. | `mix pns.check`, every run |
 
@@ -294,8 +294,8 @@ reference that hides its gaps is worse than one that admits them.
 
 | Declaration | State |
 | --- | --- |
-| `deadline` | declared; no stalled-run monitor exists |
-| `cadence` | declared; the "never observed" window is not computed from it |
+| `deadline` | declared; not yet read. Planned narrowly — a retrospective count, in the periodic report, of runs that exceeded it — not a live per-instance monitor (decided 6 August, `PLAN.md`) |
+| `cadence` | declared, and read by the report for the declaration itself. The "never observed" window **will not be built** — rejected 6 August, not merely undone; see `docs/adr/technology-notes.md` §9 |
 | `external`'s `expected_latency` | declared; nothing measures latency |
 | `external`'s `unavailable_looks_like` | **no longer decoration since 6 August** — `depends_on` plus an unavailability observation produces the fourth assertion verdict, `:suspended`. The sentence itself is still only read by a person |
 | `depends_on` at runtime | **read since 6 August**: it decides which dependency's outage can suspend an assertion. Nothing yet measures whether a dependency is slow, only whether it was seen unavailable |

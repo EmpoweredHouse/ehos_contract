@@ -751,8 +751,27 @@ ran is indistinguishable from one that has not been reached yet.
 used to imply otherwise.** The universality gate contract (§1) has no cadence and cannot be given one:
 a treatment episode is not due on a schedule, it starts when a referral arrives. So "never observed"
 needs a second source of window length for that whole class. The candidate already in the contract is
-the `within:` on the trace assertion, which states how long the run is allowed to take — **open, and it
-should be decided before the report of §9 is built, not after.**
+the `within:` on the trace assertion, which states how long the run is allowed to take.
+
+**Resolved 6 August, in conversation — rejected, not built.** The open question above was "where does the
+window come from"; the deeper problem, found only by asking why this was still unbuilt, is that "an
+instance is missing" cannot be answered from the log at all, windowed or not. Most events will be raised
+manually through the API by a frontend that already shows clients, periods and invoices directly — so it
+already answers "which client has no July" by reading its own tables, without needing this. Building the
+same answer here would need to know which instances *should* exist in order to notice which ones do not,
+and that is company knowledge this engine deliberately does not have (§1: `claims: %{}`, no `company_id`
+anywhere in a `PNS` structure). The "count, not a list" framing above does not save this — a count still
+needs a denominator, and an entity that emitted nothing is invisible to a system built on nothing but the
+log. This is a structural gap, not a missing feature: giving PNS that denominator would mean giving it the
+company knowledge the rest of this record argues it should not have.
+
+What is *not* rejected: the overlay's own "declared, never observed" edge state, at the top of this
+section, which asks a different question answerable from the log alone — has this **edge** ever been
+taken by any run — and is already built (`PNS.Conformance.untraversed_paths/1`, stage 1.4). What is
+rejected is only the per-instance cadence window this paragraph describes. `deadline` is unaffected by
+this and is being built on a narrower reading: a retrospective count, over runs that already have a
+`from` event, of how many exceeded it — the same shape as `PNS.Trace`'s `violated` count, and computable
+from the log alone because it never needs to know about instances that do not appear in it.
 
 **Version skew.** Handled by `contract_version` on the event (§3). Without it, comparing today's
 code against ninety days of log reports every removed event as drift.

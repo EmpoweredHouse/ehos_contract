@@ -33,8 +33,8 @@ nikt inny — handlera i naruszenie kontraktu**.
 
 | Luka | Waga |
 | --- | --- |
-| `deadline` procesu jest zadeklarowany i **nie czyta go nikt** — jedyni czytelnicy to filtr, który go wyrzuca, i renderer, który by go wypisał; `deadline_at` w `PNS.Trace` pochodzi z `within`, czyli z innej deklaracji | to jest produkt |
-| `cadence` jest **przenoszona**, ale nikt nie liczy z niej okna — mechanizm „never observed" z notatek §9 nadal nie istnieje | to jest produkt |
+| `deadline` procesu jest zadeklarowany i **nie czyta go nikt** — jedyni czytelnicy to filtr, który go wyrzuca, i renderer, który by go wypisał; `deadline_at` w `PNS.Trace` pochodzi z `within`, czyli z innej deklaracji | to jest produkt — **zwężone 6 sierpnia**, patrz „Rozstrzygnięte 6 sierpnia" niżej |
+| `cadence`'s „never observed" — **odrzucone 6 sierpnia**, patrz „Rozstrzygnięte 6 sierpnia" niżej. Sama deklaracja `cadence` zostaje: kosztuje zero kodu i raport już ją wypisuje. | zamknięte |
 | Zbiór wartości `:enum` nie jest deklarowalny — typ sprawdza „czy to nazwa”, nie „czy jedna z tych” | drobne |
 
 ## Etap 1 — rdzeń weryfikacji
@@ -869,11 +869,14 @@ obalił rekord: bullet falsyfikacyjny mówiący, że `trace` i `deadline` nie ma
 niewystarczające; i skew wersji, który nie obejmował usuniętego handlera. Historia jest w `git log`, nie tutaj
 — **`PLAN.md` trzyma stan, nie archiwum**.
 
-Zostały dwie rzeczy, które rekord mówi, a kod jeszcze nie:
+Została jedna rzecz, którą rekord mówi, a kod jeszcze nie — i jedna, którą rekord mówi, a kod **już nie
+będzie**, rozstrzygnięte, nie zaniedbane:
 
 - **§9 „navigation is per-process, never global”** wobec braku zawężenia w `PNS.Graph`. Luka, nie
   preferencja — należy do etapu 4, bo to jego wymaganie.
-- **§9 okno „never observed”** nie jest implementowane. Powiązane z `cadence` z tabeli luk wyżej.
+- **§9 okno „never observed" — odrzucone 6 sierpnia**, patrz „Rozstrzygnięte 6 sierpnia" wyżej i poprawka z
+  datą w `docs/adr/technology-notes.md` §9. Rekord pytał, kiedy to zbudować; odpowiedź jest „nie budujemy",
+  nie „jeszcze nie".
 
 Gałąź `backup-polskie-opisy` usunięta 5 sierpnia po sprawdzeniu, że wszystkie siedem drzew jest w `main`.
 
@@ -898,28 +901,53 @@ luk — **twierdzenia z liczbami do poprawienia, nie pytania otwarte**, bo pytan
 facylitatora, a poprawka jest jedyną rzeczą, która dowodzi, że ktoś przeczytał. Miary do zapisania dwie: ile
 procent kontraktu przyszło z sali (przy TaxVision 40%) i **ile przykładów właściciel poprawił**.
 
+### Rozstrzygnięte 6 sierpnia, w rozmowie (nie na warsztacie)
+
+- **Gdzie renderuje się raport dowodowy. ✅ zrobione 6 sierpnia.** Renderer przeniósł się do silnika —
+  `PNS.Report` (`lib/pns/report.ex`), `Taxvision.Report` usunięty. Zadanie mixa też: `mix taxvision.report` →
+  `mix pns.report`, obok `pns.check`/`pns.graph`/`pns.trace`, bo to już nie jest szew klienta.
+  **Treść też po angielsku** — dopytane osobno, bo lokalizacja kodu (moduledoc, nazwy) i lokalizacja
+  wypisywanych zdań to dwie różne rzeczy. Etykiety z kontraktu (`label`, `from_label`, `to_label`) nie są
+  tłumaczone i wychodzą tak, jak je zadeklarował klient — po polsku dla TaxVision. Skutek: raport dla
+  TaxVision jest teraz angielskim szkieletem wokół polskich etykiet biznesowych. To jest odwrócenie decyzji z
+  1.7 („raport czyta księgowa, więc jego zdania są po polsku”), zapisane jako poprawka z datą w
+  [`docs/adr/architecture.md`](docs/adr/architecture.md) (§16–17) i w `CLAUDE.md`, nie jako cichy rewrite —
+  test [`test/report_test.exs`](test/report_test.exs) i moduledoc `PNS.Report` mówią wprost, że to zmiana
+  względem 1.7, nie kontynuacja.
+- **Czy ekran jest „na żywo”.** Nie. Rekomendacja z notatki wyżej potwierdzona bez zmian.
+- **`cadence`'s „never observed" (notatki §9) — odrzucone, nie odłożone.** Powód, z rozmowy: większość zdarzeń
+  będzie odpalana ręcznie przez API z aplikacji frontendowej, która już pokazuje klientów, miesiące i
+  faktury — czyli już odpowiada „który klient nie ma otwartego lipca" wprost, patrząc w swoje tabele. Policzenie
+  tego w PNS wymagałoby wiedzieć, **które konkretne instancje powinny istnieć**, żeby wykryć, których nie ma —
+  a to jest wiedza o firmach, której silnik świadomie nie ma (§1, `claims: %{}`, żadnego `company_id` w żadnej
+  strukturze `PNS`). Notatki §9 same mówią „count, not a list", ale nawet licznik wymaga mianownika, którego
+  log zdarzeń, z zasady, nie widzi — encja, która nie wyemitowała nic, jest niewidzialna dla systemu opartego
+  wyłącznie na logu. To nie jest to samo pytanie co „ekran na żywo" (kwestia interfejsu), tylko **strukturalny
+  brak informacji, którego dokładanie oznaczałoby złamanie własnej reguły o firmach**. Poprawka z datą w
+  [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) §9, nie ciche wykreślenie — ten mechanizm był
+  tam opisany jako „open, do zdecydowania przed budową raportu z §9", więc to jest odpowiedź na tamto pytanie,
+  a nie jego ignorowanie. Deklaracja `cadence` w kontrakcie zostaje — nie kosztuje nic i raport ją już wypisuje
+  jako fakt („Należny: co miesiąc"), tylko monitor okna nie wchodzi.
+- **`deadline` procesu — zwężone, nie odrzucone.** W przeciwieństwie do `cadence`'s „never observed", to jest
+  policzalne wyłącznie z logu, bez żadnej wiedzy o firmach: pyta „z przebiegów, które **już się zaczęły**
+  (mają zdarzenie `from`), ile przekroczyło uzgodniony czas trwania" — ten sam kształt, co dziś liczy
+  `PNS.Trace` dla `violated`/`satisfied`, tylko licząc od pierwszego zdarzenia instancji, nie od konkretnego
+  zdarzenia źródłowego jednej assercji. **Do zbudowania, jeszcze nie wykonane:** dodać do
+  `PNS.Conformance.report/2` agregat „N z M przebiegów przekroczyło `deadline`" — retrospektywna liczba w
+  okresowym raporcie, nie żywy monitor per przebieg i nie alert. Frontend pokaże „ten miesiąc jest otwarty od
+  30 dni" dla jednej firmy; tego nie pokaże — to wzorzec po całej bazie klientów, ta sama wartość, którą już
+  sprzedaje `trace`.
+- **Okres, którego definicja się zmieniła. ✅ zrobione 6 sierpnia.** Nie zmienia się: miesiąc księgowy to
+  zawsze pierwszy–ostatni dzień kalendarzowego miesiąca, nikt nie ustawia zakresu ręcznie — sprawdzone przez
+  przejrzenie każdego miejsca, które pisze do `taxvision_periods`: jest jedno, `Taxvision.Periods.ensure!/1`,
+  i ono już liczy zakres z nazwy. Migracja
+  [`20260806150000_period_is_a_calendar_month.exs`](priv/repo/migrations/20260806150000_period_is_a_calendar_month.exs)
+  dokłada trzy `CHECK`, dokładnie tak, jak własna analiza wyżej przewidziała: „jeśli nie może się zmieniać,
+  wystarczy constraint i zero kodu domenowego”. Zero kodu domenowego się potwierdziło — zmieniła się tylko
+  migracja i testy weryfikujące ją odwrotnie (`test/periods_test.exs`, próba zapisania złego zakresu przez
+  `insert_all/2`, z pominięciem `ensure!/1`).
+
 ### Otwarte, i nic z tego nie jest robotą z półki
-
-**Blokuje etap:**
-
-- **Gdzie renderuje się raport dowodowy** — piąte otwarte pytanie ADR-a. Kod odpowiedział mimochodem (drzewo
-  klienta), a to nie to samo co rozstrzygnięcie. **Rekomendacja: szew renderera w silniku**, bo ADR wymienia
-  raport jako pozycję **komercyjną** — jeśli jest artefaktem klienta, sprzedajemy usługę budowaną per klient.
-  Właścicielem pytania jest jednak Karol („czy artefakt dowodowy jest tym, o co pyta kupujący”) i jest jedynym
-  recenzentem, który nie przeszedł przeglądu.
-- **Czy ekran jest „na żywo”** — notatki §9 mówią *„live, not a report… monitors eventually want alerts”*,
-  `CLAUDE.md` mówi: bez alertów. **Rekomendacja: odrzucić, z zapisanym triggerem powrotu** („klient sam
-  poprosi o stan teraz, nie o raport za miesiąc"). Powód: raport za okres jest dowodem i nie ma konkurencji,
-  a ekran operacyjny konkuruje z Datadogiem i z aplikacją klienta, i przegrywa z oboma. **Do rozstrzygnięcia
-  przed etapem 4**, bo „na żywo” zmienia model danych, a nie widok.
-
-**Łamie własność już sprzedawaną:**
-
-- **Okres, którego definicja się zmieniła.** Edytowalny `taxvision_periods` znaczy, że raport wygenerowany
-  ponownie może dać inny wynik — czyli ta sama własność, do której obrony dodałem `until:` przy 1.7, tylko
-  innymi drzwiami. **Rekomendacja: okresy append-only** (zmiana zakresu tworzy nowy wiersz), ale to decyzja
-  klienta: czy definicja okresu w TaxVision może się w ogóle zmieniać wstecz. Jeśli nie może — wystarczy
-  constraint i zero kodu.
 
 **Do process ownera, jedno pytanie:**
 
