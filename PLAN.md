@@ -850,75 +850,95 @@ czego nie mówiła posortowana lista. Bez alertów, bez stanu na żywo, bez czeg
 **Zablokowane do rozstrzygnięcia:** notatki §9 mówią *„live, not a report … monitors eventually want alerts"*,
 co jest w napięciu z zawężeniem zakresu. Etapy 1–3 są od tego niezależne.
 
-## Rekord: co czeka na przegląd
+## Rekord: gdzie jest i czego nie wolno z nim robić
 
-Gałąź **`docs/pns-record-corrections-etap-1`** w repo kontekstu, jeden commit, **niewypchnięta**. Zawiera
-cztery poprawki z etapów 1.1–1.2 plus nowy kształt `event`/`process` i sprostowanie do triggera ADR §15
-(„jedno zdarzenie w dwóch procesach" nie jest błędem kompilacji, a rzeczą niewyrażalną).
+**Pakiet projektowy jest tutaj, w [`docs/adr/`](docs/adr/).** Przeniesiony 6 sierpnia z repo
+kontekstu i przerobiony z rekordu decyzji na **założenia początkowe**: nikt ich tutaj nie akceptuje, bo
+decyzja, żeby tę ideę sprawdzić, już padła. Aparat, który do rekordu należał — kto recenzował, kto
+zaakceptował, zakres komercyjny — został tam.
 
-**Druga partia — z etapów 1.3–1.7 — dopisana 5 sierpnia jako `9897c91` na tej samej gałęzi.** Dwa commity,
-jeden przegląd, i podział widoczny w treści: co kod obalił (1–3) wobec tego, czego rekord żądał jako dowodu
-(4–5). Sprawdzone w kodzie, nie z pamięci, w kolejności wagi:
+**Do `~/Projects/ai/empowered-house-context` nie piszemy. Nigdy.** Ani commita, ani gałęzi, ani poprawki w
+pliku. Reguła jest z 6 sierpnia i ma powód: pakiet żył w obu repozytoriach naraz, poprawki jechały na gałąź
+tam, podczas gdy autorytatywne pliki były już tutaj, i **przez pół dnia istniały dwie kopie tej samej
+treści** — dokładnie ten dryf, który ten produkt wykrywa zawodowo. Czytać stamtąd wolno, jeśli ktoś o to
+poprosi. Pisać — nie. Zapisane też w `CLAUDE.md`.
 
-1. **ADR „What would falsify this", ostatni bullet, jest dziś w połowie nieprawdziwy.** Mówi, że `trace`
-   i `deadline` nie mają czytelnika. 1.5 dał czytelnika `trace`; **`deadline` nadal go nie ma** i to jest
-   sprawdzalne — patrz tabela luk wyżej. Poprawka mówi „połowa zrobiona, i wiemy która", nie „zrobione”.
-2. **ADR „What we are betting on", zakład declared-vs-observed: liczba jest, zabezpieczenia są nie te.**
-   1.4 dał liczbę (50 → 1, 49+1 → 0). Ale akapit wymienia `cadence` i `contract_version` jako to, co
-   trzyma fałszywe pozytywy w ryzach, a **cadence nie stosuje się do procesu zdarzeniowego** (poprawione
-   w §15, nie w tym akapicie) i **`contract_version` nie obejmuje usuniętego handlera** (1.6). Doszły dwa
-   źródła, których rekord nie zna wcale: **zero przebiegów** i **job w kolejce**. Zabezpieczeń jest cztery.
-3. **ADR §16–17, tabela „What ships": `Dashboard — inside the engine`.** 1.7 rozdzielił dane od zdań, bo
-   silnik nie wie, w jakim języku czyta jego odbiorca. Albo dashboard w silniku dostaje **szew na renderer
-   klienta**, albo raport dowodowy — pozycja **komercyjna** w tej samej sekcji — jest artefaktem klienta.
-   Dziś w kodzie jest to drugie i nie było decyzją, tylko konsekwencją. **Zapisane jako piąte otwarte
-   pytanie ADR-a, nie jako fakt** — decyzja jest tania teraz i droga, kiedy klient wypuści własny raport.
-4. **ADR §5–6, trigger „Not before the split is validated": dowód jest.** 1.3b — dwa zapytania na jedno
-   otwarcie miesiąca, liczone telemetrią, i `exports: []` czyniące join **niewyrażalnym**. `Consequences`
-   „Query counts rise" ma liczbę zamiast przymiotnika.
-5. **ADR §15, trigger „compensation smearing": dostarczony, i ważniejsze jest jak.** Wykrywanie krawędzi
-   wstecznych było prywatną funkcją zadania mixa **bez testu** — trigger przeglądu decyzji provisional stał
-   na sprawdzeniu, którego nikt nie sprawdzał. Przeniesione do `PNS.Check`. Natomiast „nesting is still
-   unenforced" **zostaje prawdą**: 1.3 pokrył pięć kształtów i zagnieżdżenia nie było wśród nich — to do
-   potwierdzenia, nie do zmiany.
+**Poprawki z etapów 1.1–1.7 są rozliczone i są w `docs/adr/`.** Dziewięć rzeczy, w tym trzy, w których kod
+obalił rekord: bullet falsyfikacyjny mówiący, że `trace` i `deadline` nie mają czytelnika (dziś `trace` ma,
+`deadline` nadal nie); zakład declared-vs-observed, którego oba wymienione zabezpieczenia okazały się
+niewystarczające; i skew wersji, który nie obejmował usuniętego handlera. Historia jest w `git log`, nie tutaj
+— **`PLAN.md` trzyma stan, nie archiwum**.
 
-Notatki, nie ADR: §9 version skew (usunięty handler), §9 „navigation is per-process, never global" wobec
-braku zawężenia w `PNS.Graph`, §9 okno „never observed" bez implementacji, §14 N+1 jako liczba, §5 o
-`basis:` i licznikach w dwóch wymiarach.
+Zostały dwie rzeczy, które rekord mówi, a kod jeszcze nie:
 
-Jedno otwarte pytanie **zwężone, nie zamknięte**: „what the evidence report says about a period whose
-definitions changed" — okres jest teraz wierszem z zakresem dat, a okno raportu jest na `occurred_at`, nie
-na okresie.
+- **§9 „navigation is per-process, never global”** wobec braku zawężenia w `PNS.Graph`. Luka, nie
+  preferencja — należy do etapu 4, bo to jego wymaganie.
+- **§9 okno „never observed”** nie jest implementowane. Powiązane z `cadence` z tabeli luk wyżej.
 
-**Uwaga przy odgałęzianiu od tego repozytorium:** decyzji 009 ani notatek technologicznych **nie ma na
-`main`** — żyją wyłącznie na `docs/pns-architecture-adr`, która bywa przepisywana. Gałąź odbita od niej
-osierocieje po każdym rebase i wymaga `rebase --onto`. Zdarzyło się to raz, 5 sierpnia.
-
-Gałąź `backup-polskie-opisy` **usunięta 5 sierpnia** po sprawdzeniu, że wszystkie siedem drzew jest w
-`main` i że commit `c54becb` ma niezmieniony SHA.
+Gałąź `backup-polskie-opisy` usunięta 5 sierpnia po sprawdzeniu, że wszystkie siedem drzew jest w `main`.
 
 ## Kolejność
 
-**Etap 1 zamknięty w całości.** 1.1–1.7. Brama uniwersalności przeszła, `trace` przestał być dekoracją, a różnica
-declared vs observed okazała się sygnałem — 50 przebiegów daje jedną linię raportu, a wszystkie pięć
-kształtów procesu jest obsłużonych.
+**Etap 1 zamknięty w całości.** 1.1–1.7 plus 1.5b. Brama uniwersalności przeszła, `trace` przestał być
+dekoracją i ma dziś **cztery werdykty z czterech**, a różnica declared vs observed okazała się sygnałem —
+50 przebiegów daje jedną linię raportu, i wszystkie pięć kształtów procesu jest obsłużonych.
 
 **Etap 2 zamknięty w całości, 6 sierpnia.** 2.1–2.5. Obietnice kontraktu przestały być dekoracją: `publishes:`
 wiąże handler, słownik typów jest zamknięty, wartości są walidowane, awaria synchroniczna zostawia ślad, cykl
-jest zatrzymany na obu ścieżkach, a telemetria emituje to, czego nie widzi nikt inny. Ze 42 testów na starcie
-etapu zrobiło się **206**.
+jest zatrzymany na obu ścieżkach, a telemetria emituje to, czego nie widzi nikt inny. **Etap 1 startował na
+42 testach, kończył na 133; etap 2 kończy na 221.**
 
-Otwarte pozostaje **jedna rzecz, i nie jest robotą inżynierską** — jest decyzją:
+### Co dalej: warsztat, nie kod
 
-- **Gdzie renderuje się raport dowodowy** — piąte otwarte pytanie ADR-a. Kod odpowiedział mimochodem
-  (drzewo klienta), a to nie to samo co rozstrzygnięcie.
+**Rehmed startuje 10 sierpnia, a największy zakład rekordu jest nietknięty** — czy prawdziwy process owner
+przeczyta przykłady i je poprawi. Nic z etapu 2 tego nie ruszyło ani o milimetr; rusza to tylko warsztat.
 
-**Największy zakład ADR-a nadal nietknięty:** czy prawdziwy process owner przeczyta przykłady i je poprawi.
-Nic z etapu 2 tego nie rusza — rusza to tylko warsztat.
+Pytania przygotowane: [`docs/warsztat-rehmed.md`](docs/warsztat-rehmed.md). Zbudowane wokół zakładu, nie wokół
+luk — **twierdzenia z liczbami do poprawienia, nie pytania otwarte**, bo pytanie otwarte daje prozę od
+facylitatora, a poprawka jest jedyną rzeczą, która dowodzi, że ktoś przeczytał. Miary do zapisania dwie: ile
+procent kontraktu przyszło z sali (przy TaxVision 40%) i **ile przykładów właściciel poprawił**.
 
-Zamknięte 5 sierpnia bez zmiany w DSL: **`label` dla `trace` nie wchodzi** — powód przy 1.7. Do process
-ownera zostaje jedna rzecz z etapu 1, węższa niż się wydawała: **potwierdzenie, że `within` obowiązuje także
-`or_else`.**
+### Otwarte, i nic z tego nie jest robotą z półki
+
+**Blokuje etap:**
+
+- **Gdzie renderuje się raport dowodowy** — piąte otwarte pytanie ADR-a. Kod odpowiedział mimochodem (drzewo
+  klienta), a to nie to samo co rozstrzygnięcie. **Rekomendacja: szew renderera w silniku**, bo ADR wymienia
+  raport jako pozycję **komercyjną** — jeśli jest artefaktem klienta, sprzedajemy usługę budowaną per klient.
+  Właścicielem pytania jest jednak Karol („czy artefakt dowodowy jest tym, o co pyta kupujący”) i jest jedynym
+  recenzentem, który nie przeszedł przeglądu.
+- **Czy ekran jest „na żywo”** — notatki §9 mówią *„live, not a report… monitors eventually want alerts”*,
+  `CLAUDE.md` mówi: bez alertów. **Rekomendacja: odrzucić, z zapisanym triggerem powrotu** („klient sam
+  poprosi o stan teraz, nie o raport za miesiąc"). Powód: raport za okres jest dowodem i nie ma konkurencji,
+  a ekran operacyjny konkuruje z Datadogiem i z aplikacją klienta, i przegrywa z oboma. **Do rozstrzygnięcia
+  przed etapem 4**, bo „na żywo” zmienia model danych, a nie widok.
+
+**Łamie własność już sprzedawaną:**
+
+- **Okres, którego definicja się zmieniła.** Edytowalny `taxvision_periods` znaczy, że raport wygenerowany
+  ponownie może dać inny wynik — czyli ta sama własność, do której obrony dodałem `until:` przy 1.7, tylko
+  innymi drzwiami. **Rekomendacja: okresy append-only** (zmiana zakresu tworzy nowy wiersz), ale to decyzja
+  klienta: czy definicja okresu w TaxVision może się w ogóle zmieniać wstecz. Jeśli nie może — wystarczy
+  constraint i zero kodu.
+
+**Do process ownera, jedno pytanie:**
+
+- **Czy `within` obowiązuje także `or_else`.** Silnik zakłada, że tak. Jeśli u nich jest inaczej, raport
+  pokazuje naruszenia, których nie ma. Jest w pytaniach warsztatowych, oznaczone jako nasze założenie.
+
+**Drobne, wszystkie nasze, rekomendacja: jednym commitem przy etapie 3:**
+
+- **Aktor systemowy zamiast `nil`** — `nil` zlewa „zrobiła to maszyna” z „nie wiemy kto”; do etapu 3, bo po
+  wydzieleniu pakietu robi się z tego migracja u klienta.
+- **`info` dla assercji bez `within`** — jest niefalsyfikowalna, więc jest dekoracją. Pięć linii, dziś zero
+  znalezisk.
+- **Wykluczenie przestrzeni nazw z raportu, z konfiguracji silnika** — nie z DSL, to byłoby nowe słowo.
+  Dopiero pakiet ma konfigurację.
+- **Zbiór wartości `:enum`** — patrz tabela luk.
+
+**Do etapu 4, bo to jego wymaganie, nie dług:** zawężenie `PNS.Graph` do procesu i kontraktu.
+
+Zamknięte 6 sierpnia bez zmiany w DSL: **`label` dla `trace` nie wchodzi** — powód przy 1.7.
 
 Kod zostaje w tym repo i przenosi się do repozytorium pilota, gdy ono powstanie; struktura jest już taka, że
 to `git mv`.
