@@ -28,7 +28,7 @@ defmodule Taxvision.Tasks.Task do
 
   schema "taxvision_tasks" do
     field :company_id, :string
-    field :period, :string
+    field :period_id, :binary_id
     field :name, :string
     field :status, :string, default: "open"
     # A copy from `Taxvision.Periods`, not a join to it. Strategic duplication:
@@ -58,20 +58,20 @@ defmodule Taxvision.Tasks.OnRegistryDataConsistent do
   alias Taxvision.Tasks.Task
 
   @impl PNS.Handler
-  def handle(%{company_id: company_id, period: period}, _ctx) do
+  def handle(%{company_id: company_id, period_id: period_id}, _ctx) do
     names = Taxvision.Tasks.template("JDG")
     now = DateTime.utc_now()
     # **A function call, not a join.** The no-cross-module-join rule costs exactly
     # this one query, and that is the whole truth of it: it cannot be worked
     # around, because `Taxvision.Periods` does not export its schema.
-    accounting_period = Taxvision.Periods.fetch!(period)
+    accounting_period = Taxvision.Periods.fetch_by_id!(period_id)
 
     entries =
       for name <- names do
         %{
           id: Ecto.UUID.generate(),
           company_id: company_id,
-          period: period,
+          period_id: period_id,
           name: name,
           status: "open",
           due_on: accounting_period.ends_on,
@@ -85,7 +85,7 @@ defmodule Taxvision.Tasks.OnRegistryDataConsistent do
      [
        PNS.event(:monthly_tasks_generated, %{
          company_id: company_id,
-         period: period,
+         period_id: period_id,
          task_count: count
        })
      ]}

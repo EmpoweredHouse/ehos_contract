@@ -101,7 +101,7 @@ lib/taxvision/           aplikacja klienta — tymczasowo, jako przypadek testow
   contracts/             kontrakt na jeden proces z warsztatu
   api.ex                 krawędź żądania: trzy poziomy IAM
   registry_check.ex      czysta funkcja decyzyjna (polityka P1)
-  periods.ex             okresy jako kanoniczne wiersze; exports: [] czyni join niewyrażalnym
+  periods.ex             okresy jako kanoniczne wiersze; nazwy na krawędziach, identyfikatory w środku
   report.ex              raport po polsku — bo to klient go czyta
   adapters/              behaviour + fake
 

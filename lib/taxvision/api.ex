@@ -33,7 +33,10 @@ defmodule Taxvision.Api do
       Taxvision.Contracts,
       Taxvision.Authorization,
       Taxvision.RegistryCheck,
-      Taxvision.Adapters
+      Taxvision.Adapters,
+      # The request edge resolves a period name to its identifier, so it depends on the
+      # module that owns periods. One function call, not a join.
+      Taxvision.Periods
     ],
     exports: []
 
@@ -70,11 +73,16 @@ defmodule Taxvision.Api do
     if PNS.Auth.entitled?(actor, :accounting), do: :ok, else: {:error, :forbidden}
   end
 
+  # **The one place a period name becomes an identifier.** A name is what arrives from
+  # outside — someone typed or selected "2026-07" — and an identifier is what a fact
+  # carries. Resolving here rather than in a handler is what makes the canonicalisation
+  # complete: past this line nothing in the domain sees the string again, so `"2026-7"`
+  # beside `"2026-07"` stops being possible instead of merely being discouraged.
   defp build_input(actor, company_id, period, registries) do
     %{
       command: :open_month,
       company_id: company_id,
-      period: period,
+      period_id: Taxvision.Periods.fetch!(period).id,
       actor: actor.subject,
       actor_roles: actor.roles,
       # The tenant is read from a claim by **domain code**, not from an engine

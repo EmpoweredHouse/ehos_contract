@@ -14,9 +14,15 @@ defmodule PNS.DispatchTest do
   @company "c-1"
   @period "2026-07"
 
+  # A payload carries the period's **identifier** since 6 August; the name is what the
+  # command at the request edge takes. Resolved through the fixture so no uuid is written
+  # by hand — a hand-written uuid is one that can be written slightly wrong, which is the
+  # mistake the foreign key exists to end.
+  defp period_id, do: period_id!(@period)
+
   test "emit writes the event, runs the sync handler and queues the async one — one transaction" do
     {:ok, _} =
-      PNS.emit(AccountingMonth, :registry_data_consistent, %{company_id: @company, period: @period})
+      PNS.emit(AccountingMonth, :registry_data_consistent, %{company_id: @company, period_id: period_id()})
 
     # The synchronous handler added its own rows in the same transaction, and its
     # publication pulled in a further synchronous handler.
@@ -31,7 +37,7 @@ defmodule PNS.DispatchTest do
 
   test "the causation chain and the correlation run through every event" do
     {:ok, root} =
-      PNS.emit(AccountingMonth, :registry_data_consistent, %{company_id: @company, period: @period})
+      PNS.emit(AccountingMonth, :registry_data_consistent, %{company_id: @company, period_id: period_id()})
 
     [tasks] = events_of(:monthly_tasks_generated)
     [opened] = events_of(:accounting_month_opened)
@@ -53,12 +59,12 @@ defmodule PNS.DispatchTest do
         # A `period` longer than the column breaks a constraint in the tasks
         # table, so the synchronous handler raises inside the transaction.
         #
-        # `period: nil` used to do the same, but since `period` is an instance
+        # `period_id: nil` used to do the same, but since it is an instance
         # field a null is rejected **before** the handler is reached — and that is
         # the correct order: an event with no run identity has no business
         # reaching the log. What is under test here is a handler failure, so the
         # failure has to come from the handler.
-        period: String.duplicate("x", 300)
+        period_id: String.duplicate("x", 300)
       })
     end
 
@@ -72,7 +78,7 @@ defmodule PNS.DispatchTest do
     {:ok, event} =
       PNS.emit(AccountingMonth, :registry_discrepancy_detected, %{
         company_id: @company,
-        period: @period,
+        period_id: period_id(),
         diff: "vat_status: ours=active, registries=struck-off"
       })
 
@@ -93,7 +99,7 @@ defmodule PNS.DispatchTest do
     {:ok, event} =
       PNS.emit(AccountingMonth, :registry_discrepancy_detected, %{
         company_id: @company,
-        period: @period,
+        period_id: period_id(),
         diff: diff
       })
 
@@ -111,7 +117,7 @@ defmodule PNS.DispatchTest do
     {:ok, _} =
       PNS.emit(AccountingMonth, :registry_discrepancy_detected, %{
         company_id: @company,
-        period: @period,
+        period_id: period_id(),
         diff: "a divergence"
       })
 

@@ -26,7 +26,7 @@ defmodule PNS.PayloadTest do
     test "a timestamp given as a DateTime stays one" do
       cast = Payload.cast(event_def(:registry_status_checked), %{
         company_id: "c-1",
-        period: "2026-07",
+        period_id: period_id!("2026-07"),
         checked_at: ~U[2026-08-05 09:00:00Z]
       })
 
@@ -38,7 +38,7 @@ defmodule PNS.PayloadTest do
       # from job arguments, which are JSON, so text is the only thing that can arrive.
       cast = Payload.cast(event_def(:registry_status_checked), %{
         "company_id" => "c-1",
-        "period" => "2026-07",
+        "period_id" => period_id!("2026-07"),
         "checked_at" => "2026-08-05T09:00:00Z"
       })
 
@@ -51,7 +51,7 @@ defmodule PNS.PayloadTest do
       # `cast/2` repairs the one thing the round trip destroys.
       emit(:registry_status_checked, %{
         company_id: "c-1",
-        period: "2026-07",
+        period_id: period_id!("2026-07"),
         checked_at: ~U[2026-08-05 09:00:00Z]
       })
 
@@ -67,7 +67,7 @@ defmodule PNS.PayloadTest do
       # `:integer` arriving as `"5"` is a caller passing the wrong thing, and coercing
       # it would hide what validation exists to surface.
       assert_raise ArgumentError, ~r/`task_count` is declared as :integer and holds "5"/, fn ->
-        emit(:monthly_tasks_generated, %{company_id: "c-1", period: "2026-07", task_count: "5"})
+        emit(:monthly_tasks_generated, %{company_id: "c-1", period_id: period_id!("2026-07"), task_count: "5"})
       end
     end
   end
@@ -77,7 +77,7 @@ defmodule PNS.PayloadTest do
       # The one that matters most: the contract says this fact carries a period and it
       # does not. Nothing caught this, and it is the exact shape of hole the product
       # exists to detect — a declaration nobody honoured reads as satisfied.
-      assert_raise ArgumentError, ~r/`period` is declared and missing from the payload/, fn ->
+      assert_raise ArgumentError, ~r/`period_id` is declared and missing from the payload/, fn ->
         emit(:accounting_month_opened, %{company_id: "c-1"})
       end
     end
@@ -85,7 +85,7 @@ defmodule PNS.PayloadTest do
     test "a declared field holding nil is refused, and the message says why" do
       error =
         assert_raise ArgumentError, fn ->
-          emit(:accounting_month_opened, %{company_id: "c-1", period: nil})
+          emit(:accounting_month_opened, %{company_id: "c-1", period_id: nil})
         end
 
       assert error.message =~ "holds nil"
@@ -104,7 +104,7 @@ defmodule PNS.PayloadTest do
       ]
 
       for {event, bad, type} <- wrong do
-        payload = Map.merge(%{company_id: "c-1", period: "2026-07"}, bad)
+        payload = Map.merge(%{company_id: "c-1", period_id: period_id!("2026-07")}, bad)
 
         error = assert_raise ArgumentError, fn -> emit(event, payload) end
         assert error.message =~ "declared as #{type}"
@@ -124,13 +124,13 @@ defmodule PNS.PayloadTest do
       # the identifier refers to is theirs, and so is how they write it.
       assert Payload.validate!(Contract, :accounting_month_opened, event_def(:accounting_month_opened), %{
                company_id: 42,
-               period: "2026-07"
+               period_id: period_id!("2026-07")
              }) == :ok
     end
 
     test "not an empty string, which is a missing identifier with a type" do
       assert_raise ArgumentError, ~r/`company_id` is declared as :id and holds ""/, fn ->
-        emit(:accounting_month_opened, %{company_id: "", period: "2026-07"})
+        emit(:accounting_month_opened, %{company_id: "", period_id: period_id!("2026-07")})
       end
     end
   end
@@ -166,7 +166,7 @@ defmodule PNS.PayloadTest do
       # never pass — the check would stop applying to exactly the fields carrying
       # sensitive content.
       assert_raise ArgumentError, ~r/`diff` is declared as :string and holds 12/, fn ->
-        emit(:registry_discrepancy_detected, %{company_id: "c-1", period: "2026-07", diff: 12})
+        emit(:registry_discrepancy_detected, %{company_id: "c-1", period_id: period_id!("2026-07"), diff: 12})
       end
     end
   end
@@ -177,7 +177,7 @@ defmodule PNS.PayloadTest do
       # this far — and one extra key is visible in the log rather than silent. Same
       # argument that made the retention check a report instead of a gate.
       event =
-        emit(:accounting_month_opened, %{company_id: "c-1", period: "2026-07", extra: "kept"})
+        emit(:accounting_month_opened, %{company_id: "c-1", period_id: period_id!("2026-07"), extra: "kept"})
 
       assert event.payload["extra"] == "kept"
 

@@ -23,6 +23,20 @@ defmodule Taxvision.Periods do
 
   The alternative the doctrine rejects is a shared table read by everyone, which
   buys one query and sells the ability to ever change this shape.
+
+  ## Names at the edge, identifiers inside
+
+  A name is what a person has: someone types or selects "2026-07". An identifier is what
+  a fact carries. The translation happens **once, at the request edge**, and everything
+  downstream — payloads, the run key, the module tables — holds the identifier.
+
+  That is what makes canonicalisation complete rather than advisory. While events carried
+  the name, `"2026-7"` beside `"2026-07"` was merely discouraged; with a foreign key it
+  stops being possible. The price is that a run key reads `accounting_month|c-1|<uuid>`
+  and no longer says which month, so reading the log by eye needs a join. Accepted, and
+  narrower than it first sounds: the engine's promise is that the key is **reproducible**
+  from the log, not that it is legible — and the evidence report never prints a run key,
+  because which runs are silent is a question about one company.
   """
 
   use Boundary, deps: [Taxvision.Repo], exports: []
@@ -32,10 +46,15 @@ defmodule Taxvision.Periods do
   alias Taxvision.Periods.Period
 
   @type name :: String.t()
-  @type t :: %{name: name(), starts_on: Date.t(), ends_on: Date.t()}
+  @type id :: Ecto.UUID.t()
+  @type t :: %{id: id(), name: name(), starts_on: Date.t(), ends_on: Date.t()}
 
   @doc """
   The period identified by its canonical name, raising when it does not exist.
+
+  For the request edge, where a name arrives from outside. A sibling holding a fact
+  wants `fetch_by_id!/1` instead — by then the name has already been resolved and
+  looking it up again would reintroduce the string this table exists to retire.
 
   Raising rather than returning `nil` is deliberate: a handler that derives a
   deadline from a period cannot sensibly continue without one, and a silent `nil`
@@ -43,14 +62,35 @@ defmodule Taxvision.Periods do
   """
   @spec fetch!(name()) :: t()
   def fetch!(name) do
-    Taxvision.Repo.one(from p in Period, where: p.name == ^name, select: %{
-      name: p.name,
-      starts_on: p.starts_on,
-      ends_on: p.ends_on
-    }) ||
+    one(dynamic([p], p.name == ^name)) ||
       raise ArgumentError,
             "no period named #{inspect(name)}. Periods are canonical rows, not strings " <>
               "parsed on the fly, so a period has to exist before anything can be booked into it."
+  end
+
+  @doc """
+  The period a fact refers to, by identifier.
+
+  What every sibling uses, because a payload carries `period_id`. The failure it raises
+  on is a different one from `fetch!/1`'s: not "nobody created this month" but "this fact
+  points at a period that is gone", which is a broken foreign key rather than a missing
+  setup step.
+  """
+  @spec fetch_by_id!(id()) :: t()
+  def fetch_by_id!(id) do
+    one(dynamic([p], p.id == ^id)) ||
+      raise ArgumentError,
+            "no period with id #{inspect(id)}. An event refers to a period that does not " <>
+              "exist, which is a fact pointing at nothing rather than a period nobody created."
+  end
+
+  @spec one(Ecto.Query.dynamic_expr()) :: t() | nil
+  defp one(condition) do
+    Taxvision.Repo.one(
+      from p in Period,
+        where: ^condition,
+        select: %{id: p.id, name: p.name, starts_on: p.starts_on, ends_on: p.ends_on}
+    )
   end
 
   @doc """

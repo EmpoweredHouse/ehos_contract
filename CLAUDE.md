@@ -64,6 +64,20 @@ wygenerowana z `PNS.Contract.schema/0`, a nie pisana ręcznie.
 `--warnings-as-errors` jest konieczne: `boundary` raportuje naruszenia jako ostrzeżenia, więc bez tego
 przełącznika granice są dokumentacją. Postgres słucha na **5433**.
 
+**Nie rurkuj bramy do `tail` przed commitem.** `mix check | tail -4 && git commit` sprawdza kod wyjścia
+**`tail`**, który jest zawsze zerowy — więc commit idzie na czerwonym, a Ty widzisz cztery ostatnie linie i
+nie widzisz liczby padnięć. Zdarzyło się 6 sierpnia: scommitowane 24 padnięcia. Jeśli musisz skrócić wyjście:
+
+```bash
+out=$(mix check 2>&1); rc=$?; echo "$out" | tail -4; echo "EXIT=$rc"
+```
+
+**`mix run` w `MIX_ENV=test` pisze poza sandboxem.** Sandbox obejmuje testy, nie zadania mixa — więc jedno
+`MIX_ENV=test mix run -e '...'` zostawia wiersze **na stałe** w bazie testowej i wywala potem wszystko, co
+liczy rekordy. Ta sama pułapka, którą `PNS.Deployment.record!` zastawia przy boocie. Do oglądania czegokolwiek
+używaj `MIX_ENV=dev`; jeśli już wpadniesz, ratuje `MIX_ENV=test mix ecto.drop && mix ecto.create &&
+mix ecto.migrate`.
+
 ## Konwencje, które łatwo złamać
 
 - **`boundary`: moduły procesowe są rodzeństwem, nie hierarchią.** Dostęp do cudzych tabel wymaga jawnego

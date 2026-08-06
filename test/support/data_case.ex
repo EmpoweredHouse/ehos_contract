@@ -61,6 +61,29 @@ defmodule Taxvision.DataCase do
   @doc "A canonical period. Created in setup, because without one no month can be opened."
   def period!(name), do: Taxvision.Periods.ensure!(name)
 
+  @doc """
+  The identifier of a canonical period, by name.
+
+  Since 6 August a payload carries `period_id`, so a test that emits an event needs the
+  identifier rather than the name. It lives here rather than in each test file for the
+  reason that motivated the change: a uuid written by hand is a uuid that can be written
+  slightly wrong, which is the class of mistake a foreign key exists to end.
+
+  A command still takes the **name** — `Taxvision.Api.open_month/2` resolves it — because
+  that is the edge where a person's input arrives.
+  """
+  def period_id!(name), do: period!(name).id
+
+  @doc """
+  The run key for a company and a period name.
+
+  Built here from the period's identifier rather than spelled out in an assertion, so the
+  tests say *which run* they mean and not *which uuid* — the readability that moving to an
+  identifier cost is recovered in the fixture rather than paid for in every test.
+  """
+  def instance(company_id, period_name),
+    do: "accounting_month|#{company_id}|#{period_id!(period_name)}"
+
   def events_of(type) do
     name = to_string(type)
     Taxvision.Repo.all(from e in PNS.Event, where: e.type == ^name, order_by: e.occurred_at)

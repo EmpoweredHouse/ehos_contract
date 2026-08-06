@@ -63,7 +63,7 @@ defmodule PNS.DeploymentTest do
         contract: inspect(Contract),
         contract_version: Contract.version(),
         process: "accounting_month",
-        instance_id: "accounting_month|c-1|#{@period}",
+        instance_id: instance("c-1", @period),
         correlation_id: Ecto.UUID.generate(),
         causation_id: List.first(events_of(:accounting_month_opened)).id,
         payload: %{},

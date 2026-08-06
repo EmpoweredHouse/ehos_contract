@@ -84,10 +84,44 @@ defmodule Taxvision.PeriodsTest do
 
       open_month("c-1")
 
-      assert count_queries() == 2,
-             "one query per module: Taxvision.Tasks and Taxvision.AccountingMonth. " <>
-               "If there were one, somebody is passing data around the side; if there " <>
-               "were more, N+1 grows faster than notes §14 predict"
+      assert count_queries() == 3,
+             "one at the request edge, resolving the period's name to its identifier, " <>
+               "and one per module that needs the dates: Taxvision.Tasks and " <>
+               "Taxvision.AccountingMonth. Fewer means somebody is passing data around " <>
+               "the side; more means N+1 grows faster than notes §14 predict"
+    end
+
+    test "the third query is what canonicalisation costs, and it is at the edge" do
+      # It was two until 6 August, when a fact started carrying `period_id` instead of the
+      # name. The new one is the translation, and it happens **once, at the request edge**
+      # — which is the point: past that line nothing in the domain sees the string, so
+      # `"2026-7"` beside `"2026-07"` stops being possible rather than being discouraged.
+      #
+      # Pinned separately from the count above so that if somebody moves the resolution
+      # into a handler, the number stays 3 while the reason changes — and this fails.
+      me = self()
+
+      :telemetry.attach(
+        "periods-by-name",
+        [:taxvision, :repo, :query],
+        fn _event, _measure, meta, _config ->
+          # The **condition**, not the projection. Matching `"name"` anywhere caught all
+          # three queries, because every one of them selects the name — the lookups differ
+          # in what they filter on, not in what they return.
+          if meta[:source] == "taxvision_periods" and meta.query =~ ~s(."name" = ) do
+            send(me, :by_name)
+          end
+        end,
+        nil
+      )
+
+      on_exit(fn -> :telemetry.detach("periods-by-name") end)
+
+      open_month("c-1")
+
+      # Exactly one lookup by name. Every other read of this table is by identifier.
+      assert_received :by_name
+      refute_received :by_name
     end
 
     defp count_queries(counter \\ 0) do

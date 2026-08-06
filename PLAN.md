@@ -7,7 +7,7 @@ aktualizowany stan.
 
 ## Stan na 6 sierpnia
 
-206 testów, `mix check` przechodzi. Ostrzeżenia są **cztery i wszystkie celowe**:
+207 testów, `mix check` przechodzi. Ostrzeżenia są **cztery i wszystkie celowe**:
 
 1. `deadline` TaxVision bez potwierdzenia process ownera,
 2. `deadline` z wymyślonej fikstury bramy uniwersalności,
@@ -546,9 +546,45 @@ zrobił z checka retencji raport, a nie bramę.
 
 Zweryfikowane odwrotnie: po zneutralizowaniu walidacji pada **siedem z piętnastu** testów tego pliku.
 
-**Nie zrobione i nadal do Ciebie: `period_id` jako uuid.** To decyzja klienta, nie moja — i to ta droga
-połowa, bo klucz przebiegu przestaje być czytelny z samego logu (`accounting_month|<uuid>|<uuid>`), a
-„odtwarzalny z samego logu" było jawną własnością projektową. Dziś nadal `accounting_month|c-1|2026-07`.
+**2.2c `period_id` jako identyfikator. ✅ zrobione 6 sierpnia — decyzja klienta podjęta.**
+Migracja `20260806130000`, `Taxvision.Periods.fetch_by_id!/1`. 207 testów.
+
+**Przeszacowałem koszt, kiedy o to pytałem, i to jest sprostowanie do mojego własnego zdania.** Mówiłem, że
+„odtwarzalny z samego logu" jest własnością, którą się traci. Nie jest: własność silnika mówi, że klucz jest
+**odtwarzalny** z payloadu w logu, nie że jest **czytelny**. Odtwarzalność jest nietknięta. Traci się
+interpretowalność gołym okiem — i to w dwóch miejscach, oba drobne: `mix pns.trace --instances` (widok
+debugowy) i ktokolwiek czytający log bez joina. **Raport dowodowy nie wypisuje kluczy przebiegu w ogóle** —
+sprawdzone renderem po zmianie, zero uuidów — bo „które przebiegi milczą" to pytanie o konkretną firmę.
+
+**Nazwy na krawędziach, identyfikatory w środku**, i krawędzi jest dwie. Wejściowa: `Taxvision.Api` rozwiązuje
+nazwę raz, i za tą linią nic w domenie nie widzi już stringa. **Wyjściowa, której nie przewidziałem:** temat
+powiadomienia zawiera nazwę miesiąca, więc bez odwrotnego rozwiązania księgowa dostałaby maila „miesiąc
+3f2a8c…-… zablokowany". Symetria wyszła z kodu, nie z planu.
+
+**`boundary` natychmiast złapał dwie nowe zależności międzymodułowe** — `Notifications` i `Api` sięgające po
+`Periods`. Zadeklarowane jawnie. To zakaz joinów robiący dokładnie to, po co jest: nowa zależność jest
+**widoczna od razu**, a nie przychodzi jako join, który ktoś zauważy później.
+
+**Moja pierwsza migracja była zła i pękła na dev-bazie.** Dodawała kolumnę `null: false` i przechodziła na
+pustej bazie testowej. Stary string **jest** nazwą okresu, więc join odzyskujący identyfikator istnieje —
+migracja robi teraz backfill, potem dokłada `NOT NULL`, i **nic nie usuwa**: wiersz, którego nie da się
+zmigrować, zatrzymuje migrację. Migracja cicho kasująca dane biznesowe, żeby sobie przejść, jest gorsza od
+takiej, która staje. Przy okazji jest to próba generalna dla klienta, którego tabele nie są puste.
+
+**Najciekawsze znalezisko: przykład i funkcja decyzyjna przestały być tym samym kształtem.** `example`
+opisuje **komendę, jak ją wydaje człowiek** — więc `period: "2026-07"`. Funkcja decyzyjna dostaje wejście
+**po rozwiązaniu na krawędzi** — więc `period_id`. `given:` jest dokładnie tym, co zastępuje tę maszynerię, i
+zawsze było. Identyfikator w przykładzie jest **czytelny celowo** (`"period-2026-07"`): `:id` znaczy
+*identyfikator*, nie *uuid*, a wstawienie prawdziwego uuida do kontraktu wymieniłoby całą własność §18 —
+że przykład da się przeczytać process ownerowi na głos — na spójność, której nic nie potrzebuje.
+
+**Zmierzona cena wzrosła z dwóch zapytań na trzy** i trzecie jest tą kanonizacją. Jedno na krawędzi
+(nazwa → identyfikator), po jednym na każdy moduł potrzebujący dat. Przypięte **osobnym** testem, że
+zapytanie po nazwie jest **dokładnie jedno** — bo gdyby ktoś przeniósł rozwiązywanie do handlera, liczba
+zostałaby trzy, a powód by się zmienił.
+
+Drobiazg, który pokazuje utraconą czytelność w najmniejszym możliwym miejscu: **posortowana lista kluczy
+przebiegu przestała być chronologiczna**, bo sortuje się po uuidzie. Test sortuje teraz obie strony.
 
 **2.3 Ślad po awarii handlera synchronicznego. ✅ zrobione 6 sierpnia.** `PNS.HandlerFailure`,
 `PNS.SyncHandlerError`, `test/handler_failure_test.exs`. 162 testy.
@@ -846,12 +882,10 @@ wiąże handler, słownik typów jest zamknięty, wartości są walidowane, awar
 jest zatrzymany na obu ścieżkach, a telemetria emituje to, czego nie widzi nikt inny. Ze 42 testów na starcie
 etapu zrobiło się **206**.
 
-Otwarte pozostają **trzy rzeczy i żadna nie jest robotą inżynierską do wzięcia z półki**:
+Otwarte pozostają **dwie rzeczy i żadna nie jest robotą inżynierską do wzięcia z półki**:
 
 - **1.5b, werdykt `:suspended`** — czeka na log obserwacji niedostępności zależności zewnętrznych. Dziś
   awaria rejestru w oknie assercji liczy się jako naruszenie, czyli obwiniamy klienta za cudzy serwer.
-- **`period_id` jako uuid** — decyzja klienta. Klucz przebiegu przestaje być czytelny z samego logu, a
-  „odtwarzalny z samego logu" było jawną własnością projektową.
 - **Gdzie renderuje się raport dowodowy** — piąte otwarte pytanie ADR-a. Kod odpowiedział mimochodem
   (drzewo klienta), a to nie to samo co rozstrzygnięcie.
 

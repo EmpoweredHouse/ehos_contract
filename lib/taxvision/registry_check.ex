@@ -22,9 +22,9 @@ defmodule Taxvision.RegistryCheck do
   """
   @spec decide(map()) :: [PNS.Emission.t()] | {:error, atom()}
   def decide(%{command: :open_month} = input) do
-    %{company_id: company_id, period: period} = input
+    %{company_id: company_id, period_id: period_id} = input
 
-    base = %{company_id: company_id, period: period}
+    base = %{company_id: company_id, period_id: period_id}
     checked_at = input[:checked_at] || ~U[1970-01-01 00:00:00Z]
 
     cond do

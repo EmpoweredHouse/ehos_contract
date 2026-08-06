@@ -21,8 +21,6 @@ defmodule PNS.InstanceTest do
     on_exit(fn -> Application.delete_env(:pns_prototype, Taxvision.Adapters.RegistryLookup.Fake) end)
   end
 
-  defp instance(company_id, period), do: "accounting_month|#{company_id}|#{period}"
-
   describe "run identity in the log" do
     test "the run key comes from `instance:` and is written on the event" do
       {:ok, _} = Taxvision.Api.open_month(accountant("c-1"), %{company_id: "c-1", period: "2026-07"})
@@ -52,7 +50,11 @@ defmodule PNS.InstanceTest do
 
       instances = Repo.all(from e in PNS.Event, select: e.instance_id) |> Enum.uniq() |> Enum.sort()
 
-      assert instances == [instance("c-1", "2026-06"), instance("c-1", "2026-07")]
+      # **Both sides sorted, which they did not need to be until 6 August.** While the key
+      # carried the period's name, sorting it put June before July; now it sorts by uuid,
+      # so a sorted list of run keys is no longer in any order a person would expect. That
+      # is the readability the identifier cost, showing up in the smallest possible place.
+      assert instances == Enum.sort([instance("c-1", "2026-06"), instance("c-1", "2026-07")])
     end
 
     test "an event missing an instance field does not enter the log" do
@@ -61,7 +63,7 @@ defmodule PNS.InstanceTest do
       # missing, so it reaches this case first. The consequence for the log is the one
       # that matters and is unchanged: the event does not land with an empty key segment
       # and merge with another company's run.
-      assert_raise ArgumentError, ~r/`period` is declared and missing/, fn ->
+      assert_raise ArgumentError, ~r/`period_id` is declared and missing/, fn ->
         PNS.emit(AccountingMonth, :registry_data_consistent, %{company_id: "c-1"})
       end
 
@@ -73,7 +75,7 @@ defmodule PNS.InstanceTest do
       # emitter — and there its own check is the only thing standing between a missing
       # field and a key with a hole in it. Unreachable from `emit` is not the same as
       # dead, and the difference is worth a test rather than a comment.
-      assert_raise ArgumentError, ~r/does not carry instance field :period/, fn ->
+      assert_raise ArgumentError, ~r/does not carry instance field :period_id/, fn ->
         PNS.Instance.key(AccountingMonth, :registry_data_consistent, %{company_id: "c-1"})
       end
     end
@@ -135,7 +137,7 @@ defmodule PNS.InstanceTest do
       # month, which the aggregate's invariant rightly lets through only once.
       PNS.emit!(AccountingMonth, :registry_status_checked, %{
         company_id: "c-1",
-        period: "2026-07",
+        period_id: period_id!("2026-07"),
         checked_at: DateTime.utc_now() |> DateTime.to_iso8601()
       })
 

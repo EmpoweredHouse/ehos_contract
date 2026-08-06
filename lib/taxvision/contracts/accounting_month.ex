@@ -29,7 +29,7 @@ defmodule Taxvision.Contracts.AccountingMonth do
     # causation and across the job boundary. A payload field would duplicate the
     # same truth in a second place, and two sources of truth about one fact drift
     # apart exactly when they are needed for an audit.
-    payload: %{company_id: :id, period: :id},
+    payload: %{company_id: :id, period_id: :id},
     process: :accounting_month,
     stage: :verification
 
@@ -37,28 +37,28 @@ defmodule Taxvision.Contracts.AccountingMonth do
     label: "Sprawdzono status w CEIDG/KRS, białym rejestrze VAT i VIES",
     owner: Taxvision.RegistryCheck,
     depends_on: :registries,
-    payload: %{company_id: :id, period: :id, checked_at: :timestamp},
+    payload: %{company_id: :id, period_id: :id, checked_at: :timestamp},
     process: :accounting_month,
     stage: :verification
 
   event :registry_check_logged,
     label: "Zapisano datę ostatniego sprawdzenia rejestrów",
     owner: Taxvision.RegistryCheck,
-    payload: %{company_id: :id, period: :id, checked_at: :timestamp},
+    payload: %{company_id: :id, period_id: :id, checked_at: :timestamp},
     process: :accounting_month,
     stage: :verification
 
   event :registry_data_consistent,
     label: "Dane firmy zgadzają się z rejestrami",
     owner: Taxvision.RegistryCheck,
-    payload: %{company_id: :id, period: :id},
+    payload: %{company_id: :id, period_id: :id},
     process: :accounting_month,
     stage: :verification
 
   event :registry_discrepancy_detected,
     label: "Dane firmy nie zgadzają się z rejestrami",
     owner: Taxvision.RegistryCheck,
-    payload: %{company_id: :id, period: :id, diff: :string},
+    payload: %{company_id: :id, period_id: :id, diff: :string},
     # The diff carries the company's data set against the public registries. A
     # hash goes to the log: proof that a divergence happened and which one,
     # without keeping the content forever.
@@ -72,28 +72,28 @@ defmodule Taxvision.Contracts.AccountingMonth do
     # `diff` is hashed by `retain`, and that is an advantage here: the key is
     # deterministic, so idempotency works, while it does not contain the company's
     # data set against the registries.
-    identity: [:company_id, :period, :diff],
+    identity: [:company_id, :period_id, :diff],
     process: :accounting_month,
     stage: :verification
 
   event :monthly_tasks_generated,
     label: "Utworzono taski z szablonu na nowy miesiąc",
     owner: Taxvision.Tasks,
-    payload: %{company_id: :id, period: :id, task_count: :integer},
+    payload: %{company_id: :id, period_id: :id, task_count: :integer},
     process: :accounting_month,
     stage: :opening
 
   event :accounting_month_opened,
     label: "Otwarto miesiąc księgowy",
     owner: Taxvision.AccountingMonth,
-    payload: %{company_id: :id, period: :id},
+    payload: %{company_id: :id, period_id: :id},
     process: :accounting_month,
     stage: :opening
 
   event :discrepancy_notification_sent,
     label: "Wysłano powiadomienie o rozjeździe do księgowej i klienta",
     owner: Taxvision.Notifications,
-    payload: %{company_id: :id, period: :id, recipients: :integer},
+    payload: %{company_id: :id, period_id: :id, recipients: :integer},
     process: :accounting_month,
     stage: :verification,
     terminal: true
@@ -108,25 +108,25 @@ defmodule Taxvision.Contracts.AccountingMonth do
   event :bank_statement_received,
     label: "Otrzymano wyciąg bankowy (MT940/CSV; PDF nie wchodzi)",
     owner: Taxvision.Matching,
-    payload: %{company_id: :id, period: :id, format: :enum},
+    payload: %{company_id: :id, period_id: :id, format: :enum},
     process: :accounting_month,
     stage: :collection
 
   event :turnover_matched_with_invoice,
     label: "Sparowano obrót z fakturą",
     owner: Taxvision.Matching,
-    # `period` was added by the instance gate and is **not cosmetic**: without it
+    # The period was added by the instance gate and is **not cosmetic**: without it
     # a matched turnover does not say which month it belongs to, so matching from
     # July would count as progress in the August run. This is the only event in
     # this contract that failed that gate.
-    payload: %{company_id: :id, period: :id, turnover_id: :id, invoice_id: :id},
+    payload: %{company_id: :id, period_id: :id, turnover_id: :id, invoice_id: :id},
     process: :accounting_month,
     stage: :matching
 
   event :month_closed,
     label: "Zamknięto miesiąc księgowy",
     owner: Taxvision.AccountingMonth,
-    payload: %{company_id: :id, period: :id},
+    payload: %{company_id: :id, period_id: :id},
     process: :accounting_month,
     stage: :closing,
     terminal: true
@@ -162,7 +162,7 @@ defmodule Taxvision.Contracts.AccountingMonth do
     # settles by ("the month is settled one month behind"), and it is the boundary
     # within which an assertion is counted: opening the month for c-2 credits
     # nothing to c-1's run.
-    instance: [:company_id, :period],
+    instance: [:company_id, :period_id],
     # Settlement is one month behind, and a check on the first day of the month is
     # enough [WF 00:34:40]. The "never observed" window is computed from this —
     # without a cadence a monthly process reads as dead six days after its last
@@ -198,9 +198,22 @@ defmodule Taxvision.Contracts.AccountingMonth do
     function: {Taxvision.RegistryCheck, :decide, 1},
     source: "Warsztat WF 00:34:17-00:36:07 (polityka P1), WF 00:35:41"
 
+  # **The command carries the period's name; `given:` carries its identifier.**
+  #
+  # These stopped being the same shape on 6 August, when a fact began carrying
+  # `period_id`. A command is what a person issues, so it reads "2026-07"; a decision
+  # function receives the input the request edge has already resolved. `given:` is what
+  # stands in for that machinery, which is what it was always for.
+  #
+  # The identifier here is legible on purpose. `:id` means *an identifier*, not *a uuid* —
+  # what it refers to is the client application's business — so an example may use one a
+  # person can read aloud. Runtime uses the uuid the periods table generates. Putting a
+  # real uuid in a contract would trade §18's whole property, that an example is readable
+  # to the process owner, for a consistency nothing needs.
   example "komplet danych i zgodne rejestry — miesiąc się otwiera",
     rule: :month_opens_only_on_consistent_registry,
     given: %{
+      period_id: "period-2026-07",
       completeness_confirmed: true,
       abilia: %{legal_form: "JDG", vat_status: "czynny"},
       registries: %{legal_form: "JDG", vat_status: "czynny", vies_status: "aktywny"}
@@ -213,6 +226,7 @@ defmodule Taxvision.Contracts.AccountingMonth do
   example "rozjazd statusu VAT — blokada i powiadomienie zamiast otwarcia",
     rule: :month_opens_only_on_consistent_registry,
     given: %{
+      period_id: "period-2026-07",
       completeness_confirmed: true,
       abilia: %{legal_form: "JDG", vat_status: "czynny"},
       registries: %{legal_form: "JDG", vat_status: "wykreślony", vies_status: "aktywny"}
@@ -223,6 +237,7 @@ defmodule Taxvision.Contracts.AccountingMonth do
   example "brak potwierdzenia kompletu danych — komenda odrzucona",
     rule: :month_opens_only_on_consistent_registry,
     given: %{
+      period_id: "period-2026-07",
       completeness_confirmed: false,
       abilia: %{legal_form: "JDG", vat_status: "czynny"},
       registries: %{legal_form: "JDG", vat_status: "czynny", vies_status: "aktywny"}

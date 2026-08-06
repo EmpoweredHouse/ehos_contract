@@ -36,7 +36,6 @@ defmodule PNS.TraceTest do
   defp run_jobs, do: Oban.drain_queue(queue: :events)
 
   defp evaluate(opts \\ []), do: PNS.Trace.evaluate(Contract, @assertion, opts)
-  defp instance(company, period \\ "2026-07"), do: "accounting_month|#{company}|#{period}"
 
   describe "acceptance criterion" do
     test "a blocked month is SATISFIED through or_else, not violated" do
@@ -50,7 +49,7 @@ defmodule PNS.TraceTest do
              "blocking on a divergence is a correct ending of the process, not a broken agreement"
 
       assert verdict.via == :or_else
-      assert verdict.instance_id == instance("c-1")
+      assert verdict.instance_id == instance("c-1", "2026-07")
     end
 
     test "an opened month is satisfied through eventually" do
@@ -72,8 +71,8 @@ defmodule PNS.TraceTest do
 
       by_instance = Map.new(evaluate(), &{&1.instance_id, &1})
 
-      assert by_instance[instance("c-1")].via == :eventually
-      assert by_instance[instance("c-2")].via == :or_else
+      assert by_instance[instance("c-1", "2026-07")].via == :eventually
+      assert by_instance[instance("c-2", "2026-07")].via == :or_else
 
       assert PNS.Trace.summary(evaluate()) == %{
                satisfied: 2,
@@ -116,7 +115,7 @@ defmodule PNS.TraceTest do
         process: "accounting_month",
         instance_id: instance(company, period),
         correlation_id: Ecto.UUID.generate(),
-        payload: %{"company_id" => company, "period" => period},
+        payload: %{"company_id" => company, "period_id" => period_id!(period)},
         occurred_at: at
       })
     end

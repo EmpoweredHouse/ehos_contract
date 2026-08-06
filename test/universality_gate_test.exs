@@ -117,7 +117,7 @@ defmodule PNS.UniversalityGateTest do
 
     test "run identity from one field works the same as from two" do
       assert @contract.process(:treatment_episode).instance == [:episode_id]
-      assert @taxvision.process(:accounting_month).instance == [:company_id, :period]
+      assert @taxvision.process(:accounting_month).instance == [:company_id, :period_id]
     end
 
     test "an event-driven process has no cadence, and that is a result rather than an oversight" do

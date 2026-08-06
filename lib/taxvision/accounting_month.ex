@@ -21,7 +21,7 @@ defmodule Taxvision.AccountingMonth.Month do
 
   schema "taxvision_accounting_months" do
     field :company_id, :string
-    field :period, :string
+    field :period_id, :binary_id
     field :status, :string
     # The same answer as `Taxvision.Tasks.Task.due_on`, from the same source, in a
     # second copy. This is the "two modules needing the same data" shape — and the
@@ -46,17 +46,17 @@ defmodule Taxvision.AccountingMonth.OnMonthlyTasksGenerated do
   alias Taxvision.AccountingMonth.Month
 
   @impl PNS.Handler
-  def handle(%{company_id: company_id, period: period}, _ctx) do
-    accounting_period = Taxvision.Periods.fetch!(period)
+  def handle(%{company_id: company_id, period_id: period_id}, _ctx) do
+    accounting_period = Taxvision.Periods.fetch_by_id!(period_id)
 
     Taxvision.Repo.insert!(%Month{
       company_id: company_id,
-      period: period,
+      period_id: period_id,
       status: "open",
       closes_on: accounting_period.ends_on,
       opened_at: DateTime.utc_now()
     })
 
-    {:ok, [PNS.event(:accounting_month_opened, %{company_id: company_id, period: period})]}
+    {:ok, [PNS.event(:accounting_month_opened, %{company_id: company_id, period_id: period_id})]}
   end
 end
