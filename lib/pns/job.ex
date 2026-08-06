@@ -89,14 +89,30 @@ defmodule PNS.Job do
     # claiming a success whose consequence never happened. Anything that can fail
     # while acting on the handler's result belongs on the same side of the record:
     # an undeclared emission, a cycle, a rolled-back transaction.
+    # The span covers this side too, so a handler is observable wherever it runs. Oban
+    # emits its own span around the *job* — retries, cancellation, scheduling — and this
+    # one is around the *handler*, which Oban knows nothing about. Two spans, two
+    # subjects, no overlap.
+    span = %{
+      handler: handler,
+      contract: meta.contract,
+      event_type: meta.event,
+      instance_id: ctx[:idempotency_key],
+      correlation_id: ctx.correlation_id,
+      async: true,
+      attempt: attempt
+    }
+
     {status, error} =
       try do
-        case handler.handle(payload, ctx) do
-          :ok -> {"ok", nil}
-          {:ok, list} when is_list(list) -> emit(meta, list, ctx)
-          {:ok, _} -> {"ok", nil}
-          {:error, reason} -> {"error", inspect(reason)}
-        end
+        PNS.Telemetry.handler_span(span, fn ->
+          case handler.handle(payload, ctx) do
+            :ok -> {"ok", nil}
+            {:ok, list} when is_list(list) -> emit(meta, list, ctx)
+            {:ok, _} -> {"ok", nil}
+            {:error, reason} -> {"error", inspect(reason)}
+          end
+        end)
       rescue
         e -> {"error", Exception.message(e)}
       end

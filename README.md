@@ -79,7 +79,7 @@ jest **drugim źródłem prawdy** — czyli dokładnie tą awarią, którą ten 
 ## Struktura
 
 ```
-lib/pns/                 silnik — 3209 linii, przyszły pakiet
+lib/pns/                 silnik — 3718 linii, przyszły pakiet
   contract.ex            DSL, @before_compile, bramy kompilacyjne, version/0
   handler.ex             sprawdzenia w ciele makra; publishes: wiąże też w runtime
   registry.ex            skan binarki przy boocie — graf pochodzi z kodu, który działa
@@ -94,6 +94,7 @@ lib/pns/                 silnik — 3209 linii, przyszły pakiet
   handler_failure.ex     ślad po awarii handlera synchronicznego, poza cofniętą transakcją
   graph.ex               statyczny, zaobserwowany, nałożenie
   auth.ex                szew tożsamości: behaviour + lokalny HMAC
+  telemetry.ex           katalog zdarzeń: handler i naruszenie kontraktu, nic więcej
   check.ex, duration.ex  logika checków i jednostki czasu — jedno źródło prawdy
 
 lib/taxvision/           aplikacja klienta — tymczasowo, jako przypadek testowy
@@ -161,6 +162,6 @@ nie przekierowaniem.
 | Warstwa web, API | REST przeciw GraphQL jest otwarte; budowanie API przesądzałoby otwartą decyzję |
 | `mix pns.new` | Dopiero przy drugim kliencie — generator buduje się, kiedy coś zostało skopiowane dwa razy |
 | Prawdziwe rejestry, prawdziwy mail, provider OIDC | Behaviour plus fake. Szew działa, podmiana to jedna linia konfiguracji |
-| Alerty, widoki operacyjne | Wydajność to GCP, błędy to Datadog, **stan biznesu to aplikacja klienta** |
+| Alerty, widoki operacyjne, zbieranie metryk | Wydajność to GCP, błędy to Datadog, **stan biznesu to aplikacja klienta**. `PNS.Telemetry` to szew, do którego się podłączają — emituje wyłącznie to, czego nie widzi nikt inny: handlera i naruszenie kontraktu |
 
 Pełna lista z uzasadnieniami jest w [`CLAUDE.md`](CLAUDE.md); stan i luki — w [`PLAN.md`](PLAN.md).

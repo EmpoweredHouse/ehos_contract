@@ -286,7 +286,7 @@ defmodule PNS.Emitter do
     # contract rather than to the code: a handler that needs the raw value cannot have
     # that field on `:hash`.
     supplied = Payload.cast(event_def, payload)
-    Payload.validate!(contract, type, event_def, supplied)
+    validate_payload!(contract, type, event_def, supplied)
     stored = apply_retain(supplied, event_def)
 
     # Computed from the payload **after** `retain`, so the run key is
@@ -354,12 +354,32 @@ defmodule PNS.Emitter do
   # stage 1.3 — so forbidding backward edges would forbid a shape the workshop
   # described: a turnover with no invoice, then the invoice arrives and the pair
   # closes.
+  # Both guards report before they raise, and the reporting is the same three lines
+  # twice rather than a shared wrapper: what a violation *is* differs per guard, and a
+  # generic reporter would have to be told, which is the wrapper earning nothing.
+  @spec validate_payload!(module(), atom(), map(), map()) :: :ok
+  defp validate_payload!(contract, type, event_def, payload) do
+    Payload.validate!(contract, type, event_def, payload)
+  rescue
+    error ->
+      PNS.Telemetry.contract_violation(:payload, %{contract: contract, event_type: type})
+      reraise error, __STACKTRACE__
+  end
+
   @spec guard_against_cycle!(atom(), map()) :: :ok
   defp guard_against_cycle!(type, ctx) do
     ancestors = chain(ctx)
 
     if to_string(type) in ancestors do
       path = Enum.join(ancestors ++ [to_string(type)], " → ")
+
+      PNS.Telemetry.contract_violation(:cycle, %{
+        event_type: type,
+        # The path, as names. It is the only thing that makes this actionable, and it
+        # is names rather than values, so it stays on the right side of the retention
+        # rule in `PNS.Telemetry`.
+        chain: ancestors ++ [to_string(type)]
+      })
 
       raise ArgumentError,
             "emitting #{inspect(type)} would close a cycle: #{path}. One event caused another " <>
@@ -379,9 +399,23 @@ defmodule PNS.Emitter do
     for handler <- Registry.sync_handlers_for(type) do
       started = System.monotonic_time(:microsecond)
 
+      span = %{
+        handler: handler.module,
+        contract: contract,
+        event_type: type,
+        instance_id: event.instance_id,
+        correlation_id: ctx.correlation_id,
+        async: false
+      }
+
       result =
         try do
-          handler.module.handle(payload, ctx)
+          # A span rather than a bespoke event: it emits `:start`, then `:stop` or
+          # `:exception`, in the shape every Elixir observability tool already reads.
+          # The `:exception` half is what stage 2.3 added by hand with its own
+          # measurement name — corrected here, because a package that emits
+          # almost-conventional telemetry costs each integrator a special case.
+          PNS.Telemetry.handler_span(span, fn -> handler.module.handle(payload, ctx) end)
         rescue
           already in PNS.SyncHandlerError ->
             # A handler further down the chain failed and is already described. This
@@ -391,31 +425,13 @@ defmodule PNS.Emitter do
             reraise already, __STACKTRACE__
 
           error ->
-            # The handling row disappears along with the transaction — and that is
-            # correct: nothing happened, so the log must not claim it did. What is
-            # not correct is that it used to disappear leaving nothing at all, which
-            # is the gap ADR §13 found by building this layer.
+            # The span has already reported the exception; this rescue exists for the
+            # durable half. The handling row disappears along with the transaction —
+            # correct, since nothing happened — and it used to disappear leaving
+            # nothing at all, which is the gap ADR §13 found by building this layer.
             #
-            # Telemetry first, because it is the only half that works when the
-            # caller owns the transaction. Error collection belongs to the client's
-            # tooling; this is the seam it attaches to.
-            :telemetry.execute(
-              [:pns, :handler, :exception],
-              %{duration_us: System.monotonic_time(:microsecond) - started},
-              %{
-                handler: handler.module,
-                contract: contract,
-                event_type: type,
-                instance_id: event.instance_id,
-                correlation_id: ctx.correlation_id,
-                kind: :error,
-                reason: error,
-                stacktrace: __STACKTRACE__
-              }
-            )
-
-            # Wrapped rather than reraised bare: the frame that can durably write
-            # this is outside the transaction and knows none of the context.
+            # Wrapped rather than reraised bare: the frame that can durably write this
+            # is outside the transaction and knows none of the context.
             reraise PNS.SyncHandlerError.exception(
                       handler: handler.module,
                       contract: contract,

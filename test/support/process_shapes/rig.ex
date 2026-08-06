@@ -336,6 +336,22 @@ defmodule ProcessShapes.Matching.OnItemPaired do
   end
 end
 
+defmodule ProcessShapes.Intake.OnItemNoted do
+  @moduledoc """
+  Exists so the retention rule can be tested where it actually matters.
+
+  `item_noted` carries the only `retain: :drop` field in the repository, and without a
+  handler there is no span, so a test asserting "no payload value reaches telemetry"
+  would pass by receiving nothing at all. It publishes nothing and does nothing; being
+  observed is the whole job.
+  """
+
+  use PNS.Handler, contract: ProcessShapes.Rig, event: :item_noted, publishes: []
+
+  @impl PNS.Handler
+  def handle(_payload, _ctx), do: :ok
+end
+
 defmodule ProcessShapes.Intake.OnItemMeasuredFirst do
   @moduledoc """
   One of **two** synchronous handlers on `item_measured`, for stage 2.4.

@@ -117,7 +117,14 @@ defmodule PNS.HandlerFailureTest do
       assert metadata.instance_id == "pairing|c-1"
       assert %RuntimeError{} = metadata.reason
       assert is_list(metadata.stacktrace)
-      assert measurements.duration_us >= 0
+
+      # `duration`, not the `duration_us` this test asserted when it was written. Stage
+      # 2.5 moved the handler events onto `:telemetry.span/3`, which measures in native
+      # time units and names the three events the way every Elixir observability tool
+      # already expects. The shape here was invented while solving a diagnosis problem,
+      # without asking what an integrator would have to special-case.
+      assert measurements.duration >= 0
+      assert is_integer(measurements.monotonic_time)
     end
   end
 

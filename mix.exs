@@ -36,6 +36,10 @@ defmodule PnsPrototype.MixProject do
       {:postgrex, "~> 0.22"},
       {:oban, "~> 2.20"},
       {:jason, "~> 1.4"},
+      # Direct, although Ecto and Oban both bring it transitively. `lib/pns/` emits
+      # telemetry, so it depends on it — and a package whose dependency is satisfied
+      # only because a neighbour happens to need it breaks when the neighbour goes.
+      {:telemetry, "~> 1.3"},
       {:boundary, "~> 0.10", runtime: false}
     ]
   end

@@ -118,6 +118,13 @@ defmodule PNS.Handler do
         :ok
 
       names ->
+        PNS.Telemetry.contract_violation(:undeclared_publication, %{
+          contract: meta.contract,
+          handler: meta.module,
+          event_type: meta.event,
+          undeclared: names
+        })
+
         raise ArgumentError,
               "#{inspect(meta.module)} emitted #{inspect(names)} without declaring it. " <>
                 "Declared: `publishes: #{inspect(meta.publishes)}`. The deployment graph is " <>

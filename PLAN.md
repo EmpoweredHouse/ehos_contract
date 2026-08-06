@@ -7,7 +7,7 @@ aktualizowany stan.
 
 ## Stan na 6 sierpnia
 
-196 testów, `mix check` przechodzi. Ostrzeżenia są **cztery i wszystkie celowe**:
+206 testów, `mix check` przechodzi. Ostrzeżenia są **cztery i wszystkie celowe**:
 
 1. `deadline` TaxVision bez potwierdzenia process ownera,
 2. `deadline` z wymyślonej fikstury bramy uniwersalności,
@@ -26,7 +26,8 @@ nieprzejechanych ścieżek per przebieg**, **`publishes:` wiąże handler w runt
 zostawia ślad, a raport odróżnia „próbowane i nie udaje się" od „nigdy nie próbowano"**, **cykl w runtime
 jest zatrzymany na obu ścieżkach dispatchu**, **kolejność handlerów synchronicznych jest odtwarzalna, a job
 po znikniętym handlerze jest anulowany i zapisany**, **payload jest walidowany przeciw zadeklarowanym typom,
-a `:timestamp` jest punktem w czasie po obu stronach kolejki**.
+a `:timestamp` jest punktem w czasie po obu stronach kolejki**, **telemetria emituje to, czego nie widzi
+nikt inny — handlera i naruszenie kontraktu**.
 
 **Nie działa, bo nie zostało zbudowane — i to jest produkt:**
 
@@ -720,8 +721,47 @@ aplikacji, a moduły z `.exs` w niej nie są — więc są niewidoczne dla grafu
 ścieżek. Sprawdzone: `pns.check` pokazuje nadal 18 informacji i trzy kontrakty w rejestrze. Kontrakt, który
 istnieje tylko po to, żeby go zahaszować, nie ma prawa wyjść w raporcie klienta jako proces bez przebiegów.
 
-**2.5 Telemetria.** `:telemetry` emitowana tutaj; zbieranie, wykresy i alerty należą do GCP i Datadoga.
-Pierwszy szew wszedł przy 2.3 — `[:pns, :handler, :exception]`.
+**2.5 Telemetria. ✅ zrobione 6 sierpnia — ETAP 2 ZAMKNIĘTY.** `PNS.Telemetry`, `test/telemetry_test.exs`.
+206 testów.
+
+**Dwie rodziny zdarzeń, i to, że tylko dwie, jest treścią tego punktu.** Kryterium doboru: emitujemy
+wyłącznie to, czego **żadne inne narzędzie w stosie nie widzi**.
+
+| Zdarzenie | Dlaczego my, a nie ktoś inny |
+| --- | --- |
+| `[:pns, :handler, :start/:stop/:exception]` | handlera synchronicznego nie widzi nikt — Oban zna *job*, nie handlera w środku |
+| `[:pns, :contract, :violation]` | nikt inny nie wie, co klient uzgodnił; to jedyny sygnał „kod przestał zgadzać się z ustaleniami" **na żywo** |
+
+Świadomie **nie** emitujemy: czasów zapytań (to Ecto), cyklu życia joba (to Oban), ani niczego, na co
+odpowiada raport — bo to byłaby druga, przybliżona kopia własnego produktu.
+
+**Licznik wyemitowanych zdarzeń napisałem i wyrzuciłem, i to jest uczciwsze niż go nie rozważyć.** Log ma tę
+liczbę dokładnie, a metrykę dałoby się emitować tylko **z wnętrza transakcji** — czyli awaria handlera
+synchronicznego cofałaby fakt, a licznik by go zachował. **Liczba fałszywa dokładnie wtedy, gdy coś jest
+zepsute, jest gorsza niż brak liczby.** Do tego łamała regułę, którą sam zapisałem dwa akapity wyżej.
+
+**Poprawiłem swój własny szew z 2.3.** Tamto zdarzenie wymyśliło własny kształt (`duration_us`, ręczne
+`kind`/`reason`), bo rozwiązywałem problem diagnostyczny i nie zapytałem, co będzie musiał obejść integrator.
+Teraz to `:telemetry.span/3` — `start`/`stop`/`exception`, `duration` w jednostkach natywnych, czyli kształt,
+który Ecto, Phoenix i Oban już emitują. **Pakiet emitujący telemetrię *prawie* konwencjonalną kosztuje każdego
+integratora osobny przypadek.**
+
+**Reguła o metadanych jest regułą retencji.** Telemetria to **trzecia droga na zewnątrz**, po logu i
+argumentach joba. Te dwie `retain` zamknął; metryka niosąca wartość payloadu otworzyłaby dokładnie tę dziurę
+z powrotem. Metadane niosą **nazwy i klucz przebiegu** — nazwy są deklaracjami, a klucz jest w logu z założenia
+i odtwarzalny z niego samego, więc oba są już tak publiczne jak log. Wartości payloadu nie są i nie pojawiają
+się tam nigdy.
+
+**`telemetry` weszło jako zależność bezpośrednia.** Było spełnione przechodnio przez Ecto i Obana — a pakiet,
+którego zależność jest zaspokojona tylko dlatego, że sąsiad jej potrzebuje, **pęka, kiedy sąsiad wychodzi**.
+
+**Katalog zdarzeń jest przypięty literałem** (`PNS.Telemetry.events/0`), bo nazwa zdarzenia telemetrii jest
+tak samo publiczna jak nazwa funkcji: po cichej zmianie ten, kto się podłączył, przestaje cokolwiek dostawać i
+dowiaduje się, gdy wykres pada na zero.
+
+**Mój test retencji był pozorny i złapałem to przed commitem.** `item_noted` — jedyne pole na `retain: :drop`
+w repo — nie miało handlera, więc nie było span-a i `refute_received` przechodziło, **nie dostając niczego**.
+Doszedł handler, a test najpierw **stwierdza, że span był**, i dopiero potem czego w nim nie ma.
 
 ## Dług po stronie TaxVision
 
@@ -799,11 +839,24 @@ Gałąź `backup-polskie-opisy` **usunięta 5 sierpnia** po sprawdzeniu, że wsz
 
 **Etap 1 zamknięty w całości.** 1.1–1.7. Brama uniwersalności przeszła, `trace` przestał być dekoracją, a różnica
 declared vs observed okazała się sygnałem — 50 przebiegów daje jedną linię raportu, a wszystkie pięć
-kształtów procesu jest obsłużonych. **Dalej: etap 2** — obietnice kontraktu, które dziś są dekoracją.
+kształtów procesu jest obsłużonych.
 
-Z etapu 1 zostaje otwarte **jedno**: **1.5b**, werdykt `:suspended`, czekający na log niedostępności
-zależności. Język kodu spłacony 5 sierpnia (`a0ec986`), rekord rozliczony w całości — dwa commity na
-`docs/pns-record-corrections-etap-1`.
+**Etap 2 zamknięty w całości, 6 sierpnia.** 2.1–2.5. Obietnice kontraktu przestały być dekoracją: `publishes:`
+wiąże handler, słownik typów jest zamknięty, wartości są walidowane, awaria synchroniczna zostawia ślad, cykl
+jest zatrzymany na obu ścieżkach, a telemetria emituje to, czego nie widzi nikt inny. Ze 42 testów na starcie
+etapu zrobiło się **206**.
+
+Otwarte pozostają **trzy rzeczy i żadna nie jest robotą inżynierską do wzięcia z półki**:
+
+- **1.5b, werdykt `:suspended`** — czeka na log obserwacji niedostępności zależności zewnętrznych. Dziś
+  awaria rejestru w oknie assercji liczy się jako naruszenie, czyli obwiniamy klienta za cudzy serwer.
+- **`period_id` jako uuid** — decyzja klienta. Klucz przebiegu przestaje być czytelny z samego logu, a
+  „odtwarzalny z samego logu" było jawną własnością projektową.
+- **Gdzie renderuje się raport dowodowy** — piąte otwarte pytanie ADR-a. Kod odpowiedział mimochodem
+  (drzewo klienta), a to nie to samo co rozstrzygnięcie.
+
+**Największy zakład ADR-a nadal nietknięty:** czy prawdziwy process owner przeczyta przykłady i je poprawi.
+Nic z etapu 2 tego nie rusza — rusza to tylko warsztat.
 
 Zamknięte 5 sierpnia bez zmiany w DSL: **`label` dla `trace` nie wchodzi** — powód przy 1.7. Do process
 ownera zostaje jedna rzecz z etapu 1, węższa niż się wydawała: **potwierdzenie, że `within` obowiązuje także
