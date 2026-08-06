@@ -285,6 +285,17 @@ ways to settle it, and they differ in what gets sold:
 Today the code is (2) without having chosen it. **Decide before the pilot has a screen**, because (1) is
 cheap to build early and expensive to retrofit once a client ships its own report.
 
+**Resolved 6 August, in conversation — neither of the two paths above.** The report moved into the engine
+(`PNS.Report`) and its own sentences are in English, not localised to the reader. That is a third option this
+record did not list: not "engine keeps the screen, client supplies the words" (1), and not "engine ships data,
+client renders" (2), but "engine renders, in one language it does not negotiate." It resolves the sentence
+above — *"a package cannot know its reader's language"* — by dropping the requirement it was protecting
+rather than by solving it: the report no longer promises to be readable by a non-English-speaking accountant
+on its own scaffolding. Contract labels (`label`, `from_label`, `to_label`) are unaffected and still print in
+whatever language the client declared them in, so a TaxVision report today reads as English sentences around
+Polish business terms. The open-source/commercial split two paragraphs up still needs revisiting with this
+in mind: the evidence report is now fully engine-owned code, which was the commercial line under (2).
+
 *Instead of:* extracting a template up front, or a metadata-driven configurable product as Twenty and Open
 Mercato do — which means competing on volume of pre-poured concrete against projects that have more of it.
 
@@ -398,9 +409,8 @@ generated code against a specification.
 untraversed paths, trace evaluation, two deployment identities, the report. It added a fifth open question and
 narrowed a sixth:
 
-- **Where the evidence report is rendered** — engine with a client-supplied rendering seam, or engine data
-  with the report as a client artifact. Stated in full under §16–17. The code answered it as a side effect and
-  that is not the same as deciding it.
+- **Where the evidence report is rendered** — resolved 6 August, in the engine, in English. Full detail
+  under §16–17 above; the resolution is a third option this list did not consider.
 - *Narrowed:* the period whose definitions changed. A period is now a row with a date range rather than a
   string, and the report's window runs on `occurred_at` rather than on the period — so the question is about a
   **changed row**, not about ambiguous parsing. Still open, and smaller.

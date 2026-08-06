@@ -28,9 +28,11 @@ Z tego wynikają trzy rzeczy, o które łatwo się potknąć:
 `taxvision`, a nie `my_app`. Zabezpieczenie jest mechaniczne, bo deklaratywne nie działa — spike bez tego
 zamienia się w template, którego nie chcemy budować przed drugim klientem.
 
-**Silnik nie mówi po polsku.** Produkuje dane; zdania produkuje aplikacja klienta. Raport zgodności czyta
-księgowa, więc `Taxvision.Report` jest w drzewie **klienta**, a nie w `pns.*`. Silnik nie wie, w jakim języku
-czyta jego odbiorca.
+**Silnik mówi po angielsku, wliczając raport.** Do 6 sierpnia było odwrotnie — silnik produkował dane, zdania
+produkowała aplikacja klienta (`Taxvision.Report`), bo raport czyta księgowa. Renderer przeniósł się do
+silnika (`PNS.Report`, `mix pns.report`) i wypisuje po angielsku; etykiety z kontraktu (`label`,
+`from_label`, `to_label`) nadal wychodzą dosłownie, w języku, w którym je zadeklarował klient — silnik nie
+tłumaczy cudzych słów, tłumaczy tylko własne.
 
 **Silnik nie wie nic o firmach.** Nie ma `company_id` w żadnej strukturze `PNS`. Najemcę czyta kod domenowy z
 `actor.claims`, bo przychodnia ma placówki, a spedycja terminale. Pytanie „która firma nie zamknęła lipca"
@@ -58,8 +60,8 @@ mix pns.graph --mermaid      # diagram
 mix pns.trace                # ocena assercji `trace` z logu — liczby, nie lista przebiegów
 mix pns.trace --instances    # pojedyncze przebiegi; widok do debugowania, nie dla klienta
 mix pns.docs                 # regeneracja referencji kluczy w docs/contract.md
-mix taxvision.report         # raport zgodności za okres — cztery pytania, jedna strona
-mix taxvision.report --since 2026-07-01T00:00:00Z --until 2026-07-31T23:59:59Z
+mix pns.report                # raport zgodności za okres — cztery pytania, jedna strona
+mix pns.report --since 2026-07-01T00:00:00Z --until 2026-07-31T23:59:59Z
 ```
 
 ## Gdzie co jest

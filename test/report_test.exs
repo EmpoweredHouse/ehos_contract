@@ -1,4 +1,4 @@
-defmodule Taxvision.ReportTest do
+defmodule PNS.ReportTest do
   @moduledoc """
   Stage 1.7: **the conformance report for a period.**
 
@@ -12,9 +12,13 @@ defmodule Taxvision.ReportTest do
   single technical event name, because every one is replaced by a label from the
   contract.
 
-  The Polish strings asserted on below are the report's own output — this is the
-  one artifact an accountant reads, so its sentences are in their language. See
-  `Taxvision.Report`.
+  **Moved into the engine 6 August**, reversing the stage 1.7 call that kept
+  rendering in the client tree because an accountant was the reader (see
+  `PLAN.md`). The scaffolding sentences asserted on below are English now; the
+  contract's own labels (`from_label`, `to_label`, a process's `label`) still
+  print in whatever language the contract declares them — TaxVision's are
+  Polish, and this test asserts on both without translating either. See
+  `PNS.Report`.
   """
 
   use Taxvision.DataCase, async: false
@@ -35,7 +39,7 @@ defmodule Taxvision.ReportTest do
   end
 
   defp data(opts \\ []), do: PNS.Conformance.report(Contract, opts)
-  defp text(opts \\ []), do: opts |> data() |> Taxvision.Report.render()
+  defp text(opts \\ []), do: opts |> data() |> PNS.Report.render()
 
   describe "acceptance criterion: no unconfirmed declarations" do
     test "a deadline marked `unverified` does not reach the report's data" do
@@ -55,7 +59,7 @@ defmodule Taxvision.ReportTest do
     end
 
     test "the deadline does not reach the rendered text either" do
-      refute text() =~ "Termin"
+      refute text() =~ "Deadline"
       refute text() =~ "25"
     end
 
@@ -84,9 +88,10 @@ defmodule Taxvision.ReportTest do
       t = text()
 
       # The assertion is a sentence composed of labels, because `trace` has no
-      # `label`.
-      assert t =~ "po „Potwierdzono komplet danych historycznych”"
-      assert t =~ "następuje „Otwarto miesiąc księgowy”"
+      # `label`. The labels themselves are the contract's own words — Polish here
+      # — printed inside the engine's English scaffolding, not translated.
+      assert t =~ "after \"Potwierdzono komplet danych historycznych\""
+      assert t =~ "\"Otwarto miesiąc księgowy\" follows"
 
       refute t =~ "data_completeness_confirmed"
       refute t =~ "accounting_month_opened"
@@ -95,22 +100,22 @@ defmodule Taxvision.ReportTest do
     test "satisfaction through the fallback path is named conformance, not an exception" do
       # Blocking the month is a correct ending. A report that called it a problem
       # would be switched off after the first month.
-      assert text() =~ "Dotrzymane we wszystkich 2 przebiegach"
-      assert text() =~ "zgodne z ustaleniem"
+      assert text() =~ "Met in all 2 runs"
+      assert text() =~ "conforms to the rule"
     end
 
     test "the screen's four questions are in one artifact" do
       t = text()
 
-      assert t =~ "USTALENIA"
-      assert t =~ "Wersja ustaleń"
-      assert t =~ "PROCES"
-      assert t =~ "Ustalenie: po"
-      assert t =~ "ROZBIEŻNOŚCI"
+      assert t =~ "CONTRACT"
+      assert t =~ "Version"
+      assert t =~ "PROCESS"
+      assert t =~ "Rule: after"
+      assert t =~ "DRIFT"
     end
 
     test "the absence of divergence is a sentence, not an empty section" do
-      assert text() =~ "Brak: nic nie zaszło poza ustaleniami"
+      assert text() =~ "None: nothing happened outside the agreement"
     end
   end
 
@@ -141,8 +146,8 @@ defmodule Taxvision.ReportTest do
 
       t = text(since: ~U[2027-01-01 00:00:00.000000Z])
 
-      assert t =~ "nie było ani jednego przebiegu"
-      refute t =~ "Wszystkie ustalone kroki zostały"
+      assert t =~ "not a single run in this period"
+      refute t =~ "All agreed steps were carried out"
     end
 
     test "the header names the period the report is about" do
@@ -202,11 +207,11 @@ defmodule Taxvision.ReportTest do
 
       text =
         %{report | processes: [%{process | failing: [failing]} | rest]}
-        |> Taxvision.Report.render()
+        |> PNS.Report.render()
 
-      assert text =~ "Ustalone kroki, które są próbowane i się nie udają:"
+      assert text =~ "Agreed steps that are attempted and fail:"
       assert text =~ "Otwarto miesiąc księgowy → Zamknięto miesiąc księgowy"
-      assert text =~ "nie udało się w 2 przebiegach"
+      assert text =~ "failed in 2 runs"
 
       # **One edge, one section.** The untraversed section is legitimately present
       # here too — only the consistent branch ran, so the divergent path really was
@@ -239,9 +244,9 @@ defmodule Taxvision.ReportTest do
 
       text =
         %{report | processes: [%{process | failing: [failing]} | rest]}
-        |> Taxvision.Report.render()
+        |> PNS.Report.render()
 
-      assert text =~ "nie udało się w 1 przebiegu"
+      assert text =~ "failed in 1 run"
     end
   end
 
@@ -266,23 +271,23 @@ defmodule Taxvision.ReportTest do
 
       text =
         %{report | processes: [%{process | assertions: [suspended | others]} | rest]}
-        |> Taxvision.Report.render()
+        |> PNS.Report.render()
 
-      assert text =~ "Zawieszone: 2 przebiegach"
-      assert text =~ "zależność zewnętrzna była niedostępna"
+      assert text =~ "Suspended: 2 runs"
+      assert text =~ "external dependency was unavailable"
 
       # The sentence has to say whose problem it is not. Without that clause a reader sees
       # a number next to an assertion and reads it as a fault.
-      assert text =~ "nie jest niedotrzymanie po stronie klienta"
+      assert text =~ "not a breach on the client's side"
 
       # And it must not be reported as a breach.
-      refute text =~ "NIEDOTRZYMANE"
+      refute text =~ "BREACHED"
     end
 
     test "no suspensions means no sentence at all" do
       # The control. A report that mentions suspensions when there are none teaches a
       # reader to skip the line.
-      refute text() =~ "Zawieszone"
+      refute text() =~ "Suspended"
     end
   end
 end

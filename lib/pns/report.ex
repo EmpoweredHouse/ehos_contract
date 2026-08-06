@@ -1,0 +1,229 @@
+defmodule PNS.Report do
+  @moduledoc """
+  The conformance report for a period — four questions, one page.
+
+  Moved into the engine 6 August, reversing what stage 1.7 built: `Taxvision.Report`
+  rendered Polish sentences in the client tree because an accountant was the reader,
+  and the engine could not know what language its reader spoke. That reasoning is
+  gone now, by decision rather than by a new argument — recorded in `PLAN.md`, not
+  silently rewritten here.
+
+  **The scaffolding is English; the contract's own labels are not translated.**
+  `from_label`, `to_label` and a process's `label` print exactly as the contract
+  declares them — TaxVision's are Polish, a future contract's might not be. The
+  engine writes its own sentences in one language; it still does not decide what
+  language the client wrote their labels in.
+
+  What is **not** here, unchanged from before the move: declarations the process
+  owner has not confirmed. The filter lives in `PNS.Conformance`, not here, because
+  it is a rule about evidence rather than about formatting — the consequence is
+  visible right here: an unconfirmed `deadline` never reaches `render/1`'s input.
+  """
+
+  @doc "The report for one contract over a period, as text to print."
+  @spec render(map()) :: String.t()
+  def render(report) do
+    [
+      header(report),
+      deployment(report.deployment),
+      Enum.map(report.processes, &process/1),
+      drift(report.drift)
+    ]
+    |> List.flatten()
+    |> Enum.join("\n")
+  end
+
+  @spec header(map()) :: [String.t()]
+  defp header(report) do
+    [
+      "CONFORMANCE REPORT — #{period(report.period)}",
+      "Whether the deployed code does what the agreed process says.",
+      ""
+    ]
+  end
+
+  @spec period(map()) :: String.t()
+  defp period(%{since: nil, until: nil}), do: "the whole log"
+  defp period(%{since: since, until: nil}), do: "since #{day(since)}"
+  defp period(%{since: nil, until: until}), do: "until #{day(until)}"
+  defp period(%{since: since, until: until}), do: "#{day(since)} – #{day(until)}"
+
+  @spec day(DateTime.t()) :: String.t()
+  defp day(at), do: at |> DateTime.to_date() |> Date.to_string()
+
+  @spec deployment(map()) :: [String.t()]
+  defp deployment(deployment) do
+    since =
+      case deployment.deployed.since do
+        nil -> "nothing has happened under this version yet"
+        at -> "in force since #{day(at)}"
+      end
+
+    change =
+      case deployment.changed do
+        nil ->
+          []
+
+        c ->
+          [
+            "  Since the previous version: " <>
+              "events added #{length(c.events_added)}, removed #{length(c.events_removed)}, " <>
+              "paths added #{length(c.paths_added)}, removed #{length(c.paths_removed)}."
+          ]
+      end
+
+    earlier =
+      if deployment.from_earlier_versions > 0 do
+        [
+          "  Events from earlier contract versions: #{deployment.from_earlier_versions}. " <>
+            "This is legitimate history, not drift."
+        ]
+      else
+        []
+      end
+
+    ["CONTRACT", "  Version #{deployment.deployed.contract_version}, #{since}."] ++
+      change ++ earlier ++ [""]
+  end
+
+  @spec process(map()) :: [String.t()]
+  defp process(p) do
+    ["PROCESS: #{p.label}", "  Runs in this period: #{p.runs}."] ++
+      declarations(p.declarations) ++
+      paths(p) ++
+      assertions(p.assertions) ++
+      [""]
+  end
+
+  # Confirmed declarations only. The 25-day deadline will not appear here until
+  # somebody confirms it.
+  @spec declarations([map()]) :: [String.t()]
+  defp declarations([]), do: []
+
+  defp declarations(declared) do
+    for %{key: key, value: value} <- declared do
+      case key do
+        :cadence -> "  Due: every #{amount(value)}."
+        :deadline -> "  Deadline: #{amount(value)} from the start."
+      end
+    end
+  end
+
+  @spec amount({pos_integer(), atom()}) :: String.t()
+  defp amount({1, :month}), do: "month"
+  defp amount({n, :month}), do: "#{n} months"
+  defp amount({1, :day}), do: "day"
+  defp amount({n, :day}), do: "#{n} days"
+  defp amount({n, unit}), do: "#{n} #{unit}"
+
+  @spec paths(map()) :: [String.t()]
+  defp paths(%{runs: 0}) do
+    ["  The agreed steps cannot be judged: there was not a single run in this period."]
+  end
+
+  defp paths(p) do
+    untraversed =
+      case p.untraversed do
+        [] ->
+          ["  All agreed steps were carried out in this period."]
+
+        steps ->
+          ["  Agreed steps that were never carried out:"] ++
+            for s <- steps, do: "    · #{step(s)}"
+      end
+
+    waiting =
+      for s <- p.in_flight do
+        "    · #{step(s)} — in progress, #{s.in_flight} queued"
+      end
+
+    # Separate from "never done", because it is a different finding for a different
+    # reader: there the question is whether the step is still agreed, here it is that
+    # the code is broken. Merging them puts a bug in front of the client as a
+    # question about their process.
+    failing =
+      case p.failing do
+        [] ->
+          []
+
+        steps ->
+          ["  Agreed steps that are attempted and fail:"] ++
+            for s <- steps, do: "    · #{step(s)} — failed in #{runs(s.failing)}"
+      end
+
+    untraversed ++ waiting ++ failing
+  end
+
+  @spec runs(pos_integer()) :: String.t()
+  defp runs(1), do: "1 run"
+  defp runs(n), do: "#{n} runs"
+
+  # Business labels, with the technical name only as an aside. The acceptance
+  # criterion: readable without explaining what the columns mean.
+  @spec step(map()) :: String.t()
+  defp step(s), do: "#{s.from_label} → #{s.to_label}"
+
+  @spec assertions([map()]) :: [String.t()]
+  defp assertions([]), do: []
+
+  defp assertions(list) do
+    Enum.flat_map(list, &assertion/1)
+  end
+
+  # A sentence, not a name. `trace` is the one declaration without a `label`, so a
+  # technical name is all that could be printed — and a report that says
+  # `month_opens_or_is_blocked` does not meet the "readable without explanation"
+  # criterion.
+  @spec assertion(map()) :: [String.t()]
+  defp assertion(a) do
+    alternative = if a.or_else_label, do: ", or else \"#{a.or_else_label}\"", else: ""
+    window = if a.within, do: " within #{amount(a.within)}", else: ""
+
+    [
+      "  Rule: after \"#{a.from_label}\"#{window}, \"#{a.eventually_label}\" follows#{alternative}.",
+      "    #{outcome(a)}"
+    ]
+  end
+
+  @spec outcome(map()) :: String.t()
+  defp outcome(a) do
+    via =
+      if a.satisfied_via_or_else > 0 do
+        " (including #{a.satisfied_via_or_else} via the fallback ending, which conforms to the rule)"
+      else
+        ""
+      end
+
+    state =
+      cond do
+        a.instances == 0 -> "There was no run in this period on which this could be judged."
+        a.violated > 0 -> "BREACHED in #{a.violated} of #{a.instances} runs."
+        a.pending > 0 -> "Met in #{a.satisfied} of #{a.instances}, #{a.pending} still in progress."
+        true -> "Met in all #{a.instances} runs."
+      end
+
+    state <> via <> suspended(a)
+  end
+
+  # Named as somebody else's outage, not as the client's problem, and **not** counted among
+  # the breaches. This is the whole value of the fourth verdict: without it these runs read
+  # as "you broke your own agreement" when what happened is that a system you depend on
+  # stopped answering.
+  @spec suspended(map()) :: String.t()
+  defp suspended(%{suspended: 0}), do: ""
+
+  defp suspended(a) do
+    " Suspended: #{runs(a.suspended)} — an external dependency was unavailable within the " <>
+      "rule's window, so this is not a breach on the client's side."
+  end
+
+  @spec drift([map()]) :: [String.t()]
+  defp drift([]), do: ["DRIFT", "  None: nothing happened outside the agreement.", ""]
+
+  defp drift(edges) do
+    ["DRIFT — happened, though it was not agreed:"] ++
+      (for e <- edges do
+         "  · #{e.from_label || e.from} → #{e.to_label || e.to}  (#{e.count}x)"
+       end) ++ [""]
+  end
+end

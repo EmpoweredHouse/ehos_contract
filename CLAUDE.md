@@ -94,8 +94,12 @@ mix ecto.migrate`.
   Trzy ostatnie zostały przy pierwszym sprzątaniu pominięte, bo nikt o nich nie pomyślał.
 - **Po polsku jest wyłącznie to, co klient czyta zdaniami, i tylko w stringu** — nigdy w komentarzu,
   moduledoku ani nazwie. Konkretnie: `label`, opisy `example`, `source` i `unavailable_looks_like` w
-  kontrakcie, raport w `Taxvision.Report`, nazwy tasków, temat powiadomienia. Poza tymi miejscami polski
-  string też jest błędem.
+  kontrakcie, nazwy tasków, temat powiadomienia. Poza tymi miejscami polski string też jest błędem.
+  Raport zgodności był tu wcześniej piątym wyjątkiem i **przestał być, 6 sierpnia**: renderer przeniósł się
+  do silnika (`PNS.Report`, dawniej `Taxvision.Report` w drzewie klienta) i wypisuje po angielsku — decyzja
+  zapisana w `PLAN.md`. Etykiety kontraktu (`label`, `from_label`, `to_label`) nadal wychodzą w raporcie
+  dosłownie, w języku, w którym je zadeklarował klient — regułą jest teraz "silnik pisze swoje zdania po
+  angielsku", nie "kto czyta cały artefakt".
 - **Grep po `[ąćęłńóśźż]` nie wystarcza do sprawdzenia** i to jest zapisane, bo kosztowało jeden fałszywy
   „gotowe". Spora część polszczyzny nie ma diakrytyków — `rejestry` w `registry_check.ex` przeżyło pełne
   przepisanie pliku po pliku właśnie dlatego. Przy sprawdzaniu trzeba przejść też po słowach.

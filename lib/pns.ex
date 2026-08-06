@@ -29,6 +29,7 @@ defmodule PNS do
       Job,
       Payload,
       Registry,
+      Report,
       Trace
     ]
 
