@@ -1,7 +1,8 @@
 # Plan pracy
 
 Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
-`~/Projects/ai/empowered-house-context/decisions/009-pns-runtime-architecture.md`. **Ten plik to lista roboty** i tylko tu jest
+`~/Projects/ai/empowered-house-context/decisions/009-pns-runtime-architecture.md`; założenia, które ten
+prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). **Ten plik to lista roboty** i tylko tu jest
 aktualizowany stan.
 
 ## Stan na 6 sierpnia
@@ -572,6 +573,14 @@ aplikacji, a moduły z `.exs` w niej nie są — więc są niewidoczne dla grafu
 istnieje tylko po to, żeby go zahaszować, nie ma prawa wyjść w raporcie klienta jako proces bez przebiegów.
 
 **2.5 Telemetria.** `:telemetry` emitowana tutaj; zbieranie, wykresy i alerty należą do GCP i Datadoga.
+Pierwszy szew wszedł przy 2.3 — `[:pns, :handler, :exception]`.
+
+## Dług po stronie TaxVision
+
+Jedna rzecz, która nie należy do silnika i nie miała dotąd swojego miejsca — **komenda
+`RetriggerVerification` z warsztatu została w kontrakcie pominięta.** Do dołożenia razem z pętlą ponowienia,
+przy prawdziwym materiale, nie przy moich założeniach o KSeF. Zapisane tutaj, bo README przestało być
+dziennikiem i to był jedyny punkt roboczy, który mieszkał wyłącznie tam.
 
 ## Etap 3 — pakiet jako pakiet
 
