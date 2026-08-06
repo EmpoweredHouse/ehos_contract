@@ -1,32 +1,16 @@
----
-owner: operator
-status: draft
-last_updated: 2026-08-05
-source_of_truth: design conversation 2026-07-31 / 2026-08-01, corrected against the prototype 2026-08-05
-load_policy: reference
-related:
-  - /decisions/009-pns-runtime-architecture.md
-  - /output/design-rationale.md
-  - /output/drafts/RUNTIME-VARIANTS-ADR.md
-  - /wiki/pns/coherence-layer.md
-  - /wiki/pns/ears-requirements-format.md
----
-
-> **Przeniesione z repozytorium kontekstu 6 sierpnia 2026, bez zmian w treści.**
->
-> To jest dokument projektowy i jego przegląd — szczegóły, kształty kodu, odrzucone alternatywy.
-> **Nie jest rekordem decyzji.** Rekord żyje w
-> `~/Projects/ai/empowered-house-context/decisions/009-pns-runtime-architecture.md` i jest jednostronicową
-> propozycją, która deleguje walidację tutaj. Decyzja wróci tam jako osobny rekord, kiedy będzie wynik.
->
-> Odwołania `§N` w kodzie i w `PLAN.md` wskazują na numerowane decyzje w
-> [009-pns-runtime-architecture.md](009-pns-runtime-architecture.md).
-
 # Technology notes
 
 **How it is built and what it looks like.** Code shapes, schemas, tables, library choices,
 implementation traps. Reference material, not a document to read end to end — see
 [§16](#16-where-to-look-for-what) for which section shows which decision's shape.
+
+The numbered sections here are what `notes §N` in a code comment points at. They are a different numbering
+from the decisions in [architecture](architecture.md), which are `§N` without the word *notes*, and the two
+are not in correspondence — `§16` here is a lookup table, `§16` there is what ships.
+
+Where a note says a mechanism works one way and the code works another, the code is right and the note is a
+bug: corrections are dated in place rather than rewritten, so that what was assumed stays comparable with
+what happened.
 
 Vocabulary is fixed in [design rationale](design-rationale.md#vocabulary). In particular **process**
 always means a business process; where an OTP process is meant, the text says *BEAM process*.
@@ -1017,7 +1001,7 @@ works against our cloud account is a demo. One opinionated target ships open sou
 infrastructure stays with that client until a pattern repeats.
 
 **Deployment shape** is four applications — identity bought, engine, dashboard inside the engine in v1,
-frontends separate. Stated with its diagram in [ADR §16–17](../009-pns-runtime-architecture.md#d-what-ships),
+frontends separate. Stated with its diagram in [ADR §16–17](architecture.md#d-what-ships),
 and argued in [design rationale](design-rationale.md#1617--almost-nothing-is-generated-and-what-ships-is-hex-packages).
 
 ## 16. Where to look for what
@@ -1027,13 +1011,14 @@ shapes, schemas, tables, library choices, implementation traps.
 
 | Question | Document |
 | --- | --- |
-| Is the idea right? Should we do it? | [decision 009](../009-pns-runtime-architecture.md) — problem, thirteen decisions, the bets, falsification |
+| Why does the engine work this way? What was assumed? | [architecture](architecture.md) — problem, `§1`–`§18`, the bets, falsification |
 | Why is it like this? What did each decision beat? | [design rationale](design-rationale.md) — the argument, decision by decision, plus vocabulary and alternatives in full |
 | How is it built? | this file |
+| What is done and what is next | [`PLAN.md`](../../PLAN.md) — the only place state is updated |
 
 Mapping from a decision to the section here that shows its shape:
 
-| ADR decision | Here |
+| Decision | Here |
 | --- | --- |
 | §2 contract is code | [§1](#1-the-contract-and-the-code-it-governs) — the DSL, splitting, lifecycle, ownership |
 | §4 generated/hand-written split | [§1](#1-the-contract-and-the-code-it-governs), [§7](#7-generation-workflows) |

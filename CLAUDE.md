@@ -1,35 +1,38 @@
-# PNS — repozytorium kodu
+# PNS — repozytorium silnika
 
-Silnik weryfikacji zgodności wdrożonego kodu z zadeklarowanym procesem, plus jedna aplikacja klienta jako
-przypadek testowy. `lib/pns/` to przyszły pakiet, `lib/taxvision/` to kod klienta. Granica jest wymuszona
-przez `boundary` od pierwszego commita.
+Silnik weryfikacji zgodności wdrożonego kodu z zadeklarowanym procesem. `lib/pns/` to silnik i przyszły
+pakiet; `lib/taxvision/` to **jedna aplikacja klienta, która jest tu tymczasowo** — jako przypadek testowy,
+na którym sprawdzamy, czy założenia silnika się trzymają. Granica jest wymuszona przez `boundary` od
+pierwszego commita, żeby ta tymczasowość była faktem, a nie obietnicą.
 
 ## Zanim cokolwiek zmienisz
 
 | Co | Gdzie |
 | --- | --- |
-| Plan pracy, etapy, kryteria odbioru | [`PLAN.md`](PLAN.md) |
-| Stan faktyczny, luki, co wyszło z prototypu | [`README.md`](README.md) |
+| Plan pracy, etapy, kryteria odbioru, **stan** | [`PLAN.md`](PLAN.md) |
+| Czym jest to repozytorium, brama, struktura | [`README.md`](README.md) |
 | **Jak napisać kontrakt** — klucze, wymagane/opcjonalne, co się nie skompiluje | [`docs/contract.md`](docs/contract.md) |
-| **Pełny rekord projektowy, 18 decyzji, `§N` z komentarzy w kodzie** | [`docs/adr/009-pns-runtime-architecture.md`](docs/adr/009-pns-runtime-architecture.md) |
+| **Założenia początkowe, 18 decyzji, `§N` z komentarzy w kodzie** | [`docs/adr/architecture.md`](docs/adr/architecture.md) |
+| Kształty kodu, schematy, pułapki, biblioteki — `notes §N` z komentarzy | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |
 | Co każda decyzja pobiła, odrzucone alternatywy | [`docs/adr/design-rationale.md`](docs/adr/design-rationale.md) |
-| Kształty kodu, schematy, pułapki, wybory bibliotek | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |
-| Przegląd zespołu z 3 sierpnia | `~/Projects/ai/empowered-house-context/output/20260803-adr-008-review.md` — **został w repo kontekstu**, bo mówi o luce mocy i ekonomii wdrożeń |
-| Zakres produktu, warunki oceny, stan recenzji | `~/Projects/ai/empowered-house-context/decisions/009-pns-runtime-architecture.md` |
+| Kto zaakceptował, zakres komercyjny, stan recenzji | repo kontekstu — **nie tutaj** |
 
-**Pakiet projektowy przeniesiono tutaj 6 sierpnia** z repozytorium kontekstu, bez zmian w treści. Tam został
-dwustronicowy rekord: idea, zakres, warunki oceny, stan recenzji. Podział jest po przeznaczeniu — tam się
-sprzedaje pomysł i zapada decyzja, tutaj leży dowód.
+`docs/adr/` to **założenia, nie rekord decyzji.** Nikt ich tutaj nie akceptuje i nie ma po co: decyzja, żeby
+tę ideę sprawdzić, już padła, a zadaniem tego repozytorium jest ją zwalidować. Aparat, który do niego
+należał — kto recenzował, kto zaakceptował, zakres komercyjny — **został w repo kontekstu** i tam ma zostać.
+Trzymany w dwóch miejscach zestarzeje się w jednym z nich.
 
 Z tego wynika, gdzie co poprawiać:
 
 - **Szczegół implementacyjny** — `docs/adr/technology-notes.md`, na miejscu, jednym commitem.
-- **Decyzja albo warunek oceny** — nie tutaj. Ustalenie ląduje w `PLAN.md` jako wniosek, a do rekordu w repo
-  kontekstu wraca **przy zamknięciu etapu**, nie przy każdej zmianie.
-- Rekord jest **świadomie z tyłu**. Gdy rekord i `PLAN.md` się różnią, nowszy jest `PLAN.md`.
+- **Ustalenie z pisania kodu** — do `PLAN.md`, i tylko tam aktualizuje się stan.
+- **Założenie, które okazało się nieprawdziwe** — poprawka **z datą** w `docs/adr/`, nie ciche przepisanie.
+  Sens tych plików polega na tym, że da się je porównać z tym, co faktycznie wyszło; przepisane pod aktualny
+  kod przestają cokolwiek mierzyć.
+- Założenia są **świadomie z tyłu**. Gdy `docs/adr/` i `PLAN.md` się różnią, nowszy jest `PLAN.md`.
 
-Rekord mylił się już dwa razy i oba razy wyszło to przy pisaniu kodu. Jeśli myli się znowu, poprawka idzie do
-rekordu — nie do komentarza obchodzącego problem.
+Założenia myliły się już dwa razy i oba razy wyszło to przy pisaniu kodu. Jeśli mylą się znowu, poprawka
+idzie do `docs/adr/` — nie do komentarza obchodzącego problem.
 
 ## Jedno pytanie, na które ten produkt odpowiada
 

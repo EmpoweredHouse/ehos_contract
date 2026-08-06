@@ -1,23 +1,9 @@
----
-owner: operator
-status: draft
-last_updated: 2026-08-04
-source_of_truth: design conversation 2026-08-04
-load_policy: reference
-related:
-  - /decisions/009-pns-runtime-architecture.md
-  - ~/Projects/ai/pns_prototype/docs/adr/technology-notes.md
----
-
-> **Przeniesione z repozytorium kontekstu 6 sierpnia 2026, bez zmian w treści.**
+> The design detail behind `§16–17` — identity bought, behind a protocol seam, vendor and topology left open.
+> What is here is the provider survey, their licences and a list of things to check in a PoC: material we do
+> not want to research twice.
 >
-> Szczegół projektowy stojący za decyzją §16–17 („tożsamość kupiona, za szwem protokolarnym, vendor i
-> topologia otwarte"). Sama decyzja jest w rekordzie w repozytorium kontekstu; tutaj jest rozpoznanie
-> providerów, ich licencje i lista rzeczy do sprawdzenia w PoC — czyli materiał, którego nie chcemy
-> researchować drugi raz.
->
-> **Stan implementacji:** szew stoi, weryfikatorem jest lokalny HMAC. Providera nie stawialiśmy — patrz
-> `../../README.md`.
+> **Implementation state:** the seam stands and a local HMAC is the verifier. No provider was set up, and
+> `CLAUDE.md` lists one under what we deliberately do not build. **Not reviewed since it was moved here.**
 
 # Identity — the boundary, before any decision
 
@@ -63,7 +49,7 @@ into a distributed monolith where one outage takes all of them down; prefer the 
 
 | Axis | State |
 | --- | --- |
-| Write or buy the provider | [ADR 009](~/Projects/ai/empowered-house-context/decisions/009-pns-runtime-architecture.md) decided **not written** |
+| Write or buy the provider | ADR 009 (`empowered-house-contextdocs/adr/architecture.md`) decided **not written** |
 | Where it runs — in-process module, sidecar, separately deployed application, or the client's own service | **Open** |
 
 The seam holds in all four positions on the second axis, which is why it can be fixed before that axis is.
@@ -125,7 +111,7 @@ code, domain code minting its own tokens, or any vendor name in the engine's con
 
 ## One thing worth fixing now
 
-[Technology notes §13](~/Projects/ai/pns_prototype/docs/adr/technology-notes.md) lists *Users and sessions —
+[Technology notes §13](technology-notes.md) lists *Users and sessions —
 `phx.gen.auth`, generated*. Read literally that is a credential store inside the engine, which contradicts
 identity being separate and produces two answers to whether a person still works at the company. It should
 say either "user profile mirror, no credentials, keyed by the identity subject" or nothing.
@@ -133,7 +119,7 @@ say either "user profile mirror, no credentials, keyed by the identity subject" 
 ## Not decided
 
 Vendor, packaging, login screen route, deprovisioning mechanism, who operates the instance. Also
-[ADR 009](~/Projects/ai/empowered-house-context/decisions/009-pns-runtime-architecture.md) line 248 still says `WorkOS wrapped`; that becomes
+ADR 009 (`empowered-house-contextdocs/adr/architecture.md`) line 248 still says `WorkOS wrapped`; that becomes
 wrong if the deployment ships into the client's environment, but it can be corrected whenever the ADR is next
 touched rather than on its own.
 

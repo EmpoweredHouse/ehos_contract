@@ -1,36 +1,13 @@
----
-owner: operator
-status: draft
-last_updated: 2026-08-03
-source_of_truth: design sessions 2026-07-31 / 2026-08-01, team review 2026-08-03
-load_policy: reference
-related:
-  - /decisions/009-pns-runtime-architecture.md
-  - /output/technology-notes.md
-  - /wiki/pns/modular-design.md
-  - /wiki/pns/event-driven-doctrine.md
-  - /output/drafts/RUNTIME-VARIANTS-ADR.md
----
-
-> **Przeniesione z repozytorium kontekstu 6 sierpnia 2026, bez zmian w treści.**
->
-> To jest dokument projektowy i jego przegląd — szczegóły, kształty kodu, odrzucone alternatywy.
-> **Nie jest rekordem decyzji.** Rekord żyje w
-> `~/Projects/ai/empowered-house-context/decisions/009-pns-runtime-architecture.md` i jest jednostronicową
-> propozycją, która deleguje walidację tutaj. Decyzja wróci tam jako osobny rekord, kiedy będzie wynik.
->
-> Odwołania `§N` w kodzie i w `PLAN.md` wskazują na numerowane decyzje w
-> [009-pns-runtime-architecture.md](009-pns-runtime-architecture.md).
-
 # Design rationale
 
-Why [decision 009](../009-pns-runtime-architecture.md) is the way it is. The record states
-each decision and what it beat in one line; this document carries the argument behind it, decision by
-decision, plus the vocabulary, the alternatives in full, and the reasoning behind the open questions.
+Why [the architecture](architecture.md) is the way it is. That file states each decision and what it beat in
+one line; this one carries the argument behind it, decision by decision, plus the vocabulary, the alternatives
+in full, and the reasoning behind the open questions.
 
-Three documents, three questions. **Is this idea right** is the record. **Why is it like this** is here.
-**How is it built, and what does it look like** is the
-[technology notes](technology-notes.md) — code, schemas, libraries.
+**Not reviewed since it was moved here.** The content is from the design sessions of 31 July and 1 August and
+has not been checked against what the prototype has since built — unlike
+[architecture](architecture.md) and [technology notes](technology-notes.md), which carry dated corrections.
+Treat a claim here as an assumption from before the code existed.
 
 ## Vocabulary
 
@@ -73,8 +50,8 @@ Code is open source. The workshop and the evidence are what we charge for.
 Two implementations are contracted; one running, one starting now. No spare capacity, and a runway that
 makes every month of platform work expensive.
 
-[Decision 005](~/Projects/ai/empowered-house-context/decisions/005-adopt-empoweredhouse-strategy.md) fixed the product boundary as
-architecture-neutral. [Decision 006](~/Projects/ai/empowered-house-context/decisions/006-end-rafal-slosarz-collaboration.md) vacated the
+Decision 005 (`empowered-house-context/decisions/005-adopt-empoweredhouse-strategy.md`) fixed the product boundary as
+architecture-neutral. Decision 006 (`empowered-house-context/decisions/006-end-rafal-slosarz-collaboration.md`) vacated the
 architecture seat and narrowed the direction to *model the domain, generate the code, watch it run*. This
 proposal sits inside those boundaries.
 
@@ -97,7 +74,7 @@ function call shows up in `mix xref`; an event edge does not show up anywhere. W
 derived model, event-driven design *reduces* comprehensibility rather than increasing it. That is what
 makes the registry load-bearing here rather than optional.
 
-The promise remains the one in [the charter](~/Projects/ai/empowered-house-context/wiki/pns/charter.md):
+The promise remains the one in the charter (`empowered-house-context/wiki/pns/charter.md`):
 
 > Turn business-readable intent into governed software the company owns and can safely change,
 > independent of which tool, model, team, or stack produced the code.
@@ -112,8 +89,8 @@ be decisive, but it is not a reason the architecture fits, and it is never the e
 Nothing here replaces DDD. The two are not alternatives — they are a stack. DDD does the strategic work of
 deciding where the seams run and what the words are; event-driven design is the code shape we generate
 into; the contract is the only novel part. Long form, with each claim's provenance separated, in
-[modular design](~/Projects/ai/empowered-house-context/wiki/pns/modular-design.md) and
-[event-driven doctrine](~/Projects/ai/empowered-house-context/wiki/pns/event-driven-doctrine.md).
+modular design (`empowered-house-context/wiki/pns/modular-design.md`) and
+event-driven doctrine (`empowered-house-context/wiki/pns/event-driven-doctrine.md`).
 
 | Question | Answered by |
 | --- | --- |
@@ -172,7 +149,7 @@ is a sentence everyone nods at and nobody can check.
 carries no invariants, error paths, idempotency or types, so a generator invents them differently each run.
 
 *Risk:* this lengthens the workshop, and facilitation capacity is already a recorded gap
-([decision 007](~/Projects/ai/empowered-house-context/decisions/007-filip-kozlowski-joins-pns-team.md)).
+(decision 007 (`empowered-house-context/decisions/007-filip-kozlowski-joins-pns-team.md`)).
 
 ### §2 — the contract is code, in the client's repository
 
@@ -229,7 +206,7 @@ where one copy is named as the source of truth and the other is a cache; without
 produces two masters, which is worse than the join it replaced.
 
 How to decide where the boundaries run — verbs over nouns, outcome versus entity, the four design
-questions — is [modular design and data ownership](~/Projects/ai/empowered-house-context/wiki/pns/modular-design.md). That doctrine is
+questions — is modular design and data ownership (`empowered-house-context/wiki/pns/modular-design.md`). That doctrine is
 what a generated codebase gets wrong, and §14 deliberately does not enforce it, which is why it is a skill.
 
 **This says one *engine*, not one deployed thing.** Identity, the frontends and eventually the dashboard
@@ -372,7 +349,7 @@ wrong approach looks like, which of several valid options is preferred.
 **Decomposition is the first skill, and the refusal above is why it is needed.** Whether a module should
 split is a judgement a check cannot make, and until now that meant nobody made it — tolerable when a person
 is designing, not when a model is. The doctrine is
-[modular design](~/Projects/ai/empowered-house-context/wiki/pns/modular-design.md); the skill built from it is what stops generated code
+modular design (`empowered-house-context/wiki/pns/modular-design.md`); the skill built from it is what stops generated code
 producing a `Job` context with a slug column, every time.
 
 ## D. What ships
@@ -574,6 +551,6 @@ catches it.
 
 **Prior art on constraining and verifying generated code against a specification.** A task rather than a
 question — five named directions, an owner and a timebox are in
-[review-2026-08-03](~/Projects/ai/empowered-house-context/output/20260803-adr-008-review.md#prior-art--five-directions-owner-filip). Conformance checking is
+review-2026-08-03 (`empowered-house-context/output/20260803-adr-008-review.md`). Conformance checking is
 the one that could change the design: declared-versus-observed is an established academic field with
 algorithms and thirty years of literature, and this record does not engage it.

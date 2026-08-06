@@ -1,82 +1,29 @@
----
-type: Resource
-title: PNS runtime and platform architecture
-tags:
-  - decision
-  - architecture
-  - pns
-owner: operator
-status: proposed
-author: Emil
-accepted_by: Emil — pending
-coherence_reviewer: Michał — reviewed 2026-08-03, objections open
-reviewers: Michał, Kamil, Filip — reviewed 2026-08-03, objections open; Karol — pending
-last_updated: 2026-08-05
-source_of_truth: company-os
-load_policy: reference
-related:
-  - /decisions/README.md
-  - /decisions/004-empoweredhouse-leadership-accountability.md
-  - /decisions/005-adopt-empoweredhouse-strategy.md
-  - /decisions/006-end-rafal-slosarz-collaboration.md
-  - /decisions/007-filip-kozlowski-joins-pns-team.md
-  - /wiki/pns/charter.md
-  - /wiki/pns/modular-design.md
-  - /wiki/pns/event-driven-doctrine.md
-  - /strategy/thesis.md
-  - /output/design-rationale.md
-  - /output/technology-notes.md
-  - ~/Projects/ai/empowered-house-context/output/20260803-adr-008-review.md
-  - /wiki/sources/2026-08-03-adr-pns-review-isolation-edd-problem.md
-  - /output/20260804-pns-prototype-plan.md
----
+# PNS architecture — the starting assumptions
 
-> **Przeniesione z repozytorium kontekstu 6 sierpnia 2026, bez zmian w treści.**
->
-> To jest dokument projektowy i jego przegląd — szczegóły, kształty kodu, odrzucone alternatywy.
-> **Nie jest rekordem decyzji.** Rekord żyje w
-> `~/Projects/ai/empowered-house-context/decisions/009-pns-runtime-architecture.md` i jest jednostronicową
-> propozycją, która deleguje walidację tutaj. Decyzja wróci tam jako osobny rekord, kiedy będzie wynik.
->
-> Odwołania `§N` w kodzie i w `PLAN.md` wskazują na numerowane decyzje w
-> [009-pns-runtime-architecture.md](009-pns-runtime-architecture.md).
+**This is what the engine was built to be, stated before it was built.** It is the premise this repository
+validates, not a record awaiting anyone's acceptance: whether each assumption survives contact with code is
+the question, and the answer accumulates in [`PLAN.md`](../../PLAN.md).
 
-# PNS runtime and platform architecture
+Read it to understand why a mechanism exists at all. Eighteen numbered decisions in thirteen entries — some
+are pairs, `§5–6`, `§7–8`, `§9–10`, `§11–12`, `§16–17` — and `§N` is what a comment in `lib/pns/` points at
+instead of restating the reasoning. Those references are the reason the numbering is stable and must stay so.
 
-**Read this to decide whether the idea is right.** It states the problem, the approach, the thirteen
-decisions and what each one beat, what we are betting on, and what would prove us wrong. No code.
+**Where this and `PLAN.md` disagree, `PLAN.md` is newer.** This document is deliberately behind: it says what
+was assumed, and revising it every time code teaches something would destroy the only thing it is good for,
+which is being comparable with what actually happened. Assumptions that turned out wrong are corrected here
+and marked with the date, rather than quietly rewritten.
 
 | If your question is | Read |
 | --- | --- |
-| Is this idea right? Should we do it? | this record |
-| Why is it like this? What did each decision beat? | [design rationale](design-rationale.md) |
-| How is it built? What does it look like? | [technology notes](technology-notes.md) |
+| Why does the engine work this way? What was assumed? | this file |
+| What did each decision beat? Which alternatives were rejected? | [design rationale](design-rationale.md) |
+| What do the code shapes, schemas and traps look like? | [technology notes](technology-notes.md) |
+| How do I write a contract? | [contract reference](../contract.md) |
+| What is done, what is next, what came out of building it | [`PLAN.md`](../../PLAN.md) |
 
-## Decision authority
-
-Emil's record, written out of the design sessions of 31 July and 1 August 2026, passing through the ADR
-gate in [decision 004](~/Projects/ai/empowered-house-context/decisions/004-empoweredhouse-leadership-accountability.md).
-
-**Author and accepter are the same person, so the review is the only independent gate.** It is therefore
-not optional: no material implementation begins before all four reviewers have been through it and their
-objections are either answered here or recorded as accepted risk. Each seat is asked a different question
-and the answers are not interchangeable.
-
-| Reviewer | The question they are the right person to answer | State |
-| --- | --- | --- |
-| **Michał** | Does it cohere with the technology direction and Shugyo, and do the trade-offs hold? The accountable review from decision 004 | Reviewed 3 August; objections addressed below |
-| **Kamil** | Does the harness survive contact with engineering practice, or does it get worked around? | Reviewed 3 August |
-| **Filip** | Can one person carry a client project end to end on this? He is the one who will | Reviewed 3 August |
-| **Karol** | Is the evidence artifact what a buyer actually asks for, and does the open-source and commercial split hold in front of a client? | **Not yet — three questions for him are in [the review record](~/Projects/ai/empowered-house-context/output/20260803-adr-008-review.md)** |
-
-Authorship deviates from [decision 006](~/Projects/ai/empowered-house-context/decisions/006-end-rafal-slosarz-collaboration.md), which put the architecture
-recommendation with Michał. This direction is Emil's own initiative and he carries it; 006's line on
-authorship should be amended when this record is accepted rather than left contradicting practice.
-
-**Review state.** The 3 August review contested the direction on nothing. It asked for a problem statement,
-per-decision reasoning and less length — all three addressed — and raised one gap, that a generated module
-can reach data it was never granted, which is answered in [§5–6](#b-runtime) as a deferral with a trigger
-rather than a commitment. Nine open questions were then decided the same evening. Four remain, below.
+Two things this file deliberately does not carry, because they belong to whoever decides rather than to
+whoever builds: **who approved it and when**, and **the commercial scope**. Both live in the record in the
+context repository, which is where a decision is made. Here it is a premise.
 
 ## Problem
 
@@ -163,9 +110,9 @@ and the client sees where reality drifted.
 
 ## Decisions
 
-Thirteen, in five groups, to be proven on one bounded process before anything is generalised. Each states
-what it commits to and what it beat; the argument behind each is in
-[design rationale](design-rationale.md#why-each-decision).
+Eighteen, numbered `§1`–`§18` across thirteen entries in five groups, to be proven on one bounded process
+before anything is generalised. Each states what it commits to and what it beat; the argument behind each is
+in [design rationale](design-rationale.md#why-each-decision).
 
 ### A. Workshop to running software
 
@@ -259,7 +206,7 @@ filed, because nothing failed.
 as far up the ladder as it will go — compiler error, then CI check, then generator default, then skill.
 Whether something should be an event, or a module should split, is not enforced: those are workshop
 judgements, and a linter with opinions about them gets disabled within a month. Decomposition is therefore
-the first **skill**, built on [modular design](~/Projects/ai/empowered-house-context/wiki/pns/modular-design.md).
+the first **skill**, built on modular design (`empowered-house-context/wiki/pns/modular-design.md`).
 *Instead of:* a harness with opinions about modelling. A check that is sometimes wrong about a judgement
 call costs more than the judgement call.
 
@@ -429,7 +376,7 @@ Stated because each of these has been read into a version of this proposal at so
 | Cross-module confinement | Deferred on evidence, with a trigger |
 | Event shape change | Narrowed to the evidence report |
 
-**Tested in code on 4 August**, on one bounded TaxVision process — the review's own recommendation. Confirmed:
+**Tested in code on 4 August**, on one bounded TaxVision process. Confirmed:
 contract as an Elixir module, the failure semantics of the transaction-boundary split, three separable IAM
 levels without buying a provider, `contract_version` separating history from drift, and the Ecto hook that
 makes the §5–6 deferral safe. Corrected in the record as a result: where idempotency is declared (§9–10 was
@@ -445,7 +392,7 @@ Four questions are open, with the reasoning in
 [design rationale](design-rationale.md#the-open-questions-and-why-they-are-open):
 the positive argument for event-driven design to an outside audience; REST against GraphQL for the API;
 what the evidence report says about a period whose definitions changed; and the prior-art pass on verifying
-generated code against a specification. Karol's review is the outstanding procedural item.
+generated code against a specification.
 
 **Stage 1 of the prototype closed on 5 August** — run identity, the universality gate, five process shapes,
 untraversed paths, trace evaluation, two deployment identities, the report. It added a fifth open question and
@@ -549,12 +496,10 @@ what would falsify them, which is why this section exists.
   [notes §9](technology-notes.md#9-dashboard) does not exist yet.
   So this bullet stays, narrowed: the risk was that both mechanisms arrive last and neither lands. One landed.
 
-## Supersedes
+## What this replaced
 
-No decision record. This is the first architecture record to pass the decision-004 gate, and it lands
-inside the boundaries [decision 005](~/Projects/ai/empowered-house-context/decisions/005-adopt-empoweredhouse-strategy.md) and
-[decision 006](~/Projects/ai/empowered-house-context/decisions/006-end-rafal-slosarz-collaboration.md) already fixed rather than moving them.
-
-`wiki/pns/coherence-layer.md` and `wiki/pns/ears-requirements-format.md` remain `draft` and describe July
-hypotheses this record narrows — verification from inside the running system rather than from outside it as
-a black box. §18 is what took over the job EARS was doing.
+Two earlier hypotheses, both from July, both describing verification of a system **from outside** as a black
+box: a coherence layer, and requirements in the EARS format. This architecture verifies from **inside the
+running system** instead, and `§18` is what took over the job EARS was doing — a rule states itself by
+example, in the same event vocabulary the log records, so the specification and the assertion are one artifact
+rather than two that drift.
