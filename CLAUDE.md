@@ -15,8 +15,7 @@ przez `boundary` od pierwszego commita.
 | Co każda decyzja pobiła, odrzucone alternatywy | [`docs/adr/design-rationale.md`](docs/adr/design-rationale.md) |
 | Kształty kodu, schematy, pułapki, wybory bibliotek | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |
 | Przegląd zespołu z 3 sierpnia | `~/Projects/ai/empowered-house-context/output/20260803-adr-008-review.md` — **został w repo kontekstu**, bo mówi o luce mocy i ekonomii wdrożeń |
-| Propozycja sprzedażowa i warunki oceny, dwie strony | `~/Projects/ai/empowered-house-context/decisions/008-pns-runtime-architecture.md` |
-| Zakres produktu i uzasadnienie | `~/Projects/ai/empowered-house-context/output/20260804-pns-product-plan.md` |
+| Zakres produktu, warunki oceny, stan recenzji | `~/Projects/ai/empowered-house-context/decisions/008-pns-runtime-architecture.md` |
 
 **Pakiet projektowy przeniesiono tutaj 6 sierpnia** z repozytorium kontekstu, bez zmian w treści. Tam został
 dwustronicowy rekord: idea, zakres, warunki oceny, stan recenzji. Podział jest po przeznaczeniu — tam się

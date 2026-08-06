@@ -1,8 +1,8 @@
 # Plan pracy
 
-Zakres produktu, uzasadnienie i lista zmian w rekordzie żyją w
-`~/Projects/ai/empowered-house-context/output/20260804-pns-product-plan.md`. **Ten plik to lista roboty** i
-tylko tu jest aktualizowany stan.
+Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
+`~/Projects/ai/empowered-house-context/decisions/008-pns-runtime-architecture.md`. **Ten plik to lista roboty** i tylko tu jest
+aktualizowany stan.
 
 ## Stan na 6 sierpnia
 
