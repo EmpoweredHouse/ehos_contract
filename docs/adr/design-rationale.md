@@ -73,8 +73,8 @@ Code is open source. The workshop and the evidence are what we charge for.
 Two implementations are contracted; one running, one starting now. No spare capacity, and a runway that
 makes every month of platform work expensive.
 
-[Decision 005](../~/Projects/ai/empowered-house-context/decisions/005-adopt-empoweredhouse-strategy.md) fixed the product boundary as
-architecture-neutral. [Decision 006](../~/Projects/ai/empowered-house-context/decisions/006-end-rafal-slosarz-collaboration.md) vacated the
+[Decision 005](~/Projects/ai/empowered-house-context/decisions/005-adopt-empoweredhouse-strategy.md) fixed the product boundary as
+architecture-neutral. [Decision 006](~/Projects/ai/empowered-house-context/decisions/006-end-rafal-slosarz-collaboration.md) vacated the
 architecture seat and narrowed the direction to *model the domain, generate the code, watch it run*. This
 proposal sits inside those boundaries.
 
@@ -97,7 +97,7 @@ function call shows up in `mix xref`; an event edge does not show up anywhere. W
 derived model, event-driven design *reduces* comprehensibility rather than increasing it. That is what
 makes the registry load-bearing here rather than optional.
 
-The promise remains the one in [the charter](../~/Projects/ai/empowered-house-context/wiki/pns/charter.md):
+The promise remains the one in [the charter](~/Projects/ai/empowered-house-context/wiki/pns/charter.md):
 
 > Turn business-readable intent into governed software the company owns and can safely change,
 > independent of which tool, model, team, or stack produced the code.
@@ -112,8 +112,8 @@ be decisive, but it is not a reason the architecture fits, and it is never the e
 Nothing here replaces DDD. The two are not alternatives — they are a stack. DDD does the strategic work of
 deciding where the seams run and what the words are; event-driven design is the code shape we generate
 into; the contract is the only novel part. Long form, with each claim's provenance separated, in
-[modular design](../~/Projects/ai/empowered-house-context/wiki/pns/modular-design.md) and
-[event-driven doctrine](../~/Projects/ai/empowered-house-context/wiki/pns/event-driven-doctrine.md).
+[modular design](~/Projects/ai/empowered-house-context/wiki/pns/modular-design.md) and
+[event-driven doctrine](~/Projects/ai/empowered-house-context/wiki/pns/event-driven-doctrine.md).
 
 | Question | Answered by |
 | --- | --- |
@@ -172,7 +172,7 @@ is a sentence everyone nods at and nobody can check.
 carries no invariants, error paths, idempotency or types, so a generator invents them differently each run.
 
 *Risk:* this lengthens the workshop, and facilitation capacity is already a recorded gap
-([decision 007](../~/Projects/ai/empowered-house-context/decisions/007-filip-kozlowski-joins-pns-team.md)).
+([decision 007](~/Projects/ai/empowered-house-context/decisions/007-filip-kozlowski-joins-pns-team.md)).
 
 ### §2 — the contract is code, in the client's repository
 
@@ -229,7 +229,7 @@ where one copy is named as the source of truth and the other is a cache; without
 produces two masters, which is worse than the join it replaced.
 
 How to decide where the boundaries run — verbs over nouns, outcome versus entity, the four design
-questions — is [modular design and data ownership](../~/Projects/ai/empowered-house-context/wiki/pns/modular-design.md). That doctrine is
+questions — is [modular design and data ownership](~/Projects/ai/empowered-house-context/wiki/pns/modular-design.md). That doctrine is
 what a generated codebase gets wrong, and §14 deliberately does not enforce it, which is why it is a skill.
 
 **This says one *engine*, not one deployed thing.** Identity, the frontends and eventually the dashboard
@@ -372,7 +372,7 @@ wrong approach looks like, which of several valid options is preferred.
 **Decomposition is the first skill, and the refusal above is why it is needed.** Whether a module should
 split is a judgement a check cannot make, and until now that meant nobody made it — tolerable when a person
 is designing, not when a model is. The doctrine is
-[modular design](../~/Projects/ai/empowered-house-context/wiki/pns/modular-design.md); the skill built from it is what stops generated code
+[modular design](~/Projects/ai/empowered-house-context/wiki/pns/modular-design.md); the skill built from it is what stops generated code
 producing a `Job` context with a slug column, every time.
 
 ## D. What ships

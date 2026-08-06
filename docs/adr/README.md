@@ -40,8 +40,8 @@ behind the nine decisions taken that evening — what was weighed and rejected, 
 decisions.
 
 Doctrine that outgrew this bundle now lives in `wiki/pns/`:
-[modular design](../~/Projects/ai/empowered-house-context/wiki/pns/modular-design.md) and
-[event-driven doctrine](../~/Projects/ai/empowered-house-context/wiki/pns/event-driven-doctrine.md).
+[modular design](~/Projects/ai/empowered-house-context/wiki/pns/modular-design.md) and
+[event-driven doctrine](~/Projects/ai/empowered-house-context/wiki/pns/event-driven-doctrine.md).
 
 ## Inputs
 
