@@ -232,7 +232,7 @@ packages that install into any Phoenix application.** What gets deployed is seve
 
 | Application | What it is | v1 |
 | --- | --- | --- |
-| Identity | Users, authentication, SSO. **Bought, not written**, behind a protocol seam; vendor and topology open | separate |
+| Identity | Users, authentication, SSO. **Bought, not written**, behind a protocol seam; vendor and topology open | separate |<!-- 6 Aug: the diagram below said "WorkOS wrapped", contradicting "vendor open" one line above it and the seam as built. Corrected to what the seam commits to. -->
 | Engine | Contract, modules, event log. Headless, exposes an API generated from the contract | separate |
 | Dashboard | Declared against observed | **inside the engine** |
 | Frontends | Where the client's staff work. Possibly built by another party | separate, later |
@@ -240,7 +240,7 @@ packages that install into any Phoenix application.** What gets deployed is seve
 ```mermaid
 flowchart TB
     subgraph outside["Outside the engine"]
-        ID["Identity<br/>bought, WorkOS wrapped"]
+        ID["Identity<br/>bought, behind a protocol seam"]
         F1["Frontend"]
         F2["Another frontend<br/>possibly someone else's"]
     end

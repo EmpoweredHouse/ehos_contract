@@ -22,6 +22,12 @@ tę ideę sprawdzić, już padła, a zadaniem tego repozytorium jest ją zwalido
 należał — kto recenzował, kto zaakceptował, zakres komercyjny — **został w repo kontekstu** i tam ma zostać.
 Trzymany w dwóch miejscach zestarzeje się w jednym z nich.
 
+**Do `~/Projects/ai/empowered-house-context` nie piszemy. Nigdy.** Ani commita, ani gałęzi, ani poprawki w
+pliku. Wszystko, co potrzebne, jest tutaj — założenia w `docs/adr/`, stan w `PLAN.md`. Reguła jest z 6
+sierpnia i ma powód: pakiet projektowy żył w obu repozytoriach naraz, poprawki jechały na gałąź w tamtym,
+podczas gdy autorytatywne pliki były już tutaj, i **przez pół dnia istniały dwie kopie tej samej treści**.
+Czytać stamtąd wolno, jeśli o to poprosisz. Pisać — nie.
+
 Z tego wynika, gdzie co poprawiać:
 
 - **Szczegół implementacyjny** — `docs/adr/technology-notes.md`, na miejscu, jednym commitem.
