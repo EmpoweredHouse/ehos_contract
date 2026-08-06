@@ -7,11 +7,15 @@ aktualizowany stan.
 
 ## Stan na 6 sierpnia
 
-180 testów, `mix check` przechodzi. Ostrzeżenia są **cztery** i wszystkie celowe: `deadline` TaxVision bez
-potwierdzenia process ownera, `deadline` z wymyślonej fikstury bramy uniwersalności, oraz **krawędź wsteczna
-w stanowisku badawczym kształtów — kryterium odbioru 1.3 — oraz **dwa handlery synchroniczne na
-jednym zdarzeniu** — kryterium odbioru 2.4. Brak któregokolwiek byłby regresem.**
-Samo `mix pns.check` w środowisku dev pokazuje jedno — fikstury żyją w `test/support/`.
+196 testów, `mix check` przechodzi. Ostrzeżenia są **cztery i wszystkie celowe**:
+
+1. `deadline` TaxVision bez potwierdzenia process ownera,
+2. `deadline` z wymyślonej fikstury bramy uniwersalności,
+3. **krawędź wsteczna** w stanowisku badawczym kształtów — kryterium odbioru 1.3,
+4. **dwa handlery synchroniczne na jednym zdarzeniu** — kryterium odbioru 2.4.
+
+Brak trzeciego albo czwartego byłby regresem, nie poprawą. Samo `mix pns.check` w środowisku dev pokazuje
+jedno, bo fikstury żyją w `test/support/`.
 
 Działa: kontrakt jako moduł Elixira z bramami kompilacyjnymi, dispatch po granicy transakcji, log zdarzeń,
 `boundary`, szew tożsamości, nakładka declared vs observed z czterema stanami, **tożsamość instancji procesu
@@ -21,7 +25,8 @@ nieprzejechanych ścieżek per przebieg**, **`publishes:` wiąże handler w runt
 **obie tożsamości wdrożenia haszują się kanonicznie, z jednego źródła**, **awaria handlera synchronicznego
 zostawia ślad, a raport odróżnia „próbowane i nie udaje się" od „nigdy nie próbowano"**, **cykl w runtime
 jest zatrzymany na obu ścieżkach dispatchu**, **kolejność handlerów synchronicznych jest odtwarzalna, a job
-po znikniętym handlerze jest anulowany i zapisany**.
+po znikniętym handlerze jest anulowany i zapisany**, **payload jest walidowany przeciw zadeklarowanym typom,
+a `:timestamp` jest punktem w czasie po obu stronach kolejki**.
 
 **Nie działa, bo nie zostało zbudowane — i to jest produkt:**
 
@@ -29,7 +34,7 @@ po znikniętym handlerze jest anulowany i zapisany**.
 | --- | --- |
 | `deadline` procesu jest zadeklarowany i **nie czyta go nikt** — jedyni czytelnicy to filtr, który go wyrzuca, i renderer, który by go wypisał; `deadline_at` w `PNS.Trace` pochodzi z `within`, czyli z innej deklaracji | to jest produkt |
 | `cadence` jest **przenoszona**, ale nikt nie liczy z niej okna — mechanizm „never observed" z notatek §9 nadal nie istnieje | to jest produkt |
-| Typy payloadu nie są **castowane** — brama kompilacyjna pilnuje, że typ jest legalny, ale `PNS.Payload` nie sprawdza wartości | obietnica kontraktu |
+| Zbiór wartości `:enum` nie jest deklarowalny — typ sprawdza „czy to nazwa”, nie „czy jedna z tych” | drobne |
 
 ## Etap 1 — rdzeń weryfikacji
 
@@ -495,9 +500,54 @@ notatki §1 pokazywały w przykładzie DSL-a `:uuid` i `:decimal`, **których ni
 jest teraz generowana przez `mix pns.docs` z tego samego źródła, co brama — bo ręcznie pisana kopia zbioru
 zamkniętego jest pierwszym miejscem, w którym pojawia się szósty typ bez dokumentacji.
 
-**2.2b Walidacja payloadu przeciw zadeklarowanym typom**, plus generowane testy zgodności. Dziś `:id` znaczy
-„identyfikator" w dokumentacji i w bramie kompilacyjnej, ale **nie na poziomie castowania** — `PNS.Payload`
-zamienia klucze i nie patrzy na typy. Do tego należy decyzja klienta o `period_id`.
+**2.2b Walidacja payloadu przeciw zadeklarowanym typom. ✅ zrobione 6 sierpnia.** `PNS.Payload.validate!/4`,
+`test/payload_test.exs`. 196 testów.
+
+**Wyszło, że to nie jest jedna rzecz, a dwie — i pierwsza była fałszywą obietnicą w moduledoku.**
+`PNS.Payload` twierdził, że handler synchroniczny i asynchroniczny widzą **ten sam kształt**. Dla kluczy tak,
+dla **wartości nie**: `:timestamp` był `DateTime` w jednym i tekstem ISO 8601 w drugim. Dowód, że to bolało:
+kod klienta serializował ręcznie w miejscu emisji (`DateTime.utc_now() |> DateTime.to_iso8601()`) — pole
+zadeklarowane jako punkt w czasie **celowo trzymało tekst**, bo dwa kształty były gorsze niż jeden zdegradowany.
+`cast/2` odtwarza teraz wartości, obejście wypadło z `api.ex`, a deklaracja znaczy to, co mówi.
+
+Reguła zamiast listy: **cast naprawia dokładnie to, co niszczy JSON.** Liczby, tekst i identyfikatory
+przeżywają round trip; punkt w czasie nie. **Odtwarzanie to nie koercja** — `:integer` przychodzący jako `"5"`
+nie jest stratą, bo JSON liczby niesie, więc to wołający podaje nie to; koercja ukryłaby defekt, który
+walidacja ma ujawniać.
+
+**Kolejność była zła przy pierwszym podejściu i to jest najważniejsze znalezisko tego punktu.** Walidowałem
+**po** `retain`, z uzasadnieniem „sprawdzamy to, co faktycznie wyląduje w logu". Jest odwrotnie:
+
+- `:hash` zamienia cokolwiek w hex string, więc pole `:string` **nigdy nie mogło paść**, a `:integer` **nigdy
+  przejść** — czyli sprawdzenie przestawało obowiązywać dokładnie tam, gdzie pola niosą treść wrażliwą.
+- `:drop` **usuwa pole**, więc zadeklarowane pole byłoby trwale brakujące i każda taka emisja odrzucona.
+
+Drugie było **utajone: `:drop` nie było używane nigdzie**, więc nikt nie mógł na to wpaść. Doszła fikstura
+(`item_noted`, `retain: %{note: :drop}`), która jest dziś jedynym `:drop` w repo — bo pułapka nieosiągalna to
+nie to samo co nieistniejąca. Typ opisuje **fakt**, `retain` opisuje **co log z niego zachowuje**, a
+zrzucenie pola nie zwalnia wołającego z deklaracji.
+
+**Surowo na wejściu, defensywnie na wyjściu.** Nic nie waliduje przy czytaniu i to jest decyzja, nie
+przeoczenie: log trzyma zdarzenia zapisane pod kontraktami, które się od tego czasu zmieniły, a raport, który
+nie umie przeczytać historii, jest gorszy od takiego, który czyta ją luźno. ADR §7–8 nazywa to *read
+defensively*. Przypięte testem: wiersz z payloadem bez dzisiejszego pola daje się odczytać bez wyjątku.
+
+**Jedno sprawdzenie stało się nieosiągalne z emisji** — ten sam wzorzec, co „zdarzenie w dwóch procesach".
+`PNS.Instance` rzucał, gdy pola instancji zabrakło w payloadzie; brama kompilacyjna gwarantuje deklarację,
+walidacja gwarantuje obecność, a walidacja leci **przed** liczeniem klucza. Raise **zostaje**, bo funkcja jest
+publiczna i wołający bezpośrednio nie ma przed sobą niczego — **nieosiągalne z jednej ścieżki to nie martwe**,
+i to jest przypięte osobnym testem, nie komentarzem.
+
+**Trzy pola nie są odrzucane, choć mogłyby być:** nadmiarowy klucz nieopisany w kontrakcie **zostaje**. Jest
+odrzucany tam, gdzie to ma znaczenie — handler emitujący niezadeklarowane *zdarzenie* nie dojdzie tak daleko —
+a jeden zbędny klucz jest w logu **widoczny**, podczas gdy brakujący jest ciszą. Ten sam argument, który
+zrobił z checka retencji raport, a nie bramę.
+
+Zweryfikowane odwrotnie: po zneutralizowaniu walidacji pada **siedem z piętnastu** testów tego pliku.
+
+**Nie zrobione i nadal do Ciebie: `period_id` jako uuid.** To decyzja klienta, nie moja — i to ta droga
+połowa, bo klucz przebiegu przestaje być czytelny z samego logu (`accounting_month|<uuid>|<uuid>`), a
+„odtwarzalny z samego logu" było jawną własnością projektową. Dziś nadal `accounting_month|c-1|2026-07`.
 
 **2.3 Ślad po awarii handlera synchronicznego. ✅ zrobione 6 sierpnia.** `PNS.HandlerFailure`,
 `PNS.SyncHandlerError`, `test/handler_failure_test.exs`. 162 testy.

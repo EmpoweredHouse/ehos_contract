@@ -56,14 +56,26 @@ defmodule PNS.InstanceTest do
     end
 
     test "an event missing an instance field does not enter the log" do
-      # The compile gate makes sure the field is **declared**. That it was actually
-      # supplied is only guarded here — without which the event would land in the
-      # log with an empty key segment and merge with another company's run.
-      assert_raise ArgumentError, ~r/does not carry instance field :period/, fn ->
+      # Still refused, and since stage 2.2b **by a different check**. Payload validation
+      # runs before the run key is computed and rejects any declared field that is
+      # missing, so it reaches this case first. The consequence for the log is the one
+      # that matters and is unchanged: the event does not land with an empty key segment
+      # and merge with another company's run.
+      assert_raise ArgumentError, ~r/`period` is declared and missing/, fn ->
         PNS.emit(AccountingMonth, :registry_data_consistent, %{company_id: "c-1"})
       end
 
       assert events_of(:registry_data_consistent) == []
+    end
+
+    test "the run key still guards a direct caller, where nothing validated first" do
+      # `PNS.Instance.key/3` is public, so it can be reached without going through the
+      # emitter — and there its own check is the only thing standing between a missing
+      # field and a key with a hole in it. Unreachable from `emit` is not the same as
+      # dead, and the difference is worth a test rather than a comment.
+      assert_raise ArgumentError, ~r/does not carry instance field :period/, fn ->
+        PNS.Instance.key(AccountingMonth, :registry_data_consistent, %{company_id: "c-1"})
+      end
     end
   end
 

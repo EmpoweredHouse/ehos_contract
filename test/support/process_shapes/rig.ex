@@ -152,6 +152,20 @@ defmodule ProcessShapes.Rig do
     process: :pairing,
     stage: :intake
 
+  # For stage 2.2b: the only field anywhere on `retain: :drop`, and the reason it exists
+  # is that nothing used `:drop` at all — so the interaction between dropping a field
+  # and validating declared fields was a trap nobody could have tripped. Validation
+  # runs on the payload **as supplied**, before `retain`, which is why a dropped field
+  # is legal here rather than "a declared field that is missing".
+  event :item_noted,
+    label: "Item noted",
+    owner: ProcessShapes.Intake,
+    payload: %{case_id: :id, item_no: :integer, note: :string},
+    retain: %{note: :drop},
+    identity: [:case_id, :item_no],
+    process: :pairing,
+    stage: :intake
+
   # For stage 2.4: the one event with two synchronous handlers, so the check that
   # reports that shape has something to find. Nothing else in either contract has it,
   # and a check whose only evidence is its own silence is not tested.

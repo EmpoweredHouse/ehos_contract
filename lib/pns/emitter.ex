@@ -12,28 +12,143 @@ defmodule PNS.Payload do
   This is one of the things the contract gives for free: after a round trip
   through JSON (the queue, the database) keys come back as strings, but the
   contract knows which fields were declared — so a synchronous and an asynchronous
-  handler see **the same shape**. Without the contract that would have to be kept
-  in two places.
+  handler see **the same shape**.
+
+  **That promise used to be about keys only, and the client was paying for it.**
+  Values were passed through untouched, so a `:timestamp` was a `DateTime` in a
+  synchronous handler and an ISO 8601 string in an asynchronous one. Domain code
+  worked around it by serialising by hand at the emit site — a field declared as a
+  point in time holding text, because two shapes were worse than one degraded one.
+  `cast/2` now restores values as well, so the workaround is unnecessary.
+
+  Only `:timestamp` needs restoring, and that is the rule rather than a list: **cast
+  repairs exactly what JSON destroys.** Integers, strings and identifiers survive the
+  round trip; a point in time does not.
+
+  ## Strict on write, defensive on read
+
+  `validate!/2` runs on the way **in** and refuses a payload that does not match its
+  declaration. Nothing validates on the way out, and that is deliberate rather than an
+  omission: the log holds events written under older contracts, and a report that
+  cannot read history is worse than one that reads it loosely. ADR §7-8 says the
+  payload is *read defensively*, and this is what that means in code.
   """
 
-  @doc "The payload as it is stored: string keys, because the column is JSON."
+  @doc """
+  The payload as it is stored: string keys, because the column is JSON.
+
+  Values are left to the JSON encoder, which turns a `DateTime` into ISO 8601 — the
+  same text `cast/2` reads back. The round trip is lossy in one direction only, and
+  that is the direction `cast/2` repairs.
+  """
   @spec to_storage(map()) :: map()
   def to_storage(payload) do
     Map.new(payload, fn {k, v} -> {to_string(k), v} end)
   end
 
   @doc """
-  Restores the declared fields to atom keys, leaving anything undeclared as a
-  string so an unknown field cannot exhaust the atom table.
+  Restores the declared fields: atom keys, and values in the shape the type names.
+
+  An undeclared field keeps its string key and its value untouched, so an unknown
+  field can neither exhaust the atom table nor be silently reinterpreted.
   """
   @spec cast(map(), map()) :: map()
   def cast(event_def, payload) do
-    declared = Map.keys(event_def.payload)
+    declared = event_def.payload
 
     Map.new(payload, fn {key, value} ->
-      key_atom = Enum.find(declared, &(to_string(&1) == to_string(key)))
-      {key_atom || to_string(key), value}
+      case Enum.find(Map.keys(declared), &(to_string(&1) == to_string(key))) do
+        nil -> {to_string(key), value}
+        field -> {field, restore(Map.fetch!(declared, field), value)}
+      end
     end)
+  end
+
+  # Restoration is not coercion, and the difference matters. A `:timestamp` arrives as
+  # text because JSON has no other way to carry one, so reading it back is repairing a
+  # known loss. An `:integer` arriving as `"5"` is not a loss — JSON carries integers —
+  # so it is a caller passing the wrong thing, and coercing it would hide the defect
+  # that `validate!/2` exists to surface.
+  @spec restore(atom(), term()) :: term()
+  defp restore(:timestamp, value) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, at, _offset} -> at
+      _ -> value
+    end
+  end
+
+  defp restore(_type, value), do: value
+
+  @doc """
+  Raises unless every declared field is present and holds what its type names.
+
+  Three failures, and the first is the one that makes the others worth having:
+
+  **A declared field that is absent.** The contract says this fact carries a period and
+  it does not. Nothing caught that, and it is the exact shape of hole this product
+  exists to detect — a declaration nobody honoured, which reads as satisfied.
+
+  **A declared field holding `nil`.** There is no optional field in the payload DSL: a
+  field is declared or it is not. `nil` is the absent case wearing a key.
+
+  **A value of the wrong shape.** The contract says `:integer` and a string arrives.
+
+  Undeclared fields are **not** rejected. They are already refused where it matters —
+  a handler emitting an undeclared event does not get that far — and a payload carrying
+  one extra key is visible in the log rather than silent, which is the same argument
+  that made the retention check a report instead of a gate.
+  """
+  @spec validate!(module(), atom(), map(), map()) :: :ok
+  def validate!(contract, type, event_def, payload) do
+    for {field, declared_type} <- event_def.payload do
+      case Map.fetch(payload, field) do
+        :error ->
+          bail!(contract, type, field, "is declared and missing from the payload")
+
+        {:ok, nil} ->
+          bail!(
+            contract,
+            type,
+            field,
+            "is declared as #{inspect(declared_type)} and holds nil. A payload field is " <>
+              "declared or it is not — there is no optional one, so nil is the missing case " <>
+              "with a key on it"
+          )
+
+        {:ok, value} ->
+          holds?(declared_type, value) ||
+            bail!(
+              contract,
+              type,
+              field,
+              "is declared as #{inspect(declared_type)} and holds #{inspect(value)}"
+            )
+      end
+    end
+
+    :ok
+  end
+
+  # What each type accepts. `:id` takes an integer as well as text, because a client
+  # keying on a database sequence should not have to call it a string — what the
+  # identifier refers to is theirs, and so is its representation.
+  #
+  # `:enum` is the weak one and it is named as such in `docs/contract.md`: without a
+  # declared set, "one of a fixed set" can only be checked as "a name", so an atom or
+  # text. Declaring the set is a DSL change and belongs to whoever needs it.
+  @spec holds?(atom(), term()) :: boolean()
+  defp holds?(:id, value), do: (is_binary(value) and value != "") or is_integer(value)
+  defp holds?(:string, value), do: is_binary(value)
+  defp holds?(:integer, value), do: is_integer(value)
+  defp holds?(:timestamp, value), do: match?(%DateTime{}, value)
+  defp holds?(:enum, value), do: is_atom(value) or is_binary(value)
+
+  @spec bail!(module(), atom(), atom(), String.t()) :: no_return()
+  defp bail!(contract, type, field, what) do
+    raise ArgumentError,
+          "#{inspect(contract)}, event #{inspect(type)}: `#{field}` #{what}. The contract " <>
+            "declares what a fact carries, and a declaration nothing enforces is a promise " <>
+            "the report will repeat as though it were measured."
   end
 end
 
@@ -147,24 +262,37 @@ defmodule PNS.Emitter do
     event_def = contract.event(type)
     correlation_id = ctx[:correlation_id] || Ecto.UUID.generate()
 
-    # The `retain` policy is applied **once**, before anything else, and what
-    # comes out of it is the only version of this payload in the system: it goes
-    # to the log, to the synchronous handlers, and into the job's arguments.
+    # Three steps in this order, and the order was wrong on the first attempt.
     #
-    # It was tempting to give handlers the full value and the log a hash — but
-    # then an asynchronous handler receives the full value through `oban_jobs`,
-    # that is, through a table `retain` does not cover. A retention policy the
-    # queue can walk around is worse than none, because it looks satisfied.
+    # **Cast first**, so keys are atoms and a `:timestamp` is a point in time whichever
+    # way the caller expressed it. Doing this before `retain` also means the policy
+    # finds its fields when a caller passed string keys.
     #
-    # The consequence is explicit and belongs to the contract rather than to the
-    # code: if a handler needs the raw value, that field cannot be `:hash`.
-    stored = apply_retain(payload, event_def)
-    cast_payload = Payload.cast(event_def, stored)
+    # **Validate second, on the payload as supplied.** Validating after `retain` looked
+    # right — it checks what actually gets stored — and it is backwards. `retain`
+    # transforms the value: `:hash` turns anything into a hex string, so a `:string`
+    # field could never fail and an `:integer` field could never pass, and the check
+    # would stop applying to exactly the fields that carry sensitive content. `:drop`
+    # is worse: the field disappears, so a declared field would be permanently missing
+    # and every such event would be refused. A declared type describes the fact; what
+    # the log keeps of it is a storage policy applied afterwards.
+    #
+    # **Retain third, once**, and what comes out is the only version of this payload in
+    # the system: the log, the synchronous handlers and the job's arguments all get it.
+    # Giving handlers the full value and the log a hash was tempting, but then an
+    # asynchronous handler receives the full value through `oban_jobs` — a table
+    # `retain` does not cover — and a retention policy the queue can walk around is
+    # worse than none, because it looks satisfied. The consequence belongs to the
+    # contract rather than to the code: a handler that needs the raw value cannot have
+    # that field on `:hash`.
+    supplied = Payload.cast(event_def, payload)
+    Payload.validate!(contract, type, event_def, supplied)
+    stored = apply_retain(supplied, event_def)
 
     # Computed from the payload **after** `retain`, so the run key is
     # reproducible from the log alone — rather than from the log plus knowledge
     # of what fell away on the way.
-    {process, instance_id} = PNS.Instance.key(contract, type, cast_payload)
+    {process, instance_id} = PNS.Instance.key(contract, type, stored)
 
     event =
       repo.insert!(%Event{
@@ -193,8 +321,8 @@ defmodule PNS.Emitter do
       chain: chain(ctx) ++ [to_string(type)]
     }
 
-    dispatch_sync(repo, contract, type, cast_payload, child_ctx, event)
-    dispatch_async(type, cast_payload, child_ctx, event)
+    dispatch_sync(repo, contract, type, stored, child_ctx, event)
+    dispatch_async(type, stored, child_ctx, event)
 
     event
   end

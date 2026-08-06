@@ -166,13 +166,31 @@ business, and the set is closed so it stays that way.** A type that names a thin
 accountant recognises is this library knowing one client's domain — and that is not a
 matter of taste, it is what makes the library a library.
 
-| Type | Means | Note |
+| Type | Means | Accepts |
 | --- | --- | --- |
-| `:id` | An identifier of something. | What it identifies is the client application's business, not ours. A period, an invoice, a patient — all `:id` here |
-| `:string` | **Text a human typed.** | The only type the retention check reacts to: a `:string` field with no `retain` policy reaches the log verbatim |
-| `:integer` | A whole number: a count, an amount. | |
-| `:timestamp` | A point in time. | |
-| `:enum` | One of a fixed set. | The set itself is not declared — a known gap, listed under *Known decoration* |
+| `:id` | An identifier of something. What it identifies is the client application's business, not ours — a period, an invoice, a patient are all `:id` here | Non-empty text, or an integer. A client keying on a database sequence should not have to call it a string |
+| `:string` | **Text a human typed.** The only type the retention check reacts to: a `:string` field with no `retain` policy reaches the log verbatim | Text |
+| `:integer` | A whole number: a count, an amount | An integer. `"5"` is refused rather than coerced — JSON carries integers, so text here is a caller passing the wrong thing |
+| `:timestamp` | A point in time | A `DateTime`, or ISO 8601 text — which is normalised to a `DateTime` before any handler sees it |
+| `:enum` | One of a fixed set | An atom or text. The set itself is not declared, which is a known gap listed under *Known decoration* |
+
+**These are enforced at emit time, not only described.** A declared field that is
+missing, holds `nil`, or holds the wrong shape refuses the emission and nothing reaches
+the log. An undeclared *extra* field is kept rather than refused: one spare key is
+visible in the log, while a missing one is silence.
+
+Two rules about when, both of which were wrong on the first attempt:
+
+**Validation runs on the payload as supplied, before `retain`.** `retain` is a storage
+policy applied afterwards, and it transforms the value — `:hash` turns anything into a
+hex string, so a `:string` field could never fail and an `:integer` field could never
+pass, and `:drop` removes the field, so a declared field would be permanently missing.
+A type describes the fact; `retain` describes what the log keeps of it. Dropping a field
+does not excuse the caller from declaring it correctly.
+
+**Nothing validates on the way out.** The log holds events written under contracts that
+have since changed, and a report that cannot read history is worse than one that reads
+it loosely. Strict on write, defensive on read.
 
 There is no `:period`, and it was here for two days. It looked like a general type and
 named an accounting month, which is exactly the failure this table exists to prevent.
@@ -281,6 +299,11 @@ reference that hides its gaps is worse than one that admits them.
 | `external`'s `expected_latency` | declared; nothing measures latency |
 | `external`'s `unavailable_looks_like` | declared; becomes real with the fourth assertion verdict, `:suspended` |
 | `depends_on` at runtime | the compile gate works; the conformance answer does not exist |
+| `:enum`'s set | the type is enforced as "a name"; which names are legal is not declarable |
+
+One row left this table on 6 August: payload types were decoration and are now enforced
+at emit time. What survives of that gap is the row above — `:enum` can be checked as a
+name and not as a member of a set, because the set has nowhere to be written down.
 
 ## Two things the contract deliberately does not carry
 

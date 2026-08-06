@@ -25,7 +25,7 @@ defmodule Taxvision.RegistryCheck do
     %{company_id: company_id, period: period} = input
 
     base = %{company_id: company_id, period: period}
-    checked_at = input[:checked_at] || "1970-01-01T00:00:00Z"
+    checked_at = input[:checked_at] || ~U[1970-01-01 00:00:00Z]
 
     cond do
       not input.completeness_confirmed ->

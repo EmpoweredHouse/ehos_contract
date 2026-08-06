@@ -43,10 +43,15 @@ defmodule PNS.Instance do
             value |> to_string() |> String.replace(@separator, @escaped)
 
           :error ->
-            # The compile gate guarantees the field is **declared** in the
-            # payload. That it was actually supplied is only guaranteed by this
-            # check — and without it the event would land in the log with an
-            # empty key segment and quietly merge with another company's run.
+            # **Unreachable from `PNS.Emitter` since stage 2.2b, and kept anyway.**
+            # Payload validation runs before this and refuses any declared field that
+            # is missing, so the emit path can no longer arrive here — the compile gate
+            # guarantees the field is declared, validation guarantees it is supplied.
+            #
+            # It stays because this function is public and a direct caller has nothing
+            # in front of it, and because the failure it prevents is the quiet kind: an
+            # event landing with an empty key segment, merging with another company's
+            # run. Unreachable from one path is not dead.
             raise ArgumentError,
                   "event #{inspect(event_name)} does not carry instance field #{inspect(field)}, " <>
                     "and process #{inspect(process.name)} declares " <>

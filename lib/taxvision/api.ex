@@ -81,7 +81,12 @@ defmodule Taxvision.Api do
       # struct: "whose company is this" is a TaxVision question, not a PNS one.
       actor_company: actor.claims["company_id"],
       completeness_confirmed: true,
-      checked_at: DateTime.utc_now() |> DateTime.to_iso8601(),
+      # A `DateTime`, not text. It used to be serialised here by hand, because the
+      # engine passed payload values through untouched and a point in time came back
+      # from the queue as a string — so the field was declared `:timestamp` and held
+      # text to keep both handlers seeing one shape. `PNS.Payload` restores it now, so
+      # the workaround is gone and the declaration means what it says.
+      checked_at: DateTime.utc_now(),
       abilia: %{legal_form: "JDG", vat_status: "czynny"},
       registries: registries
     }
