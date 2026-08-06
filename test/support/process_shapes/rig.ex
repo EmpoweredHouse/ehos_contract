@@ -113,6 +113,45 @@ defmodule ProcessShapes.Rig do
     process: :pairing,
     stage: :resolution
 
+  # For stage 2.4: two pairs that cause each other. All four sit in `intake` and
+  # publish within `intake`, so none of them is a backward edge and the count of
+  # those stays at one, which is the acceptance criterion of 1.3.
+  #
+  # Two pairs rather than one because a cycle caught on the synchronous path only
+  # moves to the queue. The first pair closes inside one transaction, the second
+  # closes across a job.
+  event :item_disputed,
+    label: "Item disputed",
+    owner: ProcessShapes.Intake,
+    payload: %{case_id: :id, item_no: :integer},
+    identity: [:case_id, :item_no],
+    process: :pairing,
+    stage: :intake
+
+  event :item_rechecked,
+    label: "Item rechecked",
+    owner: ProcessShapes.Intake,
+    payload: %{case_id: :id, item_no: :integer},
+    identity: [:case_id, :item_no],
+    process: :pairing,
+    stage: :intake
+
+  event :item_appealed,
+    label: "Item appealed",
+    owner: ProcessShapes.Intake,
+    payload: %{case_id: :id, item_no: :integer},
+    identity: [:case_id, :item_no],
+    process: :pairing,
+    stage: :intake
+
+  event :item_reopened,
+    label: "Item reopened",
+    owner: ProcessShapes.Intake,
+    payload: %{case_id: :id, item_no: :integer},
+    identity: [:case_id, :item_no],
+    process: :pairing,
+    stage: :intake
+
   # For stage 2.3. In `intake` rather than `resolution` deliberately: its handler
   # publishes into `matching`, and from `resolution` that would be a second backward
   # edge — which would quietly break the acceptance criterion of 1.3 by making the
@@ -269,6 +308,76 @@ defmodule ProcessShapes.Matching.OnItemPaired do
     else
       :ok
     end
+  end
+end
+
+defmodule ProcessShapes.Intake.OnItemDisputed do
+  @moduledoc """
+  Half of a cycle that closes **inside one transaction**, for stage 2.4.
+
+  It publishes `item_rechecked`, whose handler publishes `item_disputed` straight
+  back. Without a guard the recursion runs until the stack or the connection gives
+  out, and both of those failures arrive as something other than "your contract has a
+  loop".
+  """
+
+  use PNS.Handler,
+    contract: ProcessShapes.Rig,
+    event: :item_disputed,
+    publishes: [:item_rechecked]
+
+  @impl PNS.Handler
+  def handle(%{case_id: case_id, item_no: item_no}, _ctx) do
+    {:ok, [PNS.event(:item_rechecked, %{case_id: case_id, item_no: item_no})]}
+  end
+end
+
+defmodule ProcessShapes.Intake.OnItemRechecked do
+  @moduledoc "The other half: publishes back what caused it."
+
+  use PNS.Handler,
+    contract: ProcessShapes.Rig,
+    event: :item_rechecked,
+    publishes: [:item_disputed]
+
+  @impl PNS.Handler
+  def handle(%{case_id: case_id, item_no: item_no}, _ctx) do
+    {:ok, [PNS.event(:item_disputed, %{case_id: case_id, item_no: item_no})]}
+  end
+end
+
+defmodule ProcessShapes.Intake.OnItemAppealed do
+  @moduledoc """
+  Half of a cycle that closes **across the queue**, for stage 2.4.
+
+  A loop through jobs does not exhaust a stack — it runs forever, more slowly, and
+  each hop looks like ordinary work. So the guard has to travel with the job, and
+  this pair is what proves it does rather than a comment saying it should.
+  """
+
+  use PNS.Handler,
+    contract: ProcessShapes.Rig,
+    event: :item_appealed,
+    publishes: [:item_reopened]
+
+  @impl PNS.Handler
+  def handle(%{case_id: case_id, item_no: item_no}, _ctx) do
+    {:ok, [PNS.event(:item_reopened, %{case_id: case_id, item_no: item_no})]}
+  end
+end
+
+defmodule ProcessShapes.Intake.OnItemReopened do
+  @moduledoc "The other half, and it runs through the queue."
+
+  use PNS.Handler,
+    contract: ProcessShapes.Rig,
+    event: :item_reopened,
+    publishes: [:item_appealed],
+    async: true
+
+  @impl PNS.Handler
+  def handle(%{case_id: case_id, item_no: item_no}, _ctx) do
+    {:ok, [PNS.event(:item_appealed, %{case_id: case_id, item_no: item_no})]}
   end
 end
 

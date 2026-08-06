@@ -7,7 +7,7 @@ aktualizowany stan.
 
 ## Stan na 6 sierpnia
 
-166 testów, `mix check` przechodzi. Ostrzeżenia są **trzy** i wszystkie celowe: `deadline` TaxVision bez
+173 testy, `mix check` przechodzi. Ostrzeżenia są **trzy** i wszystkie celowe: `deadline` TaxVision bez
 potwierdzenia process ownera, `deadline` z wymyślonej fikstury bramy uniwersalności, oraz **krawędź wsteczna
 w stanowisku badawczym kształtów — która jest kryterium odbioru 1.3, więc jej brak byłby regresem.**
 Samo `mix pns.check` w środowisku dev pokazuje jedno — fikstury żyją w `test/support/`.
@@ -18,7 +18,8 @@ i liczniki w dwóch wymiarach (wystąpienia i przebiegi)**, **drugi kontrakt z o
 nowego słowa w DSL**, **ocena assercji `trace` per przebieg — trzy werdykty z czterech**, **raport
 nieprzejechanych ścieżek per przebieg**, **`publishes:` wiąże handler w runtime, nie tylko opisuje**,
 **obie tożsamości wdrożenia haszują się kanonicznie, z jednego źródła**, **awaria handlera synchronicznego
-zostawia ślad, a raport odróżnia „próbowane i nie udaje się" od „nigdy nie próbowano"**.
+zostawia ślad, a raport odróżnia „próbowane i nie udaje się" od „nigdy nie próbowano"**, **cykl w runtime
+jest zatrzymany, na obu ścieżkach dispatchu**.
 
 **Nie działa, bo nie zostało zbudowane — i to jest produkt:**
 
@@ -554,8 +555,45 @@ Fikstura `OnItemFlagged` jest w `intake`, **nie w `resolution`**, choć tam był
 Zweryfikowane odwrotnie: po wyłączeniu zapisu padają **trzy z dwudziestu trzech** testów w tych dwóch
 plikach — dokładnie te, które o śladzie cokolwiek twierdzą.
 
-**2.4 Cztery rzeczy odpornościowe.** Ochrona przed cyklem w runtime; zdefiniowana albo zabroniona kolejność
-dwóch handlerów synchronicznych na jednym zdarzeniu; łagodne odrzucenie joba po znikniętym handlerze.
+**2.4 Cztery rzeczy odpornościowe.** Zdefiniowana albo zabroniona kolejność dwóch handlerów synchronicznych
+na jednym zdarzeniu; łagodne odrzucenie joba po znikniętym handlerze.
+
+**Ochrona przed cyklem — ✅ zrobione 6 sierpnia.** `test/cycle_test.exs`, 173 testy.
+
+**Reguła jest węższa, niż się wydaje, i trzy tańsze były błędne.** Cyklem jest **to samo zdarzenie dwa razy
+na jednej ścieżce** od emisji korzeniowej — nic więcej.
+
+- **Limit głębokości** wymaga liczby, której nikt nie uzasadni, a ta liczba decyduje, czy prawdziwy kontrakt
+  działa. Zadeklarowany graf daje ograniczenie darmo: ścieżka bez powtórzenia nie może być dłuższa niż liczba
+  zdarzeń.
+- **„To samo zdarzenie już było w tej transakcji"** daje fałszywy alarm na rombie: komenda emituje A, handlery
+  A emitują B i C, oba publikują D. Dwa D, żadnego cyklu, bo żadne nie jest przodkiem drugiego. **Przypięte
+  testem** — dwie pozycje w jednej komendzie dają dwa `item_paired` i dwa `case_closed`.
+- **Statyczne sprawdzenie na grafie nie umie tego zrobić**, bo **krawędź wsteczna nie jest cyklem**. Rig ma
+  jedną celowo i jest ona kryterium odbioru 1.3, więc zakaz krawędzi wstecznych zakazałby kształtu, który
+  opisał warsztat.
+
+**Łańcuch jedzie przez kolejkę i to nie jest kompletność na wyrost.** Pętla przez joby nie wyczerpuje stosu —
+leci wiecznie, wolniej, a każdy skok wygląda jak zwykła praca, co czyni ją groźniejszą z dwóch. Złapanie
+cyklu tylko na ścieżce synchronicznej przenosi awarię, nie usuwa jej. Łańcuch jest listą **stringów**, nie
+atomów, bo przechodzi do argumentów joba jako JSON, a konwersja z powrotem kazałaby tabeli atomów ręczyć za
+nazwę, która mogła zostać usunięta od czasu zakolejkowania.
+
+**Mój komunikat błędu radził coś nieprawdziwego** i złapał to test asynchroniczny: pierwsza wersja
+proponowała „zrób handler asynchronicznym, żeby powtórzenie stało się nowym przebiegiem". Nie pomaga —
+łańcuch jedzie z jobem, więc pętla tylko zwalnia. Komunikat mówi teraz o tym wprost.
+
+**Wyszło przy okazji, i było prawdziwym defektem 2.3:** wiersz obsługi w jobie zapisywał `"ok"`, a emisja
+padała **pod nim**. Handlowanie i emitowanie siedzą teraz w jednej klauzuli `try`, bo wszystko, co może paść
+przy działaniu na wyniku handlera — niezadeklarowana emisja, cykl, cofnięta transakcja — należy po tej samej
+stronie zapisu.
+
+**Drugi defekt, ta sama klasa co przy 1.2:** `graph_test` porównywał **globalną** listę krawędzi
+asynchronicznych z oczekiwaniem jednego kontraktu, dwie linie pod komentarzem o ukrytym założeniu „jest tylko
+jeden". Pękł, kiedy fikstura w innym kontrakcie zadeklarowała pierwszy handler asynchroniczny. Zawężone.
+
+Zweryfikowane odwrotnie: po wyłączeniu bramy pada **cztery z siedmiu** testów, a suite trwa **32 sekundy
+zamiast 0,1** — czyli widać dokładnie ten tryb awarii, o który tu chodzi.
 
 **Kanoniczny hash — ✅ zrobione 6 sierpnia, wyciągnięte przed 2.2.** `PNS.Digest`, `test/digest_test.exs`.
 Powód wyciągnięcia: 1.6 i 1.7 właśnie oparły klasyfikację historii na `contract_version`, więc luka

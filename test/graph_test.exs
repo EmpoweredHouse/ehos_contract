@@ -27,8 +27,15 @@ defmodule PNS.GraphTest do
     assert MapSet.member?(edges, {:monthly_tasks_generated, :accounting_month_opened})
     assert MapSet.member?(edges, {:registry_discrepancy_detected, :discrepancy_notification_sent})
 
-    async = Enum.filter(graph.edges, & &1.async)
-    assert Enum.map(async, & &1.from) == [:registry_discrepancy_detected]
+    # Narrowed the same way the node count above is, and for the same reason. This
+    # line used to compare a **global** list of asynchronous edges against one
+    # contract's expectation, so it broke the moment a fixture in another contract
+    # declared an asynchronous handler — the hidden "there is only one" again, two
+    # lines below a comment about it.
+    ours = Enum.map(AccountingMonth.events(), & &1.name)
+    async = for e <- graph.edges, e.async, e.from in ours, do: e.from
+
+    assert async == [:registry_discrepancy_detected]
   end
 
   test "before any run everything is dead and nothing is drift" do

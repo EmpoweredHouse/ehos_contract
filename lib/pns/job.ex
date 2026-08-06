@@ -33,6 +33,11 @@ defmodule PNS.Job do
       # cross.
       correlation_id: args["correlation_id"],
       causation_id: args["causation_id"],
+      # Rebuilt on this side so the cycle guard sees the whole path rather than
+      # starting over at every queue hop. Jobs written before this field existed have
+      # no chain, and an empty one is the honest answer: their path is unknown, not
+      # empty. The cost is that a cycle already in the queue is caught one hop later.
+      chain: args["chain"] || [],
       actor: args["actor"],
       attempt: attempt,
       idempotency_key: idempotency_key(event_def, args, payload)
@@ -40,27 +45,22 @@ defmodule PNS.Job do
 
     started = System.monotonic_time(:microsecond)
 
-    {status, error, emissions} =
+    # Handling and emitting sit in **one** `try`, and that was a correction rather
+    # than a preference. They used to be separated by the handling row, so a failure
+    # while emitting arrived after the row had already recorded `ok` — the row
+    # claiming a success whose consequence never happened. Anything that can fail
+    # while acting on the handler's result belongs on the same side of the record:
+    # an undeclared emission, a cycle, a rolled-back transaction.
+    {status, error} =
       try do
         case handler.handle(payload, ctx) do
-          :ok ->
-            {"ok", nil, []}
-
-          {:ok, list} when is_list(list) ->
-            # Inside the `try`, so an undeclared emission lands where every other
-            # handler failure lands — recorded against the event with its message —
-            # instead of crashing after the handling row has already claimed success.
-            PNS.Handler.verify_publications!(meta, list)
-            {"ok", nil, list}
-
-          {:ok, _} ->
-            {"ok", nil, []}
-
-          {:error, reason} ->
-            {"error", inspect(reason), []}
+          :ok -> {"ok", nil}
+          {:ok, list} when is_list(list) -> emit(meta, list, ctx)
+          {:ok, _} -> {"ok", nil}
+          {:error, reason} -> {"error", inspect(reason)}
         end
       rescue
-        e -> {"error", Exception.message(e), []}
+        e -> {"error", Exception.message(e)}
       end
 
     repo().insert!(%EventHandling{
@@ -73,12 +73,14 @@ defmodule PNS.Job do
       inserted_at: DateTime.utc_now()
     })
 
-    if status == "ok" do
-      PNS.Emitter.emit_all(meta.contract, emissions, ctx)
-      :ok
-    else
-      {:error, error}
-    end
+    if status == "ok", do: :ok, else: {:error, error}
+  end
+
+  @spec emit(map(), [PNS.Emission.t()], map()) :: {String.t(), String.t() | nil}
+  defp emit(meta, emissions, ctx) do
+    PNS.Handler.verify_publications!(meta, emissions)
+    {:ok, _events} = PNS.Emitter.emit_all(meta.contract, emissions, ctx)
+    {"ok", nil}
   end
 
   # The idempotency key comes from the `identity:` of **the event in the

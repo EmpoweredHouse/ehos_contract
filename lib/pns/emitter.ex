@@ -142,6 +142,8 @@ defmodule PNS.Emitter do
               "heuristic depends on it."
     end
 
+    guard_against_cycle!(type, ctx)
+
     event_def = contract.event(type)
     correlation_id = ctx[:correlation_id] || Ecto.UUID.generate()
 
@@ -183,13 +185,65 @@ defmodule PNS.Emitter do
     child_ctx = %{
       correlation_id: correlation_id,
       causation_id: event.id,
-      actor: ctx[:actor]
+      actor: ctx[:actor],
+      # The ancestors of whatever comes next, root first. Strings rather than atoms
+      # on purpose: this list crosses into job arguments as JSON, and converting
+      # back would ask the atom table to vouch for a name that may have been
+      # removed since the job was queued.
+      chain: chain(ctx) ++ [to_string(type)]
     }
 
     dispatch_sync(repo, contract, type, cast_payload, child_ctx, event)
     dispatch_async(type, cast_payload, child_ctx, event)
 
     event
+  end
+
+  @doc """
+  The causal ancestors of an event, root first, as they travel in a context.
+
+  Public because `PNS.Job` has to put the chain back together on the other side of
+  the queue, and a cycle that is only caught on one of the two dispatch paths is a
+  cycle that moves to the other one.
+  """
+  @spec chain(map()) :: [String.t()]
+  def chain(ctx), do: Map.get(ctx, :chain) || []
+
+  # A cycle is the same event type appearing twice **on one path** from the root
+  # emission, and nothing else. Three cheaper rules were wrong:
+  #
+  # A depth limit needs a number nobody can justify, and the number is what decides
+  # whether a legitimate long chain works. The declared graph gives the bound for
+  # free — a path without a repeat cannot be longer than the number of declared
+  # events.
+  #
+  # "The same type twice anywhere in this transaction" false-positives on a diamond:
+  # one command emits A, A's handlers emit B and C, and both publish D. Two D's, no
+  # cycle, because neither is an ancestor of the other.
+  #
+  # And a static check on the declared graph cannot do it, because a backward edge is
+  # **not** a cycle. The rig has one on purpose — it is the acceptance criterion of
+  # stage 1.3 — so forbidding backward edges would forbid a shape the workshop
+  # described: a turnover with no invoice, then the invoice arrives and the pair
+  # closes.
+  @spec guard_against_cycle!(atom(), map()) :: :ok
+  defp guard_against_cycle!(type, ctx) do
+    ancestors = chain(ctx)
+
+    if to_string(type) in ancestors do
+      path = Enum.join(ancestors ++ [to_string(type)], " → ")
+
+      raise ArgumentError,
+            "emitting #{inspect(type)} would close a cycle: #{path}. One event caused another " <>
+              "that caused it again, so without this the chain runs until the stack or the " <>
+              "connection gives out. A backward edge is legal and this is not one — it is the " <>
+              "same fact causing itself. Break the loop in the contract: the second occurrence " <>
+              "is a different business fact and needs its own event, or the handler should stop " <>
+              "publishing what caused it. Making a handler asynchronous does **not** help — the " <>
+              "chain travels with the job, so the loop only gets slower."
+    end
+
+    :ok
   end
 
   @spec dispatch_sync(module(), module(), atom(), map(), map(), Event.t()) :: :ok
@@ -290,6 +344,10 @@ defmodule PNS.Emitter do
         "payload" => Payload.to_storage(payload),
         "correlation_id" => ctx.correlation_id,
         "causation_id" => ctx.causation_id,
+        # The chain crosses the queue with correlation and causation, for the same
+        # reason they do: a cycle through the queue does not blow the stack, it just
+        # runs forever more slowly. Catching it on one path only moves the failure.
+        "chain" => ctx.chain,
         "actor" => ctx[:actor] && to_string(ctx[:actor])
       }
       |> PNS.Job.new()
