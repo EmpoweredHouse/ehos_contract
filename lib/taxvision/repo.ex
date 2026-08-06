@@ -3,7 +3,7 @@ defmodule Taxvision.Repo do
   One Postgres, one transaction (ADR §5-6).
 
   This is also where the skeleton of the **deferred** data-ownership check lives.
-  Decision 008 defers enforcing boundaries from CI to run time, and the review set
+  Decision 009 defers enforcing boundaries from CI to run time, and the review set
   a condition: the deferral is only safe if the check can be added later.
 
   Checked on 4 August against Ecto 3.14.1: it can. `prepare_query/3` receives the

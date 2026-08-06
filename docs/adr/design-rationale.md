@@ -5,7 +5,7 @@ last_updated: 2026-08-03
 source_of_truth: design sessions 2026-07-31 / 2026-08-01, team review 2026-08-03
 load_policy: reference
 related:
-  - /decisions/008-pns-runtime-architecture.md
+  - /decisions/009-pns-runtime-architecture.md
   - /output/technology-notes.md
   - /wiki/pns/modular-design.md
   - /wiki/pns/event-driven-doctrine.md
@@ -16,15 +16,15 @@ related:
 >
 > To jest dokument projektowy i jego przegląd — szczegóły, kształty kodu, odrzucone alternatywy.
 > **Nie jest rekordem decyzji.** Rekord żyje w
-> `~/Projects/ai/empowered-house-context/decisions/008-pns-runtime-architecture.md` i jest jednostronicową
+> `~/Projects/ai/empowered-house-context/decisions/009-pns-runtime-architecture.md` i jest jednostronicową
 > propozycją, która deleguje walidację tutaj. Decyzja wróci tam jako osobny rekord, kiedy będzie wynik.
 >
 > Odwołania `§N` w kodzie i w `PLAN.md` wskazują na numerowane decyzje w
-> [008-pns-runtime-architecture.md](008-pns-runtime-architecture.md).
+> [009-pns-runtime-architecture.md](009-pns-runtime-architecture.md).
 
 # Design rationale
 
-Why [decision 008](../008-pns-runtime-architecture.md) is the way it is. The record states
+Why [decision 009](../009-pns-runtime-architecture.md) is the way it is. The record states
 each decision and what it beat in one line; this document carries the argument behind it, decision by
 decision, plus the vocabulary, the alternatives in full, and the reasoning behind the open questions.
 

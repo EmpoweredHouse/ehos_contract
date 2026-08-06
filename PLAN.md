@@ -1,7 +1,7 @@
 # Plan pracy
 
 Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
-`~/Projects/ai/empowered-house-context/decisions/008-pns-runtime-architecture.md`. **Ten plik to lista roboty** i tylko tu jest
+`~/Projects/ai/empowered-house-context/decisions/009-pns-runtime-architecture.md`. **Ten plik to lista roboty** i tylko tu jest
 aktualizowany stan.
 
 ## Stan na 6 sierpnia
@@ -631,7 +631,7 @@ Jedno otwarte pytanie **zwężone, nie zamknięte**: „what the evidence report
 definitions changed" — okres jest teraz wierszem z zakresem dat, a okno raportu jest na `occurred_at`, nie
 na okresie.
 
-**Uwaga przy odgałęzianiu od tego repozytorium:** decyzji 008 ani notatek technologicznych **nie ma na
+**Uwaga przy odgałęzianiu od tego repozytorium:** decyzji 009 ani notatek technologicznych **nie ma na
 `main`** — żyją wyłącznie na `docs/pns-architecture-adr`, która bywa przepisywana. Gałąź odbita od niej
 osierocieje po każdym rebase i wymaga `rebase --onto`. Zdarzyło się to raz, 5 sierpnia.
 

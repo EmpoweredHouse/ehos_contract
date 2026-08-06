@@ -5,7 +5,7 @@ last_updated: 2026-08-03
 source_of_truth: generated-output
 load_policy: reference
 related:
-  - /decisions/008-pns-runtime-architecture.md
+  - /decisions/009-pns-runtime-architecture.md
   - /output/README.md
   - /wiki/pns/charter.md
 ---
@@ -14,15 +14,15 @@ related:
 >
 > To jest dokument projektowy i jego przegląd — szczegóły, kształty kodu, odrzucone alternatywy.
 > **Nie jest rekordem decyzji.** Rekord żyje w
-> `~/Projects/ai/empowered-house-context/decisions/008-pns-runtime-architecture.md` i jest jednostronicową
+> `~/Projects/ai/empowered-house-context/decisions/009-pns-runtime-architecture.md` i jest jednostronicową
 > propozycją, która deleguje walidację tutaj. Decyzja wróci tam jako osobny rekord, kiedy będzie wynik.
 >
 > Odwołania `§N` w kodzie i w `PLAN.md` wskazują na numerowane decyzje w
-> [008-pns-runtime-architecture.md](008-pns-runtime-architecture.md).
+> [009-pns-runtime-architecture.md](009-pns-runtime-architecture.md).
 
 # PNS architecture ADR — working bundle
 
-Working material behind [decision 008](../008-pns-runtime-architecture.md), which was
+Working material behind [decision 009](../009-pns-runtime-architecture.md), which was
 written out of the design sessions of 31 July and 1 August 2026 and reviewed by the team on 3 August.
 
 **Three documents, split by the reader's question rather than by level of detail.** The earlier split — record
@@ -31,7 +31,7 @@ kept growing and kept being unreadable.
 
 | If your question is | Read | Size |
 | --- | --- | --- |
-| Is this idea right? Should we do it? | [decisions/008](../008-pns-runtime-architecture.md) — problem, approach, thirteen decisions with what each beat, the four bets, what would falsify it. Diagrams, no code | ~410 lines |
+| Is this idea right? Should we do it? | [decisions/008](../009-pns-runtime-architecture.md) — problem, approach, thirteen decisions with what each beat, the four bets, what would falsify it. Diagrams, no code | ~410 lines |
 | Why is it like this? | [design-rationale.md](design-rationale.md) — the argument decision by decision, plus vocabulary, the DDD relationship, alternatives in full, and why the open questions are open | ~570 lines |
 | How is it built? What does it look like? | [technology-notes.md](technology-notes.md) — contract DSL, compile-time enforcement, log schema, delivery, conformance, testing, generation, dashboard, adapters, configuration, prior art, libraries, packaging | ~800 lines |
 

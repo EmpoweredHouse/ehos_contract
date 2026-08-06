@@ -4,10 +4,10 @@ title: Środowisko testowe PNS — bootstrap projektu
 owner: operator
 status: done
 last_updated: 2026-08-04
-source_of_truth: decyzja 008 w stanie z 2026-08-04, przegląd 2026-08-03, szew tożsamości 2026-08-04
+source_of_truth: decyzja 009 w stanie z 2026-08-04, przegląd 2026-08-03, szew tożsamości 2026-08-04
 load_policy: task
 related:
-  - /decisions/008-pns-runtime-architecture.md
+  - /decisions/009-pns-runtime-architecture.md
   - ~/Projects/ai/pns_prototype/docs/adr/technology-notes.md
   - ~/Projects/ai/empowered-house-context/output/20260803-adr-008-review.md
   - /output/20260804-pns-identity-service.md
@@ -33,11 +33,11 @@ brama kompilacyjna §18, ekrany przestały być pytaniem otwartym, a tożsamoś�
 > **Wykonane 4 sierpnia.** Kod: `~/Projects/ai/pns_prototype`, 42 testy, `mix check` przechodzi. Dwie
 > rzeczy w tym planie rozstrzygnęły się inaczej: providera OIDC **nie stawialiśmy** (szew jest prawdziwy,
 > implementacją jest lokalny HMAC — Zitadel to koszt bez sygnału na tym etapie), a warstwa web jest
-> minimalna i ręczna. Ustalenia wróciły do decyzji 008 i notatek technologicznych. Pełny raport w
+> minimalna i ręczna. Ustalenia wróciły do decyzji 009 i notatek technologicznych. Pełny raport w
 > `README.md` prototypu.
 
 Cel: **projekt, który stoi jedną komendą i w którym da się uruchomić testy sprawdzające twierdzenia
-decyzji 008.** Nie prezentacja, nie szkielet do pokazania — środowisko, w którym twierdzenie albo przechodzi
+decyzji 009.** Nie prezentacja, nie szkielet do pokazania — środowisko, w którym twierdzenie albo przechodzi
 test, albo nie.
 
 ## Rozstrzygnięcia, które nie są pytaniami
@@ -109,14 +109,14 @@ Nazwa tabeli w joinie siedzi w module schematu, nie w `source` — trzeba doło�
 
 **Dlaczego luka nie jest dziurą.** Zapis do tabeli innego modułu changesetem wymaga nazwania jego schematu
 Ecto, czyli zdalnej referencji do modułu — a to widzi tracer kompilacji i `boundary`, więc ta ścieżka jest
-już pokryta na poziomie, na którym decyzja 008 ją stawia. Jedyne prawdziwie niewidoczne wejście to surowy
+już pokryta na poziomie, na którym decyzja 009 ją stawia. Jedyne prawdziwie niewidoczne wejście to surowy
 SQL z literalną nazwą tabeli — ten sam przypadek, który przegląd odłożył argumentem, że modele generują
 idiomatyczny Ecto, nie SQL w stringach. Jeśli kiedyś okaże się potrzebny, jest na to telemetria
 `[…, :repo, :query]`: leci przy **każdym** zapytaniu, w metadanych ma `source` i tekst SQL-a — ale po
 wykonaniu, więc nadaje się do detekcji, nie do blokowania, i `source` to jedna tabela.
 
 **Do zaniesienia na sesję 5 sierpnia:** hook jest, odroczenie stoi, właściciel z przeglądu (Kamil) ma o
-dwadzieścia minut mniej pracy. Propozycja zmiany w triggerze §5–6 decyzji 008 czeka na akceptację —
+dwadzieścia minut mniej pracy. Propozycja zmiany w triggerze §5–6 decyzji 009 czeka na akceptację —
 to canonical context, więc nie tknąłem go bez zgody.
 
 ## Wycinek domenowy
@@ -310,7 +310,7 @@ Cztery rzeczy wracają do repo kontekstu jako zmiany, nie jako raport:
 
 | Ustalenie | Gdzie wraca |
 | --- | --- |
-| Odpowiedź o hook Ecto | trigger §5–6 w decyzji 008 — decyduje, czy odroczenie jest bezpieczne |
+| Odpowiedź o hook Ecto | trigger §5–6 w decyzji 009 — decyduje, czy odroczenie jest bezpieczne |
 | Zitadel czy Keycloak na deklaratywnym bootstrapie | rozpoznanie providerów w dokumencie o tożsamości |
 | Tracer czy analiza po kompilacji | notatki §2 |
 | Findings z kompilacji warsztatu | notatki §1, i wprost do wyceny pilota |

@@ -16,7 +16,7 @@ defmodule Taxvision.Api do
 
   This is the equivalent of a Phoenix pipeline, written without Phoenix. The web
   layer shows nothing contentious in this slice, and REST versus GraphQL is still
-  open in decision 008 — building the API would settle an open decision. The swap
+  open in decision 009 — building the API would settle an open decision. The swap
   is mechanical: `authenticate` and `entitle` are two plugs, `open_month` is a
   controller action.
 

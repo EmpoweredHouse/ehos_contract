@@ -5,7 +5,7 @@ last_updated: 2026-08-05
 source_of_truth: design conversation 2026-07-31 / 2026-08-01, corrected against the prototype 2026-08-05
 load_policy: reference
 related:
-  - /decisions/008-pns-runtime-architecture.md
+  - /decisions/009-pns-runtime-architecture.md
   - /output/design-rationale.md
   - /output/drafts/RUNTIME-VARIANTS-ADR.md
   - /wiki/pns/coherence-layer.md
@@ -16,11 +16,11 @@ related:
 >
 > To jest dokument projektowy i jego przegląd — szczegóły, kształty kodu, odrzucone alternatywy.
 > **Nie jest rekordem decyzji.** Rekord żyje w
-> `~/Projects/ai/empowered-house-context/decisions/008-pns-runtime-architecture.md` i jest jednostronicową
+> `~/Projects/ai/empowered-house-context/decisions/009-pns-runtime-architecture.md` i jest jednostronicową
 > propozycją, która deleguje walidację tutaj. Decyzja wróci tam jako osobny rekord, kiedy będzie wynik.
 >
 > Odwołania `§N` w kodzie i w `PLAN.md` wskazują na numerowane decyzje w
-> [008-pns-runtime-architecture.md](008-pns-runtime-architecture.md).
+> [009-pns-runtime-architecture.md](009-pns-runtime-architecture.md).
 
 # Technology notes
 
@@ -1017,7 +1017,7 @@ works against our cloud account is a demo. One opinionated target ships open sou
 infrastructure stays with that client until a pattern repeats.
 
 **Deployment shape** is four applications — identity bought, engine, dashboard inside the engine in v1,
-frontends separate. Stated with its diagram in [ADR §16–17](../008-pns-runtime-architecture.md#d-what-ships),
+frontends separate. Stated with its diagram in [ADR §16–17](../009-pns-runtime-architecture.md#d-what-ships),
 and argued in [design rationale](design-rationale.md#1617--almost-nothing-is-generated-and-what-ships-is-hex-packages).
 
 ## 16. Where to look for what
@@ -1027,7 +1027,7 @@ shapes, schemas, tables, library choices, implementation traps.
 
 | Question | Document |
 | --- | --- |
-| Is the idea right? Should we do it? | [decision 008](../008-pns-runtime-architecture.md) — problem, thirteen decisions, the bets, falsification |
+| Is the idea right? Should we do it? | [decision 009](../009-pns-runtime-architecture.md) — problem, thirteen decisions, the bets, falsification |
 | Why is it like this? What did each decision beat? | [design rationale](design-rationale.md) — the argument, decision by decision, plus vocabulary and alternatives in full |
 | How is it built? | this file |
 

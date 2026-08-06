@@ -11,11 +11,11 @@ przez `boundary` od pierwszego commita.
 | Plan pracy, etapy, kryteria odbioru | [`PLAN.md`](PLAN.md) |
 | Stan faktyczny, luki, co wyszło z prototypu | [`README.md`](README.md) |
 | **Jak napisać kontrakt** — klucze, wymagane/opcjonalne, co się nie skompiluje | [`docs/contract.md`](docs/contract.md) |
-| **Pełny rekord projektowy, 18 decyzji, `§N` z komentarzy w kodzie** | [`docs/adr/008-pns-runtime-architecture.md`](docs/adr/008-pns-runtime-architecture.md) |
+| **Pełny rekord projektowy, 18 decyzji, `§N` z komentarzy w kodzie** | [`docs/adr/009-pns-runtime-architecture.md`](docs/adr/009-pns-runtime-architecture.md) |
 | Co każda decyzja pobiła, odrzucone alternatywy | [`docs/adr/design-rationale.md`](docs/adr/design-rationale.md) |
 | Kształty kodu, schematy, pułapki, wybory bibliotek | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |
 | Przegląd zespołu z 3 sierpnia | `~/Projects/ai/empowered-house-context/output/20260803-adr-008-review.md` — **został w repo kontekstu**, bo mówi o luce mocy i ekonomii wdrożeń |
-| Zakres produktu, warunki oceny, stan recenzji | `~/Projects/ai/empowered-house-context/decisions/008-pns-runtime-architecture.md` |
+| Zakres produktu, warunki oceny, stan recenzji | `~/Projects/ai/empowered-house-context/decisions/009-pns-runtime-architecture.md` |
 
 **Pakiet projektowy przeniesiono tutaj 6 sierpnia** z repozytorium kontekstu, bez zmian w treści. Tam został
 dwustronicowy rekord: idea, zakres, warunki oceny, stan recenzji. Podział jest po przeznaczeniu — tam się

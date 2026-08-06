@@ -35,11 +35,11 @@ related:
 >
 > To jest dokument projektowy i jego przegląd — szczegóły, kształty kodu, odrzucone alternatywy.
 > **Nie jest rekordem decyzji.** Rekord żyje w
-> `~/Projects/ai/empowered-house-context/decisions/008-pns-runtime-architecture.md` i jest jednostronicową
+> `~/Projects/ai/empowered-house-context/decisions/009-pns-runtime-architecture.md` i jest jednostronicową
 > propozycją, która deleguje walidację tutaj. Decyzja wróci tam jako osobny rekord, kiedy będzie wynik.
 >
 > Odwołania `§N` w kodzie i w `PLAN.md` wskazują na numerowane decyzje w
-> [008-pns-runtime-architecture.md](008-pns-runtime-architecture.md).
+> [009-pns-runtime-architecture.md](009-pns-runtime-architecture.md).
 
 # PNS runtime and platform architecture
 

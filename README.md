@@ -1,6 +1,6 @@
 # Prototyp PNS — kontrakt, moduły, jeden proces z eventami
 
-Środowisko testowe dla decyzji 008 (`empowered-house-context/decisions/008-pns-runtime-architecture.md`).
+Środowisko testowe dla decyzji 009 (`empowered-house-context/decisions/009-pns-runtime-architecture.md`).
 Jeden ograniczony proces z warsztatu TaxVision, zaimplementowany po to, żeby sprawdzić twierdzenia, których
 proza nie rozstrzyga.
 
@@ -58,7 +58,7 @@ koszt bez sygnału. Podmiana na `oidcc` to jedna linia w `config.exs`, co jest c
 |---|---|
 | Dashboard | Najpierw sprawdzić, czy różnica jest sygnałem. `PNS.Graph` produkuje dane, na których dashboard stanie — patrz *Dashboard* niżej |
 | Wyświetlanie logu | Log jest zapisywany i odpytywany, nie renderowany |
-| Warstwa web, API | `Taxvision.Api` jest odpowiednikiem pipeline'u Phoenixa napisanym bez Phoenixa. REST przeciw GraphQL jest w decyzji 008 otwarte — budowanie API przesądzałoby otwartą decyzję |
+| Warstwa web, API | `Taxvision.Api` jest odpowiednikiem pipeline'u Phoenixa napisanym bez Phoenixa. REST przeciw GraphQL jest w decyzji 009 otwarte — budowanie API przesądzałoby otwartą decyzję |
 | `mix pns.new` | §15 krok 2: dopiero przy drugim kliencie |
 | Prawdziwe rejestry, prawdziwy mail | Behaviour plus fake |
 | Fazy 3.2–3.4 | Zadeklarowane w kontrakcie, nieobsłużone. To demo stanu *declared, never observed*, nie niedokończona robota |

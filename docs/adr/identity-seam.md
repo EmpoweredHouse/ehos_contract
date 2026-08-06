@@ -5,7 +5,7 @@ last_updated: 2026-08-04
 source_of_truth: design conversation 2026-08-04
 load_policy: reference
 related:
-  - /decisions/008-pns-runtime-architecture.md
+  - /decisions/009-pns-runtime-architecture.md
   - ~/Projects/ai/pns_prototype/docs/adr/technology-notes.md
 ---
 
@@ -63,7 +63,7 @@ into a distributed monolith where one outage takes all of them down; prefer the 
 
 | Axis | State |
 | --- | --- |
-| Write or buy the provider | [ADR 008](~/Projects/ai/empowered-house-context/decisions/008-pns-runtime-architecture.md) decided **not written** |
+| Write or buy the provider | [ADR 009](~/Projects/ai/empowered-house-context/decisions/009-pns-runtime-architecture.md) decided **not written** |
 | Where it runs — in-process module, sidecar, separately deployed application, or the client's own service | **Open** |
 
 The seam holds in all four positions on the second axis, which is why it can be fixed before that axis is.
@@ -133,7 +133,7 @@ say either "user profile mirror, no credentials, keyed by the identity subject" 
 ## Not decided
 
 Vendor, packaging, login screen route, deprovisioning mechanism, who operates the instance. Also
-[ADR 008](~/Projects/ai/empowered-house-context/decisions/008-pns-runtime-architecture.md) line 248 still says `WorkOS wrapped`; that becomes
+[ADR 009](~/Projects/ai/empowered-house-context/decisions/009-pns-runtime-architecture.md) line 248 still says `WorkOS wrapped`; that becomes
 wrong if the deployment ships into the client's environment, but it can be corrected whenever the ADR is next
 touched rather than on its own.
 
