@@ -71,6 +71,7 @@ mix taxvision.report --since 2026-07-01T00:00:00Z --until 2026-07-31T23:59:59Z
 | Dlaczego silnik działa tak, a nie inaczej — 18 decyzji, `§N` z komentarzy | [`docs/adr/architecture.md`](docs/adr/architecture.md) |
 | Kształty kodu, schematy, pułapki — `notes §N` z komentarzy | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |
 | Konwencje, których łatwo złamać | [`CLAUDE.md`](CLAUDE.md) |
+| **Pytania na warsztat** — czego zabrakło przy TaxVision, żeby kontrakt się skompilował | [`docs/warsztat-rehmed.md`](docs/warsztat-rehmed.md) |
 
 Dokumentacja kontraktu jest generowana z `PNS.Contract.schema/0`, jej przykład jest kompilowany testem, a
 tabela „co się nie skompiluje" ma pokrycie w testach bram. Trzy mechanizmy, bo ręcznie pisany opis DSL-a
