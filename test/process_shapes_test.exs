@@ -120,4 +120,62 @@ defmodule PNS.ProcessShapesTest do
       assert receive_item("c-1", 1, 100).actor == nil
     end
   end
+
+  describe "two synchronous handlers on one event — stage 2.4" do
+    test "the check reports the one event that has two, and stays silent on the rest" do
+      competing = PNS.Check.competing_sync_handlers()
+
+      assert [%{event: :item_measured, modules: modules}] = competing
+      assert length(modules) == 2
+
+      # The silence is the evidence. Seven other events have exactly one synchronous
+      # handler, and a check that only ever fires on the case built for it proves
+      # nothing — the same argument as for the backward edge above.
+      singles =
+        PNS.Registry.handlers()
+        |> Enum.reject(& &1.async)
+        |> Enum.group_by(& &1.event)
+        |> Enum.count(fn {_event, handlers} -> length(handlers) == 1 end)
+
+      assert singles >= 7
+    end
+
+    test "the order is deterministic, and it is alphabetical rather than declared" do
+      # Sorted so a build reproduces; alphabetical because there is nothing better to
+      # sort by. `First` sorts before `Second` while being declared after it, which is
+      # why the check warns instead of the registry pretending to have solved this.
+      assert PNS.Check.competing_sync_handlers() == [
+               %{
+                 event: :item_measured,
+                 modules: [
+                   ProcessShapes.Intake.OnItemMeasuredFirst,
+                   ProcessShapes.Intake.OnItemMeasuredSecond
+                 ]
+               }
+             ]
+
+      assert Enum.map(PNS.Registry.sync_handlers_for(:item_measured), & &1.module) ==
+               [
+                 ProcessShapes.Intake.OnItemMeasuredFirst,
+                 ProcessShapes.Intake.OnItemMeasuredSecond
+               ]
+    end
+
+    test "both handlers actually run, in that order" do
+      # Reproducible order is worth nothing if one of them is skipped.
+      event = PNS.emit!(Rig, :item_measured, %{case_id: "c-1", item_no: 1})
+
+      handled =
+        Repo.all(
+          from h in PNS.EventHandling,
+            where: h.event_id == ^event.id,
+            order_by: h.inserted_at,
+            select: h.handler
+        )
+
+      assert length(handled) == 2
+      assert "ProcessShapes.Intake.OnItemMeasuredFirst" in handled
+      assert "ProcessShapes.Intake.OnItemMeasuredSecond" in handled
+    end
+  end
 end

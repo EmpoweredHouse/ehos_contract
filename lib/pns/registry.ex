@@ -63,7 +63,21 @@ defmodule PNS.Registry do
 
   @doc "Handlers of an event that run inside the emitting transaction."
   @spec sync_handlers_for(atom()) :: [handler()]
-  def sync_handlers_for(event), do: for(h <- handlers(), h.event == event, not h.async, do: h)
+  def sync_handlers_for(event) do
+    # Sorted, because the scan order is the order modules happen to be listed in the
+    # application, and that is not a promise. Two synchronous handlers on one event
+    # ran in whichever order a build produced, so behaviour could differ between two
+    # deploys of identical code — and "these two are order-independent" was a claim
+    # nobody had checked.
+    #
+    # Sorting makes it reproducible and no more than that: the order is still
+    # arbitrary. If it matters, the contract is expressing sequence through an
+    # alphabetical coincidence, which `mix pns.check` reports as a warning rather
+    # than this function pretending to solve.
+    handlers()
+    |> Enum.filter(&(&1.event == event and not &1.async))
+    |> Enum.sort_by(&inspect(&1.module))
+  end
 
   @doc "Handlers of an event that run through the queue."
   @spec async_handlers_for(atom()) :: [handler()]

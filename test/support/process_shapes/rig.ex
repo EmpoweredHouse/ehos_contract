@@ -152,6 +152,17 @@ defmodule ProcessShapes.Rig do
     process: :pairing,
     stage: :intake
 
+  # For stage 2.4: the one event with two synchronous handlers, so the check that
+  # reports that shape has something to find. Nothing else in either contract has it,
+  # and a check whose only evidence is its own silence is not tested.
+  event :item_measured,
+    label: "Item measured",
+    owner: ProcessShapes.Intake,
+    payload: %{case_id: :id, item_no: :integer},
+    identity: [:case_id, :item_no],
+    process: :pairing,
+    stage: :intake
+
   # For stage 2.3. In `intake` rather than `resolution` deliberately: its handler
   # publishes into `matching`, and from `resolution` that would be a second backward
   # edge — which would quietly break the acceptance criterion of 1.3 by making the
@@ -309,6 +320,34 @@ defmodule ProcessShapes.Matching.OnItemPaired do
       :ok
     end
   end
+end
+
+defmodule ProcessShapes.Intake.OnItemMeasuredFirst do
+  @moduledoc """
+  One of **two** synchronous handlers on `item_measured`, for stage 2.4.
+
+  Deliberately named so that alphabetical order and the intended order disagree:
+  `First` sorts after `Second`. That is the whole point of the warning — the order
+  reproduces and means nothing, so a contract that depends on it is expressing
+  sequence through the spelling of a module name.
+
+  Both publish nothing, so the graph, the wiring version and every path report are
+  untouched by their presence.
+  """
+
+  use PNS.Handler, contract: ProcessShapes.Rig, event: :item_measured, publishes: []
+
+  @impl PNS.Handler
+  def handle(_payload, _ctx), do: :ok
+end
+
+defmodule ProcessShapes.Intake.OnItemMeasuredSecond do
+  @moduledoc "The other one. Sorts first, which is exactly the trap being warned about."
+
+  use PNS.Handler, contract: ProcessShapes.Rig, event: :item_measured, publishes: []
+
+  @impl PNS.Handler
+  def handle(_payload, _ctx), do: :ok
 end
 
 defmodule ProcessShapes.Intake.OnItemDisputed do

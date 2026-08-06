@@ -21,7 +21,45 @@ defmodule PNS.Job do
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: args, attempt: attempt}) do
-    handler = resolve!(args["handler"])
+    case resolve(args["handler"]) do
+      {:ok, handler} -> run(handler, args, attempt)
+      :gone -> abandon(args, attempt)
+    end
+  end
+
+  # A job whose handler no longer exists is **cancelled, not retried**, and recorded.
+  #
+  # Retrying is what used to happen and it was pure noise: the module is gone, so the
+  # next two attempts fail identically, three seconds apart, and the job ends up
+  # `discarded` with a `String.to_existing_atom` error that says nothing about why.
+  #
+  # The reason it is recorded rather than dropped is the deployment question from stage
+  # 1.6. A queued job for a handler that no longer exists is a **path declared by a
+  # wiring that is no longer deployed** — the same fact the wiring version exists to
+  # separate from drift. Losing it would leave the log implying the work was never
+  # scheduled at all.
+  @spec abandon(map(), pos_integer()) :: {:cancel, String.t()}
+  defp abandon(args, attempt) do
+    reason =
+      "handler #{args["handler"]} no longer exists, so this job belongs to a wiring that is " <>
+        "no longer deployed. Cancelled rather than retried: the module is not coming back, and " <>
+        "two more identical failures would say nothing a third time"
+
+    repo().insert!(%EventHandling{
+      event_id: args["event_id"],
+      handler: args["handler"],
+      attempt: attempt,
+      status: "cancelled",
+      duration_us: 0,
+      error: reason,
+      inserted_at: DateTime.utc_now()
+    })
+
+    {:cancel, reason}
+  end
+
+  @spec run(module(), map(), pos_integer()) :: :ok | {:error, term()}
+  defp run(handler, args, attempt) do
     meta = handler.__pns_handler__()
     event_def = meta.contract.event(meta.event)
     payload = PNS.Payload.cast(event_def, args["payload"])
@@ -99,9 +137,29 @@ defmodule PNS.Job do
     Enum.join([name | values], ":")
   end
 
-  @spec resolve!(String.t()) :: module()
-  defp resolve!("Elixir." <> _ = name), do: String.to_existing_atom(name)
-  defp resolve!(name), do: String.to_existing_atom("Elixir." <> name)
+  # Three ways a handler can be gone, and all three mean the same thing to a job.
+  #
+  # `to_existing_atom` raises when nothing in the running system ever named that
+  # module — a rename with jobs in the queue. The module can also exist as an atom and
+  # not be loadable, or be loadable and no longer be a handler at all, which is what
+  # happens when somebody removes `use PNS.Handler` but keeps the module. All three
+  # are "this work has no owner any more".
+  @spec resolve(String.t()) :: {:ok, module()} | :gone
+  defp resolve(name) do
+    module =
+      case name do
+        "Elixir." <> _ -> String.to_existing_atom(name)
+        _ -> String.to_existing_atom("Elixir." <> name)
+      end
+
+    if Code.ensure_loaded?(module) and function_exported?(module, :__pns_handler__, 0) do
+      {:ok, module}
+    else
+      :gone
+    end
+  rescue
+    ArgumentError -> :gone
+  end
 
   defp repo, do: @repo
 end

@@ -54,6 +54,39 @@ defmodule PNS.Check do
     |> Enum.sort_by(&{to_string(&1.module), to_string(&1.process)})
   end
 
+  @typedoc "One event with more than one synchronous handler."
+  @type competing_handlers :: %{event: atom(), modules: [module()]}
+
+  @doc """
+  Events with more than one synchronous handler, in the order those handlers will run.
+
+  Reported rather than forbidden, because two handlers writing disjoint derived state
+  in one transaction are legitimate and order-independent. What is not legitimate is
+  **depending** on their order: `PNS.Registry` sorts them so a build reproduces, and
+  that order is alphabetical by module name, which is a fact about spelling rather
+  than about the process. Rename a module and it changes silently.
+
+  So this is a warning about a shape: if the order matters, the contract is expressing
+  sequence through a coincidence, and the fix is in the contract — one handler
+  publishing an event the other subscribes to, which makes the sequence a declared
+  path the overlay can see.
+
+  Not a compile error, because the two handlers are in different modules and neither
+  knows about the other while compiling. It is a whole-program property, so it belongs
+  where the whole-program checks are.
+  """
+  @spec competing_sync_handlers() :: [competing_handlers()]
+  def competing_sync_handlers do
+    PNS.Registry.handlers()
+    |> Enum.reject(& &1.async)
+    |> Enum.group_by(& &1.event)
+    |> Enum.filter(fn {_event, handlers} -> length(handlers) > 1 end)
+    |> Enum.map(fn {event, _} ->
+      %{event: event, modules: Enum.map(PNS.Registry.sync_handlers_for(event), & &1.module)}
+    end)
+    |> Enum.sort_by(&to_string(&1.event))
+  end
+
   # An event's stage is on the event, and the process holds only the order of
   # stages — so position is the index of the stage in that order.
   @spec stage_index() :: %{atom() => {atom(), non_neg_integer(), atom()}}

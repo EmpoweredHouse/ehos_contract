@@ -33,6 +33,7 @@ defmodule Mix.Tasks.Pns.Check do
       |> check_rule_functions_exist()
       |> check_traces_resolve()
       |> check_backward_edges()
+      |> check_competing_sync_handlers()
       |> check_retain_on_free_text()
       |> check_no_vendor_in_config()
       |> check_unverified_declarations()
@@ -144,6 +145,21 @@ defmodule Mix.Tasks.Pns.Check do
         {:warn,
          "backward edge in #{inspect(edge.module)} — #{edge.process}: " <>
            "publishes in #{edge.publishes_in}, subscribes in #{edge.subscribes_in}"}
+        | acc
+      ]
+    end)
+  end
+
+  defp check_competing_sync_handlers(findings) do
+    Enum.reduce(PNS.Check.competing_sync_handlers(), findings, fn item, acc ->
+      order = item.modules |> Enum.map(&inspect/1) |> Enum.join(", ")
+
+      [
+        {:warn,
+         "#{inspect(item.event)} has #{length(item.modules)} synchronous handlers. They run in " <>
+           "this order: #{order} — alphabetically by module name, which reproduces but says " <>
+           "nothing about the process. If the order matters, declare it: have one publish an " <>
+           "event the other subscribes to, so the sequence is a path the overlay can see"}
         | acc
       ]
     end)

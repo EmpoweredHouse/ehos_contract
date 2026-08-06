@@ -7,9 +7,10 @@ aktualizowany stan.
 
 ## Stan na 6 sierpnia
 
-173 testy, `mix check` przechodzi. Ostrzeżenia są **trzy** i wszystkie celowe: `deadline` TaxVision bez
+180 testów, `mix check` przechodzi. Ostrzeżenia są **cztery** i wszystkie celowe: `deadline` TaxVision bez
 potwierdzenia process ownera, `deadline` z wymyślonej fikstury bramy uniwersalności, oraz **krawędź wsteczna
-w stanowisku badawczym kształtów — która jest kryterium odbioru 1.3, więc jej brak byłby regresem.**
+w stanowisku badawczym kształtów — kryterium odbioru 1.3 — oraz **dwa handlery synchroniczne na
+jednym zdarzeniu** — kryterium odbioru 2.4. Brak któregokolwiek byłby regresem.**
 Samo `mix pns.check` w środowisku dev pokazuje jedno — fikstury żyją w `test/support/`.
 
 Działa: kontrakt jako moduł Elixira z bramami kompilacyjnymi, dispatch po granicy transakcji, log zdarzeń,
@@ -19,7 +20,8 @@ nowego słowa w DSL**, **ocena assercji `trace` per przebieg — trzy werdykty z
 nieprzejechanych ścieżek per przebieg**, **`publishes:` wiąże handler w runtime, nie tylko opisuje**,
 **obie tożsamości wdrożenia haszują się kanonicznie, z jednego źródła**, **awaria handlera synchronicznego
 zostawia ślad, a raport odróżnia „próbowane i nie udaje się" od „nigdy nie próbowano"**, **cykl w runtime
-jest zatrzymany, na obu ścieżkach dispatchu**.
+jest zatrzymany na obu ścieżkach dispatchu**, **kolejność handlerów synchronicznych jest odtwarzalna, a job
+po znikniętym handlerze jest anulowany i zapisany**.
 
 **Nie działa, bo nie zostało zbudowane — i to jest produkt:**
 
@@ -555,8 +557,49 @@ Fikstura `OnItemFlagged` jest w `intake`, **nie w `resolution`**, choć tam był
 Zweryfikowane odwrotnie: po wyłączeniu zapisu padają **trzy z dwudziestu trzech** testów w tych dwóch
 plikach — dokładnie te, które o śladzie cokolwiek twierdzą.
 
-**2.4 Cztery rzeczy odpornościowe.** Zdefiniowana albo zabroniona kolejność dwóch handlerów synchronicznych
-na jednym zdarzeniu; łagodne odrzucenie joba po znikniętym handlerze.
+**2.4 Cztery rzeczy odpornościowe. ✅ ZAMKNIĘTE 6 sierpnia.** 180 testów.
+
+**Kolejność dwóch handlerów synchronicznych — zrobione.** Plan mówił „zdefiniowana **albo** zabroniona".
+Wyszło **jedno i drugie, i to nie jest kompromis**: zdefiniowana w rejestrze, żeby zachowanie się
+odtwarzało, i zgłaszana jako ostrzeżenie w `pns.check`, bo sam determinizm nie czyni tego kształtu dobrym.
+
+Zakaz byłby za mocny: dwa handlery piszące rozłączny stan pochodny w jednej transakcji są legalne i
+niezależne od kolejności. Ale „niezależne od kolejności" **było twierdzeniem, którego nikt nie sprawdził** —
+a kolejność brała się z tego, w jakiej kolejności moduły znalazły się w liście aplikacji, więc identyczny kod
+mógł zachowywać się różnie po dwóch deployach. Teraz jest sortowana po nazwie modułu: **odtwarzalna i nadal
+arbitralna**. Ostrzeżenie mówi wprost, że jeśli kolejność ma znaczenie, to kontrakt wyraża sekwencję przez
+pisownię nazwy modułu, a poprawka należy do kontraktu — jeden handler publikuje zdarzenie, na które
+subskrybuje drugi, i wtedy sekwencja jest **ścieżką, którą widzi nakładka**.
+
+Nie jest to brama kompilacyjna, bo oba handlery są w innych modułach i żaden nie wie o drugim w czasie
+kompilacji. To własność całoprogramowa i leży tam, gdzie reszta takich — ale **w `PNS.Check`, nie w zadaniu
+mixa**, tą samą drogą co `backward_edges/0`.
+
+Żadne zdarzenie nie miało takiego kształtu, więc check byłby niemy, a **check, którego jedynym dowodem jest
+własna cisza, nie jest przetestowany.** Do rigu weszła jedna para (`OnItemMeasuredFirst`/`Second`, oba
+`publishes: []`, więc zero krawędzi), nazwana tak, że **kolejność alfabetyczna i deklaracyjna się nie
+zgadzają** — czyli dokładnie pułapka, o której mówi ostrzeżenie. `mix check` pokazuje od teraz **cztery**
+ostrzeżenia, a czwarte jest kryterium odbioru tego punktu, tak samo jak krawędź wsteczna jest kryterium 1.3.
+
+**Łagodne odrzucenie joba po znikniętym handlerze — zrobione.** Było: `to_existing_atom` rzuca, job pada,
+Oban ponawia **dwa razy identycznie** co trzy sekundy i kończy jako `discarded` z komunikatem, który nie mówi
+dlaczego. Deterministyczna awaria ponawiana to szum, a szum w kolejce jest miejscem, w którym chowają się
+awarie prawdziwe.
+
+Teraz `{:cancel, reason}` — bez ponawiania — plus wiersz w `pns_event_handlings` ze statusem `cancelled`.
+**Zapis nie jest księgowością, a odpowiedzią na pytanie z 1.6:** job zakolejkowany dla handlera, którego nie
+ma, jest **ścieżką zadeklarowaną przez obwodowanie, które nie jest już wdrożone** — dokładnie tym faktem,
+który `wiring_version` istnieje, żeby odróżnić od driftu. Cicho porzucony, log twierdziłby, że pracy nigdy nie
+zakolejkowano, co jest innym i fałszywym zdaniem.
+
+Trzy drogi do „handlera nie ma" i wszystkie znaczą dla joba to samo: atomu nigdy nie było (zmiana nazwy przy
+jobach w kolejce), moduł jest, ale nie da się go wczytać, albo **moduł jest i przestał być handlerem** — to
+ostatnie robi się, usuwając `use PNS.Handler` i zostawiając plik. Rozwiązywanie po samej nazwie wywaliłoby się
+linijkę później, na wywołaniu funkcji, której nie ma.
+
+Kontrola w tym teście padła przy pierwszym uruchomieniu, bo wybrałem jako „działający handler" fiksturę z 2.1,
+która **celowo emituje coś niezadeklarowanego**. To jest koszt trzymania złamanego kodu w rigu i wart
+zapisania: fikstury z różnych etapów potrafią się na siebie nałożyć.
 
 **Ochrona przed cyklem — ✅ zrobione 6 sierpnia.** `test/cycle_test.exs`, 173 testy.
 

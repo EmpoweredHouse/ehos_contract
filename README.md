@@ -51,7 +51,7 @@ maszynie bez pytania, co jeszcze nasłuchuje.
 więc bez tego przełącznika granice są dokumentacją. Sprawdzone celowym naruszeniem.
 
 ```bash
-mix pns.check                # sprawdzenia całoprogramowe: krawędzie wsteczne, sieroty, niepotwierdzone deklaracje
+mix pns.check                # sprawdzenia całoprogramowe: krawędzie wsteczne, konkurujące handlery, sieroty, niepotwierdzone deklaracje
 mix pns.graph                # graf statyczny z rejestru
 mix pns.graph --overlay      # nałożony na log zdarzeń
 mix pns.graph --mermaid      # diagram
