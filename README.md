@@ -74,6 +74,7 @@ mix pns.report --since 2026-07-01T00:00:00Z --until 2026-07-31T23:59:59Z
 | Kształty kodu, schematy, pułapki — `notes §N` z komentarzy | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |
 | Konwencje, których łatwo złamać | [`CLAUDE.md`](CLAUDE.md) |
 | **Pytania na warsztat** — czego zabrakło przy TaxVision, żeby kontrakt się skompilował | [`docs/warsztat-rehmed.md`](docs/warsztat-rehmed.md) |
+| **Jakie skille istnieją, w jakiej kolejności, i jak to się ma do `process-native-software`** | [`docs/warsztat-narzedzia.md`](docs/warsztat-narzedzia.md) |
 
 Dokumentacja kontraktu jest generowana z `PNS.Contract.schema/0`, jej przykład jest kompilowany testem, a
 tabela „co się nie skompiluje" ma pokrycie w testach bram. Trzy mechanizmy, bo ręcznie pisany opis DSL-a
