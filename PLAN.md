@@ -5,6 +5,33 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). **Ten plik to lista roboty** i tylko tu jest
 aktualizowany stan.
 
+## Dopisek 18 sierpnia — pierwszy kontrakt z prawdziwego zlecenia
+
+`lib/rehmed/contracts/clinical_visit.ex`: dokumentacja wizyty i zgłoszenie zdarzenia medycznego do P1,
+zdestylowane z warsztatów Rehmed przez [`docs/rehmed-2026-08-18-distillation.md`](docs/rehmed-2026-08-18-distillation.md).
+**Czwarty kontrakt, pierwszy, którego nikt tutaj nie wymyślił** — dotąd dowodem uniwersalności była
+zmyślona domena medyczna z `test/support/`, co jest dowodem na słownik, nie na zderzenie z klientem.
+
+Trzy rzeczy, które wyszły dopiero przy pisaniu, i żadna nie jest o Rehmedzie:
+
+1. **Granica agregatu ≠ granica procesu, i to się tu po raz pierwszy rozjeżdża widocznie.** Cztery agregaty
+   modelu klienta dzielą jeden klucz instancji. Gdyby zrobić z nich cztery procesy, jedyna assercja warta
+   posiadania — od zakończenia świadczenia do zgłoszenia ustawowego — nie skompilowałaby się, bo `trace`
+   nie przekracza procesu. To jest zdrowe ograniczenie, ale trzeba je znać **przed** modelowaniem, nie po.
+2. **`unverified` nie obejmuje `trace`.** `PNS.Conformance.verified_declarations/1` filtruje wyłącznie
+   `:cadence` i `:deadline`, więc **spornej assercji nie da się wyłączyć z raportu dowodowego**. Tutaj obie
+   liczby są mocne (ustawa i decyzja klienta z datą), więc nic złego się nie dzieje — ale mechanizm nie
+   powstrzymałby gorszej pary, a hasło „fałszywa metryka jest gorsza niż jej brak" jest tym, co ten produkt
+   sprzedaje. **Kandydat na etap 2.**
+3. **Assercja mierzy od momentu, w którym nam powiedziano, nie w którym się wydarzyło.** Okno biegnie od
+   wpisu w logu. Przy procesie, którego istotą jest odraczanie zapisu, to jest przekłamanie w stronę
+   optymistyczną. Kotwica została wybrana tak, żeby zapis był współczesny zdarzeniu — ale to jest wybór
+   modelujący, a nie własność silnika, i następny klient może go nie mieć.
+
+Rehmed nie ma tu kodu i może nigdy nie mieć: to drzewo jest **wyłącznie kontraktami**. Wszystkie zdarzenia
+są `declared, never observed`, czyli dokładnie ten stan, który `pns.check` raportuje jako `info` i który
+notes §5 opisuje jako normalny w trakcie wdrożenia.
+
 ## Stan na 6 sierpnia
 
 221 testów, `mix check` przechodzi. Ostrzeżenia są **cztery i wszystkie celowe**:

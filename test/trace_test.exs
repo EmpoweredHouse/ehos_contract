@@ -195,20 +195,31 @@ defmodule PNS.TraceTest do
       all = PNS.Trace.evaluate_all()
       names = Enum.map(all, & &1.trace) |> Enum.sort()
 
-      # Three contracts now, the third being the shapes rig — which is where the
+      # Four contracts now. The third is the shapes rig — which is where the
       # `:suspended` verdict is exercised, because TaxVision's one dependency is consulted
-      # before its assertion window opens.
+      # before its assertion window opens. The fourth is Rehmed, and it is the first
+      # one distilled from a real engagement rather than written here.
       assert names == [
+               :documentation_closed_within_a_day,
                :episode_reaches_an_end,
+               :medical_event_reported_within_statutory_window,
                :month_opens_or_is_blocked,
                :referral_reaches_a_decision,
                :submission_reaches_inspection
              ]
 
-      # The medical contract has no implementation, so its assertions have no runs
-      # to judge — and that is zero verdicts, not zero violations.
-      medical = Enum.filter(all, &(&1.contract == UniversalityGate.TreatmentEpisode))
-      assert Enum.all?(medical, &(&1.verdicts == []))
+      # Neither contract without an implementation has runs to judge — and that is
+      # zero verdicts, not zero violations. `UniversalityGate.TreatmentEpisode` is
+      # the invented medical domain that proved the vocabulary needs no new words;
+      # `Rehmed.Contracts.ClinicalVisit` is client material with the same property
+      # for a different reason — Rehmed has contracts here and no code.
+      unimplemented =
+        Enum.filter(
+          all,
+          &(&1.contract in [UniversalityGate.TreatmentEpisode, Rehmed.Contracts.ClinicalVisit])
+        )
+
+      assert Enum.all?(unimplemented, &(&1.verdicts == []))
     end
   end
 end

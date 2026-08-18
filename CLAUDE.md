@@ -1,9 +1,15 @@
 # PNS — repozytorium silnika
 
 Silnik weryfikacji zgodności wdrożonego kodu z zadeklarowanym procesem. `lib/pns/` to silnik i przyszły
-pakiet; `lib/taxvision/` to **jedna aplikacja klienta, która jest tu tymczasowo** — jako przypadek testowy,
+pakiet; `lib/taxvision/` to **aplikacja klienta, która jest tu tymczasowo** — jako przypadek testowy,
 na którym sprawdzamy, czy założenia silnika się trzymają. Granica jest wymuszona przez `boundary` od
 pierwszego commita, żeby ta tymczasowość była faktem, a nie obietnicą.
+
+**Od 18 sierpnia drzewa klienckie są dwa, i to jest różnica gatunkowa, nie liczbowa.** `lib/rehmed/` to
+**wyłącznie kontrakty** — Rehmed nie ma tu kodu i może nigdy nie mieć. Ma zamodelowany proces, a to
+drzewo odpowiada na pytanie, czy DSL go udźwignie. Trzeci kontrakt z domeny medycznej,
+`UniversalityGate.TreatmentEpisode`, **nie jest materiałem klienta i zostaje w `test/support/`** — jest
+zmyślony, i sam to o sobie mówi w pierwszej linii.
 
 ## Zanim cokolwiek zmienisz
 
@@ -91,7 +97,8 @@ mix ecto.migrate`.
   jest faktem, czy heurystyką.
 - **Kod jest po angielsku. Bez wyjątków.** Identyfikatory, moduledoki, `@doc`, komentarze, nazwy testów,
   komunikaty błędów kompilacji i stringi wypisywane na wyjście. **Zakres to nie tylko `lib/pns/`** —
-  także `lib/taxvision/`, `test/` z fikstrami, `config/`, `priv/repo/migrations/`, `docs/` i `mix.exs`.
+  także `lib/taxvision/`, `lib/rehmed/`, `test/` z fikstrami, `config/`, `priv/repo/migrations/`,
+  `docs/` i `mix.exs`.
   Trzy ostatnie zostały przy pierwszym sprzątaniu pominięte, bo nikt o nich nie pomyślał.
 - **Po polsku jest wyłącznie to, co klient czyta zdaniami, i tylko w stringu** — nigdy w komentarzu,
   moduledoku ani nazwie. Konkretnie: `label`, opisy `example`, `source` i `unavailable_looks_like` w
