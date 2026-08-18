@@ -1,0 +1,28 @@
+# Static routing for docker-compose.identity.yml's Traefik service. File-based
+# on purpose, not Docker-label discovery: a label-based setup needs the Docker
+# socket mounted into the proxy, and a PoC has no reason to hold that.
+#
+# Zitadel's core API and its login UI are two containers that only work
+# together behind one origin — the API redirects a browser to
+# `/ui/v2/login/...` on its own host, and the login UI expects to be served
+# from exactly that path (`NEXT_PUBLIC_BASE_PATH` in the compose file). This
+# is the routing that makes `http://localhost:8080` be both at once.
+http:
+  routers:
+    login:
+      rule: "PathPrefix(`/ui/v2/login`)"
+      service: login
+      priority: 20
+    zitadel:
+      rule: "PathPrefix(`/`)"
+      service: zitadel
+      priority: 10
+  services:
+    login:
+      loadBalancer:
+        servers:
+          - url: "http://zitadel-login:3000"
+    zitadel:
+      loadBalancer:
+        servers:
+          - url: "http://zitadel:8080"

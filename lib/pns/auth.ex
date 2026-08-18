@@ -101,6 +101,88 @@ defmodule PNS.Auth.LocalToken do
   end
 end
 
+defmodule PNS.Auth.OidcVerifier do
+  @moduledoc """
+  The identity seam's real verifier (`docs/adr/identity-seam.md`): validates a
+  bearer token's signature locally against the provider's JWKS, via
+  `Oidcc.Token.validate_jwt/3` — the same freshness trade-off `PNS.Auth`
+  already documents for entitlement, no network call once the JWKS is cached.
+
+  **Not the active verifier.** `config/dev.exs` and `config/test.exs` still
+  point `:auth_verifier` at `LocalToken`. This module reads its own
+  configuration from `Application.get_env/2` at call time rather than compile
+  time, deliberately, so nothing here needs a checked-in config entry — and
+  therefore no vendor name — until swapping it in is an actual decision
+  rather than a side effect of writing this module.
+
+  Needs an `Oidcc.ProviderConfiguration.Worker` already running under the
+  name given as `:provider`. This module starts none of its own: the seam
+  commits to consuming discovery and JWKS, not to owning the process that
+  fetches them. For manual testing against a running sidecar, see
+  `priv/poc/identity_smoke_test.exs`.
+  """
+
+  @behaviour PNS.Auth.Verifier
+
+  alias PNS.Auth.Actor
+
+  @impl true
+  def verify(token) when is_binary(token) do
+    conf = config()
+
+    with {:ok, client_context} <-
+           Oidcc.ClientContext.from_configuration_worker(
+             conf.provider,
+             conf.client_id,
+             conf.client_secret
+           ),
+         signing_algs = signing_algs(client_context),
+         {:ok, claims} <-
+           Oidcc.Token.validate_jwt(token, client_context, %{signing_algs: signing_algs}) do
+      {:ok,
+       %Actor{
+         subject: claims["sub"],
+         roles: extract_roles(claims, conf.roles_claim),
+         claims: claims
+       }}
+    end
+  end
+
+  def verify(_), do: {:error, :missing_token}
+
+  # An arbitrary bearer token is not an ID token, so — unlike
+  # `validate_id_token/3` — `oidcc` cannot infer which algorithms the issuer
+  # signs with from the token type alone. The provider configuration already
+  # lists what it supports.
+  defp signing_algs(client_context) do
+    client_context.provider_configuration.id_token_signing_alg_values_supported
+  end
+
+  # Where a role claim lives is the provider's business, not ours (`PNS.Auth`'s
+  # moduledoc: "one claim, no engine"). Zitadel nests project roles as a map
+  # keyed by role name; everything else is expected to hand back a plain list.
+  defp extract_roles(claims, roles_claim) do
+    case claims[roles_claim] do
+      roles when is_list(roles) -> roles
+      roles when is_map(roles) -> Map.keys(roles)
+      _ -> []
+    end
+  end
+
+  defp config do
+    conf =
+      Application.get_env(:pns_prototype, __MODULE__) ||
+        raise "no config for #{inspect(__MODULE__)} — see priv/poc/identity_smoke_test.exs"
+
+    %{
+      provider: Keyword.fetch!(conf, :provider),
+      client_id: Keyword.fetch!(conf, :client_id),
+      client_secret: Keyword.fetch!(conf, :client_secret),
+      roles_claim: Keyword.get(conf, :roles_claim, "roles")
+    }
+  end
+end
+
 defmodule PNS.Auth do
   @moduledoc """
   Three levels, three different owners (the identity document, 4 August).

@@ -40,7 +40,12 @@ defmodule PnsPrototype.MixProject do
       # telemetry, so it depends on it — and a package whose dependency is satisfied
       # only because a neighbour happens to need it breaks when the neighbour goes.
       {:telemetry, "~> 1.3"},
-      {:boundary, "~> 0.10", runtime: false}
+      {:boundary, "~> 0.10", runtime: false},
+      # The identity seam's real verifier (docs/adr/identity-seam.md): discovery,
+      # JWKS caching and rotation, signature validation against a bought OIDC
+      # provider. Not wired in as the active PNS.Auth.Verifier yet — see
+      # PNS.Auth.OidcVerifier.
+      {:oidcc, "~> 3.0"}
     ]
   end
 

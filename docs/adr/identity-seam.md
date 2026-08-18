@@ -4,6 +4,8 @@
 >
 > **Implementation state:** the seam stands and a local HMAC is the verifier. No provider was set up, and
 > `CLAUDE.md` lists one under what we deliberately do not build. **Not reviewed since it was moved here.**
+>
+> **9 August:** the second axis below is no longer open — see "Two axes" for the decided topology.
 
 # Identity — the boundary, before any decision
 
@@ -45,14 +47,48 @@ its own replica updated by an event when a grant changes (right for rules, and c
 event-driven direction), or by calling a shared authorisation service per request. The third turns several APIs
 into a distributed monolith where one outage takes all of them down; prefer the first two.
 
-## Two axes, only one of them decided
+## The same three levels, as a graph
+
+Added 9 August, from a conversation about how access should scale as roles and resources grow. First, what
+is granted — the bought half of the table above, drawn as a hierarchy:
+
+```mermaid
+flowchart TB
+    U["User or group<br/>from identity provider"] --> R["Role<br/>bundle of permissions"]
+    R --> S["Scope<br/>one action on one resource"]
+    S --> P["Resource<br/>part of the application"]
+```
+
+Second, what happens on a request — where the owned row from the table joins in, after the bought check
+rather than instead of it:
+
+```mermaid
+flowchart TB
+    T["Token<br/>roles and scopes as claims"] --> C["Scope check<br/>may this user reach it — bought"]
+    C --> D["Domain rule<br/>company-specific condition — ours"]
+    D --> A["Access decision<br/>allow or deny"]
+```
+
+This is why each kind of change stays cheap. A new part of the application is a new scope in the provider's
+config. A new access level is a new role bundling scopes that already exist. Both are configuration, not
+code, and neither touches the engine. Only a new company-specific condition — the third row — is code, and
+it lands in the permission engine (technology notes §13) alone, isolated from who can authenticate and how.
+
+## Two axes, both now decided
 
 | Axis | State |
 | --- | --- |
 | Write or buy the provider | ADR 009 (`empowered-house-contextdocs/adr/architecture.md`) decided **not written** |
-| Where it runs — in-process module, sidecar, separately deployed application, or the client's own service | **Open** |
+| Where it runs — in-process module, sidecar, separately deployed application, or the client's own service | **Decided 9 August: sidecar**, with an Elixir wrapper module/process in front of it |
 
-The seam holds in all four positions on the second axis, which is why it can be fixed before that axis is.
+The seam holds in all four positions on the second axis, which is why it could be fixed before that axis
+was. It is now fixed by what the wrapper already has to do, independent of which provider gets picked: hold
+the protocol-seam behaviour (`lib/pns/auth.ex`), the user profile mirror, and the permission/scope engine
+(technology notes §13) — three pieces that need their own process regardless of topology, so running the
+bought provider as a sidecar next to that process costs nothing extra. It also keeps the promise that this
+API can be called by applications the client didn't build: any OIDC client, ours or someone else's, talks to
+the sidecar's discovery endpoint and JWKS the same way — nothing about a third-party caller requires code
+here beyond what the seam already commits to.
 
 One interaction to watch, because it is the only place the axes touch: *module* is a packaging choice while the
 provider is still bought — an OIDC provider running inside the same release unit. *Module* meaning we implement
@@ -98,13 +134,73 @@ its login application can be restyled, `zitadel_api`'s API-generation coverage (
 generations; REST via the gRPC gateway is the fallback), and which Google Workspace and Entra ID licence tiers
 gate automatic provisioning on the client's side.
 
+Added 9 August, from the concrete requirement this client-shaped example surfaced: **not** a consumer social
+login (Apple among them) — the actual shape is a client's existing workforce identity, the thing already
+covered by "a client who already runs their own IdP" above. Concretely: federate into a client's Google
+Workspace domain or Microsoft Entra ID tenant so their staff use the sign-in they already have, broker a
+client's own OIDC/SAML IdP the same way for whoever runs neither, and fall back to the provider's own
+email/password store for a client with no workforce IdP at all. Both Zitadel and Keycloak do this as identity
+brokering — ordinary configuration, not code — so the thing to verify in a PoC is provisioning-tier gating
+(the Google Workspace / Entra ID licence question already listed above), not whether the feature exists.
+Separately: whether locking or disabling a user forces immediate re-authentication — a revoked session, not
+just an access token left valid until its TTL expires.
+
+## PoC findings, 9 August
+
+`docker-compose.identity.yml` runs Zitadel as the sidecar; `PNS.Auth.OidcVerifier`
+(`lib/pns/auth.ex`) is the wrapper, validating a bearer token's signature against the sidecar's JWKS via
+`Oidcc.Token.validate_jwt/3`. Not the active `PNS.Auth.Verifier` — see that module's moduledoc for why. Run
+against a real, freshly-booted instance (`priv/poc/identity_smoke_test.exs`):
+
+- **Client credentials belong to a machine *user*, not a project *application*, and that is fixed, not a
+  config gap.** An `apps/api` or `apps/oidc` client with `grantTypes: [CLIENT_CREDENTIALS]` gets
+  `invalid_client — client not found` at `/oauth/v2/token` every time — confirmed via the server log
+  (`Errors.User.NotFound`), not just the HTTP response, and unchanged by adding a compliant `redirect_uri` or
+  `accessTokenType: OIDC_TOKEN_TYPE_JWT` to the app. The client actually has to be a Zitadel machine user's own
+  generated secret (`PUT /management/v1/users/{id}/secret`).
+- **Which is why that token is not what the seam expects.** A machine user's `client_credentials` access token
+  comes back as an encrypted JWE (five dot-separated segments) always — there is no app-level setting that
+  changes it, because no app is involved in that request at all. `OidcVerifier` correctly rejects it with
+  `:no_matching_key`. The `id_token` from the same response, in contrast, is an ordinary signed RS256 JWT and
+  verifies cleanly into a `PNS.Auth.Actor`. **For service-to-service calls specifically**, this means the
+  resource side needs `/oauth/v2/introspect` — the network-per-request route §"Three levels" above already
+  argues against for ordinary requests, accepted here because it is the only route this shape offers.
+- **No `roles` claim shows up unasked.** Matches the table above — a role has to be granted and the right scope
+  requested before it appears; nothing arrives "free" without both.
+- **Fixed, 10 August: browser login now works end to end.** `docker-compose.identity.yml` runs a second
+  container (`ghcr.io/zitadel/zitadel-login`, the login screens Zitadel v3+ ships separately from the core
+  API) and a Traefik in front of both, path-routing `/ui/v2/login*` to it and everything else to the core
+  (`identity-poc-traefik-dynamic.yml`) — the two only work together behind one origin, because the API
+  redirects a browser to a same-origin path rather than a different port. Bootstrapping needs a *second*
+  machine user + PAT beyond the admin one (`ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_*`,
+  `ZITADEL_FIRSTINSTANCE_LOGINCLIENTPATPATH`) for the login container to call the API with. Run through a real
+  browser: authorize → login form → password → redirect back with a code → exchanged for a token →
+  `PNS.Auth.OidcVerifier` verifies the resulting `id_token` into a `PNS.Auth.Actor`, same as the machine-user
+  case above. One quirk worth recording so it does not look like a bug next time: the human user's
+  `loginName` was not the plain `admin` given to `ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME` — Zitadel appended
+  the org's domain, so the working login was `admin@zitadel.localhost`.
+- **The core's own `ready` healthcheck stopped agreeing with `/debug/healthz` once this login-client bootstrap
+  was added.** `/debug/healthz` answers 200 the whole time (checked directly, from inside the container); the
+  `zitadel ready` CLI subcommand used in the compose healthcheck reports not-ready indefinitely. Not chased
+  further — `depends_on` for the other containers does not gate on it.
+- **Bootstrapping needs no browser.** `ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME` +
+  `ZITADEL_FIRSTINSTANCE_PATPATH` write a working Management API token to a bind-mounted file on first boot, so
+  the whole loop above — project, app, machine secret, token, verify — is scriptable end to end from a cold
+  `docker compose up`. This is what makes the space in `priv/poc/` a real test bed rather than a stub that
+  waits on someone clicking through a console.
+
+**Decided 9 August, from the frontend's planned users-and-access screen:** that screen calls *our* API, never
+the sidecar's, even though the sidecar's own Management API already does everything the screen needs (this PoC
+used it directly: create project, create app, grant a machine user's secret, all plain REST). A thin proxy in
+the wrapper costs real code the direct route would not — but the direct route means the frontend knows
+Zitadel's request shapes, and swapping providers becomes a frontend rewrite instead of the one-line config
+change §"Two axes" already promises. Not yet built.
+
 ## Simplest start
 
-Run any OIDC provider alongside the engine, wire the plug, and move on. Zitadel is the current best guess on
-bundling ergonomics and Keycloak on breadth of IdP compatibility — but under the rule above, that guess is
-cheap to be wrong about, which is exactly why it does not need settling today. Whether it ends up a module in
-the release, a sidecar, or its own deployed application can be answered by the first real client rather than
-in advance.
+Run the provider as a sidecar, wire the plug, and move on. Zitadel is the current best guess on bundling
+ergonomics and Keycloak on breadth of IdP compatibility — but under the rule above, that guess is cheap to be
+wrong about, which is exactly why the vendor does not need settling today even though the topology now is.
 
 What breaks the rule, and therefore should not happen: a credential store reachable from the engine's domain
 code, domain code minting its own tokens, or any vendor name in the engine's configuration schema.
@@ -118,7 +214,7 @@ say either "user profile mirror, no credentials, keyed by the identity subject" 
 
 ## Not decided
 
-Vendor, packaging, login screen route, deprovisioning mechanism, who operates the instance. Also
+Vendor, login screen route, deprovisioning mechanism, who operates the instance. Also
 ADR 009 (`empowered-house-contextdocs/adr/architecture.md`) line 248 still says `WorkOS wrapped`; that becomes
 wrong if the deployment ships into the client's environment, but it can be corrected whenever the ADR is next
 touched rather than on its own.

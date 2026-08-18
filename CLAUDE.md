@@ -12,6 +12,7 @@ pierwszego commita, żeby ta tymczasowość była faktem, a nie obietnicą.
 | Plan pracy, etapy, kryteria odbioru, **stan** | [`PLAN.md`](PLAN.md) |
 | Czym jest to repozytorium, brama, struktura | [`README.md`](README.md) |
 | **Jak napisać kontrakt** — klucze, wymagane/opcjonalne, co się nie skompiluje | [`docs/contract.md`](docs/contract.md) |
+| **Jak zarządzać użytkownikami, rolami i dostępem** — przepisy działające na żywym sidecarze | [`docs/identity-admin-guide.md`](docs/identity-admin-guide.md) |
 | **Założenia początkowe, 18 decyzji, `§N` z komentarzy w kodzie** | [`docs/adr/architecture.md`](docs/adr/architecture.md) |
 | Kształty kodu, schematy, pułapki, biblioteki — `notes §N` z komentarzy | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |
 | Co każda decyzja pobiła, odrzucone alternatywy | [`docs/adr/design-rationale.md`](docs/adr/design-rationale.md) |
