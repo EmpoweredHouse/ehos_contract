@@ -8,5 +8,5 @@ defmodule Rehmed.Contracts do
   at which it starts to matter is the point at which changing it is expensive.
   """
 
-  use Boundary, deps: [PNS], exports: [ClinicalVisit, PayerSettlement]
+  use Boundary, deps: [PNS], exports: [ClinicalVisit, PayerSettlement, VisitSettlement]
 end

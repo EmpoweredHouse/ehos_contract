@@ -55,6 +55,53 @@ Dwie rzeczy, które przy okazji wyszły na plus i warto je znać jako precedens:
   z kontraktem klinicznym, który nie ma ani jednego `:string`, jest tu celowy i pokazuje, że kontrola
   retencji potrzebuje **czytelnika, nie reguły**.
 
+### Trzeci kontrakt Rehmed — rozliczenie wizyty. Pieniądze, i czym one naprawdę są
+
+`lib/rehmed/contracts/visit_settlement.ex` plus jedyny kawałek kodu domenowego w tym drzewie,
+`lib/rehmed/settlement.ex`. Napisany po to, żeby zmierzyć się z pieniędzmi zamiast je omijać — pierwsze
+dwa kontrakty Rehmed omijały, a **TaxVision omija też**: `turnover_matched_with_invoice` paruje obrót
+z fakturą po identyfikatorach i nie niesie ani jednej kwoty, w produkcie **księgowym**. Trzy kontrakty,
+zero kwot, i nikomu to nie wyglądało na lukę.
+
+**Wniosek nie brzmi „brakuje typu pieniężnego".** Grosze w `:integer` to poprawna reprezentacja pieniędzy
+— sumy i porównania są dokładne, a alternatywa, która wygląda przyjaźniej (dziesiętna liczba jako tekst),
+traci arytmetykę i ląduje w `:string`, czyli w typie, który znaczy *tekst wpisany przez człowieka* i jako
+jedyny odpala kontrolę retencji.
+
+> **Brakuje sposobu na powiedzenie, co dana liczba liczy.** `task_count` liczy taski, `recipients`
+> liczy adresatów, `amount_minor` liczy grosze — i wszystkie trzy są `:integer`, nierozróżnialne.
+> Drugi kontrakt wpisujący **złote** w pole, w które pierwszy wpisuje grosze, kompiluje się, emituje
+> i jest źle zsumowany w raporcie. **Żadna brama tego nie widzi** — ta sama klasa cichej,
+> prawdopodobnie wyglądającej porażki co granulacja assercji wyżej.
+
+Obejście zastosowane w kontrakcie to konwencja nazewnicza: każda kwota kończy się na `_minor`.
+**Konwencja nie jest gwarancją** i nazwanie jej gwarancją byłoby tym rodzajem twierdzenia, które to
+repozytorium ma wykrywać u innych.
+
+**Jeśli kiedyś dokładamy typ, to `:decimal`, nigdy `:money`.** `:decimal` jest kształtem — dokładna
+liczba dziesiętna, która nie może być floatem — i potrzebuje jej fizyka, stawki podatkowe i wagi tak samo
+jak ceny. `:money` nazywa rzecz, którą rozpoznaje księgowy, czyli powtarza błąd `:period`. Próg dowodowy
+niech będzie ten sam, który zabił `:period` — **liczenie**: przez cztery kontrakty pola, które użyłyby
+`:decimal`, to **trzy, wszystkie w tym jednym pliku**. Za mało. I powodem, gdy przyjdzie, będzie
+**dokładność, nie pieniądze**.
+
+Trzy rzeczy przy okazji:
+
+- **Silnik nigdy nie czyta wartości payloadu.** `identity` i `instance` biorą pola jako klucze,
+  `PNS.Emitter` sprawdza kształt — liczbę czyta wyłącznie `rule` przez `example`, a `given:` jest
+  **nietypowane**. Więc pieniądze w przykładach są całkowicie poza zamkniętym zbiorem. To osłabia całą
+  panikę o typ pieniężny i warto to wiedzieć, zanim ktoś zacznie go dokładać.
+- **Atrybut, który istnieje tylko czasem, nie może być polem** — drugi raz. Pole zadeklarowane musi być
+  na każdej emisji, więc opcjonalność wyraża się **osobnym zdarzeniem**. Tu boli mocniej niż przy dopisku
+  ICD-9: `DEC-05` chce, żeby każda linia płatności nazywała swojego płatnika, a linia opłacona prywatnie
+  nie ma płatnika do nazwania. **Przypadek mieszany jest w tym kontrakcie niewyrażalny** i jest to
+  zapisane jako luka, nie zaklejone polem nullowalnym, którego DSL i tak by nie przyjął.
+- **`rule`/`example` w drugiej domenie działa i jest wykonywane.** `test/rehmed_contract_examples_test.exs`
+  używa tego samego generatora co TaxVision, cztery przykłady z **prawdziwymi liczbami klienta**
+  (150 + 50 = 200, VLW 00:19:58). Sprawdzone mutacją: odwrócenie warunku w `decide/1` wywala trzy z pięciu
+  testów. „Przykład jest testem" jest własnością DSL, nie oprzyrządowania jednego kontraktu — i teraz jest
+  na to drugi dowód.
+
 ## Stan na 6 sierpnia
 
 221 testów, `mix check` przechodzi. Ostrzeżenia są **cztery i wszystkie celowe**:
