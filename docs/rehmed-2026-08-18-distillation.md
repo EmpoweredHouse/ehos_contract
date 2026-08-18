@@ -21,9 +21,48 @@ Kategorie poniżej rzutowane na ten plik, nie na pamięć o nim.
 
 ---
 
-## Zanim przeczytasz procesy: trzy ustalenia, które zmieniają kształt kontraktu
+## Zanim przeczytasz procesy
 
-Wyszły z rzutowania i są ważniejsze od pojedynczych procesów, więc idą na górę.
+Wyszły z rzutowania i są ważniejsze od pojedynczych procesów, więc idą na górę. Najpierw jedna
+poprawka do kryterium, potem trzy ustalenia o kształcie kontraktu.
+
+### 0. Poprawka do kryterium: **sekwencja, nie zegar**
+
+Pierwsza wersja tej destylacji oceniała procesy tym, ile mają kandydatów na `trace`, i odrzuciła dwa
+jako *nienadające się w ogóle*. **To było mierzenie złą miarką**, wziętą wprost ze skilla — który mówił,
+że `trace` jest kategorią nośną, a proces bez niej nie jest jeszcze wart weryfikacji. Skill został
+poprawiony 2026-08-18; ten dokument jest poprawiony razem z nim.
+
+Silnik mówi co innego. **Trzy z czterech pytań ekranu liczą się bez zegara:**
+
+| Pytanie | Mechanizm | Potrzebuje czasu? |
+|---|---|---|
+| które zadeklarowane ścieżki nigdy nie zostały przejechane | `PNS.Conformance` | **nie** |
+| które przejścia nie są zadeklarowane | `PNS.Graph` | **nie** |
+| która wersja kontraktu jest wdrożona i od kiedy | `PNS.Deployment` | **nie** |
+| które assercje `trace` są naruszane | `PNS.Trace` | tak |
+
+Do tego `PNS.Check.backward_edges` sprawdza kolejność **po `stage`, bez jednego zapytania do logu**.
+`module-boundary-check` — drugi skill w tym repo — od początku miał to poprawnie: *structural tracking
+(process, instance, stages — for drift/untraversed-path detection, **no timing required**)*.
+
+**Rehmed jest domeną sekwencyjną, nie zegarową, i to jest normalny przypadek, nie ułomny.** Zdarzenia
+odpala recepcja i specjalista klikając w ekrany; znaczenie ma **kolejność i to, czy ścieżka w ogóle
+została przejechana**. I to jest dokładnie to, co model klienta ma najmocniejszego — jego własna
+tabela *„reguły, których nikt dziś nie egzekwuje"* to w większości **twierdzenia o sekwencji**, nie
+o czasie:
+
+| Reguła z tabeli klienta | Czym jest dla silnika |
+|---|---|
+| wizyta płatnikowa musi zostać oznaczona jako rozliczona, inaczej płatnik nie płaci | zadeklarowana ścieżka, która nie jest przejeżdżana |
+| wykonana wizyta **w ogóle** zostaje zamknięta klinicznie | jw. — i to jest te „16 wizyt niezakończonych" |
+| każda wykonana wizyta płatnikowa jest zafakturowana albo wykluczona z powodem | jw. |
+| korekta przypisuje się do dnia, którego dotyczy | niezmiennik + przejście, które dziś prowadzi w złe miejsce |
+
+Żadna z nich nie potrzebuje `within`. Wszystkie cztery są policzalne z kontraktu i logu.
+
+Konsekwencja dla czytania reszty: **tabele „kandydaci na `trace`" poniżej zostają, ale przestają być
+oceną procesu.** Ocena jest w sekcjach *Etapy / bramki*, *Stany końcowe* i *Instancja*.
 
 ### 1. Granica agregatu ≠ granica `process`
 
@@ -55,10 +94,15 @@ w tej domenie kluczowe terminy są liczone od momentu **zaplanowanego w przyszł
 | Telefon po ~5 min nieobecności (`P-04`) | w przód od godziny startu wizyty | **tak, jeśli start jest zdarzeniem** |
 | Zgłoszenie do P1 w 2 dni od zakończenia świadczenia | w przód od faktu | **tak** |
 
-Obejście jest jedno i trzeba je nazwać, bo inaczej ktoś napisze `within: {-1, :day}`: **domena musi
-zmaterializować kotwicę jako zdarzenie** (planista emituje fakt „nadszedł moment przypomnienia dla tej
-wizyty"), a `trace` biegnie od niego. To jest decyzja projektowa po stronie klienta, nie brak w DSL —
-ale bez niej połowa tego, co Rehmed obiecuje pacjentowi, nie jest wyrażalna.
+**I wniosek jest taki, że one po prostu nie należą do kontraktu.** Pierwsza wersja tego akapitu
+proponowała obejście — niech planista emituje fakt „nadszedł moment przypomnienia dla tej wizyty",
+a `trace` biegnie od niego. To jest dokładanie silnikowi zegara, którego ta domena nie ma:
+**zdarzenia w Rehmedzie odpalają ludzie klikający w ekrany, nie harmonogram.** Przypomnienie o wizycie
+jest zadaniem z terminem i ma właściciela — `F-02`, silnik zadań, siedemnaście plastrów. Wpychanie go
+do kontraktu po to, żeby dało się o nim napisać asercję, odwraca zależność: mechanizm powstaje pod
+narzędzie pomiaru, a nie pod pracę.
+
+Zostaje w tabeli jako **fakt o domenie**, nie jako luka do zasypania.
 
 Dodatkowo: `within` przyjmuje wyłącznie `:second | :minute | :hour | :day` (`PNS.Duration`). **„Ostatni
 dzień roboczy" i „miesiąc" nie są jednostkami stałej długości** — nie skompilują się i nie powinny.
@@ -180,9 +224,17 @@ przejścia `Umówiona → Obecny` i `Umówiona → Nieobecność` nie chronią �
 | 2 | `visit_booked` | **niepowiedziane** | `booking_confirmation_sent` | — | nie dotyczy | pacjentowi | `P-30` — SMS „automatic", **żadne źródło nie podaje N** |
 | 3 | `visit_handed_over` | **niepowiedziane** | `payment_recorded` | `visit_closed_without_payment` | **niepowiedziane** | wewnętrznie | `P-08` — istnieje powiadomienie o zakończeniu bez płatności, ale bez terminu |
 
-**Ten proces sam w sobie jest ubogi w obietnice, i to jest ustalenie, nie luka w destylacji.** Trzy
-najgłośniejsze terminy tej domeny (przypomnienie, bezpłatne odwołanie, wygaśnięcie bonu) są zakotwiczone
-wstecz — patrz ustalenie 2 na górze. To, co naprawdę weryfikowalne, zaczyna się dopiero w procesie 3.
+**Ten proces jest ubogi w obietnice **czasowe** i bogaty w twierdzenia o sekwencji** — a to drugie jest
+tym, co go czyni wartym kontraktu. Trzy najgłośniejsze terminy domeny (przypomnienie, bezpłatne
+odwołanie, wygaśnięcie bonu) są zakotwiczone wstecz i **nie należą tu** (ustalenie 0 i 2). Zostaje to,
+co silnik liczy bez zegara, i jest tego dużo: sześć bramek, trzy stany końcowe z czego dwa złe,
+i przejścia, które model uznaje za sporne.
+
+**Najostrzejszy pojedynczy przypadek w całej destylacji jest właśnie tutaj.** `U-10`: wizyta
+niepotwierdzona **odbywa się**, a maszyna stanów dochodzi do `Obecny` wyłącznie z `Potwierdzona`.
+To jest, w słowniku silnika, **zadeklarowana ścieżka, której nie da się przejechać, przy zdarzeniu,
+które dzieje się codziennie** — czyli dokładnie to, co overlay pokazuje jako pierwsze. Nie potrzeba
+do tego ani jednej liczby.
 
 ### Kadencja
 
@@ -852,15 +904,19 @@ Appunite z 2026-08-15**, a metryka pochodzi z pisemnego wymagania klienta.
 
 ### Kandydaci na `trace`
 
-**Żadnego, i to jest ustalenie.**
+**Żadnego — i to jest fakt o domenie, nie werdykt o procesie.**
 
-Cykl życia jest realny (naliczona → pobrana / umorzona / przedawniona), ale **nikt nigdy nie powiedział,
-w jakim czasie**. `Przedawniona` znaczy „pacjent nie wraca" — czyli nie ma terminu, tylko brak zdarzenia
-bez końca. Wpisanie tu jakiegokolwiek `within` byłoby wymyśleniem liczby.
+Nikt nigdy nie powiedział, w jakim czasie kara ma zostać pobrana. `Przedawniona` znaczy „pacjent nie
+wraca" — nie ma terminu, jest brak zdarzenia bez końca. Wpisanie tu jakiegokolwiek `within` byłoby
+wymyśleniem liczby.
 
-Proces z cyklem życia i bez falsyfikowalnej obietnicy **nie jest jeszcze wart weryfikacji** — może być
-w kontrakcie jako `process` + `event` + `terminal` dla samego pokrycia grafu, ale nie wnosi tego, po co
-jest silnik.
+**Strukturalnie natomiast jest to jeden z ciekawszych procesów w całym zestawie**, i pierwsza wersja
+tej sekcji odrzuciła go niesłusznie. Ma trzy stany końcowe, z czego jeden — `Przedawniona` — jest
+**dziś niepoliczalny**, a klient prosi o tę liczbę na piśmie (`REQ LISTA 1 §8`: osobno naliczone,
+osobno skutecznie pobrane). To jest podręcznikowe *zadeklarowana ścieżka, nigdy nieprzejechana*:
+`penalty_collected` istnieje w modelu i nie istnieje w rzeczywistości, bo mechanizm, który czynił ją
+osiągalną — kaucja — jest poza zakresem. Overlay pokazałby to bez jednej liczby, i pokazałby
+**dokładnie tę metrykę, o którą klient prosił**.
 
 ### Kadencja
 
@@ -1070,8 +1126,14 @@ pan Kowalski wziął sobie" (01:26:13). **Rejestr jest tu aktywem RODO, nie ryzy
 
 ### Kandydaci na `trace`
 
-**Żadnego zakotwiczonego w zdarzeniu.** Obietnica brzmi „dzień zostaje zamknięty tego samego dnia" —
-i jest zakotwiczona w kalendarzu, nie w fakcie. To jest kadencja, nie asercja.
+**Żadnego zakotwiczonego w zdarzeniu.** Obietnica „dzień zostaje zamknięty tego samego dnia" jest
+zakotwiczona w kalendarzu, nie w fakcie — to kadencja, nie asercja.
+
+**Ale twierdzenie o sekwencji jest tu mocne i dziś fałszywe**, co czyni proces wartym kontraktu bez
+żadnego `trace`: `Skorygowany` wraca do `Zamknięty`, nigdy do `Otwarty`, a korekta przypisuje się do
+dnia, którego dotyczy. Dziś przypisuje się do dnia wpisania, więc zamknięte dni cicho dryfują —
+i **typ wpisu korygującego w ogóle nie istnieje**, przez co personel wpisuje ponownie. Zadeklarowane
+przejście, którego nie ma czym przejechać.
 
 ### Kadencja
 
@@ -1132,16 +1194,19 @@ Cisza nie jest tym samym co „nie ma", więc wymieniam z powodem.
 
 ## Podsumowanie procesów
 
-| # | Proces | Kandydaci na `trace` | Pola nie mieszczące się w zamkniętym zbiorze | Największa luka |
-|---|---|---|---|---|
-| 1 | Cykl życia wizyty | 3, z czego **0 ma podane N** | kwoty | wszystkie realne terminy są kotwiczone wstecz |
-| 2 | Dokumentacja kliniczna | **2, jeden z liczbą i datą decyzji (24 h)** | brak (ale ICD to `:enum` bez zbioru) | czy dokumentacja medyczna może żyć w logu |
-| 3 | **Sprawozdawczość P1** | **2, obie z liczbą ustawową; jedna zgodna z prawem** | brak | **od czego liczą się 2 dni** |
-| 4 | Rozliczenie wizyty | 2, z czego jeden nie powinien powstać | **kwoty — wszędzie** | jak reprezentować pieniądze |
-| 5 | Rozliczenie płatnika | 2, **obie kalendarzowe, obie się nie skompilują** | kwoty | instancja przecina granicę wizyty |
-| 6 | Opłata karna | **0** | kwoty | nikt nie podał żadnego terminu |
-| 7 | Zaświadczenie | 1, z terminem **per przypadek**, nie stałym | brak | `H20` może zlikwidować pół procesu |
-| 8 | Zamknięcie dnia | 0 (to kadencja) | kwoty | nic nie czyta kadencji |
+Pierwsze trzy kolumny to **to, co overlay weryfikuje bez zegara**. Czwarta to połowa czasowa i jest
+normalne, że jest mała.
+
+| # | Proces | Bramki | Stany końcowe (w tym złe) | `trace` | Pola poza zbiorem typów | Największa luka |
+|---|---|---|---|---|---|---|
+| 1 | Cykl życia wizyty | **6** | 3 (2 złe) | 3, z czego **0 ma podane N** | kwoty | `U-10`: ścieżki, której nie da się przejechać |
+| 2 | Dokumentacja kliniczna | 2 | 2 (**1 złe i najczęstsze**) | **2, jeden z liczbą i datą decyzji (24 h)** | ICD to `:enum` bez zbioru | czy dokumentacja medyczna może żyć w logu |
+| 3 | **Sprawozdawczość P1** | 3 | 2 (1 złe, **dziś niewidoczne**) | **2, obie z liczbą ustawową; jedna zgodna z prawem** | brak | **od czego liczą się 2 dni** |
+| 4 | Rozliczenie wizyty | 1 | 3 | 2, z czego jeden nie powinien powstać | **kwoty — wszędzie** | jak reprezentować pieniądze |
+| 5 | Rozliczenie płatnika | 3 | 3 (**2 złe, oba kosztują pieniądze**) | 2, **obie kalendarzowe, obie się nie skompilują** | kwoty | instancja przecina granicę wizyty |
+| 6 | Opłata karna | 2 | 3 (**1 niepoliczalny, a klient prosi o tę liczbę**) | 0 | kwoty | nikt nie podał żadnego terminu |
+| 7 | Zaświadczenie | 1 | 1 + **1 niezamodelowany** (nieodebrane) | 1, z terminem per przypadek | brak | `H20` może zlikwidować pół procesu |
+| 8 | Zamknięcie dnia | 1 | 2 | 0 (to kadencja) | kwoty | przejście, którego nie ma czym przejechać |
 
 ## Ustalenia międzyprocesowe
 
@@ -1172,25 +1237,40 @@ Cisza nie jest tym samym co „nie ma", więc wymieniam z powodem.
   przechowywania. To jest największa różnica między tą domeną a TaxVision i **nie znika przez ostrożne
   pisanie kontraktu.**
 
-### Procesy z zerem kandydatów na `trace`
+### Procesy z zerem kandydatów na `trace` — i co weryfikują zamiast tego
 
-- **Opłata karna** — cykl życia jest, obietnicy nie ma. Nikt nigdy nie powiedział, w jakim czasie kara
-  ma zostać pobrana, a `Przedawniona` to brak zdarzenia bez końca.
-- **Zamknięcie dnia** — to kadencja, nie asercja.
-- **Grafik i zasoby** — rdzeń biznesowy, zero obietnic czasowych. Warto to powiedzieć głośno przy
-  wyborze pilota: **PNS nie ma nic do powiedzenia o tym, co dla Rehmedu jest najbardziej różnicujące.**
+Fakt o domenie, nie werdykt. Każdy z tych trzech ma zadeklarowaną ścieżkę, która dziś nie jest
+przejeżdżana — czyli materiał dla overlaya, bez jednej liczby.
+
+- **Opłata karna** — `penalty_collected` istnieje w modelu i nie w rzeczywistości, bo kaucja jest poza
+  zakresem. **Klient prosi o tę liczbę na piśmie.**
+- **Zamknięcie dnia** — typ wpisu korygującego nie istnieje, więc przejście `Zamknięty → Skorygowany`
+  nie ma czym się odbyć, a personel wpisuje ponownie.
+- **Grafik i zasoby** — rdzeń biznesowy wg mapy kontekstów, zero obietnic czasowych **i zero
+  sekwencji**: to jest problem spełniania ograniczeń („czy ta rezerwacja może istnieć"), nie proces.
+  **To jedyny z trzech, o którym PNS naprawdę nie ma nic do powiedzenia** — i warto to wiedzieć przy
+  wyborze pilota, bo to jest jednocześnie to, co dla Rehmedu najbardziej różnicujące.
+
+### Promises zakotwiczone wstecz — poza kontraktem
+
+Przypomnienie przed wizytą, termin bezpłatnego odwołania, ostrzeżenie o wygasającym bonie. `trace`
+biegnie w przód od faktu, więc żadnego z nich nie wyrazi. **Należą do `F-02`**, silnika zadań, który
+i tak powstaje pod siedemnaście plastrów. Nie są luką w kontrakcie i nie są powodem, żeby dokładać mu
+harmonogram.
 
 ### Sygnał gotowości
 
-- **Gotowe do pierwszego szkicu kontraktu:** **proces 3 (sprawozdawczość P1)** i, jako jego bezpośrednie
-  otoczenie, **proces 2 (dokumentacja i zamknięcie kliniczne)**. Razem mają: dwie liczby z zewnętrznym
-  źródłem (2 dni ustawowe, 24 h decyzją klienta z datą), zdefiniowany ładunek, zdefiniowaną awarię
-  z własną semantyką prawną, i stan końcowy, którego dziś **nie da się zobaczyć** — czyli dokładnie to,
-  co silnik ma ujawniać.
-- **Wymagają jeszcze jednej rundy potwierdzeń:** procesy 1, 4, 5, 7 — każdy ma otwarte pytanie, które
-  zmienia kształt payloadu albo istnienie asercji.
-- **Nie nadają się jeszcze w ogóle:** proces 6 (brak jakiegokolwiek terminu) i proces 8 (kadencji nic
-  nie czyta).
+Oceniane **strukturą w pierwszej kolejności**: proces z jasną instancją, uporządkowanymi etapami
+i uczciwymi stanami końcowymi jest gotowy niezależnie od tego, czy ma choć jeden `trace`.
+
+- **Gotowe do pierwszego szkicu:** **3 (P1)** i **2 (dokumentacja)** — mają jedno i drugie: dwie liczby
+  z zewnętrznym źródłem *oraz* stan końcowy, którego dziś nie da się zobaczyć. Do tego **1 (cykl życia
+  wizyty)**, którego pierwsza wersja tej sekcji nie umieściła tu tylko dlatego, że liczyła `trace`:
+  sześć bramek, trzy stany końcowe i `U-10` — ścieżka, której nie da się przejechać przy zdarzeniu
+  codziennym. **To jest najlepszy pojedynczy materiał demonstracyjny w całym zestawie.**
+- **Gotowe strukturalnie, wymagają potwierdzenia jednego faktu:** **6 (kara)** — czy pacjent może mieć
+  dwie otwarte naraz; **8 (zamknięcie dnia)** — nic więcej, poza świadomością, że kadencji nic nie czyta.
+- **Wymagają rundy z klientem, bo otwarte pytanie zmienia payload albo istnienie asercji:** 4, 5, 7.
 
 ### Jedno zastrzeżenie do całości
 

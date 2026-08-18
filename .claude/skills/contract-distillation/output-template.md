@@ -108,9 +108,12 @@ After all processes, add:
 ```markdown
 ## Summary across processes
 
-| # | Process | Trace candidates found | Payload fields not fitting the closed type set | Biggest gap |
-|---|---------|--------------------------|---------------------------------------------------|-------------|
-| 1 | [name] | [count] | [list, or none] | [...] |
+| # | Process | Claimed orderings (gates) | Terminal states | Trace candidates | Payload fields not fitting the closed type set | Biggest gap |
+|---|---------|----------------------------|------------------|-------------------|---------------------------------------------------|-------------|
+| 1 | [name] | [count] | [count, incl. bad endings] | [count] | [list, or none] | [...] |
+
+*The first three columns are what the overlay verifies without a clock. The fourth is the timed
+half, and it is normal for it to be small.*
 
 ## Cross-process findings
 
@@ -121,10 +124,17 @@ After all processes, add:
 - [field kind]: [which processes, and what workaround was considered]
 
 ### Processes with zero trace candidates
-- [name]: [this is a real finding — a process with no falsifiable promise is not
-  verification-worthy yet, not a gap in this skill]
+- [name]: [a fact about the domain, not a verdict on the process. Say what it verifies
+  structurally instead — claimed orderings, gates, terminal states — and whether any of those
+  orderings is one nobody enforces today, which is what the overlay exists to surface]
+
+### Promises anchored backwards from a scheduled moment
+- [name]: [not expressible as `trace`, which runs forwards from an observed fact. Say so, and say
+  it belongs to the client application's reminder mechanism rather than to the contract]
 
 ### Readiness signal
 - **Processes ready for a first contract draft:** [...]
 - **Processes needing another confirmation pass with the client:** [...]
+- **Judge readiness on structure first.** A process with clear instance, ordered stages and
+  honest terminal states is ready whether or not it has a single `trace`.
 ```

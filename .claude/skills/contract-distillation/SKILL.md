@@ -103,15 +103,36 @@ the "closest DSL fit" line — do not skip straight to Elixir-shaped nouns befor
    case (visits, retries, attempts)? If so, what distinguishes occurrence two from occurrence one?
 6. **Terminal states** — every way this process ends, explicitly including bad endings
    (abandonment, rejection, cancellation) — not just the happy one.
-7. **Stages / gates** — what must happen before what is even possible (a gate), as distinct from
-   what merely happens in a typical order. Do not infer a strict linear sequence the material does
-   not support.
-8. **Trace candidates — the actual promises.** Form: *after `event A`, within `N`, `event B`
-   follows, or else `event C`.* This is the load-bearing category; a process with none of these is
-   not verification-worthy yet, whatever else it has. For each candidate: is this a promise made
-   to someone (a patient, a payer, a regulator)? What is `N`, in real units, not "quickly"? Does
-   the timing bind the fallback path too, or only the happy path — this is usually unstated and
-   must be flagged, not assumed either way.
+7. **Stages / gates — the load-bearing category.** What must happen before what is even possible
+   (a gate), as distinct from what merely happens in a typical order. Do not infer a strict linear
+   sequence the material does not support.
+
+   **This is where most of the value is, and the earlier version of this skill said the opposite.**
+   Three of the four questions the product answers — which declared paths were never traversed,
+   which transitions are not declared, which contract version is deployed — are computed from the
+   contract and the log with **no clock involved** (`PNS.Conformance`, `PNS.Graph`,
+   `PNS.Deployment`); `PNS.Check.backward_edges` checks order by `stage` without touching the log
+   at all. Only `trace` needs timing. So a process whose events are fired by people interacting
+   with screens, in an order that matters, with no promise about how fast — which is the **normal**
+   case, not a deficient one — is fully verification-worthy through `process` + `instance` +
+   `stages` + `terminal`. `module-boundary-check` already states this split correctly; this skill
+   was out of step with it and with the engine.
+
+   So for every process, extract: which orderings are **claimed** (a gate that must hold), which
+   are merely typical, and which declared paths a reader would expect to see traversed. An
+   ordering nobody enforces today is exactly what the overlay is for.
+8. **Trace candidates — the timed promises, where they exist.** Form: *after `event A`, within
+   `N`, `event B` follows, or else `event C`.* Valuable and comparatively rare: it needs a promise
+   made to someone (a patient, a payer, a regulator) **and** a number somebody actually stated.
+   What is `N`, in real units, not "quickly"? Does the timing bind the fallback path too, or only
+   the happy path — this is usually unstated and must be flagged, not assumed either way.
+
+   **Zero trace candidates is a finding about the domain, not a verdict on the process.** Record
+   it and move on to the structure. And do not manufacture the missing half: if a promise is
+   anchored *backwards* from a scheduled future moment (a reminder before an appointment, a
+   warning before an expiry), `trace` cannot express it, because the window runs forwards from an
+   observed fact. That is a reminder, and reminders belong to whatever task mechanism the client
+   application has — **not a reason to grow the contract a scheduler.**
 9. **Cadence** — is this process due on a recurring schedule, or does it start only when
    triggered (no cadence applies)? Do not force a cadence onto an event-driven process.
 10. **Retain / sensitive data** — which payload fields are personal or sensitive data (health data
