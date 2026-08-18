@@ -62,6 +62,28 @@ defmodule PNS.Trace do
   neither satisfied nor violated — there is nothing to judge. Counting it as a
   violation would raise an alarm for every case not yet started.
 
+  ## One limitation, and it fails towards good news
+
+  **An assertion is per run, so a promise made per item inside a run is
+  mis-measured rather than refused.** One verdict is produced per instance: the
+  window opens on the first `from` in that run and closes on the first hit after
+  it. Where the run holds many of the thing being promised about, one match
+  satisfies the whole run.
+
+  The compile gates catch a `trace` spanning two processes and a calendar unit in
+  `within`. **Nothing catches granularity.** Found while distilling Rehmed's
+  monthly payer settlement (`Rehmed.Contracts.PayerSettlement`), where a run is one
+  payer in one month and the promise — every delivered visit is invoiced or
+  excluded with a reason — is about each visit in it. Forty unsettled visits behind
+  one settled one report as satisfied.
+
+  The workaround is to key the process by the thing the promise is about, which is
+  usually right anyway: `instance` is what an assertion is counted within, so a
+  promise finer than the instance is a sign the instance is wrong. That is not
+  always available — the anchoring fact may already belong to another process — and
+  when it is not, there is currently nothing to write. Recorded rather than
+  approximated, and tracked in `PLAN.md`.
+
   ## The boundary of the report
 
   `evaluate/3` returns verdicts **per run**, because that is the only way to count

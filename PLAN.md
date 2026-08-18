@@ -28,9 +28,32 @@ Trzy rzeczy, które wyszły dopiero przy pisaniu, i żadna nie jest o Rehmedzie:
    optymistyczną. Kotwica została wybrana tak, żeby zapis był współczesny zdarzeniu — ale to jest wybór
    modelujący, a nie własność silnika, i następny klient może go nie mieć.
 
-Rehmed nie ma tu kodu i może nigdy nie mieć: to drzewo jest **wyłącznie kontraktami**. Wszystkie zdarzenia
-są `declared, never observed`, czyli dokładnie ten stan, który `pns.check` raportuje jako `info` i który
-notes §5 opisuje jako normalny w trakcie wdrożenia.
+Rehmed nie ma tu kodu i nie będzie miał: to drzewo jest **wyłącznie kontraktami**, bo do sprawdzenia DSL
+kod nie jest potrzebny. Wszystkie zdarzenia są `declared, never observed`, czyli dokładnie ten stan, który
+`pns.check` raportuje jako `info` i który notes §5 opisuje jako normalny w trakcie wdrożenia.
+
+### Drugi kontrakt Rehmed — rozliczenie płatnika. Cztery luki, jedna groźna
+
+`lib/rehmed/contracts/payer_settlement.ex`, ten sam dzień. **Wart więcej niż pierwszy, bo jest miejscem,
+w którym DSL się skończył** — a przy danych testowych to jest lepszy wynik niż kontrakt napisany gładko.
+
+| # | Luka | Waga |
+| --- | --- | --- |
+| 1 | **Assercja drobniejsza niż przebieg nie jest łapana i myli się w stronę dobrych wieści.** Obietnica brzmi *każda wykonana wizyta płatnikowa jest w fakturze okresu albo wykluczona z powodem* — kwantyfikator po zbiorze, nie „po A następuje B". Przebieg to płatnik-miesiąc i mieści dziesiątki wizyt; okno otwiera się na **pierwszym** wystąpieniu i zamyka **dowolnym** dopasowaniem, więc czterdzieści nierozliczonych wizyt za jedną rozliczoną raportuje się jako spełnione. Bramy łapią `trace` przez dwa procesy i jednostkę kalendarzową — **granulacji nie łapie nic** | **to jest produkt.** Cicha porażka w stronę zieleni jest gorsza niż odmowa kompilacji |
+| 2 | **Zdarzenie należy do jednego procesu, a obietnica potrzebuje dwóch.** Naturalną kotwicą jest *wizyta wykonana*, która należy do przebiegu wizyty. Scalenie procesów nie pomaga: jeden z dwóch liczników przestaje mieć sens | duże — to jest ta sama granica, o którą rozbił się pierwszy kontrakt, widziana z drugiej strony |
+| 3 | **`instance` to nie „pola grupujące przebieg", tylko „pola znane w chwili zdarzenia"** — i DSL nigdzie tego nie mówi. `E-85` rejestracja u płatnika dzieje się przed wykonaniem, a okres rozliczeniowy nie jest wtedy znany. TaxVision tego nie ujawnił, bo miesiąc księgowy jest znany przed jakąkolwiek pracą w nim | średnie — kandydat na zdanie w `docs/contract.md` |
+| 4 | **`unverified` nie obejmuje `trace` — drugi raz z rzędu zmieniło to, co dało się napisać.** Tu przepadła najostrzejsza assercja w całym zleceniu: umowny obowiązek przyjęcia pacjenta płatnika **w 7 dni** przy kolejce dwóch miesięcy (`H38`). Nikt nie potwierdził, że obowiązek istnieje, a nie ma jak zadeklarować go i trzymać poza raportem dowodowym | **z obserwacji staje się pozycją backlogu** |
+
+Dwie rzeczy, które przy okazji wyszły na plus i warto je znać jako precedens:
+
+- **Zależność obsługiwana ręcznie nie ma obserwowalnej awarii.** `external` jest zadeklarowany i **żadne
+  zdarzenie nie ma `depends_on`** — bo awaria to człowiek, który czegoś nie przepisał, a `:suspended` bierze
+  się z **zaobserwowanej** niedostępności. Deklaracja bez `depends_on` jest tu poprawną odpowiedzią, nie
+  niedbalstwem.
+- **`retain: :persist` na polu `:string` bywa decyzją, nie zaniechaniem.** Powód wykluczenia wizyty
+  z faktury musi być czytelny, więc `:hash` spełniłby kontrolę retencji i zniszczył deklarację. Kontrast
+  z kontraktem klinicznym, który nie ma ani jednego `:string`, jest tu celowy i pokazuje, że kontrola
+  retencji potrzebuje **czytelnika, nie reguły**.
 
 ## Stan na 6 sierpnia
 

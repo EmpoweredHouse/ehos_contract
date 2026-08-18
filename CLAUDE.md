@@ -5,11 +5,16 @@ pakiet; `lib/taxvision/` to **aplikacja klienta, która jest tu tymczasowo** —
 na którym sprawdzamy, czy założenia silnika się trzymają. Granica jest wymuszona przez `boundary` od
 pierwszego commita, żeby ta tymczasowość była faktem, a nie obietnicą.
 
-**Od 18 sierpnia drzewa klienckie są dwa, i to jest różnica gatunkowa, nie liczbowa.** `lib/rehmed/` to
-**wyłącznie kontrakty** — Rehmed nie ma tu kodu i może nigdy nie mieć. Ma zamodelowany proces, a to
-drzewo odpowiada na pytanie, czy DSL go udźwignie. Trzeci kontrakt z domeny medycznej,
-`UniversalityGate.TreatmentEpisode`, **nie jest materiałem klienta i zostaje w `test/support/`** — jest
-zmyślony, i sam to o sobie mówi w pierwszej linii.
+**To repozytorium jest przejściowe i nie budujemy w nim aplikacji dla nikogo.** Produktem są fundamenty
+biblioteki i wnioski; TaxVision i Rehmed są **danymi testowymi** — materiałem, na którym sprawdzamy, czy
+DSL się trzyma. Dlatego wnioski z pisania kontraktu idą do `PLAN.md` jako praca nad biblioteką, a nie do
+notatek o kliencie, i dlatego kontrakt, którego nie da się napisać, jest **lepszym** wynikiem niż
+kontrakt napisany obok materiału.
+
+Od 18 sierpnia dane testowe są z dwóch domen. `lib/taxvision/` to pełna aplikacja — schematy, handlery,
+repo. `lib/rehmed/` to **wyłącznie kontrakty**: Rehmed nie ma tu kodu i nie będzie miał, bo do
+sprawdzenia DSL kod nie jest potrzebny. Trzecia domena medyczna, `UniversalityGate.TreatmentEpisode`,
+zostaje w `test/support/`, bo jest **zmyślona** — i sama to o sobie mówi w pierwszej linii.
 
 ## Zanim cokolwiek zmienisz
 
