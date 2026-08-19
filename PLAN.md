@@ -128,6 +128,25 @@ obrazek dla `ClinicalVisit` to jedenaście nierozłączonych pudełek. Sekwencja
 Zastrzeżenie zapisane przy funkcji: **obrazek łatwiej pokiwać głową niż poprawić.** Ma stać nad zdaniami
 assercji, nie zamiast nich; miarą sesji jest liczba poprawek.
 
+**Obrazek od razu znalazł niedomiar w kontrakcie, i to jest dowód o narzędziu, nie o Rehmedzie.**
+Jedenaście pudełek, strzałkę wychodzącą miało **jedno**. Przyczyna nie była w rendererze: `ClinicalVisit`
+deklarował dwa etapy i trzymał zamknięcie kliniczne wewnątrz `:delivery`, czyli **twierdził mniej, niż
+mówi materiał**. Napisane tak z ostrożności — ze strachu przed fałszywym twierdzeniem, że dokumentacja
+dzieje się po wyjściu pacjenta — a odmowa jednego fałszywego twierdzenia nie jest powodem, żeby nie
+twierdzić nic. Poprawione na `[:delivery, :closing, :reporting]`. **Przeglądanie modułu tego nie
+wyłapało; rysunek tak.**
+
+**Czwarta luka DSL, i jedyna z tych czterech bez obejścia: `stages` wyraża wyłącznie porządek liniowy.**
+Prawdziwy kształt tej domeny to porządek **częściowy** — zamknięcie po wszystkim, reszta wzajemnie
+nieuporządkowana. Lista faz jest porządkiem totalnym, więc wszystko nieuporządkowane musi dzielić tor,
+a przez to **uporządkowania, które wewnątrz toru zachodzą, są niewyrażalne**. Granulacja, jednostka
+liczby i porządek częściowy mają ten sam kształt: DSL przyjmuje deklarację mówiącą co innego, niż autor
+sądzi, i nic tego nie sygnalizuje.
+
+Renderer mówi o tym wprost — tor z więcej niż jednym zdarzeniem nosi w tytule `no order claimed inside`.
+Bez tego pudełka bez strzałek czytają się jako *niedokończone*, a nie jako *świadomie nieuporządkowane*,
+i te dwa odczyty zbierają zupełnie inne poprawki.
+
 **Przy okazji naprawiony `within 24 hour`.** Liczba mnoga była wypisana ręcznie dla `:month` i `:day`,
 reszta jednostek wpadała w gałąź ogólną. Przeniesione do `PNS.Duration.humanize/1`, czyli do modułu,
 który i tak jest jedynym źródłem prawdy o jednostkach — `PNS.Report` deleguje. **Przeżyło cztery

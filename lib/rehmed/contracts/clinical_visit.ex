@@ -31,20 +31,41 @@ defmodule Rehmed.Contracts.ClinicalVisit do
   by the same argument, but it is a different conversation with a different
   stakeholder, and the material behind it has open questions this one does not.
 
-  ## Two stages, because that is all the material claims
+  ## Three stages — and the third was added because a picture caught its absence
 
-  Order is declared between stages and never inside one. There are exactly two,
-  and the second follows the first for a reason someone said out loud: the report
-  fires on the **specialist's** close, and reception closing and dispatching while
-  the specialist is still writing was rejected in the room — *to nie może tak
-  być* (VLW).
+  Order is declared between stages and never inside one, so a stage list is the
+  only ordering claim a contract makes. Two of the boundaries here are stated by
+  somebody: the clinical close comes after the work it closes, and the report
+  fires on the **specialist's** close — reception closing and dispatching while
+  the specialist is still writing was rejected in the room, *to nie może tak być*
+  (VLW).
 
-  Inside `:delivery` nothing is ordered, and that is not laziness. The specialists
-  described documentation as intended during the visit and deferred under
-  workload; the source model refuses to order it, and an earlier attempt to place
-  the ICD codes before the close is precisely the contested proposal `DEC-19`.
-  A stage list is read by backward-edge detection, so a sequence claimed here that
-  the business does not make would produce findings about nothing.
+  **The first version of this file declared two stages and put the close inside
+  `:delivery`, which claimed less than the material does.** It was written that
+  way out of caution — the fear was of claiming that documentation happens *after*
+  the patient leaves, which is false, since the specialists describe it as intended
+  during the visit and deferred under workload. But refusing one false claim is
+  not a reason to make no claim at all, and the two are easy to confuse while
+  looking at a list of declarations.
+
+  What made the difference visible was rendering the process as a diagram
+  (`PNS.Graph.declared_to_mermaid/2`): eleven boxes, and only one of them had an
+  arrow. That is worth recording as evidence about the tool rather than about this
+  contract — **the picture found an under-claim that reviewing the module had
+  not.**
+
+  Inside `:delivery` nothing is ordered, and that part *is* deliberate. The
+  interview, the treatment, the codes and the patient leaving are not sequenced
+  against each other by anything on record, and an earlier attempt to place the
+  ICD codes before the close is precisely the contested proposal `DEC-19`.
+  Backward-edge detection reads this list, so a sequence claimed here that the
+  business does not make would produce findings about nothing.
+
+  **And that is the limit of what `stages` can express.** The real shape is a
+  partial order — the close after everything, the rest mutually unordered — while
+  a stage list is a total order over phases. Anything unordered has to share a
+  lane, so the orderings that *do* hold inside a lane cannot be stated at all.
+  Recorded in `PLAN.md` as a library finding; there is no workaround for it here.
 
   ## What the payloads deliberately do not carry
 
@@ -181,12 +202,14 @@ defmodule Rehmed.Contracts.ClinicalVisit do
     process: :clinical_visit,
     stage: :delivery
 
+  # **Its own stage since 2026-08-19**, and the reason is in the moduledoc: this is
+  # the one ordering the material states and the contract was not claiming.
   event :visit_closed_clinically,
     label: "Zamknięto wizytę przez specjalistę",
     owner: Rehmed.VisitDocumentation,
     payload: %{visit_id: :id},
     process: :clinical_visit,
-    stage: :delivery
+    stage: :closing
 
   # The fallback of the first assertion. The client's written requirement asks for
   # a task on the managing person's list when a visit has not been properly closed;
@@ -252,7 +275,7 @@ defmodule Rehmed.Contracts.ClinicalVisit do
 
   process :clinical_visit,
     label: "Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego",
-    stages: [:delivery, :reporting],
+    stages: [:delivery, :closing, :reporting],
     # One run is one visit. The same key identifies four aggregates in the source
     # model, which is why this is one process — see the moduledoc.
     instance: [:visit_id]

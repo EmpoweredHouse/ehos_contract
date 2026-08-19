@@ -463,16 +463,18 @@ defmodule PNS.Graph do
   defp declared_lanes(process, events) do
     lanes =
       for stage <- process.stages do
+        in_stage = Enum.filter(events, &(&1.stage == stage))
+
         # A stage with no events prints an empty lane rather than disappearing.
         # A declared phase nothing has been assigned to is a finding, and a
         # diagram that hides it is the wrong tool to find it with.
         body =
-          case Enum.filter(events, &(&1.stage == stage)) do
+          case in_stage do
             [] -> [~s(        stage_#{stage}_empty[" "])]
-            in_stage -> for e <- in_stage, do: ~s(        #{e.name}["#{escape(e.label)}"])
+            _ -> for e <- in_stage, do: ~s(        #{e.name}["#{escape(e.label)}"])
           end
 
-        [~s(    subgraph stage_#{stage}["#{stage}"])] ++ body ++ ["    end"]
+        [~s(    subgraph stage_#{stage}["#{lane_title(stage, in_stage)}"])] ++ body ++ ["    end"]
       end
 
     # The order between stages is the only ordering claim a contract makes, so it
@@ -484,6 +486,18 @@ defmodule PNS.Graph do
 
     List.flatten(lanes) ++ order
   end
+
+  # **A lane holding more than one event says so on its title.**
+  #
+  # Inside a stage a contract claims nothing about order, so those events are
+  # drawn with no arrows between them — and to a reader who has not been told the
+  # rule, boxes with no arrows read as *unfinished*, not as *deliberately
+  # unordered*. The two collect completely different corrections, and the whole
+  # point of putting this in front of a process owner is the corrections.
+  #
+  # One event alone carries no marker: there is nothing there to order.
+  defp lane_title(stage, [_, _ | _]), do: "#{stage} · no order claimed inside"
+  defp lane_title(stage, _one_or_none), do: "#{stage}"
 
   # The assertions, and they are why this picture carries information the
   # inventory does not: an arrow with a number on it is a claim somebody can

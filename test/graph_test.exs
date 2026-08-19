@@ -168,16 +168,34 @@ defmodule PNS.GraphTest do
 
     defp shape, do: PNS.Graph.declared_to_mermaid(@contract, :clinical_visit)
 
-    test "stages are lanes, in the order the contract declares" do
+    test "stages are lanes, chained in the order the contract declares" do
       mermaid = shape()
 
-      assert mermaid =~ ~s(subgraph stage_delivery["delivery"])
-      assert mermaid =~ ~s(subgraph stage_reporting["reporting"])
-      assert mermaid =~ "stage_delivery --> stage_reporting"
+      assert mermaid =~ "stage_delivery --> stage_closing"
+      assert mermaid =~ "stage_closing --> stage_reporting"
 
       # The only ordering claim a contract makes is between stages, so it is the
-      # only arrow drawn between lanes.
-      refute mermaid =~ "stage_reporting --> stage_delivery"
+      # only arrow drawn between lanes — and never the other way round.
+      refute mermaid =~ "stage_closing --> stage_delivery"
+      refute mermaid =~ "stage_reporting --> stage_closing"
+
+      # Chained pairwise rather than fully connected: the claim is that each
+      # stage follows the previous one, and drawing delivery --> reporting as
+      # well would add a second edge saying nothing new.
+      refute mermaid =~ "stage_delivery --> stage_reporting"
+    end
+
+    test "a lane holding several events says it claims no order between them" do
+      # Otherwise boxes with no arrows read as unfinished rather than as
+      # deliberately unordered, and those two collect different corrections.
+      assert shape() =~ ~s(subgraph stage_delivery["delivery \u00b7 no order claimed inside"])
+    end
+
+    test "a lane holding one event carries no such marker, because there is nothing to order" do
+      mermaid = shape()
+
+      assert mermaid =~ ~s(subgraph stage_closing["closing"])
+      refute mermaid =~ "closing \u00b7 no order"
     end
 
     test "an event is drawn with the client's own words, not its atom" do
