@@ -8,6 +8,23 @@ defmodule Mix.Tasks.Pns.Graph do
   `--mermaid` prints a diagram. This is the seed of the dashboard — data without a
   screen, deliberately in that order: first check whether the difference is
   signal, then draw it.
+
+  ## `--process` draws something else, for somebody else
+
+      mix pns.graph --mermaid --process clinical_visit --output visit.mmd
+
+  The two pictures above are **for the team**: what the binary wires together, and
+  what the log says actually ran. `--process` draws one process's **declared
+  shape** — stages as lanes, how it can end, each assertion as an arrow carrying
+  its window — for the process owner, before anything is built.
+
+  It is per process and never global on purpose. The default inventory this task
+  prints is 33 events from four contracts in one flat list, which is useful to
+  nobody outside the team and is the counter-example ADR §9 had in mind with
+  *navigation is per-process, never global*.
+
+  Use `--output`: Erlang keeps stdout in latin1 when it is not a terminal, and
+  every node on this diagram is written in the client's language.
   """
 
   use Boundary, classify_to: PNS
@@ -22,7 +39,13 @@ defmodule Mix.Tasks.Pns.Graph do
 
     {opts, _} =
       OptionParser.parse!(args,
-        strict: [overlay: :boolean, mermaid: :boolean, since: :string, output: :string]
+        strict: [
+          overlay: :boolean,
+          mermaid: :boolean,
+          since: :string,
+          output: :string,
+          process: :string
+        ]
       )
 
     if opts[:overlay] do
@@ -34,7 +57,41 @@ defmodule Mix.Tasks.Pns.Graph do
 
     PNS.Registry.load!()
 
-    if opts[:overlay], do: overlay(opts), else: static(opts)
+    cond do
+      opts[:process] -> declared(opts)
+      opts[:overlay] -> overlay(opts)
+      true -> static(opts)
+    end
+  end
+
+  # The declared shape of one process, for a person who has not read the module.
+  # Deliberately per process rather than global: ADR §9 says navigation is per
+  # process and never global, and the flat inventory this task prints by default
+  # is the counter-example — 33 events from four contracts in one list, useful to
+  # nobody outside the team.
+  defp declared(opts) do
+    name = String.to_atom(opts[:process])
+
+    contract =
+      Enum.find(PNS.Registry.contracts(), fn c ->
+        Enum.any?(c.processes(), &(&1.name == name))
+      end)
+
+    unless contract do
+      known =
+        PNS.Registry.contracts()
+        |> Enum.flat_map(fn c -> Enum.map(c.processes(), & &1.name) end)
+        |> Enum.sort()
+        |> Enum.join(", ")
+
+      Mix.raise("no process #{inspect(name)}. Declared: #{known}")
+    end
+
+    if opts[:mermaid] do
+      emit_output(PNS.Graph.declared_to_mermaid(contract, name), opts)
+    else
+      Mix.raise("--process draws a diagram; pass --mermaid (and --output to keep the accents)")
+    end
   end
 
   # Erlang switches stdout to latin1 when the output is not a terminal, so

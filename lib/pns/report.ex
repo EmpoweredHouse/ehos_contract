@@ -109,12 +109,11 @@ defmodule PNS.Report do
     end
   end
 
+  # Delegated to `PNS.Duration`, which already owns everything else about units.
+  # The hand-listed plurals that used to sit here covered `:month` and `:day` and
+  # let every other unit through as "24 hour".
   @spec amount({pos_integer(), atom()}) :: String.t()
-  defp amount({1, :month}), do: "month"
-  defp amount({n, :month}), do: "#{n} months"
-  defp amount({1, :day}), do: "day"
-  defp amount({n, :day}), do: "#{n} days"
-  defp amount({n, unit}), do: "#{n} #{unit}"
+  defp amount(duration), do: PNS.Duration.humanize(duration)
 
   @spec paths(map()) :: [String.t()]
   defp paths(%{runs: 0}) do

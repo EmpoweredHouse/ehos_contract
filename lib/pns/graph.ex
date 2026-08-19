@@ -401,6 +401,144 @@ defmodule PNS.Graph do
     )
   end
 
+  @doc """
+  One process's **declared shape** as a mermaid diagram: stages as lanes, the
+  events in them, how it can end, and each assertion as an arrow carrying its
+  window.
+
+  ## This is not the graph that was rejected
+
+  `PLAN.md` records a dated finding that a diagram was not worth building: eleven
+  events gave three edges and it said nothing a sorted list did not. That was the
+  **handler graph** — edges from the registry — drawn for the team's evidence
+  screen. This is a different picture for a different reader.
+
+  The distinction is not a nicety, it is the whole reason this can be worth
+  drawing. A contract with no implementation has **no handler edges at all**, so
+  the rejected picture of `Rehmed.Contracts.ClinicalVisit` would be eleven
+  unconnected boxes. The sequence in a contract does not live in its edges; it
+  lives in `stages`, `terminal` and `trace`, and none of the three appears on the
+  handler graph.
+
+  ## Who it is for
+
+  The process owner, before anything is built — the reader `docs/warsztat-rehmed.md`
+  is written for. So the nodes carry `label`, which is the one place in the whole
+  system written in the client's language, and the assertion arrows carry the
+  number, because a claim with a number is the only thing somebody can correct.
+
+  **A picture is easier to nod at than to correct**, which is why this is meant to
+  sit above the assertion sentences rather than replace them. The measure of a
+  validation session is corrections, not agreement.
+
+  ## What it deliberately does not show
+
+  Payload fields, `identity`, `retain`, `owner`, `rule`. Those are for whoever
+  writes the code. A diagram showing everything the contract holds would be the
+  module again, and the module is what the reader could not read.
+  """
+  @spec declared_to_mermaid(module(), atom()) :: String.t()
+  def declared_to_mermaid(contract, process_name) do
+    process =
+      Enum.find(contract.processes(), &(&1.name == process_name)) ||
+        raise ArgumentError, "#{inspect(contract)} declares no process #{inspect(process_name)}"
+
+    events = contract.events_of(process_name)
+    traces = Enum.filter(contract.traces(), &(contract.process_of(&1.from).name == process_name))
+
+    Enum.join(
+      ["flowchart TB"] ++
+        declared_lanes(process, events) ++
+        declared_assertions(traces) ++
+        declared_dependencies(contract, events) ++
+        declared_classes(events),
+      "\n"
+    )
+  end
+
+  defp declared_lanes(%{stages: []}, events) do
+    for e <- events, do: ~s(    #{e.name}["#{escape(e.label)}"])
+  end
+
+  defp declared_lanes(process, events) do
+    lanes =
+      for stage <- process.stages do
+        # A stage with no events prints an empty lane rather than disappearing.
+        # A declared phase nothing has been assigned to is a finding, and a
+        # diagram that hides it is the wrong tool to find it with.
+        body =
+          case Enum.filter(events, &(&1.stage == stage)) do
+            [] -> [~s(        stage_#{stage}_empty[" "])]
+            in_stage -> for e <- in_stage, do: ~s(        #{e.name}["#{escape(e.label)}"])
+          end
+
+        [~s(    subgraph stage_#{stage}["#{stage}"])] ++ body ++ ["    end"]
+      end
+
+    # The order between stages is the only ordering claim a contract makes, so it
+    # is the only arrow drawn between lanes.
+    order =
+      process.stages
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.map(fn [a, b] -> "    stage_#{a} --> stage_#{b}" end)
+
+    List.flatten(lanes) ++ order
+  end
+
+  # The assertions, and they are why this picture carries information the
+  # inventory does not: an arrow with a number on it is a claim somebody can
+  # disagree with.
+  defp declared_assertions(traces) do
+    Enum.flat_map(traces, fn trace ->
+      window =
+        if trace.within, do: "within #{PNS.Duration.humanize(trace.within)}", else: "eventually"
+
+      eventually = "    #{trace.from} ==>|#{window}| #{trace.eventually}"
+
+      case trace.or_else do
+        nil -> [eventually]
+        or_else -> [eventually, "    #{trace.from} -.->|or else| #{or_else}"]
+      end
+    end)
+  end
+
+  # A dashed line with **no arrowhead**, following the convention the overlay
+  # already set for a relation that is not causation: a dependency is something a
+  # fact rests on, not something it leads to.
+  defp declared_dependencies(contract, events) do
+    depended_on = events |> Enum.map(& &1.depends_on) |> Enum.filter(& &1) |> Enum.uniq()
+
+    nodes =
+      for name <- depended_on,
+          external = Enum.find(contract.externals(), &(&1.name == name)),
+          do: ~s|    #{name}[("#{escape(external.label)}")]|
+
+    links = for e <- events, e.depends_on, do: "    #{e.name} -.- #{e.depends_on}"
+
+    nodes ++ links
+  end
+
+  defp declared_classes(events) do
+    terminal = for e <- events, e.terminal, do: e.name
+    external = events |> Enum.map(& &1.depends_on) |> Enum.filter(& &1) |> Enum.uniq()
+
+    assignment = fn
+      [], _class -> []
+      names, class -> ["    class #{Enum.join(names, ",")} #{class}"]
+    end
+
+    assignment.(terminal, "terminal") ++
+      assignment.(external, "external") ++
+      [
+        "    classDef terminal fill:#c8e6c9,stroke:#2e7d32,color:#000",
+        "    classDef external fill:#eceff1,stroke:#546e7a,color:#000,stroke-dasharray: 4 3"
+      ]
+  end
+
+  # A label is the client's own sentence and may hold anything they wrote. Only
+  # the double quote actually breaks a quoted mermaid node.
+  defp escape(label), do: String.replace(label, ~s("), "'")
+
   @doc "The overlay as one line per edge, for a terminal."
   @spec to_text([map()]) :: String.t()
   def to_text(overlay) do

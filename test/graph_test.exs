@@ -159,4 +159,61 @@ defmodule PNS.GraphTest do
     assert mermaid =~ "-.->|" and mermaid =~ "async"
     assert mermaid =~ "same command"
   end
+  describe "the declared shape of one process" do
+    # Drawn from `Rehmed.Contracts.ClinicalVisit` on purpose: it has **no
+    # handlers**, so the handler graph of it is eleven unconnected boxes. If this
+    # picture says anything at all, it says it from `stages`, `terminal` and
+    # `trace` — which is the claim the function is making.
+    @contract Rehmed.Contracts.ClinicalVisit
+
+    defp shape, do: PNS.Graph.declared_to_mermaid(@contract, :clinical_visit)
+
+    test "stages are lanes, in the order the contract declares" do
+      mermaid = shape()
+
+      assert mermaid =~ ~s(subgraph stage_delivery["delivery"])
+      assert mermaid =~ ~s(subgraph stage_reporting["reporting"])
+      assert mermaid =~ "stage_delivery --> stage_reporting"
+
+      # The only ordering claim a contract makes is between stages, so it is the
+      # only arrow drawn between lanes.
+      refute mermaid =~ "stage_reporting --> stage_delivery"
+    end
+
+    test "an event is drawn with the client's own words, not its atom" do
+      assert shape() =~ ~s(visit_completed["Pacjent wyszedł z gabinetu"])
+    end
+
+    test "an assertion is an arrow carrying its window, and its fallback is a second arrow" do
+      mermaid = shape()
+
+      # The number on the arrow is the point: a claim with a number is the only
+      # thing a process owner can correct.
+      assert mermaid =~ "visit_completed ==>|within 24 hours| visit_closed_clinically"
+      assert mermaid =~ "visit_completed ==>|within 2 days| p1_report_sent"
+      assert mermaid =~ "visit_completed -.->|or else| documentation_overdue_task_created"
+    end
+
+    test "a dependency hangs off the fact that declares it, on a line with no arrowhead" do
+      mermaid = shape()
+
+      assert mermaid =~ ~s|medical_event_registry[("Krajowy rejestr|
+      assert mermaid =~ "p1_report_sent -.- medical_event_registry"
+      # An arrowhead would read as causation, and somebody would build on it.
+      refute mermaid =~ "p1_report_sent -.-> medical_event_registry"
+    end
+
+    test "how a process can end is visible without reading anything" do
+      mermaid = shape()
+
+      assert mermaid =~ "class p1_reporting_not_required,p1_report_sent terminal"
+      assert mermaid =~ "classDef terminal"
+    end
+
+    test "a process nobody declared is an error, and the message says what exists" do
+      assert_raise ArgumentError, ~r/declares no process :nonesuch/, fn ->
+        PNS.Graph.declared_to_mermaid(@contract, :nonesuch)
+      end
+    end
+  end
 end

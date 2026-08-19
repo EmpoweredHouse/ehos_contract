@@ -36,6 +36,28 @@ defmodule PNS.Duration do
   @spec units() :: [unit()]
   def units, do: Map.keys(@seconds)
 
+  @doc """
+  A duration as English prose, for anything a person reads — the conformance
+  report's sentences and the declared-shape diagram's arrows.
+
+  A count of one drops the numeral, because both callers put a word in front of it:
+  *Due: every month*, *within 2 days*.
+
+  It lives here rather than in either caller because this module is already the one
+  source of truth about units, and the two were about to disagree. The version this
+  replaces listed the plurals by hand for `:month` and `:day` only, so every other
+  unit fell through to a branch that produced **"within 24 hour"**. Nobody saw it
+  until a contract used hours, which took until the fourth contract — the same
+  shape of miss as `within: {1, :month}`, which also compiled until somebody wrote
+  it.
+
+  `:month` is accepted here although `within` refuses it: `cadence` takes it, and
+  this function serves the reader rather than the evaluator.
+  """
+  @spec humanize({pos_integer(), atom()}) :: String.t()
+  def humanize({1, unit}), do: "#{unit}"
+  def humanize({n, unit}), do: "#{n} #{unit}s"
+
   @doc "Shifts a moment by a duration. The log is in UTC, so a day is 86 400 seconds."
   @spec shift(DateTime.t(), t()) :: DateTime.t()
   def shift(%DateTime{} = at, {n, unit}) do

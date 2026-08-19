@@ -102,6 +102,37 @@ Trzy rzeczy przy okazji:
   testów. „Przykład jest testem" jest własnością DSL, nie oprzyrządowania jednego kontraktu — i teraz jest
   na to drugi dowód.
 
+### 19 sierpnia — luka granulacji przypięta testem, i obrazek dla właściciela procesu
+
+**Test, który pada na żądanie.** `test/trace_granularity_test.exs`. Cztery testy opisują dzisiejsze
+zachowanie (trzy elementy obiecane, jeden dostarczony, raport mówi `satisfied`), plus kontrola pinująca
+`violated`, żeby tamte nie przechodziły z nudniejszego powodu. Piąty, otagowany `:known_defect`
+i wykluczony w `test_helper.exs`, twierdzi to, co być powinno — `mix check` zostaje zielony, a
+`mix test --include known_defect` jest naprawdę czerwony. **Nowa fikstura nie była potrzebna:**
+`ProcessShapes.Rig` już miał ten kształt (`submission_reaches_inspection` biegnie między dwoma
+zdarzeniami per element w procesie kluczowanym po sprawie) i nikt tego nie zauważył.
+
+Ostrzejsza połowa znaleziska wyszła dopiero przy pisaniu testu: **trafienie nie musi dotyczyć tego samego
+elementu, co otwarł okno.** Ewaluator szuka pierwszego wystąpienia celu po pierwszym wystąpieniu źródła
+i **nigdy nie porównuje payloadów**.
+
+**`PNS.Graph.declared_to_mermaid/2`** — kształt zadeklarowany jednego procesu: etapy jako tory, zdarzenia
+w nich, zakończenia oznaczone, każda assercja jako strzałka z liczbą, zależność zewnętrzna na linii bez
+grotu. `mix pns.graph --mermaid --process <nazwa>`.
+
+**To nie jest graf odrzucony w etapie 4** i różnica jest rozstrzygająca, nie kosmetyczna: tamten rysował
+krawędzie z rejestru handlerów, dla zespołu. **Kontrakt bez implementacji ma zero krawędzi**, więc tamten
+obrazek dla `ClinicalVisit` to jedenaście nierozłączonych pudełek. Sekwencja kontraktu siedzi w `stages`,
+`terminal` i `trace` — i żadne z tych trzech nie pojawia się na grafie handlerowym.
+
+Zastrzeżenie zapisane przy funkcji: **obrazek łatwiej pokiwać głową niż poprawić.** Ma stać nad zdaniami
+assercji, nie zamiast nich; miarą sesji jest liczba poprawek.
+
+**Przy okazji naprawiony `within 24 hour`.** Liczba mnoga była wypisana ręcznie dla `:month` i `:day`,
+reszta jednostek wpadała w gałąź ogólną. Przeniesione do `PNS.Duration.humanize/1`, czyli do modułu,
+który i tak jest jedynym źródłem prawdy o jednostkach — `PNS.Report` deleguje. **Przeżyło cztery
+kontrakty, bo żaden nie użył godzin aż do czwartego.**
+
 ## Stan na 6 sierpnia
 
 221 testów, `mix check` przechodzi. Ostrzeżenia są **cztery i wszystkie celowe**:
