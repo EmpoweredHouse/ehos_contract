@@ -176,16 +176,33 @@ Diagram w repo jest z **danych demonstracyjnych**, nie z prawdziwego przebiegu: 
 trzy przechodzą weryfikację, dwie idą w blokadę, kolejka zatrzymana. Bez zatrzymanej kolejki czwarty stan
 nakładki nie miałby czego pokazać.
 
+### Dokument do sesji z klientem
+
+```bash
+mix pns.graph --mermaid --process clinical_visit --output schemat.mmd
+mmdc -i schemat.mmd -o schemat.svg
+mix pns.brief --process clinical_visit --diagram schemat.svg --output wizyta.html
+```
+
+Jeden proces jako dokument: przebieg, zdarzenia słowami klienta, obietnice jako zdania z liczbami,
+zależności zewnętrzne. **HTML jest produktem, nie etapem do PDF-a** — te sesje odbywają się na
+współdzielonym ekranie, gdzie HTML się przelewa, da się w nim szukać i kopiować, a kto chce papier,
+drukuje z przeglądarki (arkusz ma reguły `@page` na A4). Plik jest samowystarczalny: SVG jest wklejone
+w środku, nic się nie pobiera.
+
+**Kolumna „co od tego zależy" jest liczona z kontraktu**, nie pisana ręcznie, i to ona niesie cały
+argument tego dokumentu: zdarzenie, od którego nic nie zależy, zwykle nie jest faktem tylko polem,
+które ktoś wypełnia. Takie wiersze są na czerwono. Przy pierwszym uruchomieniu wyszły dwa.
+
 ### Diagram kształtu zadeklarowanego
 
 ```bash
-mix pns.graph --mermaid --process clinical_visit --output wizyta.mmd
-mmdc -i wizyta.mmd -o wizyta.pdf
+mix pns.graph --mermaid --process clinical_visit --output schemat.mmd
+mmdc -i schemat.mmd -o schemat.svg
 ```
 
-**PDF, nie PNG**, jeśli to idzie na sesję z klientem: rozmiar wychodzi z liczby zdarzeń, a nie z `-s`,
-i skalowanie nie rozmywa polskich znaków. `mmdc` rozpoznaje format po rozszerzeniu — `-o out.png`,
-`-o out.pdf` i `-o out.svg` to ta sama komenda.
+**SVG**, bo to wchodzi do dokumentu wyżej. `mmdc` rozpoznaje format po rozszerzeniu, więc `-o out.png`
+i `-o out.pdf` to ta sama komenda, gdyby sam diagram był komuś potrzebny osobno.
 
 Etapy z więcej niż jednym zdarzeniem noszą w tytule `no order claimed inside`, bo wewnątrz etapu kontrakt
 nie twierdzi nic o kolejności — i pudełka bez strzałek muszą się czytać jako decyzja, nie jako brak.
