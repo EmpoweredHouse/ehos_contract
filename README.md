@@ -136,7 +136,20 @@ stoi w kontrakcie z `unverified: [:deadline]` i **nie liczy się do raportu dowo
 potwierdzi — bo liczba, której klient nie uzgodnił, wypisana obok liczb uzgodnionych, czyta się jako
 zmierzona.
 
-## Diagram nakładki
+## Dwa diagramy, dla dwóch różnych czytelników
+
+Oba wychodzą z `mix pns.graph` i **nie pokazują tego samego**. Mylenie ich kosztowało już raz odrzucenie
+pomysłu, który nie był tym odrzucanym — patrz `PNS.Graph.declared_to_mermaid/2`.
+
+| Co | Dla kogo | Skąd bierze treść |
+| --- | --- | --- |
+| `--overlay --mermaid` | zespół | krawędzie z rejestru handlerów + liczniki z logu |
+| `--process <nazwa> --mermaid` | **właściciel procesu, przed budową** | `stages`, `terminal`, `trace` i `depends_on` z kontraktu |
+
+Drugi jest jedynym, który ma sens dla kontraktu **bez implementacji**: bez handlerów krawędzi jest zero,
+więc nakładka takiego kontraktu to same nierozłączone pudełka.
+
+### Diagram nakładki
 
 ```bash
 mix pns.graph --overlay --mermaid --output doc/graf-nakladki.mmd
@@ -146,6 +159,22 @@ mmdc -i doc/graf-nakladki.mmd -o doc/graf-nakladki.png -b white -s 3
 Diagram w repo jest z **danych demonstracyjnych**, nie z prawdziwego przebiegu: pięć firm w jednym miesiącu,
 trzy przechodzą weryfikację, dwie idą w blokadę, kolejka zatrzymana. Bez zatrzymanej kolejki czwarty stan
 nakładki nie miałby czego pokazać.
+
+### Diagram kształtu zadeklarowanego
+
+```bash
+mix pns.graph --mermaid --process clinical_visit --output wizyta.mmd
+mmdc -i wizyta.mmd -o wizyta.pdf
+```
+
+**PDF, nie PNG**, jeśli to idzie na sesję z klientem: rozmiar wychodzi z liczby zdarzeń, a nie z `-s`,
+i skalowanie nie rozmywa polskich znaków. `mmdc` rozpoznaje format po rozszerzeniu — `-o out.png`,
+`-o out.pdf` i `-o out.svg` to ta sama komenda.
+
+Etapy z więcej niż jednym zdarzeniem noszą w tytule `no order claimed inside`, bo wewnątrz etapu kontrakt
+nie twierdzi nic o kolejności — i pudełka bez strzałek muszą się czytać jako decyzja, nie jako brak.
+**Szeroki, luźny obrazek jest wtedy prawdziwym wynikiem**, a nie usterką układu: to kontrakt, który
+deklaruje mało. Dociąganie go niewidzialnymi krawędziami sugerowałoby kolejność, której nikt nie uzgodnił.
 
 Jeśli `mmdc` zgłosi brak `chrome-headless-shell` w konkretnej wersji, a w `~/.cache/puppeteer/` leży inna —
 wskaż mu ją, zamiast pobierać drugą przeglądarkę:
