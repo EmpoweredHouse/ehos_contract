@@ -171,8 +171,9 @@ defmodule PNS.GraphTest do
     test "stages are lanes, chained in the order the contract declares" do
       mermaid = shape()
 
-      assert mermaid =~ "stage_start --> stage_delivery"
-      assert mermaid =~ "stage_delivery --> stage_departure"
+      assert mermaid =~ "stage_start --> stage_interview"
+      assert mermaid =~ "stage_interview --> stage_treatment"
+      assert mermaid =~ "stage_treatment --> stage_departure"
       assert mermaid =~ "stage_departure --> stage_documentation"
       assert mermaid =~ "stage_documentation --> stage_closing"
       assert mermaid =~ "stage_closing --> stage_reporting"
@@ -191,7 +192,7 @@ defmodule PNS.GraphTest do
     test "a lane holding several events says it claims no order between them" do
       # Otherwise boxes with no arrows read as unfinished rather than as
       # deliberately unordered, and those two collect different corrections.
-      assert shape() =~ ~s(subgraph stage_delivery["delivery \u00b7 no order claimed inside"])
+      assert shape() =~ ~s(subgraph stage_interview["interview \u00b7 no order claimed inside"])
     end
 
     test "a lane holding one event carries no such marker, because there is nothing to order" do
@@ -204,6 +205,18 @@ defmodule PNS.GraphTest do
       assert mermaid =~ ~s(subgraph stage_departure["departure"])
       assert mermaid =~ ~s(subgraph stage_closing["closing"])
       refute mermaid =~ "closing \u00b7 no order"
+    end
+
+    test "the two ways of starting a note sit in one lane, because they are alternatives" do
+      # `AGG-02` draws C-19 and C-20 as two edges into the same state, so putting
+      # `previous_note_copied` after the treatment would invent a sequence. The
+      # note that does follow the treatment is a different event, `E-49`.
+      mermaid = shape()
+
+      assert mermaid =~ ~s(subgraph stage_interview["interview \u00b7 no order claimed inside")
+      assert mermaid =~ ~s(history_taken["Zebrano wywiad pacjenta"])
+      assert mermaid =~ ~s(previous_note_copied["Powielono notatkę z poprzedniej wizyty"])
+      assert mermaid =~ ~s(reception_note_written["Zapisano notatkę widoczną w recepcji"])
     end
 
     test "the visit has a beginning, and it is not the same fact as arriving at the clinic" do

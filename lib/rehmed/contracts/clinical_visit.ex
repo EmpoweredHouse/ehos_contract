@@ -31,56 +31,64 @@ defmodule Rehmed.Contracts.ClinicalVisit do
   by the same argument, but it is a different conversation with a different
   stakeholder, and the material behind it has open questions this one does not.
 
-  ## Six stages, and every one of them was added by a reader rather than by me
+  ## Seven stages, and not one of them was my idea
 
   Order is declared between stages and never inside one, so a stage list is the
-  only ordering claim a contract makes — and this file has now got it wrong twice
-  in the same direction, both times caught by somebody looking at the picture
-  rather than at the module.
+  only ordering claim a contract makes — and this file got it wrong three times in
+  the same direction. Every correction came from somebody looking at the drawing.
 
-  | Round | What was missing | How it was found |
+  | Round | What was missing | Found by |
   | --- | --- | --- |
-  | two stages | the clinical close came after the work it closes, unstated | the diagram had eleven boxes and one arrow |
-  | three stages | the interview and the treatment precede the patient leaving, unstated; and **the start of the visit was not an event at all** | a reader asked why nothing led into *Pacjent wyszedł z gabinetu* |
+  | 1 | the clinical close comes after the work it closes | the diagram: eleven boxes, one arrow |
+  | 2 | the in-room work precedes the patient leaving — and **the visit had no beginning**, `E-40` undeclared while `E-51` was | a reader asking what led into *Pacjent wyszedł z gabinetu* |
+  | 3 | the interview precedes the treatment — and **`E-49`, the note left for the desk, was not in the contract at all** | a reader reading the three in-room boxes and saying the order was wrong |
 
-  The pattern in both is the same and worth naming, because it will recur: fear of
-  one **false** ordering claim produced **no** claim, and the two are hard to tell
-  apart in a list of declarations and trivial to tell apart in a drawing.
+  The same mistake three times: **fear of one false ordering claim produced no
+  claim**, and the two are hard to tell apart in a list of declarations and
+  trivial to tell apart in a picture.
 
-  The boundaries now declared, and who says so:
+  Round 3 also corrected a confusion of mine that the diagram made visible.
+  `previous_note_copied` (`E-42`) is not a step after the treatment — it is a
+  **shortcut for taking the history**, and `AGG-02` draws it and `C-19` as two
+  edges into the same state:
 
-  - `:start` → `:delivery` — nothing happens to the patient before they are in the
-    room. Board lane 7, `E-40` before `E-41`.
-  - `:delivery` → `:departure` — the interview, the copied note and the treatment
-    happen with the patient present. Board order, and `10-event-model.md` states
-    that board order is authoritative for sequence.
+      Pusta ──C-19 wywiad──────────────► Wywiad
+      Pusta ──C-20 powiel notatkę──────► Wywiad
+      Wywiad ──C-21/C-27 zabieg + notatka──► Opisana
+      Opisana ──C-22 ICD──────────────────► Zakodowana
+
+  So the two live together in `:interview` as alternatives, and the note that
+  belongs after the treatment is a different event — `E-49`, which was missing.
+
+  The boundaries now declared, each one backed by that machine or by board order,
+  which `10-event-model.md` states is authoritative for sequence:
+
+  - `:start` → `:interview` — nothing is asked of a patient who is not in the room.
+  - `:interview` → `:treatment` — `Pusta → Wywiad → Opisana`.
+  - `:treatment` → `:departure` — the patient leaves after being treated.
   - `:documentation` → `:closing` — a close comes after what it closes.
-  - `:closing` → `:reporting` — the report fires on the **specialist's** close, and
+  - `:closing` → `:reporting` — the report fires on the **specialist's** close;
     reception closing and dispatching while the specialist is still writing was
-    rejected in the room: *to nie może tak być* (VLW).
+    rejected in the room, *to nie może tak być* (VLW).
 
-  **One boundary is contested and is left standing so that it can be argued with.**
+  **One boundary is contested and is left standing so it can be argued with.**
   `:departure` → `:documentation` claims the ICD coding happens after the patient
   leaves. The board sequences `E-44` **before** `E-51`, so as an account of intent
   it is wrong; the transcripts describe coding deferred under workload — *16 wizyt
   niezakończonych*, *zaległości z tego dnia* — so as an account of practice it is
   right. **That contradiction is the most consequential behavioural fact in this
-  process and it is a question for the client, not a call for us.** It is in the
-  workshop questions rather than resolved here.
+  process and it is a question for the client, not a call for us.**
 
-  Nothing is ordered inside `:delivery` or `:documentation`, and that part is
-  deliberate: an interview and a treatment are not sequenced against each other by
-  anything on record, and an attempt to place the ICD codes before the close is
-  precisely the contested proposal `DEC-19`. Backward-edge detection reads this
-  list, so a sequence claimed here that the business does not make would produce
-  findings about nothing.
+  Nothing is ordered inside `:interview`, `:treatment`, `:documentation` or
+  `:reporting`, and that part is deliberate — two ways of starting a note are
+  alternatives, not a sequence.
 
   **And that is still the limit of what `stages` can express.** The real shape is a
   partial order and a stage list is a total order over phases, so anything mutually
-  unordered has to share a lane — which is why three of these six stages hold a
-  single event. The list alternates between moments and spans because that is the
-  only way to say *these in any order, then this one*. Recorded in `PLAN.md` as a
-  library finding; there is no workaround for it here.
+  unordered has to share a lane — which is why three of these seven hold a single
+  event. The list alternates between moments and spans because that is the only way
+  to say *these in any order, then this one*. Recorded in `PLAN.md` as a library
+  finding; there is no workaround for it here.
 
   ## What the payloads deliberately do not carry
 
@@ -173,14 +181,14 @@ defmodule Rehmed.Contracts.ClinicalVisit do
     owner: Rehmed.VisitDocumentation,
     payload: %{visit_id: :id},
     process: :clinical_visit,
-    stage: :delivery
+    stage: :treatment
 
   event :history_taken,
     label: "Zebrano wywiad pacjenta",
     owner: Rehmed.VisitDocumentation,
     payload: %{visit_id: :id},
     process: :clinical_visit,
-    stage: :delivery
+    stage: :interview
 
   # One of the two ways the note starts, and the only one the physiotherapists
   # were observed using as a shortcut (`E-42`). It is a separate fact rather than
@@ -191,7 +199,19 @@ defmodule Rehmed.Contracts.ClinicalVisit do
     owner: Rehmed.VisitDocumentation,
     payload: %{visit_id: :id},
     process: :clinical_visit,
-    stage: :delivery
+    stage: :interview
+
+  # `E-49`, and the note a reader was actually asking about. It is **not**
+  # `previous_note_copied`: that one is a shortcut for taking the history, and
+  # `AGG-02` draws both as edges from `Pusta` to `Wywiad`. This one is what the
+  # specialist leaves for the desk, and the state machine pairs it with the
+  # treatment — `Wywiad --> Opisana: C-21/C-27 Zabieg + notatka`.
+  event :reception_note_written,
+    label: "Zapisano notatkę widoczną w recepcji",
+    owner: Rehmed.VisitDocumentation,
+    payload: %{visit_id: :id},
+    process: :clinical_visit,
+    stage: :treatment
 
   # `E-44`, observed. ICD-10 is the diagnosis, ICD-9 the performed procedure —
   # verified against the physiotherapists' chamber and NFZ on 2026-08-13, after
@@ -313,7 +333,15 @@ defmodule Rehmed.Contracts.ClinicalVisit do
 
   process :clinical_visit,
     label: "Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego",
-    stages: [:start, :delivery, :departure, :documentation, :closing, :reporting],
+    stages: [
+      :start,
+      :interview,
+      :treatment,
+      :departure,
+      :documentation,
+      :closing,
+      :reporting
+    ],
     # One run is one visit. The same key identifies four aggregates in the source
     # model, which is why this is one process — see the moduledoc.
     instance: [:visit_id]

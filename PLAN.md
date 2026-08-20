@@ -136,7 +136,14 @@ twierdzenia, że wywiad i zabieg poprzedzają wyjście pacjenta — **i brakowa�
 `E-27`, `E-40` i `E-51` jako **jedną rodzinę** przejść wywoływanych przez pacjenta. Wziąłem koniec
 świadczenia bez jego początku.
 
-Wzorzec w obu rundach ten sam i wart nazwania, bo się powtórzy: **strach przed jednym fałszywym
+Runda trzecia, ten sam czytelnik nad tym samym PDF-em: **kolejność wewnątrz gabinetu była zła, a jednej
+notatki w ogóle nie było.** `E-49 Zapisano notatkę widoczną w recepcji` nie istniało w kontrakcie, a
+`E-42 Powielono notatkę z poprzedniej wizyty` wisiało obok zabiegu, jakby było krokiem po nim — podczas
+gdy `AGG-02` rysuje `C-19` i `C-20` jako **dwie krawędzie do tego samego stanu**: to jest wariant
+wywiadu, nie trzeci krok. Etapy: `[:start, :interview, :treatment, :departure, :documentation, :closing,
+:reporting]`.
+
+Wzorzec we wszystkich trzech rundach ten sam i wart nazwania, bo się powtórzy: **strach przed jednym fałszywym
 twierdzeniem o kolejności dał zero twierdzeń**, a te dwie rzeczy są trudne do odróżnienia na liście
 deklaracji i trywialne do odróżnienia na rysunku. Etapy: `[:start, :delivery, :departure, :documentation,
 :closing, :reporting]`. Trzy z sześciu mają jedno zdarzenie — to nie przypadek, tylko cena porządku
