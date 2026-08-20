@@ -1,8 +1,8 @@
 defmodule Rehmed.Contracts.ClinicalVisit do
   @moduledoc """
-  A visit from the moment the patient leaves the room to the statutory report —
-  documentation, the specialist's clinical close, and the medical event reaching
-  the national registry.
+  A visit from the moment the patient enters the room to the statutory report —
+  delivery, documentation, the specialist's clinical close, and the medical event
+  reaching the national registry.
 
   Distilled from `2-Solution/` in the Rehmed engagement repository via
   [`docs/rehmed-2026-08-18-distillation.md`](../../../docs/rehmed-2026-08-18-distillation.md),
@@ -31,41 +31,56 @@ defmodule Rehmed.Contracts.ClinicalVisit do
   by the same argument, but it is a different conversation with a different
   stakeholder, and the material behind it has open questions this one does not.
 
-  ## Three stages — and the third was added because a picture caught its absence
+  ## Six stages, and every one of them was added by a reader rather than by me
 
   Order is declared between stages and never inside one, so a stage list is the
-  only ordering claim a contract makes. Two of the boundaries here are stated by
-  somebody: the clinical close comes after the work it closes, and the report
-  fires on the **specialist's** close — reception closing and dispatching while
-  the specialist is still writing was rejected in the room, *to nie może tak być*
-  (VLW).
+  only ordering claim a contract makes — and this file has now got it wrong twice
+  in the same direction, both times caught by somebody looking at the picture
+  rather than at the module.
 
-  **The first version of this file declared two stages and put the close inside
-  `:delivery`, which claimed less than the material does.** It was written that
-  way out of caution — the fear was of claiming that documentation happens *after*
-  the patient leaves, which is false, since the specialists describe it as intended
-  during the visit and deferred under workload. But refusing one false claim is
-  not a reason to make no claim at all, and the two are easy to confuse while
-  looking at a list of declarations.
+  | Round | What was missing | How it was found |
+  | --- | --- | --- |
+  | two stages | the clinical close came after the work it closes, unstated | the diagram had eleven boxes and one arrow |
+  | three stages | the interview and the treatment precede the patient leaving, unstated; and **the start of the visit was not an event at all** | a reader asked why nothing led into *Pacjent wyszedł z gabinetu* |
 
-  What made the difference visible was rendering the process as a diagram
-  (`PNS.Graph.declared_to_mermaid/2`): eleven boxes, and only one of them had an
-  arrow. That is worth recording as evidence about the tool rather than about this
-  contract — **the picture found an under-claim that reviewing the module had
-  not.**
+  The pattern in both is the same and worth naming, because it will recur: fear of
+  one **false** ordering claim produced **no** claim, and the two are hard to tell
+  apart in a list of declarations and trivial to tell apart in a drawing.
 
-  Inside `:delivery` nothing is ordered, and that part *is* deliberate. The
-  interview, the treatment, the codes and the patient leaving are not sequenced
-  against each other by anything on record, and an earlier attempt to place the
-  ICD codes before the close is precisely the contested proposal `DEC-19`.
-  Backward-edge detection reads this list, so a sequence claimed here that the
-  business does not make would produce findings about nothing.
+  The boundaries now declared, and who says so:
 
-  **And that is the limit of what `stages` can express.** The real shape is a
-  partial order — the close after everything, the rest mutually unordered — while
-  a stage list is a total order over phases. Anything unordered has to share a
-  lane, so the orderings that *do* hold inside a lane cannot be stated at all.
-  Recorded in `PLAN.md` as a library finding; there is no workaround for it here.
+  - `:start` → `:delivery` — nothing happens to the patient before they are in the
+    room. Board lane 7, `E-40` before `E-41`.
+  - `:delivery` → `:departure` — the interview, the copied note and the treatment
+    happen with the patient present. Board order, and `10-event-model.md` states
+    that board order is authoritative for sequence.
+  - `:documentation` → `:closing` — a close comes after what it closes.
+  - `:closing` → `:reporting` — the report fires on the **specialist's** close, and
+    reception closing and dispatching while the specialist is still writing was
+    rejected in the room: *to nie może tak być* (VLW).
+
+  **One boundary is contested and is left standing so that it can be argued with.**
+  `:departure` → `:documentation` claims the ICD coding happens after the patient
+  leaves. The board sequences `E-44` **before** `E-51`, so as an account of intent
+  it is wrong; the transcripts describe coding deferred under workload — *16 wizyt
+  niezakończonych*, *zaległości z tego dnia* — so as an account of practice it is
+  right. **That contradiction is the most consequential behavioural fact in this
+  process and it is a question for the client, not a call for us.** It is in the
+  workshop questions rather than resolved here.
+
+  Nothing is ordered inside `:delivery` or `:documentation`, and that part is
+  deliberate: an interview and a treatment are not sequenced against each other by
+  anything on record, and an attempt to place the ICD codes before the close is
+  precisely the contested proposal `DEC-19`. Backward-edge detection reads this
+  list, so a sequence claimed here that the business does not make would produce
+  findings about nothing.
+
+  **And that is still the limit of what `stages` can express.** The real shape is a
+  partial order and a stage list is a total order over phases, so anything mutually
+  unordered has to share a lane — which is why three of these six stages hold a
+  single event. The list alternates between moments and spans because that is the
+  only way to say *these in any order, then this one*. Recorded in `PLAN.md` as a
+  library finding; there is no workaround for it here.
 
   ## What the payloads deliberately do not carry
 
@@ -128,7 +143,30 @@ defmodule Rehmed.Contracts.ClinicalVisit do
 
   use PNS.Contract
 
-  # --- delivery: everything in and around the room ---
+  # --- in the room: the visit starts, is delivered, and the patient leaves ---
+
+  # `E-40`, and its absence was the hole a reader found in the diagram: the
+  # contract had the **end** of the service and not its start, although the board
+  # carries both and `AGG-01` names `E-27`, `E-40` and `E-51` as one family of
+  # arrival-driven transitions.
+  #
+  # **Not the same fact as arriving at the clinic.** `E-27 Klient pojawił się na
+  # wizycie` is the waiting room — reception's *czeka na kanapie*, read model
+  # `R-03` — and `20-aggregates.md` warns in as many words that mixing a
+  # physical-presence state with a workflow state is what the board's colour
+  # palette got wrong. `E-27` belongs to the booking process, which nobody has
+  # written yet; this is the one that starts the clinical work.
+  #
+  # It also matters statutorily, though not for Rehmed today: the regulation
+  # counts the two days from the **end** of an ambulatory service, or **from its
+  # start** where the service spans days. Without this fact the second reading
+  # could not be expressed at all.
+  event :visit_started,
+    label: "Pacjent wszedł do gabinetu",
+    owner: Rehmed.VisitDocumentation,
+    payload: %{visit_id: :id},
+    process: :clinical_visit,
+    stage: :start
 
   event :treatment_performed,
     label: "Wykonano zabieg",
@@ -170,7 +208,7 @@ defmodule Rehmed.Contracts.ClinicalVisit do
     owner: Rehmed.VisitDocumentation,
     payload: %{visit_id: :id},
     process: :clinical_visit,
-    stage: :delivery
+    stage: :documentation
 
   # The escape hatch, and it is not optional. Sometimes no ICD-9 matches what was
   # delivered — *ten program nie przyszukuje fali uderzeniowej, więc wpisujemy
@@ -186,7 +224,7 @@ defmodule Rehmed.Contracts.ClinicalVisit do
     owner: Rehmed.VisitDocumentation,
     payload: %{visit_id: :id},
     process: :clinical_visit,
-    stage: :delivery
+    stage: :documentation
 
   # The anchor of both assertions. `E-51`: the patient leaves the room, which is
   # the end of the ambulatory service and therefore the moment the statutory clock
@@ -200,7 +238,7 @@ defmodule Rehmed.Contracts.ClinicalVisit do
     owner: Rehmed.VisitDocumentation,
     payload: %{visit_id: :id, service_id: :id},
     process: :clinical_visit,
-    stage: :delivery
+    stage: :departure
 
   # **Its own stage since 2026-08-19**, and the reason is in the moduledoc: this is
   # the one ordering the material states and the contract was not claiming.
@@ -225,7 +263,7 @@ defmodule Rehmed.Contracts.ClinicalVisit do
     owner: Rehmed.Tasks,
     payload: %{visit_id: :id},
     process: :clinical_visit,
-    stage: :delivery
+    stage: :documentation
 
   # --- reporting: the statutory submission ---
 
@@ -275,7 +313,7 @@ defmodule Rehmed.Contracts.ClinicalVisit do
 
   process :clinical_visit,
     label: "Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego",
-    stages: [:delivery, :closing, :reporting],
+    stages: [:start, :delivery, :departure, :documentation, :closing, :reporting],
     # One run is one visit. The same key identifies four aggregates in the source
     # model, which is why this is one process — see the moduledoc.
     instance: [:visit_id]

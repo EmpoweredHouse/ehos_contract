@@ -128,13 +128,32 @@ obrazek dla `ClinicalVisit` to jedenaście nierozłączonych pudełek. Sekwencja
 Zastrzeżenie zapisane przy funkcji: **obrazek łatwiej pokiwać głową niż poprawić.** Ma stać nad zdaniami
 assercji, nie zamiast nich; miarą sesji jest liczba poprawek.
 
-**Obrazek od razu znalazł niedomiar w kontrakcie, i to jest dowód o narzędziu, nie o Rehmedzie.**
-Jedenaście pudełek, strzałkę wychodzącą miało **jedno**. Przyczyna nie była w rendererze: `ClinicalVisit`
-deklarował dwa etapy i trzymał zamknięcie kliniczne wewnątrz `:delivery`, czyli **twierdził mniej, niż
-mówi materiał**. Napisane tak z ostrożności — ze strachu przed fałszywym twierdzeniem, że dokumentacja
-dzieje się po wyjściu pacjenta — a odmowa jednego fałszywego twierdzenia nie jest powodem, żeby nie
-twierdzić nic. Poprawione na `[:delivery, :closing, :reporting]`. **Przeglądanie modułu tego nie
-wyłapało; rysunek tak.**
+**Obrazek znalazł w kontrakcie trzy niedomiary w dwóch rundach, i to jest dowód o narzędziu, nie
+o Rehmedzie.** Runda pierwsza: jedenaście pudełek, jedna strzałka — brakowało twierdzenia, że zamknięcie
+kliniczne następuje po pracy, którą zamyka. Runda druga, po obejrzeniu PDF-a przez człowieka: brakowało
+twierdzenia, że wywiad i zabieg poprzedzają wyjście pacjenta — **i brakowało samego początku wizyty**.
+`E-40 Pacjent wszedł do gabinetu` nie był zadeklarowany, choć `E-51` (wyjście) był, a `AGG-01` wymienia
+`E-27`, `E-40` i `E-51` jako **jedną rodzinę** przejść wywoływanych przez pacjenta. Wziąłem koniec
+świadczenia bez jego początku.
+
+Wzorzec w obu rundach ten sam i wart nazwania, bo się powtórzy: **strach przed jednym fałszywym
+twierdzeniem o kolejności dał zero twierdzeń**, a te dwie rzeczy są trudne do odróżnienia na liście
+deklaracji i trywialne do odróżnienia na rysunku. Etapy: `[:start, :delivery, :departure, :documentation,
+:closing, :reporting]`. Trzy z sześciu mają jedno zdarzenie — to nie przypadek, tylko cena porządku
+totalnego: „te w dowolnej kolejności, potem to jedno" kosztuje osobny tor na każdy moment.
+
+**Jedna granica została jawnie sporna i tak ma zostać:** `:departure → :documentation` twierdzi, że
+kodowanie ICD dzieje się po wyjściu pacjenta. Tablica sekwencjonuje `E-44` **przed** `E-51`, więc jako
+opis intencji jest to nieprawda; transkrypty opisują odraczanie pod obciążeniem, więc jako opis praktyki
+jest to prawda. To jest pytanie do klienta, nie rozstrzygnięcie dla nas.
+
+**A `E-27 Klient pojawił się na wizycie` świadomie nie wszedł.** To jest poczekalnia — recepcyjne
+*czeka na kanapie*, read model `R-03` — a `20-aggregates.md` ostrzega wprost, że mieszanie stanu
+obecności fizycznej ze stanem przepływu pracy jest błędem, który popełniła paleta kolorów z tablicy.
+`E-27` należy do procesu rezerwacji, którego nikt jeszcze nie napisał.
+
+
+**Przeglądanie modułu nie wyłapało żadnego z trzech; rysunek wyłapał wszystkie.**
 
 **Czwarta luka DSL, i jedyna z tych czterech bez obejścia: `stages` wyraża wyłącznie porządek liniowy.**
 Prawdziwy kształt tej domeny to porządek **częściowy** — zamknięcie po wszystkim, reszta wzajemnie

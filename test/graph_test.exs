@@ -171,18 +171,21 @@ defmodule PNS.GraphTest do
     test "stages are lanes, chained in the order the contract declares" do
       mermaid = shape()
 
-      assert mermaid =~ "stage_delivery --> stage_closing"
+      assert mermaid =~ "stage_start --> stage_delivery"
+      assert mermaid =~ "stage_delivery --> stage_departure"
+      assert mermaid =~ "stage_departure --> stage_documentation"
+      assert mermaid =~ "stage_documentation --> stage_closing"
       assert mermaid =~ "stage_closing --> stage_reporting"
 
       # The only ordering claim a contract makes is between stages, so it is the
       # only arrow drawn between lanes — and never the other way round.
-      refute mermaid =~ "stage_closing --> stage_delivery"
+      refute mermaid =~ "stage_closing --> stage_documentation"
       refute mermaid =~ "stage_reporting --> stage_closing"
 
       # Chained pairwise rather than fully connected: the claim is that each
-      # stage follows the previous one, and drawing delivery --> reporting as
-      # well would add a second edge saying nothing new.
-      refute mermaid =~ "stage_delivery --> stage_reporting"
+      # stage follows the previous one, and drawing start --> reporting as well
+      # would add a second edge saying nothing new.
+      refute mermaid =~ "stage_start --> stage_reporting"
     end
 
     test "a lane holding several events says it claims no order between them" do
@@ -194,8 +197,22 @@ defmodule PNS.GraphTest do
     test "a lane holding one event carries no such marker, because there is nothing to order" do
       mermaid = shape()
 
+      # Three of the six lanes hold exactly one event, and that is not an
+      # accident: `stages` is a total order, so saying "these in any order, then
+      # this one" costs a lane per moment.
+      assert mermaid =~ ~s(subgraph stage_start["start"])
+      assert mermaid =~ ~s(subgraph stage_departure["departure"])
       assert mermaid =~ ~s(subgraph stage_closing["closing"])
       refute mermaid =~ "closing \u00b7 no order"
+    end
+
+    test "the visit has a beginning, and it is not the same fact as arriving at the clinic" do
+      # `E-40` entering the room, not `E-27` arriving at the clinic. The source
+      # model keeps them apart on purpose — the waiting room is reception's
+      # `R-03`, and mixing a physical-presence state with a workflow state is the
+      # mistake it records the board's colour palette making.
+      assert shape() =~ ~s(visit_started["Pacjent wszedł do gabinetu"])
+      refute shape() =~ "pojawił się"
     end
 
     test "an event is drawn with the client's own words, not its atom" do
