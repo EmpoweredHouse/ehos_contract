@@ -149,6 +149,22 @@ pomysłu, który nie był tym odrzucanym — patrz `PNS.Graph.declared_to_mermai
 Drugi jest jedynym, który ma sens dla kontraktu **bez implementacji**: bez handlerów krawędzi jest zero,
 więc nakładka takiego kontraktu to same nierozłączone pudełka.
 
+### Najpierw `mmdc`, bo bez tego obie komendy padną
+
+`mermaid-cli` przychodzi przez Homebrew, a przeglądarkę bierze z `~/.cache/puppeteer` i **żąda dokładnie
+tej wersji, na którą został zbudowany**. Po każdej aktualizacji jednego z dwóch numery się rozjeżdżają
+i `mmdc` mówi `Could not find chrome-headless-shell (ver. …)`, mimo że w cache leży nowsza.
+
+Nie pobieraj drugiej przeglądarki — wskaż tę, która jest:
+
+```bash
+export PUPPETEER_EXECUTABLE_PATH="$(find ~/.cache/puppeteer/chrome-headless-shell -type f -name chrome-headless-shell | head -1)"
+```
+
+`find` zamiast wpisanej wersji, bo wpisana zestarzeje się przy najbliższym `brew upgrade` — a poprzednia
+wersja tej sekcji miała w ścieżce `<wersja>` do ręcznego uzupełnienia i **właśnie dlatego przestała
+działać**. Wszystkie komendy niżej zakładają, że to jest w środowisku.
+
 ### Diagram nakładki
 
 ```bash
@@ -175,13 +191,6 @@ Etapy z więcej niż jednym zdarzeniem noszą w tytule `no order claimed inside`
 nie twierdzi nic o kolejności — i pudełka bez strzałek muszą się czytać jako decyzja, nie jako brak.
 **Szeroki, luźny obrazek jest wtedy prawdziwym wynikiem**, a nie usterką układu: to kontrakt, który
 deklaruje mało. Dociąganie go niewidzialnymi krawędziami sugerowałoby kolejność, której nikt nie uzgodnił.
-
-Jeśli `mmdc` zgłosi brak `chrome-headless-shell` w konkretnej wersji, a w `~/.cache/puppeteer/` leży inna —
-wskaż mu ją, zamiast pobierać drugą przeglądarkę:
-
-```bash
-mmdc -i in.mmd -o out.png -p <(echo '{"executablePath":"'"$HOME"'/.cache/puppeteer/chrome-headless-shell/<wersja>/chrome-headless-shell-mac-arm64/chrome-headless-shell"}')
-```
 
 Wypis przez potok psuje polskie znaki: Erlang trzyma stdout w latin1, kiedy wyjście nie jest terminalem, i
 przycina każdy kodepoint do bajtu — `ł` staje się `B`. Dlatego `--output` pisze plik przez `File.write!`, a
