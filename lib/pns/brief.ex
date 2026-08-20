@@ -40,13 +40,17 @@ defmodule PNS.Brief do
   that will react to it, which is the ordinary state mid-rollout (notes §5). The
   document says so rather than accusing.
 
-  ## HTML, and why not markdown
+  ## HTML, and why it is the deliverable rather than a step
 
-  This machine has no markdown-to-PDF path — no pandoc, no weasyprint — and
-  `mmdc` given a markdown file renders the charts out of it and drops the prose.
-  What is already installed is a headless browser, so HTML prints to PDF with the
-  dependency the repository already has. Self-contained: the diagram is inlined as
-  SVG, nothing is fetched, and the file opens with no network.
+  These sessions happen on a shared screen, where HTML reflows, can be searched and
+  can be copied out of. Anybody who wants paper prints it, and the stylesheet
+  carries `@page` rules so that gives A4 with nothing else installed. An earlier
+  version printed the file through headless Chrome and that step bought nothing.
+
+  Self-contained: the diagram is inlined as SVG, nothing is fetched, and the file
+  opens with no network. Shipping the mermaid source with a script to render it
+  would make a document handed to a client depend on the internet to show its own
+  picture.
   """
 
   alias PNS.Registry
@@ -88,17 +92,18 @@ defmodule PNS.Brief do
     <h1>#{escape(process.label)}</h1>
     <p class="meta">#{inspect(contract)} · wersja kontraktu #{contract.version()} ·
     przebieg liczony per #{Enum.map_join(process.instance, ", ", &"<code>#{&1}</code>")}</p>
-    <p class="warn"><strong>Wersja robocza do weryfikacji.</strong> Wszystko poniżej jest
-    propozycją wyciągniętą z warsztatów, nie ustaleniem. Miarą tej sesji jest liczba
-    poprawek, nie liczba przytaknięć.</p>
+    <p class="warn"><strong>Wersja robocza.</strong> Wszystko poniżej wyciągnęliśmy
+    z warsztatów i niczego jeszcze nie uzgodniliśmy. Prosimy o poprawki — też drobne,
+    też takie, które wywracają cały obrazek.</p>
     """
   end
 
   defp diagram(nil) do
     """
     <h2>Przebieg</h2>
-    <p class="warn">Diagramu nie dołączono. <code>mix pns.graph --mermaid --process …</code>,
-    potem <code>mmdc … -o schemat.svg</code>, potem <code>--diagram schemat.svg</code>.</p>
+    <p class="warn">Diagramu nie dołączono. Zrób go przez <code>mix pns.graph --mermaid
+    --process …</code> i <code>mmdc … -o schemat.svg</code>, a potem podaj
+    <code>--diagram schemat.svg</code>.</p>
     """
   end
 
@@ -121,9 +126,10 @@ defmodule PNS.Brief do
 
     """
     <h2>Zdarzenia</h2>
-    <p>Kolumna po prawej mówi, <strong>co zależy od tego, że dany fakt się wydarzył</strong>.
-    Pusta komórka znaczy, że nic — a wtedy zwykle nie jest to zdarzenie, tylko pole,
-    które ktoś wypełnia. Może też znaczyć, że obsługa jeszcze nie powstała.</p>
+    <p>W prawej kolumnie jest <strong>to, co dzieje się dlatego, że dany fakt zaszedł</strong>.
+    Czerwony wiersz znaczy, że nie znaleźliśmy niczego takiego. Zwykle wychodzi wtedy,
+    że to nie zdarzenie, tylko pole, które ktoś wypełnia w trakcie wizyty. Czasem znaczy
+    tylko tyle, że obsługa jeszcze nie powstała.</p>
     <table><thead><tr><th>Fakt</th><th>Etap</th><th>Co od tego zależy</th></tr></thead>
     <tbody>#{Enum.join(rows, "\n")}</tbody></table>
     """
@@ -154,9 +160,9 @@ defmodule PNS.Brief do
   defp promises_section([], _events) do
     """
     <h2>Obietnice</h2>
-    <p>Ten proces nie deklaruje żadnej obietnicy czasowej — <strong>i to jest normalne</strong>.
-    Sprawdzalny jest przez kolejność i przez to, które ścieżki nigdy nie zostały przejechane;
-    zegar potrzebny jest tylko tam, gdzie ktoś podał liczbę.</p>
+    <p>Ten proces nie ma żadnego terminu i nie musi mieć. Sprawdzamy w nim kolejność
+    oraz to, które ścieżki nigdy nie zostały przejechane; zegar jest potrzebny tylko tam,
+    gdzie ktoś podał liczbę.</p>
     """
   end
 
@@ -179,9 +185,9 @@ defmodule PNS.Brief do
 
     """
     <h2>Obietnice</h2>
-    <p>Każde zdanie jest twierdzeniem z liczbą, więc da się je <strong>poprawić</strong>.
-    Liczba nie z warsztatu albo termin liczony od złego momentu to najdroższe pomyłki w tym
-    dokumencie — one dają raport, który świeci na zielono przy złamanym terminie.</p>
+    <p>Każde zdanie ma w środku liczbę, więc da się je <strong>poprawić</strong>.
+    Zła liczba albo termin liczony od złego momentu dają potem raport, który świeci
+    na zielono, kiedy termin został złamany.</p>
     <ol class="promises">#{Enum.join(items, "\n")}</ol>
     """
   end
@@ -201,9 +207,9 @@ defmodule PNS.Brief do
 
         """
         <h2>Zależności poza systemem</h2>
-        <p>Kiedy któraś jest niedostępna, przebieg jest <strong>zawieszany, a nie uznawany
-        za naruszony</strong> — raport nie może mówić klientowi, że złamał własną umowę,
-        gdy leżał cudzy serwer.</p>
+        <p>Kiedy któraś jest niedostępna, <strong>zawieszamy ocenę przebiegu zamiast
+        uznawać go za naruszony</strong>. Raport nie powinien mówić Wam, że złamaliście
+        własną umowę, kiedy leżał cudzy serwer.</p>
         <table><thead><tr><th>Zależność</th><th>Jak wygląda niedostępność</th></tr></thead>
         <tbody>#{Enum.join(rows, "\n")}</tbody></table>
         """
@@ -212,11 +218,10 @@ defmodule PNS.Brief do
 
   defp footer do
     """
-    <h2>Czego tu nie ma, celowo</h2>
-    <p>Pól, kluczy technicznych i tego, co system zapisuje o pacjencie — to jest materiał
-    dla programisty, a dokument, który pokazuje wszystko, staje się z powrotem kodem.
-    Nie ma też niczego o konkretnej wizycie czy osobie: mówimy o <em>ścieżkach</em>,
-    nie o przypadkach.</p>
+    <h2>Czego tu nie ma</h2>
+    <p>Nie ma pól, kluczy technicznych ani tego, co system zapisuje o pacjencie; to jest
+    materiał dla programisty. Nie ma też niczego o konkretnej wizycie ani osobie, bo ten
+    dokument opisuje ścieżki, którymi chodzi proces.</p>
     """
   end
 

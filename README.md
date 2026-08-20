@@ -17,15 +17,21 @@ zaszło poza ustaleniami, które assercje `trace` są naruszane, która wersja u
 
 ## Co jest czym w tym repozytorium
 
-`lib/pns/` to **silnik** i przyszły pakiet na hex. `lib/taxvision/` to **jedna aplikacja klienta, która jest
-tu tymczasowo** — przypadek testowy, na którym sprawdzamy, czy założenia silnika się trzymają. Granicy
-pilnuje `boundary` od pierwszego commita, więc ta tymczasowość jest faktem, nie obietnicą: przeniesienie
-drzewa klienta obok jego repozytorium to `git mv`.
+`lib/pns/` to **silnik** i przyszły pakiet na hex. **Reszta to dane testowe.**
+
+To repozytorium jest przejściowe i nie budujemy w nim aplikacji dla nikogo: produktem są fundamenty
+biblioteki i wnioski. `lib/taxvision/` to pełna aplikacja klienta — schematy, handlery, repo — a
+`lib/rehmed/` to **wyłącznie kontrakty**, bo do sprawdzenia DSL kod nie jest potrzebny. Obie są
+materiałem, na którym sprawdzamy, czy założenia silnika się trzymają, i **kontrakt, którego nie da się
+napisać, jest lepszym wynikiem niż kontrakt napisany obok materiału**.
+
+Granicy pilnuje `boundary` od pierwszego commita, więc ta tymczasowość jest faktem, nie obietnicą:
+przeniesienie drzewa klienta obok jego repozytorium to `git mv`.
 
 Z tego wynikają trzy rzeczy, o które łatwo się potknąć:
 
-**To nie jest template.** Nie ma `mix pns.new`, nie ma generycznego wyciągu, drzewo klienta nazywa się
-`taxvision`, a nie `my_app`. Zabezpieczenie jest mechaniczne, bo deklaratywne nie działa — spike bez tego
+**To nie jest template.** Nie ma `mix pns.new`, nie ma generycznego wyciągu, drzewa klienta nazywają się
+`taxvision` i `rehmed`, a nie `my_app`. Zabezpieczenie jest mechaniczne, bo deklaratywne nie działa — spike bez tego
 zamienia się w template, którego nie chcemy budować przed drugim klientem.
 
 **Silnik mówi po angielsku, wliczając raport.** Do 6 sierpnia było odwrotnie — silnik produkował dane, zdania
@@ -56,7 +62,9 @@ więc bez tego przełącznika granice są dokumentacją. Sprawdzone celowym naru
 mix pns.check                # sprawdzenia całoprogramowe: krawędzie wsteczne, konkurujące handlery, sieroty, niepotwierdzone deklaracje
 mix pns.graph                # graf statyczny z rejestru
 mix pns.graph --overlay      # nałożony na log zdarzeń
-mix pns.graph --mermaid      # diagram
+mix pns.graph --mermaid                        # diagram nakładki
+mix pns.graph --mermaid --process <nazwa>      # kształt zadeklarowany jednego procesu
+mix pns.brief --process <nazwa> --output x.html  # dokument do sesji z klientem
 mix pns.trace                # ocena assercji `trace` z logu — liczby, nie lista przebiegów
 mix pns.trace --instances    # pojedyncze przebiegi; widok do debugowania, nie dla klienta
 mix pns.docs                 # regeneracja referencji kluczy w docs/contract.md
@@ -83,7 +91,7 @@ jest **drugim źródłem prawdy** — czyli dokładnie tą awarią, którą ten 
 ## Struktura
 
 ```
-lib/pns/                 silnik — 3718 linii, przyszły pakiet
+lib/pns/                 silnik — 4742 linie, przyszły pakiet
   contract.ex            DSL, @before_compile, bramy kompilacyjne, version/0
   handler.ex             sprawdzenia w ciele makra; publishes: wiąże też w runtime
   registry.ex            skan binarki przy boocie — graf pochodzi z kodu, który działa
@@ -97,7 +105,9 @@ lib/pns/                 silnik — 3718 linii, przyszły pakiet
   deployment.ex          dwie tożsamości wdrożenia: kontrakt i obwodowanie
   digest.ex              kanoniczna postać deklaracji, wspólna dla obu haszy
   handler_failure.ex     ślad po awarii handlera synchronicznego, poza cofniętą transakcją
-  graph.ex               statyczny, zaobserwowany, nałożenie
+  graph.ex               statyczny, zaobserwowany, nałożenie, kształt zadeklarowany
+  brief.ex               jeden proces jako dokument do walidacji z człowiekiem
+  report.ex              raport zgodności za okres — cztery pytania, jedna strona
   auth.ex                szew tożsamości: behaviour + lokalny HMAC
   telemetry.ex           katalog zdarzeń: handler i naruszenie kontraktu, nic więcej
   check.ex, duration.ex  logika checków i jednostki czasu — jedno źródło prawdy
@@ -107,8 +117,11 @@ lib/taxvision/           aplikacja klienta — tymczasowo, jako przypadek testow
   api.ex                 krawędź żądania: trzy poziomy IAM
   registry_check.ex      czysta funkcja decyzyjna (polityka P1)
   periods.ex             okresy jako kanoniczne wiersze; nazwy na krawędziach, identyfikatory w środku
-  report.ex              raport po polsku — bo to klient go czyta
   adapters/              behaviour + fake
+
+lib/rehmed/              dane testowe z drugiej domeny — WYŁĄCZNIE kontrakty
+  contracts/             trzy procesy zdestylowane z warsztatów; zero handlerów
+  settlement.ex          jedyna funkcja domenowa, bo `rule` wskazuje MFA i bez niej `example` nie istnieje
 
 test/support/
   universality_gate/     drugi kontrakt, WYMYŚLONY — brama uniwersalności, nie klient
@@ -176,11 +189,24 @@ Diagram w repo jest z **danych demonstracyjnych**, nie z prawdziwego przebiegu: 
 trzy przechodzą weryfikację, dwie idą w blokadę, kolejka zatrzymana. Bez zatrzymanej kolejki czwarty stan
 nakładki nie miałby czego pokazać.
 
-### Dokument do sesji z klientem
+### Diagram kształtu zadeklarowanego
 
 ```bash
 mix pns.graph --mermaid --process clinical_visit --output schemat.mmd
 mmdc -i schemat.mmd -o schemat.svg
+```
+
+**SVG**, bo to wchodzi do dokumentu niżej. `mmdc` rozpoznaje format po rozszerzeniu, więc `-o out.png`
+i `-o out.pdf` to ta sama komenda, gdyby sam diagram był komuś potrzebny osobno.
+
+Etapy z więcej niż jednym zdarzeniem noszą w tytule `no order claimed inside`, bo wewnątrz etapu kontrakt
+nie twierdzi nic o kolejności — i pudełka bez strzałek muszą się czytać jako decyzja, nie jako brak.
+**Szeroki, luźny obrazek jest wtedy prawdziwym wynikiem**, a nie usterką układu: to kontrakt, który
+deklaruje mało. Dociąganie go niewidzialnymi krawędziami sugerowałoby kolejność, której nikt nie uzgodnił.
+
+### Dokument do sesji z klientem
+
+```bash
 mix pns.brief --process clinical_visit --diagram schemat.svg --output wizyta.html
 ```
 
@@ -194,21 +220,6 @@ w środku, nic się nie pobiera.
 argument tego dokumentu: zdarzenie, od którego nic nie zależy, zwykle nie jest faktem tylko polem,
 które ktoś wypełnia. Takie wiersze są na czerwono. Przy pierwszym uruchomieniu wyszły dwa.
 
-### Diagram kształtu zadeklarowanego
-
-```bash
-mix pns.graph --mermaid --process clinical_visit --output schemat.mmd
-mmdc -i schemat.mmd -o schemat.svg
-```
-
-**SVG**, bo to wchodzi do dokumentu wyżej. `mmdc` rozpoznaje format po rozszerzeniu, więc `-o out.png`
-i `-o out.pdf` to ta sama komenda, gdyby sam diagram był komuś potrzebny osobno.
-
-Etapy z więcej niż jednym zdarzeniem noszą w tytule `no order claimed inside`, bo wewnątrz etapu kontrakt
-nie twierdzi nic o kolejności — i pudełka bez strzałek muszą się czytać jako decyzja, nie jako brak.
-**Szeroki, luźny obrazek jest wtedy prawdziwym wynikiem**, a nie usterką układu: to kontrakt, który
-deklaruje mało. Dociąganie go niewidzialnymi krawędziami sugerowałoby kolejność, której nikt nie uzgodnił.
-
 Wypis przez potok psuje polskie znaki: Erlang trzyma stdout w latin1, kiedy wyjście nie jest terminalem, i
 przycina każdy kodepoint do bajtu — `ł` staje się `B`. Dlatego `--output` pisze plik przez `File.write!`, a
 nie przekierowaniem.
@@ -218,7 +229,7 @@ nie przekierowaniem.
 | | Dlaczego |
 | --- | --- |
 | Ekran, dashboard | Najpierw trzeba było sprawdzić, czy różnica jest sygnałem. Jest — 50 przebiegów daje jedną linię raportu |
-| Graf w interfejsie | Sprawdzone: 11 zdarzeń dało 3 krawędzie i diagram nie powiedział nic, czego nie mówiła posortowana lista |
+| Graf **nakładki** w interfejsie | Sprawdzone: 11 zdarzeń dało 3 krawędzie i diagram nie powiedział nic, czego nie mówiła posortowana lista. **Nie dotyczy `--process`**, który rysuje co innego, dla kogo innego i dla kontraktu bez implementacji jest jedynym, który cokolwiek mówi |
 | Warstwa web, API | REST przeciw GraphQL jest otwarte; budowanie API przesądzałoby otwartą decyzję |
 | `mix pns.new` | Dopiero przy drugim kliencie — generator buduje się, kiedy coś zostało skopiowane dwa razy |
 | Prawdziwe rejestry, prawdziwy mail, provider OIDC | Behaviour plus fake. Szew działa, podmiana to jedna linia konfiguracji |

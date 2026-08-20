@@ -23,11 +23,11 @@ defmodule PNS.BriefTest do
       assert html =~ "<code>visit_id</code>"
     end
 
-    test "says it is a draft, and says what the session is measured by" do
-      # A document that looks agreed collects agreement. This one has to collect
-      # corrections, so it says so above the fold.
-      assert brief() =~ "Wersja robocza do weryfikacji"
-      assert brief() =~ "nie liczba przytaknięć"
+    test "says it is a draft, and asks for the corrections outright" do
+      # A document that looks agreed collects agreement. Asking for corrections in
+      # the first paragraph is the cheapest thing that changes what comes back.
+      assert brief() =~ "Wersja robocza"
+      assert brief() =~ "Prosimy o poprawki"
     end
   end
 
@@ -75,8 +75,7 @@ defmodule PNS.BriefTest do
     test "a process with no assertion says that is normal rather than leaving a hole" do
       html = PNS.Brief.render(Rehmed.Contracts.PayerSettlement, :payer_settlement)
 
-      assert html =~ "nie deklaruje żadnej obietnicy czasowej"
-      assert html =~ "i to jest normalne"
+      assert html =~ "nie ma żadnego terminu i nie musi mieć"
     end
   end
 
