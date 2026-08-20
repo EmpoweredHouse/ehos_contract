@@ -90,6 +90,30 @@ the "closest DSL fit" line — do not skip straight to Elixir-shaped nouns befor
 
 1. **Event candidates** — named in the client's words, past tense (a fact that happened), with a
    proposed technical name (`snake_case`) as a secondary label, and which process they belong to.
+
+   **Then reject most of them, and record what each one failed on.** Every candidate must answer:
+
+   > **Does anything outside this document depend on it having happened?**
+
+   A policy reacts to it, another actor waits for it, a deadline runs from it, it ends the process,
+   or it is the fallback of a promise. If none of those — it is a **field being filled in**, not a
+   fact, and it does not belong in the contract however clearly somebody said it.
+
+   The trap is that the test *sounds* like "is it stored in a field", and that reading is wrong: ICD
+   codes are a field and so is a settlement total, yet the codes may still matter as a precondition
+   somebody enforces. Ask about the dependency, not about the storage.
+
+   **This exists because a real run got it wrong by a factor of three.** The Rehmed distillation
+   produced 22 event candidates; the contract needed 7. Six of the fifteen removed were edits to one
+   document — the interview, the note copied from a previous visit, the note left for reception, the
+   treatment performed, the ICD codes, the free-text supplement — and each of them survived into a
+   compiled contract, a diagram and a client-facing PDF before somebody who knew the domain said
+   *that is not an action, it is a field the specialist fills in*.
+
+   The cause is structural and will recur: **Big Picture Event Storming produces a sticky for
+   everything that happens**, and its board is the main input here. A contract needs the subset that
+   something depends on. Carrying the board across without this filter is the default failure of
+   this skill, not an unlucky one.
 2. **Payload shape** — for each event, what a person would need to know for this fact to make
    sense a year from now (not "what's in the database"). Classify each field toward the closed
    type set (`docs/contract.md`) — identifier, human-typed text, whole number, point in time, one

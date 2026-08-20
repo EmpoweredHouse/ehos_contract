@@ -16,9 +16,13 @@ explicit `unverified`.
 
 ### Event candidates
 
-| # | Event (client's words, past tense) | Proposed technical name | Belongs to this process because | Evidence |
-|---|-------------------------------------|--------------------------|----------------------------------|----------|
-| 1 | [...] | `snake_case_name` | [...] | [source] |
+| # | Event (client's words, past tense) | Proposed technical name | **What depends on it having happened** | Verdict | Evidence |
+|---|-------------------------------------|--------------------------|-----------------------------------------|---------|----------|
+| 1 | [...] | `snake_case_name` | [a policy, an actor waiting, a deadline running, a terminal state, the fallback of a promise — or **nothing**] | fact / **field** | [source] |
+
+*An empty dependency cell means `field`, and a field does not go into the contract. Keep the rejected
+rows: they are what stops the next reader re-adding them, and the ratio of facts to fields is worth
+knowing — on the run this column was added after, it was 7 to 15.*
 
 ### Payload shape, per event
 
@@ -57,6 +61,15 @@ explicit `unverified`.
 | [X must happen before Y is possible] | [...] | [source] |
 
 *Note if the material only supports "no claim about order" — do not invent a linear sequence.*
+
+### Rejected as fields, not facts
+
+| Candidate | Why nothing depends on it | Evidence |
+|-----------|----------------------------|----------|
+| [...] | [...] | [source] |
+
+*Not a leftovers list — this is where a later reader checks whether a "missing" event was
+overlooked or deliberately excluded, and absence cannot distinguish those two.*
 
 ### Trace candidates
 

@@ -204,9 +204,9 @@ defmodule PNS.GraphTest do
     end
 
     test "a note is not an event, and neither is performing the treatment" do
-      # Six of the original twelve were edits to one document. The test that
-      # removed them is not "is it stored in a field" — the codes are a field —
-      # but "does anything outside this document depend on it having happened".
+      # Six of the thirteen this contract reached were edits to one document. The
+      # test that removed them is not "is it stored in a field" — the codes are a
+      # field — but "does anything outside this document depend on it happening".
       mermaid = shape()
 
       refute mermaid =~ "history_taken"

@@ -54,6 +54,89 @@ defmodule PNS.Check do
     |> Enum.sort_by(&{to_string(&1.module), to_string(&1.process)})
   end
 
+  @typedoc "An assertion whose subject is finer-grained than the run it is counted in."
+  @type finer_than_its_run :: %{
+          contract: module(),
+          trace: atom(),
+          from: atom(),
+          identity: [atom()],
+          process: atom(),
+          instance: [atom()]
+        }
+
+  @doc """
+  Assertions whose `from` event is identified by **more** than the run is —
+  a promise made per item, evaluated once per run.
+
+  ## Why this is worth a check rather than a paragraph
+
+  `PNS.Trace` produces **one verdict per instance**: the window opens on the first
+  `from` in the run and closes on the first hit after it. Where the run holds many
+  of the thing being promised about, one fulfilment satisfies all of them, and the
+  fulfilment need not even concern the same item — the evaluator never compares
+  payloads.
+
+  The compile gates already refuse a `trace` spanning two processes and a calendar
+  unit in `within`, both loudly and at build time. This one compiles, emits,
+  evaluates, and reports `satisfied`. **It is the only failure of the three that
+  fails towards good news**, which is the direction that costs a report its
+  credibility.
+
+  ## The signal, and why it is static
+
+  `identity` is what makes two occurrences the same fact; `instance` is what makes
+  them the same run. When the first is strictly finer than the second, the contract
+  has said, in its own vocabulary, that a run contains several of these — so an
+  assertion anchored there is about the items and is being counted over the run.
+
+  Found in Rehmed's monthly payer settlement, where a run is one payer in one month
+  and the invariant is about each delivered visit in it. That case never reached a
+  `trace`, because writing it by hand exposed the problem; the case that did reach
+  one is `ProcessShapes.Rig`, and `test/trace_granularity_test.exs` pins the wrong
+  answer it produces.
+
+  ## What it does not catch
+
+  An event with **no** `identity` at all, which is the common case: the contract
+  then says nothing about repetition and this check has nothing to compare. Both
+  Rehmed assertions anchor on `visit_completed`, which has no `identity` because a
+  visit ends once — correct, and invisible to this check either way.
+
+  Reported rather than refused. The honest fix is usually to key the process by the
+  thing the promise is about, and that is a modelling decision; sometimes the
+  anchoring fact already belongs to another process and there is currently nothing
+  to write instead.
+  """
+  @spec assertions_finer_than_their_run() :: [finer_than_its_run()]
+  def assertions_finer_than_their_run do
+    for contract <- PNS.Registry.contracts(),
+        trace <- contract.traces(),
+        event = Enum.find(contract.events(), &(&1.name == trace.from)),
+        identity = event && event.identity,
+        process = contract.process_of(trace.from),
+        process != nil,
+        finer?(identity, process.instance) do
+      %{
+        contract: contract,
+        trace: trace.name,
+        from: trace.from,
+        identity: identity,
+        process: process.name,
+        instance: process.instance
+      }
+    end
+    |> Enum.sort_by(&{inspect(&1.contract), to_string(&1.trace)})
+  end
+
+  # Strictly finer: every field the run is keyed by is in the fact's key, and the
+  # fact's key has at least one more. Equal keys are the ordinary, correct case —
+  # one fact per run — and a key that merely *differs* is a modelling error of a
+  # different kind, not this one.
+  @spec finer?([atom()], [atom()]) :: boolean()
+  defp finer?(identity, instance) do
+    identity != instance and Enum.all?(instance, &(&1 in identity))
+  end
+
   @typedoc "One event with more than one synchronous handler."
   @type competing_handlers :: %{event: atom(), modules: [module()]}
 

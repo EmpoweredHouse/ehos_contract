@@ -34,6 +34,7 @@ defmodule Mix.Tasks.Pns.Check do
       |> check_traces_resolve()
       |> check_backward_edges()
       |> check_competing_sync_handlers()
+      |> check_assertions_finer_than_their_run()
       |> check_retain_on_free_text()
       |> check_no_vendor_in_config()
       |> check_unverified_declarations()
@@ -187,6 +188,25 @@ defmodule Mix.Tasks.Pns.Check do
           {:info,
            "#{inspect(event.name)}.#{field} is free text with no `retain` — " <>
              "it reaches the log verbatim"}
+          | acc
+        ]
+    end
+  end
+
+  # An assertion whose subject is finer than the run it is counted in. A warning
+  # rather than an error, because the fix is a modelling decision and sometimes
+  # there is nothing to write instead — but it must be visible on every run, since
+  # this is the one shape of mistake in the DSL that reports **satisfied** while
+  # the data says otherwise.
+  defp check_assertions_finer_than_their_run(findings) do
+    for f <- PNS.Check.assertions_finer_than_their_run(), reduce: findings do
+      acc ->
+        [
+          {:warn,
+           "assertion #{inspect(f.trace)} is finer than its run: `#{f.from}` is identified by " <>
+             "#{inspect(f.identity)} while process #{inspect(f.process)} is a run per " <>
+             "#{inspect(f.instance)}. One verdict is produced per run, so a single fulfilment " <>
+             "satisfies every promise in it (#{inspect(f.contract)})"}
           | acc
         ]
     end

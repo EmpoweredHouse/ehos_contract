@@ -180,7 +180,8 @@ kontrakty, bo żaden nie użył godzin aż do czwartego.**
 
 ## Stan na 6 sierpnia
 
-221 testów, `mix check` przechodzi. Ostrzeżenia są **cztery i wszystkie celowe**:
+221 testów, `mix check` przechodzi. Ostrzeżenia są **cztery i wszystkie celowe** (piąte doszło
+19 sierpnia — patrz dopisek na górze):
 
 1. `deadline` TaxVision bez potwierdzenia process ownera,
 2. `deadline` z wymyślonej fikstury bramy uniwersalności,

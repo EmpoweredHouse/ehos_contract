@@ -126,6 +126,33 @@ defmodule PNS.TraceGranularityTest do
     end
   end
 
+  describe "the static check that names it before any data exists" do
+    test "the rig's assertion is reported as finer than its run" do
+      # This is the whole point of `PNS.Check.assertions_finer_than_their_run/0`:
+      # the tests above need a log to demonstrate the defect, and the check needs
+      # only the declarations. `identity` says two occurrences are different facts;
+      # `instance` says they belong to one run. Strictly finer means the run holds
+      # several, so an assertion anchored there is counted over the wrong thing.
+      findings = PNS.Check.assertions_finer_than_their_run()
+
+      assert %{
+               contract: ProcessShapes.Rig,
+               trace: :submission_reaches_inspection,
+               from: :item_submitted,
+               identity: [:case_id, :item_no],
+               process: :pairing,
+               instance: [:case_id]
+             } in findings
+    end
+
+    test "and it is the only one in the repository, so the check is not noise" do
+      # Both Rehmed assertions anchor on `visit_completed`, which declares no
+      # `identity` at all because a visit ends once. Nothing to compare, nothing
+      # reported — a check that fired on those would be worse than none.
+      assert [_only_one] = PNS.Check.assertions_finer_than_their_run()
+    end
+  end
+
   describe "what it should do" do
     @tag :known_defect
     test "three items promised and one delivered is not a kept agreement" do
