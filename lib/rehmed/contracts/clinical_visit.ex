@@ -1,8 +1,7 @@
 defmodule Rehmed.Contracts.ClinicalVisit do
   @moduledoc """
-  A visit from the moment the patient enters the room to the statutory report —
-  delivery, documentation, the specialist's clinical close, and the medical event
-  reaching the national registry.
+  A visit from the moment the patient enters the room to the statutory report:
+  four facts and two promises.
 
   Distilled from `2-Solution/` in the Rehmed engagement repository via
   [`docs/rehmed-2026-08-18-distillation.md`](../../../docs/rehmed-2026-08-18-distillation.md),
@@ -31,64 +30,82 @@ defmodule Rehmed.Contracts.ClinicalVisit do
   by the same argument, but it is a different conversation with a different
   stakeholder, and the material behind it has open questions this one does not.
 
-  ## Seven stages, and not one of them was my idea
+  ## Four stages and seven events, after twelve turned out to be five too many
 
-  Order is declared between stages and never inside one, so a stage list is the
-  only ordering claim a contract makes — and this file got it wrong three times in
-  the same direction. Every correction came from somebody looking at the drawing.
+  **The largest correction came last and it was not about order at all.** Reading
+  the diagram, the engagement lead said the notes are not actions — they are
+  fields on the visit that the specialist fills in. So are the ICD codes. And a
+  treatment performed needs no event either: if the patient entered the room and
+  left it, the treatment happened.
 
-  | Round | What was missing | Found by |
+  He was right, and the mistake has a name. Big Picture Event Storming produces a
+  sticky for everything that *happens*; a contract needs facts that something
+  *depends on*. I carried the board's stickies across without applying that test,
+  and six of the twelve events here were edits to one document wearing the
+  costume of domain facts. Removed: `history_taken`, `previous_note_copied`,
+  `reception_note_written`, `treatment_performed`, `diagnosis_coded`,
+  `icd9_supplement_recorded`.
+
+  The test worth keeping, because it is sharper than *is it stored in a field*
+  — the codes are a field and so is the total on a settlement:
+
+  > **Does anything outside this document depend on it having happened?**
+
+  ## How the close and the deadline actually work
+
+  Corrected by the engagement lead, and it changes both assertions:
+
+  1. **The specialist marks the visit finished immediately.** That is what tells
+     reception the patient can be settled — reception then opens the visit and
+     reads whatever note is on it. The note needs no event of its own; the close
+     is the signal.
+  2. **The documentation is what gets deferred**, not the close. If the visit is
+     not closed and the P1 forms are not filed, tasks are raised for the
+     specialist to come back to it.
+  3. **48 hours is the statutory bound** for the documentation reaching the
+     government API — the same 2 days the regulation states, said the way the
+     clinic says it.
+
+  **This settles a contested proposal, and it settles it against us.** `DEC-19`
+  proposed that ICD codes be *required* to close a visit clinically, contradicting
+  the room's 2026-08-13 *remind, don't block*. Under the account above the close
+  happens first and carries no codes, so `DEC-19` is not what this contract
+  implements. Recorded rather than quietly dropped.
+
+  It also resolves the boundary this file has been carrying as contested. The
+  question was whether coding happens before or after the patient leaves; the
+  answer is that coding is not an event, and the thing that follows departure is
+  the close.
+
+  ## The two assertions, and where each number comes from
+
+  | | Window | Source |
   | --- | --- | --- |
-  | 1 | the clinical close comes after the work it closes | the diagram: eleven boxes, one arrow |
-  | 2 | the in-room work precedes the patient leaving — and **the visit had no beginning**, `E-40` undeclared while `E-51` was | a reader asking what led into *Pacjent wyszedł z gabinetu* |
-  | 3 | the interview precedes the treatment — and **`E-49`, the note left for the desk, was not in the contract at all** | a reader reading the three in-room boxes and saying the order was wrong |
+  | reported, or somebody is chasing it | `{24, :hour}` | client decision 2026-08-13, deliberately inside the statutory window |
+  | reported, or the service is not reportable | `{2, :day}` | Dz.U. 2025 poz. 866; 48 hours as the clinic says it |
 
-  The same mistake three times: **fear of one false ordering claim produced no
-  claim**, and the two are hard to tell apart in a list of declarations and
-  trivial to tell apart in a picture.
+  They nest on purpose, and the 24-hour one moved to a different subject than the
+  version it replaces. It used to assert *the visit is closed within 24 hours*,
+  which the correction above makes wrong — the close is immediate, and a day-long
+  window on it would assert something nobody wants. Attached to the chase instead,
+  the same number does the job the client's own reasoning gave it: the escalation
+  has to fire **before** the statutory deadline, because a task raised at hour 48
+  is a post-mortem rather than a warning.
 
-  Round 3 also corrected a confusion of mine that the diagram made visible.
-  `previous_note_copied` (`E-42`) is not a step after the treatment — it is a
-  **shortcut for taking the history**, and `AGG-02` draws it and `C-19` as two
-  edges into the same state:
+  ## Stages
 
-      Pusta ──C-19 wywiad──────────────► Wywiad
-      Pusta ──C-20 powiel notatkę──────► Wywiad
-      Wywiad ──C-21/C-27 zabieg + notatka──► Opisana
-      Opisana ──C-22 ICD──────────────────► Zakodowana
+  `[:start, :departure, :closing, :reporting]`, and every boundary is stated by
+  somebody: the patient leaves after entering; the close and the chasing task
+  follow departure; the report follows the close — *to nie może tak być* was the
+  room's answer to reception closing and dispatching while the specialist is still
+  writing (VLW).
 
-  So the two live together in `:interview` as alternatives, and the note that
-  belongs after the treatment is a different event — `E-49`, which was missing.
+  Only `:closing` holds more than one event, and those two are genuinely
+  unordered: the task exists precisely when the close has not happened.
 
-  The boundaries now declared, each one backed by that machine or by board order,
-  which `10-event-model.md` states is authoritative for sequence:
-
-  - `:start` → `:interview` — nothing is asked of a patient who is not in the room.
-  - `:interview` → `:treatment` — `Pusta → Wywiad → Opisana`.
-  - `:treatment` → `:departure` — the patient leaves after being treated.
-  - `:documentation` → `:closing` — a close comes after what it closes.
-  - `:closing` → `:reporting` — the report fires on the **specialist's** close;
-    reception closing and dispatching while the specialist is still writing was
-    rejected in the room, *to nie może tak być* (VLW).
-
-  **One boundary is contested and is left standing so it can be argued with.**
-  `:departure` → `:documentation` claims the ICD coding happens after the patient
-  leaves. The board sequences `E-44` **before** `E-51`, so as an account of intent
-  it is wrong; the transcripts describe coding deferred under workload — *16 wizyt
-  niezakończonych*, *zaległości z tego dnia* — so as an account of practice it is
-  right. **That contradiction is the most consequential behavioural fact in this
-  process and it is a question for the client, not a call for us.**
-
-  Nothing is ordered inside `:interview`, `:treatment`, `:documentation` or
-  `:reporting`, and that part is deliberate — two ways of starting a note are
-  alternatives, not a sequence.
-
-  **And that is still the limit of what `stages` can express.** The real shape is a
-  partial order and a stage list is a total order over phases, so anything mutually
-  unordered has to share a lane — which is why three of these seven hold a single
-  event. The list alternates between moments and spans because that is the only way
-  to say *these in any order, then this one*. Recorded in `PLAN.md` as a library
-  finding; there is no workaround for it here.
+  **The limit of `stages` still stands** and is now cheap rather than expensive: a
+  stage list is a total order over phases, so `:start` and `:departure` are single-
+  event lanes purely to say that one follows the other. Recorded in `PLAN.md`.
 
   ## What the payloads deliberately do not carry
 
@@ -176,76 +193,6 @@ defmodule Rehmed.Contracts.ClinicalVisit do
     process: :clinical_visit,
     stage: :start
 
-  event :treatment_performed,
-    label: "Wykonano zabieg",
-    owner: Rehmed.VisitDocumentation,
-    payload: %{visit_id: :id},
-    process: :clinical_visit,
-    stage: :treatment
-
-  event :history_taken,
-    label: "Zebrano wywiad pacjenta",
-    owner: Rehmed.VisitDocumentation,
-    payload: %{visit_id: :id},
-    process: :clinical_visit,
-    stage: :interview
-
-  # One of the two ways the note starts, and the only one the physiotherapists
-  # were observed using as a shortcut (`E-42`). It is a separate fact rather than
-  # a flag on `history_taken`, because a copied note and a fresh interview are
-  # different things to a reader a year from now.
-  event :previous_note_copied,
-    label: "Powielono notatkę z poprzedniej wizyty",
-    owner: Rehmed.VisitDocumentation,
-    payload: %{visit_id: :id},
-    process: :clinical_visit,
-    stage: :interview
-
-  # `E-49`, and the note a reader was actually asking about. It is **not**
-  # `previous_note_copied`: that one is a shortcut for taking the history, and
-  # `AGG-02` draws both as edges from `Pusta` to `Wywiad`. This one is what the
-  # specialist leaves for the desk, and the state machine pairs it with the
-  # treatment — `Wywiad --> Opisana: C-21/C-27 Zabieg + notatka`.
-  event :reception_note_written,
-    label: "Zapisano notatkę widoczną w recepcji",
-    owner: Rehmed.VisitDocumentation,
-    payload: %{visit_id: :id},
-    process: :clinical_visit,
-    stage: :treatment
-
-  # `E-44`, observed. ICD-10 is the diagnosis, ICD-9 the performed procedure —
-  # verified against the physiotherapists' chamber and NFZ on 2026-08-13, after
-  # the corpus had them the other way round at one garbled point.
-  #
-  # The codes themselves are not in the payload; see the moduledoc. What follows
-  # from that is `identity`: without the codes there is nothing that could tell a
-  # correction apart from the original, so none is declared. That is not a hole
-  # left open by accident — an asynchronous handler on an event without
-  # `identity` does not compile, so the question has to be answered before anyone
-  # can build the thing that would suffer from the wrong answer.
-  event :diagnosis_coded,
-    label: "Wybrano kody ICD-10 i ICD-9",
-    owner: Rehmed.VisitDocumentation,
-    payload: %{visit_id: :id},
-    process: :clinical_visit,
-    stage: :documentation
-
-  # The escape hatch, and it is not optional. Sometimes no ICD-9 matches what was
-  # delivered — *ten program nie przyszukuje fali uderzeniowej, więc wpisujemy
-  # zabiegi fizjoterapeutyczne i ja do góry dopisuję* (W2 00:46:28). A gate with no
-  # way through is what teaches people to work around the system, and the
-  # specialists had already invented their own.
-  #
-  # A separate event rather than an extra field, because a declared field must be
-  # present on every emission: a supplement that is usually absent cannot be a
-  # field on `diagnosis_coded` without refusing the ordinary case.
-  event :icd9_supplement_recorded,
-    label: "Dopisano opis zabiegu, dla którego nie ma kodu ICD-9",
-    owner: Rehmed.VisitDocumentation,
-    payload: %{visit_id: :id},
-    process: :clinical_visit,
-    stage: :documentation
-
   # The anchor of both assertions. `E-51`: the patient leaves the room, which is
   # the end of the ambulatory service and therefore the moment the statutory clock
   # starts — see the process below.
@@ -278,12 +225,12 @@ defmodule Rehmed.Contracts.ClinicalVisit do
   # usually is. A run where neither this nor the close ever appears is the failure
   # `AGG-02` invariant 2a describes — *ona ma 16 wizyt niezakończonych* (W1
   # 02:20:04) — and it surfaces as an untraversed path rather than as a state.
-  event :documentation_overdue_task_created,
-    label: "Utworzono zadanie: wizyta niezamknięta w terminie",
+  event :documentation_task_created,
+    label: "Utworzono zadanie: dokumentacja wizyty do uzupełnienia",
     owner: Rehmed.Tasks,
     payload: %{visit_id: :id},
     process: :clinical_visit,
-    stage: :documentation
+    stage: :closing
 
   # --- reporting: the statutory submission ---
 
@@ -333,36 +280,29 @@ defmodule Rehmed.Contracts.ClinicalVisit do
 
   process :clinical_visit,
     label: "Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego",
-    stages: [
-      :start,
-      :interview,
-      :treatment,
-      :departure,
-      :documentation,
-      :closing,
-      :reporting
-    ],
+    stages: [:start, :departure, :closing, :reporting],
     # One run is one visit. The same key identifies four aggregates in the source
     # model, which is why this is one process — see the moduledoc.
     instance: [:visit_id]
 
   # --- the assertions ---
 
-  # *After the patient leaves the room, within 24 hours the specialist closes the
-  # visit — or a task appears saying it is outstanding.*
+  # *After the patient leaves the room, within 24 hours the medical event is
+  # reported — or a task exists telling the specialist to finish it.*
   #
-  # The 24 hours are the client's own decision, taken 2026-08-13 and deliberately
-  # inside the statutory 48 so that a working day of margin remains.
+  # The 24 hours are the client's decision of 2026-08-13, taken deliberately inside
+  # the statutory window. What changed on 2026-08-19 is what they are attached to.
+  # They used to bound the **clinical close**, and that is wrong: the close is
+  # immediate, because it is what tells reception the patient can be settled.
+  # What is genuinely deferred is the documentation.
   #
-  # `within` binding the fallback is the point here rather than a side effect. The
-  # requirement as originally written raised the task at 48 hours, which is exactly
-  # when the statutory deadline expires — a post-mortem, not a warning. A task that
-  # arrives after the window it exists to protect satisfies nothing, and the
-  # assertion says so.
-  trace :documentation_closed_within_a_day do
+  # `within` binding the fallback is the point rather than a side effect. The
+  # requirement as first written raised the task at 48 hours, which is exactly when
+  # the statutory deadline expires — a post-mortem, not a warning.
+  trace :reported_or_chased_within_a_day do
     from :visit_completed
-    eventually :visit_closed_clinically, within: {24, :hour}
-    or_else :documentation_overdue_task_created
+    eventually :p1_report_sent, within: {24, :hour}
+    or_else :documentation_task_created
   end
 
   # *After the patient leaves the room, within two days the medical event reaches
@@ -371,22 +311,17 @@ defmodule Rehmed.Contracts.ClinicalVisit do
   # Two days is statutory: transmit immediately and no later than 2 days from the
   # end of an ambulatory service, or from its start where it spans days.
   # Consolidated text Dz.U. 2025 poz. 866; the obligation has applied since
-  # 1 July 2021. Verified against the regulation on 2026-08-13 and, at that point,
-  # recorded nowhere in the engagement.
+  # 1 July 2021. The clinic says the same number as 48 hours.
   #
-  # **The anchor is the end of the service, not the clinical close, and the
-  # difference is the whole value of this assertion.** The dispatch fires on the
-  # close (`P-07`), and closes are deferred by days — which is what the sixteen
-  # unclosed visits are. An assertion anchored where the dispatch happens would
-  # measure how reliably we send and report green while the deadline is being
-  # missed. It would be a false metric about the one obligation that carries a
-  # legal consequence.
+  # **The anchor is the end of the service, not the close**, and that is the whole
+  # value of this assertion. The specialist returns to an unfinished visit and files
+  # the forms later; anchored on the close, the window would start when the work
+  # resumed rather than when the obligation did.
   #
   # There is deliberately no `p1_report_overdue` event. The state exists in the
-  # source model — `Przeterminowane`, described there as the state nobody can see
+  # source model — `Przeterminowane`, described there as the one nobody can see
   # today because nothing watches the deadline — and a violated assertion is
-  # exactly how it becomes visible. Declaring an event for it would ask the domain
-  # to detect what the engine is for.
+  # exactly how it becomes visible.
   trace :medical_event_reported_within_statutory_window do
     from :visit_completed
     eventually :p1_report_sent, within: {2, :day}

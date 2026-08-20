@@ -200,11 +200,11 @@ defmodule PNS.TraceTest do
       # before its assertion window opens. The fourth is Rehmed, and it is the first
       # one distilled from a real engagement rather than written here.
       assert names == [
-               :documentation_closed_within_a_day,
                :episode_reaches_an_end,
                :medical_event_reported_within_statutory_window,
                :month_opens_or_is_blocked,
                :referral_reaches_a_decision,
+               :reported_or_chased_within_a_day,
                :submission_reaches_inspection
              ]
 

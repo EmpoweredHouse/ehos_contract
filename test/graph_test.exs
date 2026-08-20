@@ -171,16 +171,13 @@ defmodule PNS.GraphTest do
     test "stages are lanes, chained in the order the contract declares" do
       mermaid = shape()
 
-      assert mermaid =~ "stage_start --> stage_interview"
-      assert mermaid =~ "stage_interview --> stage_treatment"
-      assert mermaid =~ "stage_treatment --> stage_departure"
-      assert mermaid =~ "stage_departure --> stage_documentation"
-      assert mermaid =~ "stage_documentation --> stage_closing"
+      assert mermaid =~ "stage_start --> stage_departure"
+      assert mermaid =~ "stage_departure --> stage_closing"
       assert mermaid =~ "stage_closing --> stage_reporting"
 
       # The only ordering claim a contract makes is between stages, so it is the
       # only arrow drawn between lanes — and never the other way round.
-      refute mermaid =~ "stage_closing --> stage_documentation"
+      refute mermaid =~ "stage_departure --> stage_start"
       refute mermaid =~ "stage_reporting --> stage_closing"
 
       # Chained pairwise rather than fully connected: the claim is that each
@@ -192,31 +189,31 @@ defmodule PNS.GraphTest do
     test "a lane holding several events says it claims no order between them" do
       # Otherwise boxes with no arrows read as unfinished rather than as
       # deliberately unordered, and those two collect different corrections.
-      assert shape() =~ ~s(subgraph stage_interview["interview \u00b7 no order claimed inside"])
+      assert shape() =~ ~s(subgraph stage_closing["closing \u00b7 no order claimed inside"])
     end
 
     test "a lane holding one event carries no such marker, because there is nothing to order" do
       mermaid = shape()
 
-      # Three of the six lanes hold exactly one event, and that is not an
-      # accident: `stages` is a total order, so saying "these in any order, then
-      # this one" costs a lane per moment.
+      # Two of the four lanes hold exactly one event, and that is not an accident:
+      # `stages` is a total order, so saying "this one, then that one" costs a lane
+      # per moment.
       assert mermaid =~ ~s(subgraph stage_start["start"])
       assert mermaid =~ ~s(subgraph stage_departure["departure"])
-      assert mermaid =~ ~s(subgraph stage_closing["closing"])
-      refute mermaid =~ "closing \u00b7 no order"
+      refute mermaid =~ "departure \u00b7 no order"
     end
 
-    test "the two ways of starting a note sit in one lane, because they are alternatives" do
-      # `AGG-02` draws C-19 and C-20 as two edges into the same state, so putting
-      # `previous_note_copied` after the treatment would invent a sequence. The
-      # note that does follow the treatment is a different event, `E-49`.
+    test "a note is not an event, and neither is performing the treatment" do
+      # Six of the original twelve were edits to one document. The test that
+      # removed them is not "is it stored in a field" — the codes are a field —
+      # but "does anything outside this document depend on it having happened".
       mermaid = shape()
 
-      assert mermaid =~ ~s(subgraph stage_interview["interview \u00b7 no order claimed inside")
-      assert mermaid =~ ~s(history_taken["Zebrano wywiad pacjenta"])
-      assert mermaid =~ ~s(previous_note_copied["Powielono notatkę z poprzedniej wizyty"])
-      assert mermaid =~ ~s(reception_note_written["Zapisano notatkę widoczną w recepcji"])
+      refute mermaid =~ "history_taken"
+      refute mermaid =~ "previous_note_copied"
+      refute mermaid =~ "reception_note_written"
+      refute mermaid =~ "treatment_performed"
+      refute mermaid =~ "diagnosis_coded"
     end
 
     test "the visit has a beginning, and it is not the same fact as arriving at the clinic" do
@@ -237,9 +234,12 @@ defmodule PNS.GraphTest do
 
       # The number on the arrow is the point: a claim with a number is the only
       # thing a process owner can correct.
-      assert mermaid =~ "visit_completed ==>|within 24 hours| visit_closed_clinically"
+      # Two windows on the same target, nested on purpose: a day to report or be
+      # chased, two days as the statutory bound.
+      assert mermaid =~ "visit_completed ==>|within 24 hours| p1_report_sent"
       assert mermaid =~ "visit_completed ==>|within 2 days| p1_report_sent"
-      assert mermaid =~ "visit_completed -.->|or else| documentation_overdue_task_created"
+      assert mermaid =~ "visit_completed -.->|or else| documentation_task_created"
+      assert mermaid =~ "visit_completed -.->|or else| p1_reporting_not_required"
     end
 
     test "a dependency hangs off the fact that declares it, on a line with no arrowhead" do
