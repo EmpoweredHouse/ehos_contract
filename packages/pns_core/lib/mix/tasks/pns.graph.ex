@@ -52,7 +52,7 @@ defmodule Mix.Tasks.Pns.Graph do
       Mix.Task.run("app.start")
     else
       Mix.Task.run("compile")
-      Application.load(:pns_prototype)
+      Application.load(:pns)
     end
 
     PNS.Registry.load!()

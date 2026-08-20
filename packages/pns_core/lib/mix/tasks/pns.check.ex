@@ -23,7 +23,7 @@ defmodule Mix.Tasks.Pns.Check do
     :io.setopts(:standard_io, encoding: :unicode)
 
     Mix.Task.run("compile")
-    Application.load(:pns_prototype)
+    Application.load(:pns)
     PNS.Registry.load!()
 
     findings =
@@ -232,7 +232,7 @@ defmodule Mix.Tasks.Pns.Check do
 
   # The identity seam: a vendor's name in the engine's configuration schema breaks it.
   defp check_no_vendor_in_config(findings) do
-    haystack = :pns_prototype |> Application.get_all_env() |> inspect() |> String.downcase()
+    haystack = :pns |> Application.get_all_env() |> inspect() |> String.downcase()
 
     case Enum.filter(@vendors, &String.contains?(haystack, &1)) do
       [] ->

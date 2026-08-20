@@ -96,7 +96,7 @@ defmodule PNS.Auth.LocalToken do
 
   @spec secret() :: binary()
   defp secret do
-    Application.get_env(:pns_prototype, __MODULE__)[:secret] ||
+    Application.get_env(:pns, __MODULE__)[:secret] ||
       raise "no secret configured for #{inspect(__MODULE__)}"
   end
 end
@@ -171,7 +171,7 @@ defmodule PNS.Auth.OidcVerifier do
 
   defp config do
     conf =
-      Application.get_env(:pns_prototype, __MODULE__) ||
+      Application.get_env(:pns, __MODULE__) ||
         raise "no config for #{inspect(__MODULE__)} — see priv/poc/identity_smoke_test.exs"
 
     %{
@@ -199,7 +199,7 @@ defmodule PNS.Auth do
   provider's configuration, which knows nothing about our domain.
   """
 
-  @verifier Application.compile_env!(:pns_prototype, :auth_verifier)
+  @verifier Application.compile_env!(:pns, :auth_verifier)
 
   @doc "Level 1: who is this."
   @spec verify(String.t()) :: {:ok, PNS.Auth.Actor.t()} | {:error, term()}

@@ -248,8 +248,6 @@ defmodule ProcessShapes.Matching do
 
   import Ecto.Query
 
-  @repo Application.compile_env!(:pns_prototype, :repo)
-
   @doc """
   How many items in **this run** are in a given state.
 
@@ -273,7 +271,9 @@ defmodule ProcessShapes.Matching do
     )
   end
 
-  defp repo, do: @repo
+  # Runtime rather than compile time, following `PNS.Emitter` — the extraction of
+  # 2026-08-20 forced it there and the reason is in that module.
+  defp repo, do: Application.fetch_env!(:pns, :repo)
 
   @doc "A case can close once every unresolved item has had a clarification."
   @spec closable?(String.t()) :: boolean()

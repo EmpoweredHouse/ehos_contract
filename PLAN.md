@@ -5,6 +5,31 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). **Ten plik to lista roboty** i tylko tu jest
 aktualizowany stan.
 
+## Dopisek 20 sierpnia — silnik wyjęty do `packages/pns_core`, i ile to naprawdę kosztowało
+
+`README.md` twierdził, że przeniesienie drzewa klienta to `git mv`, a `CLAUDE.md`, że tymczasowość jest
+faktem, nie obietnicą. **Nikt tego nie sprawdził, więc wyciągnięcie było jednocześnie eksperymentem.**
+
+**Dla `lib/` twierdzenie się obroniło**: `git mv lib/pns packages/pns_core/lib/pns`, własny `mix.exs`,
+zależność `path`, i ani jedna linia w `lib/taxvision/` ani `lib/rehmed/` się nie zmieniła. `boundary`
+pilnował tego szwu od pierwszego commita i szew okazał się prawdziwy.
+
+**Ale trzy rzeczy wyszły dopiero przy próbie, i wszystkie są o konfiguracji, nie o kodzie:**
+
+| # | Co pękło | Dlaczego to własność biblioteki, nie usterka |
+| --- | --- | --- |
+| 1 | `@repo Application.compile_env!(:pns_prototype, :repo)` w siedmiu modułach | **pakiet kompiluje się przed aplikacją, która go konfiguruje.** Każde wywołanie ostrzegało, że `Taxvision.Repo` nie istnieje — u prawdziwego konsumenta ostrzegałoby o jego repo. Biblioteka nie może trzymać referencji kompilacyjnej do modułu, którego użytkownik jeszcze nie napisał. Zamienione na `Application.fetch_env!/2` w runtime; **traci się sprawdzenie `compile_env!`, że konfiguracja nie zmieniła się od buildu** |
+| 2 | `PNS.Registry.load!(app \\ :pns_prototype)` | domyślną była **jedyna aplikacja, jaka wtedy była**, więc pytanie nigdy nie padło. Po wyciągnięciu biblioteka z domyślną własną nazwą **skanuje samą siebie, nie znajduje kontraktów i raportuje zdrowy pusty graf** — `0 errors, 0 warnings, 0 notices`. Cicha porażka w stronę zieleni, ta sama rodzina co granulacja i jednostka liczby. Teraz `config :pns, applications: [...]`, a brak wpisu jest błędem, nie ciszą |
+| 3 | fikstury w `test/support/` czytały nazwę aplikacji gospodarza | te same dwa wzorce co wyżej |
+
+**Wniosek dla pakietu, nie dla tego repo:** granica modułowa была prawdziwa, a granica **konfiguracyjna**
+nie istniała — nikt jej nie pilnował, bo w jednej aplikacji nie ma jej jak złamać. To jest dokładnie ta
+klasa rzeczy, których nie da się sprawdzić inaczej niż wyciągnięciem.
+
+Zostaje do zrobienia: `PNS.Migrations` (dziś pięć tabel silnika leży wymieszanych z migracjami TaxVision
+w `priv/repo/migrations/`) i przeniesienie testów silnika do pakietu — **22 z 27 plików testowych
+odwołuje się do `Taxvision`**, bo `boundary` nigdy nie objął `test/`.
+
 ## Dopisek 18 sierpnia — pierwszy kontrakt z prawdziwego zlecenia
 
 `lib/rehmed/contracts/clinical_visit.ex`: dokumentacja wizyty i zgłoszenie zdarzenia medycznego do P1,

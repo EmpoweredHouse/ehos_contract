@@ -17,7 +17,7 @@ defmodule UniversalityGate.PayerRegistry do
   def check(patient_id), do: impl().check(patient_id)
 
   defp impl do
-    Application.get_env(:pns_prototype, __MODULE__, [])[:impl] || __MODULE__.Fake
+    Application.get_env(:pns, __MODULE__, [])[:impl] || __MODULE__.Fake
   end
 end
 
@@ -35,7 +35,7 @@ defmodule UniversalityGate.PayerRegistry.Fake do
   def check("unavailable"), do: {:error, :unavailable}
 
   def check(patient_id) do
-    case Application.get_env(:pns_prototype, __MODULE__, [])[:responses] do
+    case Application.get_env(:pns, __MODULE__, [])[:responses] do
       %{^patient_id => response} -> response
       _ -> {:ok, %{status: "active", scope: "outpatient rehabilitation"}}
     end

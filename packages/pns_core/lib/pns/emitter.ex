@@ -164,7 +164,6 @@ defmodule PNS.Emitter do
 
   alias PNS.{Event, EventHandling, Payload, Registry}
 
-  @repo Application.compile_env!(:pns_prototype, :repo)
 
   @doc """
   Emits an event: the write to the log, the synchronous handlers in the same
@@ -521,5 +520,16 @@ defmodule PNS.Emitter do
        |> binary_part(0, 16))
   end
 
-  defp repo, do: @repo
+  # **Read at run time, not at compile time — and that changed when the engine
+  # became its own application (2026-08-20).** `Application.compile_env!/2`
+  # resolved to the host's repo module while compiling this package, and a package
+  # compiles before the application that configures it: every call site warned that
+  # `Taxvision.Repo` was undefined, and in a real consumer it would warn about
+  # theirs. A library cannot hold a compile-time reference to a module its user
+  # has not written yet.
+  #
+  # What is lost is `compile_env!`'s check that configuration has not changed since
+  # the build. What is gained is that this compiles standing alone, which is the
+  # whole point of a package.
+  defp repo, do: Application.fetch_env!(:pns, :repo)
 end

@@ -21,10 +21,46 @@ defmodule PNS.Registry do
           async: boolean()
         }
 
-  @doc "Scans the application and caches the result in `:persistent_term`."
-  @spec load!(atom()) :: %{handlers: [handler()], contracts: [module()]}
-  def load!(app \\ :pns_prototype) do
-    {:ok, modules} = :application.get_key(app, :modules)
+  @doc """
+  Scans the configured applications and caches the result in `:persistent_term`.
+
+  **Which applications is configuration, and it has to be.** Until the engine was
+  extracted (2026-08-20) this defaulted to the one application there was, so the
+  question never came up; a library that defaults to its own name scans itself,
+  finds no contracts, and reports a perfectly healthy empty graph — which is what
+  happened the first time this compiled as a package.
+
+      config :pns, applications: [:my_app]
+
+  A list rather than one name, because a host may keep client trees in more than
+  one application. Passing `app` explicitly stays for tests.
+  """
+  @spec load!(atom() | [atom()] | nil) :: %{handlers: [handler()], contracts: [module()]}
+  def load!(app \\ nil) do
+    apps =
+      case app || Application.get_env(:pns, :applications) do
+        nil ->
+          raise ArgumentError,
+                "PNS does not know which applications hold your contracts. " <>
+                  "Set `config :pns, applications: [:my_app]`."
+
+        one when is_atom(one) ->
+          [one]
+
+        many when is_list(many) ->
+          many
+      end
+
+    modules =
+      Enum.flat_map(apps, fn a ->
+        case :application.get_key(a, :modules) do
+          {:ok, modules} -> modules
+          # An application that is configured and not loaded is a typo in
+          # configuration, and silence here would look exactly like a client tree
+          # with nothing in it.
+          :undefined -> raise ArgumentError, "application #{inspect(a)} is not loaded"
+        end
+      end)
 
     # `Code.ensure_loaded?` is needed because modules load lazily in dev; an
     # `:embedded` release has them all.

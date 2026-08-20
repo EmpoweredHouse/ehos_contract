@@ -97,7 +97,6 @@ defmodule PNS.Trace do
 
   import Ecto.Query
 
-  @repo Application.compile_env!(:pns_prototype, :repo)
 
   alias PNS.Event
 
@@ -303,5 +302,16 @@ defmodule PNS.Trace do
   defp maybe_instance(query, nil), do: query
   defp maybe_instance(query, id), do: where(query, [e], e.instance_id == ^id)
 
-  defp repo, do: @repo
+  # **Read at run time, not at compile time — and that changed when the engine
+  # became its own application (2026-08-20).** `Application.compile_env!/2`
+  # resolved to the host's repo module while compiling this package, and a package
+  # compiles before the application that configures it: every call site warned that
+  # `Taxvision.Repo` was undefined, and in a real consumer it would warn about
+  # theirs. A library cannot hold a compile-time reference to a module its user
+  # has not written yet.
+  #
+  # What is lost is `compile_env!`'s check that configuration has not changed since
+  # the build. What is gained is that this compiles standing alone, which is the
+  # whole point of a package.
+  defp repo, do: Application.fetch_env!(:pns, :repo)
 end

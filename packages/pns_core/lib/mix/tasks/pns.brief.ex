@@ -45,7 +45,7 @@ defmodule Mix.Tasks.Pns.Brief do
     process = opts[:process] || Mix.raise("--process is required; see `mix pns.graph` for the names")
 
     Mix.Task.run("compile")
-    Application.load(:pns_prototype)
+    Application.load(:pns)
     PNS.Registry.load!()
 
     name = String.to_atom(process)

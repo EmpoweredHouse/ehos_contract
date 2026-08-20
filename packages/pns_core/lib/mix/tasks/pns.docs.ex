@@ -30,7 +30,7 @@ defmodule Mix.Tasks.Pns.Docs do
     {opts, _} = OptionParser.parse!(args, strict: [check: :boolean])
 
     Mix.Task.run("compile")
-    Application.load(:pns_prototype)
+    Application.load(:pns)
 
     current = File.read!(@path)
     updated = replace_block(current, reference())
