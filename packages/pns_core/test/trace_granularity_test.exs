@@ -44,7 +44,7 @@ defmodule PNS.TraceGranularityTest do
   without anybody noticing.
   """
 
-  use Taxvision.DataCase, async: false
+  use PNS.DataCase, async: false
 
   alias ProcessShapes.Rig
 

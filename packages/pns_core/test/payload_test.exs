@@ -13,10 +13,14 @@ defmodule PNS.PayloadTest do
   the type name a shape; validating them makes the declaration binding.
   """
 
-  use Taxvision.DataCase, async: false
+  use PNS.DataCase, async: false
 
   alias PNS.Payload
-  alias Taxvision.Contracts.AccountingMonth, as: Contract
+  # The invented contract rather than a client's. It carries every shape this file
+  # needs — a `:timestamp`, an `:integer`, a `:string` under `retain: :hash` and an
+  # event whose second field is simply required — so nothing here had to be
+  # weakened to stop borrowing the client tree.
+  alias UniversalityGate.TreatmentEpisode, as: Contract
 
   defp event_def(name), do: Contract.event(name)
 
@@ -24,9 +28,8 @@ defmodule PNS.PayloadTest do
 
   describe "the promise that used to be false: one shape on both sides" do
     test "a timestamp given as a DateTime stays one" do
-      cast = Payload.cast(event_def(:registry_status_checked), %{
-        company_id: "c-1",
-        period_id: period_id!("2026-07"),
+      cast = Payload.cast(event_def(:payer_eligibility_checked), %{
+        episode_id: "ep-1",
         checked_at: ~U[2026-08-05 09:00:00Z]
       })
 
@@ -36,9 +39,8 @@ defmodule PNS.PayloadTest do
     test "a timestamp arriving as text — the queue, the database — becomes a DateTime" do
       # This is the half that was missing. The asynchronous handler reads its payload
       # from job arguments, which are JSON, so text is the only thing that can arrive.
-      cast = Payload.cast(event_def(:registry_status_checked), %{
-        "company_id" => "c-1",
-        "period_id" => period_id!("2026-07"),
+      cast = Payload.cast(event_def(:payer_eligibility_checked), %{
+        "episode_id" => "ep-1",
         "checked_at" => "2026-08-05T09:00:00Z"
       })
 
@@ -49,16 +51,15 @@ defmodule PNS.PayloadTest do
       # The round trip end to end, through Postgres rather than through a hand-built
       # map: JSON has no way to carry a point in time, so the column holds ISO 8601 and
       # `cast/2` repairs the one thing the round trip destroys.
-      emit(:registry_status_checked, %{
-        company_id: "c-1",
-        period_id: period_id!("2026-07"),
+      emit(:payer_eligibility_checked, %{
+        episode_id: "ep-1",
         checked_at: ~U[2026-08-05 09:00:00Z]
       })
 
-      row = Repo.one!(from e in PNS.Event, where: e.type == "registry_status_checked")
+      row = Repo.one!(from e in PNS.Event, where: e.type == "payer_eligibility_checked")
 
       assert row.payload["checked_at"] == "2026-08-05T09:00:00Z"
-      assert Payload.cast(event_def(:registry_status_checked), row.payload).checked_at ==
+      assert Payload.cast(event_def(:payer_eligibility_checked), row.payload).checked_at ==
                ~U[2026-08-05 09:00:00Z]
     end
 
@@ -66,8 +67,8 @@ defmodule PNS.PayloadTest do
       # The rule is "cast repairs exactly what JSON destroys", not "cast coerces". An
       # `:integer` arriving as `"5"` is a caller passing the wrong thing, and coercing
       # it would hide what validation exists to surface.
-      assert_raise ArgumentError, ~r/`task_count` is declared as :integer and holds "5"/, fn ->
-        emit(:monthly_tasks_generated, %{company_id: "c-1", period_id: period_id!("2026-07"), task_count: "5"})
+      assert_raise ArgumentError, ~r/`session_count` is declared as :integer and holds "5"/, fn ->
+        emit(:treatment_plan_approved, %{episode_id: "ep-1", approved_by: "d-1", session_count: "5"})
       end
     end
   end
@@ -77,15 +78,15 @@ defmodule PNS.PayloadTest do
       # The one that matters most: the contract says this fact carries a period and it
       # does not. Nothing caught this, and it is the exact shape of hole the product
       # exists to detect — a declaration nobody honoured reads as satisfied.
-      assert_raise ArgumentError, ~r/`period_id` is declared and missing from the payload/, fn ->
-        emit(:accounting_month_opened, %{company_id: "c-1"})
+      assert_raise ArgumentError, ~r/`scope` is declared and missing from the payload/, fn ->
+        emit(:payer_eligibility_confirmed, %{episode_id: "ep-1"})
       end
     end
 
     test "a declared field holding nil is refused, and the message says why" do
       error =
         assert_raise ArgumentError, fn ->
-          emit(:accounting_month_opened, %{company_id: "c-1", period_id: nil})
+          emit(:payer_eligibility_confirmed, %{episode_id: "ep-1", scope: nil})
         end
 
       assert error.message =~ "holds nil"
@@ -98,13 +99,13 @@ defmodule PNS.PayloadTest do
 
     test "each type refuses what it is not" do
       wrong = [
-        {:monthly_tasks_generated, %{task_count: "many"}, ":integer"},
-        {:registry_discrepancy_detected, %{diff: 12}, ":string"},
-        {:registry_status_checked, %{checked_at: "not a date"}, ":timestamp"}
+        {:treatment_plan_approved, %{approved_by: "d-1", session_count: "many"}, ":integer"},
+        {:payer_eligibility_denied, %{reason: 12}, ":string"},
+        {:payer_eligibility_checked, %{checked_at: "not a date"}, ":timestamp"}
       ]
 
       for {event, bad, type} <- wrong do
-        payload = Map.merge(%{company_id: "c-1", period_id: period_id!("2026-07")}, bad)
+        payload = Map.merge(%{episode_id: "ep-1"}, bad)
 
         error = assert_raise ArgumentError, fn -> emit(event, payload) end
         assert error.message =~ "declared as #{type}"
@@ -112,7 +113,7 @@ defmodule PNS.PayloadTest do
     end
 
     test "nothing reaches the log when the payload is refused" do
-      assert_raise ArgumentError, fn -> emit(:accounting_month_opened, %{company_id: "c-1"}) end
+      assert_raise ArgumentError, fn -> emit(:payer_eligibility_confirmed, %{episode_id: "ep-1"}) end
 
       assert Repo.aggregate(PNS.Event, :count) == 0
     end
@@ -122,15 +123,15 @@ defmodule PNS.PayloadTest do
     test "text or an integer, because the representation is the client's business" do
       # A client keying on a database sequence should not have to call it a string. What
       # the identifier refers to is theirs, and so is how they write it.
-      assert Payload.validate!(Contract, :accounting_month_opened, event_def(:accounting_month_opened), %{
-               company_id: 42,
-               period_id: period_id!("2026-07")
+      assert Payload.validate!(Contract, :payer_eligibility_confirmed, event_def(:payer_eligibility_confirmed), %{
+               episode_id: 42,
+               scope: "outpatient rehabilitation"
              }) == :ok
     end
 
     test "not an empty string, which is a missing identifier with a type" do
-      assert_raise ArgumentError, ~r/`company_id` is declared as :id and holds ""/, fn ->
-        emit(:accounting_month_opened, %{company_id: "", period_id: period_id!("2026-07")})
+      assert_raise ArgumentError, ~r/`episode_id` is declared as :id and holds ""/, fn ->
+        emit(:payer_eligibility_confirmed, %{episode_id: "", scope: "outpatient rehabilitation"})
       end
     end
   end
@@ -165,8 +166,8 @@ defmodule PNS.PayloadTest do
       # after `retain` a `:string` field could never fail and an `:integer` field could
       # never pass — the check would stop applying to exactly the fields carrying
       # sensitive content.
-      assert_raise ArgumentError, ~r/`diff` is declared as :string and holds 12/, fn ->
-        emit(:registry_discrepancy_detected, %{company_id: "c-1", period_id: period_id!("2026-07"), diff: 12})
+      assert_raise ArgumentError, ~r/`reason` is declared as :string and holds 12/, fn ->
+        emit(:payer_eligibility_denied, %{episode_id: "ep-1", reason: 12})
       end
     end
   end
@@ -177,13 +178,17 @@ defmodule PNS.PayloadTest do
       # this far — and one extra key is visible in the log rather than silent. Same
       # argument that made the retention check a report instead of a gate.
       event =
-        emit(:accounting_month_opened, %{company_id: "c-1", period_id: period_id!("2026-07"), extra: "kept"})
+        emit(:payer_eligibility_confirmed, %{
+          episode_id: "ep-1",
+          scope: "outpatient rehabilitation",
+          extra: "kept"
+        })
 
       assert event.payload["extra"] == "kept"
 
-      cast = Payload.cast(event_def(:accounting_month_opened), event.payload)
+      cast = Payload.cast(event_def(:payer_eligibility_confirmed), event.payload)
       assert cast["extra"] == "kept"
-      assert cast.company_id == "c-1"
+      assert cast.episode_id == "ep-1"
     end
 
     test "an event written under an older shape can still be read" do
@@ -192,19 +197,19 @@ defmodule PNS.PayloadTest do
       # is worse than one that reads it loosely — ADR §7-8 calls this reading the
       # payload defensively.
       Repo.insert!(%PNS.Event{
-        type: "accounting_month_opened",
+        type: "payer_eligibility_confirmed",
         contract: inspect(Contract),
         contract_version: "0000deadbeef",
         correlation_id: Ecto.UUID.generate(),
-        payload: %{"company_id" => "c-1"},
+        payload: %{"episode_id" => "ep-1"},
         occurred_at: DateTime.utc_now()
       })
 
       row = Repo.one!(from e in PNS.Event, where: e.contract_version == "0000deadbeef")
 
       # No raise: the field the contract declares today is simply absent.
-      assert Payload.cast(event_def(:accounting_month_opened), row.payload) == %{
-               company_id: "c-1"
+      assert Payload.cast(event_def(:payer_eligibility_confirmed), row.payload) == %{
+               episode_id: "ep-1"
              }
     end
   end

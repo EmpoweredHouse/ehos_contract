@@ -9,8 +9,8 @@ defmodule PNS.TelemetryTest do
   exact.
   """
 
-  use Taxvision.DataCase, async: false
-  use Oban.Testing, repo: Taxvision.Repo
+  use PNS.DataCase, async: false
+  use Oban.Testing, repo: PNS.TestRepo
 
   alias ProcessShapes.Rig
 
@@ -109,14 +109,12 @@ defmodule PNS.TelemetryTest do
 
     test "a payload that contradicts its declaration" do
       assert_raise ArgumentError, fn ->
-        PNS.emit!(Taxvision.Contracts.AccountingMonth, :accounting_month_opened, %{
-          company_id: "c-1"
-        })
+        PNS.emit!(ProcessShapes.Bare, :batch_closed, %{batch_id: "b-1"})
       end
 
       assert_received {[:pns, :contract, :violation], _, metadata}
       assert metadata.kind == :payload
-      assert metadata.event_type == :accounting_month_opened
+      assert metadata.event_type == :batch_closed
     end
 
     test "a cycle, and the path is in the metadata because that is what makes it actionable" do

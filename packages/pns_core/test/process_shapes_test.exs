@@ -12,7 +12,7 @@ defmodule PNS.ProcessShapesTest do
   colourless so nobody reads them as knowledge about anybody's process.
   """
 
-  use Taxvision.DataCase, async: false
+  use PNS.DataCase, async: false
 
   alias ProcessShapes.Rig
 

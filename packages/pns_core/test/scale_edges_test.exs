@@ -17,7 +17,7 @@ defmodule PNS.ScaleEdgesTest do
   rows, and it makes no claim about anybody's process.
   """
 
-  use Taxvision.DataCase, async: false
+  use PNS.DataCase, async: false
 
   defmodule Bulk do
     @moduledoc "# INVENTED. Two events and a window, so that rows have somewhere to go."

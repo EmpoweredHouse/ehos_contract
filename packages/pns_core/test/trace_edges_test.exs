@@ -32,7 +32,7 @@ defmodule PNS.TraceEdgesTest do
   argument, so nothing here needs the registry at all.
   """
 
-  use Taxvision.DataCase, async: false
+  use PNS.DataCase, async: false
 
   defmodule Edges do
     @moduledoc """

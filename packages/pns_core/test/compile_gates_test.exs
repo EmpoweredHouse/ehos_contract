@@ -32,7 +32,7 @@ defmodule PNS.CompileGatesTest do
         """
         defmodule Reject.HandlerOnUnknownEvent do
           use PNS.Handler,
-            contract: Taxvision.Contracts.AccountingMonth,
+            contract: ProcessShapes.Rig,
             event: :no_such_event
         end
         """,
@@ -45,8 +45,8 @@ defmodule PNS.CompileGatesTest do
         """
         defmodule Reject.HandlerPublishingUnknown do
           use PNS.Handler,
-            contract: Taxvision.Contracts.AccountingMonth,
-            event: :registry_data_consistent,
+            contract: ProcessShapes.Rig,
+            event: :item_received,
             publishes: [:invented_event]
         end
         """,
@@ -61,8 +61,10 @@ defmodule PNS.CompileGatesTest do
         """
         defmodule Reject.AsyncOnEventWithoutIdentity do
           use PNS.Handler,
-            contract: Taxvision.Contracts.AccountingMonth,
-            event: :registry_data_consistent,
+            contract: ProcessShapes.Rig,
+            # `case_closed` is the one event in the rig with no `identity`, which
+            # is exactly the state this gate refuses to let a queue see.
+            event: :case_closed,
             async: true
         end
         """,

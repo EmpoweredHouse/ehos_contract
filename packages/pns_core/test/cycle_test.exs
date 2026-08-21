@@ -15,8 +15,8 @@ defmodule PNS.CycleTest do
   have to pass.
   """
 
-  use Taxvision.DataCase, async: false
-  use Oban.Testing, repo: Taxvision.Repo
+  use PNS.DataCase, async: false
+  use Oban.Testing, repo: PNS.TestRepo
 
   alias ProcessShapes.Rig
 

@@ -18,8 +18,8 @@ defmodule PNS.PublicationsTest do
   handler emitting nothing and staying silent.
   """
 
-  use Taxvision.DataCase, async: false
-  use Oban.Testing, repo: Taxvision.Repo
+  use PNS.DataCase, async: false
+  use Oban.Testing, repo: PNS.TestRepo
 
   alias ProcessShapes.Rig
 

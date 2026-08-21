@@ -24,7 +24,7 @@ defmodule PNS.JobIdempotencyTest do
   `mix pns.check` or the graph reports.
   """
 
-  use Taxvision.DataCase, async: false
+  use PNS.DataCase, async: false
 
   defmodule Contract do
     @moduledoc "Invented. Two identifier fields in one identity, which is all this needs."

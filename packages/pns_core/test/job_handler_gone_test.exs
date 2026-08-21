@@ -13,8 +13,8 @@ defmodule PNS.JobHandlerGoneTest do
   work was never scheduled.
   """
 
-  use Taxvision.DataCase, async: false
-  use Oban.Testing, repo: Taxvision.Repo
+  use PNS.DataCase, async: false
+  use Oban.Testing, repo: PNS.TestRepo
 
   alias ProcessShapes.Rig
 
@@ -75,12 +75,12 @@ defmodule PNS.JobHandlerGoneTest do
 
   describe "a module that exists but stopped being a handler" do
     test "is treated the same, because the work has no owner either way" do
-      # `Taxvision.Periods` is a real, loadable module that has no `__pns_handler__/0`
-      # — the shape somebody produces by deleting `use PNS.Handler` and keeping the
-      # file. Resolving by name alone would have called a function that does not exist
-      # and crashed one line later.
+      # `ProcessShapes.Matching` is a real, loadable module that has no
+      # `__pns_handler__/0` — the shape somebody produces by deleting `use PNS.Handler`
+      # and keeping the file. Resolving by name alone would have called a function that
+      # does not exist and crashed one line later.
       event = an_event()
-      job = queue_job(event, "Taxvision.Periods")
+      job = queue_job(event, "ProcessShapes.Matching")
 
       assert {:cancel, reason} = perform_job(PNS.Job, job.args)
       assert reason =~ "no longer exists"

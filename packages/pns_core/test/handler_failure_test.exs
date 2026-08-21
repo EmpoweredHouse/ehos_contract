@@ -13,7 +13,7 @@ defmodule PNS.HandlerFailureTest do
   by weakening the rollback would trade a diagnosis gap for a log that lies.
   """
 
-  use Taxvision.DataCase, async: false
+  use PNS.DataCase, async: false
 
   alias ProcessShapes.Rig
 

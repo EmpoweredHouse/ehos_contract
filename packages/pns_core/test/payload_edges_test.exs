@@ -15,7 +15,7 @@ defmodule PNS.PayloadEdgesTest do
   of every type, which is not a claim about anybody's process.
   """
 
-  use Taxvision.DataCase, async: false
+  use PNS.DataCase, async: false
 
   alias PNS.Payload
 

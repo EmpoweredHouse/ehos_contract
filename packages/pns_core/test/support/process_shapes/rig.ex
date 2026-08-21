@@ -166,6 +166,21 @@ defmodule ProcessShapes.Rig do
     process: :pairing,
     stage: :intake
 
+  # For stage 2.2b again, and from the other side: the only field anywhere on
+  # `retain: :hash` whose handler is **asynchronous**. A retention policy the queue
+  # walks around looks satisfied — the log holds the digest while `oban_jobs`, a
+  # table `retain` does not cover, holds the value. That combination needs a hashed
+  # field and an asynchronous handler on the same event, and nothing invented had
+  # both until 2026-08-21.
+  event :item_reported,
+    label: "Item reported",
+    owner: ProcessShapes.Intake,
+    payload: %{case_id: :id, item_no: :integer, note: :string},
+    retain: %{note: :hash},
+    identity: [:case_id, :item_no],
+    process: :pairing,
+    stage: :intake
+
   # For stage 2.4: the one event with two synchronous handlers, so the check that
   # reports that shape has something to find. Nothing else in either contract has it,
   # and a check whose only evidence is its own silence is not tested.
@@ -381,6 +396,28 @@ defmodule ProcessShapes.Intake.OnItemNoted do
   """
 
   use PNS.Handler, contract: ProcessShapes.Rig, event: :item_noted, publishes: []
+
+  @impl PNS.Handler
+  def handle(_payload, _ctx), do: :ok
+end
+
+defmodule ProcessShapes.Intake.OnItemReported do
+  @moduledoc """
+  Asynchronous, and it exists to be watched rather than to do anything.
+
+  `item_reported` carries the only `retain: :hash` field in the invented material,
+  and this handler is what puts that field into a job's arguments — which is the
+  one place a retention policy can be honoured in the log and broken anyway.
+
+  `publishes: []`, so the graph, the wiring version and every path report are
+  untouched by its presence.
+  """
+
+  use PNS.Handler,
+    contract: ProcessShapes.Rig,
+    event: :item_reported,
+    publishes: [],
+    async: true
 
   @impl PNS.Handler
   def handle(_payload, _ctx), do: :ok

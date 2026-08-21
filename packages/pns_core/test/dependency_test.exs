@@ -15,7 +15,7 @@ defmodule PNS.DependencyTest do
   for processes whose **consequent** reaches outside, not whose precondition does.
   """
 
-  use Taxvision.DataCase, async: false
+  use PNS.DataCase, async: false
 
   alias ProcessShapes.Rig
 

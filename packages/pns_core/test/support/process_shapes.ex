@@ -14,5 +14,5 @@ defmodule ProcessShapes do
 
   use Boundary,
     deps: [PNS],
-    exports: [Rig, Intake, Matching, Resolution]
+    exports: [Rig, Bare, Promised, Intake, Matching, Resolution]
 end

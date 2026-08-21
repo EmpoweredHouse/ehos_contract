@@ -19,7 +19,7 @@ defmodule PNS.CheckAmbiguityTest do
   an explicit contract list so they can be handed one directly.
   """
 
-  use Taxvision.DataCase, async: false
+  use PNS.DataCase, async: false
 
   defmodule TwinEventA do
     @moduledoc "Invented. Declares a name a second contract also declares."

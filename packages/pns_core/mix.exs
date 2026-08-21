@@ -16,9 +16,15 @@ defmodule PNS.MixProject do
       version: "0.1.0",
       elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
+      # Only read when this project is the top-level one; a path dependency's
+      # configuration is never loaded by the application pulling it in. That is
+      # what lets the engine be its own first consumer without leaking a repo
+      # name, a database or a secret into anybody's build.
+      config_path: "config/config.exs",
       # Without this entry `use Boundary` is documentation rather than a check.
       compilers: [:boundary] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
+      aliases: aliases(),
       deps: deps()
     ]
   end
@@ -32,6 +38,17 @@ defmodule PNS.MixProject do
   # the material a client-free test suite is built from.
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
+
+  # The suite migrates itself with `PNS.Migrations`, so the package is the first
+  # consumer of its own migration. Nothing else proves that module as cheaply.
+  defp aliases do
+    [
+      "ecto.setup": ["ecto.create", "ecto.migrate"],
+      "ecto.reset": ["ecto.drop", "ecto.setup"],
+      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      check: ["compile --force --warnings-as-errors", "pns.check", "test"]
+    ]
+  end
 
   defp deps do
     [

@@ -13,10 +13,15 @@ defmodule PNS.UniversalityGateTest do
 
   # `DataCase`, not `ExUnit.Case`: since 5 August the gate also exercises the
   # **mechanisms**, not only the vocabulary — and those need the event log.
-  use Taxvision.DataCase, async: false
+  use PNS.DataCase, async: false
 
   @contract UniversalityGate.TreatmentEpisode
-  @taxvision Taxvision.Contracts.AccountingMonth
+  # The other side of every contrast below. It used to be the TaxVision contract,
+  # and on 2026-08-21 the gate stopped borrowing a client to prove the DSL is not
+  # a client's — which is the same argument the gate itself makes about domains.
+  # `ProcessShapes.Bare` carries the two shapes that comparison needed: a run keyed
+  # by two fields, and a `cadence`.
+  @other ProcessShapes.Bare
 
   describe "acceptance criterion: zero new words" do
     test "the DSL vocabulary did not grow to fit a second domain" do
@@ -54,13 +59,13 @@ defmodule PNS.UniversalityGateTest do
       assert PNS.Contract.payload_types() == [:id, :string, :integer, :timestamp, :enum]
     end
 
-    test "neither contract uses a type outside the closed set" do
+    test "no contract uses a type outside the closed set" do
       # The gate is a compile error, so this cannot fail without the build already
       # being red. It is here for the direction the gate does not cover: it counts
       # **which** types each domain actually needed, and a type no contract has ever
       # used is a candidate for removal on the same argument that removed `:period`.
       used =
-        for contract <- [@taxvision, @contract],
+        for contract <- [@other, ProcessShapes.Rig, @contract],
             event <- contract.events(),
             {_field, type} <- event.payload,
             uniq: true,
@@ -94,7 +99,7 @@ defmodule PNS.UniversalityGateTest do
     end
   end
 
-  describe "shapes TaxVision does not have" do
+  describe "shapes the first domain does not have" do
     test "the same event many times in one run is expressible" do
       # A fact's identity includes the session number, a run's identity does not.
       # Ten sessions are ten facts in one episode — not ten episodes and not one
@@ -117,7 +122,7 @@ defmodule PNS.UniversalityGateTest do
 
     test "run identity from one field works the same as from two" do
       assert @contract.process(:treatment_episode).instance == [:episode_id]
-      assert @taxvision.process(:accounting_month).instance == [:company_id, :period_id]
+      assert @other.process(:batching).instance == [:tenant_id, :batch_id]
     end
 
     test "an event-driven process has no cadence, and that is a result rather than an oversight" do
@@ -129,7 +134,7 @@ defmodule PNS.UniversalityGateTest do
       # mechanism resting on it — the "never observed" window — has nowhere to get
       # its length from for this process, and that belongs in notes §9.
       assert @contract.process(:treatment_episode).cadence == nil
-      assert @taxvision.process(:accounting_month).cadence == {1, :month}
+      assert @other.process(:batching).cadence == {1, :week}
     end
   end
 
@@ -139,7 +144,7 @@ defmodule PNS.UniversalityGateTest do
       @rule @contract.rule(example.rule)
 
       test "an example is a test: #{example.description} (##{index})" do
-        ContractExamples.run(@example, @rule)
+        PNS.ContractExample.run(@example, @rule)
       end
     end
 
@@ -158,7 +163,7 @@ defmodule PNS.UniversalityGateTest do
     test "the engine's registry sees both contracts" do
       PNS.Registry.load!()
       assert @contract in PNS.Registry.contracts()
-      assert @taxvision in PNS.Registry.contracts()
+      assert @other in PNS.Registry.contracts()
     end
   end
 

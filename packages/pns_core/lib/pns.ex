@@ -18,6 +18,7 @@ defmodule PNS do
       Check,
       Conformance,
       Contract,
+      ContractExample,
       Deployment,
       Emission,
       Emitter,
