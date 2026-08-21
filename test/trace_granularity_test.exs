@@ -128,7 +128,7 @@ defmodule PNS.TraceGranularityTest do
 
   describe "the static check that names it before any data exists" do
     test "the rig's assertion is reported as finer than its run" do
-      # This is the whole point of `PNS.Check.assertions_finer_than_their_run/0`:
+      # This is the whole point of `PNS.Check.assertions_finer_than_their_run/1`:
       # the tests above need a log to demonstrate the defect, and the check needs
       # only the declarations. `identity` says two occurrences are different facts;
       # `instance` says they belong to one run. Strictly finer means the run holds
