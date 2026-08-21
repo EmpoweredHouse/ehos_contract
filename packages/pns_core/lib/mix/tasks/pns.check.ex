@@ -35,6 +35,7 @@ defmodule Mix.Tasks.Pns.Check do
       |> check_backward_edges()
       |> check_competing_sync_handlers()
       |> check_assertions_finer_than_their_run()
+      |> check_facts_not_keyed_by_their_run()
       |> check_retain_on_free_text()
       |> check_no_vendor_in_config()
       |> check_unverified_declarations()
@@ -207,6 +208,27 @@ defmodule Mix.Tasks.Pns.Check do
              "#{inspect(f.identity)} while process #{inspect(f.process)} is a run per " <>
              "#{inspect(f.instance)}. One verdict is produced per run, so a single fulfilment " <>
              "satisfies every promise in it (#{inspect(f.contract)})"}
+          | acc
+        ]
+    end
+  end
+
+  # A fact whose identity does not contain the run it belongs to. A warning rather
+  # than an error for the same reason as its neighbour above — an identity is a
+  # modelling claim and the engine is not entitled to overrule it — but it has to be
+  # visible, because what it costs is invisible everywhere else: the asynchronous
+  # idempotency key is built from `identity` alone, so the second run's fact reads as
+  # a repeat of the first and its handler simply never runs.
+  defp check_facts_not_keyed_by_their_run(findings) do
+    for f <- PNS.Check.facts_not_keyed_by_their_run(), reduce: findings do
+      acc ->
+        [
+          {:warn,
+           "event #{inspect(f.event)} is identified by #{inspect(f.identity)}, which does not " <>
+             "contain #{inspect(f.missing)} — the field(s) process #{inspect(f.process)} keys a " <>
+             "run by (`instance: #{inspect(f.instance)}`). Two of these facts in two different " <>
+             "runs then share one identity, so the asynchronous idempotency key cannot tell " <>
+             "them apart and the second one is deduplicated away (#{inspect(f.contract)})"}
           | acc
         ]
     end

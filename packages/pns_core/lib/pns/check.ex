@@ -106,10 +106,18 @@ defmodule PNS.Check do
   thing the promise is about, and that is a modelling decision; sometimes the
   anchoring fact already belongs to another process and there is currently nothing
   to write instead.
+
+  ## Why it takes a list of contracts
+
+  Every check here reads the registry, and the registry is the binary that runs — so
+  a fixture built to be a modelling error would put a warning on every `mix pns.check`
+  in this repository for the rest of its life. The argument exists so a deliberately
+  wrong contract can be handed straight to the check without joining the registry.
+  Omitted, it is the registry, which is what every caller outside a test wants.
   """
-  @spec assertions_finer_than_their_run() :: [finer_than_its_run()]
-  def assertions_finer_than_their_run do
-    for contract <- PNS.Registry.contracts(),
+  @spec assertions_finer_than_their_run([module()] | nil) :: [finer_than_its_run()]
+  def assertions_finer_than_their_run(contracts \\ nil) do
+    for contract <- contracts || PNS.Registry.contracts(),
         trace <- contract.traces(),
         event = Enum.find(contract.events(), &(&1.name == trace.from)),
         identity = event && event.identity,
@@ -131,10 +139,93 @@ defmodule PNS.Check do
   # Strictly finer: every field the run is keyed by is in the fact's key, and the
   # fact's key has at least one more. Equal keys are the ordinary, correct case —
   # one fact per run — and a key that merely *differs* is a modelling error of a
-  # different kind, not this one.
+  # different kind, reported by `facts_not_keyed_by_their_run/1`.
+  #
+  # **Compared as sets, and that was a bug.** The list comparison called
+  # `[:b, :a]` finer than `[:a, :b]`, because the two lists are not equal — but a
+  # key is a set of fields, and writing its fields in another order identifies
+  # exactly the same thing. The false positive landed on the one check whose whole
+  # job is to be believed about the direction a report is wrong in, and the fix a
+  # reader would reach for is to reorder a keyword list, which changes nothing.
   @spec finer?([atom()], [atom()]) :: boolean()
   defp finer?(identity, instance) do
-    identity != instance and Enum.all?(instance, &(&1 in identity))
+    identity = MapSet.new(identity)
+    instance = MapSet.new(instance)
+
+    MapSet.subset?(instance, identity) and not MapSet.equal?(instance, identity)
+  end
+
+  @typedoc "An event whose identity does not contain the run identity of its process."
+  @type unkeyed_by_run :: %{
+          contract: module(),
+          event: atom(),
+          identity: [atom()],
+          process: atom(),
+          instance: [atom()],
+          missing: [atom()]
+        }
+
+  @doc """
+  Events whose `identity` does not contain the fields their process keys a run by.
+
+  ## The two shapes this covers, and why they are one finding
+
+  `identity: [:x]` under `instance: [:a]` is a fact keyed by something unrelated to
+  its run. `identity: [:a, :x]` under `instance: [:a, :b]` is a fact keyed by half
+  of it. Neither is equal to the run key and neither is finer than it, so
+  `assertions_finer_than_their_run/1` says nothing about either — its subject is a
+  key that contains the run and says more, and these say **less**.
+
+  ## Why it is a check of its own rather than a branch of that one
+
+  A different population, a different consequence, a different fix.
+
+  The population is every declared event, not the anchor of an assertion: the damage
+  does not need a `trace` to exist.
+
+  The consequence is upstream of any report. `PNS.Job` builds the asynchronous
+  idempotency key out of `identity` and nothing else, so when the identity does not
+  contain the run, the same field values occurring in two different runs produce the
+  same key. The client's idempotency table then reads the second fact as a repeat of
+  the first and its handler never runs — a consequence skipped, in silence, with the
+  log still showing both events. The other check reports a verdict that is too kind;
+  this one reports work that quietly did not happen.
+
+  The fix differs too. The finer case is usually fixed by rekeying the **process**,
+  because the promise is about the item. This one is usually fixed on the **event**,
+  by putting the run's fields into the fact's key where they were simply forgotten —
+  the run fields are already in the payload, since a compile gate requires it.
+
+  Reported rather than refused, for the same reason as its neighbour: an identity is
+  a modelling claim, and there are contracts where the fact genuinely is global and
+  the process is the thing keyed wrongly. A gate would decide that for the author.
+
+  ## What it does not catch
+
+  An event with no `identity` at all — the common case, and correct wherever the fact
+  happens once per run. `PNS.Job` then keys on the event's own identifier, which
+  collides with nothing.
+  """
+  @spec facts_not_keyed_by_their_run([module()] | nil) :: [unkeyed_by_run()]
+  def facts_not_keyed_by_their_run(contracts \\ nil) do
+    for contract <- contracts || PNS.Registry.contracts(),
+        event <- contract.events(),
+        identity = event.identity,
+        identity != nil,
+        process = event.process && contract.process(event.process),
+        process != nil,
+        missing = process.instance -- identity,
+        missing != [] do
+      %{
+        contract: contract,
+        event: event.name,
+        identity: identity,
+        process: process.name,
+        instance: process.instance,
+        missing: missing
+      }
+    end
+    |> Enum.sort_by(&{inspect(&1.contract), to_string(&1.event)})
   end
 
   @typedoc "One event with more than one synchronous handler."

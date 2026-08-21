@@ -140,6 +140,17 @@ defmodule PNS.Job do
   # contract**, not from the handler's declaration. A fact has one identity, while
   # one event can have many handlers — held on the handler it would drift between
   # them.
+  #
+  # Every segment is escaped before it is joined, in the same shape and for the same
+  # reason as `PNS.Instance` escapes its own separator. Without it a two-field
+  # identity holding `("x:y", "z")` and one holding `("x", "y:z")` produce the same
+  # key — and the failure is the quiet kind: the client's idempotency table treats
+  # the second fact as a repeat of the first, so its handler never runs and nothing
+  # anywhere records that a consequence was skipped. A separator that can appear in
+  # the values it separates is not a separator.
+  @separator ":"
+  @escaped "%3A"
+
   @spec idempotency_key(map(), map(), map()) :: String.t()
   defp idempotency_key(%{identity: nil}, args, _payload), do: args["event_id"]
 
@@ -149,8 +160,11 @@ defmodule PNS.Job do
         Map.get(payload, field) || Map.get(payload, to_string(field))
       end)
 
-    Enum.join([name | values], ":")
+    [name | values] |> Enum.map(&escape/1) |> Enum.join(@separator)
   end
+
+  @spec escape(term()) :: String.t()
+  defp escape(segment), do: segment |> to_string() |> String.replace(@separator, @escaped)
 
   # Three ways a handler can be gone, and all three mean the same thing to a job.
   #
