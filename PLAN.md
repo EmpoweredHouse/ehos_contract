@@ -1324,12 +1324,39 @@ dziennikiem i to był jedyny punkt roboczy, który mieszkał wyłącznie tam.
 ## Etap 3 — pakiet jako pakiet
 
 Wydzielenie do `packages/pns_core` z path dep, żeby granicę wymuszał system budowania, nie tylko `boundary`.
-Migracje w stylu Obana. Trzy skille: dodaj zdarzenie, napisz handler, zmień kontrakt — ten trzeci jest
-najważniejszy, bo jako jedyny wymaga zrobienia czegoś **przed** napisaniem kodu. CI z `mix check`.
+✅ zrobione, razem z migracjami w stylu Obana i osobną suitą — patrz dopiski 20–21 sierpnia wyżej.
 
-**Czwarty skill, pierwszy dla człowieka:** jak recenzować wygenerowany PR i **czego nie sprawdzać**, bo już
-pilnuje to check. Notatki §8 wymieniają osiem skilli i wszystkie są dla agenta, który pisze — a bramą jest
-recenzent.
+Trzy skille: dodaj zdarzenie, napisz handler, zmień kontrakt — ten trzeci jest najważniejszy, bo jako
+jedyny wymaga zrobienia czegoś **przed** napisaniem kodu. **✅ `zmień kontrakt` zrobiony 21 sierpnia**
+(`.claude/skills/change-contract/`) — tabela klasyfikacji delty sprawdzona przeciw źródłu: co refuduje
+kompilator, co widzi `PNS.Deployment.diff/2` (tylko `events_added/removed`, `paths_added/removed` —
+i nic więcej), i co jest cichą zmianą kontraktu bez żadnego wsparcia diff-owego (`retain`, `identity`,
+`instance`, typ pola, parametry `trace`). Znalezisko warte zapisania osobno, nie tylko w skillu:
+**`PNS.Trace.evaluate/3` nie ma wersjonowanej historii assercji** — zmiana `within`/`from`/`eventually`/
+`or_else` na już zadeklarowanym `trace` reinterpretuje **wszystkie** historyczne przebiegi w chwili
+wdrożenia, bez żadnego znaku w logu czy w tabeli wdrożeń, że werdykt liczył się pod inną obietnicą.
+Nic tego dziś nie chroni; raport rozciągnięty na taką zmianę trzeba ręcznie ograniczyć `since:`.
+**✅ `dodaj zdarzenie` i `napisz handler` zrobione 21 sierpnia**, równolegle, każdy w osobnym
+subagencie (`.claude/skills/add-event/`, `.claude/skills/write-handler/`) — `module-boundary-check`
+nie odsyła już do nieistniejących skilli, patrz jego krok 5. Znalezisko z `napisz handler`, warte
+zapisania osobno: **handler odczytuje `meta.event` na żywo ze skompilowanych metadanych modułu w
+chwili wykonania joba, nie w chwili zakolejkowania** — job zakolejkowany przed zmianą nazwy
+zdarzenia, wykonany po tym, jak handler już wskazuje na nowe zdarzenie, castuje stary payload pod
+nowy schemat po cichu (`lib/pns/job.ex:63`). Ten sam wzorzec co znalezisko z `zmień kontrakt` o
+zmianie nazwy — teraz opisany z drugiej strony, od handlera. CI z `mix check` — nie zrobione, brak
+`.github/`.
+
+**Czwarty skill, pierwszy dla człowieka. ✅ zrobiony 21 sierpnia** (`.claude/skills/review-pr/`) —
+jak recenzować wygenerowany PR i **czego nie sprawdzać**, bo już pilnuje to check: kompletna lista
+refuzacji kompilatora i błędów `mix pns.check` (część 1), obok listy, gdzie uwaga recenzenta
+faktycznie się opłaca — ostrzeżenia/informacje `mix pns.check` wymagające osądu, `rule`/`example`
+wyglądające na wymyślone, cicha edycja `identity`/`instance`/`retain`/`trace` na już zadeklarowanym
+kontrakcie (odsyła do tabeli `zmień kontrakt`, nie duplikuje jej), brak twierdzenia „zweryfikowane
+odwrotnie" przy poprawce błędu, polski tekst poza wąską dozwoloną powierzchnią, rozmiar diffu
+niezgodny z zadeklarowanym zakresem. Notatki §8 wymieniają osiem skilli i wszystkie są dla agenta,
+który pisze — a bramą jest recenzent, i dopiero teraz ma coś napisanego dla siebie.
+
+**Etap 3, skille: 4/4 zrobione. Zostaje tylko CI.**
 
 ## Etap 4 — jeden ekran
 

@@ -1,6 +1,6 @@
 ---
 name: module-boundary-check
-description: DRAFT, not yet reviewed. Before adding a new business entity, action, or CRUD screen to this application, decide (1) whether the action should dispatch through PNS's event/handler mechanism at all, (1a) if not, whether it should still use an internal untracked event/handler shape for decoupling versus a direct function call, and (2) if it does go through PNS, separately whether it needs structural tracking (process, instance, stages — for drift/untraversed-path detection, no timing required) and/or a timed promise (trace, cadence, deadline) — then check what already exists before generating anything. Use when about to add a new module, table, or action to lib/taxvision/ (or a future client tree) — not when editing an already-declared contract, which has its own workflow.
+description: DRAFT, not yet reviewed. Before adding a new business entity, action, or CRUD screen to this application, decide (1) whether the action should dispatch through PNS's event/handler mechanism at all, (1a) if not, whether it should still use an internal untracked event/handler shape for decoupling versus a direct function call, and (2) if it does go through PNS, separately whether it needs structural tracking (process, instance, stages — for drift/untraversed-path detection, no timing required) and/or a timed promise (trace, cadence, deadline) — then check what already exists before generating anything. Use when about to add a new module, table, or action to lib/taxvision/ (or a future client tree) — not when editing an already-declared contract, which has its own workflow (see change-contract).
 ---
 
 # Deciding where a new feature lives, before writing it
@@ -187,10 +187,10 @@ for "is there a timing promise" undercounts it.
    - Do not invent the trigger condition, the timing, the stage boundaries, or the label — those
      come from whoever confirmed the process, the same rule `contract-distillation` applies before
      a contract gets written. Mark a guessed number `unverified` rather than asserting it.
-   - This repository does not yet have a built "add an event" / "write a handler" skill (`PLAN.md`,
-     stage 3 lists it as planned) — until it exists, follow an already-shipped example
-     (`lib/taxvision/contracts/accounting_month.ex` plus its handler) rather than freelancing a
-     new shape.
+   - For the event declaration itself, use `add-event` (`.claude/skills/add-event/`); for the
+     handler that reacts to it, use `write-handler` (`.claude/skills/write-handler/`) — both built
+     21 August 2026. Neither one re-decides what this skill already settled; they pick up from
+     here.
 
 6. **Record the decision where the next reader will see it** — a one-line moduledoc note on
    *the answers to every question that applied and why* — so the next person or agent does not
