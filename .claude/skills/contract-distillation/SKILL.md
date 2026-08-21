@@ -169,6 +169,15 @@ the "closest DSL fit" line — do not skip straight to Elixir-shaped nouns befor
 12. **Rules and examples** — for every "when X then Y" statement, is there a concrete example with
     real numbers, both a case that worked and one that went wrong? A rule without an example is
     prose, not something that can compile later.
+
+    **Idea worth not losing, not yet actioned.** Classic Event Storming already has a dedicated
+    sticky-note color for exactly this — a business rule/condition, distinct from the event
+    stream. If a live session used one, rule candidates would arrive as first-class artifacts
+    instead of being mined out of prose after the fact, the way this step does today. That is a
+    change to the live-session methodology, though, not to this async, after-the-fact skill — it
+    belongs to `process-extraction`/`process-native-software`'s playbook, and per the
+    non-negotiables above nothing gets written into that repo without asking first. Flag it to
+    whoever facilitates the next live session; do not invent a sticky-note convention here.
 13. **Source / unverified** — restated as its own section per process: which numbers/claims above
     have a citation, and which are the team's own placeholder guesses.
 
