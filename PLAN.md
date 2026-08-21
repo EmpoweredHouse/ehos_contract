@@ -5,6 +5,29 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). **Ten plik to lista roboty** i tylko tu jest
 aktualizowany stan.
 
+## Dopisek 21 sierpnia (6) — ostatni `known_defect` rozstrzygnięty bez zmiany kodu: zawieszenie przez `or_else` zostaje
+
+Ostatni z czterech. Inny od poprzednich trzech, bo PLAN.md od początku mówił, że to nie jest arytmetyka
+do naprawienia, tylko osąd o tym, co obiecuje `trace` z `or_else` — i osąd ten należy do process ownera,
+którego dla tej fikstury nie ma (`test/trace_edges_test.exs`: „INVENTED. NOT A DOMAIN.").
+
+Scenariusz: `trace: from :opened; eventually :closed, within: {1,:day}; or_else :chased`. `:closed`
+(trasa chciana) nie ma żadnej zależności — nic zewnętrznego nie mogło jej zablokować. `:chased`
+(fallback) zależy od `:chaser`. Gdy `:chaser` pada i nic się nie dzieje, dzisiejszy kod zawiesza
+przebieg (wyklucza naruszenie), bo **którakolwiek** awaitowana zależność padła — mimo że trasa chciana
+była osiągalna przez cały czas i po prostu się nie zdarzyła.
+
+Zapytany o rozstrzygnięcie w rozmowie, nie w kodzie: **zostawić dzisiejsze zachowanie.** Kontrakt mówi
+„X albo Y", a Y było niemożliwe — to wystarcza jako powód wstrzymania werdyktu, nawet gdy X nie
+zależało od niczego; węższe odczytanie (zawieszać tylko, gdy KAŻDA wciąż-możliwa trasa była
+zablokowana) było na stole i odrzucone. `@tag :known_defect` zdjęty z testu asertującego węższe
+odczytanie — usunięty, nie zostawiony czerwony na przyszłość, której teraz nikt nie planuje; test
+pinujący dzisiejsze zachowanie jako **potwierdzone** dostał datę i uzasadnienie w komentarzu.
+`awaited_outages/2` w [`trace.ex`](packages/pns_core/lib/pns/trace.ex) — zero zmian w kodzie,
+tylko w moduledoku, żeby decyzja była zapisana tam, gdzie mechanizm.
+
+**Cztery `known_defect` → zero.** `mix check` zielony: 44 + 289 testów, 0 błędów, 0 wykluczonych.
+
 ## Dopisek 21 sierpnia (5) — trzeci `known_defect` zamknięty: assercja liczy się teraz per element
 
 Ostatni z trzech `known_defect` po dopisku (3): `trace` produkował jeden werdykt na przebieg niezależnie
@@ -241,7 +264,7 @@ Skala: 10 000 zdarzeń w jednym przebiegu → jeden werdykt, zakotwiczony na **n
 | Co | Dlaczego nie ruszone |
 | --- | --- |
 | **~~`within: {0, :day}` się kompiluje~~ — ✅ zamknięte 21 sierpnia** | Rozstrzygnięcie po drodze: zero zostaje legalne (czyta się jako „w tej samej chwili”, przetestowane), tylko ujemna liczba jest odrzucana. `PNS.Duration.t` poprawione na `non_neg_integer()`. Patrz „Dopisek 21 sierpnia (3)” wyżej |
-| **Awaria zależności zadeklarowanej wyłącznie przez `or_else` zawiesza przebieg** | `@tag :known_defect`. Za dzisiejszym: kontrakt mówi „X albo Y”, a Y było niemożliwe. Przeciw: X było możliwe przez cały czas i się nie stało, a zawieszenie **wyłącznie zabiera** znalezisko — czyli to jest kierunek hojny, a hojny kierunek jest tym, w którym ten raport cicho przestaje cokolwiek mówić. Osąd o tym, na której trasie obietnica jest należna, nie arytmetyka |
+| **~~Awaria zależności zadeklarowanej wyłącznie przez `or_else` zawiesza przebieg~~ — ✅ rozstrzygnięte 21 sierpnia, bez zmiany kodu** | Zapytany, kto ma decydować o tym osądzie — nie ma tu prawdziwego process ownera, fikstura jest wymyślona — zdecydowałem zostać przy dzisiejszym zachowaniu: kontrakt mówi „X albo Y", a Y było niemożliwe, i to wystarcza jako powód wstrzymania werdyktu, nawet gdy X nie zależało od niczego. `@tag :known_defect` zdjęty, bo asercja przeciwna nie ma już czekać na nic — patrz „Dopisek 21 sierpnia (6)" niżej |
 | **Trzy assercje samozwrotne** | `from == eventually` i `from == or_else` **nie mogą zawieść** i kompilują się; `eventually == or_else` zawieść może, ale trwale zeruje połowę rozbicia „przez eventually / przez or_else”, czyli dokładnie tę informację, dla której werdykt niesie `via:`. Przypięte, nie zabronione — brama kompilacyjna to decyzja słownikowa |
 | **~~Eskejpowanie separatora nie jest odwracalne~~ — ✅ zamknięte 21 sierpnia** | Migracja, przez którą nie było jak przejść, okazała się nie istnieć: `pns_events` i `oban_jobs` są puste w `dev` i w `test`, i nigdzie indziej nie ma wdrożenia, które by to obwodowanie czytało — TaxVision i Rehmed są danymi testowymi, nie produkcją. Sprawdzone `psql` przed poprawką, nie z pamięci. Patrz „Dopisek 21 sierpnia (4)” niżej |
 

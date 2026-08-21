@@ -45,6 +45,14 @@ defmodule PNS.Trace do
   run is whatever `eventually` or `or_else` depends on. Taking the union of the whole
   contract's dependencies would suspend a run because something unrelated was down.
 
+  **This union is `eventually`'s dependency `or` `or_else`'s, not their intersection —
+  decided rather than assumed, 21 August 2026.** A narrower reading was on the table: a
+  wanted route with no dependency at all can never be blocked by an outage, so suspend
+  only when every still-possible route was. Rejected, because the promise a `trace`
+  makes is the disjunction itself — "X or Y" — and here Y was impossible, which stands
+  as a reason to withhold judgement on the run even when X depended on nothing.
+  `test/trace_edges_test.exs` pins this.
+
   ## Three decisions with teeth
 
   **The window runs from the first occurrence of `from`, not from the last.** If

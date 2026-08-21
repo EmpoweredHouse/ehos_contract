@@ -310,32 +310,19 @@ defmodule PNS.TraceEdgesTest do
 
   describe "a dependency on the fallback only" do
     test "an outage of it suspends the run, although the wanted route depended on nothing" do
-      # Today's behaviour. `awaited_outages/2` takes the dependencies of both awaited
-      # events, so an outage of the fallback's dependency excuses a run whose primary
-      # route was unobstructed the whole time.
+      # Decided rather than assumed, 21 August 2026: `awaited_outages/2` takes the
+      # dependencies of both awaited events on purpose. The narrower reading — suspend
+      # only when every still-possible route was blocked, so a wanted route with no
+      # dependency at all could never excuse the run — was considered and rejected. The
+      # contract says "X or Y", and here Y was impossible; that stands as a reason to
+      # withhold judgement on the run even though X depended on nothing, because the
+      # promise was the disjunction, not X alone. A `:known_defect` test asserting the
+      # narrower reading stood here until this date; removed rather than left red for a
+      # future nobody now intends.
       insert(:opened, @opened)
       PNS.Dependency.unavailable!(Edges, :chaser, "test", ~U[2026-07-01 15:00:00.000000Z])
 
       assert verdict(:closed_or_chased).verdict == :suspended
-    end
-
-    @tag :known_defect
-    test "an outage of the fallback's dependency alone should not excuse the run" do
-      # Asserts what arguably should happen, and is tagged rather than changed because
-      # it is a judgement about what the assertion promises, not a defect in arithmetic.
-      #
-      # The case for today's behaviour: the contract says "X or Y", and one of the two
-      # was impossible.
-      #
-      # The case against: X was possible throughout and did not happen. Suspension only
-      # ever removes a finding, and `PNS.Dependency` is deliberately reluctant to record
-      # unavailability for exactly that reason — an excuse taken from the route nobody
-      # was blocked on is the generous direction, and the generous direction is where
-      # this report quietly stops saying anything.
-      insert(:opened, @opened)
-      PNS.Dependency.unavailable!(Edges, :chaser, "test", ~U[2026-07-01 15:00:00.000000Z])
-
-      assert verdict(:closed_or_chased).verdict == :violated
     end
   end
 
