@@ -89,8 +89,8 @@ defmodule PNS.Check do
   has said, in its own vocabulary, that a run contains several of these — so an
   assertion anchored there is about the items and is being counted over the run.
 
-  Found in Rehmed's monthly payer settlement, where a run is one payer in one month
-  and the invariant is about each delivered visit in it. That case never reached a
+  Found in a monthly settlement, where a run is one counterparty in one month and
+  the invariant is about each delivered item in it. That case never reached a
   `trace`, because writing it by hand exposed the problem; the case that did reach
   one is `ProcessShapes.Rig`, and `test/trace_granularity_test.exs` pins the wrong
   answer it produces.
@@ -98,9 +98,10 @@ defmodule PNS.Check do
   ## What it does not catch
 
   An event with **no** `identity` at all, which is the common case: the contract
-  then says nothing about repetition and this check has nothing to compare. Both
-  Rehmed assertions anchor on `visit_completed`, which has no `identity` because a
-  visit ends once — correct, and invisible to this check either way.
+  then says nothing about repetition and this check has nothing to compare. An
+  assertion anchored on a fact that happens once per run — a case closing, a
+  service ending — needs no `identity` at all, so there is nothing to compare and
+  nothing to report. Correct, and invisible to this check either way.
 
   Reported rather than refused. The honest fix is usually to key the process by the
   thing the promise is about, and that is a modelling decision; sometimes the

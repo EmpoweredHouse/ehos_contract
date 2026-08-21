@@ -414,7 +414,7 @@ defmodule PNS.Graph do
 
   The distinction is not a nicety, it is the whole reason this can be worth
   drawing. A contract with no implementation has **no handler edges at all**, so
-  the rejected picture of `Rehmed.Contracts.ClinicalVisit` would be eleven
+  the rejected picture of a contract written before its implementation is a row of
   unconnected boxes. The sequence in a contract does not live in its edges; it
   lives in `stages`, `terminal` and `trace`, and none of the three appears on the
   handler graph.
@@ -599,7 +599,7 @@ defmodule PNS.Graph do
   # became its own application (2026-08-20).** `Application.compile_env!/2`
   # resolved to the host's repo module while compiling this package, and a package
   # compiles before the application that configures it: every call site warned that
-  # `Taxvision.Repo` was undefined, and in a real consumer it would warn about
+  # the host's repo module was undefined, and in a real consumer it would warn about
   # theirs. A library cannot hold a compile-time reference to a module its user
   # has not written yet.
   #

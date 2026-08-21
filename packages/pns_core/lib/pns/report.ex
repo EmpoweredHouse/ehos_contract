@@ -2,11 +2,12 @@ defmodule PNS.Report do
   @moduledoc """
   The conformance report for a period — four questions, one page.
 
-  Moved into the engine 6 August, reversing what stage 1.7 built: `Taxvision.Report`
-  rendered Polish sentences in the client tree because an accountant was the reader,
-  and the engine could not know what language its reader spoke. That reasoning is
-  gone now, by decision rather than by a new argument — recorded in `PLAN.md`, not
-  silently rewritten here.
+  Rendered here rather than in the application, which reverses an earlier decision:
+  the sentences used to be built client-side, on the argument that the engine cannot
+  know what language its reader speaks. The engine now writes its own sentences in
+  English and passes the contract's `label` through untouched, so a declaration
+  written in the reader's language stays in it. The engine translates its own words
+  and never somebody else's.
 
   **The scaffolding is English; the contract's own labels are not translated.**
   `from_label`, `to_label` and a process's `label` print exactly as the contract

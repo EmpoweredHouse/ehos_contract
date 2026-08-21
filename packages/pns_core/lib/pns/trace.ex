@@ -71,11 +71,10 @@ defmodule PNS.Trace do
   satisfies the whole run.
 
   The compile gates catch a `trace` spanning two processes and a calendar unit in
-  `within`. **Nothing catches granularity.** Found while distilling Rehmed's
-  monthly payer settlement (`Rehmed.Contracts.PayerSettlement`), where a run is one
-  payer in one month and the promise — every delivered visit is invoiced or
-  excluded with a reason — is about each visit in it. Forty unsettled visits behind
-  one settled one report as satisfied.
+  `within`. **Nothing catches granularity.** The shape that produced this: a run
+  keyed by a counterparty and a month, holding dozens of items, and a promise made
+  about **each item** — every delivered item is either billed or excluded with a
+  stated reason. Forty unhandled items behind one handled item report as satisfied.
 
   The workaround is to key the process by the thing the promise is about, which is
   usually right anyway: `instance` is what an assertion is counted within, so a
@@ -306,7 +305,7 @@ defmodule PNS.Trace do
   # became its own application (2026-08-20).** `Application.compile_env!/2`
   # resolved to the host's repo module while compiling this package, and a package
   # compiles before the application that configures it: every call site warned that
-  # `Taxvision.Repo` was undefined, and in a real consumer it would warn about
+  # the host's repo module was undefined, and in a real consumer it would warn about
   # theirs. A library cannot hold a compile-time reference to a module its user
   # has not written yet.
   #

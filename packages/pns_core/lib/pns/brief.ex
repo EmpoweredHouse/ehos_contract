@@ -13,8 +13,8 @@ defmodule PNS.Brief do
 
   ## Why it is not the diagram either
 
-  Two rounds of review on `Rehmed.Contracts.ClinicalVisit` showed the two halves
-  catch different mistakes, and neither substitutes for the other:
+  Two rounds of review on a real contract showed the two halves catch different
+  mistakes, and neither substitutes for the other:
 
   | Artifact | Answers | What it caught |
   | --- | --- | --- |
