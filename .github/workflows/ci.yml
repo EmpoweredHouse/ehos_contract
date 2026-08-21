@@ -1,0 +1,60 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27.2"
+          elixir-version: "1.18.4"
+
+      # Same file a developer runs locally (CLAUDE.md's documented gate) —
+      # one Postgres definition, not a second one duplicated into this
+      # workflow that could drift from docker-compose.yml over time.
+      # `--wait` blocks on the healthcheck already declared there, so
+      # nothing here needs its own retry loop.
+      - name: Start Postgres
+        run: docker compose up -d --wait
+
+      - name: Cache host deps
+        uses: actions/cache@v4
+        with:
+          path: deps
+          key: deps-${{ runner.os }}-${{ hashFiles('mix.lock') }}
+
+      # The engine is a path dependency, but package_test/1 in mix.exs runs
+      # `mix test` with `cd: "packages/pns_core"` as a fully separate Mix
+      # project — its own deps/ and mix.lock, fetched independently of the
+      # host's. Confirmed 21 August 2026: packages/pns_core/deps is
+      # git-ignored, so a fresh checkout starts without it.
+      - name: Cache engine deps
+        uses: actions/cache@v4
+        with:
+          path: packages/pns_core/deps
+          key: pns-core-deps-${{ runner.os }}-${{ hashFiles('packages/pns_core/mix.lock') }}
+
+      - name: Install host deps
+        run: mix deps.get
+
+      - name: Install engine deps
+        working-directory: packages/pns_core
+        run: mix deps.get
+
+      # No `mix ecto.setup` before this: `mix check` runs under MIX_ENV=test
+      # (`cli/0`'s `preferred_envs`), and both the host's and the engine's own
+      # `test:` alias already create and migrate their test databases before
+      # running. Confirmed 21 August 2026 by dropping the dev database and
+      # running the gate anyway — it still passed. `ecto.setup` in the
+      # documented local command is for a working dev database to poke at
+      # afterward, not a precondition of the gate itself.
+      - name: mix check
+        run: mix check

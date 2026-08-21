@@ -1343,8 +1343,18 @@ zapisania osobno: **handler odczytuje `meta.event` na żywo ze skompilowanych me
 chwili wykonania joba, nie w chwili zakolejkowania** — job zakolejkowany przed zmianą nazwy
 zdarzenia, wykonany po tym, jak handler już wskazuje na nowe zdarzenie, castuje stary payload pod
 nowy schemat po cichu (`lib/pns/job.ex:63`). Ten sam wzorzec co znalezisko z `zmień kontrakt` o
-zmianie nazwy — teraz opisany z drugiej strony, od handlera. CI z `mix check` — nie zrobione, brak
-`.github/`.
+zmianie nazwy — teraz opisany z drugiej strony, od handlera.
+
+**✅ CI zrobione 21 sierpnia** (`.github/workflows/ci.yml`) — jedno wywołanie `docker compose up -d
+--wait` (ten sam plik co lokalnie, nie druga definicja Postgresa do rozjechania się z pierwszą), dwa
+`mix deps.get` (host i `packages/pns_core` osobno — silnik jest zależnością `path`, ale
+`package_test/1` woła `mix test` w nim jako **osobny proces Mixa**, z własnym `deps/`,
+git-ignorowanym), potem `mix check`. **Sprawdzone, nie założone: `mix ecto.setup` z dokumentowanej
+komendy lokalnej nie jest potrzebne do przejścia bramy** — usunięta lokalna baza `dev`, `mix check`
+przeszedł mimo to (brama chodzi pod `MIX_ENV=test`, a bazy testowe stawia własny alias `test:`, i
+hosta, i silnika). Cały workflow przejechany lokalnie od czystego stanu — usunięte `deps/`,
+`_build/` obu projektów, świeże `mix deps.get` w obu, `mix check` zielony — bo `act` nie jest
+zainstalowany i nie instalowałem go bez pytania.
 
 **Czwarty skill, pierwszy dla człowieka. ✅ zrobiony 21 sierpnia** (`.claude/skills/review-pr/`) —
 jak recenzować wygenerowany PR i **czego nie sprawdzać**, bo już pilnuje to check: kompletna lista
@@ -1356,7 +1366,7 @@ odwrotnie" przy poprawce błędu, polski tekst poza wąską dozwoloną powierzch
 niezgodny z zadeklarowanym zakresem. Notatki §8 wymieniają osiem skilli i wszystkie są dla agenta,
 który pisze — a bramą jest recenzent, i dopiero teraz ma coś napisanego dla siebie.
 
-**Etap 3, skille: 4/4 zrobione. Zostaje tylko CI.**
+**Etap 3 zamknięty w całości: 4/4 skille, migracje, osobna suita, CI.**
 
 ## Etap 4 — jeden ekran
 
