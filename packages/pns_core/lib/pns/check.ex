@@ -66,34 +66,37 @@ defmodule PNS.Check do
 
   @doc """
   Assertions whose `from` event is identified by **more** than the run is —
-  a promise made per item, evaluated once per run.
+  a promise made per item, evaluated per item since 21 August 2026.
 
   ## Why this is worth a check rather than a paragraph
 
-  `PNS.Trace` produces **one verdict per instance**: the window opens on the first
-  `from` in the run and closes on the first hit after it. Where the run holds many
-  of the thing being promised about, one fulfilment satisfies all of them, and the
-  fulfilment need not even concern the same item — the evaluator never compares
-  payloads.
+  Before 21 August, `PNS.Trace` produced **one verdict per instance** regardless of
+  this: the window opened on the first `from` in the run and closed on the first hit
+  after it, so one fulfilment satisfied all of them, and the fulfilment did not even
+  have to concern the same item — the evaluator never compared payloads. It was the
+  only failure of the three the compile gates and this check watch for that failed
+  towards *good news*, which is the direction that costs a report its credibility.
 
-  The compile gates already refuse a `trace` spanning two processes and a calendar
-  unit in `within`, both loudly and at build time. This one compiles, emits,
-  evaluates, and reports `satisfied`. **It is the only failure of the three that
-  fails towards good news**, which is the direction that costs a report its
-  credibility.
+  `PNS.Trace.evaluate/3` now quantifies: every distinct item gets its own window,
+  paired to its `eventually`/`or_else` by matching identity field values in the
+  occurrence's own payload, and the run is `:satisfied` only if every item is. This
+  check still exists and still warns, because quantification depends on the payload
+  actually carrying those fields on the target events — a contract this fires on is
+  worth a second look to confirm that holds, not because the run's verdict is wrong.
 
   ## The signal, and why it is static
 
   `identity` is what makes two occurrences the same fact; `instance` is what makes
   them the same run. When the first is strictly finer than the second, the contract
   has said, in its own vocabulary, that a run contains several of these — so an
-  assertion anchored there is about the items and is being counted over the run.
+  assertion anchored there is about the items and is evaluated as such.
 
   Found in a monthly settlement, where a run is one counterparty in one month and
-  the invariant is about each delivered item in it. That case never reached a
-  `trace`, because writing it by hand exposed the problem; the case that did reach
-  one is `ProcessShapes.Rig`, and `test/trace_granularity_test.exs` pins the wrong
-  answer it produces.
+  the invariant is about each delivered item in it. That case still cannot reach a
+  `trace` — its anchoring fact belongs to a different process, a separate gap
+  quantification does not touch, see `lib/rehmed/contracts/payer_settlement.ex`.
+  The case that did reach one is `ProcessShapes.Rig`, and
+  `test/trace_granularity_test.exs` pins what quantification now does with it.
 
   ## What it does not catch
 

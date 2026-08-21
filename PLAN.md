@@ -5,6 +5,51 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). **Ten plik to lista roboty** i tylko tu jest
 aktualizowany stan.
 
+## Dopisek 21 sierpnia (5) — trzeci `known_defect` zamknięty: assercja liczy się teraz per element
+
+Ostatni z trzech `known_defect` po dopisku (3): `trace` produkował jeden werdykt na przebieg niezależnie
+od tego, ile razy zdarzyło się to, o czym assercja obiecuje. Okno otwierało się na pierwszym `from` w
+przebiegu i zamykało na pierwszym trafieniu po nim — więc jedno spełnienie zaliczało cały przebieg, a
+trafienie nie musiało nawet dotyczyć tego samego elementu, bo ewaluator nigdy nie porównywał payloadów.
+Znalezisko z dystylacji Rehmed (rozliczenie płatnika): *każda wykonana wizyta jest w fakturze albo
+wykluczona z powodem* — czterdzieści nierozliczonych wizyt za jedną rozliczoną raportowało się jako
+spełnione. `PNS.Check.assertions_finer_than_their_run/1` już miał sygnał statyczny (`identity` `from`-a
+ostro drobniejsze niż `instance` procesu); `test/trace_granularity_test.exs` miał czerwony test na
+żądanie od 19 sierpnia.
+
+**Mechanizm w [`trace.ex`](packages/pns_core/lib/pns/trace.ex):** gdy assercja jest kwantyfikowana
+(ten sam warunek co check), `PNS.Trace.evaluate/3` liczy **jeden element na wartość `identity`
+zdarzenia `from`** w przebiegu, każdy z własnym oknem od własnego najwcześniejszego `from`. Trafienie
+`eventually`/`or_else` łączy się z elementem po **tych samych wartościach pól `identity` w jego własnym
+payloadzie** — trafienie bez tych pól nie rozwiązuje żadnego elementu. To jest kierunek asekuracyjny:
+fakt, którego nie da się odróżnić od elementu, który miał rozwiązać, nie rozwiązuje go przez
+przypadek. Jeden werdykt przebiegu to teraz **najgorszy z werdyktów jego elementów** — `:violated`
+jeśli którykolwiek element ma zamknięte puste okno, inaczej `:pending` jeśli którykolwiek wciąż otwarte,
+inaczej `:suspended` jeśli którykolwiek wykluczony, inaczej `:satisfied` — kwantyfikator generalny, bo
+obiecane było *każdy*, nie *któryś*. Zwykły przypadek (`identity` = `instance`) jest nietknięty: to samo
+zapytanie, ta sama funkcja, ten sam koszt.
+
+**Jedna świadoma strata informacji: `via: nil`, gdy elementy zamknęły się różnymi trasami.** Przebieg
+spełniony częściowo przez `eventually`, częściowo przez `or_else` nie zgaduje, którą trasę wypisać —
+to jest pytanie warsztatowe, nie inżynierskie, i moduledoc mówi to wprost.
+
+**Nie zamyka Rehmedowego przypadku, który to znalazł.** Rozliczenie płatnika ma **drugą**, osobną lukę
+(kotwica `visit_delivered` należy do innego procesu, a `trace` nie przekracza granicy procesu) — nawet po
+tej poprawce ta assercja wciąż się nie da napisać. Dopisane w
+[`payer_settlement.ex`](lib/rehmed/contracts/payer_settlement.ex): luka 1 zamknięta, luka 2 nie, i to jest
+osobna rzecz.
+
+**Zweryfikowane odwrotnie, nie tylko zielono:** wyłączenie kwantyfikacji, przestawienie priorytetu
+`:violated`/`:pending` i zepsucie gałęzi „brak elementu"/„brak deadline'u" każde osobno wywaliło
+dokładnie ten test, który miało wywalić — nie sąsiedni, nie żaden. Pokrycie `PNS.Trace` 98,17%; reszta
+to niezmieniona gałąź obsługi nieznanej nazwy assercji, sprzed tej poprawki.
+
+Zaktualizowane przy okazji: moduledoc `PNS.Trace`, moduledoc `PNS.Check.assertions_finer_than_their_run/1`
+i komunikat ostrzeżenia w `mix pns.check` — wszystkie trzy opisywały poprzednio to jako defekt, który
+milczy w stronę dobrych wieści; teraz opisują mechanizm i jego jedno realne ryzyko (trafienie bez pól
+`identity` w payloadzie). `mix check` zielony: 44 + 290 testów, 0 błędów, jeden `known_defect` zostaje
+(zawieszenie przez `or_else`).
+
 ## Dopisek 21 sierpnia (4) — drugi `known_defect` zamknięty, bo migracji nie było z czego robić
 
 Eskejp separatora był tagowany, nie poprawiony: `PNS.Instance` zamienia `|` na `%7C` i **zostawia `%`
@@ -286,7 +331,7 @@ w którym DSL się skończył** — a przy danych testowych to jest lepszy wynik
 
 | # | Luka | Waga |
 | --- | --- | --- |
-| 1 | **Assercja drobniejsza niż przebieg nie jest łapana i myli się w stronę dobrych wieści.** Obietnica brzmi *każda wykonana wizyta płatnikowa jest w fakturze okresu albo wykluczona z powodem* — kwantyfikator po zbiorze, nie „po A następuje B". Przebieg to płatnik-miesiąc i mieści dziesiątki wizyt; okno otwiera się na **pierwszym** wystąpieniu i zamyka **dowolnym** dopasowaniem, więc czterdzieści nierozliczonych wizyt za jedną rozliczoną raportuje się jako spełnione. Bramy łapią `trace` przez dwa procesy i jednostkę kalendarzową — **granulacji nie łapie nic** | **to jest produkt.** Cicha porażka w stronę zieleni jest gorsza niż odmowa kompilacji |
+| 1 | ~~Assercja drobniejsza niż przebieg nie jest łapana i myli się w stronę dobrych wieści.~~ **✅ zamknięte 21 sierpnia** — `PNS.Trace` liczy teraz per element, patrz „Dopisek 21 sierpnia (5)". Nie zamyka tego kontraktu: luka 2 wciąż blokuje napisanie tej assercji tutaj | było **to jest produkt**, teraz zamknięte jako mechanizm silnika |
 | 2 | **Zdarzenie należy do jednego procesu, a obietnica potrzebuje dwóch.** Naturalną kotwicą jest *wizyta wykonana*, która należy do przebiegu wizyty. Scalenie procesów nie pomaga: jeden z dwóch liczników przestaje mieć sens | duże — to jest ta sama granica, o którą rozbił się pierwszy kontrakt, widziana z drugiej strony |
 | 3 | **`instance` to nie „pola grupujące przebieg", tylko „pola znane w chwili zdarzenia"** — i DSL nigdzie tego nie mówi. `E-85` rejestracja u płatnika dzieje się przed wykonaniem, a okres rozliczeniowy nie jest wtedy znany. TaxVision tego nie ujawnił, bo miesiąc księgowy jest znany przed jakąkolwiek pracą w nim | średnie — kandydat na zdanie w `docs/contract.md` |
 | 4 | **`unverified` nie obejmuje `trace` — drugi raz z rzędu zmieniło to, co dało się napisać.** Tu przepadła najostrzejsza assercja w całym zleceniu: umowny obowiązek przyjęcia pacjenta płatnika **w 7 dni** przy kolejce dwóch miesięcy (`H38`). Nikt nie potwierdził, że obowiązek istnieje, a nie ma jak zadeklarować go i trzymać poza raportem dowodowym | **z obserwacji staje się pozycją backlogu** |
@@ -349,7 +394,7 @@ Trzy rzeczy przy okazji:
   testów. „Przykład jest testem" jest własnością DSL, nie oprzyrządowania jednego kontraktu — i teraz jest
   na to drugi dowód.
 
-### 19 sierpnia — luka granulacji przypięta testem, i obrazek dla właściciela procesu
+### 19 sierpnia — luka granulacji przypięta testem, i obrazek dla właściciela procesu — ✅ zamknięte 21 sierpnia, patrz „Dopisek 21 sierpnia (5)" wyżej
 
 **Test, który pada na żądanie.** `test/trace_granularity_test.exs`. Cztery testy opisują dzisiejsze
 zachowanie (trzy elementy obiecane, jeden dostarczony, raport mówi `satisfied`), plus kontrola pinująca
@@ -1388,11 +1433,8 @@ procent kontraktu przyszło z sali (przy TaxVision 40%) i **ile przykładów wł
   ewaluacji (mechanizm ma coś do obserwowania) ale nie wchodził do agregatu raportu — ten sam wzorzec,
   co już działa dla pól procesu. DSL się nie zmienia: `unverified` już przyjmuje listę atomów, `trace`
   już ma nazwę.
-- **Kwantyfikacja wewnątrz przebiegu — celowo nie tutaj.** To jest luka 1 z tabeli Rehmed wyżej
-  (`granulacji nie łapie nic`), ma już przypięty czerwony test (`test/trace_granularity_test.exs`,
-  `:known_defect`, patrz „19 sierpnia — luka granulacji przypięta testem" wyżej) i traktowana jest jako
-  **produkt**, nie dług — cicha porażka w stronę zieleni jest gorsza niż odmowa kompilacji. Nie
-  duplikować jako osobna pozycja backlogu; jeśli kiedyś ruszać, to od tego testu, nie od nowego opisu.
+- **~~Kwantyfikacja wewnątrz przebiegu~~ — ✅ zamknięte 21 sierpnia.** Luka 1 z tabeli Rehmed
+  wyżej. Patrz „Dopisek 21 sierpnia (5)" niżej.
 
 **Drobne, wszystkie nasze, rekomendacja: jednym commitem przy etapie 3:**
 

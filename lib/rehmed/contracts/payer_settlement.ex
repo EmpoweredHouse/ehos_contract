@@ -29,10 +29,15 @@ defmodule Rehmed.Contracts.PayerSettlement do
   be satisfied by **any** later match — so forty unsettled visits behind one
   settled one would report as satisfied.
 
-  This is worse than a refusal. The compile gates catch a `trace` that spans two
-  processes and a `trace` with a calendar unit; nothing catches an assertion whose
-  granularity is finer than its run, and it fails quietly in the direction of good
-  news.
+  This was worse than a refusal, and is why finding 2 below still matters: as of
+  21 August 2026, `PNS.Trace` quantifies exactly this shape — see its moduledoc —
+  so an assertion finer than its run is now evaluated per item rather than failing
+  quietly towards good news. `PNS.Check.assertions_finer_than_their_run/1` still
+  flags it, now as "confirm the target events carry the item's identity fields
+  too," not as a defect.
+
+  That fixes finding 1 in isolation. It does not fix this contract: finding 2 is
+  the reason the assertion still cannot be written here, quantification or not.
 
   ### 2. The fact that would anchor it belongs to another run
 

@@ -40,7 +40,7 @@ defmodule Rehmed.Contracts.VisitSettlement do
   Nothing distinguishes them. A second contract writing **złote** into a field this
   one writes grosze into compiles, emits, and is added up wrong by a report, and no
   gate anywhere would notice — the same class of silent, plausible failure as the
-  granularity limitation now recorded in `PNS.Trace`.
+  granularity limitation once recorded in `PNS.Trace` and closed there 21 August 2026.
 
   The mitigation used here is a naming convention: every amount ends in `_minor`,
   so the unit is unmissable at the call site. **A convention is not a guarantee**,

@@ -62,26 +62,47 @@ defmodule PNS.Trace do
   neither satisfied nor violated — there is nothing to judge. Counting it as a
   violation would raise an alarm for every case not yet started.
 
-  ## One limitation, and it fails towards good news
+  ## Quantification: a promise made per item inside a run
 
-  **An assertion is per run, so a promise made per item inside a run is
-  mis-measured rather than refused.** One verdict is produced per instance: the
-  window opens on the first `from` in that run and closes on the first hit after
-  it. Where the run holds many of the thing being promised about, one match
-  satisfies the whole run.
+  **Fixed 21 August 2026** — until then an assertion was evaluated once per run
+  regardless of how many times the thing it promised about occurred inside it: the
+  window opened on the first `from` and closed on the first hit after it, so one
+  fulfilment satisfied every promise in the run, and the hit did not even have to
+  concern the same item — nothing compared payloads. `test/trace_granularity_test.exs`
+  pins that shape as history now, not as the requirement.
 
-  The compile gates catch a `trace` spanning two processes and a calendar unit in
-  `within`. **Nothing catches granularity.** The shape that produced this: a run
-  keyed by a counterparty and a month, holding dozens of items, and a promise made
-  about **each item** — every delivered item is either billed or excluded with a
-  stated reason. Forty unhandled items behind one handled item report as satisfied.
+  `PNS.Check.assertions_finer_than_their_run/1` already had the signal: when the
+  `from` event's `identity` is strictly finer than its process's `instance`, the run
+  holds more than one of the thing the assertion is about. `evaluate/3` reads that
+  same signal and switches modes:
 
-  The workaround is to key the process by the thing the promise is about, which is
-  usually right anyway: `instance` is what an assertion is counted within, so a
-  promise finer than the instance is a sign the instance is wrong. That is not
-  always available — the anchoring fact may already belong to another process — and
-  when it is not, there is currently nothing to write. Recorded rather than
-  approximated, and tracked in `PLAN.md`.
+  - **One item per distinct value of `from`'s `identity`** inside the run, each with
+    its own window opened by its own earliest `from` and judged by the same rules as
+    an ordinary assertion (`:satisfied`/`:violated`/`:pending`/`:suspended`).
+  - **An `eventually`/`or_else` occurrence is paired to an item by those same
+    identity field values in its own payload** — a hit whose payload does not carry
+    them cannot resolve any item. This is the conservative direction to fail in:
+    a fact that cannot be told apart from the item it is supposed to resolve does
+    not get to resolve it by coincidence.
+  - **The run's one reported verdict is the worst of its items':** `:violated` if
+    any item's window closed empty, else `:pending` if any is still open, else
+    `:suspended` if any was excused, else `:satisfied` — which requires every item to
+    be. This is a universal quantifier, and it is the whole point: the promise this
+    gap was found on was *every* delivered item, not *some*.
+
+  **`via` is reported only when every item was satisfied through the same route.** A
+  run resolved partly by `eventually` and partly by `or_else` reports `via: nil` —
+  a real loss of information, not an oversight, because deciding what a mixed route
+  means to the process owner is a modelling question the workshop has not been asked,
+  not an engineering one this module can answer on its own.
+
+  The ordinary case — `identity` equal to `instance`, one of the thing per run — is
+  untouched: same query, same function, same cost. Quantification only runs for the
+  shape `PNS.Check` already flags, and today that is exactly one assertion in the
+  whole repository (`ProcessShapes.Rig`'s `submission_reaches_inspection`) — the real
+  case that found this, Rehmed's payer settlement, still cannot write the assertion
+  at all, because its anchoring fact belongs to a different process. Quantification
+  does not reach that gap; see `lib/rehmed/contracts/payer_settlement.ex`.
 
   ## The boundary of the report
 
@@ -122,7 +143,6 @@ defmodule PNS.Trace do
         raise ArgumentError, "#{inspect(contract)} does not declare assertion #{inspect(trace_name)}"
 
     now = Keyword.get(opts, :now) || DateTime.utc_now()
-    from_type = to_string(trace.from)
 
     # One query for the whole evaluation rather than one per run: an assertion is judged
     # per run, and a query per run would make the report cost grow with the client's
@@ -130,6 +150,17 @@ defmodule PNS.Trace do
     # observed, and a report for July has to see an outage observed in July even when the
     # window it asks about was opened by an event from June.
     outages = awaited_outages(contract, trace)
+
+    if quantified?(contract, trace) do
+      evaluate_quantified(contract, trace, opts, now, outages)
+    else
+      evaluate_per_run(contract, trace, opts, now, outages)
+    end
+  end
+
+  @spec evaluate_per_run(module(), map(), keyword(), DateTime.t(), [DateTime.t()]) :: [verdict()]
+  defp evaluate_per_run(contract, trace, opts, now, outages) do
+    from_type = to_string(trace.from)
 
     contract
     |> occurrences(trace, opts)
@@ -142,6 +173,96 @@ defmodule PNS.Trace do
     end)
     |> Enum.sort_by(& &1.from_at, DateTime)
   end
+
+  # The same shape `PNS.Check.assertions_finer_than_their_run/1` flags statically: the
+  # `from` event is identified by more than its run is, so the run holds several of the
+  # thing the assertion is about. Kept local rather than shared with `PNS.Check` — a
+  # runtime evaluator reaching into a compile-gate module for a three-line set comparison
+  # would be the wrong direction of dependency for a three-line comparison to justify.
+  @spec quantified?(module(), map()) :: boolean()
+  defp quantified?(contract, trace) do
+    event = contract.event(trace.from)
+    process = contract.process_of(trace.from)
+    event.identity != nil and process != nil and finer?(event.identity, process.instance)
+  end
+
+  @spec finer?([atom()], [atom()]) :: boolean()
+  defp finer?(identity, instance) do
+    identity = MapSet.new(identity)
+    instance = MapSet.new(instance)
+    MapSet.subset?(instance, identity) and not MapSet.equal?(instance, identity)
+  end
+
+  @spec evaluate_quantified(module(), map(), keyword(), DateTime.t(), [DateTime.t()]) :: [verdict()]
+  defp evaluate_quantified(contract, trace, opts, now, outages) do
+    from_type = to_string(trace.from)
+
+    contract
+    |> item_occurrences(trace, opts)
+    |> Enum.flat_map(fn {instance_id, by_item} ->
+      item_verdicts =
+        for {_item_key, by_type} <- by_item,
+            times = Map.get(by_type, from_type),
+            times != nil do
+          verdict(trace, instance_id, Enum.min(times, DateTime), by_type, now, outages)
+        end
+
+      # An instance can appear here with no item at all: `item_occurrences/3` groups
+      # every row it fetched, including one whose only rows are an `eventually` or
+      # `or_else` that happens to share a run but not a single `from`. Same rule as the
+      # ordinary path — no `from`, nothing to judge.
+      case item_verdicts do
+        [] -> []
+        verdicts -> [aggregate(instance_id, verdicts)]
+      end
+    end)
+    |> Enum.sort_by(& &1.from_at, DateTime)
+  end
+
+  # The run's one verdict is the worst of its items' — a universal quantifier over
+  # `:satisfied`, because the promise this exists for is "every item", not "some item".
+  # Priority order matches severity to a reader: a broken promise outranks an open one,
+  # an open one outranks an excused one, and only when nothing is left unresolved does
+  # the run get to be satisfied.
+  @spec aggregate(String.t(), [verdict()]) :: verdict()
+  defp aggregate(instance_id, item_verdicts) do
+    priority = %{violated: 0, pending: 1, suspended: 2, satisfied: 3}
+    worst = Enum.min_by(item_verdicts, &priority[&1.verdict])
+
+    %{
+      instance_id: instance_id,
+      verdict: worst.verdict,
+      via: aggregate_via(item_verdicts, worst.verdict),
+      from_at: Enum.min_by(item_verdicts, & &1.from_at, DateTime).from_at,
+      deadline_at: aggregate_deadline(item_verdicts),
+      resolved_at: aggregate_resolved(item_verdicts, worst.verdict)
+    }
+  end
+
+  # `nil` on purpose when items were satisfied through different routes — the run
+  # genuinely was closed two ways, and picking one to report would be inventing an
+  # answer to a question the process owner was never asked.
+  @spec aggregate_via([verdict()], atom()) :: atom() | nil
+  defp aggregate_via(_item_verdicts, verdict) when verdict != :satisfied, do: nil
+
+  defp aggregate_via(item_verdicts, :satisfied) do
+    case item_verdicts |> Enum.map(& &1.via) |> Enum.uniq() do
+      [only] -> only
+      _mixed -> nil
+    end
+  end
+
+  @spec aggregate_deadline([verdict()]) :: DateTime.t() | nil
+  defp aggregate_deadline(item_verdicts) do
+    case Enum.reject(item_verdicts, &is_nil(&1.deadline_at)) do
+      [] -> nil
+      dated -> Enum.max_by(dated, & &1.deadline_at, DateTime).deadline_at
+    end
+  end
+
+  @spec aggregate_resolved([verdict()], atom()) :: DateTime.t() | nil
+  defp aggregate_resolved(_item_verdicts, verdict) when verdict != :satisfied, do: nil
+  defp aggregate_resolved(item_verdicts, :satisfied), do: Enum.max_by(item_verdicts, & &1.resolved_at, DateTime).resolved_at
 
   @doc "Verdicts for every assertion of every registered contract."
   @spec evaluate_all(keyword()) :: [%{contract: module(), trace: atom(), verdicts: [verdict()]}]
@@ -288,6 +409,55 @@ defmodule PNS.Trace do
       {instance, Enum.group_by(pairs, &elem(&1, 0), &elem(&1, 1))}
     end)
   end
+
+  # Same query shape as `occurrences/3`, deliberately not shared with it: this one
+  # also selects `payload`, because pairing an occurrence to an item needs the values
+  # of `from`'s identity fields wherever they appear. Folding that column into the
+  # ordinary query would make every non-quantified evaluation — the overwhelming
+  # majority — fetch a column it never reads.
+  @spec item_occurrences(module(), map(), keyword()) ::
+          %{String.t() => %{tuple() => %{String.t() => [DateTime.t()]}}}
+  defp item_occurrences(contract, trace, opts) do
+    types =
+      [trace.from, trace.eventually, trace.or_else]
+      |> Enum.reject(&is_nil/1)
+      |> Enum.map(&to_string/1)
+
+    identity = contract.event(trace.from).identity |> Enum.map(&to_string/1)
+
+    query =
+      from(e in Event,
+        where: e.contract == ^inspect(contract),
+        where: e.type in ^types,
+        where: not is_nil(e.instance_id),
+        select: {e.instance_id, e.type, e.occurred_at, e.payload}
+      )
+
+    query
+    |> maybe_since(Keyword.get(opts, :since))
+    |> maybe_until(Keyword.get(opts, :until))
+    |> maybe_instance(Keyword.get(opts, :instance))
+    |> repo().all()
+    |> Enum.group_by(fn {instance, _t, _at, _p} -> instance end)
+    |> Map.new(fn {instance, rows} ->
+      by_item =
+        rows
+        |> Enum.group_by(
+          fn {_i, _t, _at, payload} -> item_key(payload, identity) end,
+          fn {_i, type, at, _p} -> {type, at} end
+        )
+        |> Map.new(fn {key, pairs} -> {key, Enum.group_by(pairs, &elem(&1, 0), &elem(&1, 1))} end)
+
+      {instance, by_item}
+    end)
+  end
+
+  # A tuple of raw values, not a joined string: two payload fields have no separator
+  # to escape or collide on if they are never joined in the first place, which is a
+  # cheaper way to avoid the exact class of bug closed elsewhere today in `PNS.Instance`
+  # and `PNS.Job`.
+  @spec item_key(map(), [String.t()]) :: tuple()
+  defp item_key(payload, identity), do: identity |> Enum.map(&Map.get(payload, &1)) |> List.to_tuple()
 
   @spec maybe_since(Ecto.Query.t(), DateTime.t() | nil) :: Ecto.Query.t()
   defp maybe_since(query, nil), do: query

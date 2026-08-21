@@ -250,11 +250,14 @@ defmodule Mix.Tasks.Pns.Check do
     end
   end
 
-  # An assertion whose subject is finer than the run it is counted in. A warning
-  # rather than an error, because the fix is a modelling decision and sometimes
-  # there is nothing to write instead — but it must be visible on every run, since
-  # this is the one shape of mistake in the DSL that reports **satisfied** while
-  # the data says otherwise.
+  # An assertion whose subject is finer than the run it is counted in. `PNS.Trace`
+  # quantifies these — every item gets its own window, and the run is satisfied only
+  # if all of them are — so this is no longer the false-satisfied defect it was before
+  # 21 August. Still a warning rather than an `info`, because quantification pairs an
+  # `eventually`/`or_else` occurrence to an item by matching identity field values in
+  # its payload: a hit that does not carry those fields cannot resolve any item, so a
+  # process owner reading this should confirm `eventually`/`or_else` actually carry
+  # the fields `identity` names.
   defp check_assertions_finer_than_their_run(findings) do
     for f <- PNS.Check.assertions_finer_than_their_run(), reduce: findings do
       acc ->
@@ -262,8 +265,9 @@ defmodule Mix.Tasks.Pns.Check do
           {:warn,
            "assertion #{inspect(f.trace)} is finer than its run: `#{f.from}` is identified by " <>
              "#{inspect(f.identity)} while process #{inspect(f.process)} is a run per " <>
-             "#{inspect(f.instance)}. One verdict is produced per run, so a single fulfilment " <>
-             "satisfies every promise in it (#{inspect(f.contract)})"}
+             "#{inspect(f.instance)}. Evaluated per item now — confirm `eventually`/`or_else` " <>
+             "carry #{inspect(f.identity)} too, or a hit missing them cannot resolve any item " <>
+             "(#{inspect(f.contract)})"}
           | acc
         ]
     end
