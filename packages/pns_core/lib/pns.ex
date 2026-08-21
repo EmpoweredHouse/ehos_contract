@@ -27,6 +27,7 @@ defmodule PNS do
       Handler,
       Instance,
       Job,
+      Migrations,
       Payload,
       Registry,
       Report,
