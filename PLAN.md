@@ -1153,6 +1153,25 @@ procent kontraktu przyszło z sali (przy TaxVision 40%) i **ile przykładów wł
 - **Czy `within` obowiązuje także `or_else`.** Silnik zakłada, że tak. Jeśli u nich jest inaczej, raport
   pokazuje naruszenia, których nie ma. Jest w pytaniach warsztatowych, oznaczone jako nasze założenie.
 
+**Nasze, nie pytanie do klienta:**
+
+- **`unverified` nie obejmuje `trace`** — z dystylacji Rehmed (luka 4 w tabeli wyżej), dotąd tylko
+  zapisana jako obserwacja, nie jako pozycja robocza. Dziś `unverified` filtruje wyłącznie deklaracje
+  procesu (`PNS.Conformance.verified_declarations/1` czyta `process.unverified` przeciw `stages`,
+  `cadence`, `deadline`); nazwa assercji `trace` nigdy nie jest z nią zestawiana. Efekt: obowiązek,
+  którego właściciel procesu nie potwierdził — `H38` z Rehmed, przyjęcie płatnika w 7 dni przy kolejce
+  dwóch miesięcy — albo trzeba zadeklarować jako pewnik (fałszywa metryka w raporcie dowodowym), albo
+  w ogóle się nie da napisać i trzymać poza nim. Zakres: `PNS.Conformance.verified_declarations/1` plus
+  `PNS.Trace.evaluate_all/1`/`summary/1`, żeby werdykt assercji wymienionej w `unverified` liczył się w
+  ewaluacji (mechanizm ma coś do obserwowania) ale nie wchodził do agregatu raportu — ten sam wzorzec,
+  co już działa dla pól procesu. DSL się nie zmienia: `unverified` już przyjmuje listę atomów, `trace`
+  już ma nazwę.
+- **Kwantyfikacja wewnątrz przebiegu — celowo nie tutaj.** To jest luka 1 z tabeli Rehmed wyżej
+  (`granulacji nie łapie nic`), ma już przypięty czerwony test (`test/trace_granularity_test.exs`,
+  `:known_defect`, patrz „19 sierpnia — luka granulacji przypięta testem" wyżej) i traktowana jest jako
+  **produkt**, nie dług — cicha porażka w stronę zieleni jest gorsza niż odmowa kompilacji. Nie
+  duplikować jako osobna pozycja backlogu; jeśli kiedyś ruszać, to od tego testu, nie od nowego opisu.
+
 **Drobne, wszystkie nasze, rekomendacja: jednym commitem przy etapie 3:**
 
 - **Aktor systemowy zamiast `nil`** — `nil` zlewa „zrobiła to maszyna” z „nie wiemy kto”; do etapu 3, bo po

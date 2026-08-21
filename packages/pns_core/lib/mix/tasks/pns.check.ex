@@ -28,6 +28,8 @@ defmodule Mix.Tasks.Pns.Check do
 
     findings =
       []
+      |> check_something_to_check()
+      |> check_names_declared_twice()
       |> check_events_have_handlers()
       |> check_owners_exist()
       |> check_rule_functions_exist()
@@ -36,11 +38,65 @@ defmodule Mix.Tasks.Pns.Check do
       |> check_competing_sync_handlers()
       |> check_assertions_finer_than_their_run()
       |> check_facts_not_keyed_by_their_run()
+      |> check_unfalsifiable_assertions()
       |> check_retain_on_free_text()
       |> check_no_vendor_in_config()
       |> check_unverified_declarations()
 
     report(findings)
+  end
+
+  # **Nothing found is not the same as nothing wrong, and the report cannot tell
+  # them apart.** `0 errors, 0 warnings, 0 notices` is what a healthy repository
+  # prints and also what an engine pointed at the wrong application prints — which
+  # is what this engine did on the day it first compiled as a package, scanning
+  # itself and reporting a perfectly healthy empty graph.
+  #
+  # The applications are named in the finding because that is where the mistake
+  # actually is: the contracts exist, the configuration points elsewhere.
+  defp check_something_to_check(findings) do
+    if PNS.Check.no_contracts?() do
+      configured = Application.get_env(:pns, :applications) || []
+
+      [
+        {:warn,
+         "no contracts found in #{inspect(configured)}, so every check below has an empty list " <>
+           "to work on and will report nothing. A clean report and a misconfigured scan look " <>
+           "identical — set `config :pns, applications: [...]` to the applications that hold " <>
+           "your contracts"}
+        | findings
+      ]
+    else
+      findings
+    end
+  end
+
+  # Two names in one namespace. Errors rather than warnings, and that is the one
+  # place in this task where the engine overrules the author rather than reporting
+  # to them: an event name is what dispatch selects on and a process name is what a
+  # run identity is built from, so neither collision is expressible correctly. What
+  # they produce is somebody else's handler running inside your transaction, and one
+  # process's runs counted as another's — both of which show up somewhere other than
+  # where they are.
+  defp check_names_declared_twice(findings) do
+    events =
+      for c <- PNS.Check.event_names_declared_twice() do
+        {:error,
+         "event #{inspect(c.name)} is declared by #{length(c.contracts)} contracts: " <>
+           "#{inspect(c.contracts)}. Handlers are selected by event name alone, so emitting it " <>
+           "from one contract runs the other's handlers as well"}
+      end
+
+    processes =
+      for c <- PNS.Check.process_names_declared_twice() do
+        {:error,
+         "process #{inspect(c.name)} is declared by #{length(c.contracts)} contracts: " <>
+           "#{inspect(c.contracts)}. A run identity is `\"<process>|<values>\"` and carries no " <>
+           "contract, so runs of one are counted as runs of the other and the log cannot be " <>
+           "separated afterwards"}
+      end
+
+    Enum.reduce(events ++ processes, findings, &[&1 | &2])
   end
 
   # Every declared event has a handler or is terminal.
@@ -229,6 +285,24 @@ defmodule Mix.Tasks.Pns.Check do
              "run by (`instance: #{inspect(f.instance)}`). Two of these facts in two different " <>
              "runs then share one identity, so the asynchronous idempotency key cannot tell " <>
              "them apart and the second one is deduplicated away (#{inspect(f.contract)})"}
+          | acc
+        ]
+    end
+  end
+
+  # An assertion with no `within` has no failing case: any occurrence satisfies it,
+  # and where nothing occurs the verdict stays `:pending` for ever, because the
+  # window a violation needs to be past never closes. `info` rather than a warning —
+  # "eventually, and nobody has agreed a number" is an honest thing to say, and the
+  # line exists so that it is said out loud rather than read as a promise being kept.
+  defp check_unfalsifiable_assertions(findings) do
+    for f <- PNS.Check.unfalsifiable_assertions(), reduce: findings do
+      acc ->
+        [
+          {:info,
+           "assertion #{inspect(f.trace)} has no `within`, so it has no failing case: any " <>
+             "#{inspect(f.eventually)} after #{inspect(f.from)} satisfies it and a run with " <>
+             "none stays pending for ever (#{inspect(f.contract)})"}
           | acc
         ]
     end

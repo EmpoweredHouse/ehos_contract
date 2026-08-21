@@ -228,6 +228,132 @@ defmodule PNS.Check do
     |> Enum.sort_by(&{inspect(&1.contract), to_string(&1.event)})
   end
 
+  @typedoc "One name declared by more than one contract."
+  @type collision :: %{name: atom(), contracts: [module()]}
+
+  @doc """
+  Event names declared by more than one contract.
+
+  ## What is actually ambiguous, and what is not
+
+  Not `PNS.Registry.declared_events/0`: it tags every event with the contract it came
+  from, so both survive the list intact. Not `contract.process_of/1` either — that
+  function is generated per contract and can only see its own events.
+
+  The ambiguity is one level down, in **every lookup keyed by an event name alone**,
+  and dispatch is one of them. `PNS.Registry.handlers_for/1`, `sync_handlers_for/1`
+  and `async_handlers_for/1` filter handlers on `event` and never look at `contract`,
+  and `PNS.Emitter` calls them with nothing but the event's name. So emitting an event
+  from contract A **runs contract B's handlers** — a foreign process's consequences,
+  executed inside A's transaction, against a payload declared by A.
+
+  Two more readers merge silently rather than cross-firing. `PNS.Graph.overlay/1`
+  indexes nodes by event name, so one of the two events supplies the process and
+  contract for both. `PNS.Check.stage_index/0` does the same, so backward-edge
+  detection reads one contract's stages against the other's handlers.
+
+  ## Why an error rather than a warning
+
+  This is not a modelling opinion the engine has no business overruling. Nothing here
+  is expressible correctly: there is one namespace for event names because dispatch
+  has one, and two contracts inside it means the wrong code runs. Every symptom of it
+  points somewhere else — a handler that "sometimes fires twice", a graph whose
+  process labels are wrong — so it is exactly the kind of thing worth failing a build
+  over rather than leaving to be discovered.
+  """
+  @spec event_names_declared_twice([module()] | nil) :: [collision()]
+  def event_names_declared_twice(contracts \\ nil) do
+    collisions(contracts, fn contract -> Enum.map(contract.events(), & &1.name) end)
+  end
+
+  @doc """
+  Process names declared by more than one contract.
+
+  A run's identity is `"<process>|<values>"` (`PNS.Instance`) and carries no trace of
+  the contract, so two processes with one name write into one namespace in the log's
+  `instance_id` column. Where their `instance` fields also coincide — likely, since a
+  shared name usually means a shared subject — runs of one **are** runs of the other,
+  and no query can separate them afterwards. The log keeps what was written.
+
+  What reads that column reads it by name too: `PNS.Graph.overlay/1` counts runs per
+  process name, so the denominator every path report divides by is the sum of both.
+  `PNS.Trace` is the exception — it filters by contract, so assertions stay honest
+  while the coverage numbers beside them do not, which is a worse mixture than either
+  being wrong alone.
+
+  An error for the same reason as its neighbour: the collision is in a namespace the
+  engine owns, and neither contract can be repaired without renaming.
+  """
+  @spec process_names_declared_twice([module()] | nil) :: [collision()]
+  def process_names_declared_twice(contracts \\ nil) do
+    collisions(contracts, fn contract -> Enum.map(contract.processes(), & &1.name) end)
+  end
+
+  @spec collisions([module()] | nil, (module() -> [atom()])) :: [collision()]
+  defp collisions(contracts, names) do
+    for contract <- contracts || PNS.Registry.contracts(), name <- names.(contract) do
+      {name, contract}
+    end
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    |> Enum.filter(fn {_name, declarers} -> length(declarers) > 1 end)
+    |> Enum.map(fn {name, declarers} -> %{name: name, contracts: Enum.sort(declarers)} end)
+    |> Enum.sort_by(&to_string(&1.name))
+  end
+
+  @typedoc "An assertion with no deadline, which therefore has no failing case."
+  @type unfalsifiable :: %{contract: module(), trace: atom(), from: atom(), eventually: atom()}
+
+  @doc """
+  Assertions declared without `within`.
+
+  `PNS.Trace` treats a missing deadline as no deadline: any occurrence at or after
+  `from` satisfies the assertion, and where nothing occurs the verdict stays
+  `:pending` for ever, because the window a violation needs to be past never closes.
+  So the assertion has **no failing case at all** — it is satisfied or it is waiting,
+  and it can be neither refuted nor confirmed by anything that fails to happen.
+
+  That reads in the report as an assertion being met, which is why it is worth a line
+  rather than a paragraph in a moduledoc. `within` is optional in the DSL and stays
+  optional: "eventually, with no deadline" is a legitimate thing to say about a
+  process nobody has agreed a number for yet, and the honest handling of a number
+  nobody confirmed is `unverified`, not a compile error. An `info` says the sentence
+  is unfalsifiable as written without deciding what it should have said.
+
+  Recorded as a candidate in `PLAN.md` and in `PNS.Trace`'s own comment since the
+  evaluator was written; this is that candidate.
+  """
+  @spec unfalsifiable_assertions([module()] | nil) :: [unfalsifiable()]
+  def unfalsifiable_assertions(contracts \\ nil) do
+    for contract <- contracts || PNS.Registry.contracts(),
+        trace <- contract.traces(),
+        is_nil(trace.within) do
+      %{contract: contract, trace: trace.name, from: trace.from, eventually: trace.eventually}
+    end
+    |> Enum.sort_by(&{inspect(&1.contract), to_string(&1.trace)})
+  end
+
+  @doc """
+  Whether there is nothing at all to check.
+
+  **A report of `0 errors, 0 warnings, 0 notices` is what a healthy repository looks
+  like, and it is also what an engine scanning the wrong application looks like.** The
+  two are indistinguishable, and the second one happened here the first time the
+  engine compiled as its own package: it defaulted to its own name, scanned itself,
+  found no contracts and said everything was fine.
+
+  Configuration fixed the default; it did not fix the silence. `PNS.Registry.load!/1`
+  raises for an application that is not loaded — a typo — but an application that is
+  loaded and simply holds no contracts is not a typo and cannot be distinguished from
+  one that does, so the scan returns nothing and every check downstream iterates over
+  an empty list and finds nothing wrong.
+
+  A warning rather than an error, because it is the true state of a repository on the
+  day before its first contract, and a check that fails a build for being new gets
+  removed before it ever catches the real case.
+  """
+  @spec no_contracts?([module()] | nil) :: boolean()
+  def no_contracts?(contracts \\ nil), do: (contracts || PNS.Registry.contracts()) == []
+
   @typedoc "One event with more than one synchronous handler."
   @type competing_handlers :: %{event: atom(), modules: [module()]}
 
