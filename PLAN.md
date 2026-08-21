@@ -5,6 +5,31 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). **Ten plik to lista roboty** i tylko tu jest
 aktualizowany stan.
 
+## Dopisek 21 sierpnia (4) — drugi `known_defect` zamknięty, bo migracji nie było z czego robić
+
+Eskejp separatora był tagowany, nie poprawiony: `PNS.Instance` zamienia `|` na `%7C` i **zostawia `%`
+w spokoju**, więc wartość zawierająca dosłowny tekst `%7C` daje ten sam klucz przebiegu co wartość
+zawierająca `|`. `PNS.Job` odziedziczył ten sam kształt na `:`/`%3A`. Powodem tagu, nie poprawki, była
+cena migracji: poprawka zmienia format każdego `instance_id` i każdego klucza idempotencji, jaki
+kiedykolwiek zapisano, a stare wiersze zostają w starym kodowaniu.
+
+**Sprawdzone `psql` przed poprawką, nie założone: migracji nie było z czego robić.** `pns_events` i
+`oban_jobs` mają `0` wierszy w `dev` i w `test`, a żadne wdrożenie poza tym repozytorium tego
+obwodowania nie czyta — TaxVision i Rehmed są danymi testowymi, nie produkcją, więc „przeformatowane
+klucze leżą w tabelach idempotencji klientów" było ryzykiem przyszłym, nie faktem o dzisiejszym stanie.
+Cena, którą tag nazywał, wynosi dziś zero, i to jest właściwy moment na zamknięcie — każdy dzień
+dłużej z prawdziwym ruchem podnosi tę cenę, nigdy jej nie zmniejsza.
+
+Poprawka: `%` eskejpuje się jako `%25` **przed** eskejpowaniem separatora, w obu miejscach
+(`PNS.Instance.encode/3`, `PNS.Job.escape/1`), żeby odwzorowanie było różnowartościowe. Test w
+`payload_edges_test.exs` traci tag i zmienia się z „powinno się różnić, ale się nie różni" na
+asercję, że się różni; `PNS.Job` dostał symetryczny test w `job_idempotency_test.exs` — miał tę samą
+usterkę, ale nie miał własnego czerwonego testu, który by to pinował.
+
+**Trzy `known_defect` → dwa.** Zostają: kwantyfikacja wewnątrz przebiegu (`trace_granularity_test.exs`)
+— traktowana jako produkt, nie dług, patrz „Otwarte" niżej — i zawieszenie przez zależność wyłącznie
+`or_else` (`trace_edges_test.exs`), osąd wymagający rozmowy z process ownerem, nie arytmetyka.
+
 ## Dopisek 21 sierpnia (3) — jeden `known_defect` zamknięty, jeden osąd doprecyzowany po drodze
 
 `within: {0, :day}` się kompilowało, choć `PNS.Duration.t` było opublikowane jako `pos_integer()` —
@@ -173,9 +198,9 @@ Skala: 10 000 zdarzeń w jednym przebiegu → jeden werdykt, zakotwiczony na **n
 | **~~`within: {0, :day}` się kompiluje~~ — ✅ zamknięte 21 sierpnia** | Rozstrzygnięcie po drodze: zero zostaje legalne (czyta się jako „w tej samej chwili”, przetestowane), tylko ujemna liczba jest odrzucana. `PNS.Duration.t` poprawione na `non_neg_integer()`. Patrz „Dopisek 21 sierpnia (3)” wyżej |
 | **Awaria zależności zadeklarowanej wyłącznie przez `or_else` zawiesza przebieg** | `@tag :known_defect`. Za dzisiejszym: kontrakt mówi „X albo Y”, a Y było niemożliwe. Przeciw: X było możliwe przez cały czas i się nie stało, a zawieszenie **wyłącznie zabiera** znalezisko — czyli to jest kierunek hojny, a hojny kierunek jest tym, w którym ten raport cicho przestaje cokolwiek mówić. Osąd o tym, na której trasie obietnica jest należna, nie arytmetyka |
 | **Trzy assercje samozwrotne** | `from == eventually` i `from == or_else` **nie mogą zawieść** i kompilują się; `eventually == or_else` zawieść może, ale trwale zeruje połowę rozbicia „przez eventually / przez or_else”, czyli dokładnie tę informację, dla której werdykt niesie `via:`. Przypięte, nie zabronione — brama kompilacyjna to decyzja słownikowa |
-| **Eskejpowanie separatora nie jest odwracalne** | patrz niżej |
+| **~~Eskejpowanie separatora nie jest odwracalne~~ — ✅ zamknięte 21 sierpnia** | Migracja, przez którą nie było jak przejść, okazała się nie istnieć: `pns_events` i `oban_jobs` są puste w `dev` i w `test`, i nigdzie indziej nie ma wdrożenia, które by to obwodowanie czytało — TaxVision i Rehmed są danymi testowymi, nie produkcją. Sprawdzone `psql` przed poprawką, nie z pamięci. Patrz „Dopisek 21 sierpnia (4)” niżej |
 
-### Znalezisko spoza listy: eskejp, który nie jest eskejpem
+### Znalezisko spoza listy: eskejp, który nie jest eskejpem — ✅ zamknięte 21 sierpnia, patrz dopisek (4)
 
 Wyszło przy pisaniu testów payloadu, nie z listy, przeciw której były pisane. `PNS.Instance` zamienia
 `|` na `%7C` i **zostawia `%` w spokoju**, więc odwzorowanie nie jest różnowartościowe: wartość
@@ -183,10 +208,16 @@ zawierająca dosłowny tekst `%7C` daje ten sam klucz przebiegu co wartość zaw
 sama usterka, którą naprawia pierwszy commit tej serii, tylko węższa — i **`PNS.Job` ją odziedziczył**,
 bo dostał to samo eskejpowanie celowo, żeby oba mechanizmy się zgadzały.
 
-`@tag :known_defect`, nie poprawka: eskejpowanie `%` jako `%25` zmienia format **każdego `instance_id`,
-jaki kiedykolwiek zapisano**. Stare wiersze zostają w starym kodowaniu, więc przebiegi rozjeżdżają się
-na wdrożeniu, a po stronie joba przeformatowane klucze leżą w tabelach idempotencji **klientów**. To
-jest decyzja migracyjna, nie poprawka błędu — i dlatego jest tutaj, a nie w commicie.
+`@tag :known_defect`, nie poprawka wtedy: eskejpowanie `%` jako `%25` zmienia format **każdego
+`instance_id`, jaki kiedykolwiek zapisano**. Stare wiersze zostają w starym kodowaniu, więc przebiegi
+rozjeżdżają się na wdrożeniu, a po stronie joba przeformatowane klucze leżą w tabelach idempotencji
+**klientów**. To była decyzja migracyjna, nie poprawka błędu — dopóki nie było wiadomo, czy migracja
+jest z czego robiona.
+
+**Zamknięte 21 sierpnia, patrz dopisek (4) niżej: sprawdzone `psql`, nie z pamięci — migracji nie ma z
+czego robić.** `pns_events` i `oban_jobs` są puste w `dev` i w `test`, a żadne wdrożenie poza tym
+repozytorium nie czyta tego obwodowania — TaxVision i Rehmed są danymi testowymi. Koszt migracyjny, który
+uzasadniał tag, dziś wynosi zero.
 
 ### Drobiazg do rozstrzygnięcia przez człowieka
 

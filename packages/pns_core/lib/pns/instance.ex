@@ -21,6 +21,8 @@ defmodule PNS.Instance do
 
   @separator "|"
   @escaped "%7C"
+  @percent "%"
+  @escaped_percent "%25"
 
   @doc """
   Returns `{process_name, instance_id}` for an event, or `{nil, nil}` when the
@@ -40,7 +42,10 @@ defmodule PNS.Instance do
       Enum.map(process.instance, fn field ->
         case fetch(payload, field) do
           {:ok, value} ->
-            value |> to_string() |> String.replace(@separator, @escaped)
+            value
+            |> to_string()
+            |> String.replace(@percent, @escaped_percent)
+            |> String.replace(@separator, @escaped)
 
           :error ->
             # **Unreachable from `PNS.Emitter` since stage 2.2b, and kept anyway.**

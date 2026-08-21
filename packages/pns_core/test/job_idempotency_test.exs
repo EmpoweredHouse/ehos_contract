@@ -94,4 +94,14 @@ defmodule PNS.JobIdempotencyTest do
       assert key_for("c-1", "n-1") == "note_taken:c-1:n-1"
     end
   end
+
+  describe "a value containing the escape sequence itself" do
+    test "does not collide with one containing the separator" do
+      # The same fault `PNS.Instance` had on its run key: escaping `:` as `%3A` while
+      # leaving `%` alone is not reversible, so a value that literally contains the
+      # text `%3A` produced the same key as one containing `:`. Fixed the same way, by
+      # escaping `%` first.
+      refute key_for("x%3Ay", "z") == key_for("x:y", "z")
+    end
+  end
 end

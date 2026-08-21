@@ -150,6 +150,8 @@ defmodule PNS.Job do
   # the values it separates is not a separator.
   @separator ":"
   @escaped "%3A"
+  @percent "%"
+  @escaped_percent "%25"
 
   @spec idempotency_key(map(), map(), map()) :: String.t()
   defp idempotency_key(%{identity: nil}, args, _payload), do: args["event_id"]
@@ -164,7 +166,12 @@ defmodule PNS.Job do
   end
 
   @spec escape(term()) :: String.t()
-  defp escape(segment), do: segment |> to_string() |> String.replace(@separator, @escaped)
+  defp escape(segment) do
+    segment
+    |> to_string()
+    |> String.replace(@percent, @escaped_percent)
+    |> String.replace(@separator, @escaped)
+  end
 
   # Three ways a handler can be gone, and all three mean the same thing to a job.
   #

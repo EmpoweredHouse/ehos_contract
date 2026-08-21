@@ -7,9 +7,7 @@ defmodule PNS.PayloadEdgesTest do
   large integer, the timestamp written six different ways, the enum that checks almost
   nothing, and the separator character inside a value that a separator has to survive.
 
-  Everything here describes today's behaviour. One test is tagged `:known_defect` and
-  asserts what should happen instead — a defect found while writing this file rather
-  than from the list it was written against.
+  Everything here describes today's behaviour.
 
   The fixture is invented and stays out of the registry: it exists to carry one field
   of every type, which is not a claim about anybody's process.
@@ -216,25 +214,12 @@ defmodule PNS.PayloadEdgesTest do
       assert a.instance_id =~ "%7C"
     end
 
-    @tag :known_defect
-    test "a value containing the escape sequence itself should not collide with one containing the separator" do
-      # **Found while writing this file, and not on the list it was written from.**
-      #
-      # The escaping replaces `|` with `%7C` and leaves `%` alone, so the mapping is not
-      # reversible: a value that literally contains the text `%7C` produces the same run
-      # key as a value that contains `|`. It is far less likely than a bare separator —
-      # which is why the original bug was worth fixing first — but it is the same fault
-      # and the same consequence: two runs silently become one.
-      #
-      # `PNS.Job` inherited it: its idempotency key was given the same escaping on
-      # purpose, so the same two values collide there too — and on that side the keys
-      # live in clients' idempotency tables rather than in the engine's log, which makes
-      # the migration question harder rather than easier.
-      #
-      # Tagged rather than fixed because the fix (escape `%` as `%25` before `|`) changes
-      # the format of every `instance_id` ever written. Old rows keep the old encoding,
-      # so runs would split at the deploy, and whether that is worth it against a
-      # collision this narrow is a migration decision, not a bug fix.
+    test "a value containing the escape sequence itself does not collide with one containing the separator" do
+      # Found while writing this file, and not on the list it was written from. The
+      # escaping now replaces `%` with `%25` before it replaces `|` with `%7C`, so a
+      # value that literally contains the text `%7C` no longer produces the same run
+      # key as a value that contains `|`. `PNS.Job` gets the same fix, for the same
+      # reason: its idempotency key uses the same escaping on purpose.
       literal = PNS.Instance.key(TwoKeyed, :happened, %{a: "x%7Cy", b: "z"})
       separator = PNS.Instance.key(TwoKeyed, :happened, %{a: "x|y", b: "z"})
 
