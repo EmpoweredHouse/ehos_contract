@@ -120,8 +120,12 @@ mix ecto.migrate`.
 - **Grep po `[ąćęłńóśźż]` nie wystarcza do sprawdzenia** i to jest zapisane, bo kosztowało jeden fałszywy
   „gotowe". Spora część polszczyzny nie ma diakrytyków — `rejestry` w `registry_check.ex` przeżyło pełne
   przepisanie pliku po pliku właśnie dlatego. Przy sprawdzaniu trzeba przejść też po słowach.
-- **Dokumentacja repo — `README.md`, `PLAN.md`, ten plik — zostaje po polsku.** To nie jest kod i nie
-  jedzie z pakietem.
+- **Dokumentacja repo robocza — `PLAN.md`, ten plik — zostaje po polsku.** To nie jest kod i nie
+  jedzie z pakietem. **`README.md` jest wyjątkiem od 21 sierpnia** — biblioteka ma zostać
+  upubliczniona, więc `README.md` jest teraz po angielsku, po tej samej stronie granicy co
+  `docs/contract.md` i `docs/adr/`: dokument, który czyta ktoś spoza tego zespołu. `PLAN.md`
+  i ten plik zostają po polsku, bo ich czytelnikiem wciąż jest tylko zespół pracujący w tym
+  repozytorium.
 - **Publiczne funkcje w `lib/pns/` mają `@doc` i `@spec`.** Bez tego pakiet nie ma dokumentacji ani
   kontraktu typów, a `dialyzer` nie ma czego sprawdzać.
 - Wcześniejsza wersja tej reguły mówiła „identyfikatory po angielsku, moduledoki i komentarze po polsku"

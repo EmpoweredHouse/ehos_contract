@@ -1,246 +1,235 @@
-# PNS — silnik weryfikacji zgodności
+# PNS — a conformance engine
 
-Odpowiada na jedno pytanie:
+Answers one question:
 
-> **Czy wdrożony kod robi to, co mówi ustalony proces?**
+> **Is the code your company runs still doing what the agreed process says it should?**
 
-Nie „czy ten moduł działa" — to mówią testy. Nie „czy serwer stoi" — to mówi monitoring. Trzecie pytanie jest
-tym, którego dziś nie odpowiada nic: **faktura, która miała pójść, nie poszła, i nic nie zawiodło**, bo kod
-się nie wykonał. Żaden alert nie zadzwoni, każdy dashboard jest zielony.
+Not "does this module work" — tests answer that. Not "is the server up" — monitoring answers
+that. The question nothing answers today is the third one: **an invoice that should have gone
+out never did, and nothing failed**, because the code simply never ran. No alert fires. Every
+dashboard stays green.
 
-Mechanizm: proces jest zadeklarowany jako **kontrakt** — kod w repozytorium klienta, zatwierdzany przez
-process ownera. Z kontraktu wynika struktura, testy i graf zdarzeń. Log zdarzeń mówi, co faktycznie zaszło.
-**Różnica między jednym i drugim jest produktem.**
+## How it works
 
-Ekran ma **cztery pytania i ani jednego więcej**: które ustalone ścieżki nigdy nie zostały przejechane, co
-zaszło poza ustaleniami, które assercje `trace` są naruszane, która wersja ustaleń jest wdrożona i od kiedy.
+A business process is declared as a **contract**: an Elixir module, written by developers,
+approved by the person who owns the process, and versioned like any other code. The contract
+is the one artifact everything else reads:
 
-## Co jest czym w tym repozytorium
+- it generates the module structure, the tests, and the surface an API may call
+- it declares the graph of events a running system is allowed to emit
+- it states assertions a log of what actually happened gets checked against — *"within 3 days
+  of X, Y must happen, or else Z"*
 
-`lib/pns/` to **silnik** i przyszły pakiet na hex. **Reszta to dane testowe.**
+The engine reads the contract twice: at compile time, to refuse code that contradicts it, and
+at runtime, to compare the event log against what was declared. **The difference between the
+two is the product.**
 
-To repozytorium jest przejściowe i nie budujemy w nim aplikacji dla nikogo: produktem są fundamenty
-biblioteki i wnioski. `lib/taxvision/` to pełna aplikacja klienta — schematy, handlery, repo — a
-`lib/rehmed/` to **wyłącznie kontrakty**, bo do sprawdzenia DSL kod nie jest potrzebny. Obie są
-materiałem, na którym sprawdzamy, czy założenia silnika się trzymają, i **kontrakt, którego nie da się
-napisać, jest lepszym wynikiem niż kontrakt napisany obok materiału**.
-
-Granicy pilnuje `boundary` od pierwszego commita, więc ta tymczasowość jest faktem, nie obietnicą:
-przeniesienie drzewa klienta obok jego repozytorium to `git mv`.
-
-Z tego wynikają trzy rzeczy, o które łatwo się potknąć:
-
-**To nie jest template.** Nie ma `mix pns.new`, nie ma generycznego wyciągu, drzewa klienta nazywają się
-`taxvision` i `rehmed`, a nie `my_app`. Zabezpieczenie jest mechaniczne, bo deklaratywne nie działa — spike bez tego
-zamienia się w template, którego nie chcemy budować przed drugim klientem.
-
-**Silnik mówi po angielsku, wliczając raport.** Do 6 sierpnia było odwrotnie — silnik produkował dane, zdania
-produkowała aplikacja klienta (`Taxvision.Report`), bo raport czyta księgowa. Renderer przeniósł się do
-silnika (`PNS.Report`, `mix pns.report`) i wypisuje po angielsku; etykiety z kontraktu (`label`,
-`from_label`, `to_label`) nadal wychodzą dosłownie, w języku, w którym je zadeklarował klient — silnik nie
-tłumaczy cudzych słów, tłumaczy tylko własne.
-
-**Silnik nie wie nic o firmach.** Nie ma `company_id` w żadnej strukturze `PNS`. Najemcę czyta kod domenowy z
-`actor.claims`, bo przychodnia ma placówki, a spedycja terminale. Pytanie „która firma nie zamknęła lipca"
-należy do aplikacji klienta — gdy PNS zacznie na nie odpowiadać, staje się drugim, gorszym ekranem tej
-aplikacji.
-
-## Uruchomienie
-
-```bash
-docker compose up -d && mix deps.get && mix ecto.setup && mix check
+```mermaid
+flowchart LR
+    W["Workshop with the<br/>people who do the work"] --> C["Contract<br/>code, versioned, approved"]
+    C --> G["Generated structure,<br/>tests, API"]
+    G --> R["Running system"]
+    R --> L[("Event log —<br/>what actually happened")]
+    C --> D{"Declared<br/>vs<br/>observed"}
+    L --> D
+    D --> P["The difference.<br/>This is the product."]
 ```
 
-`mix check` to `compile --force --warnings-as-errors`, `pns.check`, `pns.docs --check` i `test`.
-**Musi przechodzić**, i od 21 sierpnia uruchamia **dwie** suity: tę aplikacji i `mix test` w
-`packages/pns_core`, osobnym wywołaniem, bo pakiet ma się budować i testować samodzielnie.
-Postgres słucha na **5433**, nie 5432 — lokalny bywa zajęty, a to ma stać na czystej
-maszynie bez pytania, co jeszcze nasłuchuje.
+Think of it as a control loop: the contract is the setpoint, the event log is the measurement,
+and the generated code in between is the plant — a black box on purpose. Nothing here inspects
+it. You don't model the inertia of every piston to know an engine is running slow; you compare
+the commanded pedal angle against the observed shaft speed.
 
-`--warnings-as-errors` jest konieczne, nie estetyczne: `boundary` raportuje naruszenia jako **ostrzeżenia**,
-więc bez tego przełącznika granice są dokumentacją. Sprawdzone celowym naruszeniem.
+A compliance screen built on top of this has **four questions and not one more**: which declared
+paths have never been exercised, which transitions happened that were never declared, which
+`trace` assertions are being violated right now, and which contract version is deployed, and
+since when.
+
+Everything else already has an owner. Performance is your APM's job. Errors are your error
+tracker's job. **Business state is the client application's job.** The day this engine starts
+answering "which company hasn't closed July," it has become a second, worse screen of that
+application — and that is deliberately out of scope, see below.
+
+## What's in this repository
+
+The product is `packages/pns_core` — a self-contained Elixir package with its own `mix.exs`
+and its own test suite (306 tests, none of them requiring a client application to exist).
+That is the part meant to eventually ship as a Hex package.
+
+**Everything else in this tree is test material**, kept on purpose so the engine's assumptions
+get exercised against something other than its own imagination — and a contract that turns out
+impossible to write against real material is treated as a *better* finding than one written
+next to material that never pushed back:
+
+- [`lib/taxvision/`](lib/taxvision) — a full, fictional client application: schemas, handlers, a
+  repo, an API. Built to check whether a contract survives contact with a real-shaped domain.
+- [`lib/rehmed/`](lib/rehmed) — **contracts only**, from a second, unrelated domain (healthcare),
+  with zero handlers. Proof that the DSL generalizes across domains, without paying for a second
+  full application.
+- [`test/support/universality_gate/`](packages/pns_core/test/support/universality_gate) — a
+  third, openly invented domain. It says so in its own first line.
+
+The boundary between the engine and its test material is enforced by [`boundary`](https://hex.pm/packages/boundary)
+from the first commit, so that separation is a fact the compiler checks, not a promise in a
+document. Moving a client tree out of this repository is a `git mv` — confirmed by actually
+doing it once, when the engine itself was extracted into `packages/pns_core`.
+
+## Getting started
+
+Requires Elixir `~> 1.18`, Erlang/OTP 27, and Docker (for Postgres).
 
 ```bash
-mix pns.check                # sprawdzenia całoprogramowe: krawędzie wsteczne, konkurujące handlery, sieroty, niepotwierdzone deklaracje
-mix pns.graph                # graf statyczny z rejestru
-mix pns.graph --overlay      # nałożony na log zdarzeń
-mix pns.graph --mermaid                        # diagram nakładki
-mix pns.graph --mermaid --process <nazwa>      # kształt zadeklarowany jednego procesu
-mix pns.brief --process <nazwa> --output x.html  # dokument do sesji z klientem
-mix pns.trace                # ocena assercji `trace` z logu — liczby, nie lista przebiegów
-mix pns.trace --instances    # pojedyncze przebiegi; widok do debugowania, nie dla klienta
-mix pns.docs                 # regeneracja referencji kluczy w docs/contract.md
-mix pns.report                # raport zgodności za okres — cztery pytania, jedna strona
+docker compose up -d
+mix deps.get
+mix ecto.setup
+mix check
+```
+
+`mix check` is the gate: `compile --force --warnings-as-errors`, `pns.check`, `pns.docs --check`,
+this project's own tests, and — as a separate invocation — `packages/pns_core`'s test suite,
+because the package is meant to build and test on its own, independent of any host application.
+Postgres listens on `5433`, not the default `5432`, so the gate doesn't depend on whatever else
+happens to be listening on a given machine.
+
+`--warnings-as-errors` is load-bearing, not stylistic: `boundary` reports violations as
+*warnings*, so without that flag module boundaries would be documentation rather than a check.
+
+## Writing a contract
+
+If you know `Ecto.Schema`, you already have the mental model. A schema declares the shape of
+rows that are **stored**; a `PNS.Contract` declares the shape of facts that **happened**.
+
+```elixir
+defmodule MyApp.Contracts.CaseHandling do
+  use PNS.Contract
+
+  event :case_opened,
+    label: "Case opened",
+    payload: %{case_id: :id},
+    process: :handling
+
+  event :case_closed,
+    label: "Case closed",
+    payload: %{case_id: :id},
+    process: :handling,
+    terminal: true
+
+  process :handling,
+    label: "Case handling",
+    instance: [:case_id]
+end
+```
+
+That's the smallest contract that compiles. Everything else — `trace` assertions between events,
+`external` dependencies named as business facts rather than vendors, and `rule`/`example` pairs
+for the one place a decision actually gets made — is additive. The full key reference is
+generated straight from the contract's own schema, so it cannot drift from the code that reads
+it: see [`docs/contract.md`](docs/contract.md).
+
+## Command line
+
+```bash
+mix pns.check                              # whole-program checks: back edges, competing
+                                            # handlers, orphaned declarations, unverified claims
+mix pns.graph                              # the static graph, from the compiled registry
+mix pns.graph --overlay --mermaid          # observed graph: registry edges + counts from the log
+mix pns.graph --mermaid --process <name>   # the declared shape of one process, from the
+                                            # contract alone — no implementation required
+mix pns.brief --process <name> --output brief.html  # a document for a client-facing review
+mix pns.trace                              # trace assertions evaluated against the log —
+                                            # counts, not a list of individual runs
+mix pns.docs                               # regenerate the key reference in docs/contract.md
+mix pns.report                             # the compliance report — four questions, one page
 mix pns.report --since 2026-07-01T00:00:00Z --until 2026-07-31T23:59:59Z
 ```
 
-## Gdzie co jest
+### Two diagrams, for two different readers
 
-| Czego szukasz | Gdzie |
-| --- | --- |
-| **Jak napisać kontrakt** — klucze, wymagane/opcjonalne, co się nie skompiluje | [`docs/contract.md`](docs/contract.md) |
-| Co jest zrobione, co dalej, co wyszło z pisania kodu | [`PLAN.md`](PLAN.md) — **jedyne miejsce, gdzie aktualizuje się stan** |
-| Dlaczego silnik działa tak, a nie inaczej — 18 decyzji, `§N` z komentarzy | [`docs/adr/architecture.md`](docs/adr/architecture.md) |
-| Kształty kodu, schematy, pułapki — `notes §N` z komentarzy | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |
-| Konwencje, których łatwo złamać | [`CLAUDE.md`](CLAUDE.md) |
-| **Pytania na warsztat** — czego zabrakło przy TaxVision, żeby kontrakt się skompilował | [`docs/warsztat-rehmed.md`](docs/warsztat-rehmed.md) |
-| **Jakie skille istnieją, w jakiej kolejności, i jak to się ma do `process-native-software`** | [`docs/warsztat-narzedzia.md`](docs/warsztat-narzedzia.md) |
+Both come out of `mix pns.graph`, and they deliberately don't show the same thing:
 
-Dokumentacja kontraktu jest generowana z `PNS.Contract.schema/0`, jej przykład jest kompilowany testem, a
-tabela „co się nie skompiluje" ma pokrycie w testach bram. Trzy mechanizmy, bo ręcznie pisany opis DSL-a
-jest **drugim źródłem prawdy** — czyli dokładnie tą awarią, którą ten produkt wykrywa u innych.
-
-## Struktura
-
-```
-lib/pns/                 silnik — 4742 linie, przyszły pakiet
-  contract.ex            DSL, @before_compile, bramy kompilacyjne, version/0
-  handler.ex             sprawdzenia w ciele makra; publishes: wiąże też w runtime
-  registry.ex            skan binarki przy boocie — graf pochodzi z kodu, który działa
-  emitter.ex             emit/4: log, handlery synchroniczne, joby — jedna granica transakcji
-  event.ex               log zdarzeń i log obsług
-  job.ex                 worker Obana, korelacja przez granicę procesu
-  instance.ex            tożsamość przebiegu z `instance:`, liczona przy emisji
-  trace.ex               ocena assercji per przebieg — cztery werdykty
-  dependency.ex          obserwacje niedostępności zależności; czytelnik `unavailable_looks_like`
-  conformance.ex         cztery pytania ekranu jako dane
-  deployment.ex          dwie tożsamości wdrożenia: kontrakt i obwodowanie
-  digest.ex              kanoniczna postać deklaracji, wspólna dla obu haszy
-  handler_failure.ex     ślad po awarii handlera synchronicznego, poza cofniętą transakcją
-  graph.ex               statyczny, zaobserwowany, nałożenie, kształt zadeklarowany
-  brief.ex               jeden proces jako dokument do walidacji z człowiekiem
-  report.ex              raport zgodności za okres — cztery pytania, jedna strona
-  auth.ex                szew tożsamości: behaviour + lokalny HMAC
-  telemetry.ex           katalog zdarzeń: handler i naruszenie kontraktu, nic więcej
-  check.ex, duration.ex  logika checków i jednostki czasu — jedno źródło prawdy
-  migrations.ex          pięć tabel silnika, wersjonowane w kształcie Obana
-  contract_example.ex    `example` jako assercja — w `lib/`, bo woła je też suita konsumenta
-
-packages/pns_core/test/  własna suita silnika — stoi bez aplikacji klienta
-  support/               PNS.TestRepo, PNS.DataCase, migracja przez PNS.Migrations
-  support/universality_gate/  drugi kontrakt, WYMYŚLONY — brama uniwersalności, nie klient
-  support/process_shapes/     stanowisko badawcze kształtów i mechanizmów — NIE domena
-
-lib/taxvision/           aplikacja klienta — tymczasowo, jako przypadek testowy
-  contracts/             kontrakt na jeden proces z warsztatu
-  api.ex                 krawędź żądania: trzy poziomy IAM
-  registry_check.ex      czysta funkcja decyzyjna (polityka P1)
-  periods.ex             okresy jako kanoniczne wiersze; nazwy na krawędziach, identyfikatory w środku
-  adapters/              behaviour + fake
-
-lib/rehmed/              dane testowe z drugiej domeny — WYŁĄCZNIE kontrakty
-  contracts/             trzy procesy zdestylowane z warsztatów; zero handlerów
-  settlement.ex          jedyna funkcja domenowa, bo `rule` wskazuje MFA i bez niej `example` nie istnieje
-
-test/                    to, co naprawdę testuje klienta: okresy, szew tożsamości,
-                         przykłady z kontraktów TaxVision i Rehmed, kształt zadeklarowany
-```
-
-## Co wyszło z warsztatu, a co trzeba było wymyślić
-
-Najbardziej użyteczny wynik dotąd i bezpośredni test założenia §1, że **wynik warsztatu jest
-discovery-grade, nie generation-grade.** Z warsztatu przyszły nazwy zdarzeń, polityka, aktorzy i
-niezmienniki. Wszystko poniżej trzeba było wymyślić, żeby to się skompilowało:
-
-| Czego brakowało | Kto powinien to rozstrzygnąć |
-| --- | --- |
-| **Kształty payloadów** — warsztat daje nazwy zdarzeń i polskie opisy, zero pól | Warsztat, jedna sesja na proces |
-| **Słownik typów** — nośny: `:string` dla wszystkiego zrobiło z checka retencji szum na 33 pozycje | My — to decyzja narzędziowa |
-| **Ścieżki błędów** — „blokada i powiadomienie" jest w polityce; co przy niedostępnym rejestrze, nie ma nigdzie | Warsztat — to pytanie prawne, nie techniczne |
-| **Klucze idempotencji** — brak w całym warsztacie | My, ale wymaga potwierdzenia |
-| **Stany terminalne** — stepper nie mówi, co kończy proces | Process owner |
-| **Termin 25 dni** — wzięty z przykładu w notatkach, **nie z warsztatu** | Warsztat. Jedyna liczba w kontrakcie bez źródła |
-
-**Z warsztatu wyszło jakieś 40% kontraktu, i to ta łatwiejsza część.** Nazwy i przepływ są darmowe; typy,
-ścieżki błędów, niezmienniki i idempotencja to druga sesja z klientem, nie praca programisty. Termin 25 dni
-stoi w kontrakcie z `unverified: [:deadline]` i **nie liczy się do raportu dowodowego**, dopóki go nikt nie
-potwierdzi — bo liczba, której klient nie uzgodnił, wypisana obok liczb uzgodnionych, czyta się jako
-zmierzona.
-
-## Dwa diagramy, dla dwóch różnych czytelników
-
-Oba wychodzą z `mix pns.graph` i **nie pokazują tego samego**. Mylenie ich kosztowało już raz odrzucenie
-pomysłu, który nie był tym odrzucanym — patrz `PNS.Graph.declared_to_mermaid/2`.
-
-| Co | Dla kogo | Skąd bierze treść |
+| | For | Content comes from |
 | --- | --- | --- |
-| `--overlay --mermaid` | zespół | krawędzie z rejestru handlerów + liczniki z logu |
-| `--process <nazwa> --mermaid` | **właściciel procesu, przed budową** | `stages`, `terminal`, `trace` i `depends_on` z kontraktu |
+| `--overlay --mermaid` | the engineering team | handler registry edges + counts from the event log |
+| `--process <name> --mermaid` | **the process owner, before anything is built** | `stages`, `terminal`, `trace` and `depends_on` straight from the contract |
 
-Drugi jest jedynym, który ma sens dla kontraktu **bez implementacji**: bez handlerów krawędzi jest zero,
-więc nakładka takiego kontraktu to same nierozłączone pudełka.
+The second is the only one that says anything about a contract with no implementation yet: with
+no handlers, the overlay view has zero edges, so it renders as disconnected boxes. Stages with
+more than one event are labeled `no order claimed inside` on purpose — a contract that declares
+little should render as a loose, honest picture, not as one tightened by inventing an order
+nobody agreed to.
 
-### Najpierw `mmdc`, bo bez tego obie komendy padną
+## Repository layout
 
-`mermaid-cli` przychodzi przez Homebrew, a przeglądarkę bierze z `~/.cache/puppeteer` i **żąda dokładnie
-tej wersji, na którą został zbudowany**. Po każdej aktualizacji jednego z dwóch numery się rozjeżdżają
-i `mmdc` mówi `Could not find chrome-headless-shell (ver. …)`, mimo że w cache leży nowsza.
+```
+packages/pns_core/            the engine — a standalone package, its own mix.exs and test suite
+  lib/pns/
+    contract.ex                DSL, compile-time gates, @before_compile, version/0
+    handler.ex                  checks inside the macro body; publishes: also binds at runtime
+    registry.ex                  boot-time scan of the compiled binary — the graph comes from
+                                  code that actually runs, not from source that merely compiles
+    emitter.ex                    emit/4: log write, sync handlers, jobs — one transaction boundary
+    event.ex                       the event log and the handling log
+    job.ex                          Oban worker, correlated across the process boundary
+    instance.ex                     a run's identity from `instance:`, computed at emit time
+    trace.ex                         per-run assertion evaluation — four verdicts
+    dependency.ex                    unavailability observations for external dependencies
+    conformance.ex                   the four compliance questions, as data
+    deployment.ex                     a deployment's two identities: contract and boundary
+    graph.ex                          static graph, observed overlay, declared-shape diagram
+    brief.ex                          one process as a document for a human review session
+    report.ex                         the compliance report — four questions, one page
+    auth.ex                           the identity seam: a behaviour plus a local HMAC fake
+    telemetry.ex                      the event catalogue: handler and contract-violation events
+    migrations.ex                     the engine's own tables, versioned like Oban's
+  lib/mix/tasks/                pns.check, pns.graph, pns.trace, pns.brief, pns.report, pns.docs
+  test/                          the engine's own suite — stands without any client application
+    support/universality_gate/       an invented domain, used only to prove the DSL generalizes
+    support/process_shapes/          a bench for process shapes and mechanisms — not a domain
 
-Nie pobieraj drugiej przeglądarki — wskaż tę, która jest:
+lib/taxvision/                 test material: a full client application
+  contracts/                     one process, distilled from a real workshop
+  api.ex                          the request edge: three IAM levels
+  adapters/                       behaviour + fake
 
-```bash
-export PUPPETEER_EXECUTABLE_PATH="$(find ~/.cache/puppeteer/chrome-headless-shell -type f -name chrome-headless-shell | head -1)"
+lib/rehmed/                    test material: contracts only, a second, unrelated domain
+  contracts/                     three processes distilled from workshops, zero handlers
+
+test/                          tests specific to the client trees above (periods, the identity
+                               seam, contract examples, the declared-shape renderer)
+docs/                          contract reference, starting assumptions, design rationale
 ```
 
-`find` zamiast wpisanej wersji, bo wpisana zestarzeje się przy najbliższym `brew upgrade` — a poprzednia
-wersja tej sekcji miała w ścieżce `<wersja>` do ręcznego uzupełnienia i **właśnie dlatego przestała
-działać**. Wszystkie komendy niżej zakładają, że to jest w środowisku.
+## Deliberately out of scope
 
-### Diagram nakładki
-
-```bash
-mix pns.graph --overlay --mermaid --output doc/graf-nakladki.mmd
-mmdc -i doc/graf-nakladki.mmd -o doc/graf-nakladki.png -b white -s 3
-```
-
-Diagram w repo jest z **danych demonstracyjnych**, nie z prawdziwego przebiegu: pięć firm w jednym miesiącu,
-trzy przechodzą weryfikację, dwie idą w blokadę, kolejka zatrzymana. Bez zatrzymanej kolejki czwarty stan
-nakładki nie miałby czego pokazać.
-
-### Diagram kształtu zadeklarowanego
-
-```bash
-mix pns.graph --mermaid --process clinical_visit --output schemat.mmd
-mmdc -i schemat.mmd -o schemat.svg
-```
-
-**SVG**, bo to wchodzi do dokumentu niżej. `mmdc` rozpoznaje format po rozszerzeniu, więc `-o out.png`
-i `-o out.pdf` to ta sama komenda, gdyby sam diagram był komuś potrzebny osobno.
-
-Etapy z więcej niż jednym zdarzeniem noszą w tytule `no order claimed inside`, bo wewnątrz etapu kontrakt
-nie twierdzi nic o kolejności — i pudełka bez strzałek muszą się czytać jako decyzja, nie jako brak.
-**Szeroki, luźny obrazek jest wtedy prawdziwym wynikiem**, a nie usterką układu: to kontrakt, który
-deklaruje mało. Dociąganie go niewidzialnymi krawędziami sugerowałoby kolejność, której nikt nie uzgodnił.
-
-### Dokument do sesji z klientem
-
-```bash
-mix pns.brief --process clinical_visit --diagram schemat.svg --output wizyta.html
-```
-
-Jeden proces jako dokument: przebieg, zdarzenia słowami klienta, obietnice jako zdania z liczbami,
-zależności zewnętrzne. **HTML jest produktem, nie etapem do PDF-a** — te sesje odbywają się na
-współdzielonym ekranie, gdzie HTML się przelewa, da się w nim szukać i kopiować, a kto chce papier,
-drukuje z przeglądarki (arkusz ma reguły `@page` na A4). Plik jest samowystarczalny: SVG jest wklejone
-w środku, nic się nie pobiera.
-
-**Kolumna „co od tego zależy" jest liczona z kontraktu**, nie pisana ręcznie, i to ona niesie cały
-argument tego dokumentu: zdarzenie, od którego nic nie zależy, zwykle nie jest faktem tylko polem,
-które ktoś wypełnia. Takie wiersze są na czerwono. Przy pierwszym uruchomieniu wyszły dwa.
-
-Wypis przez potok psuje polskie znaki: Erlang trzyma stdout w latin1, kiedy wyjście nie jest terminalem, i
-przycina każdy kodepoint do bajtu — `ł` staje się `B`. Dlatego `--output` pisze plik przez `File.write!`, a
-nie przekierowaniem.
-
-## Czego tu celowo nie ma
-
-| | Dlaczego |
+| | Why not |
 | --- | --- |
-| Ekran, dashboard | Najpierw trzeba było sprawdzić, czy różnica jest sygnałem. Jest — 50 przebiegów daje jedną linię raportu |
-| Graf **nakładki** w interfejsie | Sprawdzone: 11 zdarzeń dało 3 krawędzie i diagram nie powiedział nic, czego nie mówiła posortowana lista. **Nie dotyczy `--process`**, który rysuje co innego, dla kogo innego i dla kontraktu bez implementacji jest jedynym, który cokolwiek mówi |
-| Warstwa web, API | REST przeciw GraphQL jest otwarte; budowanie API przesądzałoby otwartą decyzję |
-| `mix pns.new` | Dopiero przy drugim kliencie — generator buduje się, kiedy coś zostało skopiowane dwa razy |
-| Prawdziwe rejestry, prawdziwy mail, provider OIDC | Behaviour plus fake. Szew działa, podmiana to jedna linia konfiguracji |
-| Alerty, widoki operacyjne, zbieranie metryk | Wydajność to GCP, błędy to Datadog, **stan biznesu to aplikacja klienta**. `PNS.Telemetry` to szew, do którego się podłączają — emituje wyłącznie to, czego nie widzi nikt inny: handlera i naruszenie kontraktu |
+| A dashboard, a screen | Had to confirm the difference between declared and observed was a signal worth showing before building a place to show it. It is — fifty runs collapse into one line of a report. |
+| The observed-overlay graph, in a UI | Tried it: eleven events produced three edges, and the diagram said nothing a sorted list didn't already say. Doesn't apply to `--process`, which draws something else, for someone else — and for a contract with no implementation, it's the only view that says anything at all. |
+| An opinion on the API layer | REST vs. GraphQL is an open question this project has no standing to close by building one. |
+| `mix pns.new` | Worth building once something has been copied twice — i.e., at a second real client, not before. |
+| Real registries, real mail, an OIDC provider | A behaviour plus a fake. The seam works; swapping the real implementation in is one line of configuration. |
+| Alerts, ops dashboards, metrics collection | Performance is your APM's job, errors are your error tracker's job, business state is the client application's job. `PNS.Telemetry` is the seam other tools attach to — it emits only what nothing else can see: handler failures and contract violations. |
+| Anything that answers a question about one specific company | The moment this engine can tell you "which company hasn't closed July," it has stopped being a compliance engine and started being a worse copy of the client's own application. |
 
-Pełna lista z uzasadnieniami jest w [`CLAUDE.md`](CLAUDE.md); stan i luki — w [`PLAN.md`](PLAN.md).
+## Where to go deeper
+
+| Question | Read |
+| --- | --- |
+| How do I write a contract — required/optional keys, what refuses to compile | [`docs/contract.md`](docs/contract.md) |
+| Why does the engine work this way — the starting assumptions, eighteen numbered decisions | [`docs/adr/architecture.md`](docs/adr/architecture.md) |
+| What did each decision beat, which alternatives were rejected | [`docs/adr/design-rationale.md`](docs/adr/design-rationale.md) |
+| Code shapes, schemas, library choices, implementation traps | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |
+| Managing users, roles and access on a live sidecar | [`docs/identity-admin-guide.md`](docs/identity-admin-guide.md) |
+| Project status, what's done, what came out of writing the code | `PLAN.md` — Polish, the running work log for this repository's contributors |
+| Repository conventions | `CLAUDE.md` — Polish, for the same reason |
+
+## Status
+
+A working prototype, not a released library. The engine's own suite (306 tests) and the tests
+specific to the two test-material trees (44 tests) both run in CI on every change; see
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml). Nothing here has shipped to a real client
+yet — that is the next thing this repository is for.
+
+## License
+
+Apache License 2.0 — see [`LICENSE`](LICENSE).
