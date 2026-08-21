@@ -5,6 +5,110 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). **Ten plik to lista roboty** i tylko tu jest
 aktualizowany stan.
 
+## Dopisek 21 sierpnia — brzegi silnika: trzy usterki, cztery ciche zielenie i jedno znalezisko spoza listy
+
+TaxVision i Rehmed przejeżdżały wyłącznie **wygodnym środkiem** każdego okna i każdego typu. Ten dopisek
+jest o brzegach. 324 testy, `mix check` zielony, ostrzeżenia nadal cztery plus jedno z 19 sierpnia.
+
+### Naprawione — trzy usterki, każda z testem, który przed poprawką jest czerwony
+
+1. **Klucz idempotencji sklejał wartości `identity` dwukropkiem i nie eskejpował niczego.** Przy
+   `identity: [:a, :b]` wartości `("x:y", "z")` i `("x", "y:z")` dawały **jeden** klucz. Skutek jest
+   cichy w najgorszy możliwy sposób: drugi fakt czyta się w tabeli idempotencji klienta jako powtórzenie
+   pierwszego, jego handler **nigdy nie rusza**, żaden wiersz tego nie odnotowuje, a oba zdarzenia leżą
+   w logu jak obsłużone. `PNS.Instance` eskejpował swój `"|"` od pierwszego dnia — dwa mechanizmy
+   robiły to samo i tylko jeden miał rację.
+2. **`PNS.Check.finer?/2` porównywał klucze jako listy**, więc `[:b, :a]` wobec `[:a, :b]` wychodziło
+   „drobniejsze”. Fałszywy pozytyw akurat na sprawdzeniu, którego cała wartość polega na byciu
+   wiarygodnym co do **kierunku** pomyłki — a jedyna poprawka, po którą sięgnie czytelnik, czyli
+   przestawienie pól w keywordzie, nie zmienia nic. Teraz zbiory.
+3. **Klucz rozłączny z `instance` nie był łapany przez nic**, i jest groźniejszy od drobniejszego:
+   klucz idempotencji bierze się z `identity` i **z niczego więcej**, więc fakt, którego klucz nie
+   zawiera przebiegu, skleja dwa przebiegi w jeden. Osobne sprawdzenie
+   (`PNS.Check.facts_not_keyed_by_their_run/1`), nie gałąź sąsiada: inna populacja — **każde** zdarzenie,
+   nie tylko kotwica assercji; inna konsekwencja — pominięty skutek, nie za łagodny werdykt; inna
+   poprawka — na zdarzeniu, nie na procesie.
+
+Oba sprawdzenia biorą teraz jawną listę kontraktów. Fikstura zbudowana po to, żeby być błędem
+modelowania, weszłaby inaczej do rejestru i wisiała ostrzeżeniem na **każdym** `mix pns.check` w tym
+repozytorium — a to jest sposób, w jaki sprawdzenie się wyłącza.
+
+### Cztery ciche zielenie, każda z linią w `pns.check`
+
+4. **Dwa kontrakty deklarujące tę samą nazwę zdarzenia.** Pytanie brzmiało o `declared_events/0`
+   i `process_of/1` — **żadne z nich nie jest dwuznaczne**: pierwsze tagguje każde zdarzenie jego
+   kontraktem, drugie jest generowane per kontrakt i widzi tylko własne. Dwuznaczne jest **każde
+   wyszukanie po samej nazwie**, a dispatch jest jednym z nich: `handlers_for/1` filtruje po `event`
+   i nie patrzy na `contract`. Pokazane testem, nie argumentem — `test/check_ambiguity_test.exs`
+   emituje `item_measured` z kontraktu, którego **nie ma w rejestrze** i który nie dzieli z rigiem nic
+   poza stringiem, a **oba handlery riga się wykonują**, w tej transakcji, na payloadzie, którego rig
+   nigdy nie zadeklarował. Cicho scalają się jeszcze dwaj czytelnicy: `PNS.Graph.overlay/1`
+   i `PNS.Check.stage_index/0` indeksują węzły po nazwie zdarzenia. `:error`.
+5. **Dwa kontrakty deklarujące tę samą nazwę procesu.** `"<process>|<values>"` nie niesie kontraktu,
+   więc to nie jest zbieżność, tylko **jeden string**. `overlay/1` liczy przebiegi po nazwie procesu,
+   czyli obcy emitujący cokolwiek **poprawia twoje pokrycie**. `PNS.Trace` jako jedyny filtruje po
+   kontrakcie — więc assercje zostają uczciwe obok liczb, które nie są, a to jest gorsza mieszanka niż
+   jedno albo drugie osobno. `:error`.
+6. **Zero kontraktów** dawało `0 errors, 0 warnings, 0 notices`, czyli dokładnie tę samą linię co czyste
+   repozytorium. `:warn`, i wypisuje skonfigurowane aplikacje, bo błąd jest tam, a nie w kontraktach.
+7. **`trace` bez `within` nie ma przypadku porażki**: cokolwiek po `from` ją spełnia, a przebieg bez
+   niczego zostaje `:pending` **na zawsze**, bo okno, które musi minąć, nigdy się nie zamyka. Przypięte
+   oceną rok po fakcie. `:info`, zgodnie z notatką zapisaną w `PNS.Trace` przy pisaniu ewaluatora.
+
+Żadne z czterech nie odzywa się na materiale tego repozytorium i **każde ma test kontrolny, który to
+mówi** — inaczej jedynym dowodem na sprawdzenie byłaby jego własna cisza.
+
+### Przypięte, nie zmienione
+
+`test/trace_edges_test.exs`, `test/payload_edges_test.exs`, `test/scale_edges_test.exs`.
+
+**Jedna asymetria i jest świadoma:** trafienie **dokładnie** w termin jest w oknie (`in_window?`
+porównuje `!= :gt`), zegar **dokładnie** na terminie jest już po (`pending?` porównuje `== :lt`). Obie
+połowy przypięte osobno, bo czytając którąkolwiek samą chce się dopasować ją do drugiej. Cena jest
+nazwana: zostaje jednoinstantowy wyścig, w którym zdarzenie zapisane mikrosekundy za późno jest sądzone
+przeciw oknu, które właśnie się zamknęło.
+
+Reszta, skrótem: trafienie w tej samej mikrosekundzie co `from` spełnia, a mikrosekundę wcześniej nie;
+dwa `from` w jednym momencie to nadal **jeden** werdykt; `from` z przyszłości czeka, a nie jest sądzone;
+awaria jest domknięta na **obu** końcach okna; pusty `:string` jest legalny tam, gdzie pusty `:id` nie
+jest, i to nie jest niespójność; 28-cyfrowy integer przeżywa log; offset normalizuje się do UTC i **nie
+da się go potem odzyskać**; `:enum` przyjmuje dowolny atom i dowolny string; **atom wraca z logu jako
+string**, więc `case` po atomach przestaje pasować w dniu, w którym handler staje się asynchroniczny;
+obie granice okresu raportu są domknięte, więc dwa sąsiadujące okresy liczą zdarzenie na styku **dwa
+razy**.
+
+Skala: 10 000 zdarzeń w jednym przebiegu → jeden werdykt, zakotwiczony na **najwcześniejszym**;
+50 000 przebiegów → 50 000 w mianowniku. Cztery testy, 1,1 sekundy.
+
+### Zostawione, z powodem
+
+| Co | Dlaczego nie ruszone |
+| --- | --- |
+| **`within: {0, :day}` się kompiluje** | `@tag :known_defect`. To nie jest pytanie słownikowe jak `{1, :month}`: `PNS.Duration.t` jest **opublikowane** jako `{pos_integer(), unit()}`, więc decyzja już zapadła i po prostu nie jest egzekwowana. Ujemna liczba jest gorsza — termin ląduje przed otwarciem okna, więc raport mówi, że zepsuty jest proces, a nie kontrakt |
+| **Awaria zależności zadeklarowanej wyłącznie przez `or_else` zawiesza przebieg** | `@tag :known_defect`. Za dzisiejszym: kontrakt mówi „X albo Y”, a Y było niemożliwe. Przeciw: X było możliwe przez cały czas i się nie stało, a zawieszenie **wyłącznie zabiera** znalezisko — czyli to jest kierunek hojny, a hojny kierunek jest tym, w którym ten raport cicho przestaje cokolwiek mówić. Osąd o tym, na której trasie obietnica jest należna, nie arytmetyka |
+| **Trzy assercje samozwrotne** | `from == eventually` i `from == or_else` **nie mogą zawieść** i kompilują się; `eventually == or_else` zawieść może, ale trwale zeruje połowę rozbicia „przez eventually / przez or_else”, czyli dokładnie tę informację, dla której werdykt niesie `via:`. Przypięte, nie zabronione — brama kompilacyjna to decyzja słownikowa |
+| **Eskejpowanie separatora nie jest odwracalne** | patrz niżej |
+
+### Znalezisko spoza listy: eskejp, który nie jest eskejpem
+
+Wyszło przy pisaniu testów payloadu, nie z listy, przeciw której były pisane. `PNS.Instance` zamienia
+`|` na `%7C` i **zostawia `%` w spokoju**, więc odwzorowanie nie jest różnowartościowe: wartość
+zawierająca dosłowny tekst `%7C` daje ten sam klucz przebiegu co wartość zawierająca `|`. To jest ta
+sama usterka, którą naprawia pierwszy commit tej serii, tylko węższa — i **`PNS.Job` ją odziedziczył**,
+bo dostał to samo eskejpowanie celowo, żeby oba mechanizmy się zgadzały.
+
+`@tag :known_defect`, nie poprawka: eskejpowanie `%` jako `%25` zmienia format **każdego `instance_id`,
+jaki kiedykolwiek zapisano**. Stare wiersze zostają w starym kodowaniu, więc przebiegi rozjeżdżają się
+na wdrożeniu, a po stronie joba przeformatowane klucze leżą w tabelach idempotencji **klientów**. To
+jest decyzja migracyjna, nie poprawka błędu — i dlatego jest tutaj, a nie w commicie.
+
+### Drobiazg do rozstrzygnięcia przez człowieka
+
+Przykład w moduledoku `mix pns.report` mówi `--until 2026-07-31T23:59:59Z`. Granice są domknięte, więc
+ten przykład **gubi wszystko, co wydarzyło się w ostatniej sekundzie miesiąca**. Nie ruszone, bo nie
+wiem, czy przykład ma być poprawny, czy poglądowy — a jeśli poprawny, to poprawną wartością jest
+`23:59:59.999999Z`, co widać dopiero, gdy się wie, że kolumna jest `utc_datetime_usec`.
+
 ## Dopisek 20 sierpnia — silnik wyjęty do `packages/pns_core`, i ile to naprawdę kosztowało
 
 `README.md` twierdził, że przeniesienie drzewa klienta to `git mv`, a `CLAUDE.md`, że tymczasowość jest
