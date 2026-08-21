@@ -218,5 +218,17 @@ defmodule PNS.Auth do
   @spec entitled?(PNS.Auth.Actor.t(), atom() | String.t()) :: boolean()
   def entitled?(%PNS.Auth.Actor{roles: roles}, role), do: to_string(role) in roles
 
+  @doc """
+  The explicit stand-in for "no human actor" — a scheduled job, a backfill, an
+  import — used wherever `PNS.emit`/`emit_all` is called without a `ctx.actor`.
+
+  A nil actor conflates two different facts: "we asked and there genuinely is no
+  person" and "nobody supplied one." The second is a caller that forgot, and the
+  first should read as a positive statement, not an absence — `PNS.Event.actor`
+  never stores `nil` for exactly this reason.
+  """
+  @spec system_actor() :: String.t()
+  def system_actor, do: "system"
+
   defp verifier, do: @verifier
 end

@@ -34,6 +34,17 @@ defmodule PNS.Registry do
 
   A list rather than one name, because a host may keep client trees in more than
   one application. Passing `app` explicitly stays for tests.
+
+  **`config :pns, exclude: [...]` names namespace prefixes, matched against
+  `inspect/1`, to drop from the scan before anything downstream ever sees them.**
+  `mix pns.check`, `mix pns.report`, `PNS.Graph`, and `PNS.Trace` all read
+  contracts and handlers through this one registry, so one config key keeps a
+  namespace out of every one of them at once — the alternative would be an
+  exception written into each report by hand. Not a DSL word: which binary is
+  running is an operational fact a deployer states in configuration, never a
+  claim the contract itself makes. Empty by default, so the existing property —
+  the graph comes from the binary that actually runs, in full — is unchanged
+  unless a deployer opts into narrowing it.
   """
   @spec load!(atom() | [atom()] | nil) :: %{handlers: [handler()], contracts: [module()]}
   def load!(app \\ nil) do
@@ -64,7 +75,10 @@ defmodule PNS.Registry do
 
     # `Code.ensure_loaded?` is needed because modules load lazily in dev; an
     # `:embedded` release has them all.
-    loaded = Enum.filter(modules, &Code.ensure_loaded?/1)
+    loaded =
+      modules
+      |> Enum.filter(&Code.ensure_loaded?/1)
+      |> Enum.reject(&excluded?/1)
 
     handlers =
       loaded
@@ -140,5 +154,12 @@ defmodule PNS.Registry do
     for contract <- contracts(), event <- contract.events() do
       Map.put(event, :contract, contract)
     end
+  end
+
+  @spec excluded?(module()) :: boolean()
+  defp excluded?(module) do
+    prefixes = Application.get_env(:pns, :exclude, [])
+    name = inspect(module)
+    Enum.any?(prefixes, &String.starts_with?(name, &1))
   end
 end

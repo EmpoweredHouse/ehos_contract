@@ -5,6 +5,53 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). **Ten plik to lista roboty** i tylko tu jest
 aktualizowany stan.
 
+## Dopisek 21 sierpnia (7) — cztery drobiazgi z listy „przy etapie 3", jeden z nich okazał się już zrobiony
+
+**Zanim je robić, sprawdziłem, czy któryś już istnieje** — dobra decyzja: `info` dla assercji `trace`
+bez `within` już był w `pns.check.ex` (`check_unfalsifiable_assertions/1`) z kontrolnym testem w
+`test/check_ambiguity_test.exs`, sprzed tej sesji. Lista przy etapie 3 była nieaktualna. Zdjęte z
+listy bez implementowania drugi raz.
+
+**Aktor systemowy zamiast `nil`.** `PNS.Auth.system_actor/0` (`"system"`), domyślane w
+`PNS.Emitter.default_ctx/1` dla obu punktów wejścia (`emit/4`, `emit_all/3`) — jeden ctx nigdy nie ma
+`actor: nil` od chwili, gdy trafia do `do_emit/5`. Zdjęte: `ctx[:actor] && to_string(ctx[:actor])` w
+trzech miejscach, bo warunek stał się zawsze prawdziwy. Test `process_shapes_test.exs` pinujący
+`nil` jako „nierozstrzygnięte, patrz PLAN.md" zmienił się w test pinujący `"system"` jako
+rozstrzygnięcie. Sprawdzone bazą: zero wierszy z `actor is null` w żadnej z trzech baz przed zmianą —
+nie że to miało znaczenie, silnik i tak nigdy nie migruje starych wierszy, tylko domyśla nowe.
+
+**Wykluczenie przestrzeni nazw z raportu, z konfiguracji silnika.** `config :pns, exclude: [...]` —
+lista prefiksów namespace'ów porównywanych z `inspect/1`, odrzucanych w `PNS.Registry.load!/1` zanim
+cokolwiek poniżej (check, report, graph, trace) zobaczy skanowaną binarkę. Nie z DSL — jak
+zastrzeżono w oryginalnej notatce. Domyślnie puste, więc „graf pochodzi z binarki, która działa"
+zostaje niezmienione, dopóki ktoś świadomie nie zawęzi.
+
+**Zbiór wartości `:enum` — deklarowalny, opt-in.** `payload: %{status: {:enum, [:open, :closed]}}`
+obok gołego `:enum`, który zostaje bez zmian i bez wymuszonej migracji istniejących sześciu miejsc w
+repo (TaxVision, Rehmed, fikstury) — wymyślanie prawdziwych wartości dla `format: :enum` w
+`accounting_month.ex` albo `method: :enum` w `visit_settlement.ex` byłoby dokładnie tą zmyśloną
+wiedzą domenową, którą to repozytorium ma wykrywać u innych, nie produkować. Zbiór porównywany jako
+stringi, nie jako termy — `[:open, "open"]` jest tą samą pomyłką co `[:open, :open]`, tylko w dwóch
+reprezentacjach Elixira, i brama łapie obie tym samym mechanizmem.
+
+**Jedna prawdziwa pułapka projektowa, znaleziona i naprawiona przed testami, nie po.** Pierwsza wersja
+bramy kompilacyjnej sprawdzała legalność zbioru enum w **tej samej** funkcji, która sprawdza „czy to
+w ogóle jest typ payloadu" — więc każdy nielegalny zbiór (pusty, z duplikatem, ze złym typem elementu)
+wywalał się z ogólnym komunikatem „nie jest typem payloadu", zanim druga, bardziej szczegółowa pętla
+w ogóle dostała szansę się odezwać. Druga pętla była martwym kodem od pierwszego commita. Naprawione
+rozdzieleniem: pierwsza sprawdza wyłącznie **kształt** (`{:enum, lista}`), druga **legalność
+zawartości** tej listy — złapane mutacyjnie, nie przeglądem: cofnięcie rozdzielenia wywaliło dokładnie
+te trzy testy, które sprawdzają precyzyjny komunikat błędu.
+
+**Zweryfikowane mutacyjnie, wszystkie cztery.** Wyłączenie domyślnego aktora, wyłączenie filtra
+namespace'u, cofnięcie rozdziału kształt/legalność dla enum, wyłączenie porównania zbioru enum przy
+walidacji payloadu — każde osobno wywaliło dokładnie testy zbudowane, żeby to złapać. `mix check`
+zielony: 44 + 304 testy, 0 błędów, ten sam jeden warning co przed tym dopiskiem (niepotwierdzony
+`deadline` TaxVision — niezwiązany).
+
+`docs/contract.md` zaktualizowany w dwóch miejscach: tabela typów payloadu (`:enum`) i tabela
+„Known decoration" (wiersz o zbiorze `:enum` usunięty, z notatką dlaczego).
+
 ## Dopisek 21 sierpnia (6) — ostatni `known_defect` rozstrzygnięty bez zmiany kodu: zawieszenie przez `or_else` zostaje
 
 Ostatni z czterech. Inny od poprzednich trzech, bo PLAN.md od początku mówił, że to nie jest arytmetyka
@@ -524,7 +571,7 @@ nikt inny — handlera i naruszenie kontraktu**.
 | --- | --- |
 | `deadline` procesu jest zadeklarowany i **nie czyta go nikt** — jedyni czytelnicy to filtr, który go wyrzuca, i renderer, który by go wypisał; `deadline_at` w `PNS.Trace` pochodzi z `within`, czyli z innej deklaracji | to jest produkt — **zwężone 6 sierpnia**, patrz „Rozstrzygnięte 6 sierpnia" niżej |
 | `cadence`'s „never observed" — **odrzucone 6 sierpnia**, patrz „Rozstrzygnięte 6 sierpnia" niżej. Sama deklaracja `cadence` zostaje: kosztuje zero kodu i raport już ją wypisuje. | zamknięte |
-| Zbiór wartości `:enum` nie jest deklarowalny — typ sprawdza „czy to nazwa”, nie „czy jedna z tych” | drobne |
+| ~~Zbiór wartości `:enum` nie jest deklarowalny~~ — **✅ zamknięte 21 sierpnia**, `{:enum, [...]}`, patrz „Dopisek 21 sierpnia (7)” | było drobne |
 
 ## Etap 1 — rdzeń weryfikacji
 
@@ -702,8 +749,9 @@ Wyszło przy okazji:
 - **`clarification_requested` nie ma handlera i nie jest terminalne**, bo jego kontynuacja przychodzi z
   zewnątrz. Daje linię `info` i to jest uczciwe: nie ma w DSL słowa „czeka na świat zewnętrzny" i **nie
   wolno go dopisać** — to byłoby nowe słowo pod jeden przypadek.
-- **Aktor jako `nil` nie odróżnia „import" od „nie wiemy kto".** Sensowna wersja postulatu „każde zdarzenie
-  ma aktora" to nie „wymagany", a **„nigdy cisza"** — jawny aktor systemowy. Do rozstrzygnięcia.
+- **~~Aktor jako `nil` nie odróżnia „import" od „nie wiemy kto".~~ ✅ zamknięte 21 sierpnia.** Sensowna
+  wersja postulatu „każde zdarzenie ma aktora" to nie „wymagany", a **„nigdy cisza"** — jawny aktor
+  systemowy, `PNS.Auth.system_actor/0`. Patrz „Dopisek 21 sierpnia (7)".
 
 **1.3b Dwa moduły potrzebujące tych samych danych. ✅ zrobione 5 sierpnia.** Nośnikiem jest tabela
 `taxvision_periods`: okres przestaje być stringiem i staje się wierszem z zakresem dat.
@@ -1496,15 +1544,17 @@ procent kontraktu przyszło z sali (przy TaxVision 40%) i **ile przykładów wł
 - **~~Kwantyfikacja wewnątrz przebiegu~~ — ✅ zamknięte 21 sierpnia.** Luka 1 z tabeli Rehmed
   wyżej. Patrz „Dopisek 21 sierpnia (5)" niżej.
 
-**Drobne, wszystkie nasze, rekomendacja: jednym commitem przy etapie 3:**
+**Drobne, wszystkie nasze — ✅ zamknięte 21 sierpnia, patrz „Dopisek 21 sierpnia (7)” niżej:**
 
-- **Aktor systemowy zamiast `nil`** — `nil` zlewa „zrobiła to maszyna” z „nie wiemy kto”; do etapu 3, bo po
-  wydzieleniu pakietu robi się z tego migracja u klienta.
-- **`info` dla assercji bez `within`** — jest niefalsyfikowalna, więc jest dekoracją. Pięć linii, dziś zero
-  znalezisk.
-- **Wykluczenie przestrzeni nazw z raportu, z konfiguracji silnika** — nie z DSL, to byłoby nowe słowo.
-  Dopiero pakiet ma konfigurację.
-- **Zbiór wartości `:enum`** — patrz tabela luk.
+- **~~Aktor systemowy zamiast `nil`~~** — zrobione: `PNS.Auth.system_actor/0`, domyślane w
+  `PNS.Emitter.default_ctx/1`.
+- **~~`info` dla assercji bez `within`~~** — **już było zrobione**, ta pozycja była nieaktualna: sprawdzone
+  w `pns.check.ex` (`check_unfalsifiable_assertions/1`) i w `test/check_ambiguity_test.exs`, oba istniały
+  przed tą sesją. Zdjęte z listy, nie zaimplementowane drugi raz.
+- **~~Wykluczenie przestrzeni nazw z raportu, z konfiguracji silnika~~** — zrobione: `config :pns, exclude:
+  [...]` w `PNS.Registry.load!/1`.
+- **~~Zbiór wartości `:enum`~~** — zrobione: `{:enum, [...]}` obok gołego `:enum`, opt-in, zero zmian w
+  istniejących kontraktach.
 
 **Do etapu 4, bo to jego wymaganie, nie dług:** zawężenie `PNS.Graph` do procesu i kontraktu.
 

@@ -105,19 +105,22 @@ defmodule PNS.ProcessShapesTest do
   end
 
   describe "an event arriving without a command" do
-    test "it has no actor and yet has a run identity" do
+    test "it has the explicit system actor and yet has a run identity" do
       event = receive_item("c-1", 1, 100)
 
-      assert event.actor == nil, "nobody invoked it — there is nobody to attribute it to"
+      assert event.actor == "system", "nobody invoked it — attributed to the system, not to silence"
       assert event.instance_id == "pairing|c-1"
       assert event.causation_id == nil
     end
 
-    test "an actor of `nil` does not separate \"an import\" from \"we do not know who\"" do
-      # Known and recorded: the sensible version of "every event has an actor" is
-      # not "required" but "never silent" — that is, an explicit system actor.
-      # Undecided, see PLAN.md.
-      assert receive_item("c-1", 1, 100).actor == nil
+    test "the system actor is explicit, never nil" do
+      # Fixed 21 August 2026: the sensible version of "every event has an actor" is
+      # not "required" but "never silent" — `PNS.Auth.system_actor/0`, defaulted in
+      # `PNS.Emitter.default_ctx/1` before an event ever reaches the log. An actor
+      # of `nil` used to conflate "an import" with "we do not know who"; now the
+      # first reads as this, and the second cannot occur without a caller
+      # deliberately supplying `actor: nil` in `ctx`.
+      assert receive_item("c-1", 1, 100).actor == "system"
     end
   end
 

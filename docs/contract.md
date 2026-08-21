@@ -172,7 +172,7 @@ matter of taste, it is what makes the library a library.
 | `:string` | **Text a human typed.** The only type the retention check reacts to: a `:string` field with no `retain` policy reaches the log verbatim | Text |
 | `:integer` | A whole number: a count, an amount | An integer. `"5"` is refused rather than coerced — JSON carries integers, so text here is a caller passing the wrong thing |
 | `:timestamp` | A point in time | A `DateTime`, or ISO 8601 text — which is normalised to a `DateTime` before any handler sees it |
-| `:enum` | One of a fixed set | An atom or text. The set itself is not declared, which is a known gap listed under *Known decoration* |
+| `:enum` | One of a fixed set | Bare `:enum`: any atom or text — the set is unconstrained, which is a legitimate choice, not only a gap. `{:enum, [...]}`: an atom or text that is a **member of the declared list** — fixed 21 August 2026, see `test/payload_edges_test.exs` |
 
 **These are enforced at emit time, not only described.** A declared field that is
 missing, holds `nil`, or holds the wrong shape refuses the emission and nothing reaches
@@ -267,6 +267,7 @@ write.
 | --- | --- |
 | An unknown key in any declaration | the vocabulary is fixed; a new word is a design decision, not a convenience |
 | A `payload` field with a type outside the closed set | a type that names a thing rather than a shape is the library knowing one client's domain |
+| `{:enum, [...]}` with an empty list, a member that is not an atom or text, or the same member twice (as an atom or as text) | an enum with nothing legal in it, or a name that cannot resolve, is not a set |
 | `rule` without an `example` | a rule without a case is prose |
 | `rule` with a capture instead of an MFA tuple | it would make the contract depend on the domain at compile time |
 | `trace` naming an event that does not exist | the assertion could never be evaluated |
@@ -299,12 +300,13 @@ reference that hides its gaps is worse than one that admits them.
 | `external`'s `expected_latency` | declared; nothing measures latency |
 | `external`'s `unavailable_looks_like` | **no longer decoration since 6 August** — `depends_on` plus an unavailability observation produces the fourth assertion verdict, `:suspended`. The sentence itself is still only read by a person |
 | `depends_on` at runtime | **read since 6 August**: it decides which dependency's outage can suspend an assertion. Nothing yet measures whether a dependency is slow, only whether it was seen unavailable |
-| `:enum`'s set | the type is enforced as "a name"; which names are legal is not declarable |
 
 Three rows left this table on 6 August: payload types are enforced at emit time, and
 `depends_on` together with `unavailable_looks_like` now produce the `:suspended` verdict
-instead of describing one. What survives of that gap is the row above — `:enum` can be checked as a
-name and not as a member of a set, because the set has nowhere to be written down.
+instead of describing one. A fourth left on 21 August: `:enum`'s set now has somewhere to be
+written down — `{:enum, [...]}`, see *Payload types* above — so declaring which names are legal is
+no longer a gap, only something a contract can choose not to do. Bare `:enum` stays legal and
+unconstrained; nothing existing was forced to declare a set it never had.
 
 ## Two things the contract deliberately does not carry
 

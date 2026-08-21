@@ -373,6 +373,85 @@ defmodule PNS.CompileGatesTest do
       )
     end
 
+    test "{:enum, [...]} with a legal set compiles" do
+      # Fixed 21 August 2026: the one payload type whose legal shape is a tuple
+      # rather than a bare atom, and this is the positive case — nothing here is
+      # expected to raise.
+      Code.compile_string("""
+      defmodule Accept.EnumWithADeclaredSet do
+        use PNS.Contract
+
+        event :status_changed,
+          label: "Status changed",
+          payload: %{id: :id, status: {:enum, [:open, :closed]}}
+      end
+      """)
+    end
+
+    test "{:enum, []} — an empty set is not a set" do
+      refute_compiles(
+        """
+        defmodule Reject.EmptyEnumSet do
+          use PNS.Contract
+
+          event :status_changed,
+            label: "Status changed",
+            payload: %{id: :id, status: {:enum, []}}
+        end
+        """,
+        "an enum with nothing legal in it"
+      )
+    end
+
+    test "{:enum, [:open, :open]} — the same member twice is not a set" do
+      refute_compiles(
+        """
+        defmodule Reject.DuplicateEnumMember do
+          use PNS.Contract
+
+          event :status_changed,
+            label: "Status changed",
+            payload: %{id: :id, status: {:enum, [:open, :open]}}
+        end
+        """,
+        "the same member twice"
+      )
+    end
+
+    test "{:enum, [:open, \"open\"]} — the same name twice, one as an atom and one as text, is caught too" do
+      # The reason the check compares as strings rather than as terms: once JSON has
+      # been through the round trip, `:open` and `"open"` are the same value, so
+      # declaring both is the duplicate-member mistake wearing two different
+      # Elixir representations.
+      refute_compiles(
+        """
+        defmodule Reject.CrossRepresentationDuplicateEnumMember do
+          use PNS.Contract
+
+          event :status_changed,
+            label: "Status changed",
+            payload: %{id: :id, status: {:enum, [:open, "open"]}}
+        end
+        """,
+        "the same member twice"
+      )
+    end
+
+    test "{:enum, [1, 2]} — a set of numbers is not a set of names" do
+      refute_compiles(
+        """
+        defmodule Reject.NonNameEnumMember do
+          use PNS.Contract
+
+          event :status_changed,
+            label: "Status changed",
+            payload: %{id: :id, status: {:enum, [1, 2]}}
+        end
+        """,
+        "must be a non-empty list of atoms or strings"
+      )
+    end
+
     test "the refusal says what to write instead, because the answer is not obvious" do
       # A type naming a thing collapses to `:id`, and what the thing *is* belongs to
       # the client's application. Without that sentence the error tells somebody their

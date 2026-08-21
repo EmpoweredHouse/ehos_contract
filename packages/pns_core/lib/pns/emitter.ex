@@ -133,15 +133,20 @@ defmodule PNS.Payload do
   # keying on a database sequence should not have to call it a string — what the
   # identifier refers to is theirs, and so is its representation.
   #
-  # `:enum` is the weak one and it is named as such in `docs/contract.md`: without a
-  # declared set, "one of a fixed set" can only be checked as "a name", so an atom or
-  # text. Declaring the set is a DSL change and belongs to whoever needs it.
-  @spec holds?(atom(), term()) :: boolean()
+  # Bare `:enum` stays "a name, any name" — a contract that never declared a set is
+  # not asking for one. `{:enum, [...]}` checks membership instead, compared as
+  # strings so an atom supplied synchronously and the string the queue hands back
+  # asynchronously are judged the same way.
+  @spec holds?(atom() | {:enum, [atom() | String.t()]}, term()) :: boolean()
   defp holds?(:id, value), do: (is_binary(value) and value != "") or is_integer(value)
   defp holds?(:string, value), do: is_binary(value)
   defp holds?(:integer, value), do: is_integer(value)
   defp holds?(:timestamp, value), do: match?(%DateTime{}, value)
   defp holds?(:enum, value), do: is_atom(value) or is_binary(value)
+
+  defp holds?({:enum, values}, value) do
+    (is_atom(value) or is_binary(value)) and to_string(value) in Enum.map(values, &to_string/1)
+  end
 
   @spec bail!(module(), atom(), atom(), String.t()) :: no_return()
   defp bail!(contract, type, field, what) do
@@ -177,7 +182,7 @@ defmodule PNS.Emitter do
   @spec emit(module(), atom(), map(), map()) :: {:ok, Event.t()} | {:error, term()}
   def emit(contract, type, payload, ctx \\ %{}) do
     repo = repo()
-    ctx = Map.put_new_lazy(ctx, :correlation_id, &Ecto.UUID.generate/0)
+    ctx = default_ctx(ctx)
 
     in_own_transaction(repo, fn -> do_emit(repo, contract, type, payload, ctx) end)
   end
@@ -205,7 +210,7 @@ defmodule PNS.Emitter do
   @spec emit_all(module(), [PNS.Emission.t()], map()) :: {:ok, [Event.t()]} | {:error, term()}
   def emit_all(contract, emissions, ctx \\ %{}) do
     repo = repo()
-    ctx = Map.put_new_lazy(ctx, :correlation_id, &Ecto.UUID.generate/0)
+    ctx = default_ctx(ctx)
 
     run = fn ->
       Enum.map(emissions, fn %PNS.Emission{name: name, payload: payload} ->
@@ -303,7 +308,8 @@ defmodule PNS.Emitter do
         correlation_id: correlation_id,
         causation_id: ctx[:causation_id],
         payload: Payload.to_storage(stored),
-        actor: ctx[:actor] && to_string(ctx[:actor]),
+        # Never nil: `default_ctx/1` fills this in before `do_emit/5` ever runs.
+        actor: to_string(ctx[:actor]),
         occurred_at: DateTime.utc_now()
       })
 
@@ -491,7 +497,9 @@ defmodule PNS.Emitter do
         # reason they do: a cycle through the queue does not blow the stack, it just
         # runs forever more slowly. Catching it on one path only moves the failure.
         "chain" => ctx.chain,
-        "actor" => ctx[:actor] && to_string(ctx[:actor])
+        # Never nil, for the same reason as the event row: `default_ctx/1` fills
+        # it in before any `ctx` reaches here.
+        "actor" => to_string(ctx[:actor])
       }
       |> PNS.Job.new()
       |> Oban.insert!()
@@ -532,4 +540,14 @@ defmodule PNS.Emitter do
   # the build. What is gained is that this compiles standing alone, which is the
   # whole point of a package.
   defp repo, do: Application.fetch_env!(:pns, :repo)
+
+  # Both entry points fill in the same two defaults before anything else runs, so
+  # every event this module writes carries a correlation id and a non-nil actor
+  # regardless of what the caller supplied.
+  @spec default_ctx(map()) :: map()
+  defp default_ctx(ctx) do
+    ctx
+    |> Map.put_new_lazy(:correlation_id, &Ecto.UUID.generate/0)
+    |> Map.put_new(:actor, PNS.Auth.system_actor())
+  end
 end

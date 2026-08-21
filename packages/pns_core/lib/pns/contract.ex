@@ -726,7 +726,7 @@ defmodule PNS.Contract do
   # example: `:uuid` and `:decimal`, neither of which any contract ever used.
   @spec validate_payload_types!(Macro.Env.t(), [map()]) :: :ok
   defp validate_payload_types!(env, events) do
-    for e <- events, {field, type} <- e.payload, type not in @payload_types do
+    for e <- events, {field, type} <- e.payload, not payload_type?(type) do
       bail!(
         env,
         "event #{inspect(e.name)} declares `#{field}: #{inspect(type)}`, which is not a payload " <>
@@ -734,12 +734,50 @@ defmodule PNS.Contract do
           "each one describes the shape of a value, so a type that knows what a business calls " <>
           "something is a library that knows one client's domain. If #{inspect(type)} names a " <>
           "thing rather than a shape, it is `:id` — what the thing *is* belongs to the client's " <>
-          "application, not here."
+          "application, not here. `{:enum, [...]}` is the one exception: a non-empty list of " <>
+          "atoms or strings naming the fixed set itself, not a new type."
+      )
+    end
+
+    for e <- events, {field, {:enum, values}} <- e.payload, not legal_enum_set?(values) do
+      bail!(
+        env,
+        "event #{inspect(e.name)} declares `#{field}: {:enum, #{inspect(values)}}`, and the set " <>
+          "must be a non-empty list of atoms or strings with no repeats — an enum with nothing " <>
+          "legal in it, or the same member twice, is not a set."
       )
     end
 
     :ok
   end
+
+  # `:enum` bare, as before, or `{:enum, [...]}` declaring which names are legal —
+  # the one payload type whose shape is a tuple rather than an atom, because "one of
+  # a fixed set" needs somewhere to put the set.
+  #
+  # Deliberately checks only the **shape** here (a 2-tuple naming `:enum` and a
+  # list), not whether the list is a legal set — `validate_payload_types!/2`'s
+  # second pass owns that, with a message specific to what is wrong with the set.
+  # If this function rejected an illegal set too, that pass could never run: this
+  # one always runs first and would already have raised, on the same declaration,
+  # with the wrong message.
+  @spec payload_type?(term()) :: boolean()
+  defp payload_type?(type) when type in @payload_types, do: true
+  defp payload_type?({:enum, values}) when is_list(values), do: true
+  defp payload_type?(_), do: false
+
+  @spec legal_enum_set?(term()) :: boolean()
+  defp legal_enum_set?(values) when is_list(values) and values != [] do
+    every_member_a_name = Enum.all?(values, &(is_atom(&1) or is_binary(&1)))
+    # Compared as strings, not as terms: `:open` and `"open"` name the same value
+    # once JSON has been through the round trip, so declaring both is the same
+    # mistake as declaring `:open` twice — just harder to see at a glance.
+    as_strings = Enum.map(values, &to_string/1)
+
+    every_member_a_name and as_strings == Enum.uniq(as_strings)
+  end
+
+  defp legal_enum_set?(_), do: false
 
   @spec validate_instances!(Macro.Env.t(), [map()], [map()], [map()]) :: :ok
   defp validate_instances!(env, events, processes, traces) do

@@ -5,7 +5,8 @@ defmodule PNS.PayloadEdgesTest do
   `test/payload_test.exs` pins the rule — a declared field is present, and holds what
   its type names. This file pins the corners of that rule: the empty string, the very
   large integer, the timestamp written six different ways, the enum that checks almost
-  nothing, and the separator character inside a value that a separator has to survive.
+  nothing next to the one that now can, and the separator character inside a value that
+  a separator has to survive.
 
   Everything here describes today's behaviour.
 
@@ -24,7 +25,17 @@ defmodule PNS.PayloadEdgesTest do
 
     event :measured,
       label: "Measured",
-      payload: %{case_id: :id, note: :string, amount: :integer, at: :timestamp, kind: :enum},
+      payload: %{
+        case_id: :id,
+        note: :string,
+        amount: :integer,
+        at: :timestamp,
+        kind: :enum,
+        # A second `:enum` field, deliberately declared with a set — next to `kind`,
+        # which deliberately is not — to prove the two forms coexist and that giving
+        # one field a set does not force it on the other.
+        severity: {:enum, [:low, :high]}
+      },
       process: :values
 
     process :values, label: "Values", instance: [:case_id]
@@ -43,7 +54,10 @@ defmodule PNS.PayloadEdgesTest do
   @at ~U[2026-08-05 09:00:00.000000Z]
 
   defp payload(overrides) do
-    Map.merge(%{case_id: "c-1", note: "a note", amount: 1, at: @at, kind: :ordinary}, overrides)
+    Map.merge(
+      %{case_id: "c-1", note: "a note", amount: 1, at: @at, kind: :ordinary, severity: :low},
+      overrides
+    )
   end
 
   defp emit(overrides), do: PNS.emit!(Values, :measured, payload(overrides))
@@ -152,12 +166,12 @@ defmodule PNS.PayloadEdgesTest do
   end
 
   describe ":enum" do
-    test "accepts any atom and any string — the documented gap, pinned" do
-      # `:enum` cannot name its set, so "one of a fixed set" is checkable only as "a
-      # name". Both of these are nonsense in any domain and both are accepted. Recorded
-      # in `docs/contract.md` and in `PLAN.md` as a minor gap; this is the test that
-      # makes it visible rather than merely written down, and it turns red the day
-      # somebody makes the set declarable.
+    test "bare :enum accepts any atom and any string, deliberately, still" do
+      # Fixed 21 August 2026: `{:enum, [...]}` now lets a field declare its set —
+      # `severity` below does exactly that. `kind` here stays bare on purpose,
+      # proving the fix is opt-in: a field that never asked for a set keeps
+      # accepting any name, and giving one field a set does not retroactively
+      # tighten its neighbour.
       assert round_trip(emit(%{kind: :not_a_real_kind})).kind == "not_a_real_kind"
       assert round_trip(emit(%{kind: "anything at all"})).kind == "anything at all"
     end
@@ -177,6 +191,26 @@ defmodule PNS.PayloadEdgesTest do
     end
   end
 
+  describe "{:enum, [...]} — a declared set, fixed 21 August 2026" do
+    test "a member of the declared set is accepted, as an atom or as a string" do
+      assert round_trip(emit(%{severity: :high})).severity == "high"
+      assert round_trip(emit(%{severity: "high"})).severity == "high"
+    end
+
+    test "anything outside the declared set is refused, unlike bare :enum" do
+      assert_raise ArgumentError, ~r/`severity` is declared as {:enum, \[:low, :high\]}/, fn ->
+        emit(%{severity: :medium})
+      end
+    end
+
+    test "a name-shaped value that just is not a member is still refused" do
+      # The distinction from "not a name at all" (:enum's own control, above): this
+      # is a legal name, spelled correctly, that simply is not one of the two the
+      # contract named.
+      assert_raise ArgumentError, ~r/holds "medium"/, fn -> emit(%{severity: "medium"}) end
+    end
+  end
+
   describe "string keys after a JSON round trip" do
     test "a payload supplied entirely with string keys is accepted and keyed correctly" do
       # This is the shape an asynchronous handler re-emitting from job arguments produces.
@@ -189,7 +223,8 @@ defmodule PNS.PayloadEdgesTest do
           "note" => "text",
           "amount" => 3,
           "at" => "2026-08-05T09:00:00Z",
-          "kind" => "ordinary"
+          "kind" => "ordinary",
+          "severity" => "low"
         })
 
       assert event.instance_id == "values|c-9"

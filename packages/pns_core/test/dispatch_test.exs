@@ -99,6 +99,35 @@ defmodule PNS.DispatchTest do
     refute job.args["payload"]["note"] == note
   end
 
+  describe "the system actor — fixed 21 August 2026" do
+    test "no ctx.actor supplied — the event and the queued job both get the explicit system actor, not nil" do
+      {:ok, event} = PNS.emit(Rig, :item_reported, %{case_id: "c-1", item_no: 1, note: "n"})
+
+      assert event.actor == "system"
+      assert [job] = all_enqueued(worker: PNS.Job)
+      assert job.args["actor"] == "system"
+    end
+
+    test "an explicit ctx.actor is never overridden by the default" do
+      {:ok, event} =
+        PNS.emit(Rig, :item_reported, %{case_id: "c-1", item_no: 1, note: "n"}, %{actor: "alice"})
+
+      assert event.actor == "alice"
+      assert [job] = all_enqueued(worker: PNS.Job)
+      assert job.args["actor"] == "alice"
+    end
+
+    test "emit_all defaults the actor the same way emit does" do
+      # A different entry point, and the same default_ctx/1 helper behind it —
+      # pinned separately so a future change to one path cannot silently stop
+      # covering the other.
+      {:ok, [event]} =
+        PNS.emit_all(Promised, [%PNS.Emission{name: :request_received, payload: %{request_id: "r-2"}}])
+
+      assert event.actor == "system"
+    end
+  end
+
   test "an asynchronous handler run twice does nothing the second time" do
     {:ok, _} = PNS.emit(Promised, :request_refused, %{request_id: "r-1"})
 
