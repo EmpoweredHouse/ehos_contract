@@ -26,8 +26,14 @@ defmodule PNS.Duration do
 
   @seconds %{second: 1, minute: 60, hour: 3600, day: 86_400}
 
-  @typedoc "A duration as a count of one supported unit."
-  @type t :: {pos_integer(), unit()}
+  @typedoc """
+  A duration as a count of one supported unit.
+
+  Zero is legal — it reads as "in the same instant" — and enforced together with the
+  unit at the `trace` compile gate (`PNS.Contract`). Negative is not: the deadline
+  would land before the window opened.
+  """
+  @type t :: {non_neg_integer(), unit()}
 
   @typedoc "A time unit convertible to seconds without a calendar."
   @type unit :: :second | :minute | :hour | :day

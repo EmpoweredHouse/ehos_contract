@@ -568,10 +568,22 @@ defmodule PNS.Contract do
     # time, which means at the client's — and the single source of truth about
     # units lives in `PNS.Duration` so the gate cannot drift from the arithmetic.
     for t <- traces, not is_nil(t.within) do
-      {_n, unit} = t.within
+      {n, unit} = t.within
 
       unit in PNS.Duration.units() ||
         bail!(env, "trace #{inspect(t.name)}: `within` — #{PNS.Duration.message(unit)}")
+
+      # Zero is a legitimate window: the deadline coincides with the moment `from`
+      # occurred, which reads as "must happen in the same instant" — a real, if rare,
+      # promise (`test/trace_edges_test.exs`, describe "a window of length zero").
+      # Negative has no such reading: the deadline lands *before* the window opened,
+      # so every run is violated the instant it starts, and the report says the
+      # process is comprehensively broken rather than that the contract is.
+      (is_integer(n) and n >= 0) ||
+        bail!(
+          env,
+          "trace #{inspect(t.name)}: `within` count must be a non-negative integer, got #{inspect(n)}"
+        )
     end
 
     for t <- traces, ev <- Enum.reject([t.from, t.eventually, t.or_else], &is_nil/1), ev not in names do

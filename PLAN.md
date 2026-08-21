@@ -5,6 +5,29 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). **Ten plik to lista roboty** i tylko tu jest
 aktualizowany stan.
 
+## Dopisek 21 sierpnia (3) — jeden `known_defect` zamknięty, jeden osąd doprecyzowany po drodze
+
+`within: {0, :day}` się kompilowało, choć `PNS.Duration.t` było opublikowane jako `pos_integer()` —
+brama sprawdzała tylko jednostkę, nigdy liczbę. Naprawa okazała się mieć w środku osąd, nie tylko
+kod: `test/trace_edges_test.exs` ma cały blok `describe "a window of length zero"`, który **celowo**
+wykorzystuje dzisiejszą tolerancję zera, żeby przypiąć zachowanie ewaluatora w chwili, gdy deadline
+pokrywa się z otwarciem okna — a sam moduledoc pliku mówi wprost „read every test below as a
+description of what happens, never as an argument that it should".
+
+Rozstrzygnięcie: **zero zostaje legalne, ujemna liczba nie.** Zero ma sensowne odczytanie — „musi się
+zdarzyć w tej samej chwili" — i ten odczyt jest już przetestowany i udokumentowany. Ujemna nie ma
+żadnego: termin ląduje przed otwarciem okna, więc każdy przebieg jest naruszony w chwili startu.
+`PNS.Duration.t` zmienione na `non_neg_integer()`, żeby typ zgadzał się z decyzją. Brama w
+`PNS.Contract` odrzuca teraz `within` z liczbą ujemną lub nie-całkowitą; test `known_defect` o zerze
+zamienił się w test o liczbie ujemnej i przechodzi bez tagu.
+
+**Cztery `known_defect` → trzy.** Pozostałe trzy — kolizja `%7C`/`\|` w `instance_id`
+(`payload_edges_test.exs`), kwantyfikacja wewnątrz przebiegu (`trace_granularity_test.exs`), zawieszenie
+przez zależność wyłącznie `or_else` (`trace_edges_test.exs`) — czekają z innych powodów: migracja danych
+klienta, kształt DSL jeszcze nienaciągnięty przez drugi realny kontrakt, i osąd wymagający rozmowy z
+właścicielem procesu. `mix check` zielony, `mix test --include known_defect` w pakiecie: 3 czerwone,
+zgodnie z oczekiwaniem.
+
 ## Dopisek 21 sierpnia (2) — silnik wozi własne tabele i własną suitę
 
 Dwie ostatnie rzeczy, które trzymały pakiet przy gospodarzu, i obie zostały zapłacone. `mix check`
@@ -147,7 +170,7 @@ Skala: 10 000 zdarzeń w jednym przebiegu → jeden werdykt, zakotwiczony na **n
 
 | Co | Dlaczego nie ruszone |
 | --- | --- |
-| **`within: {0, :day}` się kompiluje** | `@tag :known_defect`. To nie jest pytanie słownikowe jak `{1, :month}`: `PNS.Duration.t` jest **opublikowane** jako `{pos_integer(), unit()}`, więc decyzja już zapadła i po prostu nie jest egzekwowana. Ujemna liczba jest gorsza — termin ląduje przed otwarciem okna, więc raport mówi, że zepsuty jest proces, a nie kontrakt |
+| **~~`within: {0, :day}` się kompiluje~~ — ✅ zamknięte 21 sierpnia** | Rozstrzygnięcie po drodze: zero zostaje legalne (czyta się jako „w tej samej chwili”, przetestowane), tylko ujemna liczba jest odrzucana. `PNS.Duration.t` poprawione na `non_neg_integer()`. Patrz „Dopisek 21 sierpnia (3)” wyżej |
 | **Awaria zależności zadeklarowanej wyłącznie przez `or_else` zawiesza przebieg** | `@tag :known_defect`. Za dzisiejszym: kontrakt mówi „X albo Y”, a Y było niemożliwe. Przeciw: X było możliwe przez cały czas i się nie stało, a zawieszenie **wyłącznie zabiera** znalezisko — czyli to jest kierunek hojny, a hojny kierunek jest tym, w którym ten raport cicho przestaje cokolwiek mówić. Osąd o tym, na której trasie obietnica jest należna, nie arytmetyka |
 | **Trzy assercje samozwrotne** | `from == eventually` i `from == or_else` **nie mogą zawieść** i kompilują się; `eventually == or_else` zawieść może, ale trwale zeruje połowę rozbicia „przez eventually / przez or_else”, czyli dokładnie tę informację, dla której werdykt niesie `via:`. Przypięte, nie zabronione — brama kompilacyjna to decyzja słownikowa |
 | **Eskejpowanie separatora nie jest odwracalne** | patrz niżej |

@@ -222,10 +222,10 @@ defmodule PNS.TraceEdgesTest do
   end
 
   describe "a window of length zero" do
-    test "`within: {0, :day}` compiles, and nothing refuses it" do
-      # Recorded rather than approved. `PNS.Duration.t` says `{pos_integer(), unit()}`
-      # and the compile gate checks only the unit, so the DSL accepts a value its own
-      # published type excludes.
+    test "`within: {0, :day}` compiles, deliberately" do
+      # Zero reads as "in the same instant" — a real, if rare, promise — and
+      # `PNS.Duration.t` is published as `non_neg_integer()` to say so. Negative is
+      # the one this gate refuses; see the test below.
       assert Enum.find(Edges.traces(), &(&1.name == :closes_instantly)).within == {0, :day}
     end
 
@@ -250,22 +250,14 @@ defmodule PNS.TraceEdgesTest do
       assert verdict.verdict == :violated
     end
 
-    @tag :known_defect
-    test "a `within` of zero should not compile" do
-      # Asserts what should happen. Excluded by default; run with
-      #
-      #     mix test --include known_defect
-      #
-      # This is not the vocabulary question that `{1, :month}` was. `PNS.Duration.t` is
-      # already published as `{pos_integer(), unit()}`, so the count being positive is a
-      # decision that has been taken and is simply not enforced — the same shape as the
-      # unit gate before `PNS.Duration` existed, and found the same way. A negative count
-      # is worse still: the deadline lands before the moment that opened the window, so
-      # every run is violated the instant it starts, and the report says the process is
+    test "a `within` of a negative count should not compile" do
+      # Zero has a reading — "in the same instant" — that negative does not: the
+      # deadline would land *before* the moment that opened the window, so every run
+      # is violated the instant it starts, and the report says the process is
       # comprehensively broken rather than that the contract is.
       assert_raise CompileError, fn ->
         Code.compile_string("""
-        defmodule Reject.ZeroWindow do
+        defmodule Reject.NegativeWindow do
           use PNS.Contract
 
           event :a, label: "A", payload: %{case_id: :id}, process: :p
@@ -273,7 +265,7 @@ defmodule PNS.TraceEdgesTest do
 
           trace :instant do
             from :a
-            eventually :b, within: {0, :day}
+            eventually :b, within: {-1, :day}
           end
 
           process :p, label: "P", instance: [:case_id]
