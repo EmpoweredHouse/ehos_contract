@@ -5,6 +5,69 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). **Ten plik to lista roboty** i tylko tu jest
 aktualizowany stan.
 
+## Dopisek 21 sierpnia (2) — silnik wozi własne tabele i własną suitę
+
+Dwie ostatnie rzeczy, które trzymały pakiet przy gospodarzu, i obie zostały zapłacone. `mix check`
+uruchamia teraz **dwie** suity: 44 testy tutaj i 285 w `packages/pns_core`.
+
+### `PNS.Migrations` — i znacznik wersji powstał, zanim był potrzebny
+
+Pięć tabel silnika leżało w `priv/repo/migrations/` gospodarza, wymieszanych z migracjami TaxVision,
+a Oban stał **jedną linijkę wyżej w tym samym katalogu** i robił dokładnie odwrotnie. Schematy i
+wszystkie zapytania są w pakiecie, więc aplikacja utrzymywała kopię kształtu, którego nie posiada.
+
+Wersjonowanie w kształcie Obana, z wersją zapisaną w komentarzu na `pns_events`. Na wersji 1 nie ma
+z czego migrować i **właśnie dlatego mechanizm wchodzi teraz**: pierwsza zmiana schematu jest momentem,
+w którym jest już za późno, bo wtedy każdy konsument siedzi na nieoznaczonym `create` i nie ma stanu,
+od którego można by ruszyć.
+
+`V01` tworzy **kształt docelowy**, nie historię. `process` i `instance_id` są kolumnami `pns_events` od
+pierwszego `create`; to, że doszły dzień później, jest faktem o tym repozytorium, nie o czyjejś bazie.
+
+**Sprawdzone `pg_dump` przed i po, w `dev` i w `test`, oraz przeciwko bazie pakietu:** pięć tabel, ich
+kolumny, kolejność kolumn, wartości domyślne, ograniczenia i trzynaście indeksów są identyczne co do
+bajtu. Jedyna różnica to `COMMENT ON TABLE public.pns_events IS '1'` — czyli sam mechanizm.
+
+Tabele Obana zostają Obana. `up/1` **nie opakowuje** `Oban.Migration.up/1`: opakowanie związałoby naszą
+wersję z jego, ukryłoby aktualizację, o której konsument musi zdecydować sam, i pękłoby u konsumenta,
+który już używa Obana do własnej roboty.
+
+### Suita silnika stoi bez klienta — i to jest 87% suity
+
+Nie wiedzieliśmy dotąd, ile z testów bada silnik, a ile TaxVision. Teraz wiadomo, bo szew jest
+fizyczny: **289 testów w pakiecie, 44 tutaj** (z tego 4 `:known_defect`, wszystkie w pakiecie i wszystkie
+nadal czerwone). Sześć plików zostaje przy kliencie i każdy z powodu, który da się nazwać:
+
+| Plik | Dlaczego zostaje |
+| --- | --- |
+| `periods_test.exs` | okresy to domena TaxVision, nie mechanizm |
+| `identity_seam_test.exs` | trzy poziomy IAM na **krawędzi żądania klienta**; skanuje też moduły `:pns_prototype` i konfigurację gospodarza |
+| `contract_examples_test.exs`, `rehmed_contract_examples_test.exs` | przykłady z kontraktów klienta |
+| `declared_shape_test.exs` | **nowy, wydzielony z `graph_test.exs`** — jego assercje są o modelowaniu `Rehmed.Contracts.ClinicalVisit`, nie o rendererze: że notatka nie jest zdarzeniem, że wejście do gabinetu to inny fakt niż przyjście do przychodni, że dwa okna zagnieżdżają się na jednym celu. Przepięte na wymyśloną fiksturę **nadal by przechodziły i nie sprawdzałyby już niczego** |
+| `docs_test.exs` | pilnuje `docs/contract.md`, patrz dług niżej |
+
+### Trzy rzeczy, które wyszły dopiero przy przenoszeniu
+
+1. **`docs/contract.md` jest artefaktem pakietu trzymanym jako artefakt gospodarza.** Test bram
+   kompilacyjnych pojechał do pakietu, dokument został — bo wskazują na niego po tej ścieżce `CLAUDE.md`,
+   `README.md`, dwa skille i dwie destylacje, a `mix pns.docs` rozwiązuje ją względem katalogu roboczego.
+   Skutek: `docs_test.exs` czyta teraz **przez szew**, po ścieżce `packages/pns_core/test/…`. Działa
+   i jest brzydkie. Do zrobienia razem z przeniesieniem dokumentu i `--path` w tasku.
+2. **Fikstury nie miały trzech kształtów, które miał kontrakt klienta**, i dopiero przenoszenie to
+   pokazało: procesu bez `trace`, procesu bez `external`, przebiegu z **dwóch** pól z `cadence`, oraz
+   obietnicy z `or_else`, której drugie zakończenie jedzie przez kolejkę. Bez tego ostatniego nie da się
+   odróżnić „jeszcze nie" od „nigdy" — a to jest jedyny powód, dla którego werdykt `:pending` istnieje.
+   Stąd `ProcessShapes.Bare` i `ProcessShapes.Promised`. **Fikstury urosły, testy nie zmalały.**
+3. **`ContractExamples` mieszkał w `test/support/` gospodarza**, więc własne fikstury silnika nie mogły
+   sprawdzić swoich `example` bez pożyczenia modułu z drzewa klienta. Wjechał do `lib/` jako
+   `PNS.ContractExample`, tak jak `Oban.Testing` siedzi w `lib/`: suita konsumenta musi go zawołać, a
+   moduł kompilowany tylko pod `MIX_ENV=test` w tym pakiecie u nikogo innego nie istnieje.
+
+Do tego jedna rzecz o konfiguracji, znów: **path dependency nie wciąga konfiguracji ani `test/support/`
+zależności** — pakiet w drzewie gospodarza kompiluje się bez swoich fikstur, więc `mix pns.check`
+w tym projekcie przestał raportować rig i bramę uniwersalności. To jest poprawne (`pns.check` gospodarza
+ma mówić o kontraktach klienta) i było niewidoczne, dopóki fikstury leżały tutaj.
+
 ## Dopisek 21 sierpnia — brzegi silnika: trzy usterki, cztery ciche zielenie i jedno znalezisko spoza listy
 
 TaxVision i Rehmed przejeżdżały wyłącznie **wygodnym środkiem** każdego okna i każdego typu. Ten dopisek
@@ -132,7 +195,8 @@ klasa rzeczy, których nie da się sprawdzić inaczej niż wyciągnięciem.
 
 Zostaje do zrobienia: `PNS.Migrations` (dziś pięć tabel silnika leży wymieszanych z migracjami TaxVision
 w `priv/repo/migrations/`) i przeniesienie testów silnika do pakietu — **22 z 27 plików testowych
-odwołuje się do `Taxvision`**, bo `boundary` nigdy nie objął `test/`.
+odwołuje się do `Taxvision`**, bo `boundary` nigdy nie objął `test/`. *(Oba zrobione 21 sierpnia —
+patrz dopisek na górze.)*
 
 ## Dopisek 18 sierpnia — pierwszy kontrakt z prawdziwego zlecenia
 

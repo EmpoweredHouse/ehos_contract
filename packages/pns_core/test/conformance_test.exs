@@ -3,61 +3,65 @@ defmodule PNS.ConformanceTest do
   Stage 1.4: **behavioural path verification, per run.**
 
   The acceptance criterion is sharp and is the first block below: with 50 runs,
-  none of which entered the blocking branch, the report shows **one** untraversed
+  none of which entered the refusal branch, the report shows **one** untraversed
   path. With one run in that branch — **none**.
 
   This is also the test of whether the declared-versus-observed difference is
   signal or noise — the ADR's falsification condition. Fifty runs, one line of
   report. If the report showed fifty or three, the answer would be "noise".
 
-  The volume is simulated, but **the process is not**: the runs go through the
-  existing contract from the TaxVision workshop rather than through stages added
-  for this test. A contract designed against its own acceptance criterion will
-  always meet it.
+  The volume is simulated, but **the process is not**: the runs go through a
+  contract with handlers, three declared paths and an asynchronous ending, of
+  which an ordinary run traverses two. Until 2026-08-21 that contract was
+  TaxVision's; it is now `ProcessShapes.Promised`, which has the same ratio and
+  belongs to the engine. A contract designed against its own acceptance criterion
+  would always meet it, which is why the ratio comes from the shape rather than
+  from the criterion.
   """
 
-  use Taxvision.DataCase, async: false
-  use Oban.Testing, repo: Taxvision.Repo
+  use PNS.DataCase, async: false
+  use Oban.Testing, repo: PNS.TestRepo
 
-  @divergent %{legal_form: "JDG", vat_status: "wykreślony", vies_status: "aktywny"}
-  @blocking_path {:registry_discrepancy_detected, :discrepancy_notification_sent}
+  alias ProcessShapes.Promised
 
-  defp registries(responses) do
-    Application.put_env(:pns_prototype, Taxvision.Adapters.RegistryLookup.Fake, responses: responses)
-    on_exit(fn -> Application.delete_env(:pns_prototype, Taxvision.Adapters.RegistryLookup.Fake) end)
-  end
+  @refusal_path {:request_refused, :refusal_notified}
 
-  defp open_month(company) do
-    {:ok, _} = Taxvision.Api.open_month(accountant(company), %{company_id: company, period: "2026-07"})
+  # The request edge: one command, two facts, no cause between them. Approving
+  # reaches the ordinary ending inside the transaction; refusing leaves the
+  # ending in the queue.
+  defp request(id, decision) do
+    PNS.emit_all(Promised, [
+      PNS.event(:request_received, %{request_id: id}),
+      PNS.event(decision, %{request_id: id})
+    ])
   end
 
   defp report do
-    [r] = PNS.Conformance.untraversed_paths() |> Enum.filter(&(&1.process == :accounting_month))
+    [r] = PNS.Conformance.untraversed_paths() |> Enum.filter(&(&1.process == :handling))
     r
   end
 
   defp paths(report), do: Enum.map(report.untraversed, &{&1.from, &1.to})
 
   describe "acceptance criterion" do
-    test "50 runs, none in the blocking branch — exactly one untraversed path" do
-      for n <- 1..50, do: open_month("c-#{n}")
+    test "50 runs, none in the refusal branch — exactly one untraversed path" do
+      for n <- 1..50, do: request("r-#{n}", :request_approved)
 
       r = report()
 
       assert r.instances == 50
       assert r.basis == :runs
-      assert paths(r) == [@blocking_path]
+      assert paths(r) == [@refusal_path]
 
       # The point: the report has **one** line, not fifty and not three. If it
       # counted per event type, this one path would still come out — but with 49
-      # consistent runs and one divergence (the test below) it would not.
+      # ordinary runs and one refusal (the test below) it would not.
       assert length(r.untraversed) == 1
     end
 
-    test "one run through the blocking branch — no untraversed paths" do
-      registries(%{"c-50" => {:ok, @divergent}})
-
-      for n <- 1..50, do: open_month("c-#{n}")
+    test "one run through the refusal branch — no untraversed paths" do
+      for n <- 1..49, do: request("r-#{n}", :request_approved)
+      request("r-50", :request_refused)
       # The notification goes through an asynchronous handler, so the path only
       # closes once the job has run.
       Oban.drain_queue(queue: :events)
@@ -85,16 +89,15 @@ defmodule PNS.ConformanceTest do
     end
 
     test "a job waiting in the queue is not an untraversed path" do
-      registries(%{"c-1" => {:ok, @divergent}})
-      open_month("c-1")
+      request("r-1", :request_refused)
 
       r = report()
 
-      refute @blocking_path in paths(r),
+      refute @refusal_path in paths(r),
              "a queued job is \"not yet\", not \"never\" — without that the report lies " <>
                "on every ordinary delay"
 
-      assert Enum.map(r.in_flight, &{&1.from, &1.to}) == [@blocking_path]
+      assert Enum.map(r.in_flight, &{&1.from, &1.to}) == [@refusal_path]
     end
   end
 
@@ -103,14 +106,14 @@ defmodule PNS.ConformanceTest do
       # Drift is a different question on the screen. Mixed into one list it turns
       # the report into a bag where "we did not do it" cannot be told apart from
       # "we did something we never agreed".
-      open_month("c-1")
+      request("r-1", :request_approved)
 
       Repo.insert!(%PNS.Event{
         type: "event_outside_the_contract",
-        contract: inspect(Taxvision.Contracts.AccountingMonth),
-        contract_version: Taxvision.Contracts.AccountingMonth.version(),
+        contract: inspect(Promised),
+        contract_version: Promised.version(),
         correlation_id: Ecto.UUID.generate(),
-        causation_id: List.first(events_of(:accounting_month_opened)).id,
+        causation_id: List.first(events_of(:request_completed)).id,
         payload: %{},
         occurred_at: DateTime.utc_now()
       })
@@ -120,10 +123,10 @@ defmodule PNS.ConformanceTest do
 
     test "one report per process rather than one global list" do
       # Notes §9: "navigation is per-process, never global".
-      open_month("c-1")
+      request("r-1", :request_approved)
 
       processes = PNS.Conformance.untraversed_paths() |> Enum.map(& &1.process)
-      assert :accounting_month in processes
+      assert :handling in processes
     end
   end
 end

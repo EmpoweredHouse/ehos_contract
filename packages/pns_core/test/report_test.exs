@@ -14,28 +14,26 @@ defmodule PNS.ReportTest do
 
   **Moved into the engine 6 August**, reversing the stage 1.7 call that kept
   rendering in the client tree because an accountant was the reader (see
-  `PLAN.md`). The scaffolding sentences asserted on below are English now; the
-  contract's own labels (`from_label`, `to_label`, a process's `label`) still
-  print in whatever language the contract declares them — TaxVision's are
-  Polish, and this test asserts on both without translating either. See
-  `PNS.Report`.
+  `PLAN.md`). The scaffolding sentences asserted on below are the engine's own and
+  are English; the contract's own labels (`from_label`, `to_label`, a process's
+  `label`) print in whatever language the contract declares them, and are passed
+  through untranslated. Asserted here against the invented contract, whose labels
+  are English — so a sentence that reads as one language throughout is now a
+  statement about the renderer rather than a coincidence of two.
   """
 
-  use Taxvision.DataCase, async: false
-  use Oban.Testing, repo: Taxvision.Repo
+  use PNS.DataCase, async: false
+  use Oban.Testing, repo: PNS.TestRepo
 
-  alias Taxvision.Contracts.AccountingMonth, as: Contract
+  alias ProcessShapes.Promised, as: Contract
 
-  @consistent %{legal_form: "JDG", vat_status: "czynny", vies_status: "aktywny"}
-  @divergent %{legal_form: "JDG", vat_status: "wykreślony", vies_status: "aktywny"}
-
-  defp registries(responses) do
-    Application.put_env(:pns_prototype, Taxvision.Adapters.RegistryLookup.Fake, responses: responses)
-    on_exit(fn -> Application.delete_env(:pns_prototype, Taxvision.Adapters.RegistryLookup.Fake) end)
-  end
-
-  defp open_month(company, period \\ "2026-07") do
-    {:ok, _} = Taxvision.Api.open_month(accountant(company), %{company_id: company, period: period})
+  # The request edge: one command, two facts. Approving reaches the ordinary
+  # ending inside the transaction; refusing leaves the ending in the queue.
+  defp request(id, decision) do
+    PNS.emit_all(Contract, [
+      PNS.event(:request_received, %{request_id: id}),
+      PNS.event(decision, %{request_id: id})
+    ])
   end
 
   defp data(opts \\ []), do: PNS.Conformance.report(Contract, opts)
@@ -43,9 +41,9 @@ defmodule PNS.ReportTest do
 
   describe "acceptance criterion: no unconfirmed declarations" do
     test "a deadline marked `unverified` does not reach the report's data" do
-      # `deadline: {25, :day}` sits in the contract with `unverified: [:deadline]`,
-      # because the number is plausible but **nobody from TaxVision supplied it**.
-      assert :deadline in Contract.process(:accounting_month).unverified
+      # `deadline: {2, :day}` sits in the contract with `unverified: [:deadline]`,
+      # standing in for the number that is plausible and that nobody supplied.
+      assert :deadline in Contract.process(:handling).unverified
 
       [process] = data().processes
       keys = Enum.map(process.declarations, & &1.key)
@@ -54,20 +52,20 @@ defmodule PNS.ReportTest do
              "an unconfirmed declaration in an evidence report reads as measured — " <>
                "and a false metric is worse than a missing one, because it is the metric the product sells"
 
-      # The cadence is confirmed by the workshop [WF 00:34:40], so it stays.
+      # The cadence is confirmed, so it stays. Without a second declaration on the
+      # process this test would pass against a filter that simply drops everything.
       assert :cadence in keys
     end
 
     test "the deadline does not reach the rendered text either" do
       refute text() =~ "Deadline"
-      refute text() =~ "25"
     end
 
     test "if the deadline were confirmed, it would appear" do
       # Proof that the filter acts on `unverified` rather than simply being unable
       # to print a deadline. Without this the first test would also pass with a
       # broken filter.
-      process = Contract.process(:accounting_month)
+      process = Contract.process(:handling)
       confirmed = %{process | unverified: []}
 
       refute Enum.any?(PNS.Conformance.verified_declarations(process), &(&1.key == :deadline))
@@ -77,9 +75,8 @@ defmodule PNS.ReportTest do
 
   describe "acceptance criterion: readable without explanation" do
     setup do
-      registries(%{"c-1" => {:ok, @consistent}, "c-2" => {:ok, @divergent}})
-      open_month("c-1")
-      open_month("c-2")
+      request("r-1", :request_approved)
+      request("r-2", :request_refused)
       Oban.drain_queue(queue: :events)
       :ok
     end
@@ -88,18 +85,18 @@ defmodule PNS.ReportTest do
       t = text()
 
       # The assertion is a sentence composed of labels, because `trace` has no
-      # `label`. The labels themselves are the contract's own words — Polish here
-      # — printed inside the engine's English scaffolding, not translated.
-      assert t =~ "after \"Potwierdzono komplet danych historycznych\""
-      assert t =~ "\"Otwarto miesiąc księgowy\" follows"
+      # `label`. The labels themselves are the contract's own words, printed inside
+      # the engine's scaffolding and never rewritten by it.
+      assert t =~ "after \"Request received\""
+      assert t =~ "\"Request completed\" follows"
 
-      refute t =~ "data_completeness_confirmed"
-      refute t =~ "accounting_month_opened"
+      refute t =~ "request_received"
+      refute t =~ "request_completed"
     end
 
     test "satisfaction through the fallback path is named conformance, not an exception" do
-      # Blocking the month is a correct ending. A report that called it a problem
-      # would be switched off after the first month.
+      # A refusal is a correct ending. A report that called it a problem would be
+      # switched off after the first period.
       assert text() =~ "Met in all 2 runs"
       assert text() =~ "conforms to the rule"
     end
@@ -121,8 +118,8 @@ defmodule PNS.ReportTest do
 
   describe "the report is for a period" do
     test "the window cuts off runs from outside the period" do
-      open_month("c-1", "2026-06")
-      open_month("c-2", "2026-07")
+      request("r-1", :request_approved)
+      request("r-2", :request_approved)
 
       everything = data()
       recent = data(since: ~U[2026-08-05 00:00:00.000000Z])
@@ -142,7 +139,7 @@ defmodule PNS.ReportTest do
     end
 
     test "a period with no runs says \"there is nothing to judge\", not \"all is well\"" do
-      open_month("c-1")
+      request("r-1", :request_approved)
 
       t = text(since: ~U[2027-01-01 00:00:00.000000Z])
 
@@ -158,21 +155,21 @@ defmodule PNS.ReportTest do
 
   describe "drift is attributed to the right contract" do
     test "drift enters the report of the contract whose event caused it" do
-      open_month("c-1")
+      request("r-1", :request_approved)
 
       Repo.insert!(%PNS.Event{
         type: "event_outside_the_agreement",
         contract: inspect(Contract),
         contract_version: Contract.version(),
         correlation_id: Ecto.UUID.generate(),
-        causation_id: List.first(events_of(:accounting_month_opened)).id,
+        causation_id: List.first(events_of(:request_completed)).id,
         payload: %{},
         occurred_at: DateTime.utc_now()
       })
 
       assert [divergence] = data().drift
       assert divergence.to == "event_outside_the_agreement"
-      assert divergence.from_label == "Otwarto miesiąc księgowy"
+      assert divergence.from_label == "Request completed"
 
       # Another contract's report has no business seeing this.
       assert PNS.Conformance.report(UniversalityGate.TreatmentEpisode).drift == []
@@ -181,25 +178,27 @@ defmodule PNS.ReportTest do
 
   describe "a failing step reads as a failure, not as a step nobody took" do
     setup do
-      registries(%{"c-1" => {:ok, @consistent}})
-      open_month("c-1")
+      request("r-1", :request_approved)
       Oban.drain_queue(queue: :events)
       :ok
     end
 
     test "the sentence says it is being attempted and not succeeding" do
       # Rendering is pure, so the failing branch is exercised with the shape it is
-      # contracted to accept rather than by breaking a TaxVision handler. No client
-      # handler fails today, and making one fail to reach a renderer branch would be
-      # changing the domain to suit a test.
+      # contracted to accept rather than by breaking a handler. Nothing in this
+      # contract fails, and making something fail to reach a renderer branch would
+      # be changing the fixture to suit a test.
       report = data()
       [process | rest] = report.processes
 
+      # A different edge from the one the untraversed section legitimately holds,
+      # because the assertion below is about an edge appearing in one section and
+      # not two — which cannot be checked with an edge that belongs in both.
       failing = %{
-        from: :accounting_month_opened,
-        to: :month_closed,
-        from_label: "Otwarto miesiąc księgowy",
-        to_label: "Zamknięto miesiąc księgowy",
+        from: :request_received,
+        to: :request_logged,
+        from_label: "Request received",
+        to_label: "Request logged",
         async: false,
         in_flight: 0,
         failing: 2
@@ -210,17 +209,17 @@ defmodule PNS.ReportTest do
         |> PNS.Report.render()
 
       assert text =~ "Agreed steps that are attempted and fail:"
-      assert text =~ "Otwarto miesiąc księgowy → Zamknięto miesiąc księgowy"
+      assert text =~ "Request received → Request logged"
       assert text =~ "failed in 2 runs"
 
       # **One edge, one section.** The untraversed section is legitimately present
-      # here too — only the consistent branch ran, so the divergent path really was
+      # here too — only the approved branch ran, so the refusal path really was
       # never taken — which is exactly why the assertion has to be about this edge
       # rather than about the section existing. An earlier version of this test
       # asserted the section was absent and was simply wrong about the domain.
       occurrences =
         text
-        |> String.split("Otwarto miesiąc księgowy → Zamknięto miesiąc księgowy")
+        |> String.split("Request received → Request logged")
         |> length()
         |> Kernel.-(1)
 
@@ -233,10 +232,10 @@ defmodule PNS.ReportTest do
       [process | rest] = report.processes
 
       failing = %{
-        from: :accounting_month_opened,
-        to: :month_closed,
-        from_label: "Otwarto miesiąc księgowy",
-        to_label: "Zamknięto miesiąc księgowy",
+        from: :request_received,
+        to: :request_logged,
+        from_label: "Request received",
+        to_label: "Request logged",
         async: false,
         in_flight: 0,
         failing: 1
@@ -252,17 +251,16 @@ defmodule PNS.ReportTest do
 
   describe "a suspended run reads as somebody else's outage" do
     setup do
-      registries(%{"c-1" => {:ok, @consistent}})
-      open_month("c-1")
+      request("r-1", :request_approved)
       Oban.drain_queue(queue: :events)
       :ok
     end
 
     test "it is named as a suspension and kept out of the breaches" do
       # Rendering is pure, so the branch is exercised with the shape it is contracted to
-      # accept. TaxVision itself cannot produce a suspension — its one dependency is
-      # consulted before the assertion window opens — which is recorded in PLAN.md and is
-      # why the verdict is exercised end to end on the shapes rig instead.
+      # accept. This contract declares no external dependency, so it cannot produce a
+      # suspension at all — the verdict itself is exercised end to end on the shapes
+      # rig, which declares one.
       report = data()
       [process | rest] = report.processes
       [assertion | others] = process.assertions

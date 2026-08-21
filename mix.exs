@@ -65,7 +65,35 @@ defmodule PnsPrototype.MixProject do
       # `pns.docs --check` is here for the same reason: without it the key
       # reference in `docs/contract.md` is documentation that can lie, rather
       # than a generated artifact.
-      check: ["compile --force --warnings-as-errors", "pns.check", "pns.docs --check", "test"]
+      check: [
+        "compile --force --warnings-as-errors",
+        "pns.check",
+        "pns.docs --check",
+        "test",
+        &package_test/1
+      ]
     ]
+  end
+
+  # The engine's own suite, run from here as well.
+  #
+  # Since 2026-08-21 most of the tests live in `packages/pns_core/test/` and `mix
+  # test` in this project no longer reaches them — it runs this application's, which
+  # are now only TaxVision's and Rehmed's. A gate that stopped covering the engine on
+  # the day the engine got its own suite would be the worst possible outcome of that
+  # move, so the gate runs both.
+  #
+  # A separate `mix` invocation rather than an umbrella, because the package has to
+  # keep building and testing **standing alone** — that is the property being
+  # protected, and an umbrella would quietly remove it.
+  defp package_test(_args) do
+    {_output, status} =
+      System.cmd("mix", ["test"],
+        cd: "packages/pns_core",
+        env: [{"MIX_ENV", "test"}],
+        into: IO.stream(:stdio, :line)
+      )
+
+    if status != 0, do: Mix.raise("the engine's own suite failed (packages/pns_core)")
   end
 end

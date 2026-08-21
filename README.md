@@ -52,7 +52,9 @@ docker compose up -d && mix deps.get && mix ecto.setup && mix check
 ```
 
 `mix check` to `compile --force --warnings-as-errors`, `pns.check`, `pns.docs --check` i `test`.
-**Musi przechodzić.** Postgres słucha na **5433**, nie 5432 — lokalny bywa zajęty, a to ma stać na czystej
+**Musi przechodzić**, i od 21 sierpnia uruchamia **dwie** suity: tę aplikacji i `mix test` w
+`packages/pns_core`, osobnym wywołaniem, bo pakiet ma się budować i testować samodzielnie.
+Postgres słucha na **5433**, nie 5432 — lokalny bywa zajęty, a to ma stać na czystej
 maszynie bez pytania, co jeszcze nasłuchuje.
 
 `--warnings-as-errors` jest konieczne, nie estetyczne: `boundary` raportuje naruszenia jako **ostrzeżenia**,
@@ -111,6 +113,13 @@ lib/pns/                 silnik — 4742 linie, przyszły pakiet
   auth.ex                szew tożsamości: behaviour + lokalny HMAC
   telemetry.ex           katalog zdarzeń: handler i naruszenie kontraktu, nic więcej
   check.ex, duration.ex  logika checków i jednostki czasu — jedno źródło prawdy
+  migrations.ex          pięć tabel silnika, wersjonowane w kształcie Obana
+  contract_example.ex    `example` jako assercja — w `lib/`, bo woła je też suita konsumenta
+
+packages/pns_core/test/  własna suita silnika — stoi bez aplikacji klienta
+  support/               PNS.TestRepo, PNS.DataCase, migracja przez PNS.Migrations
+  support/universality_gate/  drugi kontrakt, WYMYŚLONY — brama uniwersalności, nie klient
+  support/process_shapes/     stanowisko badawcze kształtów i mechanizmów — NIE domena
 
 lib/taxvision/           aplikacja klienta — tymczasowo, jako przypadek testowy
   contracts/             kontrakt na jeden proces z warsztatu
@@ -123,9 +132,8 @@ lib/rehmed/              dane testowe z drugiej domeny — WYŁĄCZNIE kontrakty
   contracts/             trzy procesy zdestylowane z warsztatów; zero handlerów
   settlement.ex          jedyna funkcja domenowa, bo `rule` wskazuje MFA i bez niej `example` nie istnieje
 
-test/support/
-  universality_gate/     drugi kontrakt, WYMYŚLONY — brama uniwersalności, nie klient
-  process_shapes/        stanowisko badawcze kształtów i mechanizmów — NIE domena
+test/                    to, co naprawdę testuje klienta: okresy, szew tożsamości,
+                         przykłady z kontraktów TaxVision i Rehmed, kształt zadeklarowany
 ```
 
 ## Co wyszło z warsztatu, a co trzeba było wymyślić

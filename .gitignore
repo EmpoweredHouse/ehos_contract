@@ -1,6 +1,12 @@
 /_build/
 /cover/
 /deps/
+# The package builds and fetches on its own when it is the top-level project —
+# `cd packages/pns_core && mix test` is the proof that the seam is real, and it
+# produces a build tree of its own. Root-anchored patterns do not reach it.
+packages/*/_build/
+packages/*/cover/
+packages/*/deps/
 /doc/
 /.fetch
 erl_crash.dump

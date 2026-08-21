@@ -70,8 +70,11 @@ aplikacji klienta.
 docker compose up -d && mix ecto.setup && mix check
 ```
 
-`mix check` to `compile --force --warnings-as-errors`, `pns.check`, `pns.docs --check` i `test`.
-**Musi przechodzić.** `pns.docs --check` pilnuje, że referencja kluczy w `docs/contract.md` jest
+`mix check` to `compile --force --warnings-as-errors`, `pns.check`, `pns.docs --check`, `test` i — od
+21 sierpnia — `mix test` w `packages/pns_core` osobnym wywołaniem. **Musi przechodzić.** Suita silnika
+przeniosła się do pakietu i `mix test` w tym projekcie już jej nie widzi; brama, która przestałaby
+pokrywać silnik w dniu, w którym silnik dostał własną suitę, byłaby najgorszym możliwym wynikiem tej
+przeprowadzki. Osobne wywołanie, nie umbrella — pakiet ma stać sam, i to jest własność, której pilnujemy. `pns.docs --check` pilnuje, że referencja kluczy w `docs/contract.md` jest
 wygenerowana z `PNS.Contract.schema/0`, a nie pisana ręcznie.
 `--warnings-as-errors` jest konieczne: `boundary` raportuje naruszenia jako ostrzeżenia, więc bez tego
 przełącznika granice są dokumentacją. Postgres słucha na **5433**.
@@ -102,7 +105,8 @@ mix ecto.migrate`.
   jest faktem, czy heurystyką.
 - **Kod jest po angielsku. Bez wyjątków.** Identyfikatory, moduledoki, `@doc`, komentarze, nazwy testów,
   komunikaty błędów kompilacji i stringi wypisywane na wyjście. **Zakres to nie tylko `lib/pns/`** —
-  także `lib/taxvision/`, `lib/rehmed/`, `test/` z fikstrami, `config/`, `priv/repo/migrations/`,
+  także `lib/taxvision/`, `lib/rehmed/`, `test/` i `packages/pns_core/test/` z fikstrami, `config/`,
+  `priv/repo/migrations/`,
   `docs/` i `mix.exs`.
   Trzy ostatnie zostały przy pierwszym sprzątaniu pominięte, bo nikt o nich nie pomyślał.
 - **Po polsku jest wyłącznie to, co klient czyta zdaniami, i tylko w stringu** — nigdy w komentarzu,

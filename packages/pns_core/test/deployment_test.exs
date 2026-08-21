@@ -10,14 +10,15 @@ defmodule PNS.DeploymentTest do
   the fix does not turn out to be a fix for something that never happened.
   """
 
-  use Taxvision.DataCase, async: false
+  use PNS.DataCase, async: false
 
-  alias Taxvision.Contracts.AccountingMonth, as: Contract
+  alias ProcessShapes.Rig, as: Contract
 
-  @period "2026-07"
-
-  defp open_month(company) do
-    {:ok, _} = Taxvision.Api.open_month(accountant(company), %{company_id: company, period: @period})
+  # One run, driven all the way to its terminal event: `item_received` pairs the
+  # item and closes the case. Three events and two edges, which is everything this
+  # file needs a run for.
+  defp a_run(case_id) do
+    PNS.emit!(Contract, :item_received, %{case_id: case_id, item_no: 1, amount: 100})
   end
 
   defp deployment(attrs) do
@@ -44,7 +45,7 @@ defmodule PNS.DeploymentTest do
       before = Contract.version()
       edges = PNS.Registry.edges() |> Enum.map(&{&1.from, &1.to})
 
-      assert {:registry_data_consistent, :monthly_tasks_generated} in edges
+      assert {:item_received, :item_paired} in edges
       assert Contract.version() == before, "the contract did not change"
 
       # So: if somebody removed the handler, the `contract_version` in the log
@@ -52,27 +53,28 @@ defmodule PNS.DeploymentTest do
     end
 
     test "an edge declared in a recorded deployment is history, not drift" do
-      open_month("c-1")
+      a_run("c-1")
 
       # A deployment in which this edge **was** declared, and which is not in the
-      # registry today — exactly the situation after removing a handler.
-      deployment(%{wiring_version: "wiring-1", edges: ["accounting_month_opened->month_closed"]})
+      # registry today — exactly the situation after removing a handler. Nothing
+      # subscribes to `case_closed` now, so this path exists only in history.
+      deployment(%{wiring_version: "wiring-1", edges: ["case_closed->item_appealed"]})
 
       Repo.insert!(%PNS.Event{
-        type: "month_closed",
+        type: "item_appealed",
         contract: inspect(Contract),
         contract_version: Contract.version(),
-        process: "accounting_month",
-        instance_id: instance("c-1", @period),
+        process: "pairing",
+        instance_id: "pairing|c-1",
         correlation_id: Ecto.UUID.generate(),
-        causation_id: List.first(events_of(:accounting_month_opened)).id,
+        causation_id: List.first(events_of(:case_closed)).id,
         payload: %{},
         occurred_at: DateTime.utc_now()
       })
 
       entry =
         PNS.Graph.overlay()
-        |> Enum.find(&(&1.from == "accounting_month_opened" and &1.to == "month_closed"))
+        |> Enum.find(&(&1.from == "case_closed" and &1.to == "item_appealed"))
 
       assert entry.state == :historical,
              "the edge was declared when it ran — blaming it for drift is the false " <>
@@ -81,14 +83,14 @@ defmodule PNS.DeploymentTest do
 
     test "an edge that was never declared is still drift" do
       # The fix has no business silencing real drift.
-      open_month("c-1")
+      a_run("c-1")
 
       Repo.insert!(%PNS.Event{
         type: "never_declared",
         contract: inspect(Contract),
         contract_version: Contract.version(),
         correlation_id: Ecto.UUID.generate(),
-        causation_id: List.first(events_of(:accounting_month_opened)).id,
+        causation_id: List.first(events_of(:case_closed)).id,
         payload: %{},
         occurred_at: DateTime.utc_now()
       })
@@ -108,7 +110,7 @@ defmodule PNS.DeploymentTest do
       assert deployed.wiring_version != deployed.contract_version
 
       # The wiring knows the paths, the contract does not.
-      assert "registry_data_consistent->monthly_tasks_generated" in deployed.edges
+      assert "item_received->item_paired" in deployed.edges
       refute Enum.empty?(deployed.events)
     end
 
@@ -137,10 +139,10 @@ defmodule PNS.DeploymentTest do
   describe "the report: what is deployed, since when, what changed" do
     test "since when is the first event under this version, not the deploy moment" do
       PNS.Deployment.record!()
-      open_month("c-1")
+      a_run("c-1")
 
       report = PNS.Deployment.report(Contract)
-      first = List.first(events_of(:data_completeness_confirmed))
+      first = List.first(events_of(:item_received))
 
       assert report.deployed.contract_version == Contract.version()
       assert report.deployed.since == first.occurred_at
@@ -155,10 +157,10 @@ defmodule PNS.DeploymentTest do
     end
 
     test "versions in the log with counts and ranges" do
-      open_month("c-1")
+      a_run("c-1")
 
       Repo.insert!(%PNS.Event{
-        type: "data_completeness_confirmed",
+        type: "item_received",
         contract: inspect(Contract),
         contract_version: "old-version",
         correlation_id: Ecto.UUID.generate(),

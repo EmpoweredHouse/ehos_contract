@@ -2,35 +2,33 @@ defmodule PNS.TraceTest do
   @moduledoc """
   Stage 1.5: **evaluating `trace` assertions per run.**
 
-  There is one acceptance criterion and it is the first test below: with a blocked
-  month the assertion is **satisfied through `or_else`**, not violated. Blocking is
-  a correct ending, just not the one we wanted — and a tool that shouts about every
-  correctly blocked month gets switched off within a week.
+  There is one acceptance criterion and it is the first test below: with a refused
+  request the assertion is **satisfied through `or_else`**, not violated. A refusal
+  is a correct ending, just not the one we wanted — and a tool that shouts about
+  every correctly refused run gets switched off within a week.
 
   The rest of the tests pin the semantic decisions, each of which can be reversed
   without breaking anything else.
   """
 
-  use Taxvision.DataCase, async: false
-  use Oban.Testing, repo: Taxvision.Repo
+  use PNS.DataCase, async: false
+  use Oban.Testing, repo: PNS.TestRepo
 
-  alias Taxvision.Contracts.AccountingMonth, as: Contract
+  alias ProcessShapes.Promised, as: Contract
 
-  @assertion :month_opens_or_is_blocked
-  @consistent %{legal_form: "JDG", vat_status: "czynny", vies_status: "aktywny"}
-  @divergent %{legal_form: "JDG", vat_status: "wykreślony", vies_status: "aktywny"}
+  @assertion :completed_or_refusal_notified
 
-  defp registries(responses) do
-    Application.put_env(:pns_prototype, Taxvision.Adapters.RegistryLookup.Fake, responses: responses)
-    on_exit(fn -> Application.delete_env(:pns_prototype, Taxvision.Adapters.RegistryLookup.Fake) end)
+  # The request edge: one command, two facts. Approving reaches the ordinary
+  # ending inside the transaction; refusing leaves the ending in the queue.
+  defp request(id, decision) do
+    PNS.emit_all(Contract, [
+      PNS.event(:request_received, %{request_id: id}),
+      PNS.event(decision, %{request_id: id})
+    ])
   end
 
-  defp open_month(company, period \\ "2026-07") do
-    {:ok, _} = Taxvision.Api.open_month(accountant(company), %{company_id: company, period: period})
-  end
-
-  # The divergence notification goes out through an **asynchronous** handler, so
-  # `or_else` does not exist in the log until the job runs. In tests jobs stay put
+  # The refusal notice goes out through an **asynchronous** handler, so `or_else`
+  # does not exist in the log until the job runs. In tests jobs stay put
   # (`testing: :manual`), which is an advantage here: it separates "the agreement
   # was kept" from "the agreement is about to be kept".
   defp run_jobs, do: Oban.drain_queue(queue: :events)
@@ -38,23 +36,21 @@ defmodule PNS.TraceTest do
   defp evaluate(opts \\ []), do: PNS.Trace.evaluate(Contract, @assertion, opts)
 
   describe "acceptance criterion" do
-    test "a blocked month is SATISFIED through or_else, not violated" do
-      registries(%{"c-1" => {:ok, @divergent}})
-      open_month("c-1")
+    test "a refused request is SATISFIED through or_else, not violated" do
+      request("r-1", :request_refused)
       run_jobs()
 
       assert [verdict] = evaluate()
 
       assert verdict.verdict == :satisfied,
-             "blocking on a divergence is a correct ending of the process, not a broken agreement"
+             "refusing is a correct ending of the process, not a broken agreement"
 
       assert verdict.via == :or_else
-      assert verdict.instance_id == instance("c-1", "2026-07")
+      assert verdict.instance_id == "handling|r-1"
     end
 
-    test "an opened month is satisfied through eventually" do
-      registries(%{"c-1" => {:ok, @consistent}})
-      open_month("c-1")
+    test "a completed request is satisfied through eventually" do
+      request("r-1", :request_approved)
 
       assert [verdict] = evaluate()
       assert verdict.verdict == :satisfied
@@ -64,15 +60,14 @@ defmodule PNS.TraceTest do
     test "two runs, two different ways of being satisfied — and they do not mix" do
       # This is 1.1 and 1.5 tied together: without run identity this assertion
       # would be counted once, globally, and would credit both runs the same way.
-      registries(%{"c-1" => {:ok, @consistent}, "c-2" => {:ok, @divergent}})
-      open_month("c-1")
-      open_month("c-2")
+      request("r-1", :request_approved)
+      request("r-2", :request_refused)
       run_jobs()
 
       by_instance = Map.new(evaluate(), &{&1.instance_id, &1})
 
-      assert by_instance[instance("c-1", "2026-07")].via == :eventually
-      assert by_instance[instance("c-2", "2026-07")].via == :or_else
+      assert by_instance["handling|r-1"].via == :eventually
+      assert by_instance["handling|r-2"].via == :or_else
 
       assert PNS.Trace.summary(evaluate()) == %{
                satisfied: 2,
@@ -91,18 +86,17 @@ defmodule PNS.TraceTest do
   describe "leaving the BEAM process boundary" do
     test "while the `or_else` job sits in the queue the verdict is `pending`" do
       # This is the same lesson as the overlay's fourth state: "not yet" looks
-      # identical in the log to "never". The decision to block has been taken, but
-      # the notification has not gone out, so the agreement is not **yet** kept —
-      # and the verdict has no business claiming that it is.
-      registries(%{"c-1" => {:ok, @divergent}})
-      open_month("c-1")
+      # identical in the log to "never". The decision to refuse has been taken, but
+      # the notice has not gone out, so the agreement is not **yet** kept — and the
+      # verdict has no business claiming that it is.
+      request("r-1", :request_refused)
 
       assert [verdict] = evaluate()
       assert verdict.verdict == :pending
 
       # And once the job has run, the same assertion is satisfied. The cost of
       # asynchrony is named: a job wedged past the window counts as a violation —
-      # correctly, because the notification really did not go out.
+      # correctly, because the notice really did not go out.
       run_jobs()
       assert [%{verdict: :satisfied, via: :or_else}] = evaluate()
     end
@@ -110,15 +104,15 @@ defmodule PNS.TraceTest do
 
   describe "the window" do
     # Events inserted directly, because that is the only way to set `occurred_at`.
-    defp fact(type, company, at, period \\ "2026-07") do
+    defp fact(type, request_id, at) do
       Repo.insert!(%PNS.Event{
         type: to_string(type),
         contract: inspect(Contract),
         contract_version: Contract.version(),
-        process: "accounting_month",
-        instance_id: instance(company, period),
+        process: "handling",
+        instance_id: "handling|#{request_id}",
         correlation_id: Ecto.UUID.generate(),
-        payload: %{"company_id" => company, "period_id" => period_id!(period)},
+        payload: %{"request_id" => request_id},
         occurred_at: at
       })
     end
@@ -126,7 +120,7 @@ defmodule PNS.TraceTest do
     @start ~U[2026-07-01 09:00:00.000000Z]
 
     test "before the window elapses the verdict is `pending`, not `violated`" do
-      fact(:data_completeness_confirmed, "c-1", @start)
+      fact(:request_received, "r-1", @start)
 
       assert [verdict] = evaluate(now: DateTime.add(@start, 1, :day))
       assert verdict.verdict == :pending
@@ -134,7 +128,7 @@ defmodule PNS.TraceTest do
     end
 
     test "after the window elapses with neither ending, the verdict is `violated`" do
-      fact(:data_completeness_confirmed, "c-1", @start)
+      fact(:request_received, "r-1", @start)
 
       assert [verdict] = evaluate(now: DateTime.add(@start, 3, :day))
       assert verdict.verdict == :violated
@@ -142,8 +136,8 @@ defmodule PNS.TraceTest do
     end
 
     test "an ending after the deadline does not rescue the assertion" do
-      fact(:data_completeness_confirmed, "c-1", @start)
-      fact(:accounting_month_opened, "c-1", DateTime.add(@start, 5, :day))
+      fact(:request_received, "r-1", @start)
+      fact(:request_completed, "r-1", DateTime.add(@start, 5, :day))
 
       assert [verdict] = evaluate(now: DateTime.add(@start, 6, :day))
       assert verdict.verdict == :violated
@@ -153,8 +147,8 @@ defmodule PNS.TraceTest do
       # If the window ran from the last occurrence, a process could outrun its own
       # deadline forever by simply emitting `from` again — and this assertion
       # could never be violated.
-      fact(:data_completeness_confirmed, "c-1", @start)
-      fact(:data_completeness_confirmed, "c-1", DateTime.add(@start, 10, :day))
+      fact(:request_received, "r-1", @start)
+      fact(:request_received, "r-1", DateTime.add(@start, 10, :day))
 
       assert [verdict] = evaluate(now: DateTime.add(@start, 11, :day))
       assert verdict.verdict == :violated
@@ -164,8 +158,8 @@ defmodule PNS.TraceTest do
     test "`or_else` is bound by the deadline too" do
       # A decision for the process owner to confirm: "within two days, X or Y"
       # means both are meant to fit. Otherwise the deadline is useless.
-      fact(:data_completeness_confirmed, "c-1", @start)
-      fact(:discrepancy_notification_sent, "c-1", DateTime.add(@start, 4, :day))
+      fact(:request_received, "r-1", @start)
+      fact(:refusal_notified, "r-1", DateTime.add(@start, 4, :day))
 
       assert [verdict] = evaluate(now: DateTime.add(@start, 5, :day))
       assert verdict.verdict == :violated
@@ -176,7 +170,7 @@ defmodule PNS.TraceTest do
     test "a run with no `from` is not evaluated at all" do
       # It is neither satisfied nor violated — there is nothing to judge. Counting
       # it as a violation would raise an alarm for every case not yet started.
-      fact(:accounting_month_opened, "c-9", @start)
+      fact(:request_completed, "r-9", @start)
 
       assert evaluate(now: DateTime.add(@start, 30, :day)) == []
     end
@@ -189,36 +183,29 @@ defmodule PNS.TraceTest do
 
   describe "every contract" do
     test "the second domain's assertions are evaluated by the same code" do
-      registries(%{"c-1" => {:ok, @consistent}})
-      open_month("c-1")
+      request("r-1", :request_approved)
 
       all = PNS.Trace.evaluate_all()
       names = Enum.map(all, & &1.trace) |> Enum.sort()
 
-      # Four contracts now. The third is the shapes rig — which is where the
-      # `:suspended` verdict is exercised, because TaxVision's one dependency is consulted
-      # before its assertion window opens. The fourth is Rehmed, and it is the first
-      # one distilled from a real engagement rather than written here.
+      # Three contracts declare assertions here. `submission_reaches_inspection`
+      # is the shapes rig, and it is where the `:suspended` verdict is exercised;
+      # the two medical ones belong to the invented universality gate, which has no
+      # implementation at all.
       assert names == [
+               :completed_or_refusal_notified,
                :episode_reaches_an_end,
-               :medical_event_reported_within_statutory_window,
-               :month_opens_or_is_blocked,
                :referral_reaches_a_decision,
-               :reported_or_chased_within_a_day,
                :submission_reaches_inspection
              ]
 
-      # Neither contract without an implementation has runs to judge — and that is
-      # zero verdicts, not zero violations. `UniversalityGate.TreatmentEpisode` is
-      # the invented medical domain that proved the vocabulary needs no new words;
-      # `Rehmed.Contracts.ClinicalVisit` is client material with the same property
-      # for a different reason — Rehmed has contracts here and no code.
-      unimplemented =
-        Enum.filter(
-          all,
-          &(&1.contract in [UniversalityGate.TreatmentEpisode, Rehmed.Contracts.ClinicalVisit])
-        )
+      # A contract with no implementation has no runs to judge — and that is zero
+      # verdicts, not zero violations. `UniversalityGate.TreatmentEpisode` is the
+      # invented medical domain that proved the vocabulary needs no new words, and
+      # it deliberately has no handlers.
+      unimplemented = Enum.filter(all, &(&1.contract == UniversalityGate.TreatmentEpisode))
 
+      assert unimplemented != []
       assert Enum.all?(unimplemented, &(&1.verdicts == []))
     end
   end

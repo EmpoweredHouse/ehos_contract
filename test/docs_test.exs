@@ -22,6 +22,14 @@ defmodule PNS.DocsTest do
   use ExUnit.Case, async: true
 
   @path "docs/contract.md"
+  # The gates themselves moved into the package on 2026-08-21 with the rest of the
+  # engine's suite; this document did not, because `CLAUDE.md`, `README.md` and two
+  # skills point at it by that path and `mix pns.docs` resolves it from the working
+  # directory. So the reference and the tests that prove it now live on opposite
+  # sides of the seam, and this file reads across it by path. That is a debt with a
+  # name, recorded in `PLAN.md`: the DSL reference is a package artifact still kept
+  # as a host one.
+  @gates "packages/pns_core/test/compile_gates_test.exs"
 
   setup_all do
     {:ok, doc: File.read!(@path)}
@@ -99,7 +107,7 @@ defmodule PNS.DocsTest do
   end
 
   defp gate_tests do
-    "test/compile_gates_test.exs"
+    @gates
     |> File.read!()
     |> then(&Regex.scan(~r/^\s+test "/m, &1))
     |> length()
