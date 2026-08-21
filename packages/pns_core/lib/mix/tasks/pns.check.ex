@@ -315,18 +315,29 @@ defmodule Mix.Tasks.Pns.Check do
   # Declarations the process owner has not confirmed. Not an error — a deliberate
   # transitional state. But it has to be visible on every run, because a false
   # metric is worse than a missing one: it is the metric the product sells.
+  #
+  # `field` names either a process key (`cadence`/`deadline`) or, since 21 August
+  # 2026, a `trace`'s own name — the two need different sentences, because a
+  # trace has no value on the process struct to print: `Map.get(process, field)`
+  # would silently read `nil` for one and say nothing true about the other.
   defp check_unverified_declarations(findings) do
     for contract <- PNS.Registry.contracts(),
         process <- contract.processes(),
         field <- process.unverified,
         reduce: findings do
-      acc ->
-        [
-          {:warn,
-           "process #{inspect(process.name)}: `#{field}` = #{inspect(Map.get(process, field))} " <>
-             "is not confirmed by the process owner — it does not count towards the evidence report"}
-          | acc
-        ]
+      acc -> [{:warn, unverified_message(contract, process, field)} | acc]
+    end
+  end
+
+  @spec unverified_message(module(), map(), atom()) :: String.t()
+  defp unverified_message(contract, process, field) do
+    if Enum.any?(contract.traces(), &(&1.name == field)) do
+      "process #{inspect(process.name)}: assertion #{inspect(field)} is not confirmed by the " <>
+        "process owner — it is still evaluated, but it does not count towards the evidence " <>
+        "report's aggregate"
+    else
+      "process #{inspect(process.name)}: `#{field}` = #{inspect(Map.get(process, field))} " <>
+        "is not confirmed by the process owner — it does not count towards the evidence report"
     end
   end
 

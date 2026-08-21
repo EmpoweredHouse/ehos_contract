@@ -5,6 +5,36 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). **Ten plik to lista roboty** i tylko tu jest
 aktualizowany stan.
 
+## Dopisek 21 sierpnia (8) — `unverified` sięga teraz po `trace`, nie tylko po `cadence`/`deadline`
+
+Z dystylacji Rehmed (18 sierpnia, luka 4 rozliczenia płatnika): najostrzejsza assercja w całym
+zleceniu — `H38`, przyjęcie płatnika w 7 dni przy kolejce dwóch miesięcy — nie miała jak trafić do
+kontraktu bez wchodzenia do raportu dowodowego jako pewnik, którego nikt nie potwierdził. Do dziś
+`PNS.Conformance.verified_declarations/1` czytało `process.unverified` wyłącznie przeciw `:cadence`
+i `:deadline` — nazwa assercji `trace` nigdy nie była z nią zestawiana.
+
+**Poprawka jest jednolinijkowym filtrem w `PNS.Conformance.assertions/4`**
+(`packages/pns_core/lib/pns/conformance.ex`): `trace.name not in process.unverified`, ten sam wzorzec
+co już istniał dla pól procesu. `PNS.Trace.evaluate/3` nadal liczy werdykt normalnie — `unverified`
+nie wyłącza mechanizmu, wyłącza tylko wejście do agregatu, który czyta klient. Zero zmian w DSL:
+`unverified` już przyjmował listę atomów, `trace` już miał nazwę.
+
+**Jedna rzecz po drodze, którą trzeba było naprawić, nie tylko dopisać.** Ostrzeżenie `mix pns.check`
+o niepotwierdzonej deklaracji (`check_unverified_declarations/1`) budowało zawsze zdanie w kształcie
+„`pole` = wartość nie jest potwierdzone" przez `Map.get(process, field)` — poprawne dla `:cadence`/
+`:deadline`, ale dla nazwy assercji `Map.get` cicho zwróciłby `nil`, bo `trace` nie jest polem procesu.
+Rozdzielone na dwa zdania: jedno dla pola procesu (bez zmian), jedno dla assercji (mówi, że werdykt
+wciąż się liczy, tylko nie wchodzi do agregatu).
+
+**Nie zamyka `H38`.** Rozliczenie płatnika ma osobną, wcześniejszą blokadę (luka 2: kotwica
+`visit_delivered` należy do innego procesu, a `trace` nie przekracza granicy procesu) — mechanizm
+teraz istnieje, ale ta konkretna assercja w `payer_settlement.ex` wciąż się nie da napisać.
+
+**Zweryfikowane mutacyjnie:** usunięcie filtra z `assertions/4` wywaliło dokładnie test zbudowany, żeby
+to złapać (`test/report_test.exs`, nowa fikstura `UnverifiedTraceFixture` z dwiema assercjami na
+jednym procesie — jedną potwierdzoną, jedną nie, żeby kontrola nie przechodziła przez przypadek
+filtra usuwającego wszystko). `mix check` zielony: 44 + 306 testów, 0 błędów.
+
 ## Dopisek 21 sierpnia (7) — cztery drobiazgi z listy „przy etapie 3", jeden z nich okazał się już zrobiony
 
 **Zanim je robić, sprawdziłem, czy któryś już istnieje** — dobra decyzja: `info` dla assercji `trace`
@@ -380,11 +410,10 @@ Trzy rzeczy, które wyszły dopiero przy pisaniu, i żadna nie jest o Rehmedzie:
    modelu klienta dzielą jeden klucz instancji. Gdyby zrobić z nich cztery procesy, jedyna assercja warta
    posiadania — od zakończenia świadczenia do zgłoszenia ustawowego — nie skompilowałaby się, bo `trace`
    nie przekracza procesu. To jest zdrowe ograniczenie, ale trzeba je znać **przed** modelowaniem, nie po.
-2. **`unverified` nie obejmuje `trace`.** `PNS.Conformance.verified_declarations/1` filtruje wyłącznie
-   `:cadence` i `:deadline`, więc **spornej assercji nie da się wyłączyć z raportu dowodowego**. Tutaj obie
-   liczby są mocne (ustawa i decyzja klienta z datą), więc nic złego się nie dzieje — ale mechanizm nie
-   powstrzymałby gorszej pary, a hasło „fałszywa metryka jest gorsza niż jej brak" jest tym, co ten produkt
-   sprzedaje. **Kandydat na etap 2.**
+2. **~~`unverified` nie obejmuje `trace`.~~ ✅ zamknięte 21 sierpnia**, patrz „Dopisek 21 sierpnia (8)".
+   `PNS.Conformance.verified_declarations/1` filtrowało wyłącznie `:cadence` i `:deadline`, więc **spornej
+   assercji nie dało się wyłączyć z raportu dowodowego**. Tutaj obie liczby były mocne (ustawa i decyzja
+   klienta z datą), więc nic złego się wtedy nie działo — ale mechanizm nie powstrzymałby gorszej pary.
 3. **Assercja mierzy od momentu, w którym nam powiedziano, nie w którym się wydarzyło.** Okno biegnie od
    wpisu w logu. Przy procesie, którego istotą jest odraczanie zapisu, to jest przekłamanie w stronę
    optymistyczną. Kotwica została wybrana tak, żeby zapis był współczesny zdarzeniu — ale to jest wybór
@@ -404,7 +433,7 @@ w którym DSL się skończył** — a przy danych testowych to jest lepszy wynik
 | 1 | ~~Assercja drobniejsza niż przebieg nie jest łapana i myli się w stronę dobrych wieści.~~ **✅ zamknięte 21 sierpnia** — `PNS.Trace` liczy teraz per element, patrz „Dopisek 21 sierpnia (5)". Nie zamyka tego kontraktu: luka 2 wciąż blokuje napisanie tej assercji tutaj | było **to jest produkt**, teraz zamknięte jako mechanizm silnika |
 | 2 | **Zdarzenie należy do jednego procesu, a obietnica potrzebuje dwóch.** Naturalną kotwicą jest *wizyta wykonana*, która należy do przebiegu wizyty. Scalenie procesów nie pomaga: jeden z dwóch liczników przestaje mieć sens | duże — to jest ta sama granica, o którą rozbił się pierwszy kontrakt, widziana z drugiej strony |
 | 3 | **`instance` to nie „pola grupujące przebieg", tylko „pola znane w chwili zdarzenia"** — i DSL nigdzie tego nie mówi. `E-85` rejestracja u płatnika dzieje się przed wykonaniem, a okres rozliczeniowy nie jest wtedy znany. TaxVision tego nie ujawnił, bo miesiąc księgowy jest znany przed jakąkolwiek pracą w nim | średnie — kandydat na zdanie w `docs/contract.md` |
-| 4 | **`unverified` nie obejmuje `trace` — drugi raz z rzędu zmieniło to, co dało się napisać.** Tu przepadła najostrzejsza assercja w całym zleceniu: umowny obowiązek przyjęcia pacjenta płatnika **w 7 dni** przy kolejce dwóch miesięcy (`H38`). Nikt nie potwierdził, że obowiązek istnieje, a nie ma jak zadeklarować go i trzymać poza raportem dowodowym | **z obserwacji staje się pozycją backlogu** |
+| 4 | ~~`unverified` nie obejmuje `trace`~~ — **✅ mechanizm zamknięty 21 sierpnia**, patrz „Dopisek 21 sierpnia (8)". `H38` (przyjęcie płatnika w 7 dni) wciąż nie jest napisane w `payer_settlement.ex` — blokuje ją luka 2 (kotwica w innym procesie), osobna od tej | było **z obserwacji staje się pozycją backlogu** |
 
 Dwie rzeczy, które przy okazji wyszły na plus i warto je znać jako precedens:
 
@@ -1530,17 +1559,8 @@ procent kontraktu przyszło z sali (przy TaxVision 40%) i **ile przykładów wł
 
 **Nasze, nie pytanie do klienta:**
 
-- **`unverified` nie obejmuje `trace`** — z dystylacji Rehmed (luka 4 w tabeli wyżej), dotąd tylko
-  zapisana jako obserwacja, nie jako pozycja robocza. Dziś `unverified` filtruje wyłącznie deklaracje
-  procesu (`PNS.Conformance.verified_declarations/1` czyta `process.unverified` przeciw `stages`,
-  `cadence`, `deadline`); nazwa assercji `trace` nigdy nie jest z nią zestawiana. Efekt: obowiązek,
-  którego właściciel procesu nie potwierdził — `H38` z Rehmed, przyjęcie płatnika w 7 dni przy kolejce
-  dwóch miesięcy — albo trzeba zadeklarować jako pewnik (fałszywa metryka w raporcie dowodowym), albo
-  w ogóle się nie da napisać i trzymać poza nim. Zakres: `PNS.Conformance.verified_declarations/1` plus
-  `PNS.Trace.evaluate_all/1`/`summary/1`, żeby werdykt assercji wymienionej w `unverified` liczył się w
-  ewaluacji (mechanizm ma coś do obserwowania) ale nie wchodził do agregatu raportu — ten sam wzorzec,
-  co już działa dla pól procesu. DSL się nie zmienia: `unverified` już przyjmuje listę atomów, `trace`
-  już ma nazwę.
+- **~~`unverified` nie obejmuje `trace`~~ — ✅ zamknięte 21 sierpnia.** Z dystylacji Rehmed (luka 4 w
+  tabeli wyżej). Patrz „Dopisek 21 sierpnia (8)" niżej.
 - **~~Kwantyfikacja wewnątrz przebiegu~~ — ✅ zamknięte 21 sierpnia.** Luka 1 z tabeli Rehmed
   wyżej. Patrz „Dopisek 21 sierpnia (5)" niżej.
 

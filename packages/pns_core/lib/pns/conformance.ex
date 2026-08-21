@@ -57,6 +57,13 @@ defmodule PNS.Conformance do
   a number the client never agreed to, printed next to numbers they did, reads as
   measured. A false metric is worse than a missing one when it is the metric the
   product sells.
+
+  **Since 21 August 2026, `unverified` also reaches a `trace` by name** — the
+  sharpest assertion this engine can make is exactly the one most likely to be a
+  guess, and until this date there was no way to write it down without either
+  asserting it as fact or not writing it at all. `PNS.Trace.evaluate/3` still
+  evaluates it; `assertions/4` below is the only thing that omits it, the same
+  split `verified_declarations/1` already draws for `cadence`/`deadline`.
   """
   @spec report(module(), keyword()) :: map()
   def report(contract, opts \\ []) do
@@ -117,9 +124,19 @@ defmodule PNS.Conformance do
   # assertion. Whether the process owner also wants to *name* assertions is a
   # question for the workshop, not for us — recorded in PLAN.md rather than
   # answered by adding a key.
+  #
+  # **`unverified` reaches a `trace` by name, the same way it already reaches
+  # `cadence`/`deadline` by key.** Fixed 21 August 2026 — before this, a `trace`
+  # nobody confirmed had no way to stay out of the report except not writing it at
+  # all, which loses the assertion's own value as a `mix pns.trace` observation.
+  # `PNS.Trace.evaluate/3` still runs and still counts here internally — omitted
+  # is only whether this function hands its summary to the report the client
+  # reads, the same distinction `verified_declarations/1` already draws.
   @spec assertions(module(), map(), map(), keyword()) :: [map()]
   defp assertions(contract, process, labels, opts) do
-    for trace <- contract.traces(), contract.process_of(trace.from).name == process.name do
+    for trace <- contract.traces(),
+        contract.process_of(trace.from).name == process.name,
+        trace.name not in process.unverified do
       verdicts = Trace.evaluate(contract, trace.name, opts)
       label = fn name -> name && Map.get(labels, to_string(name), to_string(name)) end
 

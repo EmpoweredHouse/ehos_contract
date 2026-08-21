@@ -27,6 +27,32 @@ defmodule PNS.ReportTest do
 
   alias ProcessShapes.Promised, as: Contract
 
+  defmodule UnverifiedTraceFixture do
+    @moduledoc """
+    INVENTED. Two assertions on one process, one confirmed and one not — so the
+    control (a second, real assertion) proves the filter acts on `unverified`
+    rather than on every assertion regardless.
+    """
+
+    use PNS.Contract
+
+    event :thing_started, label: "Thing started", payload: %{case_id: :id}, process: :thing
+    event :thing_finished, label: "Thing finished", payload: %{case_id: :id}, process: :thing
+    event :thing_logged, label: "Thing logged", payload: %{case_id: :id}, process: :thing
+
+    trace :guessed_deadline do
+      from :thing_started
+      eventually :thing_finished, within: {1, :day}
+    end
+
+    trace :confirmed_rule do
+      from :thing_started
+      eventually :thing_logged, within: {1, :day}
+    end
+
+    process :thing, label: "Thing", instance: [:case_id], unverified: [:guessed_deadline]
+  end
+
   # The request edge: one command, two facts. Approving reaches the ordinary
   # ending inside the transaction; refusing leaves the ending in the queue.
   defp request(id, decision) do
@@ -70,6 +96,29 @@ defmodule PNS.ReportTest do
 
       refute Enum.any?(PNS.Conformance.verified_declarations(process), &(&1.key == :deadline))
       assert Enum.any?(PNS.Conformance.verified_declarations(confirmed), &(&1.key == :deadline))
+    end
+  end
+
+  describe "unverified reaches a trace by name, fixed 21 August 2026" do
+    test "an unverified trace's assertion does not reach the report" do
+      [process] = PNS.Conformance.report(UnverifiedTraceFixture).processes
+      names = Enum.map(process.assertions, & &1.trace)
+
+      refute :guessed_deadline in names,
+             "an assertion nobody confirmed reads as measured next to ones that were"
+
+      # Without a second, confirmed assertion on the same process this would also
+      # pass against a filter that drops every assertion regardless of `unverified`.
+      assert :confirmed_rule in names
+    end
+
+    test "the unverified assertion is still evaluated — the mechanism has something to observe" do
+      # `unverified` hides it from the report the client reads; it does not turn
+      # off `PNS.Trace` itself, which is what a developer reads with `mix pns.trace`.
+      PNS.emit!(UnverifiedTraceFixture, :thing_started, %{case_id: "c-1"})
+
+      assert [verdict] = PNS.Trace.evaluate(UnverifiedTraceFixture, :guessed_deadline)
+      assert verdict.verdict == :pending
     end
   end
 
