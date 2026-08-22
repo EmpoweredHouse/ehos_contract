@@ -15,7 +15,7 @@ schema "users" do        # a stored row has an email
 end
 
 event :invoice_issued,   # a fact that happened carries an invoice id
-  label: "Faktura wystawiona",
+  label: "Invoice issued",
   payload: %{invoice_id: :id}
 ```
 
