@@ -62,7 +62,7 @@ end
 ```
 
 Over a month, 40 cases were opened. 39 look completely uneventful — filed or flagged, no
-exceptions anywhere. One didn't: a code path that should have flagged it simply never ran,
+exceptions anywhere. One didn't: a code path that should have flagged it never ran,
 for reasons that have nothing to do with this engine (a bug, a missed deploy, an edge case
 nobody tested). No error, so nothing paged anyone. This is the actual, unedited output of
 `mix pns.report` for that month:
@@ -84,10 +84,9 @@ DRIFT
   None: nothing happened outside the agreement.
 ```
 
-`BREACHED in 1 of 40 runs` is the whole product on one line. It isn't a bug report — it doesn't
-point at a stack trace — and it isn't a business report — it doesn't say what the invoice was
-for. It says one thing only: reality stopped matching what was agreed, on one run out of forty,
-and here is proof.
+`BREACHED in 1 of 40 runs` is the whole product on one line. It doesn't point at a stack trace,
+and it doesn't say what the invoice was for — it says reality stopped matching what was agreed,
+once out of forty times, and here's proof.
 
 ## The four questions
 
@@ -101,8 +100,8 @@ not one more:
 
 Everything else already has an owner: performance is your APM's job, errors are your error
 tracker's job, **business state is the client application's job.** The day this engine starts
-answering "which company hasn't closed July," it has become a second, worse screen of that
-application — see [non-goals](#non-goals).
+answering "which customer's order hasn't shipped yet," it has become a second, worse screen of
+that application — see [non-goals](#non-goals).
 
 ## Writing a contract
 
@@ -163,8 +162,8 @@ mix pns.docs                               # regenerate docs/contract.md from th
 ## The package
 
 The product is [`packages/pns_core`](packages/pns_core) — a self-contained Elixir package with
-its own `mix.exs` and its own 306-test suite, none of which requires a client application to
-exist. That is the part meant to eventually ship to Hex.
+its own `mix.exs` and its own test suite, none of it requiring a client application to exist.
+That is the part meant to eventually ship to Hex.
 
 Everything else in this repository — `lib/taxvision/` (a full fictional client application),
 `lib/rehmed/` (contracts only, from a second, unrelated healthcare domain) — is test material,
@@ -182,7 +181,7 @@ from the first commit, so it's a fact the compiler checks, not a promise in a do
 | A project generator (`mix pns.new`) | Worth building once something has been copied twice — at a second real client, not before. |
 | Real registries, real mail, a real OIDC provider | A behaviour plus a fake. The seam works; swapping the real implementation in is one line of configuration. |
 | Alerts, ops dashboards, metrics collection | Performance is your APM's job, errors are your error tracker's job, business state is the client application's job. |
-| Anything that answers a question about one specific company | The moment this engine can tell you "which company hasn't closed July," it has stopped being a compliance engine and started being a worse copy of the client's own application. |
+| Anything that answers a question about one specific customer | The moment this engine can tell you "which customer's order hasn't shipped yet," it has stopped being a compliance engine and started being a worse copy of the client's own application. |
 
 ## Learn more
 
@@ -196,4 +195,5 @@ from the first commit, so it's a fact the compiler checks, not a promise in a do
 ## Status
 
 A working prototype, not a released library — nothing here has shipped to a real client yet.
-350 tests run in CI on every change (see the badge above). Licensed under [Apache 2.0](LICENSE).
+The full test suite runs in CI on every change (see the badge above). Licensed under
+[Apache 2.0](LICENSE).
