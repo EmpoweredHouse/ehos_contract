@@ -24,12 +24,12 @@ defmodule Taxvision.Contract.Invoicing do
   use PNS.Contract
 
   event :invoice_issued,
-    label: "Faktura wystawiona",
+    label: "Faktura wystawiona",             # "Invoice issued"
     owner: Taxvision.Invoicing,
     payload: %{invoice_id: :id, amount: :integer, client_id: :id}
 
   event :filing_rejected_by_authority,
-    label: "Urząd odrzucił zgłoszenie",
+    label: "Urząd odrzucił zgłoszenie",      # "The authority rejected the filing"
     owner: Taxvision.Filing,
     depends_on: :ksef,
     payload: %{filing_id: :id, closing_id: :id, reason: :string},
@@ -39,7 +39,7 @@ defmodule Taxvision.Contract.Invoicing do
     stage: :filing
 
   event :invoice_filed,
-    label: "Zgłoszenie wysłane",
+    label: "Zgłoszenie wysłane",             # "Filing sent"
     owner: Taxvision.Filing,
     payload: %{filing_id: :id, closing_id: :id},
     process: :month_end_closing,
@@ -47,7 +47,7 @@ defmodule Taxvision.Contract.Invoicing do
     terminal: true
 
   process :month_end_closing,
-    label: "Zamknięcie miesiąca",
+    label: "Zamknięcie miesiąca",            # "Month-end closing"
     stages: [:collection, :calculation, :filing],
     instance: [:closing_id],
     cadence: {1, :month},
@@ -60,26 +60,34 @@ defmodule Taxvision.Contract.Invoicing do
     or_else :closing_abandoned
   end
 
+  # KSeF: Poland's mandatory e-invoicing platform (Krajowy System e-Faktur) — a real
+  # government system, not a stand-in.
   external :ksef, label: "KSeF", expected_latency: {2, :hour}
 
   rule :filing_requires_complete_month,
-    label: "Nie wysyłamy zgłoszenia z niekompletnego miesiąca",
+    label: "Nie wysyłamy zgłoszenia z niekompletnego miesiąca",  # "We do not file for an incomplete month"
     function: {Taxvision.Filing, :prepare, 1},
     source: "Warsztat 07-07, WF 01:50:54"
 
-  example "komplet dokumentów — zgłoszenie idzie",
+  example "komplet dokumentów — zgłoszenie idzie",   # "complete documents — the filing goes through"
     rule: :filing_requires_complete_month,
     given: %{documents_collected: true, bank_statement: :present},
     command: {:prepare_filing, %{closing_id: "4712"}},
     then: [:jpk_generated, :invoice_filed]
 
-  example "brak wyciągu — komenda odrzucona",
+  example "brak wyciągu — komenda odrzucona",         # "no bank statement — command rejected"
     rule: :filing_requires_complete_month,
     given: %{documents_collected: true, bank_statement: nil},
     command: {:prepare_filing, %{closing_id: "4712"}},
     rejected_with: :bank_statement_missing
 end
 ```
+
+The Polish is not a placeholder — `label`, `source`, and the two `example` titles above are read
+by a real accountant, in the language the workshop was run in, and the engine passes them
+through untouched (see `docs/contract.md`'s note on `event`'s `label`). The English comments
+beside them exist only for a reader of this document who doesn't speak Polish; they are glosses,
+not a translation the contract itself would ever carry.
 
 `use PNS.Contract` accumulates the declarations in module attributes and generates the query
 functions at `@before_compile`: `event?/1`, `event/1`, `events/0`, `process/1`, `traces/0`,
