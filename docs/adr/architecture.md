@@ -419,7 +419,8 @@ One question turned out not to need the record's attention, and it is worth sayi
 back. A trace assertion is the only declaration with an identifier and no client-facing label, which reads
 like a gap against the consequence that "the contract is client-facing, so it needs business labels alongside
 technical event names". It is not one. An event's label carries a fact nothing else expresses — no engine
-derives *"Otwarto miesiąc księgowy"* from `accounting_month_opened`, so there is nothing for it to drift from.
+derives *"Otwarto miesiąc księgowy"* ("The accounting month was opened") from `accounting_month_opened`,
+so there is nothing for it to drift from.
 A label on an assertion would **restate** what `from`, `eventually`, `within` and `or_else` already say in
 full, which is a second editable representation of one thing: change the window and the prose still claims the
 old one, with nothing to catch it. That is the argument §2 makes against a documentation format as the source,
