@@ -5,6 +5,23 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). **Ten plik to lista roboty** i tylko tu jest
 aktualizowany stan.
 
+## Dopisek 23 sierpnia (9) — `README.md` dogonił stan faktyczny
+
+Wiersz "A dashboard, a screen" w tabeli Non-goals obrósł trzema kolejnymi dopiskami "23 August: ..."
+w jednej komórce — czytelne dla nikogo poza autorem. Skoro dashboard od dopisku (8) realnie działa na
+prawdziwym hoście, przestał być non-goalem: usunięty z tabeli, nie dogrzebany czwartym dopiskiem.
+Historia zostaje w `PLAN.md`/`git log`, nie w README — README od 21 sierpnia jest dla czytelnika
+spoza zespołu, nie archiwum decyzji.
+
+W zamian: nowa sekcja "Seeing the dashboard" (naturalne rozwinięcie "The four questions" — ten sam
+segue, którego już tam brakowało), krótka wzmianka o `packages/pns_web` w "The package" (analogicznie
+do `oban`/`oban_web`), i scalenie z już istniejącym wierszem non-goals o "Real registries, real mail,
+a real OIDC provider" — dodanie "a real login screen" tam, nie osobny, dublujący wiersz.
+
+Zweryfikowane, nie zgadywane: `mix phx.server` (polecenie w nowej sekcji) faktycznie działa i
+faktycznie odpowiada pod `/dashboard` — sprawdzone ręcznie przed wpisaniem do README, nie założone
+dlatego, że `:phoenix` jest teraz zależnością.
+
 ## Dopisek 23 sierpnia (8) — `pns_prototype` dostaje prawdziwego hosta Phoenixa
 
 Domyka wątek otwarty od ekstrakcji `packages/pns_web`: dashboard żył dotąd wyłącznie w samodzielnym

@@ -103,6 +103,25 @@ tracker's job, **business state is the client application's job.** The day this 
 answering "which customer's order hasn't shipped yet," it has become a second, worse screen of
 that application — see [non-goals](#non-goals).
 
+## Seeing the dashboard
+
+The same four questions, as a screen instead of a report — [`packages/pns_web`](packages/pns_web),
+mounted at `/dashboard` on this repository's own host the way `oban_web` mounts into any Phoenix
+app. Built only once `mix pns.report`'s text output above had already proven the signal was worth
+showing; the screen reformats that answer, it doesn't invent a second one. Two screens: contract
+status (the four questions, per contract) and accounts — a thin proxy over a handful of calls a
+bought identity provider will eventually serve (list users, grant a role), not a new opinion about
+identity.
+
+```bash
+mix phx.server
+```
+
+Then open `http://localhost:4000/dashboard` and log in — `PNS.Web.LocalLogin` mints a token for
+whoever you say you are. It's the provisional stand-in for a real login screen
+([`docs/adr/identity-seam.md`](docs/adr/identity-seam.md) still leaves the real one open, deliberately),
+not a security boundary: nothing here belongs pointed at anything but your own machine.
+
 ## Writing a contract
 
 If you know `Ecto.Schema`, you already have the mental model: a schema declares the shape of rows
@@ -165,6 +184,10 @@ The product is [`packages/pns_core`](packages/pns_core) — a self-contained Eli
 its own `mix.exs` and its own test suite, none of it requiring a client application to exist.
 That is the part meant to eventually ship to Hex.
 
+[`packages/pns_web`](packages/pns_web) ships alongside it — the dashboard from
+[above](#seeing-the-dashboard), structured the same way `oban_web` sits beside `oban`: a mountable
+router and screens, own `mix.exs`, own test host, no opinion about a host's own domain.
+
 Everything else in this repository — `lib/taxvision/` (a full fictional client application),
 `lib/rehmed/` (contracts only, from a second, unrelated healthcare domain) — is test material,
 kept around so the engine's assumptions get exercised against something other than its own
@@ -175,11 +198,10 @@ from the first commit, so it's a fact the compiler checks, not a promise in a do
 
 | | Why not |
 | --- | --- |
-| A dashboard, a screen | Had to confirm the declared/observed gap was a signal worth showing before building a place to show it. It is — fifty runs collapse into one line of a report. *23 August: both screens exist now. `packages/pns_web` renders the same four questions `PNS.Report` already answers in text, as HTML; and an accounts screen backed by `PNS.Auth.IdentityAdmin`, behind a fake, not a real provider client. Still a non-goal in the sense that matters here: one screen reformats data the engine already computes, the other proxies a handful of calls a bought identity provider already serves — neither is a new opinion this project has standing to hold.* |
 | The observed-overlay graph, in a UI | Tried it: eleven events produced three edges, and the diagram said nothing a sorted list didn't already say. Doesn't apply to the per-process view, which is the only one that says anything about a contract with no implementation yet. |
 | An opinion on the API layer | REST vs. GraphQL is an open question this project has no standing to close by building one. |
 | A project generator (`mix pns.new`) | Worth building once something has been copied twice — at a second real client, not before. |
-| Real registries, real mail, a real OIDC provider | A behaviour plus a fake. The seam works; swapping the real implementation in is one line of configuration. |
+| Real registries, real mail, a real OIDC provider, a real login screen | A behaviour plus a fake — today `PNS.Auth.LocalToken` and the form that mints it ([`docs/adr/identity-seam.md`](docs/adr/identity-seam.md) leaves the vendor and the login flow open on purpose). The seam works; swapping the real implementation in is one line of configuration, not a rewrite. |
 | Alerts, ops dashboards, metrics collection | Performance is your APM's job, errors are your error tracker's job, business state is the client application's job. |
 | Anything that answers a question about one specific customer | The moment this engine can tell you "which customer's order hasn't shipped yet," it has stopped being a compliance engine and started being a worse copy of the client's own application. |
 
