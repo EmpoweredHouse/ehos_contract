@@ -15,6 +15,15 @@ defmodule PNS.Web.TestHost.Endpoint do
 
   socket "/live", Phoenix.LiveView.Socket, websocket: [connect_info: [session: @session_options]]
 
+  # Before the router, not through it — see PNS.Web.Router.pns_dashboard/2's
+  # moduledoc for why a route (`forward`, nested in a CSRF-protected
+  # pipeline) is the wrong place for this. A real host adds this same line
+  # to its own endpoint.
+  plug Plug.Static,
+    at: "/pns_web/assets",
+    from: {:pns_web, "priv/static/assets"},
+    gzip: false
+
   plug Plug.Session, @session_options
   plug PNS.Web.TestHost.Router
 end

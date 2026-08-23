@@ -49,7 +49,11 @@ defmodule PNS.Web.MixProject do
       # The contract status screen's own test suite needs a real database, the
       # same way packages/pns_core's does — same alias, same reason.
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
-      check: ["compile --force --warnings-as-errors", "test"]
+      check: ["compile --force --warnings-as-errors", "test"],
+      # Run by whoever edits assets/js/app.js or assets/css/app.css; the
+      # committed output under priv/static/ is what everyone else —
+      # including `mix check` — uses.
+      "assets.build": ["esbuild pns_web", "esbuild pns_web_css"]
     ]
   end
 
@@ -71,7 +75,13 @@ defmodule PNS.Web.MixProject do
       # phoenix_live_view's own `live/2` test helper parses the dead-render
       # HTML with this and refuses to run without it — not optional despite
       # not appearing in phoenix_live_view's own dependency tree.
-      {:lazy_html, ">= 0.1.0", only: :test}
+      {:lazy_html, ">= 0.1.0", only: :test},
+      # Builds assets/js/app.js into the compiled bundle committed under
+      # priv/static/ — a downloaded binary, not Node, so a consumer of this
+      # package never needs it: only whoever edits the JS itself runs
+      # `mix assets.build` and commits the result, the same way a compiled
+      # asset ships with any other Phoenix component library.
+      {:esbuild, "~> 0.9", runtime: false}
     ]
   end
 end

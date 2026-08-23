@@ -67,7 +67,7 @@ defmodule PNS.Web.Live.Accounts do
     ~H"""
     <div>
       <PNS.Web.Layouts.nav base_path={@pns_web_base_path} current={:accounts} />
-      <p>Access: {access_label(@pns_web_access)}</p>
+      <p class="access-badge">Access: {access_label(@pns_web_access)}</p>
 
       <table>
         <thead>
@@ -107,8 +107,8 @@ defmodule PNS.Web.Live.Accounts do
 
       <p :if={@users == []}>No users yet.</p>
 
+      <h3 :if={@pns_web_access == :all}>Invite someone</h3>
       <form :if={@pns_web_access == :all} phx-submit="invite">
-        <h3>Invite someone</h3>
         <input type="text" name="name" placeholder="name" required />
         <input type="email" name="email" placeholder="email" required />
         <button type="submit">Invite</button>

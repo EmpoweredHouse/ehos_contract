@@ -21,7 +21,7 @@ defmodule PNS.Web.Layouts do
   def nav(assigns) do
     ~H"""
     <nav>
-      <.link navigate={@base_path} aria-current={@current == :contract_status && "page"}>
+      <.link navigate={"#{@base_path}/contract"} aria-current={@current == :contract_status && "page"}>
         Contract status
       </.link>
       <.link navigate={"#{@base_path}/accounts"} aria-current={@current == :accounts && "page"}>

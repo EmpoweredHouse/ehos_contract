@@ -25,7 +25,7 @@ defmodule PNS.Web.Live.ContractStatus do
     ~H"""
     <div>
       <PNS.Web.Layouts.nav base_path={@pns_web_base_path} current={:contract_status} />
-      <p>Access: {access_label(@pns_web_access)}</p>
+      <p class="access-badge">Access: {access_label(@pns_web_access)}</p>
 
       <div :for={report <- @reports}>
         <h2>{inspect(report.contract)}</h2>
@@ -69,7 +69,7 @@ defmodule PNS.Web.Live.ContractStatus do
             <ul>
               <li :for={assertion <- process.assertions}>
                 <p>{rule_sentence(assertion)}</p>
-                <p>{outcome_sentence(assertion)}</p>
+                <p class={outcome_class(assertion)}>{outcome_sentence(assertion)}</p>
               </li>
             </ul>
           </div>
@@ -118,6 +118,18 @@ defmodule PNS.Web.Live.ContractStatus do
       a.violated > 0 -> "BREACHED in #{a.violated} of #{a.instances} runs."
       a.pending > 0 -> "Met in #{a.satisfied} of #{a.instances}, #{a.pending} still in progress."
       true -> "Met in all #{a.instances} runs."
+    end
+  end
+
+  # The one line the report exists to be read from — README's own pitch for
+  # it — so it is the one place color carries the answer, not just the words.
+  @spec outcome_class(map()) :: String.t()
+  defp outcome_class(a) do
+    cond do
+      a.instances == 0 -> ""
+      a.violated > 0 -> "outcome-breached"
+      a.pending > 0 -> "outcome-pending"
+      true -> "outcome-ok"
     end
   end
 end

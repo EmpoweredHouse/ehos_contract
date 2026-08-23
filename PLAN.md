@@ -5,6 +5,97 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). **Ten plik to lista roboty** i tylko tu jest
 aktualizowany stan.
 
+## Dopisek 23 sierpnia (6) — trasy ekranów zsymetryzowane, dwa błędy znalezione przy ręcznym klikaniu
+
+Znalezisko z rozmowy o UX, nie z suity: `/pns` (status kontraktu) i `/pns/accounts` (konta) nie były
+sobie równe — jeden ekran dostał "goły" mount path, drugi nazwaną podścieżkę. Decyzja użytkownika:
+zsymetryzować. `PNS.Web.Live.ContractStatus` przeniósł się na `/contract`; goły `path` teraz
+przekierowuje na `path <> "/contract"`, zanim `on_mount` w ogóle zdąży sprawdzić dostęp — bookmark do
+korzenia mountu nie powinien być decyzją, tylko wskazaniem, który ekran jest "pierwszy wśród równych".
+
+**Dwa prawdziwe błędy złapane wyłącznie ręcznym klikaniem, żaden przez `mix check`:**
+
+1. **Nawigacja "nie działała" po poprzednim demo-buggu** — `Ecto.Adapters.SQL.Sandbox` ma domyślny
+   `:ownership_timeout` 120s (żeby łapać zawieszone testy), a sesja ręcznego demo stała dłużej.
+   Wygasła własność połączenia → 500 na każdym query → socket LiveView w kliencie prawdopodobnie
+   utknął w stanie, w którym `<.link navigate>` nic nie robi (próba wysłania przez martwy kanał
+   zamiast spaść na zwykłą nawigację). Poprawka jest w `tmp_manual_demo.exs` (niecommitowany), nie w
+   pakiecie: `ownership_timeout: :infinity` dla ręcznej sesji. Nie wpływa na produkcyjny kod — to
+   właściwość testowego sandboxa, nie czegoś, co `pns_web` samo w sobie robi.
+2. **Redirect gubił query string.** Pierwsza wersja `RedirectToContract` robiła
+   `redirect(to: path <> "/contract")` — literalnie, bez `conn.query_string`. Dla realnego hosta to
+   nieszkodliwe (autoryzacja idzie nagłówkiem/cookie, nie parametrem), ale dla **każdego** przyszłego
+   przypadku, gdzie ktoś doklei coś do URL-a mountu (`?since=`/`?until=` z okresu raportu, o którym
+   już rozmawialiśmy przy ekranie 1, albo cokolwiek innego) — cichy redirect obcinający query string
+   byłby bugiem czekającym na odkrycie. Poprawione ogólnie, nie tylko dla `?as=`, i przypięte testem
+   (`the redirect carries the query string, not just the path`).
+
+`PNS.Web.Layouts.nav/1` zaktualizowany na `#{base_path}/contract`. Testy: `router_test.exs` przeszedł
+z `/pns` na `/pns/contract` we wszystkich asercjach treści, plus dwa nowe testy (redirect na `/contract`,
+redirect z zachowanym query string) — 24 testy w `packages/pns_web`, było 22.
+
+`mix check` zielony: 44 + 311 + 24 = 379. Zweryfikowane też ręcznie: nawigacja w obie strony, w tej
+samej przeglądarce, po odświeżeniu.
+
+## Dopisek 23 sierpnia (5) — domyślny arkusz CSS, na tym samym esbuildzie
+
+Po pipeline JS (dopisek niżej) — mały, domyślny wygląd, żeby host montujący `pns_dashboard/2` nie
+dostawał gołego HTML-a. Zakres świadomie wąski: `assets/css/app.css`, zwykłe selektory znacznikowe
+(`nav`, `table`, `form`, `button`), zero frameworku — bezpieczne, bo `root_layout` zastępuje **całą**
+stronę hosta dla tych tras, więc selektory znacznikowe nigdzie nie wyciekają.
+
+**Jeden dodatkowy profil esbuild, nie jeden multi-entry.** Pierwsza wersja budowała `js/app.js` i
+`css/app.css` jednym wywołaniem — esbuild przy wielu wejściach nazywa wyjście ścieżką względem
+najbliższego wspólnego przodka, więc wyszło `assets/js/app.js`/`assets/css/app.css`, nie płaskie
+`assets/app.js`/`assets/app.css`, których oczekiwał layout. Poprawka: dwa profile
+(`pns_web`/`pns_web_css`), `mix assets.build` woła oba.
+
+**Dwa miejsca, gdzie kolor niesie odpowiedź, nie tylko dekoruje** — cytat z README: „`BREACHED in 1 of
+40 runs` is the whole product on one line." `outcome_class/1` w `PNS.Web.Live.ContractStatus` koloruje
+dokładnie to zdanie (czerwony/pomarańczowy/zielony dla breached/pending/satisfied); `.access-badge`
+robi to samo dla poziomu dostępu na obu ekranach. Jedyne dwa hooki klas dopisane do szablonów — reszta
+stylu to same selektory znacznikowe, zero innych zmian w LiveView.
+
+**Jeden realny błąd znaleziony wizualnie, nie przez `mix check`**: `<h3>Invite someone</h3>` siedział
+**wewnątrz** `<form phx-submit="invite">`, a `form { display: flex }` zrobiło z nagłówka wąski flex-item
+łamiący się na dwie linijki. Poprawka: nagłówek przeniesiony przed `<form>`, nie do niego — dokładnie
+ten rodzaj usterki, którego żaden test HTML-owy (asercja na tekst) nie łapie, bo tekst się zgadzał,
+tylko układ nie.
+
+`mix check` zielony bez zmian: 44 + 311 + 22 = 377. Zweryfikowane też wizualnie, w tej samej ręcznie
+odpalonej przeglądarce co pipeline JS.
+
+## Dopisek 23 sierpnia (4) — pipeline JS, bo ręczne uruchomienie znalazło martwe przyciski
+
+Znalezisko z ręcznego testu w przeglądarce (nie z suity — `Phoenix.LiveViewTest` symuluje socket w
+procesie i nigdy nie dotyka prawdziwego JS): oba ekrany renderowały się poprawnie, ale `phx-click`/
+`phx-submit` nic nie robiły — root layout nie ładował klienta LiveView, więc przeglądarka traktowała
+formularze jak zwykłe, natywne submity. 22 zielone testy nic o tym nie mówiły, bo nie miały jak.
+
+**`mix esbuild` (binarka, nie Node/npm)** — `assets/js/app.js` importuje `phoenix`/`phoenix_live_view`/
+`phoenix_html` z `deps/` przez `NODE_PATH`, dokładnie ten trik, którego używa `mix phx.new`. Zbudowany
+bundle (`priv/static/assets/app.js`, zminifikowany, 144KB) jest **commitowany**, nie budowany przy
+`mix compile` konsumenta — pakiet ścieżkowy nie ma jak uruchomić kroku budowania za kogoś, więc
+`esbuild` jest `runtime: false` i potrzebny tylko temu, kto edytuje JS (`mix assets.build`).
+
+**Ślepy zaułek, zanim wyszło na jaw dlaczego**: pierwsza wersja serwowała bundle przez
+`forward "/assets", Plug.Static, ...` zagnieżdżone w tym samym `scope` co ekrany — więc dziedziczyło
+`pipe_through :browser` hosta, `protect_from_forgery` włącznie. `Plug.CSRFProtection` ma wbudowaną
+ochronę przed cross-origin `<script>` i **odmawia serwowania JavaScriptu przez trasę objętą CSRF**,
+z zasady, niezależnie od tego, czy request faktycznie jest złośliwy
+(`Plug.CSRFProtection.InvalidCrossOriginRequestError`). Objawiało się jako 403, zamaskowane w dodatku
+przez brak skonfigurowanego `render_errors` w hoście demo — dopiero jawny error view ujawnił prawdziwy
+wyjątek. **Poprawka zgodna z tym, jak robi to każda wygenerowana aplikacja Phoenix**: statyczne assety
+serwuje się na poziomie Endpointu, przed routerem, nie przez trasę. `pns_dashboard/2` już tego nie robi
+— zamiast tego jego moduledoc **wymaga jednej linijki w Endpointzie hosta** (`plug Plug.Static, at:
+"/pns_web/assets", from: {:pns_web, "priv/static/assets"}, gzip: false`), tej samej rangi co
+`PNS.Web.Plug.Authenticate` w pipeline routera — i `test/support/test_host/endpoint.ex` niesie dokładnie
+tę linijkę, więc własna suita dowodzi instrukcji, nie tylko ją zakłada.
+
+**Zweryfikowane ręcznie, nie tylko przez `mix check`**: pełna pętla invite → grant → revoke w prawdziwej
+przeglądarce, na żywo, bez przeładowania strony — dokładnie to, czego `Phoenix.LiveViewTest` nie mogło
+udowodnić. `mix check` zielony bez zmian: 44 + 311 + 22 = 377.
+
 ## Dopisek 23 sierpnia (3) — drugi ekran: panel kont
 
 Domyka dwuekranowy plan. `PNS.Web.Live.Accounts`, pod `/accounts` w tym samym `live_session` co ekran

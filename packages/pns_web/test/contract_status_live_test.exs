@@ -28,7 +28,7 @@ defmodule PNS.Web.Live.ContractStatusTest do
     conn =
       build_conn()
       |> TestToken.put_actor("admin", ["pns_admin"])
-      |> get("/pns")
+      |> get("/pns/contract")
 
     html = html_response(conn, 200)
 

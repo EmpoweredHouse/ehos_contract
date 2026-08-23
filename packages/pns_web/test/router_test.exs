@@ -17,8 +17,19 @@ defmodule PNS.Web.RouterTest do
     {:ok, conn: build_conn()}
   end
 
-  test "no login redirects before the LiveView ever mounts", %{conn: conn} do
+  test "the bare mount path redirects to the contract status screen, before any access check",
+       %{conn: conn} do
     conn = get(conn, "/pns")
+    assert redirected_to(conn) == "/pns/contract"
+  end
+
+  test "the redirect carries the query string, not just the path", %{conn: conn} do
+    conn = get(conn, "/pns?since=2026-01-01")
+    assert redirected_to(conn) == "/pns/contract?since=2026-01-01"
+  end
+
+  test "no login redirects before the LiveView ever mounts", %{conn: conn} do
+    conn = get(conn, "/pns/contract")
     assert redirected_to(conn) == "/"
   end
 
@@ -26,7 +37,7 @@ defmodule PNS.Web.RouterTest do
     conn =
       conn
       |> TestToken.put_actor("someone", ["unrelated_role"])
-      |> get("/pns")
+      |> get("/pns/contract")
 
     assert redirected_to(conn) == "/"
   end
@@ -35,18 +46,18 @@ defmodule PNS.Web.RouterTest do
     conn =
       conn
       |> TestToken.put_actor("admin", ["pns_admin"])
-      |> get("/pns")
+      |> get("/pns/contract")
 
     assert html_response(conn, 200) =~ "Access: all"
   end
 
   test "on_mount enforces the same decision across the live socket upgrade", %{conn: conn} do
     conn = TestToken.put_actor(conn, "admin", ["pns_admin"])
-    {:ok, _view, html} = live(conn, "/pns")
+    {:ok, _view, html} = live(conn, "/pns/contract")
     assert html =~ "Access: all"
   end
 
   test "an unauthenticated conn cannot open the live socket", %{conn: conn} do
-    assert {:error, {:redirect, %{to: "/"}}} = live(conn, "/pns")
+    assert {:error, {:redirect, %{to: "/"}}} = live(conn, "/pns/contract")
   end
 end

@@ -45,3 +45,25 @@ config :pns_web, PNS.Web.TestHost.Endpoint,
   http: [port: 4102]
 
 config :logger, level: :warning
+
+# `mix assets.build` — the JS pipeline (PLAN.md, dopisek 23 sierpnia (4)).
+# NODE_PATH points at deps/ so `import {Socket} from "phoenix"` resolves
+# against the hex packages already in this build, the same trick every
+# `mix phx.new` app uses — no npm, no node_modules, esbuild is a downloaded
+# binary that reads plain ES modules.
+# Two profiles, not one multi-entry build: esbuild names multi-entry
+# output after each file's path relative to the lowest common ancestor —
+# `js/app.js` + `css/app.css` would land at `assets/js/app.js` and
+# `assets/css/app.css`, not the flat `assets/app.js`/`assets/app.css` the
+# layout links to.
+config :esbuild,
+  version: "0.25.0",
+  pns_web: [
+    args: ~w(js/app.js --bundle --minify --target=es2022 --outdir=../priv/static/assets),
+    cd: Path.expand("../assets", __DIR__),
+    env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
+  ],
+  pns_web_css: [
+    args: ~w(css/app.css --bundle --minify --outdir=../priv/static/assets),
+    cd: Path.expand("../assets", __DIR__)
+  ]
