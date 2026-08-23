@@ -5,6 +5,109 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). **Ten plik to lista roboty** i tylko tu jest
 aktualizowany stan.
 
+## Dopisek 23 sierpnia (11) — trzeci ekran: graf, krok 2 z dopisku (10) faktycznie zbudowany
+
+Domyka dopisek (10). `PNS.Web.Live.Graph`, `/graph`, trzeci tab w nawigacji. Dwa panele, asymetryczne
+świadomie, zgodnie z ADR §9 („navigation is per-process, never global"):
+
+- **Declared shape** — `PNS.Graph.declared_to_mermaid/2`, per wybrany proces (selektor `<select
+  phx-change>`, lista z `PNS.Registry.contracts()` × `c.processes()`). Prawdziwy jest nawet dla
+  kontraktu z zerem przebiegów.
+- **Declared versus observed, every contract** — `PNS.Graph.overlay/1` + `to_mermaid/2`, globalny.
+  Zostaje globalny nie z lenistwa: `to_mermaid/2` zawsze dobiera węzły z całego `static()`, niezależnie
+  od tego, jaką listę krawędzi mu się poda — pre-filtrowanie overlayu per proces odcięłoby krawędzie,
+  nie węzły, i dałoby diagram z osieroconymi skrzynkami. Zawężenie tego jest pracą w silniku, nie tym
+  ekranem.
+
+„Statyczny graf globalny" (trzecia opcja z rozmowy) **nie dostał osobnego renderera** — overlay już
+zawiera każdą zadeklarowaną krawędź, choćby martwą, więc jest tym samym widokiem bez podświetlenia
+stanu. Zawężenie zakresu zapisane wprost, nie przemilczane.
+
+**Zero zmian w `packages/pns_core`.** Wszystko: `PNS.Graph`, `PNS.Registry`, `PNS.Deployment`,
+`PNS.Conformance` już było wyeksportowane z `PNS` (`lib/pns.ex`), i dwie z trzech funkcji renderujących
+mermaid już istniały gotowe do użycia.
+
+**Pierwszy `phx-hook` w tym kodzie, i jedna prawdziwa pułapka znaleziona wyłącznie ręcznym
+sprawdzeniem w przeglądarce, nie przez `mix check`.** Mermaid (`mermaid@11.17.0`, wektorowany
+jednorazowo przez `npm pack mermaid@11`, nie jako zależność npm tego builda —
+`packages/pns_web/assets/js/vendor/mermaid.min.js`) **nie mógł zostać zaimportowany przez esbuild do
+`app.js`**, mimo że to jedyny plik JS, jaki trzeba było dodać. Wektorowany plik zakłada klasyczne
+wykonanie skryptu globalnego: `var __esbuild_esm_mermaid_nm` na najwyższym poziomie staje się
+właściwością `globalThis` tylko wtedy, gdy skrypt wykonuje się w prawdziwym zasięgu globalnym — a
+`import "./vendor/mermaid.min.js"` w pliku bundlowanym przez esbuild zawija ten kod we własny zasięg,
+więc drugi wiersz pliku (`globalThis.mermaid = globalThis.__esbuild_esm_mermaid_nm["mermaid"].default`)
+czytał **inną** zmienną niż ta, którą pierwszy wiersz właśnie ustawił, i wywalał się w głębi własnego
+kodu inicjalizacyjnego Mermaid z `TypeError: Cannot read properties of undefined (reading 'mermaid')`
+— złapane jako `mermaid version 11.17.0` „Syntax error in text" na ekranie, dopiero po ręcznym
+zalogowaniu się i kliknięciu w `/dashboard/graph`, zero sygnału z `mix check`/`Phoenix.LiveViewTest`.
+Poprawka: `mermaid.min.js` jest teraz osobnym, klasycznym `<script defer>` w `root.html.heex`, **przed**
+`app.js` (kolejność dokumentu decyduje dla dwóch `defer`), kopiowanym (nie bundlowanym) do
+`priv/static/assets/` trzecim krokiem aliasu `assets.build` w `mix.exs`. `app.js` woła gołe `mermaid.*`
+— identyfikator rozwiązuje się przez normalny łańcuch zasięgów do prawdziwego obiektu globalnego,
+niezależnie od własnego zawinięcia przez esbuild.
+
+Hook `MermaidRender` w `app.js`: diagram trzymany w `data-graph` (nigdy jako zaufany HTML — HEEx
+escapuje go jak każdą inną interpolację), `mounted()`/`updated()` resetują `el.textContent` z tego
+atrybutu i wołają `mermaid.run({ nodes: [el] })` — bez resetu drugi `run` na tym samym węźle nie ma czego
+przerysować, bo mermaid zamienia zawartość na SVG przy pierwszym uruchomieniu.
+
+**Efekt na rozmiar bundla, zaakceptowany świadomie.** `app.js` wrócił do ~143KB (mermaid nie jest już
+jego częścią); `mermaid.min.js` to osobny, statyczny plik 3,5MB, serwowany przez ten sam,
+już-istniejący wiersz `Plug.Static` co `app.js`/`app.css` — zero nowej konfiguracji po stronie hosta.
+
+Testy: `packages/pns_web/test/graph_live_test.exs` (3 — pełna pętla przez prawdziwy router z realnymi
+kontraktami, brak procesu w ogóle, zaznaczenie wybranego procesu w `<select>`). **32 testy w
+`packages/pns_web`, było 29.** `mix check` zielony wszędzie: 50 + 311 + 32 = 393.
+
+Zweryfikowane ręcznie, w prawdziwej przeglądarce, dwa razy (raz złapało powyższą pułapkę, raz po
+poprawce): login → `/dashboard/graph` → oba diagramy renderują się jako SVG (nie jako goły tekst
+`flowchart`), przełączenie procesu w `<select>` przerysowuje diagram kształtu bez przeładowania strony,
+zero błędów w konsoli.
+
+**Zaparkowane, zapisane, nie zaimplementowane: analiza zmiany deklarowanego kształtu w czasie.**
+`PNS.Deployment.all/1` (pełna historia wdrożeń), `diff/2` (porównanie dwóch zapisanych wdrożeń),
+`versions_in_log/2` (które wersje realnie wystąpiły w logu, z zakresem czasu) już istnieją i są gotowe.
+Czego nie ma: wyboru w UI dwóch punktów historii do porównania, naniesienia diffu na sam diagram, i
+rekonstrukcji pełnego historycznego **kształtu** — `pns_deployments` zapisuje płaską listę
+`events`/`edges`, nie strukturę `stages`/`trace`/`terminal`, której potrzebuje `declared_to_mermaid/2`.
+Bezpiecznie odłożone: `record!/1` jest addytywne (jeden wiersz na nowe wiązanie, nigdy nie nadpisuje),
+więc dopisanie bogatszego pola później nie wymaga migracji — stare wiersze zostają płaskie, nowe
+dostają więcej, ten sam idiom co `deployment.ex`'s własny fallback dla logu sprzed tabeli. Jedyny koszt
+zwłoki: pełna rekonstrukcja będzie możliwa tylko od dnia, w którym bogatsze pole zacznie być zapisywane
+— nie retroaktywnie.
+
+README-owy wiersz non-goali o grafie w UI **nie jest jeszcze poprawiony** — to osobny krok, zgodnie z
+zasadą „README dogania stan faktyczny" (dopisek 9); zrobię go, gdy to zostanie zacommitowane.
+
+## Dopisek 23 sierpnia (10) — Etap 4 był krok 1 z dwóch, nie werdyktem na zawsze; graf wraca do planu dashboardu
+
+Rozmowa o kierunku dashboardu: (a) przenieść `mix pns.graph`/`mix pns.report` z dev-only CLI do
+dashboardu na produkcji, (b) prawdziwe konta i prawdziwy login broniący dostępu.
+
+**(b) zaparkowane, nie robimy tego tutaj.** Po namyśle: logowanie i zarządzanie kontami to zakres
+osobnego, przyszłego projektu-szablonu (login + `pns` jako zależność + pełen deployment), nie tego
+repozytorium — zgodnie z „nie budujemy tu aplikacji dla nikogo". `PNS.Web.LocalLogin` zostaje tym, czym
+jest: prowizorką. Zero zmian kodu.
+
+**(a) — cofnięcie generalizacji, nie złamanie non-goala.** Wiersz README „The observed-overlay graph,
+in a UI" cytuje Etap 4 (`PLAN.md`, wyżej w tym pliku, przed pierwszym dopiskiem z 23 sierpnia): „11
+zdarzeń dało 3 krawędzie i diagram nie powiedział nic, czego nie mówiła posortowana lista." To był
+sprawdzian **jednego** overlayu na **tamtym**, cienkim zbiorze danych — nie odrzucenie kategorii „graf w
+UI" jako takiej. Moduledoc `mix pns.graph` (`packages/pns_core/lib/mix/tasks/pns.graph.ex`) mówi to
+wprost od początku: „`--mermaid` prints a diagram. **This is the seed of the dashboard** — data without
+a screen, deliberately in that order: first check whether the difference is signal, then draw it." Krok
+1 (CLI + mermaid, tani sposób sprawdzenia sygnału) był zawsze zapowiedzią kroku 2 (dashboard), nie
+alternatywą dla niego. README, przepisując to na non-goal przy wydaniu open source (`9bdc44b`), poszedł
+dalej niż to, co faktycznie sprawdzono.
+
+**Decyzja: krok 2 się dzieje.** Wszystko, co dziś jest tylko w `mix pns.graph`/`mix pns.report`
+(statyczny graf, nakładka declared/observed, kształt zadeklarowany per proces, raport zgodności) ma
+ostatecznie trafić do dashboardu, nie zostać na zawsze dev-only CLI-em. README-owy wiersz non-goali
+zostaje bez zmian **do chwili, aż faktycznie coś z tego wyląduje w dashboardzie** — ten sam zwyczaj co
+dopisek (9): README dogania stan faktyczny, nie plany. Zakres pierwszego kroku implementacji (który z
+trzech rodzajów grafu, na którym ekranie, jak renderować mermaid w LiveView) do rozstrzygnięcia przed
+pisaniem kodu, nie w trakcie.
+
 ## Dopisek 23 sierpnia (9) — `README.md` dogonił stan faktyczny
 
 Wiersz "A dashboard, a screen" w tabeli Non-goals obrósł trzema kolejnymi dopiskami "23 August: ..."

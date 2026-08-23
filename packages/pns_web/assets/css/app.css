@@ -203,3 +203,22 @@ button[phx-click="revoke_role"]:hover {
   color: var(--pns-ok);
   font-weight: 600;
 }
+
+/* The Mermaid hook replaces this element's content with an SVG once it
+   runs — the scroll container is needed before that happens too, since a
+   diagram wider than the column is the common case, not the exception. */
+pre.mermaid {
+  overflow-x: auto;
+  border: 1px solid var(--pns-border);
+  border-radius: var(--pns-radius);
+  padding: 1rem;
+  margin: 0.5rem 0;
+  background: var(--pns-bg-muted);
+}
+
+select {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--pns-border);
+  border-radius: var(--pns-radius);
+  font-size: 0.9rem;
+}

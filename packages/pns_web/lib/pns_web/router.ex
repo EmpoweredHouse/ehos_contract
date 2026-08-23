@@ -62,6 +62,7 @@ defmodule PNS.Web.Router do
           on_mount: [PNS.Web.Authentication | Keyword.get(opts, :on_mount, [])] do
           live "/contract", PNS.Web.Live.ContractStatus, :index
           live "/accounts", PNS.Web.Live.Accounts, :index
+          live "/graph", PNS.Web.Live.Graph, :index
         end
       end
     end

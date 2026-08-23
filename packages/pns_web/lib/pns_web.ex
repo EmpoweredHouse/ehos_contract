@@ -27,6 +27,7 @@ defmodule PNS.Web do
       Authentication,
       LocalLogin,
       Live.ContractStatus,
-      Live.Accounts
+      Live.Accounts,
+      Live.Graph
     ]
 end

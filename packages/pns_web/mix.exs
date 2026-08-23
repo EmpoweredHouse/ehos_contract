@@ -52,8 +52,20 @@ defmodule PNS.Web.MixProject do
       check: ["compile --force --warnings-as-errors", "test"],
       # Run by whoever edits assets/js/app.js or assets/css/app.css; the
       # committed output under priv/static/ is what everyone else —
-      # including `mix check` — uses.
-      "assets.build": ["esbuild pns_web", "esbuild pns_web_css"]
+      # including `mix check` — uses. The vendored Mermaid build is a
+      # straight copy, not an esbuild input: it needs to execute as a
+      # classic global script (see app.js's own comment on why), which
+      # esbuild's bundling would break.
+      "assets.build": [
+        "esbuild pns_web",
+        "esbuild pns_web_css",
+        fn _args ->
+          File.cp!(
+            Path.expand("assets/js/vendor/mermaid.min.js", __DIR__),
+            Path.expand("priv/static/assets/mermaid.min.js", __DIR__)
+          )
+        end
+      ]
     ]
   end
 
