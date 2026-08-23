@@ -134,8 +134,12 @@ The question is not "how do I add a field" but **whose field it is**:
 
 ## Not yet true
 
-- **No proxy API.** The frontend's planned users-and-access screen is decided to call the engine's own API,
-  not the sidecar directly (ADR, 9 August) — that API does not exist yet. Everything above is the sidecar's
-  Management API, called directly, for this PoC only.
+- **The proxy exists, but not against this sidecar.** `PNS.Auth.IdentityAdmin` and
+  `PNS.Web.Live.Accounts` (23 August) are the engine's own API the screen calls instead of the sidecar
+  directly (ADR, 9 August) — but the implementation behind that API today is `PNS.Auth.LocalIdentityAdmin`,
+  an in-memory fake, not a client for the Management API calls this guide documents. Everything above is
+  still the sidecar's Management API, called directly, for this PoC only; wiring a real implementation of
+  `PNS.Auth.IdentityAdmin` against it is future work this repository deliberately does not do — see
+  `docs/adr/identity-seam.md`'s 23 August note.
 - **No domain-rule UI.** Company-specific rules (the third row of the "Three levels" table) live in the
   permission engine, which is not built. This guide only covers the bought half.

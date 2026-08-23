@@ -39,7 +39,11 @@ defmodule PNS.Web.Live.ContractStatusTest do
   end
 
   test "no runs at all: the process says so instead of listing paths" do
-    assigns = %{pns_web_access: :all, reports: [report(processes: [process(runs: 0)])]}
+    assigns = %{
+      pns_web_access: :all,
+      pns_web_base_path: "/pns",
+      reports: [report(processes: [process(runs: 0)])]
+    }
 
     html = render_component(&ContractStatus.render/1, assigns)
 
@@ -64,6 +68,7 @@ defmodule PNS.Web.Live.ContractStatusTest do
 
     assigns = %{
       pns_web_access: :read_only,
+      pns_web_base_path: "/pns",
       reports: [report(processes: [process(assertions: [assertion])])]
     }
 
@@ -94,6 +99,7 @@ defmodule PNS.Web.Live.ContractStatusTest do
 
     assigns = %{
       pns_web_access: :all,
+      pns_web_base_path: "/pns",
       reports: [report(processes: [process(assertions: [assertion])])]
     }
 
@@ -107,13 +113,18 @@ defmodule PNS.Web.Live.ContractStatusTest do
     with_drift =
       render_component(&ContractStatus.render/1, %{
         pns_web_access: :all,
+        pns_web_base_path: "/pns",
         reports: [
           report(drift: [%{from: "a", to: "b", from_label: "A", to_label: "B", count: 4}])
         ]
       })
 
     without_drift =
-      render_component(&ContractStatus.render/1, %{pns_web_access: :all, reports: [report()]})
+      render_component(&ContractStatus.render/1, %{
+        pns_web_access: :all,
+        pns_web_base_path: "/pns",
+        reports: [report()]
+      })
 
     assert with_drift =~ "A → B (4x)"
     assert without_drift =~ "None: nothing happened outside the agreement."
@@ -123,6 +134,7 @@ defmodule PNS.Web.Live.ContractStatusTest do
     html =
       render_component(&ContractStatus.render/1, %{
         pns_web_access: :all,
+        pns_web_base_path: "/pns",
         reports: [report(deployment: deployment(since: nil))]
       })
 

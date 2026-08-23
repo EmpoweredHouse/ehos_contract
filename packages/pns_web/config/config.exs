@@ -9,6 +9,11 @@ import Config
 config :pns, auth_verifier: PNS.Auth.LocalToken
 config :pns, PNS.Auth.LocalToken, secret: "pns-web-test-only-secret"
 
+# The accounts screen (PLAN.md, dopisek 23 sierpnia (3)) calls PNS.Auth's
+# admin-side functions, which need this key just as strictly as
+# auth_verifier does — same compile_env!, same reason.
+config :pns, identity_admin: PNS.Auth.LocalIdentityAdmin
+
 # The contract status screen (PLAN.md, dopisek 23 sierpnia (2)) calls straight
 # into PNS.Registry/PNS.Conformance, the same functions `mix pns.report`
 # already calls — so this package needs the same two keys any consumer of

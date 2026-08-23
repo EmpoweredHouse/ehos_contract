@@ -2,7 +2,11 @@
   Supervisor.start_link(
     [
       {Phoenix.PubSub, name: PNS.Web.TestHost.PubSub},
-      PNS.Web.TestHost.Endpoint
+      PNS.Web.TestHost.Endpoint,
+      # The accounts screen's own fake (PLAN.md, dopisek 23 sierpnia (3)) —
+      # an Agent, so it starts here rather than in PNS.Web.TestHost.DataCase,
+      # which is only about the sandboxed repo.
+      PNS.Auth.LocalIdentityAdmin
     ],
     strategy: :one_for_one
   )

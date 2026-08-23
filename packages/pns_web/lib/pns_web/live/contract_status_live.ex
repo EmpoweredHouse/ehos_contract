@@ -24,6 +24,7 @@ defmodule PNS.Web.Live.ContractStatus do
   def render(assigns) do
     ~H"""
     <div>
+      <PNS.Web.Layouts.nav base_path={@pns_web_base_path} current={:contract_status} />
       <p>Access: {access_label(@pns_web_access)}</p>
 
       <div :for={report <- @reports}>

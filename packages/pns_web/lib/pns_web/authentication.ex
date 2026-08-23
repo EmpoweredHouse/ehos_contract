@@ -12,10 +12,19 @@ defmodule PNS.Web.Authentication do
 
   @spec on_mount(:default, map(), map(), Phoenix.LiveView.Socket.t()) ::
           {:cont, Phoenix.LiveView.Socket.t()} | {:halt, Phoenix.LiveView.Socket.t()}
-  def on_mount(:default, _params, %{"user" => user, "resolver" => resolver}, socket) do
+  def on_mount(
+        :default,
+        _params,
+        %{"user" => user, "resolver" => resolver, "base_path" => base_path},
+        socket
+      ) do
     case resolver.resolve_access(user) do
-      {:forbidden, path} -> {:halt, redirect(socket, to: path)}
-      access -> {:cont, assign(socket, :pns_web_access, access)}
+      {:forbidden, path} ->
+        {:halt, redirect(socket, to: path)}
+
+      access ->
+        {:cont,
+         socket |> assign(:pns_web_access, access) |> assign(:pns_web_base_path, base_path)}
     end
   end
 end

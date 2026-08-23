@@ -194,7 +194,14 @@ the sidecar's, even though the sidecar's own Management API already does everyth
 used it directly: create project, create app, grant a machine user's secret, all plain REST). A thin proxy in
 the wrapper costs real code the direct route would not — but the direct route means the frontend knows
 Zitadel's request shapes, and swapping providers becomes a frontend rewrite instead of the one-line config
-change §"Two axes" already promises. Not yet built.
+change §"Two axes" already promises.
+
+**23 August: the proxy exists, behind a fake, not behind Zitadel.** `PNS.Auth.IdentityAdmin`
+(`lib/pns/auth.ex`) is the behaviour this paragraph asks for; `PNS.Auth.LocalIdentityAdmin` is its
+`LocalToken`-shaped fake, and `PNS.Web.Live.Accounts` (`packages/pns_web`) is the screen calling it. No
+`PNS.Auth.OidcVerifier`-equivalent for this side was built — the PoC above already proved the
+Management API calls work, and writing them again as shipped code would be exactly the real integration
+`CLAUDE.md` lists under what this repository does not build. See `PLAN.md`, "Dopisek 23 sierpnia (3)".
 
 ## Simplest start
 

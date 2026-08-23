@@ -13,7 +13,8 @@ config :pns,
   # failure `PNS.Registry.load!/1` warns about.
   applications: [:pns],
   repo: PNS.TestRepo,
-  auth_verifier: PNS.Auth.LocalToken
+  auth_verifier: PNS.Auth.LocalToken,
+  identity_admin: PNS.Auth.LocalIdentityAdmin
 
 config :pns, PNS.TestRepo,
   username: "pns",

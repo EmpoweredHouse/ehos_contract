@@ -5,6 +5,69 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). **Ten plik to lista roboty** i tylko tu jest
 aktualizowany stan.
 
+## Dopisek 23 sierpnia (3) — drugi ekran: panel kont
+
+Domyka dwuekranowy plan. `PNS.Web.Live.Accounts`, pod `/accounts` w tym samym `live_session` co ekran
+1 — ta sama decyzja dostępu, ten sam `on_mount`, więc oba ekrany dzielą mechanizm z fundamentu bez
+żadnej nowej logiki auth.
+
+**Domyka też coś, co `docs/adr/identity-seam.md` zostawił jako "Not yet built" 9 sierpnia**: "ten ekran
+woła nasze API, nigdy sidecara, nawet gdy Management API sidecara już robi wszystko, co ekran
+potrzebuje. Cienki proxy w wrapperze kosztuje realny kod, którego bezpośrednia ścieżka by nie
+kosztowała — ale bezpośrednia ścieżka oznacza, że frontend zna kształty żądań Zitadela, a podmiana
+providera staje się przepisaniem frontendu zamiast jednej linijki konfiguracji." Ten proxy teraz
+istnieje — jako zaślepka, nie jako klient Zitadela.
+
+**Wzorzec `Verifier`/`LocalToken`/`OidcVerifier` w `lib/pns/auth.ex` powtórzony jeden do jednego**, bo to
+dokładnie ta sama architektura z tego samego pliku:
+- `PNS.Auth.IdentityAdmin` — behaviour, cztery callbacki (`list_users/0`, `grant_role/2`,
+  `revoke_role/2`, `invite_user/2`) — "garść wywołań zarządzania użytkownikami, których potrzebuje ekran
+  admina", cytat z ADR.
+- `PNS.Auth.LocalIdentityAdmin` — zaślepka, jeden `Agent`, zero trwałości, startowana pusta. Jedyny
+  odpowiednik `LocalToken` po stronie zarządzania, nie po stronie uwierzytelniania.
+- **Świadomie brak trzeciego modułu** (`PNS.Auth.ZitadelIdentityAdmin` czy podobnego). PoC z 9-11
+  sierpnia (`docs/adr/identity-seam.md`, `docs/identity-admin-guide.md`) już dowiódł, że wywołania
+  Management API Zitadela działają — budowanie ich tutaj jako kodu produkcyjnego byłoby dokładnie tym,
+  czego `CLAUDE.md` zabrania: "Real registries, real mail, a real OIDC provider — A behaviour plus a
+  fake." Zaślepka wystarcza, żeby udowodnić mechanizm; prawdziwy klient jest realną integracją
+  domenową klienta, zero sygnału dla biblioteki.
+- Dispatcher w `PNS.Auth` sam: `@identity_admin = Application.compile_env!(:pns, :identity_admin)`,
+  wołany przez prywatną funkcję `identity_admin/0`, dokładnie ten sam kształt co `@verifier`/`verifier/0`
+  — nie atrybut w pozycji wywołania (to byłby literał modułu, którego `boundary`/kompilator by nie
+  znały dla modułu hosta), tylko przez zmienną zwracaną z funkcji.
+
+**Trzecia pułapka konfiguracyjna z ekstrakcji odezwała się tu ponownie, tym razem świadomie.**
+`compile_env!` jest wymagający: skoro `PNS.Auth` teraz deklaruje `@identity_admin` obok `@verifier`,
+**każdy** top-level projekt kompilujący `:pns` musi ustawić `config :pns, identity_admin: ...`, inaczej
+kompilacja pada. Dodane w trzech miejscach na raz, żeby żadna z trzech zielonych bram nie zgasła:
+`packages/pns_core/config/config.exs`, `packages/pns_web/config/config.exs`, i root `config/config.exs`
+— w tym ostatnim **tylko klucz konfiguracyjny**, bez startowania procesu `Agent`, bo `pns_prototype` nie
+montuje jeszcze żadnej trasy `pns_web` (`runtime: false`, zero drzewa nadzoru Phoenixa) i uruchomienie
+procesu, którego nikt nie woła, byłoby zgadywaniem topologii, nie fundamentem.
+
+**`:read_only` przestał być martwym rozróżnieniem.** Od fundamentu istniały dwa poziomy dostępu, ale
+ekran 1 renderuje to samo dla obu. Ekran 2 jest pierwszym miejscem, gdzie różnica robi coś: `:all` widzi
+formularze grant/revoke/invite, `:read_only` widzi tylko listę. **Sprawdzane dwa razy, nie raz** — ukryte
+w znaczniku (`:if={@pns_web_access == :all}`) i osobno w każdym `handle_event/3`
+(`with_write_access/2`), bo zdarzenie LiveView to wiadomość, którą klient może wysłać niezależnie od
+tego, co faktycznie wyrenderowano — test `router_test.exs`-owym zwyczajem dowodzi obu warstw osobno,
+nie tylko ukrycia przycisku.
+
+**Nawigacja między ekranami wymagała przepchnięcia `base_path` przez sesję**, bo montowalny router nie
+może zakładać, gdzie host go zamontował — ten sam powód, dla którego `pns_dashboard/2` w ogóle nie
+sięga po `~p`. `PNS.Web.Router.__session__/3` (było `/2`) dokłada `"base_path" => path` do mapy sesji,
+`PNS.Web.Authentication` przypisuje ją jako `@pns_web_base_path`, a `PNS.Web.Layouts.nav/1` (nowy,
+współdzielony function component) buduje z niej oba linki.
+
+Testy: `packages/pns_core/test/auth_test.exs` (5, `LocalIdentityAdmin` wprost — invite/grant/revoke/
+not_found/sortowanie) i `packages/pns_web/test/accounts_live_test.exs` (4, przez prawdziwy router:
+invite, grant+revoke, grant dla nieistniejącego usera, i podwójna blokada dla `:read_only`). Zero
+Postgresa w drugim pliku — `LocalIdentityAdmin` to goły `Agent`, więc ten ekran jest tańszy do
+przetestowania niż ekran 1.
+
+`mix check` zielony wszędzie: `packages/pns_core` osobno (311, było 306), `packages/pns_web` osobno
+(22, było 18), i z korzenia repo — 44 + 311 + 22 = 377, 0 błędów.
+
 ## Dopisek 23 sierpnia (2) — pierwszy ekran: status zgodności kontraktu
 
 Po fundamencie (dopisek niżej) — pierwszy z dwóch ekranów, osobno od drugiego (panel kont), zgodnie z

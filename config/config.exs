@@ -17,7 +17,12 @@ config :pns,
   # The identity seam: the verifier implementation is swappable. Today a local
   # HMAC, eventually `oidcc` against a bought provider. Domain code does not
   # know which one it is.
-  auth_verifier: PNS.Auth.LocalToken
+  auth_verifier: PNS.Auth.LocalToken,
+  # Same seam, the admin side (docs/adr/identity-seam.md, PLAN.md dopisek 23
+  # sierpnia (3)): only the config key is needed here, not a running process —
+  # nothing in this host mounts the accounts screen yet (no Phoenix
+  # supervision tree), but PNS.Auth still has to compile.
+  identity_admin: PNS.Auth.LocalIdentityAdmin
 
 config :pns_prototype, Taxvision.Repo,
   username: "pns",

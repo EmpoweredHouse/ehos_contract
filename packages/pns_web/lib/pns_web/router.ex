@@ -20,18 +20,19 @@ defmodule PNS.Web.Router do
         import Phoenix.LiveView.Router
 
         live_session :pns_dashboard,
-          session: {PNS.Web.Router, :__session__, [resolver]},
+          session: {PNS.Web.Router, :__session__, [resolver, path]},
           root_layout: {PNS.Web.Layouts, :root},
           on_mount: [PNS.Web.Authentication | Keyword.get(opts, :on_mount, [])] do
           live "/", PNS.Web.Live.ContractStatus, :index
+          live "/accounts", PNS.Web.Live.Accounts, :index
         end
       end
     end
   end
 
   @doc false
-  @spec __session__(Plug.Conn.t(), module()) :: %{String.t() => term()}
-  def __session__(conn, resolver) do
-    %{"resolver" => resolver, "user" => resolver.resolve_user(conn)}
+  @spec __session__(Plug.Conn.t(), module(), String.t()) :: %{String.t() => term()}
+  def __session__(conn, resolver, path) do
+    %{"resolver" => resolver, "user" => resolver.resolve_user(conn), "base_path" => path}
   end
 end

@@ -183,6 +183,84 @@ defmodule PNS.Auth.OidcVerifier do
   end
 end
 
+defmodule PNS.Auth.IdentityAdmin do
+  @moduledoc """
+  The thin proxy behaviour `docs/adr/identity-seam.md` decided on 9 August:
+  the handful of user-management calls the accounts screen needs, so the
+  provider's own request shapes never reach a caller outside this module —
+  the same reason `Verifier` exists for authentication.
+
+  "Thin" is the design, not a shortcut: listing users is the provider's own
+  user list, granting access is a role grant. Only a company-specific
+  condition on top of a grant would be code, and that lands in the
+  contract's own `rule`, not here — see `docs/adr/identity-seam.md`'s
+  "Three levels" table.
+  """
+
+  @typedoc "A user as the accounts screen shows it — never the provider's own shape."
+  @type user :: %{id: String.t(), name: String.t(), email: String.t(), roles: [String.t()]}
+
+  @callback list_users() :: [user()]
+  @callback grant_role(user_id :: String.t(), role :: String.t()) :: :ok | {:error, term()}
+  @callback revoke_role(user_id :: String.t(), role :: String.t()) :: :ok | {:error, term()}
+  @callback invite_user(email :: String.t(), name :: String.t()) ::
+              {:ok, user()} | {:error, term()}
+end
+
+defmodule PNS.Auth.LocalIdentityAdmin do
+  @moduledoc """
+  A dev-only identity admin: one `Agent`, no persistence, seeded empty.
+
+  What is deliberately not here: a password, a session, anything
+  authentication touches — this module only ever manages the *roles* half of
+  identity, the same boundary `Verifier`/`LocalToken` draws for the other
+  half. Disappears when a real provider (Zitadel, per
+  `docs/identity-admin-guide.md`) takes over; nothing calls this by name
+  outside the accounts screen's own tests and whatever process starts it.
+  """
+
+  @behaviour PNS.Auth.IdentityAdmin
+
+  use Agent
+
+  @doc "Starts empty. A host wires this into its own supervision tree."
+  @spec start_link(keyword()) :: Agent.on_start()
+  def start_link(_opts \\ []), do: Agent.start_link(fn -> %{} end, name: __MODULE__)
+
+  @impl true
+  def list_users do
+    Agent.get(__MODULE__, & &1) |> Map.values() |> Enum.sort_by(& &1.email)
+  end
+
+  @impl true
+  def grant_role(user_id, role) do
+    update_user(user_id, &%{&1 | roles: Enum.uniq([role | &1.roles])})
+  end
+
+  @impl true
+  def revoke_role(user_id, role) do
+    update_user(user_id, &%{&1 | roles: List.delete(&1.roles, role)})
+  end
+
+  @impl true
+  def invite_user(email, name) do
+    user = %{id: Ecto.UUID.generate(), name: name, email: email, roles: []}
+    Agent.update(__MODULE__, &Map.put(&1, user.id, user))
+    {:ok, user}
+  end
+
+  @spec update_user(String.t(), (PNS.Auth.IdentityAdmin.user() -> PNS.Auth.IdentityAdmin.user())) ::
+          :ok | {:error, :not_found}
+  defp update_user(user_id, fun) do
+    Agent.get_and_update(__MODULE__, fn users ->
+      case Map.fetch(users, user_id) do
+        {:ok, user} -> {:ok, Map.put(users, user_id, fun.(user))}
+        :error -> {{:error, :not_found}, users}
+      end
+    end)
+  end
+end
+
 defmodule PNS.Auth do
   @moduledoc """
   Three levels, three different owners (the identity document, 4 August).
@@ -200,10 +278,30 @@ defmodule PNS.Auth do
   """
 
   @verifier Application.compile_env!(:pns, :auth_verifier)
+  @identity_admin Application.compile_env!(:pns, :identity_admin)
 
   @doc "Level 1: who is this."
   @spec verify(String.t()) :: {:ok, PNS.Auth.Actor.t()} | {:error, term()}
   def verify(token), do: verifier().verify(token)
+
+  @doc """
+  Level 2, the admin side: the accounts screen's own read — every user the
+  provider knows about, roles included. See `PNS.Auth.IdentityAdmin`.
+  """
+  @spec list_users() :: [PNS.Auth.IdentityAdmin.user()]
+  def list_users, do: identity_admin().list_users()
+
+  @doc "Level 2, the admin side: granting access is a role grant, nothing more."
+  @spec grant_role(String.t(), String.t()) :: :ok | {:error, term()}
+  def grant_role(user_id, role), do: identity_admin().grant_role(user_id, role)
+
+  @doc "Level 2, the admin side: removing access is the same call with the opposite direction."
+  @spec revoke_role(String.t(), String.t()) :: :ok | {:error, term()}
+  def revoke_role(user_id, role), do: identity_admin().revoke_role(user_id, role)
+
+  @doc "Level 2, the admin side: inviting someone is a provider endpoint."
+  @spec invite_user(String.t(), String.t()) :: {:ok, PNS.Auth.IdentityAdmin.user()} | {:error, term()}
+  def invite_user(email, name), do: identity_admin().invite_user(email, name)
 
   @doc """
   Level 2: entitlement. One claim from the token, no network, freshness bounded by
@@ -231,4 +329,5 @@ defmodule PNS.Auth do
   def system_actor, do: "system"
 
   defp verifier, do: @verifier
+  defp identity_admin, do: @identity_admin
 end
