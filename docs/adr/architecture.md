@@ -296,6 +296,14 @@ whatever language the client declared them in, so a TaxVision report today reads
 Polish business terms. The open-source/commercial split two paragraphs up still needs revisiting with this
 in mind: the evidence report is now fully engine-owned code, which was the commercial line under (2).
 
+**23 August: a second, separate decision — a graphical web dashboard, not this section's report.** Everything
+above resolves where the *text* evidence report renders. `packages/pns_web` is a new package, built the same
+way `packages/pns_core` was extracted, mounting a LiveView screen in a host's router the way `oban`/`oban_web`
+do. It is a deliberate extension of "Dashboard: inside the engine" to a second, graphical surface — not a
+silent reinterpretation of the 6 August resolution above, which stays exactly what it says for `PNS.Report`.
+See `PLAN.md`, "Dopisek 23 sierpnia", for what shipped: the mountable router and resolver only, no screen
+content yet.
+
 *Instead of:* extracting a template up front, or a metadata-driven configurable product as Twenty and Open
 Mercato do — which means competing on volume of pre-poured concrete against projects that have more of it.
 

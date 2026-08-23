@@ -50,7 +50,12 @@ defmodule PnsPrototype.MixProject do
       # JWKS caching and rotation, signature validation against a bought OIDC
       # provider. Not wired in as the active PNS.Auth.Verifier yet — see
       # PNS.Auth.OidcVerifier.
-      {:oidcc, "~> 3.0"}
+      {:oidcc, "~> 3.0"},
+      # The dashboard foundation (PLAN.md, dopisek 23 sierpnia). `runtime: false`
+      # because nothing here is started yet — this host has no Phoenix
+      # supervision tree — but it still has to compile, because Phoenix is
+      # coming to this project regardless of which screen lands first.
+      {:pns_web, path: "packages/pns_web", runtime: false}
     ]
   end
 
@@ -70,7 +75,8 @@ defmodule PnsPrototype.MixProject do
         "pns.check",
         "pns.docs --check",
         "test",
-        &package_test/1
+        &package_test/1,
+        &package_test_web/1
       ]
     ]
   end
@@ -95,5 +101,18 @@ defmodule PnsPrototype.MixProject do
       )
 
     if status != 0, do: Mix.raise("the engine's own suite failed (packages/pns_core)")
+  end
+
+  # A path dependency does not run its own tests automatically — same fact
+  # as package_test/1 above, confirmed again here rather than assumed.
+  defp package_test_web(_args) do
+    {_output, status} =
+      System.cmd("mix", ["test"],
+        cd: "packages/pns_web",
+        env: [{"MIX_ENV", "test"}],
+        into: IO.stream(:stdio, :line)
+      )
+
+    if status != 0, do: Mix.raise("the dashboard foundation's own suite failed (packages/pns_web)")
   end
 end

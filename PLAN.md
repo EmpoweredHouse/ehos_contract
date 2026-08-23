@@ -5,6 +5,59 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). **Ten plik to lista roboty** i tylko tu jest
 aktualizowany stan.
 
+## Dopisek 23 sierpnia — `packages/pns_web`, wspólny fundament dashboardu
+
+Nowy pakiet, wyekstrahowany od pierwszego commita tym samym wzorcem co `packages/pns_core`: własny
+`mix.exs`, własny `config/config.exs` czytany tylko wtedy, gdy pakiet jest top-level, własny samodzielny
+host testowy (`test/support/test_host/`), który nigdy nie dotyka `pns_prototype`. Obejmuje wyłącznie
+fundament — montowalny router (`PNS.Web.Router.pns_dashboard/2`) i resolver oparty o `PNS.Auth` — nie
+treść żadnego z dwóch docelowych ekranów.
+
+**`{:pns_web, path: "packages/pns_web", runtime: false}` wchodzi do `deps()` roota**, nie tylko do CI —
+decyzja, bo Phoenix ma niedługo i tak trafić do `pns_prototype`. `runtime: false` bo nic tu jeszcze nie
+startuje: ten host nie ma supervisora Phoenixa.
+
+**Mechanizm zweryfikowany na prawdziwym źródle `oban_web`** (`lib/oban/web/router.ex`,
+`lib/oban/web/authentication.ex`, nie tylko dokumentacja): `live_session` z
+`session: {Module, :fun, args}` — Phoenix sam woła tę funkcję z prawdziwym `conn` przy każdym mount i
+reconnect, więc **zero osobnego Pluga do przechowywania tokenu w sesji**. `on_mount`
+(`PNS.Web.Authentication`) przelicza `resolve_access/1` na nowo za każdym razem, nie raz w sesji — dokładnie
+jak `Oban.Web.Authentication`.
+
+**Świadome rozszerzenie topologii „dashboard inside the engine"**
+([`docs/adr/architecture.md`](docs/adr/architecture.md) §16–17, rozstrzygnięte 6 sierpnia) — tamta decyzja
+dotyczyła tekstowego `PNS.Report`, nie graficznego dashboardu web. Datowany dopisek poszedł do
+`architecture.md`, nie ciche przepisanie.
+
+**Cztery rzeczy znalezione dopiero przy recenzji planu, nie przy pierwszym pisaniu kodu** — wszystkie
+potwierdzone przy faktycznym budowaniu:
+
+- `Phoenix.PubSub` nie startuje samo — pakiet-biblioteka nie ma `mod:`. Test host startuje je ręcznie w
+  `test_helper.exs`; prawdziwy host będzie musiał zrobić to samo we własnym supervisorze.
+- `root_layout: {PNS.Web.Layouts, :root}` w `live_session` musi być jawny, inaczej zamontowany dashboard
+  renderuje się w layout hosta (jeśli ten ma jakiś) albo się wywala.
+- `PNS.Web` deklaruje `use Boundary, deps: [PNS]` — bez tego pierwsze odwołanie do `PNS.Auth` pada na
+  `--warnings-as-errors`.
+- `def cli, do: [preferred_envs: [check: :test]]` w `packages/pns_web/mix.exs` — bez tego `mix check`
+  odpala krok `test` w `dev`, nie w `test`, i pada. **`packages/pns_core` ma tę samą lukę** — dziś działa
+  tylko dlatego, że nikt nie odpalił tam gołego `mix check` bez wcześniejszego `MIX_ENV=test`; nie
+  naprawione w tym dopisku, bo to osobne zadanie, nie część tego planu.
+
+**Dwie zależności doszły dopiero przy pisaniu testów, nieprzewidziane w planie**: `phoenix_live_view` 1.2.x
+wymaga `{:lazy_html, ">= 0.1.0", only: :test}` dla `Phoenix.LiveViewTest.live/2` — nie widać tego w drzewie
+zależności `phoenix_live_view`, tylko w runtime błędzie przy pierwszym uruchomieniu testu. `bandit` został,
+tak jak plan przewidywał furtkę: `adapter: Bandit.PhoenixAdapter` jest konieczny (Phoenix 1.7+ nie zgaduje
+adaptera).
+
+**Wpięcie w hosta**: `package_test_web/1` w root `mix.exs`, mirror `package_test/1` — zależność ścieżkowa
+nie uruchamia testów zależności automatycznie. Trzeci blok cache + `mix deps.get` w
+`.github/workflows/ci.yml`, obok istniejącego dla `packages/pns_core`.
+
+**Zweryfikowane budowaniem, nie tylko planowaniem:** `mix check` zielony samodzielnie w
+`packages/pns_web/` (12 testów) i z korzenia repo, teraz trzy suity: 44 (`pns_prototype`) + 306
+(`packages/pns_core`) + 12 (`packages/pns_web`), 0 błędów, `boundary` bez naruszeń mimo nowej ścieżkowej
+zależności w `deps()` roota.
+
 ## Dopisek 21 sierpnia (8) — `unverified` sięga teraz po `trace`, nie tylko po `cadence`/`deadline`
 
 Z dystylacji Rehmed (18 sierpnia, luka 4 rozliczenia płatnika): najostrzejsza assercja w całym
