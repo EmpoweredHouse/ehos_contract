@@ -19,9 +19,7 @@ config :pns,
   # know which one it is.
   auth_verifier: PNS.Auth.LocalToken,
   # Same seam, the admin side (docs/adr/identity-seam.md, PLAN.md dopisek 23
-  # sierpnia (3)): only the config key is needed here, not a running process —
-  # nothing in this host mounts the accounts screen yet (no Phoenix
-  # supervision tree), but PNS.Auth still has to compile.
+  # sierpnia (3)).
   identity_admin: PNS.Auth.LocalIdentityAdmin
 
 config :pns_prototype, Taxvision.Repo,
@@ -40,5 +38,17 @@ config :pns, PNS.Auth.LocalToken,
   # the engine validates the signature with a public key from JWKS and cannot
   # issue a token at all.
   secret: "dev-only-secret-not-for-production"
+
+# The real host (PLAN.md, dopisek 23 sierpnia (8)) — `server:`/`http:` differ
+# per env (config/dev.exs, config/test.exs) so `mix test` never binds a port.
+config :pns_prototype, PnsPrototypeWeb.Endpoint,
+  adapter: Bandit.PhoenixAdapter,
+  url: [host: "localhost"],
+  # Dev-only, same status as PNS.Auth.LocalToken's secret above — a real
+  # deployment generates its own with `mix phx.gen.secret`.
+  secret_key_base: String.duplicate("c", 64),
+  live_view: [signing_salt: "pns-prototype-live-salt"],
+  pubsub_server: PnsPrototypeWeb.PubSub,
+  render_errors: [formats: [html: PnsPrototypeWeb.ErrorHTML], layout: false]
 
 import_config "#{config_env()}.exs"

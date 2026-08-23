@@ -15,5 +15,9 @@
     eventually: 1,
     eventually: 2,
     or_else: 1
-  ]
+  ],
+  # For a consumer's `import_deps: [:pns_web]` — `pns_dashboard/1,2` reads
+  # like `plug`/`live`/`scope`, the router DSL it sits beside in a host's
+  # own router, not like a plain function call.
+  export: [locals_without_parens: [pns_dashboard: 1, pns_dashboard: 2]]
 ]

@@ -9,4 +9,10 @@ config :pns_prototype, Taxvision.Repo,
 # same transaction, and run it explicitly.
 config :pns_prototype, Oban, testing: :manual
 
+# `server: false` — Phoenix.ConnTest/Phoenix.LiveViewTest dispatch straight
+# into the plug pipeline, no listening socket needed.
+config :pns_prototype, PnsPrototypeWeb.Endpoint,
+  server: false,
+  http: [port: 4001]
+
 config :logger, level: :warning

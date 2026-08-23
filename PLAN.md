@@ -5,6 +5,54 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). **Ten plik to lista roboty** i tylko tu jest
 aktualizowany stan.
 
+## Dopisek 23 sierpnia (8) — `pns_prototype` dostaje prawdziwego hosta Phoenixa
+
+Domyka wątek otwarty od ekstrakcji `packages/pns_web`: dashboard żył dotąd wyłącznie w samodzielnym
+hoście testowym pakietu. `PnsPrototypeWeb` (`lib/pns_prototype_web/`) to pierwszy **prawdziwy** host —
+`Endpoint` + `Router` w drzewie nadzoru `PnsPrototype.Application`, montujące
+`PNS.Web.Router.pns_dashboard/2` pod `/dashboard`, na realnym `Taxvision.Repo` i realnych kontraktach
+(`Taxvision.Contracts.*`, `Rehmed.Contracts.*`) — nie na wymyślonej fikstury `CaseHandling`.
+
+**Jedno realne znalezisko, które mógł ujawnić tylko prawdziwy, ściśle egzekwowany top-level boundary.**
+`pns_dashboard/2` rozwija się inline w miejscu wywołania — makra routera Phoenixa muszą wstawić
+literalny atom modułu (`live "/contract", PNS.Web.Live.ContractStatus, ...`) wprost do
+skompilowanego kodu WOŁAJĄCEGO, nie `PNS.Web`. Własny test host pakietu nigdy tego nie złapał (nie ma
+`top_level?: true`), ale `PnsPrototype.Application` je ma — i `boundary` słusznie odmówił kompilacji:
+`PNS.Web.Live.ContractStatus`, `Live.Accounts`, `Authentication`, `Router.RedirectToContract`,
+`Router.Logout`, `LocalLogin` nie były w `exports:`. To nie błąd projektowy makra — to nieunikniona
+konsekwencja tego, jak działa routing Phoenixa — więc poprawka jest w `PNS.Web`'s `exports:`, poszerzona
+o dokładnie te moduły, z wyjaśnieniem wprost w moduledoc, żeby nikt nie próbował tego "naprawić" inaczej
+następnym razem.
+
+**Jawne zależności zamiast tranzytywnych** — `phoenix`/`phoenix_live_view`/`phoenix_html`/
+`phoenix_pubsub`/`bandit`/`lazy_html` doszły do `deps()` roota wprost, tym samym rozumowaniem co
+`:telemetry` już tam ma: `PnsPrototypeWeb` woła je z nazwy, więc nie mogą być obecne tylko dlatego, że
+`:pns_web` akurat ich potrzebuje.
+
+**`PNS.Auth.LocalIdentityAdmin` musiał w końcu naprawdę wystartować.** Wcześniejszy dopisek (23
+sierpnia (3)) zostawił w rootowym configu tylko klucz konfiguracyjny, bo nic nie montowało panelu kont
+naprawdę — teraz coś montuje, więc `PnsPrototype.Application`'s lista dzieci dostała ten `Agent`.
+Znalezione przez faktyczne uruchomienie testu, nie przez czytanie kodu.
+
+**`.formatter.exs` (roota i `pns_web`) dostał `import_deps`/`export`, żeby `pns_dashboard/2` czytał się
+jak `plug`/`live`/`scope`, nie jak zwykłe wywołanie funkcji** — `packages/pns_web/.formatter.exs`
+eksportuje teraz `locals_without_parens: [pns_dashboard: 1, pns_dashboard: 2]` pod kluczem `export:`,
+żeby konsument mógł to podnieść przez `import_deps: [:pns_web]`. **Efekt uboczny złapany i cofnięty
+przed commitem**: gołe `mix format` (nie `--check-formatted`) przy okazji przeformatowało kilkanaście
+plików `lib/taxvision/`/`lib/rehmed/`/`test/`, które nigdy nie były częścią bramy (`mix check` nie
+uruchamia `format --check-formatted`, ustalone wcześniej w tej sesji) — cofnięte `git checkout` przed
+commitem, bo to nie był zakres tego zadania.
+
+Testy: `test/pns_prototype_web_test.exs` (6 — redirect z gołego mountu, login→dashboard z realnymi
+kontraktami, read-only bez formularza grant, upgrade do live socketu, logout). **50 testów w
+`pns_prototype`, było 44.**
+
+Zweryfikowane ręcznie na **prawdziwym** `mix run` w `MIX_ENV=dev`, bez żadnego skryptu demo: login →
+dashboard z prawdziwymi, polskimi etykietami Rehmed/Taxvision → panel kont → logout, w przeglądarce, na
+porcie 4000.
+
+`mix check` zielony wszędzie: 50 + 311 + 29 = 390.
+
 ## Dopisek 23 sierpnia (7) — prowizoryczny login, `PNS.Web.LocalLogin`
 
 Decyzja użytkownika: zanim `pns_prototype` dostanie prawdziwy host Phoenixa, warto mieć sposób, żeby

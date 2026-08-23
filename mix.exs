@@ -52,10 +52,25 @@ defmodule PnsPrototype.MixProject do
       # PNS.Auth.OidcVerifier.
       {:oidcc, "~> 3.0"},
       # The dashboard foundation (PLAN.md, dopisek 23 sierpnia). `runtime: false`
-      # because nothing here is started yet — this host has no Phoenix
-      # supervision tree — but it still has to compile, because Phoenix is
-      # coming to this project regardless of which screen lands first.
-      {:pns_web, path: "packages/pns_web", runtime: false}
+      # because :pns_web has no `mod:` of its own to start — PnsPrototypeWeb's
+      # own supervisor references its modules directly (PLAN.md, dopisek 23
+      # sierpnia (8)) instead of relying on the OTP application list.
+      {:pns_web, path: "packages/pns_web", runtime: false},
+      # Direct, the same reasoning as `:telemetry` above: PnsPrototypeWeb calls
+      # these by name (Endpoint, Router, PubSub, the Bandit adapter), and they
+      # would otherwise be present only because :pns_web happens to need them —
+      # satisfied by a neighbour's dependency is satisfied only until the
+      # neighbour changes what it needs.
+      {:phoenix, "~> 1.8"},
+      {:phoenix_live_view, "~> 1.1"},
+      {:phoenix_html, "~> 4.0"},
+      {:phoenix_pubsub, "~> 2.1"},
+      {:bandit, "~> 1.5"},
+      # phoenix_live_view's own `live/2` test helper needs this to parse the
+      # dead-render HTML — not optional, and not visible in
+      # phoenix_live_view's own dependency tree (packages/pns_web hit the
+      # same thing first).
+      {:lazy_html, ">= 0.1.0", only: :test}
     ]
   end
 
