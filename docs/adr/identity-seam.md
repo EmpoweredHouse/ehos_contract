@@ -219,6 +219,11 @@ code, domain code minting its own tokens, or any vendor name in the engine's con
 identity being separate and produces two answers to whether a person still works at the company. It should
 say either "user profile mirror, no credentials, keyed by the identity subject" or nothing.
 
+**23 August: already the second wording.** `technology-notes.md`'s row already reads "User profile
+mirror, no credentials, keyed by the identity subject" — the `phx.gen.auth` wording this section warns
+against is not in this repository's history of that file at all, so the fix predates the file's move
+here. This section is stale, not wrong; left as a record of what was checked, not silently dropped.
+
 ## Not decided
 
 Vendor, deprovisioning mechanism, who operates the instance. Also
