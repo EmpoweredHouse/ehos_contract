@@ -23,7 +23,7 @@ defmodule PNS.Web.Router do
           session: {PNS.Web.Router, :__session__, [resolver]},
           root_layout: {PNS.Web.Layouts, :root},
           on_mount: [PNS.Web.Authentication | Keyword.get(opts, :on_mount, [])] do
-          live "/", PNS.Web.Live.Home, :index
+          live "/", PNS.Web.Live.ContractStatus, :index
         end
       end
     end

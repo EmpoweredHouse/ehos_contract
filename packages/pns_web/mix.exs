@@ -44,6 +44,11 @@ defmodule PNS.Web.MixProject do
 
   defp aliases do
     [
+      "ecto.setup": ["ecto.create", "ecto.migrate"],
+      "ecto.reset": ["ecto.drop", "ecto.setup"],
+      # The contract status screen's own test suite needs a real database, the
+      # same way packages/pns_core's does — same alias, same reason.
+      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       check: ["compile --force --warnings-as-errors", "test"]
     ]
   end

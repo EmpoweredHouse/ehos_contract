@@ -113,6 +113,7 @@ defmodule PnsPrototype.MixProject do
         into: IO.stream(:stdio, :line)
       )
 
-    if status != 0, do: Mix.raise("the dashboard foundation's own suite failed (packages/pns_web)")
+    if status != 0,
+      do: Mix.raise("the dashboard foundation's own suite failed (packages/pns_web)")
   end
 end

@@ -20,6 +20,7 @@ defmodule PNS do
       Contract,
       ContractExample,
       Deployment,
+      Duration,
       Emission,
       Emitter,
       Event,

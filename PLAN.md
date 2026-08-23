@@ -5,6 +5,53 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). **Ten plik to lista roboty** i tylko tu jest
 aktualizowany stan.
 
+## Dopisek 23 sierpnia (2) — pierwszy ekran: status zgodności kontraktu
+
+Po fundamencie (dopisek niżej) — pierwszy z dwóch ekranów, osobno od drugiego (panel kont), zgodnie z
+decyzją użytkownika. `PNS.Web.Live.ContractStatus` zastępuje placeholder `Home` pod `/` w
+`pns_dashboard/2`.
+
+**Zero nowej logiki domenowej — to jest formatka, nie druga opinia o tym, czym jest zgodność.**
+Ekran woła dokładnie to, co już woła `mix pns.report`: `PNS.Registry.contracts()` +
+`PNS.Conformance.report(contract, [])` dla każdego kontraktu, bez selektora — ten sam powód, dla
+którego `mix pns.report` też nie ma selektora: które kontrakty istnieją to fakt uruchomieniowy silnika,
+nie decyzja UI. Cztery pytania renderują się jako HTML zamiast tekstu `PNS.Report`, z tymi samymi
+zdaniami tam, gdzie zdanie *jest* odpowiedzią (`BREACHED in N of M runs.`, `in force since DATE`) —
+świadomie zduplikowanymi w dwóch miejscach (`PNS.Report` i tu), bo to kilka linijek dla dwóch różnych
+mediów, nie wspólny mechanizm, który się rozjeżdża. Jedyny wyjątek: `PNS.Duration.humanize/1` — ten
+akurat MUSI być jeden, bo to moduł, który już raz naprawiał dokładnie ten błąd (zła liczba mnoga
+skopiowana ręcznie w dwóch miejscach) — więc **`Duration` dołączony do `exports:` w `pns.ex`**, żeby
+`pns_web` mogło go wołać, zamiast pisać formatowanie trzeci raz.
+
+**`packages/pns_web` przestał być pakietem bez tabel — ale tylko w teście.** Ekran czyta prawdziwe dane
+przez `PNS.Conformance`, więc jego własna suita potrzebuje repo, tak jak `packages/pns_core`. Zamiast
+zgadywać, zmirrorowano dokładnie ten sam przepis: `PNS.Web.TestHost.Repo`, migracja opakowująca
+`PNS.Migrations.up/0` (`priv/repo/migrations/`), `PNS.Web.TestHost.DataCase` (sandbox + czyszczenie
+`PNS.Deployment` napisanego poza sandboxem przy boocie), fixture kontrakt
+`PNS.Web.TestHost.Fixtures.CaseHandling` (WYMYŚLONY, dwa zakończenia z jednego punktu decyzji, mniejsza
+wersja `ProcessShapes.Promised`). `ecto_sql`/`postgrex`/`oban` nie doszły do `deps()` — trafiły
+tranzytywnie przez `{:pns, path: "../pns_core"}`, potwierdzone przy pierwszym `mix deps.get`, więc
+pakiet produkcyjnie dalej nie ma własnych tabel/joby, tylko test je potrzebuje.
+
+**Jak sprawdzić `:violated` bez czekania godziny.** `PNS.Trace.evaluate/3` ma `now:` właśnie po to, żeby
+dało się to testować bez prawdziwego czasu — ale ten seam należy do silnika, nie do ekranu: dodawanie
+`now:` jako publicznego parametru LiveView byłoby prawdziwą funkcją produktową kłamiącą o czasie, nie
+testowym haczykiem. Zamiast tego: **jeden test integracyjny przez prawdziwy DB** (jeden przebieg,
+zatwierdzony od razu przez handler — `:satisfied`, plus naturalnie nieużyta ścieżka `case_rejected` →
+untraversed, bez żadnej sztuczki), i **osobne testy `render/1` wprost**, przez
+`Phoenix.LiveViewTest.render_component(&ContractStatus.render/1, assigns)` z ręcznie zbudowanymi mapami
+w kształcie, jaki faktycznie zwraca `PNS.Conformance.report/2` — pokrywają `:violated`, `:pending`,
+`runs: 0`, drift obecny/pusty, deployment niepotwierdzony. Deterministyczne, zero DB, zero czekania —
+mechanizm już dokładnie przetestowany 306 testami silnika, tu sprawdzana jest tylko warstwa renderowania.
+
+**`router_test.exs` przeszedł z `async: true` na `async: false`.** Konsekwencja zmiany treści pod `/`:
+odkąd ekran naprawdę odpytuje bazę, testy dostępu admina uruchamiają `ContractStatus.mount/3` z osobnego
+procesu LiveView, który musi pożyczyć połączenie z sandboxa tego testu — to samo, dlaczego
+`PNS.ReportTest` w silniku też jest `async: false`.
+
+`mix check` zielony samodzielnie w `packages/pns_web/` (18 testów, było 12) i z korzenia — teraz 44 +
+306 + 18 = 368, 0 błędów.
+
 ## Dopisek 23 sierpnia — `packages/pns_web`, wspólny fundament dashboardu
 
 Nowy pakiet, wyekstrahowany od pierwszego commita tym samym wzorcem co `packages/pns_core`: własny

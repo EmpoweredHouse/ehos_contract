@@ -175,7 +175,7 @@ from the first commit, so it's a fact the compiler checks, not a promise in a do
 
 | | Why not |
 | --- | --- |
-| A dashboard, a screen | Had to confirm the declared/observed gap was a signal worth showing before building a place to show it. It is — fifty runs collapse into one line of a report. *23 August: the mounting foundation (`packages/pns_web`) now exists — a mountable router and an auth resolver, no screen content yet. Still a non-goal in the sense that matters here: nobody has decided what either screen shows.* |
+| A dashboard, a screen | Had to confirm the declared/observed gap was a signal worth showing before building a place to show it. It is — fifty runs collapse into one line of a report. *23 August: the mounting foundation exists, and the first of two screens does too — `packages/pns_web` renders the same four questions `PNS.Report` already answers in text, as HTML. Still a non-goal in the sense that matters here: it is the existing report's own data, reformatted, not a new opinion about what conformance means, and the second screen (accounts/permissions) is still just the foundation.* |
 | The observed-overlay graph, in a UI | Tried it: eleven events produced three edges, and the diagram said nothing a sorted list didn't already say. Doesn't apply to the per-process view, which is the only one that says anything about a contract with no implementation yet. |
 | An opinion on the API layer | REST vs. GraphQL is an open question this project has no standing to close by building one. |
 | A project generator (`mix pns.new`) | Worth building once something has been copied twice — at a second real client, not before. |
