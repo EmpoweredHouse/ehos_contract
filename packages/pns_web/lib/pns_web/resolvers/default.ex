@@ -14,15 +14,15 @@ defmodule PNS.Web.Resolvers.Default do
   def resolve_user(conn), do: conn.assigns[:pns_actor]
 
   @impl true
-  @spec resolve_access(PNS.Auth.Actor.t() | term()) ::
+  @spec resolve_access(PNS.Auth.Actor.t() | term(), String.t()) ::
           :all | :read_only | {:forbidden, String.t()}
-  def resolve_access(%PNS.Auth.Actor{} = actor) do
+  def resolve_access(%PNS.Auth.Actor{} = actor, base_path) do
     cond do
       PNS.Auth.entitled?(actor, :pns_admin) -> :all
       PNS.Auth.entitled?(actor, :pns_read) -> :read_only
-      true -> {:forbidden, "/"}
+      true -> {:forbidden, "#{base_path}/login"}
     end
   end
 
-  def resolve_access(_), do: {:forbidden, "/"}
+  def resolve_access(_, base_path), do: {:forbidden, "#{base_path}/login"}
 end

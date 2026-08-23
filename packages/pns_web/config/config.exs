@@ -42,7 +42,10 @@ config :pns_web, PNS.Web.TestHost.Endpoint,
   live_view: [signing_salt: "pns-web-test-salt"],
   pubsub_server: PNS.Web.TestHost.PubSub,
   server: false,
-  http: [port: 4102]
+  http: [port: 4102],
+  # Without this, an unhandled error masks itself as "no html template
+  # defined for PNS.ErrorView" — see PNS.Web.TestHost.ErrorHTML's moduledoc.
+  render_errors: [formats: [html: PNS.Web.TestHost.ErrorHTML], layout: false]
 
 config :logger, level: :warning
 

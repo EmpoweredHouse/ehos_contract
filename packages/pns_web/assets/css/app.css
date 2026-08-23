@@ -42,6 +42,12 @@ nav {
   border-bottom: 1px solid var(--pns-border);
 }
 
+/* Log out is not a tab among tabs — pushed to the far side rather than
+   styled apart, so it stays a nav link without a new class hook. */
+nav a:last-child {
+  margin-left: auto;
+}
+
 nav a {
   color: var(--pns-text-muted);
   text-decoration: none;

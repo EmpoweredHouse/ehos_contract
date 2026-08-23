@@ -28,18 +28,19 @@ defmodule PNS.Web.RouterTest do
     assert redirected_to(conn) == "/pns/contract?since=2026-01-01"
   end
 
-  test "no login redirects before the LiveView ever mounts", %{conn: conn} do
+  test "no login redirects to the provisional login, before the LiveView ever mounts",
+       %{conn: conn} do
     conn = get(conn, "/pns/contract")
-    assert redirected_to(conn) == "/"
+    assert redirected_to(conn) == "/pns/login"
   end
 
-  test "a role that maps to neither :all nor :read_only redirects", %{conn: conn} do
+  test "a role that maps to neither :all nor :read_only redirects to login too", %{conn: conn} do
     conn =
       conn
       |> TestToken.put_actor("someone", ["unrelated_role"])
       |> get("/pns/contract")
 
-    assert redirected_to(conn) == "/"
+    assert redirected_to(conn) == "/pns/login"
   end
 
   test "pns_admin gets a dead render with :all access", %{conn: conn} do
@@ -58,6 +59,6 @@ defmodule PNS.Web.RouterTest do
   end
 
   test "an unauthenticated conn cannot open the live socket", %{conn: conn} do
-    assert {:error, {:redirect, %{to: "/"}}} = live(conn, "/pns/contract")
+    assert {:error, {:redirect, %{to: "/pns/login"}}} = live(conn, "/pns/contract")
   end
 end

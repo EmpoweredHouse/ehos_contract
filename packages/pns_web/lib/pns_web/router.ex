@@ -43,6 +43,16 @@ defmodule PNS.Web.Router do
       # first among equals.
       get path, PNS.Web.Router.RedirectToContract, path <> "/contract"
 
+      # The provisional login (PNS.Web.LocalLogin's moduledoc) — one plug,
+      # both verbs, because it decides GET-vs-POST for itself. Outside the
+      # live_session below on purpose: it has to be reachable by someone
+      # `PNS.Web.Authentication` would otherwise turn away.
+      match :*, path <> "/login", PNS.Web.LocalLogin,
+        action: path <> "/login",
+        redirect_to: path <> "/contract"
+
+      get path <> "/logout", PNS.Web.Router.Logout, path <> "/login"
+
       scope path do
         import Phoenix.LiveView.Router
 
@@ -81,6 +91,22 @@ defmodule PNS.Web.Router do
 
     defp do_redirect(conn, to) do
       conn
+      |> Phoenix.Controller.redirect(to: to)
+      |> Plug.Conn.halt()
+    end
+  end
+
+  defmodule Logout do
+    @moduledoc false
+    @behaviour Plug
+
+    @impl true
+    def init(to), do: to
+
+    @impl true
+    def call(conn, to) do
+      conn
+      |> Plug.Conn.delete_session(:pns_local_token)
       |> Phoenix.Controller.redirect(to: to)
       |> Plug.Conn.halt()
     end

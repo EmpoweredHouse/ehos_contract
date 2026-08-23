@@ -5,6 +5,48 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). **Ten plik to lista roboty** i tylko tu jest
 aktualizowany stan.
 
+## Dopisek 23 sierpnia (7) — prowizoryczny login, `PNS.Web.LocalLogin`
+
+Decyzja użytkownika: zanim `pns_prototype` dostanie prawdziwy host Phoenixa, warto mieć sposób, żeby
+w ogóle wejść na dashboard w przeglądarce bez `?as=` (świadomie niecommitowanego hacka demo) i bez
+ręcznego curl-a z nagłówkiem. `docs/adr/identity-seam.md`'s "Not decided" wymieniał "login screen
+route" jako otwarte — to jest odpowiedź prowizoryczna, nie ostateczna, tego samego rodzaju co
+`LocalToken` samo w sobie ("pierwsza rzecz, która znika przy podmianie").
+
+**Zwykły formularz HTTP, nie LiveView.** Ustawienie sesji wymaga `conn`, a LiveView ma go tylko w
+chwili pierwszego mountu, potem jest odcięty od każdego kolejnego requesta. `PNS.Web.LocalLogin` to
+jeden `Plug`, sam decyduje GET/POST — GET renderuje formularz (kogo udajesz + rola), POST mintuje token
+przez `PNS.Auth.LocalToken.sign/1` i zapisuje go w sesji pod `:pns_local_token`.
+
+**`PNS.Web.Plug.Authenticate` nauczył się czytać token z dwóch miejsc**, nie tylko z nagłówka — nagłówek
+ma pierwszeństwo (klienci API nadal działają jak wcześniej), sesja jest fallbackiem dla przeglądarki,
+która nie ma jak wysyłać nagłówków samodzielnie.
+
+**`resolve_access/1` → `resolve_access/2`, bo `{:forbidden, "/"}` przestało mieć sens.** Skoro istnieje
+realny ekran logowania, przekierowanie kogoś bez dostępu na goły `"/"` (korzeń całego Endpointu, nie
+mountu) było już wcześniej złym zgadywaniem — teraz `PNS.Web.Resolvers.Default` przekierowuje na
+`#{base_path}/login`, co wymagało dodania `base_path` jako drugiego argumentu w całym behaviour
+`PNS.Web.Resolver`. Zmiana sygnatury publicznego callbacku, nie kosmetyka — złamałaby każdy
+niestandardowy resolver hosta, więc jest tu zapisana wprost, nie cicho.
+
+**Jeden realny błąd znaleziony przez maskujący error view, drugi raz.** Test host nie miał
+skonfigurowanego `render_errors`, więc prawdziwy wyjątek (tym razem zwykły
+`DBConnection.OwnershipError` z pomyłki w moim własnym teście — testy logowania trafiały w
+`/pns/contract`, który potrzebuje bazy, a `local_login_test.exs` nie ma `DataCase`) chował się za
+`ArgumentError: no "500" html template defined`. Naprawione **trwale** tym razem —
+`PNS.Web.TestHost.ErrorHTML` + `render_errors:` w configu test hosta — nie tylko w jednorazowym skrypcie
+demo, bo to już drugi raz, kiedy ten sam brak kosztował czas na debugowanie niewłaściwego objawu.
+
+Testy: `packages/pns_web/test/local_login_test.exs` (5 — formularz, pusty subject odrzucony, sesja
+niesie aktora dalej, rola read-only też, logout czyści sesję) + zaktualizowane `resolver_test.exs`/
+`router_test.exs` pod nową arność i nowe cele przekierowań. **29 testów w `packages/pns_web`, było 24.**
+
+Zweryfikowane ręcznie, całą pętlą, w prawdziwej przeglądarce: login (rola admin) → dashboard z realnymi
+danymi z Postgresa → "Log out" w nawigacji → powrót na ekran logowania. Zero `?as=`, zero curl-a z
+tokenem.
+
+`mix check` zielony wszędzie: 44 + 311 + 29 = 384.
+
 ## Dopisek 23 sierpnia (6) — trasy ekranów zsymetryzowane, dwa błędy znalezione przy ręcznym klikaniu
 
 Znalezisko z rozmowy o UX, nie z suity: `/pns` (status kontraktu) i `/pns/accounts` (konta) nie były

@@ -27,6 +27,7 @@ defmodule PNS.Web.Layouts do
       <.link navigate={"#{@base_path}/accounts"} aria-current={@current == :accounts && "page"}>
         Accounts
       </.link>
+      <.link href={"#{@base_path}/logout"}>Log out</.link>
     </nav>
     """
   end

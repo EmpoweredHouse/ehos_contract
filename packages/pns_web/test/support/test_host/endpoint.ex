@@ -24,6 +24,13 @@ defmodule PNS.Web.TestHost.Endpoint do
     from: {:pns_web, "priv/static/assets"},
     gzip: false
 
+  # The provisional login (PNS.Web.LocalLogin) posts a plain HTML form —
+  # the first thing in this package that needs a parsed request body. Real
+  # hosts almost always already have this; a mountable dashboard adding it
+  # would be presumptuous, so it stays out of `pns_dashboard/2` and is
+  # listed instead in `PNS.Web.LocalLogin`'s moduledoc as an assumption.
+  plug Plug.Parsers, parsers: [:urlencoded], pass: ["*/*"]
+
   plug Plug.Session, @session_options
   plug PNS.Web.TestHost.Router
 end

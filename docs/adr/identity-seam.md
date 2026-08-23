@@ -221,10 +221,17 @@ say either "user profile mirror, no credentials, keyed by the identity subject" 
 
 ## Not decided
 
-Vendor, login screen route, deprovisioning mechanism, who operates the instance. Also
+Vendor, deprovisioning mechanism, who operates the instance. Also
 ADR 009 (`empowered-house-contextdocs/adr/architecture.md`) line 248 still says `WorkOS wrapped`; that becomes
 wrong if the deployment ships into the client's environment, but it can be corrected whenever the ADR is next
 touched rather than on its own.
+
+**23 August: the login screen route has a provisional answer, not a real one.** `PNS.Web.LocalLogin`
+mints a `LocalToken` for whoever types a name into a form — no vendor, no redirect, no callback. It
+exists so `pns_dashboard/2` is usable in a browser at all today, and it is built to be thrown away: the
+real question this section still leaves open is what replaces it once a vendor and topology are picked
+— a provider redirect, a callback route, a session bridge from whatever that exchange returns to a
+cookie `PNS.Web.Plug.Authenticate` reads. See `PLAN.md`, "Dopisek 23 sierpnia (7)".
 
 Reasoning behind all of the above is in the 4 August conversation; it does not need to be repeated here until
 something is actually being decided.

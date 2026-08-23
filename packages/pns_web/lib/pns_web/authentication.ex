@@ -1,7 +1,7 @@
 defmodule PNS.Web.Authentication do
   @moduledoc """
   The `on_mount` hook `pns_dashboard/2` always installs first. Recomputes
-  `resolve_access/1` on every mount *and* reconnect — the same shape as
+  `resolve_access/2` on every mount *and* reconnect — the same shape as
   `Oban.Web.Authentication`, not a decision cached once in the session — so a
   permission change between the first render and a LiveView reconnect takes
   effect immediately rather than on the next full page load.
@@ -18,7 +18,7 @@ defmodule PNS.Web.Authentication do
         %{"user" => user, "resolver" => resolver, "base_path" => base_path},
         socket
       ) do
-    case resolver.resolve_access(user) do
+    case resolver.resolve_access(user, base_path) do
       {:forbidden, path} ->
         {:halt, redirect(socket, to: path)}
 
