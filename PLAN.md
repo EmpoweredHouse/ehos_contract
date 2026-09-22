@@ -2708,6 +2708,12 @@ Jedna rzecz, która nie należy do silnika i nie miała dotąd swojego miejsca �
 przy prawdziwym materiale, nie przy moich założeniach o KSeF. Zapisane tutaj, bo README przestało być
 dziennikiem i to był jedyny punkt roboczy, który mieszkał wyłącznie tam.
 
+**✅ Zamknięte 22 września**, i połowicznie: `command :retrigger_verification` jest w kontrakcie,
+z `source:` wskazującym `02-event-storming.md` §3.1. Sama pętla ponowienia — handler, który po tej
+komendzie faktycznie przejedzie weryfikację jeszcze raz — nie istnieje, bo integracji rejestrowej
+nadal nie ma. Deklaracja wyprzedza implementację świadomie: to jest wejście do procesu i ktoś musi
+mieć uprawnienie, żeby je wywołać, niezależnie od tego, co się za nim dzieje.
+
 ## Etap 3 — pakiet jako pakiet
 
 Wydzielenie do `packages/pns_core` z path dep, żeby granicę wymuszał system budowania, nie tylko `boundary`.
