@@ -93,7 +93,58 @@ defmodule PNS.DigestTest do
     end
   end
 
+  describe "per-declaration digests" do
+    test "every named declaration gets an entry, plus one for the examples" do
+      # Derived rather than a literal: `ProcessShapes.Rig`'s own moduledoc warns that
+      # adding an event moves counts a dozen tests assert against, and this test has
+      # no opinion about how many declarations a fixture holds — only that none is
+      # missing.
+      contract = ProcessShapes.Rig
+
+      expected =
+        length(contract.events()) + length(contract.processes()) + length(contract.traces()) +
+          length(contract.externals()) + length(contract.rules()) + 1
+
+      assert map_size(contract.declaration_digests()) == expected
+      assert Map.has_key?(contract.declaration_digests(), "process:pairing")
+    end
+
+    test "does not move when declarations are only reordered" do
+      # The same property `version/0` has, for the same reason: moving an `event`
+      # block up two lines is an edit, not a change to the agreement.
+      assert Ordered.declaration_digests() == Reordered.declaration_digests()
+    end
+
+    test "a changed declaration moves its own entry and no other" do
+      # This is the whole point. `version/0` only says something moved; here the
+      # changed payload type is attributable to `event:first` and `event:second` is
+      # demonstrably untouched.
+      ordered = Ordered.declaration_digests()
+      changed = Changed.declaration_digests()
+
+      refute ordered["event:first"] == changed["event:first"]
+      assert ordered["event:second"] == changed["event:second"]
+    end
+
+    test "each entry is twelve hex characters, like the contract version" do
+      for {_key, digest} <- Ordered.declaration_digests() do
+        assert digest =~ ~r/^[0-9a-f]{12}$/
+      end
+    end
+  end
+
   describe "grouped declarations" do
+    test "adding an empty group moves the hash" do
+      # Unpinned until now, and it is the whole argument for landing a seventh
+      # declaration in one commit: a contract that declares no commands still gets a
+      # new `version/0` the day the `command` group exists, so history reclassifies
+      # once — deliberately — rather than twice.
+      a = PNS.Digest.hash_groups(events: [%{name: :x}])
+      b = PNS.Digest.hash_groups(events: [%{name: :x}], commands: [])
+
+      refute a == b
+    end
+
     test "an empty group is not the same as a group with something in it" do
       a = PNS.Digest.hash_groups(events: [%{name: :x}], externals: [])
       b = PNS.Digest.hash_groups(events: [], externals: [%{name: :x}])

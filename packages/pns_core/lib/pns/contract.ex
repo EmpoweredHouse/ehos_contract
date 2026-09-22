@@ -429,6 +429,8 @@ defmodule PNS.Contract do
         examples: examples
       )
 
+    digests = declaration_digests(events, processes, traces, externals, rules, examples)
+
     quote do
       @doc false
       def __pns_contract__, do: true
@@ -513,7 +515,53 @@ defmodule PNS.Contract do
       """
       @spec version() :: String.t()
       def version, do: unquote(version)
+
+      @doc """
+      One digest per declaration, computed at compile time beside `version/0`.
+
+      `version/0` answers "did anything move". This answers "which one", which is
+      the question `PNS.Deployment.diff/2` could not ask: it compares the recorded
+      event names and handler edges, so a changed `within`, `retain`, `identity`,
+      `instance` or payload type moved the contract version and left no finding.
+
+      Keys are `"<kind>:<name>"` — strings rather than atoms because the map is
+      stored as jsonb and comes back as strings either way, and an atom-in,
+      string-out asymmetry is a bug with a date on it. The name is part of the
+      digested declaration, so a rename reads as remove-plus-add rather than as a
+      change, which is correct: a renamed declaration is a different declaration.
+
+      Examples get one collective entry, `"example:*"`. Two reasons, and the first
+      is enough on its own: an example is keyed by a prose description whose
+      uniqueness nothing checks, so per-example keys would silently collapse two
+      examples sharing a description — exactly the class of quiet loss this map
+      exists to prevent. The second is that no example can reinterpret a run;
+      `PNS.Trace`, `PNS.Graph` and `PNS.Conformance` never read one.
+      """
+      @spec declaration_digests() :: %{String.t() => String.t()}
+      def declaration_digests, do: unquote(Macro.escape(digests))
     end
+  end
+
+  # Named declarations carry `name`; examples carry `description` and are grouped
+  # instead. `PNS.Digest.hash/1` over the whole declaration map, so every key of it
+  # is covered without this function having to know which keys exist.
+  @spec declaration_digests([map()], [map()], [map()], [map()], [map()], [map()]) ::
+          %{String.t() => String.t()}
+  defp declaration_digests(events, processes, traces, externals, rules, examples) do
+    named =
+      for {kind, declarations} <- [
+            event: events,
+            process: processes,
+            trace: traces,
+            external: externals,
+            rule: rules
+          ],
+          declaration <- declarations,
+          into: %{} do
+        {"#{kind}:#{declaration.name}", PNS.Digest.hash(declaration)}
+      end
+
+    Map.put(named, "example:*", PNS.Digest.hash_groups(example: examples))
   end
 
   @spec attr(Macro.Env.t(), atom()) :: [map()]
