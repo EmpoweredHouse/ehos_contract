@@ -2134,6 +2134,166 @@ Dwa zdania powyżej są już rozstrzygnięte i zostają tu jako zapis tego, co e
   kodzie. Ekran nie jest na żywo: żaden z trzech nie subskrybuje niczego i nie odświeża się sam,
   każdy renderuje raz na mount. Alertów nie ma i nie wchodzą.
 
+## Etap 5 — dowód, który wie, pod jaką obietnicą się liczył
+
+Zaplanowane 22 września, nic z tego nie zbudowane. Etap składa się z pozycji, które przeszły przez
+cztery filtry: dotykają `packages/pns_core`, nie odpowiadają na pytanie o konkretną firmę, mieszczą
+się w diffie do przeczytania z uwagą i nie czekają na decyzję, której nikt jeszcze nie podjął.
+
+Relacja do dopisku (12): etap 5 bierze z tamtej listy pozycje 1, 2, 3, 6, 7 i 10, a z tego, co było
+otwarte wcześniej — agregat `deadline` z 6 sierpnia i znalezisko o wersjonowaniu assercji z
+21 sierpnia. Reszta trzynastu pozycji zostaje poza etapem i powód jest przy każdej niżej. Kiedy
+etap 5 i dopisek (12) zaczną mówić co innego, nowszy jest etap 5 — dopisek jest zapisem przeglądu,
+etap jest stanem.
+
+### Prawda o dowodzie
+
+Idzie pierwsze, bo jako jedyne dotyka twierdzenia, na którym stoi produkt.
+
+**5.1 `pns_deployments` dostaje mapę `deklaracja → digest`.** `PNS.Trace.evaluate/3` czyta dziś
+`contract.traces()`, czyli deklarację z dzisiaj, i stosuje ją do każdego historycznego przebiegu.
+Zmiana `within`, `from`, `eventually` albo `or_else` przeklasyfikowuje więc całą historię w chwili
+wdrożenia, bez znaku w logu i bez znaku w tabeli wdrożeń. Nazwane 21 sierpnia przy skillu
+`change-contract`, z adnotacją „nic tego dziś nie chroni".
+
+Oparcie tego na `contract_version` z eventu jest odruchem i jest błędne: wersja rusza się przy
+każdej zmianie kontraktu, więc oznaczenie każdego przebiegu, który przeżył jakikolwiek deploy,
+oznaczyłoby prawie wszystko i zamieniło raport w szum. Potrzebna jest granulacja deklaracji, nie
+kontraktu — a obie potrzebne części już istnieją i nigdy się nie spotkały. `PNS.Digest` kanonizuje
+pojedynczą deklarację, bo 6 sierpnia sortowanie poszło po kanonicznej postaci całej deklaracji, a
+nie po kluczu `name`. `pns_deployments` trzyma per wdrożenie `events`, `edges` i `first_seen_at`.
+
+Migracja jako `PNS.Migrations` v02 — pierwsze użycie znacznika wersji, który powstał 21 sierpnia
+„zanim był potrzebny". `record!/1` liczy mapę z `PNS.Digest`, `diff/2` zyskuje kategorię zmiany
+cichej.
+
+Jedna zmiana zamyka całą klasę wymienioną w tabeli `change-contract`, nie jedną pozycję: `retain`,
+`identity`, `instance`, typ pola i parametry `trace` przestają być zmianami bez wsparcia
+diff-owego. `PNS.Deployment.diff/2` widzi dziś wyłącznie `events_added/removed` i
+`paths_added/removed`.
+
+*Odbiór:* zmiana `within` na już zadeklarowanym `trace` i redeploy — `diff/2` pokazuje tę assercję
+jako zmienioną, z datą. Zweryfikowane odwrotnie: po zneutralizowaniu porównania padają dokładnie te
+testy, które o zmianie cokolwiek twierdzą.
+
+**5.2 Raport odróżnia werdykt liczony pod inną obietnicą.** Na 5.1. Jeżeli digest assercji zmienił
+się wewnątrz okresu raportu, przebiegi sprzed zmiany nie wchodzą do `satisfied` ani `violated`,
+tylko na własną linię. Ten sam ruch, który silnik wykonał już dwa razy — stan `:historical` w
+nakładce i rozdzielenie „próbowane i nie udaje się" od „nigdy nie próbowano" — i ta sama reguła:
+raport nie ma prawa zamieniać braku odpowiedzi na odpowiedź „nie".
+
+*Odbiór:* raport rozciągnięty na zmianę assercji nie wymaga już ręcznego ograniczenia `since:`,
+tylko sam mówi, gdzie przebiega granica.
+
+**5.3 Raport podaje wersję silnika, a wersja zaczyna cokolwiek znaczyć.** Pozycja 10 z dopisku (12):
+jedna linia obok `Version #{contract_version}` w `PNS.Report`. Sama w sobie jest ozdobą, więc idzie
+z warunkiem: `CHANGELOG.md` w `packages/pns_core` i reguła, że zmiana wpływająca na werdykt podnosi
+wersję. Dziś pakiet stoi na `0.1.0`, a kilka korekt zmieniło już, co liczy się jako drift — zero
+przebiegów, praca w kolejce, „nigdy nie próbowano" kontra „próbowano i padło" — i nic tego nie
+odnotowuje. Przy dwóch klientach na dwóch wersjach silnika to samo pytanie dostaje dwie odpowiedzi,
+a raport jest dowodem dla audytora.
+
+### Deklaracja, której nikt nie czyta
+
+**5.4 Agregat `deadline` w `PNS.Conformance.report/2`.** „N z M przebiegów przekroczyło uzgodniony
+czas trwania", retrospektywnie, bez monitora i bez alertu. Kształt ustalony 6 sierpnia i od tamtej
+pory niezmieniony, więc nie ma tu żadnej decyzji do podjęcia — jest robota, która nie została
+wykonana. Sprawdzone 22 września: `deadline` czyta dziś wyłącznie filtr `unverified` w
+`PNS.Conformance` i renderer, który go wypisuje.
+
+Powstaje z istniejących części: to ten sam kształt, który `PNS.Trace` liczy dla `violated`, tylko
+licząc od pierwszego zdarzenia instancji, nie od zdarzenia źródłowego jednej assercji.
+
+Idzie po 5.1, nie przed. Agregat `deadline` jest kolejnym werdyktem, a 5.1 decyduje, czy werdykt
+wie, pod jaką obietnicą się liczył.
+
+*Odbiór:* etap 2 istniał po to, żeby usuwać deklaracje bez czytelnika. Po 5.4 nie zostaje ani jedna.
+
+### `command` jako deklaracja
+
+Największa dziura w samym DSL-u i jedyna pozycja z przeglądu EHOS-a, która jest robotą dla
+biblioteki, a nie dla platformy: kontrakt twierdzi, że opisuje proces, a wejścia do procesu istnieją
+wyłącznie jako klucz w `example`.
+
+**5.5 Pół dnia na falsyfikację, nie na implementację.** Czy `command` da się podnieść z klucza w
+`example` do deklaracji, nie rozwalając czterech istniejących kontraktów. Materiału jest mniej, niż
+wygląda, i trzeba to wiedzieć przed wyciągnięciem wniosku, że `D-15` się broni: cztery kontrakty i
+29 eventów owszem, ale commandy są dwa (`:open_month`, `:close_settlement`) i oba siedzą w dwóch
+kontraktach. `clinical_visit` i `payer_settlement` nie mają ani jednego `example`, więc ani jednego
+commanda — eksperyment stoi realnie na połowie materiału.
+
+*Odbiór:* wynik negatywny jest wynikiem. Jeśli nie wyjdzie, `D-15` jest błędne i lepiej wiedzieć to
+przed rozmową z founderem niż po.
+
+**5.6 `command` i `owner` na procesie, jednym commitem.** Tylko jeśli 5.5 wyszło. Jeden commit nie z
+wygody: obie zmiany ruszają `contract_version` wszystkich czterech kontraktów, a to jest
+jednorazowa przeklasyfikacja historii, którą silnik zapłacił już raz jawnie 6 sierpnia
+(`7c229c333c21` → `0343089e9d75`). Dwa osobne commity to dwa skoki zamiast jednego.
+
+**Kolizja klucza, której dopisek (12) nie nazwał, i jest to decyzja do podjęcia przed kodem.**
+`owner:` istnieje dziś na evencie, wskazuje moduł, a `pns.check` weryfikuje, że ten moduł istnieje.
+`owner` na procesie ma być rolą, czyli stringiem. Ten sam klucz, dwa typy, jeden check — albo osobna
+nazwa, albo jawne rozdzielenie w `schema/0`. Cicha decyzja w trakcie pisania kodu jest tu najgorszym
+możliwym wyjściem, bo `pns.check` przestanie sprawdzać jedno albo drugie, nie mówiąc o tym.
+
+Trzeci konsument deklaracji, poza capability i klasyfikacją odpowiedzialności, to klient generowany
+dla aplikacji (`D-12`). Sam klient jest robotą EHOS-a, ale wychodzi z kontraktu, więc deklaracja
+musi nieść tyle, żeby dało się go wygenerować.
+
+### Pakiet daje się skonsumować
+
+**5.7 Metadane Hex w obu `mix.exs`.** Etap 3 nazywa się „pakiet jako pakiet" i jest zamknięty, a
+pakietu nie da się opublikować: ani `pns_core`, ani `pns_web` nie mają `package/0`, `description`,
+`licenses` ani `docs`, nie ma też `README.md` w samym pakiecie. Drobne, ale to jedyna rzecz stojąca
+między zamknięciem etapu 3 a prawdą.
+
+**5.8 Zgodność wychodzi jako dane, nie tylko jako tekst.** Pozycja 6 z dopisku (12), ale powód jest
+inny niż tam zapisany: biblioteka, której jedynym wyjściem jest angielski tekst i zadanie mixa, ma
+dokładnie jednego konsumenta. Że skorzysta z tego EHOS, jest skutkiem ubocznym.
+
+`PNS.Conformance.report/2` zwraca mapę z atomami i modułami, więc przez granicę potrzeba
+serializacji i endpointu. Szew montowalny w cudzym routerze już istnieje i jest sprawdzony
+(`pns_dashboard/2`), więc `pns_api/2` jest tą samą konstrukcją, a autoryzację niesie
+`PNS.Web.Authentication` z resolverem.
+
+**5.9 AsyncAPI z kontraktu, z digestem.** Połowa pozycji 7, ta która jest materiałem silnika:
+`schema/0`, `events/0`, typy payloadu i `PNS.Digest` już to unoszą. Drugiej połowy — OpenAPI z
+routera — etap 5 nie obejmuje, bo `D-01` mówi wprost, że kontrakt nie opisuje odczytów, a router
+jest własnością hosta.
+
+### Czego etap 5 nie obejmuje i dlaczego
+
+| Co | Powód |
+| --- | --- |
+| Monitor `cadence` | Odrzucony 6 sierpnia argumentem o mianowniku i nic się w kodzie od tego czasu nie zmieniło. Wraca dopiero, jeśli mianownik przyjdzie spoza silnika — wtedy jako nowa decyzja z datą, patrz pozycja 8 w dopisku (12) |
+| Reguły organizacji, pozycja 11 | Kształt otwarty: deklaracja, check czy generowana dokładka. To jest decyzja, nie robota. Kiedy zapadnie, naturalnym domem jest `PNS.Check` — własność całoprogramowa, ta sama droga co `backward_edges/0` — a połowa mechanizmu istnieje już jako `retain` podniesiony o poziom |
+| Generowany test odmowy per command | Silnik nie generuje dziś kodu w ogóle. Wygląda na dodatek do 5.6, a jest osobnym projektem |
+| Bramka „command poza namespace'em swojej aplikacji" | Wymaga wejścia, którego silnik nie ma: co jest aplikacją. `boundary` to wie, PNS nie |
+| Certyfikacja, pozycja 13 | Pierwszym krokiem jest godzina rozmowy z kimś, kto certyfikuje zawodowo, nie linia kodu |
+| Egzekwowanie własności tabel, pozycja 4 | To `lib/taxvision/`, czyli dane testowe, nie biblioteka. Callback już chodzi; dokończenie jest robotą klienta |
+| Identyfikatory korelacji przez most, z `D-03` | Nie da się zbudować, dopóki mostu nie ma. Zostaje zapisane przy pozycji 12 z klauzulą „od pierwszego commita", żeby nie przyszło jako retrofit |
+| `mix pns.new` | Bez zmian: dopiero przy drugim kliencie |
+
+### Kolejność w etapie 5
+
+```
+5.1 → 5.2 → 5.3       fundament dowodu, trzy małe PR-y
+      ↓
+5.4                   agregat deadline, na 5.1
+5.5                   eksperyment, równolegle, pół dnia
+      ↓
+5.6                   tylko jeśli 5.5 wyszło, jeden commit z owner
+5.7                   niezależne, godzina
+5.8 → 5.9             niezależne od reszty
+```
+
+5.1 jest jedyną pozycją z migracją i jedyną, która coś przesądza na przyszłość; reszta jest
+odwracalna. 5.5 warto puścić równolegle od razu, bo wynik negatywny zmienia kolejność wszystkiego,
+co po nim.
+
+Jedna rzecz jest do rozstrzygnięcia, zanim 5.6 dostanie choć linię kodu: kolizja klucza `owner`.
+Reszta etapu ma kształt ustalony.
+
 ## Rekord: gdzie jest i czego nie wolno z nim robić
 
 **Pakiet projektowy jest tutaj, w [`docs/adr/`](docs/adr/).** Przeniesiony 6 sierpnia z repo
@@ -2179,6 +2339,19 @@ dekoracją i ma dziś cztery werdykty z czterech, a różnica declared vs observ
 wiąże handler, słownik typów jest zamknięty, wartości są walidowane, awaria synchroniczna zostawia ślad, cykl
 jest zatrzymany na obu ścieżkach, a telemetria emituje to, czego nie widzi nikt inny. Etap 1 startował na
 42 testach, kończył na 133; etap 2 kończy na 221.
+
+**Etap 3 zamknięty 21 sierpnia** — pakiet, migracje, osobna suita, CI, cztery skille. Z jednym
+zastrzeżeniem, które wyszło dopiero 22 września i jest pozycją 5.7: pakietu nadal nie da się
+opublikować, bo żaden `mix.exs` nie ma `package/0`.
+
+**Etap 4 zamknięty 23 sierpnia**, w brzmieniu z dopisków (10) i (11), nie w tym, które nosi nagłówek
+sekcji: trzy ekrany, graf wśród nich, nie na żywo i bez alertów. Zostało pół pozycji, zawężenie
+overlaya, i jest to dług w `PNS.Graph`, nie wymaganie etapu.
+
+**Etap 5 zaplanowany 22 września, nic z niego nie zbudowane.** 5.1–5.9. Kręgosłupem jest 5.1:
+werdykt, który wie, pod jaką obietnicą się liczył. Reszta to jedyna pozostała deklaracja bez
+czytelnika (`deadline`), `command` jako siódma deklaracja — z eksperymentem falsyfikacyjnym przed
+implementacją — i to, czego brakuje, żeby pakiet dało się skonsumować z zewnątrz.
 
 ### Co dalej: warsztat, nie kod
 
