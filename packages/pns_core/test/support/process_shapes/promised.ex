@@ -83,7 +83,12 @@ defmodule ProcessShapes.Promised do
     instance: [:request_id],
     # Confirmed, in the fiction of this fixture: requests arrive daily.
     cadence: {1, :day},
-    deadline: {2, :day},
+    # Three days, deliberately **not** the assertion's two. They are different
+    # promises — how long the whole run may take, against how long one step has to
+    # follow another — and while they shared a number, a test could not tell
+    # whether a value in the report came from the confirmed assertion or from the
+    # unconfirmed deadline. Stage 5.4 needed to tell.
+    deadline: {3, :day},
     # And this one is **not** confirmed, which is the whole reason it is here. The
     # evidence report has to be able to leave a declaration out, and a fixture with
     # nothing to leave out cannot show that it does — the filter would pass just as

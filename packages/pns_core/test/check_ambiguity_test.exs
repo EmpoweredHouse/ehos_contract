@@ -113,6 +113,58 @@ defmodule PNS.CheckAmbiguityTest do
     process :pairing, label: "Pairing, but somebody else's", instance: [:case_id]
   end
 
+  defmodule NoEnding do
+    @moduledoc """
+    INVENTED. A process that promises how long it takes and declares nothing that
+    ends a run.
+    """
+
+    use PNS.Contract
+
+    event :begun, label: "Begun", payload: %{case_id: :id}, process: :endless
+    event :continued, label: "Continued", payload: %{case_id: :id}, process: :endless
+
+    process :endless, label: "Endless", instance: [:case_id], deadline: {1, :day}
+  end
+
+  defmodule HasEnding do
+    @moduledoc "INVENTED. The control: the same promise, with an ending declared."
+
+    use PNS.Contract
+
+    event :begun, label: "Begun", payload: %{case_id: :id}, process: :ending
+    event :done, label: "Done", payload: %{case_id: :id}, process: :ending, terminal: true
+
+    process :ending, label: "Ending", instance: [:case_id], deadline: {1, :day}
+  end
+
+  describe "a duration nothing can observe the end of" do
+    test "a process with a deadline and no terminal event is reported" do
+      assert [finding] = PNS.Check.unobservable_deadlines([NoEnding])
+      assert finding.process == :endless
+      assert finding.deadline == {1, :day}
+    end
+
+    test "the same promise with an ending declared is not" do
+      # The control. Without it the check above would pass just as well for one that
+      # reports every process declaring a deadline.
+      assert PNS.Check.unobservable_deadlines([HasEnding]) == []
+    end
+
+    test "a process with no deadline is not reported, however it ends" do
+      # The check is about an unmeasurable promise, not about missing `terminal:`.
+      # `ProcessShapes.Rig` declares no deadline at all.
+      assert PNS.Check.unobservable_deadlines([ProcessShapes.Rig]) == []
+    end
+
+    test "the repository's own contracts produce nothing" do
+      # The same control every check in this file carries: a finding on a real
+      # contract would be a finding about that contract, not about this check, and
+      # it should be seen the day it appears rather than in a report weeks later.
+      assert PNS.Check.unobservable_deadlines() == []
+    end
+  end
+
   describe "two contracts declaring one event name" do
     test "the check reports it" do
       assert [collision] = PNS.Check.event_names_declared_twice([TwinEventA, TwinEventB])

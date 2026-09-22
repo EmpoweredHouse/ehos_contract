@@ -93,6 +93,7 @@ defmodule PNS.Conformance do
             untraversed: label_edges(answers && answers.untraversed, labels),
             in_flight: label_edges(answers && answers.in_flight, labels),
             failing: label_edges(answers && answers.failing, labels),
+            duration: duration(contract, process, opts),
             assertions: assertions(contract, process, labels, boundaries, opts)
           }
         end,
@@ -137,6 +138,20 @@ defmodule PNS.Conformance do
   # `PNS.Trace.evaluate/3` still runs and still counts here internally — omitted
   # is only whether this function hands its summary to the report the client
   # reads, the same distinction `verified_declarations/1` already draws.
+  # The process `deadline`, measured. `nil` — not a map of zeroes — when the process
+  # declares none or has not confirmed the one it declares: exactly the split
+  # `verified_declarations/1` draws, for the same reason. A number the client never
+  # agreed to, printed next to numbers they did, reads as measured.
+  @spec duration(module(), map(), keyword()) :: map() | nil
+  defp duration(contract, process, opts) do
+    if process.deadline && :deadline not in process.unverified do
+      contract
+      |> PNS.Run.evaluate(process.name, opts)
+      |> PNS.Run.summary()
+      |> Map.put(:deadline, process.deadline)
+    end
+  end
+
   @spec assertions(module(), map(), map(), %{String.t() => DateTime.t()}, keyword()) :: [map()]
   defp assertions(contract, process, labels, boundaries, opts) do
     for trace <- contract.traces(),

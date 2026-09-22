@@ -39,6 +39,7 @@ defmodule Mix.Tasks.Pns.Check do
       |> check_assertions_finer_than_their_run()
       |> check_facts_not_keyed_by_their_run()
       |> check_unfalsifiable_assertions()
+    |> check_unobservable_deadlines()
       |> check_retain_on_free_text()
       |> check_no_vendor_in_config()
       |> check_unverified_declarations()
@@ -307,6 +308,22 @@ defmodule Mix.Tasks.Pns.Check do
            "assertion #{inspect(f.trace)} has no `within`, so it has no failing case: any " <>
              "#{inspect(f.eventually)} after #{inspect(f.from)} satisfies it and a run with " <>
              "none stays pending for ever (#{inspect(f.contract)})"}
+          | acc
+        ]
+    end
+  end
+
+  # A promise about duration that nothing can observe being kept or broken. The
+  # aggregate stays silent for this process, and without this line the silence has
+  # no visible cause.
+  defp check_unobservable_deadlines(findings) do
+    for f <- PNS.Check.unobservable_deadlines(), reduce: findings do
+      acc ->
+        [
+          {:info,
+           "process #{inspect(f.process)} declares `deadline` = #{inspect(f.deadline)} and no " <>
+             "event of it is `terminal: true`, so no run can be observed to end and the " <>
+             "duration cannot be measured (#{inspect(f.contract)})"}
           | acc
         ]
     end

@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Dopisek 22 września — etap 5: 5.1, 5.2 i 5.3 zamknięte
+## Dopisek 22 września — etap 5: 5.1–5.4 zamknięte
 
 Plan implementacji całego etapu jest osobno; tutaj idzie stan i to, co wyszło przy pisaniu.
 
@@ -116,6 +116,40 @@ drugim źródłem prawdy o sekwencji, która się nie wydarzyła.
 `MIX_ENV=dev mix pns.report` wywalał się na brakującej kolumnie, mimo że brama była zielona.
 Udokumentowana komenda bramy z `CLAUDE.md` zawiera `mix ecto.setup` i to ją pokrywa — ja puszczałem
 sam `mix check`. Kogo to ugryzie następnym razem: każdego, kto po migracji iteruje samą bramą.
+
+### 5.4 — `deadline` przeczytany, po raz pierwszy od pierwszego commita
+
+`PNS.Run` mierzy przebieg od najwcześniejszego zdarzenia do najwcześniejszego zdarzenia z
+`terminal: true`. Cztery wyniki, nie dwa: `:within`, `:exceeded`, `:overdue` (otwarty, już po czasie)
+i `:open` (otwarty, jeszcze w czasie, nie produkuje zdania w ogóle). `:overdue` nie może być zlany
+z `:exceeded`, bo tam czas trwania jest znany, a tu tylko dolne ograniczenie — „trwał cztery dni"
+i „trwa już co najmniej cztery dni" to dwa zdania. Agregat respektuje `unverified` tak samo jak
+`verified_declarations/1`. Do tego `:info` w `pns.check` na proces z `deadline` bez zdarzenia
+terminalnego; na żadnym prawdziwym kontrakcie się nie odpala, bo wszystkie cztery mają terminal.
+436 testów.
+
+Neutralizacja `PNS.Run.evaluate/3` czerwieni dziesięć testów, wszystkie w `run_test.exs`, i ani
+jednego z pozostałych 343 — czyli nowy moduł nie ma splątań.
+
+**Kryterium odbioru etapu 1.7 było węższe, niż twierdzi jego własny moduledoc, i to jest
+najważniejsze znalezisko tej pozycji.** Plan kazał sprawdzić, czy przy zdjęciu filtra `unverified`
+czerwieni się też stary test — i nie czerwienił się. Tamten test sprawdza `process.declarations`,
+czyli jeden klucz, a 5.4 dołożyło `duration:`, czyli **drugą drogę, którą ta sama niepotwierdzona
+deklaracja mogła wejść do raportu**. Moduledoc mówił „nie zawiera `deadline` oznaczonego
+`unverified`", a test mówił coś węższego o jednym kluczu. Kryterium jest teraz strukturalnym
+spacerem po całych danych procesu, więc następna pozycja dokładająca trzecią drogę jest pokryta
+w dniu, w którym ląduje, a nie w dniu, w którym ktoś spojrzy.
+
+Wyszło przy tym, że **fikstura `Promised` miała `deadline: {2, :day}` i okno assercji
+`within: {2, :day}`** — ta sama liczba dla dwóch różnych obietnic. Dopóki tak było, żaden test nie
+umiał odróżnić, czy wartość w raporcie przyszła z potwierdzonej assercji, czy z niepotwierdzonego
+deadline'u. Rozdzielone na `{3, :day}` i `{2, :day}`, z powodem w pliku.
+
+Dwa drobiazgi z pisania, oba warte linii. `fragment("min(?) FILTER ...")` nie ma typu Ecto, więc
+wraca jako `NaiveDateTime` i każde porównanie z `DateTime` wywala się funkcją dalej — trzeba
+`type(..., :utc_datetime_usec)`. I: z dwóch testów okresu tylko jeden odróżnia `having` od `where`,
+bo przy `since` sprzed startu obie klauzule dają to samo; komentarz przy drugim twierdził więcej,
+niż ten test pokazuje, i został poprawiony zamiast zostać jako fałszywa etykieta.
 
 ---
 

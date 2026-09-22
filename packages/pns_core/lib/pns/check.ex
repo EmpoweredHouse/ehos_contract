@@ -336,6 +336,38 @@ defmodule PNS.Check do
     |> Enum.sort_by(&{inspect(&1.contract), to_string(&1.trace)})
   end
 
+  @typedoc "A process promising a duration nothing can observe the end of."
+  @type unobservable_deadline :: %{contract: module(), process: atom(), deadline: PNS.Duration.t()}
+
+  @doc """
+  Processes that declare a `deadline` and no event that ends a run.
+
+  `PNS.Run` measures a run from its earliest event to the earliest event declared
+  `terminal: true`. A process with no terminal event therefore has no observable
+  ending, so every run of it is open for ever: none can be `:within`, none can be
+  `:exceeded`, and the aggregate reports that nothing finished — which is true, and
+  is indistinguishable from a process whose runs genuinely never finish.
+
+  An `info`, not an error, for the reason `check_owners_exist` is one: a process
+  whose ending is not implemented yet is a normal state mid-rollout, and a check
+  that fails a build for being early gets removed before it catches the real case.
+  Making `terminal:` mandatory alongside `deadline:` would be a compile gate on
+  three existing contracts whose authors have not been asked.
+
+  The line exists so the silence has a reason attached to it. Without it the
+  duration simply never appears in the report and nobody can see why.
+  """
+  @spec unobservable_deadlines([module()] | nil) :: [unobservable_deadline()]
+  def unobservable_deadlines(contracts \\ nil) do
+    for contract <- contracts || PNS.Registry.contracts(),
+        process <- contract.processes(),
+        process.deadline,
+        not Enum.any?(contract.events_of(process.name), & &1.terminal) do
+      %{contract: contract, process: process.name, deadline: process.deadline}
+    end
+    |> Enum.sort_by(&{inspect(&1.contract), to_string(&1.process)})
+  end
+
   @doc """
   Whether there is nothing at all to check.
 

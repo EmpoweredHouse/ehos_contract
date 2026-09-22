@@ -62,12 +62,20 @@ defmodule PNS.ReportTest do
     ])
   end
 
+  # Every value anywhere in a nested structure, so a criterion can be stated about
+  # the report rather than about one key of it.
+  defp values(map) when is_map(map) and not is_struct(map),
+    do: map |> Map.values() |> Enum.flat_map(&values/1)
+
+  defp values(list) when is_list(list), do: Enum.flat_map(list, &values/1)
+  defp values(other), do: [other]
+
   defp data(opts \\ []), do: PNS.Conformance.report(Contract, opts)
   defp text(opts \\ []), do: opts |> data() |> PNS.Report.render()
 
   describe "acceptance criterion: no unconfirmed declarations" do
     test "a deadline marked `unverified` does not reach the report's data" do
-      # `deadline: {2, :day}` sits in the contract with `unverified: [:deadline]`,
+      # `deadline: {3, :day}` sits in the contract with `unverified: [:deadline]`,
       # standing in for the number that is plausible and that nobody supplied.
       assert :deadline in Contract.process(:handling).unverified
 
@@ -85,6 +93,23 @@ defmodule PNS.ReportTest do
 
     test "the deadline does not reach the rendered text either" do
       refute text() =~ "Deadline"
+    end
+
+    test "nor anywhere else in the report data, whatever key a later stage adds" do
+      # **This test exists because the one above was too narrow and stage 5.4 found
+      # out.** That one checks `process.declarations`, so it says nothing about any
+      # other key — and 5.4 added `duration:`, a second route by which the same
+      # unconfirmed `{3, :day}` could have reached the report. Neutralising the new
+      # filter reddened only 5.4's own control; this criterion stayed green while
+      # its moduledoc claimed to be about the report as a whole.
+      #
+      # A structural walk instead of a named key, so the next stage to add a third
+      # route is covered on the day it lands rather than on the day somebody looks.
+      [process] = data().processes
+
+      refute {3, :day} in values(process),
+             "the unconfirmed deadline reached the report through some key other than " <>
+               "`declarations` — which is exactly how this criterion was escaped once"
     end
 
     test "if the deadline were confirmed, it would appear" do

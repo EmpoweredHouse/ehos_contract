@@ -114,10 +114,50 @@ defmodule PNS.Report do
     ]
   end
 
+  # The declared duration, measured. Prints nothing at all when the process declares
+  # none, has not confirmed it, or had no run — three different silences, and none
+  # of them is a number.
+  @spec duration(map() | nil) :: [String.t()]
+  defp duration(nil), do: []
+  defp duration(%{runs: 0}), do: []
+
+  defp duration(d) do
+    finished = d.within + d.exceeded
+
+    # The duration itself is not repeated here: `declarations/1` prints "Deadline: N
+    # days from the start" one line above, and `PNS.Duration.humanize/1` drops the
+    # numeral at a count of one precisely because its callers put a word in front of
+    # it. A second copy would read "the agreed duration of hour".
+    judged =
+      cond do
+        finished == 0 ->
+          "  No run finished in this period, so the agreed duration cannot be judged."
+
+        d.exceeded > 0 ->
+          "  The agreed duration was exceeded in #{d.exceeded} of #{runs(finished)} that finished."
+
+        true ->
+          "  The agreed duration was kept in all #{runs(finished)} that finished."
+      end
+
+    # Its own line, never folded into the count above. There the duration is known;
+    # here only a lower bound on it is, and "took an hour" is not "has been running
+    # for an hour".
+    still_open =
+      if d.overdue > 0 do
+        ["    #{runs(d.overdue)} still open and already past it."]
+      else
+        []
+      end
+
+    [judged] ++ still_open
+  end
+
   @spec process(map()) :: [String.t()]
   defp process(p) do
     ["PROCESS: #{p.label}", "  Runs in this period: #{p.runs}."] ++
       declarations(p.declarations) ++
+      duration(p.duration) ++
       paths(p) ++
       assertions(p.assertions) ++
       [""]

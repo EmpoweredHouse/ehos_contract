@@ -23,7 +23,21 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## 0.2.0 — 2026-09-22
 
+Not on Hex yet: this package has no `package/0` and cannot be published. The
+version is real all the same, because a conformance report already carries it.
+
 ### Added
+
+- `PNS.Run`: how long a run took, against the `deadline` its process declared.
+  The declaration has existed since the first commit and nothing read it — the
+  only mentions were a filter that dropped it when unconfirmed and a renderer that
+  printed it back. A run starts at its earliest event and ends at the earliest
+  event declared `terminal: true`; four outcomes, not two, because a run still open
+  past its duration has a known lower bound and no known duration, and folding it
+  in with runs that finished late would report a bound as a measurement.
+- `mix pns.check` reports, as a notice, a process that declares a `deadline` and no
+  `terminal: true` event — a promise about duration that nothing can observe being
+  kept or broken.
 
 - Every declaration now carries its own digest, recorded per deployment
   (`PNS.Contract.declaration_digests/0`, `PNS.Migrations` v02). `PNS.Deployment.diff/2`
