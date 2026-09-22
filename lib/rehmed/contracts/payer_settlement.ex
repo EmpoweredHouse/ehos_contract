@@ -197,23 +197,25 @@ defmodule Rehmed.Contracts.PayerSettlement do
   # (`2-Solution/10-event-model.md` §4). The other three ways into this process have
   # no command there and are deliberately not invented — see `PLAN.md`.
 
-  # `C-48`, actor `A-02`. The catalogue's source note is the one that matters here:
+  # The catalogue's source note is the one that matters here:
   # the click is easy to miss in the payer's own window, and missing it is how a
   # visit goes unpaid.
   command :mark_settled_with_payer,
     label: "Oznaczenie wizyty jako rozliczonej u płatnika",
     process: :payer_settlement,
     principals: [:human],
-    payload: %{payer_id: :id, period_id: :id, visit_id: :id}
+    payload: %{payer_id: :id, period_id: :id, visit_id: :id},
+    source: "Event model §4, C-48, aktor A-02; R2P 00:15:06"
 
-  # `C-49`, and the actor is `A-05`, the practice manager, not reception. The
+  # The actor is `A-05`, the practice manager, not reception. The
   # catalogue is explicit that this is human-initiated once a month after the data
   # has been verified — which is why the invoice number is not an input.
   command :issue_payer_invoice,
     label: "Wystawienie faktury miesięcznej dla płatnika",
     process: :payer_settlement,
     principals: [:human],
-    payload: %{payer_id: :id, period_id: :id}
+    payload: %{payer_id: :id, period_id: :id},
+    source: "Event model §4, C-49, aktor A-05 (menedżer); Domain-Discovery §1"
 
   process :payer_settlement,
     label: "Miesięczne rozliczenie z płatnikiem zewnętrznym",

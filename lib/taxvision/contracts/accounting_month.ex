@@ -148,6 +148,12 @@ defmodule Taxvision.Contracts.AccountingMonth do
   # **The process does not list its events** — every event says for itself which
   # process and which stage it belongs to. The previous version had a list of
   # eleven names here, that is, every event name in the contract written twice.
+  # **No `source:`, and that is a finding rather than an omission.** The workshop's
+  # own diagram for §3.1 opens the month as a cron-triggered chain of system checks
+  # and marks exactly one command on it, `RetriggerVerification`. Nobody in the room
+  # named the opening itself as an action somebody takes. It is declared here because
+  # the rules below are written as refusals of it — so the command exists in the
+  # contract while its provenance does not, and an empty `source:` says so.
   command :open_month,
     label: "Otwarcie miesiąca księgowego",
     process: :accounting_month,
@@ -165,7 +171,8 @@ defmodule Taxvision.Contracts.AccountingMonth do
     label: "Ponowienie weryfikacji rejestrowej",
     process: :accounting_month,
     principals: [:human],
-    payload: %{company_id: :id, period: :string}
+    payload: %{company_id: :id, period: :string},
+    source: "Warsztat: 02-event-storming.md §3.1, jedyna komenda na tym diagramie"
 
   process :accounting_month,
     label: "Cykl miesięczny księgowy",

@@ -209,11 +209,16 @@ defmodule Rehmed.Contracts.VisitSettlement do
 
   # --- the process ---
 
+  # Declared in stage 5.6 before the command catalogue had been read; the citation
+  # was found afterwards and matches on both sides — `C-30` produces `E-53 / E-56`,
+  # and this command's examples emit exactly `visit_closed_commercially` and
+  # `visit_closed_without_payment`.
   command :close_settlement,
     label: "Zamknięcie rozliczenia wizyty",
     process: :visit_settlement,
     principals: [:human],
-    payload: %{visit_id: :id}
+    payload: %{visit_id: :id},
+    source: "Event model §4, C-30, aktor A-02; H28"
 
   # Four ways in, all four read off the event model's command catalogue
   # (`2-Solution/10-event-model.md` §4) rather than invented here. The actor column
@@ -221,38 +226,41 @@ defmodule Rehmed.Contracts.VisitSettlement do
   # and both are people — the catalogue has no command this process can issue to
   # itself.
 
-  # `C-23`, actor `A-03`. Refusable in the catalogue because the visit may already
-  # be settled; that refusal is a domain rule and not something a capability decides.
+  # Refusable in the catalogue because the visit may already be settled; that
+  # refusal is a domain rule and not something a capability decides.
   command :add_service_line,
     label: "Dodanie usługi do rozliczenia wizyty",
     process: :visit_settlement,
     principals: [:human],
-    payload: %{visit_id: :id, service_id: :id}
+    payload: %{visit_id: :id, service_id: :id},
+    source: "Event model §4, C-23, aktor A-03 (specjalista); W2 00:51:18"
 
-  # `C-68`. The catalogue's own gloss is "one act by the specialist that hands the
+  # The catalogue's own gloss is "one act by the specialist that hands the
   # visit to the desk", which is this event's label almost word for word. The
   # amount is computed from the lines already added, so the caller does not supply it.
   command :hand_over_visit,
     label: "Oznaczenie wizyty jako wykonanej",
     process: :visit_settlement,
     principals: [:human],
-    payload: %{visit_id: :id}
+    payload: %{visit_id: :id},
+    source: "Event model §4, C-68, aktor A-03; Appunite 2026-08-17"
 
-  # `C-31`, actor `A-02`.
   command :record_payment,
     label: "Przyjęcie płatności za wizytę",
     process: :visit_settlement,
     principals: [:human],
-    payload: %{visit_id: :id, method: :enum, amount_minor: :integer}
+    payload: %{visit_id: :id, method: :enum, amount_minor: :integer},
+    source: "Event model §4, C-31, aktor A-02 (recepcja); ESB L8"
 
-  # `C-46`, actor `A-02`, `status: open` in the catalogue — the command is agreed,
+  # `status: open` in the catalogue — the command is agreed,
   # what may be corrected is not. The business date is stamped by the system rather
   # than supplied, which is why it is on the event and not here.
   command :book_correction,
     label: "Zaksięgowanie korekty rozliczenia",
     process: :visit_settlement,
     principals: [:human],
-    payload: %{visit_id: :id, delta_minor: :integer}
+    payload: %{visit_id: :id, delta_minor: :integer},
+    source: "Event model §4, C-46, aktor A-02; process 10"
 
   process :visit_settlement,
     label: "Rozliczenie wizyty",

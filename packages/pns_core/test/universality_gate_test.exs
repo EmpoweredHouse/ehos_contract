@@ -73,7 +73,7 @@ defmodule PNS.UniversalityGateTest do
                rule: [:label, :function, :source],
                example: [:rule, :command, :given, :then, :rejected_with],
                trace: [:from, :eventually, :within, :or_else],
-               command: [:label, :process, :principals, :payload]
+               command: [:label, :process, :principals, :payload, :source]
              }
     end
 

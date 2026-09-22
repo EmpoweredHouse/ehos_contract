@@ -27,7 +27,7 @@ defmodule PNS.Contract do
     },
     command: %{
       required: [:label, :process, :principals],
-      optional: [:payload],
+      optional: [:payload, :source],
       defaults: %{payload: %{}}
     },
     external: %{
@@ -419,7 +419,14 @@ defmodule PNS.Contract do
       label: fetch!(opts, :label, "command #{inspect(name)}"),
       process: fetch!(opts, :process, "command #{inspect(name)}"),
       principals: principals,
-      payload: Keyword.get(opts, :payload, %{})
+      payload: Keyword.get(opts, :payload, %{}),
+      # Where this command came from, in the same sense `rule` means it: a pointer
+      # into the workshop material a person can follow. Optional, and an empty one
+      # says something true — that nobody has yet found this command in what the
+      # client actually said. Left in a comment it would be unreadable by anything;
+      # here it is part of the declaration and therefore part of its digest, so
+      # correcting a citation is a change to the agreement and is recorded as one.
+      source: Keyword.get(opts, :source)
     }
   end
 

@@ -259,8 +259,7 @@ defmodule Rehmed.Contracts.ClinicalVisit do
 
   # --- the process ---
 
-  # `C-29` from the event model's command catalogue
-  # (`2-Solution/10-event-model.md` §4), actor `A-03`. The catalogue marks its
+  # The catalogue marks its
   # refusal condition — incomplete documentation — as **contested** (`H19`), which is
   # a domain question and not one a capability answers.
   #
@@ -271,7 +270,8 @@ defmodule Rehmed.Contracts.ClinicalVisit do
     label: "Zamknięcie wizyty przez specjalistę",
     process: :clinical_visit,
     principals: [:human],
-    payload: %{visit_id: :id}
+    payload: %{visit_id: :id},
+    source: "Event model §4, C-29, aktor A-03; W2 00:55:10"
 
   process :clinical_visit,
     label: "Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego",

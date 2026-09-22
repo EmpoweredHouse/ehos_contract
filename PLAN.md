@@ -56,10 +56,36 @@ umowy, dokładnie to, co `contract_version` ma odnotowywać:
 `ClinicalVisit ae645a1c61f7 → 1b73eddb24c3`, `PayerSettlement d876412fe382 → 7f5e4371da34`,
 `VisitSettlement 90bb66ae79bf → 4d78c7c2eed2`, `AccountingMonth 1cb46129609a → 715848338a42`.
 
-**Do rozważenia, nie zrobione:** `command` nie ma klucza `source:`, który `rule` ma właśnie po to,
-żeby zapisać pochodzenie. Osiem komend niesie dziś `C-nn` w komentarzu, a komentarza nie czyta nic.
-Ósmy klucz to kolejny ruch wszystkich wersji, więc nie dokładam go przy okazji — ale jeśli
-pochodzenie ma być sprawdzalne, to jest właściwe miejsce.
+**`source:` dodane do `command` tego samego dnia.** Cytaty `C-nn` przeniosły się z komentarzy do
+deklaracji: 9 z 10 komend niesie dziś pointer do materiału, w tym samym sensie, w jakim ma go `rule`.
+
+Dwie rzeczy wyszły przy przenoszeniu i obie są warte więcej niż samo pole.
+
+**`close_settlement` potwierdziło się niezależnie.** Zadeklarowałem ją w 5.6, zanim przeczytałem
+katalog komend, więc bez cytatu. Szukając źródła znalazłem `C-30 „Zamknij wizytę komercyjnie"`,
+która w katalogu produkuje `E-53 / E-56` — a przykłady tej komendy emitują dokładnie
+`visit_closed_commercially` i `visit_closed_without_payment`. Dwie strony zgodziły się bez mojego
+udziału, co jest jedynym rodzajem potwierdzenia, jaki tu cokolwiek znaczy.
+
+**`open_month` nie ma źródła i to jest znalezisko, nie niedbałość.** Warsztatowy diagram §3.1 otwiera
+miesiąc łańcuchem checków wyzwalanym cronem i oznacza na nim dokładnie jedną komendę —
+`RetriggerVerification`. **Nikt w sali nie nazwał samego otwarcia działaniem, które ktoś wykonuje.**
+Komenda istnieje w kontrakcie, bo reguły są napisane jako jej odmowy; jej pochodzenie nie istnieje,
+i puste `source:` mówi to wprost. To jest dokładnie ta informacja, której komentarz by nie uniósł.
+
+**`source` wchodzi do digestu deklaracji, więc poprawienie cytatu jest zmianą umowy i tak zostanie
+zapisane.** Można by argumentować, że poprawka cytatu nie zmienia tego, co uzgodniono — ale klucz
+wyjęty z digestu byłby kluczem, który wolno zmienić po cichu, czyli dokładnie tym, czemu 5.1 miało
+zapobiec. **Nie wychodzi natomiast do AsyncAPI**: `C-23` to nasz wewnętrzny numer, nie sprawa
+konsumenta, i `rule.source` też nie jest publikowany.
+
+**Wersje kontraktów ruszyły się trzeci raz w ciągu dnia**, bo ósmy klucz zmienia kształt każdej
+deklaracji `command`: `ClinicalVisit 1b73eddb24c3 → dc77f8c24fb3`,
+`PayerSettlement 7f5e4371da34 → 49239210339a`, `VisitSettlement 4d78c7c2eed2 → 2a56057b6d41`,
+`AccountingMonth 715848338a42 → e3683dfa5af9`. Argument z 5.6 o „jednym commicie" dotyczył
+mechanizmu i został dotrzymany; nie obejmował dokładania klucza dzień później. Wniosek na przyszłość
+jest prosty i kosztował trzy przeklasyfikowania: jeśli do DSL-a ma dojść więcej niż jedna rzecz,
+dochodzą razem.
 
 ---
 

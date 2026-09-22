@@ -25,6 +25,12 @@ defmodule PNS.CommandTest do
     command :by_schedule, label: "By schedule", process: :p, principals: [:system]
     command :by_either, label: "By either", process: :p, principals: [:human, :system]
 
+    command :sourced,
+      label: "Sourced",
+      process: :p,
+      principals: [:human],
+      source: "Event model §4, C-99, aktor A-02"
+
     process :p, label: "P", instance: [:case_id], accountable: "Someone"
   end
 
@@ -57,6 +63,23 @@ defmodule PNS.CommandTest do
       # absent actor is a scheduled job or a backfill, and treating it as a person
       # would let anonymity pass a check meant for people.
       assert PNS.Command.principal_type(nil) == :system
+    end
+  end
+
+  describe "where a command came from" do
+    test "a citation is carried on the declaration, not in a comment" do
+      # A comment is unreadable by anything. This is part of the declaration, so it
+      # is also part of the digest — correcting a citation is a change to the
+      # agreement and gets recorded as one.
+      assert Contract.command(:sourced).source =~ "C-99"
+    end
+
+    test "an absent one is `nil`, and says something true" do
+      # Not "untidy": it says nobody has yet found this command in what the client
+      # actually said. `Taxvision.Contracts.AccountingMonth`'s `:open_month` is the
+      # real instance — the workshop's diagram opens the month with a cron chain and
+      # names exactly one command on it, which is not that one.
+      assert Contract.command(:by_hand).source == nil
     end
   end
 
