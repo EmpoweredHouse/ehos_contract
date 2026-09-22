@@ -93,6 +93,20 @@ w pakiecie. Ostrzeżenia w hoście to cztery procesy bez `accountable` i jeden n
 
 **CI na tym nie przebiegło.** Patrz wyżej.
 
+### Poprawki w `docs/adr/` — zrobione 22 września
+
+Sześć, wszystkie jako notki z datą pod oryginalnym twierdzeniem, nigdy zamiast niego. `architecture.md`:
+`deadline` ma czytelnika (§ „What would falsify this"), `command` jest siódmą deklaracją (§15), linia
+open source zastąpiona modelem Community/Enterprise (§D), zakład 3 przeformułowany.
+`design-rationale.md`: zdanie o tym, za co bierzemy pieniądze. `technology-notes.md`: czwarty werdykt
+`:suspended` — zbudowany 6 sierpnia, a plik twierdził inaczej jeszcze 22 września.
+
+**Ta ostatnia jest znaleziskiem, nie porządkami.** Twierdzenie „to nie ma czytelnika" starzeje się
+cicho, bo **nic nie porównuje tych plików z kodem** — a to jest jedyna usługa, którą one świadczą.
+Znalazłem ją przypadkiem, szukając tej samej klasy nieaktualności o `deadline`, sześć tygodni po fakcie.
+Jeśli ma się to nie powtarzać, potrzebny jest mechanizm, a nie postanowienie; dziś go nie ma i nie wiem,
+jak miałby wyglądać, żeby nie był drugim źródłem prawdy.
+
 ### Otwarte pytania
 
 - Czy `principals: [:human, :system]` to właściwy zbiór. Jest **naszą propozycją, nie odczytem** —

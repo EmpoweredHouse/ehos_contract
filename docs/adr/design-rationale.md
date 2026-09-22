@@ -45,6 +45,13 @@ which is a separate question from the argument made to *contributors*, where the
 
 Code is open source. The workshop and the evidence are what we charge for.
 
+*Superseded 21 September 2026.* Two editions instead: Community open, Enterprise a fork of it, and the
+line between them runs through consistency **between** applications rather than through code against
+service. What is inside one application — contract, log, conformance — is free; reasoning across
+applications is paid. The argument made to contributors, two paragraphs up, is unaffected: the code shape
+still does that work. What changes is the sentence about what we charge for. Full statement in
+[architecture.md](architecture.md#d-what-ships) and in [PLAN.md](../../PLAN.md), "Dopisek 21 września (12)".
+
 ## Context, and what changed since the July sessions
 
 Two implementations are contracted; one running, one starting now. No spare capacity, and a runway that

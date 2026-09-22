@@ -224,6 +224,24 @@ overlay counters hide the silence of every run but the loudest. It is declared a
 process and required. Cadence, in turn, is real but **not universal**: an event-driven process has none,
 which the second-domain contract established. See
 [technology notes §1](technology-notes.md#1-the-contract-and-the-code-it-governs).
+
+*Corrected again 22 September 2026.* The second sentence — "their decision is issued as a command that
+emits events" — described commands as something that happens **to** the contract rather than something
+declared **in** it. A command is now a declaration of its own, the seventh: a name, the process it
+enters, which kinds of principal may issue it, and its payload. The capability derives from it, which is
+the whole reason it exists — a way into a process that not everybody may take.
+
+Two things that shape carries, and neither was foreseeable from here. It has **no list of the events it
+emits**, deliberately: the set the examples show and the set reachable through handlers are provably
+different in this repository's own corpus, and no compile gate can check a set for completeness, only its
+members. And the capability it derives answers one level of two — whether this *kind* of principal may
+issue the command at all. Whether *this* principal may issue it *for this subject* stays a `rule` with a
+decision function, and of the two commands that existed when this was measured, one had such a rule and
+the other had no actor field anywhere. Neither level makes the other redundant.
+
+A census run the same day found the shape of the gap this decision left: twenty-six events across the four
+contracts are entered from outside and two had a command, because until now a command could only be
+written as a side effect of writing a rule. See [PLAN.md](../../PLAN.md), "Dopisek 22 września", 5.5–5.6.
 *Instead of:* sequence, branching and compensation declared in the contract — a workflow language,
 maintained before we know whether two clients need the same one.
 
@@ -311,6 +329,20 @@ Open source: contract library, generators, base modules, basic dashboard. Commer
 conformance history, the evidence report. **The generator is built when something gets copied twice, not on
 a date.**
 
+*Superseded 21 September 2026, and the line moved rather than the list.* The founder meeting that day
+settled a different model: two editions, Community open and Enterprise a fork of it, with the boundary
+running through **consistency between applications**. Contract, event log and conformance *within one
+application* are free; reasoning across applications — specification diffs, conflict classes, impact
+analysis — is paid. Revenue is subscription, with deployment through a partner network rather than by us.
+
+What that changes for this repository is narrow and worth stating, because the rest of this document is
+unaffected: PNS lands wholly on the Community side, and must therefore **expose what cross-application
+analysis needs without performing any of it**. Generated specifications, graph data and the conformance
+result have to be consumable by something Community does not contain — otherwise Enterprise stops being a
+fork and becomes a diverging copy within a year. Both of those exist as of 22 September; see
+[PLAN.md](../../PLAN.md), "Dopisek 21 września (12)" for the decision and "Dopisek 22 września" 5.8–5.9
+for what was built.
+
 ### E. Rules and examples
 
 **18. The contract states rules by example, not in a rule language.** A rule names one pure function;
@@ -354,6 +386,13 @@ false-positive rate on a real log rather than reasoning about what keeps it down
 
 **Generated code plus this harness beats a competent team using commodity AI, measurably.** If it does not,
 we are selling process, and the honest response is to stop.
+
+*Reformulated 21 September 2026 — the bet as written cannot be won.* It assumes two things at once that do
+not sit together: that commodity code is cheap and of unknown quality, and that **our** generation is
+better than it. Generation is not the product; it is what makes writing a contract worth the trouble. The
+bet that replaces it is narrower and answerable: **can the contract stay thin, given that generation has a
+second input — the workshop material?** The early signal is mundane and specific: the third time somebody
+hand-writes the same form.
 
 **One bounded process generalises.** If the process row is the wrong abstraction — processes that nest, one
 event belonging to two — every contract written afterwards compounds the cost.
@@ -514,6 +553,28 @@ what would falsify them, which is why this section exists.
   computed from it, so the "never observed" mechanism of
   [notes §9](technology-notes.md#9-dashboard) does not exist yet.
   So this bullet stays, narrowed: the risk was that both mechanisms arrive last and neither lands. One landed.
+
+  *Corrected 22 September 2026 — the paragraph above is now false in its central claim, and the way it
+  became false is worth more than the fact.* `deadline` has a reader: `PNS.Run` measures a run from its
+  earliest event to the earliest event declared `terminal: true`, and the conformance report carries the
+  count of runs that exceeded the declared duration. So neither mechanism is missing any more, and this
+  bullet's risk did not materialise.
+
+  Two things it got wrong, though, are worth keeping rather than editing away. First, it framed the
+  stalled-process monitor as one mechanism; it is two, and they went opposite ways. The `deadline` half is
+  computable from the log alone and was built. The `cadence` "never observed" half was **rejected** on
+  6 August, not deferred — spotting an instance that is missing requires knowing which ones should exist,
+  and that is knowledge about companies this engine deliberately does not hold. A sentence predicting that
+  both would arrive late could not see that one of them would turn out not to be ours to build at all.
+
+  Second, it treated "read by nothing" as a scheduling problem. It was not: reading `deadline` needed a
+  decision nobody had taken, about where a run ends. `terminal: true` had been declarable since the first
+  commit and nothing had ever read it for anything but colour on a diagram. The declaration that unblocked
+  this one had been sitting there the whole time.
+
+  A run still open past its duration is reported on its own line and never folded in with runs that
+  finished late: there the duration is known, here only a lower bound on it is.
+  See [PLAN.md](../../PLAN.md), "Dopisek 22 września", 5.4.
 
 ## What this replaced
 

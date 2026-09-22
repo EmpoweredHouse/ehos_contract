@@ -573,6 +573,17 @@ exists. Observations rather than intervals, because an adapter knows only that o
 service came back. Suspended then means: an observation inside the window, against a dependency that some
 event on that path declares.
 
+*Built 6 August 2026, and this paragraph was still saying otherwise on 22 September.* The prerequisite it
+describes exists — `PNS.Dependency` records unavailability observations, `depends_on` decides which
+dependency's outage can suspend which assertion, and `:suspended` is the fourth verdict `PNS.Trace`
+returns. The design above is what was built, almost exactly: observations rather than intervals, for the
+reason given.
+
+Recorded here late, and the lateness is the finding. A claim in this file that a thing has no reader is
+the kind that goes stale silently, because nothing compares these files against the code — which is the
+one service this whole document is supposed to render. Found while correcting the same class of staleness
+about `deadline`. See [PLAN.md](../../PLAN.md), "Rozstrzygnięte 6 sierpnia".
+
 **Events from one command are siblings, not a chain.** A decision function returns several intentions at
 once; none caused another, the same command caused all of them, so they share `correlation_id` and carry no
 `causation_id`. The overlay is built from causation, which is right — and leaves those events with no edges
