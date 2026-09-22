@@ -18,6 +18,7 @@ defmodule PNS.Web do
   use Boundary,
     deps: [PNS],
     exports: [
+      Api.AsyncAPI,
       Api.Conformance,
       Resolver,
       Resolvers.Default,

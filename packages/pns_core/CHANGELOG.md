@@ -48,6 +48,12 @@ version is real all the same, because a conformance report already carries it.
 - `accountable:` on `process`: the role a finding is addressed to. Distinct from
   `owner:` on an event, which holds a module and answers a different question.
   `mix pns.check` warns when a process names none.
+- `PNS.AsyncAPI`: an AsyncAPI 3.0 document generated from a contract, carrying a
+  digest computed over the document itself. `channels` and `components.messages`
+  only — no `operations`, because handler edges would make the digest move when
+  somebody renamed a handler, and the digest is the point. What the standard cannot
+  express travels as `x-pns-*`: the `trace`, the retention policy, the stages, the
+  commands. `external` is deliberately absent rather than mapped to `servers`.
 - `PNS.Conformance.as_data/2` and `PNS.Conformance.Wire`: the report projected onto
   values that survive JSON. It lives in the engine rather than in a transport
   because the shape a consumer compares, version to version, is part of what this

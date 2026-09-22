@@ -101,9 +101,19 @@ defmodule PNS.Web.Router do
   """
   defmacro pns_api(path, opts \\ []) do
     quote bind_quoted: [path: path, opts: opts] do
+      resolver = Keyword.get(opts, :resolver, PNS.Web.Resolvers.Default)
+
       get path <> "/conformance",
           PNS.Web.Api.Conformance,
-          resolver: Keyword.get(opts, :resolver, PNS.Web.Resolvers.Default),
+          resolver: resolver,
+          base_path: path
+
+      # The index first: a bare `/asyncapi` must not be read as a contract named "".
+      get path <> "/asyncapi", PNS.Web.Api.AsyncAPI, resolver: resolver, base_path: path
+
+      get path <> "/asyncapi/:contract",
+          PNS.Web.Api.AsyncAPI,
+          resolver: resolver,
           base_path: path
     end
   end

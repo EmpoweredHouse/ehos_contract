@@ -12,6 +12,10 @@ Everything to date, recorded after the fact. The package is not on Hex and canno
 be until `pns` is: it depends on it by path, and a published package may only
 depend on published ones. See `README.md` for the second reason.
 
+- `pns_api/2` also serves the generated AsyncAPI documents: an index at
+  `/asyncapi` and one document per contract, each with its digest in the body and
+  in the `ETag`. Authenticated like everything else — a document naming every event
+  and label in the client's own words is a map of their business.
 - `pns_api/2`, a read-only JSON mount for the conformance report, sharing the
   dashboard's access decision through the same `PNS.Web.Resolver`. It mounts in its
   own scope because a JSON route needs the opposite pipeline to a page: no session,

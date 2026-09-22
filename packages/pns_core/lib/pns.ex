@@ -11,6 +11,7 @@ defmodule PNS do
   use Boundary,
     deps: [],
     exports: [
+      AsyncAPI,
       Auth,
       Auth.Actor,
       Auth.Verifier,

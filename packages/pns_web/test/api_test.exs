@@ -90,6 +90,49 @@ defmodule PNS.Web.ApiTest do
     end
   end
 
+  describe "the generated specification" do
+    setup %{conn: conn} do
+      {:ok, conn: TestToken.put_actor(conn, "u-1", ["pns_read"])}
+    end
+
+    test "the index lists every contract with its digest", %{conn: conn} do
+      conn = get(conn, "/pns/api/asyncapi")
+
+      assert conn.status == 200
+      %{"contracts" => contracts} = Jason.decode!(conn.resp_body)
+      assert length(contracts) == length(PNS.Registry.contracts())
+      assert Enum.all?(contracts, &(byte_size(&1["digest"]) == 12))
+    end
+
+    test "a document is served, and its ETag is its digest", %{conn: conn} do
+      name = PNS.Registry.contracts() |> List.first() |> inspect()
+      conn = get(conn, "/pns/api/asyncapi/#{name}")
+
+      assert conn.status == 200
+      document = Jason.decode!(conn.resp_body)
+      assert document["asyncapi"] == "3.0.0"
+
+      # Served twice on purpose: a consumer comparing what an instance claims
+      # against what its build recorded can do it with a HEAD and no body.
+      assert get_resp_header(conn, "etag") == [~s("#{document["info"]["x-pns-digest"]}")]
+    end
+
+    test "an unknown contract is 404, not an empty document", %{conn: conn} do
+      conn = get(conn, "/pns/api/asyncapi/Not.A.Contract")
+
+      assert conn.status == 404
+    end
+
+    test "it is not public", %{conn: _conn} do
+      # It names every event, every field and every label in the client's own words.
+      # That is a map of their business, not "just a schema".
+      conn = build_conn() |> put_req_header("accept", "application/json")
+
+      assert get(conn, "/pns/api/asyncapi").status == 403
+      assert get(conn, "/pns/api/asyncapi/Anything").status == 403
+    end
+  end
+
   describe "the screens still work" do
     test "the dashboard's HTML routes are untouched by the API mount" do
       conn =

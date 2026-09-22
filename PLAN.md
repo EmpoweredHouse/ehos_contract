@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Dopisek 22 września — etap 5: 5.1–5.8 zamknięte
+## Dopisek 22 września — etap 5 zamknięty w całości, 5.1–5.9
 
 Plan implementacji całego etapu jest osobno; tutaj idzie stan i to, co wyszło przy pisaniu.
 
@@ -363,6 +363,44 @@ w moduledoku endpointu, żeby resolver hosta mógł zdecydować.
 **Jason zadeklarowany wprost w `pns_web`** — dochodził tam wyłącznie przez `{:pns, path: ...}`, bo
 Phoenix i LiveView mają go jako `optional: true`. Jedynym mechanicznym pinem „zadeklarowane, nie
 odziedziczone" jest test czytający listę `deps`, bo usunięcie linii zostawia build zielony.
+
+### 5.9 — AsyncAPI z kontraktu, i uczciwie o tym, czego standard nie unosi
+
+`PNS.AsyncAPI.document/1` plus indeks, serwowane przez `pns_api/2` z digestem w ciele i w `ETag`.
+507 testów, brama zielona.
+
+**Zwalidowane prawdziwym walidatorem, raz, ręcznie, 22 września.** `npx @asyncapi/cli validate` na
+trzech dokumentach — `ProcessShapes.Promised`, `ProcessShapes.Rig` (ma `external` i `retain`)
+i `UniversalityGate.TreatmentEpisode` (ma komendę): każdy **valid, 0 błędów, 0 ostrzeżeń**. Jedna
+informacja na każdym: istnieje 3.1.0. Zostajemy na 3.0.0 — podbicie wersji bez sprawdzenia, co się
+w niej zmieniło, byłoby zgadywaniem. Walidatora nie ma i nie będzie w bramie: `npx` wstawiłby Node
+do repozytorium, które świadomie zwendorowało bundle JS, żeby go uniknąć. Przypięte są testy
+strukturalne, a to zdanie jest zapisem pomiaru, nie obietnicą, że ktoś go powtórzy.
+
+**Co wypada i dlaczego, bo to jest treść tej pozycji, nie przypis.** `trace` nie ma w AsyncAPI
+żadnej reprezentacji — czyli najostrzejsza rzecz, którą ten silnik deklaruje, jest jedyną, której
+standard nie wyraża; jedzie jako `x-pns-traces`, którego żadne narzędzie AsyncAPI nie czyta. `retain`
+tak samo, i tu pominięcie byłoby groźne: konsument czytający spec, który pokazuje pole i nie pokazuje,
+że pole jest hashowane albo wycinane, został okłamany przez przemilczenie. `external` jest nieobecny
+**świadomie** — oczywiste mapowanie na `servers` jest błędne, bo external nazywa się od faktu
+biznesowego, nigdy od dostawcy, a `server` to adres dostawcy; zmapowanie złamałoby regułę przez jej
+opublikowanie. Kanał nie jest procesem: kanał to adres, a proces to przebieg, więc `address` jest
+jawnie `null`.
+
+**Bramka międzypozycyjna działa w obie strony.** Test pinuje `Map.keys(PNS.Contract.schema())`, więc
+ósma deklaracja zaczerwieni się tutaj i ktokolwiek ją doda, musi powiedzieć, co specyfikacja z nią
+robi. `command`, który wszedł jedną pozycję wcześniej, dostał miejsce jako `x-pns-commands` —
+deklaracja istniejąca i nieprodukująca niczego w specyfikacji to dokładnie ta awaria, którą miał
+`mix pns.docs`.
+
+**Dwa moje testy twierdziły więcej, niż pokazywały, i oba złapała kontrola odwrotna, nie czytanie.**
+Pierwszy porównywał digesty dwóch fikstur przy „tej samej treści w innej kolejności" — a dwa
+różne moduły mają z definicji różne `info.title`, więc mierzył nazwę modułu. Drugi asertował
+`digest(doc) == doc["info"]["x-pns-digest"]` jako test na to, że digest liczy się **bez siebie** —
+i nie czerwienił się, gdy podmieniłem usunięcie klucza na wstawienie placeholdera, bo funkcja jest
+spójna ze sobą cokolwiek haszuje. Teraz testuje to, co trzeba: że digest nie zależy od tego, co
+siedzi w kluczu digestu. To już drugi raz w tym etapie, kiedy krok „zweryfikuj odwrotnie" wyłapał
+test-atrapę — pierwszy był przy 5.4 z `having` kontra `where`.
 
 ---
 
