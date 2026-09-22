@@ -2114,13 +2114,25 @@ który pisze — a bramą jest recenzent, i dopiero teraz ma coś napisanego dla
 
 **Etap 3 zamknięty w całości: 4/4 skille, migracje, osobna suita, CI.**
 
-## Etap 4 — jeden ekran
+## Etap 4 — jeden ekran — nieaktualne w tym brzmieniu, patrz dopiski (10) i (11) z 23 sierpnia
 
 Cztery pytania jako lista, nie graf. Sprawdzone: 11 zdarzeń dało 3 krawędzie i diagram nie powiedział nic,
 czego nie mówiła posortowana lista. Bez alertów, bez stanu na żywo, bez czegokolwiek o konkretnej firmie.
 
 **Zablokowane do rozstrzygnięcia:** notatki §9 mówią *„live, not a report … monitors eventually want alerts"*,
 co jest w napięciu z zawężeniem zakresu. Etapy 1–3 są od tego niezależne.
+
+Dwa zdania powyżej są już rozstrzygnięte i zostają tu jako zapis tego, co etap 4 obiecywał:
+
+- „Jeden ekran" — są trzy, `/contract`, `/accounts` i `/graph`, nazwane rodzeństwem, żeby żaden nie
+  czytał się jako kanoniczny. Dopisek (10) zapisał, dlaczego to nie jest rozrost zakresu, dopisek
+  (11) zbudował trzeci.
+- „Lista, nie graf" — werdykt z 11 zdarzeń dotyczył grafu globalnego i nadal stoi: osobnego
+  renderera grafu globalnego nie ma. Zawężony do jednego procesu diagram mówi to, czego lista nie
+  mówi — stopnie, zakończenia, okna `trace` — i to jest powód, dla którego wrócił.
+- „Zablokowane do rozstrzygnięcia" — rozstrzygnięte 6 sierpnia i to rozstrzygnięcie trzyma się w
+  kodzie. Ekran nie jest na żywo: żaden z trzech nie subskrybuje niczego i nie odświeża się sam,
+  każdy renderuje raz na mount. Alertów nie ma i nie wchodzą.
 
 ## Rekord: gdzie jest i czego nie wolno z nim robić
 
@@ -2144,8 +2156,13 @@ niewystarczające; i skew wersji, który nie obejmował usuniętego handlera. Hi
 Została jedna rzecz, którą rekord mówi, a kod jeszcze nie — i jedna, którą rekord mówi, a kod już nie
 będzie, rozstrzygnięte, nie zaniedbane:
 
-- **§9 „navigation is per-process, never global”** wobec braku zawężenia w `PNS.Graph`. Luka, nie
-  preferencja — należy do etapu 4, bo to jego wymaganie.
+- **§9 „navigation is per-process, never global” — połowa zrobiona 23 sierpnia.** Widok
+  zadeklarowany jest per proces: `PNS.Graph.declared_to_mermaid/2` bierze kontrakt i nazwę procesu,
+  a ekran daje selektor. Overlay został globalny, i ekran świadomie tego nie obchodzi — powód jest
+  teraz znany dokładnie i leży w silniku: `PNS.Graph.to_mermaid/2` wyprowadza zbiór węzłów z pełnego
+  grafu statycznego niezależnie od tego, jakie krawędzie dostanie, więc odfiltrowanie samej listy
+  krawędzi gubi krawędzie, nie gubiąc węzłów, i zostawia osierocone prostokąty zamiast zawężonego
+  obrazka. Druga połowa jest więc robotą w `PNS.Graph`, nie w ekranie.
 - **§9 okno „never observed" — odrzucone 6 sierpnia**, patrz „Rozstrzygnięte 6 sierpnia" wyżej i poprawka z
   datą w `docs/adr/technology-notes.md` §9. Rekord pytał, kiedy to zbudować; odpowiedź jest „nie budujemy",
   nie „jeszcze nie".
@@ -2245,7 +2262,10 @@ procent kontraktu przyszło z sali (przy TaxVision 40%) i ile przykładów wła�
 - **~~Zbiór wartości `:enum`~~** — zrobione: `{:enum, [...]}` obok gołego `:enum`, opt-in, zero zmian w
   istniejących kontraktach.
 
-**Do etapu 4, bo to jego wymaganie, nie dług:** zawężenie `PNS.Graph` do procesu i kontraktu.
+**Zawężenie `PNS.Graph` do procesu i kontraktu — połowa zrobiona 23 sierpnia**, patrz „Rekord"
+wyżej. Zostało: `overlay/1` nie przyjmuje ani `:process`, ani `:contract`, a samo dołożenie filtra
+nie wystarczy, bo zbiór węzłów bierze się z pełnego grafu statycznego w `to_mermaid/2`. Przestało
+być wymaganiem etapu 4 — trzy ekrany stoją bez tego — i jest zwykłym długiem w silniku.
 
 Zamknięte 6 sierpnia bez zmiany w DSL: `label` dla `trace` nie wchodzi — powód przy 1.7.
 
