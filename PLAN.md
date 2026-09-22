@@ -260,11 +260,16 @@ Fikstury testów ekranu też były zbudowane pod jego stare potrzeby, nie pod ks
 w nich `accountable`, `duration`, `in_flight` i `under_earlier_declaration`. Czyli rozjechałyby się
 tak samo.
 
+**Kolor werdyktu — naprawione osobno.** Cała linia była czerwona, razem z klauzulą mówiącą, że
+awaria zewnętrzna **nie** jest naruszeniem po stronie klienta. Zdanie „to nie jest naruszenie"
+wydrukowane kolorem naruszenia mówi coś odwrotnego niż znaczy. `verdict/1` i `qualifications/1`
+rozdzielają jedno od drugiego: kolor obejmuje werdykt, klauzule są wyciszone. Przypięte testem
+sprawdzającym, że klasa kończy się na elemencie werdyktu, i zweryfikowane odwrotnie.
+
 Drobiazgi z uruchomienia, zapisane bez naprawiania: drugi panel grafu („declared versus observed,
 every contract") jest przy tej skali nieczytelny — czterdzieści osieroconych prostokątów, bo trzy
 z czterech kontraktów nie mają handlerów; krawędź driftu drukuje się jako `(1x, 1/0 runs)`, bo nie
-ma procesu, więc mianownik jest pusty; a na ekranie cała linia werdyktu jest czerwona, razem
-z klauzulą mówiącą, że coś **nie** jest naruszeniem.
+ma procesu, więc mianownik jest pusty.
 
 ---
 

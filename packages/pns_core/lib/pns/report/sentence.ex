@@ -46,31 +46,54 @@ defmodule PNS.Report.Sentence do
 
   @doc """
   Whether it was kept, with every qualification that changes what the number means.
+
+  One string, for a medium that has one. A medium that can style parts differently
+  should use `verdict/1` and `qualifications/1` instead — the qualifications are not
+  the verdict, and one of them says outright that something is *not* a breach.
   """
   @spec outcome(map()) :: String.t()
-  def outcome(a) do
-    state =
-      cond do
-        # Two different sentences. "Nothing to judge" is an absence; "every run here
-        # predates the current rule" is a fact about which promise was in force, and
-        # those runs did happen.
-        a.instances == 0 and a.under_earlier_declaration > 0 ->
-          "No run in this period was judged under the rule as it now stands."
+  def outcome(a), do: Enum.join([verdict(a) | qualifications(a)], " ")
 
-        a.instances == 0 ->
-          "There was no run in this period on which this could be judged."
+  @doc """
+  The verdict alone: kept, breached, pending, or nothing to judge.
 
-        a.violated > 0 ->
-          "BREACHED in #{a.violated} of #{a.instances} runs."
+  This is the part a glance is supposed to answer, and the only part it is honest to
+  colour. The clauses beside it qualify the number and sometimes contradict the
+  colour — "an external dependency was unavailable, so this is not a breach on the
+  client's side" printed in red says the opposite of what it means.
+  """
+  @spec verdict(map()) :: String.t()
+  def verdict(a) do
+    cond do
+      # Two different sentences. "Nothing to judge" is an absence; "every run here
+      # predates the current rule" is a fact about which promise was in force, and
+      # those runs did happen.
+      a.instances == 0 and a.under_earlier_declaration > 0 ->
+        "No run in this period was judged under the rule as it now stands."
 
-        a.pending > 0 ->
-          "Met in #{a.satisfied} of #{a.instances}, #{a.pending} still in progress."
+      a.instances == 0 ->
+        "There was no run in this period on which this could be judged."
 
-        true ->
-          "Met in all #{a.instances} runs."
-      end
+      a.violated > 0 ->
+        "BREACHED in #{a.violated} of #{a.instances} runs."
 
-    state <> via(a) <> suspended(a) <> earlier_declaration(a)
+      a.pending > 0 ->
+        "Met in #{a.satisfied} of #{a.instances}, #{a.pending} still in progress."
+
+      true ->
+        "Met in all #{a.instances} runs."
+    end
+  end
+
+  @doc """
+  Everything that changes what the verdict's number means, each a whole sentence.
+
+  Empty for most assertions. Each one exists because a count on its own would be
+  read as saying more than it does.
+  """
+  @spec qualifications(map()) :: [String.t()]
+  def qualifications(a) do
+    Enum.reject([via(a), suspended(a), earlier_declaration(a)], &(&1 == nil))
   end
 
   @doc """
@@ -164,34 +187,34 @@ defmodule PNS.Report.Sentence do
   # Attached to the count it qualifies, never to the sentence as a whole. Appended to
   # whatever `state` said, it produced "BREACHED in 1 of 5 runs. (including 1 via the
   # fallback ending…)", where "including" reads as qualifying the breaches.
-  @spec via(map()) :: String.t()
-  defp via(%{satisfied_via_or_else: 0}), do: ""
-  defp via(%{satisfied: 0}), do: ""
+  @spec via(map()) :: String.t() | nil
+  defp via(%{satisfied_via_or_else: 0}), do: nil
+  defp via(%{satisfied: 0}), do: nil
 
   defp via(a) do
-    " Of those that were met, #{runs(a.satisfied_via_or_else)} reached the fallback " <>
+    "Of those that were met, #{runs(a.satisfied_via_or_else)} reached the fallback " <>
       "ending, which conforms to the rule."
   end
 
   # Named as somebody else's outage, and **not** counted among the breaches. That is
   # the whole value of the fourth verdict: without it these runs read as "you broke
   # your own agreement" when a system they depend on stopped answering.
-  @spec suspended(map()) :: String.t()
-  defp suspended(%{suspended: 0}), do: ""
+  @spec suspended(map()) :: String.t() | nil
+  defp suspended(%{suspended: 0}), do: nil
 
   defp suspended(a) do
-    " Suspended: #{runs(a.suspended)} — an external dependency was unavailable within the " <>
+    "Suspended: #{runs(a.suspended)} — an external dependency was unavailable within the " <>
       "rule's window, so this is not a breach on the client's side."
   end
 
   # Runs that began before this assertion last changed were judged under a promise
   # that is no longer the declared one. Counted, not listed, with the date, so a
   # reader can narrow the period themselves.
-  @spec earlier_declaration(map()) :: String.t()
-  defp earlier_declaration(%{under_earlier_declaration: 0}), do: ""
+  @spec earlier_declaration(map()) :: String.t() | nil
+  defp earlier_declaration(%{under_earlier_declaration: 0}), do: nil
 
   defp earlier_declaration(a) do
-    " #{runs(a.under_earlier_declaration)} began before this rule was last changed " <>
+    "#{runs(a.under_earlier_declaration)} began before this rule was last changed " <>
       "(#{Date.to_string(DateTime.to_date(a.declaration_changed_at))}) and are not counted " <>
       "here — they were judged under a different promise."
   end

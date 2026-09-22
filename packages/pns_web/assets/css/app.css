@@ -204,6 +204,16 @@ button[phx-click="revoke_role"]:hover {
   font-weight: 600;
 }
 
+/* Deliberately not coloured and deliberately quieter than the verdict above it.
+   A qualification explains what the verdict's number does *not* mean — one of
+   them says outright that an outage is not a breach on the client's side — and
+   inheriting the verdict's colour would make it contradict itself. */
+.outcome-qualification {
+  color: var(--pns-text-muted);
+  font-size: 0.9rem;
+  margin-top: 0.15rem;
+}
+
 /* The Mermaid hook replaces this element's content with an SVG once it
    runs — the scroll container is needed before that happens too, since a
    diagram wider than the column is the common case, not the exception. */

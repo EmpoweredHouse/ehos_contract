@@ -12,6 +12,10 @@ Everything to date, recorded after the fact. The package is not on Hex and canno
 be until `pns` is: it depends on it by path, and a published package may only
 depend on published ones. See `README.md` for the second reason.
 
+- **Fixed:** only the verdict carries the verdict's colour. The whole sentence used
+  to, including the clause explaining that an external outage means "this is not a
+  breach on the client's side" — printed in red, which says the opposite of what it
+  means. `PNS.Report.Sentence.verdict/1` and `qualifications/1` split the two.
 - **Fixed:** the contract screen was quietly answering six fewer questions than
   `mix pns.report`. It carried its own copy of the report's sentences — a
   deliberate duplication, made when both copies said the same four things — and by

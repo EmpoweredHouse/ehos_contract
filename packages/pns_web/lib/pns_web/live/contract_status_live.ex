@@ -86,7 +86,13 @@ defmodule PNS.Web.Live.ContractStatus do
             <ul>
               <li :for={assertion <- process.assertions}>
                 <p>{Sentence.rule(assertion)}</p>
-                <p class={outcome_class(assertion)}>{Sentence.outcome(assertion)}</p>
+                <p class={outcome_class(assertion)}>{Sentence.verdict(assertion)}</p>
+                <p
+                  :for={qualification <- Sentence.qualifications(assertion)}
+                  class="outcome-qualification"
+                >
+                  {qualification}
+                </p>
               </li>
             </ul>
           </div>
@@ -116,6 +122,9 @@ defmodule PNS.Web.Live.ContractStatus do
 
   # The one line the report exists to be read from — README's own pitch for
   # it — so it is the one place color carries the answer, not just the words.
+  # **The verdict only.** The clauses beside it are deliberately unstyled: one of
+  # them says an outage means "this is not a breach on the client's side", and that
+  # sentence printed in the breach colour says the opposite of what it means.
   @spec outcome_class(map()) :: String.t()
   defp outcome_class(a) do
     cond do

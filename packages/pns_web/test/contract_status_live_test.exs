@@ -120,11 +120,22 @@ defmodule PNS.Web.Live.ContractStatusTest do
 
     html = render_component(&ContractStatus.render/1, assigns)
 
-    assert html =~ escape(PNS.Report.Sentence.outcome(assertion))
+    assert html =~ escape(PNS.Report.Sentence.verdict(assertion))
+
+    for qualification <- PNS.Report.Sentence.qualifications(assertion),
+        do: assert(html =~ escape(qualification))
+
     # Named individually, so a failure says which clause went missing.
     assert html =~ "reached the fallback ending"
     assert html =~ "an external dependency was unavailable"
     assert html =~ "judged under a different promise"
+
+    # **Only the verdict is coloured.** A clause saying an outage is not a breach on
+    # the client's side, printed in the breach colour, says the opposite of what it
+    # means — so the class stops at the verdict's own element.
+    [_before, after_verdict] = String.split(html, "outcome-breached", parts: 2)
+    assert after_verdict =~ "BREACHED in 3 of 9 runs."
+    refute after_verdict |> String.split("</p>", parts: 2) |> hd() =~ "not a breach"
   end
 
   # HEEx escapes interpolated values, so a sentence carrying a quotation mark — every
