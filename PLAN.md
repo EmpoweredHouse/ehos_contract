@@ -30,7 +30,7 @@ dopóki tego nikt nie zrobił, nie wiadomo, czy niosą robotę dla silnika, czy 
 
 ### Zmiany w kontrakcie
 
-| | Co | Dlaczego |
+|  | Co | Dlaczego |
 | --- | --- | --- |
 | 1 | **`command` jako siódma deklaracja**: nazwa, `process`, jakie eventy emituje, jakie typy principala mogą go wywołać | Dziś command istnieje tylko jako klucz w `example`. Z deklaracji wyprowadza się capability, zamiast pisać osobną listę nazw uprawnień, która i tak by się rozjechała (`D-15`) |
 | 2 | **`owner` na `process`**, jako rola a nie nazwisko | Raport mówiący „reguła złamana w 1 z 40 przebiegów" musi mieć adresata. Dziś `owner` jest tylko na evencie i opcjonalny (`D-18`) |
@@ -104,11 +104,34 @@ przy podziale dispatchu po granicy transakcji, rozciągnięta na granicę proces
 
 ### Czego silnik jeszcze nie wystawia
 
-| | Co | Dlaczego |
+|  | Co | Dlaczego |
 | --- | --- | --- |
 | 6 | **Endpoint z danymi zgodności**, generowany przez PNS | EHOS nie może czytać bazy klienta, bo to byłoby dokładnie to przekraczanie schematów, które zakazaliśmy. Zgodność przechodzi granicę przez API, a endpoint generuje silnik, żeby nie było czternastu implementacji |
 | 7 | **Generowanie i serwowanie specyfikacji**: AsyncAPI z kontraktu, OpenAPI z routera, oba pod endpointem, oba z digestem | EHOS porównuje digest instancji z tym zapisanym przy buildzie. Endpoint jest weryfikacją, nie źródłem prawdy: wersjonowana specyfikacja pochodzi z pakietu deploymentu (`D-16`) |
-| 8 | **Monitor zatrzymanego procesu** | Znany brak, nazwany w ADR: `deadline` i `cadence` nie mają czytelnika. To jest jeden z dwóch mechanizmów odpowiadających na pytanie, dla którego produkt istnieje, i jedyny jeszcze niezbudowany |
+| 8 | **Agregat `deadline` w raporcie zgodności** | `deadline` procesu jest zadeklarowany i nie czyta go nikt: jedyni czytelnicy to filtr `unverified` w `PNS.Conformance` i renderer, który go wypisuje. Kształt jest ustalony od 6 sierpnia i niezmieniony — „N z M przebiegów przekroczyło `deadline`", retrospektywnie, w `PNS.Conformance.report/2` |
+
+Pozycja 8 była tu zapisana jako „monitor zatrzymanego procesu", obejmujący `deadline` i `cadence`
+razem — i w tym brzmieniu cofała po cichu własne rozstrzygnięcie. 6 sierpnia te dwie rzeczy zostały
+rozdzielone i poszły w przeciwne strony; patrz „Rozstrzygnięte 6 sierpnia" niżej.
+
+- `deadline` — zwężony, nie odrzucony. Liczy się wyłącznie z logu: z przebiegów, które już się
+  zaczęły, ile przekroczyło uzgodniony czas trwania. Zero wiedzy o firmach, ten sam kształt, który
+  `PNS.Trace` liczy dziś dla `violated`/`satisfied`. To jest pozycja 8 powyżej i jest to specyfikacja
+  gotowa od sześciu tygodni, nie nowy pomysł z przeglądu. Sprawdzone przy tej korekcie: nadal
+  niezbudowana.
+- `cadence`'s okno „never observed" — odrzucone, nie odłożone, i argument był strukturalny: żeby
+  wykryć instancję, której nie ma, trzeba wiedzieć, które powinny istnieć, a to jest wiedza o
+  firmach, której silnik świadomie nie ma. Encja, która nie wyemitowała nic, jest niewidzialna dla
+  systemu opartego wyłącznie na logu.
+
+Słowo „monitor" dokładało do tego jeszcze trzecią rzecz, której żadna z tamtych decyzji nie
+obejmowała: liczenie na żywo zamiast w okresowym raporcie. Ekran na żywo został odrzucony osobno,
+tego samego dnia.
+
+Jedno mogłoby przywrócić `cadence` do gry, i warto to sprawdzić zamiast przepisywać pozycję z
+powrotem: EHOS wie, jakie workloady i jakie instancje powinny działać, więc mianownik, którego log
+nie ma, mógłby przyjść spoza silnika. Gdyby tak było, jest to nowa decyzja z datą i z nazwanym
+źródłem mianownika — nie „znany brak, nazwany w ADR".
 
 ### Po spotkaniu z founderem, 21 września — pięć pozycji, których wcześniej nie było
 
