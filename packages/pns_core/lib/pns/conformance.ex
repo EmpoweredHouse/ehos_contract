@@ -71,6 +71,8 @@ defmodule PNS.Conformance do
     nodes = Graph.static().nodes
     labels = Map.new(nodes, &{to_string(&1.event), &1.label})
     declared_by = Map.new(nodes, &{to_string(&1.event), &1.contract})
+    # Once for the report, not once per assertion: it is a query.
+    boundaries = Deployment.declaration_boundaries(contract)
 
     %{
       contract: contract,
@@ -88,7 +90,7 @@ defmodule PNS.Conformance do
             untraversed: label_edges(answers && answers.untraversed, labels),
             in_flight: label_edges(answers && answers.in_flight, labels),
             failing: label_edges(answers && answers.failing, labels),
-            assertions: assertions(contract, process, labels, opts)
+            assertions: assertions(contract, process, labels, boundaries, opts)
           }
         end,
       drift: drift(contract, labels, declared_by, opts)
@@ -132,23 +134,53 @@ defmodule PNS.Conformance do
   # `PNS.Trace.evaluate/3` still runs and still counts here internally — omitted
   # is only whether this function hands its summary to the report the client
   # reads, the same distinction `verified_declarations/1` already draws.
-  @spec assertions(module(), map(), map(), keyword()) :: [map()]
-  defp assertions(contract, process, labels, opts) do
+  @spec assertions(module(), map(), map(), %{String.t() => DateTime.t()}, keyword()) :: [map()]
+  defp assertions(contract, process, labels, boundaries, opts) do
     for trace <- contract.traces(),
         contract.process_of(trace.from).name == process.name,
         trace.name not in process.unverified do
       verdicts = Trace.evaluate(contract, trace.name, opts)
       label = fn name -> name && Map.get(labels, to_string(name), to_string(name)) end
+      boundary = Map.get(boundaries, "trace:#{trace.name}")
+      {current, earlier} = split_by_declaration(verdicts, boundary)
 
       %{
         trace: trace.name,
         from_label: label.(trace.from),
         eventually_label: label.(trace.eventually),
         or_else_label: label.(trace.or_else),
-        within: trace.within
+        within: trace.within,
+        declaration_changed_at: boundary,
+        under_earlier_declaration: length(earlier)
       }
-      |> Map.merge(Trace.summary(verdicts))
+      |> Map.merge(Trace.summary(current))
     end
+  end
+
+  # Runs that began before this assertion was last changed were judged under a
+  # promise that is no longer the one declared, so they do not belong in the same
+  # counts. `PNS.Trace` is not involved: every verdict already carries `from_at`,
+  # which is the moment the promise attached to that run, and the question of which
+  # promise was in force is the report's, not the evaluator's.
+  #
+  # The boundary is the last change full stop, not a change inside the reported
+  # period. A report for July, run in September, on an assertion changed in August
+  # is the case a period-bounded rule would miss — and it is the worse one, because
+  # nothing in the output would hint that the rule had moved.
+  #
+  # Two buckets, not one per version: an assertion changed three times inside the
+  # period puts two superseded rules in the same earlier count. That is a smaller
+  # untruth than today's, which folds them into `satisfied`, and the report prints
+  # the boundary date so a reader can narrow `--since` themselves.
+  @spec split_by_declaration([map()], DateTime.t() | nil) :: {[map()], [map()]}
+  defp split_by_declaration(verdicts, nil), do: {verdicts, []}
+
+  defp split_by_declaration(verdicts, at) do
+    # `!= :lt`, not `== :gt`: a run whose `from` lands in the same microsecond as
+    # the deployment is judged under the new rule, because the new rule was in
+    # force from that moment. Arbitrary at the boundary, but decided rather than
+    # accidental.
+    Enum.split_with(verdicts, &(DateTime.compare(&1.from_at, at) != :lt))
   end
 
   # A drift edge has no contract of its own: its **target** is undeclared, which

@@ -218,13 +218,44 @@ defmodule PNS.Report do
 
     state =
       cond do
-        a.instances == 0 -> "There was no run in this period on which this could be judged."
-        a.violated > 0 -> "BREACHED in #{a.violated} of #{a.instances} runs."
-        a.pending > 0 -> "Met in #{a.satisfied} of #{a.instances}, #{a.pending} still in progress."
-        true -> "Met in all #{a.instances} runs."
+        # Two different sentences, and conflating them would be the same error this
+        # report keeps being corrected for. "Nothing to judge" is an absence; "every
+        # run here predates the current rule" is a fact about which promise was in
+        # force, and the runs did happen.
+        a.instances == 0 and a.under_earlier_declaration > 0 ->
+          "No run in this period was judged under the rule as it now stands."
+
+        a.instances == 0 ->
+          "There was no run in this period on which this could be judged."
+
+        a.violated > 0 ->
+          "BREACHED in #{a.violated} of #{a.instances} runs."
+
+        a.pending > 0 ->
+          "Met in #{a.satisfied} of #{a.instances}, #{a.pending} still in progress."
+
+        true ->
+          "Met in all #{a.instances} runs."
       end
 
-    state <> via <> suspended(a)
+    state <> via <> suspended(a) <> earlier_declaration(a)
+  end
+
+  # The counts above describe runs judged under the rule as declared today. Runs
+  # that began before it last changed were judged under a different promise, and
+  # folding them in would let an edit to `within` retroactively turn a year of
+  # conforming runs into breaches with nothing in the report to say why.
+  #
+  # Counted, not listed, and the date is given so a reader can narrow the period
+  # themselves — which until now was the only way to get this truth at all, and
+  # required already knowing the date.
+  @spec earlier_declaration(map()) :: String.t()
+  defp earlier_declaration(%{under_earlier_declaration: 0}), do: ""
+
+  defp earlier_declaration(a) do
+    " #{runs(a.under_earlier_declaration)} began before this rule was last changed " <>
+      "(#{day(a.declaration_changed_at)}) and are not counted here — they were judged " <>
+      "under a different promise."
   end
 
   # Named as somebody else's outage, not as the client's problem, and **not** counted among

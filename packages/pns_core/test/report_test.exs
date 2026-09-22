@@ -202,6 +202,96 @@ defmodule PNS.ReportTest do
     end
   end
 
+  describe "a rule that was changed does not retroactively judge older runs" do
+    # Two runs, one on each side of the moment the assertion's window last moved.
+    # Backdated by payload rather than by instance key, so the test does not depend
+    # on how `PNS.Instance` encodes one.
+    defp run_at(id, at) do
+      request(id, :request_approved)
+      Oban.drain_queue(queue: :events)
+
+      Repo.update_all(
+        from(e in PNS.Event, where: fragment("?->>'request_id' = ?", e.payload, ^id)),
+        set: [occurred_at: at]
+      )
+    end
+
+    defp rule_changed_on(at) do
+      for {digest, seen} <- [{"aaaaaaaaaaaa", ~U[2026-08-01 00:00:00.000000Z]}, {"bbbbbbbbbbbb", at}] do
+        Repo.insert!(%PNS.Deployment{
+          contract: inspect(Contract),
+          contract_version: Contract.version(),
+          wiring_version: "wiring-#{digest}",
+          events: [],
+          edges: [],
+          declaration_digests: %{"trace:completed_or_refusal_notified" => digest},
+          first_seen_at: seen
+        })
+      end
+    end
+
+    defp assertion do
+      [process] = data().processes
+      [assertion] = process.assertions
+      assertion
+    end
+
+    test "runs from before the change are counted apart, not folded in" do
+      run_at("r-old", ~U[2026-08-02 09:00:00.000000Z])
+      run_at("r-new", ~U[2026-08-09 09:00:00.000000Z])
+      rule_changed_on(~U[2026-08-05 09:00:00.000000Z])
+
+      a = assertion()
+
+      assert a.under_earlier_declaration == 1
+      assert a.declaration_changed_at == ~U[2026-08-05 09:00:00.000000Z]
+
+      # The counts now describe only what the current rule can speak about, and the
+      # four verdicts still account for every one of them. Without that invariant a
+      # partition bug would show up as a number nobody can add.
+      assert a.instances == 1
+      assert a.satisfied + a.violated + a.pending + a.suspended == a.instances
+    end
+
+    test "with no change, the numbers and the text are what they were" do
+      # The 99% path. An assertion that never moved must render byte for byte as
+      # before, or this mechanism has a cost on every report rather than on the
+      # reports it is for.
+      run_at("r-1", ~U[2026-08-02 09:00:00.000000Z])
+
+      a = assertion()
+
+      assert a.under_earlier_declaration == 0
+      assert a.declaration_changed_at == nil
+      assert a.instances == 1
+      refute text() =~ "judged under a different promise"
+    end
+
+    test "the report says how many fell outside and on what date" do
+      run_at("r-old", ~U[2026-08-02 09:00:00.000000Z])
+      run_at("r-new", ~U[2026-08-09 09:00:00.000000Z])
+      rule_changed_on(~U[2026-08-05 09:00:00.000000Z])
+
+      t = text()
+
+      assert t =~ "1 run began before this rule was last changed (2026-08-05)"
+      assert t =~ "judged under a different promise"
+    end
+
+    test "every run predating the change is not the same as nothing to judge" do
+      run_at("r-old", ~U[2026-08-02 09:00:00.000000Z])
+      rule_changed_on(~U[2026-08-05 09:00:00.000000Z])
+
+      a = assertion()
+      assert a.instances == 0
+      assert a.under_earlier_declaration == 1
+
+      t = text()
+      assert t =~ "No run in this period was judged under the rule as it now stands."
+      refute t =~ "There was no run in this period on which this could be judged."
+    end
+  end
+
   describe "drift is attributed to the right contract" do
     test "drift enters the report of the contract whose event caused it" do
       request("r-1", :request_approved)

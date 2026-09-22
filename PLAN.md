@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Dopisek 22 września — etap 5 ruszył: 5.1, dwa z trzech kroków
+## Dopisek 22 września — etap 5: 5.1 i 5.2 zamknięte
 
 Plan implementacji całego etapu jest osobno; tutaj idzie stan i to, co wyszło przy pisaniu.
 
@@ -56,6 +56,40 @@ eventu raportowałby zmianę reguły, pod którą żaden przebieg nie mógł by�
 w którym doszła kolumna, nie jest dniem, w którym zmieniły się wszystkie deklaracje" — wiersze
 bez digestów wypadają **przed** parowaniem, bo inaczej data migracji byłaby fałszywą granicą
 wypadającą w środku historii każdego klienta. Obie są dziś przypięte testem.
+
+### 5.2 — raport przestał sądzić starą historię dzisiejszą regułą
+
+`PNS.Trace` nie został ruszony ani o linię i to było przewidziane: każdy werdykt niósł już `from_at`,
+czyli moment, w którym obietnica przywiązała się do przebiegu, a `assertions/4` trzymało pełną listę
+werdyktów i wyrzucało ją po `summary/1`. Partycja to jeden `Enum.split_with/2` na danych, które były
+o linię od wyrzucenia. Assercja dostała dwa klucze — `declaration_changed_at` i
+`under_earlier_declaration` — a `summary/1` liczy się odtąd nad przebiegami spod aktualnej
+deklaracji. 413 testów, brama zielona.
+
+Zweryfikowane odwrotnie w dwóch miejscach, bo to dwa osobne twierdzenia. Neutralizacja partycji
+czerwieni trzy testy i zostawia **wszystkie 43 testy `trace`** zielone — to jest dowód, że silnik
+oceny naprawdę nie został tknięty. Neutralizacja samej klauzuli renderera czerwieni jeden test,
+tekstowy; dane i zdanie są przypięte osobno.
+
+**Poprawka do planu, wprowadzona w kodzie: granicą jest ostatnia zmiana, kropka, a nie zmiana
+wewnątrz okresu raportu.** Wąska reguła przepuszczała gorszy przypadek — raport za lipiec,
+uruchomiony we wrześniu, na assercji zmienionej w sierpniu: nic by się nie podzieliło i każdy
+lipcowy przebieg poszedłby pod regułę, której w lipcu nie było. Szersza reguła pochłania wąską
+i nie kosztuje nic: gdy assercja nigdy nie drgnęła, granica jest `nil`, a raport wychodzi bajt
+w bajt taki jak wcześniej — przypięte osobnym testem, bo to jest ścieżka 99% raportów.
+
+**Błąd, który wart jest zapisania, bo jego klasa wróci.** Napisałem `"trace:\#{trace.name}"` —
+z uciekniętą interpolacją. Skompilowało się bez ostrzeżenia, `Map.get` nigdy nie trafiał w klucz,
+więc granica zawsze wychodziła `nil` i całe 5.2 było martwe. **A wszystkie testy kontrolne
+przechodziły**, bo stan wyłączony tego mechanizmu to dokładnie zachowanie sprzed niego. Wniosek nie
+jest o interpolacji: mechanizm, którego stan bezczynny wygląda jak przypadek normalny, nie jest
+przypięty testem kontrolnym — potrzebuje testu twierdzącego, że granica **została znaleziona**.
+Taki test jest dziś w suicie i to on to złapał.
+
+**Ograniczenie, świadome i zapisane:** dwa kubełki, nie N. Assercja zmieniona trzy razy w okresie
+daje „przed ostatnią zmianą" i „po", a wcześniejszy kubełek miesza dwie nieaktualne reguły. To jest
+mniejsza nieprawda niż dzisiejsza, która zwijała je w `satisfied`, a raport drukuje datę granicy,
+więc czytelnik zawęzi `--since` sam. Historii assercji nikt jeszcze nie potrzebował.
 
 ---
 
