@@ -76,6 +76,9 @@ defmodule PNS.Conformance do
 
     %{
       contract: contract,
+      # In the data, not only in the rendered text: the report crosses a boundary
+      # as JSON too, and an auditor reading it there needs the same fact.
+      engine: PNS.version(),
       period: %{since: Keyword.get(opts, :since), until: Keyword.get(opts, :until)},
       deployment: Deployment.report(contract, opts),
       processes:

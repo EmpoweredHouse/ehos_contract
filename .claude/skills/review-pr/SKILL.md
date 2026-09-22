@@ -167,7 +167,27 @@ describes, expect a matching dated note somewhere in the same PR. Its absence is
 — "where's the correction for this?" — not proof the PR silently rewrote history, but not something
 to let pass unasked either.
 
-### 7. Diff size as its own signal
+### 7. A verdict-moving change without a CHANGELOG entry
+
+`packages/pns_core/CHANGELOG.md` carries a rule: a change that can move a verdict raises the minor
+version and gets a line there. A verdict is anything the conformance report prints as a number or a
+state — an overlay edge's state, a `trace` verdict, a path counted as untraversed, a run counted as
+exceeding a deadline, a declaration counted as changed. Wording, docstrings, tests and fixtures do
+not.
+
+**Nothing mechanical enforces this and nothing can**, which is why it is a reviewer's line rather
+than a check. The mechanical part — that the report states which engine computed it — is pinned by
+`PNS.VersionTest`, and on its own it is decoration: a version number nobody can attribute to a
+behaviour is worse than no version, because it reads as provenance.
+
+The trigger is narrow, so it can be applied without judgment: a diff touching
+`packages/pns_core/lib/pns/{trace,graph,conformance,deployment,report,run}.ex` with no entry in
+`CHANGELOG.md` goes back to its author. If the author's answer is "this cannot move a verdict", that
+answer belongs in the PR description, and it is usually right — but it should be written down rather
+than assumed, because the alternative is two clients on two versions getting two answers to the same
+question with nothing to explain the difference.
+
+### 8. Diff size as its own signal
 
 `change-contract`'s non-negotiables state the rule for the writer: work from an actual diff, never
 regenerate a whole module, because a full regeneration risks silently dropping an existing

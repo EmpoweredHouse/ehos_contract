@@ -1,6 +1,11 @@
 defmodule PNS.MixProject do
   use Mix.Project
 
+  # One source for `project/0` and, through `PNS.version/0`, for the line every
+  # conformance report carries. A change that can move a verdict raises the minor
+  # version and gets a line in CHANGELOG.md — the rule is written there.
+  @version "0.2.0"
+
   @moduledoc """
   The engine as its own application, extracted on 2026-08-20.
 
@@ -13,7 +18,7 @@ defmodule PNS.MixProject do
   def project do
     [
       app: :pns,
-      version: "0.1.0",
+      version: @version,
       elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
       # Only read when this project is the top-level one; a path dependency's

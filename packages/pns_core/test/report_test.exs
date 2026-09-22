@@ -202,6 +202,18 @@ defmodule PNS.ReportTest do
     end
   end
 
+  describe "the report says which engine computed it" do
+    test "the engine version is in the data, because the data crosses boundaries too" do
+      # Not only in the rendered text: this is the key an auditor reads when the
+      # report arrives as JSON rather than as a page.
+      assert data().engine == PNS.version()
+    end
+
+    test "and in the header, as a property of the whole artifact" do
+      assert text() =~ "Computed by PNS #{PNS.version()}."
+    end
+  end
+
   describe "a rule that was changed does not retroactively judge older runs" do
     # Two runs, one on each side of the moment the assertion's window last moved.
     # Backdated by payload rather than by instance key, so the test does not depend

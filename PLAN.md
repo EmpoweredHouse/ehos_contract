@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Dopisek 22 września — etap 5: 5.1 i 5.2 zamknięte
+## Dopisek 22 września — etap 5: 5.1, 5.2 i 5.3 zamknięte
 
 Plan implementacji całego etapu jest osobno; tutaj idzie stan i to, co wyszło przy pisaniu.
 
@@ -90,6 +90,32 @@ Taki test jest dziś w suicie i to on to złapał.
 daje „przed ostatnią zmianą" i „po", a wcześniejszy kubełek miesza dwie nieaktualne reguły. To jest
 mniejsza nieprawda niż dzisiejsza, która zwijała je w `satisfied`, a raport drukuje datę granicy,
 więc czytelnik zawęzi `--since` sam. Historii assercji nikt jeszcze nie potrzebował.
+
+### 5.3 — wersja silnika, i reguła, która czyni z niej coś więcej niż napis
+
+`PNS.version/0` czyta `mix.exs` atrybutem kompilacyjnym, nie przez `Application.spec(:pns, :vsn)` —
+tamto zwraca charlistę i wymaga załadowanej aplikacji, a obie te rzeczy trafiłyby jako niespodzianka
+do renderera i do enkodera JSON z 5.8. Wersja jest w `header/1`, bo to własność całego artefaktu, nie
+bloku kontraktu, i dzięki temu `deployment/1` nie został ruszony. Jest też kluczem `engine:` w samych
+danych, bo raport przechodzi granicę także jako JSON. Pakiet stoi teraz na `0.2.0`. 417 testów.
+
+**Ta połowa jest dekoracją i test to mówi wprost:** usunięcie linii z nagłówka czerwieni jeden test
+i nic więcej. Nie-dekoracją jest `packages/pns_core/CHANGELOG.md` z regułą wpisaną do pliku — zmiana
+mogąca ruszyć werdykt podnosi MINOR i dostaje linię — i **żaden test tego nie wyegzekwuje.**
+Jedynym trwałym mechanizmem jest punkt 7 w skillu `review-pr`: diff dotykający
+`lib/pns/{trace,graph,conformance,deployment,report,run}.ex` bez wpisu w CHANGELOG wraca do autora.
+Wyzwalacz jest wąski celowo, żeby dało się go stosować bez osądu.
+
+**Wpis `0.1.0` jest retrospektywny i nie ma własnego numeru wersji.** Wymienia pięć zmian, które już
+ruszyły werdykt, zanim reguła istniała — zero przebiegów jako `basis: :no_runs`, praca w kolejce jako
+`:in_flight`, rozdzielenie „próbowane i padło" od „nigdy nie próbowano", czwarty werdykt `:suspended`,
+`unverified` sięgające po `trace`. Wymyślanie numerów dla wydań, których nikt nie opublikował, byłoby
+drugim źródłem prawdy o sekwencji, która się nie wydarzyła.
+
+**Pułapka przy iterowaniu, warta zapisania:** `mix check` nie dotyka bazy `dev`. Po migracji v02
+`MIX_ENV=dev mix pns.report` wywalał się na brakującej kolumnie, mimo że brama była zielona.
+Udokumentowana komenda bramy z `CLAUDE.md` zawiera `mix ecto.setup` i to ją pokrywa — ja puszczałem
+sam `mix check`. Kogo to ugryzie następnym razem: każdego, kto po migracji iteruje samą bramą.
 
 ---
 

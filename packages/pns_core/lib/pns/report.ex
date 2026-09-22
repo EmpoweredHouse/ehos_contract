@@ -39,6 +39,11 @@ defmodule PNS.Report do
     [
       "CONFORMANCE REPORT — #{period(report.period)}",
       "Whether the deployed code does what the agreed process says.",
+      # A property of the whole artifact, not of the contract block below it —
+      # which is also why `deployment/1` stays untouched. What counts as drift has
+      # moved more than once, so a number without the engine that produced it is
+      # not reproducible evidence.
+      "Computed by PNS #{report.engine}.",
       ""
     ]
   end
