@@ -237,4 +237,161 @@ defmodule PNS.DeploymentTest do
       assert PNS.Deployment.report(Contract).changed == nil
     end
   end
+
+  describe "a change events and paths cannot show" do
+    # Two deployments identical in everything the diff could see before: same event
+    # names, same edges. Only one assertion's window moved — which is the whole
+    # class of change this exists for.
+    defp two_versions_differing_only_in(digests_old, digests_new) do
+      deployment(%{
+        wiring_version: "wiring-1",
+        events: ["a", "b"],
+        edges: ["a->b"],
+        declaration_digests: digests_old,
+        first_seen_at: ~U[2026-08-01 09:00:00.000000Z]
+      })
+
+      deployment(%{
+        contract_version: "new",
+        wiring_version: "wiring-2",
+        events: ["a", "b"],
+        edges: ["a->b"],
+        declaration_digests: digests_new,
+        first_seen_at: ~U[2026-08-02 09:00:00.000000Z]
+      })
+
+      PNS.Deployment.report(Contract).changed
+    end
+
+    test "a changed assertion window is named, with events and paths still empty" do
+      change =
+        two_versions_differing_only_in(
+          %{"trace:paired_in_time" => "aaaaaaaaaaaa", "event:a" => "cccccccccccc"},
+          %{"trace:paired_in_time" => "bbbbbbbbbbbb", "event:a" => "cccccccccccc"}
+        )
+
+      assert change.declarations.changed == ["trace:paired_in_time"]
+      assert change.declarations.added == []
+      assert change.declarations.removed == []
+
+      # The control, and the reason this test exists: before this key, the same
+      # edit produced exactly these four empty lists and nothing else.
+      assert change.events_added == []
+      assert change.events_removed == []
+      assert change.paths_added == []
+      assert change.paths_removed == []
+    end
+
+    test "a new declaration is a birth, not a change" do
+      change =
+        two_versions_differing_only_in(
+          %{"event:a" => "cccccccccccc"},
+          %{"event:a" => "cccccccccccc", "external:registry" => "dddddddddddd"}
+        )
+
+      assert change.declarations.added == ["external:registry"]
+      assert change.declarations.changed == []
+    end
+
+    test "a row from before the column says so, rather than saying nothing moved" do
+      change =
+        two_versions_differing_only_in(nil, %{"event:a" => "cccccccccccc"})
+
+      assert change.declarations == :not_recorded
+    end
+
+    test "the report says it cannot compare, not that nothing changed" do
+      two_versions_differing_only_in(nil, %{"event:a" => "cccccccccccc"})
+
+      text = Contract |> PNS.Conformance.report() |> PNS.Report.render()
+
+      assert text =~ "was not recorded, so it cannot be compared"
+      refute text =~ "Declarations changed:"
+    end
+
+    test "the report names the changed declaration" do
+      two_versions_differing_only_in(
+        %{"trace:paired_in_time" => "aaaaaaaaaaaa"},
+        %{"trace:paired_in_time" => "bbbbbbbbbbbb"}
+      )
+
+      text = Contract |> PNS.Conformance.report() |> PNS.Report.render()
+
+      assert text =~ "Declarations changed: 1 (trace:paired_in_time)"
+    end
+  end
+
+  describe "when a declaration last moved" do
+    test "the boundary is the deployment that introduced the new digest" do
+      deployment(%{
+        wiring_version: "w1",
+        declaration_digests: %{"trace:t" => "aaaaaaaaaaaa"},
+        first_seen_at: ~U[2026-08-01 09:00:00.000000Z]
+      })
+
+      deployment(%{
+        wiring_version: "w2",
+        declaration_digests: %{"trace:t" => "bbbbbbbbbbbb"},
+        first_seen_at: ~U[2026-08-05 09:00:00.000000Z]
+      })
+
+      assert PNS.Deployment.declaration_boundaries(Contract) ==
+               %{"trace:t" => ~U[2026-08-05 09:00:00.000000Z]}
+    end
+
+    test "a later change overwrites an earlier one" do
+      # The value is the *last* time the rule moved. A run before an older change is
+      # also before the newer one, so the newest boundary is the only one that can
+      # be applied without claiming more than the two buckets support.
+      for {digest, at} <- [
+            {"aaaaaaaaaaaa", ~U[2026-08-01 09:00:00.000000Z]},
+            {"bbbbbbbbbbbb", ~U[2026-08-05 09:00:00.000000Z]},
+            {"cccccccccccc", ~U[2026-08-09 09:00:00.000000Z]}
+          ] do
+        deployment(%{
+          wiring_version: "w-#{digest}",
+          declaration_digests: %{"trace:t" => digest},
+          first_seen_at: at
+        })
+      end
+
+      assert PNS.Deployment.declaration_boundaries(Contract) ==
+               %{"trace:t" => ~U[2026-08-09 09:00:00.000000Z]}
+    end
+
+    test "the day the column arrived is not a day every declaration changed" do
+      # Rows with no digests drop out before pairing. Without that, the migration
+      # date would read as a change to everything at once — a false boundary on the
+      # one date guaranteed to sit in the middle of everybody's history.
+      deployment(%{
+        wiring_version: "w1",
+        declaration_digests: nil,
+        first_seen_at: ~U[2026-08-01 09:00:00.000000Z]
+      })
+
+      deployment(%{
+        wiring_version: "w2",
+        declaration_digests: %{"trace:t" => "aaaaaaaaaaaa"},
+        first_seen_at: ~U[2026-08-05 09:00:00.000000Z]
+      })
+
+      assert PNS.Deployment.declaration_boundaries(Contract) == %{}
+    end
+
+    test "a declaration that never moved has no boundary" do
+      deployment(%{
+        wiring_version: "w1",
+        declaration_digests: %{"trace:t" => "aaaaaaaaaaaa"},
+        first_seen_at: ~U[2026-08-01 09:00:00.000000Z]
+      })
+
+      deployment(%{
+        wiring_version: "w2",
+        declaration_digests: %{"trace:t" => "aaaaaaaaaaaa"},
+        first_seen_at: ~U[2026-08-05 09:00:00.000000Z]
+      })
+
+      assert PNS.Deployment.declaration_boundaries(Contract) == %{}
+    end
+  end
 end

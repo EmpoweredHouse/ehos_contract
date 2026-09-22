@@ -39,9 +39,23 @@ linia. Do tego `PNS.Migrations` v02 z kolumną `declaration_digests` na `pns_dep
    zbudowany 21 sierpnia „zanim był potrzebny" właśnie się przydał i nadal nie ma testu; dedykowany
    test z drugą bazą zostaje na liście.
 
-**Zostało w 5.1:** `diff/2` z kategorią zmiany cichej, `declaration_boundaries/1` i linia w
-`PNS.Report`. Bez nich mapa jest zapisywana i nieczytana — czyli dokładnie ten stan, który etap 2
-istniał, żeby kasować.
+**5.1 domknięte.** `diff/2` ma kategorię `declarations` z trzema listami — dodane, usunięte,
+zmienione — albo `:not_recorded`, gdy któraś strona pochodzi sprzed kolumny. `PNS.Report` wypisuje
+nazwy zmienionych deklaracji, a przy `:not_recorded` mówi, że nie da się porównać, zamiast napisać
+„zmienionych 0". `declaration_boundaries/1` odpowiada, kiedy każda deklaracja ruszyła się ostatnio —
+i to jest jedyna rzecz w 5.1, której dziś nikt nie woła: czytelnikiem będzie 5.2. 409 testów.
+
+Kryterium odbioru sprawdzone odwrotnie i wyszło dokładnie tak, jak miało: neutralizacja
+`declaration_diff/2` czerwieni pięć testów, wszystkie z jednego bloku i wszystkie twierdzące coś
+o deklaracjach; neutralizacja `declaration_boundaries/1` czerwieni dwa na 327 i nic więcej, co jest
+dowodem, że 5.1 stoi bez 5.2.
+
+**Dwie rzeczy, których lista testów z planu nie przewidziała, a są tymi ostrzejszymi.** Pierwsza:
+„nowa deklaracja to narodziny, nie zmiana" — bez tego rozróżnienia pierwszy deploy po dopisaniu
+eventu raportowałby zmianę reguły, pod którą żaden przebieg nie mógł być sądzony. Druga: „dzień,
+w którym doszła kolumna, nie jest dniem, w którym zmieniły się wszystkie deklaracje" — wiersze
+bez digestów wypadają **przed** parowaniem, bo inaczej data migracji byłaby fałszywą granicą
+wypadającą w środku historii każdego klienta. Obie są dziś przypięte testem.
 
 ---
 

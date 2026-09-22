@@ -61,11 +61,17 @@ defmodule PNS.Deployment do
   end
 
   @type t :: %__MODULE__{}
+  @type declaration_change :: %{
+          added: [String.t()],
+          removed: [String.t()],
+          changed: [String.t()]
+        }
   @type change :: %{
           events_added: [String.t()],
           events_removed: [String.t()],
           paths_added: [String.t()],
-          paths_removed: [String.t()]
+          paths_removed: [String.t()],
+          declarations: declaration_change() | :not_recorded
         }
 
   @doc """
@@ -145,6 +151,17 @@ defmodule PNS.Deployment do
 
   Paths are reported separately from events because they move independently: a
   handler can add a path without the contract changing at all.
+
+  `declarations` is the part event names and edges could never show. A `trace`
+  whose `within` moved, an event whose `retain` or `identity` moved, a process
+  whose `instance` moved, a payload type that changed — all of them move
+  `contract_version` and none of them adds or removes an event or a path, so
+  until this key existed the diff reported a change to the agreement as four
+  empty lists.
+
+  It is `:not_recorded` when either side predates the column. "Compared, nothing
+  moved" and "could not be compared" are different statements, and collapsing
+  them would put a false negative exactly where the mechanism is meant to speak.
   """
   @spec diff(t(), t()) :: change()
   def diff(%__MODULE__{} = old, %__MODULE__{} = new) do
@@ -152,8 +169,54 @@ defmodule PNS.Deployment do
       events_added: new.events -- old.events,
       events_removed: old.events -- new.events,
       paths_added: new.edges -- old.edges,
-      paths_removed: old.edges -- new.edges
+      paths_removed: old.edges -- new.edges,
+      declarations: declaration_diff(old.declaration_digests, new.declaration_digests)
     }
+  end
+
+  @spec declaration_diff(map() | nil, map() | nil) :: declaration_change() | :not_recorded
+  defp declaration_diff(nil, _new), do: :not_recorded
+  defp declaration_diff(_old, nil), do: :not_recorded
+
+  defp declaration_diff(old, new) do
+    %{
+      added: new |> Map.keys() |> Kernel.--(Map.keys(old)) |> Enum.sort(),
+      removed: old |> Map.keys() |> Kernel.--(Map.keys(new)) |> Enum.sort(),
+      changed:
+        new
+        |> Enum.filter(fn {key, digest} -> Map.has_key?(old, key) and old[key] != digest end)
+        |> Enum.map(&elem(&1, 0))
+        |> Enum.sort()
+    }
+  end
+
+  @doc """
+  When each declaration last changed, for one contract.
+
+  The answer `PNS.Conformance` needs in order to stop folding runs judged under a
+  superseded promise into the same counts as runs judged under the current one.
+
+  Three exclusions, each of which would otherwise be a lie. Rows with no recorded
+  digests drop out **before** pairing, so the day the column arrived does not read
+  as "every declaration changed at once". A key absent from the older row is a
+  birth rather than a change, because no run can have been judged under a rule
+  that did not yet exist. And a later change overwrites an earlier one, so the
+  value is the *last* time this declaration moved, not the first.
+  """
+  @spec declaration_boundaries(module()) :: %{String.t() => DateTime.t()}
+  def declaration_boundaries(contract) do
+    contract
+    |> all()
+    |> Enum.reject(&is_nil(&1.declaration_digests))
+    |> Enum.chunk_every(2, 1, :discard)
+    |> Enum.reduce(%{}, fn [old, new], boundaries ->
+      for {key, digest} <- new.declaration_digests,
+          Map.has_key?(old.declaration_digests, key),
+          old.declaration_digests[key] != digest,
+          into: boundaries do
+        {key, new.first_seen_at}
+      end
+    end)
   end
 
   @doc """

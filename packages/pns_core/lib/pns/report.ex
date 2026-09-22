@@ -70,7 +70,7 @@ defmodule PNS.Report do
             "  Since the previous version: " <>
               "events added #{length(c.events_added)}, removed #{length(c.events_removed)}, " <>
               "paths added #{length(c.paths_added)}, removed #{length(c.paths_removed)}."
-          ]
+          ] ++ declarations_changed(c.declarations)
       end
 
     earlier =
@@ -85,6 +85,28 @@ defmodule PNS.Report do
 
     ["CONTRACT", "  Version #{deployment.deployed.contract_version}, #{since}."] ++
       change ++ earlier ++ [""]
+  end
+
+  # The line events and paths could never carry: a `trace` whose window moved, or an
+  # event whose `retain` moved, adds and removes nothing. Named rather than counted,
+  # because "2 declarations changed" sends the reader looking and the names end the
+  # search.
+  @spec declarations_changed(map() | :not_recorded) :: [String.t()]
+  defp declarations_changed(:not_recorded) do
+    [
+      "  What the declarations said under the previous version was not recorded, " <>
+        "so it cannot be compared."
+    ]
+  end
+
+  defp declarations_changed(%{added: [], removed: [], changed: []}), do: []
+
+  defp declarations_changed(d) do
+    moved = d.changed ++ d.added ++ d.removed
+
+    [
+      "  Declarations changed: #{length(moved)} (#{Enum.join(moved, ", ")})."
+    ]
   end
 
   @spec process(map()) :: [String.t()]
