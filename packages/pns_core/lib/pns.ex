@@ -20,6 +20,7 @@ defmodule PNS do
       Check,
       Command,
       Conformance,
+      Conformance.Wire,
       Contract,
       ContractExample,
       Deployment,

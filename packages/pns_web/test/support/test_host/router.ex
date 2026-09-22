@@ -17,10 +17,27 @@ defmodule PNS.Web.TestHost.Router do
     plug PNS.Web.Plug.Authenticate
   end
 
+  # No session, no CSRF, and `accepts` says json rather than html. Each of those is
+  # the opposite of what the dashboard needs, which is why the API mounts in its own
+  # scope rather than beside the screens. `PNS.Web.Plug.Authenticate` appears in
+  # both, which is the point: it is meant to work without a session, and mounting it
+  # here is what found that it did not.
+  pipeline :pns_api do
+    plug :accepts, ["json"]
+    plug PNS.Web.Plug.Authenticate
+  end
+
   scope "/" do
     pipe_through :browser
     import PNS.Web.Router
 
     pns_dashboard("/pns")
+  end
+
+  scope "/" do
+    pipe_through :pns_api
+    import PNS.Web.Router
+
+    pns_api("/pns/api")
   end
 end

@@ -48,6 +48,11 @@ version is real all the same, because a conformance report already carries it.
 - `accountable:` on `process`: the role a finding is addressed to. Distinct from
   `owner:` on an event, which holds a module and answers a different question.
   `mix pns.check` warns when a process names none.
+- `PNS.Conformance.as_data/2` and `PNS.Conformance.Wire`: the report projected onto
+  values that survive JSON. It lives in the engine rather than in a transport
+  because the shape a consumer compares, version to version, is part of what this
+  package promises. An undecided tuple or struct raises rather than being guessed
+  at — a wire format acquires unreadable fields one guess at a time.
 - The package can be published: `package/0`, a description, a licence file of its
   own, a README and generated docs. Stage 3 called this "the package as a package"
   and closed in August; `mix hex.build` refused the project outright until now.

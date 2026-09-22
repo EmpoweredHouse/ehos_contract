@@ -41,6 +41,19 @@ defmodule PNS.Web.Plug.Authenticate do
     end
   end
 
+  # **Only when a session has been fetched.** `Plug.Conn.get_session/2` raises when
+  # `fetch_session` has not run, and this plug is meant to be mountable in a
+  # pipeline that has no session at all — an API pipeline is exactly that. Without
+  # this guard the plug crashes on every request arriving without a bearer header,
+  # which is precisely the unauthenticated request an endpoint most needs to refuse
+  # cleanly. Found by mounting it that way in stage 5.8, not by reading it.
   @spec session_token(Plug.Conn.t()) :: String.t() | nil
-  defp session_token(conn), do: get_session(conn, :pns_local_token)
+  # `:plug_session`, not `:plug_session_fetch`. The endpoint's `Plug.Session` sets
+  # the latter on every request whether or not anybody fetched a session, so keying
+  # on it looks right and guards nothing — which is what the first version of this
+  # did, until the API test failed with the exact crash it was meant to prevent.
+  defp session_token(%Plug.Conn{private: %{plug_session: _}} = conn),
+    do: get_session(conn, :pns_local_token)
+
+  defp session_token(_conn), do: nil
 end

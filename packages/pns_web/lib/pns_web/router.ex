@@ -74,6 +74,40 @@ defmodule PNS.Web.Router do
     %{"resolver" => resolver, "user" => resolver.resolve_user(conn), "base_path" => path}
   end
 
+  @doc """
+  Mounts the read-only conformance API at `path`: `path <> "/conformance"`.
+
+  Separate from `pns_dashboard/2` and mounted in its own scope on purpose, because
+  the two need opposite pipelines. A dashboard route wants a session and CSRF
+  protection; a JSON route wants neither, and `plug :accepts, ["html"]` — which any
+  ordinary `:browser` pipeline carries — answers 406 to an API client before the
+  route is even reached.
+
+      pipeline :pns_api do
+        plug :accepts, ["json"]
+        plug PNS.Web.Plug.Authenticate
+      end
+
+      scope "/" do
+        pipe_through :pns_api
+        import PNS.Web.Router
+
+        pns_api "/pns/api"
+      end
+
+  This macro adds no `Plug.Parsers` of its own, for the reason the dashboard adds no
+  `Plug.Static`: a mountable package reaching into the host's pipeline is
+  presumptuous, and these are GET routes with no body to parse anyway.
+  """
+  defmacro pns_api(path, opts \\ []) do
+    quote bind_quoted: [path: path, opts: opts] do
+      get path <> "/conformance",
+          PNS.Web.Api.Conformance,
+          resolver: Keyword.get(opts, :resolver, PNS.Web.Resolvers.Default),
+          base_path: path
+    end
+  end
+
   defmodule RedirectToContract do
     @moduledoc false
     @behaviour Plug

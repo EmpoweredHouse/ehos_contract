@@ -1,9 +1,9 @@
 defmodule PnsPrototypeWeb.Router do
   @moduledoc """
-  The one route this host has: the dashboard, mounted at `/dashboard`.
-  Nothing else lives here — this project has no other frontend yet, and
-  `docs/adr/architecture.md` §16-17 puts frontends outside the engine
-  regardless.
+  Two mounts, both from `pns_web`: the dashboard at `/dashboard` for a person, and
+  the read-only conformance API at `/api/pns` for anything that is not one.
+  Nothing else lives here — this project has no other frontend, and
+  `docs/adr/architecture.md` §16-17 puts frontends outside the engine regardless.
   """
 
   use Phoenix.Router
@@ -18,10 +18,25 @@ defmodule PnsPrototypeWeb.Router do
     plug PNS.Web.Plug.Authenticate
   end
 
+  # No session and no CSRF, and `accepts` says json. Each is the opposite of what the
+  # dashboard's pipeline needs, which is why this is a second pipeline rather than a
+  # second route in the first one.
+  pipeline :api do
+    plug :accepts, ["json"]
+    plug PNS.Web.Plug.Authenticate
+  end
+
   scope "/" do
     pipe_through :browser
     import PNS.Web.Router
 
     pns_dashboard "/dashboard"
+  end
+
+  scope "/" do
+    pipe_through :api
+    import PNS.Web.Router
+
+    pns_api "/api/pns"
   end
 end

@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Dopisek 22 września — etap 5: 5.1–5.7 zamknięte
+## Dopisek 22 września — etap 5: 5.1–5.8 zamknięte
 
 Plan implementacji całego etapu jest osobno; tutaj idzie stan i to, co wyszło przy pisaniu.
 
@@ -322,6 +322,47 @@ której nikt jeszcze nie zaplanował.
 **Zastane, naprawione po drodze:** `packages/pns_core` nie miał `cli/0` z `preferred_envs`, więc
 jego własny `mix check` wywalał się na `ecto.create` w `:dev`, zanim doszedł do pierwszego testu.
 Alias był używalny tylko, jeśli ktoś sam dopisał `MIX_ENV=test`.
+
+### 5.8 — zgodność wychodzi jako dane
+
+`PNS.Conformance.as_data/2` plus `PNS.Conformance.Wire` w silniku, `pns_api/2` w `pns_web`,
+zamontowane też na prawdziwym hoście pod `/api/pns`. 477 testów.
+
+**Projekcja mieszka w silniku, nie w transporcie**, i to nie jest preferencja: kształt, który
+konsument porównuje wersja do wersji, jest częścią tego, co ten pakiet obiecuje. Napisana
+w pakiecie webowym byłaby własnością tego, kto akurat ją serwuje. Nierozstrzygnięta krotka albo
+struktura **rzuca**, zamiast zostać zgadnięta — format drutowy dorabia się nieczytelnych pól po
+jednym zgadnięciu naraz.
+
+**Test jest strukturalnym spacerem, nie listą kluczy, i to już się opłaciło.** Chodzi po całym
+wyniku i twierdzi, że nie ma tam atomu, krotki, struktury ani niestringowego klucza. Gdyby wymieniał
+znane sobie klucze, przeszedłby, podczas gdy 5.2 i 5.4 dołożyły `declaration_changed_at` (DateTime)
+i `duration` (krotka) — obie rzeczy, których `Jason` nie unosi.
+
+**Żywy błąd, przewidziany w planie i potwierdzony, a potem jeszcze raz.**
+`PNS.Web.Plug.Authenticate` schodził do `get_session/2`, które rzuca, gdy `fetch_session` nie
+przebiegło — czyli w bezsesyjnym pipelinie API wywalał się na **każdym żądaniu bez bearer headera**,
+dokładnie na tym nieuwierzytelnionym, które endpoint ma odrzucić czysto. Napisałem strażnika na
+`:plug_session_fetch` i **to nadal nie działało**: endpoint stawia `Plug.Session`, więc ten klucz
+jest zawsze, a brakuje `:plug_session`. Pierwszy strażnik wyglądał poprawnie i nie strzegł niczego;
+złapał to test, nie czytanie.
+
+**`{:forbidden, path}` staje się 403, a ścieżka jest porzucana.** Callback odpowiada celem
+przekierowania, bo transport, dla którego powstał, to HTML. Przekierowanie jest daną użyteczną
+wyłącznie dla przeglądarki — klient API idący za nim pobrałby stronę logowania i próbował sparsować
+ją jako JSON. Znaczenie zostaje, reprezentacja należy do transportu. Drugi callback byłby gorszy:
+każdy host implementowałby dwa, a `@optional_callbacks` robi z tego callback, którego może po cichu
+nie być.
+
+**Wystawiona ekspozycja, nazwana zamiast zredagowanej:** `report.deployment.in_log` niesie liczby
+zdarzeń per wersja z datami, czyli dane o wolumenie cudzego biznesu — po drugiej stronie linii,
+którą moduledoc `PNS.Conformance` rysuje między ścieżkami a firmami. Nie redaguję tego w pakiecie,
+bo pakiet decydujący o wrażliwości cudzych danych to pakiet znający cudzą domenę. Zapisane
+w moduledoku endpointu, żeby resolver hosta mógł zdecydować.
+
+**Jason zadeklarowany wprost w `pns_web`** — dochodził tam wyłącznie przez `{:pns, path: ...}`, bo
+Phoenix i LiveView mają go jako `optional: true`. Jedynym mechanicznym pinem „zadeklarowane, nie
+odziedziczone" jest test czytający listę `deps`, bo usunięcie linii zostawia build zielony.
 
 ---
 

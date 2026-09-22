@@ -106,6 +106,25 @@ defmodule PNS.Conformance do
   end
 
   @doc """
+  The same report, projected onto values that survive JSON.
+
+  Separate from `report/2` rather than replacing it: everything in this package
+  reads the Elixir shape, and a transport is the only caller that needs the other
+  one. See `PNS.Conformance.Wire` for what each mapping is and why.
+  """
+  @spec as_data(module(), keyword()) :: map()
+  def as_data(contract, opts \\ []) do
+    %{
+      # A name for the shape, so a consumer comparing two responses can tell a
+      # changed report from a changed projection. The engine version is already
+      # inside the report itself and is deliberately not repeated here.
+      "schema" => "pns.conformance.v1",
+      "generated_at" => DateTime.utc_now() |> DateTime.to_iso8601(),
+      "report" => contract |> report(opts) |> PNS.Conformance.Wire.encode()
+    }
+  end
+
+  @doc """
   Process declarations that may appear in an evidence report: those the process
   owner has confirmed.
 

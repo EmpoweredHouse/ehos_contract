@@ -102,6 +102,12 @@ defmodule PNS.Web.MixProject do
 
   defp deps do
     [
+      # Declared rather than inherited. It reaches here today only through
+      # `{:pns, path: ...}` — Phoenix and LiveView both list it `optional: true` —
+      # and a dependency satisfied because a neighbour happens to need it breaks
+      # when the neighbour goes. The same rule this repository states twice
+      # elsewhere.
+      {:jason, "~> 1.4"},
       # The engine, for PNS.Auth. A path dependency, same shape as the root
       # host's own dependency on it.
       {:pns, path: "../pns_core"},
