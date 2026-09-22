@@ -5,6 +5,46 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
+## Dopisek 22 września — etap 5 ruszył: 5.1, dwa z trzech kroków
+
+Plan implementacji całego etapu jest osobno; tutaj idzie stan i to, co wyszło przy pisaniu.
+
+**Zrobione.** `PNS.Contract.declaration_digests/0` — jeden digest na deklarację, liczony w
+`__before_compile__` obok `version/0`, z tych samych deklaracji, więc nie mają jak się rozjechać.
+`PNS.Digest.hash/1` już umiał haszować pojedynczy term, więc w tamtym module nie przybyła ani jedna
+linia. Do tego `PNS.Migrations` v02 z kolumną `declaration_digests` na `pns_deployments` i
+`record!/1`, który ją zapisuje. 400 testów, brama zielona.
+
+**Trzy rzeczy wyszły przy pisaniu i żadnej nie było w planie.**
+
+1. **`on_conflict: :nothing` musiało stać się `{:replace, [:declaration_digests]}`.** Pierwszy boot
+   po migracji trafia w wiersz zapisany przed kolumną i `:nothing` zostawiłoby go z nullem na
+   zawsze — czyli mechanizm byłby ślepy dokładnie dla aktualnie wdrożonej wersji, tej jedynej,
+   o którą ktokolwiek pyta. Zamiana jest bezpieczna, bo wartość jest funkcją conflict targetu:
+   wiersz niesie ten sam `contract_version`, który jest haszem tych samych deklaracji. Gdyby ta
+   zależność kiedyś przestała obowiązywać, to samo `{:replace, ...}` stałoby się fałszowaniem
+   historii — i dlatego stoi przy nim uzasadnienie, nie tylko opcja.
+
+2. **Napisałem `down(version: 1)` i to zdjęłoby wszystkie tabele silnika, nie tylko v02.**
+   `down/1` schodzi *do* celu, więc z zapisanej wersji 2 cel 1 daje `2..1//-1`, czyli `V02.down`
+   i zaraz po nim `V01.down`. Moduledoc `PNS.Migrations` ma to poprawnie od sierpnia
+   (`down(version: 2)`), ja przepisałem źle. Złapane przed uruchomieniem, ale wyłącznie dlatego,
+   że akurat czytałem arytmetykę zakresu — nic tego nie sprawdza. Powód dopisany do wszystkich
+   trzech plików migracji konsumentów.
+
+3. **Ścieżka upgrade'u przeszła po raz pierwszy — i CI nigdy jej nie przejdzie.** Bazy
+   `pns_prototype_test` i `pns_web_test` miały już zapisane `add_pns` na v1, więc trafiły na v2
+   gałęzią `recorded < target`; sprawdzone zapytaniem, obie mają dziś znacznik `2` i kolumnę.
+   Ale CI stawia bazy od zera przy każdym przebiegu, więc zawsze pójdzie gałęzią świeżą. Mechanizm
+   zbudowany 21 sierpnia „zanim był potrzebny" właśnie się przydał i nadal nie ma testu; dedykowany
+   test z drugą bazą zostaje na liście.
+
+**Zostało w 5.1:** `diff/2` z kategorią zmiany cichej, `declaration_boundaries/1` i linia w
+`PNS.Report`. Bez nich mapa jest zapisywana i nieczytana — czyli dokładnie ten stan, który etap 2
+istniał, żeby kasować.
+
+---
+
 ## Dopisek 21 września (12) — przegląd architektury EHOS-a: czego prototyp jeszcze nie ma
 
 Nic tu nie zostało zbudowane. To jest lista zobowiązań wynikających z przeglądu, który ustalił relację

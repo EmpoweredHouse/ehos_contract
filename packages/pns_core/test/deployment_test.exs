@@ -121,6 +121,32 @@ defmodule PNS.DeploymentTest do
       assert length(PNS.Deployment.all(Contract)) == 1
     end
 
+    test "the row carries one digest per declaration, so a change is attributable" do
+      PNS.Deployment.record!()
+      [deployed] = PNS.Deployment.all(Contract)
+
+      # String keys on both sides: the column is jsonb, and the contract computes
+      # string keys for that reason rather than leaving the round trip to surprise
+      # somebody.
+      assert deployed.declaration_digests == Contract.declaration_digests()
+      assert deployed.declaration_digests["process:pairing"]
+    end
+
+    test "a row recorded before the column existed is backfilled on the next boot" do
+      # The one case `on_conflict: :nothing` got wrong, and the reason it is now
+      # `{:replace, ...}`: the first boot after the migration meets a row written
+      # before it. Leaving that row null would make the whole mechanism blind for
+      # the version that is actually deployed.
+      PNS.Deployment.record!()
+      Repo.update_all(PNS.Deployment, set: [declaration_digests: nil])
+
+      PNS.Deployment.record!()
+      [deployed] = PNS.Deployment.all(Contract)
+
+      assert deployed.declaration_digests == Contract.declaration_digests()
+      assert length(PNS.Deployment.all(Contract)) == 1
+    end
+
     test "the wiring hash is canonical — from sorted strings, not from a term" do
       # `version/0` hashes through `term_to_binary`, so an OTP upgrade could
       # reclassify the whole history (gap 2.4). That problem does not exist here,

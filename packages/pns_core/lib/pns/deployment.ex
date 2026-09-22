@@ -53,6 +53,10 @@ defmodule PNS.Deployment do
     field :wiring_version, :string
     field :events, {:array, :string}
     field :edges, {:array, :string}
+    # One digest per declaration (`PNS.Contract.declaration_digests/0`). Nullable,
+    # because a row written before this column existed does not know what its
+    # contract declared, and `%{}` would claim it declared nothing.
+    field :declaration_digests, :map
     field :first_seen_at, :utc_datetime_usec
   end
 
@@ -88,12 +92,23 @@ defmodule PNS.Deployment do
           wiring_version: PNS.Digest.hash(edges),
           events: events,
           edges: edges,
+          declaration_digests: contract.declaration_digests(),
           first_seen_at: now
         }
       end
 
+    # `{:replace, ...}` rather than `:nothing`, and the difference matters exactly
+    # once: the first boot after the column exists meets a row recorded before it,
+    # and `:nothing` would leave that row's digests null forever — blind for the
+    # version that is actually deployed, which is the one anybody asks about.
+    #
+    # Replacing is sound because the value is a function of the conflict target.
+    # `contract_version` is a hash of the same declarations, so a row carrying
+    # today's version *has* today's declarations. `first_seen_at` is untouched, so
+    # no history is rewritten. Were that functional dependency ever to stop
+    # holding, this would become falsification of history rather than a backfill.
     repo().insert_all(__MODULE__, rows,
-      on_conflict: :nothing,
+      on_conflict: {:replace, [:declaration_digests]},
       conflict_target: [:contract, :contract_version, :wiring_version]
     )
 
