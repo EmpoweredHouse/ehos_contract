@@ -77,6 +77,15 @@ version is real all the same, because a conformance report already carries it.
 - `PNS.Deployment.declaration_boundaries/1`: when each declaration last changed.
 - `PNS.version/0`, and the report says which engine computed it.
 
+### Fixed
+
+- The conformance report no longer says "BREACHED in 1 of 5 runs. (including 1 via
+  the fallback ending, which conforms to the rule)". The clause qualified the runs
+  that were *met* while reading as though it qualified the breaches, which is the
+  worst kind of ambiguity to have in an artifact meant to be evidence. It is now
+  attached to the count it describes, and omitted entirely when nothing was met.
+  Not a verdict change — the numbers were always right — but the sentence was not.
+
 ### Changed
 
 - **Every contract's `version/0` moved once, deliberately.** A seventh declaration

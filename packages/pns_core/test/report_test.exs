@@ -227,6 +227,60 @@ defmodule PNS.ReportTest do
     end
   end
 
+  describe "the fallback ending is named beside the count it qualifies" do
+    test "a breached assertion does not read as though the fallback excused a breach" do
+      # **Found by running the engine on a seeded log, not by a test.** The clause
+      # used to be appended to whatever the sentence said, producing "BREACHED in 1
+      # of 5 runs. (including 1 via the fallback ending, which conforms to the
+      # rule)" — where "including" reads as qualifying the breaches and in fact
+      # qualifies the runs that were met. In an artifact meant to be evidence, that
+      # is the worst place for an ambiguous pronoun.
+      report = data()
+      [process | rest] = report.processes
+      [assertion | others] = process.assertions
+
+      mixed = %{
+        assertion
+        | instances: 5,
+          satisfied: 4,
+          satisfied_via_eventually: 3,
+          satisfied_via_or_else: 1,
+          violated: 1,
+          pending: 0
+      }
+
+      text =
+        %{report | processes: [%{process | assertions: [mixed | others]} | rest]}
+        |> PNS.Report.render()
+
+      assert text =~ "BREACHED in 1 of 5 runs."
+      assert text =~ "Of those that were met, 1 run reached the fallback ending"
+      refute text =~ "including"
+    end
+
+    test "and says nothing about a fallback when nothing was met at all" do
+      # There would be no count for the clause to qualify.
+      report = data()
+      [process | rest] = report.processes
+      [assertion | others] = process.assertions
+
+      none = %{
+        assertion
+        | instances: 2,
+          satisfied: 0,
+          satisfied_via_or_else: 0,
+          violated: 2,
+          pending: 0
+      }
+
+      text =
+        %{report | processes: [%{process | assertions: [none | others]} | rest]}
+        |> PNS.Report.render()
+
+      refute text =~ "fallback ending"
+    end
+  end
+
   describe "the report says which engine computed it" do
     test "the engine version is in the data, because the data crosses boundaries too" do
       # Not only in the rendered text: this is the key an auditor reads when the

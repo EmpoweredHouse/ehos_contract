@@ -262,9 +262,16 @@ defmodule PNS.Report do
 
   @spec outcome(map()) :: String.t()
   defp outcome(a) do
+    # **Attached to the count it qualifies, never to the sentence as a whole.** It
+    # used to be appended to whatever `state` said, which produced, verbatim:
+    # "BREACHED in 1 of 5 runs. (including 1 via the fallback ending, which conforms
+    # to the rule)" — where "including" reads as qualifying the breaches and in fact
+    # qualifies the runs that were met. Found by running the thing on a seeded log,
+    # not by any of the tests.
     via =
       if a.satisfied_via_or_else > 0 do
-        " (including #{a.satisfied_via_or_else} via the fallback ending, which conforms to the rule)"
+        " Of those that were met, #{runs(a.satisfied_via_or_else)} reached the fallback " <>
+          "ending, which conforms to the rule."
       else
         ""
       end
@@ -290,6 +297,10 @@ defmodule PNS.Report do
         true ->
           "Met in all #{a.instances} runs."
       end
+
+    # No `via` when nothing was met: there is no count for it to qualify, and the
+    # sentence would be about a subset of zero.
+    via = if a.satisfied > 0, do: via, else: ""
 
     state <> via <> suspended(a) <> earlier_declaration(a)
   end
