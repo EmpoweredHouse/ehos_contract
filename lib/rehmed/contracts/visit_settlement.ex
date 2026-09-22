@@ -215,6 +215,45 @@ defmodule Rehmed.Contracts.VisitSettlement do
     principals: [:human],
     payload: %{visit_id: :id}
 
+  # Four ways in, all four read off the event model's command catalogue
+  # (`2-Solution/10-event-model.md` §4) rather than invented here. The actor column
+  # there is what `principals:` says: `A-02` is reception, `A-03` the specialist,
+  # and both are people — the catalogue has no command this process can issue to
+  # itself.
+
+  # `C-23`, actor `A-03`. Refusable in the catalogue because the visit may already
+  # be settled; that refusal is a domain rule and not something a capability decides.
+  command :add_service_line,
+    label: "Dodanie usługi do rozliczenia wizyty",
+    process: :visit_settlement,
+    principals: [:human],
+    payload: %{visit_id: :id, service_id: :id}
+
+  # `C-68`. The catalogue's own gloss is "one act by the specialist that hands the
+  # visit to the desk", which is this event's label almost word for word. The
+  # amount is computed from the lines already added, so the caller does not supply it.
+  command :hand_over_visit,
+    label: "Oznaczenie wizyty jako wykonanej",
+    process: :visit_settlement,
+    principals: [:human],
+    payload: %{visit_id: :id}
+
+  # `C-31`, actor `A-02`.
+  command :record_payment,
+    label: "Przyjęcie płatności za wizytę",
+    process: :visit_settlement,
+    principals: [:human],
+    payload: %{visit_id: :id, method: :enum, amount_minor: :integer}
+
+  # `C-46`, actor `A-02`, `status: open` in the catalogue — the command is agreed,
+  # what may be corrected is not. The business date is stamped by the system rather
+  # than supplied, which is why it is on the event and not here.
+  command :book_correction,
+    label: "Zaksięgowanie korekty rozliczenia",
+    process: :visit_settlement,
+    principals: [:human],
+    payload: %{visit_id: :id, delta_minor: :integer}
+
   process :visit_settlement,
     label: "Rozliczenie wizyty",
     # Charging gates payment: an amount has to exist before it can be tendered.

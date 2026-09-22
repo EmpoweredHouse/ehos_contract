@@ -154,6 +154,19 @@ defmodule Taxvision.Contracts.AccountingMonth do
     principals: [:human],
     payload: %{company_id: :id, period: :string}
 
+  # The command the workshop named and this contract omitted — recorded as debt in
+  # `PLAN.md` since August. Source: `02-event-storming.md` §3.1, where it is the only
+  # command on the accounting-month diagram: after a discrepancy notice goes out, the
+  # accountant may re-run the registry check.
+  #
+  # Actor is Księgowa, so `[:human]`. The rest of that diagram is `cron` and system
+  # checks, which is why this process has two commands and not eight.
+  command :retrigger_verification,
+    label: "Ponowienie weryfikacji rejestrowej",
+    process: :accounting_month,
+    principals: [:human],
+    payload: %{company_id: :id, period: :string}
+
   process :accounting_month,
     label: "Cykl miesięczny księgowy",
     # Stage names are **identifiers, not labels** — they go into `pns.check`, into

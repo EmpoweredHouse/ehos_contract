@@ -5,6 +5,64 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
+## Dopisek 22 września (3) — komendy z warsztatu: osiem, nie dwadzieścia dwie
+
+Dług „22 wejścia bez komendy" spłacony w tej części, w której da się go spłacić z materiału.
+**Zadeklarowanych jest osiem nowych komend, nie dwadzieścia dwie**, i ta różnica jest wynikiem, nie
+niedokończeniem.
+
+**Skąd osiem.** Rehmed ma pełny katalog komend — `2-Solution/10-event-model.md` §4, 75 pozycji
+z aktorem, produkowanymi zdarzeniami, powodem odmowy i źródłem. TaxVision ma event storming, w którym
+komendy są w diagramach oznaczone jako `:::command` i jest ich w całym pliku trzy, z czego jedna
+dotyczy procesu księgowego. Zmapowane na wejścia:
+
+| Kontrakt | komenda | źródło | aktor |
+| --- | --- | --- | --- |
+| `VisitSettlement` | `add_service_line` | `C-23` | `A-03` specjalista |
+| `VisitSettlement` | `hand_over_visit` | `C-68` | `A-03` |
+| `VisitSettlement` | `record_payment` | `C-31` | `A-02` recepcja |
+| `VisitSettlement` | `book_correction` | `C-46` | `A-02` |
+| `PayerSettlement` | `mark_settled_with_payer` | `C-48` | `A-02` |
+| `PayerSettlement` | `issue_payer_invoice` | `C-49` | `A-05` menedżer |
+| `ClinicalVisit` | `close_visit_clinically` | `C-29` | `A-03` |
+| `AccountingMonth` | `retrigger_verification` | storming §3.1 | Księgowa |
+
+`C-68` jest najładniejszym dopasowaniem: katalog opisuje ją jako „jeden akt specjalisty, który
+przekazuje wizytę do recepcji", a etykieta zdarzenia w kontrakcie brzmi „Wizyta oznaczona jako
+wykonana i gotowa do rozliczenia". To samo zdanie dwoma drogami.
+
+**Czego nie zadeklarowałem i dlaczego.** Czternaście wejść zostaje bez komendy, i dla każdego powód
+jest ten sam: w materiale jej nie ma. Trzy z `ClinicalVisit` to wyniki integracji z P1 — odpowiedzi
+cudzego rejestru, nie czyjeś działanie. `visit_started` i `visit_completed` to obserwacje („pacjent
+wszedł", „pacjent wyszedł"), nie akcje. Sześć wejść `AccountingMonth` to w diagramie warsztatowym
+`cron` i checki systemowe — dlatego ten proces ma dwie komendy, a nie osiem. Reszta po prostu nie
+została na warsztacie nazwana.
+
+**Wymyślenie ich byłoby tym samym błędem, co wymyślenie nazwy zdarzenia**, tylko gorszym o jedną
+rzecz: `label` komendy to polska proza, którą czyta klient, więc wymyślanie etykiety to wymyślanie,
+jak klient nazywa własne działania. `principals:` jest już naszą propozycją, nie odczytem — pomnożenie
+tego przez czternaście niepotwierdzonych komend pomnożyłoby też założenie.
+
+**Konsekwencja rezygnacji z `emits:`, którą widać dopiero teraz.** Pytanie „czy to wejście ma już
+komendę" przestało być liczalne maszynowo: `command` niesie `process`, a nie listę zdarzeń, więc
+powiązanie komenda→zdarzenie żyje wyłącznie w komentarzu cytującym `C-nn`. To jest cena decyzji
+z 5.5, zapłacona świadomie — alternatywą była lista, której kompletności żadna brama nie sprawdzi.
+Spis z 5.5 liczy komendy z `example` i po 5.6 mierzy już nie to; zostaje jako zapis tamtego pomiaru,
+nie jako narzędzie.
+
+**Wersje kontraktów ruszyły się drugi raz w ciągu dnia**, po 5.6. Tym razem nie przez zmianę
+mechanizmu, tylko przez dopisanie deklaracji do czterech kontraktów — czyli zwykłą zmianę treści
+umowy, dokładnie to, co `contract_version` ma odnotowywać:
+`ClinicalVisit ae645a1c61f7 → 1b73eddb24c3`, `PayerSettlement d876412fe382 → 7f5e4371da34`,
+`VisitSettlement 90bb66ae79bf → 4d78c7c2eed2`, `AccountingMonth 1cb46129609a → 715848338a42`.
+
+**Do rozważenia, nie zrobione:** `command` nie ma klucza `source:`, który `rule` ma właśnie po to,
+żeby zapisać pochodzenie. Osiem komend niesie dziś `C-nn` w komentarzu, a komentarza nie czyta nic.
+Ósmy klucz to kolejny ruch wszystkich wersji, więc nie dokładam go przy okazji — ale jeśli
+pochodzenie ma być sprawdzalne, to jest właściwe miejsce.
+
+---
+
 ## Dopisek 22 września (2) — krok formatowania w bramie, i cztery rzeczy, które to odsłoniło
 
 `mix format --check-formatted` jest od teraz pierwszym krokiem w bramie, we wszystkich trzech
