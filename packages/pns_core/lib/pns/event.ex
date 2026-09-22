@@ -16,19 +16,19 @@ defmodule PNS.Event do
   @type t :: %__MODULE__{}
 
   schema "pns_events" do
-    field :type, :string
-    field :contract, :string
-    field :contract_version, :string
+    field(:type, :string)
+    field(:contract, :string)
+    field(:contract_version, :string)
     # Which run this event belongs to. `correlation_id` answers a different
     # question — "from which command" — and is per request, so a month opened by
     # two commands has two correlations and one run.
-    field :process, :string
-    field :instance_id, :string
-    field :correlation_id, :binary_id
-    field :causation_id, :binary_id
-    field :payload, :map
-    field :actor, :string
-    field :occurred_at, :utc_datetime_usec
+    field(:process, :string)
+    field(:instance_id, :string)
+    field(:correlation_id, :binary_id)
+    field(:causation_id, :binary_id)
+    field(:payload, :map)
+    field(:actor, :string)
+    field(:occurred_at, :utc_datetime_usec)
   end
 end
 
@@ -48,14 +48,14 @@ defmodule PNS.EventHandling do
   @type t :: %__MODULE__{}
 
   schema "pns_event_handlings" do
-    field :event_id, :binary_id
-    field :handler, :string
+    field(:event_id, :binary_id)
+    field(:handler, :string)
     # "Succeeded after three attempts" is a different state from "succeeded", and
     # a flapping handler is a useful signal.
-    field :attempt, :integer, default: 1
-    field :status, :string
-    field :duration_us, :integer
-    field :error, :string
-    field :inserted_at, :utc_datetime_usec
+    field(:attempt, :integer, default: 1)
+    field(:status, :string)
+    field(:duration_us, :integer)
+    field(:error, :string)
+    field(:inserted_at, :utc_datetime_usec)
   end
 end

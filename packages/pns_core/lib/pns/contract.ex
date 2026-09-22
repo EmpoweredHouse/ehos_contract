@@ -465,8 +465,12 @@ defmodule PNS.Contract do
   @spec validate_keys!(keyword(), [atom()], String.t()) :: :ok
   defp validate_keys!(opts, allowed, where) do
     case Keyword.keys(opts) -- allowed do
-      [] -> :ok
-      extra -> raise ArgumentError, "#{where}: unknown keys #{inspect(extra)}, allowed #{inspect(allowed)}"
+      [] ->
+        :ok
+
+      extra ->
+        raise ArgumentError,
+              "#{where}: unknown keys #{inspect(extra)}, allowed #{inspect(allowed)}"
     end
   end
 
@@ -756,8 +760,13 @@ defmodule PNS.Contract do
         )
     end
 
-    for t <- traces, ev <- Enum.reject([t.from, t.eventually, t.or_else], &is_nil/1), ev not in names do
-      bail!(env, "trace #{inspect(t.name)} names event #{inspect(ev)}, which the contract does not declare")
+    for t <- traces,
+        ev <- Enum.reject([t.from, t.eventually, t.or_else], &is_nil/1),
+        ev not in names do
+      bail!(
+        env,
+        "trace #{inspect(t.name)} names event #{inspect(ev)}, which the contract does not declare"
+      )
     end
 
     validate_instances!(env, events, processes, traces)
@@ -917,7 +926,8 @@ defmodule PNS.Contract do
       )
     end
 
-    for {what, payload} <- declarations, {field, {:enum, values}} <- payload,
+    for {what, payload} <- declarations,
+        {field, {:enum, values}} <- payload,
         not legal_enum_set?(values) do
       bail!(
         env,

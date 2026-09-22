@@ -21,16 +21,16 @@ defmodule Taxvision.Notifications.Notification do
   @primary_key {:id, :binary_id, autogenerate: true}
 
   schema "taxvision_notifications" do
-    field :company_id, :string
-    field :period_id, :binary_id
-    field :recipient, :string
-    field :subject, :string
+    field(:company_id, :string)
+    field(:period_id, :binary_id)
+    field(:recipient, :string)
+    field(:subject, :string)
     # A reference, not the content: the diff lives in the event log and only its
     # fingerprint is here. That is both a workshop rule and the consequence of
     # `retain: %{diff: :hash}`.
-    field :body_ref, :string
-    field :idempotency_key, :string
-    field :sent_at, :utc_datetime_usec
+    field(:body_ref, :string)
+    field(:idempotency_key, :string)
+    field(:sent_at, :utc_datetime_usec)
   end
 end
 
@@ -64,7 +64,7 @@ defmodule Taxvision.Notifications.OnRegistryDiscrepancyDetected do
     # The idempotency check against this module's own table. The limit of that
     # method is named rather than swept away: it reaches its own tables and mock
     # call counters, and nothing more (notes §6).
-    if Taxvision.Repo.exists?(from n in Notification, where: n.idempotency_key == ^key) do
+    if Taxvision.Repo.exists?(from(n in Notification, where: n.idempotency_key == ^key)) do
       :ok
     else
       now = DateTime.utc_now()

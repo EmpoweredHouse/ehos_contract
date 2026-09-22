@@ -20,14 +20,14 @@ defmodule Taxvision.AccountingMonth.Month do
   @primary_key {:id, :binary_id, autogenerate: true}
 
   schema "taxvision_accounting_months" do
-    field :company_id, :string
-    field :period_id, :binary_id
-    field :status, :string
+    field(:company_id, :string)
+    field(:period_id, :binary_id)
+    field(:status, :string)
     # The same answer as `Taxvision.Tasks.Task.due_on`, from the same source, in a
     # second copy. This is the "two modules needing the same data" shape — and the
     # price of the no-join rule: a second query for the same period.
-    field :closes_on, :date
-    field :opened_at, :utc_datetime_usec
+    field(:closes_on, :date)
+    field(:opened_at, :utc_datetime_usec)
   end
 end
 

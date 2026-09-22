@@ -17,7 +17,6 @@ defmodule PNS.Job do
 
   alias PNS.EventHandling
 
-
   @impl Oban.Worker
   def perform(%Oban.Job{args: args, attempt: attempt}) do
     case resolve(args["handler"]) do

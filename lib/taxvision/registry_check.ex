@@ -45,7 +45,13 @@ defmodule Taxvision.RegistryCheck do
           differences ->
             # The system shows a diff: "this is what we hold, this is what the
             # registries say" [WF 00:32:27].
-            prefix ++ [PNS.event(:registry_discrepancy_detected, Map.put(base, :diff, render(differences)))]
+            prefix ++
+              [
+                PNS.event(
+                  :registry_discrepancy_detected,
+                  Map.put(base, :diff, render(differences))
+                )
+              ]
         end
     end
   end

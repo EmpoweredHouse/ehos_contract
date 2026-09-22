@@ -75,10 +75,10 @@ defmodule PNS.CycleTest do
       event = PNS.emit!(Rig, :item_appealed, %{case_id: "c-1", item_no: 1})
       Oban.drain_queue(queue: :events)
 
-      reopened = Repo.one!(from e in PNS.Event, where: e.type == "item_reopened")
+      reopened = Repo.one!(from(e in PNS.Event, where: e.type == "item_reopened"))
 
       [handling] =
-        Repo.all(from h in PNS.EventHandling, where: h.event_id == ^reopened.id)
+        Repo.all(from(h in PNS.EventHandling, where: h.event_id == ^reopened.id))
 
       assert handling.status == "error"
       assert handling.error =~ "would close a cycle"

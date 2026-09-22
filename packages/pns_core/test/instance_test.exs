@@ -37,7 +37,7 @@ defmodule PNS.InstanceTest do
     test "every event of one command lands in one run" do
       receive_item("c-1", 1, 100)
 
-      instances = Repo.all(from e in PNS.Event, select: e.instance_id) |> Enum.uniq()
+      instances = Repo.all(from(e in PNS.Event, select: e.instance_id)) |> Enum.uniq()
 
       assert instances == ["pairing|c-1"]
     end
@@ -49,7 +49,8 @@ defmodule PNS.InstanceTest do
       # questions.
       for case_id <- ["c-1", "c-2"], do: receive_item(case_id, 1, 100)
 
-      instances = Repo.all(from e in PNS.Event, select: e.instance_id) |> Enum.uniq() |> Enum.sort()
+      instances =
+        Repo.all(from(e in PNS.Event, select: e.instance_id)) |> Enum.uniq() |> Enum.sort()
 
       assert instances == ["pairing|c-1", "pairing|c-2"]
     end
@@ -64,7 +65,7 @@ defmodule PNS.InstanceTest do
       end
 
       instances =
-        Repo.all(from e in PNS.Event, where: e.process == "batching", select: e.instance_id)
+        Repo.all(from(e in PNS.Event, where: e.process == "batching", select: e.instance_id))
         |> Enum.uniq()
         |> Enum.sort()
 

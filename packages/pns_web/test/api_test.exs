@@ -55,7 +55,9 @@ defmodule PNS.Web.ApiTest do
       # would be this package forming an opinion about how sensitive a client's own
       # data is.
       admin = conn |> TestToken.put_actor("u-2", ["pns_admin"]) |> get("/pns/api/conformance")
-      reader = build_conn() |> TestToken.put_actor("u-1", ["pns_read"]) |> get("/pns/api/conformance")
+
+      reader =
+        build_conn() |> TestToken.put_actor("u-1", ["pns_read"]) |> get("/pns/api/conformance")
 
       assert admin.status == 200
       assert Jason.decode!(admin.resp_body)["report"] == Jason.decode!(reader.resp_body)["report"]

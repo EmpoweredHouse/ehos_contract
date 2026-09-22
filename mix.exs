@@ -86,6 +86,16 @@ defmodule PnsPrototype.MixProject do
       # reference in `docs/contract.md` is documentation that can lie, rather
       # than a generated artifact.
       check: [
+        # First because it is the cheapest and the message is the clearest. Until
+        # 2026-09-22 the gate had no format step at all, and fifty-one files across
+        # the three projects had drifted without anybody seeing it.
+        #
+        # **A trap worth knowing:** Mix caches the resolved formatter configuration in
+        # `_build/<env>/lib/<app>/.mix/cached_dot_formatter` and does not invalidate it
+        # when a *dependency's* `.formatter.exs` changes. A machine whose cache predates
+        # such a change formats differently from CI, which always starts from an empty
+        # `_build`. If this step disagrees with what you see locally, delete that file.
+        "format --check-formatted",
         "compile --force --warnings-as-errors",
         "pns.check",
         "pns.docs --check",
@@ -109,26 +119,26 @@ defmodule PnsPrototype.MixProject do
   # protected, and an umbrella would quietly remove it.
   defp package_test(_args) do
     {_output, status} =
-      System.cmd("mix", ["test"],
+      System.cmd("mix", ["check"],
         cd: "packages/pns_core",
         env: [{"MIX_ENV", "test"}],
         into: IO.stream(:stdio, :line)
       )
 
-    if status != 0, do: Mix.raise("the engine's own suite failed (packages/pns_core)")
+    if status != 0, do: Mix.raise("the engine's own gate failed (packages/pns_core)")
   end
 
   # A path dependency does not run its own tests automatically — same fact
   # as package_test/1 above, confirmed again here rather than assumed.
   defp package_test_web(_args) do
     {_output, status} =
-      System.cmd("mix", ["test"],
+      System.cmd("mix", ["check"],
         cd: "packages/pns_web",
         env: [{"MIX_ENV", "test"}],
         into: IO.stream(:stdio, :line)
       )
 
     if status != 0,
-      do: Mix.raise("the dashboard foundation's own suite failed (packages/pns_web)")
+      do: Mix.raise("the dashboard foundation's own gate failed (packages/pns_web)")
   end
 end

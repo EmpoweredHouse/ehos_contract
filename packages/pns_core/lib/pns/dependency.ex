@@ -44,14 +44,13 @@ defmodule PNS.Dependency do
 
   import Ecto.Query
 
-
   @primary_key {:id, :binary_id, autogenerate: true}
 
   schema "pns_dependency_observations" do
-    field :contract, :string
-    field :external, :string
-    field :reason, :string
-    field :observed_at, :utc_datetime_usec
+    field(:contract, :string)
+    field(:external, :string)
+    field(:reason, :string)
+    field(:observed_at, :utc_datetime_usec)
   end
 
   @type t :: %__MODULE__{}

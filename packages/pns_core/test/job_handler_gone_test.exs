@@ -19,7 +19,7 @@ defmodule PNS.JobHandlerGoneTest do
   alias ProcessShapes.Rig
 
   defp handlings(event_id) do
-    Repo.all(from h in PNS.EventHandling, where: h.event_id == ^event_id)
+    Repo.all(from(h in PNS.EventHandling, where: h.event_id == ^event_id))
   end
 
   defp queue_job(event, handler) do

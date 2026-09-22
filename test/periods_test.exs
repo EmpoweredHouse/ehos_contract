@@ -20,7 +20,8 @@ defmodule Taxvision.PeriodsTest do
   @period "2026-07"
 
   defp open_month(company) do
-    {:ok, _} = Taxvision.Api.open_month(accountant(company), %{company_id: company, period: @period})
+    {:ok, _} =
+      Taxvision.Api.open_month(accountant(company), %{company_id: company, period: @period})
   end
 
   describe "canonicalisation" do
@@ -56,7 +57,17 @@ defmodule Taxvision.PeriodsTest do
     defp bad_period(fields) do
       Repo.insert_all(
         Taxvision.Periods.Period,
-        [Map.merge(%{id: Ecto.UUID.generate(), name: "2026-09", starts_on: ~D[2026-09-01], ends_on: ~D[2026-09-30]}, fields)]
+        [
+          Map.merge(
+            %{
+              id: Ecto.UUID.generate(),
+              name: "2026-09",
+              starts_on: ~D[2026-09-01],
+              ends_on: ~D[2026-09-30]
+            },
+            fields
+          )
+        ]
       )
     end
 
@@ -86,7 +97,8 @@ defmodule Taxvision.PeriodsTest do
     test "the range `ensure!/1` actually writes passes all three constraints" do
       # The control: a constraint that also rejects the good row would silently
       # break the one path that is supposed to keep working.
-      assert %{starts_on: ~D[2026-09-01], ends_on: ~D[2026-09-30]} = Taxvision.Periods.ensure!("2026-09")
+      assert %{starts_on: ~D[2026-09-01], ends_on: ~D[2026-09-30]} =
+               Taxvision.Periods.ensure!("2026-09")
     end
   end
 

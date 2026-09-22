@@ -142,7 +142,9 @@ defmodule Mix.Tasks.Pns.Graph do
   end
 
   defp overlay(opts) do
-    since = opts[:since] && NaiveDateTime.from_iso8601!(opts[:since]) |> DateTime.from_naive!("Etc/UTC")
+    since =
+      opts[:since] && NaiveDateTime.from_iso8601!(opts[:since]) |> DateTime.from_naive!("Etc/UTC")
+
     overlay = PNS.Graph.overlay(since: since)
 
     if opts[:mermaid] do
@@ -178,7 +180,9 @@ defmodule Mix.Tasks.Pns.Graph do
       r = PNS.Deployment.report(contract)
 
       since =
-        if r.deployed.since, do: DateTime.to_iso8601(r.deployed.since), else: "nothing emitted yet"
+        if r.deployed.since,
+          do: DateTime.to_iso8601(r.deployed.since),
+          else: "nothing emitted yet"
 
       Mix.shell().info("#{inspect(contract)}")
 
@@ -241,7 +245,9 @@ defmodule Mix.Tasks.Pns.Graph do
           end
 
           for edge <- report.in_flight do
-            Mix.shell().info("    #{edge.from} -> #{edge.to}   — #{edge.in_flight} queued, so not yet")
+            Mix.shell().info(
+              "    #{edge.from} -> #{edge.to}   — #{edge.in_flight} queued, so not yet"
+            )
           end
       end
     end

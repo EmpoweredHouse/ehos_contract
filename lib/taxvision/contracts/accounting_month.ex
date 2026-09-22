@@ -255,7 +255,8 @@ defmodule Taxvision.Contracts.AccountingMonth do
   # configuration, because the provider knows nothing about an accounting month or
   # about whose company this is.
   rule :only_company_accountant_opens_month,
-    label: "Miesiąc otwiera księgowa przypisana do tej firmy, nie klient i nie księgowa innej firmy",
+    label:
+      "Miesiąc otwiera księgowa przypisana do tej firmy, nie klient i nie księgowa innej firmy",
     function: {Taxvision.Authorization, :authorize_open_month, 1},
     source: "Warsztat: aktor fazy 3.1 to Księgowa + System; HS28 (model dwóch osi dostępu)"
 

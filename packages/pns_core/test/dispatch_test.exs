@@ -33,7 +33,7 @@ defmodule PNS.DispatchTest do
     # One handling row per handler that ran, all of them committed by the same
     # transaction that committed the events.
     handlers =
-      Repo.all(from h in PNS.EventHandling, select: h.handler) |> Enum.sort()
+      Repo.all(from(h in PNS.EventHandling, select: h.handler)) |> Enum.sort()
 
     assert handlers == [
              "ProcessShapes.Intake.OnItemReceived",
@@ -122,7 +122,9 @@ defmodule PNS.DispatchTest do
       # pinned separately so a future change to one path cannot silently stop
       # covering the other.
       {:ok, [event]} =
-        PNS.emit_all(Promised, [%PNS.Emission{name: :request_received, payload: %{request_id: "r-2"}}])
+        PNS.emit_all(Promised, [
+          %PNS.Emission{name: :request_received, payload: %{request_id: "r-2"}}
+        ])
 
       assert event.actor == "system"
     end

@@ -83,7 +83,9 @@ defmodule PNS.AsyncAPITest do
 
     test "retention travels, because a spec that hides it lies by omission" do
       messages = PNS.AsyncAPI.document(ProcessShapes.Rig)["components"]["messages"]
-      retains = messages |> Map.values() |> Enum.map(& &1["x-pns-retain"]) |> Enum.reject(&(&1 == %{}))
+
+      retains =
+        messages |> Map.values() |> Enum.map(& &1["x-pns-retain"]) |> Enum.reject(&(&1 == %{}))
 
       refute retains == [],
              "the rig declares a `retain` policy and the document shows no sign of it"

@@ -72,7 +72,7 @@ defmodule PNS.PublicationsTest do
       event = escalate(1)
       Oban.drain_queue(queue: :events)
 
-      [handling] = Repo.all(from h in PNS.EventHandling, where: h.event_id == ^event.id)
+      [handling] = Repo.all(from(h in PNS.EventHandling, where: h.event_id == ^event.id))
 
       assert handling.status == "error"
       assert handling.error =~ "OnItemEscalated"
@@ -95,7 +95,7 @@ defmodule PNS.PublicationsTest do
       event = escalate(0)
       Oban.drain_queue(queue: :events)
 
-      [handling] = Repo.all(from h in PNS.EventHandling, where: h.event_id == ^event.id)
+      [handling] = Repo.all(from(h in PNS.EventHandling, where: h.event_id == ^event.id))
 
       assert handling.status == "ok"
       assert logged("item_paired") == 0

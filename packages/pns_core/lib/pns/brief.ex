@@ -139,7 +139,9 @@ defmodule PNS.Brief do
   # rather than written by hand: a hand-kept column is the first thing to go stale,
   # and this one is the document's whole argument.
   defp depends_on_it(event, traces) do
-    handlers = for h <- Registry.handlers_for(event.name), do: "obsługuje <code>#{inspect(h.module)}</code>"
+    handlers =
+      for h <- Registry.handlers_for(event.name),
+          do: "obsługuje <code>#{inspect(h.module)}</code>"
 
     roles =
       for t <- traces, role = trace_role(t, event.name), role != nil do

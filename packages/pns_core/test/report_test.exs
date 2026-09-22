@@ -254,7 +254,10 @@ defmodule PNS.ReportTest do
     end
 
     defp rule_changed_on(at) do
-      for {digest, seen} <- [{"aaaaaaaaaaaa", ~U[2026-08-01 00:00:00.000000Z]}, {"bbbbbbbbbbbb", at}] do
+      for {digest, seen} <- [
+            {"aaaaaaaaaaaa", ~U[2026-08-01 00:00:00.000000Z]},
+            {"bbbbbbbbbbbb", at}
+          ] do
         Repo.insert!(%PNS.Deployment{
           contract: inspect(Contract),
           contract_version: Contract.version(),

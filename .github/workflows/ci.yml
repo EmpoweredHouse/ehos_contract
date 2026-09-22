@@ -32,7 +32,7 @@ jobs:
           key: deps-${{ runner.os }}-${{ hashFiles('mix.lock') }}
 
       # The engine is a path dependency, but package_test/1 in mix.exs runs
-      # `mix test` with `cd: "packages/pns_core"` as a fully separate Mix
+      # `mix check` with `cd: "packages/pns_core"` as a fully separate Mix
       # project — its own deps/ and mix.lock, fetched independently of the
       # host's. Confirmed 21 August 2026: packages/pns_core/deps is
       # git-ignored, so a fresh checkout starts without it.
@@ -43,7 +43,7 @@ jobs:
           key: pns-core-deps-${{ runner.os }}-${{ hashFiles('packages/pns_core/mix.lock') }}
 
       # The dashboard foundation (PLAN.md, dopisek 23 sierpnia), same shape
-      # as the engine above: a path dependency whose own suite runs as a
+      # as the engine above: a path dependency whose own gate runs as a
       # fully separate Mix project via package_test_web/1 in mix.exs.
       - name: Cache dashboard foundation deps
         uses: actions/cache@v4
@@ -69,5 +69,12 @@ jobs:
       # running the gate anyway — it still passed. `ecto.setup` in the
       # documented local command is for a working dev database to poke at
       # afterward, not a precondition of the gate itself.
+      #
+      # A fresh `_build` here, always — which matters for one step in particular.
+      # Mix caches the resolved formatter configuration and does not invalidate it
+      # when a dependency's `.formatter.exs` changes, so a developer's machine can
+      # disagree with this job about `format --check-formatted`. CI is the one that
+      # is right; the local fix is to delete
+      # `_build/<env>/lib/<app>/.mix/cached_dot_formatter`.
       - name: mix check
         run: mix check

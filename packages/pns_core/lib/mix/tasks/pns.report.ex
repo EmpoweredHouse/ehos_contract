@@ -21,7 +21,8 @@ defmodule Mix.Tasks.Pns.Report do
     # terminal.
     :io.setopts(:standard_io, encoding: :unicode)
 
-    {opts, _} = OptionParser.parse!(args, strict: [since: :string, until: :string, output: :string])
+    {opts, _} =
+      OptionParser.parse!(args, strict: [since: :string, until: :string, output: :string])
 
     Mix.Task.run("app.start")
     PNS.Registry.load!()

@@ -86,6 +86,6 @@ defmodule Taxvision.DataCase do
 
   def events_of(type) do
     name = to_string(type)
-    Taxvision.Repo.all(from e in PNS.Event, where: e.type == ^name, order_by: e.occurred_at)
+    Taxvision.Repo.all(from(e in PNS.Event, where: e.type == ^name, order_by: e.occurred_at))
   end
 end

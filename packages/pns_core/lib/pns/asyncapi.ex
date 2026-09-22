@@ -158,7 +158,8 @@ defmodule PNS.AsyncAPI do
   defp schema(payload) do
     %{
       "type" => "object",
-      "properties" => Map.new(payload, fn {field, type} -> {to_string(field), property(type)} end),
+      "properties" =>
+        Map.new(payload, fn {field, type} -> {to_string(field), property(type)} end),
       # Every declared field is present on every emission — this DSL expresses
       # optionality by declaring a second event, never by omitting a field.
       "required" => payload |> Map.keys() |> Enum.map(&to_string/1) |> Enum.sort()

@@ -89,7 +89,8 @@ defmodule PNS.Auth.LocalToken do
   # byte, which leaks how many characters matched.
   @spec secure_compare(binary(), binary()) :: boolean()
   defp secure_compare(left, right) when byte_size(left) == byte_size(right) do
-    :crypto.exor(left, right) |> :binary.bin_to_list() |> Enum.reduce(0, &Bitwise.bor(&1, &2)) == 0
+    :crypto.exor(left, right) |> :binary.bin_to_list() |> Enum.reduce(0, &Bitwise.bor(&1, &2)) ==
+      0
   end
 
   defp secure_compare(_, _), do: false
@@ -300,7 +301,8 @@ defmodule PNS.Auth do
   def revoke_role(user_id, role), do: identity_admin().revoke_role(user_id, role)
 
   @doc "Level 2, the admin side: inviting someone is a provider endpoint."
-  @spec invite_user(String.t(), String.t()) :: {:ok, PNS.Auth.IdentityAdmin.user()} | {:error, term()}
+  @spec invite_user(String.t(), String.t()) ::
+          {:ok, PNS.Auth.IdentityAdmin.user()} | {:error, term()}
   def invite_user(email, name), do: identity_admin().invite_user(email, name)
 
   @doc """

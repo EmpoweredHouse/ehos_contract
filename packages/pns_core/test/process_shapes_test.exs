@@ -24,10 +24,11 @@ defmodule PNS.ProcessShapesTest do
     instance = "pairing|#{case_id}"
 
     Repo.all(
-      from e in PNS.Event,
+      from(e in PNS.Event,
         where: e.instance_id == ^instance,
         order_by: e.occurred_at,
         select: e.type
+      )
     )
   end
 
@@ -60,7 +61,11 @@ defmodule PNS.ProcessShapesTest do
       # raise a false alarm here.
       assert Rig.event(:item_paired).stage == :matching
       assert Rig.event(:case_closed).stage == :resolution
-      refute ProcessShapes.Matching.OnItemPaired in Enum.map(PNS.Check.backward_edges(), & &1.module)
+
+      refute ProcessShapes.Matching.OnItemPaired in Enum.map(
+               PNS.Check.backward_edges(),
+               & &1.module
+             )
     end
   end
 
@@ -108,7 +113,9 @@ defmodule PNS.ProcessShapesTest do
     test "it has the explicit system actor and yet has a run identity" do
       event = receive_item("c-1", 1, 100)
 
-      assert event.actor == "system", "nobody invoked it — attributed to the system, not to silence"
+      assert event.actor == "system",
+             "nobody invoked it — attributed to the system, not to silence"
+
       assert event.instance_id == "pairing|c-1"
       assert event.causation_id == nil
     end
@@ -170,10 +177,11 @@ defmodule PNS.ProcessShapesTest do
 
       handled =
         Repo.all(
-          from h in PNS.EventHandling,
+          from(h in PNS.EventHandling,
             where: h.event_id == ^event.id,
             order_by: h.inserted_at,
             select: h.handler
+          )
         )
 
       assert length(handled) == 2

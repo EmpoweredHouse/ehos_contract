@@ -39,8 +39,8 @@ defmodule Mix.Tasks.Pns.Check do
       |> check_assertions_finer_than_their_run()
       |> check_facts_not_keyed_by_their_run()
       |> check_unfalsifiable_assertions()
-    |> check_unobservable_deadlines()
-    |> check_processes_without_accountable()
+      |> check_unobservable_deadlines()
+      |> check_processes_without_accountable()
       |> check_retain_on_free_text()
       |> check_no_vendor_in_config()
       |> check_unverified_declarations()
@@ -391,7 +391,8 @@ defmodule Mix.Tasks.Pns.Check do
 
       found ->
         [
-          {:error, "identity vendor name in the engine's configuration: #{inspect(found)} — seam broken"}
+          {:error,
+           "identity vendor name in the engine's configuration: #{inspect(found)} — seam broken"}
           | findings
         ]
     end

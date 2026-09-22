@@ -328,8 +328,8 @@ defmodule PNS.Report do
 
   defp drift(edges) do
     ["DRIFT — happened, though it was not agreed:"] ++
-      (for e <- edges do
-         "  · #{e.from_label || e.from} → #{e.to_label || e.to}  (#{e.count}x)"
-       end) ++ [""]
+      for e <- edges do
+        "  · #{e.from_label || e.from} → #{e.to_label || e.to}  (#{e.count}x)"
+      end ++ [""]
   end
 end

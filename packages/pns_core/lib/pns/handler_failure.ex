@@ -47,17 +47,16 @@ defmodule PNS.HandlerFailure do
 
   import Ecto.Query
 
-
   @primary_key {:id, :binary_id, autogenerate: true}
 
   schema "pns_handler_failures" do
-    field :contract, :string
-    field :event_type, :string
-    field :handler, :string
-    field :correlation_id, :binary_id
-    field :instance_id, :string
-    field :error, :string
-    field :occurred_at, :utc_datetime_usec
+    field(:contract, :string)
+    field(:event_type, :string)
+    field(:handler, :string)
+    field(:correlation_id, :binary_id)
+    field(:instance_id, :string)
+    field(:error, :string)
+    field(:occurred_at, :utc_datetime_usec)
   end
 
   @type t :: %__MODULE__{}

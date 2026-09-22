@@ -36,7 +36,10 @@ defmodule Mix.Tasks.Pns.Trace do
     trace = Enum.find(contract.traces(), &(&1.name == name))
 
     Mix.shell().info("\n#{name}  (#{inspect(contract)})")
-    Mix.shell().info("  after #{trace.from} → #{trace.eventually}#{window(trace)}#{alternative(trace)}")
+
+    Mix.shell().info(
+      "  after #{trace.from} → #{trace.eventually}#{window(trace)}#{alternative(trace)}"
+    )
 
     if s.instances == 0 do
       # Zero runs is **no basis for a verdict**, not zero violations. Reading it
@@ -54,7 +57,10 @@ defmodule Mix.Tasks.Pns.Trace do
     if opts[:instances] do
       for v <- verdicts do
         via = if v.via, do: " via #{v.via}", else: ""
-        Mix.shell().info("    #{String.pad_trailing(to_string(v.verdict), 10)}#{via}  #{v.instance_id}")
+
+        Mix.shell().info(
+          "    #{String.pad_trailing(to_string(v.verdict), 10)}#{via}  #{v.instance_id}"
+        )
       end
     end
   end

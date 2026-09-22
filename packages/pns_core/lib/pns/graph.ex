@@ -17,7 +17,6 @@ defmodule PNS.Graph do
 
   import Ecto.Query
 
-
   alias PNS.{Event, Registry}
 
   @no_traffic %{count: 0, instances: 0}
@@ -90,9 +89,14 @@ defmodule PNS.Graph do
       events
       |> join(:inner, [event: e], parent in Event, on: e.causation_id == parent.id, as: :parent)
       |> group_by([event: e, parent: p], [p.type, e.type])
-      |> select([event: e, parent: p], {p.type, e.type, count(e.id), count(e.instance_id, :distinct)})
+      |> select(
+        [event: e, parent: p],
+        {p.type, e.type, count(e.id), count(e.instance_id, :distinct)}
+      )
       |> repo.all()
-      |> Map.new(fn {from, to, count, instances} -> {{from, to}, %{count: count, instances: instances}} end)
+      |> Map.new(fn {from, to, count, instances} ->
+        {{from, to}, %{count: count, instances: instances}}
+      end)
 
     %{nodes: node_counts, edges: edge_counts, processes: process_instances(opts)}
   end
@@ -192,7 +196,8 @@ defmodule PNS.Graph do
     contracts = Registry.contracts()
 
     from_observed =
-      for {{from, to}, traffic} <- observed.edges, not MapSet.member?(declared_edges, {from, to}) do
+      for {{from, to}, traffic} <- observed.edges,
+          not MapSet.member?(declared_edges, {from, to}) do
         # **The question is about the edge, not about the contract version.**
         # Previously the state came from the target event's `contract_version`,
         # which is an approximation and has a hole: removing a handler changes the
@@ -206,7 +211,8 @@ defmodule PNS.Graph do
         # A fallback for a log older than the deployments table. Explicit, not
         # silent: a report that guesses without saying so is worse than one that
         # admits the gap.
-        historical? = declared_before? or Enum.all?(versions, &(not MapSet.member?(current_versions, &1)))
+        historical? =
+          declared_before? or Enum.all?(versions, &(not MapSet.member?(current_versions, &1)))
 
         %{
           from: from,

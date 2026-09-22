@@ -242,7 +242,7 @@ defmodule PNS.CheckAmbiguityTest do
       event = PNS.emit!(Doppelganger, :item_measured, %{shipment_id: "s-1"})
 
       handlers =
-        Repo.all(from h in PNS.EventHandling, where: h.event_id == ^event.id, select: h.handler)
+        Repo.all(from(h in PNS.EventHandling, where: h.event_id == ^event.id, select: h.handler))
 
       assert "ProcessShapes.Intake.OnItemMeasuredFirst" in handlers
       assert "ProcessShapes.Intake.OnItemMeasuredSecond" in handlers
@@ -278,7 +278,7 @@ defmodule PNS.CheckAmbiguityTest do
       PNS.emit!(PairingTwin, :shipment_paired, %{case_id: "c-1"})
 
       contracts =
-        Repo.all(from e in PNS.Event, where: e.instance_id == "pairing|c-1", select: e.contract)
+        Repo.all(from(e in PNS.Event, where: e.instance_id == "pairing|c-1", select: e.contract))
 
       assert "ProcessShapes.Rig" in contracts
       assert "PNS.CheckAmbiguityTest.PairingTwin" in contracts
@@ -327,7 +327,9 @@ defmodule PNS.CheckAmbiguityTest do
       })
 
       assert [verdict] =
-               PNS.Trace.evaluate(NoDeadline, :an_answer_arrives, now: ~U[2027-01-01 00:00:00.000000Z])
+               PNS.Trace.evaluate(NoDeadline, :an_answer_arrives,
+                 now: ~U[2027-01-01 00:00:00.000000Z]
+               )
 
       assert verdict.verdict == :pending
       assert verdict.deadline_at == nil

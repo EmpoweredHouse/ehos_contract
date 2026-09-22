@@ -35,7 +35,12 @@ defmodule UniversalityGate.Eligibility do
 
         %{status: status} ->
           prefix ++
-            [PNS.event(:payer_eligibility_denied, Map.put(base, :reason, "eligibility #{status}"))]
+            [
+              PNS.event(
+                :payer_eligibility_denied,
+                Map.put(base, :reason, "eligibility #{status}")
+              )
+            ]
       end
     else
       {:error, :patient_identity_not_confirmed}

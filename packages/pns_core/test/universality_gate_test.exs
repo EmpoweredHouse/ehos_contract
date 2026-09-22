@@ -49,8 +49,26 @@ defmodule PNS.UniversalityGateTest do
       # module; this holds a role. One key with two types is the drift this library
       # detects for a living.
       assert PNS.Contract.vocabulary() == %{
-               event: [:label, :owner, :payload, :retain, :depends_on, :identity, :process, :stage, :terminal],
-               process: [:label, :instance, :stages, :cadence, :deadline, :unverified, :accountable],
+               event: [
+                 :label,
+                 :owner,
+                 :payload,
+                 :retain,
+                 :depends_on,
+                 :identity,
+                 :process,
+                 :stage,
+                 :terminal
+               ],
+               process: [
+                 :label,
+                 :instance,
+                 :stages,
+                 :cadence,
+                 :deadline,
+                 :unverified,
+                 :accountable
+               ],
                external: [:label, :expected_latency, :unavailable_looks_like],
                rule: [:label, :function, :source],
                example: [:rule, :command, :given, :then, :rejected_with],
@@ -116,9 +134,17 @@ defmodule PNS.UniversalityGateTest do
       assert function_exported?(@contract, :__pns_contract__, 0)
       assert length(@contract.events()) == 10
       assert Enum.map(@contract.processes(), & &1.name) == [:treatment_episode]
-      assert Enum.map(@contract.traces(), & &1.name) == [:referral_reaches_a_decision, :episode_reaches_an_end]
+
+      assert Enum.map(@contract.traces(), & &1.name) == [
+               :referral_reaches_a_decision,
+               :episode_reaches_an_end
+             ]
+
       assert Enum.map(@contract.externals(), & &1.name) == [:payer_registry]
-      assert Enum.map(@contract.rules(), & &1.name) == [:treatment_starts_only_on_confirmed_eligibility]
+
+      assert Enum.map(@contract.rules(), & &1.name) == [
+               :treatment_starts_only_on_confirmed_eligibility
+             ]
     end
   end
 
@@ -215,7 +241,10 @@ defmodule PNS.UniversalityGateTest do
     test "the second domain's assertion is satisfied through or_else, by the same code" do
       referral("ep-1")
 
-      PNS.emit!(@contract, :payer_eligibility_denied, %{episode_id: "ep-1", reason: "eligibility expired"})
+      PNS.emit!(@contract, :payer_eligibility_denied, %{
+        episode_id: "ep-1",
+        reason: "eligibility expired"
+      })
 
       assert [verdict] = PNS.Trace.evaluate(@contract, :referral_reaches_a_decision)
       assert verdict.verdict == :satisfied

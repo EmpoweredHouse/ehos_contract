@@ -42,7 +42,8 @@ defmodule Mix.Tasks.Pns.Brief do
     {opts, _} =
       OptionParser.parse!(args, strict: [process: :string, diagram: :string, output: :string])
 
-    process = opts[:process] || Mix.raise("--process is required; see `mix pns.graph` for the names")
+    process =
+      opts[:process] || Mix.raise("--process is required; see `mix pns.graph` for the names")
 
     Mix.Task.run("compile")
     Application.load(:pns)

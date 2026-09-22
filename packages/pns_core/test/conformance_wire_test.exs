@@ -13,7 +13,9 @@ defmodule PNS.Conformance.WireTest do
 
   alias ProcessShapes.Promised, as: Contract
 
-  defp leaves(map) when is_map(map), do: Enum.flat_map(map, fn {k, v} -> [{:key, k} | leaves(v)] end)
+  defp leaves(map) when is_map(map),
+    do: Enum.flat_map(map, fn {k, v} -> [{:key, k} | leaves(v)] end)
+
   defp leaves(list) when is_list(list), do: Enum.flat_map(list, &leaves/1)
   defp leaves(other), do: [{:value, other}]
 

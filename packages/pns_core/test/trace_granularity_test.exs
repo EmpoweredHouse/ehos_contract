@@ -103,10 +103,26 @@ defmodule PNS.TraceGranularityTest do
   end
 
   defp submit(case_id, item_no, at \\ @submitted),
-    do: insert(Rig, "item_submitted", "pairing", "pairing|#{case_id}", %{"case_id" => case_id, "item_no" => item_no}, at)
+    do:
+      insert(
+        Rig,
+        "item_submitted",
+        "pairing",
+        "pairing|#{case_id}",
+        %{"case_id" => case_id, "item_no" => item_no},
+        at
+      )
 
   defp inspected(case_id, item_no, at),
-    do: insert(Rig, "item_inspected", "pairing", "pairing|#{case_id}", %{"case_id" => case_id, "item_no" => item_no}, at)
+    do:
+      insert(
+        Rig,
+        "item_inspected",
+        "pairing",
+        "pairing|#{case_id}",
+        %{"case_id" => case_id, "item_no" => item_no},
+        at
+      )
 
   defp verdicts, do: PNS.Trace.evaluate(Rig, :submission_reaches_inspection, now: @after_window)
 
@@ -173,10 +189,41 @@ defmodule PNS.TraceGranularityTest do
     end
 
     test "satisfied through different routes reports via: nil, not a guess" do
-      insert(MixedRoute, "piece_submitted", "batching", "batching|b-1", %{"batch_id" => "b-1", "piece_no" => 1}, @submitted)
-      insert(MixedRoute, "piece_approved", "batching", "batching|b-1", %{"batch_id" => "b-1", "piece_no" => 1}, @inside_window)
-      insert(MixedRoute, "piece_submitted", "batching", "batching|b-1", %{"batch_id" => "b-1", "piece_no" => 2}, @submitted)
-      insert(MixedRoute, "piece_rejected", "batching", "batching|b-1", %{"batch_id" => "b-1", "piece_no" => 2}, @inside_window)
+      insert(
+        MixedRoute,
+        "piece_submitted",
+        "batching",
+        "batching|b-1",
+        %{"batch_id" => "b-1", "piece_no" => 1},
+        @submitted
+      )
+
+      insert(
+        MixedRoute,
+        "piece_approved",
+        "batching",
+        "batching|b-1",
+        %{"batch_id" => "b-1", "piece_no" => 1},
+        @inside_window
+      )
+
+      insert(
+        MixedRoute,
+        "piece_submitted",
+        "batching",
+        "batching|b-1",
+        %{"batch_id" => "b-1", "piece_no" => 2},
+        @submitted
+      )
+
+      insert(
+        MixedRoute,
+        "piece_rejected",
+        "batching",
+        "batching|b-1",
+        %{"batch_id" => "b-1", "piece_no" => 2},
+        @inside_window
+      )
 
       assert [verdict] =
                PNS.Trace.evaluate(MixedRoute, :piece_is_resolved, now: @after_window)
@@ -188,9 +235,32 @@ defmodule PNS.TraceGranularityTest do
     end
 
     test "no `within` on the assertion — the aggregate deadline is nil, not invented" do
-      insert(MixedRoute, "piece_submitted", "batching", "batching|b-2", %{"batch_id" => "b-2", "piece_no" => 1}, @submitted)
-      insert(MixedRoute, "piece_approved", "batching", "batching|b-2", %{"batch_id" => "b-2", "piece_no" => 1}, @inside_window)
-      insert(MixedRoute, "piece_submitted", "batching", "batching|b-2", %{"batch_id" => "b-2", "piece_no" => 2}, @submitted)
+      insert(
+        MixedRoute,
+        "piece_submitted",
+        "batching",
+        "batching|b-2",
+        %{"batch_id" => "b-2", "piece_no" => 1},
+        @submitted
+      )
+
+      insert(
+        MixedRoute,
+        "piece_approved",
+        "batching",
+        "batching|b-2",
+        %{"batch_id" => "b-2", "piece_no" => 1},
+        @inside_window
+      )
+
+      insert(
+        MixedRoute,
+        "piece_submitted",
+        "batching",
+        "batching|b-2",
+        %{"batch_id" => "b-2", "piece_no" => 2},
+        @submitted
+      )
 
       assert [verdict] =
                PNS.Trace.evaluate(MixedRoute, :piece_is_acknowledged, now: @after_window)

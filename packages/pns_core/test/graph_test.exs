@@ -159,6 +159,7 @@ defmodule PNS.GraphTest do
 
   test "mermaid comes out of the overlay, not out of a separate file" do
     receive_item("c-1")
+
     PNS.emit_all(Rig, [
       PNS.event(:item_submitted, %{case_id: "c-1", item_no: 1}),
       PNS.event(:item_measured, %{case_id: "c-1", item_no: 1})

@@ -42,6 +42,6 @@ defmodule PNS.DataCase do
   @doc "Every event of a type, oldest first."
   def events_of(type) do
     name = to_string(type)
-    PNS.TestRepo.all(from e in PNS.Event, where: e.type == ^name, order_by: e.occurred_at)
+    PNS.TestRepo.all(from(e in PNS.Event, where: e.type == ^name, order_by: e.occurred_at))
   end
 end

@@ -123,7 +123,8 @@ defmodule ProcessShapes.Promised.OnRequestApproved do
     publishes: [:request_completed]
 
   @impl PNS.Handler
-  def handle(%{request_id: id}, _ctx), do: {:ok, [PNS.event(:request_completed, %{request_id: id})]}
+  def handle(%{request_id: id}, _ctx),
+    do: {:ok, [PNS.event(:request_completed, %{request_id: id})]}
 end
 
 defmodule ProcessShapes.Promised.OnRequestRefused do
@@ -167,8 +168,9 @@ defmodule ProcessShapes.Promised.OnRequestRefused do
     repo = Application.fetch_env!(:pns, :repo)
 
     repo.exists?(
-      from e in PNS.Event,
+      from(e in PNS.Event,
         where: e.instance_id == ^instance_id and e.type == "refusal_notified"
+      )
     )
   end
 end

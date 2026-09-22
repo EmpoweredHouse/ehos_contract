@@ -125,7 +125,6 @@ defmodule PNS.Trace do
 
   import Ecto.Query
 
-
   alias PNS.Event
 
   @typedoc "One run's verdict for one assertion."
@@ -148,7 +147,8 @@ defmodule PNS.Trace do
   def evaluate(contract, trace_name, opts \\ []) do
     trace =
       Enum.find(contract.traces(), &(&1.name == trace_name)) ||
-        raise ArgumentError, "#{inspect(contract)} does not declare assertion #{inspect(trace_name)}"
+        raise ArgumentError,
+              "#{inspect(contract)} does not declare assertion #{inspect(trace_name)}"
 
     now = Keyword.get(opts, :now) || DateTime.utc_now()
 
@@ -201,7 +201,9 @@ defmodule PNS.Trace do
     MapSet.subset?(instance, identity) and not MapSet.equal?(instance, identity)
   end
 
-  @spec evaluate_quantified(module(), map(), keyword(), DateTime.t(), [DateTime.t()]) :: [verdict()]
+  @spec evaluate_quantified(module(), map(), keyword(), DateTime.t(), [DateTime.t()]) :: [
+          verdict()
+        ]
   defp evaluate_quantified(contract, trace, opts, now, outages) do
     from_type = to_string(trace.from)
 
@@ -270,7 +272,9 @@ defmodule PNS.Trace do
 
   @spec aggregate_resolved([verdict()], atom()) :: DateTime.t() | nil
   defp aggregate_resolved(_item_verdicts, verdict) when verdict != :satisfied, do: nil
-  defp aggregate_resolved(item_verdicts, :satisfied), do: Enum.max_by(item_verdicts, & &1.resolved_at, DateTime).resolved_at
+
+  defp aggregate_resolved(item_verdicts, :satisfied),
+    do: Enum.max_by(item_verdicts, & &1.resolved_at, DateTime).resolved_at
 
   @doc "Verdicts for every assertion of every registered contract."
   @spec evaluate_all(keyword()) :: [%{contract: module(), trace: atom(), verdicts: [verdict()]}]
@@ -392,7 +396,9 @@ defmodule PNS.Trace do
     |> Enum.min(DateTime, fn -> nil end)
   end
 
-  @spec occurrences(module(), map(), keyword()) :: %{String.t() => %{String.t() => [DateTime.t()]}}
+  @spec occurrences(module(), map(), keyword()) :: %{
+          String.t() => %{String.t() => [DateTime.t()]}
+        }
   defp occurrences(contract, trace, opts) do
     types =
       [trace.from, trace.eventually, trace.or_else]
@@ -465,7 +471,8 @@ defmodule PNS.Trace do
   # cheaper way to avoid the exact class of bug closed elsewhere today in `PNS.Instance`
   # and `PNS.Job`.
   @spec item_key(map(), [String.t()]) :: tuple()
-  defp item_key(payload, identity), do: identity |> Enum.map(&Map.get(payload, &1)) |> List.to_tuple()
+  defp item_key(payload, identity),
+    do: identity |> Enum.map(&Map.get(payload, &1)) |> List.to_tuple()
 
   @spec maybe_since(Ecto.Query.t(), DateTime.t() | nil) :: Ecto.Query.t()
   defp maybe_since(query, nil), do: query

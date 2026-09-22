@@ -376,7 +376,11 @@ defmodule PNS.Check do
   end
 
   @typedoc "A process promising a duration nothing can observe the end of."
-  @type unobservable_deadline :: %{contract: module(), process: atom(), deadline: PNS.Duration.t()}
+  @type unobservable_deadline :: %{
+          contract: module(),
+          process: atom(),
+          deadline: PNS.Duration.t()
+        }
 
   @doc """
   Processes that declare a `deadline` and no event that ends a run.

@@ -87,9 +87,10 @@ defmodule Taxvision.Periods do
   @spec one(Ecto.Query.dynamic_expr()) :: t() | nil
   defp one(condition) do
     Taxvision.Repo.one(
-      from p in Period,
+      from(p in Period,
         where: ^condition,
         select: %{id: p.id, name: p.name, starts_on: p.starts_on, ends_on: p.ends_on}
+      )
     )
   end
 
@@ -143,8 +144,8 @@ defmodule Taxvision.Periods.Period do
   @primary_key {:id, :binary_id, autogenerate: true}
 
   schema "taxvision_periods" do
-    field :name, :string
-    field :starts_on, :date
-    field :ends_on, :date
+    field(:name, :string)
+    field(:starts_on, :date)
+    field(:ends_on, :date)
   end
 end

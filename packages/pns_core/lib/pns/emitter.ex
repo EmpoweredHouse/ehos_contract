@@ -169,7 +169,6 @@ defmodule PNS.Emitter do
 
   alias PNS.{Event, EventHandling, Payload, Registry}
 
-
   @doc """
   Emits an event: the write to the log, the synchronous handlers in the same
   transaction, and asynchronous jobs inserted in that same transaction.

@@ -28,10 +28,11 @@ defmodule PNS.PayloadTest do
 
   describe "the promise that used to be false: one shape on both sides" do
     test "a timestamp given as a DateTime stays one" do
-      cast = Payload.cast(event_def(:payer_eligibility_checked), %{
-        episode_id: "ep-1",
-        checked_at: ~U[2026-08-05 09:00:00Z]
-      })
+      cast =
+        Payload.cast(event_def(:payer_eligibility_checked), %{
+          episode_id: "ep-1",
+          checked_at: ~U[2026-08-05 09:00:00Z]
+        })
 
       assert cast.checked_at == ~U[2026-08-05 09:00:00Z]
     end
@@ -39,10 +40,11 @@ defmodule PNS.PayloadTest do
     test "a timestamp arriving as text — the queue, the database — becomes a DateTime" do
       # This is the half that was missing. The asynchronous handler reads its payload
       # from job arguments, which are JSON, so text is the only thing that can arrive.
-      cast = Payload.cast(event_def(:payer_eligibility_checked), %{
-        "episode_id" => "ep-1",
-        "checked_at" => "2026-08-05T09:00:00Z"
-      })
+      cast =
+        Payload.cast(event_def(:payer_eligibility_checked), %{
+          "episode_id" => "ep-1",
+          "checked_at" => "2026-08-05T09:00:00Z"
+        })
 
       assert cast.checked_at == ~U[2026-08-05 09:00:00Z]
     end
@@ -56,9 +58,10 @@ defmodule PNS.PayloadTest do
         checked_at: ~U[2026-08-05 09:00:00Z]
       })
 
-      row = Repo.one!(from e in PNS.Event, where: e.type == "payer_eligibility_checked")
+      row = Repo.one!(from(e in PNS.Event, where: e.type == "payer_eligibility_checked"))
 
       assert row.payload["checked_at"] == "2026-08-05T09:00:00Z"
+
       assert Payload.cast(event_def(:payer_eligibility_checked), row.payload).checked_at ==
                ~U[2026-08-05 09:00:00Z]
     end
@@ -68,7 +71,11 @@ defmodule PNS.PayloadTest do
       # `:integer` arriving as `"5"` is a caller passing the wrong thing, and coercing
       # it would hide what validation exists to surface.
       assert_raise ArgumentError, ~r/`session_count` is declared as :integer and holds "5"/, fn ->
-        emit(:treatment_plan_approved, %{episode_id: "ep-1", approved_by: "d-1", session_count: "5"})
+        emit(:treatment_plan_approved, %{
+          episode_id: "ep-1",
+          approved_by: "d-1",
+          session_count: "5"
+        })
       end
     end
   end
@@ -113,7 +120,9 @@ defmodule PNS.PayloadTest do
     end
 
     test "nothing reaches the log when the payload is refused" do
-      assert_raise ArgumentError, fn -> emit(:payer_eligibility_confirmed, %{episode_id: "ep-1"}) end
+      assert_raise ArgumentError, fn ->
+        emit(:payer_eligibility_confirmed, %{episode_id: "ep-1"})
+      end
 
       assert Repo.aggregate(PNS.Event, :count) == 0
     end
@@ -123,10 +132,15 @@ defmodule PNS.PayloadTest do
     test "text or an integer, because the representation is the client's business" do
       # A client keying on a database sequence should not have to call it a string. What
       # the identifier refers to is theirs, and so is how they write it.
-      assert Payload.validate!(Contract, :payer_eligibility_confirmed, event_def(:payer_eligibility_confirmed), %{
-               episode_id: 42,
-               scope: "outpatient rehabilitation"
-             }) == :ok
+      assert Payload.validate!(
+               Contract,
+               :payer_eligibility_confirmed,
+               event_def(:payer_eligibility_confirmed),
+               %{
+                 episode_id: 42,
+                 scope: "outpatient rehabilitation"
+               }
+             ) == :ok
     end
 
     test "not an empty string, which is a missing identifier with a type" do
@@ -143,7 +157,8 @@ defmodule PNS.PayloadTest do
       # removes the field, so a declared field would be permanently missing and every
       # such event refused. Nothing in either contract used `:drop`, so the trap was
       # unreachable rather than absent.
-      event = PNS.emit!(ProcessShapes.Rig, :item_noted, %{case_id: "c-1", item_no: 1, note: "text"})
+      event =
+        PNS.emit!(ProcessShapes.Rig, :item_noted, %{case_id: "c-1", item_no: 1, note: "text"})
 
       refute Map.has_key?(event.payload, "note")
       assert event.payload["case_id"] == "c-1"
@@ -205,7 +220,7 @@ defmodule PNS.PayloadTest do
         occurred_at: DateTime.utc_now()
       })
 
-      row = Repo.one!(from e in PNS.Event, where: e.contract_version == "0000deadbeef")
+      row = Repo.one!(from(e in PNS.Event, where: e.contract_version == "0000deadbeef"))
 
       # No raise: the field the contract declares today is simply absent.
       assert Payload.cast(event_def(:payer_eligibility_confirmed), row.payload) == %{

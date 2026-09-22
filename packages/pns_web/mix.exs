@@ -58,7 +58,7 @@ defmodule PNS.Web.MixProject do
       # The contract status screen's own test suite needs a real database, the
       # same way packages/pns_core's does — same alias, same reason.
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
-      check: ["compile --force --warnings-as-errors", "test"],
+      check: ["format --check-formatted", "compile --force --warnings-as-errors", "test"],
       # Run by whoever edits assets/js/app.js or assets/css/app.css; the
       # committed output under priv/static/ is what everyone else —
       # including `mix check` — uses. The vendored Mermaid build is a

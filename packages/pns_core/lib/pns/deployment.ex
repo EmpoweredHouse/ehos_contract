@@ -44,21 +44,20 @@ defmodule PNS.Deployment do
 
   import Ecto.Query
 
-
   @primary_key {:id, :binary_id, autogenerate: true}
 
   schema "pns_deployments" do
-    field :contract, :string
-    field :contract_version, :string
-    field :wiring_version, :string
-    field :events, {:array, :string}
-    field :edges, {:array, :string}
+    field(:contract, :string)
+    field(:contract_version, :string)
+    field(:wiring_version, :string)
+    field(:events, {:array, :string})
+    field(:edges, {:array, :string})
     # One digest per declaration, from the contract's generated `declaration_digests/0`
     # — a function on each contract module, not on `PNS.Contract`. Nullable,
     # because a row written before this column existed does not know what its
     # contract declared, and `%{}` would claim it declared nothing.
-    field :declaration_digests, :map
-    field :first_seen_at, :utc_datetime_usec
+    field(:declaration_digests, :map)
+    field(:first_seen_at, :utc_datetime_usec)
   end
 
   @type t :: %__MODULE__{}
@@ -128,9 +127,10 @@ defmodule PNS.Deployment do
     name = inspect(contract)
 
     repo().all(
-      from d in __MODULE__,
+      from(d in __MODULE__,
         where: d.contract == ^name,
         order_by: [asc: d.first_seen_at]
+      )
     )
   end
 
@@ -240,7 +240,12 @@ defmodule PNS.Deployment do
       deployed: %{
         contract_version: contract.version(),
         wiring_version: current && current.wiring_version,
-        since: current && Enum.find_value(in_log, &(&1.contract_version == current.contract_version && &1.first_at))
+        since:
+          current &&
+            Enum.find_value(
+              in_log,
+              &(&1.contract_version == current.contract_version && &1.first_at)
+            )
       },
       in_log: in_log,
       changed: last_change(recorded),

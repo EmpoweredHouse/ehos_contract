@@ -69,7 +69,12 @@ defmodule PNS.MixProject do
       # in a shell-out for a package nobody has decided to publish yet would be
       # machinery ahead of the decision. `test/package_test.exs` pins the metadata;
       # the tarball is a manual step before a release that has not been scheduled.
-      check: ["compile --force --warnings-as-errors", "pns.check", "test"]
+      check: [
+        "format --check-formatted",
+        "compile --force --warnings-as-errors",
+        "pns.check",
+        "test"
+      ]
     ]
   end
 

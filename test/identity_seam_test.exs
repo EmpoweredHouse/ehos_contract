@@ -69,7 +69,9 @@ defmodule Taxvision.IdentitySeamTest do
   describe "the structure of the seam" do
     test "the engine has no credentials table" do
       tables =
-        Repo.query!("select table_name from information_schema.tables where table_schema = 'public'")
+        Repo.query!(
+          "select table_name from information_schema.tables where table_schema = 'public'"
+        )
         |> Map.get(:rows)
         |> List.flatten()
 
@@ -128,7 +130,10 @@ defmodule Taxvision.IdentitySeamTest do
         do: caller
   end
 
-  defp calls?({:call, _, {:remote, _, {:atom, _, module}, {:atom, _, function}}, args}, {module, function, arity})
+  defp calls?(
+         {:call, _, {:remote, _, {:atom, _, module}, {:atom, _, function}}, args},
+         {module, function, arity}
+       )
        when length(args) == arity,
        do: true
 

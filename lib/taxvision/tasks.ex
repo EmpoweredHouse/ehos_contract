@@ -15,7 +15,12 @@ defmodule Taxvision.Tasks do
   @doc "The task template for a legal form. Changes take effect from the next month (P3)."
   @spec template(String.t()) :: [String.t()]
   def template("JDG"),
-    do: ["Pobrać wyciągi", "Skompletować faktury KSeF", "Zaksięgować dokumenty", "Wysłać deklarację"]
+    do: [
+      "Pobrać wyciągi",
+      "Skompletować faktury KSeF",
+      "Zaksięgować dokumenty",
+      "Wysłać deklarację"
+    ]
 
   def template(_), do: ["Skompletować dokumenty", "Zaksięgować dokumenty", "Wysłać deklarację"]
 end
@@ -27,14 +32,14 @@ defmodule Taxvision.Tasks.Task do
   @primary_key {:id, :binary_id, autogenerate: true}
 
   schema "taxvision_tasks" do
-    field :company_id, :string
-    field :period_id, :binary_id
-    field :name, :string
-    field :status, :string, default: "open"
+    field(:company_id, :string)
+    field(:period_id, :binary_id)
+    field(:name, :string)
+    field(:status, :string, default: "open")
     # A copy from `Taxvision.Periods`, not a join to it. Strategic duplication:
     # there is one named source of truth and there may be many copies.
-    field :due_on, :date
-    field :inserted_at, :utc_datetime_usec
+    field(:due_on, :date)
+    field(:inserted_at, :utc_datetime_usec)
   end
 end
 
@@ -91,4 +96,3 @@ defmodule Taxvision.Tasks.OnRegistryDataConsistent do
      ]}
   end
 end
-

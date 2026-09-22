@@ -5,6 +5,43 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
+## Dopisek 22 września (2) — krok formatowania w bramie, i cztery rzeczy, które to odsłoniło
+
+`mix format --check-formatted` jest od teraz pierwszym krokiem w bramie, we wszystkich trzech
+projektach. Przy okazji root wchodzi do pakietów przez `mix check`, a nie `mix test` — czyli
+**`pns.check` pakietu chodzi w bramie po raz pierwszy**, razem z jego własnym formatowaniem.
+Bez zmian w kodzie: 51 plików przeformatowanych, wyłącznie zawijanie linii i puste linie.
+
+**Sprostowanie do 5.7, i to jest najważniejsza część tego dopisku.** Napisałem tam, że bez eksportu
+`locals_without_parens` 14 plików nie przechodzi sprawdzenia, a z eksportem 10. Obie liczby są
+nieprawdziwe, bo pomiar szedł na **nieświeżej konfiguracji formatera**. Mix trzyma rozwiązaną
+konfigurację w `_build/<env>/lib/<app>/.mix/cached_dot_formatter` i **nie unieważnia jej, gdy zmieni
+się `.formatter.exs` zależności.** Moja pierwsza sonda przeszła, bo dotknąłem wtedy korzeniowego
+`.formatter.exs`; każda następna czytała cache sprzed zmiany. Prawdziwy stan przed sprzątaniem: 11
+plików w hoście, 39 w `pns_core`, 1 w `pns_web`.
+
+Ta pułapka jest gorsza, niż wygląda, i dlatego ma komentarz w `mix.exs` i w `ci.yml`: CI zawsze
+startuje z pustym `_build`, więc **maszyna dewelopera może się z bramą nie zgadzać**, a rację ma
+brama. Lokalna naprawa to skasowanie tego pliku.
+
+**Mój `.formatter.exs` z 5.7 był w połowie zepsuty.** Miał `locals_without_parens` wyłącznie pod
+`export:`, czyli dla konsumentów — a to nie jest to samo, czego używa `mix format` samego pakietu.
+Skutek: fikstury w `packages/pns_core/test/support/` były jedynym miejscem w repozytorium, gdzie
+kontrakt zostałby przepisany z nawiasami, czyli dokładnie odwrotnie do celu. Teraz lista jest
+nazwana raz i użyta dwa razy.
+
+**Dwa brakujące `import_deps` i jedno brakujące makro w eksporcie.** Migracje dostawały
+`add(:kolumna, :map)`, bo ani root, ani `pns_core` nie importowały `:ecto_sql`. A `pns_api` — makro,
+które dodałem jedną pozycję wcześniej — nie było w eksporcie `pns_web`, więc host formatował je
+z nawiasami, inaczej niż sąsiadujące `pns_dashboard`. Obie rzeczy są dokładnie tym, co ten krok
+w bramie ma łapać, i obie znalazły się w pierwszym przebiegu po jego dodaniu.
+
+**Nie formatowałem na ślepo.** Pierwszy przebieg `mix format` dołożył nawiasy do kontraktów i do
+migracji — cofnąłem go w całości i naprawiłem konfigurację, zanim cokolwiek zapisałem. Gdyby ten
+diff poszedł do commita, DSL przestałby wyglądać jak DSL w każdym kontrakcie naraz.
+
+---
+
 ## Dopisek 22 września — etap 5 zamknięty w całości, 5.1–5.9
 
 Plan implementacji całego etapu jest osobno; tutaj idzie stan i to, co wyszło przy pisaniu.
@@ -299,11 +336,11 @@ odzyskane to kontrakty. `packages/pns_web/.formatter.exs` obchodził to ręczną
 **ta kopia była już niekompletna**: brakowało `external: 2`, `rule: 2`, `example: 2`. Teraz jest
 jeden eksport i dwa `import_deps`.
 
-**Dziesięć plików nadal nie przechodzi `mix format --check-formatted` i to jest osobny dług.**
-Brama nie ma kroku formatowania i nigdy nie miała, więc nikt tego nie widział. Nie sprzątam tego
-w commicie o pakowaniu — dziesięciopliowy przeformatowanie wewnątrz commita o metadanych to
-dokładnie ten rozmiar diffu, przed którym ostrzega `CLAUDE.md`. Do zrobienia osobno, razem
-z decyzją, czy `mix format --check-formatted` wchodzi do bramy.
+**Pliki nie przechodzące `mix format --check-formatted` to osobny dług** — brama nie ma kroku
+formatowania i nigdy nie miała, więc nikt tego nie widział. Nie sprzątam tego w commicie
+o pakowaniu; do zrobienia osobno, razem z decyzją, czy ten krok wchodzi do bramy.
+**Liczba „dziesięć", którą tu pierwotnie podałem, była nieprawdziwa — patrz dopisek o kroku
+formatowania niżej; pomiar był zrobiony na nieświeżym cache'u Mixa.**
 
 **`pns_web` nie da się opublikować i powód jest twardszy niż zwendorowany Mermaid.** `hex.build`
 mówi wprost: *„Dependencies excluded from the package (only Hex packages can be dependencies):
