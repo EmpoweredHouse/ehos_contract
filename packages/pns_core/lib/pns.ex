@@ -38,6 +38,7 @@ defmodule PNS do
       Payload,
       Registry,
       Report,
+      Report.Sentence,
       Trace
     ]
 

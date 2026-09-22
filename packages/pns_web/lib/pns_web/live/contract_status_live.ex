@@ -1,9 +1,16 @@
 defmodule PNS.Web.Live.ContractStatus do
   @moduledoc """
-  Screen 1 of 2: the four questions, per contract, as HTML instead of
-  `PNS.Report`'s text. Same data, same reader, same wording where the wording
-  is the answer to a question — a formatting choice, not a second opinion
-  about what conformance means.
+  Screen 1 of 3: the four questions, per contract, as HTML instead of
+  `PNS.Report`'s text.
+
+  **Every sentence comes from `PNS.Report.Sentence`.** This screen decides what is a
+  heading, what is a list and what is red; it decides nothing about what the answer
+  says. That split used to be a comment rather than a mechanism — the sentences were
+  duplicated here, deliberately, on the argument that the structure was small enough
+  to copy. By the time anybody ran both renderers side by side, this one was silently
+  missing six answers the text one had grown: the addressee, the measured `deadline`,
+  a run suspended by an external outage, a run judged under a rule that had since
+  changed, which met runs reached the fallback, and queued work at all.
 
   No contract picker: `PNS.Registry.contracts()` is the same source
   `mix pns.report` reads, and this screen renders every contract it finds the
@@ -13,6 +20,7 @@ defmodule PNS.Web.Live.ContractStatus do
   use Phoenix.LiveView
 
   alias PNS.Conformance
+  alias PNS.Report.Sentence
 
   @impl true
   def mount(_params, _session, socket) do
@@ -41,25 +49,34 @@ defmodule PNS.Web.Live.ContractStatus do
 
         <section :for={process <- report.processes}>
           <h3>{process.label}</h3>
+          <p :if={Sentence.accountable(process.accountable)}>
+            {Sentence.accountable(process.accountable)}
+          </p>
           <p>Runs in this period: {process.runs}.</p>
 
-          <p :if={process.runs == 0}>
-            The agreed steps cannot be judged: there was not a single run in this period.
-          </p>
+          <p :for={declaration <- process.declarations}>{Sentence.declaration(declaration)}</p>
+          <p :for={line <- Sentence.duration(process.duration)}>{line}</p>
+
+          <p :if={process.runs == 0}>{Sentence.no_runs()}</p>
 
           <div :if={process.runs > 0}>
             <h4>Declared paths never exercised</h4>
-            <p :if={process.untraversed == []}>All agreed steps were carried out in this period.</p>
+            <p :if={process.untraversed == []}>{Sentence.all_steps_carried_out()}</p>
             <ul :if={process.untraversed != []}>
-              <li :for={edge <- process.untraversed}>{edge.from_label} → {edge.to_label}</li>
+              <li :for={edge <- process.untraversed}>{Sentence.step(edge)}</li>
             </ul>
+
+            <div :if={process.in_flight != []}>
+              <h4>Agreed steps whose work is queued</h4>
+              <ul>
+                <li :for={edge <- process.in_flight}>{Sentence.step_in_flight(edge)}</li>
+              </ul>
+            </div>
 
             <div :if={process.failing != []}>
               <h4>Agreed steps that are attempted and fail</h4>
               <ul>
-                <li :for={edge <- process.failing}>
-                  {edge.from_label} → {edge.to_label} — failed in {edge.failing} run(s)
-                </li>
+                <li :for={edge <- process.failing}>{Sentence.step_failing(edge)}</li>
               </ul>
             </div>
           </div>
@@ -68,8 +85,8 @@ defmodule PNS.Web.Live.ContractStatus do
             <h4>Trace assertions</h4>
             <ul>
               <li :for={assertion <- process.assertions}>
-                <p>{rule_sentence(assertion)}</p>
-                <p class={outcome_class(assertion)}>{outcome_sentence(assertion)}</p>
+                <p>{Sentence.rule(assertion)}</p>
+                <p class={outcome_class(assertion)}>{Sentence.outcome(assertion)}</p>
               </li>
             </ul>
           </div>
@@ -77,7 +94,7 @@ defmodule PNS.Web.Live.ContractStatus do
 
         <section>
           <h3>Drift</h3>
-          <p :if={report.drift == []}>None: nothing happened outside the agreement.</p>
+          <p :if={report.drift == []}>{Sentence.no_drift()}</p>
           <ul :if={report.drift != []}>
             <li :for={edge <- report.drift}>
               {edge.from_label || edge.from} → {edge.to_label || edge.to} ({edge.count}x)
@@ -96,30 +113,6 @@ defmodule PNS.Web.Live.ContractStatus do
   @spec deployed_since(DateTime.t() | nil) :: String.t()
   defp deployed_since(nil), do: "nothing has happened under this version yet"
   defp deployed_since(at), do: "in force since #{DateTime.to_date(at)}"
-
-  # The rule and outcome sentences mirror `PNS.Report`'s wording on purpose —
-  # same fact, same reader — but live here rather than being shared with it:
-  # `PNS.Duration.humanize/1` is the one piece both renderers cannot be
-  # allowed to disagree on (it exists specifically to prevent that), so it is
-  # reused directly; the surrounding sentence structure is presentation glue
-  # for two different mediums and is small enough that duplicating it beats
-  # inventing a shared renderer neither text nor HTML fully needs yet.
-  @spec rule_sentence(map()) :: String.t()
-  defp rule_sentence(a) do
-    window = if a.within, do: " within #{PNS.Duration.humanize(a.within)}", else: ""
-    alternative = if a.or_else_label, do: ~s(, or else "#{a.or_else_label}"), else: ""
-    ~s(Rule: after "#{a.from_label}"#{window}, "#{a.eventually_label}" follows#{alternative}.)
-  end
-
-  @spec outcome_sentence(map()) :: String.t()
-  defp outcome_sentence(a) do
-    cond do
-      a.instances == 0 -> "There was no run in this period on which this could be judged."
-      a.violated > 0 -> "BREACHED in #{a.violated} of #{a.instances} runs."
-      a.pending > 0 -> "Met in #{a.satisfied} of #{a.instances}, #{a.pending} still in progress."
-      true -> "Met in all #{a.instances} runs."
-    end
-  end
 
   # The one line the report exists to be read from — README's own pitch for
   # it — so it is the one place color carries the answer, not just the words.

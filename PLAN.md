@@ -224,6 +224,50 @@ dochodzą razem.
 
 ---
 
+## Dopisek 22 września (3) — demo znalazło dwie rzeczy, których 498 testów nie znalazło
+
+Uruchomienie całości na zaseedowanym logu TaxVision, pięć migawek raportu, dashboard i endpointy.
+Zero zmian w kontraktach; wszystkie zdarzenia poza jednym przeszły prawdziwym kodem domenowym.
+
+**Pierwsza: raport twierdził coś, czego nie znaczył.** Wypisał dosłownie „BREACHED in 1 of 5 runs.
+(including 1 via the fallback ending, which conforms to the rule)". „Including" czyta się jako
+dopowiedzenie do naruszeń, a odnosi się do przebiegów spełnionych. Liczby były poprawne, zdanie nie —
+a w artefakcie dowodowym to gorsza połowa do pomylenia. Istniejący test asercjonował „Met in all 2
+runs" i „conforms to the rule", oba prawdziwe także w wersji z błędem, więc przechodził.
+
+**Druga, poważniejsza: ekran miał własną kopię zdań raportu i już się rozjechała.** Duplikacja była
+świadoma i opisana komentarzem — „struktura zdania jest na tyle mała, że skopiowanie bije wymyślanie
+wspólnego renderera". Ta ocena była słuszna, kiedy obie kopie mówiły to samo cztery razy. Zanim
+ktokolwiek zestawił je obok siebie, renderer tekstowy urósł o **sześć odpowiedzi, których ekran nie
+miał**: adresata (`accountable`), zmierzony `deadline`, przebieg zawieszony cudzą awarią, przebieg
+sądzony pod zmienioną regułą, informację, które spełnione przebiegi doszły zakończeniem awaryjnym,
+i pracę czekającą w kolejce — tej ostatniej ekran nie renderował w ogóle.
+
+Skutek był taki, że **przebieg zawieszony przez cudzą awarię wyglądał na ekranie jak zwykły.** To
+jest dokładnie ten tryb awarii, który ten produkt wykrywa zawodowo, wewnątrz tego produktu.
+Rozstrzygnięte na korzyść wspólnego modułu: `PNS.Report.Sentence` trzyma zdania bez wcięć i bez
+struktury, `PNS.Report` składa je wcięciami, ekran składa je HTML-em. Medium decyduje, co jest
+nagłówkiem, listą i czerwienią; nie decyduje, co odpowiedź mówi.
+
+**Test antydryfowy też okazał się słabszy, niż twierdziłem, i znów wyszło to z kontroli odwrotnej.**
+Pierwsza wersja chodziła po prawdziwym raporcie i porównywała HTML ze wspólną funkcją — ale prawdziwy
+log ćwiczy jedną gałąź `outcome/1`, więc wstawiona z powrotem lokalna kopia o dwóch gałęziach
+**przeszła**. Druga wersja podaje ekranowi assercję z wszystkimi klauzulami naraz: naruszenie,
+zakończenie awaryjne, awarię zewnętrzną i zmienioną regułę. Lokalna kopia nie przejdzie tego, nie
+stając się wspólną funkcją.
+
+Fikstury testów ekranu też były zbudowane pod jego stare potrzeby, nie pod kształt raportu — brakowało
+w nich `accountable`, `duration`, `in_flight` i `under_earlier_declaration`. Czyli rozjechałyby się
+tak samo.
+
+Drobiazgi z uruchomienia, zapisane bez naprawiania: drugi panel grafu („declared versus observed,
+every contract") jest przy tej skali nieczytelny — czterdzieści osieroconych prostokątów, bo trzy
+z czterech kontraktów nie mają handlerów; krawędź driftu drukuje się jako `(1x, 1/0 runs)`, bo nie
+ma procesu, więc mianownik jest pusty; a na ekranie cała linia werdyktu jest czerwona, razem
+z klauzulą mówiącą, że coś **nie** jest naruszeniem.
+
+---
+
 ## Dopisek 22 września (2) — krok formatowania w bramie, i cztery rzeczy, które to odsłoniło
 
 `mix format --check-formatted` jest od teraz pierwszym krokiem w bramie, we wszystkich trzech

@@ -38,6 +38,100 @@ defmodule PNS.Web.Live.ContractStatusTest do
     assert html =~ "Met in all 1 runs."
   end
 
+  test "every sentence on the screen is one PNS.Report.Sentence produced" do
+    # **The anti-drift test, and the reason this file exists in this shape.** The
+    # screen used to carry its own copy of these sentences; by the time anybody
+    # compared the two, it was silently missing six answers the text report had
+    # grown — including a run suspended by somebody else's outage, which read on
+    # screen exactly like an ordinary one.
+    #
+    # This does not check wording. It checks that the wording is not this screen's
+    # to choose: the expected strings are computed from the same data the screen
+    # renders, so a local copy that says anything else fails here the day it appears.
+    PNS.emit_all(CaseHandling, [PNS.event(:case_opened, %{case_id: "case-a"})])
+    PNS.emit_all(CaseHandling, [PNS.event(:case_approved, %{case_id: "case-a"})])
+
+    report = PNS.Conformance.report(CaseHandling, [])
+
+    html =
+      build_conn()
+      |> TestToken.put_actor("admin", ["pns_admin"])
+      |> get("/pns/contract")
+      |> html_response(200)
+
+    for process <- report.processes do
+      if line = PNS.Report.Sentence.accountable(process.accountable),
+        do: assert(html =~ escape(line))
+
+      for declaration <- process.declarations,
+          do: assert(html =~ escape(PNS.Report.Sentence.declaration(declaration)))
+
+      for line <- PNS.Report.Sentence.duration(process.duration),
+          do: assert(html =~ escape(line))
+
+      for edge <- process.untraversed,
+          do: assert(html =~ escape(PNS.Report.Sentence.step(edge)))
+
+      for edge <- process.in_flight,
+          do: assert(html =~ escape(PNS.Report.Sentence.step_in_flight(edge)))
+
+      for edge <- process.failing,
+          do: assert(html =~ escape(PNS.Report.Sentence.step_failing(edge)))
+
+      for assertion <- process.assertions do
+        assert html =~ escape(PNS.Report.Sentence.rule(assertion))
+        assert html =~ escape(PNS.Report.Sentence.outcome(assertion))
+      end
+    end
+  end
+
+  test "and the clauses a real log rarely produces are not this screen's to omit" do
+    # The test above walks a real report, and a real report exercises one branch of
+    # `outcome/1`. **Checked by neutralising it: putting a local two-branch copy back
+    # in the screen left that test green**, because the branch it covers is the one
+    # both versions agree on.
+    #
+    # So this one hands the screen an assertion with every qualifying clause set at
+    # once — a breach, a fallback, an outage, and a rule that has since changed — and
+    # asserts the screen prints exactly what the shared function says. A local copy
+    # cannot pass this without becoming the shared function.
+    assertion = %{
+      from_label: "Case opened",
+      eventually_label: "Case closed",
+      or_else_label: "Case closed as rejected",
+      within: {1, :hour},
+      instances: 9,
+      satisfied: 5,
+      satisfied_via_eventually: 3,
+      satisfied_via_or_else: 2,
+      violated: 3,
+      pending: 1,
+      suspended: 1,
+      trace: :closed_in_time,
+      under_earlier_declaration: 4,
+      declaration_changed_at: ~U[2026-08-05 09:00:00.000000Z]
+    }
+
+    assigns = %{
+      pns_web_access: :all,
+      pns_web_base_path: "/pns",
+      reports: [report(processes: [process(assertions: [assertion])])]
+    }
+
+    html = render_component(&ContractStatus.render/1, assigns)
+
+    assert html =~ escape(PNS.Report.Sentence.outcome(assertion))
+    # Named individually, so a failure says which clause went missing.
+    assert html =~ "reached the fallback ending"
+    assert html =~ "an external dependency was unavailable"
+    assert html =~ "judged under a different promise"
+  end
+
+  # HEEx escapes interpolated values, so a sentence carrying a quotation mark — every
+  # `rule` sentence does — is not in the HTML verbatim.
+  defp escape(sentence),
+    do: sentence |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
+
   test "no runs at all: the process says so instead of listing paths" do
     assigns = %{
       pns_web_access: :all,
@@ -63,7 +157,9 @@ defmodule PNS.Web.Live.ContractStatusTest do
       pending: 0,
       suspended: 0,
       satisfied_via_eventually: 1,
-      satisfied_via_or_else: 0
+      satisfied_via_or_else: 0,
+      under_earlier_declaration: 0,
+      declaration_changed_at: nil
     }
 
     assigns = %{
@@ -94,7 +190,9 @@ defmodule PNS.Web.Live.ContractStatusTest do
       pending: 2,
       suspended: 0,
       satisfied_via_eventually: 1,
-      satisfied_via_or_else: 0
+      satisfied_via_or_else: 0,
+      under_earlier_declaration: 0,
+      declaration_changed_at: nil
     }
 
     assigns = %{
@@ -172,8 +270,10 @@ defmodule PNS.Web.Live.ContractStatusTest do
       %{
         process: :handling,
         label: "Case handling",
+        accountable: nil,
         runs: 1,
         declarations: [],
+        duration: nil,
         untraversed: [],
         in_flight: [],
         failing: [],

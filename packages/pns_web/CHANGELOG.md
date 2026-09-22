@@ -12,6 +12,16 @@ Everything to date, recorded after the fact. The package is not on Hex and canno
 be until `pns` is: it depends on it by path, and a published package may only
 depend on published ones. See `README.md` for the second reason.
 
+- **Fixed:** the contract screen was quietly answering six fewer questions than
+  `mix pns.report`. It carried its own copy of the report's sentences — a
+  deliberate duplication, made when both copies said the same four things — and by
+  the time anybody ran the two side by side it had no addressee, no measured
+  `deadline`, nothing for a run suspended by an external outage, nothing for a run
+  judged under a rule that had since changed, nothing about which met runs reached
+  the fallback, and no sign of queued work at all. A run suspended by somebody
+  else's outage read on screen exactly like an ordinary one. Every sentence now
+  comes from `PNS.Report.Sentence`; the screen decides what is a heading, a list or
+  red, and decides nothing about what the answer says.
 - `pns_api/2` also serves the generated AsyncAPI documents: an index at
   `/asyncapi` and one document per contract, each with its digest in the body and
   in the `ETag`. Authenticated like everything else — a document naming every event

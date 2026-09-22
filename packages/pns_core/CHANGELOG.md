@@ -48,6 +48,9 @@ version is real all the same, because a conformance report already carries it.
 - `accountable:` on `process`: the role a finding is addressed to. Distinct from
   `owner:` on an event, which holds a module and answers a different question.
   `mix pns.check` warns when a process names none.
+- `PNS.Report.Sentence`: the sentences a conformance report is made of, without its
+  layout. `PNS.Report` composes them with indentation; anything else rendering the
+  same report composes them some other way. Neither owns the words.
 - `PNS.AsyncAPI`: an AsyncAPI 3.0 document generated from a contract, carrying a
   digest computed over the document itself. `channels` and `components.messages`
   only — no `operations`, because handler edges would make the digest move when

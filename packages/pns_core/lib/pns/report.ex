@@ -21,6 +21,8 @@ defmodule PNS.Report do
   visible right here: an unconfirmed `deadline` never reaches `render/1`'s input.
   """
 
+  alias PNS.Report.Sentence
+
   @doc "The report for one contract over a period, as text to print."
   @spec render(map()) :: String.t()
   def render(report) do
@@ -114,49 +116,23 @@ defmodule PNS.Report do
     ]
   end
 
-  # Nothing at all when the process names no role. An invented addressee is worse
-  # than none: it sends the finding to somebody who never agreed to receive it.
   @spec accountable(String.t() | nil) :: [String.t()]
-  defp accountable(nil), do: []
-  defp accountable(role), do: ["  Accountable: #{role}."]
+  defp accountable(role) do
+    case Sentence.accountable(role) do
+      nil -> []
+      line -> ["  " <> line]
+    end
+  end
 
-  # The declared duration, measured. Prints nothing at all when the process declares
-  # none, has not confirmed it, or had no run — three different silences, and none
-  # of them is a number.
   @spec duration(map() | nil) :: [String.t()]
-  defp duration(nil), do: []
-  defp duration(%{runs: 0}), do: []
-
   defp duration(d) do
-    finished = d.within + d.exceeded
-
-    # The duration itself is not repeated here: `declarations/1` prints "Deadline: N
-    # days from the start" one line above, and `PNS.Duration.humanize/1` drops the
-    # numeral at a count of one precisely because its callers put a word in front of
-    # it. A second copy would read "the agreed duration of hour".
-    judged =
-      cond do
-        finished == 0 ->
-          "  No run finished in this period, so the agreed duration cannot be judged."
-
-        d.exceeded > 0 ->
-          "  The agreed duration was exceeded in #{d.exceeded} of #{runs(finished)} that finished."
-
-        true ->
-          "  The agreed duration was kept in all #{runs(finished)} that finished."
-      end
-
-    # Its own line, never folded into the count above. There the duration is known;
-    # here only a lower bound on it is, and "took an hour" is not "has been running
-    # for an hour".
-    still_open =
-      if d.overdue > 0 do
-        ["    #{runs(d.overdue)} still open and already past it."]
-      else
-        []
-      end
-
-    [judged] ++ still_open
+    case Sentence.duration(d) do
+      [] -> []
+      # The second line is indented further because it qualifies the first, the same
+      # way a step qualifies the heading above it.
+      [judged] -> ["  " <> judged]
+      [judged, still_open] -> ["  " <> judged, "    " <> still_open]
+    end
   end
 
   @spec process(map()) :: [String.t()]
@@ -174,48 +150,24 @@ defmodule PNS.Report do
   # Confirmed declarations only. The 25-day deadline will not appear here until
   # somebody confirms it.
   @spec declarations([map()]) :: [String.t()]
-  defp declarations([]), do: []
-
-  defp declarations(declared) do
-    for %{key: key, value: value} <- declared do
-      case key do
-        :cadence -> "  Due: every #{amount(value)}."
-        :deadline -> "  Deadline: #{amount(value)} from the start."
-      end
-    end
-  end
-
-  # Delegated to `PNS.Duration`, which already owns everything else about units.
-  # The hand-listed plurals that used to sit here covered `:month` and `:day` and
-  # let every other unit through as "24 hour".
-  @spec amount({pos_integer(), atom()}) :: String.t()
-  defp amount(duration), do: PNS.Duration.humanize(duration)
+  defp declarations(declared), do: for(d <- declared, do: "  " <> Sentence.declaration(d))
 
   @spec paths(map()) :: [String.t()]
-  defp paths(%{runs: 0}) do
-    ["  The agreed steps cannot be judged: there was not a single run in this period."]
-  end
+  defp paths(%{runs: 0}), do: ["  " <> Sentence.no_runs()]
 
   defp paths(p) do
     untraversed =
       case p.untraversed do
         [] ->
-          ["  All agreed steps were carried out in this period."]
+          ["  " <> Sentence.all_steps_carried_out()]
 
         steps ->
           ["  Agreed steps that were never carried out:"] ++
-            for s <- steps, do: "    · #{step(s)}"
+            for s <- steps, do: "    · " <> Sentence.step(s)
       end
 
-    waiting =
-      for s <- p.in_flight do
-        "    · #{step(s)} — in progress, #{s.in_flight} queued"
-      end
+    waiting = for s <- p.in_flight, do: "    · " <> Sentence.step_in_flight(s)
 
-    # Separate from "never done", because it is a different finding for a different
-    # reader: there the question is whether the step is still agreed, here it is that
-    # the code is broken. Merging them puts a bug in front of the client as a
-    # question about their process.
     failing =
       case p.failing do
         [] ->
@@ -223,119 +175,19 @@ defmodule PNS.Report do
 
         steps ->
           ["  Agreed steps that are attempted and fail:"] ++
-            for s <- steps, do: "    · #{step(s)} — failed in #{runs(s.failing)}"
+            for s <- steps, do: "    · " <> Sentence.step_failing(s)
       end
 
     untraversed ++ waiting ++ failing
   end
 
-  @spec runs(pos_integer()) :: String.t()
-  defp runs(1), do: "1 run"
-  defp runs(n), do: "#{n} runs"
-
-  # Business labels, with the technical name only as an aside. The acceptance
-  # criterion: readable without explaining what the columns mean.
-  @spec step(map()) :: String.t()
-  defp step(s), do: "#{s.from_label} → #{s.to_label}"
-
   @spec assertions([map()]) :: [String.t()]
-  defp assertions([]), do: []
-
   defp assertions(list) do
-    Enum.flat_map(list, &assertion/1)
-  end
-
-  # A sentence, not a name. `trace` is the one declaration without a `label`, so a
-  # technical name is all that could be printed — and a report that says
-  # `month_opens_or_is_blocked` does not meet the "readable without explanation"
-  # criterion.
-  @spec assertion(map()) :: [String.t()]
-  defp assertion(a) do
-    alternative = if a.or_else_label, do: ", or else \"#{a.or_else_label}\"", else: ""
-    window = if a.within, do: " within #{amount(a.within)}", else: ""
-
-    [
-      "  Rule: after \"#{a.from_label}\"#{window}, \"#{a.eventually_label}\" follows#{alternative}.",
-      "    #{outcome(a)}"
-    ]
-  end
-
-  @spec outcome(map()) :: String.t()
-  defp outcome(a) do
-    # **Attached to the count it qualifies, never to the sentence as a whole.** It
-    # used to be appended to whatever `state` said, which produced, verbatim:
-    # "BREACHED in 1 of 5 runs. (including 1 via the fallback ending, which conforms
-    # to the rule)" — where "including" reads as qualifying the breaches and in fact
-    # qualifies the runs that were met. Found by running the thing on a seeded log,
-    # not by any of the tests.
-    via =
-      if a.satisfied_via_or_else > 0 do
-        " Of those that were met, #{runs(a.satisfied_via_or_else)} reached the fallback " <>
-          "ending, which conforms to the rule."
-      else
-        ""
-      end
-
-    state =
-      cond do
-        # Two different sentences, and conflating them would be the same error this
-        # report keeps being corrected for. "Nothing to judge" is an absence; "every
-        # run here predates the current rule" is a fact about which promise was in
-        # force, and the runs did happen.
-        a.instances == 0 and a.under_earlier_declaration > 0 ->
-          "No run in this period was judged under the rule as it now stands."
-
-        a.instances == 0 ->
-          "There was no run in this period on which this could be judged."
-
-        a.violated > 0 ->
-          "BREACHED in #{a.violated} of #{a.instances} runs."
-
-        a.pending > 0 ->
-          "Met in #{a.satisfied} of #{a.instances}, #{a.pending} still in progress."
-
-        true ->
-          "Met in all #{a.instances} runs."
-      end
-
-    # No `via` when nothing was met: there is no count for it to qualify, and the
-    # sentence would be about a subset of zero.
-    via = if a.satisfied > 0, do: via, else: ""
-
-    state <> via <> suspended(a) <> earlier_declaration(a)
-  end
-
-  # The counts above describe runs judged under the rule as declared today. Runs
-  # that began before it last changed were judged under a different promise, and
-  # folding them in would let an edit to `within` retroactively turn a year of
-  # conforming runs into breaches with nothing in the report to say why.
-  #
-  # Counted, not listed, and the date is given so a reader can narrow the period
-  # themselves — which until now was the only way to get this truth at all, and
-  # required already knowing the date.
-  @spec earlier_declaration(map()) :: String.t()
-  defp earlier_declaration(%{under_earlier_declaration: 0}), do: ""
-
-  defp earlier_declaration(a) do
-    " #{runs(a.under_earlier_declaration)} began before this rule was last changed " <>
-      "(#{day(a.declaration_changed_at)}) and are not counted here — they were judged " <>
-      "under a different promise."
-  end
-
-  # Named as somebody else's outage, not as the client's problem, and **not** counted among
-  # the breaches. This is the whole value of the fourth verdict: without it these runs read
-  # as "you broke your own agreement" when what happened is that a system you depend on
-  # stopped answering.
-  @spec suspended(map()) :: String.t()
-  defp suspended(%{suspended: 0}), do: ""
-
-  defp suspended(a) do
-    " Suspended: #{runs(a.suspended)} — an external dependency was unavailable within the " <>
-      "rule's window, so this is not a breach on the client's side."
+    Enum.flat_map(list, fn a -> ["  " <> Sentence.rule(a), "    " <> Sentence.outcome(a)] end)
   end
 
   @spec drift([map()]) :: [String.t()]
-  defp drift([]), do: ["DRIFT", "  None: nothing happened outside the agreement.", ""]
+  defp drift([]), do: ["DRIFT", "  " <> Sentence.no_drift(), ""]
 
   defp drift(edges) do
     ["DRIFT — happened, though it was not agreed:"] ++
