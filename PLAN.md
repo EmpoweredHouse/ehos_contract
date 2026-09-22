@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Dopisek 22 września — etap 5: 5.1–5.4 zamknięte
+## Dopisek 22 września — etap 5: 5.1–5.4 zamknięte, 5.5 przeprowadzone
 
 Plan implementacji całego etapu jest osobno; tutaj idzie stan i to, co wyszło przy pisaniu.
 
@@ -150,6 +150,88 @@ wraca jako `NaiveDateTime` i każde porównanie z `DateTime` wywala się funkcj�
 `type(..., :utc_datetime_usec)`. I: z dwóch testów okresu tylko jeden odróżnia `having` od `where`,
 bo przy `since` sprzed startu obie klauzule dają to samo; komentarz przy drugim twierdził więcej,
 niż ten test pokazuje, i został poprawiony zamiast zostać jako fałszywa etykieta.
+
+### 5.5 — eksperyment falsyfikacyjny na `command`. Wynik: mieszany, i to jest wynik
+
+Zero zmian w kodzie. Jeden skrypt jednorazowy, puszczony dwa razy — w hoście (4 kontrakty)
+i w `packages/pns_core` pod `MIX_ENV=test` (5 fikstur). Poniżej liczby, nie wrażenia.
+
+**Krok 0 — ile komend powinno być, mierzone bez dotykania `example`.** Zdarzenie, którego żaden
+handler nie publikuje, nie ma w systemie przyczyny, więc wchodzi z zewnątrz. To jest wejście do
+procesu, niezależnie od tego, czy ktoś napisał do niego regułę.
+
+| Kontrakt | wejść | komend | wejść bez komendy |
+| --- | --- | --- | --- |
+| `Rehmed.ClinicalVisit` | 7 | 0 | 7 |
+| `Rehmed.PayerSettlement` | 5 | 0 | 5 |
+| `Rehmed.VisitSettlement` | 6 | 1 | 4 |
+| `Taxvision.AccountingMonth` | 8 | 1 | 6 |
+| **razem** | **26** | **2** | **22** |
+
+**To rozstrzyga pytanie, które postawiłem przed eksperymentem, i rozstrzyga przeciwko mojej własnej
+wcześniejszej analizie.** Trzykrotnie podawałem „dwie komendy w korpusie" jako pomiar domeny. Nie
+jest: 22 z 26 wejść do procesów nie ma żadnej deklaracji, bo `command` da się dziś wyrazić wyłącznie
+jako skutek uboczny napisania reguły. Korpus jest pokryty w 8%.
+
+Dla `D-15` to jest wynik **pozytywny**, i to mocniejszy niż cokolwiek, czego się spodziewałem:
+najlepszym argumentem za deklaracją commanda jest to, że przy jej braku 22 wejścia do procesu nie
+zostały nigdzie zapisane, choć każde z nich ktoś musi umieć wywołać i nie każdy będzie mógł.
+
+**Krok A — czy komenda jest funkcją jednego procesu.** Przechodzi. Obie realne komendy emitują
+wyłącznie zdarzenia jednego procesu, a ich parametry zawierają pola `instance`.
+
+**Krok B — czy `emits:` da się wyprowadzić. Nie, i różnica nie jest jednorodna.**
+
+| Komenda | emitowane w przykładach | osiągalne przez handlery | różnica |
+| --- | --- | --- | --- |
+| `:close_settlement` | 2 | 2 | **0** |
+| `:open_month` | 2 | 5 | **3**, w tym `accounting_month_opened` |
+
+Czyli dla jednej z dwóch komend oba czytania „emituje" dają ten sam zbiór, a dla drugiej różnią się
+o trzy zdarzenia — łącznie z tym, od którego komenda wzięła nazwę. Decyzja o wyrzuceniu `emits:`
+stoi, i stoi teraz na liczbie, a nie tylko na argumencie o kompletności zbioru.
+
+**Krok C — czy wyprowadzona capability ma co zastępować.** Tu wyszło coś, czego nie przewidziałem.
+
+- `:open_month` — `given` niesie `actor_roles` i `actor_company`, czyli istnieje reguła poziomu 3
+  (`actor_company == company_id`), i wyprowadzona capability jej nie zastąpi.
+- `:close_settlement` — `given` niesie `payments` i `total_minor`. **Ani jednego pola o aktorze.**
+  Ta komenda nie ma dziś żadnej kontroli dostępu; jej jedyna reguła jest niezmiennikiem
+  biznesowym.
+
+Przewidywałem, że `D-15` padnie, jeśli każda realna decyzja dostępowa okaże się poziomem 3. Wyszło
+odwrotnie i ciekawiej: dla połowy korpusu wyprowadzona capability nie byłaby nadmiarowa, tylko
+**jedyną kontrolą dostępu, jaka by istniała**. To jest argument za, nie przeciw.
+
+**Krok D — promień rażenia.** Wszystkie dziewięć kontraktów zmienia `version/0` po dołożeniu pustej
+siódmej grupy. Pary przed/po zapisane do wklejenia w commit 5.6, wzorem `7c229c333c21 →
+0343089e9d75` z 6 sierpnia. Przykład: `Taxvision.AccountingMonth` `7ac66ea1bb9e → 0bc94dd13b5d`.
+
+**Kontrola odwrotna nie przeszła, i to jest osobne znalezisko.** Miałem puścić ten sam spis na
+`:qualify_referral` z `UniversalityGate.TreatmentEpisode` — komendy z domeny świadomie zmyślonej —
+i sprawdzić, czy choć jedna kolumna wychodzi inaczej niż dla realnych. Wychodzi identycznie jak
+`:close_settlement`: różnica B pusta, zero pól o aktorze. Czyli **ten spis nie odróżnia komendy
+wymyślonej od prawdziwej, kiedy prawdziwa jest prosta.** Jedyną komendą, która dała wyróżniające
+się wyjście, jest `:open_month` — dwie reguły, reguła o aktorze, niepusta różnica B. Dla ciekawego
+przypadku n = 1.
+
+**Werdykt, jedną linią: `D-15` się broni, kształt z listy foundera padł, a `principals:` nie ma
+w korpusie oparcia.**
+
+- **Broni się:** deklaracja jest potrzebna (22 nieopisane wejścia) i wyprowadzalna (krok A), a dla
+  połowy korpusu byłaby jedyną kontrolą dostępu (krok C).
+- **Padło:** `emits:` jako klucz deklaracji. Dwa czytania, prowadzalnie różne w korpusie, żadnej
+  bramy na kompletność.
+- **Materiał nie rozstrzyga:** `principals:`. Silnik zna tylko `PNS.Auth.Actor` z `roles` jako
+  stringami i `system_actor/0`; korpus niesie `actor_roles: ["accounting"]`, czyli rolę, nie typ
+  principala. Zamknięty zbiór `[:human, :system]` byłby **naszym wymysłem, nie odczytem z korpusu** —
+  i to trzeba powiedzieć founderowi wprost, bo to jest wejście, którego `D-18` wiersz 3 wymaga,
+  a którego nie ma.
+
+**Co z tego wynika dla 5.6.** Wchodzi, ale w węższym kształcie i z jawnie nazwanym długiem: klucze
+`label`, `process` i `payload` mają oparcie w korpusie, `principals:` nie ma i jest propozycją do
+zatwierdzenia, a dopisanie 22 brakujących komend jest robotą warsztatową z process ownerem, nie
+robotą w silniku. Nie ma sensu generować deklaracji dla wejść, których nikt nie nazwał.
 
 ---
 
