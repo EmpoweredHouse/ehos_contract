@@ -582,7 +582,7 @@ Alias był używalny tylko, jeśli ktoś sam dopisał `MIX_ENV=test`.
 ### 5.8 — zgodność wychodzi jako dane
 
 `PNS.Conformance.as_data/2` plus `PNS.Conformance.Wire` w silniku, `pns_api/2` w `pns_web`,
-zamontowane też na prawdziwym hoście pod `/api/pns`. 477 testów.
+zamontowane też na prawdziwym hoście pod `/api/pns`. 490 testów.
 
 **Projekcja mieszka w silniku, nie w transporcie**, i to nie jest preferencja: kształt, który
 konsument porównuje wersja do wersji, jest częścią tego, co ten pakiet obiecuje. Napisana
@@ -623,7 +623,7 @@ odziedziczone" jest test czytający listę `deps`, bo usunięcie linii zostawia 
 ### 5.9 — AsyncAPI z kontraktu, i uczciwie o tym, czego standard nie unosi
 
 `PNS.AsyncAPI.document/1` plus indeks, serwowane przez `pns_api/2` z digestem w ciele i w `ETag`.
-507 testów, brama zielona.
+494 testy, brama zielona.
 
 **Zwalidowane prawdziwym walidatorem, raz, ręcznie, 22 września.** `npx @asyncapi/cli validate` na
 trzech dokumentach — `ProcessShapes.Promised`, `ProcessShapes.Rig` (ma `external` i `retain`)
