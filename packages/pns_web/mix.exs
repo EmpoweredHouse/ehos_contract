@@ -1,6 +1,10 @@
 defmodule PNS.Web.MixProject do
   use Mix.Project
 
+  @version "0.1.0"
+  @source_url "https://github.com/EmpoweredHouse/eh-os-prototype"
+  @description "A mountable conformance dashboard for PNS."
+
   @moduledoc """
   The dashboard foundation, extracted as its own package from the first commit.
 
@@ -14,7 +18,12 @@ defmodule PNS.Web.MixProject do
   def project do
     [
       app: :pns_web,
-      version: "0.1.0",
+      version: @version,
+      name: "PNS.Web",
+      description: @description,
+      package: package(),
+      docs: docs(),
+      source_url: @source_url,
       elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
       # Only read when this project is the top-level one; see
@@ -67,6 +76,28 @@ defmodule PNS.Web.MixProject do
         end
       ]
     ]
+  end
+
+  # **Metadata now; publication held.** `priv/static/assets/mermaid.min.js` is a
+  # vendored third-party build (Mermaid, MIT), so a tarball of this package
+  # redistributes somebody else's code. That needs an attribution line a lawyer would
+  # accept, not just a comment in a source file, and publishing is irreversible in a
+  # way editing is not. `NOTICE` carries the attribution; the decision to actually
+  # push is a separate one and has not been made.
+  defp package do
+    [
+      name: "pns_web",
+      licenses: ["Apache-2.0"],
+      links: %{
+        "GitHub" => @source_url,
+        "Changelog" => "#{@source_url}/blob/main/packages/pns_web/CHANGELOG.md"
+      },
+      files: ~w(lib priv/static .formatter.exs mix.exs README.md CHANGELOG.md LICENSE NOTICE)
+    ]
+  end
+
+  defp docs do
+    [main: "readme", extras: ["README.md", "CHANGELOG.md"], source_ref: "v#{@version}"]
   end
 
   defp deps do

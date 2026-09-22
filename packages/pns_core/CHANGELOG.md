@@ -48,11 +48,18 @@ version is real all the same, because a conformance report already carries it.
 - `accountable:` on `process`: the role a finding is addressed to. Distinct from
   `owner:` on an event, which holds a module and answers a different question.
   `mix pns.check` warns when a process names none.
+- The package can be published: `package/0`, a description, a licence file of its
+  own, a README and generated docs. Stage 3 called this "the package as a package"
+  and closed in August; `mix hex.build` refused the project outright until now.
+- `.formatter.exs` with an exported `locals_without_parens`, so a consuming
+  project's `mix format` leaves contracts looking like contracts instead of
+  rewriting every declaration as a function call.
 - `mix pns.check` reports, as a notice, a process that declares a `deadline` and no
   `terminal: true` event — a promise about duration that nothing can observe being
   kept or broken.
 - Every declaration now carries its own digest, recorded per deployment
-  (`PNS.Contract.declaration_digests/0`, `PNS.Migrations` v02). `PNS.Deployment.diff/2`
+  (each contract gains a generated `declaration_digests/0`, stored by `PNS.Migrations` v02).
+  `PNS.Deployment.diff/2`
   reports which declaration moved, where before it could only compare event names
   and handler edges — so a changed `within`, `retain`, `identity`, `instance` or
   payload type registered as four empty lists.

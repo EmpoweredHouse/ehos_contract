@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Dopisek 22 września — etap 5: 5.1–5.6 zamknięte
+## Dopisek 22 września — etap 5: 5.1–5.7 zamknięte
 
 Plan implementacji całego etapu jest osobno; tutaj idzie stan i to, co wyszło przy pisaniu.
 
@@ -284,6 +284,44 @@ dokument generowany mieć nie może. Lista jest teraz uzupełniana o resztę `Ma
 Przy okazji poprawione w `docs/contract.md`: „sześć deklaracji" na siedem, wiersz `deadline`
 w tabeli znaczeń (mówił „nothing yet", a od 5.4 czyta go `PNS.Run`) i wypadnięcie `deadline`
 z sekcji „Known decoration".
+
+### 5.7 — pakiet daje się opublikować, a `pns_web` nie i wiadomo dlaczego
+
+**Nazwa `pns` jest wolna na Hexie**, sprawdzone przed czymkolwiek innym, bo od tego rozgałęział się
+cały punkt. Czyli `app: :pns`, katalog `pns_core` zostaje, żadnej przemianowywanej aplikacji.
+`mix hex.build` produkuje dziś tarball bez ostrzeżeń, `mix docs` buduje się bez ani jednego —
+były cztery, dwa moje i dwa zastane. 460 testów.
+
+**Najdroższe znalezisko nie jest o metadanych.** `packages/pns_core/.formatter.exs` w ogóle nie
+istniał, więc `mix format` u konsumenta przepisywał każdy kontrakt na `event(:x, label: "...")`.
+Zmierzone: bez eksportu 14 plików nie przechodzi `--check-formatted`, z eksportem 10 — cztery
+odzyskane to kontrakty. `packages/pns_web/.formatter.exs` obchodził to ręczną kopią listy i
+**ta kopia była już niekompletna**: brakowało `external: 2`, `rule: 2`, `example: 2`. Teraz jest
+jeden eksport i dwa `import_deps`.
+
+**Dziesięć plików nadal nie przechodzi `mix format --check-formatted` i to jest osobny dług.**
+Brama nie ma kroku formatowania i nigdy nie miała, więc nikt tego nie widział. Nie sprzątam tego
+w commicie o pakowaniu — dziesięciopliowy przeformatowanie wewnątrz commita o metadanych to
+dokładnie ten rozmiar diffu, przed którym ostrzega `CLAUDE.md`. Do zrobienia osobno, razem
+z decyzją, czy `mix format --check-formatted` wchodzi do bramy.
+
+**`pns_web` nie da się opublikować i powód jest twardszy niż zwendorowany Mermaid.** `hex.build`
+mówi wprost: *„Dependencies excluded from the package (only Hex packages can be dependencies):
+pns"*. Pakiet zależy od `pns` ścieżką, a opublikowany może zależeć tylko od opublikowanych. Czyli
+kolejność jest wymuszona, nie preferowana: najpierw `pns`, potem zamiana `path:` na `~> 0.2`,
+dopiero wtedy `pns_web`. Metadane i tak wchodzą, plus `NOTICE` z licencją MIT Mermaida — tarball
+redystrybuuje cudzy kod i wymaga atrybucji w pliku, nie w komentarzu.
+
+**Poprawka do planu:** zakładałem asymetrię — że usunięcie `licenses:` wywali i test, i
+`hex.build`, a usunięcie *pliku* `LICENSE` tylko test. Nieprawda: `hex.build` łapie oba, bo
+`LICENSE` jest wymieniony w `files:`. Test zostaje mimo to, bo brama go uruchamia, a `hex.build`
+nie — i tu jest druga poprawka: **`hex.build` nie działa z wnętrza aliasu**, choć samodzielnie
+działa. Wyjąłem go zamiast owijać w shell-out pod krok, który i tak jest ręczny przed publikacją,
+której nikt jeszcze nie zaplanował.
+
+**Zastane, naprawione po drodze:** `packages/pns_core` nie miał `cli/0` z `preferred_envs`, więc
+jego własny `mix check` wywalał się na `ecto.create` w `:dev`, zanim doszedł do pierwszego testu.
+Alias był używalny tylko, jeśli ktoś sam dopisał `MIX_ENV=test`.
 
 ---
 

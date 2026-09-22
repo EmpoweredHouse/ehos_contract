@@ -5,6 +5,8 @@ defmodule PNS.MixProject do
   # conformance report carries. A change that can move a verdict raises the minor
   # version and gets a line in CHANGELOG.md — the rule is written there.
   @version "0.2.0"
+  @source_url "https://github.com/EmpoweredHouse/eh-os-prototype"
+  @description "Checks that deployed code does what the declared business process says it does."
 
   @moduledoc """
   The engine as its own application, extracted on 2026-08-20.
@@ -19,6 +21,11 @@ defmodule PNS.MixProject do
     [
       app: :pns,
       version: @version,
+      name: "PNS",
+      description: @description,
+      package: package(),
+      docs: docs(),
+      source_url: @source_url,
       elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
       # Only read when this project is the top-level one; a path dependency's
@@ -33,6 +40,12 @@ defmodule PNS.MixProject do
       deps: deps()
     ]
   end
+
+  # Mirrors the host's. Without it `mix check` here runs the `test` alias in `:dev`,
+  # where `PNS.TestRepo` is not compiled, and fails on `ecto.create` before reaching
+  # a single test — which is how this alias stood until 2026-09-22, usable only if
+  # you happened to prefix `MIX_ENV=test` yourself.
+  def cli, do: [preferred_envs: [check: :test]]
 
   def application do
     [extra_applications: [:logger, :crypto]]
@@ -51,7 +64,38 @@ defmodule PNS.MixProject do
       "ecto.setup": ["ecto.create", "ecto.migrate"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      # `hex.build` is deliberately **not** here. It works standalone
+      # (`MIX_ENV=test mix hex.build`) and not from inside an alias, and wrapping it
+      # in a shell-out for a package nobody has decided to publish yet would be
+      # machinery ahead of the decision. `test/package_test.exs` pins the metadata;
+      # the tarball is a manual step before a release that has not been scheduled.
       check: ["compile --force --warnings-as-errors", "pns.check", "test"]
+    ]
+  end
+
+  defp package do
+    [
+      name: "pns",
+      licenses: ["Apache-2.0"],
+      links: %{
+        "GitHub" => @source_url,
+        "Changelog" => "#{@source_url}/blob/main/packages/pns_core/CHANGELOG.md"
+      },
+      # Listed explicitly rather than left to the default, which would include
+      # `priv/`. The only thing under `priv/` here is this package's own test
+      # migration — an artifact of testing the migration module against itself, and
+      # nothing a consumer should receive. `LICENSE` is a copy: a package published
+      # from a subdirectory does not pick up the repository's, and `licenses:` above
+      # is metadata rather than a file.
+      files: ~w(lib .formatter.exs mix.exs README.md CHANGELOG.md LICENSE)
+    ]
+  end
+
+  defp docs do
+    [
+      main: "readme",
+      extras: ["README.md", "CHANGELOG.md"],
+      source_ref: "v#{@version}"
     ]
   end
 
@@ -72,7 +116,8 @@ defmodule PNS.MixProject do
       {:boundary, "~> 0.10", runtime: false},
       # The identity seam's real verifier. Not the active one — see
       # `PNS.Auth.OidcVerifier`.
-      {:oidcc, "~> 3.0"}
+      {:oidcc, "~> 3.0"},
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false}
     ]
   end
 end

@@ -53,7 +53,8 @@ defmodule PNS.Deployment do
     field :wiring_version, :string
     field :events, {:array, :string}
     field :edges, {:array, :string}
-    # One digest per declaration (`PNS.Contract.declaration_digests/0`). Nullable,
+    # One digest per declaration, from the contract's generated `declaration_digests/0`
+    # — a function on each contract module, not on `PNS.Contract`. Nullable,
     # because a row written before this column existed does not know what its
     # contract declared, and `%{}` would claim it declared nothing.
     field :declaration_digests, :map

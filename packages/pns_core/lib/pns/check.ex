@@ -253,7 +253,7 @@ defmodule PNS.Check do
 
   Two more readers merge silently rather than cross-firing. `PNS.Graph.overlay/1`
   indexes nodes by event name, so one of the two events supplies the process and
-  contract for both. `PNS.Check.stage_index/0` does the same, so backward-edge
+  contract for both. This module's own `stage_index/0` does the same, so backward-edge
   detection reads one contract's stages against the other's handlers.
 
   ## Why an error rather than a warning
