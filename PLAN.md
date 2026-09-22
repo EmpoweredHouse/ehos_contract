@@ -5,6 +5,166 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
+## Dopisek 21 września (12) — przegląd architektury EHOS-a: czego prototyp jeszcze nie ma
+
+Nic tu nie zostało zbudowane. To jest lista zobowiązań wynikających z przeglądu, który ustalił relację
+PNS-a do EHOS-a i przeszedł przez trzynaście rozbieżności między wizją a obiema bazami technicznymi.
+Rozstrzygnięcia żyją w `~/Projects/ai/eh-os/`: `ARCHITECTURE.md` (decyzje `D-01`…`D-21`),
+`ALIGNMENT.md` (rozbieżności `A-01`…`A-13`) i `DECYZJE.md` (zdania do zatwierdzenia przez foundera).
+
+**Ustalenie ramowe.** PNS zostaje wąskim pakietem: kontrakt, log zdarzeń, zgodność. EHOS jest osobnym
+systemem obok, z własnym cyklem życia i własną bazą, który uruchamia workloady klienta. PNS jest
+biblioteką w runtime klienta, EHOS nie jest warstwą nad nią. Część poniższych pozycji to zmiany w DSL,
+bo prototyp adaptuje się do architektury, a nie odwrotnie — tak to zostało zapisane w
+`ARCHITECTURE.md`.
+
+Trzynaście pozycji: 1–3 to zmiany w kontrakcie, 4–5 wychodzą ze struktury projektu klienta, 6–8 to
+czego silnik jeszcze nie wystawia, 9–13 przyszło ze spotkania z founderem.
+
+### Zmiany w kontrakcie
+
+| | Co | Dlaczego |
+| --- | --- | --- |
+| 1 | **`command` jako siódma deklaracja**: nazwa, `process`, jakie eventy emituje, jakie typy principala mogą go wywołać | Dziś command istnieje tylko jako klucz w `example`. Z deklaracji wyprowadza się capability, zamiast pisać osobną listę nazw uprawnień, która i tak by się rozjechała (`D-15`) |
+| 2 | **`owner` na `process`**, jako rola a nie nazwisko | Raport mówiący „reguła złamana w 1 z 40 przebiegów" musi mieć adresata. Dziś `owner` jest tylko na evencie i opcjonalny (`D-18`) |
+| 3 | **Klasyfikacja odpowiedzialności wyprowadzana, nie deklarowana** | `rule` z funkcją → kod; `trace` z deadlinem → platforma; command tylko dla principala-człowieka → człowiek. Wymaga pozycji 1, żeby trzeci wiersz był wyprowadzalny (`D-18`) |
+
+Deklaracja commanda ma trzech konsumentów, nie jednego. Poza capability i klasyfikacją
+odpowiedzialności wychodzi z niej klient generowany dla aplikacji, który opakowują CLI i MCP
+(`D-12`). Sam klient jest robotą EHOS-a, nie PNS-a, ale wychodzi z kontraktu, więc deklaracja musi
+nieść tyle, żeby dało się go wygenerować — to jest ten sam wymóg co pozycja 9.
+
+Pierwszy krok to półdniowy eksperyment, nie implementacja: czy `command` da się podnieść z klucza w
+`example` do deklaracji, nie rozwalając czterech istniejących kontraktów. Materiał jest: cztery
+kontrakty, 29 eventów, dwa commandy już nazwane atomami (`:open_month`, `:close_settlement`). Jeśli nie
+wyjdzie, `D-15` jest błędne i lepiej wiedzieć to przed rozmową z founderem niż po.
+
+### Nowe bramki kompilacji
+
+- command zadeklarowany poza namespace'em swojej aplikacji (klasa konfliktu `C-2` w `ARCHITECTURE.md`)
+- proces bez odpowiedzialnego właściciela
+- generowany test odmowy per command: wywołanie bez capability musi zostać odrzucone. Mechaniczne,
+  więc generowane. Granularność commanda pozostaje osądem warsztatowym i nie jest sprawdzana, z tego
+  samego powodu, dla którego harness nie ma opinii o tym, czy coś powinno być eventem
+
+### Struktura projektu klienta
+
+Dziś: jeden projekt mix, katalogi `lib/taxvision` i `lib/rehmed`, jedno `Repo`, jedna migracja
+`create_taxvision_module_tables`. Model docelowy ma cztery poziomy (`D-02`):
+
+```
+jednostka wdrożenia   jeden artefakt, jeden kontener, jeden runtime, jeden schemat, jeden user bazy
+  └ własność          to, co posiada jeden zespół — MOŻE się różnić od poziomu wyżej
+      └ proces        jedna aplikacja OTP, jeden kontrakt, własne tabele
+          └ moduł     szczegół implementacyjny
+```
+
+- aplikacja OTP per proces, każda tabela ma jednego właściciela, pilnowane przez `boundary`
+- schemat i user bazy per projekt × środowisko, nie per proces. Schemat per proces broni przed
+  procesem tego samego zespołu, czyli przed niczym, a kosztuje pulę połączeń na proces
+- zero dostępu między schematami. Dane innego procesu przez jego punkt wejścia, nigdy przez bazę.
+  Wygenerowany klient ukrywa transport, żeby wydzielenie procesu do osobnego projektu było zmianą
+  konfiguracji, a nie przepisywaniem zapytań
+
+Dwie rzeczy wyszły dopiero przy weryfikacji tego modelu i są robotą do wykonania.
+
+**4. Własność tabeli jest konwencją egzekwowaną tylko na ścieżce idiomatycznej.** Przy jednym
+schemacie i jednym userze baza nie egzekwuje nic: każda aplikacja OTP w projekcie może odczytać każdą
+tabelę. To jest cena uniknięcia puli połączeń na proces i jest przyjęta świadomie. Ale egzekwowanie
+powyżej bazy ma dziurę, której wcześniej nie nazwaliśmy:
+
+| Jak sięgnąć po cudzą tabelę | Co to łapie |
+| --- | --- |
+| `from(e in InnyProces.Schema)` | `boundary`, przy kompilacji: moduł nieeksportowany, join niewyrażalny |
+| `from(p in "inna_tabela")` | nic dzisiaj. Nie pada nazwa modułu, więc `boundary` nie ma czego sprawdzić |
+| `Ecto.Adapters.SQL.query/3` | nic, i raczej nic nie będzie |
+
+Środkowy wiersz jest domykalny, i ADR już to rozpoznał: `prepare_query/3` dostaje całe `%Ecto.Query{}`
+przed wykonaniem, więc każda dotknięta tabela wychodzi strukturalnie z `from` i `joins`, łącznie z
+podanymi jako string. Retrofit to nadpisanie jednego callbacka. Dopóki tego nie ma, zdanie „podział
+procesu jest tani, bo wystarczy przenieść tabele" jest prawdziwe warunkowo: tylko jeśli konwencja się
+trzymała, a to trzeba sprawdzić w momencie podziału, nie założyć.
+
+**5. Wywołanie do procesu-brata nie może uczestniczyć w transakcji wołającego**, także wtedy, gdy oba
+siedzą w tym samym runtime. W jednym BEAM-ie z jednym `Repo` uczestniczenie jest domyślne, a domyślne
+sprzężenie transakcyjne zamienia późniejszy podział z przeniesienia danych w zmianę semantyki, outbox
+albo sagę, i robi to dokładnie w momencie, gdy podział jest potrzebny. To jest ta sama dyscyplina co
+przy podziale dispatchu po granicy transakcji, rozciągnięta na granicę procesu.
+
+### Czego silnik jeszcze nie wystawia
+
+| | Co | Dlaczego |
+| --- | --- | --- |
+| 6 | **Endpoint z danymi zgodności**, generowany przez PNS | EHOS nie może czytać bazy klienta, bo to byłoby dokładnie to przekraczanie schematów, które zakazaliśmy. Zgodność przechodzi granicę przez API, a endpoint generuje silnik, żeby nie było czternastu implementacji |
+| 7 | **Generowanie i serwowanie specyfikacji**: AsyncAPI z kontraktu, OpenAPI z routera, oba pod endpointem, oba z digestem | EHOS porównuje digest instancji z tym zapisanym przy buildzie. Endpoint jest weryfikacją, nie źródłem prawdy: wersjonowana specyfikacja pochodzi z pakietu deploymentu (`D-16`) |
+| 8 | **Monitor zatrzymanego procesu** | Znany brak, nazwany w ADR: `deadline` i `cadence` nie mają czytelnika. To jest jeden z dwóch mechanizmów odpowiadających na pytanie, dla którego produkt istnieje, i jedyny jeszcze niezbudowany |
+
+### Po spotkaniu z founderem, 21 września — pięć pozycji, których wcześniej nie było
+
+Powyższe wyszło z przeglądu technicznego. Poniższe z rozmowy o modelu biznesowym tego samego dnia i
+dotyczy PNS-a bezpośrednio.
+
+**9. Cały PNS ląduje po stronie Community, i to jest wiążące od pierwszego commita.** Produkt ma dwie
+edycje: Community otwarte, Enterprise jako fork Community. Linia biegnie przez spójność między
+aplikacjami: kontrakt, log zdarzeń i zgodność w obrębie *jednej* aplikacji są darmowe, a wnioskowanie
+po wielu aplikacjach, czyli diff specyfikacji, klasy konfliktu i analiza wpływu, jest płatne.
+
+Dla PNS-a wynika z tego jedna konkretna rzecz, którą trzeba trzymać od początku: PNS musi wystawiać
+to, czego potrzebuje analiza międzyaplikacyjna, mimo że sam jej nie robi. Wygenerowane specyfikacje,
+dane grafu i wynik zgodności muszą być konsumowalne przez coś, czego Community nie zawiera. Jeżeli to
+nie będzie wystawione od razu, Enterprise przestanie być forkiem i stanie się rozjeżdżającą się kopią
+w rok.
+
+**10. Raport podaje wersję silnika, który go policzył.** Raport zgodności jest wyliczeniem, a ten
+rekord zawiera kilka korekt tego, co liczy się jako drift: zero przebiegów, praca w kolejce, „nigdy
+nie próbowano" kontra „próbowano i padło". Każda zmieniła wynik. Przy dwóch klientach na dwóch
+wersjach silnika to samo pytanie dostaje dwie odpowiedzi, a raport jest dowodem dla audytora. Wersja
+silnika obok `contract_version`, w tym samym miejscu, które już niesie dwie wersje.
+
+**11. Reguły organizacji dziedziczone przez każdy kontrakt.** Firma ustala standard raz — płatność
+powyżej progu wymaga drugiej akceptacji, pole z danymi osobowymi nie może trafić do żadnego eventu — i
+reguła jest wciągana do każdego kontraktu, zamiast być powtarzana w każdym z osobna. Kontrakty
+zostają własnością właścicieli procesów; reguły organizacji są warstwą nad nimi.
+
+Kształt jest otwarty: deklaracja, check, czy generowana dokładka do kontraktu. Raport musi umieć
+odróżnić złamanie reguły procesu od złamania reguły organizacji, bo idą do dwóch różnych ludzi. To
+jest ten sam argument o adresacie co przy `owner` na procesie.
+
+**12. Lokalizacja logu zdarzeń i uprawnienia do odczytu eventów.** Twoje pytanie z rozmowy, bez
+odpowiedzi. Dziś eventy leżą w bazie aplikacji. Wyniesienie ich do wspólnego logu daje historię
+przekrojową i natychmiast tworzy problem uprawnień per event: event niosący kwotę nie może być
+czytelny dla aplikacji, która kwot widzieć nie może. Zostawienie ich lokalnie omija ten problem, ale
+historia międzyaplikacyjna nie ma wtedy domu.
+
+**13. Reguły wymuszające zachowanie, doklejane do kontraktu.** Kierunek produktu to certyfikowane
+środowisko, z którego aplikacje dziedziczą zgodność, a to jest mechanicznie możliwe tylko wtedy, gdy
+wymagane zachowanie jest przyczepione do każdego kontraktu, a nie mamy nadziei, że ktoś pamiętał. To
+jest to samo, co pozycja 11, oglądane od strony sprzedaży, i dlatego 11 jest ważniejsza, niż wygląda.
+
+*Zastrzeżenie:* cała ta ścieżka stoi na założeniu, że jednostka certyfikująca przyjmie roszczenie
+dziedziczone. Nikt tego nie wie, i pierwszym krokiem jest godzina z kimś, kto certyfikuje zawodowo.
+Dopóki ta rozmowa się nie odbędzie, 13 nie jest robotą do zrobienia, tylko kierunkiem.
+
+### Do poprawienia w zapisie, nie w kodzie
+
+- **Nazwa repozytorium.** `eh-os-prototype` mówi coś przeciwnego niż rozdzielenie PNS-a od EHOS-a.
+- **`licenses` w `packages/*/mix.exs`.** Hex tego wymaga przy publikacji.
+- **Zakład 3 w ADR** („wygenerowany kod plus harness bije kompetentny zespół z powszechnym AI") został
+  w przeglądzie przeformułowany: generowanie nie jest produktem, tylko tym, co sprawia, że opłaca się
+  napisać kontrakt. Nie da się jednocześnie zakładać, że kod jest tani i nieznanej jakości, i że nasze
+  generowanie jest lepsze. Nowy zakład brzmi: czy kontrakt może zostać cienki, skoro generowanie ma
+  drugie wejście, czyli materiał warsztatowy. Wczesny sygnał: trzeci raz ręcznie pisany ten sam
+  formularz.
+- **Linia open source w §16–17 jest nieaktualna.** Rekord opisuje silnik otwarty w całości, z
+  przychodem z warsztatu, wdrożeń, wsparcia i katalogu procesów referencyjnych. Spotkanie z founderem
+  21 września ustaliło co innego: biznes produktowy, Community otwarte, Enterprise płatne jako fork,
+  przychód abonamentowy, wdrożenia przez sieć partnerów. Rekord wymaga przepisania pod pozycję 9.
+- **Materiał warsztatowy jest drugim wejściem generowania i nic go nie weryfikuje.** Starzeje się po
+  cichu, a jakość generowania spada bez sygnału. Przy drugim warsztacie u tego samego klienta materiał
+  trzeba odświeżyć, a nie dopisać.
+
+---
+
 ## Dopisek 23 sierpnia (11) — trzeci ekran: graf, krok 2 z dopisku (10) faktycznie zbudowany
 
 Domyka dopisek (10). `PNS.Web.Live.Graph`, `/graph`, trzeci tab w nawigacji. Dwa panele, asymetryczne
