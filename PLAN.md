@@ -5,6 +5,127 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
+## Handoff — stan na 22 września, 14:58
+
+Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
+zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
+
+Silnik weryfikacji zgodności wdrożonego kodu z zadeklarowanym procesem. Etap 5 zamknięty w całości
+(5.1–5.9), plus dwie rzeczy dorzucone po nim: krok formatowania w bramie i komendy z materiału
+warsztatowego. Co to repozytorium jest i czym nie jest — `CLAUDE.md`, nie tutaj.
+
+### Stan repozytorium
+
+Gałąź `main`, `HEAD` = `f018cb8`, drzewo czyste, historia liniowa (zero merge commitów).
+
+**21 commitów przed `origin/main` i ani jeden nie jest wypchnięty.** Zdalna głowa to `41c709d`
+z 23 sierpnia. To jest najważniejsza linia w tym handoffie.
+
+### Co zostało — i czyje to jest
+
+**Wypchnięcie i CI — Twoje.** Ostatni przebieg CI to `32663159795` z 23 sierpnia na `41c709d`:
+jeden job `check`, `success`, zero pominiętych kroków. Czyli **żaden z 21 commitów nie przeszedł
+przez CI**, a brama zmieniła się w międzyczasie — doszedł krok formatowania i root wchodzi teraz do
+pakietów przez `mix check`, nie `mix test`. Lokalnie jest zielono; pierwszy przebieg CI na czystym
+`_build` jest jedyną rzeczą, która to potwierdzi.
+
+**Publikacja `pns` na Hex — Twoja.** Nazwa jest wolna (sprawdzone), `mix hex.build` produkuje
+tarball bez ostrzeżeń. To jest krok nieodwracalny i decyzja o nim nie została podjęta.
+`packages/pns_web` nie da się opublikować wcześniej: zależy od `pns` ścieżką, a opublikowany pakiet
+może zależeć tylko od opublikowanych — dopiero po publikacji `pns` zamienia się `path:` na `~> 0.2`.
+
+**Czternaście wejść do procesów bez komendy — warsztat, nie kod.** Nie ma ich w materiale, więc
+wymyślenie nazwy i polskiej etykiety byłoby wymyślaniem, jak klient nazywa własne działania. Lista
+i powód przy każdym: dopisek 22 września (3).
+
+**`open_month` bez `source:` — do process ownera.** Warsztatowy diagram §3.1 nie nazywa otwarcia
+miesiąca działaniem, które ktoś wykonuje. Albo ktoś to potwierdzi, albo komenda jest naszą
+konstrukcją i trzeba to zapisać.
+
+**`within` wobec `or_else` — jedyne otwarte pytanie do process ownera z 6 sierpnia.** Silnik zakłada,
+że okno obowiązuje także alternatywę; jeśli u nich nie, raport pokazuje naruszenia, których nie ma.
+Jest w `docs/warsztat-rehmed.md`.
+
+**Z przeglądu EHOS-a nietknięte:** `D-17`, `D-19`, identyfikatory korelacji przez most (`D-03`, ma
+klauzulę „od pierwszego commita"), reguły organizacji, lokalizacja logu, certyfikacja, egzekwowanie
+własności tabel. Powody i granice — dopisek 21 września (12), sekcje „Czego etap 5 nie obejmuje".
+
+### Co przeczytać najpierw
+
+1. `CLAUDE.md` — reguły, których złamanie kosztuje najwięcej: język kodu, granice `boundary`,
+   zakaz pisania do repo kontekstu, pułapki powłoki. Tabela na górze mówi, gdzie jest co.
+2. Ten plik, dopiski z 22 września (trzy) — co zrobiono w etapie 5 i **czego świadomie nie**.
+3. `docs/contract.md` — siedem deklaracji, referencja kluczy generowana z `PNS.Contract.schema/0`
+   i tabela „co się nie skompiluje". Jedyny dokument, który trzeba znać, żeby napisać kontrakt.
+4. `packages/pns_core/CHANGELOG.md` — reguła, że zmiana ruszająca werdykt podnosi MINOR, i pięć
+   zmian z `0.1.0` nazwanych wstecz.
+5. `.claude/skills/review-pr/` — co recenzent ma sprawdzać, a czego nie, bo pilnuje tego brama.
+6. `~/Projects/ai/eh-os/ARCHITECTURE.md` — tylko gdy potrzebujesz numeru `D-nn`. **Do czytania,
+   nie do pisania**, i numery stamtąd zestarzały się tu raz w jeden dzień.
+
+### Komendy
+
+```bash
+docker compose up -d && mix ecto.setup && mix check
+```
+
+Postgres słucha na **5433**. `mix check` to od 22 września: `format --check-formatted`,
+`compile --force --warnings-as-errors`, `pns.check`, `pns.docs --check`, `test`, plus `mix check`
+w obu pakietach osobnym wywołaniem.
+
+Nie rurkuj bramy do `tail` przed commitem — powód i obejście w `CLAUDE.md`.
+
+Jeśli krok formatowania nie zgadza się z tym, co widzisz lokalnie: Mix cache'uje rozwiązaną
+konfigurację i nie unieważnia jej przy zmianie `.formatter.exs` **zależności**. Skasuj
+`_build/<env>/lib/<app>/.mix/cached_dot_formatter`. Rację ma CI, które startuje z pustym `_build`.
+Zapisane w `mix.exs` i w `ci.yml`.
+
+Po migracji: `mix check` nie dotyka bazy `dev`. Udokumentowana komenda wyżej zawiera `ecto.setup`
+i to ją pokrywa; sam `mix check` nie.
+
+### Ostatnia pełna weryfikacja
+
+22 września, 14:58, lokalnie, na `f018cb8`: `mix check` zielony, kod wyjścia 0.
+496 testów (50 host, 400 `pns_core`, 46 `pns_web`), zero padnięć, zero testów z `known_defect`.
+`pns.check`: 0 błędów, 5 ostrzeżeń, 23 informacje w hoście; 0 błędów, 8 ostrzeżeń, 16 informacji
+w pakiecie. Ostrzeżenia w hoście to cztery procesy bez `accountable` i jeden niepotwierdzony
+`deadline` — stan faktyczny, nie usterka.
+
+**CI na tym nie przebiegło.** Patrz wyżej.
+
+### Otwarte pytania
+
+- Czy `principals: [:human, :system]` to właściwy zbiór. Jest **naszą propozycją, nie odczytem** —
+  spis z 5.5 nie znalazł w korpusie żadnego słownika typów principala, tylko role jako stringi.
+  Do zatwierdzenia przez foundera; dopóki nie jest, `D-18` wiersz 3 nie ma wejścia.
+- Czy poprawienie cytatu w `source:` ma ruszać `contract_version`. Dziś rusza, bo klucz wyjęty
+  z digestu byłby kluczem zmienialnym po cichu. Argument przeciwny — że poprawka cytatu nie zmienia
+  tego, co uzgodniono — jest realny i nikt go nie rozstrzygnął.
+- Czy `pns_web` publikować w ogóle, skoro wozi zwendorowany bundle Mermaida. `NOTICE` jest, decyzji
+  nie ma.
+- Czy powiązanie komenda→zdarzenie ma być sprawdzalne maszynowo. Dziś nie jest — `command` niesie
+  `process`, nie listę zdarzeń, i to jest świadoma cena rezygnacji z `emits:` (5.5). Wraca za każdym
+  razem, gdy ktoś pyta „czy to wejście ma komendę".
+
+### Zgoda i stałe uprawnienia
+
+**Ten blok jest do skasowania. Skasowanie go cofa uprawnienie — nie migruje ono samo między
+sesjami.**
+
+W tej sesji: commity na `main` bez pytania (praca szła seriami po jednej pozycji etapu),
+zapis stanu do `PLAN.md`. **Nie było zgody na `git push`** i nic nie zostało wypchnięte.
+Nie było też zgody na publikację czegokolwiek na Hex.
+
+### Język
+
+Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów i komunikaty bram — po angielsku,
+bez wyjątków. `README.md`, `docs/contract.md` i `docs/adr/` po angielsku; `PLAN.md` i `CLAUDE.md`
+po polsku. Po polsku w kodzie jest wyłącznie to, co klient czyta zdaniami i tylko w stringu:
+`label`, `source`, opisy `example`, `unavailable_looks_like`, nazwy tasków, temat powiadomienia.
+Pełna reguła i jej zakres — `CLAUDE.md`.
+
+---
+
 ## Dopisek 22 września (3) — komendy z warsztatu: osiem, nie dwadzieścia dwie
 
 Dług „22 wejścia bez komendy" spłacony w tej części, w której da się go spłacić z materiału.
