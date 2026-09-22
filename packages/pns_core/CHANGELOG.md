@@ -14,9 +14,11 @@ versions get two answers to the same question. `PNS.version/0` puts the version 
 the report; this file says what each one changed. A version in a report that
 nothing explains is decoration.
 
-Nothing mechanical enforces this — no test can. The `review-pr` skill carries it:
-a diff touching `lib/pns/{trace,graph,conformance,deployment,report}.ex` with no
-entry here goes back to its author.
+Nothing mechanical enforces this — no test can. The `review-pr` skill carries it,
+and the list of files that trigger the question lives there and only there: two
+copies of it had already disagreed by the time this paragraph was rewritten, which
+is the drift this package exists to detect, in the file describing the rule
+against it.
 
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
@@ -38,7 +40,6 @@ version is real all the same, because a conformance report already carries it.
 - `mix pns.check` reports, as a notice, a process that declares a `deadline` and no
   `terminal: true` event — a promise about duration that nothing can observe being
   kept or broken.
-
 - Every declaration now carries its own digest, recorded per deployment
   (`PNS.Contract.declaration_digests/0`, `PNS.Migrations` v02). `PNS.Deployment.diff/2`
   reports which declaration moved, where before it could only compare event names
