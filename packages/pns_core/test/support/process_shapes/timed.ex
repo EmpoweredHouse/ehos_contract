@@ -64,6 +64,9 @@ defmodule ProcessShapes.Timed do
   process :timed_run,
     label: "Timed run",
     stages: [:opening, :closing],
+    # Invented, like everything else here — and the only fixture that names one, so
+    # the report's addressee line has something to render.
+    accountable: "Run owner",
     instance: [:run_id],
     # Confirmed, in the fiction of this fixture — and it is the only confirmed
     # `deadline` in the repository, which is the entire reason this file exists.

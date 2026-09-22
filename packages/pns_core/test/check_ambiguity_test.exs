@@ -138,6 +138,64 @@ defmodule PNS.CheckAmbiguityTest do
     process :ending, label: "Ending", instance: [:case_id], deadline: {1, :day}
   end
 
+  defmodule TwinCommandA do
+    @moduledoc "INVENTED. Two contracts, one command name."
+
+    use PNS.Contract
+
+    event :a, label: "A", payload: %{case_id: :id}, process: :pa
+    command :shared_name, label: "Shared", process: :pa, principals: [:human]
+    process :pa, label: "PA", instance: [:case_id], accountable: "A"
+  end
+
+  defmodule TwinCommandB do
+    @moduledoc "INVENTED. The other half of the collision."
+
+    use PNS.Contract
+
+    event :b, label: "B", payload: %{case_id: :id}, process: :pb
+    command :shared_name, label: "Shared", process: :pb, principals: [:system]
+    process :pb, label: "PB", instance: [:case_id], accountable: "B"
+  end
+
+  defmodule NoAddressee do
+    @moduledoc "INVENTED. A process whose findings go to nobody."
+
+    use PNS.Contract
+
+    event :c, label: "C", payload: %{case_id: :id}, process: :unowned
+    process :unowned, label: "Unowned", instance: [:case_id]
+  end
+
+  describe "two contracts declaring one command name" do
+    test "the collision is reported with both declarers" do
+      # Sharper than an event-name collision: the capability is derived from the
+      # name, so one permission would authorise two different things — and the two
+      # here do not even accept the same kind of principal.
+      assert [collision] = PNS.Check.command_names_declared_twice([TwinCommandA, TwinCommandB])
+      assert collision.name == :shared_name
+      assert collision.contracts == Enum.sort([TwinCommandA, TwinCommandB])
+    end
+
+    test "one contract on its own is not a collision" do
+      assert PNS.Check.command_names_declared_twice([TwinCommandA]) == []
+    end
+  end
+
+  describe "a process with no addressee" do
+    test "a process naming no accountable role is reported" do
+      assert [finding] = PNS.Check.processes_without_accountable([NoAddressee])
+      assert finding.process == :unowned
+      assert finding.label == "Unowned"
+    end
+
+    test "a process that names one is not" do
+      # The control. Without it this would pass just as well for a check reporting
+      # every process there is.
+      assert PNS.Check.processes_without_accountable([TwinCommandA]) == []
+    end
+  end
+
   describe "a duration nothing can observe the end of" do
     test "a process with a deadline and no terminal event is reported" do
       assert [finding] = PNS.Check.unobservable_deadlines([NoEnding])

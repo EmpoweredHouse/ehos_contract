@@ -79,7 +79,12 @@ defmodule Mix.Tasks.Pns.Docs do
   defp declarations do
     schema = PNS.Contract.schema()
 
-    order = [:event, :process, :trace, :external, :rule, :example]
+    # Reading order, then anything `schema/0` holds that this list does not name.
+    # It used to be the whole list, which meant a seventh declaration kind was
+    # **silently omitted** from the generated reference while `--check` reported the
+    # file as current — the one failure mode a generated document must not have.
+    order = [:event, :process, :trace, :external, :rule, :example, :command]
+    order = order ++ (Map.keys(schema) -- order)
 
     Enum.map_join(order, "\n", fn declaration ->
       keys = Map.fetch!(schema, declaration)

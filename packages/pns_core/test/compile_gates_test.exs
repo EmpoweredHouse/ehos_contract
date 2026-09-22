@@ -26,6 +26,136 @@ defmodule PNS.CompileGatesTest do
            """
   end
 
+  describe "command" do
+    test "naming a process the contract does not declare does not compile" do
+      refute_compiles(
+        """
+        defmodule Reject.CommandWithoutProcess do
+          use PNS.Contract
+
+          event :a, label: "A", payload: %{case_id: :id}, process: :real
+          command :do_it, label: "Do it", process: :imaginary, principals: [:human]
+          process :real, label: "Real", instance: [:case_id]
+        end
+        """,
+        "which this contract does not declare"
+      )
+    end
+
+    test "declared twice does not compile" do
+      refute_compiles(
+        """
+        defmodule Reject.CommandTwice do
+          use PNS.Contract
+
+          event :a, label: "A", payload: %{case_id: :id}, process: :p
+          command :do_it, label: "Do it", process: :p, principals: [:human]
+          command :do_it, label: "Do it again", process: :p, principals: [:human]
+          process :p, label: "P", instance: [:case_id]
+        end
+        """,
+        "commands declared twice"
+      )
+    end
+
+    test "a principal outside the closed set does not compile" do
+      # `ArgumentError` rather than `CompileError`, like every other `build_*`
+      # refusal: this one is decidable from the declaration alone, without the rest
+      # of the module, so it fires where it is written.
+      assert_raise ArgumentError, ~r/must be a non-empty list drawn from/, fn ->
+        Code.compile_string("""
+        defmodule Reject.CommandBadPrincipal do
+          use PNS.Contract
+
+          event :a, label: "A", payload: %{case_id: :id}, process: :p
+          command :do_it, label: "Do it", process: :p, principals: [:accountant]
+          process :p, label: "P", instance: [:case_id]
+        end
+        """)
+      end
+    end
+
+    test "an empty principal list does not compile either" do
+      # A command nobody may issue is not a narrower permission, it is a command
+      # with no way in — and almost certainly a forgotten key rather than an
+      # intention.
+      assert_raise ArgumentError, ~r/must be a non-empty list drawn from/, fn ->
+        Code.compile_string("""
+        defmodule Reject.CommandNoPrincipal do
+          use PNS.Contract
+
+          event :a, label: "A", payload: %{case_id: :id}, process: :p
+          command :do_it, label: "Do it", process: :p, principals: []
+          process :p, label: "P", instance: [:case_id]
+        end
+        """)
+      end
+    end
+
+    test "a payload type outside the closed set does not compile, as for an event" do
+      refute_compiles(
+        """
+        defmodule Reject.CommandBadPayloadType do
+          use PNS.Contract
+
+          event :a, label: "A", payload: %{case_id: :id}, process: :p
+          command :do_it,
+            label: "Do it",
+            process: :p,
+            principals: [:human],
+            payload: %{case_id: :uuid}
+          process :p, label: "P", instance: [:case_id]
+        end
+        """,
+        "command :do_it declares `case_id: :uuid`"
+      )
+    end
+  end
+
+  describe "example pointing at a command" do
+    test "an example naming a command the contract does not declare does not compile" do
+      # The third pointer gate, beside `example.rule` and `event.depends_on`. Without
+      # it a contract could declare one command and write examples for another for
+      # ever, which is what would make the declaration decorative.
+      refute_compiles(
+        """
+        defmodule Reject.ExampleUnknownCommand do
+          use PNS.Contract
+
+          event :a, label: "A", payload: %{case_id: :id}, process: :p
+          rule :r, label: "R", function: {Kernel, :is_map, 1}
+          example "x", rule: :r, command: {:no_such, %{case_id: "c"}}, then: [:a]
+          process :p, label: "P", instance: [:case_id]
+        end
+        """,
+        "does not declare as a `command`"
+      )
+    end
+
+    test "supplying a different set of params than the command declares does not compile" do
+      # Equality, not a subset: this DSL has no optional fields anywhere, so a
+      # mismatch means one of the two is wrong rather than that one is partial.
+      refute_compiles(
+        """
+        defmodule Reject.ExampleParamMismatch do
+          use PNS.Contract
+
+          event :a, label: "A", payload: %{case_id: :id}, process: :p
+          command :do_it,
+            label: "Do it",
+            process: :p,
+            principals: [:human],
+            payload: %{case_id: :id}
+          rule :r, label: "R", function: {Kernel, :is_map, 1}
+          example "x", rule: :r, command: {:do_it, %{case_id: "c", extra: 1}}, then: [:a]
+          process :p, label: "P", instance: [:case_id]
+        end
+        """,
+        "They must match"
+      )
+    end
+  end
+
   describe "handler" do
     test "on an event that does not exist does not compile" do
       refute_compiles(

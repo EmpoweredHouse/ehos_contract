@@ -156,6 +156,14 @@ defmodule PNS.Registry do
     end
   end
 
+  @doc "Commands declared across every contract, each tagged with its contract."
+  @spec declared_commands() :: [map()]
+  def declared_commands do
+    for contract <- contracts(), command <- contract.commands() do
+      Map.put(command, :contract, contract)
+    end
+  end
+
   @spec excluded?(module()) :: boolean()
   defp excluded?(module) do
     prefixes = Application.get_env(:pns, :exclude, [])

@@ -22,8 +22,13 @@ defmodule PNS.Contract do
     },
     process: %{
       required: [:label, :instance],
-      optional: [:stages, :cadence, :deadline, :unverified],
+      optional: [:stages, :cadence, :deadline, :unverified, :accountable],
       defaults: %{stages: [], unverified: []}
+    },
+    command: %{
+      required: [:label, :process, :principals],
+      optional: [:payload],
+      defaults: %{payload: %{}}
     },
     external: %{
       required: [:label],
@@ -70,14 +75,27 @@ defmodule PNS.Contract do
   # notices for 11 events, including every `company_id`.
   @payload_types [:id, :string, :integer, :timestamp, :enum]
 
+  # Who may issue a command. Closed for the reason `@payload_types` is closed: an
+  # open set is not a convention, it is nothing.
+  #
+  # **This one is a proposal, not a reading.** The stage 5.5 census looked for a
+  # principal vocabulary in the corpus and did not find one: the engine knows only
+  # `PNS.Auth.Actor`, whose `roles` are strings, and `system_actor/0`; the contracts
+  # carry `actor_roles: ["accounting"]`, which is a role rather than a kind of
+  # principal. Both members describe *who issues* and neither names anybody's
+  # business — but they were chosen rather than observed, and that is written here
+  # so the next reader does not mistake one for the other.
+  @principal_types [:human, :system]
+
   @event_keys @schema.event.required ++ @schema.event.optional
   @process_keys @schema.process.required ++ @schema.process.optional
   @external_keys @schema.external.required ++ @schema.external.optional
   @rule_keys @schema.rule.required ++ @schema.rule.optional
   @example_keys @schema.example.required ++ @schema.example.optional
+  @command_keys @schema.command.required ++ @schema.command.optional
 
   @typedoc "A declaration kind: the name of one DSL construct."
-  @type declaration :: :event | :process | :external | :rule | :example | :trace
+  @type declaration :: :event | :process | :external | :rule | :example | :trace | :command
 
   @doc """
   The DSL surface as data: keys per declaration, which are required, and the
@@ -103,6 +121,20 @@ defmodule PNS.Contract do
   def payload_types, do: @payload_types
 
   @doc """
+  Who may issue a command. A closed set, and a proposal — the attribute's own
+  comment says why this one was chosen rather than read out of the corpus.
+
+  The capability derived from it answers "may this *kind* of principal issue this
+  command at all". It does not answer "may this person issue it for this company",
+  which stays a `rule` with a decision function. Neither level makes the other
+  redundant: of the two commands in the corpus one has such a rule and the other
+  has no actor field anywhere, so for that one a derived capability would be the
+  only access control there is.
+  """
+  @spec principal_types() :: [atom()]
+  def principal_types, do: @principal_types
+
+  @doc """
   The whole DSL vocabulary as data, derived from `schema/0`.
 
   Exists so the **universality gate can be pinned by a test**. The stage 1.2
@@ -122,7 +154,8 @@ defmodule PNS.Contract do
   @doc false
   defmacro __using__(_opts) do
     quote do
-      import PNS.Contract, only: [event: 2, process: 2, trace: 2, external: 2, rule: 2, example: 2]
+      import PNS.Contract,
+        only: [event: 2, process: 2, trace: 2, external: 2, rule: 2, example: 2, command: 2]
 
       Module.register_attribute(__MODULE__, :pns_events, accumulate: true)
       Module.register_attribute(__MODULE__, :pns_processes, accumulate: true)
@@ -130,6 +163,7 @@ defmodule PNS.Contract do
       Module.register_attribute(__MODULE__, :pns_externals, accumulate: true)
       Module.register_attribute(__MODULE__, :pns_rules, accumulate: true)
       Module.register_attribute(__MODULE__, :pns_examples, accumulate: true)
+      Module.register_attribute(__MODULE__, :pns_commands, accumulate: true)
 
       @before_compile PNS.Contract
     end
@@ -176,6 +210,18 @@ defmodule PNS.Contract do
   defmacro example(description, opts) do
     quote bind_quoted: [description: description, opts: opts] do
       @pns_examples PNS.Contract.build_example(description, opts)
+    end
+  end
+
+  @doc """
+  A command: a way into a process from outside, and who may take it.
+
+  Everything else in a contract describes what happened; this describes what can be
+  asked for. It carries no list of the events it emits — see `build_command/2`.
+  """
+  defmacro command(name, opts) do
+    quote bind_quoted: [name: name, opts: opts] do
+      @pns_commands PNS.Contract.build_command(name, opts)
     end
   end
 
@@ -281,6 +327,17 @@ defmodule PNS.Contract do
       # days after the last run (notes §9).
       cadence: Keyword.get(opts, :cadence),
       deadline: Keyword.get(opts, :deadline),
+      # Who the report is addressed to when this process's rule is broken. A role,
+      # not a person and not a module — `owner:` on an event answers a different
+      # question, "which module implements this fact", and holds a module. One key
+      # meaning two types is the drift this library sells detection of, so the two
+      # questions get two words.
+      #
+      # Optional, and `mix pns.check` warns rather than the compiler refusing: a
+      # process whose owner has not been agreed yet is an ordinary state mid-rollout,
+      # and a gate that fails a build for being early gets removed before it catches
+      # the real case.
+      accountable: Keyword.get(opts, :accountable),
       # Declarations the **process owner has not confirmed**. They stay in the
       # contract, because without them the mechanism has nothing to watch, but
       # they must not count towards the evidence report: a false metric is worse
@@ -324,6 +381,45 @@ defmodule PNS.Contract do
       label: fetch!(opts, :label, "rule #{inspect(name)}"),
       function: mfa,
       source: Keyword.get(opts, :source)
+    }
+  end
+
+  @doc """
+  Builds one `command` declaration.
+
+  **There is no `emits:` key, and that is a deviation from `D-15` as written.** The
+  stage 5.5 census measured both readings of "what this command emits" against the
+  corpus: the set the examples show and the set reachable through handler edges are
+  identical for one of the two commands and differ by three events for the other —
+  including the event that command is named after. So the key would have two
+  meanings, provably different, and no gate could check either: a gate can refuse an
+  event that does not exist, never a set that is incomplete. It would be the first
+  key in a contract allowed to be wrong with nothing to notice.
+
+  The reachable set is already held, by `PNS.Registry` and the handlers' own
+  `publishes:`, which the engine verifies at run time. A third copy is the drift
+  this product detects.
+  """
+  @spec build_command(atom(), keyword()) :: map()
+  def build_command(name, opts) do
+    validate_keys!(opts, @command_keys, "command #{inspect(name)}")
+
+    principals = fetch!(opts, :principals, "command #{inspect(name)}")
+
+    unless is_list(principals) and principals != [] and
+             Enum.all?(principals, &(&1 in @principal_types)) do
+      raise ArgumentError,
+            "command #{inspect(name)}: `principals:` must be a non-empty list drawn from " <>
+              "#{inspect(@principal_types)}, got #{inspect(principals)}. The set is closed " <>
+              "because an open one is not a convention."
+    end
+
+    %{
+      name: name,
+      label: fetch!(opts, :label, "command #{inspect(name)}"),
+      process: fetch!(opts, :process, "command #{inspect(name)}"),
+      principals: principals,
+      payload: Keyword.get(opts, :payload, %{})
     }
   end
 
@@ -412,8 +508,9 @@ defmodule PNS.Contract do
     externals = attr(env, :pns_externals)
     rules = attr(env, :pns_rules)
     examples = attr(env, :pns_examples)
+    commands = attr(env, :pns_commands)
 
-    validate!(env, events, processes, traces, externals, rules, examples)
+    validate!(env, events, processes, traces, externals, rules, examples, commands)
 
     # Through `PNS.Digest` rather than `:erlang.term_to_binary/1`: this value is
     # compared against versions written into the log weeks ago, so it must not move
@@ -426,10 +523,11 @@ defmodule PNS.Contract do
         traces: traces,
         externals: externals,
         rules: rules,
-        examples: examples
+        examples: examples,
+        commands: commands
       )
 
-    digests = declaration_digests(events, processes, traces, externals, rules, examples)
+    digests = declaration_digests(events, processes, traces, externals, rules, commands, examples)
 
     quote do
       @doc false
@@ -508,6 +606,18 @@ defmodule PNS.Contract do
       @spec examples_for(atom()) :: [map()]
       def examples_for(rule_name), do: Enum.filter(examples(), &(&1.rule == rule_name))
 
+      @doc "Every declared command, in declaration order."
+      @spec commands() :: [map()]
+      def commands, do: unquote(Macro.escape(commands))
+
+      @doc "One command by name, or `nil`."
+      @spec command(atom()) :: map() | nil
+      def command(name), do: Enum.find(commands(), &(&1.name == name))
+
+      @doc "The commands that enter one process."
+      @spec commands_of(atom()) :: [map()]
+      def commands_of(process_name), do: Enum.filter(commands(), &(&1.process == process_name))
+
       @doc """
       A hash of every declaration, computed at compile time. This is the
       `contract_version` stamped on every event — it cannot be forgotten or
@@ -545,16 +655,17 @@ defmodule PNS.Contract do
   # Named declarations carry `name`; examples carry `description` and are grouped
   # instead. `PNS.Digest.hash/1` over the whole declaration map, so every key of it
   # is covered without this function having to know which keys exist.
-  @spec declaration_digests([map()], [map()], [map()], [map()], [map()], [map()]) ::
+  @spec declaration_digests([map()], [map()], [map()], [map()], [map()], [map()], [map()]) ::
           %{String.t() => String.t()}
-  defp declaration_digests(events, processes, traces, externals, rules, examples) do
+  defp declaration_digests(events, processes, traces, externals, rules, commands, examples) do
     named =
       for {kind, declarations} <- [
             event: events,
             process: processes,
             trace: traces,
             external: externals,
-            rule: rules
+            rule: rules,
+            command: commands
           ],
           declaration <- declarations,
           into: %{} do
@@ -567,12 +678,23 @@ defmodule PNS.Contract do
   @spec attr(Macro.Env.t(), atom()) :: [map()]
   defp attr(env, name), do: env.module |> Module.get_attribute(name) |> Enum.reverse()
 
-  @spec validate!(Macro.Env.t(), [map()], [map()], [map()], [map()], [map()], [map()]) :: :ok
-  defp validate!(env, events, processes, traces, externals, rules, examples) do
+  @spec validate!(
+          Macro.Env.t(),
+          [map()],
+          [map()],
+          [map()],
+          [map()],
+          [map()],
+          [map()],
+          [map()]
+        ) :: :ok
+  defp validate!(env, events, processes, traces, externals, rules, examples, commands) do
     names = Enum.map(events, & &1.name)
 
     dupes = names -- Enum.uniq(names)
     dupes == [] || bail!(env, "events declared twice: #{inspect(Enum.uniq(dupes))}")
+
+    validate_commands!(env, commands, processes, examples)
 
     # ADR §18, the compile gate: a rule with no example does not compile.
     rules_without_examples =
@@ -639,7 +761,15 @@ defmodule PNS.Contract do
     end
 
     validate_instances!(env, events, processes, traces)
-    validate_payload_types!(env, events)
+    # Commands carry a payload too, and the set is closed for them for exactly the
+    # reason it is closed for events. Passed as `{what, payload}` pairs so the
+    # message can name a command as a command, rather than as an event that is not
+    # one.
+    validate_payload_types!(
+      env,
+      Enum.map(events, &{"event #{inspect(&1.name)}", &1.payload}) ++
+        Enum.map(commands, &{"command #{inspect(&1.name)}", &1.payload})
+    )
 
     external_names = Enum.map(externals, & &1.name)
 
@@ -772,12 +902,12 @@ defmodule PNS.Contract do
   #
   # It also caught two nonexistent types that had been sitting in a documented DSL
   # example: `:uuid` and `:decimal`, neither of which any contract ever used.
-  @spec validate_payload_types!(Macro.Env.t(), [map()]) :: :ok
-  defp validate_payload_types!(env, events) do
-    for e <- events, {field, type} <- e.payload, not payload_type?(type) do
+  @spec validate_payload_types!(Macro.Env.t(), [{String.t(), map()}]) :: :ok
+  defp validate_payload_types!(env, declarations) do
+    for {what, payload} <- declarations, {field, type} <- payload, not payload_type?(type) do
       bail!(
         env,
-        "event #{inspect(e.name)} declares `#{field}: #{inspect(type)}`, which is not a payload " <>
+        "#{what} declares `#{field}: #{inspect(type)}`, which is not a payload " <>
           "type. Legal types are #{inspect(@payload_types)} and the set is closed on purpose: " <>
           "each one describes the shape of a value, so a type that knows what a business calls " <>
           "something is a library that knows one client's domain. If #{inspect(type)} names a " <>
@@ -787,10 +917,11 @@ defmodule PNS.Contract do
       )
     end
 
-    for e <- events, {field, {:enum, values}} <- e.payload, not legal_enum_set?(values) do
+    for {what, payload} <- declarations, {field, {:enum, values}} <- payload,
+        not legal_enum_set?(values) do
       bail!(
         env,
-        "event #{inspect(e.name)} declares `#{field}: {:enum, #{inspect(values)}}`, and the set " <>
+        "#{what} declares `#{field}: {:enum, #{inspect(values)}}`, and the set " <>
           "must be a non-empty list of atoms or strings with no repeats — an enum with nothing " <>
           "legal in it, or the same member twice, is not a set."
       )
@@ -878,6 +1009,60 @@ defmodule PNS.Contract do
               "within one run, and every process has its own run identity."
           )
       end
+    end
+
+    :ok
+  end
+
+  # Four gates, each mirroring one that already exists for another declaration, so a
+  # seventh kind does not arrive with a weaker contract than the six around it.
+  @spec validate_commands!(Macro.Env.t(), [map()], [map()], [map()]) :: :ok
+  defp validate_commands!(env, commands, processes, examples) do
+    names = Enum.map(commands, & &1.name)
+    dupes = names -- Enum.uniq(names)
+    dupes == [] || bail!(env, "commands declared twice: #{inspect(Enum.uniq(dupes))}")
+
+    # Same shape as `event`'s `process:` gate: a declaration pointing at a process
+    # this contract does not declare cannot be read by anything.
+    process_names = Enum.map(processes, & &1.name)
+
+    for command <- commands, command.process not in process_names do
+      bail!(
+        env,
+        "command #{inspect(command.name)}: `process:` names #{inspect(command.process)}, which " <>
+          "this contract does not declare. Declared: #{inspect(process_names)}."
+      )
+    end
+
+    # The third pointer gate, beside `example.rule` and `event.depends_on`. Without
+    # it a contract can declare one command and write examples for another for ever,
+    # which is what would make the declaration decorative.
+    for example <- examples do
+      {command_name, params} = example.command
+
+      command =
+        Enum.find(commands, &(&1.name == command_name)) ||
+          bail!(
+            env,
+            "example #{inspect(example.description)}: `command:` names " <>
+              "#{inspect(command_name)}, which this contract does not declare as a `command`. " <>
+              "Declared: #{inspect(names)}."
+          )
+
+      declared = command.payload |> Map.keys() |> Enum.sort()
+      supplied = params |> Map.keys() |> Enum.sort()
+
+      # Equality, not a subset: this DSL has no optionality anywhere — an event's
+      # payload field must be present on every emission, and optionality is expressed
+      # by declaring another event. A command whose example supplies a different set
+      # of keys than the declaration names is one of the two being wrong.
+      declared == supplied ||
+        bail!(
+          env,
+          "example #{inspect(example.description)}: command #{inspect(command_name)} declares " <>
+            "payload keys #{inspect(declared)} and this example supplies #{inspect(supplied)}. " <>
+            "They must match — this DSL has no optional fields."
+        )
     end
 
     :ok

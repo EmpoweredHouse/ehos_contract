@@ -148,6 +148,12 @@ defmodule Taxvision.Contracts.AccountingMonth do
   # **The process does not list its events** — every event says for itself which
   # process and which stage it belongs to. The previous version had a list of
   # eleven names here, that is, every event name in the contract written twice.
+  command :open_month,
+    label: "Otwarcie miesiąca księgowego",
+    process: :accounting_month,
+    principals: [:human],
+    payload: %{company_id: :id, period: :string}
+
   process :accounting_month,
     label: "Cykl miesięczny księgowy",
     # Stage names are **identifiers, not labels** — they go into `pns.check`, into

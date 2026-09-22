@@ -156,7 +156,16 @@ defmodule UniversalityGate.TreatmentEpisode do
 
   # --- the process ---
 
+  command :qualify_referral,
+    label: "Qualify a referral",
+    process: :treatment_episode,
+    # A referral is qualified by a person. The system never does it by itself, which
+    # is what a principal type says and what a role list cannot.
+    principals: [:human],
+    payload: %{episode_id: :id, patient_id: :id}
+
   process :treatment_episode,
+    accountable: "Attending physician",
     label: "Treatment episode: from referral to closing",
     stages: [:qualification, :plan, :treatment, :closing],
     # One run is one episode. A single field is enough, because an episode is

@@ -209,6 +209,12 @@ defmodule Rehmed.Contracts.VisitSettlement do
 
   # --- the process ---
 
+  command :close_settlement,
+    label: "Zamknięcie rozliczenia wizyty",
+    process: :visit_settlement,
+    principals: [:human],
+    payload: %{visit_id: :id}
+
   process :visit_settlement,
     label: "Rozliczenie wizyty",
     # Charging gates payment: an amount has to exist before it can be tendered.

@@ -93,6 +93,38 @@ defmodule PNS.DigestTest do
     end
   end
 
+  defmodule WithCommand do
+    @moduledoc false
+    use PNS.Contract
+
+    event :first, label: "Pierwsze", payload: %{case_id: :id, seq: :integer}, process: :p
+    command :start_it, label: "Start it", process: :p, principals: [:human]
+    process :p, label: "P", instance: [:case_id]
+  end
+
+  defmodule WithoutCommand do
+    @moduledoc false
+    use PNS.Contract
+
+    event :first, label: "Pierwsze", payload: %{case_id: :id, seq: :integer}, process: :p
+    process :p, label: "P", instance: [:case_id]
+  end
+
+  describe "the seventh declaration group" do
+    test "a declared command moves the contract version" do
+      # The group is in `hash_groups/1`'s keyword list, and this is what says so.
+      # Without it the whole seventh declaration could be added to a contract with
+      # no effect on its recorded version, and the log would keep classifying events
+      # under an agreement that had changed.
+      refute WithCommand.version() == WithoutCommand.version()
+    end
+
+    test "and gets its own entry among the declaration digests" do
+      assert Map.has_key?(WithCommand.declaration_digests(), "command:start_it")
+      refute Map.has_key?(WithoutCommand.declaration_digests(), "command:start_it")
+    end
+  end
+
   describe "per-declaration digests" do
     test "every named declaration gets an entry, plus one for the examples" do
       # Derived rather than a literal: `ProcessShapes.Rig`'s own moduledoc warns that

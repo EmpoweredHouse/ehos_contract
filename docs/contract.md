@@ -52,7 +52,7 @@ executed is documentation nobody has checked.
 the whole module is known, so an `event` may name a `process:` declared fifty
 lines below it. Group declarations however reads best.
 
-## The six declarations
+## The seven declarations
 
 | Declaration | States |
 | --- | --- |
@@ -62,6 +62,7 @@ lines below it. Group declarations however reads best.
 | `external` | a dependency outside this system, named as a business fact |
 | `rule` | one pure function that decides something |
 | `example` | a case that pins a rule, readable aloud and executable |
+| `command` | a way into a process from outside, and who may take it |
 
 ## Key reference
 
@@ -93,6 +94,7 @@ Generated from `PNS.Contract.schema/0` by `mix pns.docs`. Do not edit by hand �
 | `cadence` | no | `nil` |
 | `deadline` | no | `nil` |
 | `unverified` | no | `[]` |
+| `accountable` | no | `nil` |
 
 ### `trace`
 
@@ -129,6 +131,15 @@ Generated from `PNS.Contract.schema/0` by `mix pns.docs`. Do not edit by hand �
 | `then` | no | `nil` |
 | `rejected_with` | no | `nil` |
 
+### `command`
+
+| Key | Required | Omitted means |
+| --- | --- | --- |
+| `label` | yes | — |
+| `process` | yes | — |
+| `principals` | yes | — |
+| `payload` | no | `%{}` |
+
 ### payload types
 
 | Type |
@@ -157,7 +168,25 @@ visible rather than implied.
 | `depends_on` | Which `external` this fact relies on. | compile gate, and `PNS.Trace`: if this dependency was seen unavailable inside an assertion window, the run is `:suspended` rather than in breach |
 | `process` | Which run this fact belongs to. A single key, so belonging to two processes is not expressible. | `PNS.Instance`, `PNS.Graph`, `PNS.Check` |
 | `stage` | Which phase of that process. | backward-edge detection in `PNS.Check` |
-| `terminal` | The process ends here. Being blocked counts: a run that ended badly still ended. | `mix pns.check`, `PNS.Graph` |
+| `terminal` | The process ends here. Being blocked counts: a run that ended badly still ended. | `mix pns.check`, `PNS.Graph`, `PNS.Run` — a run's duration is measured to this event |
+
+### `command`
+
+| Key | Meaning | Read by |
+| --- | --- | --- |
+| `label` | The business name of the action, in the client's language. | the client-facing report |
+| `process` | Which process this command enters. A command that started two processes would be two commands. | compile gate |
+| `principals` | Which kinds of principal may issue it, from the closed set `[:human, :system]`. This derives the capability, and it answers level 2 only — *may this kind of caller issue this at all*. Whether *this* caller may issue it *for this subject* is level 3 and stays a `rule` with a decision function. | `PNS.Command.permits?/3` |
+| `payload` | Field name to type, from the same closed set an event's payload uses. An `example`'s command params must supply exactly these keys. | compile gate |
+
+There is deliberately **no `emits:` key.** What a command emits has two readings —
+the events its decision function returns, and the events reachable from those
+through handlers — and in this repository's own corpus they are identical for one
+command and differ by three events for another, including the event that command is
+named after. Both readings are already held elsewhere, by the examples and by the
+handlers' `publishes:`. A third copy could not be checked for completeness by any
+gate, only for the existence of its members, so it would be the first key in a
+contract allowed to be wrong with nothing to notice.
 
 #### Payload types
 
@@ -207,8 +236,9 @@ surplus — counting caught it: the second contract has fourteen payload fields 
 | `instance` | Payload fields that say **which run** an event belongs to. Required, because both things that make this a product — assertion evaluation and the declared-versus-observed overlay — are counted within a run. | `PNS.Instance`, `PNS.Trace`, `PNS.Conformance` |
 | `stages` | The order **between** phases, and nothing about order inside one. Omit it and the process has one phase and makes no claim about sequence; its events then carry no `stage`. | `PNS.Check` |
 | `cadence` | How often a run is due. Only meaningful for calendar-driven processes — an event-driven one has none. | the report, for the declaration itself — see *Known decoration* for what still does not read it |
-| `deadline` | How long a run may take. | nothing yet — see *Known decoration* |
+| `deadline` | How long a run may take, from the run's earliest event to its `terminal: true` one. | `PNS.Run`, and the report — a count of the runs that exceeded it, plus a separate line for runs still open and already past it |
 | `unverified` | Declarations the **process owner has not confirmed**. They stay, because the mechanism needs something to watch, but they must not count toward the evidence report: a false metric is worse than a missing one when it is the metric the product sells. | `mix pns.check`, every run |
+| `accountable` | The role a finding about this process is addressed to. A role, not a person and not a module — `owner` on an event answers "which module implements this fact" and holds a module, which is why these are two words and not one. | the report; `mix pns.check` warns when a process names none |
 
 ### `trace`
 
@@ -287,6 +317,11 @@ write.
 | A handler on an event the contract does not declare | |
 | A handler publishing an event the contract does not declare | |
 | An asynchronous handler on an event without `identity` | the queue is at-least-once, so the event will arrive twice |
+| The same command declared twice | the capability is derived from the name, so one permission would authorise two things |
+| `command` naming a process the contract does not declare | nothing could read it |
+| `principals` empty, or naming anything outside `[:human, :system]` | the set is closed; a command nobody may issue is a forgotten key, not a narrower permission |
+| `example` naming a command the contract does not declare | the third pointer gate, beside `example`'s rule and `event`'s `depends_on` |
+| `example` supplying a different set of command params than the command declares | this DSL has no optional fields, so a mismatch means one of the two is wrong |
 
 ## Known decoration
 
@@ -295,11 +330,16 @@ reference that hides its gaps is worse than one that admits them.
 
 | Declaration | State |
 | --- | --- |
-| `deadline` | declared; not yet read. Planned narrowly — a retrospective count, in the periodic report, of runs that exceeded it — not a live per-instance monitor (decided 6 August, `PLAN.md`) |
 | `cadence` | declared, and read by the report for the declaration itself. The "never observed" window **will not be built** — rejected 6 August, not merely undone; see `docs/adr/technology-notes.md` §9 |
 | `external`'s `expected_latency` | declared; nothing measures latency |
 | `external`'s `unavailable_looks_like` | **no longer decoration since 6 August** — `depends_on` plus an unavailability observation produces the fourth assertion verdict, `:suspended`. The sentence itself is still only read by a person |
 | `depends_on` at runtime | **read since 6 August**: it decides which dependency's outage can suspend an assertion. Nothing yet measures whether a dependency is slow, only whether it was seen unavailable |
+
+`deadline` left this table on 22 September, built exactly as narrowly as it was
+planned on 6 August: a retrospective count in the periodic report, never a live
+per-instance monitor. A process that declares one and marks no event `terminal: true`
+has no observable ending, so nothing can be measured — `mix pns.check` says so as a
+notice rather than leaving the silence unexplained.
 
 Three rows left this table on 6 August: payload types are enforced at emit time, and
 `depends_on` together with `unavailable_looks_like` now produce the `:suspended` verdict

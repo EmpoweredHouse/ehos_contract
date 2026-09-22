@@ -88,6 +88,10 @@ defmodule PNS.Conformance do
           %{
             process: process.name,
             label: process.label,
+            # Who the finding is addressed to. A report saying "this rule was broken
+            # in 1 of 40 runs" and naming nobody is a report with no recipient, which
+            # is what `D-18` is about.
+            accountable: process.accountable,
             runs: (answers && answers.instances) || 0,
             declarations: verified_declarations(process),
             untraversed: label_edges(answers && answers.untraversed, labels),

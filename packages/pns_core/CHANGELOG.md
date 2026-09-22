@@ -37,6 +37,17 @@ version is real all the same, because a conformance report already carries it.
   event declared `terminal: true`; four outcomes, not two, because a run still open
   past its duration has a known lower bound and no known duration, and folding it
   in with runs that finished late would report a bound as a measurement.
+- `command`, a seventh declaration: a way into a process from outside, and which
+  kinds of principal may take it. `PNS.Command.permits?/3` derives the capability,
+  which answers level 2 only — whether *this* caller may act for *this* subject
+  stays a `rule` with a decision function. There is no `emits:` key, deliberately
+  and against `D-15` as written: both readings of "what this command emits" are
+  already held elsewhere and neither can be checked for completeness by a gate.
+  `principals:` is a closed set and, unlike the payload types, a proposal rather
+  than something read out of any corpus.
+- `accountable:` on `process`: the role a finding is addressed to. Distinct from
+  `owner:` on an event, which holds a module and answers a different question.
+  `mix pns.check` warns when a process names none.
 - `mix pns.check` reports, as a notice, a process that declares a `deadline` and no
   `terminal: true` event — a promise about duration that nothing can observe being
   kept or broken.
@@ -50,6 +61,11 @@ version is real all the same, because a conformance report already carries it.
 
 ### Changed
 
+- **Every contract's `version/0` moved once, deliberately.** A seventh declaration
+  group changes the hash even for a contract that declares no commands, so the log
+  reclassifies once rather than twice; `accountable:` landed in the same commit for
+  that reason. The same one-off price was paid on 6 August when the hash became
+  canonical.
 - **Verdict-moving.** A `trace` assertion's counts now cover only runs that began
   after that assertion last changed. Runs from before it are counted separately
   and named in the report with the date of the change. Previously an edit to

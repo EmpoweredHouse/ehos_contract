@@ -18,6 +18,7 @@ defmodule PNS do
       Auth.IdentityAdmin,
       Auth.LocalIdentityAdmin,
       Check,
+      Command,
       Conformance,
       Contract,
       ContractExample,

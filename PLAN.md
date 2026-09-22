@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Dopisek 22 września — etap 5: 5.1–5.4 zamknięte, 5.5 przeprowadzone
+## Dopisek 22 września — etap 5: 5.1–5.6 zamknięte
 
 Plan implementacji całego etapu jest osobno; tutaj idzie stan i to, co wyszło przy pisaniu.
 
@@ -232,6 +232,58 @@ w korpusie oparcia.**
 `label`, `process` i `payload` mają oparcie w korpusie, `principals:` nie ma i jest propozycją do
 zatwierdzenia, a dopisanie 22 brakujących komend jest robotą warsztatową z process ownerem, nie
 robotą w silniku. Nie ma sensu generować deklaracji dla wejść, których nikt nie nazwał.
+
+### 5.6 — siódma deklaracja i `accountable`, jednym commitem
+
+`command :nazwa, label:, process:, principals:, payload:`. Bez `emits:` — decyzja z 5.5, teraz
+z liczbą za sobą. `accountable:` na procesie, jako rola i **osobny klucz od `owner:`**, który na
+evencie trzyma moduł; jeden klucz o dwóch typach jest dryfem, który ta biblioteka wykrywa zawodowo.
+Oba w jednym commicie, bo siódma grupa rusza `version/0` każdego kontraktu nawet przy zerowej
+liczbie komend, a jedna przeklasyfikacja historii jest tańsza niż dwie. Cena zapłacona raz i jawnie:
+
+| Kontrakt | przed | po |
+| --- | --- | --- |
+| `Rehmed.ClinicalVisit` | `7d5f580c39a6` | `ae645a1c61f7` |
+| `Rehmed.PayerSettlement` | `30e7a299b62a` | `d876412fe382` |
+| `Rehmed.VisitSettlement` | `f726e92ad49d` | `90bb66ae79bf` |
+| `Taxvision.AccountingMonth` | `7ac66ea1bb9e` | `1cb46129609a` |
+
+Cztery nowe bramy kompilacyjne, każda wzorowana na istniejącej: duplikat nazwy komendy, `process:`
+spoza kontraktu, `example` wskazujący niezadeklarowaną komendę (trzeci wskaźnik obok `example.rule`
+i `event.depends_on`) i równość zbioru parametrów przykładu z zadeklarowanym `payload:` — równość,
+nie podzbiór, bo ten DSL nie ma opcjonalności nigdzie. Plus zamknięty zbiór `principals` i typy
+payloadu komendy przez ten sam gate, co event. **Neutralizacja każdej z czterech czerwieni dokładnie
+jeden test, sama.** 374 testy.
+
+**`principals:` i `accountable:` dostały czytelników w tym samym commicie**, bo inaczej byłyby
+ozdobą w dniu pierwszym — a etap 2 istniał po to, żeby takie kasować. `PNS.Command.permits?/3`
+rozstrzyga poziom 2; `accountable` wychodzi w nagłówku procesu w raporcie.
+
+**`permits?/3` rzuca dla niezadeklarowanej komendy, nie zwraca `false`.** Odmowa i nazwa, której nie
+ma, to dwie różne odpowiedzi, a zwracanie pierwszej w miejsce drugiej znaczy, że przemianowana
+komenda zaczyna po cichu odmawiać wszystkim — czyli ta sama awaria, którą deklaracja miała usunąć,
+wprowadzona poziom niżej.
+
+**Nie wpisałem `accountable` do czterech prawdziwych kontraktów i to jest decyzja, nie
+niedokończenie.** Rola adresata jest wiedzą z warsztatu, a wymyślenie jej byłoby tym samym błędem co
+wymyślenie nazwy zdarzenia. Stan faktyczny brzmi „nikt nie uzgodnił, do kogo to idzie" i tak właśnie
+wygląda dziś wyjście bramy: `mix pns.check` daje 5 ostrzeżeń zamiast 1, cztery nowe to dokładnie te
+cztery procesy. Wpisane są tylko dwie fikstury, obie świadomie zmyślone.
+
+**Brama uniwersalności zaczerwieniła się z projektu i jej literał został zaktualizowany z powodem
+w pliku.** Dwa nowe słowa, `principals` i `accountable`, i żadne z nich nie przyszło z drugiej
+domeny — kryterium etapu 1.2 mówi o opisaniu innej *domeny* bez nowych słów i trzyma się. Słowo
+dodane po to, żeby wyrazić coś, czego wcześniej żadna domena nie umiała powiedzieć, jest innym
+zdarzeniem i ma zostać odnotowane, a nie ukryte.
+
+**Jedna zmiana poza zakresem, zamykająca klasę błędów:** `pns.docs.ex` miał zakodowaną listę
+`order`, a kind obecny w `schema/0` i nieobecny w niej był **po cichu pomijany** w generowanej
+referencji, podczas gdy `--check` raportował plik jako aktualny. To jedyny tryb awarii, którego
+dokument generowany mieć nie może. Lista jest teraz uzupełniana o resztę `Map.keys(schema)`.
+
+Przy okazji poprawione w `docs/contract.md`: „sześć deklaracji" na siedem, wiersz `deadline`
+w tabeli znaczeń (mówił „nothing yet", a od 5.4 czyta go `PNS.Run`) i wypadnięcie `deadline`
+z sekcji „Known decoration".
 
 ---
 

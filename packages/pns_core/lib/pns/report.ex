@@ -114,6 +114,12 @@ defmodule PNS.Report do
     ]
   end
 
+  # Nothing at all when the process names no role. An invented addressee is worse
+  # than none: it sends the finding to somebody who never agreed to receive it.
+  @spec accountable(String.t() | nil) :: [String.t()]
+  defp accountable(nil), do: []
+  defp accountable(role), do: ["  Accountable: #{role}."]
+
   # The declared duration, measured. Prints nothing at all when the process declares
   # none, has not confirmed it, or had no run — three different silences, and none
   # of them is a number.
@@ -155,7 +161,9 @@ defmodule PNS.Report do
 
   @spec process(map()) :: [String.t()]
   defp process(p) do
-    ["PROCESS: #{p.label}", "  Runs in this period: #{p.runs}."] ++
+    ["PROCESS: #{p.label}"] ++
+      accountable(p.accountable) ++
+      ["  Runs in this period: #{p.runs}."] ++
       declarations(p.declarations) ++
       duration(p.duration) ++
       paths(p) ++

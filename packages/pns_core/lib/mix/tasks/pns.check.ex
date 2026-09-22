@@ -40,6 +40,7 @@ defmodule Mix.Tasks.Pns.Check do
       |> check_facts_not_keyed_by_their_run()
       |> check_unfalsifiable_assertions()
     |> check_unobservable_deadlines()
+    |> check_processes_without_accountable()
       |> check_retain_on_free_text()
       |> check_no_vendor_in_config()
       |> check_unverified_declarations()
@@ -97,7 +98,29 @@ defmodule Mix.Tasks.Pns.Check do
            "separated afterwards"}
       end
 
-    Enum.reduce(events ++ processes, findings, &[&1 | &2])
+    commands =
+      for c <- PNS.Check.command_names_declared_twice() do
+        {:error,
+         "command #{inspect(c.name)} is declared by #{length(c.contracts)} contracts: " <>
+           "#{inspect(c.contracts)}. The capability is derived from the name, so one permission " <>
+           "would authorise two different things"}
+      end
+
+    Enum.reduce(events ++ processes ++ commands, findings, &[&1 | &2])
+  end
+
+  # A finished report with nowhere to go. Not a compile gate on purpose — see
+  # `PNS.Check.processes_without_accountable/1` for the argument and the precedent.
+  defp check_processes_without_accountable(findings) do
+    for f <- PNS.Check.processes_without_accountable(), reduce: findings do
+      acc ->
+        [
+          {:warn,
+           "process #{inspect(f.process)} names no `accountable` role, so a finding about it " <>
+             "has no addressee (#{inspect(f.contract)})"}
+          | acc
+        ]
+    end
   end
 
   # Every declared event has a handler or is terminal.

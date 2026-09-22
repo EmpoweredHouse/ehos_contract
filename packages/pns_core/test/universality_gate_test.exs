@@ -36,14 +36,37 @@ defmodule PNS.UniversalityGateTest do
       # The order carries information: **required first, then optional**, because
       # the vocabulary is derived from `schema/0`, where the two are separated.
       # They used to be two separate lists, that is, two things to drift apart.
+      #
+      # **Two words were added on 2026-09-22 and neither came from a second domain.**
+      # `principals` and `accountable` arrived from stage 5.6, which declares the way
+      # into a process and who the report is addressed to. The criterion this test
+      # states is about describing another *domain* without new words, and it still
+      # holds: nothing here was added to fit medicine, logistics or accounting. A
+      # word added to express something no domain could previously say is a different
+      # event, and one this test should record rather than hide.
+      #
+      # `accountable` is deliberately not `owner`. `owner` is on an event and holds a
+      # module; this holds a role. One key with two types is the drift this library
+      # detects for a living.
       assert PNS.Contract.vocabulary() == %{
                event: [:label, :owner, :payload, :retain, :depends_on, :identity, :process, :stage, :terminal],
-               process: [:label, :instance, :stages, :cadence, :deadline, :unverified],
+               process: [:label, :instance, :stages, :cadence, :deadline, :unverified, :accountable],
                external: [:label, :expected_latency, :unavailable_looks_like],
                rule: [:label, :function, :source],
                example: [:rule, :command, :given, :then, :rejected_with],
-               trace: [:from, :eventually, :within, :or_else]
+               trace: [:from, :eventually, :within, :or_else],
+               command: [:label, :process, :principals, :payload]
              }
+    end
+
+    test "the principal set is closed, and is a proposal rather than a reading" do
+      # Pinned like `payload_types/0`, and for the same reason — but with one
+      # difference that has to stay written down. The payload types were arrived at
+      # by removing what turned out to be a domain in disguise. These two were
+      # **chosen**: the stage 5.5 census found no principal vocabulary anywhere in
+      # the corpus, only role strings. If a founder or a process owner says the set
+      # is wrong, the set changes and this test follows — it is not evidence.
+      assert PNS.Contract.principal_types() == [:human, :system]
     end
 
     test "no payload type knows what anybody's business calls a thing" do
@@ -82,7 +105,7 @@ defmodule PNS.UniversalityGateTest do
         |> Enum.reject(&String.starts_with?(to_string(&1), "__"))
         |> Enum.sort()
 
-      assert macros == [:event, :example, :external, :process, :rule, :trace]
+      assert macros == [:command, :event, :example, :external, :process, :rule, :trace]
     end
 
     test "the medical contract introduces no key outside the vocabulary" do

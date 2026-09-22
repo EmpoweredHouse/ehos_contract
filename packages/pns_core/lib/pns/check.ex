@@ -293,6 +293,45 @@ defmodule PNS.Check do
     collisions(contracts, fn contract -> Enum.map(contract.processes(), & &1.name) end)
   end
 
+  @doc """
+  One command name declared by two contracts.
+
+  An error for the reason an event-name collision is one, and a sharper one: a
+  command name is the namespace a capability is derived from, so two occupants mean
+  two different things authorised by one permission.
+  """
+  @spec command_names_declared_twice([module()] | nil) :: [collision()]
+  def command_names_declared_twice(contracts \\ nil) do
+    collisions(contracts, fn contract -> Enum.map(contract.commands(), & &1.name) end)
+  end
+
+  @typedoc "A process whose findings have no addressee."
+  @type without_accountable :: %{contract: module(), process: atom(), label: String.t()}
+
+  @doc """
+  Processes that name no `accountable` role.
+
+  A report saying "this rule was broken in 1 of 40 runs" has to have somebody to go
+  to, and until `accountable:` existed a contract had no way to say who. This finds
+  the ones still silent.
+
+  A warning, not a compile gate, and the deviation from `D-18` is deliberate:
+  requiring it would break every existing contract on the commit that introduced it
+  and turn a rollout state into a build failure — the same argument
+  `check_owners_exist` already makes for `info` over `error`. It is a `warn` rather
+  than an `info` because, unlike an unimplemented owner module, an unaddressed
+  report is a finished artifact going nowhere.
+  """
+  @spec processes_without_accountable([module()] | nil) :: [without_accountable()]
+  def processes_without_accountable(contracts \\ nil) do
+    for contract <- contracts || PNS.Registry.contracts(),
+        process <- contract.processes(),
+        is_nil(process.accountable) do
+      %{contract: contract, process: process.name, label: process.label}
+    end
+    |> Enum.sort_by(&{inspect(&1.contract), to_string(&1.process)})
+  end
+
   @spec collisions([module()] | nil, (module() -> [atom()])) :: [collision()]
   defp collisions(contracts, names) do
     for contract <- contracts || PNS.Registry.contracts(), name <- names.(contract) do
