@@ -9,8 +9,8 @@ roboty i tylko tu jest aktualizowany stan.
 
 Nic tu nie zostało zbudowane. To jest lista zobowiązań wynikających z przeglądu, który ustalił relację
 PNS-a do EHOS-a i przeszedł przez trzynaście rozbieżności między wizją a obiema bazami technicznymi.
-Rozstrzygnięcia żyją w `~/Projects/ai/eh-os/`: `ARCHITECTURE.md` (decyzje `D-01`…`D-21`),
-`ALIGNMENT.md` (rozbieżności `A-01`…`A-13`) i `DECYZJE.md` (zdania do zatwierdzenia przez foundera).
+Rozstrzygnięcia żyją w `~/Projects/ai/eh-os/`: `ARCHITECTURE.md` (decyzje `D-01`…`D-22`),
+`ALIGNMENT.md` (rozbieżności `A-01`…`A-13`) i `DECISIONS.md` (zdania do zatwierdzenia przez foundera).
 
 **Ustalenie ramowe.** PNS zostaje wąskim pakietem: kontrakt, log zdarzeń, zgodność. EHOS jest osobnym
 systemem obok, z własnym cyklem życia i własną bazą, który uruchamia workloady klienta. PNS jest
@@ -20,6 +20,13 @@ bo prototyp adaptuje się do architektury, a nie odwrotnie — tak to zostało z
 
 Trzynaście pozycji: 1–3 to zmiany w kontrakcie, 4–5 wychodzą ze struktury projektu klienta, 6–8 to
 czego silnik jeszcze nie wystawia, 9–13 przyszło ze spotkania z founderem.
+
+Ta lista nie pokrywa całego zobowiązania wobec kontraktu. `ARCHITECTURE.md` mówi wprost, że siedem
+decyzji, `D-15`…`D-21`, wymaga od języka kontraktu nowej deklaracji albo klucza. Niżej jest pięć z
+nich: `D-15` (pozycja 1), `D-18` (2 i 3), `D-16` (7), `D-20` (9) i `D-21` (11). Poza listą zostają
+`D-17` — zatwierdzenie przypięte do wersji kontraktu, a każdy inny widok jest tylko renderem — i
+`D-19`, trzy rodzaje workloadu, z których kontraktu potrzebuje jeden. Obie trzeba przejść osobno;
+dopóki tego nikt nie zrobił, nie wiadomo, czy niosą robotę dla silnika, czy wyłącznie dla EHOS-a.
 
 ### Zmiany w kontrakcie
 
@@ -79,9 +86,13 @@ powyżej bazy ma dziurę, której wcześniej nie nazwaliśmy:
 | `from(p in "inna_tabela")` | nic dzisiaj. Nie pada nazwa modułu, więc `boundary` nie ma czego sprawdzić |
 | `Ecto.Adapters.SQL.query/3` | nic, i raczej nic nie będzie |
 
-Środkowy wiersz jest domykalny, i ADR już to rozpoznał: `prepare_query/3` dostaje całe `%Ecto.Query{}`
-przed wykonaniem, więc każda dotknięta tabela wychodzi strukturalnie z `from` i `joins`, łącznie z
-podanymi jako string. Retrofit to nadpisanie jednego callbacka. Dopóki tego nie ma, zdanie „podział
+Środkowy wiersz jest domykalny i jest bliżej domknięcia, niż zapisano: callback już istnieje i już
+chodzi. `Taxvision.Repo.prepare_query/3` (`lib/taxvision/repo.ex:25`, z 4 sierpnia) dostaje całe
+`%Ecto.Query{}` przed wykonaniem, a `tables/1` obok niego wyciąga każdą dotkniętą tabelę z `from`,
+`joins` i podzapytań, łącznie z nazwami podanymi jako string — razem z pułapką, przez którą tabela
+joina nie siedzi w `source`. Brakuje więc nie callbacka, tylko dwóch rzeczy: mapy „tabela →
+właściciel", której dziś nie deklaruje nic, i samej odmowy, bo na razie wynik ląduje w słowniku
+procesu pod `:pns_trace_tables` i nikt go nie czyta. Dopóki tego nie ma, zdanie „podział
 procesu jest tani, bo wystarczy przenieść tabele" jest prawdziwe warunkowo: tylko jeśli konwencja się
 trzymała, a to trzeba sprawdzić w momencie podziału, nie założyć.
 
@@ -130,11 +141,22 @@ Kształt jest otwarty: deklaracja, check, czy generowana dokładka do kontraktu.
 odróżnić złamanie reguły procesu od złamania reguły organizacji, bo idą do dwóch różnych ludzi. To
 jest ten sam argument o adresacie co przy `owner` na procesie.
 
-**12. Lokalizacja logu zdarzeń i uprawnienia do odczytu eventów.** Twoje pytanie z rozmowy, bez
-odpowiedzi. Dziś eventy leżą w bazie aplikacji. Wyniesienie ich do wspólnego logu daje historię
-przekrojową i natychmiast tworzy problem uprawnień per event: event niosący kwotę nie może być
-czytelny dla aplikacji, która kwot widzieć nie może. Zostawienie ich lokalnie omija ten problem, ale
-historia międzyaplikacyjna nie ma wtedy domu.
+**12. Uprawnienia do odczytu eventów.** Pytanie z rozmowy dotyczyło lokalizacji logu i uprawnień, a
+pierwsza połowa ma już odpowiedź, tylko nie w tym pliku: `D-03` rozstrzyga, że log domenowy zostaje
+własnością aplikacji i jest jedynym podłożem, na którym liczy się zgodność, a historia przekrojowa
+jedzie osobnym strumieniem integracyjnym — świadomie zaprojektowanym podzbiorem, przez outbox, z
+własnym kontraktem, własnymi uprawnieniami i własną retencją. Eventy zostają więc tam, gdzie leżą, i
+nie ma dylematu „wynieść albo stracić historię międzyaplikacyjną".
+
+Otwarte zostaje to drugie: jak te uprawnienia wyglądają per event. Event niosący kwotę nie może być
+czytelny dla aplikacji, która kwot widzieć nie może, a `D-03` mówi tylko tyle, że strumień ma własne
+uprawnienia.
+
+Z `D-03` wychodzi też pozycja, której na tej liście nie ma, a która ma w ADR klauzulę „od pierwszego
+commita": zgodność międzyaplikacyjna potrzebuje identyfikatorów korelacji spinających oba podłoża.
+`PNS.Event` niesie dziś `correlation_id` i `causation_id`, ale oba są per request w obrębie jednej
+aplikacji i nic nie przechodzi przez most. To jest najtańsza rzecz z całego przeglądu i jedyna, która
+drożeje z każdym wierszem dopisanym do logu.
 
 **13. Reguły wymuszające zachowanie, doklejane do kontraktu.** Kierunek produktu to certyfikowane
 środowisko, z którego aplikacje dziedziczą zgodność, a to jest mechanicznie możliwe tylko wtedy, gdy
