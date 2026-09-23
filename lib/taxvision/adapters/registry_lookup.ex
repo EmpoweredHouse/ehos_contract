@@ -29,7 +29,7 @@ defmodule Taxvision.Adapters.RegistryLookup do
   # flag: the contract environment uses the real adapter against a sandbox, which
   # a single switch cannot express (notes §11).
   defp impl do
-    Application.get_env(:eh_os_prototype, __MODULE__, [])[:impl] || __MODULE__.Fake
+    Application.get_env(:eh_os_contract_host, __MODULE__, [])[:impl] || __MODULE__.Fake
   end
 end
 
@@ -50,7 +50,7 @@ defmodule Taxvision.Adapters.RegistryLookup.Fake do
   def lookup("unavailable"), do: {:error, :unavailable}
 
   def lookup(nip) do
-    case Application.get_env(:eh_os_prototype, __MODULE__, [])[:responses] do
+    case Application.get_env(:eh_os_contract_host, __MODULE__, [])[:responses] do
       %{^nip => response} -> response
       _ -> {:ok, %{legal_form: "JDG", vat_status: "czynny", vies_status: "aktywny"}}
     end

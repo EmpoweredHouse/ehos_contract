@@ -9,7 +9,7 @@ defmodule EhOsContract.Web.MixProject do
   The dashboard foundation, extracted as its own package from the first commit.
 
   Mirrors the `packages/eh_os_contract` extraction: this package builds and tests
-  standing alone, against its own test host, and never touches `eh_os_prototype`
+  standing alone, against its own test host, and never touches `eh_os_contract_host`
   directly. What it does not carry is `ecto_sql`/`postgrex`/`oban` — this
   package owns no tables and runs no jobs, so pulling those in would be
   copying the template rather than mirroring it.

@@ -6,7 +6,7 @@ na którym sprawdzamy, czy założenia silnika się trzymają. Granica jest wymu
 pierwszego commita, żeby ta tymczasowość była faktem, a nie obietnicą.
 
 **Do 23 września pakiet nazywał się `pns` (moduły `PNS.*`, host `:pns_prototype`, tabele `pns_*`).**
-Wszystko w kodzie nosi już nową nazwę — `eh_os_contract`, `EhOsContract`, `:eh_os_prototype`. Stara
+Wszystko w kodzie nosi już nową nazwę — `eh_os_contract`, `EhOsContract`, `:eh_os_contract_host`. Stara
 zostaje tylko w `docs/adr/` i w historii `PLAN.md`, bo to zapis, nie opis stanu: `PNS.X` tam to dzisiejsze
 `EhOsContract.X`.
 

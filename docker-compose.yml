@@ -1,4 +1,4 @@
-name: eh-os-prototype
+name: eh-os-contract-host
 
 services:
   postgres:
@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_USER: eh_os
       POSTGRES_PASSWORD: eh_os
-      POSTGRES_DB: eh_os_prototype_dev
+      POSTGRES_DB: eh_os_contract_host_dev
     ports:
       # 5433 on the host: 5432 is often taken by a local Postgres, and this has
       # to start on a clean machine without asking what else is listening.
@@ -15,7 +15,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U eh_os -d eh_os_prototype_dev"]
+      test: ["CMD-SHELL", "pg_isready -U eh_os -d eh_os_contract_host_dev"]
       interval: 2s
       timeout: 3s
       retries: 30

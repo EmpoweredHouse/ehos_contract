@@ -156,7 +156,7 @@ umową **między aplikacjami**.
 jeszcze nie używa: tabele `eh_os_contract_*` (wprost w `V01`/`V02`, bez migracji przejściowej; baza
 postawiona od zera, użytkownik `eh_os`), rozszerzenia `x-eh-os-contract-*` w AsyncAPI, schemat
 `eh_os_contract.conformance.v1`, zmienne CSS `--eh-os-contract-*`, bazy testowe, host
-(`:eh_os_prototype`, `EhOsPrototypeWeb` — tak, jak już nazywa się repozytorium na GitHubie), ścieżki
+(`:eh_os_contract_host`, `EhOsContractHostWeb` — host, który montuje bibliotekę; nazwa hosta nie może być `EhOsContract`, bo to przestrzeń nazw i aplikacja OTP pakietu), ścieżki
 montowania w hostach testowych. Dwa indeksy dostały jawne nazwy, bo wygenerowane przekraczały 63 znaki,
 a Postgres obcina dłuższe identyfikatory bez błędu.
 

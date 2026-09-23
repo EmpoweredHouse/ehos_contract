@@ -1,4 +1,4 @@
-defmodule EhOsPrototype.Repo.Migrations.UpgradeEhOsContractToV2 do
+defmodule EhOsContractHost.Repo.Migrations.UpgradeEhOsContractToV2 do
   @moduledoc """
   The engine's v02, as a separate migration rather than an edit to `add_eh_os_contract`.
 

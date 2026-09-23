@@ -1,4 +1,4 @@
-defmodule EhOsPrototypeWeb.Endpoint do
+defmodule EhOsContractHostWeb.Endpoint do
   @moduledoc """
   The real Phoenix endpoint `packages/eh_os_contract_web`'s own test host stood in
   for until now (`packages/eh_os_contract_web/test/support/test_host/endpoint.ex`,
@@ -6,12 +6,12 @@ defmodule EhOsPrototypeWeb.Endpoint do
   documented there and in `EhOsContract.Web.Router.eh_os_contract_dashboard/2`'s moduledoc).
   """
 
-  use Phoenix.Endpoint, otp_app: :eh_os_prototype
+  use Phoenix.Endpoint, otp_app: :eh_os_contract_host
 
   @session_options [
     store: :cookie,
-    key: "_eh_os_prototype_key",
-    signing_salt: "eh-os-prototype-salt",
+    key: "_eh_os_contract_host_key",
+    signing_salt: "eh-os-contract-host-salt",
     same_site: "Lax"
   ]
 
@@ -26,5 +26,5 @@ defmodule EhOsPrototypeWeb.Endpoint do
     gzip: false
 
   plug Plug.Session, @session_options
-  plug EhOsPrototypeWeb.Router
+  plug EhOsContractHostWeb.Router
 end

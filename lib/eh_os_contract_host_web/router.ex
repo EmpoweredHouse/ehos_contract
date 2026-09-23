@@ -1,4 +1,4 @@
-defmodule EhOsPrototypeWeb.Router do
+defmodule EhOsContractHostWeb.Router do
   @moduledoc """
   Two mounts, both from `eh_os_contract_web`: the dashboard at `/dashboard` for a person, and
   the read-only conformance API at `/api/eh_os_contract` for anything that is not one.
@@ -28,13 +28,13 @@ defmodule EhOsPrototypeWeb.Router do
     pipe_through :browser
     import EhOsContract.Web.Router
 
-    eh_os_contract_dashboard "/dashboard", resolver: EhOsPrototypeWeb.Resolver
+    eh_os_contract_dashboard "/dashboard", resolver: EhOsContractHostWeb.Resolver
   end
 
   scope "/" do
     pipe_through :api
     import EhOsContract.Web.Router
 
-    eh_os_contract_api "/api/eh_os_contract", resolver: EhOsPrototypeWeb.Resolver
+    eh_os_contract_api "/api/eh_os_contract", resolver: EhOsContractHostWeb.Resolver
   end
 end

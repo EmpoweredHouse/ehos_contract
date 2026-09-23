@@ -1,4 +1,4 @@
-defmodule EhOsPrototypeWeb.ErrorHTML do
+defmodule EhOsContractHostWeb.ErrorHTML do
   @moduledoc """
   Without this, an unhandled error masks itself as `ArgumentError: no
   html template defined` instead of the real exception — the same trap

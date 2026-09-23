@@ -1,9 +1,9 @@
-defmodule EhOsPrototype.MixProject do
+defmodule EhOsContractHost.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :eh_os_prototype,
+      app: :eh_os_contract_host,
       version: "0.1.0",
       elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -23,7 +23,7 @@ defmodule EhOsPrototype.MixProject do
   def application do
     [
       extra_applications: [:logger, :crypto],
-      mod: {EhOsPrototype.Application, []}
+      mod: {EhOsContractHost.Application, []}
     ]
   end
 
@@ -47,11 +47,11 @@ defmodule EhOsPrototype.MixProject do
       # compile rather than merely warning.
       {:eh_os_contract, path: "packages/eh_os_contract"},
       # The dashboard foundation (PLAN.md, dopisek 23 sierpnia). `runtime: false`
-      # because :eh_os_contract_web has no `mod:` of its own to start — EhOsPrototypeWeb's
+      # because :eh_os_contract_web has no `mod:` of its own to start — EhOsContractHostWeb's
       # own supervisor references its modules directly (PLAN.md, dopisek 23
       # sierpnia (8)) instead of relying on the OTP application list.
       {:eh_os_contract_web, path: "packages/eh_os_contract_web", runtime: false},
-      # Direct, the same reasoning as `:telemetry` above: EhOsPrototypeWeb calls
+      # Direct, the same reasoning as `:telemetry` above: EhOsContractHostWeb calls
       # these by name (Endpoint, Router, PubSub, the Bandit adapter), and they
       # would otherwise be present only because :eh_os_contract_web happens to need them —
       # satisfied by a neighbour's dependency is satisfied only until the

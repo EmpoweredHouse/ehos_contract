@@ -1,7 +1,7 @@
 defmodule EhOsContract.Web.TestHost.Endpoint do
   @moduledoc """
   The whole host this package proves itself against — never the real
-  `eh_os_prototype`, which has no Phoenix yet.
+  `eh_os_contract_host`, which has no Phoenix yet.
   """
 
   use Phoenix.Endpoint, otp_app: :eh_os_contract_web

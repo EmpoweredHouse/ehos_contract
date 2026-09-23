@@ -1,8 +1,8 @@
-defmodule EhOsPrototypeWebTest do
+defmodule EhOsContractHostWebTest do
   @moduledoc """
   The real host, mounted for real (PLAN.md, dopisek 23 sierpnia (8)) —
   proof that `EhOsContract.Web.Router.eh_os_contract_dashboard/2` works against
-  `eh_os_prototype`'s own `Taxvision.Repo` and real contracts, not just
+  `eh_os_contract_host`'s own `Taxvision.Repo` and real contracts, not just
   `packages/eh_os_contract_web`'s own test host and its invented fixture.
   """
 
@@ -11,7 +11,7 @@ defmodule EhOsPrototypeWebTest do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
-  @endpoint EhOsPrototypeWeb.Endpoint
+  @endpoint EhOsContractHostWeb.Endpoint
 
   setup do
     {:ok, conn: build_conn()}
@@ -25,7 +25,7 @@ defmodule EhOsPrototypeWebTest do
   test "the contract status screen renders this host's real contracts", %{conn: conn} do
     html = conn |> get("/dashboard/contract") |> html_response(200)
 
-    # `EhOsPrototypeWeb.Resolver` lets everyone in read-only: this host has no
+    # `EhOsContractHostWeb.Resolver` lets everyone in read-only: this host has no
     # login, and says so rather than inheriting a default.
     assert html =~ "Access: read only"
     # Taxvision.Contracts.AccountingMonth, this host's own real contract —

@@ -8,8 +8,8 @@ defmodule EhOsContract.Web do
   to be exported, not just `Router` itself** — Phoenix's router macros
   compile a literal module reference into whatever router calls them, so
   the reference lands in the *caller's* compiled code, not this package's.
-  A host with its own strict top-level boundary (`eh_os_prototype`'s own
-  `EhOsPrototype.Application, top_level?: true` found this the first time
+  A host with its own strict top-level boundary (`eh_os_contract_host`'s own
+  `EhOsContractHost.Application, top_level?: true` found this the first time
   anything outside `packages/eh_os_contract_web`'s own test host actually mounted the
   macro for real) checks that reference like any other — there is no way
   to route to a LiveView Phoenix does not know the name of.

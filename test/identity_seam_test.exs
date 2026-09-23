@@ -85,7 +85,7 @@ defmodule Taxvision.IdentitySeamTest do
       # `sign/1` is the first thing to disappear when a real provider takes over.
       # If the domain calls it, the swap becomes a rewrite rather than a
       # configuration change.
-      callers = callers_of(:eh_os_prototype, {Taxvision.Identity, :sign, 1})
+      callers = callers_of(:eh_os_contract_host, {Taxvision.Identity, :sign, 1})
 
       # A positive control. Without it this test would pass vacuously if the
       # detector stopped working — and a test that always passes is worse than no

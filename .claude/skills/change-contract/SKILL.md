@@ -90,7 +90,7 @@ That gap is what this table exists to cover by hand.
    otherwise only live in someone's head (see any "Dopisek" entry in `PLAN.md` for the shape of
    that note: what changed, why, what it costs).
 5. For `identity:` or `instance:` specifically: run the real-data check before writing a word about
-   cost — `docker compose exec -T postgres psql -U eh_os -d eh_os_prototype_dev -c "select count(*) from
+   cost — `docker compose exec -T postgres psql -U eh_os -d eh_os_contract_host_dev -c "select count(*) from
    eh_os_contract_events;"` (and the `_test` database too) is cheaper than the conversation about whether a
    migration is needed, and is exactly what closed the `%7C`/`%3A` defect on 21 August.
 6. For a new required `payload` field, a removed field with a `retain` policy, or a changed type:
