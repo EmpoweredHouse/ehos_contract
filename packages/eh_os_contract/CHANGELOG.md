@@ -10,7 +10,7 @@ counted as exceeding a deadline, a declaration counted as changed. Wording,
 docstrings, tests and fixtures do not.
 
 The rule exists because a report is arithmetic, and two clients running two engine
-versions get two answers to the same question. `PNS.version/0` puts the version in
+versions get two answers to the same question. `EhOsContract.version/0` puts the version in
 the report; this file says what each one changed. A version in a report that
 nothing explains is decoration.
 
@@ -27,14 +27,14 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 
-- `PNS.Auth` in full — the token verifiers (`LocalToken`, `OidcVerifier`), the
+- `EhOsContract.Auth` in full — the token verifiers (`LocalToken`, `OidcVerifier`), the
   user-management seam (`IdentityAdmin`, `LocalIdentityAdmin`) and `entitled?/2` —
   along with the `:auth_verifier` and `:identity_admin` configuration keys every
   consumer had to set, and the `oidcc` dependency. They belonged to an earlier
   scope in which this engine would also own the dashboard's login and accounts.
   The engine now takes an actor as an opaque subject in `ctx.actor` and knows
-  nothing else about identity. `system_actor/0` moved to `PNS.Event.system_actor/0`.
-- `PNS.Command.permits?/3` and `principal_type/1`. The `command` declaration and
+  nothing else about identity. `system_actor/0` moved to `EhOsContract.Event.system_actor/0`.
+- `EhOsContract.Command.permits?/3` and `principal_type/1`. The `command` declaration and
   its `principals:` key stay, as a description; the engine no longer derives an
   access decision from them. No verdict moves: nothing in the report read either.
 
@@ -45,7 +45,7 @@ version is real all the same, because a conformance report already carries it.
 
 ### Added
 
-- `PNS.Run`: how long a run took, against the `deadline` its process declared.
+- `EhOsContract.Run`: how long a run took, against the `deadline` its process declared.
   The declaration has existed since the first commit and nothing read it — the
   only mentions were a filter that dropped it when unconfirmed and a renderer that
   printed it back. A run starts at its earliest event and ends at the earliest
@@ -53,7 +53,7 @@ version is real all the same, because a conformance report already carries it.
   past its duration has a known lower bound and no known duration, and folding it
   in with runs that finished late would report a bound as a measurement.
 - `command`, a seventh declaration: a way into a process from outside, and which
-  kinds of principal may take it. `PNS.Command.permits?/3` derives the capability,
+  kinds of principal may take it. `EhOsContract.Command.permits?/3` derives the capability,
   which answers level 2 only — whether *this* caller may act for *this* subject
   stays a `rule` with a decision function. There is no `emits:` key, deliberately
   and against `D-15` as written: both readings of "what this command emits" are
@@ -62,17 +62,17 @@ version is real all the same, because a conformance report already carries it.
   than something read out of any corpus.
 - `accountable:` on `process`: the role a finding is addressed to. Distinct from
   `owner:` on an event, which holds a module and answers a different question.
-  `mix pns.check` warns when a process names none.
-- `PNS.Report.Sentence`: the sentences a conformance report is made of, without its
-  layout. `PNS.Report` composes them with indentation; anything else rendering the
+  `mix eh_os_contract.check` warns when a process names none.
+- `EhOsContract.Report.Sentence`: the sentences a conformance report is made of, without its
+  layout. `EhOsContract.Report` composes them with indentation; anything else rendering the
   same report composes them some other way. Neither owns the words.
-- `PNS.AsyncAPI`: an AsyncAPI 3.0 document generated from a contract, carrying a
+- `EhOsContract.AsyncAPI`: an AsyncAPI 3.0 document generated from a contract, carrying a
   digest computed over the document itself. `channels` and `components.messages`
   only — no `operations`, because handler edges would make the digest move when
   somebody renamed a handler, and the digest is the point. What the standard cannot
-  express travels as `x-pns-*`: the `trace`, the retention policy, the stages, the
+  express travels as `x-eh-os-contract-*`: the `trace`, the retention policy, the stages, the
   commands. `external` is deliberately absent rather than mapped to `servers`.
-- `PNS.Conformance.as_data/2` and `PNS.Conformance.Wire`: the report projected onto
+- `EhOsContract.Conformance.as_data/2` and `EhOsContract.Conformance.Wire`: the report projected onto
   values that survive JSON. It lives in the engine rather than in a transport
   because the shape a consumer compares, version to version, is part of what this
   package promises. An undecided tuple or struct raises rather than being guessed
@@ -83,17 +83,17 @@ version is real all the same, because a conformance report already carries it.
 - `.formatter.exs` with an exported `locals_without_parens`, so a consuming
   project's `mix format` leaves contracts looking like contracts instead of
   rewriting every declaration as a function call.
-- `mix pns.check` reports, as a notice, a process that declares a `deadline` and no
+- `mix eh_os_contract.check` reports, as a notice, a process that declares a `deadline` and no
   `terminal: true` event — a promise about duration that nothing can observe being
   kept or broken.
 - Every declaration now carries its own digest, recorded per deployment
-  (each contract gains a generated `declaration_digests/0`, stored by `PNS.Migrations` v02).
-  `PNS.Deployment.diff/2`
+  (each contract gains a generated `declaration_digests/0`, stored by `EhOsContract.Migrations` v02).
+  `EhOsContract.Deployment.diff/2`
   reports which declaration moved, where before it could only compare event names
   and handler edges — so a changed `within`, `retain`, `identity`, `instance` or
   payload type registered as four empty lists.
-- `PNS.Deployment.declaration_boundaries/1`: when each declaration last changed.
-- `PNS.version/0`, and the report says which engine computed it.
+- `EhOsContract.Deployment.declaration_boundaries/1`: when each declaration last changed.
+- `EhOsContract.version/0`, and the report says which engine computed it.
 
 ### Fixed
 
@@ -120,7 +120,7 @@ version is real all the same, because a conformance report already carries it.
   reads as "no run was judged under the rule as it now stands" rather than as
   "there was no run on which this could be judged". The second is an absence; the
   first is not.
-- `PNS.Deployment.record!/1` replaces `declaration_digests` on conflict instead of
+- `EhOsContract.Deployment.record!/1` replaces `declaration_digests` on conflict instead of
   leaving the row alone, so a deployment recorded before v02 is backfilled rather
   than staying blind for the version actually running.
 

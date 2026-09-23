@@ -44,7 +44,7 @@ defmodule EhOsContract.Web.Api.Authorize do
         |> halt()
 
       access when access in [:all, :read_only] ->
-        assign(conn, :pns_web_access, access)
+        assign(conn, :eh_os_contract_web_access, access)
     end
   end
 end

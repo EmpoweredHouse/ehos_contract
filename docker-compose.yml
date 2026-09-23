@@ -1,21 +1,21 @@
-name: pns-prototype
+name: eh-os-prototype
 
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: pns-postgres
+    container_name: eh-os-postgres
     environment:
-      POSTGRES_USER: pns
-      POSTGRES_PASSWORD: pns
-      POSTGRES_DB: pns_prototype_dev
+      POSTGRES_USER: eh_os
+      POSTGRES_PASSWORD: eh_os
+      POSTGRES_DB: eh_os_prototype_dev
     ports:
-      # 5433 na hoście: 5432 bywa zajęty lokalnym Postgresem, a to ma stać
-      # na czystej maszynie bez pytania, co jeszcze słucha.
+      # 5433 on the host: 5432 is often taken by a local Postgres, and this has
+      # to start on a clean machine without asking what else is listening.
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pns -d pns_prototype_dev"]
+      test: ["CMD-SHELL", "pg_isready -U eh_os -d eh_os_prototype_dev"]
       interval: 2s
       timeout: 3s
       retries: 30

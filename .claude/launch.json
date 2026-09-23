@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "pns_prototype",
+      "name": "eh_os_prototype",
       "runtimeExecutable": "mix",
       "runtimeArgs": [
         "phx.server"

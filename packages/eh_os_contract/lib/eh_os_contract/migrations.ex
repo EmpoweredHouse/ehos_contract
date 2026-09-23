@@ -53,7 +53,7 @@ defmodule EhOsContract.Migrations do
 
   ## Where the version is recorded
 
-  In a comment on `pns_events`, read back by `migrated_version/0`. This is Oban's
+  In a comment on `eh_os_contract_events`, read back by `migrated_version/0`. This is Oban's
   trick and it is used here for Oban's reason: `up/1` has to know what the
   database already has, and the alternative — a table of our own to hold one
   integer — is a second thing to migrate before you can migrate anything.
@@ -115,7 +115,7 @@ defmodule EhOsContract.Migrations do
     SELECT pg_catalog.obj_description(pg_class.oid, 'pg_class')
     FROM pg_class
     LEFT JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
-    WHERE pg_class.relname = 'pns_events'
+    WHERE pg_class.relname = 'eh_os_contract_events'
     AND pg_namespace.nspname = 'public'
     """
 
@@ -142,6 +142,6 @@ defmodule EhOsContract.Migrations do
   defp record_version(0), do: :ok
 
   defp record_version(version) do
-    execute("COMMENT ON TABLE \"public\".pns_events IS '#{version}'")
+    execute("COMMENT ON TABLE \"public\".eh_os_contract_events IS '#{version}'")
   end
 end

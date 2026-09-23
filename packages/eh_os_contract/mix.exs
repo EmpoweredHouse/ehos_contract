@@ -80,7 +80,7 @@ defmodule EhOsContract.MixProject do
 
   defp package do
     [
-      name: "pns",
+      name: "eh_os_contract",
       licenses: ["Apache-2.0"],
       links: %{
         "GitHub" => @source_url,

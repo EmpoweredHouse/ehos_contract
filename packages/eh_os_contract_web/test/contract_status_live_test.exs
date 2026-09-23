@@ -28,8 +28,8 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
 
     conn =
       build_conn()
-      |> Access.put_actor("admin", ["pns_admin"])
-      |> get("/pns/contract")
+      |> Access.put_actor("admin", ["eh_os_contract_admin"])
+      |> get("/dashboard/contract")
 
     html = html_response(conn, 200)
 
@@ -57,8 +57,8 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
 
     html =
       build_conn()
-      |> Access.put_actor("admin", ["pns_admin"])
-      |> get("/pns/contract")
+      |> Access.put_actor("admin", ["eh_os_contract_admin"])
+      |> get("/dashboard/contract")
       |> html_response(200)
 
     for process <- report.processes do
@@ -115,8 +115,8 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     }
 
     assigns = %{
-      pns_web_access: :all,
-      pns_web_base_path: "/pns",
+      eh_os_contract_web_access: :all,
+      eh_os_contract_web_base_path: "/dashboard",
       reports: [report(processes: [process(assertions: [assertion])])]
     }
 
@@ -147,8 +147,8 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
 
   test "no runs at all: the process says so instead of listing paths" do
     assigns = %{
-      pns_web_access: :all,
-      pns_web_base_path: "/pns",
+      eh_os_contract_web_access: :all,
+      eh_os_contract_web_base_path: "/dashboard",
       reports: [report(processes: [process(runs: 0)])]
     }
 
@@ -176,8 +176,8 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     }
 
     assigns = %{
-      pns_web_access: :read_only,
-      pns_web_base_path: "/pns",
+      eh_os_contract_web_access: :read_only,
+      eh_os_contract_web_base_path: "/dashboard",
       reports: [report(processes: [process(assertions: [assertion])])]
     }
 
@@ -209,8 +209,8 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     }
 
     assigns = %{
-      pns_web_access: :all,
-      pns_web_base_path: "/pns",
+      eh_os_contract_web_access: :all,
+      eh_os_contract_web_base_path: "/dashboard",
       reports: [report(processes: [process(assertions: [assertion])])]
     }
 
@@ -223,8 +223,8 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
   test "drift renders the undeclared edge, and its absence renders as none" do
     with_drift =
       render_component(&ContractStatus.render/1, %{
-        pns_web_access: :all,
-        pns_web_base_path: "/pns",
+        eh_os_contract_web_access: :all,
+        eh_os_contract_web_base_path: "/dashboard",
         reports: [
           report(drift: [%{from: "a", to: "b", from_label: "A", to_label: "B", count: 4}])
         ]
@@ -232,8 +232,8 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
 
     without_drift =
       render_component(&ContractStatus.render/1, %{
-        pns_web_access: :all,
-        pns_web_base_path: "/pns",
+        eh_os_contract_web_access: :all,
+        eh_os_contract_web_base_path: "/dashboard",
         reports: [report()]
       })
 
@@ -244,8 +244,8 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
   test "an unconfirmed deployment says nothing has happened under it yet" do
     html =
       render_component(&ContractStatus.render/1, %{
-        pns_web_access: :all,
-        pns_web_base_path: "/pns",
+        eh_os_contract_web_access: :all,
+        eh_os_contract_web_base_path: "/dashboard",
         reports: [report(deployment: deployment(since: nil))]
       })
 

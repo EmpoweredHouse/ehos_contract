@@ -1,7 +1,7 @@
 defmodule EhOsContract.Migrations.V02 do
   @moduledoc false
 
-  # One digest per declaration on `pns_deployments`, so a change to a single
+  # One digest per declaration on `eh_os_contract_deployments`, so a change to a single
   # declaration is attributable.
   #
   # **Nullable, and deliberately without a default.** A row written before this
@@ -16,7 +16,7 @@ defmodule EhOsContract.Migrations.V02 do
   @doc false
   @spec up() :: :ok
   def up do
-    alter table(:pns_deployments) do
+    alter table(:eh_os_contract_deployments) do
       add :declaration_digests, :map
     end
 
@@ -26,7 +26,7 @@ defmodule EhOsContract.Migrations.V02 do
   @doc false
   @spec down() :: :ok
   def down do
-    alter table(:pns_deployments) do
+    alter table(:eh_os_contract_deployments) do
       remove :declaration_digests
     end
 

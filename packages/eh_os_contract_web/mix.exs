@@ -9,7 +9,7 @@ defmodule EhOsContract.Web.MixProject do
   The dashboard foundation, extracted as its own package from the first commit.
 
   Mirrors the `packages/eh_os_contract` extraction: this package builds and tests
-  standing alone, against its own test host, and never touches `pns_prototype`
+  standing alone, against its own test host, and never touches `eh_os_prototype`
   directly. What it does not carry is `ecto_sql`/`postgrex`/`oban` — this
   package owns no tables and runs no jobs, so pulling those in would be
   copying the template rather than mirroring it.
@@ -67,7 +67,7 @@ defmodule EhOsContract.Web.MixProject do
       # esbuild's bundling would break.
       "assets.build": [
         "esbuild eh_os_contract_web",
-        "esbuild pns_web_css",
+        "esbuild eh_os_contract_web_css",
         fn _args ->
           File.cp!(
             Path.expand("assets/js/vendor/mermaid.min.js", __DIR__),

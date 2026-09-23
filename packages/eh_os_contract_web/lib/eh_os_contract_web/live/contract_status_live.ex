@@ -32,8 +32,8 @@ defmodule EhOsContract.Web.Live.ContractStatus do
   def render(assigns) do
     ~H"""
     <div>
-      <EhOsContract.Web.Layouts.nav base_path={@pns_web_base_path} current={:contract_status} />
-      <p class="access-badge">Access: {access_label(@pns_web_access)}</p>
+      <EhOsContract.Web.Layouts.nav base_path={@eh_os_contract_web_base_path} current={:contract_status} />
+      <p class="access-badge">Access: {access_label(@eh_os_contract_web_access)}</p>
 
       <div :for={report <- @reports}>
         <h2>{inspect(report.contract)}</h2>

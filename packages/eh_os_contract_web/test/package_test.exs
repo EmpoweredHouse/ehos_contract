@@ -16,8 +16,8 @@ defmodule EhOsContract.Web.PackageTest do
 
     assert :jason in declared,
            "this package calls Jason directly. Phoenix and LiveView both list it " <>
-             "`optional: true`, so without this line it arrives only because `pns` happens " <>
-             "to need it — and breaks the day `pns` stops"
+             "`optional: true`, so without this line it arrives only because `eh_os_contract` happens " <>
+             "to need it — and breaks the day `eh_os_contract` stops"
   end
 
   test "the metadata Hex would need is present, even though publication is held" do

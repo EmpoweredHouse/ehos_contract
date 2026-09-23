@@ -46,7 +46,7 @@ defmodule EhOsContract.Dependency do
 
   @primary_key {:id, :binary_id, autogenerate: true}
 
-  schema "pns_dependency_observations" do
+  schema "eh_os_contract_dependency_observations" do
     field(:contract, :string)
     field(:external, :string)
     field(:reason, :string)

@@ -6,7 +6,7 @@ defmodule EhOsContract.Migrations.V01 do
   # **The final shape, not the history.** The tables reached this shape through
   # four migrations and one alter in the host application, and replaying those
   # increments here would make every new consumer pay for a week of our
-  # indecision. `instance_id` and `process` are columns of `pns_events` from the
+  # indecision. `instance_id` and `process` are columns of `eh_os_contract_events` from the
   # first `create`; that they were added a day later is a fact about this
   # repository, not about anybody's database.
   #
@@ -19,7 +19,7 @@ defmodule EhOsContract.Migrations.V01 do
   @doc false
   @spec up() :: :ok
   def up do
-    create table(:pns_events, primary_key: false) do
+    create table(:eh_os_contract_events, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :type, :string, null: false
       add :contract, :string, null: false
@@ -40,18 +40,18 @@ defmodule EhOsContract.Migrations.V01 do
       add :instance_id, :string
     end
 
-    create index(:pns_events, [:type])
-    create index(:pns_events, [:correlation_id])
+    create index(:eh_os_contract_events, [:type])
+    create index(:eh_os_contract_events, [:correlation_id])
     # An observed edge is a `causation_id` — this is what the query
     # reconstructing the actual graph runs on.
-    create index(:pns_events, [:causation_id])
-    create index(:pns_events, [:occurred_at])
+    create index(:eh_os_contract_events, [:causation_id])
+    create index(:eh_os_contract_events, [:occurred_at])
     # Every per-run query runs on this: the `trace` assertion, the instance
     # counter on an edge, the list of one run's events.
-    create index(:pns_events, [:instance_id])
-    create index(:pns_events, [:process, :instance_id])
+    create index(:eh_os_contract_events, [:instance_id])
+    create index(:eh_os_contract_events, [:process, :instance_id])
 
-    create table(:pns_event_handlings, primary_key: false) do
+    create table(:eh_os_contract_event_handlings, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :event_id, :binary_id, null: false
       add :handler, :string, null: false
@@ -62,8 +62,8 @@ defmodule EhOsContract.Migrations.V01 do
       add :inserted_at, :utc_datetime_usec, null: false
     end
 
-    create index(:pns_event_handlings, [:event_id])
-    create index(:pns_event_handlings, [:handler, :status])
+    create index(:eh_os_contract_event_handlings, [:event_id])
+    create index(:eh_os_contract_event_handlings, [:handler, :status])
 
     # What was declared, and when it was in force.
     #
@@ -74,7 +74,7 @@ defmodule EhOsContract.Migrations.V01 do
     #
     # One row per distinct wiring that has booted. Written at startup, so the
     # graph still comes from the binary that actually runs.
-    create table(:pns_deployments, primary_key: false) do
+    create table(:eh_os_contract_deployments, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :contract, :string, null: false
       add :contract_version, :string, null: false
@@ -88,8 +88,15 @@ defmodule EhOsContract.Migrations.V01 do
       add :first_seen_at, :utc_datetime_usec, null: false
     end
 
-    create unique_index(:pns_deployments, [:contract, :contract_version, :wiring_version])
-    create index(:pns_deployments, [:first_seen_at])
+    # Named explicitly: the generated name is 73 characters, and Postgres truncates
+    # identifiers past 63 without an error.
+    create unique_index(
+             :eh_os_contract_deployments,
+             [:contract, :contract_version, :wiring_version],
+             name: :eh_os_contract_deployments_versions_index
+           )
+
+    create index(:eh_os_contract_deployments, [:first_seen_at])
 
     # What a synchronous handler was doing when it died.
     #
@@ -99,13 +106,13 @@ defmodule EhOsContract.Migrations.V01 do
     # leaves the most interesting failure invisible in the artifact that exists to
     # make failures visible (ADR §13).
     #
-    # **Deliberately no foreign key to `pns_events`.** There is nothing to point
+    # **Deliberately no foreign key to `eh_os_contract_events`.** There is nothing to point
     # at: the event was rolled back and never existed. What survives a rollback is
     # the correlation id, generated before the transaction opened, so that is the
     # handle this table carries. A row here says "this command was attempted and
     # died", which is a different kind of statement from every other row in the
-    # log — hence a different table rather than a status on `pns_event_handlings`.
-    create table(:pns_handler_failures, primary_key: false) do
+    # log — hence a different table rather than a status on `eh_os_contract_event_handlings`.
+    create table(:eh_os_contract_handler_failures, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :contract, :string, null: false
       add :event_type, :string, null: false
@@ -119,8 +126,8 @@ defmodule EhOsContract.Migrations.V01 do
       add :occurred_at, :utc_datetime_usec, null: false
     end
 
-    create index(:pns_handler_failures, [:handler])
-    create index(:pns_handler_failures, [:occurred_at])
+    create index(:eh_os_contract_handler_failures, [:handler])
+    create index(:eh_os_contract_handler_failures, [:occurred_at])
 
     # When a declared external dependency was seen to be unavailable.
     #
@@ -139,7 +146,7 @@ defmodule EhOsContract.Migrations.V01 do
     # No reference to a run. A registry being down is not something that happens to
     # one company's month; it happens to everybody at once, which is why the row is
     # keyed by dependency and time rather than by `instance_id`.
-    create table(:pns_dependency_observations, primary_key: false) do
+    create table(:eh_os_contract_dependency_observations, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :contract, :string, null: false
       # The name from the contract's `external` declaration, never a vendor's. An
@@ -151,7 +158,9 @@ defmodule EhOsContract.Migrations.V01 do
     end
 
     # The only query there is: this dependency, within this window.
-    create index(:pns_dependency_observations, [:contract, :external, :observed_at])
+    create index(:eh_os_contract_dependency_observations, [:contract, :external, :observed_at],
+             name: :eh_os_contract_dependency_observations_lookup_index
+           )
 
     :ok
   end
@@ -159,11 +168,11 @@ defmodule EhOsContract.Migrations.V01 do
   @doc false
   @spec down() :: :ok
   def down do
-    drop table(:pns_dependency_observations)
-    drop table(:pns_handler_failures)
-    drop table(:pns_deployments)
-    drop table(:pns_event_handlings)
-    drop table(:pns_events)
+    drop table(:eh_os_contract_dependency_observations)
+    drop table(:eh_os_contract_handler_failures)
+    drop table(:eh_os_contract_deployments)
+    drop table(:eh_os_contract_event_handlings)
+    drop table(:eh_os_contract_events)
 
     :ok
   end

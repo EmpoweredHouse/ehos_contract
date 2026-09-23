@@ -49,7 +49,7 @@ defmodule EhOsContract.HandlerFailure do
 
   @primary_key {:id, :binary_id, autogenerate: true}
 
-  schema "pns_handler_failures" do
+  schema "eh_os_contract_handler_failures" do
     field(:contract, :string)
     field(:event_type, :string)
     field(:handler, :string)

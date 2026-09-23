@@ -1,4 +1,4 @@
-defmodule PnsPrototypeWeb.Resolver do
+defmodule EhOsPrototypeWeb.Resolver do
   @moduledoc """
   Everyone gets `:read_only`. This host has no login and is not meant to have
   one: it runs on a developer's own machine, and `eh_os_contract_web` requires a host to

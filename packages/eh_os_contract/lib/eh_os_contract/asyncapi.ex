@@ -16,16 +16,16 @@ defmodule EhOsContract.AsyncAPI do
   at all; the transport is a Postgres table and in-process dispatch. The channel is
   a grouping and its `address` is deliberately undefined, so nobody wires a broker to
   it believing this document promised one. Everything a process actually declares
-  travels in `x-pns-process`.
+  travels in `x-eh-os-contract-process`.
 
   **`trace` has no representation.** AsyncAPI has no vocabulary for a temporal
   assertion, which means the sharpest thing this engine declares is the one thing the
-  standard cannot express. It goes in `x-pns-traces`, which no AsyncAPI tool reads.
+  standard cannot express. It goes in `x-eh-os-contract-traces`, which no AsyncAPI tool reads.
   Anyone choosing EhOsContract *because* it emits AsyncAPI is choosing it for the least of it.
 
   **`retain` must not be silently dropped.** A consumer reading a spec that shows a
   field, without showing that the field is hashed or discarded before it is ever
-  stored, has been told something false by omission. `x-pns-retain` carries it.
+  stored, has been told something false by omission. `x-eh-os-contract-retain` carries it.
 
   **`external` is deliberately absent.** The obvious mapping is to `servers`, and it
   is wrong: an `external` is named after the business fact it supplies and never
@@ -57,7 +57,7 @@ defmodule EhOsContract.AsyncAPI do
   @spec document(module()) :: map()
   def document(contract) do
     body = body(contract)
-    put_in(body, ["info", "x-pns-digest"], digest(body))
+    put_in(body, ["info", "x-eh-os-contract-digest"], digest(body))
   end
 
   @doc """
@@ -75,7 +75,7 @@ defmodule EhOsContract.AsyncAPI do
   @spec digest(map()) :: String.t()
   def digest(document) do
     document
-    |> update_in(["info"], &Map.delete(&1, "x-pns-digest"))
+    |> update_in(["info"], &Map.delete(&1, "x-eh-os-contract-digest"))
     |> EhOsContract.Digest.hash()
   end
 
@@ -90,7 +90,7 @@ defmodule EhOsContract.AsyncAPI do
       %{
         "contract" => inspect(contract),
         "version" => contract.version(),
-        "digest" => contract |> document() |> get_in(["info", "x-pns-digest"])
+        "digest" => contract |> document() |> get_in(["info", "x-eh-os-contract-digest"])
       }
     end
     |> Enum.sort_by(& &1["contract"])
@@ -103,9 +103,9 @@ defmodule EhOsContract.AsyncAPI do
       "info" => %{
         "title" => inspect(contract),
         "version" => contract.version(),
-        "x-pns-engine" => EhOsContract.version(),
-        "x-pns-traces" => traces(contract),
-        "x-pns-commands" => commands(contract)
+        "x-eh-os-contract-engine" => EhOsContract.version(),
+        "x-eh-os-contract-traces" => traces(contract),
+        "x-eh-os-contract-commands" => commands(contract)
       },
       "channels" => channels(contract),
       "components" => %{"messages" => messages(contract)}
@@ -127,7 +127,7 @@ defmodule EhOsContract.AsyncAPI do
            Map.new(events, fn e ->
              {to_string(e.name), %{"$ref" => "#/components/messages/#{message_name(e.name)}"}}
            end),
-         "x-pns-process" => %{
+         "x-eh-os-contract-process" => %{
            "instance" => Enum.map(process.instance, &to_string/1),
            "stages" => Enum.map(process.stages, &to_string/1),
            "cadence" => duration(process.cadence),
@@ -147,9 +147,10 @@ defmodule EhOsContract.AsyncAPI do
          "name" => to_string(event.name),
          "title" => event.label,
          "payload" => schema(event.payload),
-         "x-pns-retain" => Map.new(event.retain, fn {k, v} -> {to_string(k), to_string(v)} end),
-         "x-pns-identity" => event.identity && Enum.map(event.identity, &to_string/1),
-         "x-pns-terminal" => event.terminal
+         "x-eh-os-contract-retain" =>
+           Map.new(event.retain, fn {k, v} -> {to_string(k), to_string(v)} end),
+         "x-eh-os-contract-identity" => event.identity && Enum.map(event.identity, &to_string/1),
+         "x-eh-os-contract-terminal" => event.terminal
        }}
     end
   end
@@ -168,19 +169,23 @@ defmodule EhOsContract.AsyncAPI do
 
   # `:id` and `:string` are both strings on the wire and are **not** the same
   # declaration: the distinction is what gives the retention check its signal. It
-  # travels as `x-pns-type` rather than as a `format`, because inventing a format
+  # travels as `x-eh-os-contract-type` rather than as a `format`, because inventing a format
   # name is a private convention wearing a standard's clothes.
   @spec property(atom() | {:enum, [term()]}) :: map()
-  defp property(:integer), do: %{"type" => "integer", "x-pns-type" => "integer"}
+  defp property(:integer), do: %{"type" => "integer", "x-eh-os-contract-type" => "integer"}
 
   defp property(:timestamp),
-    do: %{"type" => "string", "format" => "date-time", "x-pns-type" => "timestamp"}
+    do: %{"type" => "string", "format" => "date-time", "x-eh-os-contract-type" => "timestamp"}
 
   defp property({:enum, values}) do
-    %{"type" => "string", "enum" => Enum.map(values, &to_string/1), "x-pns-type" => "enum"}
+    %{
+      "type" => "string",
+      "enum" => Enum.map(values, &to_string/1),
+      "x-eh-os-contract-type" => "enum"
+    }
   end
 
-  defp property(type), do: %{"type" => "string", "x-pns-type" => to_string(type)}
+  defp property(type), do: %{"type" => "string", "x-eh-os-contract-type" => to_string(type)}
 
   @spec traces(module()) :: [map()]
   defp traces(contract) do

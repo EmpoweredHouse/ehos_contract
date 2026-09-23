@@ -1,4 +1,4 @@
-defmodule EhOsContract.Web.TestHost.Repo.Migrations.AddPns do
+defmodule EhOsContract.Web.TestHost.Repo.Migrations.AddEhOsContract do
   use Ecto.Migration
 
   @moduledoc """

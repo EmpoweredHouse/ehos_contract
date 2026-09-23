@@ -7,16 +7,16 @@
 
 :root {
   color-scheme: light;
-  --pns-border: #d8dee4;
-  --pns-bg: #ffffff;
-  --pns-bg-muted: #f6f8fa;
-  --pns-text: #1f2328;
-  --pns-text-muted: #57606a;
-  --pns-accent: #0969da;
-  --pns-danger: #cf222e;
-  --pns-warning: #9a6700;
-  --pns-ok: #1a7f37;
-  --pns-radius: 6px;
+  --eh-os-contract-border: #d8dee4;
+  --eh-os-contract-bg: #ffffff;
+  --eh-os-contract-bg-muted: #f6f8fa;
+  --eh-os-contract-text: #1f2328;
+  --eh-os-contract-text-muted: #57606a;
+  --eh-os-contract-accent: #0969da;
+  --eh-os-contract-danger: #cf222e;
+  --eh-os-contract-warning: #9a6700;
+  --eh-os-contract-ok: #1a7f37;
+  --eh-os-contract-radius: 6px;
 }
 
 * {
@@ -27,8 +27,8 @@ body {
   margin: 0;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  color: var(--pns-text);
-  background: var(--pns-bg);
+  color: var(--eh-os-contract-text);
+  background: var(--eh-os-contract-bg);
   line-height: 1.5;
 }
 
@@ -39,7 +39,7 @@ nav {
   gap: 1.25rem;
   padding: 1rem 0;
   margin-bottom: 0.5rem;
-  border-bottom: 1px solid var(--pns-border);
+  border-bottom: 1px solid var(--eh-os-contract-border);
 }
 
 /* Log out is not a tab among tabs — pushed to the far side rather than
@@ -49,7 +49,7 @@ nav a:last-child {
 }
 
 nav a {
-  color: var(--pns-text-muted);
+  color: var(--eh-os-contract-text-muted);
   text-decoration: none;
   font-weight: 600;
   padding-bottom: 0.25rem;
@@ -57,12 +57,12 @@ nav a {
 }
 
 nav a:hover {
-  color: var(--pns-accent);
+  color: var(--eh-os-contract-accent);
 }
 
 nav a[aria-current="page"] {
-  color: var(--pns-text);
-  border-bottom-color: var(--pns-accent);
+  color: var(--eh-os-contract-text);
+  border-bottom-color: var(--eh-os-contract-accent);
 }
 
 main {
@@ -85,7 +85,7 @@ h3 {
 h4 {
   font-size: 0.85rem;
   margin: 1rem 0 0.35rem;
-  color: var(--pns-text-muted);
+  color: var(--eh-os-contract-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -104,8 +104,8 @@ li {
 }
 
 section {
-  border: 1px solid var(--pns-border);
-  border-radius: var(--pns-radius);
+  border: 1px solid var(--eh-os-contract-border);
+  border-radius: var(--eh-os-contract-radius);
   padding: 0.25rem 1.25rem 1rem;
   margin: 1rem 0;
 }
@@ -120,11 +120,11 @@ th,
 td {
   text-align: left;
   padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--pns-border);
+  border-bottom: 1px solid var(--eh-os-contract-border);
 }
 
 th {
-  background: var(--pns-bg-muted);
+  background: var(--eh-os-contract-bg-muted);
   font-weight: 600;
 }
 
@@ -138,38 +138,38 @@ form {
 input[type="text"],
 input[type="email"] {
   padding: 0.4rem 0.6rem;
-  border: 1px solid var(--pns-border);
-  border-radius: var(--pns-radius);
+  border: 1px solid var(--eh-os-contract-border);
+  border-radius: var(--eh-os-contract-radius);
   font-size: 0.9rem;
 }
 
 button {
   padding: 0.4rem 0.8rem;
-  border: 1px solid var(--pns-border);
-  border-radius: var(--pns-radius);
-  background: var(--pns-bg-muted);
+  border: 1px solid var(--eh-os-contract-border);
+  border-radius: var(--eh-os-contract-radius);
+  background: var(--eh-os-contract-bg-muted);
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--pns-text);
+  color: var(--eh-os-contract-text);
 }
 
 button:hover {
-  background: var(--pns-border);
+  background: var(--eh-os-contract-border);
 }
 
 /* The "revoke" button reads as a warning without needing a template-side
    class — its own phx-click name already says what it does. */
 button[phx-click="revoke_role"] {
-  color: var(--pns-danger);
-  border-color: var(--pns-danger);
+  color: var(--eh-os-contract-danger);
+  border-color: var(--eh-os-contract-danger);
   background: transparent;
   padding: 0.15rem 0.5rem;
   font-size: 0.8rem;
 }
 
 button[phx-click="revoke_role"]:hover {
-  background: var(--pns-danger);
+  background: var(--eh-os-contract-danger);
   color: white;
 }
 
@@ -182,25 +182,25 @@ button[phx-click="revoke_role"]:hover {
   display: inline-block;
   padding: 0.15rem 0.6rem;
   border-radius: 999px;
-  background: var(--pns-bg-muted);
-  border: 1px solid var(--pns-border);
+  background: var(--eh-os-contract-bg-muted);
+  border: 1px solid var(--eh-os-contract-border);
   font-size: 0.8rem;
   font-weight: 600;
   margin: 0.75rem 0;
 }
 
 .outcome-breached {
-  color: var(--pns-danger);
+  color: var(--eh-os-contract-danger);
   font-weight: 600;
 }
 
 .outcome-pending {
-  color: var(--pns-warning);
+  color: var(--eh-os-contract-warning);
   font-weight: 600;
 }
 
 .outcome-ok {
-  color: var(--pns-ok);
+  color: var(--eh-os-contract-ok);
   font-weight: 600;
 }
 
@@ -209,7 +209,7 @@ button[phx-click="revoke_role"]:hover {
    them says outright that an outage is not a breach on the client's side — and
    inheriting the verdict's colour would make it contradict itself. */
 .outcome-qualification {
-  color: var(--pns-text-muted);
+  color: var(--eh-os-contract-text-muted);
   font-size: 0.9rem;
   margin-top: 0.15rem;
 }
@@ -219,16 +219,16 @@ button[phx-click="revoke_role"]:hover {
    diagram wider than the column is the common case, not the exception. */
 pre.mermaid {
   overflow-x: auto;
-  border: 1px solid var(--pns-border);
-  border-radius: var(--pns-radius);
+  border: 1px solid var(--eh-os-contract-border);
+  border-radius: var(--eh-os-contract-radius);
   padding: 1rem;
   margin: 0.5rem 0;
-  background: var(--pns-bg-muted);
+  background: var(--eh-os-contract-bg-muted);
 }
 
 select {
   padding: 0.4rem 0.6rem;
-  border: 1px solid var(--pns-border);
-  border-radius: var(--pns-radius);
+  border: 1px solid var(--eh-os-contract-border);
+  border-radius: var(--eh-os-contract-radius);
   font-size: 0.9rem;
 }

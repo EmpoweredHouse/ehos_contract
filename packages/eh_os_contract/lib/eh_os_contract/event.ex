@@ -15,7 +15,7 @@ defmodule EhOsContract.Event do
 
   @type t :: %__MODULE__{}
 
-  schema "pns_events" do
+  schema "eh_os_contract_events" do
     field(:type, :string)
     field(:contract, :string)
     field(:contract_version, :string)
@@ -63,7 +63,7 @@ defmodule EhOsContract.EventHandling do
 
   @type t :: %__MODULE__{}
 
-  schema "pns_event_handlings" do
+  schema "eh_os_contract_event_handlings" do
     field(:event_id, :binary_id)
     field(:handler, :string)
     # "Succeeded after three attempts" is a different state from "succeeded", and

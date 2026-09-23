@@ -79,7 +79,7 @@ defmodule EhOsContract.Web.Router do
         pipe_through :eh_os_contract_api
         import EhOsContract.Web.Router
 
-        eh_os_contract_api "/pns/api", resolver: MyApp.EhOsContractResolver
+        eh_os_contract_api "/api", resolver: MyApp.EhOsContractResolver
       end
 
   This macro adds no `Plug.Parsers` of its own, for the reason the dashboard adds no

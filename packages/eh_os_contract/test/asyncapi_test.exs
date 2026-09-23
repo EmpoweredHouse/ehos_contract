@@ -5,7 +5,7 @@ defmodule EhOsContract.AsyncAPITest do
   What this generates is a message catalogue. The `trace`, the `rule`, the
   `example`, the retention policy and the stage order — everything that makes this
   a conformance engine rather than a schema registry — leave the document as
-  `x-pns-*` extensions that no AsyncAPI tool reads. That is worth knowing before
+  `x-eh-os-contract-*` extensions that no AsyncAPI tool reads. That is worth knowing before
   anybody concludes the contract "is" AsyncAPI.
   """
 
@@ -55,11 +55,15 @@ defmodule EhOsContract.AsyncAPITest do
       # type without teaching the generator fails here the same day, rather than
       # producing a spec that is quietly wrong about a field.
       mapping = %{
-        id: %{"type" => "string", "x-pns-type" => "id"},
-        string: %{"type" => "string", "x-pns-type" => "string"},
-        integer: %{"type" => "integer", "x-pns-type" => "integer"},
-        timestamp: %{"type" => "string", "format" => "date-time", "x-pns-type" => "timestamp"},
-        enum: %{"type" => "string", "x-pns-type" => "enum"}
+        id: %{"type" => "string", "x-eh-os-contract-type" => "id"},
+        string: %{"type" => "string", "x-eh-os-contract-type" => "string"},
+        integer: %{"type" => "integer", "x-eh-os-contract-type" => "integer"},
+        timestamp: %{
+          "type" => "string",
+          "format" => "date-time",
+          "x-eh-os-contract-type" => "timestamp"
+        },
+        enum: %{"type" => "string", "x-eh-os-contract-type" => "enum"}
       }
 
       assert Map.keys(mapping) |> Enum.sort() == Enum.sort(EhOsContract.Contract.payload_types())
@@ -73,19 +77,24 @@ defmodule EhOsContract.AsyncAPITest do
 
     test "`:id` and `:string` stay distinguishable, because the retention check needs it" do
       # Both are strings on the wire and are not the same declaration. Carried as
-      # `x-pns-type` rather than as a `format`, which would be a private convention
+      # `x-eh-os-contract-type` rather than as a `format`, which would be a private convention
       # wearing a standard's clothes.
       doc = schema_for(%{a: :id, b: :string})
 
       assert doc["properties"]["a"]["type"] == doc["properties"]["b"]["type"]
-      refute doc["properties"]["a"]["x-pns-type"] == doc["properties"]["b"]["x-pns-type"]
+
+      refute doc["properties"]["a"]["x-eh-os-contract-type"] ==
+               doc["properties"]["b"]["x-eh-os-contract-type"]
     end
 
     test "retention travels, because a spec that hides it lies by omission" do
       messages = EhOsContract.AsyncAPI.document(ProcessShapes.Rig)["components"]["messages"]
 
       retains =
-        messages |> Map.values() |> Enum.map(& &1["x-pns-retain"]) |> Enum.reject(&(&1 == %{}))
+        messages
+        |> Map.values()
+        |> Enum.map(& &1["x-eh-os-contract-retain"])
+        |> Enum.reject(&(&1 == %{}))
 
       refute retains == [],
              "the rig declares a `retain` policy and the document shows no sign of it"
@@ -94,7 +103,7 @@ defmodule EhOsContract.AsyncAPITest do
     test "what the standard cannot express is carried as an extension, not dropped" do
       info = EhOsContract.AsyncAPI.document(Contract)["info"]
 
-      assert [trace] = info["x-pns-traces"]
+      assert [trace] = info["x-eh-os-contract-traces"]
       assert trace["name"] == "completed_or_refusal_notified"
       assert trace["within"] == %{"count" => 2, "unit" => "day"}
     end
@@ -105,7 +114,7 @@ defmodule EhOsContract.AsyncAPITest do
       # that `schema/0` is pinned below to prevent repeating.
       info = EhOsContract.AsyncAPI.document(UniversalityGate.TreatmentEpisode)["info"]
 
-      assert [command] = info["x-pns-commands"]
+      assert [command] = info["x-eh-os-contract-commands"]
       assert command["name"] == "qualify_referral"
       assert command["principals"] == ["human"]
     end
@@ -127,8 +136,8 @@ defmodule EhOsContract.AsyncAPITest do
 
   describe "the digest" do
     test "is stable across two calls" do
-      assert EhOsContract.AsyncAPI.document(Contract)["info"]["x-pns-digest"] ==
-               EhOsContract.AsyncAPI.document(Contract)["info"]["x-pns-digest"]
+      assert EhOsContract.AsyncAPI.document(Contract)["info"]["x-eh-os-contract-digest"] ==
+               EhOsContract.AsyncAPI.document(Contract)["info"]["x-eh-os-contract-digest"]
     end
 
     test "does not move when declarations are only reordered" do
@@ -156,10 +165,10 @@ defmodule EhOsContract.AsyncAPITest do
       # substituting a placeholder for the deletion reddened nothing at all. Found by
       # running the reverse check, not by reading it.
       doc = EhOsContract.AsyncAPI.document(Contract)
-      tampered = put_in(doc, ["info", "x-pns-digest"], "0000deadbeef")
+      tampered = put_in(doc, ["info", "x-eh-os-contract-digest"], "0000deadbeef")
 
       assert EhOsContract.AsyncAPI.digest(tampered) == EhOsContract.AsyncAPI.digest(doc)
-      assert EhOsContract.AsyncAPI.digest(doc) == doc["info"]["x-pns-digest"]
+      assert EhOsContract.AsyncAPI.digest(doc) == doc["info"]["x-eh-os-contract-digest"]
     end
   end
 
@@ -175,7 +184,9 @@ defmodule EhOsContract.AsyncAPITest do
   end
 
   defp digest(%{} = document), do: EhOsContract.AsyncAPI.digest(document)
-  defp digest(contract), do: EhOsContract.AsyncAPI.document(contract)["info"]["x-pns-digest"]
+
+  defp digest(contract),
+    do: EhOsContract.AsyncAPI.document(contract)["info"]["x-eh-os-contract-digest"]
 
   # Everything but the module's own name and version, which differ between two
   # fixtures by construction and say nothing about declaration order.

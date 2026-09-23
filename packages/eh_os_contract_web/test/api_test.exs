@@ -25,7 +25,7 @@ defmodule EhOsContract.Web.ApiTest do
     test "a caller the resolver refuses gets JSON, not a redirect", %{conn: conn} do
       # A redirect is a datum only a browser can use. An API client following one
       # would fetch the host's login page and try to parse it as JSON.
-      conn = get(conn, "/pns/api/conformance")
+      conn = get(conn, "/api/conformance")
 
       assert conn.status == 403
       assert Jason.decode!(conn.resp_body) == %{"error" => "forbidden"}
@@ -33,20 +33,22 @@ defmodule EhOsContract.Web.ApiTest do
     end
 
     test "a read-only actor gets the report", %{conn: conn} do
-      conn = conn |> Access.put_actor("u-1", ["pns_read"]) |> get("/pns/api/conformance")
+      conn = conn |> Access.put_actor("u-1", ["eh_os_contract_read"]) |> get("/api/conformance")
 
       assert conn.status == 200
-      assert %{"schema" => "pns.conformance.v1"} = Jason.decode!(conn.resp_body)
+      assert %{"schema" => "eh_os_contract.conformance.v1"} = Jason.decode!(conn.resp_body)
     end
 
     test "and so does an admin, identically", %{conn: conn} do
       # `:read_only` and `:all` both pass and neither is redacted. Redacting for one
       # would be this package forming an opinion about how sensitive a client's own
       # data is.
-      admin = conn |> Access.put_actor("u-2", ["pns_admin"]) |> get("/pns/api/conformance")
+      admin = conn |> Access.put_actor("u-2", ["eh_os_contract_admin"]) |> get("/api/conformance")
 
       reader =
-        build_conn() |> Access.put_actor("u-1", ["pns_read"]) |> get("/pns/api/conformance")
+        build_conn()
+        |> Access.put_actor("u-1", ["eh_os_contract_read"])
+        |> get("/api/conformance")
 
       assert admin.status == 200
       assert Jason.decode!(admin.resp_body)["report"] == Jason.decode!(reader.resp_body)["report"]
@@ -55,26 +57,26 @@ defmodule EhOsContract.Web.ApiTest do
 
   describe "what comes back" do
     setup %{conn: conn} do
-      {:ok, conn: Access.put_actor(conn, "u-1", ["pns_read"])}
+      {:ok, conn: Access.put_actor(conn, "u-1", ["eh_os_contract_read"])}
     end
 
     test "a named contract is served", %{conn: conn} do
       contract = EhOsContract.Registry.contracts() |> List.first() |> inspect()
-      conn = get(conn, "/pns/api/conformance?contract=#{contract}")
+      conn = get(conn, "/api/conformance?contract=#{contract}")
 
       assert conn.status == 200
       assert Jason.decode!(conn.resp_body)["report"]["contract"] == contract
     end
 
     test "an unknown contract is a bad request, not a crash", %{conn: conn} do
-      conn = get(conn, "/pns/api/conformance?contract=Not.A.Contract")
+      conn = get(conn, "/api/conformance?contract=Not.A.Contract")
 
       assert conn.status == 400
       assert Jason.decode!(conn.resp_body)["detail"] =~ "unknown contract"
     end
 
     test "an unparseable period is a bad request naming which one", %{conn: conn} do
-      conn = get(conn, "/pns/api/conformance?since=yesterday")
+      conn = get(conn, "/api/conformance?since=yesterday")
 
       assert conn.status == 400
       assert Jason.decode!(conn.resp_body)["detail"] =~ "since"
@@ -83,11 +85,11 @@ defmodule EhOsContract.Web.ApiTest do
 
   describe "the generated specification" do
     setup %{conn: conn} do
-      {:ok, conn: Access.put_actor(conn, "u-1", ["pns_read"])}
+      {:ok, conn: Access.put_actor(conn, "u-1", ["eh_os_contract_read"])}
     end
 
     test "the index lists every contract with its digest", %{conn: conn} do
-      conn = get(conn, "/pns/api/asyncapi")
+      conn = get(conn, "/api/asyncapi")
 
       assert conn.status == 200
       %{"contracts" => contracts} = Jason.decode!(conn.resp_body)
@@ -97,7 +99,7 @@ defmodule EhOsContract.Web.ApiTest do
 
     test "a document is served, and its ETag is its digest", %{conn: conn} do
       name = EhOsContract.Registry.contracts() |> List.first() |> inspect()
-      conn = get(conn, "/pns/api/asyncapi/#{name}")
+      conn = get(conn, "/api/asyncapi/#{name}")
 
       assert conn.status == 200
       document = Jason.decode!(conn.resp_body)
@@ -105,11 +107,13 @@ defmodule EhOsContract.Web.ApiTest do
 
       # Served twice on purpose: a consumer comparing what an instance claims
       # against what its build recorded can do it with a HEAD and no body.
-      assert get_resp_header(conn, "etag") == [~s("#{document["info"]["x-pns-digest"]}")]
+      assert get_resp_header(conn, "etag") == [
+               ~s("#{document["info"]["x-eh-os-contract-digest"]}")
+             ]
     end
 
     test "an unknown contract is 404, not an empty document", %{conn: conn} do
-      conn = get(conn, "/pns/api/asyncapi/Not.A.Contract")
+      conn = get(conn, "/api/asyncapi/Not.A.Contract")
 
       assert conn.status == 404
     end
@@ -119,8 +123,8 @@ defmodule EhOsContract.Web.ApiTest do
       # That is a map of their business, not "just a schema".
       conn = build_conn() |> put_req_header("accept", "application/json")
 
-      assert get(conn, "/pns/api/asyncapi").status == 403
-      assert get(conn, "/pns/api/asyncapi/Anything").status == 403
+      assert get(conn, "/api/asyncapi").status == 403
+      assert get(conn, "/api/asyncapi/Anything").status == 403
     end
   end
 
@@ -128,8 +132,8 @@ defmodule EhOsContract.Web.ApiTest do
     test "the dashboard's HTML routes are untouched by the API mount" do
       conn =
         build_conn()
-        |> Access.put_actor("u-3", ["pns_admin"])
-        |> get("/pns/contract")
+        |> Access.put_actor("u-3", ["eh_os_contract_admin"])
+        |> get("/dashboard/contract")
 
       assert conn.status == 200
     end

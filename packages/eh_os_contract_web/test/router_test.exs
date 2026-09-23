@@ -19,18 +19,18 @@ defmodule EhOsContract.Web.RouterTest do
 
   test "the bare mount path redirects to the contract status screen, before any access check",
        %{conn: conn} do
-    conn = get(conn, "/pns")
-    assert redirected_to(conn) == "/pns/contract"
+    conn = get(conn, "/dashboard")
+    assert redirected_to(conn) == "/dashboard/contract"
   end
 
   test "the redirect carries the query string, not just the path", %{conn: conn} do
-    conn = get(conn, "/pns?since=2026-01-01")
-    assert redirected_to(conn) == "/pns/contract?since=2026-01-01"
+    conn = get(conn, "/dashboard?since=2026-01-01")
+    assert redirected_to(conn) == "/dashboard/contract?since=2026-01-01"
   end
 
   test "a caller the resolver does not know is redirected where the host said, before the LiveView ever mounts",
        %{conn: conn} do
-    conn = get(conn, "/pns/contract")
+    conn = get(conn, "/dashboard/contract")
     assert redirected_to(conn) == "/"
   end
 
@@ -38,27 +38,27 @@ defmodule EhOsContract.Web.RouterTest do
     conn =
       conn
       |> Access.put_actor("someone", ["unrelated_role"])
-      |> get("/pns/contract")
+      |> get("/dashboard/contract")
 
     assert redirected_to(conn) == "/"
   end
 
-  test "pns_admin gets a dead render with :all access", %{conn: conn} do
+  test "eh_os_contract_admin gets a dead render with :all access", %{conn: conn} do
     conn =
       conn
-      |> Access.put_actor("admin", ["pns_admin"])
-      |> get("/pns/contract")
+      |> Access.put_actor("admin", ["eh_os_contract_admin"])
+      |> get("/dashboard/contract")
 
     assert html_response(conn, 200) =~ "Access: all"
   end
 
   test "on_mount enforces the same decision across the live socket upgrade", %{conn: conn} do
-    conn = Access.put_actor(conn, "admin", ["pns_admin"])
-    {:ok, _view, html} = live(conn, "/pns/contract")
+    conn = Access.put_actor(conn, "admin", ["eh_os_contract_admin"])
+    {:ok, _view, html} = live(conn, "/dashboard/contract")
     assert html =~ "Access: all"
   end
 
   test "an unknown caller cannot open the live socket", %{conn: conn} do
-    assert {:error, {:redirect, %{to: "/"}}} = live(conn, "/pns/contract")
+    assert {:error, {:redirect, %{to: "/"}}} = live(conn, "/dashboard/contract")
   end
 end

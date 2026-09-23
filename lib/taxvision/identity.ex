@@ -82,7 +82,7 @@ defmodule Taxvision.Identity do
 
   @spec secret() :: binary()
   defp secret do
-    Application.get_env(:pns_prototype, __MODULE__)[:secret] ||
+    Application.get_env(:eh_os_prototype, __MODULE__)[:secret] ||
       raise "no secret configured for #{inspect(__MODULE__)}"
   end
 end

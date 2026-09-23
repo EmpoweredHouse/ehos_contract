@@ -155,13 +155,13 @@ defmodule EhOsContract.Contract do
       import EhOsContract.Contract,
         only: [event: 2, process: 2, trace: 2, external: 2, rule: 2, example: 2, command: 2]
 
-      Module.register_attribute(__MODULE__, :pns_events, accumulate: true)
-      Module.register_attribute(__MODULE__, :pns_processes, accumulate: true)
-      Module.register_attribute(__MODULE__, :pns_traces, accumulate: true)
-      Module.register_attribute(__MODULE__, :pns_externals, accumulate: true)
-      Module.register_attribute(__MODULE__, :pns_rules, accumulate: true)
-      Module.register_attribute(__MODULE__, :pns_examples, accumulate: true)
-      Module.register_attribute(__MODULE__, :pns_commands, accumulate: true)
+      Module.register_attribute(__MODULE__, :eh_os_contract_events, accumulate: true)
+      Module.register_attribute(__MODULE__, :eh_os_contract_processes, accumulate: true)
+      Module.register_attribute(__MODULE__, :eh_os_contract_traces, accumulate: true)
+      Module.register_attribute(__MODULE__, :eh_os_contract_externals, accumulate: true)
+      Module.register_attribute(__MODULE__, :eh_os_contract_rules, accumulate: true)
+      Module.register_attribute(__MODULE__, :eh_os_contract_examples, accumulate: true)
+      Module.register_attribute(__MODULE__, :eh_os_contract_commands, accumulate: true)
 
       @before_compile EhOsContract.Contract
     end
@@ -170,21 +170,21 @@ defmodule EhOsContract.Contract do
   @doc "An event: a fact that happened. Named in the past tense."
   defmacro event(name, opts) do
     quote bind_quoted: [name: name, opts: opts] do
-      @pns_events EhOsContract.Contract.build_event(name, opts)
+      @eh_os_contract_events EhOsContract.Contract.build_event(name, opts)
     end
   end
 
   @doc "A process: the dashboard's navigation unit and the contract's unit of division."
   defmacro process(name, opts) do
     quote bind_quoted: [name: name, opts: opts] do
-      @pns_processes EhOsContract.Contract.build_process(name, opts)
+      @eh_os_contract_processes EhOsContract.Contract.build_process(name, opts)
     end
   end
 
   @doc "An external dependency, named after the business fact rather than the vendor (ADR §11-12)."
   defmacro external(name, opts) do
     quote bind_quoted: [name: name, opts: opts] do
-      @pns_externals EhOsContract.Contract.build_external(name, opts)
+      @eh_os_contract_externals EhOsContract.Contract.build_external(name, opts)
     end
   end
 
@@ -197,7 +197,7 @@ defmodule EhOsContract.Contract do
   """
   defmacro rule(name, opts) do
     quote bind_quoted: [name: name, opts: opts] do
-      @pns_rules EhOsContract.Contract.build_rule(name, opts)
+      @eh_os_contract_rules EhOsContract.Contract.build_rule(name, opts)
     end
   end
 
@@ -207,7 +207,7 @@ defmodule EhOsContract.Contract do
   """
   defmacro example(description, opts) do
     quote bind_quoted: [description: description, opts: opts] do
-      @pns_examples EhOsContract.Contract.build_example(description, opts)
+      @eh_os_contract_examples EhOsContract.Contract.build_example(description, opts)
     end
   end
 
@@ -219,7 +219,7 @@ defmodule EhOsContract.Contract do
   """
   defmacro command(name, opts) do
     quote bind_quoted: [name: name, opts: opts] do
-      @pns_commands EhOsContract.Contract.build_command(name, opts)
+      @eh_os_contract_commands EhOsContract.Contract.build_command(name, opts)
     end
   end
 
@@ -231,7 +231,7 @@ defmodule EhOsContract.Contract do
     steps = trace_steps(block)
 
     quote bind_quoted: [name: name, steps: Macro.escape(steps)] do
-      @pns_traces Map.put(steps, :name, name)
+      @eh_os_contract_traces Map.put(steps, :name, name)
     end
   end
 
@@ -511,13 +511,13 @@ defmodule EhOsContract.Contract do
 
   @doc false
   defmacro __before_compile__(env) do
-    events = attr(env, :pns_events)
-    processes = attr(env, :pns_processes)
-    traces = attr(env, :pns_traces)
-    externals = attr(env, :pns_externals)
-    rules = attr(env, :pns_rules)
-    examples = attr(env, :pns_examples)
-    commands = attr(env, :pns_commands)
+    events = attr(env, :eh_os_contract_events)
+    processes = attr(env, :eh_os_contract_processes)
+    traces = attr(env, :eh_os_contract_traces)
+    externals = attr(env, :eh_os_contract_externals)
+    rules = attr(env, :eh_os_contract_rules)
+    examples = attr(env, :eh_os_contract_examples)
+    commands = attr(env, :eh_os_contract_commands)
 
     validate!(env, events, processes, traces, externals, rules, examples, commands)
 

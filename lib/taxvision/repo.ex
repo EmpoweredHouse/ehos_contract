@@ -19,12 +19,15 @@ defmodule Taxvision.Repo do
   """
 
   use Boundary, deps: [], exports: []
-  use Ecto.Repo, otp_app: :pns_prototype, adapter: Ecto.Adapters.Postgres
+  use Ecto.Repo, otp_app: :eh_os_prototype, adapter: Ecto.Adapters.Postgres
 
   @impl true
   def prepare_query(_operation, query, opts) do
-    if Process.get(:pns_trace_tables) do
-      Process.put(:pns_touched_tables, tables(query) ++ (Process.get(:pns_touched_tables) || []))
+    if Process.get(:eh_os_contract_trace_tables) do
+      Process.put(
+        :eh_os_contract_touched_tables,
+        tables(query) ++ (Process.get(:eh_os_contract_touched_tables) || [])
+      )
     end
 
     {query, opts}

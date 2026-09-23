@@ -46,7 +46,7 @@ defmodule EhOsContract.Deployment do
 
   @primary_key {:id, :binary_id, autogenerate: true}
 
-  schema "pns_deployments" do
+  schema "eh_os_contract_deployments" do
     field(:contract, :string)
     field(:contract_version, :string)
     field(:wiring_version, :string)

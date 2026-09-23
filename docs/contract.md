@@ -69,7 +69,7 @@ lines below it. Group declarations however reads best.
 Generated from `EhOsContract.Contract.schema/0` by `mix eh_os_contract.docs`. Do not edit by hand —
 `mix check` fails if this block is stale.
 
-<!-- pns:reference:start -->
+<!-- eh_os_contract:reference:start -->
 ### `event`
 
 | Key | Required | Omitted means |
@@ -150,7 +150,7 @@ Generated from `EhOsContract.Contract.schema/0` by `mix eh_os_contract.docs`. Do
 | `:integer` |
 | `:timestamp` |
 | `:enum` |
-<!-- pns:reference:end -->
+<!-- eh_os_contract:reference:end -->
 
 ## What each key means, and which mechanism needs it
 
@@ -177,7 +177,7 @@ visible rather than implied.
 | --- | --- | --- |
 | `label` | The business name of the action, in the client's language. | the client-facing report |
 | `process` | Which process this command enters. A command that started two processes would be two commands. | compile gate |
-| `principals` | Which kinds of principal take this way in, from the closed set `[:human, :system]`. A description, not an access decision: the engine enforces nothing with it. Whether a given caller may issue the command is the emitting application's to decide, and where that is a domain rule it stays a `rule` with a decision function. | `EhOsContract.AsyncAPI` (`x-pns-commands`); a person |
+| `principals` | Which kinds of principal take this way in, from the closed set `[:human, :system]`. A description, not an access decision: the engine enforces nothing with it. Whether a given caller may issue the command is the emitting application's to decide, and where that is a domain rule it stays a `rule` with a decision function. | `EhOsContract.AsyncAPI` (`x-eh-os-contract-commands`); a person |
 | `payload` | Field name to type, from the same closed set an event's payload uses. An `example`'s command params must supply exactly these keys. | compile gate |
 | `source` | Where this command came from — a pointer into the workshop material a person can follow, in the same sense `rule` means it. Nothing reads it mechanically, and that is the point: it is provenance for whoever asks "who said this". An absent one is informative rather than untidy, because it says nobody has yet found this command in what the client actually said. | a person; and its digest, so correcting a citation is recorded as a change to the agreement |
 

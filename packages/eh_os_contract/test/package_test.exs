@@ -22,7 +22,7 @@ defmodule EhOsContract.PackageTest do
   test "the metadata Hex requires is present", %{config: config} do
     package = config[:package]
 
-    assert package[:name] == "pns"
+    assert package[:name] == "eh_os_contract"
     assert package[:licenses] == ["Apache-2.0"]
     assert is_binary(config[:description]) and config[:description] != ""
     assert package[:links]["GitHub"]

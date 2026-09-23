@@ -1,6 +1,6 @@
-defmodule PnsPrototype.Repo.Migrations.UpgradePnsToV2 do
+defmodule EhOsContract.TestRepo.Migrations.UpgradeEhOsContractToV2 do
   @moduledoc """
-  The engine's v02, as a separate migration rather than an edit to `add_pns`.
+  The engine's v02, as a separate migration rather than an edit to `add_eh_os_contract`.
 
   This is the shape `EhOsContract.Migrations`' own moduledoc prescribes for an upgrade,
   and this file is the first time anybody has followed it — the versioning was

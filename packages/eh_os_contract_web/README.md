@@ -13,7 +13,7 @@ scope "/" do
   pipe_through :browser
   import EhOsContract.Web.Router
 
-  eh_os_contract_dashboard "/pns", resolver: MyApp.EhOsContractResolver
+  eh_os_contract_dashboard "/dashboard", resolver: MyApp.EhOsContractResolver
 end
 ```
 

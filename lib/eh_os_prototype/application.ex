@@ -1,20 +1,20 @@
-defmodule PnsPrototype.Application do
+defmodule EhOsPrototype.Application do
   @moduledoc false
 
   use Application
-  use Boundary, top_level?: true, deps: [EhOsContract, Taxvision, PnsPrototypeWeb]
+  use Boundary, top_level?: true, deps: [EhOsContract, Taxvision, EhOsPrototypeWeb]
 
   @impl true
   def start(_type, _args) do
     children = [
       Taxvision.Repo,
-      {Oban, Application.fetch_env!(:pns_prototype, Oban)},
-      {Phoenix.PubSub, name: PnsPrototypeWeb.PubSub},
-      PnsPrototypeWeb.Endpoint
+      {Oban, Application.fetch_env!(:eh_os_prototype, Oban)},
+      {Phoenix.PubSub, name: EhOsPrototypeWeb.PubSub},
+      EhOsPrototypeWeb.Endpoint
     ]
 
     result =
-      Supervisor.start_link(children, strategy: :one_for_one, name: PnsPrototype.Supervisor)
+      Supervisor.start_link(children, strategy: :one_for_one, name: EhOsPrototype.Supervisor)
 
     # The registry scan at boot. The graph comes from the binary that actually
     # runs — not from a file beside it.

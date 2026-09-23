@@ -24,7 +24,9 @@ defmodule EhOsContract.Web.Authentication do
 
       access ->
         {:cont,
-         socket |> assign(:pns_web_access, access) |> assign(:pns_web_base_path, base_path)}
+         socket
+         |> assign(:eh_os_contract_web_access, access)
+         |> assign(:eh_os_contract_web_base_path, base_path)}
     end
   end
 end

@@ -59,7 +59,7 @@ defmodule EhOsContract.Conformance.WireTest do
     test "the envelope names the shape" do
       data = EhOsContract.Conformance.as_data(Contract)
 
-      assert data["schema"] == "pns.conformance.v1"
+      assert data["schema"] == "eh_os_contract.conformance.v1"
       assert {:ok, _, _} = DateTime.from_iso8601(data["generated_at"])
       # The engine version lives in the report and is deliberately not repeated in
       # the envelope: two copies of one fact are two things to drift apart.

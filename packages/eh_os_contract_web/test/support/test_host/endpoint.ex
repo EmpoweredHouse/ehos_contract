@@ -1,15 +1,15 @@
 defmodule EhOsContract.Web.TestHost.Endpoint do
   @moduledoc """
   The whole host this package proves itself against — never the real
-  `pns_prototype`, which has no Phoenix yet.
+  `eh_os_prototype`, which has no Phoenix yet.
   """
 
   use Phoenix.Endpoint, otp_app: :eh_os_contract_web
 
   @session_options [
     store: :cookie,
-    key: "_pns_web_test_host_key",
-    signing_salt: "pns-web-test-salt",
+    key: "_eh_os_contract_web_test_host_key",
+    signing_salt: "eh-os-contract-web-test-salt",
     same_site: "Lax"
   ]
 

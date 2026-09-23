@@ -152,12 +152,17 @@ sterowanej zdarzeniami (emisja, handlery, dispatch) i sprawdzanie zgodności. Ko
 obie — i przy wielu aplikacjach OTP wymieniających zdarzenia przez broker (JetStream, w planie) staje się
 umową **między aplikacjami**.
 
-**Czego świadomie nie przemianowano**, bo to już nie nazwa w kodzie, tylko dane albo format:
-tabele `pns_*` (zmiana wymagałaby migracji v03), rozszerzenia `x-pns-*` w AsyncAPI (zmieniłyby digest
-dokumentu), schemat `pns.conformance.v1`, zmienne CSS `--pns-*`, bazy testowe `pns_core_test` /
-`pns_web_test` i użytkownik `pns` w `docker-compose.yml`. Każda z tych rzeczy to osobna decyzja.
-Nie ruszony też host (`:pns_prototype`, `PnsPrototypeWeb`) — idzie razem ze zmianą nazwy repozytorium,
-odłożoną na później. `docs/adr/` i historia w tym pliku zostają przy starej nazwie, bo są zapisem.
+**Drugim commitem przemianowane też to, co pierwszy zostawił** — bez zgodności wstecz, bo nikt tego
+jeszcze nie używa: tabele `eh_os_contract_*` (wprost w `V01`/`V02`, bez migracji przejściowej; baza
+postawiona od zera, użytkownik `eh_os`), rozszerzenia `x-eh-os-contract-*` w AsyncAPI, schemat
+`eh_os_contract.conformance.v1`, zmienne CSS `--eh-os-contract-*`, bazy testowe, host
+(`:eh_os_prototype`, `EhOsPrototypeWeb` — tak, jak już nazywa się repozytorium na GitHubie), ścieżki
+montowania w hostach testowych. Dwa indeksy dostały jawne nazwy, bo wygenerowane przekraczały 63 znaki,
+a Postgres obcina dłuższe identyfikatory bez błędu.
+
+Stara nazwa zostaje wyłącznie w `docs/adr/` i w historii tego pliku, bo są zapisem — `CLAUDE.md` mówi
+to w drugim akapicie. Lokalny katalog repozytorium (`pns_prototype`) i nazwa repozytorium na GitHubie
+czekają na osobną decyzję.
 
 `mix check`: 46 + 391 + 31 testów, 0 padnięć.
 

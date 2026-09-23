@@ -14,11 +14,11 @@ config :eh_os_contract, applications: [:eh_os_contract_web], repo: EhOsContract.
 config :eh_os_contract_web, ecto_repos: [EhOsContract.Web.TestHost.Repo]
 
 config :eh_os_contract_web, EhOsContract.Web.TestHost.Repo,
-  username: "pns",
-  password: "pns",
+  username: "eh_os",
+  password: "eh_os",
   hostname: "localhost",
   port: 5433,
-  database: "pns_web_test",
+  database: "eh_os_contract_web_test",
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: 10
 
@@ -32,7 +32,7 @@ config :eh_os_contract_web, EhOsContract.Web.TestHost.Endpoint,
   adapter: Bandit.PhoenixAdapter,
   url: [host: "localhost"],
   secret_key_base: String.duplicate("a", 64),
-  live_view: [signing_salt: "pns-web-test-salt"],
+  live_view: [signing_salt: "eh-os-contract-web-test-salt"],
   pubsub_server: EhOsContract.Web.TestHost.PubSub,
   server: false,
   http: [port: 4102],
@@ -59,7 +59,7 @@ config :esbuild,
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
   ],
-  pns_web_css: [
+  eh_os_contract_web_css: [
     args: ~w(css/app.css --bundle --minify --outdir=../priv/static/assets),
     cd: Path.expand("../assets", __DIR__)
   ]

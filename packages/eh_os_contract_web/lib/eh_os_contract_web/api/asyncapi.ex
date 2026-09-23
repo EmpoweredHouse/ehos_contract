@@ -5,7 +5,7 @@ defmodule EhOsContract.Web.Api.AsyncAPI do
   `GET <mount>/asyncapi` — every contract, with its version and document digest.
   `GET <mount>/asyncapi/My.Contract` — that contract's document.
 
-  The digest is served twice, in `info["x-pns-digest"]` and as the `ETag`. Not
+  The digest is served twice, in `info["x-eh-os-contract-digest"]` and as the `ETag`. Not
   redundant: a consumer comparing what an instance claims against what its build
   recorded can do it with a `HEAD` and no body at all.
 
@@ -45,7 +45,7 @@ defmodule EhOsContract.Web.Api.AsyncAPI do
         document = EhOsContract.AsyncAPI.document(contract)
 
         conn
-        |> put_resp_header("etag", ~s("#{document["info"]["x-pns-digest"]}"))
+        |> put_resp_header("etag", ~s("#{document["info"]["x-eh-os-contract-digest"]}"))
         |> json(200, document)
     end
   end

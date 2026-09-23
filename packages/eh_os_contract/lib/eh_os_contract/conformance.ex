@@ -118,7 +118,7 @@ defmodule EhOsContract.Conformance do
       # A name for the shape, so a consumer comparing two responses can tell a
       # changed report from a changed projection. The engine version is already
       # inside the report itself and is deliberately not repeated here.
-      "schema" => "pns.conformance.v1",
+      "schema" => "eh_os_contract.conformance.v1",
       "generated_at" => DateTime.utc_now() |> DateTime.to_iso8601(),
       "report" => contract |> report(opts) |> EhOsContract.Conformance.Wire.encode()
     }

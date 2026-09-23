@@ -21,8 +21,8 @@ defmodule Mix.Tasks.EhOsContract.Docs do
   use Mix.Task
 
   @path "docs/contract.md"
-  @start "<!-- pns:reference:start -->"
-  @stop "<!-- pns:reference:end -->"
+  @start "<!-- eh_os_contract:reference:start -->"
+  @stop "<!-- eh_os_contract:reference:end -->"
 
   @impl Mix.Task
   def run(args) do

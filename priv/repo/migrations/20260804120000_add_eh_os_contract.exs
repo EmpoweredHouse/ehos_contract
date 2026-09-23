@@ -1,4 +1,4 @@
-defmodule Taxvision.Repo.Migrations.AddPns do
+defmodule Taxvision.Repo.Migrations.AddEhOsContract do
   use Ecto.Migration
 
   @moduledoc """

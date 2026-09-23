@@ -5,6 +5,11 @@ pakiet; `lib/taxvision/` to **aplikacja klienta, która jest tu tymczasowo** —
 na którym sprawdzamy, czy założenia silnika się trzymają. Granica jest wymuszona przez `boundary` od
 pierwszego commita, żeby ta tymczasowość była faktem, a nie obietnicą.
 
+**Do 23 września pakiet nazywał się `pns` (moduły `PNS.*`, host `:pns_prototype`, tabele `pns_*`).**
+Wszystko w kodzie nosi już nową nazwę — `eh_os_contract`, `EhOsContract`, `:eh_os_prototype`. Stara
+zostaje tylko w `docs/adr/` i w historii `PLAN.md`, bo to zapis, nie opis stanu: `PNS.X` tam to dzisiejsze
+`EhOsContract.X`.
+
 **To repozytorium jest przejściowe i nie budujemy w nim aplikacji dla nikogo.** Produktem są fundamenty
 biblioteki i wnioski; TaxVision i Rehmed są **danymi testowymi** — materiałem, na którym sprawdzamy, czy
 DSL się trzyma. Dlatego wnioski z pisania kontraktu idą do `PLAN.md` jako praca nad biblioteką, a nie do

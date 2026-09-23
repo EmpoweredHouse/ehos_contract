@@ -1,4 +1,4 @@
-defmodule PnsPrototypeWeb.ErrorHTML do
+defmodule EhOsPrototypeWeb.ErrorHTML do
   @moduledoc """
   Without this, an unhandled error masks itself as `ArgumentError: no
   html template defined` instead of the real exception — the same trap

@@ -1,4 +1,4 @@
-defmodule PnsPrototypeWeb do
+defmodule EhOsPrototypeWeb do
   @moduledoc """
   The host's own web layer — plumbing, not content. Everything the
   dashboard renders lives in `packages/eh_os_contract_web`; this tree is only what a

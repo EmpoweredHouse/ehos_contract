@@ -10,7 +10,7 @@ Mapping — jak prowadzić warsztat, jaki zespół, jak nagrywać, jakie są faz
 **zwalidowany** (jedyny tak oznaczony w tamtym repo) skill `process-extraction`, który zamienia
 surowe transkrypty Dnia 1 w mapę procesu biznesowego.
 
-**`pns_prototype` powstało później**, jako test jednej konkretnej idei: czy da się zbudować silnik
+**`eh_os_prototype` powstało później**, jako test jednej konkretnej idei: czy da się zbudować silnik
 weryfikujący zgodność wdrożonego kodu z zadeklarowanym procesem. To repo jest dziś tymczasowe —
 `README.md` mówi to wprost. Jeśli idea się sprawdzi, `process-native-software` prawdopodobnie
 kiedyś trafi **tutaj**, jako podkatalog metodologii, którą ten silnik obsługuje — nie odwrotnie.
@@ -22,8 +22,8 @@ pytania** — to nie jest nasz playbook, ma własne zasady zarządzania (`AGENTS
 | Kiedy | Skill | Gdzie mieszka | Co robi | Co NIE robi |
 | --- | --- | --- | --- | --- |
 | Po Dniu 1 warsztatu | `process-extraction` | `process-native-software` (zewnętrzny, zwalidowany) | Surowy transkrypt → mapa procesu biznesowego (`output/01-processes.md`): aktorzy, kroki, narzędzia, wyjątki, punkty bólu | Nie wie nic o DSL-u EhOsContract; nie generuje kontraktu |
-| Po Dniu 2, albo dużo później — kiedykolwiek jest materiał i czas | `contract-distillation` | `pns_prototype` (ten skill) | To samo źródło (najlepiej już przetworzone przez `process-extraction`) → destylacja pod kategorie, których wymaga kontrakt: kandydaci na zdarzenia, `identity`, `instance`, `terminal`, `stages`, kandydaci na `trace`, `cadence`, `retain`, `external`, przykłady, źródła/`unverified` | Nie generuje kodu Elixira; nie jest mapą procesu biznesowego (to już zrobił `process-extraction`) |
-| Podczas pisania kodu aplikacji (backend, API, frontend) | `module-boundary-check` | `pns_prototype` (ten skill) | Dla konkretnej akcji: (1) czy w ogóle iść przez event/handler EhOsContract, (2) osobno, czy ten event potrzebuje `trace`/`instance`/`process` | Nie decyduje za Ciebie w niejasnych przypadkach — każe zapytać |
+| Po Dniu 2, albo dużo później — kiedykolwiek jest materiał i czas | `contract-distillation` | `eh_os_prototype` (ten skill) | To samo źródło (najlepiej już przetworzone przez `process-extraction`) → destylacja pod kategorie, których wymaga kontrakt: kandydaci na zdarzenia, `identity`, `instance`, `terminal`, `stages`, kandydaci na `trace`, `cadence`, `retain`, `external`, przykłady, źródła/`unverified` | Nie generuje kodu Elixira; nie jest mapą procesu biznesowego (to już zrobił `process-extraction`) |
+| Podczas pisania kodu aplikacji (backend, API, frontend) | `module-boundary-check` | `eh_os_prototype` (ten skill) | Dla konkretnej akcji: (1) czy w ogóle iść przez event/handler EhOsContract, (2) osobno, czy ten event potrzebuje `trace`/`instance`/`process` | Nie decyduje za Ciebie w niejasnych przypadkach — każe zapytać |
 
 **`docs/warsztat-rehmed.md` to coś czwartego, nie z tej tabeli** — to nie skill uruchamiany na
 materiale, tylko przygotowane pytania **na żywo, w trakcie sesji z klientem**, budowane na
@@ -46,7 +46,7 @@ startu) — a surowy transkrypt tylko wtedy, gdy tamtego jeszcze nie ma.
 
 ## Co jest wciąż tylko szkicem
 
-Wszystkie trzy skille natywne dla `pns_prototype` (`contract-distillation`, `module-boundary-check`)
+Wszystkie trzy skille natywne dla `eh_os_prototype` (`contract-distillation`, `module-boundary-check`)
 są oznaczone `DRAFT` w swoich plikach `SKILL.md` — nieprzetestowane na prawdziwym zaangażowaniu.
 Warsztat z Rehmed (10-11 sierpnia) jest pierwszą okazją, żeby to sprawdzić na żywym materiale.
 Aktualizować tę tabelę i pliki skilli po każdym realnym użyciu — zgodnie z tym, jak

@@ -15,11 +15,11 @@ config :eh_os_contract,
   repo: EhOsContract.TestRepo
 
 config :eh_os_contract, EhOsContract.TestRepo,
-  username: "pns",
-  password: "pns",
+  username: "eh_os",
+  password: "eh_os",
   hostname: "localhost",
   port: 5433,
-  database: "pns_core_test",
+  database: "eh_os_contract_test",
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: 10
 

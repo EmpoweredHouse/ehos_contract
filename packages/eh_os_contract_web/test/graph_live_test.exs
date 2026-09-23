@@ -20,8 +20,8 @@ defmodule EhOsContract.Web.Live.GraphTest do
   test "mounting through the real router draws both diagrams for a real contract" do
     conn =
       build_conn()
-      |> Access.put_actor("admin", ["pns_admin"])
-      |> get("/pns/graph")
+      |> Access.put_actor("admin", ["eh_os_contract_admin"])
+      |> get("/dashboard/graph")
 
     html = html_response(conn, 200)
 
@@ -36,8 +36,8 @@ defmodule EhOsContract.Web.Live.GraphTest do
   test "no process declared anywhere says so, and draws only the overlay diagram" do
     html =
       render_component(&Graph.render/1, %{
-        pns_web_access: :all,
-        pns_web_base_path: "/pns",
+        eh_os_contract_web_access: :all,
+        eh_os_contract_web_base_path: "/dashboard",
         processes: [],
         selected: nil,
         declared_mermaid: nil,
@@ -52,8 +52,8 @@ defmodule EhOsContract.Web.Live.GraphTest do
   test "the selected process's option is marked, others are not" do
     html =
       render_component(&Graph.render/1, %{
-        pns_web_access: :read_only,
-        pns_web_base_path: "/pns",
+        eh_os_contract_web_access: :read_only,
+        eh_os_contract_web_base_path: "/dashboard",
         processes: [
           %{contract: nil, name: :handling, label: "Case handling"},
           %{contract: nil, name: :billing, label: "Billing"}

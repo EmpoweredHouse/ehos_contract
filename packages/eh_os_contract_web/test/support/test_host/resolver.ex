@@ -19,8 +19,8 @@ defmodule EhOsContract.Web.TestHost.Resolver do
   @impl true
   def resolve_access(roles, _base_path) when is_list(roles) do
     cond do
-      "pns_admin" in roles -> :all
-      "pns_read" in roles -> :read_only
+      "eh_os_contract_admin" in roles -> :all
+      "eh_os_contract_read" in roles -> :read_only
       true -> {:forbidden, "/"}
     end
   end

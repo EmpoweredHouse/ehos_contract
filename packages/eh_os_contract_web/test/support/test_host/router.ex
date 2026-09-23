@@ -26,13 +26,13 @@ defmodule EhOsContract.Web.TestHost.Router do
     pipe_through :browser
     import EhOsContract.Web.Router
 
-    eh_os_contract_dashboard("/pns", resolver: EhOsContract.Web.TestHost.Resolver)
+    eh_os_contract_dashboard("/dashboard", resolver: EhOsContract.Web.TestHost.Resolver)
   end
 
   scope "/" do
     pipe_through :eh_os_contract_api
     import EhOsContract.Web.Router
 
-    eh_os_contract_api("/pns/api", resolver: EhOsContract.Web.TestHost.Resolver)
+    eh_os_contract_api("/api", resolver: EhOsContract.Web.TestHost.Resolver)
   end
 end
