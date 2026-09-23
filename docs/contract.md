@@ -177,7 +177,7 @@ visible rather than implied.
 | --- | --- | --- |
 | `label` | The business name of the action, in the client's language. | the client-facing report |
 | `process` | Which process this command enters. A command that started two processes would be two commands. | compile gate |
-| `principals` | Which kinds of principal may issue it, from the closed set `[:human, :system]`. This derives the capability, and it answers level 2 only — *may this kind of caller issue this at all*. Whether *this* caller may issue it *for this subject* is level 3 and stays a `rule` with a decision function. | `PNS.Command.permits?/3` |
+| `principals` | Which kinds of principal take this way in, from the closed set `[:human, :system]`. A description, not an access decision: the engine enforces nothing with it. Whether a given caller may issue the command is the emitting application's to decide, and where that is a domain rule it stays a `rule` with a decision function. | `PNS.AsyncAPI` (`x-pns-commands`); a person |
 | `payload` | Field name to type, from the same closed set an event's payload uses. An `example`'s command params must supply exactly these keys. | compile gate |
 | `source` | Where this command came from — a pointer into the workshop material a person can follow, in the same sense `rule` means it. Nothing reads it mechanically, and that is the point: it is provenance for whoever asks "who said this". An absent one is informative rather than untidy, because it says nobody has yet found this command in what the client actually said. | a person; and its digest, so correcting a citation is recorded as a change to the agreement |
 

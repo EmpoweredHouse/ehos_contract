@@ -23,7 +23,6 @@ zostaje w `test/support/`, bo jest **zmyślona** — i sama to o sobie mówi w p
 | Plan pracy, etapy, kryteria odbioru, **stan** | [`PLAN.md`](PLAN.md) |
 | Czym jest to repozytorium, brama, struktura | [`README.md`](README.md) |
 | **Jak napisać kontrakt** — klucze, wymagane/opcjonalne, co się nie skompiluje | [`docs/contract.md`](docs/contract.md) |
-| **Jak zarządzać użytkownikami, rolami i dostępem** — przepisy działające na żywym sidecarze | [`docs/identity-admin-guide.md`](docs/identity-admin-guide.md) |
 | **Założenia początkowe, 18 decyzji, `§N` z komentarzy w kodzie** | [`docs/adr/architecture.md`](docs/adr/architecture.md) |
 | Kształty kodu, schematy, pułapki, biblioteki — `notes §N` z komentarzy | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |
 | Co każda decyzja pobiła, odrzucone alternatywy | [`docs/adr/design-rationale.md`](docs/adr/design-rationale.md) |
@@ -158,6 +157,9 @@ Kod idzie jako PR i weryfikuje go człowiek. Z tego wynikają dwie rzeczy przy g
 ## Czego nie budujemy
 
 `mix pns.new` (dopiero przy drugim kliencie). Prawdziwych parserów i integracji — koszt domenowy klienta,
-zero sygnału dla biblioteki. Providera OIDC — szew działa, podmiana to jedna linia konfiguracji. Grafu w
+zero sygnału dla biblioteki. **Tożsamości** — logowania, kont, ról, providera OIDC: silnik zna aktora
+wyłącznie jako nieprzezroczysty `subject`, uwierzytelnia aplikacja klienta, dostęp do dashboardu
+rozstrzyga host przez `PNS.Web.Resolver` (od 23 września; wcześniej `PNS.Auth` z logowaniem i kontami, z
+czasów, gdy silnik miał być właścicielem EHOS). Grafu w
 interfejsie — sprawdzone, przy tej skali dekoracja. Alertów i widoków operacyjnych. **Czegokolwiek, co
 odpowiada na pytanie o konkretną firmę.**

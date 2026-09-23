@@ -108,7 +108,7 @@ defmodule PNS.Web.MixProject do
       # when the neighbour goes. The same rule this repository states twice
       # elsewhere.
       {:jason, "~> 1.4"},
-      # The engine, for PNS.Auth. A path dependency, same shape as the root
+      # The engine, whose report and graph the screens render. A path dependency, same shape as the root
       # host's own dependency on it.
       {:pns, path: "../pns_core"},
       {:phoenix, "~> 1.8"},

@@ -12,9 +12,7 @@ config :pns,
   # the one place where a library naming itself is correct rather than the silent
   # failure `PNS.Registry.load!/1` warns about.
   applications: [:pns],
-  repo: PNS.TestRepo,
-  auth_verifier: PNS.Auth.LocalToken,
-  identity_admin: PNS.Auth.LocalIdentityAdmin
+  repo: PNS.TestRepo
 
 config :pns, PNS.TestRepo,
   username: "pns",
@@ -31,7 +29,5 @@ config :pns, Oban,
   repo: PNS.TestRepo,
   queues: [events: 10],
   testing: :manual
-
-config :pns, PNS.Auth.LocalToken, secret: "test-only-secret-not-for-production"
 
 config :logger, level: :warning

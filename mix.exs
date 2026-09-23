@@ -46,11 +46,6 @@ defmodule PnsPrototype.MixProject do
       # alone, so a client tree reaching into the engine's internals fails to
       # compile rather than merely warning.
       {:pns, path: "packages/pns_core"},
-      # The identity seam's real verifier (docs/adr/identity-seam.md): discovery,
-      # JWKS caching and rotation, signature validation against a bought OIDC
-      # provider. Not wired in as the active PNS.Auth.Verifier yet — see
-      # PNS.Auth.OidcVerifier.
-      {:oidcc, "~> 3.0"},
       # The dashboard foundation (PLAN.md, dopisek 23 sierpnia). `runtime: false`
       # because :pns_web has no `mod:` of its own to start — PnsPrototypeWeb's
       # own supervisor references its modules directly (PLAN.md, dopisek 23

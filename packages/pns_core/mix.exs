@@ -119,9 +119,6 @@ defmodule PNS.MixProject do
       # neighbour goes.
       {:telemetry, "~> 1.3"},
       {:boundary, "~> 0.10", runtime: false},
-      # The identity seam's real verifier. Not the active one — see
-      # `PNS.Auth.OidcVerifier`.
-      {:oidcc, "~> 3.0"},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false}
     ]
   end

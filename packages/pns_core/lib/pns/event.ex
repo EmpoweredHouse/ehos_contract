@@ -30,6 +30,22 @@ defmodule PNS.Event do
     field(:actor, :string)
     field(:occurred_at, :utc_datetime_usec)
   end
+
+  @doc """
+  The explicit stand-in for "no human actor" — a scheduled job, a backfill, an
+  import — used wherever `PNS.emit`/`emit_all` is called without a `ctx.actor`.
+
+  A nil actor conflates two different facts: "we asked and there genuinely is no
+  person" and "nobody supplied one." The second is a caller that forgot, and the
+  first should read as a positive statement, not an absence — `actor` never stores
+  `nil` for exactly this reason.
+
+  Who the actor is otherwise is the host's business. The engine receives an opaque
+  subject string in `ctx.actor` and verifies nothing about it: authentication, roles
+  and tenants belong to the application that emits.
+  """
+  @spec system_actor() :: String.t()
+  def system_actor, do: "system"
 end
 
 defmodule PNS.EventHandling do

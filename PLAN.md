@@ -140,6 +140,45 @@ Pełna reguła i jej zakres — `CLAUDE.md`.
 
 ---
 
+## Dopisek 23 września — warstwa tożsamości wycięta z silnika i z dashboardu
+
+`PNS.Auth`, ekran kont, prowizoryczny login i domyślny resolver były z założenia, które już nie obowiązuje:
+że ten projekt ma być właścicielem całego EHOS-a, a więc także dashboardu z logowaniem i zarządzaniem
+tożsamościami. Produktem jest silnik zdarzeń i zgodności — i on z tego wszystkiego potrzebował jednej
+rzeczy: stringa `"system"` na aktora, gdy wołający żadnego nie podał.
+
+**Co wyleciało.**
+
+- `pns_core`: cały `PNS.Auth` (`Actor`, `Verifier`, `LocalToken`, `OidcVerifier`, `IdentityAdmin`,
+  `LocalIdentityAdmin`, `entitled?/2`), klucze konfiguracji `:auth_verifier` i `:identity_admin` — które
+  przez `compile_env!` musiał ustawić **każdy** konsument `:pns` — zależność `oidcc` (z `jose` i
+  `telemetry_registry`), oraz `PNS.Command` razem z `permits?/3`. `system_actor/0` przeszedł do
+  `PNS.Event.system_actor/0`, obok kolumny, której dotyczy.
+- `pns_web`: `LocalLogin`, trasy `/login` i `/logout`, `Live.Accounts`, `Plug.Authenticate`,
+  `Resolvers.Default`. `:resolver` jest teraz **wymagany** w `pns_dashboard/2` i `pns_api/2`, bez domyślnego —
+  domyślny „wpuść wszystkich” byłby pakietem decydującym za hosta, a ekran z każdym zdarzeniem w słowach
+  klienta to mapa jego biznesu.
+- Repo: `docker-compose.identity.yml`, `identity-poc-traefik-dynamic.yml`, `priv/poc/identity_smoke_test.exs`,
+  `docs/identity-admin-guide.md`. Są w historii. Razem z nimi sprawdzenie `check_no_vendor_in_config` w
+  `mix pns.check` i jego odpowiednik w `identity_seam_test.exs` — pilnowały, że w konfiguracji silnika nie
+  pojawi się nazwa dostawcy tożsamości, a silnik nie ma już konfiguracji tożsamości, której mogłyby pilnować.
+
+**Co zostało i gdzie.** Deklaracja `command` z `principals:` zostaje w DSL jako opis — kto wchodzi do
+procesu którymi drzwiami, materiał z warsztatu, eksportowany w `x-pns-commands` AsyncAPI. Silnik nie
+podejmuje już z niej decyzji o dostępie. Weryfikacja tokenu przeszła do `Taxvision.Identity` — jedynej
+aplikacji w repo, która ma brzeg żądania — i `identity_seam_test.exs` dalej sprawdza trzy poziomy IAM,
+teraz jako własność aplikacji klienta, nie silnika. Host w repo (`PnsPrototypeWeb.Resolver`) wpuszcza
+wszystkich jako `:read_only`, jawnie.
+
+**Poprawka założenia** poszła do `docs/adr/identity-seam.md` z datą: „one plug in the engine (`oidcc`) and
+a `behaviour` for the user-management calls” było prawdziwe tylko przy tamtym zakresie.
+
+**Do zważenia później, nie teraz:** `:all` i `:read_only` w `PNS.Web.Resolver` rozróżniały się wyłącznie na
+ekranie kont — jedynym miejscu, gdzie dało się coś *zrobić*. Oba pozostałe ekrany i API traktują je
+identycznie. Poziom `:all` jest dziś bez treści; usunięcie go zmienia behaviour, więc to osobny krok.
+
+`mix check`: 46 + 391 + 31 testów, 0 padnięć.
+
 ## Dopisek 22 września (3) — komendy z warsztatu: osiem, nie dwadzieścia dwie
 
 Dług „22 wejścia bez komendy" spłacony w tej części, w której da się go spłacić z materiału.

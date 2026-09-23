@@ -96,14 +96,6 @@ defmodule Taxvision.IdentitySeamTest do
       domain = callers -- [Taxvision.Identity, Taxvision.DataCase]
       assert domain == [], "domain code calls token signing: #{inspect(domain)}"
     end
-
-    test "the engine's configuration contains no vendor name" do
-      config = :pns_prototype |> Application.get_all_env() |> inspect() |> String.downcase()
-
-      for vendor <- ~w(zitadel keycloak workos auth0 okta authentik fusionauth) do
-        refute config =~ vendor, "vendor name #{vendor} in the engine's configuration"
-      end
-    end
   end
 
   defp columns(table) do

@@ -122,7 +122,7 @@ defmodule PNS.ProcessShapesTest do
 
     test "the system actor is explicit, never nil" do
       # Fixed 21 August 2026: the sensible version of "every event has an actor" is
-      # not "required" but "never silent" — `PNS.Auth.system_actor/0`, defaulted in
+      # not "required" but "never silent" — `PNS.Event.system_actor/0`, defaulted in
       # `PNS.Emitter.default_ctx/1` before an event ever reaches the log. An actor
       # of `nil` used to conflate "an import" with "we do not know who"; now the
       # first reads as this, and the second cannot occur without a caller

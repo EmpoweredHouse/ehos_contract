@@ -547,6 +547,6 @@ defmodule PNS.Emitter do
   defp default_ctx(ctx) do
     ctx
     |> Map.put_new_lazy(:correlation_id, &Ecto.UUID.generate/0)
-    |> Map.put_new(:actor, PNS.Auth.system_actor())
+    |> Map.put_new(:actor, PNS.Event.system_actor())
   end
 end

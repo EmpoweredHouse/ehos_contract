@@ -36,9 +36,6 @@ defmodule PNS.DataCase do
     :ok
   end
 
-  @doc "A token for tests. A real provider does not hand out its signing secret."
-  def token(claims), do: PNS.Auth.LocalToken.sign(claims)
-
   @doc "Every event of a type, oldest first."
   def events_of(type) do
     name = to_string(type)

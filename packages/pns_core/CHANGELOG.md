@@ -23,6 +23,21 @@ against it.
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Removed
+
+- `PNS.Auth` in full — the token verifiers (`LocalToken`, `OidcVerifier`), the
+  user-management seam (`IdentityAdmin`, `LocalIdentityAdmin`) and `entitled?/2` —
+  along with the `:auth_verifier` and `:identity_admin` configuration keys every
+  consumer had to set, and the `oidcc` dependency. They belonged to an earlier
+  scope in which this engine would also own the dashboard's login and accounts.
+  The engine now takes an actor as an opaque subject in `ctx.actor` and knows
+  nothing else about identity. `system_actor/0` moved to `PNS.Event.system_actor/0`.
+- `PNS.Command.permits?/3` and `principal_type/1`. The `command` declaration and
+  its `principals:` key stay, as a description; the engine no longer derives an
+  access decision from them. No verdict moves: nothing in the report read either.
+
 ## 0.2.0 — 2026-09-22
 
 Not on Hex yet: this package has no `package/0` and cannot be published. The

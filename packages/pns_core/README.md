@@ -121,8 +121,10 @@ judgment.
 ## What it deliberately does not do
 
 It does not know what a company is, what a tenant is, or what any of your fields
-mean. `PNS.Auth.Actor` carries a subject, roles and an opaque claims bag, and every
-payload type describes the shape of a value rather than the name of a thing. A
+mean, and it does not know who anybody is: an event's actor is an opaque subject the
+emitting application supplies, and authentication, roles and tenants stay on that
+application's side. Every payload type describes the shape of a value rather than
+the name of a thing. A
 library that knows one client's domain is a library for one client.
 
 ## Licence

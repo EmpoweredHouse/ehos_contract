@@ -6,6 +6,16 @@
 > `CLAUDE.md` lists one under what we deliberately do not build. **Not reviewed since it was moved here.**
 >
 > **9 August:** the second axis below is no longer open — see "Two axes" for the decided topology.
+>
+> **23 September — the seam left the engine.** "It costs one plug in the engine (`oidcc`) and a `behaviour`
+> for the handful of user-management calls" below assumed the engine would own the dashboard's login and user
+> management, from a scope in which this project was to own EHOS as a whole. That scope is gone. `PNS.Auth`,
+> `oidcc`, the accounts screen and the provisional login were removed; the engine takes an actor as an opaque
+> subject in `ctx.actor` and verifies nothing. Token verification moved to the one application with a request
+> edge (`Taxvision.Identity`), and dashboard access to a `PNS.Web.Resolver` the host must supply. The three
+> levels below still hold — they now describe the client application's edge, not the engine's. The PoC files
+> this document cites (`docker-compose.identity.yml`, `priv/poc/`, `docs/identity-admin-guide.md`) are in git
+> history, not in the tree.
 
 # Identity — the boundary, before any decision
 

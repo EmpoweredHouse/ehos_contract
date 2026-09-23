@@ -10,11 +10,7 @@ defmodule PnsPrototype.Application do
       Taxvision.Repo,
       {Oban, Application.fetch_env!(:pns_prototype, Oban)},
       {Phoenix.PubSub, name: PnsPrototypeWeb.PubSub},
-      PnsPrototypeWeb.Endpoint,
-      # The accounts screen's fake (PLAN.md, dopisek 23 sierpnia (3)) — a
-      # config key alone was enough while nothing mounted that screen for
-      # real; now something does.
-      PNS.Auth.LocalIdentityAdmin
+      PnsPrototypeWeb.Endpoint
     ]
 
     result =

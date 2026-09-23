@@ -15,7 +15,6 @@ ExUnit.configure(exclude: [:known_defect])
 
 {:ok, _} = PNS.TestRepo.start_link()
 {:ok, _} = Oban.start_link(Application.fetch_env!(:pns, Oban))
-{:ok, _} = PNS.Auth.LocalIdentityAdmin.start_link()
 
 # The same two calls a host makes at boot, for the same reason: the graph comes
 # from the binary that actually runs, and the deployment row records what that

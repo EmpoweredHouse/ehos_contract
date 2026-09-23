@@ -108,20 +108,18 @@ that application — see [non-goals](#non-goals).
 The same four questions, as a screen instead of a report — [`packages/pns_web`](packages/pns_web),
 mounted at `/dashboard` on this repository's own host the way `oban_web` mounts into any Phoenix
 app. Built only once `mix pns.report`'s text output above had already proven the signal was worth
-showing; the screen reformats that answer, it doesn't invent a second one. Three screens: contract
-status (the four questions, per contract), accounts — a thin proxy over a handful of calls a bought
-identity provider will eventually serve (list users, grant a role), not a new opinion about
-identity — and graph, the same declared-shape and declared-versus-observed Mermaid diagrams
-`mix pns.graph` already drew, rendered live instead of piped to a file.
+showing; the screen reformats that answer, it doesn't invent a second one. Two screens: contract
+status (the four questions, per contract), and graph, the same declared-shape and
+declared-versus-observed Mermaid diagrams `mix pns.graph` already drew, rendered live instead of
+piped to a file.
 
 ```bash
 mix phx.server
 ```
 
-Then open `http://localhost:4000/dashboard` and log in — `PNS.Web.LocalLogin` mints a token for
-whoever you say you are. It's the provisional stand-in for a real login screen
-([`docs/adr/identity-seam.md`](docs/adr/identity-seam.md) still leaves the real one open, deliberately),
-not a security boundary: nothing here belongs pointed at anything but your own machine.
+Then open `http://localhost:4000/dashboard`. There is no login: who may see the dashboard is the
+host's decision, made through a `PNS.Web.Resolver` it passes to the mount, and this repository's
+host lets everyone in read-only — nothing here belongs pointed at anything but your own machine.
 
 ## Writing a contract
 
@@ -201,7 +199,8 @@ from the first commit, so it's a fact the compiler checks, not a promise in a do
 | --- | --- |
 | An opinion on the API layer | REST vs. GraphQL is an open question this project has no standing to close by building one. |
 | A project generator (`mix pns.new`) | Worth building once something has been copied twice — at a second real client, not before. |
-| Real registries, real mail, a real OIDC provider, a real login screen | A behaviour plus a fake — today `PNS.Auth.LocalToken` and the form that mints it ([`docs/adr/identity-seam.md`](docs/adr/identity-seam.md) leaves the vendor and the login flow open on purpose). The seam works; swapping the real implementation in is one line of configuration, not a rewrite. |
+| Real registries, real mail | A behaviour plus a fake. Real integrations are the client's domain cost and carry no signal for the engine. |
+| Identity: login, users, roles | The engine takes an actor as an opaque subject and knows nothing else about who anybody is. Authentication belongs to the application that emits events, access to the dashboard to the host that mounts it. |
 | Alerts, ops dashboards, metrics collection | Performance is your APM's job, errors are your error tracker's job, business state is the client application's job. |
 | Anything that answers a question about one specific customer | The moment this engine can tell you "which customer's order hasn't shipped yet," it has stopped being a compliance engine and started being a worse copy of the client's own application. |
 

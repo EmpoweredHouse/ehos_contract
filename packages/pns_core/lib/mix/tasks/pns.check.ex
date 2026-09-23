@@ -13,8 +13,6 @@ defmodule Mix.Tasks.Pns.Check do
   use Boundary, classify_to: PNS
   use Mix.Task
 
-  @vendors ~w(zitadel keycloak workos auth0 okta authentik fusionauth supertokens)
-
   @impl Mix.Task
   def run(_args) do
     # Erlang keeps stdout in latin1 when the output is not a terminal, so
@@ -42,7 +40,6 @@ defmodule Mix.Tasks.Pns.Check do
       |> check_unobservable_deadlines()
       |> check_processes_without_accountable()
       |> check_retain_on_free_text()
-      |> check_no_vendor_in_config()
       |> check_unverified_declarations()
 
     report(findings)
@@ -378,23 +375,6 @@ defmodule Mix.Tasks.Pns.Check do
     else
       "process #{inspect(process.name)}: `#{field}` = #{inspect(Map.get(process, field))} " <>
         "is not confirmed by the process owner — it does not count towards the evidence report"
-    end
-  end
-
-  # The identity seam: a vendor's name in the engine's configuration schema breaks it.
-  defp check_no_vendor_in_config(findings) do
-    haystack = :pns |> Application.get_all_env() |> inspect() |> String.downcase()
-
-    case Enum.filter(@vendors, &String.contains?(haystack, &1)) do
-      [] ->
-        findings
-
-      found ->
-        [
-          {:error,
-           "identity vendor name in the engine's configuration: #{inspect(found)} — seam broken"}
-          | findings
-        ]
     end
   end
 

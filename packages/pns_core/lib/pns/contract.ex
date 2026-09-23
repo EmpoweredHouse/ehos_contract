@@ -80,7 +80,7 @@ defmodule PNS.Contract do
   #
   # **This one is a proposal, not a reading.** The stage 5.5 census looked for a
   # principal vocabulary in the corpus and did not find one: the engine knows only
-  # `PNS.Auth.Actor`, whose `roles` are strings, and `system_actor/0`; the contracts
+  # an opaque actor subject and `PNS.Event.system_actor/0`; the contracts
   # carry `actor_roles: ["accounting"]`, which is a role rather than a kind of
   # principal. Both members describe *who issues* and neither names anybody's
   # business — but they were chosen rather than observed, and that is written here
@@ -124,12 +124,10 @@ defmodule PNS.Contract do
   Who may issue a command. A closed set, and a proposal — the attribute's own
   comment says why this one was chosen rather than read out of the corpus.
 
-  The capability derived from it answers "may this *kind* of principal issue this
-  command at all". It does not answer "may this person issue it for this company",
-  which stays a `rule` with a decision function. Neither level makes the other
-  redundant: of the two commands in the corpus one has such a rule and the other
-  has no actor field anywhere, so for that one a derived capability would be the
-  only access control there is.
+  A description of who takes this way into the process, not an access decision:
+  the engine enforces nothing with it. Whether a given caller may issue a command
+  is the emitting application's to decide, and where that decision is a domain
+  rule it stays a `rule` with a decision function.
   """
   @spec principal_types() :: [atom()]
   def principal_types, do: @principal_types
