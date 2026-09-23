@@ -33,6 +33,12 @@ config :pns_prototype, Oban,
   repo: Taxvision.Repo,
   queues: [events: 10]
 
+config :pns_prototype, Taxvision.Identity,
+  # A dev-only secret. A real provider does not hand out its signing secret —
+  # the request edge validates the signature with a public key from JWKS and
+  # cannot issue a token at all.
+  secret: "dev-only-secret-not-for-production"
+
 config :pns, PNS.Auth.LocalToken,
   # A dev-only secret. A real provider does not hand out its signing secret —
   # the engine validates the signature with a public key from JWKS and cannot

@@ -85,7 +85,7 @@ defmodule Taxvision.IdentitySeamTest do
       # `sign/1` is the first thing to disappear when a real provider takes over.
       # If the domain calls it, the swap becomes a rewrite rather than a
       # configuration change.
-      callers = callers_of(:pns_prototype, {PNS.Auth.LocalToken, :sign, 1})
+      callers = callers_of(:pns_prototype, {Taxvision.Identity, :sign, 1})
 
       # A positive control. Without it this test would pass vacuously if the
       # detector stopped working — and a test that always passes is worse than no
@@ -93,7 +93,7 @@ defmodule Taxvision.IdentitySeamTest do
       assert Taxvision.DataCase in callers,
              "the call detector is not working — it cannot even see a known caller"
 
-      domain = callers -- [PNS.Auth.LocalToken, Taxvision.DataCase]
+      domain = callers -- [Taxvision.Identity, Taxvision.DataCase]
       assert domain == [], "domain code calls token signing: #{inspect(domain)}"
     end
 

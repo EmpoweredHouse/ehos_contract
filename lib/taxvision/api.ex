@@ -32,6 +32,7 @@ defmodule Taxvision.Api do
       PNS,
       Taxvision.Contracts,
       Taxvision.Authorization,
+      Taxvision.Identity,
       Taxvision.RegistryCheck,
       Taxvision.Adapters,
       # The request edge resolves a period name to its identifier, so it depends on the
@@ -60,7 +61,7 @@ defmodule Taxvision.Api do
   end
 
   defp authenticate(token) do
-    case PNS.Auth.verify(token) do
+    case Taxvision.Identity.verify(token) do
       {:ok, actor} -> {:ok, actor}
       {:error, _} -> {:error, :unauthenticated}
     end
@@ -70,7 +71,7 @@ defmodule Taxvision.Api do
     # One claim, no network. The cut-off happens here, so no event reaches the
     # log — and that is checkable by the absence of a row rather than by the
     # content of a response.
-    if PNS.Auth.entitled?(actor, :accounting), do: :ok, else: {:error, :forbidden}
+    if Taxvision.Identity.entitled?(actor, :accounting), do: :ok, else: {:error, :forbidden}
   end
 
   # **The one place a period name becomes an identifier.** A name is what arrives from

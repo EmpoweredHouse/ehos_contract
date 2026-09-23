@@ -25,9 +25,6 @@ defmodule PnsPrototypeWeb.Endpoint do
     from: {:pns_web, "priv/static/assets"},
     gzip: false
 
-  # The provisional login (PNS.Web.LocalLogin) posts a plain HTML form.
-  plug Plug.Parsers, parsers: [:urlencoded], pass: ["*/*"]
-
   plug Plug.Session, @session_options
   plug PnsPrototypeWeb.Router
 end

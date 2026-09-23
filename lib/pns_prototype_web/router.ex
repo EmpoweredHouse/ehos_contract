@@ -15,7 +15,6 @@ defmodule PnsPrototypeWeb.Router do
     plug :accepts, ["html"]
     plug :fetch_session
     plug :protect_from_forgery
-    plug PNS.Web.Plug.Authenticate
   end
 
   # No session and no CSRF, and `accepts` says json. Each is the opposite of what the
@@ -23,20 +22,19 @@ defmodule PnsPrototypeWeb.Router do
   # second route in the first one.
   pipeline :api do
     plug :accepts, ["json"]
-    plug PNS.Web.Plug.Authenticate
   end
 
   scope "/" do
     pipe_through :browser
     import PNS.Web.Router
 
-    pns_dashboard "/dashboard"
+    pns_dashboard "/dashboard", resolver: PnsPrototypeWeb.Resolver
   end
 
   scope "/" do
     pipe_through :api
     import PNS.Web.Router
 
-    pns_api "/api/pns"
+    pns_api "/api/pns", resolver: PnsPrototypeWeb.Resolver
   end
 end

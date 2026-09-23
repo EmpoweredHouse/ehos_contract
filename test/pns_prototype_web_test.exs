@@ -22,51 +22,19 @@ defmodule PnsPrototypeWebTest do
     assert redirected_to(conn) == "/dashboard/contract"
   end
 
-  test "no login redirects to the provisional login screen", %{conn: conn} do
-    conn = get(conn, "/dashboard/contract")
-    assert redirected_to(conn) == "/dashboard/login"
-  end
+  test "the contract status screen renders this host's real contracts", %{conn: conn} do
+    html = conn |> get("/dashboard/contract") |> html_response(200)
 
-  test "logging in as admin reaches the contract status screen with real contracts",
-       %{conn: conn} do
-    conn = post(conn, "/dashboard/login", %{"subject" => "reviewer", "role" => "pns_admin"})
-    assert redirected_to(conn, 303) == "/dashboard/contract"
-
-    conn = conn |> recycle() |> get("/dashboard/contract")
-    html = html_response(conn, 200)
-
-    assert html =~ "Access: all"
+    # `PnsPrototypeWeb.Resolver` lets everyone in read-only: this host has no
+    # login, and says so rather than inheriting a default.
+    assert html =~ "Access: read only"
     # Taxvision.Contracts.AccountingMonth, this host's own real contract —
     # not packages/pns_web's invented CaseHandling fixture.
     assert html =~ "AccountingMonth"
   end
 
-  test "logging in as read only reaches the accounts screen without the grant form",
-       %{conn: conn} do
-    conn = post(conn, "/dashboard/login", %{"subject" => "viewer", "role" => "pns_read"})
-    conn = conn |> recycle() |> get("/dashboard/accounts")
-    html = html_response(conn, 200)
-
-    assert html =~ "Access: read only"
-    refute html =~ "Invite someone"
-  end
-
-  test "the live socket upgrade enforces the same decision as the dead render",
-       %{conn: conn} do
-    conn = post(conn, "/dashboard/login", %{"subject" => "reviewer", "role" => "pns_admin"})
-    conn = conn |> recycle()
-
+  test "the live socket upgrade reaches the same screen as the dead render", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/dashboard/contract")
-    assert html =~ "Access: all"
-  end
-
-  test "logging out sends a subsequent visit back to the login screen", %{conn: conn} do
-    conn = post(conn, "/dashboard/login", %{"subject" => "reviewer", "role" => "pns_admin"})
-
-    conn = conn |> recycle() |> get("/dashboard/logout")
-    assert redirected_to(conn) == "/dashboard/login"
-
-    conn = conn |> recycle() |> get("/dashboard/contract")
-    assert redirected_to(conn) == "/dashboard/login"
+    assert html =~ "AccountingMonth"
   end
 end

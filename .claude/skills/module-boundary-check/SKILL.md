@@ -134,7 +134,7 @@ for "is there a timing promise" undercounts it.
 - **PNS knows nothing about companies or business entities, no exceptions.** A CRUD context
   does not get engine-level awareness just because it is declared next to a contract. If a
   litmus-test answer implies PNS needs to know "which client this is" as a structured field,
-  that is a sign the action is not contract territory after all — see `claims: %{}` in `PNS.Auth.Actor`.
+  that is a sign the action is not contract territory after all — see `claims: %{}` in `Taxvision.Identity.Actor`.
 - **Every new module declares `use Boundary` explicitly**, deps and exports named — even
   `deps: [], exports: []`. No module rides along under an existing boundary by omission; that is
   how a join or a hidden dependency gets in.

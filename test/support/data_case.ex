@@ -39,7 +39,7 @@ defmodule Taxvision.DataCase do
   end
 
   @doc "A token for dev and tests. A real provider does not hand out its signing secret."
-  def token(claims), do: PNS.Auth.LocalToken.sign(claims)
+  def token(claims), do: Taxvision.Identity.sign(claims)
 
   # `sub` is an **opaque, stable identifier**, not an email address. The first
   # version of this fixture put an email here, and because of that every event in
