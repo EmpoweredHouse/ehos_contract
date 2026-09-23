@@ -25,6 +25,12 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Added
+
+- `EhOsContract` as a supervision-tree child. It runs `EhOsContract.Registry.load!/1`
+  and `EhOsContract.Deployment.record!/1` in that order and returns `:ignore`, so a
+  host no longer has to remember to call both by hand after starting its repo.
+
 ### Removed
 
 - `EhOsContract.Auth` in full — the token verifiers (`LocalToken`, `OidcVerifier`), the

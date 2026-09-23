@@ -9,22 +9,13 @@ defmodule EhOsContractHost.Application do
     children = [
       Taxvision.Repo,
       {Oban, Application.fetch_env!(:eh_os_contract_host, Oban)},
+      # After the repo, which it writes the deployment row to, and before the
+      # endpoint, whose dashboard reads the registry it loads.
+      EhOsContract,
       {Phoenix.PubSub, name: EhOsContractHostWeb.PubSub},
       EhOsContractHostWeb.Endpoint
     ]
 
-    result =
-      Supervisor.start_link(children, strategy: :one_for_one, name: EhOsContractHost.Supervisor)
-
-    # The registry scan at boot. The graph comes from the binary that actually
-    # runs — not from a file beside it.
-    EhOsContract.Registry.load!()
-
-    # Recording the deployed version: what is declared and since when it applies.
-    # Without it, history cannot be separated from drift for **paths**, because
-    # `version/0` hashes the contract while paths come from handlers.
-    EhOsContract.Deployment.record!()
-
-    result
+    Supervisor.start_link(children, strategy: :one_for_one, name: EhOsContractHost.Supervisor)
   end
 end

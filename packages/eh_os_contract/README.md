@@ -68,6 +68,19 @@ config :eh_os_contract,
   repo: MyApp.Repo
 ```
 
+And add EhOsContract to your supervision tree, after the repo and Oban. At boot it
+scans the running binary for contracts and handlers and records which contract
+version is deployed; without it the report has nothing to compare against.
+
+```elixir
+children = [
+  MyApp.Repo,
+  {Oban, Application.fetch_env!(:my_app, Oban)},
+  EhOsContract,
+  MyAppWeb.Endpoint
+]
+```
+
 ## A contract
 
 ```elixir

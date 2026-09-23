@@ -55,6 +55,42 @@ defmodule EhOsContract do
   @spec version() :: String.t()
   def version, do: @version
 
+  @doc """
+  Boots the engine inside the host's supervision tree, after the host's repo and Oban:
+
+      children = [
+        MyApp.Repo,
+        {Oban, Application.fetch_env!(:my_app, Oban)},
+        EhOsContract,
+        MyAppWeb.Endpoint
+      ]
+
+  Two things have to happen at boot, in this order, and a host used to call both by
+  hand: `EhOsContract.Registry.load!/1` scans the running binary for contracts and
+  handlers, and `EhOsContract.Deployment.record!/1` writes what that binary declared
+  and since when. Forgetting the first leaves an empty graph; forgetting the second
+  leaves the report unable to tell history from drift. As a child the pair cannot
+  be half-remembered, and its position in the list states the dependency on the
+  repo that a comment used to.
+
+  The child does its work while the supervisor starts and then returns `:ignore` —
+  there is no process to keep alive. If either step raises, the host fails to boot,
+  which is the point: a host running with an unscanned registry reports nothing and
+  looks healthy.
+  """
+  @spec child_spec(term()) :: Supervisor.child_spec()
+  def child_spec(_opts) do
+    %{id: __MODULE__, start: {__MODULE__, :boot, []}, restart: :temporary}
+  end
+
+  @doc false
+  @spec boot() :: :ignore
+  def boot do
+    EhOsContract.Registry.load!()
+    EhOsContract.Deployment.record!()
+    :ignore
+  end
+
   @doc "An intention to emit an event, returned by a pure decision function."
   @spec event(atom(), map()) :: EhOsContract.Emission.t()
   def event(name, payload \\ %{}), do: %EhOsContract.Emission{name: name, payload: payload}
