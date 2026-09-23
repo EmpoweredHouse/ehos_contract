@@ -17,7 +17,7 @@ defmodule PNS.Web.Live.ContractStatusTest do
 
   alias PNS.Web.Live.ContractStatus
   alias PNS.Web.TestHost.Fixtures.CaseHandling
-  alias PNS.Web.TestHost.TestToken
+  alias PNS.Web.TestHost.Access
 
   @endpoint PNS.Web.TestHost.Endpoint
 
@@ -27,7 +27,7 @@ defmodule PNS.Web.Live.ContractStatusTest do
 
     conn =
       build_conn()
-      |> TestToken.put_actor("admin", ["pns_admin"])
+      |> Access.put_actor("admin", ["pns_admin"])
       |> get("/pns/contract")
 
     html = html_response(conn, 200)
@@ -55,7 +55,7 @@ defmodule PNS.Web.Live.ContractStatusTest do
 
     html =
       build_conn()
-      |> TestToken.put_actor("admin", ["pns_admin"])
+      |> Access.put_actor("admin", ["pns_admin"])
       |> get("/pns/contract")
       |> html_response(200)
 

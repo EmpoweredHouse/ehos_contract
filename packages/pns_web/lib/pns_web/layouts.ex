@@ -24,13 +24,9 @@ defmodule PNS.Web.Layouts do
       <.link navigate={"#{@base_path}/contract"} aria-current={@current == :contract_status && "page"}>
         Contract status
       </.link>
-      <.link navigate={"#{@base_path}/accounts"} aria-current={@current == :accounts && "page"}>
-        Accounts
-      </.link>
       <.link navigate={"#{@base_path}/graph"} aria-current={@current == :graph && "page"}>
         Graph
       </.link>
-      <.link href={"#{@base_path}/logout"}>Log out</.link>
     </nav>
     """
   end

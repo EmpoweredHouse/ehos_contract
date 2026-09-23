@@ -3,9 +3,8 @@
 A conformance dashboard for [PNS](https://hex.pm/packages/pns), mounted in your
 own router.
 
-Three screens and nothing else: the contract's conformance status, the accounts
-that may see it, and the process graph — declared shape per process, declared
-versus observed across all of them.
+Two screens and nothing else: the contract's conformance status, and the process
+graph — declared shape per process, declared versus observed across all of them.
 
 ## Mounting it
 
@@ -14,7 +13,7 @@ scope "/" do
   pipe_through :browser
   import PNS.Web.Router
 
-  pns_dashboard "/pns"
+  pns_dashboard "/pns", resolver: MyApp.PNSResolver
 end
 ```
 
@@ -34,11 +33,10 @@ instruction rather than assuming it.
 
 ## Who may see it
 
-`pns_dashboard/2` takes a `:resolver` implementing `PNS.Web.Resolver`: one callback
-says who the caller is, another says whether they get `:all`, `:read_only` or a
-redirect. The default reads `conn.assigns[:pns_actor]`, which the optional
-`PNS.Web.Plug.Authenticate` fills from a bearer token or the session — but a host is
-free to fill that assign however it already authenticates.
+`pns_dashboard/2` and `pns_api/2` both require a `:resolver` implementing
+`PNS.Web.Resolver`: one callback says who the caller is, another says whether they
+get `:all`, `:read_only` or a redirect. There is no default and no login screen —
+the host already knows who is logged in, and this package does not get to guess.
 
 ## Not on Hex
 

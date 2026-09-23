@@ -8,10 +8,10 @@ defmodule PNS.Web.Router do
 
   @doc """
   Mounts the dashboard at `path`: `path <> "/contract"` and
-  `path <> "/accounts"` for the two screens, `path` itself redirecting to
+  `path <> "/graph"` for the two screens, `path` itself redirecting to
   the first — both are named siblings, so neither reads as more canonical
   than the other by virtue of owning the bare mount path. `opts[:resolver]`
-  defaults to `PNS.Web.Resolvers.Default`; `opts[:on_mount]` is appended
+  is required — see `PNS.Web.Resolver`; `opts[:on_mount]` is appended
   after `PNS.Web.Authentication`, which always runs first so access is
   decided before any host-supplied hook sees the socket.
 
@@ -23,8 +23,7 @@ defmodule PNS.Web.Router do
   CSRF-protected route on principle (`Plug.CSRFProtection.InvalidCrossOriginRequestError`).
   Real Phoenix apps serve static files at the **endpoint**, before the
   router runs at all, for exactly this reason. A host adds one line to its
-  own endpoint, the same shape as `PNS.Web.Plug.Authenticate` in a router
-  pipeline:
+  own endpoint:
 
       plug Plug.Static,
         at: "/pns_web/assets",
@@ -36,22 +35,12 @@ defmodule PNS.Web.Router do
   """
   defmacro pns_dashboard(path, opts \\ []) do
     quote bind_quoted: [path: path, opts: opts] do
-      resolver = Keyword.get(opts, :resolver, PNS.Web.Resolvers.Default)
+      resolver = Keyword.fetch!(opts, :resolver)
 
       # Ahead of any access check — a bookmark to the bare mount path should
       # not need to be a decision, just a pointer to whichever screen is
       # first among equals.
       get path, PNS.Web.Router.RedirectToContract, path <> "/contract"
-
-      # The provisional login (PNS.Web.LocalLogin's moduledoc) — one plug,
-      # both verbs, because it decides GET-vs-POST for itself. Outside the
-      # live_session below on purpose: it has to be reachable by someone
-      # `PNS.Web.Authentication` would otherwise turn away.
-      match :*, path <> "/login", PNS.Web.LocalLogin,
-        action: path <> "/login",
-        redirect_to: path <> "/contract"
-
-      get path <> "/logout", PNS.Web.Router.Logout, path <> "/login"
 
       scope path do
         import Phoenix.LiveView.Router
@@ -61,7 +50,6 @@ defmodule PNS.Web.Router do
           root_layout: {PNS.Web.Layouts, :root},
           on_mount: [PNS.Web.Authentication | Keyword.get(opts, :on_mount, [])] do
           live "/contract", PNS.Web.Live.ContractStatus, :index
-          live "/accounts", PNS.Web.Live.Accounts, :index
           live "/graph", PNS.Web.Live.Graph, :index
         end
       end
@@ -85,14 +73,13 @@ defmodule PNS.Web.Router do
 
       pipeline :pns_api do
         plug :accepts, ["json"]
-        plug PNS.Web.Plug.Authenticate
       end
 
       scope "/" do
         pipe_through :pns_api
         import PNS.Web.Router
 
-        pns_api "/pns/api"
+        pns_api "/pns/api", resolver: MyApp.PNSResolver
       end
 
   This macro adds no `Plug.Parsers` of its own, for the reason the dashboard adds no
@@ -101,7 +88,7 @@ defmodule PNS.Web.Router do
   """
   defmacro pns_api(path, opts \\ []) do
     quote bind_quoted: [path: path, opts: opts] do
-      resolver = Keyword.get(opts, :resolver, PNS.Web.Resolvers.Default)
+      resolver = Keyword.fetch!(opts, :resolver)
 
       get path <> "/conformance",
           PNS.Web.Api.Conformance,
@@ -136,22 +123,6 @@ defmodule PNS.Web.Router do
 
     defp do_redirect(conn, to) do
       conn
-      |> Phoenix.Controller.redirect(to: to)
-      |> Plug.Conn.halt()
-    end
-  end
-
-  defmodule Logout do
-    @moduledoc false
-    @behaviour Plug
-
-    @impl true
-    def init(to), do: to
-
-    @impl true
-    def call(conn, to) do
-      conn
-      |> Plug.Conn.delete_session(:pns_local_token)
       |> Phoenix.Controller.redirect(to: to)
       |> Plug.Conn.halt()
     end

@@ -1,8 +1,8 @@
 defmodule PNS.Web do
   @moduledoc """
-  The dashboard foundation's public surface: a mountable router, a resolver
-  behaviour, and the two implementations a host needs to wire itself in —
-  nothing about the content of either eventual screen.
+  The dashboard's public surface: a mountable router, the screens it routes
+  to, and a resolver behaviour through which the host decides who may see
+  them. No login and no accounts: who somebody is belongs to the host.
 
   **Every module `pns_dashboard/2` names in a `live`/`get`/`match` route has
   to be exported, not just `Router` itself** — Phoenix's router macros
@@ -21,15 +21,10 @@ defmodule PNS.Web do
       Api.AsyncAPI,
       Api.Conformance,
       Resolver,
-      Resolvers.Default,
-      Plug.Authenticate,
       Router,
       Router.RedirectToContract,
-      Router.Logout,
       Authentication,
-      LocalLogin,
       Live.ContractStatus,
-      Live.Accounts,
       Live.Graph
     ]
 end

@@ -13,7 +13,7 @@ defmodule PNS.Web.ApiTest do
   import Phoenix.ConnTest
   import Plug.Conn, only: [put_req_header: 3, get_resp_header: 2]
 
-  alias PNS.Web.TestHost.TestToken
+  alias PNS.Web.TestHost.Access
 
   @endpoint PNS.Web.TestHost.Endpoint
 
@@ -22,9 +22,9 @@ defmodule PNS.Web.ApiTest do
   end
 
   describe "who gets an answer" do
-    test "an unauthenticated request is refused as JSON, not redirected", %{conn: conn} do
+    test "a caller the resolver refuses gets JSON, not a redirect", %{conn: conn} do
       # A redirect is a datum only a browser can use. An API client following one
-      # would fetch a login page and try to parse it as JSON.
+      # would fetch the host's login page and try to parse it as JSON.
       conn = get(conn, "/pns/api/conformance")
 
       assert conn.status == 403
@@ -32,19 +32,8 @@ defmodule PNS.Web.ApiTest do
       assert get_resp_header(conn, "location") == []
     end
 
-    test "a request with no session at all does not crash", %{conn: conn} do
-      # **The regression this stage exists to have found.**
-      # `PNS.Web.Plug.Authenticate` fell through to `get_session/2`, which raises
-      # when `fetch_session` has not run — so in a session-less API pipeline it
-      # crashed on exactly the unauthenticated request the endpoint most needs to
-      # refuse cleanly. A 500 here, not a 403, is that bug returning.
-      conn = get(conn, "/pns/api/conformance")
-
-      assert conn.status == 403
-    end
-
     test "a read-only actor gets the report", %{conn: conn} do
-      conn = conn |> TestToken.put_actor("u-1", ["pns_read"]) |> get("/pns/api/conformance")
+      conn = conn |> Access.put_actor("u-1", ["pns_read"]) |> get("/pns/api/conformance")
 
       assert conn.status == 200
       assert %{"schema" => "pns.conformance.v1"} = Jason.decode!(conn.resp_body)
@@ -54,10 +43,10 @@ defmodule PNS.Web.ApiTest do
       # `:read_only` and `:all` both pass and neither is redacted. Redacting for one
       # would be this package forming an opinion about how sensitive a client's own
       # data is.
-      admin = conn |> TestToken.put_actor("u-2", ["pns_admin"]) |> get("/pns/api/conformance")
+      admin = conn |> Access.put_actor("u-2", ["pns_admin"]) |> get("/pns/api/conformance")
 
       reader =
-        build_conn() |> TestToken.put_actor("u-1", ["pns_read"]) |> get("/pns/api/conformance")
+        build_conn() |> Access.put_actor("u-1", ["pns_read"]) |> get("/pns/api/conformance")
 
       assert admin.status == 200
       assert Jason.decode!(admin.resp_body)["report"] == Jason.decode!(reader.resp_body)["report"]
@@ -66,7 +55,7 @@ defmodule PNS.Web.ApiTest do
 
   describe "what comes back" do
     setup %{conn: conn} do
-      {:ok, conn: TestToken.put_actor(conn, "u-1", ["pns_read"])}
+      {:ok, conn: Access.put_actor(conn, "u-1", ["pns_read"])}
     end
 
     test "a named contract is served", %{conn: conn} do
@@ -94,7 +83,7 @@ defmodule PNS.Web.ApiTest do
 
   describe "the generated specification" do
     setup %{conn: conn} do
-      {:ok, conn: TestToken.put_actor(conn, "u-1", ["pns_read"])}
+      {:ok, conn: Access.put_actor(conn, "u-1", ["pns_read"])}
     end
 
     test "the index lists every contract with its digest", %{conn: conn} do
@@ -139,7 +128,7 @@ defmodule PNS.Web.ApiTest do
     test "the dashboard's HTML routes are untouched by the API mount" do
       conn =
         build_conn()
-        |> TestToken.put_actor("u-3", ["pns_admin"])
+        |> Access.put_actor("u-3", ["pns_admin"])
         |> get("/pns/contract")
 
       assert conn.status == 200

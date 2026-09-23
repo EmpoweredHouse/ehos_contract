@@ -13,14 +13,14 @@ defmodule PNS.Web.Live.GraphTest do
   import Phoenix.LiveViewTest
 
   alias PNS.Web.Live.Graph
-  alias PNS.Web.TestHost.TestToken
+  alias PNS.Web.TestHost.Access
 
   @endpoint PNS.Web.TestHost.Endpoint
 
   test "mounting through the real router draws both diagrams for a real contract" do
     conn =
       build_conn()
-      |> TestToken.put_actor("admin", ["pns_admin"])
+      |> Access.put_actor("admin", ["pns_admin"])
       |> get("/pns/graph")
 
     html = html_response(conn, 200)

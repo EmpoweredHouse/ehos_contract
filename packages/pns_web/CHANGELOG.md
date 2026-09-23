@@ -6,6 +6,15 @@ gets a line here.
 
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+- **Removed:** the provisional login (`PNS.Web.LocalLogin`, the `/login` and
+  `/logout` routes), the accounts screen (`PNS.Web.Live.Accounts`), the optional
+  `PNS.Web.Plug.Authenticate` and the default resolver `PNS.Web.Resolvers.Default`.
+  All of them stood on `PNS.Auth`, which left the engine with them. `:resolver` is
+  now required by both `pns_dashboard/2` and `pns_api/2`: the host decides who may
+  see the dashboard, with no fallback that silently lets everyone in.
+
 ## 0.1.0 — not published
 
 Everything to date, recorded after the fact. The package is not on Hex and cannot

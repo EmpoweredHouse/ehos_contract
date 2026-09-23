@@ -1,7 +1,7 @@
 // The dashboard's client-side code: connect the LiveView socket, and (since
 // the graph screen) render Mermaid diagrams the server can only ever hand
-// over as text. Everything else — access control, the four questions, the
-// accounts roster — is server-rendered.
+// over as text. Everything else — access control and the four questions —
+// is server-rendered.
 import "phoenix_html"
 import { Socket } from "phoenix"
 import { LiveSocket } from "phoenix_live_view"

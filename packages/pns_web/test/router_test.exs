@@ -9,7 +9,7 @@ defmodule PNS.Web.RouterTest do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
-  alias PNS.Web.TestHost.TestToken
+  alias PNS.Web.TestHost.Access
 
   @endpoint PNS.Web.TestHost.Endpoint
 
@@ -28,37 +28,37 @@ defmodule PNS.Web.RouterTest do
     assert redirected_to(conn) == "/pns/contract?since=2026-01-01"
   end
 
-  test "no login redirects to the provisional login, before the LiveView ever mounts",
+  test "a caller the resolver does not know is redirected where the host said, before the LiveView ever mounts",
        %{conn: conn} do
     conn = get(conn, "/pns/contract")
-    assert redirected_to(conn) == "/pns/login"
+    assert redirected_to(conn) == "/"
   end
 
-  test "a role that maps to neither :all nor :read_only redirects to login too", %{conn: conn} do
+  test "a role that maps to neither :all nor :read_only is redirected too", %{conn: conn} do
     conn =
       conn
-      |> TestToken.put_actor("someone", ["unrelated_role"])
+      |> Access.put_actor("someone", ["unrelated_role"])
       |> get("/pns/contract")
 
-    assert redirected_to(conn) == "/pns/login"
+    assert redirected_to(conn) == "/"
   end
 
   test "pns_admin gets a dead render with :all access", %{conn: conn} do
     conn =
       conn
-      |> TestToken.put_actor("admin", ["pns_admin"])
+      |> Access.put_actor("admin", ["pns_admin"])
       |> get("/pns/contract")
 
     assert html_response(conn, 200) =~ "Access: all"
   end
 
   test "on_mount enforces the same decision across the live socket upgrade", %{conn: conn} do
-    conn = TestToken.put_actor(conn, "admin", ["pns_admin"])
+    conn = Access.put_actor(conn, "admin", ["pns_admin"])
     {:ok, _view, html} = live(conn, "/pns/contract")
     assert html =~ "Access: all"
   end
 
-  test "an unauthenticated conn cannot open the live socket", %{conn: conn} do
-    assert {:error, {:redirect, %{to: "/pns/login"}}} = live(conn, "/pns/contract")
+  test "an unknown caller cannot open the live socket", %{conn: conn} do
+    assert {:error, {:redirect, %{to: "/"}}} = live(conn, "/pns/contract")
   end
 end
