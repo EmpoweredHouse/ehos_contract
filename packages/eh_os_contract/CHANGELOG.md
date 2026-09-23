@@ -23,33 +23,17 @@ against it.
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.2.0 — 2026-09-23
+
+The first tagged version: `v0.2.0`. Not on Hex yet, so it installs from git — see
+`README.md`. Everything below that `0.1.0` did not have, including what changed on
+23 September before the tag.
 
 ### Added
 
 - `EhOsContract` as a supervision-tree child. It runs `EhOsContract.Registry.load!/1`
   and `EhOsContract.Deployment.record!/1` in that order and returns `:ignore`, so a
   host no longer has to remember to call both by hand after starting its repo.
-
-### Removed
-
-- `EhOsContract.Auth` in full — the token verifiers (`LocalToken`, `OidcVerifier`), the
-  user-management seam (`IdentityAdmin`, `LocalIdentityAdmin`) and `entitled?/2` —
-  along with the `:auth_verifier` and `:identity_admin` configuration keys every
-  consumer had to set, and the `oidcc` dependency. They belonged to an earlier
-  scope in which this engine would also own the dashboard's login and accounts.
-  The engine now takes an actor as an opaque subject in `ctx.actor` and knows
-  nothing else about identity. `system_actor/0` moved to `EhOsContract.Event.system_actor/0`.
-- `EhOsContract.Command.permits?/3` and `principal_type/1`. The `command` declaration and
-  its `principals:` key stay, as a description; the engine no longer derives an
-  access decision from them. No verdict moves: nothing in the report read either.
-
-## 0.2.0 — 2026-09-22
-
-Not on Hex yet: this package has no `package/0` and cannot be published. The
-version is real all the same, because a conformance report already carries it.
-
-### Added
 
 - `EhOsContract.Run`: how long a run took, against the `deadline` its process declared.
   The declaration has existed since the first commit and nothing read it — the
@@ -112,6 +96,15 @@ version is real all the same, because a conformance report already carries it.
 
 ### Changed
 
+- **Renamed from `pns` to `eh_os_contract`**, with the namespace (`PNS` →
+  `EhOsContract`), the mix tasks (`mix pns.*` → `mix eh_os_contract.*`), the
+  telemetry prefix, the engine's tables (`pns_*` → `eh_os_contract_*`, created that
+  way by `V01`/`V02` with no upgrade path), the AsyncAPI extensions
+  (`x-eh-os-contract-*`) and the report schema (`eh_os_contract.conformance.v1`).
+- `docs/contract.md`, the DSL reference, ships inside the package;
+  `mix eh_os_contract.docs` is tooling for developing the package and is no longer
+  compiled into consumers.
+
 - **Every contract's `version/0` moved once, deliberately.** A seventh declaration
   group changes the hash even for a contract that declares no commands, so the log
   reclassifies once rather than twice; `accountable:` landed in the same commit for
@@ -129,6 +122,19 @@ version is real all the same, because a conformance report already carries it.
 - `EhOsContract.Deployment.record!/1` replaces `declaration_digests` on conflict instead of
   leaving the row alone, so a deployment recorded before v02 is backfilled rather
   than staying blind for the version actually running.
+
+### Removed
+
+- `PNS.Auth` in full — the token verifiers (`LocalToken`, `OidcVerifier`), the
+  user-management seam (`IdentityAdmin`, `LocalIdentityAdmin`) and `entitled?/2` —
+  along with the `:auth_verifier` and `:identity_admin` configuration keys every
+  consumer had to set, and the `oidcc` dependency. They belonged to an earlier
+  scope in which this engine would also own the dashboard's login and accounts.
+  The engine now takes an actor as an opaque subject in `ctx.actor` and knows
+  nothing else about identity. `system_actor/0` moved to `EhOsContract.Event.system_actor/0`.
+- `PNS.Command.permits?/3` and `principal_type/1`. The `command` declaration and
+  its `principals:` key stay, as a description; the engine no longer derives an
+  access decision from them. No verdict moves: nothing in the report read either.
 
 ## 0.1.0 — never published
 

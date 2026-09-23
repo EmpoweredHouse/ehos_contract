@@ -6,7 +6,12 @@ gets a line here.
 
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## 0.1.0 — 2026-09-23
+
+Everything to date, recorded after the fact, and the first tagged version:
+`v0.2.0` of the repository, alongside `eh_os_contract` 0.2.0. Not on Hex, because
+`eh_os_contract` is not either and a published package may depend only on published
+ones; see `README.md` for the second reason. It installs from git.
 
 - **Fixed:** installing this package from git failed with "Dependencies have
   diverged", because it named the engine by `path: "../eh_os_contract"`, which a
@@ -16,15 +21,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Removed:** the provisional login (`EhOsContract.Web.LocalLogin`, the `/login` and
   `/logout` routes), the accounts screen (`EhOsContract.Web.Live.Accounts`), the optional
   `EhOsContract.Web.Plug.Authenticate` and the default resolver `EhOsContract.Web.Resolvers.Default`.
-  All of them stood on `EhOsContract.Auth`, which left the engine with them. `:resolver` is
+  All of them stood on `PNS.Auth`, which left the engine with them. `:resolver` is
   now required by both `eh_os_contract_dashboard/2` and `eh_os_contract_api/2`: the host decides who may
   see the dashboard, with no fallback that silently lets everyone in.
-
-## 0.1.0 — not published
-
-Everything to date, recorded after the fact. The package is not on Hex and cannot
-be until `eh_os_contract` is: it depends on it by path, and a published package may only
-depend on published ones. See `README.md` for the second reason.
 
 - **Fixed:** only the verdict carries the verdict's colour. The whole sentence used
   to, including the clause explaining that an external outage means "this is not a
