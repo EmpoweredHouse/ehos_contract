@@ -23,6 +23,13 @@ against it.
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.2.1 — 2026-09-23
+
+### Changed
+
+- The repository is `EmpoweredHouse/eh-os-contract`, renamed from `eh-os-prototype`.
+  `source_url` and the package links point there. No code changed; no verdict moves.
+
 ## 0.2.0 — 2026-09-23
 
 The first tagged version: `v0.2.0`. Not on Hex yet, so it installs from git — see

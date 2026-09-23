@@ -6,6 +6,15 @@ gets a line here.
 
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.1.1 — 2026-09-23
+
+Tagged `v0.2.1` of the repository, alongside `eh_os_contract` 0.2.1.
+
+- The repository is `EmpoweredHouse/eh-os-contract`, renamed from `eh-os-prototype`.
+  `source_url` follows, and so does the git address this package fetches the engine
+  from outside its own repository — which under `v0.2.0` reached the engine only
+  through GitHub's redirect from the old name.
+
 ## 0.1.0 — 2026-09-23
 
 Everything to date, recorded after the fact, and the first tagged version:
