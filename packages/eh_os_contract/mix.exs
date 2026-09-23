@@ -54,7 +54,13 @@ defmodule EhOsContract.MixProject do
   # The invented fixtures — the universality gate and the process-shapes rig —
   # belong to the engine and not to any client, so they compile here. They are
   # the material a client-free test suite is built from.
-  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  #
+  # `dev/` holds tooling for developing this package itself — today only
+  # `mix eh_os_contract.docs`, which rewrites `docs/contract.md` inside this
+  # package. A dependency always compiles in `:prod`, so none of it reaches a
+  # consumer, where it had nothing to rewrite and failed with a `File.Error`.
+  defp elixirc_paths(:test), do: ["lib", "test/support", "dev"]
+  defp elixirc_paths(:dev), do: ["lib", "dev"]
   defp elixirc_paths(_), do: ["lib"]
 
   # The suite migrates itself with `EhOsContract.Migrations`, so the package is the first
@@ -73,6 +79,7 @@ defmodule EhOsContract.MixProject do
         "format --check-formatted",
         "compile --force --warnings-as-errors",
         "eh_os_contract.check",
+        "eh_os_contract.docs --check",
         "test"
       ]
     ]
@@ -92,14 +99,14 @@ defmodule EhOsContract.MixProject do
       # nothing a consumer should receive. `LICENSE` is a copy: a package published
       # from a subdirectory does not pick up the repository's, and `licenses:` above
       # is metadata rather than a file.
-      files: ~w(lib .formatter.exs mix.exs README.md CHANGELOG.md LICENSE)
+      files: ~w(lib docs .formatter.exs mix.exs README.md CHANGELOG.md LICENSE)
     ]
   end
 
   defp docs do
     [
       main: "readme",
-      extras: ["README.md", "CHANGELOG.md"],
+      extras: ["README.md", "docs/contract.md", "CHANGELOG.md"],
       source_ref: "v#{@version}"
     ]
   end

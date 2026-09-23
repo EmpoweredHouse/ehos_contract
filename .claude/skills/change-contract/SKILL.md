@@ -22,11 +22,11 @@ and a log cannot be edited — only added to.**
 edit is exactly what a linter is for. What no lint can enforce is *doing the impact analysis before
 the edit*, because by the time the compiler runs, the file already says whatever it says. That
 ordering — think, then write — is the entire reason this skill exists rather than a paragraph in
-`docs/contract.md`.
+`packages/eh_os_contract/docs/contract.md`.
 
 ## The compile gate already covers one whole category — do not re-derive it
 
-`docs/contract.md`'s ["What refuses to compile"](../../../docs/contract.md) table is the complete,
+`packages/eh_os_contract/docs/contract.md`'s ["What refuses to compile"](../../../packages/eh_os_contract/docs/contract.md) table is the complete,
 tested list (`test/compile_gates_test.exs`, in the package). An unknown key, a payload type outside
 `EhOsContract.Contract.payload_types/0`, a `trace` naming an event that does not exist, a handler on an
 undeclared event, an async handler on an event without `identity` — all of these fail loudly at

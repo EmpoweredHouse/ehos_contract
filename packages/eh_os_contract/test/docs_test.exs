@@ -16,20 +16,13 @@ defmodule EhOsContract.DocsTest do
      promises a compile error; the test proves the promise is true.
 
   The generated reference block guards itself — `mix eh_os_contract.docs --check` in
-  `mix check` breaks the build if it is out of date.
+  this package's `mix check` breaks the build if it is out of date.
   """
 
   use ExUnit.Case, async: true
 
   @path "docs/contract.md"
-  # The gates themselves moved into the package on 2026-08-21 with the rest of the
-  # engine's suite; this document did not, because `CLAUDE.md`, `README.md` and two
-  # skills point at it by that path and `mix eh_os_contract.docs` resolves it from the working
-  # directory. So the reference and the tests that prove it now live on opposite
-  # sides of the seam, and this file reads across it by path. That is a debt with a
-  # name, recorded in `PLAN.md`: the DSL reference is a package artifact still kept
-  # as a host one.
-  @gates "packages/eh_os_contract/test/compile_gates_test.exs"
+  @gates "test/compile_gates_test.exs"
 
   setup_all do
     {:ok, doc: File.read!(@path)}

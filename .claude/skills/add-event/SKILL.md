@@ -77,7 +77,7 @@ The full key set, from `@schema.event` (`contract.ex:18-22`):
 This is the complete, current set — confirmed against the source, not the earlier version of this
 list that seeded this task (which was correct in this case, but treat that as luck, not a guarantee,
 next time the schema changes). An unknown key raises at compile time (`validate_keys!/3`,
-`contract.ex:369-374`): `docs/contract.md`'s "What refuses to compile" table lists this as "the
+`contract.ex:369-374`): `packages/eh_os_contract/docs/contract.md`'s "What refuses to compile" table lists this as "the
 vocabulary is fixed; a new word is a design decision, not a convenience." If a fact genuinely needs a
 concept none of the above cover, that is exactly the situation `module-boundary-check`'s and
 `contract-distillation`'s non-negotiables both name: flag it, do not invent DSL vocabulary to paper
@@ -87,7 +87,7 @@ over it.
 
 `EhOsContract.Contract.payload_types/0` is `[:id, :string, :integer, :timestamp, :enum]` (`contract.ex:71`).
 Closed on purpose — "a type that names a thing an accountant recognises is this library knowing one
-client's domain" (`docs/contract.md:165-167`) — and an out-of-set type is compile-refused
+client's domain" (`packages/eh_os_contract/docs/contract.md:165-167`) — and an out-of-set type is compile-refused
 (`validate_payload_types!/2`, `contract.ex:727-742`).
 
 Two working conventions to know before writing a field, neither of which the compiler enforces:
@@ -102,7 +102,7 @@ Two working conventions to know before writing a field, neither of which the com
   that's a DSL-vocabulary decision, out of scope here.
 - **An attribute that only sometimes applies cannot be a nullable field.** `PLAN.md:409-413` — the
   "DEC-05" finding — states this as a recorded gap, not a workaround: a declared payload field must be
-  present on every emission (a missing declared field refuses the emission, `docs/contract.md:177-179`),
+  present on every emission (a missing declared field refuses the emission, `packages/eh_os_contract/docs/contract.md:177-179`),
   so "sometimes present" needs its own event, not `field: :type` plus hoping callers omit it
   gracefully. If the material describes a fact that applies to some occurrences and not others, that's
   two events, or an open gap to flag — not one event with an optional-feeling field.
@@ -212,7 +212,7 @@ plausible-sounding name to keep moving; an unconfirmed name is exactly the kind 
    layout.
 9. **Compile it**: `mix compile --warnings-as-errors` (from the repo root, or `cd packages/eh_os_contract`
    for the engine's own suite) surfaces every one of the key/type/membership gates in
-   `docs/contract.md`'s "What refuses to compile" table for free — read what it says rather than
+   `packages/eh_os_contract/docs/contract.md`'s "What refuses to compile" table for free — read what it says rather than
    guessing at the cause.
 10. **Run `mix eh_os_contract.check`** and read any new `info`/`warning` line naming this event by name — an owner
     that doesn't exist yet, or a `facts_not_keyed_by_their_run`/`assertions_finer_than_their_run`

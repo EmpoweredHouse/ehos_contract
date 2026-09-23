@@ -170,7 +170,7 @@ for "is there a timing promise" undercounts it.
 4. **If Question 1 is "yes" but neither Criterion A nor B applies (bare event):**
    - Declare the event with `payload`, `label`, `owner`, and `identity` only if retries need
      deduplication — no `process:`, no `instance`, no `trace`.
-   - Still check `docs/contract.md`/`mix eh_os_contract.check` for an existing owner of this fact before
+   - Still check `packages/eh_os_contract/docs/contract.md`/`mix eh_os_contract.check` for an existing owner of this fact before
      adding a new one, same as any other declaration.
    - Watch the payload type dictionary here specifically: `[:id, :string, :integer, :timestamp,
      :enum]` has no decimal/float type, so a monetary field (an invoice amount, for instance)
@@ -178,7 +178,7 @@ for "is there a timing promise" undercounts it.
      choice made once and forgotten.
 
 5. **If Criterion A applies (structural, whether or not Criterion B also does):**
-   - Check whether the event, process, or assertion already exists: `docs/contract.md`,
+   - Check whether the event, process, or assertion already exists: `packages/eh_os_contract/docs/contract.md`,
      `mix eh_os_contract.check` (an `info` line naming an event with no handler, or an owner module that
      does not exist yet, both mean "declared but not built" rather than "does not exist").
    - Give the event `process:` and `stage:`, and give the process `instance` — this alone is

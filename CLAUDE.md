@@ -27,7 +27,7 @@ zostaje w `test/support/`, bo jest **zmyślona** — i sama to o sobie mówi w p
 | --- | --- |
 | Plan pracy, etapy, kryteria odbioru, **stan** | [`PLAN.md`](PLAN.md) |
 | Czym jest to repozytorium, brama, struktura | [`README.md`](README.md) |
-| **Jak napisać kontrakt** — klucze, wymagane/opcjonalne, co się nie skompiluje | [`docs/contract.md`](docs/contract.md) |
+| **Jak napisać kontrakt** — klucze, wymagane/opcjonalne, co się nie skompiluje | [`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
 | **Założenia początkowe, 18 decyzji, `§N` z komentarzy w kodzie** | [`docs/adr/architecture.md`](docs/adr/architecture.md) |
 | Kształty kodu, schematy, pułapki, biblioteki — `notes §N` z komentarzy | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |
 | Co każda decyzja pobiła, odrzucone alternatywy | [`docs/adr/design-rationale.md`](docs/adr/design-rationale.md) |
@@ -78,7 +78,7 @@ docker compose up -d && mix ecto.setup && mix check
 21 sierpnia — `mix test` w `packages/eh_os_contract` osobnym wywołaniem. **Musi przechodzić.** Suita silnika
 przeniosła się do pakietu i `mix test` w tym projekcie już jej nie widzi; brama, która przestałaby
 pokrywać silnik w dniu, w którym silnik dostał własną suitę, byłaby najgorszym możliwym wynikiem tej
-przeprowadzki. Osobne wywołanie, nie umbrella — pakiet ma stać sam, i to jest własność, której pilnujemy. `eh_os_contract.docs --check` pilnuje, że referencja kluczy w `docs/contract.md` jest
+przeprowadzki. Osobne wywołanie, nie umbrella — pakiet ma stać sam, i to jest własność, której pilnujemy. `eh_os_contract.docs --check` pilnuje, że referencja kluczy w `packages/eh_os_contract/docs/contract.md` jest
 wygenerowana z `EhOsContract.Contract.schema/0`, a nie pisana ręcznie.
 `--warnings-as-errors` jest konieczne: `boundary` raportuje naruszenia jako ostrzeżenia, więc bez tego
 przełącznika granice są dokumentacją. Postgres słucha na **5433**.
@@ -127,7 +127,7 @@ mix ecto.migrate`.
 - **Dokumentacja repo robocza — `PLAN.md`, ten plik — zostaje po polsku.** To nie jest kod i nie
   jedzie z pakietem. **`README.md` jest wyjątkiem od 21 sierpnia** — biblioteka ma zostać
   upubliczniona, więc `README.md` jest teraz po angielsku, po tej samej stronie granicy co
-  `docs/contract.md` i `docs/adr/`: dokument, który czyta ktoś spoza tego zespołu. `PLAN.md`
+  `packages/eh_os_contract/docs/contract.md` i `docs/adr/`: dokument, który czyta ktoś spoza tego zespołu. `PLAN.md`
   i ten plik zostają po polsku, bo ich czytelnikiem wciąż jest tylko zespół pracujący w tym
   repozytorium.
 - **Publiczne funkcje w `lib/eh_os_contract/` mają `@doc` i `@spec`.** Bez tego pakiet nie ma dokumentacji ani

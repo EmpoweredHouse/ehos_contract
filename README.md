@@ -186,9 +186,9 @@ an actual decision gets made, so a decision function ships with a case that work
 that went wrong — readable aloud, and executed by the test suite, not just documentation of it.
 
 The full key reference — required keys, optional keys, what refuses to compile — lives in
-[`docs/contract.md`](docs/contract.md), and it is not hand-written: `mix eh_os_contract.docs` generates it
-from `EhOsContract.Contract.schema/0`, and `mix eh_os_contract.docs --check` fails the build if anyone lets the two
-drift apart. A DSL reference that can go stale is the exact failure mode this project exists to
+[`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md), and it is not hand-written: `mix eh_os_contract.docs`, run inside the package,
+generates it from `EhOsContract.Contract.schema/0`, and the package's gate runs it with `--check`, failing
+the build if anyone lets the two drift apart. A DSL reference that can go stale is the exact failure mode this project exists to
 catch in other people's systems, so it doesn't get to have one of its own.
 
 Two diagrams come out of `mix eh_os_contract.graph`, for two different readers, and they deliberately don't
@@ -226,7 +226,7 @@ than a check.
 | `mix eh_os_contract.brief --process <name> --output brief.html` | a document for a client-facing review |
 | `mix eh_os_contract.trace` | trace assertions evaluated against the log |
 | `mix eh_os_contract.report --since … --until …` | the conformance report for a period |
-| `mix eh_os_contract.docs` | regenerate `docs/contract.md` from the DSL itself |
+| `mix eh_os_contract.docs` | inside `packages/eh_os_contract` only: regenerate its `docs/contract.md` from the DSL itself |
 
 ## The package
 
@@ -259,7 +259,7 @@ from the first commit, so it's a fact the compiler checks, not a promise in a do
 
 | Question | Read |
 | --- | --- |
-| How do I write a contract — every key, required/optional, generated from the code | [`docs/contract.md`](docs/contract.md) |
+| How do I write a contract — every key, required/optional, generated from the code | [`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
 | Why does the library work this way — eighteen starting decisions (written under its earlier name, `pns`) | [`docs/adr/architecture.md`](docs/adr/architecture.md) |
 | What did each decision beat, which alternatives were rejected | [`docs/adr/design-rationale.md`](docs/adr/design-rationale.md) |
 | Code shapes, schemas, library choices, implementation traps | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |

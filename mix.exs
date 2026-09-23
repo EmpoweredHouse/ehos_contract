@@ -76,10 +76,8 @@ defmodule EhOsContractHost.MixProject do
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       # The one command that has to pass. `--warnings-as-errors` is necessary
       # here: `boundary` reports violations as warnings, so without that switch
-      # the boundaries are documentation rather than enforcement.
-      # `eh_os_contract.docs --check` is here for the same reason: without it the key
-      # reference in `docs/contract.md` is documentation that can lie, rather
-      # than a generated artifact.
+      # the boundaries are documentation rather than enforcement. The DSL reference
+      # is checked by the package's own gate, where the reference now lives.
       check: [
         # First because it is the cheapest and the message is the clearest. Until
         # 2026-09-22 the gate had no format step at all, and fifty-one files across
@@ -93,7 +91,6 @@ defmodule EhOsContractHost.MixProject do
         "format --check-formatted",
         "compile --force --warnings-as-errors",
         "eh_os_contract.check",
-        "eh_os_contract.docs --check",
         "test",
         &package_test/1,
         &package_test_web/1

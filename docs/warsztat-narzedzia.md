@@ -36,7 +36,7 @@ Oba czytają ten sam rodzaj materiału, ale pytają o co innego:
 
 - `process-extraction` pyta o **zrozumienie biznesowe** — po to, żeby zbudować wireframe'y i mapę
   AS-IS/TO-BE. Odbiorcą jest projektant i sam klient (mapa idzie do potwierdzenia).
-- `contract-distillation` pyta o **gotowość kontraktu** — kategorie z `docs/contract.md`, które
+- `contract-distillation` pyta o **gotowość kontraktu** — kategorie z `packages/eh_os_contract/docs/contract.md`, które
   prędzej czy później trzeba wypełnić, żeby `EhOsContract.Contract` się skompilował. Odbiorcą jest ten, kto
   usiądzie pisać plik `.ex` — czasem tego samego dnia, czasem za miesiąc.
 

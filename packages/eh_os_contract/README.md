@@ -126,8 +126,7 @@ the reason the declarations carry a `label` in the client's own language.
 
 The full key reference — every declaration, every key, and the list of things that
 will not compile — is generated from `EhOsContract.Contract.schema/0` and lives in
-`docs/contract.md` in this repository rather than in this package. That split is a
-known debt, recorded rather than quietly tolerated.
+[`docs/contract.md`](docs/contract.md), inside this package.
 
 ## Emitting and reacting
 

@@ -189,7 +189,7 @@ instrument its own timing — that is already done, on both paths, by the caller
 
 ## Procedure
 
-1. Confirm the event already exists and is what you think it is: `mix eh_os_contract.check` / `docs/contract.md`
+1. Confirm the event already exists and is what you think it is: `mix eh_os_contract.check` / `packages/eh_os_contract/docs/contract.md`
    for its `payload`, `identity`, and `process`/`stage`. If it does not exist yet, stop — that is
    `add-event`, not this skill.
 2. Decide sync vs. async using the transaction-boundary criterion above, not habit: does the

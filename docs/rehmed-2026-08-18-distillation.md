@@ -16,7 +16,7 @@ podaje tylko własny identyfikator, piszę identyfikator i tyle.
 to `stated`.* Nic tutaj nie jest potwierdzone z klientem. Ten dokument jest wejściem do pisania
 kontraktu, nie kontraktem.
 
-**Weryfikacja słownika:** `mix eh_os_contract.docs --check` → `docs/contract.md: reference is current` (2026-08-18).
+**Weryfikacja słownika:** `mix eh_os_contract.docs --check` → `packages/eh_os_contract/docs/contract.md: reference is current` (2026-08-18).
 Kategorie poniżej rzutowane na ten plik, nie na pamięć o nim.
 
 ---
@@ -116,7 +116,7 @@ niezwłocznie, nie później niż w **2 dni** od zakończenia świadczenia ambul
 systemu: nie później niż 3 dni od jej usunięcia**.
 
 To jest jeden do jednego mechanizm `depends_on` + `unavailable_looks_like` → czwarty werdykt
-`:suspended` (od 6 sierpnia czytany w runtime, patrz `docs/contract.md` § Known decoration). Nie trzeba
+`:suspended` (od 6 sierpnia czytany w runtime, patrz `packages/eh_os_contract/docs/contract.md` § Known decoration). Nie trzeba
 tego nagabywać ani tłumaczyć — **regulator sam napisał semantykę zawieszenia**. Jeżeli ma powstać jeden
 kontrakt EhOsContract dla Rehmedu jako dowód, że silnik robi coś prawdziwego, to jest ten.
 
@@ -727,7 +727,7 @@ decyduje o tym, czy płatnik nam zapłaci, a główne źródło to rozmowa z nie
 | Zdarzenie | Pole | Znaczenie | Typ DSL | Dowód |
 |---|---|---|---|---|
 | 1, 2 | `visit_id`, `payer_id` | — | `:id` | `AGG-11` |
-| 3 | `period` | miesiąc rozliczeniowy | **`:id`** — i to jest właściwa odpowiedź, nie nowy typ; `:period` był w DSL przez dwa dni i wyleciał | `docs/contract.md` § Payload types |
+| 3 | `period` | miesiąc rozliczeniowy | **`:id`** — i to jest właściwa odpowiedź, nie nowy typ; `:period` był w DSL przez dwa dni i wyleciał | `packages/eh_os_contract/docs/contract.md` § Payload types |
 | 3 | `invoice_id` | **`DEC-16`: wizyta niesie referencję do faktury, która ją rozliczyła** — „nierozliczona" to brak tej referencji | `:id` | `DEC-16` |
 | 3 | `amount` | kwota faktury | **nie mieści się** | — |
 
@@ -1228,7 +1228,7 @@ normalne, że jest mała.
   zamiast kształtu jest biblioteką znającą jedną domenę. Ale w Rehmedzie pieniądze są w niezmienniku
   (`AGG-03` inv. 1: *linie sumują się do całości*), więc to nie jest kosmetyka.
 - **Kody słownikowe (ICD-10, ICD-9, rodzaj i tryb zdarzenia, metoda płatności).** Konceptualnie `:enum`,
-  ale **zbioru nie da się zadeklarować** (znana ozdoba w `docs/contract.md`), a tutaj słowniki są
+  ale **zbioru nie da się zadeklarować** (znana ozdoba w `packages/eh_os_contract/docs/contract.md`), a tutaj słowniki są
   ogromne i zewnętrzne — „milion słowników, które trzeba mieć u siebie". Efekt: albo `:string`
   (i wtedy kontrola retencji traktuje kod ICD jak tekst pisany przez człowieka, co akurat jest prawdą
   o wrażliwości i nieprawdą o pochodzeniu), albo `:enum` bez żadnej gwarancji.

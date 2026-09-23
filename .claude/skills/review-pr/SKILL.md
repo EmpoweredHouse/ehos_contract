@@ -1,6 +1,6 @@
 ---
 name: review-pr
-description: DRAFT, not yet reviewed. Before approving or sending back a PR generated for this repository — a new event, a new handler, a contract edit, or anything touching lib/eh_os_contract/, lib/taxvision/, or lib/rehmed/ — separate what `mix check` already guarantees (so review attention does not waste itself re-deriving a compile refusal) from what only a human judgment call can catch: an unexplained `mix eh_os_contract.check` warning, an invented-looking `rule`/`example`, a silent edit to an existing contract's `identity`/`instance`/`retain`/`trace`, a missing "verified in reverse" claim, Polish text outside the narrow allowed surface, or a diff too large for its stated scope. Use for any PR review in this repo, whether by a human or an agent reviewing on a human's behalf. Does not replace the compiler, `mix check`, or `docs/contract.md`'s compile-gate table — it tells you which parts of those you never need to re-check by hand.
+description: DRAFT, not yet reviewed. Before approving or sending back a PR generated for this repository — a new event, a new handler, a contract edit, or anything touching lib/eh_os_contract/, lib/taxvision/, or lib/rehmed/ — separate what `mix check` already guarantees (so review attention does not waste itself re-deriving a compile refusal) from what only a human judgment call can catch: an unexplained `mix eh_os_contract.check` warning, an invented-looking `rule`/`example`, a silent edit to an existing contract's `identity`/`instance`/`retain`/`trace`, a missing "verified in reverse" claim, Polish text outside the narrow allowed surface, or a diff too large for its stated scope. Use for any PR review in this repo, whether by a human or an agent reviewing on a human's behalf. Does not replace the compiler, `mix check`, or `packages/eh_os_contract/docs/contract.md`'s compile-gate table — it tells you which parts of those you never need to re-check by hand.
 ---
 
 # Reviewing a generated PR
@@ -8,7 +8,7 @@ description: DRAFT, not yet reviewed. Before approving or sending back a PR gene
 DRAFT — not yet run against a real PR review. Review before trusting it. Every claim below about
 what `mix check` refuses, what `mix eh_os_contract.check` only warns or informs about, and what
 `EhOsContract.Deployment.diff/2` / `EhOsContract.Trace.evaluate/3` do or do not track was checked against this
-package's source (`packages/eh_os_contract/lib/mix/tasks/eh_os_contract.check.ex`, `docs/contract.md`) on 21 August
+package's source (`packages/eh_os_contract/lib/mix/tasks/eh_os_contract.check.ex`, `packages/eh_os_contract/docs/contract.md`) on 21 August
 2026, not assumed — file and line references are given so the next reader can re-check rather than
 take it on faith.
 
@@ -45,8 +45,8 @@ tail -4; echo "EXIT=$rc"` — insist on the `EXIT=` line if a shortened log is a
 
 Given a genuinely green gate, two categories are already closed and do not deserve review attention:
 
-**1a. Compile-time refusals** — `docs/contract.md`'s ["What refuses to
-compile"](../../../docs/contract.md) table, pinned by `test/compile_gates_test.exs`. If the PR
+**1a. Compile-time refusals** — `packages/eh_os_contract/docs/contract.md`'s ["What refuses to
+compile"](../../../packages/eh_os_contract/docs/contract.md) table, pinned by `test/compile_gates_test.exs`. If the PR
 compiled, none of these apply:
 
 | Refused | Why |
