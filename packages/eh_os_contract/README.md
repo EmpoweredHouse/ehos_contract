@@ -30,7 +30,7 @@ hence `sparse:`; `mix.lock` pins the commit.
 def deps do
   [
     {:eh_os_contract,
-     git: "https://github.com/EmpoweredHouse/eh-os-prototype.git",
+     git: "https://github.com/EmpoweredHouse/eh-os-contract.git",
      sparse: "packages/eh_os_contract"}
   ]
 end

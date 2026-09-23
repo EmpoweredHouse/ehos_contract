@@ -5,7 +5,7 @@ defmodule EhOsContract.MixProject do
   # conformance report carries. A change that can move a verdict raises the minor
   # version and gets a line in CHANGELOG.md — the rule is written there.
   @version "0.2.0"
-  @source_url "https://github.com/EmpoweredHouse/eh-os-prototype"
+  @source_url "https://github.com/EmpoweredHouse/eh-os-contract"
   @description "Checks that deployed code does what the declared business process says it does."
 
   @moduledoc """

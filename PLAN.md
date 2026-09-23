@@ -163,10 +163,11 @@ wyszły cztery przeszkody, każda ma swój commit:
 Przy okazji z `CLAUDE.md` wyleciało „grafu w interfejsie nie budujemy” — dashboard ma ekran grafu od
 23 sierpnia.
 
-**Otwarte, po stronie zespołu:** wypchnięcie, tag `v0.2.0` (dziś konsument może przypiąć się tylko do
-gałęzi, a `mix.lock` do commita), zmiana nazwy repozytorium na GitHubie — z nią `@source_url` w obu
-pakietach i adres gita w `eh_os_contract_web/mix.exs` oraz w README. Repozytorium jest prywatne, więc
-CI konsumenta potrzebuje klucza albo tokenu.
+**Zrobione tego samego dnia:** `main` wypchnięty, tag `v0.2.0` na `fafc3cf` (niewydane sekcje obu
+CHANGELOG-ów włączone w 0.2.0 i 0.1.0, żeby tag nie przeczył dacie), repozytorium przemianowane na
+`EmpoweredHouse/eh-os-contract` — `@source_url` w obu pakietach, adres gita w `eh_os_contract_web/mix.exs`,
+README i `origin` za nim poszły. Repozytorium jest prywatne, więc CI konsumenta potrzebuje klucza albo
+tokenu. Lokalny katalog nadal nazywa się `pns_prototype`.
 
 `mix check`: 42 + 397 + 31 testów, 0 padnięć.
 

@@ -1,6 +1,6 @@
 # eh_os_contract
 
-[![check](https://github.com/EmpoweredHouse/eh-os-prototype/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/EmpoweredHouse/eh-os-prototype/actions/workflows/ci.yml)
+[![check](https://github.com/EmpoweredHouse/eh-os-contract/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/EmpoweredHouse/eh-os-contract/actions/workflows/ci.yml)
 
 **One contract per business process, and two things built on it: the plumbing an event-driven
 Elixir application runs on, and a check — for as long as the system runs — that what actually
