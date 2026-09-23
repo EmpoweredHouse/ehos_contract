@@ -1,10 +1,15 @@
 # EhOsContract
 
-Checks that deployed code does what the declared business process says it does.
+A contract per business process, and two things built on it: event dispatch for an
+event-driven Elixir application, and a continuous check that what happened is what
+the contract says should.
 
 You declare a process as an Elixir module — its events, the run they belong to,
-the promises it makes about them. Handlers react to those events. EhOsContract records what
-actually happened and answers four questions about the difference:
+the promises it makes about them. `EhOsContract.emit/4` refuses anything the contract
+does not declare and writes the rest to an event log; handlers react to those events,
+synchronously inside the emitting transaction or asynchronously through an Oban job
+inserted in that same transaction. Then EhOsContract compares the log with the contract
+and answers four questions about the difference:
 
 - which declared paths have never been traversed,
 - which transitions happened without being declared,
@@ -65,6 +70,7 @@ defmodule MyApp.Contracts.Onboarding do
   event :application_received,
     label: "Application received",
     payload: %{application_id: :id},
+    identity: [:application_id],
     process: :onboarding,
     stage: :intake
 
@@ -103,6 +109,29 @@ will not compile — is generated from `EhOsContract.Contract.schema/0` and live
 `docs/contract.md` in this repository rather than in this package. That split is a
 known debt, recorded rather than quietly tolerated.
 
+## Emitting and reacting
+
+```elixir
+EhOsContract.emit(MyApp.Contracts.Onboarding, :application_received, %{application_id: id})
+
+defmodule MyApp.Onboarding.OnApplicationReceived do
+  use EhOsContract.Handler,
+    contract: MyApp.Contracts.Onboarding,
+    event: :application_received,
+    async: true
+
+  @impl EhOsContract.Handler
+  def handle(%{application_id: id}, ctx) do
+    # ctx.idempotency_key: the queue delivers at least once
+    MyApp.Mailer.acknowledge(id, ctx.idempotency_key)
+    :ok
+  end
+end
+```
+
+A handler for an event the contract does not declare does not compile. Neither does
+an asynchronous one whose event has no `identity:` to derive an idempotency key from.
+
 ## What you get
 
 ```
@@ -124,8 +153,8 @@ It does not know what a company is, what a tenant is, or what any of your fields
 mean, and it does not know who anybody is: an event's actor is an opaque subject the
 emitting application supplies, and authentication, roles and tenants stay on that
 application's side. Every payload type describes the shape of a value rather than
-the name of a thing. A
-library that knows one client's domain is a library for one client.
+the name of a thing. A library that knows one client's domain is a library for one
+client.
 
 ## Licence
 
