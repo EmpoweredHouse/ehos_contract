@@ -3,9 +3,10 @@
   "configurations": [
     {
       "name": "eh_os_contract_host",
-      "runtimeExecutable": "mix",
+      "runtimeExecutable": "sh",
       "runtimeArgs": [
-        "phx.server"
+        "-c",
+        "cd sandbox && exec mix phx.server"
       ],
       "port": 4000,
       "autoPort": true

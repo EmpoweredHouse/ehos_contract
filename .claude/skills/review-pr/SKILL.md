@@ -1,6 +1,6 @@
 ---
 name: review-pr
-description: DRAFT, not yet reviewed. Before approving or sending back a PR generated for this repository — a new event, a new handler, a contract edit, or anything touching lib/eh_os_contract/, lib/taxvision/, or lib/rehmed/ — separate what `mix check` already guarantees (so review attention does not waste itself re-deriving a compile refusal) from what only a human judgment call can catch: an unexplained `mix eh_os_contract.check` warning, an invented-looking `rule`/`example`, a silent edit to an existing contract's `identity`/`instance`/`retain`/`trace`, a missing "verified in reverse" claim, Polish text outside the narrow allowed surface, or a diff too large for its stated scope. Use for any PR review in this repo, whether by a human or an agent reviewing on a human's behalf. Does not replace the compiler, `mix check`, or `packages/eh_os_contract/docs/contract.md`'s compile-gate table — it tells you which parts of those you never need to re-check by hand.
+description: DRAFT, not yet reviewed. Before approving or sending back a PR generated for this repository — a new event, a new handler, a contract edit, or anything touching packages/eh_os_contract/lib/eh_os_contract/, sandbox/lib/taxvision/, or sandbox/lib/rehmed/ — separate what `mix check` already guarantees (so review attention does not waste itself re-deriving a compile refusal) from what only a human judgment call can catch: an unexplained `mix eh_os_contract.check` warning, an invented-looking `rule`/`example`, a silent edit to an existing contract's `identity`/`instance`/`retain`/`trace`, a missing "verified in reverse" claim, Polish text outside the narrow allowed surface, or a diff too large for its stated scope. Use for any PR review in this repo, whether by a human or an agent reviewing on a human's behalf. Does not replace the compiler, `mix check`, or `packages/eh_os_contract/docs/contract.md`'s compile-gate table — it tells you which parts of those you never need to re-check by hand.
 ---
 
 # Reviewing a generated PR
@@ -33,9 +33,10 @@ scratch.
 
 ## Part 1 — what NOT to re-check, because the gate already did
 
-`docker compose up -d && mix ecto.setup && mix check` runs, in this order: `compile --force
---warnings-as-errors`, `eh_os_contract.check`, `eh_os_contract.docs --check`, `test`, and — since 21 August —
-`mix test` inside `packages/eh_os_contract` as its own separate invocation (`CLAUDE.md`). **If this did
+`docker compose up -d && cd sandbox && mix ecto.setup && mix check` runs, in this order: formatting,
+`compile --force --warnings-as-errors`, `eh_os_contract.check`, the sandbox's tests, and then each
+package's own `mix check` as a separate invocation — `packages/eh_os_contract`'s includes
+`eh_os_contract.docs --check` (`CLAUDE.md`). **If this did
 not run green, there is nothing to review yet.** Ask for the real exit code, not a description of
 one. Never accept `mix check | tail -4` as evidence: piping to `tail` reports `tail`'s exit code,
 which is always zero, and this repository has already committed 24 real failures behind exactly that
@@ -137,15 +138,15 @@ but it is a question to ask before trusting the fix is actually the thing that w
 
 ### 5. The language boundary, exactly as stated, not loosened
 
-`CLAUDE.md` is specific: code is English, no exceptions, and the scope is not just `lib/eh_os_contract/` but
-also `lib/taxvision/`, `lib/rehmed/`, `test/`, `packages/eh_os_contract/test/` fixtures, `config/`,
-`priv/repo/migrations/`, `docs/`, and `mix.exs`. The only Polish allowed anywhere in that scope is
+`CLAUDE.md` is specific: code is English, no exceptions, and the scope is not just `packages/eh_os_contract/lib/eh_os_contract/` but
+also everything else under `packages/` and `sandbox/` — `lib/`, `test/` with fixtures, `config/`,
+`priv/repo/migrations/`, `mix.exs` — and `docs/`. The only Polish allowed anywhere in that scope is
 inside a string a client actually reads: `label`, `example` prose, `source:`, `unavailable_looks_like`
 in a contract, task names, a notification subject. Everywhere else — identifiers, moduledocs, `@doc`,
 comments, test names, compiler error strings — a Polish string is a defect, however small.
 
 **Grepping for `[ąćęłńóśźż]` is not sufficient**, and this repository has the concrete counter-example
-already checked into it: `rejestry` in `lib/taxvision/registry_check.ex:66` carries zero diacritics
+already checked into it: `rejestry` in `sandbox/lib/taxvision/registry_check.ex:66` carries zero diacritics
 and survived a full file-by-file rewrite meant to close exactly this class of finding — confirmed
 present in the tree today. Reviewing for the language boundary means reading the diff's strings for
 Polish words, not running a diacritics grep and calling it done.

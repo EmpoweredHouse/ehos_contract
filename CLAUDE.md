@@ -1,25 +1,35 @@
-# EhOsContract — repozytorium silnika
+# eh_os_contract — repozytorium biblioteki
 
-Silnik weryfikacji zgodności wdrożonego kodu z zadeklarowanym procesem. `lib/eh_os_contract/` to silnik i przyszły
-pakiet; `lib/taxvision/` to **aplikacja klienta, która jest tu tymczasowo** — jako przypadek testowy,
-na którym sprawdzamy, czy założenia silnika się trzymają. Granica jest wymuszona przez `boundary` od
-pierwszego commita, żeby ta tymczasowość była faktem, a nie obietnicą.
+To jest repozytorium biblioteki `eh_os_contract`: kontrakt procesu biznesowego i dwie rzeczy na nim
+zbudowane — dispatch zdarzeń dla aplikacji sterowanej zdarzeniami i sprawdzanie, czy to, co się stało,
+zgadza się z tym, co kontrakt mówi. Inne repozytoria instalują pakiety stąd — z gita, przez `sparse:`,
+docelowo z Hexa.
+
+| Katalog | Co |
+| --- | --- |
+| `packages/eh_os_contract/` | **biblioteka** — DSL kontraktu, dispatch, log, zgodność, `docs/contract.md` |
+| `packages/eh_os_contract_web/` | montowalny dashboard |
+| `sandbox/` | host deweloperski `:eh_os_contract_host` i dane testowe: TaxVision, Rehmed, endpoint Phoenixa |
+| `docs/` | założenia (`docs/adr/`) i materiał warsztatowy |
+
+Każdy z trzech to osobny projekt Mix. Pakiety budują się i testują same, bez `sandbox/` — i to jest
+własność, której pilnujemy: `sandbox/` jest pierwszym konsumentem biblioteki, nie jej częścią.
 
 **Do 23 września pakiet nazywał się `pns` (moduły `PNS.*`, host `:pns_prototype`, tabele `pns_*`).**
 Wszystko w kodzie nosi już nową nazwę — `eh_os_contract`, `EhOsContract`, `:eh_os_contract_host`. Stara
 zostaje tylko w `docs/adr/` i w historii `PLAN.md`, bo to zapis, nie opis stanu: `PNS.X` tam to dzisiejsze
 `EhOsContract.X`.
 
-**To repozytorium jest przejściowe i nie budujemy w nim aplikacji dla nikogo.** Produktem są fundamenty
-biblioteki i wnioski; TaxVision i Rehmed są **danymi testowymi** — materiałem, na którym sprawdzamy, czy
-DSL się trzyma. Dlatego wnioski z pisania kontraktu idą do `PLAN.md` jako praca nad biblioteką, a nie do
+**`sandbox/` nie jest produktem i nie budujemy w nim aplikacji dla nikogo.** Produktem jest biblioteka;
+TaxVision i Rehmed są **danymi testowymi** — materiałem, na którym sprawdzamy, czy DSL się trzyma. Dlatego wnioski z pisania kontraktu idą do `PLAN.md` jako praca nad biblioteką, a nie do
 notatek o kliencie, i dlatego kontrakt, którego nie da się napisać, jest **lepszym** wynikiem niż
 kontrakt napisany obok materiału.
 
-Od 18 sierpnia dane testowe są z dwóch domen. `lib/taxvision/` to pełna aplikacja — schematy, handlery,
-repo. `lib/rehmed/` to **wyłącznie kontrakty**: Rehmed nie ma tu kodu i nie będzie miał, bo do
-sprawdzenia DSL kod nie jest potrzebny. Trzecia domena medyczna, `UniversalityGate.TreatmentEpisode`,
-zostaje w `test/support/`, bo jest **zmyślona** — i sama to o sobie mówi w pierwszej linii.
+Od 18 sierpnia dane testowe są z dwóch domen. `sandbox/lib/taxvision/` to pełna aplikacja — schematy,
+handlery, repo. `sandbox/lib/rehmed/` to **wyłącznie kontrakty**: Rehmed nie ma tu kodu i nie będzie miał,
+bo do sprawdzenia DSL kod nie jest potrzebny. Trzecia domena medyczna, `UniversalityGate.TreatmentEpisode`,
+jest w `packages/eh_os_contract/test/support/`, bo jest **zmyślona** — i sama to o sobie mówi w pierwszej
+linii.
 
 ## Zanim cokolwiek zmienisz
 
@@ -56,7 +66,13 @@ Z tego wynika, gdzie co poprawiać:
 Założenia myliły się już dwa razy i oba razy wyszło to przy pisaniu kodu. Jeśli mylą się znowu, poprawka
 idzie do `docs/adr/` — nie do komentarza obchodzącego problem.
 
-## Jedno pytanie, na które ten produkt odpowiada
+## Czym biblioteka jest, a czym nie
+
+Dwie połowy na jednym kontrakcie. **Zdarzenia**: `emit` odrzuca to, czego kontrakt nie deklaruje, handlery
+synchroniczne jadą w transakcji emisji, asynchroniczne przez Obana wstawionego w tę samą transakcję. W planie:
+wiele aplikacji OTP wymieniających zdarzenia przez broker (JetStream) — **jeszcze niezbudowane**, a
+`docs/adr/architecture.md` §9–10 mówi dziś „bez zewnętrznego brokera”, więc przy tej pracy idzie tam
+poprawka z datą. **Zgodność** odpowiada na jedno pytanie:
 
 > Czy wdrożony kod robi to, co mówi zdefiniowany proces?
 
@@ -71,15 +87,16 @@ aplikacji klienta.
 ## Brama
 
 ```bash
-docker compose up -d && mix ecto.setup && mix check
+docker compose up -d && cd sandbox && mix ecto.setup && mix check
 ```
 
-`mix check` to `compile --force --warnings-as-errors`, `eh_os_contract.check`, `eh_os_contract.docs --check`, `test` i — od
-21 sierpnia — `mix test` w `packages/eh_os_contract` osobnym wywołaniem. **Musi przechodzić.** Suita silnika
-przeniosła się do pakietu i `mix test` w tym projekcie już jej nie widzi; brama, która przestałaby
-pokrywać silnik w dniu, w którym silnik dostał własną suitę, byłaby najgorszym możliwym wynikiem tej
-przeprowadzki. Osobne wywołanie, nie umbrella — pakiet ma stać sam, i to jest własność, której pilnujemy. `eh_os_contract.docs --check` pilnuje, że referencja kluczy w `packages/eh_os_contract/docs/contract.md` jest
-wygenerowana z `EhOsContract.Contract.schema/0`, a nie pisana ręcznie.
+`mix check` w `sandbox/` to `format --check-formatted`, `compile --force --warnings-as-errors`,
+`eh_os_contract.check`, testy sandboxa, a potem `mix check` każdego pakietu osobnym wywołaniem —
+`packages/eh_os_contract` (z `eh_os_contract.docs --check`, które pilnuje, że referencja kluczy w jego
+`docs/contract.md` jest wygenerowana z `EhOsContract.Contract.schema/0`, a nie pisana ręcznie) i
+`packages/eh_os_contract_web`. **Musi przechodzić.** Osobne wywołania, nie umbrella — pakiet ma stać sam,
+i to jest własność, której pilnujemy. Brama mieszka w `sandbox/`, bo tylko on widzi wszystkie trzy projekty;
+każdy pakiet ma też własne `mix check`, które przechodzi bez niego.
 `--warnings-as-errors` jest konieczne: `boundary` raportuje naruszenia jako ostrzeżenia, więc bez tego
 przełącznika granice są dokumentacją. Postgres słucha na **5433**.
 
@@ -91,7 +108,8 @@ nie widzisz liczby padnięć. Zdarzyło się 6 sierpnia: scommitowane 24 padnię
 out=$(mix check 2>&1); rc=$?; echo "$out" | tail -4; echo "EXIT=$rc"
 ```
 
-**`mix run` w `MIX_ENV=test` pisze poza sandboxem.** Sandbox obejmuje testy, nie zadania mixa — więc jedno
+**`mix run` w `MIX_ENV=test` pisze poza Ecto Sandboxem** (tym od transakcji w testach, nie katalogiem
+`sandbox/`). Ecto Sandbox obejmuje testy, nie zadania mixa — więc jedno
 `MIX_ENV=test mix run -e '...'` zostawia wiersze **na stałe** w bazie testowej i wywala potem wszystko, co
 liczy rekordy. Ta sama pułapka, którą `EhOsContract.Deployment.record!` zastawia przy boocie. Do oglądania czegokolwiek
 używaj `MIX_ENV=dev`; jeśli już wpadniesz, ratuje `MIX_ENV=test mix ecto.drop && mix ecto.create &&
@@ -108,11 +126,9 @@ mix ecto.migrate`.
 - **Nazwy zdarzeń to literały.** Publikacja dynamiczna jest nielegalna, bo od tego zależy, czy graf statyczny
   jest faktem, czy heurystyką.
 - **Kod jest po angielsku. Bez wyjątków.** Identyfikatory, moduledoki, `@doc`, komentarze, nazwy testów,
-  komunikaty błędów kompilacji i stringi wypisywane na wyjście. **Zakres to nie tylko `lib/eh_os_contract/`** —
-  także `lib/taxvision/`, `lib/rehmed/`, `test/` i `packages/eh_os_contract/test/` z fikstrami, `config/`,
-  `priv/repo/migrations/`,
-  `docs/` i `mix.exs`.
-  Trzy ostatnie zostały przy pierwszym sprzątaniu pominięte, bo nikt o nich nie pomyślał.
+  komunikaty błędów kompilacji i stringi wypisywane na wyjście. **Zakres to wszystko w `packages/` i
+  `sandbox/`** — `lib/`, `test/` z fikstrami, `config/`, `priv/repo/migrations/`, `mix.exs` — oraz `docs/`.
+  `config/`, migracje i `mix.exs` zostały przy pierwszym sprzątaniu pominięte, bo nikt o nich nie pomyślał.
 - **Po polsku jest wyłącznie to, co klient czyta zdaniami, i tylko w stringu** — nigdy w komentarzu,
   moduledoku ani nazwie. Konkretnie: `label`, opisy `example`, `source` i `unavailable_looks_like` w
   kontrakcie, nazwy tasków, temat powiadomienia. Poza tymi miejscami polski string też jest błędem.
@@ -130,10 +146,10 @@ mix ecto.migrate`.
   `packages/eh_os_contract/docs/contract.md` i `docs/adr/`: dokument, który czyta ktoś spoza tego zespołu. `PLAN.md`
   i ten plik zostają po polsku, bo ich czytelnikiem wciąż jest tylko zespół pracujący w tym
   repozytorium.
-- **Publiczne funkcje w `lib/eh_os_contract/` mają `@doc` i `@spec`.** Bez tego pakiet nie ma dokumentacji ani
+- **Publiczne funkcje w `packages/eh_os_contract/lib/` mają `@doc` i `@spec`.** Bez tego pakiet nie ma dokumentacji ani
   kontraktu typów, a `dialyzer` nie ma czego sprawdzać.
 - Wcześniejsza wersja tej reguły mówiła „identyfikatory po angielsku, moduledoki i komentarze po polsku"
-  i to był błąd, który zdążył się rozlać po `lib/eh_os_contract/`. **Poprawianie wstecz jest osobnym zadaniem** —
+  i to był błąd, który zdążył się rozlać po bibliotece. **Poprawianie wstecz jest osobnym zadaniem** —
   patrz `PLAN.md`, bo jest sprzężone z assercjami testów bram kompilacyjnych.
 - **Komunikaty commitów po angielsku**, z tej samej reguły: `git log` czyta recenzent, nigdy klient.
   Dwanaście pierwszych commitów jest po polsku i **zostaje** — historia sprzed reguły nie jest przepisywana,
@@ -164,7 +180,6 @@ Kod idzie jako PR i weryfikuje go człowiek. Z tego wynikają dwie rzeczy przy g
 `mix eh_os_contract.new` (dopiero przy drugim kliencie). Prawdziwych parserów i integracji — koszt domenowy klienta,
 zero sygnału dla biblioteki. **Tożsamości** — logowania, kont, ról, providera OIDC: silnik zna aktora
 wyłącznie jako nieprzezroczysty `subject`, uwierzytelnia aplikacja klienta, dostęp do dashboardu
-rozstrzyga host przez `EhOsContract.Web.Resolver` (od 23 września; wcześniej `EhOsContract.Auth` z logowaniem i kontami, z
-czasów, gdy silnik miał być właścicielem EHOS). Grafu w
-interfejsie — sprawdzone, przy tej skali dekoracja. Alertów i widoków operacyjnych. **Czegokolwiek, co
+rozstrzyga host przez `EhOsContract.Web.Resolver` (od 23 września; wcześniej `PNS.Auth` z logowaniem i kontami, z
+czasów, gdy silnik miał być właścicielem EHOS). Alertów i widoków operacyjnych. **Czegokolwiek, co
 odpowiada na pytanie o konkretną firmę.**

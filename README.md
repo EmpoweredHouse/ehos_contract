@@ -158,7 +158,7 @@ that application — see [non-goals](#non-goals).
 ## Seeing the dashboard
 
 The same four questions, as a screen instead of a report — [`packages/eh_os_contract_web`](packages/eh_os_contract_web),
-mounted at `/dashboard` on this repository's own host the way `oban_web` mounts into any Phoenix
+mounted at `/dashboard` on this repository's sandbox host the way `oban_web` mounts into any Phoenix
 app. Built only once `mix eh_os_contract.report`'s text output above had already proven the signal was worth
 showing; the screen reformats that answer, it doesn't invent a second one. Two screens: contract
 status (the four questions, per contract), and graph, the same declared-shape and
@@ -166,11 +166,11 @@ declared-versus-observed Mermaid diagrams `mix eh_os_contract.graph` already dre
 piped to a file.
 
 ```bash
-mix phx.server
+cd sandbox && mix phx.server
 ```
 
 Then open `http://localhost:4000/dashboard`. There is no login: who may see the dashboard is the
-host's decision, made through an `EhOsContract.Web.Resolver` it passes to the mount, and this repository's
+host's decision, made through an `EhOsContract.Web.Resolver` it passes to the mount, and the sandbox
 host lets everyone in read-only — nothing here belongs pointed at anything but your own machine.
 
 ## Writing a contract
@@ -202,21 +202,29 @@ show the same thing:
 The second is the only one that says anything about a contract with no implementation yet — with
 no handlers wired up, the overlay view has zero edges and renders as disconnected boxes.
 
-## Getting started
+## Using it in your application
+
+Both packages install from git — see [`packages/eh_os_contract`](packages/eh_os_contract#installation)
+for the engine (dependency, migration, configuration, the supervision-tree child) and
+[`packages/eh_os_contract_web`](packages/eh_os_contract_web#installation) for the dashboard.
+
+## Working on it
 
 Requires Elixir `~> 1.18`, Erlang/OTP 27, and Docker (for Postgres).
 
 ```bash
 docker compose up -d
+cd sandbox
 mix deps.get
 mix ecto.setup
 mix check
 ```
 
-`mix check` is the gate: `compile --force --warnings-as-errors`, `eh_os_contract.check`, `eh_os_contract.docs --check`,
-and the test suite — `--warnings-as-errors` matters because `boundary` reports module-boundary
-violations as warnings, so without that flag the boundaries below would be documentation rather
-than a check.
+`mix check` in `sandbox/` is the gate: formatting, `compile --force --warnings-as-errors`,
+`eh_os_contract.check` and the sandbox's own tests, then each package's own `mix check` as a
+separate project — the engine's includes `eh_os_contract.docs --check`. `--warnings-as-errors`
+matters because `boundary` reports module-boundary violations as warnings, so without that flag the
+boundaries below would be documentation rather than a check.
 
 | Task | Does |
 | --- | --- |
@@ -228,18 +236,25 @@ than a check.
 | `mix eh_os_contract.report --since … --until …` | the conformance report for a period |
 | `mix eh_os_contract.docs` | inside `packages/eh_os_contract` only: regenerate its `docs/contract.md` from the DSL itself |
 
-## The package
+## The repository
 
-The library is [`packages/eh_os_contract`](packages/eh_os_contract) — a self-contained Elixir package with
-its own `mix.exs` and its own test suite, none of it requiring a client application to exist.
-That is the part meant to eventually ship to Hex.
+| Directory | What |
+| --- | --- |
+| [`packages/eh_os_contract`](packages/eh_os_contract) | **the library** — contract DSL, dispatch, event log, conformance, [`docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
+| [`packages/eh_os_contract_web`](packages/eh_os_contract_web) | the mountable dashboard |
+| [`sandbox`](sandbox) | a host application around both, with the test material below |
+| [`docs`](docs) | the starting assumptions (`docs/adr/`) and workshop material |
+
+The library is a self-contained Elixir package with its own `mix.exs` and its own test suite, none
+of it requiring a client application to exist. That is the part meant to eventually ship to Hex.
 
 [`packages/eh_os_contract_web`](packages/eh_os_contract_web) ships alongside it — the dashboard from
 [above](#seeing-the-dashboard), structured the same way `oban_web` sits beside `oban`: a mountable
 router and screens, own `mix.exs`, own test host, no opinion about a host's own domain.
 
-Everything else in this repository — `lib/taxvision/` (a full fictional client application),
-`lib/rehmed/` (contracts only, from a second, unrelated healthcare domain) — is test material,
+The sandbox — `sandbox/lib/taxvision/` (a full fictional client application), `sandbox/lib/rehmed/`
+(contracts only, from a second, unrelated healthcare domain) — is test material and the library's first
+consumer,
 kept around so the library's assumptions get exercised against something other than its own
 imagination. [`boundary`](https://hex.pm/packages/boundary) enforces the line between the two
 from the first commit, so it's a fact the compiler checks, not a promise in a document.

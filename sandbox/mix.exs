@@ -45,12 +45,12 @@ defmodule EhOsContractHost.MixProject do
       # the build system now enforces the boundary that `boundary` was enforcing
       # alone, so a client tree reaching into the engine's internals fails to
       # compile rather than merely warning.
-      {:eh_os_contract, path: "packages/eh_os_contract"},
+      {:eh_os_contract, path: "../packages/eh_os_contract"},
       # The dashboard foundation (PLAN.md, dopisek 23 sierpnia). `runtime: false`
       # because :eh_os_contract_web has no `mod:` of its own to start — EhOsContractHostWeb's
       # own supervisor references its modules directly (PLAN.md, dopisek 23
       # sierpnia (8)) instead of relying on the OTP application list.
-      {:eh_os_contract_web, path: "packages/eh_os_contract_web", runtime: false},
+      {:eh_os_contract_web, path: "../packages/eh_os_contract_web", runtime: false},
       # Direct, the same reasoning as `:telemetry` above: EhOsContractHostWeb calls
       # these by name (Endpoint, Router, PubSub, the Bandit adapter), and they
       # would otherwise be present only because :eh_os_contract_web happens to need them —
@@ -112,7 +112,7 @@ defmodule EhOsContractHost.MixProject do
   defp package_test(_args) do
     {_output, status} =
       System.cmd("mix", ["check"],
-        cd: "packages/eh_os_contract",
+        cd: "../packages/eh_os_contract",
         env: [{"MIX_ENV", "test"}],
         into: IO.stream(:stdio, :line)
       )
@@ -125,7 +125,7 @@ defmodule EhOsContractHost.MixProject do
   defp package_test_web(_args) do
     {_output, status} =
       System.cmd("mix", ["check"],
-        cd: "packages/eh_os_contract_web",
+        cd: "../packages/eh_os_contract_web",
         env: [{"MIX_ENV", "test"}],
         into: IO.stream(:stdio, :line)
       )

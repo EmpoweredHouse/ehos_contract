@@ -246,7 +246,7 @@ The unit of splitting is the **process**, which is already first-class, is the d
 navigation unit, and is what a workshop produces:
 
 ```
-lib/taxvision/contracts/
+sandbox/lib/taxvision/contracts/
   month_end_closing.ex
   invoice_correction.ex
   client_onboarding.ex

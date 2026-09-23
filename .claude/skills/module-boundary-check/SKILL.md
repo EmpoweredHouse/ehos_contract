@@ -1,6 +1,6 @@
 ---
 name: module-boundary-check
-description: DRAFT, not yet reviewed. Before adding a new business entity, action, or CRUD screen to this application, decide (1) whether the action should dispatch through EhOsContract's event/handler mechanism at all, (1a) if not, whether it should still use an internal untracked event/handler shape for decoupling versus a direct function call, and (2) if it does go through EhOsContract, separately whether it needs structural tracking (process, instance, stages — for drift/untraversed-path detection, no timing required) and/or a timed promise (trace, cadence, deadline) — then check what already exists before generating anything. Use when about to add a new module, table, or action to lib/taxvision/ (or a future client tree) — not when editing an already-declared contract, which has its own workflow (see change-contract).
+description: DRAFT, not yet reviewed. Before adding a new business entity, action, or CRUD screen to this application, decide (1) whether the action should dispatch through EhOsContract's event/handler mechanism at all, (1a) if not, whether it should still use an internal untracked event/handler shape for decoupling versus a direct function call, and (2) if it does go through EhOsContract, separately whether it needs structural tracking (process, instance, stages — for drift/untraversed-path detection, no timing required) and/or a timed promise (trace, cadence, deadline) — then check what already exists before generating anything. Use when about to add a new module, table, or action to sandbox/lib/taxvision/ (or a future client tree) — not when editing an already-declared contract, which has its own workflow (see change-contract).
 ---
 
 # Deciding where a new feature lives, before writing it
@@ -57,7 +57,7 @@ function call. No event. Stop — Question 1a and Question 2 below do not apply.
 A "no" to Question 1 does not always mean "call the other module's function directly." There is
 a middle option: an **internal, untracked signal** — same event/handler *shape* for code
 organization, dispatched entirely outside EhOsContract (no contract, no registry, no graph, no drift
-check). This is not an EhOsContract feature and does not belong in `lib/eh_os_contract/` — it earns nothing from the
+check). This is not an EhOsContract feature and does not belong in `packages/eh_os_contract/lib/eh_os_contract/` — it earns nothing from the
 library, because the whole value of EhOsContract is the tracking this deliberately skips. It is plain
 Elixir: a module holding a list of subscriber callbacks, invoked in the same function, same
 transaction, by default. Reach for `Phoenix.PubSub` or a queue only if there is a concrete reason
@@ -105,7 +105,7 @@ independently useful criterion below.
 Yes → give it `process:`/`stage:`, and give the process `instance`. This alone buys
 `EhOsContract.Conformance.untraversed_paths` (a declared step that silently never fires for anyone) and
 drift detection (something happening that was never declared) — **no timing relationship between
-events is required for either.** `lib/taxvision/contracts/accounting_month.ex` has three events
+events is required for either.** `sandbox/lib/taxvision/contracts/accounting_month.ex` has three events
 declared exactly this way today — `bank_statement_received`, `turnover_matched_with_invoice`,
 `month_closed` — deliberately with handlers, on purpose, as a live demonstration of "declared,
 never observed."
@@ -156,7 +156,7 @@ for "is there a timing promise" undercounts it.
 
 3. **If Question 1 is "no", answer Question 1a before writing anything:**
    - Direct call → `grep` for an existing owner before creating a new one — exports lists in
-     `lib/eh_os_contract.ex` and every `lib/taxvision/*.ex`, and existing migrations for the table.
+     `packages/eh_os_contract/lib/eh_os_contract.ex` and every `sandbox/lib/taxvision/*.ex`, and existing migrations for the table.
      Duplicating an existing context is the same mistake the no-join rule exists to prevent, one
      layer up. Scaffold with an explicit `use Boundary, deps: [...], exports: [...]`, following
      the shape of an existing sibling context (e.g. `Taxvision.Periods`) rather than a generic

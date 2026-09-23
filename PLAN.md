@@ -140,6 +140,36 @@ Pełna reguła i jej zakres — `CLAUDE.md`.
 
 ---
 
+## Dopisek 23 września (3) — repozytorium biblioteki, nie prototypu
+
+Od dziś to jest repozytorium biblioteki: inne repozytoria instalują `eh_os_contract` i
+`eh_os_contract_web` stąd. Sprawdzone projektem-konsumentem w scratchpadzie, który zainstalował oba pakiety
+z gita, przeszedł migrację, wyemitował zdarzenie przez synchroniczny handler i dostał raport. Po drodze
+wyszły cztery przeszkody, każda ma swój commit:
+
+1. **`eh_os_contract_web` wskazywał silnik przez `path: "../eh_os_contract"`**, czego checkout `sparse:`
+   nie zawiera — `mix deps.get` konsumenta padał z „Dependencies have diverged”. Ścieżka jest teraz tylko
+   wtedy, gdy silnik leży obok; inaczej git z tym samym `sparse:`, które deklaruje konsument.
+2. **Start wymagał dwóch ręcznych wywołań** (`Registry.load!`, `Deployment.record!`), których README
+   pakietu nie wymieniało. Teraz `EhOsContract` to child do drzewa nadzoru, po repo i Obanie.
+3. **`docs/contract.md` leżał poza pakietem**, a `mix eh_os_contract.docs` jechał do konsumentów i padał
+   u nich na `File.Error`. Referencja jest w `packages/eh_os_contract/docs/`, task w `dev/` (kompilowany
+   tylko w `:dev`/`:test`), jego `--check` w bramie pakietu, testy referencji obok bram kompilacyjnych.
+4. **W katalogu głównym leżał host**, nie biblioteka. Host z TaxVision i Rehmedem jest teraz w
+   `sandbox/`, jako pierwszy konsument. Brama: `docker compose up -d && cd sandbox && mix ecto.setup &&
+   mix check`. `CLAUDE.md` przepisany pod nową rolę repozytorium; zdanie „to repozytorium jest
+   przejściowe” odnosi się teraz do `sandbox/`, nie do całości.
+
+Przy okazji z `CLAUDE.md` wyleciało „grafu w interfejsie nie budujemy” — dashboard ma ekran grafu od
+23 sierpnia.
+
+**Otwarte, po stronie zespołu:** wypchnięcie, tag `v0.2.0` (dziś konsument może przypiąć się tylko do
+gałęzi, a `mix.lock` do commita), zmiana nazwy repozytorium na GitHubie — z nią `@source_url` w obu
+pakietach i adres gita w `eh_os_contract_web/mix.exs` oraz w README. Repozytorium jest prywatne, więc
+CI konsumenta potrzebuje klucza albo tokenu.
+
+`mix check`: 42 + 397 + 31 testów, 0 padnięć.
+
 ## Dopisek 23 września (2) — `pns` → `eh_os_contract`
 
 Pakiet nazywa się teraz `:eh_os_contract`, dashboard `:eh_os_contract_web`, przestrzeń nazw `EhOsContract`

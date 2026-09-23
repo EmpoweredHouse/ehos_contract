@@ -25,13 +25,16 @@ jobs:
       - name: Start Postgres
         run: docker compose up -d --wait
 
-      - name: Cache host deps
+      # The sandbox is the host application around the library — TaxVision,
+      # Rehmed, a Phoenix endpoint — and its `mix check` is the gate: it runs its
+      # own suite and then each package's `mix check` as a separate project.
+      - name: Cache sandbox deps
         uses: actions/cache@v4
         with:
-          path: deps
-          key: deps-${{ runner.os }}-${{ hashFiles('mix.lock') }}
+          path: sandbox/deps
+          key: sandbox-deps-${{ runner.os }}-${{ hashFiles('sandbox/mix.lock') }}
 
-      # The engine is a path dependency, but package_test/1 in mix.exs runs
+      # The engine is a path dependency, but package_test/1 in sandbox/mix.exs runs
       # `mix check` with `cd: "packages/eh_os_contract"` as a fully separate Mix
       # project — its own deps/ and mix.lock, fetched independently of the
       # host's. Confirmed 21 August 2026: packages/eh_os_contract/deps is
@@ -44,14 +47,15 @@ jobs:
 
       # The dashboard foundation (PLAN.md, dopisek 23 sierpnia), same shape
       # as the engine above: a path dependency whose own gate runs as a
-      # fully separate Mix project via package_test_web/1 in mix.exs.
+      # fully separate Mix project via package_test_web/1 in sandbox/mix.exs.
       - name: Cache dashboard foundation deps
         uses: actions/cache@v4
         with:
           path: packages/eh_os_contract_web/deps
           key: eh-os-contract-web-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_web/mix.lock') }}
 
-      - name: Install host deps
+      - name: Install sandbox deps
+        working-directory: sandbox
         run: mix deps.get
 
       - name: Install engine deps
@@ -77,4 +81,5 @@ jobs:
       # is right; the local fix is to delete
       # `_build/<env>/lib/<app>/.mix/cached_dot_formatter`.
       - name: mix check
+        working-directory: sandbox
         run: mix check

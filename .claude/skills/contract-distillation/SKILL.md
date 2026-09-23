@@ -40,7 +40,7 @@ not add it silently.
 
 **Before reading `packages/eh_os_contract/docs/contract.md`, verify it is actually current — do not assume it.** The file
 is generated from `EhOsContract.Contract.schema/0`, but that guarantee only holds when the compile gate has
-run against the commit you're looking at; an uncommitted local change to `lib/eh_os_contract/contract.ex`, or
+run against the commit you're looking at; an uncommitted local change to `packages/eh_os_contract/lib/eh_os_contract/contract.ex`, or
 a stale checkout, can leave the checked-in file behind the real vocabulary. Run:
 
 ```bash

@@ -165,7 +165,7 @@ interpolation, `String.to_atom/1`, or a variable sourced from payload data.
 **Names come from the workshop, not imagination.** `CLAUDE.md:142-143` names the concrete source used
 for TaxVision: `~/Projects/ai/taxvision-process-native/workshop_output/02-event-storming.md`. The
 existing exemplar states this as a moduledoc convention worth copying —
-`lib/taxvision/contracts/accounting_month.ex:3-5`: *"Every event name comes from the workshop; none is
+`sandbox/lib/taxvision/contracts/accounting_month.ex:3-5`: *"Every event name comes from the workshop; none is
 invented. Source: `workshop_output/02-event-storming.md`, section 3.1..."* If no workshop material
 exists yet for the fact being added, that's `contract-distillation`'s territory — it distills raw
 material into named event candidates before this skill has anything to write from. Do not invent a
@@ -184,7 +184,7 @@ plausible-sounding name to keep moving; an unconfirmed name is exactly the kind 
 - **Never write into `~/Projects/ai/empowered-house-context`.**
 - **Code identifiers, moduledocs, comments and error text are English; `label` and the other
   client-facing strings stay in the client's language** — `CLAUDE.md`'s scope note, which explicitly
-  includes contract files under `lib/taxvision/`, `lib/rehmed/`, and `test/`.
+  includes contract files under `sandbox/lib/taxvision/`, `sandbox/lib/rehmed/`, and the packages' test fixtures.
 
 ## Procedure
 
@@ -208,7 +208,7 @@ plausible-sounding name to keep moving; an unconfirmed name is exactly the kind 
    there.
 7. **Set `owner`** to the module that will handle this, even if that module doesn't exist yet.
 8. **Write the declaration**, following the shape of an existing sibling event in the same contract
-   (or `lib/taxvision/contracts/accounting_month.ex` if there is no sibling yet) rather than a novel
+   (or `sandbox/lib/taxvision/contracts/accounting_month.ex` if there is no sibling yet) rather than a novel
    layout.
 9. **Compile it**: `mix compile --warnings-as-errors` (from the repo root, or `cd packages/eh_os_contract`
    for the engine's own suite) surfaces every one of the key/type/membership gates in

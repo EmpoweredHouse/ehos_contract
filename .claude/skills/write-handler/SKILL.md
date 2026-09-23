@@ -48,7 +48,7 @@ The generated module gets `@behaviour EhOsContract.Handler` and a `__eh_os_contr
 step.
 
 **The callback**, per `@callback` (handler.ex:15) and both real fixtures
-(`lib/taxvision/tasks.ex:60-61`, `lib/taxvision/notifications.ex:60-61`):
+(`sandbox/lib/taxvision/tasks.ex:60-61`, `sandbox/lib/taxvision/notifications.ex:60-61`):
 
 ```elixir
 @impl EhOsContract.Handler
@@ -63,7 +63,7 @@ on both paths; an async handler additionally gets `attempt` and `idempotency_key
 (job.ex:66-81) — a sync handler's `ctx` has no `idempotency_key` because sync handlers run inside
 the emitting transaction and have no queue-arrival problem to key against.
 
-Returning `{:ok, list()}` means a list of `EhOsContract.Emission.t()` (`EhOsContract.event/2`, `lib/eh_os_contract.ex:40`) —
+Returning `{:ok, list()}` means a list of `EhOsContract.Emission.t()` (`EhOsContract.event/2`, `packages/eh_os_contract/lib/eh_os_contract.ex:40`) —
 further facts this handler is choosing to publish. Every name in that list must be in this
 handler's own `publishes:`; `EhOsContract.Handler.verify_publications!/2` is called on the result, on
 **both** dispatch paths (`emitter.ex:460`, `job.ex:134`), before those emissions reach the log.
@@ -133,7 +133,7 @@ genuinely different occurrence silently reads as a repeat and your handler never
 time, with nothing in the log flagging it as skipped.
 
 The house pattern for the idempotency check itself is a query against the handler's own table,
-not a separate mechanism (`lib/taxvision/notifications.ex:61-68`): `if <table>.exists?(idempotency_key
+not a separate mechanism (`sandbox/lib/taxvision/notifications.ex:61-68`): `if <table>.exists?(idempotency_key
 == ^ctx.idempotency_key), do: :ok, else: <do the effect>`. Named limit, from that fixture's own
 comment: this only reaches the handler's own tables and mocked call counters — it cannot make an
 actual outbound side effect (a sent email, a third-party call) idempotent on the far end.
@@ -177,13 +177,13 @@ instrument its own timing — that is already done, on both paths, by the caller
   that the macro does not already read; that is a library change, not a handler-writing decision.
 - **Every new handler module still declares `use Boundary`** with explicit `deps:`/`exports:` —
   the handler is a regular module in the same boundary discipline as any other
-  (`CLAUDE.md`; `lib/taxvision/notifications.ex:8-14`, `lib/taxvision/tasks.ex:11-13` for the shape).
+  (`CLAUDE.md`; `sandbox/lib/taxvision/notifications.ex:8-14`, `sandbox/lib/taxvision/tasks.ex:11-13` for the shape).
 - **Reach through `EhOsContract`/a contract's own MFA, never `capture`**, and never publish a dynamic event
   name — `CLAUDE.md`'s "reguła wskazuje MFA, nigdy capture" and "nazwy zdarzeń to literały" apply
   here exactly as everywhere else; `publishes:` is a literal list checked at compile time, and a
   handler computing an event name at runtime defeats that check by construction.
 - **Code, identifiers, moduledocs, comments, and error text are in English.** `label:`/`subject:`
-  strings the client reads (as in `lib/taxvision/notifications.ex:86`) are the one carved-out
+  strings the client reads (as in `sandbox/lib/taxvision/notifications.ex:86`) are the one carved-out
   exception, not a precedent for anything else in the handler.
 - **Never write into `~/Projects/ai/empowered-house-context`.**
 
@@ -206,10 +206,10 @@ instrument its own timing — that is already done, on both paths, by the caller
 5. Write `handle/2` thin: it should read as "check idempotency if async, delegate the actual
    decision to a pure function, translate the result into `:ok`/`{:ok, emissions}`/`{:error, _}`."
    The pure decision function itself is the separate "write a decision function" skill
-   (`docs/adr/technology-notes.md` §8) — not yet built; follow `lib/taxvision/tasks.ex` and
-   `lib/taxvision/notifications.ex` for the shape meanwhile, not a freelanced structure.
+   (`docs/adr/technology-notes.md` §8) — not yet built; follow `sandbox/lib/taxvision/tasks.ex` and
+   `sandbox/lib/taxvision/notifications.ex` for the shape meanwhile, not a freelanced structure.
 6. If async, write the idempotency check against the handler's own table using
-   `ctx.idempotency_key`, following `lib/taxvision/notifications.ex:61-68`. Confirm the event's
+   `ctx.idempotency_key`, following `sandbox/lib/taxvision/notifications.ex:61-68`. Confirm the event's
    `identity:` fields actually distinguish the occurrences you need distinguished — the 21 August
    escaping defect is the standing reminder that "some field is declared" is not the same claim as
    "these fields are collision-free for this fact."
@@ -219,7 +219,7 @@ instrument its own timing — that is already done, on both paths, by the caller
    confirm every compile gate above; then the relevant test suite, read-only, to exercise the
    handler on both success and failure.
 9. Record, in the handler's moduledoc, which side of the boundary it is on and why — the same
-   one-line convention `lib/taxvision/tasks.ex` and `lib/taxvision/notifications.ex` already use —
+   one-line convention `sandbox/lib/taxvision/tasks.ex` and `sandbox/lib/taxvision/notifications.ex` already use —
    so the next reader does not have to re-derive it from the dispatch code.
 
 ## What this does not do
