@@ -8,6 +8,11 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **Fixed:** installing this package from git failed with "Dependencies have
+  diverged", because it named the engine by `path: "../eh_os_contract"`, which a
+  `sparse:` checkout does not contain. The path is used only when the engine sits
+  beside this package; otherwise the engine comes from the same repository over
+  git, in the shape a consumer declares it.
 - **Removed:** the provisional login (`EhOsContract.Web.LocalLogin`, the `/login` and
   `/logout` routes), the accounts screen (`EhOsContract.Web.Live.Accounts`), the optional
   `EhOsContract.Web.Plug.Authenticate` and the default resolver `EhOsContract.Web.Resolvers.Default`.

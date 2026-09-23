@@ -6,6 +6,25 @@ own router.
 Two screens and nothing else: the contract's conformance status, and the process
 graph — declared shape per process, declared versus observed across all of them.
 
+## Installation
+
+From git, beside the engine, with the same `git:` and `sparse:` shape — this package
+declares its dependency on the engine that way whenever it is fetched on its own, so
+the two declarations converge instead of diverging:
+
+```elixir
+def deps do
+  [
+    {:eh_os_contract,
+     git: "https://github.com/EmpoweredHouse/eh-os-prototype.git",
+     sparse: "packages/eh_os_contract"},
+    {:eh_os_contract_web,
+     git: "https://github.com/EmpoweredHouse/eh-os-prototype.git",
+     sparse: "packages/eh_os_contract_web"}
+  ]
+end
+```
+
 ## Mounting it
 
 ```elixir
@@ -42,7 +61,8 @@ the host already knows who is logged in, and this package does not get to guess.
 
 This package is not published. Two reasons, both recorded rather than pending:
 
-- it depends on `eh_os_contract` by path, which a published package cannot do;
+- it depends on `eh_os_contract`, which is not on Hex either, and a published package
+  may depend only on published ones;
 - `priv/static/assets/mermaid.min.js` is a vendored third-party build, so a tarball
   redistributes somebody else's code. `NOTICE` carries the attribution, and the
   decision to actually publish is a separate one.

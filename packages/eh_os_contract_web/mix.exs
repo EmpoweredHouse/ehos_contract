@@ -3,6 +3,7 @@ defmodule EhOsContract.Web.MixProject do
 
   @version "0.1.0"
   @source_url "https://github.com/EmpoweredHouse/eh-os-prototype"
+  @git_url "#{@source_url}.git"
   @description "A mountable conformance dashboard for EhOsContract."
 
   @moduledoc """
@@ -100,6 +101,21 @@ defmodule EhOsContract.Web.MixProject do
     [main: "readme", extras: ["README.md", "CHANGELOG.md"], source_ref: "v#{@version}"]
   end
 
+  # A path when the engine sits beside this package — inside its own repository —
+  # and the same repository over git otherwise. A consumer fetching this package
+  # with `sparse: "packages/eh_os_contract_web"` gets only this directory, so
+  # `../eh_os_contract` is not there, and a bare `path:` made every such
+  # `mix deps.get` fail with "Dependencies have diverged". The git form is the one
+  # a consumer declares for the engine itself, so the two converge; `mix.lock`
+  # pins the commit.
+  defp eh_os_contract_dep do
+    if File.exists?(Path.expand("../eh_os_contract/mix.exs", __DIR__)) do
+      {:eh_os_contract, path: "../eh_os_contract"}
+    else
+      {:eh_os_contract, git: @git_url, sparse: "packages/eh_os_contract"}
+    end
+  end
+
   defp deps do
     [
       # Declared rather than inherited. It reaches here today only through
@@ -108,9 +124,8 @@ defmodule EhOsContract.Web.MixProject do
       # when the neighbour goes. The same rule this repository states twice
       # elsewhere.
       {:jason, "~> 1.4"},
-      # The engine, whose report and graph the screens render. A path dependency, same shape as the root
-      # host's own dependency on it.
-      {:eh_os_contract, path: "../eh_os_contract"},
+      # The engine, whose report and graph the screens render.
+      eh_os_contract_dep(),
       {:phoenix, "~> 1.8"},
       {:phoenix_live_view, "~> 1.1"},
       {:phoenix_html, "~> 4.0"},

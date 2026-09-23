@@ -23,9 +23,16 @@ you already have.
 
 ## Installation
 
+Not on Hex yet, so from git. The package lives in a subdirectory of its repository,
+hence `sparse:`; `mix.lock` pins the commit.
+
 ```elixir
 def deps do
-  [{:eh_os_contract, "~> 0.2"}]
+  [
+    {:eh_os_contract,
+     git: "https://github.com/EmpoweredHouse/eh-os-prototype.git",
+     sparse: "packages/eh_os_contract"}
+  ]
 end
 ```
 
