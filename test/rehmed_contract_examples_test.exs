@@ -18,7 +18,7 @@ defmodule Rehmed.ContractExamplesTest do
     @rule @contract.rule(example.rule)
 
     test "#{example.rule}: #{example.description} (##{index})" do
-      PNS.ContractExample.run(@example, @rule)
+      EhOsContract.ContractExample.run(@example, @rule)
     end
   end
 

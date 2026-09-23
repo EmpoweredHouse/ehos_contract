@@ -1,9 +1,9 @@
 defmodule PnsPrototypeWebTest do
   @moduledoc """
   The real host, mounted for real (PLAN.md, dopisek 23 sierpnia (8)) —
-  proof that `PNS.Web.Router.pns_dashboard/2` works against
+  proof that `EhOsContract.Web.Router.eh_os_contract_dashboard/2` works against
   `pns_prototype`'s own `Taxvision.Repo` and real contracts, not just
-  `packages/pns_web`'s own test host and its invented fixture.
+  `packages/eh_os_contract_web`'s own test host and its invented fixture.
   """
 
   use Taxvision.DataCase, async: false
@@ -29,7 +29,7 @@ defmodule PnsPrototypeWebTest do
     # login, and says so rather than inheriting a default.
     assert html =~ "Access: read only"
     # Taxvision.Contracts.AccountingMonth, this host's own real contract —
-    # not packages/pns_web's invented CaseHandling fixture.
+    # not packages/eh_os_contract_web's invented CaseHandling fixture.
     assert html =~ "AccountingMonth"
   end
 

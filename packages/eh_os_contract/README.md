@@ -1,0 +1,132 @@
+# EhOsContract
+
+Checks that deployed code does what the declared business process says it does.
+
+You declare a process as an Elixir module — its events, the run they belong to,
+the promises it makes about them. Handlers react to those events. EhOsContract records what
+actually happened and answers four questions about the difference:
+
+- which declared paths have never been traversed,
+- which transitions happened without being declared,
+- which `trace` assertions are being violated,
+- which contract version is deployed, and since when.
+
+Nothing else. Performance belongs to your APM, errors to your error tracker, and
+the state of your business to your own application. A tool that starts answering
+"which customer has not closed July" has become a second, worse copy of the screen
+you already have.
+
+## Installation
+
+```elixir
+def deps do
+  [{:eh_os_contract, "~> 0.2"}]
+end
+```
+
+EhOsContract owns its tables and ships the migration for them, the same shape Oban does.
+Generate a migration and call into it:
+
+```elixir
+defmodule MyApp.Repo.Migrations.AddEhOsContract do
+  use Ecto.Migration
+
+  def up do
+    Oban.Migration.up()
+    EhOsContract.Migrations.up()
+  end
+
+  def down do
+    EhOsContract.Migrations.down()
+    Oban.Migration.down()
+  end
+end
+```
+
+Oban's tables are Oban's; `EhOsContract.Migrations` deliberately does not wrap them, so an
+application that already runs Oban for its own work is not surprised by an upgrade
+it did not ask for. When a later release raises `EhOsContract.Migrations.current_version/0`,
+the upgrade is another generated migration rather than an edit to the one above.
+
+Then tell EhOsContract which applications hold your contracts, and which repo to use:
+
+```elixir
+config :eh_os_contract,
+  applications: [:my_app],
+  repo: MyApp.Repo
+```
+
+## A contract
+
+```elixir
+defmodule MyApp.Contracts.Onboarding do
+  use EhOsContract.Contract
+
+  event :application_received,
+    label: "Application received",
+    payload: %{application_id: :id},
+    process: :onboarding,
+    stage: :intake
+
+  event :application_approved,
+    label: "Application approved",
+    payload: %{application_id: :id},
+    process: :onboarding,
+    stage: :decision,
+    terminal: true
+
+  command :submit_application,
+    label: "Submit an application",
+    process: :onboarding,
+    principals: [:human],
+    payload: %{application_id: :id}
+
+  process :onboarding,
+    label: "Onboarding",
+    stages: [:intake, :decision],
+    instance: [:application_id],
+    accountable: "Head of onboarding"
+
+  trace :decided_within_a_week do
+    from :application_received
+    eventually :application_approved, within: {7, :day}
+  end
+end
+```
+
+Read the `trace` aloud: *after an application is received, within seven days it is
+approved.* That sentence is what a process owner confirms or corrects, and it is
+the reason the declarations carry a `label` in the client's own language.
+
+The full key reference — every declaration, every key, and the list of things that
+will not compile — is generated from `EhOsContract.Contract.schema/0` and lives in
+`docs/contract.md` in this repository rather than in this package. That split is a
+known debt, recorded rather than quietly tolerated.
+
+## What you get
+
+```
+mix eh_os_contract.check      whole-program checks the compiler cannot make
+mix eh_os_contract.report     the conformance report for a period
+mix eh_os_contract.graph      the declared graph, and declared versus observed
+mix eh_os_contract.trace      assertion verdicts, per run
+mix eh_os_contract.brief      one process, rendered for the person who owns it
+```
+
+`mix eh_os_contract.check` is the one to put in CI. It refuses a build for the things that are
+unambiguously wrong — a rule whose function does not exist, two contracts claiming
+one event name — and reports as warnings or notices the things that need a person's
+judgment.
+
+## What it deliberately does not do
+
+It does not know what a company is, what a tenant is, or what any of your fields
+mean, and it does not know who anybody is: an event's actor is an opaque subject the
+emitting application supplies, and authentication, roles and tenants stay on that
+application's side. Every payload type describes the shape of a value rather than
+the name of a thing. A
+library that knows one client's domain is a library for one client.
+
+## Licence
+
+Apache 2.0.

@@ -42,7 +42,7 @@ defmodule Taxvision.IdentitySeamTest do
 
       # Verified by the absence of a row in the log rather than by the content of
       # the response. If the cut-off happened too late, the event would exist.
-      assert Repo.aggregate(PNS.Event, :count) == 0
+      assert Repo.aggregate(EhOsContract.Event, :count) == 0
     end
   end
 

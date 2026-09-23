@@ -1,6 +1,6 @@
-defmodule PNS.DeclaredShapeTest do
+defmodule EhOsContract.DeclaredShapeTest do
   @moduledoc """
-  `PNS.Graph.declared_to_mermaid/2`: the picture a contract draws of itself, before
+  `EhOsContract.Graph.declared_to_mermaid/2`: the picture a contract draws of itself, before
   a single handler exists.
 
   Split out of `graph_test.exs` on 2026-08-21, when the engine's tests moved into
@@ -23,7 +23,7 @@ defmodule PNS.DeclaredShapeTest do
     # `trace` — which is the claim the function is making.
     @contract Rehmed.Contracts.ClinicalVisit
 
-    defp shape, do: PNS.Graph.declared_to_mermaid(@contract, :clinical_visit)
+    defp shape, do: EhOsContract.Graph.declared_to_mermaid(@contract, :clinical_visit)
 
     test "stages are lanes, chained in the order the contract declares" do
       mermaid = shape()
@@ -117,7 +117,7 @@ defmodule PNS.DeclaredShapeTest do
 
     test "a process nobody declared is an error, and the message says what exists" do
       assert_raise ArgumentError, ~r/declares no process :nonesuch/, fn ->
-        PNS.Graph.declared_to_mermaid(@contract, :nonesuch)
+        EhOsContract.Graph.declared_to_mermaid(@contract, :nonesuch)
       end
     end
   end

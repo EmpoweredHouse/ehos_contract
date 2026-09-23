@@ -30,9 +30,9 @@ defmodule Rehmed.Contracts.PayerSettlement do
   settled one would report as satisfied.
 
   This was worse than a refusal, and is why finding 2 below still matters: as of
-  21 August 2026, `PNS.Trace` quantifies exactly this shape — see its moduledoc —
+  21 August 2026, `EhOsContract.Trace` quantifies exactly this shape — see its moduledoc —
   so an assertion finer than its run is now evaluated per item rather than failing
-  quietly towards good news. `PNS.Check.assertions_finer_than_their_run/1` still
+  quietly towards good news. `EhOsContract.Check.assertions_finer_than_their_run/1` still
   flags it, now as "confirm the target events carry the item's identity fields
   too," not as a defect.
 
@@ -113,7 +113,7 @@ defmodule Rehmed.Contracts.PayerSettlement do
   item.
   """
 
-  use PNS.Contract
+  use EhOsContract.Contract
 
   # --- reconciliation ---
 

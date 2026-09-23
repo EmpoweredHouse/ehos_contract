@@ -8,5 +8,5 @@ defmodule Taxvision.Contracts do
   the handlers of that one process rather than all of them.
   """
 
-  use Boundary, deps: [PNS], exports: [AccountingMonth]
+  use Boundary, deps: [EhOsContract], exports: [AccountingMonth]
 end

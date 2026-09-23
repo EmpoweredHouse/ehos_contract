@@ -4,7 +4,7 @@ defmodule Taxvision.Identity do
   token carries the role for this API at all.
 
   **The client application's, not the engine's.** This lived in the engine as
-  `PNS.Auth` until 23 September 2026, from a scope in which the engine would also
+  `EhOsContract.Auth` until 23 September 2026, from a scope in which the engine would also
   own the dashboard's login and user management. The conformance engine takes an
   actor as an opaque subject string in `ctx.actor` and needs nothing more, so the
   verifier moved to the one application that has a request edge.

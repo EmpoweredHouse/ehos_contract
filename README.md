@@ -1,4 +1,4 @@
-# PNS
+# EhOsContract
 
 [![check](https://github.com/EmpoweredHouse/eh-os-prototype/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/EmpoweredHouse/eh-os-prototype/actions/workflows/ci.yml)
 
@@ -43,7 +43,7 @@ explicitly flagged for review.
 
 ```elixir
 defmodule Acme.Contracts.InvoiceFiling do
-  use PNS.Contract
+  use EhOsContract.Contract
 
   event :case_opened, label: "Case opened", payload: %{case_id: :id}, process: :invoice_filing
   event :invoice_filed, label: "Invoice filed", payload: %{case_id: :id},
@@ -65,7 +65,7 @@ Over a month, 40 cases were opened. 39 look completely uneventful — filed or f
 exceptions anywhere. One didn't: a code path that should have flagged it never ran,
 for reasons that have nothing to do with this engine (a bug, a missed deploy, an edge case
 nobody tested). No error, so nothing paged anyone. This is the actual, unedited output of
-`mix pns.report` for that month:
+`mix eh_os_contract.report` for that month:
 
 ```
 CONFORMANCE REPORT — 2026-07-01 – 2026-07-31
@@ -105,12 +105,12 @@ that application — see [non-goals](#non-goals).
 
 ## Seeing the dashboard
 
-The same four questions, as a screen instead of a report — [`packages/pns_web`](packages/pns_web),
+The same four questions, as a screen instead of a report — [`packages/eh_os_contract_web`](packages/eh_os_contract_web),
 mounted at `/dashboard` on this repository's own host the way `oban_web` mounts into any Phoenix
-app. Built only once `mix pns.report`'s text output above had already proven the signal was worth
+app. Built only once `mix eh_os_contract.report`'s text output above had already proven the signal was worth
 showing; the screen reformats that answer, it doesn't invent a second one. Two screens: contract
 status (the four questions, per contract), and graph, the same declared-shape and
-declared-versus-observed Mermaid diagrams `mix pns.graph` already drew, rendered live instead of
+declared-versus-observed Mermaid diagrams `mix eh_os_contract.graph` already drew, rendered live instead of
 piped to a file.
 
 ```bash
@@ -118,13 +118,13 @@ mix phx.server
 ```
 
 Then open `http://localhost:4000/dashboard`. There is no login: who may see the dashboard is the
-host's decision, made through a `PNS.Web.Resolver` it passes to the mount, and this repository's
+host's decision, made through a `EhOsContract.Web.Resolver` it passes to the mount, and this repository's
 host lets everyone in read-only — nothing here belongs pointed at anything but your own machine.
 
 ## Writing a contract
 
 If you know `Ecto.Schema`, you already have the mental model: a schema declares the shape of rows
-that are **stored**, a `PNS.Contract` declares the shape of facts that **happened**. Both are
+that are **stored**, a `EhOsContract.Contract` declares the shape of facts that **happened**. Both are
 declarations a machine reads, and both generate functions you didn't write.
 
 The example above is close to the smallest contract that compiles. Beyond it: `external`
@@ -134,12 +134,12 @@ an actual decision gets made, so a decision function ships with a case that work
 that went wrong — readable aloud, and executed by the test suite, not just documentation of it.
 
 The full key reference — required keys, optional keys, what refuses to compile — lives in
-[`docs/contract.md`](docs/contract.md), and it is not hand-written: `mix pns.docs` generates it
-from `PNS.Contract.schema/0`, and `mix pns.docs --check` fails the build if anyone lets the two
+[`docs/contract.md`](docs/contract.md), and it is not hand-written: `mix eh_os_contract.docs` generates it
+from `EhOsContract.Contract.schema/0`, and `mix eh_os_contract.docs --check` fails the build if anyone lets the two
 drift apart. A DSL reference that can go stale is the exact failure mode this project exists to
 catch in other people's systems, so it doesn't get to have one of its own.
 
-Two diagrams come out of `mix pns.graph`, for two different readers, and they deliberately don't
+Two diagrams come out of `mix eh_os_contract.graph`, for two different readers, and they deliberately don't
 show the same thing:
 
 | | For | Content comes from |
@@ -161,29 +161,29 @@ mix ecto.setup
 mix check
 ```
 
-`mix check` is the gate: `compile --force --warnings-as-errors`, `pns.check`, `pns.docs --check`,
+`mix check` is the gate: `compile --force --warnings-as-errors`, `eh_os_contract.check`, `eh_os_contract.docs --check`,
 and the test suite — `--warnings-as-errors` matters because `boundary` reports module-boundary
 violations as warnings, so without that flag the boundaries below would be documentation rather
 than a check.
 
 ```bash
-mix pns.check                              # whole-program checks: back edges, competing
+mix eh_os_contract.check                              # whole-program checks: back edges, competing
                                             # handlers, orphaned declarations, unverified claims
-mix pns.graph --overlay --mermaid          # the observed graph: edges + counts from the log
-mix pns.graph --mermaid --process <name>   # the declared shape of one process, no code required
-mix pns.brief --process <name> --output brief.html  # a document for a client-facing review
-mix pns.trace                              # trace assertions evaluated against the log
-mix pns.report --since 2026-07-01T00:00:00Z --until 2026-07-31T23:59:59Z
-mix pns.docs                               # regenerate docs/contract.md from the DSL itself
+mix eh_os_contract.graph --overlay --mermaid          # the observed graph: edges + counts from the log
+mix eh_os_contract.graph --mermaid --process <name>   # the declared shape of one process, no code required
+mix eh_os_contract.brief --process <name> --output brief.html  # a document for a client-facing review
+mix eh_os_contract.trace                              # trace assertions evaluated against the log
+mix eh_os_contract.report --since 2026-07-01T00:00:00Z --until 2026-07-31T23:59:59Z
+mix eh_os_contract.docs                               # regenerate docs/contract.md from the DSL itself
 ```
 
 ## The package
 
-The product is [`packages/pns_core`](packages/pns_core) — a self-contained Elixir package with
+The product is [`packages/eh_os_contract`](packages/eh_os_contract) — a self-contained Elixir package with
 its own `mix.exs` and its own test suite, none of it requiring a client application to exist.
 That is the part meant to eventually ship to Hex.
 
-[`packages/pns_web`](packages/pns_web) ships alongside it — the dashboard from
+[`packages/eh_os_contract_web`](packages/eh_os_contract_web) ships alongside it — the dashboard from
 [above](#seeing-the-dashboard), structured the same way `oban_web` sits beside `oban`: a mountable
 router and screens, own `mix.exs`, own test host, no opinion about a host's own domain.
 
@@ -198,7 +198,7 @@ from the first commit, so it's a fact the compiler checks, not a promise in a do
 | | Why not |
 | --- | --- |
 | An opinion on the API layer | REST vs. GraphQL is an open question this project has no standing to close by building one. |
-| A project generator (`mix pns.new`) | Worth building once something has been copied twice — at a second real client, not before. |
+| A project generator (`mix eh_os_contract.new`) | Worth building once something has been copied twice — at a second real client, not before. |
 | Real registries, real mail | A behaviour plus a fake. Real integrations are the client's domain cost and carry no signal for the engine. |
 | Identity: login, users, roles | The engine takes an actor as an opaque subject and knows nothing else about who anybody is. Authentication belongs to the application that emits events, access to the dashboard to the host that mounts it. |
 | Alerts, ops dashboards, metrics collection | Performance is your APM's job, errors are your error tracker's job, business state is the client application's job. |

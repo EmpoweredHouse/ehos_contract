@@ -21,9 +21,9 @@ pytania** — to nie jest nasz playbook, ma własne zasady zarządzania (`AGENTS
 
 | Kiedy | Skill | Gdzie mieszka | Co robi | Co NIE robi |
 | --- | --- | --- | --- | --- |
-| Po Dniu 1 warsztatu | `process-extraction` | `process-native-software` (zewnętrzny, zwalidowany) | Surowy transkrypt → mapa procesu biznesowego (`output/01-processes.md`): aktorzy, kroki, narzędzia, wyjątki, punkty bólu | Nie wie nic o DSL-u PNS; nie generuje kontraktu |
+| Po Dniu 1 warsztatu | `process-extraction` | `process-native-software` (zewnętrzny, zwalidowany) | Surowy transkrypt → mapa procesu biznesowego (`output/01-processes.md`): aktorzy, kroki, narzędzia, wyjątki, punkty bólu | Nie wie nic o DSL-u EhOsContract; nie generuje kontraktu |
 | Po Dniu 2, albo dużo później — kiedykolwiek jest materiał i czas | `contract-distillation` | `pns_prototype` (ten skill) | To samo źródło (najlepiej już przetworzone przez `process-extraction`) → destylacja pod kategorie, których wymaga kontrakt: kandydaci na zdarzenia, `identity`, `instance`, `terminal`, `stages`, kandydaci na `trace`, `cadence`, `retain`, `external`, przykłady, źródła/`unverified` | Nie generuje kodu Elixira; nie jest mapą procesu biznesowego (to już zrobił `process-extraction`) |
-| Podczas pisania kodu aplikacji (backend, API, frontend) | `module-boundary-check` | `pns_prototype` (ten skill) | Dla konkretnej akcji: (1) czy w ogóle iść przez event/handler PNS, (2) osobno, czy ten event potrzebuje `trace`/`instance`/`process` | Nie decyduje za Ciebie w niejasnych przypadkach — każe zapytać |
+| Podczas pisania kodu aplikacji (backend, API, frontend) | `module-boundary-check` | `pns_prototype` (ten skill) | Dla konkretnej akcji: (1) czy w ogóle iść przez event/handler EhOsContract, (2) osobno, czy ten event potrzebuje `trace`/`instance`/`process` | Nie decyduje za Ciebie w niejasnych przypadkach — każe zapytać |
 
 **`docs/warsztat-rehmed.md` to coś czwartego, nie z tej tabeli** — to nie skill uruchamiany na
 materiale, tylko przygotowane pytania **na żywo, w trakcie sesji z klientem**, budowane na
@@ -37,7 +37,7 @@ Oba czytają ten sam rodzaj materiału, ale pytają o co innego:
 - `process-extraction` pyta o **zrozumienie biznesowe** — po to, żeby zbudować wireframe'y i mapę
   AS-IS/TO-BE. Odbiorcą jest projektant i sam klient (mapa idzie do potwierdzenia).
 - `contract-distillation` pyta o **gotowość kontraktu** — kategorie z `docs/contract.md`, które
-  prędzej czy później trzeba wypełnić, żeby `PNS.Contract` się skompilował. Odbiorcą jest ten, kto
+  prędzej czy później trzeba wypełnić, żeby `EhOsContract.Contract` się skompilował. Odbiorcą jest ten, kto
   usiądzie pisać plik `.ex` — czasem tego samego dnia, czasem za miesiąc.
 
 Stąd kolejność preferencji wejścia w `contract-distillation`: **najpierw sprawdź, czy istnieje już

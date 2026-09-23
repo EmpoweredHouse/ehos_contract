@@ -1,11 +1,11 @@
-# Writing a PNS contract
+# Writing an EhOsContract contract
 
 A contract is an Elixir module that states what a business process is supposed to
 do. The engine reads it twice — at compile time, to refuse code that contradicts
 it, and at runtime, to compare what the log recorded against what was agreed.
 
 If you know `Ecto.Schema`, you already have the mental model. `Ecto.Schema`
-declares the shape of **rows that are stored**; `PNS.Contract` declares the shape
+declares the shape of **rows that are stored**; `EhOsContract.Contract` declares the shape
 of **facts that happened**. Both are declarations a machine reads, and both
 generate query functions you did not write.
 
@@ -25,7 +25,7 @@ Everything below is optional or has a fallback. This is the floor:
 
 ```elixir
 defmodule Docs.MinimalContract do
-  use PNS.Contract
+  use EhOsContract.Contract
 
   event :case_opened,
     label: "Case opened",
@@ -66,7 +66,7 @@ lines below it. Group declarations however reads best.
 
 ## Key reference
 
-Generated from `PNS.Contract.schema/0` by `mix pns.docs`. Do not edit by hand —
+Generated from `EhOsContract.Contract.schema/0` by `mix eh_os_contract.docs`. Do not edit by hand —
 `mix check` fails if this block is stale.
 
 <!-- pns:reference:start -->
@@ -162,14 +162,14 @@ visible rather than implied.
 | Key | Meaning | Read by |
 | --- | --- | --- |
 | `label` | The business name. `invoice_issued` means nothing to an accountant, and the accountant is who confirms the process. **Written in the client's language** — the only place where that is true. | the client-facing report |
-| `payload` | Field name to type, from the closed set above — see *Payload types*. The engine casts keys back to atoms after a JSON round trip through the queue and the database, so synchronous and asynchronous handlers see one shape. | `PNS.Payload`, four compile gates, the retention check |
-| `owner` | Which module owns this fact. | `mix pns.check` reports an owner that does not exist as a module — as `info`, because the owner of an unimplemented phase is a normal state |
-| `retain` | Per field: `:persist` (default), `:hash`, `:drop`. Applied **once, before anything else**, so what comes out is the only version in the system — log, handlers and job arguments alike. A retention policy the queue can bypass looks satisfied and is not. | `PNS.Emitter` |
-| `identity` | What makes two occurrences **the same fact**. This is the idempotency key. It must include what *distinguishes* facts, not only what groups them. | `PNS.Job`; an asynchronous handler on an event without it does not compile |
-| `depends_on` | Which `external` this fact relies on. | compile gate, and `PNS.Trace`: if this dependency was seen unavailable inside an assertion window, the run is `:suspended` rather than in breach |
-| `process` | Which run this fact belongs to. A single key, so belonging to two processes is not expressible. | `PNS.Instance`, `PNS.Graph`, `PNS.Check` |
-| `stage` | Which phase of that process. | backward-edge detection in `PNS.Check` |
-| `terminal` | The process ends here. Being blocked counts: a run that ended badly still ended. | `mix pns.check`, `PNS.Graph`, `PNS.Run` — a run's duration is measured to this event |
+| `payload` | Field name to type, from the closed set above — see *Payload types*. The engine casts keys back to atoms after a JSON round trip through the queue and the database, so synchronous and asynchronous handlers see one shape. | `EhOsContract.Payload`, four compile gates, the retention check |
+| `owner` | Which module owns this fact. | `mix eh_os_contract.check` reports an owner that does not exist as a module — as `info`, because the owner of an unimplemented phase is a normal state |
+| `retain` | Per field: `:persist` (default), `:hash`, `:drop`. Applied **once, before anything else**, so what comes out is the only version in the system — log, handlers and job arguments alike. A retention policy the queue can bypass looks satisfied and is not. | `EhOsContract.Emitter` |
+| `identity` | What makes two occurrences **the same fact**. This is the idempotency key. It must include what *distinguishes* facts, not only what groups them. | `EhOsContract.Job`; an asynchronous handler on an event without it does not compile |
+| `depends_on` | Which `external` this fact relies on. | compile gate, and `EhOsContract.Trace`: if this dependency was seen unavailable inside an assertion window, the run is `:suspended` rather than in breach |
+| `process` | Which run this fact belongs to. A single key, so belonging to two processes is not expressible. | `EhOsContract.Instance`, `EhOsContract.Graph`, `EhOsContract.Check` |
+| `stage` | Which phase of that process. | backward-edge detection in `EhOsContract.Check` |
+| `terminal` | The process ends here. Being blocked counts: a run that ended badly still ended. | `mix eh_os_contract.check`, `EhOsContract.Graph`, `EhOsContract.Run` — a run's duration is measured to this event |
 
 ### `command`
 
@@ -177,7 +177,7 @@ visible rather than implied.
 | --- | --- | --- |
 | `label` | The business name of the action, in the client's language. | the client-facing report |
 | `process` | Which process this command enters. A command that started two processes would be two commands. | compile gate |
-| `principals` | Which kinds of principal take this way in, from the closed set `[:human, :system]`. A description, not an access decision: the engine enforces nothing with it. Whether a given caller may issue the command is the emitting application's to decide, and where that is a domain rule it stays a `rule` with a decision function. | `PNS.AsyncAPI` (`x-pns-commands`); a person |
+| `principals` | Which kinds of principal take this way in, from the closed set `[:human, :system]`. A description, not an access decision: the engine enforces nothing with it. Whether a given caller may issue the command is the emitting application's to decide, and where that is a domain rule it stays a `rule` with a decision function. | `EhOsContract.AsyncAPI` (`x-pns-commands`); a person |
 | `payload` | Field name to type, from the same closed set an event's payload uses. An `example`'s command params must supply exactly these keys. | compile gate |
 | `source` | Where this command came from — a pointer into the workshop material a person can follow, in the same sense `rule` means it. Nothing reads it mechanically, and that is the point: it is provenance for whoever asks "who said this". An absent one is informative rather than untidy, because it says nobody has yet found this command in what the client actually said. | a person; and its digest, so correcting a citation is recorded as a change to the agreement |
 
@@ -235,12 +235,12 @@ surplus — counting caught it: the second contract has fourteen payload fields 
 | Key | Meaning | Read by |
 | --- | --- | --- |
 | `label` | The business name of the run. | the report |
-| `instance` | Payload fields that say **which run** an event belongs to. Required, because both things that make this a product — assertion evaluation and the declared-versus-observed overlay — are counted within a run. | `PNS.Instance`, `PNS.Trace`, `PNS.Conformance` |
-| `stages` | The order **between** phases, and nothing about order inside one. Omit it and the process has one phase and makes no claim about sequence; its events then carry no `stage`. | `PNS.Check` |
+| `instance` | Payload fields that say **which run** an event belongs to. Required, because both things that make this a product — assertion evaluation and the declared-versus-observed overlay — are counted within a run. | `EhOsContract.Instance`, `EhOsContract.Trace`, `EhOsContract.Conformance` |
+| `stages` | The order **between** phases, and nothing about order inside one. Omit it and the process has one phase and makes no claim about sequence; its events then carry no `stage`. | `EhOsContract.Check` |
 | `cadence` | How often a run is due. Only meaningful for calendar-driven processes — an event-driven one has none. | the report, for the declaration itself — see *Known decoration* for what still does not read it |
-| `deadline` | How long a run may take, from the run's earliest event to its `terminal: true` one. | `PNS.Run`, and the report — a count of the runs that exceeded it, plus a separate line for runs still open and already past it |
-| `unverified` | Declarations the **process owner has not confirmed**. They stay, because the mechanism needs something to watch, but they must not count toward the evidence report: a false metric is worse than a missing one when it is the metric the product sells. | `mix pns.check`, every run |
-| `accountable` | The role a finding about this process is addressed to. A role, not a person and not a module — `owner` on an event answers "which module implements this fact" and holds a module, which is why these are two words and not one. | the report; `mix pns.check` warns when a process names none |
+| `deadline` | How long a run may take, from the run's earliest event to its `terminal: true` one. | `EhOsContract.Run`, and the report — a count of the runs that exceeded it, plus a separate line for runs still open and already past it |
+| `unverified` | Declarations the **process owner has not confirmed**. They stay, because the mechanism needs something to watch, but they must not count toward the evidence report: a false metric is worse than a missing one when it is the metric the product sells. | `mix eh_os_contract.check`, every run |
+| `accountable` | The role a finding about this process is addressed to. A role, not a person and not a module — `owner` on an event answers "which module implements this fact" and holds a module, which is why these are two words and not one. | the report; `mix eh_os_contract.check` warns when a process names none |
 
 ### `trace`
 
@@ -269,7 +269,7 @@ wrong without breaking anything visible:
 - A run without `from` is **not evaluated**. Neither satisfied nor violated —
   there is nothing to rule on.
 
-`within` takes fixed-length units only (`PNS.Duration`). Calendar units are
+`within` takes fixed-length units only (`EhOsContract.Duration`). Calendar units are
 rejected at compile time, because a month has no fixed length and shifting by one
 requires deciding what follows 31 January.
 
@@ -340,7 +340,7 @@ reference that hides its gaps is worse than one that admits them.
 `deadline` left this table on 22 September, built exactly as narrowly as it was
 planned on 6 August: a retrospective count in the periodic report, never a live
 per-instance monitor. A process that declares one and marks no event `terminal: true`
-has no observable ending, so nothing can be measured — `mix pns.check` says so as a
+has no observable ending, so nothing can be measured — `mix eh_os_contract.check` says so as a
 notice rather than leaving the silence unexplained.
 
 Three rows left this table on 6 August: payload types are enforced at emit time, and
@@ -361,4 +361,4 @@ exactly when an audit needs them.
 **Which contract version was in force.** `version/0` is a hash of the
 declarations, computed at compile time and stamped on every event, so it cannot
 be forgotten or hand-maintained. Note that it hashes the *contract* — paths come
-from handlers, and those have their own identity in `PNS.Deployment`.
+from handlers, and those have their own identity in `EhOsContract.Deployment`.

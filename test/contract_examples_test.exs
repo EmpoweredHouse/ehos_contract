@@ -27,7 +27,7 @@ defmodule Taxvision.ContractExamplesTest do
       # Passed as an argument rather than expanded in the test body: a literal in
       # the `case` would let the typechecker treat the other branches as
       # unreachable and bury the output in warnings.
-      PNS.ContractExample.run(@example, @rule)
+      EhOsContract.ContractExample.run(@example, @rule)
     end
   end
 

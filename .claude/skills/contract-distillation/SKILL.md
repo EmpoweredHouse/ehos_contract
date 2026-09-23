@@ -1,6 +1,6 @@
 ---
 name: contract-distillation
-description: DRAFT, not yet reviewed. Distill process-mapping workshop material (raw transcripts, or a reviewed process-extraction output) into the categories a PNS contract needs — event candidates, identity, instance, terminal states, stages, trace promises, cadence, retain/PII, external dependencies, examples, and what is confirmed vs. guessed. Produces a document, not code. Use any time after workshop material exists, independent of when the actual Elixir contract gets written — that can be days or months later.
+description: DRAFT, not yet reviewed. Distill process-mapping workshop material (raw transcripts, or a reviewed process-extraction output) into the categories an EhOsContract contract needs — event candidates, identity, instance, terminal states, stages, trace promises, cadence, retain/PII, external dependencies, examples, and what is confirmed vs. guessed. Produces a document, not code. Use any time after workshop material exists, independent of when the actual Elixir contract gets written — that can be days or months later.
 ---
 
 # Contract distillation
@@ -15,23 +15,23 @@ proven tool for turning Day 1 raw material into a business-process map
 (`output/01-processes.md`). **This skill does not compete with that and does not replace it.**
 
 That repo predates this one, and this repo's own founding framing (`README.md`) is explicit that
-PNS-the-engine is still a validation prototype, not a finished product. If the engine idea holds
+EhOsContract-the-engine is still a validation prototype, not a finished product. If the engine idea holds
 up, `process-native-software` is expected to eventually move under this repository as the wider
-methodology PNS-the-engine serves — not the other way around. Until then, the two stay separate,
+methodology EhOsContract-the-engine serves — not the other way around. Until then, the two stay separate,
 and nothing gets written into `process-native-software` from here without asking first.
 
 **What this skill adds, distinct from `process-extraction`:** `process-extraction` organizes
 material toward business understanding and screens — actors, steps, tools, handoffs, pain
 points. This skill re-reads the *same class of material* (or `process-extraction`'s own output,
 preferred when it exists, since it is already reviewed) through a different, narrower lens: the
-categories a PNS contract needs before it can be written. It produces neither a business process
+categories an EhOsContract contract needs before it can be written. It produces neither a business process
 map nor Elixir code — it produces an intermediate distillation so that whoever eventually sits
 down to write the contract (possibly weeks later, possibly a different session) is not starting
 from eight hours of raw transcript.
 
 ## Why this is domain-neutral by construction
 
-The categories below come from `PNS.Contract`'s DSL vocabulary, not from any client's domain —
+The categories below come from `EhOsContract.Contract`'s DSL vocabulary, not from any client's domain —
 that vocabulary is deliberately closed and domain-neutral (see `docs/contract.md`,
 `docs/adr/technology-notes.md` §1). Projecting workshop material onto a fixed, neutral vocabulary
 is what makes this skill reusable across clients without modification. If a category ever needs a
@@ -39,16 +39,16 @@ client-specific word to make sense, that is a signal the word does not belong he
 not add it silently.
 
 **Before reading `docs/contract.md`, verify it is actually current — do not assume it.** The file
-is generated from `PNS.Contract.schema/0`, but that guarantee only holds when the compile gate has
-run against the commit you're looking at; an uncommitted local change to `lib/pns/contract.ex`, or
+is generated from `EhOsContract.Contract.schema/0`, but that guarantee only holds when the compile gate has
+run against the commit you're looking at; an uncommitted local change to `lib/eh_os_contract/contract.ex`, or
 a stale checkout, can leave the checked-in file behind the real vocabulary. Run:
 
 ```bash
-mix pns.docs --check
+mix eh_os_contract.docs --check
 ```
 
 This exits 0 and prints `docs/contract.md: reference is current` when it is safe to trust. If it
-fails instead, the file is stale — run `mix pns.docs` to regenerate it before reading it, and say
+fails instead, the file is stale — run `mix eh_os_contract.docs` to regenerate it before reading it, and say
 so in the output rather than silently working from an unverified copy. Once verified, that file —
 not this skill's memory of past runs — is the vocabulary; if the two ever disagree, the file wins.
 
@@ -134,8 +134,8 @@ the "closest DSL fit" line — do not skip straight to Elixir-shaped nouns befor
    **This is where most of the value is, and the earlier version of this skill said the opposite.**
    Three of the four questions the product answers — which declared paths were never traversed,
    which transitions are not declared, which contract version is deployed — are computed from the
-   contract and the log with **no clock involved** (`PNS.Conformance`, `PNS.Graph`,
-   `PNS.Deployment`); `PNS.Check.backward_edges` checks order by `stage` without touching the log
+   contract and the log with **no clock involved** (`EhOsContract.Conformance`, `EhOsContract.Graph`,
+   `EhOsContract.Deployment`); `EhOsContract.Check.backward_edges` checks order by `stage` without touching the log
    at all. Only `trace` needs timing. So a process whose events are fired by people interacting
    with screens, in an order that matters, with no promise about how fast — which is the **normal**
    case, not a deficient one — is fully verification-worthy through `process` + `instance` +

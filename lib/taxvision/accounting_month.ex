@@ -9,7 +9,7 @@ defmodule Taxvision.AccountingMonth do
   """
 
   use Boundary,
-    deps: [PNS, Taxvision.Repo, Taxvision.Contracts, Taxvision.Periods],
+    deps: [EhOsContract, Taxvision.Repo, Taxvision.Contracts, Taxvision.Periods],
     exports: [Month]
 end
 
@@ -38,14 +38,14 @@ defmodule Taxvision.AccountingMonth.OnMonthlyTasksGenerated do
   tasks, and the opening last) — so a month without tasks does not exist.
   """
 
-  use PNS.Handler,
+  use EhOsContract.Handler,
     contract: Taxvision.Contracts.AccountingMonth,
     event: :monthly_tasks_generated,
     publishes: [:accounting_month_opened]
 
   alias Taxvision.AccountingMonth.Month
 
-  @impl PNS.Handler
+  @impl EhOsContract.Handler
   def handle(%{company_id: company_id, period_id: period_id}, _ctx) do
     accounting_period = Taxvision.Periods.fetch_by_id!(period_id)
 
@@ -57,6 +57,12 @@ defmodule Taxvision.AccountingMonth.OnMonthlyTasksGenerated do
       opened_at: DateTime.utc_now()
     })
 
-    {:ok, [PNS.event(:accounting_month_opened, %{company_id: company_id, period_id: period_id})]}
+    {:ok,
+     [
+       EhOsContract.event(:accounting_month_opened, %{
+         company_id: company_id,
+         period_id: period_id
+       })
+     ]}
   end
 end

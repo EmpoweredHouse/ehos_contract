@@ -1,6 +1,6 @@
-# PNS — repozytorium silnika
+# EhOsContract — repozytorium silnika
 
-Silnik weryfikacji zgodności wdrożonego kodu z zadeklarowanym procesem. `lib/pns/` to silnik i przyszły
+Silnik weryfikacji zgodności wdrożonego kodu z zadeklarowanym procesem. `lib/eh_os_contract/` to silnik i przyszły
 pakiet; `lib/taxvision/` to **aplikacja klienta, która jest tu tymczasowo** — jako przypadek testowy,
 na którym sprawdzamy, czy założenia silnika się trzymają. Granica jest wymuszona przez `boundary` od
 pierwszego commita, żeby ta tymczasowość była faktem, a nie obietnicą.
@@ -60,7 +60,7 @@ które przejścia nie są zadeklarowane, które assercje `trace` są naruszane, 
 wdrożona i od kiedy.
 
 Wszystko inne ma właściciela: wydajność to GCP, błędy to Datadog, **stan biznesu to aplikacja klienta**.
-Kiedy PNS zacznie odpowiadać „która firma nie ma otwartego lipca", staje się drugim, gorszym ekranem
+Kiedy EhOsContract zacznie odpowiadać „która firma nie ma otwartego lipca", staje się drugim, gorszym ekranem
 aplikacji klienta.
 
 ## Brama
@@ -69,12 +69,12 @@ aplikacji klienta.
 docker compose up -d && mix ecto.setup && mix check
 ```
 
-`mix check` to `compile --force --warnings-as-errors`, `pns.check`, `pns.docs --check`, `test` i — od
-21 sierpnia — `mix test` w `packages/pns_core` osobnym wywołaniem. **Musi przechodzić.** Suita silnika
+`mix check` to `compile --force --warnings-as-errors`, `eh_os_contract.check`, `eh_os_contract.docs --check`, `test` i — od
+21 sierpnia — `mix test` w `packages/eh_os_contract` osobnym wywołaniem. **Musi przechodzić.** Suita silnika
 przeniosła się do pakietu i `mix test` w tym projekcie już jej nie widzi; brama, która przestałaby
 pokrywać silnik w dniu, w którym silnik dostał własną suitę, byłaby najgorszym możliwym wynikiem tej
-przeprowadzki. Osobne wywołanie, nie umbrella — pakiet ma stać sam, i to jest własność, której pilnujemy. `pns.docs --check` pilnuje, że referencja kluczy w `docs/contract.md` jest
-wygenerowana z `PNS.Contract.schema/0`, a nie pisana ręcznie.
+przeprowadzki. Osobne wywołanie, nie umbrella — pakiet ma stać sam, i to jest własność, której pilnujemy. `eh_os_contract.docs --check` pilnuje, że referencja kluczy w `docs/contract.md` jest
+wygenerowana z `EhOsContract.Contract.schema/0`, a nie pisana ręcznie.
 `--warnings-as-errors` jest konieczne: `boundary` raportuje naruszenia jako ostrzeżenia, więc bez tego
 przełącznika granice są dokumentacją. Postgres słucha na **5433**.
 
@@ -88,7 +88,7 @@ out=$(mix check 2>&1); rc=$?; echo "$out" | tail -4; echo "EXIT=$rc"
 
 **`mix run` w `MIX_ENV=test` pisze poza sandboxem.** Sandbox obejmuje testy, nie zadania mixa — więc jedno
 `MIX_ENV=test mix run -e '...'` zostawia wiersze **na stałe** w bazie testowej i wywala potem wszystko, co
-liczy rekordy. Ta sama pułapka, którą `PNS.Deployment.record!` zastawia przy boocie. Do oglądania czegokolwiek
+liczy rekordy. Ta sama pułapka, którą `EhOsContract.Deployment.record!` zastawia przy boocie. Do oglądania czegokolwiek
 używaj `MIX_ENV=dev`; jeśli już wpadniesz, ratuje `MIX_ENV=test mix ecto.drop && mix ecto.create &&
 mix ecto.migrate`.
 
@@ -103,8 +103,8 @@ mix ecto.migrate`.
 - **Nazwy zdarzeń to literały.** Publikacja dynamiczna jest nielegalna, bo od tego zależy, czy graf statyczny
   jest faktem, czy heurystyką.
 - **Kod jest po angielsku. Bez wyjątków.** Identyfikatory, moduledoki, `@doc`, komentarze, nazwy testów,
-  komunikaty błędów kompilacji i stringi wypisywane na wyjście. **Zakres to nie tylko `lib/pns/`** —
-  także `lib/taxvision/`, `lib/rehmed/`, `test/` i `packages/pns_core/test/` z fikstrami, `config/`,
+  komunikaty błędów kompilacji i stringi wypisywane na wyjście. **Zakres to nie tylko `lib/eh_os_contract/`** —
+  także `lib/taxvision/`, `lib/rehmed/`, `test/` i `packages/eh_os_contract/test/` z fikstrami, `config/`,
   `priv/repo/migrations/`,
   `docs/` i `mix.exs`.
   Trzy ostatnie zostały przy pierwszym sprzątaniu pominięte, bo nikt o nich nie pomyślał.
@@ -112,7 +112,7 @@ mix ecto.migrate`.
   moduledoku ani nazwie. Konkretnie: `label`, opisy `example`, `source` i `unavailable_looks_like` w
   kontrakcie, nazwy tasków, temat powiadomienia. Poza tymi miejscami polski string też jest błędem.
   Raport zgodności był tu wcześniej piątym wyjątkiem i **przestał być, 6 sierpnia**: renderer przeniósł się
-  do silnika (`PNS.Report`, dawniej `Taxvision.Report` w drzewie klienta) i wypisuje po angielsku — decyzja
+  do silnika (`EhOsContract.Report`, dawniej `Taxvision.Report` w drzewie klienta) i wypisuje po angielsku — decyzja
   zapisana w `PLAN.md`. Etykiety kontraktu (`label`, `from_label`, `to_label`) nadal wychodzą w raporcie
   dosłownie, w języku, w którym je zadeklarował klient — regułą jest teraz "silnik pisze swoje zdania po
   angielsku", nie "kto czyta cały artefakt".
@@ -125,10 +125,10 @@ mix ecto.migrate`.
   `docs/contract.md` i `docs/adr/`: dokument, który czyta ktoś spoza tego zespołu. `PLAN.md`
   i ten plik zostają po polsku, bo ich czytelnikiem wciąż jest tylko zespół pracujący w tym
   repozytorium.
-- **Publiczne funkcje w `lib/pns/` mają `@doc` i `@spec`.** Bez tego pakiet nie ma dokumentacji ani
+- **Publiczne funkcje w `lib/eh_os_contract/` mają `@doc` i `@spec`.** Bez tego pakiet nie ma dokumentacji ani
   kontraktu typów, a `dialyzer` nie ma czego sprawdzać.
 - Wcześniejsza wersja tej reguły mówiła „identyfikatory po angielsku, moduledoki i komentarze po polsku"
-  i to był błąd, który zdążył się rozlać po `lib/pns/`. **Poprawianie wstecz jest osobnym zadaniem** —
+  i to był błąd, który zdążył się rozlać po `lib/eh_os_contract/`. **Poprawianie wstecz jest osobnym zadaniem** —
   patrz `PLAN.md`, bo jest sprzężone z assercjami testów bram kompilacyjnych.
 - **Komunikaty commitów po angielsku**, z tej samej reguły: `git log` czyta recenzent, nigdy klient.
   Dwanaście pierwszych commitów jest po polsku i **zostaje** — historia sprzed reguły nie jest przepisywana,
@@ -156,10 +156,10 @@ Kod idzie jako PR i weryfikuje go człowiek. Z tego wynikają dwie rzeczy przy g
 
 ## Czego nie budujemy
 
-`mix pns.new` (dopiero przy drugim kliencie). Prawdziwych parserów i integracji — koszt domenowy klienta,
+`mix eh_os_contract.new` (dopiero przy drugim kliencie). Prawdziwych parserów i integracji — koszt domenowy klienta,
 zero sygnału dla biblioteki. **Tożsamości** — logowania, kont, ról, providera OIDC: silnik zna aktora
 wyłącznie jako nieprzezroczysty `subject`, uwierzytelnia aplikacja klienta, dostęp do dashboardu
-rozstrzyga host przez `PNS.Web.Resolver` (od 23 września; wcześniej `PNS.Auth` z logowaniem i kontami, z
+rozstrzyga host przez `EhOsContract.Web.Resolver` (od 23 września; wcześniej `EhOsContract.Auth` z logowaniem i kontami, z
 czasów, gdy silnik miał być właścicielem EHOS). Grafu w
 interfejsie — sprawdzone, przy tej skali dekoracja. Alertów i widoków operacyjnych. **Czegokolwiek, co
 odpowiada na pytanie o konkretną firmę.**

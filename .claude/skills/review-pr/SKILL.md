@@ -1,21 +1,21 @@
 ---
 name: review-pr
-description: DRAFT, not yet reviewed. Before approving or sending back a PR generated for this repository — a new event, a new handler, a contract edit, or anything touching lib/pns/, lib/taxvision/, or lib/rehmed/ — separate what `mix check` already guarantees (so review attention does not waste itself re-deriving a compile refusal) from what only a human judgment call can catch: an unexplained `mix pns.check` warning, an invented-looking `rule`/`example`, a silent edit to an existing contract's `identity`/`instance`/`retain`/`trace`, a missing "verified in reverse" claim, Polish text outside the narrow allowed surface, or a diff too large for its stated scope. Use for any PR review in this repo, whether by a human or an agent reviewing on a human's behalf. Does not replace the compiler, `mix check`, or `docs/contract.md`'s compile-gate table — it tells you which parts of those you never need to re-check by hand.
+description: DRAFT, not yet reviewed. Before approving or sending back a PR generated for this repository — a new event, a new handler, a contract edit, or anything touching lib/eh_os_contract/, lib/taxvision/, or lib/rehmed/ — separate what `mix check` already guarantees (so review attention does not waste itself re-deriving a compile refusal) from what only a human judgment call can catch: an unexplained `mix eh_os_contract.check` warning, an invented-looking `rule`/`example`, a silent edit to an existing contract's `identity`/`instance`/`retain`/`trace`, a missing "verified in reverse" claim, Polish text outside the narrow allowed surface, or a diff too large for its stated scope. Use for any PR review in this repo, whether by a human or an agent reviewing on a human's behalf. Does not replace the compiler, `mix check`, or `docs/contract.md`'s compile-gate table — it tells you which parts of those you never need to re-check by hand.
 ---
 
 # Reviewing a generated PR
 
 DRAFT — not yet run against a real PR review. Review before trusting it. Every claim below about
-what `mix check` refuses, what `mix pns.check` only warns or informs about, and what
-`PNS.Deployment.diff/2` / `PNS.Trace.evaluate/3` do or do not track was checked against this
-package's source (`packages/pns_core/lib/mix/tasks/pns.check.ex`, `docs/contract.md`) on 21 August
+what `mix check` refuses, what `mix eh_os_contract.check` only warns or informs about, and what
+`EhOsContract.Deployment.diff/2` / `EhOsContract.Trace.evaluate/3` do or do not track was checked against this
+package's source (`packages/eh_os_contract/lib/mix/tasks/eh_os_contract.check.ex`, `docs/contract.md`) on 21 August
 2026, not assumed — file and line references are given so the next reader can re-check rather than
 take it on faith.
 
 ## Where this sits
 
 The other skills in this repository write something: `module-boundary-check` decides whether a new
-action needs PNS at all, `contract-distillation` turns workshop material into the categories a
+action needs EhOsContract at all, `contract-distillation` turns workshop material into the categories a
 contract needs, `change-contract` classifies the risk of editing a contract that already exists,
 and `add-event`/`write-handler` (the two `PLAN.md` Etap 3 names alongside `change-contract`, under
 `.claude/skills/add-event/` and `.claude/skills/write-handler/`) produce the actual event
@@ -34,8 +34,8 @@ scratch.
 ## Part 1 — what NOT to re-check, because the gate already did
 
 `docker compose up -d && mix ecto.setup && mix check` runs, in this order: `compile --force
---warnings-as-errors`, `pns.check`, `pns.docs --check`, `test`, and — since 21 August —
-`mix test` inside `packages/pns_core` as its own separate invocation (`CLAUDE.md`). **If this did
+--warnings-as-errors`, `eh_os_contract.check`, `eh_os_contract.docs --check`, `test`, and — since 21 August —
+`mix test` inside `packages/eh_os_contract` as its own separate invocation (`CLAUDE.md`). **If this did
 not run green, there is nothing to review yet.** Ask for the real exit code, not a description of
 one. Never accept `mix check | tail -4` as evidence: piping to `tail` reports `tail`'s exit code,
 which is always zero, and this repository has already committed 24 real failures behind exactly that
@@ -63,35 +63,35 @@ compiled, none of these apply:
 | `depends_on` naming an undeclared `external` | — |
 | The same event declared twice, a handler on an undeclared event, a handler publishing an undeclared event, an async handler on an event without `identity` | — |
 
-**1b. `mix pns.check`'s own `:error` findings** — not a macro-time refusal, but a whole-program check
-that fails the same run (`report/1`, `pns.check.ex:368`: any `:error` count above zero exits
+**1b. `mix eh_os_contract.check`'s own `:error` findings** — not a macro-time refusal, but a whole-program check
+that fails the same run (`report/1`, `eh_os_contract.check.ex:368`: any `:error` count above zero exits
 `{:shutdown, 1}`, which fails `mix check`). If the gate is green, none of these are present either:
-an event or process name declared by two contracts (`pns.check.ex:81-100`), a `rule` naming an MFA
-that does not exist or export the given arity (`pns.check.ex:161-177`), a `trace` naming an event
-that does not resolve (`pns.check.ex:179-195` — a second-layer check behind the compile gate, since a
+an event or process name declared by two contracts (`eh_os_contract.check.ex:81-100`), a `rule` naming an MFA
+that does not exist or export the given arity (`eh_os_contract.check.ex:161-177`), a `trace` naming an event
+that does not resolve (`eh_os_contract.check.ex:179-195` — a second-layer check behind the compile gate, since a
 contract can only see its own module at compile time), or an identity-vendor name leaking into the
-engine's config (`pns.check.ex:334-347`). All four are enforced automatically; spending review time
+engine's config (`eh_os_contract.check.ex:334-347`). All four are enforced automatically; spending review time
 re-deriving them is exactly the waste this skill exists to prevent.
 
 ## Part 2 — where review attention actually earns its cost
 
-### 2. `mix pns.check`'s `:warn`/`:info` findings — visible in CI, not gate-enforced, need your judgment
+### 2. `mix eh_os_contract.check`'s `:warn`/`:info` findings — visible in CI, not gate-enforced, need your judgment
 
-These print in every `mix check` run but never fail it (`pns.check.ex:349-368` only counts `:error`
+These print in every `mix check` run but never fail it (`eh_os_contract.check.ex:349-368` only counts `:error`
 toward the exit code). Each one needs a human to decide "expected here" vs. "regression":
 
 | Finding | Level | Source | What to decide |
 | --- | --- | --- | --- |
-| No contracts found in the configured applications | `:warn` | `pns.check.ex:57-72` | Should never appear on a PR that touches a contract. If it does, `config :pns, applications: [...]` is wrong — this is close to a hard blocker, not a judgment call |
-| A declared event has no handler and is not `terminal` | `:info` | `pns.check.ex:103-129` | "Declared, never observed" is this repo's normal, deliberate mid-rollout state (every Rehmed event is in this state on purpose — `PLAN.md`). Ask: did the PR mean to leave this unhandled, or did it forget a handler it clearly intended to write? |
-| An `owner:` module does not exist | `:info` | `pns.check.ex:143-158` | Same "mid-rollout is normal" reasoning — but check the named module is a real, planned owner, not a typo nobody will ever fill in |
-| Backward edge between stages | `:warn` | `pns.check.ex:200-209` | This repo keeps two of these deliberately as acceptance-criteria fixtures (`PLAN.md`, "Stan na 6 sierpnia"). A **new** backward edge on a real contract or handler is a genuine ordering mistake — check which case this is before waving it through |
-| N synchronous handlers on one event, ordered alphabetically | `:warn` | `pns.check.ex:211-224` | Alphabetical order "reproduces but says nothing about the process." If the PR's own logic depends on which handler runs first, that dependency is invisible to the engine — ask whether it should be, or whether one handler should instead publish an event the other subscribes to |
-| `:string` payload field with no `retain` policy | `:info` | `pns.check.ex:237-251` | Reaches the log verbatim. Sometimes correct on purpose (Rehmed's exclusion-reason string, kept readable deliberately, per `PLAN.md`'s payer-settlement notes) — but check it isn't PII or free text that should have been `:hash`/`:drop` |
-| Assertion finer than its run | `:warn` | `pns.check.ex:261-274` | Since 21 August this is quantified per item, not a false-satisfied bug — but it still needs `eventually`/`or_else` to carry the same `identity` field values as `from`, or a hit cannot resolve any item and the run stays open. Check the PR's `eventually`/`or_else` payloads actually carry those fields |
-| Fact not keyed by its own run (`identity` missing a field `instance` requires) | `:warn` | `pns.check.ex:282-295` | Two facts in two different runs then share one idempotency key, and the second's handler silently never runs. Confirm this is either impossible for this event or genuinely intended |
-| `trace` with no `within` | `:info` | `pns.check.ex:302-313` | No failing case exists; a run with nothing satisfying it stays `:pending` forever. Ask whether a number was simply never agreed, or whether one exists and was dropped |
-| `process.unverified` names a field | `:warn` | `pns.check.ex:318-331` | The declaration exists but does not count toward the evidence report. Check the PR is not quietly relying on an `unverified:` number as if it were confirmed — and note separately that `unverified` never covers `trace` itself (`PLAN.md`'s open item, "`unverified` nie obejmuje `trace`") |
+| No contracts found in the configured applications | `:warn` | `eh_os_contract.check.ex:57-72` | Should never appear on a PR that touches a contract. If it does, `config :eh_os_contract, applications: [...]` is wrong — this is close to a hard blocker, not a judgment call |
+| A declared event has no handler and is not `terminal` | `:info` | `eh_os_contract.check.ex:103-129` | "Declared, never observed" is this repo's normal, deliberate mid-rollout state (every Rehmed event is in this state on purpose — `PLAN.md`). Ask: did the PR mean to leave this unhandled, or did it forget a handler it clearly intended to write? |
+| An `owner:` module does not exist | `:info` | `eh_os_contract.check.ex:143-158` | Same "mid-rollout is normal" reasoning — but check the named module is a real, planned owner, not a typo nobody will ever fill in |
+| Backward edge between stages | `:warn` | `eh_os_contract.check.ex:200-209` | This repo keeps two of these deliberately as acceptance-criteria fixtures (`PLAN.md`, "Stan na 6 sierpnia"). A **new** backward edge on a real contract or handler is a genuine ordering mistake — check which case this is before waving it through |
+| N synchronous handlers on one event, ordered alphabetically | `:warn` | `eh_os_contract.check.ex:211-224` | Alphabetical order "reproduces but says nothing about the process." If the PR's own logic depends on which handler runs first, that dependency is invisible to the engine — ask whether it should be, or whether one handler should instead publish an event the other subscribes to |
+| `:string` payload field with no `retain` policy | `:info` | `eh_os_contract.check.ex:237-251` | Reaches the log verbatim. Sometimes correct on purpose (Rehmed's exclusion-reason string, kept readable deliberately, per `PLAN.md`'s payer-settlement notes) — but check it isn't PII or free text that should have been `:hash`/`:drop` |
+| Assertion finer than its run | `:warn` | `eh_os_contract.check.ex:261-274` | Since 21 August this is quantified per item, not a false-satisfied bug — but it still needs `eventually`/`or_else` to carry the same `identity` field values as `from`, or a hit cannot resolve any item and the run stays open. Check the PR's `eventually`/`or_else` payloads actually carry those fields |
+| Fact not keyed by its own run (`identity` missing a field `instance` requires) | `:warn` | `eh_os_contract.check.ex:282-295` | Two facts in two different runs then share one idempotency key, and the second's handler silently never runs. Confirm this is either impossible for this event or genuinely intended |
+| `trace` with no `within` | `:info` | `eh_os_contract.check.ex:302-313` | No failing case exists; a run with nothing satisfying it stays `:pending` forever. Ask whether a number was simply never agreed, or whether one exists and was dropped |
+| `process.unverified` names a field | `:warn` | `eh_os_contract.check.ex:318-331` | The declaration exists but does not count toward the evidence report. Check the PR is not quietly relying on an `unverified:` number as if it were confirmed — and note separately that `unverified` never covers `trace` itself (`PLAN.md`'s open item, "`unverified` nie obejmuje `trace`") |
 
 ### 3. Where the randomness in the diff actually lives
 
@@ -107,11 +107,11 @@ concretely:
   it.
 - Any edit to an **existing** contract's `identity:`, `instance:`, `retain:`, or a `trace`'s
   `from`/`eventually`/`or_else`/`within`. These are exactly the rows in `change-contract`'s delta
-  table with **zero `PNS.Deployment.diff/2` support** — the diff tool cannot flag them, so the review
+  table with **zero `EhOsContract.Deployment.diff/2` support** — the diff tool cannot flag them, so the review
   is the only check left. Open `.claude/skills/change-contract/SKILL.md`'s delta-classification table
   and match the PR's change against it row by row rather than reasoning about the risk from scratch;
   in particular, a changed `trace` timing parameter silently reinterprets **every past run** the
-  moment it deploys (`PNS.Trace.evaluate/3` always reads the contract as compiled now, with no
+  moment it deploys (`EhOsContract.Trace.evaluate/3` always reads the contract as compiled now, with no
   versioned history), so a PR bumping one of these without a `since:` note for future reports is
   incomplete even if it compiles and passes.
 
@@ -137,8 +137,8 @@ but it is a question to ask before trusting the fix is actually the thing that w
 
 ### 5. The language boundary, exactly as stated, not loosened
 
-`CLAUDE.md` is specific: code is English, no exceptions, and the scope is not just `lib/pns/` but
-also `lib/taxvision/`, `lib/rehmed/`, `test/`, `packages/pns_core/test/` fixtures, `config/`,
+`CLAUDE.md` is specific: code is English, no exceptions, and the scope is not just `lib/eh_os_contract/` but
+also `lib/taxvision/`, `lib/rehmed/`, `test/`, `packages/eh_os_contract/test/` fixtures, `config/`,
 `priv/repo/migrations/`, `docs/`, and `mix.exs`. The only Polish allowed anywhere in that scope is
 inside a string a client actually reads: `label`, `example` prose, `source:`, `unavailable_looks_like`
 in a contract, task names, a notification subject. Everywhere else — identifiers, moduledocs, `@doc`,
@@ -169,7 +169,7 @@ to let pass unasked either.
 
 ### 7. A verdict-moving change without a CHANGELOG entry
 
-`packages/pns_core/CHANGELOG.md` carries a rule: a change that can move a verdict raises the minor
+`packages/eh_os_contract/CHANGELOG.md` carries a rule: a change that can move a verdict raises the minor
 version and gets a line there. A verdict is anything the conformance report prints as a number or a
 state — an overlay edge's state, a `trace` verdict, a path counted as untraversed, a run counted as
 exceeding a deadline, a declaration counted as changed. Wording, docstrings, tests and fixtures do
@@ -177,11 +177,11 @@ not.
 
 **Nothing mechanical enforces this and nothing can**, which is why it is a reviewer's line rather
 than a check. The mechanical part — that the report states which engine computed it — is pinned by
-`PNS.VersionTest`, and on its own it is decoration: a version number nobody can attribute to a
+`EhOsContract.VersionTest`, and on its own it is decoration: a version number nobody can attribute to a
 behaviour is worse than no version, because it reads as provenance.
 
 The trigger is narrow, so it can be applied without judgment: a diff touching
-`packages/pns_core/lib/pns/{trace,graph,conformance,deployment,report,run}.ex` with no entry in
+`packages/eh_os_contract/lib/eh_os_contract/{trace,graph,conformance,deployment,report,run}.ex` with no entry in
 `CHANGELOG.md` goes back to its author. If the author's answer is "this cannot move a verdict", that
 answer belongs in the PR description, and it is usually right — but it should be written down rather
 than assumed, because the alternative is two clients on two versions getting two answers to the same
@@ -214,7 +214,7 @@ to send back before reviewing it at all.
 
 1. Confirm the gate: get the real exit code of `mix check`, not a tail'd log. If it is not green,
    stop — there is nothing to review yet.
-2. Read every `mix pns.check` finding in the CI output. Anything at `:error` is already
+2. Read every `mix eh_os_contract.check` finding in the CI output. Anything at `:error` is already
    gate-enforced — skip it. For every `:warn`/`:info` touched or newly introduced by this diff, use
    the table in Part 2.2 to decide expected vs. regression.
 3. Read the diff itself for where the randomness is: `rule`/`example` pairs, handler decision

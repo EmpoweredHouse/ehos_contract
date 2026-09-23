@@ -27,7 +27,7 @@ defmodule Rehmed.Settlement do
   the line that is wrong.
   """
 
-  use Boundary, deps: [PNS], exports: []
+  use Boundary, deps: [EhOsContract], exports: []
 
   @doc """
   Decides whether the commercial side of a visit may be closed.
@@ -36,7 +36,7 @@ defmodule Rehmed.Settlement do
   all is in the contract's moduledoc. Sums of integers are exact; the same
   arithmetic in floats is not, and money that is added up must never be a float.
   """
-  @spec decide(map()) :: [PNS.Event.intention()] | {:error, atom()}
+  @spec decide(map()) :: [EhOsContract.Event.intention()] | {:error, atom()}
   def decide(%{command: :close_settlement} = input) do
     %{visit_id: visit_id, total_minor: total_minor} = input
 
@@ -44,13 +44,13 @@ defmodule Rehmed.Settlement do
 
     cond do
       paid_minor == 0 ->
-        [PNS.event(:visit_closed_without_payment, %{visit_id: visit_id})]
+        [EhOsContract.event(:visit_closed_without_payment, %{visit_id: visit_id})]
 
       paid_minor != total_minor ->
         {:error, :payment_lines_do_not_sum_to_total}
 
       true ->
-        [PNS.event(:visit_closed_commercially, %{visit_id: visit_id})]
+        [EhOsContract.event(:visit_closed_commercially, %{visit_id: visit_id})]
     end
   end
 end

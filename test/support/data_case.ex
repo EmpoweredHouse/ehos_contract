@@ -17,14 +17,14 @@ defmodule Taxvision.DataCase do
   setup tags do
     pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Taxvision.Repo, shared: not tags[:async])
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
-    PNS.Registry.load!()
+    EhOsContract.Registry.load!()
 
     # Deployments are written by the **application boot**, that is, outside the
     # sandbox — those rows commit to the test database permanently and would leak
     # into every test that claims anything about deployments. The cleanup runs
     # inside the sandbox transaction, so it rolls back after the test, and
     # production behaviour is untouched: there, writing at boot is exactly right.
-    Taxvision.Repo.delete_all(PNS.Deployment)
+    Taxvision.Repo.delete_all(EhOsContract.Deployment)
 
     # A period is a **canonical row**, not a string parsed on the fly, so it has to
     # exist before anything can be booked into it. In production an admin or a
@@ -86,6 +86,9 @@ defmodule Taxvision.DataCase do
 
   def events_of(type) do
     name = to_string(type)
-    Taxvision.Repo.all(from(e in PNS.Event, where: e.type == ^name, order_by: e.occurred_at))
+
+    Taxvision.Repo.all(
+      from(e in EhOsContract.Event, where: e.type == ^name, order_by: e.occurred_at)
+    )
   end
 end

@@ -2,7 +2,7 @@ defmodule PnsPrototypeWeb.ErrorHTML do
   @moduledoc """
   Without this, an unhandled error masks itself as `ArgumentError: no
   html template defined` instead of the real exception — the same trap
-  `packages/pns_web`'s own test host hit twice before this config stopped
+  `packages/eh_os_contract_web`'s own test host hit twice before this config stopped
   being optional.
   """
 

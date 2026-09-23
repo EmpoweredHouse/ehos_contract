@@ -10,7 +10,7 @@ defmodule Taxvision.Notifications do
     # rather than reached for: `boundary` refused the reference the moment it appeared,
     # which is the no-join rule making a new cross-module dependency visible instead of
     # letting it arrive as a join somebody notices later.
-    deps: [PNS, Taxvision.Repo, Taxvision.Contracts, Taxvision.Periods],
+    deps: [EhOsContract, Taxvision.Repo, Taxvision.Contracts, Taxvision.Periods],
     exports: [Notification]
 end
 
@@ -45,7 +45,7 @@ defmodule Taxvision.Notifications.OnRegistryDiscrepancyDetected do
   is why the handler macro refused `async: true` without a key.
   """
 
-  use PNS.Handler,
+  use EhOsContract.Handler,
     contract: Taxvision.Contracts.AccountingMonth,
     event: :registry_discrepancy_detected,
     publishes: [:discrepancy_notification_sent],
@@ -57,7 +57,7 @@ defmodule Taxvision.Notifications.OnRegistryDiscrepancyDetected do
 
   @recipients ["ksiegowa@biuro.example", "klient@firma.example"]
 
-  @impl PNS.Handler
+  @impl EhOsContract.Handler
   def handle(%{company_id: company_id, period_id: period_id} = payload, ctx) do
     key = ctx.idempotency_key
 
@@ -94,7 +94,7 @@ defmodule Taxvision.Notifications.OnRegistryDiscrepancyDetected do
 
       {:ok,
        [
-         PNS.event(:discrepancy_notification_sent, %{
+         EhOsContract.event(:discrepancy_notification_sent, %{
            company_id: company_id,
            period_id: period_id,
            recipients: count

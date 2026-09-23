@@ -1,6 +1,6 @@
 ---
 name: module-boundary-check
-description: DRAFT, not yet reviewed. Before adding a new business entity, action, or CRUD screen to this application, decide (1) whether the action should dispatch through PNS's event/handler mechanism at all, (1a) if not, whether it should still use an internal untracked event/handler shape for decoupling versus a direct function call, and (2) if it does go through PNS, separately whether it needs structural tracking (process, instance, stages — for drift/untraversed-path detection, no timing required) and/or a timed promise (trace, cadence, deadline) — then check what already exists before generating anything. Use when about to add a new module, table, or action to lib/taxvision/ (or a future client tree) — not when editing an already-declared contract, which has its own workflow (see change-contract).
+description: DRAFT, not yet reviewed. Before adding a new business entity, action, or CRUD screen to this application, decide (1) whether the action should dispatch through EhOsContract's event/handler mechanism at all, (1a) if not, whether it should still use an internal untracked event/handler shape for decoupling versus a direct function call, and (2) if it does go through EhOsContract, separately whether it needs structural tracking (process, instance, stages — for drift/untraversed-path detection, no timing required) and/or a timed promise (trace, cadence, deadline) — then check what already exists before generating anything. Use when about to add a new module, table, or action to lib/taxvision/ (or a future client tree) — not when editing an already-declared contract, which has its own workflow (see change-contract).
 ---
 
 # Deciding where a new feature lives, before writing it
@@ -27,8 +27,8 @@ thing: "contract territory." That conflated **using the event/handler mechanism*
 and they are independently decidable, confirmed against a coupling analysis of event-driven
 design (["Events and different kinds of coupling"](https://mkaszubowski.com/2019/06/28/events-and-different-kinds-of-coupling.html)):
 decoupling modules with an event can be done **synchronously and transactionally**, inside one
-ACID transaction, which is exactly PNS's sync dispatch path — it costs no queue, no eventual
-consistency, and (confirmed against `PNS.Contract`) no `instance`/`identity` either, because
+ACID transaction, which is exactly EhOsContract's sync dispatch path — it costs no queue, no eventual
+consistency, and (confirmed against `EhOsContract.Contract`) no `instance`/`identity` either, because
 those are only required once an event joins a `process:`. A bare event with a handler, and
 nothing else declared, is cheap. What is *not* free is `trace`/`cadence`/`deadline` — that
 machinery answers a different question (is a *promise* being kept), and earns its cost only
@@ -56,13 +56,13 @@ function call. No event. Stop — Question 1a and Question 2 below do not apply.
 
 A "no" to Question 1 does not always mean "call the other module's function directly." There is
 a middle option: an **internal, untracked signal** — same event/handler *shape* for code
-organization, dispatched entirely outside PNS (no contract, no registry, no graph, no drift
-check). This is not a PNS feature and does not belong in `lib/pns/` — it earns nothing from the
-library, because the whole value of PNS is the tracking this deliberately skips. It is plain
+organization, dispatched entirely outside EhOsContract (no contract, no registry, no graph, no drift
+check). This is not an EhOsContract feature and does not belong in `lib/eh_os_contract/` — it earns nothing from the
+library, because the whole value of EhOsContract is the tracking this deliberately skips. It is plain
 Elixir: a module holding a list of subscriber callbacks, invoked in the same function, same
 transaction, by default. Reach for `Phoenix.PubSub` or a queue only if there is a concrete reason
 to decouple operationally — that reason is itself a sign this might actually belong back in
-Question 1 as a real PNS event.
+Question 1 as a real EhOsContract event.
 
 Decide with that same distinction, not taste:
 
@@ -76,19 +76,19 @@ wired as a function call or an event.
 No (the caller only announces a fact; who reacts, how many react, and whether anyone reacts yet
 are none of its business — and that list is expected to grow without editing the caller) →
 **internal signal.** Keep it boring: a plain module, a plain list of callbacks, called
-synchronously. Name it so nobody mistakes it for a governed PNS event — a suffix or namespace
+synchronously. Name it so nobody mistakes it for a governed EhOsContract event — a suffix or namespace
 distinct from anything with a `payload:`/`label:` declaration, and a one-line moduledoc note:
-*"internal only, not tracked by PNS, see `module-boundary-check`."*
+*"internal only, not tracked by EhOsContract, see `module-boundary-check`."*
 
 **Semantic coupling still applies even though nothing is tracked.** The same analysis's warning
 that events increase semantic coupling is not conditional on a formal contract — the moment a second
 module depends on a signal's name and payload shape, changing that shape is a breaking change
-whether or not `PNS.Contract` knows about it. Treat the signal's shape as deliberate from the
+whether or not `EhOsContract.Contract` knows about it. Treat the signal's shape as deliberate from the
 first version, the same discipline as a public function signature.
 
 **Graduation path.** If a real promise later shows up for this fact ("after this, within N, that
 must follow, or else..."), that is the signal to move it into Question 1's "yes" branch — add the
-contract declaration, switch the dispatch call from the internal signal to `PNS.emit`, and keep
+contract declaration, switch the dispatch call from the internal signal to `EhOsContract.emit`, and keep
 the handler function itself unchanged as far as possible so the move is cheap.
 
 ## Question 2 — only if Question 1 was "yes": does this event need verification machinery?
@@ -103,7 +103,7 @@ independently useful criterion below.
 > gets exercised across every run, and whether anything happens that was never declared?**
 
 Yes → give it `process:`/`stage:`, and give the process `instance`. This alone buys
-`PNS.Conformance.untraversed_paths` (a declared step that silently never fires for anyone) and
+`EhOsContract.Conformance.untraversed_paths` (a declared step that silently never fires for anyone) and
 drift detection (something happening that was never declared) — **no timing relationship between
 events is required for either.** `lib/taxvision/contracts/accounting_month.ex` has three events
 declared exactly this way today — `bank_statement_received`, `turnover_matched_with_invoice`,
@@ -131,9 +131,9 @@ for "is there a timing promise" undercounts it.
 
 ## Non-negotiables, carried over from this repo's own rules
 
-- **PNS knows nothing about companies or business entities, no exceptions.** A CRUD context
+- **EhOsContract knows nothing about companies or business entities, no exceptions.** A CRUD context
   does not get engine-level awareness just because it is declared next to a contract. If a
-  litmus-test answer implies PNS needs to know "which client this is" as a structured field,
+  litmus-test answer implies EhOsContract needs to know "which client this is" as a structured field,
   that is a sign the action is not contract territory after all — see `claims: %{}` in `Taxvision.Identity.Actor`.
 - **Every new module declares `use Boundary` explicitly**, deps and exports named — even
   `deps: [], exports: []`. No module rides along under an existing boundary by omission; that is
@@ -156,7 +156,7 @@ for "is there a timing promise" undercounts it.
 
 3. **If Question 1 is "no", answer Question 1a before writing anything:**
    - Direct call → `grep` for an existing owner before creating a new one — exports lists in
-     `lib/pns.ex` and every `lib/taxvision/*.ex`, and existing migrations for the table.
+     `lib/eh_os_contract.ex` and every `lib/taxvision/*.ex`, and existing migrations for the table.
      Duplicating an existing context is the same mistake the no-join rule exists to prevent, one
      layer up. Scaffold with an explicit `use Boundary, deps: [...], exports: [...]`, following
      the shape of an existing sibling context (e.g. `Taxvision.Periods`) rather than a generic
@@ -165,12 +165,12 @@ for "is there a timing promise" undercounts it.
      the contract.
    - Internal signal → same `boundary` discipline for whichever module owns the subscriber list;
      name and moduledoc it as explicitly untracked (see Question 1a); treat its shape as a
-     deliberate, stable contract even though PNS never sees it.
+     deliberate, stable contract even though EhOsContract never sees it.
 
 4. **If Question 1 is "yes" but neither Criterion A nor B applies (bare event):**
    - Declare the event with `payload`, `label`, `owner`, and `identity` only if retries need
      deduplication — no `process:`, no `instance`, no `trace`.
-   - Still check `docs/contract.md`/`mix pns.check` for an existing owner of this fact before
+   - Still check `docs/contract.md`/`mix eh_os_contract.check` for an existing owner of this fact before
      adding a new one, same as any other declaration.
    - Watch the payload type dictionary here specifically: `[:id, :string, :integer, :timestamp,
      :enum]` has no decimal/float type, so a monetary field (an invoice amount, for instance)
@@ -179,7 +179,7 @@ for "is there a timing promise" undercounts it.
 
 5. **If Criterion A applies (structural, whether or not Criterion B also does):**
    - Check whether the event, process, or assertion already exists: `docs/contract.md`,
-     `mix pns.check` (an `info` line naming an event with no handler, or an owner module that
+     `mix eh_os_contract.check` (an `info` line naming an event with no handler, or an owner module that
      does not exist yet, both mean "declared but not built" rather than "does not exist").
    - Give the event `process:` and `stage:`, and give the process `instance` — this alone is
      enough to get untraversed-path and drift signal; a `trace` (Criterion B) is an addition on
@@ -199,7 +199,7 @@ for "is there a timing promise" undercounts it.
 ## What this does not do
 
 Does not generate the CRUD code or the contract code — it is the triage step before either, not
-a replacement for `mix pns.check`'s compile-time gates or for a human reviewing the result.
+a replacement for `mix eh_os_contract.check`'s compile-time gates or for a human reviewing the result.
 Does not resolve genuinely ambiguous cases on its own: if either question's answer is unclear
 after step 2, that is a real open question, not a bug in this skill, and it should be asked
 rather than guessed past.

@@ -1,7 +1,7 @@
 defmodule Taxvision do
   @moduledoc """
   The client application. Whatever is specific to TaxVision — and whatever is not
-  lands in `lib/pns/`. That one rule is the whole discipline of this prototype
+  lands in `lib/eh_os_contract/`. That one rule is the whole discipline of this prototype
   (notes §15, step 1).
 
   The topology of the boundaries is content here rather than ornament. Every
@@ -12,5 +12,5 @@ defmodule Taxvision do
   to be a boundary.
   """
 
-  use Boundary, deps: [PNS], exports: []
+  use Boundary, deps: [EhOsContract], exports: []
 end

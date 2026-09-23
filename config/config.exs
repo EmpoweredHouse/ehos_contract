@@ -7,7 +7,7 @@ config :pns_prototype, ecto_repos: [Taxvision.Repo]
 # through a module reference — that is what keeps the package from depending on
 # a client application at compile time, and it is why extracting it needed no
 # change to either client tree.
-config :pns,
+config :eh_os_contract,
   # Which applications hold the contracts. The engine scans the binary that
   # actually runs, and after the extraction it can no longer guess whose binary
   # that is — a library defaulting to its own name scans itself and reports a

@@ -40,7 +40,7 @@ defmodule Rehmed.Contracts.VisitSettlement do
   Nothing distinguishes them. A second contract writing **złote** into a field this
   one writes grosze into compiles, emits, and is added up wrong by a report, and no
   gate anywhere would notice — the same class of silent, plausible failure as the
-  granularity limitation once recorded in `PNS.Trace` and closed there 21 August 2026.
+  granularity limitation once recorded in `EhOsContract.Trace` and closed there 21 August 2026.
 
   The mitigation used here is a naming convention: every amount ends in `_minor`,
   so the unit is unmissable at the call site. **A convention is not a guarantee**,
@@ -75,7 +75,7 @@ defmodule Rehmed.Contracts.VisitSettlement do
 
   This is a judgement, not a rule the engine enforces, and it is worth saying that
   the engine never reads any of these values. `identity` and `instance` use fields
-  as keys; `PNS.Emitter` checks their shape; only `rule` and `example` read a number
+  as keys; `EhOsContract.Emitter` checks their shape; only `rule` and `example` read a number
   — and `example`'s `given:` is untyped domain state, so the money in the cases at
   the foot of this file is unconstrained by the closed set entirely.
 
@@ -127,7 +127,7 @@ defmodule Rehmed.Contracts.VisitSettlement do
   than the day they belong to, which is why closed days drift.
   """
 
-  use PNS.Contract
+  use EhOsContract.Contract
 
   # --- charging ---
 
@@ -198,7 +198,7 @@ defmodule Rehmed.Contracts.VisitSettlement do
   # entered, so closed days drift silently. Declaring `business_date` is what makes
   # the difference between the two expressible at all.
   #
-  # `delta_minor` may be negative — `PNS.Emitter` checks `is_integer/1`, so a
+  # `delta_minor` may be negative — `EhOsContract.Emitter` checks `is_integer/1`, so a
   # refund needs no separate event and no sign convention hidden in a name.
   event :settlement_corrected,
     label: "Zaksięgowano korektę rozliczenia",

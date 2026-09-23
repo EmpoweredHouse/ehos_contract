@@ -1,6 +1,6 @@
 defmodule PnsPrototypeWeb.Router do
   @moduledoc """
-  Two mounts, both from `pns_web`: the dashboard at `/dashboard` for a person, and
+  Two mounts, both from `eh_os_contract_web`: the dashboard at `/dashboard` for a person, and
   the read-only conformance API at `/api/pns` for anything that is not one.
   Nothing else lives here — this project has no other frontend, and
   `docs/adr/architecture.md` §16-17 puts frontends outside the engine regardless.
@@ -26,15 +26,15 @@ defmodule PnsPrototypeWeb.Router do
 
   scope "/" do
     pipe_through :browser
-    import PNS.Web.Router
+    import EhOsContract.Web.Router
 
-    pns_dashboard "/dashboard", resolver: PnsPrototypeWeb.Resolver
+    eh_os_contract_dashboard "/dashboard", resolver: PnsPrototypeWeb.Resolver
   end
 
   scope "/" do
     pipe_through :api
-    import PNS.Web.Router
+    import EhOsContract.Web.Router
 
-    pns_api "/api/pns", resolver: PnsPrototypeWeb.Resolver
+    eh_os_contract_api "/api/pns", resolver: PnsPrototypeWeb.Resolver
   end
 end

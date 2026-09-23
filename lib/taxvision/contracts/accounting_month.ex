@@ -17,7 +17,7 @@ defmodule Taxvision.Contracts.AccountingMonth do
   Everything else — event names, stage names, field names — is an identifier.
   """
 
-  use PNS.Contract
+  use EhOsContract.Contract
 
   # --- phase 3.1: implemented ---
 
@@ -101,7 +101,7 @@ defmodule Taxvision.Contracts.AccountingMonth do
   # --- later phases: declared, deliberately unimplemented ---
   #
   # This is not unfinished work. It is a demonstration of the "declared, never
-  # observed" state (notes §5, §9): `mix pns.check` and `mix pns.graph --overlay`
+  # observed" state (notes §5, §9): `mix eh_os_contract.check` and `mix eh_os_contract.graph --overlay`
   # are meant to list them as dead paths, because that is exactly what a contract
   # running ahead of its implementation looks like — the normal state mid-rollout.
 
@@ -176,7 +176,7 @@ defmodule Taxvision.Contracts.AccountingMonth do
 
   process :accounting_month,
     label: "Cykl miesięczny księgowy",
-    # Stage names are **identifiers, not labels** — they go into `pns.check`, into
+    # Stage names are **identifiers, not labels** — they go into `eh_os_contract.check`, into
     # the graph and into the contract's version key, so they are in English like
     # the rest of the code. What is in Polish is what the client reads: `label`
     # and the example descriptions.

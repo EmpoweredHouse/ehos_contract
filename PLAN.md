@@ -140,6 +140,27 @@ Pełna reguła i jej zakres — `CLAUDE.md`.
 
 ---
 
+## Dopisek 23 września (2) — `pns` → `eh_os_contract`
+
+Pakiet nazywa się teraz `:eh_os_contract`, dashboard `:eh_os_contract_web`, przestrzeń nazw `EhOsContract`
+(`EhOsContract.Web`), katalogi `packages/eh_os_contract` i `packages/eh_os_contract_web`, taski
+`mix eh_os_contract.*`, makra `eh_os_contract_dashboard/2` i `eh_os_contract_api/2`, telemetria
+`[:eh_os_contract, ...]`, znaczniki `__eh_os_contract__/0` i `__eh_os_contract_handler__/0`.
+
+**Dlaczego „contract”, a nie „conformance”.** Biblioteka to dwie rzeczy naraz: fundament architektury
+sterowanej zdarzeniami (emisja, handlery, dispatch) i sprawdzanie zgodności. Kontrakt jest tym, co czytają
+obie — i przy wielu aplikacjach OTP wymieniających zdarzenia przez broker (JetStream, w planie) staje się
+umową **między aplikacjami**.
+
+**Czego świadomie nie przemianowano**, bo to już nie nazwa w kodzie, tylko dane albo format:
+tabele `pns_*` (zmiana wymagałaby migracji v03), rozszerzenia `x-pns-*` w AsyncAPI (zmieniłyby digest
+dokumentu), schemat `pns.conformance.v1`, zmienne CSS `--pns-*`, bazy testowe `pns_core_test` /
+`pns_web_test` i użytkownik `pns` w `docker-compose.yml`. Każda z tych rzeczy to osobna decyzja.
+Nie ruszony też host (`:pns_prototype`, `PnsPrototypeWeb`) — idzie razem ze zmianą nazwy repozytorium,
+odłożoną na później. `docs/adr/` i historia w tym pliku zostają przy starej nazwie, bo są zapisem.
+
+`mix check`: 46 + 391 + 31 testów, 0 padnięć.
+
 ## Dopisek 23 września — warstwa tożsamości wycięta z silnika i z dashboardu
 
 `PNS.Auth`, ekran kont, prowizoryczny login i domyślny resolver były z założenia, które już nie obowiązuje:

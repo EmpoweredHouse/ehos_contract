@@ -9,7 +9,7 @@ defmodule Taxvision.Tasks do
   """
 
   use Boundary,
-    deps: [PNS, Taxvision.Repo, Taxvision.Contracts, Taxvision.Periods],
+    deps: [EhOsContract, Taxvision.Repo, Taxvision.Contracts, Taxvision.Periods],
     exports: [Task]
 
   @doc "The task template for a legal form. Changes take effect from the next month (P3)."
@@ -55,14 +55,14 @@ defmodule Taxvision.Tasks.OnRegistryDataConsistent do
   such handlers cannot be synchronous.
   """
 
-  use PNS.Handler,
+  use EhOsContract.Handler,
     contract: Taxvision.Contracts.AccountingMonth,
     event: :registry_data_consistent,
     publishes: [:monthly_tasks_generated]
 
   alias Taxvision.Tasks.Task
 
-  @impl PNS.Handler
+  @impl EhOsContract.Handler
   def handle(%{company_id: company_id, period_id: period_id}, _ctx) do
     names = Taxvision.Tasks.template("JDG")
     now = DateTime.utc_now()
@@ -88,7 +88,7 @@ defmodule Taxvision.Tasks.OnRegistryDataConsistent do
 
     {:ok,
      [
-       PNS.event(:monthly_tasks_generated, %{
+       EhOsContract.event(:monthly_tasks_generated, %{
          company_id: company_id,
          period_id: period_id,
          task_count: count

@@ -97,7 +97,7 @@ defmodule Rehmed.Contracts.ClinicalVisit do
   ## Two things this contract cannot say
 
   **A contested assertion cannot be marked as such.** `unverified` covers `cadence`
-  and `deadline` only, so `PNS.Conformance.verified_declarations/1` cannot exclude
+  and `deadline` only, so `EhOsContract.Conformance.verified_declarations/1` cannot exclude
   a `trace` the process owner has not confirmed. Both assertions below will count
   towards an evidence report. Here that is defensible — one number is statutory and
   the other is a client decision with a date — but the mechanism would not have
@@ -146,7 +146,7 @@ defmodule Rehmed.Contracts.ClinicalVisit do
   around here.
   """
 
-  use PNS.Contract
+  use EhOsContract.Contract
 
   # --- in the room: the visit starts and the patient leaves ---
 

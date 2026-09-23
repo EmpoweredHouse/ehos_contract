@@ -11,7 +11,7 @@ defmodule Taxvision.RegistryCheck do
   for an accounting client that is the whole question (ADR §11-12).
   """
 
-  use Boundary, deps: [PNS], exports: []
+  use Boundary, deps: [EhOsContract], exports: []
 
   @doc """
   Policy P1 from the workshop: when a month starts, check the registries; when the
@@ -20,7 +20,7 @@ defmodule Taxvision.RegistryCheck do
   The precondition for inserting the template is the absence of a legal-status
   divergence [WF 00:35:41].
   """
-  @spec decide(map()) :: [PNS.Emission.t()] | {:error, atom()}
+  @spec decide(map()) :: [EhOsContract.Emission.t()] | {:error, atom()}
   def decide(%{command: :open_month} = input) do
     %{company_id: company_id, period_id: period_id} = input
 
@@ -33,21 +33,21 @@ defmodule Taxvision.RegistryCheck do
 
       true ->
         prefix = [
-          PNS.event(:data_completeness_confirmed, base),
-          PNS.event(:registry_status_checked, Map.put(base, :checked_at, checked_at)),
-          PNS.event(:registry_check_logged, Map.put(base, :checked_at, checked_at))
+          EhOsContract.event(:data_completeness_confirmed, base),
+          EhOsContract.event(:registry_status_checked, Map.put(base, :checked_at, checked_at)),
+          EhOsContract.event(:registry_check_logged, Map.put(base, :checked_at, checked_at))
         ]
 
         case diff(input.abilia, input.registries) do
           [] ->
-            prefix ++ [PNS.event(:registry_data_consistent, base)]
+            prefix ++ [EhOsContract.event(:registry_data_consistent, base)]
 
           differences ->
             # The system shows a diff: "this is what we hold, this is what the
             # registries say" [WF 00:32:27].
             prefix ++
               [
-                PNS.event(
+                EhOsContract.event(
                   :registry_discrepancy_detected,
                   Map.put(base, :diff, render(differences))
                 )

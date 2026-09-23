@@ -1,4 +1,4 @@
-# Rehmed — destylacja do kontraktu PNS, 2026-08-18
+# Rehmed — destylacja do kontraktu EhOsContract, 2026-08-18
 
 Po polsku, bo to materiał roboczy zespołu i cytuje klienta dosłownie — nie kod, nie jedzie z pakietem.
 Nazwy techniczne zdarzeń i klucze DSL są po angielsku, `label` po polsku, zgodnie z regułą repo i
@@ -16,7 +16,7 @@ podaje tylko własny identyfikator, piszę identyfikator i tyle.
 to `stated`.* Nic tutaj nie jest potwierdzone z klientem. Ten dokument jest wejściem do pisania
 kontraktu, nie kontraktem.
 
-**Weryfikacja słownika:** `mix pns.docs --check` → `docs/contract.md: reference is current` (2026-08-18).
+**Weryfikacja słownika:** `mix eh_os_contract.docs --check` → `docs/contract.md: reference is current` (2026-08-18).
 Kategorie poniżej rzutowane na ten plik, nie na pamięć o nim.
 
 ---
@@ -37,12 +37,12 @@ Silnik mówi co innego. **Trzy z czterech pytań ekranu liczą się bez zegara:*
 
 | Pytanie | Mechanizm | Potrzebuje czasu? |
 |---|---|---|
-| które zadeklarowane ścieżki nigdy nie zostały przejechane | `PNS.Conformance` | **nie** |
-| które przejścia nie są zadeklarowane | `PNS.Graph` | **nie** |
-| która wersja kontraktu jest wdrożona i od kiedy | `PNS.Deployment` | **nie** |
-| które assercje `trace` są naruszane | `PNS.Trace` | tak |
+| które zadeklarowane ścieżki nigdy nie zostały przejechane | `EhOsContract.Conformance` | **nie** |
+| które przejścia nie są zadeklarowane | `EhOsContract.Graph` | **nie** |
+| która wersja kontraktu jest wdrożona i od kiedy | `EhOsContract.Deployment` | **nie** |
+| które assercje `trace` są naruszane | `EhOsContract.Trace` | tak |
 
-Do tego `PNS.Check.backward_edges` sprawdza kolejność **po `stage`, bez jednego zapytania do logu**.
+Do tego `EhOsContract.Check.backward_edges` sprawdza kolejność **po `stage`, bez jednego zapytania do logu**.
 `module-boundary-check` — drugi skill w tym repo — od początku miał to poprawnie: *structural tracking
 (process, instance, stages — for drift/untraversed-path detection, **no timing required**)*.
 
@@ -69,13 +69,13 @@ oceną procesu.** Ocena jest w sekcjach *Etapy / bramki*, *Stany końcowe* i *In
 Model dzieli wizytę na trzy agregaty (`AGG-01` rezerwacja, `AGG-02` dokumentacja, `AGG-03` rozliczenie,
 `DEC-01`) — **wszystkie trzy mają tę samą tożsamość: `visit id`.** `AGG-10` (zgłoszenie P1) też.
 
-W PNS `trace` **nie może przekraczać granicy procesu** (gate kompilacji: *`trace` spanning two
+W EhOsContract `trace` **nie może przekraczać granicy procesu** (gate kompilacji: *`trace` spanning two
 processes*). A wszystkie obietnice, które w tej domenie warto weryfikować, biegną **w poprzek** tych
 agregatów: od wykonania wizyty do zgłoszenia w P1, od przekazania do płatności, od wyjścia pacjenta do
 zamknięcia klinicznego.
 
 > **Wniosek: to jest jeden `process :wizyta, instance: [:visit_id]` ze `stages`, a nie trzy procesy.**
-> Podział na agregaty jest ustaleniem o spójności zapisu i zostaje w kodzie domeny; `process` w PNS jest
+> Podział na agregaty jest ustaleniem o spójności zapisu i zostaje w kodzie domeny; `process` w EhOsContract jest
 > jednostką *przebiegu*, i tu przebieg jest jeden.
 
 Nie rozstrzygam tego za piszącego kontrakt — ale jeśli powstaną trzy procesy, **żadna z traktowanych
@@ -104,7 +104,7 @@ narzędzie pomiaru, a nie pod pracę.
 
 Zostaje w tabeli jako **fakt o domenie**, nie jako luka do zasypania.
 
-Dodatkowo: `within` przyjmuje wyłącznie `:second | :minute | :hour | :day` (`PNS.Duration`). **„Ostatni
+Dodatkowo: `within` przyjmuje wyłącznie `:second | :minute | :hour | :day` (`EhOsContract.Duration`). **„Ostatni
 dzień roboczy" i „miesiąc" nie są jednostkami stałej długości** — nie skompilują się i nie powinny.
 Kalendarz roboczy per lokalizacja (`P-03`, trzy lokalizacje, stajnia z wieczornymi slotami) jest
 konfiguracją domeny, nigdy argumentem `within`.
@@ -118,9 +118,9 @@ systemu: nie później niż 3 dni od jej usunięcia**.
 To jest jeden do jednego mechanizm `depends_on` + `unavailable_looks_like` → czwarty werdykt
 `:suspended` (od 6 sierpnia czytany w runtime, patrz `docs/contract.md` § Known decoration). Nie trzeba
 tego nagabywać ani tłumaczyć — **regulator sam napisał semantykę zawieszenia**. Jeżeli ma powstać jeden
-kontrakt PNS dla Rehmedu jako dowód, że silnik robi coś prawdziwego, to jest ten.
+kontrakt EhOsContract dla Rehmedu jako dowód, że silnik robi coś prawdziwego, to jest ten.
 
-Zastrzeżenie: PNS zawiesza asercję, gdy zależność **była widziana jako niedostępna w oknie asercji**.
+Zastrzeżenie: EhOsContract zawiesza asercję, gdy zależność **była widziana jako niedostępna w oknie asercji**.
 Rozporządzenie liczy 3 dni **od usunięcia awarii**, czyli przedłuża okno, a nie zawiesza werdykt.
 To nie jest to samo i nie należy udawać, że jest — patrz otwarte pytania procesu 3.
 
@@ -279,7 +279,7 @@ do tego ani jednej liczby.
 |---|---|---|
 | Czy `visit_handed_over` w ogóle powstanie, i jako blokada czy ostrzeżenie? | `stages`, `terminal`, cały `trace` #3 | `U-09`: nikt tego nie zamawiał, a fizjoterapeuta powiedział wprost, że status jest niepotrzebny |
 | Wizyta dwuosobowa — jedna instancja czy dwie? | `instance`, payload | `H35` rozstrzygnięte co do biznesu, nie co do kardynalności |
-| Czy „ważna notatka" może iść do logu zdarzeń w ogóle? | `retain` | PNS ma `:persist`/`:hash`/`:drop` i **żadnej kategorii „dane zdrowotne"** |
+| Czy „ważna notatka" może iść do logu zdarzeń w ogóle? | `retain` | EhOsContract ma `:persist`/`:hash`/`:drop` i **żadnej kategorii „dane zdrowotne"** |
 
 ---
 
@@ -382,7 +382,7 @@ Dlatego 24 h, i dlatego eskalacja musi zapalić się **przed** 24 h, nie na 24 h
 | `icd9_supplement` | dane zdrowotne, tekst wolny | tak, drukowany/wysyłany | `:persist`; `:hash` czyni go bezużytecznym | W2 00:46:28 |
 | wywiad | dane zdrowotne | tak | — | `E-41` |
 
-> **To jest najostrzejsze zderzenie tej destylacji z PNS.** `retain` ma trzy wartości i żadna nie mówi
+> **To jest najostrzejsze zderzenie tej destylacji z EhOsContract.** `retain` ma trzy wartości i żadna nie mówi
 > „to są dane medyczne, log ma inny reżim niż tabela". Jednocześnie retencja dokumentacji medycznej to
 > ustawowe 20 lat (Radosław: „tam jest po 20 lat, czy ileś trzeba" — jego własna liczba, podana
 > z widoczną niepewnością, nieweryfikowana). **Log zdarzeń z ICD staje się dokumentacją medyczną.**
@@ -416,7 +416,7 @@ Dlatego 24 h, i dlatego eskalacja musi zapalić się **przed** 24 h, nie na 24 h
 | Pytanie | Blokuje | Czego brakuje |
 |---|---|---|
 | Czy korekta kodu to nowy fakt czy nadpisanie? | `identity` na `diagnosis_coded` | nikt nie opisał ścieżki korekty w systemie |
-| Czy dokumentacja medyczna może żyć w logu zdarzeń przez 20 lat? | `retain`, cała architektura logu | PNS nie ma kategorii danych zdrowotnych |
+| Czy dokumentacja medyczna może żyć w logu zdarzeń przez 20 lat? | `retain`, cała architektura logu | EhOsContract nie ma kategorii danych zdrowotnych |
 | Czy `documentation_overdue_task_created` to zdarzenie procesu, czy zadanie z innego kontekstu? | `or_else` w `trace` #1 | `F-02` jest fundamentem współdzielonym; `trace` nie przekracza procesów |
 
 ---
@@ -428,7 +428,7 @@ Dlatego 24 h, i dlatego eskalacja musi zapalić się **przed** 24 h, nie na 24 h
 **Jakość dowodu:** mechanika — stakeholder-stated i częściowo `observed` (`E-54`); **termin — zweryfikowany
 wobec aktu prawnego**, jedyny taki w całym korpusie.
 
-> **To jest proces, dla którego warto napisać kontrakt PNS w pierwszej kolejności.** Ma zewnętrznie
+> **To jest proces, dla którego warto napisać kontrakt EhOsContract w pierwszej kolejności.** Ma zewnętrznie
 > narzucony termin z liczbą, ma ładunek o zdefiniowanych polach, ma zdefiniowaną awarię i ma stan,
 > którego dziś **fizycznie nie da się zobaczyć** — czyli dokładnie klasę pytania, na którą silnik
 > odpowiada: *czy wdrożony kod robi to, co mówi zadeklarowany proces.*
@@ -513,7 +513,7 @@ argument za bramką na `C-29`, wyrażony jako brakujący stan.
 > **Konsekwencja jest brutalna i warto ją postawić wprost:** kontrakt zakotwiczony na `#2` będzie
 > raportował zieleń, podczas gdy Rehmed łamie termin. Asercja mierzyłaby wtedy sprawność wysyłki,
 > a nie zgodność — i byłaby dokładnie tym rodzajem fałszywej metryki, przed którym broni `unverified`
-> w `PNS.Process`.
+> w `EhOsContract.Process`.
 >
 > **Zalecenie: `#1`.** `#2` można dodać obok jako miarę wewnętrzną, ale nie zamiast.
 
@@ -533,7 +533,7 @@ argument za bramką na `C-29`, wyrażony jako brakujący stan.
 | `practitioner_number` | dane osobowe pracownika | tak | `:persist` | KIF |
 
 **To jest proces, w którym cały ładunek musi być trzymany w postaci surowej.** Żadne pole nie jest
-kandydatem na `:hash` ani `:drop`. Jeśli PNS ma tu cokolwiek obiecywać, to na poziomie dostępu i okresu
+kandydatem na `:hash` ani `:drop`. Jeśli EhOsContract ma tu cokolwiek obiecywać, to na poziomie dostępu i okresu
 przechowywania, a nie `retain`.
 
 ### Zależności zewnętrzne
@@ -546,7 +546,7 @@ przechowywania, a nie `retain`.
 z krajowym rejestrem; certyfikat wygasł albo nie został wgrany.*
 
 **I tu wraca ustalenie 3.** Rozporządzenie przewiduje własną semantykę awarii: **3 dni od usunięcia
-awarii**. PNS na `depends_on` + obserwację niedostępności daje werdykt `:suspended` — czyli „nie
+awarii**. EhOsContract na `depends_on` + obserwację niedostępności daje werdykt `:suspended` — czyli „nie
 oceniamy tego przebiegu". **To nie jest to samo co „okno przesuwa się o 3 dni od naprawy".** Różnica
 jest realna: przebieg zawieszony znika z licznika, przebieg z przedłużonym oknem nadal może go naruszyć.
 Zalecenie: użyć `:suspended` i **powiedzieć w raporcie, że to przybliżenie** — albo podnieść to jako
@@ -605,7 +605,7 @@ brakującą zdolność silnika, ale nie udawać, że pasuje idealnie.
 | `payment_recorded` | `amount` | kwota linii | **NIE MIEŚCI SIĘ** | `AGG-03` inv. 1 |
 | `bill_split` | `payer_id` per linia | każda linia nazywa swojego płatnika i swój kanał rozliczenia | `:id` | `DEC-05` |
 
-> **To jest miejsce, w którym zamknięty zbiór typów PNS realnie uwiera.** `AGG-03` inv. 1 brzmi *linie
+> **To jest miejsce, w którym zamknięty zbiór typów EhOsContract realnie uwiera.** `AGG-03` inv. 1 brzmi *linie
 > płatności sumują się do całości* — i to jest niezmiennik o pieniądzach. Do wyboru: grosze jako
 > `:integer` (działa, ale typ przestaje mówić prawdę o jednostce), albo `:string` (traci arytmetykę).
 > **Nie proponuję dokładać `:money` do DSL** — to jest dokładnie ten ruch, którym `:period` wszedł
@@ -621,7 +621,7 @@ brakującą zdolność silnika, ale nie udawać, że pasuje idealnie.
 
 - **Jeden przypadek:** rozliczenie jednej wizyty. Znowu `visit_id`.
 - **Równolegle:** etapy 2 i 3 modelu **nakładają się** — recepcja rozlicza przy ladzie, gdy specjalista
-  jeszcze pisze. To jest cały argument za `DEC-01` i jednocześnie argument za tym, żeby w PNS był to
+  jeszcze pisze. To jest cały argument za `DEC-01` i jednocześnie argument za tym, żeby w EhOsContract był to
   **jeden proces ze stages**, nie dwa procesy (ustalenie 1).
 
 ### Powtarzalne zdarzenia w jednej instancji
@@ -776,7 +776,7 @@ decyduje o tym, czy płatnik nam zapłaci, a główne źródło to rozmowa z nie
 | 1 | `visit_completed` (płatnikowa) | **`{1, :month}`** → **NIE SKOMPILUJE SIĘ** | `visit_marked_settled_with_payer` | — | — | płatnikowi, i sobie | `AGG-11` inv. 2 |
 | 2 | `visit_marked_settled_with_payer` | koniec okresu rozliczeniowego | `payer_invoice_issued` **albo** wykluczenie z podanym powodem | — | — | płatnikowi | `AGG-11` inv. 4 |
 
-> **Oba są kalendarzowe i żaden nie przejdzie przez `PNS.Duration`.** Miesiąc nie ma stałej długości —
+> **Oba są kalendarzowe i żaden nie przejdzie przez `EhOsContract.Duration`.** Miesiąc nie ma stałej długości —
 > gate odmawia kompilacji i ma rację. Obejście jest to samo co w ustaleniu 2: **zmaterializować koniec
 > okresu jako zdarzenie** (`settlement_period_closed`) i liczyć `within` od niego, albo przyjąć
 > `{30, :day}` i **powiedzieć wprost, że to nie jest miesiąc.**
@@ -791,7 +791,7 @@ decyduje o tym, czy płatnik nam zapłaci, a główne źródło to rozmowa z nie
 ### Kadencja
 
 - **Miesięczna** — `cadence: {1, :month}` jest legalne (kadencja nie liczy kalendarza, patrz
-  `PNS.Duration` moduledoc).
+  `EhOsContract.Duration` moduledoc).
 - ⚠️ Ale: kadencję czyta dziś **tylko raport, dla samej deklaracji**. Monitor „nigdy nieobserwowany"
   został **odrzucony 6 sierpnia**, nie odłożony. Więc deklaracja `cadence` tu **nic nie pilnuje** —
   i trzeba to powiedzieć, zamiast sprzedawać jako mechanizm.
@@ -1186,7 +1186,7 @@ Cisza nie jest tym samym co „nie ma", więc wymieniam z powodem.
 | **Konfiguracja, katalog usług, pracownicy** (`CTX-10`) | CRUD z jedną prawdziwą regułą (kwalifikacje). Nic czasowego |
 | **Komunikacja z pacjentem** (`CTX-08`) | to nie jest proces, tylko **wątek przez cztery inne** — model to wprost stwierdza: sześć zdarzeń SMS-owych zaprojektowanych w izolacji. Zdarzenia komunikacyjne siedzą w procesach 1 i 7, gdzie mają kotwicę |
 | **Karnety i bony** (`AGG-04`, `AGG-14`) | mają cykl życia, ale jedyna obietnica czasowa — ostrzeżenie 2 miesiące przed wygaśnięciem — jest zakotwiczona wstecz (ustalenie 2), a wygaśnięcie to upływ, nie fakt. Do rozważenia w drugiej kolejności |
-| **Grafik i zasoby** (`AGG-08`, `AGG-16`) | rdzeń domeny wg mapy kontekstów (`CTX-01` = jedyny `core`) — **i mimo to zero obietnic czasowych.** To jest problem spełniania ograniczeń, nie procesu. Wart uwagi jako ostrzeżenie: **najważniejszy kontekst biznesowo jest tym, w którym PNS ma najmniej do powiedzenia** |
+| **Grafik i zasoby** (`AGG-08`, `AGG-16`) | rdzeń domeny wg mapy kontekstów (`CTX-01` = jedyny `core`) — **i mimo to zero obietnic czasowych.** To jest problem spełniania ograniczeń, nie procesu. Wart uwagi jako ostrzeżenie: **najważniejszy kontekst biznesowo jest tym, w którym EhOsContract ma najmniej do powiedzenia** |
 | **Zadania** (`AGG-13`, `F-02`) | fundament współdzielony przez 17 plastrów. Jest terminem dla innych procesów, a `trace` nie przekracza granicy procesu — więc zadanie musi być albo zdarzeniem procesu, który je zrodził, albo niczym w kontrakcie |
 | **Stajnia** (`AGG-17`) | model wprost: rekreacja, bez dokumentacji klinicznej i bez obowiązku P1 |
 
@@ -1213,7 +1213,7 @@ normalne, że jest mała.
 ### Wspólne wzorce tożsamości i instancji
 
 - **`visit_id` jest tożsamością czterech agregatów naraz** (`AGG-01`, `AGG-02`, `AGG-03`, `AGG-10`).
-  W PNS to jest jeden `process` ze `stages`, nie cztery procesy — patrz ustalenie 1. To jest **najważniejsza
+  W EhOsContract to jest jeden `process` ze `stages`, nie cztery procesy — patrz ustalenie 1. To jest **najważniejsza
   pojedyncza decyzja** przed napisaniem pierwszej linii kontraktu.
 - **Dwa procesy mają instancję, która nie jest wizytą:** rozliczenie płatnika (`[:payer_id, :period]`)
   i opłata karna (`[:penalty_id]`, przecinająca dwie wizyty). Oba są przez to odcięte od `trace`
@@ -1248,7 +1248,7 @@ przejeżdżana — czyli materiał dla overlaya, bez jednej liczby.
   nie ma czym się odbyć, a personel wpisuje ponownie.
 - **Grafik i zasoby** — rdzeń biznesowy wg mapy kontekstów, zero obietnic czasowych **i zero
   sekwencji**: to jest problem spełniania ograniczeń („czy ta rezerwacja może istnieć"), nie proces.
-  **To jedyny z trzech, o którym PNS naprawdę nie ma nic do powiedzenia** — i warto to wiedzieć przy
+  **To jedyny z trzech, o którym EhOsContract naprawdę nie ma nic do powiedzenia** — i warto to wiedzieć przy
   wyborze pilota, bo to jest jednocześnie to, co dla Rehmedu najbardziej różnicujące.
 
 ### Promises zakotwiczone wstecz — poza kontraktem

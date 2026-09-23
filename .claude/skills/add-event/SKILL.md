@@ -1,21 +1,21 @@
 ---
 name: add-event
-description: DRAFT, not yet reviewed. After `module-boundary-check` has already decided a fact belongs in the contract as a PNS event — never to decide that question itself — walk the `event` macro's full key set against `PNS.Contract`'s current source, confirm the fact is past tense with more than one interested party (not a command in disguise), pick a payload type from the closed set (including the `_minor` money convention and the "cannot be a nullable field" DEC-05 gap), decide `identity` and whether it is even narrower than the process `instance` it lives under, and check the event name traces to workshop material. Use when about to write a brand-new `event :name, ...` declaration, in a new or an already-existing contract module. Not for deciding whether something should be an event at all (see `module-boundary-check`, which hands off here once the answer is "yes"); not for widening or reinterpreting a field, identity, or trace on an event that already has real historical data (see `change-contract`, whose impact-analysis table this skill does not duplicate); not for writing the handler that reacts to the event (see the sibling skill `write-handler`, being written in parallel and not yet checked into this repository).
+description: DRAFT, not yet reviewed. After `module-boundary-check` has already decided a fact belongs in the contract as an EhOsContract event — never to decide that question itself — walk the `event` macro's full key set against `EhOsContract.Contract`'s current source, confirm the fact is past tense with more than one interested party (not a command in disguise), pick a payload type from the closed set (including the `_minor` money convention and the "cannot be a nullable field" DEC-05 gap), decide `identity` and whether it is even narrower than the process `instance` it lives under, and check the event name traces to workshop material. Use when about to write a brand-new `event :name, ...` declaration, in a new or an already-existing contract module. Not for deciding whether something should be an event at all (see `module-boundary-check`, which hands off here once the answer is "yes"); not for widening or reinterpreting a field, identity, or trace on an event that already has real historical data (see `change-contract`, whose impact-analysis table this skill does not duplicate); not for writing the handler that reacts to the event (see the sibling skill `write-handler`, being written in parallel and not yet checked into this repository).
 ---
 
-# Adding a new event to a PNS contract
+# Adding a new event to an EhOsContract contract
 
 DRAFT — not yet run against a real event addition. Review before trusting it. Every claim below
 about the `event` macro's keys, the payload type set, the compile gates, and what `owner`/`identity`
-actually do was checked against this package's source on 21 August 2026 — `packages/pns_core/lib/pns/contract.ex`,
-`packages/pns_core/lib/pns/handler.ex`, `packages/pns_core/lib/pns/check.ex`, and
-`packages/pns_core/lib/mix/tasks/pns.check.ex` — not assumed from the ADR summary alone. File and
+actually do was checked against this package's source on 21 August 2026 — `packages/eh_os_contract/lib/eh_os_contract/contract.ex`,
+`packages/eh_os_contract/lib/eh_os_contract/handler.ex`, `packages/eh_os_contract/lib/eh_os_contract/check.ex`, and
+`packages/eh_os_contract/lib/mix/tasks/eh_os_contract.check.ex` — not assumed from the ADR summary alone. File and
 line references are given so the next reader can re-check rather than take it on faith.
 
 ## Where this sits
 
 `module-boundary-check` runs first and answers a different question: whether this fact should go
-through PNS's event/handler mechanism at all, and if so, whether it additionally needs `process`/
+through EhOsContract's event/handler mechanism at all, and if so, whether it additionally needs `process`/
 `instance`/`stage` (Criterion A) or a `trace` promise (Criterion B). This skill starts **after** that
 is already "yes" — it does not re-run the litmus test, and if the answer is genuinely unclear, that
 question belongs there, not here.
@@ -33,7 +33,7 @@ historical could disagree with a declaration nothing yet named), which is exactl
 an existing declaration rather than a wholly new one, stop and use that skill instead.
 
 `write-handler` (parallel, not yet in this repository) picks up once the event is declared: the
-`use PNS.Handler` module that reacts to it. This skill stops at the contract declaration.
+`use EhOsContract.Handler` module that reacts to it. This skill stops at the contract declaration.
 
 ## First: is it actually an event, in the past tense sense, or a command?
 
@@ -58,21 +58,21 @@ know whether that reaction succeeded before proceeding, it's a command wearing a
 this is the same distinction `module-boundary-check`'s Question 1a draws for the non-event case, applied
 here to something that already cleared Question 1.
 
-## The `event` macro, key by key — verified against `packages/pns_core/lib/pns/contract.ex`
+## The `event` macro, key by key — verified against `packages/eh_os_contract/lib/eh_os_contract/contract.ex`
 
 The full key set, from `@schema.event` (`contract.ex:18-22`):
 
 | Key | Required? | Omitted means | What reads it |
 | --- | --- | --- | --- |
 | `label` | **yes** | — (raises `ArgumentError` if missing, `contract.ex:203`) | the client-facing report — written in the client's language, the one place that's true |
-| `owner` | no | `nil` | `mix pns.check`'s `check_owners_exist/1` — an `info` line, **grouped by module**, only when the module doesn't exist (`pns.check.ex:143-158`) |
-| `payload` | no | `%{}` | `PNS.Payload`, four compile gates, the retention check |
-| `retain` | no | `%{}` | `PNS.Emitter`, applied once before anything else reaches the log/handlers/job args |
-| `depends_on` | no | `nil` | compile gate (must name a declared `external`) plus `PNS.Trace`'s `:suspended` verdict |
-| `identity` | no | `nil` | `PNS.Job`'s idempotency key; compile-refused on an async handler without it |
-| `process` | no | `nil` | `PNS.Instance`, `PNS.Graph`, `PNS.Check` — one key, so an event belongs to at most one process, by construction, not by check |
-| `stage` | no | `nil` | backward-edge detection in `PNS.Check` |
-| `terminal` | no | `false` | `mix pns.check`, `PNS.Graph` — a run that ended badly still ended |
+| `owner` | no | `nil` | `mix eh_os_contract.check`'s `check_owners_exist/1` — an `info` line, **grouped by module**, only when the module doesn't exist (`eh_os_contract.check.ex:143-158`) |
+| `payload` | no | `%{}` | `EhOsContract.Payload`, four compile gates, the retention check |
+| `retain` | no | `%{}` | `EhOsContract.Emitter`, applied once before anything else reaches the log/handlers/job args |
+| `depends_on` | no | `nil` | compile gate (must name a declared `external`) plus `EhOsContract.Trace`'s `:suspended` verdict |
+| `identity` | no | `nil` | `EhOsContract.Job`'s idempotency key; compile-refused on an async handler without it |
+| `process` | no | `nil` | `EhOsContract.Instance`, `EhOsContract.Graph`, `EhOsContract.Check` — one key, so an event belongs to at most one process, by construction, not by check |
+| `stage` | no | `nil` | backward-edge detection in `EhOsContract.Check` |
+| `terminal` | no | `false` | `mix eh_os_contract.check`, `EhOsContract.Graph` — a run that ended badly still ended |
 
 This is the complete, current set — confirmed against the source, not the earlier version of this
 list that seeded this task (which was correct in this case, but treat that as luck, not a guarantee,
@@ -85,7 +85,7 @@ over it.
 
 ## Payload: pick from the closed type set, deliberately
 
-`PNS.Contract.payload_types/0` is `[:id, :string, :integer, :timestamp, :enum]` (`contract.ex:71`).
+`EhOsContract.Contract.payload_types/0` is `[:id, :string, :integer, :timestamp, :enum]` (`contract.ex:71`).
 Closed on purpose — "a type that names a thing an accountant recognises is this library knowing one
 client's domain" (`docs/contract.md:165-167`) — and an out-of-set type is compile-refused
 (`validate_payload_types!/2`, `contract.ex:727-742`).
@@ -114,7 +114,7 @@ the right move: mark it "does not fit the set cleanly" and flag it, rather than 
 ## `identity`: when it's required, when it's optional-but-consequential
 
 **Required, compile-enforced, but only for one specific case:** an asynchronous handler on an event
-with no `identity` does not compile. The exact message, from `packages/pns_core/lib/pns/handler.ex:49-56`:
+with no `identity` does not compile. The exact message, from `packages/eh_os_contract/lib/eh_os_contract/handler.ex:49-56`:
 
 > "an asynchronous handler requires event `:name` to declare `identity:` in the contract. Oban gives
 > at-least-once, so this event will arrive a second time, and the question 'what makes two occurrences
@@ -127,27 +127,27 @@ distinguished "the same fact reported twice" from "two different facts" (the que
 `contract-distillation` asks explicitly).
 
 **When you do give it one, get the fields right relative to the process's `instance` — this is a
-modelling decision `mix pns.check` only warns about, never refuses:**
+modelling decision `mix eh_os_contract.check` only warns about, never refuses:**
 
 - `identity` narrower than or unrelated to `instance` (missing run fields) is flagged by
-  `PNS.Check.facts_not_keyed_by_their_run/1` (`check.ex:172-214`): the async idempotency key then
+  `EhOsContract.Check.facts_not_keyed_by_their_run/1` (`check.ex:172-214`): the async idempotency key then
   collides across *different* runs, and a real fact silently never gets its handler run a second time
   — "the log still shows both events" but "the second... never runs." Usually fixed by adding the
   run's own fields into `identity`, since they're already required in `payload` by another gate.
 - `identity` **strictly finer** than `instance` (a fact repeats per run — settlement line items within
   a month, visits within a case) is a genuine, sometimes-correct modelling choice, but it changes how
-  any `trace` anchored on this event is evaluated: since 21 August 2026, `PNS.Trace.evaluate/3`
+  any `trace` anchored on this event is evaluated: since 21 August 2026, `EhOsContract.Trace.evaluate/3`
   quantifies per distinct `identity` value within the run rather than producing one verdict for the
-  whole run (`packages/pns_core/lib/pns/check.ex:67-99`, and `PLAN.md`'s 21 August dopisek on
-  `PNS.Check.assertions_finer_than_their_run/1`). One sentence is enough here — the mechanics belong to
+  whole run (`packages/eh_os_contract/lib/eh_os_contract/check.ex:67-99`, and `PLAN.md`'s 21 August dopisek on
+  `EhOsContract.Check.assertions_finer_than_their_run/1`). One sentence is enough here — the mechanics belong to
   that check's moduledoc and to `PLAN.md`, not to a re-explanation in this skill. If a `trace` will
   ever anchor on this event, know before writing `identity` that it decides whether the promise is
   "once per run" or "once per item."
 
 ## `owner`: informational only
 
-`owner:` is read in exactly one place, `mix pns.check`'s `check_owners_exist/1`
-(`packages/pns_core/lib/mix/tasks/pns.check.ex:143-158`), and only produces a finding — an `info` line,
+`owner:` is read in exactly one place, `mix eh_os_contract.check`'s `check_owners_exist/1`
+(`packages/eh_os_contract/lib/mix/tasks/eh_os_contract.check.ex:143-158`), and only produces a finding — an `info` line,
 grouped by module — when the named module *doesn't exist yet*. That's a normal mid-rollout state, the
 same as a declared event with no handler. Nothing enforces that the owner module is correct, actually
 handles the event, or has any relationship to it beyond the name. Set it to the module that will (or
@@ -210,11 +210,11 @@ plausible-sounding name to keep moving; an unconfirmed name is exactly the kind 
 8. **Write the declaration**, following the shape of an existing sibling event in the same contract
    (or `lib/taxvision/contracts/accounting_month.ex` if there is no sibling yet) rather than a novel
    layout.
-9. **Compile it**: `mix compile --warnings-as-errors` (from the repo root, or `cd packages/pns_core`
+9. **Compile it**: `mix compile --warnings-as-errors` (from the repo root, or `cd packages/eh_os_contract`
    for the engine's own suite) surfaces every one of the key/type/membership gates in
    `docs/contract.md`'s "What refuses to compile" table for free — read what it says rather than
    guessing at the cause.
-10. **Run `mix pns.check`** and read any new `info`/`warning` line naming this event by name — an owner
+10. **Run `mix eh_os_contract.check`** and read any new `info`/`warning` line naming this event by name — an owner
     that doesn't exist yet, or a `facts_not_keyed_by_their_run`/`assertions_finer_than_their_run`
     finding if `identity` was set.
 11. **Run the full gate (`mix check`)** last, as confirmation for the whole change, not only the
@@ -222,7 +222,7 @@ plausible-sounding name to keep moving; an unconfirmed name is exactly the kind 
 
 ## What this does not do
 
-Does not decide whether the fact belongs in PNS at all, or whether it needs `process`/`instance` or a
+Does not decide whether the fact belongs in EhOsContract at all, or whether it needs `process`/`instance` or a
 `trace` — that triage already happened in `module-boundary-check` before this skill runs. Does not
 write the handler that reacts to the event — that is the sibling skill `write-handler`, being written
 in parallel and not yet in this repository; this skill stops at a compiling contract declaration. Does

@@ -154,7 +154,7 @@ której wymyślony kontrakt medyczny nauczył nas o prawdziwym.
 
 # Cztery pytania, których nikt nie zadaje na event stormingu
 
-Te są specyficzne dla PNS i przy TaxVision wypadły w całości. Trzy z nich są w domenie
+Te są specyficzne dla EhOsContract i przy TaxVision wypadły w całości. Trzy z nich są w domenie
 medycznej **dużo ważniejsze** niż w księgowej.
 
 ## 9. Co nie ma prawa wylądować w logu na zawsze → `retain`

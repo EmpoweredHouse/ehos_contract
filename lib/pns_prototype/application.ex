@@ -2,7 +2,7 @@ defmodule PnsPrototype.Application do
   @moduledoc false
 
   use Application
-  use Boundary, top_level?: true, deps: [PNS, Taxvision, PnsPrototypeWeb]
+  use Boundary, top_level?: true, deps: [EhOsContract, Taxvision, PnsPrototypeWeb]
 
   @impl true
   def start(_type, _args) do
@@ -18,12 +18,12 @@ defmodule PnsPrototype.Application do
 
     # The registry scan at boot. The graph comes from the binary that actually
     # runs — not from a file beside it.
-    PNS.Registry.load!()
+    EhOsContract.Registry.load!()
 
     # Recording the deployed version: what is declared and since when it applies.
     # Without it, history cannot be separated from drift for **paths**, because
     # `version/0` hashes the contract while paths come from handlers.
-    PNS.Deployment.record!()
+    EhOsContract.Deployment.record!()
 
     result
   end

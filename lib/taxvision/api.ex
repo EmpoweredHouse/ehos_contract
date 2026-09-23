@@ -29,7 +29,7 @@ defmodule Taxvision.Api do
 
   use Boundary,
     deps: [
-      PNS,
+      EhOsContract,
       Taxvision.Contracts,
       Taxvision.Authorization,
       Taxvision.Identity,
@@ -53,7 +53,8 @@ defmodule Taxvision.Api do
          input = build_input(actor, company_id, period, registries),
          :ok <- Taxvision.Authorization.authorize_open_month(input),
          emissions when is_list(emissions) <- Taxvision.RegistryCheck.decide(input),
-         {:ok, events} <- PNS.emit_all(AccountingMonth, emissions, %{actor: actor.subject}) do
+         {:ok, events} <-
+           EhOsContract.emit_all(AccountingMonth, emissions, %{actor: actor.subject}) do
       {:ok, List.first(events).correlation_id}
     else
       {:error, reason} -> {:error, reason}
@@ -87,13 +88,13 @@ defmodule Taxvision.Api do
       actor: actor.subject,
       actor_roles: actor.roles,
       # The tenant is read from a claim by **domain code**, not from an engine
-      # struct: "whose company is this" is a TaxVision question, not a PNS one.
+      # struct: "whose company is this" is a TaxVision question, not an EhOsContract one.
       actor_company: actor.claims["company_id"],
       completeness_confirmed: true,
       # A `DateTime`, not text. It used to be serialised here by hand, because the
       # engine passed payload values through untouched and a point in time came back
       # from the queue as a string — so the field was declared `:timestamp` and held
-      # text to keep both handlers seeing one shape. `PNS.Payload` restores it now, so
+      # text to keep both handlers seeing one shape. `EhOsContract.Payload` restores it now, so
       # the workaround is gone and the declaration means what it says.
       checked_at: DateTime.utc_now(),
       abilia: %{legal_form: "JDG", vat_status: "czynny"},

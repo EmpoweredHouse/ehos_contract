@@ -36,7 +36,7 @@ defmodule PnsPrototype.MixProject do
       {:postgrex, "~> 0.22"},
       {:oban, "~> 2.20"},
       {:jason, "~> 1.4"},
-      # Direct, although Ecto and Oban both bring it transitively. `lib/pns/` emits
+      # Direct, although Ecto and Oban both bring it transitively. `lib/eh_os_contract/` emits
       # telemetry, so it depends on it — and a package whose dependency is satisfied
       # only because a neighbour happens to need it breaks when the neighbour goes.
       {:telemetry, "~> 1.3"},
@@ -45,15 +45,15 @@ defmodule PnsPrototype.MixProject do
       # the build system now enforces the boundary that `boundary` was enforcing
       # alone, so a client tree reaching into the engine's internals fails to
       # compile rather than merely warning.
-      {:pns, path: "packages/pns_core"},
+      {:eh_os_contract, path: "packages/eh_os_contract"},
       # The dashboard foundation (PLAN.md, dopisek 23 sierpnia). `runtime: false`
-      # because :pns_web has no `mod:` of its own to start — PnsPrototypeWeb's
+      # because :eh_os_contract_web has no `mod:` of its own to start — PnsPrototypeWeb's
       # own supervisor references its modules directly (PLAN.md, dopisek 23
       # sierpnia (8)) instead of relying on the OTP application list.
-      {:pns_web, path: "packages/pns_web", runtime: false},
+      {:eh_os_contract_web, path: "packages/eh_os_contract_web", runtime: false},
       # Direct, the same reasoning as `:telemetry` above: PnsPrototypeWeb calls
       # these by name (Endpoint, Router, PubSub, the Bandit adapter), and they
-      # would otherwise be present only because :pns_web happens to need them —
+      # would otherwise be present only because :eh_os_contract_web happens to need them —
       # satisfied by a neighbour's dependency is satisfied only until the
       # neighbour changes what it needs.
       {:phoenix, "~> 1.8"},
@@ -63,7 +63,7 @@ defmodule PnsPrototype.MixProject do
       {:bandit, "~> 1.5"},
       # phoenix_live_view's own `live/2` test helper needs this to parse the
       # dead-render HTML — not optional, and not visible in
-      # phoenix_live_view's own dependency tree (packages/pns_web hit the
+      # phoenix_live_view's own dependency tree (packages/eh_os_contract_web hit the
       # same thing first).
       {:lazy_html, ">= 0.1.0", only: :test}
     ]
@@ -77,7 +77,7 @@ defmodule PnsPrototype.MixProject do
       # The one command that has to pass. `--warnings-as-errors` is necessary
       # here: `boundary` reports violations as warnings, so without that switch
       # the boundaries are documentation rather than enforcement.
-      # `pns.docs --check` is here for the same reason: without it the key
+      # `eh_os_contract.docs --check` is here for the same reason: without it the key
       # reference in `docs/contract.md` is documentation that can lie, rather
       # than a generated artifact.
       check: [
@@ -92,8 +92,8 @@ defmodule PnsPrototype.MixProject do
         # `_build`. If this step disagrees with what you see locally, delete that file.
         "format --check-formatted",
         "compile --force --warnings-as-errors",
-        "pns.check",
-        "pns.docs --check",
+        "eh_os_contract.check",
+        "eh_os_contract.docs --check",
         "test",
         &package_test/1,
         &package_test_web/1
@@ -103,7 +103,7 @@ defmodule PnsPrototype.MixProject do
 
   # The engine's own suite, run from here as well.
   #
-  # Since 2026-08-21 most of the tests live in `packages/pns_core/test/` and `mix
+  # Since 2026-08-21 most of the tests live in `packages/eh_os_contract/test/` and `mix
   # test` in this project no longer reaches them — it runs this application's, which
   # are now only TaxVision's and Rehmed's. A gate that stopped covering the engine on
   # the day the engine got its own suite would be the worst possible outcome of that
@@ -115,12 +115,12 @@ defmodule PnsPrototype.MixProject do
   defp package_test(_args) do
     {_output, status} =
       System.cmd("mix", ["check"],
-        cd: "packages/pns_core",
+        cd: "packages/eh_os_contract",
         env: [{"MIX_ENV", "test"}],
         into: IO.stream(:stdio, :line)
       )
 
-    if status != 0, do: Mix.raise("the engine's own gate failed (packages/pns_core)")
+    if status != 0, do: Mix.raise("the engine's own gate failed (packages/eh_os_contract)")
   end
 
   # A path dependency does not run its own tests automatically — same fact
@@ -128,12 +128,12 @@ defmodule PnsPrototype.MixProject do
   defp package_test_web(_args) do
     {_output, status} =
       System.cmd("mix", ["check"],
-        cd: "packages/pns_web",
+        cd: "packages/eh_os_contract_web",
         env: [{"MIX_ENV", "test"}],
         into: IO.stream(:stdio, :line)
       )
 
     if status != 0,
-      do: Mix.raise("the dashboard foundation's own gate failed (packages/pns_web)")
+      do: Mix.raise("the dashboard foundation's own gate failed (packages/eh_os_contract_web)")
   end
 end
