@@ -106,7 +106,10 @@ one. What changes is what a host has to do.
   consumed is a v2 contract of the same domain declaring the events named (X5); and that the fields a
   subscriber correlates or matches on are in the sibling's event as it is compiled now, with the same type,
   neither optional nor personal (X6) — so removing or retyping such a field fails the compile of every
-  subscriber that uses it, with an error at the subscriber naming the publisher's event and its line.
+  subscriber that uses it, with an error at the subscriber naming the publisher's event and its line. Across the
+  application: a process name is declared once (X7), a command's or query's capability `<domain>.<name>` too
+  (D14), and a declaration has at most one implementation (X8).
+- `__eh_os_implementation__/0` also says where the implementation's `use` is, `file:` and `line:`.
 - `EhOsContract.Next.Contract.vocabulary/0`: every entity of the contract DSL, by path, with the keys it
   takes, derived from the extension.
 - `actor` in the domain DSL takes `scope:`, the fields a grant narrows query answers by (D10).

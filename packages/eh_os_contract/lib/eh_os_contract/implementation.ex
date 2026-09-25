@@ -65,7 +65,9 @@ defmodule EhOsContract.Implementation do
           contract: module(),
           kind: atom(),
           name: atom(),
-          emitted: %{{atom(), arity()} => [atom()]}
+          emitted: %{{atom(), arity()} => [atom()]},
+          file: String.t(),
+          line: pos_integer()
         }
 
   # --- binding ----------------------------------------------------------------------
@@ -453,7 +455,9 @@ defmodule EhOsContract.Implementation do
       contract: impl.contract,
       kind: impl.kind,
       name: impl.name,
-      emitted: emitted
+      emitted: emitted,
+      file: env.file,
+      line: impl.line
     }
 
     quote do

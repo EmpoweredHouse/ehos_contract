@@ -13,6 +13,7 @@ defmodule EhOsContract.Next.Contract.Links do
 
   - `Links.Domain` — X1–X4 and the parts of D10 and D11 that need the domain.
   - `Links.Siblings` — X5–X6, what a contract consumes from a sibling contract.
+  - `Links.System` — X7, X8 and D14's names, unique across the application.
 
   A violation points at the declaration at fault. L3 reads the declarations Spark
   kept in each compiled contract (`spark_dsl_config/0`), the same ones L2 read,
@@ -39,12 +40,12 @@ defmodule EhOsContract.Next.Contract.Links do
           domain: map() | nil
         }
 
-  @groups [Links.Domain, Links.Siblings]
+  @groups [Links.Domain, Links.Siblings, Links.System]
 
   @doc """
   Every violation of an L3 rule among `modules`, the modules of one application.
-  Modules that are neither a v2 contract nor a domain are ignored, so the whole
-  compile path can be passed as it is.
+  Modules that are neither a v2 contract nor an implementation of one are ignored,
+  so the whole compile path can be passed as it is.
   """
   @spec check([module()]) :: [violation()]
   def check(modules) do
@@ -53,15 +54,19 @@ defmodule EhOsContract.Next.Contract.Links do
   end
 
   @doc false
-  @spec system([module()]) :: %{contracts: [contract()]}
+  @spec system([module()]) :: %{contracts: [contract()], implementations: [map()]}
   def system(modules) do
-    contracts =
-      modules
-      |> Enum.map(&contract/1)
-      |> Enum.reject(&is_nil/1)
-      |> Enum.sort_by(&inspect(&1.module))
+    modules = Enum.sort_by(modules, &inspect/1)
+    contracts = modules |> Enum.map(&contract/1) |> Enum.reject(&is_nil/1)
 
-    %{contracts: contracts}
+    # What `EhOsContract.Implementation` says about each, with the module it is.
+    implementations =
+      for module <- modules,
+          Code.ensure_loaded?(module),
+          function_exported?(module, :__eh_os_implementation__, 0),
+          do: Map.put(module.__eh_os_implementation__(), :module, module)
+
+    %{contracts: contracts, implementations: implementations}
   end
 
   @doc "A v2 contract as the rules read it, or `nil` when `module` is not one."
