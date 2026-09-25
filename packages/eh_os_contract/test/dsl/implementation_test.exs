@@ -134,7 +134,9 @@ defmodule EhOsContract.ImplementationTest do
                  {:record_payment, 2} => [:payment_recorded],
                  {:close, 2} => [:closed_without_payment, :closed],
                  {:remind, 2} => [:reminded]
-               }
+               },
+               file: "visit.ex",
+               line: 2
              }
 
       assert Billing.Aggregates.Visit in module.module_info(:attributes)[:behaviour]

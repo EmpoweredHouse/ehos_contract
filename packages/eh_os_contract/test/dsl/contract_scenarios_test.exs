@@ -175,6 +175,49 @@ defmodule EhOsContract.Next.ContractScenariosTest do
                  "state, so it takes no given (data_wrong.ex:44)"
     end
 
+    test "the data of what a process manager or a boundary is given" do
+      message =
+        refuse_contract("GivenDataWrong", """
+        #{@unit}
+          process_manager :chase, "Pogoń" do
+            correlate :visit_id
+            starts_on :payment_recorded, issues: :remind
+            ends_on :closed
+          end
+
+          scenario "zamknięto — pogoń się kończy" do
+            given :payment_recorded, %{amont: 100}
+            on :closed
+            ended true
+          end
+
+          dcb :slot, "Termin" do
+            identity :visit_id
+            command :hold, "Wstrzymanie", by: :reception, emits: :held
+            event :held, "Wstrzymano"
+            consults :payment_recorded, match: :visit_id
+          end
+
+          scenario "wstrzymano po płatności" do
+            given :payment_recorded, %{amount: "sto"}
+            command :hold
+            expect :held
+          end
+        """)
+
+      manager = ~s|scenario "zamknięto — pogoń się kończy" (process manager :chase)|
+
+      assert message =~
+               "S3: #{manager}: event :payment_recorded has no field :amont (given_data_wrong.ex:41)"
+
+      assert message =~
+               "S3: #{manager}: event :payment_recorded needs :amount (given_data_wrong.ex:41)"
+
+      assert message =~
+               ~s|S3: scenario "wstrzymano po płatności" (dcb :slot): event :payment_recorded, | <>
+                 ~s|field :amount: "sto" is not an :integer (given_data_wrong.ex:54)|
+    end
+
     test "a given the unit does not keep is refused" do
       message =
         refuse_contract("GivenWrong", """

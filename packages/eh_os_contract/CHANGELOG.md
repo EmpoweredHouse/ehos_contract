@@ -97,6 +97,21 @@ one. What changes is what a host has to do.
 - `EhOsContract.Model.capabilities/1`: a v2 contract's capabilities under the names EHOS grants (D14),
   `<domain>.<command>` and `<domain>.<query>`, each with its roles `<domain>.<actor>` and a query's scope. The
   model's `grants` says the same per actor, with the events each records.
+- `compile.eh_os_contract`, a Mix compiler for v2 §6's layer L3: add it after Elixir's,
+  `compilers: Mix.compilers() ++ [:eh_os_contract]`. On every compile it checks the project's v2 contracts
+  against what they name without a compile dependency, and fails the compile with an error at the declaration:
+  `domain:` and `context:` (X1); every actor in `by:`, `recorded_by:`, `accountable` and a scenario, of the
+  contract's context (X2); field types and subjects (X3); externals (X4); that every actor asking a scoped query
+  carries the scope (D10); that a `publish` is named under the domain's `name:` (D11); that a sibling contract
+  consumed is a v2 contract of the same domain declaring the events named (X5); and that the fields a
+  subscriber correlates or matches on are in the sibling's event as it is compiled now, with the same type,
+  neither optional nor personal (X6) — so removing or retyping such a field fails the compile of every
+  subscriber that uses it, with an error at the subscriber naming the publisher's event and its line. Across the
+  application: a process name is declared once (X7), a command's or query's capability `<domain>.<name>` too
+  (D14), and a declaration has at most one implementation (X8). Scenario data that L2 leaves alone has to fit
+  (X9): values of domain types — an enum's member, a value's type, a value's fields — and the data of an event
+  consumed from a sibling, against the sibling's fields.
+- `__eh_os_implementation__/0` also says where the implementation's `use` is, `file:` and `line:`.
 - `EhOsContract.Next.Contract.vocabulary/0`: every entity of the contract DSL, by path, with the keys it
   takes, derived from the extension.
 - `actor` in the domain DSL takes `scope:`, the fields a grant narrows query answers by (D10).

@@ -152,7 +152,7 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
 
   # --- S2–S7, once the target is known ----------------------------------------------
 
-  defp fits(where, scenario, trigger, kind, unit, _d) when kind in [:aggregate, :dcb] do
+  defp fits(where, scenario, trigger, kind, unit, d) when kind in [:aggregate, :dcb] do
     command = Enum.find(unit.commands, &(&1.name == trigger.name))
     events = Map.new(Rules.events(unit), &{&1.name, &1})
     consulted = MapSet.new(unit.consults, & &1.event)
@@ -167,7 +167,7 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
             )
 
           MapSet.member?(consulted, given.event) ->
-            []
+            event_data(where, given, given.event, d)
 
           true ->
             [
@@ -244,7 +244,7 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
         else: []
 
     givens ++
-      delivered(where, trigger, d) ++
+      event_data(where, trigger, trigger.name, d) ++
       issued(where, scenario, policy.issues, d) ++
       decisions_only(where, scenario) ++
       no_timers(where, scenario, "a policy") ++ outcome ++ no_actor(where, scenario)
@@ -257,9 +257,13 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
     ends = Enum.any?(pm.ends_on, &(&1.event == trigger.name))
 
     givens =
-      for given <- scenario.given, given.event not in triggers(pm) do
-        {"S2: #{where}: given #{inspect(given.event)} is not an event it handles", given}
-      end
+      Enum.flat_map(scenario.given, fn given ->
+        if given.event in triggers(pm),
+          do: event_data(where, given, given.event, d),
+          else: [
+            {"S2: #{where}: given #{inspect(given.event)} is not an event it handles", given}
+          ]
+      end)
 
     allowed = fn key -> reactions |> Enum.flat_map(&Map.get(&1, key, [])) |> MapSet.new() end
 
@@ -286,7 +290,7 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
          else: []
 
     # A timer that fires delivers no event, so it has no data to check.
-    delivered = if timer, do: [], else: delivered(where, trigger, d)
+    delivered = if timer, do: [], else: event_data(where, trigger, trigger.name, d)
     issues = Enum.flat_map(reactions, & &1.issues) ++ if(timer, do: timer.issues, else: [])
 
     givens ++
@@ -309,29 +313,31 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
     ]
   end
 
-  # The event an `on` delivers: its data, when this contract declares its fields.
-  defp delivered(where, trigger, d) do
-    case Enum.find(Rules.local_events(d), &(&1.name == trigger.name)) do
+  # The data of an event a scenario gives — delivered by `on`, or given — when this
+  # contract declares its fields: a local event's, whose unit's identity the scenario
+  # fills in, or a received one's. A sibling's fields are the sibling's (X9).
+  defp event_data(where, declaration, name, d) do
+    case Enum.find(Rules.local_events(d), &(&1.name == name)) do
       nil ->
-        case received_fields(d, trigger.name) do
+        case received_fields(d, name) do
           nil ->
             []
 
           fields ->
-            data(where, trigger, "event #{inspect(trigger.name)}", fields, nil, required: true)
+            data(where, declaration, "event #{inspect(name)}", fields, nil, required: true)
         end
 
       event ->
         unit = Enum.find(d.units, fn u -> event in Rules.events(u) end)
-        data(where, trigger, "event #{inspect(event.name)}", event.fields, unit, required: true)
+        data(where, declaration, "event #{inspect(name)}", event.fields, unit, required: true)
     end
   end
 
   defp received_fields(d, name) do
-    Enum.find_value(d.consumes, fn
-      %Dsl.Consumes{from: from, as: ^name, fields: fields} when is_binary(from) -> fields
+    case List.keyfind(Rules.consumed(d), name, 0) do
+      {_, %Dsl.Consumes{from: from, fields: fields}} when is_binary(from) -> fields
       _ -> nil
-    end)
+    end
   end
 
   defp issued(where, scenario, allowed, d) do

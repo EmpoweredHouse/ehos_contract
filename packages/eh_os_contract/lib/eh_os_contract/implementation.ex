@@ -54,6 +54,7 @@ defmodule EhOsContract.Implementation do
   and the backstop that what a decision returns is within its declaration.
   """
 
+  alias EhOsContract.DslRules
   alias EhOsContract.Model
   alias EhOsContract.Next.Contract.Callbacks
 
@@ -64,7 +65,9 @@ defmodule EhOsContract.Implementation do
           contract: module(),
           kind: atom(),
           name: atom(),
-          emitted: %{{atom(), arity()} => [atom()]}
+          emitted: %{{atom(), arity()} => [atom()]},
+          file: String.t(),
+          line: pos_integer()
         }
 
   # --- binding ----------------------------------------------------------------------
@@ -150,7 +153,7 @@ defmodule EhOsContract.Implementation do
       elsewhere != [] ->
         "#{inspect(name)} is not #{a(kind)} but #{Enum.map_join(elsewhere, " and ", &a/1)}"
 
-      suggestion = closest(name, names) ->
+      suggestion = DslRules.closest(name, names) ->
         "there is no #{human(kind)} #{inspect(name)}; did you mean #{inspect(suggestion)}?"
 
       true ->
@@ -175,14 +178,6 @@ defmodule EhOsContract.Implementation do
       )
 
     Enum.map(Map.fetch!(model, key), & &1.name)
-  end
-
-  defp closest(name, names) do
-    names
-    |> Enum.map(&{&1, String.jaro_distance(Atom.to_string(name), Atom.to_string(&1))})
-    |> Enum.filter(fn {_, distance} -> distance > 0.8 end)
-    |> Enum.max_by(fn {_, distance} -> distance end, fn -> {nil, 0} end)
-    |> elem(0)
   end
 
   defp human(kind), do: kind |> Atom.to_string() |> String.replace("_", " ")
@@ -460,7 +455,9 @@ defmodule EhOsContract.Implementation do
       contract: impl.contract,
       kind: impl.kind,
       name: impl.name,
-      emitted: emitted
+      emitted: emitted,
+      file: env.file,
+      line: impl.line
     }
 
     quote do

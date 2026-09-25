@@ -622,6 +622,28 @@ between DSL modules record no compile dependency, §8):
 - X8: each unit has at most one implementation.
 - X9: scenario values fit their types.
 
+  > *Made precise 25 September 2026, E5b, while the L3 rules were written* (`EhOsContract.Next.Contract.Links`).
+  > **X2**: an actor "of this context" is one that names this contract's context or none. **X5**: since D11
+  > there is no `public` to require; the consumed contract has to be a v2 contract **of the same domain**, since
+  > one of another domain is another application's, reached only through `publish`, and it declares every event
+  > named. **X6**: the fields used are the process's `correlate` for every event it `include`s, a process
+  > manager's `correlate` for every event it handles, and a boundary's `match:` for every event it `consults`;
+  > compatible means the same type, and neither optional nor personal, as F4 asks of a local event. `projects`
+  > names an event and no field of it: which fields a projection reads is in its implementation, which matches
+  > on the publisher's struct (§7, the third mechanism), so for `projects` X6 is X5. **X8** covers everything
+  > code implements, not only units: dispatch and scenarios need one implementation of a policy or a query too.
+  > **X9** checks values of domain types wherever a scenario gives one, and the data of an event consumed from a
+  > sibling in full — keys, required fields, types — where S3 could see no fields. The parts of D10, D11 and D14
+  > that need the domain or other contracts are L3 as well, and are numbered by their decision, as in L2: every
+  > actor asking a scoped query carries the scope (D10), a `publish` is named under the domain's `name:` (D11),
+  > and a command's or a query's name is unique among the contracts of one domain (D14). **Which modules**: the
+  > compiler reads the `.beam` files in the project's compile path, with no configuration, and looks up by name
+  > the domain and the siblings a contract names. **Locations** (§9): L3 reads the declarations Spark keeps in
+  > the compiled module (`spark_dsl_config/0`), with their file and line, so nothing new is persisted beside the
+  > model; the line of a contract's `use` is added to Spark's persisted data, and an implementation's `use` to
+  > `__eh_os_implementation__/0`. L5 does not repeat L3 yet: both projects in this repository register the
+  > compiler, and that repetition comes with the rest of L5 (E10).
+
 **L4 — implementation macros** (`CompileError` at the call site). I1: the unit exists. I2: every callback is
 defined. I3: `evolve` is covered. I4: `emit` gets literals allowed there. I5: `reject` names an invariant in
 the command's `rejects:`. I6: `issue` names commands in `issues:`. I7: each macro only where its kind allows
