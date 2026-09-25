@@ -11,5 +11,12 @@ defmodule UniversalityGate do
 
   use Boundary,
     deps: [EhOsContract],
-    exports: [TreatmentEpisode, Eligibility, PayerRegistry, PayerRegistry.Fake]
+    exports: [
+      TreatmentEpisode,
+      Next.TreatmentEpisode,
+      Domain,
+      Eligibility,
+      PayerRegistry,
+      PayerRegistry.Fake
+    ]
 end
