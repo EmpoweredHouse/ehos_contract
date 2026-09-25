@@ -63,7 +63,7 @@ one. What changes is what a host has to do.
   and `publish`; one `process` with stages, includes, cadence, deadline and promises; and scenarios. Its model
   is `__eh_os_contract_model__/0`, with a version that ignores declaration order. Nothing runs it yet, and the
   v1 accessors of `EhOsContract.Model` refuse it by name. It refuses to compile what v2 §6's layer L2 refuses:
-  names (N1–N2), fields (F1–F6), units and their commands (A1–A5, C1), what reacts and what is read
+  names (N1–N2, which also keeps `state` and `row` for the aliases an implementation gets), fields (F1–F6), units and their commands (A1–A5, C1), what reacts and what is read
   (P1–P5), the process (R1–R6), what it consumes from a sibling contract (K1), the query scope and
   publications of D10–D11, and scenarios (S1–S8): one trigger each, data that fits the declared fields, and
   **every invariant named by a scenario in which a command is rejected on it**. A scenario writes a

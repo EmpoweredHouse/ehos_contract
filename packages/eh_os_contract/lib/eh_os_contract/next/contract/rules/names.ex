@@ -16,7 +16,9 @@ defmodule EhOsContract.Next.Contract.Rules.Names do
   command called `:send` would define `send/2`. Commands and queries are called
   with two arguments; events, timers and consumed events are handled with one or
   with two, depending on who handles them, so both arities are checked. `evolve` is
-  the callback every unit has already, so no command or event may take it.
+  the callback every unit has already, so no command or event may take it. Nor may
+  a command, an event, a consumed event or a query be called `state` or `row`: an
+  implementation aliases its struct by its name, and `State` and `Row` are taken.
   """
 
   alias EhOsContract.DslRules
@@ -24,6 +26,7 @@ defmodule EhOsContract.Next.Contract.Rules.Names do
 
   @reserved ~w(do end fn and or not in when catch rescue after else true false nil)a
   @taken [:evolve]
+  @aliases [:state, :row]
 
   @doc false
   @spec check(map()) :: [DslRules.violation()]
@@ -174,10 +177,24 @@ defmodule EhOsContract.Next.Contract.Rules.Names do
 
     for {kind, name, arities, declaration} <- arities,
         is_atom(name),
-        violation <- clash(kind, name, arities, declaration) do
+        violation <- clash(kind, name, arities, declaration) ++ aliased(kind, name, declaration) do
       violation
     end
   end
+
+  # An implementation aliases each struct it touches by its name, and a unit's state
+  # and a read model's row as `State` and `Row` (`EhOsContract.Implementation`).
+  defp aliased(kind, name, declaration) when kind != "timer" and name in @aliases do
+    alias = name |> Atom.to_string() |> Macro.camelize()
+
+    [
+      {"N2: #{kind} #{inspect(name)} would be aliased #{alias} in an implementation, which is " <>
+         "the alias of a #{if name == :state, do: "unit's state", else: "read model's row"}",
+       declaration}
+    ]
+  end
+
+  defp aliased(_kind, _name, _declaration), do: []
 
   defp clash(kind, name, arities, declaration) do
     cond do
