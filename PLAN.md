@@ -13,35 +13,36 @@ zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisan
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności) i jej
 dashboardu; `sandbox/` to dane testowe. **Trwa pivot do v2**: DSL na Sparku z modelem domeny w stylu ESDM
 (jeden kontrakt = jeden proces), event sourcing na własnym magazynie w Postgresie, crypto-shredding. Plan
-zatwierdzono 25 września. **E0 (dokumenty) jest w `main`. E1 (szew `EhOsContract.Model`) jest zrobiony na
-gałęzi `dsl-v2/e1-model-seam`, przejrzany i wystawiony jako PR do przeglądu. E2–E11 nie są zaczęte.** Zachowanie v1 się nie zmieniło.
+zatwierdzono 25 września. **E0 i E1 (szew `EhOsContract.Model`) są w `main`. Po E1 doszły decyzje D10–D12
+(query z capability i `scope`, zdarzenia integracyjne przez `publish`, inbox) i etap E12. E2–E12 nie są
+zaczęte.** Zachowanie v1 się nie zmieniło.
 
 ### Stan repozytorium
 
-- `main` = `origin/main` = `73031d2`, merge [PR #2](https://github.com/EmpoweredHouse/eh-os-contract/pull/2)
-  (`dsl-v2/e0-review-hook`: hook i skill przeglądu, domknięcie handoffu E0). Przed nim
-  [PR #1](https://github.com/EmpoweredHouse/eh-os-contract/pull/1) (`7ce9be2`, dokumenty E0). Oba
-  zmergowane przez użytkownika 25 września. CI na `main` po obu merge'ach: `success`.
-- **Gałęzie `dsl-v2/e0-groundwork` i `dsl-v2/e0-review-hook` są skasowane**, lokalnie i na `origin`
-  (sprawdzone `git ls-remote --heads origin`: jest tylko `main`). Commit `d1a1ebb` z pierwszej z nich do
-  `main` nie trafił; jego treść była w poprzednim handoffie.
-- **`dsl-v2/e1-model-seam`**, od `main` (`73031d2`): 14 commitów kodu (`6a9baf4`..`b5e9a79`), commit
-  dokumentów E1 (`80e6b51`), dwie poprawki z przeglądu przed PR (`64d3b9e`, `24c91ab`) i commit z tym
-  handoffem. Wypchnięta i wystawiona jako PR 25 września na polecenie użytkownika; numer i stan odczytaj
-  przez `gh pr list --state all --limit 3`. Worktree sesji E1:
-  `.claude/worktrees/dsl-v2-e1-model-seam-ed132e`.
+- `main` = `origin/main` = `bfda7c7`, merge [PR #3](https://github.com/EmpoweredHouse/eh-os-contract/pull/3)
+  (`dsl-v2/e1-model-seam`, E1), zmergowanego przez użytkownika 25 września. Wcześniej PR #1 (`7ce9be2`, E0) i
+  PR #2 (`73031d2`, hook i skill przeglądu). CI na `main` po merge'u #3: przebieg `36118784554`, `success`.
+- `dsl-v2/e1-model-seam` jest w całości w `main`, ale istnieje dalej lokalnie, na `origin` i jako worktree
+  sesji E1 (`.claude/worktrees/dsl-v2-e1-model-seam-ed132e`).
+- **`dsl-v2/e1-decisions`**, od `bfda7c7`: tylko dokumenty — D10–D12 w `docs/adr/contract-v2.md` §16 (z
+  notkami z datą w §4.2, §4.6, §7, §15, §19) i zmiany etapów w dopisku Etap 6. Wypchnięcie i PR 25 września na
+  polecenie użytkownika; stan odczytaj przez `gh pr list --state all --limit 3`.
 - **Przegląd przed PR**: `.claude/settings.json` (hook `PreToolUse` odmawia `gh pr create`/`gh pr new`,
   dopóki `HEAD` nie ma notatki `git notes --ref=review`) i `.claude/skills/pre-pr-review/` (połowa autora).
   Połową recenzenta zostaje `.claude/skills/review-pr/`. Notatki są lokalne, `refs/notes/review` nie jest
-  wypychane. Notatka przeglądu E1 wisi na ostatnim commicie gałęzi, lokalnie w worktree sesji E1.
+  wypychane.
 
 ### Co zostało — i czyje to jest
 
-- **Przegląd i merge PR z E1 — użytkownika.** Po uwagach recenzenta: poprawka, commit, kroki 3–7
-  `pre-pr-review` dla nowych commitów, a przed pushem sprawdzić, że PR jest nadal otwarty.
-- **E2–E11 — asystenta**, według dopisku „Dopisek 25 września (2) — Etap 6” niżej. Następny krok: E2
-  (log staje się magazynem) na gałęzi `dsl-v2/e2-*` od `dsl-v2/e1-model-seam` — zgodnie ze strategią
-  („odgałęziona od poprzedniego etapu”) także wtedy, gdy E1 nie jest jeszcze zmergowany.
+- **Przegląd i merge PR z `dsl-v2/e1-decisions` — użytkownika.** E2 rusza dopiero po nim, bo oba zmieniają
+  `PLAN.md`.
+- **Skasowanie `dsl-v2/e1-model-seam` i jej worktree — użytkownika**, gdy sesja E1 jest zamknięta:
+  `git worktree remove .claude/worktrees/dsl-v2-e1-model-seam-ed132e`, `git branch -d dsl-v2/e1-model-seam`,
+  `git push origin --delete dsl-v2/e1-model-seam`.
+- **E2–E12 — asystenta**, według dopisku „Dopisek 25 września (2) — Etap 6” niżej. Następny krok: E2
+  (log staje się magazynem) na gałęzi `dsl-v2/e2-*` od `main`.
+- **Lista zmian do `eh-os`** (odwrócenie D-01, zawężenie D-15, outbox, G-16, pytanie o transport v1) —
+  użytkownika; jest w „D10–D12 — skąd się wzięły” w dopisku Etap 6.
 - **Trzy pytania z E1 do użytkownika** (szczegóły: „E1 — co szew ujawnił” w dopisku Etap 6):
   naprawić niedeterministyczną kolejność linii `owner` w `mix eh_os_contract.check` (jedno `sort_by`,
   osobny commit) — kiedy; wpis o `EhOsContract.Model` w `CHANGELOG.md` teraz czy dopiero w E6;
@@ -87,17 +88,18 @@ uruchomić `MIX_ENV=test mix deps.get` w `packages/eh_os_contract` i w `packages
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 25 września**, na `dsl-v2/e1-model-seam` (`24c91ab`, a potem ten commit, który zmienia tylko
-  `PLAN.md`): brama wyżej → **EXIT=0**. Sandbox: 42 testy, 0 padnięć, `eh_os_contract.check` 0 błędów,
+- **Lokalnie, 25 września**, na `dsl-v2/e1-model-seam` (`24c91ab`; kod identyczny z dzisiejszym `main`, bo
+  później zmieniały się tylko `PLAN.md` i `docs/adr/contract-v2.md`): brama wyżej → **EXIT=0**. Sandbox: 42 testy, 0 padnięć, `eh_os_contract.check` 0 błędów,
   5 ostrzeżeń, 23 informacje. Pakiet silnika: 421 testów (397 + 24 z `model_test`), 0 padnięć, `check`
   0 błędów, 8 ostrzeżeń, 16 informacji. Pakiet web: 31 testów, 0 padnięć. Te same liczby `check` co na
   `main`.
-- **CI**: na `main` po merge'u PR #2 przebieg `36114248354` (`73031d2`), a po PR #1 przebieg `36112961721`;
-  oba `success`. CI na PR z E1 odczytaj przez `gh pr checks`, nie z tego akapitu.
+- **CI**: na `main` po merge'u PR #3 przebieg `36118784554` (`bfda7c7`), `success`. CI na PR z
+  `dsl-v2/e1-decisions` odczytaj przez `gh pr checks`, nie z tego akapitu.
 
 ### Otwarte pytania
 
-- **D1–D9** (`docs/adr/contract-v2.md` §16) przyjęte z planem 25 września, z rekomendacjami. Każde można
+- **D1–D9** (`docs/adr/contract-v2.md` §16) przyjęte z planem 25 września, z rekomendacjami; **D10–D12**
+  przyjęte po E1 tego samego dnia. Nowe pytania w §19: `scope` dla komend, transport v1 między kontenerami. Każde można
   otworzyć ponownie; ponowne otwarcie to notka z datą w §16. Najbardziej brzemienne: D6 (`recorded_by` dla
   15 zdarzeń bez komendy) i D7 (przynależność cudzych zdarzeń do przebiegów przez `_event_runs`).
 - **Na początku E2:** trigger „tylko dopisywanie” już w E2 (emiter v1 dostaje wtedy `occurred_at` w `ctx`
@@ -121,7 +123,8 @@ założeń do `docs/adr/contract-v2.md`. Tego samego dnia jednorazowo zlecił wy
 PR #1, a po jego merge'u — drugiego PR z tym, co do #1 nie weszło, razem z hookiem i skillem przeglądu.
 Poza tym **nie** było zgody na `git push`, PR, merge, tag ani publikację na Hex — w szczególności nie
 dla kolejnych etapów. Zlecając E1 (25 września), użytkownik powtórzył to samo: commity na `dsl-v2/e1-*` bez
-pytania; push, PR, merge i tag tylko na jego wyraźne polecenie; przed PR skill `pre-pr-review`.
+pytania; push, PR, merge i tag tylko na jego wyraźne polecenie; przed PR skill `pre-pr-review`. Po merge'u
+E1 jednorazowo zlecił wypchnięcie `dsl-v2/e1-decisions` i PR z D10–D12.
 
 ### Język
 
@@ -210,7 +213,8 @@ kompiluje się pod ścisłym `boundary` sandboxa z `--warnings-as-errors`; forma
 **E4 — Rdzeń DSL-a kontraktu, pod `EhOsContract.Next.Contract`.** `aggregate`/`dcb`, `identity` (wstrzykiwana),
 `state`, `invariant`, `command`, `event` (z `recorded_by`), grupy `stage`, `process` (`correlate`, `include`,
 `promise`, `cadence`, `deadline`), pola i typy (v2 §4.3), budowa modelu i digestów, reguły L2 (v2 §6: N, F, A,
-C, R, K). Zmyślona fikstura `UniversalityGate` przepisana na nowy DSL; fikstury testów to moduły inline poza
+C, R, K), a od D10–D11 (v2 §16) także `scope` na aktorze i query, `publish` oraz `consumes "<nazwa>"` z polami
+— same deklaracje i ich reguły L2, bez runtime'u. Zmyślona fikstura `UniversalityGate` przepisana na nowy DSL; fikstury testów to moduły inline poza
 skanem rejestru (wzorzec z `check_keys_test`).
 *Odbiór:* test na każdą regułę L2 i kontrola, która się kompiluje; złoty test modelu; słownik przypięty
 testem, wyprowadzany z rozszerzenia, a nie z ręcznej listy.
@@ -225,19 +229,24 @@ plik użytkownika. Poprawka ADR: §18.
 *Odbiór:* implementacja fikstury kompiluje się pod `--warnings-as-errors`; test `CompileError` z plikiem:linią
 na każdą regułę L4; usunięcie scenariusza z odmową psuje kompilację i nazywa inwariant; literówka w `by:` psuje
 zwykłe `mix compile`; `mix xref graph --label compile-connected` nie pokazuje krawędzi kontrakt →
-implementacja; **na parze zmyślonych kontraktów (wydawca, subskrybent): usunięcie pola publicznego zdarzenia,
-zmiana jego typu albo cofnięcie `public: true` psuje `mix compile` z błędem wskazującym obie strony — kontrole:
+implementacja; **na parze zmyślonych kontraktów jednej aplikacji (wydawca, subskrybent): usunięcie pola
+konsumowanego zdarzenia albo zmiana jego typu psuje `mix compile` z błędem wskazującym obie strony (od D11 nie ma
+już `public: true` do cofnięcia) — kontrole:
 dodanie pola opcjonalnego się kompiluje, a subskrybent, który zmienionego pola nie używa, kompiluje się dalej.**
 
 **E6 — Dispatch synchroniczny i przejście VisitSettlement.** `Dispatcher`, `Codec`, `Capability`, idempotencja,
-ponowienia, projekcje i polityki inline, `record/3` (D6), wiersze `_commands` (v2 §11–12). Jeden commit
+ponowienia, projekcje i polityki inline, `record/3` (D6), wiersze `_commands` (v2 §11–12); query przez tę samą
+ścieżkę autoryzacji co komendy, ze `scope` i sprawdzeniem zwróconych wierszy (D10), i `EhOsContract.Plug`
+wystawiający komendy i query modelu po HTTP. Jeden commit
 zastępuje stary kontrakt VisitSettlement, `Rehmed.Settlement.decide/1` i `rehmed_contract_examples_test`
 nowym kontraktem, domeną, implementacją i testem scenariuszy (v2 §4.5). `@version "0.3.0-dev"`, CHANGELOG
 „Unreleased” — od tego commita wersje kontraktów się ruszają. Na każdym skillu baner „opisuje v1”. Poprawki
 ADR: „historia, nie sourcing” i wiersz o Commanded (design-rationale), §7–8.
 *Odbiór:* cztery scenariusze przechodzą; decyzja zwracająca niezadeklarowane zdarzenie rzuca wyjątek, a magazyn
 się nie zmienia — kontrola: zadeklarowane zostaje dopisane; wyjątek w projekcji inline wycofuje dopis; odmowa
-uprawnień niczego nie zapisuje; konflikt jest ponawiany; ten sam klucz idempotencji zwraca te same pozycje;
+uprawnień niczego nie zapisuje; query o wartość `scope` spoza grantu jest odrzucone, zanim ruszy implementacja,
+a implementacja zwracająca cudzy wiersz jest zatrzymana — kontrola: wartość z grantu przechodzi; konflikt jest
+ponawiany; ten sam klucz idempotencji zwraca te same pozycje;
 delta `check` w sandboxie dotyczy tylko linii VisitSettlement.
 
 **E7 — Runtime asynchroniczny, fikstury, zgodność.** Efekty (Oban, joby tylko z identyfikatorami),
@@ -278,8 +287,8 @@ nie dotyka.**
 
 **E10 — Wyjścia.** Ostrzeżenia L5 (v2 §6) przypięte testem na wyjściu sandboxa; graf systemu (domena →
 konteksty → kontrakty, krawędzie `consumes`) w `mix eh_os_contract.graph` i na `/graph`; `Model.to_data/1` z
-nazwanym schematem dla EHOS-a, z uprawnieniami, i endpoint w API pakietu web; AsyncAPI z publicznych zdarzeń
-modelu.
+nazwanym schematem dla EHOS-a, z uprawnieniami, i endpoint w API pakietu web; AsyncAPI z deklaracji `publish` (D11)
+i OpenAPI z komend i query modelu (D10).
 
 **E11 — Cięcie.** Osobne commity: usunięcie v1 (DSL, `Handler`, `Emitter`, `Job`, handlerowe części rejestru,
 `dev/mix/tasks/eh_os_contract.docs.ex`, testy v1, `Rig`) — samo usuwanie; przemianowanie `Next` — samo
@@ -291,6 +300,34 @@ datą (słownik wymieniony hurtem przez przejęcie ESDM, „zero nowych słów�
 pokazuje stanu biznesu, choć biblioteka prowadzi read modele klienta), CHANGELOG 0.3.0, pozostałe poprawki ADR
 (v2 §18); skille — pięć przepisanych, `write-handler` wycofany na rzecz `write-decider` i `write-reaction`.
 Opcjonalnie generator `mix eh_os_contract.gen.impl` na Igniterze. Potem weryfikacja końcowa.
+
+**E12 — Integracja między aplikacjami (D11–D12, v2 §16).** Behaviour `EhOsContract.Bus` z adapterem lokalnym i
+wspólną suitą testów adapterów; relay jako uporządkowana subskrypcja nad logiem (bez tabeli outboxu); inbox i
+runner subskrybenta; capability `<nazwa>.subscribe` w `Model.capabilities/1`. Adaptery transportu (relay v1
+EHOS-a, JetStream przez `gnat`) są po stronie EHOS-a; biblioteka nie zależy od NATS-a. Po E7 (subskrypcje) i E10
+(eksport modelu). Poprawka ADR: §9–10 („bez zewnętrznego brokera”).
+*Odbiór:* dwie aplikacje w teście na adapterze lokalnym — zdarzenie z `publish` dochodzi do polityki odbiorcy
+dokładnie raz przy dwukrotnym doręczeniu; relay po restarcie wznawia od checkpointu i nie gubi zdarzenia
+dopisanego w trakcie; wiadomość nie niesie pola spoza `fields`; fakt odbiorcy ma `causation_id` wiadomości;
+kontrola: zdarzenie bez `publish` nie wychodzi.
+
+### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
+
+Po lekturze architektury EHOS-a (`~/Projects/ai/eh-os`, `docs/ADR.md` i `docs/ARCHITECTURE.md`; research w
+`~/Projects/ai/ehos-knowledge` jest według jego własnego README podrzędny wobec `eh-os`) użytkownik przyjął
+trzy decyzje, zapisane w v2 §16: **D10** query daje capability i ma `scope`; **D11** zdarzenie wychodzi do innej
+aplikacji tylko przez `publish`, `public: true` znika; **D12** obce zdarzenie trafia do inboxu, a nie do logu
+domenowego. Zmienione wyżej: E4, E5, E6, E10; dodany E12.
+
+**Do przeniesienia do `eh-os` — przez użytkownika albo sesję w tamtym repozytorium; stąd tam nie piszemy:**
+- D-01 („kontrakt nie obejmuje query”) — odwrócone przez D10; wraz z tym konsekwencja, że część query w OpenAPI
+  jest obserwacją serwera: od D10 pochodzi z modelu.
+- D-15, trzecia powierzchnia uprawnień („autoryzacja query zostaje w aplikacji”) — zawężona: jedno pole `scope`
+  jest w kontrakcie, reszta zostaje w aplikacji; G-9 częściowo domknięte. Grant musi umieć nieść wartości zakresu.
+- D-03 i ARCHITECTURE „Where the state lives” (wiersz „Outbox rows”) — w v2 log jest outboxem, relay trzyma
+  checkpoint, tabeli outboxu nie ma.
+- G-16 — punkt egzekucji autoryzacji subskrypcji w v1 to relay EHOS-a z tablicą routingu z grantów.
+- Pytanie otwarte: co w v1 przenosi wiadomość między dwoma kontenerami, skoro D-03 mówi o relayu „in-process”.
 
 ### E1 — co szew ujawnił (25 września)
 
