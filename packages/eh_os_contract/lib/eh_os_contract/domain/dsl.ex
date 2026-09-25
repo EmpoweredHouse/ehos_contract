@@ -248,12 +248,17 @@ defmodule EhOsContract.Domain.Dsl do
     ]
   }
 
-  @domain %Spark.Dsl.Section{
-    name: :domain,
-    top_level?: true,
-    describe: "The vocabulary contracts share.",
-    entities: [@context, @actor, @subject, @value, @external, @relation]
-  }
+  # `context`, `term` and `value` take a block, so they also take their options
+  # beside it (v2 §16, D13).
+  @domain EhOsContract.DslWrappers.attach(
+            %Spark.Dsl.Section{
+              name: :domain,
+              top_level?: true,
+              describe: "The vocabulary contracts share.",
+              entities: [@context, @actor, @subject, @value, @external, @relation]
+            },
+            __MODULE__
+          )
 
   use Spark.Dsl.Extension,
     sections: [@domain],

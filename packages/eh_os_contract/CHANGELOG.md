@@ -25,7 +25,7 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
-Stages E1–E3 of the move to a v2 contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`). **No verdict moves.**
+Stages E1–E4 of the move to a v2 contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`). **No verdict moves.**
 `mix eh_os_contract.report` and `mix eh_os_contract.graph --overlay --mermaid` gave byte-identical output on
 the development database before and after each stage, so the version stays 0.2.1 until a change does move
 one. What changes is what a host has to do.
@@ -57,6 +57,10 @@ one. What changes is what a host has to do.
 - `EhOsContract.Domain`: the v2 domain DSL, on Spark. It covers contexts with a glossary, actors, subjects,
   values, externals and relations, with rules D1–D5 and F3/F5 as compile errors. Its model is
   `__eh_os_contract_model__/0`, and it generates a `Values` module of types. Nothing in v1 reads it yet.
+- Options beside a `do` block in the domain DSL: `context`, `term` and `value` accept
+  `context :settlement, "Rozliczenia", subdomain: :supporting do … end` as well as the options written inside
+  the block. An error still points at the declaration's file and line, and `mix format` keeps the form as
+  written.
 
 ### Changed
 

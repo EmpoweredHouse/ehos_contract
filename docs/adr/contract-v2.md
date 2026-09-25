@@ -1078,6 +1078,22 @@ G-14, G-16; `docs/ARCHITECTURE.md` §3). Two of them contradict decisions record
 | D13 | **Options stay beside a `do` block; the library supplies the missing arity.** Taken 25 September 2026, after E3 found that `command :x, "L", by: [:a] do … end` is a four-argument call that Spark's entity macros (positional args plus one options list) do not define. The user chose to keep the shape of §4.5–4.6 over writing options inside the block: the contract a process owner reads keeps "name, label, who, what it emits" on one line and fields in the block. For every entity that takes a block, the library defines one more arity that moves the block into the options, `command(name, label, opts, do: block)` → `command(name, label, opts ++ [do: block])`, which Spark's macro reads as `opts[:do]` (checked on `context` in E3). The wrappers are generated from the entity definitions, not written by hand. **Conditions, pinned by tests in E4's first commit:** a DSL error still points at the file and line of the declaration, not at the wrapper; the formatter keeps the four-argument form without parentheses in a consumer (the wrappers' arities are exported beside `spark_locals_without_parens`, which does not list them); the domain DSL gets the same wrappers. If either of the first two fails, the fallback is options inside the block, and the question returns to the user. |
 | D14 | **The contract declares who may act; a separate package verifies who is acting.** Taken 25 September 2026, after comparing v2 with stage 4 of `eh-os` (D-32, D-33, D-34, D-40): v2 cited `eh_os_contract_auth` as if it existed, no stage built it, and §11 checked roles that EHOS's credential does not carry. The user kept the contract library to its DDD scope and put authentication beside it, for now as a third package in this repository. The contract names the actors that may issue a command or a query (`by:`; actors are roles, §18) and derives the names EHOS relies on: a capability is `<domain>.<command>` or `<domain>.<query>`, a role `<domain>.<actor>`, with `<domain>` the domain's `name:`, so a command or query name is unique across an application, not only within a contract. `dispatch` and `query` ask an `EhOsContract.Authorizer` behaviour (§11, corrected). `eh_os_contract_auth` implements it: it verifies EHOS's credential against keys it keeps in the application's database, builds `ctx.actor` from `sub`, `cap` and `scp`, and records every decision in its own table. The engine does not depend on it. A scoped capability with no granted values is refused. The package's manifest task projects the model onto `ehos.manifest` (E10). |
 
+> **25 September 2026, E4's first commit — D13's conditions hold, and one assumption under them was
+> wrong.** `EhOsContract.DslWrappers` generates the wrappers from the entity definitions and imports them where
+> Spark imports the entities: a top-level entity's through the section, a nested one's through its parent.
+> Both conditions are pinned in `test/dsl/dsl_wrappers_test.exs` and, in a consumer, in
+> `sandbox/test/rehmed_domain_test.exs`. A refusal beside a wrapped block, whether Spark's schema check or
+> a D rule, carries the declaration's file and line. The formatter keeps the four-argument form without
+> parentheses, **but not because of an export**: it never adds parentheses to a call that has a `do` block,
+> whatever `locals_without_parens` lists. The wrappers' arities are therefore not exported, and
+> `spark_locals_without_parens` stays what `mix spark.formatter` writes. One thing D13 did not foresee: an
+> entity with an optional positional argument already has the arity its shorter wrapper would take.
+> `value :address, label: "Adres" do … end` reaches Spark's `value(name, type, opts)` with the keyword list
+> in `type`. Without a block, Spark itself reads a keyword list in the last optional argument as options.
+> The wrappers give such an entity a `transform` that applies the same rule when a block follows, and that
+> checks the options against the entity's schema. A contract entity that takes a block therefore never gives
+> an optional positional argument a keyword list as a legal value.
+
 **D10 in the contract and in the implementation.**
 
 ```elixir
