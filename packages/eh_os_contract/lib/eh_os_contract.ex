@@ -28,6 +28,7 @@ defmodule EhOsContract do
       Instance,
       Job,
       Migrations,
+      Model,
       Payload,
       Registry,
       Report,
