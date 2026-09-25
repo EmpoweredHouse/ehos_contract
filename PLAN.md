@@ -14,7 +14,7 @@ Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, s
 dashboardu; `sandbox/` to dane testowe. **Trwa pivot do v2**: DSL na Sparku z modelem domeny w stylu ESDM
 (jeden kontrakt = jeden proces), event sourcing na własnym magazynie w Postgresie, crypto-shredding. Plan
 zatwierdzono 25 września. **E0, E1 (szew `EhOsContract.Model`), D10–D12 i E2 (log staje się magazynem) są w
-`main`. E3 (Spark i DSL domeny) jest zrobiony na gałęzi `dsl-v2/e3-spark`, niewypchniętej. E4–E12 nie są
+`main`. E3 (Spark i DSL domeny) jest zrobiony na gałęzi `dsl-v2/e3-spark`, przejrzany i wystawiony jako PR. E4–E12 nie są
 zaczęte; przed E4 jest pytanie do użytkownika o opcje obok bloku `do`.** Zachowanie v1 się nie zmieniło,
 poza tym, że log jest tylko do dopisywania.
 
@@ -24,8 +24,9 @@ poza tym, że log jest tylko do dopisywania.
   (`dsl-v2/e2-store`, E2), zmergowanego przez użytkownika 25 września. Przed nim PR #4 (`c61ce5b`, D10–D12),
   PR #3 (`bfda7c7`, E1), PR #2 (`73031d2`, hook i skill przeglądu) i PR #1 (`7ce9be2`, E0).
 - Na `origin` zostały zmergowane `dsl-v2/e1-decisions` i `dsl-v2/e2-store`; lokalnie też obie.
-- **`dsl-v2/e3-spark`**, od `6646df7`: 10 commitów E3 (`eb80194`..`0138890`) i commit z tym handoffem. Tylko
-  lokalnie, bez PR. **Worktree leży pod ścieżką `.claude/worktrees/dsl-v2-e1-model-seam-ed132e`** — nazwa z E1,
+- **`dsl-v2/e3-spark`**, od `6646df7`: 10 commitów E3 (`eb80194`..`0138890`), commit dokumentów E3, sześć
+  poprawek z przeglądu przed PR (`f022dfa`..`b2175b5`) i commit z tym handoffem. Wypchnięta i wystawiona jako PR
+  25 września na polecenie użytkownika; numer i stan odczytaj przez `gh pr list --state all --limit 3`. **Worktree leży pod ścieżką `.claude/worktrees/dsl-v2-e1-model-seam-ed132e`** — nazwa z E1,
   bo hook sesji pilnuje tej ścieżki; gałąź w nim to `dsl-v2/e3-spark`, główny checkout stoi na `main`. Hook
   przeglądu czyta HEAD `$CLAUDE_PROJECT_DIR` (głównego checkoutu), nie worktree — przy PR z E2 główny checkout
   był na chwilę odczepiony na głowie gałęzi, za zgodą użytkownika.
@@ -38,7 +39,8 @@ poza tym, że log jest tylko do dopisywania.
 
 - **Decyzja przed E4 — użytkownika:** opcje obok bloku `do` (ustalenie 1 w „E3 — co wyszło”). Albo przykłady
   z v2 §4.5–4.6 przepisane na opcje w bloku, albo generowane makra o jedną arność więcej.
-- **Przegląd E3 i decyzja o PR — użytkownika.** Przed `gh pr create` skill `pre-pr-review` na tej gałęzi.
+- **Przegląd i merge PR z E3 — użytkownika.** Po uwagach recenzenta: poprawka, commit, kroki 3–7
+  `pre-pr-review`, a przed pushem sprawdzić, że PR jest nadal otwarty.
 - **Skasowanie zmergowanych gałęzi `dsl-v2/e1-decisions` i `dsl-v2/e2-store` — użytkownika**
   (`git branch -d …`, `git push origin --delete …`), i worktree po zamknięciu sesji.
 - **E4–E12 — asystenta**, według dopisku „Dopisek 25 września (2) — Etap 6” niżej. Następny krok: E4 (rdzeń
@@ -93,14 +95,13 @@ uruchomić `MIX_ENV=test mix deps.get` w `packages/eh_os_contract` i w `packages
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 25 września**, na `dsl-v2/e3-spark` (`0138890`, a potem ten commit, który zmienia tylko
+- **Lokalnie, 25 września**, na `dsl-v2/e3-spark` (`b2175b5`, a potem ten commit, który zmienia tylko
   dokumenty): brama wyżej → **EXIT=0**. Sandbox: 44 testy (42 + 2 z E3), 0 padnięć, `eh_os_contract.check` 0 błędów,
-  5 ostrzeżeń, 23 informacje. Pakiet silnika: 484 testy (454 z `main` + 30 z E3), 0 padnięć, `check` 0 błędów,
+  5 ostrzeżeń, 23 informacje. Pakiet silnika: 491 testów (454 z `main` + 37 z E3), 0 padnięć, `check` 0 błędów,
   8 ostrzeżeń, 16 informacji. Pakiet web: 31 testów, 0 padnięć. Te same liczby `check` co na `main`.
 - **CI**: PR #5 — przebieg `36122716953` na `b4e4a43`; `main` po merge'u — przebieg `36123110982` na
   `6646df7`. Oba `success`, więc druga baza testowa silnika (`eh_os_contract_test_commits`) powstaje na CI sama,
-  z aliasu `test`. Na gałęzi E3 CI nie było, bo nie jest wypchnięta; pierwszy przebieg pokaże też, czy CI
-  pobiera Sparka bez niespodzianek.
+  z aliasu `test`. CI na PR z E3 (pierwszy przebieg ze Sparkiem) odczytaj przez `gh pr checks`.
 
 ### Otwarte pytania
 
@@ -554,6 +555,19 @@ padła):
 7. **Po drodze:** commit `6067bc1` poszedł, zanim porównanie bajtów raportu przeszło — skrypt łączył je przez
    `;`. Porównanie powtórzone po kompilacji dało identyczne bajty, więc opis commita jest prawdziwy, ale od tego
    miejsca commit stoi po `&&`.
+
+**Przegląd przed PR (25 września, `/code-review high origin/main..HEAD`).** Siedem znalezisk:
+1. Akcesory kontraktu wołane z modułem domeny padały na `KeyError` zamiast odmowy z E2 — **poprawione** w
+   `f022dfa`.
+2. Wersja domeny nie obejmowała `name:` i `language:` — **poprawione** w `18b271c` (klucz `"domain:<name>"`).
+3. Ta sama relacja zadeklarowana dwa razy przechodziła D1, a w `digests` jedna nadpisywała drugą —
+   **poprawione** w `e011238`.
+4. Polski komentarz w `Rehmed.Domain` — **poprawione** w `595e2e4`; pliki E3 przejrzane też słowo po słowie.
+5. Pola wartości przyjmowały `default:`, `subject:` i `personal:` bez sprawdzenia — **poprawione** w `3e282f3`
+   (F3 i F5 na polach wartości domeny).
+6. `unit` odrzucany przy wartości, której typ jest inną wartością liczbową — **poprawione** w `b2175b5`.
+7. `Model.fetch/1` sprawdza załadowanie dwa razy na wywołanie — **pominięte**: koszt pomijalny, czas suity bez
+   zmian.
 
 ### Losy fikstur
 
