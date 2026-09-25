@@ -31,7 +31,7 @@ implementacji, ale dispatchu jeszcze nie ma.
   (`66ab602`, E3), #5 (`6646df7`, E2), #4 (`c61ce5b`, D10–D12), #3 (`bfda7c7`, E1), #2 (`73031d2`), #1
   (`7ce9be2`). Historia `main` ma merge commity, bo użytkownik merguje PR-y jako merge.
 - **E5a jest na `claude/dsl-v2-e5-codegen-0c8df1`** (worktree `.claude/worktrees/dsl-v2-e5-codegen-0c8df1`):
-  `5cb888d` (handoff) plus 8 commitów E5a, niewypchnięta. `dsl-v2/e5-codegen` została na `5cb888d`, bo jest
+  `5cb888d` (handoff) plus 8 commitów E5a, 8 poprawek z przeglądu i commit tego zapisu, niewypchnięta. `dsl-v2/e5-codegen` została na `5cb888d`, bo jest
   wymeldowana w worktree `.claude/worktrees/dsl-v2-e4-contract-core-68fd81` i git nie przesuwa jej tutaj;
   użytkownik zgodził się 25 września na commity na gałęzi sesji, tak jak w E4. Push E5a na nią to
   fast-forward: `git push origin claude/dsl-v2-e5-codegen-0c8df1:dsl-v2/e5-codegen` — na polecenie
@@ -59,7 +59,8 @@ implementacji, ale dispatchu jeszcze nie ma.
   danych scenariuszy, X9), podmioty i systemy zewnętrzne z domeny; `scope` aktorów przy query (D10);
   przestrzeń nazw publikacji (D11); unikalność nazw komend i query w całej aplikacji (D14); jedna
   implementacja na jednostkę (X8); para zmyślonych kontraktów wydawca–subskrybent z odbioru E5; literówka w
-  `by:` psująca zwykłe `mix compile`. Do tego ustalenie 11 z „E5a — co wyszło” (nazwy `:state` i `:row`).
+  `by:` psująca zwykłe `mix compile`. Do tego pominięte znalezisko 9 z przeglądu E5a (jedno miejsce na
+  odnajdywanie zdarzenia konsumowanego po nazwie lokalnej).
   Reguły S, uzupełnienie `given` fikstury, czas w danych scenariusza i decider — zrobione w E5a.
 - **Lista zmian do `eh-os`** (odwrócenie D-01, zawężenie D-15, outbox, G-16, pytanie o transport v1) —
   użytkownika; jest w „D10–D12 — skąd się wzięły” w dopisku Etap 6. Od D14 także D-34, D-40 i plan etapu 4
@@ -116,9 +117,9 @@ uruchomić `MIX_ENV=test mix deps.get` w `packages/eh_os_contract` i w `packages
 ### Ostatnia pełna weryfikacja
 
 - **Lokalnie, 25 września**, na ostatnim commicie E5a, brama z `sandbox/` → **EXIT=0**. Sandbox: 45 testów, 0
-  padnięć, `eh_os_contract.check` 0 błędów, 5 ostrzeżeń, 23 informacje. Pakiet silnika: 646 testów, 0 padnięć,
+  padnięć, `eh_os_contract.check` 0 błędów, 5 ostrzeżeń, 23 informacje. Pakiet silnika: 654 testy, 0 padnięć,
   `check` 0 błędów, 8 ostrzeżeń, 16 informacji. Pakiet web: 31 testów, 0 padnięć. Linie `check` w obu
-  projektach identyczne co do bajtu z tymi na `5cb888d` (i sprzed E4) — na każdym commicie E5a.
+  projektach identyczne co do bajtu z tymi na `5cb888d` (i sprzed E4) — na każdym commicie E5a i przeglądu.
 - **CI**: PR #9 — przebieg `36145275279` na `1dea272`, job `check` `success`, żaden krok pominięty ani
   nieudany (odczytane po jobach). `main` po merge'u #8 — `36141999262`, `success`. `main` po merge'u #9 —
   `36145850036` na `db00403`, job `check` `success`, żaden krok pominięty ani nieudany.
@@ -296,7 +297,8 @@ dodanie pola opcjonalnego się kompiluje, a subskrybent, który zmienionego pola
 generowanie struktur i behaviours, wiązanie implementacji z L4, reguły S, `ScenarioCase`, decider fikstury,
 kierunek zależności w xref; **E5b** — kompilator `compile.eh_os_contract` z regułami X i częściami L3 z
 D10/D11/D14, para wydawca–subskrybent, literówka w `by:` psująca `mix compile`. **E5a zrobione 25 września**
-na `claude/dsl-v2-e5-codegen-0c8df1`, 8 commitów od `b1d4a27`, niewypchnięte — „E5a — co wyszło” niżej.
+na `claude/dsl-v2-e5-codegen-0c8df1`, 8 commitów od `b1d4a27` i 8 poprawek z przeglądu przed PR,
+niewypchnięte — „E5a — co wyszło” niżej.
 
 **E6 — Dispatch synchroniczny i przejście VisitSettlement.** `Dispatcher`, `Codec`, `Capability`, idempotencja,
 ponowienia, projekcje i polityki inline, `record/3` (D6), wiersze `_commands` (v2 §11–12); query przez tę samą
@@ -876,10 +878,33 @@ w obu projektach na każdym commicie.
     `rehmed_contract_examples_test`, `universality_gate_test`); znika z ostatnim z nich — VisitSettlement w E6,
     reszta w E9 i E11. `ScenarioCase` zachowuje jego semantykę podciągu i dodaje dopasowanie pól oraz
     zabezpieczenie, że wynik decyzji mieści się w deklaracji.
-11. **Otwarte na E5b:** komenda albo zdarzenie o nazwie `:state` lub `:row` dostałoby alias `State`/`Row`,
-    który koliduje z aliasem stanu lub wiersza w implementacji. N2 tego nie odrzuca; do dopisania razem z L3.
-    Przy okazji: pole zdarzenia `consumes "<nazwa>"`, którego deklaracja nie wymienia, jest odrzucane przez
+11. **Nazwy `:state` i `:row`** dla komendy, zdarzenia albo query dawały alias kolidujący z `State`/`Row` w
+    implementacji — zapisane tu jako otwarte na E5b, zamknięte w przeglądzie (znalezisko 5, N2). Przy
+    okazji: pole zdarzenia `consumes "<nazwa>"`, którego deklaracja nie wymienia, jest odrzucane przez
     samego Elixira (klucz spoza struktury `C.Received.*` we wzorcu) — tę część D11 daje generowana struktura.
+
+**Przegląd przed PR (25 września, `/code-review high origin/main..HEAD`).** Dziesięć znalezisk:
+1. I3 brało zmienną ze strażnikiem (`when is_struct(e, A)`) za catch-all i wyłączało sprawdzenie pokrycia —
+   **poprawione** w `dc52aa8`; moduledoc mówi teraz, że I3 czyta wzorce, nie strażniki.
+2. Pola `correlate` wstrzykiwane do stanu PM zawsze jako `:id` — **poprawione** w `c62601b`: typ z lokalnego
+   zdarzenia, `:id` tylko dla pola, które niosą wyłącznie zdarzenia konsumowane.
+3. Drugie `use C, …` w tym samym module po cichu zastępowało pierwsze — **poprawione** w `1bf1d13` (I1). Przy
+   tym wyszło, że atrybut ustawiony w cytowanym kodzie `use` nie jest widoczny dla następnego `use`, bo ciało
+   modułu jest rozwijane, zanim ruszy; ustawiany jest teraz w czasie rozwijania.
+4. I4 odmawiało `for … uniq: true, do: %E{}` — **poprawione** w `8534629`; `into:` i `reduce:` dalej odmawiane.
+5. Nazwy `:state`/`:row` — **poprawione** w `c1dc59a` (N2).
+6. Niepasujące dane typu domeny kończyły scenariusz `MatchError` — **poprawione** w `7270465`: scenariusz
+   pada z nazwą pola. Tamże zmiana nazwy fikstury `ManagerRight`, która kolidowała z testem E4.
+7. Decyzja zwracająca mapę zamiast struktury kończyła scenariusz `KeyError` — **poprawione** w `284ff24`.
+8. DCB konsultujący własne zdarzenie miał je dwa razy w `evolve` — **poprawione** w `45904b9`.
+9. Odnajdywanie zdarzenia konsumowanego po nazwie lokalnej jest w trzech miejscach — **pominięte**: X5–X6 w
+   E5b czytają zdarzenia konsumowane między kontraktami i tam powinien powstać jeden akcesor.
+10. Makra liczą `Callbacks.of/3` przy każdym wywołaniu — **pominięte**: koszt tylko w czasie kompilacji,
+    liniowy w liczbie wywołań.
+
+Każda poprawka zweryfikowana wstecz: na kodzie sprzed niej pada dokładnie nowy test. Silnik 646 → 654. Diff
+E5a nie dotyka czytelników v1 (`trace`, `graph`, `conformance`, `report`, `run`, …), tasków, sandboxa ani
+pakietu web, więc porównanie bajtów raportu i grafu na bazie dev nie ma czego mierzyć i nie było puszczane.
 
 ### Losy fikstur
 
