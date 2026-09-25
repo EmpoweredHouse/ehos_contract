@@ -511,6 +511,18 @@ that code is cheap, so declarations should generate ordinary Phoenix and Ecto. G
 readable by any Elixir developer, including the client's team and a partner. Worth borrowing the
 declarative-resource idea for the contract DSL. Closest competitor to this leg.
 
+*Corrected 25 September 2026, v2 plan stage E3.* The borrowing went further than "the idea". v2's DSL is
+built on **Spark**, the DSL engine Ash itself is built on (`docs/adr/contract-v2.md` §2): sections,
+entities, schemas, transformers and the generated formatter list are Spark's. The first half of this
+paragraph still stands. Ash's *runtime* is not adopted, no resource is interpreted at run time, and what a
+declaration compiles to is plain data plus ordinary modules. What changed is that "worth borrowing" became
+a dependency on the engine under Ash. E3 checked the properties v2 relies on before any contract was built
+on it: an error points at the file and line of the declaration, reordering declarations does not move a
+version, a domain module compiles under a consumer's strict `boundary`, and the formatter export reaches a
+consumer. One caveat surfaced that the ADR did not foresee. An entity's options cannot be given both as a
+trailing keyword list and alongside a `do` block, so a declaration with a block takes its options inside
+the block.
+
 **Taking [`oban-events`](https://github.com/allocator-one/oban-events) as the emission layer.** It
 independently arrived at almost the same design — `emit/2`, handler behaviour, correlation and causation,
 transactional emission, retries, idempotency key — so the API shape and metadata model are worth copying.

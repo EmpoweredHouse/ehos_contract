@@ -131,7 +131,10 @@ mix ecto.migrate`.
   `config/`, migracje i `mix.exs` zostały przy pierwszym sprzątaniu pominięte, bo nikt o nich nie pomyślał.
 - **Po polsku jest wyłącznie to, co klient czyta zdaniami, i tylko w stringu** — nigdy w komentarzu,
   moduledoku ani nazwie. Konkretnie: `label`, opisy `example`, `source` i `unavailable_looks_like` w
-  kontrakcie, nazwy tasków, temat powiadomienia. Poza tymi miejscami polski string też jest błędem.
+  kontrakcie, nazwy tasków, temat powiadomienia. **Od v2 (etap E3, 25 września) także:** w domenie
+  tekst `term`, jego `definition`, `avoid` i tekst tłumaczenia (`translation`), a w kontrakcie v2 prozę
+  `where` przy `consults` i opisy scenariuszy — to słownik i przypadki, które właściciel procesu czyta
+  zdaniami. Poza tymi miejscami polski string też jest błędem.
   Raport zgodności był tu wcześniej piątym wyjątkiem i **przestał być, 6 sierpnia**: renderer przeniósł się
   do silnika (`EhOsContract.Report`, dawniej `Taxvision.Report` w drzewie klienta) i wypisuje po angielsku — decyzja
   zapisana w `PLAN.md`. Etykiety kontraktu (`label`, `from_label`, `to_label`) nadal wychodzą w raporcie
