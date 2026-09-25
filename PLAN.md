@@ -42,7 +42,7 @@ v2 nic jeszcze nie uruchamia.
 
 ### Co zostało — i czyje to jest
 
-- **Push E4, `pre-pr-review` i PR — użytkownika** (polecenie); E4 nie ma jeszcze notatki przeglądu.
+- **E4: przegląd przed PR zrobiony, PR otwierany na polecenie użytkownika z 25 września.** Po merge'u — CI na `main` do sprawdzenia po jobach.
 - **Stare worktree po zamknięciu sesji — użytkownika** (`.claude/worktrees/dsl-v2-e1-model-seam-ed132e` i to z
   E4, gdy nikt w nich nie pracuje).
 - **E5–E12 — asystenta**, według dopisku „Dopisek 25 września (2) — Etap 6” niżej. Następny krok: E5
@@ -106,7 +106,7 @@ uruchomić `MIX_ENV=test mix deps.get` w `packages/eh_os_contract` i w `packages
 
 - **Lokalnie, 25 września**, na `claude/dsl-v2-e4-contract-core-68fd81` (po przebazowaniu na `950f83f` i
   z D14): brama → **EXIT=0**. Sandbox: 45 testów, 0 padnięć,
-  `eh_os_contract.check` 0 błędów, 5 ostrzeżeń, 23 informacje. Pakiet silnika: 589 testów, 0 padnięć, `check`
+  `eh_os_contract.check` 0 błędów, 5 ostrzeżeń, 23 informacje. Pakiet silnika: 593 testy, 0 padnięć, `check`
   0 błędów, 8 ostrzeżeń, 16 informacji. Pakiet web: 31 testów, 0 padnięć. Linie `check` w obu projektach
   identyczne co do bajtu z `main` na każdym commicie E4.
 - **CI**: na `main` po merge'u #7 — przebieg `36137135279` na `c882946`, job `check` `success`, żaden krok
@@ -673,7 +673,7 @@ także w DSL-u domeny), `EhOsContract.DslRules` (raport naruszeń, wyjęty z `Do
 `Next.Contract.vocabulary/0`, `Model.capabilities/1`, `scope:` na aktorze domeny. Fikstura
 `UniversalityGate.Next.TreatmentEpisode` z `UniversalityGate.Domain`. `Rehmed.Domain` w zapisie z §4.5, bez
 nawiasów. Brama zielona na każdym z 12 commitów (z zastrzeżeniem w ustaleniu 10); sandbox 44 → 45, silnik
-493 → 589, web 31; `eh_os_contract.check` bez żadnej zmienionej linii w obu projektach.
+493 → 593 (z przeglądem), web 31; `eh_os_contract.check` bez żadnej zmienionej linii w obu projektach.
 
 **Warunki D13, jak sprawdzone** (plan: porażka któregokolwiek — stop i pytanie; żaden nie padł):
 1. *Błąd wskazuje plik:linię deklaracji, nie nakładki* — `test/dsl/dsl_wrappers_test.exs`: nieznana opcja obok
@@ -772,6 +772,24 @@ nawiasów. Brama zielona na każdym z 12 commitów (z zastrzeżeniem w ustaleniu
     się względem domeny (§8). Nieskompilowana domena jest odmawiana z nazwy. N1 odmawia query o nazwie
     komendy; unikalność w całej aplikacji to L3 (E5), jak mówi opis. Przykład wyniku z §4.6, pisany po
     aktorze, dostał notkę z datą: to jest `grants`.
+
+**Przegląd przed PR (25 września, `/code-review high origin/main..HEAD`, po przebazowaniu na `950f83f`).**
+Sześć znalezisk:
+1. `include` w procesie i `consults` w dcb przyjmowały zdarzenie z `consumes "<nazwa>"`, choć D12 kładzie je
+   w inboksie, nie w logu — **poprawione** w `1a376e1` (R4, A4).
+2. `consumes Kontrakt, :zdarzenie do field … end` kompilowało się, a `Build` gubił pola bez słowa —
+   **poprawione** w `597ace8`: K1 odmawia pól dla zdarzenia z kontraktu-rodzeństwa (v2 §7).
+3. Scenariusz z dwoma wyzwalaczami kompiluje się, a model trzyma tylko pierwszy — **pominięte**: jeden
+   wyzwalacz na scenariusz to reguły S1/S6, które wchodzą w E5; do dopisania tam.
+4. `DslWrappers.attach/2` odmawiał każdej encji z własnym `transform`, także takiej, której nakładki nie
+   dotykają — **poprawione** w `98185d8`.
+5. `Model.capabilities/1` przy `domain:` wskazującym moduł niebędący domeną padało na błędzie adaptera v1 —
+   **poprawione** w `cd10e5a`.
+6. N2 czytało eksporty `Kernel` na każdą nazwę i arność — **poprawione** w `edf109d` (jedna mapa przy
+   kompilacji modułu; bez zmiany zachowania).
+Testy z 1, 2, 4 i 5 zweryfikowane wstecz: na kodzie sprzed poprawki pada dokładnie nowy test. Silnik 589 →
+593. Na przebazowanych commitach sprzed przeglądu bramy od nowa nie puszczano — #8 zmienił tylko Markdown;
+zielona jest na każdym commicie od przebazowania.
 
 ### Losy fikstur
 
