@@ -16,7 +16,7 @@ dashboardu; `sandbox/` to dane testowe. **Trwa pivot do v2**: DSL na Sparku z mo
 są E0–E5a, D10–D14 (PR #1–#10). **E5 jest podzielony na dwa PR-y (decyzja użytkownika z 25 września): E5a —
 generowanie struktur i behaviours, wiązanie implementacji z L4, reguły S, `ScenarioCase` — zmergowany jako
 [PR #10](https://github.com/EmpoweredHouse/eh-os-contract/pull/10); E5b — kompilator Mixa `compile.eh_os_contract`
-z regułami X i L3 — jest zrobiony na `dsl-v2/e5b-compiler`, lokalnie, bez przeglądu przed PR i niewypchnięty.**
+z regułami X i L3 — jest zrobiony na `dsl-v2/e5b-compiler`, lokalnie, po przeglądzie przed PR, niewypchnięty.**
 E6–E12 i EA nie są zaczęte. Zachowanie v1 się nie zmieniło, poza tym, że log jest tylko do dopisywania.
 
 ### Stan repozytorium
@@ -25,8 +25,9 @@ E6–E12 i EA nie są zaczęte. Zachowanie v1 się nie zmieniło, poza tym, że 
   historia `main` ma merge commity.
 - **E5b: `dsl-v2/e5b-compiler`**, lokalna, niewypchnięta, wymeldowana w worktree
   `.claude/worktrees/dsl-v2-e5b-compiler-903cbd`. Na niej: handoff `de88708`, merge `origin/main` (`f38cc59`, bez
-  konfliktów), sześć commitów E5b (`686fcab`..`423164c`) i zapis stanu. **Przeglądu przed PR jeszcze nie było**
-  (skill `pre-pr-review`, notatka `refs/notes/review` na `HEAD`), więc PR-u też nie.
+  konfliktów), sześć commitów E5b (`686fcab`..`423164c`), zapis stanu (`d7a0f0a`), pięć poprawek z przeglądu
+  przed PR (`6793974`..`6b79f40`) i zapis przeglądu. Notatka przeglądu (`refs/notes/review`) jest na `HEAD`;
+  PR-u jeszcze nie ma.
 - Inne worktree: `dsl-v2-e1-model-seam-ed132e` (`38df8bd`), `dsl-v2-e4-contract-core-68fd81` (wymeldowuje
   `dsl-v2/e5-codegen` na `5cb888d`), `dsl-v2-e5-codegen-0c8df1` (`86f042f`), `eh-os-contract-step-7-062e77`
   (`ba1796a`) — wszystkie w całości w `main`; główny checkout na `main` (`3da83b4`).
@@ -36,9 +37,9 @@ E6–E12 i EA nie są zaczęte. Zachowanie v1 się nie zmieniło, poza tym, że 
 
 ### Co zostało — i czyje to jest
 
-- **E5b — przegląd przed PR: asystenta** (skill `pre-pr-review`: `/code-review` na `origin/main..HEAD`,
-  rozstrzygnięcie znalezisk, brama, notatka). **Push na `dsl-v2/e5b-compiler` i PR — na polecenie użytkownika.**
-  Co zrobione — „E5b — co wyszło” w dopisku Etap 6.
+- **E5b — push na `dsl-v2/e5b-compiler` i PR: na polecenie użytkownika.** Przegląd przed PR jest zrobiony i
+  zapisany; co zrobione — „E5b — co wyszło” w dopisku Etap 6. Opis PR-u: sekcje „How it was tested” (brama,
+  EXIT=0) i „Review” (osiem znalezisk niżej, z losem każdego).
 - **E6–E12 i EA — asystenta**, według dopisku Etap 6.
 - **Stare worktree i gałęzie — użytkownika**: `git worktree remove` dla `dsl-v2-e1-model-seam-ed132e`,
   `dsl-v2-e4-contract-core-68fd81`, `dsl-v2-e5-codegen-0c8df1`, `eh-os-contract-step-7-062e77`; gałęzie
@@ -82,9 +83,9 @@ czegokolwiek `MIX_ENV=dev`. Commit wiąż wyłącznie z kodem wyjścia bramy: sk
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 25 września**, na każdym z sześciu commitów E5b i na zapisie stanu, brama z `sandbox/` →
-  **EXIT=0**. Sandbox: 45 testów, 0 padnięć, `eh_os_contract.check` 0 błędów, 5 ostrzeżeń, 23 informacje.
-  Silnik: 685 testów (654 przed E5b), 0 padnięć, `check` 0 / 8 / 16. Web: 31 testów, 0 padnięć. Linie `check`
+- **Lokalnie, 25 września**, na każdym commicie E5b, poprawkach z przeglądu i zapisach stanu, brama z
+  `sandbox/` → **EXIT=0**. Sandbox: 45 testów, 0 padnięć, `eh_os_contract.check` 0 błędów, 5 ostrzeżeń, 23
+  informacje. Silnik: 688 testów (654 przed E5b), 0 padnięć, `check` 0 / 8 / 16. Web: 31 testów, 0 padnięć. Linie `check`
   w obu projektach identyczne co do bajtu z tymi na `f38cc59` (merge `main` przed E5b), a te z `5cb888d`.
 - **CI**: E5b nie był wypychany. Ostatni odczyt: PR #10 — przebieg `36153405700` na `86f042f`, `success`.
 
@@ -253,7 +254,7 @@ D10/D11/D14, para wydawca–subskrybent, literówka w `by:` psująca `mix compil
 na `claude/dsl-v2-e5-codegen-0c8df1`, 8 commitów od `b1d4a27` i 8 poprawek z przeglądu przed PR, wypchnięte
 na `dsl-v2/e5-codegen` jako [PR #10](https://github.com/EmpoweredHouse/eh-os-contract/pull/10) — „E5a — co
 wyszło” niżej. **E5b zrobione 25 września** na `dsl-v2/e5b-compiler`, sześć commitów (`686fcab`..`423164c`) na
-`main` z E5a, bez przeglądu przed PR — „E5b — co wyszło” niżej.
+`main` z E5a, i pięć poprawek z przeglądu przed PR — „E5b — co wyszło” niżej.
 
 **E6 — Dispatch synchroniczny i przejście VisitSettlement.** `Dispatcher`, `Codec`, `Capability`, idempotencja,
 ponowienia, projekcje i polityki inline, `record/3` (D6), wiersze `_commands` (v2 §11–12); query przez tę samą
@@ -921,6 +922,31 @@ konsekwencji; asystent je wyłożył i wybrał rekomendowane, bo oba są szczeg�
    sandboxa (VisitSettlement, E6) będzie sprawdzany od pierwszej kompilacji.
 7. **Katalog `tmp/`.** `@tag :tmp_dir` pisze do `packages/eh_os_contract/tmp/`; dopisane do
    `.gitignore` pakietu.
+
+**Przegląd przed PR (25 września, `/code-review high origin/main..HEAD`).** Osiem znalezisk:
+1. S3 nie sprawdzał danych `given` process managera ani `given` zdarzenia konsultowanego przez boundary, a X9
+   zakładał, że sprawdził — nieznany klucz albo brak pola przechodził przez obie warstwy. **Poprawione** w
+   `1693da3`, w S3 (L2), bo tam są pola lokalnych zdarzeń: oba idą tym samym sprawdzeniem co zdarzenie z `on`.
+2. X8 czytał `file:`/`line:` z opisu implementacji, więc `.beam` sprzed tej zmiany kończył `mix compile`
+   `KeyError`em w kompilatorze — **poprawione** w `6793974`: taka implementacja jest odrzucana bez miejsca.
+3. `Links.Siblings` rozwiązywał przemianowania `as:` sam, czwarta kopia tego, co `Model.consumed/2` miał
+   zastąpić — **poprawione** w `bfbd341`.
+4. `Links.Domain` trzymał własną listę struktur kontraktu obok tej w `Rules.Fields` — **poprawione** w `6b79f40`:
+   `Rules.Fields.structs/1` jest jedną listą.
+5. Kontrakt-rodzeństwo był budowany od nowa przy każdym `consumes` i każdym wpisie scenariusza —
+   **poprawione** w `f2d9746`: `Links.contract/2` bierze ten z `system`.
+6. Brak testu L3 dla zdarzenia przemianowanego przez `as:` — **poprawione** w `bfbd341` (test przechodzi przed i
+   po refaktorze 3, który przypina).
+7. Kompilator czyta eksporty każdego `.beam` przy każdej kompilacji — **pominięte**: zmierzone 759 plików w
+   109 ms razem ze startem VM (około 0,14 ms na plik), a alternatywa, manifest kompilatora Elixira, jest
+   prywatnym API Mixa.
+8. `Links.System.human/1` powtarza prywatne `human/1` z `Implementation` — **pominięte**: jedna linia w dwóch
+   modułach.
+Poprawki 1 i 2 zweryfikowane wstecz: na kodzie sprzed nich pada dokładnie nowy test. 3, 4 i 5 nie zmieniają
+zachowania; testy L3 przechodzą bez zmian. Silnik 685 → 688. Sprawdzone poza testami: prawdziwe `mix compile`
+projektu-fikstury w scratchpadzie — z błędem X2 w formacie Elixira, a bez zarejestrowanego kompilatora ta sama
+kompilacja przechodzi. Diff nie dotyka czytelników v1, tasków ani pakietu web, więc porównanie bajtów raportu i
+grafu na bazie dev nie ma czego mierzyć i nie było puszczane.
 
 ### Losy fikstur
 
