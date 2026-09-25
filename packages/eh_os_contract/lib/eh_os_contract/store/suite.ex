@@ -97,6 +97,24 @@ defmodule EhOsContract.Store.Suite do
           assert Enum.map(@store.read_stream(@repo, stream, 2), & &1.stream_version) == [3]
         end
 
+        test "an entry that names its own stream is refused; the condition names it" do
+          stream = suite_name("named")
+          type = suite_name("named-type")
+
+          assert_raise ArgumentError, fn ->
+            suite_append(
+              [suite_entry(type, %{stream_id: suite_name("other")})],
+              {:stream, stream, 0}
+            )
+          end
+
+          assert_raise ArgumentError, fn ->
+            suite_append([suite_entry(type, %{stream_version: 7})], {:stream, stream, 0})
+          end
+
+          assert @store.read_stream(@repo, stream, 0) == []
+        end
+
         test "a stale expected version is refused and writes nothing; the right one is accepted" do
           stream = suite_name("conflict")
           type = suite_name("conflict-type")

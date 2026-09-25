@@ -16,7 +16,8 @@ defmodule EhOsContract.Store do
   - **A stream's versions have no gaps.** `{:stream, id, expected}` appends only when
     the stream's highest version is `expected` (`0`: the stream must not exist yet).
     The new events get `expected + 1`, `expected + 2`, …. Otherwise the append returns
-    `{:error, :wrong_expected_version}` and writes nothing.
+    `{:error, :wrong_expected_version}` and writes nothing. The entries themselves name
+    no stream: the condition does.
   - **`:none` appends without a condition**, and then no entry may carry a stream.
     A stream id with no check would be a version nobody verified.
 

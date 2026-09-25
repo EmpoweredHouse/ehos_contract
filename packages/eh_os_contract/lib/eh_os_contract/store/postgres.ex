@@ -97,6 +97,16 @@ defmodule EhOsContract.Store.Postgres do
 
   defp apply_condition(repo, rows, {:stream, stream_id, expected})
        when is_binary(stream_id) and is_integer(expected) and expected >= 0 do
+    # The condition names the stream and the store numbers it. An entry that names
+    # one as well would be overwritten silently, and the stream it meant would never
+    # be checked.
+    if Enum.any?(rows, &(Map.get(&1, :stream_id) || Map.get(&1, :stream_version))) do
+      raise ArgumentError,
+            "an entry appended under {:stream, #{inspect(stream_id)}, _} carries its own " <>
+              "stream_id or stream_version. The condition names the stream and the store " <>
+              "numbers it, so leave both out of the entry"
+    end
+
     current =
       repo.one(
         from(e in Event,
