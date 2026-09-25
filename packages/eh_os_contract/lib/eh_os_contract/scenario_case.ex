@@ -47,6 +47,9 @@ defmodule EhOsContract.ScenarioCase do
 
   @epoch ~U[2026-01-01 09:00:00Z]
 
+  # The identity of a scenario's stream when the scenario gives none: it is one stream.
+  @stream "scenario"
+
   @doc false
   defmacro __using__(opts) do
     contract = Keyword.fetch!(opts, :contract)
@@ -92,7 +95,7 @@ defmodule EhOsContract.ScenarioCase do
   defp run(model, %{target: %{kind: kind, name: name}} = scenario, impl, identity, givens, now)
        when kind in [:aggregate, :dcb] do
     unit = Enum.find(model.units, &(&1.name == name))
-    initial = Map.new(unit.identity, &{&1, identity.(&1)})
+    initial = Map.new(unit.identity, &{&1, identity.(&1) || @stream})
 
     state =
       fold(
@@ -140,7 +143,15 @@ defmodule EhOsContract.ScenarioCase do
     state =
       if kind == :process_manager do
         pm = Enum.find(model.process_managers, &(&1.name == name))
-        run = Map.new(pm.correlate, &{&1, identity.(&1)})
+
+        domain = domain(model)
+
+        run =
+          for f <- pm.state.fields,
+              f.name in pm.correlate,
+              into: %{},
+              do: {f.name, correlated(f, identity, domain)}
+
         fold(impl, struct(Module.concat(Model.module_for(model, kind, name), State), run), givens)
       end
 
@@ -176,6 +187,16 @@ defmodule EhOsContract.ScenarioCase do
     for declaration <- declarations do
       {_module, fields, _identity} = shape(model, kind, name.(declaration))
       %{event: name.(declaration), data: cast_data(fields, declaration.data, domain)}
+    end
+  end
+
+  # What the scenario gives a correlation field, cast to its type. One it does not
+  # give is "scenario" when it is an :id, as an identity is; any other type has no
+  # value a runner could make up.
+  defp correlated(%{name: name, type: type}, identity, domain) do
+    case {identity.(name), type} do
+      {nil, :id} -> @stream
+      {value, _} -> cast(type, value, domain)
     end
   end
 
@@ -239,14 +260,14 @@ defmodule EhOsContract.ScenarioCase do
 
   # --- building structs from scenario data ------------------------------------------
 
-  # The value a scenario gives an identity field anywhere, or "scenario": one stream.
+  # The value a scenario gives a field of its stream anywhere, or nil.
   defp identity(scenario) do
     data =
       Enum.map(scenario.given, & &1.data) ++
         [scenario.trigger.data] ++
         Enum.map(scenario.expect, & &1.data) ++ Enum.map(scenario.issues, & &1.data)
 
-    fn field -> Enum.find_value(data, "scenario", &Map.get(&1, field)) end
+    fn field -> Enum.find_value(data, &Map.get(&1, field)) end
   end
 
   # A struct from scenario data: its fields cast to their types, the identity its
@@ -258,7 +279,7 @@ defmodule EhOsContract.ScenarioCase do
       for field <- injected,
           not Map.has_key?(data, field),
           into: %{},
-          do: {field, identity.(field)}
+          do: {field, identity.(field) || @stream}
 
     values = cast_data(fields, Map.merge(ids, data), domain(model))
     struct!(module, Map.put(values, :__meta__, %Meta{occurred_at: at, actor: actor}))

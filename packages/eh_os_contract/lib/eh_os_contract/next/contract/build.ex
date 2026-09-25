@@ -60,13 +60,16 @@ defmodule EhOsContract.Next.Contract.Build do
     units = of(entities, Dsl.Unit)
     declarations = Rules.declarations(dsl)
 
+    events = for u <- units, {stage, e} <- events(u), do: event(u, stage, e, prefix)
+
     collections = %{
       units: Enum.map(units, &unit/1),
       commands: for(u <- units, c <- u.commands, do: command(u, c)),
-      events: for(u <- units, {stage, e} <- events(u), do: event(u, stage, e, prefix)),
+      events: events,
       policies: entities |> of(Dsl.Policy) |> Enum.map(&plain/1),
       effects: entities |> of(Dsl.Effect) |> Enum.map(&plain/1),
-      process_managers: entities |> of(Dsl.ProcessManager) |> Enum.map(&process_manager/1),
+      process_managers:
+        entities |> of(Dsl.ProcessManager) |> Enum.map(&process_manager(&1, events)),
       read_models: entities |> of(Dsl.ReadModel) |> Enum.map(&plain/1),
       queries: entities |> of(Dsl.Query) |> Enum.map(&plain/1),
       consumes: entities |> of(Dsl.Consumes) |> Enum.map(&consumes/1),
@@ -149,11 +152,24 @@ defmodule EhOsContract.Next.Contract.Build do
   defp state_fields(states), do: Enum.flat_map(states, &plain(&1.fields))
 
   # A run is told by its correlation, so a process manager's state starts with those
-  # fields, as a unit's starts with its identity, unless the state declares them.
-  defp process_manager(pm) do
+  # fields, as a unit's starts with its identity, unless the state declares them. Each
+  # has the type a local event gives the field; one only consumed events carry is an
+  # :id, since their fields are the sibling's, which a contract does not compile against.
+  defp process_manager(pm, events) do
     declared = state_fields(pm.state)
     names = MapSet.new(declared, & &1.name)
-    correlation = for f <- id_fields(pm.correlate), not MapSet.member?(names, f.name), do: f
+
+    correlation =
+      for f <- id_fields(pm.correlate), not MapSet.member?(names, f.name) do
+        type =
+          Enum.find_value(
+            events,
+            :id,
+            &Enum.find_value(&1.fields, fn e -> e.name == f.name && e.type end)
+          )
+
+        %{f | type: type}
+      end
 
     pm
     |> plain()

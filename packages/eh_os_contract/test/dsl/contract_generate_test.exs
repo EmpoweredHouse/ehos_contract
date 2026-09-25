@@ -137,6 +137,43 @@ defmodule EhOsContract.Next.ContractGenerateTest do
     end
   end
 
+  test "a process manager's correlation has the type a local event gives it" do
+    binaries =
+      "Periods"
+      |> contract("""
+        aggregate :month, "Miesiąc" do
+          identity :company_id
+
+          command :open_month, "Otwarcie", by: :accountant, emits: :month_opened do
+            field :period, :integer
+          end
+
+          event :month_opened, "Otwarto" do
+            field :period, :integer
+          end
+        end
+
+        process :month, "Miesiąc" do
+          correlate :company_id
+        end
+
+        process_manager :reminders, "Przypomnienia" do
+          correlate [:company_id, :period]
+          starts_on :month_opened
+          ends_on :month_opened
+        end
+      """)
+      |> compile("periods.ex")
+      |> Map.new()
+
+    state = Module.concat([@fixtures, Periods, ProcessManagers, Reminders, State])
+    {:ok, [{:type, t}]} = binaries |> Map.fetch!(state) |> Code.Typespec.fetch_types()
+    type = t |> Code.Typespec.type_to_quoted() |> Macro.to_string()
+
+    assert type =~ "company_id: String.t() | nil"
+    assert type =~ "period: integer() | nil"
+  end
+
   describe "consumed events" do
     test "one received from another application is a struct of the fields declared for it" do
       received = generated([Received, VisitClosed])
