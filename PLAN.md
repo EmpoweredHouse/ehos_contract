@@ -31,8 +31,9 @@ zmian — w kodzie nic się jeszcze nie ruszyło.
   repozytorium:
   - `.claude/settings.json` — hook `PreToolUse` na Bash: odmawia otwarcia PR, dopóki `HEAD` nie ma notatki
     `git notes --ref=review`. Dopasowuje tylko faktyczne wywołanie (na początku linii albo po `;`, `&`, `|`,
-    `(`), nie frazę w tekście. Sprawdzony pipe-testem i `jq -e`; Claude Code przeładowuje go w trakcie
-    sesji. Notatki są lokalne — `refs/notes/review` nie jest wypychane.
+    `(`), nie frazę w tekście; łapie też alias `gh pr new`. Sprawdzony pipe-testem i `jq -e`. W sesji z
+    25 września Claude Code przeładował go po edycji, ale to jedna obserwacja: jeśli po zmianie hooka nie
+    działa, pomaga `/hooks` albo restart. Notatki są lokalne — `refs/notes/review` nie jest wypychane.
   - `.claude/skills/pre-pr-review/` — połowa autora: `/code-review`, rozliczenie znalezisk, brama, notatka.
     Połową recenzenta zostaje `.claude/skills/review-pr/`.
 

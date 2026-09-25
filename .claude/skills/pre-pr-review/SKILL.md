@@ -7,9 +7,15 @@ description: Review your own change to this repository with /code-review, settle
 
 Every pull request to this repository is reviewed by its author before it is opened: run
 `/code-review`, settle what it finds, pass the gate, record it. A Claude Code hook
-(`.claude/settings.json`) enforces the last step: `gh pr create` is refused until `HEAD` carries a
-note in `refs/notes/review`. The note belongs to one commit, so a new commit, amend or rebase
-leaves the new `HEAD` without one.
+(`.claude/settings.json`) enforces the last step: `gh pr create` (and its alias `gh pr new`) is
+refused until `HEAD` carries a note in `refs/notes/review`. The note belongs to one commit, so a
+new commit, amend or rebase leaves the new `HEAD` without one.
+
+The hook is a reminder for this workflow, not access control. It reads the local `HEAD`, not the
+branch the pull request will carry (`--head`), it does not see an invocation behind `env`,
+`bash -c` or a shell keyword, it lets everything through on a machine without `jq`, and it
+refuses `--help` too (`gh help pr create` works). Keeping to the steps is what makes the note
+mean something.
 
 This is the author's half. The reviewer's half is `.claude/skills/review-pr/SKILL.md`; read it
 before step 3, because what it tells the reviewer to look at is what your review should have
