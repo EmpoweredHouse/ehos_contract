@@ -283,6 +283,62 @@ defmodule EhOsContract.DomainRulesTest do
     end
   end
 
+  describe "D5: a relation's roles fit its type, and its ends exist" do
+    @contexts """
+      context :scheduling, "Umawianie", subdomain: :core
+      context :settlement, "Rozliczenia", subdomain: :supporting
+    """
+
+    test "a directed relation written with between is refused" do
+      assert refused(
+               "DirectedBetween",
+               @contexts <> "  relation :conformist, between: [:scheduling, :settlement]\n"
+             ) =~
+               "D5: relation :conformist has a direction: give it upstream: and downstream:, and no between: (directed_between.ex:6)"
+    end
+
+    test "a symmetric relation written with a direction is refused" do
+      assert refused(
+               "SymmetricDirected",
+               @contexts <>
+                 "  relation :partnership, upstream: :scheduling, downstream: :settlement\n"
+             ) =~
+               "D5: relation :partnership is symmetric: give it between: [a, b], and no upstream: or downstream:"
+    end
+
+    test "an end the domain does not declare, and a context related to itself, are refused" do
+      message =
+        refused(
+          "BadEnds",
+          @contexts <>
+            """
+              relation :customer_supplier, upstream: :scheduling, downstream: :billing
+              relation :shared_kernel, between: [:settlement, :settlement]
+            """
+        )
+
+      assert message =~
+               "D5: relation :customer_supplier names context :billing, which this domain does not declare"
+
+      assert message =~ "D5: relation :shared_kernel relates context :settlement to itself"
+    end
+
+    test "the control: each of the eight types, written the way it reads, compiles" do
+      directed =
+        for type <-
+              ~w(customer_supplier conformist anticorruption_layer open_host_service published_language) do
+          "  relation :#{type}, upstream: :scheduling, downstream: :settlement\n"
+        end
+
+      symmetric =
+        for type <- ~w(partnership shared_kernel separate_ways) do
+          "  relation :#{type}, between: [:scheduling, :settlement]\n"
+        end
+
+      compiles("EveryRelation", @contexts <> Enum.join(directed ++ symmetric))
+    end
+  end
+
   describe "the Spark schema (layer L1)" do
     test "an unknown option is refused with the file and line of the declaration" do
       error =

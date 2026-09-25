@@ -13,7 +13,8 @@ defmodule EhOsContract.Domain.Rules do
 
   use Spark.Dsl.Transformer
 
-  alias EhOsContract.Domain.Dsl.{Actor, Context, External, Subject, Value}
+  alias EhOsContract.Domain.Dsl
+  alias EhOsContract.Domain.Dsl.{Actor, Context, External, Relation, Subject, Value}
   alias Spark.Dsl.Transformer
 
   @impl true
@@ -40,7 +41,7 @@ defmodule EhOsContract.Domain.Rules do
     end
   end
 
-  defp rules, do: [&d1/2, &d2/2, &d3/2, &d4/2]
+  defp rules, do: [&d1/2, &d2/2, &d3/2, &d4/2, &d5/2]
 
   # --- D1: names are unique per kind ---------------------------------------------
 
@@ -308,6 +309,57 @@ defmodule EhOsContract.Domain.Rules do
         else: []
 
     backed_by ++ context
+  end
+
+  # --- D5: a relation's roles fit its type, and its ends exist --------------------
+
+  defp d5(entities, _domain) do
+    contexts = MapSet.new(for %Context{name: name} <- entities, do: name)
+
+    for %Relation{} = relation <- entities,
+        violation <- relation_violations(relation, contexts) do
+      violation
+    end
+  end
+
+  defp relation_violations(%Relation{type: type} = relation, contexts) do
+    where = "D5: relation #{inspect(type)}"
+    directed? = type in Dsl.directed_relations()
+
+    roles =
+      cond do
+        directed? and
+            (relation.between != [] or is_nil(relation.upstream) or is_nil(relation.downstream)) ->
+          [
+            {"#{where} has a direction: give it upstream: and downstream:, and no between:",
+             relation}
+          ]
+
+        not directed? and
+            (relation.upstream != nil or relation.downstream != nil or
+               length(relation.between) != 2) ->
+          [
+            {"#{where} is symmetric: give it between: [a, b], and no upstream: or downstream:",
+             relation}
+          ]
+
+        true ->
+          []
+      end
+
+    ends = Enum.reject([relation.upstream, relation.downstream | relation.between], &is_nil/1)
+
+    unknown =
+      for name <- Enum.uniq(ends), not MapSet.member?(contexts, name) do
+        {"#{where} names context #{inspect(name)}, which this domain does not declare", relation}
+      end
+
+    itself =
+      if roles == [] and length(Enum.uniq(ends)) == 1,
+        do: [{"#{where} relates context #{inspect(hd(ends))} to itself", relation}],
+        else: []
+
+    roles ++ unknown ++ itself
   end
 
   # Every occurrence after the first, in declaration order: the later declaration is
