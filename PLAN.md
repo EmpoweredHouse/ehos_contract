@@ -13,20 +13,23 @@ zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisan
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności) i jej
 dashboardu; `sandbox/` to dane testowe. **Trwa pivot do v2**: DSL na Sparku z modelem domeny w stylu ESDM
 (jeden kontrakt = jeden proces), event sourcing na własnym magazynie w Postgresie, crypto-shredding. Plan
-zatwierdzono 25 września. **E0 i E1 (szew `EhOsContract.Model`) są w `main`. Po E1 doszły decyzje D10–D12
-(query z capability i `scope`, zdarzenia integracyjne przez `publish`, inbox) i etap E12. E2–E12 nie są
-zaczęte.** Zachowanie v1 się nie zmieniło.
+zatwierdzono 25 września. **E0, E1 (szew `EhOsContract.Model`) i decyzje D10–D12 (query z capability i
+`scope`, zdarzenia integracyjne przez `publish`, inbox, etap E12) są w `main`. E2 (log staje się magazynem) jest
+zrobiony na gałęzi `dsl-v2/e2-store`, niewypchniętej. E3–E12 nie są zaczęte.** Zachowanie v1 się nie zmieniło,
+poza tym, że log jest teraz tylko do dopisywania.
 
 ### Stan repozytorium
 
-- `main` = `origin/main` = `bfda7c7`, merge [PR #3](https://github.com/EmpoweredHouse/eh-os-contract/pull/3)
-  (`dsl-v2/e1-model-seam`, E1), zmergowanego przez użytkownika 25 września. Wcześniej PR #1 (`7ce9be2`, E0) i
-  PR #2 (`73031d2`, hook i skill przeglądu). CI na `main` po merge'u #3: przebieg `36118784554`, `success`.
-- `dsl-v2/e1-model-seam` jest w całości w `main`, ale istnieje dalej lokalnie, na `origin` i jako worktree
-  sesji E1 (`.claude/worktrees/dsl-v2-e1-model-seam-ed132e`).
-- **`dsl-v2/e1-decisions`**, od `bfda7c7`: tylko dokumenty — D10–D12 w `docs/adr/contract-v2.md` §16 (z
-  notkami z datą w §4.2, §4.6, §7, §15, §19) i zmiany etapów w dopisku Etap 6. Wypchnięcie i PR 25 września na
-  polecenie użytkownika; stan odczytaj przez `gh pr list --state all --limit 3`.
+- `main` = `origin/main` = `c61ce5b`, merge [PR #4](https://github.com/EmpoweredHouse/eh-os-contract/pull/4)
+  (`dsl-v2/e1-decisions`: D10–D12 w `docs/adr/contract-v2.md` §16 i zmiany etapów). Przed nim
+  [PR #3](https://github.com/EmpoweredHouse/eh-os-contract/pull/3) (`bfda7c7`, E1), PR #2 (`73031d2`, hook i skill
+  przeglądu) i PR #1 (`7ce9be2`, E0). Wszystkie zmergowane przez użytkownika 25 września.
+- `dsl-v2/e1-model-seam` jest skasowana lokalnie i na `origin`. `dsl-v2/e1-decisions` jest w całości w `main`,
+  ale istnieje dalej lokalnie i na `origin`.
+- **`dsl-v2/e2-store`**, od `c61ce5b`: 7 commitów kodu (`5db56e5`..`246dd11`) i commit z tym handoffem. Tylko
+  lokalnie, bez PR. **Worktree E2 leży pod ścieżką `.claude/worktrees/dsl-v2-e1-model-seam-ed132e`** — nazwa z
+  E1, bo hook sesji pilnował tej ścieżki po skasowaniu worktree E1 i nie pozwalał pisać w głównym checkoucie.
+  Gałąź w nim to `dsl-v2/e2-store`; główny checkout stoi na `main`.
 - **Przegląd przed PR**: `.claude/settings.json` (hook `PreToolUse` odmawia `gh pr create`/`gh pr new`,
   dopóki `HEAD` nie ma notatki `git notes --ref=review`) i `.claude/skills/pre-pr-review/` (połowa autora).
   Połową recenzenta zostaje `.claude/skills/review-pr/`. Notatki są lokalne, `refs/notes/review` nie jest
@@ -34,19 +37,20 @@ zaczęte.** Zachowanie v1 się nie zmieniło.
 
 ### Co zostało — i czyje to jest
 
-- **Przegląd i merge PR z `dsl-v2/e1-decisions` — użytkownika.** E2 rusza dopiero po nim, bo oba zmieniają
-  `PLAN.md`.
-- **Skasowanie `dsl-v2/e1-model-seam` i jej worktree — użytkownika**, gdy sesja E1 jest zamknięta:
-  `git worktree remove .claude/worktrees/dsl-v2-e1-model-seam-ed132e`, `git branch -d dsl-v2/e1-model-seam`,
-  `git push origin --delete dsl-v2/e1-model-seam`.
-- **E2–E12 — asystenta**, według dopisku „Dopisek 25 września (2) — Etap 6” niżej. Następny krok: E2
-  (log staje się magazynem) na gałęzi `dsl-v2/e2-*` od `main`.
+- **Przegląd E2 i decyzja o PR — użytkownika.** Wypchnięcie, PR i merge tylko na wyraźne polecenie; przed
+  `gh pr create` skill `pre-pr-review` na tej gałęzi.
+- **Skasowanie `dsl-v2/e1-decisions` — użytkownika** (`git branch -d dsl-v2/e1-decisions`,
+  `git push origin --delete dsl-v2/e1-decisions`), i worktree E2 po zamknięciu jego sesji.
+- **E3–E12 — asystenta**, według dopisku „Dopisek 25 września (2) — Etap 6” niżej. Następny krok: E3 (Spark i
+  DSL domeny) na gałęzi `dsl-v2/e3-*` od `dsl-v2/e2-store`. E3 kończy się testem właściwości Sparka, którego
+  porażka wraca do użytkownika przed E4.
 - **Lista zmian do `eh-os`** (odwrócenie D-01, zawężenie D-15, outbox, G-16, pytanie o transport v1) —
   użytkownika; jest w „D10–D12 — skąd się wzięły” w dopisku Etap 6.
 - **Trzy pytania z E1 do użytkownika** (szczegóły: „E1 — co szew ujawnił” w dopisku Etap 6):
   naprawić niedeterministyczną kolejność linii `owner` w `mix eh_os_contract.check` (jedno `sort_by`,
   osobny commit) — kiedy; wpis o `EhOsContract.Model` w `CHANGELOG.md` teraz czy dopiero w E6;
-  zasiane w E1 dwa przebiegi `open_month` zostają w bazie dev — czy to przeszkadza.
+  zasiane w E1 dwa przebiegi `open_month` zostają w bazie dev — czy to przeszkadza. E2 dokłada do drugiego
+  pytania nową migrację i moduły `Clock` i `Store` (ustalenie 8 w „E2 — co wyszło”).
 - **Publikacja na Hex — użytkownika**, decyzja niepodjęta. W repozytorium są tagi `v0.2.0` i `v0.2.1`; śladu
   publikacji nie ma.
 - **F1 i F2** (`docs/adr/contract-v2.md` §16: skąd suma wizyty, który dzień dostaje korekta) oraz dziesięć
@@ -66,9 +70,10 @@ zaczęte.** Zachowanie v1 się nie zmieniło.
    usterek, których porty nie naprawiają.
 5. `packages/eh_os_contract/docs/contract.md` — DSL v1, który jest zastępowany; tabela „What refuses to
    compile” to punkt wyjścia reguł L2.
-6. Przed E2: `packages/eh_os_contract/lib/eh_os_contract/{event,emitter,migrations}.ex` i
-   `lib/eh_os_contract/migrations/`. Czytelnicy pytają już tylko `EhOsContract.Model`
-   (`lib/eh_os_contract/model.ex`), a o funkcje kontraktu pyta wyłącznie `Model.V1`.
+6. Przed E3: `docs/adr/contract-v2.md` §4.2 (rozszerzenie `Domain`) i §6 (reguły D1–D5), plan E3 w dopisku
+   Etap 6. Stan kodu: czytelnicy pytają tylko `EhOsContract.Model`, log pisze się tylko przez
+   `EhOsContract.Store` (`lib/eh_os_contract/store.ex`, `store/postgres.ex`), czas zdarzenia daje
+   `EhOsContract.Clock`.
 7. Przed pierwszym PR: `.claude/skills/pre-pr-review/SKILL.md` — bez notatki przeglądu hook odmówi.
 
 ### Komendy
@@ -88,13 +93,14 @@ uruchomić `MIX_ENV=test mix deps.get` w `packages/eh_os_contract` i w `packages
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 25 września**, na `dsl-v2/e1-model-seam` (`24c91ab`; kod identyczny z dzisiejszym `main`, bo
-  później zmieniały się tylko `PLAN.md` i `docs/adr/contract-v2.md`): brama wyżej → **EXIT=0**. Sandbox: 42 testy, 0 padnięć, `eh_os_contract.check` 0 błędów,
-  5 ostrzeżeń, 23 informacje. Pakiet silnika: 421 testów (397 + 24 z `model_test`), 0 padnięć, `check`
-  0 błędów, 8 ostrzeżeń, 16 informacji. Pakiet web: 31 testów, 0 padnięć. Te same liczby `check` co na
-  `main`.
-- **CI**: na `main` po merge'u PR #3 przebieg `36118784554` (`bfda7c7`), `success`. CI na PR z
-  `dsl-v2/e1-decisions` odczytaj przez `gh pr checks`, nie z tego akapitu.
+- **Lokalnie, 25 września**, na `dsl-v2/e2-store` (`246dd11`, a potem ten commit, który zmienia tylko
+  dokumenty): brama wyżej → **EXIT=0**. Sandbox: 42 testy, 0 padnięć, `eh_os_contract.check` 0 błędów,
+  5 ostrzeżeń, 23 informacje. Pakiet silnika: 450 testów (421 z `main` + 29 z E2), 0 padnięć, `check` 0 błędów,
+  8 ostrzeżeń, 16 informacji. Pakiet web: 31 testów, 0 padnięć. Te same liczby `check` co na `main`.
+- **CI**: na `main` sprawdzaj przez `gh run list --branch main --limit 2`. Na gałęzi E2 CI nie było, bo nie jest
+  wypchnięta. **Suita silnika potrzebuje teraz drugiej bazy** (`eh_os_contract_test_commits`). Alias `test`
+  pakietu tworzy ją i migruje sam, bo `ecto.create` obejmuje oba repo — sprawdzone lokalnie po
+  `ecto.drop -r EhOsContract.CommitRepo`. Na CI potwierdzi to pierwszy przebieg.
 
 ### Otwarte pytania
 
@@ -102,8 +108,6 @@ uruchomić `MIX_ENV=test mix deps.get` w `packages/eh_os_contract` i w `packages
   przyjęte po E1 tego samego dnia. Nowe pytania w §19: `scope` dla komend, transport v1 między kontenerami. Każde można
   otworzyć ponownie; ponowne otwarcie to notka z datą w §16. Najbardziej brzemienne: D6 (`recorded_by` dla
   15 zdarzeń bez komendy) i D7 (przynależność cudzych zdarzeń do przebiegów przez `_event_runs`).
-- **Na początku E2:** trigger „tylko dopisywanie” już w E2 (emiter v1 dostaje wtedy `occurred_at` w `ctx`
-  dla trzech testów cofających czas) czy dopiero w E6. Rozstrzygnąć i zapisać w dopisku Etap 6.
 - **Trzy pytania z E1** — wyżej, w „Co zostało”.
 - **Upcastery:** kontrakt callbacku — jeden na typ i wersję czy łańcuch — rozstrzyga etap, który pierwszy go
   potrzebuje (§19).
@@ -197,6 +201,9 @@ report, graph, deployment, dependency) przechodzą bez zmian asercji; test konfl
 która przechodzi; czytelnik „pozycja > checkpoint” nie gubi zdarzenia przy dwóch transakcjach commitujących
 poza kolejnością sekwencji; 50 równoległych dopisujących daje wersje 1..N bez dziur; UPDATE, DELETE i TRUNCATE
 odrzucone; suita behaviouru `Store`, którą może uruchomić każda implementacja; V02 ↔ V03 w obie strony.
+**Zrobione 25 września** na `dsl-v2/e2-store`, 7 commitów (`5db56e5`..`246dd11`), niewypchnięte. Trigger
+„tylko dopisywanie” **wszedł w E2**; zegar wstrzykiwany to `EhOsContract.Clock` w zasięgu procesu, nie
+`occurred_at` w `ctx` — powód i reszta ustaleń w „E2 — co wyszło” niżej.
 
 **E3 — Spark i DSL domeny.** `{:spark, "~> 2.7.3"}`, `sourceror` tylko dev/test. Rozszerzenie `Domain`
 (v2 §4.2): transformery (reguły D1–D5), model, generowany moduł typów `Values`, digest domeny. Brama pakietu
@@ -405,6 +412,70 @@ nowy plik). Brama zielona na każdym z 14 commitów; sandbox 42 testy, silnik 39
    najpierw `Code.ensure_loaded?/1`. Oba testy z tego commita zweryfikowane wstecz.
 5. `EhOsContract.Model.` pisane raz przez alias, raz pełną nazwą. **Bez zmiany**: pełną nazwą tam, gdzie
    w pliku jest jedno wywołanie, tak jak w tych samych plikach `EhOsContract.Registry.contracts()`.
+
+### E2 — co wyszło (25 września)
+
+Stan: migracja V03 (`lib/eh_os_contract/migrations/v03.ex`, `current_version/0` = 3, migracja konsumenta
+`20260925120000_upgrade_eh_os_contract_to_v3` w trzech katalogach `priv`), `EhOsContract.Store`,
+`Store.Postgres`, `Store.Suite`, `EhOsContract.Clock`, emiter v1 i pomocnik testów dopisujący przez `Store`.
+Druga baza testowa silnika, `eh_os_contract_test_commits` (`test/support/commit_repo.ex`), na testy, które
+potrzebują prawdziwych commitów. Brama zielona na każdym z 7 commitów; sandbox 42, silnik 421 → 450, web 31;
+`eh_os_contract.check` bez żadnej zmienionej linii.
+
+**Odbiór, jak sprawdzony.**
+- Testy czytające log (trace, trace_edges, trace_granularity, run, conformance, conformance_wire, report,
+  graph, deployment, dependency): żadna asercja nie zmieniona. Zmieniły się tylko pomocnicze funkcje zasiewu
+  — `run_test` i `report_test` emitują w przeszłości przez `Clock.at/2` zamiast przesuwać `occurred_at`
+  `UPDATE`-em, a jedenaście plików pisze log przez `DataCase.record_event!/1` (albo `record_events!/1`).
+- Konflikt wersji z kontrolą, 50 równoległych dopisujących → wersje 1..50 bez dziur, czytelnik „pozycja >
+  checkpoint” przy dwóch transakcjach: `EhOsContract.Store.Suite`, uruchamiana w `test/store_test.exs` na
+  `CommitRepo`. Zweryfikowane wstecz: bez blokady w `append/3` pada wyścig (naruszenie unikalności indeksu
+  strumienia); bez blokady i bez triggera V03 pada też test kolejności commitów i test zapisu z pominięciem
+  store'u. `store_test` pięć razy pod rząd zielony.
+- UPDATE, DELETE i TRUNCATE odrzucone, każde z kontrolą: `test/store_schema_test.exs`.
+- V02 ↔ V03 w obie strony, na wierszach zapisanych w kształcie V02: `test/migrations_test.exs`; zweryfikowane
+  wstecz (numerowanie po czymś innym niż `occurred_at` psuje test). Poza tym `CommitRepo.reset!/0` przy
+  każdym przebiegu suity migruje całą bazę w dół i w górę.
+- Baza dev: V03 ponumerowała 12 zasianych wierszy 1..12 w kolejności `occurred_at`; `mix eh_os_contract.report`
+  i `graph --overlay --mermaid` przed migracją i po niej identyczne bajt w bajt. **Baza dev jest teraz na V03**
+  — wspólna z głównym checkoutem; kod z `main` nadal na niej działa, bo V03 niczego mu nie zabrania poza
+  UPDATE/DELETE na logu, których v1 nie robi.
+
+**Ustalenia.**
+1. **Zegar w zasięgu procesu, nie `occurred_at` w `ctx`.** `report_test` cofał czas także zdarzeniom
+   emitowanym przez handler asynchroniczny po `Oban.drain_queue/2`, a job buduje swój `ctx` z argumentów —
+   klucz w `ctx` wołającego tam nie dociera. Przenoszenie czasu przez argumenty joba byłoby błędem poza
+   testami, bo zakolejkowany handler działa później. `Clock.at/2` sięga każdego zdarzenia wyemitowanego w
+   tym procesie w trakcie funkcji, łącznie z opróżnianą kolejką, i żadnego z innego procesu. Kilka linii,
+   więc trigger wszedł w E2, zgodnie z regułą z opisu etapu. `Clock.at/2` poszerza precyzję do mikrosekund
+   — przykład z jego własnego moduledoku padał na `:utc_datetime_usec` (osobny commit `246dd11`).
+2. **Piszących log z pominięciem `emit` było jedenastu, nie dziesięciu.** Grep z planowania szukał
+   `insert!(%Event{})`; `scale_edges_test` wstawiał przez `insert_all` i bez `actor`, co wyszło dopiero na
+   `NOT NULL` z V03.
+3. **Prawdziwe commity wymagały osobnej bazy, nie osobnego schematu.** Plan dla E7 mówi „osobny schemat”.
+   Dla E2 wystarczyło drugie repo na drugiej bazie: `Store` dostaje repo w każdym wywołaniu, więc nic nie
+   musiało znać prefiksu, a migracje i tak testują się na niej w obie strony. Wierszy z logu nie da się
+   usunąć, więc baza jest czyszczona migracją w dół i w górę na starcie każdego przebiegu, a testy na niej
+   są `async: false` i piszą pod własnymi nazwami. E7 może jej użyć zamiast schematu.
+4. **Szkic v2 §10.1 miał trzy rzeczy do poprawki** — poprawka z datą w §10.1: `after` to słowo
+   zarezerwowane (parametr nazywa się `after_position`); callbacki zwracają wiersze `EhOsContract.Event`, a
+   nie `Recorded`, bo tak czytają wszyscy czytelnicy v1 (`Recorded` ma sens, gdy `Codec` zacznie dekodować,
+   E6); warunek DCB i `read_query/2` wchodzą w E9 razem z PayerSettlement.
+5. **`id` zostaje kluczem głównym schematu Ecto, choć kluczem tabeli jest `position`.** Dzięki temu żadne
+   `Repo.get(Event, id)` ani `causation_id` nie musiało się zmienić. `position` i `recorded_at` są
+   `read_after_writes`, a Ecto nie wstawia ich jawnie, więc kolumna tożsamości `GENERATED ALWAYS` działa także
+   z `Repo.insert!/1`.
+6. **Globalna blokada a testy konsumenta.** W transakcji Ecto Sandbox blokada dopisu trwa do końca testu,
+   więc dwa testy `async: true`, które piszą log, czekają na siebie w całości. W tej suicie wszystkie testy
+   piszące log są `async: false`, więc dziś nic to nie kosztuje; host z asynchronicznymi testami emisji
+   zobaczy ich serializację. Do zapisania w dokumentacji dla konsumentów przy cięciu (E11).
+7. **Poza zakresem E2, świadomie:** kolumny v1 zostają `varchar(255)` zamiast `text` z v2 §10.3 (zwinięcie
+   migracji, D2, E11, dojdzie do ostatecznego kształtu); `EhOsContract.Key` z v2 §10.4 — nic w E2 nie liczy
+   jeszcze identyfikatorów strumieni, pierwsze będą agregaty w E6; `eh_os_contract_commands` istnieje, ale nic
+   do niej nie pisze do E6 — jest w V03, żeby E6 nie potrzebował V04.
+8. **Zmiana dla konsumenta:** nowa migracja jest wymagana (`up(version: 3)`), a z nią publiczne moduły
+   `Clock`, `Store`, `Store.Postgres`, `Store.Suite`. To powinno trafić do `CHANGELOG.md` przed wydaniem —
+   dokłada się do pytania z E1, kiedy otworzyć „Unreleased”.
 
 ### Losy fikstur
 
