@@ -323,7 +323,7 @@ defmodule EhOsContract.CheckAmbiguityTest do
       # answer anywhere in the log, the verdict is still `:pending` — which reads as
       # "too early to say" and will read that way for ever, because the window a
       # violation has to be past never closes.
-      Repo.insert!(%EhOsContract.Event{
+      record_event!(%{
         type: "asked",
         contract: inspect(NoDeadline),
         contract_version: NoDeadline.version(),

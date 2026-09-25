@@ -29,6 +29,19 @@ defmodule EhOsContract.Event do
     field(:payload, :map)
     field(:actor, :string)
     field(:occurred_at, :utc_datetime_usec)
+
+    # The store's columns (v2 §10.3, migration V03). `position` is the order of
+    # appends and the table's primary key; `id` stays this schema's primary key, so
+    # every lookup by id works as before. Both `position` and `recorded_at` are the
+    # database's to assign.
+    field(:position, :integer, read_after_writes: true)
+    field(:recorded_at, :utc_datetime_usec, read_after_writes: true)
+    field(:schema_version, :integer, default: 1)
+    field(:stream_id, :string)
+    field(:stream_version, :integer)
+    field(:tags, {:array, :string}, default: [])
+    field(:command_id, :binary_id)
+    field(:metadata, :map, default: %{})
   end
 
   @doc """

@@ -60,7 +60,7 @@ defmodule EhOsContract.DeploymentTest do
       # subscribes to `case_closed` now, so this path exists only in history.
       deployment(%{wiring_version: "wiring-1", edges: ["case_closed->item_appealed"]})
 
-      Repo.insert!(%EhOsContract.Event{
+      record_event!(%{
         type: "item_appealed",
         contract: inspect(Contract),
         contract_version: Contract.version(),
@@ -85,7 +85,7 @@ defmodule EhOsContract.DeploymentTest do
       # The fix has no business silencing real drift.
       a_run("c-1")
 
-      Repo.insert!(%EhOsContract.Event{
+      record_event!(%{
         type: "never_declared",
         contract: inspect(Contract),
         contract_version: Contract.version(),
@@ -185,7 +185,7 @@ defmodule EhOsContract.DeploymentTest do
     test "versions in the log with counts and ranges" do
       a_run("c-1")
 
-      Repo.insert!(%EhOsContract.Event{
+      record_event!(%{
         type: "item_received",
         contract: inspect(Contract),
         contract_version: "old-version",

@@ -695,6 +695,18 @@ end
 
 It isolates the SQL, not the transaction model: every call runs inside the caller's Ecto transaction.
 
+*Corrected 25 September 2026, while E2 built the behaviour.* Three things in the sketch above did not survive
+contact with the compiler and with v1's readers:
+
+- `after ::` does not compile, because `after` is a reserved word in Elixir. The built behaviour names the
+  parameter `after_position`.
+- The callbacks return `EhOsContract.Event` rows, not an `EhOsContract.Recorded` struct. Every v1 reader
+  and handler already takes `%EhOsContract.Event{}`, and E2 changes none of them. A decoded read type
+  earns its own struct when `Codec` starts decoding payloads (E6), not before.
+- E2 builds the `:none` and `{:stream, id, expected}` conditions only. `{:dcb, query, after}` and
+  `read_query/2` come in E9 with PayerSettlement, the first contract that needs them. So the condition
+  arrives together with its first reader.
+
 ### 10.2 Ordering: one global, transaction-scoped advisory lock
 
 Positions from a sequence commit out of order under concurrent writers, and a reader following

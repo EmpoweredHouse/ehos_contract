@@ -105,7 +105,7 @@ defmodule EhOsContract.TraceTest do
   describe "the window" do
     # Events inserted directly, because that is the only way to set `occurred_at`.
     defp fact(type, request_id, at) do
-      Repo.insert!(%EhOsContract.Event{
+      record_event!(%{
         type: to_string(type),
         contract: inspect(Contract),
         contract_version: Contract.version(),

@@ -6,7 +6,7 @@ import Config
 # configure itself as its own first consumer.
 
 config :eh_os_contract,
-  ecto_repos: [EhOsContract.TestRepo],
+  ecto_repos: [EhOsContract.TestRepo, EhOsContract.CommitRepo],
   # The engine scans the binary that actually runs, and here that binary is its
   # own: the invented fixtures compile into `:eh_os_contract` under `test/support/`. This is
   # the one place where a library naming itself is correct rather than the silent
@@ -22,6 +22,20 @@ config :eh_os_contract, EhOsContract.TestRepo,
   database: "eh_os_contract_test",
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: 10
+
+# A second database for the tests the sandbox cannot host: concurrent appenders,
+# transactions that commit out of order, and migrations run back and forth. Those
+# need real commits, and a committed row in the log can never be deleted, so they
+# get a database of their own. `test_helper.exs` migrates it down and up again before
+# every run, which is what empties it.
+config :eh_os_contract, EhOsContract.CommitRepo,
+  username: "eh_os",
+  password: "eh_os",
+  hostname: "localhost",
+  port: 5433,
+  database: "eh_os_contract_test_commits",
+  priv: "priv/test_repo",
+  pool_size: 60
 
 # Jobs do not run by themselves. The tests check that a job was inserted in the
 # same transaction, and run it explicitly.

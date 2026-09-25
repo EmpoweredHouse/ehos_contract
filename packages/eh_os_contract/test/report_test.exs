@@ -302,16 +302,13 @@ defmodule EhOsContract.ReportTest do
 
   describe "a rule that was changed does not retroactively judge older runs" do
     # Two runs, one on each side of the moment the assertion's window last moved.
-    # Backdated by payload rather than by instance key, so the test does not depend
-    # on how `EhOsContract.Instance` encodes one.
+    # Emitted in the past rather than moved there afterwards: the log is append-only,
+    # and `EhOsContract.Clock.at/2` also reaches the events the drained jobs emit.
     defp run_at(id, at) do
-      request(id, :request_approved)
-      Oban.drain_queue(queue: :events)
-
-      Repo.update_all(
-        from(e in EhOsContract.Event, where: fragment("?->>'request_id' = ?", e.payload, ^id)),
-        set: [occurred_at: at]
-      )
+      EhOsContract.Clock.at(at, fn ->
+        request(id, :request_approved)
+        Oban.drain_queue(queue: :events)
+      end)
     end
 
     defp rule_changed_on(at) do
@@ -397,7 +394,7 @@ defmodule EhOsContract.ReportTest do
     test "drift enters the report of the contract whose event caused it" do
       request("r-1", :request_approved)
 
-      Repo.insert!(%EhOsContract.Event{
+      record_event!(%{
         type: "event_outside_the_agreement",
         contract: inspect(Contract),
         contract_version: Contract.version(),

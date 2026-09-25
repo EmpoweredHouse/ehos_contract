@@ -13,6 +13,7 @@ defmodule EhOsContract do
     exports: [
       AsyncAPI,
       Check,
+      Clock,
       Conformance,
       Conformance.Wire,
       Contract,
@@ -33,6 +34,9 @@ defmodule EhOsContract do
       Registry,
       Report,
       Report.Sentence,
+      Store,
+      Store.Postgres,
+      Store.Suite,
       Trace
     ]
 

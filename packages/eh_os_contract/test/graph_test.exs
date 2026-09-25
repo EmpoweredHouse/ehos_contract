@@ -107,7 +107,7 @@ defmodule EhOsContract.GraphTest do
 
     # Simulating a deploy that removed an event: a row in the log under a contract
     # version that is no longer in the binary.
-    Repo.insert!(%EhOsContract.Event{
+    record_event!(%{
       type: "event_from_last_month",
       contract: inspect(Rig),
       contract_version: "version_that_is_gone",

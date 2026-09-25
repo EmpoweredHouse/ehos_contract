@@ -36,6 +36,57 @@ defmodule EhOsContract.DataCase do
     :ok
   end
 
+  @doc """
+  Writes one row to the log directly, bypassing `EhOsContract.emit/4`: an event from an
+  older contract version, one the contract never declared, or one dated in the past.
+
+  **The one place the suite writes the log itself**, and it writes through
+  `EhOsContract.Store` like the emitter does. Until v2 plan stage E2, eleven test files
+  each did their own `Repo.insert!(%EhOsContract.Event{})`. The one exception is
+  `store_schema_test.exs`, which tests what the table refuses from any writer and so
+  inserts around the store on purpose.
+
+  Defaults cover what those files never cared about: `actor` is the system actor
+  (the log never holds a nil actor), `payload` is empty and `occurred_at` comes from
+  `EhOsContract.Clock`.
+  """
+  @spec record_event!(map()) :: EhOsContract.Event.t()
+  def record_event!(attrs) when is_map(attrs) do
+    [event] = append!([Map.merge(defaults(), attrs)])
+    event
+  end
+
+  @doc """
+  `record_event!/1` for many rows at once, for a test about the size of the log
+  rather than about how any one row got there. Inserted in chunks, so fifty thousand
+  rows stay under Postgres's limit on bind parameters.
+  """
+  @spec record_events!([map()]) :: :ok
+  def record_events!(rows) when is_list(rows) do
+    rows
+    |> Enum.map(&Map.merge(defaults(), &1))
+    |> Enum.chunk_every(2_000)
+    |> Enum.each(&append!/1)
+  end
+
+  defp append!(entries) do
+    {:ok, {:ok, events}} =
+      EhOsContract.TestRepo.transaction(fn ->
+        EhOsContract.Store.append(EhOsContract.TestRepo, entries, :none)
+      end)
+
+    events
+  end
+
+  defp defaults do
+    %{
+      actor: EhOsContract.Event.system_actor(),
+      correlation_id: Ecto.UUID.generate(),
+      payload: %{},
+      occurred_at: EhOsContract.Clock.now()
+    }
+  end
+
   @doc "Every event of a type, oldest first."
   def events_of(type) do
     name = to_string(type)

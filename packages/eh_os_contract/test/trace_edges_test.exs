@@ -116,7 +116,7 @@ defmodule EhOsContract.TraceEdgesTest do
   @long_after ~U[2026-07-10 09:00:00.000000Z]
 
   defp insert(type, at, case_id \\ "c-1") do
-    Repo.insert!(%EhOsContract.Event{
+    record_event!(%{
       type: to_string(type),
       contract: inspect(Edges),
       contract_version: Edges.version(),

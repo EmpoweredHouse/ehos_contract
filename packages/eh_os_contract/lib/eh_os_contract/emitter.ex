@@ -298,20 +298,29 @@ defmodule EhOsContract.Emitter do
     # of what fell away on the way.
     {process, instance_id} = EhOsContract.Instance.key(contract, type, stored)
 
-    event =
-      repo.insert!(%Event{
-        type: to_string(type),
-        contract: inspect(contract),
-        contract_version: Model.version(contract),
-        process: process,
-        instance_id: instance_id,
-        correlation_id: correlation_id,
-        causation_id: ctx[:causation_id],
-        payload: Payload.to_storage(stored),
-        # Never nil: `default_ctx/1` fills this in before `do_emit/5` ever runs.
-        actor: to_string(ctx[:actor]),
-        occurred_at: DateTime.utc_now()
-      })
+    # Through the store, unconditionally: a v1 event belongs to no stream, so there is
+    # no version to check. The append still takes the store's lock, which is what
+    # orders this event against every other writer (v2 §10.2).
+    entry = %{
+      type: to_string(type),
+      contract: inspect(contract),
+      contract_version: Model.version(contract),
+      process: process,
+      instance_id: instance_id,
+      correlation_id: correlation_id,
+      causation_id: ctx[:causation_id],
+      payload: Payload.to_storage(stored),
+      # Never nil: `default_ctx/1` fills this in before `do_emit/5` ever runs.
+      actor: to_string(ctx[:actor]),
+      occurred_at: EhOsContract.Clock.now()
+    }
+
+    {:ok, [appended]} = EhOsContract.Store.append(repo, [entry], :none)
+
+    # The store reads the row back, and JSON has turned every point in time into text.
+    # What the emitter hands on is the payload as it stored it, as before the store
+    # existed, so a caller holding the returned event sees the same values it did.
+    event = %{appended | payload: entry.payload}
 
     # Context for handling: correlation carries on, and this event becomes the
     # cause of everything that follows from it.
