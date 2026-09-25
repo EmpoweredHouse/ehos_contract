@@ -23,6 +23,46 @@ against it.
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+Stages E1–E3 of the move to a v2 contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`). **No verdict moves.**
+`mix eh_os_contract.report` and `mix eh_os_contract.graph --overlay --mermaid` gave byte-identical output on
+the development database before and after each stage, so the version stays 0.2.1 until a change does move
+one. What changes is what a host has to do.
+
+### Changed — a host has to act
+
+- **A new migration is required.** Add one calling `EhOsContract.Migrations.up(version: 3)` and
+  `down(version: 3)`, like the upgrade to version 2. V03 alters `eh_os_contract_events` in place:
+  - a `position` column becomes its primary key, and existing rows are numbered in `occurred_at` order;
+  - streams, tags, `schema_version`, `command_id`, `metadata` and `recorded_at` are added;
+  - `actor` becomes NOT NULL, and rows without one get the system actor;
+  - the `eh_os_contract_commands` table is created.
+- **The log is append-only.** Triggers refuse UPDATE, DELETE and TRUNCATE on `eh_os_contract_events`. A test
+  that moved `occurred_at` afterwards has to emit in the past instead, with `EhOsContract.Clock.at/2`. A test
+  database that leaked rows is recovered with `ecto.drop`.
+- **Emissions run under READ COMMITTED.** `EhOsContract.Store.Postgres` refuses to append at a stricter
+  isolation level. Every append takes one transaction-scoped advisory lock, so a transaction that locks a row
+  and then emits can deadlock with an emission whose handler locks the same row. Take
+  `EhOsContract.Store.Postgres.lock/1` first (`EhOsContract.Store`'s moduledoc).
+- **A new dependency: `spark ~> 2.7.3`.**
+
+### Added
+
+- `EhOsContract.Model`: a contract as plain data, and the accessors every reader now uses. A module that is
+  not a contract is refused by name.
+- `EhOsContract.Store`, with `Store.Postgres` and `Store.Suite`, a set of tests any implementation can run.
+  The v1 emitter appends through it.
+- `EhOsContract.Clock`: the time events are stamped with, which a test can set for the calling process.
+- `EhOsContract.Domain`: the v2 domain DSL, on Spark. It covers contexts with a glossary, actors, subjects,
+  values, externals and relations, with rules D1–D5 and F3/F5 as compile errors. Its model is
+  `__eh_os_contract_model__/0`, and it generates a `Values` module of types. Nothing in v1 reads it yet.
+
+### Changed
+
+- `mix eh_os_contract.check` prints its findings in a fixed order: errors, warnings, notices, each by text.
+  The lines are the same.
+
 ## 0.2.1 — 2026-09-23
 
 ### Changed
