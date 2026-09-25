@@ -291,6 +291,9 @@ defmodule EhOsContract.Next.ContractTest do
 
           dcb :payer_period, "Okres płatnika" do
             identity #{inspect(identity)}
+            consults :period_closed, match: :payer_id
+            command :close_period, "Zamknięcie okresu", by: :manager, emits: :period_closed
+            event :period_closed, "Zamknięto okres", terminal: true
           end
 
           process :billing, "Rozliczenie płatnika" do
