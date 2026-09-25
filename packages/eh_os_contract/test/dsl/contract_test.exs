@@ -259,6 +259,15 @@ defmodule EhOsContract.Next.ContractTest do
                ~r/__spark_metadata__|__struct__|Spark\./
     end
 
+    test "gives capabilities, which a v1 contract does not have" do
+      assert Model.capabilities(Golden).manager == %{commands: [:close], queries: [], records: []}
+
+      error = assert_raise ArgumentError, fn -> Model.capabilities(ProcessShapes.Bare) end
+
+      assert error.message =~
+               "ProcessShapes.Bare is a v1 contract, which declares no capabilities"
+    end
+
     test "is refused by the v1 accessors, by name" do
       error = assert_raise ArgumentError, fn -> Model.events(Golden) end
       assert error.message =~ "EhOsContract.Next.ContractTest.Golden is a v2 contract"

@@ -100,6 +100,28 @@ defmodule EhOsContract.Model do
     end
   end
 
+  @doc """
+  What each actor may do under a v2 contract: the commands it may issue, the queries
+  it may ask and the events it may record, derived from `by:` and `recorded_by:`
+  rather than written down (v2 §4.6, D10). A v1 contract declares no capabilities and
+  is refused by name, as a domain is.
+  """
+  @spec capabilities(contract() | module()) :: %{
+          atom() => %{commands: [atom()], queries: [atom()], records: [atom()]}
+        }
+  def capabilities(contract) do
+    case fetch(contract) do
+      %{kind: :contract, capabilities: capabilities} ->
+        capabilities
+
+      %{kind: :contract, module: module} ->
+        raise ArgumentError, "#{inspect(module)} is a v1 contract, which declares no capabilities"
+
+      %{kind: kind, module: module} ->
+        raise ArgumentError, "#{inspect(module)} is a #{kind}, not a contract"
+    end
+  end
+
   @doc "The contract module the model was built from."
   @spec module(contract()) :: module()
   def module(contract), do: contract!(contract).module
