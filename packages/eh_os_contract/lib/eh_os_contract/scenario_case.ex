@@ -43,9 +43,10 @@ defmodule EhOsContract.ScenarioCase do
   import ExUnit.Assertions
 
   alias EhOsContract.{Meta, Model, Rejection}
-  alias EhOsContract.Next.Contract.Callbacks
+  alias EhOsContract.Next.Contract.{Callbacks, Data}
 
   @epoch ~U[2026-01-01 09:00:00Z]
+  @built_in EhOsContract.Domain.Rules.built_in_types()
 
   # The identity of a scenario's stream when the scenario gives none: it is one stream.
   @stream "scenario"
@@ -285,13 +286,18 @@ defmodule EhOsContract.ScenarioCase do
     struct!(module, Map.put(values, :__meta__, %Meta{occurred_at: at, actor: actor}))
   end
 
+  # Data S3 could not check — a domain value's, a sibling event's — may not fit, and a
+  # scenario then fails naming the field rather than crashing in a parser.
   defp cast_data(fields, data, domain) do
     types = Map.new(fields, &{&1.name, &1.type})
 
-    for {key, value} <- data,
-        Map.has_key?(types, key),
-        into: %{},
-        do: {key, cast(Map.fetch!(types, key), value, domain)}
+    for {key, value} <- data, Map.has_key?(types, key), into: %{} do
+      try do
+        {key, cast(Map.fetch!(types, key), value, domain)}
+      catch
+        {:unfit, problem} -> flunk("scenario data, field #{inspect(key)}: #{problem}")
+      end
+    end
   end
 
   # The struct, its fields, and the identity its unit injects: a local declaration's,
@@ -346,15 +352,13 @@ defmodule EhOsContract.ScenarioCase do
 
   defp cast(_type, nil, _domain), do: nil
 
-  defp cast(:timestamp, value, _domain) when is_binary(value) do
-    {:ok, at, _offset} = DateTime.from_iso8601(value)
-    at
+  defp cast(type, value, domain)
+       when type in @built_in or (is_tuple(type) and elem(type, 0) == :enum) do
+    case Data.problems(type, value) do
+      [] -> built_in(type, value, domain)
+      [problem | _] -> throw({:unfit, problem})
+    end
   end
-
-  defp cast(:date, value, _domain) when is_binary(value), do: Date.from_iso8601!(value)
-
-  defp cast(:decimal, value, _domain) when is_binary(value) or is_integer(value),
-    do: Decimal.new(value)
 
   defp cast({:list, inner}, values, domain) when is_list(values),
     do: Enum.map(values, &cast(inner, &1, domain))
@@ -365,12 +369,27 @@ defmodule EhOsContract.ScenarioCase do
         types = Map.new(fields, &{&1.name, &1.type})
         Map.new(value, fn {key, v} -> {key, cast(Map.get(types, key), v, domain)} end)
 
+      %{type: nil} ->
+        throw({:unfit, "#{inspect(value)} is not a map of the fields of #{inspect(type)}"})
+
       %{type: inner} ->
         cast(inner, value, domain)
     end
   end
 
   defp cast(_type, value, _domain), do: value
+
+  defp built_in(:timestamp, value, _domain) when is_binary(value) do
+    {:ok, at, _offset} = DateTime.from_iso8601(value)
+    at
+  end
+
+  defp built_in(:date, value, _domain) when is_binary(value), do: Date.from_iso8601!(value)
+
+  defp built_in(:decimal, value, _domain) when is_binary(value) or is_integer(value),
+    do: Decimal.new(value)
+
+  defp built_in(_type, value, _domain), do: value
 
   # --- finding the implementation ---------------------------------------------------
 

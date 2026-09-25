@@ -273,6 +273,68 @@ defmodule EhOsContract.ScenarioCaseTest do
                  ":record_payment emits, [:payment_recorded, :receipt_issued]"
     end
 
+    test "data of a domain type that does not fit, which only the run can see" do
+      compile("""
+      defmodule EhOsContract.Next.Fixtures.MomentDomain do
+        use EhOsContract.Domain, name: :moments, language: :pl
+        context :clinic, "Przychodnia", subdomain: :core
+        value :moment, :timestamp
+      end
+
+      defmodule EhOsContract.Next.Fixtures.Moments do
+        use EhOsContract.Next.Contract, domain: EhOsContract.Next.Fixtures.MomentDomain, context: :clinic
+
+        aggregate :visit, "Wizyta" do
+          identity :visit_id
+
+          command :arrive, "Przyjście", by: :reception, emits: :arrived do
+            field :at, :moment
+          end
+
+          event :arrived, "Przyszedł" do
+            field :at, :moment
+          end
+        end
+
+        process :visit, "Wizyta" do
+          correlate :visit_id
+        end
+
+        scenario "przyszedł wczoraj" do
+          command :arrive, %{at: "wczoraj"}
+          expect :arrived
+        end
+
+        scenario "przyszedł o dziewiątej" do
+          command :arrive, %{at: "2026-09-01T09:00:00Z"}
+          expect :arrived, %{at: "2026-09-01T09:00:00Z"}
+        end
+      end
+
+      defmodule EhOsContract.Next.Implementations.Moments do
+        use EhOsContract.Next.Fixtures.Moments, aggregate: :visit
+
+        @impl true
+        def arrive(%Arrive{visit_id: id, at: %DateTime{} = at}, _state),
+          do: emit(%Arrived{visit_id: id, at: at})
+      end
+      """)
+
+      [yesterday, nine] = Model.fetch(EhOsContract.Next.Fixtures.Moments).scenarios
+      implementations = [EhOsContract.Next.Implementations.Moments]
+
+      error =
+        assert_raise ExUnit.AssertionError, fn ->
+          ScenarioCase.run(EhOsContract.Next.Fixtures.Moments, yesterday, implementations)
+        end
+
+      assert error.message ==
+               ~s|scenario data, field :at: "wczoraj" is not an ISO 8601 timestamp with an | <>
+                 ~s|offset, "2026-09-01T09:00:00Z"|
+
+      assert ScenarioCase.run(EhOsContract.Next.Fixtures.Moments, nine, implementations)
+    end
+
     test "no implementation, and two" do
       assert failure("sam paragon wystarcza", []) =~
                "no module implements aggregate :visit of EhOsContract.Next.Fixtures.Scenarios, so " <>

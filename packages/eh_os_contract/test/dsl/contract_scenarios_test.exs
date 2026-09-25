@@ -354,7 +354,7 @@ defmodule EhOsContract.Next.ContractScenariosTest do
 
     test "control: a process manager's scenario, from start to end" do
       assert [_, %{target: %{kind: :process_manager}, sets: [:later]}, %{ended: true}] =
-               compile_contract("ManagerRight", """
+               compile_contract("ManagerScenarios", """
                #{@unit}
                  process_manager :chase, "Pogoń" do
                    correlate :visit_id
