@@ -21,7 +21,7 @@ defmodule Taxvision.Contracts.AccountingMonth do
 
   # --- phase 3.1: implemented ---
 
-  event :data_completeness_confirmed,
+  event(:data_completeness_confirmed,
     label: "Potwierdzono komplet danych historycznych",
     owner: Taxvision.RegistryCheck,
     # There is no `confirmed_by` here. Who confirmed is known to the **engine** —
@@ -32,30 +32,34 @@ defmodule Taxvision.Contracts.AccountingMonth do
     payload: %{company_id: :id, period_id: :id},
     process: :accounting_month,
     stage: :verification
+  )
 
-  event :registry_status_checked,
+  event(:registry_status_checked,
     label: "Sprawdzono status w CEIDG/KRS, białym rejestrze VAT i VIES",
     owner: Taxvision.RegistryCheck,
     depends_on: :registries,
     payload: %{company_id: :id, period_id: :id, checked_at: :timestamp},
     process: :accounting_month,
     stage: :verification
+  )
 
-  event :registry_check_logged,
+  event(:registry_check_logged,
     label: "Zapisano datę ostatniego sprawdzenia rejestrów",
     owner: Taxvision.RegistryCheck,
     payload: %{company_id: :id, period_id: :id, checked_at: :timestamp},
     process: :accounting_month,
     stage: :verification
+  )
 
-  event :registry_data_consistent,
+  event(:registry_data_consistent,
     label: "Dane firmy zgadzają się z rejestrami",
     owner: Taxvision.RegistryCheck,
     payload: %{company_id: :id, period_id: :id},
     process: :accounting_month,
     stage: :verification
+  )
 
-  event :registry_discrepancy_detected,
+  event(:registry_discrepancy_detected,
     label: "Dane firmy nie zgadzają się z rejestrami",
     owner: Taxvision.RegistryCheck,
     payload: %{company_id: :id, period_id: :id, diff: :string},
@@ -75,28 +79,32 @@ defmodule Taxvision.Contracts.AccountingMonth do
     identity: [:company_id, :period_id, :diff],
     process: :accounting_month,
     stage: :verification
+  )
 
-  event :monthly_tasks_generated,
+  event(:monthly_tasks_generated,
     label: "Utworzono taski z szablonu na nowy miesiąc",
     owner: Taxvision.Tasks,
     payload: %{company_id: :id, period_id: :id, task_count: :integer},
     process: :accounting_month,
     stage: :opening
+  )
 
-  event :accounting_month_opened,
+  event(:accounting_month_opened,
     label: "Otwarto miesiąc księgowy",
     owner: Taxvision.AccountingMonth,
     payload: %{company_id: :id, period_id: :id},
     process: :accounting_month,
     stage: :opening
+  )
 
-  event :discrepancy_notification_sent,
+  event(:discrepancy_notification_sent,
     label: "Wysłano powiadomienie o rozjeździe do księgowej i klienta",
     owner: Taxvision.Notifications,
     payload: %{company_id: :id, period_id: :id, recipients: :integer},
     process: :accounting_month,
     stage: :verification,
     terminal: true
+  )
 
   # --- later phases: declared, deliberately unimplemented ---
   #
@@ -105,14 +113,15 @@ defmodule Taxvision.Contracts.AccountingMonth do
   # are meant to list them as dead paths, because that is exactly what a contract
   # running ahead of its implementation looks like — the normal state mid-rollout.
 
-  event :bank_statement_received,
+  event(:bank_statement_received,
     label: "Otrzymano wyciąg bankowy (MT940/CSV; PDF nie wchodzi)",
     owner: Taxvision.Matching,
     payload: %{company_id: :id, period_id: :id, format: :enum},
     process: :accounting_month,
     stage: :collection
+  )
 
-  event :turnover_matched_with_invoice,
+  event(:turnover_matched_with_invoice,
     label: "Sparowano obrót z fakturą",
     owner: Taxvision.Matching,
     # The period was added by the instance gate and is **not cosmetic**: without it
@@ -122,14 +131,16 @@ defmodule Taxvision.Contracts.AccountingMonth do
     payload: %{company_id: :id, period_id: :id, turnover_id: :id, invoice_id: :id},
     process: :accounting_month,
     stage: :matching
+  )
 
-  event :month_closed,
+  event(:month_closed,
     label: "Zamknięto miesiąc księgowy",
     owner: Taxvision.AccountingMonth,
     payload: %{company_id: :id, period_id: :id},
     process: :accounting_month,
     stage: :closing,
     terminal: true
+  )
 
   # --- the process ---
 
@@ -154,11 +165,12 @@ defmodule Taxvision.Contracts.AccountingMonth do
   # named the opening itself as an action somebody takes. It is declared here because
   # the rules below are written as refusals of it — so the command exists in the
   # contract while its provenance does not, and an empty `source:` says so.
-  command :open_month,
+  command(:open_month,
     label: "Otwarcie miesiąca księgowego",
     process: :accounting_month,
     principals: [:human],
     payload: %{company_id: :id, period: :string}
+  )
 
   # The command the workshop named and this contract omitted — recorded as debt in
   # `PLAN.md` since August. Source: `02-event-storming.md` §3.1, where it is the only
@@ -167,14 +179,15 @@ defmodule Taxvision.Contracts.AccountingMonth do
   #
   # Actor is Księgowa, so `[:human]`. The rest of that diagram is `cron` and system
   # checks, which is why this process has two commands and not eight.
-  command :retrigger_verification,
+  command(:retrigger_verification,
     label: "Ponowienie weryfikacji rejestrowej",
     process: :accounting_month,
     principals: [:human],
     payload: %{company_id: :id, period: :string},
     source: "Warsztat: 02-event-storming.md §3.1, jedyna komenda na tym diagramie"
+  )
 
-  process :accounting_month,
+  process(:accounting_month,
     label: "Cykl miesięczny księgowy",
     # Stage names are **identifiers, not labels** — they go into `eh_os_contract.check`, into
     # the graph and into the contract's version key, so they are in English like
@@ -201,28 +214,31 @@ defmodule Taxvision.Contracts.AccountingMonth do
     # Until the process owner confirms it, this does not count towards the
     # evidence report.
     unverified: [:deadline]
+  )
 
   # --- the assertion ---
 
   trace :month_opens_or_is_blocked do
-    from :data_completeness_confirmed
-    eventually :accounting_month_opened, within: {2, :day}
-    or_else :discrepancy_notification_sent
+    from(:data_completeness_confirmed)
+    eventually(:accounting_month_opened, within: {2, :day})
+    or_else(:discrepancy_notification_sent)
   end
 
   # --- external dependencies, named after the fact rather than the vendor ---
 
-  external :registries,
+  external(:registries,
     label: "Rejestry publiczne: CEIDG/KRS, biały rejestr VAT, VIES",
     expected_latency: {10, :second},
     unavailable_looks_like: "timeout albo pusta odpowiedź — weryfikacja zawieszona, nie negatywna"
+  )
 
   # --- rules and examples (ADR §18) ---
 
-  rule :month_opens_only_on_consistent_registry,
+  rule(:month_opens_only_on_consistent_registry,
     label: "Bez zgodnej weryfikacji rejestrowej miesiąc się nie otwiera",
     function: {Taxvision.RegistryCheck, :decide, 1},
     source: "Warsztat WF 00:34:17-00:36:07 (polityka P1), WF 00:35:41"
+  )
 
   # **The command carries the period's name; `given:` carries its identifier.**
   #
@@ -236,7 +252,7 @@ defmodule Taxvision.Contracts.AccountingMonth do
   # person can read aloud. Runtime uses the uuid the periods table generates. Putting a
   # real uuid in a contract would trade §18's whole property, that an example is readable
   # to the process owner, for a consistency nothing needs.
-  example "komplet danych i zgodne rejestry — miesiąc się otwiera",
+  example("komplet danych i zgodne rejestry — miesiąc się otwiera",
     rule: :month_opens_only_on_consistent_registry,
     given: %{
       period_id: "period-2026-07",
@@ -248,8 +264,9 @@ defmodule Taxvision.Contracts.AccountingMonth do
     # Only this event is the substance of this rule. `then:` means "among those
     # emitted, in this order" — not "exactly these".
     then: [:registry_data_consistent]
+  )
 
-  example "rozjazd statusu VAT — blokada i powiadomienie zamiast otwarcia",
+  example("rozjazd statusu VAT — blokada i powiadomienie zamiast otwarcia",
     rule: :month_opens_only_on_consistent_registry,
     given: %{
       period_id: "period-2026-07",
@@ -259,8 +276,9 @@ defmodule Taxvision.Contracts.AccountingMonth do
     },
     command: {:open_month, %{company_id: "c-1", period: "2026-07"}},
     then: [:registry_discrepancy_detected]
+  )
 
-  example "brak potwierdzenia kompletu danych — komenda odrzucona",
+  example("brak potwierdzenia kompletu danych — komenda odrzucona",
     rule: :month_opens_only_on_consistent_registry,
     given: %{
       period_id: "period-2026-07",
@@ -270,25 +288,29 @@ defmodule Taxvision.Contracts.AccountingMonth do
     },
     command: {:open_month, %{company_id: "c-1", period: "2026-07"}},
     rejected_with: :data_completeness_not_confirmed
+  )
 
   # The third IAM level: the domain rule. Inexpressible in an identity provider's
   # configuration, because the provider knows nothing about an accounting month or
   # about whose company this is.
-  rule :only_company_accountant_opens_month,
+  rule(:only_company_accountant_opens_month,
     label:
       "Miesiąc otwiera księgowa przypisana do tej firmy, nie klient i nie księgowa innej firmy",
     function: {Taxvision.Authorization, :authorize_open_month, 1},
     source: "Warsztat: aktor fazy 3.1 to Księgowa + System; HS28 (model dwóch osi dostępu)"
+  )
 
-  example "księgowa własnej firmy — wolno",
+  example("księgowa własnej firmy — wolno",
     rule: :only_company_accountant_opens_month,
     given: %{actor_roles: ["accounting"], actor_company: "c-1"},
     command: {:open_month, %{company_id: "c-1", period: "2026-07"}},
     then: []
+  )
 
-  example "księgowa innej firmy — nie wolno, i to nie jest 403 od providera",
+  example("księgowa innej firmy — nie wolno, i to nie jest 403 od providera",
     rule: :only_company_accountant_opens_month,
     given: %{actor_roles: ["accounting"], actor_company: "c-2"},
     command: {:open_month, %{company_id: "c-1", period: "2026-07"}},
     rejected_with: :not_this_company
+  )
 end
