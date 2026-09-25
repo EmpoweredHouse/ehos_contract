@@ -181,7 +181,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
   # A `rule` names an MFA, so nobody checks for us that the function exists.
   defp check_rule_functions_exist(findings) do
     for contract <- EhOsContract.Registry.contracts(),
-        rule <- contract.rules(),
+        rule <- EhOsContract.Model.rules(contract),
         reduce: findings do
       acc ->
         {module, function, arity} = rule.function
@@ -203,7 +203,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
     all_events = EhOsContract.Registry.declared_events() |> Enum.map(& &1.name) |> MapSet.new()
 
     for contract <- EhOsContract.Registry.contracts(),
-        trace <- contract.traces(),
+        trace <- EhOsContract.Model.traces(contract),
         reduce: findings do
       acc ->
         missing =
@@ -363,7 +363,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
   # would silently read `nil` for one and say nothing true about the other.
   defp check_unverified_declarations(findings) do
     for contract <- EhOsContract.Registry.contracts(),
-        process <- contract.processes(),
+        process <- EhOsContract.Model.processes(contract),
         field <- process.unverified,
         reduce: findings do
       acc -> [{:warn, unverified_message(contract, process, field)} | acc]
@@ -372,7 +372,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
 
   @spec unverified_message(module(), map(), atom()) :: String.t()
   defp unverified_message(contract, process, field) do
-    if Enum.any?(contract.traces(), &(&1.name == field)) do
+    if EhOsContract.Model.trace(contract, field) do
       "process #{inspect(process.name)}: assertion #{inspect(field)} is not confirmed by the " <>
         "process owner — it is still evaluated, but it does not count towards the evidence " <>
         "report's aggregate"
