@@ -50,14 +50,29 @@ defmodule EhOsContract.DataCase do
   """
   @spec record_event!(map()) :: EhOsContract.Event.t()
   def record_event!(attrs) when is_map(attrs) do
-    defaults = %{
+    EhOsContract.TestRepo.insert!(struct!(EhOsContract.Event, Map.merge(defaults(), attrs)))
+  end
+
+  @doc """
+  `record_event!/1` for many rows at once, for a test about the size of the log
+  rather than about how any one row got there. Inserted in chunks, so fifty thousand
+  rows stay under Postgres's limit on bind parameters.
+  """
+  @spec record_events!([map()]) :: :ok
+  def record_events!(rows) when is_list(rows) do
+    rows
+    |> Enum.map(&Map.merge(Map.put(defaults(), :id, Ecto.UUID.generate()), &1))
+    |> Enum.chunk_every(2_000)
+    |> Enum.each(&EhOsContract.TestRepo.insert_all(EhOsContract.Event, &1))
+  end
+
+  defp defaults do
+    %{
       actor: EhOsContract.Event.system_actor(),
       correlation_id: Ecto.UUID.generate(),
       payload: %{},
       occurred_at: EhOsContract.Clock.now()
     }
-
-    EhOsContract.TestRepo.insert!(struct!(EhOsContract.Event, Map.merge(defaults, attrs)))
   end
 
   @doc "Every event of a type, oldest first."

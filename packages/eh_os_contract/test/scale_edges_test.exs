@@ -38,15 +38,11 @@ defmodule EhOsContract.ScaleEdgesTest do
   @opened ~U[2026-07-01 09:00:00.000000Z]
   @long_after ~U[2026-07-10 09:00:00.000000Z]
 
-  # `insert_all` rather than `EhOsContract.emit!`: emitting ten thousand facts would exercise
-  # dispatch, the cycle guard and telemetry ten thousand times, and none of those is
-  # what is under test here. What is under test is the evaluator's behaviour on a log
-  # of that size, so the log is written directly.
-  defp bulk_insert(rows) do
-    rows
-    |> Enum.chunk_every(2_000)
-    |> Enum.each(&Repo.insert_all(EhOsContract.Event, &1))
-  end
+  # Written directly rather than through `EhOsContract.emit!`: emitting ten thousand facts
+  # would exercise dispatch, the cycle guard and telemetry ten thousand times, and none of
+  # those is what is under test here. What is under test is the evaluator's behaviour on a
+  # log of that size.
+  defp bulk_insert(rows), do: record_events!(rows)
 
   defp row(type, case_id, at) do
     %{
