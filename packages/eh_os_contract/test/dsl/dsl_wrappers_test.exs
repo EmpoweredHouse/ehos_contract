@@ -15,7 +15,7 @@ defmodule EhOsContract.DslWrappersTest do
 
   use EhOsContract.DslCase, async: false
 
-  alias EhOsContract.Model
+  alias EhOsContract.{DslWrappers, Model}
 
   defp domain(name, body) do
     """
@@ -185,6 +185,51 @@ defmodule EhOsContract.DslWrappersTest do
       assert error.file =~ "not_literal.ex"
       assert error.line == 5
       assert error.description =~ "must be a literal keyword list"
+    end
+  end
+
+  describe "an entity's own transform" do
+    defp leaf(transform) do
+      %Spark.Dsl.Entity{
+        name: :note,
+        target: EhOsContract.Domain.Dsl.Avoid,
+        args: [:text],
+        schema: [text: [type: :string, required: true]],
+        transform: transform
+      }
+    end
+
+    defp parent(child, args) do
+      %Spark.Dsl.Entity{
+        name: :box,
+        target: EhOsContract.Domain.Dsl.Term,
+        args: args,
+        entities: [avoid: [child]],
+        schema: [text: [type: :string], definition: [type: :string]]
+      }
+    end
+
+    defp section(entity),
+      do: %Spark.Dsl.Section{name: :probe, top_level?: true, entities: [entity]}
+
+    test "is left alone where no transform of the wrappers' is needed" do
+      transform = {__MODULE__, :noop, []}
+
+      attached =
+        DslWrappers.attach(section(parent(leaf(transform), [:text])), __MODULE__.LeftAlone)
+
+      [%{entities: [avoid: [child]]}] = attached.entities
+      assert child.transform == transform
+    end
+
+    test "is refused where the wrappers would need one of their own" do
+      box = %{parent(leaf(nil), [{:optional, :text}]) | transform: {__MODULE__, :noop, []}}
+
+      error =
+        assert_raise ArgumentError, fn -> DslWrappers.attach(section(box), __MODULE__.Refused) end
+
+      assert error.message =~
+               "box takes a block and an optional argument, and has its own transform"
     end
   end
 

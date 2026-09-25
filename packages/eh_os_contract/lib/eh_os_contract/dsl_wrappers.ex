@@ -130,29 +130,35 @@ defmodule EhOsContract.DslWrappers do
     {name, [line: caller.line], args ++ [opts ++ block]}
   end
 
-  defp with_options_transform(%{transform: nil} = entity) do
+  defp with_options_transform(entity) do
     optional = for {:optional, name} <- entity.args, do: name
     optional = optional ++ for {:optional, name, _default} <- entity.args, do: name
 
-    if optional == [] or not takes_block?(entity) do
-      entity
-    else
-      options =
-        for {key, spec} <- entity.schema, key not in arg_names(entity), do: {key, loose(spec)}
-
-      defaults = for name <- optional, do: {name, entity.schema[name][:default]}
-
-      %{
+    cond do
+      optional == [] or not takes_block?(entity) ->
         entity
-        | schema: Enum.map(entity.schema, &widen(&1, optional)),
-          transform: {__MODULE__, :options_from_optional_argument, [defaults, options]}
-      }
+
+      entity.transform != nil ->
+        raise ArgumentError,
+              "#{entity.name} takes a block and an optional argument, and has its own " <>
+                "transform, which EhOsContract.DslWrappers cannot chain"
+
+      true ->
+        with_transform(entity, optional)
     end
   end
 
-  defp with_options_transform(%{name: name}) do
-    raise ArgumentError,
-          "#{name} has its own transform, which EhOsContract.DslWrappers cannot chain"
+  defp with_transform(entity, optional) do
+    options =
+      for {key, spec} <- entity.schema, key not in arg_names(entity), do: {key, loose(spec)}
+
+    defaults = for name <- optional, do: {name, entity.schema[name][:default]}
+
+    %{
+      entity
+      | schema: Enum.map(entity.schema, &widen(&1, optional)),
+        transform: {__MODULE__, :options_from_optional_argument, [defaults, options]}
+    }
   end
 
   # Spark checks the argument's type before any transform runs, so an optional
