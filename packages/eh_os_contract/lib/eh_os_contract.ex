@@ -13,6 +13,7 @@ defmodule EhOsContract do
     exports: [
       AsyncAPI,
       Check,
+      Clock,
       Conformance,
       Conformance.Wire,
       Contract,

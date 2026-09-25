@@ -20,23 +20,15 @@ defmodule EhOsContract.RunTest do
   @nine ~U[2026-09-01 09:00:00.000000Z]
   @noon ~U[2026-09-01 12:00:00.000000Z]
 
-  defp set_time(id, types, at) do
-    Repo.update_all(
-      from(e in EhOsContract.Event,
-        where: e.instance_id == ^"timed_run|#{id}" and e.type in ^types
-      ),
-      set: [occurred_at: at]
-    )
-  end
-
+  # Emitted at the given time rather than moved there afterwards: the log is
+  # append-only. `run_acknowledged`, which the synchronous handler emits, gets the
+  # same time, as it did when both were moved together.
   defp start_run(id, at) do
-    EhOsContract.emit!(Contract, :run_started, %{run_id: id})
-    set_time(id, ["run_started", "run_acknowledged"], at)
+    EhOsContract.Clock.at(at, fn -> EhOsContract.emit!(Contract, :run_started, %{run_id: id}) end)
   end
 
   defp finish_run(id, at) do
-    EhOsContract.emit!(Contract, :run_finished, %{run_id: id})
-    set_time(id, ["run_finished"], at)
+    EhOsContract.Clock.at(at, fn -> EhOsContract.emit!(Contract, :run_finished, %{run_id: id}) end)
   end
 
   defp outcomes(opts \\ []) do

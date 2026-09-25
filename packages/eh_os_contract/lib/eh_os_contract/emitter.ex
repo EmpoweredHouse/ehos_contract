@@ -310,7 +310,7 @@ defmodule EhOsContract.Emitter do
         payload: Payload.to_storage(stored),
         # Never nil: `default_ctx/1` fills this in before `do_emit/5` ever runs.
         actor: to_string(ctx[:actor]),
-        occurred_at: DateTime.utc_now()
+        occurred_at: EhOsContract.Clock.now()
       })
 
     # Context for handling: correlation carries on, and this event becomes the
