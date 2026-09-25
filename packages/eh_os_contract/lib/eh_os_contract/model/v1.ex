@@ -12,13 +12,28 @@ defmodule EhOsContract.Model.V1 do
   would have to notice a module being recompiled, which tests do on purpose.
   """
 
-  @doc "Whether a module was compiled with `use EhOsContract.Contract`."
-  @spec contract?(module()) :: boolean()
-  def contract?(module), do: function_exported?(module, :__eh_os_contract__, 0)
+  @doc """
+  Whether a module was compiled with `use EhOsContract.Contract`.
 
-  @doc "The model of a v1 contract module."
+  Loads the module first. `function_exported?/3` answers `false` for a module that
+  is not loaded yet, which in dev is every module before its first use.
+  """
+  @spec contract?(module()) :: boolean()
+  def contract?(module),
+    do: Code.ensure_loaded?(module) and function_exported?(module, :__eh_os_contract__, 0)
+
+  @doc """
+  The model of a v1 contract module. Raises `ArgumentError` naming the module when
+  it is not a contract, rather than failing on whichever generated function
+  happens to be called first.
+  """
   @spec build(module()) :: EhOsContract.Model.t()
   def build(module) do
+    unless contract?(module) do
+      raise ArgumentError,
+            "#{inspect(module)} is not an EhOsContract contract (no `use EhOsContract.Contract`)"
+    end
+
     %{
       format: 1,
       kind: :contract,

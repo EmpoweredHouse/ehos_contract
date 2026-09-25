@@ -95,6 +95,38 @@ defmodule EhOsContract.ModelTest do
     end
   end
 
+  test "a module that is not a contract is refused by name, not by a missing function" do
+    error = assert_raise ArgumentError, fn -> Model.traces(Enum) end
+    assert error.message =~ "Enum is not an EhOsContract contract"
+  end
+
+  # A contract whose module exists on the code path but is not loaded yet, which is
+  # the ordinary state of any module in dev before first use. `function_exported?/3`
+  # alone answers false for it. The module is private to this test, so unloading it
+  # cannot disturb any other test running alongside.
+  @tag :tmp_dir
+  test "contract?/1 recognises a contract that is not loaded yet", %{tmp_dir: dir} do
+    source = Path.join(dir, "not_yet_loaded.ex")
+
+    File.write!(source, """
+    defmodule EhOsContract.ModelTest.NotYetLoaded do
+      use EhOsContract.Contract
+      event :noted, label: "Zanotowano"
+    end
+    """)
+
+    {:ok, [module], _} = Kernel.ParallelCompiler.compile_to_path([source], dir)
+    true = Code.prepend_path(dir)
+    on_exit(fn -> Code.delete_path(dir) end)
+    :code.purge(module)
+    :code.delete(module)
+    :code.purge(module)
+    refute :code.is_loaded(module)
+
+    assert Model.contract?(module)
+    assert Model.event_names(module) == [:noted]
+  end
+
   test "contract?/1 recognises contracts and nothing else" do
     assert Enum.all?(@contracts, &Model.contract?/1)
     refute Model.contract?(ProcessShapes.Promised.OnRequestReceived)
