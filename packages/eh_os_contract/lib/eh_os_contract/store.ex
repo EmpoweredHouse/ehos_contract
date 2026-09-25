@@ -23,6 +23,24 @@ defmodule EhOsContract.Store do
 
   `EhOsContract.Store.Suite` checks all of this. Any implementation can run it.
 
+  ## What it asks of the caller's transaction
+
+  Two things, both from the one global lock, and both new for a host that emitted on
+  0.2.1:
+
+  - **READ COMMITTED.** `EhOsContract.Store.Postgres` refuses to append at any other
+    isolation level, because under a stricter one the stream check reads a snapshot
+    older than the lock. An emission inside a REPEATABLE READ or SERIALIZABLE
+    transaction now raises.
+  - **Take the append lock before any row lock that an emission's handlers also
+    take.** The lock is held from the first append to the end of the transaction.
+    Take this order: transaction A locks row R and then emits, while transaction B
+    emits and its synchronous handler then locks R. A waits for the append lock and
+    B waits for R, so Postgres aborts one of them as a deadlock. A transaction that
+    locks rows and then emits should call `lock/1` first. So should any transaction
+    that emits and then locks rows another emitter may hold. The lock is re-entrant,
+    so taking it early costs nothing.
+
   ## Not yet
 
   v2 §10.1 also has a `{:dcb, query, after}` condition and `read_query/2`. They arrive

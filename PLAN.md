@@ -15,7 +15,7 @@ dashboardu; `sandbox/` to dane testowe. **Trwa pivot do v2**: DSL na Sparku z mo
 (jeden kontrakt = jeden proces), event sourcing na własnym magazynie w Postgresie, crypto-shredding. Plan
 zatwierdzono 25 września. **E0, E1 (szew `EhOsContract.Model`) i decyzje D10–D12 (query z capability i
 `scope`, zdarzenia integracyjne przez `publish`, inbox, etap E12) są w `main`. E2 (log staje się magazynem) jest
-zrobiony na gałęzi `dsl-v2/e2-store`, niewypchniętej. E3–E12 nie są zaczęte.** Zachowanie v1 się nie zmieniło,
+zrobiony na gałęzi `dsl-v2/e2-store`, przejrzany i wystawiony jako PR. E3–E12 nie są zaczęte.** Zachowanie v1 się nie zmieniło,
 poza tym, że log jest teraz tylko do dopisywania.
 
 ### Stan repozytorium
@@ -26,8 +26,10 @@ poza tym, że log jest teraz tylko do dopisywania.
   przeglądu) i PR #1 (`7ce9be2`, E0). Wszystkie zmergowane przez użytkownika 25 września.
 - `dsl-v2/e1-model-seam` jest skasowana lokalnie i na `origin`. `dsl-v2/e1-decisions` jest w całości w `main`,
   ale istnieje dalej lokalnie i na `origin`.
-- **`dsl-v2/e2-store`**, od `c61ce5b`: 7 commitów kodu (`5db56e5`..`246dd11`) i commit z tym handoffem. Tylko
-  lokalnie, bez PR. **Worktree E2 leży pod ścieżką `.claude/worktrees/dsl-v2-e1-model-seam-ed132e`** — nazwa z
+- **`dsl-v2/e2-store`**, od `c61ce5b`: 7 commitów kodu (`5db56e5`..`246dd11`), commit dokumentów E2, cztery
+  poprawki z przeglądu przed PR (`2e2b0df`, `40f13e0`, `b0cb32b`, `df7d6e6`) i commit z tym handoffem.
+  Wypchnięta i wystawiona jako PR 25 września na polecenie użytkownika; numer i stan odczytaj przez
+  `gh pr list --state all --limit 3`. **Worktree E2 leży pod ścieżką `.claude/worktrees/dsl-v2-e1-model-seam-ed132e`** — nazwa z
   E1, bo hook sesji pilnował tej ścieżki po skasowaniu worktree E1 i nie pozwalał pisać w głównym checkoucie.
   Gałąź w nim to `dsl-v2/e2-store`; główny checkout stoi na `main`.
 - **Przegląd przed PR**: `.claude/settings.json` (hook `PreToolUse` odmawia `gh pr create`/`gh pr new`,
@@ -37,8 +39,8 @@ poza tym, że log jest teraz tylko do dopisywania.
 
 ### Co zostało — i czyje to jest
 
-- **Przegląd E2 i decyzja o PR — użytkownika.** Wypchnięcie, PR i merge tylko na wyraźne polecenie; przed
-  `gh pr create` skill `pre-pr-review` na tej gałęzi.
+- **Przegląd i merge PR z E2 — użytkownika.** Po uwagach recenzenta: poprawka, commit, kroki 3–7
+  `pre-pr-review` dla nowych commitów, a przed pushem sprawdzić, że PR jest nadal otwarty.
 - **Skasowanie `dsl-v2/e1-decisions` — użytkownika** (`git branch -d dsl-v2/e1-decisions`,
   `git push origin --delete dsl-v2/e1-decisions`), i worktree E2 po zamknięciu jego sesji.
 - **E3–E12 — asystenta**, według dopisku „Dopisek 25 września (2) — Etap 6” niżej. Następny krok: E3 (Spark i
@@ -93,12 +95,12 @@ uruchomić `MIX_ENV=test mix deps.get` w `packages/eh_os_contract` i w `packages
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 25 września**, na `dsl-v2/e2-store` (`246dd11`, a potem ten commit, który zmienia tylko
-  dokumenty): brama wyżej → **EXIT=0**. Sandbox: 42 testy, 0 padnięć, `eh_os_contract.check` 0 błędów,
-  5 ostrzeżeń, 23 informacje. Pakiet silnika: 450 testów (421 z `main` + 29 z E2), 0 padnięć, `check` 0 błędów,
+- **Lokalnie, 25 września**, na `dsl-v2/e2-store` (`df7d6e6`, a potem ten commit, który zmienia moduledoc
+  `Store` i dokumenty): brama wyżej → **EXIT=0**. Sandbox: 42 testy, 0 padnięć, `eh_os_contract.check` 0 błędów,
+  5 ostrzeżeń, 23 informacje. Pakiet silnika: 454 testy (421 z `main` + 33 z E2), 0 padnięć, `check` 0 błędów,
   8 ostrzeżeń, 16 informacji. Pakiet web: 31 testów, 0 padnięć. Te same liczby `check` co na `main`.
-- **CI**: na `main` sprawdzaj przez `gh run list --branch main --limit 2`. Na gałęzi E2 CI nie było, bo nie jest
-  wypchnięta. **Suita silnika potrzebuje teraz drugiej bazy** (`eh_os_contract_test_commits`). Alias `test`
+- **CI**: na `main` sprawdzaj przez `gh run list --branch main --limit 2`. CI na PR z E2 odczytaj przez
+  `gh pr checks`. **Suita silnika potrzebuje teraz drugiej bazy** (`eh_os_contract_test_commits`). Alias `test`
   pakietu tworzy ją i migruje sam, bo `ecto.create` obejmuje oba repo — sprawdzone lokalnie po
   `ecto.drop -r EhOsContract.CommitRepo`. Na CI potwierdzi to pierwszy przebieg.
 
@@ -128,7 +130,8 @@ PR #1, a po jego merge'u — drugiego PR z tym, co do #1 nie weszło, razem z ho
 Poza tym **nie** było zgody na `git push`, PR, merge, tag ani publikację na Hex — w szczególności nie
 dla kolejnych etapów. Zlecając E1 (25 września), użytkownik powtórzył to samo: commity na `dsl-v2/e1-*` bez
 pytania; push, PR, merge i tag tylko na jego wyraźne polecenie; przed PR skill `pre-pr-review`. Po merge'u
-E1 jednorazowo zlecił wypchnięcie `dsl-v2/e1-decisions` i PR z D10–D12.
+E1 jednorazowo zlecił wypchnięcie `dsl-v2/e1-decisions` i PR z D10–D12, a po E2 — `pre-pr-review` i PR z
+`dsl-v2/e2-store`.
 
 ### Język
 
@@ -201,7 +204,8 @@ report, graph, deployment, dependency) przechodzą bez zmian asercji; test konfl
 która przechodzi; czytelnik „pozycja > checkpoint” nie gubi zdarzenia przy dwóch transakcjach commitujących
 poza kolejnością sekwencji; 50 równoległych dopisujących daje wersje 1..N bez dziur; UPDATE, DELETE i TRUNCATE
 odrzucone; suita behaviouru `Store`, którą może uruchomić każda implementacja; V02 ↔ V03 w obie strony.
-**Zrobione 25 września** na `dsl-v2/e2-store`, 7 commitów (`5db56e5`..`246dd11`), niewypchnięte. Trigger
+**Zrobione 25 września** na `dsl-v2/e2-store`, 7 commitów (`5db56e5`..`246dd11`) plus cztery poprawki z
+przeglądu przed PR, wystawione jako PR. Trigger
 „tylko dopisywanie” **wszedł w E2**; zegar wstrzykiwany to `EhOsContract.Clock` w zasięgu procesu, nie
 `occurred_at` w `ctx` — powód i reszta ustaleń w „E2 — co wyszło” niżej.
 
@@ -476,6 +480,22 @@ potrzebują prawdziwych commitów. Brama zielona na każdym z 7 commitów; sandb
 8. **Zmiana dla konsumenta:** nowa migracja jest wymagana (`up(version: 3)`), a z nią publiczne moduły
    `Clock`, `Store`, `Store.Postgres`, `Store.Suite`. To powinno trafić do `CHANGELOG.md` przed wydaniem —
    dokłada się do pytania z E1, kiedy otworzyć „Unreleased”.
+
+**Przegląd przed PR (25 września, `/code-review high origin/main..HEAD`).** Osiem znalezisk:
+1. `emit!` zwracał payload odczytany z Postgresa (znacznik czasu jako tekst) zamiast zapisanego —
+   **poprawione** w `2e2b0df`, test zweryfikowany wstecz na całej suicie.
+2. Globalna blokada brana w środku transakcji umożliwia zakleszczenie z wierszami blokowanymi przez hosta
+   albo handler — **pominięte jako zmiana kodu**, opisane w moduledoku `EhOsContract.Store` (weź `lock/1`
+   przed blokadami wierszy). To cena decyzji z v2 §10.2; dotyczy każdego konsumenta, więc idzie do
+   CHANGELOG razem z ustaleniem 8.
+3. Emisja poza READ COMMITTED teraz rzuca — **pominięte** z tego samego powodu i tak samo opisane.
+4. Pod `{:stream, …}` pola strumienia we wpisie były po cichu nadpisywane — **poprawione** w `40f13e0`.
+5. Suita wspólna dla implementacji sprawdzała brzmienie komunikatów Postgresa — **poprawione** w `b0cb32b`;
+   brzmienie przypięte w `store_test`.
+6. `emit_all` dopisuje po jednym zdarzeniu (osobne zapytanie o blokadę na każde) — **pominięte**: to ścieżka
+   v1, którą E6 zastępuje dispatcherem dopisującym decyzję jednym wywołaniem.
+7. `Clock.at/2` przyjmował czas spoza UTC, który padał dopiero przy dopisie — **poprawione** w `df7d6e6`.
+8. Suita wstrzykuje do modułu hosta funkcje pomocnicze — **bez zmiany**: mają prefiks `suite_`.
 
 ### Losy fikstur
 
