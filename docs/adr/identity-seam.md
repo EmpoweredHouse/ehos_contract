@@ -16,6 +16,14 @@
 > levels below still hold — they now describe the client application's edge, not the engine's. The PoC files
 > this document cites (`docker-compose.identity.yml`, `priv/poc/`, `docs/identity-admin-guide.md`) are in git
 > history, not in the tree.
+>
+> **25 September 2026 — the issuer is EHOS, and the verifier is a package of this repository.** "Identity
+> bought", the provider survey and the sidecar topology below describe a choice that `eh-os` made the other way:
+> EHOS issues ten-minute Ed25519 JWTs carrying capabilities and publishes its keys as JWKS (`eh-os` D-24, D-33).
+> Verification leaves `Taxvision.Identity`'s HMAC for `eh_os_contract_auth`, a package beside the engine that
+> implements the contract's `EhOsContract.Authorizer` ([contract v2](contract-v2.md) §16 D14, `PLAN.md` stage
+> EA). The engine still verifies nothing. The three levels below still hold: level 2 is now the credential's
+> `cap`, derived from the contract's `by:`.
 
 # Identity — the boundary, before any decision
 
