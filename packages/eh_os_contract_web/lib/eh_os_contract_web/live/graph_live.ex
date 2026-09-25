@@ -33,7 +33,7 @@ defmodule EhOsContract.Web.Live.Graph do
   def mount(_params, _session, socket) do
     processes =
       for contract <- EhOsContract.Registry.contracts(),
-          process <- contract.processes() do
+          process <- EhOsContract.Model.processes(contract) do
         %{contract: contract, name: process.name, label: process.label}
       end
       |> Enum.sort_by(& &1.label)
