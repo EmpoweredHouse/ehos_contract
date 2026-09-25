@@ -402,10 +402,17 @@ defmodule EhOsContract.Implementation do
     end)
   end
 
+  # `uniq:` keeps it a list of the same structs; `into:` and `reduce:` make it
+  # something else, so they are not literals.
   defp structs({:for, _, args}, caller) when is_list(args) do
-    case List.last(args) do
-      [do: {:__block__, _, [_ | _] = body}] -> structs(List.last(body), caller)
-      [do: body] -> structs(body, caller)
+    with opts when is_list(opts) <- List.last(args),
+         true <- Keyword.keyword?(opts) and Keyword.keys(opts) -- [:do, :uniq] == [],
+         {:ok, body} <- Keyword.fetch(opts, :do) do
+      case body do
+        {:__block__, _, [_ | _] = exprs} -> structs(List.last(exprs), caller)
+        body -> structs(body, caller)
+      end
+    else
       _ -> :error
     end
   end

@@ -326,6 +326,30 @@ defmodule EhOsContract.ImplementationTest do
       )
     end
 
+    test "a for with uniq: is a literal; one with into: is not" do
+      uniq =
+        String.replace(
+          @aggregate,
+          "emit(for _ <- [1], do: %Reminded{visit_id: id})",
+          "emit(for _ <- [1], uniq: true, do: %Reminded{visit_id: id})"
+        )
+
+      compiles_clean(implementation("ForUniq", "aggregate: :visit", uniq))
+
+      into =
+        String.replace(
+          @aggregate,
+          "emit(for _ <- [1], do: %Reminded{visit_id: id})",
+          "emit(for _ <- [1], into: %{}, do: {id, %Reminded{visit_id: id}})"
+        )
+
+      refused(
+        implementation("ForInto", "aggregate: :visit", into),
+        "I4: emit/1 takes struct literals",
+        14
+      )
+    end
+
     test "control: outside a command's callback, any event of the unit may be emitted" do
       compiles_clean(
         implementation("Helper", "aggregate: :visit", """
