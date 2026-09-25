@@ -140,6 +140,208 @@ Pełna reguła i jej zakres — `CLAUDE.md`.
 
 ---
 
+## Dopisek 25 września (2) — Etap 6: pivot do DSL v2, plan wykonania
+
+Plan zatwierdzony 25 września. **Projekt jest w [`docs/adr/contract-v2.md`](docs/adr/contract-v2.md)** —
+założenia startowe v2 po angielsku, cytowane w kodzie jako `v2 §N`: DSL na Sparku z referencją encji, co
+generuje kontrakt, pięć warstw sprawdzeń z katalogiem reguł, zmiana zdarzenia a subskrybenci, model jako
+dane, magazyn i jego schemat, dispatch, konsumenci, crypto-shredding, zgodność na nowym logu, decyzje D1–D9,
+znaleziska F1–F3, ryzyka i lista tego, co v2 odwraca w rekordzie v1. Tu jest tylko wykonanie: etapy,
+kryteria odbioru, losy testów i fikstur, stan.
+
+Decyzje, w skrócie (pełne w v2 §2 i §16): cały pivot etapami; **event sourcing od razu**; **Spark** bez
+spike'u porównawczego; **własny event store w Postgresie** (zaakceptowany po porównaniu z EventStore
+Commanded — v2 §2); **crypto-shredding**; ESDM jako specyfikacja funkcjonalności, **bez integracji**; zgodności
+wstecz brak. Wymóg z rozmowy, doprecyzowany przez właściciela: zmiana struktury zdarzenia w jednym procesie
+jest weryfikowana przez kompilator u każdego subskrybenta (v2 §7).
+
+### Strategia
+
+- **Strangler w pakiecie.** Najpierw szew `EhOsContract.Model`, przez który czytają wszyscy czytelnicy. v2
+  rośnie obok v1: nowe nazwy nie kolidują (`Domain`, `Store`, `Dispatcher`, `Scenario`, …), a jedyny kolidujący
+  moduł żyje do cięcia jako `EhOsContract.Next.Contract` — przemianowanie dotknie wtedy około 10 miejsc
+  zamiast około 80. Każdy kontrakt sandboxa jest **zastępowany jednym commitem**, nigdy duplikowany; v1 znika
+  w osobnych commitach usuwających; 0.3.0 na końcu.
+- **Reguły każdego commita.** Brama zielona. Test v1 znika tylko razem z testem v2, który przejmuje to samo
+  zachowanie — mapowanie w opisie commita. Dodawanie, usuwanie i przemianowania się nie mieszają. Delta
+  `eh_os_contract.check` jest raportowana i każda nowa linia wyjaśniona. Rodzaj deklaracji wchodzi razem ze
+  swoim czytelnikiem. Kontrakt nigdy nie jest naraz v1 i v2 — pilnuje tego już `check_names_declared_twice`.
+- **Porty tłumaczą, nie naprawiają.** Dziesięć usterek z dopisku niżej zostaje pytaniami. Wyjątki: usterka 2
+  (okno TaxVision do `unverified`) i usterka 5 (`open_month` ma źródło w US-MON-01) — jednolinijkowe commity z
+  cytatem. Gdzie nowy DSL wymusza wybór, rozstrzyga materiał warsztatowy i jest cytowany.
+- **Tryb pracy.** Gałąź na etap, `dsl-v2/eN-<nazwa>`, odgałęziona od poprzedniego etapu. Brama na każdym
+  commicie przez `out=$(mix check 2>&1); rc=$?` — nigdy przez `tail` (powód w `CLAUDE.md`). **Push, PR, merge,
+  tag i Hex są po stronie użytkownika.** Testy trafiają od razu do docelowych katalogów (`test/dsl/`,
+  `test/runtime/`).
+
+### Etapy
+
+**E0 — Podstawy (dokumenty).** Commit mapy z 25 września; `docs/adr/contract-v2.md`; ten dopisek; nowy
+handoff na górze pliku. **Zrobione 25 września** — patrz handoff.
+
+**E1 — Szew `EhOsContract.Model` (tylko v1, bez zmiany zachowania).** Adapter v1 buduje kanoniczne dane
+(v2 §9, podzbiór, który v1 ma). Czytelnicy przechodzą po jednym na commit: `Trace`, `Run`, `Conformance`,
+`Graph`, `Deployment`, `Check` (i task `check`), `AsyncAPI`, `Brief`, webowy `Live.Graph` (dziś jedyny, który
+woła `contract.processes()` bezpośrednio). Adapter, około 100 linii, znika przy cięciu; `Model` zostaje — to
+też eksport dla EHOS-a.
+*Odbiór:* żaden istniejący test nie jest edytowany; grep pokazuje, że `events/0`, `traces/0`, `processes/0` i
+reszta funkcji kontraktu są wołane tylko przez adapter; `mix eh_os_contract.report` i
+`mix eh_os_contract.graph --overlay --mermaid` dają identyczne bajty na bazie dev przed i po.
+
+**E2 — Log staje się magazynem, w miejscu (V03).** `EhOsContract.Store` i `Store.Postgres` (v2 §10): globalna
+blokada, strumienie, pozycja, tagi, tabela `_commands`, trigger „tylko dopisywanie”. V03 **zmienia tabelę w
+miejscu i zostawia jej nazwę**, bo `Migrations` czyta numer wersji z komentarza tej tabeli; wygenerowane
+migracje w trzech katalogach `priv` w tym samym commicie. Emiter v1 dopisuje przez `Store` bez warunku.
+Bezpośrednie `insert!(%EhOsContract.Event{})` w 10 plikach testów (policzone 25 września grepem) przechodzą na
+jednego pomocnika. Trzy pliki cofają `occurred_at` przez `update_all` (`report_test`, `run_test`,
+`deployment_test`) — trigger na to nie pozwoli, więc emiter v1 przyjmuje `occurred_at` w `ctx` jako zegar
+wstrzykiwany. Jeśli to okaże się większe niż kilka linii, trigger wchodzi dopiero w E6; decyzja zapisana tu.
+*Odbiór:* testy czytające log (trace, trace_edges, trace_granularity, run, conformance, conformance_wire,
+report, graph, deployment, dependency) przechodzą bez zmian asercji; test konfliktu wersji plus kontrola,
+która przechodzi; czytelnik „pozycja > checkpoint” nie gubi zdarzenia przy dwóch transakcjach commitujących
+poza kolejnością sekwencji; 50 równoległych dopisujących daje wersje 1..N bez dziur; UPDATE, DELETE i TRUNCATE
+odrzucone; suita behaviouru `Store`, którą może uruchomić każda implementacja; V02 ↔ V03 w obie strony.
+
+**E3 — Spark i DSL domeny.** `{:spark, "~> 2.7.3"}`, `sourceror` tylko dev/test. Rozszerzenie `Domain`
+(v2 §4.2): transformery (reguły D1–D5), model, generowany moduł typów `Values`, digest domeny. Brama pakietu
+dostaje `mix spark.formatter --extensions … --check`; `.formatter.exs` eksportuje
+`spark_locals_without_parens`; eksporty `boundary` (`{Domain.Dsl, []}`, `Domain`, `Model`). `CLAUDE.md`: lista
+miejsc, w których wolno pisać po polsku, rośnie o `term`, `definition`, `avoid`, tłumaczenia, `where` i opisy
+scenariuszy. Poprawka ADR: akapit o Ashu w design-rationale.
+**Ten etap jest zarazem testem właściwości Sparka; porażka którejkolwiek wraca do użytkownika przed E4:**
+każda reguła D ma test `Spark.Error.DslError` z komunikatem i plikiem:linią (w `.exs` potrzebne
+`Code.put_compiler_option(:debug_info, true)`); przestawienie deklaracji nie zmienia wersji; moduł domeny
+kompiluje się pod ścisłym `boundary` sandboxa z `--warnings-as-errors`; formatter działa u konsumenta przez
+`import_deps`.
+
+**E4 — Rdzeń DSL-a kontraktu, pod `EhOsContract.Next.Contract`.** `aggregate`/`dcb`, `identity` (wstrzykiwana),
+`state`, `invariant`, `command`, `event` (z `recorded_by`), grupy `stage`, `process` (`correlate`, `include`,
+`promise`, `cadence`, `deadline`), pola i typy (v2 §4.3), budowa modelu i digestów, reguły L2 (v2 §6: N, F, A,
+C, R, K). Zmyślona fikstura `UniversalityGate` przepisana na nowy DSL; fikstury testów to moduły inline poza
+skanem rejestru (wzorzec z `check_keys_test`).
+*Odbiór:* test na każdą regułę L2 i kontrola, która się kompiluje; złoty test modelu; słownik przypięty
+testem, wyprowadzany z rozszerzenia, a nie z ręcznej listy.
+
+**E5 — Generowanie kodu, wiązanie, scenariusze, L3.** Struktury i behaviours (v2 §5), `EhOsContract.Implementation`
+z makrami `emit`/`reject`/`issue` i `@before_compile`, `ScenarioCase` (zastępuje `ContractExample`, zachowuje
+semantykę podciągu; reguły S, w tym S8 — inwariant bez scenariusza odmowy się nie kompiluje), kompilator Mixa
+`compile.eh_os_contract` (reguły X, w tym X5–X6 — subskrybenci). Pomocnik testów bram zastępuje
+`refute_compiles/2`: `Code.compile_string/1` w `Code.with_diagnostics/2` z rescue, przyjmuje
+`Spark.Error.DslError`, `CompileError` albo diagnostykę poziomu error i sprawdza fragment komunikatu **oraz**
+plik użytkownika. Poprawka ADR: §18.
+*Odbiór:* implementacja fikstury kompiluje się pod `--warnings-as-errors`; test `CompileError` z plikiem:linią
+na każdą regułę L4; usunięcie scenariusza z odmową psuje kompilację i nazywa inwariant; literówka w `by:` psuje
+zwykłe `mix compile`; `mix xref graph --label compile-connected` nie pokazuje krawędzi kontrakt →
+implementacja; **na parze zmyślonych kontraktów (wydawca, subskrybent): usunięcie pola publicznego zdarzenia,
+zmiana jego typu albo cofnięcie `public: true` psuje `mix compile` z błędem wskazującym obie strony — kontrole:
+dodanie pola opcjonalnego się kompiluje, a subskrybent, który zmienionego pola nie używa, kompiluje się dalej.**
+
+**E6 — Dispatch synchroniczny i przejście VisitSettlement.** `Dispatcher`, `Codec`, `Capability`, idempotencja,
+ponowienia, projekcje i polityki inline, `record/3` (D6), wiersze `_commands` (v2 §11–12). Jeden commit
+zastępuje stary kontrakt VisitSettlement, `Rehmed.Settlement.decide/1` i `rehmed_contract_examples_test`
+nowym kontraktem, domeną, implementacją i testem scenariuszy (v2 §4.5). `@version "0.3.0-dev"`, CHANGELOG
+„Unreleased” — od tego commita wersje kontraktów się ruszają. Na każdym skillu baner „opisuje v1”. Poprawki
+ADR: „historia, nie sourcing” i wiersz o Commanded (design-rationale), §7–8.
+*Odbiór:* cztery scenariusze przechodzą; decyzja zwracająca niezadeklarowane zdarzenie rzuca wyjątek, a magazyn
+się nie zmienia — kontrola: zadeklarowane zostaje dopisane; wyjątek w projekcji inline wycofuje dopis; odmowa
+uprawnień niczego nie zapisuje; konflikt jest ponawiany; ten sam klucz idempotencji zwraca te same pozycje;
+delta `check` w sandboxie dotyczy tylko linii VisitSettlement.
+
+**E7 — Runtime asynchroniczny, fikstury, zgodność.** Efekty (Oban, joby tylko z identyfikatorami),
+uporządkowane subskrypcje, process managery i timery, przebudowa, `_event_runs` (D7), nowe źródła zgodności:
+w toku, padające, pokrycie scenariuszy (v2 §12–13). Wersja okablowania liczona z kontraktu i implementacji —
+zmienia werdykt, więc linia w CHANGELOG. Fikstury przebudowane według tabeli niżej. Poprawki ADR: §9–10, §15,
+wyzwalacz „jedno zdarzenie w dwóch procesach”.
+*Odbiór:* te same scenariusze dają te same liczby werdyktów (np. „50 przebiegów → jedna linia raportu” z
+`report_test`); „jeszcze nie” przechodzi w „nigdy” dopiero po opróżnieniu kolejki; przebudowa daje identyczne
+wiersze; trujące zdarzenie zatrzymuje konsumenta dokładnie na swojej pozycji; dwóch runnerów nie bierze tej
+samej paczki (prawdziwe commity, osobny schemat); odpalony timer uruchomiony dwa razy daje jeden dispatch.
+
+**E8 — Crypto-shredding.** `subject` w domenie, `personal:`/`subject:` na polach, tabele kluczy i usunięć,
+`Vault`, szyfrowanie w `Codec`, `erase/3`, `forget/2`, bramki (v2 §14). Przed TaxVision, bo
+`registry_discrepancy_detected.diff` ma dziś `retain: :hash`. Poprawka ADR: retencja w §7–8.
+*Odbiór:* w `payload` nie ma jawnego tekstu pól osobowych; po usunięciu odczyt daje `Erased`, snapshoty z tą
+osobą znikają, `forget/2` się wykonało; `Conformance.as_data` identyczne przed i po (poza `generated_at`);
+bramki odrzucają pola osobowe w kluczach; kontrola: osoba nieusunięta czyta się normalnie.
+
+**E9 — Pozostałe kontrakty sandboxa.** Kolejność i zakres:
+- **TaxVision**, dwa commity: kontrakt i domena; potem implementacje — `Taxvision.Tasks` jako polityka i
+  komenda, miesiąc jako polityka i projekcja, `Taxvision.Notifications` jako polityka i efekt —
+  `Taxvision.Api.open_month` przez dispatch, `identity_seam_test` i `periods_test` przepisane, liczby zapytań
+  zmierzone od nowa i zapisane tu.
+- **ClinicalVisit** — `consumes`/`include` przez cztery agregaty, process manager pogoni za dokumentacją, dwie
+  obietnice; przypięcia `declared_shape_test` wyprowadzone od nowa; zdarzenia E-40 i E-51 tam, gdzie kładzie je
+  materiał (AGG-01, CTX-01), z cytatem.
+- **PayerSettlement** — DCB: warunek dopisu wchodzi do magazynu razem z rodzajem, który go potrzebuje.
+- D6 dla 15 zdarzeń bez komendy (`recorded_by`); usuwane po drodze: każdy kontrakt v1, trzy moduły handlerów
+  v1, MFA reguł.
+
+*Odbiór:* wszystkie cztery kontrakty się kompilują i ich scenariusze przechodzą; w wyścigu DCB niezmiennik
+nigdy nie pęka, a sprawdzenie konfliktu czyta tylko zakres klucza głównego; obietnica ClinicalVisit spełniona
+przez `or_else` na zasianym przebiegu; **zmiana struktury zdarzenia konsumowanego między kontraktami sandboxa
+(np. pola korelacji `visit_id` zdarzenia włączanego do ClinicalVisit) psuje kompilację kontraktu i
+implementacji subskrybenta ze wskazaniem obu stron — kontrola: zmiana pola, którego subskrybent nie używa, go
+nie dotyka.**
+
+**E10 — Wyjścia.** Ostrzeżenia L5 (v2 §6) przypięte testem na wyjściu sandboxa; graf systemu (domena →
+konteksty → kontrakty, krawędzie `consumes`) w `mix eh_os_contract.graph` i na `/graph`; `Model.to_data/1` z
+nazwanym schematem dla EHOS-a, z uprawnieniami, i endpoint w API pakietu web; AsyncAPI z publicznych zdarzeń
+modelu.
+
+**E11 — Cięcie.** Osobne commity: usunięcie v1 (DSL, `Handler`, `Emitter`, `Job`, handlerowe części rejestru,
+`dev/mix/tasks/eh_os_contract.docs.ex`, testy v1, `Rig`) — samo usuwanie; przemianowanie `Next` — samo
+przemianowanie; zwinięcie migracji (D2) i regeneracja trzech katalogów `priv`; `docs/contract.md` z
+`Spark.CheatSheet.cheat_sheet/1`, `docs_test` (bloki kodu się kompilują, także z README; wiersze tabeli bram ≤
+testy bram w `test/dsl/`; niepusty opis każdej opcji) i brama uniwersalności przypięta od nowa z komentarzem z
+datą (słownik wymieniony hurtem przez przejęcie ESDM, „zero nowych słów” liczy się od tego literału); READMEs,
+`CLAUDE.md` („implementacje wskazują kontrakt, nigdy odwrotnie” zamiast „MFA, nigdy capture”; dashboard nie
+pokazuje stanu biznesu, choć biblioteka prowadzi read modele klienta), CHANGELOG 0.3.0, pozostałe poprawki ADR
+(v2 §18); skille — pięć przepisanych, `write-handler` wycofany na rzecz `write-decider` i `write-reaction`.
+Opcjonalnie generator `mix eh_os_contract.gen.impl` na Igniterze. Potem weryfikacja końcowa.
+
+### Losy fikstur
+
+| Fikstura | Los |
+| --- | --- |
+| `ProcessShapes.Promised` (or_else, asynchroniczny koniec, niepotwierdzony deadline; używana przez 7 plików testów) | przebudowana w E7 |
+| `ProcessShapes.Timed`, `ProcessShapes.Bare` | przebudowane w E7 |
+| `UniversalityGate.TreatmentEpisode` z `Eligibility` i fake'iem `PayerRegistry` | przepisana w E4; `Eligibility.decide/1` staje się deciderem; fake zostaje; kontrakt bez implementacji poza tym (D3) |
+| `ProcessShapes.Rig` (19 zdarzeń, 14 handlerów) | **rozbity, nie portowany:** krawędź wsteczna i jej trzy kontrole → E7; celowo zepsute handlery → testy wyjścia decydera i polityki w E6; pary cyklu → E6/E7; konkurujące handlery synchroniczne → dwie projekcje inline w E6; `item_noted` → E8; usunięty przy cięciu |
+| `CaseHandling` (web) | przebudowany w E7 z dwiema politykami |
+
+### Losy testów
+
+Liczby z planowania 25 września (z listy plików, nie z uruchomienia):
+
+| Grupa | Los |
+| --- | --- |
+| Zachowanie weryfikacji (~159): trace, trace_edges, trace_granularity, run, conformance, conformance_wire, report, graph, deployment, dependency, duration, brief | **zostają**; pomocnik zasiewu zmienia się w E2, fikstury w E7; asercje zmieniają się tylko tam, gdzie werdykt rusza się celowo — każda taka zmiana to linia w CHANGELOG |
+| Dispatch v1 (~116): dispatch, publications, cycle, handler_failure, job_*, telemetry, payload, payload_edges, instance, scale_edges, process_shapes, registry_exclude | zachowanie wyprowadzone od nowa na runtime v2 w E6–E8; plik v1 znika, gdy każde zachowanie ma test v2 |
+| Związane z DSL-em (~90): compile_gates, check_keys, check_ambiguity, command, digest, asyncapi | przepisane na Sparka; testy formy kanonicznej w `digest_test` zostają słowo w słowo |
+| Przypięcia (~22): universality_gate, docs_test | ustanowione od nowa przy cięciu |
+| Pakietowe (~8): package, version, boot | zostają; `boot` się zmienia, bo child staje się supervisorem |
+| Web (31) | zostają, przepięte na nowy `CaseHandling` w E7 |
+| Sandbox (35 statycznych) | `periods` i `identity_seam` przepisane w E9; `declared_shape` wyprowadzony od nowa w E9; testy przykładów stają się testami scenariuszy w E6/E9; `eh_os_contract_host_web` zostaje |
+
+### Weryfikacja końcowa
+
+1. Usunięcie trzech baz testowych i brama od zera — migracje z pustej bazy, zwinięcie poprawne.
+2. CI na czystym `_build` (wypycha użytkownik).
+3. Baza dev (nigdy `MIX_ENV=test mix run`): `open_month` przez trzy poziomy IAM, komendy VisitSettlement,
+   przebieg ClinicalVisit ponad 24 godziny; `mix eh_os_contract.report` pokazuje naruszenie, spełnienie przez
+   `or_else`, zawieszenie po `Dependency.unavailable!` i ścieżkę w toku przy nieopróżnionym efekcie.
+4. Przebudowa projekcji z magazynu daje identyczne wiersze.
+5. Usunięcie osoby: pola nieczytelne, liczby raportu bez zmian.
+6. `mix phx.server`: `/dashboard` — status czterech kontraktów, grafy (deklarowany, nakładka, system);
+   endpointy zgodności, AsyncAPI i modelu z nazwami schematów.
+7. `mix eh_os_contract.graph --process clinical_visit --mermaid` zgodny z przypięciami; widok systemu z
+   krawędziami `consumes`; `mix eh_os_contract.trace --instances` działa.
+8. Projekt-konsument w scratchpadzie instaluje oba pakiety z gita, migruje, wykonuje dispatch, dostaje raport;
+   formatter zachowuje kształt DSL-a.
+9. `MIX_ENV=test mix hex.build` przechodzi czysto; kod po angielsku, sprawdzony słowo po słowie.
+
+---
+
 ## Dopisek 25 września — cztery kontrakty rzutowane na ESDM: rdzeń, rozszerzenie, luka
 
 Nic tu nie zostało zbudowane. To mapa na papierze i pierwszy krok kierunku ustalonego w rozmowie tego dnia:
