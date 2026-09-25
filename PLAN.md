@@ -14,8 +14,9 @@ Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, s
 dashboardu; `sandbox/` to dane testowe. **Trwa pivot do v2**: DSL na Sparku z modelem domeny w stylu ESDM
 (jeden kontrakt = jeden proces), event sourcing na własnym magazynie w Postgresie, crypto-shredding. Plan
 zatwierdzono 25 września. **E0, E1 (szew `EhOsContract.Model`), D10–D12 i E2 (log staje się magazynem) są w
-`main`. E3 (Spark i DSL domeny) jest zrobiony na gałęzi `dsl-v2/e3-spark`, przejrzany i wystawiony jako PR. E4–E12 nie są
-zaczęte; przed E4 jest pytanie do użytkownika o opcje obok bloku `do`.** Zachowanie v1 się nie zmieniło,
+`main`. E3 (Spark i DSL domeny) jest zrobiony na `dsl-v2/e3-spark` i czeka jako PR #6. Decyzja D13 (opcje obok
+bloku `do` zostają, biblioteka generuje nakładki o jedną arność więcej) jest zapisana na `dsl-v2/e4-contract-core`,
+od której rusza E4. E4–E12 nie są zaczęte.** Zachowanie v1 się nie zmieniło,
 poza tym, że log jest tylko do dopisywania.
 
 ### Stan repozytorium
@@ -26,10 +27,16 @@ poza tym, że log jest tylko do dopisywania.
 - Na `origin` zostały zmergowane `dsl-v2/e1-decisions` i `dsl-v2/e2-store`; lokalnie też obie.
 - **`dsl-v2/e3-spark`**, od `6646df7`: 10 commitów E3 (`eb80194`..`0138890`), commit dokumentów E3, sześć
   poprawek z przeglądu przed PR (`f022dfa`..`b2175b5`) i commit z tym handoffem. Wypchnięta i wystawiona jako PR
-  25 września na polecenie użytkownika; numer i stan odczytaj przez `gh pr list --state all --limit 3`. **Worktree leży pod ścieżką `.claude/worktrees/dsl-v2-e1-model-seam-ed132e`** — nazwa z E1,
-  bo hook sesji pilnuje tej ścieżki; gałąź w nim to `dsl-v2/e3-spark`, główny checkout stoi na `main`. Hook
-  przeglądu czyta HEAD `$CLAUDE_PROJECT_DIR` (głównego checkoutu), nie worktree — przy PR z E2 główny checkout
-  był na chwilę odczepiony na głowie gałęzi, za zgodą użytkownika.
+  25 września na polecenie użytkownika jako [PR #6](https://github.com/EmpoweredHouse/eh-os-contract/pull/6);
+  stan odczytaj przez `gh pr view 6`.
+- **`dsl-v2/e4-contract-core`**, od `dsl-v2/e3-spark` (`9fbe323`): jeden commit z D13 i tym handoffem, tylko
+  lokalnie. Jeśli PR #6 dostanie poprawki przed merge'em, tę gałąź trzeba przełożyć (`git rebase`) na nową głowę
+  `dsl-v2/e3-spark`; po merge'u — na `origin/main`.
+- **Worktree leży pod ścieżką `.claude/worktrees/dsl-v2-e1-model-seam-ed132e`** — nazwa z E1, bo hook sesji
+  pilnował tej ścieżki; gałąź w nim to `dsl-v2/e4-contract-core`, główny checkout stoi na `main`. Hook przeglądu
+  czyta HEAD `$CLAUDE_PROJECT_DIR` (głównego checkoutu), nie worktree — przy PR z E2 i E3 główny checkout był na
+  chwilę odczepiony na głowie gałęzi, za każdym razem za osobną zgodą użytkownika. Nowa sesja może pracować w
+  świeżym worktree; wtedy najpierw `MIX_ENV=test mix deps.get` w obu pakietach i `mix deps.get` w sandboxie.
 - **Przegląd przed PR**: `.claude/settings.json` (hook `PreToolUse` odmawia `gh pr create`/`gh pr new`,
   dopóki `HEAD` nie ma notatki `git notes --ref=review`) i `.claude/skills/pre-pr-review/` (połowa autora).
   Połową recenzenta zostaje `.claude/skills/review-pr/`. Notatki są lokalne, `refs/notes/review` nie jest
@@ -37,15 +44,14 @@ poza tym, że log jest tylko do dopisywania.
 
 ### Co zostało — i czyje to jest
 
-- **Decyzja przed E4 — użytkownika:** opcje obok bloku `do` (ustalenie 1 w „E3 — co wyszło”). Albo przykłady
-  z v2 §4.5–4.6 przepisane na opcje w bloku, albo generowane makra o jedną arność więcej.
-- **Przegląd i merge PR z E3 — użytkownika.** Po uwagach recenzenta: poprawka, commit, kroki 3–7
+- **Przegląd i merge PR #6 (E3) — użytkownika.** Po uwagach recenzenta: poprawka, commit, kroki 3–7
   `pre-pr-review`, a przed pushem sprawdzić, że PR jest nadal otwarty.
 - **Skasowanie zmergowanych gałęzi `dsl-v2/e1-decisions` i `dsl-v2/e2-store` — użytkownika**
   (`git branch -d …`, `git push origin --delete …`), i worktree po zamknięciu sesji.
 - **E4–E12 — asystenta**, według dopisku „Dopisek 25 września (2) — Etap 6” niżej. Następny krok: E4 (rdzeń
-  DSL-a kontraktu pod `EhOsContract.Next.Contract`) na gałęzi `dsl-v2/e4-*` od `dsl-v2/e3-spark`, po decyzji
-  wyżej.
+  DSL-a kontraktu pod `EhOsContract.Next.Contract`) na `dsl-v2/e4-contract-core`. **Pierwszy commit E4 to
+  nakładki z D13 i testy ich dwóch warunków** (opis E4 w dopisku); jeśli któryś padnie — stop i pytanie do
+  użytkownika, nie obejście.
 - **Lista zmian do `eh-os`** (odwrócenie D-01, zawężenie D-15, outbox, G-16, pytanie o transport v1) —
   użytkownika; jest w „D10–D12 — skąd się wzięły” w dopisku Etap 6.
 - **Trzy pytania z E1 do użytkownika** (szczegóły: „E1 — co szew ujawnił” w dopisku Etap 6):
@@ -72,9 +78,12 @@ poza tym, że log jest tylko do dopisywania.
    usterek, których porty nie naprawiają.
 5. `packages/eh_os_contract/docs/contract.md` — DSL v1, który jest zastępowany; tabela „What refuses to
    compile” to punkt wyjścia reguł L2.
-6. Przed E3: `docs/adr/contract-v2.md` §4.2 (rozszerzenie `Domain`) i §6 (reguły D1–D5), plan E3 w dopisku
-   Etap 6. Stan kodu: czytelnicy pytają tylko `EhOsContract.Model`, log pisze się tylko przez
-   `EhOsContract.Store` (`lib/eh_os_contract/store.ex`, `store/postgres.ex`), czas zdarzenia daje
+6. Przed E4: opis E4 w dopisku Etap 6 (z pierwszym commitem D13), D13 w v2 §16, v2 §4.2–4.6 (encje i przykłady
+   kontraktu), §5 (co generuje kontrakt), §6 (reguły N, F, A, C, R, K) i „E3 — co wyszło”. Kod, na którym E4
+   stoi: `lib/eh_os_contract/domain/{dsl,rules,build}.ex` (wzorzec rozszerzenia Sparka, reguł w jednym
+   transformerze i modelu z digestem; `Rules.type_problems/2` i `Build.typespec/1` są do ponownego użycia),
+   `test/support/dsl_case.ex` (kompilacja z `:debug_info`, stąd `async: false`), `lib/eh_os_contract/model.ex`
+   (`fetch/1` zwraca model skompilowany). Log pisze się tylko przez `EhOsContract.Store`, czas daje
    `EhOsContract.Clock`.
 7. Przed pierwszym PR: `.claude/skills/pre-pr-review/SKILL.md` — bez notatki przeglądu hook odmówi.
 
@@ -229,8 +238,18 @@ cztery właściwości Sparka przeszły; jedno zastrzeżenie wraca do użytkownik
 C, R, K), a od D10–D11 (v2 §16) także `scope` na aktorze i query, `publish` oraz `consumes "<nazwa>"` z polami
 — same deklaracje i ich reguły L2, bez runtime'u. Zmyślona fikstura `UniversalityGate` przepisana na nowy DSL; fikstury testów to moduły inline poza
 skanem rejestru (wzorzec z `check_keys_test`).
+**Pierwszy commit E4 (D13, v2 §16, decyzja użytkownika z 25 września): nakładki o jedną arność więcej.** Dla
+każdej encji, która przyjmuje blok, biblioteka generuje z definicji encji makro `nazwa(args…, opts, do: block)`
+→ `nazwa(args…, opts ++ [do: block])` (Spark czyta blok z `opts[:do]`; sprawdzone na `context` w E3). Najpierw w
+DSL-u domeny (`context`, `term`, `value` — tam, gdzie encja ma encje zagnieżdżone), potem w kontrakcie. W tym
+samym commicie testy warunków D13: błąd DSL-a wskazuje plik:linię deklaracji, nie nakładki; formatter u
+konsumenta zostawia czteroargumentowy zapis bez nawiasów (arności nakładek eksportowane obok
+`spark_locals_without_parens`, bo `mix spark.formatter` ich nie widzi); test w sandboxie na `Rehmed.Domain`
+przepisanym do zapisu z §4.5 (`context …, subdomain: … do term … end`). **Jeśli pierwszy albo drugi warunek
+padnie — stop, wariant A (opcje w bloku) i pytanie wraca do użytkownika.**
 *Odbiór:* test na każdą regułę L2 i kontrola, która się kompiluje; złoty test modelu; słownik przypięty
-testem, wyprowadzany z rozszerzenia, a nie z ręcznej listy.
+testem, wyprowadzany z rozszerzenia, a nie z ręcznej listy; przykłady z v2 §4.5–4.6 kompilują się w zapisie,
+w którym są napisane (poza poprawkami z D10–D12).
 
 **E5 — Generowanie kodu, wiązanie, scenariusze, L3.** Struktury i behaviours (v2 §5), `EhOsContract.Implementation`
 z makrami `emit`/`reject`/`issue` i `@before_compile`, `ScenarioCase` (zastępuje `ContractExample`, zachowuje
@@ -526,7 +545,7 @@ padła):
    `mix spark.formatter`, a jej `--check` w bramie pakietu odrzuca listę bez jednej encji.
 
 **Ustalenia.**
-1. **Opcje nie mogą stać obok bloku `do`** — *pytanie do użytkownika przed E4*. Elixir czyta
+1. **Opcje nie mogą stać obok bloku `do`** — *rozstrzygnięte 25 września: wariant B, D13 w v2 §16*. Elixir czyta
    `command :x, "L", by: [:a] do … end` jako cztery argumenty, a makro encji Sparka ma pozycyjne argumenty i
    jedne opcje, więc taki zapis się nie kompiluje (`undefined function context/4`). Z blokiem opcje pisze się w
    środku (`subdomain :supporting`). Większość przykładów v2 §4.5–4.6 stawia opcje obok bloku. Do wyboru w E4:
