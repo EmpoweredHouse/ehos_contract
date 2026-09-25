@@ -142,6 +142,12 @@ scenario        description!   scope · actor
 - **Durations.** `within`, `deadline` and `wait` accept only the fixed units of `EhOsContract.Duration`;
   `cadence` may also use calendar units.
 
+> **25 September 2026, after E1 — D10 and D11 (§16) change this reference.** `query` gains `scope`, and
+> `param` replaces `field` for its parameters; `actor` gains `scope: [field]`. `event … public:` retires:
+> `consumes Contract, events` stays for a sibling process in the same application, and between applications
+> an event crosses only through `publish` and `consumes "<name>"`. The table above is left as it was
+> written; E4 and E5 build to D10–D12.
+
 ### 4.3 Field types and options
 
 - Built-in types: `:id :string :integer :decimal :boolean :date :timestamp {:enum, [...]} {:list, t}`, plus
@@ -350,6 +356,9 @@ end
 ### 4.6 The other kinds, in short
 
 Names the material does not provide are marked *illustrative*; a real port does not invent them.
+
+> **25 September 2026, after E1:** `public: true` below is superseded by D11 (§16). Inside one application the
+> `consumes` + `policy` shape stays and needs no flag; `query` below gains `by:` capabilities with `scope` (D10).
 
 ```elixir
 # consumes + public + policy (TaxVision; the command name is illustrative)
@@ -597,6 +606,13 @@ that does not use the field keeps compiling. A change to an event that already h
 needs a `schema_version` and an upcaster (§10.6). Between applications, over a broker, the compiler cannot
 reach: there `check` compares a public event's schema with the deployed version, and impact analysis across
 applications belongs to EHOS.
+
+> **25 September 2026, after E1 — D11 (§16).** Everything above holds inside one application, where
+> publisher and subscriber are compiled together. "Withdrawing `public: true`" no longer exists: a sibling
+> process's event is consumable without a flag. Between applications the subscriber has no publisher code to
+> compile against, so it declares the fields it reads in `consumes "<name>"` and EHOS's composition check
+> (C-3, C-4 in `eh-os`) compares that with the publisher's registered model. Removing or retyping a field of a
+> `publish` is a new versioned name, not an edit.
 
 ## 8. Compile-time dependencies
 
@@ -986,6 +1002,10 @@ end
   incoming events into commands, the source event id as idempotency key.
 - Architecture §9–10 ("no external broker") gets its dated correction when this is built, not before.
 
+> **25 September 2026, after E1:** superseded by D11 and D12 (§16) and stage E12 in `PLAN.md`. The relay stays
+> a subscription over the log, but it publishes through an `EhOsContract.Bus` behaviour rather than to NATS
+> directly, and the receiving side is an inbox, not a direct command.
+
 ## 16. Decisions taken with the plan, and findings
 
 Recommended in the plan and accepted with it on 25 September 2026. Any of them can be reopened; reopening
@@ -1013,6 +1033,104 @@ Findings from rewriting VisitSettlement:
   the incumbent's defect.
 - **F3 — two workarounds retire.** `optional:` makes DEC-05's mixed-payer case expressible, and `unit:`
   replaces the `_minor` naming convention.
+
+### Added 25 September 2026, after E1: D10–D12
+
+Taken after reading EHOS's architecture (`eh-os`: `docs/ADR.md` D-01, D-03, D-04, D-15, D-16, D-34, G-9,
+G-14, G-16; `docs/ARCHITECTURE.md` §3). Two of them contradict decisions recorded there; the list of what
+`eh-os` would have to correct is in `PLAN.md`, because this repository does not write there.
+
+| | Decision |
+| --- | --- |
+| D10 | **A query is part of the agreement and grants a capability.** It is derived exactly as a command's is, from the declaration, never written as a separate string. `scope` narrows it to rows: it names a field of the read model, every actor in `by:` must carry that field as a scope dimension (`actor :reception, :human, scope: [:clinic_id]`), and a grant carries the values. Contradicts `eh-os` D-01 (queries are not in the contract) and narrows the third permission surface of its D-15, which leaves query authorization to the application. |
+| D11 | **An event crosses to another application only through a `publish` declaration.** A `publish` names a versioned integration event under the application's own namespace, the domain event it comes from, a subset of that event's fields and the fields that make two deliveries the same fact (`eh-os` D-04). `public: true` retires. Inside one application, `consumes Contract, events` of a sibling process stays, without a flag, checked by the compiler as §7 says. |
+| D12 | **A received integration event goes to an inbox, not into the domain log.** The inbox row and the reaction commit together; the reaction's own fact carries the source message as its cause. `include` (D7) therefore covers only events in the same log; a run across two applications is correlated by `correlation_id` and assembled by EHOS (`eh-os` G-14). |
+
+**D10 in the contract and in the implementation.**
+
+```elixir
+# in the domain
+actor :reception, :human, "Recepcja", scope: [:clinic_id]
+
+# in the contract
+read_model :open_visits, "Wizyty do rozliczenia", projects: [:visit_handed_over, :payment_recorded,
+                                                             :visit_closed_commercially] do
+  field :clinic_id, :id
+  field :total, :money
+  field :paid, :money, default: 0
+end
+
+query :open_visits_for_clinic, "Otwarte wizyty w przychodni",
+  reads: :open_visits, by: [:reception], returns: :many do
+  param :clinic_id, :id
+  scope :clinic_id
+end
+
+# the implementation
+defmodule Rehmed.Settlement.Queries do
+  use Rehmed.Contracts.VisitSettlement, query: :open_visits_for_clinic
+
+  @impl true
+  def open_visits_for_clinic(%OpenVisitsForClinic{clinic_id: id}, _ctx),
+    do: Repo.all(from r in OpenVisits.Row, where: r.clinic_id == ^id)
+end
+```
+
+- **Checked at compile time (L2):** the `scope` field is a field of the read model and a `param` of the
+  query, with the same type; every actor in `by:` declares it as a scope dimension; a query without `by:` is
+  refused, since nobody could be granted it.
+- **One authorization path for commands and queries** (§11): the credential is verified locally by
+  `eh_os_contract_auth` (`eh-os` D-34); the principal's type is in `by:`; a grant for this application and
+  environment carries the capability; the `scope` parameter is within the grant's values; the implementation
+  runs; every returned row's `scope` field is checked again, so a wrong `where` cannot leak another clinic's
+  rows. A refusal is recorded, as for commands; an accepted query is telemetry rather than a row, because reads
+  outnumber writes by orders of magnitude. A query writes nothing to the log, so conformance does not see it.
+- **What `scope` does not do:** one field, equality against granted values. "Only the visits I took" is
+  still the implementation's rule, and so is anything that depends on more than one field. Whether commands
+  get the same `scope` is open (§19).
+- **Reached the same way from everywhere** (`eh-os` D-12): in the same application `EhOsContract.query/3` is a
+  function call; from outside, `EhOsContract.Plug` mounted in the host's router serves the commands and queries
+  of the model (`POST …/commands/<capability>`, `GET …/queries/<capability>`), and the OpenAPI document and the
+  generated client come from the model, not from the running server.
+
+**D11 and D12, from both sides.**
+
+```elixir
+# the publisher: Rehmed
+publish :visit_closed, as: "rehmed.visit.closed.v1",
+  from: :visit_closed_commercially,
+  fields: [:visit_id, :closed_at],
+  idempotent_on: [:visit_id]
+
+# the subscriber: another application
+consumes "rehmed.visit.closed.v1", as: :visit_closed do
+  field :visit_id, :id
+  field :closed_at, :timestamp
+end
+
+policy :invoice_on_visit_close, "Faktura po zamknięciu wizyty",
+  handles: :visit_closed, issues: :add_invoice_line
+```
+
+- **Refused at compile time:** a `publish` naming a field the source event does not have, or a `personal:`
+  field (a copy on a broker cannot be crypto-shredded, §14), or a name outside the application's namespace
+  (`eh-os` C-2); `idempotent_on` naming a field outside `fields`; a `consumes "<name>"` whose policy matches a
+  field the declaration does not list.
+- **What each side knows.** The publisher knows only that the event leaves; it never names a subscriber. The
+  subscriber's `consumes` derives the capability `rehmed.visit.closed.subscribe`, which the application
+  requests and an owner grants per environment (`eh-os` D-10); EHOS turns the grant into a route of its v1
+  relay or a broker consumer and its ACL, which closes `eh-os` G-16 once a broker exists.
+- **Relay.** One more ordered subscription over the log (§12): for every event with a `publish`, it builds the
+  message from `fields`, gives it the id `<source event id>/<publish name>`, calls `EhOsContract.Bus.publish/2`
+  and advances its checkpoint on acknowledgement. The log is the outbox; there is no outbox table to prune.
+- **Inbox.** The subscriber's runner takes messages from `Bus`, and in one transaction writes
+  `(name, message id)` to the inbox table (a duplicate is acknowledged and dropped), runs the policy and
+  dispatches its command with `causation_id` set to the message id and `correlation_id` taken from the
+  message; it acknowledges after the commit.
+- **`EhOsContract.Bus`** is a behaviour: publish a batch with ids, subscribe a durable consumer by name,
+  acknowledge. The library ships a local adapter for tests and one application; the transport adapters (EHOS's
+  v1 relay, JetStream through `gnat`) are EHOS's, and one shared test suite runs against every adapter. The
+  library does not depend on NATS.
 
 ## 17. Risks
 
@@ -1057,5 +1175,9 @@ layers; and [identity seam](identity-seam.md) — ESDM's actors are roles, not i
   contradicting DEC-18, on which `visit_handed_over` stands. It waits for ratification.
 - The upcaster contract — one callback per type and version, or a chain — is decided in the stage that first
   needs it.
+- Whether commands get `scope` as queries do (D10). The TaxVision material has the case
+  (`actor_company == company_id`, `PLAN.md` 22 September, step C).
+- What carries a message between two containers in EHOS's v1, where `eh-os` D-03 names "an in-process relay":
+  only EHOS can answer, and only the `Bus` adapter depends on it.
 - The shape of the API EHOS will read: `Model.to_data/1` gets a named schema in E10; transport and versioning of
   that API are EHOS's to specify.
