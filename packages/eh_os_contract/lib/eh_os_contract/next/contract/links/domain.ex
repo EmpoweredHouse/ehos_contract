@@ -136,28 +136,7 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
 
   # `{where, field}` for the field of every struct the contract declares.
   defp fields(d) do
-    Enum.concat([
-      for(
-        u <- d.units,
-        f <- Rules.state_fields(u.state),
-        do: {"#{u.kind} #{inspect(u.name)}, state", f}
-      ),
-      for(c <- Rules.commands(d), f <- c.fields, do: {"command #{inspect(c.name)}", f}),
-      for(e <- Rules.local_events(d), f <- e.fields, do: {"event #{inspect(e.name)}", f}),
-      for(
-        pm <- d.process_managers,
-        f <- Rules.state_fields(pm.state),
-        do: {"process manager #{inspect(pm.name)}, state", f}
-      ),
-      for(r <- d.read_models, f <- r.fields, do: {"read model #{inspect(r.name)}", f}),
-      for(q <- d.queries, f <- q.params, do: {"query #{inspect(q.name)}", f}),
-      for(
-        c <- d.consumes,
-        is_binary(c.from),
-        f <- c.fields,
-        do: {"consumed event #{inspect(c.from)}", f}
-      )
-    ])
+    for {where, fields, _injected, _kind} <- Rules.Fields.structs(d), f <- fields, do: {where, f}
   end
 
   # --- X4 ---------------------------------------------------------------------------

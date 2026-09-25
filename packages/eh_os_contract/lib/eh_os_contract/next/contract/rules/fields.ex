@@ -35,8 +35,12 @@ defmodule EhOsContract.Next.Contract.Rules.Fields do
     end
   end
 
-  # `{where, declared fields, injected names, kind}` for every struct.
-  defp structs(d) do
+  @doc """
+  Every struct a contract declares, as `{where, declared fields, injected names,
+  kind}`: the one list of them, which the rules between modules read too (X3).
+  """
+  @spec structs(map()) :: [{String.t(), [struct()], [atom()], term()}]
+  def structs(d) do
     Enum.concat([
       for(
         u <- d.units,
