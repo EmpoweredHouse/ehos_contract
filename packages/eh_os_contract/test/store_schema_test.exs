@@ -16,11 +16,23 @@ defmodule EhOsContract.StoreSchemaTest do
 
   alias EhOsContract.Event
 
+  # Around the store on purpose: what the table refuses, it refuses from any writer.
   defp row(attrs \\ %{}) do
-    record_event!(
-      Map.merge(
-        %{type: "noted", contract: "Fixture", contract_version: "v", payload: %{"n" => 1}},
-        attrs
+    Repo.insert!(
+      struct!(
+        Event,
+        Map.merge(
+          %{
+            type: "noted",
+            contract: "Fixture",
+            contract_version: "v",
+            payload: %{"n" => 1},
+            actor: Event.system_actor(),
+            correlation_id: Ecto.UUID.generate(),
+            occurred_at: DateTime.utc_now()
+          },
+          attrs
+        )
       )
     )
   end
@@ -112,7 +124,7 @@ defmodule EhOsContract.StoreSchemaTest do
     end
   end
 
-  test "a row without an actor is refused, which is why the test helper supplies one" do
+  test "a row without an actor is refused" do
     error = assert_raise Postgrex.Error, fn -> row(%{actor: nil}) end
     assert error.postgres.code == :not_null_violation
   end

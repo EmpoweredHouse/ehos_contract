@@ -298,20 +298,24 @@ defmodule EhOsContract.Emitter do
     # of what fell away on the way.
     {process, instance_id} = EhOsContract.Instance.key(contract, type, stored)
 
-    event =
-      repo.insert!(%Event{
-        type: to_string(type),
-        contract: inspect(contract),
-        contract_version: Model.version(contract),
-        process: process,
-        instance_id: instance_id,
-        correlation_id: correlation_id,
-        causation_id: ctx[:causation_id],
-        payload: Payload.to_storage(stored),
-        # Never nil: `default_ctx/1` fills this in before `do_emit/5` ever runs.
-        actor: to_string(ctx[:actor]),
-        occurred_at: EhOsContract.Clock.now()
-      })
+    # Through the store, unconditionally: a v1 event belongs to no stream, so there is
+    # no version to check. The append still takes the store's lock, which is what
+    # orders this event against every other writer (v2 §10.2).
+    entry = %{
+      type: to_string(type),
+      contract: inspect(contract),
+      contract_version: Model.version(contract),
+      process: process,
+      instance_id: instance_id,
+      correlation_id: correlation_id,
+      causation_id: ctx[:causation_id],
+      payload: Payload.to_storage(stored),
+      # Never nil: `default_ctx/1` fills this in before `do_emit/5` ever runs.
+      actor: to_string(ctx[:actor]),
+      occurred_at: EhOsContract.Clock.now()
+    }
+
+    {:ok, [event]} = EhOsContract.Store.append(repo, [entry], :none)
 
     # Context for handling: correlation carries on, and this event becomes the
     # cause of everything that follows from it.
