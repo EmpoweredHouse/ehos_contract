@@ -18,37 +18,33 @@ zmian — w kodzie nic się jeszcze nie ruszyło.
 
 ### Stan repozytorium
 
-- Gałąź `dsl-v2/e0-groundwork`, odgałęziona od `main`; `main` = `origin/main` = `5f0092b` (sprawdzone
-  25 września po `git fetch`). Nad `main` trzy commity, wszystkie tylko dokumentacja: `54604d3` (mapa
-  czterech kontraktów na ESDM), `9d2c7c2` (projekt v2 i plan etapów) i commit z tym handoffem —
-  `git log --oneline main..HEAD` pokazuje je wszystkie.
-- **Gałąź nie jest wypchnięta.** Historia liniowa, zero merge commitów.
-- W drzewie dwa **nieśledzone** wpisy, skopiowane przez użytkownika z innego projektu (EHOS):
-  - `.claude/settings.json` — hook `PreToolUse` na Bash, który nie pozwala otworzyć PR, dopóki `HEAD` nie
-    jest oznaczony jako przejrzany. W oryginale wołał `mix ehos.review gate`, którego tu nie ma, i odrzucał
-    każde polecenie Bash, w którego *tekście* stała fraza `gh pr create` (także zapis pliku z tą frazą w
-    treści). **Poprawiony 25 września na prośbę użytkownika:** znakiem przeglądu jest notatka
-    `git notes --ref=review` na `HEAD`, bez żadnego taska; dopasowanie łapie tylko faktyczne wywołanie — na
-    początku linii albo po `;`, `&`, `|`, `(`. Sprawdzone pipe-testem (bezpośrednie i łańcuchowe wywołanie
-    odrzucone; fraza w prozie i w heredocu przepuszczona; z notatką przepuszczone, po nowym commicie znów
-    odrzucone) i `jq -e`. **W sesji, w której go poprawiono, nie zadziałał** — Claude Code wczytuje hooki przy
-    starcie — więc pierwsza świeża sesja jest pierwszą, która używa poprawionej wersji.
-    Oznaczenie przejrzanego commita: `git notes --ref=review add -m '<co przegląd znalazł>' HEAD`.
-  - `.claude/skills/pre-pr-review/` — skill EHOS-a (Kubernetes, `mix precommit`, próg pokrycia,
-    `mix ehos.review record`), w tym repozytorium w większości nieaktualny i dublujący
-    `.claude/skills/review-pr/`. Nie ruszany.
+- `main` = `origin/main` = `7ce9be2`, merge [PR #1](https://github.com/EmpoweredHouse/eh-os-contract/pull/1)
+  (`dsl-v2/e0-groundwork`), zmergowanego przez użytkownika 25 września o 10:26 (sprawdzone po `git fetch`).
+  PR wniósł trzy commity, wszystkie tylko dokumentacja: `54604d3` (mapa czterech kontraktów na ESDM),
+  `9d2c7c2` (projekt v2 i plan etapów), `4262480` (handoff). To pierwszy merge commit w historii `main`.
+- Commit `d1a1ebb` (aktualizacja handoffu po otwarciu PR #1) poszedł na gałąź osiem sekund po merge'u i do
+  `main` nie trafił. Jego treść jest w tym handoffie. `dsl-v2/e0-groundwork` z tym commitem zostaje lokalnie
+  i na `origin`.
+- Gałąź `dsl-v2/e0-review-hook`, od `7ce9be2`: hook i skill przeglądu oraz ten handoff. Wypchnięcie i PR
+  25 września na polecenie użytkownika; stan odczytaj przez `gh pr list --state all --limit 3`.
+- **Przegląd przed PR** — oba pliki skopiowane przez użytkownika z EHOS-a i przepisane 25 września pod to
+  repozytorium:
+  - `.claude/settings.json` — hook `PreToolUse` na Bash: odmawia otwarcia PR, dopóki `HEAD` nie ma notatki
+    `git notes --ref=review`. Dopasowuje tylko faktyczne wywołanie (na początku linii albo po `;`, `&`, `|`,
+    `(`), nie frazę w tekście; łapie też alias `gh pr new`. Sprawdzony pipe-testem i `jq -e`. W sesji z
+    25 września Claude Code przeładował go po edycji, ale to jedna obserwacja: jeśli po zmianie hooka nie
+    działa, pomaga `/hooks` albo restart. Notatki są lokalne — `refs/notes/review` nie jest wypychane.
+  - `.claude/skills/pre-pr-review/` — połowa autora: `/code-review`, rozliczenie znalezisk, brama, notatka.
+    Połową recenzenta zostaje `.claude/skills/review-pr/`.
 
 ### Co zostało — i czyje to jest
 
 - **E1–E11 — asystenta**, według dopisku „Dopisek 25 września (2) — Etap 6” niżej. Następny krok: E1, szew
-  `EhOsContract.Model`, na nowej gałęzi `dsl-v2/e1-model-seam` odgałęzionej od `dsl-v2/e0-groundwork`.
-- **Wypchnięcie `dsl-v2/e0-groundwork`, PR i merge — użytkownika** (D9):
-  `git push -u origin dsl-v2/e0-groundwork`, potem PR przez `gh` — po oznaczeniu `HEAD` notatką przeglądu
-  (hook wyżej). Zmiana jest tylko dokumentacyjna, więc przegląd sprowadza się do sprawdzenia tego.
-- **Zacommitowanie `.claude/settings.json` — użytkownika.** Po commicie hook obowiązuje każdego, kto używa
-  Claude Code w tym repozytorium.
-- **`.claude/skills/pre-pr-review/` — użytkownika**: usunąć albo przepisać pod to repozytorium (brama
-  `cd sandbox && mix check`, notatka `git notes --ref=review`, lista znalezisk z `review-pr`).
+  `EhOsContract.Model`, na nowej gałęzi `dsl-v2/e1-model-seam` od `main` — gdy PR z `dsl-v2/e0-review-hook`
+  jest zmergowany. Jeśli nie jest, zapytaj użytkownika, zanim zaczniesz.
+- **Przegląd i merge PR z `dsl-v2/e0-review-hook` — użytkownika** (D9).
+- **Skasowanie `dsl-v2/e0-groundwork` — użytkownika**; `d1a1ebb` nie jest w `main`, więc lokalnie potrzeba
+  `-D`: `git branch -D dsl-v2/e0-groundwork` i `git push origin --delete dsl-v2/e0-groundwork`.
 - **Publikacja na Hex — użytkownika**, decyzja niepodjęta. W repozytorium są tagi `v0.2.0` i `v0.2.1`; śladu
   publikacji nie ma.
 - **F1 i F2** (`docs/adr/contract-v2.md` §16: skąd suma wizyty, który dzień dostaje korekta) oraz dziesięć
@@ -69,6 +65,7 @@ zmian — w kodzie nic się jeszcze nie ruszyło.
    compile” to punkt wyjścia reguł L2.
 6. Przed E1: `packages/eh_os_contract/lib/eh_os_contract/{contract,registry,conformance,trace,graph}.ex` —
    interfejs, który szew ma owinąć.
+7. Przed pierwszym PR: `.claude/skills/pre-pr-review/SKILL.md` — bez notatki przeglądu hook odmówi.
 
 ### Komendy
 
@@ -83,13 +80,14 @@ ratunek dla zaśmieconej bazy testowej. Gdy krok formatowania nie zgadza się z 
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 25 września**, na `dsl-v2/e0-groundwork` z kodem identycznym z `5f0092b` (od tamtego commita
-  zmieniły się tylko `PLAN.md` i `docs/adr/contract-v2.md`): brama wyżej → **EXIT=0**. Sandbox: 42 testy,
-  0 padnięć, `eh_os_contract.check` 0 błędów, 5 ostrzeżeń, 23 informacje. Pakiet silnika: 397 testów,
+- **Lokalnie, 25 września**, na `dsl-v2/e0-groundwork` z kodem identycznym z `5f0092b` i z dzisiejszym
+  `main` (od `5f0092b` zmieniły się tylko `PLAN.md`, `docs/adr/contract-v2.md` i `.claude/`, których brama
+  nie czyta): brama wyżej → **EXIT=0**. Sandbox: 42 testy, 0 padnięć, `eh_os_contract.check` 0 błędów, 5 ostrzeżeń, 23 informacje. Pakiet silnika: 397 testów,
   0 padnięć, `check` 0 błędów, 8 ostrzeżeń, 16 informacji. Pakiet web: 31 testów, 0 padnięć.
-- **CI**: ostatni przebieg na `main`, `35877354505` (commit `5f0092b`, 23 września 14:52 UTC) — jeden job
-  `check`, `success`, żaden krok pominięty ani nieudany (odczytane przez `gh run view --json jobs`). Na
-  `dsl-v2/e0-groundwork` CI nie biegło, bo nic nie jest wypchnięte.
+- **CI**: PR #1 — przebieg `36112858612` na `4262480`; `main` po merge'u — przebieg `36112961721` na
+  `7ce9be2` (25 września 08:26 UTC). Oba: jeden job `check`, `success`, żaden krok pominięty ani nieudany
+  (odczytane przez `gh run view --json jobs`). CI na PR z `dsl-v2/e0-review-hook` odczytaj przez
+  `gh pr checks`, nie z tego akapitu.
 
 ### Otwarte pytania
 
@@ -111,7 +109,10 @@ ratunek dla zaśmieconej bazy testowej. Gdy krok formatowania nie zgadza się z 
 
 Zatwierdzając plan 25 września, użytkownik zgodził się na pracę na gałęziach etapów `dsl-v2/eN-*` z
 commitami bez pytania, przy zielonej bramie na każdym commicie (D9), oraz na zapis stanu do `PLAN.md` i
-założeń do `docs/adr/contract-v2.md`. **Nie** było zgody na `git push`, PR, merge, tag ani publikację na Hex.
+założeń do `docs/adr/contract-v2.md`. Tego samego dnia jednorazowo zlecił wypchnięcie gałęzi E0 i otwarcie
+PR #1, a po jego merge'u — drugiego PR z tym, co do #1 nie weszło, razem z hookiem i skillem przeglądu.
+Poza tym **nie** było zgody na `git push`, PR, merge, tag ani publikację na Hex — w szczególności nie
+dla kolejnych etapów.
 
 ### Język
 
