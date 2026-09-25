@@ -61,12 +61,25 @@ defmodule EhOsContract.Model do
   def contract?(module) when is_atom(module), do: EhOsContract.Model.V1.contract?(module)
 
   @doc """
-  The model of a contract. Passing a model returns it unchanged, so a reader that
-  asks many questions can build it once.
+  The model of a contract, or of a domain. Passing a model returns it unchanged, so a
+  reader that asks many questions can build it once.
+
+  A module compiled from a v2 DSL carries its model as `__eh_os_contract_model__/0`
+  (v2 §9), and that is returned as it is. The first such module is a domain
+  (`EhOsContract.Domain`, `kind: :domain`). A v1 contract has no compiled model, and
+  `EhOsContract.Model.V1` builds one from its generated functions.
+
+  The accessors below read contracts. A domain's model is plain data with its own
+  keys (`contexts`, `actors`, `values`, …), read directly until a reader needs more.
   """
-  @spec fetch(contract()) :: t()
-  def fetch(%{format: 1, kind: :contract} = model), do: model
-  def fetch(module) when is_atom(module), do: EhOsContract.Model.V1.build(module)
+  @spec fetch(contract() | module()) :: t() | map()
+  def fetch(%{format: 1, kind: kind} = model) when kind in [:contract, :domain], do: model
+
+  def fetch(module) when is_atom(module) do
+    if Code.ensure_loaded?(module) and function_exported?(module, :__eh_os_contract_model__, 0),
+      do: module.__eh_os_contract_model__(),
+      else: EhOsContract.Model.V1.build(module)
+  end
 
   @doc "The contract module the model was built from."
   @spec module(contract()) :: module()

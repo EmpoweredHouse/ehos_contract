@@ -19,6 +19,8 @@ defmodule EhOsContract do
       Contract,
       ContractExample,
       Deployment,
+      Domain,
+      {Domain.Dsl, []},
       Duration,
       Emission,
       Emitter,

@@ -126,6 +126,12 @@ defmodule EhOsContract.MixProject do
       # neighbour goes.
       {:telemetry, "~> 1.3"},
       {:boundary, "~> 0.10", runtime: false},
+      # The v2 DSL engine (v2 §2). Pinned to the patch series E3 tested its properties on:
+      # error locations, formatter export, digest stability under `boundary`.
+      {:spark, "~> 2.7.3"},
+      # Spark's formatter task rewrites `.formatter.exs` through it. Only where that
+      # task runs.
+      {:sourceror, "~> 1.12", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false}
     ]
   end
