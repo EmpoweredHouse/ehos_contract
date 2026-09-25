@@ -2,29 +2,18 @@ defmodule EhOsContract.CompileGatesTest do
   @moduledoc """
   The most convincing artifacts on the whole list: things that **do not compile**.
 
-  Tested through `Code.compile_string/1` with an assertion on the exception. If one
-  of these tests ever stops passing, it means the enforcement turned into a
-  convention — that is, into nothing.
+  Tested through `EhOsContract.DslCase.assert_refused/4`, which compiles the source
+  and asserts on the refusal: its message, and that it points at the refused file
+  rather than at the library. If one of these tests ever stops passing, it means the
+  enforcement turned into a convention — that is, into nothing.
   """
 
-  use ExUnit.Case, async: true
+  use EhOsContract.DslCase, async: false
 
-  defp refute_compiles(source, expected_fragment) do
-    error =
-      assert_raise CompileError, fn ->
-        Code.compile_string(source)
-      end
-
-    message = Exception.message(error)
-
-    assert message =~ expected_fragment or
-             error.description =~ expected_fragment,
-           """
-           the code failed to compile, but not for this reason.
-           expected fragment: #{inspect(expected_fragment)}
-           got: #{message}
-           """
-  end
+  # Every refusal has to point at the code that was refused, not at the library:
+  # the file each source is compiled as.
+  defp refute_compiles(source, expected_fragment),
+    do: assert_refused(source, "gate.ex", expected_fragment)
 
   describe "command" do
     test "naming a process the contract does not declare does not compile" do

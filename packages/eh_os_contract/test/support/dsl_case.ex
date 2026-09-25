@@ -67,6 +67,86 @@ defmodule EhOsContract.DslCase do
   end
 
   @doc """
+  Compiles `source` as the file `file` and returns why it did not compile:
+  `%{message:, file:, line:}`. Fails the test when it compiles.
+
+  A refusal comes in one of three shapes, and each is taken: a `Spark.Error.DslError`
+  from a DSL rule (L1–L2), a `CompileError` a macro raises at its call site (L4), and
+  an error diagnostic from the compiler itself — an unknown key in a struct pattern,
+  an undefined function — which it logs before raising a `CompileError` of its own
+  that names no cause. The first diagnostic of level error wins over that exception.
+  """
+  @spec refusal(String.t(), String.t()) :: %{
+          message: String.t(),
+          file: String.t() | nil,
+          line: non_neg_integer() | nil
+        }
+  def refusal(source, file) do
+    {result, diagnostics} =
+      Code.with_diagnostics(fn ->
+        try do
+          compile(source, file)
+          :compiled
+        rescue
+          error -> {:raised, error}
+        end
+      end)
+
+    case {result, Enum.filter(diagnostics, &(&1.severity == :error))} do
+      {:compiled, []} ->
+        ExUnit.Assertions.flunk("expected #{file} not to compile, and it compiled")
+
+      {_, [diagnostic | _]} ->
+        %{message: diagnostic.message, file: diagnostic.file, line: line(diagnostic.position)}
+
+      {{:raised, %Spark.Error.DslError{location: anno} = error}, []} ->
+        %{
+          message: Exception.message(error),
+          file: anno && anno |> :erl_anno.file() |> to_string(),
+          line: anno && :erl_anno.line(anno)
+        }
+
+      {{:raised, %CompileError{} = error}, []} ->
+        %{message: error.description, file: error.file, line: error.line}
+
+      {{:raised, error}, []} ->
+        ExUnit.Assertions.flunk(
+          "expected #{file} to be refused, and compiling it raised #{inspect(error)}"
+        )
+    end
+  end
+
+  @doc """
+  Asserts that `source`, compiled as the file `file`, is refused with a message
+  containing `fragment`, **and that the refusal points at `file`** — at the user's
+  code, not at the library's. `line`, when given, is checked too. Returns the
+  message.
+  """
+  @spec assert_refused(String.t(), String.t(), String.t() | Regex.t(), pos_integer() | nil) ::
+          String.t()
+  def assert_refused(source, file, fragment, line \\ nil) do
+    refusal = refusal(source, file)
+
+    ExUnit.Assertions.assert(
+      refusal.message =~ fragment,
+      "#{file} was refused, but not for this reason.\nexpected: #{inspect(fragment)}\n" <>
+        "got: #{refusal.message}"
+    )
+
+    ExUnit.Assertions.assert(
+      refusal.file == file,
+      "the refusal points at #{inspect(refusal.file)}, not at #{file}: #{refusal.message}"
+    )
+
+    if line, do: ExUnit.Assertions.assert(refusal.line == line, "#{inspect(refusal)}")
+
+    refusal.message
+  end
+
+  defp line({line, _column}), do: line
+  defp line(line), do: line
+
+  @doc """
   Compiles `source` as the file `file` with `:debug_info` on, and returns what
   `Code.compile_string/2` returns. The binaries then carry their debug chunk, which
   is also where typespecs are read from.

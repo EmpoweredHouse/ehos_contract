@@ -16,7 +16,8 @@ defmodule EhOsContract.Next.Contract.Build do
 
   **Identity is injected** (v2 §4.2): a unit's identity fields, typed `:id`, come
   first in its state, in each of its commands and in each of its events, as if they
-  had been declared there.
+  had been declared there. A process manager's `correlate` fields come first in its
+  state the same way, unless the state declares them.
 
   **The digest does not see declaration order.** Every collection of declarations
   is a set to it, nested ones included, and so is every value with set meaning
@@ -29,7 +30,7 @@ defmodule EhOsContract.Next.Contract.Build do
   use Spark.Dsl.Transformer
 
   alias EhOsContract.Digest
-  alias EhOsContract.Next.Contract.Dsl
+  alias EhOsContract.Next.Contract.{Dsl, Rules}
   alias Spark.Dsl.Transformer
 
   @impl true
@@ -37,8 +38,9 @@ defmodule EhOsContract.Next.Contract.Build do
     model = model(dsl)
 
     {:ok,
-     Transformer.eval(
-       dsl,
+     dsl
+     |> Transformer.persist(:eh_os_contract_model, model)
+     |> Transformer.eval(
        [],
        quote do
          @doc false
@@ -56,19 +58,23 @@ defmodule EhOsContract.Next.Contract.Build do
     prefix = process && process.name
 
     units = of(entities, Dsl.Unit)
+    declarations = Rules.declarations(dsl)
+
+    events = for u <- units, {stage, e} <- events(u), do: event(u, stage, e, prefix)
 
     collections = %{
       units: Enum.map(units, &unit/1),
       commands: for(u <- units, c <- u.commands, do: command(u, c)),
-      events: for(u <- units, {stage, e} <- events(u), do: event(u, stage, e, prefix)),
+      events: events,
       policies: entities |> of(Dsl.Policy) |> Enum.map(&plain/1),
       effects: entities |> of(Dsl.Effect) |> Enum.map(&plain/1),
-      process_managers: entities |> of(Dsl.ProcessManager) |> Enum.map(&process_manager/1),
+      process_managers:
+        entities |> of(Dsl.ProcessManager) |> Enum.map(&process_manager(&1, events)),
       read_models: entities |> of(Dsl.ReadModel) |> Enum.map(&plain/1),
       queries: entities |> of(Dsl.Query) |> Enum.map(&plain/1),
       consumes: entities |> of(Dsl.Consumes) |> Enum.map(&consumes/1),
       publishes: entities |> of(Dsl.Publish) |> Enum.map(&plain/1),
-      scenarios: entities |> of(Dsl.Scenario) |> Enum.map(&scenario/1)
+      scenarios: entities |> of(Dsl.Scenario) |> Enum.map(&scenario(&1, declarations))
     }
 
     own = %{domain: domain, context: context}
@@ -127,8 +133,10 @@ defmodule EhOsContract.Next.Contract.Build do
     })
   end
 
-  defp identity_fields(unit) do
-    for name <- unit.identity do
+  defp identity_fields(unit), do: id_fields(unit.identity)
+
+  defp id_fields(names) do
+    for name <- names do
       %{
         name: name,
         type: :id,
@@ -143,11 +151,30 @@ defmodule EhOsContract.Next.Contract.Build do
 
   defp state_fields(states), do: Enum.flat_map(states, &plain(&1.fields))
 
-  defp process_manager(pm) do
+  # A run is told by its correlation, so a process manager's state starts with those
+  # fields, as a unit's starts with its identity, unless the state declares them. Each
+  # has the type a local event gives the field; one only consumed events carry is an
+  # :id, since their fields are the sibling's, which a contract does not compile against.
+  defp process_manager(pm, events) do
+    declared = state_fields(pm.state)
+    names = MapSet.new(declared, & &1.name)
+
+    correlation =
+      for f <- id_fields(pm.correlate), not MapSet.member?(names, f.name) do
+        type =
+          Enum.find_value(
+            events,
+            :id,
+            &Enum.find_value(&1.fields, fn e -> e.name == f.name && e.type end)
+          )
+
+        %{f | type: type}
+      end
+
     pm
     |> plain()
     |> Map.merge(%{
-      state: %{fields: state_fields(pm.state)},
+      state: %{fields: correlation ++ declared},
       timers:
         Enum.map(pm.timers, &(&1 |> plain() |> Map.update!(:wait, fn w -> duration(w) end))),
       ends_on: Enum.map(pm.ends_on, & &1.event)
@@ -206,17 +233,17 @@ defmodule EhOsContract.Next.Contract.Build do
   defp put_unverified(%{} = duration, unverified), do: Map.put(duration, :unverified, unverified)
   defp put_unverified(other, _unverified), do: other
 
-  defp scenario(scenario) do
+  # One trigger, which S1 has made sure of, and the declaration it resolves to.
+  defp scenario(%Dsl.Scenario{trigger: [trigger]} = scenario, declarations) do
+    {kind, target} = Rules.Scenarios.target(scenario, declarations)
+
     %{
       description: scenario.description,
       scope: scenario.scope,
+      target: %{kind: kind, name: target.name},
       actor: scenario.actor,
       given: plain(scenario.given),
-      trigger:
-        case scenario.trigger do
-          [trigger | _] -> plain(trigger)
-          [] -> nil
-        end,
+      trigger: plain(trigger),
       expect: plain(scenario.expect),
       rejected: scenario.rejected,
       issues: plain(scenario.issues),

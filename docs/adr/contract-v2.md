@@ -136,6 +136,10 @@ scenario        description!   scope · actor
 
 - **Identity is injected.** A unit's identity fields appear in its state, commands and events without being
   declared there; declaring one again is an error.
+
+  > *25 September 2026, E5:* a process manager's `correlate` fields are injected into its state the same way,
+  > unless the state declares them. Its timer's callback receives the state alone, and without the run's
+  > correlation it could not name the visit its command is about.
 - **Stage membership is nesting.** Local events sit inside `stage :payment do … end` in their unit; foreign
   events are placed with `include` inside `process`. The order of `stage` entries in `process` is the order
   of stages.
@@ -519,6 +523,21 @@ end
 fields), capabilities at dispatch, the backstop that emitted events are within `emits:` and rejections
 within `rejects:`, routing a stored type to its struct, and encryption.
 
+> **25 September 2026, E5 — what the table above left open, as built.** The generator is a transformer after
+> `Build` that calls `Module.create/3` at each declaration's file and line; it writes the structs and
+> behaviours from one list, `EhOsContract.Next.Contract.Callbacks`, which the implementation macros check
+> against as well. Choices the table does not make: **`evolve/2` is expected only when a state is declared**
+> — a unit whose state is its identity alone has nothing to fold — and it folds a boundary's consulted events
+> as well as its own, and a process manager's triggers. **A process manager has one callback per reaction or
+> timer that issues**, `(event, state)` and `(state)`; what it sets and cancels is declared, so it has no
+> callback. **A read model's callback takes the event alone**, `(event) :: :ok`, until E6 runs projections
+> and says what they write through. **A query's callback sits in `C.Queries.*`, beside its parameters**,
+> since `use C, query: :q` binds to it and the implementation matches on the struct. An event received from
+> another application gets `C.Received.*`. **`reject/1` only:** a second argument would carry details, and a
+> rejection travels to logs and callers, so `EhOsContract.Rejection` names the invariant and nothing else
+> (§17). `emit/1`, `reject/1` and `issue/1` are imported in every implementation, so a macro in the wrong
+> kind is refused by I7 with a reason, not by the compiler as an undefined function.
+
 ## 6. Checks, in five layers
 
 **No rule depends on a Spark verifier.** Verifiers run in `@after_verify`, Spark turns their errors into
@@ -568,6 +587,23 @@ where it helps; every violation is reported as a diagnostic before the single ra
   `rejects:`. S5: `expect` ⊆ the command's `emits:`. S6: trigger and outcome fit the kind of unit. S7: the
   scenario's `actor` is in the command's `by:`. S8: **every invariant is covered by at least one `rejected`
   scenario** — the successor of architecture §18's gate, kept an error although ESDM makes it a warning.
+
+  > *Made precise 25 September 2026, E5, while the S rules were written.* **S1** also refuses a scenario with
+  > no trigger or with more than one: E4's model kept the first of two and dropped the other without a word.
+  > **S3**: a unit's identity is not required in scenario data, because a scenario is one stream and §4.5's
+  > own scenarios name no `visit_id`; given, it has to be an `:id`. Values of built-in types are checked here,
+  > at L2, and only values of domain types, and data of an event consumed from a sibling, are left to X9.
+  > **Time in scenario data** is an ISO 8601 string, `"2026-09-01T09:00:00Z"` for a `:timestamp` and
+  > `"2026-09-01"` for a `:date`: a `~U` literal would put a `DateTime` into the model, which §9 keeps plain
+  > data, so S3 refuses it with that reason. **S6** accepts two targets: a command to an aggregate or a
+  > boundary, followed by `expect` or `rejected` and not both; and an event delivered to a policy (followed by
+  > `issues`) or to a process manager (followed by `issues`, `sets`, `cancels` or `ended`, each one its
+  > declaration allows for that trigger). An effect's outcome is outside the log, and nothing yet says what a
+  > read model's rows or a query's answer should be, so neither is a scenario's target until a stage gives
+  > them a word; `query` stays in the vocabulary and is refused with that reason. **S8** counts per unit: two
+  > units may each have an invariant of the same name. *Later the same day, with `ScenarioCase`:* `on` may name
+  > a process manager's timer, which fires, since a timer is one of its triggers (P4) and nothing else could
+  > state what it issues; and two scenarios may not share a description, which names the test generated for each.
 - *Domain.* D1: unique names per kind. D2: at most one translation per language, none into the context's
   own. D3: a value has exactly one of type or fields; `unit` only on numeric types; no cycles. D4: a human
   actor has no `backed_by`. D5: relation roles fit the type; endpoints exist; no relation to itself.

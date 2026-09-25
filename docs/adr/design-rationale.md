@@ -492,6 +492,15 @@ under an implementation that special-cases three inputs; and they are a **mainte
 the way all tests rot, tolerable only because an example *is* a test and fails loudly. Both are expanded,
 with the coverage join against the log, in [technology notes §5](technology-notes.md#5-conformance).
 
+*Corrected 25 September 2026, v2 plan E5* ([contract v2](contract-v2.md) §6, §18). The four properties
+survive the move to v2 and the shape does not. A rule is an invariant of a unit, and an example is a
+Given-When-Then scenario whose `given` is a list of events: the decision reads a state folded from history,
+so an example states history, not inputs. "A rule with no example does not compile" is now "an invariant
+with no scenario rejected on it does not compile" (S8), kept an error where ESDM makes it a warning. The
+contract no longer names a function: an implementation names the contract, and the scenario runs against it.
+The table's middle row still holds, and so does "not enforced: how much state an example may set up" —
+a scenario may give as many events as it needs.
+
 ---
 
 ## Alternatives considered

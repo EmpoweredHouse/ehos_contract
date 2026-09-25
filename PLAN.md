@@ -15,42 +15,53 @@ dashboardu; `sandbox/` to dane testowe. **Trwa pivot do v2**: DSL na Sparku z mo
 (jeden kontrakt = jeden proces), event sourcing na własnym magazynie w Postgresie, crypto-shredding. Plan
 zatwierdzono 25 września. **E0, E1 (szew `EhOsContract.Model`), D10–D12, E2 (log staje się magazynem) i E3
 (Spark i DSL domeny) są w `main`, a z nimi decyzje po E3 (PR #7): D13 (opcje obok bloku `do` zostają, biblioteka
-generuje nakładki o jedną arność więcej), stała kolejność w `check`, „Unreleased” w obu changelogach. E4
-(rdzeń DSL-a kontraktu pod `EhOsContract.Next.Contract`) jest zrobiony lokalnie, 12 commitów, niewypchnięty.
-E5–E12 nie są zaczęte.** Zachowanie v1 się nie zmieniło, poza tym, że log jest tylko do dopisywania; kontraktu
-v2 nic jeszcze nie uruchamia.
+generuje nakładki o jedną arność więcej), stała kolejność w `check`, „Unreleased” w obu changelogach. Po nich
+D14 (PR #8: kontrakt deklaruje, kto może działać, osobny pakiet weryfikuje) i E4 (PR #9: rdzeń DSL-a
+kontraktu pod `EhOsContract.Next.Contract`, jego model i reguły L2). E5 jest podzielony na dwa PR-y; **E5a
+(generowanie, wiązanie implementacji, L4, reguły S, `ScenarioCase`) jest zrobione lokalnie**, E5b (kompilator
+Mixa, reguły X, L3) nie jest zaczęty; E6–E12 i EA też nie.** Zachowanie v1 się nie zmieniło, poza tym, że log
+jest tylko do dopisywania; kontrakt v2 generuje struktury i behaviours, a jego scenariusze biegną w testach na
+implementacji, ale dispatchu jeszcze nie ma.
 
 ### Stan repozytorium
 
-- `main` = `origin/main` = `950f83f`, merge [PR #8](https://github.com/EmpoweredHouse/eh-os-contract/pull/8)
-  (D14, sama dokumentacja). Przed nim [PR #7](https://github.com/EmpoweredHouse/eh-os-contract/pull/7)
-  (`c882946`, decyzje po E3), zmergowany przed końcem swojego checku; CI na `main` po nim zielone (przebieg
-  `36137135279`, job `check` `success`). Wcześniej PR #6 (`66ab602`, E3), #5 (`6646df7`, E2), #4 (`c61ce5b`,
-  D10–D12), #3 (`bfda7c7`, E1), #2 (`73031d2`), #1 (`7ce9be2`). CodeRabbit na #7 (plan Free) dał samo
-  podsumowanie, zero uwag.
-- **E4 leży na `claude/dsl-v2-e4-contract-core-68fd81`** = `origin/main` + handoff po #7 + 12 commitów E4 +
-  commit z tym wpisem, przebazowane na `950f83f`, w worktree `.claude/worktrees/dsl-v2-e4-contract-core-68fd81`. Lokalna `dsl-v2/e4-contract-core`
-  stoi na `38df8bd`, wymeldowana w starym worktree `.claude/worktrees/dsl-v2-e1-model-seam-ed132e`, a
-  `origin/dsl-v2/e4-contract-core` na `a4a7009` (w całości w `main`). Push E4 to więc fast-forward:
-  `git push origin claude/dsl-v2-e4-contract-core-68fd81:dsl-v2/e4-contract-core` — tylko na polecenie.
+- `main` = `origin/main` = `db00403`, merge [PR #9](https://github.com/EmpoweredHouse/eh-os-contract/pull/9)
+  (E4), zmergowanego przez użytkownika 25 września. Drzewo `db00403` jest identyczne z `1dea272`, głową
+  gałęzi PR (`git diff 1dea272 db00403` pusty). Wcześniej PR #8 (`950f83f`, D14), #7 (`c882946`), #6
+  (`66ab602`, E3), #5 (`6646df7`, E2), #4 (`c61ce5b`, D10–D12), #3 (`bfda7c7`, E1), #2 (`73031d2`), #1
+  (`7ce9be2`). Historia `main` ma merge commity, bo użytkownik merguje PR-y jako merge.
+- **E5a jest na `claude/dsl-v2-e5-codegen-0c8df1`** (worktree `.claude/worktrees/dsl-v2-e5-codegen-0c8df1`):
+  `5cb888d` (handoff) plus 8 commitów E5a, 8 poprawek z przeglądu i commit tego zapisu, niewypchnięta. `dsl-v2/e5-codegen` została na `5cb888d`, bo jest
+  wymeldowana w worktree `.claude/worktrees/dsl-v2-e4-contract-core-68fd81` i git nie przesuwa jej tutaj;
+  użytkownik zgodził się 25 września na commity na gałęzi sesji, tak jak w E4. Push E5a na nią to
+  fast-forward: `git push origin claude/dsl-v2-e5-codegen-0c8df1:dsl-v2/e5-codegen` — na polecenie
+  użytkownika. W repozytorium są jeszcze worktree `dsl-v2-e1-model-seam-ed132e` (stara
+  `dsl-v2/e4-contract-core` na `38df8bd`, już w `main`), `eh-os-contract-step-7-062e77` (sesja D14,
+  `ba1796a`, w `main`) i główny checkout na `main` (`db00403`).
 - **Przegląd przed PR**: `.claude/settings.json` (hook `PreToolUse` odmawia `gh pr create`/`gh pr new`,
   dopóki `HEAD` nie ma notatki `git notes --ref=review`) i `.claude/skills/pre-pr-review/` (połowa autora).
-  Hook czyta HEAD **głównego checkoutu** (`$CLAUDE_PROJECT_DIR`), nie worktree — przy E2 i E3 główny checkout
-  był na chwilę odczepiony na głowie gałęzi, za każdym razem za osobną zgodą użytkownika; poprawka hooka to
-  osobna, niezrobiona zmiana. Połową recenzenta zostaje `.claude/skills/review-pr/`. Notatki są lokalne,
-  `refs/notes/review` nie jest wypychane.
+  Hook czyta HEAD katalogu `$CLAUDE_PROJECT_DIR`. W E2 i E3 był nim główny checkout; w sesji E4 hook przepuścił
+  PR #9 przy notatce na HEAD worktree, bez ruszania głównego checkoutu — czyli tam był to katalog sesji.
+  Jeśli hook odmówi mimo notatki na HEAD worktree, chodzi o główny checkout i trzeba zapytać użytkownika, czy
+  go na chwilę odczepić. Notatki są wspólne dla wszystkich worktree, lokalne, `refs/notes/review` nie jest
+  wypychane. Połową recenzenta zostaje `.claude/skills/review-pr/`.
+- CodeRabbit na #7 i #9 (plan Free): tylko podsumowanie, na #9 „Review limit reached”; zero uwag inline i
+  recenzji na obu.
 
 ### Co zostało — i czyje to jest
 
-- **E4: przegląd przed PR zrobiony, PR otwierany na polecenie użytkownika z 25 września.** Po merge'u — CI na `main` do sprawdzenia po jobach.
-- **Stare worktree po zamknięciu sesji — użytkownika** (`.claude/worktrees/dsl-v2-e1-model-seam-ed132e` i to z
-  E4, gdy nikt w nich nie pracuje).
-- **E5–E12 — asystenta**, według dopisku „Dopisek 25 września (2) — Etap 6” niżej. Następny krok: E5
-  (generowanie kodu, wiązanie implementacji, scenariusze, L3). E5 dziedziczy z E4: reguły L3, których L2 nie
-  może sprawdzić bez domeny (aktorzy, wartości, podmioty, systemy zewnętrzne, `scope` aktorów przy query,
-  przestrzeń nazw publikacji), reguły S na scenariuszach — w tym uzupełnienie `given` fikstury
-  `UniversalityGate.Next` i reprezentację czasu w danych scenariusza — oraz decider z
-  `UniversalityGate.Eligibility.decide/1` („E4 — co wyszło”, ustalenia 3, 5, 6).
+- **Stare worktree — użytkownika** (`git worktree remove …` dla `dsl-v2-e1-model-seam-ed132e` i
+  `eh-os-contract-step-7-062e77`, gdy nikt w nich nie pracuje); lokalna gałąź `claude/dsl-v2-e4-contract-core-68fd81`
+  jest w całości w `main` i też jest do usunięcia.
+- **E5b–E12 i EA — asystenta**, według dopisku „Dopisek 25 września (2) — Etap 6” niżej. Przed E5b:
+  `pre-pr-review` i PR z E5a — na polecenie użytkownika. **E5b** to kompilator `compile.eh_os_contract` z
+  regułami X1–X9 i tym, czego L2 nie sprawdzi bez domeny i innych kontraktów: aktorzy, wartości (także w
+  danych scenariuszy, X9), podmioty i systemy zewnętrzne z domeny; `scope` aktorów przy query (D10);
+  przestrzeń nazw publikacji (D11); unikalność nazw komend i query w całej aplikacji (D14); jedna
+  implementacja na jednostkę (X8); para zmyślonych kontraktów wydawca–subskrybent z odbioru E5; literówka w
+  `by:` psująca zwykłe `mix compile`. Do tego pominięte znalezisko 9 z przeglądu E5a (jedno miejsce na
+  odnajdywanie zdarzenia konsumowanego po nazwie lokalnej).
+  Reguły S, uzupełnienie `given` fikstury, czas w danych scenariusza i decider — zrobione w E5a.
 - **Lista zmian do `eh-os`** (odwrócenie D-01, zawężenie D-15, outbox, G-16, pytanie o transport v1) —
   użytkownika; jest w „D10–D12 — skąd się wzięły” w dopisku Etap 6. Od D14 także D-34, D-40 i plan etapu 4
   (kroki 7–8) — w „D14 — autoryzacja” tamże.
@@ -77,9 +88,10 @@ v2 nic jeszcze nie uruchamia.
    usterek, których porty nie naprawiają.
 5. `packages/eh_os_contract/docs/contract.md` — DSL v1, który jest zastępowany; tabela „What refuses to
    compile” to punkt wyjścia reguł L2.
-6. Przed E5: opis E5 w dopisku Etap 6, v2 §5 (co generuje kontrakt i jak wiąże się implementacja), §6
-   (reguły S, X i I), §7–8 (subskrybenci, zależności kompilacyjne) i „E4 — co wyszło”. Kod, na którym E5
-   stoi: `lib/eh_os_contract/next/contract/{dsl,rules,build}.ex` i `rules/*.ex` (jedna grupa reguł na moduł,
+6. Przed E5b: opis E5 w dopisku Etap 6 (z podziałem na E5a i E5b), „E5a — co wyszło”, v2 §6 (reguły X, z
+   notką o S z E5), §7–8 (subskrybenci, zależności kompilacyjne). Kod E5a: `lib/eh_os_contract/implementation.ex`
+   (wiązanie, L4), `scenario_case.ex`, `next/contract/{generate,callbacks,data}.ex`, `rules/scenarios.ex`,
+   `DslCase.assert_refused/4`. Kod, na którym stał E5: `lib/eh_os_contract/next/contract/{dsl,rules,build}.ex` i `rules/*.ex` (jedna grupa reguł na moduł,
    wszystkie czytają `Rules.declarations/1`), `lib/eh_os_contract/dsl_wrappers.ex` (nakładki D13 i
    `transform` dla opcjonalnych argumentów), `lib/eh_os_contract/dsl_rules.ex` (jeden `DslError` na
    wszystkie naruszenia), `test/support/dsl_case.ex` (`compile/2`, `compile_error/2`, `refuse_contract/2`,
@@ -104,14 +116,13 @@ uruchomić `MIX_ENV=test mix deps.get` w `packages/eh_os_contract` i w `packages
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 25 września**, na `claude/dsl-v2-e4-contract-core-68fd81` (po przebazowaniu na `950f83f` i
-  z D14): brama → **EXIT=0**. Sandbox: 45 testów, 0 padnięć,
-  `eh_os_contract.check` 0 błędów, 5 ostrzeżeń, 23 informacje. Pakiet silnika: 593 testy, 0 padnięć, `check`
-  0 błędów, 8 ostrzeżeń, 16 informacji. Pakiet web: 31 testów, 0 padnięć. Linie `check` w obu projektach
-  identyczne co do bajtu z `main` na każdym commicie E4.
-- **CI**: na `main` po merge'u #7 — przebieg `36137135279` na `c882946`, job `check` `success`, żaden krok
-  pominięty ani nieudany. E4 nie był jeszcze na CI (niewypchnięty). Druga baza testowa silnika powstaje na CI
-  sama, z aliasu `test`.
+- **Lokalnie, 25 września**, na ostatnim commicie E5a, brama z `sandbox/` → **EXIT=0**. Sandbox: 45 testów, 0
+  padnięć, `eh_os_contract.check` 0 błędów, 5 ostrzeżeń, 23 informacje. Pakiet silnika: 654 testy, 0 padnięć,
+  `check` 0 błędów, 8 ostrzeżeń, 16 informacji. Pakiet web: 31 testów, 0 padnięć. Linie `check` w obu
+  projektach identyczne co do bajtu z tymi na `5cb888d` (i sprzed E4) — na każdym commicie E5a i przeglądu.
+- **CI**: PR #9 — przebieg `36145275279` na `1dea272`, job `check` `success`, żaden krok pominięty ani
+  nieudany (odczytane po jobach). `main` po merge'u #8 — `36141999262`, `success`. `main` po merge'u #9 —
+  `36145850036` na `db00403`, job `check` `success`, żaden krok pominięty ani nieudany.
 
 ### Otwarte pytania
 
@@ -119,6 +130,9 @@ uruchomić `MIX_ENV=test mix deps.get` w `packages/eh_os_contract` i w `packages
   przyjęte po E1 tego samego dnia. Nowe pytania w §19: `scope` dla komend, transport v1 między kontenerami. Każde można
   otworzyć ponownie; ponowne otwarcie to notka z datą w §16. Najbardziej brzemienne: D6 (`recorded_by` dla
   15 zdarzeń bez komendy) i D7 (przynależność cudzych zdarzeń do przebiegów przez `_event_runs`).
+- **D14:** przyjęta komenda ma wiersz w tabeli pakietu auth i wiersz `accepted` w `_commands` — dwa zapisy
+  jednego faktu; rozstrzyga EA („D14 — autoryzacja” w dopisku Etap 6). Kształt behaviouru
+  `EhOsContract.Authorizer` do potwierdzenia przed E6 (opis PR #8).
 - **Upcastery:** kontrakt callbacku — jeden na typ i wersję czy łańcuch — rozstrzyga etap, który pierwszy go
   potrzebuje (§19).
 - **H177** z materiału Rehmedu (przekazanie wizyty jako komenda warunkowa, zamrożenie ceny przy rozliczeniu)
@@ -142,7 +156,12 @@ E1 jednorazowo zlecił wypchnięcie `dsl-v2/e1-decisions` i PR z D10–D12, a po
 `dsl-v2/e2-store`. Zlecając E4 (25 września), powtórzył zgodę na commity na `dsl-v2/eN-*` przy zielonej bramie
 i na zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. Commity E4 poszły jednak na gałąź worktree tej
 sesji, `claude/dsl-v2-e4-contract-core-68fd81`, a nie na `dsl-v2/e4-contract-core` (powód w „Stan
-repozytorium”) — ta rozbieżność czeka na potwierdzenie użytkownika.
+repozytorium” z tamtej chwili); użytkownik to potwierdził i zlecił `pre-pr-review` oraz PR #9, który
+zmergował. **Zlecając E5 (25 września), użytkownik potwierdził to samo w nowej sesji:** commity bez pytania
+przy zielonej bramie na każdym, zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`; commity na gałęzi
+sesji `claude/dsl-v2-e5-codegen-0c8df1`, a nie na `dsl-v2/e5-codegen` (wymeldowanej w innym worktree); E5
+podzielony na dwa PR-y. Push, PR, merge, tag i Hex — dalej tylko na wyraźne polecenie. Nic z tego nie
+przechodzi samo na kolejną sesję.
 
 ### Język
 
@@ -256,8 +275,8 @@ padnie — stop, wariant A (opcje w bloku) i pytanie wraca do użytkownika.**
 *Odbiór:* test na każdą regułę L2 i kontrola, która się kompiluje; złoty test modelu; słownik przypięty
 testem, wyprowadzany z rozszerzenia, a nie z ręcznej listy; przykłady z v2 §4.5–4.6 kompilują się w zapisie,
 w którym są napisane (poza poprawkami z D10–D12).
-**Zrobione 25 września**, 12 commitów na gałęzi worktree tej sesji,
-`claude/dsl-v2-e4-contract-core-68fd81`, niewypchnięte. Oba warunki D13 przeszły, choć jedno założenie pod
+**Zrobione 25 września** i zmergowane jako PR #9 (`db00403`): 12 commitów E4, pięć poprawek z przeglądu
+przed PR i dwa commity `PLAN.md`. Oba warunki D13 przeszły, choć jedno założenie pod
 nimi było błędne; kryteria odbioru spełnione — „E4 — co wyszło” niżej.
 
 **E5 — Generowanie kodu, wiązanie, scenariusze, L3.** Struktury i behaviours (v2 §5), `EhOsContract.Implementation`
@@ -274,6 +293,12 @@ implementacja; **na parze zmyślonych kontraktów jednej aplikacji (wydawca, sub
 konsumowanego zdarzenia albo zmiana jego typu psuje `mix compile` z błędem wskazującym obie strony (od D11 nie ma
 już `public: true` do cofnięcia) — kontrole:
 dodanie pola opcjonalnego się kompiluje, a subskrybent, który zmienionego pola nie używa, kompiluje się dalej.**
+**Podzielony na dwa PR-y** (decyzja użytkownika z 25 września, żeby diff dało się przeczytać): **E5a** —
+generowanie struktur i behaviours, wiązanie implementacji z L4, reguły S, `ScenarioCase`, decider fikstury,
+kierunek zależności w xref; **E5b** — kompilator `compile.eh_os_contract` z regułami X i częściami L3 z
+D10/D11/D14, para wydawca–subskrybent, literówka w `by:` psująca `mix compile`. **E5a zrobione 25 września**
+na `claude/dsl-v2-e5-codegen-0c8df1`, 8 commitów od `b1d4a27` i 8 poprawek z przeglądu przed PR,
+niewypchnięte — „E5a — co wyszło” niżej.
 
 **E6 — Dispatch synchroniczny i przejście VisitSettlement.** `Dispatcher`, `Codec`, `Capability`, idempotencja,
 ponowienia, projekcje i polityki inline, `record/3` (D6), wiersze `_commands` (v2 §11–12); query przez tę samą
@@ -791,13 +816,103 @@ Testy z 1, 2, 4 i 5 zweryfikowane wstecz: na kodzie sprzed poprawki pada dokład
 593. Na przebazowanych commitach sprzed przeglądu bramy od nowa nie puszczano — #8 zmienił tylko Markdown;
 zielona jest na każdym commicie od przebazowania.
 
+### E5a — co wyszło (25 września)
+
+Stan: kontrakt v2 generuje struktury (`Next.Contract.Generate`: `C.Commands.*`, `C.Events.*`, `C.Received.*`,
+stany, `Row`, parametry query) i behaviours z jednej listy `Next.Contract.Callbacks`; `use C, aggregate: :x`
+(i sześć innych rodzajów) wiąże implementację przez `EhOsContract.Implementation` z makrami `emit`/`reject`/
+`issue` i `@before_compile` (L4, I1–I7); reguły S1–S8 są ósmą grupą L2 (`Rules.Scenarios`);
+`EhOsContract.ScenarioCase` uruchamia scenariusze na implementacji; decider fikstury to
+`UniversalityGate.Next.Episode`. Nowe w eksportach `boundary`: `Implementation`, `Meta`, `Rejection`,
+`ScenarioCase`. `Model.module_for/3` wszedł ze swoim czytelnikiem (generator). Brama zielona na każdym z 8
+commitów; silnik 593 → 646, sandbox 45, web 31; linie `eh_os_contract.check` identyczne co do bajtu z `5cb888d`
+w obu projektach na każdym commicie.
+
+**Odbiór E5, część E5a, jak sprawdzony.**
+- *Implementacja fikstury kompiluje się pod `--warnings-as-errors`* — `UniversalityGate.Next.Episode` w
+  `test/support/`, kompilowany przez bramę pakietu; kontrole w `implementation_test` sprawdzają zero diagnostyk.
+- *Test `CompileError` z plikiem:linią na każdą regułę L4* — `test/dsl/implementation_test.exs`, I1–I7, każda
+  odmowa przez `DslCase.assert_refused/4`, który sprawdza plik i linię użytkownika. Wstecz: gdy `refuse!/2`
+  niczego nie odrzuca, pada 8 testów odmów, 4 kontrole przechodzą.
+- *Usunięcie scenariusza z odmową psuje kompilację i nazywa inwariant* — `contract_scenarios_test`, S8, z
+  kontrolą. Wstecz: bez grupy `Rules.Scenarios` pada 11 odmów, 5 kontroli przechodzi.
+- *`mix xref graph --label compile-connected` bez krawędzi kontrakt → implementacja* — przypięte testem
+  (`implementation_dependency_test`), który uruchamia prawdziwy `mix xref` na manifeście tej kompilacji: od
+  kontraktu fikstury tylko pliki biblioteki, ani implementacja, ani domena; implementacja ma krawędź
+  kompilacji do kontraktu.
+- *Pomocnik testów bram zastępuje `refute_compiles/2`* — `DslCase.refusal/2` i `assert_refused/4` przyjmują
+  `DslError`, `CompileError` z makra i diagnostykę błędu kompilatora. `compile_gates_test` (v1) przeszedł na
+  niego bez zmiany jednej asercji; wszystkie 27 odmów v1 wskazuje plik użytkownika.
+- *Poprawka ADR §18* — notki z datą w `architecture.md` i `design-rationale.md`.
+
+**Ustalenia.**
+1. **Czas w danych scenariusza to napis ISO 8601** (`"2026-09-01T09:00:00Z"`, data `"2026-09-01"`). S3
+   odmawia literału `~U` z powodem: włożyłby `DateTime` do modelu, który ma być czystymi danymi.
+   `ScenarioCase` rzutuje napisy na typy pól. Wartości typów wbudowanych sprawdza S3 (L2); X9 zostają tylko
+   typy domeny i dane zdarzeń z kontraktu-rodzeństwa. Notka w v2 §6.
+2. **Tożsamość jednostki w danych scenariusza jest opcjonalna**: scenariusz to jeden strumień, a scenariusze
+   §4.5 nie podają `visit_id`. `ScenarioCase` wstawia wartość podaną gdziekolwiek w scenariuszu albo
+   `"scenario"`.
+3. **S1 zamyka znalezisko 3 z przeglądu E4** (dwa wyzwalacze) i dostał jeszcze jedno: dwa scenariusze o tym
+   samym opisie są odrzucane, bo opis nazywa test, który `ScenarioCase` generuje.
+4. **S6 przyjmuje dwa cele:** komendę do agregatu lub DCB (`expect` albo `rejected`, nie oba) i zdarzenie
+   dostarczone polityce albo process managerowi, także timer PM przez `on :timer`. Efekt, read model i query
+   są odrzucane z powodem: nic jeszcze nie mówi, czym jest wynik read modelu ani odpowiedź query. **`query` w
+   scenariuszu czeka na E6**, który uruchamia projekcje — wtedy trzeba mu dać słowo wyniku.
+5. **Kształty callbacków, których §5 nie rozstrzygał** (notka z datą w v2 §5): `evolve/2` tylko przy
+   zadeklarowanym stanie; PM ma callback tylko na reakcję lub timer, które coś wydają; callback read modelu
+   `(event) :: :ok` do E6; callback query w `C.Queries.*` obok parametrów. **`reject/1` bez `reject/2`**:
+   `EhOsContract.Rejection` nazywa tylko inwariant, bo odmowa idzie do logów i wywołujących (§17).
+6. **Stan process managera zaczyna się od pól `correlate`**, tak jak stan jednostki od tożsamości. Wyszło przy
+   pisaniu `ScenarioCase`: callback timera dostaje sam stan, a bez korelacji nie miałby z czego zbudować
+   komendy. Notka w v2 §4.2.
+7. **Cena I4 (literały w `emit/1`), zmierzona na deciderze:** dwa wyniki `qualify_referral` mają wspólne dwa
+   pierwsze zdarzenia, które trzeba zapisać w każdym z dwóch `emit`. Zostawione — reguła kupuje sprawdzenie w
+   czasie kompilacji — ale to pierwszy pomiar i warto go powtórzyć na VisitSettlement w E6.
+8. **Wygenerowane moduły powstają `Module.create/3` na pliku i linii deklaracji**, co widać w chunku
+   `debug_info` (`anno`); w testach `Code.compile_string` nie pisze chunka `Docs`. Typ mapy w `@type t` wraca z
+   `Code.Typespec` z polami posortowanymi — tak przechowuje je Erlang, więc test porównuje posortowane.
+9. **`Row` read modelu i parametry query nie wymuszają kluczy** (`@enforce_keys`), komendy i zdarzenia tak.
+   Czy `Row` stanie się schematem Ecto, rozstrzyga E6.
+10. **`ContractExample` zostaje** dla testów v1 (`sandbox/test/contract_examples_test`,
+    `rehmed_contract_examples_test`, `universality_gate_test`); znika z ostatnim z nich — VisitSettlement w E6,
+    reszta w E9 i E11. `ScenarioCase` zachowuje jego semantykę podciągu i dodaje dopasowanie pól oraz
+    zabezpieczenie, że wynik decyzji mieści się w deklaracji.
+11. **Nazwy `:state` i `:row`** dla komendy, zdarzenia albo query dawały alias kolidujący z `State`/`Row` w
+    implementacji — zapisane tu jako otwarte na E5b, zamknięte w przeglądzie (znalezisko 5, N2). Przy
+    okazji: pole zdarzenia `consumes "<nazwa>"`, którego deklaracja nie wymienia, jest odrzucane przez
+    samego Elixira (klucz spoza struktury `C.Received.*` we wzorcu) — tę część D11 daje generowana struktura.
+
+**Przegląd przed PR (25 września, `/code-review high origin/main..HEAD`).** Dziesięć znalezisk:
+1. I3 brało zmienną ze strażnikiem (`when is_struct(e, A)`) za catch-all i wyłączało sprawdzenie pokrycia —
+   **poprawione** w `dc52aa8`; moduledoc mówi teraz, że I3 czyta wzorce, nie strażniki.
+2. Pola `correlate` wstrzykiwane do stanu PM zawsze jako `:id` — **poprawione** w `c62601b`: typ z lokalnego
+   zdarzenia, `:id` tylko dla pola, które niosą wyłącznie zdarzenia konsumowane.
+3. Drugie `use C, …` w tym samym module po cichu zastępowało pierwsze — **poprawione** w `1bf1d13` (I1). Przy
+   tym wyszło, że atrybut ustawiony w cytowanym kodzie `use` nie jest widoczny dla następnego `use`, bo ciało
+   modułu jest rozwijane, zanim ruszy; ustawiany jest teraz w czasie rozwijania.
+4. I4 odmawiało `for … uniq: true, do: %E{}` — **poprawione** w `8534629`; `into:` i `reduce:` dalej odmawiane.
+5. Nazwy `:state`/`:row` — **poprawione** w `c1dc59a` (N2).
+6. Niepasujące dane typu domeny kończyły scenariusz `MatchError` — **poprawione** w `7270465`: scenariusz
+   pada z nazwą pola. Tamże zmiana nazwy fikstury `ManagerRight`, która kolidowała z testem E4.
+7. Decyzja zwracająca mapę zamiast struktury kończyła scenariusz `KeyError` — **poprawione** w `284ff24`.
+8. DCB konsultujący własne zdarzenie miał je dwa razy w `evolve` — **poprawione** w `45904b9`.
+9. Odnajdywanie zdarzenia konsumowanego po nazwie lokalnej jest w trzech miejscach — **pominięte**: X5–X6 w
+   E5b czytają zdarzenia konsumowane między kontraktami i tam powinien powstać jeden akcesor.
+10. Makra liczą `Callbacks.of/3` przy każdym wywołaniu — **pominięte**: koszt tylko w czasie kompilacji,
+    liniowy w liczbie wywołań.
+
+Każda poprawka zweryfikowana wstecz: na kodzie sprzed niej pada dokładnie nowy test. Silnik 646 → 654. Diff
+E5a nie dotyka czytelników v1 (`trace`, `graph`, `conformance`, `report`, `run`, …), tasków, sandboxa ani
+pakietu web, więc porównanie bajtów raportu i grafu na bazie dev nie ma czego mierzyć i nie było puszczane.
+
 ### Losy fikstur
 
 | Fikstura | Los |
 | --- | --- |
 | `ProcessShapes.Promised` (or_else, asynchroniczny koniec, niepotwierdzony deadline; używana przez 7 plików testów) | przebudowana w E7 |
 | `ProcessShapes.Timed`, `ProcessShapes.Bare` | przebudowane w E7 |
-| `UniversalityGate.TreatmentEpisode` z `Eligibility` i fake'iem `PayerRegistry` | przetłumaczona w E4 **obok**, jako `UniversalityGate.Next.TreatmentEpisode` z `UniversalityGate.Domain` (ustalenie 5 w „E4 — co wyszło”); v1 znika, gdy jej osiem plików testów ma następców (E7, najpóźniej E11); `Eligibility.decide/1` staje się deciderem w E5; fake zostaje; kontrakt bez implementacji poza tym (D3) |
+| `UniversalityGate.TreatmentEpisode` z `Eligibility` i fake'iem `PayerRegistry` | przetłumaczona w E4 **obok**, jako `UniversalityGate.Next.TreatmentEpisode` z `UniversalityGate.Domain` (ustalenie 5 w „E4 — co wyszło”); v1 znika, gdy jej osiem plików testów ma następców (E7, najpóźniej E11); `Eligibility.decide/1` jest od E5 deciderem `UniversalityGate.Next.Episode`, a scenariusze fikstury przechodzą na nim (`universality_gate_scenarios_test`); samo `Eligibility` zostaje dla kontraktu v1 do E11; fake zostaje; kontrakt bez implementacji poza tym (D3) |
 | `ProcessShapes.Rig` (19 zdarzeń, 14 handlerów) | **rozbity, nie portowany:** krawędź wsteczna i jej trzy kontrole → E7; celowo zepsute handlery → testy wyjścia decydera i polityki w E6; pary cyklu → E6/E7; konkurujące handlery synchroniczne → dwie projekcje inline w E6; `item_noted` → E8; usunięty przy cięciu |
 | `CaseHandling` (web) | przebudowany w E7 z dwiema politykami |
 

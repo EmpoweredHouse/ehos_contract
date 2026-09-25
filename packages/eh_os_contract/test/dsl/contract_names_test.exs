@@ -226,6 +226,29 @@ defmodule EhOsContract.Next.ContractNamesTest do
                "N2: event :spawn would define spawn/1, which clashes with Kernel.spawn/1 (event_clash.ex:7)"
     end
 
+    test "state and row, which an implementation aliases as State and Row" do
+      message =
+        refuse_contract("Aliased", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :state, "Stan", by: :reception, emits: :row
+            event :row, "Wiersz", terminal: true
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      assert message =~
+               "N2: command :state would be aliased State in an implementation, which is the " <>
+                 "alias of a unit's state (aliased.ex:6)"
+
+      assert message =~
+               "N2: event :row would be aliased Row in an implementation, which is the alias of " <>
+                 "a read model's row (aliased.ex:7)"
+    end
+
     test "control: a name that only begins like a Kernel function compiles" do
       assert %{} =
                compile_contract("NoClash", """
