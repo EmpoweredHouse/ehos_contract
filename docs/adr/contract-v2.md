@@ -142,6 +142,15 @@ scenario        description!   scope · actor
 - **Durations.** `within`, `deadline` and `wait` accept only the fixed units of `EhOsContract.Duration`;
   `cadence` may also use calendar units.
 
+> **25 September 2026, E3 — options cannot sit beside a `do` block.** Elixir parses
+> `command :x, "L", by: [:a] do … end` as four arguments: name, label, the keyword list, and `[do: …]`.
+> A Spark entity macro takes its positional args plus one options argument, so that call does not compile
+> (`undefined function command/4`). With a block, options are written inside it:
+> `command :x, "L" do by [:a]; emits [...]; field … end`. Without a block, the trailing keyword list works
+> as written. Most examples in §4.5 and §4.6 put options beside a block. The domain entities built in E3
+> follow the rule, and E4 has to choose between rewriting the examples that way and generating wrapper
+> macros of one more arity. The question goes to the user before E4.
+
 > **25 September 2026, after E1 — D10 and D11 (§16) change this reference.** `query` gains `scope`, and
 > `param` replaces `field` for its parameters; `actor` gains `scope: [field]`. `event … public:` retires:
 > `consumes Contract, events` stays for a sibling process in the same application, and between applications
