@@ -13,7 +13,7 @@ defmodule EhOsContract.ContractExample do
   under `MIX_ENV=test` in this package does not exist in anybody else's build.
 
       test "an example is a test" do
-        EhOsContract.ContractExample.run(example, contract.rule(example.rule))
+        EhOsContract.ContractExample.run(example, EhOsContract.Model.rule(contract, example.rule))
       end
   """
 
