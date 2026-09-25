@@ -86,11 +86,84 @@ defmodule EhOsContract.Model do
   @spec contract!(contract()) :: t()
   defp contract!(contract) do
     case fetch(contract) do
+      # A v2 contract's model has other keys (`units`, one `process`), and nothing
+      # reads one before dispatch does (v2 plan, E6).
+      %{kind: :contract, units: _, module: module} ->
+        raise ArgumentError,
+              "#{inspect(module)} is a v2 contract, and these accessors read v1 contracts"
+
       %{kind: :contract} = model ->
         model
 
       %{kind: kind, module: module} ->
         raise ArgumentError, "#{inspect(module)} is a #{kind}, not a contract"
+    end
+  end
+
+  @doc """
+  The capabilities a v2 contract declares, under the names EHOS grants them by (v2
+  §16, D14): `<domain>.<command>` for each command, `<domain>.<query>` for each
+  query, where `<domain>` is the domain's `name:`. Each says which roles may use it,
+  `<domain>.<actor>` for every actor in its `by:`, and a query also the field its
+  grant is scoped by (D10).
+
+      %{"rehmed.record_payment" =>
+          %{kind: :command, name: :record_payment, roles: ["rehmed.reception"], scope: nil}}
+
+  Derived from the declarations, never written down. The domain's name is read from
+  the compiled domain at the call, since a contract records no compile dependency on
+  its domain (v2 §8); a domain that is not compiled is refused by name, and so are a
+  v1 contract, which declares no capabilities, and a domain.
+  """
+  @spec capabilities(contract() | module()) :: %{
+          String.t() => %{
+            kind: :command | :query,
+            name: atom(),
+            roles: [String.t()],
+            scope: atom() | nil
+          }
+        }
+  def capabilities(contract) do
+    case fetch(contract) do
+      %{kind: :contract, grants: _} = model ->
+        prefix = domain_name!(model)
+        role = &"#{prefix}.#{&1}"
+
+        commands =
+          for c <- model.commands,
+              do: {role.(c.name), %{kind: :command, name: c.name, by: c.by, scope: nil}}
+
+        queries =
+          for q <- model.queries,
+              do: {role.(q.name), %{kind: :query, name: q.name, by: q.by, scope: q.scope}}
+
+        Map.new(commands ++ queries, fn {capability, declared} ->
+          {by, declared} = Map.pop!(declared, :by)
+          {capability, Map.put(declared, :roles, by |> Enum.map(role) |> Enum.sort())}
+        end)
+
+      %{kind: :contract, module: module} ->
+        raise ArgumentError, "#{inspect(module)} is a v1 contract, which declares no capabilities"
+
+      %{kind: kind, module: module} ->
+        raise ArgumentError, "#{inspect(module)} is a #{kind}, not a contract"
+    end
+  end
+
+  defp domain_name!(%{domain: domain, module: module}) do
+    # Only a compiled model is asked: `fetch/1` on any other module would try it as a
+    # v1 contract and fail with that error instead of this one.
+    compiled? =
+      Code.ensure_loaded?(domain) and function_exported?(domain, :__eh_os_contract_model__, 0)
+
+    case compiled? && domain.__eh_os_contract_model__() do
+      %{kind: :domain, name: name} ->
+        name
+
+      _ ->
+        raise ArgumentError,
+              "#{inspect(module)} names domain #{inspect(domain)}, which is not a compiled " <>
+                "EhOsContract.Domain; its capabilities are named after the domain's name:"
     end
   end
 

@@ -25,7 +25,7 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
-Stages E1–E3 of the move to a v2 contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`). **No verdict moves.**
+Stages E1–E4 of the move to a v2 contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`). **No verdict moves.**
 `mix eh_os_contract.report` and `mix eh_os_contract.graph --overlay --mermaid` gave byte-identical output on
 the development database before and after each stage, so the version stays 0.2.1 until a change does move
 one. What changes is what a host has to do.
@@ -57,6 +57,25 @@ one. What changes is what a host has to do.
 - `EhOsContract.Domain`: the v2 domain DSL, on Spark. It covers contexts with a glossary, actors, subjects,
   values, externals and relations, with rules D1–D5 and F3/F5 as compile errors. Its model is
   `__eh_os_contract_model__/0`, and it generates a `Values` module of types. Nothing in v1 reads it yet.
+- `EhOsContract.Next.Contract`: the v2 contract DSL, on Spark, beside v1's `EhOsContract.Contract` until the
+  cut. It declares aggregates and dynamic consistency boundaries with their identity, state, invariants,
+  commands, events and stage groups; policies, effects, process managers, read models and queries; `consumes`
+  and `publish`; one `process` with stages, includes, cadence, deadline and promises; and scenarios. Its model
+  is `__eh_os_contract_model__/0`, with a version that ignores declaration order. Nothing runs it yet, and the
+  v1 accessors of `EhOsContract.Model` refuse it by name. It refuses to compile what v2 §6's layer L2 refuses:
+  names (N1–N2), fields (F1–F6), units and their commands (A1–A5, C1), what reacts and what is read
+  (P1–P5), the process (R1–R6), what it consumes from a sibling contract (K1), and the query scope and
+  publications of D10–D11.
+- `EhOsContract.Model.capabilities/1`: a v2 contract's capabilities under the names EHOS grants (D14),
+  `<domain>.<command>` and `<domain>.<query>`, each with its roles `<domain>.<actor>` and a query's scope. The
+  model's `grants` says the same per actor, with the events each records.
+- `EhOsContract.Next.Contract.vocabulary/0`: every entity of the contract DSL, by path, with the keys it
+  takes, derived from the extension.
+- `actor` in the domain DSL takes `scope:`, the fields a grant narrows query answers by (D10).
+- Options beside a `do` block in the domain DSL: `context`, `term` and `value` accept
+  `context :settlement, "Rozliczenia", subdomain: :supporting do … end` as well as the options written inside
+  the block. An error still points at the declaration's file and line, and `mix format` keeps the form as
+  written.
 
 ### Changed
 

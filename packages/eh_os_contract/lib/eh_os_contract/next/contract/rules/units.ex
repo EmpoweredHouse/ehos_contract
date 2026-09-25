@@ -1,0 +1,150 @@
+defmodule EhOsContract.Next.Contract.Rules.Units do
+  @moduledoc """
+  A1–A5 and C1 of v2 §6: what a unit decides, and who can ask it to.
+
+  - **A1.** A command emits something, and only events of its own unit.
+  - **A2.** Every event is emitted by a command of its unit, or declares
+    `recorded_by:` (D6). Stricter than ESDM on purpose: in an event-sourced log,
+    an event nothing produces can never occur.
+  - **A3.** A command rejects only invariants of its own unit.
+  - **A4.** A dynamic consistency boundary consults at least one event; each one
+    is an event of this log — its own or a sibling contract's, not one received from
+    another application (D12) — and says which by `match:`
+    or `where:`; `match:` names fields of the boundary's identity.
+  - **A5.** A unit, or a process manager, declares its state at most once.
+  - **C1.** A command can be issued: it names actors in `by:`, or a policy or a
+    process manager of this contract issues it.
+  """
+
+  alias EhOsContract.DslRules
+  alias EhOsContract.Next.Contract.Rules
+
+  @doc false
+  @spec check(map()) :: [DslRules.violation()]
+  def check(declarations) do
+    Enum.flat_map(declarations.units, &unit(&1, declarations)) ++
+      states(declarations) ++ reachable(declarations)
+  end
+
+  defp unit(unit, d) do
+    where = "#{unit.kind} #{inspect(unit.name)}"
+    events = MapSet.new(Rules.events(unit), & &1.name)
+    invariants = MapSet.new(unit.invariants, & &1.name)
+
+    emits =
+      Enum.flat_map(unit.commands, fn command ->
+        if command.emits == [] do
+          [
+            {"A1: command #{inspect(command.name)} emits nothing; name the events it may produce",
+             command}
+          ]
+        else
+          for event <- command.emits, not MapSet.member?(events, event) do
+            {"A1: command #{inspect(command.name)} emits #{inspect(event)}, which is not an event " <>
+               "of #{where}", command}
+          end
+        end
+      end)
+
+    emitted = MapSet.new(Enum.flat_map(unit.commands, & &1.emits))
+
+    unemitted =
+      for event <- Rules.events(unit),
+          not MapSet.member?(emitted, event.name),
+          event.recorded_by == [] do
+        {"A2: event #{inspect(event.name)} is emitted by no command of #{where} and declares no " <>
+           "recorded_by:, so it could never occur", event}
+      end
+
+    rejects =
+      for command <- unit.commands,
+          invariant <- command.rejects,
+          not MapSet.member?(invariants, invariant) do
+        {"A3: command #{inspect(command.name)} rejects #{inspect(invariant)}, which is not an " <>
+           "invariant of #{where}", command}
+      end
+
+    emits ++ unemitted ++ rejects ++ consults(unit, d)
+  end
+
+  defp consults(%{kind: :dcb} = unit, d) do
+    where = "dcb #{inspect(unit.name)}"
+
+    known =
+      MapSet.new(
+        Enum.map(Rules.local_events(d), & &1.name) ++ Enum.map(Rules.consumed(d), &elem(&1, 0))
+      )
+
+    none =
+      if unit.consults == [],
+        do: [{"A4: #{where} consults no event, so it decides over nothing", unit}],
+        else: []
+
+    each =
+      Enum.flat_map(unit.consults, fn consults ->
+        event = inspect(consults.event)
+
+        unknown =
+          cond do
+            MapSet.member?(Rules.received(d), consults.event) ->
+              [
+                {"A4: #{where} consults #{event}, which arrives from another application into an " <>
+                   "inbox, not into this log (D12), so no append condition can read it", consults}
+              ]
+
+            MapSet.member?(known, consults.event) ->
+              []
+
+            true ->
+              [
+                {"A4: #{where} consults #{event}, which is neither an event of this contract nor " <>
+                   "one it consumes", consults}
+              ]
+          end
+
+        criterion =
+          if consults.match == [] and consults.where == nil,
+            do: [{"A4: #{where} consults #{event} with neither match: nor where:", consults}],
+            else: []
+
+        outside =
+          for field <- consults.match, field not in unit.identity do
+            {"A4: #{where} consults #{event} matching #{inspect(field)}, which is not in its " <>
+               "identity #{inspect(unit.identity)}", consults}
+          end
+
+        unknown ++ criterion ++ outside
+      end)
+
+    none ++ each
+  end
+
+  defp consults(_unit, _d), do: []
+
+  defp states(d) do
+    units = for u <- d.units, do: {"#{u.kind} #{inspect(u.name)}", u.state}
+    managers = for pm <- d.process_managers, do: {"process manager #{inspect(pm.name)}", pm.state}
+
+    for {where, [_first | again]} <- units ++ managers, state <- again do
+      {"A5: #{where} declares its state twice", state}
+    end
+  end
+
+  defp reachable(d) do
+    issued =
+      MapSet.new(
+        Enum.flat_map(d.policies, & &1.issues) ++
+          Enum.flat_map(d.process_managers, fn pm ->
+            Enum.flat_map(pm.starts_on, & &1.issues) ++
+              Enum.flat_map(pm.on, & &1.issues) ++ Enum.flat_map(pm.timers, & &1.issues)
+          end)
+      )
+
+    for command <- Rules.commands(d),
+        command.by == [],
+        not MapSet.member?(issued, command.name) do
+      {"C1: command #{inspect(command.name)} can be issued by no one: give it by:, or have a " <>
+         "policy or a process manager of this contract issue it", command}
+    end
+  end
+end

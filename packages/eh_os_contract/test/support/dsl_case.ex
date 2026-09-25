@@ -35,6 +35,38 @@ defmodule EhOsContract.DslCase do
   end
 
   @doc """
+  The source of a v2 contract `EhOsContract.Next.Fixtures.<name>` whose `body` starts
+  at line 4 of the file. Its domain is named and does not exist, which a contract
+  may do (v2 §8).
+  """
+  @spec contract(String.t(), String.t()) :: String.t()
+  def contract(name, body) do
+    """
+    defmodule EhOsContract.Next.Fixtures.#{name} do
+      use EhOsContract.Next.Contract, domain: Clinic, context: :settlement
+
+    #{body}
+    end
+    """
+  end
+
+  @doc """
+  Compiles the contract `contract/2` writes, as the file `<name, underscored>.ex`, and
+  returns the message of the error it raises.
+  """
+  @spec refuse_contract(String.t(), String.t()) :: String.t()
+  def refuse_contract(name, body) do
+    name |> contract(body) |> compile_error("#{Macro.underscore(name)}.ex") |> Exception.message()
+  end
+
+  @doc "Compiles the contract `contract/2` writes and returns its model."
+  @spec compile_contract(String.t(), String.t()) :: map()
+  def compile_contract(name, body) do
+    compile(contract(name, body), "#{Macro.underscore(name)}.ex")
+    EhOsContract.Model.fetch(Module.concat(EhOsContract.Next.Fixtures, name))
+  end
+
+  @doc """
   Compiles `source` as the file `file` with `:debug_info` on, and returns what
   `Code.compile_string/2` returns. The binaries then carry their debug chunk, which
   is also where typespecs are read from.

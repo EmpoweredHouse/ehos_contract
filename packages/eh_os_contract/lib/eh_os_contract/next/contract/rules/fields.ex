@@ -1,0 +1,181 @@
+defmodule EhOsContract.Next.Contract.Rules.Fields do
+  @moduledoc """
+  F1–F6 of v2 §6: the fields of every struct a contract declares — a unit's or a
+  process manager's state, a command, an event, a read model's row, a query's
+  parameters, and a published event this contract consumes.
+
+  - **F1.** Field names are unique within a struct, and none starts with `__`,
+    which the generated structs keep for themselves (`__meta__`).
+  - **F2.** A type is well formed: a built-in type, `{:list, type}`, a non-empty
+    `{:enum, members}` with no member twice, or the name of a domain value. Whether
+    that value exists is the domain's to say, and a Mix compiler checks it (L3, X3).
+  - **F3.** Only a state gives a field a `default:`.
+  - **F4.** A field that tells which run an event belongs to — named in the
+    process's `correlate`, or in the `correlate` of a process manager handling the
+    event — is neither `optional:` nor `personal:`. Identity fields are injected
+    required and not personal, so they satisfy this by construction.
+  - **F5.** `personal: f` names `f`, a required, non-personal `:id` field of the
+    same struct that declares `subject:`. Whether the subject exists is X3's.
+  - **F6.** A unit's identity is injected into its state, commands and events;
+    declaring one of those fields there again is an error.
+  """
+
+  alias EhOsContract.Domain
+  alias EhOsContract.DslRules
+  alias EhOsContract.Next.Contract.Rules
+
+  @doc false
+  @spec check(map()) :: [DslRules.violation()]
+  def check(declarations) do
+    correlated = correlated(declarations)
+
+    for {where, fields, injected, kind} <- structs(declarations),
+        violation <- struct_violations(where, fields, injected, kind, correlated) do
+      violation
+    end
+  end
+
+  # `{where, declared fields, injected names, kind}` for every struct.
+  defp structs(d) do
+    Enum.concat([
+      for(
+        u <- d.units,
+        do:
+          {"#{u.kind} #{inspect(u.name)}, state", Rules.state_fields(u.state), u.identity, :state}
+      ),
+      for(
+        u <- d.units,
+        c <- u.commands,
+        do: {"command #{inspect(c.name)}", c.fields, u.identity, :command}
+      ),
+      for(
+        u <- d.units,
+        e <- Rules.events(u),
+        do: {"event #{inspect(e.name)}", e.fields, u.identity, {:event, e.name}}
+      ),
+      for(
+        pm <- d.process_managers,
+        do:
+          {"process manager #{inspect(pm.name)}, state", Rules.state_fields(pm.state), [], :state}
+      ),
+      for(r <- d.read_models, do: {"read model #{inspect(r.name)}", r.fields, [], :row}),
+      for(q <- d.queries, do: {"query #{inspect(q.name)}", q.params, [], :params}),
+      for(
+        c <- d.consumes,
+        is_binary(c.from),
+        do: {"consumed event #{inspect(c.from)}", c.fields, [], :consumed}
+      )
+    ])
+  end
+
+  # For each local event, the correlation fields that apply to it and who names them.
+  defp correlated(d) do
+    process =
+      for p <- d.processes, name <- p.correlate, e <- Rules.local_events(d), into: [] do
+        {e.name, name, "process #{inspect(p.name)}"}
+      end
+
+    managers =
+      for pm <- d.process_managers,
+          event <- handled(pm),
+          name <- pm.correlate,
+          into: [] do
+        {event, name, "process manager #{inspect(pm.name)}"}
+      end
+
+    Enum.group_by(process ++ managers, &elem(&1, 0), &Tuple.delete_at(&1, 0))
+  end
+
+  defp handled(pm) do
+    Enum.map(pm.starts_on, & &1.event) ++
+      Enum.map(pm.on, & &1.event) ++ Enum.map(pm.ends_on, & &1.event)
+  end
+
+  defp struct_violations(where, fields, injected, kind, correlated) do
+    by_name = Map.new(fields, &{&1.name, &1})
+
+    reserved =
+      for f <- fields, is_atom(f.name), String.starts_with?(Atom.to_string(f.name), "__") do
+        {"F1: #{where}: field #{inspect(f.name)} starts with __, which the generated struct keeps " <>
+           "for itself", f}
+      end
+
+    twice =
+      for f <- DslRules.duplicates(fields, & &1.name) do
+        {"F1: #{where} declares field #{inspect(f.name)} twice", f}
+      end
+
+    redeclared =
+      for f <- fields, f.name in injected do
+        {"F6: #{where} declares #{inspect(f.name)}, which the unit's identity already injects", f}
+      end
+
+    types =
+      for f <- fields, problem <- type_problems(f.type) do
+        {"F2: #{where}, field #{inspect(f.name)}: #{problem}", f}
+      end
+
+    defaults =
+      for f <- fields, kind != :state, Map.get(f, :default) != nil do
+        {"F3: #{where}, field #{inspect(f.name)} has a default, which only a state may have", f}
+      end
+
+    correlation =
+      case kind do
+        {:event, event} ->
+          for {name, by} <- Map.get(correlated, event, []),
+              f = Map.get(by_name, name),
+              f != nil and (f.optional or f.personal != nil) do
+            {"F4: #{where}, field #{inspect(name)} tells which run of #{by} the event belongs to, " <>
+               "so it cannot be #{if f.optional, do: "optional", else: "personal"}", f}
+          end
+
+        _ ->
+          []
+      end
+
+    personal = for f <- fields, v <- personal_violations(where, f, by_name), do: v
+
+    reserved ++ twice ++ redeclared ++ types ++ defaults ++ correlation ++ personal
+  end
+
+  defp personal_violations(where, field, by_name) do
+    case Map.get(field, :personal) do
+      nil ->
+        []
+
+      target ->
+        where = "#{where}, field #{inspect(field.name)}"
+
+        case Map.fetch(by_name, target) do
+          :error ->
+            [
+              {"F5: #{where} is personal to #{inspect(target)}, which is not a field declared here",
+               field}
+            ]
+
+          {:ok, %{optional: true}} ->
+            [{"F5: #{where} is personal to #{inspect(target)}, which is optional", field}]
+
+          {:ok, %{type: :id, subject: subject, personal: nil}} when subject != nil ->
+            []
+
+          {:ok, _} ->
+            [
+              {"F5: #{where} is personal to #{inspect(target)}, which is not an :id field " <>
+                 "declaring a subject", field}
+            ]
+        end
+    end
+  end
+
+  @doc """
+  What is wrong with a field's type, as far as a contract can tell on its own: any
+  atom may be a domain value, and only the domain can say which are (X3).
+  """
+  @spec type_problems(term()) :: [String.t()]
+  def type_problems(type) when is_atom(type) and type not in [nil, true, false], do: []
+  def type_problems({:list, inner}), do: type_problems(inner)
+  def type_problems({:enum, _} = enum), do: Domain.Rules.type_problems(enum, MapSet.new())
+  def type_problems(other), do: ["#{inspect(other)} is not a type"]
+end

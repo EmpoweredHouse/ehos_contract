@@ -1,0 +1,88 @@
+defmodule EhOsContract.Next.UniversalityGateTest do
+  @moduledoc """
+  v2 plan, E4: **the universality gate's invented contract, in the v2 DSL.**
+  `UniversalityGate.Next.TreatmentEpisode` is compiled by `mix compile` from
+  `test/support/`, like a consumer's contract, and describes a domain with nothing
+  to do with accounting in the words `vocabulary/0` pins
+  (`contract_vocabulary_test.exs`) — none added for it.
+
+  One test here does by hand what a Mix compiler will do in E5 (L3, X2–X4): every
+  actor, value, subject and external the contract names is declared by its domain.
+  """
+
+  use ExUnit.Case, async: true
+
+  alias EhOsContract.Model
+
+  @contract UniversalityGate.Next.TreatmentEpisode
+
+  test "the shapes TaxVision does not have survive the translation" do
+    model = Model.fetch(@contract)
+    events = Map.new(model.events, &{&1.name, &1})
+
+    # An event arriving without a command.
+    assert events.referral_received.recorded_by == [:referral_intake]
+    refute Enum.any?(model.commands, &(:referral_received in &1.emits))
+
+    # The same event many times in one run: a stream, and no key of its own.
+    assert Enum.map(events.session_completed.fields, & &1.name) ==
+             [:episode_id, :session_no, :performed_at]
+
+    # Run identity from a single field, and no cadence.
+    assert model.process.correlate == [:episode_id]
+    assert model.process.cadence == nil
+    assert model.process.deadline == %{amount: 30, unit: :day, unverified: true}
+  end
+
+  test "the stages keep v1's order, and every event sits in one" do
+    model = Model.fetch(@contract)
+
+    assert Enum.map(model.process.stages, & &1.name) ==
+             [:qualification, :plan, :treatment, :closing]
+
+    assert Enum.all?(model.events, &(&1.stage != nil))
+  end
+
+  test "the rule became an invariant with a rejected scenario, the examples scenarios" do
+    model = Model.fetch(@contract)
+
+    assert [%{invariants: [%{name: :treatment_starts_only_on_confirmed_eligibility}]}] =
+             model.units
+
+    assert Enum.map(model.scenarios, & &1.rejected) ==
+             [nil, nil, :treatment_starts_only_on_confirmed_eligibility]
+  end
+
+  test "everything the contract names, its domain declares" do
+    contract = Model.fetch(@contract)
+    domain = Model.fetch(contract.domain)
+    names = fn key -> MapSet.new(Map.fetch!(domain, key), & &1.name) end
+
+    actors =
+      Enum.flat_map(contract.commands, & &1.by) ++
+        Enum.flat_map(contract.events, & &1.recorded_by) ++ [contract.process.accountable]
+
+    fields =
+      Enum.flat_map(contract.commands ++ contract.events, & &1.fields) ++
+        hd(contract.units).state.fields
+
+    built_in = EhOsContract.Domain.Rules.built_in_types()
+    values = for %{type: type} <- fields, is_atom(type), type not in built_in, do: type
+
+    assert MapSet.subset?(MapSet.new(actors), names.(:actors))
+    assert MapSet.subset?(MapSet.new(values), names.(:values))
+    assert MapSet.subset?(MapSet.new(for(%{subject: s} <- fields, s, do: s)), names.(:subjects))
+
+    assert MapSet.subset?(
+             MapSet.new(for(%{depends_on: d} <- contract.events, d, do: d)),
+             names.(:externals)
+           )
+
+    assert Enum.any?(domain.contexts, &(&1.name == contract.context))
+  end
+
+  test "v1's registry does not see it, so v1's check and report are unchanged" do
+    refute @contract in EhOsContract.Registry.contracts()
+    assert UniversalityGate.TreatmentEpisode in EhOsContract.Registry.contracts()
+  end
+end

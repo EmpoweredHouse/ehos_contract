@@ -370,6 +370,12 @@ Names the material does not provide are marked *illustrative*; a real port does 
 > **25 September 2026, after E1:** `public: true` below is superseded by D11 (§16). Inside one application the
 > `consumes` + `policy` shape stays and needs no flag; `query` below gains `by:` capabilities with `scope` (D10).
 
+> **25 September 2026, E4 — D14 (§16) renames the last example's result.** Written per actor, as below, it is
+> the model's `grants`. `EhOsContract.Model.capabilities/1` gives the same capabilities under the names EHOS
+> grants: `%{"rehmed.record_payment" => %{kind: :command, name: :record_payment, roles: ["rehmed.reception"],
+> scope: nil}, …}`. The domain's `name:` is read from the compiled domain at the call, because a contract
+> records no compile dependency on it (§8).
+
 ```elixir
 # consumes + public + policy (TaxVision; the command name is illustrative)
 event :registry_data_consistent, "Dane firmy zgadzają się z rejestrami", public: true   # in AccountingMonth
@@ -544,6 +550,12 @@ where it helps; every violation is reported as a diagnostic before the single ra
   manager triggers are events or its own timers; a timer has exactly one of `wait` / `at`; `at` names a
   `:timestamp` field of its state; `sets` / `cancels` name its own timers. P5: `projects` names local or
   consumed events; `reads` names a local read model.
+
+  > *Corrected 25 September 2026, E4.* P3 as written refuses §4.6's own process manager, which is
+  > `:at_least_once` by default and names no `idempotency`, while E4's acceptance is that §4.6 compiles as
+  > written. A process manager's commands and timers take keys the library derives from the run (§17,
+  > "deterministic keys; timers as events"), so it has nothing to name. P3 applies to policies and effects.
+
 - *Process.* R1: exactly one `process`. R2: its `correlate` fields are present in every local event. R3: if
   the process declares stages, every local event sits in a stage group and every `include` has a stage; if
   it declares none, no groups. R4: `include` names consumed events only. R5: a promise's `from`,
@@ -1077,6 +1089,24 @@ G-14, G-16; `docs/ARCHITECTURE.md` §3). Two of them contradict decisions record
 | D12 | **A received integration event goes to an inbox, not into the domain log.** The inbox row and the reaction commit together; the reaction's own fact carries the source message as its cause. `include` (D7) therefore covers only events in the same log; a run across two applications is correlated by `correlation_id` and assembled by EHOS (`eh-os` G-14). |
 | D13 | **Options stay beside a `do` block; the library supplies the missing arity.** Taken 25 September 2026, after E3 found that `command :x, "L", by: [:a] do … end` is a four-argument call that Spark's entity macros (positional args plus one options list) do not define. The user chose to keep the shape of §4.5–4.6 over writing options inside the block: the contract a process owner reads keeps "name, label, who, what it emits" on one line and fields in the block. For every entity that takes a block, the library defines one more arity that moves the block into the options, `command(name, label, opts, do: block)` → `command(name, label, opts ++ [do: block])`, which Spark's macro reads as `opts[:do]` (checked on `context` in E3). The wrappers are generated from the entity definitions, not written by hand. **Conditions, pinned by tests in E4's first commit:** a DSL error still points at the file and line of the declaration, not at the wrapper; the formatter keeps the four-argument form without parentheses in a consumer (the wrappers' arities are exported beside `spark_locals_without_parens`, which does not list them); the domain DSL gets the same wrappers. If either of the first two fails, the fallback is options inside the block, and the question returns to the user. |
 | D14 | **The contract declares who may act; a separate package verifies who is acting.** Taken 25 September 2026, after comparing v2 with stage 4 of `eh-os` (D-32, D-33, D-34, D-40): v2 cited `eh_os_contract_auth` as if it existed, no stage built it, and §11 checked roles that EHOS's credential does not carry. The user kept the contract library to its DDD scope and put authentication beside it, for now as a third package in this repository. The contract names the actors that may issue a command or a query (`by:`; actors are roles, §18) and derives the names EHOS relies on: a capability is `<domain>.<command>` or `<domain>.<query>`, a role `<domain>.<actor>`, with `<domain>` the domain's `name:`, so a command or query name is unique across an application, not only within a contract. `dispatch` and `query` ask an `EhOsContract.Authorizer` behaviour (§11, corrected). `eh_os_contract_auth` implements it: it verifies EHOS's credential against keys it keeps in the application's database, builds `ctx.actor` from `sub`, `cap` and `scp`, and records every decision in its own table. The engine does not depend on it. A scoped capability with no granted values is refused. The package's manifest task projects the model onto `ehos.manifest` (E10). |
+
+> **25 September 2026, E4's first commit — D13's conditions hold, and one assumption under them was
+> wrong.** `EhOsContract.DslWrappers` generates the wrappers from the entity definitions and imports them where
+> Spark imports the entities: a top-level entity's through the section, a nested one's through its parent.
+> Both conditions are pinned in `test/dsl/dsl_wrappers_test.exs` and, in a consumer, in
+> `sandbox/test/rehmed_domain_test.exs`. A refusal beside a wrapped block, whether Spark's schema check or
+> a D rule, carries the declaration's file and line. The formatter keeps the four-argument form without
+> parentheses, **but not because of an export**: it never adds parentheses to a call that has a `do` block,
+> whatever `locals_without_parens` lists. The wrappers' arities are therefore not exported, and
+> `spark_locals_without_parens` stays what `mix spark.formatter` writes. One thing D13 did not foresee: an
+> entity with an optional positional argument already has the arity its shorter wrapper would take.
+> `value :address, label: "Adres" do … end` reaches Spark's `value(name, type, opts)` with the keyword list
+> in `type`. Without a block, Spark itself reads a keyword list in the last optional argument as options.
+> The wrappers give such an entity a `transform` that applies the same rule when a block follows, and that
+> checks the options against the entity's schema. Spark checks the argument's own type before any transform
+> runs, which `consumes "<name>", as: :x do … end` showed later the same day (its optional argument is a list
+> of atoms), so the wrappers also widen that type to accept the keyword list the transform moves out. A contract entity that takes a block therefore never gives
+> an optional positional argument a keyword list as a legal value.
 
 **D10 in the contract and in the implementation.**
 

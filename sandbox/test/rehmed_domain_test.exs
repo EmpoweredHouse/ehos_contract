@@ -22,6 +22,22 @@ defmodule Rehmed.DomainTest do
 
     assert [%{type: :customer_supplier, upstream: :scheduling, downstream: :settlement}] =
              model.relations
+
+    assert [%{terms: [%{text: "Zrealizowana", source: "AGG-01, E-51"}]}, %{terms: []}] =
+             model.contexts
+  end
+
+  test "the formatter keeps options beside a do block without parentheses (v2 §16, D13)" do
+    # `mix format --check-formatted` in the gate already holds the whole file. This
+    # names the one declaration D13 is about, and formats it with this project's own
+    # formatter, the one `import_deps` builds.
+    path = "lib/rehmed/domain.ex"
+    source = File.read!(path)
+    four_arguments = ~s|context :scheduling, "Umawianie i zasoby", subdomain: :core do|
+
+    assert source =~ four_arguments
+    {format, _options} = Mix.Tasks.Format.formatter_for_file(path)
+    assert format.(source) == source
   end
 
   test "Values has a type per value, readable from the compiled module" do
