@@ -382,8 +382,25 @@ defmodule Mix.Tasks.EhOsContract.Check do
     end
   end
 
+  @doc """
+  The findings in the order they are printed: errors, then warnings, then notices,
+  each group sorted by its text.
+
+  A fixed order rather than the order the checks produced them. Some checks group
+  by module into a map, and on OTP 26 and later a small map keyed by atoms iterates
+  in the order the atoms were created, not alphabetically. A new module anywhere in
+  the build could therefore swap two lines of this report between runs of the same
+  code (v2 plan, E1). The plan compares this output commit to commit, so it has to
+  come out the same for the same findings.
+  """
+  @spec ordered([{:error | :warn | :info, String.t()}]) :: [{:error | :warn | :info, String.t()}]
+  def ordered(findings) do
+    rank = %{error: 0, warn: 1, info: 2}
+    Enum.sort_by(findings, fn {level, message} -> {Map.fetch!(rank, level), message} end)
+  end
+
   defp report(findings) do
-    for {level, message} <- Enum.reverse(findings) do
+    for {level, message} <- ordered(findings) do
       prefix =
         case level do
           :error -> "ERROR"
