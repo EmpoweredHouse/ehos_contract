@@ -355,6 +355,17 @@ with no example does not compile.**
 constraint into a test; and a notation expressive enough for real rules is a programming language with
 worse tooling.
 
+*Corrected 25 September 2026, v2 plan E5, in the code that confirms it* ([contract v2](contract-v2.md) §6,
+§18). In v2 a rule is an **invariant** of a unit, and its examples are **scenarios**: Given events, a
+command or an event, then the events expected, the commands issued, or the rejection on that invariant.
+`given` is a list of events rather than a map of inputs, because the decision reads a state folded from the
+unit's history, not arguments assembled for it. What held: the decision stays in code, the contract cannot
+express the general rule, and **an invariant with no scenario rejected on it does not compile** (S8) — the
+successor of "a rule with no example". What changed: the contract names no function. An implementation
+binds to the contract (`use Contract, aggregate: :name`), not the contract to an MFA, and a scenario runs
+against whichever module implements its unit (`EhOsContract.ScenarioCase`), with the subsequence semantics
+v1's examples had.
+
 ## What we are betting on
 
 Four things could be untrue, and each would be fatal in a different way. This is the list a reviewer should
