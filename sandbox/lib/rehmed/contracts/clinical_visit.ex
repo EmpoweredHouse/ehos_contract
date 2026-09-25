@@ -166,12 +166,13 @@ defmodule Rehmed.Contracts.ClinicalVisit do
   # counts the two days from the **end** of an ambulatory service, or **from its
   # start** where the service spans days. Without this fact the second reading
   # could not be expressed at all.
-  event :visit_started,
+  event(:visit_started,
     label: "Pacjent wszedł do gabinetu",
     owner: Rehmed.VisitDocumentation,
     payload: %{visit_id: :id},
     process: :clinical_visit,
     stage: :start
+  )
 
   # The anchor of both assertions. `E-51`: the patient leaves the room, which is
   # the end of the ambulatory service and therefore the moment the statutory clock
@@ -180,21 +181,23 @@ defmodule Rehmed.Contracts.ClinicalVisit do
   # `service_id` is here and nowhere else in this contract. It is what decides
   # whether the reporting branch applies at all, so without it the graph shows a
   # branch nobody can explain.
-  event :visit_completed,
+  event(:visit_completed,
     label: "Pacjent wyszedł z gabinetu",
     owner: Rehmed.VisitDocumentation,
     payload: %{visit_id: :id, service_id: :id},
     process: :clinical_visit,
     stage: :departure
+  )
 
   # **Immediate, and that is the point of it**: this is what tells reception the
   # patient can be settled. It carries no codes — see `DEC-19` in the moduledoc.
-  event :visit_closed_clinically,
+  event(:visit_closed_clinically,
     label: "Zamknięto wizytę przez specjalistę",
     owner: Rehmed.VisitDocumentation,
     payload: %{visit_id: :id},
     process: :clinical_visit,
     stage: :closing
+  )
 
   # The fallback of the 24-hour assertion: within a day the medical event is
   # reported, **or** somebody has been told to finish the documentation. The
@@ -206,12 +209,13 @@ defmodule Rehmed.Contracts.ClinicalVisit do
   # what the task is for. A run where neither this nor the report ever appears is
   # the failure `AGG-02` invariant 2a describes, *ona ma 16 wizyt niezakończonych*
   # (W1 02:20:04), and it surfaces as a violated assertion rather than as a state.
-  event :documentation_task_created,
+  event(:documentation_task_created,
     label: "Utworzono zadanie: dokumentacja wizyty do uzupełnienia",
     owner: Rehmed.Tasks,
     payload: %{visit_id: :id},
     process: :clinical_visit,
     stage: :closing
+  )
 
   # --- reporting: the statutory submission ---
 
@@ -225,15 +229,16 @@ defmodule Rehmed.Contracts.ClinicalVisit do
   # Declaring the branch means the overlay can say something useful about it: if
   # this path is never traversed, either every service is flagged reportable or the
   # flag is not being read.
-  event :p1_reporting_not_required,
+  event(:p1_reporting_not_required,
     label: "Usługa nie podlega zgłoszeniu do rejestru zdarzeń medycznych",
     owner: Rehmed.Reporting,
     payload: %{visit_id: :id},
     process: :clinical_visit,
     stage: :reporting,
     terminal: true
+  )
 
-  event :p1_report_sent,
+  event(:p1_report_sent,
     label: "Wysłano zgłoszenie zdarzenia medycznego do P1",
     owner: Rehmed.Reporting,
     depends_on: :medical_event_registry,
@@ -241,6 +246,7 @@ defmodule Rehmed.Contracts.ClinicalVisit do
     process: :clinical_visit,
     stage: :reporting,
     terminal: true
+  )
 
   # Feeds the retry queue rather than ending the run. What it cannot yet say is
   # whether a send that left the building was also accepted: everything the corpus
@@ -249,13 +255,14 @@ defmodule Rehmed.Contracts.ClinicalVisit do
   # distinguishably from a transport success, this splits in two and the retry
   # queue gets a different definition of done — `H64`, and the answer is in the
   # integration documentation, not in a workshop.
-  event :p1_report_failed,
+  event(:p1_report_failed,
     label: "Zgłoszenie do P1 odrzucone albo nie doszło do rejestru",
     owner: Rehmed.Reporting,
     depends_on: :medical_event_registry,
     payload: %{visit_id: :id},
     process: :clinical_visit,
     stage: :reporting
+  )
 
   # --- the process ---
 
@@ -266,19 +273,21 @@ defmodule Rehmed.Contracts.ClinicalVisit do
   # The other six ways into this process have no command in the catalogue and are
   # not invented here. Three of them are P1 registry outcomes, which are an
   # integration's answers rather than anybody's action.
-  command :close_visit_clinically,
+  command(:close_visit_clinically,
     label: "Zamknięcie wizyty przez specjalistę",
     process: :clinical_visit,
     principals: [:human],
     payload: %{visit_id: :id},
     source: "Event model §4, C-29, aktor A-03; W2 00:55:10"
+  )
 
-  process :clinical_visit,
+  process(:clinical_visit,
     label: "Wizyta: wykonanie, dokumentacja i zgłoszenie zdarzenia medycznego",
     stages: [:start, :departure, :closing, :reporting],
     # One run is one visit. The same key identifies four aggregates in the source
     # model, which is why this is one process — see the moduledoc.
     instance: [:visit_id]
+  )
 
   # --- the assertions ---
 
@@ -295,9 +304,9 @@ defmodule Rehmed.Contracts.ClinicalVisit do
   # requirement as first written raised the task at 48 hours, which is exactly when
   # the statutory deadline expires — a post-mortem, not a warning.
   trace :reported_or_chased_within_a_day do
-    from :visit_completed
-    eventually :p1_report_sent, within: {24, :hour}
-    or_else :documentation_task_created
+    from(:visit_completed)
+    eventually(:p1_report_sent, within: {24, :hour})
+    or_else(:documentation_task_created)
   end
 
   # *After the patient leaves the room, within two days the medical event reaches
@@ -318,9 +327,9 @@ defmodule Rehmed.Contracts.ClinicalVisit do
   # today because nothing watches the deadline — and a violated assertion is
   # exactly how it becomes visible.
   trace :medical_event_reported_within_statutory_window do
-    from :visit_completed
-    eventually :p1_report_sent, within: {2, :day}
-    or_else :p1_reporting_not_required
+    from(:visit_completed)
+    eventually(:p1_report_sent, within: {2, :day})
+    or_else(:p1_reporting_not_required)
   end
 
   # --- the external dependency ---
@@ -343,8 +352,9 @@ defmodule Rehmed.Contracts.ClinicalVisit do
   # judged. The regulation extends the window instead, so a run that stayed broken
   # past the extension would still be in breach while the engine reports it as
   # unjudged. Recorded here rather than approximated silently.
-  external :medical_event_registry,
+  external(:medical_event_registry,
     label: "Krajowy rejestr zdarzeń medycznych (P1)",
     unavailable_looks_like:
       "odrzucenie zgłoszenia albo brak łączności z rejestrem; wygasły lub niewgrany certyfikat placówki"
+  )
 end

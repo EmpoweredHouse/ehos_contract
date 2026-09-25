@@ -138,7 +138,7 @@ defmodule Rehmed.Contracts.VisitSettlement do
   #
   # No amount: the fact is that a service joined the settlement. What it costs is
   # an attribute of the line, and the line is a row in whatever holds settlements.
-  event :service_line_added,
+  event(:service_line_added,
     label: "Dodano usługę do rozliczenia wizyty",
     owner: Rehmed.Settlement,
     payload: %{visit_id: :id, service_id: :id},
@@ -150,6 +150,7 @@ defmodule Rehmed.Contracts.VisitSettlement do
     # matter.
     process: :visit_settlement,
     stage: :charging
+  )
 
   # `E-115` / `DEC-18`. The transfer of authority over the price — see the
   # moduledoc for how contested it is.
@@ -157,41 +158,45 @@ defmodule Rehmed.Contracts.VisitSettlement do
   # `total_minor` is here because this is the moment the amount becomes final, and
   # a total that is only recoverable by re-adding the lines at read time is not a
   # frozen total.
-  event :visit_handed_over,
+  event(:visit_handed_over,
     label: "Wizyta oznaczona jako wykonana i gotowa do rozliczenia",
     owner: Rehmed.Settlement,
     payload: %{visit_id: :id, total_minor: :integer},
     process: :visit_settlement,
     stage: :charging
+  )
 
   # --- payment ---
 
   # `E-55`. Cash, card, transfer or a voucher; a split across methods is allowed
   # and is where the incumbent flips the sign.
-  event :payment_recorded,
+  event(:payment_recorded,
     label: "Pacjent opłacił wizytę",
     owner: Rehmed.Settlement,
     payload: %{visit_id: :id, method: :enum, amount_minor: :integer},
     process: :visit_settlement,
     stage: :payment
+  )
 
-  event :visit_closed_commercially,
+  event(:visit_closed_commercially,
     label: "Recepcja zamknęła wizytę",
     owner: Rehmed.Settlement,
     payload: %{visit_id: :id},
     process: :visit_settlement,
     stage: :payment,
     terminal: true
+  )
 
   # The other meaning `C-30` used to carry. A real ending and a bad one: `P-08`
   # exists precisely to notice it.
-  event :visit_closed_without_payment,
+  event(:visit_closed_without_payment,
     label: "Zamknięto wizytę bez płatności",
     owner: Rehmed.Settlement,
     payload: %{visit_id: :id},
     process: :visit_settlement,
     stage: :payment,
     terminal: true
+  )
 
   # `E-84`, and the payload is the shape of the known defect. A correction carries
   # the day it *belongs to*; today the incumbent attributes it to the day it was
@@ -200,12 +205,13 @@ defmodule Rehmed.Contracts.VisitSettlement do
   #
   # `delta_minor` may be negative — `EhOsContract.Emitter` checks `is_integer/1`, so a
   # refund needs no separate event and no sign convention hidden in a name.
-  event :settlement_corrected,
+  event(:settlement_corrected,
     label: "Zaksięgowano korektę rozliczenia",
     owner: Rehmed.Settlement,
     payload: %{visit_id: :id, delta_minor: :integer, business_date: :timestamp},
     process: :visit_settlement,
     stage: :payment
+  )
 
   # --- the process ---
 
@@ -213,12 +219,13 @@ defmodule Rehmed.Contracts.VisitSettlement do
   # was found afterwards and matches on both sides — `C-30` produces `E-53 / E-56`,
   # and this command's examples emit exactly `visit_closed_commercially` and
   # `visit_closed_without_payment`.
-  command :close_settlement,
+  command(:close_settlement,
     label: "Zamknięcie rozliczenia wizyty",
     process: :visit_settlement,
     principals: [:human],
     payload: %{visit_id: :id},
     source: "Event model §4, C-30, aktor A-02; H28"
+  )
 
   # Four ways in, all four read off the event model's command catalogue
   # (`2-Solution/10-event-model.md` §4) rather than invented here. The actor column
@@ -228,41 +235,45 @@ defmodule Rehmed.Contracts.VisitSettlement do
 
   # Refusable in the catalogue because the visit may already be settled; that
   # refusal is a domain rule and not something a capability decides.
-  command :add_service_line,
+  command(:add_service_line,
     label: "Dodanie usługi do rozliczenia wizyty",
     process: :visit_settlement,
     principals: [:human],
     payload: %{visit_id: :id, service_id: :id},
     source: "Event model §4, C-23, aktor A-03 (specjalista); W2 00:51:18"
+  )
 
   # The catalogue's own gloss is "one act by the specialist that hands the
   # visit to the desk", which is this event's label almost word for word. The
   # amount is computed from the lines already added, so the caller does not supply it.
-  command :hand_over_visit,
+  command(:hand_over_visit,
     label: "Oznaczenie wizyty jako wykonanej",
     process: :visit_settlement,
     principals: [:human],
     payload: %{visit_id: :id},
     source: "Event model §4, C-68, aktor A-03; Appunite 2026-08-17"
+  )
 
-  command :record_payment,
+  command(:record_payment,
     label: "Przyjęcie płatności za wizytę",
     process: :visit_settlement,
     principals: [:human],
     payload: %{visit_id: :id, method: :enum, amount_minor: :integer},
     source: "Event model §4, C-31, aktor A-02 (recepcja); ESB L8"
+  )
 
   # `status: open` in the catalogue — the command is agreed,
   # what may be corrected is not. The business date is stamped by the system rather
   # than supplied, which is why it is on the event and not here.
-  command :book_correction,
+  command(:book_correction,
     label: "Zaksięgowanie korekty rozliczenia",
     process: :visit_settlement,
     principals: [:human],
     payload: %{visit_id: :id, delta_minor: :integer},
     source: "Event model §4, C-46, aktor A-02; process 10"
+  )
 
-  process :visit_settlement,
+  process(:visit_settlement,
     label: "Rozliczenie wizyty",
     # Charging gates payment: an amount has to exist before it can be tendered.
     # Nothing is ordered inside either stage — a correction after a close is a real
@@ -276,6 +287,7 @@ defmodule Rehmed.Contracts.VisitSettlement do
     # two runs over one identity is what "concurrent and independent" looks like
     # when it is written down.
     instance: [:visit_id]
+  )
 
   # --- the rule, and the examples that pin it ---
 
@@ -283,16 +295,17 @@ defmodule Rehmed.Contracts.VisitSettlement do
   # domain at compile time, and handlers depend on the contract, so every change in
   # `Rehmed.Settlement` would recompile all of them. It also means `Rehmed.Contracts`
   # needs no boundary dependency on `Rehmed.Settlement` — the tuple is three atoms.
-  rule :payment_lines_sum_to_the_total,
+  rule(:payment_lines_sum_to_the_total,
     label: "Linie płatności sumują się do wartości rozliczenia",
     function: {Rehmed.Settlement, :decide, 1},
     source: "W1 02:02:07 — split płatności odwraca znak; AGG-03 niezmiennik 1"
+  )
 
   # The numbers are the client's own, from the case where an unpaid penalty is
   # collected with the next visit: *musisz zapłacić od razu 200 zł, a nie 150*
   # (VLW 00:19:58). A 150 zł visit plus a 50 zł penalty is 200 zł, and it is the
   # same two-lines-on-one-settlement the mixed-payer case needs.
-  example "wizyta 150 zł i kara 50 zł, zapłacone 200 zł — rozliczenie się zamyka",
+  example("wizyta 150 zł i kara 50 zł, zapłacone 200 zł — rozliczenie się zamyka",
     rule: :payment_lines_sum_to_the_total,
     given: %{
       total_minor: 20_000,
@@ -300,10 +313,11 @@ defmodule Rehmed.Contracts.VisitSettlement do
     },
     command: {:close_settlement, %{visit_id: "w-1"}},
     then: [:visit_closed_commercially]
+  )
 
   # The same money arriving as two lines. This is the case the incumbent gets
   # wrong, written as a case that passes.
-  example "ta sama kwota w dwóch liniach — split jest poprawny, nie defektem",
+  example("ta sama kwota w dwóch liniach — split jest poprawny, nie defektem",
     rule: :payment_lines_sum_to_the_total,
     given: %{
       total_minor: 20_000,
@@ -314,8 +328,9 @@ defmodule Rehmed.Contracts.VisitSettlement do
     },
     command: {:close_settlement, %{visit_id: "w-1"}},
     then: [:visit_closed_commercially]
+  )
 
-  example "zapłacone 150 zł przy należnych 200 — rozliczenie odrzucone",
+  example("zapłacone 150 zł przy należnych 200 — rozliczenie odrzucone",
     rule: :payment_lines_sum_to_the_total,
     given: %{
       total_minor: 20_000,
@@ -323,10 +338,12 @@ defmodule Rehmed.Contracts.VisitSettlement do
     },
     command: {:close_settlement, %{visit_id: "w-1"}},
     rejected_with: :payment_lines_do_not_sum_to_total
+  )
 
-  example "nic nie zapłacono — wizyta zamyka się bez płatności, i to jest legalne",
+  example("nic nie zapłacono — wizyta zamyka się bez płatności, i to jest legalne",
     rule: :payment_lines_sum_to_the_total,
     given: %{total_minor: 20_000, payments: []},
     command: {:close_settlement, %{visit_id: "w-1"}},
     then: [:visit_closed_without_payment]
+  )
 end

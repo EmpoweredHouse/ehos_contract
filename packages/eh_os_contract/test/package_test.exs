@@ -58,4 +58,17 @@ defmodule EhOsContract.PackageTest do
              "#{declaration} is a declaration macro and is not exported to consumers' formatters"
     end
   end
+
+  test "the domain DSL's entities are exported to consumers' formatters too" do
+    # The list is Spark's (`spark_locals_without_parens`), kept current by
+    # `mix spark.formatter --check` in this package's gate. What is pinned here is that
+    # it reaches the export, so a consumer's `import_deps` keeps a domain module as
+    # declarations rather than rewriting it into function calls.
+    {formatter, _} = Code.eval_file(".formatter.exs")
+    exported = formatter[:export][:locals_without_parens]
+
+    for local <- [context: 3, actor: 3, value: 2, value: 3, term: 1, relation: 2, field: 2] do
+      assert local in exported, "#{inspect(local)} is not exported to consumers' formatters"
+    end
+  end
 end

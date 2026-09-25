@@ -126,7 +126,7 @@ defmodule Rehmed.Contracts.PayerSettlement do
   # known from the booking, so it is a step on a screen someone is already looking
   # at rather than something to remember from scratch. A step on the path cannot be
   # forgotten; a reminder can.
-  event :visit_marked_settled_with_payer,
+  event(:visit_marked_settled_with_payer,
     label: "Oznaczono wizytę jako rozliczoną u płatnika",
     owner: Rehmed.PayerSettlement,
     payload: %{payer_id: :id, period_id: :id, visit_id: :id},
@@ -136,6 +136,7 @@ defmodule Rehmed.Contracts.PayerSettlement do
     identity: [:payer_id, :period_id, :visit_id],
     process: :payer_settlement,
     stage: :reconciliation
+  )
 
   # The other half of the completeness invariant, and the half that makes it
   # checkable at all: a delivered visit that will not be invoiced has to say why.
@@ -145,7 +146,7 @@ defmodule Rehmed.Contracts.PayerSettlement do
   # the declaration — an exclusion whose reason nobody can read is an exclusion
   # without a reason, which is the state being replaced. It is accounting prose
   # about a visit, not clinical content.
-  event :visit_excluded_from_invoice,
+  event(:visit_excluded_from_invoice,
     label: "Wykluczono wizytę z rozliczenia okresu, z podanym powodem",
     owner: Rehmed.PayerSettlement,
     payload: %{payer_id: :id, period_id: :id, visit_id: :id, reason: :string},
@@ -153,27 +154,30 @@ defmodule Rehmed.Contracts.PayerSettlement do
     identity: [:payer_id, :period_id, :visit_id],
     process: :payer_settlement,
     stage: :reconciliation
+  )
 
   # Human-initiated and named as such: once a month the practice manager opens the
   # module, verifies the data, and only then issues. `C-49` moved from reception to
   # the manager on 2026-08-14, and `R-08` stopped being a report and became a
   # working screen with a verification step in it.
-  event :payer_visits_reconciled,
+  event(:payer_visits_reconciled,
     label: "Zweryfikowano dane do rozliczenia płatnika za okres",
     owner: Rehmed.PayerSettlement,
     payload: %{payer_id: :id, period_id: :id},
     process: :payer_settlement,
     stage: :reconciliation
+  )
 
   # --- invoicing ---
 
-  event :payer_invoice_issued,
+  event(:payer_invoice_issued,
     label: "Wystawiono fakturę miesięczną dla płatnika",
     owner: Rehmed.PayerSettlement,
     payload: %{payer_id: :id, period_id: :id, invoice_id: :id},
     process: :payer_settlement,
     stage: :invoicing,
     terminal: true
+  )
 
   # A period that closes with nothing to bill is a legitimate ending and a
   # different one from an unfinished period. Without it, a payer with no patients
@@ -183,13 +187,14 @@ defmodule Rehmed.Contracts.PayerSettlement do
   # `origin: appunite`. Nobody described this case; it is the ending the state
   # machine needs to stop lying about the other one. Marked here rather than
   # smuggled in as though the corpus had it.
-  event :payer_period_closed_without_invoice,
+  event(:payer_period_closed_without_invoice,
     label: "Zamknięto okres bez faktury — brak wizyt do rozliczenia",
     owner: Rehmed.PayerSettlement,
     payload: %{payer_id: :id, period_id: :id},
     process: :payer_settlement,
     stage: :invoicing,
     terminal: true
+  )
 
   # --- the process ---
 
@@ -200,24 +205,26 @@ defmodule Rehmed.Contracts.PayerSettlement do
   # The catalogue's source note is the one that matters here:
   # the click is easy to miss in the payer's own window, and missing it is how a
   # visit goes unpaid.
-  command :mark_settled_with_payer,
+  command(:mark_settled_with_payer,
     label: "Oznaczenie wizyty jako rozliczonej u płatnika",
     process: :payer_settlement,
     principals: [:human],
     payload: %{payer_id: :id, period_id: :id, visit_id: :id},
     source: "Event model §4, C-48, aktor A-02; R2P 00:15:06"
+  )
 
   # The actor is `A-05`, the practice manager, not reception. The
   # catalogue is explicit that this is human-initiated once a month after the data
   # has been verified — which is why the invoice number is not an input.
-  command :issue_payer_invoice,
+  command(:issue_payer_invoice,
     label: "Wystawienie faktury miesięcznej dla płatnika",
     process: :payer_settlement,
     principals: [:human],
     payload: %{payer_id: :id, period_id: :id},
     source: "Event model §4, C-49, aktor A-05 (menedżer); Domain-Discovery §1"
+  )
 
-  process :payer_settlement,
+  process(:payer_settlement,
     label: "Miesięczne rozliczenie z płatnikiem zewnętrznym",
     # Reconciliation gates invoicing, and that is the whole of the order claim.
     # Within reconciliation nothing is ordered: marking a visit settled happens at
@@ -234,6 +241,7 @@ defmodule Rehmed.Contracts.PayerSettlement do
     # reads it: the never-observed monitor was rejected on 6 August, so this
     # declaration reaches the report as a declaration and no further.
     cadence: {1, :month}
+  )
 
   # --- no assertions, and the moduledoc says why ---
 
@@ -246,8 +254,9 @@ defmodule Rehmed.Contracts.PayerSettlement do
   # No `expected_latency`, because there is no call to time. No `depends_on`
   # anywhere, because an outage here is a person who did not retype something, and
   # nothing can observe that — see the moduledoc.
-  external :payer_settlement_system,
+  external(:payer_settlement_system,
     label: "System rozliczeniowy płatnika zewnętrznego (LuxMed, Enelmed, TuZdrowie)",
     unavailable_looks_like:
       "panel płatnika niedostępny albo wizyta nie została w nim odnotowana przez człowieka — czego nasz system nie widzi"
+  )
 end

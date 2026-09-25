@@ -13,25 +13,23 @@ zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisan
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności) i jej
 dashboardu; `sandbox/` to dane testowe. **Trwa pivot do v2**: DSL na Sparku z modelem domeny w stylu ESDM
 (jeden kontrakt = jeden proces), event sourcing na własnym magazynie w Postgresie, crypto-shredding. Plan
-zatwierdzono 25 września. **E0, E1 (szew `EhOsContract.Model`) i decyzje D10–D12 (query z capability i
-`scope`, zdarzenia integracyjne przez `publish`, inbox, etap E12) są w `main`. E2 (log staje się magazynem) jest
-zrobiony na gałęzi `dsl-v2/e2-store`, przejrzany i wystawiony jako PR. E3–E12 nie są zaczęte.** Zachowanie v1 się nie zmieniło,
-poza tym, że log jest teraz tylko do dopisywania.
+zatwierdzono 25 września. **E0, E1 (szew `EhOsContract.Model`), D10–D12 i E2 (log staje się magazynem) są w
+`main`. E3 (Spark i DSL domeny) jest zrobiony na gałęzi `dsl-v2/e3-spark`, przejrzany i wystawiony jako PR. E4–E12 nie są
+zaczęte; przed E4 jest pytanie do użytkownika o opcje obok bloku `do`.** Zachowanie v1 się nie zmieniło,
+poza tym, że log jest tylko do dopisywania.
 
 ### Stan repozytorium
 
-- `main` = `origin/main` = `c61ce5b`, merge [PR #4](https://github.com/EmpoweredHouse/eh-os-contract/pull/4)
-  (`dsl-v2/e1-decisions`: D10–D12 w `docs/adr/contract-v2.md` §16 i zmiany etapów). Przed nim
-  [PR #3](https://github.com/EmpoweredHouse/eh-os-contract/pull/3) (`bfda7c7`, E1), PR #2 (`73031d2`, hook i skill
-  przeglądu) i PR #1 (`7ce9be2`, E0). Wszystkie zmergowane przez użytkownika 25 września.
-- `dsl-v2/e1-model-seam` jest skasowana lokalnie i na `origin`. `dsl-v2/e1-decisions` jest w całości w `main`,
-  ale istnieje dalej lokalnie i na `origin`.
-- **`dsl-v2/e2-store`**, od `c61ce5b`: 7 commitów kodu (`5db56e5`..`246dd11`), commit dokumentów E2, cztery
-  poprawki z przeglądu przed PR (`2e2b0df`, `40f13e0`, `b0cb32b`, `df7d6e6`) i commit z tym handoffem.
-  Wypchnięta i wystawiona jako PR 25 września na polecenie użytkownika; numer i stan odczytaj przez
-  `gh pr list --state all --limit 3`. **Worktree E2 leży pod ścieżką `.claude/worktrees/dsl-v2-e1-model-seam-ed132e`** — nazwa z
-  E1, bo hook sesji pilnował tej ścieżki po skasowaniu worktree E1 i nie pozwalał pisać w głównym checkoucie.
-  Gałąź w nim to `dsl-v2/e2-store`; główny checkout stoi na `main`.
+- `main` = `origin/main` = `6646df7`, merge [PR #5](https://github.com/EmpoweredHouse/eh-os-contract/pull/5)
+  (`dsl-v2/e2-store`, E2), zmergowanego przez użytkownika 25 września. Przed nim PR #4 (`c61ce5b`, D10–D12),
+  PR #3 (`bfda7c7`, E1), PR #2 (`73031d2`, hook i skill przeglądu) i PR #1 (`7ce9be2`, E0).
+- Na `origin` zostały zmergowane `dsl-v2/e1-decisions` i `dsl-v2/e2-store`; lokalnie też obie.
+- **`dsl-v2/e3-spark`**, od `6646df7`: 10 commitów E3 (`eb80194`..`0138890`), commit dokumentów E3, sześć
+  poprawek z przeglądu przed PR (`f022dfa`..`b2175b5`) i commit z tym handoffem. Wypchnięta i wystawiona jako PR
+  25 września na polecenie użytkownika; numer i stan odczytaj przez `gh pr list --state all --limit 3`. **Worktree leży pod ścieżką `.claude/worktrees/dsl-v2-e1-model-seam-ed132e`** — nazwa z E1,
+  bo hook sesji pilnuje tej ścieżki; gałąź w nim to `dsl-v2/e3-spark`, główny checkout stoi na `main`. Hook
+  przeglądu czyta HEAD `$CLAUDE_PROJECT_DIR` (głównego checkoutu), nie worktree — przy PR z E2 główny checkout
+  był na chwilę odczepiony na głowie gałęzi, za zgodą użytkownika.
 - **Przegląd przed PR**: `.claude/settings.json` (hook `PreToolUse` odmawia `gh pr create`/`gh pr new`,
   dopóki `HEAD` nie ma notatki `git notes --ref=review`) i `.claude/skills/pre-pr-review/` (połowa autora).
   Połową recenzenta zostaje `.claude/skills/review-pr/`. Notatki są lokalne, `refs/notes/review` nie jest
@@ -39,13 +37,15 @@ poza tym, że log jest teraz tylko do dopisywania.
 
 ### Co zostało — i czyje to jest
 
-- **Przegląd i merge PR z E2 — użytkownika.** Po uwagach recenzenta: poprawka, commit, kroki 3–7
-  `pre-pr-review` dla nowych commitów, a przed pushem sprawdzić, że PR jest nadal otwarty.
-- **Skasowanie `dsl-v2/e1-decisions` — użytkownika** (`git branch -d dsl-v2/e1-decisions`,
-  `git push origin --delete dsl-v2/e1-decisions`), i worktree E2 po zamknięciu jego sesji.
-- **E3–E12 — asystenta**, według dopisku „Dopisek 25 września (2) — Etap 6” niżej. Następny krok: E3 (Spark i
-  DSL domeny) na gałęzi `dsl-v2/e3-*` od `dsl-v2/e2-store`. E3 kończy się testem właściwości Sparka, którego
-  porażka wraca do użytkownika przed E4.
+- **Decyzja przed E4 — użytkownika:** opcje obok bloku `do` (ustalenie 1 w „E3 — co wyszło”). Albo przykłady
+  z v2 §4.5–4.6 przepisane na opcje w bloku, albo generowane makra o jedną arność więcej.
+- **Przegląd i merge PR z E3 — użytkownika.** Po uwagach recenzenta: poprawka, commit, kroki 3–7
+  `pre-pr-review`, a przed pushem sprawdzić, że PR jest nadal otwarty.
+- **Skasowanie zmergowanych gałęzi `dsl-v2/e1-decisions` i `dsl-v2/e2-store` — użytkownika**
+  (`git branch -d …`, `git push origin --delete …`), i worktree po zamknięciu sesji.
+- **E4–E12 — asystenta**, według dopisku „Dopisek 25 września (2) — Etap 6” niżej. Następny krok: E4 (rdzeń
+  DSL-a kontraktu pod `EhOsContract.Next.Contract`) na gałęzi `dsl-v2/e4-*` od `dsl-v2/e3-spark`, po decyzji
+  wyżej.
 - **Lista zmian do `eh-os`** (odwrócenie D-01, zawężenie D-15, outbox, G-16, pytanie o transport v1) —
   użytkownika; jest w „D10–D12 — skąd się wzięły” w dopisku Etap 6.
 - **Trzy pytania z E1 do użytkownika** (szczegóły: „E1 — co szew ujawnił” w dopisku Etap 6):
@@ -95,14 +95,13 @@ uruchomić `MIX_ENV=test mix deps.get` w `packages/eh_os_contract` i w `packages
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 25 września**, na `dsl-v2/e2-store` (`df7d6e6`, a potem ten commit, który zmienia moduledoc
-  `Store` i dokumenty): brama wyżej → **EXIT=0**. Sandbox: 42 testy, 0 padnięć, `eh_os_contract.check` 0 błędów,
-  5 ostrzeżeń, 23 informacje. Pakiet silnika: 454 testy (421 z `main` + 33 z E2), 0 padnięć, `check` 0 błędów,
+- **Lokalnie, 25 września**, na `dsl-v2/e3-spark` (`b2175b5`, a potem ten commit, który zmienia tylko
+  dokumenty): brama wyżej → **EXIT=0**. Sandbox: 44 testy (42 + 2 z E3), 0 padnięć, `eh_os_contract.check` 0 błędów,
+  5 ostrzeżeń, 23 informacje. Pakiet silnika: 491 testów (454 z `main` + 37 z E3), 0 padnięć, `check` 0 błędów,
   8 ostrzeżeń, 16 informacji. Pakiet web: 31 testów, 0 padnięć. Te same liczby `check` co na `main`.
-- **CI**: na `main` sprawdzaj przez `gh run list --branch main --limit 2`. CI na PR z E2 odczytaj przez
-  `gh pr checks`. **Suita silnika potrzebuje teraz drugiej bazy** (`eh_os_contract_test_commits`). Alias `test`
-  pakietu tworzy ją i migruje sam, bo `ecto.create` obejmuje oba repo — sprawdzone lokalnie po
-  `ecto.drop -r EhOsContract.CommitRepo`. Na CI potwierdzi to pierwszy przebieg.
+- **CI**: PR #5 — przebieg `36122716953` na `b4e4a43`; `main` po merge'u — przebieg `36123110982` na
+  `6646df7`. Oba `success`, więc druga baza testowa silnika (`eh_os_contract_test_commits`) powstaje na CI sama,
+  z aliasu `test`. CI na PR z E3 (pierwszy przebieg ze Sparkiem) odczytaj przez `gh pr checks`.
 
 ### Otwarte pytania
 
@@ -220,6 +219,9 @@ każda reguła D ma test `Spark.Error.DslError` z komunikatem i plikiem:linią (
 `Code.put_compiler_option(:debug_info, true)`); przestawienie deklaracji nie zmienia wersji; moduł domeny
 kompiluje się pod ścisłym `boundary` sandboxa z `--warnings-as-errors`; formatter działa u konsumenta przez
 `import_deps`.
+
+**Zrobione 25 września** na `dsl-v2/e3-spark`, 10 commitów (`eb80194`..`0138890`), niewypchnięte. Wszystkie
+cztery właściwości Sparka przeszły; jedno zastrzeżenie wraca do użytkownika przed E4 — „E3 — co wyszło” niżej.
 
 **E4 — Rdzeń DSL-a kontraktu, pod `EhOsContract.Next.Contract`.** `aggregate`/`dcb`, `identity` (wstrzykiwana),
 `state`, `invariant`, `command`, `event` (z `recorded_by`), grupy `stage`, `process` (`correlate`, `include`,
@@ -496,6 +498,76 @@ potrzebują prawdziwych commitów. Brama zielona na każdym z 7 commitów; sandb
    v1, którą E6 zastępuje dispatcherem dopisującym decyzję jednym wywołaniem.
 7. `Clock.at/2` przyjmował czas spoza UTC, który padał dopiero przy dopisie — **poprawione** w `df7d6e6`.
 8. Suita wstrzykuje do modułu hosta funkcje pomocnicze — **bez zmiany**: mają prefiks `suite_`.
+
+### E3 — co wyszło (25 września)
+
+Stan: `{:spark, "~> 2.7.3"}` (plus `sourceror` tylko dev/test); `EhOsContract.Domain` i rozszerzenie
+`EhOsContract.Domain.Dsl` z encjami v2 §4.2 — `context` (z `term`, `translation`, `avoid`), `actor`, `subject`,
+`value` (typ albo `field`), `external`, `relation`; transformer `Domain.Rules` (D1–D5) i `Domain.Build` (model
+`__eh_os_contract_model__/0`, digest, moduł `Values`); `EhOsContract.Model.fetch/1` zwraca model skompilowany,
+gdy moduł go ma. `entity` z §4.2 pominięte — sama tabela mówi „deferred: nothing reads it yet”. W sandboxie
+`Rehmed.Domain` (tłumaczenie domeny z v2 §4.5). Brama pakietu dostała `spark.formatter … --check`. Brama zielona
+na każdym z 10 commitów; sandbox 42 → 44, silnik 454 → 484, web 31; `check` bez zmian.
+
+**Właściwości Sparka, jak sprawdzone** (plan: porażka którejkolwiek wraca do użytkownika przed E4 — żadna nie
+padła):
+1. *Każda reguła D ma test `DslError` z komunikatem i plikiem:linią* — `test/dsl/domain_rules_test.exs`,
+   16 testów odmowy i 5 kontroli; z pustą listą reguł pada dokładnie 16. Pod prawdziwym `mix compile` w
+   sandboxie druga deklaracja `actor :manager` daje „D1: two actors are named :manager
+   (lib/rehmed/domain.ex:36)”.
+2. *Przestawienie deklaracji nie zmienia wersji* — `test/dsl/domain_test.exs`: dwa moduły z tymi samymi
+   deklaracjami w innej kolejności, także zagnieżdżonymi (terminy, tłumaczenia, pola), mają tę samą wersję i te
+   same digesty; zmiana jednostki jednej wartości rusza wersję i wyłącznie `value:money`.
+3. *Moduł domeny kompiluje się pod ścisłym `boundary` sandboxa z `--warnings-as-errors`* — `Rehmed.Domain`;
+   kontrola: wywołanie do `Taxvision.Periods` i do nieeksportowanego `EhOsContract.Migrations.V03` to
+   „forbidden reference”.
+4. *Formatter działa u konsumenta przez `import_deps`* — `mix format` zostawia `Rehmed.Domain` bez zmian; bez
+   `:eh_os_contract` w `import_deps` sandboxa ten sam plik jest „not formatted”. Lista pochodzi z
+   `mix spark.formatter`, a jej `--check` w bramie pakietu odrzuca listę bez jednej encji.
+
+**Ustalenia.**
+1. **Opcje nie mogą stać obok bloku `do`** — *pytanie do użytkownika przed E4*. Elixir czyta
+   `command :x, "L", by: [:a] do … end` jako cztery argumenty, a makro encji Sparka ma pozycyjne argumenty i
+   jedne opcje, więc taki zapis się nie kompiluje (`undefined function context/4`). Z blokiem opcje pisze się w
+   środku (`subdomain :supporting`). Większość przykładów v2 §4.5–4.6 stawia opcje obok bloku. Do wyboru w E4:
+   przepisać przykłady na opcje w bloku (zero kodu, zmienia wygląd każdego kontraktu) albo generować własne
+   makra o jedną arność więcej (kod obok Sparka, który trzeba utrzymać i przetestować z formatterem). Poprawka z
+   datą w v2 §4.2 i w akapicie o Ashu w design-rationale.
+2. **Położenie błędu zależy od opcji kompilatora `:debug_info`.** Spark zapisuje adnotację tylko przy niej
+   (`Spark.Dsl.Extension.macro_env_anno/2`). `mix compile` ją włącza dla `.ex`, więc konsument widzi plik:linię;
+   kod kompilowany w teście z łańcucha jej nie ma. `EhOsContract.DslCase` włącza ją na czas jednej kompilacji —
+   opcja jest globalna dla VM, więc przypadki z niej korzystające są `async: false`. Z tego samego powodu
+   typespeki `Values` da się przeczytać w teście tylko z binarki skompilowanej z `:debug_info`.
+3. **`boundary` sandboxa egzekwuje eksporty silnika, ale nie deklaracje `deps: [EhOsContract]`.** `Rehmed.Domain`
+   z `deps: []` kompiluje się, nawet z wywołaniem `EhOsContract.Model` w czasie działania. Tak samo jest dziś z
+   każdą granicą sandboxa — to nie E3, tylko sposób, w jaki `boundary` traktuje zależności spoza aplikacji.
+   Komentarz w `sandbox/mix.exs` („a client tree reaching into the engine's internals fails to compile”) jest
+   prawdziwy dla modułów nieeksportowanych, nie dla samej zależności. Do rozstrzygnięcia przy okazji: tryb
+   ścisły dla zależności zewnętrznych albo zdanie w komentarzu.
+4. **Wszystkie naruszenia w jednym `DslError`.** Spark ma jedno położenie na błąd, więc położenie to pierwsze
+   naruszenie, a komunikat wymienia każde ze swoim plikiem:linią. v2 §6 zakłada „diagnostykę przed jednym
+   raise” — ta forma to spełnia bez drukowania ostrzeżeń, które brama zamieniłaby w błędy.
+5. **Źródła w `Rehmed.Domain`.** A-02, A-03, A-05 i CTX-01 mają pokrycie w repozytorium, metody płatności — w
+   `E-55`. Numery CTX-05 i AGG-06 z v2 §4.5 nie występują w dystylacji w tym repozytorium; CTX-05 zostaje w
+   komentarzu z adnotacją, że numer pochodzi z §4.5, a przy metodach płatności cytowane jest `E-55`.
+6. **Sprawdzanie typów wartości jest publiczne** (`Domain.Rules.type_problems/2`, `built_in_types/0`,
+   `Domain.Build.typespec/1`), bo E4 użyje tych samych typów dla pól kontraktu.
+7. **Po drodze:** commit `6067bc1` poszedł, zanim porównanie bajtów raportu przeszło — skrypt łączył je przez
+   `;`. Porównanie powtórzone po kompilacji dało identyczne bajty, więc opis commita jest prawdziwy, ale od tego
+   miejsca commit stoi po `&&`.
+
+**Przegląd przed PR (25 września, `/code-review high origin/main..HEAD`).** Siedem znalezisk:
+1. Akcesory kontraktu wołane z modułem domeny padały na `KeyError` zamiast odmowy z E2 — **poprawione** w
+   `f022dfa`.
+2. Wersja domeny nie obejmowała `name:` i `language:` — **poprawione** w `18b271c` (klucz `"domain:<name>"`).
+3. Ta sama relacja zadeklarowana dwa razy przechodziła D1, a w `digests` jedna nadpisywała drugą —
+   **poprawione** w `e011238`.
+4. Polski komentarz w `Rehmed.Domain` — **poprawione** w `595e2e4`; pliki E3 przejrzane też słowo po słowie.
+5. Pola wartości przyjmowały `default:`, `subject:` i `personal:` bez sprawdzenia — **poprawione** w `3e282f3`
+   (F3 i F5 na polach wartości domeny).
+6. `unit` odrzucany przy wartości, której typ jest inną wartością liczbową — **poprawione** w `b2175b5`.
+7. `Model.fetch/1` sprawdza załadowanie dwa razy na wywołanie — **pominięte**: koszt pomijalny, czas suity bez
+   zmian.
 
 ### Losy fikstur
 
