@@ -55,7 +55,11 @@ defmodule EhOsContract.Next.Contract.Links do
   end
 
   @doc false
-  @spec system([module()]) :: %{contracts: [contract()], implementations: [map()]}
+  @spec system([module()]) :: %{
+          contracts: [contract()],
+          by_module: %{module() => contract()},
+          implementations: [map()]
+        }
   def system(modules) do
     modules = Enum.sort_by(modules, &inspect/1)
     contracts = modules |> Enum.map(&contract/1) |> Enum.reject(&is_nil/1)
@@ -67,8 +71,19 @@ defmodule EhOsContract.Next.Contract.Links do
           function_exported?(module, :__eh_os_implementation__, 0),
           do: Map.put(module.__eh_os_implementation__(), :module, module)
 
-    %{contracts: contracts, implementations: implementations}
+    %{
+      contracts: contracts,
+      by_module: Map.new(contracts, &{&1.module, &1}),
+      implementations: implementations
+    }
   end
+
+  @doc """
+  The v2 contract `module` as the rules read it: the one `system/1` built, or, for
+  one outside the modules checked, built now. `nil` when it is not one.
+  """
+  @spec contract(map(), module()) :: contract() | nil
+  def contract(system, module), do: Map.get(system.by_module, module) || contract(module)
 
   @doc "A v2 contract as the rules read it, or `nil` when `module` is not one."
   @spec contract(module()) :: contract() | nil

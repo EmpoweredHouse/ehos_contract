@@ -27,13 +27,13 @@ defmodule EhOsContract.Next.Contract.Links.Siblings do
 
   @doc false
   @spec check(map()) :: [Links.violation()]
-  def check(system), do: Enum.flat_map(system.contracts, &contract/1)
+  def check(system), do: Enum.flat_map(system.contracts, &contract(&1, system))
 
-  defp contract(c) do
+  defp contract(c, system) do
     siblings =
       for %{from: from} = consumes <- c.declarations.consumes,
           is_atom(from),
-          do: {consumes, Links.contract(from)}
+          do: {consumes, Links.contract(system, from)}
 
     existence = Enum.flat_map(siblings, fn {consumes, sibling} -> x5(c, consumes, sibling) end)
     events = consumed_events(c, siblings)

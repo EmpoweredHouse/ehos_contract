@@ -20,13 +20,13 @@ defmodule EhOsContract.Next.Contract.Links.Scenarios do
 
   @doc false
   @spec check(map()) :: [Links.violation()]
-  def check(system), do: Enum.flat_map(system.contracts, &contract/1)
+  def check(system), do: Enum.flat_map(system.contracts, &contract(&1, system))
 
-  defp contract(c) do
+  defp contract(c, system) do
     values = if c.domain, do: Map.new(c.domain.values, &{&1.name, &1}), else: %{}
 
     for {model, declaration} <- Enum.zip(c.model.scenarios, c.declarations.scenarios),
-        {what, shape, data, at, required?} <- entries(c, model, declaration),
+        {what, shape, data, at, required?} <- entries(c, system, model, declaration),
         problem <- problems(shape, data, values, required?) do
       {"X9: scenario #{inspect(model.description)}: #{what}#{problem}", at}
     end
@@ -34,21 +34,21 @@ defmodule EhOsContract.Next.Contract.Links.Scenarios do
 
   # `{what, shape, data, where, required?}` for everything the scenario gives data
   # for. The model and the declaration list them in the same order.
-  defp entries(c, model, declaration) do
+  defp entries(c, system, model, declaration) do
     givens =
       for {given, at} <- Enum.zip(model.given, declaration.given),
-          do: event(c, given.event, given.data, at, true)
+          do: event(c, system, given.event, given.data, at, true)
 
     trigger =
       case {model.trigger, declaration.trigger} do
         {%{kind: :command} = t, [at]} -> [command(c, t.name, t.data, at, true)]
-        {%{kind: :on} = t, [at]} -> [event(c, t.name, t.data, at, true)]
+        {%{kind: :on} = t, [at]} -> [event(c, system, t.name, t.data, at, true)]
         _ -> []
       end
 
     expected =
       for {expect, at} <- Enum.zip(model.expect, declaration.expect),
-          do: event(c, expect.event, expect.data, at, false)
+          do: event(c, system, expect.event, expect.data, at, false)
 
     issued =
       for {issues, at} <- Enum.zip(model.issues, declaration.issues),
@@ -69,7 +69,7 @@ defmodule EhOsContract.Next.Contract.Links.Scenarios do
 
   # A local event, or a received one, whose fields S3 has checked; a sibling's, whose
   # fields it could not see; or nothing to check, as for a timer that fires.
-  defp event(c, name, data, at, required?) do
+  defp event(c, system, name, data, at, required?) do
     case Enum.find(c.model.events, &(&1.name == name)) do
       %{fields: fields} ->
         {"event #{inspect(name)}, ", {:local, fields}, data, Links.at(at), required?}
@@ -80,7 +80,7 @@ defmodule EhOsContract.Next.Contract.Links.Scenarios do
             {"event #{inspect(name)}, ", {:local, fields}, data, Links.at(at), required?}
 
           {:contract, from, original} ->
-            sibling(from, original, name, data, at, required?)
+            sibling(system, from, original, name, data, at, required?)
 
           nil ->
             nil
@@ -88,8 +88,8 @@ defmodule EhOsContract.Next.Contract.Links.Scenarios do
     end
   end
 
-  defp sibling(from, original, name, data, at, required?) do
-    with %{} = sibling <- Links.contract(from),
+  defp sibling(system, from, original, name, data, at, required?) do
+    with %{} = sibling <- Links.contract(system, from),
          %{} = event <- Enum.find(sibling.model.events, &(&1.name == original)) do
       identity = Enum.find(sibling.model.units, &(&1.name == event.unit)).identity
       declared = Enum.find(Rules.local_events(sibling.declarations), &(&1.name == original))
