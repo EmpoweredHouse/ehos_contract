@@ -8,11 +8,11 @@ defmodule EhOsContract.Next.Contract.Rules do
   reads the contract through `declarations/1`, so none of them walks Spark's
   structure on its own.
 
-  What L2 cannot see is left to L3, a Mix compiler (v2 plan, E5): whether an actor,
-  a value type, a subject or an external exists in the domain, and whether a
-  consumed contract has the events and fields this one reads. The domain and the
-  consumed contracts are named without a compile dependency (v2 §8), so a
-  transformer has nothing to look them up in.
+  What L2 cannot see is left to L3, the Mix compiler `compile.eh_os_contract`
+  (`EhOsContract.Next.Contract.Links`): whether an actor, a value type, a subject or
+  an external exists in the domain, and whether a consumed contract has the events
+  and fields this one reads. The domain and the consumed contracts are named without
+  a compile dependency (v2 §8), so a transformer has nothing to look them up in.
   """
 
   use Spark.Dsl.Transformer
