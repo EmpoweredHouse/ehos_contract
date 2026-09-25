@@ -4,3 +4,5 @@
 /cover/
 # `mix hex.build` output.
 *.tar
+# ExUnit's `@tag :tmp_dir`: the projects `compiler_test` compiles.
+/tmp/

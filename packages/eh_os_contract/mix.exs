@@ -33,8 +33,10 @@ defmodule EhOsContract.MixProject do
       # what lets the engine be its own first consumer without leaking a repo
       # name, a database or a secret into anybody's build.
       config_path: "config/config.exs",
-      # Without this entry `use Boundary` is documentation rather than a check.
-      compilers: [:boundary] ++ Mix.compilers(),
+      # Without this entry `use Boundary` is documentation rather than a check. The
+      # last one checks the fixtures' v2 contracts across modules, as a consumer's
+      # would be (v2 §6, L3).
+      compilers: [:boundary] ++ Mix.compilers() ++ [:eh_os_contract],
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps()

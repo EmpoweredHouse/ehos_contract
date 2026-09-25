@@ -97,6 +97,12 @@ one. What changes is what a host has to do.
 - `EhOsContract.Model.capabilities/1`: a v2 contract's capabilities under the names EHOS grants (D14),
   `<domain>.<command>` and `<domain>.<query>`, each with its roles `<domain>.<actor>` and a query's scope. The
   model's `grants` says the same per actor, with the events each records.
+- `compile.eh_os_contract`, a Mix compiler for v2 §6's layer L3: add it after Elixir's,
+  `compilers: Mix.compilers() ++ [:eh_os_contract]`. On every compile it checks the project's v2 contracts
+  against what they name without a compile dependency, and fails the compile with an error at the declaration:
+  `domain:` and `context:` (X1); every actor in `by:`, `recorded_by:`, `accountable` and a scenario, of the
+  contract's context (X2); field types and subjects (X3); externals (X4); that every actor asking a scoped query
+  carries the scope (D10); and that a `publish` is named under the domain's `name:` (D11).
 - `EhOsContract.Next.Contract.vocabulary/0`: every entity of the contract DSL, by path, with the keys it
   takes, derived from the extension.
 - `actor` in the domain DSL takes `scope:`, the fields a grant narrows query answers by (D10).

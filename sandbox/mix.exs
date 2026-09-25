@@ -8,8 +8,9 @@ defmodule EhOsContractHost.MixProject do
       elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
       # Module boundaries enforced at compile time, from the first commit
-      # (ADR §5-6). Without this entry `use Boundary` is only documentation.
-      compilers: [:boundary] ++ Mix.compilers(),
+      # (ADR §5-6). Without this entry `use Boundary` is only documentation. The last
+      # one checks v2 contracts against their domain and each other (v2 §6, L3).
+      compilers: [:boundary] ++ Mix.compilers() ++ [:eh_os_contract],
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps()
