@@ -394,7 +394,7 @@ defmodule EhOsContract.ReportTest do
     test "drift enters the report of the contract whose event caused it" do
       request("r-1", :request_approved)
 
-      Repo.insert!(%EhOsContract.Event{
+      record_event!(%{
         type: "event_outside_the_agreement",
         contract: inspect(Contract),
         contract_version: Contract.version(),

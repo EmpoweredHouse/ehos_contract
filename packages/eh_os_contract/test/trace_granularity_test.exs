@@ -90,7 +90,7 @@ defmodule EhOsContract.TraceGranularityTest do
   @after_window ~U[2026-07-05 09:00:00.000000Z]
 
   defp insert(contract, type, process, instance_id, payload, at) do
-    Repo.insert!(%EhOsContract.Event{
+    record_event!(%{
       type: type,
       contract: inspect(contract),
       contract_version: contract.version(),

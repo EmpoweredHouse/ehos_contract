@@ -26,7 +26,7 @@ defmodule EhOsContract.DependencyTest do
   @after_window ~U[2026-07-05 09:00:00.000000Z]
 
   defp submit(case_id, at) do
-    Repo.insert!(%EhOsContract.Event{
+    record_event!(%{
       type: "item_submitted",
       contract: inspect(Rig),
       contract_version: Rig.version(),
@@ -86,7 +86,7 @@ defmodule EhOsContract.DependencyTest do
       submit("c-1", @submitted)
       outage(~U[2026-07-01 15:00:00.000000Z])
 
-      Repo.insert!(%EhOsContract.Event{
+      record_event!(%{
         type: "item_inspected",
         contract: inspect(Rig),
         contract_version: Rig.version(),

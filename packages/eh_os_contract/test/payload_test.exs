@@ -215,7 +215,7 @@ defmodule EhOsContract.PayloadTest do
       # under contracts that have since changed, and a report that cannot read history
       # is worse than one that reads it loosely — ADR §7-8 calls this reading the
       # payload defensively.
-      Repo.insert!(%EhOsContract.Event{
+      record_event!(%{
         type: "payer_eligibility_confirmed",
         contract: inspect(Contract),
         contract_version: "0000deadbeef",

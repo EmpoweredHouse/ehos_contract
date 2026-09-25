@@ -108,7 +108,7 @@ defmodule EhOsContract.ConformanceTest do
       # "we did something we never agreed".
       request("r-1", :request_approved)
 
-      Repo.insert!(%EhOsContract.Event{
+      record_event!(%{
         type: "event_outside_the_contract",
         contract: inspect(Promised),
         contract_version: Promised.version(),

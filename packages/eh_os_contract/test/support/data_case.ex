@@ -36,6 +36,30 @@ defmodule EhOsContract.DataCase do
     :ok
   end
 
+  @doc """
+  Writes one row to the log directly, bypassing `EhOsContract.emit/4`: an event from an
+  older contract version, one the contract never declared, or one dated in the past.
+
+  **The one place the suite writes the log itself.** Until v2 plan stage E2, ten test
+  files each did their own `Repo.insert!(%EhOsContract.Event{})`. The log is becoming a
+  store with an append path of its own, and one writer here follows it in one edit.
+
+  Defaults cover what those files never cared about: `actor` is the system actor
+  (the log never holds a nil actor), `payload` is empty and `occurred_at` comes from
+  `EhOsContract.Clock`.
+  """
+  @spec record_event!(map()) :: EhOsContract.Event.t()
+  def record_event!(attrs) when is_map(attrs) do
+    defaults = %{
+      actor: EhOsContract.Event.system_actor(),
+      correlation_id: Ecto.UUID.generate(),
+      payload: %{},
+      occurred_at: EhOsContract.Clock.now()
+    }
+
+    EhOsContract.TestRepo.insert!(struct!(EhOsContract.Event, Map.merge(defaults, attrs)))
+  end
+
   @doc "Every event of a type, oldest first."
   def events_of(type) do
     name = to_string(type)
