@@ -23,8 +23,9 @@ defmodule EhOsContract.Domain.Rules do
   @impl true
   def transform(dsl) do
     entities = Transformer.get_entities(dsl, [:domain])
+    domain = Transformer.get_persisted(dsl, :eh_os_contract_domain)
 
-    case Enum.flat_map(rules(), & &1.(entities)) do
+    case Enum.flat_map(rules(), & &1.(entities, domain)) do
       [] ->
         {:ok, dsl}
 
@@ -39,7 +40,7 @@ defmodule EhOsContract.Domain.Rules do
     end
   end
 
-  defp rules, do: [&d1/1]
+  defp rules, do: [&d1/2, &d2/2]
 
   # --- D1: names are unique per kind ---------------------------------------------
 
@@ -51,7 +52,7 @@ defmodule EhOsContract.Domain.Rules do
     {External, "external"}
   ]
 
-  defp d1(entities) do
+  defp d1(entities, _domain) do
     by_kind =
       for {struct, kind} <- @kinds,
           duplicate <- duplicates(for(%{__struct__: ^struct} = e <- entities, do: e), & &1.name) do
@@ -66,6 +67,34 @@ defmodule EhOsContract.Domain.Rules do
       end
 
     by_kind ++ terms
+  end
+
+  # --- D2: one translation per language, none into the term's own ----------------
+
+  defp d2(entities, domain) do
+    for %Context{} = context <- entities,
+        own = context.language || domain.language,
+        term <- context.terms,
+        violation <- translation_violations(context, term, own) do
+      violation
+    end
+  end
+
+  defp translation_violations(context, term, own) do
+    into_own =
+      for %{language: ^own} = translation <- term.translations do
+        {"D2: the term #{inspect(term.text)} in context #{inspect(context.name)} is translated " <>
+           "into #{inspect(own)}, which is the language it is written in", translation}
+      end
+
+    repeated =
+      for translation <- duplicates(term.translations, & &1.language),
+          translation.language != own do
+        {"D2: the term #{inspect(term.text)} in context #{inspect(context.name)} has a second " <>
+           "translation into #{inspect(translation.language)}", translation}
+      end
+
+    into_own ++ repeated
   end
 
   # Every occurrence after the first, in declaration order: the later declaration is

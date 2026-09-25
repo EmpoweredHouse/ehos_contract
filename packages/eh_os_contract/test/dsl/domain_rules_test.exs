@@ -84,6 +84,74 @@ defmodule EhOsContract.DomainRulesTest do
     end
   end
 
+  describe "D2: one translation per language, none into the term's own" do
+    test "a second translation into one language is refused" do
+      message =
+        refused("TwoEnglish", """
+          context :settlement, "Rozliczenia" do
+            subdomain :supporting
+
+            term "Wizyta" do
+              definition "Spotkanie"
+              translation :en, "Visit"
+              translation :en, "Appointment"
+            end
+          end
+        """)
+
+      assert message =~
+               ~s|D2: the term "Wizyta" in context :settlement has a second translation into :en (two_english.ex:10)|
+    end
+
+    test "a translation into the domain's language is refused" do
+      message =
+        refused("IntoPolish", """
+          context :settlement, "Rozliczenia" do
+            subdomain :supporting
+
+            term "Wizyta" do
+              definition "Spotkanie"
+              translation :pl, "Wizyta"
+            end
+          end
+        """)
+
+      assert message =~
+               ~s|is translated into :pl, which is the language it is written in (into_polish.ex:9)|
+    end
+
+    test "a context in another language takes that language as the term's own" do
+      message =
+        refused("IntoEnglish", """
+          context :billing, "Billing" do
+            subdomain :supporting
+            language :en
+
+            term "Visit" do
+              definition "A patient's appointment"
+              translation :en, "Visit"
+            end
+          end
+        """)
+
+      assert message =~ "is translated into :en, which is the language it is written in"
+    end
+
+    test "the control: one translation per other language compiles" do
+      compiles("Translated", """
+        context :settlement, "Rozliczenia" do
+          subdomain :supporting
+
+          term "Wizyta" do
+            definition "Spotkanie"
+            translation :en, "Visit"
+            translation :de, "Besuch"
+          end
+        end
+      """)
+    end
+  end
+
   describe "the Spark schema (layer L1)" do
     test "an unknown option is refused with the file and line of the declaration" do
       error =
