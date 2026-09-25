@@ -88,6 +88,7 @@ defmodule EhOsContract.Next.Contract do
     quote do
       @persist {:eh_os_contract_contract,
                 %{domain: unquote(opts[:domain]), context: unquote(opts[:context])}}
+      @persist {:eh_os_contract_line, __ENV__.line}
     end
   end
 end

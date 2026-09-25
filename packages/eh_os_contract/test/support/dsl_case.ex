@@ -147,6 +147,52 @@ defmodule EhOsContract.DslCase do
   defp line(line), do: line
 
   @doc """
+  Compiles each `{file, source}` and returns what the rules between modules (L3,
+  `EhOsContract.Next.Contract.Links`) find among the modules they define, as
+  `%{message:, file:, line:}`. The sources have to compile: L3 reads compiled
+  modules.
+  """
+  @spec links([{String.t(), String.t()}]) :: [
+          %{message: String.t(), file: String.t() | nil, line: non_neg_integer() | nil}
+        ]
+  def links(sources) do
+    modules =
+      for {file, source} <- sources, {module, _binary} <- compile(source, file), do: module
+
+    for {message, anno} <- EhOsContract.Next.Contract.Links.check(modules) do
+      %{
+        message: message,
+        file: anno && anno |> :erl_anno.file() |> to_string() |> Path.relative_to_cwd(),
+        line: anno && :erl_anno.line(anno)
+      }
+    end
+  end
+
+  @doc """
+  Asserts that one of `violations` (from `links/1`) has a message containing
+  `fragment` **and points at `file`**, at `line` when given. Returns the message.
+  """
+  @spec assert_linked([map()], String.t() | Regex.t(), String.t(), pos_integer() | nil) ::
+          String.t()
+  def assert_linked(violations, fragment, file, line \\ nil) do
+    found =
+      Enum.find(violations, &(&1.message =~ fragment)) ||
+        ExUnit.Assertions.flunk(
+          "no violation says #{inspect(fragment)}; found:\n" <>
+            Enum.map_join(violations, "\n", &"  #{&1.message}")
+        )
+
+    ExUnit.Assertions.assert(
+      found.file == file,
+      "the violation points at #{inspect(found.file)}, not at #{file}: #{found.message}"
+    )
+
+    if line, do: ExUnit.Assertions.assert(found.line == line, "#{inspect(found)}")
+
+    found.message
+  end
+
+  @doc """
   Compiles `source` as the file `file` with `:debug_info` on, and returns what
   `Code.compile_string/2` returns. The binaries then carry their debug chunk, which
   is also where typespecs are read from.

@@ -51,6 +51,19 @@ defmodule EhOsContract.DslRules do
     Enum.reverse(repeated)
   end
 
+  @doc """
+  The name in `names` closest to `name`, for a did-you-mean, or `nil` when none is
+  close enough to be the one meant.
+  """
+  @spec closest(atom(), [atom()]) :: atom() | nil
+  def closest(name, names) do
+    names
+    |> Enum.map(&{&1, String.jaro_distance(Atom.to_string(name), Atom.to_string(&1))})
+    |> Enum.filter(fn {_, distance} -> distance > 0.8 end)
+    |> Enum.max_by(fn {_, distance} -> distance end, fn -> {nil, 0} end)
+    |> elem(0)
+  end
+
   defp describe({message, declaration}) do
     case Spark.Dsl.Entity.anno(declaration) do
       nil ->
