@@ -201,15 +201,13 @@ defmodule EhOsContract.Next.Contract.Rules.Names do
     end
   end
 
-  defp kernel?(name, arity), do: kernel_module(name, arity) != nil
+  # Read once, when this module compiles: `{name, arity} => "Kernel"`.
+  @kernel for module <- [Kernel.SpecialForms, Kernel],
+              export <- module.__info__(:functions) ++ module.__info__(:macros),
+              into: %{},
+              do: {export, inspect(module)}
 
-  defp kernel_module(name, arity) do
-    Enum.find([Kernel, Kernel.SpecialForms], fn module ->
-      {name, arity} in module.__info__(:functions) or {name, arity} in module.__info__(:macros)
-    end)
-    |> case do
-      nil -> nil
-      module -> inspect(module)
-    end
-  end
+  defp kernel?(name, arity), do: Map.has_key?(@kernel, {name, arity})
+
+  defp kernel_module(name, arity), do: Map.get(@kernel, {name, arity})
 end
