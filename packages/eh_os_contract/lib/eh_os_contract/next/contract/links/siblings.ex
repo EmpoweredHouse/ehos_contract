@@ -22,6 +22,7 @@ defmodule EhOsContract.Next.Contract.Links.Siblings do
   """
 
   alias EhOsContract.DslRules
+  alias EhOsContract.Model
   alias EhOsContract.Next.Contract.{Links, Rules}
 
   @doc false
@@ -78,21 +79,22 @@ defmodule EhOsContract.Next.Contract.Links.Siblings do
   # Every sibling event this contract consumes, under its local name: the sibling,
   # its fields as the sibling's model has them, and where the sibling declares it.
   defp consumed_events(c, siblings) do
-    for {consumes, %{} = sibling} <- siblings,
-        sibling.model.domain == c.model.domain,
-        {local, ^consumes} <- Rules.consumed(c.declarations),
-        original = original(consumes, local),
+    same_domain =
+      for {_consumes, %{} = sibling} <- siblings,
+          sibling.model.domain == c.model.domain,
+          into: %{},
+          do: {sibling.module, sibling}
+
+    for {local, _consumes} <- Rules.consumed(c.declarations),
+        {:contract, from, original} <- [Model.consumed(c.model, local)],
+        sibling = same_domain[from],
+        sibling != nil,
         event = Enum.find(sibling.model.events, &(&1.name == original)),
         event != nil,
         into: %{} do
       declared = Enum.find(Rules.local_events(sibling.declarations), &(&1.name == original))
-      {local, %{sibling: sibling.module, event: event, at: Links.at(declared)}}
+      {local, %{sibling: from, event: event, at: Links.at(declared)}}
     end
-  end
-
-  defp original(consumes, local) do
-    renames = if Keyword.keyword?(List.wrap(consumes.as)), do: List.wrap(consumes.as), else: []
-    Enum.find(consumes.events, &(Keyword.get(renames, &1, &1) == local))
   end
 
   defp correlation(c, events) do

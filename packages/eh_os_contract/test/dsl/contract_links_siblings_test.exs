@@ -214,6 +214,33 @@ defmodule EhOsContract.Next.ContractLinksSiblingsTest do
       assert_linked(personal, "declares personal", "sib_personal_billing.ex", 15)
     end
 
+    test "an event renamed with as: is checked under its local name" do
+      billing =
+        "SibRenamedBilling"
+        |> subscriber("SibRenamedBooking", ":visit_booked, as: [visit_booked: :booked]")
+        |> String.replace("include :visit_booked", "include :booked")
+        |> String.replace("starts_on :visit_booked", "starts_on :booked")
+        |> String.replace("consults :visit_booked", "consults :booked")
+
+      violations =
+        links([
+          {"sib_renamed_booking.ex",
+           publisher("SibRenamedBooking", "      field :room, :string")},
+          {"sib_renamed_billing.ex", billing}
+        ])
+
+      assert assert_linked(
+               violations,
+               "X6: process :billing includes :booked",
+               "sib_renamed_billing.ex",
+               15
+             ) =~
+               "which event :visit_booked of #{inspect(@fixtures)}.SibRenamedBooking " <>
+                 "(sib_renamed_booking.ex:9) does not have"
+
+      assert length(violations) == 3
+    end
+
     test "controls: an optional field added, and a change to a field no declaration uses" do
       assert pair("sib_added", @fields <> "      field :note, :string, optional: true") == []
       assert pair("sib_unused", "      field :visit_id, :id\n      field :room, :integer") == []
