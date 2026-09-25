@@ -40,7 +40,7 @@ defmodule EhOsContract.Domain.Rules do
     end
   end
 
-  defp rules, do: [&d1/2, &d2/2, &d3/2]
+  defp rules, do: [&d1/2, &d2/2, &d3/2, &d4/2]
 
   # --- D1: names are unique per kind ---------------------------------------------
 
@@ -262,6 +262,52 @@ defmodule EhOsContract.Domain.Rules do
         MapSet.union(seen, MapSet.new(fresh))
       )
     end
+  end
+
+  # --- D4: a person is not backed by a system ------------------------------------
+
+  defp d4(entities, _domain) do
+    externals = MapSet.new(for %External{name: name} <- entities, do: name)
+    contexts = MapSet.new(for %Context{name: name} <- entities, do: name)
+
+    for %Actor{} = actor <- entities, violation <- actor_violations(actor, externals, contexts) do
+      violation
+    end
+  end
+
+  defp actor_violations(actor, externals, contexts) do
+    where = "D4: actor #{inspect(actor.name)}"
+
+    backed_by =
+      cond do
+        actor.backed_by == nil ->
+          []
+
+        actor.kind == :human ->
+          [
+            {"#{where} is a person and cannot be backed_by #{inspect(actor.backed_by)}; " <>
+               "only a system actor stands for an external system", actor}
+          ]
+
+        not MapSet.member?(externals, actor.backed_by) ->
+          [
+            {"#{where} is backed_by #{inspect(actor.backed_by)}, which this domain does not " <>
+               "declare as an external", actor}
+          ]
+
+        true ->
+          []
+      end
+
+    context =
+      if actor.context && not MapSet.member?(contexts, actor.context),
+        do: [
+          {"#{where} names context #{inspect(actor.context)}, which this domain does not declare",
+           actor}
+        ],
+        else: []
+
+    backed_by ++ context
   end
 
   # Every occurrence after the first, in declaration order: the later declaration is

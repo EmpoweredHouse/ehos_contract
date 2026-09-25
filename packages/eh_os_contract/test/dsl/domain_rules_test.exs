@@ -246,6 +246,43 @@ defmodule EhOsContract.DomainRulesTest do
     end
   end
 
+  describe "D4: a person is not backed by a system" do
+    test "a human actor with backed_by is refused" do
+      message =
+        refused("BackedPerson", """
+          external :payer_registry, "Rejestr płatnika", direction: :outbound
+          actor :reception, :human, "Recepcja", backed_by: :payer_registry
+        """)
+
+      assert message =~
+               "D4: actor :reception is a person and cannot be backed_by :payer_registry;"
+
+      assert message =~ "(backed_person.ex:5)"
+    end
+
+    test "a system actor backed by an undeclared external, and an undeclared context, are refused" do
+      message =
+        refused("UnknownBacking", """
+          actor :gateway, :system, "Bramka", backed_by: :payer_registry, context: :billing
+        """)
+
+      assert message =~
+               "D4: actor :gateway is backed_by :payer_registry, which this domain does not declare"
+
+      assert message =~
+               "D4: actor :gateway names context :billing, which this domain does not declare"
+    end
+
+    test "the control: a system actor backed by a declared external, in a declared context, compiles" do
+      compiles("Backed", """
+        context :settlement, "Rozliczenia", subdomain: :supporting
+        external :payer_registry, "Rejestr płatnika", direction: :outbound
+        actor :gateway, :system, "Bramka", backed_by: :payer_registry, context: :settlement
+        actor :reception, :human, "Recepcja", context: :settlement
+      """)
+    end
+  end
+
   describe "the Spark schema (layer L1)" do
     test "an unknown option is refused with the file and line of the declaration" do
       error =
