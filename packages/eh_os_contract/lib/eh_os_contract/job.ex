@@ -59,7 +59,7 @@ defmodule EhOsContract.Job do
   @spec run(module(), map(), pos_integer()) :: :ok | {:error, term()}
   defp run(handler, args, attempt) do
     meta = handler.__eh_os_contract_handler__()
-    event_def = meta.contract.event(meta.event)
+    event_def = EhOsContract.Model.event(meta.contract, meta.event)
     payload = EhOsContract.Payload.cast(event_def, args["payload"])
 
     ctx = %{

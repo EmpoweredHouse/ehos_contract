@@ -167,7 +167,7 @@ defmodule EhOsContract.Emitter do
   is weaker than the record claims.
   """
 
-  alias EhOsContract.{Event, EventHandling, Payload, Registry}
+  alias EhOsContract.{Event, EventHandling, Model, Payload, Registry}
 
   @doc """
   Emits an event: the write to the log, the synchronous handlers in the same
@@ -254,7 +254,7 @@ defmodule EhOsContract.Emitter do
 
   @spec do_emit(module(), module(), atom(), map(), map()) :: Event.t()
   defp do_emit(repo, contract, type, payload, ctx) do
-    unless contract.event?(type) do
+    unless Model.event?(contract, type) do
       raise ArgumentError,
             "#{inspect(contract)} does not declare event #{inspect(type)}. " <>
               "Dynamic publication is illegal — whether the static graph is a fact or a " <>
@@ -263,7 +263,7 @@ defmodule EhOsContract.Emitter do
 
     guard_against_cycle!(type, ctx)
 
-    event_def = contract.event(type)
+    event_def = Model.event(contract, type)
     correlation_id = ctx[:correlation_id] || Ecto.UUID.generate()
 
     # Three steps in this order, and the order was wrong on the first attempt.
@@ -302,7 +302,7 @@ defmodule EhOsContract.Emitter do
       repo.insert!(%Event{
         type: to_string(type),
         contract: inspect(contract),
-        contract_version: contract.version(),
+        contract_version: Model.version(contract),
         process: process,
         instance_id: instance_id,
         correlation_id: correlation_id,
