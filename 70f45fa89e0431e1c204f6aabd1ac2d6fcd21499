@@ -1,0 +1,1 @@
+Documentation only: diff touches PLAN.md and docs/adr/contract-v2.md, which mix check does not read; checked with git diff --stat origin/main..HEAD. No /code-review, per pre-pr-review.
