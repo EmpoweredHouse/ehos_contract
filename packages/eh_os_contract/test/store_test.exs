@@ -59,6 +59,33 @@ defmodule EhOsContract.StoreTest do
     assert message =~ "only under READ COMMITTED"
   end
 
+  test "its refusals say what to do instead" do
+    type = "wording-#{System.unique_integer([:positive])}"
+
+    entry = %{
+      type: type,
+      contract: "StoreTest",
+      contract_version: "v",
+      correlation_id: Ecto.UUID.generate(),
+      actor: "system",
+      occurred_at: DateTime.utc_now()
+    }
+
+    assert_raise ArgumentError, ~r/inside the caller's transaction/, fn ->
+      Postgres.append(Repo, [entry], :none)
+    end
+
+    assert_raise ArgumentError, ~r/condition :none carries a stream_id.*\{:stream, id/s, fn ->
+      Repo.transaction(fn -> Postgres.append(Repo, [Map.put(entry, :stream_id, "s")], :none) end)
+    end
+
+    assert_raise ArgumentError, ~r/leave both out of the entry/, fn ->
+      Repo.transaction(fn ->
+        Postgres.append(Repo, [Map.put(entry, :stream_id, "s")], {:stream, "t", 0})
+      end)
+    end
+  end
+
   test "refuses a column the store assigns" do
     assert_raise ArgumentError, ~r/the store assigns position/, fn ->
       Repo.transaction(fn -> Postgres.append(Repo, [%{type: "t", position: 1}], :none) end)

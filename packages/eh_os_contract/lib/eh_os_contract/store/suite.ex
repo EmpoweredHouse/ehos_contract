@@ -19,6 +19,9 @@ defmodule EhOsContract.Store.Suite do
   `EhOsContract.Migrations`. Rows written here stay, because the log is append-only,
   so every test writes under types and streams of its own and never assumes the log
   is empty. Keep the case `async: false`.
+
+  A refusal is asserted as an `ArgumentError` and nothing more specific. The wording
+  belongs to the implementation, and each implementation pins its own.
   """
 
   @doc false
@@ -70,13 +73,13 @@ defmodule EhOsContract.Store.Suite do
         end
 
         test "refuses to run outside a transaction" do
-          assert_raise ArgumentError, ~r/inside the caller's transaction/, fn ->
+          assert_raise ArgumentError, fn ->
             @store.append(@repo, [suite_entry(suite_name("outside"))], :none)
           end
         end
 
         test "refuses a stream id under :none, whose version nothing would check" do
-          assert_raise ArgumentError, ~r/condition :none carries a stream_id/, fn ->
+          assert_raise ArgumentError, fn ->
             suite_append([suite_entry(suite_name("unchecked"), %{stream_id: "s"})], :none)
           end
         end
