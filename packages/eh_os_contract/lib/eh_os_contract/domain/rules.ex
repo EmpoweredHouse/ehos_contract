@@ -2,18 +2,14 @@ defmodule EhOsContract.Domain.Rules do
   @moduledoc """
   The rules a domain module must satisfy to compile: v2 §6, layer L2, rules D1–D5.
 
-  A transformer, not a verifier. Spark turns a verifier's error into a warning and
-  does not re-run verifiers on an incremental compile, so a rule written as one would
-  hold only sometimes (v2 §6). A transformer's error stops the compilation.
-
-  Every violation found is reported, not only the first. They come in one
-  `Spark.Error.DslError`: its location is the first violation's, and its message
-  lists every violation with the file and line of the declaration at fault.
+  A transformer, not a verifier, and every violation is reported at once, in one
+  error that names each declaration's file and line (`EhOsContract.DslRules`).
   """
 
   use Spark.Dsl.Transformer
 
   alias EhOsContract.Domain.Dsl
+  alias EhOsContract.DslRules
   alias EhOsContract.Domain.Dsl.{Actor, Context, External, Relation, Subject, Value}
   alias Spark.Dsl.Transformer
 
@@ -26,19 +22,7 @@ defmodule EhOsContract.Domain.Rules do
     entities = Transformer.get_entities(dsl, [:domain])
     domain = Transformer.get_persisted(dsl, :eh_os_contract_domain)
 
-    case Enum.flat_map(rules(), & &1.(entities, domain)) do
-      [] ->
-        {:ok, dsl}
-
-      [{_, first} | _] = violations ->
-        {:error,
-         Spark.Error.DslError.exception(
-           module: Transformer.get_persisted(dsl, :module),
-           path: [:domain],
-           location: anno(first),
-           message: Enum.map_join(violations, "\n  ", &describe/1)
-         )}
-    end
+    DslRules.result(dsl, [:domain], Enum.flat_map(rules(), & &1.(entities, domain)))
   end
 
   defp rules, do: [&d1/2, &d2/2, &d3/2, &d4/2, &d5/2]
@@ -451,33 +435,5 @@ defmodule EhOsContract.Domain.Rules do
     roles ++ unknown ++ itself
   end
 
-  # Every occurrence after the first, in declaration order: the later declaration is
-  # the one to move or rename.
-  defp duplicates(list, key) do
-    {_, repeated} =
-      Enum.reduce(list, {MapSet.new(), []}, fn item, {seen, repeated} ->
-        k = key.(item)
-
-        if MapSet.member?(seen, k),
-          do: {seen, [item | repeated]},
-          else: {MapSet.put(seen, k), repeated}
-      end)
-
-    Enum.reverse(repeated)
-  end
-
-  # --- reporting -----------------------------------------------------------------
-
-  defp anno(entity), do: Spark.Dsl.Entity.anno(entity)
-
-  defp describe({message, entity}) do
-    case anno(entity) do
-      nil ->
-        message
-
-      anno ->
-        file = anno |> :erl_anno.file() |> to_string() |> Path.relative_to_cwd()
-        "#{message} (#{file}:#{:erl_anno.line(anno)})"
-    end
-  end
+  defp duplicates(list, key), do: DslRules.duplicates(list, key)
 end
