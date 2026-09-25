@@ -45,7 +45,9 @@ poza tym, że log jest tylko do dopisywania.
   nakładki z D13 i testy ich dwóch warunków** (opis E4 w dopisku); jeśli któryś padnie — stop i pytanie do
   użytkownika, nie obejście.
 - **Lista zmian do `eh-os`** (odwrócenie D-01, zawężenie D-15, outbox, G-16, pytanie o transport v1) —
-  użytkownika; jest w „D10–D12 — skąd się wzięły” w dopisku Etap 6.
+  użytkownika; jest w „D10–D12 — skąd się wzięły” w dopisku Etap 6. Od D14 także D-34, D-40 i plan etapu 4
+  (kroki 7–8) — w „D14 — autoryzacja” tamże.
+- **EA — pakiet `eh_os_contract_auth` — asystenta**, po E6 (D14, v2 §16). Na nim stoi krok 8 etapu 4 EHOS-a.
 - **Trzy pytania z E1 — rozstrzygnięte przez użytkownika 25 września, po E3:** kolejność linii w
   `mix eh_os_contract.check` naprawiona teraz (`189cad7`: błędy, ostrzeżenia, informacje, każde po tekście);
   „Unreleased” w obu `CHANGELOG.md` otwarte teraz, bez zmiany wersji (`b58062b`) — **każdy kolejny etap dopisuje
@@ -228,7 +230,10 @@ cztery właściwości Sparka przeszły; jedno zastrzeżenie wraca do użytkownik
 `state`, `invariant`, `command`, `event` (z `recorded_by`), grupy `stage`, `process` (`correlate`, `include`,
 `promise`, `cadence`, `deadline`), pola i typy (v2 §4.3), budowa modelu i digestów, reguły L2 (v2 §6: N, F, A,
 C, R, K), a od D10–D11 (v2 §16) także `scope` na aktorze i query, `publish` oraz `consumes "<nazwa>"` z polami
-— same deklaracje i ich reguły L2, bez runtime'u. Zmyślona fikstura `UniversalityGate` przepisana na nowy DSL; fikstury testów to moduły inline poza
+— same deklaracje i ich reguły L2, bez runtime'u. Od D14 (v2 §16) model wyprowadza nazwy, na których stoi EHOS:
+uprawnienie `<domena>.<komenda>` i `<domena>.<query>`, rola `<domena>.<aktor>`, gdzie `<domena>` to `name:`
+domeny; `Model.capabilities/1` jest kluczowane nazwą uprawnienia. Nazwa komendy lub query jest więc unikalna w
+całej aplikacji — reguła między kontraktami wchodzi z L3 w E5. Zmyślona fikstura `UniversalityGate` przepisana na nowy DSL; fikstury testów to moduły inline poza
 skanem rejestru (wzorzec z `check_keys_test`).
 **Pierwszy commit E4 (D13, v2 §16, decyzja użytkownika z 25 września): nakładki o jedną arność więcej.** Dla
 każdej encji, która przyjmuje blok, biblioteka generuje z definicji encji makro `nazwa(args…, opts, do: block)`
@@ -261,17 +266,48 @@ dodanie pola opcjonalnego się kompiluje, a subskrybent, który zmienionego pola
 **E6 — Dispatch synchroniczny i przejście VisitSettlement.** `Dispatcher`, `Codec`, `Capability`, idempotencja,
 ponowienia, projekcje i polityki inline, `record/3` (D6), wiersze `_commands` (v2 §11–12); query przez tę samą
 ścieżkę autoryzacji co komendy, ze `scope` i sprawdzeniem zwróconych wierszy (D10), i `EhOsContract.Plug`
-wystawiający komendy i query modelu po HTTP. Jeden commit
+wystawiający komendy i query modelu po HTTP. Autoryzacja przez behaviour `EhOsContract.Authorizer` (D14):
+dispatch i query pytają go, czy `ctx.actor` ma uprawnienie deklaracji; domyślna implementacja porównuje z
+uprawnieniami niesionymi przez aktora i niczego nie zapisuje, a aktorzy `:system` (polityki, process managery,
+efekty) są sprawdzani tylko względem `by:`/`recorded_by:`. Credentiale, klucze i wiersz audytu to EA. Jeden commit
 zastępuje stary kontrakt VisitSettlement, `Rehmed.Settlement.decide/1` i `rehmed_contract_examples_test`
 nowym kontraktem, domeną, implementacją i testem scenariuszy (v2 §4.5). `@version "0.3.0-dev"` i linia w
 CHANGELOG „Unreleased” (sekcja istnieje od `b58062b`) — od tego commita wersje kontraktów się ruszają. Na każdym skillu baner „opisuje v1”. Poprawki
 ADR: „historia, nie sourcing” i wiersz o Commanded (design-rationale), §7–8.
 *Odbiór:* cztery scenariusze przechodzą; decyzja zwracająca niezadeklarowane zdarzenie rzuca wyjątek, a magazyn
 się nie zmienia — kontrola: zadeklarowane zostaje dopisane; wyjątek w projekcji inline wycofuje dopis; odmowa
-uprawnień niczego nie zapisuje; query o wartość `scope` spoza grantu jest odrzucone, zanim ruszy implementacja,
-a implementacja zwracająca cudzy wiersz jest zatrzymana — kontrola: wartość z grantu przechodzi; konflikt jest
+uprawnień niczego nie zapisuje — ani do logu, ani do `_commands` (wiersz odmowy należy do implementacji
+`Authorizer`, EA); query o wartość `scope` spoza grantu jest odrzucone, zanim ruszy implementacja;
+uprawnienie ze `scope` bez żadnej wartości w grancie jest odrzucone (fail closed); implementacja zwracająca
+cudzy wiersz jest zatrzymana — kontrola: wartość z grantu przechodzi; konflikt jest
 ponawiany; ten sam klucz idempotencji zwraca te same pozycje;
 delta `check` w sandboxie dotyczy tylko linii VisitSettlement.
+
+**EA — Pakiet `eh_os_contract_auth` (D14, v2 §16; `eh-os` D-33, D-34).** Trzeci pakiet w `packages/`, obok
+`eh_os_contract_web`, z własnym `mix check`; rdzeń od niego nie zależy. Implementuje `EhOsContract.Authorizer`
+z E6 dla credentiali EHOS-a:
+- `verify/2`: JWT z nagłówkiem `alg: "Ed25519"` (tylko ten), `kid` = odcisk RFC 7638, `iss` z konfiguracji,
+  `aud` dokładnie `<aplikacja>/<środowisko>`, `exp`; powody `:expired`, `:unknown_key`, `:bad_signature`,
+  `:wrong_audience`, `:wrong_issuer`, `:no_keys`. Z `sub`, `cap` i `scp` (`eh-os` D-40) buduje `ctx.actor`.
+  Joken do kryptografii, bez `joken_jwks` (powód w D-34);
+- klucze z `/.well-known/jwks.json` w tabeli w bazie aplikacji (własna migracja, wzorzec
+  `EhOsContract.Migrations`): przy starcie ostatni dobry zestaw z tabeli, potem pobranie; odświeżanie co 5 min;
+  nieznany `kid` — wcześniejsze pobranie najwyżej raz na 30 s; nieudane pobranie niczego nie zmienia;
+- wiersz audytu każdej decyzji — principal, uprawnienie, wersja kontraktu, wynik, powód, przy query ze `scope`
+  także wartość — we własnej tabeli pakietu;
+- Plug dla tokenu bearer przed `EhOsContract.Plug`;
+- pomocnik testów: host mapuje każdą komendę i query modelu na funkcję wołającą swój punkt wejścia, pomocnik
+  woła każdą credentialem bez uprawnienia i oczekuje odmowy z wierszem; deklaracja bez mapowania go wywraca.
+
+Po E6 (behaviour i ścieżka dispatchu), niezależny od E7–E9; `verify/2` i klucze nie czytają kontraktu i mogą
+ruszyć wcześniej. Poprawki: `CLAUDE.md` („Czego nie budujemy” — zrobione przy zapisie D14),
+`docs/adr/identity-seam.md` (notka z datą — zrobione przy zapisie D14).
+*Odbiór:* testy z D-34 — klucz usunięty z JWKS odrzucony po następnym odświeżeniu; nieudane pobranie zostawia
+ostatni zestaw; nieznany `kid` pobiera najwyżej raz na interwał; pierwszy start bez EHOS-a odrzuca z
+`:no_keys`; restart bez EHOS-a działa na kluczach z tabeli. Ponadto: `alg: "EdDSA"`, credential innego `aud` i
+innego `iss` odrzucone; uprawnienie ze `scope` bez wpisu w `scp` odrzucone; odmowa ma wiersz w tabeli pakietu, a
+log i `_commands` nie dostają niczego; pomocnik pada na komendzie bez mapowania — kontrola: credential z
+uprawnieniem przechodzi i też ma wiersz.
 
 **E7 — Runtime asynchroniczny, fikstury, zgodność.** Efekty (Oban, joby tylko z identyfikatorami),
 uporządkowane subskrypcje, process managery i timery, przebudowa, `_event_runs` (D7), nowe źródła zgodności:
@@ -312,7 +348,12 @@ nie dotyka.**
 **E10 — Wyjścia.** Ostrzeżenia L5 (v2 §6) przypięte testem na wyjściu sandboxa; graf systemu (domena →
 konteksty → kontrakty, krawędzie `consumes`) w `mix eh_os_contract.graph` i na `/graph`; `Model.to_data/1` z
 nazwanym schematem dla EHOS-a, z uprawnieniami, i endpoint w API pakietu web; AsyncAPI z deklaracji `publish` (D11)
-i OpenAPI z komend i query modelu (D10).
+i OpenAPI z komend i query modelu (D10). W pakiecie auth (D14) task manifestu dla EHOS-a: `ehos.manifest/v1`
+(`eh-os` `docs/manifest.md`) jako projekcja modelu i domeny — tylko pola schematu EHOS-a, bo każde inne jest
+odrzucane; aktor bez żadnego uprawnienia i aktorzy `:system` nie są rolami — potem v2 według `eh-os` D-40/D-41.
+*Odbiór manifestu:* dla TaxVision po E9 równy fixture'owi `eh-os` `test/support/fixtures/manifests/taxvision.json`
+(rola `taxvision.accountant`, „Księgowa”); jeśli task dopisuje `engine` i `contracts`, digest odchodzi od
+przypiętego w EHOS i porównanie je pomija — rozstrzygnięte przy tym etapie.
 
 **E11 — Cięcie.** Osobne commity: usunięcie v1 (DSL, `Handler`, `Emitter`, `Job`, handlerowe części rejestru,
 `dev/mix/tasks/eh_os_contract.docs.ex`, testy v1, `Rig`) — samo usuwanie; przemianowanie `Next` — samo
@@ -352,6 +393,32 @@ domenowego. Zmienione wyżej: E4, E5, E6, E10; dodany E12.
   checkpoint, tabeli outboxu nie ma.
 - G-16 — punkt egzekucji autoryzacji subskrypcji w v1 to relay EHOS-a z tablicą routingu z grantów.
 - Pytanie otwarte: co w v1 przenosi wiadomość między dwoma kontenerami, skoro D-03 mówi o relayu „in-process”.
+
+### D14 — autoryzacja: kontrakt deklaruje, osobny pakiet weryfikuje (25 września)
+
+Z przeglądu zgodności z etapem 4 EHOS-a (`eh-os` `docs/plans/stage-4-identity-and-console.md`, krok 7, oraz
+D-32, D-33, D-34, D-40, D-41). Wyszło, że v2 powołuje się na `eh_os_contract_auth` (v2 §16, D10), a nie buduje
+go żaden etap, i że v2 §11 sprawdza role aktora, choć credential EHOS-a niesie tylko uprawnienia (`cap`), bez
+ról. Użytkownik: kontrakt zostaje wąski, w obrębie DDD; auth jest osobny i wpina się w kontrakt; na razie
+jako pakiet w tym repozytorium. Zapisane w v2 §16 jako D14; zmienione wyżej: E4, E6, E10; dodany EA.
+
+Podział: EHOS wydaje credential i uruchamia aplikację kliencką; kontrakt mówi, kto może wydać komendę lub
+query (`by:`, aktorzy są rolami — v2 §18), wyprowadza nazwy uprawnień i ról i pyta `EhOsContract.Authorizer`
+przy dispatchu; pakiet auth weryfikuje credential, trzyma klucze, implementuje `Authorizer` i zapisuje wiersz
+każdej decyzji. Rdzeń przy odmowie nie zapisuje nic.
+
+**Otwarte:** przyjęta komenda ma wiersz w tabeli pakietu auth i wiersz `accepted` w `_commands` — dwa zapisy
+jednego faktu. Rozstrzyga EA.
+
+**Do przeniesienia do `eh-os` — przez użytkownika albo sesję w tamtym repozytorium; stąd tam nie piszemy:**
+- D-34 „the seam is a call, not a gate” — w v2 dispatch pyta `Authorizer`, więc sprawdzenie jest bramką w
+  kontrakcie, a pakiet auth tylko dostarcza tożsamość, uprawnienia i wiersz. Powód D-34 (joby i backfille
+  z credentialem) v2 rozwiązuje aktorami `:system`. Także: „the other five tables” — od V03 jest sześć.
+- D-40 mówi o „generated denial test” w E6; D-34 i EA mają zamiast tego pomocnika testów.
+- Plan etapu 4, krok 7: weryfikator to EA (po E6), task manifestu to E10, a odbiór „manifest wygenerowany dla
+  sandboxa równy fixture'owi” jest możliwy dopiero po E9. Krok 8: sandbox dostanie aktorów v2 dopiero w E9, więc
+  wcześniej krok 8 potrzebuje minimalnej aplikacji z jednym kontraktem v2 i pakietem auth.
+- Handoff planu etapu 4 opisuje krok 6 jako otwarty PR, a jest zmergowany (#35, `5fe898b`).
 
 ### E1 — co szew ujawnił (25 września)
 

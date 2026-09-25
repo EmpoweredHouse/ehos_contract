@@ -184,5 +184,8 @@ Kod idzie jako PR i weryfikuje go człowiek. Z tego wynikają dwie rzeczy przy g
 zero sygnału dla biblioteki. **Tożsamości** — logowania, kont, ról, providera OIDC: silnik zna aktora
 wyłącznie jako nieprzezroczysty `subject`, uwierzytelnia aplikacja klienta, dostęp do dashboardu
 rozstrzyga host przez `EhOsContract.Web.Resolver` (od 23 września; wcześniej `PNS.Auth` z logowaniem i kontami, z
-czasów, gdy silnik miał być właścicielem EHOS). Alertów i widoków operacyjnych. **Czegokolwiek, co
+czasów, gdy silnik miał być właścicielem EHOS). **Od 25 września (D14 w v2 §16)** credential wydaje EHOS, a
+weryfikuje go osobny pakiet `eh_os_contract_auth` (etap EA w `PLAN.md`), który implementuje
+`EhOsContract.Authorizer` kontraktu; rdzeń od niego nie zależy i dalej niczego nie weryfikuje. Role to aktorzy
+kontraktu (v2 §18), nie osobna deklaracja. Alertów i widoków operacyjnych. **Czegokolwiek, co
 odpowiada na pytanie o konkretną firmę.**
