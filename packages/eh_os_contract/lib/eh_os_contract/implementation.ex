@@ -33,7 +33,7 @@ defmodule EhOsContract.Implementation do
   `use` line for the ones checked before the module compiles:
 
   - **I1.** `use C, …` names one declaration that exists; a misspelling gets a
-    did-you-mean.
+    did-you-mean. A module binds once.
   - **I2.** Every callback of the behaviour is defined, and the error shows the
     clause to add.
   - **I3.** `evolve/2` has a clause for every event, or a catch-all: an unguarded
@@ -75,6 +75,30 @@ defmodule EhOsContract.Implementation do
     model = contract.__eh_os_contract_model__()
     {kind, name} = declaration!(model, opts, caller)
 
+    # One module, one declaration: a second binding would replace the first, and the
+    # first's callbacks would never be checked. The attribute is set here, while `use`
+    # expands, because the module body is expanded before any of it runs: set in the
+    # quote below, a second `use` would not see it yet.
+    case Module.get_attribute(caller.module, :eh_os_contract_implementation) do
+      nil ->
+        :ok
+
+      bound ->
+        refuse!(
+          caller,
+          "I1: #{inspect(caller.module)} already implements #{human(bound.kind)} " <>
+            "#{inspect(bound.name)} of #{inspect(bound.contract)}; one module implements one " <>
+            "declaration"
+        )
+    end
+
+    Module.put_attribute(caller.module, :eh_os_contract_implementation, %{
+      contract: contract,
+      kind: kind,
+      name: name,
+      line: caller.line
+    })
+
     aliases =
       for {module, as} <- aliases(model, kind, name) do
         quote do: alias(unquote(module), as: unquote(as), warn: false)
@@ -82,12 +106,6 @@ defmodule EhOsContract.Implementation do
 
     quote do
       @behaviour unquote(Model.module_for(model, kind, name))
-      @eh_os_contract_implementation %{
-        contract: unquote(contract),
-        kind: unquote(kind),
-        name: unquote(name),
-        line: unquote(caller.line)
-      }
       Module.register_attribute(__MODULE__, :eh_os_contract_emitted, accumulate: true)
       import EhOsContract.Implementation, only: [emit: 1, reject: 1, issue: 1], warn: false
       unquote_splicing(aliases)

@@ -220,6 +220,22 @@ defmodule EhOsContract.ImplementationTest do
     end
   end
 
+  describe "I1: one module, one declaration" do
+    test "a second binding in the same module is refused" do
+      refused(
+        implementation("BoundTwice", "effect: :notify", """
+          use EhOsContract.Next.Fixtures.Billing, read_model: :payments
+
+          @impl true
+          def closed(%Closed{}), do: :ok
+        """),
+        "I1: EhOsContract.Next.Implementations.BoundTwice already implements effect :notify of " <>
+          "EhOsContract.Next.Fixtures.Billing; one module implements one declaration",
+        4
+      )
+    end
+  end
+
   describe "I2 and I3: every callback, and every event evolve/2 is kept from" do
     test "a missing callback is named with the clause to add" do
       body =
