@@ -251,6 +251,22 @@ defmodule EhOsContract.ImplementationTest do
       )
     end
 
+    test "a guarded variable is not a catch-all" do
+      body =
+        String.replace(
+          @aggregate,
+          "  def evolve(state, _event), do: state\n",
+          "  def evolve(state, event) when is_struct(event, Reminded), do: state\n"
+        )
+
+      refused(
+        implementation("GuardedVariable", "aggregate: :visit", body),
+        "I3: EhOsContract.Next.Implementations.GuardedVariable.evolve/2 has no clause for " <>
+          "%Closed{}, %ClosedWithoutPayment{}, %Reminded{}.",
+        2
+      )
+    end
+
     test "control: a clause for each event covers evolve/2 without a catch-all" do
       body =
         String.replace(@aggregate, "  def evolve(state, _event), do: state\n", """

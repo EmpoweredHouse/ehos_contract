@@ -36,7 +36,9 @@ defmodule EhOsContract.Implementation do
     did-you-mean.
   - **I2.** Every callback of the behaviour is defined, and the error shows the
     clause to add.
-  - **I3.** `evolve/2` has a clause for every event, or a catch-all.
+  - **I3.** `evolve/2` has a clause for every event, or a catch-all: an unguarded
+    variable. It reads struct patterns, not guards, so a clause written
+    `when is_struct(event, A)` covers nothing; write `%A{}` instead.
   - **I4.** `emit/1` takes struct literals — `%E{}`, a list of them, or a `for`
     producing them — of events allowed where it is called: inside a command's
     callback, that command's `emits:`; anywhere else in the module, those of any
@@ -445,9 +447,16 @@ defmodule EhOsContract.Implementation do
   # I3: every event the state is kept from has a clause, unless one catches all.
   defp covered!(env, at, model, evolve, aliases) do
     {:v1, _kind, _meta, clauses} = Module.get_definition(env.module, {:evolve, 2})
-    patterns = Enum.map(clauses, fn {_meta, [_state, event], _guards, _body} -> event end)
 
-    unless Enum.any?(patterns, &catch_all?/1) do
+    patterns =
+      Enum.map(clauses, fn {_meta, [_state, event], guards, _body} -> {event, guards} end)
+
+    # A variable catches every event only without a guard: `when is_struct(e, A)` is a
+    # clause for A, not for all.
+    catch_all = Enum.any?(patterns, fn {event, guards} -> guards == [] and catch_all?(event) end)
+    patterns = Enum.map(patterns, &elem(&1, 0))
+
+    unless catch_all do
       handled = MapSet.new(Enum.flat_map(patterns, &struct_modules/1))
 
       missing =
