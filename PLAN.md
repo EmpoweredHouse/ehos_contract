@@ -5,138 +5,119 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 22 września, 14:58
+## Handoff — stan na 25 września
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
 
-Silnik weryfikacji zgodności wdrożonego kodu z zadeklarowanym procesem. Etap 5 zamknięty w całości
-(5.1–5.9), plus dwie rzeczy dorzucone po nim: krok formatowania w bramie i komendy z materiału
-warsztatowego. Co to repozytorium jest i czym nie jest — `CLAUDE.md`, nie tutaj.
+Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności) i jej
+dashboardu; `sandbox/` to dane testowe. **Trwa pivot do v2**: DSL na Sparku z modelem domeny w stylu ESDM
+(jeden kontrakt = jeden proces), event sourcing na własnym magazynie w Postgresie, crypto-shredding. Plan
+zatwierdzono 25 września. Etap E0 (dokumenty) jest zrobiony, **E1–E11 nie są zaczęte**, a v1 działa bez
+zmian — w kodzie nic się jeszcze nie ruszyło.
 
 ### Stan repozytorium
 
-Gałąź `main`, `HEAD` = `f018cb8`, drzewo czyste, historia liniowa (zero merge commitów).
-
-**21 commitów przed `origin/main` i ani jeden nie jest wypchnięty.** Zdalna głowa to `41c709d`
-z 23 sierpnia. To jest najważniejsza linia w tym handoffie.
+- Gałąź `dsl-v2/e0-groundwork`, odgałęziona od `main`; `main` = `origin/main` = `5f0092b` (sprawdzone
+  25 września po `git fetch`). Nad `main` trzy commity, wszystkie tylko dokumentacja: `54604d3` (mapa
+  czterech kontraktów na ESDM), `9d2c7c2` (projekt v2 i plan etapów) i commit z tym handoffem —
+  `git log --oneline main..HEAD` pokazuje je wszystkie.
+- **Gałąź nie jest wypchnięta.** Historia liniowa, zero merge commitów.
+- W drzewie dwa **nieśledzone** wpisy, skopiowane przez użytkownika z innego projektu (EHOS):
+  - `.claude/settings.json` — hook `PreToolUse` na Bash, który nie pozwala otworzyć PR, dopóki `HEAD` nie
+    jest oznaczony jako przejrzany. W oryginale wołał `mix ehos.review gate`, którego tu nie ma, i odrzucał
+    każde polecenie Bash, w którego *tekście* stała fraza `gh pr create` (także zapis pliku z tą frazą w
+    treści). **Poprawiony 25 września na prośbę użytkownika:** znakiem przeglądu jest notatka
+    `git notes --ref=review` na `HEAD`, bez żadnego taska; dopasowanie łapie tylko faktyczne wywołanie — na
+    początku linii albo po `;`, `&`, `|`, `(`. Sprawdzone pipe-testem (bezpośrednie i łańcuchowe wywołanie
+    odrzucone; fraza w prozie i w heredocu przepuszczona; z notatką przepuszczone, po nowym commicie znów
+    odrzucone) i `jq -e`. **W sesji, w której go poprawiono, nie zadziałał** — Claude Code wczytuje hooki przy
+    starcie — więc pierwsza świeża sesja jest pierwszą, która używa poprawionej wersji.
+    Oznaczenie przejrzanego commita: `git notes --ref=review add -m '<co przegląd znalazł>' HEAD`.
+  - `.claude/skills/pre-pr-review/` — skill EHOS-a (Kubernetes, `mix precommit`, próg pokrycia,
+    `mix ehos.review record`), w tym repozytorium w większości nieaktualny i dublujący
+    `.claude/skills/review-pr/`. Nie ruszany.
 
 ### Co zostało — i czyje to jest
 
-**Wypchnięcie i CI — Twoje.** Ostatni przebieg CI to `32663159795` z 23 sierpnia na `41c709d`:
-jeden job `check`, `success`, zero pominiętych kroków. Czyli **żaden z 21 commitów nie przeszedł
-przez CI**, a brama zmieniła się w międzyczasie — doszedł krok formatowania i root wchodzi teraz do
-pakietów przez `mix check`, nie `mix test`. Lokalnie jest zielono; pierwszy przebieg CI na czystym
-`_build` jest jedyną rzeczą, która to potwierdzi.
-
-**Publikacja `pns` na Hex — Twoja.** Nazwa jest wolna (sprawdzone), `mix hex.build` produkuje
-tarball bez ostrzeżeń. To jest krok nieodwracalny i decyzja o nim nie została podjęta.
-`packages/pns_web` nie da się opublikować wcześniej: zależy od `pns` ścieżką, a opublikowany pakiet
-może zależeć tylko od opublikowanych — dopiero po publikacji `pns` zamienia się `path:` na `~> 0.2`.
-
-**Czternaście wejść do procesów bez komendy — warsztat, nie kod.** Nie ma ich w materiale, więc
-wymyślenie nazwy i polskiej etykiety byłoby wymyślaniem, jak klient nazywa własne działania. Lista
-i powód przy każdym: dopisek 22 września (3).
-
-**`open_month` bez `source:` — do process ownera.** Warsztatowy diagram §3.1 nie nazywa otwarcia
-miesiąca działaniem, które ktoś wykonuje. Albo ktoś to potwierdzi, albo komenda jest naszą
-konstrukcją i trzeba to zapisać.
-
-**`within` wobec `or_else` — jedyne otwarte pytanie do process ownera z 6 sierpnia.** Silnik zakłada,
-że okno obowiązuje także alternatywę; jeśli u nich nie, raport pokazuje naruszenia, których nie ma.
-Jest w `docs/warsztat-rehmed.md`.
-
-**Z przeglądu EHOS-a nietknięte:** `D-17`, `D-19`, identyfikatory korelacji przez most (`D-03`, ma
-klauzulę „od pierwszego commita"), reguły organizacji, lokalizacja logu, certyfikacja, egzekwowanie
-własności tabel. Powody i granice — dopisek 21 września (12), sekcje „Czego etap 5 nie obejmuje".
+- **E1–E11 — asystenta**, według dopisku „Dopisek 25 września (2) — Etap 6” niżej. Następny krok: E1, szew
+  `EhOsContract.Model`, na nowej gałęzi `dsl-v2/e1-model-seam` odgałęzionej od `dsl-v2/e0-groundwork`.
+- **Wypchnięcie `dsl-v2/e0-groundwork`, PR i merge — użytkownika** (D9):
+  `git push -u origin dsl-v2/e0-groundwork`, potem PR przez `gh` — po oznaczeniu `HEAD` notatką przeglądu
+  (hook wyżej). Zmiana jest tylko dokumentacyjna, więc przegląd sprowadza się do sprawdzenia tego.
+- **Zacommitowanie `.claude/settings.json` — użytkownika.** Po commicie hook obowiązuje każdego, kto używa
+  Claude Code w tym repozytorium.
+- **`.claude/skills/pre-pr-review/` — użytkownika**: usunąć albo przepisać pod to repozytorium (brama
+  `cd sandbox && mix check`, notatka `git notes --ref=review`, lista znalezisk z `review-pr`).
+- **Publikacja na Hex — użytkownika**, decyzja niepodjęta. W repozytorium są tagi `v0.2.0` i `v0.2.1`; śladu
+  publikacji nie ma.
+- **F1 i F2** (`docs/adr/contract-v2.md` §16: skąd suma wizyty, który dzień dostaje korekta) oraz dziesięć
+  usterek z dopisku „Dopisek 25 września” — do właścicieli procesów, przez użytkownika. Nie blokują E1–E8.
 
 ### Co przeczytać najpierw
 
-1. `CLAUDE.md` — reguły, których złamanie kosztuje najwięcej: język kodu, granice `boundary`,
-   zakaz pisania do repo kontekstu, pułapki powłoki. Tabela na górze mówi, gdzie jest co.
-2. Ten plik, dopiski z 22 września (trzy) — co zrobiono w etapie 5 i **czego świadomie nie**.
-3. `docs/contract.md` — siedem deklaracji, referencja kluczy generowana z `PNS.Contract.schema/0`
-   i tabela „co się nie skompiluje". Jedyny dokument, który trzeba znać, żeby napisać kontrakt.
-4. `packages/pns_core/CHANGELOG.md` — reguła, że zmiana ruszająca werdykt podnosi MINOR, i pięć
-   zmian z `0.1.0` nazwanych wstecz.
-5. `.claude/skills/review-pr/` — co recenzent ma sprawdzać, a czego nie, bo pilnuje tego brama.
-6. `~/Projects/ai/eh-os/ARCHITECTURE.md` — tylko gdy potrzebujesz numeru `D-nn`. **Do czytania,
-   nie do pisania**, i numery stamtąd zestarzały się tu raz w jeden dzień.
+1. `CLAUDE.md` — reguły, których złamanie kosztuje najwięcej: język kodu, `boundary`, zakaz pisania do repo
+   kontekstu, brama bez `tail`, pułapka `MIX_ENV=test mix run`, dzielenie słów w zsh.
+2. `docs/adr/contract-v2.md` — czym v2 ma być: DSL (§4), co generuje kontrakt (§5), katalog reguł (§6),
+   zmiana zdarzenia a subskrybenci (§7), schemat magazynu (§10), dispatch (§11), konsumenci (§12),
+   crypto-shredding (§14), decyzje (§16), co v2 odwraca w rekordzie v1 (§18).
+3. Dopisek „Dopisek 25 września (2) — Etap 6” niżej — etapy, kryteria odbioru z kontrolami, losy fikstur i
+   testów, tryb pracy.
+4. Dopisek „Dopisek 25 września” niżej — mapa czterech kontraktów na ESDM: dowody za pivotem i dziesięć
+   usterek, których porty nie naprawiają.
+5. `packages/eh_os_contract/docs/contract.md` — DSL v1, który jest zastępowany; tabela „What refuses to
+   compile” to punkt wyjścia reguł L2.
+6. Przed E1: `packages/eh_os_contract/lib/eh_os_contract/{contract,registry,conformance,trace,graph}.ex` —
+   interfejs, który szew ma owinąć.
 
 ### Komendy
 
 ```bash
-docker compose up -d && mix ecto.setup && mix check
+docker compose up -d && cd sandbox && mix ecto.setup && mix check
 ```
 
-Postgres słucha na **5433**. `mix check` to od 22 września: `format --check-formatted`,
-`compile --force --warnings-as-errors`, `pns.check`, `pns.docs --check`, `test`, plus `mix check`
-w obu pakietach osobnym wywołaniem.
-
-Nie rurkuj bramy do `tail` przed commitem — powód i obejście w `CLAUDE.md`.
-
-Jeśli krok formatowania nie zgadza się z tym, co widzisz lokalnie: Mix cache'uje rozwiązaną
-konfigurację i nie unieważnia jej przy zmianie `.formatter.exs` **zależności**. Skasuj
-`_build/<env>/lib/<app>/.mix/cached_dot_formatter`. Rację ma CI, które startuje z pustym `_build`.
-Zapisane w `mix.exs` i w `ci.yml`.
-
-Po migracji: `mix check` nie dotyka bazy `dev`. Udokumentowana komenda wyżej zawiera `ecto.setup`
-i to ją pokrywa; sam `mix check` nie.
+Postgres słucha na **5433**. Przed commitem liczy się kod wyjścia bramy, nie `tail`:
+`out=$(mix check 2>&1); rc=$?; echo "$out" | tail -4; echo "EXIT=$rc"` — powód w `CLAUDE.md`, tak samo jak
+ratunek dla zaśmieconej bazy testowej. Gdy krok formatowania nie zgadza się z CI, skasuj
+`_build/<env>/lib/<app>/.mix/cached_dot_formatter` (zapisane w `sandbox/mix.exs` i `ci.yml`).
 
 ### Ostatnia pełna weryfikacja
 
-22 września, 14:58, lokalnie, na `f018cb8`: `mix check` zielony, kod wyjścia 0.
-496 testów (50 host, 400 `pns_core`, 46 `pns_web`), zero padnięć, zero testów z `known_defect`.
-`pns.check`: 0 błędów, 5 ostrzeżeń, 23 informacje w hoście; 0 błędów, 8 ostrzeżeń, 16 informacji
-w pakiecie. Ostrzeżenia w hoście to cztery procesy bez `accountable` i jeden niepotwierdzony
-`deadline` — stan faktyczny, nie usterka.
-
-**CI na tym nie przebiegło.** Patrz wyżej.
-
-### Poprawki w `docs/adr/` — zrobione 22 września
-
-Sześć, wszystkie jako notki z datą pod oryginalnym twierdzeniem, nigdy zamiast niego. `architecture.md`:
-`deadline` ma czytelnika (§ „What would falsify this"), `command` jest siódmą deklaracją (§15), linia
-open source zastąpiona modelem Community/Enterprise (§D), zakład 3 przeformułowany.
-`design-rationale.md`: zdanie o tym, za co bierzemy pieniądze. `technology-notes.md`: czwarty werdykt
-`:suspended` — zbudowany 6 sierpnia, a plik twierdził inaczej jeszcze 22 września.
-
-**Ta ostatnia jest znaleziskiem, nie porządkami.** Twierdzenie „to nie ma czytelnika" starzeje się
-cicho, bo **nic nie porównuje tych plików z kodem** — a to jest jedyna usługa, którą one świadczą.
-Znalazłem ją przypadkiem, szukając tej samej klasy nieaktualności o `deadline`, sześć tygodni po fakcie.
-Jeśli ma się to nie powtarzać, potrzebny jest mechanizm, a nie postanowienie; dziś go nie ma i nie wiem,
-jak miałby wyglądać, żeby nie był drugim źródłem prawdy.
+- **Lokalnie, 25 września**, na `dsl-v2/e0-groundwork` z kodem identycznym z `5f0092b` (od tamtego commita
+  zmieniły się tylko `PLAN.md` i `docs/adr/contract-v2.md`): brama wyżej → **EXIT=0**. Sandbox: 42 testy,
+  0 padnięć, `eh_os_contract.check` 0 błędów, 5 ostrzeżeń, 23 informacje. Pakiet silnika: 397 testów,
+  0 padnięć, `check` 0 błędów, 8 ostrzeżeń, 16 informacji. Pakiet web: 31 testów, 0 padnięć.
+- **CI**: ostatni przebieg na `main`, `35877354505` (commit `5f0092b`, 23 września 14:52 UTC) — jeden job
+  `check`, `success`, żaden krok pominięty ani nieudany (odczytane przez `gh run view --json jobs`). Na
+  `dsl-v2/e0-groundwork` CI nie biegło, bo nic nie jest wypchnięte.
 
 ### Otwarte pytania
 
-- Czy `principals: [:human, :system]` to właściwy zbiór. Jest **naszą propozycją, nie odczytem** —
-  spis z 5.5 nie znalazł w korpusie żadnego słownika typów principala, tylko role jako stringi.
-  Do zatwierdzenia przez foundera; dopóki nie jest, `D-18` wiersz 3 nie ma wejścia.
-- Czy poprawienie cytatu w `source:` ma ruszać `contract_version`. Dziś rusza, bo klucz wyjęty
-  z digestu byłby kluczem zmienialnym po cichu. Argument przeciwny — że poprawka cytatu nie zmienia
-  tego, co uzgodniono — jest realny i nikt go nie rozstrzygnął.
-- Czy `pns_web` publikować w ogóle, skoro wozi zwendorowany bundle Mermaida. `NOTICE` jest, decyzji
-  nie ma.
-- Czy powiązanie komenda→zdarzenie ma być sprawdzalne maszynowo. Dziś nie jest — `command` niesie
-  `process`, nie listę zdarzeń, i to jest świadoma cena rezygnacji z `emits:` (5.5). Wraca za każdym
-  razem, gdy ktoś pyta „czy to wejście ma komendę".
+- **D1–D9** (`docs/adr/contract-v2.md` §16) przyjęte z planem 25 września, z rekomendacjami. Każde można
+  otworzyć ponownie; ponowne otwarcie to notka z datą w §16. Najbardziej brzemienne: D6 (`recorded_by` dla
+  15 zdarzeń bez komendy) i D7 (przynależność cudzych zdarzeń do przebiegów przez `_event_runs`).
+- **Na początku E2:** trigger „tylko dopisywanie” już w E2 (emiter v1 dostaje wtedy `occurred_at` w `ctx`
+  dla trzech testów cofających czas) czy dopiero w E6. Rozstrzygnąć i zapisać w dopisku Etap 6.
+- **Upcastery:** kontrakt callbacku — jeden na typ i wersję czy łańcuch — rozstrzyga etap, który pierwszy go
+  potrzebuje (§19).
+- **H177** z materiału Rehmedu (przekazanie wizyty jako komenda warunkowa, zamrożenie ceny przy rozliczeniu)
+  przeczy DEC-18, na którym stoi `visit_handed_over`; czeka na ratyfikację u klienta.
+- **API dla EHOS-a** poza nazwanym schematem `Model.to_data/1` (E10): transport i wersjonowanie specyfikuje
+  EHOS.
 
 ### Zgoda i stałe uprawnienia
 
-**Ten blok jest do skasowania. Skasowanie go cofa uprawnienie — nie migruje ono samo między
-sesjami.**
+**Ten blok jest do skasowania. Skasowanie go cofa uprawnienie — nie migruje ono samo między sesjami.**
 
-W tej sesji: commity na `main` bez pytania (praca szła seriami po jednej pozycji etapu),
-zapis stanu do `PLAN.md`. **Nie było zgody na `git push`** i nic nie zostało wypchnięte.
-Nie było też zgody na publikację czegokolwiek na Hex.
+Zatwierdzając plan 25 września, użytkownik zgodził się na pracę na gałęziach etapów `dsl-v2/eN-*` z
+commitami bez pytania, przy zielonej bramie na każdym commicie (D9), oraz na zapis stanu do `PLAN.md` i
+założeń do `docs/adr/contract-v2.md`. **Nie** było zgody na `git push`, PR, merge, tag ani publikację na Hex.
 
 ### Język
 
-Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów i komunikaty bram — po angielsku,
-bez wyjątków. `README.md`, `docs/contract.md` i `docs/adr/` po angielsku; `PLAN.md` i `CLAUDE.md`
-po polsku. Po polsku w kodzie jest wyłącznie to, co klient czyta zdaniami i tylko w stringu:
-`label`, `source`, opisy `example`, `unavailable_looks_like`, nazwy tasków, temat powiadomienia.
-Pełna reguła i jej zakres — `CLAUDE.md`.
+Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów i komunikaty bram — po angielsku;
+`docs/adr/` i `README.md` po angielsku; `PLAN.md` i `CLAUDE.md` po polsku. Pełna reguła — `CLAUDE.md`; od E3
+lista miejsc, w których wolno pisać po polsku, rośnie (dopisek Etap 6).
 
 ---
 
