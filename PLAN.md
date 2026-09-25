@@ -13,25 +13,18 @@ zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisan
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności) i jej
 dashboardu; `sandbox/` to dane testowe. **Trwa pivot do v2**: DSL na Sparku z modelem domeny w stylu ESDM
 (jeden kontrakt = jeden proces), event sourcing na własnym magazynie w Postgresie, crypto-shredding. Plan
-zatwierdzono 25 września. **E0, E1 (szew `EhOsContract.Model`), D10–D12 i E2 (log staje się magazynem) są w
-`main`. E3 (Spark i DSL domeny) jest zrobiony na `dsl-v2/e3-spark` i czeka jako PR #6. Decyzja D13 (opcje obok
-bloku `do` zostają, biblioteka generuje nakładki o jedną arność więcej) jest zapisana na `dsl-v2/e4-contract-core`,
-od której rusza E4. E4–E12 nie są zaczęte.** Zachowanie v1 się nie zmieniło,
+zatwierdzono 25 września. **E0, E1 (szew `EhOsContract.Model`), D10–D12, E2 (log staje się magazynem) i E3
+(Spark i DSL domeny) są w `main`. Decyzja D13 (opcje obok bloku `do` zostają, biblioteka generuje nakładki o
+jedną arność więcej) jest zapisana na `dsl-v2/e4-contract-core`, od której rusza E4. E4–E12 nie są zaczęte.** Zachowanie v1 się nie zmieniło,
 poza tym, że log jest tylko do dopisywania.
 
 ### Stan repozytorium
 
-- `main` = `origin/main` = `6646df7`, merge [PR #5](https://github.com/EmpoweredHouse/eh-os-contract/pull/5)
-  (`dsl-v2/e2-store`, E2), zmergowanego przez użytkownika 25 września. Przed nim PR #4 (`c61ce5b`, D10–D12),
-  PR #3 (`bfda7c7`, E1), PR #2 (`73031d2`, hook i skill przeglądu) i PR #1 (`7ce9be2`, E0).
-- Na `origin` zostały zmergowane `dsl-v2/e1-decisions` i `dsl-v2/e2-store`; lokalnie też obie.
-- **`dsl-v2/e3-spark`**, od `6646df7`: 10 commitów E3 (`eb80194`..`0138890`), commit dokumentów E3, sześć
-  poprawek z przeglądu przed PR (`f022dfa`..`b2175b5`) i commit z tym handoffem. Wypchnięta i wystawiona jako PR
-  25 września na polecenie użytkownika jako [PR #6](https://github.com/EmpoweredHouse/eh-os-contract/pull/6);
-  stan odczytaj przez `gh pr view 6`.
-- **`dsl-v2/e4-contract-core`**, od `dsl-v2/e3-spark` (`9fbe323`): jeden commit z D13 i tym handoffem, tylko
-  lokalnie. Jeśli PR #6 dostanie poprawki przed merge'em, tę gałąź trzeba przełożyć (`git rebase`) na nową głowę
-  `dsl-v2/e3-spark`; po merge'u — na `origin/main`.
+- `main` = `origin/main` = `66ab602`, merge [PR #6](https://github.com/EmpoweredHouse/eh-os-contract/pull/6)
+  (`dsl-v2/e3-spark`, E3), zmergowanego przez użytkownika 25 września. Przed nim PR #5 (`6646df7`, E2), PR #4
+  (`c61ce5b`, D10–D12), PR #3 (`bfda7c7`, E1), PR #2 (`73031d2`, hook i skill przeglądu), PR #1 (`7ce9be2`, E0).
+- Na `origin` zostały zmergowane `dsl-v2/e1-decisions`, `dsl-v2/e2-store` i `dsl-v2/e3-spark`; lokalnie też.
+- **`dsl-v2/e4-contract-core`**, od `66ab602`: commit z D13 i commit z tym handoffem, tylko lokalnie.
 - **Worktree leży pod ścieżką `.claude/worktrees/dsl-v2-e1-model-seam-ed132e`** — nazwa z E1, bo hook sesji
   pilnował tej ścieżki; gałąź w nim to `dsl-v2/e4-contract-core`, główny checkout stoi na `main`. Hook przeglądu
   czyta HEAD `$CLAUDE_PROJECT_DIR` (głównego checkoutu), nie worktree — przy PR z E2 i E3 główny checkout był na
@@ -44,9 +37,7 @@ poza tym, że log jest tylko do dopisywania.
 
 ### Co zostało — i czyje to jest
 
-- **Przegląd i merge PR #6 (E3) — użytkownika.** Po uwagach recenzenta: poprawka, commit, kroki 3–7
-  `pre-pr-review`, a przed pushem sprawdzić, że PR jest nadal otwarty.
-- **Skasowanie zmergowanych gałęzi `dsl-v2/e1-decisions` i `dsl-v2/e2-store` — użytkownika**
+- **Skasowanie zmergowanych gałęzi `dsl-v2/e1-decisions`, `dsl-v2/e2-store` i `dsl-v2/e3-spark` — użytkownika**
   (`git branch -d …`, `git push origin --delete …`), i worktree po zamknięciu sesji.
 - **E4–E12 — asystenta**, według dopisku „Dopisek 25 września (2) — Etap 6” niżej. Następny krok: E4 (rdzeń
   DSL-a kontraktu pod `EhOsContract.Next.Contract`) na `dsl-v2/e4-contract-core`. **Pierwszy commit E4 to
@@ -108,9 +99,9 @@ uruchomić `MIX_ENV=test mix deps.get` w `packages/eh_os_contract` i w `packages
   dokumenty): brama wyżej → **EXIT=0**. Sandbox: 44 testy (42 + 2 z E3), 0 padnięć, `eh_os_contract.check` 0 błędów,
   5 ostrzeżeń, 23 informacje. Pakiet silnika: 491 testów (454 z `main` + 37 z E3), 0 padnięć, `check` 0 błędów,
   8 ostrzeżeń, 16 informacji. Pakiet web: 31 testów, 0 padnięć. Te same liczby `check` co na `main`.
-- **CI**: PR #5 — przebieg `36122716953` na `b4e4a43`; `main` po merge'u — przebieg `36123110982` na
-  `6646df7`. Oba `success`, więc druga baza testowa silnika (`eh_os_contract_test_commits`) powstaje na CI sama,
-  z aliasu `test`. CI na PR z E3 (pierwszy przebieg ze Sparkiem) odczytaj przez `gh pr checks`.
+- **CI**: PR #6 — przebieg `36126765033` na `9fbe323`, job `check` `success`, żaden krok pominięty ani
+  nieudany (pierwszy przebieg ze Sparkiem). Na `main` po merge'u #6 (`66ab602`) przebieg trwał w chwili pisania;
+  sprawdź `gh run list --branch main --limit 1`. Druga baza testowa silnika powstaje na CI sama, z aliasu `test`.
 
 ### Otwarte pytania
 
