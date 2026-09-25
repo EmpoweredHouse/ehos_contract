@@ -237,13 +237,33 @@ defmodule EhOsContract.Model do
   # An event this contract consumes: a sibling's struct under its original name, or
   # the struct received events get here.
   defp consumed_module(model, name) do
-    Enum.find_value(model.consumes, fn
-      %{kind: :published, as: ^name} ->
-        generated_name(model.module, Received, name)
+    case consumed(model, name) do
+      {:contract, from, original} -> generated_name(from, Events, original)
+      {:published, _fields} -> generated_name(model.module, Received, name)
+      nil -> nil
+    end
+  end
+
+  @doc """
+  Where an event a v2 contract consumes comes from, asked by the name it has in that
+  contract:
+
+    * `{:contract, sibling, name}` — a sibling contract's event, under its name
+      there, which differs from the local one when `as:` renames it;
+    * `{:published, fields}` — another application's published event, with the
+      fields this contract declares for it (D11);
+    * `nil` — the contract consumes no event of that name.
+  """
+  @spec consumed(contract() | map(), atom()) ::
+          {:contract, module(), atom()} | {:published, [map()]} | nil
+  def consumed(contract, name) do
+    Enum.find_value(v2!(contract).consumes, fn
+      %{kind: :published, as: ^name, fields: fields} ->
+        {:published, fields}
 
       %{kind: :contract, from: from, events: events, renames: renames} ->
         original = Enum.find(events, fn event -> Map.get(renames, event, event) == name end)
-        original && generated_name(from, Events, original)
+        original && {:contract, from, original}
 
       _ ->
         nil

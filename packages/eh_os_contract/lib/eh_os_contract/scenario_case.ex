@@ -328,22 +328,15 @@ defmodule EhOsContract.ScenarioCase do
   defp injected(model, unit), do: Enum.find(model.units, &(&1.name == unit)).identity
 
   defp consumed_fields(model, name) do
-    Enum.find_value(model.consumes, fn
-      %{kind: :published, as: ^name, fields: fields} ->
+    case Model.consumed(model, name) do
+      {:published, fields} ->
         {fields, []}
 
-      %{kind: :contract, from: from, events: events, renames: renames} ->
-        original = Enum.find(events, &(Map.get(renames, &1, &1) == name))
-
-        if original do
-          sibling = Model.fetch(from)
-          event = Enum.find(sibling.events, &(&1.name == original))
-          {event.fields, injected(sibling, event.unit)}
-        end
-
-      _ ->
-        nil
-    end)
+      {:contract, from, original} ->
+        sibling = Model.fetch(from)
+        event = Enum.find(sibling.events, &(&1.name == original))
+        {event.fields, injected(sibling, event.unit)}
+    end
   end
 
   defp domain(model) do

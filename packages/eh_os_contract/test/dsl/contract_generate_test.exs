@@ -194,6 +194,19 @@ defmodule EhOsContract.Next.ContractGenerateTest do
       assert Model.module_for(model, :event, :rebooked) ==
                EhOsContract.Next.Fixtures.Booking.Events.VisitMoved
     end
+
+    test "Model.consumed/2 says where each comes from, by the name it has here" do
+      model = Model.fetch(generated([]))
+      booking = EhOsContract.Next.Fixtures.Booking
+
+      assert Model.consumed(model, :visit_booked) == {:contract, booking, :visit_booked}
+      assert Model.consumed(model, :rebooked) == {:contract, booking, :visit_moved}
+      assert {:published, [%{name: :visit_id} | _]} = Model.consumed(model, :visit_closed)
+
+      # A local event, and a sibling's under the name the rename replaced, are not consumed.
+      assert Model.consumed(model, :payment_recorded) == nil
+      assert Model.consumed(model, :visit_moved) == nil
+    end
   end
 
   describe "behaviours" do

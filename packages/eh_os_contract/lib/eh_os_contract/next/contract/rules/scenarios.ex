@@ -328,10 +328,10 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
   end
 
   defp received_fields(d, name) do
-    Enum.find_value(d.consumes, fn
-      %Dsl.Consumes{from: from, as: ^name, fields: fields} when is_binary(from) -> fields
+    case List.keyfind(Rules.consumed(d), name, 0) do
+      {_, %Dsl.Consumes{from: from, fields: fields}} when is_binary(from) -> fields
       _ -> nil
-    end)
+    end
   end
 
   defp issued(where, scenario, allowed, d) do
