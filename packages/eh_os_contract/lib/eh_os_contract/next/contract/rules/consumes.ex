@@ -4,7 +4,9 @@ defmodule EhOsContract.Next.Contract.Rules.Consumes do
   application, `consumes Contract, events`.
 
   A contract does not consume itself, and it names the events it consumes: a
-  rename, `as: [old: :new]`, renames one of them. That a consumed alias does not
+  rename, `as: [old: :new]`, renames one of them. It declares no fields for them:
+  a subscriber never declares a copy of a sibling's event, it reads the one the
+  sibling's contract declares (v2 §7). That a consumed alias does not
   collide with a local name is N1's, since both share the callback namespace.
 
   Whether the sibling exists and has those events is the domain-wide view a Mix
@@ -55,6 +57,14 @@ defmodule EhOsContract.Next.Contract.Rules.Consumes do
           ]
       end
 
-    itself ++ none ++ renames
+    fields =
+      if consumes.fields == [],
+        do: [],
+        else: [
+          {"K1: #{where} declares fields; a sibling's event is read in the shape its own contract " <>
+             "declares (v2 §7), never copied", consumes}
+        ]
+
+    itself ++ none ++ renames ++ fields
   end
 end

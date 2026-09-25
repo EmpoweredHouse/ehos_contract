@@ -335,6 +335,25 @@ defmodule EhOsContract.Next.ContractProcessTest do
                "a sibling's events are renamed with as: [old: :new] (consumes_wrong.ex:7)"
     end
 
+    test "fields declared for a sibling's event are refused, not silently dropped" do
+      message =
+        refuse_contract("ConsumesSiblingFields", """
+          consumes Clinic.Contracts.Scheduling, :visit_completed do
+            field :visit_id, :id
+          end
+
+        #{@unit}
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      assert message =~
+               "K1: consumes Clinic.Contracts.Scheduling declares fields; a sibling's event is read " <>
+                 "in the shape its own contract declares (v2 §7), never copied " <>
+                 "(consumes_sibling_fields.ex:4)"
+    end
+
     test "control: a renamed consumed event is known here by its new name" do
       model =
         compile_contract("ConsumesRenamed", """
