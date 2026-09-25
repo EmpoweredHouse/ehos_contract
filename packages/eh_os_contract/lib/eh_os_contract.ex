@@ -28,6 +28,7 @@ defmodule EhOsContract do
       EventHandling,
       Graph,
       Handler,
+      Implementation,
       Instance,
       Job,
       Meta,

@@ -84,7 +84,15 @@ defmodule EhOsContract.Next.Contract.Generate do
         create(module, behaviour_body(model, kind, name), Map.get(anno, key))
       end
 
-    modules = structs ++ behaviours
+    # `use C, aggregate: :name` in an implementation (v2 §5).
+    binding =
+      quote do
+        @doc "Binds an implementation to one declaration: `EhOsContract.Implementation`."
+        defmacro __using__(opts),
+          do: EhOsContract.Implementation.bind(__MODULE__, opts, __CALLER__)
+      end
+
+    modules = structs ++ behaviours ++ [binding]
 
     {:ok, Transformer.eval(dsl, [], quote(do: (unquote_splicing(modules))))}
   end

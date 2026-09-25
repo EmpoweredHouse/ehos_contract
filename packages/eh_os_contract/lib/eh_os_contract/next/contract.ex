@@ -37,7 +37,10 @@ defmodule EhOsContract.Next.Contract do
 
   Nothing runs a v2 contract yet. It compiles, it refuses what v2 §6 refuses, its
   model is data, and it generates a struct for every command, event, state, row
-  and query (`EhOsContract.Next.Contract.Generate`); dispatch comes in E6.
+  and query and a behaviour for everything code implements
+  (`EhOsContract.Next.Contract.Generate`). Code binds to it with
+  `use Contract, aggregate: :name` (`EhOsContract.Implementation`); dispatch comes in
+  E6.
   """
 
   use Spark.Dsl,

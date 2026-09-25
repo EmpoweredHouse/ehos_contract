@@ -79,6 +79,14 @@ one. What changes is what a host has to do.
   query's callback beside its parameters: one callback per command, `(command, state)`, and `evolve/2` for a
   declared state; one per handled or projected event; one per process manager reaction or timer that issues.
   A decision returns `{:ok, events}` or `{:error, %EhOsContract.Rejection{}}`, which names the invariant only.
+- `use C, aggregate: :name` (or `dcb:`, `policy:`, `effect:`, `process_manager:`, `read_model:`, `query:`) binds
+  a module to one declaration of the v2 contract `C` (`EhOsContract.Implementation`): its behaviour, aliases for
+  the structs it touches, and `emit/1`, `reject/1` and `issue/1`. It refuses to compile what v2 §6's layer L4
+  refuses, at the implementation's own file and line: a declaration that does not exist, with a did-you-mean
+  (I1); a missing callback, with the clause to add (I2); `evolve/2` missing an event (I3); `emit/1` of an event
+  the command does not emit, or of anything but struct literals (I4); `reject/1` of an invariant the command
+  does not reject on (I5); `issue/1` of a command the reaction does not issue (I6); a macro in a kind that has
+  no use for it (I7). `__eh_os_implementation__/0` says what each callback emits.
 - `EhOsContract.Model.capabilities/1`: a v2 contract's capabilities under the names EHOS grants (D14),
   `<domain>.<command>` and `<domain>.<query>`, each with its roles `<domain>.<actor>` and a query's scope. The
   model's `grants` says the same per actor, with the events each records.

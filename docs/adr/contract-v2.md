@@ -519,6 +519,21 @@ end
 fields), capabilities at dispatch, the backstop that emitted events are within `emits:` and rejections
 within `rejects:`, routing a stored type to its struct, and encryption.
 
+> **25 September 2026, E5 — what the table above left open, as built.** The generator is a transformer after
+> `Build` that calls `Module.create/3` at each declaration's file and line; it writes the structs and
+> behaviours from one list, `EhOsContract.Next.Contract.Callbacks`, which the implementation macros check
+> against as well. Choices the table does not make: **`evolve/2` is expected only when a state is declared**
+> — a unit whose state is its identity alone has nothing to fold — and it folds a boundary's consulted events
+> as well as its own, and a process manager's triggers. **A process manager has one callback per reaction or
+> timer that issues**, `(event, state)` and `(state)`; what it sets and cancels is declared, so it has no
+> callback. **A read model's callback takes the event alone**, `(event) :: :ok`, until E6 runs projections
+> and says what they write through. **A query's callback sits in `C.Queries.*`, beside its parameters**,
+> since `use C, query: :q` binds to it and the implementation matches on the struct. An event received from
+> another application gets `C.Received.*`. **`reject/1` only:** a second argument would carry details, and a
+> rejection travels to logs and callers, so `EhOsContract.Rejection` names the invariant and nothing else
+> (§17). `emit/1`, `reject/1` and `issue/1` are imported in every implementation, so a macro in the wrong
+> kind is refused by I7 with a reason, not by the compiler as an undefined function.
+
 ## 6. Checks, in five layers
 
 **No rule depends on a Spark verifier.** Verifiers run in `@after_verify`, Spark turns their errors into
