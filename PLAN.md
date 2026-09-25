@@ -140,6 +140,366 @@ Pełna reguła i jej zakres — `CLAUDE.md`.
 
 ---
 
+## Dopisek 25 września — cztery kontrakty rzutowane na ESDM: rdzeń, rozszerzenie, luka
+
+Nic tu nie zostało zbudowane. To mapa na papierze i pierwszy krok kierunku ustalonego w rozmowie tego dnia:
+**DSL w Elixirze przejmuje funkcjonalność ESDM** (Event-Sourced Domain Modeling, esdm.io, wersja 0.15.0 z
+17 września) — jego pojęcia, reguły walidacji i narzędzia — **z opisem modelu jako DSL-em zamiast YAML-a.**
+To nie jest integracja: żadnego eksportu do `.esdm.yaml`, żadnego `esdm lint`, żadnej zależności od ich
+wersji schematu. ESDM jest specyfikacją tego, co model ma umieć wyrazić i sprawdzić, a nasza warstwa
+weryfikacji zostaje tym, czego ESDM nie ma. Do tego strona odczytu z CQRS (read modele, zapytania) w tym samym
+modelu i, później, grafy domeny w rodzaju EventCatalogu z nałożonymi danymi z logu. **Zgodność wstecz nie
+obowiązuje**: kontrakty to dane testowe i nic nie działa u klienta.
+
+Każdy element czterech kontraktów trafił do jednego z trzech koszyków:
+
+1. **ESDM** — pojęcie, które ESDM ma (w rdzeniu albo w Given-When-Then), a nasz DSL musi przejąć; zmienia się
+   nazwa albo kształt.
+2. **Rozszerzenie** — ESDM nie ma nic podobnego. To cała nasza warstwa weryfikacji. „Rozszerzenie” znaczy tu
+   część DSL-a ponad funkcjonalnością ESDM, nie osobny schemat ani plik.
+3. **Luka** — model ESDM czegoś wymaga, a kontrakt tego nie mówi. Uzupełnienie jest decyzją modelową; przy
+   każdej luce sprawdziłem, czy zapełnia ją materiał.
+
+Źródła: schemat ESDM czytany 25 września (esdm.io i surowe pliki schematu z `thenativeweb/esdm`), cztery
+kontrakty z `sandbox/`, materiał TaxVision z `taxvision-process-native/workshop_output/` i materiał Rehmedu
+z `rehmed-process-native/2-Solution/` w **obecnej** wersji, czyli po zmianach z 11–17 września. Skróty: ES —
+`02-event-storming.md`, DDD — `03-ddd-architecture.md`, HB — `10-ddd-headless-backend.md`, US —
+`04-user-stories/`; AG — `20-aggregates.md`, CX — `30-contexts.md`, EM — `10-event-model.md`. Numery linii
+z bieżących plików.
+
+### Wynik w sześciu zdaniach
+
+1. **Dwie trzecie DSL-a to weryfikacja, nie model domeny.** Z 36 kluczy siedmiu deklaracji dom w ESDM ma 12,
+   z czego mechanicznie przechodzą trzy (`payload` zdarzenia i komendy, `command` przykładu); dziewięć wymaga
+   przepisania albo decyzji. Pozostałe 24 to rozszerzenie.
+2. **Prawie wszystko, czego ESDM wymaga, a kontrakty nie mówią, jest w materiale** — konteksty z klasyfikacją
+   subdomen, mapy kontekstów, agregaty z inwariantami, aktorzy, read modele. Oba materiały są zrobione w
+   pojęciach DDD; destylacja to wyrzuciła, bo DSL nie miał gdzie tego położyć.
+3. **15 z 29 zdarzeń nie ma komendy, która by je publikowała**, a ESDM wymaga wydawcy dla każdego.
+4. **Model Rehmedu wpisał dwie obietnice czasowe między inwarianty**, bo nie miał dla nich innego miejsca.
+   Inwariant ESDM sprawdza się przy obsłudze komendy, więc tych dwóch nie uniesie — to jest dokładnie nasze
+   `trace`. Rozszerzenie nie jest dodatkiem: łata dziurę widoczną w modelu zrobionym po ESDM-owemu.
+5. **Przebieg pokrywa się z jednym agregatem tylko w PayerSettlement**, i właśnie tam potrzebne jest DCB. W
+   pozostałych trzech przebieg spina kilka agregatów, w ClinicalVisit — cztery, w czterech kontekstach.
+6. **Mapowanie wyciągnęło dziesięć usterek i rozjazdów w samych kontraktach**, niezależnych od ESDM — lista na
+   końcu.
+
+### Słownik, klucz po kluczu
+
+`E` — przechodzi mechanicznie, `E*` — ESDM ma odpowiednik, ale po przepisaniu albo decyzji, `R` — nasze
+rozszerzenie. Kolumna „Dokąd” podaje odpowiednik w ESDM, czyli to, co DSL musi umieć wyrazić — nie format,
+do którego cokolwiek eksportujemy. Nazwy przechodzą bez zmian, chyba że przejmiemy konwencję ESDM, w której
+zdarzenie nazywa się w obrębie swojego agregatu (`accounting_month_opened` → `opened` w `accounting_month`).
+
+| Deklaracja | Klucz | Dokąd | |
+| --- | --- | --- | --- |
+| `event` | `label` | `description` | `E*` — ESDM nie ma pola na etykietę biznesową i niczego z niej nie czyta; u nas wymagana i czytana przez raport, więc wymóg zostaje w `R` |
+| | `payload` | `data` | `E` — ESDM opisuje dane pełnym JSON Schema: zagnieżdżenia, pola opcjonalne, formaty, value objects; nasze pięć płaskich typów to podzbiór, więc to, co dziś jest, przechodzi, a reszty trzeba DSL-a nauczyć |
+| | `owner` | — | `R` — moduł w kodzie; w ESDM wydawcą jest agregat przez `command.publishes` |
+| | `retain` | — | `R` |
+| | `identity` | — | `R` — ESDM trzyma idempotencję na konsumencie (`idempotency.owner`, `strategy`), nie na fakcie |
+| | `depends_on` | — | `R` — ESDM wiąże system zewnętrzny z efektem ubocznym handlera albo z aktorem (`backedBy`), nie ze zdarzeniem |
+| | `process`, `stage`, `terminal` | — | `R` |
+| `command` | `label` | `description` | `E*` — jak przy `event` |
+| | `payload` | `data` | `E` |
+| | `principals` | `actors` | `E*` — ESDM chce nazwanych ról (`actor` z `type: human \| system`), nie samych rodzajów |
+| | `process` | — | `R` — w ESDM komenda celuje w agregat albo DCB (`scope`), nie w przebieg |
+| | `source` | — | `R` |
+| `process` | wszystkie siedem | — | `R` — process manager w ESDM steruje; nasz `process` obserwuje przebieg |
+| `trace` | wszystkie cztery | — | `R` |
+| `external` | `label` | `description` | `E*` |
+| | `expected_latency`, `unavailable_looks_like` | — | `R` |
+| `rule` | `label` | `invariant` agregatu albo `command.constraints` | `E*` — patrz „Reguła to dwie rzeczy” niżej |
+| | `function` | — | `R` — wiązanie z kodem (`decide`) |
+| | `source` | — | `R` |
+| `example` | `rule` | `feature.scope` (agregat) | `E*` |
+| | `command` | `when: {command, data, actor}` | `E` — aktora nasze przykłady nie nazywają, ESDM go nie wymaga |
+| | `given` | `given: [{event, data}]` | `E*` — mapa stanu musi stać się listą zdarzeń |
+| | `then` | `then: {events: [{event, data}]}` | `E*` — ESDM wymaga danych; semantykę dopasowania (u nas podciąg) zostawia implementacji, więc ta zostaje w `R` |
+| | `rejected_with` | `then: {rejection: {invariant}}` | `E*` — powód musi być nazwanym inwariantem |
+| handler w kodzie | `event`, `publishes`, `async` | `policy`, `event-handler`, projekcja `read-model` | `E*` — każdy handler trzeba zaklasyfikować; tryb „synchronicznie w transakcji” nie ma odpowiednika w `deliveryGuarantee` (tylko `at-least-once \| at-most-once`), więc zostaje w `R` |
+
+**Reguła to dwie rzeczy.** W dwóch regułach z trzech przykłady mieszają rozgałęzienie i odmowę:
+`month_opens_only_on_consistent_registry` ma dwa `then:` i jedno `rejected_with:`,
+`payment_lines_sum_to_the_total` — trzy i jedno. W ESDM to dwa różne miejsca: odmowa jest nazwanym
+inwariantem, rozgałęzienie („zero płatności → zamknięcie bez płatności”) to `constraints` komendy. Bramka
+„reguła bez przykładu się nie kompiluje” ma w ESDM odpowiednik, `uncovered-invariant`, tyle że jako
+ostrzeżenie — zostaje nasza.
+
+### `Taxvision.Contracts.AccountingMonth`
+
+11 zdarzeń, 2 komendy, proces, `trace`, `external`, 2 reguły, 5 przykładów, 3 handlery w kodzie.
+
+**Jeden przebieg, cztery konteksty.** Materiał dzieli to, co kontrakt trzyma jako jeden proces, między
+konteksty z klasyfikacją subdomen (DDD §2, HB §1). W kontrakcie jedynym śladem tego podziału jest `owner:` —
+i pokrywa się z kontekstami prawie jeden do jednego:
+
+| Zdarzenie kontraktu | Kontekst i agregat w materiale | `owner:` dziś |
+| --- | --- | --- |
+| `data_completeness_confirmed` | Companies, `CompanyProfile` — raz na firmę, nie co miesiąc (DDD §4.1, US-ONB-08) | `RegistryCheck` |
+| `registry_status_checked`, `registry_data_consistent`, `registry_discrepancy_detected` | Companies, `RegistryCheckLog`, komendy `CheckRegistries` i `RetriggerVerification` (DDD §4.2, HB §4.4) | `RegistryCheck` |
+| `registry_check_logged` | już nie zdarzenie — „zastąpiona automatycznym wpisem” | `RegistryCheck` |
+| `monthly_tasks_generated` | Work Orchestration (core); komendy generowania materiał nie nazywa | `Tasks` |
+| `accounting_month_opened`, `month_closed` | Client Month (core), `AccountingMonth` (ES §12); HB zmienia nazwę na `PeriodOpened` | `AccountingMonth` |
+| `discrepancy_notification_sent` | Notifications (supporting), „jedyny nadawca” | `Notifications` |
+
+Między kontekstami materiał ma gotowe mapowanie: Client Month „publikuje `periodId` jako published language”
+(HB), czyli `context-mapping` typu `published-language`.
+
+**Agregat `AccountingMonth` jest w materiale razem z inwariantami** (ES §12): stepper Gromadzenie →
+Dopasowywanie → Wynik, „otwarcie warunkowane pozytywną weryfikacją rejestrową”, „dopasowywanie warunkowane
+wyciągiem”, „każdy krok ma deadline”. Stany z makiety — nieotwarty, zablokowany rejestrowo, gromadzenie,
+dopasowywanie, wynik, zamknięty — pokrywają się z `stages` naszego procesu (brakuje u nas tylko wyniku).
+Etapy przebiegu są więc stanami jednego agregatu, choć sam przebieg obejmuje zdarzenia czterech. Tożsamości
+materiał nie podaje wprost („per firma per miesiąc”), a agregat ESDM chce jednego pola, więc klucz złożony
+wymaga pola syntetycznego albo DCB.
+
+**Komenda `open_month` to w materiale dwie komendy w dwóch kontekstach.** `Taxvision.RegistryCheck.decide/1`
+robi naraz `CheckRegistries` i otwarcie; w materiale otwiera polityka P1 po `RegistryDataConsistent`, a
+ręcznie — `OpenMonth` z US-MON-01. Wymagane w ESDM `publishes` rozdziela to, co u nas zlewa jedna decyzja, i
+pokazuje, że `open_month` wcale nie publikuje `accounting_month_opened`: to zdarzenie powstaje dwa handlery
+później. To są „dwie interpretacje `emits:`” z 5.5, tym razem na konkretnym przykładzie.
+
+**Reguła 1 jest inwariantem z materiału, ale sięga do cudzego agregatu.** „Otwarcie warunkowane pozytywną
+weryfikacją” to dosłownie inwariant `AccountingMonth`, tylko że wynik weryfikacji to zdarzenia
+`RegistryCheckLog`. Póki otwiera wyłącznie polityka, wystarczy agregat; ręczne `OpenMonth` z US-MON-01
+wymaga sprawdzenia przy zapisie ponad dwoma agregatami, czyli DCB. Rozgałęzienie „zgodne / rozjazd” idzie do
+`constraints` komendy `CheckRegistries`. Po przepisaniu przykładów na zdarzenia `abilia:` staje się
+zdarzeniami `CompanyProfile` (Abilia to własny system klienta, nie zewnętrzny), a `registries:` — danymi w
+`registry_status_checked`, które dziś niesie tylko `checked_at`.
+
+**Reguła 2 da się zapisać w ESDM, ale nie zgadza się z materiałem.** Przypisanie księgowej do firmy jest w
+materiale faktem domenowym (`CaretakerAssigned`, agregat `Assignment`, DDD §4.5; HB przenosi je do Identity),
+więc przykład „księgowa innej firmy” przepisuje się na zdarzenia i odmowę z nazwanym inwariantem. Założenie,
+że ta reguła zostanie w rozszerzeniu, było prawdziwe tylko przy przypisaniu jako roszczeniu z tokenu. Tyle że
+decyzja 19 (ES) mówi co innego niż reguła: jeden typ użytkownika, firma publiczna otwarta dla wszystkich
+pracowników, prywatna dla przypisanych opiekunów i adminów. Reguła w kontrakcie pasuje tylko do firm
+prywatnych.
+
+**Handlery, po zaklasyfikowaniu:**
+
+- `Taxvision.Tasks` (na `registry_data_consistent`) — polityka plus komenda w Work Orchestration.
+- `OnMonthlyTasksGenerated` — polityka („zadania są → otwórz”), zdarzenie agregatu i projekcja. Kolejność jest
+  sporna w samym materiale: ES §3.1 ma zadania **przed** otwarciem (tak robi kod), DDD §5, US-MON-A1 i HB —
+  **po**.
+- `Taxvision.Notifications` — polityka wysyłająca komendę do Notifications plus event handler z efektem
+  ubocznym. `discrepancy_notification_sent` nie ma w ESDM prawa powstać z handlera, a materiał i tak go nie ma:
+  powiadomienie to encja ze statusami wysłana / dostarczona / odczytana / potwierdzona (DDD §4.9), a HB
+  publikuje tylko `NotificationDelivered`, `NotificationAcknowledged` i `NotificationDeliveryFailed`.
+
+**Read modele są nazwane w materiale** (HB §3.3): `company_portfolio`, `company_period`, `period_tasks`,
+`my_work_today`, `notification_registry`, z zasadą „każda projekcja to endpoint odczytu”. Trzy tabele pisane
+dziś przez handlery odpowiadają trzem z nich. `taxvision_periods` to dane referencyjne zapisywane bez zdarzeń
+— w ESDM `entity`. Systemy zewnętrzne: rejestry i poczta, oba `outbound`; kontrakt deklaruje tylko rejestry.
+
+### `Rehmed.Contracts.ClinicalVisit`
+
+7 zdarzeń, komenda, proces, 2 `trace`, `external`.
+
+**Jeden przebieg, cztery konteksty, cztery agregaty:**
+
+| Zdarzenie kontraktu | Kontekst i agregat w materiale | `owner:` dziś |
+| --- | --- | --- |
+| `visit_started` (E-40), `visit_completed` (E-51) | CTX-01 Umawianie i zasoby (core), AGG-01 Wizyta — przejścia bez komendy | `VisitDocumentation` |
+| `visit_closed_clinically` (E-52, C-29) | CTX-03 Dokumentacja kliniczna, AGG-02 | `VisitDocumentation` |
+| `documentation_task_created` | CTX-07 Koordynacja pracy, AGG-13, przez P-23 | `Tasks` |
+| `p1_report_sent` (E-54) | CTX-04 Sprawozdawczość (generic, conformist wobec P1), AGG-10 | `Reporting` |
+| `p1_report_failed`, `p1_reporting_not_required` | AGG-10 ma stan Błąd, ale żadne z nich nie ma numeru E-; „nie podlega” to warunek P-07, nie zdarzenie | `Reporting` |
+
+Mapa kontekstów jest w materiale i przechodzi na ESDM jeden do jednego (CX:157–170): CTX-01↔CTX-03
+`partnership`, CTX-03→CTX-04 `conformist`, CTX-04→P1 `conformist`, wszystkie → CTX-07 `open-host-service`.
+
+**Obietnice czasowe siedzą w materiale między inwariantami.** AGG-02, inwariant 2a: „A delivered visit is
+clinically closed at all”; AGG-10: zgłoszenie ma dojść do P1 „within the statutory 2 days (nothing watches —
+H19)” (AG:264–269, AG:630). Żadna komenda nie może odmówić dlatego, że czegoś *nie* zrobiono, więc inwariant
+ESDM tych dwóch nie uniesie. To są nasze dwie assercje `trace`, a model zrobiony po ESDM-owemu wpisał je w
+jedyne miejsce, jakie miał.
+
+**Wydawców ma jedno zdarzenie z siedmiu.** E-40 i E-51 to w materiale przejścia bez komendy, czyli
+obserwacje. Wyniki P1 zapisuje się w ESDM komendą aktora systemowego `backedBy` system zewnętrzny, a materiał
+nie ma aktorów systemowych — automatykę wyraża politykami (P-nn) i systemami (X-nn).
+
+**24 godziny to w ESDM process manager z timerem, a nasze `trace` sprawdza, czy działa.** To jest podział ról
+z kierunku z 25 września w najczystszej postaci: process manager (pojęcie z ESDM) opisuje sterowanie, `trace`
+(rozszerzenie) — obietnicę.
+
+Read modele z materiału (EM:569–603): R-03 („kto jest w budynku”, zasilany E-27, E-40, E-51), R-06
+(zaległości dokumentacyjne, E-51 i E-52), R-16 (zadania).
+
+### `Rehmed.Contracts.VisitSettlement`
+
+6 zdarzeń, 5 komend, proces, reguła, 4 przykłady. **Najczystszy przypadek i wzorzec dla kroku z deciderem.**
+
+- Agregat AGG-03 Rozliczenie wizyty (CTX-05 Rozliczenia, supporting), tożsamość: identyfikator wizyty. Jedno
+  pole, więc pasuje do `identifiedBy` ESDM bez sztuczek.
+- Każde zdarzenie ma komendę, która je publikuje — jedyny taki kontrakt z czterech. `publishes` wynika z
+  materiału: C-23→E-45, C-31→E-55, C-30→E-53/E-56, C-46→E-84, C-68→E-115.
+- **`given` przepisuje się na zdarzenia z tego samego kontraktu, jeden do jednego:** `total_minor` pochodzi z
+  `visit_handed_over`, `payments` z kolejnych `payment_recorded`. Żaden przykład nie potrzebuje faktu spoza
+  kontraktu.
+- Value objects: kwota (`total_minor`, `amount_minor`, `delta_minor`) i linia płatności (metoda, kwota,
+  płatnik). Zbiór metod jest w materiale — „K / G / przelew / bon” (AGG-06) — więc gołe `:enum` może dostać
+  zbiór. Przypadek mieszany (C-61→E-106) wymaga płatnika tylko na części linii: JSON Schema to wyraża, nasz DSL
+  nie, bo nie ma pól opcjonalnych.
+- `business_date` jest datą, nie chwilą — w ESDM `format: date`, u nas najbliżej jest `:timestamp`.
+- Read model R-07 (sumy dnia per metoda płatności) jest „corrupted by the split-payment defect”. **Znany
+  defekt klienta żyje w projekcji**, czyli dokładnie w tej części, której dziś nie deklarujemy.
+
+Dwie rzeczy do rozstrzygnięcia. `visit_handed_over` (E-115) to w materiale zdarzenie AGG-01 w CTX-01 (przez
+C-68), które *otwiera* AGG-03 (`[*] --> Otwarte: E-115`); przebieg obejmuje więc zdarzenie z innego
+kontekstu, do czego ESDM wymaga mapowania — a materiał je ma (CTX-01→CTX-05 `customer-supplier`). I
+właściciel reguły jest niejednoznaczny w samym materiale: „Payment lines sum to the settlement total” to
+inwariant 1 AGG-03, ale ta sama reguła stoi na AGG-06, a tabela reguł przypisuje ją AGG-06 (AG:108, 381,
+536). W ESDM inwariant należy do jednej jednostki.
+
+### `Rehmed.Contracts.PayerSettlement`
+
+5 zdarzeń, 2 komendy, proces, `external`, zero assercji.
+
+- Agregat AGG-11 Rozliczenie płatnika (CTX-06 Płatnicy zewnętrzni, generic, „ACL with a manual adapter behind
+  it”). Materiał nie podaje tożsamości ani automatu stanów; klucz `[payer_id, period_id]` jest nasz.
+- Komendy z materiału: C-48→E-86 i C-49→E-87 są w kontrakcie, C-47→E-85 (rejestracja w systemie płatnika)
+  kontrakt świadomie pominął. Trzy zdarzenia kontraktu nie mają ani numeru E-, ani komendy.
+- **Niezmiennik, którego kontrakt nie umiał zapisać, jest w ESDM DCB.** „Every delivered payer-funded visit in
+  a settlement period is either included in that period's invoice, or excluded with a stated reason” (AG:694)
+  przecina wizyty i okres płatnika. Moduledoc kontraktu podaje trzy powody, dla których nie wyraziło go
+  `trace`: kwantyfikator po zbiorze, kotwica w cudzym przebiegu, klucz nieznany w chwili zdarzenia. DCB
+  odpowiada na wszystkie trzy: tożsamość płatnik + okres, `consults` na wykonaniu wizyty, E-85, E-86,
+  wykluczeniach i E-87, a kryterium rozstrzyga się przy decyzji, nie przy emisji. DEC-16 (wizyta niesie
+  referencję do faktury, która ją rozliczyła) robi z obu list wyjątków „zapytania po jednym polu”.
+- Ale DCB **zapobiega** przy zapisie. Sprawdzenie po fakcie — „faktura wystawiona, a dostarczona wizyta ani
+  oznaczona, ani wykluczona” — wymaga logu, w którym zdarzenie może dotyczyć kilku obiektów naraz (OCEL). To
+  ta sama granica, na którą trafia wyzwalacz „jedno zdarzenie w dwóch procesach” z `docs/adr/architecture.md`.
+- Read model R-08 („czy płatnik zapłacił za wszystko”, zasilany E-85, E-86, E-87) z ekranem S-60 i jego
+  „two exception lists”.
+
+### Wydawcy: 15 z 29 zdarzeń bez komendy
+
+| Dlaczego nie ma komendy | Ile | Zdarzenia |
+| --- | --- | --- |
+| publikuje je handler, więc w ESDM potrzebna polityka i komenda | 3 | `monthly_tasks_generated`, `accounting_month_opened`, `discrepancy_notification_sent` |
+| późniejsze fazy TaxVision, niezaimplementowane | 3 | `bank_statement_received`, `turnover_matched_with_invoice`, `month_closed` |
+| obserwacja, bez komendy także w materiale | 2 | `visit_started`, `visit_completed` |
+| wynik integracji z P1 | 2 | `p1_report_sent`, `p1_report_failed` |
+| decyzja systemu o zgłaszalności | 1 | `p1_reporting_not_required` |
+| zadanie tworzone przez politykę | 1 | `documentation_task_created` |
+| bez komendy w materiale | 3 | `visit_excluded_from_invoice`, `payer_visits_reconciled`, `payer_period_closed_without_invoice` |
+
+To nie to samo co czternaście „wejść bez komendy” z dopisku 22 września (3): tamten spis liczył wejścia do
+procesu z zewnątrz, ten liczy zdarzenia bez wydawcy, więc obejmuje też zdarzenia z handlerów.
+
+### Co idzie do rdzenia, a co do rozszerzenia
+
+**Rdzeń DSL-a** — rodzaje ESDM, których potrzebują te cztery kontrakty: `domain`, `subdomain`,
+`bounded-context`, `context-mapping`, `aggregate`, `dynamic-consistency-boundary` (PayerSettlement, ręczne
+otwarcie miesiąca), `entity` (okres), `value-object` (kwota, linia płatności), `command`, `event`, `policy`,
+`event-handler`, `process-manager` (pogoń za dokumentacją), `read-model`, `query`, `actor`, `external-system`,
+a z rozszerzeń ESDM — `feature` i `scenario` z Given-When-Then. Siedemnaście z osiemnastu; nie potrzeba tylko
+`domain-service`. Materiał ma dwanaście z nich wprost, domena jest oczywista, a DCB, process manager, value
+object i zapytanie jako osobny byt to nasze propozycje. Wymóg z rozmowy zostaje: rodzaj wchodzi do DSL-a
+dopiero z mechanizmem, który go czyta.
+
+**Rozszerzenie** — nasze konstrukcje, których ESDM nie ma:
+
+- przebieg: `process` z `instance`, `stages`, `terminal`, `cadence`, `deadline`, `unverified`, `accountable` —
+  z jedną zmianą, którą wymusza ta mapa: przebieg deklaruje się nad kluczem korelacji spinającym kilka
+  agregatów, a nie nad jednym;
+- obietnice: `trace` z `from`, `eventually`, `within`, `or_else`;
+- fakt: `retain`, `identity`, `depends_on`;
+- systemy zewnętrzne: `expected_latency`, `unavailable_looks_like` i werdykt `:suspended`;
+- wiązanie z kodem: `owner`, funkcje decyzyjne (dziś `rule.function`), tryb dispatchu (w transakcji albo
+  przez Obana);
+- pochodzenie: `source` i wymagana etykieta biznesowa;
+- semantyka dopasowania scenariusza (podciąg, nie równość) i wersja kontraktu na każdym zdarzeniu.
+
+Podział na rdzeń i rozszerzenie porządkuje DSL i jego dokumentację. To jeden moduł kontraktu i jedna
+kompilacja, nie dwa formaty.
+
+### Co poza słownikiem
+
+Funkcjonalność ESDM to nie tylko rodzaje deklaracji. Trzy rzeczy do przejęcia i jedna, w której już mamy więcej:
+
+- **Reguły walidacji** — 47 w rdzeniu i 17 dla Given-When-Then. Przechodzą na naszą drabinę: reguły
+  strukturalne (model sobie przeczy — komenda bez `publishes`, pole tożsamości spoza stanu, korelacja process
+  managera, której nie niesie któreś z jego zdarzeń) stają się błędami kompilacji, a reguły modelowe (model
+  spójny, ale niepełny — zdarzenie bez konsumenta, read model bez zapytania, inwariant bez scenariusza) —
+  ostrzeżeniami `mix eh_os_contract.check`. Reguły modelowe ESDM sprawdzają kompletność, nie osąd, więc §14
+  („harness stays out of modelling”) ich nie wyklucza.
+- **Narzędzia** — widok hierarchiczny (domena → kontekst → jednostka), słownik języka kontekstu z
+  tłumaczeniami i dokumentacja, strona na element z linkami. U nas taski mix; grafy — dashboard. Nazwa
+  `mix eh_os_contract.docs` jest zajęta przez referencję DSL-a.
+- **Domain Storytelling** — format odkrywania, sprzed modelu. Żaden z czterech kontraktów go nie potrzebuje;
+  na później.
+- **Wykonywanie scenariuszy** — ESDM sprawdza je tylko składniowo i zostawia uruchamianie implementacji. My
+  wykonujemy przykłady jako testy już dziś (`EhOsContract.ContractExample`), więc tu nie kopiujemy.
+
+### Usterki i rozjazdy, które mapowanie wydobyło
+
+Niezależne od ESDM: wyszły przy sprawdzaniu, skąd wziąć brakujące elementy. **Nic z tego nie zostało
+poprawione w kontraktach.**
+
+W warstwie weryfikacji:
+
+1. `trace :month_opens_or_is_blocked` startuje od `data_completeness_confirmed`, które w materiale zdarza się
+   raz na firmę (`ConfirmDataCompleteness` na `CompanyProfile`), a w kodzie powstaje co miesiąc z decyzji,
+   której wejście samo je zakłada — `completeness_confirmed: true` jest wpisane na sztywno w `Taxvision.Api`.
+   Kotwica ma złą częstotliwość, a fakt jest wyjściem decyzji zamiast jej warunkiem.
+2. Tej samej assercji `within: {2, :day}` nie ma w materiale; najbliżej jest ilustracja z warsztatu
+   („pierwszego może … wylecieć, on naprawi rzeczy i drugiego powinno być okej”, WF 00:34:52). Od 21 sierpnia
+   `unverified` obejmuje `trace`, więc tam powinna trafić.
+3. Jej `or_else`, `discrepancy_notification_sent`, dzieli się na dwa zdarzenia: po warsztacie klient poprosił,
+   żeby do klienta szło „dopiero po weryfikacji przez księgową, nie równolegle” (uwagi, fragment 21; otwarte
+   pytanie A10).
+4. `or_else` w `:reported_or_chased_within_a_day` to `documentation_task_created`, a P-23 tworzy to zadanie
+   przy rezerwacji (E-14), czyli przed kotwicą `visit_completed`. `EhOsContract.Trace` liczy tylko zdarzenia
+   od kotwicy (`first_at_or_after`), więc gdy P-23 powstanie, każda wizyta niezgłoszona w 24 godziny będzie
+   naruszeniem, choć zadanie istnieje.
+
+Rozjazdy kontraktu z materiałem:
+
+5. `open_month` ma źródło: US-MON-01 („Standardowo miesiąc otwiera polityka …; operacja dostępna też
+   ręcznie”, aktor Księgowa). Puste `source:` było prawdziwe wobec diagramu ES §3.1, nie wobec historyjek —
+   pozycję z handoffu „`open_month` bez `source:`” zamyka ten cytat.
+6. Reguła `only_company_accountant_opens_month` pasuje do decyzji 19 tylko dla firm prywatnych.
+7. `registry_check_logged` w materiale nie jest już zdarzeniem, a kolejność „zadania, potem otwarcie” jest
+   sporna w samym materiale (ES §3.1 kontra DDD §5, US-MON-A1 i HB); kod idzie za ES §3.1.
+8. ClinicalVisit: E-40 i E-51 należą w materiale do AGG-01 w CTX-01, nie do dokumentacji. A poprawka z
+   19 sierpnia („zamknięcie jest natychmiastowe”), na której stoi cały kontrakt, nie występuje w `2-Solution/`
+   — tam E-52 to późniejsze zamknięcie wymagające kodów ICD, a sygnałem dla recepcji jest E-115.
+9. PayerSettlement pisze „There is no API”, a CX:107 — że API płatnika jest „*unchecked*, not refused”. S-121
+   (11 września) każe wystawiać fakturę ręcznie w portalu KSeF, więc E-87 może być tylko ręcznym oznaczeniem.
+10. VisitSettlement: H177 (wrzesień) robi z przekazania wizyty komendę warunkową i przesuwa zamrożenie ceny na
+    moment rozliczenia — „przeczy DEC-18”, na którym stoi `visit_handed_over`. Czeka na ratyfikację.
+
+### Co dalej
+
+**Decyzje biblioteki, przed kodem:**
+
+- składnia: zagnieżdżone bloki (`aggregate … do … end` z komendami i zdarzeniami w środku, jak zakres w ESDM)
+  czy płaskie deklaracje z kluczem zakresu, jak dziś `process:`;
+- jak rozszerzenie deklaruje przebieg nad kluczem korelacji spinającym kilka agregatów;
+- etykieta biznesowa: ESDM ma `description` i słownik kontekstu, my wymagamy `label` — czy etykieta zostaje,
+  czy przechodzi do słownika; i co z `retain` na zdarzeniu, które przy event sourcingu byłoby źródłem prawdy;
+- dane zdarzeń i komend: ESDM ma pełny JSON Schema (zagnieżdżenia, pola opcjonalne, formaty), więc zakaz pól
+  opcjonalnych i płaski zbiór typów trzeba zastąpić czymś o tej sile — w składni DSL-a, nie w JSON-ie.
+
+**Pytania do materiału albo do klienta:** usterki 1–4 i 6–10; wydawcy dla 15 zdarzeń; tożsamość AGG-10 i
+AGG-11; właściciel reguły sumy linii.
+
+**Kolejność przepisywania rdzenia**, od najczystszego:
+
+1. VisitSettlement — jedna tożsamość, komplet komend, `given` jeden do jednego. Na nim powstaje decider
+   (`decide` + `evolve`) i Given-When-Then.
+2. TaxVision — podział na konteksty, handlery jako polityki i projekcje, read modele z HB §3.3.
+3. ClinicalVisit — przebieg nad kilkoma agregatami, process manager, obietnice w rozszerzeniu.
+4. PayerSettlement — DCB.
+
+Poprawki z datą w `docs/adr/` (zamknięty zbiór typów, §15, „historia zdarzeń, nie event sourcing”) — gdy kod
+je potwierdzi, nie wcześniej. §2 zostaje w mocy: DSL pozostaje jedynym źródłem i żaden zewnętrzny format nie
+stoi obok niego.
+
+---
+
 ## Dopisek 23 września (3) — repozytorium biblioteki, nie prototypu
 
 Od dziś to jest repozytorium biblioteki: inne repozytoria instalują `eh_os_contract` i
