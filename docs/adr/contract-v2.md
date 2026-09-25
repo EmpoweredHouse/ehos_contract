@@ -544,6 +544,12 @@ where it helps; every violation is reported as a diagnostic before the single ra
   manager triggers are events or its own timers; a timer has exactly one of `wait` / `at`; `at` names a
   `:timestamp` field of its state; `sets` / `cancels` name its own timers. P5: `projects` names local or
   consumed events; `reads` names a local read model.
+
+  > *Corrected 25 September 2026, E4.* P3 as written refuses §4.6's own process manager, which is
+  > `:at_least_once` by default and names no `idempotency`, while E4's acceptance is that §4.6 compiles as
+  > written. A process manager's commands and timers take keys the library derives from the run (§17,
+  > "deterministic keys; timers as events"), so it has nothing to name. P3 applies to policies and effects.
+
 - *Process.* R1: exactly one `process`. R2: its `correlate` fields are present in every local event. R3: if
   the process declares stages, every local event sits in a stage group and every `include` has a stage; if
   it declares none, no groups. R4: `include` names consumed events only. R5: a promise's `from`,
