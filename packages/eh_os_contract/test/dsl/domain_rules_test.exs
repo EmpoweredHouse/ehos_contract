@@ -75,6 +75,24 @@ defmodule EhOsContract.DomainRulesTest do
                ~s|D1: context :settlement defines the term "Wizyta" twice (two_terms.ex:7)|
     end
 
+    test "the same relation twice is refused, a symmetric one in either order" do
+      message =
+        refused("TwoRelations", """
+          context :scheduling, "Umawianie", subdomain: :core
+          context :settlement, "Rozliczenia", subdomain: :supporting
+          relation :customer_supplier, upstream: :scheduling, downstream: :settlement
+          relation :customer_supplier, upstream: :scheduling, downstream: :settlement
+          relation :partnership, between: [:scheduling, :settlement]
+          relation :partnership, between: [:settlement, :scheduling]
+        """)
+
+      assert message =~
+               "D1: relation :customer_supplier between :scheduling and :settlement is declared twice (two_relations.ex:7)"
+
+      assert message =~
+               "D1: relation :partnership between :scheduling and :settlement is declared twice (two_relations.ex:9)"
+    end
+
     test "the control: one name per kind, and one name reused across kinds, compile" do
       compiles("UniqueNames", """
         context :settlement, "Rozliczenia", subdomain: :supporting

@@ -67,7 +67,21 @@ defmodule EhOsContract.Domain.Rules do
          duplicate}
       end
 
-    by_kind ++ terms
+    # A relation has no name: it is its type and its two ends, a symmetric pair in
+    # either order. Two of them would also share one key in the model's digests.
+    relations =
+      for duplicate <-
+            duplicates(
+              for(%Relation{} = r <- entities, do: r),
+              &{&1.type, EhOsContract.Domain.Build.endpoints(&1)}
+            ) do
+        [a, b | _] = EhOsContract.Domain.Build.endpoints(duplicate) ++ [nil, nil]
+
+        {"D1: relation #{inspect(duplicate.type)} between #{inspect(a)} and #{inspect(b)} " <>
+           "is declared twice", duplicate}
+      end
+
+    by_kind ++ terms ++ relations
   end
 
   # --- D2: one translation per language, none into the term's own ----------------
