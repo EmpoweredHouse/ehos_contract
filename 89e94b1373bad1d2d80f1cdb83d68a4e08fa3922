@@ -1,0 +1,12 @@
+Pre-PR review of E5b (compile.eh_os_contract, L3: X1-X9, D10/D11/D14), 25 September 2026.
+/code-review high origin/main..HEAD, 8 findings:
+1. S3 checked no data of a process manager given or a boundary given of a consulted local event, and X9 relied on it - fixed in 1693da3 (S3), verified in reverse.
+2. X8 raised KeyError on an implementation description without file:/line: (stale beam) - fixed in 6793974, verified in reverse.
+3. Links.Siblings re-implemented the as: rename lookup of Model.consumed/2 - fixed in bfbd341 (no behaviour change).
+4. Links.Domain kept its own list of a contract structs beside Rules.Fields - fixed in 6b79f40 (Rules.Fields.structs/1).
+5. Sibling contracts rebuilt per consumes and per scenario entry - fixed in f2d9746 (Links.contract/2).
+6. No L3 test for an event renamed with as: - fixed in bfbd341.
+7. Every beam exports read on every compile - skipped: 759 beams in 109 ms incl. VM start; the alternative is Mix private manifest.
+8. Links.System.human/1 duplicates Implementation human/1 - skipped: one line in two modules.
+Gate from sandbox/ on HEAD: EXIT=0. Sandbox 45 tests, check 0/5/23; engine 688 tests, check 0/8/16; web 31. check lines byte-identical to f38cc59.
+Verified beyond the tests: a real mix compile of a fixture project fails with X2 at the declaration, and compiles without the compiler registered.
