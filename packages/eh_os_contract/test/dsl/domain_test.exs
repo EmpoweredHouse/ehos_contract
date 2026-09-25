@@ -142,6 +142,11 @@ defmodule EhOsContract.DomainTest do
       assert Enum.map(fields, & &1.name) == [:street, :city]
     end
 
+    test "a contract accessor refuses a domain by name" do
+      error = assert_raise ArgumentError, fn -> Model.events(Ordered) end
+      assert error.message =~ "EhOsContract.DomainTest.Ordered is a domain, not a contract"
+    end
+
     test "holds no Spark struct and no source annotation" do
       refute inspect(Model.fetch(Ordered), limit: :infinity) =~
                ~r/__spark_metadata__|__struct__|Spark\./
