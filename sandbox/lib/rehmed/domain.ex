@@ -36,7 +36,7 @@ defmodule Rehmed.Domain do
 
   value(:money, :integer, unit: :grosze, label: "Kwota")
 
-  # E-55: gotówka / karta / przelew / bon
+  # E-55: cash, card, bank transfer, voucher
   value(
     :payment_method,
     {:enum, [card: "Karta", cash: "Gotówka", transfer: "Przelew", voucher: "Bon"]}
