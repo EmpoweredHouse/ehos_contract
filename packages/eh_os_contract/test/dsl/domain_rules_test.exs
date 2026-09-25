@@ -152,6 +152,100 @@ defmodule EhOsContract.DomainRulesTest do
     end
   end
 
+  describe "D3: a value is one type or fields, well formed, without cycles" do
+    test "neither a type nor fields, and both, are refused" do
+      message =
+        refused("TypeOrFields", """
+          value :nothing
+
+          value :both, :string do
+            field :street, :string
+          end
+        """)
+
+      assert message =~
+               "D3: value :nothing has neither a type nor fields; give it exactly one (type_or_fields.ex:4)"
+
+      assert message =~
+               "D3: value :both has both a type and fields; keep one (type_or_fields.ex:6)"
+    end
+
+    test "a unit on a type that does not count is refused" do
+      assert refused("UnitOnText", "  value :note, :string, unit: :grosze\n") =~
+               "D3: value :note has unit :grosze, and a unit counts only an :integer or a :decimal"
+    end
+
+    test "an unknown type, a malformed enum and a repeated member are refused" do
+      message =
+        refused("BadTypes", """
+          value :price, :money
+          value :method, {:enum, []}
+          value :status, {:enum, [:open, :closed, :open]}
+          value :flag, {:enum, [true]}
+
+          value :line do
+            field :amount, :cents
+          end
+        """)
+
+      assert message =~ "value :price: type :money is neither a built-in type"
+      assert message =~ "value :method: an enum is a non-empty list of members"
+      assert message =~ "value :status: an enum repeats a member: [:open, :closed, :open]"
+      assert message =~ "value :flag: an enum member is an atom, or an atom with a label"
+      assert message =~ "value :line, field :amount: type :cents is neither a built-in type"
+    end
+
+    test "a value naming a context the domain does not declare is refused" do
+      assert refused("NoSuchContext", "  value :money, :integer, context: :billing\n") =~
+               "D3: value :money names context :billing, which this domain does not declare"
+    end
+
+    test "values referring to each other in a cycle are refused, once per cycle" do
+      message =
+        refused("Cycle", """
+          value :a do
+            field :b, :b
+          end
+
+          value :b do
+            field :items, {:list, :a}
+          end
+
+          value :self do
+            field :parent, :self
+          end
+        """)
+
+      assert message =~ "D3: values refer to each other in a cycle: :a -> :b -> :a (cycle.ex:4)"
+      assert message =~ "cycle: :self -> :self (cycle.ex:12)"
+      refute message =~ ":b -> :a -> :b"
+    end
+
+    test "the control: every built-in type, a unit, labels, lists and nested values compile" do
+      compiles("WellFormed", """
+        context :settlement, "Rozliczenia", subdomain: :supporting
+        value :money, :integer, unit: :grosze, label: "Kwota", context: :settlement
+        value :rate, :decimal, unit: :percent
+        value :method, {:enum, [card: "Karta", cash: "Gotówka"]}
+        value :status, {:enum, [:open, :closed]}
+
+        value :line do
+          field :id, :id
+          field :note, :string, optional: true
+          field :amount, :money
+          field :paid, :boolean
+          field :on, :date
+          field :at, :timestamp
+          field :methods, {:list, :method}
+        end
+
+        value :invoice do
+          field :lines, {:list, :line}
+        end
+      """)
+    end
+  end
+
   describe "the Spark schema (layer L1)" do
     test "an unknown option is refused with the file and line of the declaration" do
       error =
