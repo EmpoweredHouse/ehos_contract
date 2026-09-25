@@ -315,7 +315,12 @@ defmodule EhOsContract.Emitter do
       occurred_at: EhOsContract.Clock.now()
     }
 
-    {:ok, [event]} = EhOsContract.Store.append(repo, [entry], :none)
+    {:ok, [appended]} = EhOsContract.Store.append(repo, [entry], :none)
+
+    # The store reads the row back, and JSON has turned every point in time into text.
+    # What the emitter hands on is the payload as it stored it, as before the store
+    # existed, so a caller holding the returned event sees the same values it did.
+    event = %{appended | payload: entry.payload}
 
     # Context for handling: correlation carries on, and this event becomes the
     # cause of everything that follows from it.

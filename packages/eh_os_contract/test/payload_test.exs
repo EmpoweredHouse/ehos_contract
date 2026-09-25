@@ -49,6 +49,19 @@ defmodule EhOsContract.PayloadTest do
       assert cast.checked_at == ~U[2026-08-05 09:00:00Z]
     end
 
+    test "emit returns the payload as the emitter stored it, not as JSON gave it back" do
+      # v2 plan, E2: the emitter appends through `EhOsContract.Store`, which reads the
+      # row back from Postgres. The event `emit!` returns kept the stored values before
+      # that change, a DateTime included, and E2 was not meant to move v1 behaviour.
+      event =
+        emit(:payer_eligibility_checked, %{
+          episode_id: "ep-1",
+          checked_at: ~U[2026-08-05 09:00:00Z]
+        })
+
+      assert event.payload["checked_at"] == ~U[2026-08-05 09:00:00Z]
+    end
+
     test "the log holds text, and reading it back gives a DateTime again" do
       # The round trip end to end, through Postgres rather than through a hand-built
       # map: JSON has no way to carry a point in time, so the column holds ISO 8601 and
