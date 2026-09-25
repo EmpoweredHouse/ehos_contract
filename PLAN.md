@@ -23,8 +23,9 @@ poza tym, że log jest tylko do dopisywania.
 - `main` = `origin/main` = `66ab602`, merge [PR #6](https://github.com/EmpoweredHouse/eh-os-contract/pull/6)
   (`dsl-v2/e3-spark`, E3), zmergowanego przez użytkownika 25 września. Przed nim PR #5 (`6646df7`, E2), PR #4
   (`c61ce5b`, D10–D12), PR #3 (`bfda7c7`, E1), PR #2 (`73031d2`, hook i skill przeglądu), PR #1 (`7ce9be2`, E0).
-- Na `origin` zostały zmergowane `dsl-v2/e1-decisions`, `dsl-v2/e2-store` i `dsl-v2/e3-spark`; lokalnie też.
-- **`dsl-v2/e4-contract-core`**, od `66ab602`: commit z D13 i commit z tym handoffem, tylko lokalnie.
+- **`dsl-v2/e4-contract-core`**, od `66ab602`: commit z D13 (`82c183d`), commit handoffu po merge'u #6,
+  dwa commity z decyzji użytkownika (`189cad7` kolejność w `check`, `b58062b` „Unreleased”) i commit z tym
+  handoffem. Tylko lokalnie. Na `origin` jest już tylko `main` — zmergowane gałęzie E1–E3 skasowane 25 września.
 - **Worktree leży pod ścieżką `.claude/worktrees/dsl-v2-e1-model-seam-ed132e`** — nazwa z E1, bo hook sesji
   pilnował tej ścieżki; gałąź w nim to `dsl-v2/e4-contract-core`, główny checkout stoi na `main`. Hook przeglądu
   czyta HEAD `$CLAUDE_PROJECT_DIR` (głównego checkoutu), nie worktree — przy PR z E2 i E3 główny checkout był na
@@ -37,19 +38,19 @@ poza tym, że log jest tylko do dopisywania.
 
 ### Co zostało — i czyje to jest
 
-- **Skasowanie zmergowanych gałęzi `dsl-v2/e1-decisions`, `dsl-v2/e2-store` i `dsl-v2/e3-spark` — użytkownika**
-  (`git branch -d …`, `git push origin --delete …`), i worktree po zamknięciu sesji.
+- **Worktree po zamknięciu sesji — użytkownika** (`git worktree remove .claude/worktrees/dsl-v2-e1-model-seam-ed132e`,
+  gdy nikt w nim nie pracuje).
 - **E4–E12 — asystenta**, według dopisku „Dopisek 25 września (2) — Etap 6” niżej. Następny krok: E4 (rdzeń
   DSL-a kontraktu pod `EhOsContract.Next.Contract`) na `dsl-v2/e4-contract-core`. **Pierwszy commit E4 to
   nakładki z D13 i testy ich dwóch warunków** (opis E4 w dopisku); jeśli któryś padnie — stop i pytanie do
   użytkownika, nie obejście.
 - **Lista zmian do `eh-os`** (odwrócenie D-01, zawężenie D-15, outbox, G-16, pytanie o transport v1) —
   użytkownika; jest w „D10–D12 — skąd się wzięły” w dopisku Etap 6.
-- **Trzy pytania z E1 do użytkownika** (szczegóły: „E1 — co szew ujawnił” w dopisku Etap 6):
-  naprawić niedeterministyczną kolejność linii `owner` w `mix eh_os_contract.check` (jedno `sort_by`,
-  osobny commit) — kiedy; wpis o `EhOsContract.Model` w `CHANGELOG.md` teraz czy dopiero w E6;
-  zasiane w E1 dwa przebiegi `open_month` zostają w bazie dev — czy to przeszkadza. E2 dokłada do drugiego
-  pytania nową migrację i moduły `Clock` i `Store` (ustalenie 8 w „E2 — co wyszło”).
+- **Trzy pytania z E1 — rozstrzygnięte przez użytkownika 25 września, po E3:** kolejność linii w
+  `mix eh_os_contract.check` naprawiona teraz (`189cad7`: błędy, ostrzeżenia, informacje, każde po tekście);
+  „Unreleased” w obu `CHANGELOG.md` otwarte teraz, bez zmiany wersji (`b58062b`) — **każdy kolejny etap dopisuje
+  tam swoje zmiany widoczne dla konsumenta w swoich commitach**; zasiane w E1 dwa przebiegi `open_month`
+  **zostają** w bazie dev jako punkt odniesienia porównań bajtów (ustalenie w „E1 — co szew ujawnił”).
 - **Publikacja na Hex — użytkownika**, decyzja niepodjęta. W repozytorium są tagi `v0.2.0` i `v0.2.1`; śladu
   publikacji nie ma.
 - **F1 i F2** (`docs/adr/contract-v2.md` §16: skąd suma wizyty, który dzień dostaje korekta) oraz dziesięć
@@ -95,10 +96,11 @@ uruchomić `MIX_ENV=test mix deps.get` w `packages/eh_os_contract` i w `packages
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 25 września**, na `dsl-v2/e3-spark` (`b2175b5`, a potem ten commit, który zmienia tylko
-  dokumenty): brama wyżej → **EXIT=0**. Sandbox: 44 testy (42 + 2 z E3), 0 padnięć, `eh_os_contract.check` 0 błędów,
-  5 ostrzeżeń, 23 informacje. Pakiet silnika: 491 testów (454 z `main` + 37 z E3), 0 padnięć, `check` 0 błędów,
-  8 ostrzeżeń, 16 informacji. Pakiet web: 31 testów, 0 padnięć. Te same liczby `check` co na `main`.
+- **Lokalnie, 25 września**, na `dsl-v2/e4-contract-core` (`b58062b`, a potem ten commit, który zmienia tylko
+  `PLAN.md`): brama wyżej → **EXIT=0**. Sandbox: 44 testy, 0 padnięć, `eh_os_contract.check` 0 błędów,
+  5 ostrzeżeń, 23 informacje. Pakiet silnika: 493 testy (491 z `main` + 2 z `check_order_test`), 0 padnięć,
+  `check` 0 błędów, 8 ostrzeżeń, 16 informacji. Pakiet web: 31 testów, 0 padnięć. Te same liczby `check` co na
+  `main`; od `189cad7` linie `check` wychodzą w stałej kolejności, więc deltę porównuje się zwykłym diffem.
 - **CI**: PR #6 — przebieg `36126765033` na `9fbe323`, job `check` `success`, żaden krok pominięty ani
   nieudany (pierwszy przebieg ze Sparkiem). Na `main` po merge'u #6 (`66ab602`) przebieg trwał w chwili pisania;
   sprawdź `gh run list --branch main --limit 1`. Druga baza testowa silnika powstaje na CI sama, z aliasu `test`.
@@ -109,7 +111,6 @@ uruchomić `MIX_ENV=test mix deps.get` w `packages/eh_os_contract` i w `packages
   przyjęte po E1 tego samego dnia. Nowe pytania w §19: `scope` dla komend, transport v1 między kontenerami. Każde można
   otworzyć ponownie; ponowne otwarcie to notka z datą w §16. Najbardziej brzemienne: D6 (`recorded_by` dla
   15 zdarzeń bez komendy) i D7 (przynależność cudzych zdarzeń do przebiegów przez `_event_runs`).
-- **Trzy pytania z E1** — wyżej, w „Co zostało”.
 - **Upcastery:** kontrakt callbacku — jeden na typ i wersję czy łańcuch — rozstrzyga etap, który pierwszy go
   potrzebuje (§19).
 - **H177** z materiału Rehmedu (przekazanie wizyty jako komenda warunkowa, zamrożenie ceny przy rozliczeniu)
@@ -262,8 +263,8 @@ ponowienia, projekcje i polityki inline, `record/3` (D6), wiersze `_commands` (v
 ścieżkę autoryzacji co komendy, ze `scope` i sprawdzeniem zwróconych wierszy (D10), i `EhOsContract.Plug`
 wystawiający komendy i query modelu po HTTP. Jeden commit
 zastępuje stary kontrakt VisitSettlement, `Rehmed.Settlement.decide/1` i `rehmed_contract_examples_test`
-nowym kontraktem, domeną, implementacją i testem scenariuszy (v2 §4.5). `@version "0.3.0-dev"`, CHANGELOG
-„Unreleased” — od tego commita wersje kontraktów się ruszają. Na każdym skillu baner „opisuje v1”. Poprawki
+nowym kontraktem, domeną, implementacją i testem scenariuszy (v2 §4.5). `@version "0.3.0-dev"` i linia w
+CHANGELOG „Unreleased” (sekcja istnieje od `b58062b`) — od tego commita wersje kontraktów się ruszają. Na każdym skillu baner „opisuje v1”. Poprawki
 ADR: „historia, nie sourcing” i wiersz o Commanded (design-rationale), §7–8.
 *Odbiór:* cztery scenariusze przechodzą; decyzja zwracająca niezadeklarowane zdarzenie rzuca wyjątek, a magazyn
 się nie zmienia — kontrola: zadeklarowane zostaje dopisane; wyjątek w projekcji inline wycofuje dopis; odmowa
@@ -375,7 +376,8 @@ nowy plik). Brama zielona na każdym z 14 commitów; sandbox 42 testy, silnik 39
   endpointu, a nie z taska.
 - **Baza dev była pusta** (zero przebiegów), więc nakładka miała same `0x` i porównanie niewiele by
   dowodziło. Przed pomiarem zasiane dwa przebiegi `Taxvision.Api.open_month` (c-1, 2026-07 i 2026-08) przez
-  `MIX_ENV=dev mix run`; te wiersze zostają w bazie dev na stałe. Ścieżki asynchronicznej celowo nie
+  `MIX_ENV=dev mix run`; te wiersze zostają w bazie dev na stałe — *i mają zostać: decyzja użytkownika z
+  25 września po E3; to punkt odniesienia porównań bajtów raportu i grafu w kolejnych etapach*. Ścieżki asynchronicznej celowo nie
   zasiewano: kolejkę mógłby opróżnić inny serwer dev na tej samej bazie i stan zmieniłby się między pomiarami.
 - Ponad kryteria: tymczasowy worktree `main` w scratchpadzie, na tej samej bazie dev, dał identyczne bajty
   dla `graph --process <p> --mermaid` i `brief --process <p>` wszystkich czterech procesów, `graph` i
@@ -405,13 +407,15 @@ nowy plik). Brama zielona na każdym z 14 commitów; sandbox 42 testy, silnik 39
    samej bramy. Istniało przed E1, E1 tylko to odsłoniło. Nie naprawione, bo E1 nie zmienia zachowania.
    Naprawa to jedno `Enum.sort_by` i osobny commit; do decyzji, w którym etapie. Delta `check` w opisach
    commitów jest dlatego raportowana dwojako: linie dodane lub usunięte (zawsze zero) i kolejność.
+   *Naprawione 25 września po E3, na decyzję użytkownika: `189cad7`, stała kolejność wypisywania.*
 5. **Model nie jest cache'owany.** Każdy akcesor buduje mapę od nowa z literałów modułu, więc `emit` buduje ją
    cztery razy. Suita silnika: 2,7 s przed E1, 2,6 s po. Cache po module musiałby zauważać rekompilację, którą
    testy robią celowo; wróci do tematu E4, gdy model v2 będzie większy.
 6. **Pakiet web zależy teraz od `EhOsContract.Model`.** W repozytorium i przez gita oba pakiety biorą ten
    sam commit, więc rozjazd jest niemożliwy. Przy publikacji na Hex wymaganie wersji silnika w webie musi
    wskazywać wydanie z `Model`. `CHANGELOG.md` nie ma jeszcze wpisu o nowym publicznym module; plan otwiera
-   „Unreleased” w E6. Otwarte pytanie: czy wpis ma wejść wcześniej.
+   „Unreleased” w E6. Otwarte pytanie: czy wpis ma wejść wcześniej. *Rozstrzygnięte 25 września po E3:
+   „Unreleased” otwarte od razu (`b58062b`), wersja zostaje do E6.*
 7. **Nazwy akcesorów to podzbiór v1**, nie lista z v2 §9: jest `processes/1` (kontrakt v1 może mieć kilka
    procesów), są `trace/2` i `module/1`, a nie ma `unit_of/2`, `run/1`, `capabilities/1` ani `module_for/3`,
    bo v1 nie ma tych pojęć. E4 dopisze je razem z modelem v2. `processes/1` i `events_of/2` znikną albo zmienią
@@ -491,7 +495,7 @@ potrzebują prawdziwych commitów. Brama zielona na każdym z 7 commitów; sandb
    do niej nie pisze do E6 — jest w V03, żeby E6 nie potrzebował V04.
 8. **Zmiana dla konsumenta:** nowa migracja jest wymagana (`up(version: 3)`), a z nią publiczne moduły
    `Clock`, `Store`, `Store.Postgres`, `Store.Suite`. To powinno trafić do `CHANGELOG.md` przed wydaniem —
-   dokłada się do pytania z E1, kiedy otworzyć „Unreleased”.
+   dokłada się do pytania z E1, kiedy otworzyć „Unreleased”. *Wpisane w `b58062b`.*
 
 **Przegląd przed PR (25 września, `/code-review high origin/main..HEAD`).** Osiem znalezisk:
 1. `emit!` zwracał payload odczytany z Postgresa (znacznik czasu jako tekst) zamiast zapisanego —
