@@ -73,6 +73,21 @@ defmodule EhOsContract.Next.ContractScenariosTest do
                  "(trigger_wrong.ex:45)"
     end
 
+    test "two scenarios with one description" do
+      message =
+        refuse_contract("DescribedTwice", """
+        #{@unit}
+          scenario "zapłacono za mało — zamknięcie odrzucone" do
+            command :remind
+            expect :reminded
+          end
+        """)
+
+      assert message =~
+               ~s|S1: two scenarios are described "zapłacono za mało — zamknięcie odrzucone"; | <>
+                 "each case needs its own words (described_twice.ex:34)"
+    end
+
     test "an event two reactions handle needs scope:, and scope: must answer it" do
       message =
         refuse_contract("ScopeWrong", """

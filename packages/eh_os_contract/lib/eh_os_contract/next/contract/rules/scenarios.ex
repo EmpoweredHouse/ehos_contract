@@ -3,7 +3,8 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
   S1–S8 of v2 §6: scenarios, the examples a process owner reads.
 
   - **S1.** A scenario has exactly one trigger — `command`, `on` or `query` — and
-    it resolves to the declaration that answers it. A command belongs to one unit;
+    it resolves to the declaration that answers it. No two scenarios have the same
+    description, which is what names each one. A command belongs to one unit;
     an event may be handled by several reactions, and then `scope:` names the one.
   - **S2.** `given` events are ones the target keeps its state from: a unit's own
     events, and for a boundary also the events it consults; a process manager's
@@ -19,7 +20,7 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
     `expect` or by `rejected`, not both. An event delivered to a policy is followed
     by what it `issues`; to a process manager, by what it `issues`, `sets`,
     `cancels` or whether it has `ended`, and each of those is one its declaration
-    allows. An effect's outcome is outside the log and a read model's rows have no
+    allows; `on` may also name one of its timers, which then fires. An effect's outcome is outside the log and a read model's rows have no
     word yet, so neither is a scenario's target; nor is a query, for the same
     reason.
   - **S7.** A scenario's `actor` is in the command's `by:`, and only a command has one.
@@ -34,7 +35,17 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
   @doc false
   @spec check(map()) :: [DslRules.violation()]
   def check(declarations) do
-    Enum.flat_map(declarations.scenarios, &scenario(&1, declarations)) ++ covered(declarations)
+    Enum.flat_map(declarations.scenarios, &scenario(&1, declarations)) ++
+      described_once(declarations) ++ covered(declarations)
+  end
+
+  # A scenario is named by its description, in the test `EhOsContract.ScenarioCase`
+  # generates for it too.
+  defp described_once(d) do
+    for scenario <- DslRules.duplicates(d.scenarios, & &1.description) do
+      {~s|S1: two scenarios are described "#{scenario.description}"; each case needs its own words|,
+       scenario}
+    end
   end
 
   @doc """
@@ -102,7 +113,11 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
 
   defp candidates(%Dsl.Trigger{kind: :on, name: name}, d) do
     for(p <- d.policies, name in p.handles, do: {:policy, p}) ++
-      for(pm <- d.process_managers, name in triggers(pm), do: {:process_manager, pm}) ++
+      for(
+        pm <- d.process_managers,
+        name in triggers(pm) or name in timers(pm),
+        do: {:process_manager, pm}
+      ) ++
       for(e <- d.effects, name in e.handles, do: {:effect, e}) ++
       for r <- d.read_models, name in r.projects, do: {:read_model, r}
   end
@@ -124,6 +139,8 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
     Enum.map(pm.starts_on, & &1.event) ++
       Enum.map(pm.on, & &1.event) ++ Enum.map(pm.ends_on, & &1.event)
   end
+
+  defp timers(pm), do: Enum.map(pm.timers, & &1.name)
 
   defp kind(:aggregate), do: "aggregate"
   defp kind(:dcb), do: "dcb"
@@ -236,6 +253,7 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
   defp fits(where, scenario, trigger, :process_manager, pm, d) do
     where = "#{where} (process manager #{inspect(pm.name)})"
     reactions = Enum.filter(pm.starts_on ++ pm.on, &(&1.event == trigger.name))
+    timer = Enum.find(pm.timers, &(&1.name == trigger.name))
     ends = Enum.any?(pm.ends_on, &(&1.event == trigger.name))
 
     givens =
@@ -267,9 +285,13 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
          ],
          else: []
 
+    # A timer that fires delivers no event, so it has no data to check.
+    delivered = if timer, do: [], else: delivered(where, trigger, d)
+    issues = Enum.flat_map(reactions, & &1.issues) ++ if(timer, do: timer.issues, else: [])
+
     givens ++
-      delivered(where, trigger, d) ++
-      issued(where, scenario, Enum.flat_map(reactions, & &1.issues), d) ++
+      delivered ++
+      issued(where, scenario, issues, d) ++
       decisions_only(where, scenario) ++ timers ++ ended ++ outcome ++ no_actor(where, scenario)
   end
 

@@ -123,7 +123,8 @@ defmodule EhOsContract.Next.ContractGenerateTest do
       assert %{visit_id: nil, total: nil, payments: []} =
                struct(generated([Aggregates, Visit, State]))
 
-      assert %{due_at: nil} = struct(generated([ProcessManagers, Chase, State]))
+      # A process manager's run is told by its correlation, as a unit's by its identity.
+      assert %{visit_id: nil, due_at: nil} = struct(generated([ProcessManagers, Chase, State]))
       refute Map.has_key?(struct(generated([Aggregates, Visit, State])), :__meta__)
     end
 

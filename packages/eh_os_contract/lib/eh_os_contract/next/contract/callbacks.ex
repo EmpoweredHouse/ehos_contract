@@ -124,7 +124,8 @@ defmodule EhOsContract.Next.Contract.Callbacks do
       |> Enum.reject(&MapSet.member?(timers, &1))
       |> Enum.uniq()
 
-    %{callbacks: callbacks, evolve: if(pm.state.fields != [], do: evolve(model, state, triggers))}
+    declared? = Enum.any?(pm.state.fields, &(&1.name not in pm.correlate))
+    %{callbacks: callbacks, evolve: if(declared?, do: evolve(model, state, triggers))}
   end
 
   def of(model, :read_model, name) do

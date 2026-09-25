@@ -16,7 +16,8 @@ defmodule EhOsContract.Next.Contract.Build do
 
   **Identity is injected** (v2 §4.2): a unit's identity fields, typed `:id`, come
   first in its state, in each of its commands and in each of its events, as if they
-  had been declared there.
+  had been declared there. A process manager's `correlate` fields come first in its
+  state the same way, unless the state declares them.
 
   **The digest does not see declaration order.** Every collection of declarations
   is a set to it, nested ones included, and so is every value with set meaning
@@ -129,8 +130,10 @@ defmodule EhOsContract.Next.Contract.Build do
     })
   end
 
-  defp identity_fields(unit) do
-    for name <- unit.identity do
+  defp identity_fields(unit), do: id_fields(unit.identity)
+
+  defp id_fields(names) do
+    for name <- names do
       %{
         name: name,
         type: :id,
@@ -145,11 +148,17 @@ defmodule EhOsContract.Next.Contract.Build do
 
   defp state_fields(states), do: Enum.flat_map(states, &plain(&1.fields))
 
+  # A run is told by its correlation, so a process manager's state starts with those
+  # fields, as a unit's starts with its identity, unless the state declares them.
   defp process_manager(pm) do
+    declared = state_fields(pm.state)
+    names = MapSet.new(declared, & &1.name)
+    correlation = for f <- id_fields(pm.correlate), not MapSet.member?(names, f.name), do: f
+
     pm
     |> plain()
     |> Map.merge(%{
-      state: %{fields: state_fields(pm.state)},
+      state: %{fields: correlation ++ declared},
       timers:
         Enum.map(pm.timers, &(&1 |> plain() |> Map.update!(:wait, fn w -> duration(w) end))),
       ends_on: Enum.map(pm.ends_on, & &1.event)

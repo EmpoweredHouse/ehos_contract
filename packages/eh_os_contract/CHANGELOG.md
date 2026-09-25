@@ -87,6 +87,13 @@ one. What changes is what a host has to do.
   the command does not emit, or of anything but struct literals (I4); `reject/1` of an invariant the command
   does not reject on (I5); `issue/1` of a command the reaction does not issue (I6); a macro in a kind that has
   no use for it (I7). `__eh_os_implementation__/0` says what each callback emits.
+- `use EhOsContract.ScenarioCase, contract: C` generates one test per scenario of `C` and runs it against the
+  implementation of its target, found in `C`'s application (or named with `implementations:`). What is
+  expected, or issued, has to appear among what the code produced, in order and with the fields named — the
+  subsequence `EhOsContract.ContractExample` asserts; a rejection has to be on the named invariant; and whatever
+  a decision returns has to be within its declaration. Scenario data is cast to the fields' types.
+- A process manager's state starts with its `correlate` fields, as a unit's with its identity, and a scenario may
+  fire one of its timers with `on :timer`. Two scenarios may not share a description.
 - `EhOsContract.Model.capabilities/1`: a v2 contract's capabilities under the names EHOS grants (D14),
   `<domain>.<command>` and `<domain>.<query>`, each with its roles `<domain>.<actor>` and a query's scope. The
   model's `grants` says the same per actor, with the events each records.

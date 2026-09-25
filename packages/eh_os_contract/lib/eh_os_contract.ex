@@ -41,6 +41,7 @@ defmodule EhOsContract do
       Rejection,
       Report,
       Report.Sentence,
+      ScenarioCase,
       Store,
       Store.Postgres,
       Store.Suite,

@@ -136,6 +136,10 @@ scenario        description!   scope · actor
 
 - **Identity is injected.** A unit's identity fields appear in its state, commands and events without being
   declared there; declaring one again is an error.
+
+  > *25 September 2026, E5:* a process manager's `correlate` fields are injected into its state the same way,
+  > unless the state declares them. Its timer's callback receives the state alone, and without the run's
+  > correlation it could not name the visit its command is about.
 - **Stage membership is nesting.** Local events sit inside `stage :payment do … end` in their unit; foreign
   events are placed with `include` inside `process`. The order of `stage` entries in `process` is the order
   of stages.
@@ -597,7 +601,9 @@ where it helps; every violation is reported as a diagnostic before the single ra
   > declaration allows for that trigger). An effect's outcome is outside the log, and nothing yet says what a
   > read model's rows or a query's answer should be, so neither is a scenario's target until a stage gives
   > them a word; `query` stays in the vocabulary and is refused with that reason. **S8** counts per unit: two
-  > units may each have an invariant of the same name.
+  > units may each have an invariant of the same name. *Later the same day, with `ScenarioCase`:* `on` may name
+  > a process manager's timer, which fires, since a timer is one of its triggers (P4) and nothing else could
+  > state what it issues; and two scenarios may not share a description, which names the test generated for each.
 - *Domain.* D1: unique names per kind. D2: at most one translation per language, none into the context's
   own. D3: a value has exactly one of type or fields; `unit` only on numeric types; no cycles. D4: a human
   actor has no `backed_by`. D5: relation roles fit the type; endpoints exist; no relation to itself.

@@ -34,7 +34,8 @@ defmodule UniversalityGate.Next.TreatmentEpisode do
   - *The rule becomes an invariant*, named as v1's rule was, and the examples
     become scenarios. v1's decision function received the payer registry's answer
     as input (`UniversalityGate.Eligibility`); here the command carries it.
-    `Eligibility.decide/1` becomes this unit's decider in E5.
+    `Eligibility.decide/1` became this unit's decider in E5,
+    `UniversalityGate.Next.Episode`.
   - *`:enum` needs its members.* `document_type` has the one the fake produces;
     v1's `scope` was declared `:enum` and filled with a sentence, so it is a
     `:string`.
