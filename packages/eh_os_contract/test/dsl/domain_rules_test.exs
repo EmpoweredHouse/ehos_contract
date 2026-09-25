@@ -240,6 +240,47 @@ defmodule EhOsContract.DomainRulesTest do
       refute message =~ ":b -> :a -> :b"
     end
 
+    test "a value's field takes no default, and its subject and personal must hold" do
+      message =
+        refused("FieldOptions", """
+          subject :patient, "Pacjent"
+
+          value :contact do
+            field :note, :string, default: "brak"
+            field :owner_id, :id, subject: :nobody
+            field :patient_id, :id, subject: :patient, optional: true
+            field :phone, :string, personal: :patient_id
+            field :email, :string, personal: :missing_id
+            field :name, :string, personal: :note
+          end
+        """)
+
+      assert message =~
+               "F3: value :contact, field :note has a default, which only a contract's state may have"
+
+      assert message =~
+               "field :owner_id names subject :nobody, which this domain does not declare"
+
+      assert message =~ "field :phone is personal to :patient_id, which is optional"
+
+      assert message =~
+               "field :email is personal to :missing_id, which is not a field of this value"
+
+      assert message =~
+               "field :name is personal to :note, which is not an :id field declaring a subject"
+    end
+
+    test "the control: a personal field of a required subject identifier compiles" do
+      compiles("PersonalField", """
+        subject :patient, "Pacjent"
+
+        value :contact do
+          field :patient_id, :id, subject: :patient
+          field :phone, :string, personal: :patient_id, optional: true
+        end
+      """)
+    end
+
     test "the control: every built-in type, a unit, labels, lists and nested values compile" do
       compiles("WellFormed", """
         context :settlement, "Rozliczenia", subdomain: :supporting

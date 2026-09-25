@@ -127,9 +127,71 @@ defmodule EhOsContract.Domain.Rules do
     values = for %Value{} = value <- entities, do: value
     names = MapSet.new(values, & &1.name)
     contexts = MapSet.new(for %Context{name: name} <- entities, do: name)
+    subjects = MapSet.new(for %Subject{name: name} <- entities, do: name)
 
     shape = Enum.flat_map(values, &value_shape(&1, names, contexts))
-    shape ++ cycles(values, names)
+    options = Enum.flat_map(values, &field_options(&1, subjects))
+    shape ++ options ++ cycles(values, names)
+  end
+
+  # A value's fields may say whose personal data they hold (v2 §4.3, §14), and
+  # those options are checked here with the rule letters v2 §6 gives them. F3: a
+  # default belongs only to a contract's state. F5: `personal: f` needs `f` to be
+  # a required, non-personal `:id` field of the same value declaring `subject:`,
+  # and that subject must be declared.
+  defp field_options(value, subjects) do
+    by_name = Map.new(value.fields, &{&1.name, &1})
+
+    for field <- value.fields,
+        violation <- field_option_violations(value, field, by_name, subjects) do
+      violation
+    end
+  end
+
+  defp field_option_violations(value, field, by_name, subjects) do
+    where = "value #{inspect(value.name)}, field #{inspect(field.name)}"
+
+    default =
+      if field.default != nil,
+        do: [{"F3: #{where} has a default, which only a contract's state may have", field}],
+        else: []
+
+    subject =
+      if field.subject && not MapSet.member?(subjects, field.subject),
+        do: [
+          {"F5: #{where} names subject #{inspect(field.subject)}, which this domain does not declare",
+           field}
+        ],
+        else: []
+
+    personal =
+      case field.personal && Map.fetch(by_name, field.personal) do
+        nil ->
+          []
+
+        false ->
+          []
+
+        :error ->
+          [
+            {"F5: #{where} is personal to #{inspect(field.personal)}, which is not a field of this value",
+             field}
+          ]
+
+        {:ok, %{optional: true}} ->
+          [{"F5: #{where} is personal to #{inspect(field.personal)}, which is optional", field}]
+
+        {:ok, %{type: :id, subject: subject, personal: nil}} when subject != nil ->
+          []
+
+        {:ok, _} ->
+          [
+            {"F5: #{where} is personal to #{inspect(field.personal)}, which is not an :id field " <>
+               "declaring a subject", field}
+          ]
+      end
+
+    default ++ subject ++ personal
   end
 
   defp value_shape(value, names, contexts) do
