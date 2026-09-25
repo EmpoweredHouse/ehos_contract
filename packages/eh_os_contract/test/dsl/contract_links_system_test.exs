@@ -142,6 +142,35 @@ defmodule EhOsContract.Next.ContractLinksSystemTest do
       assert length(violations) == 1
     end
 
+    test "an implementation compiled before it said where it is is still refused, without a place" do
+      # A beam from before `__eh_os_implementation__/0` carried `file:` and `line:`, as
+      # a consumer's build may hold one after upgrading the library.
+      stale =
+        for name <- [SysStaleFirst, SysStaleSecond] do
+          module = Module.concat(EhOsContract.Next.Implementations, name)
+
+          {:module, ^module, _, _} =
+            Module.create(
+              module,
+              quote do
+                def __eh_os_implementation__,
+                  do: %{
+                    contract: EhOsContract.Next.Fixtures.SysImplemented,
+                    kind: :aggregate,
+                    name: :implemented,
+                    emitted: %{}
+                  }
+              end,
+              Macro.Env.location(__ENV__)
+            )
+
+          module
+        end
+
+      assert [{"X8: EhOsContract.Next.Implementations.SysStaleSecond implements" <> _, nil}] =
+               EhOsContract.Next.Contract.Links.check(stale)
+    end
+
     test "control: one implementation passes" do
       assert links([implementation("SysOnly")]) == []
     end

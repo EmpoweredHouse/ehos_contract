@@ -58,8 +58,7 @@ defmodule EhOsContract.Next.Contract.Links.System do
   defp implementations(system) do
     named =
       for impl <- system.implementations do
-        at = [file: String.to_charlist(impl.file), location: impl.line]
-        {{impl.contract, impl.kind, impl.name}, impl.module, at}
+        {{impl.contract, impl.kind, impl.name}, impl.module, use_at(impl)}
       end
 
     for {{contract, kind, name}, {module, at}, {first, first_at}} <- collisions(named) do
@@ -68,6 +67,11 @@ defmodule EhOsContract.Next.Contract.Links.System do
          "already; a declaration has one implementation", at}
     end
   end
+
+  # Where the implementation's `use` is. One compiled before the description said so
+  # has no place, and is refused all the same.
+  defp use_at(%{file: file, line: line}), do: [file: String.to_charlist(file), location: line]
+  defp use_at(_description), do: nil
 
   # For every key held more than once, each holder after the first, with the first.
   # Holders come sorted by module, and within a module in declaration order.
