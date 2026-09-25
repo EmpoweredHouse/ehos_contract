@@ -14,7 +14,8 @@ defmodule EhOsContract.Domain.Build do
   where every collection of declarations is sorted, nested ones included: a
   context's terms, a term's translations, a value's fields. Moving a declaration
   therefore moves nothing. Changing one moves the version and that declaration's
-  digest, and nothing else.
+  digest, and nothing else. The domain's own `name:` and `language:` are covered as
+  well, under the digest key `"domain:<name>"`.
   """
 
   use Spark.Dsl.Transformer
@@ -108,6 +109,10 @@ defmodule EhOsContract.Domain.Build do
         {key, for(%{__struct__: _} = e <- entities, entity_name(e) == entity, do: plain(e))}
       end
 
+    # The domain's own options are part of the agreement too: `language` decides what
+    # D2 accepts and which language every label and term is written in.
+    own = %{name: name, language: language}
+
     Map.merge(collections, %{
       format: 1,
       kind: :domain,
@@ -116,9 +121,10 @@ defmodule EhOsContract.Domain.Build do
       language: language,
       version:
         Digest.hash_groups(
-          for {key, _} <- @kinds, do: {key, Enum.map(collections[key], &digest_form/1)}
+          [domain: [own]] ++
+            for({key, _} <- @kinds, do: {key, Enum.map(collections[key], &digest_form/1)})
         ),
-      digests: digests(collections)
+      digests: Map.put(digests(collections), "domain:#{name}", Digest.hash(own))
     })
   end
 

@@ -169,12 +169,36 @@ defmodule EhOsContract.DomainTest do
       assert moved == ["value:money"]
     end
 
+    test "moves when the domain's language changes, and only the domain's own digest moves" do
+      Code.compile_string("""
+      defmodule EhOsContract.DomainTest.English do
+        use EhOsContract.Domain, name: :clinic, language: :en
+        context :scheduling, "Umawianie", subdomain: :core
+      end
+      """)
+
+      Code.compile_string("""
+      defmodule EhOsContract.DomainTest.Polish do
+        use EhOsContract.Domain, name: :clinic, language: :pl
+        context :scheduling, "Umawianie", subdomain: :core
+      end
+      """)
+
+      english = Model.fetch(EhOsContract.DomainTest.English)
+      polish = Model.fetch(EhOsContract.DomainTest.Polish)
+
+      assert english.version != polish.version
+      moved = for {key, digest} <- english.digests, polish.digests[key] != digest, do: key
+      assert moved == ["domain:clinic"]
+    end
+
     test "has one digest per declaration, keyed by kind and name" do
       assert Map.keys(Model.fetch(Ordered).digests) |> Enum.sort() == [
                "actor:payer_gateway",
                "actor:reception",
                "context:scheduling",
                "context:settlement",
+               "domain:clinic",
                "external:payer_registry",
                "relation:customer_supplier:scheduling,settlement",
                "subject:patient",
