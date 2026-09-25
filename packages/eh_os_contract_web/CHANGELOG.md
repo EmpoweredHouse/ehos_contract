@@ -1,10 +1,16 @@
 # Changelog
 
-The rule this package follows is the one written in `packages/eh_os_contract_core/CHANGELOG.md`:
+The rule this package follows is the one written in `packages/eh_os_contract/CHANGELOG.md`:
 a change that can move something the dashboard reports raises the minor version and
 gets a line here.
 
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## Unreleased
+
+- `EhOsContract.Web.Live.Graph` reads contracts through `EhOsContract.Model`, so this package needs an engine
+  that has it: the engine's own "Unreleased" or later. Inside this repository, and over git from it, both
+  packages come from one commit. Nothing the dashboard shows changes.
 
 ## 0.1.1 — 2026-09-23
 
