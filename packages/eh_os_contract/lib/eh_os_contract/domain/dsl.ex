@@ -34,7 +34,7 @@ defmodule EhOsContract.Domain.Dsl do
 
   defmodule Actor do
     @moduledoc false
-    defstruct [:name, :kind, :label, :backed_by, :context, __spark_metadata__: nil]
+    defstruct [:name, :kind, :label, :backed_by, :context, scope: [], __spark_metadata__: nil]
   end
 
   defmodule Subject do
@@ -158,7 +158,12 @@ defmodule EhOsContract.Domain.Dsl do
       kind: [type: {:one_of, [:human, :system]}, required: true, doc: "A person or a system."],
       label: [type: :string, required: true, doc: "What the business calls it."],
       backed_by: [type: :atom, doc: "The external system a system actor stands for."],
-      context: [type: :atom, doc: "The context the actor belongs to."]
+      context: [type: :atom, doc: "The context the actor belongs to."],
+      scope: [
+        type: {:wrap_list, :atom},
+        default: [],
+        doc: "The fields a grant to this actor narrows query answers by (D10)."
+      ]
     ]
   }
 

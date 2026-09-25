@@ -22,7 +22,15 @@ defmodule EhOsContract.Next.Contract.Rules do
   alias EhOsContract.Next.Contract.Rules
   alias Spark.Dsl.Transformer
 
-  @groups [Rules.Names, Rules.Fields, Rules.Units, Rules.Process, Rules.Consumes, Rules.Consumers]
+  @groups [
+    Rules.Names,
+    Rules.Fields,
+    Rules.Units,
+    Rules.Process,
+    Rules.Consumes,
+    Rules.Consumers,
+    Rules.Boundaries
+  ]
 
   @impl true
   def before?(EhOsContract.Next.Contract.Build), do: true

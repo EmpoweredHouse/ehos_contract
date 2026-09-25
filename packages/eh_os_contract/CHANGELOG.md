@@ -64,7 +64,9 @@ one. What changes is what a host has to do.
   is `__eh_os_contract_model__/0`, with a version that ignores declaration order. Nothing runs it yet, and the
   v1 accessors of `EhOsContract.Model` refuse it by name. It refuses to compile what v2 §6's layer L2 refuses:
   names (N1–N2), fields (F1–F6), units and their commands (A1–A5, C1), what reacts and what is read
-  (P1–P5), the process (R1–R6) and what it consumes from a sibling contract (K1).
+  (P1–P5), the process (R1–R6), what it consumes from a sibling contract (K1), and the query scope and
+  publications of D10–D11.
+- `actor` in the domain DSL takes `scope:`, the fields a grant narrows query answers by (D10).
 - Options beside a `do` block in the domain DSL: `context`, `term` and `value` accept
   `context :settlement, "Rozliczenia", subdomain: :supporting do … end` as well as the options written inside
   the block. An error still points at the declaration's file and line, and `mix format` keeps the form as

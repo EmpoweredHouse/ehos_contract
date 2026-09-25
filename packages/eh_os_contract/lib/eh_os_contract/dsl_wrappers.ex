@@ -21,9 +21,11 @@ defmodule EhOsContract.DslWrappers do
   `value :address, label: "Adres" do … end` it calls `value(name, type, opts)`, with
   the keyword list in `type` and only the block in `opts`. Without a block Spark
   itself reads a keyword list in the last optional argument as options. `attach/2`
-  gives such an entity a `transform` that applies the same rule when a block follows,
-  so an optional positional argument of an entity that takes a block must never
-  accept a keyword list as its value.
+  gives such an entity a `transform` that applies the same rule when a block follows.
+  Spark checks the argument's type before a transform runs, so the argument's type
+  is widened to accept a keyword list as well, which the transform moves into the
+  options before anything reads it. An optional positional argument of an entity
+  that takes a block must therefore never take a keyword list as a legal value.
 
   The formatter needs nothing for them: it never adds parentheses to a call with a
   `do` block, so a consumer's `mix format` keeps the four-argument form as written.
@@ -138,13 +140,27 @@ defmodule EhOsContract.DslWrappers do
       options =
         for {key, spec} <- entity.schema, key not in arg_names(entity), do: {key, loose(spec)}
 
-      %{entity | transform: {__MODULE__, :options_from_optional_argument, [optional, options]}}
+      defaults = for name <- optional, do: {name, entity.schema[name][:default]}
+
+      %{
+        entity
+        | schema: Enum.map(entity.schema, &widen(&1, optional)),
+          transform: {__MODULE__, :options_from_optional_argument, [defaults, options]}
+      }
     end
   end
 
   defp with_options_transform(%{name: name}) do
     raise ArgumentError,
           "#{name} has its own transform, which EhOsContract.DslWrappers cannot chain"
+  end
+
+  # Spark checks the argument's type before any transform runs, so an optional
+  # argument's type also accepts the keyword list the transform then moves out.
+  defp widen({key, spec}, optional) do
+    if key in optional,
+      do: {key, Keyword.update!(spec, :type, &{:or, [&1, :keyword_list]})},
+      else: {key, spec}
   end
 
   defp arg_names(entity) do
@@ -161,15 +177,21 @@ defmodule EhOsContract.DslWrappers do
   defp loose(spec), do: spec |> Keyword.delete(:required) |> Keyword.delete(:default)
 
   @doc false
-  @spec options_from_optional_argument(struct(), [atom()], keyword()) ::
+  @spec options_from_optional_argument(struct(), keyword(), keyword()) ::
           {:ok, struct()} | {:error, term()}
-  def options_from_optional_argument(built, optional, options) do
-    last_given = optional |> Enum.reverse() |> Enum.find(&(Map.get(built, &1) != nil))
-    value = last_given && Map.get(built, last_given)
+  def options_from_optional_argument(built, defaults, options) do
+    last_given =
+      defaults
+      |> Enum.reverse()
+      |> Enum.find(fn {name, default} -> Map.get(built, name) not in [nil, default] end)
+
+    value = last_given && Map.get(built, elem(last_given, 0))
 
     if is_list(value) and value != [] and Keyword.keyword?(value) do
+      {name, default} = last_given
+
       with {:ok, valid} <- Spark.Options.validate(value, options) do
-        {:ok, built |> Map.put(last_given, nil) |> struct(valid)}
+        {:ok, built |> Map.put(name, default) |> struct(valid)}
       end
     else
       {:ok, built}

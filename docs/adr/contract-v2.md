@@ -1097,7 +1097,9 @@ G-14, G-16; `docs/ARCHITECTURE.md` §3). Two of them contradict decisions record
 > `value :address, label: "Adres" do … end` reaches Spark's `value(name, type, opts)` with the keyword list
 > in `type`. Without a block, Spark itself reads a keyword list in the last optional argument as options.
 > The wrappers give such an entity a `transform` that applies the same rule when a block follows, and that
-> checks the options against the entity's schema. A contract entity that takes a block therefore never gives
+> checks the options against the entity's schema. Spark checks the argument's own type before any transform
+> runs, which `consumes "<name>", as: :x do … end` showed later the same day (its optional argument is a list
+> of atoms), so the wrappers also widen that type to accept the keyword list the transform moves out. A contract entity that takes a block therefore never gives
 > an optional positional argument a keyword list as a legal value.
 
 **D10 in the contract and in the implementation.**
