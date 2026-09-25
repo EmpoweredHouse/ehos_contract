@@ -93,6 +93,19 @@ defmodule EhOsContract.Next.Contract.Rules do
     end)
   end
 
+  @doc """
+  The local names of events received from another application, `consumes "<name>"`.
+  They go to an inbox, not into this log (D12), so nothing that reads the log — a
+  run, a boundary's append condition — can take them in.
+  """
+  @spec received(map()) :: MapSet.t(atom())
+  def received(declarations) do
+    for {as, %Dsl.Consumes{from: from}} <- consumed(declarations),
+        is_binary(from),
+        into: MapSet.new(),
+        do: as
+  end
+
   @doc "The fields of every state a unit or a process manager declares."
   @spec state_fields([struct()]) :: [struct()]
   def state_fields(states), do: Enum.flat_map(states, & &1.fields)

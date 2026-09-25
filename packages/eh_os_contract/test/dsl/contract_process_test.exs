@@ -187,6 +187,39 @@ defmodule EhOsContract.Next.ContractProcessTest do
     end
   end
 
+  describe "R4 and A4: an event received from another application is not in this log (D12)" do
+    test "neither a run nor a boundary can take it in" do
+      message =
+        refuse_contract("ReceivedInLog", """
+          consumes "rehmed.visit.closed.v1", as: :visit_closed_elsewhere do
+            field :visit_id, :id
+          end
+
+          dcb :payer_period, "Okres płatnika" do
+            identity :visit_id
+            consults :visit_closed_elsewhere, match: :visit_id
+            command :close_period, "Zamknięcie okresu", by: :manager, emits: :period_closed
+            event :period_closed, "Zamknięto okres", terminal: true
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+            include :visit_closed_elsewhere
+          end
+        """)
+
+      assert message =~
+               "R4: process :visit includes :visit_closed_elsewhere, but it arrives from another " <>
+                 "application into an inbox, not into this log (D12); a run across applications is " <>
+                 "assembled by EHOS (received_in_log.ex:17)"
+
+      assert message =~
+               "A4: dcb :payer_period consults :visit_closed_elsewhere, which arrives from another " <>
+                 "application into an inbox, not into this log (D12), so no append condition can " <>
+                 "read it (received_in_log.ex:10)"
+    end
+  end
+
   describe "R5: a promise is about events of the run" do
     test "an event outside the run is refused, in each position" do
       message =

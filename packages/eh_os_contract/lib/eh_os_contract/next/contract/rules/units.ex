@@ -8,7 +8,8 @@ defmodule EhOsContract.Next.Contract.Rules.Units do
     an event nothing produces can never occur.
   - **A3.** A command rejects only invariants of its own unit.
   - **A4.** A dynamic consistency boundary consults at least one event; each one
-    is an event of this contract or one it consumes, and says which by `match:`
+    is an event of this log — its own or a sibling contract's, not one received from
+    another application (D12) — and says which by `match:`
     or `where:`; `match:` names fields of the boundary's identity.
   - **A5.** A unit, or a process manager, declares its state at most once.
   - **C1.** A command can be issued: it names actors in `by:`, or a policy or a
@@ -84,12 +85,22 @@ defmodule EhOsContract.Next.Contract.Rules.Units do
         event = inspect(consults.event)
 
         unknown =
-          if MapSet.member?(known, consults.event),
-            do: [],
-            else: [
-              {"A4: #{where} consults #{event}, which is neither an event of this contract nor " <>
-                 "one it consumes", consults}
-            ]
+          cond do
+            MapSet.member?(Rules.received(d), consults.event) ->
+              [
+                {"A4: #{where} consults #{event}, which arrives from another application into an " <>
+                   "inbox, not into this log (D12), so no append condition can read it", consults}
+              ]
+
+            MapSet.member?(known, consults.event) ->
+              []
+
+            true ->
+              [
+                {"A4: #{where} consults #{event}, which is neither an event of this contract nor " <>
+                   "one it consumes", consults}
+              ]
+          end
 
         criterion =
           if consults.match == [] and consults.where == nil,

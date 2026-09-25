@@ -9,8 +9,9 @@ defmodule EhOsContract.Next.Contract.Rules.Process do
     local event sits in a stage group of its unit, every `include` in a stage, and
     a stage group names a stage the process declares. When it declares none, there
     are no groups.
-  - **R4.** `include` places consumed events; a local event is placed by its
-    unit's stage group.
+  - **R4.** `include` places events consumed from a sibling contract; a local event
+    is placed by its unit's stage group, and an event received from another
+    application is not in this log at all (D12).
   - **R5.** A promise's `from`, `eventually` and `or_else` are events of the run:
     local events, and consumed events the process includes.
   - **R6.** `within`, `deadline` and a timer's `wait` count a non-negative number
@@ -103,13 +104,23 @@ defmodule EhOsContract.Next.Contract.Rules.Process do
 
   defp includes(process, d) do
     consumed = MapSet.new(Rules.consumed(d), &elem(&1, 0))
+    received = Rules.received(d)
     local = MapSet.new(Rules.local_events(d), & &1.name)
 
-    for include <- all_includes(process), not MapSet.member?(consumed, include.event) do
+    for include <- all_includes(process),
+        MapSet.member?(received, include.event) or not MapSet.member?(consumed, include.event) do
       why =
-        if MapSet.member?(local, include.event),
-          do: "a local event is placed by its unit's stage group",
-          else: "it is not an event this contract consumes"
+        cond do
+          MapSet.member?(local, include.event) ->
+            "a local event is placed by its unit's stage group"
+
+          MapSet.member?(received, include.event) ->
+            "it arrives from another application into an inbox, not into this log (D12); " <>
+              "a run across applications is assembled by EHOS"
+
+          true ->
+            "it is not an event this contract consumes"
+        end
 
       {"R4: process #{inspect(process.name)} includes #{inspect(include.event)}, but #{why}",
        include}
