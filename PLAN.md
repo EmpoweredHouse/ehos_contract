@@ -14,18 +14,20 @@ Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, s
 dashboardu; `sandbox/` to dane testowe. **Trwa pivot do v2**: DSL na Sparku z modelem domeny w stylu ESDM
 (jeden kontrakt = jeden proces), event sourcing na własnym magazynie w Postgresie, crypto-shredding. Plan
 zatwierdzono 25 września. **E0, E1 (szew `EhOsContract.Model`), D10–D12, E2 (log staje się magazynem) i E3
-(Spark i DSL domeny) są w `main`. Decyzja D13 (opcje obok bloku `do` zostają, biblioteka generuje nakładki o
-jedną arność więcej) jest zapisana na `dsl-v2/e4-contract-core`, od której rusza E4. E4–E12 nie są zaczęte.** Zachowanie v1 się nie zmieniło,
+(Spark i DSL domeny) są w `main`, a z nimi decyzje po E3 (PR #7): D13 (opcje obok bloku `do` zostają, biblioteka
+generuje nakładki o jedną arność więcej), stała kolejność w `check`, „Unreleased” w obu changelogach. E4–E12
+nie są zaczęte; E4 rusza na `dsl-v2/e4-contract-core`.** Zachowanie v1 się nie zmieniło,
 poza tym, że log jest tylko do dopisywania.
 
 ### Stan repozytorium
 
-- `main` = `origin/main` = `66ab602`, merge [PR #6](https://github.com/EmpoweredHouse/eh-os-contract/pull/6)
-  (`dsl-v2/e3-spark`, E3), zmergowanego przez użytkownika 25 września. Przed nim PR #5 (`6646df7`, E2), PR #4
-  (`c61ce5b`, D10–D12), PR #3 (`bfda7c7`, E1), PR #2 (`73031d2`, hook i skill przeglądu), PR #1 (`7ce9be2`, E0).
-- **`dsl-v2/e4-contract-core`**, od `66ab602`: commit z D13 (`82c183d`), commit handoffu po merge'u #6,
-  dwa commity z decyzji użytkownika (`189cad7` kolejność w `check`, `b58062b` „Unreleased”) i commit z tym
-  handoffem. Tylko lokalnie. Na `origin` jest już tylko `main` — zmergowane gałęzie E1–E3 skasowane 25 września.
+- `main` = `origin/main` = `c882946`, merge [PR #7](https://github.com/EmpoweredHouse/eh-os-contract/pull/7)
+  (decyzje po E3), zmergowanego przez użytkownika 25 września — **zanim skończył się jego check `check`**;
+  wynik CI na `main` po tym merge'u sprawdź przez `gh run list --branch main --limit 1`. Wcześniej PR #6
+  (`66ab602`, E3), #5 (`6646df7`, E2), #4 (`c61ce5b`, D10–D12), #3 (`bfda7c7`, E1), #2 (`73031d2`), #1 (`7ce9be2`).
+  Na PR #7 pojawił się też CodeRabbit (recenzja automatyczna) — jego uwagi, jeśli są, czekają na odczytanie.
+- **`dsl-v2/e4-contract-core`**: lokalnie przesunięta na `c882946` i commit z tym handoffem. Na `origin` ta
+  gałąź stoi na `a4a7009`, w całości w `main`; pierwszy push E4 pójdzie na nią bez przepisywania historii.
 - **Worktree leży pod ścieżką `.claude/worktrees/dsl-v2-e1-model-seam-ed132e`** — nazwa z E1, bo hook sesji
   pilnował tej ścieżki; gałąź w nim to `dsl-v2/e4-contract-core`, główny checkout stoi na `main`. Hook przeglądu
   czyta HEAD `$CLAUDE_PROJECT_DIR` (głównego checkoutu), nie worktree — przy PR z E2 i E3 główny checkout był na
