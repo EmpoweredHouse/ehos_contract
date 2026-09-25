@@ -69,6 +69,12 @@ one. What changes is what a host has to do.
   **every invariant named by a scenario in which a command is rejected on it**. A scenario writes a
   timestamp as an ISO 8601 string, `"2026-09-01T09:00:00Z"`, and a date as `"2026-09-01"`, so the model
   stays plain data; the unit's identity is the scenario's own and need not be given.
+- A v2 contract generates a struct for each command (`C.Commands.RecordPayment`), event (`C.Events.*`), event
+  received from another application (`C.Received.*`), state (`C.Aggregates.*.State`, `C.Dcbs.*.State`,
+  `C.ProcessManagers.*.State`), read model row (`C.ReadModels.*.Row`) and query's parameters (`C.Queries.*`),
+  each with `@type t` and defined at the line of its declaration. Commands and events enforce their required
+  fields and carry `__meta__`, an `EhOsContract.Meta`. `EhOsContract.Model.module_for/3` names them; an event
+  consumed from a sibling contract is the sibling's own struct.
 - `EhOsContract.Model.capabilities/1`: a v2 contract's capabilities under the names EHOS grants (D14),
   `<domain>.<command>` and `<domain>.<query>`, each with its roles `<domain>.<actor>` and a query's scope. The
   model's `grants` says the same per actor, with the events each records.

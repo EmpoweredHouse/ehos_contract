@@ -37,8 +37,9 @@ defmodule EhOsContract.Next.Contract.Build do
     model = model(dsl)
 
     {:ok,
-     Transformer.eval(
-       dsl,
+     dsl
+     |> Transformer.persist(:eh_os_contract_model, model)
+     |> Transformer.eval(
        [],
        quote do
          @doc false

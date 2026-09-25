@@ -35,8 +35,9 @@ defmodule EhOsContract.Next.Contract do
   against the contract by a Mix compiler, not by recompiling every contract when the
   domain changes.
 
-  Nothing runs a v2 contract yet. It compiles, it refuses what v2 §6 refuses, and
-  its model is data; generated structs and behaviours come in E5, dispatch in E6.
+  Nothing runs a v2 contract yet. It compiles, it refuses what v2 §6 refuses, its
+  model is data, and it generates a struct for every command, event, state, row
+  and query (`EhOsContract.Next.Contract.Generate`); dispatch comes in E6.
   """
 
   use Spark.Dsl,

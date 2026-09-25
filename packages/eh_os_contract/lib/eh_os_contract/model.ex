@@ -167,6 +167,102 @@ defmodule EhOsContract.Model do
     end
   end
 
+  @typedoc "What a v2 contract generates a module for (v2 §5)."
+  @type generated ::
+          :command
+          | :event
+          | :aggregate
+          | :dcb
+          | :policy
+          | :effect
+          | :process_manager
+          | :read_model
+          | :query
+
+  @doc """
+  The module a v2 contract generates for a declaration (v2 §5): the struct of a
+  command, an event or a query's parameters, or the behaviour of a unit, a policy,
+  an effect, a process manager or a read model.
+
+      Model.module_for(Rehmed.Contracts.VisitSettlement, :command, :record_payment)
+      #=> Rehmed.Contracts.VisitSettlement.Commands.RecordPayment
+
+  An event is named as the contract knows it. A local one is `C.Events.X`. One
+  consumed from a sibling contract is the sibling's own struct, under its name
+  there, so a change to it reaches every subscriber (v2 §7). One received from
+  another application is `C.Received.X`, built from the fields this contract
+  declares for it (D11). A unit's state is `Module.concat(unit, State)`, a read
+  model's row `Module.concat(read_model, Row)`.
+
+  A name the contract does not declare is refused.
+  """
+  @spec module_for(contract() | map(), generated(), atom()) :: module()
+  def module_for(contract, kind, name) do
+    model = v2!(contract)
+
+    generated(model, kind, name) ||
+      raise ArgumentError, "#{inspect(model.module)} declares no #{kind} #{inspect(name)}"
+  end
+
+  @namespaces [
+    command: {:commands, Commands},
+    policy: {:policies, Policies},
+    effect: {:effects, Effects},
+    process_manager: {:process_managers, ProcessManagers},
+    read_model: {:read_models, ReadModels},
+    query: {:queries, Queries}
+  ]
+
+  defp generated(model, :event, name) do
+    if declared?(model.events, name),
+      do: generated_name(model.module, Events, name),
+      else: consumed_module(model, name)
+  end
+
+  defp generated(model, unit, name) when unit in [:aggregate, :dcb] do
+    if Enum.any?(model.units, &(&1.name == name and &1.kind == unit)),
+      do: generated_name(model.module, if(unit == :aggregate, do: Aggregates, else: Dcbs), name)
+  end
+
+  defp generated(model, kind, name) do
+    {key, namespace} = Keyword.fetch!(@namespaces, kind)
+    if declared?(Map.fetch!(model, key), name), do: generated_name(model.module, namespace, name)
+  end
+
+  defp declared?(declarations, name), do: Enum.any?(declarations, &(&1.name == name))
+
+  defp generated_name(module, namespace, name),
+    do: Module.concat([module, namespace, name |> Atom.to_string() |> Macro.camelize()])
+
+  # An event this contract consumes: a sibling's struct under its original name, or
+  # the struct received events get here.
+  defp consumed_module(model, name) do
+    Enum.find_value(model.consumes, fn
+      %{kind: :published, as: ^name} ->
+        generated_name(model.module, Received, name)
+
+      %{kind: :contract, from: from, events: events, renames: renames} ->
+        original = Enum.find(events, fn event -> Map.get(renames, event, event) == name end)
+        original && generated_name(from, Events, original)
+
+      _ ->
+        nil
+    end)
+  end
+
+  defp v2!(contract) do
+    case fetch(contract) do
+      %{kind: :contract, units: _} = model ->
+        model
+
+      %{kind: :contract, module: module} ->
+        raise ArgumentError, "#{inspect(module)} is a v1 contract, which generates no modules"
+
+      %{kind: kind, module: module} ->
+        raise ArgumentError, "#{inspect(module)} is a #{kind}, not a contract"
+    end
+  end
+
   @doc "The contract module the model was built from."
   @spec module(contract()) :: module()
   def module(contract), do: contract!(contract).module

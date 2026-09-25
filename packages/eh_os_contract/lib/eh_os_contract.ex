@@ -30,6 +30,7 @@ defmodule EhOsContract do
       Handler,
       Instance,
       Job,
+      Meta,
       Migrations,
       Model,
       Next.Contract,

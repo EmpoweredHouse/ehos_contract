@@ -1,0 +1,21 @@
+defmodule EhOsContract.Meta do
+  @moduledoc """
+  What a command or an event carries besides its fields (v2 §5): who acted, when,
+  and which run and which cause it belongs to. Every struct a v2 contract generates
+  has it as `__meta__`, a name no declared field may take (F1).
+
+  A decision reads it and never writes it: dispatch sets it on a command, and the
+  store on an event it appends. `evolve/2` in v2 §4.5 takes a business date from
+  `occurred_at` this way.
+  """
+
+  defstruct [:actor, :occurred_at, :correlation_id, :causation_id]
+
+  @typedoc "Set by dispatch and by the store, not by a decision."
+  @type t :: %__MODULE__{
+          actor: term(),
+          occurred_at: DateTime.t() | nil,
+          correlation_id: String.t() | nil,
+          causation_id: String.t() | nil
+        }
+end
