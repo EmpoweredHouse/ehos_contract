@@ -221,6 +221,9 @@ defmodule EhOsContract.ScenarioCase do
     modules = Map.new(allowed, &{Model.module_for(model, kind, &1), &1})
 
     for struct <- structs do
+      assert is_struct(struct),
+             "#{what} structs, and the code produced #{inspect(struct)}, which is not one"
+
       name = Map.get(modules, struct.__struct__)
 
       assert name,

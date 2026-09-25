@@ -335,6 +335,27 @@ defmodule EhOsContract.ScenarioCaseTest do
       assert ScenarioCase.run(EhOsContract.Next.Fixtures.Moments, nine, implementations)
     end
 
+    test "a decision that returns a map, not a struct" do
+      mapped =
+        visit("Mapped", """
+          @impl true
+          def record_payment(%RecordPayment{visit_id: id}, _state), do: {:ok, [%{visit_id: id}]}
+
+          @impl true
+          def close(_command, _state), do: reject(:paid_in_full)
+
+          @impl true
+          def remind(%Remind{visit_id: id}, _state), do: emit(%Reminded{visit_id: id})
+
+          @impl true
+          def evolve(state, _event), do: state
+        """)
+
+      assert failure("sam paragon wystarcza", [mapped]) =~
+               ~s|command :record_payment emits structs, and the code produced | <>
+                 ~s|%{visit_id: "scenario"}, which is not one|
+    end
+
     test "no implementation, and two" do
       assert failure("sam paragon wystarcza", []) =~
                "no module implements aggregate :visit of EhOsContract.Next.Fixtures.Scenarios, so " <>
