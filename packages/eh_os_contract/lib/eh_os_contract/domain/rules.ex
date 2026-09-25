@@ -129,7 +129,8 @@ defmodule EhOsContract.Domain.Rules do
     contexts = MapSet.new(for %Context{name: name} <- entities, do: name)
     subjects = MapSet.new(for %Subject{name: name} <- entities, do: name)
 
-    shape = Enum.flat_map(values, &value_shape(&1, names, contexts))
+    aliases = Map.new(values, &{&1.name, &1.type})
+    shape = Enum.flat_map(values, &value_shape(&1, names, contexts, aliases))
     options = Enum.flat_map(values, &field_options(&1, subjects))
     shape ++ options ++ cycles(values, names)
   end
@@ -194,7 +195,7 @@ defmodule EhOsContract.Domain.Rules do
     default ++ subject ++ personal
   end
 
-  defp value_shape(value, names, contexts) do
+  defp value_shape(value, names, contexts, aliases) do
     where = "D3: value #{inspect(value.name)}"
 
     one_of =
@@ -210,10 +211,10 @@ defmodule EhOsContract.Domain.Rules do
       end
 
     unit =
-      if value.unit && value.type not in @numeric do
+      if value.unit && not numeric?(value.type, aliases, MapSet.new()) do
         [
-          {"#{where} has unit #{inspect(value.unit)}, and a unit counts only an :integer or a :decimal",
-           value}
+          {"#{where} has unit #{inspect(value.unit)}, and a unit counts only an :integer or a :decimal, " <>
+             "or a value that is one", value}
         ]
       else
         []
@@ -241,6 +242,18 @@ defmodule EhOsContract.Domain.Rules do
 
     one_of ++ unit ++ context ++ types ++ fields
   end
+
+  # A number counts something whether it is written as :integer or as a value that
+  # is one, `value :fee, :money` over `value :money, :integer`. The walk stops at a
+  # value already seen, because a cycle is D3's own violation, reported separately.
+  defp numeric?(type, _aliases, _seen) when type in @numeric, do: true
+
+  defp numeric?(name, aliases, seen) when is_atom(name) and name != nil do
+    not MapSet.member?(seen, name) and
+      numeric?(Map.get(aliases, name), aliases, MapSet.put(seen, name))
+  end
+
+  defp numeric?(_type, _aliases, _seen), do: false
 
   @doc false
   @spec type_problems(term(), MapSet.t(atom())) :: [String.t()]

@@ -270,6 +270,21 @@ defmodule EhOsContract.DomainRulesTest do
                "field :name is personal to :note, which is not an :id field declaring a subject"
     end
 
+    test "the control: a unit on a value whose type is another numeric value compiles" do
+      compiles("UnitOnAlias", """
+        value :money, :integer
+        value :fee, :money, unit: :grosze
+      """)
+    end
+
+    test "a unit on a value whose type is a non-numeric value is still refused" do
+      assert refused(
+               "UnitOnTextAlias",
+               "  value :note, :string\n  value :memo, :note, unit: :grosze\n"
+             ) =~
+               "D3: value :memo has unit :grosze"
+    end
+
     test "the control: a personal field of a required subject identifier compiles" do
       compiles("PersonalField", """
         subject :patient, "Pacjent"
