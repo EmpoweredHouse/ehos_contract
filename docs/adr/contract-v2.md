@@ -568,6 +568,21 @@ where it helps; every violation is reported as a diagnostic before the single ra
   `rejects:`. S5: `expect` ⊆ the command's `emits:`. S6: trigger and outcome fit the kind of unit. S7: the
   scenario's `actor` is in the command's `by:`. S8: **every invariant is covered by at least one `rejected`
   scenario** — the successor of architecture §18's gate, kept an error although ESDM makes it a warning.
+
+  > *Made precise 25 September 2026, E5, while the S rules were written.* **S1** also refuses a scenario with
+  > no trigger or with more than one: E4's model kept the first of two and dropped the other without a word.
+  > **S3**: a unit's identity is not required in scenario data, because a scenario is one stream and §4.5's
+  > own scenarios name no `visit_id`; given, it has to be an `:id`. Values of built-in types are checked here,
+  > at L2, and only values of domain types, and data of an event consumed from a sibling, are left to X9.
+  > **Time in scenario data** is an ISO 8601 string, `"2026-09-01T09:00:00Z"` for a `:timestamp` and
+  > `"2026-09-01"` for a `:date`: a `~U` literal would put a `DateTime` into the model, which §9 keeps plain
+  > data, so S3 refuses it with that reason. **S6** accepts two targets: a command to an aggregate or a
+  > boundary, followed by `expect` or `rejected` and not both; and an event delivered to a policy (followed by
+  > `issues`) or to a process manager (followed by `issues`, `sets`, `cancels` or `ended`, each one its
+  > declaration allows for that trigger). An effect's outcome is outside the log, and nothing yet says what a
+  > read model's rows or a query's answer should be, so neither is a scenario's target until a stage gives
+  > them a word; `query` stays in the vocabulary and is refused with that reason. **S8** counts per unit: two
+  > units may each have an invariant of the same name.
 - *Domain.* D1: unique names per kind. D2: at most one translation per language, none into the context's
   own. D3: a value has exactly one of type or fields; `unit` only on numeric types; no cycles. D4: a human
   actor has no `backed_by`. D5: relation roles fit the type; endpoints exist; no relation to itself.

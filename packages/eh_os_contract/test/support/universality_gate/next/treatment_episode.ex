@@ -156,7 +156,11 @@ defmodule UniversalityGate.Next.TreatmentEpisode do
   end
 
   scenario "identity confirmed and eligibility active — qualification passes" do
-    given :referral_received, %{patient_id: "p-1", referral_code: "r-1"}
+    given :referral_received, %{
+      patient_id: "p-1",
+      referral_code: "r-1",
+      received_at: "2026-09-01T08:00:00Z"
+    }
 
     command :qualify_referral, %{
       patient_id: "p-1",
@@ -171,7 +175,11 @@ defmodule UniversalityGate.Next.TreatmentEpisode do
   end
 
   scenario "eligibility expired — a denial instead of qualification" do
-    given :referral_received, %{patient_id: "p-1", referral_code: "r-1"}
+    given :referral_received, %{
+      patient_id: "p-1",
+      referral_code: "r-1",
+      received_at: "2026-09-01T08:00:00Z"
+    }
 
     command :qualify_referral, %{
       patient_id: "p-1",
@@ -185,7 +193,11 @@ defmodule UniversalityGate.Next.TreatmentEpisode do
   end
 
   scenario "identity unconfirmed — the command is rejected, the registry is not even asked" do
-    given :referral_received, %{patient_id: "p-1", referral_code: "r-1"}
+    given :referral_received, %{
+      patient_id: "p-1",
+      referral_code: "r-1",
+      received_at: "2026-09-01T08:00:00Z"
+    }
 
     command :qualify_referral, %{
       patient_id: "p-1",

@@ -25,7 +25,7 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
-Stages E1–E4 of the move to a v2 contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`). **No verdict moves.**
+Stages E1–E5 of the move to a v2 contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`). **No verdict moves.**
 `mix eh_os_contract.report` and `mix eh_os_contract.graph --overlay --mermaid` gave byte-identical output on
 the development database before and after each stage, so the version stays 0.2.1 until a change does move
 one. What changes is what a host has to do.
@@ -64,8 +64,11 @@ one. What changes is what a host has to do.
   is `__eh_os_contract_model__/0`, with a version that ignores declaration order. Nothing runs it yet, and the
   v1 accessors of `EhOsContract.Model` refuse it by name. It refuses to compile what v2 §6's layer L2 refuses:
   names (N1–N2), fields (F1–F6), units and their commands (A1–A5, C1), what reacts and what is read
-  (P1–P5), the process (R1–R6), what it consumes from a sibling contract (K1), and the query scope and
-  publications of D10–D11.
+  (P1–P5), the process (R1–R6), what it consumes from a sibling contract (K1), the query scope and
+  publications of D10–D11, and scenarios (S1–S8): one trigger each, data that fits the declared fields, and
+  **every invariant named by a scenario in which a command is rejected on it**. A scenario writes a
+  timestamp as an ISO 8601 string, `"2026-09-01T09:00:00Z"`, and a date as `"2026-09-01"`, so the model
+  stays plain data; the unit's identity is the scenario's own and need not be given.
 - `EhOsContract.Model.capabilities/1`: a v2 contract's capabilities under the names EHOS grants (D14),
   `<domain>.<command>` and `<domain>.<query>`, each with its roles `<domain>.<actor>` and a query's scope. The
   model's `grants` says the same per actor, with the events each records.

@@ -29,7 +29,7 @@ defmodule EhOsContract.Next.Contract.Build do
   use Spark.Dsl.Transformer
 
   alias EhOsContract.Digest
-  alias EhOsContract.Next.Contract.Dsl
+  alias EhOsContract.Next.Contract.{Dsl, Rules}
   alias Spark.Dsl.Transformer
 
   @impl true
@@ -56,6 +56,7 @@ defmodule EhOsContract.Next.Contract.Build do
     prefix = process && process.name
 
     units = of(entities, Dsl.Unit)
+    declarations = Rules.declarations(dsl)
 
     collections = %{
       units: Enum.map(units, &unit/1),
@@ -68,7 +69,7 @@ defmodule EhOsContract.Next.Contract.Build do
       queries: entities |> of(Dsl.Query) |> Enum.map(&plain/1),
       consumes: entities |> of(Dsl.Consumes) |> Enum.map(&consumes/1),
       publishes: entities |> of(Dsl.Publish) |> Enum.map(&plain/1),
-      scenarios: entities |> of(Dsl.Scenario) |> Enum.map(&scenario/1)
+      scenarios: entities |> of(Dsl.Scenario) |> Enum.map(&scenario(&1, declarations))
     }
 
     own = %{domain: domain, context: context}
@@ -206,17 +207,17 @@ defmodule EhOsContract.Next.Contract.Build do
   defp put_unverified(%{} = duration, unverified), do: Map.put(duration, :unverified, unverified)
   defp put_unverified(other, _unverified), do: other
 
-  defp scenario(scenario) do
+  # One trigger, which S1 has made sure of, and the declaration it resolves to.
+  defp scenario(%Dsl.Scenario{trigger: [trigger]} = scenario, declarations) do
+    {kind, target} = Rules.Scenarios.target(scenario, declarations)
+
     %{
       description: scenario.description,
       scope: scenario.scope,
+      target: %{kind: kind, name: target.name},
       actor: scenario.actor,
       given: plain(scenario.given),
-      trigger:
-        case scenario.trigger do
-          [trigger | _] -> plain(trigger)
-          [] -> nil
-        end,
+      trigger: plain(trigger),
       expect: plain(scenario.expect),
       rejected: scenario.rejected,
       issues: plain(scenario.issues),

@@ -51,6 +51,12 @@ defmodule EhOsContract.Next.ContractTest do
       correlate :visit_id
       stage :payment
     end
+
+    scenario "zapłacono za mało — zamknięcie odrzucone" do
+      given :payment_recorded, %{amount: 100}
+      command :close
+      rejected :paid_in_full
+    end
   end
 
   defmodule Reordered do
@@ -90,6 +96,12 @@ defmodule EhOsContract.Next.ContractTest do
         field :payments, {:list, :money}, default: []
         field :total, :money, optional: true
       end
+    end
+
+    scenario "zapłacono za mało — zamknięcie odrzucone" do
+      given :payment_recorded, %{amount: 100}
+      command :close
+      rejected :paid_in_full
     end
   end
 
@@ -131,6 +143,12 @@ defmodule EhOsContract.Next.ContractTest do
     process :visit, "Wizyta" do
       correlate :visit_id
       stage :payment
+    end
+
+    scenario "zapłacono za mało — zamknięcie odrzucone" do
+      given :payment_recorded, %{amount: 100}
+      command :close
+      rejected :paid_in_full
     end
   end
 
@@ -234,7 +252,22 @@ defmodule EhOsContract.Next.ContractTest do
                queries: [],
                consumes: [],
                publishes: [],
-               scenarios: [],
+               scenarios: [
+                 %{
+                   description: "zapłacono za mało — zamknięcie odrzucone",
+                   scope: nil,
+                   target: %{kind: :aggregate, name: :visit},
+                   actor: nil,
+                   given: [%{event: :payment_recorded, data: %{amount: 100}}],
+                   trigger: %{kind: :command, name: :close, data: %{}},
+                   expect: [],
+                   rejected: :paid_in_full,
+                   issues: [],
+                   sets: [],
+                   cancels: [],
+                   ended: false
+                 }
+               ],
                grants: %{
                  reception: %{commands: [:close, :record_payment], queries: [], records: []},
                  manager: %{commands: [:close], queries: [], records: []}
@@ -250,6 +283,7 @@ defmodule EhOsContract.Next.ContractTest do
                "event:closed",
                "event:payment_recorded",
                "process:visit",
+               "scenario:*",
                "unit:visit"
              ]
     end

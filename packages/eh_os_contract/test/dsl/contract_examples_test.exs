@@ -255,6 +255,13 @@ defmodule EhOsContract.Next.ContractExamplesTest do
             correlate [:payer_id, :period_id]
             stage :invoicing
           end
+
+          # S8: the invariant needs a scenario that is rejected on it.
+          scenario "wizyta ani na fakturze, ani wykluczona — faktura odrzucona" do
+            given :visit_completed
+            command :issue_payer_invoice, %{invoice_id: "f-1"}
+            rejected :every_delivered_visit_settled_or_excluded
+          end
         """)
 
       assert [%{kind: :dcb, identity: [:payer_id, :period_id], consults: consults}] = model.units

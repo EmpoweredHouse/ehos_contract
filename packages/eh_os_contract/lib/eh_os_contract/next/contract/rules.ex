@@ -29,7 +29,8 @@ defmodule EhOsContract.Next.Contract.Rules do
     Rules.Process,
     Rules.Consumes,
     Rules.Consumers,
-    Rules.Boundaries
+    Rules.Boundaries,
+    Rules.Scenarios
   ]
 
   @impl true
