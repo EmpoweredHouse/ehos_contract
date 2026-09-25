@@ -257,5 +257,5 @@ defmodule EhOsContract.Domain.Dsl do
 
   use Spark.Dsl.Extension,
     sections: [@domain],
-    transformers: [EhOsContract.Domain.Build]
+    transformers: [EhOsContract.Domain.Rules, EhOsContract.Domain.Build]
 end
