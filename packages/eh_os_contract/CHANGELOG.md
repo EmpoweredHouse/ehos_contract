@@ -66,8 +66,9 @@ one. What changes is what a host has to do.
   names (N1–N2), fields (F1–F6), units and their commands (A1–A5, C1), what reacts and what is read
   (P1–P5), the process (R1–R6), what it consumes from a sibling contract (K1), and the query scope and
   publications of D10–D11.
-- `EhOsContract.Model.capabilities/1`: what each actor may do under a v2 contract — commands, queries and
-  events it records — derived from `by:` and `recorded_by:`.
+- `EhOsContract.Model.capabilities/1`: a v2 contract's capabilities under the names EHOS grants (D14),
+  `<domain>.<command>` and `<domain>.<query>`, each with its roles `<domain>.<actor>` and a query's scope. The
+  model's `grants` says the same per actor, with the events each records.
 - `EhOsContract.Next.Contract.vocabulary/0`: every entity of the contract DSL, by path, with the keys it
   takes, derived from the extension.
 - `actor` in the domain DSL takes `scope:`, the fields a grant narrows query answers by (D10).

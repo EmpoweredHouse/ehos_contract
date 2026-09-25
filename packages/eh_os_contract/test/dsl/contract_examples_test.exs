@@ -68,8 +68,9 @@ defmodule EhOsContract.Next.ContractExamplesTest do
     end
 
     test "§4.6's capabilities are what the contract derives", %{four_six: fragments} do
-      # `#=> %{reception: %{commands: [...], queries: []}, ...}`: the part the ADR
-      # spells out. The model also says what each actor records, which is empty here.
+      # `#=> %{reception: %{commands: [...], queries: []}, ...}` is written per actor.
+      # Since D14 that view is the model's `grants`, and `Model.capabilities/1` gives
+      # the same capabilities under the names EHOS grants: `rehmed.<command>`.
       [_, expected] =
         Regex.run(
           ~r/#=> %\{reception: (%\{commands: \[[^\]]*\], queries: \[\]\})/,
@@ -77,12 +78,16 @@ defmodule EhOsContract.Next.ContractExamplesTest do
         )
 
       {expected, _} = Code.eval_string(expected)
+      model = Model.fetch(Rehmed.Contracts.VisitSettlement)
 
-      assert Map.take(Model.capabilities(Rehmed.Contracts.VisitSettlement).reception, [
-               :commands,
-               :queries
-             ]) ==
-               expected
+      assert Map.take(model.grants.reception, [:commands, :queries]) == expected
+
+      reception =
+        for {name, %{roles: roles}} <- Model.capabilities(model),
+            "rehmed.reception" in roles,
+            do: name
+
+      assert Enum.sort(reception) == Enum.map(expected.commands, &"rehmed.#{&1}")
     end
   end
 
@@ -168,7 +173,7 @@ defmodule EhOsContract.Next.ContractExamplesTest do
              ] =
                model.events
 
-      assert model.capabilities.specialist.records == [:visit_completed]
+      assert model.grants.specialist.records == [:visit_completed]
     end
 
     test "a process manager", %{four_six: f} do

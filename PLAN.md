@@ -16,19 +16,20 @@ dashboardu; `sandbox/` to dane testowe. **Trwa pivot do v2**: DSL na Sparku z mo
 zatwierdzono 25 września. **E0, E1 (szew `EhOsContract.Model`), D10–D12, E2 (log staje się magazynem) i E3
 (Spark i DSL domeny) są w `main`, a z nimi decyzje po E3 (PR #7): D13 (opcje obok bloku `do` zostają, biblioteka
 generuje nakładki o jedną arność więcej), stała kolejność w `check`, „Unreleased” w obu changelogach. E4
-(rdzeń DSL-a kontraktu pod `EhOsContract.Next.Contract`) jest zrobiony lokalnie, 11 commitów, niewypchnięty.
+(rdzeń DSL-a kontraktu pod `EhOsContract.Next.Contract`) jest zrobiony lokalnie, 12 commitów, niewypchnięty.
 E5–E12 nie są zaczęte.** Zachowanie v1 się nie zmieniło, poza tym, że log jest tylko do dopisywania; kontraktu
 v2 nic jeszcze nie uruchamia.
 
 ### Stan repozytorium
 
-- `main` = `origin/main` = `c882946`, merge [PR #7](https://github.com/EmpoweredHouse/eh-os-contract/pull/7)
-  (decyzje po E3), zmergowanego 25 września przed końcem swojego checku; CI na `main` po nim zielone (przebieg
+- `main` = `origin/main` = `950f83f`, merge [PR #8](https://github.com/EmpoweredHouse/eh-os-contract/pull/8)
+  (D14, sama dokumentacja). Przed nim [PR #7](https://github.com/EmpoweredHouse/eh-os-contract/pull/7)
+  (`c882946`, decyzje po E3), zmergowany przed końcem swojego checku; CI na `main` po nim zielone (przebieg
   `36137135279`, job `check` `success`). Wcześniej PR #6 (`66ab602`, E3), #5 (`6646df7`, E2), #4 (`c61ce5b`,
   D10–D12), #3 (`bfda7c7`, E1), #2 (`73031d2`), #1 (`7ce9be2`). CodeRabbit na #7 (plan Free) dał samo
   podsumowanie, zero uwag.
-- **E4 leży na `claude/dsl-v2-e4-contract-core-68fd81`** = `38df8bd` (handoff po #7) + 11 commitów E4 + commit
-  z tym wpisem, w worktree `.claude/worktrees/dsl-v2-e4-contract-core-68fd81`. Lokalna `dsl-v2/e4-contract-core`
+- **E4 leży na `claude/dsl-v2-e4-contract-core-68fd81`** = `origin/main` + handoff po #7 + 12 commitów E4 +
+  commit z tym wpisem, przebazowane na `950f83f`, w worktree `.claude/worktrees/dsl-v2-e4-contract-core-68fd81`. Lokalna `dsl-v2/e4-contract-core`
   stoi na `38df8bd`, wymeldowana w starym worktree `.claude/worktrees/dsl-v2-e1-model-seam-ed132e`, a
   `origin/dsl-v2/e4-contract-core` na `a4a7009` (w całości w `main`). Push E4 to więc fast-forward:
   `git push origin claude/dsl-v2-e4-contract-core-68fd81:dsl-v2/e4-contract-core` — tylko na polecenie.
@@ -103,9 +104,9 @@ uruchomić `MIX_ENV=test mix deps.get` w `packages/eh_os_contract` i w `packages
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 25 września**, na `claude/dsl-v2-e4-contract-core-68fd81` (`e5a8d5d`, a potem commit z tym
-  wpisem, który zmienia tylko `PLAN.md`): brama → **EXIT=0**. Sandbox: 45 testów, 0 padnięć,
-  `eh_os_contract.check` 0 błędów, 5 ostrzeżeń, 23 informacje. Pakiet silnika: 587 testów, 0 padnięć, `check`
+- **Lokalnie, 25 września**, na `claude/dsl-v2-e4-contract-core-68fd81` (po przebazowaniu na `950f83f` i
+  z D14): brama → **EXIT=0**. Sandbox: 45 testów, 0 padnięć,
+  `eh_os_contract.check` 0 błędów, 5 ostrzeżeń, 23 informacje. Pakiet silnika: 589 testów, 0 padnięć, `check`
   0 błędów, 8 ostrzeżeń, 16 informacji. Pakiet web: 31 testów, 0 padnięć. Linie `check` w obu projektach
   identyczne co do bajtu z `main` na każdym commicie E4.
 - **CI**: na `main` po merge'u #7 — przebieg `36137135279` na `c882946`, job `check` `success`, żaden krok
@@ -255,7 +256,7 @@ padnie — stop, wariant A (opcje w bloku) i pytanie wraca do użytkownika.**
 *Odbiór:* test na każdą regułę L2 i kontrola, która się kompiluje; złoty test modelu; słownik przypięty
 testem, wyprowadzany z rozszerzenia, a nie z ręcznej listy; przykłady z v2 §4.5–4.6 kompilują się w zapisie,
 w którym są napisane (poza poprawkami z D10–D12).
-**Zrobione 25 września**, 11 commitów (`2fafd4e`..`e5a8d5d`) na gałęzi worktree tej sesji,
+**Zrobione 25 września**, 12 commitów na gałęzi worktree tej sesji,
 `claude/dsl-v2-e4-contract-core-68fd81`, niewypchnięte. Oba warunki D13 przeszły, choć jedno założenie pod
 nimi było błędne; kryteria odbioru spełnione — „E4 — co wyszło” niżej.
 
@@ -671,8 +672,8 @@ grupami reguł (`Names`, `Fields`, `Units`, `Process`, `Consumes`, `Consumers`, 
 także w DSL-u domeny), `EhOsContract.DslRules` (raport naruszeń, wyjęty z `Domain.Rules`),
 `Next.Contract.vocabulary/0`, `Model.capabilities/1`, `scope:` na aktorze domeny. Fikstura
 `UniversalityGate.Next.TreatmentEpisode` z `UniversalityGate.Domain`. `Rehmed.Domain` w zapisie z §4.5, bez
-nawiasów. Brama zielona na każdym z 11 commitów (z zastrzeżeniem w ustaleniu 10); sandbox 44 → 45, silnik
-493 → 587, web 31; `eh_os_contract.check` bez żadnej zmienionej linii w obu projektach.
+nawiasów. Brama zielona na każdym z 12 commitów (z zastrzeżeniem w ustaleniu 10); sandbox 44 → 45, silnik
+493 → 589, web 31; `eh_os_contract.check` bez żadnej zmienionej linii w obu projektach.
 
 **Warunki D13, jak sprawdzone** (plan: porażka któregokolwiek — stop i pytanie; żaden nie padł):
 1. *Błąd wskazuje plik:linię deklaracji, nie nakładki* — `test/dsl/dsl_wrappers_test.exs`: nieznana opcja obok
@@ -733,14 +734,14 @@ nawiasów. Brama zielona na każdym z 11 commitów (z zastrzeżeniem w ustaleniu
    odrzuci, a reprezentacja czasu w danych scenariusza jest pytaniem E5: literał `~U[…]` włożyłby do modelu
    strukturę `DateTime`, a model ma być czystymi danymi.
 7. **Model v2 jest skompilowany do modułu**, więc pytanie o cache z E1 (ustalenie 5) dotyczy tylko adaptera v1.
-   Z akcesorów v2 §9 wszedł `Model.capabilities/1`, bo §4.6 go woła; `unit_of/2`, `run/1` i `module_for/3`
+   Z akcesorów v2 §9 wszedł `Model.capabilities/1`, bo §4.6 go woła (kształt — ustalenie 14); `unit_of/2`, `run/1` i `module_for/3`
    wejdą ze swoimi czytelnikami (E5–E6). Akcesory v1 odmawiają kontraktu v2 z nazwy modułu, więc żaden
    czytelnik v1 nie przeczyta go po cichu źle, a rejestr v1 go nie widzi (`universality_gate_next_test`).
 8. **Kształt modelu, poza §9:** listy w kolejności deklaracji; komendy i zdarzenia wyjęte z jednostek na
    górny poziom z kluczem `unit`, zdarzenie z kluczem `stage`; `include` płasko w `process.includes` z kluczem
    `stage`; `consumes` z `kind: :contract | :published`; digest per zużyte zdarzenie pod nazwą lokalną
-   (`consumes:<as>`); jeden digest dla wszystkich scenariuszy (`scenario:*`, jak w §9); capabilities z trzema
-   listami, `commands`, `queries` i `records` (to ostatnie z `recorded_by:`).
+   (`consumes:<as>`); jeden digest dla wszystkich scenariuszy (`scenario:*`, jak w §9); `grants` po aktorze z
+   trzema listami, `commands`, `queries` i `records` (to ostatnie z `recorded_by:`).
 9. **Błąd budowania encji zagnieżdżonej zostawia stan Sparka w słowniku procesu**, więc kolejny moduł
    kompilowany w tym samym procesie pada na „nested entity without a `recursive_as`”. U konsumenta bez
    znaczenia (kompilacja i tak staje na pierwszym błędzie); w testach jedna taka odmowa na test.
@@ -756,13 +757,21 @@ nawiasów. Brama zielona na każdym z 11 commitów (z zastrzeżeniem w ustaleniu
     terminu z definicją w repozytorium nie ma, więc żaden nie jest zmyślony. Wersja domeny ruszyła (aktorzy
     mają teraz `scope: []`); nikt jej nie czyta.
 12. **Gałąź.** Sesja pracowała w nowym worktree `.claude/worktrees/dsl-v2-e4-contract-core-68fd81`, na gałęzi
-    `claude/dsl-v2-e4-contract-core-68fd81`, odgałęzionej od `38df8bd`. Lokalna `dsl-v2/e4-contract-core`
+    `claude/dsl-v2-e4-contract-core-68fd81`, odgałęzionej od `38df8bd` i przed PR przebazowanej na `950f83f`. Lokalna `dsl-v2/e4-contract-core`
     została na `38df8bd`, bo jest wymeldowana w worktree z E1 i git nie przesuwa gałęzi wymeldowanej gdzie
     indziej. `origin/dsl-v2/e4-contract-core` stoi na `a4a7009`, więc push E4 na nią to fast-forward:
     `git push origin claude/dsl-v2-e4-contract-core-68fd81:dsl-v2/e4-contract-core` — na polecenie użytkownika.
 13. **Przed E4:** CI na `main` po merge'u #7 zielone (przebieg `36137135279` na `c882946`, job `check`
     `success`, żaden krok pominięty ani nieudany). CodeRabbit na PR #7: plan Free, samo podsumowanie, zero
     komentarzy i recenzji — nie było czego rozstrzygać.
+14. **D14 przyszło w trakcie E4.** PR #8 (zmergowany, gdy E4 był już lokalnie gotowy) dopisał do opisu E4
+    nazwy, na których stoi EHOS. Po przebazowaniu na nowy `main` E4 je dostał, jednym commitem przed
+    przeglądem. Mapa po aktorze nazywa się w modelu `grants`. `Model.capabilities/1` jest kluczowane nazwą
+    uprawnienia (`<domena>.<komenda>`, `<domena>.<query>`) i podaje role `<domena>.<aktor>` oraz `scope`
+    query. Nazwę domeny czyta w chwili wywołania ze skompilowanego modułu domeny, bo kontrakt nie kompiluje
+    się względem domeny (§8). Nieskompilowana domena jest odmawiana z nazwy. N1 odmawia query o nazwie
+    komendy; unikalność w całej aplikacji to L3 (E5), jak mówi opis. Przykład wyniku z §4.6, pisany po
+    aktorze, dostał notkę z datą: to jest `grants`.
 
 ### Losy fikstur
 

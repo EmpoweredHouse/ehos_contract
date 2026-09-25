@@ -370,6 +370,12 @@ Names the material does not provide are marked *illustrative*; a real port does 
 > **25 September 2026, after E1:** `public: true` below is superseded by D11 (§16). Inside one application the
 > `consumes` + `policy` shape stays and needs no flag; `query` below gains `by:` capabilities with `scope` (D10).
 
+> **25 September 2026, E4 — D14 (§16) renames the last example's result.** Written per actor, as below, it is
+> the model's `grants`. `EhOsContract.Model.capabilities/1` gives the same capabilities under the names EHOS
+> grants: `%{"rehmed.record_payment" => %{kind: :command, name: :record_payment, roles: ["rehmed.reception"],
+> scope: nil}, …}`. The domain's `name:` is read from the compiled domain at the call, because a contract
+> records no compile dependency on it (§8).
+
 ```elixir
 # consumes + public + policy (TaxVision; the command name is illustrative)
 event :registry_data_consistent, "Dane firmy zgadzają się z rejestrami", public: true   # in AccountingMonth

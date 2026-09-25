@@ -137,6 +137,31 @@ defmodule EhOsContract.Next.ContractNamesTest do
       assert message =~ "N1: process :visit has two promises named :closed (nested.ex:28)"
     end
 
+    test "a query with a command's name, since both are capabilities <domain>.<name> (D14)" do
+      message =
+        refuse_contract("QueryLikeCommand", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+            event :visit_closed, "Wizyta zamknięta", terminal: true
+          end
+
+          read_model :closed_visits, "Zamknięte wizyty", projects: :visit_closed do
+            field :closed_on, :date
+          end
+
+          query :close_visit, "Zamykane wizyty", reads: :closed_visits, by: :reception
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      assert message =~
+               "N1: query :close_visit has the name of a command; both are capabilities named " <>
+                 "<domain>.close_visit (D14) (query_like_command.ex:14)"
+    end
+
     test "each other kind of declaration" do
       message =
         refuse_contract("Kinds", """

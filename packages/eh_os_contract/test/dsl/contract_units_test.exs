@@ -62,7 +62,7 @@ defmodule EhOsContract.Next.ContractUnitsTest do
     end
 
     test "control: an event recorded rather than decided compiles (D6)" do
-      assert %{capabilities: %{specialist: %{records: [:visit_completed]}}} =
+      assert %{grants: %{specialist: %{records: [:visit_completed]}}} =
                compile_contract("Recorded", """
                  aggregate :visit, "Wizyta" do
                    identity :visit_id

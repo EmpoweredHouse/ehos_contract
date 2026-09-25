@@ -6,7 +6,8 @@ defmodule EhOsContract.Next.Contract.Rules.Names do
   events, timers and consumed events share one namespace, because each becomes a
   callback of the same implementation: an aggregate has one per command, a process
   manager one per event and timer (v2 §5). Units are one namespace, whether
-  aggregate or boundary; so is each other kind of declaration. Invariants and stage
+  aggregate or boundary; so is each other kind of declaration. A query does not
+  take a command's name, since both become a capability `<domain>.<name>` (D14). Invariants and stage
   groups are unique within their unit, and the process's stages and promises within
   the process.
 
@@ -119,7 +120,19 @@ defmodule EhOsContract.Next.Contract.Rules.Names do
         []
       end
 
-    kinds ++ per_unit ++ callback_namespace(d) ++ in_process
+    kinds ++ per_unit ++ callback_namespace(d) ++ capability_namespace(d) ++ in_process
+  end
+
+  # A command and a query are both capabilities, named `<domain>.<name>` (D14), so a
+  # query may not take a command's name. Unique across the whole application is the
+  # Mix compiler's to check, since it sees every contract (L3).
+  defp capability_namespace(d) do
+    commands = MapSet.new(Rules.commands(d), & &1.name)
+
+    for q <- d.queries, MapSet.member?(commands, q.name) do
+      {"N1: query #{inspect(q.name)} has the name of a command; both are capabilities named " <>
+         "<domain>.#{q.name} (D14)", q}
+    end
   end
 
   # Commands, events, timers and consumed events: one namespace. A duplicate is

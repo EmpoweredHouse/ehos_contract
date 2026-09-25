@@ -11,7 +11,8 @@ defmodule EhOsContract.Next.Contract.Build do
   **Collections keep declaration order**, because readers print in it (E1's
   correction to v2 §9). A unit's commands and events are lifted to the top level,
   each naming its `unit`, so a reader asking for an event does not walk units; an
-  event declared in a stage group carries that `stage`.
+  event declared in a stage group carries that `stage`. `grants` says, per actor,
+  which commands it may issue, queries it may ask and events it may record.
 
   **Identity is injected** (v2 §4.2): a unit's identity fields, typed `:id`, come
   first in its state, in each of its commands and in each of its events, as if they
@@ -80,7 +81,7 @@ defmodule EhOsContract.Next.Contract.Build do
       domain: domain,
       context: context,
       process: process,
-      capabilities: capabilities(collections),
+      grants: grants(collections),
       version: version(own, process, collections),
       digests: digests(own, process, collections)
     })
@@ -231,11 +232,13 @@ defmodule EhOsContract.Next.Contract.Build do
 
   defp duration(other), do: other
 
-  # --- capabilities ----------------------------------------------------------------
+  # --- grants ----------------------------------------------------------------------
 
   # What each actor may do, derived from `by:` and `recorded_by:`, never written as a
-  # separate list (v2 §4.6, D10).
-  defp capabilities(collections) do
+  # separate list (v2 §4.6, D10). Keyed by the actor's local name: the names EHOS
+  # reads, `<domain>.<command>`, need the domain's `name:`, which a contract does not
+  # compile against, so `EhOsContract.Model.capabilities/1` derives them (D14).
+  defp grants(collections) do
     grants =
       for(c <- collections.commands, actor <- c.by, do: {actor, :commands, c.name}) ++
         for(q <- collections.queries, actor <- q.by, do: {actor, :queries, q.name}) ++

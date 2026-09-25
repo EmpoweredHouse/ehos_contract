@@ -235,7 +235,7 @@ defmodule EhOsContract.Next.ContractTest do
                consumes: [],
                publishes: [],
                scenarios: [],
-               capabilities: %{
+               grants: %{
                  reception: %{commands: [:close, :record_payment], queries: [], records: []},
                  manager: %{commands: [:close], queries: [], records: []}
                }
@@ -259,8 +259,59 @@ defmodule EhOsContract.Next.ContractTest do
                ~r/__spark_metadata__|__struct__|Spark\./
     end
 
-    test "gives capabilities, which a v1 contract does not have" do
-      assert Model.capabilities(Golden).manager == %{commands: [:close], queries: [], records: []}
+    test "names its capabilities after the domain, which has to be compiled (D14)" do
+      compile("""
+      defmodule EhOsContract.Next.ContractTest.ClinicDomain do
+        use EhOsContract.Domain, name: :clinic, language: :pl
+      end
+
+      defmodule EhOsContract.Next.ContractTest.Named do
+        use EhOsContract.Next.Contract,
+          domain: EhOsContract.Next.ContractTest.ClinicDomain,
+          context: :settlement
+
+        aggregate :visit, "Wizyta" do
+          identity :visit_id
+          command :close, "Zamknięcie", by: [:reception, :manager], emits: :closed
+          event :closed, "Zamknięto", terminal: true
+        end
+
+        process :visit, "Wizyta" do
+          correlate :visit_id
+        end
+
+        read_model :open_visits, "Otwarte wizyty", projects: :closed do
+          field :clinic_id, :id
+        end
+
+        query :open_for_clinic, "Otwarte w przychodni", reads: :open_visits, by: :reception do
+          param :clinic_id, :id
+          scope :clinic_id
+        end
+      end
+      """)
+
+      assert Model.capabilities(EhOsContract.Next.ContractTest.Named) == %{
+               "clinic.close" => %{
+                 kind: :command,
+                 name: :close,
+                 roles: ["clinic.manager", "clinic.reception"],
+                 scope: nil
+               },
+               "clinic.open_for_clinic" => %{
+                 kind: :query,
+                 name: :open_for_clinic,
+                 roles: ["clinic.reception"],
+                 scope: :clinic_id
+               }
+             }
+    end
+
+    test "refuses capabilities for a domain that is not compiled, and for a v1 contract" do
+      error = assert_raise ArgumentError, fn -> Model.capabilities(Golden) end
+
+      assert error.message =~
+               "names domain EhOsContract.Next.ContractTest.Clinic, which is not a compiled"
 
       error = assert_raise ArgumentError, fn -> Model.capabilities(ProcessShapes.Bare) end
 

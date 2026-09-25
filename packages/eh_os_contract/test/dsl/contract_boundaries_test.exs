@@ -80,7 +80,7 @@ defmodule EhOsContract.Next.ContractBoundariesTest do
         """)
 
       assert [%{scope: :clinic_id, params: [%{name: :clinic_id, type: :id}]}] = model.queries
-      assert model.capabilities.reception.queries == [:open_visits_for_clinic]
+      assert model.grants.reception.queries == [:open_visits_for_clinic]
     end
   end
 
