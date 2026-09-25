@@ -14,6 +14,8 @@
 ExUnit.configure(exclude: [:known_defect])
 
 {:ok, _} = EhOsContract.TestRepo.start_link()
+{:ok, _} = EhOsContract.CommitRepo.start_link()
+:ok = EhOsContract.CommitRepo.reset!()
 {:ok, _} = Oban.start_link(Application.fetch_env!(:eh_os_contract, Oban))
 
 # The same two calls a host makes at boot, for the same reason: the graph comes
