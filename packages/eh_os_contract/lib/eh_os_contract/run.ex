@@ -61,6 +61,7 @@ defmodule EhOsContract.Run do
   import Ecto.Query
 
   alias EhOsContract.Event
+  alias EhOsContract.Model
 
   @typedoc """
   One run, measured against its process's declared duration.
@@ -86,7 +87,7 @@ defmodule EhOsContract.Run do
   """
   @spec evaluate(module(), atom(), keyword()) :: [outcome()]
   def evaluate(contract, process_name, opts \\ []) do
-    process = Enum.find(contract.processes(), &(&1.name == process_name))
+    process = Model.process(contract, process_name)
 
     case process && process.deadline do
       nil -> []
@@ -184,7 +185,7 @@ defmodule EhOsContract.Run do
   end
 
   @spec events_of(module(), map()) :: [map()]
-  defp events_of(contract, process), do: contract.events_of(process.name)
+  defp events_of(contract, process), do: Model.events_of(contract, process.name)
 
   # `having` on the run's minimum, never `where` on the row — see the moduledoc.
   @spec bound(Ecto.Query.t(), :>= | :<=, DateTime.t() | nil) :: Ecto.Query.t()
