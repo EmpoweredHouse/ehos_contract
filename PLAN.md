@@ -14,7 +14,7 @@ Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, s
 dashboardu; `sandbox/` to dane testowe. **Trwa pivot do v2**: DSL na Sparku z modelem domeny w stylu ESDM
 (jeden kontrakt = jeden proces), event sourcing na własnym magazynie w Postgresie, crypto-shredding. Plan
 zatwierdzono 25 września. **E0 (dokumenty) jest w `main`. E1 (szew `EhOsContract.Model`) jest zrobiony na
-gałęzi `dsl-v2/e1-model-seam`, niewypchniętej. E2–E11 nie są zaczęte.** Zachowanie v1 się nie zmieniło.
+gałęzi `dsl-v2/e1-model-seam`, przejrzany i wystawiony jako PR do przeglądu. E2–E11 nie są zaczęte.** Zachowanie v1 się nie zmieniło.
 
 ### Stan repozytorium
 
@@ -25,18 +25,20 @@ gałęzi `dsl-v2/e1-model-seam`, niewypchniętej. E2–E11 nie są zaczęte.** Z
 - **Gałęzie `dsl-v2/e0-groundwork` i `dsl-v2/e0-review-hook` są skasowane**, lokalnie i na `origin`
   (sprawdzone `git ls-remote --heads origin`: jest tylko `main`). Commit `d1a1ebb` z pierwszej z nich do
   `main` nie trafił; jego treść była w poprzednim handoffie.
-- **`dsl-v2/e1-model-seam`**, od `main` (`73031d2`): 14 commitów kodu (`6a9baf4`..`b5e9a79`) i commit z
-  tym handoffem. Tylko lokalnie, bez PR. Worktree sesji E1:
+- **`dsl-v2/e1-model-seam`**, od `main` (`73031d2`): 14 commitów kodu (`6a9baf4`..`b5e9a79`), commit
+  dokumentów E1 (`80e6b51`), dwie poprawki z przeglądu przed PR (`64d3b9e`, `24c91ab`) i commit z tym
+  handoffem. Wypchnięta i wystawiona jako PR 25 września na polecenie użytkownika; numer i stan odczytaj
+  przez `gh pr list --state all --limit 3`. Worktree sesji E1:
   `.claude/worktrees/dsl-v2-e1-model-seam-ed132e`.
 - **Przegląd przed PR**: `.claude/settings.json` (hook `PreToolUse` odmawia `gh pr create`/`gh pr new`,
   dopóki `HEAD` nie ma notatki `git notes --ref=review`) i `.claude/skills/pre-pr-review/` (połowa autora).
   Połową recenzenta zostaje `.claude/skills/review-pr/`. Notatki są lokalne, `refs/notes/review` nie jest
-  wypychane. Na gałęzi E1 **nie ma jeszcze notatki przeglądu**.
+  wypychane. Notatka przeglądu E1 wisi na ostatnim commicie gałęzi, lokalnie w worktree sesji E1.
 
 ### Co zostało — i czyje to jest
 
-- **Przegląd E1 i decyzja o PR — użytkownika.** Wypchnięcie, PR i merge tylko na wyraźne polecenie. Przed
-  `gh pr create` skill `pre-pr-review` na tej gałęzi, bo bez notatki hook odmówi.
+- **Przegląd i merge PR z E1 — użytkownika.** Po uwagach recenzenta: poprawka, commit, kroki 3–7
+  `pre-pr-review` dla nowych commitów, a przed pushem sprawdzić, że PR jest nadal otwarty.
 - **E2–E11 — asystenta**, według dopisku „Dopisek 25 września (2) — Etap 6” niżej. Następny krok: E2
   (log staje się magazynem) na gałęzi `dsl-v2/e2-*` od `dsl-v2/e1-model-seam` — zgodnie ze strategią
   („odgałęziona od poprzedniego etapu”) także wtedy, gdy E1 nie jest jeszcze zmergowany.
@@ -85,13 +87,13 @@ uruchomić `MIX_ENV=test mix deps.get` w `packages/eh_os_contract` i w `packages
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 25 września**, na `dsl-v2/e1-model-seam` (`b5e9a79`, a potem ten commit, który zmienia tylko
-  dokumenty): brama wyżej → **EXIT=0**. Sandbox: 42 testy, 0 padnięć, `eh_os_contract.check` 0 błędów,
-  5 ostrzeżeń, 23 informacje. Pakiet silnika: 419 testów (397 + 22 z `model_test`), 0 padnięć, `check`
+- **Lokalnie, 25 września**, na `dsl-v2/e1-model-seam` (`24c91ab`, a potem ten commit, który zmienia tylko
+  `PLAN.md`): brama wyżej → **EXIT=0**. Sandbox: 42 testy, 0 padnięć, `eh_os_contract.check` 0 błędów,
+  5 ostrzeżeń, 23 informacje. Pakiet silnika: 421 testów (397 + 24 z `model_test`), 0 padnięć, `check`
   0 błędów, 8 ostrzeżeń, 16 informacji. Pakiet web: 31 testów, 0 padnięć. Te same liczby `check` co na
   `main`.
 - **CI**: na `main` po merge'u PR #2 przebieg `36114248354` (`73031d2`), a po PR #1 przebieg `36112961721`;
-  oba `success`. Na gałęzi E1 CI nie było, bo nie jest wypchnięta.
+  oba `success`. CI na PR z E1 odczytaj przez `gh pr checks`, nie z tego akapitu.
 
 ### Otwarte pytania
 
@@ -176,8 +178,8 @@ też eksport dla EHOS-a.
 *Odbiór:* żaden istniejący test nie jest edytowany; grep pokazuje, że `events/0`, `traces/0`, `processes/0` i
 reszta funkcji kontraktu są wołane tylko przez adapter; `mix eh_os_contract.report` i
 `mix eh_os_contract.graph --overlay --mermaid` dają identyczne bajty na bazie dev przed i po.
-**Zrobione 25 września** na `dsl-v2/e1-model-seam`, 14 commitów (`6a9baf4`..`b5e9a79`), niewypchnięte;
-kryteria odbioru spełnione — szczegóły i ustalenia w „E1 — co szew ujawnił” niżej.
+**Zrobione 25 września** na `dsl-v2/e1-model-seam`, 14 commitów (`6a9baf4`..`b5e9a79`) plus dwie poprawki z
+przeglądu przed PR, wystawione jako PR; kryteria odbioru spełnione — szczegóły i ustalenia w „E1 — co szew ujawnił” niżej.
 
 **E2 — Log staje się magazynem, w miejscu (V03).** `EhOsContract.Store` i `Store.Postgres` (v2 §10): globalna
 blokada, strumienie, pozycja, tagi, tabela `_commands`, trigger „tylko dopisywanie”. V03 **zmienia tabelę w
@@ -293,10 +295,10 @@ Opcjonalnie generator `mix eh_os_contract.gen.impl` na Igniterze. Potem weryfika
 ### E1 — co szew ujawnił (25 września)
 
 Stan: `EhOsContract.Model` (akcesory) i `EhOsContract.Model.V1` (adapter, 37 linii — plan zakładał około
-100) w pakiecie silnika, `Model` w eksportach `boundary`. Nowy `test/model_test.exs` (22 testy) przypina, że
+100) w pakiecie silnika, `Model` w eksportach `boundary`. Nowy `test/model_test.exs` (22 testy, po przeglądzie 24) przypina, że
 każdy akcesor zwraca dokładnie to, co funkcja, którą zastępuje — na pięciu fiksturach, razem z chybieniami i
 treścią wyjątku. Żaden istniejący test nie jest zmieniony (`git diff --stat main` w `test/` pokazuje jeden
-nowy plik). Brama zielona na każdym z 14 commitów; sandbox 42 testy, silnik 397 → 419, web 31;
+nowy plik). Brama zielona na każdym z 14 commitów; sandbox 42 testy, silnik 397 → 419 (po przeglądzie 421), web 31;
 `eh_os_contract.check` bez żadnej dodanej ani usuniętej linii.
 
 **Odbiór, jak sprawdzony.**
@@ -354,6 +356,18 @@ nowy plik). Brama zielona na każdym z 14 commitów; sandbox 42 testy, silnik 39
    procesów), są `trace/2` i `module/1`, a nie ma `unit_of/2`, `run/1`, `capabilities/1` ani `module_for/3`,
    bo v1 nie ma tych pojęć. E4 dopisze je razem z modelem v2. `processes/1` i `events_of/2` znikną albo zmienią
    znaczenie przy cięciu.
+
+**Przegląd przed PR (25 września, `/code-review high origin/main..HEAD`).** Pięć znalezisk:
+1. Moduledoc `EhOsContract.Contract` wskazywał dawnych wołających funkcje generowane. **Poprawione**
+   w `24c91ab`.
+2. Każdy akcesor buduje model od nowa, także w pętlach (`Graph.static`, `Deployment.report`, `Emitter`).
+   **Pominięte**, bo koszt jest zmierzony i mieści się w szumie (ustalenie 5 wyżej). Wraca w E4.
+3. Moduł, który nie jest kontraktem, padał na `events/0` zamiast na funkcji, o którą pytał czytelnik.
+   **Poprawione** w `64d3b9e`: teraz `ArgumentError` z nazwą modułu.
+4. `Model.contract?/1` dawał `false` dla kontraktu jeszcze niezaładowanego. **Poprawione** w `64d3b9e`:
+   najpierw `Code.ensure_loaded?/1`. Oba testy z tego commita zweryfikowane wstecz.
+5. `EhOsContract.Model.` pisane raz przez alias, raz pełną nazwą. **Bez zmiany**: pełną nazwą tam, gdzie
+   w pliku jest jedno wywołanie, tak jak w tych samych plikach `EhOsContract.Registry.contracts()`.
 
 ### Losy fikstur
 
