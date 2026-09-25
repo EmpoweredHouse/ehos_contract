@@ -37,6 +37,14 @@ defmodule EhOsContract.ClockTest do
     assert Enum.all?(emitted_by_jobs, &(&1.occurred_at == @nine))
   end
 
+  test "a time written to the second is accepted, as the moduledoc's example writes it" do
+    Clock.at(~U[2026-07-01 09:00:00Z], fn ->
+      EhOsContract.emit!(ProcessShapes.Timed, :run_started, %{run_id: "r-1"})
+    end)
+
+    assert [%{occurred_at: ~U[2026-07-01 09:00:00.000000Z]}] = events_of(:run_started)
+  end
+
   test "outside at/2 it is now, and calls nest and restore" do
     before = DateTime.utc_now()
     assert DateTime.compare(Clock.now(), before) != :lt

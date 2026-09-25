@@ -32,10 +32,13 @@ defmodule EhOsContract.Clock do
   @doc """
   Runs `fun` with every event it emits in this process stamped `at`. Restores
   whatever was set before, so calls nest.
+
+  `at` may be written to any precision. The log stores microseconds, so it is
+  widened to six digits here rather than refused at the append.
   """
   @spec at(DateTime.t(), (-> result)) :: result when result: term()
-  def at(%DateTime{} = at, fun) when is_function(fun, 0) do
-    previous = Process.put(@key, at)
+  def at(%DateTime{microsecond: {value, _precision}} = at, fun) when is_function(fun, 0) do
+    previous = Process.put(@key, %{at | microsecond: {value, 6}})
 
     try do
       fun.()
