@@ -1,0 +1,222 @@
+defmodule EhOsContract.Next.ContractLinksSiblingsTest do
+  @moduledoc """
+  v2 plan, E5b: **X5–X6** (v2 §6, §7) — a subscriber checked against the sibling
+  contract it consumes from, as that sibling is compiled now. A violation stands at
+  the subscriber's declaration and names the publisher's event with its file and
+  line; each has a control beside it that passes.
+  """
+
+  use EhOsContract.DslCase, async: false
+
+  @fixtures EhOsContract.Next.Fixtures
+  @domain EhOsContract.Next.Fixtures.SiblingsClinic
+
+  setup_all do
+    compile(
+      """
+      defmodule #{inspect(@domain)} do
+        use EhOsContract.Domain, name: :clinic, language: :pl
+
+        context :settlement, "Rozliczenia", subdomain: :core
+        actor :reception, :human, "Recepcja"
+      end
+      """,
+      "siblings_clinic.ex"
+    )
+
+    :ok
+  end
+
+  # The publisher. Line 9 declares the event, line 10 its `visit_id`.
+  defp publisher(name, fields, opts \\ []) do
+    domain = Keyword.get(opts, :domain, inspect(@domain))
+
+    """
+    defmodule #{inspect(Module.concat(@fixtures, name))} do
+      use EhOsContract.Next.Contract, domain: #{domain}, context: :settlement
+
+      aggregate :booking, "Rezerwacja" do
+        identity :booking_id
+
+        command :book_visit, "Rezerwacja wizyty", by: :reception, emits: :visit_booked
+
+        event :visit_booked, "Wizyta zarezerwowana" do
+    #{fields}
+        end
+      end
+
+      process :booking, "Rezerwacja" do
+        correlate :booking_id
+      end
+    end
+    """
+  end
+
+  @fields """
+        field :visit_id, :id
+        field :room, :string
+  """
+
+  # The subscriber: it correlates its process on `visit_id` and includes the
+  # publisher's event (line 15), a process manager starts on it (line 19), and a
+  # boundary consults it matching `visit_id` (line 29).
+  defp subscriber(name, publisher, consumes \\ ":visit_booked") do
+    """
+    defmodule #{inspect(Module.concat(@fixtures, name))} do
+      use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+
+      consumes #{inspect(Module.concat(@fixtures, publisher))}, #{consumes}
+
+      aggregate :billing, "Rozliczenie" do
+        identity :visit_id
+        command :bill_visit, "Rozliczenie wizyty", by: :reception, emits: :visit_billed
+        event :visit_billed, "Wizyta rozliczona"
+      end
+
+      process :billing, "Rozliczenie" do
+        correlate :visit_id
+
+        include :visit_booked
+      end
+
+      process_manager :chase, "Pogoń za rozliczeniem", correlate: :visit_id do
+        starts_on :visit_booked, issues: :bill_visit
+        ends_on :visit_billed
+      end
+
+      dcb :visit_slot, "Termin wizyty" do
+        identity :visit_id
+
+        command :hold_slot, "Wstrzymanie terminu", by: :reception, emits: :slot_held
+        event :slot_held, "Termin wstrzymany"
+
+        consults :visit_booked, match: :visit_id
+      end
+    end
+    """
+  end
+
+  defp pair(test, fields, consumes \\ ":visit_booked") do
+    links([
+      {"#{test}_booking.ex", publisher("#{Macro.camelize(test)}Booking", fields)},
+      {"#{test}_billing.ex",
+       subscriber("#{Macro.camelize(test)}Billing", "#{Macro.camelize(test)}Booking", consumes)}
+    ])
+  end
+
+  test "control: a subscriber using the publisher's fields as declared passes" do
+    assert pair("sib_right", @fields) == []
+  end
+
+  describe "X5: the sibling and its events exist" do
+    test "a module that is not a compiled v2 contract, and one that is v1" do
+      violations =
+        links([
+          {"sib_nowhere.ex", subscriber("SibNowhere", "Nowhere")},
+          {"sib_v1.ex",
+           String.replace(
+             subscriber("SibV1", "Nowhere"),
+             inspect(Module.concat(@fixtures, Nowhere)),
+             "ProcessShapes.Bare"
+           )}
+        ])
+
+      assert assert_linked(
+               violations,
+               "X5: consumes #{inspect(@fixtures)}.Nowhere",
+               "sib_nowhere.ex",
+               4
+             ) =~
+               "which is not a compiled v2 contract"
+
+      assert_linked(violations, "X5: consumes ProcessShapes.Bare, which is not", "sib_v1.ex", 4)
+    end
+
+    test "a sibling of another domain is another application's" do
+      violations =
+        links([
+          {"sib_other_domain_booking.ex",
+           publisher("SibOtherDomainBooking", @fields, domain: "UniversalityGate.Domain")
+           |> String.replace(":settlement", ":treatment")
+           |> String.replace(":reception", ":attending_physician")},
+          {"sib_other_domain_billing.ex",
+           subscriber("SibOtherDomainBilling", "SibOtherDomainBooking")}
+        ])
+
+      assert assert_linked(violations, "X5:", "sib_other_domain_billing.ex", 4) =~
+               "a contract of domain UniversalityGate.Domain, not #{inspect(@domain)}: another " <>
+                 "application's events arrive only through a publish (D11)"
+
+      # Nothing is read from a sibling that is not one.
+      refute Enum.any?(violations, &(&1.message =~ "X6"))
+    end
+
+    test "an event the sibling does not declare, with a did-you-mean" do
+      violations = pair("sib_no_event", @fields, "[:visit_booked, :visit_boked]")
+
+      assert assert_linked(violations, "X5: consumes :visit_boked", "sib_no_event_billing.ex", 4) =~
+               "(sib_no_event_booking.ex:2), which declares no such event; did you mean :visit_booked?"
+    end
+  end
+
+  describe "X6: the fields a subscriber uses are in the publisher's schema" do
+    test "a removed field breaks the include, the process manager and the boundary, naming both sides" do
+      violations = pair("sib_removed", "      field :room, :string")
+
+      assert assert_linked(
+               violations,
+               "X6: process :billing includes :visit_booked",
+               "sib_removed_billing.ex",
+               15
+             ) =~
+               "correlates on :visit_id, which event :visit_booked of " <>
+                 "#{inspect(@fixtures)}.SibRemovedBooking (sib_removed_booking.ex:9) does not have"
+
+      assert_linked(
+        violations,
+        "X6: process manager :chase handles :visit_booked",
+        "sib_removed_billing.ex",
+        19
+      )
+
+      assert_linked(
+        violations,
+        "X6: dcb :visit_slot consults :visit_booked matching :visit_id",
+        "sib_removed_billing.ex",
+        29
+      )
+
+      assert length(violations) == 3
+    end
+
+    test "a changed type" do
+      violations =
+        pair("sib_retyped", "      field :visit_id, :string\n      field :room, :string")
+
+      assert assert_linked(violations, "X6: process :billing", "sib_retyped_billing.ex", 15) =~
+               "(sib_retyped_booking.ex:9) has as :string, not :id"
+
+      assert length(violations) == 3
+    end
+
+    test "a field made optional, or personal" do
+      optional = pair("sib_optional", "      field :visit_id, :id, optional: true")
+
+      assert assert_linked(optional, "X6: process :billing", "sib_optional_billing.ex", 15) =~
+               "declares optional; a field telling which run an event belongs to cannot be"
+
+      personal =
+        pair("sib_personal", """
+              field :visit_id, :id, personal: :patient_id
+              field :patient_id, :id, subject: :patient
+        """)
+
+      assert_linked(personal, "declares personal", "sib_personal_billing.ex", 15)
+    end
+
+    test "controls: an optional field added, and a change to a field no declaration uses" do
+      assert pair("sib_added", @fields <> "      field :note, :string, optional: true") == []
+      assert pair("sib_unused", "      field :visit_id, :id\n      field :room, :integer") == []
+    end
+  end
+end

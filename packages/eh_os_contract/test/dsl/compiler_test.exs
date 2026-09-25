@@ -86,6 +86,100 @@ defmodule EhOsContract.CompilerTest do
     assert output =~ "lib/visit.ex:7"
   end
 
+  # Line 9 is the event, line 10 the field the subscriber correlates on.
+  @booking """
+  defmodule Fx.Booking do
+    use EhOsContract.Next.Contract, domain: Fx.Domain, context: :settlement
+
+    aggregate :booking, "Rezerwacja" do
+      identity :booking_id
+
+      command :book_visit, "Rezerwacja wizyty", by: :reception, emits: :visit_booked
+
+      event :visit_booked, "Wizyta zarezerwowana" do
+        field :visit_id, :id
+        field :room, :string
+      end
+    end
+
+    process :booking, "Rezerwacja" do
+      correlate :booking_id
+    end
+  end
+  """
+
+  # Line 14 includes the publisher's event in the run.
+  @billing """
+  defmodule Fx.Billing do
+    use EhOsContract.Next.Contract, domain: Fx.Domain, context: :settlement
+
+    consumes Fx.Booking, :visit_booked
+
+    aggregate :billing, "Rozliczenie" do
+      identity :visit_id
+      command :bill_visit, "Rozliczenie wizyty", by: :reception, emits: :visit_billed
+      event :visit_billed, "Wizyta rozliczona"
+    end
+
+    process :billing, "Rozliczenie" do
+      correlate :visit_id
+      include :visit_booked
+    end
+  end
+  """
+
+  test "a change to a consumed event fails the compile of its subscriber, naming both sides",
+       %{tmp_dir: dir} do
+    project(dir, %{
+      "lib/domain.ex" => @domain,
+      "lib/booking.ex" => @booking,
+      "lib/billing.ex" => @billing
+    })
+
+    assert {_, 0} = compile(dir)
+
+    # Controls: an optional field added, and a field the subscriber does not use
+    # retyped, compile.
+    edit(dir, "lib/booking.ex", @booking, [
+      {"field :room, :string",
+       "field :room, :integer\n      field :note, :string, optional: true"}
+    ])
+
+    assert {_, 0} = compile(dir)
+
+    # The field the subscriber correlates on, retyped. Only the publisher is
+    # recompiled: the subscriber records no compile dependency on it (v2 §8).
+    edit(dir, "lib/booking.ex", @booking, [{"field :visit_id, :id", "field :visit_id, :string"}])
+    {output, status} = compile(dir)
+
+    assert status != 0
+    assert output =~ "Compiling 1 file (.ex)"
+
+    assert output =~
+             "X6: process :billing includes :visit_booked and correlates on :visit_id, which " <>
+               "event :visit_booked of Fx.Booking (lib/booking.ex:9) has as :string, not :id"
+
+    assert output =~ "lib/billing.ex:14"
+
+    # And removed.
+    edit(dir, "lib/booking.ex", @booking, [{"field :visit_id, :id\n", ""}])
+    {output, status} = compile(dir)
+
+    assert status != 0
+    assert output =~ "event :visit_booked of Fx.Booking (lib/booking.ex:9) does not have"
+    assert output =~ "lib/billing.ex:14"
+  end
+
+  defp edit(dir, path, source, replacements) do
+    edited =
+      Enum.reduce(replacements, source, fn {from, to}, acc ->
+        true = acc =~ from
+        String.replace(acc, from, to)
+      end)
+
+    write(dir, path, edited)
+  end
+
   defp project(dir, files) do
     write(dir, "mix.exs", """
     defmodule Fx.MixProject do

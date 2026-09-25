@@ -102,7 +102,11 @@ one. What changes is what a host has to do.
   against what they name without a compile dependency, and fails the compile with an error at the declaration:
   `domain:` and `context:` (X1); every actor in `by:`, `recorded_by:`, `accountable` and a scenario, of the
   contract's context (X2); field types and subjects (X3); externals (X4); that every actor asking a scoped query
-  carries the scope (D10); and that a `publish` is named under the domain's `name:` (D11).
+  carries the scope (D10); that a `publish` is named under the domain's `name:` (D11); that a sibling contract
+  consumed is a v2 contract of the same domain declaring the events named (X5); and that the fields a
+  subscriber correlates or matches on are in the sibling's event as it is compiled now, with the same type,
+  neither optional nor personal (X6) — so removing or retyping such a field fails the compile of every
+  subscriber that uses it, with an error at the subscriber naming the publisher's event and its line.
 - `EhOsContract.Next.Contract.vocabulary/0`: every entity of the contract DSL, by path, with the keys it
   takes, derived from the extension.
 - `actor` in the domain DSL takes `scope:`, the fields a grant narrows query answers by (D10).
