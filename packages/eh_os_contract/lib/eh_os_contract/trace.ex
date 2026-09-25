@@ -126,6 +126,7 @@ defmodule EhOsContract.Trace do
   import Ecto.Query
 
   alias EhOsContract.Event
+  alias EhOsContract.Model
 
   @typedoc "One run's verdict for one assertion."
   @type verdict :: %{
@@ -146,7 +147,7 @@ defmodule EhOsContract.Trace do
   @spec evaluate(module(), atom(), keyword()) :: [verdict()]
   def evaluate(contract, trace_name, opts \\ []) do
     trace =
-      Enum.find(contract.traces(), &(&1.name == trace_name)) ||
+      Model.trace(contract, trace_name) ||
         raise ArgumentError,
               "#{inspect(contract)} does not declare assertion #{inspect(trace_name)}"
 
@@ -189,8 +190,8 @@ defmodule EhOsContract.Trace do
   # would be the wrong direction of dependency for a three-line comparison to justify.
   @spec quantified?(module(), map()) :: boolean()
   defp quantified?(contract, trace) do
-    event = contract.event(trace.from)
-    process = contract.process_of(trace.from)
+    event = Model.event(contract, trace.from)
+    process = Model.process_of(contract, trace.from)
     event.identity != nil and process != nil and finer?(event.identity, process.instance)
   end
 
@@ -279,7 +280,7 @@ defmodule EhOsContract.Trace do
   @doc "Verdicts for every assertion of every registered contract."
   @spec evaluate_all(keyword()) :: [%{contract: module(), trace: atom(), verdicts: [verdict()]}]
   def evaluate_all(opts \\ []) do
-    for contract <- EhOsContract.Registry.contracts(), trace <- contract.traces() do
+    for contract <- EhOsContract.Registry.contracts(), trace <- Model.traces(contract) do
       %{
         contract: contract,
         trace: trace.name,
@@ -357,7 +358,7 @@ defmodule EhOsContract.Trace do
 
     for name <- [trace.eventually, trace.or_else],
         name != nil,
-        external = contract.event(name).depends_on,
+        external = Model.event(contract, name).depends_on,
         external != nil,
         at <- Map.get(observed, to_string(external), []) do
       at
@@ -437,7 +438,7 @@ defmodule EhOsContract.Trace do
       |> Enum.reject(&is_nil/1)
       |> Enum.map(&to_string/1)
 
-    identity = contract.event(trace.from).identity |> Enum.map(&to_string/1)
+    identity = Model.event(contract, trace.from).identity |> Enum.map(&to_string/1)
 
     query =
       from(e in Event,
