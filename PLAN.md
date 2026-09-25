@@ -15,42 +15,50 @@ dashboardu; `sandbox/` to dane testowe. **Trwa pivot do v2**: DSL na Sparku z mo
 (jeden kontrakt = jeden proces), event sourcing na własnym magazynie w Postgresie, crypto-shredding. Plan
 zatwierdzono 25 września. **E0, E1 (szew `EhOsContract.Model`), D10–D12, E2 (log staje się magazynem) i E3
 (Spark i DSL domeny) są w `main`, a z nimi decyzje po E3 (PR #7): D13 (opcje obok bloku `do` zostają, biblioteka
-generuje nakładki o jedną arność więcej), stała kolejność w `check`, „Unreleased” w obu changelogach. E4
-(rdzeń DSL-a kontraktu pod `EhOsContract.Next.Contract`) jest zrobiony lokalnie, 12 commitów, niewypchnięty.
-E5–E12 nie są zaczęte.** Zachowanie v1 się nie zmieniło, poza tym, że log jest tylko do dopisywania; kontraktu
-v2 nic jeszcze nie uruchamia.
+generuje nakładki o jedną arność więcej), stała kolejność w `check`, „Unreleased” w obu changelogach. Po nich
+D14 (PR #8: kontrakt deklaruje, kto może działać, osobny pakiet weryfikuje) i E4 (PR #9: rdzeń DSL-a
+kontraktu pod `EhOsContract.Next.Contract`, jego model i reguły L2). E5–E12 i EA nie są zaczęte; E5 rusza na
+`dsl-v2/e5-codegen`.** Zachowanie v1 się nie zmieniło, poza tym, że log jest tylko do dopisywania; kontraktu v2
+nic jeszcze nie uruchamia.
 
 ### Stan repozytorium
 
-- `main` = `origin/main` = `950f83f`, merge [PR #8](https://github.com/EmpoweredHouse/eh-os-contract/pull/8)
-  (D14, sama dokumentacja). Przed nim [PR #7](https://github.com/EmpoweredHouse/eh-os-contract/pull/7)
-  (`c882946`, decyzje po E3), zmergowany przed końcem swojego checku; CI na `main` po nim zielone (przebieg
-  `36137135279`, job `check` `success`). Wcześniej PR #6 (`66ab602`, E3), #5 (`6646df7`, E2), #4 (`c61ce5b`,
-  D10–D12), #3 (`bfda7c7`, E1), #2 (`73031d2`), #1 (`7ce9be2`). CodeRabbit na #7 (plan Free) dał samo
-  podsumowanie, zero uwag.
-- **E4 leży na `claude/dsl-v2-e4-contract-core-68fd81`** = `origin/main` + handoff po #7 + 12 commitów E4 +
-  commit z tym wpisem, przebazowane na `950f83f`, w worktree `.claude/worktrees/dsl-v2-e4-contract-core-68fd81`. Lokalna `dsl-v2/e4-contract-core`
-  stoi na `38df8bd`, wymeldowana w starym worktree `.claude/worktrees/dsl-v2-e1-model-seam-ed132e`, a
-  `origin/dsl-v2/e4-contract-core` na `a4a7009` (w całości w `main`). Push E4 to więc fast-forward:
-  `git push origin claude/dsl-v2-e4-contract-core-68fd81:dsl-v2/e4-contract-core` — tylko na polecenie.
+- `main` = `origin/main` = `db00403`, merge [PR #9](https://github.com/EmpoweredHouse/eh-os-contract/pull/9)
+  (E4), zmergowanego przez użytkownika 25 września. Drzewo `db00403` jest identyczne z `1dea272`, głową
+  gałęzi PR (`git diff 1dea272 db00403` pusty). Wcześniej PR #8 (`950f83f`, D14), #7 (`c882946`), #6
+  (`66ab602`, E3), #5 (`6646df7`, E2), #4 (`c61ce5b`, D10–D12), #3 (`bfda7c7`, E1), #2 (`73031d2`), #1
+  (`7ce9be2`). Historia `main` ma merge commity, bo użytkownik merguje PR-y jako merge.
+- **`dsl-v2/e5-codegen`**: lokalnie = `db00403` plus commit z tym handoffem, niewypchnięta. Leży w worktree
+  `.claude/worktrees/dsl-v2-e4-contract-core-68fd81` (nazwa z E4). W repozytorium są jeszcze trzy inne
+  worktree: `dsl-v2-e1-model-seam-ed132e` (stara `dsl-v2/e4-contract-core` na `38df8bd`, już w `main`),
+  `eh-os-contract-step-7-062e77` (sesja D14, `ba1796a`, w `main`) i główny checkout na `main` (`c882946`,
+  za `origin/main`).
 - **Przegląd przed PR**: `.claude/settings.json` (hook `PreToolUse` odmawia `gh pr create`/`gh pr new`,
   dopóki `HEAD` nie ma notatki `git notes --ref=review`) i `.claude/skills/pre-pr-review/` (połowa autora).
-  Hook czyta HEAD **głównego checkoutu** (`$CLAUDE_PROJECT_DIR`), nie worktree — przy E2 i E3 główny checkout
-  był na chwilę odczepiony na głowie gałęzi, za każdym razem za osobną zgodą użytkownika; poprawka hooka to
-  osobna, niezrobiona zmiana. Połową recenzenta zostaje `.claude/skills/review-pr/`. Notatki są lokalne,
-  `refs/notes/review` nie jest wypychane.
+  Hook czyta HEAD katalogu `$CLAUDE_PROJECT_DIR`. W E2 i E3 był nim główny checkout; w sesji E4 hook przepuścił
+  PR #9 przy notatce na HEAD worktree, bez ruszania głównego checkoutu — czyli tam był to katalog sesji.
+  Jeśli hook odmówi mimo notatki na HEAD worktree, chodzi o główny checkout i trzeba zapytać użytkownika, czy
+  go na chwilę odczepić. Notatki są wspólne dla wszystkich worktree, lokalne, `refs/notes/review` nie jest
+  wypychane. Połową recenzenta zostaje `.claude/skills/review-pr/`.
+- CodeRabbit na #7 i #9 (plan Free): tylko podsumowanie, na #9 „Review limit reached”; zero uwag inline i
+  recenzji na obu.
 
 ### Co zostało — i czyje to jest
 
-- **E4: przegląd przed PR zrobiony, PR otwierany na polecenie użytkownika z 25 września.** Po merge'u — CI na `main` do sprawdzenia po jobach.
-- **Stare worktree po zamknięciu sesji — użytkownika** (`.claude/worktrees/dsl-v2-e1-model-seam-ed132e` i to z
-  E4, gdy nikt w nich nie pracuje).
-- **E5–E12 — asystenta**, według dopisku „Dopisek 25 września (2) — Etap 6” niżej. Następny krok: E5
-  (generowanie kodu, wiązanie implementacji, scenariusze, L3). E5 dziedziczy z E4: reguły L3, których L2 nie
-  może sprawdzić bez domeny (aktorzy, wartości, podmioty, systemy zewnętrzne, `scope` aktorów przy query,
-  przestrzeń nazw publikacji), reguły S na scenariuszach — w tym uzupełnienie `given` fikstury
-  `UniversalityGate.Next` i reprezentację czasu w danych scenariusza — oraz decider z
-  `UniversalityGate.Eligibility.decide/1` („E4 — co wyszło”, ustalenia 3, 5, 6).
+- **Stare worktree — użytkownika** (`git worktree remove …` dla `dsl-v2-e1-model-seam-ed132e` i
+  `eh-os-contract-step-7-062e77`, gdy nikt w nich nie pracuje); lokalna gałąź `claude/dsl-v2-e4-contract-core-68fd81`
+  jest w całości w `main` i też jest do usunięcia.
+- **E5–E12 i EA — asystenta**, według dopisku „Dopisek 25 września (2) — Etap 6” niżej. Następny krok: **E5**
+  (generowanie kodu, wiązanie implementacji, scenariusze, L3) na `dsl-v2/e5-codegen`. E5 dziedziczy z E4:
+  - reguły L3, których L2 nie sprawdzi bez domeny i bez innych kontraktów: aktorzy, wartości, podmioty i
+    systemy zewnętrzne z domeny; `scope` aktorów przy query (D10); przestrzeń nazw publikacji (D11); unikalność
+    nazw komend i query w całej aplikacji (D14);
+  - reguły S na scenariuszach, w tym jeden wyzwalacz na scenariusz (znalezisko 3 z przeglądu E4 — dziś model
+    trzyma tylko pierwszy), uzupełnienie `given` fikstury `UniversalityGate.Next` i reprezentację czasu w danych
+    scenariusza;
+  - decider z `UniversalityGate.Eligibility.decide/1`.
+
+  Szczegóły: „E4 — co wyszło”, ustalenia 3, 5, 6 i 14, oraz „Przegląd przed PR” tamże.
 - **Lista zmian do `eh-os`** (odwrócenie D-01, zawężenie D-15, outbox, G-16, pytanie o transport v1) —
   użytkownika; jest w „D10–D12 — skąd się wzięły” w dopisku Etap 6. Od D14 także D-34, D-40 i plan etapu 4
   (kroki 7–8) — w „D14 — autoryzacja” tamże.
@@ -104,14 +112,13 @@ uruchomić `MIX_ENV=test mix deps.get` w `packages/eh_os_contract` i w `packages
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 25 września**, na `claude/dsl-v2-e4-contract-core-68fd81` (po przebazowaniu na `950f83f` i
-  z D14): brama → **EXIT=0**. Sandbox: 45 testów, 0 padnięć,
-  `eh_os_contract.check` 0 błędów, 5 ostrzeżeń, 23 informacje. Pakiet silnika: 593 testy, 0 padnięć, `check`
-  0 błędów, 8 ostrzeżeń, 16 informacji. Pakiet web: 31 testów, 0 padnięć. Linie `check` w obu projektach
-  identyczne co do bajtu z `main` na każdym commicie E4.
-- **CI**: na `main` po merge'u #7 — przebieg `36137135279` na `c882946`, job `check` `success`, żaden krok
-  pominięty ani nieudany. E4 nie był jeszcze na CI (niewypchnięty). Druga baza testowa silnika powstaje na CI
-  sama, z aliasu `test`.
+- **Lokalnie, 25 września**, na `1dea272` (drzewo identyczne z `main` = `db00403`), brama z `sandbox/` →
+  **EXIT=0**. Sandbox: 45 testów, 0 padnięć, `eh_os_contract.check` 0 błędów, 5 ostrzeżeń, 23 informacje.
+  Pakiet silnika: 593 testy, 0 padnięć, `check` 0 błędów, 8 ostrzeżeń, 16 informacji. Pakiet web: 31 testów,
+  0 padnięć. Linie `check` w obu projektach identyczne co do bajtu z tymi sprzed E4.
+- **CI**: PR #9 — przebieg `36145275279` na `1dea272`, job `check` `success`, żaden krok pominięty ani
+  nieudany (odczytane po jobach). `main` po merge'u #8 — `36141999262`, `success`. `main` po merge'u #9 —
+  `36145850036` na `db00403`, job `check` `success`, żaden krok pominięty ani nieudany.
 
 ### Otwarte pytania
 
@@ -119,6 +126,9 @@ uruchomić `MIX_ENV=test mix deps.get` w `packages/eh_os_contract` i w `packages
   przyjęte po E1 tego samego dnia. Nowe pytania w §19: `scope` dla komend, transport v1 między kontenerami. Każde można
   otworzyć ponownie; ponowne otwarcie to notka z datą w §16. Najbardziej brzemienne: D6 (`recorded_by` dla
   15 zdarzeń bez komendy) i D7 (przynależność cudzych zdarzeń do przebiegów przez `_event_runs`).
+- **D14:** przyjęta komenda ma wiersz w tabeli pakietu auth i wiersz `accepted` w `_commands` — dwa zapisy
+  jednego faktu; rozstrzyga EA („D14 — autoryzacja” w dopisku Etap 6). Kształt behaviouru
+  `EhOsContract.Authorizer` do potwierdzenia przed E6 (opis PR #8).
 - **Upcastery:** kontrakt callbacku — jeden na typ i wersję czy łańcuch — rozstrzyga etap, który pierwszy go
   potrzebuje (§19).
 - **H177** z materiału Rehmedu (przekazanie wizyty jako komenda warunkowa, zamrożenie ceny przy rozliczeniu)
@@ -142,7 +152,9 @@ E1 jednorazowo zlecił wypchnięcie `dsl-v2/e1-decisions` i PR z D10–D12, a po
 `dsl-v2/e2-store`. Zlecając E4 (25 września), powtórzył zgodę na commity na `dsl-v2/eN-*` przy zielonej bramie
 i na zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. Commity E4 poszły jednak na gałąź worktree tej
 sesji, `claude/dsl-v2-e4-contract-core-68fd81`, a nie na `dsl-v2/e4-contract-core` (powód w „Stan
-repozytorium”) — ta rozbieżność czeka na potwierdzenie użytkownika.
+repozytorium” z tamtej chwili); użytkownik to potwierdził i zlecił `pre-pr-review` oraz PR #9, który
+zmergował. Poza tym nic z tego nie przechodzi na E5 samo: commity na `dsl-v2/e5-*` bez pytania tylko wtedy, gdy
+użytkownik powtórzy zgodę w nowej sesji.
 
 ### Język
 
@@ -256,8 +268,8 @@ padnie — stop, wariant A (opcje w bloku) i pytanie wraca do użytkownika.**
 *Odbiór:* test na każdą regułę L2 i kontrola, która się kompiluje; złoty test modelu; słownik przypięty
 testem, wyprowadzany z rozszerzenia, a nie z ręcznej listy; przykłady z v2 §4.5–4.6 kompilują się w zapisie,
 w którym są napisane (poza poprawkami z D10–D12).
-**Zrobione 25 września**, 12 commitów na gałęzi worktree tej sesji,
-`claude/dsl-v2-e4-contract-core-68fd81`, niewypchnięte. Oba warunki D13 przeszły, choć jedno założenie pod
+**Zrobione 25 września** i zmergowane jako PR #9 (`db00403`): 12 commitów E4, pięć poprawek z przeglądu
+przed PR i dwa commity `PLAN.md`. Oba warunki D13 przeszły, choć jedno założenie pod
 nimi było błędne; kryteria odbioru spełnione — „E4 — co wyszło” niżej.
 
 **E5 — Generowanie kodu, wiązanie, scenariusze, L3.** Struktury i behaviours (v2 §5), `EhOsContract.Implementation`
