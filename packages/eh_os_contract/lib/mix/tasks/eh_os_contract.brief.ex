@@ -54,7 +54,7 @@ defmodule Mix.Tasks.EhOsContract.Brief do
 
     contract =
       Enum.find(EhOsContract.Registry.contracts(), fn c ->
-        Enum.any?(c.processes(), &(&1.name == name))
+        Enum.any?(EhOsContract.Model.processes(c), &(&1.name == name))
       end) ||
         Mix.raise("no process #{inspect(name)}. Declared: #{known_processes()}")
 
@@ -74,7 +74,7 @@ defmodule Mix.Tasks.EhOsContract.Brief do
 
   defp known_processes do
     EhOsContract.Registry.contracts()
-    |> Enum.flat_map(fn c -> Enum.map(c.processes(), & &1.name) end)
+    |> Enum.flat_map(fn c -> Enum.map(EhOsContract.Model.processes(c), & &1.name) end)
     |> Enum.sort()
     |> Enum.join(", ")
   end
