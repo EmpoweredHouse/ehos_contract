@@ -14,6 +14,7 @@ defmodule EhOsContract.Next.Contract.Links do
   - `Links.Domain` — X1–X4 and the parts of D10 and D11 that need the domain.
   - `Links.Siblings` — X5–X6, what a contract consumes from a sibling contract.
   - `Links.System` — X7, X8 and D14's names, unique across the application.
+  - `Links.Scenarios` — X9, scenario values of domain types and of siblings' events.
 
   A violation points at the declaration at fault. L3 reads the declarations Spark
   kept in each compiled contract (`spark_dsl_config/0`), the same ones L2 read,
@@ -40,7 +41,7 @@ defmodule EhOsContract.Next.Contract.Links do
           domain: map() | nil
         }
 
-  @groups [Links.Domain, Links.Siblings, Links.System]
+  @groups [Links.Domain, Links.Siblings, Links.System, Links.Scenarios]
 
   @doc """
   Every violation of an L3 rule among `modules`, the modules of one application.

@@ -10,8 +10,8 @@ defmodule EhOsContract.Next.Contract.Data do
   an integer or a string of digits, for the same reason.
 
   A field typed with a domain value is checked against the domain, which a contract
-  does not compile against (v2 §8): `problems/2` leaves it alone, and a Mix compiler
-  checks it (L3, X9).
+  does not compile against (v2 §8): `problems/2` leaves it alone, and the Mix
+  compiler checks it with `problems/3`, given the domain's values (L3, X9).
   """
 
   @built_in EhOsContract.Domain.Rules.built_in_types()
@@ -81,6 +81,56 @@ defmodule EhOsContract.Next.Contract.Data do
 
   # A domain value: the domain says.
   def problems(type, _value) when is_atom(type), do: []
+
+  @doc """
+  What is wrong with `value` as a value of `type`, domain values included: `values`
+  are the domain's, by name. A value with a type is a value of that type; a value
+  with fields is a map of those fields, each required one given.
+  """
+  @spec problems(type(), term(), %{atom() => map()}) :: [String.t()]
+  def problems(_type, nil, _values), do: []
+
+  def problems({:list, inner}, list, values) when is_list(list),
+    do: Enum.flat_map(list, &problems(inner, &1, values))
+
+  def problems(type, value, values) when is_atom(type) and is_map_key(values, type) do
+    case Map.fetch!(values, type) do
+      %{type: nil, fields: fields} when is_map(value) ->
+        fields_problems(type, fields, value, values)
+
+      %{type: nil} ->
+        ["#{inspect(value)} is not a map of the fields of #{inspect(type)}"]
+
+      %{type: inner} ->
+        problems(inner, value, values)
+    end
+  end
+
+  def problems(type, value, _values), do: problems(type, value)
+
+  defp fields_problems(type, fields, value, values) do
+    declared = Map.new(fields, &{&1.name, &1})
+
+    unknown =
+      for key <- Map.keys(value), not Map.has_key?(declared, key) do
+        "#{inspect(type)} has no field #{inspect(key)}"
+      end
+
+    missing =
+      for f <- fields, not f.optional, not Map.has_key?(value, f.name) do
+        "#{inspect(type)} needs #{inspect(f.name)}"
+      end
+
+    nested =
+      for {key, v} <- value,
+          field = declared[key],
+          field != nil,
+          problem <- problems(field.type, v, values) do
+        "#{inspect(type)}, field #{inspect(key)}: #{problem}"
+      end
+
+    unknown ++ missing ++ nested
+  end
 
   defp example(:date), do: ~s|an ISO 8601 date, "2026-09-01"|
   defp example(:timestamp), do: ~s|an ISO 8601 string, "2026-09-01T09:00:00Z"|

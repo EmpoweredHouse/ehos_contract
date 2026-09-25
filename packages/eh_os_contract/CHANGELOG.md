@@ -108,7 +108,9 @@ one. What changes is what a host has to do.
   neither optional nor personal (X6) — so removing or retyping such a field fails the compile of every
   subscriber that uses it, with an error at the subscriber naming the publisher's event and its line. Across the
   application: a process name is declared once (X7), a command's or query's capability `<domain>.<name>` too
-  (D14), and a declaration has at most one implementation (X8).
+  (D14), and a declaration has at most one implementation (X8). Scenario data that L2 leaves alone has to fit
+  (X9): values of domain types — an enum's member, a value's type, a value's fields — and the data of an event
+  consumed from a sibling, against the sibling's fields.
 - `__eh_os_implementation__/0` also says where the implementation's `use` is, `file:` and `line:`.
 - `EhOsContract.Next.Contract.vocabulary/0`: every entity of the contract DSL, by path, with the keys it
   takes, derived from the extension.
