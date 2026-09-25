@@ -44,6 +44,8 @@ defmodule EhOsContract.Deployment do
 
   import Ecto.Query
 
+  alias EhOsContract.Model
+
   @primary_key {:id, :binary_id, autogenerate: true}
 
   schema "eh_os_contract_deployments" do
@@ -85,20 +87,20 @@ defmodule EhOsContract.Deployment do
   def record!(now \\ DateTime.utc_now()) do
     rows =
       for contract <- EhOsContract.Registry.contracts() do
-        events = contract.event_names() |> Enum.map(&to_string/1) |> Enum.sort()
+        events = contract |> Model.event_names() |> Enum.map(&to_string/1) |> Enum.sort()
         edges = contract |> edge_labels() |> Enum.sort()
 
         %{
           id: Ecto.UUID.generate(),
           contract: inspect(contract),
-          contract_version: contract.version(),
+          contract_version: Model.version(contract),
           # Sorted above, so the list order carries no meaning by the time it gets
           # here — which is the one case where `EhOsContract.Digest` needs the caller's help,
           # since it preserves list order on purpose.
           wiring_version: EhOsContract.Digest.hash(edges),
           events: events,
           edges: edges,
-          declaration_digests: contract.declaration_digests(),
+          declaration_digests: Model.digests(contract),
           first_seen_at: now
         }
       end
@@ -232,13 +234,13 @@ defmodule EhOsContract.Deployment do
   @spec report(module(), keyword()) :: map()
   def report(contract, opts \\ []) do
     recorded = all(contract)
-    current = Enum.find(recorded, &(&1.contract_version == contract.version()))
+    current = Enum.find(recorded, &(&1.contract_version == Model.version(contract)))
     in_log = versions_in_log(contract, opts)
 
     %{
       contract: contract,
       deployed: %{
-        contract_version: contract.version(),
+        contract_version: Model.version(contract),
         wiring_version: current && current.wiring_version,
         since:
           current &&
@@ -251,7 +253,7 @@ defmodule EhOsContract.Deployment do
       changed: last_change(recorded),
       from_earlier_versions:
         in_log
-        |> Enum.reject(&(&1.contract_version == contract.version()))
+        |> Enum.reject(&(&1.contract_version == Model.version(contract)))
         |> Enum.map(& &1.events)
         |> Enum.sum()
     }
