@@ -75,6 +75,10 @@ one. What changes is what a host has to do.
   each with `@type t` and defined at the line of its declaration. Commands and events enforce their required
   fields and carry `__meta__`, an `EhOsContract.Meta`. `EhOsContract.Model.module_for/3` names them; an event
   consumed from a sibling contract is the sibling's own struct.
+- A v2 contract generates a behaviour for each unit, policy, effect, process manager and read model, and a
+  query's callback beside its parameters: one callback per command, `(command, state)`, and `evolve/2` for a
+  declared state; one per handled or projected event; one per process manager reaction or timer that issues.
+  A decision returns `{:ok, events}` or `{:error, %EhOsContract.Rejection{}}`, which names the invariant only.
 - `EhOsContract.Model.capabilities/1`: a v2 contract's capabilities under the names EHOS grants (D14),
   `<domain>.<command>` and `<domain>.<query>`, each with its roles `<domain>.<actor>` and a query's scope. The
   model's `grants` says the same per actor, with the events each records.

@@ -1,7 +1,7 @@
 defmodule EhOsContract.Next.Contract.Generate do
   @moduledoc """
-  Generates the modules a v2 contract names (v2 §5), after `Build` has made its
-  model.
+  Generates the modules a v2 contract names (v2 §5), structs and behaviours, after
+  `Build` has made its model.
 
   **Structs.** For a contract `C`:
 
@@ -27,13 +27,20 @@ defmodule EhOsContract.Next.Contract.Generate do
 
   An event consumed from a sibling contract gets no struct here: the sibling's own
   is the only one (v2 §7, mechanism 1).
+
+  **Behaviours.** `C.Aggregates.*`, `C.Dcbs.*`, `C.Policies.*`, `C.Effects.*`,
+  `C.ProcessManagers.*` and `C.ReadModels.*` each declare the callbacks an
+  implementation of that declaration defines; a query's one callback sits in
+  `C.Queries.*`, beside its parameters. Which callbacks, with which types, is
+  `EhOsContract.Next.Contract.Callbacks`: the same list the implementation macros
+  check against.
   """
 
   use Spark.Dsl.Transformer
 
   alias EhOsContract.Domain
   alias EhOsContract.Model
-  alias EhOsContract.Next.Contract.{Build, Rules}
+  alias EhOsContract.Next.Contract.{Build, Callbacks, Rules}
   alias Spark.Dsl.Transformer
 
   @built_in Domain.Rules.built_in_types()
@@ -48,10 +55,36 @@ defmodule EhOsContract.Next.Contract.Generate do
     anno = locations(Rules.declarations(dsl))
     values = Module.concat(model.domain, Values)
 
-    modules =
+    queries = MapSet.new(model.queries, &Model.module_for(model, :query, &1.name))
+
+    structs =
       for {module, what, fields, shape, key} <- structs(model) do
-        create(module, struct_body(model, what, fields, shape, values), Map.get(anno, key))
+        body = struct_body(model, what, fields, shape, values)
+
+        # A query's parameters and its callback are one module: `use C, query: :q`
+        # binds to it, and the implementation matches on the struct.
+        body =
+          if MapSet.member?(queries, module),
+            do:
+              quote(
+                do:
+                  (
+                    unquote(body)
+                    unquote(callbacks(model, :query, elem(key, 1)))
+                  )
+              ),
+            else: body
+
+        create(module, body, Map.get(anno, key))
       end
+
+    behaviours =
+      for {kind, name, key} <- behaviours(model) do
+        module = Model.module_for(model, kind, name)
+        create(module, behaviour_body(model, kind, name), Map.get(anno, key))
+      end
+
+    modules = structs ++ behaviours
 
     {:ok, Transformer.eval(dsl, [], quote(do: (unquote_splicing(modules))))}
   end
@@ -109,6 +142,46 @@ defmodule EhOsContract.Next.Contract.Generate do
            q.params, :plain, {:query, q.name}}
       )
     ])
+  end
+
+  # `{kind, name, location key}` for every declaration an implementation binds to,
+  # except a query, whose callback sits with its parameters.
+  defp behaviours(model) do
+    Enum.concat([
+      for(u <- model.units, do: {u.kind, u.name, {:unit, u.name}}),
+      for(p <- model.policies, do: {:policy, p.name, {:policy, p.name}}),
+      for(e <- model.effects, do: {:effect, e.name, {:effect, e.name}}),
+      for(
+        pm <- model.process_managers,
+        do: {:process_manager, pm.name, {:process_manager, pm.name}}
+      ),
+      for(r <- model.read_models, do: {:read_model, r.name, {:read_model, r.name}})
+    ])
+  end
+
+  defp behaviour_body(model, kind, name) do
+    doc =
+      "What an implementation of #{String.replace(Atom.to_string(kind), "_", " ")} " <>
+        "`#{inspect(name)}` of `#{inspect(model.module)}` defines, generated from its declaration. " <>
+        "Bound with `use #{inspect(model.module)}, #{kind}: #{inspect(name)}`."
+
+    quote do
+      @moduledoc unquote(doc)
+      unquote(callbacks(model, kind, name))
+    end
+  end
+
+  defp callbacks(model, kind, name) do
+    %{callbacks: callbacks, evolve: evolve} = Callbacks.of(model, kind, name)
+
+    specs =
+      for c <- callbacks ++ if(evolve, do: [evolve.callback], else: []) do
+        quote do
+          @callback unquote(c.name)(unquote_splicing(c.args)) :: unquote(c.returns)
+        end
+      end
+
+    quote(do: (unquote_splicing(specs)))
   end
 
   defp struct_body(model, what, fields, shape, values) do
@@ -175,6 +248,8 @@ defmodule EhOsContract.Next.Contract.Generate do
         for(e <- Rules.local_events(d), do: {{:event, e.name}, e}),
         for({as, c} <- Rules.consumed(d), is_binary(c.from), do: {{:received, as}, c}),
         for(pm <- d.process_managers, do: {{:process_manager, pm.name}, pm}),
+        for(p <- d.policies, do: {{:policy, p.name}, p}),
+        for(e <- d.effects, do: {{:effect, e.name}, e}),
         for(r <- d.read_models, do: {{:read_model, r.name}, r}),
         for(q <- d.queries, do: {{:query, q.name}, q})
       ])

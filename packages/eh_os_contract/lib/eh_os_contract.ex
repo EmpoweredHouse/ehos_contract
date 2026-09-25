@@ -37,6 +37,7 @@ defmodule EhOsContract do
       {Next.Contract.Dsl, []},
       Payload,
       Registry,
+      Rejection,
       Report,
       Report.Sentence,
       Store,
