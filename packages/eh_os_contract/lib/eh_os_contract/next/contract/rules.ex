@@ -22,7 +22,7 @@ defmodule EhOsContract.Next.Contract.Rules do
   alias EhOsContract.Next.Contract.Rules
   alias Spark.Dsl.Transformer
 
-  @groups [Rules.Names, Rules.Fields, Rules.Units]
+  @groups [Rules.Names, Rules.Fields, Rules.Units, Rules.Process, Rules.Consumes]
 
   @impl true
   def before?(EhOsContract.Next.Contract.Build), do: true
@@ -41,6 +41,7 @@ defmodule EhOsContract.Next.Contract.Rules do
     of = fn struct -> for %{__struct__: ^struct} = e <- entities, do: e end
 
     %{
+      module: Transformer.get_persisted(dsl, :module),
       units: of.(Dsl.Unit),
       policies: of.(Dsl.Policy),
       effects: of.(Dsl.Effect),
