@@ -774,5 +774,5 @@ defmodule EhOsContract.Next.Contract.Dsl do
 
   use Spark.Dsl.Extension,
     sections: [@contract],
-    transformers: [EhOsContract.Next.Contract.Build]
+    transformers: [EhOsContract.Next.Contract.Rules, EhOsContract.Next.Contract.Build]
 end

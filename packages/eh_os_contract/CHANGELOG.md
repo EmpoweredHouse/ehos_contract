@@ -62,7 +62,8 @@ one. What changes is what a host has to do.
   commands, events and stage groups; policies, effects, process managers, read models and queries; `consumes`
   and `publish`; one `process` with stages, includes, cadence, deadline and promises; and scenarios. Its model
   is `__eh_os_contract_model__/0`, with a version that ignores declaration order. Nothing runs it yet, and the
-  v1 accessors of `EhOsContract.Model` refuse it by name.
+  v1 accessors of `EhOsContract.Model` refuse it by name. It refuses to compile what v2 §6's layer L2 refuses:
+  names (N1–N2) and fields (F1–F6).
 - Options beside a `do` block in the domain DSL: `context`, `term` and `value` accept
   `context :settlement, "Rozliczenia", subdomain: :supporting do … end` as well as the options written inside
   the block. An error still points at the declaration's file and line, and `mix format` keeps the form as
