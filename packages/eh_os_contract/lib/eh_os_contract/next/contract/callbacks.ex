@@ -58,8 +58,11 @@ defmodule EhOsContract.Next.Contract.Callbacks do
         )
       end
 
+    # A boundary may consult an event of its own (A4); it is folded once.
     events =
-      for(e <- model.events, e.unit == name, do: e.name) ++ Enum.map(unit.consults, & &1.event)
+      Enum.uniq(
+        for(e <- model.events, e.unit == name, do: e.name) ++ Enum.map(unit.consults, & &1.event)
+      )
 
     %{
       callbacks: commands,

@@ -295,6 +295,52 @@ defmodule EhOsContract.ImplementationTest do
     end
   end
 
+  describe "I3 in a boundary" do
+    test "an event the boundary both emits and consults is named once" do
+      compile(
+        contract("SelfConsulting", """
+          dcb :invoicing, "Fakturowanie" do
+            identity :payer_id
+            consults :invoice_issued, match: :payer_id
+
+            state do
+              field :issued, :integer, default: 0
+            end
+
+            command :issue, "Wystawienie", by: :reception, emits: :invoice_issued
+            event :invoice_issued, "Wystawiono", terminal: true
+            event :invoice_noted, "Odnotowano", recorded_by: :reception
+          end
+
+          process :invoicing, "Fakturowanie" do
+            correlate :payer_id
+          end
+        """),
+        "self_consulting.ex"
+      )
+
+      message =
+        assert_refused(
+          """
+          defmodule EhOsContract.Next.Implementations.SelfConsulting do
+            use EhOsContract.Next.Fixtures.SelfConsulting, dcb: :invoicing
+
+            @impl true
+            def issue(%Issue{payer_id: id}, _state), do: emit(%InvoiceIssued{payer_id: id})
+
+            @impl true
+            def evolve(state, %InvoiceNoted{}), do: state
+          end
+          """,
+          "self_consulting_impl.ex",
+          "I3: EhOsContract.Next.Implementations.SelfConsulting.evolve/2 has no clause for " <>
+            "%InvoiceIssued{}. Add"
+        )
+
+      refute message =~ "%InvoiceIssued{}, %InvoiceIssued{}"
+    end
+  end
+
   describe "I4 and I5: what a decision emits and rejects on" do
     test "an event the command does not emit, and one that is not a literal" do
       body =
