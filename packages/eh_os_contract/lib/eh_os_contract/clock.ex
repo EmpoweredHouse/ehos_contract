@@ -34,10 +34,13 @@ defmodule EhOsContract.Clock do
   whatever was set before, so calls nest.
 
   `at` may be written to any precision. The log stores microseconds, so it is
-  widened to six digits here rather than refused at the append.
+  widened to six digits here rather than refused at the append. It must be in UTC,
+  which is what the log stores: converting needs a time zone database, and that is
+  the caller's to choose, so a time in another zone is refused here, at the call.
   """
   @spec at(DateTime.t(), (-> result)) :: result when result: term()
-  def at(%DateTime{microsecond: {value, _precision}} = at, fun) when is_function(fun, 0) do
+  def at(%DateTime{time_zone: "Etc/UTC", microsecond: {value, _precision}} = at, fun)
+      when is_function(fun, 0) do
     previous = Process.put(@key, %{at | microsecond: {value, 6}})
 
     try do
@@ -45,5 +48,11 @@ defmodule EhOsContract.Clock do
     after
       if previous, do: Process.put(@key, previous), else: Process.delete(@key)
     end
+  end
+
+  def at(%DateTime{time_zone: zone}, _fun) do
+    raise ArgumentError,
+          "EhOsContract.Clock.at/2 got a time in #{zone}. The log stores UTC: convert it " <>
+            "first, e.g. with DateTime.shift_zone!(at, \"Etc/UTC\")"
   end
 end
