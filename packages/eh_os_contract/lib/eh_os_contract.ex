@@ -34,6 +34,9 @@ defmodule EhOsContract do
       Registry,
       Report,
       Report.Sentence,
+      Store,
+      Store.Postgres,
+      Store.Suite,
       Trace
     ]
 
