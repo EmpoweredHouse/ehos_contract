@@ -1,0 +1,1 @@
+Documentation only: main..HEAD touches PLAN.md and docs/adr/contract-v2.md, no code, config, migration or test. No code review needed; checked on 2026-09-25 before opening the PR.
