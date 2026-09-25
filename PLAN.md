@@ -102,8 +102,8 @@ uruchomić `MIX_ENV=test mix deps.get` w `packages/eh_os_contract` i w `packages
   `check` 0 błędów, 8 ostrzeżeń, 16 informacji. Pakiet web: 31 testów, 0 padnięć. Te same liczby `check` co na
   `main`; od `189cad7` linie `check` wychodzą w stałej kolejności, więc deltę porównuje się zwykłym diffem.
 - **CI**: PR #6 — przebieg `36126765033` na `9fbe323`, job `check` `success`, żaden krok pominięty ani
-  nieudany (pierwszy przebieg ze Sparkiem). Na `main` po merge'u #6 (`66ab602`) przebieg trwał w chwili pisania;
-  sprawdź `gh run list --branch main --limit 1`. Druga baza testowa silnika powstaje na CI sama, z aliasu `test`.
+  nieudany (pierwszy przebieg ze Sparkiem). Na `main` po merge'u #6 — przebieg `36135283027` na `66ab602`, job `check`
+  `success`, żaden krok pominięty ani nieudany. Druga baza testowa silnika powstaje na CI sama, z aliasu `test`.
 
 ### Otwarte pytania
 
