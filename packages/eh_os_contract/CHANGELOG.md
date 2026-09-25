@@ -57,6 +57,12 @@ one. What changes is what a host has to do.
 - `EhOsContract.Domain`: the v2 domain DSL, on Spark. It covers contexts with a glossary, actors, subjects,
   values, externals and relations, with rules D1–D5 and F3/F5 as compile errors. Its model is
   `__eh_os_contract_model__/0`, and it generates a `Values` module of types. Nothing in v1 reads it yet.
+- `EhOsContract.Next.Contract`: the v2 contract DSL, on Spark, beside v1's `EhOsContract.Contract` until the
+  cut. It declares aggregates and dynamic consistency boundaries with their identity, state, invariants,
+  commands, events and stage groups; policies, effects, process managers, read models and queries; `consumes`
+  and `publish`; one `process` with stages, includes, cadence, deadline and promises; and scenarios. Its model
+  is `__eh_os_contract_model__/0`, with a version that ignores declaration order. Nothing runs it yet, and the
+  v1 accessors of `EhOsContract.Model` refuse it by name.
 - Options beside a `do` block in the domain DSL: `context`, `term` and `value` accept
   `context :settlement, "Rozliczenia", subdomain: :supporting do … end` as well as the options written inside
   the block. An error still points at the declaration's file and line, and `mix format` keeps the form as

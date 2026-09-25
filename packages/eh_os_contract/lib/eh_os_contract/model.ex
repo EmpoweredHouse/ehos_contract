@@ -86,6 +86,12 @@ defmodule EhOsContract.Model do
   @spec contract!(contract()) :: t()
   defp contract!(contract) do
     case fetch(contract) do
+      # A v2 contract's model has other keys (`units`, one `process`), and nothing
+      # reads one before dispatch does (v2 plan, E6).
+      %{kind: :contract, units: _, module: module} ->
+        raise ArgumentError,
+              "#{inspect(module)} is a v2 contract, and these accessors read v1 contracts"
+
       %{kind: :contract} = model ->
         model
 

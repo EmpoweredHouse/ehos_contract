@@ -6,8 +6,8 @@ defmodule EhOsContract.DslWrappers do
   as four arguments: the two positional ones, the keyword list, and `[do: …]`. A Spark
   entity macro takes its positional arguments and one options list, so that call
   names a macro Spark never defines. For every entity that takes a block, one that
-  has entities nested in it, `attach/2` defines that one more arity from the entity's
-  definition. It moves the block into the options, `context(name, label, opts, do: b)`
+  has entities nested in it and options of its own, `attach/2` defines that one more
+  arity from the entity's definition. It moves the block into the options, `context(name, label, opts, do: b)`
   → `context(name, label, opts ++ [do: b])`, and Spark's own macro reads the block
   from `opts[:do]`. Nothing is written by hand per entity.
 
@@ -37,35 +37,47 @@ defmodule EhOsContract.DslWrappers do
   """
   @spec attach(Spark.Dsl.Section.t(), module()) :: Spark.Dsl.Section.t()
   def attach(%Spark.Dsl.Section{} = section, namespace) do
-    {entities, imports} = level(section.entities, Module.concat(namespace, Wrappers))
+    module = Module.concat(namespace, Wrappers)
+    imports = define(module, section.entities)
+    entities = Enum.map(section.entities, &nest(&1, child_module(module, &1)))
     %{section | entities: entities, imports: section.imports ++ imports}
   end
 
-  # One level of nesting: the wrappers for these entities go into `module`, which is
-  # imported wherever these entities are. Their own children get a module of their
-  # own, imported in their body.
-  defp level(entities, module) do
-    blocked = Enum.filter(entities, &takes_block?/1)
-    if blocked != [], do: define!(module, blocked)
+  # The wrappers for an entity's children go into one module, whatever key each child
+  # is nested under, and that module is imported in the entity's body. Each child's
+  # own children get a module of their own, one level down.
+  defp nest(entity, module) do
+    children = Enum.flat_map(entity.entities, fn {_key, list} -> list end)
+    imports = define(module, children)
 
-    entities =
-      Enum.map(entities, fn entity ->
-        children = Module.concat(module, Macro.camelize(Atom.to_string(entity.name)))
+    nested =
+      for {key, list} <- entity.entities do
+        {key, Enum.map(list, &nest(&1, child_module(module, &1)))}
+      end
 
-        {nested, imports} =
-          Enum.map_reduce(entity.entities, [], fn {key, list}, imports ->
-            {list, more} = level(list, children)
-            {{key, list}, Enum.uniq(imports ++ more)}
-          end)
-
-        %{entity | entities: nested, imports: entity.imports ++ imports}
-        |> with_options_transform()
-      end)
-
-    {entities, if(blocked == [], do: [], else: [module])}
+    with_options_transform(%{entity | entities: nested, imports: entity.imports ++ imports})
   end
 
-  defp takes_block?(entity), do: entity.entities != []
+  defp child_module(module, entity),
+    do: Module.concat(module, Macro.camelize(Atom.to_string(entity.name)))
+
+  # Returns the modules to import: the one defined, or none when no entity at this
+  # level takes a block.
+  defp define(module, entities) do
+    case entities |> Enum.filter(&takes_block?/1) |> Enum.uniq_by(& &1.name) do
+      [] ->
+        []
+
+      blocked ->
+        define!(module, blocked)
+        [module]
+    end
+  end
+
+  # An entity with nothing nested takes no block, and one whose every key is a
+  # positional argument has no options to put beside one (`state do … end`).
+  defp takes_block?(entity),
+    do: entity.entities != [] and Keyword.drop(entity.schema, arg_names(entity)) != []
 
   defp define!(module, entities) do
     macros =

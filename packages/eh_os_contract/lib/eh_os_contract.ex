@@ -32,6 +32,8 @@ defmodule EhOsContract do
       Job,
       Migrations,
       Model,
+      Next.Contract,
+      {Next.Contract.Dsl, []},
       Payload,
       Registry,
       Report,
