@@ -313,6 +313,15 @@ defmodule EhOsContract.Next.ContractTest do
       assert error.message =~
                "names domain EhOsContract.Next.ContractTest.Clinic, which is not a compiled"
 
+      # A module that exists and is no domain at all: named as such, not tried as a
+      # v1 contract.
+      error =
+        assert_raise ArgumentError, fn ->
+          Model.capabilities(%{Model.fetch(Golden) | domain: Enum})
+        end
+
+      assert error.message =~ "names domain Enum, which is not a compiled EhOsContract.Domain"
+
       error = assert_raise ArgumentError, fn -> Model.capabilities(ProcessShapes.Bare) end
 
       assert error.message =~

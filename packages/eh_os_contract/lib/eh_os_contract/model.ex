@@ -151,7 +151,12 @@ defmodule EhOsContract.Model do
   end
 
   defp domain_name!(%{domain: domain, module: module}) do
-    case Code.ensure_loaded?(domain) && fetch(domain) do
+    # Only a compiled model is asked: `fetch/1` on any other module would try it as a
+    # v1 contract and fail with that error instead of this one.
+    compiled? =
+      Code.ensure_loaded?(domain) and function_exported?(domain, :__eh_os_contract_model__, 0)
+
+    case compiled? && domain.__eh_os_contract_model__() do
       %{kind: :domain, name: name} ->
         name
 
