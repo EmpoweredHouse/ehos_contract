@@ -30,7 +30,7 @@ defmodule EhOsContract.Instance do
   """
   @spec key(module(), atom(), map()) :: {String.t(), String.t()} | {nil, nil}
   def key(contract, event_name, payload) do
-    case contract.process_of(event_name) do
+    case EhOsContract.Model.process_of(contract, event_name) do
       nil -> {nil, nil}
       process -> {to_string(process.name), encode(process, event_name, payload)}
     end

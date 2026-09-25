@@ -89,7 +89,7 @@ defmodule EhOsContract.Dependency do
   """
   @spec unavailable!(module(), atom(), String.t() | nil) :: t()
   def unavailable!(contract, external, reason \\ nil, now \\ DateTime.utc_now()) do
-    unless Enum.any?(contract.externals(), &(&1.name == external)) do
+    unless EhOsContract.Model.external(contract, external) do
       raise ArgumentError,
             "#{inspect(contract)} does not declare `external #{inspect(external)}`, so an " <>
               "observation about it could never reach an assertion. Declare the dependency " <>

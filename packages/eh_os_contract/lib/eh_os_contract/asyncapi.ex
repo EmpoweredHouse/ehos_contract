@@ -49,6 +49,8 @@ defmodule EhOsContract.AsyncAPI do
   would hide which contract moved.
   """
 
+  alias EhOsContract.Model
+
   @asyncapi_version "3.0.0"
 
   @doc """
@@ -89,7 +91,7 @@ defmodule EhOsContract.AsyncAPI do
     for contract <- EhOsContract.Registry.contracts() do
       %{
         "contract" => inspect(contract),
-        "version" => contract.version(),
+        "version" => Model.version(contract),
         "digest" => contract |> document() |> get_in(["info", "x-eh-os-contract-digest"])
       }
     end
@@ -102,7 +104,7 @@ defmodule EhOsContract.AsyncAPI do
       "asyncapi" => @asyncapi_version,
       "info" => %{
         "title" => inspect(contract),
-        "version" => contract.version(),
+        "version" => Model.version(contract),
         "x-eh-os-contract-engine" => EhOsContract.version(),
         "x-eh-os-contract-traces" => traces(contract),
         "x-eh-os-contract-commands" => commands(contract)
@@ -116,8 +118,8 @@ defmodule EhOsContract.AsyncAPI do
   # messages of one run, and claims nothing about where they travel.
   @spec channels(module()) :: map()
   defp channels(contract) do
-    for process <- contract.processes(), into: %{} do
-      events = contract.events_of(process.name)
+    for process <- Model.processes(contract), into: %{} do
+      events = Model.events_of(contract, process.name)
 
       {to_string(process.name),
        %{
@@ -141,7 +143,7 @@ defmodule EhOsContract.AsyncAPI do
 
   @spec messages(module()) :: map()
   defp messages(contract) do
-    for event <- contract.events(), into: %{} do
+    for event <- Model.events(contract), into: %{} do
       {message_name(event.name),
        %{
          "name" => to_string(event.name),
@@ -189,7 +191,7 @@ defmodule EhOsContract.AsyncAPI do
 
   @spec traces(module()) :: [map()]
   defp traces(contract) do
-    for trace <- contract.traces() do
+    for trace <- Model.traces(contract) do
       %{
         "name" => to_string(trace.name),
         "from" => to_string(trace.from),
@@ -202,7 +204,7 @@ defmodule EhOsContract.AsyncAPI do
 
   @spec commands(module()) :: [map()]
   defp commands(contract) do
-    for command <- contract.commands() do
+    for command <- Model.commands(contract) do
       %{
         "name" => to_string(command.name),
         "title" => command.label,

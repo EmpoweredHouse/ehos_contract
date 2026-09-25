@@ -74,13 +74,13 @@ defmodule Mix.Tasks.EhOsContract.Graph do
 
     contract =
       Enum.find(EhOsContract.Registry.contracts(), fn c ->
-        Enum.any?(c.processes(), &(&1.name == name))
+        Enum.any?(EhOsContract.Model.processes(c), &(&1.name == name))
       end)
 
     unless contract do
       known =
         EhOsContract.Registry.contracts()
-        |> Enum.flat_map(fn c -> Enum.map(c.processes(), & &1.name) end)
+        |> Enum.flat_map(fn c -> Enum.map(EhOsContract.Model.processes(c), & &1.name) end)
         |> Enum.sort()
         |> Enum.join(", ")
 

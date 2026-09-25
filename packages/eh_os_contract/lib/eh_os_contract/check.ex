@@ -14,6 +14,8 @@ defmodule EhOsContract.Check do
   of `mix eh_os_contract.check` should follow the same route; recorded in `PLAN.md`.
   """
 
+  alias EhOsContract.Model
+
   @typedoc "One module subscribing upstream of where it publishes."
   @type backward_edge :: %{
           module: module(),
@@ -122,10 +124,10 @@ defmodule EhOsContract.Check do
   @spec assertions_finer_than_their_run([module()] | nil) :: [finer_than_its_run()]
   def assertions_finer_than_their_run(contracts \\ nil) do
     for contract <- contracts || EhOsContract.Registry.contracts(),
-        trace <- contract.traces(),
-        event = Enum.find(contract.events(), &(&1.name == trace.from)),
+        trace <- Model.traces(contract),
+        event = Enum.find(Model.events(contract), &(&1.name == trace.from)),
         identity = event && event.identity,
-        process = contract.process_of(trace.from),
+        process = Model.process_of(contract, trace.from),
         process != nil,
         finer?(identity, process.instance) do
       %{
@@ -213,10 +215,10 @@ defmodule EhOsContract.Check do
   @spec facts_not_keyed_by_their_run([module()] | nil) :: [unkeyed_by_run()]
   def facts_not_keyed_by_their_run(contracts \\ nil) do
     for contract <- contracts || EhOsContract.Registry.contracts(),
-        event <- contract.events(),
+        event <- Model.events(contract),
         identity = event.identity,
         identity != nil,
-        process = event.process && contract.process(event.process),
+        process = event.process && Model.process(contract, event.process),
         process != nil,
         missing = process.instance -- identity,
         missing != [] do
@@ -241,8 +243,8 @@ defmodule EhOsContract.Check do
   ## What is actually ambiguous, and what is not
 
   Not `EhOsContract.Registry.declared_events/0`: it tags every event with the contract it came
-  from, so both survive the list intact. Not `contract.process_of/1` either — that
-  function is generated per contract and can only see its own events.
+  from, so both survive the list intact. Not `EhOsContract.Model.process_of/2` either — that
+  function answers for one contract and can only see its own events.
 
   The ambiguity is one level down, in **every lookup keyed by an event name alone**,
   and dispatch is one of them. `EhOsContract.Registry.handlers_for/1`, `sync_handlers_for/1`
@@ -267,7 +269,7 @@ defmodule EhOsContract.Check do
   """
   @spec event_names_declared_twice([module()] | nil) :: [collision()]
   def event_names_declared_twice(contracts \\ nil) do
-    collisions(contracts, fn contract -> Enum.map(contract.events(), & &1.name) end)
+    collisions(contracts, fn contract -> Enum.map(Model.events(contract), & &1.name) end)
   end
 
   @doc """
@@ -290,7 +292,7 @@ defmodule EhOsContract.Check do
   """
   @spec process_names_declared_twice([module()] | nil) :: [collision()]
   def process_names_declared_twice(contracts \\ nil) do
-    collisions(contracts, fn contract -> Enum.map(contract.processes(), & &1.name) end)
+    collisions(contracts, fn contract -> Enum.map(Model.processes(contract), & &1.name) end)
   end
 
   @doc """
@@ -302,7 +304,7 @@ defmodule EhOsContract.Check do
   """
   @spec command_names_declared_twice([module()] | nil) :: [collision()]
   def command_names_declared_twice(contracts \\ nil) do
-    collisions(contracts, fn contract -> Enum.map(contract.commands(), & &1.name) end)
+    collisions(contracts, fn contract -> Enum.map(Model.commands(contract), & &1.name) end)
   end
 
   @typedoc "A process whose findings have no addressee."
@@ -325,7 +327,7 @@ defmodule EhOsContract.Check do
   @spec processes_without_accountable([module()] | nil) :: [without_accountable()]
   def processes_without_accountable(contracts \\ nil) do
     for contract <- contracts || EhOsContract.Registry.contracts(),
-        process <- contract.processes(),
+        process <- Model.processes(contract),
         is_nil(process.accountable) do
       %{contract: contract, process: process.name, label: process.label}
     end
@@ -368,7 +370,7 @@ defmodule EhOsContract.Check do
   @spec unfalsifiable_assertions([module()] | nil) :: [unfalsifiable()]
   def unfalsifiable_assertions(contracts \\ nil) do
     for contract <- contracts || EhOsContract.Registry.contracts(),
-        trace <- contract.traces(),
+        trace <- Model.traces(contract),
         is_nil(trace.within) do
       %{contract: contract, trace: trace.name, from: trace.from, eventually: trace.eventually}
     end
@@ -403,9 +405,9 @@ defmodule EhOsContract.Check do
   @spec unobservable_deadlines([module()] | nil) :: [unobservable_deadline()]
   def unobservable_deadlines(contracts \\ nil) do
     for contract <- contracts || EhOsContract.Registry.contracts(),
-        process <- contract.processes(),
+        process <- Model.processes(contract),
         process.deadline,
-        not Enum.any?(contract.events_of(process.name), & &1.terminal) do
+        not Enum.any?(Model.events_of(contract, process.name), & &1.terminal) do
       %{contract: contract, process: process.name, deadline: process.deadline}
     end
     |> Enum.sort_by(&{inspect(&1.contract), to_string(&1.process)})
@@ -474,7 +476,7 @@ defmodule EhOsContract.Check do
   @spec stage_index() :: %{atom() => {atom(), non_neg_integer(), atom()}}
   defp stage_index do
     for event <- EhOsContract.Registry.declared_events(),
-        process = event.process && event.contract.process(event.process),
+        process = event.process && Model.process(event.contract, event.process),
         index = Enum.find_index(process.stages, &(&1 == event.stage)),
         into: %{} do
       {event.name, {process.name, index, event.stage}}

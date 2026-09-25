@@ -26,22 +26,22 @@ defmodule EhOsContract.Handler do
     # and the check below would fall silent instead of firing.
     Code.ensure_compiled!(contract)
 
-    unless function_exported?(contract, :__eh_os_contract__, 0) do
+    unless EhOsContract.Model.contract?(contract) do
       bail!(
         caller,
         "#{inspect(contract)} is not an EhOsContract contract (no `use EhOsContract.Contract`)"
       )
     end
 
-    unless contract.event?(event) do
+    unless EhOsContract.Model.event?(contract, event) do
       bail!(
         caller,
         "handler declares event #{inspect(event)}, which contract #{inspect(contract)} does not " <>
-          "declare. Declared events: #{inspect(contract.event_names())}"
+          "declare. Declared events: #{inspect(EhOsContract.Model.event_names(contract))}"
       )
     end
 
-    for published <- publishes, not contract.event?(published) do
+    for published <- publishes, not EhOsContract.Model.event?(contract, published) do
       bail!(
         caller,
         "handler declares `publishes: #{inspect(published)}`, which contract " <>
@@ -49,7 +49,7 @@ defmodule EhOsContract.Handler do
       )
     end
 
-    if async and is_nil(contract.event(event).identity) do
+    if async and is_nil(EhOsContract.Model.event(contract, event).identity) do
       bail!(
         caller,
         "an asynchronous handler requires event #{inspect(event)} to declare `identity:` in the " <>

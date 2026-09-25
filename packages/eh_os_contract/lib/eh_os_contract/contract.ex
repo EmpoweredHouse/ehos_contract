@@ -3,8 +3,9 @@ defmodule EhOsContract.Contract do
   The contract as an Elixir module (ADR §2, notes §1).
 
   Declarations accumulate in module attributes, and `@before_compile` generates
-  the query functions. Those are called at two different moments: at compile time
-  by the handler macro, and at run time by the conformance queries.
+  the query functions. Inside the engine only `EhOsContract.Model.V1` calls them;
+  every reader, the handler macro at compile time included, asks
+  `EhOsContract.Model` instead. A new reader should do the same.
 
   The gate from ADR §18 lives here: **a rule with no example does not compile.**
   """

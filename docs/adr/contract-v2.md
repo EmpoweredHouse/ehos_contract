@@ -644,6 +644,18 @@ as `%{amount: 24, unit: :hour}` — so it encodes to JSON for EHOS unchanged:
 - **The system.** `EhOsContract.System` derives the whole system — contexts, contracts, `consumes` edges,
   capabilities — from the registry's scan, never from a parent module listing contracts.
 
+*Corrected 25 September 2026, while E1 built the v1 subset of this model.* "Collections of declarations are
+maps keyed by name, so declaration order does not matter" is true of the digest. It is not true of the data.
+Every v1 reader that prints a list prints it in declaration order: graph nodes, the report's processes and the
+brief's rows all come out that way. So a model keyed by name would reorder their output, and E1's
+acceptance criterion (a byte-identical report and graph) could not hold. The E1 model therefore keeps
+**lists in declaration order**, and the v2 model has to carry that order as well, either as lists or as an
+explicit position. The digest ignores order, as it already does: `EhOsContract.Digest` makes declaration
+order insignificant, so nothing about the version changes. Two smaller points came out of the same work.
+The v1 subset needs `processes/1`, because a v1 contract may hold several processes where v2 has one
+`process`. And v1 has none of the concepts behind `unit_of/2`, `run/1`, `capabilities/1` and
+`module_for/3`, so E1 left those accessors out rather than stubbing them.
+
 ## 10. The store
 
 ### 10.1 Behaviour

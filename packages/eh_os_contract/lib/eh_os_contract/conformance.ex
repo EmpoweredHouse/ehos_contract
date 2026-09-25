@@ -38,7 +38,7 @@ defmodule EhOsContract.Conformance do
   question about the state of the business and belongs to the client application.
   """
 
-  alias EhOsContract.{Deployment, Graph, HandlerFailure, Trace}
+  alias EhOsContract.{Deployment, Graph, HandlerFailure, Model, Trace}
 
   @doc """
   All four of the screen's questions for one contract over a period, as data.
@@ -82,7 +82,7 @@ defmodule EhOsContract.Conformance do
       period: %{since: Keyword.get(opts, :since), until: Keyword.get(opts, :until)},
       deployment: Deployment.report(contract, opts),
       processes:
-        for process <- contract.processes() do
+        for process <- Model.processes(contract) do
           answers = Enum.find(paths, &(&1.process == process.name))
 
           %{
@@ -177,8 +177,8 @@ defmodule EhOsContract.Conformance do
 
   @spec assertions(module(), map(), map(), %{String.t() => DateTime.t()}, keyword()) :: [map()]
   defp assertions(contract, process, labels, boundaries, opts) do
-    for trace <- contract.traces(),
-        contract.process_of(trace.from).name == process.name,
+    for trace <- Model.traces(contract),
+        Model.process_of(contract, trace.from).name == process.name,
         trace.name not in process.unverified do
       verdicts = Trace.evaluate(contract, trace.name, opts)
       label = fn name -> name && Map.get(labels, to_string(name), to_string(name)) end
@@ -285,7 +285,7 @@ defmodule EhOsContract.Conformance do
     # — so the whole universality gate contract was **absent** from the report.
     # And absence reads as "there is nothing to discuss", which is the same
     # silence-pretending-to-be-health this product is meant to detect.
-    for contract <- EhOsContract.Registry.contracts(), process <- contract.processes() do
+    for contract <- EhOsContract.Registry.contracts(), process <- Model.processes(contract) do
       report(contract, process, Map.get(edges, process.name, []))
     end
     |> Enum.sort_by(&to_string(&1.process))

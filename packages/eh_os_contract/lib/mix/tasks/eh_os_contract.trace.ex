@@ -33,7 +33,7 @@ defmodule Mix.Tasks.EhOsContract.Trace do
 
   defp report(contract, name, verdicts, opts) do
     s = EhOsContract.Trace.summary(verdicts)
-    trace = Enum.find(contract.traces(), &(&1.name == name))
+    trace = EhOsContract.Model.trace(contract, name)
 
     Mix.shell().info("\n#{name}  (#{inspect(contract)})")
 

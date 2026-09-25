@@ -87,7 +87,7 @@ defmodule EhOsContract.Registry do
 
     contracts =
       loaded
-      |> Enum.filter(&function_exported?(&1, :__eh_os_contract__, 0))
+      |> Enum.filter(&EhOsContract.Model.contract?/1)
 
     graph = %{handlers: handlers, contracts: contracts}
     :persistent_term.put(@key, graph)
@@ -151,7 +151,7 @@ defmodule EhOsContract.Registry do
   @doc "Events declared across every contract, each tagged with its contract."
   @spec declared_events() :: [map()]
   def declared_events do
-    for contract <- contracts(), event <- contract.events() do
+    for contract <- contracts(), event <- EhOsContract.Model.events(contract) do
       Map.put(event, :contract, contract)
     end
   end
@@ -159,7 +159,7 @@ defmodule EhOsContract.Registry do
   @doc "Commands declared across every contract, each tagged with its contract."
   @spec declared_commands() :: [map()]
   def declared_commands do
-    for contract <- contracts(), command <- contract.commands() do
+    for contract <- contracts(), command <- EhOsContract.Model.commands(contract) do
       Map.put(command, :contract, contract)
     end
   end

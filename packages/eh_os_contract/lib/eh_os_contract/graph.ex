@@ -17,7 +17,7 @@ defmodule EhOsContract.Graph do
 
   import Ecto.Query
 
-  alias EhOsContract.{Event, Registry}
+  alias EhOsContract.{Event, Model, Registry}
 
   @no_traffic %{count: 0, instances: 0}
 
@@ -30,14 +30,14 @@ defmodule EhOsContract.Graph do
   def static do
     nodes =
       for event <- Registry.declared_events() do
-        process = event.contract.process_of(event.name)
+        process = Model.process_of(event.contract, event.name)
 
         %{
           event: event.name,
           label: event.label,
           owner: event.owner,
           contract: event.contract,
-          contract_version: event.contract.version(),
+          contract_version: Model.version(event.contract),
           depends_on: event.depends_on,
           process: process && process.name,
           cadence: process && process.cadence,
@@ -445,11 +445,16 @@ defmodule EhOsContract.Graph do
   @spec declared_to_mermaid(module(), atom()) :: String.t()
   def declared_to_mermaid(contract, process_name) do
     process =
-      Enum.find(contract.processes(), &(&1.name == process_name)) ||
+      Model.process(contract, process_name) ||
         raise ArgumentError, "#{inspect(contract)} declares no process #{inspect(process_name)}"
 
-    events = contract.events_of(process_name)
-    traces = Enum.filter(contract.traces(), &(contract.process_of(&1.from).name == process_name))
+    events = Model.events_of(contract, process_name)
+
+    traces =
+      Enum.filter(
+        Model.traces(contract),
+        &(Model.process_of(contract, &1.from).name == process_name)
+      )
 
     Enum.join(
       ["flowchart TB"] ++
@@ -531,7 +536,7 @@ defmodule EhOsContract.Graph do
 
     nodes =
       for name <- depended_on,
-          external = Enum.find(contract.externals(), &(&1.name == name)),
+          external = Model.external(contract, name),
           do: ~s|    #{name}[("#{escape(external.label)}")]|
 
     links = for e <- events, e.depends_on, do: "    #{e.name} -.- #{e.depends_on}"
