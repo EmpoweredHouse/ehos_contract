@@ -27,7 +27,8 @@ defmodule EhOsContract.DomainRulesTest do
   end
 
   defp compiles(name, body) do
-    assert [{_, _}] = Code.compile_string(domain(name, body))
+    compiled = Code.compile_string(domain(name, body)) |> Enum.map(&elem(&1, 0))
+    assert Module.concat(__MODULE__, name) in compiled
   end
 
   describe "D1: names are unique per kind" do

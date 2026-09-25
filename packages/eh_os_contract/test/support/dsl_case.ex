@@ -28,14 +28,24 @@ defmodule EhOsContract.DslCase do
   """
   @spec compile_error(String.t(), String.t()) :: Spark.Error.DslError.t()
   def compile_error(source, file) do
+    compile(source, file)
+    ExUnit.Assertions.flunk("expected #{file} not to compile, and it compiled")
+  rescue
+    error in Spark.Error.DslError -> error
+  end
+
+  @doc """
+  Compiles `source` as the file `file` with `:debug_info` on, and returns what
+  `Code.compile_string/2` returns. The binaries then carry their debug chunk, which
+  is also where typespecs are read from.
+  """
+  @spec compile(String.t(), String.t()) :: [{module(), binary()}]
+  def compile(source, file \\ "nofile") do
     previous = Code.get_compiler_option(:debug_info)
     Code.put_compiler_option(:debug_info, true)
 
     try do
       Code.compile_string(source, file)
-      ExUnit.Assertions.flunk("expected #{file} not to compile, and it compiled")
-    rescue
-      error in Spark.Error.DslError -> error
     after
       Code.put_compiler_option(:debug_info, previous)
     end

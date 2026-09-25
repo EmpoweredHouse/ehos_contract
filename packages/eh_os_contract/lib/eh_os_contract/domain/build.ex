@@ -34,6 +34,7 @@ defmodule EhOsContract.Domain.Build do
   @impl true
   def transform(dsl) do
     model = model(dsl)
+    types = Enum.map(model.values, &value_type/1)
 
     {:ok,
      Transformer.eval(
@@ -42,9 +43,59 @@ defmodule EhOsContract.Domain.Build do
        quote do
          @doc false
          def __eh_os_contract_model__, do: unquote(Macro.escape(model))
+
+         defmodule Values do
+           @moduledoc """
+           One type per value of `#{inspect(unquote(model.module))}`, generated from its
+           declarations. Contracts refer to them as remote types, which records no
+           compile dependency (v2 §5).
+           """
+
+           unquote_splicing(types)
+         end
        end
      )}
   end
+
+  # `value :money, :integer` becomes `@type money :: integer()`; a value with fields
+  # becomes a map type with one key per field.
+  defp value_type(%{name: name, type: nil, fields: fields}) do
+    pairs =
+      for field <- fields do
+        type = typespec(field.type)
+        {field.name, if(field.optional, do: quote(do: unquote(type) | nil), else: type)}
+      end
+
+    quote do: @type(unquote({name, [], []}) :: %{unquote_splicing(pairs)})
+  end
+
+  defp value_type(%{name: name, type: type}) do
+    quote do: @type(unquote({name, [], []}) :: unquote(typespec(type)))
+  end
+
+  @doc false
+  @spec typespec(term()) :: Macro.t()
+  def typespec(:id), do: quote(do: String.t())
+  def typespec(:string), do: quote(do: String.t())
+  def typespec(:integer), do: quote(do: integer())
+  def typespec(:decimal), do: quote(do: Decimal.t())
+  def typespec(:boolean), do: quote(do: boolean())
+  def typespec(:date), do: quote(do: Date.t())
+  def typespec(:timestamp), do: quote(do: DateTime.t())
+  def typespec({:list, inner}), do: quote(do: [unquote(typespec(inner))])
+
+  def typespec({:enum, members}) do
+    members
+    |> Enum.map(fn
+      {member, _label} -> member
+      member -> member
+    end)
+    |> Enum.reverse()
+    |> Enum.reduce(fn member, union -> {:|, [], [member, union]} end)
+  end
+
+  # Anything else has passed D3, so it is a value of the same domain.
+  def typespec(value) when is_atom(value), do: {value, [], []}
 
   @doc false
   @spec model(map()) :: map()
