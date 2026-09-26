@@ -51,6 +51,18 @@ defmodule EhOsContract.DispatchInlineTest do
       assert %{outcome: "failed", failed_in: "read_model:movements"} = List.last(rows())
     end
 
+    @tag :capture_log
+    test "when the failed row cannot be written either, the caller still gets the first exception" do
+      Application.put_env(:eh_os_contract, :repo, EhOsContract.BrokenRepo)
+      on_exit(fn -> Application.put_env(:eh_os_contract, :repo, EhOsContract.TestRepo) end)
+
+      assert_raise RuntimeError, ~r/fails on 13/, fn ->
+        dispatch(%Deposit{account_id: "a-1", amount: 13})
+      end
+
+      assert Enum.map(log(), & &1.type) == ["ledger.account_opened"]
+    end
+
     test "control: the amount next to it is appended and projected" do
       {:ok, _} = dispatch(%Deposit{account_id: "a-1", amount: 12})
       assert balance("a-1") == 12

@@ -52,10 +52,14 @@ defmodule EhOsContract.Dispatcher do
   **Failures.** An exception anywhere in the transaction rolls all of it back and is
   re-raised. When dispatch owns the transaction it first writes a `failed` row
   naming where it failed and the exception's module; inside a caller's transaction
-  the row would roll back with everything else, so there is none.
+  the row would roll back with everything else, so there is none. A row that cannot
+  be written — the database is what failed — is logged, and the caller still gets
+  the exception it would have recorded.
   """
 
   import Ecto.Query
+
+  require Logger
 
   alias EhOsContract.{
     Actor,
@@ -349,8 +353,9 @@ defmodule EhOsContract.Dispatcher do
         end)
       rescue
         exception ->
+          stacktrace = __STACKTRACE__
           failed!(job, repo, exception)
-          reraise exception, __STACKTRACE__
+          reraise exception, stacktrace
       end
 
     case result do
@@ -685,10 +690,19 @@ defmodule EhOsContract.Dispatcher do
     repo.insert!(row)
   end
 
+  # The row records the failure and must never replace it: when the database is what
+  # failed, writing the row fails too, and the caller has to see the first exception.
   defp failed!(job, repo, exception) do
     failed_in = Process.delete({__MODULE__, :failed_in}) || "dispatch"
 
     write_row!(repo, job, "failed", %{failed_in: failed_in, error: inspect(exception.__struct__)})
+  rescue
+    secondary ->
+      Logger.error(
+        "the failed row of command #{job.type} of #{inspect(job.model.module)} could not be " <>
+          "written (#{inspect(secondary.__struct__)}); the exception it records, " <>
+          "#{inspect(exception.__struct__)}, goes on to the caller"
+      )
   end
 
   # Where an exception came from, for the `failed` row.
