@@ -108,6 +108,12 @@ defmodule DispatchRig.Ledger do
     delivery: :at_least_once,
     idempotency: :event_id
 
+  policy :return_small_change, "Return one after a withdrawal of three",
+    handles: :withdrawn,
+    issues: :deposit,
+    delivery: :at_least_once,
+    idempotency: :event_id
+
   effect :notify_branch, "Tell the branch an account was flagged",
     handles: :account_flagged,
     idempotency: :event_id

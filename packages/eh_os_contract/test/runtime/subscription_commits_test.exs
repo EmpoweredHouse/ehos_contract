@@ -102,6 +102,87 @@ defmodule EhOsContract.SubscriptionCommitsTest do
     assert %SubscriptionRecord{attempts: 0, failed_position: nil, status: "running"} = row()
   end
 
+  describe "an ordered policy" do
+    alias DispatchRig.Ledger
+    alias DispatchRig.Ledger.Commands.{Deposit, OpenAccount, Withdraw}
+
+    @change "DispatchRig.Ledger:policy:return_small_change"
+    @clerk EhOsContract.Actor.credential("u-1", [
+             "dispatch_rig.open_account",
+             "dispatch_rig.deposit",
+             "dispatch_rig.withdraw"
+           ])
+
+    defp dispatch!(command), do: {:ok, _} = EhOsContract.dispatch(Ledger, command, actor: @clerk)
+
+    # The notification after each commit goes through Oban, which runs on TestRepo.
+    @tag :capture_log
+    test "is not failed by another writer of the stream it dispatches to", %{account: a} do
+      dispatch!(%OpenAccount{account_id: a, branch_id: "b-commits"})
+      dispatch!(%Deposit{account_id: a, amount: 10})
+      head = Repo.one(from(e in EhOsContract.Event, select: max(e.position)))
+      dispatch!(%Withdraw{account_id: a, amount: 3})
+
+      policy = Implementations.consumer(@change)
+      Repo.delete_all(from(s in SubscriptionRecord, where: s.name == @change))
+      Subscription.register!(Repo, [policy])
+
+      Repo.update_all(from(s in SubscriptionRecord, where: s.name == @change),
+        set: [position: head]
+      )
+
+      # Another writer takes the append lock, and appends to the account while the
+      # policy's command is being decided.
+      stream = EhOsContract.Key.stream(:account, [a])
+      parent = self()
+
+      writer =
+        Task.async(fn ->
+          Repo.transaction(fn ->
+            :ok = Store.lock(Repo)
+            send(parent, :locked)
+            Process.sleep(300)
+            version = length(Store.read_stream(Repo, stream, 0))
+
+            {:ok, _} =
+              Store.append(
+                Repo,
+                [
+                  %{
+                    type: "ledger.deposited",
+                    contract: "DispatchRig.Ledger",
+                    contract_version: "commits",
+                    correlation_id: Ecto.UUID.generate(),
+                    actor: "system:commits",
+                    occurred_at: DateTime.utc_now(),
+                    payload: %{"account_id" => a, "amount" => 2}
+                  }
+                ],
+                {:stream, stream, version}
+              )
+          end)
+        end)
+
+      assert_receive :locked
+      assert Subscription.step(Repo, policy) == {:applied, 1}
+      Task.await(writer)
+
+      assert %SubscriptionRecord{attempts: 0, failed_position: nil} =
+               Repo.get!(SubscriptionRecord, @change)
+
+      amounts =
+        Repo.all(
+          from(e in EhOsContract.Event,
+            where: e.stream_id == ^stream and e.type == "ledger.deposited",
+            order_by: e.stream_version,
+            select: e.payload["amount"]
+          )
+        )
+
+      assert amounts == [10, 2, 1]
+    end
+  end
+
   @tag :capture_log
   test "a poison event stops it at its position, and the failure is committed", %{
     consumer: c,

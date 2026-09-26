@@ -10,7 +10,8 @@ defmodule EhOsContract.Subscription do
   reads the next events of the consumer's types after the position; applies them;
   and advances the position in the same transaction, so a batch is applied exactly
   once. A batch is 500 events for a read model and 1 for a policy, because a policy
-  dispatches, a dispatch takes the append lock, and a batch would hold it throughout.
+  dispatches, takes the append lock before it decides, and a batch would hold the
+  lock throughout.
 
   **An event that fails is retried, then isolated, never skipped.** The failing
   step rolls back, and the row records the event's position, the exception's module
@@ -121,6 +122,12 @@ defmodule EhOsContract.Subscription do
 
   defp apply_next(repo, consumer, row) do
     types = Map.keys(consumer.callbacks)
+
+    # A policy dispatches inside this transaction, where dispatch does not retry a
+    # conflict. Holding the append lock from before the decision means no stream can
+    # move under it, as inside a dispatch transaction; otherwise another writer of the
+    # same stream would count as a failure of the event, and three would stop it.
+    if consumer.kind == :policy, do: :ok = Store.lock(repo)
 
     case fenced(Store.read_all(repo, row.position, batch(consumer), types), row) do
       [] when row.status == "rebuilding" ->
