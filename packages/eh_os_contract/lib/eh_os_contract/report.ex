@@ -143,7 +143,7 @@ defmodule EhOsContract.Report do
       declarations(p.declarations) ++
       duration(p.duration) ++
       paths(p) ++
-      assertions(p.assertions) ++
+      assertions(Map.get(p, :assertions) || Map.get(p, :promises)) ++
       [""]
   end
 
@@ -191,8 +191,16 @@ defmodule EhOsContract.Report do
 
   defp drift(edges) do
     ["DRIFT — happened, though it was not agreed:"] ++
-      for e <- edges do
-        "  · #{e.from_label || e.from} → #{e.to_label || e.to}  (#{e.count}x)"
-      end ++ [""]
+      for(e <- edges, do: "  · " <> drifted(e)) ++ [""]
   end
+
+  # A v2 contract's drift is an event no declared command emits: by a command that
+  # does not emit it, or written around dispatch.
+  defp drifted(%{from: nil, to: %{} = to} = e),
+    do: "#{to.label} — written outside dispatch  (#{e.count}x)"
+
+  defp drifted(%{from: %{} = from, to: %{} = to} = e),
+    do: "#{from.label} → #{to.label}  (#{e.count}x)"
+
+  defp drifted(e), do: "#{e.from_label || e.from} → #{e.to_label || e.to}  (#{e.count}x)"
 end

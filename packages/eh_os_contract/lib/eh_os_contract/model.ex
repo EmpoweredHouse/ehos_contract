@@ -398,15 +398,28 @@ defmodule EhOsContract.Model do
   def command(contract, name), do: Enum.find(commands(contract), &(&1.name == name))
 
   @doc """
-  The contract version: a hash of every declaration, stamped on every event.
+  The contract version: a hash of every declaration, stamped on every event. A v2
+  contract's too, which is a key both models have.
   """
   @spec version(contract()) :: String.t()
-  def version(contract), do: contract!(contract).version
+  def version(contract), do: any_contract!(contract).version
 
   @doc """
   One digest per declaration, keyed `"<kind>:<name>"`. What
-  `EhOsContract.Deployment` records to say which declaration moved.
+  `EhOsContract.Deployment` records to say which declaration moved. A v2 contract's
+  too.
   """
   @spec digests(contract()) :: %{String.t() => String.t()}
-  def digests(contract), do: contract!(contract).digests
+  def digests(contract), do: any_contract!(contract).digests
+
+  # A contract of either DSL, for the keys both models have.
+  defp any_contract!(contract) do
+    case fetch(contract) do
+      %{kind: :contract} = model ->
+        model
+
+      %{kind: kind, module: module} ->
+        raise ArgumentError, "#{inspect(module)} is a #{kind}, not a contract"
+    end
+  end
 end

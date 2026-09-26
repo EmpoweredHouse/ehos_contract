@@ -90,6 +90,14 @@ What changes otherwise is what a host has to do.
   a v2 `promise`, and `Run.evaluate/3` measures a v2 process's `deadline`, both over the runs in
   `eh_os_contract_event_runs`, so an event another contract decided counts in the run that includes it. The
   arithmetic is v1's, and the same scenarios give the same verdicts on a v1 shape and on its v2 port.
+- **E7c: the conformance report reads v2 contracts, and `conformance.v2` is their shape on the wire.**
+  `EhOsContract.Conformance.report/2` of a v2 contract answers the same four questions: its steps
+  (`EhOsContract.Paths`, each end `{kind, name, label}`) untraversed, in flight and failing, with `in_flight`
+  as `{effects, timers, lag}` and `failing` as `{commands, subscription, effects}`; its confirmed promises under
+  `promises`; its confirmed deadline and cadence; and as drift, an event of the deployed version no declared
+  command emits. `as_data/2` names it `eh_os_contract.conformance.v2`. **A v1 contract's report is unchanged,
+  and stays `conformance.v1`.** `EhOsContract.Report` renders both, and a v2 step says which consumer it runs
+  through and which source waits or fails.
 - **E7c: `EhOsContract.Paths`**, the steps a v2 contract declares — a command's emits, a policy's or process
   manager's issues, a timer's, an effect — and, for each, the runs that took it, what waits (subscription lag,
   scheduled timers, effect jobs) and what fails (commands through `failed_in`, a subscription stopped at an

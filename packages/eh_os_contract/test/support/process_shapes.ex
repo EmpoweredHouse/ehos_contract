@@ -23,6 +23,7 @@ defmodule ProcessShapes do
       Resolution,
       Domain,
       Next.Promised,
-      Next.Timed
+      Next.Timed,
+      Next.Bare
     ]
 end

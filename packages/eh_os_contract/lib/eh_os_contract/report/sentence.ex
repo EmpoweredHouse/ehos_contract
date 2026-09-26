@@ -148,12 +148,43 @@ defmodule EhOsContract.Report.Sentence do
     end
   end
 
-  @doc "A step, by its business labels. The technical names are for whoever writes code."
+  @doc """
+  A step, by its business labels. The technical names are for whoever writes code.
+
+  A v2 step (`EhOsContract.Paths`) goes from a command to its event, or from an
+  event through a consumer to a command, and says which consumer: `"Deposited →
+  Flag the account for review (via: Flag an account on a large deposit)"`. An
+  effect's step ends at the effect.
+  """
   @spec step(map()) :: String.t()
+  def step(%{from: %{} = from, via: nil, to: %{} = to}), do: "#{name(from)} → #{name(to)}"
+  def step(%{from: %{} = from, via: %{} = via, to: nil}), do: "#{name(from)} → #{name(via)}"
+
+  def step(%{from: %{} = from, via: %{} = via, to: %{} = to}),
+    do: "#{name(from)} → #{name(to)} (via: #{name(via)})"
+
   def step(s), do: "#{s.from_label} → #{s.to_label}"
 
-  @doc "A step whose work is sitting in a queue — which is not a step nobody took."
+  @doc """
+  A step whose work is sitting in a queue — which is not a step nobody took. A v2
+  step names each source that waits, since each goes to somebody else: events its
+  consumer has not reached yet, timers scheduled, effects queued.
+  """
   @spec step_in_flight(map()) :: String.t()
+  def step_in_flight(%{in_flight: %{} = waiting} = s) do
+    parts =
+      Enum.reject(
+        [
+          count(waiting.lag, "event not yet taken", "events not yet taken"),
+          count(waiting.timers, "timer scheduled", "timers scheduled"),
+          count(waiting.effects, "effect queued", "effects queued")
+        ],
+        &is_nil/1
+      )
+
+    "#{step(s)} — in progress: #{Enum.join(parts, ", ")}"
+  end
+
   def step_in_flight(s), do: "#{step(s)} — in progress, #{s.in_flight} queued"
 
   @doc """
@@ -165,6 +196,20 @@ defmodule EhOsContract.Report.Sentence do
   their process.
   """
   @spec step_failing(map()) :: String.t()
+  def step_failing(%{failing: %{} = failing} = s) do
+    parts =
+      Enum.reject(
+        [
+          failing.commands > 0 && "a command failed in #{runs(failing.commands)}",
+          failing.subscription && "the subscription stopped at an event it cannot apply",
+          count(failing.effects, "effect job discarded", "effect jobs discarded")
+        ],
+        &(&1 in [nil, false])
+      )
+
+    "#{step(s)} — failing: #{Enum.join(parts, "; ")}"
+  end
+
   def step_failing(s), do: "#{step(s)} — failed in #{runs(s.failing)}"
 
   @doc "A count of runs, with the numeral where it belongs."
@@ -218,6 +263,17 @@ defmodule EhOsContract.Report.Sentence do
       "(#{Date.to_string(DateTime.to_date(a.declaration_changed_at))}) and are not counted " <>
       "here — they were judged under a different promise."
   end
+
+  # What the business calls a node, and its name when nothing does: a timer has no
+  # label of its own.
+  @spec name(map()) :: String.t()
+  defp name(%{label: label}) when is_binary(label), do: label
+  defp name(%{name: name}), do: Atom.to_string(name)
+
+  @spec count(non_neg_integer(), String.t(), String.t()) :: String.t() | nil
+  defp count(0, _one, _many), do: nil
+  defp count(1, one, _many), do: "1 #{one}"
+  defp count(n, _one, many), do: "#{n} #{many}"
 
   @spec amount({pos_integer(), atom()}) :: String.t()
   defp amount(duration), do: EhOsContract.Duration.humanize(duration)
