@@ -49,13 +49,9 @@ rdzeń E7c.
     w dwóch procesach” (architecture, review triggers);
   - z E7a i E7b: `min_position` przy query (v2 §11); pierwszy przebieg sandboxa w dev (boot zapisuje wiersze
     wdrożenia i subskrypcji do bazy dev — punktu odniesienia porównań bajtów raportu; zrobić świadomie, raz).
-  - **Najpierw zapytać użytkownika**: czy E7c dzielić na dwa PR-y (np. czytelnicy + `_event_runs` / fikstury +
-    web) — zakres jest większy niż E7a; oraz o kształty widoczne dla hosta (schemat `conformance.v2`, nowe zdania
-    raportu, wyjście grafu dla v2), zanim powstaną.
-- **Decyzja użytkownika z przeglądu E7b**: nowa polityka `:at_least_once` zaczyna od pozycji 0 i reaguje na
-  historię (klucze chronią przed podwójnym dopisem, ale komendy za stare zdarzenia wyjdą), a nowy process manager
-  od E7b najpierw robi replay bez reakcji. Czy politykę wyrównać do process managera — „E7b — co wyszło”,
-  przegląd, znalezisko 1.
+  - **Rozstrzygnięte przez użytkownika 26 września**: dwa PR-y (E7c-1 werdykty, E7c-2 wyjścia), kształt
+    `conformance.v2` ze źródłami osobno, graf v2 z węzłami wszystkich rodzajów, nowa polityka startuje jak nowy
+    process manager — pełny zapis pod opisem E7 w dopisku Etap 6.
 - **Konwencja etykiet w scenariuszach — użytkownika**: propozycja z 26 września, żeby wartości w scenariuszach
   mówiły, czym są („konto-Anny”, „Kraków”), a nie „a-1”, „b-7”; bez odpowiedzi.
 - **EA — asystenta**, może ruszyć równolegle: behaviour `Authorizer` i ścieżka dispatchu są.
@@ -118,7 +114,7 @@ git -c credential.helper='!gh auth git-credential' push https://github.com/Empow
 
 ### Otwarte pytania
 
-- **Start nowej polityki** i **konwencja etykiet w scenariuszach** — użytkownika (wyżej).
+- **Konwencja etykiet w scenariuszach** — użytkownika (wyżej).
 - **Runner dla read modelu `:in_transaction`** odpytuje co sekundę, choć pracuje tylko przy przebudowie —
   pominięte w przeglądzie E7a (znalezisko 6), wraca przy pomiarze.
 - **`EhOsContract.Authorizer`**: podwójny zapis przyjętej komendy (pakiet auth i `_commands`) rozstrzyga EA; nazwę
@@ -356,6 +352,28 @@ każdy na gałęzi od poprzedniego:
   linią w CHANGELOG, `conformance.v2`, fikstury według „Losów fikstur”, webowy `CaseHandling`, poprawki ADR.
   Odbiór: te same scenariusze dają te same liczby werdyktów; „jeszcze nie” przechodzi w „nigdy” dopiero po
   opróżnieniu kolejki.
+  Rozstrzygnięte przez użytkownika 26 września przed budową E7c:
+  - **Dwa PR-y**, drugi na gałęzi od pierwszego. **E7c-1 — werdykty** (`dsl-v2/e7c-conformance`): `_event_runs`,
+    `Trace`, `Run`, `Conformance` i `Report` na kontraktach v2, w toku i padające z nowych źródeł,
+    `conformance.v2`, fikstury `ProcessShapes` przebudowane (odbiór „te same liczby werdyktów” stoi na nich),
+    start nowej polityki. **E7c-2 — wyjścia**: graf v2, `check` na v2, pokrycie scenariuszy, wersja okablowania,
+    webowy `CaseHandling`, poprawki ADR, `min_position` przy query, pierwszy przebieg sandboxa w dev.
+  - **`conformance.v2` tylko dla kontraktów v2**; kontrakt v1 zostaje przy `conformance.v1` z identycznymi
+    bajtami do cięcia. Krok v2 to `from` / `via` / `to`, każde `{kind, name, label}` (komenda → zdarzenie albo
+    zdarzenie → konsument → komenda), z `mode`, `runs` i `of_runs`. **W toku i padające rozbite na źródła**, bo
+    każde idzie do innej osoby: `in_flight` = `{effects, timers, lag}`, `failing` = `{commands, subscription,
+    effects}`. Nowe sekcje `scenarios` (zadeklarowane, zaobserwowane, nigdy niezaobserwowane, wyniki bez
+    scenariusza) i `wiring` (wersja, od kiedy) — obie w E7c-2. Zdania raportu nazywają źródło: „in progress: 2
+    timers scheduled”, „failing: 1 command failed in 1 run”, „failing: the subscription stopped at an event it
+    cannot apply”; krok przez konsumenta mówi „(via: <etykieta konsumenta>)”.
+  - **Graf v2 ma węzły wszystkich rodzajów** — komendy, zdarzenia, konsumenci (polityka, process manager,
+    efekt), timery — w kolorach Event Stormingu, krawędzie `emits` / `issues` z licznikami przebiegów z
+    nakładki (jak EventCatalog). Wariant „tylko zdarzenia, jak w v1” odrzucony: komenda od człowieka nie ma
+    zdarzenia wejściowego, więc by zniknęła.
+  - **Nowa polityka `:at_least_once` startuje jak nowy process manager**: bez reakcji na historię. Polityka nie
+    ma stanu, więc replay bez reakcji to start od głowy logu w chwili rejestracji; przejście historii z
+    reakcjami to świadome `--reset NAZWA`. Zamyka znalezisko 1 z przeglądu E7b. Linia w CHANGELOG.
+  Zgoda na commity bez pytania i zapis stanu obejmuje `dsl-v2/e7c-conformance` i gałąź E7c-2.
 
 Interfejs widoczny dla hosta, rozstrzygnięty przez użytkownika 26 września przed budową E7a:
 - runnery wyłącza `config :eh_os_contract, subscriptions: :manual` (obok `:repo` i `:applications`), nie opcja
