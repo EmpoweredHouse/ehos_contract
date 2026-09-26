@@ -10,6 +10,7 @@ defmodule EhOsContract.Supervisor do
   require Logger
 
   @impl Supervisor
+  @spec init(term()) :: {:ok, {Supervisor.sup_flags(), [Supervisor.child_spec()]}}
   def init(_opts) do
     EhOsContract.Registry.load!()
     EhOsContract.Deployment.record!()

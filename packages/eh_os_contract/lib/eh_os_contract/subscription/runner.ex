@@ -45,7 +45,12 @@ defmodule EhOsContract.Subscription.Runner do
     _kind, _reason -> :ok
   end
 
+  @typedoc false
+  @type state :: %{key: String.t(), timer: reference() | nil}
+
+  @doc "Listens for dispatch's notification, and runs the subscription `key` at once."
   @impl GenServer
+  @spec init(String.t()) :: {:ok, state()}
   def init(key) do
     try do
       Oban.Notifier.listen(Oban, [@channel])
@@ -56,7 +61,9 @@ defmodule EhOsContract.Subscription.Runner do
     {:ok, schedule(%{key: key, timer: nil}, 0)}
   end
 
+  @doc "Runs the subscription on a notification or its own timer; ignores anything else."
   @impl GenServer
+  @spec handle_info(term(), state()) :: {:noreply, state()}
   def handle_info({:notification, @channel, _payload}, state), do: {:noreply, run(state)}
   def handle_info(:run, state), do: {:noreply, run(%{state | timer: nil})}
   def handle_info(_other, state), do: {:noreply, state}
