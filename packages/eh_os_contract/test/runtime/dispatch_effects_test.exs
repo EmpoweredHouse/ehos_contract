@@ -106,6 +106,32 @@ defmodule EhOsContract.DispatchEffectsTest do
     end
   end
 
+  describe "the notification after a commit" do
+    setup do
+      test = self()
+      id = "notify-#{System.unique_integer([:positive])}"
+
+      :telemetry.attach(
+        id,
+        [:oban, :notifier, :notify, :start],
+        fn _, _, %{channel: channel}, _ -> send(test, {:notified, channel}) end,
+        nil
+      )
+
+      on_exit(fn -> :telemetry.detach(id) end)
+    end
+
+    test "wakes the runners when a command appended something" do
+      {:ok, _} = dispatch(%Deposit{account_id: "a-1", amount: 5})
+      assert_received {:notified, :eh_os_contract}
+    end
+
+    test "is not sent for a command that appended nothing" do
+      {:error, _rejection} = dispatch(%Withdraw{account_id: "a-1", amount: 5})
+      refute_received {:notified, :eh_os_contract}
+    end
+  end
+
   describe "an effect delivered in the transaction" do
     setup do
       {:ok, _} = dispatch(%Deposit{account_id: "a-1", amount: 500})

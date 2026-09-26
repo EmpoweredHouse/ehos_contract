@@ -360,8 +360,7 @@ defmodule EhOsContract.Dispatcher do
 
     case result do
       {:ok, result} ->
-        # Committed: the runners can read what was appended (v2 §11).
-        EhOsContract.Subscription.Runner.notify()
+        notify(job, result)
         result
 
       {:error, :conflict} when attempt < @attempts ->
@@ -372,6 +371,15 @@ defmodule EhOsContract.Dispatcher do
         {:error, :conflict}
     end
   end
+
+  # Committed: the runners can read what was appended (v2 §11). Only when something
+  # was, and something reads it after the transaction — with Oban's Postgres
+  # notifier every notification is a query.
+  defp notify(job, {:ok, %Receipt{duplicate: false, events: [_ | _]}}) do
+    if Implementations.ordered?(job.model.module), do: EhOsContract.Subscription.Runner.notify()
+  end
+
+  defp notify(_job, _nothing_appended), do: :ok
 
   # One try: `{:ok, receipt}`, `{:error, _}`, or `:conflict` when the stream moved.
   defp attempt(%{kind: :record} = job, repo) do

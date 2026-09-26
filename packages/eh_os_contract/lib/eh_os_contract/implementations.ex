@@ -99,6 +99,14 @@ defmodule EhOsContract.Implementations do
   def subscribed, do: index(nil).subscribed
 
   @doc """
+  Whether any consumer is fed from the log after the transaction, in the
+  applications dispatch of `contract` looks in: what a runner would wake up for.
+  """
+  @spec ordered?(module()) :: boolean()
+  def ordered?(contract),
+    do: Enum.any?(index(contract).subscribed, &(&1.delivery == :at_least_once))
+
+  @doc """
   `consumer` as it takes the stored `type`: `inline()`, with the callback for it.
   """
   @spec taking(consumer(), String.t()) :: inline()
