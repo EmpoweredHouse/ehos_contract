@@ -296,20 +296,12 @@ defmodule EhOsContract.Implementations do
   # The stored type of an event as a contract names it, its own or a sibling's, and
   # the digest of its declaration; `{nil, nil}` for one another application publishes.
   defp stored(model, event) do
-    case Enum.find(model.events, &(&1.name == event)) do
-      %{type: type} ->
-        {type, Map.fetch!(model.digests, "event:#{event}")}
+    case EhOsContract.Model.declaring(model, event) do
+      {contract, %{name: name, type: type}} ->
+        {type, Map.fetch!(EhOsContract.Model.fetch(contract).digests, "event:#{name}")}
 
       nil ->
-        case EhOsContract.Model.consumed(model, event) do
-          {:contract, from, original} ->
-            publisher = EhOsContract.Model.fetch(from)
-            %{type: type} = Enum.find(publisher.events, &(&1.name == original))
-            {type, Map.fetch!(publisher.digests, "event:#{original}")}
-
-          _published ->
-            {nil, nil}
-        end
+        {nil, nil}
     end
   end
 end
