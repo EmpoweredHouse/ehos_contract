@@ -76,7 +76,8 @@ defmodule EhOsContract.Dispatcher do
     Model,
     Receipt,
     Rejection,
-    Store
+    Store,
+    SubscriptionRecord
   }
 
   @attempts 3
@@ -508,7 +509,7 @@ defmodule EhOsContract.Dispatcher do
       %{}
     else
       repo.all(
-        from(s in "eh_os_contract_subscriptions",
+        from(s in SubscriptionRecord,
           where: s.name in ^keys,
           select: {s.name, s.status}
         )
@@ -521,7 +522,7 @@ defmodule EhOsContract.Dispatcher do
 
   defp advance!(repo, key, position) do
     repo.update_all(
-      from(s in "eh_os_contract_subscriptions", where: s.name == ^key and s.position < ^position),
+      from(s in SubscriptionRecord, where: s.name == ^key and s.position < ^position),
       set: [position: position, updated_at: DateTime.utc_now()]
     )
   end
