@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 26 września (E7a wystawione jako PR)
+## Handoff — stan na 26 września (po E7b, przed PR)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -16,18 +16,19 @@ dashboardu; `sandbox/` to dane testowe. **Trwa pivot do v2**: DSL na Sparku z mo
 są E0–E6 w całości i D10–D14 (PR #1–#13).** E6 (dispatch synchroniczny, `Authorizer`, przejście VisitSettlement)
 zmergowany jako [PR #12](https://github.com/EmpoweredHouse/eh-os-contract/pull/12), opis autoryzacji
 `packages/eh_os_contract/docs/authorization.md` jako [PR #13](https://github.com/EmpoweredHouse/eh-os-contract/pull/13).
-**E7 podzielony na trzy PR-y; E7a (runtime asynchroniczny) zrobione, przejrzane i wystawione jako PR** z
-`dsl-v2/e7-async` — „E7a — co wyszło” niżej. Następne: merge E7a (użytkownika), potem E7b (process managery i
-timery) i E7c (zgodność na nowym logu, fikstury); E8–E12 i EA niezaczęte.
+**E7 podzielony na trzy PR-y. E7a zmergowane jako [PR #14](https://github.com/EmpoweredHouse/eh-os-contract/pull/14)
+(`83befa9`); E7b (process managery i timery) zrobione** na `dsl-v2/e7b-process-managers`, niewypchnięte —
+„E7b — co wyszło” niżej. Następne: przegląd przed PR i PR E7b (na polecenie użytkownika), potem E7c (zgodność
+na nowym logu, fikstury); E8–E12 i EA niezaczęte.
 Kontrakty v1 działają jak przed E6. `Rehmed.Contracts.VisitSettlement` jest pierwszym kontraktem v2 sandboxa i do
 E7 nie widzą go czytelnicy v1 (raport, graf, `check`).
 
 ### Stan repozytorium
 
-- `main` = `origin/main` = `d54c389` (merge PR #13). Użytkownik merguje PR-y jako merge, więc historia `main` ma
+- `main` = `origin/main` = `83befa9` (merge PR #14). Użytkownik merguje PR-y jako merge, więc historia `main` ma
   merge commity.
-- **E7a: `dsl-v2/e7-async`**, odgałęziona od `d54c389`, wypchnięta jako PR: handoff, zapis podziału, osiem
-  commitów E7a (`213b0b4`..`91ae210`), dziewięć poprawek z przeglądu (`ad0f91c`..`5c065f3`) i zapis stanu. Wymeldowana w worktree
+- **E7b: `dsl-v2/e7b-process-managers`**, odgałęziona od `83befa9`, lokalna, niewypchnięta (commity w „E7b —
+  co wyszło”). Wymeldowana w worktree
   `.claude/worktrees/dsl-v2-e7-async-runtime-00f4d5`; nowa sesja w innym worktree najpierw
   `git -C <ten worktree> switch --detach`. E7b pójdzie na gałęzi od E7a.
 - **Przegląd przed PR**: hook w `.claude/settings.json` odmawia `gh pr create`, dopóki `HEAD` nie ma notatki
@@ -35,13 +36,10 @@ E7 nie widzą go czytelnicy v1 (raport, graf, `check`).
 
 ### Co zostało — i czyje to jest
 
-- **E7b i E7c — asystenta**, według opisu E7 i podziału w dopisku Etap 6. Z E7a zostało: process managery (E7b);
-  `min_position` przy query (v2 §11) i pierwszy przebieg w dev (E7c). Z wcześniejszych etapów przechodzą:
+- **E7c — asystenta**, według opisu E7 i podziału w dopisku Etap 6. Z E7a i E7b zostało: `min_position` przy
+  query (v2 §11), pierwszy przebieg w dev, test timera `at:`. Z wcześniejszych etapów przechodzą:
   - kontrakty v2 w czytelnikach zgodności (raport, graf, `check`), `_event_runs` (D7);
-  - pole `correlate` process managera, które niosą tylko zdarzenia konsumowane, typowane w stanie jako `:id`
-    („E5b — co wyszło”, ustalenie 4);
-  - poprawki ADR z v2 §18 dla E7: §9–10, §15 (process managery sterują), wyzwalacz „jedno zdarzenie w dwóch
-    procesach”; fikstury według tabeli „Losy fikstur” (`ProcessShapes.Promised`, `Timed`, `Bare`, reszta `Rig`,
+  - poprawki ADR z v2 §18 dla E7c: §9–10, wyzwalacz „jedno zdarzenie w dwóch procesach”; fikstury według tabeli „Losy fikstur” (`ProcessShapes.Promised`, `Timed`, `Bare`, reszta `Rig`,
     webowy `CaseHandling`).
 - **Konwencja etykiet w scenariuszach — użytkownika**: propozycja z 26 września, żeby wartości w scenariuszach
   mówiły, czym są („konto-Anny”, „Kraków”), a nie „a-1”, „b-7”; bez odpowiedzi.
@@ -95,10 +93,11 @@ git -c credential.helper='!gh auth git-credential' fetch https://github.com/Empo
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 26 września**, na `dsl-v2/e7-async` = `5c065f3` (ostatni commit z kodem po przeglądzie), brama z
+- **Lokalnie, 26 września**, na `dsl-v2/e7b-process-managers` = `d2dfbae` (ostatni commit z kodem E7b), brama z
   `sandbox/` → **EXIT=0**. Sandbox: 47 testów, 0 padnięć, `eh_os_contract.check` 0 błędów, 4 ostrzeżenia, 19
-  informacji. Silnik: 798 testów, 0 padnięć, `check` 0 / 8 / 16. Web: 31 testów, 0 padnięć.
-- **CI**: `main` po PR #13 — przebieg `36228484648` na `d54c389`, `success` (job `check`). E7a nie był w CI.
+  informacji. Silnik: 810 testów, 0 padnięć, `check` 0 / 8 / 16. Web: 31 testów, 0 padnięć.
+- **CI**: PR #14 — przebieg `36232956049` na `ee9f345`, `success`; `main` po merge'u — `36233753606` na
+  `83befa9`, `success`. E7b nie był w CI.
 
 ### Otwarte pytania
 
@@ -116,8 +115,8 @@ git -c credential.helper='!gh auth git-credential' fetch https://github.com/Empo
 
 W sesjach E1–E7a użytkownik zgadzał się na: commity bez pytania na gałęziach etapów przy zielonej bramie na
 każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. W sesji E7a (26 września) potwierdził
-to dla `dsl-v2/e7-async`. **Dla gałęzi E7b i E7c, i w każdej nowej sesji, obowiązuje to dopiero po ponownym
-potwierdzeniu przez użytkownika.** Push, PR, merge, tag i publikacja na Hex — tylko
+to dla `dsl-v2/e7-async`, a potem dla `dsl-v2/e7b-process-managers`. **Dla gałęzi E7c i w każdej nowej sesji
+obowiązuje to dopiero po ponownym potwierdzeniu przez użytkownika.** Push, PR, merge, tag i publikacja na Hex — tylko
 na wyraźne polecenie, a przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie piszemy
 nigdy.
 
@@ -1193,6 +1192,38 @@ poprawionych, każde osobnym commitem z testem, który na kodzie sprzed poprawki
     `e68d2b0`, bez zmiany zachowania.
 
 Silnik 790 → 798 testów, sandbox 47, web 31; `check` bez zmian (0/8/16, 0/4/19).
+
+### E7b — co wyszło (26 września)
+
+**Stan.** Na `dsl-v2/e7b-process-managers` od `main` po PR #14, lokalnie, niewypchnięte: zapis decyzji
+(`3f35299`), P4 odrzuca process managera `:in_transaction` (`ff65927`), runtime process managerów i timerów
+(`d2dfbae`), poprawki ADR i ten zapis. Brama zielona na każdym commicie, także na tym z samym `PLAN.md`. Silnik
+798 → 810 testów, sandbox 47, web 31; `check` bez zmian (0/8/16, 0/4/19).
+
+**Odbiór E7b, jak sprawdzony:** *odpalony timer uruchomiony dwa razy daje jeden dispatch* —
+`process_manager_test`, „a timer fired twice”: ten sam job wykonany dwa razy, zanim process manager weźmie
+którekolwiek odpalenie, daje dwa zdarzenia `timer_elapsed` i jedno oflagowanie; wykonany po nim nie dopisuje
+niczego. Wstecz: bez sprawdzenia tokenu test pada. Obok: „nie przed czasem” — job wykonany godzinę za wcześnie
+drzemie 3600 s; bez sprawdzenia terminu pada siedem testów, w tym ten.
+
+**Ustalenia.**
+1. **Semantyka wzięta ze `ScenarioCase`**, żeby scenariusz i runtime mówiły to samo: callback reakcji dostaje
+   zdarzenie i stan *sprzed* niego, potem `evolve/2`. Zdarzenie `starts_on` dla działającego przebiegu nie
+   jest reakcją (reaguje tylko `on`), zdarzenie przebiegu, który nie wystartował albo się skończył, niczego nie
+   zmienia.
+2. **Token timera to id zdarzenia, które go nastawiło, a `wait:` liczy się od jego `occurred_at`**, nie od zegara
+   kroku — dzięki temu replay odtwarza te same timery, a job zaplanowany przed przebudową dalej pasuje.
+3. **Replay jest chroniony trzy razy**: reakcje wyłączone, klucze z id zdarzeń, `TimerJob` unikalny po
+   argumentach. Żadne pojedyncze usunięcie nie wywraca testu replayu, więc test przypina wynik, nie mechanizm.
+4. **Ustalenie 4 z E5b (`correlate` typowane jako `:id`) nie wymagało zmiany**: korelacja w runtime to
+   `Key.join` wartości pól zdarzenia, a `Key` zamienia każdą wartość na tekst, więc typ pola w stanie nie
+   zmienia przebiegu.
+5. **`at:` timera jest zbudowane, ale bez testu** — fikstura ma tylko `wait:`. Timer `at:` pola stanu, które w
+   chwili nastawienia jest `nil`, rzuca, więc subskrypcja staje na tym zdarzeniu jako `failing`.
+6. **Linia CHANGELOG o P4** weszła commitem runtime'u, nie tym, który zmienił regułę — wbrew zasadzie „tym samym
+   commitem”.
+7. **Poprawki ADR**: notka z datą w architecture §15 („wersja druga steruje, obietnice patrzą”) i przy jej
+   wyzwalaczu („druga implementacja”), w design-rationale §15, i notka „as built” w v2 §12.
 
 ### Losy fikstur
 

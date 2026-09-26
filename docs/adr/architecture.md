@@ -257,6 +257,17 @@ outside it raises and nothing is appended. Completeness is still not checked, so
 stands; v2 checks the half that can be checked. The first of the two levels is now the
 `EhOsContract.Authorizer`'s question (D14). "For this subject" is `scope` for queries (D10), and still open
 for commands (§19). The steering half of this section waits for process managers, in E7.
+
+*Corrected 26 September 2026, v2 plan E7b* ([contract v2](contract-v2.md) §4.6, §12). **Version two steers, and
+promises still watch.** A process manager is declared in the contract — what starts a run, what it reacts to,
+its timers, what ends it, and the commands each may issue — and the engine runs it from the log in order: a
+timer that passes issues a command, and the command goes through dispatch like a person's, held to the
+declaration. `promise` (v1's `trace`) keeps the watching half and checks that the steering does what it
+says. What stays from this section: sequence, branching and compensation are not a workflow language. A
+process manager reacts to one event or one timer at a time with code the contract names, and its choice is
+a command that emits events, so every exception is still a recorded case. "A person decides" becomes the
+default rather than the only way: ClinicalVisit's chase asks a person for the documentation, it does not
+write it.
 *Instead of:* sequence, branching and compensation declared in the contract — a workflow language,
 maintained before we know whether two clients need the same one.
 
@@ -519,6 +530,8 @@ what would falsify them, which is why this section exists.
   the case built for it proves nothing.
 - *A second implementation needs the same shape.* One hand-written steering module is learning; two with
   the same structure justifies generalising.
+  *26 September 2026, v2 plan E7b:* generalised before a second one was written, by adopting ESDM's process
+  manager rather than extracting one of ours — the direction taken on 25 September, not this trigger firing.
 - *The process row is the wrong idea.* Stop if processes nest or one event belongs to two. **The second
   half is no longer expressible.** Run identity is one column on the event, so an event in two processes
   would have two answers to "which run was this". That was first enforced as a compile-time check; the check

@@ -408,6 +408,15 @@ at all.
   row being the wrong idea — processes that nest, or one event in two processes — which invalidates the
   pilot's contract.
 
+*Corrected 26 September 2026, v2 plan E7b* ([contract v2](contract-v2.md) §12). Code now chooses some
+recoveries: a process manager's timer or reaction issues a command by itself. What the argument above feared
+— "a wrong recovery rule acts on money and filings by itself" — is bounded rather than removed. The contract
+lists every command a process manager may issue, dispatch refuses any other, a scenario pins what each
+reaction issues, and the command goes through the unit's invariants like a person's. The weakness named
+above is answered too: steering lives in one declared place per process instead of in the modules it
+coordinates. What still holds is the refusal of a workflow language: no sequence, branching or compensation
+is declared, only reactions to one event or one timer.
+
 ### §16–17 — almost nothing is generated, and what ships is hex packages
 
 Generated code is a fork the moment it lands, so this split decides whether any of this is upgradable in
