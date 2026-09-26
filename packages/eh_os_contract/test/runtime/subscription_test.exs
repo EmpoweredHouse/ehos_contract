@@ -223,6 +223,49 @@ defmodule EhOsContract.SubscriptionTest do
     end
   end
 
+  defp advanced(n \\ 0) do
+    receive do
+      :advanced -> advanced(n + 1)
+    after
+      0 -> n
+    end
+  end
+
+  describe "an inline read model's row" do
+    test "is advanced once per dispatch, to the last event it projected" do
+      alias DispatchRig.Ledger.Commands.SplitDeposit
+
+      Testing.drain(only: [@balances, @movements])
+
+      test = self()
+      id = "advance-#{System.unique_integer([:positive])}"
+
+      :telemetry.attach(
+        id,
+        [:eh_os_contract, :test_repo, :query],
+        fn _, _, %{query: query}, _ ->
+          if query =~ ~r/^UPDATE "eh_os_contract_subscriptions"/, do: send(test, :advanced)
+        end,
+        nil
+      )
+
+      on_exit(fn -> :telemetry.detach(id) end)
+
+      {:ok, %{position: last}} =
+        EhOsContract.dispatch(Ledger, %SplitDeposit{account_id: "a-1", first: 5, second: 6},
+          actor: Actor.credential("u-1", ["dispatch_rig.split_deposit"])
+        )
+
+      :telemetry.detach(id)
+
+      # Two read models, two events each: one update per read model.
+      assert advanced() == 2
+
+      assert row(@balances).position == last
+      assert row(@movements).position == last
+    end
+  end
+
   describe "registration" do
     test "a read model whose declaration changed is stale, and goes on taking events" do
       Testing.drain(only: @lines)

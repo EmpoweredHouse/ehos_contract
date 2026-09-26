@@ -482,19 +482,24 @@ defmodule EhOsContract.Dispatcher do
 
     projecting = projecting(repo, consumers)
 
-    for {consumer, event, row} <- consumers,
-        consumer.kind != :read_model or Map.get(projecting, consumer.key) != :rebuilding do
-      stage(Consumer.label(consumer), fn ->
-        with {:error, reason} <- Consumer.handle!(consumer, event, job.ctx.chain) do
-          raise ArgumentError,
-                "effect #{inspect(consumer.name)} runs in the dispatch transaction and " <>
-                  "answered {:error, #{inspect(reason)}}, so nothing was appended"
-        end
-      end)
+    projected =
+      for {consumer, event, row} <- consumers,
+          consumer.kind != :read_model or Map.get(projecting, consumer.key) != :rebuilding do
+        stage(Consumer.label(consumer), fn ->
+          with {:error, reason} <- Consumer.handle!(consumer, event, job.ctx.chain) do
+            raise ArgumentError,
+                  "effect #{inspect(consumer.name)} runs in the dispatch transaction and " <>
+                    "answered {:error, #{inspect(reason)}}, so nothing was appended"
+          end
+        end)
 
-      if Map.get(projecting, consumer.key) == :running,
-        do: advance!(repo, consumer.key, row.position)
-    end
+        {consumer.key, row.position}
+      end
+
+    # Each registered read model's row once, to the last event it projected.
+    for {key, positions} <- Enum.group_by(projected, &elem(&1, 0), &elem(&1, 1)),
+        Map.get(projecting, key) == :running,
+        do: advance!(repo, key, Enum.max(positions))
 
     enqueue!(job, pairs, repo)
   end
