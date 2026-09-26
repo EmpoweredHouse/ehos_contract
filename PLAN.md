@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 26 września (E7c-1 zbudowane, przed przeglądem i PR)
+## Handoff — stan na 26 września (E7c-1 zbudowane i przejrzane, przed PR)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -35,7 +35,8 @@ module kontraktu); **`Registry`, graf, `check` i taski mixa dalej ich nie widzą
 
 ### Co zostało — i czyje to jest
 
-- **E7c-1 — asystenta, do dokończenia**: przegląd `pre-pr-review` i PR na polecenie użytkownika. Zakres zbudowany
+- **E7c-1 — asystenta, do dokończenia**: przegląd zrobiony (notatka `refs/notes/review` na `HEAD`); push i PR na
+  polecenie użytkownika. Zakres zbudowany
   jest w „E7c-1 — co wyszło”.
 - **E7c-2 — asystenta**, według podziału pod opisem E7 w dopisku Etap 6. Z listy niżej zostaje dla niego: graf,
   `check` i `Registry` na v2, pokrycie scenariuszy, wersja okablowania i wdrożenia kontraktów v2 (od nich
@@ -112,9 +113,9 @@ git -c credential.helper='!gh auth git-credential' push https://github.com/Empow
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 26 września**, na `dsl-v2/e7c-conformance` = `9cf8b13`, brama z `sandbox/` → **EXIT=0**. Sandbox:
-  47 testów, 0 padnięć, `eh_os_contract.check` 0 błędów, 4 ostrzeżenia, 19 informacji. Silnik: 879 testów, 0
-  padnięć, `check` 0 / 8 / 16. Web: 31 testów, 0 padnięć.
+- **Lokalnie, 26 września**, na `dsl-v2/e7c-conformance` po przeglądzie, brama z `sandbox/` → **EXIT=0**. Sandbox:
+  47 testów, 0 padnięć, `eh_os_contract.check` 0 błędów, 4 ostrzeżenia, 19 informacji. Silnik: 881 testów, 0
+  padnięć, `check` 0 / 8 / 16. Web: 31 testów, 0 padnięć. (Po poprawkach z przeglądu; stan przed nimi: `9cf8b13`.)
 - **CI**: `main` po merge'u PR #15 — przebieg `36239199828` na `3e612f0`, job `check` `success`. Gałąź E7c-1
   jeszcze nie była w CI.
 
@@ -1340,6 +1341,31 @@ także na tych z samym `PLAN.md`. Silnik 816 → 879 testów, sandbox 47, web 31
 10. **Do E7c-2, bo stoi na wdrożeniach v2**: boot nie zapisuje wdrożeń kontraktów v2, więc raport mówi „nothing
     has happened under this version yet”, a granica deklaracji obietnicy (`promise:<nazwa>`) jest zawsze `nil`.
     Tam też `Registry` i `check`, które kontraktów v2 nie widzą.
+
+**Przegląd przed PR (26 września, `/code-review high origin/main..HEAD`).** Dziesięć znalezisk; sześć poprawionych
+z testem, który na kodzie sprzed poprawki pada jako jedyny, jedno poprawione bez zmiany zachowania, jedno
+porządkowe bez testu, dwa pominięte, jedno błędne:
+1. **Krok za czekającym krokiem był „niezrobiony”** — przy odmowie w lagu polityki raport wypisywał „Notify a
+   refusal → Refusal notified” jako „never carried out”, wbrew odbiorowi E7c. **Poprawione** w `71610d0`: krok,
+   do którego początku prowadzi krok czekający (także dalej w łańcuchu), nie jest niezrobiony.
+2. Lag kroku timera liczył odpalenia wszystkich timerów wszystkich process managerów — **poprawione** w `6bb69ff`.
+3. Padające komendy ograniczane okresem po `recorded_at` (zegar bazy), reszta po `occurred_at` (`Clock`) —
+   **pominięte**: `_commands` nie ma innej chwili; na produkcji zegar dispatchu to zegar ścienny, a różnica
+   dotyczy tylko wstrzykniętego zegara. Wraca, jeśli wiersz komendy dostanie `occurred_at`.
+4. Grupowanie reakcji po polu `timer` z payloadu każdego zdarzenia zlewało grupy — **poprawione** w `aad9f81`.
+5. Lag to jedno zapytanie na konsumenta i typ — **pominięte**, ta sama kategoria co ustalenie 12 E6: wraca przy
+   pomiarze.
+6. `LIKE` na nazwie kontraktu z `_` jako wieloznacznikiem — **poprawione** w `73d7fb7` (dokładne klucze), bez testu,
+   bo żaden moduł w repozytorium nie ma `_` w nazwie.
+7. `Implementations.stored/2` powielał `Model.declaring/2` — **poprawione** w `3bb7eae`, bez zmiany zachowania.
+8. Raport liczy przebiegi osobno od `of_runs` kroków — **błędne**: proces bez kroków (`DispatchRig.Branch`) ma
+   przebiegi, których żaden krok nie niesie.
+9. `Paths.declared/1` oddawał klucze wewnętrzne wbrew dokumentacji — **poprawione** w `c4bc294`.
+10. Kroki w toku drukowane pod „never carried out”, a przy pustej liście po „All agreed steps were carried
+    out” — **poprawione** w `ce7c002` dla procesu v2 (własny nagłówek „Agreed steps in progress:”); układ v1 bez
+    zmian, więc bajty raportu v1 się nie ruszają.
+
+Silnik 879 → 881 testów, sandbox 47, web 31; `check` bez zmian (0/4/19, 0/8/16).
 
 ### Losy fikstur
 

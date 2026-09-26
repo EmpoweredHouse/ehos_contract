@@ -1171,7 +1171,8 @@ the person's.
 > so whether it was taken is unknown: never untraversed, only waiting or failing. **Waiting** is subscription
 > lag (only for a consumer with a row), scheduled timer jobs and effect jobs; **failing** is failed commands
 > attributed by `failed_in` — a consumer's stage to that consumer's steps, anywhere else to every step the
-> command emits — a `failing` subscription, and discarded effect jobs. **Drift** is an event of the deployed
+> command emits — a `failing` subscription, and discarded effect jobs. A step reached from a waiting one, down
+> the chain, is not untraversed either: a branch is several steps and only its head waits in a queue. **Drift** is an event of the deployed
 > version that no declared command emits, which includes one written around dispatch. **The wire**:
 > `conformance.v2` for a v2 contract, `v1` for a v1 one. **Not yet**: the boot records no v2 deployment,
 > so the deployed version has no `since`, and a promise's declaration boundary is always `nil`; and
