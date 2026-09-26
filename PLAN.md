@@ -22,7 +22,7 @@ kontraktem v2 sandboxa i wypadł przez to z czytelników v1 (raport, graf, `chec
 
 - `main` = `origin/main` = `6ef626b` (merge PR #11). Użytkownik merguje PR-y jako merge, więc historia `main` ma
   merge commity.
-- **E6: `dsl-v2/e6-dispatch`**, lokalna, niewypchnięta, odgałęziona od `6ef626b`: handoff (`110d5bc`) i dziesięć
+- **E6: `dsl-v2/e6-dispatch`**, lokalna, niewypchnięta, odgałęziona od `6ef626b`: handoff (`110d5bc`) i dwanaście
   commitów E6 (`bbad60c`..głowa), brama zielona na każdym. Wymeldowana w worktree
   `.claude/worktrees/dsl-v2-e6-dispatch-3b16ce`. Worktree `dsl-v2-e5b-compiler-903cbd` stoi odłączony na `110d5bc`.
 - Inne worktree, wszystkie w całości w `main`: `dsl-v2-e1-model-seam-ed132e` (`38df8bd`),
@@ -34,11 +34,9 @@ kontraktem v2 sandboxa i wypadł przez to z czytelników v1 (raport, graf, `chec
 ### Co zostało — i czyje to jest
 
 - **Przegląd przed PR, push i PR E6 — na polecenie użytkownika** (skill `pre-pr-review`). Diff jest duży:
-  około 3400 linii kodu, testów i fikstur. Jak przy E5, da się go podzielić na dwa PR-y po commitach: runtime
-  (`bbad60c`..`77d7a4d`) i przejście VisitSettlement z dokumentami (`38eb854`..głowa) — decyzja użytkownika.
-- **Słowo na wynik query i read modelu w scenariuszu — kształt interfejsu, więc użytkownika**, ale nie teraz:
-  rekomendacja w „E6 — co wyszło”, ustalenie 7, to odłożyć do etapu, w którym kontrakt sandboxa pierwszy raz
-  deklaruje query (E9).
+  około 3900 linii kodu, testów i fikstur. Jak przy E5, da się go podzielić na dwa PR-y po commitach: runtime
+  (`bbad60c`..`77d7a4d`) i przejście VisitSettlement, dokumenty i scenariusz query (`38eb854`..głowa) — decyzja
+  użytkownika.
 - **E7–E12 i EA — asystenta**, według dopisku Etap 6. EA może ruszyć: behaviour `Authorizer` i ścieżka dispatchu
   są.
 - **Stare worktree i gałęzie — użytkownika**: `git worktree remove` dla `dsl-v2-e1-model-seam-ed132e`,
@@ -90,14 +88,12 @@ oglądania czegokolwiek `MIX_ENV=dev`. Commit wiąż wyłącznie z kodem wyjści
 
 - **Lokalnie, 26 września**, na głowie `dsl-v2/e6-dispatch`, brama z `sandbox/` → **EXIT=0**. Sandbox: 47 testów,
   0 padnięć, `eh_os_contract.check` 0 błędów, 4 ostrzeżenia, 19 informacji (przed E6: 0/5/23 — ubyło dokładnie
-  pięć linii VisitSettlement v1). Silnik: 744 testy, 0 padnięć, `check` 0 / 8 / 16, bez zmian. Web: 31 testów,
+  pięć linii VisitSettlement v1). Silnik: 751 testów, 0 padnięć, `check` 0 / 8 / 16, bez zmian. Web: 31 testów,
   0 padnięć.
 - **CI**: E6 nie był wypychany. Ostatnie CI to `main` po PR #11 (przebieg `36190022071` na `6ef626b`, zielony).
 
 ### Otwarte pytania
 
-- **Słowo na wynik query i read modelu w scenariuszu** — użytkownika, rekomendacja: odłożyć do E9 („E6 — co
-  wyszło”, ustalenie 7).
 - **`EhOsContract.Authorizer`**: podwójny zapis przyjętej komendy (pakiet auth i `_commands`) rozstrzyga EA;
   nazwę uprawnienia dla `record/3` z credentialem — E9.
 - **Po E5b:** `mix eh_os_contract.check` nie powtarza L3 dla projektów bez zarejestrowanego kompilatora — E10, z
@@ -277,7 +273,7 @@ uprawnienie ze `scope` bez żadnej wartości w grancie jest odrzucone (fail clos
 cudzy wiersz jest zatrzymana — kontrola: wartość z grantu przechodzi; konflikt jest
 ponawiany; ten sam klucz idempotencji zwraca te same pozycje;
 delta `check` w sandboxie dotyczy tylko linii VisitSettlement.
-**Zrobione 26 września** na `dsl-v2/e6-dispatch`, dziewięć commitów (`bbad60c`..`115c15f`) i zapis stanu,
+**Zrobione 26 września** na `dsl-v2/e6-dispatch`, jedenaście commitów (`bbad60c`..`7903265`) i zapis stanu,
 niewypchnięte; odbiór spełniony — „E6 — co wyszło” niżej.
 
 **EA — Pakiet `eh_os_contract_auth` (D14, v2 §16; `eh-os` D-33, D-34).** Trzeci pakiet w `packages/`, obok
@@ -977,11 +973,12 @@ urządzeniem (DPoP/mTLS), do 5 minut po usunięciu klucza, `scope` jako jedno po
 podmianą, własna pamięć JWKS. **Do `eh-os`, przez użytkownika:** logowanie frontendu zwykłej aplikacji nie
 jest tam zaprojektowane (najbliżej G-3), a od niego zależy reszta.
 
-**Stan.** Dziewięć commitów, brama zielona na każdym: zapis ustaleń (`bbad60c`); `Actor` i `Authorizer`
+**Stan.** Jedenaście commitów, brama zielona na każdym: zapis ustaleń (`bbad60c`); `Actor` i `Authorizer`
 (`04952ec`); `Codec` i `Key` (`4290aca`); `dispatch/3` z `Implementations`, `CommandRecord` i `Receipt`
 (`c724c83`); read modele i polityki w transakcji (`6e8cbfe`); `record/3` i `query/3` (`e2988bb`);
 `EhOsContract.Plug` (`77d7a4d`); przejście VisitSettlement i `0.3.0-dev` (`38eb854`); banery na skillach i
-poprawki ADR (`115c15f`). Silnik 688 → 744 testy, sandbox 45 → 47, web 31. `check` silnika 0/8/16 bez zmian;
+poprawki ADR (`115c15f`); zapis stanu (`d51b99e`); scenariusz query, `answers` (`7903265`). Silnik 688 → 751
+testów, sandbox 45 → 47, web 31. `check` silnika 0/8/16 bez zmian;
 sandboxa 0/5/23 → 0/4/19.
 
 **Odbiór E6, jak sprawdzony** (testy w `test/runtime/` pakietu i w `sandbox/test/`):
@@ -1023,10 +1020,19 @@ sandboxa 0/5/23 → 0/4/19.
    decyzji mają wspólny prefiks. Reguła zostaje.
 6. **Aktor w logu to `"actor:<subject>"`, `"system:<nazwa>"` albo `"policy:<nazwa>"`** (v2 §10.3, `issued_by`),
    także w kolumnie `actor` zdarzeń v2. v1 pisał tam goły podmiot albo `"system"`.
-7. **Słowo na wynik query i read modelu w scenariuszu nie powstało.** S6 dalej je odrzuca. To kształt DSL-a, więc
-   decyzja użytkownika; rekomendacja: odłożyć do etapu, w którym kontrakt sandboxa pierwszy raz deklaruje query
-   albo read model (E9), zgodnie z regułą „rodzaj wchodzi razem ze swoim czytelnikiem”. `DispatchRig` ma query i
-   testuje je przez `query/3`, nie przez scenariusz.
+7. **Scenariusz query: `answers`, według wariantu read modelu z ESDM** (`7903265`). Użytkownik zapytał, jak to
+   robi ESDM: rozszerzenie Given-When-Then ma wariant read modelu — given zdarzenia, when query z parametrami,
+   then `result` albo zmaterializowany read model; porównania ESDM nie ustala. Użytkownik zgodził się na
+   implementację w E6. Słowo `answers` (lista wierszy; przy `returns: :one` wiersz albo `nil`); S2 — `given` to
+   zdarzenia, które read model projektuje; S3 — pola wiersza i parametry; S6 — jedno `answers`, tylko po query;
+   X9 — wartości typów domeny. **Porównanie: dokładnie tyle wierszy, ile wymienionych, każdy pasuje do innego
+   zwróconego na wymienionych polach, kolejność bez znaczenia** — inaczej niż w pierwszej propozycji
+   („oczekiwane są wśród zwróconych”), bo ta nie pozwoliłaby powiedzieć, że wiersza innej przychodni w
+   odpowiedzi nie ma; zmiana wyjaśniona użytkownikowi przed implementacją. Wariant „cały read model” pominięty.
+   `ScenarioCase` projektuje `given` przez implementację read modelu i pyta query w transakcji wycofywanej na
+   końcu, więc moduł testu z takim scenariuszem pobiera połączenie sandboxa Ecto. Klucz `answers` jest w modelu
+   tylko przy scenariuszu query, więc słowo nie ruszyło wersji żadnego kontraktu. Wstecz na `DispatchRig`: złe
+   saldo, pusta odpowiedź i nadmiarowy wiersz wywracają scenariusz.
 8. **F2 ma konsekwencję w kodzie**: korekta przed przekazaniem wizyty nie ma dnia (`handed_over_on` jest `nil`),
    więc zdarzenie nie pasuje do pola `business_date` i dispatch rzuca. Port tłumaczy, więc zostało; opisane w
    moduledocu kontraktu jako pytanie do właściciela, obok F1.
