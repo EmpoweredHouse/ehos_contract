@@ -275,6 +275,16 @@ defmodule EhOsContract.ProcessManagerTest do
       assert %{status: "running"} = Repo.get!(EhOsContract.SubscriptionRecord, @chase)
     end
 
+    test "takes events in batches, since it dispatches nothing" do
+      for account <- ~w(a-1 a-2 a-3), do: open(account)
+      drain_at(0)
+
+      assert :ok = Subscription.rebuild(Repo, @chase)
+      consumer = EhOsContract.Implementations.consumer(@chase)
+
+      assert {:applied, 3} = at(1, fn -> Subscription.step(Repo, consumer) end)
+    end
+
     test "schedules a timer still pending again, once" do
       open()
       drain_at(0)

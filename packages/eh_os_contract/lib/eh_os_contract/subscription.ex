@@ -131,9 +131,13 @@ defmodule EhOsContract.Subscription do
     # conflict. Holding the append lock from before the decision means no stream can
     # move under it, as inside a dispatch transaction; otherwise another writer of the
     # same stream would count as a failure of the event, and three would stop it.
-    if consumer.kind in [:policy, :process_manager], do: :ok = Store.lock(repo)
+    # A process manager's replay dispatches nothing, so it takes neither the lock nor
+    # one event at a time.
+    replay? = consumer.kind == :process_manager and row.status == "rebuilding"
+    if consumer.kind in [:policy, :process_manager] and not replay?, do: :ok = Store.lock(repo)
+    batch = if replay?, do: 500, else: batch(consumer)
 
-    case fenced(Store.read_all(repo, row.position, batch(consumer), types), row) do
+    case fenced(Store.read_all(repo, row.position, batch, types), row) do
       [] when row.status == "rebuilding" ->
         :at_head
 
