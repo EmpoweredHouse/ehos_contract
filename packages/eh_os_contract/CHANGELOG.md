@@ -61,6 +61,12 @@ What changes otherwise is what a host has to do.
   the job reads the event from the log. An effect delivered `:in_transaction` acts before the dispatch commits,
   and its `{:error, reason}` rolls the append back. Until E6 both were skipped without a word. Oban has to run
   on the repo dispatch appends through, and dispatch refuses to insert a job otherwise.
+- **E7a: ordered subscriptions.** A read model or a policy delivered `:at_least_once` is fed from the log after
+  the transaction, in order, by `EhOsContract.Subscription`, one row each in `eh_os_contract_subscriptions`. An
+  event it cannot apply is retried three times and then stops it at that position, `failing`, until a person
+  skips it; a read model whose declaration changed is `stale` until it is rebuilt. A read model's
+  implementation may define `reset/0` to empty its rows, and only then can it be rebuilt; an inline one is left
+  to the runner while it is. `EhOsContract.Testing.drain/1` runs all of it inside a test's transaction.
 
 - `EhOsContract.Model`: a contract as plain data, and the accessors every reader now uses. A module that is
   not a contract is refused by name.

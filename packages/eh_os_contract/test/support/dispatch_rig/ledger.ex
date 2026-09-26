@@ -73,6 +73,13 @@ defmodule DispatchRig.Ledger do
     field :amount, :integer
   end
 
+  read_model :ledger_lines, "Ledger lines",
+    projects: [:deposited, :withdrawn],
+    delivery: :at_least_once do
+    field :account_id, :id
+    field :amount, :integer
+  end
+
   query :balances_for_branch, "Balances of one branch",
     reads: :balances,
     by: [:clerk, :nightly_import],
@@ -89,6 +96,12 @@ defmodule DispatchRig.Ledger do
     issues: :flag_account
 
   policy :echo_deposit, "Repeat a deposit of 777", handles: :deposited, issues: :deposit
+
+  policy :flag_large_withdrawal, "Flag an account on a large withdrawal",
+    handles: :withdrawn,
+    issues: :flag_account,
+    delivery: :at_least_once,
+    idempotency: :event_id
 
   effect :notify_branch, "Tell the branch an account was flagged",
     handles: :account_flagged,

@@ -30,6 +30,12 @@ defmodule DispatchRig.Balances do
   def interest_recorded(%InterestRecorded{account_id: id, amount: amount, __meta__: meta}),
     do: move(id, amount, meta.position)
 
+  @impl true
+  def reset do
+    repo().delete_all("dispatch_rig_balances")
+    :ok
+  end
+
   defp move(id, amount, position) do
     repo().update_all(from(b in "dispatch_rig_balances", where: b.account_id == ^id),
       inc: [balance: amount],
