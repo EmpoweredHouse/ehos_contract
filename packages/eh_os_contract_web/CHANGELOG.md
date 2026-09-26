@@ -8,6 +8,12 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **The screens read v2 contracts** (engine E7c). The contract status screen renders a v2 contract's report —
+  its steps, with what waits under a heading of its own, its promises, its wiring version and its scenarios —
+  in `EhOsContract.Report.Sentence`'s words, as it renders a v1 one; the drift line is the shared sentence too.
+  The graph screen draws a v2 process as its steps, declared and with the log laid over it. The conformance
+  API serves a v2 contract as `eh_os_contract.conformance.v2`; with more than one contract registered a request
+  names one, as before.
 - `EhOsContract.Web.Live.Graph` reads contracts through `EhOsContract.Model`, so this package needs an engine
   that has it: the engine's own "Unreleased" or later. Inside this repository, and over git from it, both
   packages come from one commit. Nothing the dashboard shows changes.

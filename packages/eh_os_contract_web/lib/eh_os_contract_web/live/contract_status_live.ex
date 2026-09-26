@@ -12,9 +12,10 @@ defmodule EhOsContract.Web.Live.ContractStatus do
   a run suspended by an external outage, a run judged under a rule that had since
   changed, which met runs reached the fallback, and queued work at all.
 
-  No contract picker: `EhOsContract.Registry.contracts()` is the same source
+  No contract picker: the registry's v1 and v2 contracts are the same source
   `mix eh_os_contract.report` reads, and this screen renders every contract it finds the
-  same way that task does, one section per contract.
+  same way that task does, one section per contract. A v2 contract's report has its
+  steps, its promises, its wiring and its scenarios (v2 plan, E7c).
   """
 
   use Phoenix.LiveView
@@ -24,7 +25,12 @@ defmodule EhOsContract.Web.Live.ContractStatus do
 
   @impl true
   def mount(_params, _session, socket) do
-    reports = Enum.map(EhOsContract.Registry.contracts(), &Conformance.report(&1, []))
+    reports =
+      Enum.map(
+        EhOsContract.Registry.contracts() ++ EhOsContract.Registry.v2_contracts(),
+        &Conformance.report(&1, [])
+      )
+
     {:ok, assign(socket, :reports, reports)}
   end
 
@@ -45,6 +51,7 @@ defmodule EhOsContract.Web.Live.ContractStatus do
               report.deployment.deployed.since
             )}.
           </p>
+          <p :if={wiring(report)}>Wiring {wiring(report)}.</p>
         </section>
 
         <section :for={process <- report.processes}>
@@ -61,7 +68,7 @@ defmodule EhOsContract.Web.Live.ContractStatus do
 
           <div :if={process.runs > 0}>
             <h4>Declared paths never exercised</h4>
-            <p :if={process.untraversed == []}>{Sentence.all_steps_carried_out()}</p>
+            <p :if={carried_out?(process)}>{Sentence.all_steps_carried_out()}</p>
             <ul :if={process.untraversed != []}>
               <li :for={edge <- process.untraversed}>{Sentence.step(edge)}</li>
             </ul>
@@ -81,10 +88,10 @@ defmodule EhOsContract.Web.Live.ContractStatus do
             </div>
           </div>
 
-          <div :if={process.assertions != []}>
-            <h4>Trace assertions</h4>
+          <div :if={rules(process) != []}>
+            <h4>{if Map.has_key?(process, :promises), do: "Promises", else: "Trace assertions"}</h4>
             <ul>
-              <li :for={assertion <- process.assertions}>
+              <li :for={assertion <- rules(process)}>
                 <p>{Sentence.rule(assertion)}</p>
                 <p class={outcome_class(assertion)}>{Sentence.verdict(assertion)}</p>
                 <p
@@ -98,19 +105,52 @@ defmodule EhOsContract.Web.Live.ContractStatus do
           </div>
         </section>
 
+        <section :if={report[:scenarios]}>
+          <h3>Scenarios</h3>
+          <p>{Sentence.scenarios_observed(report.scenarios)}</p>
+          <div :if={report.scenarios.never_observed != []}>
+            <h4>Never observed</h4>
+            <ul>
+              <li :for={description <- report.scenarios.never_observed}>"{description}"</li>
+            </ul>
+          </div>
+          <div :if={report.scenarios.undeclared_outcomes != []}>
+            <h4>Outcomes no scenario declares</h4>
+            <ul>
+              <li :for={outcome <- report.scenarios.undeclared_outcomes}>
+                {Sentence.outcome_undeclared(outcome)}
+              </li>
+            </ul>
+          </div>
+        </section>
+
         <section>
           <h3>Drift</h3>
           <p :if={report.drift == []}>{Sentence.no_drift()}</p>
           <ul :if={report.drift != []}>
-            <li :for={edge <- report.drift}>
-              {edge.from_label || edge.from} → {edge.to_label || edge.to} ({edge.count}x)
-            </li>
+            <li :for={edge <- report.drift}>{Sentence.drift(edge)}</li>
           </ul>
         </section>
       </div>
     </div>
     """
   end
+
+  # A v1 process's assertions, a v2 process's promises: judged and worded alike.
+  @spec rules(map()) :: [map()]
+  defp rules(process), do: Map.get(process, :assertions) || Map.get(process, :promises) || []
+
+  # As in the text report: a v2 branch is several steps behind one queue, so "carried
+  # out" is said only when nothing of it waits either. A v1 process keeps its layout.
+  @spec carried_out?(map()) :: boolean()
+  defp carried_out?(%{promises: _} = process),
+    do: process.untraversed == [] and process.in_flight == []
+
+  defp carried_out?(process), do: process.untraversed == []
+
+  @spec wiring(map()) :: String.t() | nil
+  defp wiring(%{wiring: %{version: version}}), do: version
+  defp wiring(_v1), do: nil
 
   @spec access_label(:all | :read_only) :: String.t()
   defp access_label(:all), do: "all"

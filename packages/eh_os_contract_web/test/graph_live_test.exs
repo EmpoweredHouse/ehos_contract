@@ -27,10 +27,24 @@ defmodule EhOsContract.Web.Live.GraphTest do
 
     assert html =~ "Access: all"
     assert html =~ "Case handling"
-    assert html =~ "flowchart TB"
-    assert html =~ "flowchart LR"
     assert html =~ ~s(id="declared-graph")
     assert html =~ ~s(id="overlay-graph")
+
+    # The first process is the v2 one: both panels are its steps.
+    assert html =~ "command_open_case --&gt; event_case_opened"
+    assert html =~ "Declared versus observed, this process"
+  end
+
+  test "a v1 process keeps its declared shape and the overlay of every contract" do
+    {:ok, view, _html} =
+      build_conn()
+      |> Access.put_actor("admin", ["eh_os_contract_admin"])
+      |> live("/dashboard/graph")
+
+    html = render_change(view, "select_process", %{"process" => "v1_handling"})
+
+    assert html =~ "flowchart TB"
+    assert html =~ "Declared versus observed, every contract"
   end
 
   test "no process declared anywhere says so, and draws only the overlay diagram" do
