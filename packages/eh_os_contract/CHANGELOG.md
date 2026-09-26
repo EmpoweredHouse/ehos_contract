@@ -90,6 +90,11 @@ What changes otherwise is what a host has to do.
   a v2 `promise`, and `Run.evaluate/3` measures a v2 process's `deadline`, both over the runs in
   `eh_os_contract_event_runs`, so an event another contract decided counts in the run that includes it. The
   arithmetic is v1's, and the same scenarios give the same verdicts on a v1 shape and on its v2 port.
+- **E7c: `mix eh_os_contract.check` reads v2 contracts** (`EhOsContract.Check.v2_findings/1`): a process with no
+  `accountable`, a declaration or promise not confirmed, a promise with no `within`, a `deadline` no run can be
+  seen to end, and whether the contract is implemented — not at all is noted (D3), in part is a warning. What
+  the DSL refuses to compile is not repeated. The sandbox gains one warning (`Rehmed.Contracts.VisitSettlement`
+  has no `accountable`), which E6's port had taken out of the output.
 - **E7c: a v2 contract's graph**, `EhOsContract.Graph.steps_to_mermaid/2` and `mix eh_os_contract.graph --process
   NAME --mermaid` for a v2 process: a node of every kind — commands, events, policies, process managers,
   effects, timers — in the Event Storming colours, and each step as its edges; with `--overlay` (`overlay:
