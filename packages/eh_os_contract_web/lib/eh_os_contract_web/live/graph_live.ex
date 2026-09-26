@@ -20,9 +20,11 @@ defmodule EhOsContract.Web.Live.Graph do
       leaving orphaned boxes rather than a scoped picture. Narrowing that is
       engine work, not something this screen should paper over.
 
-  **A v2 contract's process** (v2 plan, E7c) is drawn as its steps in both panels —
-  `EhOsContract.Graph.steps_to_mermaid/2`, declared and with the log laid over it —
-  since a v2 contract is one process and its overlay is that process's alone.
+  **A v2 contract's process** (v2 plan, E7c) has its declared shape in the first
+  panel, as a v1 one does, and its steps with the log laid over them in the second
+  (`EhOsContract.Graph.steps_to_mermaid/2`), since a v2 contract is one process and
+  its overlay is that process's alone. The screen opens on a v2 process when there
+  is one.
 
   Rendering is client-side, through `app.js`'s `MermaidRender` hook: both
   diagram strings reach the template as plain data in a `data-graph`
@@ -53,7 +55,9 @@ defmodule EhOsContract.Web.Live.Graph do
       socket
       |> assign(:processes, processes)
       |> assign(:every_contract, EhOsContract.Graph.overlay() |> EhOsContract.Graph.to_mermaid())
-      |> select_process(List.first(processes))
+      # A v2 process first when there is one: it is what the screen has most to say
+      # about, and the label order would otherwise open on whichever came first.
+      |> select_process(Enum.find(processes, & &1.v2) || List.first(processes))
 
     {:ok, socket}
   end
@@ -77,7 +81,7 @@ defmodule EhOsContract.Web.Live.Graph do
   defp select_process(socket, %{v2: true} = process) do
     assign(socket,
       selected: key(process),
-      declared_mermaid: EhOsContract.Graph.steps_to_mermaid(process.contract),
+      declared_mermaid: EhOsContract.Graph.declared_to_mermaid(process.contract, process.name),
       overlay_mermaid: EhOsContract.Graph.steps_to_mermaid(process.contract, overlay: true),
       overlay_heading: "Declared versus observed, this process"
     )

@@ -102,6 +102,10 @@ What changes otherwise is what a host has to do.
   seen to end, and whether the contract is implemented — not at all is noted (D3), in part is a warning. What
   the DSL refuses to compile is not repeated. The sandbox gains one warning (`Rehmed.Contracts.VisitSettlement`
   has no `accountable`), which E6's port had taken out of the output.
+- **A v2 process's declared shape** (after E7c): `EhOsContract.Graph.declared_to_mermaid/2` draws a v2 process as
+  it draws a v1 one — stages as lanes, the contract's own and included events in them, promises as arrows with
+  their window, endings and externals marked. `mix eh_os_contract.graph --process NAME --mermaid` draws it for a
+  v2 process too; with `--overlay`, the steps with the log laid over them, as before.
 - **E7c: a v2 contract's graph**, `EhOsContract.Graph.steps_to_mermaid/2` and `mix eh_os_contract.graph --process
   NAME --mermaid` for a v2 process: a node of every kind — commands, events, policies, process managers,
   effects, timers — in the Event Storming colours, and each step as its edges; with `--overlay` (`overlay:

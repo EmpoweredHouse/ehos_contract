@@ -29,7 +29,7 @@ defmodule EhOsContract.Web.TestHost.Fixtures.V1.CaseHandling do
     process: :handling,
     terminal: true
 
-  process :handling, label: "Case handling (v1)", instance: [:case_id]
+  process :handling, label: "(v1) Case handling", instance: [:case_id]
 
   trace :closes_promptly do
     from :case_opened
