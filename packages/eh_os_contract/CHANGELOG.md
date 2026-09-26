@@ -125,6 +125,11 @@ one. What changes is what a host has to do.
   `:missing_capability`, `:unscoped_grant`, `:outside_scope` — and `config :eh_os_contract, authorizer: M`
   replaces the default, which is `check/2` alone. An implementation may narrow a grant, never widen it: the
   engine repeats `check/2` after an `:ok` and raises `Authorizer.WidenedError` when it refuses.
+- `EhOsContract.Codec`: v2 field values against their declared types, and their form in the log — JSON's,
+  with a decimal as a string of digits and dates and timestamps in ISO 8601. Decoding never creates an atom, and
+  a problem names the field, never its value. `EhOsContract.Key`: the one escaping for stream ids, tags and
+  joined keys.
+- `decimal` is a declared dependency; it came through Ecto before.
 
 ### Changed
 

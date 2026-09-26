@@ -128,6 +128,9 @@ defmodule EhOsContract.MixProject do
       # satisfied only because a neighbour happens to need it breaks when the
       # neighbour goes.
       {:telemetry, "~> 1.3"},
+      # `EhOsContract.Codec` writes a `:decimal` field as a string and reads it back as a
+      # `Decimal`, so the engine calls it by name; the same reasoning as `:telemetry`.
+      {:decimal, "~> 2.0 or ~> 3.0"},
       {:boundary, "~> 0.10", runtime: false},
       # The v2 DSL engine (v2 §2). Pinned to the patch series E3 tested its properties on:
       # error locations, formatter export, digest stability under `boundary`.
