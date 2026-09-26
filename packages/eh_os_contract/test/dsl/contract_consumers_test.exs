@@ -153,6 +153,20 @@ defmodule EhOsContract.Next.ContractConsumersTest do
       assert message =~ "P4: process manager :chase starts on no event (manager_idle.ex:16)"
     end
 
+    test "one delivered in the transaction is refused" do
+      message =
+        refuse_contract("ManagerInline", """
+        #{@unit}
+          process_manager :chase, "Pogoń", correlate: :visit_id, delivery: :in_transaction do
+            starts_on :visit_closed
+          end
+        """)
+
+      assert message =~
+               "P4: process manager :chase is fed from the log in order, after the transaction; " <>
+                 "it cannot run :in_transaction (manager_inline.ex:16)"
+    end
+
     test "control: v2 §4.6's shape, with a timer at a timestamp too, compiles" do
       assert %{process_managers: [manager]} =
                compile_contract("ManagerRight", """
