@@ -1,9 +1,15 @@
 ---
 name: contract-distillation
-description: DRAFT, not yet reviewed. Distill process-mapping workshop material (raw transcripts, or a reviewed process-extraction output) into the categories an EhOsContract contract needs — event candidates, identity, instance, terminal states, stages, trace promises, cadence, retain/PII, external dependencies, examples, and what is confirmed vs. guessed. Produces a document, not code. Use any time after workshop material exists, independent of when the actual Elixir contract gets written — that can be days or months later.
+description: DRAFT, not yet reviewed, and describes the v1 DSL only. Distill process-mapping workshop material (raw transcripts, or a reviewed process-extraction output) into the categories an EhOsContract contract needs — event candidates, identity, instance, terminal states, stages, trace promises, cadence, retain/PII, external dependencies, examples, and what is confirmed vs. guessed. Produces a document, not code. Use any time after workshop material exists, independent of when the actual Elixir contract gets written — that can be days or months later.
 ---
 
 # Contract distillation
+
+> **Describes v1** (26 September 2026, v2 plan E6). This skill was written for v1's
+> `EhOsContract.Contract` and `EhOsContract.Handler`. From E6 a contract may be written in the v2 DSL
+> (`EhOsContract.Next.Contract`, [`docs/adr/contract-v2.md`](../../../docs/adr/contract-v2.md)), and
+> `Rehmed.Contracts.VisitSettlement` is. For a v2 contract the keys, gates and runtime described below do
+> not apply. The skill is rewritten at the cut (E11).
 
 DRAFT — not yet run against a real engagement. Review its output before trusting it.
 

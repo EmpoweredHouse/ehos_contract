@@ -4,7 +4,7 @@ defmodule EhOsContract.MixProject do
   # One source for `project/0` and, through `EhOsContract.version/0`, for the line every
   # conformance report carries. A change that can move a verdict raises the minor
   # version and gets a line in CHANGELOG.md — the rule is written there.
-  @version "0.2.1"
+  @version "0.3.0-dev"
   @source_url "https://github.com/EmpoweredHouse/eh-os-contract"
   @description "Checks that deployed code does what the declared business process says it does."
 
@@ -128,6 +128,13 @@ defmodule EhOsContract.MixProject do
       # satisfied only because a neighbour happens to need it breaks when the
       # neighbour goes.
       {:telemetry, "~> 1.3"},
+      # `EhOsContract.Codec` writes a `:decimal` field as a string and reads it back as a
+      # `Decimal`, so the engine calls it by name; the same reasoning as `:telemetry`.
+      {:decimal, "~> 2.0 or ~> 3.0"},
+      # `EhOsContract.Plug` serves the model's commands and queries over HTTP. Optional:
+      # a host without Plug does not get it, and the module compiles only when Plug is
+      # there.
+      {:plug, "~> 1.16", optional: true},
       {:boundary, "~> 0.10", runtime: false},
       # The v2 DSL engine (v2 §2). Pinned to the patch series E3 tested its properties on:
       # error locations, formatter export, digest stability under `boundary`.

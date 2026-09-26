@@ -1,9 +1,15 @@
 ---
 name: review-pr
-description: DRAFT, not yet reviewed. Before approving or sending back a PR generated for this repository — a new event, a new handler, a contract edit, or anything touching packages/eh_os_contract/lib/eh_os_contract/, sandbox/lib/taxvision/, or sandbox/lib/rehmed/ — separate what `mix check` already guarantees (so review attention does not waste itself re-deriving a compile refusal) from what only a human judgment call can catch: an unexplained `mix eh_os_contract.check` warning, an invented-looking `rule`/`example`, a silent edit to an existing contract's `identity`/`instance`/`retain`/`trace`, a missing "verified in reverse" claim, Polish text outside the narrow allowed surface, or a diff too large for its stated scope. Use for any PR review in this repo, whether by a human or an agent reviewing on a human's behalf. Does not replace the compiler, `mix check`, or `packages/eh_os_contract/docs/contract.md`'s compile-gate table — it tells you which parts of those you never need to re-check by hand.
+description: DRAFT, not yet reviewed, and describes the v1 DSL only. Before approving or sending back a PR generated for this repository — a new event, a new handler, a contract edit, or anything touching packages/eh_os_contract/lib/eh_os_contract/, sandbox/lib/taxvision/, or sandbox/lib/rehmed/ — separate what `mix check` already guarantees (so review attention does not waste itself re-deriving a compile refusal) from what only a human judgment call can catch: an unexplained `mix eh_os_contract.check` warning, an invented-looking `rule`/`example`, a silent edit to an existing contract's `identity`/`instance`/`retain`/`trace`, a missing "verified in reverse" claim, Polish text outside the narrow allowed surface, or a diff too large for its stated scope. Use for any PR review in this repo, whether by a human or an agent reviewing on a human's behalf. Does not replace the compiler, `mix check`, or `packages/eh_os_contract/docs/contract.md`'s compile-gate table — it tells you which parts of those you never need to re-check by hand.
 ---
 
 # Reviewing a generated PR
+
+> **Describes v1** (26 September 2026, v2 plan E6). This skill was written for v1's
+> `EhOsContract.Contract` and `EhOsContract.Handler`. From E6 a contract may be written in the v2 DSL
+> (`EhOsContract.Next.Contract`, [`docs/adr/contract-v2.md`](../../../docs/adr/contract-v2.md)), and
+> `Rehmed.Contracts.VisitSettlement` is. For a v2 contract the keys, gates and runtime described below do
+> not apply. The skill is rewritten at the cut (E11).
 
 DRAFT — not yet run against a real PR review. Review before trusting it. Every claim below about
 what `mix check` refuses, what `mix eh_os_contract.check` only warns or informs about, and what

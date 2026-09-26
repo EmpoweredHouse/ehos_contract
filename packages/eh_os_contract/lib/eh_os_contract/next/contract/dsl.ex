@@ -174,6 +174,11 @@ defmodule EhOsContract.Next.Contract.Dsl do
     defstruct [:event, data: %{}, __spark_metadata__: nil]
   end
 
+  defmodule Answers do
+    @moduledoc false
+    defstruct [:rows, __spark_metadata__: nil]
+  end
+
   defmodule Issues do
     @moduledoc false
     defstruct [:command, data: %{}, __spark_metadata__: nil]
@@ -187,7 +192,14 @@ defmodule EhOsContract.Next.Contract.Dsl do
   defmodule Scenario do
     @moduledoc false
     defstruct [:description, :scope, :actor, :rejected, ended: false, given: [], trigger: []] ++
-                [expect: [], issues: [], sets: [], cancels: [], __spark_metadata__: nil]
+                [
+                  expect: [],
+                  issues: [],
+                  sets: [],
+                  cancels: [],
+                  answers: [],
+                  __spark_metadata__: nil
+                ]
   end
 
   # --- fields --------------------------------------------------------------------
@@ -728,6 +740,22 @@ defmodule EhOsContract.Next.Contract.Dsl do
     schema: [timer: [type: :atom, required: true, doc: "The timer."]]
   }
 
+  @answers %Spark.Dsl.Entity{
+    name: :answers,
+    describe:
+      "What the query answers: the rows, or for a query that returns one, the row or nil " <>
+        "(ESDM's result).",
+    target: Answers,
+    args: [:rows],
+    schema: [
+      rows: [
+        type: :any,
+        required: true,
+        doc: "Rows as maps of the fields they must carry; exactly as many as answered."
+      ]
+    ]
+  }
+
   @scenario %Spark.Dsl.Entity{
     name: :scenario,
     describe: "Given events, a trigger, and what follows: an example the process owner reads.",
@@ -739,7 +767,8 @@ defmodule EhOsContract.Next.Contract.Dsl do
       expect: [@expect],
       issues: [@issues],
       sets: [@sets],
-      cancels: [@cancels]
+      cancels: [@cancels],
+      answers: [@answers]
     ],
     schema: [
       description: [type: :string, required: true, doc: "The case, in the owner's words."],

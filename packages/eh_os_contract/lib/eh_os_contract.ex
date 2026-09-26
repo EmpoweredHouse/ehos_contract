@@ -11,9 +11,17 @@ defmodule EhOsContract do
   use Boundary,
     deps: [],
     exports: [
+      Actor,
       AsyncAPI,
+      Authorizer,
+      Authorizer.Default,
+      Authorizer.OutsideScopeError,
+      Authorizer.Request,
+      Authorizer.WidenedError,
       Check,
       Clock,
+      Codec,
+      CommandRecord,
       Conformance,
       Conformance.Wire,
       Contract,
@@ -30,6 +38,7 @@ defmodule EhOsContract do
       Handler,
       Implementation,
       Instance,
+      Key,
       Job,
       Meta,
       Migrations,
@@ -37,7 +46,9 @@ defmodule EhOsContract do
       Next.Contract,
       {Next.Contract.Dsl, []},
       Payload,
+      Plug,
       Registry,
+      Receipt,
       Rejection,
       Report,
       Report.Sentence,
@@ -107,6 +118,26 @@ defmodule EhOsContract do
   @doc "An intention to emit an event, returned by a pure decision function."
   @spec event(atom(), map()) :: EhOsContract.Emission.t()
   def event(name, payload \\ %{}), do: %EhOsContract.Emission{name: name, payload: payload}
+
+  @doc """
+  Dispatches a command to a v2 contract: authorizes its actor, decides, appends
+  (`EhOsContract.Dispatcher`).
+  """
+  @spec dispatch(module(), struct(), keyword() | map()) ::
+          {:ok, EhOsContract.Receipt.t()}
+          | {:error, EhOsContract.Rejection.t() | EhOsContract.Dispatcher.refusal()}
+  defdelegate dispatch(contract, command, opts), to: EhOsContract.Dispatcher
+
+  @doc "Records an event a v2 contract declares `recorded_by:` (`EhOsContract.Dispatcher.record/3`)."
+  @spec record(module(), struct(), keyword() | map()) ::
+          {:ok, EhOsContract.Receipt.t()}
+          | {:error, EhOsContract.Dispatcher.refusal() | :not_grantable}
+  defdelegate record(contract, event, opts), to: EhOsContract.Dispatcher
+
+  @doc "Asks a query of a v2 contract (`EhOsContract.Dispatcher.query/3`)."
+  @spec query(module(), struct(), keyword() | map()) ::
+          {:ok, [struct()] | struct() | nil} | {:error, EhOsContract.Dispatcher.refusal()}
+  defdelegate query(contract, params, opts), to: EhOsContract.Dispatcher
 
   defdelegate emit(contract, type, payload, ctx \\ %{}), to: EhOsContract.Emitter
   defdelegate emit!(contract, type, payload, ctx \\ %{}), to: EhOsContract.Emitter

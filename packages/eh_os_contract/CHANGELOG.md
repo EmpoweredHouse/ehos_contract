@@ -25,10 +25,14 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
-Stages E1–E5 of the move to a v2 contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`). **No verdict moves.**
-`mix eh_os_contract.report` and `mix eh_os_contract.graph --overlay --mermaid` gave byte-identical output on
-the development database before and after each stage, so the version stays 0.2.1 until a change does move
-one. What changes is what a host has to do.
+Stages E1–E6 of the move to a v2 contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`). **No verdict of a v1
+contract moves.** `mix eh_os_contract.report` and `mix eh_os_contract.graph --overlay --mermaid` gave
+byte-identical output on the development database before and after each of E1–E5.
+
+**The version is 0.3.0-dev from E6**, where v2 contracts start to run. A host that ports a contract to v2 sees
+it leave what the v1 readers — the report, the graph, `check` — cover, until E7 reads the new log; the
+sandbox's `Rehmed.Contracts.VisitSettlement` is the first, and its five lines left `check`'s output with it.
+What changes otherwise is what a host has to do.
 
 ### Changed — a host has to act
 
@@ -119,6 +123,55 @@ one. What changes is what a host has to do.
   `context :settlement, "Rozliczenia", subdomain: :supporting do … end` as well as the options written inside
   the block. An error still points at the declaration's file and line, and `mix format` keeps the form as
   written.
+- `EhOsContract.Actor` and `EhOsContract.Authorizer` (D14): who acts, and the question v2 dispatch will ask
+  about a credential's actor. `Actor.credential/3` carries a credential's `sub`, `cap` and `scp` as issued;
+  `Actor.system/1` is a `:system` actor of the domain. `Authorizer.check/2` is the decision —
+  `:missing_capability`, `:unscoped_grant`, `:outside_scope` — and `config :eh_os_contract, authorizer: M`
+  replaces the default, which is `check/2` alone. An implementation may narrow a grant, never widen it: the
+  engine repeats `check/2` after an `:ok` and raises `Authorizer.WidenedError` when it refuses.
+- `EhOsContract.Codec`: v2 field values against their declared types, and their form in the log — JSON's,
+  with a decimal as a string of digits and dates and timestamps in ISO 8601. Decoding never creates an atom, and
+  a problem names the field, never its value. `EhOsContract.Key`: the one escaping for stream ids, tags and
+  joined keys.
+- `decimal` is a declared dependency; it came through Ecto before.
+- `EhOsContract.dispatch/3`: a command to a v2 contract (`EhOsContract.Dispatcher`). It authorizes the actor —
+  a credential's through the `Authorizer`, a `:system` actor against `by:` — then checks the fields, reads the
+  unit's stream through `evolve/2`, lets the implementation decide, holds the decision to the declaration
+  (an undeclared event or invariant raises and appends nothing), and appends under the stream's version,
+  retrying a conflict up to three times when it owns the transaction and returning `{:error, :conflict}`
+  inside the caller's. It returns an `EhOsContract.Receipt`. Each outcome is a row of
+  `eh_os_contract_commands` (`EhOsContract.CommandRecord`): accepted, rejected with its invariant, or failed
+  with where and the exception's module; a refusal writes nothing. An accepted idempotency key returns the
+  first receipt, `duplicate: true`.
+- Read models and policies delivered `:in_transaction` run inside the dispatch transaction: read models project
+  the appended events, then policies react, and what a policy issues is dispatched in the same transaction as
+  the policy's own actor, with the event as its cause and a key derived from it. An exception in any of them
+  rolls the whole dispatch back; a policy caught in a cycle raises. A declaration delivered in the transaction
+  with no implementation stops dispatch rather than being skipped.
+- `EhOsContract.record/3` (D6): an event declaring `recorded_by:` enters without a decision, recorded by a
+  `:system` actor it names, under the unit's stream version, with the consumers in the transaction and an
+  `accepted` row of type `"record:<event>"`. A credential is refused with `:not_grantable` until a capability
+  to record exists.
+- `EhOsContract.query/3` (D10): a query is authorized like a command, and a scoped query with the value of its
+  scope parameter, so a value outside the credential's grant, or a scoped capability granted with no values, is
+  refused before the implementation runs. Every row answered is checked against the grant again, and one outside
+  it raises `EhOsContract.Authorizer.OutsideScopeError`. A `:system` actor the query names is not narrowed.
+  Nothing is written.
+- `EhOsContract.Plug` serves the commands and queries of the contracts it is given over HTTP, under their
+  capabilities: `POST …/commands/<capability>` and `GET …/queries/<capability>`. It authenticates nobody: the
+  actor is `conn.assigns.eh_os_contract_actor`, a credential's, built by the plug in front of it, and without
+  one the answer is 401. Outcomes map to statuses — 200, 422 for a rejection or unfitting fields, 403 for a
+  refusal, 409 for a conflict or a reused key, 404 — and no body carries a value the caller did not send.
+  `plug` is an optional dependency, and the module compiles only when it is there.
+- A scenario may ask a query and state its answer, after ESDM's read model scenario: `query :q, %{…}` and
+  `answers [%{…}]` (`answers %{…}` or `answers nil` for a query returning one). Givens are events the read model
+  projects, and each row names its fields (S2, S3, S6; X9 for values of domain types). `ScenarioCase` projects
+  the givens through the read model's implementation and asks the query in a transaction it rolls back, and
+  requires exactly as many rows as named, each matching a different answered row on the fields it names, in any
+  order. A test module with such a scenario checks out an Ecto sandbox connection of the configured repo.
+- `EhOsContract.Codec.decode/4` takes `strings: true`, to read an integer or a boolean written as text.
+- `EhOsContract.Meta` carries an event's `id` and `position` when it is read back from the log.
+- `EhOsContract.Store.lock/1` on the configured implementation.
 
 ### Changed
 

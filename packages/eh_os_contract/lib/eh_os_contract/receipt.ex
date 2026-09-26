@@ -1,0 +1,20 @@
+defmodule EhOsContract.Receipt do
+  @moduledoc """
+  What an accepted command gives back: its id, the events it appended, as the
+  contract's structs with `__meta__` set, and their positions. `position` is the
+  last of them, what a later query can wait for (v2 §11).
+
+  `duplicate: true` when the idempotency key had already been accepted: the events
+  are that command's, read back, and nothing was appended this time (v2 §10.4).
+  """
+
+  defstruct [:command_id, :position, events: [], positions: [], duplicate: false]
+
+  @type t :: %__MODULE__{
+          command_id: String.t(),
+          position: pos_integer() | nil,
+          events: [struct()],
+          positions: [pos_integer()],
+          duplicate: boolean()
+        }
+end

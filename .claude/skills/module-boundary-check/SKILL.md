@@ -1,9 +1,15 @@
 ---
 name: module-boundary-check
-description: DRAFT, not yet reviewed. Before adding a new business entity, action, or CRUD screen to this application, decide (1) whether the action should dispatch through EhOsContract's event/handler mechanism at all, (1a) if not, whether it should still use an internal untracked event/handler shape for decoupling versus a direct function call, and (2) if it does go through EhOsContract, separately whether it needs structural tracking (process, instance, stages — for drift/untraversed-path detection, no timing required) and/or a timed promise (trace, cadence, deadline) — then check what already exists before generating anything. Use when about to add a new module, table, or action to sandbox/lib/taxvision/ (or a future client tree) — not when editing an already-declared contract, which has its own workflow (see change-contract).
+description: DRAFT, not yet reviewed, and describes the v1 DSL only. Before adding a new business entity, action, or CRUD screen to this application, decide (1) whether the action should dispatch through EhOsContract's event/handler mechanism at all, (1a) if not, whether it should still use an internal untracked event/handler shape for decoupling versus a direct function call, and (2) if it does go through EhOsContract, separately whether it needs structural tracking (process, instance, stages — for drift/untraversed-path detection, no timing required) and/or a timed promise (trace, cadence, deadline) — then check what already exists before generating anything. Use when about to add a new module, table, or action to sandbox/lib/taxvision/ (or a future client tree) — not when editing an already-declared contract, which has its own workflow (see change-contract).
 ---
 
 # Deciding where a new feature lives, before writing it
+
+> **Describes v1** (26 September 2026, v2 plan E6). This skill was written for v1's
+> `EhOsContract.Contract` and `EhOsContract.Handler`. From E6 a contract may be written in the v2 DSL
+> (`EhOsContract.Next.Contract`, [`docs/adr/contract-v2.md`](../../../docs/adr/contract-v2.md)), and
+> `Rehmed.Contracts.VisitSettlement` is. For a v2 contract the keys, gates and runtime described below do
+> not apply. The skill is rewritten at the cut (E11).
 
 DRAFT — not yet run against a real feature addition. Review before trusting it on real code. A
 revision below corrected an earlier version that conflated two separate decisions; see

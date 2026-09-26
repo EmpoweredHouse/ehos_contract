@@ -77,7 +77,8 @@ defmodule EhOsContract.Next.ContractVocabularyTest do
         [:scenario, :expect] => [:event, :data],
         [:scenario, :issues] => [:command, :data],
         [:scenario, :sets] => [:timer],
-        [:scenario, :cancels] => [:timer]
+        [:scenario, :cancels] => [:timer],
+        [:scenario, :answers] => [:rows]
       })
 
     assert EhOsContract.Next.Contract.vocabulary() == expected

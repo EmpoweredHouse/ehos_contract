@@ -604,6 +604,19 @@ where it helps; every violation is reported as a diagnostic before the single ra
   > units may each have an invariant of the same name. *Later the same day, with `ScenarioCase`:* `on` may name
   > a process manager's timer, which fires, since a timer is one of its triggers (P4) and nothing else could
   > state what it issues; and two scenarios may not share a description, which names the test generated for each.
+  >
+  > *26 September 2026, E6: a query's scenario, after ESDM's read model scenario.* ESDM's Given-When-Then
+  > extension has a read model variant: given events, **when** a query with its parameters, **then** a
+  > `result` (or the materialized read model). v2 takes it with the word `answers`: `query :q, %{…}` followed by
+  > `answers [%{…}]`, or for a query returning one, `answers %{…}` or `answers nil`. S2: `given` events are
+  > ones the read model the query reads projects. S3: the parameters are the query's, and each row names
+  > fields of that read model. S6: exactly one `answers`, and it belongs to a query's scenario only. ESDM
+  > leaves how a result is compared open; `EhOsContract.ScenarioCase` asks for **exactly as many rows as
+  > named, each matching a different answered row on the fields it names, in any order**. Events stay a
+  > subsequence, since a flow grows by events; an answer is wholly determined by its givens, and "the other
+  > clinic's visit is not in it" is often the point. The read model alone, ESDM's materialized variant, is not
+  > a target: a scenario reaches it through a query. `answers` enters the model only on a query's scenario, so
+  > the word moved no existing contract's version.
 - *Domain.* D1: unique names per kind. D2: at most one translation per language, none into the context's
   own. D3: a value has exactly one of type or fields; `unit` only on numeric types; no cycles. D4: a human
   actor has no `backed_by`. D5: relation roles fit the type; endpoints exist; no relation to itself.
@@ -975,6 +988,50 @@ The default implementation compares against the capabilities in `ctx.actor` and 
 actor is checked against `by:` or `recorded_by:` alone. A refusal writes nothing to the log or to `_commands`.
 Verifying a credential, and the row that records each decision, belong to `eh_os_contract_auth`, which
 implements the behaviour.
+
+*26 September 2026, before E6: the `Authorizer`'s shape, as the user accepted it.* **The check stands at the
+application's door, and the criterion is where a call comes from, not what kind of actor makes it.** A call
+that arrives with a credential is asked of the `Authorizer`. Today that is a person; a system will be too,
+once EHOS issues credentials to systems (`eh-os` D-23, G-2). What the application's own code issues is held
+to the contract instead: a reaction, to what its `issues:` names; a `:system` actor of the domain, to the
+declarations whose `by:` or `recorded_by:` name it. It is not asked of the `Authorizer`, for three reasons:
+the application would be asking itself, EHOS issues no credential to a job (`eh-os` D-34), and an inline
+policy refused inside the transaction of a person's command would fail that command for a reason that is not
+the person's.
+
+- `%EhOsContract.Actor{}` built from a credential carries `subject`, `capabilities` and `scopes` exactly as
+  `sub`, `cap` and `scp` are issued, strings included, so the package that builds it converts nothing.
+- One callback, `authorize(actor, request) :: :ok | {:error, reason}`. The request names the kind (command or
+  query), the capability, the contract and its version, and, for a scoped query, the dimension and the value
+  asked for, both as strings in the form `scp` carries. Comparing in that form means a grant value that is not
+  of the field's type never matches, instead of failing a cast.
+- `EhOsContract.Authorizer.check/2` is the decision itself, pure: `:missing_capability`, `:unscoped_grant` (a
+  scoped capability with no values, refused because empty is not "all"), `:outside_scope`. The default
+  implementation is `check/2` alone; `eh_os_contract_auth` calls it and adds its row.
+- **An implementation can narrow what a credential grants, never widen it.** After `:ok` the engine runs
+  `check/2` again from the actor and raises when that refuses. Grants therefore travel in the credential, as
+  EHOS issues them (`eh-os` ARCHITECTURE §6.4). The rows a query returns are checked against the actor's
+  scopes too, whatever the implementation said.
+- **A credential recording an event through `record/3` is refused** until E9 names the capability for it:
+  EHOS grants commands and queries only, so nothing could grant it. A `:system` actor records as before.
+
+> **26 September 2026, E6 — what the sketch above left open, as built.** `EhOsContract.Dispatcher` behind
+> `EhOsContract.dispatch/3`, `record/3` and `query/3`; the modules the sketch names (`Registry.command!`,
+> `Capability`, `Loader`, `Decider`, `Emits`, `Enrich`) are steps of it, not modules. **Order**: the actor,
+> then the fields (`EhOsContract.Codec`), then the idempotency key, then the stream folded through `evolve/2`,
+> the decision, and the decision held to its declaration — an undeclared event or invariant, or an event
+> whose fields do not fit, raises and appends nothing. **Rows**: `accepted`, `rejected` with its invariant,
+> `failed` with where it failed (`decider`, `evolve`, `read_model:<name>`, `policy:<name>`) and the
+> exception's module, never its message; `record/3` writes `accepted` with the type `"record:<event>"`.
+> **Inline policies**: a nested dispatch is keyed `"policy:<contract>:<name>:<event id>:<index>"`, one segment
+> more than §10.4, because the index of accepted keys spans the application and two contracts may each have a
+> policy of one name on one event. A nested dispatch whose command is rejected leaves the first command
+> standing, since a rejection is the unit's answer; a nested conflict cannot happen, because the append lock is held from the
+> transaction's first append. **Not built in E6**: `Runs.index` and `_event_runs`, effects, `min_position`
+> and the notifier (E7); the DCB condition (E9). **Implementations are found by a scan** of the host's
+> applications, kept in `:persistent_term` (`EhOsContract.Implementations`), not by the boot registry of
+> §10.5; failing boot on a duplicate type is not built either. **HTTP**: `EhOsContract.Plug` serves
+> `POST …/commands/<capability>` and `GET …/queries/<capability>` with the actor another plug built.
 
 ## 12. Consumers
 

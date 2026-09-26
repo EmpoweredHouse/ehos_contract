@@ -1,9 +1,15 @@
 ---
 name: write-handler
-description: DRAFT, not yet reviewed. Before writing a module that does `use EhOsContract.Handler` for an already-declared event, decide sync or async, get the idempotency key right if async, and know exactly what happens to the log on each side of the transaction boundary when the handler fails. Use once an event exists in a contract (see add-event for declaring the event itself) and you are wiring a reaction to it; not for deciding whether the reaction should be an EhOsContract event at all (see module-boundary-check) and not for the pure function the handler body should delegate its decision to (a separate, not-yet-built "write a decision function" skill).
+description: DRAFT, not yet reviewed, and describes the v1 DSL only. Before writing a module that does `use EhOsContract.Handler` for an already-declared event, decide sync or async, get the idempotency key right if async, and know exactly what happens to the log on each side of the transaction boundary when the handler fails. Use once an event exists in a contract (see add-event for declaring the event itself) and you are wiring a reaction to it; not for deciding whether the reaction should be an EhOsContract event at all (see module-boundary-check) and not for the pure function the handler body should delegate its decision to (a separate, not-yet-built "write a decision function" skill).
 ---
 
 # Writing a `EhOsContract.Handler`
+
+> **Describes v1** (26 September 2026, v2 plan E6). This skill was written for v1's
+> `EhOsContract.Contract` and `EhOsContract.Handler`. From E6 a contract may be written in the v2 DSL
+> (`EhOsContract.Next.Contract`, [`docs/adr/contract-v2.md`](../../../docs/adr/contract-v2.md)), and
+> `Rehmed.Contracts.VisitSettlement` is. For a v2 contract the keys, gates and runtime described below do
+> not apply. The skill is rewritten at the cut (E11), and gives way to `write-decider` and `write-reaction`.
 
 DRAFT — not yet run against a real handler. Review before trusting it. Every claim below about
 `EhOsContract.Handler`, `EhOsContract.Emitter`, `EhOsContract.Job`, and `EhOsContract.Check` was checked against
