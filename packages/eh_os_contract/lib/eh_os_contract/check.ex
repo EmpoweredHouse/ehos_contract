@@ -492,14 +492,16 @@ defmodule EhOsContract.Check do
     accountable ++ unverified ++ unfalsifiable ++ unobservable
   end
 
-  # What dispatch looks an implementation up for: every unit, and every consumer.
+  # What dispatch looks an implementation up for: every unit, every consumer, and
+  # every query, which `EhOsContract.Dispatcher.query/3` answers through its module.
   defp v2_implemented(model) do
     wanted =
       for(u <- model.units, do: {u.kind, u.name}) ++
         for(p <- model.policies, do: {:policy, p.name}) ++
         for(e <- model.effects, do: {:effect, e.name}) ++
         for(pm <- model.process_managers, do: {:process_manager, pm.name}) ++
-        for r <- model.read_models, do: {:read_model, r.name}
+        for(r <- model.read_models, do: {:read_model, r.name}) ++
+        for q <- model.queries, do: {:query, q.name}
 
     declarations = EhOsContract.Implementations.index(model.module).declarations
 

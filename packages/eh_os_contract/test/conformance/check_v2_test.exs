@@ -33,6 +33,15 @@ defmodule EhOsContract.CheckV2Test do
     assert findings(ProcessShapes.Next.Timed) == []
   end
 
+  test "a contract implemented in part names what dispatch will refuse, its query too" do
+    assert [{:warn, message}] =
+             findings(DispatchRig.Unfinished)
+             |> Enum.filter(&(elem(&1, 0) == :warn and elem(&1, 1) =~ "implements"))
+
+    assert message =~ "read_model notes"
+    assert message =~ "query notes_of"
+  end
+
   test "a contract with no implementation is legal, and noted" do
     Code.compile_string("""
     defmodule EhOsContract.CheckV2Test.Unimplemented do
