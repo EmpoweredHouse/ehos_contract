@@ -98,7 +98,7 @@ defmodule EhOsContract.Paths do
         in_flight: %{
           effects: Map.get(waiting_effects, {key, step.from_type}, 0),
           timers: Map.get(timers, {key, timer_name(step)}, 0),
-          lag: Map.get(lag, {key, step.from_type}, 0)
+          lag: Map.get(lag, {key, step.from_type, timer_name(step)}, 0)
         },
         failing: %{
           commands: failed_in_step(step, failed),
@@ -329,7 +329,9 @@ defmodule EhOsContract.Paths do
   # A consumer with no row has not been deployed, and nothing waits for it.
   defp lag(steps) do
     ordered =
-      for %{mode: :async, key: key, from_type: type} <- steps, type != nil, do: {key, type}
+      for %{mode: :async, key: key, from_type: type} = step <- steps,
+          type != nil,
+          do: {key, type, timer_name(step)}
 
     rows =
       Map.new(
@@ -339,17 +341,33 @@ defmodule EhOsContract.Paths do
         &{&1.name, &1}
       )
 
-    for {key, type} <- Enum.uniq(ordered), row = Map.get(rows, key), row != nil, into: %{} do
+    for {key, type, timer} = entry <- Enum.uniq(ordered),
+        row = Map.get(rows, key),
+        row != nil,
+        into: %{} do
       waiting =
-        repo().one(
-          from(e in Event,
-            where: e.type == ^type and e.position > ^row.position,
-            select: count(e.position)
-          )
+        from(e in Event,
+          where: e.type == ^type and e.position > ^row.position,
+          select: count(e.position)
         )
+        |> fired(key, timer)
+        |> repo().one()
 
-      {{key, type}, waiting}
+      {entry, waiting}
     end
+  end
+
+  # Every timer of every process manager fires as one type, so a timer's step waits
+  # only on the firings of that timer of that process manager.
+  defp fired(query, _key, nil), do: query
+
+  defp fired(query, key, timer) do
+    where(
+      query,
+      [e],
+      fragment("?->>'process_manager'", e.payload) == ^key and
+        fragment("?->>'timer'", e.payload) == ^timer
+    )
   end
 
   defp scheduled_timers do

@@ -123,6 +123,20 @@ defmodule EhOsContract.PathsTest do
       assert %{runs: nil} = step(steps(), :account_flagged, :notify_branch, nil)
     end
 
+    test "a timer's firing not yet taken waits on its own step, not on the other timer's" do
+      Testing.drain()
+      [job] = Repo.all(from(j in Oban.Job, where: j.worker == "EhOsContract.TimerJob"))
+
+      EhOsContract.Clock.at(DateTime.add(DateTime.utc_now(), 26, :hour), fn ->
+        :ok = EhOsContract.TimerJob.perform(job)
+      end)
+
+      assert %{in_flight: %{lag: 1}} =
+               step(steps(), :first_deposit_due, :first_deposit_chase, :flag_account)
+
+      assert %{in_flight: %{lag: 0}} = step(steps(), :review, :first_deposit_chase, :flag_account)
+    end
+
     test "an effect's job waits until it runs" do
       {:ok, _} = dispatch(%Deposit{account_id: "a-1", amount: 1500})
 
