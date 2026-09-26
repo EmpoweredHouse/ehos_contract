@@ -42,7 +42,9 @@ defmodule EhOsContract.ScenarioCase do
   inside a domain value. The unit's identity is the scenario's own: the value a
   scenario gives it anywhere, or `"scenario"`. Every given, and then the trigger,
   gets `__meta__` with `occurred_at` a minute after the one before, from
-  2026-01-01 09:00 UTC, and the command its scenario's `actor`.
+  2026-01-01 09:00 UTC, and the command its scenario's `actor`. A given also has an
+  `id` and a `position`, 1, 2, … in the order listed, as an event read back from the
+  log has.
 
   **Which implementation.** The one module of the contract's application whose
   `__eh_os_implementation__/0` names the scenario's target; `implementations:` names
@@ -122,9 +124,13 @@ defmodule EhOsContract.ScenarioCase do
     times = Stream.iterate(@epoch, &DateTime.add(&1, 60)) |> Enum.take(length(scenario.given) + 1)
     {given_times, [now]} = Enum.split(times, length(scenario.given))
 
+    # A given is an event read back from a log, as dispatch hands one to its consumers:
+    # with an id and a position, in the order the scenario lists them.
     givens =
-      for {given, at} <- Enum.zip(scenario.given, given_times),
-          do: message(model, :event, given.event, given.data, identity, at, nil)
+      for {{given, at}, position} <- Enum.with_index(Enum.zip(scenario.given, given_times), 1) do
+        event = message(model, :event, given.event, given.data, identity, at, nil)
+        %{event | __meta__: %{event.__meta__ | id: Ecto.UUID.generate(), position: position}}
+      end
 
     run(model, scenario, implementation, identity, givens, now, implementations)
   end
