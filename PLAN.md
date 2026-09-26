@@ -18,7 +18,7 @@ zmergowany jako [PR #12](https://github.com/EmpoweredHouse/eh-os-contract/pull/1
 `packages/eh_os_contract/docs/authorization.md` jako [PR #13](https://github.com/EmpoweredHouse/eh-os-contract/pull/13).
 **E7 podzielony na trzy PR-y. E7a zmergowane jako [PR #14](https://github.com/EmpoweredHouse/eh-os-contract/pull/14)
 (`83befa9`); E7b (process managery i timery) zrobione** na `dsl-v2/e7b-process-managers`, niewypchnięte —
-„E7b — co wyszło” niżej. Następne: przegląd przed PR i PR E7b (na polecenie użytkownika), potem E7c (zgodność
+„E7b — co wyszło” niżej, **przejrzane** (notka na HEAD). Następne: PR E7b (na polecenie użytkownika), potem E7c (zgodność
 na nowym logu, fikstury); E8–E12 i EA niezaczęte.
 Kontrakty v1 działają jak przed E6. `Rehmed.Contracts.VisitSettlement` jest pierwszym kontraktem v2 sandboxa i do
 E7 nie widzą go czytelnicy v1 (raport, graf, `check`).
@@ -37,7 +37,8 @@ E7 nie widzą go czytelnicy v1 (raport, graf, `check`).
 ### Co zostało — i czyje to jest
 
 - **E7c — asystenta**, według opisu E7 i podziału w dopisku Etap 6. Z E7a i E7b zostało: `min_position` przy
-  query (v2 §11), pierwszy przebieg w dev, test timera `at:`. Z wcześniejszych etapów przechodzą:
+  query (v2 §11), pierwszy przebieg w dev; decyzja użytkownika, czy nowa polityka ma startować jak nowy process
+  manager (przegląd E7b, znalezisko 1). Z wcześniejszych etapów przechodzą:
   - kontrakty v2 w czytelnikach zgodności (raport, graf, `check`), `_event_runs` (D7);
   - poprawki ADR z v2 §18 dla E7c: §9–10, wyzwalacz „jedno zdarzenie w dwóch procesach”; fikstury według tabeli „Losy fikstur” (`ProcessShapes.Promised`, `Timed`, `Bare`, reszta `Rig`,
     webowy `CaseHandling`).
@@ -93,9 +94,9 @@ git -c credential.helper='!gh auth git-credential' fetch https://github.com/Empo
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 26 września**, na `dsl-v2/e7b-process-managers` = `d2dfbae` (ostatni commit z kodem E7b), brama z
-  `sandbox/` → **EXIT=0**. Sandbox: 47 testów, 0 padnięć, `eh_os_contract.check` 0 błędów, 4 ostrzeżenia, 19
-  informacji. Silnik: 810 testów, 0 padnięć, `check` 0 / 8 / 16. Web: 31 testów, 0 padnięć.
+- **Lokalnie, 26 września**, na `dsl-v2/e7b-process-managers` = `a6aad4a` (ostatni commit z kodem po przeglądzie),
+  brama z `sandbox/` → **EXIT=0**. Sandbox: 47 testów, 0 padnięć, `eh_os_contract.check` 0 błędów, 4 ostrzeżenia,
+  19 informacji. Silnik: 816 testów, 0 padnięć, `check` 0 / 8 / 16. Web: 31 testów, 0 padnięć.
 - **CI**: PR #14 — przebieg `36232956049` na `ee9f345`, `success`; `main` po merge'u — `36233753606` na
   `83befa9`, `success`. E7b nie był w CI.
 
@@ -1224,6 +1225,26 @@ drzemie 3600 s; bez sprawdzenia terminu pada siedem testów, w tym ten.
    commitem”.
 7. **Poprawki ADR**: notka z datą w architecture §15 („wersja druga steruje, obietnice patrzą”) i przy jej
    wyzwalaczu („druga implementacja”), w design-rationale §15, i notka „as built” w v2 §12.
+
+**Przegląd przed PR (26 września, `/code-review high origin/main..HEAD`).** Siedem znalezisk; pięć poprawionych
+z testem, który na kodzie sprzed poprawki pada, jedno poprawione bez zmiany zachowania, jedno błędne:
+1. **Nowy process manager na logu z historią** startował od pozycji 0 z reakcjami — wdrożony na rok historii
+   wydałby komendy za każdy stary przebieg i odpalił naraz wszystkie zaległe timery. **Poprawione** w `a6aad4a`:
+   nowy process manager zaczyna od replayu z wyłączonymi reakcjami; na głowie timer zaległy bez czekającego
+   joba jest porzucany (przyszedł, gdy nikt nie sterował), a zaległy z czekającym jobem — po przebudowie
+   działającego — odpala się. Boot i `drain/1` rejestrują tak samo. **Uwaga dla użytkownika:** to inna reguła
+   niż dla nowej polityki z E7a (ta dalej zaczyna od 0 i reaguje na historię, z kluczami z zdarzeń); do
+   rozważenia, czy polityce nie dać tej samej.
+2. Job timera usuniętego process managera padał `MatchError` — **poprawione** w `47a01ca`: anulowany.
+3. Stan przebiegu czytany `binary_to_term/1` bez `:safe` — **poprawione** w `3aaa30b`.
+4. Replay brał jedno zdarzenie na krok pod blokadą dopisu — **poprawione** w `1acd77e`: paczki po 500, bez blokady.
+5. Komentarz powrotu read modelu nad klauzulą process managera — **poprawione** w `b2713b6`.
+6. „Martwa” klauzula `order(:process_manager)` — **błędne**: `order/1` sortuje też indeks; usunięcie wywróciło
+   89 testów w bramie; doc poprawiony w `b2713b6`.
+7. Timer `at:` bez testu — **poprawione** w `3d6c0a8`: przegląd tydzień po wpłacie w fiksturze. Ustalenie 5 wyżej
+   jest od tego commita nieaktualne.
+
+Silnik 810 → 816 testów, sandbox 47, web 31; `check` bez zmian.
 
 ### Losy fikstur
 
