@@ -23,8 +23,8 @@ kontraktem v2 sandboxa i wypadł przez to z czytelników v1 (raport, graf, `chec
 
 - `main` = `origin/main` = `ef77603` (merge PR #12). Użytkownik merguje PR-y jako merge, więc historia `main` ma
   merge commity.
-- **`dsl-v2/e6-authorization-doc`**, lokalna, od `ef77603`: `docs/authorization.md` pakietu (opis autoryzacji, o
-  który poprosił użytkownik) i ten handoff. Wymeldowana w worktree `.claude/worktrees/dsl-v2-e6-dispatch-3b16ce`.
+- **`dsl-v2/e6-authorization-doc`**, wypchnięta i wystawiona jako PR do `main`, od `ef77603`:
+  `docs/authorization.md` pakietu (opis autoryzacji, o który poprosił użytkownik) i ten handoff. Wymeldowana w worktree `.claude/worktrees/dsl-v2-e6-dispatch-3b16ce`.
 - **`dsl-v2/e6-dispatch` na `origin` ma jeden commit za merge'em** (`35bd1cd`, ten sam dokument), wypchnięty po
   merge'u PR #12 przez pomyłkę: sprawdzenie stanu PR wypisało „MERGED”, ale nie zatrzymało pusha, bo polecenia
   były połączone `&&`, a `gh pr view` kończy się zerem niezależnie od stanu. Do `main` nie trafił i nie trafi;
@@ -38,7 +38,8 @@ kontraktem v2 sandboxa i wypadł przez to z czytelników v1 (raport, graf, `chec
 
 ### Co zostało — i czyje to jest
 
-- **PR z `docs/authorization.md` — na polecenie użytkownika** (`dsl-v2/e6-authorization-doc`).
+- **PR z `docs/authorization.md` — merge użytkownika** (`dsl-v2/e6-authorization-doc`; przegląd `/code-review
+  low`, bez znalezisk).
 - **Konwencja etykiet w scenariuszach — użytkownika**: propozycja z rozmowy 26 września, żeby wartości w
   scenariuszach mówiły, czym są („konto-Anny”, „Kraków”), a nie „a-1”, „b-7”; bez odpowiedzi.
 - **E7–E12 i EA — asystenta**, według dopisku Etap 6. EA może ruszyć: behaviour `Authorizer` i ścieżka dispatchu
