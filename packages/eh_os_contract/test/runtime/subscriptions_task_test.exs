@@ -78,9 +78,10 @@ defmodule EhOsContract.SubscriptionsTaskTest do
     assert_raise Mix.Error, ~r/defines no reset\/0/, fn ->
       task(["--reset", "DispatchRig.Ledger:read_model:movements"])
     end
+  end
 
-    assert_raise Mix.Error, ~r/is a policy/, fn ->
-      task(["--reset", "DispatchRig.Ledger:policy:flag_large_withdrawal"])
-    end
+  test "--reset of a policy moves it back, to react to the log" do
+    task(["--reset", "DispatchRig.Ledger:policy:flag_large_withdrawal"])
+    assert output() =~ "moved back to the beginning of the log, to react to it"
   end
 end

@@ -84,6 +84,12 @@ What changes otherwise is what a host has to do.
   `EhOsContract.Clock.now/0`.
 - **E7a: `mix eh_os_contract.subscriptions`** lists where each subscription stands; `--skip KEY` moves a
   failing one past the event it fails on, `--reset KEY` empties a read model and replays the log into it.
+- **E7c: a new policy leaves history alone, as a new process manager does.** A policy delivered
+  `:at_least_once` starts at the head of the log when it is first registered, instead of at position 0: a
+  deploy onto a year of history issues nothing for that year. `--reset KEY` of a policy moves it back to the
+  beginning, and it reacts to the whole log, with the keys derived from each event, so what it issued before
+  is not issued twice; until E7c it was refused. **In a host's tests the first `EhOsContract.Testing.drain/1`
+  is the deploy**, so a test of a policy's reaction drains once before it dispatches what the policy reacts to.
 
 - `EhOsContract.Model`: a contract as plain data, and the accessors every reader now uses. A module that is
   not a contract is refused by name.

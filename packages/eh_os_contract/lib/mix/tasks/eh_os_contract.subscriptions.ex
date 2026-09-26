@@ -16,8 +16,9 @@ defmodule Mix.Tasks.EhOsContract.Subscriptions do
 
   `--skip` moves a `failing` subscription past the one event it fails on, which is
   then never applied. `--reset` empties a read model through its `reset/0` and
-  replays the whole log into it; a read model without `reset/0`, and a policy, which
-  keeps no rows, cannot be reset.
+  replays the whole log into it; a read model without `reset/0` cannot be reset. A
+  policy keeps no rows, so `--reset` moves it back to the beginning of the log, and
+  it reacts to the history a new policy leaves alone.
   """
 
   use Boundary, classify_to: EhOsContract
@@ -51,15 +52,18 @@ defmodule Mix.Tasks.EhOsContract.Subscriptions do
   defp reset(repo, key) do
     case Subscription.rebuild(repo, key) do
       :ok ->
-        Mix.shell().info("#{key}: emptied, and replayed from the beginning of the log")
+        case Implementations.consumer(key) do
+          %{kind: :policy} ->
+            Mix.shell().info("#{key}: moved back to the beginning of the log, to react to it")
+
+          _rebuilt ->
+            Mix.shell().info("#{key}: emptied, and replayed from the beginning of the log")
+        end
 
       {:error, :no_reset} ->
         Mix.raise(
           "#{key} defines no reset/0, so its rows cannot be emptied and it cannot be reset"
         )
-
-      {:error, :not_a_read_model} ->
-        Mix.raise("#{key} is a policy, which keeps no rows to rebuild")
 
       {:error, :not_registered} ->
         Mix.raise("#{key} is not a subscription of this application")

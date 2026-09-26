@@ -30,14 +30,21 @@ defmodule EhOsContract.Subscription do
   lock again, once nothing is left to read. A read model without `reset/0` cannot be
   rebuilt and stays `stale`.
 
-  **Where a new consumer starts.** An ordered one at position 0, so it takes the
-  whole log — a new policy reacts to history, with keys derived from each event, as
-  Commanded's handlers start from the origin by default. A new process manager
-  replays the log instead, with its reactions suppressed: it learns the runs already
-  there and steers none of them, and a timer of theirs that came due before the
-  deploy is dropped (`EhOsContract.ProcessManager.reconcile!/2`). An inline read
-  model starts at the head of the log, since dispatch has been projecting it all
+  **Where a new consumer starts.** What is in the log when a consumer is first
+  registered is history, and nothing new reacts to history by itself. A new policy
+  starts at the head of the log: it keeps no state, so replaying the log with its
+  reactions suppressed would come to the same position. A new process manager
+  replays the log with its reactions suppressed: it learns the runs already there and
+  steers none of them, and a timer of theirs that came due before the deploy is
+  dropped (`EhOsContract.ProcessManager.reconcile!/2`). A deploy onto a year of
+  history therefore issues nothing for that year. An ordered read model starts at
+  position 0 and takes the whole log, since projecting history is what it is for. An
+  inline read model starts at the head, since dispatch has been projecting it all
   along; one added to a log that already has its events is rebuilt by hand.
+
+  Reacting to history is a person's decision: `rebuild/2` of a policy moves it back
+  to position 0, and it reacts to every event from there, with the keys derived from
+  each event, so what it issued before is not issued twice.
   """
 
   import Ecto.Query
@@ -95,8 +102,11 @@ defmodule EhOsContract.Subscription do
   defp mode(%{delivery: :in_transaction}), do: "inline"
   defp mode(_ordered), do: "ordered"
 
-  defp start(repo, %{delivery: :in_transaction}),
-    do: repo.one(from(e in EhOsContract.Event, select: coalesce(max(e.position), 0)))
+  # A policy starts at the head as an inline read model does, for another reason: what
+  # is in the log is history, and it reacts to none of it (see the moduledoc).
+  defp start(repo, consumer)
+       when consumer.delivery == :in_transaction or consumer.kind == :policy,
+       do: repo.one(from(e in EhOsContract.Event, select: coalesce(max(e.position), 0)))
 
   defp start(_repo, _ordered), do: 0
 
@@ -289,21 +299,17 @@ defmodule EhOsContract.Subscription do
 
   @doc """
   Empties `key`'s read model through its `reset/0`, or forgets every run of a
-  process manager, and replays the log into it (see the moduledoc).
-  `{:error, :no_reset}` for a read model without `reset/0`, `{:error,
-  :not_a_read_model}` for a policy, which keeps nothing to rebuild.
+  process manager, and replays the log into it; moves a policy back to position 0,
+  so it reacts to the whole log (see the moduledoc). `{:error, :no_reset}` for a
+  read model without `reset/0`.
   """
-  @spec rebuild(module(), String.t()) ::
-          :ok | {:error, :no_reset | :not_a_read_model | :not_registered}
+  @spec rebuild(module(), String.t()) :: :ok | {:error, :no_reset | :not_registered}
   def rebuild(repo, key) do
     consumer = Implementations.consumer(key)
 
     cond do
       consumer == nil or repo.get(SubscriptionRecord, key) == nil ->
         {:error, :not_registered}
-
-      consumer.kind == :policy ->
-        {:error, :not_a_read_model}
 
       consumer.kind == :read_model and
           not (consumer.module && function_exported?(consumer.module, :reset, 0)) ->
@@ -325,6 +331,11 @@ defmodule EhOsContract.Subscription do
                 %{delivery: :in_transaction} ->
                   :ok = consumer.module.reset()
                   "rebuilding"
+
+                # Nothing to empty: its keys keep what it already issued from being
+                # issued again.
+                %{kind: :policy} ->
+                  "running"
 
                 _ordered ->
                   :ok = consumer.module.reset()

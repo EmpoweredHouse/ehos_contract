@@ -134,6 +134,9 @@ defmodule EhOsContract.SubscriptionTest do
 
   describe "a policy delivered at least once" do
     test "reacts after the transaction, and what it issues goes on to the effect" do
+      # Registered first: what is in the log when a policy is registered is history.
+      Testing.drain()
+
       # Under 1000 each, so the policy in the transaction flags nothing.
       deposit(900)
       deposit(900)
@@ -154,11 +157,14 @@ defmodule EhOsContract.SubscriptionTest do
     end
 
     test "delivered a second time, appends nothing" do
+      Testing.drain(only: @flag)
+
       # Under 1000 each, so the policy in the transaction flags nothing.
       deposit(900)
       deposit(900)
       dispatch(%Withdraw{account_id: "a-1", amount: 1500})
       Testing.drain(only: @flag)
+      assert length(flagged()) == 1
 
       Repo.update_all(from(s in SubscriptionRecord, where: s.name == @flag), set: [position: 0])
 
@@ -217,9 +223,24 @@ defmodule EhOsContract.SubscriptionTest do
       assert {:error, :no_reset} = Subscription.rebuild(Repo, @movements)
     end
 
-    test "a policy keeps no rows to rebuild" do
+    test "a policy is moved back to the beginning, and reacts to the history it left alone" do
+      # History: the policy is registered after this withdrawal, and flags nothing.
+      deposit(900)
+      deposit(900)
+      dispatch(%Withdraw{account_id: "a-1", amount: 1500})
       Testing.drain(only: @flag)
-      assert {:error, :not_a_read_model} = Subscription.rebuild(Repo, @flag)
+      assert flagged() == []
+
+      assert :ok = Subscription.rebuild(Repo, @flag)
+      assert %SubscriptionRecord{position: 0, status: "running"} = row(@flag)
+
+      Testing.drain(only: @flag)
+      assert [_flag] = flagged()
+
+      # A second time, the keys derived from the event append nothing again.
+      assert :ok = Subscription.rebuild(Repo, @flag)
+      Testing.drain(only: @flag)
+      assert [_flag] = flagged()
     end
   end
 
@@ -299,16 +320,37 @@ defmodule EhOsContract.SubscriptionTest do
       refute row(@flag).version == "old"
     end
 
-    test "an ordered consumer starts from the beginning of the log, an inline read model at its head" do
+    test "an ordered read model starts from the beginning of the log, an inline one and a policy at its head" do
       deposit(10)
 
       Subscription.register!(Repo, [
         Implementations.consumer(@lines),
-        Implementations.consumer(@balances)
+        Implementations.consumer(@balances),
+        Implementations.consumer(@flag)
       ])
 
       assert row(@lines).position == 0
       assert row(@balances).position == List.last(deposits()).position
+      assert row(@flag).position == List.last(deposits()).position
+    end
+
+    test "a new policy leaves the history in the log alone, and reacts to what follows" do
+      # Before the deploy: a withdrawal the policy would flag.
+      for _ <- 1..3, do: deposit(900)
+      dispatch(%Withdraw{account_id: "a-1", amount: 1500})
+
+      # The deploy is its first registration.
+      Testing.drain(only: @flag)
+      assert flagged() == []
+
+      dispatch(%Withdraw{account_id: "a-1", amount: 1100})
+      Testing.drain(only: @flag)
+      assert [flag] = flagged()
+
+      [_history, withdrawn] =
+        Repo.all(from(e in Event, where: e.type == "ledger.withdrawn", order_by: e.position))
+
+      assert flag.metadata["idempotency_key"] =~ withdrawn.id
     end
   end
 end

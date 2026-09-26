@@ -1127,6 +1127,14 @@ the person's.
 > queued is dropped, because it came due while nothing steered its run; one whose job is still queued, after a
 > rebuild of a running process manager, fires.
 
+> **26 September 2026, E7c — a new policy starts like a new process manager.** This reverses the E7a note's
+> "a new policy reacts to history" (the user's decision after the E7b review): what is in the log when a
+> consumer is first registered is history, and nothing new reacts to history by itself. A policy keeps no
+> state, so its replay with reactions suppressed is its registration at the head of the log. Reacting to
+> history is a person's `--reset`, which moves the policy back to position 0; the keys derived from each event
+> keep what it already issued from being issued twice. An ordered read model still starts at position 0. In a
+> host's tests the first `EhOsContract.Testing.drain/1` is the deploy.
+
 ## 13. Runs, promises and conformance on the new log
 
 - **Runs.** `process` and `instance_id` are computed at append for the event's home process, as v1's
