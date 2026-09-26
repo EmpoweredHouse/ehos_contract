@@ -135,6 +135,26 @@ defmodule EhOsContract.ProcessManagerTest do
       assert flags() == []
     end
 
+    @tag :capture_log
+    test "reads its state back without creating an atom it does not know" do
+      open()
+      drain_at(0)
+
+      # A state written by something else than the engine, naming an atom nothing has
+      # ever created: the external term format of a small UTF-8 atom.
+      name = "eh_os_contract_never_#{System.unique_integer([:positive])}"
+      forged = <<131, 119, byte_size(name)>> <> name
+
+      Repo.update_all(from(r in ProcessManagerRecord, where: r.name == @chase),
+        set: [state: forged]
+      )
+
+      at(1, fn -> dispatch(%Deposit{account_id: "a-1", amount: 10}) end)
+      drain_at(1)
+
+      assert_raise ArgumentError, fn -> String.to_existing_atom(name) end
+    end
+
     test "control: events of an account whose run never started change nothing" do
       Testing.drain()
       at(1, fn -> dispatch(%OpenAccount{account_id: "a-9", branch_id: "b-7"}) end)

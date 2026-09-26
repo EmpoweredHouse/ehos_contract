@@ -69,7 +69,7 @@ defmodule EhOsContract.ProcessManager do
          %{"token" => ^fired} <- Map.get(record.timers, timer) do
       {model, pm} = declaration(consumer)
       name = String.to_existing_atom(timer)
-      state = :erlang.binary_to_term(record.state)
+      state = state!(record)
       source = %{id: row.id, correlation_id: row.correlation_id}
 
       unless replay? or not exported?(consumer, name, 1) do
@@ -112,7 +112,7 @@ defmodule EhOsContract.ProcessManager do
 
     state =
       if record,
-        do: :erlang.binary_to_term(record.state),
+        do: state!(record),
         else: initial(model, pm, event)
 
     reactions =
@@ -246,6 +246,10 @@ defmodule EhOsContract.ProcessManager do
       Map.new(pm.correlate, &{&1, Map.fetch!(event, &1)})
     )
   end
+
+  # `:safe`: the state is the engine's own struct, whose atoms exist; a binary that
+  # would create an atom or a fun was not written by the engine and is refused.
+  defp state!(record), do: :erlang.binary_to_term(record.state, [:safe])
 
   defp load(repo, key, correlation),
     do: repo.get_by(ProcessManagerRecord, name: key, correlation: correlation)
