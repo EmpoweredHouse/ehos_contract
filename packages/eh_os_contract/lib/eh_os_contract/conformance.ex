@@ -182,9 +182,16 @@ defmodule EhOsContract.Conformance do
     in_flight = Enum.filter(steps, &waiting?/1)
     failing = Enum.filter(steps, &failing?/1)
 
+    pending = downstream_of(in_flight, steps)
+
     untraversed =
       if runs > 0,
-        do: Enum.filter(steps, &(&1.runs == 0 and not waiting?(&1) and not failing?(&1))),
+        do:
+          Enum.filter(
+            steps,
+            &(&1.runs == 0 and not waiting?(&1) and not failing?(&1) and
+                not MapSet.member?(pending, &1.from))
+          ),
         else: []
 
     %{
@@ -206,6 +213,26 @@ defmodule EhOsContract.Conformance do
   end
 
   defp waiting?(step), do: Enum.any?(Map.values(step.in_flight), &(&1 > 0))
+
+  # What a waiting step leads to, and what that leads to in turn: a step starting there
+  # has not been taken *yet*, since what it starts from is still on its way. Without
+  # this a chain of steps behind one queue reads as "never" everywhere but its head.
+  @spec downstream_of([map()], [map()]) :: MapSet.t()
+  defp downstream_of(waiting, steps) do
+    reached = for %{to: %{} = to} <- waiting, into: MapSet.new(), do: to
+    close(reached, steps)
+  end
+
+  defp close(reached, steps) do
+    more =
+      for %{from: from, to: %{} = to} <- steps,
+          MapSet.member?(reached, from),
+          not MapSet.member?(reached, to),
+          into: MapSet.new(),
+          do: to
+
+    if MapSet.size(more) == 0, do: reached, else: close(MapSet.union(reached, more), steps)
+  end
 
   defp failing?(%{failing: f}), do: f.commands > 0 or f.effects > 0 or f.subscription != nil
 

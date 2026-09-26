@@ -120,9 +120,9 @@ defmodule EhOsContract.ReportV2Test do
 
       assert names(p.in_flight) == [{:request_refused, :notify_on_refusal, :notify_refusal}]
       refute {:request_refused, :notify_on_refusal, :notify_refusal} in names(p.untraversed)
-      # The step after it has no run yet, and nothing waits for it on its own: it is
-      # untraversed until the one before it is taken.
-      assert {:notify_refusal, nil, :refusal_notified} in names(p.untraversed)
+      # Nor the step after it, which waits on the one before: its command has not been
+      # issued yet, which is "not yet" too.
+      refute {:notify_refusal, nil, :refusal_notified} in names(p.untraversed)
 
       assert text(:v2) =~
                "Request refused → Notify a refusal (via: Notify a refused request) — in progress: 1 event not yet taken"
