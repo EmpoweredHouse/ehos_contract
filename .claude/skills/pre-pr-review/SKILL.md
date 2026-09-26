@@ -62,9 +62,15 @@ for the note: record it once you have checked the diff is documentation only
    or says the change is documentation only.
 
 After review comments or a failed CI run, fix, commit, and go through steps 3–7 again for the new
-commits before pushing them. Before any push to an existing pull request, check it is still open
-(`gh pr view <number> --json state --jq .state`). On 25 September a commit pushed to PR #1's
-branch eight seconds after the merge never reached `main` and needed a pull request of its own.
+commits before pushing them. Before any push to an existing pull request, check it is still open: a
+commit pushed to a merged pull request's branch never reaches `main`. Test the state itself, not
+the exit code of the command that prints it, because `gh pr view` exits 0 for a merged pull request
+too:
+
+```bash
+[ "$(gh pr view <number> --json state --jq .state)" = OPEN ] && git push
+```
+
 The hook guards only `gh pr create`, not later pushes, so this part is yours to keep.
 
 ## What the review checks against
@@ -83,9 +89,8 @@ them, not against memory:
 
 Kinds of problems a review here found that neither file names yet:
 
-- A guard over shell commands matches the invocation, not the text. The first version of this
-  repository's hook refused every command that merely mentioned `gh pr create`, a heredoc and a
-  file write included (fixed 25 September).
+- A guard over shell commands matches the invocation, not the text: a command that only mentions
+  `gh pr create`, in a heredoc or a file it writes, is not that command.
 
 Add to this list when a review finds a new kind of problem. If it is a rule about the code, it
 belongs in `CLAUDE.md` instead.

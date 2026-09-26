@@ -109,7 +109,7 @@ defmodule EhOsContract.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md", "docs/contract.md", "CHANGELOG.md"],
+      extras: ["README.md", "docs/contract.md", "docs/authorization.md", "CHANGELOG.md"],
       source_ref: "v#{@version}"
     ]
   end

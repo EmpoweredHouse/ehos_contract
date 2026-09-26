@@ -169,6 +169,9 @@ What changes otherwise is what a host has to do.
   the givens through the read model's implementation and asks the query in a transaction it rolls back, and
   requires exactly as many rows as named, each matching a different answered row on the fields it names, in any
   order. A test module with such a scenario checks out an Ecto sandbox connection of the configured repo.
+- `docs/authorization.md`: how authorization works — the names the contract derives, the flow from EHOS's
+  credential to a check in dispatch, which calls are asked of the `Authorizer` and which are held to the
+  contract, scope, what is written for each outcome, the HTTP surface, and how strong it is.
 - `EhOsContract.Codec.decode/4` takes `strings: true`, to read an integer or a boolean written as text.
 - `EhOsContract.Meta` carries an event's `id` and `position` when it is read back from the log.
 - `EhOsContract.Store.lock/1` on the configured implementation.
