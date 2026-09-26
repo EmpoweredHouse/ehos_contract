@@ -325,6 +325,31 @@ wyzwalacz „jedno zdarzenie w dwóch procesach”.
 `report_test`); „jeszcze nie” przechodzi w „nigdy” dopiero po opróżnieniu kolejki; przebudowa daje identyczne
 wiersze; trujące zdarzenie zatrzymuje konsumenta dokładnie na swojej pozycji; dwóch runnerów nie bierze tej
 samej paczki (prawdziwe commity, osobny schemat); odpalony timer uruchomiony dwa razy daje jeden dispatch.
+**Podzielony na trzy PR-y** (decyzja użytkownika z 26 września, jak E5a/E5b — żeby diff dało się przeczytać),
+każdy na gałęzi od poprzedniego:
+- **E7a — runtime asynchroniczny** (`dsl-v2/e7-async`): migracja V04; efekty na Obanie; uporządkowane
+  subskrypcje dla read modeli i polityk `:at_least_once`; supervisor; przebudowa read modeli; testy trującego
+  zdarzenia i dwóch runnerów na `CommitRepo`; znalezisko 5 z przeglądu E6. Odbiór: przebudowa daje identyczne
+  wiersze; trujące zdarzenie zatrzymuje konsumenta dokładnie na swojej pozycji; dwóch runnerów nie bierze tej
+  samej paczki.
+- **E7b — process managery i timery**: krok jako jedna transakcja, `TimerJob` i `eh_os_contract.timer_elapsed`,
+  replay bez reakcji, `correlate` z ustalenia 4 E5b. Odbiór: odpalony timer uruchomiony dwa razy daje jeden
+  dispatch.
+- **E7c — zgodność na nowym logu i fikstury**: `_event_runs` z czytelnikami (`Trace`, `Run`), kontrakty v2 w
+  raporcie, grafie i `check`, w toku i padające z nowych źródeł, pokrycie scenariuszy, wersja okablowania z
+  linią w CHANGELOG, `conformance.v2`, fikstury według „Losów fikstur”, webowy `CaseHandling`, poprawki ADR.
+  Odbiór: te same scenariusze dają te same liczby werdyktów; „jeszcze nie” przechodzi w „nigdy” dopiero po
+  opróżnieniu kolejki.
+
+Interfejs widoczny dla hosta, rozstrzygnięty przez użytkownika 26 września przed budową E7a:
+- runnery wyłącza `config :eh_os_contract, subscriptions: :manual` (obok `:repo` i `:applications`), nie opcja
+  dziecka;
+- jeden pomocnik testów, `EhOsContract.Testing.drain/1`: dogania każdą subskrypcję do głowy logu i wykonuje
+  joby efektów (w E7b także timerów), aż nic nie zostanie; `only:` zawęża do nazw konsumentów;
+- jeden task, `mix eh_os_contract.subscriptions`: stan każdej subskrypcji, `--skip NAZWA` za trujące zdarzenie,
+  `--reset NAZWA` przebudowa od zera — biblioteka sama nigdy nie pomija (v2 §12);
+- read model czyści swoje wiersze opcjonalnym callbackiem `reset/0 :: :ok`; bez niego przebudowa odmawia, a
+  subskrypcja zostaje `stale`, widoczna w tasku.
 
 **E8 — Crypto-shredding.** `subject` w domenie, `personal:`/`subject:` na polach, tabele kluczy i usunięć,
 `Vault`, szyfrowanie w `Codec`, `erase/3`, `forget/2`, bramki (v2 §14). Przed TaxVision, bo
