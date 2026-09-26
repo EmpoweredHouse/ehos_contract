@@ -24,7 +24,9 @@ kontraktem v2 sandboxa i wypadł przez to z czytelników v1 (raport, graf, `chec
 - `main` = `origin/main` = `6ef626b` (merge PR #11). Użytkownik merguje PR-y jako merge, więc historia `main` ma
   merge commity.
 - **E6: `dsl-v2/e6-dispatch`**, wypchnięta, odgałęziona od `6ef626b`: handoff (`110d5bc`) i dwadzieścia commitów
-  E6 (`bbad60c`..głowa), brama zielona na każdym; PR do `main` otwarty 26 września. Wymeldowana w worktree
+  E6 (`bbad60c`..głowa), brama zielona na każdym; [PR #12](https://github.com/EmpoweredHouse/eh-os-contract/pull/12)
+  do `main`, otwarty 26 września. Po jego otwarciu doszedł `docs/authorization.md` pakietu (opis autoryzacji,
+  o który poprosił użytkownik). Wymeldowana w worktree
   `.claude/worktrees/dsl-v2-e6-dispatch-3b16ce`. Worktree `dsl-v2-e5b-compiler-903cbd` stoi odłączony na `110d5bc`.
 - Inne worktree, wszystkie w całości w `main`: `dsl-v2-e1-model-seam-ed132e` (`38df8bd`),
   `dsl-v2-e4-contract-core-68fd81` (`5cb888d`), `dsl-v2-e5-codegen-0c8df1` (`86f042f`),
