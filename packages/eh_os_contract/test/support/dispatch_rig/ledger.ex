@@ -96,6 +96,12 @@ defmodule DispatchRig.Ledger do
     param :account_id, :id
   end
 
+  # Over a read model projected after the transaction, so that reading one's own
+  # write has something to wait for.
+  query :lines_of, "Lines of one account", reads: :ledger_lines, by: :auditor do
+    param :account_id, :id
+  end
+
   policy :flag_large_deposit, "Flag an account on a large deposit",
     handles: :deposited,
     issues: :flag_account

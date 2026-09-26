@@ -90,6 +90,9 @@ What changes otherwise is what a host has to do.
   a v2 `promise`, and `Run.evaluate/3` measures a v2 process's `deadline`, both over the runs in
   `eh_os_contract_event_runs`, so an event another contract decided counts in the run that includes it. The
   arithmetic is v1's, and the same scenarios give the same verdicts on a v1 shape and on its v2 port.
+- **E7c: a query reads its own writes.** `EhOsContract.query/3` takes `min_position:` — the `position` of a
+  dispatch's receipt — and waits, up to `wait:` milliseconds (5000), until the read model the query reads has
+  taken it; otherwise `{:error, :not_caught_up}`. A read model delivered in the transaction already has it.
 - **E7c: scenario coverage** (`EhOsContract.Coverage`, v2 §13): a v2 report's `scenarios` says how many of the
   contract's command scenarios the log saw happen — by type only, `given` among the stream's types and `expect`
   a subsequence of what was emitted, or the same rejecting invariant — which never, and which decisions no
