@@ -160,6 +160,17 @@ defmodule EhOsContract.DispatchCommandTest do
       assert [%{outcome: "failed", failed_in: "decider", error: "ArgumentError"}] = rows()
     end
 
+    test "an event for another unit raises, since it would be appended to this unit's stream" do
+      Process.put(:dispatch_rig_stray, "a-2")
+
+      assert_raise ArgumentError, ~r/for another unit: its account_id is not the command's/, fn ->
+        deposit!("a-1", 5)
+      end
+
+      assert log() == []
+      assert [%{outcome: "failed", failed_in: "decider"}] = rows()
+    end
+
     test "control: the same account takes a declared event" do
       assert %Receipt{events: [%Deposited{amount: 5}]} = deposit!("a-1", 5)
       assert length(log()) == 1

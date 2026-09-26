@@ -6,7 +6,9 @@ defmodule DispatchRig.Account do
   does not emit without `emit/1`, which would have refused it at compile time.
   And a test can make the next `deposit/2` append to the same stream behind the
   decision's back, `Process.put(:dispatch_rig_race, true)`, so that the append
-  meets a stream that moved: the conflict dispatch retries.
+  meets a stream that moved: the conflict dispatch retries. And it can make the
+  next deposit decide an event for another account,
+  `Process.put(:dispatch_rig_stray, "a-2")`, which dispatch has to refuse.
   """
 
   use DispatchRig.Ledger, aggregate: :account
@@ -18,7 +20,7 @@ defmodule DispatchRig.Account do
   @impl true
   def deposit(%Deposit{account_id: id, amount: amount}, _state) do
     if Process.delete(:dispatch_rig_race), do: race(id)
-    emit(%Deposited{account_id: id, amount: amount})
+    emit(%Deposited{account_id: Process.delete(:dispatch_rig_stray) || id, amount: amount})
   end
 
   @impl true

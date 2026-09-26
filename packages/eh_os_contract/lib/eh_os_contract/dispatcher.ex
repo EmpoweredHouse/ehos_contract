@@ -616,6 +616,7 @@ defmodule EhOsContract.Dispatcher do
   defp emitted!(job, events) do
     %{model: model, declaration: declaration, values: values} = job
     allowed = Map.new(declaration.emits, &{Model.module_for(model, :event, &1), &1})
+    unit = Enum.find(model.units, &(&1.name == declaration.unit))
 
     for event <- events do
       name =
@@ -626,6 +627,16 @@ defmodule EhOsContract.Dispatcher do
                   "#{inspect(declaration.emits)}. Nothing was appended."
 
       event_declaration = Enum.find(model.events, &(&1.name == name))
+
+      # The event is appended to the command's stream, so it has to be about the same
+      # unit: one carrying another identity would sit in this stream and be folded
+      # into this unit's state.
+      for field <- unit.identity, Map.fetch!(event, field) != Map.fetch!(job.command, field) do
+        raise ArgumentError,
+              "command #{inspect(declaration.name)} decided event #{inspect(name)} for another " <>
+                "unit: its #{field} is not the command's, and an event joins the stream of the " <>
+                "unit that decided it. Nothing was appended."
+      end
 
       case Codec.problems(event_declaration.fields, event, values) do
         [] ->
