@@ -74,6 +74,17 @@ defmodule EhOsContract.DispatchEffectsTest do
       assert notices() == ["a-1"]
     end
 
+    test "runs when the contract's application is not among the configured ones" do
+      # Dispatch finds a contract's consumers in its own application too; so does the job.
+      Application.put_env(:eh_os_contract, :applications, [])
+      on_exit(fn -> Application.put_env(:eh_os_contract, :applications, [:eh_os_contract]) end)
+
+      {:ok, _} = dispatch(%Deposit{account_id: "a-1", amount: 1000})
+
+      assert %{success: 1, cancelled: 0} = Oban.drain_queue(queue: :events)
+      assert notices() == ["a-1"]
+    end
+
     test "is retried when it answers {:error, reason}" do
       {:ok, _} = dispatch(%Deposit{account_id: "a-down", amount: 1000})
 

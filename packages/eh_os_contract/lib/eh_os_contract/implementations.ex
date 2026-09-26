@@ -90,7 +90,10 @@ defmodule EhOsContract.Implementations do
   Every consumer that keeps a row in `eh_os_contract_subscriptions`, in the order of
   their keys: read models and policies delivered `:at_least_once`,
   which a runner feeds in order, and read models delivered `:in_transaction`, whose
-  row lets them be rebuilt. The host's applications are the configured ones.
+  row lets them be rebuilt. The host's applications are the configured ones:
+  unlike dispatch, a boot does not know which contract will be dispatched, so an
+  ordered consumer of a contract outside `config :eh_os_contract, applications:` gets
+  no row and no runner.
   """
   @spec subscribed() :: [consumer()]
   def subscribed, do: index(nil).subscribed
@@ -102,9 +105,22 @@ defmodule EhOsContract.Implementations do
   def taking(consumer, type),
     do: Map.merge(consumer, %{type: type, callback: Map.fetch!(consumer.callbacks, type)})
 
-  @doc "The consumer whose key is `key`, or `nil`."
+  @doc """
+  The consumer whose key is `key`, or `nil`. Looked up where dispatch looks: the
+  configured applications and the application of the contract the key names, so an
+  effect's job finds the effect its dispatch enqueued it for.
+  """
   @spec consumer(String.t()) :: consumer() | nil
-  def consumer(key), do: Enum.find(index(nil).consumers, &(&1.key == key))
+  def consumer(key) do
+    [contract | _] = String.split(key, ":")
+    Enum.find(index(existing(contract)).consumers, &(&1.key == key))
+  end
+
+  defp existing(contract) do
+    Module.safe_concat([contract])
+  rescue
+    ArgumentError -> nil
+  end
 
   @doc false
   @spec index(module() | nil) :: %{
