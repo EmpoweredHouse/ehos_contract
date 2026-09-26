@@ -21,10 +21,25 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
 
   @endpoint EhOsContract.Web.TestHost.Endpoint
 
-  test "mounting through the real router renders a real conformance report" do
-    EhOsContract.emit_all(CaseHandling, [EhOsContract.event(:case_opened, %{case_id: "case-a"})])
+  @officer EhOsContract.Actor.credential("u-1", [
+             "web_test_host.open_case",
+             "web_test_host.decide_case"
+           ])
 
-    EhOsContract.emit_all(CaseHandling, [EhOsContract.event(:case_approved, %{case_id: "case-a"})])
+  # A case opened and approved, through dispatch, as a host's code would.
+  defp approve(id) do
+    alias EhOsContract.Web.TestHost.Fixtures.CaseHandling.Commands.{DecideCase, OpenCase}
+
+    {:ok, _} = EhOsContract.dispatch(CaseHandling, %OpenCase{case_id: id}, actor: @officer)
+
+    {:ok, _} =
+      EhOsContract.dispatch(CaseHandling, %DecideCase{case_id: id, approve: true},
+        actor: @officer
+      )
+  end
+
+  test "mounting through the real router renders a real conformance report" do
+    approve("case-a")
 
     conn =
       build_conn()
@@ -35,8 +50,11 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
 
     assert html =~ inspect(CaseHandling)
     assert html =~ "Runs in this period: 1."
-    assert html =~ "Case rejected → Case closed as rejected"
+    # A v2 step: the rejection reaching its policy, and the policy's command.
+    assert html =~ "Case rejected → Close a case as rejected (via: Close a rejected case)"
     assert html =~ "Met in all 1 runs."
+    # A v2 contract's scenarios, in the report's words: this one declares none.
+    assert html =~ EhOsContract.Report.Sentence.scenarios_observed(%{declared: 0})
   end
 
   test "every sentence on the screen is one EhOsContract.Report.Sentence produced" do
@@ -49,9 +67,7 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     # This does not check wording. It checks that the wording is not this screen's
     # to choose: the expected strings are computed from the same data the screen
     # renders, so a local copy that says anything else fails here the day it appears.
-    EhOsContract.emit_all(CaseHandling, [EhOsContract.event(:case_opened, %{case_id: "case-a"})])
-
-    EhOsContract.emit_all(CaseHandling, [EhOsContract.event(:case_approved, %{case_id: "case-a"})])
+    approve("case-a")
 
     report = EhOsContract.Conformance.report(CaseHandling, [])
 
@@ -80,7 +96,7 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
       for edge <- process.failing,
           do: assert(html =~ escape(EhOsContract.Report.Sentence.step_failing(edge)))
 
-      for assertion <- process.assertions do
+      for assertion <- Map.get(process, :assertions) || process.promises do
         assert html =~ escape(EhOsContract.Report.Sentence.rule(assertion))
         assert html =~ escape(EhOsContract.Report.Sentence.outcome(assertion))
       end
@@ -237,7 +253,15 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
         reports: [report()]
       })
 
-    assert with_drift =~ "A → B (4x)"
+    assert with_drift =~
+             EhOsContract.Report.Sentence.drift(%{
+               from: "a",
+               to: "b",
+               from_label: "A",
+               to_label: "B",
+               count: 4
+             })
+
     assert without_drift =~ "None: nothing happened outside the agreement."
   end
 

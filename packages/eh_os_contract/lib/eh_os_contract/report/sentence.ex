@@ -225,6 +225,43 @@ defmodule EhOsContract.Report.Sentence do
   @spec all_steps_carried_out() :: String.t()
   def all_steps_carried_out, do: "All agreed steps were carried out in this period."
 
+  @doc """
+  One thing that happened though it was not agreed. A v1 drift is an edge nobody
+  declared; a v2 one is an event no declared command emits, by a command that does
+  not emit it or written around dispatch.
+  """
+  @spec drift(map()) :: String.t()
+  def drift(%{from: nil, to: %{} = to} = e),
+    do: "#{name(to)} — written outside dispatch  (#{e.count}x)"
+
+  def drift(%{from: %{} = from, to: %{} = to} = e),
+    do: "#{name(from)} → #{name(to)}  (#{e.count}x)"
+
+  def drift(e), do: "#{e.from_label || e.from} → #{e.to_label || e.to}  (#{e.count}x)"
+
+  @doc """
+  How many of a v2 contract's command scenarios the log saw happen
+  (`EhOsContract.Coverage`).
+  """
+  @spec scenarios_observed(map()) :: String.t()
+  def scenarios_observed(%{declared: 0}),
+    do: "No scenario is triggered by a command, so none can be observed in the log."
+
+  def scenarios_observed(s),
+    do: "Scenarios: #{s.observed} of #{s.declared} observed in this period."
+
+  @doc """
+  A decision the log saw that no scenario declares: the command, and what it emitted
+  or the invariant it was refused on.
+  """
+  @spec outcome_undeclared(map()) :: String.t()
+  def outcome_undeclared(%{rejected: nil} = o) do
+    emitted = if o.emitted == [], do: "nothing", else: Enum.join(o.emitted, ", ")
+    "#{name(o.command)} → #{emitted}"
+  end
+
+  def outcome_undeclared(o), do: "#{name(o.command)} → refused: #{o.rejected}"
+
   @doc false
   @spec no_drift() :: String.t()
   def no_drift, do: "None: nothing happened outside the agreement."

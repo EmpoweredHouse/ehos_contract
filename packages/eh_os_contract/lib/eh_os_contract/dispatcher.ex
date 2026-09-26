@@ -89,6 +89,7 @@ defmodule EhOsContract.Dispatcher do
           | {:invalid, [Codec.problem()]}
           | :idempotency_key_reused
           | :conflict
+          | :not_caught_up
 
   @doc """
   Dispatches `command`, a struct a v2 contract generated, to `contract`.
@@ -170,6 +171,13 @@ defmodule EhOsContract.Dispatcher do
   is not among the values the credential grants raises
   `EhOsContract.Authorizer.OutsideScopeError`, so a wrong `where` cannot hand one
   clinic another's rows. So do rows that are not the read model's.
+
+  **Read your writes** (v2 §11): `min_position:` — the `position` of a dispatch's
+  receipt — waits until the read model the query reads has taken that position,
+  polling its subscription row for up to `wait:` milliseconds (5000), and then
+  refuses with `{:error, :not_caught_up}` rather than answer from before the write.
+  A read model delivered in the transaction has taken every committed event, unless
+  it is being rebuilt.
   """
   @spec query(module(), struct(), keyword() | map()) ::
           {:ok, [struct()] | struct() | nil} | {:error, refusal()}
@@ -181,10 +189,46 @@ defmodule EhOsContract.Dispatcher do
     scope = scope(declaration, params, values)
 
     with :ok <- permit_query(model, declaration, ctx.actor, scope),
-         :ok <- valid(declaration.params, params, values) do
+         :ok <- valid(declaration.params, params, values),
+         :ok <- caught_up(model, declaration, Map.new(opts)) do
       impl = Implementations.fetch!(model, :query, declaration.name)
       answer = apply(impl, declaration.name, [params, %{actor: ctx.actor}])
       {:ok, answered!(model, declaration, answer, ctx.actor, values)}
+    end
+  end
+
+  # --- read your writes ---------------------------------------------------------------
+
+  @poll 25
+
+  defp caught_up(model, declaration, %{min_position: position} = opts)
+       when is_integer(position) do
+    key = "#{inspect(model.module)}:read_model:#{declaration.reads}"
+    read_model = Enum.find(model.read_models, &(&1.name == declaration.reads))
+    until = System.monotonic_time(:millisecond) + Map.get(opts, :wait, 5000)
+    wait_for(repo(), key, read_model.delivery, position, until)
+  end
+
+  defp caught_up(_model, _declaration, _opts), do: :ok
+
+  defp wait_for(repo, key, delivery, position, until) do
+    case {repo.get(SubscriptionRecord, key), delivery} do
+      # Projected by dispatch in its own transaction, with no row to say so: what
+      # committed is there.
+      {nil, :in_transaction} ->
+        :ok
+
+      {%{position: at, status: status}, _delivery}
+      when at >= position and status != "rebuilding" ->
+        :ok
+
+      _behind ->
+        if System.monotonic_time(:millisecond) >= until do
+          {:error, :not_caught_up}
+        else
+          Process.sleep(@poll)
+          wait_for(repo, key, delivery, position, until)
+        end
     end
   end
 

@@ -413,6 +413,123 @@ defmodule EhOsContract.Check do
     |> Enum.sort_by(&{inspect(&1.contract), to_string(&1.process)})
   end
 
+  @typedoc "One finding about a v2 contract: its level, and the sentence `mix eh_os_contract.check` prints."
+  @type v2_finding :: {:warn | :info, String.t()}
+
+  @doc """
+  What `mix eh_os_contract.check` says about v2 contracts (plan E7c-2).
+
+  Most of what v1 checks here a v2 contract cannot compile without — a name
+  declared twice, an assertion naming an event nobody declares, a rule function
+  that does not exist are L2 and L3 rules of the DSL. What is left is what a
+  contract may legally say and a reader should still hear about, the same sentences
+  v1 contracts get: a process with no `accountable`; a declaration or a `promise`
+  the process owner has not confirmed; a promise with no `within`, which has no
+  failing case; a `deadline` with no event that ends a run; and whether the
+  contract is implemented — not at all is legal and noted (D3), in part is a
+  command or a consumer dispatch will refuse, and a warning.
+  """
+  @spec v2_findings([module()] | nil) :: [v2_finding()]
+  def v2_findings(contracts \\ nil) do
+    for contract <- contracts || EhOsContract.Registry.v2_contracts(),
+        model = Model.fetch(contract),
+        finding <- v2_process(model) ++ v2_implemented(model) do
+      finding
+    end
+  end
+
+  defp v2_process(%{process: nil}), do: []
+
+  defp v2_process(%{process: process} = model) do
+    name = inspect(model.module)
+
+    accountable =
+      if process.accountable == nil,
+        do: [
+          {:warn,
+           "process #{inspect(process.name)} names no `accountable` role, so a finding about it " <>
+             "has no addressee (#{name})"}
+        ],
+        else: []
+
+    unverified =
+      for key <- [:cadence, :deadline],
+          %{unverified: true} = value <- [Map.get(process, key)] do
+        {:warn,
+         "process #{inspect(process.name)}: `#{key}` = #{inspect({value.amount, value.unit})} " <>
+           "is not confirmed by the process owner — it does not count towards the evidence report " <>
+           "(#{name})"}
+      end ++
+        for %{unverified: true} = promise <- process.promises do
+          {:warn,
+           "process #{inspect(process.name)}: promise #{inspect(promise.name)} is not confirmed by " <>
+             "the process owner — it is still evaluated, but it does not count towards the " <>
+             "evidence report's aggregate (#{name})"}
+        end
+
+    unfalsifiable =
+      for %{within: nil} = promise <- process.promises do
+        {:info,
+         "promise #{inspect(promise.name)} has no `within`, so it has no failing case: any " <>
+           "#{inspect(promise.eventually)} after #{inspect(promise.from)} satisfies it and a run " <>
+           "with none stays pending for ever (#{name})"}
+      end
+
+    ends? =
+      Enum.any?(model.events, & &1.terminal) or Enum.any?(process.includes, & &1.terminal)
+
+    unobservable =
+      if process.deadline && not ends?,
+        do: [
+          {:info,
+           "process #{inspect(process.name)} declares `deadline` = " <>
+             "#{inspect({process.deadline.amount, process.deadline.unit})} and no event of it is " <>
+             "`terminal: true`, so no run can be observed to end and the duration cannot be " <>
+             "measured (#{name})"}
+        ],
+        else: []
+
+    accountable ++ unverified ++ unfalsifiable ++ unobservable
+  end
+
+  # What dispatch looks an implementation up for: every unit, every consumer, and
+  # every query, which `EhOsContract.Dispatcher.query/3` answers through its module.
+  defp v2_implemented(model) do
+    wanted =
+      for(u <- model.units, do: {u.kind, u.name}) ++
+        for(p <- model.policies, do: {:policy, p.name}) ++
+        for(e <- model.effects, do: {:effect, e.name}) ++
+        for(pm <- model.process_managers, do: {:process_manager, pm.name}) ++
+        for(r <- model.read_models, do: {:read_model, r.name}) ++
+        for q <- model.queries, do: {:query, q.name}
+
+    declarations = EhOsContract.Implementations.index(model.module).declarations
+
+    missing =
+      for {kind, name} <- wanted,
+          not Map.has_key?(declarations, {model.module, kind, name}),
+          do: "#{kind} #{name}"
+
+    cond do
+      wanted == [] or missing == [] ->
+        []
+
+      length(missing) == length(wanted) ->
+        [
+          {:info,
+           "#{inspect(model.module)} has no implementation, which a contract may (D3): nothing " <>
+             "of it can be dispatched, and its report is of a process nobody runs"}
+        ]
+
+      true ->
+        [
+          {:warn,
+           "#{inspect(model.module)} implements some declarations and not " <>
+             "#{Enum.join(missing, ", ")}, which dispatch will refuse to run"}
+        ]
+    end
+  end
+
   @doc """
   Whether there is nothing at all to check.
 

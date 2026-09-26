@@ -17,7 +17,7 @@ defmodule EhOsContract.Graph do
 
   import Ecto.Query
 
-  alias EhOsContract.{Event, Model, Registry}
+  alias EhOsContract.{Event, EventRun, Model, Registry}
 
   @no_traffic %{count: 0, instances: 0}
 
@@ -563,6 +563,168 @@ defmodule EhOsContract.Graph do
 
   # A label is the client's own sentence and may hold anything they wrote. Only
   # the double quote actually breaks a quoted mermaid node.
+  @doc """
+  A v2 contract's graph as a mermaid diagram (v2 §13, plan E7c-2): **a node of every
+  kind** — commands, events, the policies, process managers and effects that react,
+  and timers — coloured as Event Storming colours them, and each step of
+  `EhOsContract.Paths` as the edges between them. A command emits its events; an
+  event reaches a consumer; the consumer issues a command.
+
+  It is one contract's, which is one process's: navigation stays per process (ADR
+  §9). `overlay: true` lays the log over it — on each event the occurrences and the
+  runs it happened in, on each step the runs that took it out of the process's runs,
+  and what waits or fails there. The counts sit on the edge that is the step's own —
+  the emit, or the consumer's command — since an event may reach one consumer that
+  issues two commands. `since:` and `until:` bound the log, as in the report.
+  """
+  @spec steps_to_mermaid(module(), keyword()) :: String.t()
+  def steps_to_mermaid(contract, opts \\ []) do
+    model = Model.fetch(contract)
+    overlay? = Keyword.get(opts, :overlay, false)
+
+    steps =
+      if overlay?,
+        do: EhOsContract.Paths.observe(model, opts),
+        else: EhOsContract.Paths.declared(model)
+
+    counts = if overlay?, do: event_counts(model, opts), else: %{}
+
+    nodes =
+      (Enum.flat_map(steps, &[&1.from, &1.via, &1.to]) ++ event_nodes(model))
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq_by(&node_id/1)
+
+    node_lines = for node <- nodes, do: "    " <> node_line(node, Map.get(counts, node.name))
+
+    edge_lines =
+      steps
+      |> Enum.flat_map(&step_edges(&1, overlay?))
+      |> Enum.uniq()
+      |> Enum.map(&("    " <> &1))
+
+    Enum.join(["flowchart LR"] ++ node_lines ++ edge_lines ++ step_classes(), "\n")
+  end
+
+  # Every event of the contract and every one its process includes, so an event no
+  # step touches is still on the picture.
+  defp event_nodes(model) do
+    own = for e <- model.events, do: %{kind: :event, name: e.name, label: e.label}
+
+    included =
+      for include <- (model.process && model.process.includes) || [],
+          {_contract, e} <- [Model.declaring(model, include.event)],
+          do: %{kind: :event, name: include.event, label: e.label}
+
+    own ++ included
+  end
+
+  # Occurrences and runs of each event in the contract's process.
+  defp event_counts(%{process: nil}, _opts), do: %{}
+
+  defp event_counts(model, opts) do
+    by_type =
+      Map.new(event_nodes(model), fn node ->
+        {_contract, e} = Model.declaring(model, node.name)
+        {e.type, node.name}
+      end)
+
+    types = Map.keys(by_type)
+
+    from(r in EventRun,
+      join: e in Event,
+      as: :event,
+      on: e.position == r.position,
+      where: r.process == ^Atom.to_string(model.process.name) and e.type in ^types,
+      group_by: e.type,
+      select: {e.type, count(e.id), count(r.instance_id, :distinct)}
+    )
+    |> maybe_since(Keyword.get(opts, :since))
+    |> maybe_until(Keyword.get(opts, :until))
+    |> repo().all()
+    |> Map.new(fn {type, count, runs} -> {Map.fetch!(by_type, type), {count, runs}} end)
+  end
+
+  defp node_id(%{kind: kind, name: name}), do: "#{kind}_#{name}"
+
+  defp node_line(node, counts) do
+    text = escape(node.label || Atom.to_string(node.name)) <> count_suffix(counts)
+    {open, close} = shape(node.kind)
+    ~s(#{node_id(node)}#{open}"#{text}"#{close}:::#{node.kind})
+  end
+
+  defp count_suffix(nil), do: ""
+  defp count_suffix({count, instances}), do: " (#{count}x, #{runs(instances)})"
+
+  defp shape(:command), do: {"[", "]"}
+  defp shape(:event), do: {"[", "]"}
+  defp shape(:policy), do: {"{{", "}}"}
+  defp shape(:process_manager), do: {"[[", "]]"}
+  defp shape(:effect), do: {">", "]"}
+  defp shape(:timer), do: {"([", "])"}
+
+  # A step's own edge carries its counts; an event reaching its consumer is drawn
+  # once, however many commands the consumer issues.
+  defp step_edges(%{via: nil} = step, overlay?),
+    do: [edge(step.from, step.to, :inline, label(step, overlay?))]
+
+  # A timer is the process manager's: it sets it, and the timer issues the command,
+  # so the timer's counts do not share an edge with the manager's other reactions.
+  # Setting is ownership, not a delivery, so it is a plain line saying so.
+  defp step_edges(%{from: %{kind: :timer}} = step, overlay?) do
+    [
+      "#{node_id(step.via)} -. sets .- #{node_id(step.from)}",
+      edge(step.from, step.to, :async, label(step, overlay?))
+    ]
+  end
+
+  defp step_edges(%{to: nil} = step, overlay?),
+    do: [edge(step.from, step.via, step.mode, label(step, overlay?))]
+
+  defp step_edges(step, overlay?) do
+    [
+      edge(step.from, step.via, step.mode, nil),
+      edge(step.via, step.to, step.mode, label(step, overlay?))
+    ]
+  end
+
+  defp edge(from, to, mode, label) do
+    arrow = if mode == :async, do: "-.->", else: "-->"
+
+    label =
+      if mode == :async,
+        do: Enum.join(Enum.reject(["async", label], &is_nil/1), " · "),
+        else: label
+
+    text = if label in [nil, ""], do: "", else: "|#{label}|"
+    "#{node_id(from)} #{arrow}#{text} #{node_id(to)}"
+  end
+
+  defp label(_step, false), do: nil
+
+  defp label(step, true) do
+    taken = if step.runs, do: "#{step.runs}/#{step.of_runs} runs", else: "runs unknown"
+    waiting = Enum.sum(Map.values(step.in_flight))
+    f = step.failing
+    failing? = f.commands > 0 or f.effects > 0 or f.subscription != nil
+
+    [taken, waiting > 0 && "#{waiting} waiting", failing? && "failing"]
+    |> Enum.filter(& &1)
+    |> Enum.join(" · ")
+  end
+
+  # The Event Storming palette: commands blue, events orange, policies lilac,
+  # process managers purple, effects pink as the outside world, timers grey.
+  defp step_classes do
+    [
+      "    classDef command fill:#a7c7e7,stroke:#3b6ea5,color:#000",
+      "    classDef event fill:#ffb86c,stroke:#c46a00,color:#000",
+      "    classDef policy fill:#d7b8f3,stroke:#7b4fa8,color:#000",
+      "    classDef process_manager fill:#b39ddb,stroke:#5e35b1,color:#000",
+      "    classDef effect fill:#f8bbd0,stroke:#ad1457,color:#000",
+      "    classDef timer fill:#e0e0e0,stroke:#757575,color:#000"
+    ]
+  end
+
   defp escape(label), do: String.replace(label, ~s("), "'")
 
   @doc "The overlay as one line per edge, for a terminal."

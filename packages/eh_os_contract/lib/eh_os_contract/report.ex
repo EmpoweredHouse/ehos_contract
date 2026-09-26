@@ -28,8 +28,9 @@ defmodule EhOsContract.Report do
   def render(report) do
     [
       header(report),
-      deployment(report.deployment),
+      deployment(report.deployment, Map.get(report, :wiring)),
       Enum.map(report.processes, &process/1),
+      scenarios(Map.get(report, :scenarios)),
       drift(report.drift)
     ]
     |> List.flatten()
@@ -59,8 +60,8 @@ defmodule EhOsContract.Report do
   @spec day(DateTime.t()) :: String.t()
   defp day(at), do: at |> DateTime.to_date() |> Date.to_string()
 
-  @spec deployment(map()) :: [String.t()]
-  defp deployment(deployment) do
+  @spec deployment(map(), map() | nil) :: [String.t()]
+  defp deployment(deployment, wiring) do
     since =
       case deployment.deployed.since do
         nil -> "nothing has happened under this version yet"
@@ -90,8 +91,15 @@ defmodule EhOsContract.Report do
         []
       end
 
+    # A v2 contract's wiring is the code's half of what is deployed, so it is named.
+    wired =
+      case wiring do
+        %{version: version} when is_binary(version) -> ["  Wiring #{version}."]
+        _v1_or_not_recorded -> []
+      end
+
     ["CONTRACT", "  Version #{deployment.deployed.contract_version}, #{since}."] ++
-      change ++ earlier ++ [""]
+      wired ++ change ++ earlier ++ [""]
   end
 
   # The line events and paths could never carry: a `trace` whose window moved, or an
@@ -213,21 +221,35 @@ defmodule EhOsContract.Report do
     Enum.flat_map(list, fn a -> ["  " <> Sentence.rule(a), "    " <> Sentence.outcome(a)] end)
   end
 
+  # A v2 contract's scenarios; a v1 one has none to say anything about.
+  @spec scenarios(map() | nil) :: [String.t()]
+  defp scenarios(nil), do: []
+
+  defp scenarios(s) do
+    never =
+      case s.never_observed do
+        [] -> []
+        descriptions -> ["  Never observed:"] ++ for(d <- descriptions, do: ~s(    · "#{d}"))
+      end
+
+    undeclared =
+      case s.undeclared_outcomes do
+        [] ->
+          []
+
+        outcomes ->
+          ["  Outcomes no scenario declares:"] ++
+            for(o <- outcomes, do: "    · " <> Sentence.outcome_undeclared(o))
+      end
+
+    ["SCENARIOS", "  " <> Sentence.scenarios_observed(s)] ++ never ++ undeclared ++ [""]
+  end
+
   @spec drift([map()]) :: [String.t()]
   defp drift([]), do: ["DRIFT", "  " <> Sentence.no_drift(), ""]
 
   defp drift(edges) do
     ["DRIFT — happened, though it was not agreed:"] ++
-      for(e <- edges, do: "  · " <> drifted(e)) ++ [""]
+      for(e <- edges, do: "  · " <> Sentence.drift(e)) ++ [""]
   end
-
-  # A v2 contract's drift is an event no declared command emits: by a command that
-  # does not emit it, or written around dispatch.
-  defp drifted(%{from: nil, to: %{} = to} = e),
-    do: "#{to.label} — written outside dispatch  (#{e.count}x)"
-
-  defp drifted(%{from: %{} = from, to: %{} = to} = e),
-    do: "#{from.label} → #{to.label}  (#{e.count}x)"
-
-  defp drifted(e), do: "#{e.from_label || e.from} → #{e.to_label || e.to}  (#{e.count}x)"
 end

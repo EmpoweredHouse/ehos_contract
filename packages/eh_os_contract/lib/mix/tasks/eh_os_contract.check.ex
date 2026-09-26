@@ -42,7 +42,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
       |> check_retain_on_free_text()
       |> check_unverified_declarations()
 
-    report(findings)
+    report(EhOsContract.Check.v2_findings() ++ findings)
   end
 
   # **Nothing found is not the same as nothing wrong, and the report cannot tell
