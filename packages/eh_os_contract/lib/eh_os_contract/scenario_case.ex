@@ -25,6 +25,17 @@ defmodule EhOsContract.ScenarioCase do
   invariant. Whatever a decision returns is also held to its declaration: an event
   the command does not emit fails the scenario, whatever it expects.
 
+  **A query's scenario** (ESDM's read model scenario) projects every `given`
+  through the implementation of the read model the query reads, asks the query with
+  the trigger's data as its parameters, and compares what it answers with
+  `answers`: **exactly as many rows, each matching a different row on the fields it
+  names**, in any order. Unlike events, extra rows fail: an answer is wholly
+  determined by the givens, and "the other clinic's visit is not in it" is often
+  what the scenario is about. The projection writes the host's tables, so this runs
+  in a transaction of `config :eh_os_contract, :repo` that is rolled back, and a
+  test module with a query's scenario checks out an Ecto sandbox connection when the
+  repo's pool is the sandbox.
+
   **Data.** Scenario data is plain data (`EhOsContract.Next.Contract.Data`): an ISO
   8601 string becomes the `DateTime` or `Date` of a `:timestamp` or `:date` field
   here, and a digit string or an integer the `Decimal` of a `:decimal`, including
@@ -60,6 +71,15 @@ defmodule EhOsContract.ScenarioCase do
     quote do
       use ExUnit.Case, async: unquote(async)
 
+      if Enum.any?(
+           EhOsContract.Model.fetch(unquote(contract)).scenarios,
+           &(&1.target.kind == :query)
+         ) do
+        setup do
+          EhOsContract.ScenarioCase.checkout()
+        end
+      end
+
       for scenario <- EhOsContract.Model.fetch(unquote(contract)).scenarios do
         @eh_os_contract_scenario scenario
         test "scenario: #{scenario.description}" do
@@ -71,6 +91,22 @@ defmodule EhOsContract.ScenarioCase do
         end
       end
     end
+  end
+
+  @doc """
+  Checks out an Ecto sandbox connection of `config :eh_os_contract, :repo` for the
+  test, when that repo's pool is the sandbox: a query's scenario projects into the
+  host's tables.
+  """
+  @spec checkout() :: :ok
+  def checkout do
+    with repo when repo != nil <- Application.get_env(:eh_os_contract, :repo),
+         Ecto.Adapters.SQL.Sandbox <- repo.config()[:pool] do
+      owner = Ecto.Adapters.SQL.Sandbox.start_owner!(repo, shared: false)
+      ExUnit.Callbacks.on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(owner) end)
+    end
+
+    :ok
   end
 
   @doc """
@@ -90,7 +126,68 @@ defmodule EhOsContract.ScenarioCase do
       for {given, at} <- Enum.zip(scenario.given, given_times),
           do: message(model, :event, given.event, given.data, identity, at, nil)
 
-    run(model, scenario, implementation, identity, givens, now)
+    run(model, scenario, implementation, identity, givens, now, implementations)
+  end
+
+  defp run(model, %{target: %{kind: :query}} = scenario, impl, _identity, givens, _now, found) do
+    query = Enum.find(model.queries, &(&1.name == scenario.target.name))
+    read_model = Enum.find(model.read_models, &(&1.name == query.reads))
+    projection = implementation!(model, %{kind: :read_model, name: read_model.name}, found)
+    domain = domain(model)
+    repo = Application.fetch_env!(:eh_os_contract, :repo)
+
+    params =
+      struct!(
+        Model.module_for(model, :query, query.name),
+        cast_data(query.params, scenario.trigger.data, domain)
+      )
+
+    {:error, {:answered, answer}} =
+      repo.transaction(fn ->
+        for {given, event} <- Enum.zip(scenario.given, givens) do
+          assert apply(projection, given.event, [event]) == :ok,
+                 "read model #{inspect(read_model.name)} returned something other than :ok " <>
+                   "for #{inspect(given.event)}"
+        end
+
+        repo.rollback({:answered, apply(impl, query.name, [params, %{actor: nil}])})
+      end)
+
+    row = Module.concat(Model.module_for(model, :read_model, read_model.name), Row)
+    answered = if query.returns == :one, do: List.wrap(answer), else: answer
+
+    assert is_list(answered) and Enum.all?(answered, &is_struct(&1, row)),
+           "query #{inspect(query.name)} answered #{inspect(answer)}, and it answers " <>
+             if(query.returns == :one,
+               do: "one %#{inspect(row)}{} or nil",
+               else: "a list of them"
+             )
+
+    expected = Enum.map(scenario.answers, &cast_data(read_model.fields, &1, domain))
+
+    assert length(expected) == length(answered) and matched?(expected, answered),
+           """
+           the scenario requires the query to answer exactly these rows, in any order:
+             #{Enum.map_join(expected, "\n  ", &inspect/1)}
+           and it answered:
+             #{Enum.map_join(answered, "\n  ", &inspect(Map.from_struct(&1)))}
+           """
+  end
+
+  defp run(model, scenario, impl, identity, givens, now, _found),
+    do: run(model, scenario, impl, identity, givens, now)
+
+  # Every expected row matches a different answered row, trying each pairing: a row
+  # that names fewer fields may match several, and the first fit need not be the one
+  # that lets the others fit.
+  defp matched?([], _answered), do: true
+
+  defp matched?([expected | rest], answered) do
+    answered
+    |> Enum.with_index()
+    |> Enum.any?(fn {row, index} ->
+      matches?(expected, row) and matched?(rest, List.delete_at(answered, index))
+    end)
   end
 
   defp run(model, %{target: %{kind: kind, name: name}} = scenario, impl, identity, givens, now)

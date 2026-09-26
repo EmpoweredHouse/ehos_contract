@@ -421,6 +421,121 @@ defmodule EhOsContract.Next.ContractScenariosTest do
     end
   end
 
+  describe "S6: a query's scenario answers (ESDM's read model scenario)" do
+    @read """
+      read_model :payments, "Płatności", projects: [:payment_recorded] do
+        field :visit_id, :id
+        field :amount, :integer
+      end
+
+      query :payments_of_visit, "Płatności wizyty", reads: :payments, by: :reception do
+        param :visit_id, :id
+      end
+
+      query :last_payment, "Ostatnia płatność", reads: :payments, by: :reception, returns: :one do
+        param :visit_id, :id
+      end
+    """
+
+    test "no answer, two answers, the wrong shape, a field the row lacks, a given it does not project" do
+      message =
+        refuse_contract("QueryOutcome", """
+        #{@unit}
+        #{@read}
+          scenario "płatności — bez odpowiedzi" do
+            query :payments_of_visit, %{visit_id: "w-1"}
+          end
+
+          scenario "płatności — dwie odpowiedzi" do
+            query :payments_of_visit, %{visit_id: "w-1"}
+            answers []
+            answers []
+          end
+
+          scenario "ostatnia płatność — lista" do
+            query :last_payment, %{visit_id: "w-1"}
+            answers [%{amount: 100}]
+          end
+
+          scenario "płatności — pole spoza wiersza" do
+            given :closed
+            query :payments_of_visit, %{visit_id: "w-1"}
+            answers [%{amount: 100, method: :card}]
+          end
+        """)
+
+      assert message =~
+               ~s|S6: scenario "płatności — bez odpowiedzi" (query :payments_of_visit): after a | <>
+                 "query, say what it answers (query_outcome.ex:47)"
+
+      assert message =~
+               ~s|S6: scenario "płatności — dwie odpowiedzi" (query :payments_of_visit): a query | <>
+                 "answers once (query_outcome.ex:54)"
+
+      assert message =~
+               ~s|S6: scenario "ostatnia płatność — lista" (query :last_payment): answers one | <>
+                 "row, a map, or nil, as the query returns one (query_outcome.ex:59)"
+
+      assert message =~
+               ~s|S3: scenario "płatności — pole spoza wiersza" (query :payments_of_visit): a row | <>
+                 "of read model :payments has no field :method (query_outcome.ex:65)"
+
+      assert message =~
+               ~s|S2: scenario "płatności — pole spoza wiersza" (query :payments_of_visit): given | <>
+                 ":closed is not an event read model :payments projects (query_outcome.ex:63)"
+    end
+
+    test "answers belongs to a query's scenario" do
+      message =
+        refuse_contract("AnswersElsewhere", """
+        #{@unit}
+          scenario "zamknięcie z odpowiedzią" do
+            command :close
+            expect :closed
+            answers []
+          end
+        """)
+
+      assert message =~
+               ~s|S6: scenario "zamknięcie z odpowiedzią" (aggregate :visit): answers belongs to | <>
+                 "a query's scenario, not to a command to a unit (answers_elsewhere.ex:37)"
+    end
+
+    test "control: rows of the read model, one row or nil, and the model keeps them as a list" do
+      assert [_, many, one, none] =
+               compile_contract("QueryScenarios", """
+               #{@unit}
+               #{@read}
+                 scenario "płatności wizyty" do
+                   given :payment_recorded, %{visit_id: "w-1", amount: 100}
+                   query :payments_of_visit, %{visit_id: "w-1"}
+                   answers [%{visit_id: "w-1", amount: 100}]
+                 end
+
+                 scenario "ostatnia płatność" do
+                   given :payment_recorded, %{visit_id: "w-1", amount: 100}
+                   query :last_payment, %{visit_id: "w-1"}
+                   answers %{amount: 100}
+                 end
+
+                 scenario "brak płatności" do
+                   query :last_payment, %{visit_id: "w-1"}
+                   answers nil
+                 end
+               """).scenarios
+
+      assert %{target: %{kind: :query, name: :payments_of_visit}, answers: [%{amount: 100}]} =
+               many
+
+      assert %{answers: [%{amount: 100}]} = one
+      assert %{answers: []} = none
+    end
+
+    test "a command's scenario has no answers key, so the word moved no version" do
+      refute Map.has_key?(hd(compile_contract("NoAnswers", @unit).scenarios), :answers)
+    end
+  end
+
   describe "S7: the actor" do
     test "an actor who may not issue the command, and an actor on a reaction" do
       message =

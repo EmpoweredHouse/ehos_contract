@@ -233,11 +233,19 @@ defmodule EhOsContract.Next.Contract.Build do
   defp put_unverified(%{} = duration, unverified), do: Map.put(duration, :unverified, unverified)
   defp put_unverified(other, _unverified), do: other
 
-  # One trigger, which S1 has made sure of, and the declaration it resolves to.
+  # One trigger, which S1 has made sure of, and the declaration it resolves to. A
+  # query's scenario also has `answers`, its rows as a list; the key is left out of
+  # every other scenario, so adding the word moved no contract's version.
   defp scenario(%Dsl.Scenario{trigger: [trigger]} = scenario, declarations) do
     {kind, target} = Rules.Scenarios.target(scenario, declarations)
 
-    %{
+    answers =
+      case scenario.answers do
+        [%Dsl.Answers{rows: rows}] when kind == :query -> %{answers: List.wrap(rows)}
+        _ -> %{}
+      end
+
+    Map.merge(answers, %{
       description: scenario.description,
       scope: scenario.scope,
       target: %{kind: kind, name: target.name},
@@ -250,7 +258,7 @@ defmodule EhOsContract.Next.Contract.Build do
       sets: Enum.map(scenario.sets, & &1.timer),
       cancels: Enum.map(scenario.cancels, & &1.timer),
       ended: scenario.ended
-    }
+    })
   end
 
   # `{24, :hour}` as data. Anything else is left as written, for the rules to refuse.
@@ -349,7 +357,7 @@ defmodule EhOsContract.Next.Contract.Build do
   # `correlate`, stages, givens and expectations keep their order.
   @sets ~w(fields params invariants consults starts_on on timers ends_on includes promises
            by emits rejects handles issues calls projects recorded_by match sets cancels events
-           idempotent_on)a
+           idempotent_on answers)a
 
   defp digest_form(%{} = declaration) do
     Map.new(declaration, fn

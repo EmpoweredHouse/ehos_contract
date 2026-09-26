@@ -8,7 +8,8 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
     an event may be handled by several reactions, and then `scope:` names the one.
   - **S2.** `given` events are ones the target keeps its state from: a unit's own
     events, and for a boundary also the events it consults; a process manager's
-    triggers. A policy keeps no state, so it takes no `given`.
+    triggers; for a query, the events the read model it reads projects. A policy
+    keeps no state, so it takes no `given`.
   - **S3.** Data names declared fields only. `given` and the trigger supply every
     required field, except the target's identity, which a scenario fills in itself:
     it is one stream. A value of a built-in type fits it (`EhOsContract.Next.Contract.Data`);
@@ -20,9 +21,12 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
     `expect` or by `rejected`, not both. An event delivered to a policy is followed
     by what it `issues`; to a process manager, by what it `issues`, `sets`,
     `cancels` or whether it has `ended`, and each of those is one its declaration
-    allows; `on` may also name one of its timers, which then fires. An effect's outcome is outside the log and a read model's rows have no
-    word yet, so neither is a scenario's target; nor is a query, for the same
-    reason.
+    allows; `on` may also name one of its timers, which then fires. A query is
+    followed by one `answers`, ESDM's `result`: a list of rows when it returns
+    many, one row or `nil` when it returns one, each row naming fields of the read
+    model it reads. An effect's outcome is outside the log, so an effect is no
+    scenario's target; neither is a read model on its own, which a scenario reaches
+    through a query, as ESDM's read model scenario does.
   - **S7.** A scenario's `actor` is in the command's `by:`, and only a command has one.
   - **S8.** **Every invariant is named by at least one `rejected` scenario** — the
     successor of architecture §18's gate, kept an error although ESDM makes it a
@@ -299,12 +303,49 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
       decisions_only(where, scenario) ++ timers ++ ended ++ outcome ++ no_actor(where, scenario)
   end
 
+  defp fits(where, scenario, trigger, :query, query, d) do
+    where = "#{where} (query #{inspect(query.name)})"
+    read_model = Enum.find(d.read_models, &(&1.name == query.reads))
+    projects = if read_model, do: read_model.projects, else: []
+
+    givens =
+      Enum.flat_map(scenario.given, fn given ->
+        if given.event in projects,
+          do: event_data(where, given, given.event, d),
+          else: [
+            {"S2: #{where}: given #{inspect(given.event)} is not an event read model " <>
+               "#{inspect(query.reads)} projects", given}
+          ]
+      end)
+
+    params =
+      data(where, trigger, "query #{inspect(query.name)}", query.params, nil, required: true)
+
+    answered =
+      case scenario.answers do
+        [answers] ->
+          answers(where, answers, query, read_model)
+
+        [] ->
+          [{"S6: #{where}: after a query, say what it answers", scenario}]
+
+        [_, second | _] ->
+          [{"S6: #{where}: a query answers once", second}]
+      end
+
+    foreign =
+      reactions_only(where, %{scenario | answers: []}, "a query") ++
+        decisions_only(where, %{scenario | answers: []}) ++
+        no_actor(where, scenario)
+
+    givens ++ params ++ answered ++ foreign
+  end
+
   defp fits(where, scenario, _trigger, kind, target, _d) do
     why =
       case kind do
         :effect -> "an effect's outcome is outside the log"
-        :read_model -> "a read model's rows have no word in a scenario yet"
-        :query -> "a query's answer has no word in a scenario yet"
+        :read_model -> "a scenario reaches a read model through a query that reads it"
       end
 
     [
@@ -362,9 +403,10 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
   end
 
   defp reactions_only(where, scenario, what) do
-    for {key, word} <- [issues: "issues", sets: "sets", cancels: "cancels"],
+    for {key, word} <- [issues: "issues", sets: "sets", cancels: "cancels", answers: "answers"],
         declaration <- Map.fetch!(scenario, key) do
-      {"S6: #{where}: #{word} belongs to a reaction's scenario, not to #{what}", declaration}
+      owner = if key == :answers, do: "a query's", else: "a reaction's"
+      {"S6: #{where}: #{word} belongs to #{owner} scenario, not to #{what}", declaration}
     end ++
       if(scenario.ended,
         do: [{"S6: #{where}: ended belongs to a process manager's scenario", scenario}],
@@ -373,6 +415,11 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
   end
 
   defp decisions_only(where, scenario) do
+    answered =
+      for answers <- scenario.answers do
+        {"S6: #{where}: answers belongs to a query's scenario", answers}
+      end
+
     expected =
       for expect <- scenario.expect do
         {"S6: #{where}: a reaction issues commands; expect belongs to a command's scenario",
@@ -384,7 +431,7 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
         do: [{"S6: #{where}: rejected belongs to a command's scenario", scenario}],
         else: []
 
-    expected ++ rejected
+    answered ++ expected ++ rejected
   end
 
   defp no_timers(where, scenario, what) do
@@ -410,12 +457,44 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
   defp no_actor(where, scenario),
     do: [{"S7: #{where}: only a command's scenario names an actor", scenario}]
 
+  # The rows a query answers: as many as it returns, each naming fields of the row.
+  defp answers(where, answers, query, read_model) do
+    rows =
+      case {query.returns, answers.rows} do
+        {:many, rows} when is_list(rows) -> rows
+        {:one, nil} -> []
+        {:one, %{} = row} -> [row]
+        _ -> :unfit
+      end
+
+    case rows do
+      :unfit ->
+        shape = if query.returns == :one, do: "one row, a map, or nil", else: "a list of rows"
+        [{"S6: #{where}: answers #{shape}, as the query returns #{query.returns}", answers}]
+
+      rows ->
+        fields = if read_model, do: read_model.fields, else: []
+
+        Enum.flat_map(rows, fn
+          %{} = row ->
+            data(where, answers, "a row of read model #{inspect(query.reads)}", fields, nil,
+              required: false,
+              data: row
+            )
+
+          other ->
+            [{"S6: #{where}: a row is a map of fields, and #{inspect(other)} is not", answers}]
+        end)
+    end
+  end
+
   # --- S3: data -----------------------------------------------------------------------
 
-  defp data(where, declaration, what, fields, unit, required: required?) do
+  defp data(where, declaration, what, fields, unit, opts) do
+    required? = Keyword.fetch!(opts, :required)
     identity = if unit, do: unit.identity, else: []
     declared = Map.new(fields, &{&1.name, &1})
-    data = declaration.data
+    data = Keyword.get_lazy(opts, :data, fn -> declaration.data end)
 
     unknown =
       for key <- Map.keys(data), key not in identity, not Map.has_key?(declared, key) do

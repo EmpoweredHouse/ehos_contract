@@ -604,6 +604,19 @@ where it helps; every violation is reported as a diagnostic before the single ra
   > units may each have an invariant of the same name. *Later the same day, with `ScenarioCase`:* `on` may name
   > a process manager's timer, which fires, since a timer is one of its triggers (P4) and nothing else could
   > state what it issues; and two scenarios may not share a description, which names the test generated for each.
+  >
+  > *26 September 2026, E6: a query's scenario, after ESDM's read model scenario.* ESDM's Given-When-Then
+  > extension has a read model variant: given events, **when** a query with its parameters, **then** a
+  > `result` (or the materialized read model). v2 takes it with the word `answers`: `query :q, %{…}` followed by
+  > `answers [%{…}]`, or for a query returning one, `answers %{…}` or `answers nil`. S2: `given` events are
+  > ones the read model the query reads projects. S3: the parameters are the query's, and each row names
+  > fields of that read model. S6: exactly one `answers`, and it belongs to a query's scenario only. ESDM
+  > leaves how a result is compared open; `EhOsContract.ScenarioCase` asks for **exactly as many rows as
+  > named, each matching a different answered row on the fields it names, in any order**. Events stay a
+  > subsequence, since a flow grows by events; an answer is wholly determined by its givens, and "the other
+  > clinic's visit is not in it" is often the point. The read model alone, ESDM's materialized variant, is not
+  > a target: a scenario reaches it through a query. `answers` enters the model only on a query's scenario, so
+  > the word moved no existing contract's version.
 - *Domain.* D1: unique names per kind. D2: at most one translation per language, none into the context's
   own. D3: a value has exactly one of type or fields; `unit` only on numeric types; no cycles. D4: a human
   actor has no `backed_by`. D5: relation roles fit the type; endpoints exist; no relation to itself.

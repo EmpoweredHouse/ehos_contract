@@ -96,6 +96,14 @@ defmodule DispatchRig.Ledger do
     rejected :balance_never_negative
   end
 
+  scenario "a branch's balances are its accounts, with what was deposited" do
+    given :account_opened, %{account_id: "a-1", branch_id: "b-7"}
+    given :deposited, %{account_id: "a-1", amount: 40}
+    given :account_opened, %{account_id: "a-2", branch_id: "b-9"}
+    query :balances_for_branch, %{branch_id: "b-7"}
+    answers [%{account_id: "a-1", balance: 40}]
+  end
+
   scenario "a withdrawal within the balance goes through" do
     given :deposited, %{amount: 100}
     command :withdraw, %{amount: 100}

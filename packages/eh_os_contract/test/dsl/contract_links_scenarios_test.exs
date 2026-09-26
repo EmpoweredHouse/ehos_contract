@@ -103,6 +103,63 @@ defmodule EhOsContract.Next.ContractLinksScenariosTest do
     end
   end
 
+  describe "a query's parameters and the rows it answers" do
+    # The query's parameters at line 27, the rows at line 28.
+    defp statuses(name, params, rows) do
+      {"#{Macro.underscore(name)}.ex",
+       """
+       defmodule #{inspect(Module.concat(@fixtures, name))} do
+         use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+
+         aggregate :visit, "Wizyta" do
+           identity :visit_id
+           command :register, "Rejestracja", by: :reception, emits: :registered
+
+           event :registered, "Zarejestrowano" do
+             field :status, :status
+           end
+         end
+
+         read_model :statuses, "Statusy", projects: :registered do
+           field :visit_id, :id
+           field :status, :status
+         end
+
+         query :with_status, "Wizyty o statusie", reads: :statuses, by: :reception do
+           param :status, :status
+         end
+
+         process :visit, "Wizyta" do
+           correlate :visit_id
+         end
+
+         scenario "wizyty aktywne" do
+           query :with_status, #{params}
+           answers #{rows}
+         end
+       end
+       """}
+    end
+
+    test "a member of the domain's enum in a parameter and in a row" do
+      violations = links([statuses("ScnQueryWrong", "%{status: :asleep}", "[%{status: :gone}]")])
+      file = "scn_query_wrong.ex"
+
+      assert assert_linked(violations, "field :status: :asleep", file, 27) =~
+               ~s|X9: scenario "wizyty aktywne": query :with_status, field :status: :asleep|
+
+      assert assert_linked(violations, "field :status: :gone", file, 28) =~
+               ~s|X9: scenario "wizyty aktywne": a row of read model :statuses, field :status|
+
+      assert length(violations) == 2
+    end
+
+    test "control: members that fit pass" do
+      assert links([statuses("ScnQueryRight", "%{status: :active}", "[%{status: :active}]")]) ==
+               []
+    end
+  end
+
   describe "the data of a sibling's event" do
     defp booking(name) do
       {"#{Macro.underscore(name)}.ex",

@@ -163,6 +163,12 @@ What changes otherwise is what a host has to do.
   one the answer is 401. Outcomes map to statuses — 200, 422 for a rejection or unfitting fields, 403 for a
   refusal, 409 for a conflict or a reused key, 404 — and no body carries a value the caller did not send.
   `plug` is an optional dependency, and the module compiles only when it is there.
+- A scenario may ask a query and state its answer, after ESDM's read model scenario: `query :q, %{…}` and
+  `answers [%{…}]` (`answers %{…}` or `answers nil` for a query returning one). Givens are events the read model
+  projects, and each row names its fields (S2, S3, S6; X9 for values of domain types). `ScenarioCase` projects
+  the givens through the read model's implementation and asks the query in a transaction it rolls back, and
+  requires exactly as many rows as named, each matching a different answered row on the fields it names, in any
+  order. A test module with such a scenario checks out an Ecto sandbox connection of the configured repo.
 - `EhOsContract.Codec.decode/4` takes `strings: true`, to read an integer or a boolean written as text.
 - `EhOsContract.Meta` carries an event's `id` and `position` when it is read back from the log.
 - `EhOsContract.Store.lock/1` on the configured implementation.

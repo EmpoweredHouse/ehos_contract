@@ -8,6 +8,8 @@ defmodule EhOsContract.Next.Contract.Links.Scenarios do
   - **a value of a domain type**, anywhere a scenario gives one: one member of an
     enum, a value of the type a value names, a map of the fields a value with
     fields declares — in lists too (`EhOsContract.Next.Contract.Data.problems/3`);
+  - **a query's parameters and the rows its scenario answers**, whose fields are
+    this contract's, for the values of domain types among them;
   - **the data of an event consumed from a sibling contract**, whose fields are the
     sibling's: every key a field of the sibling's event, every required field given
     where S3 requires one (a `given` and the trigger, not what is expected or
@@ -43,6 +45,13 @@ defmodule EhOsContract.Next.Contract.Links.Scenarios do
       case {model.trigger, declaration.trigger} do
         {%{kind: :command} = t, [at]} -> [command(c, t.name, t.data, at, true)]
         {%{kind: :on} = t, [at]} -> [event(c, system, t.name, t.data, at, true)]
+        {%{kind: :query} = t, [at]} -> [params(c, t.name, t.data, at)]
+        _ -> []
+      end
+
+    answered =
+      case {Map.get(model, :answers), declaration.answers} do
+        {rows, [at]} when is_list(rows) -> Enum.map(rows, &row(c, model.target.name, &1, at))
         _ -> []
       end
 
@@ -54,7 +63,21 @@ defmodule EhOsContract.Next.Contract.Links.Scenarios do
       for {issues, at} <- Enum.zip(model.issues, declaration.issues),
           do: command(c, issues.command, issues.data, at, false)
 
-    Enum.reject(givens ++ trigger ++ expected ++ issued, &is_nil/1)
+    Enum.reject(givens ++ trigger ++ expected ++ issued ++ answered, &is_nil/1)
+  end
+
+  defp params(c, name, data, at) do
+    query = Enum.find(c.model.queries, &(&1.name == name))
+    {"query #{inspect(name)}, ", {:local, query.params}, data, Links.at(at), true}
+  end
+
+  # A row the query answers, against the fields of the read model it reads.
+  defp row(c, name, data, at) do
+    query = Enum.find(c.model.queries, &(&1.name == name))
+    read_model = Enum.find(c.model.read_models, &(&1.name == query.reads))
+
+    {"a row of read model #{inspect(query.reads)}, ", {:local, read_model.fields}, data,
+     Links.at(at), false}
   end
 
   defp command(c, name, data, at, required?) do
