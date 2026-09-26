@@ -86,7 +86,7 @@ defmodule EhOsContract.Paths do
     timers = scheduled_timers()
     {waiting_effects, discarded_effects} = effect_jobs()
     failed = failed_commands(model, opts)
-    stopped = stopped_subscriptions(model)
+    stopped = stopped_subscriptions(steps)
 
     for step <- steps do
       key = step[:key]
@@ -458,10 +458,12 @@ defmodule EhOsContract.Paths do
 
   defp distinct_runs(rows), do: rows |> Enum.map(& &1.run) |> Enum.uniq() |> length()
 
-  defp stopped_subscriptions(model) do
-    prefix = "#{inspect(model.module)}:"
+  # By the consumers' keys, which the steps know, rather than by a pattern on the
+  # contract's name: `_` in a module name is a wildcard to `LIKE`.
+  defp stopped_subscriptions(steps) do
+    keys = for %{key: key} <- steps, uniq: true, do: key
 
-    from(s in SubscriptionRecord, where: s.status == "failing" and like(s.name, ^"#{prefix}%"))
+    from(s in SubscriptionRecord, where: s.status == "failing" and s.name in ^keys)
     |> repo().all()
     |> Map.new(&{&1.name, %{stopped_at: &1.failed_position, failure: &1.failure}})
   end
