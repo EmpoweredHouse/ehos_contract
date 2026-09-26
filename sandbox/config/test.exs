@@ -9,6 +9,10 @@ config :eh_os_contract_host, Taxvision.Repo,
 # same transaction, and run it explicitly.
 config :eh_os_contract_host, Oban, testing: :manual
 
+# The same for the engine's subscriptions: no runner starts and the boot registers
+# nothing, so a test drains them itself (`EhOsContract.Testing.drain/1`).
+config :eh_os_contract, subscriptions: :manual
+
 # `server: false` — Phoenix.ConnTest/Phoenix.LiveViewTest dispatch straight
 # into the plug pipeline, no listening socket needed.
 config :eh_os_contract_host, EhOsContractHostWeb.Endpoint,

@@ -355,6 +355,8 @@ defmodule EhOsContract.Dispatcher do
 
     case result do
       {:ok, result} ->
+        # Committed: the runners can read what was appended (v2 §11).
+        EhOsContract.Subscription.Runner.notify()
         result
 
       {:error, :conflict} when attempt < @attempts ->

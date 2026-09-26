@@ -53,6 +53,11 @@ What changes otherwise is what a host has to do.
   and then emits can deadlock with an emission whose handler locks the same row. Take
   `EhOsContract.Store.Postgres.lock/1` first (`EhOsContract.Store`'s moduledoc).
 - **A new dependency: `spark ~> 2.7.3`.**
+- **E7a: the `EhOsContract` child is a supervisor.** Besides scanning the registry and recording the
+  deployment, it registers every subscription, rebuilds the stale read models that define `reset/0`, and
+  starts one runner per subscription; dispatch wakes them through Oban's notifier after each commit it owns.
+  **A host's tests set `config :eh_os_contract, subscriptions: :manual`**, which skips registration and
+  runners, and drain with `EhOsContract.Testing.drain/1`. `EhOsContract.boot/0` is gone.
 
 ### Added
 

@@ -12,7 +12,10 @@ config :eh_os_contract,
   # the one place where a library naming itself is correct rather than the silent
   # failure `EhOsContract.Registry.load!/1` warns about.
   applications: [:eh_os_contract],
-  repo: EhOsContract.TestRepo
+  repo: EhOsContract.TestRepo,
+  # Nothing runs by itself: the tests drain subscriptions and effect jobs in their
+  # own sandbox transaction (`EhOsContract.Testing.drain/1`).
+  subscriptions: :manual
 
 config :eh_os_contract, EhOsContract.TestRepo,
   username: "eh_os",
