@@ -90,6 +90,10 @@ What changes otherwise is what a host has to do.
   a v2 `promise`, and `Run.evaluate/3` measures a v2 process's `deadline`, both over the runs in
   `eh_os_contract_event_runs`, so an event another contract decided counts in the run that includes it. The
   arithmetic is v1's, and the same scenarios give the same verdicts on a v1 shape and on its v2 port.
+- **E7c: `EhOsContract.Paths`**, the steps a v2 contract declares — a command's emits, a policy's or process
+  manager's issues, a timer's, an effect — and, for each, the runs that took it, what waits (subscription lag,
+  scheduled timers, effect jobs) and what fails (commands through `failed_in`, a subscription stopped at an
+  event, discarded effect jobs).
 - **E7a: `mix eh_os_contract.subscriptions`** lists where each subscription stands; `--skip KEY` moves a
   failing one past the event it fails on, `--reset KEY` empties a read model and replays the log into it.
 - **E7c: a new policy leaves history alone, as a new process manager does.** A policy delivered

@@ -1,0 +1,452 @@
+defmodule EhOsContract.Paths do
+  @moduledoc """
+  The declared paths of a v2 contract, and what the log says about each (v2 §13,
+  plan E7c).
+
+  A v1 path went from an event to an event through a handler. A v2 contract makes
+  the command a node of its own, so a path is one **step** of three kinds:
+
+  | Step | from | via | to |
+  | --- | --- | --- | --- |
+  | a command emits | the command | — | the event |
+  | a reaction issues | the event | the policy or process manager | the command |
+  | a timer issues | the timer | the process manager | the command |
+  | an effect acts | the event | the effect | — |
+
+  Each end is `%{kind, name, label}`, which is what `EhOsContract.Conformance`
+  hands on as `conformance.v2`, and what the graph draws.
+
+  ## Taken, waiting, failing
+
+  **Taken** is counted in runs, as in v1: the distinct runs of the contract's
+  process in which the step happened. A command emitted an event when the event's
+  row names the command's row (`command_id`); a reaction issued a command when a row
+  of `eh_os_contract_commands` names its actor and, as its cause, an event of the
+  step's type. An effect leaves nothing in the log when it acts, so whether it was
+  taken is not known, and its `runs` is `nil`: never untraversed, only waiting or
+  failing.
+
+  **Waiting** — "not yet", never "never" — has three sources, each counted apart
+  because each goes to a different person: events an ordered consumer has not
+  reached yet (`lag`), timers scheduled and not fired (`timers`), and effect jobs
+  not run yet (`effects`).
+
+  **Failing** has three too: commands that failed where the step runs, attributed
+  through the row's `failed_in` (`commands`, in runs); the consumer's subscription
+  stopped at an event it cannot apply (`subscription`); effect jobs Oban discarded
+  (`effects`). A command that failed in its decision, or in a read model's
+  projection, fails every step it emits: which of them it would have taken is not
+  known.
+  """
+
+  import Ecto.Query
+
+  alias EhOsContract.{CommandRecord, Event, EventRun, Model, ProcessManager, SubscriptionRecord}
+
+  @waiting ~w(available scheduled executing retryable)
+
+  @typedoc "One end of a step, or the consumer it runs through."
+  @type node_ref :: %{kind: atom(), name: atom(), label: String.t() | nil}
+
+  @typedoc "One declared step, with what the log says about it."
+  @type step :: %{
+          from: node_ref(),
+          via: node_ref() | nil,
+          to: node_ref() | nil,
+          mode: :inline | :async,
+          runs: non_neg_integer() | nil,
+          of_runs: non_neg_integer(),
+          in_flight: %{
+            effects: non_neg_integer(),
+            timers: non_neg_integer(),
+            lag: non_neg_integer()
+          },
+          failing: %{
+            commands: non_neg_integer(),
+            subscription: %{stopped_at: pos_integer(), failure: String.t() | nil} | nil,
+            effects: non_neg_integer()
+          }
+        }
+
+  @doc """
+  Every step `contract` declares, in declaration order: its commands' emits, then its
+  policies, process managers and effects. `opts`: `:since` and `:until` bound the
+  events counted as taken, as in `EhOsContract.Trace`.
+  """
+  @spec observe(module() | map(), keyword()) :: [step()]
+  def observe(contract, opts \\ []) do
+    model = Model.fetch(contract)
+    steps = declared(model)
+    process = model.process && Atom.to_string(model.process.name)
+
+    emitted = if process, do: emitted(model, process, opts), else: %{}
+    issued = issued(model, opts)
+    of_runs = if process, do: runs_of(model, process, opts), else: 0
+    lag = lag(steps)
+    timers = scheduled_timers()
+    {waiting_effects, discarded_effects} = effect_jobs()
+    failed = failed_commands(model, opts)
+    stopped = stopped_subscriptions(model)
+
+    for step <- steps do
+      key = step[:key]
+
+      step
+      |> Map.merge(%{
+        runs: taken(step, emitted, issued),
+        of_runs: of_runs,
+        in_flight: %{
+          effects: Map.get(waiting_effects, {key, step.from_type}, 0),
+          timers: Map.get(timers, {key, timer_name(step)}, 0),
+          lag: Map.get(lag, {key, step.from_type}, 0)
+        },
+        failing: %{
+          commands: failed_in_step(step, failed),
+          subscription: Map.get(stopped, key),
+          effects: Map.get(discarded_effects, {key, step.from_type}, 0)
+        }
+      })
+      |> Map.drop([:key, :from_type, :command_type, :issued_by])
+    end
+  end
+
+  @doc """
+  The steps `contract` declares, without the log: `from`, `via`, `to` and `mode`,
+  in declaration order.
+  """
+  @spec declared(module() | map()) :: [map()]
+  def declared(contract) do
+    model = Model.fetch(contract)
+    label = labels(model)
+
+    emits =
+      for command <- model.commands, event <- command.emits do
+        %{
+          from: ref(:command, command.name, command.label),
+          via: nil,
+          to: ref(:event, event, label.(event)),
+          mode: :inline,
+          from_type: nil,
+          command_type: Atom.to_string(command.name)
+        }
+      end
+
+    policies =
+      for policy <- model.policies,
+          event <- policy.handles,
+          type = type_of(model, event),
+          type != nil,
+          command <- policy.issues do
+        reaction(model, :policy, policy, event, type, command, label)
+      end
+
+    managers =
+      for pm <- model.process_managers,
+          {event, commands} <- reactions(pm),
+          type = type_of(model, event),
+          type != nil,
+          command <- commands do
+        reaction(model, :process_manager, pm, event, type, command, label)
+      end
+
+    timers =
+      for pm <- model.process_managers, timer <- pm.timers, command <- timer.issues do
+        %{
+          from: ref(:timer, timer.name, nil),
+          via: ref(:process_manager, pm.name, pm.label),
+          to: ref(:command, command, command_label(model, command)),
+          mode: :async,
+          key: key(model, :process_manager, pm.name),
+          from_type: ProcessManager.elapsed(),
+          issued_by: "pm:#{pm.name}",
+          command_type: Atom.to_string(command)
+        }
+      end
+
+    effects =
+      for effect <- model.effects,
+          event <- effect.handles,
+          type = type_of(model, event),
+          type != nil do
+        %{
+          from: ref(:event, event, label.(event)),
+          via: ref(:effect, effect.name, effect.label),
+          to: nil,
+          mode: mode(effect.delivery),
+          key: key(model, :effect, effect.name),
+          from_type: type
+        }
+      end
+
+    emits ++ policies ++ managers ++ timers ++ effects
+  end
+
+  @doc """
+  Distinct runs of the contract's process in the period, over its own events' types
+  and the ones it includes: the denominator every step's `runs` is read against.
+  """
+  @spec runs_of(map(), String.t(), keyword()) :: non_neg_integer()
+  def runs_of(model, process, opts \\ []) do
+    types =
+      Enum.map(model.events, & &1.type) ++
+        for include <- model.process.includes,
+            {_contract, event} <- [Model.declaring(model, include.event)],
+            do: event.type
+
+    from(r in EventRun,
+      join: e in Event,
+      as: :event,
+      on: e.position == r.position,
+      where: r.process == ^process and e.type in ^types,
+      select: count(r.instance_id, :distinct)
+    )
+    |> bounded(opts)
+    |> repo().one()
+  end
+
+  # --- declarations --------------------------------------------------------------------
+
+  defp reaction(model, kind, consumer, event, type, command, label) do
+    %{
+      from: ref(:event, event, label.(event)),
+      via: ref(kind, consumer.name, consumer.label),
+      to: ref(:command, command, command_label(model, command)),
+      mode: mode(consumer.delivery),
+      key: key(model, kind, consumer.name),
+      from_type: type,
+      issued_by: "#{if kind == :policy, do: "policy", else: "pm"}:#{consumer.name}",
+      command_type: Atom.to_string(command)
+    }
+  end
+
+  # What each event a process manager takes issues: `starts_on` and `on`, in order.
+  defp reactions(pm) do
+    for reaction <- pm.starts_on ++ pm.on,
+        reaction.issues != [],
+        do: {reaction.event, reaction.issues}
+  end
+
+  defp ref(kind, name, label), do: %{kind: kind, name: name, label: label}
+
+  defp mode(:in_transaction), do: :inline
+  defp mode(_at_least_once), do: :async
+
+  defp key(model, kind, name), do: "#{inspect(model.module)}:#{kind}:#{name}"
+
+  # An event's label, from the contract that declares it; a sibling's for a consumed one.
+  defp labels(model) do
+    fn name ->
+      case Model.declaring(model, name) do
+        {_contract, event} -> event.label
+        nil -> nil
+      end
+    end
+  end
+
+  defp type_of(model, name) do
+    case Model.declaring(model, name) do
+      {_contract, %{type: type}} -> type
+      nil -> nil
+    end
+  end
+
+  defp command_label(model, name) do
+    case Enum.find(model.commands, &(&1.name == name)) do
+      %{label: label} -> label
+      nil -> nil
+    end
+  end
+
+  defp timer_name(%{from: %{kind: :timer, name: name}}), do: Atom.to_string(name)
+  defp timer_name(_step), do: nil
+
+  # --- taken -------------------------------------------------------------------------
+
+  defp taken(%{via: %{kind: :effect}}, _emitted, _issued), do: nil
+
+  defp taken(%{via: nil} = step, emitted, _issued),
+    do: Map.get(emitted, {step.command_type, type(step.to)}, 0)
+
+  defp taken(%{from: %{kind: :timer, name: timer}} = step, _emitted, issued),
+    do:
+      Map.get(
+        issued,
+        {step.issued_by, step.command_type, step.from_type, Atom.to_string(timer)},
+        0
+      )
+
+  defp taken(step, _emitted, issued),
+    do: Map.get(issued, {step.issued_by, step.command_type, step.from_type, nil}, 0)
+
+  defp type(%{kind: :event, name: name}), do: name
+
+  # Runs in which a command's row names an event of the step's type, by the event's
+  # home run in this process.
+  defp emitted(model, process, opts) do
+    names = Map.new(model.events, &{&1.type, &1.name})
+
+    from(e in Event,
+      as: :event,
+      join: c in CommandRecord,
+      on: c.id == e.command_id,
+      join: r in EventRun,
+      on: r.position == e.position and r.process == ^process,
+      where: e.contract == ^inspect(model.module) and c.contract == ^inspect(model.module),
+      group_by: [c.type, e.type],
+      select: {c.type, e.type, count(r.instance_id, :distinct)}
+    )
+    |> bounded(opts)
+    |> repo().all()
+    |> Map.new(fn {command, type, runs} -> {{command, Map.get(names, type)}, runs} end)
+  end
+
+  # Runs in which a reaction's command was accepted or rejected, caused by an event of
+  # the step's type; for a timer, by its firing.
+  defp issued(model, opts) do
+    from(c in CommandRecord,
+      join: e in Event,
+      as: :event,
+      on: e.id == c.causation_event_id,
+      where: c.contract == ^inspect(model.module),
+      where: c.outcome in ["accepted", "rejected"],
+      where: like(c.issued_by, "policy:%") or like(c.issued_by, "pm:%"),
+      group_by: [c.issued_by, c.type, e.type, fragment("?->>'timer'", e.payload)],
+      select:
+        {c.issued_by, c.type, e.type, fragment("?->>'timer'", e.payload),
+         count(c.instance_id, :distinct)}
+    )
+    |> bounded(opts)
+    |> repo().all()
+    |> Map.new(fn {by, command, type, timer, runs} ->
+      timer = if type == ProcessManager.elapsed(), do: timer
+      {{by, command, type, timer}, runs}
+    end)
+  end
+
+  # --- waiting ------------------------------------------------------------------------
+
+  # Events of each type an ordered consumer takes, past the position its row is at.
+  # A consumer with no row has not been deployed, and nothing waits for it.
+  defp lag(steps) do
+    ordered =
+      for %{mode: :async, key: key, from_type: type} <- steps, type != nil, do: {key, type}
+
+    rows =
+      Map.new(
+        repo().all(
+          from(s in SubscriptionRecord, where: s.name in ^Enum.map(ordered, &elem(&1, 0)))
+        ),
+        &{&1.name, &1}
+      )
+
+    for {key, type} <- Enum.uniq(ordered), row = Map.get(rows, key), row != nil, into: %{} do
+      waiting =
+        repo().one(
+          from(e in Event,
+            where: e.type == ^type and e.position > ^row.position,
+            select: count(e.position)
+          )
+        )
+
+      {{key, type}, waiting}
+    end
+  end
+
+  defp scheduled_timers do
+    from(j in Oban.Job,
+      where: j.worker == "EhOsContract.TimerJob" and j.state in @waiting,
+      group_by: [fragment("?->>'process_manager'", j.args), fragment("?->>'timer'", j.args)],
+      select:
+        {fragment("?->>'process_manager'", j.args), fragment("?->>'timer'", j.args), count(j.id)}
+    )
+    |> repo().all()
+    |> Map.new(fn {key, timer, n} -> {{key, timer}, n} end)
+  end
+
+  # Effect jobs by effect and the type of the event each was enqueued for: waiting,
+  # and discarded by Oban after its attempts.
+  defp effect_jobs do
+    rows =
+      from(j in Oban.Job,
+        join: e in Event,
+        on: fragment("(?->>'event_id')::uuid", j.args) == e.id,
+        where: j.worker == "EhOsContract.EffectJob",
+        where: j.state in ^["discarded" | @waiting],
+        group_by: [fragment("?->>'effect'", j.args), e.type, j.state],
+        select: {fragment("?->>'effect'", j.args), e.type, j.state, count(j.id)}
+      )
+      |> repo().all()
+
+    {counts(rows, &(&1 in @waiting)), counts(rows, &(&1 == "discarded"))}
+  end
+
+  defp counts(rows, state?) do
+    for {key, type, state, n} <- rows, state?.(state), reduce: %{} do
+      acc -> Map.update(acc, {key, type}, n, &(&1 + n))
+    end
+  end
+
+  # --- failing ------------------------------------------------------------------------
+
+  defp failed_commands(model, opts) do
+    from(c in CommandRecord,
+      where: c.contract == ^inspect(model.module) and c.outcome == "failed",
+      select: %{
+        type: c.type,
+        failed_in: c.failed_in,
+        issued_by: c.issued_by,
+        run: c.instance_id,
+        at: c.recorded_at
+      }
+    )
+    |> bounded_rows(opts)
+    |> repo().all()
+  end
+
+  # A failure inside a consumer's stage is that consumer's step, which is how dispatch
+  # names the stage (`EhOsContract.Consumer.label/1`); anywhere else — the decision,
+  # the fold, a read model — it is every step the command emits.
+  defp failed_in_step(%{via: %{kind: kind, name: name}}, failed) do
+    label = "#{kind}:#{name}"
+    failed |> Enum.filter(&(&1.failed_in == label)) |> distinct_runs()
+  end
+
+  defp failed_in_step(%{via: nil, command_type: command}, failed) do
+    failed
+    |> Enum.filter(&(&1.type == command and not consumer_stage?(&1.failed_in)))
+    |> distinct_runs()
+  end
+
+  defp consumer_stage?(failed_in),
+    do: String.starts_with?(failed_in || "", ["policy:", "process_manager:", "effect:"])
+
+  defp distinct_runs(rows), do: rows |> Enum.map(& &1.run) |> Enum.uniq() |> length()
+
+  defp stopped_subscriptions(model) do
+    prefix = "#{inspect(model.module)}:"
+
+    from(s in SubscriptionRecord, where: s.status == "failing" and like(s.name, ^"#{prefix}%"))
+    |> repo().all()
+    |> Map.new(&{&1.name, %{stopped_at: &1.failed_position, failure: &1.failure}})
+  end
+
+  # --- bounds --------------------------------------------------------------------------
+
+  defp bounded(query, opts) do
+    query
+    |> then(fn q ->
+      if at = opts[:since], do: where(q, [event: e], e.occurred_at >= ^at), else: q
+    end)
+    |> then(fn q ->
+      if at = opts[:until], do: where(q, [event: e], e.occurred_at <= ^at), else: q
+    end)
+  end
+
+  defp bounded_rows(query, opts) do
+    query
+    |> then(fn q -> if at = opts[:since], do: where(q, [c], c.recorded_at >= ^at), else: q end)
+    |> then(fn q -> if at = opts[:until], do: where(q, [c], c.recorded_at <= ^at), else: q end)
+  end
+
+  defp repo, do: Application.fetch_env!(:eh_os_contract, :repo)
+end
