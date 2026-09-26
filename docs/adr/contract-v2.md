@@ -1122,7 +1122,10 @@ the person's.
 > run's; the process manager ignores a firing whose token is gone, which is what makes a timer fired twice
 > dispatch once. **A rebuild** forgets the runs, replays with reactions suppressed and, at the head, schedules
 > the pending timers again; a stale process manager is rebuilt at boot, since the library owns its table and
-> needs no `reset/0`.
+> needs no `reset/0`. **A new process manager starts with the same replay**, unlike a new policy (E7a): it
+> learns the runs already in the log and steers none of them. At the head a timer that came due with no job
+> queued is dropped, because it came due while nothing steered its run; one whose job is still queued, after a
+> rebuild of a running process manager, fires.
 
 ## 13. Runs, promises and conformance on the new log
 

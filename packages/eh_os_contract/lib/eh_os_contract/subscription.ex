@@ -32,9 +32,12 @@ defmodule EhOsContract.Subscription do
 
   **Where a new consumer starts.** An ordered one at position 0, so it takes the
   whole log — a new policy reacts to history, with keys derived from each event, as
-  Commanded's handlers start from the origin by default. An inline read model at the
-  head of the log, since dispatch has been projecting it all along; one added to a
-  log that already has its events is rebuilt by hand.
+  Commanded's handlers start from the origin by default. A new process manager
+  replays the log instead, with its reactions suppressed: it learns the runs already
+  there and steers none of them, and a timer of theirs that came due before the
+  deploy is dropped (`EhOsContract.ProcessManager.reconcile!/2`). An inline read
+  model starts at the head of the log, since dispatch has been projecting it all
+  along; one added to a log that already has its events is rebuilt by hand.
   """
 
   import Ecto.Query
@@ -68,6 +71,7 @@ defmodule EhOsContract.Subscription do
               mode: mode(consumer),
               version: consumer.version,
               position: start(repo, consumer),
+              status: first_status(consumer),
               updated_at: DateTime.utc_now()
             },
             on_conflict: :nothing
@@ -95,6 +99,11 @@ defmodule EhOsContract.Subscription do
     do: repo.one(from(e in EhOsContract.Event, select: coalesce(max(e.position), 0)))
 
   defp start(_repo, _ordered), do: 0
+
+  # A new process manager learns the runs already in the log by a replay, so it steers
+  # none of them: a deploy onto a year of history issues nothing for that year.
+  defp first_status(%{kind: :process_manager}), do: "rebuilding"
+  defp first_status(_consumer), do: "running"
 
   @doc """
   One step of `consumer` (see the moduledoc): `:idle` when another runner holds it,

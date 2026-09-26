@@ -77,7 +77,9 @@ What changes otherwise is what a host has to do.
   of `eh_os_contract_process_managers`. A timer is an `EhOsContract.TimerJob` that appends
   `eh_os_contract.timer_elapsed` to the run's stream when it is due, and the process manager reacts to that
   event in order, so a timer fired twice dispatches once. Its commands are issued as `pm:<name>`. A process
-  manager whose declaration changed is replayed at boot with its reactions suppressed. **A process manager
+  manager whose declaration changed is replayed at boot with its reactions suppressed, and so is **a new one
+  deployed onto a log with history**: it learns the runs already there and steers none of them, and their
+  timers that came due before the deploy are dropped. **A process manager
   delivered `:in_transaction` no longer compiles** (P4). `EhOsContract.Testing.drain/1` fires the timers due by
   `EhOsContract.Clock.now/0`.
 - **E7a: `mix eh_os_contract.subscriptions`** lists where each subscription stands; `--skip KEY` moves a

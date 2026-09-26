@@ -216,21 +216,59 @@ defmodule EhOsContract.ProcessManager do
     do: {:ok, _} = Oban.insert(TimerJob.job(key, correlation, Atom.to_string(name), entry))
 
   @doc """
-  Schedules every pending timer of every running run of `consumer` again, after a
-  replay. A job already queued for the same token is not duplicated.
+  Schedules the pending timers of every running run of `consumer` after a replay,
+  and returns how many. A job already queued for a timer is left to fire, and is not
+  duplicated. **A timer that came due with no job queued is dropped**: it came due
+  while nothing steered the run — before this process manager was deployed — and
+  firing it now would act on history. After a rebuild of one that was running, a
+  timer still due has its job queued from before, and fires.
   """
   @spec reconcile!(module(), Implementations.consumer()) :: non_neg_integer()
   def reconcile!(repo, consumer) do
+    now = EhOsContract.Clock.now()
+
     records =
       repo.all(
         from(r in ProcessManagerRecord, where: r.name == ^consumer.key and is_nil(r.completed_at))
       )
 
-    for record <- records, {timer, entry} <- record.timers, reduce: 0 do
+    for record <- records, reduce: 0 do
       n ->
-        {:ok, _} = Oban.insert(TimerJob.job(consumer.key, record.correlation, timer, entry))
-        n + 1
+        {kept, dropped} =
+          Enum.split_with(record.timers, fn {timer, entry} ->
+            {:ok, at, _} = DateTime.from_iso8601(entry["at"])
+            DateTime.compare(at, now) == :gt or queued?(repo, consumer.key, record, timer, entry)
+          end)
+
+        if dropped != [] do
+          repo.update_all(
+            from(r in ProcessManagerRecord,
+              where: r.name == ^record.name and r.correlation == ^record.correlation
+            ),
+            set: [timers: Map.new(kept)]
+          )
+        end
+
+        for {timer, entry} <- kept do
+          {:ok, _} = Oban.insert(TimerJob.job(consumer.key, record.correlation, timer, entry))
+        end
+
+        n + length(kept)
     end
+  end
+
+  # A job not yet finished for exactly this timer: the one its run queued before.
+  defp queued?(repo, key, record, timer, entry) do
+    args = TimerJob.job(key, record.correlation, timer, entry).changes.args
+
+    repo.exists?(
+      from(j in Oban.Job,
+        where:
+          j.worker == "EhOsContract.TimerJob" and
+            j.state in ["available", "scheduled", "executing", "retryable", "suspended"] and
+            fragment("? @> ?", j.args, ^args)
+      )
+    )
   end
 
   @doc "Forgets every run of `consumer`, before a replay rebuilds them."

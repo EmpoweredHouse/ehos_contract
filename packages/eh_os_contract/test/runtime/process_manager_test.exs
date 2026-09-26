@@ -247,6 +247,26 @@ defmodule EhOsContract.ProcessManagerTest do
     end
   end
 
+  describe "a process manager deployed onto a log with history" do
+    test "learns the old runs without steering them, and steers from then on" do
+      # Before the deploy: an account opened two days ago, whose day has long passed.
+      open("a-old")
+
+      # The deploy: its first registration, 47 hours later, with one more account then.
+      at(47, fn -> dispatch(%OpenAccount{account_id: "a-new", branch_id: "b-7"}) end)
+      drain_at(47)
+
+      # The old run is known, but its day passed while nothing steered it.
+      assert %ProcessManagerRecord{timers: %{}} = run("a-old")
+      assert Map.keys(run("a-new").timers) == ["first_deposit_due"]
+      assert flags() == []
+
+      drain_at(72)
+      assert [flag] = flags()
+      assert flag.payload["account_id"] == "a-new"
+    end
+  end
+
   describe "a replay" do
     test "rebuilds the runs without dispatching, and schedules no timer twice" do
       open()
@@ -283,6 +303,17 @@ defmodule EhOsContract.ProcessManagerTest do
       consumer = EhOsContract.Implementations.consumer(@chase)
 
       assert {:applied, 3} = at(1, fn -> Subscription.step(Repo, consumer) end)
+    end
+
+    test "keeps a timer that came due while it was running, whose job is still queued" do
+      open()
+      drain_at(0)
+
+      # Rebuilt a day and more later, before the queued job ran.
+      assert :ok = Subscription.rebuild(Repo, @chase)
+      drain_at(25)
+
+      assert [_flag] = flags()
     end
 
     test "schedules a timer still pending again, once" do
