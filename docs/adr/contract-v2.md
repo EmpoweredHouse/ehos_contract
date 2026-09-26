@@ -1088,6 +1088,27 @@ the person's.
 - **Snapshots** are off by default (VisitSettlement streams are about 20 events); when on, one is taken on
   read once a stream's tail passes a threshold, and a snapshot whose state schema digest differs is ignored.
 
+> **26 September 2026, E7a — what the sketch above left open, as built.** `EhOsContract.Consumer` is what one
+> read model, policy or effect does with one event, shared by dispatch, the runners and the effect job. **The
+> policy chain** is a list of `"<contract>:<policy>:<type>"` in the event's `metadata`, so an ordered policy
+> continues the chain its event came down. **Effects**: an `:in_transaction` effect acts after the policies and
+> its `{:error, _}` rolls back; an `:at_least_once` one is an `EhOsContract.EffectJob` in Oban's `:events`
+> queue, and dispatch refuses to insert it when Oban runs on another repo. A job whose effect has no module is
+> cancelled. **Subscriptions**: one row per ordered consumer, and one per inline read model, which dispatch
+> advances as it projects — a query and an update per inline read model per dispatch. A consumer's version
+> is the digest of its declaration and of every event it takes. After a failure the row fences the event:
+> the next step applies what precedes it, then the event alone; three attempts, then `failing`. A `stale`
+> subscription goes on taking events until it is rebuilt. **Rebuilding needs the implementation's optional
+> `reset/0`**, because a read model writes the host's tables (the user's choice); a policy is never rebuilt,
+> only takes the new version. **A new ordered consumer starts at position 0** — a new policy reacts to
+> history, with keys derived from each event, as Commanded's handlers start from the origin — and a new
+> inline read model at the head. **Supervision**: `config :eh_os_contract, subscriptions: :manual` skips
+> registration and runners, and `EhOsContract.Testing.drain/1` runs subscriptions and effect jobs inside a
+> test's transaction; `mix eh_os_contract.subscriptions` lists them and takes `--skip` and `--reset` (all
+> three the user's choices). **Not built in E7a**: process managers and timers (E7b); `_event_runs` and its
+> readers (E7c); `min_position` on queries (§11). The notification is not observed by a test, because the
+> sandbox never commits; the runners' one-second poll is.
+
 ## 13. Runs, promises and conformance on the new log
 
 - **Runs.** `process` and `instance_id` are computed at append for the event's home process, as v1's
