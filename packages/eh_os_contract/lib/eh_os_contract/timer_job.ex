@@ -51,10 +51,10 @@ defmodule EhOsContract.TimerJob do
   @doc """
   Appends the timer's firing to the run's stream, if the timer is due and still the
   run's; snoozes one that is not due; does nothing for one that is no longer the
-  run's.
+  run's; cancels one whose process manager is no longer deployed.
   """
   @impl Oban.Worker
-  @spec perform(Oban.Job.t()) :: :ok | {:snooze, pos_integer()}
+  @spec perform(Oban.Job.t()) :: :ok | {:snooze, pos_integer()} | {:cancel, String.t()}
   def perform(%Oban.Job{args: %{"at" => at} = args}) do
     {:ok, at, _} = DateTime.from_iso8601(at)
 
@@ -64,7 +64,19 @@ defmodule EhOsContract.TimerJob do
     end
   end
 
-  defp fire(%{"process_manager" => key, "correlation" => correlation} = args) do
+  defp fire(%{"process_manager" => key} = args) do
+    case Implementations.consumer(key) do
+      %{kind: :process_manager} = consumer ->
+        fire(consumer, args)
+
+      _gone ->
+        {:cancel,
+         "no process manager #{key} in this binary, so the timer belongs to a wiring that is " <>
+           "no longer deployed"}
+    end
+  end
+
+  defp fire(consumer, %{"process_manager" => key, "correlation" => correlation} = args) do
     %{"timer" => name, "token" => token} = args
     repo = Application.fetch_env!(:eh_os_contract, :repo)
 
@@ -79,7 +91,7 @@ defmodule EhOsContract.TimerJob do
                )
              ) do
           %{timers: %{^name => %{"token" => ^token} = timer}} ->
-            append!(repo, key, correlation, args, timer)
+            append!(repo, consumer, correlation, args, timer)
 
           _gone ->
             :ok
@@ -89,8 +101,8 @@ defmodule EhOsContract.TimerJob do
     :ok
   end
 
-  defp append!(repo, key, correlation, args, timer) do
-    %{contract: contract, name: name} = Implementations.consumer(key)
+  defp append!(repo, consumer, correlation, args, timer) do
+    %{contract: contract, name: name, key: key} = consumer
     stream = ProcessManager.stream(key, correlation)
     version = length(Store.read_stream(repo, stream, 0))
 

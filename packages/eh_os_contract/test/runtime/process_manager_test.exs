@@ -181,6 +181,24 @@ defmodule EhOsContract.ProcessManagerTest do
       assert length(flags()) == 1
     end
 
+    test "is cancelled when its process manager is no longer deployed" do
+      open()
+      drain_at(0)
+      [job] = timer_jobs()
+      gone = put_in(job.args["process_manager"], "DispatchRig.Ledger:process_manager:gone")
+
+      Repo.update_all(from(r in ProcessManagerRecord, where: r.name == @chase),
+        set: [name: gone.args["process_manager"]]
+      )
+
+      at(25, fn ->
+        assert {:cancel, reason} = TimerJob.perform(gone)
+        assert reason =~ "no longer deployed"
+      end)
+
+      assert firings() == []
+    end
+
     test "control: a job run before its time snoozes and appends nothing" do
       open()
       drain_at(0)
