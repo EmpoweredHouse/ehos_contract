@@ -1158,6 +1158,25 @@ the person's.
   mean storing command payloads, which is personal data. Two findings follow: a scenario never observed, and a
   decision outcome no scenario declares.
 
+> **26 September 2026, E7c-1 — the verdicts on the new log, as built.** **Runs**: the store writes every run of
+> an event in the append that writes it, the home run from the entry's `process` and `instance_id` and the
+> included ones dispatch names under `runs:`, from an index of which v2 contracts' processes `include` which
+> type (`EhOsContract.EventRun`). A v1 event gets its home run too, and no v1 reader reads the table. Not
+> built: filling the table for old events when a contract starts including their type — "rebuildable" above
+> is still a sketch. **`Trace` and `Run`** branch on the model; a v2 contract's `promise` and `deadline` are
+> judged over `_event_runs` with v1's arithmetic, unchanged, and the v1 queries are the ones they were.
+> **Paths**: a step is a command's emit, a policy's or process manager's issue on an event, a timer's issue,
+> or an effect on an event (`EhOsContract.Paths`). Taken is counted in runs through `events.command_id` and
+> through `_commands.issued_by` with its causation event. An effect leaves nothing in the log when it acts,
+> so whether it was taken is unknown: never untraversed, only waiting or failing. **Waiting** is subscription
+> lag (only for a consumer with a row), scheduled timer jobs and effect jobs; **failing** is failed commands
+> attributed by `failed_in` — a consumer's stage to that consumer's steps, anywhere else to every step the
+> command emits — a `failing` subscription, and discarded effect jobs. **Drift** is an event of the deployed
+> version that no declared command emits, which includes one written around dispatch. **The wire**:
+> `conformance.v2` for a v2 contract, `v1` for a v1 one. **Not yet**: the boot records no v2 deployment,
+> so the deployed version has no `since`, and a promise's declaration boundary is always `nil`; and
+> scenario coverage — both E7c-2.
+
 | Fate | Modules |
 | --- | --- |
 | Kept unchanged | `Digest`, `Duration`, `Dependency` |
