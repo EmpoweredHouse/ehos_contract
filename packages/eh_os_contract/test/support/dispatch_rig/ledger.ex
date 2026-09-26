@@ -90,6 +90,12 @@ defmodule DispatchRig.Ledger do
 
   policy :echo_deposit, "Repeat a deposit of 777", handles: :deposited, issues: :deposit
 
+  effect :notify_branch, "Tell the branch an account was flagged",
+    handles: :account_flagged,
+    idempotency: :event_id
+
+  effect :audit_withdrawal, "Audit a withdrawal", handles: :withdrawn, delivery: :in_transaction
+
   process :ledger, "Ledger" do
     correlate :account_id
   end

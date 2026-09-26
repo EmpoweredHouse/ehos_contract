@@ -56,6 +56,12 @@ What changes otherwise is what a host has to do.
 
 ### Added
 
+- **E7a: effects run.** An effect delivered `:at_least_once` is an `EhOsContract.EffectJob` in Oban's
+  `:events` queue, inserted in the dispatch transaction and holding only the effect's key and the event's id;
+  the job reads the event from the log. An effect delivered `:in_transaction` acts before the dispatch commits,
+  and its `{:error, reason}` rolls the append back. Until E6 both were skipped without a word. Oban has to run
+  on the repo dispatch appends through, and dispatch refuses to insert a job otherwise.
+
 - `EhOsContract.Model`: a contract as plain data, and the accessors every reader now uses. A module that is
   not a contract is refused by name.
 - `EhOsContract.Store`, with `Store.Postgres` and `Store.Suite`, a set of tests any implementation can run.

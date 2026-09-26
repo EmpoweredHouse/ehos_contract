@@ -30,14 +30,19 @@ defmodule EhOsContract.Dispatcher do
   6. **Append**, under the stream's version as it was read, and write the
      `accepted` row. A rejection writes a `rejected` row and appends nothing.
   7. **Inside the transaction** (v2 §12): every read model delivered
-     `:in_transaction` projects the appended events, in order, and then every such
-     policy reacts. What a policy issues is dispatched at once, in the same
-     transaction, as the policy's own actor, with the event as its cause and a key
-     derived from it, `"policy:<contract>:<name>:<event id>:<index>"` — the contract
-     too, since the index of accepted keys spans the application. A rejection of it is the
-     unit's answer and leaves the first command standing; anything else it raises
-     rolls everything back. A policy reacting to the kind of event it already reacted
-     to down one chain is a cycle, and raises.
+     `:in_transaction` projects the appended events, in order, then every such
+     policy reacts, then every such effect acts (`EhOsContract.Consumer`). What a
+     policy issues is dispatched at once, in the same transaction, as the policy's
+     own actor, with the event as its cause and a key derived from it,
+     `"policy:<contract>:<name>:<event id>:<index>"` — the contract too, since the
+     index of accepted keys spans the application. A rejection of it is the unit's
+     answer and leaves the first command standing; anything else it raises, and an
+     effect's `{:error, reason}`, rolls everything back. A policy reacting to the
+     kind of event it already reacted to down one chain is a cycle, and raises. A
+     read model whose subscription is being rebuilt is left to the runner catching
+     it up.
+  8. **After it, by the same commit**: one `EhOsContract.EffectJob` per effect
+     delivered `:at_least_once`, holding the effect's key and the event's id.
 
   **Conflicts.** When the stream moved between reading and appending, dispatch rolls
   back, reads again, decides again, up to three times, with jitter — but only when
@@ -58,6 +63,8 @@ defmodule EhOsContract.Dispatcher do
     Clock,
     Codec,
     CommandRecord,
+    Consumer,
+    EffectJob,
     Event,
     Implementations,
     Key,
@@ -443,111 +450,83 @@ defmodule EhOsContract.Dispatcher do
 
   # Every read model delivered in the transaction projects the appended events, in
   # order; then every such policy reacts, and what it issues is dispatched here, in
-  # the same transaction, as the policy's own actor.
+  # the same transaction, as the policy's own actor; then every such effect acts. Last,
+  # one job per effect delivered at least once.
   defp inline!(job, pairs, repo) do
     consumers =
       for {event, row} <- pairs,
           consumer <- Implementations.inline(job.model.module, row.type),
-          do: {consumer, event}
+          do: {consumer, event, row}
 
-    {projections, policies} = Enum.split_with(consumers, &(elem(&1, 0).kind == :read_model))
+    projecting = projecting(repo, consumers)
 
-    for {consumer, event} <- projections do
-      module = implemented!(consumer)
-
-      stage("read_model:#{consumer.name}", fn ->
-        case apply(module, consumer.callback, [event]) do
-          :ok ->
-            :ok
-
-          other ->
-            raise ArgumentError,
-                  "read model #{inspect(consumer.name)} returned #{inspect(other)} for " <>
-                    "#{inspect(consumer.callback)}; a projection returns :ok"
+    for {consumer, event, row} <- consumers,
+        consumer.kind != :read_model or Map.get(projecting, consumer.key) != :rebuilding do
+      stage(Consumer.label(consumer), fn ->
+        with {:error, reason} <- Consumer.handle!(consumer, event, job.ctx.chain) do
+          raise ArgumentError,
+                "effect #{inspect(consumer.name)} runs in the dispatch transaction and " <>
+                  "answered {:error, #{inspect(reason)}}, so nothing was appended"
         end
       end)
+
+      if Map.get(projecting, consumer.key) == :running,
+        do: advance!(repo, consumer.key, row.position)
     end
 
-    Enum.each(policies, fn {consumer, event} -> react!(job, consumer, event, repo) end)
+    enqueue!(job, pairs, repo)
   end
 
-  defp react!(job, consumer, event, _repo) do
-    module = implemented!(consumer)
-    model = Model.fetch(consumer.contract)
-    policy = Enum.find(model.policies, &(&1.name == consumer.name))
-    link = {consumer.contract, consumer.name, event.__struct__}
-    chain = job.ctx.chain
+  # What each inline read model's subscription row says: `:running` advances with the
+  # dispatch, `:rebuilding` is left to the runner that is catching it up (v2 §12),
+  # and a read model without a row, one no boot registered, projects as before.
+  defp projecting(repo, consumers) do
+    keys = for {%{kind: :read_model, key: key}, _, _} <- consumers, uniq: true, do: key
 
-    # The cycle guard v1's emitter had: a policy that reacts, down one chain, to the
-    # kind of event it has already reacted to would dispatch for ever.
-    if link in chain or length(chain) >= 32 do
-      raise ArgumentError,
-            "policy #{inspect(consumer.name)} of #{inspect(consumer.contract)} reacts to " <>
-              "#{inspect(event.__struct__)} again down one chain of dispatches, which would " <>
-              "never end: #{inspect(Enum.reverse([link | chain]))}"
+    if keys == [] do
+      %{}
+    else
+      repo.all(
+        from(s in "eh_os_contract_subscriptions",
+          where: s.name in ^keys,
+          select: {s.name, s.status}
+        )
+      )
+      |> Map.new(fn {name, status} ->
+        {name, if(status == "rebuilding", do: :rebuilding, else: :running)}
+      end)
     end
+  end
 
-    # Under the policy's name as a whole: a command it issued that fails in its own
-    # decider fails the first command because of this policy, and its row says so.
-    stage("policy:#{consumer.name}", fn ->
-      case apply(module, consumer.callback, [event]) do
-        {:ok, commands} when is_list(commands) ->
-          dispatch_issued!(consumer, event, commands, {model, policy.issues}, [link | chain])
+  defp advance!(repo, key, position) do
+    repo.update_all(
+      from(s in "eh_os_contract_subscriptions", where: s.name == ^key and s.position < ^position),
+      set: [position: position, updated_at: DateTime.utc_now()]
+    )
+  end
 
-        other ->
+  # One job per effect delivered at least once, inserted in this transaction, so the
+  # job exists exactly when the event does.
+  defp enqueue!(job, pairs, repo) do
+    jobs =
+      for {_event, row} <- pairs,
+          effect <- Implementations.effects(job.model.module, row.type),
+          do: EffectJob.job(effect.key, row.id)
+
+    if jobs != [] do
+      case Oban.config() do
+        %{repo: ^repo} ->
+          Oban.insert_all(jobs)
+
+        %{repo: other} ->
           raise ArgumentError,
-                "policy #{inspect(consumer.name)} returned #{inspect(other)}; it returns " <>
-                  "{:ok, commands}"
-      end
-    end)
-  end
-
-  defp dispatch_issued!(consumer, event, commands, {model, issues}, chain) do
-    allowed = MapSet.new(issues, &Model.module_for(model, :command, &1))
-
-    for {command, index} <- Enum.with_index(commands) do
-      unless is_struct(command) and MapSet.member?(allowed, command.__struct__) do
-        raise ArgumentError,
-              "policy #{inspect(consumer.name)} issued #{describe(command)}, which is not among " <>
-                "the commands it issues: #{inspect(issues)}"
-      end
-
-      opts = [
-        actor: Actor.reaction(:policy, consumer.name),
-        causation_id: event.__meta__.id,
-        correlation_id: event.__meta__.correlation_id,
-        idempotency_key:
-          "policy:#{inspect(consumer.contract)}:#{consumer.name}:#{event.__meta__.id}:#{index}",
-        chain: chain
-      ]
-
-      case dispatch(consumer.contract, command, opts) do
-        {:ok, _receipt} ->
-          :ok
-
-        # A rejection is the unit's answer, and its row is written: the policy asked
-        # and was told no. The command that set it off still stands.
-        {:error, %Rejection{}} ->
-          :ok
-
-        # Not a conflict: the append lock is held from this transaction's first
-        # append, so no stream can move under a nested dispatch.
-        {:error, reason} ->
-          raise ArgumentError,
-                "policy #{inspect(consumer.name)} issued #{describe(command)}, and dispatch " <>
-                  "refused it: #{inspect(reason)}"
+                "Oban runs on #{inspect(other)} and dispatch appends through #{inspect(repo)}, " <>
+                  "so an effect's job would not commit with its event; run Oban on the same repo"
       end
     end
-  end
 
-  defp implemented!(%{module: nil} = consumer) do
-    raise ArgumentError,
-          "#{consumer.kind} #{inspect(consumer.name)} of #{inspect(consumer.contract)} runs in " <>
-            "the dispatch transaction and no module implements it; bind one with " <>
-            "`use #{inspect(consumer.contract)}, #{consumer.kind}: #{inspect(consumer.name)}`"
+    :ok
   end
-
-  defp implemented!(%{module: module}), do: module
 
   # --- once ------------------------------------------------------------------------------
 
@@ -593,33 +572,7 @@ defmodule EhOsContract.Dispatcher do
     end
   end
 
-  defp decode!(job, %Event{} = event) do
-    declaration =
-      Enum.find(job.model.events, &(&1.type == event.type)) ||
-        raise ArgumentError,
-              "#{inspect(job.model.module)} declares no event of type #{inspect(event.type)}, " <>
-                "which its log holds at position #{event.position}"
-
-    case Codec.decode(declaration.fields, event.payload, job.values) do
-      {:ok, fields} ->
-        struct!(
-          Model.module_for(job.model, :event, declaration.name),
-          Map.put(fields, :__meta__, %Meta{
-            actor: event.actor,
-            occurred_at: event.occurred_at,
-            correlation_id: event.correlation_id,
-            causation_id: event.causation_id,
-            id: event.id,
-            position: event.position
-          })
-        )
-
-      {:error, problems} ->
-        raise ArgumentError,
-              "the event at position #{event.position} no longer fits #{inspect(event.type)} as " <>
-                "declared: #{inspect(problems)}"
-    end
-  end
+  defp decode!(job, %Event{} = event), do: Consumer.decode!(job.model, job.values, event)
 
   # --- holding the decision to its declaration ----------------------------------------------
 
@@ -689,6 +642,9 @@ defmodule EhOsContract.Dispatcher do
           "issued_by" => Actor.label(ctx.actor)
         }
         |> put_present("idempotency_key", ctx.idempotency_key)
+        # The policies that led here, so a runner reacting to this event later
+        # continues the chain instead of starting it over.
+        |> put_present("chain", if(ctx.chain != [], do: ctx.chain))
     }
   end
 
