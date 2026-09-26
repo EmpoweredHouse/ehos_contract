@@ -3,10 +3,10 @@ defmodule Rehmed.Domain do
   The vocabulary Rehmed's v2 contracts will share: contexts, actors, value types
   (v2 §4.5, v2 plan stage E3).
 
-  Nothing reads it yet. The v1 contracts in `Rehmed.Contracts` do not know a
-  domain, and the first v2 contract to name this one is VisitSettlement, in E6. It
-  is here now because E3 has to show that a domain module compiles under this
-  application's strict `boundary` with `--warnings-as-errors`, and that the
+  `Rehmed.Contracts.VisitSettlement` names it since 26 September 2026 (E6), the
+  first v2 contract of this application; the other two Rehmed contracts are still
+  v1 and know no domain. It came in E3, to show that a domain module compiles under
+  this application's strict `boundary` with `--warnings-as-errors`, and that the
   formatter keeps it as declarations through `import_deps`. The scheduling context
   is written with its options beside its block, which is how v2 §4.5 writes a
   declaration and what v2 §16, D13, keeps legal.

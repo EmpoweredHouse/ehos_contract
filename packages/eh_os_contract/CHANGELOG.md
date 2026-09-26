@@ -25,10 +25,14 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
-Stages E1–E5 of the move to a v2 contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`). **No verdict moves.**
-`mix eh_os_contract.report` and `mix eh_os_contract.graph --overlay --mermaid` gave byte-identical output on
-the development database before and after each stage, so the version stays 0.2.1 until a change does move
-one. What changes is what a host has to do.
+Stages E1–E6 of the move to a v2 contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`). **No verdict of a v1
+contract moves.** `mix eh_os_contract.report` and `mix eh_os_contract.graph --overlay --mermaid` gave
+byte-identical output on the development database before and after each of E1–E5.
+
+**The version is 0.3.0-dev from E6**, where v2 contracts start to run. A host that ports a contract to v2 sees
+it leave what the v1 readers — the report, the graph, `check` — cover, until E7 reads the new log; the
+sandbox's `Rehmed.Contracts.VisitSettlement` is the first, and its five lines left `check`'s output with it.
+What changes otherwise is what a host has to do.
 
 ### Changed — a host has to act
 
