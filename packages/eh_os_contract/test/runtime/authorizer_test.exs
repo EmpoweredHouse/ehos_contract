@@ -118,7 +118,7 @@ defmodule EhOsContract.AuthorizerTest do
       actor = Actor.credential("u-1", ["a.b"], %{"a.b" => %{"x" => ["1"]}})
       assert actor.kind == :credential
       assert MapSet.member?(actor.capabilities, "a.b")
-      assert Actor.label(actor) == "u-1"
+      assert Actor.label(actor) == "actor:u-1"
 
       assert_raise ArgumentError, fn -> Actor.credential("u-1", [:a_b]) end
 

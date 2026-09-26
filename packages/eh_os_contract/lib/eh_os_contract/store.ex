@@ -88,6 +88,10 @@ defmodule EhOsContract.Store do
   @spec impl() :: module()
   def impl, do: Application.get_env(:eh_os_contract, :store, EhOsContract.Store.Postgres)
 
+  @doc "`c:lock/1` on the configured implementation."
+  @spec lock(module()) :: :ok
+  def lock(repo), do: impl().lock(repo)
+
   @doc "`c:append/3` on the configured implementation."
   @spec append(module(), [entry()], condition()) ::
           {:ok, [Event.t()]} | {:error, :wrong_expected_version}

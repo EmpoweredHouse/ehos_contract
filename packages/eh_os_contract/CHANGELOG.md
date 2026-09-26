@@ -130,6 +130,17 @@ one. What changes is what a host has to do.
   a problem names the field, never its value. `EhOsContract.Key`: the one escaping for stream ids, tags and
   joined keys.
 - `decimal` is a declared dependency; it came through Ecto before.
+- `EhOsContract.dispatch/3`: a command to a v2 contract (`EhOsContract.Dispatcher`). It authorizes the actor —
+  a credential's through the `Authorizer`, a `:system` actor against `by:` — then checks the fields, reads the
+  unit's stream through `evolve/2`, lets the implementation decide, holds the decision to the declaration
+  (an undeclared event or invariant raises and appends nothing), and appends under the stream's version,
+  retrying a conflict up to three times when it owns the transaction and returning `{:error, :conflict}`
+  inside the caller's. It returns an `EhOsContract.Receipt`. Each outcome is a row of
+  `eh_os_contract_commands` (`EhOsContract.CommandRecord`): accepted, rejected with its invariant, or failed
+  with where and the exception's module; a refusal writes nothing. An accepted idempotency key returns the
+  first receipt, `duplicate: true`.
+- `EhOsContract.Meta` carries an event's `id` and `position` when it is read back from the log.
+- `EhOsContract.Store.lock/1` on the configured implementation.
 
 ### Changed
 

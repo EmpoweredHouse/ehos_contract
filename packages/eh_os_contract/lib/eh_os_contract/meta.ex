@@ -6,16 +6,19 @@ defmodule EhOsContract.Meta do
 
   A decision reads it and never writes it: dispatch sets it on a command, and the
   store on an event it appends. `evolve/2` in v2 §4.5 takes a business date from
-  `occurred_at` this way.
+  `occurred_at` this way. An event read back from the log also carries its `id`
+  and its `position`; a command has neither.
   """
 
-  defstruct [:actor, :occurred_at, :correlation_id, :causation_id]
+  defstruct [:actor, :occurred_at, :correlation_id, :causation_id, :id, :position]
 
   @typedoc "Set by dispatch and by the store, not by a decision."
   @type t :: %__MODULE__{
           actor: term(),
           occurred_at: DateTime.t() | nil,
           correlation_id: String.t() | nil,
-          causation_id: String.t() | nil
+          causation_id: String.t() | nil,
+          id: String.t() | nil,
+          position: pos_integer() | nil
         }
 end

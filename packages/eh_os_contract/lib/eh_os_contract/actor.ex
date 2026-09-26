@@ -77,11 +77,11 @@ defmodule EhOsContract.Actor do
     do: %__MODULE__{kind: :reaction, name: {kind, name}}
 
   @doc """
-  How the actor is written to the log and to `_commands`: a credential's subject,
-  `"system:<name>"`, or `"<reaction kind>:<name>"`.
+  How the actor is written to the log and to `_commands` (v2 §10.3): `"actor:<subject>"`
+  for a credential's, `"system:<name>"`, or `"<reaction kind>:<name>"`.
   """
   @spec label(t()) :: String.t()
-  def label(%__MODULE__{kind: :credential, subject: subject}), do: subject
+  def label(%__MODULE__{kind: :credential, subject: subject}), do: "actor:#{subject}"
   def label(%__MODULE__{kind: :system, name: name}), do: "system:#{name}"
   def label(%__MODULE__{kind: :reaction, name: {kind, name}}), do: "#{kind}:#{name}"
 

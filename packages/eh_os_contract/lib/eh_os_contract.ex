@@ -20,6 +20,7 @@ defmodule EhOsContract do
       Check,
       Clock,
       Codec,
+      CommandRecord,
       Conformance,
       Conformance.Wire,
       Contract,
@@ -45,6 +46,7 @@ defmodule EhOsContract do
       {Next.Contract.Dsl, []},
       Payload,
       Registry,
+      Receipt,
       Rejection,
       Report,
       Report.Sentence,
@@ -114,6 +116,15 @@ defmodule EhOsContract do
   @doc "An intention to emit an event, returned by a pure decision function."
   @spec event(atom(), map()) :: EhOsContract.Emission.t()
   def event(name, payload \\ %{}), do: %EhOsContract.Emission{name: name, payload: payload}
+
+  @doc """
+  Dispatches a command to a v2 contract: authorizes its actor, decides, appends
+  (`EhOsContract.Dispatcher`).
+  """
+  @spec dispatch(module(), struct(), keyword() | map()) ::
+          {:ok, EhOsContract.Receipt.t()}
+          | {:error, EhOsContract.Rejection.t() | EhOsContract.Dispatcher.refusal()}
+  defdelegate dispatch(contract, command, opts), to: EhOsContract.Dispatcher
 
   defdelegate emit(contract, type, payload, ctx \\ %{}), to: EhOsContract.Emitter
   defdelegate emit!(contract, type, payload, ctx \\ %{}), to: EhOsContract.Emitter
