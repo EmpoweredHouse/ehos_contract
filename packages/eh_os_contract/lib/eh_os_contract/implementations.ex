@@ -199,7 +199,10 @@ defmodule EhOsContract.Implementations do
     }
   end
 
-  @doc "Where a kind of consumer runs in the dispatch transaction: read models, policies, effects."
+  @doc """
+  The order of kinds of consumer: in the dispatch transaction, read models, then
+  policies, then effects; in the index, where a process manager sorts with policies.
+  """
   @spec order(:read_model | :policy | :process_manager | :effect) :: 0 | 1 | 2
   def order(:read_model), do: 0
   def order(:policy), do: 1
