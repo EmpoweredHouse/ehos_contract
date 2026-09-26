@@ -8,7 +8,7 @@ defmodule Rehmed.Settlement.VisitSettlement do
 
   ## The partial-payment assumption, stated because it is ours
 
-  Zero payments is a legitimate close: `C-30 Zamknij bez płatności` is a real
+  Zero payments is a legitimate close: `C-30`'s close without payment is a real
   transition, and `P-08` exists to notice it. Anything other than zero must match
   the total exactly.
 

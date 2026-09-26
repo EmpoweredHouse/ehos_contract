@@ -101,7 +101,7 @@ defmodule Rehmed.Contracts.VisitSettlement do
   ## No promise
 
   Nothing here has a stated time. The one promise anybody described is that a
-  mid-visit addition reaches the desk *od razu, zanim dojdzie osoba* — a moment,
+  mid-visit addition reaches the desk at once, before the patient does — a moment,
   not an interval, answered by `DEC-17` with a push over sockets, which leaves no
   window to budget for. Writing `within: {30, :second}` would invent a number
   nobody said and turn a transport guarantee into an assertion about latency.
@@ -231,7 +231,7 @@ defmodule Rehmed.Contracts.VisitSettlement do
   end
 
   # The numbers are the client's own, from the case where an unpaid penalty is
-  # collected with the next visit: *musisz zapłacić od razu 200 zł, a nie 150*
+  # collected with the next visit: pay 200 zł at once, not 150
   # (VLW 00:19:58). A 150 zł visit plus a 50 zł penalty is 200 zł.
   scenario "wizyta 150 zł i kara 50 zł, zapłacone 200 zł — rozliczenie się zamyka" do
     given :visit_handed_over, %{total: 20_000}
