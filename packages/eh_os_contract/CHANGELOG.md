@@ -82,8 +82,57 @@ What changes otherwise is what a host has to do.
   timers that came due before the deploy are dropped. **A process manager
   delivered `:in_transaction` no longer compiles** (P4). `EhOsContract.Testing.drain/1` fires the timers due by
   `EhOsContract.Clock.now/0`.
+- **E7c: every run an event belongs to is a row of `eh_os_contract_event_runs`** (D7), written in the same
+  append as the event: its home run, and the run of each v2 contract whose process `include`s it, correlated
+  by that process's fields. An `EhOsContract.Store` entry may carry `runs:` for the included ones. A v1 event
+  gets its home run too; the v1 readers do not read the table.
+- **E7c: `EhOsContract.Trace` and `EhOsContract.Run` read v2 contracts.** `Trace.evaluate/3` takes the name of
+  a v2 `promise`, and `Run.evaluate/3` measures a v2 process's `deadline`, both over the runs in
+  `eh_os_contract_event_runs`, so an event another contract decided counts in the run that includes it. The
+  arithmetic is v1's, and the same scenarios give the same verdicts on a v1 shape and on its v2 port.
+- **E7c: a query reads its own writes.** `EhOsContract.query/3` takes `min_position:` — the `position` of a
+  dispatch's receipt — and waits, up to `wait:` milliseconds (5000), until the read model the query reads has
+  taken it; otherwise `{:error, :not_caught_up}`. A read model delivered in the transaction already has it.
+- **E7c: scenario coverage** (`EhOsContract.Coverage`, v2 §13): a v2 report's `scenarios` says how many of the
+  contract's command scenarios the log saw happen — by type only, `given` among the stream's types and `expect`
+  a subsequence of what was emitted, or the same rejecting invariant — which never, and which decisions no
+  scenario declares. Beside it, `wiring` names the deployed wiring version and since when.
+- **E7c: `mix eh_os_contract.check` reads v2 contracts** (`EhOsContract.Check.v2_findings/1`): a process with no
+  `accountable`, a declaration or promise not confirmed, a promise with no `within`, a `deadline` no run can be
+  seen to end, and whether the contract is implemented — not at all is noted (D3), in part is a warning. What
+  the DSL refuses to compile is not repeated. The sandbox gains one warning (`Rehmed.Contracts.VisitSettlement`
+  has no `accountable`), which E6's port had taken out of the output.
+- **E7c: a v2 contract's graph**, `EhOsContract.Graph.steps_to_mermaid/2` and `mix eh_os_contract.graph --process
+  NAME --mermaid` for a v2 process: a node of every kind — commands, events, policies, process managers,
+  effects, timers — in the Event Storming colours, and each step as its edges; with `--overlay` (`overlay:
+  true`) the runs per step, the occurrences per event, and what waits or fails.
+- **E7c: `mix eh_os_contract.report` reports v2 contracts too**, one section each beside the v1 ones.
+- **E7c: the boot records the deployment of every v2 contract** (`EhOsContract.Registry.v2_contracts/0`, beside
+  `contracts/0`, which stays v1's). Its paths are its declared steps, and **its wiring version is computed from
+  the contract and the implementation**: the steps, and which module implements each declaration, so the same
+  contract bound to other modules is another wiring. This moves verdicts of a v2 report: the deployed version
+  has a `since`, and a changed `promise` — digested on its own at the deploy, `promise:<name>` — stops judging
+  the runs that began before it.
+- **E7c: the conformance report reads v2 contracts, and `conformance.v2` is their shape on the wire.**
+  `EhOsContract.Conformance.report/2` of a v2 contract answers the same four questions: its steps
+  (`EhOsContract.Paths`, each end `{kind, name, label}`) untraversed, in flight and failing, with `in_flight`
+  as `{effects, timers, lag}` and `failing` as `{commands, subscription, effects}`; its confirmed promises under
+  `promises`; its confirmed deadline and cadence; and as drift, an event of the deployed version no declared
+  command emits. `as_data/2` names it `eh_os_contract.conformance.v2`. **A v1 contract's report is unchanged,
+  and stays `conformance.v1`.** `EhOsContract.Report` renders both, and a v2 step says which consumer it runs
+  through and which source waits or fails.
+- **E7c: `EhOsContract.Paths`**, the steps a v2 contract declares — a command's emits, a policy's or process
+  manager's issues, a timer's, an effect — and, for each, the runs that took it, what waits (subscription lag,
+  scheduled timers, effect jobs) and what fails (commands through `failed_in`, a subscription stopped at an
+  event, discarded effect jobs).
 - **E7a: `mix eh_os_contract.subscriptions`** lists where each subscription stands; `--skip KEY` moves a
   failing one past the event it fails on, `--reset KEY` empties a read model and replays the log into it.
+- **E7c: a new policy leaves history alone, as a new process manager does.** A policy delivered
+  `:at_least_once` starts at the head of the log when it is first registered, instead of at position 0: a
+  deploy onto a year of history issues nothing for that year. `--reset KEY` of a policy moves it back to the
+  beginning, and it reacts to the whole log, with the keys derived from each event, so what it issued before
+  is not issued twice; until E7c it was refused. **In a host's tests the first `EhOsContract.Testing.drain/1`
+  is the deploy**, so a test of a policy's reaction drains once before it dispatches what the policy reacts to.
 
 - `EhOsContract.Model`: a contract as plain data, and the accessors every reader now uses. A module that is
   not a contract is refused by name.

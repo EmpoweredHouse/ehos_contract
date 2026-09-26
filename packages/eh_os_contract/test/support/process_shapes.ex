@@ -14,5 +14,16 @@ defmodule ProcessShapes do
 
   use Boundary,
     deps: [EhOsContract],
-    exports: [Rig, Bare, Promised, Intake, Matching, Resolution]
+    exports: [
+      Rig,
+      Bare,
+      Promised,
+      Intake,
+      Matching,
+      Resolution,
+      Domain,
+      Next.Promised,
+      Next.Timed,
+      Next.Bare
+    ]
 end

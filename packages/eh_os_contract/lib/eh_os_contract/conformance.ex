@@ -31,12 +31,22 @@ defmodule EhOsContract.Conformance do
   (`EhOsContract.HandlerFailure`). This is the third variant of one mistake: the report must
   not turn *no answer* into *the answer is no*.
 
+  ## A v2 contract
+
+  **The same four questions, on the new log** (v2 §13, plan E7c). A path is a step
+  of `EhOsContract.Paths`, so the command is a node, and what waits and what fails
+  is split by source; the assertions are the process's `promises`. The report names
+  its shape: `as_data/2` says `eh_os_contract.conformance.v2` for a v2 contract, and
+  a v1 contract's stays `v1`.
+
   ## The boundary
 
   The report talks about **paths**, not about companies. If 47 of 50 runs did not
   take a path, the finding is the path and the number; which runs those were is a
   question about the state of the business and belongs to the client application.
   """
+
+  import Ecto.Query
 
   alias EhOsContract.{Deployment, Graph, HandlerFailure, Model, Trace}
 
@@ -67,6 +77,14 @@ defmodule EhOsContract.Conformance do
   """
   @spec report(module(), keyword()) :: map()
   def report(contract, opts \\ []) do
+    case Model.fetch(contract) do
+      %{units: _} = model -> report_v2(model, opts)
+      _v1 -> report_v1(contract, opts)
+    end
+  end
+
+  @spec report_v1(module(), keyword()) :: map()
+  defp report_v1(contract, opts) do
     paths = untraversed_paths(opts)
     nodes = Graph.static().nodes
     labels = Map.new(nodes, &{to_string(&1.event), &1.label})
@@ -117,12 +135,208 @@ defmodule EhOsContract.Conformance do
     %{
       # A name for the shape, so a consumer comparing two responses can tell a
       # changed report from a changed projection. The engine version is already
-      # inside the report itself and is deliberately not repeated here.
-      "schema" => "eh_os_contract.conformance.v1",
+      # inside the report itself and is deliberately not repeated here. A v2
+      # contract's report has other steps and names its promises, so it is another
+      # shape; a v1 contract's stays `v1`, byte for byte, until v1 is cut.
+      "schema" => schema(contract),
       "generated_at" => DateTime.utc_now() |> DateTime.to_iso8601(),
       "report" => contract |> report(opts) |> EhOsContract.Conformance.Wire.encode()
     }
   end
+
+  @spec schema(module()) :: String.t()
+  defp schema(contract) do
+    case Model.fetch(contract) do
+      %{units: _} -> "eh_os_contract.conformance.v2"
+      _v1 -> "eh_os_contract.conformance.v1"
+    end
+  end
+
+  # --- a v2 contract (v2 §13, plan E7c) ---------------------------------------------------
+  #
+  # The same four questions. A path is a step of `EhOsContract.Paths` — from, via, to,
+  # each `%{kind, name, label}` — with its runs and each source of waiting and failing
+  # apart; the assertions are the process's promises, judged by `EhOsContract.Trace`;
+  # the deployed version is `EhOsContract.Deployment`'s, as for v1. What is left out
+  # for the same reasons as in v1: a declaration or a promise the owner has not
+  # confirmed, and every step when no run happened.
+
+  @spec report_v2(map(), keyword()) :: map()
+  defp report_v2(model, opts) do
+    deployment = Deployment.report(model.module, opts)
+
+    %{
+      contract: model.module,
+      engine: EhOsContract.version(),
+      period: %{since: Keyword.get(opts, :since), until: Keyword.get(opts, :until)},
+      deployment: deployment,
+      # The code's half of the deployment, beside the agreement's: a v2 contract's
+      # wiring is its steps and the modules that implement them.
+      wiring: %{version: deployment.deployed.wiring_version, since: deployment.deployed.since},
+      processes: List.wrap(model.process && process_v2(model, opts)),
+      scenarios: EhOsContract.Coverage.of(model, opts),
+      drift: drift_v2(model, opts)
+    }
+  end
+
+  @spec process_v2(map(), keyword()) :: map()
+  defp process_v2(model, opts) do
+    process = model.process
+    steps = EhOsContract.Paths.observe(model, opts)
+    runs = EhOsContract.Paths.runs_of(model, Atom.to_string(process.name), opts)
+
+    in_flight = Enum.filter(steps, &waiting?/1)
+    failing = Enum.filter(steps, &failing?/1)
+
+    pending = downstream_of(in_flight, steps)
+
+    untraversed =
+      if runs > 0,
+        do:
+          Enum.filter(
+            steps,
+            &(&1.runs == 0 and not waiting?(&1) and not failing?(&1) and
+                not MapSet.member?(pending, &1.from))
+          ),
+        else: []
+
+    %{
+      process: process.name,
+      label: process.label,
+      accountable: actor_label(model, process.accountable),
+      runs: runs,
+      declarations:
+        for key <- [:cadence, :deadline],
+            %{unverified: false} = value <- [Map.get(process, key)] do
+          %{key: key, value: {value.amount, value.unit}}
+        end,
+      untraversed: untraversed,
+      in_flight: in_flight,
+      failing: failing,
+      duration: duration_v2(model, opts),
+      promises: promises(model, opts)
+    }
+  end
+
+  defp waiting?(step), do: Enum.any?(Map.values(step.in_flight), &(&1 > 0))
+
+  # What a waiting step leads to, and what that leads to in turn: a step starting there
+  # has not been taken *yet*, since what it starts from is still on its way. Without
+  # this a chain of steps behind one queue reads as "never" everywhere but its head.
+  @spec downstream_of([map()], [map()]) :: MapSet.t()
+  defp downstream_of(waiting, steps) do
+    reached = for %{to: %{} = to} <- waiting, into: MapSet.new(), do: to
+    close(reached, steps)
+  end
+
+  defp close(reached, steps) do
+    more =
+      for %{from: from, to: %{} = to} <- steps,
+          MapSet.member?(reached, from),
+          not MapSet.member?(reached, to),
+          into: MapSet.new(),
+          do: to
+
+    if MapSet.size(more) == 0, do: reached, else: close(MapSet.union(reached, more), steps)
+  end
+
+  defp failing?(%{failing: f}), do: f.commands > 0 or f.effects > 0 or f.subscription != nil
+
+  # The role, as the domain names the actor the process is addressed to.
+  defp actor_label(_model, nil), do: nil
+
+  defp actor_label(model, actor) do
+    case Enum.find(Model.fetch(model.domain).actors, &(&1.name == actor)) do
+      %{label: label} -> label
+      nil -> Atom.to_string(actor)
+    end
+  end
+
+  defp duration_v2(%{process: %{deadline: %{unverified: false} = deadline}} = model, opts) do
+    model.module
+    |> EhOsContract.Run.evaluate(model.process.name, opts)
+    |> EhOsContract.Run.summary()
+    |> Map.put(:deadline, {deadline.amount, deadline.unit})
+  end
+
+  defp duration_v2(_model, _opts), do: nil
+
+  defp promises(model, opts) do
+    label = fn name ->
+      case name && Model.declaring(model, name) do
+        {_contract, event} -> event.label
+        _none -> name && Atom.to_string(name)
+      end
+    end
+
+    boundaries = Deployment.declaration_boundaries(model.module)
+
+    for promise <- model.process.promises, not promise.unverified do
+      verdicts = Trace.evaluate(model.module, promise.name, opts)
+      boundary = Map.get(boundaries, "promise:#{promise.name}")
+      {current, earlier} = split_by_declaration(verdicts, boundary)
+
+      %{
+        promise: promise.name,
+        from_label: label.(promise.from),
+        eventually_label: label.(promise.eventually),
+        or_else_label: label.(promise.or_else),
+        within: promise.within && {promise.within.amount, promise.within.unit},
+        declaration_changed_at: boundary,
+        under_earlier_declaration: length(earlier)
+      }
+      |> Map.merge(Trace.summary(current))
+    end
+  end
+
+  # v2 refuses an undeclared emit at run time, so what is left of drift is what did
+  # not come through dispatch under today's declarations: an event of the deployed
+  # version that no command it declares emits — written around dispatch, when it
+  # names no command at all. History under an older version is not drift.
+  @spec drift_v2(map(), keyword()) :: [map()]
+  defp drift_v2(model, opts) do
+    declared =
+      MapSet.new(
+        for(c <- model.commands, e <- c.emits, do: {Atom.to_string(c.name), e}) ++
+          for(%{recorded_by: [_ | _]} = e <- model.events, do: {"record:#{e.name}", e.name})
+      )
+
+    names = Map.new(model.events, &{&1.type, &1})
+    commands = Map.new(model.commands, &{Atom.to_string(&1.name), &1})
+
+    from(e in EhOsContract.Event,
+      left_join: c in EhOsContract.CommandRecord,
+      on: c.id == e.command_id,
+      where: e.contract == ^inspect(model.module) and e.contract_version == ^model.version,
+      group_by: [c.type, e.type],
+      select: {c.type, e.type, count(e.id)}
+    )
+    |> drift_bounds(opts)
+    |> repo().all()
+    |> Enum.flat_map(fn {command, type, count} ->
+      event = Map.get(names, type)
+
+      if event == nil or MapSet.member?(declared, {command, event.name}) do
+        []
+      else
+        from =
+          case Map.get(commands, command) do
+            nil -> nil
+            c -> %{kind: :command, name: c.name, label: c.label}
+          end
+
+        [%{from: from, to: %{kind: :event, name: event.name, label: event.label}, count: count}]
+      end
+    end)
+  end
+
+  defp drift_bounds(query, opts) do
+    query
+    |> then(fn q -> if at = opts[:since], do: where(q, [e], e.occurred_at >= ^at), else: q end)
+    |> then(fn q -> if at = opts[:until], do: where(q, [e], e.occurred_at <= ^at), else: q end)
+  end
+
+  defp repo, do: Application.fetch_env!(:eh_os_contract, :repo)
 
   @doc """
   Process declarations that may appear in an evidence report: those the process

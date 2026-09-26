@@ -476,6 +476,15 @@ PubSub is fine for disposable signals — live UI, presence, cache invalidation.
 in an evidence artifact: with at-most-once delivery, a missing event is indistinguishable from a
 process that never ran.
 
+*26 September 2026, v2 plan E7, as built.* The table above is v1's handler. In v2 the row is a consumer's
+`delivery`: `:in_transaction` runs in the dispatch transaction (read models, then policies, then effects),
+and `:at_least_once` is either an ordered subscription over the log, one row in
+`eh_os_contract_subscriptions` with its position (read models, policies, process managers), or an
+`EhOsContract.EffectJob` in Oban's `:events` queue inserted in the dispatch transaction (effects). Oban's
+transactional enqueue is still what makes an effect's job an outbox. A poison event stops a subscription at
+its position until a person skips it; a query reads its own write with `min_position:`. Details in
+`contract-v2.md` §12.
+
 ### Idempotency
 
 Every async handler eventually processes the same event twice. **The event declares `identity:` in the

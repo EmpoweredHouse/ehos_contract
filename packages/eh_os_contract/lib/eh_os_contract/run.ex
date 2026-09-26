@@ -54,14 +54,21 @@ defmodule EhOsContract.Run do
   measurement are different questions, and the duration comes from the run's whole
   history however narrow the window on it.
 
+  ## A v2 process
+
+  **Measured the same way, on the new log** (v2 §13, plan E7c). A v2 contract's one
+  `process` declares its `deadline`, and its runs are the rows of
+  `eh_os_contract_event_runs` for that process, over its own events' types and the
+  ones it includes (D7): an included event can start a run, and an included one
+  declared `terminal:` ends it.
+
   Like `EhOsContract.Trace`, this counts runs and never names them. Which client is late is a
   question for the client's own application, which already knows.
   """
 
   import Ecto.Query
 
-  alias EhOsContract.Event
-  alias EhOsContract.Model
+  alias EhOsContract.{Event, EventRun, Model}
 
   @typedoc """
   One run, measured against its process's declared duration.
@@ -87,11 +94,20 @@ defmodule EhOsContract.Run do
   """
   @spec evaluate(module(), atom(), keyword()) :: [outcome()]
   def evaluate(contract, process_name, opts \\ []) do
-    process = Model.process(contract, process_name)
+    case Model.fetch(contract) do
+      %{units: _, process: %{name: ^process_name, deadline: %{} = deadline}} = model ->
+        measure(runs_of(model), {deadline.amount, deadline.unit}, opts)
 
-    case process && process.deadline do
-      nil -> []
-      deadline -> measure(contract, process, deadline, opts)
+      %{units: _} ->
+        []
+
+      _v1 ->
+        process = Model.process(contract, process_name)
+
+        case process && process.deadline do
+          nil -> []
+          deadline -> measure({:contract, contract, process}, deadline, opts)
+        end
     end
   end
 
@@ -121,12 +137,12 @@ defmodule EhOsContract.Run do
     }
   end
 
-  @spec measure(module(), map(), EhOsContract.Duration.t(), keyword()) :: [outcome()]
-  defp measure(contract, process, deadline, opts) do
+  @spec measure(source(), EhOsContract.Duration.t(), keyword()) :: [outcome()]
+  defp measure(source, deadline, opts) do
     now = Keyword.get(opts, :now) || DateTime.utc_now()
 
-    contract
-    |> spans(process, opts)
+    source
+    |> spans(opts)
     |> Enum.map(fn {instance_id, started_at, ended_at} ->
       %{
         instance_id: instance_id,
@@ -155,8 +171,52 @@ defmodule EhOsContract.Run do
   # One grouped query per process. The terminal end is a filtered aggregate over the
   # same rows rather than a second query, so a run cannot be seen to start in one
   # snapshot and end in another.
-  @spec spans(module(), map(), keyword()) :: [{String.t(), DateTime.t(), DateTime.t() | nil}]
-  defp spans(contract, process, opts) do
+  # Which rows make the runs of a process, and which of their types end one. A v1
+  # process's runs are its contract's events' own `instance_id`; a v2 process's are
+  # the rows of `eh_os_contract_event_runs` of its events' types, its own and the ones
+  # it includes (D7), so an event another contract decided starts or ends a run too.
+  @typep source :: {:contract, module(), map()} | {:runs, String.t(), [String.t()], [String.t()]}
+
+  @spec runs_of(map()) :: source()
+  defp runs_of(model) do
+    process = model.process
+
+    own = for e <- model.events, do: {e.type, e.terminal}
+
+    included =
+      for include <- process.includes,
+          {_contract, event} = Model.declaring(model, include.event),
+          do: {event.type, include.terminal}
+
+    types = own ++ included
+
+    {:runs, Atom.to_string(process.name), Enum.map(types, &elem(&1, 0)),
+     for({type, true} <- types, do: type)}
+  end
+
+  @spec spans(source(), keyword()) :: [{String.t(), DateTime.t(), DateTime.t() | nil}]
+  defp spans({:runs, process, types, terminal}, opts) do
+    from(r in EventRun,
+      join: e in Event,
+      as: :event,
+      on: e.position == r.position,
+      where: r.process == ^process,
+      where: e.type in ^types,
+      group_by: r.instance_id,
+      select:
+        {r.instance_id, min(e.occurred_at),
+         type(
+           fragment("min(?) FILTER (WHERE ? = ANY(?))", e.occurred_at, e.type, ^terminal),
+           :utc_datetime_usec
+         )}
+    )
+    |> bound(:>=, Keyword.get(opts, :since))
+    |> bound(:<=, Keyword.get(opts, :until))
+    |> maybe_run(Keyword.get(opts, :instance))
+    |> repo().all()
+  end
+
+  defp spans({:contract, contract, process}, opts) do
     terminal =
       contract
       |> events_of(process)
@@ -164,6 +224,7 @@ defmodule EhOsContract.Run do
       |> Enum.map(&to_string(&1.name))
 
     from(e in Event,
+      as: :event,
       where: e.contract == ^inspect(contract),
       where: e.process == ^to_string(process.name),
       where: not is_nil(e.instance_id),
@@ -190,12 +251,16 @@ defmodule EhOsContract.Run do
   # `having` on the run's minimum, never `where` on the row — see the moduledoc.
   @spec bound(Ecto.Query.t(), :>= | :<=, DateTime.t() | nil) :: Ecto.Query.t()
   defp bound(query, _direction, nil), do: query
-  defp bound(query, :>=, at), do: having(query, [e], min(e.occurred_at) >= ^at)
-  defp bound(query, :<=, at), do: having(query, [e], min(e.occurred_at) <= ^at)
+  defp bound(query, :>=, at), do: having(query, [event: e], min(e.occurred_at) >= ^at)
+  defp bound(query, :<=, at), do: having(query, [event: e], min(e.occurred_at) <= ^at)
 
   @spec maybe_instance(Ecto.Query.t(), String.t() | nil) :: Ecto.Query.t()
   defp maybe_instance(query, nil), do: query
   defp maybe_instance(query, id), do: where(query, [e], e.instance_id == ^id)
+
+  @spec maybe_run(Ecto.Query.t(), String.t() | nil) :: Ecto.Query.t()
+  defp maybe_run(query, nil), do: query
+  defp maybe_run(query, id), do: where(query, [r], r.instance_id == ^id)
 
   @spec repo() :: module()
   defp repo, do: Application.fetch_env!(:eh_os_contract, :repo)

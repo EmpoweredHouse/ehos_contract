@@ -171,6 +171,16 @@ contract asserts on, because both lose events silently.
 *Instead of:* everything through Oban, which breaks read-after-write, or everything synchronous, where a
 handler sending mail can roll back a business transaction.
 
+*Corrected 26 September 2026, v2 plan E7* ([contract v2](contract-v2.md) §11–12, §18). **The split
+survives, as a delivery on each consumer**: `:in_transaction` against `:at_least_once`. Handlers are gone;
+what reacts is a read model (a projection), a policy (issues a command), a process manager (steers a run
+with state and timers) or an effect (a side effect; one that calls an external system cannot run in the
+transaction). Idempotency is still declared, on the consumer (`idempotency: :event_id`), with keys derived
+from the event. What runs after the transaction is fed from the log in order by a subscription, not only by
+jobs, so a read model after the transaction answers read-after-write through `min_position:` on a query.
+**"No external broker" is still true** here; it changes with integration between applications (E12,
+`docs/adr/contract-v2.md` §15–16), where a dated note will say so.
+
 **11–12. External systems are adapters, the contract declares the dependency, and swapping is separate
 from configuring.** Events are named after the business fact, never the vendor.
 *Instead of:* calling vendors from domain code, after which a check cannot tell "we broke the rule" from
@@ -540,6 +550,11 @@ what would falsify them, which is why this section exists.
   outcome than catching it. **Nesting is still unenforced**, and is now the only live half — confirmed on
   5 August rather than left implicit: five process shapes were exercised on a synthetic rig, and nesting was
   not among them, so nothing has yet pushed on this half either way.
+  *26 September 2026, v2 plan E7c:* for a v2 contract the second half is **answered rather than made
+  inexpressible** (D7). An event belongs to its home run and to the run of every contract that `include`s it,
+  each a row of `eh_os_contract_event_runs`, so "which run was this" has one answer per process instead of
+  one per event. The trigger as written cannot fire for v2 either, for the opposite reason: an event in two
+  processes is a declared shape now, measured by `Trace` and `Run` like any other.
 - *Review point.* Revisit once the pilot is in production and the log has real data.
 
 **§5–6 — ownership enforced in CI rather than at runtime.**

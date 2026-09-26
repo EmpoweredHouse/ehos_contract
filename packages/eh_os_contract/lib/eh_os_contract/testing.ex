@@ -11,6 +11,11 @@ defmodule EhOsContract.Testing do
   and nothing runs by itself: no runner starts, and the boot registers nothing. The
   test pushes the work through with `drain/1`, in its own process and its own
   sandbox transaction.
+
+  **The first `drain/1` is the deploy.** It registers the subscriptions, and what is
+  in the log by then is history, which a new policy or process manager does not
+  react to (`EhOsContract.Subscription`). A test of a policy's reaction drains once
+  before it dispatches what the policy reacts to.
   """
 
   alias EhOsContract.{Implementations, Subscription, SubscriptionRecord}

@@ -9,5 +9,5 @@ defmodule DispatchRig do
   consumers that run inside the dispatch transaction.
   """
 
-  use Boundary, deps: [EhOsContract], exports: [Domain, Ledger]
+  use Boundary, deps: [EhOsContract], exports: [Branch, Domain, Ledger, Unfinished]
 end

@@ -17,6 +17,10 @@ defmodule EhOsContract.Web.ApiTest do
 
   @endpoint EhOsContract.Web.TestHost.Endpoint
 
+  # Two contracts are registered, the v2 one and its v1 original kept for AsyncAPI,
+  # so a request names which it asks about.
+  @contract "/api/conformance?contract=EhOsContract.Web.TestHost.Fixtures.CaseHandling"
+
   setup do
     {:ok, conn: build_conn() |> put_req_header("accept", "application/json")}
   end
@@ -33,22 +37,22 @@ defmodule EhOsContract.Web.ApiTest do
     end
 
     test "a read-only actor gets the report", %{conn: conn} do
-      conn = conn |> Access.put_actor("u-1", ["eh_os_contract_read"]) |> get("/api/conformance")
+      conn = conn |> Access.put_actor("u-1", ["eh_os_contract_read"]) |> get(@contract)
 
       assert conn.status == 200
-      assert %{"schema" => "eh_os_contract.conformance.v1"} = Jason.decode!(conn.resp_body)
+      assert %{"schema" => "eh_os_contract.conformance.v2"} = Jason.decode!(conn.resp_body)
     end
 
     test "and so does an admin, identically", %{conn: conn} do
       # `:read_only` and `:all` both pass and neither is redacted. Redacting for one
       # would be this package forming an opinion about how sensitive a client's own
       # data is.
-      admin = conn |> Access.put_actor("u-2", ["eh_os_contract_admin"]) |> get("/api/conformance")
+      admin = conn |> Access.put_actor("u-2", ["eh_os_contract_admin"]) |> get(@contract)
 
       reader =
         build_conn()
         |> Access.put_actor("u-1", ["eh_os_contract_read"])
-        |> get("/api/conformance")
+        |> get(@contract)
 
       assert admin.status == 200
       assert Jason.decode!(admin.resp_body)["report"] == Jason.decode!(reader.resp_body)["report"]
@@ -76,7 +80,7 @@ defmodule EhOsContract.Web.ApiTest do
     end
 
     test "an unparseable period is a bad request naming which one", %{conn: conn} do
-      conn = get(conn, "/api/conformance?since=yesterday")
+      conn = get(conn, @contract <> "&since=yesterday")
 
       assert conn.status == 400
       assert Jason.decode!(conn.resp_body)["detail"] =~ "since"

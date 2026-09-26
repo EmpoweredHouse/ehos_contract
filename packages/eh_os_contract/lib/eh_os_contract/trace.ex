@@ -118,6 +118,18 @@ defmodule EhOsContract.Trace do
   them correctly and the only way to test them. Notes §9 also foresee a
   single-run view — for debugging, "what happened to invoice 4712".
 
+  ## A v2 contract's `promise`
+
+  **The same arithmetic, on the new log** (v2 §13, plan E7c). A v2 contract declares
+  `promise` in its one `process`, and `evaluate/3` takes the promise's name where it
+  takes a trace's. The runs are the rows of `eh_os_contract_event_runs` for that
+  process, so an event another contract decided and this one includes counts in its
+  run (D7), and the events are named by their stored types, `"<process>.<event>"`.
+  Quantification switches on the same signal: the unit identity of `from`'s event
+  strictly finer than the process's correlation. `test/conformance/promise_test.exs`
+  runs the scenarios of `trace_test.exs` on a v1 shape and its v2 port and expects
+  the same verdicts from both.
+
   But **the report aggregates to numbers** (`summary/1`). "Which company has no
   open July" is a question about the state of the business and belongs to the
   client application; EhOsContract answers the question about the assertion.
@@ -125,8 +137,7 @@ defmodule EhOsContract.Trace do
 
   import Ecto.Query
 
-  alias EhOsContract.Event
-  alias EhOsContract.Model
+  alias EhOsContract.{Event, EventRun, Model}
 
   @typedoc "One run's verdict for one assertion."
   @type verdict :: %{
@@ -146,6 +157,14 @@ defmodule EhOsContract.Trace do
   """
   @spec evaluate(module(), atom(), keyword()) :: [verdict()]
   def evaluate(contract, trace_name, opts \\ []) do
+    case Model.fetch(contract) do
+      %{units: _} = model -> evaluate_promise(model, trace_name, opts)
+      _v1 -> evaluate_trace(contract, trace_name, opts)
+    end
+  end
+
+  @spec evaluate_trace(module(), atom(), keyword()) :: [verdict()]
+  defp evaluate_trace(contract, trace_name, opts) do
     trace =
       Model.trace(contract, trace_name) ||
         raise ArgumentError,
@@ -159,19 +178,86 @@ defmodule EhOsContract.Trace do
     # observed, and a report for July has to see an outage observed in July even when the
     # window it asks about was opened by an event from June.
     outages = awaited_outages(contract, trace)
+    source = {:contract, contract}
 
     if quantified?(contract, trace) do
-      evaluate_quantified(contract, trace, opts, now, outages)
+      identity = Model.event(contract, trace.from).identity
+      evaluate_quantified(source, trace, identity, opts, now, outages)
     else
-      evaluate_per_run(contract, trace, opts, now, outages)
+      evaluate_per_run(source, trace, opts, now, outages)
     end
   end
 
-  @spec evaluate_per_run(module(), map(), keyword(), DateTime.t(), [DateTime.t()]) :: [verdict()]
-  defp evaluate_per_run(contract, trace, opts, now, outages) do
+  # A v2 contract's `promise` (v2 §13): the same arithmetic, over the runs of the
+  # contract's one process as `eh_os_contract_event_runs` records them, so an event
+  # another contract decided counts in a run that includes it (D7). Its events are
+  # named by their stored types, `"<process>.<event>"`, the sibling's for an included
+  # one, and the verdicts carry the promise's name where a v1 one has the trace's.
+  @spec evaluate_promise(map(), atom(), keyword()) :: [verdict()]
+  defp evaluate_promise(model, name, opts) do
+    promise =
+      (model.process && Enum.find(model.process.promises, &(&1.name == name))) ||
+        raise ArgumentError, "#{inspect(model.module)} does not declare promise #{inspect(name)}"
+
+    trace = %{
+      from: stored_type!(model, promise.from),
+      eventually: stored_type!(model, promise.eventually),
+      or_else: promise.or_else && stored_type!(model, promise.or_else),
+      within: promise.within && {promise.within.amount, promise.within.unit}
+    }
+
+    now = Keyword.get(opts, :now) || DateTime.utc_now()
+    outages = promised_outages(model, promise)
+    source = {:runs, Atom.to_string(model.process.name)}
+    identity = identity_of(model, promise.from)
+
+    if finer?(identity, model.process.correlate) do
+      evaluate_quantified(source, trace, identity, opts, now, outages)
+    else
+      evaluate_per_run(source, trace, opts, now, outages)
+    end
+  end
+
+  @spec stored_type!(map(), atom()) :: String.t()
+  defp stored_type!(model, name) do
+    case Model.declaring(model, name) do
+      {_contract, %{type: type}} -> type
+      nil -> raise ArgumentError, "#{inspect(model.module)} stores no event #{inspect(name)}"
+    end
+  end
+
+  # The fields that tell one of the thing apart in its unit: its unit's identity, in
+  # the contract that declares the event.
+  @spec identity_of(map(), atom()) :: [atom()]
+  defp identity_of(model, name) do
+    {contract, event} = Model.declaring(model, name)
+    Enum.find(Model.fetch(contract).units, &(&1.name == event.unit)).identity
+  end
+
+  # As `awaited_outages/2`, from the events that did not arrive: the externals their
+  # declarations depend on, as observed by the contract that declares each.
+  @spec promised_outages(map(), map()) :: [DateTime.t()]
+  defp promised_outages(model, promise) do
+    for name <- [promise.eventually, promise.or_else],
+        name != nil,
+        {contract, event} = Model.declaring(model, name),
+        external = event.depends_on,
+        external != nil,
+        at <-
+          Map.get(
+            EhOsContract.Dependency.observations_by_external(contract),
+            to_string(external),
+            []
+          ) do
+      at
+    end
+  end
+
+  @spec evaluate_per_run(source(), map(), keyword(), DateTime.t(), [DateTime.t()]) :: [verdict()]
+  defp evaluate_per_run(source, trace, opts, now, outages) do
     from_type = to_string(trace.from)
 
-    contract
+    source
     |> occurrences(trace, opts)
     |> Enum.flat_map(fn {instance_id, by_type} ->
       case Map.get(by_type, from_type) do
@@ -202,14 +288,13 @@ defmodule EhOsContract.Trace do
     MapSet.subset?(instance, identity) and not MapSet.equal?(instance, identity)
   end
 
-  @spec evaluate_quantified(module(), map(), keyword(), DateTime.t(), [DateTime.t()]) :: [
-          verdict()
-        ]
-  defp evaluate_quantified(contract, trace, opts, now, outages) do
+  @spec evaluate_quantified(source(), map(), [atom()], keyword(), DateTime.t(), [DateTime.t()]) ::
+          [verdict()]
+  defp evaluate_quantified(source, trace, identity, opts, now, outages) do
     from_type = to_string(trace.from)
 
-    contract
-    |> item_occurrences(trace, opts)
+    source
+    |> item_occurrences(trace, identity, opts)
     |> Enum.flat_map(fn {instance_id, by_item} ->
       item_verdicts =
         for {_item_key, by_type} <- by_item,
@@ -397,27 +482,12 @@ defmodule EhOsContract.Trace do
     |> Enum.min(DateTime, fn -> nil end)
   end
 
-  @spec occurrences(module(), map(), keyword()) :: %{
+  @spec occurrences(source(), map(), keyword()) :: %{
           String.t() => %{String.t() => [DateTime.t()]}
         }
-  defp occurrences(contract, trace, opts) do
-    types =
-      [trace.from, trace.eventually, trace.or_else]
-      |> Enum.reject(&is_nil/1)
-      |> Enum.map(&to_string/1)
-
-    query =
-      from(e in Event,
-        where: e.contract == ^inspect(contract),
-        where: e.type in ^types,
-        where: not is_nil(e.instance_id),
-        select: {e.instance_id, e.type, e.occurred_at}
-      )
-
-    query
-    |> maybe_since(Keyword.get(opts, :since))
-    |> maybe_until(Keyword.get(opts, :until))
-    |> maybe_instance(Keyword.get(opts, :instance))
+  defp occurrences(source, trace, opts) do
+    source
+    |> rows(types(trace), opts, :times)
     |> repo().all()
     |> Enum.group_by(fn {instance, _t, _at} -> instance end, fn {_i, type, at} -> {type, at} end)
     |> Map.new(fn {instance, pairs} ->
@@ -430,28 +500,13 @@ defmodule EhOsContract.Trace do
   # of `from`'s identity fields wherever they appear. Folding that column into the
   # ordinary query would make every non-quantified evaluation — the overwhelming
   # majority — fetch a column it never reads.
-  @spec item_occurrences(module(), map(), keyword()) ::
+  @spec item_occurrences(source(), map(), [atom()], keyword()) ::
           %{String.t() => %{tuple() => %{String.t() => [DateTime.t()]}}}
-  defp item_occurrences(contract, trace, opts) do
-    types =
-      [trace.from, trace.eventually, trace.or_else]
-      |> Enum.reject(&is_nil/1)
-      |> Enum.map(&to_string/1)
+  defp item_occurrences(source, trace, identity, opts) do
+    identity = Enum.map(identity, &to_string/1)
 
-    identity = Model.event(contract, trace.from).identity |> Enum.map(&to_string/1)
-
-    query =
-      from(e in Event,
-        where: e.contract == ^inspect(contract),
-        where: e.type in ^types,
-        where: not is_nil(e.instance_id),
-        select: {e.instance_id, e.type, e.occurred_at, e.payload}
-      )
-
-    query
-    |> maybe_since(Keyword.get(opts, :since))
-    |> maybe_until(Keyword.get(opts, :until))
-    |> maybe_instance(Keyword.get(opts, :instance))
+    source
+    |> rows(types(trace), opts, :payloads)
     |> repo().all()
     |> Enum.group_by(fn {instance, _t, _at, _p} -> instance end)
     |> Map.new(fn {instance, rows} ->
@@ -475,17 +530,78 @@ defmodule EhOsContract.Trace do
   defp item_key(payload, identity),
     do: identity |> Enum.map(&Map.get(payload, &1)) |> List.to_tuple()
 
+  @spec types(map()) :: [String.t()]
+  defp types(trace) do
+    [trace.from, trace.eventually, trace.or_else]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.map(&to_string/1)
+  end
+
+  # The rows an assertion is judged on, each with the run it belongs to: `{instance_id,
+  # type, occurred_at}`, and the payload after them for `:payloads`. A v1 contract's
+  # runs are its events' own `instance_id`; a v2 contract's are the rows of
+  # `eh_os_contract_event_runs` for its process, whichever contract decided the event.
+  @typep source :: {:contract, module()} | {:runs, String.t()}
+
+  @spec rows(source(), [String.t()], keyword(), :times | :payloads) :: Ecto.Query.t()
+  defp rows({:contract, contract}, types, opts, shape) do
+    query =
+      from(e in Event,
+        as: :event,
+        where: e.contract == ^inspect(contract),
+        where: e.type in ^types,
+        where: not is_nil(e.instance_id)
+      )
+      |> bounded(opts)
+      |> maybe_instance(Keyword.get(opts, :instance), :event)
+
+    case shape do
+      :times -> select(query, [event: e], {e.instance_id, e.type, e.occurred_at})
+      :payloads -> select(query, [event: e], {e.instance_id, e.type, e.occurred_at, e.payload})
+    end
+  end
+
+  defp rows({:runs, process}, types, opts, shape) do
+    query =
+      from(r in EventRun,
+        as: :run,
+        join: e in Event,
+        as: :event,
+        on: e.position == r.position,
+        where: r.process == ^process,
+        where: e.type in ^types
+      )
+      |> bounded(opts)
+      |> maybe_instance(Keyword.get(opts, :instance), :run)
+
+    case shape do
+      :times ->
+        select(query, [run: r, event: e], {r.instance_id, e.type, e.occurred_at})
+
+      :payloads ->
+        select(query, [run: r, event: e], {r.instance_id, e.type, e.occurred_at, e.payload})
+    end
+  end
+
+  @spec bounded(Ecto.Query.t(), keyword()) :: Ecto.Query.t()
+  defp bounded(query, opts) do
+    query
+    |> maybe_since(Keyword.get(opts, :since))
+    |> maybe_until(Keyword.get(opts, :until))
+  end
+
   @spec maybe_since(Ecto.Query.t(), DateTime.t() | nil) :: Ecto.Query.t()
   defp maybe_since(query, nil), do: query
-  defp maybe_since(query, since), do: where(query, [e], e.occurred_at >= ^since)
+  defp maybe_since(query, since), do: where(query, [event: e], e.occurred_at >= ^since)
 
   @spec maybe_until(Ecto.Query.t(), DateTime.t() | nil) :: Ecto.Query.t()
   defp maybe_until(query, nil), do: query
-  defp maybe_until(query, until), do: where(query, [e], e.occurred_at <= ^until)
+  defp maybe_until(query, until), do: where(query, [event: e], e.occurred_at <= ^until)
 
-  @spec maybe_instance(Ecto.Query.t(), String.t() | nil) :: Ecto.Query.t()
-  defp maybe_instance(query, nil), do: query
-  defp maybe_instance(query, id), do: where(query, [e], e.instance_id == ^id)
+  @spec maybe_instance(Ecto.Query.t(), String.t() | nil, :event | :run) :: Ecto.Query.t()
+  defp maybe_instance(query, nil, _binding), do: query
+  defp maybe_instance(query, id, :event), do: where(query, [event: e], e.instance_id == ^id)
+  defp maybe_instance(query, id, :run), do: where(query, [run: r], r.instance_id == ^id)
 
   # **Read at run time, not at compile time — and that changed when the engine
   # became its own application (2026-08-20).** `Application.compile_env!/2`

@@ -305,6 +305,12 @@ production. `Phoenix.PubSub` and `GenStage` are rejected for anything the contra
 lose events silently — fine for live UI, never for evidence. Broadway sits at the edge if a client brings a
 broker.
 
+*26 September 2026, v2 plan E7:* the argument holds, and moved from handlers to consumers. A v2 read model,
+policy or effect declares `delivery: :in_transaction` or `:at_least_once`, and the failure semantics above
+are the two deliveries' (`contract-v2.md` §12). Read-after-write, the reason for not putting everything
+after the transaction, now has a second answer beside "project in the transaction": a query's
+`min_position:` waits for a read model projected after it. No broker, still.
+
 ### §11–12 — adapters, declared dependencies, and two configuration axes
 
 **Why the declared dependency changes what a check can say.** Because the contract records which events

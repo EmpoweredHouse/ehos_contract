@@ -87,6 +87,14 @@ defmodule EhOsContract.Implementations do
   def effects(contract, type), do: Map.get(index(contract).effects, type, [])
 
   @doc """
+  The processes of the v2 contracts that `include` events of `type` (D7), each with
+  the fields that correlate its runs, in the applications dispatch of `contract`
+  looks in: the runs an event of that type belongs to besides its home run.
+  """
+  @spec included(module(), String.t()) :: [%{name: atom(), correlate: [atom()]}]
+  def included(contract, type), do: Map.get(index(contract).included, type, [])
+
+  @doc """
   Every consumer that keeps a row in `eh_os_contract_subscriptions`, in the order of
   their keys: read models and policies delivered `:at_least_once` and process
   managers, which a runner feeds in order, and read models delivered `:in_transaction`, whose
@@ -136,7 +144,8 @@ defmodule EhOsContract.Implementations do
           inline: %{String.t() => [inline()]},
           effects: %{String.t() => [inline()]},
           consumers: [consumer()],
-          subscribed: [consumer()]
+          subscribed: [consumer()],
+          included: %{String.t() => [%{name: atom(), correlate: [atom()]}]}
         }
   def index(contract) do
     apps =
@@ -195,8 +204,24 @@ defmodule EhOsContract.Implementations do
         |> Enum.filter(
           &(&1.kind != :effect and (&1.delivery == :at_least_once or &1.kind == :read_model))
         )
-        |> Enum.sort_by(& &1.key)
+        |> Enum.sort_by(& &1.key),
+      included: included(contracts)
     }
+  end
+
+  # A process includes a sibling's event by the name it consumes it under, and the
+  # event is stored under the sibling's type. Another application's event is received
+  # into an inbox, never this log (D12), so its runs are not written here.
+  defp included(contracts) do
+    for %{process: %{includes: [_ | _]} = process} = model <- contracts,
+        include <- process.includes,
+        {:contract, from, original} <- [EhOsContract.Model.consumed(model, include.event)],
+        %{name: ^original, type: type} <- EhOsContract.Model.fetch(from).events,
+        uniq: true do
+      {type, %{name: process.name, correlate: process.correlate}}
+    end
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    |> Map.new(fn {type, runs} -> {type, Enum.sort(runs)} end)
   end
 
   @doc """
@@ -271,20 +296,12 @@ defmodule EhOsContract.Implementations do
   # The stored type of an event as a contract names it, its own or a sibling's, and
   # the digest of its declaration; `{nil, nil}` for one another application publishes.
   defp stored(model, event) do
-    case Enum.find(model.events, &(&1.name == event)) do
-      %{type: type} ->
-        {type, Map.fetch!(model.digests, "event:#{event}")}
+    case EhOsContract.Model.declaring(model, event) do
+      {contract, %{name: name, type: type}} ->
+        {type, Map.fetch!(EhOsContract.Model.fetch(contract).digests, "event:#{name}")}
 
       nil ->
-        case EhOsContract.Model.consumed(model, event) do
-          {:contract, from, original} ->
-            publisher = EhOsContract.Model.fetch(from)
-            %{type: type} = Enum.find(publisher.events, &(&1.name == original))
-            {type, Map.fetch!(publisher.digests, "event:#{original}")}
-
-          _published ->
-            {nil, nil}
-        end
+        {nil, nil}
     end
   end
 end

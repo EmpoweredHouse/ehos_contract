@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 26 września (po E7b, przed PR)
+## Handoff — stan na 26 września (E7c-1 w PR #16, E7c-2 zbudowane i przejrzane, przed PR)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -13,64 +13,84 @@ zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisan
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności) i jej
 dashboardu; `sandbox/` to dane testowe. **Trwa pivot do v2**: DSL na Sparku z modelem domeny w stylu ESDM
 (jeden kontrakt = jeden proces), event sourcing na własnym magazynie w Postgresie, crypto-shredding. **W `main`
-są E0–E6 w całości i D10–D14 (PR #1–#13).** E6 (dispatch synchroniczny, `Authorizer`, przejście VisitSettlement)
-zmergowany jako [PR #12](https://github.com/EmpoweredHouse/eh-os-contract/pull/12), opis autoryzacji
-`packages/eh_os_contract/docs/authorization.md` jako [PR #13](https://github.com/EmpoweredHouse/eh-os-contract/pull/13).
-**E7 podzielony na trzy PR-y. E7a zmergowane jako [PR #14](https://github.com/EmpoweredHouse/eh-os-contract/pull/14)
-(`83befa9`); E7b (process managery i timery) zrobione** na `dsl-v2/e7b-process-managers`, niewypchnięte —
-„E7b — co wyszło” niżej, **przejrzane** (notka na HEAD). Następne: PR E7b (na polecenie użytkownika), potem E7c (zgodność
-na nowym logu, fikstury); E8–E12 i EA niezaczęte.
-Kontrakty v1 działają jak przed E6. `Rehmed.Contracts.VisitSettlement` jest pierwszym kontraktem v2 sandboxa i do
-E7 nie widzą go czytelnicy v1 (raport, graf, `check`).
+są E0–E7b (PR #1–#15).** E7 jest podzielony na trzy PR-y: **E7a** (efekty, uporządkowane subskrypcje,
+przebudowa, supervisor) — [PR #14](https://github.com/EmpoweredHouse/eh-os-contract/pull/14); **E7b** (process
+managery i timery) — [PR #15](https://github.com/EmpoweredHouse/eh-os-contract/pull/15). **E7c idzie dwoma PR-ami**
+(decyzja użytkownika z 26 września): **E7c-1 — werdykty** jest w
+[PR #16](https://github.com/EmpoweredHouse/eh-os-contract/pull/16) (CI zielone, czeka na merge użytkownika);
+**E7c-2 — wyjścia** jest zbudowane na `dsl-v2/e7c2-outputs`, przed przeglądem i niewypchnięte. E8–E12 i EA
+niezaczęte. Kontrakty v1 działają jak przed E6. Kontrakty v2 widzą od E7c wszystkie wyjścia zgodności: raport
+(task, dashboard, API `conformance.v2`), graf, `check`, wdrożenia z okablowaniem, pokrycie scenariuszy. Poza tym
+zostaje AsyncAPI (E10).
 
 ### Stan repozytorium
 
-- `main` = `origin/main` = `83befa9` (merge PR #14). Użytkownik merguje PR-y jako merge, więc historia `main` ma
+- `main` = `origin/main` = `3e612f0` (merge PR #15). Użytkownik merguje PR-y jako merge, więc historia `main` ma
   merge commity.
-- **E7b: `dsl-v2/e7b-process-managers`**, odgałęziona od `83befa9`, lokalna, niewypchnięta (commity w „E7b —
-  co wyszło”). Wymeldowana w worktree
-  `.claude/worktrees/dsl-v2-e7-async-runtime-00f4d5`; nowa sesja w innym worktree najpierw
-  `git -C <ten worktree> switch --detach`. E7b pójdzie na gałęzi od E7a.
+- **E7c-1: `dsl-v2/e7c-conformance`**, odgałęziona od `3e612f0`, wypchnięta jako PR #16 (`410bf82`, notatka
+  przeglądu na nim). **E7c-2: `dsl-v2/e7c2-outputs`** od `410bf82`, lokalna, niewypchnięta; spis commitów w
+  „E7c-2 — co wyszło”. Wymeldowana w worktree
+  `.claude/worktrees/dsl-v2-e7c-conformance-be3100`; nowa sesja w innym worktree najpierw `git -C
+  ~/Projects/ai/eh-os-contract/.claude/worktrees/dsl-v2-e7c-conformance-be3100 switch --detach`, potem `git switch
+  dsl-v2/e7c2-outputs`. Po merge'u PR #16 PR E7c-2 idzie na `main` (albo na `dsl-v2/e7c-conformance`, jeśli
+  #16 jest jeszcze otwarty).
 - **Przegląd przed PR**: hook w `.claude/settings.json` odmawia `gh pr create`, dopóki `HEAD` nie ma notatki
   `refs/notes/review` (notatki są lokalne). Skill: `.claude/skills/pre-pr-review/`.
 
 ### Co zostało — i czyje to jest
 
-- **E7c — asystenta**, według opisu E7 i podziału w dopisku Etap 6. Z E7a i E7b zostało: `min_position` przy
-  query (v2 §11), pierwszy przebieg w dev; decyzja użytkownika, czy nowa polityka ma startować jak nowy process
-  manager (przegląd E7b, znalezisko 1). Z wcześniejszych etapów przechodzą:
-  - kontrakty v2 w czytelnikach zgodności (raport, graf, `check`), `_event_runs` (D7);
-  - poprawki ADR z v2 §18 dla E7c: §9–10, wyzwalacz „jedno zdarzenie w dwóch procesach”; fikstury według tabeli „Losy fikstur” (`ProcessShapes.Promised`, `Timed`, `Bare`, reszta `Rig`,
-    webowy `CaseHandling`).
+- **E7c-1 — użytkownika**: merge PR #16.
+- **E7c-2 — asystenta, do dokończenia**: przegląd zrobiony (notatka `refs/notes/review` na `HEAD`); push i PR na
+  polecenie użytkownika. Zakres zbudowany
+  jest w „E7c-1 — co wyszło”.
+- **E7c-2 — asystenta**, według podziału pod opisem E7 w dopisku Etap 6. Z listy niżej zostaje dla niego: graf,
+  `check` i `Registry` na v2, pokrycie scenariuszy, wersja okablowania i wdrożenia kontraktów v2 (od nich
+  zależy „since” w raporcie i granica deklaracji obietnicy — ustalenie 10 E7c-1), webowy `CaseHandling`,
+  poprawki ADR, `min_position`, pierwszy przebieg w dev. Pierwotna lista E7c:
+  - `_event_runs` (D7): tabela jest od V04, nikt jej nie pisze; wpis w transakcji dispatchu (przebieg domowy i
+    każdy `include` innego kontraktu), razem z czytelnikami `Trace` i `Run`;
+  - kontrakty v2 w raporcie, grafie i `check`; nowe źródła: **w toku** — oczekujące joby efektów i timerów,
+    opóźnienie subskrypcji; **padające** — wiersze `failed` w `_commands` (przez `failed_in`), subskrypcje
+    `failing`, efekty `discarded` (v2 §13);
+  - pokrycie scenariuszy (v2 §13, ostatni punkt);
+  - wersja okablowania liczona z kontraktu i implementacji — zmienia werdykt, więc linia w CHANGELOG;
+    `conformance.v2` w `Conformance.Wire`;
+  - fikstury według tabeli „Losy fikstur” (`ProcessShapes.Promised`, `Timed`, `Bare`, reszta `Rig`, webowy
+    `CaseHandling` z dwiema politykami);
+  - poprawki ADR z v2 §18: §9–10 („dispatch split survives as inline against async”) i wyzwalacz „jedno zdarzenie
+    w dwóch procesach” (architecture, review triggers);
+  - z E7a i E7b: `min_position` przy query (v2 §11); pierwszy przebieg sandboxa w dev (boot zapisuje wiersze
+    wdrożenia i subskrypcji do bazy dev — punktu odniesienia porównań bajtów raportu; zrobić świadomie, raz).
+  - **Rozstrzygnięte przez użytkownika 26 września**: dwa PR-y (E7c-1 werdykty, E7c-2 wyjścia), kształt
+    `conformance.v2` ze źródłami osobno, graf v2 z węzłami wszystkich rodzajów, nowa polityka startuje jak nowy
+    process manager — pełny zapis pod opisem E7 w dopisku Etap 6.
 - **Konwencja etykiet w scenariuszach — użytkownika**: propozycja z 26 września, żeby wartości w scenariuszach
   mówiły, czym są („konto-Anny”, „Kraków”), a nie „a-1”, „b-7”; bez odpowiedzi.
-- **EA — asystenta**, może ruszyć równolegle z E7: behaviour `Authorizer` i ścieżka dispatchu są.
+- **EA — asystenta**, może ruszyć równolegle: behaviour `Authorizer` i ścieżka dispatchu są.
 - **Lista zmian do `eh-os`** — użytkownika: D-01, D-15, outbox, G-16, transport v1, D-34, D-40, plan etapu 4
   („D10–D12 — skąd się wzięły” i „D14 — autoryzacja” w dopisku Etap 6) oraz od E6 logowanie frontendu zwykłej
   aplikacji, w `eh-os` niezaprojektowane (najbliżej G-3).
-- **Publikacja na Hex — użytkownika**, decyzja niepodjęta (tagi `v0.2.0`, `v0.2.1`; w `mix.exs` od E6
-  `0.3.0-dev`).
-- **F1, F2 i dziesięć usterek** z „Dopisek 25 września” — do właścicieli procesów, przez użytkownika. F2 ma od E6
-  konsekwencję w kodzie: korekta przed przekazaniem wizyty nie ma dnia i dispatch jej odmawia.
+- **Publikacja na Hex — użytkownika**, decyzja niepodjęta (tagi `v0.2.0`, `v0.2.1`; w `mix.exs` `0.3.0-dev`).
+- **F1, F2 i dziesięć usterek** z „Dopisek 25 września” — do właścicieli procesów, przez użytkownika.
 - Zasady trzymają się dalej: **zmiany widoczne dla konsumenta idą do „Unreleased” w `CHANGELOG.md` tym samym
-  commitem** (E7 zmienia werdykt, więc linia z wersją okablowania); dwa przebiegi `open_month` w bazie dev
+  commitem** (w E7b raz nie poszły — „E7b — co wyszło”, ustalenie 6); dwa przebiegi `open_month` w bazie dev
   zostają punktem odniesienia porównań bajtów.
 
 ### Co przeczytać najpierw
 
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach,
    `boundary`, zsh bez dzielenia słów.
-2. `PLAN.md`, dopisek Etap 6: **opis E7** (zakres i odbiór), reguły każdego commita w „Strategia”, tabele
-   „Losy fikstur” i „Losy testów”; potem „E6 — co wyszło” i „E7a — co wyszło” — E7b stoi na tym kodzie.
-3. `docs/adr/contract-v2.md`: §12 (konsumenci: efekty, uporządkowane subskrypcje, process managery i timery,
-   przebudowa, nadzór), §13 (przebiegi, obietnice i zgodność na nowym logu), §10.3 (tabele `subscriptions`,
-   `process_managers`, `event_runs`), §16 D7, §17 (ryzyka: sandbox Ecto a subskrypcje, trujące zdarzenie).
-4. Kod E6 i E7a: `lib/eh_os_contract/dispatcher.ex`, `consumer.ex`, `subscription.ex` (tu dochodzą process
-   managery), `effect_job.ex`, `implementations.ex`, `store.ex`; notka z 26 września w v2 §12; fikstura
-   `test/support/dispatch_rig/`.
-5. v1, który E7 zastępuje: `lib/eh_os_contract/emitter.ex`, `job.ex`, `handler.ex`; czytelnicy zgodności
-   `run.ex`, `trace.ex`, `conformance.ex`, `report.ex` i fikstury `test/support/process_shapes/`.
-6. `packages/eh_os_contract/docs/authorization.md` — jak działa autoryzacja z E6, jeśli E7 jej dotyka.
+2. `PLAN.md`, dopisek Etap 6: **opis E7 i jego podział** (zakres i odbiór E7c: te same scenariusze dają te same
+   liczby werdyktów, „jeszcze nie” przechodzi w „nigdy” dopiero po opróżnieniu kolejki), reguły commita w
+   „Strategia”, tabele „Losy fikstur” i „Losy testów”; potem „E7a — co wyszło” i „E7b — co wyszło”.
+3. `docs/adr/contract-v2.md` §13 (przebiegi, obietnice i zgodność na nowym logu, tabela losów modułów), §10.3
+   (`event_runs`), §16 D7, notki z 26 września w §12 (co zbudowały E7a i E7b).
+4. Czytelnicy v1, których E7c rozszerza: `lib/eh_os_contract/run.ex`, `trace.ex`, `conformance.ex`,
+   `conformance/wire.ex`, `report.ex`, `graph.ex`, `check.ex`, `deployment.ex`, i `model.ex` (szew z E1, przez
+   który czytają); fikstury `test/support/process_shapes/`.
+5. Runtime E7a/E7b, z którego E7c bierze źródła: `subscription.ex`, `subscription_record.ex`, `effect_job.ex`,
+   `timer_job.ex`, `process_manager.ex`, `command_record.ex`, `dispatcher.ex`; fikstura `test/support/dispatch_rig/`.
+6. `packages/eh_os_contract_web` — webowy `CaseHandling` i ekrany zgodności, które przejdą na nową fiksturę.
 7. Przed PR: `.claude/skills/pre-pr-review/SKILL.md`.
 
 ### Komendy
@@ -92,17 +112,22 @@ push szły przez HTTPS z credentialem `gh`, bez zmiany konfiguracji gita:
 git -c credential.helper='!gh auth git-credential' fetch https://github.com/EmpoweredHouse/eh-os-contract.git +refs/heads/main:refs/remotes/origin/main
 ```
 
+```bash
+git -c credential.helper='!gh auth git-credential' push https://github.com/EmpoweredHouse/eh-os-contract.git dsl-v2/e7c-conformance:dsl-v2/e7c-conformance
+```
+
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 26 września**, na `dsl-v2/e7b-process-managers` = `a6aad4a` (ostatni commit z kodem po przeglądzie),
-  brama z `sandbox/` → **EXIT=0**. Sandbox: 47 testów, 0 padnięć, `eh_os_contract.check` 0 błędów, 4 ostrzeżenia,
-  19 informacji. Silnik: 816 testów, 0 padnięć, `check` 0 / 8 / 16. Web: 31 testów, 0 padnięć.
-- **CI**: PR #14 — przebieg `36232956049` na `ee9f345`, `success`; `main` po merge'u — `36233753606` na
-  `83befa9`, `success`. E7b nie był w CI.
+- **Lokalnie, 26 września**, na `dsl-v2/e7c2-outputs`, brama z `sandbox/` → **EXIT=0**. Sandbox: 47 testów,
+  `eh_os_contract.check` 0 / 5 / 19. Silnik: 906 testów, `check` 0 / 15 / 17. Web: 32 testy. Delta `check`
+  wyjaśniona w „E7c-2 — co wyszło”. Na `dsl-v2/e7c-conformance` (PR #16): 881 / 0/8/16, sandbox 0/4/19, web 31.
+- **CI**: PR #16 — dwa sprawdzenia zielone. `main` po PR #15 — `36239199828`, `success`.
 
 ### Otwarte pytania
 
 - **Konwencja etykiet w scenariuszach** — użytkownika (wyżej).
+- **Runner dla read modelu `:in_transaction`** odpytuje co sekundę, choć pracuje tylko przy przebudowie —
+  pominięte w przeglądzie E7a (znalezisko 6), wraca przy pomiarze.
 - **`EhOsContract.Authorizer`**: podwójny zapis przyjętej komendy (pakiet auth i `_commands`) rozstrzyga EA; nazwę
   uprawnienia dla `record/3` z credentialem — E9.
 - **Po E5b:** `mix eh_os_contract.check` nie powtarza L3 dla projektów bez zarejestrowanego kompilatora — E10.
@@ -114,12 +139,12 @@ git -c credential.helper='!gh auth git-credential' fetch https://github.com/Empo
 
 **Ten blok jest do skasowania. Skasowanie go cofa uprawnienie — nie migruje ono samo między sesjami.**
 
-W sesjach E1–E7a użytkownik zgadzał się na: commity bez pytania na gałęziach etapów przy zielonej bramie na
-każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. W sesji E7a (26 września) potwierdził
-to dla `dsl-v2/e7-async`, a potem dla `dsl-v2/e7b-process-managers`. **Dla gałęzi E7c i w każdej nowej sesji
-obowiązuje to dopiero po ponownym potwierdzeniu przez użytkownika.** Push, PR, merge, tag i publikacja na Hex — tylko
-na wyraźne polecenie, a przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie piszemy
-nigdy.
+W sesjach E1–E7b użytkownik zgadzał się na: commity bez pytania na gałęziach etapów przy zielonej bramie na
+każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. 26 września potwierdził to dla
+`dsl-v2/e7-async` i `dsl-v2/e7b-process-managers`, zlecił push i PR #14 i #15, które sam zmergował, polecił
+zacząć E7c, i w sesji E7c potwierdził zgodę dla `dsl-v2/e7c-conformance` i gałęzi drugiego PR-a E7c. **W nowej sesji obowiązuje to dopiero po ponownym potwierdzeniu przez użytkownika.** Push, PR, merge,
+tag i publikacja na Hex — tylko na wyraźne polecenie, a przed PR skill `pre-pr-review`. Do
+`~/Projects/ai/empowered-house-context` nie piszemy nigdy.
 
 ### Język
 
@@ -318,8 +343,10 @@ wyzwalacz „jedno zdarzenie w dwóch procesach”.
 `report_test`); „jeszcze nie” przechodzi w „nigdy” dopiero po opróżnieniu kolejki; przebudowa daje identyczne
 wiersze; trujące zdarzenie zatrzymuje konsumenta dokładnie na swojej pozycji; dwóch runnerów nie bierze tej
 samej paczki (prawdziwe commity, osobny schemat); odpalony timer uruchomiony dwa razy daje jeden dispatch.
-**E7a zrobione 26 września** na `dsl-v2/e7-async`, osiem commitów, niewypchnięte; jego trzy punkty odbioru
-spełnione — „E7a — co wyszło” niżej. **Podzielony na trzy PR-y** (decyzja użytkownika z 26 września, jak E5a/E5b — żeby diff dało się przeczytać),
+**E7a zrobione 26 września** i zmergowane jako PR #14 (`83befa9`); jego trzy punkty odbioru spełnione — „E7a — co
+wyszło” niżej. **E7b zrobione 26 września** i zmergowane jako PR #15 (`3e612f0`) — „E7b — co wyszło” niżej. **E7c-1
+zrobione 26 września**, wystawione jako [PR #16](https://github.com/EmpoweredHouse/eh-os-contract/pull/16) — „E7c-1 —
+co wyszło” niżej. **E7c-2 zrobione 26 września** na `dsl-v2/e7c2-outputs`, niewypchnięte — „E7c-2 — co wyszło”. **Podzielony na trzy PR-y** (decyzja użytkownika z 26 września, jak E5a/E5b — żeby diff dało się przeczytać),
 każdy na gałęzi od poprzedniego:
 - **E7a — runtime asynchroniczny** (`dsl-v2/e7-async`): migracja V04; efekty na Obanie; uporządkowane
   subskrypcje dla read modeli i polityk `:at_least_once`; supervisor; przebudowa read modeli; testy trującego
@@ -338,6 +365,28 @@ każdy na gałęzi od poprzedniego:
   linią w CHANGELOG, `conformance.v2`, fikstury według „Losów fikstur”, webowy `CaseHandling`, poprawki ADR.
   Odbiór: te same scenariusze dają te same liczby werdyktów; „jeszcze nie” przechodzi w „nigdy” dopiero po
   opróżnieniu kolejki.
+  Rozstrzygnięte przez użytkownika 26 września przed budową E7c:
+  - **Dwa PR-y**, drugi na gałęzi od pierwszego. **E7c-1 — werdykty** (`dsl-v2/e7c-conformance`): `_event_runs`,
+    `Trace`, `Run`, `Conformance` i `Report` na kontraktach v2, w toku i padające z nowych źródeł,
+    `conformance.v2`, fikstury `ProcessShapes` przebudowane (odbiór „te same liczby werdyktów” stoi na nich),
+    start nowej polityki. **E7c-2 — wyjścia**: graf v2, `check` na v2, pokrycie scenariuszy, wersja okablowania,
+    webowy `CaseHandling`, poprawki ADR, `min_position` przy query, pierwszy przebieg sandboxa w dev.
+  - **`conformance.v2` tylko dla kontraktów v2**; kontrakt v1 zostaje przy `conformance.v1` z identycznymi
+    bajtami do cięcia. Krok v2 to `from` / `via` / `to`, każde `{kind, name, label}` (komenda → zdarzenie albo
+    zdarzenie → konsument → komenda), z `mode`, `runs` i `of_runs`. **W toku i padające rozbite na źródła**, bo
+    każde idzie do innej osoby: `in_flight` = `{effects, timers, lag}`, `failing` = `{commands, subscription,
+    effects}`. Nowe sekcje `scenarios` (zadeklarowane, zaobserwowane, nigdy niezaobserwowane, wyniki bez
+    scenariusza) i `wiring` (wersja, od kiedy) — obie w E7c-2. Zdania raportu nazywają źródło: „in progress: 2
+    timers scheduled”, „failing: 1 command failed in 1 run”, „failing: the subscription stopped at an event it
+    cannot apply”; krok przez konsumenta mówi „(via: <etykieta konsumenta>)”.
+  - **Graf v2 ma węzły wszystkich rodzajów** — komendy, zdarzenia, konsumenci (polityka, process manager,
+    efekt), timery — w kolorach Event Stormingu, krawędzie `emits` / `issues` z licznikami przebiegów z
+    nakładki (jak EventCatalog). Wariant „tylko zdarzenia, jak w v1” odrzucony: komenda od człowieka nie ma
+    zdarzenia wejściowego, więc by zniknęła.
+  - **Nowa polityka `:at_least_once` startuje jak nowy process manager**: bez reakcji na historię. Polityka nie
+    ma stanu, więc replay bez reakcji to start od głowy logu w chwili rejestracji; przejście historii z
+    reakcjami to świadome `--reset NAZWA`. Zamyka znalezisko 1 z przeglądu E7b. Linia w CHANGELOG.
+  Zgoda na commity bez pytania i zapis stanu obejmuje `dsl-v2/e7c-conformance` i gałąź E7c-2.
 
 Interfejs widoczny dla hosta, rozstrzygnięty przez użytkownika 26 września przed budową E7a:
 - runnery wyłącza `config :eh_os_contract, subscriptions: :manual` (obok `:repo` i `:applications`), nie opcja
@@ -1114,7 +1163,7 @@ sprawdza `plug_test` przez `Plug.Test`.
 
 ### E7a — co wyszło (26 września)
 
-**Stan.** Na `dsl-v2/e7-async`, lokalnie, niewypchnięte: zapis podziału (`a0828e8`), V04 (`213b0b4`), efekty
+**Stan.** Na `dsl-v2/e7-async`, zmergowane jako PR #14: zapis podziału (`a0828e8`), V04 (`213b0b4`), efekty
 (`fbce133`), subskrypcje z przebudową i `drain/1` (`1e85f09`), supervisor (`279494c`), testy na prawdziwych
 commitach (`b238ff2`), task `subscriptions` (`b9db321`), znalezisko 5 z przeglądu E6 (`c0cdf28`) i ten zapis.
 Brama zielona na każdym commicie z kodem. `a0828e8` to sam `PLAN.md`, zacommitowany bez przebiegu bramy na
@@ -1196,7 +1245,7 @@ Silnik 790 → 798 testów, sandbox 47, web 31; `check` bez zmian (0/8/16, 0/4/1
 
 ### E7b — co wyszło (26 września)
 
-**Stan.** Na `dsl-v2/e7b-process-managers` od `main` po PR #14, lokalnie, niewypchnięte: zapis decyzji
+**Stan.** Na `dsl-v2/e7b-process-managers` od `main` po PR #14, zmergowane jako PR #15: zapis decyzji
 (`3f35299`), P4 odrzuca process managera `:in_transaction` (`ff65927`), runtime process managerów i timerów
 (`d2dfbae`), poprawki ADR i ten zapis. Brama zielona na każdym commicie, także na tym z samym `PLAN.md`. Silnik
 798 → 810 testów, sandbox 47, web 31; `check` bez zmian (0/8/16, 0/4/19).
@@ -1246,15 +1295,166 @@ z testem, który na kodzie sprzed poprawki pada, jedno poprawione bez zmiany zac
 
 Silnik 810 → 816 testów, sandbox 47, web 31; `check` bez zmian.
 
+### E7c-1 — co wyszło (26 września)
+
+**Stan.** Na `dsl-v2/e7c-conformance` od `main` po PR #15, niewypchnięte: handoff (`9285de2`), zapis decyzji
+(`632a5cf`), start nowej polityki (`706bee3`), `_event_runs` (`815801e`), `Trace` i `Run` na v2 (`e1894dd`),
+`Paths` (`2cdaf76`), raport v2 i `conformance.v2` (`9cf8b13`) i ten zapis. Brama zielona na każdym commicie,
+także na tych z samym `PLAN.md`. Silnik 816 → 879 testów, sandbox 47, web 31; `check` bez zmian (0/4/19,
+0/8/16) — fikstury v2 są dla `check` niewidoczne, dopóki `check` nie czyta v2 (E7c-2).
+
+**Odbiór E7c-1, jak sprawdzony:**
+- *Te same scenariusze dają te same liczby werdyktów* — `test/conformance/promise_test.exs` (scenariusze
+  `trace_test`), `deadline_test.exs` (scenariusze `run_test`) i pierwszy blok `report_v2_test.exs` (przebiegi,
+  werdykty obietnicy, potwierdzony termin, deklaracje, zdania reguły) idą raz na kształt v1 i raz na port v2,
+  z tymi samymi asercjami. Testy v1 są nietknięte.
+- *„Jeszcze nie” przechodzi w „nigdy” dopiero po opróżnieniu kolejki* — `report_v2_test`, „not yet is not
+  never”: krok odmowy przez politykę `:at_least_once` jest w `in_flight` (lag 1), nie w `untraversed`; po
+  `drain` znika z obu.
+- *D7* — `event_runs_test` (zdarzenie w przebiegu domowym i w przebiegu oddziału) i `deadline_test`
+  („measures a run made of another contract's events”). Wstecz: bez typów z `include` pada ten drugi i tylko on.
+
+**Ustalenia.**
+1. **Fikstury przetłumaczone obok, nie zastąpione** — jak `UniversalityGate.Next` w E4: `ProcessShapes.Next.
+   Promised`, `Timed`, `Bare` w wymyślonej `ProcessShapes.Domain`, a `ProcessShapes.Seed` pisze ten sam
+   scenariusz w oba kształty. Zastąpienie przepisałoby siedem plików testów v1 i zostawiło czytelników v1 bez
+   testu, choć TaxVision w sandboxie dalej ich używa. v1 i `Seed` znikają w E11. Mechanika, rozstrzygnięta
+   przeze mnie.
+2. **Gałąź odmowy to w v2 trzy kroki, nie jedna ścieżka.** Komenda jest węzłem, więc „50 przebiegów → jedna
+   linia raportu” z `conformance_test` ma w v2 postać „50 przebiegów → te same trzy kroki, każdy raz”: kroki
+   nikomu niezrobione są raportowane raz, niezależnie od liczby przebiegów. To mój odczyt kryterium; liczby
+   werdyktów (obietnice, termin, przebiegi) są równe dosłownie.
+3. **W testach hosta pierwsze `drain/1` to wdrożenie** — konsekwencja decyzji o starcie polityki: polityka
+   zarejestrowana po zdarzeniu nie reaguje na nie. Dwa testy polityki w `subscription_test` robią `drain` przed
+   dispatchem; linia w CHANGELOG i akapit w `Testing`.
+4. **Magazyn pisze przebiegi razem ze zdarzeniem**, nie dispatcher po dopisie: żadna ścieżka dopisu (dispatch,
+   `record/3`, timer, pomocnik testów, emiter v1) nie może zapomnieć wiersza. Zdarzenie v1 też dostaje przebieg
+   domowy; czytelnicy v1 tabeli nie czytają. Wspólna nazwa procesu v1 i v2 (`handling`) niczego nie miesza, bo
+   czytelnik v2 filtruje typami `"<proces>.<zdarzenie>"` — test kontrolny w `promise_test`.
+5. **Niezbudowane: uzupełnienie `_event_runs` dla starych zdarzeń**, gdy kontrakt zaczyna włączać ich typ
+   (v2 §13 mówi „rebuildable”). Wraca przy ClinicalVisit (E9), pierwszym kontrakcie, który włącza cudze
+   zdarzenia z historią.
+6. **Efekt nie zostawia śladu w logu, kiedy działa**, więc jego krok ma `runs: nil`: nigdy „niezrobiony”, tylko
+   w toku (job czeka) albo padający (job `discarded`).
+7. **Padająca komenda trafia do kroku przez `failed_in`**: etap konsumenta — do kroków tego konsumenta; decyzja,
+   fold albo read model — do każdego kroku, który komenda emituje (której z nich by dokonała, nie wiadomo).
+   Polityka z dwoma zdarzeniami wejściowymi dostaje porażkę na obu krokach.
+8. **Lag liczony tylko dla konsumenta z wierszem subskrypcji**: bez wiersza konsument nie jest wdrożony i nic
+   na niego nie czeka.
+9. **Dryf v2** to zdarzenie wdrożonej wersji, którego żadna zadeklarowana komenda nie emituje, także zapisane
+   obok dispatchu (`from: nil`, „written outside dispatch”). Historia pod starszą wersją nie jest dryfem.
+10. **Do E7c-2, bo stoi na wdrożeniach v2**: boot nie zapisuje wdrożeń kontraktów v2, więc raport mówi „nothing
+    has happened under this version yet”, a granica deklaracji obietnicy (`promise:<nazwa>`) jest zawsze `nil`.
+    Tam też `Registry` i `check`, które kontraktów v2 nie widzą.
+
+**Przegląd przed PR (26 września, `/code-review high origin/main..HEAD`).** Dziesięć znalezisk; sześć poprawionych
+z testem, który na kodzie sprzed poprawki pada jako jedyny, jedno poprawione bez zmiany zachowania, jedno
+porządkowe bez testu, dwa pominięte, jedno błędne:
+1. **Krok za czekającym krokiem był „niezrobiony”** — przy odmowie w lagu polityki raport wypisywał „Notify a
+   refusal → Refusal notified” jako „never carried out”, wbrew odbiorowi E7c. **Poprawione** w `71610d0`: krok,
+   do którego początku prowadzi krok czekający (także dalej w łańcuchu), nie jest niezrobiony.
+2. Lag kroku timera liczył odpalenia wszystkich timerów wszystkich process managerów — **poprawione** w `6bb69ff`.
+3. Padające komendy ograniczane okresem po `recorded_at` (zegar bazy), reszta po `occurred_at` (`Clock`) —
+   **pominięte**: `_commands` nie ma innej chwili; na produkcji zegar dispatchu to zegar ścienny, a różnica
+   dotyczy tylko wstrzykniętego zegara. Wraca, jeśli wiersz komendy dostanie `occurred_at`.
+4. Grupowanie reakcji po polu `timer` z payloadu każdego zdarzenia zlewało grupy — **poprawione** w `aad9f81`.
+5. Lag to jedno zapytanie na konsumenta i typ — **pominięte**, ta sama kategoria co ustalenie 12 E6: wraca przy
+   pomiarze.
+6. `LIKE` na nazwie kontraktu z `_` jako wieloznacznikiem — **poprawione** w `73d7fb7` (dokładne klucze), bez testu,
+   bo żaden moduł w repozytorium nie ma `_` w nazwie.
+7. `Implementations.stored/2` powielał `Model.declaring/2` — **poprawione** w `3bb7eae`, bez zmiany zachowania.
+8. Raport liczy przebiegi osobno od `of_runs` kroków — **błędne**: proces bez kroków (`DispatchRig.Branch`) ma
+   przebiegi, których żaden krok nie niesie.
+9. `Paths.declared/1` oddawał klucze wewnętrzne wbrew dokumentacji — **poprawione** w `c4bc294`.
+10. Kroki w toku drukowane pod „never carried out”, a przy pustej liście po „All agreed steps were carried
+    out” — **poprawione** w `ce7c002` dla procesu v2 (własny nagłówek „Agreed steps in progress:”); układ v1 bez
+    zmian, więc bajty raportu v1 się nie ruszają.
+
+Silnik 879 → 881 testów, sandbox 47, web 31; `check` bez zmian (0/4/19, 0/8/16).
+
+### E7c-2 — co wyszło (26 września)
+
+**Stan.** Na `dsl-v2/e7c2-outputs` od `dsl-v2/e7c-conformance` (PR #16), niewypchnięte: wdrożenia v2 z wersją
+okablowania (`f92e528`), task raportu (`39febdc`), graf v2 (`42d283c`), `check` na v2 (`200a1fa`), pokrycie
+scenariuszy i `wiring` w raporcie (`33bac1e`), webowy `CaseHandling` v2 i ekrany (`3fbdfa2`), `min_position`
+(`d3463ae`), poprawki ADR (`1120c8d`) i ten zapis. Brama zielona na każdym commicie. Silnik 881 → 904 testy,
+sandbox 47, web 31 → 32; `check` sandboxa 0/4/19 → **0/5/19**, silnika 0/8/16 → **0/14/17** (niżej).
+
+**Delta `check`, każda linia wyjaśniona.** Sandbox: +1 ostrzeżenie — `Rehmed.Contracts.VisitSettlement` nie ma
+`accountable`; to linia, która wypadła z wyjścia przy porcie w E6. Silnik: +6 ostrzeżeń i +1 informacja —
+`ProcessShapes.Next.Promised` i `Next.Bare` bez `accountable` oraz niepotwierdzone terminy `Next.Promised` i
+`UniversalityGate.Next.TreatmentEpisode`, dokładnie jak ich oryginały v1; `DispatchRig.Ledger` i `Branch` bez
+`accountable`; termin `Branch` bez zdarzenia kończącego (informacja). Linie v2 niosą nazwę kontraktu, bo port i
+oryginał dawałyby inaczej tę samą linię.
+
+**Pierwszy przebieg sandboxa w dev.** Zrobił go **nie ten skrypt, tylko `mix phx.server`** uruchomiony w tym
+worktree przez aplikację Claude o 23:15 (PID 81432, nadal działa): boot zapisał wiersz wdrożenia v2
+`VisitSettlement` (`2ae1d0074cbc` / okablowanie `90e7d665ab04`); wierszy subskrypcji i przebiegów nie ma, bo
+`VisitSettlement` nie ma konsumentów uporządkowanych, a baza dev nie ma zdarzeń v2. Potem raport i graf
+nakładki na tej samej bazie z kodem `main` (worktree `dsl-v2-e7-async-runtime-00f4d5`, `9285de2`) i z E7c-2:
+**`graph --overlay --mermaid` bajt w bajt identyczny**, a raport różni się wyłącznie dopisaną sekcją kontraktu
+v2 (wersja, okablowanie, zmiana względem wiersza v1, zero przebiegów, cztery scenariusze niezaobserwowane).
+Części v1 bez zmiany bajtu. Przed: 12 zdarzeń, 5 wdrożeń; po: tak samo — wiersz v2 zapisał już ten boot.
+
+**Ustalenia.**
+1. **`Registry.v2_contracts/0` obok `contracts/0`**, nie w nim: kilkunastu czytelników v1 pyta kontrakt o to, na
+   co odpowiada tylko v1. Każde wyjście czyta v2 jawnie; przy cięciu listy się sklejają.
+2. **Okablowanie v2 = kroki z `Paths.declared` + moduły implementujące deklaracje.** Kroki już ruszają wersję
+   kontraktu, więc tylko wiązanie z modułami mówi coś o kodzie. Obietnica dostaje własny digest przy zapisie
+   wdrożenia (`promise:<nazwa>`), bo model digestuje cały proces — granica deklaracji obietnicy działa.
+3. **Graf v2**: liczniki na krawędzi, która jest krokiem (emisja albo komenda konsumenta), bo zdarzenie
+   docierające do konsumenta, który wydaje dwie komendy, rysowane jest raz; timer rysowany jako process manager →
+   timer → komenda, żeby jego licznik nie dzielił krawędzi z reakcjami. Process manager bez `issues:` na
+   `starts_on` nie ma krawędzi od zdarzenia — kroki są tylko tam, gdzie coś jest wydawane.
+4. **`check` na v2 nie powtarza reguł L2/L3**: tylko to, co kontrakt może legalnie powiedzieć, a czytelnik
+   powinien usłyszeć. Kontrakt częściowo zaimplementowany to ostrzeżenie (dispatch resztę odrzuci), wcale —
+   informacja (D3). Częściowej implementacji nie da się zbudować w teście (moduł spoza aplikacji nie jest
+   skanowany), więc ta gałąź nie ma testu.
+5. **Pokrycie scenariuszy** liczy tylko scenariusze wyzwalane komendą: query nie zostawia wiersza. „Wynik bez
+   scenariusza” to rozstrzygnięcie komendy (emisje albo niezmiennik), którego żaden jej scenariusz by nie
+   dopasował — bez względu na `given`. Okres po `recorded_at`, jak padające komendy (znalezisko 3 z przeglądu
+   E7c-1).
+6. **Webowy `CaseHandling` zastąpiony portem v2** z dwiema politykami inline; **oryginał v1 zostaje jako
+   `Fixtures.V1.CaseHandling` wyłącznie dla AsyncAPI**, które czyta v1 do E10. Oba nazywają proces `:handling`
+   (przemianowanie na `:v1_handling` z pierwszej wersji cofnięte po przeglądzie, znalezisko 2). Testy API
+   zgodności nazywają kontrakt, bo zarejestrowane są dwa.
+7. **`min_position`**: polling wiersza subskrypcji co 25 ms, najdłużej `wait:` (5000 ms), potem
+   `{:error, :not_caught_up}`. Read model inline bez wiersza uchodzi za dogoniony. Fikstura `Ledger` dostała
+   query `:lines_of` na asynchronicznym `ledger_lines`.
+8. **Poprawki ADR z v2 §18 dla E7** są w architecture §9–10 i wyzwalaczu „jedno zdarzenie w dwóch procesach”,
+   design-rationale §9–10, technology-notes §4. „Bez zewnętrznego brokera” zostaje prawdą do E12.
+
+**Przegląd przed PR (26 września, `/code-review high dsl-v2/e7c-conformance..HEAD`).** Osiem znalezisk; sześć
+poprawionych, jedno pominięte, jedno błędne:
+1. i 7. **`check` nie liczył query** wśród tego, co wymaga implementacji, a gałąź „zaimplementowany w części”
+   nie miała testu — **poprawione** w `051ad57` z fiksturą `DispatchRig.Unfinished` (zaimplementowany unit, bez
+   read modelu i query); `check` silnika 0/14/17 → 0/15/17, ta jedna linia to cel fikstury.
+2. **Wybór procesu na ekranie grafu po samej nazwie** — v2 i jego oryginał v1 o tej samej nazwie procesu
+   zasłaniały się nawzajem; przemianowanie na `:v1_handling` to ukrywało. **Poprawione** w `c0f7de5`: klucz to
+   kontrakt i nazwa.
+3. **Digest obietnicy z całej mapy**, także `unverified` i `source` — potwierdzenie obietnicy rysowałoby
+   granicę deklaracji i wyjmowało wcześniejsze przebiegi z werdyktu. **Poprawione** w `b820acd`: digest z
+   `from`, `eventually`, `within`, `or_else`.
+4. Skan wszystkich jobów Obana na kontrakt — **poprawione** w `986f00c` (klucze konsumentów kontraktu), bez
+   zmiany zachowania.
+5. `Coverage` padałby na scenariuszu z `given` spoza magazynu — **pominięte**: osiągalne dopiero przez DCB
+   konsultujący zdarzenie odebrane z innej aplikacji (E9); tam do obsłużenia.
+6. Krawędź process manager → timer rysowana jako dostawa „async” — **poprawione** w `116f7c0` („sets”, bez
+   grotu).
+8. `wiring` powtarza dane z `deployment` — **błędne**: sekcja jest kształtem, który użytkownik zatwierdził przed
+   E7c.
+
+Silnik 904 → 906, web 32; `check` sandboxa 0/5/19, silnika 0/15/17.
+
 ### Losy fikstur
 
 | Fikstura | Los |
 | --- | --- |
-| `ProcessShapes.Promised` (or_else, asynchroniczny koniec, niepotwierdzony deadline; używana przez 7 plików testów) | przebudowana w E7 |
-| `ProcessShapes.Timed`, `ProcessShapes.Bare` | przebudowane w E7 |
+| `ProcessShapes.Promised` (or_else, asynchroniczny koniec, niepotwierdzony deadline; używana przez 7 plików testów) | przetłumaczona w E7c-1 **obok**, jako `ProcessShapes.Next.Promised` (ustalenie 1 w „E7c-1 — co wyszło”); v1 znika w E11 |
+| `ProcessShapes.Timed`, `ProcessShapes.Bare` | przetłumaczone w E7c-1 obok, jako `ProcessShapes.Next.Timed` i `Next.Bare`; v1 znika w E11 |
 | `UniversalityGate.TreatmentEpisode` z `Eligibility` i fake'iem `PayerRegistry` | przetłumaczona w E4 **obok**, jako `UniversalityGate.Next.TreatmentEpisode` z `UniversalityGate.Domain` (ustalenie 5 w „E4 — co wyszło”); v1 znika, gdy jej osiem plików testów ma następców (E7, najpóźniej E11); `Eligibility.decide/1` jest od E5 deciderem `UniversalityGate.Next.Episode`, a scenariusze fikstury przechodzą na nim (`universality_gate_scenarios_test`); samo `Eligibility` zostaje dla kontraktu v1 do E11; fake zostaje; kontrakt bez implementacji poza tym (D3) |
 | `ProcessShapes.Rig` (19 zdarzeń, 14 handlerów) | **rozbity, nie portowany:** krawędź wsteczna i jej trzy kontrole → E7; celowo zepsute handlery → testy wyjścia decydera i polityki w E6; pary cyklu → E6/E7; konkurujące handlery synchroniczne → dwie projekcje inline w E6; `item_noted` → E8; usunięty przy cięciu |
-| `CaseHandling` (web) | przebudowany w E7 z dwiema politykami |
+| `CaseHandling` (web) | zastąpiony w E7c-2 portem v2 z dwiema politykami; oryginał v1 jako `Fixtures.V1.CaseHandling` tylko dla AsyncAPI, do E10 |
 
 ### Losy testów
 

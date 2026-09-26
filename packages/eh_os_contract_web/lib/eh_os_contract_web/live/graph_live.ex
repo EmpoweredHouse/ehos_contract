@@ -20,6 +20,10 @@ defmodule EhOsContract.Web.Live.Graph do
       leaving orphaned boxes rather than a scoped picture. Narrowing that is
       engine work, not something this screen should paper over.
 
+  **A v2 contract's process** (v2 plan, E7c) is drawn as its steps in both panels —
+  `EhOsContract.Graph.steps_to_mermaid/2`, declared and with the log laid over it —
+  since a v2 contract is one process and its overlay is that process's alone.
+
   Rendering is client-side, through `app.js`'s `MermaidRender` hook: both
   diagram strings reach the template as plain data in a `data-graph`
   attribute, never as trusted HTML — HEEx escapes them like any other
@@ -31,34 +35,63 @@ defmodule EhOsContract.Web.Live.Graph do
 
   @impl true
   def mount(_params, _session, socket) do
-    processes =
+    v1 =
       for contract <- EhOsContract.Registry.contracts(),
           process <- EhOsContract.Model.processes(contract) do
-        %{contract: contract, name: process.name, label: process.label}
+        %{contract: contract, name: process.name, label: process.label, v2: false}
       end
-      |> Enum.sort_by(& &1.label)
+
+    v2 =
+      for contract <- EhOsContract.Registry.v2_contracts(),
+          %{process: %{} = process} <- [EhOsContract.Model.fetch(contract)] do
+        %{contract: contract, name: process.name, label: process.label, v2: true}
+      end
+
+    processes = Enum.sort_by(v1 ++ v2, & &1.label)
 
     socket =
       socket
       |> assign(:processes, processes)
-      |> assign(:overlay_mermaid, EhOsContract.Graph.overlay() |> EhOsContract.Graph.to_mermaid())
+      |> assign(:every_contract, EhOsContract.Graph.overlay() |> EhOsContract.Graph.to_mermaid())
       |> select_process(List.first(processes))
 
     {:ok, socket}
   end
 
   @impl true
-  def handle_event("select_process", %{"process" => name}, socket) do
-    process = Enum.find(socket.assigns.processes, &(to_string(&1.name) == name))
+  def handle_event("select_process", %{"process" => key}, socket) do
+    process = Enum.find(socket.assigns.processes, &(key(&1) == key))
     {:noreply, select_process(socket, process)}
   end
 
   @spec select_process(Phoenix.LiveView.Socket.t(), map() | nil) :: Phoenix.LiveView.Socket.t()
-  defp select_process(socket, nil), do: assign(socket, selected: nil, declared_mermaid: nil)
+  defp select_process(socket, nil) do
+    assign(socket,
+      selected: nil,
+      declared_mermaid: nil,
+      overlay_mermaid: socket.assigns.every_contract,
+      overlay_heading: nil
+    )
+  end
+
+  defp select_process(socket, %{v2: true} = process) do
+    assign(socket,
+      selected: key(process),
+      declared_mermaid: EhOsContract.Graph.steps_to_mermaid(process.contract),
+      overlay_mermaid: EhOsContract.Graph.steps_to_mermaid(process.contract, overlay: true),
+      overlay_heading: "Declared versus observed, this process"
+    )
+  end
 
   defp select_process(socket, process) do
     mermaid = EhOsContract.Graph.declared_to_mermaid(process.contract, process.name)
-    assign(socket, selected: process.name, declared_mermaid: mermaid)
+
+    assign(socket,
+      selected: key(process),
+      declared_mermaid: mermaid,
+      overlay_mermaid: socket.assigns.every_contract,
+      overlay_heading: nil
+    )
   end
 
   @impl true
@@ -75,8 +108,8 @@ defmodule EhOsContract.Web.Live.Graph do
           <select name="process">
             <option
               :for={process <- @processes}
-              value={to_string(process.name)}
-              selected={process.name == @selected}
+              value={key(process)}
+              selected={key(process) == @selected}
             >
               {process.label}
             </option>
@@ -95,7 +128,7 @@ defmodule EhOsContract.Web.Live.Graph do
       </section>
 
       <section>
-        <h3>Declared versus observed, every contract</h3>
+        <h3>{assigns[:overlay_heading] || "Declared versus observed, every contract"}</h3>
         <pre
           class="mermaid"
           phx-hook="MermaidRender"
@@ -106,6 +139,11 @@ defmodule EhOsContract.Web.Live.Graph do
     </div>
     """
   end
+
+  # A process by its contract and its name: two contracts may name their processes
+  # alike — a v2 port beside its v1 original — and each has to be reachable.
+  @spec key(map()) :: String.t()
+  defp key(process), do: "#{inspect(process.contract)}:#{process.name}"
 
   @spec access_label(:all | :read_only) :: String.t()
   defp access_label(:all), do: "all"

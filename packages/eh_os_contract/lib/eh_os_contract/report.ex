@@ -28,8 +28,9 @@ defmodule EhOsContract.Report do
   def render(report) do
     [
       header(report),
-      deployment(report.deployment),
+      deployment(report.deployment, Map.get(report, :wiring)),
       Enum.map(report.processes, &process/1),
+      scenarios(Map.get(report, :scenarios)),
       drift(report.drift)
     ]
     |> List.flatten()
@@ -59,8 +60,8 @@ defmodule EhOsContract.Report do
   @spec day(DateTime.t()) :: String.t()
   defp day(at), do: at |> DateTime.to_date() |> Date.to_string()
 
-  @spec deployment(map()) :: [String.t()]
-  defp deployment(deployment) do
+  @spec deployment(map(), map() | nil) :: [String.t()]
+  defp deployment(deployment, wiring) do
     since =
       case deployment.deployed.since do
         nil -> "nothing has happened under this version yet"
@@ -90,8 +91,15 @@ defmodule EhOsContract.Report do
         []
       end
 
+    # A v2 contract's wiring is the code's half of what is deployed, so it is named.
+    wired =
+      case wiring do
+        %{version: version} when is_binary(version) -> ["  Wiring #{version}."]
+        _v1_or_not_recorded -> []
+      end
+
     ["CONTRACT", "  Version #{deployment.deployed.contract_version}, #{since}."] ++
-      change ++ earlier ++ [""]
+      wired ++ change ++ earlier ++ [""]
   end
 
   # The line events and paths could never carry: a `trace` whose window moved, or an
@@ -143,7 +151,7 @@ defmodule EhOsContract.Report do
       declarations(p.declarations) ++
       duration(p.duration) ++
       paths(p) ++
-      assertions(p.assertions) ++
+      assertions(Map.get(p, :assertions) || Map.get(p, :promises)) ++
       [""]
   end
 
@@ -154,6 +162,36 @@ defmodule EhOsContract.Report do
 
   @spec paths(map()) :: [String.t()]
   defp paths(%{runs: 0}), do: ["  " <> Sentence.no_runs()]
+
+  # A v2 process: what waits has a heading of its own, never the list of what nobody
+  # did, and "carried out" is said only when nothing waits either — a v2 branch is
+  # several steps, and only its head waits in a queue. v1 keeps its layout.
+  defp paths(%{promises: _} = p) do
+    untraversed =
+      case {p.untraversed, p.in_flight} do
+        {[], []} ->
+          ["  " <> Sentence.all_steps_carried_out()]
+
+        {[], _waiting} ->
+          []
+
+        {steps, _waiting} ->
+          ["  Agreed steps that were never carried out:"] ++
+            for s <- steps, do: "    · " <> Sentence.step(s)
+      end
+
+    waiting =
+      case p.in_flight do
+        [] ->
+          []
+
+        steps ->
+          ["  Agreed steps in progress:"] ++
+            for(s <- steps, do: "    · " <> Sentence.step_in_flight(s))
+      end
+
+    untraversed ++ waiting ++ failing(p.failing)
+  end
 
   defp paths(p) do
     untraversed =
@@ -168,17 +206,14 @@ defmodule EhOsContract.Report do
 
     waiting = for s <- p.in_flight, do: "    · " <> Sentence.step_in_flight(s)
 
-    failing =
-      case p.failing do
-        [] ->
-          []
+    untraversed ++ waiting ++ failing(p.failing)
+  end
 
-        steps ->
-          ["  Agreed steps that are attempted and fail:"] ++
-            for s <- steps, do: "    · " <> Sentence.step_failing(s)
-      end
+  defp failing([]), do: []
 
-    untraversed ++ waiting ++ failing
+  defp failing(steps) do
+    ["  Agreed steps that are attempted and fail:"] ++
+      for s <- steps, do: "    · " <> Sentence.step_failing(s)
   end
 
   @spec assertions([map()]) :: [String.t()]
@@ -186,13 +221,35 @@ defmodule EhOsContract.Report do
     Enum.flat_map(list, fn a -> ["  " <> Sentence.rule(a), "    " <> Sentence.outcome(a)] end)
   end
 
+  # A v2 contract's scenarios; a v1 one has none to say anything about.
+  @spec scenarios(map() | nil) :: [String.t()]
+  defp scenarios(nil), do: []
+
+  defp scenarios(s) do
+    never =
+      case s.never_observed do
+        [] -> []
+        descriptions -> ["  Never observed:"] ++ for(d <- descriptions, do: ~s(    · "#{d}"))
+      end
+
+    undeclared =
+      case s.undeclared_outcomes do
+        [] ->
+          []
+
+        outcomes ->
+          ["  Outcomes no scenario declares:"] ++
+            for(o <- outcomes, do: "    · " <> Sentence.outcome_undeclared(o))
+      end
+
+    ["SCENARIOS", "  " <> Sentence.scenarios_observed(s)] ++ never ++ undeclared ++ [""]
+  end
+
   @spec drift([map()]) :: [String.t()]
   defp drift([]), do: ["DRIFT", "  " <> Sentence.no_drift(), ""]
 
   defp drift(edges) do
     ["DRIFT — happened, though it was not agreed:"] ++
-      for e <- edges do
-        "  · #{e.from_label || e.from} → #{e.to_label || e.to}  (#{e.count}x)"
-      end ++ [""]
+      for(e <- edges, do: "  · " <> Sentence.drift(e)) ++ [""]
   end
 end

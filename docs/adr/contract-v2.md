@@ -1127,6 +1127,14 @@ the person's.
 > queued is dropped, because it came due while nothing steered its run; one whose job is still queued, after a
 > rebuild of a running process manager, fires.
 
+> **26 September 2026, E7c — a new policy starts like a new process manager.** This reverses the E7a note's
+> "a new policy reacts to history" (the user's decision after the E7b review): what is in the log when a
+> consumer is first registered is history, and nothing new reacts to history by itself. A policy keeps no
+> state, so its replay with reactions suppressed is its registration at the head of the log. Reacting to
+> history is a person's `--reset`, which moves the policy back to position 0; the keys derived from each event
+> keep what it already issued from being issued twice. An ordered read model still starts at position 0. In a
+> host's tests the first `EhOsContract.Testing.drain/1` is the deploy.
+
 ## 13. Runs, promises and conformance on the new log
 
 - **Runs.** `process` and `instance_id` are computed at append for the event's home process, as v1's
@@ -1149,6 +1157,26 @@ the person's.
   invariant, and had its `given` types in `given_types`. Matching is by type only — matching on data would
   mean storing command payloads, which is personal data. Two findings follow: a scenario never observed, and a
   decision outcome no scenario declares.
+
+> **26 September 2026, E7c-1 — the verdicts on the new log, as built.** **Runs**: the store writes every run of
+> an event in the append that writes it, the home run from the entry's `process` and `instance_id` and the
+> included ones dispatch names under `runs:`, from an index of which v2 contracts' processes `include` which
+> type (`EhOsContract.EventRun`). A v1 event gets its home run too, and no v1 reader reads the table. Not
+> built: filling the table for old events when a contract starts including their type — "rebuildable" above
+> is still a sketch. **`Trace` and `Run`** branch on the model; a v2 contract's `promise` and `deadline` are
+> judged over `_event_runs` with v1's arithmetic, unchanged, and the v1 queries are the ones they were.
+> **Paths**: a step is a command's emit, a policy's or process manager's issue on an event, a timer's issue,
+> or an effect on an event (`EhOsContract.Paths`). Taken is counted in runs through `events.command_id` and
+> through `_commands.issued_by` with its causation event. An effect leaves nothing in the log when it acts,
+> so whether it was taken is unknown: never untraversed, only waiting or failing. **Waiting** is subscription
+> lag (only for a consumer with a row), scheduled timer jobs and effect jobs; **failing** is failed commands
+> attributed by `failed_in` — a consumer's stage to that consumer's steps, anywhere else to every step the
+> command emits — a `failing` subscription, and discarded effect jobs. A step reached from a waiting one, down
+> the chain, is not untraversed either: a branch is several steps and only its head waits in a queue. **Drift** is an event of the deployed
+> version that no declared command emits, which includes one written around dispatch. **The wire**:
+> `conformance.v2` for a v2 contract, `v1` for a v1 one. **Not yet**: the boot records no v2 deployment,
+> so the deployed version has no `since`, and a promise's declaration boundary is always `nil`; and
+> scenario coverage — both E7c-2.
 
 | Fate | Modules |
 | --- | --- |
