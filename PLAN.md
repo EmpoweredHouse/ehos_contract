@@ -1424,6 +1424,24 @@ Części v1 bez zmiany bajtu. Przed: 12 zdarzeń, 5 wdrożeń; po: tak samo — 
 8. **Poprawki ADR z v2 §18 dla E7** są w architecture §9–10 i wyzwalaczu „jedno zdarzenie w dwóch procesach”,
    design-rationale §9–10, technology-notes §4. „Bez zewnętrznego brokera” zostaje prawdą do E12.
 
+**Po merge'u PR #16 i #17 (27 września): nowy punkt odniesienia bazy dev i zasiew v2.** Na polecenie
+użytkownika. **Punkt odniesienia porównań bajtów jest teraz poza repozytorium**, w
+`~/Projects/ai/eh-os-contract-dev-reference/`: `2026-09-27-przed-zasiewem/` (raport, graf nakładki, `pg_dump` bazy
+dev na `main` = `191e47c`, identyczne z przebiegiem E7c-2) i `2026-09-27-po-zasiewie-visit-settlement/` (to samo po
+zasiewie, plus graf procesu `visit_settlement`). Zasiew przez dispatch w `MIX_ENV=dev`: sześć wizyt
+`VisitSettlement` od 21 do 26 września — pełna płatność, split karta+gotówka, odmowa na niezmienniku (150 z
+200 zł), zamknięcie bez płatności, korekta po zamknięciu, wizyta w toku; 17 zdarzeń, 18 wierszy komend, 17
+przebiegów. **Sekcje v1 raportu i graf nakładki v1 po zasiewie są bajt w bajt takie jak przed nim.** Sekcja v2:
+6 przebiegów, w mocy od 21 września, wszystkie kroki zrobione, 4 z 4 scenariuszy zaobserwowane, cztery wyniki
+bez scenariusza (dodanie usługi, korekta, wydanie wizyty, płatność).
+
+**Port sandboxa w dev: 4010, i taski nie zajmują portu.** Port 4000 na tej maszynie trzyma inna aplikacja
+Phoenix (`/private/tmp/eh-os-test`, od 14 września), więc `autoPort` z `launch.json` losował przy każdym starcie
+inny port, a pod `localhost:4000` odpowiadał tamten projekt. Poza tym `server: true` w `config/dev.exs` sprawiał,
+że każdy task startujący aplikację stawiał serwer: `mix eh_os_contract.report` przy działającym dashboardzie na tym
+samym porcie padał z `:eaddrinuse` (sprawdzone). `server: true` usunięty — `mix phx.server` serwuje i bez niego
+(sprawdzone na 4011) — a domyślny port sandboxa to 4010 w `dev.exs`, `launch.json` i README.
+
 **Przegląd przed PR (26 września, `/code-review high dsl-v2/e7c-conformance..HEAD`).** Osiem znalezisk; sześć
 poprawionych, jedno pominięte, jedno błędne:
 1. i 7. **`check` nie liczył query** wśród tego, co wymaga implementacji, a gałąź „zaimplementowany w części”

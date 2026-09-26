@@ -169,7 +169,7 @@ piped to a file.
 cd sandbox && mix phx.server
 ```
 
-Then open `http://localhost:4000/dashboard`. There is no login: who may see the dashboard is the
+Then open `http://localhost:4010/dashboard`. There is no login: who may see the dashboard is the
 host's decision, made through an `EhOsContract.Web.Resolver` it passes to the mount, and the sandbox
 host lets everyone in read-only — nothing here belongs pointed at anything but your own machine.
 
