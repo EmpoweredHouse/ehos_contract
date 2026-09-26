@@ -11,7 +11,12 @@ defmodule EhOsContract do
   use Boundary,
     deps: [],
     exports: [
+      Actor,
       AsyncAPI,
+      Authorizer,
+      Authorizer.Default,
+      Authorizer.Request,
+      Authorizer.WidenedError,
       Check,
       Clock,
       Conformance,

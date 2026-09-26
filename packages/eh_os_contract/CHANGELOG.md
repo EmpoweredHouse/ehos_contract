@@ -119,6 +119,12 @@ one. What changes is what a host has to do.
   `context :settlement, "Rozliczenia", subdomain: :supporting do … end` as well as the options written inside
   the block. An error still points at the declaration's file and line, and `mix format` keeps the form as
   written.
+- `EhOsContract.Actor` and `EhOsContract.Authorizer` (D14): who acts, and the question v2 dispatch will ask
+  about a credential's actor. `Actor.credential/3` carries a credential's `sub`, `cap` and `scp` as issued;
+  `Actor.system/1` is a `:system` actor of the domain. `Authorizer.check/2` is the decision —
+  `:missing_capability`, `:unscoped_grant`, `:outside_scope` — and `config :eh_os_contract, authorizer: M`
+  replaces the default, which is `check/2` alone. An implementation may narrow a grant, never widen it: the
+  engine repeats `check/2` after an `:ok` and raises `Authorizer.WidenedError` when it refuses.
 
 ### Changed
 
