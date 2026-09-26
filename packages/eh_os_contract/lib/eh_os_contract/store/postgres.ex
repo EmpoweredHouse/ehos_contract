@@ -19,11 +19,11 @@ defmodule EhOsContract.Store.Postgres do
 
   import Ecto.Query
 
-  alias EhOsContract.Event
+  alias EhOsContract.{Event, EventRun}
 
   @writable ~w(id type schema_version contract contract_version stream_id stream_version tags
                process instance_id command_id correlation_id causation_id actor occurred_at
-               payload metadata)a
+               payload metadata runs)a
 
   @impl true
   @spec lock(module()) :: :ok
@@ -56,10 +56,41 @@ defmodule EhOsContract.Store.Postgres do
     lock(repo)
 
     with {:ok, rows} <- apply_condition(repo, rows, condition) do
-      {_count, events} = repo.insert_all(Event, rows, returning: true)
-      {:ok, Enum.sort_by(events, & &1.position)}
+      included = Map.new(rows, &{&1.id, Map.get(&1, :runs, [])})
+
+      {_count, events} =
+        repo.insert_all(Event, Enum.map(rows, &Map.delete(&1, :runs)), returning: true)
+
+      events = Enum.sort_by(events, & &1.position)
+      :ok = insert_runs(repo, events, included)
+      {:ok, events}
     end
   end
+
+  # The home run and the included ones, one row each, paired by id since `RETURNING`
+  # promises no order. A process named twice is one run.
+  @spec insert_runs(module(), [Event.t()], %{String.t() => [{String.t(), String.t()}]}) :: :ok
+  defp insert_runs(repo, events, included) do
+    rows =
+      for event <- events,
+          {process, instance_id} <- home(event) ++ Map.fetch!(included, event.id) do
+        %{position: event.position, process: process, instance_id: instance_id}
+      end
+
+    case Enum.uniq_by(rows, &{&1.position, &1.process}) do
+      [] ->
+        :ok
+
+      rows ->
+        {_count, _} = repo.insert_all(EventRun, rows)
+        :ok
+    end
+  end
+
+  defp home(%Event{process: process, instance_id: id}) when is_binary(process) and is_binary(id),
+    do: [{process, id}]
+
+  defp home(_event), do: []
 
   @impl true
   @spec read_stream(module(), String.t(), non_neg_integer()) :: [Event.t()]

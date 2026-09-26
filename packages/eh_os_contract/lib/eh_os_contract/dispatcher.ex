@@ -669,6 +669,8 @@ defmodule EhOsContract.Dispatcher do
       tags: Enum.map(unit.identity, &Key.tag(&1, Map.fetch!(event, &1))),
       process: model.process && Atom.to_string(model.process.name),
       instance_id: instance(model, event),
+      # The runs of the processes that include it (D7), written with it.
+      runs: included_runs(model, declaration.type, event),
       command_id: command_id,
       correlation_id: ctx.correlation_id,
       causation_id: command_id,
@@ -689,10 +691,20 @@ defmodule EhOsContract.Dispatcher do
 
   # The run a struct belongs to: the process's name, then its correlation values.
   defp instance(%{process: nil}, _struct), do: nil
+  defp instance(%{process: process}, struct), do: run_key(process, struct)
 
-  defp instance(%{process: process}, struct) do
+  defp run_key(process, struct) do
     values = Enum.map(process.correlate, &Map.get(struct, &1))
     if Enum.all?(values, &(&1 != nil)), do: Key.join([process.name | values])
+  end
+
+  # An event without the fields another process correlates on is in none of its runs,
+  # as one without its home process's is in no home run.
+  defp included_runs(model, type, event) do
+    for process <- Implementations.included(model.module, type),
+        key = run_key(process, event),
+        key != nil,
+        do: {Atom.to_string(process.name), key}
   end
 
   defp write_row!(repo, job, outcome, fields) do

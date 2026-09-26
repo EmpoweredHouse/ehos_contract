@@ -30,6 +30,8 @@ defmodule EhOsContract.Store.Suite do
     repo = Keyword.fetch!(opts, :repo)
 
     quote location: :keep do
+      require Ecto.Query
+
       @store unquote(store)
       @repo unquote(repo)
 
@@ -76,6 +78,36 @@ defmodule EhOsContract.Store.Suite do
           assert_raise ArgumentError, fn ->
             @store.append(@repo, [suite_entry(suite_name("outside"))], :none)
           end
+        end
+
+        test "writes an event's runs with it: the home run, and each run it is included in once" do
+          type = suite_name("runs")
+
+          assert {:ok, [with_runs, without]} =
+                   suite_append(
+                     [
+                       suite_entry(type, %{
+                         process: "home",
+                         instance_id: "home|1",
+                         runs: [{"other", "other|7"}, {"other", "other|7"}]
+                       }),
+                       suite_entry(type)
+                     ],
+                     :none
+                   )
+
+          runs = fn event ->
+            @repo.all(
+              Ecto.Query.from(r in EhOsContract.EventRun,
+                where: r.position == ^event.position,
+                order_by: r.process,
+                select: {r.process, r.instance_id}
+              )
+            )
+          end
+
+          assert runs.(with_runs) == [{"home", "home|1"}, {"other", "other|7"}]
+          assert runs.(without) == []
         end
 
         test "refuses a stream id under :none, whose version nothing would check" do

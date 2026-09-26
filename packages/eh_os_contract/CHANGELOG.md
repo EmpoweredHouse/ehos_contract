@@ -82,6 +82,10 @@ What changes otherwise is what a host has to do.
   timers that came due before the deploy are dropped. **A process manager
   delivered `:in_transaction` no longer compiles** (P4). `EhOsContract.Testing.drain/1` fires the timers due by
   `EhOsContract.Clock.now/0`.
+- **E7c: every run an event belongs to is a row of `eh_os_contract_event_runs`** (D7), written in the same
+  append as the event: its home run, and the run of each v2 contract whose process `include`s it, correlated
+  by that process's fields. An `EhOsContract.Store` entry may carry `runs:` for the included ones. A v1 event
+  gets its home run too; the v1 readers do not read the table.
 - **E7a: `mix eh_os_contract.subscriptions`** lists where each subscription stands; `--skip KEY` moves a
   failing one past the event it fails on, `--reset KEY` empties a read model and replays the log into it.
 - **E7c: a new policy leaves history alone, as a new process manager does.** A policy delivered

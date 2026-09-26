@@ -20,6 +20,8 @@ defmodule EhOsContract.Store do
     no stream: the condition does.
   - **`:none` appends without a condition**, and then no entry may carry a stream.
     A stream id with no check would be a version nobody verified.
+  - **An event's runs are appended with it** (`t:entry/0`), so no event is in the log
+    without the runs it belongs to.
 
   `EhOsContract.Store.Suite` checks all of this. Any implementation can run it.
 
@@ -56,6 +58,11 @@ defmodule EhOsContract.Store do
   @typedoc """
   One event to append: the fields of `EhOsContract.Event` except `position` and
   `recorded_at`, which the store assigns. `id` is generated when missing.
+
+  `runs` lists the runs the event belongs to besides its home run, as
+  `{process, instance_id}`: the processes of the contracts that `include` it (D7).
+  The store writes every run as an `EhOsContract.EventRun` in the same append, the
+  home run from the entry's `process` and `instance_id` when it has both.
   """
   @type entry :: map()
 
