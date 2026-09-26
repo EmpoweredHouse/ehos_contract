@@ -32,14 +32,17 @@ defmodule EhOsContract.Subscription do
 
   **Where a new consumer starts.** An ordered one at position 0, so it takes the
   whole log — a new policy reacts to history, with keys derived from each event, as
-  Commanded's handlers start from the origin by default. An inline read model at the
-  head of the log, since dispatch has been projecting it all along; one added to a
-  log that already has its events is rebuilt by hand.
+  Commanded's handlers start from the origin by default. A new process manager
+  replays the log instead, with its reactions suppressed: it learns the runs already
+  there and steers none of them, and a timer of theirs that came due before the
+  deploy is dropped (`EhOsContract.ProcessManager.reconcile!/2`). An inline read
+  model starts at the head of the log, since dispatch has been projecting it all
+  along; one added to a log that already has its events is rebuilt by hand.
   """
 
   import Ecto.Query
 
-  alias EhOsContract.{Consumer, Implementations, Store, SubscriptionRecord}
+  alias EhOsContract.{Consumer, Implementations, ProcessManager, Store, SubscriptionRecord}
 
   require Logger
 
@@ -68,6 +71,7 @@ defmodule EhOsContract.Subscription do
               mode: mode(consumer),
               version: consumer.version,
               position: start(repo, consumer),
+              status: first_status(consumer),
               updated_at: DateTime.utc_now()
             },
             on_conflict: :nothing
@@ -78,7 +82,8 @@ defmodule EhOsContract.Subscription do
         %{version: version} = row when version == consumer.version ->
           row
 
-        %{status: status} = row when consumer.kind == :read_model and status != "rebuilding" ->
+        %{status: status} = row
+        when consumer.kind in [:read_model, :process_manager] and status != "rebuilding" ->
           repo.update!(SubscriptionRecord.changeset(row, %{status: "stale"}))
 
         row ->
@@ -94,6 +99,11 @@ defmodule EhOsContract.Subscription do
     do: repo.one(from(e in EhOsContract.Event, select: coalesce(max(e.position), 0)))
 
   defp start(_repo, _ordered), do: 0
+
+  # A new process manager learns the runs already in the log by a replay, so it steers
+  # none of them: a deploy onto a year of history issues nothing for that year.
+  defp first_status(%{kind: :process_manager}), do: "rebuilding"
+  defp first_status(_consumer), do: "running"
 
   @doc """
   One step of `consumer` (see the moduledoc): `:idle` when another runner holds it,
@@ -130,9 +140,13 @@ defmodule EhOsContract.Subscription do
     # conflict. Holding the append lock from before the decision means no stream can
     # move under it, as inside a dispatch transaction; otherwise another writer of the
     # same stream would count as a failure of the event, and three would stop it.
-    if consumer.kind == :policy, do: :ok = Store.lock(repo)
+    # A process manager's replay dispatches nothing, so it takes neither the lock nor
+    # one event at a time.
+    replay? = consumer.kind == :process_manager and row.status == "rebuilding"
+    if consumer.kind in [:policy, :process_manager] and not replay?, do: :ok = Store.lock(repo)
+    batch = if replay?, do: 500, else: batch(consumer)
 
-    case fenced(Store.read_all(repo, row.position, batch(consumer), types), row) do
+    case fenced(Store.read_all(repo, row.position, batch, types), row) do
       [] when row.status == "rebuilding" ->
         :at_head
 
@@ -140,7 +154,7 @@ defmodule EhOsContract.Subscription do
         :idle
 
       events ->
-        Enum.each(events, &apply!(repo, consumer, &1))
+        Enum.each(events, &apply!(repo, consumer, &1, row.status))
         last = List.last(events).position
         advance!(repo, row, last)
         {:applied, length(events)}
@@ -156,11 +170,22 @@ defmodule EhOsContract.Subscription do
 
   defp fenced(events, _row), do: Enum.take(events, 1)
 
-  defp apply!(repo, consumer, row) do
+  # `status` is the subscription's: a process manager being rebuilt replays without
+  # reacting.
+  defp apply!(repo, consumer, row, status) do
     consumer = Implementations.taking(consumer, row.type)
     chain = Map.get(row.metadata || %{}, "chain", [])
 
-    case Consumer.handle!(consumer, Consumer.decode!(row), chain) do
+    handled =
+      case consumer.kind do
+        :process_manager ->
+          ProcessManager.handle!(repo, consumer, row, chain, status == "rebuilding")
+
+        _other ->
+          Consumer.handle!(consumer, Consumer.decode!(row), chain)
+      end
+
+    case handled do
       :ok ->
         :ok
 
@@ -178,6 +203,25 @@ defmodule EhOsContract.Subscription do
         else: %{position: position}
 
     repo.update!(SubscriptionRecord.changeset(row, changes))
+  end
+
+  # A process manager at the head of its replay: back to `running`, with every
+  # pending timer scheduled again. Dispatch never feeds it, so no append lock.
+  defp caught_up!(repo, %{kind: :process_manager} = consumer) do
+    {:ok, step} =
+      repo.transaction(fn ->
+        case take(repo, consumer.key, ["rebuilding"], :wait) do
+          nil ->
+            :idle
+
+          row ->
+            repo.update!(SubscriptionRecord.changeset(row, %{status: "running"}))
+            ProcessManager.reconcile!(repo, consumer)
+            {:applied, 0}
+        end
+      end)
+
+    step
   end
 
   # A rebuilding inline read model at the head: back to `running` under the append
@@ -198,7 +242,7 @@ defmodule EhOsContract.Subscription do
 
           row ->
             tail = Store.read_all(repo, row.position, 1_000_000, Map.keys(consumer.callbacks))
-            Enum.each(tail, &apply!(repo, consumer, &1))
+            Enum.each(tail, &apply!(repo, consumer, &1, row.status))
             position = if tail == [], do: row.position, else: List.last(tail).position
             changes = %{position: position, status: "running"}
             repo.update!(SubscriptionRecord.changeset(row, changes))
@@ -244,9 +288,10 @@ defmodule EhOsContract.Subscription do
   end
 
   @doc """
-  Empties `key`'s read model through its `reset/0` and replays the log into it (see
-  the moduledoc). `{:error, :no_reset}` for a read model without `reset/0`,
-  `{:error, :not_a_read_model}` for a policy, which keeps no rows to rebuild.
+  Empties `key`'s read model through its `reset/0`, or forgets every run of a
+  process manager, and replays the log into it (see the moduledoc).
+  `{:error, :no_reset}` for a read model without `reset/0`, `{:error,
+  :not_a_read_model}` for a policy, which keeps nothing to rebuild.
   """
   @spec rebuild(module(), String.t()) ::
           :ok | {:error, :no_reset | :not_a_read_model | :not_registered}
@@ -257,10 +302,11 @@ defmodule EhOsContract.Subscription do
       consumer == nil or repo.get(SubscriptionRecord, key) == nil ->
         {:error, :not_registered}
 
-      consumer.kind != :read_model ->
+      consumer.kind == :policy ->
         {:error, :not_a_read_model}
 
-      not (consumer.module && function_exported?(consumer.module, :reset, 0)) ->
+      consumer.kind == :read_model and
+          not (consumer.module && function_exported?(consumer.module, :reset, 0)) ->
         {:error, :no_reset}
 
       true ->
@@ -268,9 +314,22 @@ defmodule EhOsContract.Subscription do
           repo.transaction(fn ->
             if consumer.delivery == :in_transaction, do: :ok = Store.lock(repo)
             row = take(repo, key, ~w(running stale rebuilding failing), :wait)
-            :ok = consumer.module.reset()
+            # A process manager replays with its reactions suppressed, so it is
+            # `rebuilding` until the head, where its timers are scheduled again.
+            status =
+              case consumer do
+                %{kind: :process_manager} ->
+                  :ok = ProcessManager.reset!(repo, consumer)
+                  "rebuilding"
 
-            status = if consumer.delivery == :in_transaction, do: "rebuilding", else: "running"
+                %{delivery: :in_transaction} ->
+                  :ok = consumer.module.reset()
+                  "rebuilding"
+
+                _ordered ->
+                  :ok = consumer.module.reset()
+                  "running"
+              end
 
             repo.update!(
               SubscriptionRecord.changeset(row, %{

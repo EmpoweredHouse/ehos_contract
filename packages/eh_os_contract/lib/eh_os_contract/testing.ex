@@ -26,15 +26,23 @@ defmodule EhOsContract.Testing do
 
   @doc """
   Runs everything that is waiting until nothing is: every subscription catches up
-  with the head of the log, and every effect job in Oban's `:events` queue runs,
-  retries included, since either can append what the other then takes. Registers the
-  subscription rows it needs first, inside the caller's transaction.
+  with the head of the log, and every effect and timer job in Oban's `:events` queue
+  runs, retries included, since either can append what the other then takes.
+  Registers the subscription rows it needs first, inside the caller's transaction.
+
+  **A timer fires only when it is due by `EhOsContract.Clock.now/0`**; an earlier
+  one snoozes and stays queued. To see a process manager's 24 hours pass, drain at
+  the time the test chooses:
+
+      EhOsContract.Clock.at(DateTime.add(opened, 25 * 3600), fn ->
+        EhOsContract.Testing.drain()
+      end)
 
   `only:` narrows it to the consumers with those keys (`"<contract>:<kind>:<name>"`).
   Effect jobs are Oban's and run queue-wide, so with `only:` they run only when it
   names an effect.
 
-  Returns how many events the subscriptions applied, how many effect jobs ran, and
+  Returns how many events the subscriptions applied, how many jobs ran, and
   the keys of the subscriptions that are `failing` afterwards. Raises after #{@rounds}
   rounds that still found work, which is a cycle no guard caught.
   """

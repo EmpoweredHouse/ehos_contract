@@ -72,6 +72,16 @@ What changes otherwise is what a host has to do.
   skips it; a read model whose declaration changed is `stale` until it is rebuilt. A read model's
   implementation may define `reset/0` to empty its rows, and only then can it be rebuilt; an inline one is left
   to the runner while it is. `EhOsContract.Testing.drain/1` runs all of it inside a test's transaction.
+- **E7b: process managers run.** A process manager is fed from the log in order, like an ordered policy: a
+  run starts on its `starts_on` event, reacts, sets and cancels timers, and ends on `ends_on`; its runs are rows
+  of `eh_os_contract_process_managers`. A timer is an `EhOsContract.TimerJob` that appends
+  `eh_os_contract.timer_elapsed` to the run's stream when it is due, and the process manager reacts to that
+  event in order, so a timer fired twice dispatches once. Its commands are issued as `pm:<name>`. A process
+  manager whose declaration changed is replayed at boot with its reactions suppressed, and so is **a new one
+  deployed onto a log with history**: it learns the runs already there and steers none of them, and their
+  timers that came due before the deploy are dropped. **A process manager
+  delivered `:in_transaction` no longer compiles** (P4). `EhOsContract.Testing.drain/1` fires the timers due by
+  `EhOsContract.Clock.now/0`.
 - **E7a: `mix eh_os_contract.subscriptions`** lists where each subscription stands; `--skip KEY` moves a
   failing one past the event it fails on, `--reset KEY` empties a read model and replays the log into it.
 

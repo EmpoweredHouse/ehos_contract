@@ -14,7 +14,8 @@ defmodule EhOsContract.Next.Contract.Rules.Consumers do
   - **P4.** A process manager starts on at least one event. Its triggers are
     events or its own timers; its `sets:` and `cancels:` name its own timers; a
     timer fires after `wait:` or `at:` a `:timestamp` field of the state, exactly
-    one of them; what it issues is a command of this contract.
+    one of them; what it issues is a command of this contract; it is delivered
+    `:at_least_once`, since it runs from the log in order.
   - **P5.** A read model projects events of this contract or events it consumes; a
     query reads a read model of this contract.
   """
@@ -103,7 +104,17 @@ defmodule EhOsContract.Next.Contract.Rules.Consumers do
         violation
       end
 
-    starts ++ triggers ++ references ++ timer_shape ++ issued
+    # Fed from the log in order, one step a transaction (v2 §12): there is no inline
+    # process manager, and one declared so would run as if it were not.
+    delivery =
+      if pm.delivery == :in_transaction,
+        do: [
+          {"P4: #{where} is fed from the log in order, after the transaction; it cannot run " <>
+             ":in_transaction", pm}
+        ],
+        else: []
+
+    starts ++ triggers ++ references ++ timer_shape ++ issued ++ delivery
   end
 
   defp timer(where, timer, state) do

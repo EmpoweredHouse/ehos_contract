@@ -48,7 +48,7 @@ defmodule EhOsContract.Implementations do
   takes, so a read model whose event gained a field is stale too.
   """
   @type consumer :: %{
-          kind: :read_model | :policy | :effect,
+          kind: :read_model | :policy | :process_manager | :effect,
           contract: module(),
           name: atom(),
           delivery: :in_transaction | :at_least_once,
@@ -88,8 +88,8 @@ defmodule EhOsContract.Implementations do
 
   @doc """
   Every consumer that keeps a row in `eh_os_contract_subscriptions`, in the order of
-  their keys: read models and policies delivered `:at_least_once`,
-  which a runner feeds in order, and read models delivered `:in_transaction`, whose
+  their keys: read models and policies delivered `:at_least_once` and process
+  managers, which a runner feeds in order, and read models delivered `:in_transaction`, whose
   row lets them be rebuilt. The host's applications are the configured ones:
   unlike dispatch, a boot does not know which contract will be dispatched, so an
   ordered consumer of a contract outside `config :eh_os_contract, applications:` gets
@@ -199,10 +199,14 @@ defmodule EhOsContract.Implementations do
     }
   end
 
-  @doc "Where a kind of consumer runs in the dispatch transaction: read models, policies, effects."
-  @spec order(:read_model | :policy | :effect) :: 0 | 1 | 2
+  @doc """
+  The order of kinds of consumer: in the dispatch transaction, read models, then
+  policies, then effects; in the index, where a process manager sorts with policies.
+  """
+  @spec order(:read_model | :policy | :process_manager | :effect) :: 0 | 1 | 2
   def order(:read_model), do: 0
   def order(:policy), do: 1
+  def order(:process_manager), do: 1
   def order(:effect), do: 2
 
   defp by_type(consumers) do
@@ -215,8 +219,9 @@ defmodule EhOsContract.Implementations do
     read_models = for r <- model.read_models, do: {:read_model, r, r.projects}
     policies = for p <- model.policies, do: {:policy, p, p.handles}
     effects = for e <- model.effects, do: {:effect, e, e.handles}
+    managers = for pm <- model.process_managers, do: {:process_manager, pm, triggers(pm)}
 
-    for {kind, declaration, events} <- read_models ++ policies ++ effects do
+    for {kind, declaration, events} <- read_models ++ policies ++ effects ++ managers do
       module =
         case Map.get(declarations, {model.module, kind, declaration.name}) do
           [module] -> module
@@ -230,13 +235,19 @@ defmodule EhOsContract.Implementations do
             type,
             do: {type, event, digest}
 
+      # A process manager also takes its own timers' firings, one type for all of them.
+      timers =
+        if kind == :process_manager,
+          do: %{EhOsContract.ProcessManager.elapsed() => :timer_elapsed},
+          else: %{}
+
       %{
         kind: kind,
         contract: model.module,
         name: declaration.name,
         delivery: declaration.delivery,
         module: module,
-        callbacks: Map.new(taken, fn {type, event, _} -> {type, event} end),
+        callbacks: Map.merge(Map.new(taken, fn {type, event, _} -> {type, event} end), timers),
         key: "#{inspect(model.module)}:#{kind}:#{declaration.name}",
         version:
           EhOsContract.Digest.hash([
@@ -245,6 +256,16 @@ defmodule EhOsContract.Implementations do
           ])
       }
     end
+  end
+
+  # The events a process manager takes: what it starts, reacts and ends on, and not
+  # its own timers, whose firings come as one type of their own.
+  defp triggers(pm) do
+    timers = MapSet.new(pm.timers, & &1.name)
+
+    (Enum.map(pm.starts_on ++ pm.on, & &1.event) ++ pm.ends_on)
+    |> Enum.reject(&MapSet.member?(timers, &1))
+    |> Enum.uniq()
   end
 
   # The stored type of an event as a contract names it, its own or a sibling's, and

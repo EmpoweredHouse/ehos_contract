@@ -114,6 +114,22 @@ defmodule DispatchRig.Ledger do
     delivery: :at_least_once,
     idempotency: :event_id
 
+  process_manager :first_deposit_chase, "Chase an account's first deposit" do
+    correlate :account_id
+
+    state do
+      field :deposits, :integer, default: 0
+      field :review_at, :timestamp, optional: true
+    end
+
+    starts_on :account_opened, sets: :first_deposit_due
+    on :deposited, cancels: :first_deposit_due, sets: :review
+    on :interest_recorded, issues: :flag_account
+    timer :first_deposit_due, wait: {1, :day}, issues: :flag_account
+    timer :review, at: :review_at, issues: :flag_account
+    ends_on :account_flagged
+  end
+
   effect :notify_branch, "Tell the branch an account was flagged",
     handles: :account_flagged,
     idempotency: :event_id

@@ -1109,6 +1109,24 @@ the person's.
 > readers (E7c); `min_position` on queries (§11). The notification is not observed by a test, because the
 > sandbox never commits; the runners' one-second poll is.
 
+> **26 September 2026, E7b — process managers and timers, as built.** A process manager is an ordered
+> consumer, one event a step, with the append lock taken first because it dispatches; P4 now refuses one
+> delivered `:in_transaction`. A run is a row keyed by `Key.join` of its correlation values; the state is the
+> generated struct in the external term format. **Which reaction**: a `starts_on` event starts a run that has
+> no row, an `on` event reaches a running one, anything else changes nothing. The reaction's callback gets the
+> event and the state *before* it, as `ScenarioCase` already called it, and then `evolve/2` folds the event.
+> Commands go out as `pm:<name>`, keyed `"pm:<contract>:<name>:<source id>:<index>"`. **A timer's token is the
+> id of the event that set it**, and `wait:` counts from that event's `occurred_at`, so a replay recomputes the
+> same timers. `EhOsContract.TimerJob` is unique on its arguments, snoozes until `Clock.now/0` reaches the
+> timer, and appends `eh_os_contract.timer_elapsed` to `$pm:<key>:<correlation>` only while the token is the
+> run's; the process manager ignores a firing whose token is gone, which is what makes a timer fired twice
+> dispatch once. **A rebuild** forgets the runs, replays with reactions suppressed and, at the head, schedules
+> the pending timers again; a stale process manager is rebuilt at boot, since the library owns its table and
+> needs no `reset/0`. **A new process manager starts with the same replay**, unlike a new policy (E7a): it
+> learns the runs already in the log and steers none of them. At the head a timer that came due with no job
+> queued is dropped, because it came due while nothing steered its run; one whose job is still queued, after a
+> rebuild of a running process manager, fires.
+
 ## 13. Runs, promises and conformance on the new log
 
 - **Runs.** `process` and `instance_id` are computed at append for the event's home process, as v1's

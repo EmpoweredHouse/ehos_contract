@@ -47,6 +47,8 @@ defmodule EhOsContract do
       {Next.Contract.Dsl, []},
       Payload,
       Plug,
+      ProcessManager,
+      ProcessManagerRecord,
       Registry,
       Receipt,
       Rejection,
@@ -61,6 +63,7 @@ defmodule EhOsContract do
       SubscriptionRecord,
       Testing,
       EffectJob,
+      TimerJob,
       Trace
     ]
 
