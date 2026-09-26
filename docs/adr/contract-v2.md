@@ -976,6 +976,32 @@ actor is checked against `by:` or `recorded_by:` alone. A refusal writes nothing
 Verifying a credential, and the row that records each decision, belong to `eh_os_contract_auth`, which
 implements the behaviour.
 
+*26 September 2026, before E6: the `Authorizer`'s shape, as the user accepted it.* **The check stands at the
+application's door, and the criterion is where a call comes from, not what kind of actor makes it.** A call
+that arrives with a credential is asked of the `Authorizer`. Today that is a person; a system will be too,
+once EHOS issues credentials to systems (`eh-os` D-23, G-2). What the application's own code issues is held
+to the contract instead: a reaction, to what its `issues:` names; a `:system` actor of the domain, to the
+declarations whose `by:` or `recorded_by:` name it. It is not asked of the `Authorizer`, for three reasons:
+the application would be asking itself, EHOS issues no credential to a job (`eh-os` D-34), and an inline
+policy refused inside the transaction of a person's command would fail that command for a reason that is not
+the person's.
+
+- `%EhOsContract.Actor{}` built from a credential carries `subject`, `capabilities` and `scopes` exactly as
+  `sub`, `cap` and `scp` are issued, strings included, so the package that builds it converts nothing.
+- One callback, `authorize(actor, request) :: :ok | {:error, reason}`. The request names the kind (command or
+  query), the capability, the contract and its version, and, for a scoped query, the dimension and the value
+  asked for, both as strings in the form `scp` carries. Comparing in that form means a grant value that is not
+  of the field's type never matches, instead of failing a cast.
+- `EhOsContract.Authorizer.check/2` is the decision itself, pure: `:missing_capability`, `:unscoped_grant` (a
+  scoped capability with no values, refused because empty is not "all"), `:outside_scope`. The default
+  implementation is `check/2` alone; `eh_os_contract_auth` calls it and adds its row.
+- **An implementation can narrow what a credential grants, never widen it.** After `:ok` the engine runs
+  `check/2` again from the actor and raises when that refuses. Grants therefore travel in the credential, as
+  EHOS issues them (`eh-os` ARCHITECTURE §6.4). The rows a query returns are checked against the actor's
+  scopes too, whatever the implementation said.
+- **A credential recording an event through `record/3` is refused** until E9 names the capability for it:
+  EHOS grants commands and queries only, so nothing could grant it. A `:system` actor records as before.
+
 ## 12. Consumers
 
 - **Inline projections and policies** run in the dispatch transaction. A projection writes only its own

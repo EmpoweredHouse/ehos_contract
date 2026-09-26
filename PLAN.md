@@ -34,8 +34,7 @@ zmieniło, poza tym, że log jest tylko do dopisywania.
 
 ### Co zostało — i czyje to jest
 
-- **Przed E6 — użytkownika: kształt `EhOsContract.Authorizer`** (D14, v2 §16; otwarte od E4). E6 buduje dispatch,
-  który go woła, a EA go implementuje, więc sesja E6 zaczyna od propozycji kształtu i czeka na potwierdzenie.
+- **Kształt `EhOsContract.Authorizer` — rozstrzygnięty 26 września** (użytkownik; „E6 — co wyszło”, v2 §11).
 - **E6 — asystenta**, według opisu E6 w dopisku Etap 6 (odbiór tam). Z E5 przechodzą na E6: słowo na wynik query
   i read modelu w scenariuszu (S6 dziś je odrzuca), ponowny pomiar ceny literałów w `emit/1` na VisitSettlement,
   `Row` a schemat Ecto, `@version "0.3.0-dev"` i linia w CHANGELOG, baner „opisuje v1” na skillach.
@@ -96,8 +95,8 @@ sprawdzany od pierwszego `mix compile`.
 
 ### Otwarte pytania
 
-- **`EhOsContract.Authorizer`** — kształt do potwierdzenia przez użytkownika przed E6 (wyżej). Podwójny zapis
-  przyjętej komendy (pakiet auth i `_commands`) rozstrzyga EA.
+- **`EhOsContract.Authorizer`** — kształt przyjęty 26 września. Podwójny zapis przyjętej komendy (pakiet auth i
+  `_commands`) rozstrzyga EA; nazwę uprawnienia dla `record/3` z credentialem — E9.
 - **Po E5b:** `mix eh_os_contract.check` nie powtarza L3 dla projektów bez zarejestrowanego kompilatora — E10, z
   resztą L5. Pole `correlate` process managera, które niosą tylko zdarzenia konsumowane, `Build` typuje jako
   `:id`, więc X6 odrzuca wydawcę z innym typem, dopóki stan PM nie zadeklaruje pola — wrócić w E7 (ustalenie 4
@@ -950,6 +949,31 @@ zachowania; testy L3 przechodzą bez zmian. Silnik 685 → 688. Sprawdzone poza 
 projektu-fikstury w scratchpadzie — z błędem X2 w formacie Elixira, a bez zarejestrowanego kompilatora ta sama
 kompilacja przechodzi. Diff nie dotyka czytelników v1, tasków ani pakietu web, więc porównanie bajtów raportu i
 grafu na bazie dev nie ma czego mierzyć i nie było puszczane.
+
+### E6 — co wyszło (26 września)
+
+**Rozstrzygnięcie z początku etapu: kształt `EhOsContract.Authorizer`.** Użytkownik go potwierdził po
+rozpisaniu przebiegu od manifestu po kliknięcie (manifest z rolami → przypięcie roli w EHOS-ie → token z
+`sub`, `cap`, `scp` → lokalne sprawdzenie w aplikacji, bez pytania EHOS-a). Trzy decyzje, zapisane w v2 §11
+notką z datą:
+1. **Sprawdzenie stoi na drzwiach aplikacji.** `Authorizer` jest pytany o wywołanie z credentialem (dziś
+   człowiek, później także system z własnym credentialem — `eh-os` D-23, G-2). Kod samej aplikacji pilnuje
+   kontrakt: reakcję jej `issues:`, aktora `:system` domeny `by:`/`recorded_by:` deklaracji. Kryterium to
+   pochodzenie wywołania, nie rodzaj aktora — pierwsza propozycja mówiła „tylko człowiek” i była myląca.
+2. **`Authorizer` może zawęzić, nie może poszerzyć.** `authorize/2 :: :ok | {:error, powód}`; czysta decyzja
+   to `Authorizer.check/2` (`:missing_capability`, `:unscoped_grant`, `:outside_scope`), domyślna
+   implementacja to samo `check/2`, a po `:ok` silnik liczy `check/2` jeszcze raz z aktora i rzuca, gdy ten
+   odmawia. Uprawnienia muszą więc przyjść w credentialu. `scope` porównywany w postaci stringa z `scp`.
+3. **`record/3` z credentialem jest odrzucany do E9**, bo EHOS nadaje tylko komendy i query, więc nie ma nazwy
+   uprawnienia do nagrania zdarzenia. Aktor `:system` nagrywa normalnie.
+
+Przy okazji użytkownik zapytał o poziom zabezpieczenia. Odpowiedź: standard (JWT Ed25519 sprawdzany lokalnie z
+JWKS, krótki czas życia, `aud` na aplikację i środowisko, RBAC spłaszczony do uprawnień, fail closed, audyt),
+z egzekwowaniem mocniejszym niż w typowej aplikacji, bo w jednym miejscu w dispatchu, i z drugim sprawdzeniem
+wierszy query. Słabsze strony, świadomie przyjęte: do 10 minut po odebraniu roli, bearer bez wiązania z
+urządzeniem (DPoP/mTLS), do 5 minut po usunięciu klucza, `scope` jako jedno pole, audyt bez ochrony przed
+podmianą, własna pamięć JWKS. **Do `eh-os`, przez użytkownika:** logowanie frontendu zwykłej aplikacji nie
+jest tam zaprojektowane (najbliżej G-3), a od niego zależy reszta.
 
 ### Losy fikstur
 
