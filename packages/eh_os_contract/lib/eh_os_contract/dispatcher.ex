@@ -207,6 +207,18 @@ defmodule EhOsContract.Dispatcher do
     if policy && declaration.name in policy.issues, do: :ok, else: {:error, :not_declared}
   end
 
+  # A process manager issues what its reactions and its timers name.
+  defp permit(model, declaration, %Actor{kind: :reaction, name: {:pm, name}}) do
+    case Enum.find(model.process_managers, &(&1.name == name)) do
+      nil ->
+        {:error, :not_declared}
+
+      pm ->
+        issues = Enum.flat_map(pm.starts_on ++ pm.on ++ pm.timers, & &1.issues)
+        if declaration.name in issues, do: :ok, else: {:error, :not_declared}
+    end
+  end
+
   defp permit(_model, _declaration, actor) do
     raise ArgumentError,
           "dispatch takes `actor:`, an EhOsContract.Actor — a credential's or a :system actor " <>

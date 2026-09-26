@@ -72,7 +72,7 @@ defmodule EhOsContract.Consumer do
 
     case apply(module, consumer.callback, [event]) do
       {:ok, commands} when is_list(commands) ->
-        dispatch_issued!(consumer, event, commands, {model, policy.issues}, [link | chain])
+        issue!(consumer, :policy, event.__meta__, commands, {model, policy.issues}, [link | chain])
 
       other ->
         raise ArgumentError,
@@ -134,22 +134,35 @@ defmodule EhOsContract.Consumer do
   # One link of a chain: the policy, and the type of the event it reacted to.
   defp link(consumer), do: "#{inspect(consumer.contract)}:#{consumer.name}:#{consumer.type}"
 
-  defp dispatch_issued!(consumer, event, commands, {model, issues}, chain) do
+  @doc false
+  # What a reaction issued, dispatched at once as the reaction's own actor, `:policy`
+  # or `:pm`, with `source` — the event it reacted to, or the timer's — as its cause
+  # and a key derived from it, so a second delivery appends nothing. A rejection is
+  # the unit's answer; anything else dispatch refuses raises.
+  @spec issue!(map(), :policy | :pm, map(), term(), {map(), [atom()]}, [String.t()]) :: :ok
+  def issue!(consumer, kind, source, commands, {model, issues}, chain) do
     allowed = MapSet.new(issues, &Model.module_for(model, :command, &1))
+    what = if kind == :policy, do: "policy", else: "process manager"
+
+    unless is_list(commands) do
+      raise ArgumentError,
+            "#{what} #{inspect(consumer.name)} returned #{inspect(commands)}; it returns " <>
+              "{:ok, commands}"
+    end
 
     for {command, index} <- Enum.with_index(commands) do
       unless is_struct(command) and MapSet.member?(allowed, command.__struct__) do
         raise ArgumentError,
-              "policy #{inspect(consumer.name)} issued #{describe(command)}, which is not among " <>
-                "the commands it issues: #{inspect(issues)}"
+              "#{what} #{inspect(consumer.name)} issued #{describe(command)}, which is not " <>
+                "among the commands it issues: #{inspect(issues)}"
       end
 
       opts = [
-        actor: Actor.reaction(:policy, consumer.name),
-        causation_id: event.__meta__.id,
-        correlation_id: event.__meta__.correlation_id,
+        actor: Actor.reaction(kind, consumer.name),
+        causation_id: source.id,
+        correlation_id: source.correlation_id,
         idempotency_key:
-          "policy:#{inspect(consumer.contract)}:#{consumer.name}:#{event.__meta__.id}:#{index}",
+          "#{kind}:#{inspect(consumer.contract)}:#{consumer.name}:#{source.id}:#{index}",
         chain: chain
       ]
 
@@ -157,14 +170,14 @@ defmodule EhOsContract.Consumer do
         {:ok, _receipt} ->
           :ok
 
-        # A rejection is the unit's answer, and its row is written: the policy asked
-        # and was told no. The command that set it off still stands.
+        # A rejection is the unit's answer, and its row is written: the reaction asked
+        # and was told no. What set it off still stands.
         {:error, %Rejection{}} ->
           :ok
 
         {:error, reason} ->
           raise ArgumentError,
-                "policy #{inspect(consumer.name)} issued #{describe(command)}, and dispatch " <>
+                "#{what} #{inspect(consumer.name)} issued #{describe(command)}, and dispatch " <>
                   "refused it: #{inspect(reason)}"
       end
     end
