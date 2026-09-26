@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 26 września (po E6, PR otwarty)
+## Handoff — stan na 26 września (E6 w `main`)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -13,21 +13,23 @@ zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisan
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności) i jej
 dashboardu; `sandbox/` to dane testowe. **Trwa pivot do v2**: DSL na Sparku z modelem domeny w stylu ESDM
 (jeden kontrakt = jeden proces), event sourcing na własnym magazynie w Postgresie, crypto-shredding. **W `main`
-są E0–E5 w całości i D10–D14 (PR #1–#11).** **E6 — dispatch synchroniczny i przejście VisitSettlement — jest
-zrobiony** na `dsl-v2/e6-dispatch`, po przeglądzie przed PR, wypchnięty i wystawiony jako PR; odbiór spełniony
-(„E6 — co wyszło”).
+są E0–E6 w całości i D10–D14 (PR #1–#12)**; E6 — dispatch synchroniczny i przejście VisitSettlement — zmergowany
+26 września jako [PR #12](https://github.com/EmpoweredHouse/eh-os-contract/pull/12) (`ef77603`); odbiór spełniony
+(„E6 — co wyszło”). **Następny jest E7** (albo EA, które może ruszyć równolegle).
 E7–E12 i EA niezaczęte. Kontrakty v1 działają jak przed E6; `Rehmed.Contracts.VisitSettlement` jest pierwszym
 kontraktem v2 sandboxa i wypadł przez to z czytelników v1 (raport, graf, `check`) do E7.
 
 ### Stan repozytorium
 
-- `main` = `origin/main` = `6ef626b` (merge PR #11). Użytkownik merguje PR-y jako merge, więc historia `main` ma
+- `main` = `origin/main` = `ef77603` (merge PR #12). Użytkownik merguje PR-y jako merge, więc historia `main` ma
   merge commity.
-- **E6: `dsl-v2/e6-dispatch`**, wypchnięta, odgałęziona od `6ef626b`: handoff (`110d5bc`) i dwadzieścia commitów
-  E6 (`bbad60c`..głowa), brama zielona na każdym; [PR #12](https://github.com/EmpoweredHouse/eh-os-contract/pull/12)
-  do `main`, otwarty 26 września. Po jego otwarciu doszedł `docs/authorization.md` pakietu (opis autoryzacji,
-  o który poprosił użytkownik). Wymeldowana w worktree
-  `.claude/worktrees/dsl-v2-e6-dispatch-3b16ce`. Worktree `dsl-v2-e5b-compiler-903cbd` stoi odłączony na `110d5bc`.
+- **`dsl-v2/e6-authorization-doc`**, lokalna, od `ef77603`: `docs/authorization.md` pakietu (opis autoryzacji, o
+  który poprosił użytkownik) i ten handoff. Wymeldowana w worktree `.claude/worktrees/dsl-v2-e6-dispatch-3b16ce`.
+- **`dsl-v2/e6-dispatch` na `origin` ma jeden commit za merge'em** (`35bd1cd`, ten sam dokument), wypchnięty po
+  merge'u PR #12 przez pomyłkę: sprawdzenie stanu PR wypisało „MERGED”, ale nie zatrzymało pusha, bo polecenia
+  były połączone `&&`, a `gh pr view` kończy się zerem niezależnie od stanu. Do `main` nie trafił i nie trafi;
+  jego treść jest na `dsl-v2/e6-authorization-doc`. Gałąź do usunięcia przez użytkownika.
+- Worktree `dsl-v2-e5b-compiler-903cbd` stoi odłączony na `110d5bc`.
 - Inne worktree, wszystkie w całości w `main`: `dsl-v2-e1-model-seam-ed132e` (`38df8bd`),
   `dsl-v2-e4-contract-core-68fd81` (`5cb888d`), `dsl-v2-e5-codegen-0c8df1` (`86f042f`),
   `eh-os-contract-step-7-062e77` (`ba1796a`); główny checkout stoi na `main` = `3da83b4`, za `origin/main`.
@@ -36,9 +38,7 @@ kontraktem v2 sandboxa i wypadł przez to z czytelników v1 (raport, graf, `chec
 
 ### Co zostało — i czyje to jest
 
-- **PR E6 — przegląd i merge użytkownika.** Przegląd przed PR zrobiony (dziesięć znalezisk, osiem poprawionych —
-  „E6 — co wyszło”). Jeden PR na całość, około 4000 linii kodu, testów i fikstur; commity są ułożone tak, że
-  runtime (`bbad60c`..`77d7a4d`) czyta się osobno od przejścia VisitSettlement i reszty.
+- **PR z `docs/authorization.md` — na polecenie użytkownika** (`dsl-v2/e6-authorization-doc`).
 - **Konwencja etykiet w scenariuszach — użytkownika**: propozycja z rozmowy 26 września, żeby wartości w
   scenariuszach mówiły, czym są („konto-Anny”, „Kraków”), a nie „a-1”, „b-7”; bez odpowiedzi.
 - **E7–E12 i EA — asystenta**, według dopisku Etap 6. EA może ruszyć: behaviour `Authorizer` i ścieżka dispatchu
@@ -47,7 +47,8 @@ kontraktem v2 sandboxa i wypadł przez to z czytelników v1 (raport, graf, `chec
   `dsl-v2-e4-contract-core-68fd81`, `dsl-v2-e5-codegen-0c8df1`, `dsl-v2-e5b-compiler-903cbd`,
   `eh-os-contract-step-7-062e77`; lokalne gałęzie `claude/dsl-v2-e4-contract-core-68fd81`,
   `claude/dsl-v2-e5-codegen-0c8df1`, `claude/dsl-v2-e5b-compiler-903cbd`, `claude/dsl-v2-e6-dispatch-3b16ce`,
-  `dsl-v2/e4-contract-core`, `dsl-v2/e5-codegen` i `dsl-v2/e5b-compiler` są w całości w `main`. Główny checkout:
+  `dsl-v2/e4-contract-core`, `dsl-v2/e5-codegen` i `dsl-v2/e5b-compiler` są w całości w `main`;
+  `dsl-v2/e6-dispatch` (lokalna i na `origin`) poza `35bd1cd`. Główny checkout:
   `git -C ~/Projects/ai/eh-os-contract pull`.
 - **Lista zmian do `eh-os`** (D-01, D-15, outbox, G-16, transport v1, D-34, D-40, plan etapu 4) — użytkownika;
   „D10–D12 — skąd się wzięły” i „D14 — autoryzacja” w dopisku Etap 6. **Od E6 także**: logowanie frontendu
@@ -95,8 +96,8 @@ oglądania czegokolwiek `MIX_ENV=dev`. Commit wiąż wyłącznie z kodem wyjści
   0 padnięć, `eh_os_contract.check` 0 błędów, 4 ostrzeżenia, 19 informacji (przed E6: 0/5/23 — ubyło dokładnie
   pięć linii VisitSettlement v1). Silnik: 756 testów, 0 padnięć, `check` 0 / 8 / 16, bez zmian. Web: 31 testów,
   0 padnięć.
-- **CI**: do odczytania na PR E6. Ostatnie przed nim: `main` po PR #11 (przebieg `36190022071` na `6ef626b`,
-  zielony).
+- **CI**: PR #12 — przebieg `36225757700` na `b8b36d6`, `main` po merge'u — `36227889690` na `ef77603`; oba
+  `success`.
 
 ### Otwarte pytania
 

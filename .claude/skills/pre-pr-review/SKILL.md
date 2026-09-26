@@ -65,7 +65,13 @@ After review comments or a failed CI run, fix, commit, and go through steps 3–
 commits before pushing them. Before any push to an existing pull request, check it is still open
 (`gh pr view <number> --json state --jq .state`). On 25 September a commit pushed to PR #1's
 branch eight seconds after the merge never reached `main` and needed a pull request of its own.
-The hook guards only `gh pr create`, not later pushes, so this part is yours to keep.
+The hook guards only `gh pr create`, not later pushes, so this part is yours to keep. **Read the
+answer before pushing; do not chain the push to the command.** `gh pr view` exits 0 whatever the
+state, so `gh pr view … && git push` pushes to a merged pull request's branch anyway: on 26
+September it printed `MERGED` and the push to PR #12's branch went ahead, and the commit needed a
+branch and a pull request of its own. Test the state itself, e.g.
+`[ "$(gh pr view 12 --json state --jq .state)" = OPEN ] && git push …`, or look first and push in a
+separate step.
 
 ## What the review checks against
 
