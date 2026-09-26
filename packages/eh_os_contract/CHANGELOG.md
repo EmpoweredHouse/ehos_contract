@@ -42,6 +42,9 @@ What changes otherwise is what a host has to do.
   - streams, tags, `schema_version`, `command_id`, `metadata` and `recorded_at` are added;
   - `actor` becomes NOT NULL, and rows without one get the system actor;
   - the `eh_os_contract_commands` table is created.
+- **And a second one, from E7**: `EhOsContract.Migrations.up(version: 4)` and `down(version: 4)`. V04 creates
+  the tables of the consumers that run outside the dispatch transaction — `eh_os_contract_subscriptions`,
+  `eh_os_contract_process_managers` and `eh_os_contract_event_runs` — and changes no existing table.
 - **The log is append-only.** Triggers refuse UPDATE, DELETE and TRUNCATE on `eh_os_contract_events`. A test
   that moved `occurred_at` afterwards has to emit in the past instead, with `EhOsContract.Clock.at/2`. A test
   database that leaked rows is recovered with `ecto.drop`.

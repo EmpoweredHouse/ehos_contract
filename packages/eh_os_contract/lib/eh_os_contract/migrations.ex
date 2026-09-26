@@ -62,7 +62,7 @@ defmodule EhOsContract.Migrations do
   use Ecto.Migration
 
   @initial_version 1
-  @current_version 3
+  @current_version 4
 
   @doc "The oldest version this module can create."
   @spec initial_version() :: pos_integer()

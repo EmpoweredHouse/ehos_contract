@@ -14,6 +14,7 @@ defmodule EhOsContract.MigrationsTest do
   alias EhOsContract.CommitRepo, as: Repo
 
   @v03 20_260_925_120_000
+  @v04 20_260_926_120_000
 
   setup do
     # Whatever happens in the test, the database is back at the newest version for
@@ -25,6 +26,9 @@ defmodule EhOsContract.MigrationsTest do
   defp migrate(direction, opts), do: Repo.migrate(direction, opts)
 
   defp one(sql, params \\ []), do: Repo.query!(sql, params).rows |> List.first() |> List.first()
+
+  # What `up all` reaches: the newest version, whichever that is by now.
+  defp newest, do: Integer.to_string(EhOsContract.Migrations.current_version())
 
   defp version do
     one("SELECT obj_description('public.eh_os_contract_events'::regclass, 'pg_class')")
@@ -94,7 +98,7 @@ defmodule EhOsContract.MigrationsTest do
     insert_v02_rows(contract)
     migrate(:up, all: true)
 
-    assert version() == "3"
+    assert version() == newest()
     assert primary_key() == "position"
 
     assert triggers() == [
@@ -153,7 +157,32 @@ defmodule EhOsContract.MigrationsTest do
            ]
 
     migrate(:up, all: true)
-    assert version() == "3"
+    assert version() == newest()
     assert length(rows(contract)) == 4
+  end
+
+  defp table?(name), do: one("SELECT to_regclass($1)::text", ["public." <> name]) != nil
+
+  test "V04 adds the tables of the consumers outside the dispatch transaction, and its down drops them" do
+    tables =
+      ~w(eh_os_contract_subscriptions eh_os_contract_process_managers eh_os_contract_event_runs)
+
+    assert Enum.all?(tables, &table?/1)
+
+    migrate(:down, to: @v04)
+    assert version() == "3"
+    refute Enum.any?(tables, &table?/1)
+
+    migrate(:up, all: true)
+    assert version() == "4"
+    assert Enum.all?(tables, &table?/1)
+
+    # A status outside the four is refused by the table, whoever writes it.
+    assert_raise Postgrex.Error, ~r/eh_os_contract_subscriptions_status/, fn ->
+      Repo.query!(
+        "INSERT INTO eh_os_contract_subscriptions (name, kind, mode, version, status) " <>
+          "VALUES ('MigrationsTest', 'read_model', 'ordered', 'v', 'skipped')"
+      )
+    end
   end
 end
