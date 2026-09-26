@@ -155,6 +155,36 @@ defmodule EhOsContract.Report do
   @spec paths(map()) :: [String.t()]
   defp paths(%{runs: 0}), do: ["  " <> Sentence.no_runs()]
 
+  # A v2 process: what waits has a heading of its own, never the list of what nobody
+  # did, and "carried out" is said only when nothing waits either — a v2 branch is
+  # several steps, and only its head waits in a queue. v1 keeps its layout.
+  defp paths(%{promises: _} = p) do
+    untraversed =
+      case {p.untraversed, p.in_flight} do
+        {[], []} ->
+          ["  " <> Sentence.all_steps_carried_out()]
+
+        {[], _waiting} ->
+          []
+
+        {steps, _waiting} ->
+          ["  Agreed steps that were never carried out:"] ++
+            for s <- steps, do: "    · " <> Sentence.step(s)
+      end
+
+    waiting =
+      case p.in_flight do
+        [] ->
+          []
+
+        steps ->
+          ["  Agreed steps in progress:"] ++
+            for(s <- steps, do: "    · " <> Sentence.step_in_flight(s))
+      end
+
+    untraversed ++ waiting ++ failing(p.failing)
+  end
+
   defp paths(p) do
     untraversed =
       case p.untraversed do
@@ -168,17 +198,14 @@ defmodule EhOsContract.Report do
 
     waiting = for s <- p.in_flight, do: "    · " <> Sentence.step_in_flight(s)
 
-    failing =
-      case p.failing do
-        [] ->
-          []
+    untraversed ++ waiting ++ failing(p.failing)
+  end
 
-        steps ->
-          ["  Agreed steps that are attempted and fail:"] ++
-            for s <- steps, do: "    · " <> Sentence.step_failing(s)
-      end
+  defp failing([]), do: []
 
-    untraversed ++ waiting ++ failing
+  defp failing(steps) do
+    ["  Agreed steps that are attempted and fail:"] ++
+      for s <- steps, do: "    · " <> Sentence.step_failing(s)
   end
 
   @spec assertions([map()]) :: [String.t()]

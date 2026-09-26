@@ -124,8 +124,12 @@ defmodule EhOsContract.ReportV2Test do
       # issued yet, which is "not yet" too.
       refute {:notify_refusal, nil, :refusal_notified} in names(p.untraversed)
 
-      assert text(:v2) =~
-               "Request refused → Notify a refusal (via: Notify a refused request) — in progress: 1 event not yet taken"
+      t = text(:v2)
+
+      assert t =~
+               "  Agreed steps in progress:\n    · Request refused → Notify a refusal (via: Notify a refused request) — in progress: 1 event not yet taken"
+
+      refute t =~ "All agreed steps were carried out"
 
       Seed.run_queue(:v2)
       p = process(data(:v2))
