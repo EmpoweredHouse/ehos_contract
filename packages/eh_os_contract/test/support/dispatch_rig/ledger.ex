@@ -80,6 +80,10 @@ defmodule DispatchRig.Ledger do
     param :branch_id, :id
   end
 
+  query :balance_of, "Balance of one account", reads: :balances, by: :auditor, returns: :one do
+    param :account_id, :id
+  end
+
   policy :flag_large_deposit, "Flag an account on a large deposit",
     handles: :deposited,
     issues: :flag_account
@@ -102,6 +106,13 @@ defmodule DispatchRig.Ledger do
     given :account_opened, %{account_id: "a-2", branch_id: "b-9"}
     query :balances_for_branch, %{branch_id: "b-7"}
     answers [%{account_id: "a-1", balance: 40}]
+  end
+
+  scenario "an account's balance is what was deposited on it" do
+    given :account_opened, %{account_id: "a-1", branch_id: "b-7"}
+    given :deposited, %{account_id: "a-1", amount: 40}
+    query :balance_of, %{account_id: "a-1"}
+    answers %{account_id: "a-1", balance: 40}
   end
 
   scenario "a withdrawal within the balance goes through" do

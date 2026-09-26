@@ -136,6 +136,21 @@ defmodule EhOsContract.DispatchRecordQueryTest do
       assert length(rows) == 3
     end
 
+    test "a query returning one answers a row or nil, and a list raises" do
+      auditor = Actor.credential("u-9", ["dispatch_rig.balance_of"])
+
+      ask_one =
+        &EhOsContract.query(Ledger, %DispatchRig.Ledger.Queries.BalanceOf{account_id: &1},
+          actor: auditor
+        )
+
+      assert {:ok, %Row{account_id: "a-1"}} = ask_one.("a-1")
+      assert {:ok, nil} = ask_one.("a-404")
+
+      Process.put(:dispatch_rig_as_list, true)
+      assert_raise ArgumentError, ~r/it answers one/, fn -> ask_one.("a-1") end
+    end
+
     test "the application's own :system actor is not narrowed, and a query writes nothing" do
       Process.put(:dispatch_rig_leak, true)
       before = {length(log()), length(rows())}

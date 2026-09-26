@@ -154,7 +154,14 @@ defmodule EhOsContract.ScenarioCase do
       end)
 
     row = Module.concat(Model.module_for(model, :read_model, read_model.name), Row)
-    answered = if query.returns == :one, do: List.wrap(answer), else: answer
+
+    answered =
+      case {query.returns, answer} do
+        {:one, nil} -> []
+        {:one, %{__struct__: _} = one} -> [one]
+        {:one, _other} -> :unfit
+        {:many, many} -> many
+      end
 
     assert is_list(answered) and Enum.all?(answered, &is_struct(&1, row)),
            "query #{inspect(query.name)} answered #{inspect(answer)}, and it answers " <>

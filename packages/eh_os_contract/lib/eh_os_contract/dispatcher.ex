@@ -261,10 +261,16 @@ defmodule EhOsContract.Dispatcher do
   # many as `returns:` says, and for a credential only rows within its grant.
   defp answered!(model, declaration, answer, actor, values) do
     row = Module.concat(Model.module_for(model, :read_model, declaration.reads), Row)
-    rows = if declaration.returns == :one, do: List.wrap(answer), else: answer
+    # One row is a row or nil, never a list of one: the caller was promised a row.
+    rows =
+      case {declaration.returns, answer} do
+        {:one, nil} -> []
+        {:one, %{__struct__: _} = one} -> [one]
+        {:one, _other} -> :unfit
+        {:many, many} -> many
+      end
 
-    unless is_list(rows) and (declaration.returns == :many or length(rows) <= 1) and
-             Enum.all?(rows, &is_struct(&1, row)) do
+    unless is_list(rows) and Enum.all?(rows, &is_struct(&1, row)) do
       raise ArgumentError,
             "query #{inspect(declaration.name)} of #{inspect(model.module)} answered " <>
               "#{describe(answer)}; it answers #{if declaration.returns == :one, do: "one %#{inspect(row)}{} or nil", else: "a list of %#{inspect(row)}{}"}"
