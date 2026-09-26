@@ -72,6 +72,8 @@ What changes otherwise is what a host has to do.
   skips it; a read model whose declaration changed is `stale` until it is rebuilt. A read model's
   implementation may define `reset/0` to empty its rows, and only then can it be rebuilt; an inline one is left
   to the runner while it is. `EhOsContract.Testing.drain/1` runs all of it inside a test's transaction.
+- **E7a: `mix eh_os_contract.subscriptions`** lists where each subscription stands; `--skip KEY` moves a
+  failing one past the event it fails on, `--reset KEY` empties a read model and replays the log into it.
 
 - `EhOsContract.Model`: a contract as plain data, and the accessors every reader now uses. A module that is
   not a contract is refused by name.
