@@ -89,9 +89,8 @@ them, not against memory:
 
 Kinds of problems a review here found that neither file names yet:
 
-- A guard over shell commands matches the invocation, not the text. The first version of this
-  repository's hook refused every command that merely mentioned `gh pr create`, a heredoc and a
-  file write included (fixed 25 September).
+- A guard over shell commands matches the invocation, not the text: a command that only mentions
+  `gh pr create`, in a heredoc or a file it writes, is not that command.
 
 Add to this list when a review finds a new kind of problem. If it is a rule about the code, it
 belongs in `CLAUDE.md` instead.
