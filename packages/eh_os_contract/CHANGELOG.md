@@ -144,6 +144,15 @@ one. What changes is what a host has to do.
   the policy's own actor, with the event as its cause and a key derived from it. An exception in any of them
   rolls the whole dispatch back; a policy caught in a cycle raises. A declaration delivered in the transaction
   with no implementation stops dispatch rather than being skipped.
+- `EhOsContract.record/3` (D6): an event declaring `recorded_by:` enters without a decision, recorded by a
+  `:system` actor it names, under the unit's stream version, with the consumers in the transaction and an
+  `accepted` row of type `"record:<event>"`. A credential is refused with `:not_grantable` until a capability
+  to record exists.
+- `EhOsContract.query/3` (D10): a query is authorized like a command, and a scoped query with the value of its
+  scope parameter, so a value outside the credential's grant, or a scoped capability granted with no values, is
+  refused before the implementation runs. Every row answered is checked against the grant again, and one outside
+  it raises `EhOsContract.Authorizer.OutsideScopeError`. A `:system` actor the query names is not narrowed.
+  Nothing is written.
 - `EhOsContract.Meta` carries an event's `id` and `position` when it is read back from the log.
 - `EhOsContract.Store.lock/1` on the configured implementation.
 

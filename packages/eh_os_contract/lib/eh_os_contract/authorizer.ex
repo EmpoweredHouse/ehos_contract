@@ -64,6 +64,15 @@ defmodule EhOsContract.Authorizer do
     defexception [:message]
   end
 
+  defmodule OutsideScopeError do
+    @moduledoc """
+    Raised when a query's implementation answers a row outside what the credential
+    grants. The query's code is wrong, and no row leaves.
+    """
+
+    defexception [:message]
+  end
+
   @typedoc "Why a request is refused. An implementation may have reasons of its own."
   @type reason :: :missing_capability | :unscoped_grant | :outside_scope | atom()
 

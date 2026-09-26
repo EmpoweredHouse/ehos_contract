@@ -17,6 +17,9 @@ defmodule DispatchRig.Balances do
   @impl true
   def withdrawn(%Withdrawn{account_id: id, amount: amount}), do: move(id, -amount)
 
+  @impl true
+  def interest_recorded(%InterestRecorded{account_id: id, amount: amount}), do: move(id, amount)
+
   defp move(id, amount) do
     repo().update_all(from(b in "dispatch_rig_balances", where: b.account_id == ^id),
       inc: [balance: amount]

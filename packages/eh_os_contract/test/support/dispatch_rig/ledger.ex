@@ -53,9 +53,16 @@ defmodule DispatchRig.Ledger do
     end
 
     event :account_flagged, "Account flagged for review"
+
+    event :interest_recorded, "Interest recorded", recorded_by: :nightly_import do
+      field :amount, :integer
+    end
+
+    event :balance_confirmed, "Balance confirmed", recorded_by: :auditor
   end
 
-  read_model :balances, "Balances", projects: [:account_opened, :deposited, :withdrawn] do
+  read_model :balances, "Balances",
+    projects: [:account_opened, :deposited, :withdrawn, :interest_recorded] do
     field :account_id, :id
     field :branch_id, :id
     field :balance, :integer
@@ -64,6 +71,13 @@ defmodule DispatchRig.Ledger do
   read_model :movements, "Movements", projects: :deposited do
     field :account_id, :id
     field :amount, :integer
+  end
+
+  query :balances_for_branch, "Balances of one branch",
+    reads: :balances,
+    by: [:clerk, :nightly_import],
+    scope: :branch_id do
+    param :branch_id, :id
   end
 
   policy :flag_large_deposit, "Flag an account on a large deposit",

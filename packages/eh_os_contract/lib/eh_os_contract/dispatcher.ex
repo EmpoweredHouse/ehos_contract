@@ -94,8 +94,84 @@ defmodule EhOsContract.Dispatcher do
 
     with :ok <- permit(model, declaration, ctx.actor),
          :ok <- valid(declaration.fields, command, values) do
-      job = %{model: model, declaration: declaration, command: command, ctx: ctx, values: values}
+      job = %{
+        kind: :command,
+        type: Atom.to_string(declaration.name),
+        model: model,
+        declaration: declaration,
+        command: command,
+        ctx: ctx,
+        values: values
+      }
+
       run(job, repo())
+    end
+  end
+
+  @doc """
+  Records `event`, which the contract declares `recorded_by:` — an observation, or
+  an integration's answer — without a decision (v2 §11, D6).
+
+  Only a `:system` actor the event's `recorded_by:` names may record it. A
+  credential is refused with `:not_grantable`: EHOS grants commands and queries,
+  so no credential could carry a capability to record (v2 §11, the note of 26
+  September 2026). Otherwise it goes as a command does — the fields checked, the
+  idempotency key honoured, the unit's stream version as the append's condition,
+  the consumers in the transaction run, the `accepted` row written with the type
+  `"record:<event>"` — only without a decider.
+  """
+  @spec record(module(), struct(), keyword() | map()) ::
+          {:ok, Receipt.t()} | {:error, refusal() | :not_grantable}
+  def record(contract, %module{} = event, opts) do
+    model = model!(contract)
+    declaration = recorded!(model, module)
+    ctx = context(opts)
+    values = Codec.values(model.domain)
+
+    with :ok <- permit_record(model, declaration, ctx.actor),
+         :ok <- valid(declaration.fields, event, values) do
+      job = %{
+        kind: :record,
+        type: "record:#{declaration.name}",
+        model: model,
+        declaration: declaration,
+        command: event,
+        ctx: ctx,
+        values: values
+      }
+
+      run(job, repo())
+    end
+  end
+
+  @doc """
+  Asks a query of a v2 contract, and returns what its implementation answers (v2
+  §11, D10). Nothing is written: a read is not a fact.
+
+  A credential's actor is asked of the `EhOsContract.Authorizer` for the query's
+  capability, and for a scoped query with the value of the scope parameter, so a
+  value outside the grant is refused before the implementation runs. A `:system`
+  actor the query's `by:` names is the application's own code, and is not narrowed.
+
+  **Every row is checked again**: for a credential's actor, a row whose scope field
+  is not among the values the credential grants raises
+  `EhOsContract.Authorizer.OutsideScopeError`, so a wrong `where` cannot hand one
+  clinic another's rows. So do rows that are not the read model's.
+  """
+  @spec query(module(), struct(), keyword() | map()) ::
+          {:ok, [struct()] | struct() | nil} | {:error, refusal()}
+  def query(contract, %module{} = params, opts) do
+    model = model!(contract)
+    declaration = query!(model, module)
+    ctx = context(opts)
+    values = Codec.values(model.domain)
+    scope = scope(declaration, params, values)
+
+    with :ok <- permit_query(model, declaration, ctx.actor, scope),
+         :ok <- valid(declaration.params, params, values) do
+      impl = Implementations.fetch!(model, :query, declaration.name)
+      answer = apply(impl, declaration.name, [params, %{actor: ctx.actor}])
+      {:ok, answered!(model, declaration, answer, ctx.actor, values)}
     end
   end
 
@@ -125,6 +201,89 @@ defmodule EhOsContract.Dispatcher do
     raise ArgumentError,
           "dispatch takes `actor:`, an EhOsContract.Actor — a credential's or a :system actor " <>
             "of the domain — and got #{inspect(actor)}"
+  end
+
+  defp permit_record(_model, _declaration, %Actor{kind: :credential}),
+    do: {:error, :not_grantable}
+
+  defp permit_record(model, declaration, %Actor{kind: :system, name: name}) do
+    if name in declaration.recorded_by and system_actor?(model, name),
+      do: :ok,
+      else: {:error, :not_declared}
+  end
+
+  defp permit_record(_model, _declaration, %Actor{kind: :reaction}), do: {:error, :not_declared}
+  defp permit_record(model, declaration, actor), do: permit(model, declaration, actor)
+
+  defp permit_query(model, declaration, %Actor{kind: :credential} = actor, scope) do
+    Authorizer.run(actor, %Authorizer.Request{
+      kind: :query,
+      capability: capability(model, :query, declaration.name),
+      contract: model.module,
+      version: model.version,
+      scope: scope && {scope.dimension, scope.value}
+    })
+  end
+
+  defp permit_query(model, declaration, %Actor{kind: :system, name: name}, _scope) do
+    if name in declaration.by and system_actor?(model, name),
+      do: :ok,
+      else: {:error, :not_declared}
+  end
+
+  defp permit_query(_model, _declaration, %Actor{kind: :reaction}, _scope),
+    do: {:error, :not_declared}
+
+  defp permit_query(model, declaration, actor, _scope), do: permit(model, declaration, actor)
+
+  # A scoped query's dimension, and the value asked for, in the form a credential's
+  # `scp` carries: a string, or nil when the parameter is missing.
+  defp scope(%{scope: nil}, _params, _values), do: nil
+
+  defp scope(declaration, params, values) do
+    param = Enum.find(declaration.params, &(&1.name == declaration.scope))
+
+    %{
+      dimension: Atom.to_string(declaration.scope),
+      value: scoped(param.type, Map.get(params, declaration.scope), values),
+      type: param.type
+    }
+  end
+
+  defp scoped(type, value, values) do
+    case Codec.encode_value(type, value, values) do
+      nil -> nil
+      encoded -> to_string(encoded)
+    end
+  end
+
+  # The implementation's answer, held to the declaration: rows of the read model, as
+  # many as `returns:` says, and for a credential only rows within its grant.
+  defp answered!(model, declaration, answer, actor, values) do
+    row = Module.concat(Model.module_for(model, :read_model, declaration.reads), Row)
+    rows = if declaration.returns == :one, do: List.wrap(answer), else: answer
+
+    unless is_list(rows) and (declaration.returns == :many or length(rows) <= 1) and
+             Enum.all?(rows, &is_struct(&1, row)) do
+      raise ArgumentError,
+            "query #{inspect(declaration.name)} of #{inspect(model.module)} answered " <>
+              "#{describe(answer)}; it answers #{if declaration.returns == :one, do: "one %#{inspect(row)}{} or nil", else: "a list of %#{inspect(row)}{}"}"
+    end
+
+    with %Actor{kind: :credential} <- actor,
+         %{dimension: dimension, type: type} <- scope(declaration, %{}, values) do
+      granted = Authorizer.granted(actor, capability(model, :query, declaration.name), dimension)
+
+      for row <- rows, scoped(type, Map.get(row, declaration.scope), values) not in granted do
+        raise Authorizer.OutsideScopeError,
+          message:
+            "query #{inspect(declaration.name)} of #{inspect(model.module)} answered a row whose " <>
+              "#{dimension} is outside what the credential of #{inspect(actor.subject)} grants; " <>
+              "no row was returned"
+      end
+    end
+
+    answer
   end
 
   defp system_actor?(model, name) do
@@ -196,6 +355,17 @@ defmodule EhOsContract.Dispatcher do
   end
 
   # One try: `{:ok, receipt}`, `{:error, _}`, or `:conflict` when the stream moved.
+  defp attempt(%{kind: :record} = job, repo) do
+    with :new <- idempotent(repo, job) do
+      unit = Enum.find(job.model.units, &(&1.name == job.declaration.unit))
+      stream = Key.stream(unit.name, Enum.map(unit.identity, &Map.fetch!(job.command, &1)))
+      recorded = Store.read_stream(repo, stream, 0)
+      version = if recorded == [], do: 0, else: List.last(recorded).stream_version
+      job = Map.merge(job, %{stream: stream, version: version, given: recorded})
+      commit(job, [{job.declaration, job.command}], repo)
+    end
+  end
+
   defp attempt(job, repo) do
     %{model: model, declaration: declaration, command: command, ctx: ctx} = job
 
@@ -223,7 +393,7 @@ defmodule EhOsContract.Dispatcher do
                     "#{inspect(declaration.rejects)}"
           end
 
-          record!(repo, job, "rejected", %{invariant: Atom.to_string(invariant)})
+          write_row!(repo, job, "rejected", %{invariant: Atom.to_string(invariant)})
           {:error, rejection}
 
         other ->
@@ -248,7 +418,7 @@ defmodule EhOsContract.Dispatcher do
           :conflict
 
         {:ok, appended} ->
-          record!(repo, Map.put(job, :command_id, command_id), "accepted", %{
+          write_row!(repo, Map.put(job, :command_id, command_id), "accepted", %{
             emitted_types: Enum.map(appended, & &1.type),
             first_position: appended |> List.first() |> position(),
             last_position: appended |> List.last() |> position()
@@ -384,7 +554,7 @@ defmodule EhOsContract.Dispatcher do
         :new
 
       accepted.contract == inspect(job.model.module) and
-          accepted.type == Atom.to_string(job.declaration.name) ->
+          accepted.type == job.type ->
         events =
           repo.all(from(e in Event, where: e.command_id == ^accepted.id, order_by: e.position))
 
@@ -494,7 +664,7 @@ defmodule EhOsContract.Dispatcher do
       payload: Codec.encode(declaration.fields, event, values),
       metadata:
         %{
-          "command" => Atom.to_string(job.declaration.name),
+          "command" => job.type,
           "issued_by" => Actor.label(ctx.actor)
         }
         |> put_present("idempotency_key", ctx.idempotency_key)
@@ -509,8 +679,8 @@ defmodule EhOsContract.Dispatcher do
     if Enum.all?(values, &(&1 != nil)), do: Key.join([process.name | values])
   end
 
-  defp record!(repo, job, outcome, fields) do
-    %{model: model, declaration: declaration, ctx: ctx} = job
+  defp write_row!(repo, job, outcome, fields) do
+    %{model: model, ctx: ctx} = job
 
     row =
       struct!(
@@ -519,7 +689,7 @@ defmodule EhOsContract.Dispatcher do
           %{
             id: Map.get(job, :command_id) || Ecto.UUID.generate(),
             contract: inspect(model.module),
-            type: Atom.to_string(declaration.name),
+            type: job.type,
             issued_by: Actor.label(ctx.actor),
             idempotency_key: if(outcome == "accepted", do: ctx.idempotency_key),
             causation_event_id: ctx.causation_id,
@@ -539,7 +709,7 @@ defmodule EhOsContract.Dispatcher do
   defp failed!(job, repo, exception) do
     failed_in = Process.delete({__MODULE__, :failed_in}) || "dispatch"
 
-    record!(repo, job, "failed", %{failed_in: failed_in, error: inspect(exception.__struct__)})
+    write_row!(repo, job, "failed", %{failed_in: failed_in, error: inspect(exception.__struct__)})
   end
 
   # Where an exception came from, for the `failed` row.
@@ -620,6 +790,20 @@ defmodule EhOsContract.Dispatcher do
     Enum.find(model.commands, &(Model.module_for(model, :command, &1.name) == module)) ||
       raise ArgumentError,
             "#{inspect(module)} is not a command of #{inspect(model.module)}"
+  end
+
+  defp recorded!(model, module) do
+    Enum.find(model.events, fn e ->
+      e.recorded_by != [] and Model.module_for(model, :event, e.name) == module
+    end) ||
+      raise ArgumentError,
+            "#{inspect(module)} is not an event #{inspect(model.module)} records; only an event " <>
+              "declaring recorded_by: is recorded, and a command emits the others"
+  end
+
+  defp query!(model, module) do
+    Enum.find(model.queries, &(Model.module_for(model, :query, &1.name) == module)) ||
+      raise ArgumentError, "#{inspect(module)} is not a query of #{inspect(model.module)}"
   end
 
   defp repo, do: Application.fetch_env!(:eh_os_contract, :repo)

@@ -39,6 +39,10 @@ defmodule DispatchRig.Account do
   @impl true
   def evolve(state, %Deposited{amount: amount}), do: %{state | balance: state.balance + amount}
   def evolve(state, %Withdrawn{amount: amount}), do: %{state | balance: state.balance - amount}
+
+  def evolve(state, %InterestRecorded{amount: amount}),
+    do: %{state | balance: state.balance + amount}
+
   def evolve(state, _opened), do: state
 
   # Another writer's event in the stream, appended at the version the decision read.

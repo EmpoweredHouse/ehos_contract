@@ -15,6 +15,7 @@ defmodule EhOsContract do
       AsyncAPI,
       Authorizer,
       Authorizer.Default,
+      Authorizer.OutsideScopeError,
       Authorizer.Request,
       Authorizer.WidenedError,
       Check,
@@ -125,6 +126,17 @@ defmodule EhOsContract do
           {:ok, EhOsContract.Receipt.t()}
           | {:error, EhOsContract.Rejection.t() | EhOsContract.Dispatcher.refusal()}
   defdelegate dispatch(contract, command, opts), to: EhOsContract.Dispatcher
+
+  @doc "Records an event a v2 contract declares `recorded_by:` (`EhOsContract.Dispatcher.record/3`)."
+  @spec record(module(), struct(), keyword() | map()) ::
+          {:ok, EhOsContract.Receipt.t()}
+          | {:error, EhOsContract.Dispatcher.refusal() | :not_grantable}
+  defdelegate record(contract, event, opts), to: EhOsContract.Dispatcher
+
+  @doc "Asks a query of a v2 contract (`EhOsContract.Dispatcher.query/3`)."
+  @spec query(module(), struct(), keyword() | map()) ::
+          {:ok, [struct()] | struct() | nil} | {:error, EhOsContract.Dispatcher.refusal()}
+  defdelegate query(contract, params, opts), to: EhOsContract.Dispatcher
 
   defdelegate emit(contract, type, payload, ctx \\ %{}), to: EhOsContract.Emitter
   defdelegate emit!(contract, type, payload, ctx \\ %{}), to: EhOsContract.Emitter
