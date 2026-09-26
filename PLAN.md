@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 26 września (po E6, przed PR)
+## Handoff — stan na 26 września (po E6, PR otwarty)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -14,7 +14,8 @@ Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, s
 dashboardu; `sandbox/` to dane testowe. **Trwa pivot do v2**: DSL na Sparku z modelem domeny w stylu ESDM
 (jeden kontrakt = jeden proces), event sourcing na własnym magazynie w Postgresie, crypto-shredding. **W `main`
 są E0–E5 w całości i D10–D14 (PR #1–#11).** **E6 — dispatch synchroniczny i przejście VisitSettlement — jest
-zrobiony lokalnie** na `dsl-v2/e6-dispatch`, niewypchnięty i bez PR; odbiór spełniony („E6 — co wyszło”).
+zrobiony** na `dsl-v2/e6-dispatch`, po przeglądzie przed PR, wypchnięty i wystawiony jako PR; odbiór spełniony
+(„E6 — co wyszło”).
 E7–E12 i EA niezaczęte. Kontrakty v1 działają jak przed E6; `Rehmed.Contracts.VisitSettlement` jest pierwszym
 kontraktem v2 sandboxa i wypadł przez to z czytelników v1 (raport, graf, `check`) do E7.
 
@@ -22,8 +23,8 @@ kontraktem v2 sandboxa i wypadł przez to z czytelników v1 (raport, graf, `chec
 
 - `main` = `origin/main` = `6ef626b` (merge PR #11). Użytkownik merguje PR-y jako merge, więc historia `main` ma
   merge commity.
-- **E6: `dsl-v2/e6-dispatch`**, lokalna, niewypchnięta, odgałęziona od `6ef626b`: handoff (`110d5bc`) i dwanaście
-  commitów E6 (`bbad60c`..głowa), brama zielona na każdym. Wymeldowana w worktree
+- **E6: `dsl-v2/e6-dispatch`**, wypchnięta, odgałęziona od `6ef626b`: handoff (`110d5bc`) i dwadzieścia commitów
+  E6 (`bbad60c`..głowa), brama zielona na każdym; PR do `main` otwarty 26 września. Wymeldowana w worktree
   `.claude/worktrees/dsl-v2-e6-dispatch-3b16ce`. Worktree `dsl-v2-e5b-compiler-903cbd` stoi odłączony na `110d5bc`.
 - Inne worktree, wszystkie w całości w `main`: `dsl-v2-e1-model-seam-ed132e` (`38df8bd`),
   `dsl-v2-e4-contract-core-68fd81` (`5cb888d`), `dsl-v2-e5-codegen-0c8df1` (`86f042f`),
@@ -33,10 +34,11 @@ kontraktem v2 sandboxa i wypadł przez to z czytelników v1 (raport, graf, `chec
 
 ### Co zostało — i czyje to jest
 
-- **Przegląd przed PR, push i PR E6 — na polecenie użytkownika** (skill `pre-pr-review`). Diff jest duży:
-  około 3900 linii kodu, testów i fikstur. Jak przy E5, da się go podzielić na dwa PR-y po commitach: runtime
-  (`bbad60c`..`77d7a4d`) i przejście VisitSettlement, dokumenty i scenariusz query (`38eb854`..głowa) — decyzja
-  użytkownika.
+- **PR E6 — przegląd i merge użytkownika.** Przegląd przed PR zrobiony (dziesięć znalezisk, osiem poprawionych —
+  „E6 — co wyszło”). Jeden PR na całość, około 4000 linii kodu, testów i fikstur; commity są ułożone tak, że
+  runtime (`bbad60c`..`77d7a4d`) czyta się osobno od przejścia VisitSettlement i reszty.
+- **Konwencja etykiet w scenariuszach — użytkownika**: propozycja z rozmowy 26 września, żeby wartości w
+  scenariuszach mówiły, czym są („konto-Anny”, „Kraków”), a nie „a-1”, „b-7”; bez odpowiedzi.
 - **E7–E12 i EA — asystenta**, według dopisku Etap 6. EA może ruszyć: behaviour `Authorizer` i ścieżka dispatchu
   są.
 - **Stare worktree i gałęzie — użytkownika**: `git worktree remove` dla `dsl-v2-e1-model-seam-ed132e`,
@@ -86,11 +88,13 @@ oglądania czegokolwiek `MIX_ENV=dev`. Commit wiąż wyłącznie z kodem wyjści
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 26 września**, na głowie `dsl-v2/e6-dispatch`, brama z `sandbox/` → **EXIT=0**. Sandbox: 47 testów,
+- **Lokalnie, 26 września**, na głowie `dsl-v2/e6-dispatch` po przeglądzie, brama z `sandbox/` → **EXIT=0**.
+  Sandbox: 47 testów,
   0 padnięć, `eh_os_contract.check` 0 błędów, 4 ostrzeżenia, 19 informacji (przed E6: 0/5/23 — ubyło dokładnie
-  pięć linii VisitSettlement v1). Silnik: 751 testów, 0 padnięć, `check` 0 / 8 / 16, bez zmian. Web: 31 testów,
+  pięć linii VisitSettlement v1). Silnik: 756 testów, 0 padnięć, `check` 0 / 8 / 16, bez zmian. Web: 31 testów,
   0 padnięć.
-- **CI**: E6 nie był wypychany. Ostatnie CI to `main` po PR #11 (przebieg `36190022071` na `6ef626b`, zielony).
+- **CI**: do odczytania na PR E6. Ostatnie przed nim: `main` po PR #11 (przebieg `36190022071` na `6ef626b`,
+  zielony).
 
 ### Otwarte pytania
 
@@ -273,8 +277,8 @@ uprawnienie ze `scope` bez żadnej wartości w grancie jest odrzucone (fail clos
 cudzy wiersz jest zatrzymana — kontrola: wartość z grantu przechodzi; konflikt jest
 ponawiany; ten sam klucz idempotencji zwraca te same pozycje;
 delta `check` w sandboxie dotyczy tylko linii VisitSettlement.
-**Zrobione 26 września** na `dsl-v2/e6-dispatch`, jedenaście commitów (`bbad60c`..`7903265`) i zapis stanu,
-niewypchnięte; odbiór spełniony — „E6 — co wyszło” niżej.
+**Zrobione 26 września** na `dsl-v2/e6-dispatch`, dziewiętnaście commitów (`bbad60c`..`7303de9`) z poprawkami z
+przeglądu przed PR i zapis stanu, wystawione jako PR; odbiór spełniony — „E6 — co wyszło” niżej.
 
 **EA — Pakiet `eh_os_contract_auth` (D14, v2 §16; `eh-os` D-33, D-34).** Trzeci pakiet w `packages/`, obok
 `eh_os_contract_web`, z własnym `mix check`; rdzeń od niego nie zależy. Implementuje `EhOsContract.Authorizer`
@@ -973,12 +977,12 @@ urządzeniem (DPoP/mTLS), do 5 minut po usunięciu klucza, `scope` jako jedno po
 podmianą, własna pamięć JWKS. **Do `eh-os`, przez użytkownika:** logowanie frontendu zwykłej aplikacji nie
 jest tam zaprojektowane (najbliżej G-3), a od niego zależy reszta.
 
-**Stan.** Jedenaście commitów, brama zielona na każdym: zapis ustaleń (`bbad60c`); `Actor` i `Authorizer`
+**Stan.** Dziewiętnaście commitów, brama zielona na każdym: zapis ustaleń (`bbad60c`); `Actor` i `Authorizer`
 (`04952ec`); `Codec` i `Key` (`4290aca`); `dispatch/3` z `Implementations`, `CommandRecord` i `Receipt`
 (`c724c83`); read modele i polityki w transakcji (`6e8cbfe`); `record/3` i `query/3` (`e2988bb`);
 `EhOsContract.Plug` (`77d7a4d`); przejście VisitSettlement i `0.3.0-dev` (`38eb854`); banery na skillach i
-poprawki ADR (`115c15f`); zapis stanu (`d51b99e`); scenariusz query, `answers` (`7903265`). Silnik 688 → 751
-testów, sandbox 45 → 47, web 31. `check` silnika 0/8/16 bez zmian;
+poprawki ADR (`115c15f`); zapis stanu (`d51b99e`); scenariusz query, `answers` (`7903265`); zapis stanu (`97208b2`); siedem poprawek z
+przeglądu przed PR (`bd85190`..`7303de9`). Silnik 688 → 756 testów, sandbox 45 → 47, web 31. `check` silnika 0/8/16 bez zmian;
 sandboxa 0/5/23 → 0/4/19.
 
 **Odbiór E6, jak sprawdzony** (testy w `test/runtime/` pakietu i w `sandbox/test/`):
@@ -1046,6 +1050,34 @@ sandboxa 0/5/23 → 0/4/19.
     ładują ten sam plik w jednym przebiegu. To ostrzeżenie czasu wykonania, nie kompilacji; brama przechodzi.
 12. **`Model.capabilities/1` jest liczone przy każdym dispatchu** (nazwa uprawnienia do żądania). Tanie przy
     VisitSettlement; pamięć podręczna, gdy pomiar pokaże potrzebę.
+
+**Przegląd przed PR (26 września, `/code-review high origin/main..HEAD`).** Dziesięć znalezisk:
+1. Decyzja mogła zwrócić zdarzenie z tożsamością innej jednostki, a dispatch dopisywał je do strumienia komendy
+   (zdarzenie konta a-2 w strumieniu a-1, wliczane do salda a-1) — **poprawione** w `bd85190`: tożsamość zdarzenia
+   musi być tożsamością komendy, inaczej wyjątek i nic nie jest dopisane.
+2. Query z `returns: :one` przepuszczało listę (`List.wrap`), także w `ScenarioCase` — **poprawione** w
+   `f393da7`; `DispatchRig` dostał query zwracające jeden wiersz, ze scenariuszem.
+3. Porażka komendy wydanej przez politykę zapisywała w wierszu pierwotnej komendy `failed_in` z wnętrza
+   (`"decider"`) — **poprawione** w `7100331`: cała reakcja idzie pod `"policy:<nazwa>"`.
+4. Klucz idempotencji komendy polityki nie zawierał kontraktu, a indeks przyjętych kluczy obejmuje całą
+   aplikację — **poprawione** w `25cf70c`: `"policy:<kontrakt>:<nazwa>:<id zdarzenia>:<n>"`, notka w v2 §11.
+5. Zapis wiersza `failed` w `rescue` może zasłonić pierwotny wyjątek, gdy pada sama baza — **pominięte**: dotyczy
+   tylko sytuacji, w której baza pada w trakcie dispatchu, test wymaga repo psującego się na żądanie; wraca w E7
+   z obsługą padających konsumentów.
+6. Zdarzenia z `given` w scenariuszu query nie miały `id` ani `position` w `__meta__`, a dispatch je daje —
+   **poprawione** w `c4f5272`; projekcja sald `DispatchRig` zapisuje pozycję w kolumnie `NOT NULL`.
+7. Uprawnienia, wartości domeny i aktorzy liczeni przy każdym wywołaniu, w Plugu dla każdego kontraktu —
+   **pominięte**: to ustalenie 12; pamięć podręczna, gdy pomiar pokaże potrzebę.
+8. To samo sprawdzenie aktora `:system` w trzech klauzulach — **poprawione** w `c478c9d`.
+9. Polskie cytaty w moduledocu i komentarzu VisitSettlement i w moduledocu decidera, przeniesione z v1 —
+   **poprawione** w `7303de9`.
+10. `EhOsContract.Plug.init/1`, `call/2` i `Authorizer.Default.authorize/2` bez `@doc` i `@spec` — **poprawione** w
+    `c478c9d`.
+Poprawki 1, 2, 3 i 6 zweryfikowane wstecz: na kodzie sprzed każdej pada dokładnie nowy test (przy 6 — trzy
+testy scenariuszy query, żaden test dispatchu). Poprawka 4 ma test formatu klucza, który pada na starym kodzie.
+Silnik 751 → 756, sandbox 47, web 31; `check` bez zmian (0/4/19, 0/8/16). Poza testami nic nie było puszczane:
+baza dev jest punktem odniesienia porównań bajtów raportu, a v2 czytelnicy logu przychodzą w E7; ścieżkę HTTP
+sprawdza `plug_test` przez `Plug.Test`.
 
 ### Losy fikstur
 
