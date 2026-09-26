@@ -31,6 +31,17 @@ defmodule EhOsContract.DeploymentV2Test do
     assert Map.has_key?(row.declaration_digests, "promise:completed_or_refusal_notified")
   end
 
+  test "a promise's digest is its rule: confirming it or citing it anew is no change" do
+    [promise] = Promised.__eh_os_contract_model__().process.promises
+    digest = Deployment.promise_digest(promise)
+
+    assert Deployment.promise_digest(%{promise | unverified: true, source: "W1 00:01:02"}) ==
+             digest
+
+    refute Deployment.promise_digest(%{promise | within: %{amount: 3, unit: :day}}) == digest
+    refute Deployment.promise_digest(%{promise | or_else: nil}) == digest
+  end
+
   test "a v2 report says since when its version is in force" do
     Seed.deploy(:v2)
     Deployment.record!()

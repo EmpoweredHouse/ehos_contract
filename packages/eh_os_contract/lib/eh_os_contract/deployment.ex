@@ -143,7 +143,7 @@ defmodule EhOsContract.Deployment do
     promises =
       for promise <- (model.process && model.process.promises) || [],
           into: %{},
-          do: {"promise:#{promise.name}", EhOsContract.Digest.hash(promise)}
+          do: {"promise:#{promise.name}", promise_digest(promise)}
 
     %{
       id: Ecto.UUID.generate(),
@@ -156,6 +156,16 @@ defmodule EhOsContract.Deployment do
       first_seen_at: now
     }
   end
+
+  @doc """
+  A promise's digest at a deploy: of its rule — `from`, `eventually`, `within`,
+  `or_else` — and nothing else. Confirming it (`unverified`) or citing a new `source`
+  changes no run's verdict, so it must not draw a boundary that stops judging the
+  runs before it. Public for its test.
+  """
+  @spec promise_digest(map()) :: String.t()
+  def promise_digest(promise),
+    do: promise |> Map.take([:from, :eventually, :within, :or_else]) |> EhOsContract.Digest.hash()
 
   @doc """
   A v2 contract's declared steps as the labels a deployment records:
