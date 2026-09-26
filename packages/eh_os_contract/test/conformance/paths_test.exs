@@ -37,7 +37,10 @@ defmodule EhOsContract.PathsTest do
                {:request_refused, :notify_on_refusal, :notify_refusal}
              ]
 
-      [emits | _] = Paths.declared(ProcessShapes.Next.Promised)
+      [emits | _] = declared = Paths.declared(ProcessShapes.Next.Promised)
+
+      # What it promises, and nothing `observe/2` uses to find a step's rows.
+      assert Enum.all?(declared, &(Enum.sort(Map.keys(&1)) == [:from, :mode, :to, :via]))
 
       assert emits.from == %{kind: :command, name: :submit_request, label: "Submit a request"}
       assert emits.to == %{kind: :event, name: :request_received, label: "Request received"}

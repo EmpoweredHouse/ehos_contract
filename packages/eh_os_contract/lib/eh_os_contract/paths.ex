@@ -76,7 +76,7 @@ defmodule EhOsContract.Paths do
   @spec observe(module() | map(), keyword()) :: [step()]
   def observe(contract, opts \\ []) do
     model = Model.fetch(contract)
-    steps = declared(model)
+    steps = steps(model)
     process = model.process && Atom.to_string(model.process.name)
 
     emitted = if process, do: emitted(model, process, opts), else: %{}
@@ -116,7 +116,15 @@ defmodule EhOsContract.Paths do
   """
   @spec declared(module() | map()) :: [map()]
   def declared(contract) do
-    model = Model.fetch(contract)
+    contract
+    |> Model.fetch()
+    |> steps()
+    |> Enum.map(&Map.take(&1, [:from, :via, :to, :mode]))
+  end
+
+  # The declared steps with what `observe/2` needs to find their rows: the consumer's
+  # key, the stored type a step starts from, the command's name and its issuer's label.
+  defp steps(model) do
     label = labels(model)
 
     emits =
