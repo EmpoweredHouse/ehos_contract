@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 26 września (E7c-1 w PR #16, E7c-2 zbudowane, przed przeglądem)
+## Handoff — stan na 26 września (E7c-1 w PR #16, E7c-2 zbudowane i przejrzane, przed PR)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -40,8 +40,8 @@ zostaje AsyncAPI (E10).
 ### Co zostało — i czyje to jest
 
 - **E7c-1 — użytkownika**: merge PR #16.
-- **E7c-2 — asystenta, do dokończenia**: przegląd `pre-pr-review` na zakresie `dsl-v2/e7c-conformance..HEAD`,
-  potem push i PR na polecenie użytkownika. Zakres zbudowany
+- **E7c-2 — asystenta, do dokończenia**: przegląd zrobiony (notatka `refs/notes/review` na `HEAD`); push i PR na
+  polecenie użytkownika. Zakres zbudowany
   jest w „E7c-1 — co wyszło”.
 - **E7c-2 — asystenta**, według podziału pod opisem E7 w dopisku Etap 6. Z listy niżej zostaje dla niego: graf,
   `check` i `Registry` na v2, pokrycie scenariuszy, wersja okablowania i wdrożenia kontraktów v2 (od nich
@@ -119,7 +119,7 @@ git -c credential.helper='!gh auth git-credential' push https://github.com/Empow
 ### Ostatnia pełna weryfikacja
 
 - **Lokalnie, 26 września**, na `dsl-v2/e7c2-outputs`, brama z `sandbox/` → **EXIT=0**. Sandbox: 47 testów,
-  `eh_os_contract.check` 0 / 5 / 19. Silnik: 904 testy, `check` 0 / 14 / 17. Web: 32 testy. Delta `check`
+  `eh_os_contract.check` 0 / 5 / 19. Silnik: 906 testów, `check` 0 / 15 / 17. Web: 32 testy. Delta `check`
   wyjaśniona w „E7c-2 — co wyszło”. Na `dsl-v2/e7c-conformance` (PR #16): 881 / 0/8/16, sandbox 0/4/19, web 31.
 - **CI**: PR #16 — dwa sprawdzenia zielone. `main` po PR #15 — `36239199828`, `success`.
 
@@ -1415,14 +1415,36 @@ Części v1 bez zmiany bajtu. Przed: 12 zdarzeń, 5 wdrożeń; po: tak samo — 
    dopasował — bez względu na `given`. Okres po `recorded_at`, jak padające komendy (znalezisko 3 z przeglądu
    E7c-1).
 6. **Webowy `CaseHandling` zastąpiony portem v2** z dwiema politykami inline; **oryginał v1 zostaje jako
-   `Fixtures.V1.CaseHandling` wyłącznie dla AsyncAPI**, które czyta v1 do E10; jego proces to `:v1_handling`, bo
-   wybór procesu na ekranie grafu idzie po nazwie. Testy API zgodności nazywają kontrakt, bo zarejestrowane są
-   dwa.
+   `Fixtures.V1.CaseHandling` wyłącznie dla AsyncAPI**, które czyta v1 do E10. Oba nazywają proces `:handling`
+   (przemianowanie na `:v1_handling` z pierwszej wersji cofnięte po przeglądzie, znalezisko 2). Testy API
+   zgodności nazywają kontrakt, bo zarejestrowane są dwa.
 7. **`min_position`**: polling wiersza subskrypcji co 25 ms, najdłużej `wait:` (5000 ms), potem
    `{:error, :not_caught_up}`. Read model inline bez wiersza uchodzi za dogoniony. Fikstura `Ledger` dostała
    query `:lines_of` na asynchronicznym `ledger_lines`.
 8. **Poprawki ADR z v2 §18 dla E7** są w architecture §9–10 i wyzwalaczu „jedno zdarzenie w dwóch procesach”,
    design-rationale §9–10, technology-notes §4. „Bez zewnętrznego brokera” zostaje prawdą do E12.
+
+**Przegląd przed PR (26 września, `/code-review high dsl-v2/e7c-conformance..HEAD`).** Osiem znalezisk; sześć
+poprawionych, jedno pominięte, jedno błędne:
+1. i 7. **`check` nie liczył query** wśród tego, co wymaga implementacji, a gałąź „zaimplementowany w części”
+   nie miała testu — **poprawione** w `051ad57` z fiksturą `DispatchRig.Unfinished` (zaimplementowany unit, bez
+   read modelu i query); `check` silnika 0/14/17 → 0/15/17, ta jedna linia to cel fikstury.
+2. **Wybór procesu na ekranie grafu po samej nazwie** — v2 i jego oryginał v1 o tej samej nazwie procesu
+   zasłaniały się nawzajem; przemianowanie na `:v1_handling` to ukrywało. **Poprawione** w `c0f7de5`: klucz to
+   kontrakt i nazwa.
+3. **Digest obietnicy z całej mapy**, także `unverified` i `source` — potwierdzenie obietnicy rysowałoby
+   granicę deklaracji i wyjmowało wcześniejsze przebiegi z werdyktu. **Poprawione** w `b820acd`: digest z
+   `from`, `eventually`, `within`, `or_else`.
+4. Skan wszystkich jobów Obana na kontrakt — **poprawione** w `986f00c` (klucze konsumentów kontraktu), bez
+   zmiany zachowania.
+5. `Coverage` padałby na scenariuszu z `given` spoza magazynu — **pominięte**: osiągalne dopiero przez DCB
+   konsultujący zdarzenie odebrane z innej aplikacji (E9); tam do obsłużenia.
+6. Krawędź process manager → timer rysowana jako dostawa „async” — **poprawione** w `116f7c0` („sets”, bez
+   grotu).
+8. `wiring` powtarza dane z `deployment` — **błędne**: sekcja jest kształtem, który użytkownik zatwierdził przed
+   E7c.
+
+Silnik 904 → 906, web 32; `check` sandboxa 0/5/19, silnika 0/15/17.
 
 ### Losy fikstur
 
