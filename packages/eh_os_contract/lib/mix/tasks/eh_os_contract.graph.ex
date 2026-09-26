@@ -18,6 +18,11 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   shape** — stages as lanes, how it can end, each assertion as an arrow carrying
   its window — for the process owner, before anything is built.
 
+  **A v2 contract's process** is drawn as its steps instead (plan E7c-2): commands,
+  events, the consumers between them and timers, each kind in its Event Storming
+  colour (`EhOsContract.Graph.steps_to_mermaid/2`). With `--overlay` too, the log is
+  laid over it: runs per step, and what waits or fails there.
+
   It is per process and never global on purpose. The default inventory this task
   prints is 33 events from four contracts in one flat list, which is useful to
   nobody outside the team and is the counter-example ADR §9 had in mind with
@@ -77,28 +82,48 @@ defmodule Mix.Tasks.EhOsContract.Graph do
         Enum.any?(EhOsContract.Model.processes(c), &(&1.name == name))
       end)
 
-    unless contract do
-      known =
-        EhOsContract.Registry.contracts()
-        |> Enum.flat_map(fn c -> Enum.map(EhOsContract.Model.processes(c), & &1.name) end)
-        |> Enum.sort()
-        |> Enum.join(", ")
+    v2 =
+      Enum.find(EhOsContract.Registry.v2_contracts(), fn c ->
+        match?(%{process: %{name: ^name}}, EhOsContract.Model.fetch(c))
+      end)
 
-      Mix.raise("no process #{inspect(name)}. Declared: #{known}")
-    end
+    cond do
+      not opts[:mermaid] ->
+        Mix.raise("--process draws a diagram; pass --mermaid (and --output to keep the accents)")
 
-    if opts[:mermaid] do
-      emit_output(EhOsContract.Graph.declared_to_mermaid(contract, name), opts)
-    else
-      Mix.raise("--process draws a diagram; pass --mermaid (and --output to keep the accents)")
+      contract ->
+        emit_output(EhOsContract.Graph.declared_to_mermaid(contract, name), opts)
+
+      v2 ->
+        emit_output(
+          EhOsContract.Graph.steps_to_mermaid(v2,
+            overlay: opts[:overlay] || false,
+            since: since(opts)
+          ),
+          opts
+        )
+
+      true ->
+        known =
+          (Enum.flat_map(EhOsContract.Registry.contracts(), fn c ->
+             Enum.map(EhOsContract.Model.processes(c), & &1.name)
+           end) ++
+             for(
+               c <- EhOsContract.Registry.v2_contracts(),
+               %{process: %{name: n}} <- [EhOsContract.Model.fetch(c)],
+               do: n
+             ))
+          |> Enum.sort()
+          |> Enum.join(", ")
+
+        Mix.raise("no process #{inspect(name)}. Declared: #{known}")
     end
   end
 
-  # Erlang switches stdout to latin1 when the output is not a terminal, so
-  # `mix eh_os_contract.graph --mermaid > file.mmd` corrupts every non-ASCII character:
-  # U+0142 comes out as byte 0x42. Event labels are written in the client's
-  # language, so this is not cosmetic. `--output` writes through `File.write!`,
-  # which always writes UTF-8.
+  defp since(opts),
+    do:
+      opts[:since] && NaiveDateTime.from_iso8601!(opts[:since]) |> DateTime.from_naive!("Etc/UTC")
+
   defp emit_output(text, opts) do
     case opts[:output] do
       nil ->
@@ -142,9 +167,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   end
 
   defp overlay(opts) do
-    since =
-      opts[:since] && NaiveDateTime.from_iso8601!(opts[:since]) |> DateTime.from_naive!("Etc/UTC")
-
+    since = since(opts)
     overlay = EhOsContract.Graph.overlay(since: since)
 
     if opts[:mermaid] do
