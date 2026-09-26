@@ -86,6 +86,10 @@ What changes otherwise is what a host has to do.
   append as the event: its home run, and the run of each v2 contract whose process `include`s it, correlated
   by that process's fields. An `EhOsContract.Store` entry may carry `runs:` for the included ones. A v1 event
   gets its home run too; the v1 readers do not read the table.
+- **E7c: `EhOsContract.Trace` and `EhOsContract.Run` read v2 contracts.** `Trace.evaluate/3` takes the name of
+  a v2 `promise`, and `Run.evaluate/3` measures a v2 process's `deadline`, both over the runs in
+  `eh_os_contract_event_runs`, so an event another contract decided counts in the run that includes it. The
+  arithmetic is v1's, and the same scenarios give the same verdicts on a v1 shape and on its v2 port.
 - **E7a: `mix eh_os_contract.subscriptions`** lists where each subscription stands; `--skip KEY` moves a
   failing one past the event it fails on, `--reset KEY` empties a read model and replays the log into it.
 - **E7c: a new policy leaves history alone, as a new process manager does.** A policy delivered

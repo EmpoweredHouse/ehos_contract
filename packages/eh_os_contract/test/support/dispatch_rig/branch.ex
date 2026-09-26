@@ -18,5 +18,9 @@ defmodule DispatchRig.Branch do
   process :branch, "Branch" do
     correlate :branch_id
     include :account_opened
+
+    # So that a reader of runs has something to measure on a run made only of another
+    # contract's events. Nothing ends a branch's run, so every one is open or overdue.
+    deadline {1, :day}
   end
 end

@@ -270,6 +270,31 @@ defmodule EhOsContract.Model do
     end)
   end
 
+  @doc """
+  The contract that declares an event a v2 contract names, with its declaration:
+  the contract's own event, or a sibling's it consumes, found under the sibling's
+  name. `nil` for an event another application publishes, which is received into an
+  inbox and never stored in this log (D12), and for a name the contract does not know.
+  """
+  @spec declaring(contract() | map(), atom()) :: {module(), map()} | nil
+  def declaring(contract, name) do
+    model = v2!(contract)
+
+    case Enum.find(model.events, &(&1.name == name)) do
+      %{} = event ->
+        {model.module, event}
+
+      nil ->
+        case consumed(model, name) do
+          {:contract, from, original} ->
+            {from, Enum.find(fetch(from).events, &(&1.name == original))}
+
+          _published_or_unknown ->
+            nil
+        end
+    end
+  end
+
   defp v2!(contract) do
     case fetch(contract) do
       %{kind: :contract, units: _} = model ->
