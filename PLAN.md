@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 26 września (E6 w `main`)
+## Handoff — stan na 26 września (E7a wystawione jako PR)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -13,68 +13,66 @@ zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisan
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności) i jej
 dashboardu; `sandbox/` to dane testowe. **Trwa pivot do v2**: DSL na Sparku z modelem domeny w stylu ESDM
 (jeden kontrakt = jeden proces), event sourcing na własnym magazynie w Postgresie, crypto-shredding. **W `main`
-są E0–E6 w całości i D10–D14 (PR #1–#12)**; E6 — dispatch synchroniczny i przejście VisitSettlement — zmergowany
-26 września jako [PR #12](https://github.com/EmpoweredHouse/eh-os-contract/pull/12) (`ef77603`); odbiór spełniony
-(„E6 — co wyszło”). **Następny jest E7** (albo EA, które może ruszyć równolegle).
-E7–E12 i EA niezaczęte. Kontrakty v1 działają jak przed E6; `Rehmed.Contracts.VisitSettlement` jest pierwszym
-kontraktem v2 sandboxa i wypadł przez to z czytelników v1 (raport, graf, `check`) do E7.
+są E0–E6 w całości i D10–D14 (PR #1–#13).** E6 (dispatch synchroniczny, `Authorizer`, przejście VisitSettlement)
+zmergowany jako [PR #12](https://github.com/EmpoweredHouse/eh-os-contract/pull/12), opis autoryzacji
+`packages/eh_os_contract/docs/authorization.md` jako [PR #13](https://github.com/EmpoweredHouse/eh-os-contract/pull/13).
+**E7 podzielony na trzy PR-y; E7a (runtime asynchroniczny) zrobione, przejrzane i wystawione jako PR** z
+`dsl-v2/e7-async` — „E7a — co wyszło” niżej. Następne: merge E7a (użytkownika), potem E7b (process managery i
+timery) i E7c (zgodność na nowym logu, fikstury); E8–E12 i EA niezaczęte.
+Kontrakty v1 działają jak przed E6. `Rehmed.Contracts.VisitSettlement` jest pierwszym kontraktem v2 sandboxa i do
+E7 nie widzą go czytelnicy v1 (raport, graf, `check`).
 
 ### Stan repozytorium
 
-- `main` = `origin/main` = `ef77603` (merge PR #12). Użytkownik merguje PR-y jako merge, więc historia `main` ma
+- `main` = `origin/main` = `d54c389` (merge PR #13). Użytkownik merguje PR-y jako merge, więc historia `main` ma
   merge commity.
-- **`dsl-v2/e6-authorization-doc`**, wypchnięta i wystawiona jako PR do `main`, od `ef77603`:
-  `docs/authorization.md` pakietu (opis autoryzacji, o który poprosił użytkownik) i ten handoff. Wymeldowana w worktree `.claude/worktrees/dsl-v2-e6-dispatch-3b16ce`.
-- **`dsl-v2/e6-dispatch` na `origin` ma jeden commit za merge'em** (`35bd1cd`, ten sam dokument), wypchnięty po
-  merge'u PR #12 przez pomyłkę: sprawdzenie stanu PR wypisało „MERGED”, ale nie zatrzymało pusha, bo polecenia
-  były połączone `&&`, a `gh pr view` kończy się zerem niezależnie od stanu. Do `main` nie trafił i nie trafi;
-  jego treść jest na `dsl-v2/e6-authorization-doc`. Gałąź do usunięcia przez użytkownika.
-- Worktree `dsl-v2-e5b-compiler-903cbd` stoi odłączony na `110d5bc`.
-- Inne worktree, wszystkie w całości w `main`: `dsl-v2-e1-model-seam-ed132e` (`38df8bd`),
-  `dsl-v2-e4-contract-core-68fd81` (`5cb888d`), `dsl-v2-e5-codegen-0c8df1` (`86f042f`),
-  `eh-os-contract-step-7-062e77` (`ba1796a`); główny checkout stoi na `main` = `3da83b4`, za `origin/main`.
+- **E7a: `dsl-v2/e7-async`**, odgałęziona od `d54c389`, wypchnięta jako PR: handoff, zapis podziału, osiem
+  commitów E7a (`213b0b4`..`91ae210`), dziewięć poprawek z przeglądu (`ad0f91c`..`5c065f3`) i zapis stanu. Wymeldowana w worktree
+  `.claude/worktrees/dsl-v2-e7-async-runtime-00f4d5`; nowa sesja w innym worktree najpierw
+  `git -C <ten worktree> switch --detach`. E7b pójdzie na gałęzi od E7a.
 - **Przegląd przed PR**: hook w `.claude/settings.json` odmawia `gh pr create`, dopóki `HEAD` nie ma notatki
   `refs/notes/review` (notatki są lokalne). Skill: `.claude/skills/pre-pr-review/`.
 
 ### Co zostało — i czyje to jest
 
-- **PR z `docs/authorization.md` — merge użytkownika** (`dsl-v2/e6-authorization-doc`; przegląd `/code-review
-  low`, bez znalezisk).
-- **Konwencja etykiet w scenariuszach — użytkownika**: propozycja z rozmowy 26 września, żeby wartości w
-  scenariuszach mówiły, czym są („konto-Anny”, „Kraków”), a nie „a-1”, „b-7”; bez odpowiedzi.
-- **E7–E12 i EA — asystenta**, według dopisku Etap 6. EA może ruszyć: behaviour `Authorizer` i ścieżka dispatchu
-  są.
-- **Stare worktree i gałęzie — użytkownika**: `git worktree remove` dla `dsl-v2-e1-model-seam-ed132e`,
-  `dsl-v2-e4-contract-core-68fd81`, `dsl-v2-e5-codegen-0c8df1`, `dsl-v2-e5b-compiler-903cbd`,
-  `eh-os-contract-step-7-062e77`; lokalne gałęzie `claude/dsl-v2-e4-contract-core-68fd81`,
-  `claude/dsl-v2-e5-codegen-0c8df1`, `claude/dsl-v2-e5b-compiler-903cbd`, `claude/dsl-v2-e6-dispatch-3b16ce`,
-  `dsl-v2/e4-contract-core`, `dsl-v2/e5-codegen` i `dsl-v2/e5b-compiler` są w całości w `main`;
-  `dsl-v2/e6-dispatch` (lokalna i na `origin`) poza `35bd1cd`. Główny checkout:
-  `git -C ~/Projects/ai/eh-os-contract pull`.
-- **Lista zmian do `eh-os`** (D-01, D-15, outbox, G-16, transport v1, D-34, D-40, plan etapu 4) — użytkownika;
-  „D10–D12 — skąd się wzięły” i „D14 — autoryzacja” w dopisku Etap 6. **Od E6 także**: logowanie frontendu
-  zwykłej aplikacji nie jest w `eh-os` zaprojektowane (najbliżej G-3); słabe strony z oceny zabezpieczenia
-  („E6 — co wyszło”, początek).
-- **Publikacja na Hex — użytkownika**, decyzja niepodjęta (tagi `v0.2.0`, `v0.2.1`, bez publikacji; wersja w
-  `mix.exs` to od E6 `0.3.0-dev`).
-- **F1, F2 i dziesięć usterek** z dopisku „Dopisek 25 września” — do właścicieli procesów, przez użytkownika;
-  nie blokują E7–E8. F2 ma od E6 konsekwencję w kodzie: korekta przed przekazaniem wizyty nie ma dnia i dispatch
-  jej odmawia (moduledoc kontraktu).
+- **E7b i E7c — asystenta**, według opisu E7 i podziału w dopisku Etap 6. Z E7a zostało: process managery (E7b);
+  `min_position` przy query (v2 §11) i pierwszy przebieg w dev (E7c). Z wcześniejszych etapów przechodzą:
+  - kontrakty v2 w czytelnikach zgodności (raport, graf, `check`), `_event_runs` (D7);
+  - pole `correlate` process managera, które niosą tylko zdarzenia konsumowane, typowane w stanie jako `:id`
+    („E5b — co wyszło”, ustalenie 4);
+  - poprawki ADR z v2 §18 dla E7: §9–10, §15 (process managery sterują), wyzwalacz „jedno zdarzenie w dwóch
+    procesach”; fikstury według tabeli „Losy fikstur” (`ProcessShapes.Promised`, `Timed`, `Bare`, reszta `Rig`,
+    webowy `CaseHandling`).
+- **Konwencja etykiet w scenariuszach — użytkownika**: propozycja z 26 września, żeby wartości w scenariuszach
+  mówiły, czym są („konto-Anny”, „Kraków”), a nie „a-1”, „b-7”; bez odpowiedzi.
+- **EA — asystenta**, może ruszyć równolegle z E7: behaviour `Authorizer` i ścieżka dispatchu są.
+- **Lista zmian do `eh-os`** — użytkownika: D-01, D-15, outbox, G-16, transport v1, D-34, D-40, plan etapu 4
+  („D10–D12 — skąd się wzięły” i „D14 — autoryzacja” w dopisku Etap 6) oraz od E6 logowanie frontendu zwykłej
+  aplikacji, w `eh-os` niezaprojektowane (najbliżej G-3).
+- **Publikacja na Hex — użytkownika**, decyzja niepodjęta (tagi `v0.2.0`, `v0.2.1`; w `mix.exs` od E6
+  `0.3.0-dev`).
+- **F1, F2 i dziesięć usterek** z „Dopisek 25 września” — do właścicieli procesów, przez użytkownika. F2 ma od E6
+  konsekwencję w kodzie: korekta przed przekazaniem wizyty nie ma dnia i dispatch jej odmawia.
 - Zasady trzymają się dalej: **zmiany widoczne dla konsumenta idą do „Unreleased” w `CHANGELOG.md` tym samym
-  commitem**; dwa przebiegi `open_month` w bazie dev zostają punktem odniesienia porównań bajtów.
+  commitem** (E7 zmienia werdykt, więc linia z wersją okablowania); dwa przebiegi `open_month` w bazie dev
+  zostają punktem odniesienia porównań bajtów.
 
 ### Co przeczytać najpierw
 
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach,
    `boundary`, zsh bez dzielenia słów.
-2. `PLAN.md`: „E6 — co wyszło” (rozstrzygnięcia, odbiór, ustalenia), potem opis następnego etapu w dopisku
-   Etap 6 i reguły każdego commita w „Strategia”.
-3. `docs/adr/contract-v2.md`: §11 z notkami z 25 i 26 września (autoryzacja, jak zbudowany dispatch), §12
-   (konsumenci — E7), §10.4–10.5.
-4. Kod E6: `lib/eh_os_contract/dispatcher.ex` (`dispatch/3`, `record/3`, `query/3`), `authorizer.ex`,
-   `actor.ex`, `codec.ex`, `implementations.ex`, `plug.ex`; fikstura `test/support/dispatch_rig/` i testy
-   `test/runtime/`; w sandboxie `lib/rehmed/contracts/visit_settlement.ex` i `lib/rehmed/settlement/`.
-5. Przed PR: `.claude/skills/pre-pr-review/SKILL.md`.
+2. `PLAN.md`, dopisek Etap 6: **opis E7** (zakres i odbiór), reguły każdego commita w „Strategia”, tabele
+   „Losy fikstur” i „Losy testów”; potem „E6 — co wyszło” i „E7a — co wyszło” — E7b stoi na tym kodzie.
+3. `docs/adr/contract-v2.md`: §12 (konsumenci: efekty, uporządkowane subskrypcje, process managery i timery,
+   przebudowa, nadzór), §13 (przebiegi, obietnice i zgodność na nowym logu), §10.3 (tabele `subscriptions`,
+   `process_managers`, `event_runs`), §16 D7, §17 (ryzyka: sandbox Ecto a subskrypcje, trujące zdarzenie).
+4. Kod E6 i E7a: `lib/eh_os_contract/dispatcher.ex`, `consumer.ex`, `subscription.ex` (tu dochodzą process
+   managery), `effect_job.ex`, `implementations.ex`, `store.ex`; notka z 26 września w v2 §12; fikstura
+   `test/support/dispatch_rig/`.
+5. v1, który E7 zastępuje: `lib/eh_os_contract/emitter.ex`, `job.ex`, `handler.ex`; czytelnicy zgodności
+   `run.ex`, `trace.ex`, `conformance.ex`, `report.ex` i fikstury `test/support/process_shapes/`.
+6. `packages/eh_os_contract/docs/authorization.md` — jak działa autoryzacja z E6, jeśli E7 jej dotyka.
+7. Przed PR: `.claude/skills/pre-pr-review/SKILL.md`.
 
 ### Komendy
 
@@ -85,42 +83,43 @@ out=$(mix check 2>&1); rc=$?; echo "$out" | tail -4; echo "EXIT=$rc"
 
 Brama idzie z `sandbox/`; Postgres słucha na **5433**. **W świeżym worktree** najpierw
 `MIX_ENV=test mix deps.get` w `packages/eh_os_contract` i `packages/eh_os_contract_web` oraz `mix deps.get` w
-`sandbox/` (inaczej brama pada na `Unknown dependency :ecto_sql given to :import_deps`). **Od E6 pakiet ma
-opcjonalną zależność `plug`**, więc worktree sprzed E6 potrzebuje `deps.get` w pakiecie jeszcze raz. Do
-oglądania czegokolwiek `MIX_ENV=dev`. Commit wiąż wyłącznie z kodem wyjścia bramy: skrypt, który kończy się jej
-`exit $rc`, dopiero po nim `git commit` (powód: „E4 — co wyszło”, ustalenie 10).
+`sandbox/`. Do oglądania czegokolwiek `MIX_ENV=dev`. Commit wiąż wyłącznie z kodem wyjścia bramy: skrypt, który
+kończy się jej `exit $rc`, dopiero po nim `git commit`.
+
+**Z sesji Claude Code na tej maszynie SSH do GitHuba odmawia** (`Permission denied (publickey)`). Pobieranie i
+push szły przez HTTPS z credentialem `gh`, bez zmiany konfiguracji gita:
+
+```bash
+git -c credential.helper='!gh auth git-credential' fetch https://github.com/EmpoweredHouse/eh-os-contract.git +refs/heads/main:refs/remotes/origin/main
+```
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 26 września**, na głowie `dsl-v2/e6-dispatch` po przeglądzie, brama z `sandbox/` → **EXIT=0**.
-  Sandbox: 47 testów,
-  0 padnięć, `eh_os_contract.check` 0 błędów, 4 ostrzeżenia, 19 informacji (przed E6: 0/5/23 — ubyło dokładnie
-  pięć linii VisitSettlement v1). Silnik: 756 testów, 0 padnięć, `check` 0 / 8 / 16, bez zmian. Web: 31 testów,
-  0 padnięć.
-- **CI**: PR #12 — przebieg `36225757700` na `b8b36d6`, `main` po merge'u — `36227889690` na `ef77603`; oba
-  `success`.
+- **Lokalnie, 26 września**, na `dsl-v2/e7-async` = `5c065f3` (ostatni commit z kodem po przeglądzie), brama z
+  `sandbox/` → **EXIT=0**. Sandbox: 47 testów, 0 padnięć, `eh_os_contract.check` 0 błędów, 4 ostrzeżenia, 19
+  informacji. Silnik: 798 testów, 0 padnięć, `check` 0 / 8 / 16. Web: 31 testów, 0 padnięć.
+- **CI**: `main` po PR #13 — przebieg `36228484648` na `d54c389`, `success` (job `check`). E7a nie był w CI.
 
 ### Otwarte pytania
 
-- **`EhOsContract.Authorizer`**: podwójny zapis przyjętej komendy (pakiet auth i `_commands`) rozstrzyga EA;
-  nazwę uprawnienia dla `record/3` z credentialem — E9.
-- **Po E5b:** `mix eh_os_contract.check` nie powtarza L3 dla projektów bez zarejestrowanego kompilatora — E10, z
-  resztą L5. Pole `correlate` process managera, które niosą tylko zdarzenia konsumowane, `Build` typuje jako
-  `:id` — wrócić w E7 (ustalenie 4 w „E5b — co wyszło”).
+- **Konwencja etykiet w scenariuszach** — użytkownika (wyżej).
+- **`EhOsContract.Authorizer`**: podwójny zapis przyjętej komendy (pakiet auth i `_commands`) rozstrzyga EA; nazwę
+  uprawnienia dla `record/3` z credentialem — E9.
+- **Po E5b:** `mix eh_os_contract.check` nie powtarza L3 dla projektów bez zarejestrowanego kompilatora — E10.
 - **D1–D14** (v2 §16) przyjęte; ponowne otwarcie to notka z datą w §16. Pytania w §19: `scope` dla komend,
   transport v1 między kontenerami, kontrakt upcasterów.
-- **H177** z materiału Rehmedu przeczy DEC-18, na którym stoi `visit_handed_over`; czeka na klienta. E6
-  przeniósł zdarzenie tak, jak stało, z cytatem w moduledocu.
+- **H177** z materiału Rehmedu przeczy DEC-18, na którym stoi `visit_handed_over`; czeka na klienta.
 
 ### Zgoda i stałe uprawnienia
 
 **Ten blok jest do skasowania. Skasowanie go cofa uprawnienie — nie migruje ono samo między sesjami.**
 
-W sesjach E1–E5b użytkownik zgadzał się na: commity bez pytania na gałęziach etapów przy zielonej bramie na
-każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. W sesji E6 (26 września) potwierdził
-to dla E6. **Dla następnego etapu obowiązuje to tylko wtedy, gdy użytkownik potwierdzi zgodę w nowej sesji.**
-Push, PR, merge, tag i publikacja na Hex — tylko na wyraźne polecenie, a przed PR skill `pre-pr-review`. Do
-`~/Projects/ai/empowered-house-context` nie piszemy nigdy.
+W sesjach E1–E7a użytkownik zgadzał się na: commity bez pytania na gałęziach etapów przy zielonej bramie na
+każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. W sesji E7a (26 września) potwierdził
+to dla `dsl-v2/e7-async`. **Dla gałęzi E7b i E7c, i w każdej nowej sesji, obowiązuje to dopiero po ponownym
+potwierdzeniu przez użytkownika.** Push, PR, merge, tag i publikacja na Hex — tylko
+na wyraźne polecenie, a przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie piszemy
+nigdy.
 
 ### Język
 
@@ -319,6 +318,32 @@ wyzwalacz „jedno zdarzenie w dwóch procesach”.
 `report_test`); „jeszcze nie” przechodzi w „nigdy” dopiero po opróżnieniu kolejki; przebudowa daje identyczne
 wiersze; trujące zdarzenie zatrzymuje konsumenta dokładnie na swojej pozycji; dwóch runnerów nie bierze tej
 samej paczki (prawdziwe commity, osobny schemat); odpalony timer uruchomiony dwa razy daje jeden dispatch.
+**E7a zrobione 26 września** na `dsl-v2/e7-async`, osiem commitów, niewypchnięte; jego trzy punkty odbioru
+spełnione — „E7a — co wyszło” niżej. **Podzielony na trzy PR-y** (decyzja użytkownika z 26 września, jak E5a/E5b — żeby diff dało się przeczytać),
+każdy na gałęzi od poprzedniego:
+- **E7a — runtime asynchroniczny** (`dsl-v2/e7-async`): migracja V04; efekty na Obanie; uporządkowane
+  subskrypcje dla read modeli i polityk `:at_least_once`; supervisor; przebudowa read modeli; testy trującego
+  zdarzenia i dwóch runnerów na `CommitRepo`; znalezisko 5 z przeglądu E6. Odbiór: przebudowa daje identyczne
+  wiersze; trujące zdarzenie zatrzymuje konsumenta dokładnie na swojej pozycji; dwóch runnerów nie bierze tej
+  samej paczki.
+- **E7b — process managery i timery**: krok jako jedna transakcja, `TimerJob` i `eh_os_contract.timer_elapsed`,
+  replay bez reakcji, `correlate` z ustalenia 4 E5b. Odbiór: odpalony timer uruchomiony dwa razy daje jeden
+  dispatch.
+- **E7c — zgodność na nowym logu i fikstury**: `_event_runs` z czytelnikami (`Trace`, `Run`), kontrakty v2 w
+  raporcie, grafie i `check`, w toku i padające z nowych źródeł, pokrycie scenariuszy, wersja okablowania z
+  linią w CHANGELOG, `conformance.v2`, fikstury według „Losów fikstur”, webowy `CaseHandling`, poprawki ADR.
+  Odbiór: te same scenariusze dają te same liczby werdyktów; „jeszcze nie” przechodzi w „nigdy” dopiero po
+  opróżnieniu kolejki.
+
+Interfejs widoczny dla hosta, rozstrzygnięty przez użytkownika 26 września przed budową E7a:
+- runnery wyłącza `config :eh_os_contract, subscriptions: :manual` (obok `:repo` i `:applications`), nie opcja
+  dziecka;
+- jeden pomocnik testów, `EhOsContract.Testing.drain/1`: dogania każdą subskrypcję do głowy logu i wykonuje
+  joby efektów (w E7b także timerów), aż nic nie zostanie; `only:` zawęża do nazw konsumentów;
+- jeden task, `mix eh_os_contract.subscriptions`: stan każdej subskrypcji, `--skip NAZWA` za trujące zdarzenie,
+  `--reset NAZWA` przebudowa od zera — biblioteka sama nigdy nie pomija (v2 §12);
+- read model czyści swoje wiersze opcjonalnym callbackiem `reset/0 :: :ok`; bez niego przebudowa odmawia, a
+  subskrypcja zostaje `stale`, widoczna w tasku.
 
 **E8 — Crypto-shredding.** `subject` w domenie, `personal:`/`subject:` na polach, tabele kluczy i usunięć,
 `Vault`, szyfrowanie w `Codec`, `erase/3`, `forget/2`, bramki (v2 §14). Przed TaxVision, bo
@@ -1082,6 +1107,88 @@ testy scenariuszy query, żaden test dispatchu). Poprawka 4 ma test formatu kluc
 Silnik 751 → 756, sandbox 47, web 31; `check` bez zmian (0/4/19, 0/8/16). Poza testami nic nie było puszczane:
 baza dev jest punktem odniesienia porównań bajtów raportu, a v2 czytelnicy logu przychodzą w E7; ścieżkę HTTP
 sprawdza `plug_test` przez `Plug.Test`.
+
+### E7a — co wyszło (26 września)
+
+**Stan.** Na `dsl-v2/e7-async`, lokalnie, niewypchnięte: zapis podziału (`a0828e8`), V04 (`213b0b4`), efekty
+(`fbce133`), subskrypcje z przebudową i `drain/1` (`1e85f09`), supervisor (`279494c`), testy na prawdziwych
+commitach (`b238ff2`), task `subscriptions` (`b9db321`), znalezisko 5 z przeglądu E6 (`c0cdf28`) i ten zapis.
+Brama zielona na każdym commicie z kodem. `a0828e8` to sam `PLAN.md`, zacommitowany bez przebiegu bramy na
+drzewie, które przed chwilą przeszło ją jako `09ced0e`. Od następnego commita szło to już skryptem, który
+commituje dopiero po `exit $rc`. Silnik 756 → 790 testów, sandbox 47, web 31; `check` bez zmian (0/8/16, 0/4/19).
+Notka z datą w v2 §12 opisuje, co zbudowano.
+
+**Odbiór E7a, jak sprawdzony:**
+- *Przebudowa daje identyczne wiersze* — `subscription_test`, „rebuilding”: read model asynchroniczny (linie
+  księgi) po `rebuild` i `drain` ma te same wiersze; read model w transakcji (salda) jest w trakcie pomijany
+  przez dispatch, dogania go runner, wraca do dispatchu. Wstecz: dispatch projektujący przebudowywany read
+  model wywraca test — ale dopiero po dołożeniu otwarcia konta w trakcie przebudowy. Pierwsza wersja testu
+  przechodziła pusto, bo wpłata na wyczyszczonej tabeli to `update_all` na zera wierszy.
+- *Trujące zdarzenie zatrzymuje konsumenta dokładnie na swojej pozycji* — `subscription_test` („a poison
+  event”) i `subscription_commits_test` (każda próba to osobny commit): `failed_position` = pozycja trującego,
+  `position` = poprzednie zastosowane, trzy próby, `failing`; dalsze `drain` go nie ruszają, `skip` pomija tylko
+  jego. Wstecz: bez płotu po porażce padają oba testy trującego zdarzenia.
+- *Dwóch runnerów nie bierze tej samej paczki (prawdziwe commity)* — `subscription_commits_test` na
+  `CommitRepo`: drugi dostaje `:idle`, gdy pierwszy trzyma paczkę; czterech naraz stosuje 39 zdarzeń dokładnie
+  raz. Wstecz: bez `FOR UPDATE SKIP LOCKED` padają oba testy.
+
+**Ustalenia.**
+1. **Nowy konsument uporządkowany zaczyna od pozycji 0**, więc nowa polityka reaguje na historię — z kluczami
+   z każdego zdarzenia, więc drugi raz niczego nie dopisze. Tak startują handlery Commanded. Nowy read model w
+   transakcji zaczyna od głowy logu, bo dispatch projektował go od początku. Read model dodany do logu, który
+   ma już jego zdarzenia, przebudowuje się ręcznie (`--reset`). Mechanika, rozstrzygnięta przeze mnie. Opcja
+   „zacznij od głowy” dla polityki wejdzie, gdy pierwszy host jej potrzebuje.
+2. **Dispatch przesuwa wiersz każdego read modelu w transakcji**: jedno zapytanie i jedna aktualizacja na read
+   model na dispatch, pod blokadą dopisu. Bez pomiaru; to ta sama kategoria co ustalenie 12 z E6.
+3. **Wersja konsumenta to digest deklaracji i zdarzeń, które bierze.** Read model, którego zdarzenie zyskało
+   pole, jest `stale`. Zmiana samego kodu implementacji wersji nie rusza, więc przebudowę po poprawce
+   projekcji robi człowiek. `stale` dalej bierze zdarzenia.
+4. **`drain(only:)` a efekty**: joby są Obana i idą całą kolejką `:events`, więc z `only:` joby ruszają tylko
+   wtedy, gdy `only:` wymienia efekt. To węższe od „`only:` zawęża do nazw konsumentów” w decyzji.
+5. **Oban musi chodzić na repo dispatchu**, inaczej job nie commituje się ze zdarzeniem; dispatch odmawia
+   wstawienia. Klucz konsumenta to `"<kontrakt>:<rodzaj>:<nazwa>"` — nazwa wiersza subskrypcji i argument jobu.
+6. **Powiadomienie po commicie nie jest widziane przez żaden test**: sandbox nigdy nie commituje. Runner w
+   `boot_test` dogania przez poll co sekundę.
+7. **Pytanie z E2 („jak uruchomić dispatcher na drugim repo”)**: test `async: false` przestawia
+   `config :eh_os_contract, :repo` na `CommitRepo` i przywraca w `on_exit`. Do zasymulowania padającej bazy
+   jest `EhOsContract.BrokenRepo` — `TestRepo` z jednym zepsutym `insert!`.
+8. **`EhOsContract.boot/0` zniknął**, dziecko jest supervisorem — linia w CHANGELOG. Sandbox w dev **nie był**
+   uruchamiany: boot zapisałby wiersze wdrożenia i subskrypcji do bazy dev, która jest punktem odniesienia
+   porównań bajtów raportu. Pierwszy przebieg w dev należy do E7c, razem z czytelnikami v2.
+
+**Przegląd przed PR (26 września, `/code-review high origin/main..HEAD`).** Dziesięć znalezisk; dziewięć
+poprawionych, każde osobnym commitem z testem, który na kodzie sprzed poprawki pada jako jedyny:
+1. Konsumenci w transakcji szli zdarzenie po zdarzeniu, więc zagnieżdżony dispatch polityki na pierwszym
+   zdarzeniu projektował swoje zdarzenie przed drugim zdarzeniem komendy — read model widział e1, e3, e2
+   (regresja względem E6). **Poprawione** w `ad0f91c`: najpierw wszystkie read modele, potem polityki, potem
+   efekty. Fikstura dostała `split_deposit` (dwa zdarzenia), a salda projektują też `account_flagged`.
+2. Polityka uporządkowana dispatchuje w transakcji kroku, gdzie konflikt nie jest ponawiany; inny piszący do tego
+   samego strumienia liczył się jako porażka zdarzenia, trzy — `failing`. **Poprawione** w `b8f36aa`: krok
+   polityki bierze blokadę dopisu przed decyzją. Test na `CommitRepo` z nową polityką fikstury
+   `return_small_change` (jej komenda nie uruchamia efektu, więc obywa się bez Obana).
+3. `Implementations.consumer/1` szukał tylko w skonfigurowanych aplikacjach, dispatch także w aplikacji
+   kontraktu — job efektu kontraktu spoza `applications:` był anulowany. **Poprawione** w `973467e`. Zostaje:
+   konsument uporządkowany spoza skonfigurowanych aplikacji nie dostaje wiersza ani runnera, bo boot nie wie,
+   który kontrakt będzie dispatchowany; zapisane w `subscribed/0`.
+4. Powrót przebudowanego read modelu do dispatchu brał blokadę dopisu, trzymając już wiersz, odwrotnie niż
+   `rebuild/2` — zakleszczenie z `--reset`. **Poprawione** w `31fd7b4`: osobna transakcja, najpierw blokada
+   dopisu. Pierwsza wersja testu zależała od kolejności testów (dochodzenie do głowy pętlą kroków zużywało
+   powrót, gdy log nie miał zdarzeń sald) i padła w bramie; pozycja jest teraz ustawiana wprost.
+5. Powiadomienie po każdym dispatchu, także po odmowie i bez konsumentów uporządkowanych — przy notifierze
+   Postgresa to zapytanie. **Poprawione** w `5c33fb1`, test przez telemetrię Obana.
+6. Runner dla każdego read modelu w transakcji odpytuje co sekundę, choć pracuje tylko przy przebudowie —
+   **pominięte**: jedno lekkie zapytanie na sekundę na read model, a przebudowa bez runnera musiałaby mieć
+   osobną ścieżkę startu; wraca, gdy pomiar pokaże koszt, jak ustalenie 12 z E6.
+7. Wiersz read modelu w transakcji przesuwany po każdym zdarzeniu — **poprawione** w `e0cdac8`: raz na dispatch.
+   Ustalenie 2 wyżej jest od tego commita prawdziwe co do liczby aktualizacji.
+8. Job efektu, który przestał brać typ zdarzenia, padał `KeyError` i szedł do `discarded` — **poprawione** w
+   `75b2c8c`: anulowany, jak job usuniętego efektu.
+9. Publiczne `EffectJob.perform/1`, `Runner.init/1`, `handle_info/2` bez `@doc` i `@spec` — **poprawione** w
+   `75b2c8c` i `5c065f3`.
+10. Dispatcher pytał o tabelę subskrypcji po nazwie zamiast przez `SubscriptionRecord` — **poprawione** w
+    `e68d2b0`, bez zmiany zachowania.
+
+Silnik 790 → 798 testów, sandbox 47, web 31; `check` bez zmian (0/8/16, 0/4/19).
 
 ### Losy fikstur
 

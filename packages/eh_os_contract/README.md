@@ -81,6 +81,16 @@ children = [
 ]
 ```
 
+The child is a supervisor: it also starts one runner per consumer a v2 contract feeds
+from the log after the transaction. A test cannot use those runners, because they would
+not see the rows of its sandbox transaction, so in `config/test.exs`:
+
+```elixir
+config :eh_os_contract, subscriptions: :manual
+```
+
+and a test that needs them runs `EhOsContract.Testing.drain/1`.
+
 ## A contract
 
 ```elixir

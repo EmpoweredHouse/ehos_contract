@@ -36,6 +36,11 @@ defmodule DispatchRig.Ledger do
       field :amount, :integer
     end
 
+    command :split_deposit, "Deposit in two parts", by: :clerk, emits: :deposited do
+      field :first, :integer
+      field :second, :integer
+    end
+
     command :misbehave, "Decide what is not declared", by: :clerk, emits: :deposited
 
     command :flag_account, "Flag the account for review", emits: :account_flagged
@@ -62,13 +67,20 @@ defmodule DispatchRig.Ledger do
   end
 
   read_model :balances, "Balances",
-    projects: [:account_opened, :deposited, :withdrawn, :interest_recorded] do
+    projects: [:account_opened, :deposited, :withdrawn, :interest_recorded, :account_flagged] do
     field :account_id, :id
     field :branch_id, :id
     field :balance, :integer
   end
 
   read_model :movements, "Movements", projects: :deposited do
+    field :account_id, :id
+    field :amount, :integer
+  end
+
+  read_model :ledger_lines, "Ledger lines",
+    projects: [:deposited, :withdrawn],
+    delivery: :at_least_once do
     field :account_id, :id
     field :amount, :integer
   end
@@ -89,6 +101,24 @@ defmodule DispatchRig.Ledger do
     issues: :flag_account
 
   policy :echo_deposit, "Repeat a deposit of 777", handles: :deposited, issues: :deposit
+
+  policy :flag_large_withdrawal, "Flag an account on a large withdrawal",
+    handles: :withdrawn,
+    issues: :flag_account,
+    delivery: :at_least_once,
+    idempotency: :event_id
+
+  policy :return_small_change, "Return one after a withdrawal of three",
+    handles: :withdrawn,
+    issues: :deposit,
+    delivery: :at_least_once,
+    idempotency: :event_id
+
+  effect :notify_branch, "Tell the branch an account was flagged",
+    handles: :account_flagged,
+    idempotency: :event_id
+
+  effect :audit_withdrawal, "Audit a withdrawal", handles: :withdrawn, delivery: :in_transaction
 
   process :ledger, "Ledger" do
     correlate :account_id

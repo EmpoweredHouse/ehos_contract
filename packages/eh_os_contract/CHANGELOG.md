@@ -42,6 +42,9 @@ What changes otherwise is what a host has to do.
   - streams, tags, `schema_version`, `command_id`, `metadata` and `recorded_at` are added;
   - `actor` becomes NOT NULL, and rows without one get the system actor;
   - the `eh_os_contract_commands` table is created.
+- **And a second one, from E7**: `EhOsContract.Migrations.up(version: 4)` and `down(version: 4)`. V04 creates
+  the tables of the consumers that run outside the dispatch transaction — `eh_os_contract_subscriptions`,
+  `eh_os_contract_process_managers` and `eh_os_contract_event_runs` — and changes no existing table.
 - **The log is append-only.** Triggers refuse UPDATE, DELETE and TRUNCATE on `eh_os_contract_events`. A test
   that moved `occurred_at` afterwards has to emit in the past instead, with `EhOsContract.Clock.at/2`. A test
   database that leaked rows is recovered with `ecto.drop`.
@@ -50,8 +53,27 @@ What changes otherwise is what a host has to do.
   and then emits can deadlock with an emission whose handler locks the same row. Take
   `EhOsContract.Store.Postgres.lock/1` first (`EhOsContract.Store`'s moduledoc).
 - **A new dependency: `spark ~> 2.7.3`.**
+- **E7a: the `EhOsContract` child is a supervisor.** Besides scanning the registry and recording the
+  deployment, it registers every subscription, rebuilds the stale read models that define `reset/0`, and
+  starts one runner per subscription; dispatch wakes them through Oban's notifier after each commit it owns.
+  **A host's tests set `config :eh_os_contract, subscriptions: :manual`**, which skips registration and
+  runners, and drain with `EhOsContract.Testing.drain/1`. `EhOsContract.boot/0` is gone.
 
 ### Added
+
+- **E7a: effects run.** An effect delivered `:at_least_once` is an `EhOsContract.EffectJob` in Oban's
+  `:events` queue, inserted in the dispatch transaction and holding only the effect's key and the event's id;
+  the job reads the event from the log. An effect delivered `:in_transaction` acts before the dispatch commits,
+  and its `{:error, reason}` rolls the append back. Until E6 both were skipped without a word. Oban has to run
+  on the repo dispatch appends through, and dispatch refuses to insert a job otherwise.
+- **E7a: ordered subscriptions.** A read model or a policy delivered `:at_least_once` is fed from the log after
+  the transaction, in order, by `EhOsContract.Subscription`, one row each in `eh_os_contract_subscriptions`. An
+  event it cannot apply is retried three times and then stops it at that position, `failing`, until a person
+  skips it; a read model whose declaration changed is `stale` until it is rebuilt. A read model's
+  implementation may define `reset/0` to empty its rows, and only then can it be rebuilt; an inline one is left
+  to the runner while it is. `EhOsContract.Testing.drain/1` runs all of it inside a test's transaction.
+- **E7a: `mix eh_os_contract.subscriptions`** lists where each subscription stands; `--skip KEY` moves a
+  failing one past the event it fails on, `--reset KEY` empties a read model and replays the log into it.
 
 - `EhOsContract.Model`: a contract as plain data, and the accessors every reader now uses. A module that is
   not a contract is refused by name.

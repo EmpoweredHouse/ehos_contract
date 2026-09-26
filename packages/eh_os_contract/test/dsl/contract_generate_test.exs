@@ -218,7 +218,20 @@ defmodule EhOsContract.Next.ContractGenerateTest do
       assert callbacks([Policies, Remind]) == [rebooked: 1]
       assert callbacks([Effects, Notify]) == [payment_recorded: 1, visit_closed: 1]
       assert callbacks([ProcessManagers, Chase]) == [evolve: 2, later: 1, visit_booked: 2]
-      assert callbacks([ReadModels, Payments]) == [payment_recorded: 1]
+      assert callbacks([ReadModels, Payments]) == [payment_recorded: 1, reset: 0]
+    end
+
+    test "a read model's reset/0 is optional, and it is the only optional callback anywhere" do
+      assert generated([ReadModels, Payments]).behaviour_info(:optional_callbacks) == [reset: 0]
+
+      for module <- [
+            [Aggregates, Visit],
+            [Policies, Remind],
+            [Effects, Notify],
+            [ProcessManagers, Chase]
+          ] do
+        assert generated(module).behaviour_info(:optional_callbacks) == []
+      end
     end
 
     test "a query's callback sits with its parameters" do

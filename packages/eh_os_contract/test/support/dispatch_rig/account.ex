@@ -39,6 +39,14 @@ defmodule DispatchRig.Account do
   end
 
   @impl true
+  def split_deposit(%SplitDeposit{account_id: id, first: first, second: second}, _state),
+    do:
+      emit([
+        %Deposited{account_id: id, amount: first},
+        %Deposited{account_id: id, amount: second}
+      ])
+
+  @impl true
   def misbehave(%Misbehave{account_id: id}, _state),
     do: {:ok, [%Withdrawn{account_id: id, amount: 1}]}
 

@@ -56,6 +56,11 @@ defmodule EhOsContract do
       Store,
       Store.Postgres,
       Store.Suite,
+      Subscription,
+      Subscription.Runner,
+      SubscriptionRecord,
+      Testing,
+      EffectJob,
       Trace
     ]
 
@@ -89,31 +94,33 @@ defmodule EhOsContract do
         MyAppWeb.Endpoint
       ]
 
-  Two things have to happen at boot, in this order, and a host used to call both by
-  hand: `EhOsContract.Registry.load!/1` scans the running binary for contracts and
-  handlers, and `EhOsContract.Deployment.record!/1` writes what that binary declared
-  and since when. Forgetting the first leaves an empty graph; forgetting the second
-  leaves the report unable to tell history from drift. As a child the pair cannot
-  be half-remembered, and its position in the list states the dependency on the
-  repo that a comment used to.
+  The child is a supervisor. While it starts it does, in this order:
 
-  The child does its work while the supervisor starts and then returns `:ignore` —
-  there is no process to keep alive. If either step raises, the host fails to boot,
-  which is the point: a host running with an unscanned registry reports nothing and
-  looks healthy.
+  1. `EhOsContract.Registry.load!/1` scans the running binary for contracts and
+     handlers, and `EhOsContract.Deployment.record!/1` writes what that binary
+     declared and since when. Forgetting the first leaves an empty graph;
+     forgetting the second leaves the report unable to tell history from drift.
+  2. `EhOsContract.Subscription.register!/2` writes a row for every consumer fed from
+     the log, marks the read models whose declaration changed `stale`, and rebuilds
+     those that define `reset/0` (v2 §12).
+  3. It starts one `EhOsContract.Subscription.Runner` per subscription.
+
+  **`config :eh_os_contract, subscriptions: :manual`** skips the last two steps:
+  nothing is registered and no runner starts. Tests use it, and push the work through
+  with `EhOsContract.Testing.drain/1` inside their sandbox transaction, where a
+  runner could not see their rows.
+
+  If any step raises, the host fails to boot, which is the point: a host running with
+  an unscanned registry reports nothing and looks healthy.
   """
   @spec child_spec(term()) :: Supervisor.child_spec()
-  def child_spec(_opts) do
-    %{id: __MODULE__, start: {__MODULE__, :boot, []}, restart: :temporary}
+  def child_spec(opts) do
+    %{id: __MODULE__, start: {__MODULE__, :start_link, [opts]}, type: :supervisor}
   end
 
-  @doc false
-  @spec boot() :: :ignore
-  def boot do
-    EhOsContract.Registry.load!()
-    EhOsContract.Deployment.record!()
-    :ignore
-  end
+  @doc "Starts the engine's supervisor (`child_spec/1`)."
+  @spec start_link(term()) :: Supervisor.on_start()
+  def start_link(_opts \\ []), do: Supervisor.start_link(__MODULE__.Supervisor, [])
 
   @doc "An intention to emit an event, returned by a pure decision function."
   @spec event(atom(), map()) :: EhOsContract.Emission.t()

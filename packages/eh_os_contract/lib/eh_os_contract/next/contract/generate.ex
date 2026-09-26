@@ -176,6 +176,22 @@ defmodule EhOsContract.Next.Contract.Generate do
     quote do
       @moduledoc unquote(doc)
       unquote(callbacks(model, kind, name))
+      unquote(if kind == :read_model, do: reset())
+    end
+  end
+
+  # A read model writes the host's tables, which the library does not know, so only
+  # the implementation can empty them before a rebuild (v2 §12; the user's choice of
+  # 26 September 2026). Optional: a read model without it is never rebuilt.
+  defp reset do
+    quote do
+      @doc """
+      Deletes every row this read model wrote, before it is rebuilt from the log.
+      Optional: without it the read model cannot be rebuilt, and a changed declaration
+      leaves its subscription `stale`.
+      """
+      @callback reset() :: :ok
+      @optional_callbacks reset: 0
     end
   end
 

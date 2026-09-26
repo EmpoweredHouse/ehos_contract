@@ -11,7 +11,11 @@ defmodule EhOsContract.DispatchInlineTest do
   alias DispatchRig.Ledger.Commands.{Deposit, OpenAccount}
   alias EhOsContract.{Actor, CommandRecord, Event}
 
-  @clerk Actor.credential("u-1", ["dispatch_rig.open_account", "dispatch_rig.deposit"])
+  @clerk Actor.credential("u-1", [
+           "dispatch_rig.open_account",
+           "dispatch_rig.deposit",
+           "dispatch_rig.split_deposit"
+         ])
 
   defp log, do: Repo.all(from(e in Event, order_by: e.position))
   defp rows, do: Repo.all(from(c in CommandRecord, order_by: c.recorded_at))
@@ -40,6 +44,23 @@ defmodule EhOsContract.DispatchInlineTest do
       assert movements() == [40, 2]
     end
 
+    test "project every appended event before any policy reacts to one of them" do
+      alias DispatchRig.Ledger.Commands.SplitDeposit
+
+      # 1000 sets the flagging policy off; its nested dispatch appends a flag after
+      # both deposits, and balances project it last, as the log orders it.
+      {:ok, _} = dispatch(%SplitDeposit{account_id: "a-1", first: 1000, second: 5})
+
+      [flag] = Repo.all(from(e in Event, where: e.type == "ledger.account_flagged"))
+
+      assert Repo.one(
+               from(b in "dispatch_rig_balances",
+                 where: b.account_id == "a-1",
+                 select: {b.balance, b.last_position}
+               )
+             ) == {1005, flag.position}
+    end
+
     test "an exception in one rolls the append back, and every other projection with it" do
       assert_raise RuntimeError, ~r/fails on 13/, fn ->
         dispatch(%Deposit{account_id: "a-1", amount: 13})
@@ -49,6 +70,18 @@ defmodule EhOsContract.DispatchInlineTest do
       assert balance("a-1") == 0
       assert movements() == []
       assert %{outcome: "failed", failed_in: "read_model:movements"} = List.last(rows())
+    end
+
+    @tag :capture_log
+    test "when the failed row cannot be written either, the caller still gets the first exception" do
+      Application.put_env(:eh_os_contract, :repo, EhOsContract.BrokenRepo)
+      on_exit(fn -> Application.put_env(:eh_os_contract, :repo, EhOsContract.TestRepo) end)
+
+      assert_raise RuntimeError, ~r/fails on 13/, fn ->
+        dispatch(%Deposit{account_id: "a-1", amount: 13})
+      end
+
+      assert Enum.map(log(), & &1.type) == ["ledger.account_opened"]
     end
 
     test "control: the amount next to it is appended and projected" do
