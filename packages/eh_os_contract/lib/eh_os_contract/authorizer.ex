@@ -149,6 +149,9 @@ defmodule EhOsContract.Authorizer.Default do
 
   @behaviour EhOsContract.Authorizer
 
+  @doc "`EhOsContract.Authorizer.check/2`, and nothing else."
   @impl true
+  @spec authorize(EhOsContract.Actor.t(), EhOsContract.Authorizer.Request.t()) ::
+          :ok | {:error, EhOsContract.Authorizer.reason()}
   def authorize(actor, request), do: EhOsContract.Authorizer.check(actor, request)
 end

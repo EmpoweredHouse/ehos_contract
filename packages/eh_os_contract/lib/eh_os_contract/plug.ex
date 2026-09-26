@@ -43,13 +43,17 @@ if Code.ensure_loaded?(Plug.Conn) do
 
     alias EhOsContract.{Actor, Codec, Model, Receipt, Rejection}
 
+    @doc "Takes `contracts:`, the v2 contracts whose commands and queries it serves."
     @impl true
+    @spec init(keyword()) :: %{contracts: [module()]}
     def init(opts) do
       contracts = Keyword.fetch!(opts, :contracts)
       %{contracts: List.wrap(contracts)}
     end
 
+    @doc "Serves one request, or answers 404 for a path it does not route."
     @impl true
+    @spec call(Plug.Conn.t(), %{contracts: [module()]}) :: Plug.Conn.t()
     def call(conn, %{contracts: contracts}) do
       case {conn.method, conn.path_info} do
         {"POST", ["commands", capability]} -> serve(conn, contracts, :command, capability)

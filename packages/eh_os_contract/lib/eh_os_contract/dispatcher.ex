@@ -187,11 +187,8 @@ defmodule EhOsContract.Dispatcher do
     })
   end
 
-  defp permit(model, declaration, %Actor{kind: :system, name: name}) do
-    if name in declaration.by and system_actor?(model, name),
-      do: :ok,
-      else: {:error, :not_declared}
-  end
+  defp permit(model, declaration, %Actor{kind: :system, name: name}),
+    do: named(model, declaration.by, name)
 
   defp permit(model, declaration, %Actor{kind: :reaction, name: {:policy, name}}) do
     policy = Enum.find(model.policies, &(&1.name == name))
@@ -207,11 +204,8 @@ defmodule EhOsContract.Dispatcher do
   defp permit_record(_model, _declaration, %Actor{kind: :credential}),
     do: {:error, :not_grantable}
 
-  defp permit_record(model, declaration, %Actor{kind: :system, name: name}) do
-    if name in declaration.recorded_by and system_actor?(model, name),
-      do: :ok,
-      else: {:error, :not_declared}
-  end
+  defp permit_record(model, declaration, %Actor{kind: :system, name: name}),
+    do: named(model, declaration.recorded_by, name)
 
   defp permit_record(_model, _declaration, %Actor{kind: :reaction}), do: {:error, :not_declared}
   defp permit_record(model, declaration, actor), do: permit(model, declaration, actor)
@@ -226,11 +220,8 @@ defmodule EhOsContract.Dispatcher do
     })
   end
 
-  defp permit_query(model, declaration, %Actor{kind: :system, name: name}, _scope) do
-    if name in declaration.by and system_actor?(model, name),
-      do: :ok,
-      else: {:error, :not_declared}
-  end
+  defp permit_query(model, declaration, %Actor{kind: :system, name: name}, _scope),
+    do: named(model, declaration.by, name)
 
   defp permit_query(_model, _declaration, %Actor{kind: :reaction}, _scope),
     do: {:error, :not_declared}
@@ -291,6 +282,13 @@ defmodule EhOsContract.Dispatcher do
     end
 
     answer
+  end
+
+  # The application's own code acting as a :system actor of the domain: allowed where
+  # the declaration names it, and only if the domain declares it :system, so a
+  # person's actor cannot be passed off as code.
+  defp named(model, names, name) do
+    if name in names and system_actor?(model, name), do: :ok, else: {:error, :not_declared}
   end
 
   defp system_actor?(model, name) do
