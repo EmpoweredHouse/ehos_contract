@@ -35,16 +35,22 @@ defmodule EhOsContract.Web.Live.GraphTest do
     assert html =~ "Declared versus observed, this process"
   end
 
-  test "a v1 process keeps its declared shape and the overlay of every contract" do
+  test "two processes of one name in two contracts are each reachable, a v1 one with its own panels" do
+    # The v2 fixture and its v1 original both name their process `handling`.
     {:ok, view, _html} =
       build_conn()
       |> Access.put_actor("admin", ["eh_os_contract_admin"])
       |> live("/dashboard/graph")
 
-    html = render_change(view, "select_process", %{"process" => "v1_handling"})
+    v1 = "#{inspect(EhOsContract.Web.TestHost.Fixtures.V1.CaseHandling)}:handling"
+    html = render_change(view, "select_process", %{"process" => v1})
 
     assert html =~ "flowchart TB"
     assert html =~ "Declared versus observed, every contract"
+
+    v2 = "#{inspect(EhOsContract.Web.TestHost.Fixtures.CaseHandling)}:handling"
+    html = render_change(view, "select_process", %{"process" => v2})
+    assert html =~ "Declared versus observed, this process"
   end
 
   test "no process declared anywhere says so, and draws only the overlay diagram" do
@@ -72,13 +78,13 @@ defmodule EhOsContract.Web.Live.GraphTest do
           %{contract: nil, name: :handling, label: "Case handling"},
           %{contract: nil, name: :billing, label: "Billing"}
         ],
-        selected: :billing,
+        selected: "nil:billing",
         declared_mermaid: "flowchart TB",
         overlay_mermaid: "flowchart LR"
       })
 
-    assert html =~ ~s(value="billing" selected>)
-    refute html =~ ~s(value="handling" selected>)
+    assert html =~ ~s(value="nil:billing" selected>)
+    refute html =~ ~s(value="nil:handling" selected>)
     assert html =~ "Access: read only"
   end
 end

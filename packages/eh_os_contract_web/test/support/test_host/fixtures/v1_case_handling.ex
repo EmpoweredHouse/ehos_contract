@@ -13,23 +13,23 @@ defmodule EhOsContract.Web.TestHost.Fixtures.V1.CaseHandling do
 
   use EhOsContract.Contract
 
-  event :case_opened, label: "Case opened", payload: %{case_id: :id}, process: :v1_handling
-  event :case_approved, label: "Case approved", payload: %{case_id: :id}, process: :v1_handling
-  event :case_rejected, label: "Case rejected", payload: %{case_id: :id}, process: :v1_handling
+  event :case_opened, label: "Case opened", payload: %{case_id: :id}, process: :handling
+  event :case_approved, label: "Case approved", payload: %{case_id: :id}, process: :handling
+  event :case_rejected, label: "Case rejected", payload: %{case_id: :id}, process: :handling
 
   event :case_closed,
     label: "Case closed",
     payload: %{case_id: :id},
-    process: :v1_handling,
+    process: :handling,
     terminal: true
 
   event :case_closed_as_rejected,
     label: "Case closed as rejected",
     payload: %{case_id: :id},
-    process: :v1_handling,
+    process: :handling,
     terminal: true
 
-  process :v1_handling, label: "Case handling (v1)", instance: [:case_id]
+  process :handling, label: "Case handling (v1)", instance: [:case_id]
 
   trace :closes_promptly do
     from :case_opened

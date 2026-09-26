@@ -59,8 +59,8 @@ defmodule EhOsContract.Web.Live.Graph do
   end
 
   @impl true
-  def handle_event("select_process", %{"process" => name}, socket) do
-    process = Enum.find(socket.assigns.processes, &(to_string(&1.name) == name))
+  def handle_event("select_process", %{"process" => key}, socket) do
+    process = Enum.find(socket.assigns.processes, &(key(&1) == key))
     {:noreply, select_process(socket, process)}
   end
 
@@ -76,7 +76,7 @@ defmodule EhOsContract.Web.Live.Graph do
 
   defp select_process(socket, %{v2: true} = process) do
     assign(socket,
-      selected: process.name,
+      selected: key(process),
       declared_mermaid: EhOsContract.Graph.steps_to_mermaid(process.contract),
       overlay_mermaid: EhOsContract.Graph.steps_to_mermaid(process.contract, overlay: true),
       overlay_heading: "Declared versus observed, this process"
@@ -87,7 +87,7 @@ defmodule EhOsContract.Web.Live.Graph do
     mermaid = EhOsContract.Graph.declared_to_mermaid(process.contract, process.name)
 
     assign(socket,
-      selected: process.name,
+      selected: key(process),
       declared_mermaid: mermaid,
       overlay_mermaid: socket.assigns.every_contract,
       overlay_heading: nil
@@ -108,8 +108,8 @@ defmodule EhOsContract.Web.Live.Graph do
           <select name="process">
             <option
               :for={process <- @processes}
-              value={to_string(process.name)}
-              selected={process.name == @selected}
+              value={key(process)}
+              selected={key(process) == @selected}
             >
               {process.label}
             </option>
@@ -139,6 +139,11 @@ defmodule EhOsContract.Web.Live.Graph do
     </div>
     """
   end
+
+  # A process by its contract and its name: two contracts may name their processes
+  # alike — a v2 port beside its v1 original — and each has to be reachable.
+  @spec key(map()) :: String.t()
+  defp key(process), do: "#{inspect(process.contract)}:#{process.name}"
 
   @spec access_label(:all | :read_only) :: String.t()
   defp access_label(:all), do: "all"
