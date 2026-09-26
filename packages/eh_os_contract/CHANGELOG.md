@@ -139,6 +139,11 @@ one. What changes is what a host has to do.
   `eh_os_contract_commands` (`EhOsContract.CommandRecord`): accepted, rejected with its invariant, or failed
   with where and the exception's module; a refusal writes nothing. An accepted idempotency key returns the
   first receipt, `duplicate: true`.
+- Read models and policies delivered `:in_transaction` run inside the dispatch transaction: read models project
+  the appended events, then policies react, and what a policy issues is dispatched in the same transaction as
+  the policy's own actor, with the event as its cause and a key derived from it. An exception in any of them
+  rolls the whole dispatch back; a policy caught in a cycle raises. A declaration delivered in the transaction
+  with no implementation stops dispatch rather than being skipped.
 - `EhOsContract.Meta` carries an event's `id` and `position` when it is read back from the log.
 - `EhOsContract.Store.lock/1` on the configured implementation.
 

@@ -35,8 +35,31 @@ defmodule EhOsContract.Implementations do
     end
   end
 
+  @typedoc "A read model or a policy that runs inside the dispatch transaction."
+  @type inline :: %{
+          kind: :read_model | :policy,
+          contract: module(),
+          name: atom(),
+          callback: atom(),
+          module: module() | nil
+        }
+
+  @doc """
+  The read models and policies delivered `:in_transaction` that take events of
+  `type`, in any v2 contract of the host's applications: read models first, then
+  policies, each in the order of their modules' names, so the order never depends
+  on a scan. `callback` is the event's name in the consumer's contract, which
+  differs from the publisher's when `as:` renames it. `module` is `nil` for a
+  declaration nobody implemented, and dispatch refuses to go on without it.
+  """
+  @spec inline(module(), String.t()) :: [inline()]
+  def inline(contract, type), do: Map.get(index(contract).inline, type, [])
+
   @doc false
-  @spec index(module()) :: %{declarations: %{{module(), atom(), atom()} => [module()]}}
+  @spec index(module()) :: %{
+          declarations: %{{module(), atom(), atom()} => [module()]},
+          inline: %{String.t() => [inline()]}
+        }
   def index(contract) do
     apps =
       Enum.uniq(
@@ -58,16 +81,74 @@ defmodule EhOsContract.Implementations do
   end
 
   defp build(apps) do
-    declarations =
+    modules =
       for app <- apps,
           module <- Application.spec(app, :modules) || [],
           Code.ensure_loaded?(module),
+          do: module
+
+    declarations =
+      for module <- modules,
           function_exported?(module, :__eh_os_implementation__, 0),
           %{contract: contract, kind: kind, name: name} = module.__eh_os_implementation__(),
           reduce: %{} do
         acc -> Map.update(acc, {contract, kind, name}, [module], &Enum.sort([module | &1]))
       end
 
-    %{declarations: declarations}
+    contracts =
+      for module <- modules,
+          function_exported?(module, :__eh_os_contract_model__, 0),
+          match?(%{kind: :contract, units: _}, module.__eh_os_contract_model__()),
+          do: module.__eh_os_contract_model__()
+
+    inline =
+      contracts
+      |> Enum.flat_map(&consumers(&1, declarations))
+      |> Enum.sort_by(fn {_type, c} -> {c.kind != :read_model, inspect(c.module), c.name} end)
+      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+
+    %{declarations: declarations, inline: inline}
+  end
+
+  defp consumers(model, declarations) do
+    read_models = for r <- model.read_models, do: {:read_model, r, r.projects}
+    policies = for p <- model.policies, do: {:policy, p, p.handles}
+
+    for {kind, declaration, events} <- read_models ++ policies,
+        declaration.delivery == :in_transaction,
+        event <- events do
+      module =
+        case Map.get(declarations, {model.module, kind, declaration.name}) do
+          [module] -> module
+          _none_or_many -> nil
+        end
+
+      {type(model, event),
+       %{
+         kind: kind,
+         contract: model.module,
+         name: declaration.name,
+         callback: event,
+         module: module
+       }}
+    end
+  end
+
+  # The stored type of an event as a contract names it: its own, or a sibling's.
+  defp type(model, event) do
+    case Enum.find(model.events, &(&1.name == event)) do
+      %{type: type} ->
+        type
+
+      nil ->
+        case EhOsContract.Model.consumed(model, event) do
+          {:contract, from, original} ->
+            Enum.find(EhOsContract.Model.fetch(from).events, &(&1.name == original)).type
+
+          # Received from another application: into an inbox, never this log (D12).
+          _published ->
+            nil
+        end
+    end
   end
 end

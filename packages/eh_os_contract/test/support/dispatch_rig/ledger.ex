@@ -4,7 +4,10 @@ defmodule DispatchRig.Ledger do
 
   One account per stream. `withdraw` is refused below zero, and `misbehave` is a
   command whose implementation returns an event the command does not emit, which
-  the compiler cannot see and dispatch has to stop.
+  the compiler cannot see and dispatch has to stop. Two read models and a policy
+  run inside the dispatch transaction; one policy flags an account on a deposit of
+  1000 or more, through a command no actor may issue, and the other repeats a
+  deposit of 777, a cycle for dispatch's guard to stop.
   """
 
   use EhOsContract.Next.Contract, domain: DispatchRig.Domain, context: :ledger
@@ -35,6 +38,8 @@ defmodule DispatchRig.Ledger do
 
     command :misbehave, "Decide what is not declared", by: :clerk, emits: :deposited
 
+    command :flag_account, "Flag the account for review", emits: :account_flagged
+
     event :account_opened, "Account opened" do
       field :branch_id, :id
     end
@@ -46,7 +51,26 @@ defmodule DispatchRig.Ledger do
     event :withdrawn, "Withdrawn" do
       field :amount, :integer
     end
+
+    event :account_flagged, "Account flagged for review"
   end
+
+  read_model :balances, "Balances", projects: [:account_opened, :deposited, :withdrawn] do
+    field :account_id, :id
+    field :branch_id, :id
+    field :balance, :integer
+  end
+
+  read_model :movements, "Movements", projects: :deposited do
+    field :account_id, :id
+    field :amount, :integer
+  end
+
+  policy :flag_large_deposit, "Flag an account on a large deposit",
+    handles: :deposited,
+    issues: :flag_account
+
+  policy :echo_deposit, "Repeat a deposit of 777", handles: :deposited, issues: :deposit
 
   process :ledger, "Ledger" do
     correlate :account_id

@@ -29,6 +29,10 @@ defmodule DispatchRig.Account do
   end
 
   @impl true
+  def flag_account(%FlagAccount{account_id: id}, _state),
+    do: emit(%AccountFlagged{account_id: id})
+
+  @impl true
   def misbehave(%Misbehave{account_id: id}, _state),
     do: {:ok, [%Withdrawn{account_id: id, amount: 1}]}
 

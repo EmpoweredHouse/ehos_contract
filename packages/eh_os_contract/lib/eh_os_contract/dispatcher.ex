@@ -29,6 +29,14 @@ defmodule EhOsContract.Dispatcher do
      nothing is appended.
   6. **Append**, under the stream's version as it was read, and write the
      `accepted` row. A rejection writes a `rejected` row and appends nothing.
+  7. **Inside the transaction** (v2 §12): every read model delivered
+     `:in_transaction` projects the appended events, in order, and then every such
+     policy reacts. What a policy issues is dispatched at once, in the same
+     transaction, as the policy's own actor, with the event as its cause and a key
+     derived from it, `"policy:<name>:<event id>:<index>"`. A rejection of it is the
+     unit's answer and leaves the first command standing; anything else it raises
+     rolls everything back. A policy reacting to the kind of event it already reacted
+     to down one chain is a cycle, and raises.
 
   **Conflicts.** When the stream moved between reading and appending, dispatch rolls
   back, reads again, decides again, up to three times, with jitter — but only when
@@ -246,13 +254,120 @@ defmodule EhOsContract.Dispatcher do
             last_position: appended |> List.last() |> position()
           })
 
-          {:ok, receipt(command_id, Enum.zip(Enum.map(events, &elem(&1, 1)), appended), false)}
+          receipt = receipt(command_id, Enum.zip(Enum.map(events, &elem(&1, 1)), appended), false)
+          inline!(job, Enum.zip(receipt.events, appended), repo)
+          {:ok, receipt}
       end
     end
   end
 
   defp position(nil), do: nil
   defp position(%Event{position: position}), do: position
+
+  # --- inside the transaction ------------------------------------------------------------
+
+  # Every read model delivered in the transaction projects the appended events, in
+  # order; then every such policy reacts, and what it issues is dispatched here, in
+  # the same transaction, as the policy's own actor.
+  defp inline!(job, pairs, repo) do
+    consumers =
+      for {event, row} <- pairs,
+          consumer <- Implementations.inline(job.model.module, row.type),
+          do: {consumer, event}
+
+    {projections, policies} = Enum.split_with(consumers, &(elem(&1, 0).kind == :read_model))
+
+    for {consumer, event} <- projections do
+      module = implemented!(consumer)
+
+      stage("read_model:#{consumer.name}", fn ->
+        case apply(module, consumer.callback, [event]) do
+          :ok ->
+            :ok
+
+          other ->
+            raise ArgumentError,
+                  "read model #{inspect(consumer.name)} returned #{inspect(other)} for " <>
+                    "#{inspect(consumer.callback)}; a projection returns :ok"
+        end
+      end)
+    end
+
+    Enum.each(policies, fn {consumer, event} -> react!(job, consumer, event, repo) end)
+  end
+
+  defp react!(job, consumer, event, _repo) do
+    module = implemented!(consumer)
+    model = Model.fetch(consumer.contract)
+    policy = Enum.find(model.policies, &(&1.name == consumer.name))
+    link = {consumer.contract, consumer.name, event.__struct__}
+    chain = job.ctx.chain
+
+    # The cycle guard v1's emitter had: a policy that reacts, down one chain, to the
+    # kind of event it has already reacted to would dispatch for ever.
+    if link in chain or length(chain) >= 32 do
+      raise ArgumentError,
+            "policy #{inspect(consumer.name)} of #{inspect(consumer.contract)} reacts to " <>
+              "#{inspect(event.__struct__)} again down one chain of dispatches, which would " <>
+              "never end: #{inspect(Enum.reverse([link | chain]))}"
+    end
+
+    issued =
+      stage("policy:#{consumer.name}", fn ->
+        case apply(module, consumer.callback, [event]) do
+          {:ok, commands} when is_list(commands) ->
+            commands
+
+          other ->
+            raise ArgumentError,
+                  "policy #{inspect(consumer.name)} returned #{inspect(other)}; it returns {:ok, commands}"
+        end
+      end)
+
+    allowed = MapSet.new(policy.issues, &Model.module_for(model, :command, &1))
+
+    for {command, index} <- Enum.with_index(issued) do
+      unless is_struct(command) and MapSet.member?(allowed, command.__struct__) do
+        raise ArgumentError,
+              "policy #{inspect(consumer.name)} issued #{describe(command)}, which is not among " <>
+                "the commands it issues: #{inspect(policy.issues)}"
+      end
+
+      opts = [
+        actor: Actor.reaction(:policy, consumer.name),
+        causation_id: event.__meta__.id,
+        correlation_id: event.__meta__.correlation_id,
+        idempotency_key: "policy:#{consumer.name}:#{event.__meta__.id}:#{index}",
+        chain: [link | chain]
+      ]
+
+      case dispatch(consumer.contract, command, opts) do
+        {:ok, _receipt} ->
+          :ok
+
+        # A rejection is the unit's answer, and its row is written: the policy asked
+        # and was told no. The command that set it off still stands.
+        {:error, %Rejection{}} ->
+          :ok
+
+        # Not a conflict: the append lock is held from this transaction's first
+        # append, so no stream can move under a nested dispatch.
+        {:error, reason} ->
+          raise ArgumentError,
+                "policy #{inspect(consumer.name)} issued #{describe(command)}, and dispatch " <>
+                  "refused it: #{inspect(reason)}"
+      end
+    end
+  end
+
+  defp implemented!(%{module: nil} = consumer) do
+    raise ArgumentError,
+          "#{consumer.kind} #{inspect(consumer.name)} of #{inspect(consumer.contract)} runs in " <>
+            "the dispatch transaction and no module implements it; bind one with " <>
+            "`use #{inspect(consumer.contract)}, #{consumer.kind}: #{inspect(consumer.name)}`"
+  end
+
+  defp implemented!(%{module: module}), do: module
 
   # --- once ------------------------------------------------------------------------------
 
@@ -472,7 +587,8 @@ defmodule EhOsContract.Dispatcher do
       idempotency_key: Map.get(opts, :idempotency_key),
       correlation_id: Map.get(opts, :correlation_id) || Ecto.UUID.generate(),
       causation_id: Map.get(opts, :causation_id),
-      now: Clock.now()
+      now: Clock.now(),
+      chain: Map.get(opts, :chain, [])
     }
   end
 
