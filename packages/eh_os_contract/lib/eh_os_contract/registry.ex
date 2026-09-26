@@ -46,7 +46,11 @@ defmodule EhOsContract.Registry do
   the graph comes from the binary that actually runs, in full — is unchanged
   unless a deployer opts into narrowing it.
   """
-  @spec load!(atom() | [atom()] | nil) :: %{handlers: [handler()], contracts: [module()]}
+  @spec load!(atom() | [atom()] | nil) :: %{
+          handlers: [handler()],
+          contracts: [module()],
+          v2_contracts: [module()]
+        }
   def load!(app \\ nil) do
     apps =
       case app || Application.get_env(:eh_os_contract, :applications) do
@@ -89,13 +93,21 @@ defmodule EhOsContract.Registry do
       loaded
       |> Enum.filter(&EhOsContract.Model.contract?/1)
 
-    graph = %{handlers: handlers, contracts: contracts}
+    # Beside the v1 contracts rather than among them: every v1 reader asks a contract
+    # the questions only a v1 one answers, and each reader of v2 says so by name.
+    v2_contracts =
+      Enum.filter(loaded, fn module ->
+        function_exported?(module, :__eh_os_contract_model__, 0) and
+          match?(%{kind: :contract, units: _}, module.__eh_os_contract_model__())
+      end)
+
+    graph = %{handlers: handlers, contracts: contracts, v2_contracts: v2_contracts}
     :persistent_term.put(@key, graph)
     graph
   end
 
   @doc "The cached scan, loading it on first use."
-  @spec graph() :: %{handlers: [handler()], contracts: [module()]}
+  @spec graph() :: %{handlers: [handler()], contracts: [module()], v2_contracts: [module()]}
   def graph do
     case :persistent_term.get(@key, nil) do
       nil -> load!()
@@ -107,9 +119,17 @@ defmodule EhOsContract.Registry do
   @spec handlers() :: [handler()]
   def handlers, do: graph().handlers
 
-  @doc "Every contract found in the running binary."
+  @doc "Every v1 contract found in the running binary."
   @spec contracts() :: [module()]
   def contracts, do: graph().contracts
+
+  @doc """
+  Every v2 contract found in the running binary (v2 plan, E7c): kept apart from
+  `contracts/0`, which v1's readers ask what only a v1 contract answers, until v1 is
+  cut and the two lists become one.
+  """
+  @spec v2_contracts() :: [module()]
+  def v2_contracts, do: Map.get(graph(), :v2_contracts, [])
 
   @doc "Handlers of an event that run inside the emitting transaction."
   @spec sync_handlers_for(atom()) :: [handler()]

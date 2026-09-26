@@ -90,6 +90,12 @@ What changes otherwise is what a host has to do.
   a v2 `promise`, and `Run.evaluate/3` measures a v2 process's `deadline`, both over the runs in
   `eh_os_contract_event_runs`, so an event another contract decided counts in the run that includes it. The
   arithmetic is v1's, and the same scenarios give the same verdicts on a v1 shape and on its v2 port.
+- **E7c: the boot records the deployment of every v2 contract** (`EhOsContract.Registry.v2_contracts/0`, beside
+  `contracts/0`, which stays v1's). Its paths are its declared steps, and **its wiring version is computed from
+  the contract and the implementation**: the steps, and which module implements each declaration, so the same
+  contract bound to other modules is another wiring. This moves verdicts of a v2 report: the deployed version
+  has a `since`, and a changed `promise` — digested on its own at the deploy, `promise:<name>` — stops judging
+  the runs that began before it.
 - **E7c: the conformance report reads v2 contracts, and `conformance.v2` is their shape on the wire.**
   `EhOsContract.Conformance.report/2` of a v2 contract answers the same four questions: its steps
   (`EhOsContract.Paths`, each end `{kind, name, label}`) untraversed, in flight and failing, with `in_flight`

@@ -86,24 +86,25 @@ defmodule EhOsContract.Deployment do
   @spec record!(DateTime.t()) :: :ok
   def record!(now \\ DateTime.utc_now()) do
     rows =
-      for contract <- EhOsContract.Registry.contracts() do
-        events = contract |> Model.event_names() |> Enum.map(&to_string/1) |> Enum.sort()
-        edges = contract |> edge_labels() |> Enum.sort()
+      for(contract <- EhOsContract.Registry.v2_contracts(), do: v2_row(contract, now)) ++
+        for contract <- EhOsContract.Registry.contracts() do
+          events = contract |> Model.event_names() |> Enum.map(&to_string/1) |> Enum.sort()
+          edges = contract |> edge_labels() |> Enum.sort()
 
-        %{
-          id: Ecto.UUID.generate(),
-          contract: inspect(contract),
-          contract_version: Model.version(contract),
-          # Sorted above, so the list order carries no meaning by the time it gets
-          # here — which is the one case where `EhOsContract.Digest` needs the caller's help,
-          # since it preserves list order on purpose.
-          wiring_version: EhOsContract.Digest.hash(edges),
-          events: events,
-          edges: edges,
-          declaration_digests: Model.digests(contract),
-          first_seen_at: now
-        }
-      end
+          %{
+            id: Ecto.UUID.generate(),
+            contract: inspect(contract),
+            contract_version: Model.version(contract),
+            # Sorted above, so the list order carries no meaning by the time it gets
+            # here — which is the one case where `EhOsContract.Digest` needs the caller's help,
+            # since it preserves list order on purpose.
+            wiring_version: EhOsContract.Digest.hash(edges),
+            events: events,
+            edges: edges,
+            declaration_digests: Model.digests(contract),
+            first_seen_at: now
+          }
+        end
 
     # `{:replace, ...}` rather than `:nothing`, and the difference matters exactly
     # once: the first boot after the column exists meets a row recorded before it,
@@ -121,6 +122,53 @@ defmodule EhOsContract.Deployment do
     )
 
     :ok
+  end
+
+  # A v2 contract's paths are its steps (`EhOsContract.Paths`), declared by the
+  # contract itself, so they move its version. What only the code says is which
+  # module implements each declaration: that, with the steps, is its wiring. A
+  # promise gets a digest of its own here, so a changed promise has a boundary
+  # (`declaration_boundaries/1`) where the model only digests the whole process.
+  @spec v2_row(module(), DateTime.t()) :: map()
+  defp v2_row(contract, now) do
+    model = Model.fetch(contract)
+    edges = contract |> v2_edge_labels() |> Enum.sort()
+
+    bindings =
+      for {{^contract, kind, name}, modules} <-
+            EhOsContract.Implementations.index(contract).declarations,
+          module <- modules,
+          do: "#{kind}:#{name}=#{inspect(module)}"
+
+    promises =
+      for promise <- (model.process && model.process.promises) || [],
+          into: %{},
+          do: {"promise:#{promise.name}", EhOsContract.Digest.hash(promise)}
+
+    %{
+      id: Ecto.UUID.generate(),
+      contract: inspect(contract),
+      contract_version: model.version,
+      wiring_version: EhOsContract.Digest.hash(edges ++ Enum.sort(bindings)),
+      events: model.events |> Enum.map(&to_string(&1.name)) |> Enum.sort(),
+      edges: edges,
+      declaration_digests: Map.merge(model.digests, promises),
+      first_seen_at: now
+    }
+  end
+
+  @doc """
+  A v2 contract's declared steps as the labels a deployment records:
+  `"<kind>:<name>-><kind>:<name>"`, with the consumer between them for a reaction,
+  a timer and an effect.
+  """
+  @spec v2_edge_labels(module()) :: [String.t()]
+  def v2_edge_labels(contract) do
+    for step <- EhOsContract.Paths.declared(contract) do
+      [step.from, step.via, step.to]
+      |> Enum.reject(&is_nil/1)
+      |> Enum.map_join("->", &"#{&1.kind}:#{&1.name}")
+    end
   end
 
   @doc "Every recorded deployment of a contract, oldest first."
