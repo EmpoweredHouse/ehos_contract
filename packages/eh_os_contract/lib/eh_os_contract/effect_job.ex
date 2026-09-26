@@ -15,9 +15,9 @@ defmodule EhOsContract.EffectJob do
   `EhOsContract.record/3`, as its `:system` actor.
 
   `:ok` finishes the job; `{:error, reason}` or an exception is retried, three
-  attempts in all. A job whose effect no module implements any more is cancelled,
-  not retried: the module is not coming back, and two more identical failures would
-  say nothing a third time.
+  attempts in all. A job whose effect no module implements any more, or whose effect
+  no longer takes the event's type, is cancelled, not retried: that wiring is not
+  coming back, and two more identical failures would say nothing a third time.
 
   The queue is `:events`, the one v1's handler jobs used, so a host's Oban
   configuration does not change. Oban has to run on the repo dispatch appends
@@ -33,12 +33,24 @@ defmodule EhOsContract.EffectJob do
   @spec job(String.t(), Ecto.UUID.t()) :: Oban.Job.changeset()
   def job(effect, event_id), do: new(%{"effect" => effect, "event_id" => event_id})
 
+  @doc """
+  Runs the effect on the event, read from the log: `:ok`, `{:error, reason}` to be
+  retried, or `{:cancel, reason}` when the wiring the job was enqueued for is gone —
+  no module implements the effect, or it no longer takes the event's type.
+  """
   @impl Oban.Worker
+  @spec perform(Oban.Job.t()) :: :ok | {:error, term()} | {:cancel, String.t()}
   def perform(%Oban.Job{args: %{"effect" => key, "event_id" => event_id}}) do
-    case Implementations.consumer(key) do
-      %{kind: :effect, module: module} = effect when module != nil ->
-        row = repo().get!(Event, event_id)
-        Consumer.handle!(Implementations.taking(effect, row.type), Consumer.decode!(row), [])
+    with %{kind: :effect, module: module} = effect when module != nil <-
+           Implementations.consumer(key),
+         row = repo().get!(Event, event_id),
+         true <- Map.has_key?(effect.callbacks, row.type) || {:dropped, row.type} do
+      Consumer.handle!(Implementations.taking(effect, row.type), Consumer.decode!(row), [])
+    else
+      {:dropped, type} ->
+        {:cancel,
+         "effect #{key} no longer takes #{type}, so the job belongs to a wiring that is no " <>
+           "longer deployed"}
 
       _gone ->
         {:cancel,

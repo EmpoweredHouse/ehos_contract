@@ -85,6 +85,20 @@ defmodule EhOsContract.DispatchEffectsTest do
       assert notices() == ["a-1"]
     end
 
+    test "is cancelled when the effect no longer takes the event's type" do
+      {:ok, receipt} = dispatch(%Deposit{account_id: "a-1", amount: 5})
+      [deposited] = receipt.events
+
+      # The effect handles account_flagged only: a job for a deposit is a wiring that
+      # is no longer deployed.
+      assert {:cancel, reason} =
+               EffectJob.perform(%Oban.Job{
+                 args: %{"effect" => @notify, "event_id" => deposited.__meta__.id}
+               })
+
+      assert reason =~ "no longer takes ledger.deposited"
+    end
+
     test "is retried when it answers {:error, reason}" do
       {:ok, _} = dispatch(%Deposit{account_id: "a-down", amount: 1000})
 
