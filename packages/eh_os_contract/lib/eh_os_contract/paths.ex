@@ -83,8 +83,9 @@ defmodule EhOsContract.Paths do
     issued = issued(model, opts)
     of_runs = if process, do: runs_of(model, process, opts), else: 0
     lag = lag(steps)
-    timers = scheduled_timers()
-    {waiting_effects, discarded_effects} = effect_jobs()
+    keys = for %{key: key} <- steps, uniq: true, do: key
+    timers = scheduled_timers(keys)
+    {waiting_effects, discarded_effects} = effect_jobs(keys)
     failed = failed_commands(model, opts)
     stopped = stopped_subscriptions(steps)
 
@@ -388,9 +389,12 @@ defmodule EhOsContract.Paths do
     )
   end
 
-  defp scheduled_timers do
+  # Only this contract's consumers' jobs: a report per contract must not scan every
+  # job of the application.
+  defp scheduled_timers(keys) do
     from(j in Oban.Job,
       where: j.worker == "EhOsContract.TimerJob" and j.state in @waiting,
+      where: fragment("?->>'process_manager'", j.args) in ^keys,
       group_by: [fragment("?->>'process_manager'", j.args), fragment("?->>'timer'", j.args)],
       select:
         {fragment("?->>'process_manager'", j.args), fragment("?->>'timer'", j.args), count(j.id)}
@@ -401,12 +405,13 @@ defmodule EhOsContract.Paths do
 
   # Effect jobs by effect and the type of the event each was enqueued for: waiting,
   # and discarded by Oban after its attempts.
-  defp effect_jobs do
+  defp effect_jobs(keys) do
     rows =
       from(j in Oban.Job,
         join: e in Event,
         on: fragment("(?->>'event_id')::uuid", j.args) == e.id,
         where: j.worker == "EhOsContract.EffectJob",
+        where: fragment("?->>'effect'", j.args) in ^keys,
         where: j.state in ^["discarded" | @waiting],
         group_by: [fragment("?->>'effect'", j.args), e.type, j.state],
         select: {fragment("?->>'effect'", j.args), e.type, j.state, count(j.id)}
