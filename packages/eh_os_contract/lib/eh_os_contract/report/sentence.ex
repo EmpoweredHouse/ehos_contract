@@ -225,6 +225,20 @@ defmodule EhOsContract.Report.Sentence do
   @spec all_steps_carried_out() :: String.t()
   def all_steps_carried_out, do: "All agreed steps were carried out in this period."
 
+  @doc """
+  One thing that happened though it was not agreed. A v1 drift is an edge nobody
+  declared; a v2 one is an event no declared command emits, by a command that does
+  not emit it or written around dispatch.
+  """
+  @spec drift(map()) :: String.t()
+  def drift(%{from: nil, to: %{} = to} = e),
+    do: "#{name(to)} — written outside dispatch  (#{e.count}x)"
+
+  def drift(%{from: %{} = from, to: %{} = to} = e),
+    do: "#{name(from)} → #{name(to)}  (#{e.count}x)"
+
+  def drift(e), do: "#{e.from_label || e.from} → #{e.to_label || e.to}  (#{e.count}x)"
+
   @doc false
   @spec no_drift() :: String.t()
   def no_drift, do: "None: nothing happened outside the agreement."
