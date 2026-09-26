@@ -417,6 +417,15 @@ excess data is visible and fixable. Volume is handled by an Oban job purging by 
 conformance window. The payload itself is declared in the contract and stored as JSON, read defensively:
 interpret the fields you understand, show the raw value where you cannot.
 
+*Corrected 26 September 2026, v2 plan E6* ([contract v2](contract-v2.md) §10.3, §11). The table above is
+v1's; the store's shape is v2 §10.3, with positions, streams, tags and `eh_os_contract_commands`. For a v2
+contract `event_handlings` gives way to that table: a command's outcome is one row, accepted, rejected with
+its invariant, or failed with where it failed and the exception's module, never its message, since a message
+may quote a value. `correlation_id` and `causation_id` are still set by the framework: dispatch makes the
+command the cause of its events, and the event a policy reacted to the cause of the policy's command. The
+payload is written by `EhOsContract.Codec` in the log's JSON form and read back into the contract's structs.
+Retention: E8.
+
 ## 4. Delivery
 
 The split is the transaction boundary, not a preference.

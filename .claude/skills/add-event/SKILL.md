@@ -1,9 +1,15 @@
 ---
 name: add-event
-description: DRAFT, not yet reviewed. After `module-boundary-check` has already decided a fact belongs in the contract as an EhOsContract event — never to decide that question itself — walk the `event` macro's full key set against `EhOsContract.Contract`'s current source, confirm the fact is past tense with more than one interested party (not a command in disguise), pick a payload type from the closed set (including the `_minor` money convention and the "cannot be a nullable field" DEC-05 gap), decide `identity` and whether it is even narrower than the process `instance` it lives under, and check the event name traces to workshop material. Use when about to write a brand-new `event :name, ...` declaration, in a new or an already-existing contract module. Not for deciding whether something should be an event at all (see `module-boundary-check`, which hands off here once the answer is "yes"); not for widening or reinterpreting a field, identity, or trace on an event that already has real historical data (see `change-contract`, whose impact-analysis table this skill does not duplicate); not for writing the handler that reacts to the event (see the sibling skill `write-handler`, being written in parallel and not yet checked into this repository).
+description: DRAFT, not yet reviewed, and describes the v1 DSL only. After `module-boundary-check` has already decided a fact belongs in the contract as an EhOsContract event — never to decide that question itself — walk the `event` macro's full key set against `EhOsContract.Contract`'s current source, confirm the fact is past tense with more than one interested party (not a command in disguise), pick a payload type from the closed set (including the `_minor` money convention and the "cannot be a nullable field" DEC-05 gap), decide `identity` and whether it is even narrower than the process `instance` it lives under, and check the event name traces to workshop material. Use when about to write a brand-new `event :name, ...` declaration, in a new or an already-existing contract module. Not for deciding whether something should be an event at all (see `module-boundary-check`, which hands off here once the answer is "yes"); not for widening or reinterpreting a field, identity, or trace on an event that already has real historical data (see `change-contract`, whose impact-analysis table this skill does not duplicate); not for writing the handler that reacts to the event (see the sibling skill `write-handler`, being written in parallel and not yet checked into this repository).
 ---
 
 # Adding a new event to an EhOsContract contract
+
+> **Describes v1** (26 September 2026, v2 plan E6). This skill was written for v1's
+> `EhOsContract.Contract` and `EhOsContract.Handler`. From E6 a contract may be written in the v2 DSL
+> (`EhOsContract.Next.Contract`, [`docs/adr/contract-v2.md`](../../../docs/adr/contract-v2.md)), and
+> `Rehmed.Contracts.VisitSettlement` is. For a v2 contract the keys, gates and runtime described below do
+> not apply. The skill is rewritten at the cut (E11).
 
 DRAFT — not yet run against a real event addition. Review before trusting it. Every claim below
 about the `event` macro's keys, the payload type set, the compile gates, and what `owner`/`identity`

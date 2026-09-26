@@ -1002,6 +1002,22 @@ the person's.
 - **A credential recording an event through `record/3` is refused** until E9 names the capability for it:
   EHOS grants commands and queries only, so nothing could grant it. A `:system` actor records as before.
 
+> **26 September 2026, E6 — what the sketch above left open, as built.** `EhOsContract.Dispatcher` behind
+> `EhOsContract.dispatch/3`, `record/3` and `query/3`; the modules the sketch names (`Registry.command!`,
+> `Capability`, `Loader`, `Decider`, `Emits`, `Enrich`) are steps of it, not modules. **Order**: the actor,
+> then the fields (`EhOsContract.Codec`), then the idempotency key, then the stream folded through `evolve/2`,
+> the decision, and the decision held to its declaration — an undeclared event or invariant, or an event
+> whose fields do not fit, raises and appends nothing. **Rows**: `accepted`, `rejected` with its invariant,
+> `failed` with where it failed (`decider`, `evolve`, `read_model:<name>`, `policy:<name>`) and the
+> exception's module, never its message; `record/3` writes `accepted` with the type `"record:<event>"`.
+> **Inline policies**: a nested dispatch whose command is rejected leaves the first command standing, since a
+> rejection is the unit's answer; a nested conflict cannot happen, because the append lock is held from the
+> transaction's first append. **Not built in E6**: `Runs.index` and `_event_runs`, effects, `min_position`
+> and the notifier (E7); the DCB condition (E9). **Implementations are found by a scan** of the host's
+> applications, kept in `:persistent_term` (`EhOsContract.Implementations`), not by the boot registry of
+> §10.5; failing boot on a duplicate type is not built either. **HTTP**: `EhOsContract.Plug` serves
+> `POST …/commands/<capability>` and `GET …/queries/<capability>` with the actor another plug built.
+
 ## 12. Consumers
 
 - **Inline projections and policies** run in the dispatch transaction. A projection writes only its own

@@ -157,6 +157,13 @@ nothing about where it lives.
 *Instead of:* CRUD-shaped mutations, which leave nothing to subscribe to or assert on — and instead of the
 job table as the record, since a queue holds what was scheduled rather than what occurred.
 
+*Corrected 26 September 2026, v2 plan E6, in the code that confirms it* ([contract v2](contract-v2.md)
+§10–11, §18). For a v2 contract the log is not written in the state change's transaction: **the append is
+the state change.** A unit's state is folded from its stream, `EhOsContract.dispatch/3` appends under the
+stream's version, and read models are written in the append's transaction or after it. v1 contracts keep
+working as the paragraph says until the cut (E11). Retention by default changes with crypto-shredding, in
+E8.
+
 **9–10. Dispatch is split by the transaction boundary, not by developer preference**, and idempotency is a
 contract property — **the event declares which payload fields make two occurrences the same fact**, and the
 key must include what distinguishes facts, not only what groups them. No external broker; `Phoenix.PubSub` and `GenStage` are rejected for anything the
@@ -242,6 +249,14 @@ the other had no actor field anywhere. Neither level makes the other redundant.
 A census run the same day found the shape of the gap this decision left: twenty-six events across the four
 contracts are entered from outside and two had a command, because until now a command could only be
 written as a side effect of writing a rule. See [PLAN.md](../../PLAN.md), "Dopisek 22 września", 5.5–5.6.
+
+*Corrected 26 September 2026, v2 plan E6* ([contract v2](contract-v2.md) §5, §11, §18). "No list of the events
+it emits" is reversed for a v2 contract: a command declares `emits:`, and the set is checked for membership
+at compile time, where `emit/1` takes only events the command emits (I4), and at dispatch, where an event
+outside it raises and nothing is appended. Completeness is still not checked, so the argument about sets
+stands; v2 checks the half that can be checked. The first of the two levels is now the
+`EhOsContract.Authorizer`'s question (D14). "For this subject" is `scope` for queries (D10), and still open
+for commands (§19). The steering half of this section waits for process managers, in E7.
 *Instead of:* sequence, branching and compensation declared in the contract — a workflow language,
 maintained before we know whether two clients need the same one.
 

@@ -1,9 +1,15 @@
 ---
 name: change-contract
-description: DRAFT, not yet reviewed. Before editing an EhOsContract.Contract module that already has declared events, processes, or trace assertions — adding, renaming, or removing a declaration, or changing identity, instance, retain, a payload type, or a trace's from/eventually/or_else/within — classify what the change actually risks before touching code: a compile gate that catches it for free, a change EhOsContract.Deployment's own diff mechanism cannot see at all, a retroactive reinterpretation of history, or a redaction that quietly stops applying. Produces a written impact analysis and the smallest edit that satisfies it, not a full regeneration of the file. Use when modifying a contract that already has declarations; not when writing the first version of a contract (see contract-distillation) or deciding whether something belongs in EhOsContract at all (see module-boundary-check, which explicitly hands off here for that case).
+description: DRAFT, not yet reviewed, and describes the v1 DSL only. Before editing an EhOsContract.Contract module that already has declared events, processes, or trace assertions — adding, renaming, or removing a declaration, or changing identity, instance, retain, a payload type, or a trace's from/eventually/or_else/within — classify what the change actually risks before touching code: a compile gate that catches it for free, a change EhOsContract.Deployment's own diff mechanism cannot see at all, a retroactive reinterpretation of history, or a redaction that quietly stops applying. Produces a written impact analysis and the smallest edit that satisfies it, not a full regeneration of the file. Use when modifying a contract that already has declarations; not when writing the first version of a contract (see contract-distillation) or deciding whether something belongs in EhOsContract at all (see module-boundary-check, which explicitly hands off here for that case).
 ---
 
 # Changing a contract that already exists
+
+> **Describes v1** (26 September 2026, v2 plan E6). This skill was written for v1's
+> `EhOsContract.Contract` and `EhOsContract.Handler`. From E6 a contract may be written in the v2 DSL
+> (`EhOsContract.Next.Contract`, [`docs/adr/contract-v2.md`](../../../docs/adr/contract-v2.md)), and
+> `Rehmed.Contracts.VisitSettlement` is. For a v2 contract the keys, gates and runtime described below do
+> not apply. The skill is rewritten at the cut (E11).
 
 DRAFT — not yet run against a real contract change. Review before trusting it. Every claim below
 about what compiles, what `EhOsContract.Deployment.diff/2` tracks, and what `retain`/`identity`/`instance`

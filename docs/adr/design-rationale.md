@@ -118,6 +118,15 @@ generates those enthusiastically and the result is Java in Elixir.
 **Rejecting event sourcing is not rejecting DDD.** We need event *history*, not event *sourcing*. Anyone
 who treats those as the same thing will read the record as more heterodox than it is.
 
+*Corrected 26 September 2026, v2 plan E6, in the code that confirms it* ([contract v2](contract-v2.md) §2,
+§10–11, §18). v2 sources. A unit of a v2 contract is an aggregate whose state is folded from its own stream
+through `evolve/2`, and `EhOsContract.dispatch/3` appends under the version of the stream it read. History was
+enough while the log recorded what the application's own state change had decided. It stopped being enough
+once the decision became a pure function over events, the shape the next paragraph argues for: to decide, it
+has to read them. The distinction the paragraph draws still stands. The log is still the history the
+conformance half reads, and it is now also what a unit is built from. What the rejection of Commanded still
+holds is under "Alternatives considered".
+
 **Why event-driven, then, if DDD could express the same system?** Because of what it does to *generated*
 code, which is the only axis where the two differ for us: `command -> {:error, reason} | [events]` is a
 pure function with an enumerable output, so a model's work can be checked against an example without
@@ -268,6 +277,14 @@ to produce the evidence artifact. That keeps the data-processing obligations on 
 hosted conformance history not being a product in version one. The schema therefore assumes nothing about
 where it lives — a requirement rather than a remark, since it is the single condition keeping hosting
 available later as a product instead of a rewrite.
+
+*Corrected 26 September 2026, v2 plan E6* ([contract v2](contract-v2.md) §10–11, §18). For a v2 contract the
+log is not written in the state change's transaction, because **the append is the state change**: there is no
+separate state row to write beside it. A unit's state is what `evolve/2` folds from its stream, and read
+models are projections written in the append's transaction or after it. The contract version, correlation
+and causation stay on every event, and the payload stays declared and stored as JSON, written by
+`EhOsContract.Codec`. Retention by `:hash` and `:drop` becomes crypto-shredding, and that correction comes
+with the stage that builds it, E8.
 
 ### §9–10 — dispatch split by the transaction boundary, and idempotency
 
@@ -514,6 +531,17 @@ Each decision above carries its *instead of*. These are the rejections that need
 | Everything through Oban | Read-after-write stops being reliable, which in back-office software is a support cost rather than a theoretical concern | — |
 | Umbrella applications | Build-time separation without boundary enforcement, plus config and release friction | — |
 | Generating directly from the EventStorming graph | Discovery-grade output carries no invariants, error paths, idempotency or types | — |
+
+*Corrected 26 September 2026, v2 plan E6* ([contract v2](contract-v2.md) §2, §10.6, §12, §16). The Commanded
+row, reason by reason, as v2 stands. *Commits the whole application to aggregates*: v2 takes aggregates per
+contract, not for the whole application; a contract without an implementation stays legal (D3), and v1
+contracts run beside v2 until the cut. *Eventual consistency*: still rejected. A v2 command's read models and
+policies may run in the append's transaction, so read-after-write holds for them. *Permanent upcasting*:
+accepted, with `schema_version` and an upcaster per type (§10.6), built when real data first needs one.
+*Harder for a model to generate correctly*: answered by the contract instead of by avoiding sourcing.
+`emit/1` takes struct literals checked at compile time (I4), and dispatch holds every decision to its
+declaration at run time. Commanded itself is still not used: v2 keeps its own store in Postgres, chosen after
+comparing it with Commanded's EventStore (§2). Kept from it: the correlation model, still.
 
 **Ash Framework as the foundation.** Ash interprets declarative resources at runtime; the premise here is
 that code is cheap, so declarations should generate ordinary Phoenix and Ecto. Generated ordinary code is
