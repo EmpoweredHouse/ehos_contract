@@ -460,10 +460,16 @@ defmodule EhOsContract.Dispatcher do
   # the same transaction, as the policy's own actor; then every such effect acts. Last,
   # one job per effect delivered at least once.
   defp inline!(job, pairs, repo) do
+    # Every read model takes every appended event before any policy reacts to one:
+    # a policy's nested dispatch appends after them, and a read model has to see the
+    # events in the log's order. Stable, so each kind keeps that order.
     consumers =
-      for {event, row} <- pairs,
-          consumer <- Implementations.inline(job.model.module, row.type),
-          do: {consumer, event, row}
+      for(
+        {event, row} <- pairs,
+        consumer <- Implementations.inline(job.model.module, row.type),
+        do: {consumer, event, row}
+      )
+      |> Enum.sort_by(fn {consumer, _, _} -> Implementations.order(consumer.kind) end)
 
     projecting = projecting(repo, consumers)
 

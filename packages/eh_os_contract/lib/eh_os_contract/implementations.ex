@@ -175,9 +175,11 @@ defmodule EhOsContract.Implementations do
     }
   end
 
-  defp order(:read_model), do: 0
-  defp order(:policy), do: 1
-  defp order(:effect), do: 2
+  @doc "Where a kind of consumer runs in the dispatch transaction: read models, policies, effects."
+  @spec order(:read_model | :policy | :effect) :: 0 | 1 | 2
+  def order(:read_model), do: 0
+  def order(:policy), do: 1
+  def order(:effect), do: 2
 
   defp by_type(consumers) do
     consumers
