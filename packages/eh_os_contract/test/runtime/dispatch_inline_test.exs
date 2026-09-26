@@ -72,7 +72,11 @@ defmodule EhOsContract.DispatchInlineTest do
       assert flag.outcome == "accepted"
       assert flag.issued_by == "policy:flag_large_deposit"
       assert flag.causation_event_id == deposited.__meta__.id
-      assert flag.idempotency_key == "policy:flag_large_deposit:#{deposited.__meta__.id}:0"
+      # The contract is in the key: the index of accepted keys spans the application,
+      # and two contracts may each have a policy of the same name on the same event.
+      assert flag.idempotency_key ==
+               "policy:DispatchRig.Ledger:flag_large_deposit:#{deposited.__meta__.id}:0"
+
       assert flagged.causation_id == flag.id
     end
 

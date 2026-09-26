@@ -1023,8 +1023,10 @@ the person's.
 > whose fields do not fit, raises and appends nothing. **Rows**: `accepted`, `rejected` with its invariant,
 > `failed` with where it failed (`decider`, `evolve`, `read_model:<name>`, `policy:<name>`) and the
 > exception's module, never its message; `record/3` writes `accepted` with the type `"record:<event>"`.
-> **Inline policies**: a nested dispatch whose command is rejected leaves the first command standing, since a
-> rejection is the unit's answer; a nested conflict cannot happen, because the append lock is held from the
+> **Inline policies**: a nested dispatch is keyed `"policy:<contract>:<name>:<event id>:<index>"`, one segment
+> more than §10.4, because the index of accepted keys spans the application and two contracts may each have a
+> policy of one name on one event. A nested dispatch whose command is rejected leaves the first command
+> standing, since a rejection is the unit's answer; a nested conflict cannot happen, because the append lock is held from the
 > transaction's first append. **Not built in E6**: `Runs.index` and `_event_runs`, effects, `min_position`
 > and the notifier (E7); the DCB condition (E9). **Implementations are found by a scan** of the host's
 > applications, kept in `:persistent_term` (`EhOsContract.Implementations`), not by the boot registry of

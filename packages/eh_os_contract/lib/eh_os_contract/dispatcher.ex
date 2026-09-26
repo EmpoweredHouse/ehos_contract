@@ -33,7 +33,8 @@ defmodule EhOsContract.Dispatcher do
      `:in_transaction` projects the appended events, in order, and then every such
      policy reacts. What a policy issues is dispatched at once, in the same
      transaction, as the policy's own actor, with the event as its cause and a key
-     derived from it, `"policy:<name>:<event id>:<index>"`. A rejection of it is the
+     derived from it, `"policy:<contract>:<name>:<event id>:<index>"` — the contract
+     too, since the index of accepted keys spans the application. A rejection of it is the
      unit's answer and leaves the first command standing; anything else it raises
      rolls everything back. A policy reacting to the kind of event it already reacted
      to down one chain is a cycle, and raises.
@@ -517,7 +518,8 @@ defmodule EhOsContract.Dispatcher do
         actor: Actor.reaction(:policy, consumer.name),
         causation_id: event.__meta__.id,
         correlation_id: event.__meta__.correlation_id,
-        idempotency_key: "policy:#{consumer.name}:#{event.__meta__.id}:#{index}",
+        idempotency_key:
+          "policy:#{inspect(consumer.contract)}:#{consumer.name}:#{event.__meta__.id}:#{index}",
         chain: chain
       ]
 
