@@ -669,9 +669,10 @@ defmodule EhOsContract.Graph do
 
   # A timer is the process manager's: it sets it, and the timer issues the command,
   # so the timer's counts do not share an edge with the manager's other reactions.
+  # Setting is ownership, not a delivery, so it is a plain line saying so.
   defp step_edges(%{from: %{kind: :timer}} = step, overlay?) do
     [
-      edge(step.via, step.from, :async, nil),
+      "#{node_id(step.via)} -. sets .- #{node_id(step.from)}",
       edge(step.from, step.to, :async, label(step, overlay?))
     ]
   end

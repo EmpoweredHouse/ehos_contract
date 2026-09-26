@@ -37,7 +37,9 @@ defmodule EhOsContract.GraphV2Test do
     assert diagram =~ "event_deposited --> policy_flag_large_deposit"
     assert diagram =~ "policy_flag_large_deposit --> command_flag_account"
     assert diagram =~ "event_withdrawn -.->|async| policy_flag_large_withdrawal"
-    assert diagram =~ "process_manager_first_deposit_chase -.->|async| timer_first_deposit_due"
+    # The manager sets its timer, which is ownership, not a delivery: no arrowhead, no "async".
+    assert diagram =~ "process_manager_first_deposit_chase -. sets .- timer_first_deposit_due"
+    refute diagram =~ "process_manager_first_deposit_chase -.->|async| timer_first_deposit_due"
     assert diagram =~ "timer_first_deposit_due -.->|async| command_flag_account"
   end
 
