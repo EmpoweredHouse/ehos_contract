@@ -153,6 +153,13 @@ one. What changes is what a host has to do.
   refused before the implementation runs. Every row answered is checked against the grant again, and one outside
   it raises `EhOsContract.Authorizer.OutsideScopeError`. A `:system` actor the query names is not narrowed.
   Nothing is written.
+- `EhOsContract.Plug` serves the commands and queries of the contracts it is given over HTTP, under their
+  capabilities: `POST …/commands/<capability>` and `GET …/queries/<capability>`. It authenticates nobody: the
+  actor is `conn.assigns.eh_os_contract_actor`, a credential's, built by the plug in front of it, and without
+  one the answer is 401. Outcomes map to statuses — 200, 422 for a rejection or unfitting fields, 403 for a
+  refusal, 409 for a conflict or a reused key, 404 — and no body carries a value the caller did not send.
+  `plug` is an optional dependency, and the module compiles only when it is there.
+- `EhOsContract.Codec.decode/4` takes `strings: true`, to read an integer or a boolean written as text.
 - `EhOsContract.Meta` carries an event's `id` and `position` when it is read back from the log.
 - `EhOsContract.Store.lock/1` on the configured implementation.
 

@@ -46,6 +46,7 @@ defmodule EhOsContract do
       Next.Contract,
       {Next.Contract.Dsl, []},
       Payload,
+      Plug,
       Registry,
       Receipt,
       Rejection,

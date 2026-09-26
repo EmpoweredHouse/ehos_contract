@@ -126,11 +126,18 @@ defmodule EhOsContract.Codec do
   a struct holds. Keys are read as strings, or as atoms when the map has those.
   Fails with the fields that do not fit, and never creates an atom.
   """
-  @spec decode([field()], map(), values()) :: {:ok, map()} | {:error, [problem()]}
-  def decode(fields, external, values) when is_map(external) do
+  #
+  # `strings: true` also reads an integer or a boolean written as text, as a query
+  # string carries every value, and only at the top level, where a query's
+  # parameters are.
+  @spec decode([field()], map(), values(), keyword()) :: {:ok, map()} | {:error, [problem()]}
+  def decode(fields, external, values, opts \\ []) when is_map(external) do
+    strings = Keyword.get(opts, :strings, false)
+
     {decoded, problems} =
       Enum.reduce(fields, {%{}, []}, fn field, {decoded, problems} ->
         raw = Map.get(external, Atom.to_string(field.name), Map.get(external, field.name))
+        raw = if strings, do: from_text(field.type, raw, values), else: raw
 
         case decode_value(field.type, raw, values) do
           {:ok, nil} ->
@@ -148,6 +155,34 @@ defmodule EhOsContract.Codec do
 
     if problems == [], do: {:ok, decoded}, else: {:error, Enum.reverse(problems)}
   end
+
+  defp from_text(type, value, values) when is_binary(value) do
+    case base(type, values) do
+      :integer ->
+        case Integer.parse(value) do
+          {integer, ""} -> integer
+          _ -> value
+        end
+
+      :boolean ->
+        %{"true" => true, "false" => false} |> Map.get(value, value)
+
+      _ ->
+        value
+    end
+  end
+
+  defp from_text(_type, value, _values), do: value
+
+  # The built-in type a domain value aliases, through as many aliases as there are.
+  defp base(type, values) when is_atom(type) and is_map_key(values, type) do
+    case Map.fetch!(values, type) do
+      %{type: nil} -> nil
+      %{type: inner} -> base(inner, values)
+    end
+  end
+
+  defp base(type, _values), do: type
 
   defp decode_value(_type, nil, _values), do: {:ok, nil}
 
