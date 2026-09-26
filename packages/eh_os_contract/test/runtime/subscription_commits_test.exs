@@ -183,6 +183,43 @@ defmodule EhOsContract.SubscriptionCommitsTest do
     end
   end
 
+  describe "a rebuilt inline read model" do
+    @balances "DispatchRig.Ledger:read_model:balances"
+
+    test "goes back to dispatch while a person resets it again, without a deadlock" do
+      balances = Implementations.consumer(@balances)
+      Repo.delete_all(from(s in SubscriptionRecord, where: s.name == @balances))
+      Subscription.register!(Repo, [balances])
+      :ok = Subscription.rebuild(Repo, @balances)
+
+      # At the head, so the next step is the one that hands it back to dispatch. Set
+      # rather than stepped to: how many steps that takes depends on what earlier
+      # tests left in this log.
+      head = Repo.one(from(e in EhOsContract.Event, select: coalesce(max(e.position), 0)))
+
+      Repo.update_all(from(s in SubscriptionRecord, where: s.name == @balances),
+        set: [position: head]
+      )
+
+      parent = self()
+
+      reset =
+        Task.async(fn ->
+          Repo.transaction(fn ->
+            :ok = Store.lock(Repo)
+            send(parent, :locked)
+            Process.sleep(300)
+            Subscription.rebuild(Repo, @balances)
+          end)
+        end)
+
+      assert_receive :locked
+      assert {:applied, _} = Subscription.step(Repo, balances)
+      assert Task.await(reset) == {:ok, :ok}
+      assert %SubscriptionRecord{status: "running"} = Repo.get!(SubscriptionRecord, @balances)
+    end
+  end
+
   @tag :capture_log
   test "a poison event stops it at its position, and the failure is committed", %{
     consumer: c,

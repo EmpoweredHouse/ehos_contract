@@ -111,6 +111,9 @@ defmodule EhOsContract.Subscription do
       end)
 
     case result do
+      {:ok, :at_head} ->
+        caught_up!(repo, consumer)
+
       {:ok, step} ->
         step
 
@@ -131,7 +134,7 @@ defmodule EhOsContract.Subscription do
 
     case fenced(Store.read_all(repo, row.position, batch(consumer), types), row) do
       [] when row.status == "rebuilding" ->
-        caught_up!(repo, consumer, row)
+        :at_head
 
       [] ->
         :idle
@@ -179,17 +182,38 @@ defmodule EhOsContract.Subscription do
 
   # A rebuilding inline read model at the head: back to `running` under the append
   # lock, after whatever was appended since the last read, so dispatch projects the
-  # next event and no event falls between the runner and dispatch. The append lock is
-  # taken before the row's, the order dispatch takes them in.
-  defp caught_up!(repo, consumer, _row) do
-    :ok = Store.lock(repo)
-    row = take(repo, consumer.key, ["rebuilding"], :wait)
-    tail = Store.read_all(repo, row.position, 1_000_000, Map.keys(consumer.callbacks))
-    Enum.each(tail, &apply!(repo, consumer, &1))
-    position = if tail == [], do: row.position, else: List.last(tail).position
+  # next event and no event falls between the runner and dispatch. Its own
+  # transaction, taking the append lock before the row's — the order dispatch and
+  # `rebuild/2` take them in; holding the row from the step first could deadlock with
+  # a rebuild.
+  defp caught_up!(repo, consumer) do
+    result =
+      repo.transaction(fn ->
+        :ok = Store.lock(repo)
 
-    repo.update!(SubscriptionRecord.changeset(row, %{position: position, status: "running"}))
-    {:applied, length(tail)}
+        case take(repo, consumer.key, ["rebuilding"], :wait) do
+          # Another runner handed it back first.
+          nil ->
+            :idle
+
+          row ->
+            tail = Store.read_all(repo, row.position, 1_000_000, Map.keys(consumer.callbacks))
+            Enum.each(tail, &apply!(repo, consumer, &1))
+            position = if tail == [], do: row.position, else: List.last(tail).position
+            changes = %{position: position, status: "running"}
+            repo.update!(SubscriptionRecord.changeset(row, changes))
+            {:applied, length(tail)}
+        end
+      end)
+
+    case result do
+      {:ok, step} ->
+        step
+
+      {:error, {:failed, position, exception}} ->
+        failed!(repo, consumer, position, exception)
+        {:failed, position}
+    end
   end
 
   defp failed!(repo, consumer, position, exception) do
