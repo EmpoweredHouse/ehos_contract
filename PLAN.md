@@ -329,6 +329,10 @@ każdy na gałęzi od poprzedniego:
 - **E7b — process managery i timery**: krok jako jedna transakcja, `TimerJob` i `eh_os_contract.timer_elapsed`,
   replay bez reakcji, `correlate` z ustalenia 4 E5b. Odbiór: odpalony timer uruchomiony dwa razy daje jeden
   dispatch.
+  Rozstrzygnięte przez użytkownika 26 września przed budową E7b: **test przesuwa czas zegarem** —
+  `EhOsContract.Testing.drain/1` odpala tylko timery należne według `EhOsContract.Clock.now()`, a test ustawia
+  zegar istniejącym `Clock.at/2`, więc widzi też „za wcześnie”. Na produkcji timer odpala Oban o swojej porze.
+  Zgoda na commity bez pytania i zapis stanu obejmuje gałąź `dsl-v2/e7b-process-managers` (od `main` po PR #14).
 - **E7c — zgodność na nowym logu i fikstury**: `_event_runs` z czytelnikami (`Trace`, `Run`), kontrakty v2 w
   raporcie, grafie i `check`, w toku i padające z nowych źródeł, pokrycie scenariuszy, wersja okablowania z
   linią w CHANGELOG, `conformance.v2`, fikstury według „Losów fikstur”, webowy `CaseHandling`, poprawki ADR.
