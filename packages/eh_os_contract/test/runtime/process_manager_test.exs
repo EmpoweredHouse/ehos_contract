@@ -97,12 +97,28 @@ defmodule EhOsContract.ProcessManagerTest do
       at(2, fn -> dispatch(%Deposit{account_id: "a-1", amount: 10}) end)
       drain_at(2)
 
-      assert %ProcessManagerRecord{timers: %{}} = run()
+      # The day's timer is gone; the deposit set the week's review instead.
+      assert Map.keys(run().timers) == ["review"]
       assert :erlang.binary_to_term(run().state).deposits == 1
 
       drain_at(48)
       assert flags() == []
       assert firings() == []
+    end
+
+    test "fires a timer at a time its state holds, set from the event it just folded" do
+      open()
+      at(2, fn -> dispatch(%Deposit{account_id: "a-1", amount: 10}) end)
+      drain_at(2)
+
+      # A week after the deposit, which evolve/2 put in the state before the timer was set.
+      assert run().timers["review"]["at"] == "2026-09-08T11:00:00.000000Z"
+
+      drain_at(169)
+      assert flags() == []
+
+      drain_at(171)
+      assert [_flag] = flags()
     end
 
     test "flags an account whose first money is interest, reacting with its state" do
