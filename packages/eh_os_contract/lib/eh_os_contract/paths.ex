@@ -302,25 +302,35 @@ defmodule EhOsContract.Paths do
 
   # Runs in which a reaction's command was accepted or rejected, caused by an event of
   # the step's type; for a timer, by its firing.
+  # A timer's firing names its timer in the payload; any other event's payload is the
+  # domain's, whose own `timer` field would split the runs, so it is read only there.
   defp issued(model, opts) do
-    from(c in CommandRecord,
-      join: e in Event,
-      as: :event,
-      on: e.id == c.causation_event_id,
-      where: c.contract == ^inspect(model.module),
-      where: c.outcome in ["accepted", "rejected"],
-      where: like(c.issued_by, "policy:%") or like(c.issued_by, "pm:%"),
-      group_by: [c.issued_by, c.type, e.type, fragment("?->>'timer'", e.payload)],
-      select:
-        {c.issued_by, c.type, e.type, fragment("?->>'timer'", e.payload),
-         count(c.instance_id, :distinct)}
+    elapsed = ProcessManager.elapsed()
+
+    reactions =
+      from(c in CommandRecord,
+        join: e in Event,
+        as: :event,
+        on: e.id == c.causation_event_id,
+        where: c.contract == ^inspect(model.module),
+        where: c.outcome in ["accepted", "rejected"],
+        where: like(c.issued_by, "policy:%") or like(c.issued_by, "pm:%"),
+        select: %{
+          by: c.issued_by,
+          command: c.type,
+          type: e.type,
+          timer: fragment("CASE WHEN ? = ? THEN ?->>'timer' END", e.type, ^elapsed, e.payload),
+          run: c.instance_id
+        }
+      )
+      |> bounded(opts)
+
+    from(r in subquery(reactions),
+      group_by: [r.by, r.command, r.type, r.timer],
+      select: {r.by, r.command, r.type, r.timer, count(r.run, :distinct)}
     )
-    |> bounded(opts)
     |> repo().all()
-    |> Map.new(fn {by, command, type, timer, runs} ->
-      timer = if type == ProcessManager.elapsed(), do: timer
-      {{by, command, type, timer}, runs}
-    end)
+    |> Map.new(fn {by, command, type, timer, runs} -> {{by, command, type, timer}, runs} end)
   end
 
   # --- waiting ------------------------------------------------------------------------

@@ -137,6 +137,34 @@ defmodule EhOsContract.PathsTest do
       assert %{in_flight: %{lag: 0}} = step(steps(), :review, :first_deposit_chase, :flag_account)
     end
 
+    test "a causing event's own field named timer does not split a reaction's runs" do
+      for {account, timer} <- [{"a-7", "x"}, {"a-8", "y"}] do
+        event =
+          record_event!(%{
+            type: "ledger.deposited",
+            contract: "DispatchRig.Ledger",
+            contract_version: "v",
+            process: "ledger",
+            instance_id: "ledger|#{account}",
+            payload: %{"account_id" => account, "amount" => 1500, "timer" => timer}
+          })
+
+        Repo.insert!(%EhOsContract.CommandRecord{
+          id: Ecto.UUID.generate(),
+          contract: "DispatchRig.Ledger",
+          type: "flag_account",
+          issued_by: "policy:flag_large_deposit",
+          causation_event_id: event.id,
+          correlation_id: Ecto.UUID.generate(),
+          outcome: "accepted",
+          process: "ledger",
+          instance_id: "ledger|#{account}"
+        })
+      end
+
+      assert %{runs: 2} = step(steps(), :deposited, :flag_large_deposit, :flag_account)
+    end
+
     test "an effect's job waits until it runs" do
       {:ok, _} = dispatch(%Deposit{account_id: "a-1", amount: 1500})
 
