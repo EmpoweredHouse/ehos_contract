@@ -1442,6 +1442,13 @@ inny port, a pod `localhost:4000` odpowiadał tamten projekt. Poza tym `server: 
 samym porcie padał z `:eaddrinuse` (sprawdzone). `server: true` usunięty — `mix phx.server` serwuje i bez niego
 (sprawdzone na 4011) — a domyślny port sandboxa to 4010 w `dev.exs`, `launch.json` i README.
 
+**Kształt deklarowany procesu v2** (luka, którą użytkownik zobaczył na dashboardzie 27 września). Po E7c ekran
+grafu rysował dla procesu v2 w obu panelach graf kroków, a obrazka dla właściciela procesu — etapy jako pasy,
+zakończenia, obietnice z oknem — v2 nie miał; ekran otwierał się przy tym na procesie v1 (kolejność etykiet), więc
+wyglądał jak sprzed E7. `Graph.declared_to_mermaid/2` rysuje teraz proces v2 tymi samymi funkcjami co v1 (wyjście
+v1 bajt w bajt identyczne dla trzech procesów sandboxa), task `graph --process` rysuje go bez `--overlay`, a ekran
+otwiera się na pierwszym procesie v2.
+
 **Przegląd przed PR (26 września, `/code-review high dsl-v2/e7c-conformance..HEAD`).** Osiem znalezisk; sześć
 poprawionych, jedno pominięte, jedno błędne:
 1. i 7. **`check` nie liczył query** wśród tego, co wymaga implementacji, a gałąź „zaimplementowany w części”
