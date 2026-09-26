@@ -163,12 +163,18 @@ defmodule EhOsContract.Conformance do
 
   @spec report_v2(map(), keyword()) :: map()
   defp report_v2(model, opts) do
+    deployment = Deployment.report(model.module, opts)
+
     %{
       contract: model.module,
       engine: EhOsContract.version(),
       period: %{since: Keyword.get(opts, :since), until: Keyword.get(opts, :until)},
-      deployment: Deployment.report(model.module, opts),
+      deployment: deployment,
+      # The code's half of the deployment, beside the agreement's: a v2 contract's
+      # wiring is its steps and the modules that implement them.
+      wiring: %{version: deployment.deployed.wiring_version, since: deployment.deployed.since},
       processes: List.wrap(model.process && process_v2(model, opts)),
+      scenarios: EhOsContract.Coverage.of(model, opts),
       drift: drift_v2(model, opts)
     }
   end

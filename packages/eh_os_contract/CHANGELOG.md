@@ -90,6 +90,10 @@ What changes otherwise is what a host has to do.
   a v2 `promise`, and `Run.evaluate/3` measures a v2 process's `deadline`, both over the runs in
   `eh_os_contract_event_runs`, so an event another contract decided counts in the run that includes it. The
   arithmetic is v1's, and the same scenarios give the same verdicts on a v1 shape and on its v2 port.
+- **E7c: scenario coverage** (`EhOsContract.Coverage`, v2 §13): a v2 report's `scenarios` says how many of the
+  contract's command scenarios the log saw happen — by type only, `given` among the stream's types and `expect`
+  a subsequence of what was emitted, or the same rejecting invariant — which never, and which decisions no
+  scenario declares. Beside it, `wiring` names the deployed wiring version and since when.
 - **E7c: `mix eh_os_contract.check` reads v2 contracts** (`EhOsContract.Check.v2_findings/1`): a process with no
   `accountable`, a declaration or promise not confirmed, a promise with no `within`, a `deadline` no run can be
   seen to end, and whether the contract is implemented — not at all is noted (D3), in part is a warning. What
