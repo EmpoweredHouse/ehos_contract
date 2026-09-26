@@ -2,13 +2,15 @@ defmodule DispatchRig.Account do
   @moduledoc """
   **Invented.** The decider of `DispatchRig.Ledger`'s account.
 
-  Two things here exist only for tests. `misbehave/2` builds an event the command
+  Several things here exist only for tests. `misbehave/2` builds an event the command
   does not emit without `emit/1`, which would have refused it at compile time.
   And a test can make the next `deposit/2` append to the same stream behind the
   decision's back, `Process.put(:dispatch_rig_race, true)`, so that the append
   meets a stream that moved: the conflict dispatch retries. And it can make the
   next deposit decide an event for another account,
-  `Process.put(:dispatch_rig_stray, "a-2")`, which dispatch has to refuse.
+  `Process.put(:dispatch_rig_stray, "a-2")`, which dispatch has to refuse. And make
+  the next flagging raise, `Process.put(:dispatch_rig_flag_fails, true)`, to watch a
+  policy's command fail inside the command that set the policy off.
   """
 
   use DispatchRig.Ledger, aggregate: :account
@@ -31,8 +33,10 @@ defmodule DispatchRig.Account do
   end
 
   @impl true
-  def flag_account(%FlagAccount{account_id: id}, _state),
-    do: emit(%AccountFlagged{account_id: id})
+  def flag_account(%FlagAccount{account_id: id}, _state) do
+    if Process.delete(:dispatch_rig_flag_fails), do: raise("flagging fails")
+    emit(%AccountFlagged{account_id: id})
+  end
 
   @impl true
   def misbehave(%Misbehave{account_id: id}, _state),

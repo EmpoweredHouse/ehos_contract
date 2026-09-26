@@ -76,6 +76,21 @@ defmodule EhOsContract.DispatchInlineTest do
       assert flagged.causation_id == flag.id
     end
 
+    test "a failure in what a policy issued rolls everything back, and names the policy" do
+      Process.put(:dispatch_rig_flag_fails, true)
+
+      assert_raise RuntimeError, ~r/flagging fails/, fn ->
+        dispatch(%Deposit{account_id: "a-1", amount: 1000})
+      end
+
+      assert Enum.map(log(), & &1.type) == ["ledger.account_opened"]
+
+      # One failed row, the deposit's: its own decider ran fine, and the failure came
+      # from the policy it set off.
+      assert [%{type: "deposit", failed_in: "policy:flag_large_deposit"}] =
+               Enum.filter(rows(), &(&1.outcome == "failed"))
+    end
+
     test "control: a deposit below the threshold issues nothing" do
       {:ok, _} = dispatch(%Deposit{account_id: "a-1", amount: 999})
       refute Enum.any?(log(), &(&1.type == "ledger.account_flagged"))

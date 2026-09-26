@@ -488,25 +488,29 @@ defmodule EhOsContract.Dispatcher do
               "never end: #{inspect(Enum.reverse([link | chain]))}"
     end
 
-    issued =
-      stage("policy:#{consumer.name}", fn ->
-        case apply(module, consumer.callback, [event]) do
-          {:ok, commands} when is_list(commands) ->
-            commands
+    # Under the policy's name as a whole: a command it issued that fails in its own
+    # decider fails the first command because of this policy, and its row says so.
+    stage("policy:#{consumer.name}", fn ->
+      case apply(module, consumer.callback, [event]) do
+        {:ok, commands} when is_list(commands) ->
+          dispatch_issued!(consumer, event, commands, {model, policy.issues}, [link | chain])
 
-          other ->
-            raise ArgumentError,
-                  "policy #{inspect(consumer.name)} returned #{inspect(other)}; it returns {:ok, commands}"
-        end
-      end)
+        other ->
+          raise ArgumentError,
+                "policy #{inspect(consumer.name)} returned #{inspect(other)}; it returns " <>
+                  "{:ok, commands}"
+      end
+    end)
+  end
 
-    allowed = MapSet.new(policy.issues, &Model.module_for(model, :command, &1))
+  defp dispatch_issued!(consumer, event, commands, {model, issues}, chain) do
+    allowed = MapSet.new(issues, &Model.module_for(model, :command, &1))
 
-    for {command, index} <- Enum.with_index(issued) do
+    for {command, index} <- Enum.with_index(commands) do
       unless is_struct(command) and MapSet.member?(allowed, command.__struct__) do
         raise ArgumentError,
               "policy #{inspect(consumer.name)} issued #{describe(command)}, which is not among " <>
-                "the commands it issues: #{inspect(policy.issues)}"
+                "the commands it issues: #{inspect(issues)}"
       end
 
       opts = [
@@ -514,7 +518,7 @@ defmodule EhOsContract.Dispatcher do
         causation_id: event.__meta__.id,
         correlation_id: event.__meta__.correlation_id,
         idempotency_key: "policy:#{consumer.name}:#{event.__meta__.id}:#{index}",
-        chain: [link | chain]
+        chain: chain
       ]
 
       case dispatch(consumer.contract, command, opts) do
