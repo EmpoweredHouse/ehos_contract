@@ -50,6 +50,29 @@ plug Plug.Static,
 This package's own test host carries that same line, so the suite proves the
 instruction rather than assuming it.
 
+The same line serves the fonts: they sit beside the stylesheet, in
+`priv/static/assets/fonts/`, and the stylesheet names them by relative URL. Nothing
+the dashboard loads comes from anywhere but these assets — no Google Fonts, no CDN —
+so it works under a policy of `default-src 'self'` and without internet, with one
+exception: the graph screen's diagrams need inline styles (see "Looks" below).
+
+## Looks
+
+The dashboard is styled from the EmpoweredHouse design system, the one the EHOS
+console uses: dark by default, light when the system prefers it. Its tokens are a
+copy kept in `assets/css/vendor/empoweredhouse/`, which is refreshed from the design
+system and never edited here; `SOURCE.md` beside it says where it came from.
+
+A host cannot restyle it or pin its theme yet. The dashboard's root layout replaces
+the host's for these routes and loads only this package's stylesheet, so neither a
+host stylesheet nor a `data-theme` attribute reaches the page. The
+`--eh-os-contract-*` custom properties are kept as the names such a hook would set.
+
+**The graph screen needs `style-src 'unsafe-inline'`.** Mermaid, which draws its
+diagrams in the browser, writes a `<style>` element into each one. Under a policy
+that forbids inline styles the status screen works and the diagrams render as black
+boxes.
+
 ## Who may see it
 
 `eh_os_contract_dashboard/2` and `eh_os_contract_api/2` both require a `:resolver` implementing
@@ -63,9 +86,10 @@ This package is not published. Two reasons, both recorded rather than pending:
 
 - it depends on `eh_os_contract`, which is not on Hex either, and a published package
   may depend only on published ones;
-- `priv/static/assets/mermaid.min.js` is a vendored third-party build, so a tarball
-  redistributes somebody else's code. `NOTICE` carries the attribution, and the
-  decision to actually publish is a separate one.
+- `priv/static/assets/mermaid.min.js` is a vendored third-party build, and
+  `priv/static/assets/fonts/` holds two third-party fonts, so a tarball redistributes
+  somebody else's work. `NOTICE` carries the attribution, and the decision to
+  actually publish is a separate one.
 
 ## Licence
 

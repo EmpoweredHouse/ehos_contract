@@ -59,7 +59,10 @@ config :esbuild,
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
   ],
+  # The fonts are not an input: they are committed where the built stylesheet's
+  # relative url()s point, priv/static/assets/fonts/, and --external keeps
+  # esbuild from resolving (and failing on) those urls.
   eh_os_contract_web_css: [
-    args: ~w(css/app.css --bundle --minify --outdir=../priv/static/assets),
+    args: ~w(css/app.css --bundle --minify --external:*.woff2 --outdir=../priv/static/assets),
     cd: Path.expand("../assets", __DIR__)
   ]

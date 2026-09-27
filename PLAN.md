@@ -185,6 +185,68 @@ Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty bram, 
 `README.md` i README pakietów — po angielsku; `PLAN.md` i `CLAUDE.md` po polsku. Wartości w danych testowych: słowa
 po angielsku, imiona i miasta bez diakrytyków (`visit-anna`, `krakow`). Pełna reguła — `CLAUDE.md`.
 
+## Dopisek 28 września — dashboard na design systemie EmpoweredHouse
+
+Poza kolejnością etapów v2, na gałęzi `claude/dashboard-design-system-migration-6df600`. To samo, co `eh-os`
+zrobił dla konsoli w D-42 (PR EmpoweredHouse/eh-os#36), przełożone na montowalną bibliotekę ze zwykłym CSS.
+Założenia w [`docs/adr/dashboard-design-system.md`](docs/adr/dashboard-design-system.md), **status
+`proposed`** — czeka na akceptację.
+
+**Co jest.** Kopia `colors_and_type.css` w `packages/eh_os_contract_web/assets/css/vendor/empoweredhouse/`
+z `SOURCE.md` — bajt w bajt ta sama co w `eh-os` (SHA-256 `704bbd4e…`), `.gitattributes` z `-text`. Fonty
+(Albert Sans, JetBrains Mono, 400/500, `latin` + `latin-ext`, OFL) w `priv/static/assets/fonts/`, obok
+zbudowanego `app.css`, więc **host nie dodaje nic** — serwuje je ten sam `Plug.Static` co `app.css`, a
+względne `url()` rozwiązują się względem arkusza. esbuild dostał `--external:*.woff2`, bo inaczej próbuje
+rozwiązać `url()` i pada. Warstwa `app.css` importuje kopię, zmienne `--eh-os-contract-*` zostają jako API
+hosta i wskazują na tokeny. Mermaid dostaje motyw z tokenów w runtime (`getComputedStyle`, przeliczone na
+hex przez canvas, bo silnik motywów Mermaida czyta tylko hex), przerysowuje się przy zmianie motywu.
+Skill odświeżania: `.claude/skills/sync-design-system/`. Testy: `test/design_system_test.exs`, 8.
+
+**Decyzje użytkownika (28 września):**
+
+- **Werdykt:** *breached* w kolorze błędu (coral) z kropką, *met* i *in progress* neutralnym tekstem —
+  różnicę mówi zdanie. *Odrzucone:* kropka lime przy „Met in all N runs” (lime przekroczyłby ~5% ekranu
+  przy wielu obietnicach, a spełniona obietnica to przypadek zwykły, nie sygnał); neutralne badge dla
+  *in progress* (nowy element w szablonie zamiast samego CSS).
+- **Kolory węzłów silnika w diagramach:** paleta Event Stormingu grafu v2 **zostaje na razie** — „w
+  niedalekiej przyszłości będzie to zmieniane”, więc podmiana siedzi w jednej tabeli (`NODE_CLASSES` w
+  `assets/js/app.js`), do której klasy Event Stormingu dołączą jedną zmianą. Kolory stanów v1 (`confirmed`,
+  `in_flight`, `dead`, `terminal`, `external`) dashboard podmienia na tokeny, bo to kolory statusu, których
+  design system nie ma. Silnik bez zmian — jego Mermaid idzie też do `mix eh_os_contract.graph`.
+  *Odrzucone:* wszystko z tokenów (traci kolory, które ludzie znają z warsztatu); nie ruszać `classDef`
+  (zielony „ok” na ciemnym tle łamie zasady).
+
+**Znalezione przy weryfikacji, do zrobienia osobno.** **Ekran grafu nie działa pod ścisłym CSP i nie
+działał nigdy.** Mermaid wstawia `<style>` do każdego SVG; pod `default-src 'self'` (tak ma EHOS) każdy
+diagram to czarne prostokąty. Sprawdzone na sandboxie z polityką EHOS-a dodaną tylko na czas testu — z
+arkuszem i skryptem sprzed tej zmiany wynik ten sam, więc to nie regresja. README pakietu mówi teraz
+wprost, że ekran grafu wymaga `style-src 'unsafe-inline'`. Naprawa to rysowanie diagramów bez stylu
+inline (np. SVG po stronie serwera albo przeniesienie reguł do arkusza) — osobna decyzja.
+
+Drugie znalezisko, naprawione na miejscu: Mermaid 11 owija etykietę węzła w `<p>`, więc stronowa reguła
+`p { color }` przebijała `color:#000` z `classDef` i etykiety na pastelowych węzłach Event Stormingu były
+nieczytelne. Reset `pre.mermaid p` w warstwie.
+
+Usunięte przy okazji martwe reguły z czasów panelu kont: `button[phx-click="revoke_role"]` i
+`nav a:last-child { margin-left: auto }` — ta druga przy dwóch linkach spychała „Graph” na prawą krawędź.
+Po przeglądzie także reguły `table`/`th`/`td`, `input` i `button`: żaden szablon ich nie renderuje.
+
+**Przegląd (dwa równolegle, `pre-pr-review`).** Naprawione: kolory przez odczyt pikseli z canvasa
+(przeglądarki antyfingerprintingowe blokują albo zaszumiają `getImageData`) — teraz przez ukryty element
+i złożenie alfy w JS; brakujący albo nieczytelny token dawał po cichu zły kolor — teraz nazwany błąd,
+diagramy spadają do wyglądu Mermaida, a LiveView łączy się mimo to (wcześniej wyjątek na górze `app.js`
+zabijał cały dashboard); nakładające się rysowania jednego diagramu — teraz kolejka per element;
+`document.fonts.ready` nie ładował podzbioru `latin-ext` przed pomiarem polskich etykiet — teraz
+`document.fonts.load` z tekstem diagramu; focus niewidoczny w forced-colors; kolory `classDef` liczone
+przy każdym rysowaniu zamiast raz na motyw. Testy: token czytany przez `app.css`/`app.js`, którego kopia
+nie definiuje; `url(data:…)`; komunikat przy skrypcie inline, który ginął w `MatchError`.
+
+**Poprawione założenie:** zmienne `--eh-os-contract-*` nie są i nie były powierzchnią nadpisywania dla
+hosta — root layout zastępuje layout hosta i ładuje tylko arkusz pakietu, więc żaden arkusz hosta ani
+`data-theme` tu nie dociera. README i ADR mówiły inaczej; poprawione (w ADR z datą). **Otwarte, do
+decyzji:** czy dać hostowi wejście (np. opcję makra z własnym arkuszem albo motywem) — to nowy kształt
+widoczny dla hosta, więc nie w tej zmianie.
+
 ## Dopisek 25 września (2) — Etap 6: pivot do DSL v2, plan wykonania
 
 Plan zatwierdzony 25 września. **Projekt jest w [`docs/adr/contract-v2.md`](docs/adr/contract-v2.md)** —

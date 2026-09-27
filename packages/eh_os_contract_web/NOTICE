@@ -32,3 +32,16 @@ MIT Licence:
 It is vendored rather than pulled from npm because this repository deliberately
 carries no Node toolchain; the file is the published `dist/mermaid.min.js`, taken
 once via `npm pack mermaid@11` and not modified.
+
+## Albert Sans and JetBrains Mono
+
+`priv/static/assets/fonts/` holds unmodified WOFF2 files of Albert Sans and
+JetBrains Mono, weights 400 and 500, subsets latin and latin-ext, taken from the
+npm packages `@fontsource/albert-sans@5.3.0` and `@fontsource/jetbrains-mono@5.3.0`.
+Both are licensed under the SIL Open Font License, Version 1.1, whose full text,
+with each font's copyright line, is beside the files:
+`OFL-albert-sans.txt` and `OFL-jetbrains-mono.txt`.
+
+They are served by the dashboard itself, rather than from Google Fonts, because
+the dashboard runs under its host's Content-Security-Policy and may have no
+internet access.
