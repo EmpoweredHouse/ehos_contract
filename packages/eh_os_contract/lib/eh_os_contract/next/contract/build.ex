@@ -109,12 +109,22 @@ defmodule EhOsContract.Next.Contract.Build do
       state: %{fields: identity_fields(unit) ++ state_fields(unit.state)},
       invariants: plain(unit.invariants)
     }
+    # Kept only where it is set, so no other unit's digest moves (plan EM3).
+    |> then(&if unit.generated, do: Map.put(&1, :generated, unit.generated), else: &1)
   end
 
+  # A command that creates its aggregate arrives without the generated identity, so
+  # the identity is optional in it (plan EM3). `creates` is kept only where it is
+  # true, so no other command's digest moves.
   defp command(unit, command) do
+    identity =
+      for field <- identity_fields(unit),
+          do: if(command.creates, do: %{field | optional: true}, else: field)
+
     command
     |> plain()
-    |> Map.merge(%{unit: unit.name, fields: identity_fields(unit) ++ plain(command.fields)})
+    |> then(&if command.creates, do: &1, else: Map.delete(&1, :creates))
+    |> Map.merge(%{unit: unit.name, fields: identity ++ plain(command.fields)})
   end
 
   # A unit's events, each with the stage group it sits in: `nil` outside one.

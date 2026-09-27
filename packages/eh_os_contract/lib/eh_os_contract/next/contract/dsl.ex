@@ -41,7 +41,23 @@ defmodule EhOsContract.Next.Contract.Dsl do
   defmodule Command do
     @moduledoc false
     defstruct [:name, :label, :source, by: [], emits: [], rejects: [], fields: []] ++
-                [__spark_metadata__: nil]
+                [creates: false, __spark_metadata__: nil]
+  end
+
+  defmodule Generated do
+    @moduledoc """
+    `identity :booking_id, generated: :uuid` in an aggregate (plan EM3): the identity,
+    and that the library gives each new aggregate one. Spark's option takes one
+    argument, so this two-argument form sets the two options it stands for.
+    """
+
+    @doc "Sets the aggregate's `identity` and how a new one is `generated`."
+    defmacro identity(fields, opts) when is_list(opts) do
+      quote do
+        identity(unquote(fields))
+        generated(unquote(Keyword.fetch!(opts, :generated)))
+      end
+    end
   end
 
   defmodule Event do
@@ -62,7 +78,7 @@ defmodule EhOsContract.Next.Contract.Dsl do
 
   defmodule Unit do
     @moduledoc false
-    defstruct [:kind, :name, :label, :source, identity: [], consults: [], state: []] ++
+    defstruct [:kind, :name, :label, :source, :generated, identity: [], consults: [], state: []] ++
                 [invariants: [], commands: [], events: [], stages: [], __spark_metadata__: nil]
   end
 
@@ -299,6 +315,12 @@ defmodule EhOsContract.Next.Contract.Dsl do
         default: [],
         doc: "The invariants of this unit it may refuse on."
       ],
+      creates: [
+        type: :boolean,
+        default: false,
+        doc:
+          "Whether it creates the aggregate, which the library then gives its generated identity."
+      ],
       source: [type: :string, doc: "Where the command comes from in the material."]
     ]
   }
@@ -368,6 +390,7 @@ defmodule EhOsContract.Next.Contract.Dsl do
     args: [:name, :label],
     auto_set_fields: [kind: :aggregate],
     entities: @unit_entities,
+    imports: [Generated],
     schema: [
       name: [type: :atom, required: true, doc: "The aggregate's name."],
       label: [type: :string, required: true, doc: "What the business calls it."],
@@ -376,6 +399,12 @@ defmodule EhOsContract.Next.Contract.Dsl do
         required: true,
         doc:
           "The fields that identify one aggregate; injected into its state, commands and events."
+      ],
+      generated: [
+        type: {:one_of, [:uuid]},
+        doc:
+          "That the library gives a new aggregate its identity, a UUIDv7, when a command that " <>
+            "`creates:` it arrives without one; written `identity :booking_id, generated: :uuid`."
       ],
       source: [type: :string, doc: "Where the aggregate comes from in the material."]
     ]

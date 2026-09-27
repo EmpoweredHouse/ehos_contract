@@ -87,6 +87,13 @@ What changes otherwise is what a host has to do.
   and checks its result, raising on a mismatch without the value in the message
   (`EhOsContract.DomainService`). `mix eh_os_contract.check` counts it among what a contract implements. A
   contract declaring none keeps its version.
+- **EM3: the library may give a new aggregate its identity** (ESDM's `identifiedBy: generated`). An aggregate
+  declares `identity :booking_id, generated: :uuid`, and a command `creates: true`; that command arrives
+  without the identity, dispatch gives it a UUIDv7, and `%EhOsContract.Receipt{identity: %{booking_id: id}}`
+  returns it — the first command's for a duplicate. A creating command that brings an identity is refused
+  with `{:error, {:invalid, [booking_id: :generated]}}`, a new problem; every other command still needs one.
+  A6 keeps it to an aggregate with one identity field and at least one creating command. `Receipt` gains
+  `identity` for every command.
 - **EM3: a process manager's timer may wait by the calendar**, `timer :review, wait: {1, :month}` — also
   `:week` and `:year`. A month after 31 January is the last day of February (`EhOsContract.Duration.calendar_shift/2`,
   `DateTime.shift/2`). `within` and `deadline` still take fixed units only, since the report measures elapsed time

@@ -45,6 +45,7 @@ spark_locals_without_parens = [
   context: 2,
   context: 3,
   correlate: 1,
+  creates: 1,
   data: 1,
   dcb: 2,
   dcb: 3,
@@ -82,6 +83,7 @@ spark_locals_without_parens = [
   from: 1,
   function: 2,
   function: 3,
+  generated: 1,
   given: 1,
   given: 2,
   given: 3,
@@ -189,7 +191,12 @@ v1_locals_without_parens = [
   or_else: 1
 ]
 
-locals_without_parens = v1_locals_without_parens ++ spark_locals_without_parens
+# Macros of the library's own beside Spark's, which `mix spark.formatter` cannot see:
+# `identity :booking_id, generated: :uuid` in an aggregate (plan EM3).
+own_locals_without_parens = [identity: 2]
+
+locals_without_parens =
+  v1_locals_without_parens ++ spark_locals_without_parens ++ own_locals_without_parens
 
 [
   # `:ecto_sql` for `EhOsContract.Migrations`' version modules.

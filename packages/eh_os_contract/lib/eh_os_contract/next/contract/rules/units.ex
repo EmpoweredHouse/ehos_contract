@@ -16,6 +16,9 @@ defmodule EhOsContract.Next.Contract.Rules.Units do
     and a boundary finds what it consults by its tags. For an event consumed from a
     sibling contract the same is X6's, where the sibling is known.
   - **A5.** A unit, or a process manager, declares its state at most once.
+  - **A6** (plan EM3). An aggregate whose identity is `generated:` has one identity
+    field, and at least one command that `creates:` it, since nothing else could make
+    a new one; `creates:` belongs only to such an aggregate's commands.
   - **C1.** A command can be issued: it names actors in `by:`, or a policy or a
     process manager of this contract issues it.
   """
@@ -68,7 +71,37 @@ defmodule EhOsContract.Next.Contract.Rules.Units do
            "invariant of #{where}", command}
       end
 
-    emits ++ unemitted ++ rejects ++ consults(unit, d)
+    emits ++ unemitted ++ rejects ++ consults(unit, d) ++ generated(unit, where)
+  end
+
+  defp generated(unit, where) do
+    creating = for c <- unit.commands, c.creates, do: c
+
+    if unit.generated do
+      one =
+        if length(List.wrap(unit.identity)) == 1,
+          do: [],
+          else: [
+            {"A6: #{where} is identified by #{inspect(unit.identity)}; a generated identity is one " <>
+               "field", unit}
+          ]
+
+      created =
+        if creating == [],
+          do: [
+            {"A6: #{where} has a generated identity and no command that creates: it, so none " <>
+               "could ever be made", unit}
+          ],
+          else: []
+
+      one ++ created
+    else
+      for c <- creating do
+        {"A6: command #{inspect(c.name)} creates: #{where}, whose identity is not generated; " <>
+           "write `identity #{inspect(List.first(List.wrap(unit.identity)))}, generated: :uuid`",
+         c}
+      end
+    end
   end
 
   defp consults(%{kind: :dcb} = unit, d) do

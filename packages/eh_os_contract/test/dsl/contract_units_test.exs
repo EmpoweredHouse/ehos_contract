@@ -227,6 +227,75 @@ defmodule EhOsContract.Next.ContractUnitsTest do
     end
   end
 
+  describe "A6: a generated identity, and the command that creates it" do
+    test "two identity fields, no creating command, and creates: without a generated identity" do
+      message =
+        refuse_contract("GeneratedWrong", """
+          aggregate :booking, "Rezerwacja" do
+            identity [:clinic_id, :booking_id], generated: :uuid
+            command :cancel, "Odwołanie", by: :reception, emits: :cancelled
+            event :cancelled, "Odwołano", terminal: true
+          end
+
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :open_visit, "Otwarcie", by: :reception, emits: :opened, creates: true
+            event :opened, "Otwarto"
+          end
+
+          process :booking, "Rezerwacja" do
+            correlate :clinic_id
+          end
+        """)
+
+      assert message =~
+               "A6: aggregate :booking is identified by [:clinic_id, :booking_id]; a generated " <>
+                 "identity is one field (generated_wrong.ex:4)"
+
+      assert message =~
+               "A6: aggregate :booking has a generated identity and no command that creates: it"
+
+      assert message =~
+               "A6: command :open_visit creates: aggregate :visit, whose identity is not " <>
+                 "generated; write `identity :visit_id, generated: :uuid` (generated_wrong.ex:12)"
+    end
+
+    test "control: a generated identity with a creating command compiles into the model" do
+      model =
+        compile_contract("GeneratedRight", """
+          aggregate :booking, "Rezerwacja" do
+            identity :booking_id, generated: :uuid
+
+            command :book_visit, "Umów wizytę", by: :reception, emits: :visit_booked, creates: true do
+              field :slot, :timestamp
+            end
+
+            command :cancel, "Odwołanie", by: :reception, emits: :cancelled
+
+            event :visit_booked, "Zarezerwowano" do
+              field :slot, :timestamp
+            end
+
+            event :cancelled, "Odwołano", terminal: true
+          end
+
+          process :booking, "Rezerwacja" do
+            correlate :booking_id
+          end
+        """)
+
+      assert [%{identity: [:booking_id], generated: :uuid}] = model.units
+
+      book = Enum.find(model.commands, &(&1.name == :book_visit))
+      cancel = Enum.find(model.commands, &(&1.name == :cancel))
+
+      assert book.creates
+      assert %{name: :booking_id, optional: true} = hd(book.fields)
+      refute Map.has_key?(cancel, :creates)
+      assert %{name: :booking_id, optional: false} = hd(cancel.fields)
+    end
+  end
+
   describe "C1: a command can be issued" do
     test "a command without by:, which no reaction issues, is refused" do
       message =

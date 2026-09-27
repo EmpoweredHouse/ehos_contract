@@ -97,7 +97,7 @@ defmodule EhOsContract.Dispatcher do
   @type refusal ::
           Authorizer.reason()
           | :not_declared
-          | {:invalid, [Codec.problem()]}
+          | {:invalid, [Codec.problem() | {atom(), :generated}]}
           | :idempotency_key_reused
           | :conflict
           | :not_caught_up
@@ -119,7 +119,8 @@ defmodule EhOsContract.Dispatcher do
     values = Codec.values(model.domain)
 
     with :ok <- permit(model, declaration, ctx.actor),
-         :ok <- valid(declaration.fields, command, values) do
+         :ok <- valid(declaration.fields, command, values),
+         {:ok, command} <- generate_identity(model, declaration, command) do
       job = %{
         kind: :command,
         type: Atom.to_string(declaration.name),
@@ -413,6 +414,21 @@ defmodule EhOsContract.Dispatcher do
 
   # --- what --------------------------------------------------------------------------
 
+  # A command that creates an aggregate whose identity is generated arrives without
+  # it, and gets a UUIDv7 here, once per dispatch, so a retried conflict keeps it
+  # (plan EM3). One that brings its own is refused: the library gives it, and a host
+  # that made up its own would have two ways of doing so.
+  defp generate_identity(model, %{creates: true} = declaration, command) do
+    [field] = Enum.find(model.units, &(&1.name == declaration.unit)).identity
+
+    case Map.fetch!(command, field) do
+      nil -> {:ok, Map.put(command, field, Ecto.UUID.generate(version: 7))}
+      _given -> {:error, {:invalid, [{field, :generated}]}}
+    end
+  end
+
+  defp generate_identity(_model, _declaration, command), do: {:ok, command}
+
   defp valid(fields, struct, values) do
     case Codec.problems(fields, struct, values) do
       [] -> :ok
@@ -545,7 +561,9 @@ defmodule EhOsContract.Dispatcher do
             last_position: appended |> List.last() |> position()
           })
 
-          receipt = receipt(command_id, Enum.zip(Enum.map(events, &elem(&1, 1)), appended), false)
+          receipt =
+            receipt(job, command_id, Enum.zip(Enum.map(events, &elem(&1, 1)), appended), false)
+
           inline!(job, Enum.zip(receipt.events, appended), repo)
           {:ok, receipt}
       end
@@ -667,7 +685,7 @@ defmodule EhOsContract.Dispatcher do
         events =
           repo.all(from(e in Event, where: e.command_id == ^accepted.id, order_by: e.position))
 
-        {:ok, receipt(accepted.id, Enum.zip(decode_all!(job, events), events), true)}
+        {:ok, receipt(job, accepted.id, Enum.zip(decode_all!(job, events), events), true)}
 
       true ->
         {:error, :idempotency_key_reused}
@@ -927,7 +945,7 @@ defmodule EhOsContract.Dispatcher do
       reraise exception, __STACKTRACE__
   end
 
-  defp receipt(command_id, pairs, duplicate) do
+  defp receipt(job, command_id, pairs, duplicate) do
     events =
       for {event, %Event{} = row} <- pairs do
         meta = %Meta{
@@ -944,8 +962,15 @@ defmodule EhOsContract.Dispatcher do
 
     positions = Enum.map(events, & &1.__meta__.position)
 
+    # The unit's identity as the events carry it — a duplicate's is the first
+    # command's, whatever this one generated — or as the command did, when it decided
+    # no event.
+    keys = Enum.find(job.model.units, &(&1.name == job.declaration.unit)).identity
+    identity = Map.take(List.first(events) || job.command, keys)
+
     %Receipt{
       command_id: command_id,
+      identity: identity,
       events: events,
       positions: positions,
       position: List.last(positions),

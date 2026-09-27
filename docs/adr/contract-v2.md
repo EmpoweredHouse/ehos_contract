@@ -178,6 +178,12 @@ scenario        description!   scope · actor
 > the arguments and the result to their declared types and raises on a mismatch (the user's choice over a
 > compile-time check alone). No scenario targets it; ESDM has none for it either.
 
+> **27 September 2026, EM3 — a generated identity.** ESDM's `identifiedBy: {source: generated}` is written
+> `identity :booking_id, generated: :uuid` on an aggregate, with `creates: true` on the command that makes
+> one (the user's shapes). Dispatch gives that command a UUIDv7 and the receipt returns it; a creating command
+> that brings its own is refused, since two ways of making an identity would be one too many. A boundary has
+> no generated identity: its identity comes from the command, as ESDM's `command-payload` source does.
+
 ### 4.3 Field types and options
 
 - Built-in types: `:id :string :integer :decimal :boolean :date :timestamp {:enum, [...]} {:list, t}`, plus
