@@ -248,6 +248,11 @@ What changes otherwise is what a host has to do.
   one the answer is 401. Outcomes map to statuses — 200, 422 for a rejection or unfitting fields, 403 for a
   refusal, 409 for a conflict or a reused key, 404 — and no body carries a value the caller did not send.
   `plug` is an optional dependency, and the module compiles only when it is there.
+- `EhOsContract.Plug` asks whether the caller may make the call before it says what is wrong with the request
+  (stage EA). A body that is not an object, fields that do not decode, or a correlation id that is not a UUID
+  are asked of the `EhOsContract.Authorizer` as the call would have been: a caller without the capability gets
+  403 where it used to get 400 or 422 with the fields named, and a scoped query without its parameter is 403
+  `outside_scope`, as `query/3` answers it. Each request is still exactly one question to the `Authorizer`.
 - A scenario may ask a query and state its answer, after ESDM's read model scenario: `query :q, %{…}` and
   `answers [%{…}]` (`answers %{…}` or `answers nil` for a query returning one). Givens are events the read model
   projects, and each row names its fields (S2, S3, S6; X9 for values of domain types). `ScenarioCase` projects

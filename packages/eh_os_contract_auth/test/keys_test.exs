@@ -162,6 +162,49 @@ defmodule EhOsContract.Auth.KeysTest do
     assert jwk == [%{"kty" => "OKP", "crv" => "Ed25519", "x" => pair.public["x"]}]
   end
 
+  test "a pinned key is trusted through refreshes, and never written to the table" do
+    ehos = ehos({:keys, [key_pair()]})
+    keys = start_keys(ehos)
+    pinned = key_pair()
+
+    assert Keys.pin(pinned.public, keys) == pinned.kid
+    assert {:ok, _} = Auth.verify(credential(pinned), keys: keys)
+
+    answer(ehos, {:keys, [key_pair()]})
+    :ok = Keys.refresh(keys)
+    assert {:ok, _} = Auth.verify(credential(pinned), keys: keys)
+
+    assert Repo.query!("SELECT count(*) FROM eh_os_contract_auth_keys WHERE kid = $1", [
+             pinned.kid
+           ]).rows == [[0]]
+  end
+
+  test "pinning works only where the configuration allows it" do
+    pair = key_pair()
+    keys = start_keys(ehos({:keys, [key_pair()]}))
+    Application.put_env(:eh_os_contract_auth, :pin_keys, false)
+    on_exit(fn -> Application.put_env(:eh_os_contract_auth, :pin_keys, true) end)
+
+    assert_raise ArgumentError, ~r/pinning a key is for tests/, fn ->
+      Keys.pin(pair.public, keys)
+    end
+
+    assert Auth.verify(credential(pair), keys: keys) == {:error, :unknown_key}
+  end
+
+  test "pinning something that is not an Ed25519 key raises in the caller, not the process" do
+    pair = key_pair()
+    keys = start_keys(ehos({:keys, [pair]}))
+    pid = Process.whereis(keys)
+
+    assert_raise ArgumentError, ~r/only an Ed25519 public key/, fn ->
+      Keys.pin(%{"kty" => "EC", "crv" => "P-256"}, keys)
+    end
+
+    assert Process.whereis(keys) == pid
+    assert {:ok, _} = Auth.verify(credential(pair), keys: keys)
+  end
+
   test "a key process that is not running refuses with :no_keys, and does not raise" do
     assert Auth.verify(credential(key_pair()), keys: :not_started) == {:error, :no_keys}
     refute Auth.ready?(keys: :not_started)

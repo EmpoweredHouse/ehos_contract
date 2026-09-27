@@ -18,3 +18,12 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   more than fifteen minutes away, or whose header carries `crit`, is `:bad_signature`.
   `EhOsContract.Auth.ready?/0` answers whether any key is held, for the host's
   health check. `EhOsContract.Auth.Migrations` creates the table.
+- **`EhOsContract.Auth` is an `EhOsContract.Authorizer`** (`config :eh_os_contract, authorizer:
+  EhOsContract.Auth`): `EhOsContract.Authorizer.check/2`'s answer, and one row per decision in
+  `eh_os_contract_auth_decisions` — subject, kind, capability, contract and version, the scope
+  dimension and value, `allowed` or `refused`, the reason. Migration version 2 creates the table.
+- **`EhOsContract.Auth.Plug`** verifies a bearer credential in front of `EhOsContract.Plug`, and
+  answers 401 with `no_credential` or the reason `verify/2` refused it.
+- **`EhOsContract.Auth.Testing`**: `credential/3` signs with a test key pinned in the running key
+  store (`EhOsContract.Auth.Keys.pin/2`), and `assert_every_entry_refuses/3` calls a host's entry
+  point for every capability its contracts declare with a credential that lacks it.

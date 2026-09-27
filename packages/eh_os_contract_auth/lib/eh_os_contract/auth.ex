@@ -4,6 +4,8 @@ defmodule EhOsContract.Auth do
   own database (v2 §16, D14; `eh-os` D-33, D-34).
 
       # config/config.exs
+      config :eh_os_contract, authorizer: EhOsContract.Auth
+
       config :eh_os_contract_auth,
         issuer: "https://ehos.example.com",
         audience: "rehmed/production"
@@ -52,17 +54,37 @@ defmodule EhOsContract.Auth do
 
   An accepted credential becomes an `EhOsContract.Actor` of kind `:credential`,
   with `subject`, `capabilities` and `scopes` exactly as it carries them in `sub`,
-  `cap` and `scp` (`eh-os` D-40). The engine asks the configured
-  `EhOsContract.Authorizer` what that actor may do.
+  `cap` and `scp` (`eh-os` D-40). Over HTTP, `EhOsContract.Auth.Plug` does this for
+  a bearer token in front of `EhOsContract.Plug`.
 
-  How the keys are kept, refreshed and refetched is `EhOsContract.Auth.Keys`.
+  **This module is also the `EhOsContract.Authorizer`** the engine asks what that
+  actor may do. `authorize/2` decides with `EhOsContract.Authorizer.check/2` alone —
+  no rule of its own, so it narrows nothing — and writes one row to
+  `eh_os_contract_auth_decisions` for every decision, a refusal as carefully as an
+  acceptance (`eh-os` D-34, FM-21): who, which capability, which contract and
+  version, the scope value asked for, the outcome and the reason.
+
+  The row records the authorization, not the command. A command allowed here may
+  still be rejected on an invariant or fail in code, and what became of it is the
+  engine's row in `eh_os_contract_commands`: two facts, two rows. The engine asks
+  before its own transaction, so the row goes through whatever connection the call
+  is on. A caller that wraps `EhOsContract.dispatch/3` in a transaction of its own
+  and rolls it back rolls the row back with it; `EhOsContract.Plug` never does.
+  A row that cannot be written fails the call: a decision nobody recorded is not
+  made.
+
+  How the keys are kept, refreshed and refetched is `EhOsContract.Auth.Keys`; tests
+  get credentials from `EhOsContract.Auth.Testing`.
   """
 
-  use Boundary, deps: [EhOsContract], exports: [Keys, Migrations]
+  use Boundary, deps: [EhOsContract], exports: [Keys, Migrations, Plug, Testing]
 
-  alias EhOsContract.Actor
+  @behaviour EhOsContract.Authorizer
+
+  alias EhOsContract.{Actor, Authorizer}
   alias EhOsContract.Auth.Keys
 
+  @decisions "eh_os_contract_auth_decisions"
   @max_lifetime 15 * 60
 
   @typedoc "Why a credential is refused."
@@ -163,6 +185,32 @@ defmodule EhOsContract.Auth do
          :ok <- claim(within_lifetime?(claims["exp"]), :bad_signature) do
       actor(claims)
     end
+  end
+
+  @doc """
+  The engine's question about a credential's actor: `EhOsContract.Authorizer.check/2`'s
+  answer, recorded. See the module's doc for the row.
+  """
+  @impl Authorizer
+  @spec authorize(Actor.t(), Authorizer.Request.t()) :: :ok | {:error, Authorizer.reason()}
+  def authorize(%Actor{kind: :credential} = actor, %Authorizer.Request{} = request) do
+    decision = Authorizer.check(actor, request)
+    {dimension, value} = request.scope || {nil, nil}
+
+    row = %{
+      subject: actor.subject,
+      kind: Atom.to_string(request.kind),
+      capability: request.capability,
+      contract: inspect(request.contract),
+      contract_version: request.version,
+      scope_dimension: dimension,
+      scope_value: value,
+      outcome: if(decision == :ok, do: "allowed", else: "refused"),
+      reason: with({:error, reason} <- decision, do: Atom.to_string(reason), else: (_ -> nil))
+    }
+
+    {1, _} = Application.fetch_env!(:eh_os_contract, :repo).insert_all(@decisions, [row])
+    decision
   end
 
   defp config!(key), do: Application.fetch_env!(:eh_os_contract_auth, key)

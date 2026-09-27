@@ -105,6 +105,78 @@ defmodule EhOsContract.PlugTest do
     assert {outside.status, json(outside)} == {403, %{"refused" => "outside_scope"}}
   end
 
+  describe "whether the caller may is answered before what is wrong with the request" do
+    # Tells the test process about every question, so a request asked twice or not at
+    # all shows. The plug runs in the test process under `Plug.Test`.
+    defmodule Counting do
+      @moduledoc false
+      @behaviour EhOsContract.Authorizer
+
+      @impl true
+      def authorize(actor, request) do
+        send(self(), {:asked, request.capability, request.scope})
+        EhOsContract.Authorizer.check(actor, request)
+      end
+    end
+
+    setup do
+      previous = Application.get_env(:eh_os_contract, :authorizer)
+      Application.put_env(:eh_os_contract, :authorizer, Counting)
+
+      on_exit(fn ->
+        if previous,
+          do: Application.put_env(:eh_os_contract, :authorizer, previous),
+          else: Application.delete_env(:eh_os_contract, :authorizer)
+      end)
+    end
+
+    defp asked do
+      receive do
+        {:asked, capability, scope} -> [{capability, scope} | asked()]
+      after
+        0 -> []
+      end
+    end
+
+    test "a caller without the capability is refused, whatever it sent" do
+      stranger = Actor.credential("u-2", [])
+
+      for conn <- [
+            post("/commands/dispatch_rig.deposit", %{account_id: "a-1", amount: "a lot"}),
+            conn(:post, "/commands/dispatch_rig.deposit", "[1]")
+            |> put_req_header("content-type", "application/json"),
+            post("/commands/dispatch_rig.deposit", %{account_id: "a-1", amount: 1})
+            |> put_req_header("x-correlation-id", "not-a-uuid")
+          ] do
+        refused = call(conn, stranger)
+        assert {refused.status, json(refused)} == {403, %{"refused" => "missing_capability"}}
+        assert asked() == [{"dispatch_rig.deposit", nil}]
+      end
+
+      assert Repo.aggregate(Event, :count) == 1
+    end
+
+    test "the control: with the capability, the problem with the request is the answer" do
+      invalid =
+        call(post("/commands/dispatch_rig.deposit", %{account_id: "a-1", amount: "a lot"}))
+
+      assert {invalid.status, json(invalid)} == {422, %{"invalid" => %{"amount" => "type"}}}
+      assert asked() == [{"dispatch_rig.deposit", nil}]
+
+      valid = call(post("/commands/dispatch_rig.deposit", %{account_id: "a-1", amount: 1}))
+      assert valid.status == 200
+      assert asked() == [{"dispatch_rig.deposit", nil}], "asked once, by dispatch, as before"
+    end
+
+    test "a scoped query that does not decode is asked with the value as it was sent" do
+      # Without its scope parameter the query does not decode, and asks for no value
+      # the grant holds: refused, as `EhOsContract.query/3` refuses it, not 422.
+      missing = call(conn(:get, "/queries/#{@query}"))
+      assert {missing.status, json(missing)} == {403, %{"refused" => "outside_scope"}}
+      assert asked() == [{@query, {"branch_id", nil}}]
+    end
+  end
+
   test "a correlation id that is not a UUID is refused before anything runs" do
     conn =
       post("/commands/dispatch_rig.deposit", %{account_id: "a-1", amount: 1})

@@ -20,6 +20,14 @@ defmodule EhOsContract.Auth.PackageTest do
     assert File.exists?("CHANGELOG.md")
   end
 
+  test "a test credential without the key process says what to start" do
+    assert_raise ArgumentError,
+                 ~r/start EhOsContract.Auth in the application's supervision/,
+                 fn ->
+                   EhOsContract.Auth.Testing.credential("u-anna", [], %{}, keys: :not_started)
+                 end
+  end
+
   describe "the child for the host's supervision tree" do
     setup do
       config = Application.get_all_env(:eh_os_contract_auth)

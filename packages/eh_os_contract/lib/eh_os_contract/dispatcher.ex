@@ -234,6 +234,30 @@ defmodule EhOsContract.Dispatcher do
 
   # --- who ---------------------------------------------------------------------------
 
+  # `EhOsContract.Plug`'s question when a request fails before dispatch or query would
+  # run — a body that is not an object, fields that do not decode, a correlation id
+  # that is not a UUID: the request either of them would make, with a scope value as
+  # it was sent. Asked first, a caller without the capability learns nothing about
+  # the declaration's fields, and every request is still one decision (v2 §11).
+  @doc false
+  @spec permit_undecoded(Model.t(), :command | :query, map(), Actor.t(), map()) ::
+          :ok | {:error, Authorizer.reason()}
+  def permit_undecoded(model, :command, declaration, actor, _input),
+    do: permit(model, declaration, actor)
+
+  def permit_undecoded(model, :query, %{scope: nil} = declaration, actor, _input),
+    do: permit_query(model, declaration, actor, nil)
+
+  def permit_undecoded(model, :query, declaration, actor, input) do
+    value =
+      case Map.get(input, Atom.to_string(declaration.scope)) do
+        value when is_binary(value) -> value
+        _missing_or_not_a_string -> nil
+      end
+
+    permit_query(model, declaration, actor, scope_request(declaration.scope, value))
+  end
+
   defp permit(model, declaration, %Actor{kind: :credential} = actor) do
     Authorizer.run(actor, %Authorizer.Request{
       kind: :command,
@@ -302,13 +326,13 @@ defmodule EhOsContract.Dispatcher do
 
   defp scope(declaration, params, values) do
     param = Enum.find(declaration.params, &(&1.name == declaration.scope))
-
-    %{
-      dimension: Atom.to_string(declaration.scope),
-      value: scoped(param.type, Map.get(params, declaration.scope), values),
-      type: param.type
-    }
+    value = scoped(param.type, Map.get(params, declaration.scope), values)
+    declaration.scope |> scope_request(value) |> Map.put(:type, param.type)
   end
+
+  # What a scoped request carries, decoded or as it was sent: the one place that
+  # says so, for `query/3` and for `permit_undecoded/5`.
+  defp scope_request(dimension, value), do: %{dimension: Atom.to_string(dimension), value: value}
 
   defp scoped(type, value, values) do
     case Codec.encode_value(type, value, values) do

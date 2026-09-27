@@ -10,7 +10,9 @@ config :eh_os_contract_auth, ecto_repos: [EhOsContract.Auth.TestRepo]
 
 config :eh_os_contract_auth,
   issuer: "https://ehos.test",
-  audience: "rehmed/test"
+  audience: "rehmed/test",
+  # Test keys may be pinned (`EhOsContract.Auth.Keys.pin/2`); nowhere but a test.
+  pin_keys: true
 
 config :eh_os_contract_auth, EhOsContract.Auth.TestRepo,
   username: "eh_os",

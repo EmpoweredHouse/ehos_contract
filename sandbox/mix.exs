@@ -52,6 +52,9 @@ defmodule EhOsContractHost.MixProject do
       # own supervisor references its modules directly (PLAN.md, dopisek 23
       # sierpnia (8)) instead of relying on the OTP application list.
       {:eh_os_contract_web, path: "../packages/eh_os_contract_web", runtime: false},
+      # The credential verifier (v2 stage EA): the `EhOsContract.Authorizer` this host
+      # configures, and the bearer plug in front of the commands it serves over HTTP.
+      {:eh_os_contract_auth, path: "../packages/eh_os_contract_auth"},
       # Direct, the same reasoning as `:telemetry` above: EhOsContractHostWeb calls
       # these by name (Endpoint, Router, PubSub, the Bandit adapter), and they
       # would otherwise be present only because :eh_os_contract_web happens to need them —

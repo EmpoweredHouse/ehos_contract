@@ -103,9 +103,9 @@ defmodule EhOsContract.Auth.MixProject do
       # The key set is fetched over HTTP, by the small fetcher D-34 chose.
       {:req, "~> 0.7"},
       {:boundary, "~> 0.10", runtime: false},
-      # `Req.Test`'s helpers build their answers on a `Plug.Conn`: the suite plays
-      # EHOS's JWKS endpoint as a function plug, without opening a port.
-      {:plug, "~> 1.16", only: :test}
+      # `EhOsContract.Auth.Plug`, the bearer plug in front of `EhOsContract.Plug`. The
+      # suite also plays EHOS's JWKS endpoint as a function plug handed to Req.
+      {:plug, "~> 1.16"}
     ]
   end
 end

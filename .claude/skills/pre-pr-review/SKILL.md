@@ -1,12 +1,12 @@
 ---
 name: pre-pr-review
-description: Review your own change to this repository with /code-review, settle what it finds, pass the gate and record the review as a git note, before opening a pull request or pushing new commits to one. Use whenever you are about to run `gh pr create`, when the hook in `.claude/settings.json` refuses `gh pr create` because HEAD has no review note, and when the user asks to review a change before it is sent. Not for reviewing someone else's pull request — that is `review-pr`.
+description: Review your own change to this repository with two reviews run in parallel — /code-review for correctness and a security-and-performance pass — settle what they find, pass the gate and record the review as a git note, before opening a pull request or pushing new commits to one. Use whenever you are about to run `gh pr create`, when the hook in `.claude/settings.json` refuses `gh pr create` because HEAD has no review note, and when the user asks to review a change before it is sent. Not for reviewing someone else's pull request — that is `review-pr`.
 ---
 
 # Reviewing a change before its pull request
 
-Every pull request to this repository is reviewed by its author before it is opened: run
-`/code-review`, settle what it finds, pass the gate, record it. A Claude Code hook
+Every pull request to this repository is reviewed by its author before it is opened: run two
+reviews in parallel, settle what they find, pass the gate, record it. A Claude Code hook
 (`.claude/settings.json`) enforces the last step: `gh pr create` (and its alias `gh pr new`) is
 refused until `HEAD` carries a note in `refs/notes/review`. The note belongs to one commit, so a
 new commit, amend or rebase leaves the new `HEAD` without one.
@@ -33,7 +33,23 @@ for the note: record it once you have checked the diff is documentation only
 1. **Commit everything.** The review reads committed history, and the note covers one commit.
 2. **Rebase onto the current `origin/main`** (`git fetch origin && git rebase origin/main`), so the
    review covers only this change.
-3. **Review the exact range:** `/code-review high origin/main..HEAD`.
+3. **Review the exact range with two reviews, in parallel.** They look for different things, and
+   neither found what the other did when both were first run on the same change (stage EA, 27
+   September 2026: `/code-review` found crashes and dead ends in the key store, the
+   security-and-performance pass found that an `http` issuer and a followed redirect let the key
+   set be replaced). Start both as subagents in one message (the Agent tool, two calls), each told to
+   report findings and change nothing:
+   - **correctness** — invoke the `code-review` skill with `high origin/main..HEAD`: bugs,
+     removed guards, callers, reuse, simplification, altitude, `CLAUDE.md` conventions;
+   - **security and performance** — invoke the `engineering:code-review` skill on the same range,
+     naming "security and performance" as the focus: authentication and authorization, injection,
+     secrets, trust in fetched data (TLS, redirects, sizes), personal data at rest, unbounded work
+     or growth, synchronous writes on hot paths, missing indexes. Without that plugin, the subagent
+     reviews against this list itself.
+
+   Pool what both return, drop duplicates, and settle the pool. A finding that changes a shape a
+   host sees (configuration, a public function, a status, a reason) goes to the user before it is
+   fixed, as `PLAN.md`'s strategy says of every host-visible shape.
 4. **Settle every finding** as one of:
    - **fixed**: a real problem. Fix it in its own commit, with a message stating the failure
      scenario, and a test that fails on the old code. Verify it in reverse: revert the fix and
@@ -43,6 +59,10 @@ for the note: record it once you have checked the diff is documentation only
    - **skipped**: real but out of scope. Say so in the pull request, with why.
 
    Then report the outcomes with ReportFindings (`fixed` / `no_change_needed` / `skipped`).
+   A mutation used for the reverse check has to apply in full: a substitution that matches half of
+   a change, or a Perl pattern that interpolates `@module_attribute` as an empty array, breaks the
+   code rather than undoing the fix, and whatever fails then proves nothing. Check the diff of the
+   mutated file, or mutate with a tool that does not interpolate.
 5. **Pass the gate**, checking its own exit code, never `tail`'s:
    `docker compose up -d && cd sandbox && mix ecto.setup`, then
    `out=$(mix check 2>&1); rc=$?; echo "$out" | tail -4; echo "EXIT=$rc"` in `sandbox/`. Compare
@@ -54,15 +74,15 @@ for the note: record it once you have checked the diff is documentation only
    a pipe test with a synthesised payload.
 7. **Record the review.** `git status --porcelain` must print nothing, since uncommitted changes
    are not covered by the note. Then
-   `git notes --ref=review add -m '<what the review found and what happened to each finding>' HEAD`
+   `git notes --ref=review add -m '<what each review found and what happened to each finding>' HEAD`
    (`-f` replaces a note already on that commit). Notes stay local: `refs/notes/review` is not
    pushed.
 8. **Open the pull request.** Its "How it was tested" section says what you ran, with the gate's
-   exit code. A "Review" section lists what the review found and what happened to each finding,
+   exit code. A "Review" section lists what each review found and what happened to each finding,
    or says the change is documentation only.
 
 After review comments or a failed CI run, fix, commit, and go through steps 3–7 again for the new
-commits before pushing them. Before any push to an existing pull request, check it is still open: a
+commits before pushing them. For a small fix-up both reviews may run on the new commits alone. Before any push to an existing pull request, check it is still open: a
 commit pushed to a merged pull request's branch never reaches `main`. Test the state itself, not
 the exit code of the command that prints it, because `gh pr view` exits 0 for a merged pull request
 too:
@@ -91,6 +111,10 @@ Kinds of problems a review here found that neither file names yet:
 
 - A guard over shell commands matches the invocation, not the text: a command that only mentions
   `gh pr create`, in a heredoc or a file it writes, is not that command.
+- Trust in something fetched is only as good as the fetch: an HTTP client's defaults (following
+  redirects, reading any size, accepting `http`) quietly widen who can answer. Found in stage EA.
+- A process that owns an ETS table takes the table with it when it raises: validate in the caller,
+  and treat every exception while handling outside input as a failed attempt, not a crash.
 
 Add to this list when a review finds a new kind of problem. If it is a rule about the code, it
 belongs in `CLAUDE.md` instead.

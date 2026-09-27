@@ -13,7 +13,18 @@ config :eh_os_contract,
   # that is — a library defaulting to its own name scans itself and reports a
   # healthy empty graph.
   applications: [:eh_os_contract_host],
-  repo: Taxvision.Repo
+  repo: Taxvision.Repo,
+  # Every command and query that arrives with a credential is decided, and recorded,
+  # by the credential verifier's package (v2 stage EA).
+  authorizer: EhOsContract.Auth
+
+# EHOS's address and this application's audience. There is no EHOS beside the
+# sandbox, and `.invalid` never resolves (RFC 6761), so the key store logs at boot
+# that it has no keys and refuses every real credential; the tests pin a key of
+# their own (`EhOsContract.Auth.Testing`).
+config :eh_os_contract_auth,
+  issuer: "https://ehos.invalid",
+  audience: "rehmed/sandbox"
 
 config :eh_os_contract_host, Taxvision.Repo,
   username: "eh_os",
