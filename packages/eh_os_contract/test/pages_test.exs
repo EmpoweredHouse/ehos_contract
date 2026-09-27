@@ -157,7 +157,7 @@ defmodule EhOsContract.PagesTest do
     @tag :tmp_dir
     test "--check names a page that differs, one missing and one left over", %{tmp_dir: dir} do
       run(["--output", dir])
-      File.write!(Path.join(dir, "values/amount.md"), "edited by hand")
+      File.write!(Path.join(dir, "values/amount.md"), Pages.marker() <> "\n\nedited by hand\n")
       File.rm!(Path.join(dir, "values/fee.md"))
 
       File.write!(
@@ -196,6 +196,83 @@ defmodule EhOsContract.PagesTest do
 
     test "asks where the pages go" do
       assert_raise Mix.Error, ~r/--output <directory>/, fn -> run([]) end
+      assert_raise Mix.Error, ~r/--output <directory>/, fn -> run(["--output", ""]) end
+    end
+
+    # The EL3 review: a file the task did not write, and a link, are never written
+    # over, nor through; and a link is not followed when looking for pages to delete.
+    @tag :tmp_dir
+    test "writes nothing when a file it did not write is where a page goes", %{tmp_dir: dir} do
+      File.write!(Path.join(dir, "index.md"), "# Written by a person\n")
+
+      error = assert_raise Mix.Error, fn -> run(["--output", dir]) end
+      assert error.message =~ "#{dir}: nothing written, since these are not pages this task wrote"
+      assert error.message =~ "\n  index.md"
+      assert File.read!(Path.join(dir, "index.md")) == "# Written by a person\n"
+      refute File.exists?(Path.join(dir, "values"))
+
+      check = assert_raise Mix.Error, fn -> run(["--output", dir, "--check"]) end
+      assert check.message =~ "index.md is in the way"
+    end
+
+    @tag :tmp_dir
+    test "never writes through a link, nor deletes behind one", %{tmp_dir: dir} do
+      out = Path.join(dir, "out")
+      elsewhere = Path.join(dir, "elsewhere")
+      File.mkdir_p!(Path.join(out, "values"))
+      File.mkdir_p!(elsewhere)
+
+      # A page left over, written by this task, behind a linked directory.
+      File.write!(
+        Path.join(elsewhere, "tip.md"),
+        Pages.marker() <> "\n\nA value since removed.\n"
+      )
+
+      File.ln_s!(elsewhere, Path.join(out, "shared"))
+
+      # A page's own path, linked to a person's file outside.
+      File.write!(Path.join(elsewhere, "notes.md"), "# Notes\n")
+      File.ln_s!(Path.join(elsewhere, "notes.md"), Path.join(out, "values/amount.md"))
+
+      error = assert_raise Mix.Error, fn -> run(["--output", out]) end
+      assert error.message =~ "values/amount.md"
+      assert File.read!(Path.join(elsewhere, "notes.md")) == "# Notes\n"
+
+      File.rm!(Path.join(out, "values/amount.md"))
+      run(["--output", out])
+      assert_received {:mix_shell, :info, [written]}
+      assert written == "#{out}: 15 pages written"
+      assert File.exists?(Path.join(elsewhere, "tip.md"))
+    end
+
+    @tag :tmp_dir
+    test "reads the output's name as a name, not a pattern", %{tmp_dir: dir} do
+      out = Path.join(dir, "o[u]t")
+      sibling = Path.join(dir, "out")
+      File.mkdir_p!(Path.join(sibling, "values"))
+      File.write!(Path.join(sibling, "values/tip.md"), Pages.marker() <> "\n\nNot this one's.\n")
+      File.mkdir_p!(Path.join(out, "values"))
+
+      File.write!(
+        Path.join(out, "values/tip.md"),
+        Pages.marker() <> "\n\nA value since removed.\n"
+      )
+
+      run(["--output", out])
+      assert_received {:mix_shell, :info, [written]}
+      assert written == "#{out}: 15 pages written, 1 left over deleted"
+      refute File.exists?(Path.join(out, "values/tip.md"))
+      assert File.exists?(Path.join(sibling, "values/tip.md"))
+    end
+
+    @tag :tmp_dir
+    test "a directory a deleted page leaves empty goes with it", %{tmp_dir: dir} do
+      File.mkdir_p!(Path.join(dir, "gone/deeper"))
+      File.write!(Path.join(dir, "gone/deeper/page.md"), Pages.marker() <> "\n\nGone.\n")
+
+      run(["--output", dir])
+      refute File.exists?(Path.join(dir, "gone"))
+      assert File.exists?(Path.join(dir, "values"))
     end
   end
 end
