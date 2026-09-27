@@ -5,87 +5,65 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 27 września (po EM1–EM3, przed EL)
+## Handoff — stan na 28 września (EL1 i EL2 w `main`, przed EL2b)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
 
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności), jej
-dashboardu i pakietu `eh_os_contract_auth` (weryfikacja credentiali EHOS-a); `sandbox/` to dane testowe. **Trwa
-pivot do v2** (DSL na Sparku, model domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding).
-**E0–E8 i EA są w `main`** (PR #1–#23). E8 poszło trzema PR-ami:
-[#21](https://github.com/EmpoweredHouse/eh-os-contract/pull/21) — E8a, szyfrowanie pól osobowych;
-[#22](https://github.com/EmpoweredHouse/eh-os-contract/pull/22) — E8b, `erase/3` i `forget/2`;
-[#23](https://github.com/EmpoweredHouse/eh-os-contract/pull/23) — poprawki po E8 (wynik `erase/3`, błędy efektów
-w Obanie bez wartości). **Następny w planie (zmienione 27 września, po E8): luki ESDM (EM), ostrzeżenia i
-narzędzia (EL), grafy (EG), dopiero potem kontrakty sandboxa od nowa (E9)** — „Po E8 — kolejność zmieniona” w
-„Etapach”; E10–E12 niezaczęte. Jedynym
-kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`; `Taxvision.Contracts.AccountingMonth`,
-`Rehmed.Contracts.ClinicalVisit` i `Rehmed.Contracts.PayerSettlement` są v1, a handlery v1 żyją w
-`sandbox/lib/taxvision/{accounting_month,notifications,tasks}.ex`.
+dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa pivot do v2** (DSL na Sparku, model
+domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E8, EA i EM są w `main`** (PR
+#1–#26), **EL1 i EL2 też** (PR #27–#28). Kolejność od 27 września: **EL** (ostrzeżenia, narzędzia, pola
+opisowe) → **EG** (cztery grafy) → **E9** (kontrakty sandboxa od nowa z materiału) → E10–E12. Z EL zostały EL2b i
+EL3.
+Jedynym kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`.
 
 ### Stan repozytorium
 
-- **EM1–EM3 są w `main`** (PR #24–#26: runtime DCB; encje i serwisy domenowe; pusty wynik serwisu, timery
-  kalendarzowe, identyfikator nadawany przez bibliotekę). `main` = `origin/main` = `081877d`. Opis w „Po E8 —
-  kolejność zmieniona” i „EM1/EM2/EM3 — co wyszło”. Użytkownik merguje PR-y jako merge.
-- **EL2 zbudowane** na `dsl-v2/el-glossary` (od EL1), niewypchnięte: `glossary`, `view`, nazwana subdomena,
-  tłumaczenie z definicją, sprawdzane ograniczenia komend, relacja z systemem zewnętrznym, `issued_by:`. Opis w „EL2 —
-  co wyszło”, decyzje w „Przed EL2 — decyzje użytkownika”; przegląd EL2 zrobiony; reguły 1–4 z „Po EL2 — proza,
-  którą da się sprawdzać” zbudowane na tej samej gałęzi. **Dalej:** przegląd reguł 1–4, potem EL2b (walidator
-  wartości i przykłady reguł serwisów), EL3 (strony dokumentacji).
-- **EL1 zbudowane** na `dsl-v2/el-warnings` (od `main`), niewypchnięte: ostrzeżenia L5 ze stałymi nazwami,
-  `--format json`, `--warnings-as-errors`, `docs/rules.md`, powtórzenie L3, przypięcie słownika domeny. Opis w
-  „EL1 — co wyszło”, decyzje w „Przed EL — decyzje użytkownika”. Przegląd zrobiony, notatka w `refs/notes/review`
-  na ostatnim commicie.
-- **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`) i nie ma
-  tabel pakietu auth ani V05 (klucze i usunięcia z E8). Przed `mix phx.server`: `mix ecto.migrate` w `sandbox/`;
-  bez tego dispatch z credentialem pada na zapisie decyzji.
-- **Przegląd przed PR** (`.claude/skills/pre-pr-review/`) to dwa przeglądy równolegle: `code-review high` i
-  `engineering:code-review` (bezpieczeństwo i wydajność). Hook w `.claude/settings.json` odmawia `gh pr create` bez
-  notatki `refs/notes/review` na `HEAD`; notatki są lokalne. W E8 użytkownik poprosił o przegląd **przed**
-  rozpoczęciem kolejnej części etapu, nie dopiero przed PR — „zawsze będzie mniej do sprawdzania”.
+- **EL1 i EL2 są w `main`**: PR [#27](https://github.com/EmpoweredHouse/eh-os-contract/pull/27) (EL1 — katalog
+  reguł ze stałymi nazwami, `docs/rules.md`, `--format json`, `--warnings-as-errors`, reguły kompletności ESDM,
+  reguły z v1 na v2, powtórzenie L3) i [#28](https://github.com/EmpoweredHouse/eh-os-contract/pull/28) (EL2 —
+  `glossary`, `view`, nazwana subdomena, tłumaczenie z definicją, sprawdzane ograniczenia komend, relacja z systemem,
+  `issued_by:`, reguły 1–4 z przeglądu prozy). `origin/main` = `5344273` (merge #27; #28 wszedł wcześniej do gałęzi
+  EL1). Opisy: „Przed EL — decyzje użytkownika”, „EL1 — co wyszło”, „Przed EL2 — decyzje użytkownika”, „EL2 — co
+  wyszło”, „Po EL2 — proza, którą da się sprawdzać”.
+- **Ten handoff** jest na lokalnej gałęzi `dsl-v2/el-handoff` od `5344273`, niewypchnięty — jak pójdzie do `main`,
+  decyduje użytkownik.
+- **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
+  `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
 ### Co zostało — i czyje to jest
 
-- **Od 27 września przed E9 idą EM, EL i EG** („Po E8 — kolejność zmieniona”), a kontrakty sandboxa powstają od
-  nowa z materiału; akapit niżej opisuje E9 sprzed tej zmiany.
-- **E9 — asystenta, po pytaniach do użytkownika.** Opis i odbiór w „Etapach” (TaxVision, ClinicalVisit,
-  PayerSettlement, D6 dla 15 zdarzeń bez komendy, usuwanie kontraktów i handlerów v1). Jak przed E7, EA i E8:
-  **przed budową zapytać o podział na PR-y i o kształty widoczne dla hosta**, a każdą decyzję zapisać w
-  `PLAN.md` **razem z odrzuconymi opcjami** (prośba użytkownika z 27 września). Gałąź od `main`:
-  `dsl-v2/e9-<nazwa>`. Pytania, które E9 na pewno postawi — w „Otwartych pytaniach”.
-- **Proces na porcie 4000 — użytkownika**: `beam.smp` z `/private/tmp/eh-os-test`, niezwiązany z repozytorium.
-- **Wdrożenie E8 u hosta — użytkownika**: błędy jobów Obana zapisane przed #23 mogą trzymać dane osobowe; usunąć
-  nieudane joby `EhOsContract.EffectJob` z `oban_jobs` albo zostawić je pruningowi (linia w `CHANGELOG.md`
-  silnika). Kopie kluczy w backupach, WAL i replikach — decyzja właściciela produktu (v2 §14, README silnika).
-- **Lista zmian do `eh-os`** — użytkownika: D-01, D-15, outbox, G-16, transport v1, D-34, D-40, plan etapu 4
-  („D10–D12 — skąd się wzięły” i „D14 — autoryzacja” w dopisku Etap 6), logowanie frontendu zwykłej aplikacji;
-  od EA: D-34 zakłada „authorize/3” wołane przez hosta — w v2 to bramka w dispatchu; pakiet auth odrzuca
-  credential z `exp` > 15 min i `crit`, czego D-33 nie mówi.
-- **Publikacja na Hex — użytkownika**, decyzja niepodjęta (tagi `v0.2.0`, `v0.2.1`; w `mix.exs` silnika
-  `0.3.0-dev`, pakietu auth `0.1.0-dev`).
-- **F1, F2 i dziesięć usterek** z „Dopisek 25 września” — do właścicieli procesów, przez użytkownika. Porty E9
-  tłumaczą, nie naprawiają (wyjątki: usterki 2 i 5 — „Strategia”).
-- **Odłożone z E7 i E8** — listy w „E7c-1/E7c-2 — co wyszło”, „E8a — co wyszło” (klucze per wiersz w runnerach,
-  do pomiaru) i „Po E8 — poprawki”.
-- Zasady trzymają się dalej: zmiany widoczne dla konsumenta idą do „Unreleased” w `CHANGELOG.md` swojego pakietu
-  tym samym commitem; delta `eh_os_contract.check` jest raportowana i każda nowa linia wyjaśniona.
+- **EL2b — asystenta**, gałąź od `main`: `dsl-v2/el-values`. Kształty **rozstrzygnięte** przez
+  użytkownika („Przed EL2 — decyzje użytkownika”, akapit „Zmienione tego samego dnia”): inwariant wartości w domenie
+  `invariant :not_negative, "…", violated_by: [-1], satisfied_by: [0, 15_000]` (oba wymagane), implementacja
+  `use Rehmed.Domain, value: :money` z funkcją na inwariant (behaviour z `@callback`, L4 wymaga każdej), sprawdzanie
+  w dispatchu w komendzie (`{:error, {:invalid, [amount: {:invariant, :not_negative}]}}`, HTTP 422) i w zdarzeniach
+  (z decyzji — rzuca; z `record/3` — odmowa), także w listach i polach wartości złożonych; test z każdego
+  przykładu. Plus **przykłady przy regule serwisu domenowego** (`rule …, examples: [{[1, 3], 0}]`, pozycja 5 z „Po
+  EL2”) tym samym mechanizmem. Przed budową: zapytać użytkownika tylko o to, czego te decyzje nie mówią (np.
+  zapis przykładów reguły serwisu, jeśli trzeba wybrać), każde pytanie na przykładzie z materiału.
+- **EL3 — asystenta**: strony dokumentacji (ESDM `documentation`: strona na element, Markdown, linki). Przed
+  budową zapytać o kształt wyjścia (katalog, nazwy plików, czy razem z `view`).
+- **EG, E9, E10–E12 — asystenta, po pytaniach**; opisy w „Etapach” i „Po E8 — kolejność zmieniona”. Do E9
+  odłożone pozycje 6–9 z „Po EL2 — proza, którą da się sprawdzać” i uwaga o `event-name-with-aggregate-prefix` na
+  nazwach z warsztatu („EL1 — co wyszło”).
+- **Proces na porcie 4000, wdrożenie E8 u hosta, lista zmian do `eh-os`, publikacja na Hex, F1/F2 i dziesięć
+  usterek** — użytkownika, bez zmian od poprzedniego handoffu (opisane w „Po E8 — kolejność zmieniona” i
+  dopiskach 25–27 września). Link w wyjściu `check` (`hexdocs.pm/eh_os_contract/rules.html`) zadziała dopiero po
+  publikacji na Hex.
 
 ### Co przeczytać najpierw
 
-1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach, `boundary`,
-   zsh bez dzielenia słów, **nazwy zdarzeń z warsztatu** (źródło w `CLAUDE.md`).
-2. `PLAN.md`, dopisek Etap 6: „Strategia” (reguły każdego commita, porty tłumaczą, nie naprawiają, konwencja
-   wartości w scenariuszach) i **opis E9** w „Etapach”, z odbiorem.
-3. `PLAN.md`, „Dopisek 25 września — cztery kontrakty rzutowane na ESDM” — kontrakt po kontrakcie, co się
-   przekłada i jakie usterki wyszły; to materiał wejściowy E9.
-4. `PLAN.md`, „E8a/E8b — co wyszło” i „Po E8 — poprawki” — jak działa `personal:`, `erase/3`, `forget/2`, co
-   bramki odrzucają; E9 to pierwsze kontrakty sandboxa, które mogą mieć dane osobowe.
-5. `docs/adr/contract-v2.md` §4.5–4.6 (przykłady DSL, w tym `dcb`, process manager, `consumes`), §6 (reguły),
-   §10.1 (warunek `{:dcb, …}` dopisu — wchodzi w E9 z PayerSettlement), §14 z notkami z 27 września.
-6. Wzorzec portu: `sandbox/lib/rehmed/contracts/visit_settlement.ex` i `sandbox/lib/rehmed/settlement/` (kontrakt
-   v2 z implementacjami), oraz `store.ex` („Not yet”: DCB).
+1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach, zsh bez
+   dzielenia słów, nazwy zdarzeń z warsztatu.
+2. `PLAN.md`, „Przed EL2 — decyzje użytkownika” — kształty walidatora wartości (EL2b), już rozstrzygnięte.
+3. `PLAN.md`, „Po EL2 — proza, którą da się sprawdzać” — pozycja 5 do EL2b, 6–9 do E9, co zostaje prozą.
+4. `PLAN.md`, „EL1 — co wyszło” i „EL2 — co wyszło” — mechanika i pułapki etapu.
+5. `docs/adr/contract-v2.md` §4.2 i §6 — notki z 27 września (subdomena, tłumaczenie, relacja z systemem,
+   `issued_by:`, ograniczenia, L5).
+6. Wzorzec do EL2b: serwis domenowy z EM2 (`lib/eh_os_contract/domain_service.ex`,
+   `lib/eh_os_contract/next/contract/generate.ex`) i ograniczenia komend (`test/dsl/contract_constraints_test.exs`).
 7. Przed PR: `.claude/skills/pre-pr-review/SKILL.md`.
 
 ### Komendy
@@ -97,8 +75,9 @@ out=$(mix check 2>&1); rc=$?; echo "$out" | tail -4; echo "EXIT=$rc"
 
 Brama idzie z `sandbox/` i woła `mix check` trzech pakietów; Postgres słucha na **5433**. **W świeżym worktree**
 najpierw `MIX_ENV=test mix deps.get` w `packages/eh_os_contract`, `packages/eh_os_contract_web` i
-`packages/eh_os_contract_auth` oraz `mix deps.get` w `sandbox/`. Do oglądania czegokolwiek `MIX_ENV=dev`. Commit
-wiąż wyłącznie z kodem wyjścia bramy. Dashboard: `cd sandbox && mix phx.server` → `http://localhost:4010/dashboard`.
+`packages/eh_os_contract_auth` oraz `mix deps.get` w `sandbox/`. Nowe narzędzia: `mix eh_os_contract.view`,
+`mix eh_os_contract.glossary`, `mix eh_os_contract.check --format json`; `docs/rules.md` regeneruje
+`mix eh_os_contract.rules` (w pakiecie silnika, `MIX_ENV=test`). Do oglądania czegokolwiek `MIX_ENV=dev`.
 
 **Z sesji Claude Code na tej maszynie SSH do GitHuba odmawia.** Pobieranie i push przez HTTPS z credentialem `gh`:
 
@@ -110,80 +89,49 @@ git -c credential.helper='!gh auth git-credential' fetch https://github.com/Empo
 git -c credential.helper='!gh auth git-credential' push https://github.com/EmpoweredHouse/eh-os-contract.git <gałąź>:<gałąź>
 ```
 
-Praca przerwana w pół (np. na przegląd) — jako patch w scratchpadzie albo commit WIP na własnej gałęzi, nigdy
-gołe `git stash` (stos jest wspólny dla worktree).
+Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej gałęzi, nigdy gołe `git stash`.
+
+**Pułapki z EL** (poza listą w `CLAUDE.md`):
+- nowe słowo DSL-a → `MIX_ENV=test mix spark.formatter --extensions EhOsContract.Domain.Dsl,EhOsContract.Next.Contract.Dsl`
+  w pakiecie silnika, a w `sandbox/` i pakiecie web skasować `_build/*/lib/*/.mix/cached_dot_formatter`, inaczej
+  `mix format` doda nawiasy;
+- fikstury kompilowane ze stringów w testach: numer linii w asercji to linia w stringu, nie w pliku testu;
+- próba odwrotna: `git diff <plik> > $S/x.patch; git apply -R …; git apply …`, nie `git stash`.
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 27 września, na `b2fb6c0`** (EL2 z regułami 1–4 po przeglądzie): brama z `sandbox/` → **EXIT=0** —
-  sandbox 54 testy, `check` 0 / 12 / 19; silnik 1106, `check` 0 / 63 / 20; web 32; auth 51.
-- **Lokalnie, 27 września, na `61579c7`** (EL2 z regułami 1–4): brama z `sandbox/` → **EXIT=0** — sandbox 54
-  testy, `check` 0 / 12 / 19; silnik 1106, `check` 0 / 63 / 20; web 32; auth 51.
-- **Lokalnie, 27 września, na `87f9a4e`** (EL2 po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 54
-  testy, `check` 0 / 12 / 19; silnik 1101, `check` 0 / 50 / 20; web 32; auth 51.
-- **Lokalnie, 27 września, na `efda115`** (koniec budowy EL2): brama z `sandbox/` → **EXIT=0** — sandbox 54
-  testy, `check` 0 / 12 / 19; silnik 1096, `check` 0 / 50 / 20; web 32; auth 51.
-- **Lokalnie, 27 września, na `7d46602`** (EL1 po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 54
-  testy, `check` 0 / 12 / 19; silnik 1075, `check` 0 / 50 / 20; web 32; auth 51. CI na gałęzi EL1 — nie było.
-- **Lokalnie, 27 września, na `081877d`** (main po #24–#26): EXIT=0 — sandbox 54, `check` 0 / 5 / 19; silnik 1040,
-  `check` 0 / 19 / 17; web 32; auth 51.
-- **Lokalnie, 27 września, na `c17bb50`** (koniec EM3): brama z `sandbox/` → **EXIT=0** — sandbox 54 testy,
-  `check` 0 / 5 / 19; silnik 1040, `check` 0 / 19 / 17 (plus cztery ostrzeżenia o `accountable` procesów fikstur
-  `BoundaryRig`, jak w `DispatchRig`); web 32; auth 51. CI na gałęziach EM — nie było (niewypchnięte).
-
-- **Lokalnie, 27 września**, brama z `sandbox/` → **EXIT=0** na `f210b8b` (merge PR #23, kod tego handoffu):
-  sandbox 54 testy, `eh_os_contract.check` 0 / 5 / 19; silnik 972, `check` 0 / 15 / 17; web 32; auth 51.
-- **CI**: PR #23 — przebieg `36316976123` na `c546e11`, job `check` `success`; `main` po merge'u E8
-  (`7d69ebb`) — przebieg `36315853940`, job `check` `success`; `main` po merge'u #23 (`f210b8b`) — przebieg
-  `36317266361`, job `check` w toku przy pisaniu.
+- **Lokalnie, 28 września, na `main` = `5344273` z tym handoffem** (`dsl-v2/el-handoff`): brama z `sandbox/` →
+  **EXIT=0** — sandbox 54 testy, `check` 0 / 12 / 19; silnik 1106, `check` 0 / 63 / 20; web 32; auth 51.
+- **Lokalnie, 27 września, na `6dc3e30`** (głowa #28): brama z `sandbox/` → **EXIT=0** — sandbox 54 testy,
+  `check` 0 / 12 / 19; silnik 1106, `check` 0 / 63 / 20; web 32; auth 51.
+- **Lokalnie, 27 września, na `d218e47`** (głowa #27): EXIT=0 — sandbox 54, `check` 0 / 12 / 19; silnik 1075,
+  `check` 0 / 50 / 20; web 32; auth 51.
+- **CI** (odczytane przy pisaniu, 28 września): `main` przed EL — `081877d`, przebieg `36342030182`, job `check`
+  `success`; przebiegi PR-ów #27/#28 i `main` po merge'u (`5344273`, przebieg `36353661954`) — **w toku** przy
+  pisaniu, wyniku nie odczytano. Pierwsza rzecz w nowej sesji: `gh run view 36353661954 --json jobs`.
 
 ### Otwarte pytania
 
-- **E9, TaxVision: `registry_discrepancy_detected.diff` ma w v1 `retain: :hash` i jest w `identity`.** v2 nie ma
-  `retain:`; `personal:` wymaga podmiotu (osoby), a `diff` to dane firmy zestawione z rejestrami, i pole
-  tożsamości nie może być osobowe (F4). Kontrakt v2 tego wprost nie wyrazi — decyzja użytkownika przed portem
-  (np. implementacja liczy skrót i zdarzenie niesie tylko `diff_hash`; jawny `diff`; albo luka w DSL zapisana jako
-  wynik — „kontrakt, którego nie da się napisać, jest lepszym wynikiem”, `CLAUDE.md`).
-- **E9: które pola kontraktów Rehmedu są osobowe** (`ClinicalVisit` to dane pacjentów) i czy domena Rehmedu
-  deklaruje `subject :patient` — materiał warsztatowy, nie wyobraźnia.
-- ~~**`record/3` z credentialem** — nazwa uprawnienia, E9.~~ Rozstrzygnięte 27 września: `<domena>.<zdarzenie>`
-  („Po E8 — kolejność zmieniona”).
-- **H177** z materiału Rehmedu przeczy DEC-18, na którym stoi `visit_handed_over`; czeka na klienta.
-- **Runner dla read modelu `:in_transaction`** odpytuje co sekundę, choć pracuje tylko przy przebudowie — wraca
-  przy pomiarze.
-- ~~**Po E5b:** `mix eh_os_contract.check` nie powtarza L3 dla projektów bez zarejestrowanego kompilatora — E10.~~
-  Zrobione w EL1.
-- ~~**Przed EL2 — kształty DSL-a pól opisowych:** `constraints` na komendzie i query, inwarianty wartości,
-  tłumaczenie z definicją i `avoid` (w ESDM `avoid` ma też powód), relacja z systemem zewnętrznym jako końcem.
-  **Plus (dopisane przez użytkownika 27 września, po EM): identyfikator nadawany przez system zewnętrzny** — numer
-  zgłoszenia z P1, numer faktury z KSeF, numer rejestracji wizyty u płatnika (C-47 → E-85). Dziś działa jako atrybut
-  (efekt woła system, `record/3` jako aktor `:system` z `backed_by:`) albo jako klucz (`identity :ksef_number` bez
-  `generated:`); nie może być daną osobową (pola `:id` idą do tagów i kluczy strumieni). Luka: model nie wie, że
-  pole pochodzi z danego systemu (ESDM też nie). Opcje: (a) `{:id, :medical_event_registry}`, zapis encji z EM2;
-  (b) `field :p1_report_id, :id, issued_by: :medical_event_registry`; (c) nic, proza w `source:`. Rekomendacja
-  asystenta: (b) — encja i wystawca to dwie różne rzeczy i pole bywa naraz jednym i drugim
-  (`field :invoice_number, {:id, :invoice}, issued_by: :ksef`), czego (a) nie wyrazi; `orphan-external-system`
-  policzy `issued_by:` jako użycie. Przy (a) lub (b): czytelnik w EL (strona elementu, `view`), krawędź w EG,
-  ewentualnie L5 „system wystawia identyfikator, a żaden efekt go nie woła”.~~ Rozstrzygnięte 27 września —
-  „Przed EL2 — decyzje użytkownika”.
-- **D1–D14** (v2 §16) przyjęte; pytania w §19: `scope` dla komend, transport v1 między kontenerami, kontrakt
-  upcasterów.
+- **E9, TaxVision: `registry_discrepancy_detected.diff`** (v1 `retain: :hash`, w `identity`) i **które pola
+  Rehmedu są osobowe** — bez zmian, patrz „Po E8 — kolejność zmieniona” i poprzednie dopiski.
+- **H177** z materiału Rehmedu przeczy DEC-18 — czeka na klienta.
+- **Runner read modelu `:in_transaction`** odpytuje co sekundę — wraca przy pomiarze.
+- **D1–D14** przyjęte; w v2 §19: transport v1 między kontenerami, kontrakt upcasterów.
 
 ### Zgoda i stałe uprawnienia
 
 **Ten blok jest do skasowania. Skasowanie go cofa uprawnienie — nie migruje ono samo między sesjami.**
 
-W sesji E8 (27 września) użytkownik zgodził się na: commity bez pytania na gałęziach etapu (`dsl-v2/e8…`) przy
-zielonej bramie na każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. Zlecił push i PR-y
-#21–#23 i je zmergował. **W nowej sesji obowiązuje to dopiero po ponownym potwierdzeniu przez użytkownika** i dla
-etapu, który wybierze. Push, PR, merge, tag i publikacja na Hex — tylko na wyraźne polecenie, a przed PR skill
-`pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie piszemy nigdy.
+W sesji EL (27 września) użytkownik zgodził się na: commity bez pytania na gałęziach `dsl-v2/el-…` przy zielonej
+bramie na każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. Zlecił push obu gałęzi i
+PR-y #27–#28, które zmergował. **W nowej sesji obowiązuje to dopiero po ponownym potwierdzeniu przez użytkownika.** Push, PR,
+merge, tag i Hex — tylko na wyraźne polecenie, przed PR skill `pre-pr-review`. Do
+`~/Projects/ai/empowered-house-context` nie piszemy nigdy.
 
 ### Język
 
-Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty bram, commity, opisy PR, `docs/adr/`,
-`README.md` i README pakietów — po angielsku; `PLAN.md` i `CLAUDE.md` po polsku. Wartości w danych testowych: słowa
-po angielsku, imiona i miasta bez diakrytyków (`visit-anna`, `krakow`). Pełna reguła — `CLAUDE.md`.
+Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty, commity, opisy PR, `docs/adr/`,
+`README.md` — po angielsku; `PLAN.md` i `CLAUDE.md` po polsku. Pełna reguła — `CLAUDE.md`.
 
 ## Dopisek 28 września — dashboard na design systemie EmpoweredHouse
 
