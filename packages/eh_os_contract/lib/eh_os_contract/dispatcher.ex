@@ -21,13 +21,19 @@ defmodule EhOsContract.Dispatcher do
      another command, `{:error, :idempotency_key_reused}`. Only an accepted
      command binds its key, so a rejected one can be sent again once the state has
      changed. The key is checked again under the append lock.
-  4. **Decide.** The unit's stream is read and folded through `evolve/2`, and the
-     implementation decides with the command, its `__meta__` set.
+  4. **Decide.** What the unit decides over is read and folded through `evolve/2`,
+     and the implementation decides with the command, its `__meta__` set. An
+     aggregate reads its stream. A dynamic consistency boundary reads a query over
+     the log (v2 §10.1): its own events carrying its identity, and every event it
+     `consults` — on the fields it `match`es, or every one of that type when it
+     consults by `where:` alone — each decoded by the contract that declares it, in
+     the log's order.
   5. **Hold the decision to its declaration.** An event the command does not emit,
      a rejection on an invariant it does not reject on, or an event whose fields
      do not fit raises: that is a defect in the code, never a business outcome, and
      nothing is appended.
-  6. **Append**, under the stream's version as it was read, and write the
+  6. **Append**, under the stream's version as it was read — for a boundary, only
+     if nothing it read was appended since (`{:dcb, query, head}`) — and write the
      `accepted` row. A rejection writes a `rejected` row and appends nothing. The
      personal fields are sealed with their subjects' keys (`EhOsContract.Personal`);
      an event carrying personal data of an erased subject is refused,
@@ -48,7 +54,7 @@ defmodule EhOsContract.Dispatcher do
   8. **After it, by the same commit**: one `EhOsContract.EffectJob` per effect
      delivered `:at_least_once`, holding the effect's key and the event's id.
 
-  **Conflicts.** When the stream moved between reading and appending, dispatch rolls
+  **Conflicts.** When the stream, or the boundary, moved between reading and appending, dispatch rolls
   back, reads again, decides again, up to three times, with jitter — but only when
   it owns the transaction. Inside a caller's transaction it returns
   `{:error, :conflict}`, since the caller's other writes cannot be replayed.
@@ -472,10 +478,8 @@ defmodule EhOsContract.Dispatcher do
   defp attempt(%{kind: :record} = job, repo) do
     with :new <- idempotent(repo, job) do
       unit = Enum.find(job.model.units, &(&1.name == job.declaration.unit))
-      stream = Key.stream(unit.name, Enum.map(unit.identity, &Map.fetch!(job.command, &1)))
-      recorded = Store.read_stream(repo, stream, 0)
-      version = if recorded == [], do: 0, else: List.last(recorded).stream_version
-      job = Map.merge(job, %{stream: stream, version: version, given: recorded})
+      {recorded, condition} = read_unit(repo, job.model, unit, job.command)
+      job = Map.merge(job, %{condition: condition, given: recorded})
       commit(job, [{job.declaration, job.command}], repo)
     end
   end
@@ -486,14 +490,12 @@ defmodule EhOsContract.Dispatcher do
     with :new <- idempotent(repo, job) do
       unit = Enum.find(model.units, &(&1.name == declaration.unit))
       impl = Implementations.fetch!(model, unit.kind, unit.name)
-      stream = Key.stream(unit.name, Enum.map(unit.identity, &Map.fetch!(command, &1)))
-      recorded = Store.read_stream(repo, stream, 0)
+      {recorded, condition} = read_unit(repo, model, unit, command)
       state = fold(job, unit, impl, recorded)
-      version = if recorded == [], do: 0, else: List.last(recorded).stream_version
 
       command = %{command | __meta__: meta(ctx)}
       decision = stage("decider", fn -> apply(impl, declaration.name, [command, state]) end)
-      job = Map.merge(job, %{stream: stream, version: version, given: recorded})
+      job = Map.merge(job, %{condition: condition, given: recorded})
 
       case decision do
         {:ok, events} when is_list(events) ->
@@ -532,8 +534,8 @@ defmodule EhOsContract.Dispatcher do
       command_id = Ecto.UUID.generate()
       entries = Enum.map(events, &entry(job, &1, command_id, keys))
 
-      case Store.append(repo, entries, {:stream, job.stream, job.version}) do
-        {:error, :wrong_expected_version} ->
+      case Store.append(repo, entries, job.condition) do
+        {:error, conflict} when conflict in [:wrong_expected_version, :condition_failed] ->
           :conflict
 
         {:ok, appended} ->
@@ -672,6 +674,39 @@ defmodule EhOsContract.Dispatcher do
     end
   end
 
+  # --- reading a unit ----------------------------------------------------------------------
+
+  # What a unit decides over, and the condition its append is made under. An
+  # aggregate is its stream, appended under the version read. A consistency boundary
+  # is a query over the log (v2 §10.1): its own events carrying its identity, and each
+  # event it consults, on the fields it matches — every one of them when it matches on
+  # none — appended only if nothing it reads was appended after the head it read to.
+  defp read_unit(repo, _model, %{kind: :aggregate} = unit, command) do
+    stream = Key.stream(unit.name, Enum.map(unit.identity, &Map.fetch!(command, &1)))
+    recorded = Store.read_stream(repo, stream, 0)
+    version = if recorded == [], do: 0, else: List.last(recorded).stream_version
+    {recorded, {:stream, stream, version}}
+  end
+
+  defp read_unit(repo, model, %{kind: :dcb} = unit, command) do
+    query = boundary(model, unit, command)
+    {recorded, head} = Store.read_query(repo, query)
+    {recorded, {:dcb, query, head}}
+  end
+
+  defp boundary(model, unit, command) do
+    tag = fn fields -> Enum.map(fields, &Key.tag(&1, Map.fetch!(command, &1))) end
+    own = for e <- model.events, e.unit == unit.name, do: e.type
+
+    consulted =
+      for consults <- unit.consults do
+        {_contract, declaration} = Model.declaring(model, consults.event)
+        %{types: [declaration.type], tags: tag.(consults.match)}
+      end
+
+    [%{types: own, tags: tag.(unit.identity)} | consulted]
+  end
+
   # --- reading a stream --------------------------------------------------------------------
 
   defp fold(job, unit, impl, recorded) do
@@ -693,7 +728,22 @@ defmodule EhOsContract.Dispatcher do
     end
   end
 
-  defp decode_all!(job, rows), do: Consumer.decode_all!(job.model, job.values, rows)
+  # A boundary reads events of the sibling contracts it consults too, and each is
+  # decoded by the contract that declares it; the log's order is kept.
+  defp decode_all!(job, rows) do
+    rows
+    |> Enum.group_by(& &1.contract)
+    |> Enum.flat_map(fn {contract, rows} ->
+      if contract == inspect(job.model.module) do
+        Enum.zip(rows, Consumer.decode_all!(job.model, job.values, rows))
+      else
+        sibling = Model.fetch(Module.safe_concat([contract]))
+        Enum.zip(rows, Consumer.decode_all!(sibling, Codec.values(sibling.domain), rows))
+      end
+    end)
+    |> Enum.sort_by(fn {row, _event} -> row.position end)
+    |> Enum.map(&elem(&1, 1))
+  end
 
   # --- holding the decision to its declaration ----------------------------------------------
 
@@ -712,9 +762,9 @@ defmodule EhOsContract.Dispatcher do
 
       event_declaration = Enum.find(model.events, &(&1.name == name))
 
-      # The event is appended to the command's stream, so it has to be about the same
-      # unit: one carrying another identity would sit in this stream and be folded
-      # into this unit's state.
+      # The event joins the unit that decided it — its stream, or its boundary's own
+      # events — so it has to be about the same unit: one carrying another identity
+      # would be folded into this unit's state.
       for field <- unit.identity, Map.fetch!(event, field) != Map.fetch!(job.command, field) do
         raise ArgumentError,
               "command #{inspect(declaration.name)} decided event #{inspect(name)} for another " <>

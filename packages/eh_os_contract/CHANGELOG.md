@@ -77,6 +77,11 @@ What changes otherwise is what a host has to do.
 
 ### Added
 
+- **EM1: a command to a dynamic consistency boundary dispatches** (v2 §10.1), through `EhOsContract.dispatch/3`
+  as a command to an aggregate does, and `EhOsContract.record/3` records a boundary's event. The decision folds
+  what the boundary reads — its own events under its identity, and each event it `consults`, a sibling
+  contract's too, on the fields it matches or all of the type by `where:` — and the append goes in only if
+  none of it moved since the read; otherwise dispatch reads and decides again, as for a stream.
 - **E7a: effects run.** An effect delivered `:at_least_once` is an `EhOsContract.EffectJob` in Oban's
   `:events` queue, inserted in the dispatch transaction and holding only the effect's key and the event's id;
   the job reads the event from the log. An effect delivered `:in_transaction` acts before the dispatch commits,

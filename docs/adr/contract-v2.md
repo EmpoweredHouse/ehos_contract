@@ -807,6 +807,16 @@ contact with the compiler and with v1's readers:
   `read_query/2` come in E9 with PayerSettlement, the first contract that needs them. So the condition
   arrives together with its first reader.
 
+> **27 September 2026, EM1 — the boundary as built.** The condition and `read_query/2` came before
+> PayerSettlement, with the dispatch of a boundary's command as their reader (plan: the ESDM gaps before the
+> sandbox contracts). Three things the sketch did not say: (1) a boundary reads **its own events under its
+> whole identity** besides what it `consults`, as an aggregate reads its stream, so it sees its own history
+> without consulting itself — and consults its own events explicitly when a narrower match is the point, as
+> a seat consults every subscription to its course; (2) a `consults` with `where:` alone reads **every
+> event of the type**, since prose cannot be a tag, so any new one is a conflict — correct and coarse, and
+> L5's "a `consults` with only `where`" says so; (3) a boundary's events carry **no stream**: the condition
+> is the query, and the store refuses a stream on an entry appended under it.
+
 ### 10.2 Ordering: one global, transaction-scoped advisory lock
 
 Positions from a sequence commit out of order under concurrent writers, and a reader following
