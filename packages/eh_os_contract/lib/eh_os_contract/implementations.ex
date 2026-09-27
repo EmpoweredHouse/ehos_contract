@@ -40,7 +40,10 @@ defmodule EhOsContract.Implementations do
   contract of the host's applications.
 
   `callbacks` maps each stored type it takes to its callback: the event's name in the
-  consumer's contract, which differs from the publisher's when `as:` renames it.
+  consumer's contract, which differs from the publisher's when `as:` renames it. A
+  process manager also takes its timers' firings, `:timer_elapsed`, and a read model
+  that projects personal data every erasure, `:forget` (v2 §14); `forgets` holds the
+  subject types it forgets, the ones whose personal data it projects.
   `module` is `nil` for a declaration nobody implemented. `key` names it,
   `"<contract>:<kind>:<name>"`: its row in `eh_os_contract_subscriptions` and its
   effect jobs' argument. `version` is what that row compares to
@@ -54,6 +57,7 @@ defmodule EhOsContract.Implementations do
           delivery: :in_transaction | :at_least_once,
           module: module() | nil,
           callbacks: %{String.t() => atom()},
+          forgets: MapSet.t(atom()),
           key: String.t(),
           version: String.t()
         }
@@ -266,13 +270,29 @@ defmodule EhOsContract.Implementations do
           do: %{EhOsContract.ProcessManager.elapsed() => :timer_elapsed},
           else: %{}
 
+      # A read model that projects personal data also takes every erasure, and
+      # forgets a subject of the types it holds (v2 §14).
+      subjects =
+        if kind == :read_model,
+          do: Enum.reduce(events, MapSet.new(), &MapSet.union(&2, subjects(model, &1))),
+          else: MapSet.new()
+
+      forgets =
+        if MapSet.size(subjects) > 0,
+          do: %{EhOsContract.Personal.erased_type() => :forget},
+          else: %{}
+
       %{
         kind: kind,
         contract: model.module,
         name: declaration.name,
         delivery: declaration.delivery,
         module: module,
-        callbacks: Map.merge(Map.new(taken, fn {type, event, _} -> {type, event} end), timers),
+        callbacks:
+          Map.new(taken, fn {type, event, _} -> {type, event} end)
+          |> Map.merge(timers)
+          |> Map.merge(forgets),
+        forgets: subjects,
         key: "#{inspect(model.module)}:#{kind}:#{declaration.name}",
         version:
           EhOsContract.Digest.hash([
@@ -280,6 +300,21 @@ defmodule EhOsContract.Implementations do
             | Enum.map(taken, &elem(&1, 2))
           ])
       }
+    end
+  end
+
+  # The subject types whose personal data an event a contract names, its own or a
+  # sibling's, carries at any depth.
+  defp subjects(model, event) do
+    case EhOsContract.Model.declaring(model, event) do
+      {contract, %{fields: fields}} ->
+        EhOsContract.Codec.personal_subjects(
+          fields,
+          EhOsContract.Codec.values(EhOsContract.Model.fetch(contract).domain)
+        )
+
+      nil ->
+        MapSet.new()
     end
   end
 

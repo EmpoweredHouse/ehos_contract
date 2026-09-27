@@ -1237,6 +1237,19 @@ the person's.
 > user's decision, `PLAN.md`, E8). (6) The keys a reader needs are found from the declared fields: a sealed
 > field's subject is its sibling's value, so the envelope carries no subject.
 
+> **27 September 2026, E8b — erasure as built.** (1) `erase/3` is host-gated and idempotent: `actor:` is
+> recorded, no `Authorizer` is asked, and a second call returns `:ok` and appends nothing (decision of the
+> user). (2) The refusal is narrower than "an append for the subject": an event is refused,
+> `{:error, :subject_erased}`, only when it carries personal data of an erased subject — the one case where
+> a key would be created again. An event naming the subject's id and nothing personal is appended. The
+> check runs under the append lock, after `prepare/2` and before anything is stored or sealed, and writes no
+> `_commands` row; over HTTP it is `410`. (3) `eh_os_contract.subject_erased` is stored with `contract:
+> "EhOsContract"`, no stream and no run, so no contract's conformance reads it. (4) A read model takes the
+> event only when it projects personal data, and `forget/2` is called only for the subject types whose data
+> it projects (`Codec.personal_subjects/2`); a read model that projects personal data without `forget/2`
+> fails boot. (5) A missing key reads as `Erased` only for a subject in `eh_os_contract_erasures`; any other
+> missing key raises (E8a review).
+
 ## 15. Integration hooks — designed, not built
 
 - `public: true` marks an event as published language: a stable subject such as

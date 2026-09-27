@@ -218,11 +218,14 @@ defmodule EhOsContract.Next.ContractGenerateTest do
       assert callbacks([Policies, Remind]) == [rebooked: 1]
       assert callbacks([Effects, Notify]) == [payment_recorded: 1, visit_closed: 1]
       assert callbacks([ProcessManagers, Chase]) == [evolve: 2, later: 1, visit_booked: 2]
-      assert callbacks([ReadModels, Payments]) == [payment_recorded: 1, reset: 0]
+      assert callbacks([ReadModels, Payments]) == [forget: 2, payment_recorded: 1, reset: 0]
     end
 
-    test "a read model's reset/0 is optional, and it is the only optional callback anywhere" do
-      assert generated([ReadModels, Payments]).behaviour_info(:optional_callbacks) == [reset: 0]
+    test "a read model's reset/0 and forget/2 are optional, and the only optional callbacks anywhere" do
+      # forget/2 from E8: optional to compile, required at boot of a read model that
+      # projects personal data (`EhOsContract.Personal.check_forgetting!/1`).
+      assert Enum.sort(generated([ReadModels, Payments]).behaviour_info(:optional_callbacks)) ==
+               [forget: 2, reset: 0]
 
       for module <- [
             [Aggregates, Visit],

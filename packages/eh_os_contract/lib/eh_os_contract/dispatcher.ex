@@ -28,7 +28,11 @@ defmodule EhOsContract.Dispatcher do
      do not fit raises: that is a defect in the code, never a business outcome, and
      nothing is appended.
   6. **Append**, under the stream's version as it was read, and write the
-     `accepted` row. A rejection writes a `rejected` row and appends nothing.
+     `accepted` row. A rejection writes a `rejected` row and appends nothing. The
+     personal fields are sealed with their subjects' keys (`EhOsContract.Personal`);
+     an event carrying personal data of an erased subject is refused,
+     `{:error, :subject_erased}`, before anything is sealed, and writes no row: the
+     decision was the unit's, the refusal is the erasure's.
   7. **Inside the transaction** (v2 §12): every read model delivered
      `:in_transaction` projects the appended events, in order, then every such
      policy reacts, then every such effect acts (`EhOsContract.Consumer`). What a
@@ -91,6 +95,7 @@ defmodule EhOsContract.Dispatcher do
           | :idempotency_key_reused
           | :conflict
           | :not_caught_up
+          | :subject_erased
 
   @doc """
   Dispatches `command`, a struct a v2 contract generated, to `contract`.
@@ -520,10 +525,11 @@ defmodule EhOsContract.Dispatcher do
     :ok = Store.lock(repo)
 
     # Checked again under the lock: another transaction with the same key may have
-    # committed while this one decided.
-    with :new <- idempotent(repo, job) do
+    # committed while this one decided. Under the lock too, no subject whose data
+    # the events carry is erased, and none gets its key created again (v2 §14).
+    with :new <- idempotent(repo, job),
+         {:ok, keys} <- Personal.for_writing(repo, prepared) do
       command_id = Ecto.UUID.generate()
-      keys = Personal.for_writing(repo, prepared)
       entries = Enum.map(events, &entry(job, &1, command_id, keys))
 
       case Store.append(repo, entries, {:stream, job.stream, job.version}) do

@@ -207,6 +207,43 @@ defmodule EhOsContract.Codec do
   def personal?(fields, values), do: personal?(fields, values, MapSet.new())
 
   @doc """
+  The subject types whose personal data `fields` declare, at any depth: what a
+  consumer of them has to forget.
+  """
+  @spec personal_subjects([field()], values()) :: MapSet.t(atom())
+  def personal_subjects(fields, values), do: personal_subjects(fields, values, MapSet.new())
+
+  defp personal_subjects(fields, values, seen) do
+    for field <- fields, reduce: MapSet.new() do
+      acc ->
+        own =
+          case Map.get(field, :personal) do
+            nil -> []
+            target -> [Enum.find(fields, &(&1.name == target)).subject]
+          end
+
+        acc
+        |> MapSet.union(MapSet.new(own))
+        |> MapSet.union(type_subjects(field.type, values, seen))
+    end
+  end
+
+  defp type_subjects({:list, inner}, values, seen), do: type_subjects(inner, values, seen)
+
+  defp type_subjects(type, values, seen) when is_atom(type) and is_map_key(values, type) do
+    if MapSet.member?(seen, type) do
+      MapSet.new()
+    else
+      case Map.fetch!(values, type) do
+        %{type: nil, fields: fields} -> personal_subjects(fields, values, MapSet.put(seen, type))
+        %{type: inner} -> type_subjects(inner, values, MapSet.put(seen, type))
+      end
+    end
+  end
+
+  defp type_subjects(_type, _values, _seen), do: MapSet.new()
+
+  @doc """
   Whether `type` holds a personal field somewhere inside: a domain value's fields,
   what an alias stands for, a list's items. `values` maps each value's name to a map
   with its `type` and `fields`, as a domain's model and its declarations both do.

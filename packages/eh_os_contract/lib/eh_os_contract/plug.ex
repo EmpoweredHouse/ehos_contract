@@ -38,6 +38,7 @@ if Code.ensure_loaded?(Plug.Conn) do
     | refused | 403 | `{"refused": "<reason>"}` |
     | no actor | 401 | `{"error": "no_actor"}` |
     | conflict, or a reused key | 409 | `{"error": "<reason>"}` |
+    | personal data of an erased subject | 410 | `{"error": "subject_erased"}` |
     | no such capability | 404 | `{"error": "not_found"}` |
 
     No body ever carries a field value the caller did not send: a problem names
@@ -176,6 +177,8 @@ if Code.ensure_loaded?(Plug.Conn) do
 
     defp refused(conn, reason) when reason in [:conflict, :idempotency_key_reused],
       do: reply(conn, 409, %{error: reason})
+
+    defp refused(conn, :subject_erased), do: reply(conn, 410, %{error: :subject_erased})
 
     defp refused(conn, reason), do: reply(conn, 403, %{refused: reason})
 

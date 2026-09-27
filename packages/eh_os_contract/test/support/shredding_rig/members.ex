@@ -5,7 +5,9 @@ defmodule ShreddingRig.Members do
   A membership per stream, held by one member. Joining carries the member's name,
   an optional email and a list of contacts, each personal to the member it names;
   renaming carries the new name and the previous one, which the decision takes from
-  the state its stream folds to — so a rename reads personal data back.
+  the state its stream folds to — so a rename reads personal data back. Two read
+  models keep the name in the host's tables, one in the dispatch transaction and one
+  after it, and each forgets an erased member.
   """
 
   use EhOsContract.Next.Contract, domain: ShreddingRig.Domain, context: :membership
@@ -44,6 +46,18 @@ defmodule ShreddingRig.Members do
       field :name, :string, personal: :member_id
       field :previous, :string, personal: :member_id
     end
+  end
+
+  read_model :members, "Members", projects: [:joined, :renamed] do
+    field :membership_id, :id
+    field :member_id, :id, subject: :member
+    field :name, :string, personal: :member_id
+  end
+
+  read_model :member_names, "Member names", projects: :joined, delivery: :at_least_once do
+    field :membership_id, :id
+    field :member_id, :id, subject: :member
+    field :name, :string, personal: :member_id
   end
 
   process :membership, "Membership" do

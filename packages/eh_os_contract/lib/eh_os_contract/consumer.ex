@@ -21,6 +21,7 @@ defmodule EhOsContract.Consumer do
     Actor,
     Codec,
     Dispatcher,
+    Erased,
     Event,
     Implementations,
     Meta,
@@ -38,6 +39,12 @@ defmodule EhOsContract.Consumer do
   caller knows whether to roll back or to retry.
   """
   @spec handle!(Implementations.inline(), struct(), [String.t()]) :: :ok | {:error, term()}
+  # An erasure: the read model forgets the subject, if it holds that type's data at
+  # all (v2 §14).
+  def handle!(%{kind: :read_model, callback: :forget} = consumer, %Erased{} = erased, _chain) do
+    if MapSet.member?(consumer.forgets, erased.subject), do: forget!(consumer, erased), else: :ok
+  end
+
   def handle!(%{kind: :read_model} = consumer, event, _chain) do
     case apply(implemented!(consumer), consumer.callback, [event]) do
       :ok ->
@@ -95,6 +102,18 @@ defmodule EhOsContract.Consumer do
   @spec label(Implementations.inline() | Implementations.consumer()) :: String.t()
   def label(consumer), do: "#{consumer.kind}:#{consumer.name}"
 
+  defp forget!(consumer, erased) do
+    case implemented!(consumer).forget(erased.subject, erased.id) do
+      :ok ->
+        :ok
+
+      other ->
+        raise ArgumentError,
+              "read model #{inspect(consumer.name)} returned #{inspect(other)} from forget/2; " <>
+                "it returns :ok"
+    end
+  end
+
   @doc """
   An event as its consumers take it: the struct of the contract that declares its
   type, with `__meta__` from the row. Raises when no contract of the host declares the
@@ -102,10 +121,18 @@ defmodule EhOsContract.Consumer do
 
   A personal field is opened with its subject's key, read for this row alone and
   only when the row has a sealed field; once the subject is erased it holds
-  `EhOsContract.Erased`. A key missing for a subject never erased raises.
+  `EhOsContract.Erased`. A key missing for a subject never erased raises. The
+  erasure itself, `eh_os_contract.subject_erased`, is declared by no contract, and
+  reads as the `EhOsContract.Erased` it names.
   """
   @spec decode!(Event.t()) :: struct()
-  def decode!(%Event{} = row) do
+  def decode!(%Event{type: type, payload: payload} = row) do
+    if type == Personal.erased_type(),
+      do: Personal.erased_event(payload),
+      else: decode_declared!(row)
+  end
+
+  defp decode_declared!(row) do
     model =
       case Model.fetch(Module.safe_concat([row.contract])) do
         %{kind: :contract, units: _} = model -> model

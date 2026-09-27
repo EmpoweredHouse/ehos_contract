@@ -191,7 +191,14 @@ defmodule EhOsContract.Next.Contract.Generate do
       leaves its subscription `stale`.
       """
       @callback reset() :: :ok
-      @optional_callbacks reset: 0
+
+      @doc """
+      Deletes, or blanks, what this read model keeps of an erased subject's personal
+      data (v2 §14). Required of a read model that projects personal data: without
+      it, the host does not boot.
+      """
+      @callback forget(subject_type :: atom(), subject_id :: String.t()) :: :ok
+      @optional_callbacks reset: 0, forget: 2
     end
   end
 
