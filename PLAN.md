@@ -931,7 +931,35 @@ początek zdarzenia (`accounting_month_opened` w jednostce `accounting_month`). 
 Pytania po przeglądzie EL1, każde z przykładem z materiału; wszystkie pola są opisowe — nic ich nie wykonuje, czytają
 je `glossary`, `view`, strony dokumentacji (EL3) i grafy (EG).
 
-- **`constraints` i inwarianty wartości jako nazwane deklaracje:** `command :record_payment, … do constraint
+- **Zmienione tego samego dnia, po pytaniu użytkownika „czy silnik może to sprawdzić?”** — wyjaśnione na
+  `record_payment` i `value :money`, jak dziś działa inwariant agregatu (nazwa w kontrakcie, `reject` w
+  implementacji, S8, test ze scenariusza):
+  - **Ograniczenie komendy sprawdzane scenariuszem:** `constraint :positive_amount, "…"` w komendzie, komenda je
+    `rejects:`, implementacja `reject(:positive_amount)`, każde ograniczenie ma scenariusz odmowy (jak S8), test
+    generuje `ScenarioCase`. Query nie odmawia, więc tam ograniczenie zostaje prozą. *Odrzucone:* sama proza
+    (nic nie dowodzi, że kod trzyma regułę); scenariusz zalecany ostrzeżeniem `check` zamiast błędu (łagodniej niż
+    S8 dla inwariantów).
+  - **Inwariant wartości z walidatorem od razu:** domena generuje behaviour, implementacja wartości definiuje
+    funkcję na każdy inwariant, dispatch sprawdza pola tego typu, test z kontrprzykładu przy inwariancie.
+    Rekomendacja asystenta była inna — proza teraz, walidator, gdy E9 go potrzebuje; *odrzucone* przez użytkownika.
+    Kształty rozstrzygnięte zaraz potem:
+    - **sprawdzane w komendzie i w zdarzeniach**, także w listach i polach wartości złożonych: pole komendy —
+      odmowa przed decyzją, `{:error, {:invalid, [amount: {:invariant, :not_negative}]}}`, HTTP 422
+      `{"invalid": {"amount": "not_negative"}}`, bez wiersza w logu; zdarzenie z decyzji — błąd kodu, rzuca jak
+      niezadeklarowane zdarzenie; zdarzenie z `record/3` — odmowa jak przy komendzie. *Odrzucone:* tylko komenda
+      (zła wartość z decyzji albo nagrania zostaje w logu na zawsze); tylko zdarzenia (komenda z -500 wywraca
+      dispatch zamiast odmowy);
+    - **kontrprzykład i przykład poprawny, oba wymagane:** `invariant :not_negative, "…", violated_by: [-1],
+      satisfied_by: [0, 15_000]`; brak to błąd kompilacji; każdy daje wygenerowany test (walidator odrzuca
+      `violated_by` i przepuszcza `satisfied_by`). Wybór użytkownika zamiast rekomendacji asystenta (samo
+      `violated_by`, wymagane). *Odrzucone:* samo `violated_by`, wymagane (nie dowodzi, że walidator nie odrzuca
+      wszystkiego); `violated_by` opcjonalne z ostrzeżeniem (inwariant bez dowodu);
+    - **funkcja na inwariant:** `use Rehmed.Domain, value: :money`, `def not_negative(amount), do: amount >= 0`;
+      behaviour z `@callback not_negative(money()) :: boolean()`, L4 wymaga każdej funkcji. *Odrzucone:* jedno
+      `check/1` zwracające nazwę (kompilator nie sprawdzi, że każdy inwariant jest obsłużony);
+    - **osobny PR po EL2, przed EL3** (EL2b), z przeglądem po skończeniu. *Odrzucone:* w EL2 (diff łączy narzędzia
+      tekstowe z mechaniką dispatchu); po EL3 (dokumentacja EL3 nie pokazałaby kontrprzykładów).
+- *Pierwsza wersja, zastąpiona akapitem wyżej:* **`constraints` i inwarianty wartości jako nazwane deklaracje:** `command :record_payment, … do constraint
   :positive_amount, "Kwota płatności jest dodatnia" end` (tak samo w query) i `value :money, :integer, unit: :grosze
   do invariant :not_negative, "Kwota nie jest ujemna" end` — kształt `invariant` agregatu, nazwa daje kotwicę na
   stronie. Proza po polsku, więc lista miejsc w `CLAUDE.md` rośnie. *Odrzucone:* lista zdań w opcji,
