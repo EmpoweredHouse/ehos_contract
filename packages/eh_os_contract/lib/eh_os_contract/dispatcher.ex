@@ -749,14 +749,13 @@ defmodule EhOsContract.Dispatcher do
 
   defp entry(job, {declaration, event}, command_id, keys) do
     %{model: model, ctx: ctx, values: values} = job
-    unit = Enum.find(model.units, &(&1.name == declaration.unit))
 
     %{
       id: Ecto.UUID.generate(),
       type: declaration.type,
       contract: inspect(model.module),
       contract_version: model.version,
-      tags: Enum.map(unit.identity, &Key.tag(&1, Map.fetch!(event, &1))),
+      tags: tags(declaration, event),
       process: model.process && Atom.to_string(model.process.name),
       instance_id: instance(model, event),
       # The runs of the processes that include it (D7), written with it.
@@ -778,6 +777,15 @@ defmodule EhOsContract.Dispatcher do
         # continues the chain instead of starting it over.
         |> put_present("chain", if(ctx.chain != [], do: ctx.chain))
     }
+  end
+
+  # Every required, non-personal `:id` field of the event, its unit's identity among
+  # them, since that is what a consistency boundary may match on (A4, X6). Tagging
+  # only the fields some boundary matches today would leave the events appended
+  # before a new boundary untagged, and it would never see them.
+  defp tags(declaration, event) do
+    for %{type: :id, optional: false, personal: nil, name: name} <- declaration.fields,
+        do: Key.tag(name, Map.fetch!(event, name))
   end
 
   # The run a struct belongs to: the process's name, then its correlation values.

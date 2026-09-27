@@ -152,6 +152,26 @@ defmodule EhOsContract.Next.ContractUnitsTest do
       refute message =~ "consults :period_closed"
     end
 
+    test "a match on a field the local event does not carry as a required :id is refused" do
+      # An appended event is tagged with its required, non-personal :id fields, and
+      # a boundary finds what it consults by tags: matched on a text field, it would
+      # read nothing and the invariant would hold vacuously.
+      message = refuse_contract("ConsultsUntagged", consulting_visit_marked(":string"))
+
+      assert message =~
+               "A4: dcb :payer_period consults :visit_marked matching :period_id, which the " <>
+                 "event does not carry as a required, non-personal :id field, so no appended " <>
+                 ":visit_marked is tagged with it and the boundary could never find one " <>
+                 "(consults_untagged.ex:17)"
+
+      refute message =~ "matching :payer_id"
+    end
+
+    test "control: the same match on required :id fields compiles" do
+      assert %{units: [_visit, %{consults: [%{match: [:payer_id, :period_id]}]}]} =
+               compile_contract("ConsultsTagged", consulting_visit_marked(":id"))
+    end
+
     test "control: consulting a consumed event, by prose, compiles" do
       assert %{units: [%{consults: [%{event: :visit_completed, where: "wykonana wizyta"}]}]} =
                compile_contract("ConsultsConsumed", """
@@ -243,5 +263,33 @@ defmodule EhOsContract.Next.ContractUnitsTest do
                #{@process}
                """)
     end
+  end
+
+  # A visit marked for a payer's period, and the boundary that consults it on both
+  # fields; `type` is what the visit's event declares its period as.
+  defp consulting_visit_marked(type) do
+    """
+      aggregate :visit, "Wizyta" do
+        identity :visit_id
+        command :mark_visit, "Oznaczenie wizyty", by: :manager, emits: :visit_marked do
+          field :payer_id, :id
+          field :period_id, #{type}
+        end
+        event :visit_marked, "Oznaczono wizytę" do
+          field :payer_id, :id
+          field :period_id, #{type}
+        end
+      end
+      dcb :payer_period, "Okres płatnika" do
+        identity [:payer_id, :period_id]
+        consults :visit_marked, match: [:payer_id, :period_id]
+        command :close_period, "Zamknięcie okresu", by: :manager, emits: :period_closed
+        event :period_closed, "Zamknięto okres", terminal: true
+      end
+
+      process :payer, "Płatnik" do
+        correlate :payer_id
+      end
+    """
   end
 end

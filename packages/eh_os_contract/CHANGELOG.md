@@ -70,6 +70,10 @@ What changes otherwise is what a host has to do.
 - **EM1: an `EhOsContract.Store` implementation of the host's own needs `read_query/2`**, and its `append/3`
   takes a third condition, `{:dcb, query, after_position}`, refused with `{:error, :condition_failed}`
   (v2 §10.1). `EhOsContract.Store.Suite` checks both. `EhOsContract.Store.Postgres`, the default, has them.
+- **EM1: an appended event is tagged with every required, non-personal `:id` field it carries**, not only its
+  unit's identity: `["account_id:a-1", "branch_id:b-7"]` where it was `["account_id:a-1"]`. A consistency
+  boundary finds what it consults by these tags, so a `match:` names only such fields (A4 for a local event,
+  X6 already for a sibling's). Events appended before this version carry the narrower tags.
 
 ### Added
 

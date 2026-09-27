@@ -44,7 +44,7 @@ defmodule EhOsContract.DispatchCommandTest do
       assert event.type == "ledger.account_opened"
       assert event.stream_id == "account:a-1"
       assert event.stream_version == 1
-      assert event.tags == ["account_id:a-1"]
+      assert event.tags == ["account_id:a-1", "branch_id:b-7"]
       assert event.process == "ledger"
       assert event.instance_id == "ledger|a-1"
       assert event.actor == "actor:u-1"

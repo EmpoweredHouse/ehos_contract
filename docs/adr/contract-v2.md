@@ -923,6 +923,13 @@ INSERT INTO eh_os_contract_events (...) VALUES (...), (...) RETURNING position, 
   used by stream ids, tags, instance ids and idempotency keys alike — otherwise the escaped-separator defect
   fixed on 21 August would exist in four copies. A unit's key fields are always tags, so DCBs can consult
   aggregate events.
+  > **27 September 2026, EM1.** "A unit's key fields are always tags" is too narrow for a boundary that
+  > consults another unit's events on fields that are not that unit's key — PayerSettlement matches
+  > `visit_marked_settled_with_payer` on `payer_id` and `period_id`, while the visit's key is `visit_id`.
+  > Tagging only the fields some boundary matches today would leave the events appended before a new
+  > boundary untagged, and it would never see them. So **every required, non-personal `:id` field of an
+  > event is a tag**, its unit's key among them, and `match:` names only such fields (A4 for a local event;
+  > X6 already required `:id` of a sibling's).
 - **Idempotency.** The host supplies `ctx.idempotency_key` (opaque, never personal data). It is checked before
   loading and again under the lock; a hit returns the earlier events with `duplicate: true`; a hit for another
   command type is `{:error, :idempotency_key_reused}`. Only accepted outcomes bind the key, so a rejected
