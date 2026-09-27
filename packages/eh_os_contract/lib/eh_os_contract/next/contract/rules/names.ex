@@ -21,7 +21,9 @@ defmodule EhOsContract.Next.Contract.Rules.Names do
   a command, an event, a consumed event or a query be called `state` or `row`: an
   implementation aliases its struct by its name, and `State` and `Row` are taken.
   A domain service's function is defined, with its arguments' arity, both by the
-  implementation and by the module the contract generates to call it.
+  implementation and by the module the contract generates to call it, which is also
+  a behaviour: `behaviour_info/1`, `module_info/0,1` and `__info__/1` are taken there,
+  and `evolve` is not.
   """
 
   alias EhOsContract.DslRules
@@ -29,6 +31,7 @@ defmodule EhOsContract.Next.Contract.Rules.Names do
 
   @reserved ~w(do end fn and or not in when catch rescue after else true false nil)a
   @taken [:evolve]
+  @module_functions [behaviour_info: 1, module_info: 0, module_info: 1, __info__: 1]
   @aliases [:state, :row]
 
   @doc false
@@ -237,7 +240,16 @@ defmodule EhOsContract.Next.Contract.Rules.Names do
       name in @reserved ->
         [{"N2: #{kind} #{inspect(name)} is a word Elixir reserves", declaration}]
 
-      name in @taken ->
+      # A function is defined in the module the contract generates for its service,
+      # which is a behaviour: Elixir defines these there already.
+      kind == "function" and {name, hd(arities)} in @module_functions ->
+        [
+          {"N2: #{kind} #{inspect(name)} would define #{name}/#{hd(arities)}, which every " <>
+             "module defines already", declaration}
+        ]
+
+      # `evolve/2` is a unit's, and a service's module has none.
+      name in @taken and kind != "function" ->
         [
           {"N2: #{kind} #{inspect(name)} would clash with evolve/2, which every unit defines",
            declaration}

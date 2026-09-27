@@ -57,6 +57,44 @@ defmodule EhOsContract.Next.ContractDomainServicesTest do
                "(services_named.ex:7)"
   end
 
+  test "a function a behaviour's module defines already is refused; evolve is not" do
+    message =
+      refuse_contract("ServicesTaken", """
+        domain_service :lookup, "Wyszukiwanie" do
+          function :behaviour_info, "Informacja" do
+            argument :what, :string
+            returns :string
+          end
+
+          function :module_info, "Moduł" do
+            returns :string
+          end
+        end
+
+      #{@process}
+      """)
+
+    assert message =~
+             "N2: function :behaviour_info would define behaviour_info/1, which every module " <>
+               "defines already (services_taken.ex:5)"
+
+    assert message =~ "N2: function :module_info would define module_info/0"
+  end
+
+  test "control: a function named evolve compiles, since a service's module has no evolve/2" do
+    assert %{domain_services: [%{functions: [%{name: :evolve}]}]} =
+             compile_contract("ServicesEvolve", """
+               domain_service :growth, "Wzrost" do
+                 function :evolve, "Następna wartość" do
+                   argument :value, :integer
+                   returns :integer
+                 end
+               end
+
+             #{@process}
+             """)
+  end
+
   test "a malformed argument or result type is refused" do
     message =
       refuse_contract("ServicesTyped", """
