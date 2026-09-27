@@ -52,6 +52,19 @@ defmodule EhOsContract.Auth.PackageTest do
       assert opts[:req_options] == [retry: false]
     end
 
+    test "fails the boot when keys would be fetched over anything but https" do
+      for url <- ["http://ehos.example.com/jwks.json", "ftp://ehos.example.com/jwks.json", "ehos"] do
+        Application.put_env(:eh_os_contract_auth, :jwks_url, url)
+
+        assert_raise ArgumentError, ~r/not https/, fn -> EhOsContract.Auth.child_spec([]) end
+      end
+
+      # The control: loopback may be plain, for development.
+      Application.put_env(:eh_os_contract_auth, :jwks_url, "http://localhost:4100/jwks.json")
+      assert %{start: {_, _, [opts]}} = EhOsContract.Auth.child_spec([])
+      assert opts[:url] == "http://localhost:4100/jwks.json"
+    end
+
     test "fails the boot without an audience, or without an issuer even with a jwks_url" do
       Application.delete_env(:eh_os_contract_auth, :audience)
       assert_raise ArgumentError, ~r/audience:/, fn -> EhOsContract.Auth.child_spec([]) end

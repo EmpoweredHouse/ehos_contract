@@ -66,7 +66,9 @@ defmodule EhOsContract.Auth.KeyCase do
 
   @doc """
   EHOS's JWKS endpoint: an agent holding what it answers — `{:keys, [pair]}`,
-  `{:status, code}` or `:down` — and how many times it was asked.
+  `{:status, code}`, `:down`, or one of the answers no EHOS gives: `:redirect` (to
+  another host, which does serve a key), `:huge` (a body past the limit) and `:many`
+  (more keys than a rotation holds) — and how many times it was asked.
   """
   def ehos(answer) do
     {:ok, agent} = Agent.start_link(fn -> %{answer: answer, requests: 0} end)
@@ -111,10 +113,38 @@ defmodule EhOsContract.Auth.KeyCase do
     answer = Agent.get_and_update(ehos, &{&1.answer, %{&1 | requests: &1.requests + 1}})
 
     case answer do
-      {:keys, pairs} -> Req.Test.json(conn, %{"keys" => Enum.map(pairs, &jwks_entry/1)})
-      {:status, status} -> Plug.Conn.send_resp(conn, status, "")
-      :down -> Req.Test.transport_error(conn, :econnrefused)
+      {:keys, pairs} ->
+        Req.Test.json(conn, %{"keys" => Enum.map(pairs, &jwks_entry/1)})
+
+      {:status, status} ->
+        Plug.Conn.send_resp(conn, status, "")
+
+      :down ->
+        Req.Test.transport_error(conn, :econnrefused)
+
+      :redirect ->
+        redirect(conn)
+
+      :huge ->
+        # A key a fetch without the limit would store, past the limit.
+        Req.Test.json(conn, %{
+          "keys" => [jwks_entry(key_pair())],
+          "padding" => String.duplicate("x", 70_000)
+        })
+
+      :many ->
+        Req.Test.json(conn, %{"keys" => Enum.map(1..17, fn _ -> jwks_entry(key_pair()) end)})
     end
+  end
+
+  # Elsewhere does serve a key: a fetch that followed the redirect would store it.
+  defp redirect(%{host: "elsewhere.test"} = conn),
+    do: Req.Test.json(conn, %{"keys" => [jwks_entry(key_pair())]})
+
+  defp redirect(conn) do
+    conn
+    |> Plug.Conn.put_resp_header("location", "https://elsewhere.test/keys")
+    |> Plug.Conn.send_resp(302, "")
   end
 
   # What EHOS publishes for a key: its public half, with the `kid` and `alg` a JWKS

@@ -47,7 +47,18 @@ defmodule EhOsContract.Auth.Keys do
   @refetch_at_most_every :timer.seconds(30)
   # A key set is a few hundred bytes: an EHOS that takes longer than this to send one
   # is treated as down, and the keys in force stay.
-  @request_options [retry: false, connect_options: [timeout: 2_000], receive_timeout: 3_000]
+  # No redirect is followed: the keys come from the configured URL or not at all,
+  # so an answer pointing elsewhere cannot move where trust comes from.
+  @request_options [
+    retry: false,
+    redirect: false,
+    connect_options: [timeout: 2_000],
+    receive_timeout: 3_000
+  ]
+  # A key set holds a current key and, during a rotation, a previous one. Anything
+  # far beyond that is not EHOS's answer, and is not read into memory to find out.
+  @max_body 64 * 1024
+  @max_keys 16
   @call_timeout 10_000
   # The one entry of the table that is not a key: `{@next, clock, at}`, when the next
   # early fetch is allowed, by the process's clock.
@@ -271,7 +282,16 @@ defmodule EhOsContract.Auth.Keys do
   end
 
   defp get(state) do
-    case Req.get(state.url, Keyword.merge(@request_options, state.req_options)) do
+    options = Keyword.merge([into: &at_most/2] ++ @request_options, state.req_options)
+
+    case Req.get(state.url, options) do
+      {:ok, %Req.Response{status: 200, body: :too_large}} ->
+        {:error, :too_large}
+
+      {:ok, %Req.Response{status: 200, body: %{"keys" => keys}}}
+      when is_list(keys) and length(keys) > @max_keys ->
+        {:error, :too_many_keys}
+
       {:ok, %Req.Response{status: 200, body: %{"keys" => keys}}} when is_list(keys) ->
         case for(key <- keys, entry = ed25519(key), into: %{}, do: entry) do
           empty when map_size(empty) == 0 -> {:error, :no_ed25519_key}
@@ -291,6 +311,15 @@ defmodule EhOsContract.Auth.Keys do
     # Whatever the answer holds, it is a failed fetch, never a crash of this process:
     # a crash takes its table with it, and a restart would fetch the same answer.
     exception -> {:error, exception}
+  end
+
+  # Collects the body up to `@max_body` and gives up past it.
+  defp at_most({:data, data}, {request, response}) do
+    body = (response.body || "") <> data
+
+    if byte_size(body) > @max_body,
+      do: {:halt, {request, %{response | body: :too_large}}},
+      else: {:cont, {request, %{response | body: body}}}
   end
 
   # `{thumbprint, public members}` of an Ed25519 key, or nil for anything else. Only
