@@ -35,9 +35,8 @@ Jedynym kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`.
 
 ### Co zostało — i czyje to jest
 
-- **EL2b — zrobione**, czeka na decyzję użytkownika o pushu i PR. Jedna rzecz do potwierdzenia przez
-  użytkownika, rozstrzygnięta przez asystenta domyślnie: stare zdarzenie z wartością, która łamie inwariant dodany
-  później, zatrzymuje reakcję budującą z niej komendę („EL2b — co wyszło”, przegląd).
+- **EL2b — zrobione**, czeka na decyzję użytkownika o pushu i PR. Jedyne rozstrzygnięcie asystenta do
+  potwierdzenia (stare zdarzenie a inwariant dodany później) użytkownik potwierdził 28 września.
 - **EL3 — asystenta**: strony dokumentacji (ESDM `documentation`: strona na element, Markdown, linki). Przed
   budową zapytać o kształt wyjścia (katalog, nazwy plików, czy razem z `view`).
 - **EG, E9, E10–E12 — asystenta, po pytaniach**; opisy w „Etapach” i „Po E8 — kolejność zmieniona”. Do E9
@@ -1168,7 +1167,7 @@ Mechanika, rozstrzygnięta przez asystenta:
   wyjątek z funkcji inwariantu albo brak implementacji rzuca przed transakcją, więc bez wiersza `failed` — jak
   wszystko, co dispatch robi przed transakcją, np. `Authorizer`; wyjątek z funkcji inwariantu niesie argument w
   stacktrace — tak samo jak decyzja i efekt, bez nowego rodzaju narażenia.
-- **Rozstrzygnięte przez asystenta, do potwierdzenia przez użytkownika:** inwariant dodany później odmawia
+- **Rozstrzygnięte przez asystenta, potwierdzone przez użytkownika 28 września:** inwariant dodany później odmawia
   komendy, którą reakcja buduje ze starego zdarzenia, a odmowa komendy reakcji cofa komendę, która ją wywołała,
   albo zatrzymuje uporządkowanego konsumenta na tym zdarzeniu. Zostaje tak, zapisane w ADR (§6, notka z 28
   września): dodanie inwariantu to zmiana modelu jak zawężenie typu. *Odrzucone:* komendy reakcji bez sprawdzania
