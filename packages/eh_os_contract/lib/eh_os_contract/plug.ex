@@ -34,7 +34,7 @@ if Code.ensure_loaded?(Plug.Conn) do
     | accepted | 200 | `command_id`, `identity` (the unit's, the one the library gave when the command created it), `positions`, `position`, `duplicate`, and each event's `type` and `position` |
     | query answered | 200 | `rows`, or `row`, in the log's form; an erased personal field is `null` |
     | rejected on an invariant | 422 | `{"rejected": "<invariant>"}` |
-    | fields that do not fit | 422 | `{"invalid": {"<field>": "required" \\| "type" \\| "generated"}}` — `generated` for an identity sent with a command that creates its aggregate, which the library gives |
+    | fields that do not fit | 422 | `{"invalid": {"<field>": "required" \\| "type" \\| "generated" \\| "<invariant>"}}` — `generated` for an identity sent with a command that creates its aggregate, which the library gives; an invariant's name for a value that breaks it (plan EL2b) |
     | refused | 403 | `{"refused": "<reason>"}` |
     | no actor | 401 | `{"error": "no_actor"}` |
     | a command that creates its aggregate, without an `idempotency-key` | 422 | `{"error": "idempotency_key_required"}` |
@@ -175,7 +175,17 @@ if Code.ensure_loaded?(Plug.Conn) do
       end
     end
 
-    defp refused(conn, {:invalid, problems}), do: reply(conn, 422, %{invalid: Map.new(problems)})
+    # A broken invariant is named where `required` or `type` would be: D9 keeps those
+    # words from being an invariant's name.
+    defp refused(conn, {:invalid, problems}) do
+      invalid =
+        Map.new(problems, fn
+          {field, {:invariant, invariant}} -> {field, invariant}
+          problem -> problem
+        end)
+
+      reply(conn, 422, %{invalid: invalid})
+    end
 
     defp refused(conn, :idempotency_key_required),
       do: reply(conn, 422, %{error: :idempotency_key_required})

@@ -115,6 +115,19 @@ defmodule EhOsContract.Check.Catalog do
       """
     },
     %{
+      id: "value-without-implementation",
+      level: :warn,
+      reads: :v2,
+      esdm: nil,
+      summary: "A value declares invariants, and no module checks them.",
+      text: """
+      Dispatch holds every value of the type to its invariants (plan EL2b), so a command, an event or
+      a query carrying one raises without the code that checks them. Add a module with
+      `use <Domain>, value: <name>`. Said only of a domain some contract of which is implemented:
+      a domain whose contracts have no code yet has nothing to run either.
+      """
+    },
+    %{
       id: "competing-in-transaction-consumers",
       level: :warn,
       reads: :v2,

@@ -46,6 +46,14 @@ defmodule EhOsContract.ScenarioCase do
   `id` and a `position`, 1, 2, … in the order listed, as an event read back from the
   log has.
 
+  **A domain's examples** (plan EL2b). `use EhOsContract.ScenarioCase, domain:
+  Rehmed.Domain` writes one test per example of every value's invariant, against the
+  module bound with `use Rehmed.Domain, value: :name`: the invariant's function
+  answers `false` for each of its `violated_by:`, and every invariant of the value
+  answers `true` for each of its `satisfied_by:`, since a value that keeps one
+  invariant and breaks another is no example of a value. An example is plain data,
+  cast as a scenario's is.
+
   **Which implementation.** The one module of the contract's application whose
   `__eh_os_implementation__/0` names the scenario's target; `implementations:` names
   them instead, for contracts compiled outside an application. A target without
@@ -66,6 +74,31 @@ defmodule EhOsContract.ScenarioCase do
 
   @doc false
   defmacro __using__(opts) do
+    if Keyword.has_key?(opts, :domain), do: domain_case(opts), else: contract_case(opts)
+  end
+
+  defp domain_case(opts) do
+    domain = Keyword.fetch!(opts, :domain)
+    implementations = Keyword.get(opts, :implementations)
+    async = Keyword.get(opts, :async, true)
+
+    quote do
+      use ExUnit.Case, async: unquote(async)
+
+      for example <- EhOsContract.ScenarioCase.examples(unquote(domain)) do
+        @eh_os_contract_example example
+        test EhOsContract.ScenarioCase.describe(example) do
+          EhOsContract.ScenarioCase.run_example(
+            unquote(domain),
+            @eh_os_contract_example,
+            unquote(implementations)
+          )
+        end
+      end
+    end
+  end
+
+  defp contract_case(opts) do
     contract = Keyword.fetch!(opts, :contract)
     implementations = Keyword.get(opts, :implementations)
     async = Keyword.get(opts, :async, true)
@@ -93,6 +126,82 @@ defmodule EhOsContract.ScenarioCase do
         end
       end
     end
+  end
+
+  @typedoc "One example of a value's invariant, as a test runs it."
+  @type example :: %{
+          value: atom(),
+          invariant: atom(),
+          kind: :violated_by | :satisfied_by,
+          data: term()
+        }
+
+  @doc "Every example of every invariant of `domain`'s values, in declaration order."
+  @spec examples(module()) :: [example()]
+  def examples(domain) do
+    for value <- Model.fetch(domain).values,
+        invariant <- value.invariants,
+        kind <- [:violated_by, :satisfied_by],
+        data <- Map.fetch!(invariant, kind),
+        do: %{value: value.name, invariant: invariant.name, kind: kind, data: data}
+  end
+
+  @doc "The name of an example's test."
+  @spec describe(example()) :: String.t()
+  def describe(%{kind: kind} = example) do
+    verb = if kind == :violated_by, do: "breaks", else: "keeps"
+
+    "invariant #{inspect(example.invariant)} of value #{inspect(example.value)}: " <>
+      "#{inspect(example.data)} #{verb} it"
+  end
+
+  @doc """
+  Runs one example of a value's invariant of `domain` against the value's
+  implementation. `implementations`, when given, is where it is looked for instead
+  of the domain's application.
+  """
+  @spec run_example(module(), example(), [module()] | nil) :: true
+  def run_example(domain, example, implementations \\ nil) do
+    model = Model.fetch(domain)
+    implementation = implementation!(model, %{kind: :value, name: example.value}, implementations)
+    value = Enum.find(model.values, &(&1.name == example.value))
+    data = cast_example(example, Map.new(model.values, &{&1.name, &1}))
+
+    checked =
+      case example.kind do
+        :violated_by -> [example.invariant]
+        :satisfied_by -> Enum.map(value.invariants, & &1.name)
+      end
+
+    for invariant <- checked do
+      answer = apply(implementation, invariant, [data])
+      expected = example.kind == :satisfied_by
+
+      assert is_boolean(answer),
+             "#{inspect(implementation)}.#{invariant}/1 answered #{inspect(answer)}; the check " <>
+               "of an invariant answers true or false"
+
+      assert answer == expected,
+             if(expected,
+               do:
+                 "#{inspect(example.data)} is given as a value of #{inspect(example.value)} " <>
+                   "that keeps #{inspect(example.invariant)}, and " <>
+                   "#{inspect(implementation)}.#{invariant}/1 answers that it breaks " <>
+                   "#{inspect(invariant)}",
+               else:
+                 "#{inspect(example.data)} breaks invariant #{inspect(invariant)} of value " <>
+                   "#{inspect(example.value)}, and #{inspect(implementation)}.#{invariant}/1 " <>
+                   "lets it through"
+             )
+    end
+
+    true
+  end
+
+  defp cast_example(example, domain) do
+    cast(example.value, example.data, domain)
+  catch
+    {:unfit, problem} -> flunk("example of #{describe(example)}: #{problem}")
   end
 
   @doc """

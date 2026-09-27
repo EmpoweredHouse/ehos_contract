@@ -62,9 +62,23 @@ defmodule EhOsContract.Domain.Dsl do
     ]
   end
 
+  defmodule ValueInvariant do
+    @moduledoc false
+    defstruct [:name, :label, :source, violated_by: [], satisfied_by: [], __spark_metadata__: nil]
+  end
+
   defmodule Value do
     @moduledoc false
-    defstruct [:name, :type, :unit, :label, :context, fields: [], __spark_metadata__: nil]
+    defstruct [
+      :name,
+      :type,
+      :unit,
+      :label,
+      :context,
+      fields: [],
+      invariants: [],
+      __spark_metadata__: nil
+    ]
   end
 
   defmodule Entity do
@@ -235,12 +249,42 @@ defmodule EhOsContract.Domain.Dsl do
     ]
   }
 
+  # A value's invariant is checked (plan EL2b): the implementation of the value
+  # defines one function per invariant, dispatch holds every value of the type to
+  # them, and each example becomes a test. Examples are plain data, as a scenario's
+  # are (`EhOsContract.Next.Contract.Data`).
+  @value_invariant %Spark.Dsl.Entity{
+    name: :invariant,
+    describe: "What is true of every value of the type, with values that break it and keep it.",
+    target: ValueInvariant,
+    args: [:name, :label],
+    schema: [
+      name: [
+        type: :atom,
+        required: true,
+        doc: "The invariant's name, and the name of the function that checks it."
+      ],
+      label: [type: :string, required: true, doc: "The rule, as the business states it."],
+      violated_by: [
+        type: {:list, :any},
+        required: true,
+        doc: "Values that break it, as plain data: each is a test that the check refuses it."
+      ],
+      satisfied_by: [
+        type: {:list, :any},
+        required: true,
+        doc: "Values that keep it, as plain data: each is a test that the check lets it through."
+      ],
+      source: [type: :string, doc: "Where the rule comes from in the material."]
+    ]
+  }
+
   @value %Spark.Dsl.Entity{
     name: :value,
     describe: "A value type: one built-in type with an optional unit, or a set of fields.",
     target: Value,
     args: [:name, {:optional, :type}],
-    entities: [fields: [@field]],
+    entities: [fields: [@field], invariants: [@value_invariant]],
     schema: [
       name: [type: :atom, required: true, doc: "The value's name, used as a field type."],
       type: [type: :any, doc: "The built-in type, when the value is not a set of fields."],

@@ -43,6 +43,7 @@ defmodule EhOsContract.Domain.Build do
   def transform(dsl) do
     model = model(dsl)
     types = Enum.map(model.values, &value_type/1)
+    behaviours = for %{invariants: [_ | _]} = value <- model.values, do: behaviour(model, value)
 
     {:ok,
      Transformer.eval(
@@ -61,8 +62,45 @@ defmodule EhOsContract.Domain.Build do
 
            unquote_splicing(types)
          end
+
+         unquote_splicing(behaviours)
+
+         @doc "Binds a value's invariants to their checks: `EhOsContract.Implementation`."
+         defmacro __using__(opts),
+           do: EhOsContract.Implementation.bind(__MODULE__, opts, __CALLER__)
        end
      )}
+  end
+
+  # `D.Values.Money`: one callback per invariant of `value :money`, taking a value of
+  # the type and answering whether it keeps the invariant (plan EL2b). Written from
+  # `EhOsContract.Next.Contract.Callbacks`, the list `use D, value: :money` checks
+  # against.
+  defp behaviour(model, value) do
+    module = Module.concat([model.module, Values, Macro.camelize(Atom.to_string(value.name))])
+    %{callbacks: callbacks} = EhOsContract.Next.Contract.Callbacks.of(model, :value, value.name)
+    labels = Map.new(value.invariants, &{&1.name, &1.label})
+
+    specs =
+      for c <- callbacks do
+        quote do
+          @doc unquote(Map.fetch!(labels, c.name))
+          @callback unquote(c.name)(unquote_splicing(c.args)) :: unquote(c.returns)
+        end
+      end
+
+    doc =
+      "What an implementation of value `#{inspect(value.name)}` of `#{inspect(model.module)}` " <>
+        "defines, generated from its invariants: one function each, answering whether a " <>
+        "value of the type keeps it. Bound with `use #{inspect(model.module)}, value: " <>
+        "#{inspect(value.name)}`."
+
+    quote do
+      defmodule unquote(module) do
+        @moduledoc unquote(doc)
+        unquote_splicing(specs)
+      end
+    end
   end
 
   # `value :money, :integer` becomes `@type money :: integer()`; a value with fields
@@ -165,9 +203,16 @@ defmodule EhOsContract.Domain.Build do
 
   # Every list of declarations inside a declaration is a set: sorted here, and only
   # here. `between` is a pair without a direction, so it is sorted too.
+  #
+  # A value without invariants hashes as it did before values had them (plan EL2b), so
+  # the key moves no domain's version until a value declares one.
+  defp digest_form(%{invariants: []} = value),
+    do: value |> Map.delete(:invariants) |> digest_form()
+
   defp digest_form(%{} = declaration) do
     Map.new(declaration, fn
-      {key, list} when key in [:terms, :translations, :avoid, :fields] and is_list(list) ->
+      {key, list}
+      when key in [:terms, :translations, :avoid, :fields, :invariants] and is_list(list) ->
         {key, list |> Enum.map(&digest_form/1) |> Enum.sort_by(&Digest.canonical/1)}
 
       {:between, list} ->

@@ -81,6 +81,17 @@ A contract is implemented in part.
 The unit, consumer, query or domain service the finding names has no implementation, so
 dispatch refuses to run it. Add a module with `use <Contract>, <kind>: <name>`.
 
+## `value-without-implementation`
+
+**warning** · reads v2 contracts
+
+A value declares invariants, and no module checks them.
+
+Dispatch holds every value of the type to its invariants (plan EL2b), so a command, an event or
+a query carrying one raises without the code that checks them. Add a module with
+`use <Domain>, value: <name>`. Said only of a domain some contract of which is implemented:
+a domain whose contracts have no code yet has nothing to run either.
+
 ## `competing-in-transaction-consumers`
 
 **warning** · reads v2 contracts

@@ -235,8 +235,32 @@ defmodule EhOsContract.Check.Completeness do
       unmapped_references(model, contracts),
       relations_against_references(model, contracts),
       avoided_terms(model, contracts),
-      directions(model, declared, contracts)
+      directions(model, declared, contracts),
+      unchecked_values(model, declared, contracts)
     ])
+  end
+
+  # A value whose invariants no module checks, in a domain whose contracts have code:
+  # dispatch raises on the first value of it (plan EL2b).
+  defp unchecked_values(model, declared, contracts) do
+    implemented = EhOsContract.Implementations.index(model.module).declarations
+
+    running? =
+      Enum.any?(Map.keys(implemented), fn {module, _kind, _name} ->
+        Enum.any?(contracts, &(&1.model.module == module))
+      end)
+
+    for %{invariants: [_ | _]} = value <- model.values,
+        running?,
+        not Map.has_key?(implemented, {model.module, :value, value.name}) do
+      Finding.new(
+        "value-without-implementation",
+        "value #{inspect(value.name)} of #{inspect(model.module)} declares invariants and no " <>
+          "module checks them, so dispatch raises on every value of it; bind one with " <>
+          "`use #{inspect(model.module)}, value: #{inspect(value.name)}`",
+        at(declared.values, value.name)
+      )
+    end
   end
 
   # The domain's declarations as Spark kept them, with where each was written.

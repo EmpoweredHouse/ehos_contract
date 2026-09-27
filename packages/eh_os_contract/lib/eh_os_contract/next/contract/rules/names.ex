@@ -278,6 +278,28 @@ defmodule EhOsContract.Next.Contract.Rules.Names do
     end
   end
 
+  @doc false
+  # What a function `name/arity` would clash with where a module defines it, for a
+  # rule outside the contract's: a domain value's check (D9, plan EL2b). `nil` when
+  # nothing.
+  @spec elixir_clash(atom(), arity()) :: String.t() | nil
+  def elixir_clash(name, arity) do
+    cond do
+      name in @reserved ->
+        "is a word Elixir reserves"
+
+      {name, arity} in @module_functions ->
+        "would define #{name}/#{arity}, which every module defines already"
+
+      kernel?(name, arity) ->
+        "would define #{name}/#{arity}, which clashes with #{kernel_module(name, arity)}." <>
+          "#{name}/#{arity}"
+
+      true ->
+        nil
+    end
+  end
+
   # Read once, when this module compiles: `{name, arity} => "Kernel"`.
   @kernel for module <- [Kernel.SpecialForms, Kernel],
               export <- module.__info__(:functions) ++ module.__info__(:macros),

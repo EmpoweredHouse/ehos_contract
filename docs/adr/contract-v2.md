@@ -154,6 +154,15 @@ scenario        description!   scope · actor
 > domain's value or entity (D8). It composes with an entity reference, `field :invoice_number, {:id, :invoice},
 > issued_by: :ksef`, which is why it is an option and not `{:id, :ksef}`. ESDM has no such field. An external
 > identifier that is personal data (a PESEL, a patient's number at a payer) is still never an `:id` (§14).
+>
+> *Added 28 September 2026, plan EL2b, the user's choice of 27 September.* **A value's invariant is checked, and
+> shown on examples:** `value :money, :integer do invariant :not_negative, "…", violated_by: [-1],
+> satisfied_by: [0, 15_000] end` — both lists required, each example plain data of the value's type, as a
+> scenario's is. The domain generates a behaviour, `D.Values.Money`, with one callback per invariant, `(value) ::
+> boolean`, and a module bound with `use D, value: :money` defines each (I1, I2). Dispatch holds every value of
+> the type to them (§11), and `use EhOsContract.ScenarioCase, domain: D` writes a test per example. ESDM's
+> value-object invariants are prose; this is the library's addition, in the shape the aggregate's invariant already
+> had.
 
 - **Identity is injected.** A unit's identity fields appear in its state, commands and events without being
   declared there; declaring one again is an error.
@@ -680,6 +689,18 @@ where it helps; every violation is reported as a diagnostic before the single ra
 - *Domain.* D1: unique names per kind. D2: at most one translation per language, none into the context's
   own. D3: a value has exactly one of type or fields; `unit` only on numeric types; no cycles. D4: a human
   actor has no `backed_by`. D5: relation roles fit the type; endpoints exist; no relation to itself.
+
+  > *Added 28 September 2026, plan EL2b.* **D9**: a value's invariant is named as the function that checks it
+  > is — snake_case, once in its value, no clash with what Elixir defines at arity one (N2's list), and not
+  > `:required`, `:type` or `:generated`, which a refusal puts where an invariant's name goes — and it gives at
+  > least one `violated_by:` and one `satisfied_by:`, each plain data of the value's type, none `nil` and none
+  > in both. **At run time** a value that fits its type is held to its invariants wherever a type is:
+  > a command's fields and a recorded event's are refused, `{field, {:invariant, name}}`, 422 `{"invalid":
+  > {"<field>": "<invariant>"}}`; an event a decision returns raises, as one not fitting its type does; a
+  > query's parameters are refused and a domain service's arguments and result raise. What the value is made of
+  > is asked first — a list's items, a value's fields, the value an alias stands for — then its own. **The log
+  > read back is never held to them**, so an invariant added later leaves history readable. `check` warns,
+  > `value-without-implementation`, of a value nobody checks in a domain whose contracts have code.
 
 **L3 — a Mix compiler, `compile.eh_os_contract`** (hard diagnostics on every compile, because references
 between DSL modules record no compile dependency, §8):

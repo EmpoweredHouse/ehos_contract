@@ -179,11 +179,16 @@ defmodule EhOsContract.Model do
           | :read_model
           | :query
           | :domain_service
+          | :value
 
   @doc """
   The module a v2 contract generates for a declaration (v2 §5): the struct of a
   command, an event or a query's parameters, or the behaviour of a unit, a policy,
-  an effect, a process manager or a read model.
+  an effect, a process manager or a read model. A domain generates one too, the
+  behaviour of a value that declares invariants (plan EL2b):
+
+      Model.module_for(Rehmed.Domain, :value, :money)
+      #=> Rehmed.Domain.Values.Money
 
       Model.module_for(Rehmed.Contracts.VisitSettlement, :command, :record_payment)
       #=> Rehmed.Contracts.VisitSettlement.Commands.RecordPayment
@@ -198,6 +203,22 @@ defmodule EhOsContract.Model do
   A name the contract does not declare is refused.
   """
   @spec module_for(contract() | map(), generated(), atom()) :: module()
+  def module_for(domain, :value, name) do
+    case fetch(domain) do
+      %{kind: :domain, module: module, values: values} ->
+        if Enum.any?(values, &(&1.name == name and &1.invariants != [])),
+          do: generated_name(module, Values, name),
+          else:
+            raise(
+              ArgumentError,
+              "#{inspect(module)} declares no value #{inspect(name)} with invariants"
+            )
+
+      %{kind: kind, module: module} ->
+        raise ArgumentError, "#{inspect(module)} is a #{kind}, and only a domain has values"
+    end
+  end
+
   def module_for(contract, kind, name) do
     model = v2!(contract)
 
