@@ -20,6 +20,7 @@ defmodule EhOsContract.Web.DesignSystemTest do
   @source Path.join(@root, "assets/css/vendor/empoweredhouse/SOURCE.md")
   @layer Path.join(@root, "assets/css/app.css")
   @built Path.join(@root, "priv/static/assets/app.css")
+  @script Path.join(@root, "assets/js/app.js")
   @fonts Path.join(@root, "priv/static/assets/fonts")
 
   # The custom properties a stylesheet defines: `--name:` at the start of a declaration.
@@ -55,7 +56,32 @@ defmodule EhOsContract.Web.DesignSystemTest do
 
       refute css =~ ~r/@import\s+(?:url\()?\s*["']?(?:[a-z]+:)?\/\//i,
              "#{path} imports from another origin"
+
+      # Not another origin, but not 'self' either: a host's `default-src 'self'` refuses it.
+      refute css =~ ~r/url\(\s*["']?data:/i, "#{path} inlines a data: url"
     end
+  end
+
+  test "every token the dashboard's styles and scripts read is one the copy or the layer defines" do
+    # A refresh that renames a token breaks nothing loudly: CSS falls back to nothing, and the
+    # diagrams' theme gives up. This is where the rename shows.
+    defined =
+      MapSet.union(
+        @copy |> File.read!() |> defined_properties(),
+        @layer |> File.read!() |> defined_properties()
+      )
+
+    read =
+      for path <- [@layer, @script],
+          [name] <-
+            Regex.scan(~r/(?:var\(|["'])(--[a-z0-9-]+)/, File.read!(path),
+              capture: :all_but_first
+            ),
+          into: MapSet.new(),
+          do: name
+
+    assert MapSet.size(read) > 20
+    assert MapSet.difference(read, defined) |> Enum.sort() == []
   end
 
   test "the dashboard's styles refer to the design system's tokens and never redefine one" do
@@ -101,13 +127,16 @@ defmodule EhOsContract.Web.DesignSystemTest do
       |> LazyHTML.from_document()
 
     for link <- LazyHTML.query(document, "link[rel=stylesheet]") do
-      assert [href] = LazyHTML.attribute(link, "href")
+      [href] = LazyHTML.attribute(link, "href")
       assert String.starts_with?(href, "/eh_os_contract_web/assets/"), "a stylesheet from #{href}"
     end
 
     for script <- LazyHTML.query(document, "script") do
-      assert [src] = LazyHTML.attribute(script, "src"), "an inline script"
-      assert String.starts_with?(src, "/eh_os_contract_web/assets/"), "a script from #{src}"
+      sources = LazyHTML.attribute(script, "src")
+      assert length(sources) == 1, "an inline script"
+
+      assert String.starts_with?(hd(sources), "/eh_os_contract_web/assets/"),
+             "a script from #{hd(sources)}"
     end
   end
 
