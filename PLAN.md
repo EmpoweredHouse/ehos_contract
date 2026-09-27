@@ -26,15 +26,10 @@ kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`; `Taxvision
 
 ### Stan repozytorium
 
-- **EM1–EM3 zbudowane i przejrzane, niewypchnięte**, na trzech lokalnych gałęziach, każda od poprzedniej:
-  `dsl-v2/e9-em1-dcb` (runtime DCB), `dsl-v2/e9-em2-entities` (encje, serwisy domenowe),
-  `dsl-v2/e9-em3-runtime` (pusty wynik serwisu, timery kalendarzowe, identyfikator nadawany przez bibliotekę).
-  Pierwsze commity EM1 to zapis decyzji w tym pliku. Każda gałąź ma notatkę przeglądu w `refs/notes/review` na
-  swoim ostatnim commicie (EM3 — po zapisie tego stanu). Opis w „Po E8 — kolejność zmieniona” i „EM1/EM2/EM3 — co
-  wyszło”.
-- `main` = `origin/main` = `bce10fa` (handoff po E8), na `f210b8b` (merge PR #23). Użytkownik merguje PR-y jako merge,
-  więc historia `main` ma merge commity; handoff idzie tak, jak zdecyduje użytkownik (poprzedni poszedł prosto na
-  `main`).
+- **EM1–EM3 są w `main`** (PR #24–#26: runtime DCB; encje i serwisy domenowe; pusty wynik serwisu, timery
+  kalendarzowe, identyfikator nadawany przez bibliotekę). `main` = `origin/main` = `081877d`. Opis w „Po E8 —
+  kolejność zmieniona” i „EM1/EM2/EM3 — co wyszło”. Użytkownik merguje PR-y jako merge.
+- **EL w toku** na `dsl-v2/el-warnings` (EL1), od `main`. Decyzje przed budową — „Przed EL — decyzje użytkownika”.
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`) i nie ma
   tabel pakietu auth ani V05 (klucze i usunięcia z E8). Przed `mix phx.server`: `mix ecto.migrate` w `sandbox/`;
   bez tego dispatch z credentialem pada na zapisie decyzji.
@@ -806,7 +801,43 @@ Mechanika, rozstrzygnięta przez asystenta:
 
 **EM zamknięte**: trzy gałęzie EM1 → EM2 → EM3, każda od poprzedniej, gotowe na trzy PR-y. Push i PR — na
 polecenie użytkownika. Dalej EL (ostrzeżenia kompletności, `view`, słownik, strony dokumentacji i pola opisowe
-odłożone z EM3), EG (cztery grafy), potem kontrakty sandboxa od nowa (E9).
+odłożone z EM3), EG (cztery grafy), potem kontrakty sandboxa od nowa (E9). Zmergowane jako PR #24–#26.
+
+### Przed EL — decyzje użytkownika (27 września)
+
+Punkt odniesienia: ESDM na `cf17780` (0.15.0), sprawdzone w kodzie. Reguła ma tam identyfikator
+`esdm/<kategoria>/<nazwa>` i poziom na stałe (`error` albo `warning`, bez wyciszania); każda ma wpis z kotwicą na
+jednej stronie reguł, generowany z opisu reguły; `esdm lint --format json` wypisuje tablicę z `ruleId`, `severity`,
+`message`, `location`, `documentationUrl`; kod wyjścia 1 tylko przy błędach, `--warnings-as-errors` zmienia sam kod
+wyjścia. `view` rysuje drzewo w terminalu, `glossary` wypisuje Markdown (sekcja na kontekst, `--language`),
+`documentation --output <dir>` pisze Markdown, stronę na element, z linkami.
+
+- **Trzy PR-y, każdy na gałęzi od poprzedniego, z przeglądem po każdej części:** **EL1** (`dsl-v2/el-warnings`) —
+  ostrzeżenia L5 z identyfikatorami, `check` powtarzający L3, przypięcie słownika DSL-a domeny; **EL2** — pola
+  opisowe razem z `glossary` i `view`, które je czytają; **EL3** — strony dokumentacji. *Odrzucone:* dwa PR-y
+  (drugi diff za duży); cztery (`view` osobno — więcej scalania bez zysku na czytelności).
+- **Identyfikatory: krótkie nazwy, tylko dla ostrzeżeń `check`.** `orphan-actor: actor :manager of Rehmed.Domain
+  …` z linkiem do `docs/rules.md#orphan-actor`; nazwa z ESDM tam, gdzie reguła jest z ESDM, i własna w tym samym
+  stylu dla reguł z v1 (`process-without-accountable`). Błędy kompilacji zostają przy `X2:`, `N1:`, jak dziś.
+  Wymagało wyjaśnienia na przykładzie — pierwsze pytanie nie mówiło, po co regule stały identyfikator (zdanie się
+  zmienia, identyfikator nie: wyszukiwanie, link do opisu, filtr w JSON-ie, przypięcie w teście). *Odrzucone:*
+  (b) nazwy we wszystkich warstwach (`unknown-actor` zamiast `X2`; około 60 kodów, ich testy i odwołania w ADR);
+  (c) pełne identyfikatory ESDM, `esdm/modeling/orphan-actor` (cudzy prefiks bez integracji, a nasze reguły spoza
+  ESDM potrzebowałyby drugiego stylu).
+- **Wyciszanie i wyjście maszynowe jak w ESDM:** bez wyciszania; `mix eh_os_contract.check --format json` i
+  `--warnings-as-errors`, które zmienia tylko kod wyjścia. Ostrzeżenie znika przez poprawę modelu, nie
+  konfiguracji. *Odrzucone:* wyciszanie w konfiguracji (`check: [ignore: […]]` — wyciszona reguła przestaje mówić
+  całej aplikacji); wyciszanie przy deklaracji (nowe słowo DSL-a i powód w modelu).
+- **Nazwana subdomena, na którą wskazuje kontekst:** `subdomain :visits, "Wizyty", type: :core` i `context
+  :scheduling, …, subdomain: :visits`; typ przechodzi na subdomenę. Wchodzi w EL2. *Odrzucone:* subdomena wymienia
+  swoje konteksty, jak w ESDM (kontekst bez `subdomain:`, inaczej niż `entity …, context:`); obie formy (dwa
+  sposoby na to samo).
+- **Kształty DSL-a pozostałych pól opisowych** (`constraints`, inwarianty wartości, tłumaczenie z definicją i
+  `avoid`, relacja z systemem zewnętrznym) — pytania do użytkownika przed EL2.
+
+Rozstrzygnięte przez asystenta: narzędzia to taski Mixa, nie ekrany dashboardu (`CLAUDE.md`: ekran ma cztery
+pytania; grafy na `/graph` to osobna decyzja EG). Proza `constraints` i inwariantów wartości to zdania dla
+właściciela procesu, więc lista miejsc „po polsku” w `CLAUDE.md` rośnie o nie w EL2.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
