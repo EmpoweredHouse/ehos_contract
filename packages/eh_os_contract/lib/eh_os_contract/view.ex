@@ -41,6 +41,7 @@ defmodule EhOsContract.View do
       end
 
     types = Map.new(domain.subdomains, &{&1.name, &1.type})
+    known!(domain, contracts, context_filter, unit_filter)
 
     contexts =
       for context <- domain.contexts, context_filter in [nil, context.name] do
@@ -70,25 +71,42 @@ defmodule EhOsContract.View do
     process = if model.process, do: "  process #{model.process.name}", else: ""
 
     children =
-      Enum.filter(
-        Enum.map(model.units, &unit(model, &1, details?)) ++
-          Enum.map(model.policies, &policy/1) ++
-          Enum.map(model.effects, &effect/1) ++
-          Enum.map(model.process_managers, &process_manager/1) ++
-          Enum.map(model.read_models, &read_model(&1, details?)) ++
-          Enum.map(model.queries, &query(&1, details?)) ++
-          Enum.map(model.domain_services, &domain_service(&1, details?)),
-        fn {_line, _details, _children} = node ->
-          unit_filter == nil or named?(node, unit_filter)
-        end
-      )
+      for {name, node} <- declarations(model, details?), unit_filter in [nil, name], do: node
 
     {"contract #{inspect(model.module)}#{process}", [], children}
   end
 
-  # A branch kept by `path:` is a unit, a consumer or anything else named there.
-  defp named?({line, _details, _children}, name),
-    do: line |> String.split("  ") |> hd() |> String.split(" ") |> List.last() == "#{name}"
+  # Each row under a contract with the name `path:` keeps it by.
+  defp declarations(model, details?) do
+    Enum.map(model.units, &{&1.name, unit(model, &1, details?)}) ++
+      Enum.map(model.policies, &{&1.name, policy(&1)}) ++
+      Enum.map(model.effects, &{&1.name, effect(&1)}) ++
+      Enum.map(model.process_managers, &{&1.name, process_manager(&1)}) ++
+      Enum.map(model.read_models, &{&1.name, read_model(&1, details?)}) ++
+      Enum.map(model.queries, &{&1.name, query(&1, details?)}) ++
+      Enum.map(model.domain_services, &{&1.name, domain_service(&1, details?)})
+  end
+
+  # A path naming nothing is refused rather than printed as an empty branch.
+  defp known!(_domain, _contracts, nil, nil), do: :ok
+
+  defp known!(domain, contracts, context, unit) do
+    unless Enum.any?(domain.contexts, &(&1.name == context)),
+      do: raise(ArgumentError, "#{inspect(domain.module)} has no context #{inspect(context)}")
+
+    names =
+      for c <- contracts, c.context == context, {name, _node} <- declarations(c, false), do: name
+
+    if unit != nil and unit not in names,
+      do:
+        raise(
+          ArgumentError,
+          "context #{inspect(context)} has no unit or other declaration #{inspect(unit)}; " <>
+            "it has #{inspect(names)}"
+        )
+
+    :ok
+  end
 
   defp unit(model, unit, details?) do
     commands = Enum.filter(model.commands, &(&1.unit == unit.name))

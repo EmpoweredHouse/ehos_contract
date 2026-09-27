@@ -41,15 +41,30 @@ defmodule Mix.Tasks.EhOsContract.View do
           []
 
         [path] ->
-          [context | unit] = String.split(path, "/", parts: 2)
-          [Tools.context!(domain, context) | Enum.map(unit, &Tools.existing_atom(&1, "path"))]
+          case String.split(path, "/") do
+            [context] ->
+              [Tools.context!(domain, context)]
+
+            [context, unit] when unit != "" ->
+              [Tools.context!(domain, context), Tools.existing_atom(unit, "path")]
+
+            _other ->
+              Mix.raise("the path is <context> or <context>/<name>, got #{inspect(path)}")
+          end
+
+        _many ->
+          Mix.raise("one path at most, <context> or <context>/<name>; got #{inspect(rest)}")
       end
 
     text =
-      EhOsContract.View.render(domain, EhOsContract.Registry.v2_contracts(),
-        details: opts[:details] || false,
-        path: path
-      )
+      try do
+        EhOsContract.View.render(domain, EhOsContract.Registry.v2_contracts(),
+          details: opts[:details] || false,
+          path: path
+        )
+      rescue
+        error in ArgumentError -> Mix.raise(Exception.message(error))
+      end
 
     case opts[:output] do
       nil -> Mix.shell().info(text)

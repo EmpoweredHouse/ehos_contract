@@ -124,4 +124,16 @@ defmodule EhOsContract.ViewTest do
   test "control: a contract of another domain is not in the tree" do
     refute View.render(@domain, [ProcessShapes.Next.Bare]) =~ "ProcessShapes"
   end
+
+  test "a path naming nothing is refused, not printed as an empty branch" do
+    assert_raise ArgumentError,
+                 ~r/context :settlement has no unit or other declaration :paid/,
+                 fn ->
+                   View.render(@domain, [@visits], path: [:settlement, :paid])
+                 end
+
+    assert_raise ArgumentError, ~r/has no context :billing/, fn ->
+      View.render(@domain, [@visits], path: [:billing])
+    end
+  end
 end
