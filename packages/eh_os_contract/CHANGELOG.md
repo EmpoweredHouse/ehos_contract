@@ -74,6 +74,9 @@ What changes otherwise is what a host has to do.
   unit's identity: `["account_id:a-1", "branch_id:b-7"]` where it was `["account_id:a-1"]`. A consistency
   boundary finds what it consults by these tags, so a `match:` names only such fields (A4 for a local event,
   X6 already for a sibling's). Events appended before this version carry the narrower tags.
+- **EM1: a command's row in `eh_os_contract_commands` lists each type it was given once** (`given_types`), in
+  the order first read, where it listed one entry per event: a boundary may read the whole history of a type.
+  Scenario coverage compares these as sets, so no count moves.
 
 ### Added
 

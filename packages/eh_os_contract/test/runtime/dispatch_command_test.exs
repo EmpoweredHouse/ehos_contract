@@ -76,10 +76,8 @@ defmodule EhOsContract.DispatchCommandTest do
 
       assert Enum.map(log(), & &1.stream_version) == [1, 2, 3]
 
-      assert Enum.map(rows(), & &1.given_types) |> List.last() == [
-               "ledger.deposited",
-               "ledger.deposited"
-             ]
+      # Two deposits read, one type recorded.
+      assert Enum.map(rows(), & &1.given_types) |> List.last() == ["ledger.deposited"]
     end
   end
 

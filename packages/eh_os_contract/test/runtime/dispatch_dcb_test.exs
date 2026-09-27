@@ -76,6 +76,10 @@ defmodule EhOsContract.DispatchDcbTest do
                subscribe("course-art", "student-cara")
 
       assert length(subscriptions("course-art")) == 2
+
+      # What the refused decision read, each type once however many of it there were.
+      refused = Repo.one!(from(c in CommandRecord, where: c.outcome == "rejected"))
+      assert refused.given_types == ["course.course_defined", "enrolment.student_subscribed"]
     end
 
     test "control: subscriptions to another course do not count" do

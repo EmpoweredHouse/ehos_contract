@@ -872,7 +872,9 @@ defmodule EhOsContract.Dispatcher do
             causation_event_id: ctx.causation_id,
             correlation_id: ctx.correlation_id,
             outcome: outcome,
-            given_types: Enum.map(Map.get(job, :given, []), & &1.type),
+            # Each type once, in the order first read: a boundary reads what may be the
+            # whole history of a type, and coverage asks only which types were there.
+            given_types: job |> Map.get(:given, []) |> Enum.map(& &1.type) |> Enum.uniq(),
             process: model.process && Atom.to_string(model.process.name),
             instance_id: instance(model, job.command)
           },
