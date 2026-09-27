@@ -24,9 +24,16 @@ defmodule EhOsContract.Auth.Keys do
   (`eh-os` D-33), so nobody configures it and nothing can claim another key's name.
 
   Memory is an ETS table owned by this process and read by `verify` without a call,
-  so checking a credential costs no message. It is not `:persistent_term`, whose
-  every update costs a global garbage collection, and this one updates every five
-  minutes.
+  so checking a credential costs no message. It holds each key ready to verify with,
+  parsed once per fetch rather than once per credential, and when the rate limit
+  above is next open, so a credential with an unknown `kid` inside the window costs
+  no message either. It is not `:persistent_term`, whose every update costs a global
+  garbage collection, and this one updates every five minutes.
+
+  **A key process that is not running refuses, it does not raise.** While it is
+  down or restarting, its table is gone with it, and every credential is refused
+  with `:no_keys` — the answer `EhOsContract.Auth.ready?/0` gives for the same
+  state.
 
   `EhOsContract.Auth` starts it; nothing else needs to.
   """
@@ -42,6 +49,9 @@ defmodule EhOsContract.Auth.Keys do
   # is treated as down, and the keys in force stay.
   @request_options [retry: false, connect_options: [timeout: 2_000], receive_timeout: 3_000]
   @call_timeout 10_000
+  # The one entry of the table that is not a key: `{@next, clock, at}`, when the next
+  # early fetch is allowed, by the process's clock.
+  @next :next_early_fetch
 
   @typedoc "What `start_link/1` takes. Every option but `:url` has a default."
   @type option ::
@@ -70,35 +80,53 @@ defmodule EhOsContract.Auth.Keys do
   end
 
   @doc """
-  The public key whose thumbprint is `kid`, as a JWK map, or why there is none:
-  `:no_keys` when this application has never seen a key set, `:unknown_key` when
-  the set it has does not hold this one.
+  The signer for the key whose thumbprint is `kid`, or why there is none:
+  `:no_keys` when this application holds no key — it has never seen a key set, or
+  the key process is not running — and `:unknown_key` when the set it holds does not
+  have this one.
 
-  A key not in memory asks for an early fetch first, within the rate limit above,
-  and is looked up again after it.
+  A key not in memory asks for an early fetch first, when the rate limit above
+  allows one, and is looked up again after it.
   """
-  @spec fetch(String.t(), atom()) :: {:ok, map()} | {:error, :no_keys | :unknown_key}
+  @spec fetch(String.t(), atom()) :: {:ok, Joken.Signer.t()} | {:error, :no_keys | :unknown_key}
   def fetch(kid, name \\ __MODULE__) when is_binary(kid) do
     with :error <- lookup(name, kid) do
-      refetch(name)
+      if refetch_open?(name), do: refetch(name)
 
       case lookup(name, kid) do
-        {:ok, jwk} ->
-          {:ok, jwk}
-
-        :error ->
-          if :ets.info(name, :size) == 0, do: {:error, :no_keys}, else: {:error, :unknown_key}
+        {:ok, signer} -> {:ok, signer}
+        :error -> if held(name) > 0, do: {:error, :unknown_key}, else: {:error, :no_keys}
       end
     end
   end
 
+  @doc false
+  # How many keys are in force; 0 when the key process is not running.
+  @spec held(atom()) :: non_neg_integer()
+  def held(name \\ __MODULE__) do
+    case :ets.info(name, :size) do
+      size when is_integer(size) -> size - 1
+      :undefined -> 0
+    end
+  end
+
+  # The process checks again under its own lock: two callers may both see it open.
+  defp refetch_open?(name) do
+    case :ets.lookup(name, @next) do
+      [{@next, clock, at}] -> at == nil or clock.() >= at
+      [] -> false
+    end
+  rescue
+    ArgumentError -> false
+  end
+
   # A fetch is bounded by the request timeouts below, well inside this, so the call
-  # outlives it. Should the process still not answer, the credential is refused with
-  # what memory holds rather than taking the caller down with it.
+  # outlives it. Should the process not answer — too slow, or not running — the
+  # credential is refused with what memory holds rather than taking the caller down.
   defp refetch(name) do
     GenServer.call(name, :refetch, @call_timeout)
   catch
-    :exit, {:timeout, _} -> :ok
+    :exit, _reason -> :ok
   end
 
   @doc """
@@ -106,24 +134,21 @@ defmodule EhOsContract.Auth.Keys do
   failed. Not rate-limited: this is the scheduled path, called directly.
   """
   @spec refresh(atom()) :: :ok | {:error, term()}
-  def refresh(name \\ __MODULE__), do: GenServer.call(name, :refresh)
+  def refresh(name \\ __MODULE__), do: GenServer.call(name, :refresh, @call_timeout)
 
   @doc "The thumbprints of the keys in force, sorted."
   @spec kids(atom()) :: [String.t()]
   def kids(name \\ __MODULE__),
-    do: name |> :ets.select([{{:"$1", :_}, [], [:"$1"]}]) |> Enum.sort()
+    do: name |> :ets.select([{{:"$1", :_}, [{:is_binary, :"$1"}], [:"$1"]}]) |> Enum.sort()
 
   defp lookup(name, kid) do
-    if :ets.whereis(name) == :undefined do
-      raise ArgumentError,
-            "#{inspect(name)} is not running: add EhOsContract.Auth to the application's " <>
-              "supervision tree, after its repo"
-    end
-
     case :ets.lookup(name, kid) do
-      [{^kid, jwk}] -> {:ok, jwk}
+      [{^kid, signer}] -> {:ok, signer}
       [] -> :error
     end
+  rescue
+    # No table: the key process is not running.
+    ArgumentError -> :error
   end
 
   # --- the process ---------------------------------------------------------------------
@@ -145,6 +170,7 @@ defmodule EhOsContract.Auth.Keys do
       fetched_at: nil
     }
 
+    :ets.insert(name, {@next, state.clock, nil})
     {:ok, state, {:continue, :start}}
   end
 
@@ -153,7 +179,7 @@ defmodule EhOsContract.Auth.Keys do
     load(state)
     {_result, state} = fetch_now(state)
 
-    if :ets.info(state.name, :size) == 0 do
+    if held(state.name) == 0 do
       Logger.error(
         "eh_os_contract_auth has never seen a key set from #{state.url}, and refuses every " <>
           "credential with :no_keys until a fetch succeeds"
@@ -193,7 +219,7 @@ defmodule EhOsContract.Auth.Keys do
   # empty and says so: the fetch after it may still succeed.
   defp load(state) do
     %{rows: rows} = state.repo.query!("SELECT kid, jwk FROM #{@table}", [], log: false)
-    :ets.insert(state.name, for([kid, jwk] <- rows, do: {kid, jwk}))
+    :ets.insert(state.name, for([kid, jwk] <- rows, do: {kid, signer(jwk)}))
   rescue
     exception ->
       Logger.error(
@@ -202,7 +228,9 @@ defmodule EhOsContract.Auth.Keys do
   end
 
   defp fetch_now(state) do
-    state = %{state | fetched_at: state.clock.()}
+    now = state.clock.()
+    :ets.insert(state.name, {@next, state.clock, now + state.refetch_at_most_every})
+    state = %{state | fetched_at: now}
 
     case get(state) do
       {:ok, keys} ->
@@ -212,7 +240,7 @@ defmodule EhOsContract.Auth.Keys do
       {:error, reason} = error ->
         Logger.warning(
           "eh_os_contract_auth could not fetch the key set from #{state.url} (#{inspect(reason)}); " <>
-            "#{:ets.info(state.name, :size)} keys stay in force"
+            "#{held(state.name)} keys stay in force"
         )
 
         {error, state}
@@ -222,9 +250,9 @@ defmodule EhOsContract.Auth.Keys do
   defp get(state) do
     case Req.get(state.url, Keyword.merge(@request_options, state.req_options)) do
       {:ok, %Req.Response{status: 200, body: %{"keys" => keys}}} when is_list(keys) ->
-        case for(key <- keys, jwk = ed25519(key), do: jwk) do
-          [] -> {:error, :no_ed25519_key}
-          jwks -> {:ok, Map.new(jwks, &{&1 |> JOSE.JWK.from_map() |> JOSE.JWK.thumbprint(), &1})}
+        case for(key <- keys, entry = ed25519(key), into: %{}, do: entry) do
+          empty when map_size(empty) == 0 -> {:error, :no_ed25519_key}
+          keys -> {:ok, keys}
         end
 
       {:ok, %Req.Response{status: 200}} ->
@@ -236,14 +264,31 @@ defmodule EhOsContract.Auth.Keys do
       {:error, exception} ->
         {:error, exception}
     end
+  rescue
+    # Whatever the answer holds, it is a failed fetch, never a crash of this process:
+    # a crash takes its table with it, and a restart would fetch the same answer.
+    exception -> {:error, exception}
   end
 
-  # Only the public members of an Ed25519 key are kept: a JWKS that carried a
-  # private part by mistake does not get it written to a table.
-  defp ed25519(%{"kty" => "OKP", "crv" => "Ed25519", "x" => x}) when is_binary(x),
-    do: %{"kty" => "OKP", "crv" => "Ed25519", "x" => x}
+  # `{thumbprint, public members}` of an Ed25519 key, or nil for anything else. Only
+  # the public members are kept, so a JWKS that carried a private part by mistake
+  # does not get it written to a table; and an `x` that is not 32 bytes is skipped,
+  # so one malformed entry costs itself and not the keys beside it.
+  defp ed25519(%{"kty" => "OKP", "crv" => "Ed25519", "x" => x}) when is_binary(x) do
+    case Base.url_decode64(x, padding: false) do
+      {:ok, <<_::binary-size(32)>>} ->
+        public = %{"kty" => "OKP", "crv" => "Ed25519", "x" => x}
+        {public |> JOSE.JWK.from_map() |> JOSE.JWK.thumbprint(), public}
+
+      _malformed ->
+        nil
+    end
+  end
 
   defp ed25519(_key), do: nil
+
+  # Parsed once, when the key enters memory, not once per credential.
+  defp signer(jwk), do: Joken.Signer.create("Ed25519", jwk)
 
   # The table first, so memory never holds a set the next start would not load.
   # When the table cannot be written the keys still go into memory: they are good,
@@ -264,10 +309,7 @@ defmodule EhOsContract.Auth.Keys do
         )
     end
 
-    for {kid, _jwk} <- :ets.tab2list(state.name), not Map.has_key?(keys, kid) do
-      :ets.delete(state.name, kid)
-    end
-
-    :ets.insert(state.name, Map.to_list(keys))
+    for kid <- kids(state.name), not Map.has_key?(keys, kid), do: :ets.delete(state.name, kid)
+    :ets.insert(state.name, for({kid, jwk} <- keys, do: {kid, signer(jwk)}))
   end
 end

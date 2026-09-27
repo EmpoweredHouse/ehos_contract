@@ -159,9 +159,39 @@ defmodule EhOsContract.Auth.KeysTest do
     assert jwk == [%{"kty" => "OKP", "crv" => "Ed25519", "x" => pair.public["x"]}]
   end
 
-  test "verifying without the key process started says what to add" do
-    assert_raise ArgumentError, ~r/add EhOsContract.Auth to the application's supervision/, fn ->
-      Auth.verify(credential(key_pair()), keys: :not_started)
-    end
+  test "a key process that is not running refuses with :no_keys, and does not raise" do
+    assert Auth.verify(credential(key_pair()), keys: :not_started) == {:error, :no_keys}
+    refute Auth.ready?(keys: :not_started)
+  end
+
+  test "a malformed entry costs itself, not the keys beside it, nor the process" do
+    good = key_pair()
+
+    malformed = %{
+      kid: "bad",
+      public: %{"kty" => "OKP", "crv" => "Ed25519", "x" => "not-32-bytes"}
+    }
+
+    ehos = ehos({:keys, [malformed, good]})
+    keys = start_keys(ehos)
+
+    assert Keys.kids(keys) == [good.kid]
+    assert {:ok, _} = Auth.verify(credential(good), keys: keys)
+
+    # Only malformed entries: a failed fetch, and the process is still there.
+    answer(ehos, {:keys, [malformed]})
+    assert {:error, :no_ed25519_key} = Keys.refresh(keys)
+    assert Keys.kids(keys) == [good.kid]
+  end
+
+  test "an unknown kid inside the window does not call the key process" do
+    ehos = ehos({:keys, [key_pair()]})
+    keys = start_keys(ehos)
+    :sys.suspend(keys)
+
+    # A suspended process answers no call, so a verify that made one would wait.
+    task = Task.async(fn -> Auth.verify(credential(key_pair()), keys: keys) end)
+    assert Task.await(task, 1_000) == {:error, :unknown_key}
+    :sys.resume(keys)
   end
 end

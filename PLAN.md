@@ -1531,8 +1531,31 @@ brak `exp`, zegar `Clock.at/2`, zmieniony claim, obcy klucz pod znanym `kid`, ro
    odsyła tam notką z datą.
 6. **Test migracji w dół nie powstał**: zestaw migruje się `up/0` jak konsument, `down/1` jest nieprzetestowane.
    Silnik testuje migracje na `CommitRepo`; pakiet auth nie ma drugiego repo i przy jednej tabeli nie było warto.
-7. Health check dla `:no_keys` (D-34: „says so in its log and its health check”) — jest tylko log przy starcie;
-   funkcja dla health checku hosta to kształt widoczny dla hosta, więc pytanie do użytkownika, nie dopisek.
+7. Health check dla `:no_keys` (D-34: „says so in its log and its health check”) — **`EhOsContract.Auth.ready?/0`,
+   na prośbę użytkownika** (`56d6910`): `false`, gdy nie ma żadnego klucza albo proces kluczy nie działa; nigdy nie
+   pobiera i nie rzuca.
+
+**`/code-review` (high) na `main...dsl-v2/ea-verify`, na polecenie użytkownika — siedem uwag, wszystkie
+poprawione:**
+1. **Jeden zepsuty wpis JWKS zabijał proces kluczy w pętli** — `x`, które nie jest kluczem Ed25519, rzucało w
+   `JOSE.JWK.from_map/1` w procesie; restart pobierał to samo i nadzorca w końcu kładł hosta. Teraz `x` musi mieć
+   32 bajty, zły wpis kosztuje tylko siebie, a każdy wyjątek przy pobieraniu to nieudane pobranie, nie crash.
+2. **`child_spec` przyjmował sam `jwks_url`, a `verify` i tak wymagał `issuer`** — każde żądanie rzucało
+   `KeyError`. `issuer` jest teraz wymagany przy starcie.
+3. **Proces kluczy w restarcie wywracał wołającego** (brak tabeli → `ArgumentError`, `:noproc` z wywołania).
+   Teraz to odmowa `:no_keys`, jak w `ready?/0`; zniknął komunikat „dodaj do drzewa nadzoru” — tę rolę przejmuje
+   `ready?/0` i log przy starcie.
+4. `refresh/1` miał 5 s na wywołanie przy pobieraniu do 5 s i zapisie — teraz 10 s, jak przy nieznanym `kid`.
+5. **Klucz parsowany przy każdym credentialu** — w pamięci jest teraz gotowy `Joken.Signer`, liczony raz na
+   pobranie.
+6. **Nieznany `kid` zawsze szedł przez proces**, także w oknie 30 s, więc zalew podrobionych `kid` kolejkował się
+   za trwającym pobraniem. Chwila następnego dozwolonego pobrania jest w tabeli ETS i wołający bez niej nie woła
+   procesu; proces sprawdza jeszcze raz u siebie.
+7. **`actor/1` łapał każdy wyjątek jako `:bad_signature`** — teraz kształty `sub`/`cap` w strażniku i tylko
+   `ArgumentError` z `Actor.credential/3`. Własne sprawdzenie `scp` wyleciało po mutacji: `Actor.credential/3`
+   odrzuca je sam.
+Nowe testy sprawdzone wstecz (cofnięcie każdej z poprawek 1, 2, 3 i 6 wywraca dokładnie swój test); 4, 5 i 7 bez
+osobnego testu — 5 i 7 nie zmieniają zachowania, 4 wymagałby wolnego EHOS-a. Pakiet 30 → 32 testy.
 
 ### Losy fikstur
 

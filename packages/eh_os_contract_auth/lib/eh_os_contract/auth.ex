@@ -70,9 +70,10 @@ defmodule EhOsContract.Auth do
   The child that keeps the keys, for the application's supervision tree, after its
   repo: `EhOsContract.Auth` in the list of children.
 
-  It reads `:issuer` and `:jwks_url` from `config :eh_os_contract_auth` and raises
-  at boot when neither is there; `:audience` is read by `verify/2`, and is checked
-  here too, so a missing one fails the boot rather than every request.
+  It reads `:issuer` and `:jwks_url` from `config :eh_os_contract_auth`, and raises
+  at boot without an issuer. `:audience` and `:issuer` are read by `verify/2` on
+  every credential, and are checked here too, so a missing one fails the boot rather
+  than every request.
   """
   @spec child_spec(keyword()) :: Supervisor.child_spec()
   def child_spec(opts) do
@@ -84,11 +85,15 @@ defmodule EhOsContract.Auth do
               "it is the only audience a credential for this application may carry"
     end
 
+    unless config[:issuer] do
+      raise ArgumentError,
+            "config :eh_os_contract_auth, issuer: \"<EHOS's public URL>\" is missing; it is " <>
+              "the only iss a credential may carry, and the default place of its keys"
+    end
+
     url =
       config[:jwks_url] ||
-        (config[:issuer] && String.trim_trailing(config[:issuer], "/") <> "/.well-known/jwks.json") ||
-        raise ArgumentError,
-              "config :eh_os_contract_auth needs issuer: (EHOS's public URL), or jwks_url:"
+        String.trim_trailing(config[:issuer], "/") <> "/.well-known/jwks.json"
 
     %{
       id: __MODULE__,
@@ -110,12 +115,7 @@ defmodule EhOsContract.Auth do
   """
   @spec ready?([{:keys, atom()}]) :: boolean()
   def ready?(opts \\ []) do
-    # `:undefined` when there is no table, and an atom compares greater than any
-    # number, so the size is matched rather than compared.
-    case :ets.info(Keyword.get(opts, :keys, Keys), :size) do
-      size when is_integer(size) -> size > 0
-      :undefined -> false
-    end
+    Keys.held(Keyword.get(opts, :keys, Keys)) > 0
   end
 
   @doc """
@@ -132,8 +132,8 @@ defmodule EhOsContract.Auth do
     audience = Keyword.get_lazy(opts, :audience, fn -> Keyword.fetch!(config, :audience) end)
 
     with {:ok, kid} <- kid(token),
-         {:ok, jwk} <- Keys.fetch(kid, Keyword.get(opts, :keys, Keys)),
-         {:ok, claims} <- signed(token, jwk),
+         {:ok, signer} <- Keys.fetch(kid, Keyword.get(opts, :keys, Keys)),
+         {:ok, claims} <- signed(token, signer),
          :ok <- claim(claims["iss"] == issuer, :wrong_issuer),
          :ok <- claim(claims["aud"] == audience, :wrong_audience),
          :ok <- claim(unexpired?(claims["exp"]), :expired) do
@@ -150,8 +150,8 @@ defmodule EhOsContract.Auth do
     _malformed -> {:error, :bad_signature}
   end
 
-  defp signed(token, jwk) do
-    case Joken.verify(token, Joken.Signer.create("Ed25519", jwk)) do
+  defp signed(token, signer) do
+    case Joken.verify(token, signer) do
       {:ok, claims} -> {:ok, claims}
       {:error, _reason} -> {:error, :bad_signature}
     end
@@ -167,9 +167,14 @@ defmodule EhOsContract.Auth do
 
   defp unexpired?(_exp), do: false
 
-  defp actor(claims) do
-    {:ok, Actor.credential(claims["sub"], claims["cap"], Map.get(claims, "scp", %{}))}
+  # The claims' shapes are checked here, and the members' by `Actor.credential/3`,
+  # whose ArgumentError is the one thing rescued: any other exception is a defect in
+  # this code, not a credential to refuse.
+  defp actor(%{"sub" => sub, "cap" => cap} = claims) when is_binary(sub) and is_list(cap) do
+    {:ok, Actor.credential(sub, cap, Map.get(claims, "scp", %{}))}
   rescue
-    _malformed -> {:error, :bad_signature}
+    ArgumentError -> {:error, :bad_signature}
   end
+
+  defp actor(_claims), do: {:error, :bad_signature}
 end

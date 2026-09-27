@@ -44,12 +44,13 @@ defmodule EhOsContract.Auth.PackageTest do
       assert opts[:req_options] == [retry: false]
     end
 
-    test "fails the boot without an audience, or without anywhere to fetch keys from" do
+    test "fails the boot without an audience, or without an issuer even with a jwks_url" do
       Application.delete_env(:eh_os_contract_auth, :audience)
       assert_raise ArgumentError, ~r/audience:/, fn -> EhOsContract.Auth.child_spec([]) end
 
       Application.put_env(:eh_os_contract_auth, :audience, "rehmed/test")
       Application.delete_env(:eh_os_contract_auth, :issuer)
+      Application.put_env(:eh_os_contract_auth, :jwks_url, "https://keys.ehos.test/jwks.json")
       assert_raise ArgumentError, ~r/issuer:/, fn -> EhOsContract.Auth.child_spec([]) end
     end
   end
