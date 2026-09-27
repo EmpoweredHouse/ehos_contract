@@ -37,8 +37,8 @@ Jedynym kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`.
 
 - **EL2b — zrobione**, czeka na decyzję użytkownika o pushu i PR. Jedyne rozstrzygnięcie asystenta do
   potwierdzenia (stare zdarzenie a inwariant dodany później) użytkownik potwierdził 28 września.
-- **EL3 — asystenta**: strony dokumentacji (ESDM `documentation`: strona na element, Markdown, linki). Przed
-  budową zapytać o kształt wyjścia (katalog, nazwy plików, czy razem z `view`).
+- **EL3 — asystenta, w toku** na `dsl-v2/el-docs` (od `dsl-v2/el-values`): strony dokumentacji, kształt
+  rozstrzygnięty („Przed EL3 — decyzje użytkownika”).
 - **EG, E9, E10–E12 — asystenta, po pytaniach**; opisy w „Etapach” i „Po E8 — kolejność zmieniona”. Do E9
   odłożone pozycje 6–9 z „Po EL2 — proza, którą da się sprawdzać” i uwaga o `event-name-with-aggregate-prefix` na
   nazwach z warsztatu („EL1 — co wyszło”).
@@ -1173,6 +1173,20 @@ Mechanika, rozstrzygnięta przez asystenta:
   września): dodanie inwariantu to zmiana modelu jak zawężenie typu. *Odrzucone:* komendy reakcji bez sprawdzania
   inwariantów (zła wartość wraca do logu tą drogą); ostrzeżenie `check` o wartościach w logu (potrzebuje bazy, jak
   reguła o zmianie schematu odłożona do E12).
+
+### Przed EL3 — decyzje użytkownika (28 września)
+
+Pytanie zadane na Rehmedzie (domena `rehmed`, kontekst `:settlement`, `VisitSettlement` z `:record_payment`,
+`:payment_recorded` i wartością `:money`), z podglądem układu plików przy każdej opcji.
+
+- **Strona na element, jak w ESDM:** osobny plik dla domeny, kontekstu, kontraktu i każdej deklaracji w nim, dla
+  wartości i encji domeny, z linkami między nimi (komenda → zdarzenie, pole → wartość). *Odrzucone:* strona na
+  kontrakt z kotwicami (link trafia w długą stronę); strona na kontekst (kontekst z kilkoma kontraktami to jedna
+  bardzo długa strona).
+- **`--output <katalog>`, jak `esdm documentation --output`:** host decyduje, czy pliki commituje, czy wkłada do
+  ExDoc (`extras`), czy tylko ogląda; `--check` mówi, czy katalog jest aktualny. *Odrzucone:* stały katalog z
+  `--check` w bramie hosta (wymaganie, o które host nie prosił); tylko `extras` przy `mix docs` (bez plików w
+  repozytorium nie ma ich w przeglądzie PR-a).
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
