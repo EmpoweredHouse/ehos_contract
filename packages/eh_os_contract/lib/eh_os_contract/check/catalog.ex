@@ -1,0 +1,531 @@
+defmodule EhOsContract.Check.Catalog do
+  @moduledoc """
+  Every rule `mix eh_os_contract.check` reports on, under a name that does not
+  change (layer L5 of v2 §6; plan EL1).
+
+  A rule's name is what a reader searches for, what `--format json` carries, and
+  what a test pins; its sentence may be reworded, its name may not. Where the rule
+  is one of ESDM's, the name is ESDM's, without ESDM's `esdm/<category>/` prefix:
+  the library takes ESDM's functionality, not its namespace, and a rule of ours
+  sometimes means more or less than ESDM's does — `esdm` says which of ESDM's it
+  follows and the text says where it differs. The level is fixed per rule, as in
+  ESDM, and nothing silences one: a finding goes away when the model changes.
+
+  `docs/rules.md` is generated from this list (`mix eh_os_contract.rules`), one
+  entry per rule, and each finding links to its entry.
+
+  The rules of the compiler — `N1`, `X2` and the rest of L2 and L3 — are not here.
+  They are errors a contract cannot compile with, they keep the codes they are
+  printed with, and v2 §6 is their reference.
+  """
+
+  @typedoc """
+  One rule: its name, its level, which contracts it reads, the ESDM rule it follows
+  (`nil` when it is the library's own), one line saying what it finds, and the
+  paragraph `docs/rules.md` prints under it.
+  """
+  @type rule :: %{
+          id: String.t(),
+          level: :error | :warn | :info,
+          reads: :v1 | :v2 | :both,
+          esdm: String.t() | nil,
+          summary: String.t(),
+          text: String.t()
+        }
+
+  @rules [
+    %{
+      id: "no-contracts",
+      level: :warn,
+      reads: :both,
+      esdm: nil,
+      summary: "The applications `check` scans hold no contract.",
+      text: """
+      A clean report and a scan of the wrong application print the same thing, `0 errors, 0 warnings,
+      0 notices`. This is the one finding that tells them apart. Set `config :eh_os_contract,
+      applications: [...]` to the applications holding the contracts.
+      """
+    },
+    %{
+      id: "process-without-accountable",
+      level: :warn,
+      reads: :both,
+      esdm: nil,
+      summary: "A process names no `accountable` role.",
+      text: """
+      A finding about the process — a promise broken, a path never taken — has nobody to go to. Name
+      the role that answers for the process with `accountable`.
+      """
+    },
+    %{
+      id: "unverified-declaration",
+      level: :warn,
+      reads: :both,
+      esdm: nil,
+      summary: "A `cadence`, a `deadline` or a promise is marked `unverified: true`.",
+      text: """
+      The process owner has not confirmed the number. It is still evaluated, but it does not count
+      towards the evidence report, because a metric nobody agreed to is worse than none. Remove
+      `unverified: true` once the owner confirms it.
+      """
+    },
+    %{
+      id: "promise-without-within",
+      level: :info,
+      reads: :both,
+      esdm: nil,
+      summary: "A promise (a v1 `trace`) has no `within`.",
+      text: """
+      Any `eventually` after its `from` keeps it, and a run with none stays pending for ever, so the
+      promise has no failing case. That is an honest thing to say when nobody agreed a number; the
+      notice makes sure it is not read as a promise being kept.
+      """
+    },
+    %{
+      id: "deadline-without-terminal-event",
+      level: :info,
+      reads: :both,
+      esdm: nil,
+      summary: "A process has a `deadline` and no event of it is `terminal: true`.",
+      text: """
+      No run can be seen to end, so its duration cannot be measured and the deadline is never kept
+      or broken. Mark the event that ends a run `terminal: true`.
+      """
+    },
+    %{
+      id: "contract-without-implementation",
+      level: :info,
+      reads: :v2,
+      esdm: nil,
+      summary: "Nothing implements a contract.",
+      text: """
+      A contract may exist without code (v2 §16, D3): nothing of it can be dispatched, and its report
+      is of a process nobody runs.
+      """
+    },
+    %{
+      id: "declaration-without-implementation",
+      level: :warn,
+      reads: :v2,
+      esdm: nil,
+      summary: "A contract is implemented in part.",
+      text: """
+      The unit, consumer, query or domain service the finding names has no implementation, so
+      dispatch refuses to run it. Add a module with `use <Contract>, <kind>: <name>`.
+      """
+    },
+    %{
+      id: "competing-in-transaction-consumers",
+      level: :warn,
+      reads: :v2,
+      esdm: nil,
+      summary: "Two or more reactions take one event inside the transaction that records it.",
+      text: """
+      Policies and effects delivered `:in_transaction`, of this contract or of any that consumes the
+      event, run one after another in an order the contract does not state. If one depends on what
+      the other does, have it react to the event the other decides, so the order is a path the
+      process shows. Read models are not counted: they decide nothing. v1's
+      `competing-sync-handlers`, in v2's words.
+      """
+    },
+    %{
+      id: "free-text-not-personal",
+      level: :info,
+      reads: :v2,
+      esdm: nil,
+      summary: "A `:string` field of an event is not `personal:`.",
+      text: """
+      `:string` is text a person typed. Unless it is marked `personal:` it is not sealed with its
+      subject's key and stays in the log as written after the subject is erased (v2 §14). A code, a
+      number or a choice has a type of its own. v1's `free-text-without-retain`, in v2's words.
+      """
+    },
+    %{
+      id: "emits-never-produced",
+      level: :warn,
+      reads: :v2,
+      esdm: nil,
+      summary: "A command may emit an event that no `emit/1` of its implementation names.",
+      text: """
+      The contract says the command can decide the event, and no path of the code does: either the
+      declaration is wider than the decision, or the decision returns the event without `emit/1`,
+      which nothing checks until dispatch. An `emit/1` in a helper function counts for every command
+      of the unit, since nothing says which one calls it.
+      """
+    },
+    %{
+      id: "aggregate-without-events",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/aggregate-without-events",
+      summary: "A unit declares no event.",
+      text: """
+      A command has to emit (A1), so a unit with no event has no command either and can decide
+      nothing. A boundary is held to this too. ESDM's `aggregate-without-commands` is not a rule here:
+      a unit whose events are all `recorded_by:` has no command on purpose (v2 §16, D6).
+      """
+    },
+    %{
+      id: "event-without-consumer",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/event-without-consumer",
+      summary: "Nothing reacts to or reads an event.",
+      text: """
+      No policy, effect or process manager takes it, no read model projects it, no boundary consults
+      it, no contract consumes it and no `publish` sends it. Unlike ESDM, an event a promise names, or
+      one marked `terminal: true`, has a reader: the conformance report. The unit's own `evolve` does
+      not count, as ESDM's aggregate does not.
+      """
+    },
+    %{
+      id: "read-model-without-query",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/read-model-without-query",
+      summary: "No query reads a read model.",
+      text: """
+      A read model nobody can ask is kept for nothing: every event it projects costs a write no answer
+      ever reads.
+      """
+    },
+    %{
+      id: "process-manager-without-ends-on",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/process-manager-without-ends-when",
+      summary: "A process manager declares no `ends_on`.",
+      text: """
+      Every run it starts stays open for ever, and its state is kept for ever with it. ESDM's name for
+      the same rule says `ends-when`, after its own key.
+      """
+    },
+    %{
+      id: "process-manager-without-event-reactions",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/process-manager-without-event-reactions",
+      summary: "A process manager reacts only to its own timers after it starts.",
+      text: """
+      It has timers and no `on` that names an event, so once it runs, what happens in the process can
+      end it (`ends_on`, which is not a reaction, as ESDM's `endsWhen` is not) and not steer it: it is
+      a schedule, and may be simpler as one.
+      """
+    },
+    %{
+      id: "event-name-with-aggregate-prefix",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/event-name-with-aggregate-prefix",
+      summary: "An event's name starts with the name of its unit.",
+      text: """
+      `visit_closed` in the unit `visit`: the unit is where the event is declared and its type carries
+      the process, so the prefix says twice what the name should not have to. Name what happened.
+      """
+    },
+    %{
+      id: "reaction-without-scenario",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/gwt/feature-without-scenarios",
+      summary: "No scenario runs a policy, a process manager or a query.",
+      text: """
+      Its label says what it does, and nothing shows its implementation does it: a scenario on the
+      event it takes, with what it `issues`, or a query with what it `answers`, is the test that would.
+      ESDM asks this of a feature; here of each declaration a scenario can run. An effect is left out,
+      since its outcome is outside the log and no scenario can name it (S6). A warning, where an
+      invariant without a rejecting scenario is an error (S8): the scenario is the only proof an
+      invariant holds, and a reaction is also checked on the log by the conformance report.
+      """
+    },
+    %{
+      id: "consults-without-match",
+      level: :warn,
+      reads: :v2,
+      esdm: nil,
+      summary: "A boundary consults an event by `where:` alone.",
+      text: """
+      Without `match:` the boundary reads every event of that type, whoever it is about, and any new
+      one conflicts with its decision, so under load most decisions are retried or refused with
+      `:conflict`. Name the identity fields that narrow it with `match:`.
+      """
+    },
+    %{
+      id: "orphan-actor",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/orphan-actor",
+      summary: "An actor of the domain is named by no contract.",
+      text: """
+      No command's or query's `by:`, no event's `recorded_by:` and no process's `accountable` names
+      it, so no contract gives it anything to do. A scenario's `actor` does not count: it has to be
+      in the command's `by:` already (S7). Either the actor is left over, or the contract that gives
+      it work is not written yet.
+      """
+    },
+    %{
+      id: "orphan-external-system",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/orphan-external-system",
+      summary: "An external system of the domain is used by nothing.",
+      text: """
+      No actor is `backed_by:` it, no relation ends at it, no field is `issued_by:` it, no effect
+      `calls:` it and no event `depends_on:` it.
+      """
+    },
+    %{
+      id: "bounded-context-without-content",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/bounded-context-without-content",
+      summary: "A context of the domain is the `context:` of no contract.",
+      text: """
+      ESDM counts the aggregates, boundaries and read models in a context; here those live in
+      contracts, so a context is empty when no contract belongs to it. Values and entities it owns do
+      not make it less empty: nothing is decided, recorded or read there.
+      """
+    },
+    %{
+      id: "subdomain-without-bounded-context",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/subdomain-without-bounded-context",
+      summary: "No context belongs to a subdomain of the domain.",
+      text: """
+      The subdomain names a part of the business, and nothing of the model is in it. Either a context
+      should name it with `subdomain:`, or it is left over.
+      """
+    },
+    %{
+      id: "orphan-context-mapping",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/orphan-context-mapping",
+      summary: "A relation between two contexts is crossed by no reference.",
+      text: """
+      No contract of one context consumes a contract of the other, and none names an entity the other
+      owns (`{:id, entity}`), in either direction; for a relation to an external system, no contract
+      of the context calls it, depends on it, has a field it issues or acts through an actor it backs. The relation describes
+      a dependency the contracts do not have.
+      """
+    },
+    %{
+      id: "relation-against-references",
+      level: :warn,
+      reads: :v2,
+      esdm: nil,
+      summary:
+        "A reference between two contexts runs against the relation declared between them.",
+      text: """
+      A directed relation — `customer_supplier`, `conformist`, `anticorruption_layer`,
+      `open_host_service`, `published_language` — says the downstream context depends on the upstream
+      one, and a contract of the upstream context consumes a contract of the downstream one or names
+      an entity it owns. Or the relation is `separate_ways`, which says the two do not depend on each
+      other, and a reference crosses it anyway. Either the relation or the reference is wrong. Between
+      contexts only: which way a call to an external system runs says nothing about who depends on
+      whom.
+      """
+    },
+    %{
+      id: "label-with-avoided-term",
+      level: :warn,
+      reads: :v2,
+      esdm: nil,
+      summary: "A label of a contract uses a word its context's glossary says to avoid.",
+      text: """
+      The glossary says `avoid "Finished"` for the term "Completed", and an event of that context is
+      labelled "Visit finished": the contract says what its own language says not to. The labels read
+      are every declaration's and every enum member's; a word matches whole, regardless of letter case,
+      and not inside the term itself. Inflected forms are not caught: `avoid` names each form to avoid.
+      The words a translation avoids are another language's, which labels are not written in.
+      """
+    },
+    %{
+      id: "external-direction-contradicted",
+      level: :warn,
+      reads: :v2,
+      esdm: nil,
+      summary: "An external this application only sends to issues a value or backs an actor.",
+      text: """
+      A value `issued_by:` a system, and an actor `backed_by:` one, bring what the system says into
+      this application, so a system declared `direction: :outbound`, one the application only sends
+      to, can do neither. A system that also answers is `:bidirectional`: P1 is sent a report and
+      answers with its number. A call says nothing either way, since an effect calls a system to send
+      and to fetch alike.
+      """
+    },
+    %{
+      id: "cross-bounded-context-reference-without-mapping",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/cross-bounded-context-reference-without-mapping",
+      summary: "A contract reaches into another context that no relation connects to its own.",
+      text: """
+      It consumes a contract of another context, or names an entity another context owns, and the
+      domain declares no `relation` between the two. Which way the dependency runs — who is upstream,
+      who conforms, who translates — is then written nowhere. One finding per reference.
+      """
+    },
+    %{
+      id: "event-declared-twice",
+      level: :error,
+      reads: :v1,
+      esdm: nil,
+      summary: "Two v1 contracts declare an event of one name.",
+      text: """
+      Handlers are selected by event name alone, so emitting it from one contract runs the other's
+      handlers too. A v2 contract cannot compile with this (X7).
+      """
+    },
+    %{
+      id: "process-declared-twice",
+      level: :error,
+      reads: :v1,
+      esdm: nil,
+      summary: "Two v1 contracts declare a process of one name.",
+      text: """
+      A run identity carries no contract, so runs of one are counted as runs of the other and the log
+      cannot be separated afterwards. A v2 contract cannot compile with this (X7).
+      """
+    },
+    %{
+      id: "command-declared-twice",
+      level: :error,
+      reads: :v1,
+      esdm: nil,
+      summary: "Two v1 contracts declare a command of one name.",
+      text: """
+      The capability is derived from the name, so one permission would authorise two different
+      things. A v2 contract cannot compile with this (D14).
+      """
+    },
+    %{
+      id: "event-without-handler",
+      level: :info,
+      reads: :v1,
+      esdm: nil,
+      summary: "A v1 event has no handler and is not `terminal`.",
+      text: """
+      Legal, and the plainest case of a declared path nobody takes. Whether it is on purpose lives in
+      the author's head, so it is said out loud.
+      """
+    },
+    %{
+      id: "owner-not-a-module",
+      level: :info,
+      reads: :v1,
+      esdm: nil,
+      summary: "A v1 event's `owner` names a module that does not exist.",
+      text: """
+      Normal while a stage is not yet implemented; a typo otherwise. One finding per owner, not per
+      event.
+      """
+    },
+    %{
+      id: "rule-function-missing",
+      level: :error,
+      reads: :v1,
+      esdm: nil,
+      summary: "A v1 `rule` names a function that does not exist.",
+      text: """
+      A `rule` points at a function by module, name and arity, so nothing else checks that it exists.
+      """
+    },
+    %{
+      id: "trace-unresolved",
+      level: :error,
+      reads: :v1,
+      esdm: nil,
+      summary: "A v1 `trace` names an event no contract declares.",
+      text: """
+      The assertion can never be evaluated. A v2 promise cannot compile with this (R5).
+      """
+    },
+    %{
+      id: "backward-edge",
+      level: :warn,
+      reads: :both,
+      esdm: nil,
+      summary: "A reaction in a later stage publishes into an earlier one.",
+      text: """
+      The process goes back on itself, which the stage order says it does not. Either the stages are
+      in the wrong order or the reaction is a loop the process has not declared. In a v2 contract, a
+      policy or a process manager reacting to an event of one stage issues a command whose events
+      sit in an earlier one.
+      """
+    },
+    %{
+      id: "competing-sync-handlers",
+      level: :warn,
+      reads: :v1,
+      esdm: nil,
+      summary: "A v1 event has two or more synchronous handlers.",
+      text: """
+      They run in alphabetical order of module name, which reproduces but says nothing about the
+      process. If the order matters, have one publish an event the other subscribes to.
+      """
+    },
+    %{
+      id: "free-text-without-retain",
+      level: :info,
+      reads: :v1,
+      esdm: nil,
+      summary: "A v1 `:string` field has no `retain`.",
+      text: """
+      `:string` means text a person typed, and it reaches the log verbatim.
+      """
+    },
+    %{
+      id: "promise-finer-than-run",
+      level: :warn,
+      reads: :v1,
+      esdm: nil,
+      summary: "A v1 assertion's `from` event is identified by more than its run.",
+      text: """
+      The assertion is evaluated per item. An `eventually` or `or_else` that does not carry the
+      item's fields cannot resolve any item, so confirm that they do.
+      """
+    },
+    %{
+      id: "fact-not-keyed-by-run",
+      level: :warn,
+      reads: :v1,
+      esdm: nil,
+      summary: "A v1 event's identity does not contain its run's key.",
+      text: """
+      Two such facts in two runs share one identity, so the asynchronous idempotency key cannot tell
+      them apart and the second is deduplicated away.
+      """
+    }
+  ]
+
+  @by_id Map.new(@rules, &{&1.id, &1})
+
+  @doc "Every rule, in the order `docs/rules.md` prints them."
+  @spec rules() :: [rule()]
+  def rules, do: @rules
+
+  @doc "The rule named `id`. Raises for a name the catalog does not have."
+  @spec fetch!(String.t()) :: rule()
+  def fetch!(id) do
+    case Map.fetch(@by_id, id) do
+      {:ok, rule} -> rule
+      :error -> raise ArgumentError, "no rule #{inspect(id)} in EhOsContract.Check.Catalog"
+    end
+  end
+
+  @doc "Whether the catalog has a rule named `id`."
+  @spec known?(String.t()) :: boolean()
+  def known?(id), do: Map.has_key?(@by_id, id)
+
+  @doc "The word a level is printed as in `docs/rules.md` and in `--format json`."
+  @spec level_word(:error | :warn | :info) :: String.t()
+  def level_word(:error), do: "error"
+  def level_word(:warn), do: "warning"
+  def level_word(:info), do: "notice"
+
+  @doc "Where a rule is documented: its entry in `docs/rules.md`, as the package's docs publish it."
+  @spec url(String.t()) :: String.t()
+  def url(id), do: "https://hexdocs.pm/eh_os_contract/rules.html##{fetch!(id).id}"
+end

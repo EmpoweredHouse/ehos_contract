@@ -434,7 +434,7 @@ defmodule EhOsContract.ImplementationTest do
 
       refused(
         implementation("WrongRejection", "aggregate: :visit", body),
-        "I5: reject/1 gets :paid_in_full, which is not among the invariants command :remind " <>
+        "I5: reject/1 gets :paid_in_full, which is not among the invariants and constraints command :remind " <>
           "rejects on, []",
         14
       )
@@ -448,7 +448,7 @@ defmodule EhOsContract.ImplementationTest do
 
       refused(
         implementation("RejectionNotLiteral", "aggregate: :visit", body),
-        "I5: reject/1 takes the invariant as an atom literal",
+        "I5: reject/1 takes the invariant or constraint as an atom literal",
         11
       )
     end

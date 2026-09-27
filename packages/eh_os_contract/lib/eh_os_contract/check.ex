@@ -14,7 +14,9 @@ defmodule EhOsContract.Check do
   of `mix eh_os_contract.check` should follow the same route; recorded in `PLAN.md`.
   """
 
+  alias EhOsContract.Check.Finding
   alias EhOsContract.Model
+  alias EhOsContract.Next.Contract.Links
 
   @typedoc "One module subscribing upstream of where it publishes."
   @type backward_edge :: %{
@@ -413,11 +415,9 @@ defmodule EhOsContract.Check do
     |> Enum.sort_by(&{inspect(&1.contract), to_string(&1.process)})
   end
 
-  @typedoc "One finding about a v2 contract: its level, and the sentence `mix eh_os_contract.check` prints."
-  @type v2_finding :: {:warn | :info, String.t()}
-
   @doc """
-  What `mix eh_os_contract.check` says about v2 contracts (plan E7c-2).
+  What `mix eh_os_contract.check` says about v2 contracts (plan E7c-2), each finding
+  at the declaration it is about (plan EL1).
 
   Most of what v1 checks here a v2 contract cannot compile without — a name
   declared twice, an assertion naming an event nobody declares, a rule function
@@ -429,50 +429,65 @@ defmodule EhOsContract.Check do
   contract is implemented — not at all is legal and noted (D3), in part is a
   command or a consumer dispatch will refuse, and a warning.
   """
-  @spec v2_findings([module()] | nil) :: [v2_finding()]
+  @spec v2_findings([module()] | nil) :: [Finding.t()]
   def v2_findings(contracts \\ nil) do
     for contract <- contracts || EhOsContract.Registry.v2_contracts(),
-        model = Model.fetch(contract),
-        finding <- v2_process(model) ++ v2_implemented(model) do
+        %{} = linked <- [Links.contract(contract)],
+        finding <- v2_process(linked) ++ v2_implemented(linked) do
       finding
     end
   end
 
-  defp v2_process(%{process: nil}), do: []
+  defp v2_process(%{model: %{process: nil}}), do: []
 
-  defp v2_process(%{process: process} = model) do
+  defp v2_process(%{model: %{process: process} = model, declarations: declarations}) do
     name = inspect(model.module)
+    declared = Enum.find(declarations.processes, &(&1.name == process.name))
+    at = declared && Links.at(declared)
+    promise_at = fn promise -> located(declared && declared.promises, promise.name) || at end
 
     accountable =
       if process.accountable == nil,
         do: [
-          {:warn,
-           "process #{inspect(process.name)} names no `accountable` role, so a finding about it " <>
-             "has no addressee (#{name})"}
+          Finding.new(
+            "process-without-accountable",
+            "process #{inspect(process.name)} names no `accountable` role, so a finding about it " <>
+              "has no addressee (#{name})",
+            at
+          )
         ],
         else: []
 
     unverified =
       for key <- [:cadence, :deadline],
           %{unverified: true} = value <- [Map.get(process, key)] do
-        {:warn,
-         "process #{inspect(process.name)}: `#{key}` = #{inspect({value.amount, value.unit})} " <>
-           "is not confirmed by the process owner — it does not count towards the evidence report " <>
-           "(#{name})"}
+        Finding.new(
+          "unverified-declaration",
+          "process #{inspect(process.name)}: `#{key}` = #{inspect({value.amount, value.unit})} " <>
+            "is not confirmed by the process owner — it does not count towards the evidence report " <>
+            "(#{name})",
+          at
+        )
       end ++
         for %{unverified: true} = promise <- process.promises do
-          {:warn,
-           "process #{inspect(process.name)}: promise #{inspect(promise.name)} is not confirmed by " <>
-             "the process owner — it is still evaluated, but it does not count towards the " <>
-             "evidence report's aggregate (#{name})"}
+          Finding.new(
+            "unverified-declaration",
+            "process #{inspect(process.name)}: promise #{inspect(promise.name)} is not confirmed by " <>
+              "the process owner — it is still evaluated, but it does not count towards the " <>
+              "evidence report's aggregate (#{name})",
+            promise_at.(promise)
+          )
         end
 
     unfalsifiable =
       for %{within: nil} = promise <- process.promises do
-        {:info,
-         "promise #{inspect(promise.name)} has no `within`, so it has no failing case: any " <>
-           "#{inspect(promise.eventually)} after #{inspect(promise.from)} satisfies it and a run " <>
-           "with none stays pending for ever (#{name})"}
+        Finding.new(
+          "promise-without-within",
+          "promise #{inspect(promise.name)} has no `within`, so it has no failing case: any " <>
+            "#{inspect(promise.eventually)} after #{inspect(promise.from)} satisfies it and a run " <>
+            "with none stays pending for ever (#{name})",
+          promise_at.(promise)
+        )
       end
 
     ends? =
@@ -481,21 +496,33 @@ defmodule EhOsContract.Check do
     unobservable =
       if process.deadline && not ends?,
         do: [
-          {:info,
-           "process #{inspect(process.name)} declares `deadline` = " <>
-             "#{inspect({process.deadline.amount, process.deadline.unit})} and no event of it is " <>
-             "`terminal: true`, so no run can be observed to end and the duration cannot be " <>
-             "measured (#{name})"}
+          Finding.new(
+            "deadline-without-terminal-event",
+            "process #{inspect(process.name)} declares `deadline` = " <>
+              "#{inspect({process.deadline.amount, process.deadline.unit})} and no event of it is " <>
+              "`terminal: true`, so no run can be observed to end and the duration cannot be " <>
+              "measured (#{name})",
+            at
+          )
         ],
         else: []
 
     accountable ++ unverified ++ unfalsifiable ++ unobservable
   end
 
+  defp located(nil, _name), do: nil
+
+  defp located(declarations, name) do
+    case Enum.find(declarations, &(&1.name == name)) do
+      nil -> nil
+      declaration -> Links.at(declaration)
+    end
+  end
+
   # What dispatch looks an implementation up for: every unit, every consumer, and
   # every query, which `EhOsContract.Dispatcher.query/3` answers through its module;
   # and every domain service, which a decision calls through the contract.
-  defp v2_implemented(model) do
+  defp v2_implemented(%{model: model, at: at}) do
     wanted =
       for(u <- model.units, do: {u.kind, u.name}) ++
         for(p <- model.policies, do: {:policy, p.name}) ++
@@ -518,18 +545,38 @@ defmodule EhOsContract.Check do
 
       length(missing) == length(wanted) ->
         [
-          {:info,
-           "#{inspect(model.module)} has no implementation, which a contract may (D3): nothing " <>
-             "of it can be dispatched, and its report is of a process nobody runs"}
+          Finding.new(
+            "contract-without-implementation",
+            "#{inspect(model.module)} has no implementation, which a contract may (D3): nothing " <>
+              "of it can be dispatched, and its report is of a process nobody runs",
+            at
+          )
         ]
 
       true ->
         [
-          {:warn,
-           "#{inspect(model.module)} implements some declarations and not " <>
-             "#{Enum.join(missing, ", ")}, which dispatch will refuse to run"}
+          Finding.new(
+            "declaration-without-implementation",
+            "#{inspect(model.module)} implements some declarations and not " <>
+              "#{Enum.join(missing, ", ")}, which dispatch will refuse to run",
+            at
+          )
         ]
     end
+  end
+
+  @doc """
+  The rules between modules, L3, repeated as errors for a project that does not run
+  them on every compile (v2 §6, L5; plan EL1): one whose `compilers` has no
+  `:eh_os_contract`. `modules` gives the project's compiled modules, and is called
+  only for such a project: one that registers the compiler gets nothing here, since
+  its build already failed on each, and reads no `.beam` for it.
+  """
+  @spec compiler_findings([atom()], (-> [module()])) :: [Finding.t()]
+  def compiler_findings(compilers, modules) do
+    if :eh_os_contract in compilers,
+      do: [],
+      else: modules.() |> Links.check() |> Enum.map(&Finding.compiler/1)
   end
 
   @doc """
@@ -552,7 +599,10 @@ defmodule EhOsContract.Check do
   removed before it ever catches the real case.
   """
   @spec no_contracts?([module()] | nil) :: boolean()
-  def no_contracts?(contracts \\ nil), do: (contracts || EhOsContract.Registry.contracts()) == []
+  def no_contracts?(contracts \\ nil),
+    do:
+      (contracts || EhOsContract.Registry.contracts() ++ EhOsContract.Registry.v2_contracts()) ==
+        []
 
   @typedoc "One event with more than one synchronous handler."
   @type competing_handlers :: %{event: atom(), modules: [module()]}

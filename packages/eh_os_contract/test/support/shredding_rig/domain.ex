@@ -18,4 +18,6 @@ defmodule ShreddingRig.Domain do
     field :member_id, :id, subject: :member
     field :phone, :string, personal: :member_id
   end
+
+  subdomain :core, "Core", type: :core
 end

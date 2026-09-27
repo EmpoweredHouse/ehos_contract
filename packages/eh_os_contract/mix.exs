@@ -57,9 +57,9 @@ defmodule EhOsContract.MixProject do
   # belong to the engine and not to any client, so they compile here. They are
   # the material a client-free test suite is built from.
   #
-  # `dev/` holds tooling for developing this package itself — today only
-  # `mix eh_os_contract.docs`, which rewrites `docs/contract.md` inside this
-  # package. A dependency always compiles in `:prod`, so none of it reaches a
+  # `dev/` holds tooling for developing this package itself — `mix eh_os_contract.docs`,
+  # which rewrites `docs/contract.md` inside this package, and `mix eh_os_contract.rules`,
+  # which writes `docs/rules.md`. A dependency always compiles in `:prod`, so none of it reaches a
   # consumer, where it had nothing to rewrite and failed with a `File.Error`.
   defp elixirc_paths(:test), do: ["lib", "test/support", "dev"]
   defp elixirc_paths(:dev), do: ["lib", "dev"]
@@ -82,6 +82,7 @@ defmodule EhOsContract.MixProject do
         "compile --force --warnings-as-errors",
         "eh_os_contract.check",
         "eh_os_contract.docs --check",
+        "eh_os_contract.rules --check",
         "spark.formatter --extensions EhOsContract.Domain.Dsl,EhOsContract.Next.Contract.Dsl --check",
         "test"
       ]
@@ -109,7 +110,13 @@ defmodule EhOsContract.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md", "docs/contract.md", "docs/authorization.md", "CHANGELOG.md"],
+      extras: [
+        "README.md",
+        "docs/contract.md",
+        "docs/authorization.md",
+        "docs/rules.md",
+        "CHANGELOG.md"
+      ],
       source_ref: "v#{@version}"
     ]
   end

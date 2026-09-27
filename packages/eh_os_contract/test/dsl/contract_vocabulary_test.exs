@@ -12,7 +12,8 @@ defmodule EhOsContract.Next.ContractVocabularyTest do
 
   use ExUnit.Case, async: true
 
-  @field [:name, :type, :optional, :label, :personal, :subject, :default]
+  # Plan EL2: `issued_by`, the external that gives a value.
+  @field [:name, :type, :optional, :label, :personal, :subject, :default, :issued_by]
   @event [:name, :label, :terminal, :depends_on, :recorded_by, :schema_version, :source]
   @command [:name, :label, :by, :emits, :rejects, :creates, :source]
 
@@ -24,6 +25,8 @@ defmodule EhOsContract.Next.ContractVocabularyTest do
       [kind, :invariant] => [:name, :label, :source],
       [kind, :command] => @command,
       [kind, :command, :field] => @field,
+      # Plan EL2: ESDM's constraint, checked as an invariant is.
+      [kind, :command, :constraint] => [:name, :label, :source],
       [kind, :event] => @event,
       [kind, :event, :field] => @field,
       [kind, :stage] => [:name],
@@ -53,6 +56,7 @@ defmodule EhOsContract.Next.ContractVocabularyTest do
         [:read_model, :field] => @field,
         [:query] => [:name, :label, :reads, :by, :returns, :scope],
         [:query, :param] => [:name, :type, :optional, :label],
+        [:query, :constraint] => [:name, :label, :source],
         # Plan EM2: ESDM's domain service.
         [:domain_service] => [:name, :label, :source],
         [:domain_service, :function] => [:name, :label],

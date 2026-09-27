@@ -24,6 +24,7 @@ defmodule EhOsContract.Domain.Build do
   alias Spark.Dsl.Transformer
 
   @kinds [
+    subdomains: :subdomain,
     contexts: :context,
     actors: :actor,
     subjects: :subject,
@@ -179,6 +180,7 @@ defmodule EhOsContract.Domain.Build do
 
   defp digest_form(other), do: other
 
+  defp entity_name(%EhOsContract.Domain.Dsl.Subdomain{}), do: :subdomain
   defp entity_name(%EhOsContract.Domain.Dsl.Context{}), do: :context
   defp entity_name(%EhOsContract.Domain.Dsl.Actor{}), do: :actor
   defp entity_name(%EhOsContract.Domain.Dsl.Subject{}), do: :subject
@@ -208,11 +210,16 @@ defmodule EhOsContract.Domain.Build do
   # field has, so no other field's digest moves. Every reader of types — the codec,
   # tags, typespecs — therefore sees a plain `:id`.
   @spec reference(map()) :: map()
+  #
+  # `issued_by` (plan EL2) is kept only where a field declares it, for the same reason.
   def reference(%{name: _, type: {:id, entity}} = field) when is_atom(entity),
-    do: field |> Map.put(:type, :id) |> Map.put(:refers_to, entity)
+    do: field |> Map.put(:type, :id) |> Map.put(:refers_to, entity) |> issuer()
 
   def reference(%{name: _, type: {:list, {:id, entity}}} = field) when is_atom(entity),
-    do: field |> Map.put(:type, {:list, :id}) |> Map.put(:refers_to, entity)
+    do: field |> Map.put(:type, {:list, :id}) |> Map.put(:refers_to, entity) |> issuer()
 
-  def reference(map), do: map
+  def reference(map), do: issuer(map)
+
+  defp issuer(%{issued_by: nil} = field), do: Map.delete(field, :issued_by)
+  defp issuer(map), do: map
 end

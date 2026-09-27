@@ -59,6 +59,8 @@ defmodule EhOsContract.Next.Contract.Rules.Names do
       for(u <- d.units, i <- u.invariants, do: {"invariant", i.name, i}),
       for(u <- d.units, s <- u.stages, do: {"stage", s.name, s}),
       for(c <- Rules.commands(d), do: {"command", c.name, c}),
+      for(c <- Rules.commands(d), k <- c.constraints, do: {"constraint", k.name, k}),
+      for(q <- d.queries, k <- q.constraints, do: {"constraint", k.name, k}),
       for(e <- Rules.local_events(d), do: {"event", e.name, e}),
       for(p <- d.policies, do: {"policy", p.name, p}),
       for(e <- d.effects, do: {"effect", e.name, e}),
@@ -125,6 +127,14 @@ defmodule EhOsContract.Next.Contract.Rules.Names do
         invariants ++ stages
       end)
 
+    # Plan EL2: a command's constraints, and a query's, are named once each.
+    constraints =
+      for {kind, owner} <-
+            Enum.map(Rules.commands(d), &{"command", &1}) ++ Enum.map(d.queries, &{"query", &1}),
+          k <- DslRules.duplicates(owner.constraints, & &1.name) do
+        {"N1: #{kind} #{inspect(owner.name)} has two constraints named #{inspect(k.name)}", k}
+      end
+
     in_process =
       if process do
         for(
@@ -156,7 +166,9 @@ defmodule EhOsContract.Next.Contract.Rules.Names do
           do: violation
 
     kinds ++
-      per_unit ++ per_service ++ callback_namespace(d) ++ capability_namespace(d) ++ in_process
+      per_unit ++
+      per_service ++
+      callback_namespace(d) ++ capability_namespace(d) ++ in_process ++ constraints
   end
 
   # A command and a query are both capabilities, named `<domain>.<name>` (D14), so a

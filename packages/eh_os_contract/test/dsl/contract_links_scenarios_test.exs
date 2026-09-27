@@ -27,6 +27,8 @@ defmodule EhOsContract.Next.ContractLinksScenariosTest do
           field :city, :string
           field :apartment, :string, optional: true
         end
+
+        subdomain :core, "Core", type: :core
       end
       """,
       "scenarios_clinic.ex"

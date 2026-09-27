@@ -3,7 +3,7 @@ defmodule EhOsContract.Domain.Dsl do
   The Spark extension behind `use EhOsContract.Domain` (v2 §4.1–4.3).
 
   One top-level section, so every entity is written straight into the module body:
-  contexts with their glossary, actors, subjects of personal data, value types,
+  subdomains, contexts with their glossary, actors, subjects of personal data, value types,
   entities, external systems and the relations between contexts. The vocabulary is closed:
   a domain module cannot add extensions.
 
@@ -14,17 +14,22 @@ defmodule EhOsContract.Domain.Dsl do
 
   defmodule Translation do
     @moduledoc false
-    defstruct [:language, :text, __spark_metadata__: nil]
+    defstruct [:language, :text, :definition, avoid: [], __spark_metadata__: nil]
   end
 
   defmodule Avoid do
     @moduledoc false
-    defstruct [:text, __spark_metadata__: nil]
+    defstruct [:text, :reason, __spark_metadata__: nil]
   end
 
   defmodule Term do
     @moduledoc false
     defstruct [:text, :definition, :source, translations: [], avoid: [], __spark_metadata__: nil]
+  end
+
+  defmodule Subdomain do
+    @moduledoc false
+    defstruct [:name, :label, :type, :source, __spark_metadata__: nil]
   end
 
   defmodule Context do
@@ -51,6 +56,7 @@ defmodule EhOsContract.Domain.Dsl do
       :personal,
       :subject,
       :default,
+      :issued_by,
       optional: false,
       __spark_metadata__: nil
     ]
@@ -110,23 +116,28 @@ defmodule EhOsContract.Domain.Dsl do
   @spec directed_relations() :: [atom()]
   def directed_relations, do: @directed_relations
 
-  @translation %Spark.Dsl.Entity{
-    name: :translation,
-    describe: "The term in another language.",
-    target: Translation,
-    args: [:language, :text],
+  @avoid %Spark.Dsl.Entity{
+    name: :avoid,
+    describe: "A word that must not be used for this term, and why.",
+    target: Avoid,
+    args: [:text],
     schema: [
-      language: [type: :atom, required: true, doc: "The language, e.g. `:en`."],
-      text: [type: :string, required: true, doc: "The term in that language."]
+      text: [type: :string, required: true, doc: "The word to avoid."],
+      reason: [type: :string, doc: "Why it must not be used (plan EL2)."]
     ]
   }
 
-  @avoid %Spark.Dsl.Entity{
-    name: :avoid,
-    describe: "A word that must not be used for this term.",
-    target: Avoid,
-    args: [:text],
-    schema: [text: [type: :string, required: true, doc: "The word to avoid."]]
+  @translation %Spark.Dsl.Entity{
+    name: :translation,
+    describe: "The term in another language, with what it means there (plan EL2, as in ESDM).",
+    target: Translation,
+    args: [:language, :text],
+    entities: [avoid: [@avoid]],
+    schema: [
+      language: [type: :atom, required: true, doc: "The language, e.g. `:en`."],
+      text: [type: :string, required: true, doc: "The term in that language."],
+      definition: [type: :string, required: true, doc: "What it means, in that language."]
+    ]
   }
 
   @term %Spark.Dsl.Entity{
@@ -142,6 +153,23 @@ defmodule EhOsContract.Domain.Dsl do
     ]
   }
 
+  @subdomain %Spark.Dsl.Entity{
+    name: :subdomain,
+    describe: "A part of the business the domain covers, named, with its kind (plan EL2).",
+    target: Subdomain,
+    args: [:name, :label],
+    schema: [
+      name: [type: :atom, required: true, doc: "The subdomain's name."],
+      label: [type: :string, required: true, doc: "What the business calls it."],
+      type: [
+        type: {:one_of, [:core, :supporting, :generic]},
+        required: true,
+        doc: "The kind of subdomain."
+      ],
+      source: [type: :string, doc: "Where the subdomain comes from in the material."]
+    ]
+  }
+
   @context %Spark.Dsl.Entity{
     name: :context,
     describe: "A bounded context: a part of the domain with its own language.",
@@ -151,11 +179,7 @@ defmodule EhOsContract.Domain.Dsl do
     schema: [
       name: [type: :atom, required: true, doc: "The context's name."],
       label: [type: :string, required: true, doc: "What the business calls it."],
-      subdomain: [
-        type: {:one_of, [:core, :supporting, :generic]},
-        required: true,
-        doc: "The kind of subdomain."
-      ],
+      subdomain: [type: :atom, required: true, doc: "The subdomain the context belongs to."],
       language: [type: :atom, doc: "The context's language, when it differs from the domain's."],
       source: [type: :string, doc: "Where the context comes from in the material."]
     ]
@@ -203,7 +227,11 @@ defmodule EhOsContract.Domain.Dsl do
       label: [type: :string, doc: "What the business calls it."],
       personal: [type: :atom, doc: "The field holding the identifier of whose data this is."],
       subject: [type: :atom, doc: "The subject this identifier field identifies."],
-      default: [type: :any, doc: "Only in a contract's state."]
+      default: [type: :any, doc: "Only in a contract's state."],
+      issued_by: [
+        type: :atom,
+        doc: "The external of this domain that gives this value (plan EL2)."
+      ]
     ]
   }
 
@@ -290,7 +318,16 @@ defmodule EhOsContract.Domain.Dsl do
               name: :domain,
               top_level?: true,
               describe: "The vocabulary contracts share.",
-              entities: [@context, @actor, @subject, @value, @entity, @external, @relation]
+              entities: [
+                @subdomain,
+                @context,
+                @actor,
+                @subject,
+                @value,
+                @entity,
+                @external,
+                @relation
+              ]
             },
             __MODULE__
           )

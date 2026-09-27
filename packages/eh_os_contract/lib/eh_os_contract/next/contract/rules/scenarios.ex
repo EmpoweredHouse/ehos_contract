@@ -15,7 +15,7 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
     it is one stream. A value of a built-in type fits it (`EhOsContract.Next.Contract.Data`);
     one of a domain value is the Mix compiler's (X9). An event consumed from a
     sibling contract has its fields in the sibling, so its data is X9's as well.
-  - **S4.** `rejected` names an invariant in the command's `rejects:`.
+  - **S4.** `rejected` names an invariant or a constraint in the command's `rejects:`.
   - **S5.** `expect` names events in the command's `emits:`.
   - **S6.** Trigger and outcome fit the target. A command to a unit is followed by
     `expect` or by `rejected`, not both. An event delivered to a policy is followed
@@ -30,7 +30,8 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
   - **S7.** A scenario's `actor` is in the command's `by:`, and only a command has one.
   - **S8.** **Every invariant is named by at least one `rejected` scenario** — the
     successor of architecture §18's gate, kept an error although ESDM makes it a
-    warning.
+    warning — and so is every constraint of a command, by a scenario of that command
+    (plan EL2).
   """
 
   alias EhOsContract.DslRules
@@ -540,11 +541,31 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
           into: MapSet.new(),
           do: {unit.name, scenario.rejected}
 
-    for unit <- d.units,
-        invariant <- unit.invariants,
-        not MapSet.member?(rejected, {unit.name, invariant.name}) do
-      {"S8: invariant #{inspect(invariant.name)} of #{kind(unit.kind)} #{inspect(unit.name)} has " <>
-         "no scenario in which a command is rejected on it", invariant}
-    end
+    invariants =
+      for unit <- d.units,
+          invariant <- unit.invariants,
+          not MapSet.member?(rejected, {unit.name, invariant.name}) do
+        {"S8: invariant #{inspect(invariant.name)} of #{kind(unit.kind)} #{inspect(unit.name)} has " <>
+           "no scenario in which a command is rejected on it", invariant}
+      end
+
+    # A command's constraint, by that command (plan EL2).
+    refused =
+      for scenario <- d.scenarios,
+          scenario.rejected != nil,
+          %{kind: :command, name: command} <- scenario.trigger,
+          into: MapSet.new(),
+          do: {command, scenario.rejected}
+
+    constraints =
+      for unit <- d.units,
+          command <- unit.commands,
+          constraint <- command.constraints,
+          not MapSet.member?(refused, {command.name, constraint.name}) do
+        {"S8: constraint #{inspect(constraint.name)} of command #{inspect(command.name)} has no " <>
+           "scenario in which the command is rejected on it", constraint}
+      end
+
+    invariants ++ constraints
   end
 end

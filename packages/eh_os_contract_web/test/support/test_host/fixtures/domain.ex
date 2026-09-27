@@ -9,4 +9,6 @@ defmodule EhOsContract.Web.TestHost.Fixtures.Domain do
   context :cases, "Cases", subdomain: :core
 
   actor :case_officer, :human, "Case officer"
+
+  subdomain :core, "Core", type: :core
 end

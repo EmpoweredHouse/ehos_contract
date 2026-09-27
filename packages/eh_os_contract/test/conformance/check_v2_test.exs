@@ -9,23 +9,27 @@ defmodule EhOsContract.CheckV2Test do
 
   alias EhOsContract.Check
 
-  defp findings(contract), do: Check.v2_findings([contract])
+  defp findings(contract),
+    do: for(f <- Check.v2_findings([contract]), do: {f.level, f.rule, f.message})
 
   test "a process with no addressee, and a deadline its owner has not confirmed" do
-    assert {:warn, "process :handling names no `accountable` role" <> _} =
+    assert {:warn, "process-without-accountable",
+            "process :handling names no `accountable` role" <> _} =
              List.keyfind(findings(ProcessShapes.Next.Promised), :warn, 0)
 
     assert Enum.any?(
              findings(ProcessShapes.Next.Promised),
              &match?(
-               {:warn, "process :handling: `deadline` = {3, :day} is not confirmed" <> _},
+               {:warn, "unverified-declaration",
+                "process :handling: `deadline` = {3, :day} is not confirmed" <> _},
                &1
              )
            )
   end
 
   test "a deadline no run can be seen to end" do
-    assert {:info, "process :branch declares `deadline` = {1, :day} and no event of it is" <> _} =
+    assert {:info, "deadline-without-terminal-event",
+            "process :branch declares `deadline` = {1, :day} and no event of it is" <> _} =
              List.keyfind(findings(DispatchRig.Branch), :info, 0)
   end
 
@@ -34,9 +38,9 @@ defmodule EhOsContract.CheckV2Test do
   end
 
   test "a contract implemented in part names what dispatch will refuse, its query too" do
-    assert [{:warn, message}] =
+    assert [{:warn, "declaration-without-implementation", message}] =
              findings(DispatchRig.Unfinished)
-             |> Enum.filter(&(elem(&1, 0) == :warn and elem(&1, 1) =~ "implements"))
+             |> Enum.filter(&(elem(&1, 0) == :warn and elem(&1, 2) =~ "implements"))
 
     assert message =~ "read_model notes"
     assert message =~ "query notes_of"
@@ -68,8 +72,9 @@ defmodule EhOsContract.CheckV2Test do
     module = EhOsContract.CheckV2Test.Unimplemented
 
     assert [
-             {:info, "promise :stays_stacked has no `within`, so it has no failing case" <> _},
-             {:info,
+             {:info, "promise-without-within",
+              "promise :stays_stacked has no `within`, so it has no failing case" <> _},
+             {:info, "contract-without-implementation",
               "EhOsContract.CheckV2Test.Unimplemented has no implementation, which a contract may (D3)" <>
                 _}
            ] = findings(module)

@@ -19,6 +19,8 @@ defmodule EhOsContract do
       Authorizer.Request,
       Authorizer.WidenedError,
       Check,
+      Check.Catalog,
+      Check.Finding,
       Clock,
       Codec,
       CommandRecord,

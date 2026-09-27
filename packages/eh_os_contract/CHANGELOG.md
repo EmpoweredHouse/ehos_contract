@@ -36,6 +36,16 @@ What changes otherwise is what a host has to do.
 
 ### Changed — a host has to act
 
+- **EL2: a subdomain is named, and a context names it.** `subdomain :visits, "Wizyty", type: :core` in the
+  domain, then `context :scheduling, …, subdomain: :visits`; `subdomain:` on a context no longer takes the kind,
+  and a name the domain does not declare fails the compile (D7). A domain keeping its old contexts can declare
+  `subdomain :core, "…", type: :core` and leave them as they are. Every domain's version moves.
+- **EL2: a translation needs its `definition:`**, as in ESDM: `translation :en, "Completed", definition: "…"`;
+  one without fails the compile. A translation may name words to `avoid` in its language, and an `avoid` may
+  give its `reason:`. `mix eh_os_contract.glossary --language` prints them.
+- **EL1: `mix eh_os_contract.check` prints two lines a finding**, `LEVEL <rule>: <sentence>` and then where the
+  declaration was written (v2 contracts) and the rule's entry in `docs/rules.md`. A script reading the old
+  one-line output reads the first line of each pair; one reading it by program should move to `--format json`.
 - **E8b: a read model that projects personal data needs `forget/2`**; without it, the `EhOsContract` child
   refuses to start, since an erased subject's data would stay in its tables.
 - **E8a: a host whose contract declares personal fields needs a master key**, `config :eh_os_contract,
@@ -80,6 +90,61 @@ What changes otherwise is what a host has to do.
 
 ### Added
 
+- **EL1: every finding of `mix eh_os_contract.check` names a rule** of `EhOsContract.Check.Catalog`, a name
+  that does not change between versions, documented in `docs/rules.md` (generated from the catalog). A
+  finding about a v2 contract says the file and line of its declaration. `--format json` prints one array of
+  `rule`, `level`, `message`, `file`, `line` and `documentation`; `--warnings-as-errors` fails the task on a
+  warning too. Nothing silences a rule. `no-contracts` now counts v2 contracts, so an application with only
+  v2 contracts no longer hears that it has none.
+- **EL1: ESDM's completeness rules that read a whole domain**, warnings of `check`: `orphan-actor`,
+  `orphan-external-system`, `bounded-context-without-content` (a context no contract belongs to),
+  `orphan-context-mapping` and `cross-bounded-context-reference-without-mapping` — a reference being a
+  `consumes` of another context's contract or a field naming another context's entity.
+- **EL1: ESDM's completeness rules that read one contract**, warnings of `check`: `aggregate-without-events`,
+  `event-without-consumer` (a promise or `terminal: true` counts as a reader, the conformance report),
+  `read-model-without-query`, `process-manager-without-ends-on` (ESDM's `-ends-when`),
+  `process-manager-without-event-reactions`, `event-name-with-aggregate-prefix`, and the library's own
+  `consults-without-match`.
+- **EL1: v1's rules over v2 contracts, and one only an implementation answers**: `backward-edge` (a
+  reaction issuing a command into an earlier stage), `competing-in-transaction-consumers`,
+  `free-text-not-personal` (a notice) and `emits-never-produced` (an event a command declares and no
+  `emit/1` of its implementation names).
+- **EL1: `check` repeats the rules between modules (L3) as errors** in a project whose `compilers` has no
+  `:eh_os_contract`, under the codes the compiler prints (`X2`, `D14`, …). A project that registers the
+  compiler sees no change.
+- **EL2: `mix eh_os_contract.glossary`** (ESDM's `glossary`): the domain's ubiquitous language as Markdown,
+  a section per context, `--language` for a translation, `--context`, `--domain`, `--output`
+  (`EhOsContract.Glossary.render/2`). `EhOsContract.Registry.domains/0` lists the domains of the configured
+  applications.
+- **EL2: `mix eh_os_contract.view`** (ESDM's `view`): the domain as a tree — contexts, their contracts, each
+  contract's units with commands and events, consumers, read models, queries and domain services — with a path
+  to keep one branch and `--details` for what each row declares (`EhOsContract.View.render/3`).
+- **EL2: `constraint` in a command and a query** (ESDM's constraints). A command's is checked as an invariant
+  is: `rejects:` names it, `reject/1` refuses on it, and a `rejected` scenario of the command is required for
+  each (A7, S8); a query's is prose. A command or a query declaring none keeps its version.
+- **EL2: a directed relation may end at an external system**, `relation :conformist, upstream: :ksef,
+  downstream: :settlement`, with the other end a context (D5); a name both a context and an external fails the
+  compile (D1). `orphan-external-system` counts a relation's end as a use, and `orphan-context-mapping` counts a
+  relation to an external as crossed when a contract of its context calls it, depends on it or acts through an
+  actor it backs.
+- **EL2: `issued_by:` on a field**, the domain external that gives its value (a number P1 or KSeF assigns):
+  `field :p1_report_id, :id, issued_by: :medical_event_registry`, with an entity reference too. An unknown
+  external fails the compile (X4 in a contract, D8 in a domain). `view --details` shows it; `check` counts it as
+  a use of the external. A field without it keeps its digest.
+- **EL2: `relation-against-references`**, a warning of `check`: a contract of a directed relation's upstream
+  context consumes a contract of the downstream one or names an entity it owns, or any such reference crosses
+  `separate_ways`.
+- **EL2: `label-with-avoided-term`**, a warning of `check`: a label of a contract uses, as a whole word in any
+  case (not its inflected forms), a word its context's glossary says to `avoid`, in declarations' labels and
+  enum members' labels.
+- **EL2: `external-direction-contradicted`**, a warning of `check`: a value is `issued_by:`, or an actor
+  `backed_by:`, a system declared `direction: :outbound`.
+- **EL2: `reaction-without-scenario`**, a warning of `check` (ESDM's `feature-without-scenarios`): a policy, a
+  process manager or a query no scenario runs.
+- **EL2: `subdomain-without-bounded-context`**, ESDM's warning for a subdomain no context names; `view`
+  shows each context's subdomain and its kind.
+- **EL1: `EhOsContract.Domain.vocabulary/0`**, the domain DSL's words by entity path, as
+  `EhOsContract.Next.Contract.vocabulary/0` has them for the contract; a test pins both.
 - **EM2: `domain_service` in a contract** (ESDM's domain service): pure functions no unit owns, each with
   typed `argument`s, a `returns` type and prose `rule`s. The contract generates `C.DomainServices.<Name>`, a
   behaviour for the implementation (`use C, domain_service: :name`, I2 asks for every function) and the module
