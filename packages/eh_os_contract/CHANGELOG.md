@@ -283,7 +283,8 @@ What changes otherwise is what a host has to do.
 - **E8a: `EhOsContract.Erased`** is what a personal field reads back as once its subject's key is gone,
   `%EhOsContract.Erased{subject: :member, id: "member-anna"}`. The structs a contract generates, and the types of
   domain values, admit `EhOsContract.Erased.t()` on every personal field, and `EhOsContract.Codec.problems/3`
-  accepts it there and nowhere else. Writing it is refused.
+  accepts it there and nowhere else. Sealing it into the log is refused; out of the log — a query's rows over
+  HTTP — it is written as `null`.
 - **E8a: `EhOsContract.Vault`**, the behaviour of the master keys, with `EhOsContract.Vault.Local` as default: the
   keys come from `config :eh_os_contract, EhOsContract.Vault, keys: [{id, base64}]`, the first wrapping, the
   others only unwrapping. `mix eh_os_contract.rewrap` rewraps every data key a retired master key still

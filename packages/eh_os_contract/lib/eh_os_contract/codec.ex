@@ -123,8 +123,9 @@ defmodule EhOsContract.Codec do
   declared field is written, `nil` included, so a payload says a field was absent
   rather than leaving it to be guessed. Assumes `problems/3` found nothing.
 
-  With `seal`, a personal field that holds a value is stored as `seal` returns it;
-  `EhOsContract.Erased` cannot be written. Without, it is written as it is.
+  With `seal`, a personal field that holds a value is stored as `seal` returns it,
+  and `EhOsContract.Erased` cannot be written. Without — a query's rows over HTTP — a
+  personal field is written as it is, and `EhOsContract.Erased` as `nil`.
   """
   @spec encode([field()], map(), values(), seal() | nil) :: %{String.t() => term()}
   def encode(fields, data, values, seal \\ nil), do: encode_fields(fields, data, values, seal, [])
@@ -137,10 +138,14 @@ defmodule EhOsContract.Codec do
 
       encoded =
         cond do
-          is_struct(value, Erased) ->
+          is_struct(value, Erased) and seal != nil ->
             raise ArgumentError,
                   "field #{Enum.join(here, ".")} holds EhOsContract.Erased, and an erased value " <>
                     "cannot be written"
+
+          # Out of the log — a query's row over HTTP — what was erased is absent.
+          is_struct(value, Erased) ->
+            nil
 
           target != nil and seal != nil and value != nil ->
             seal.(

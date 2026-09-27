@@ -210,7 +210,7 @@ defmodule EhOsContract.CodecTest do
       assert Codec.decode(@personal, stored, %{}) == {:error, [name: :type]}
     end
 
-    test "Erased fits a personal field and nothing else, and cannot be written" do
+    test "Erased fits a personal field and nothing else, and cannot be sealed" do
       erased = %Erased{subject: :member, id: "member-anna"}
 
       assert Codec.problems(@personal, %{member_id: "member-anna", name: erased}, %{}) == []
@@ -226,6 +226,13 @@ defmodule EhOsContract.CodecTest do
           Personal.sealer(@keys, "t")
         )
       end
+    end
+
+    test "out of the log, Erased is written as nil" do
+      erased = %Erased{subject: :member, id: "member-anna"}
+
+      assert Codec.encode(@personal, %{member_id: "member-anna", name: erased}, %{}) ==
+               %{"member_id" => "member-anna", "name" => nil, "note" => nil}
     end
 
     test "personal?/2 and subjects/4 look inside domain values, lists and aliases" do

@@ -32,7 +32,7 @@ if Code.ensure_loaded?(Plug.Conn) do
     | Outcome | Status | Body |
     | --- | --- | --- |
     | accepted | 200 | `command_id`, `positions`, `position`, `duplicate`, and each event's `type` and `position` |
-    | query answered | 200 | `rows`, or `row`, in the log's form |
+    | query answered | 200 | `rows`, or `row`, in the log's form; an erased personal field is `null` |
     | rejected on an invariant | 422 | `{"rejected": "<invariant>"}` |
     | fields that do not fit | 422 | `{"invalid": {"<field>": "required" \\| "type"}}` |
     | refused | 403 | `{"refused": "<reason>"}` |
