@@ -29,14 +29,20 @@ defmodule EhOsContract.DispatchDcbCommitsTest do
     do: Actor.credential("u-registrar", ["boundary_rig.define_course", "boundary_rig.subscribe"])
 
   # Dispatch retries a conflict three times; a registrar whose three all met one
-  # sends the command again, as a host would.
-  defp subscribe_until_settled(course, student) do
+  # sends the command again, as a host would — a bounded number of times, so that a
+  # conflict that never settles fails here rather than as a timeout.
+  defp subscribe_until_settled(course, student, sends \\ 20)
+
+  defp subscribe_until_settled(course, student, 0),
+    do: flunk("#{student}'s subscription to #{course} kept conflicting")
+
+  defp subscribe_until_settled(course, student, sends) do
     case EhOsContract.dispatch(
            BoundaryRig.Enrolment,
            %Subscribe{course_id: course, student_id: student},
            actor: registrar()
          ) do
-      {:error, :conflict} -> subscribe_until_settled(course, student)
+      {:error, :conflict} -> subscribe_until_settled(course, student, sends - 1)
       settled -> settled
     end
   end

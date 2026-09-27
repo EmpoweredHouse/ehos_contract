@@ -226,8 +226,8 @@ defmodule EhOsContract.Store.Postgres do
 
   defp item!(item) do
     raise ArgumentError,
-          "a query item is %{types: [type, ...], tags: [tag, ...]}, strings with at least one " <>
-            "type, and got #{inspect(item)}"
+          "a query item is %{types: [type, ...], tags: [tag]}: at least one type, any number of " <>
+            "tags (none matches every event of the types), all strings; got #{inspect(item)}"
   end
 
   # An entry becomes the row `insert_all/3` needs: only the writable columns, and

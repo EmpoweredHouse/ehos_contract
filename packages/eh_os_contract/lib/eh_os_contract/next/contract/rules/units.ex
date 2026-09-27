@@ -143,8 +143,7 @@ defmodule EhOsContract.Next.Contract.Rules.Units do
   # its own required, non-personal fields of the built-in type `:id`.
   defp tagged_fields(d) do
     for unit <- d.units, event <- Rules.events(unit), into: %{} do
-      own =
-        for f <- event.fields, f.type == :id, not f.optional, f.personal == nil, do: f.name
+      own = for f <- event.fields, EhOsContract.Key.tag_field?(f), do: f.name
 
       {event.name, List.wrap(unit.identity) ++ own}
     end

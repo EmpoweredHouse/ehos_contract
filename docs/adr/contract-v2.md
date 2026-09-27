@@ -939,7 +939,11 @@ INSERT INTO eh_os_contract_events (...) VALUES (...), (...) RETURNING position, 
   > Tagging only the fields some boundary matches today would leave the events appended before a new
   > boundary untagged, and it would never see them. So **every required, non-personal `:id` field of an
   > event is a tag**, its unit's key among them, and `match:` names only such fields (A4 for a local event;
-  > X6 already required `:id` of a sibling's).
+  > X6 already required `:id` of a sibling's). A subject's identifier is such a field, so "every event about
+  > subject p-17" is now one lookup in the tags' index, which erasure leaves alone — as it leaves the same
+  > identifier in the payload and in stream ids, by the design above. That holds only while an `:id` is an
+  > opaque identifier: a natural one, such as a PESEL, must never be an `:id`, as it must never be an
+  > idempotency key.
 - **Idempotency.** The host supplies `ctx.idempotency_key` (opaque, never personal data). It is checked before
   loading and again under the lock; a hit returns the earlier events with `duplicate: true`; a hit for another
   command type is `{:error, :idempotency_key_reused}`. Only accepted outcomes bind the key, so a rejected

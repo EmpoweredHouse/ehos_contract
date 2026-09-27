@@ -851,8 +851,9 @@ defmodule EhOsContract.Dispatcher do
   # only the fields some boundary matches today would leave the events appended
   # before a new boundary untagged, and it would never see them.
   defp tags(declaration, event) do
-    for %{type: :id, optional: false, personal: nil, name: name} <- declaration.fields,
-        do: Key.tag(name, Map.fetch!(event, name))
+    for field <- declaration.fields,
+        Key.tag_field?(field),
+        do: Key.tag(field.name, Map.fetch!(event, field.name))
   end
 
   # The run a struct belongs to: the process's name, then its correlation values.
