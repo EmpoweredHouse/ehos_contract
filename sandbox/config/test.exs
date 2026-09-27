@@ -13,6 +13,9 @@ config :eh_os_contract_host, Oban, testing: :manual
 # nothing, so a test drains them itself (`EhOsContract.Testing.drain/1`).
 config :eh_os_contract, subscriptions: :manual
 
+# `EhOsContract.Auth.Testing` pins its test key in the running key store; only here.
+config :eh_os_contract_auth, pin_keys: true
+
 # `server: false` — Phoenix.ConnTest/Phoenix.LiveViewTest dispatch straight
 # into the plug pipeline, no listening socket needed.
 config :eh_os_contract_host, EhOsContractHostWeb.Endpoint,

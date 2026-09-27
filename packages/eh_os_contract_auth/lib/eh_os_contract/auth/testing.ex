@@ -35,7 +35,9 @@ defmodule EhOsContract.Auth.Testing do
 
   **The test key.** `credential/3` signs with an Ed25519 key made once per test run
   and pinned in the running `EhOsContract.Auth.Keys` (`EhOsContract.Auth.Keys.pin/2`):
-  trusted like EHOS's, kept through refreshes, never written to the table. No EHOS
+  trusted like EHOS's, kept through refreshes, never written to the table. Pinning
+  needs `config :eh_os_contract_auth, pin_keys: true` in `config/test.exs`, and
+  raises anywhere it is not set. No EHOS
   and no network are needed. The claims are EHOS's — the configured `iss` and `aud`,
   ten minutes of life from `EhOsContract.Clock.now/0`.
 

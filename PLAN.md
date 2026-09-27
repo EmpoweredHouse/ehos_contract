@@ -432,6 +432,9 @@ Interfejs widoczny dla hosta, rozstrzygnięty przez użytkownika 26 września pr
 **E8 — Crypto-shredding.** `subject` w domenie, `personal:`/`subject:` na polach, tabele kluczy i usunięć,
 `Vault`, szyfrowanie w `Codec`, `erase/3`, `forget/2`, bramki (v2 §14). Przed TaxVision, bo
 `registry_discrepancy_detected.diff` ma dziś `retain: :hash`. Poprawka ADR: retencja w §7–8.
+Od EA (27 września, przegląd bezpieczeństwa): **bramka „pole osobowe nie może być `scope` query”** — wartość
+`scope` trafia do `eh_os_contract_auth_decisions` pakietu auth, poza crypto-shreddingiem; v2 §14 wymienia klucze,
+tagi, korelację, `identity`, stan PM i pola publiczne, a `scope` nie.
 *Odbiór:* w `payload` nie ma jawnego tekstu pól osobowych; po usunięciu odczyt daje `Erased`, snapshoty z tą
 osobą znikają, `forget/2` się wykonało; `Conformance.as_data` identyczne przed i po (poza `generated_at`);
 bramki odrzucają pola osobowe w kluczach; kontrola: osoba nieusunięta czyta się normalnie.
@@ -1624,6 +1627,31 @@ niewrażliwości schematu `Bearer` na wielkość liter.
 7. `EhOsContract.Auth.Plug.init/1` po cichu gubił nieznane opcje (literówka w `audience`) — teraz rzuca (test).
 8. Dev bez migracji pada przy dispatchu z credentialem — **bez zmian**, opisane wyżej w „Stanie repozytorium”.
 Poprawki 1, 3 i 7 sprawdzone wstecz. Pakiet auth 41 → 44.
+
+**`engineering:code-review` (bezpieczeństwo i wydajność) na `main...dsl-v2/ea-authorize`, na polecenie
+użytkownika — dziesięć uwag, wszystkie poprawione** („popraw wszystko”; przy 3 i 4 asystent wziął domyślne):
+1. **`http://` jako `issuer`/`jwks_url` był przyjmowany** — klucze otwartym tekstem, podmienialne po drodze. Start
+   pada, jeśli adres nie jest `https` (`http` tylko dla `localhost`).
+2. **Req domyślnie idzie za 10 przekierowaniami** (sprawdzone w `req/lib/req/steps.ex`) — odpowiedź 302 na inny host
+   przenosiła źródło zaufania. `redirect: false`; przekierowanie to nieudane pobranie.
+3. **`Keys.pin/2` działał wszędzie** — teraz tylko przy `config :eh_os_contract_auth, pin_keys: true` (pakiet i
+   `sandbox/config/test.exs`); gdzie indziej rzuca. Domyślne asystenta, kształt dla hosta — do potwierdzenia.
+4. **Brak górnej granicy życia credentiala** — `exp` dalej niż 15 min (10 z D-33 i 5 na rozjazd zegarów) to
+   `:bad_signature`. Domyślne asystenta — do potwierdzenia.
+5. **Odpowiedź JWKS czytana w całości** — powyżej 64 KB (czytanie przerwane w `into:`) albo 16 kluczy to nieudane
+   pobranie.
+6. **`scope_value` może kiedyś być daną osobową** poza crypto-shreddingiem — bramka dopisana do opisu E8.
+7. **Synchroniczny INSERT audytu na każde żądanie**, także query — wymóg D-34, koszt opisany w `README.md` pakietu.
+8. **Tabela decyzji rośnie bez końca** — sekcja o retencji w `README.md` (decyzja hosta, przykład `DELETE`).
+9. **Nagłówek `crit` ignorowany** (RFC 7515 każe odrzucić) — `:bad_signature`.
+10. `verify/2` czytał całą konfigurację aplikacji na każdy credential — dwa `fetch_env`.
+Poprawki 1, 2, 4, 5, 9 na `dsl-v2/ea-verify` (`8c28221`), bo to kod EA1, scalone do EA2 (`f286f3a`); 3, 6, 7, 8 na
+EA2. Każda z 1–5 i 9 sprawdzona wstecz; przy 5 pierwsza wersja testu przeżyła mutację (za duża odpowiedź nie miała
+klucza, więc i tak była nieudana) — poprawiona, żeby niosła klucz. Pakiet auth 44 → 51.
+
+**Skill `pre-pr-review` odpala od teraz oba przeglądy równolegle** (prośba użytkownika): dwa subagenty w jednej
+wiadomości, `code-review high` i `engineering:code-review` z naciskiem na bezpieczeństwo i wydajność, wspólna pula
+uwag; plus dwa nowe rodzaje problemów i ostrzeżenie o mutacjach, które stosują się w połowie.
 
 ### Losy fikstur
 

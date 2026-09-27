@@ -152,10 +152,23 @@ defmodule EhOsContract.Auth.Keys do
   refresh, without writing it to the table; answers its thumbprint.
 
   This is how `EhOsContract.Auth.Testing` gets its test key trusted, and nothing
-  else calls it: a key pinned here verifies credentials exactly as EHOS's do.
+  else calls it: a key pinned here verifies credentials exactly as EHOS's do. So it
+  works only where the configuration allows it, which is meant to be a test's:
+
+      # config/test.exs
+      config :eh_os_contract_auth, pin_keys: true
+
+  Anywhere else it raises, so no code in a running application can make it trust a
+  key EHOS did not publish.
   """
   @spec pin(map(), atom()) :: String.t()
   def pin(jwk, name \\ __MODULE__) when is_map(jwk) do
+    unless Application.get_env(:eh_os_contract_auth, :pin_keys, false) == true do
+      raise ArgumentError,
+            "pinning a key is for tests, and this environment does not allow it: set " <>
+              "config :eh_os_contract_auth, pin_keys: true in config/test.exs"
+    end
+
     # Checked here, in the caller: raising in the process would take its table, and
     # every key in force, with it.
     {kid, public} =

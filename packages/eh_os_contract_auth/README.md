@@ -76,6 +76,21 @@ goes through the connection the call is on, so a caller that wraps `EhOsContract
 transaction of its own and rolls it back rolls the row back too. A row that cannot be written fails
 the call.
 
+**What it costs.** Every command and query that arrives with a credential writes that row: one
+`INSERT`, committed on its own before the engine's transaction starts, and for a query the only write
+the call makes. `eh-os` D-34 asks for exactly this — a refusal recorded as carefully as an acceptance,
+and a refusal cannot be written inside a transaction that never starts. Budget for one extra write per
+call; the table carries no index beyond `decided_at` and `(subject, decided_at)`.
+
+**How long rows are kept is the application's decision.** Nothing here deletes them. The index on
+`decided_at` makes a periodic cleanup cheap, for instance from a job:
+
+```elixir
+MyApp.Repo.query!("DELETE FROM eh_os_contract_auth_decisions WHERE decided_at < now() - interval '400 days'")
+```
+
+keeping them as long as the application keeps its own log is the usual choice.
+
 ## Over HTTP
 
 ```elixir
@@ -118,7 +133,15 @@ in the engine's log or `eh_os_contract_commands`. A declared capability without 
 and so does an entry for one that is not declared, so a new command cannot be added unchecked.
 
 `credential/3` signs with a key made once per test run and pinned in the running key store: trusted
-like EHOS's, never written to the table, no EHOS or network needed.
+like EHOS's, never written to the table, no EHOS or network needed. Pinning is allowed only with
+
+```elixir
+# config/test.exs
+config :eh_os_contract_auth, pin_keys: true
+```
+
+and raises anywhere else, so nothing in a running application can make it trust a key EHOS did not
+publish.
 
 ## Where the keys come from, and what to configure at integration
 
