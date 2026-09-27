@@ -33,18 +33,11 @@ crypto-shredding). **E0–E7 i EA są w `main`** (PR #1–#20; EA poszło dwoma 
 
 ### Co zostało — i czyje to jest
 
-- **Dwie domyślne decyzje asystenta do potwierdzenia — użytkownika** („popraw wszystko” z przeglądu
-  bezpieczeństwa): `Keys.pin/2` tylko przy `config :eh_os_contract_auth, pin_keys: true` (ustawione w teście
-  pakietu i sandboxa); credential z `exp` dalej niż 15 min od teraz to `:bad_signature`. Obie w „EA2 — co wyszło”.
-- **Wejście silnika dla surowych danych — decyzja użytkownika.** Kolejność „najpierw uprawnienie, potem pola”
-  trzyma dziś tylko `EhOsContract.Plug`, przez `Dispatcher.permit_undecoded/5` (`@doc false`); drugie drzwi
-  (LiveView, job z credentialem) musiałyby o tym wiedzieć. Publiczne wejście robiące autoryzację → dekodowanie →
-  dispatch rozwiązałoby to raz. Pominięte w przeglądzie EA2 (uwaga 4).
-- **E8 — asystenta, po decyzjach wyżej**: przed budową zapytać o podział na PR-y i o kształty widoczne dla hosta
-  (`erase/3`, `forget/2`, `Erased` przy odczycie, opcje `personal:`/`subject:`, konfiguracja `Vault` i KEK), jak
-  przed E7 i EA. Deklaracje `subject`/`personal:` i część bramek są od E3–E4; brakuje runtime'u. Opis E8 w
-  „Etapach” dostał 27 września bramkę „pole osobowe nie może być `scope` query”. Gałąź od `main`:
-  `dsl-v2/e8-<nazwa>`.
+- **Trzy decyzje z EA rozstrzygnięte 27 września** (z odrzuconymi opcjami): `pin_keys: true` zostaje, limit
+  15 min zostaje stały — oba w „EA2 — co wyszło”; publiczne wejście dla surowych danych wchodzi w E12 — przy opisie
+  E12 w „Etapach”.
+- **E8 — w toku, asystenta.** Podział na dwa PR-y i kształty widoczne dla hosta rozstrzygnięte 27 września, z
+  odrzuconymi opcjami, pod opisem E8 w „Etapach”. E8a na `dsl-v2/e8a-encryption` od `main`.
 - **Proces na porcie 4000 — użytkownika**: `beam.smp` z `/private/tmp/eh-os-test`, niezwiązany z repozytorium.
 - **Lista zmian do `eh-os`** — użytkownika: D-01, D-15, outbox, G-16, transport v1, D-34, D-40, plan etapu 4
   („D10–D12 — skąd się wzięły” i „D14 — autoryzacja” w dopisku Etap 6), logowanie frontendu zwykłej aplikacji.
@@ -104,7 +97,6 @@ git -c credential.helper='!gh auth git-credential' push https://github.com/Empow
 
 ### Otwarte pytania
 
-- **Dwie domyślne decyzje z przeglądu bezpieczeństwa i wejście silnika dla surowych danych** — użytkownika (wyżej).
 - **Runner dla read modelu `:in_transaction`** odpytuje co sekundę, choć pracuje tylko przy przebudowie — wraca
   przy pomiarze.
 - **`record/3` z credentialem** — nazwa uprawnienia, E9.
@@ -431,6 +423,42 @@ tagi, korelację, `identity`, stan PM i pola publiczne, a `scope` nie.
 osobą znikają, `forget/2` się wykonało; `Conformance.as_data` identyczne przed i po (poza `generated_at`);
 bramki odrzucają pola osobowe w kluczach; kontrola: osoba nieusunięta czyta się normalnie.
 
+Rozstrzygnięte przez użytkownika 27 września przed budową E8. Przy każdej decyzji są też odrzucone opcje, żeby
+dało się do nich wrócić bez odtwarzania rozmowy (prośba użytkownika):
+- **Dwa PR-y, drugi na gałęzi od pierwszego.** **E8a — zapis i odczyt** (`dsl-v2/e8a-encryption`): migracja V05
+  (tabele kluczy i usunięć), `Vault`, szyfrowanie w `Codec`, `Erased` przy odczycie, bramki. **E8b — usuwanie**:
+  `erase/3`, odmowa dopisu dla usuniętej osoby, `eh_os_contract.subject_erased`, `forget/2`, test złoty zgodności,
+  dokumenty, poprawka ADR (retencja §7–8). *Odrzucone:* jeden PR (mniej ceremonii, diff za duży na uważne
+  czytanie); trzy PR-y (bramki i V05 / szyfrowanie / usuwanie — najmniejsze diffy, najwięcej scalania).
+- **`erase/3`: uprawnienia pilnuje host, wywołanie jest idempotentne.**
+  `EhOsContract.erase(:patient, "p-17", actor: actor)` zwraca `:ok`, także gdy osoba jest już usunięta, i wtedy
+  nie dopisuje drugiego zdarzenia. Aktor trafia do `erasures.requested_by` i do zdarzenia. Silnik nie pyta
+  `Authorizer`: kto może usuwać, rozstrzyga host, tak jak dostęp do dashboardu (`Web.Resolver`). *Odrzucone:*
+  (a) **przez `Authorizer`**, uprawnienie `eh_os_contract.erase` w credentialu od EHOS-a — spójne z D14, ale to
+  uprawnienie spoza kontraktu, więc musiałoby wejść do manifestu (E10) i do listy uprawnień w `Model.capabilities/1`;
+  **naturalny moment na zmianę zdania to E10**, a zmiana dla hosta to tylko inny `actor:`. (b) **drugie usunięcie jako
+  błąd** `{:error, :already_erased}` — mówi więcej, ale każdy host ponawiający żądanie RODO musiałby ten błąd
+  połykać.
+- **`Vault`: lista KEK w konfiguracji, z rotacją.**
+  `config :eh_os_contract, EhOsContract.Vault, keys: [{"2026-09", kek}, {"2026-03", stary}]`. Pierwszy klucz jest
+  bieżący, pozostałe tylko rozpakowują. `mix eh_os_contract.rewrap` przepakowuje klucze osobowe bieżącym. Własny
+  adapter (KMS) podpina się przez `config :eh_os_contract, vault: Modul`. Start pada, gdy zarejestrowany kontrakt
+  ma pola osobowe, a KEK nie ma. *Odrzucone:* (a) **jeden KEK bez rotacji** — prostsza konfiguracja, ale wymiana
+  klucza głównego oznaczałaby migrację, której nikt nie napisał; (b) **tylko behaviour**, bez domyślnego adaptera —
+  nie ma czego źle skonfigurować, ale każdy host musi na start napisać własny, także w teście.
+- **Snapshoty i rotacja klucza osoby poza E8.** Tabeli snapshotów w magazynie nie ma (v2 §10.3 ją opisuje, V03 i
+  V04 jej nie tworzą), więc punkt odbioru „snapshoty z tą osobą znikają” **wypada** z E8. Kto zbuduje snapshoty,
+  ten dokłada kolumnę `subjects` i kasowanie w `erase`. Kolumna `key_version` jest od V05, zawsze 1; rotacja klucza
+  danych osoby (nowe zdarzenia pod nowym kluczem) czeka na użytkownika. *Odrzucone:* zbudować snapshoty w E8
+  (spory dodatek, który nie jest crypto-shreddingiem); dodać rotację `key_version` w E8b.
+- **Kształty wzięte przez asystenta domyślnie**, bo przesądza je v2 §14 (wymienione użytkownikowi przed budową):
+  `personal:`/`subject:` bez zmian od E3–E4, dochodzą tylko bramki; w polu osobowym usuniętej osoby jest
+  `%EhOsContract.Erased{subject: :patient, id: "p-17"}`, a typy generowane go dopuszczają;
+  `forget(subject_type, subject_id) :: :ok` to opcjonalny callback read modelu, a read model konsumujący pole
+  osobowe bez niego nie startuje; dispatch dotykający usuniętej osoby to odmowa `{:error, :subject_erased}`; klucza
+  osoby nigdzie nie trzymamy w pamięci podręcznej.
+Zgoda na commity bez pytania i zapis stanu obejmuje gałęzie `dsl-v2/e8…`.
+
 **E9 — Pozostałe kontrakty sandboxa.** Kolejność i zakres:
 - **TaxVision**, dwa commity: kontrakt i domena; potem implementacje — `Taxvision.Tasks` jako polityka i
   komenda, miesiąc jako polityka i projekcja, `Taxvision.Notifications` jako polityka i efekt —
@@ -480,6 +508,14 @@ EHOS-a, JetStream przez `gnat`) są po stronie EHOS-a; biblioteka nie zależy od
 dokładnie raz przy dwukrotnym doręczeniu; relay po restarcie wznawia od checkpointu i nie gubi zdarzenia
 dopisanego w trakcie; wiadomość nie niesie pola spoza `fields`; fakt odbiorcy ma `causation_id` wiadomości;
 kontrola: zdarzenie bez `publish` nie wychodzi.
+**Publiczne wejście dla surowych danych — w E12** (decyzja użytkownika z 27 września; uwaga 4 z przeglądu EA2).
+Jedno wejście silnika: autoryzacja → dekodowanie → dispatch albo query. Na nie przechodzi `EhOsContract.Plug`, a
+`Dispatcher.permit_undecoded/5` (`@doc false`) znika. Powód terminu: dziś są jedne drzwi (Plug), a drugie powstają
+dopiero tutaj — inbox zamienia przychodzące wiadomości w komendy, czyli też przyjmuje surowe dane. *Odrzucone:*
+(a) **teraz**, małym PR-em przed E8 — nowe publiczne API, zanim pojawi się drugi użytkownik, więc kształt byłby
+zgadywany z jednego przypadku; (b) **wcale** — każde przyszłe wejście (LiveView, job z credentialem) musiałoby samo
+pamiętać o kolejności „najpierw uprawnienie, potem pola”. Jeśli drugie drzwi pojawią się przed E12, wejście wchodzi
+razem z nimi.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
@@ -1637,6 +1673,15 @@ użytkownika — dziesięć uwag, wszystkie poprawione** („popraw wszystko”;
 8. **Tabela decyzji rośnie bez końca** — sekcja o retencji w `README.md` (decyzja hosta, przykład `DELETE`).
 9. **Nagłówek `crit` ignorowany** (RFC 7515 każe odrzucić) — `:bad_signature`.
 10. `verify/2` czytał całą konfigurację aplikacji na każdy credential — dwa `fetch_env`.
+**Potwierdzone przez użytkownika 27 września, przed E8** — obie domyślne asystenta zostają:
+- **`pin_keys: true` zostaje warunkiem `Keys.pin/2`.** Konfiguracja zamiast `Mix.env()`, bo w release'ie `Mix` nie
+  istnieje. *Odrzucone:* (a) bez bramki, tylko ostrzeżenie w dokumentacji (stan sprzed przeglądu) — każdy kod w VM
+  może dopisać ufany klucz; (b) przypinanie tylko w `EhOsContract.Auth.Testing` kompilowanym w `:test` —
+  mocniejsze, ale zależność kompilowałaby się u hosta inaczej w teście niż na produkcji.
+- **Limit życia credentiala zostaje stały: 15 minut** (10 z D-33 i 5 na rozjazd zegarów), dalej `:bad_signature`.
+  Jeśli EHOS zmieni czas życia, zmienia się pakiet. *Odrzucone:* (a) konfigurowalny `max_lifetime` z domyślnymi
+  15 min — elastyczniej, ale host może też limit poluzować; (b) bez limitu, pełne zaufanie do `exp` z EHOS-a.
+
 Poprawki 1, 2, 4, 5, 9 na `dsl-v2/ea-verify` (`8c28221`), bo to kod EA1, scalone do EA2 (`f286f3a`); 3, 6, 7, 8 na
 EA2. Każda z 1–5 i 9 sprawdzona wstecz; przy 5 pierwsza wersja testu przeżyła mutację (za duża odpowiedź nie miała
 klucza, więc i tak była nieudana) — poprawiona, żeby niosła klucz. Pakiet auth 44 → 51.
