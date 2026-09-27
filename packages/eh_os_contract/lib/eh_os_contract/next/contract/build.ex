@@ -385,7 +385,7 @@ defmodule EhOsContract.Next.Contract.Build do
   # `correlate`, stages, givens and expectations keep their order.
   @sets ~w(fields params invariants consults starts_on on timers ends_on includes promises
            by emits rejects handles issues calls projects recorded_by match sets cancels events
-           idempotent_on answers functions rules)a
+           idempotent_on answers functions rules constraints)a
 
   defp digest_form(%{} = declaration) do
     Map.new(declaration, fn

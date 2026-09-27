@@ -132,6 +132,49 @@ defmodule EhOsContract.Next.ContractConstraintsTest do
     end
   end
 
+  describe "the digest" do
+    test "does not see the order constraints are written in" do
+      body = fn first, second ->
+        """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+
+            command :record_payment, "Płatność", by: :reception, emits: :paid, rejects: [:positive, :whole] do
+              field :amount, :integer
+        #{first}
+        #{second}
+            end
+
+            event :paid, "Zapłacono"
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+
+          scenario "0 zł" do
+            command :record_payment, %{amount: 0}
+            rejected :positive
+          end
+
+          scenario "pół grosza" do
+            command :record_payment, %{amount: 1}
+            rejected :whole
+          end
+        """
+      end
+
+      positive = ~s|      constraint :positive, "Kwota jest dodatnia"|
+      whole = ~s|      constraint :whole, "Kwota jest w pełnych groszach"|
+
+      one = compile_contract("ConstraintsOrderOne", body.(positive, whole))
+      other = compile_contract("ConstraintsOrderOther", body.(whole, positive))
+
+      assert one.digests["command:record_payment"] == other.digests["command:record_payment"]
+      assert one.version == other.version
+    end
+  end
+
   describe "what does not compile" do
     test "A7: a constraint the command does not reject on, one named twice, one named as an invariant" do
       message =
