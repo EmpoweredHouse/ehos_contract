@@ -141,12 +141,23 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
   defp entities(%{declarations: d, domain: domain}) do
     entities = Enum.map(Map.get(domain, :entities, []), & &1.name)
 
-    for {where, field} <- fields(d),
-        name <- Domain.Rules.references(field.type),
-        name not in entities do
-      {"X3: #{where}, field #{inspect(field.name)}: {:id, #{inspect(name)}} names no entity of " <>
-         "#{inspect(domain.module)}; #{suggest(name, entities)}", Links.at(field)}
-    end
+    fields =
+      for {where, field} <- fields(d),
+          name <- Domain.Rules.references(field.type),
+          name not in entities do
+        {"X3: #{where}, field #{inspect(field.name)}: {:id, #{inspect(name)}} names no entity of " <>
+           "#{inspect(domain.module)}; #{suggest(name, entities)}", Links.at(field)}
+      end
+
+    returns =
+      for {where, function} <- Rules.Fields.returns(d),
+          name <- Domain.Rules.references(function.returns),
+          name not in entities do
+        {"X3: #{where} returns {:id, #{inspect(name)}}, which names no entity of " <>
+           "#{inspect(domain.module)}; #{suggest(name, entities)}", Links.at(function)}
+      end
+
+    fields ++ returns
   end
 
   defp subjects(%{declarations: d, domain: domain}) do

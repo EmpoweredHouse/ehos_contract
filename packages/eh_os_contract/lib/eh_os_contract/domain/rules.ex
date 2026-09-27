@@ -276,7 +276,16 @@ defmodule EhOsContract.Domain.Rules do
            "an entity this domain does not declare", field}
       end
 
-    shapes ++ references
+    # A value that is an entity's identifier, `value :period_ref, {:id, :period}`.
+    aliases =
+      for %Value{type: type} = value <- entities,
+          name <- references(type),
+          not MapSet.member?(known, name) do
+        {"D6: #{describe(value)} is {:id, #{inspect(name)}}, which names an entity this domain " <>
+           "does not declare", value}
+      end
+
+    shapes ++ references ++ aliases
   end
 
   defp entity_shape(entity, contexts, values) do

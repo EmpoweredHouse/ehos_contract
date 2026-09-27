@@ -495,6 +495,8 @@ defmodule EhOsContract.DomainRulesTest do
               value :line do
                 field :service_id, {:list, {:id, :service}}
               end
+
+              value :clinic_ref, {:id, :clinic}
             """
         )
 
@@ -505,6 +507,10 @@ defmodule EhOsContract.DomainRulesTest do
       assert message =~
                "D6: value :line, field :service_id: {:id, :service} names an entity this domain " <>
                  "does not declare (reference_wrong.ex:11)"
+
+      assert message =~
+               "D6: value :clinic_ref is {:id, :clinic}, which names an entity this domain does " <>
+                 "not declare (reference_wrong.ex:14)"
     end
 
     test "the control: an entity, and fields naming it, compile into the model as :id" do

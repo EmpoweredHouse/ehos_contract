@@ -290,6 +290,30 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
       assert length(violations) == 1
     end
 
+    test "a domain service returning the identifier of an entity the domain lacks is refused" do
+      body =
+        @body <>
+          """
+            domain_service :lookup, "Wyszukiwanie" do
+              function :nearest, "Najbliższa przychodnia" do
+                argument :city, :string
+                returns {:id, :clinc}
+              end
+            end
+          """
+
+      violations = links("LinksServiceEntity", body)
+
+      assert assert_linked(
+               violations,
+               "X3: domain service :lookup, function :nearest returns {:id, :clinc}",
+               "links_service_entity.ex",
+               56
+             ) =~ "which names no entity of #{inspect(@domain)}; did you mean :clinic?"
+
+      assert length(violations) == 1
+    end
+
     test "control: the model holds it as an :id that refers to the entity, and tags it" do
       assert links("LinksEntityRight", @body) == []
       model = EhOsContract.Model.fetch(EhOsContract.Next.Fixtures.LinksEntityRight)
