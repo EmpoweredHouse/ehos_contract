@@ -67,6 +67,9 @@ What changes otherwise is what a host has to do.
   starts one runner per subscription; dispatch wakes them through Oban's notifier after each commit it owns.
   **A host's tests set `config :eh_os_contract, subscriptions: :manual`**, which skips registration and
   runners, and drain with `EhOsContract.Testing.drain/1`. `EhOsContract.boot/0` is gone.
+- **EM1: an `EhOsContract.Store` implementation of the host's own needs `read_query/2`**, and its `append/3`
+  takes a third condition, `{:dcb, query, after_position}`, refused with `{:error, :condition_failed}`
+  (v2 §10.1). `EhOsContract.Store.Suite` checks both. `EhOsContract.Store.Postgres`, the default, has them.
 
 ### Added
 
