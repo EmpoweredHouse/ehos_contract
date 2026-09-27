@@ -326,6 +326,20 @@ defmodule EhOsContract.Check.Catalog do
       """
     },
     %{
+      id: "external-direction-contradicted",
+      level: :warn,
+      reads: :v2,
+      esdm: nil,
+      summary: "An external is used against the `direction:` its declaration gives.",
+      text: """
+      An effect `calls:` a system to send it something, so a system declared `:inbound`, one that only
+      sends to this application, cannot be called. A value `issued_by:` a system, and an actor
+      `backed_by:` one, bring what the system says into this application, so a system declared
+      `:outbound`, one this application only sends to, can do neither. A system that does both is
+      `:bidirectional`: P1 is called with a report and answers with its number.
+      """
+    },
+    %{
       id: "cross-bounded-context-reference-without-mapping",
       level: :warn,
       reads: :v2,

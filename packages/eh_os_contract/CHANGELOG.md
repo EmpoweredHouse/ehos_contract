@@ -136,6 +136,8 @@ What changes otherwise is what a host has to do.
   `separate_ways`.
 - **EL2: `label-with-avoided-term`**, a warning of `check`: a label of a contract uses, as a whole word in any
   case, a word its context's glossary says to `avoid`.
+- **EL2: `external-direction-contradicted`**, a warning of `check`: an effect calls a system declared
+  `:inbound`, or a value is `issued_by:` or an actor `backed_by:` a system declared `:outbound`.
 - **EL2: `subdomain-without-bounded-context`**, ESDM's warning for a subdomain no context names; `view`
   shows each context's subdomain and its kind.
 - **EL1: `EhOsContract.Domain.vocabulary/0`**, the domain DSL's words by entity path, as

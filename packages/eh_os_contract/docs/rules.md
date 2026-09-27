@@ -257,6 +257,18 @@ is labelled "Wizyta zakończona": the contract says what its own language says n
 words in any case; the words a translation avoids are another language's, which labels are not
 written in. Rename the label with the term.
 
+## `external-direction-contradicted`
+
+**warning** · reads v2 contracts
+
+An external is used against the `direction:` its declaration gives.
+
+An effect `calls:` a system to send it something, so a system declared `:inbound`, one that only
+sends to this application, cannot be called. A value `issued_by:` a system, and an actor
+`backed_by:` one, bring what the system says into this application, so a system declared
+`:outbound`, one this application only sends to, can do neither. A system that does both is
+`:bidirectional`: P1 is called with a report and answers with its number.
+
 ## `cross-bounded-context-reference-without-mapping`
 
 **warning** · reads v2 contracts · ESDM: `esdm/modeling/cross-bounded-context-reference-without-mapping`

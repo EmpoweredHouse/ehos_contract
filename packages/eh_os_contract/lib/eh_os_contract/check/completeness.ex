@@ -209,7 +209,8 @@ defmodule EhOsContract.Check.Completeness do
       orphan_relations(model, declared, contracts),
       unmapped_references(model, contracts),
       relations_against_references(model, declared, contracts),
-      avoided_terms(model, contracts)
+      avoided_terms(model, contracts),
+      directions(model, declared, contracts)
     ])
   end
 
@@ -219,6 +220,8 @@ defmodule EhOsContract.Check.Completeness do
     of = fn struct -> for %{__struct__: ^struct} = e <- entities, do: e end
 
     %{
+      values: of.(Domain.Dsl.Value),
+      entities: of.(Domain.Dsl.Entity),
       subdomains: of.(Domain.Dsl.Subdomain),
       actors: of.(Domain.Dsl.Actor),
       externals: of.(Domain.Dsl.External),
@@ -457,6 +460,66 @@ defmodule EhOsContract.Check.Completeness do
   defp labelled(%{} = map), do: map |> Map.values() |> labelled()
   defp labelled(list) when is_list(list), do: Enum.flat_map(list, &labelled/1)
   defp labelled(_other), do: []
+
+  # The library's own (plan EL2, "Po EL2" rule 3): an external's `direction:` and how
+  # the model uses it. An effect `calls:` a system to send it something, so one that
+  # only sends to us (`:inbound`) cannot be called; a value `issued_by:` a system, and
+  # an actor `backed_by:` one, bring what it says into this application, so a system we
+  # only send to (`:outbound`) can do neither.
+  defp directions(model, declared, contracts) do
+    direction = Map.new(model.externals, &{&1.name, &1.direction})
+
+    calls =
+      for c <- contracts,
+          effect <- c.declarations.effects,
+          external <- List.wrap(effect.calls),
+          direction[external] == :inbound do
+        Finding.new(
+          "external-direction-contradicted",
+          "effect #{inspect(effect.name)} of #{inspect(c.module)} calls #{inspect(external)}, " <>
+            "which #{inspect(model.module)} declares `direction: :inbound`: it only sends to this " <>
+            "application",
+          Links.at(effect)
+        )
+      end
+
+    domain_fields =
+      for owner <- declared.values ++ declared.entities, field <- owner.fields, do: field
+
+    contract_fields =
+      for c <- contracts,
+          {_where, fields, _injected, _kind} <-
+            EhOsContract.Next.Contract.Rules.Fields.structs(c.declarations),
+          field <- fields,
+          do: field
+
+    issued =
+      for field <- domain_fields ++ contract_fields,
+          external = Map.get(field, :issued_by),
+          direction[external] == :outbound do
+        Finding.new(
+          "external-direction-contradicted",
+          "field #{inspect(field.name)} is issued_by: #{inspect(external)}, which " <>
+            "#{inspect(model.module)} declares `direction: :outbound`: it only receives from this " <>
+            "application",
+          Links.at(field)
+        )
+      end
+
+    backed =
+      for actor <- declared.actors,
+          direction[actor.backed_by] == :outbound do
+        Finding.new(
+          "external-direction-contradicted",
+          "actor #{inspect(actor.name)} is backed_by: #{inspect(actor.backed_by)}, which " <>
+            "#{inspect(model.module)} declares `direction: :outbound`: it only receives from this " <>
+            "application, so nothing of it acts here",
+          Links.at(actor)
+        )
+      end
+
+    calls ++ issued ++ backed
+  end
 
   # Every reference from a contract into another context: `{contexts, contract, what,
   # at}`, the contexts as an unordered pair, `at` the `consumes` it is made by or, for
