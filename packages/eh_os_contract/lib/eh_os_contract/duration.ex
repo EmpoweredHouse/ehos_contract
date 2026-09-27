@@ -22,6 +22,14 @@ defmodule EhOsContract.Duration do
   `cadence: {1, :month}` is a different matter and stays legal: cadence says how
   often an instance is due, and nothing computes it today. Once something does —
   the stalled-process monitor — the same calendar question comes back here.
+
+  **27 September 2026, plan EM3: the decision was taken, for timers only.** The user
+  chose ESDM's calendar arithmetic for a process manager's timer: `wait: {1, :month}`
+  fires on the same day of the next month, and on its last day when there is no such
+  day — 31 January, then the end of February (`calendar_shift/2`, which is
+  `DateTime.shift/2`). `within` and `deadline` stay in fixed units, since the report
+  measures elapsed time against them and a month there would make one run's window
+  longer than another's.
   """
 
   @seconds %{second: 1, minute: 60, hour: 3600, day: 86_400}
@@ -72,6 +80,21 @@ defmodule EhOsContract.Duration do
       :error -> raise ArgumentError, message(unit)
     end
   end
+
+  @doc "The calendar units a timer may wait for, besides the fixed ones."
+  @spec calendar_units() :: [:week | :month | :year]
+  def calendar_units, do: [:week, :month, :year]
+
+  @doc """
+  Shifts a moment by a duration that may count calendar units: a week, a month or a
+  year after it, with a month after the 31st landing on the month's last day. Fixed
+  units shift as `shift/2` does.
+  """
+  @spec calendar_shift(DateTime.t(), {non_neg_integer(), atom()}) :: DateTime.t()
+  def calendar_shift(%DateTime{} = at, {n, unit}) when unit in [:week, :month, :year],
+    do: DateTime.shift(at, [{unit, n}])
+
+  def calendar_shift(%DateTime{} = at, duration), do: shift(at, duration)
 
   @doc """
   The rejection message for an unsupported unit.

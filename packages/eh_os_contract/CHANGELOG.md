@@ -87,6 +87,10 @@ What changes otherwise is what a host has to do.
   and checks its result, raising on a mismatch without the value in the message
   (`EhOsContract.DomainService`). `mix eh_os_contract.check` counts it among what a contract implements. A
   contract declaring none keeps its version.
+- **EM3: a process manager's timer may wait by the calendar**, `timer :review, wait: {1, :month}` — also
+  `:week` and `:year`. A month after 31 January is the last day of February (`EhOsContract.Duration.calendar_shift/2`,
+  `DateTime.shift/2`). `within` and `deadline` still take fixed units only, since the report measures elapsed time
+  against them.
 - **EM3: a domain service's result may be declared empty**, `returns {:id, :clinic}, optional: true`; without
   `optional:` a `nil` result is still refused. `returns` is its own declaration now, and a function without one
   does not compile (F2).
