@@ -98,6 +98,10 @@ What changes otherwise is what a host has to do.
   `read-model-without-query`, `process-manager-without-ends-on` (ESDM's `-ends-when`),
   `process-manager-without-event-reactions`, `event-name-with-aggregate-prefix`, and the library's own
   `consults-without-match`.
+- **EL1: v1's rules over v2 contracts, and one only an implementation answers**: `backward-edge` (a
+  reaction issuing a command into an earlier stage), `competing-in-transaction-consumers`,
+  `free-text-not-personal` (a notice) and `emits-never-produced` (an event a command declares and no
+  `emit/1` of its implementation names).
 - **EM2: `domain_service` in a contract** (ESDM's domain service): pure functions no unit owns, each with
   typed `argument`s, a `returns` type and prose `rule`s. The contract generates `C.DomainServices.<Name>`, a
   behaviour for the implementation (`use C, domain_service: :name`, I2 asks for every function) and the module

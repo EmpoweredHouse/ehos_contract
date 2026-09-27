@@ -81,6 +81,39 @@ A contract is implemented in part.
 The unit, consumer, query or domain service the finding names has no implementation, so
 dispatch refuses to run it. Add a module with `use <Contract>, <kind>: <name>`.
 
+## `competing-in-transaction-consumers`
+
+**warning** · reads v2 contracts
+
+Two or more reactions take one event inside the transaction that records it.
+
+Policies and effects delivered `:in_transaction`, of this contract or of any that consumes the
+event, run one after another in an order the contract does not state. If one depends on what
+the other does, have it react to the event the other decides, so the order is a path the
+process shows. Read models are not counted: they decide nothing. v1's
+`competing-sync-handlers`, in v2's words.
+
+## `free-text-not-personal`
+
+**notice** · reads v2 contracts
+
+A `:string` field of an event is not `personal:`.
+
+`:string` is text a person typed. Unless it is marked `personal:` it is not sealed with its
+subject's key and stays in the log as written after the subject is erased (v2 §14). A code, a
+number or a choice has a type of its own. v1's `free-text-without-retain`, in v2's words.
+
+## `emits-never-produced`
+
+**warning** · reads v2 contracts
+
+A command may emit an event that no `emit/1` of its implementation names.
+
+The contract says the command can decide the event, and no path of the code does: either the
+declaration is wider than the decision, or the decision returns the event without `emit/1`,
+which nothing checks until dispatch. An `emit/1` in a helper function counts for every command
+of the unit, since nothing says which one calls it.
+
 ## `aggregate-without-events`
 
 **warning** · reads v2 contracts · ESDM: `esdm/modeling/aggregate-without-events`
@@ -262,12 +295,14 @@ The assertion can never be evaluated. A v2 promise cannot compile with this (R5)
 
 ## `backward-edge`
 
-**warning** · reads v1 contracts
+**warning** · reads v1 and v2 contracts
 
 A reaction in a later stage publishes into an earlier one.
 
 The process goes back on itself, which the stage order says it does not. Either the stages are
-in the wrong order or the reaction is a loop the process has not declared.
+in the wrong order or the reaction is a loop the process has not declared. In a v2 contract, a
+policy or a process manager reacting to an event of one stage issues a command whose events
+sit in an earlier one.
 
 ## `competing-sync-handlers`
 

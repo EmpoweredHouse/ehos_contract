@@ -68,7 +68,8 @@ defmodule Mix.Tasks.EhOsContract.Check do
 
     report(
       EhOsContract.Check.v2_findings(v2) ++
-        EhOsContract.Check.Completeness.findings(v2) ++ findings,
+        EhOsContract.Check.Completeness.findings(v2) ++
+        EhOsContract.Check.Contracts.findings(v2) ++ findings,
       opts
     )
   end
