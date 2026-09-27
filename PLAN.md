@@ -142,6 +142,16 @@ gołe `git stash` (stos jest wspólny dla worktree).
   Zrobione w EL1.
 - **Przed EL2 — kształty DSL-a pól opisowych:** `constraints` na komendzie i query, inwarianty wartości,
   tłumaczenie z definicją i `avoid` (w ESDM `avoid` ma też powód), relacja z systemem zewnętrznym jako końcem.
+  **Plus (dopisane przez użytkownika 27 września, po EM): identyfikator nadawany przez system zewnętrzny** — numer
+  zgłoszenia z P1, numer faktury z KSeF, numer rejestracji wizyty u płatnika (C-47 → E-85). Dziś działa jako atrybut
+  (efekt woła system, `record/3` jako aktor `:system` z `backed_by:`) albo jako klucz (`identity :ksef_number` bez
+  `generated:`); nie może być daną osobową (pola `:id` idą do tagów i kluczy strumieni). Luka: model nie wie, że
+  pole pochodzi z danego systemu (ESDM też nie). Opcje: (a) `{:id, :medical_event_registry}`, zapis encji z EM2;
+  (b) `field :p1_report_id, :id, issued_by: :medical_event_registry`; (c) nic, proza w `source:`. Rekomendacja
+  asystenta: (b) — encja i wystawca to dwie różne rzeczy i pole bywa naraz jednym i drugim
+  (`field :invoice_number, {:id, :invoice}, issued_by: :ksef`), czego (a) nie wyrazi; `orphan-external-system`
+  policzy `issued_by:` jako użycie. Przy (a) lub (b): czytelnik w EL (strona elementu, `view`), krawędź w EG,
+  ewentualnie L5 „system wystawia identyfikator, a żaden efekt go nie woła”.
 - **D1–D14** (v2 §16) przyjęte; pytania w §19: `scope` dla komend, transport v1 między kontenerami, kontrakt
   upcasterów.
 
