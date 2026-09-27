@@ -91,7 +91,8 @@ defmodule EhOsContract.CheckContractsTest do
   end
 
   test "two reactions in the transaction recording one event; control: an event with one" do
-    assert [{message, _at}] = findings("competing-in-transaction-consumers")
+    # At the first of them, as they are listed.
+    assert [{message, {"visits.ex", 32}}] = findings("competing-in-transaction-consumers")
 
     assert message =~
              ":booked of #{inspect(@visits)} has 2 reactions inside the transaction that " <>
@@ -194,5 +195,37 @@ defmodule EhOsContract.CheckContractsTest do
            |> Enum.filter(&(&1.rule == "free-text-not-personal"))
            |> Enum.map(&(&1.message |> String.split(" of ") |> hd())) ==
              [":noted.lines", ":noted.remark", ":noted.contact.note"]
+  end
+
+  test "reactions of two contracts to one event compete in one transaction" do
+    compile(
+      """
+      defmodule EhOsContract.CheckContractsTest.Reception do
+        use EhOsContract.Next.Contract, domain: Clinic, context: :settlement
+
+        consumes #{inspect(@visits)}, :booked, as: [booked: :visit_booked]
+
+        aggregate :desk, "Recepcja" do
+          identity :visit_id
+          command :prepare, "Przygotuj", by: :reception, emits: :prepared
+          event :prepared, "Przygotowano"
+        end
+
+        policy :prepare_desk, "Przygotowanie", handles: :visit_booked, issues: :prepare
+
+        process :desk, "Recepcja" do
+          correlate :visit_id
+        end
+      end
+      """,
+      "reception.ex"
+    )
+
+    assert [%Finding{message: message}] =
+             Contracts.findings([@visits, EhOsContract.CheckContractsTest.Reception], [@decider])
+             |> Enum.filter(&(&1.rule == "competing-in-transaction-consumers"))
+
+    assert message =~ ":booked of #{inspect(@visits)} has 3 reactions"
+    assert message =~ "policy :prepare_desk of EhOsContract.CheckContractsTest.Reception"
   end
 end

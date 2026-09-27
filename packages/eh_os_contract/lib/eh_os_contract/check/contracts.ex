@@ -113,25 +113,28 @@ defmodule EhOsContract.Check.Contracts do
   defp competing(linked) do
     reactions =
       for %{model: model} = c <- linked,
-          {kind, declarations} <- [policy: model.policies, effect: model.effects],
-          declaration <- declarations,
-          declaration.delivery == :in_transaction,
-          event <- List.wrap(declaration.handles),
+          {kind, reactions, declared} <- [
+            {:policy, model.policies, c.declarations.policies},
+            {:effect, model.effects, c.declarations.effects}
+          ],
+          reaction <- reactions,
+          reaction.delivery == :in_transaction,
+          event <- List.wrap(reaction.handles),
           {publisher, %{name: original}} <- [declaring(model, event)] do
-        {{publisher, original},
-         "#{kind} #{inspect(declaration.name)} of #{inspect(model.module)}", c}
+        {{publisher, original}, "#{kind} #{inspect(reaction.name)} of #{inspect(model.module)}",
+         at(declared, reaction.name)}
       end
 
     for {{publisher, event}, [_, _ | _] = group} <- Enum.group_by(reactions, &elem(&1, 0)) do
-      names = group |> Enum.map(&elem(&1, 1)) |> Enum.sort()
-      {_, _, first} = Enum.min_by(group, &elem(&1, 1))
+      [{_, _, first} | _] = group = Enum.sort_by(group, &elem(&1, 1))
+      names = Enum.map(group, &elem(&1, 1))
 
       Finding.new(
         "competing-in-transaction-consumers",
         "#{inspect(event)} of #{inspect(publisher)} has #{length(names)} reactions inside the " <>
           "transaction that records it — #{Enum.join(names, ", ")} — and nothing says which " <>
           "comes first. If one depends on the other, have it react to what the other decides",
-        first.at
+        first
       )
     end
   end
