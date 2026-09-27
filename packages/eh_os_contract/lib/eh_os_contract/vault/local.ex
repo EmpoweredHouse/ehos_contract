@@ -16,6 +16,7 @@ defmodule EhOsContract.Vault.Local do
   @behaviour EhOsContract.Vault
 
   @impl true
+  @spec wrap(binary(), binary()) :: {EhOsContract.Vault.kek_id(), binary()}
   def wrap(key, context) do
     {id, kek} = hd(keys!())
     iv = :crypto.strong_rand_bytes(12)
@@ -24,6 +25,7 @@ defmodule EhOsContract.Vault.Local do
   end
 
   @impl true
+  @spec unwrap(EhOsContract.Vault.kek_id(), binary(), binary()) :: {:ok, binary()} | :error
   def unwrap(id, <<iv::binary-12, tag::binary-16, ct::binary>>, context) do
     with {^id, kek} <- List.keyfind(keys!(), id, 0),
          key when is_binary(key) <-
@@ -37,9 +39,11 @@ defmodule EhOsContract.Vault.Local do
   def unwrap(_id, _wrapped, _context), do: :error
 
   @impl true
+  @spec current() :: EhOsContract.Vault.kek_id()
   def current, do: keys!() |> hd() |> elem(0)
 
   @impl true
+  @spec check() :: :ok | {:error, String.t()}
   def check do
     case keys() do
       {:ok, _keys} -> :ok
