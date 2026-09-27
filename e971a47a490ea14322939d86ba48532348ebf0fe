@@ -1,0 +1,5 @@
+EL3 review, 9ae9198..1eed5c2, two reviews in parallel (code-review high; security and performance).
+Fixed, each with a test red on the old code (cbee11a is a refactor, pinned by existing link tests): f13828c task wrote over unmarked files, followed links, globbed --output, took ""; 19cac2e deleted another domain's pages; 6654e53 non-snake_case names in paths, colliding paths; f6d411b promise without or_else, includes missing, raw durations; 6a9c114 timer in on as received event, PM scenario outcomes, scenario paragraph; 388d7db map in tuple nondeterministic; 3834eaf published source and consumed links/renames; d30eb45 used-by/referred-to-by; 067eb87 table cells and code spans; cbee11a Path.relative_to.
+Skipped: raw HTML in labels (author-written, escaping would change labels); quadratic scans (negligible); published-consume fields in used-by (no page).
+Real run: MIX_ENV=dev in sandbox, 18 Rehmed pages, --check current, then differs after a hand edit.
+Gate on e971a47: EXIT=0 — sandbox 54, check 0/12/19; engine 1187, check 0/65/21; web 32; auth 51.
