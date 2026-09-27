@@ -204,11 +204,33 @@ defmodule EhOsContract.Personal do
   """
   @spec sealer(current_keys(), String.t()) :: Codec.seal()
   def sealer(keys, type) do
+    # Neither failure may say more than the field: `Map.fetch!/2` would print every
+    # key of the dispatch, and `Jason.encode!/1` the value.
     fn path, {subject, id}, value ->
-      {version, key} = Map.fetch!(keys, {Atom.to_string(subject), id})
+      {version, key} =
+        case Map.fetch(keys, {Atom.to_string(subject), id}) do
+          {:ok, current} ->
+            current
+
+          :error ->
+            raise ArgumentError,
+                  "field #{path} is personal to subject #{subject} #{inspect(id)}, whose key was " <>
+                    "not prepared for this append"
+        end
+
+      json =
+        case Jason.encode(value) do
+          {:ok, json} ->
+            json
+
+          {:error, _} ->
+            raise ArgumentError,
+                  "field #{path} holds a value that cannot be written as JSON, such as text " <>
+                    "that is not UTF-8"
+        end
+
       iv = :crypto.strong_rand_bytes(12)
       aad = aad(type, path, subject, id, version)
-      json = Jason.encode!(value)
       {ct, tag} = :crypto.crypto_one_time_aead(:aes_256_gcm, key, iv, json, aad, true)
       %{"$eh" => "enc1", "k" => version, "d" => Base.encode64(iv <> tag <> ct)}
     end

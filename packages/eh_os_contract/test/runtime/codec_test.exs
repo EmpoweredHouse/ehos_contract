@@ -234,6 +234,37 @@ defmodule EhOsContract.CodecTest do
       end
     end
 
+    test "a seal that fails names the field, never a key or the value" do
+      [{_, {_, key}}] = Map.to_list(@keys)
+
+      missing =
+        assert_raise ArgumentError, fn ->
+          Codec.encode(
+            @personal,
+            %{member_id: "member-bartek", name: "Bartek Nowak"},
+            %{},
+            Personal.sealer(@keys, "t")
+          )
+        end
+
+      assert missing.message =~ "field name is personal to subject member \"member-bartek\""
+      refute missing.message =~ inspect(key)
+      refute missing.message =~ "Bartek Nowak"
+
+      not_utf8 =
+        assert_raise ArgumentError, fn ->
+          Codec.encode(
+            @personal,
+            %{member_id: "member-anna", name: "Anna " <> <<0xFF>>},
+            %{},
+            Personal.sealer(@keys, "t")
+          )
+        end
+
+      assert not_utf8.message =~ "field name holds a value that cannot be written as JSON"
+      refute not_utf8.message =~ "Anna"
+    end
+
     test "out of the log, Erased is written as nil" do
       erased = %Erased{subject: :member, id: "member-anna"}
 
