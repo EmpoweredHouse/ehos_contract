@@ -204,7 +204,52 @@ defmodule EhOsContract.Codec do
   depth.
   """
   @spec personal?([field()], values()) :: boolean()
-  def personal?(fields, values), do: personal?(fields, values, MapSet.new())
+  def personal?(fields, values), do: MapSet.size(personal_subjects(fields, values)) > 0
+
+  @doc """
+  The subject types whose personal data `fields` declare, at any depth: what a
+  consumer of them has to forget.
+  """
+  @spec personal_subjects([field()], values()) :: MapSet.t(atom())
+  def personal_subjects(fields, values), do: personal_subjects(fields, values, MapSet.new())
+
+  defp personal_subjects(fields, values, seen) do
+    for field <- fields, reduce: MapSet.new() do
+      acc ->
+        # A target F5 refuses — missing, or declaring no subject — still makes the
+        # field personal: the rules that ask run beside F5, not after it.
+        own =
+          case Map.get(field, :personal) do
+            nil ->
+              []
+
+            target ->
+              case Enum.find(fields, &(&1.name == target)) do
+                %{subject: subject} -> [subject]
+                nil -> [nil]
+              end
+          end
+
+        acc
+        |> MapSet.union(MapSet.new(own))
+        |> MapSet.union(type_subjects(field.type, values, seen))
+    end
+  end
+
+  defp type_subjects({:list, inner}, values, seen), do: type_subjects(inner, values, seen)
+
+  defp type_subjects(type, values, seen) when is_atom(type) and is_map_key(values, type) do
+    if MapSet.member?(seen, type) do
+      MapSet.new()
+    else
+      case Map.fetch!(values, type) do
+        %{type: nil, fields: fields} -> personal_subjects(fields, values, MapSet.put(seen, type))
+        %{type: inner} -> type_subjects(inner, values, MapSet.put(seen, type))
+      end
+    end
+  end
+
+  defp type_subjects(_type, _values, _seen), do: MapSet.new()
 
   @doc """
   Whether `type` holds a personal field somewhere inside: a domain value's fields,
@@ -212,28 +257,8 @@ defmodule EhOsContract.Codec do
   with its `type` and `fields`, as a domain's model and its declarations both do.
   """
   @spec personal_type?(term(), map()) :: boolean()
-  def personal_type?(type, values), do: personal_type?(type, values, MapSet.new())
-
-  defp personal?(fields, values, seen) do
-    Enum.any?(fields, fn field ->
-      Map.get(field, :personal) != nil or personal_type?(field.type, values, seen)
-    end)
-  end
-
-  defp personal_type?({:list, inner}, values, seen), do: personal_type?(inner, values, seen)
-
-  defp personal_type?(type, values, seen) when is_atom(type) and is_map_key(values, type) do
-    if MapSet.member?(seen, type) do
-      false
-    else
-      case Map.fetch!(values, type) do
-        %{type: nil, fields: fields} -> personal?(fields, values, MapSet.put(seen, type))
-        %{type: inner} -> personal_type?(inner, values, MapSet.put(seen, type))
-      end
-    end
-  end
-
-  defp personal_type?(_type, _values, _seen), do: false
+  def personal_type?(type, values),
+    do: MapSet.size(type_subjects(type, values, MapSet.new())) > 0
 
   @doc """
   The subjects whose personal data `data` carries, each once. `:value` reads a

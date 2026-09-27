@@ -36,9 +36,12 @@ crypto-shredding). **E0–E7 i EA są w `main`** (PR #1–#20; EA poszło dwoma 
 - **Trzy decyzje z EA rozstrzygnięte 27 września** (z odrzuconymi opcjami): `pin_keys: true` zostaje, limit
   15 min zostaje stały — oba w „EA2 — co wyszło”; publiczne wejście dla surowych danych wchodzi w E12 — przy opisie
   E12 w „Etapach”.
-- **E8 — w toku, asystenta.** Podział na dwa PR-y i kształty widoczne dla hosta rozstrzygnięte 27 września, z
-  odrzuconymi opcjami, pod opisem E8 w „Etapach”. **E8a zbudowane** na `dsl-v2/e8a-encryption` od `main`,
-  niewypchnięte, bez przeglądu przed PR — „E8a — co wyszło”. E8b na gałęzi od E8a.
+- **E8 — wystawione, czeka na merge (użytkownika).** Podział na dwa PR-y i kształty widoczne dla hosta
+  rozstrzygnięte 27 września, z odrzuconymi opcjami, pod opisem E8 w „Etapach”. **E8a** —
+  [PR #21](https://github.com/EmpoweredHouse/eh-os-contract/pull/21), `dsl-v2/e8a-encryption` do `main` —
+  „E8a — co wyszło”. **E8b** — [PR #22](https://github.com/EmpoweredHouse/eh-os-contract/pull/22),
+  `dsl-v2/e8b-erasure` do gałęzi E8a, więc najpierw #21 — „E8b — co wyszło”. Oba po przeglądzie przed PR.
+  **Do użytkownika z przeglądu E8b:** czy `erase/3` ma dalej zwracać `:ok` dla identyfikatora, którego nie było.
 - **Proces na porcie 4000 — użytkownika**: `beam.smp` z `/private/tmp/eh-os-test`, niezwiązany z repozytorium.
 - **Lista zmian do `eh-os`** — użytkownika: D-01, D-15, outbox, G-16, transport v1, D-34, D-40, plan etapu 4
   („D10–D12 — skąd się wzięły” i „D14 — autoryzacja” w dopisku Etap 6), logowanie frontendu zwykłej aplikacji.
@@ -460,7 +463,9 @@ dało się do nich wrócić bez odtwarzania rozmowy (prośba użytkownika):
   osoby nigdzie nie trzymamy w pamięci podręcznej.
 Zgoda na commity bez pytania i zapis stanu obejmuje gałęzie `dsl-v2/e8…`.
 **E8a zrobione 27 września** na `dsl-v2/e8a-encryption`, niewypchnięte, po przeglądzie przed PR — „E8a — co
-wyszło” niżej.
+wyszło” niżej. **E8b zrobione 27 września** na `dsl-v2/e8b-erasure` (od E8a) — „E8b — co wyszło”. Wystawione jako PR #21 (E8a) i
+PR #22 (E8b, do gałęzi E8a).
+Odbiór E8 spełniony (mapa w „E8b — co wyszło”), poza snapshotami, które wypadły decyzją użytkownika.
 
 **E9 — Pozostałe kontrakty sandboxa.** Kolejność i zakres:
 - **TaxVision**, dwa commity: kontrakt i domena; potem implementacje — `Taxvision.Tasks` jako polityka i
@@ -1766,6 +1771,64 @@ README silnika zdanie o retencji klucza głównego wobec retencji kopii. Klucze 
 4 wyżej, do pomiaru. **Bez zmiany:** AAD bez identyfikatora zdarzenia — podmiana szyfrogramów między zdarzeniami
 wymaga UPDATE na logu, który odrzuca trigger.
 Po przeglądzie: silnik 937 → 947, `check` bez delty.
+
+### E8b — co wyszło (27 września)
+
+**Stan.** Na `dsl-v2/e8b-erasure`, gałęzi od E8a po przeglądzie (`9455bc2`): usuwanie (`d014010`). Brama zielona.
+Silnik 947 → 959, sandbox 54, web 32, auth 51; `check` bez delty (0/5/19, 0/15/17). Niewypchnięte. Praca przerwana
+na przegląd E8a (prośba użytkownika) poszła jako patch w scratchpadzie, bez wspólnego stasha; nałożona na nową
+głowę E8a z trzema konfliktami, rozwiązanymi na rzecz poprawek z przeglądu.
+
+**Co jest:** `EhOsContract.erase/3` (`Personal.erase/3`): w jednej transakcji pod blokadą dopisu kasuje klucze osoby,
+zapisuje usunięcie, dopisuje `eh_os_contract.subject_erased` (typ i id osoby, nic osobowego; `contract:
+"EhOsContract"`, bez strumienia i przebiegu) i woła `forget/2` read modeli w transakcji. Read model po transakcji
+dostaje zdarzenie w kolejności, przebudowa je odtwarza. Drugie wywołanie to `:ok` bez zdarzenia. Odmowa
+`{:error, :subject_erased}` w dispatchu (bez wiersza `_commands`; `410` w `Plug`). Opcjonalny `forget/2` w
+generowanym behaviour read modelu i sprawdzenie przy starcie (`check_forgetting!/1`). `Codec.personal_subjects/2`.
+Fikstura `ShreddingRig` dostała dwa read modele (w transakcji i po niej) i tabele w migracji testowej.
+
+**Odbiór E8, jak sprawdzony (E8a i E8b razem):**
+- w `payload` nie ma jawnego tekstu pól osobowych — E8a;
+- po usunięciu odczyt daje `Erased` (także w liście kontaktów i w polu `previous`), `forget/2` się wykonał w
+  transakcji i po niej — `erasure_test`; snapshotów nie ma (decyzja użytkownika, punkt wypada);
+- `Conformance.as_data` identyczne przed i po, poza `generated_at` — test złoty w `erasure_test`;
+- bramki odrzucają pola osobowe w kluczach — E4 i F7, po przeglądzie E8a także wartość domenowa w środku;
+- kontrola: osoba nieusunięta czyta się normalnie, jej komenda przechodzi.
+Wstecz: bez odmowy, bez `forget` w transakcji, bez routingu `forget` do runnera, bez filtra typu podmiotu i bez
+idempotencji `erase/3` pada po teście.
+
+**Ustalenia:**
+1. **Odmowa jest węższa niż „dopis dla osoby”**: dispatch odmawia zdarzenia, które niesie dane osobowe usuniętej
+   osoby — tylko wtedy powstałby jej klucz od nowa. Zdarzenie z samym jej identyfikatorem przechodzi, bo proces
+   biznesowy może iść dalej (np. anulowanie wizyty). Notka z datą pod v2 §14.
+2. **`forget/2` idzie tylko do read modeli z danymi danego typu podmiotu.** Pierwszy przebieg testów wywołał
+   `forget(:patient, …)` w read modelu członków — `:patient` deklaruje zmyślona domena `UniversalityGate`, a
+   routing znał tylko typ zdarzenia. Konsument niesie teraz `forgets` (typy podmiotów), test regresji jest.
+3. **`subject_erased` nie należy do żadnego kontraktu**, więc `Consumer.decode!/1` rozpoznaje go po typie i daje
+   `%Erased{}`; czytelnicy zgodności go nie widzą (kontrakt `"EhOsContract"`, bez przebiegu).
+4. **Wpięcie `check_forgetting!/1` w `Supervisor` nie ma testu** — sama funkcja ma; test bootu potrzebowałby
+   fikstury bez `forget/2`, która wywróciłaby start każdego innego testu bootu.
+5. Po przeglądzie E8a sprawdzenie usunięcia siedzi w `Personal.for_writing/2` pod blokadą, po `prepare/2`: klucze
+   rozpakowuje się przed blokadą, ale żaden nie zostanie zapisany ani użyty dla osoby usuniętej w międzyczasie.
+6. Pomocniki `join/3` w teście kolidowały z importowanym `Ecto.Query.join/3` (błąd kompilacji testu) — nazwy
+   `join_member/3`, `rename_member/3`.
+
+**Przegląd przed PR E8b (27 września)** — dwa przeglądy równolegle na `dsl-v2/e8a-encryption...dsl-v2/e8b-erasure`:
+`code-review high` (9 uwag) i `engineering:code-review` (8 uwag); po połączeniu 13. **Poprawione** (`6abb069`..`92f2d88`,
+testy sprawdzone wstecz, poza refaktorem): polityka albo process manager z odmową `:subject_erased` wywracał
+dispatch albo zatrzymywał subskrypcję dla wszystkich — teraz to odpowiedź, jak odrzucenie (oba przeglądy);
+`prepare/2` pakował przez `Vault` klucz dla usuniętej osoby (oba); stare `subject_erased` typu, którego żadna domena
+już nie deklaruje, wywracało przebudowę (oba); nieimplementowany read model w transakcji blokował każde `erase/3`;
+`erase/3` z dwoma odczytami zegara, dekodowaniem własnego wiersza, zapytaniami bez konsumentów i opcją
+`correlation_id:` rysującą fałszywą krawędź w grafie (opcja usunięta); podwójne przejście po polach osobowych w
+`Codec`. **Dokumentacja**: `forget/2` biegnie pod blokadą dopisu (indeks na identyfikatorze podmiotu); `erase/3`
+sięga read modeli skonfigurowanych aplikacji (uwaga obu przeglądów — kontrakt spoza `applications:` jest też poza
+rejestrem, raportem i subskrypcjami, więc `erase/3` nie ma jak go znaleźć); `--skip` na usunięciu zostawia kopię,
+`--reset` ją zabiera. **Pominięte:** `oban_jobs.errors` może trzymać zdekodowane zdarzenie z wyjątku efektu, do
+czasu przycięcia przez Obana — kod sprzed E8, poza zakresem, do osobnej pracy. **Do użytkownika:** `erase/3` zwraca
+`:ok` także dla identyfikatora, którego nie było (literówka w wielkości liter „usuwa” nieistniejącą osobę i blokuje
+ten identyfikator); tak brzmi decyzja z 27 września — zmiana (np. liczba skasowanych kluczy) byłaby nowym kształtem.
+Po przeglądzie: silnik 959 → 963, `check` bez delty.
 
 ### Losy fikstur
 

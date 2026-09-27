@@ -36,6 +36,8 @@ What changes otherwise is what a host has to do.
 
 ### Changed — a host has to act
 
+- **E8b: a read model that projects personal data needs `forget/2`**; without it, the `EhOsContract` child
+  refuses to start, since an erased subject's data would stay in its tables.
 - **E8a: a host whose contract declares personal fields needs a master key**, `config :eh_os_contract,
   EhOsContract.Vault, keys: [...]` (`README.md`); without one, the `EhOsContract` child refuses to start. A host
   without personal fields configures nothing.
@@ -298,6 +300,20 @@ What changes otherwise is what a host has to do.
   a process manager's state field, or a query's `scope` parameter, of a domain value holding a personal field
   at any depth — directly, through an alias, in a list — is an L3 error. A query's parameter takes no
   `personal:` itself.
+- **E8b: `EhOsContract.erase(subject_type, subject_id, actor: actor)`** erases a subject, in one transaction
+  under the append lock: its data keys are deleted, the erasure recorded in `eh_os_contract_erasures`,
+  `eh_os_contract.subject_erased` appended (the subject's type and id, nothing personal), and every read model
+  delivered in the transaction that projects that subject type's data forgets it. A read model after the
+  transaction takes the same event in order, and a rebuild replays it. `:ok` also when the subject was erased
+  before, and then nothing is appended. The engine asks no `Authorizer`: who may erase is the host's to decide.
+  **No verdict moves**: the conformance readers never read the event, and a test pins
+  `EhOsContract.Conformance.as_data/2` identical before and after.
+- **E8b: dispatch refuses personal data of an erased subject**, `{:error, :subject_erased}` (a new refusal),
+  checked under the append lock before anything is sealed; it writes no `_commands` row. `EhOsContract.Plug`
+  answers it `410` with `{"error": "subject_erased"}`.
+- **E8b: a read model's `forget(subject_type, subject_id) :: :ok`**, an optional callback of the generated
+  behaviour, called for the subject types whose personal data the read model projects.
+  `EhOsContract.Codec.personal_subjects/2` says which.
 - **E8a: personal data inside a domain value is held to the same rules as a personal field.** A field declared
   `personal:` whose type holds personal fields of its own is refused — in a domain value (F5) and in a contract
   (F5, L3) — since they would be sealed under the outer subject's key and outlive their own subject's erasure.

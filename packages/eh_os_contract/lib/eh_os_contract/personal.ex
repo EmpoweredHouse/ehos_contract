@@ -22,14 +22,35 @@ defmodule EhOsContract.Personal do
 
   **No cache.** Keys are read for one batch of events and dropped with it: a cache
   on another node would outlive an erasure.
+
+  **Erasure** (`erase/3`) is one transaction under the append lock: the subject's
+  keys are deleted, its erasure recorded, and `eh_os_contract.subject_erased`
+  appended — with the subject's type and id, nothing personal — and every read model
+  delivered in the transaction that projects personal data forgets the subject
+  through its `forget/2`. A read model fed from the log after the transaction gets
+  the same event in order. From then on no event carrying the subject's personal
+  data is appended: dispatch refuses it with `{:error, :subject_erased}`, since
+  another key would make new data readable again.
   """
 
   import Ecto.Query
 
-  alias EhOsContract.{Codec, Vault}
+  alias EhOsContract.{
+    Actor,
+    Clock,
+    Codec,
+    Consumer,
+    Erased,
+    Implementations,
+    Registry,
+    Store,
+    SubscriptionRecord,
+    Vault
+  }
 
   @keys "eh_os_contract_subject_keys"
   @erasures "eh_os_contract_erasures"
+  @erased "eh_os_contract.subject_erased"
 
   @typedoc "A subject: its type, as the domain declares it, and its id."
   @type subject :: {atom(), String.t()}
@@ -46,6 +67,10 @@ defmodule EhOsContract.Personal do
     values = Codec.values(model.domain)
     Enum.any?(model.events, &Codec.personal?(&1.fields, values))
   end
+
+  @doc "The type of the event `erase/3` appends."
+  @spec erased_type() :: String.t()
+  def erased_type, do: @erased
 
   @typedoc """
   What `prepare/2` read and wrapped before the append lock: the subjects' newest
@@ -76,10 +101,20 @@ defmodule EhOsContract.Personal do
         {subject, {version, key}}
       end)
 
-    created =
+    missing =
       for {type, id} <- subjects,
+          not Map.has_key?(existing, {Atom.to_string(type), id}),
+          uniq: true,
+          do: {type, id}
+
+    # An erased subject has no key, and gets none: `for_writing/2` refuses it under
+    # the lock, and a key made here would be a vault call for nothing.
+    erased = erased_among(repo, missing)
+
+    created =
+      for {type, id} <- missing,
           subject = {Atom.to_string(type), id},
-          not Map.has_key?(existing, subject),
+          not MapSet.member?(erased, subject),
           into: %{} do
         {type, id} = subject
         key = :crypto.strong_rand_bytes(32)
@@ -93,10 +128,18 @@ defmodule EhOsContract.Personal do
   @doc """
   The second half, under the append lock: stores the keys `prepare/2` made, and
   returns the newest key of each subject. Creating them here is what keeps two
-  dispatches from creating two keys for one subject.
+  dispatches from creating two keys for one subject. `{:error, :subject_erased}`
+  when one of the subjects is erased, and then nothing is stored: asked under the
+  lock, so no erasure commits between the answer and the append.
   """
-  @spec for_writing(module(), prepared()) :: current_keys()
-  def for_writing(repo, %{existing: existing, created: created} = prepared) do
+  @spec for_writing(module(), prepared()) :: {:ok, current_keys()} | {:error, :subject_erased}
+  def for_writing(repo, prepared) do
+    if MapSet.size(erased_among(repo, prepared.subjects)) == 0,
+      do: {:ok, store(repo, prepared)},
+      else: {:error, :subject_erased}
+  end
+
+  defp store(repo, %{existing: existing, created: created} = prepared) do
     rows =
       for {{type, id}, {version, _key, kek_id, wrapped}} <- created do
         %{
@@ -119,12 +162,196 @@ defmodule EhOsContract.Personal do
     # one its events are sealed with, so read them all again. Rare, and the only
     # vault call under the lock.
     if inserted < length(rows) do
-      for_writing(repo, %{prepare(repo, prepared.subjects) | created: %{}})
+      store(repo, %{prepare(repo, prepared.subjects) | created: %{}})
     else
       Map.merge(
         existing,
         Map.new(created, fn {subject, {v, key, _, _}} -> {subject, {v, key}} end)
       )
+    end
+  end
+
+  @doc """
+  Erases `subject` `id` (see the moduledoc): `:ok`, also when it was erased before,
+  and then nothing is appended again. `opts`: `actor:`, an `EhOsContract.Actor`,
+  required — who asked, recorded with the erasure and as the event's actor. The event
+  starts a correlation of its own: it continues no command. Who may erase is the
+  host's to decide: the engine asks no `EhOsContract.Authorizer` (the user's decision
+  of 27 September 2026).
+
+  It reaches the read models of the configured applications,
+  `config :eh_os_contract, applications:`, as the registry and the subscriptions do:
+  a contract dispatched from outside them has read models `erase/3` does not know.
+  A read model fed after the transaction that is moved past the erasure by
+  `mix eh_os_contract.subscriptions --skip` keeps its copy; `--reset` rebuilds it,
+  and the replay forgets. Calling `erase/3` again appends nothing.
+
+  Raises when no domain of the host's contracts declares `subject`.
+  """
+  @spec erase(atom(), String.t(), keyword() | map()) :: :ok
+  def erase(subject, id, opts) when is_atom(subject) and is_binary(id) do
+    opts = Map.new(opts)
+
+    actor =
+      case Map.get(opts, :actor) do
+        %Actor{} = actor ->
+          actor
+
+        other ->
+          raise ArgumentError,
+                "erase takes `actor:`, an EhOsContract.Actor, and got #{inspect(other)}"
+      end
+
+    declared!(subject)
+    repo = Application.fetch_env!(:eh_os_contract, :repo)
+    type = Atom.to_string(subject)
+
+    {:ok, appended} =
+      repo.transaction(fn ->
+        :ok = Store.lock(repo)
+
+        if MapSet.size(erased_among(repo, [{subject, id}])) == 0 do
+          now = Clock.now()
+
+          repo.delete_all(
+            from(k in @keys, where: k.subject_type == ^type and k.subject_id == ^id)
+          )
+
+          repo.insert_all(@erasures, [
+            %{
+              subject_type: type,
+              subject_id: id,
+              erased_at: now,
+              requested_by: Actor.label(actor)
+            }
+          ])
+
+          {:ok, [row]} =
+            Store.append(
+              repo,
+              [
+                %{
+                  type: @erased,
+                  contract: inspect(EhOsContract),
+                  contract_version: EhOsContract.version(),
+                  actor: Actor.label(actor),
+                  correlation_id: Ecto.UUID.generate(),
+                  occurred_at: now,
+                  payload: %{"subject_type" => type, "subject_id" => id},
+                  metadata: %{"issued_by" => Actor.label(actor)}
+                }
+              ],
+              :none
+            )
+
+          forget_inline!(repo, row, %Erased{subject: subject, id: id})
+          true
+        else
+          false
+        end
+      end)
+
+    if appended and Enum.any?(Implementations.subscribed(), &forgets_after?/1),
+      do: EhOsContract.Subscription.Runner.notify()
+
+    :ok
+  end
+
+  defp forgets_after?(consumer),
+    do: consumer.delivery == :at_least_once and Map.has_key?(consumer.callbacks, @erased)
+
+  # Every read model delivered in the transaction that forgets, as dispatch projects an
+  # appended event: a registered one's row advances with it, one being rebuilt is left
+  # to its runner (v2 §12).
+  defp forget_inline!(repo, row, erased) do
+    case Implementations.inline(nil, @erased) do
+      [] -> :ok
+      consumers -> forget_inline!(repo, row, erased, consumers)
+    end
+  end
+
+  defp forget_inline!(repo, row, erased, consumers) do
+    keys = for c <- consumers, do: c.key
+
+    rebuilding =
+      repo.all(
+        from(s in SubscriptionRecord,
+          where: s.name in ^keys and s.status == "rebuilding",
+          select: s.name
+        )
+      )
+
+    for consumer <- consumers, consumer.key not in rebuilding do
+      :ok = Consumer.handle!(consumer, erased, [])
+    end
+
+    repo.update_all(
+      from(s in SubscriptionRecord,
+        where: s.name in ^keys and s.status != "rebuilding" and s.position < ^row.position
+      ),
+      set: [position: row.position, updated_at: DateTime.utc_now()]
+    )
+  end
+
+  defp declared!(subject) do
+    declared =
+      for contract <- Registry.v2_contracts(),
+          domain = EhOsContract.Model.fetch(contract).domain,
+          Code.ensure_loaded?(domain) and
+            function_exported?(domain, :__eh_os_contract_model__, 0),
+          %{name: name} <- domain.__eh_os_contract_model__().subjects,
+          uniq: true,
+          do: name
+
+    unless subject in declared do
+      raise ArgumentError,
+            "no domain of the host's contracts declares subject #{inspect(subject)}; " <>
+              "they declare #{inspect(Enum.sort(declared))}"
+    end
+  end
+
+  @doc """
+  The event `erase/3` appended, as a read model's `forget/2` is handed it:
+  `%EhOsContract.Erased{}` naming the subject.
+  """
+  #
+  # A type no domain declares any more has no atom, and no read model holds its data:
+  # it stays a string, so a replay goes past the event instead of stopping at it.
+  @spec erased_event(map()) :: Erased.t()
+  def erased_event(%{"subject_type" => type, "subject_id" => id}) do
+    subject =
+      try do
+        String.to_existing_atom(type)
+      rescue
+        ArgumentError -> type
+      end
+
+    %Erased{subject: subject, id: id}
+  end
+
+  @doc """
+  Raises when a read model that projects personal data defines no `forget/2`: it
+  would keep an erased subject's data in the host's tables. What the engine runs at
+  boot, on every consumer of the host's contracts.
+  """
+  @spec check_forgetting!([Implementations.consumer()]) :: :ok
+  def check_forgetting!(consumers) do
+    missing =
+      for %{kind: :read_model, module: module} = consumer <- consumers,
+          Map.has_key?(consumer.callbacks, @erased),
+          module != nil,
+          not (Code.ensure_loaded?(module) and function_exported?(module, :forget, 2)),
+          do: consumer
+
+    case missing do
+      [] ->
+        :ok
+
+      missing ->
+        raise ArgumentError,
+              "#{Enum.map_join(missing, ", ", &"read model #{inspect(&1.name)} of #{inspect(&1.contract)}")} " <>
+                "project personal data and define no forget/2, so an erased subject's data would " <>
+                "stay in their tables; define forget(subject_type, subject_id)"
     end
   end
 

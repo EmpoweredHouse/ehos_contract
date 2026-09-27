@@ -164,6 +164,17 @@ stream's version, and read models are written in the append's transaction or aft
 working as the paragraph says until the cut (E11). Retention by default changes with crypto-shredding, in
 E8.
 
+*Corrected 27 September 2026, v2 plan E8* ([contract v2](contract-v2.md) §14). **Retention of a v2
+contract's log is for ever, and personal data leaves it by crypto-shredding, not by deletion.** A field
+declared `personal:` is sealed in the payload under its subject's data key; `EhOsContract.erase/3` deletes
+the keys, records the erasure and appends `eh_os_contract.subject_erased`, and from then on the field reads
+back as `EhOsContract.Erased`, while types, times, ids and every other field stay — so no conformance number
+moves. A read model keeps its own copy in the host's tables and forgets it through `forget/2`. v1's
+`retain:` (redacting or hashing a field as it is written) stays for v1 contracts until the cut, and v2 has
+no `retain:`: `personal:` replaces it. "Volume handled by a purge job", in the table below, cannot hold
+for the log since the append-only trigger of E2; what bounds its volume is open. Backups, WAL and replicas
+keep a subject's wrapped key until they expire, which is the product owner's to weigh (§14).
+
 **9–10. Dispatch is split by the transaction boundary, not by developer preference**, and idempotency is a
 contract property — **the event declares which payload fields make two occurrences the same fact**, and the
 key must include what distinguishes facts, not only what groups them. No external broker; `Phoenix.PubSub` and `GenStage` are rejected for anything the

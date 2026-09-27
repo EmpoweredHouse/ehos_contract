@@ -106,6 +106,21 @@ personal data. To rotate, put the new key first and keep the old one after it, d
 `mix eh_os_contract.rewrap`, and then drop the old key. A KMS goes behind the
 `EhOsContract.Vault` behaviour: `config :eh_os_contract, vault: MyApp.KmsVault`.
 
+To erase a subject — a person who asked for their data to be removed:
+
+```elixir
+EhOsContract.erase(:patient, "p-17", actor: actor)
+```
+
+It deletes the subject's data key, records the erasure and appends an event saying so; the
+subject's personal fields read back as `%EhOsContract.Erased{}` from then on, everything else
+stays, and a command that would write their personal data again is refused with
+`{:error, :subject_erased}`. Who may erase is yours to decide: the engine asks no authorizer.
+A read model that projects personal data keeps a copy in your tables, so it defines
+`forget(subject_type, subject_id)`; without it the host does not boot. One delivered in the
+transaction forgets inside the erasure, under the lock every append takes, so index the
+column its `forget/2` looks the subject up by.
+
 Erasing a subject deletes its data key from the database, not from your backups: a
 backup, a WAL archive or a replica still holds the key, wrapped, and anyone who also
 has the master key can open the subject's data. Retire and destroy master keys on a
