@@ -215,6 +215,9 @@ defmodule EhOsContract.Pages do
   # A row of a table with links in it, joined when the page resolves them.
   defp row(parts), do: {:row, parts}
 
+  defp type(site, %{refers_to: entity, type: {:list, inner}}) when entity != nil,
+    do: ["list of ", code(inspect(inner)), " of ", entity_link(site, entity)]
+
   defp type(site, %{refers_to: entity, type: type}) when entity != nil,
     do: [code(inspect(type)), " of ", entity_link(site, entity)]
 
@@ -382,19 +385,32 @@ defmodule EhOsContract.Pages do
     ]
   end
 
-  # Every declaration with a field of the type, and every value with one.
+  # Every declaration with a field of the type, and every value or entity with one.
   defp used_by(site, name) do
-    in_values =
+    aliases =
       for v <- site.domain.values,
-          Enum.any?(v.fields, &mentions?(&1.type, name)) or
-            mentions?(v.type, name) do
-        bullet(["value ", link(code(v.name), value_path(v.name))])
-      end
+          mentions?(v.type, name),
+          do: bullet(["value ", link(code(v.name), value_path(v.name))])
+
+    section("Used by", aliases ++ holders(site, &mentions?(&1.type, name)), & &1)
+  end
+
+  # Every declaration, value and entity with a field `wanted` says yes to.
+  defp holders(site, wanted) do
+    in_domain =
+      for(
+        v <- site.domain.values,
+        Enum.any?(v.fields, wanted),
+        do: bullet(["value ", link(code(v.name), value_path(v.name))])
+      ) ++
+        for e <- site.domain.entities,
+            Enum.any?(e.fields, wanted),
+            do: bullet(["entity ", link(code(e.name), entity_path(e.name))])
 
     in_contracts =
       for model <- site.contracts,
           {key, declaration, fields} <- field_holders(model),
-          Enum.any?(fields, &mentions?(&1.type, name)) do
+          Enum.any?(fields, wanted) do
         bullet([
           kind_word(key, declaration),
           " ",
@@ -403,10 +419,7 @@ defmodule EhOsContract.Pages do
         ])
       end
 
-    case in_values ++ in_contracts do
-      [] -> []
-      rows -> ["", "## Used by", "" | rows]
-    end
+    in_domain ++ in_contracts
   end
 
   defp mentions?({:list, inner}, name), do: mentions?(inner, name)
@@ -417,6 +430,7 @@ defmodule EhOsContract.Pages do
       for(u <- model.units, do: {:unit, u, u.state.fields}),
       for(c <- model.commands, do: {:commands, c, c.fields}),
       for(e <- model.events, do: {:events, e, e.fields}),
+      for(pm <- model.process_managers, do: {:process_managers, pm, pm.state.fields}),
       for(r <- model.read_models, do: {:read_models, r, r.fields}),
       for(q <- model.queries, do: {:queries, q, q.params}),
       for(
@@ -449,7 +463,9 @@ defmodule EhOsContract.Pages do
       ]),
       "",
       "## Fields",
-      "" | fields_table(site, e.fields)
+      "",
+      fields_table(site, e.fields),
+      section("Referred to by", holders(site, &(Map.get(&1, :refers_to) == e.name)), & &1)
     ]
     |> Enum.reject(&is_nil/1)
   end

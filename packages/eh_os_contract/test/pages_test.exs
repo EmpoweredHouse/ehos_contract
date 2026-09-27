@@ -225,6 +225,50 @@ defmodule EhOsContract.PagesTest do
                "[`account_opened`](../ledger/events/account_opened.md) as `opened`"
   end
 
+  # The EL3 review: "Used by" skipped entities and process managers, and nothing led
+  # from an entity to the fields that name it.
+  test "who uses a value and who refers to an entity, entities included" do
+    field = fn name, type, extra ->
+      Map.merge(
+        %{
+          name: name,
+          type: type,
+          optional: true,
+          label: nil,
+          personal: nil,
+          subject: nil,
+          default: nil
+        },
+        extra
+      )
+    end
+
+    clinic = %{
+      name: :clinic,
+      label: "Clinic",
+      context: :till,
+      identified_by: :clinic_id,
+      source: nil,
+      fields: [field.(:clinic_id, :id, %{optional: false}), field.(:fee, :fee, %{})]
+    }
+
+    domain = EhOsContract.Model.fetch(ValueRig.Domain)
+    domain = %{domain | entities: [clinic]}
+
+    till = EhOsContract.Model.fetch(ValueRig.Till)
+    [pay_in | commands] = till.commands
+    clinics = field.(:clinics, {:list, :id}, %{refers_to: :clinic})
+    till = %{till | commands: [%{pay_in | fields: pay_in.fields ++ [clinics]} | commands]}
+
+    pages = Pages.render(domain, [till])
+
+    assert pages["values/fee.md"] =~ "- entity [`clinic`](../entities/clinic.md)"
+    assert pages["entities/clinic.md"] =~ "## Referred to by\n\n- command [`pay_in`]"
+
+    assert pages["till/till/commands/pay_in.md"] =~
+             "| `clinics` | list of `:id` of [`clinic`](../../../entities/clinic.md) |"
+  end
+
   test "two contracts of one context that would share a directory are refused" do
     till = EhOsContract.Model.fetch(ValueRig.Till)
     twin = %{till | module: Module.concat([Other, Till])}
