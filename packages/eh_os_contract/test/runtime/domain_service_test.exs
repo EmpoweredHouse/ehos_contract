@@ -32,6 +32,19 @@ defmodule EhOsContract.DomainServiceTest do
     refute error.message =~ "none"
   end
 
+  test "a call with the wrong number of arguments, or to an undeclared service, says so" do
+    error =
+      assert_raise ArgumentError, fn ->
+        EhOsContract.DomainService.call(BoundaryRig.Enrolment, :seating, :free_seats, [3, 1, 9])
+      end
+
+    assert error.message =~ "takes 2 arguments and was called with 3"
+
+    assert_raise ArgumentError, ~r/declares no domain service :parking/, fn ->
+      EhOsContract.DomainService.call(BoundaryRig.Enrolment, :parking, :free_seats, [3, 1])
+    end
+  end
+
   test "the generated module is the behaviour the implementation binds to" do
     assert BoundaryRig.SeatingRules.__eh_os_implementation__() |> Map.take([:kind, :name]) ==
              %{kind: :domain_service, name: :seating}

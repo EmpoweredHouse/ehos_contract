@@ -194,8 +194,10 @@ defmodule EhOsContract.Next.Contract.Generate do
     service = Enum.find(model.domain_services, &(&1.name == name))
     %{callbacks: callbacks} = Callbacks.of(model, :domain_service, name)
 
+    by_name = Map.new(callbacks, &{&1.name, &1})
+
     functions =
-      for {f, c} <- Enum.zip(service.functions, callbacks) do
+      for f <- service.functions, c = Map.fetch!(by_name, f.name) do
         args = Macro.generate_arguments(length(f.arguments), __MODULE__)
 
         quote do

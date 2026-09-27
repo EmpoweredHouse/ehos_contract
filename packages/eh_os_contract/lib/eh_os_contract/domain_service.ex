@@ -18,14 +18,23 @@ defmodule EhOsContract.DomainService do
   @doc false
   # Called by the functions of a generated `C.DomainServices.<Name>`.
   @spec call(module(), atom(), atom(), [term()]) :: term()
-  def call(contract, service, function, args) do
-    model = Model.fetch(contract)
-    declared = Enum.find(model.domain_services, &(&1.name == service))
-    f = Enum.find(declared.functions, &(&1.name == function))
-    values = Codec.values(model.domain)
+  def call(contract, service, function, args) when is_list(args) do
+    %{implementation: implementation, functions: functions, values: values} =
+      resolved(contract, service)
 
     where =
       "function #{inspect(function)} of domain service #{inspect(service)} of #{inspect(contract)}"
+
+    f =
+      Map.get(functions, function) ||
+        raise ArgumentError,
+              "#{inspect(contract)}'s domain service #{inspect(service)} " <>
+                "declares no function #{inspect(function)}"
+
+    if length(args) != length(f.arguments) do
+      raise ArgumentError,
+            "#{where} takes #{length(f.arguments)} arguments and was called with #{length(args)}"
+    end
 
     arguments = Map.new(Enum.zip(Enum.map(f.arguments, & &1.name), args))
 
@@ -39,13 +48,10 @@ defmodule EhOsContract.DomainService do
                 inspect(problems)
     end
 
-    result = apply(Implementations.fetch!(model, :domain_service, service), function, args)
+    result = apply(implementation, function, args)
+    returns = [%{name: :result, type: f.returns, optional: false}]
 
-    case Codec.problems(
-           [%{name: :result, type: f.returns, optional: false}],
-           %{result: result},
-           values
-         ) do
+    case Codec.problems(returns, %{result: result}, values) do
       [] ->
         result
 
@@ -53,6 +59,37 @@ defmodule EhOsContract.DomainService do
         raise ArgumentError,
               "#{where} returned a result that does not fit #{inspect(f.returns)} " <>
                 "(#{problem}); the declaration says what it returns"
+    end
+  end
+
+  # What a call needs that does not change while the node runs: the implementation,
+  # the declared functions, the domain's values. Looked up once per service and kept
+  # in `:persistent_term`, as `EhOsContract.Implementations` keeps its index, since a
+  # decision may call a function once per line of what it decides over. A module
+  # added to a running node is found after a restart, as there.
+  defp resolved(contract, service) do
+    key = {__MODULE__, contract, service}
+
+    case :persistent_term.get(key, nil) do
+      nil ->
+        model = Model.fetch(contract)
+
+        declared =
+          Enum.find(model.domain_services, &(&1.name == service)) ||
+            raise ArgumentError,
+                  "#{inspect(contract)} declares no domain service #{inspect(service)}"
+
+        resolved = %{
+          implementation: Implementations.fetch!(model, :domain_service, service),
+          functions: Map.new(declared.functions, &{&1.name, &1}),
+          values: Codec.values(model.domain)
+        }
+
+        :persistent_term.put(key, resolved)
+        resolved
+
+      resolved ->
+        resolved
     end
   end
 end

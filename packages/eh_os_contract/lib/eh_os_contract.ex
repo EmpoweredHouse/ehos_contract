@@ -23,6 +23,7 @@ defmodule EhOsContract do
       Codec,
       CommandRecord,
       Conformance,
+      DomainService,
       Conformance.Wire,
       Contract,
       ContractExample,
