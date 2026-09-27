@@ -78,27 +78,48 @@ defmodule EhOsContract.EffectJob do
   defp guarded(key, row, fun) do
     trapping = Process.flag(:trap_exit, true)
 
-    try do
-      case fun.() do
-        {:error, reason} ->
-          {:error,
-           "effect #{key} answered {:error, #{kind(reason)}} on the event at position " <>
-             "#{row.position}"}
+    result =
+      try do
+        fun.()
+      rescue
+        exception ->
+          failed(key, row, "raised #{inspect(exception.__struct__)}", __STACKTRACE__)
+      catch
+        :exit, reason ->
+          failed(key, row, "exited with #{kind(reason)}", __STACKTRACE__)
 
-        other ->
-          other
+        :throw, value ->
+          failed(key, row, "threw #{kind(value)}", __STACKTRACE__)
+      after
+        Process.flag(:trap_exit, trapping)
       end
-    rescue
-      exception ->
-        failed(key, row, "raised #{inspect(exception.__struct__)}", __STACKTRACE__)
-    catch
-      :exit, reason ->
-        failed(key, row, "exited with #{kind(reason)}", __STACKTRACE__)
 
-      :throw, value ->
-        failed(key, row, "threw #{kind(value)}", __STACKTRACE__)
+    case exits_after(key, row, result) do
+      {:error, reason} ->
+        {:error,
+         "effect #{key} answered {:error, #{kind(reason)}} on the event at position " <>
+           "#{row.position}"}
+
+      other ->
+        other
+    end
+  end
+
+  # What trapping exits left in the mailbox once the effect returned: a linked process
+  # that crashed fails the job, as it would have without trapping; a shutdown from the
+  # job's supervisor is honoured now that the effect is done; a normal exit is nothing.
+  defp exits_after(key, row, result) do
+    receive do
+      {:EXIT, _pid, :normal} ->
+        exits_after(key, row, result)
+
+      {:EXIT, _pid, reason} when reason == :shutdown or elem(reason, 0) == :shutdown ->
+        exit(:shutdown)
+
+      {:EXIT, _pid, reason} ->
+        failed(key, row, "had a linked process exit with #{kind(reason)}", [])
     after
-      Process.flag(:trap_exit, trapping)
+      0 -> result
     end
   end
 

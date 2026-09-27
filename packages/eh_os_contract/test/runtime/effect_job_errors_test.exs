@@ -63,7 +63,9 @@ defmodule EhOsContract.EffectJobErrorsTest do
   for {name, what, case_name} <- [
         {"Exit Anna", "exited with {:deliver, ...}", "exits"},
         {"Throw Anna", "threw {:deliver, ...}", "throws"},
-        {"Link Anna", "exited with a value", "crashes a linked task"}
+        {"Link Anna", "exited with a value", "crashes a linked task"},
+        {"Spawn Anna", "had a linked process exit with a value",
+         "leaves a linked process crashed"}
       ] do
     @tag :capture_log
     test "an effect that #{case_name} with a name reaches Oban without it" do
