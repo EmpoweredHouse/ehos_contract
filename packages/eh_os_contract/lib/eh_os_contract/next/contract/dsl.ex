@@ -52,10 +52,21 @@ defmodule EhOsContract.Next.Contract.Dsl do
     """
 
     @doc "Sets the aggregate's `identity` and how a new one is `generated`."
-    defmacro identity(fields, opts) when is_list(opts) do
-      quote do
-        identity(unquote(fields))
-        generated(unquote(Keyword.fetch!(opts, :generated)))
+    defmacro identity(fields, opts) do
+      case opts do
+        [generated: generated] ->
+          quote do
+            identity(unquote(fields))
+            generated(unquote(generated))
+          end
+
+        _other ->
+          raise CompileError,
+            file: __CALLER__.file,
+            line: __CALLER__.line,
+            description:
+              "identity takes one option beside its fields, `generated: :uuid`, and got " <>
+                Macro.to_string(opts)
       end
     end
   end

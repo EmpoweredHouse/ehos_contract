@@ -97,9 +97,16 @@ defmodule EhOsContract.Next.Contract.Rules.Units do
       one ++ created
     else
       for c <- creating do
+        advice =
+          if unit.kind == :dcb,
+            do:
+              "a boundary's identity comes from its commands, so creates: belongs only to an " <>
+                "aggregate's",
+            else:
+              "write `identity #{inspect(List.first(List.wrap(unit.identity)))}, generated: :uuid`"
+
         {"A6: command #{inspect(c.name)} creates: #{where}, whose identity is not generated; " <>
-           "write `identity #{inspect(List.first(List.wrap(unit.identity)))}, generated: :uuid`",
-         c}
+           advice, c}
       end
     end
   end

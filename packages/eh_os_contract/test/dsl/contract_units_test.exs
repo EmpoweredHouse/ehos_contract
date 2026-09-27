@@ -260,6 +260,46 @@ defmodule EhOsContract.Next.ContractUnitsTest do
                  "generated; write `identity :visit_id, generated: :uuid` (generated_wrong.ex:12)"
     end
 
+    test "creates: on a boundary's command says a boundary has no generated identity" do
+      assert refuse_contract("GeneratedOnBoundary", """
+               dcb :seat, "Miejsce" do
+                 identity :seat_id
+                 consults :seat_taken, match: :seat_id
+                 command :take_seat, "Zajęcie", by: :reception, emits: :seat_taken, creates: true
+                 event :seat_taken, "Zajęto"
+               end
+
+               process :seat, "Miejsce" do
+                 correlate :seat_id
+               end
+             """) =~
+               "A6: command :take_seat creates: dcb :seat, whose identity is not generated; a " <>
+                 "boundary's identity comes from its commands, so creates: belongs only to an " <>
+                 "aggregate's (generated_on_boundary.ex:7)"
+    end
+
+    test "identity with another option than generated: is refused at the declaration" do
+      source =
+        contract("GeneratedTypo", """
+          aggregate :booking, "Rezerwacja" do
+            identity :booking_id, generate: :uuid
+            command :book, "Rezerwacja", by: :reception, emits: :booked, creates: true
+            event :booked, "Zarezerwowano"
+          end
+
+          process :booking, "Rezerwacja" do
+            correlate :booking_id
+          end
+        """)
+
+      assert_refused(
+        source,
+        "generated_typo.ex",
+        "identity takes one option beside its fields, `generated: :uuid`, and got [generate: :uuid]",
+        5
+      )
+    end
+
     test "control: a generated identity with a creating command compiles into the model" do
       model =
         compile_contract("GeneratedRight", """
