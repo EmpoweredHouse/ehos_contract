@@ -222,6 +222,18 @@ defmodule EhOsContract.Next.ContractFieldsTest do
                  """)
                )
     end
+
+    test "control: personal to a subject identifier that is an entity's compiles" do
+      # Stored as an :id, like any subject identifier (plan EM2).
+      assert %{} =
+               compile_contract(
+                 "PersonalToEntity",
+                 unit("""
+                       field :patient_id, {:id, :patient_card}, subject: :patient
+                       field :name, :string, personal: :patient_id
+                 """)
+               )
+    end
   end
 
   describe "F7: nothing personal where the library keeps it outside the log" do

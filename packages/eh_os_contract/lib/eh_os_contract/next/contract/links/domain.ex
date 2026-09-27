@@ -11,7 +11,8 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
     is an actor of the domain, and of this contract's context unless the actor
     names no context.
   - **X3.** Every field type that is not built in is a value of the domain, inside
-    a list as well; every `subject:` is a subject of the domain.
+    a list as well; every `{:id, entity}` names an entity of the domain; every
+    `subject:` is a subject of the domain.
   - **X4.** An event's `depends_on` and an effect's `calls` name externals of the
     domain.
   - **F7**, the part that needs the domain: a field F7 keeps from being personal
@@ -51,6 +52,8 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
       context(c),
       actors(c),
       types(c),
+      returns(c),
+      entities(c),
       subjects(c),
       personal_values(c),
       externals(c),
@@ -124,6 +127,41 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
     end
   end
 
+  defp returns(%{declarations: d, domain: domain}) do
+    values = Enum.map(domain.values, & &1.name)
+
+    for {where, function} <- Rules.Fields.returns(d),
+        function.returns != nil,
+        name <- value_names(function.returns.type),
+        name not in values do
+      {"X3: #{where} returns #{inspect(name)}, which is neither a built-in type nor a value of " <>
+         "#{inspect(domain.module)}; #{suggest(name, values)}", Links.at(function)}
+    end
+  end
+
+  defp entities(%{declarations: d, domain: domain}) do
+    entities = Enum.map(Map.get(domain, :entities, []), & &1.name)
+
+    fields =
+      for {where, field} <- fields(d),
+          name <- Domain.Rules.references(field.type),
+          name not in entities do
+        {"X3: #{where}, field #{inspect(field.name)}: {:id, #{inspect(name)}} names no entity of " <>
+           "#{inspect(domain.module)}; #{suggest(name, entities)}", Links.at(field)}
+      end
+
+    returns =
+      for {where, function} <- Rules.Fields.returns(d),
+          function.returns != nil,
+          name <- Domain.Rules.references(function.returns.type),
+          name not in entities do
+        {"X3: #{where} returns {:id, #{inspect(name)}}, which names no entity of " <>
+           "#{inspect(domain.module)}; #{suggest(name, entities)}", Links.at(function)}
+      end
+
+    fields ++ returns
+  end
+
   defp subjects(%{declarations: d, domain: domain}) do
     subjects = Enum.map(domain.subjects, & &1.name)
 
@@ -181,6 +219,7 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
   defp value_names(type) when type in @built_in, do: []
   defp value_names({:list, inner}), do: value_names(inner)
   defp value_names({:enum, _members}), do: []
+  defp value_names({:id, _entity}), do: []
   defp value_names(name) when is_atom(name), do: [name]
   defp value_names(_malformed), do: []
 

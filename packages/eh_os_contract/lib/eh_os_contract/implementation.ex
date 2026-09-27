@@ -58,7 +58,16 @@ defmodule EhOsContract.Implementation do
   alias EhOsContract.Model
   alias EhOsContract.Next.Contract.Callbacks
 
-  @kinds [:aggregate, :dcb, :policy, :effect, :process_manager, :read_model, :query]
+  @kinds [
+    :aggregate,
+    :dcb,
+    :policy,
+    :effect,
+    :process_manager,
+    :read_model,
+    :query,
+    :domain_service
+  ]
 
   @typedoc "What `__eh_os_implementation__/0` says about an implementation."
   @type t :: %{
@@ -107,13 +116,27 @@ defmodule EhOsContract.Implementation do
         quote do: alias(unquote(module), as: unquote(as), warn: false)
       end
 
+    # A declaration with nothing to define — a process manager whose reactions and
+    # timers issue nothing and whose state is its correlation — generates a module
+    # with no callback, which Elixir does not take as a behaviour.
+    behaviour =
+      if behaviour?(model, kind, name),
+        do: quote(do: @behaviour(unquote(Model.module_for(model, kind, name))))
+
     quote do
-      @behaviour unquote(Model.module_for(model, kind, name))
+      unquote(behaviour)
       Module.register_attribute(__MODULE__, :eh_os_contract_emitted, accumulate: true)
       import EhOsContract.Implementation, only: [emit: 1, reject: 1, issue: 1], warn: false
       unquote_splicing(aliases)
       @before_compile EhOsContract.Implementation
     end
+  end
+
+  defp behaviour?(_model, :read_model, _name), do: true
+
+  defp behaviour?(model, kind, name) do
+    %{callbacks: callbacks, evolve: evolve} = Callbacks.of(model, kind, name)
+    callbacks != [] or evolve != nil
   end
 
   # I1: exactly one kind, naming a declaration that exists.
@@ -172,7 +195,8 @@ defmodule EhOsContract.Implementation do
           effect: :effects,
           process_manager: :process_managers,
           read_model: :read_models,
-          query: :queries
+          query: :queries,
+          domain_service: :domain_services
         },
         kind
       )
@@ -233,6 +257,9 @@ defmodule EhOsContract.Implementation do
           query = Enum.find(model.queries, &(&1.name == name))
           reads = Model.module_for(model, :read_model, query.reads)
           [{behaviour, camel(name)}, {Module.concat(reads, Row), Row}]
+
+        :domain_service ->
+          []
       end
 
     Enum.uniq(pairs)
@@ -510,6 +537,9 @@ defmodule EhOsContract.Implementation do
   defp struct_modules(_), do: []
 
   # The clause I2 shows: the callback's head, with the aliases the module has.
+  defp clause(%{names: [_ | _] = names} = callback, _aliases),
+    do: "    @impl true\n    def #{callback.name}(#{Enum.join(names, ", ")}) do\n      …\n    end"
+
   defp clause(callback, aliases) do
     args =
       Enum.map(callback.args, fn

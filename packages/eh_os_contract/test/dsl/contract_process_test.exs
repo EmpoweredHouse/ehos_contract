@@ -276,8 +276,8 @@ defmodule EhOsContract.Next.ContractProcessTest do
                "R6: timer :reminder: wait counts -1, which is not a non-negative integer (durations.ex:12)"
 
       assert message =~
-               "R6: process :visit: deadline is in :month, a calendar unit, which only cadence may " <>
-                 "use (durations.ex:18)"
+               "R6: process :visit: deadline is in :month, a calendar unit, which only a timer's wait " <>
+                 "and cadence may use (durations.ex:18)"
 
       assert message =~ "R6: process :visit: cadence is in :fortnight, which is not one of"
       assert message =~ "R6: promise :closed_quickly: within is 24, which is not {count, unit}"

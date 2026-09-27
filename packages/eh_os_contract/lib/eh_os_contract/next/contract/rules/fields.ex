@@ -7,8 +7,9 @@ defmodule EhOsContract.Next.Contract.Rules.Fields do
   - **F1.** Field names are unique within a struct, and none starts with `__`,
     which the generated structs keep for themselves (`__meta__`).
   - **F2.** A type is well formed: a built-in type, `{:list, type}`, a non-empty
-    `{:enum, members}` with no member twice, or the name of a domain value. Whether
-    that value exists is the domain's to say, and a Mix compiler checks it (L3, X3).
+    `{:enum, members}` with no member twice, the name of a domain value, or
+    `{:id, entity}`, the identifier of a domain entity. Whether that value or entity
+    exists is the domain's to say, and a Mix compiler checks it (L3, X3).
   - **F3.** Only a state gives a field a `default:`.
   - **F4.** A field that tells which run an event belongs to — named in the
     process's `correlate`, or in the `correlate` of a process manager handling the
@@ -30,6 +31,8 @@ defmodule EhOsContract.Next.Contract.Rules.Fields do
   alias EhOsContract.DslRules
   alias EhOsContract.Next.Contract.Rules
 
+  require EhOsContract.Domain.Rules
+
   @doc false
   @spec check(map()) :: [DslRules.violation()]
   def check(declarations) do
@@ -41,7 +44,28 @@ defmodule EhOsContract.Next.Contract.Rules.Fields do
         violation
       end
 
-    structs ++ outside_the_log(declarations)
+    returns =
+      for {where, function} <- returns(declarations),
+          problem <-
+            if(function.returns,
+              do: type_problems(function.returns.type),
+              else: ["nothing: say what it returns with `returns type`"]
+            ) do
+        {"F2: #{where} returns #{problem}", function.returns || function}
+      end
+
+    structs ++ returns ++ outside_the_log(declarations)
+  end
+
+  @doc """
+  Every function of a domain service, as `{where, function}`, for the type it
+  returns: F2 here, X3 between modules.
+  """
+  @spec returns(map()) :: [{String.t(), struct()}]
+  def returns(d) do
+    for s <- d.domain_services,
+        f <- s.functions,
+        do: {"domain service #{inspect(s.name)}, function #{inspect(f.name)}", f}
   end
 
   @doc """
@@ -104,6 +128,13 @@ defmodule EhOsContract.Next.Contract.Rules.Fields do
       ),
       for(r <- d.read_models, do: {"read model #{inspect(r.name)}", r.fields, [], :row}),
       for(q <- d.queries, do: {"query #{inspect(q.name)}", q.params, [], :params}),
+      for(
+        s <- d.domain_services,
+        f <- s.functions,
+        do:
+          {"domain service #{inspect(s.name)}, function #{inspect(f.name)}", f.arguments, [],
+           :arguments}
+      ),
       for(
         c <- d.consumes,
         is_binary(c.from),
@@ -201,7 +232,8 @@ defmodule EhOsContract.Next.Contract.Rules.Fields do
           {:ok, %{optional: true}} ->
             [{"F5: #{where} is personal to #{inspect(target)}, which is optional", field}]
 
-          {:ok, %{type: :id, subject: subject, personal: nil}} when subject != nil ->
+          {:ok, %{type: type, subject: subject, personal: nil}}
+          when subject != nil and Domain.Rules.is_id(type) ->
             []
 
           {:ok, _} ->
@@ -219,6 +251,10 @@ defmodule EhOsContract.Next.Contract.Rules.Fields do
   """
   @spec type_problems(term()) :: [String.t()]
   def type_problems(type) when is_atom(type) and type not in [nil, true, false], do: []
+
+  def type_problems({:id, entity}) when is_atom(entity) and entity not in [nil, true, false],
+    do: []
+
   def type_problems({:list, inner}), do: type_problems(inner)
   def type_problems({:enum, _} = enum), do: Domain.Rules.type_problems(enum, MapSet.new())
   def type_problems(other), do: ["#{inspect(other)} is not a type"]

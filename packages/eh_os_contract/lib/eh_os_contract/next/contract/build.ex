@@ -72,6 +72,7 @@ defmodule EhOsContract.Next.Contract.Build do
         entities |> of(Dsl.ProcessManager) |> Enum.map(&process_manager(&1, events)),
       read_models: entities |> of(Dsl.ReadModel) |> Enum.map(&plain/1),
       queries: entities |> of(Dsl.Query) |> Enum.map(&plain/1),
+      domain_services: entities |> of(Dsl.DomainService) |> Enum.map(&plain/1),
       consumes: entities |> of(Dsl.Consumes) |> Enum.map(&consumes/1),
       publishes: entities |> of(Dsl.Publish) |> Enum.map(&plain/1),
       scenarios: entities |> of(Dsl.Scenario) |> Enum.map(&scenario(&1, declarations))
@@ -108,12 +109,22 @@ defmodule EhOsContract.Next.Contract.Build do
       state: %{fields: identity_fields(unit) ++ state_fields(unit.state)},
       invariants: plain(unit.invariants)
     }
+    # Kept only where it is set, so no other unit's digest moves (plan EM3).
+    |> then(&if unit.generated, do: Map.put(&1, :generated, unit.generated), else: &1)
   end
 
+  # A command that creates its aggregate arrives without the generated identity, so
+  # the identity is optional in it (plan EM3). `creates` is kept only where it is
+  # true, so no other command's digest moves.
   defp command(unit, command) do
+    identity =
+      for field <- identity_fields(unit),
+          do: if(command.creates, do: %{field | optional: true}, else: field)
+
     command
     |> plain()
-    |> Map.merge(%{unit: unit.name, fields: identity_fields(unit) ++ plain(command.fields)})
+    |> then(&if command.creates, do: &1, else: Map.delete(&1, :creates))
+    |> Map.merge(%{unit: unit.name, fields: identity ++ plain(command.fields)})
   end
 
   # A unit's events, each with the stage group it sits in: `nil` outside one.
@@ -302,13 +313,23 @@ defmodule EhOsContract.Next.Contract.Build do
     process_managers: :process_manager,
     read_models: :read_model,
     queries: :query,
-    publishes: :publish
+    publishes: :publish,
+    domain_services: :domain_service
   ]
+
+  # Kinds that came after the first contracts were digested: a contract that declares
+  # none of one hashes as it did before the kind existed, so adding a kind to the
+  # library moves no contract's version.
+  @later [:domain_services]
 
   defp version(own, process, collections) do
     Digest.hash_groups(
       [contract: [own], process: List.wrap(process && digest_form(process))] ++
-        for({key, _} <- @collections, do: {key, Enum.map(collections[key], &digest_form/1)}) ++
+        for(
+          {key, _} <- @collections,
+          key not in @later or collections[key] != [],
+          do: {key, Enum.map(collections[key], &digest_form/1)}
+        ) ++
         [
           consumes: Enum.map(consumed(collections.consumes), &digest_form/1),
           scenarios: Enum.map(collections.scenarios, &digest_form/1)
@@ -357,7 +378,7 @@ defmodule EhOsContract.Next.Contract.Build do
   # `correlate`, stages, givens and expectations keep their order.
   @sets ~w(fields params invariants consults starts_on on timers ends_on includes promises
            by emits rejects handles issues calls projects recorded_by match sets cancels events
-           idempotent_on answers)a
+           idempotent_on answers functions rules)a
 
   defp digest_form(%{} = declaration) do
     Map.new(declaration, fn
@@ -381,6 +402,7 @@ defmodule EhOsContract.Next.Contract.Build do
     |> Map.from_struct()
     |> Map.delete(:__spark_metadata__)
     |> Map.new(fn {key, value} -> {key, plain(value)} end)
+    |> EhOsContract.Domain.Build.reference()
   end
 
   defp plain(list) when is_list(list), do: Enum.map(list, &plain/1)

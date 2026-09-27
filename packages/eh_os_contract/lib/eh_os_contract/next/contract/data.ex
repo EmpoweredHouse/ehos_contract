@@ -17,7 +17,7 @@ defmodule EhOsContract.Next.Contract.Data do
   @built_in EhOsContract.Domain.Rules.built_in_types()
 
   @typedoc "A field's type, as a contract declares it."
-  @type type :: atom() | {:enum, list()} | {:list, type()}
+  @type type :: atom() | {:enum, list()} | {:list, type()} | {:id, atom()}
 
   @doc """
   What is wrong with `value` as a value of `type`, as far as a contract can tell on
@@ -26,6 +26,7 @@ defmodule EhOsContract.Next.Contract.Data do
   @spec problems(type(), term()) :: [String.t()]
   def problems(_type, nil), do: []
   def problems(:id, value) when is_binary(value), do: []
+  def problems({:id, _entity}, value), do: problems(:id, value)
   def problems(:string, value) when is_binary(value), do: []
   def problems(:integer, value) when is_integer(value), do: []
   def problems(:boolean, value) when is_boolean(value), do: []

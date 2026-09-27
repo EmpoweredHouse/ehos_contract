@@ -250,6 +250,7 @@ defmodule EhOsContract.Next.ContractTest do
                process_managers: [],
                read_models: [],
                queries: [],
+               domain_services: [],
                consumes: [],
                publishes: [],
                scenarios: [

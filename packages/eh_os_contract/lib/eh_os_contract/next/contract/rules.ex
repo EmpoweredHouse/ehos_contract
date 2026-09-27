@@ -57,6 +57,7 @@ defmodule EhOsContract.Next.Contract.Rules do
       process_managers: of.(Dsl.ProcessManager),
       read_models: of.(Dsl.ReadModel),
       queries: of.(Dsl.Query),
+      domain_services: of.(Dsl.DomainService),
       consumes: of.(Dsl.Consumes),
       publishes: of.(Dsl.Publish),
       processes: of.(Dsl.ProcessDeclaration),

@@ -162,6 +162,32 @@ scenario        description!   scope · actor
 > an event crosses only through `publish` and `consumes "<name>"`. The table above is left as it was
 > written; E4 and E5 build to D10–D12.
 
+> **27 September 2026, EM2.** `entity` is no longer deferred: ESDM coverage came before the sandbox contracts
+> (plan, "Po E8 — kolejność zmieniona"), and what reads an entity is the field that names it. The user
+> decided both shapes: an entity is declared in the domain, beside `value`, with the context that owns it
+> (`context:` required, `identified_by:` one of its fields, a required non-personal `:id`); and a field names
+> one as `{:id, entity}`, which the model stores as `type: :id, refers_to: entity`, so the codec, tags and
+> typespecs see a plain `:id`. No field of an entity is personal: its rows are the application's, outside the
+> log, where erasure cannot reach them. Rules: D6 in the domain, X3 in a contract.
+
+> **27 September 2026, EM2 — a domain service.** ESDM's `domain-service` was the one core kind the four
+> contracts did not need (the 25 September mapping), and it came with the coverage the user asked for. It is
+> declared in the contract, `domain_service :name, "label" do function :f, "label" do argument …; returns …;
+> rule … end end`, and bound like every other kind, `use C, domain_service: :name`. What reads it is the
+> module the contract generates, `C.DomainServices.<Name>`: a decision calls the function there, which holds
+> the arguments and the result to their declared types and raises on a mismatch (the user's choice over a
+> compile-time check alone). No scenario targets it; ESDM has none for it either.
+
+> **27 September 2026, EM3 — a generated identity.** ESDM's `identifiedBy: {source: generated}` is written
+> `identity :booking_id, generated: :uuid` on an aggregate, with `creates: true` on the command that makes
+> one (the user's shapes). Dispatch gives that command a UUIDv7 and the receipt returns it; a creating command
+> that brings its own is refused, since two ways of making an identity would be one too many. A boundary has
+> no generated identity: its identity comes from the command, as ESDM's `command-payload` source does. The
+> generator is **UUIDv7**, whose first 48 bits are the creation time to the millisecond: whoever holds an
+> identity — in a stream id, a tag, a URL — learns when it was made, and erasure leaves it, as §14 leaves
+> every identifier. Chosen over v4 for index locality in the log's `stream_id`; the rest is 74 random bits,
+> so identities are not guessable.
+
 ### 4.3 Field types and options
 
 - Built-in types: `:id :string :integer :decimal :boolean :date :timestamp {:enum, [...]} {:list, t}`, plus

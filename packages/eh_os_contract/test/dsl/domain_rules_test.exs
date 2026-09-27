@@ -439,6 +439,198 @@ defmodule EhOsContract.DomainRulesTest do
     end
   end
 
+  describe "D6: an entity, and every field that names one" do
+    @periods """
+      context :month, "Miesiąc", subdomain: :core
+    """
+
+    test "an unknown context, a wrong identity and a personal field are refused" do
+      message =
+        refused(
+          "EntityWrong",
+          @periods <>
+            """
+              entity :period, "Okres", context: :billing, identified_by: :period_key do
+                field :period_id, :id
+              end
+
+              entity :service, "Usługa", context: :month, identified_by: :service_id do
+                field :service_id, :id, optional: true
+              end
+
+              entity :clinic, "Placówka", context: :month, identified_by: :clinic_id do
+                field :clinic_id, :id
+                field :owner, :string, personal: :clinic_id
+              end
+            """
+        )
+
+      assert message =~
+               "D6: entity :period names context :billing, which this domain does not declare " <>
+                 "(entity_wrong.ex:5)"
+
+      assert message =~
+               "D6: entity :period is identified by :period_key, which is not one of its fields"
+
+      assert message =~
+               "D6: entity :service is identified by :service_id, which is not a required, " <>
+                 "non-personal :id field (entity_wrong.ex:9)"
+
+      assert message =~
+               "D6: entity :clinic, field :owner has personal:, and an entity's rows are the " <>
+                 "application's, outside the log, where erasure cannot reach them"
+    end
+
+    test "{:id, entity} naming an entity the domain does not declare is refused" do
+      message =
+        refused(
+          "ReferenceWrong",
+          @periods <>
+            """
+              entity :period, "Okres", context: :month, identified_by: :period_id do
+                field :period_id, :id
+                field :previous_id, {:id, :perod}
+              end
+
+              value :line do
+                field :service_id, {:list, {:id, :service}}
+              end
+
+              value :clinic_ref, {:id, :clinic}
+            """
+        )
+
+      assert message =~
+               "D6: entity :period, field :previous_id: {:id, :perod} names an entity this " <>
+                 "domain does not declare (reference_wrong.ex:7)"
+
+      assert message =~
+               "D6: value :line, field :service_id: {:id, :service} names an entity this domain " <>
+                 "does not declare (reference_wrong.ex:11)"
+
+      assert message =~
+               "D6: value :clinic_ref is {:id, :clinic}, which names an entity this domain does " <>
+                 "not declare (reference_wrong.ex:14)"
+    end
+
+    test "the control: an entity, and fields naming it, compile into the model as :id" do
+      compiles(
+        "EntityRight",
+        @periods <>
+          """
+            entity :period, "Okres", context: :month, identified_by: :period_id,
+              source: "US-MON-01" do
+              field :period_id, :id
+              field :name, :string
+              field :ends_on, :date
+              field :previous_id, {:id, :period}, optional: true
+            end
+
+            value :line do
+              field :period_ids, {:list, {:id, :period}}
+            end
+          """
+      )
+
+      model = Module.concat(__MODULE__, EntityRight).__eh_os_contract_model__()
+
+      assert [%{name: :period, context: :month, identified_by: :period_id} = period] =
+               model.entities
+
+      assert %{type: :id, refers_to: :period} =
+               Enum.find(period.fields, &(&1.name == :previous_id))
+
+      refute Map.has_key?(Enum.find(period.fields, &(&1.name == :name)), :refers_to)
+
+      assert [%{type: {:list, :id}, refers_to: :period}] =
+               Enum.find(model.values, &(&1.name == :line)).fields
+
+      assert Map.has_key?(model.digests, "entity:period")
+    end
+
+    test "a field twice, an unknown subject and personal data inside a value are refused" do
+      message =
+        refused(
+          "EntityFields",
+          @periods <>
+            """
+              subject :patient, "Pacjent"
+
+              value :contact do
+                field :patient_id, :id, subject: :patient
+                field :phone, :string, personal: :patient_id
+              end
+
+              entity :card, "Karta", context: :month, identified_by: :card_id do
+                field :card_id, :id
+                field :card_id, :string
+                field :holder_id, :id, subject: :holder
+                field :contact, :contact
+              end
+            """
+        )
+
+      assert message =~ "D6: entity :card declares field :card_id twice (entity_fields.ex:14)"
+
+      assert message =~
+               "D6: entity :card, field :holder_id names subject :holder, which this domain does " <>
+                 "not declare (entity_fields.ex:15)"
+
+      assert message =~
+               "D6: entity :card, field :contact is of :contact, which holds personal data, and " <>
+                 "an entity's rows are the application's"
+    end
+
+    test "control: a value's personal field may name a subject identifier that is an entity's" do
+      compiles(
+        "PersonalToEntity",
+        @periods <>
+          """
+            subject :patient, "Pacjent"
+
+            entity :card, "Karta", context: :month, identified_by: :card_id do
+              field :card_id, :id
+            end
+
+            value :contact do
+              field :patient_id, {:id, :card}, subject: :patient
+              field :phone, :string, personal: :patient_id
+            end
+          """
+      )
+    end
+
+    test "a domain without entities hashes as it did before entities existed" do
+      compiles("NoEntities", @periods <> "  value :money, :integer\n")
+      model = Module.concat(__MODULE__, NoEntities).__eh_os_contract_model__()
+
+      # The groups a domain was hashed over before the kind was added.
+      before =
+        EhOsContract.Digest.hash_groups(
+          [domain: [%{name: model.name, language: model.language}]] ++
+            for key <- [:contexts, :actors, :subjects, :values, :externals, :relations] do
+              {key, Enum.map(Map.fetch!(model, key), &digest_form/1)}
+            end
+        )
+
+      assert model.version == before
+    end
+  end
+
+  # The digest's form of a declaration, as `EhOsContract.Domain.Build` sorts it.
+  defp digest_form(declaration) do
+    Map.new(declaration, fn
+      {key, list} when key in [:terms, :translations, :avoid, :fields] and is_list(list) ->
+        {key, list |> Enum.map(&digest_form/1) |> Enum.sort_by(&EhOsContract.Digest.canonical/1)}
+
+      {:between, list} ->
+        {:between, Enum.sort(list)}
+
+      other ->
+        other
+    end)
+  end
+
   describe "the Spark schema (layer L1)" do
     test "an unknown option is refused with the file and line of the declaration" do
       error =

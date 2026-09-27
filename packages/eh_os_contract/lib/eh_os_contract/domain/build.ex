@@ -29,8 +29,14 @@ defmodule EhOsContract.Domain.Build do
     subjects: :subject,
     values: :value,
     externals: :external,
-    relations: :relation
+    relations: :relation,
+    entities: :entity
   ]
+
+  # Kinds that came after the first domains were digested: a domain that declares
+  # none of one hashes as it did before the kind existed, so adding a kind to the
+  # library moves no domain's version.
+  @later [:entities]
 
   @impl true
   def transform(dsl) do
@@ -127,7 +133,11 @@ defmodule EhOsContract.Domain.Build do
       version:
         Digest.hash_groups(
           [domain: [own]] ++
-            for({key, _} <- @kinds, do: {key, Enum.map(collections[key], &digest_form/1)})
+            for(
+              {key, _} <- @kinds,
+              key not in @later or collections[key] != [],
+              do: {key, Enum.map(collections[key], &digest_form/1)}
+            )
         ),
       digests: Map.put(digests(collections), "domain:#{name}", Digest.hash(own))
     })
@@ -175,6 +185,7 @@ defmodule EhOsContract.Domain.Build do
   defp entity_name(%EhOsContract.Domain.Dsl.Value{}), do: :value
   defp entity_name(%EhOsContract.Domain.Dsl.External{}), do: :external
   defp entity_name(%EhOsContract.Domain.Dsl.Relation{}), do: :relation
+  defp entity_name(%EhOsContract.Domain.Dsl.Entity{}), do: :entity
 
   # A Spark struct becomes a plain map, recursively, without the struct tag and
   # without the source annotation.
@@ -185,8 +196,23 @@ defmodule EhOsContract.Domain.Build do
     |> Map.from_struct()
     |> Map.delete(:__spark_metadata__)
     |> Map.new(fn {key, value} -> {key, plain(value)} end)
+    |> reference()
   end
 
   def plain(list) when is_list(list), do: Enum.map(list, &plain/1)
   def plain(other), do: other
+
+  @doc false
+  # A field declared `{:id, entity}` is an `:id` in the model, as it is in the log,
+  # and says which entity it identifies in `refers_to` (plan EM2), a key only such a
+  # field has, so no other field's digest moves. Every reader of types — the codec,
+  # tags, typespecs — therefore sees a plain `:id`.
+  @spec reference(map()) :: map()
+  def reference(%{name: _, type: {:id, entity}} = field) when is_atom(entity),
+    do: field |> Map.put(:type, :id) |> Map.put(:refers_to, entity)
+
+  def reference(%{name: _, type: {:list, {:id, entity}}} = field) when is_atom(entity),
+    do: field |> Map.put(:type, {:list, :id}) |> Map.put(:refers_to, entity)
+
+  def reference(map), do: map
 end

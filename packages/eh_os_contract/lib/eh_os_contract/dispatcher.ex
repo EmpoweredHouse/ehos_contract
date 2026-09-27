@@ -15,7 +15,10 @@ defmodule EhOsContract.Dispatcher do
      is `{:error, reason}` and writes nothing, neither to the log nor to
      `_commands`.
   2. **What.** The command's fields against their types (`EhOsContract.Codec`):
-     `{:error, {:invalid, [{field, :required | :type}]}}`.
+     `{:error, {:invalid, [{field, :required | :type}]}}`. A command that `creates:`
+     an aggregate whose identity is generated gets a UUIDv7 here, and is refused
+     with `{field, :generated}` when it brings one of its own, and with
+     `{:error, :idempotency_key_required}` without an idempotency key (plan EM3).
   3. **Once.** An idempotency key already accepted for the same command returns
      that command's receipt, `duplicate: true`, and appends nothing; accepted for
      another command, `{:error, :idempotency_key_reused}`. Only an accepted
@@ -97,8 +100,9 @@ defmodule EhOsContract.Dispatcher do
   @type refusal ::
           Authorizer.reason()
           | :not_declared
-          | {:invalid, [Codec.problem()]}
+          | {:invalid, [Codec.problem() | {atom(), :generated}]}
           | :idempotency_key_reused
+          | :idempotency_key_required
           | :conflict
           | :not_caught_up
           | :subject_erased
@@ -119,7 +123,8 @@ defmodule EhOsContract.Dispatcher do
     values = Codec.values(model.domain)
 
     with :ok <- permit(model, declaration, ctx.actor),
-         :ok <- valid(declaration.fields, command, values) do
+         :ok <- valid(declaration.fields, command, values),
+         {:ok, command} <- generate_identity(model, declaration, command, ctx) do
       job = %{
         kind: :command,
         type: Atom.to_string(declaration.name),
@@ -144,10 +149,12 @@ defmodule EhOsContract.Dispatcher do
   September 2026). Otherwise it goes as a command does — the fields checked, the
   idempotency key honoured, the unit's stream version as the append's condition,
   the consumers in the transaction run, the `accepted` row written with the type
-  `"record:<event>"` — only without a decider.
+  `"record:<event>"` — only without a decider. An event of an aggregate whose
+  identity is generated is recorded only for one a command created:
+  `{:error, :not_created}` otherwise.
   """
   @spec record(module(), struct(), keyword() | map()) ::
-          {:ok, Receipt.t()} | {:error, refusal() | :not_grantable}
+          {:ok, Receipt.t()} | {:error, refusal() | :not_grantable | :not_created}
   def record(contract, %module{} = event, opts) do
     model = model!(contract)
     declaration = recorded!(model, module)
@@ -413,6 +420,24 @@ defmodule EhOsContract.Dispatcher do
 
   # --- what --------------------------------------------------------------------------
 
+  # A command that creates an aggregate whose identity is generated arrives without
+  # it, and gets a UUIDv7 here, once per dispatch, so a retried conflict keeps it
+  # (plan EM3). One that brings its own is refused: the library gives it, and a host
+  # that made up its own would have two ways of doing so. And it needs an idempotency
+  # key, since a retry without one would make a second aggregate the caller never
+  # hears of (the user's choice after the EM3 review); a reaction's is derived.
+  defp generate_identity(model, %{creates: true} = declaration, command, ctx) do
+    [field] = Enum.find(model.units, &(&1.name == declaration.unit)).identity
+
+    cond do
+      Map.fetch!(command, field) != nil -> {:error, {:invalid, [{field, :generated}]}}
+      ctx.idempotency_key == nil -> {:error, :idempotency_key_required}
+      true -> {:ok, Map.put(command, field, Ecto.UUID.generate(version: 7))}
+    end
+  end
+
+  defp generate_identity(_model, _declaration, command, _ctx), do: {:ok, command}
+
   defp valid(fields, struct, values) do
     case Codec.problems(fields, struct, values) do
       [] -> :ok
@@ -479,8 +504,16 @@ defmodule EhOsContract.Dispatcher do
     with :new <- idempotent(repo, job) do
       unit = Enum.find(job.model.units, &(&1.name == job.declaration.unit))
       {recorded, condition} = read_unit(repo, job.model, unit, job.command)
-      job = Map.merge(job, %{condition: condition, given: recorded})
-      commit(job, [{job.declaration, job.command}], repo)
+
+      # An aggregate whose identity the library gives is made only by the command that
+      # creates it (A6), so an event recorded for one that does not exist would make
+      # it under an identity the host made up (the user's choice after the EM3 review).
+      if Map.get(unit, :generated) && recorded == [] do
+        {:error, :not_created}
+      else
+        job = Map.merge(job, %{condition: condition, given: recorded})
+        commit(job, [{job.declaration, job.command}], repo)
+      end
     end
   end
 
@@ -545,7 +578,9 @@ defmodule EhOsContract.Dispatcher do
             last_position: appended |> List.last() |> position()
           })
 
-          receipt = receipt(command_id, Enum.zip(Enum.map(events, &elem(&1, 1)), appended), false)
+          receipt =
+            receipt(job, command_id, Enum.zip(Enum.map(events, &elem(&1, 1)), appended), false)
+
           inline!(job, Enum.zip(receipt.events, appended), repo)
           {:ok, receipt}
       end
@@ -667,7 +702,7 @@ defmodule EhOsContract.Dispatcher do
         events =
           repo.all(from(e in Event, where: e.command_id == ^accepted.id, order_by: e.position))
 
-        {:ok, receipt(accepted.id, Enum.zip(decode_all!(job, events), events), true)}
+        {:ok, receipt(job, accepted.id, Enum.zip(decode_all!(job, events), events), true)}
 
       true ->
         {:error, :idempotency_key_reused}
@@ -927,7 +962,7 @@ defmodule EhOsContract.Dispatcher do
       reraise exception, __STACKTRACE__
   end
 
-  defp receipt(command_id, pairs, duplicate) do
+  defp receipt(job, command_id, pairs, duplicate) do
     events =
       for {event, %Event{} = row} <- pairs do
         meta = %Meta{
@@ -944,8 +979,22 @@ defmodule EhOsContract.Dispatcher do
 
     positions = Enum.map(events, & &1.__meta__.position)
 
+    # The unit's identity as the events carry it, so a duplicate's is the first
+    # command's. When the command decided no event, a fresh one's is the command's; a
+    # duplicate's is unknown, since this command's may be one generated just now for
+    # the retry, or name another unit under a reused key.
+    keys = Enum.find(job.model.units, &(&1.name == job.declaration.unit)).identity
+
+    identity =
+      case {events, duplicate} do
+        {[first | _], _} -> Map.take(first, keys)
+        {[], false} -> Map.take(job.command, keys)
+        {[], true} -> %{}
+      end
+
     %Receipt{
       command_id: command_id,
+      identity: identity,
       events: events,
       positions: positions,
       position: List.last(positions),
