@@ -150,16 +150,7 @@ defmodule EhOsContract.Pages do
   defp unit_path(model, unit), do: declaration_path(model, unit.kind, unit.name)
 
   # `to`, from the directory of `from`.
-  defp relative(from, to) do
-    from_dirs = from |> Path.split() |> Enum.drop(-1)
-    to_parts = Path.split(to)
-    common = common_length(from_dirs, to_parts)
-    ups = List.duplicate("..", length(from_dirs) - common)
-    Enum.join(ups ++ Enum.drop(to_parts, common), "/")
-  end
-
-  defp common_length([a | as], [a | bs]) when bs != [], do: 1 + common_length(as, bs)
-  defp common_length(_as, _bs), do: 0
+  defp relative(from, to), do: Path.relative_to(to, Path.dirname(from), force: true)
 
   defp link(text, to), do: {:link, text, to}
   # A code span; one holding a backtick is fenced by two, as CommonMark reads it.
