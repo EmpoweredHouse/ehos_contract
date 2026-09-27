@@ -297,8 +297,9 @@ defmodule EhOsContract.Implementation do
   end
 
   @doc """
-  A command refused on an invariant: `{:error, %EhOsContract.Rejection{}}`. Takes an
-  atom literal among the invariants the command rejects on (I5, I7).
+  A command refused on an invariant, or on one of its constraints (plan EL2):
+  `{:error, %EhOsContract.Rejection{}}`. Takes an atom literal among what the command
+  rejects on (I5, I7).
   """
   defmacro reject(invariant) do
     impl = implementation!(__CALLER__, "reject/1")
@@ -310,15 +311,16 @@ defmodule EhOsContract.Implementation do
       not is_atom(invariant) ->
         refuse!(
           __CALLER__,
-          "I5: reject/1 takes the invariant as an atom literal, so it is known at compile " <>
+          "I5: reject/1 takes the invariant or constraint as an atom literal, so it is known " <>
+            "at compile " <>
             "time; got #{Macro.to_string(invariant)}"
         )
 
       invariant not in allowed ->
         refuse!(
           __CALLER__,
-          "I5: reject/1 gets #{inspect(invariant)}, which is not among the invariants #{where} " <>
-            "rejects on, #{inspect(allowed)}"
+          "I5: reject/1 gets #{inspect(invariant)}, which is not among the invariants and " <>
+            "constraints #{where} rejects on, #{inspect(allowed)}"
         )
 
       true ->

@@ -411,8 +411,8 @@ defmodule EhOsContract.DomainRulesTest do
                  "context (externals_wrong.ex:8)"
 
       assert message =~
-               "D5: relation :partnership names context :ksef, which this domain does not declare " <>
-                 "(externals_wrong.ex:9)"
+               "D5: relation :partnership is symmetric and names external :ksef: a symmetric " <>
+                 "relation joins contexts; an external may end a directed one (externals_wrong.ex:9)"
 
       assert message =~
                "D1: :settlement is a context and an external; a relation could not tell which it " <>

@@ -610,8 +610,19 @@ defmodule EhOsContract.Domain.Rules do
 
     unknown =
       for name <- Enum.uniq(ends), not MapSet.member?(known, name) do
-        what = if directed?, do: "context or external", else: "context"
-        {"#{where} names #{what} #{inspect(name)}, which this domain does not declare", relation}
+        cond do
+          not directed? and MapSet.member?(externals, name) ->
+            {"#{where} is symmetric and names external #{inspect(name)}: a symmetric relation " <>
+               "joins contexts; an external may end a directed one", relation}
+
+          directed? ->
+            {"#{where} names context or external #{inspect(name)}, which this domain does not " <>
+               "declare", relation}
+
+          true ->
+            {"#{where} names context #{inspect(name)}, which this domain does not declare",
+             relation}
+        end
       end
 
     outside =
@@ -620,7 +631,7 @@ defmodule EhOsContract.Domain.Rules do
         else: []
 
     itself =
-      if roles == [] and length(Enum.uniq(ends)) == 1,
+      if roles == [] and outside == [] and length(Enum.uniq(ends)) == 1,
         do: [{"#{where} relates context #{inspect(hd(ends))} to itself", relation}],
         else: []
 
