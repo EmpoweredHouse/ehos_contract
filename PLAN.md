@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 28 września (EL1 i EL2 w `main`, przed EL2b)
+## Handoff — stan na 28 września (EL2b zrobione na gałęzi, przed EL3)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -14,8 +14,8 @@ Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, s
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa pivot do v2** (DSL na Sparku, model
 domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E8, EA i EM są w `main`** (PR
 #1–#26), **EL1 i EL2 też** (PR #27–#28). Kolejność od 27 września: **EL** (ostrzeżenia, narzędzia, pola
-opisowe) → **EG** (cztery grafy) → **E9** (kontrakty sandboxa od nowa z materiału) → E10–E12. Z EL zostały EL2b i
-EL3.
+opisowe) → **EG** (cztery grafy) → **E9** (kontrakty sandboxa od nowa z materiału) → E10–E12. **EL2b jest
+zrobione** na `dsl-v2/el-values`, z przeglądem; z EL zostało EL3.
 Jedynym kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`.
 
 ### Stan repozytorium
@@ -27,22 +27,17 @@ Jedynym kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`.
   `issued_by:`, reguły 1–4 z przeglądu prozy). `origin/main` = `5344273` (merge #27; #28 wszedł wcześniej do gałęzi
   EL1). Opisy: „Przed EL — decyzje użytkownika”, „EL1 — co wyszło”, „Przed EL2 — decyzje użytkownika”, „EL2 — co
   wyszło”, „Po EL2 — proza, którą da się sprawdzać”.
-- **Ten handoff** jest na lokalnej gałęzi `dsl-v2/el-handoff` od `5344273`, niewypchnięty — jak pójdzie do `main`,
-  decyduje użytkownik.
+- **EL2b** jest na lokalnej gałęzi `dsl-v2/el-values`, niewypchniętej. Stoi na `dsl-v2/el-handoff` (`8ab88ba`,
+  poprzedni handoff, `main` + jeden commit), więc PR z niej niesie i ten handoff. Opis: „Przed EL2b — decyzja
+  użytkownika”, „EL2b — co wyszło”. Push i PR — na polecenie użytkownika.
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
 ### Co zostało — i czyje to jest
 
-- **EL2b — asystenta**, gałąź od `main`: `dsl-v2/el-values`. Kształty **rozstrzygnięte** przez
-  użytkownika („Przed EL2 — decyzje użytkownika”, akapit „Zmienione tego samego dnia”): inwariant wartości w domenie
-  `invariant :not_negative, "…", violated_by: [-1], satisfied_by: [0, 15_000]` (oba wymagane), implementacja
-  `use Rehmed.Domain, value: :money` z funkcją na inwariant (behaviour z `@callback`, L4 wymaga każdej), sprawdzanie
-  w dispatchu w komendzie (`{:error, {:invalid, [amount: {:invariant, :not_negative}]}}`, HTTP 422) i w zdarzeniach
-  (z decyzji — rzuca; z `record/3` — odmowa), także w listach i polach wartości złożonych; test z każdego
-  przykładu. Plus **przykłady przy regule serwisu domenowego** (`rule …, examples: [{[1, 3], 0}]`, pozycja 5 z „Po
-  EL2”) tym samym mechanizmem. Przed budową: zapytać użytkownika tylko o to, czego te decyzje nie mówią (np.
-  zapis przykładów reguły serwisu, jeśli trzeba wybrać), każde pytanie na przykładzie z materiału.
+- **EL2b — zrobione**, czeka na decyzję użytkownika o pushu i PR. Jedna rzecz do potwierdzenia przez
+  użytkownika, rozstrzygnięta przez asystenta domyślnie: stare zdarzenie z wartością, która łamie inwariant dodany
+  później, zatrzymuje reakcję budującą z niej komendę („EL2b — co wyszło”, przegląd).
 - **EL3 — asystenta**: strony dokumentacji (ESDM `documentation`: strona na element, Markdown, linki). Przed
   budową zapytać o kształt wyjścia (katalog, nazwy plików, czy razem z `view`).
 - **EG, E9, E10–E12 — asystenta, po pytaniach**; opisy w „Etapach” i „Po E8 — kolejność zmieniona”. Do E9
@@ -57,13 +52,13 @@ Jedynym kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`.
 
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach, zsh bez
    dzielenia słów, nazwy zdarzeń z warsztatu.
-2. `PLAN.md`, „Przed EL2 — decyzje użytkownika” — kształty walidatora wartości (EL2b), już rozstrzygnięte.
-3. `PLAN.md`, „Po EL2 — proza, którą da się sprawdzać” — pozycja 5 do EL2b, 6–9 do E9, co zostaje prozą.
+2. `PLAN.md`, „EL2b — co wyszło” — inwarianty wartości, przykłady reguł, przegląd.
+3. `PLAN.md`, „Po EL2 — proza, którą da się sprawdzać” — 6–9 do E9, co zostaje prozą.
 4. `PLAN.md`, „EL1 — co wyszło” i „EL2 — co wyszło” — mechanika i pułapki etapu.
-5. `docs/adr/contract-v2.md` §4.2 i §6 — notki z 27 września (subdomena, tłumaczenie, relacja z systemem,
-   `issued_by:`, ograniczenia, L5).
-6. Wzorzec do EL2b: serwis domenowy z EM2 (`lib/eh_os_contract/domain_service.ex`,
-   `lib/eh_os_contract/next/contract/generate.ex`) i ograniczenia komend (`test/dsl/contract_constraints_test.exs`).
+5. `docs/adr/contract-v2.md` §4.2, §4.6 i §6 — notki z 27 i 28 września (subdomena, tłumaczenie, relacja z
+   systemem, `issued_by:`, ograniczenia, L5, D9, S9).
+6. Do EL3: `lib/eh_os_contract/view.ex` i `glossary.ex` — dwa czytelniki modelu, które strony dokumentacji
+   poszerzą; przed budową pytanie o kształt wyjścia.
 7. Przed PR: `.claude/skills/pre-pr-review/SKILL.md`.
 
 ### Komendy
@@ -100,15 +95,16 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 28 września, na głowie `dsl-v2/el-values`** (po przeglądzie EL2b): brama z `sandbox/` → **EXIT=0**
+  — sandbox 54 testy, `check` 0 / 12 / 19; silnik 1162, `check` 0 / 65 / 21; web 32; auth 51.
 - **Lokalnie, 28 września, na `main` = `5344273` z tym handoffem** (`dsl-v2/el-handoff`): brama z `sandbox/` →
   **EXIT=0** — sandbox 54 testy, `check` 0 / 12 / 19; silnik 1106, `check` 0 / 63 / 20; web 32; auth 51.
 - **Lokalnie, 27 września, na `6dc3e30`** (głowa #28): brama z `sandbox/` → **EXIT=0** — sandbox 54 testy,
   `check` 0 / 12 / 19; silnik 1106, `check` 0 / 63 / 20; web 32; auth 51.
 - **Lokalnie, 27 września, na `d218e47`** (głowa #27): EXIT=0 — sandbox 54, `check` 0 / 12 / 19; silnik 1075,
   `check` 0 / 50 / 20; web 32; auth 51.
-- **CI** (odczytane przy pisaniu, 28 września): `main` przed EL — `081877d`, przebieg `36342030182`, job `check`
-  `success`; przebiegi PR-ów #27/#28 i `main` po merge'u (`5344273`, przebieg `36353661954`) — **w toku** przy
-  pisaniu, wyniku nie odczytano. Pierwsza rzecz w nowej sesji: `gh run view 36353661954 --json jobs`.
+- **CI**: `main` po merge'u #27/#28 (`5344273`, przebieg `36353661954`) — job `check` **`success`**, odczytane 28
+  września.
 
 ### Otwarte pytania
 
@@ -1123,6 +1119,61 @@ zadane na fiksturze `BoundaryRig.Enrolment` (`function :free_seats`, `rule :neve
   (`C.DomainServices.Seating.free_seats(1, 3) == 0`), więc sprawdza też typy argumentów i wyniku. *Odrzucone:*
   opcjonalne z ostrzeżeniem `check` (ostrzeżenia nie da się wyciszyć, a reguła bez dowodu i tak przejdzie
   kompilację); opcjonalne bez ostrzeżenia (reguła zostaje prozą i nikt się o tym nie dowie).
+
+### EL2b — co wyszło (28 września)
+
+Na `dsl-v2/el-values` (od `dsl-v2/el-handoff`), niewypchnięte. Commit decyzji (`7beabe8`), dwa budowy —
+inwarianty wartości (`5c4f8eb`) i przykłady reguł (`3e9b344`) — i siedem z przeglądu. Silnik 1106 → 1162
+testów. Delta `check` silnika 0 / 63 / 20 → **0 / 65 / 21**, wszystko na nowej wymyślonej fiksturze `ValueRig` i
+tych rodzajów, które mają inne fikstury: `process-without-accountable` (`:till`), `reaction-without-scenario`
+(query `:payments_above`), notka `free-text-not-personal` (`note` płatności). Sandbox bez zmian (0 / 12 / 19);
+`VisitSettlement` ma dalej `2ae1d0074cbc` i wiring `90e7d665ab04`, sprawdzone w `MIX_ENV=dev` i w tabeli
+wdrożeń bazy dev.
+
+Mechanika, rozstrzygnięta przez asystenta:
+- **Inwariant wartości** siedzi w bloku `value` (nowa encja `invariant` DSL-a domeny); **D9** — nazwa jak nazwa
+  funkcji (snake_case, raz w wartości, bez kolizji z Elixirem z listy N2, nie `:required`/`:type`/`:generated`,
+  bo te słowa odmowa stawia tam, gdzie nazwę inwariantu), co najmniej po jednym przykładzie w każdej liście,
+  przykłady jako dane proste typu wartości (jak dane scenariusza), żaden `nil`, żaden w obu listach ani dwa razy.
+- **Behaviour** `D.Values.<Nazwa>` tylko dla wartości z inwariantami; `use D, value: :name` przez
+  `EhOsContract.Implementation` (I1, I2, I7 jak dla kontraktu), callbacki z `Callbacks.of/3`. Wartość bez
+  inwariantów nie ma czego implementować (I1 to mówi).
+- **Gdzie sprawdzane:** wszędzie, gdzie dispatch sprawdza typ — komenda, `record/3`, parametry query (odmowa),
+  zdarzenie z decyzji, argumenty i wynik serwisu domenowego (rzuca). Najpierw to, z czego wartość się składa
+  (elementy listy, pola, wartość, na którą wskazuje alias), potem jej własne; pierwszy złamany to problem pola.
+  Query i serwis domenowy są poza literą decyzji („w komendzie i w zdarzeniach”), ale wartość łamiąca inwariant nie
+  jest wartością tego typu, więc jedna reguła dla wszystkich miejsc, w których typ jest sprawdzany. **Odczyt
+  logu nigdy nie sprawdza.** Funkcja odpowiadająca czymś innym niż boolean rzuca, bez pokazania odpowiedzi.
+- **Digest:** wartość bez inwariantów liczy się jak przed EL2b, więc wersja żadnej domeny się nie ruszyła.
+- **Testy z przykładów:** `use EhOsContract.ScenarioCase, domain: D` — `violated_by` → funkcja inwariantu mówi
+  `false`; `satisfied_by` → każdy inwariant wartości mówi `true`, a to, z czego się składa, przechodzi sprawdzenie
+  dispatchu. Przykłady reguł wchodzą same do `use EhOsContract.ScenarioCase, contract: C`: wywołanie przez
+  `C.DomainServices.<Nazwa>`, wynik porównany jako wartość (2.50 to 2.5).
+- **Przykład reguły** zostaje w modelu jako `{[argumenty], wynik}`, tak jak zapisany; **S9** sprawdza kształt,
+  arność, typy wbudowane i `nil` tylko przy `optional`; **X9** — wartości typów domeny.
+- **`check`:** `value-without-implementation` (ostrzeżenie), tylko dla domeny, której jakiś kontrakt ma kod.
+
+**Przegląd EL2b** (dwa równolegle na `8ab88ba..3e9b344`):
+- **Poprawione, z testem i próbą odwrotną:** implementacja serwisu domenowego szukana w indeksie przy każdym
+  wywołaniu (`43b430b`) i implementacja wartości przy każdej sprawdzanej wartości (`fb2abb1`) — skan
+  załadowanych aplikacji, ~30 µs, lista 100 tys. kwot w jednym żądaniu; przykład podany dwa razy w jednej liście
+  dawał zduplikowaną nazwę testu (`4727123`); przykład „zachowuje” jednego inwariantu, który inny inwariant
+  wartości albo wartość, z której się składa, podaje jako „łamie” (`eaffa10`), a test `satisfied_by` nie pytał
+  części wartości (`67ef206`); implementacje wartości poza `wiring_version`, więc zmiana tego, co dispatch
+  przyjmuje, nie była widoczna jako wdrożenie (`419bf9a`); N2 i D9 z jednej funkcji, co domknęło lukę:
+  zdarzenie `:module_info` przechodziło N2 (`c418908`).
+- **Pominięte, z powodem:** implementacja wartości szukana wśród skonfigurowanych aplikacji i aplikacji domeny,
+  jak implementacje kontraktu wśród aplikacji kontraktu (v2 §10.5; zapisane w ADR); `implementations:` w
+  `ScenarioCase` nie sięga do wartości z inwariantami (tylko fikstury kompilowane ze stringów, żaden host);
+  wyjątek z funkcji inwariantu albo brak implementacji rzuca przed transakcją, więc bez wiersza `failed` — jak
+  wszystko, co dispatch robi przed transakcją, np. `Authorizer`; wyjątek z funkcji inwariantu niesie argument w
+  stacktrace — tak samo jak decyzja i efekt, bez nowego rodzaju narażenia.
+- **Rozstrzygnięte przez asystenta, do potwierdzenia przez użytkownika:** inwariant dodany później odmawia
+  komendy, którą reakcja buduje ze starego zdarzenia, a odmowa komendy reakcji cofa komendę, która ją wywołała,
+  albo zatrzymuje uporządkowanego konsumenta na tym zdarzeniu. Zostaje tak, zapisane w ADR (§6, notka z 28
+  września): dodanie inwariantu to zmiana modelu jak zawężenie typu. *Odrzucone:* komendy reakcji bez sprawdzania
+  inwariantów (zła wartość wraca do logu tą drogą); ostrzeżenie `check` o wartościach w logu (potrzebuje bazy, jak
+  reguła o zmianie schematu odłożona do E12).
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 

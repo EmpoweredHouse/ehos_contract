@@ -713,6 +713,12 @@ where it helps; every violation is reported as a diagnostic before the single ra
   > is asked first — a list's items, a value's fields, the value an alias stands for — then its own. **The log
   > read back is never held to them**, so an invariant added later leaves history readable. `check` warns,
   > `value-without-implementation`, of a value nobody checks in a domain whose contracts have code.
+  > **What history can still meet:** a policy or process manager that builds a command from an old event's
+  > value is refused on an invariant added since, and the refusal of a reaction's command rolls back the
+  > command that set it off, or stops an ordered consumer at that event. Adding an invariant is therefore a
+  > change to the model, like narrowing a type: the values already in the log need a look first. A value's
+  > implementation is found as a declaration's is (§10.5): among the configured applications and the
+  > domain's own; its binding joins the wiring version of every contract of the domain (§13).
 
 **L3 — a Mix compiler, `compile.eh_os_contract`** (hard diagnostics on every compile, because references
 between DSL modules record no compile dependency, §8):
