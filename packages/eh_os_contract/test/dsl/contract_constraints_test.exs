@@ -198,7 +198,11 @@ defmodule EhOsContract.Next.ContractConstraintsTest do
           end
         """)
 
-      assert message =~ "A7: command :record_payment, constraint :positive is declared twice"
+      assert [_once] =
+               Regex.scan(
+                 ~r/N1: command :record_payment has two constraints named :positive/,
+                 message
+               )
 
       assert message =~
                "A7: command :record_payment, constraint :paid_once has the name of an invariant"
@@ -235,6 +239,38 @@ defmodule EhOsContract.Next.ContractConstraintsTest do
       assert message =~
                "S8: constraint :positive of command :record_payment has no scenario in which the " <>
                  "command is rejected on it (constraint_uncovered.ex:9)"
+    end
+
+    test "N1: a constraint's name is snake_case, and a query's are named once" do
+      message =
+        refuse_contract("ConstraintNames", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+
+            command :record_payment, "Płatność", by: :reception, emits: :paid, rejects: :PositiveAmount do
+              constraint :PositiveAmount, "Kwota jest dodatnia"
+            end
+
+            event :paid, "Zapłacono"
+          end
+
+          read_model :payments, "Płatności", projects: :paid do
+            field :visit_id, :id
+          end
+
+          query :payments_of, "Płatności", reads: :payments, by: :reception do
+            param :visit_id, :id
+            constraint :own_clinic, "Tylko własna przychodnia"
+            constraint :own_clinic, "Tylko własna przychodnia, drugi raz"
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      assert message =~ "N1: constraint :PositiveAmount is not snake_case"
+      assert message =~ "N1: query :payments_of has two constraints named :own_clinic"
     end
   end
 end

@@ -17,8 +17,8 @@ defmodule EhOsContract.Next.Contract.Rules.Units do
     and a boundary finds what it consults by its tags. For an event consumed from a
     sibling contract the same is X6's, where the sibling is known.
   - **A5.** A unit, or a process manager, declares its state at most once.
-  - **A7** (plan EL2). A command's constraints are named once, never as an invariant
-    of its unit, and each is in the command's `rejects:`.
+  - **A7** (plan EL2). A command's constraints are never named as an invariant of its
+    unit, and each is in the command's `rejects:`; N1 names each once.
   - **A6** (plan EM3). An aggregate whose identity is `generated:` has one identity
     field, and at least one command that `creates:` it, since nothing else could make
     a new one; `creates:` belongs only to such an aggregate's commands.
@@ -81,8 +81,8 @@ defmodule EhOsContract.Next.Contract.Rules.Units do
       rejects ++ constraints(unit, invariants) ++ consults(unit, d) ++ generated(unit, where)
   end
 
-  # A7 (plan EL2): a command's constraints are named once, never as an invariant of its
-  # unit, since `rejects:` and `reject/1` name both alike, and each is in `rejects:`:
+  # A7 (plan EL2): a command's constraints are never named as an invariant of its unit,
+  # since `rejects:` and `reject/1` name both alike, and each is in `rejects:`:
   # a constraint the command cannot refuse on is one nothing checks.
   defp constraints(unit, invariants) do
     for command <- unit.commands,
@@ -93,11 +93,9 @@ defmodule EhOsContract.Next.Contract.Rules.Units do
     end
   end
 
+  # A name declared twice is N1's, reported once.
   defp constraint_problems(command, constraint, invariants) do
-    twice = Enum.count(command.constraints, &(&1.name == constraint.name)) > 1
-
     Enum.concat([
-      if(twice, do: ["is declared twice"], else: []),
       if(MapSet.member?(invariants, constraint.name),
         do: ["has the name of an invariant of the unit; give it its own"],
         else: []
