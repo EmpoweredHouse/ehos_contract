@@ -13,7 +13,8 @@ defmodule EhOsContract.Domain.Rules do
   contract's names, and never `:required`, `:type` or `:generated`, the words a
   refusal already puts where an invariant's name goes — and shows itself on
   examples: `violated_by:` and `satisfied_by:` each give at least one, every one is
-  plain data of the value's type, and none is in both.
+  plain data of the value's type, none is in both and none is in one twice, since
+  each names its test.
 
   **D7** (plan EL2): a context's `subdomain:` names a subdomain the domain declares,
   `subdomain :visits, "Wizyty", type: :core`; the kind is the subdomain's.
@@ -733,7 +734,17 @@ defmodule EhOsContract.Domain.Rules do
         {"#{where} gives #{inspect(example)} in both violated_by: and satisfied_by:", invariant}
       end
 
-    name ++ examples ++ both
+    # Each example names its test, so one given twice would name two alike.
+    twice =
+      for {key, list} <- [
+            violated_by: invariant.violated_by,
+            satisfied_by: invariant.satisfied_by
+          ],
+          example <- Enum.uniq(duplicates(list, & &1)) do
+        {"#{where} gives #{inspect(example)} twice in #{key}:", invariant}
+      end
+
+    name ++ examples ++ both ++ twice
   end
 
   defp example_violations(where, key, [], _value, invariant, _values),

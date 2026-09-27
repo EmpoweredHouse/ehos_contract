@@ -175,6 +175,22 @@ defmodule EhOsContract.DomainInvariantsTest do
              """) =~ "D9: invariant :not_negative of value :money gives 0 in both"
     end
 
+    test "no example is given twice, since each names its test" do
+      message =
+        refuse("Twice", """
+          value :money, :integer do
+            invariant :not_negative, "Kwota nie jest ujemna",
+              violated_by: [-1, -1],
+              satisfied_by: [0, 5, 0]
+          end
+        """)
+
+      assert message =~
+               "D9: invariant :not_negative of value :money gives -1 twice in violated_by:"
+
+      assert message =~ "gives 0 twice in satisfied_by:"
+    end
+
     test "an invariant is named once in its value, as a function can be" do
       message =
         refuse("Names", """
