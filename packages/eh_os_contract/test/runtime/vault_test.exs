@@ -10,6 +10,7 @@ defmodule EhOsContract.VaultTest do
   use EhOsContract.DataCase, async: false
 
   import ExUnit.CaptureIO
+  import ExUnit.CaptureLog
 
   alias EhOsContract.{Actor, Consumer, Event, Model, Personal, Vault}
   alias EhOsContract.Vault.Local
@@ -246,6 +247,26 @@ defmodule EhOsContract.VaultTest do
 
       assert %{outcome: "failed", failed_in: "evolve"} =
                Repo.one(from(c in EhOsContract.CommandRecord, where: c.type == "rename"))
+    end
+
+    test "no wrapped key reaches a log, when a key is made or rewrapped" do
+      level = Logger.level()
+      Logger.configure(level: :debug)
+      on_exit(fn -> Logger.configure(level: level) end)
+
+      keys([{"kek-old", @kek}])
+
+      log =
+        capture_log(fn ->
+          join!("membership-anna", "member-anna")
+          keys([{"kek-new", @new_kek}, {"kek-old", @kek}])
+          assert Personal.rewrap!(Repo) == 1
+        end)
+
+      # Control: the queries around them are logged.
+      assert log =~ "eh_os_contract_events"
+      refute log =~ ~s(INSERT INTO "eh_os_contract_subject_keys")
+      refute log =~ ~s(UPDATE "eh_os_contract_subject_keys")
     end
 
     test "the task reports how many keys it rewrapped" do

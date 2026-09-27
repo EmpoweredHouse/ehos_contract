@@ -108,8 +108,12 @@ defmodule EhOsContract.Personal do
         }
       end
 
+    # Not logged: Ecto prints a query's parameters at `:debug`, and a wrapped key in a
+    # log file, with the master key, reads the subject after its erasure.
     {inserted, _} =
-      if rows == [], do: {0, nil}, else: repo.insert_all(@keys, rows, on_conflict: :nothing)
+      if rows == [],
+        do: {0, nil},
+        else: repo.insert_all(@keys, rows, on_conflict: :nothing, log: false)
 
     # Another dispatch created one between `prepare/2` and the lock; its key is the
     # one its events are sealed with, so read them all again. Rare, and the only
@@ -336,7 +340,8 @@ defmodule EhOsContract.Personal do
             from(k in @keys,
               where: k.subject_type == ^type and k.subject_id == ^id and k.key_version == ^version
             ),
-            set: [kek_id: new_kek, wrapped_key: new_wrapped]
+            [set: [kek_id: new_kek, wrapped_key: new_wrapped]],
+            log: false
           )
         end
 
