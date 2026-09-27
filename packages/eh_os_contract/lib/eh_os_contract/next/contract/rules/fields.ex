@@ -46,8 +46,12 @@ defmodule EhOsContract.Next.Contract.Rules.Fields do
 
     returns =
       for {where, function} <- returns(declarations),
-          problem <- type_problems(function.returns) do
-        {"F2: #{where} returns #{problem}", function}
+          problem <-
+            if(function.returns,
+              do: type_problems(function.returns.type),
+              else: ["nothing: say what it returns with `returns type`"]
+            ) do
+        {"F2: #{where} returns #{problem}", function.returns || function}
       end
 
     structs ++ returns ++ outside_the_log(declarations)

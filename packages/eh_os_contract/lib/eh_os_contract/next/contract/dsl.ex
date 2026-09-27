@@ -127,6 +127,11 @@ defmodule EhOsContract.Next.Contract.Dsl do
     defstruct [:name, :label, :source, __spark_metadata__: nil]
   end
 
+  defmodule Returns do
+    @moduledoc false
+    defstruct [:type, optional: false, __spark_metadata__: nil]
+  end
+
   defmodule ServiceFunction do
     @moduledoc false
     defstruct [:name, :label, :returns, arguments: [], rules: [], __spark_metadata__: nil]
@@ -564,16 +569,27 @@ defmodule EhOsContract.Next.Contract.Dsl do
     ]
   }
 
+  @returns %Spark.Dsl.Entity{
+    name: :returns,
+    describe: "What a domain service's function returns.",
+    target: Returns,
+    args: [:type],
+    schema: [
+      type: [type: :any, required: true, doc: "A built-in type or a value of the domain."],
+      optional: [type: :boolean, default: false, doc: "Whether it may return nil."]
+    ]
+  }
+
   @function %Spark.Dsl.Entity{
     name: :function,
     describe: "A pure function of a domain service: arguments in, a result out, nothing written.",
     target: ServiceFunction,
     args: [:name, :label],
-    entities: [arguments: [@argument], rules: [@rule]],
+    entities: [arguments: [@argument], rules: [@rule], returns: [@returns]],
+    singleton_entity_keys: [:returns],
     schema: [
       name: [type: :atom, required: true, doc: "The function's name."],
-      label: [type: :string, required: true, doc: "What it computes, as the business says it."],
-      returns: [type: :any, required: true, doc: "The type of its result."]
+      label: [type: :string, required: true, doc: "What it computes, as the business says it."]
     ]
   }
 

@@ -87,6 +87,9 @@ What changes otherwise is what a host has to do.
   and checks its result, raising on a mismatch without the value in the message
   (`EhOsContract.DomainService`). `mix eh_os_contract.check` counts it among what a contract implements. A
   contract declaring none keeps its version.
+- **EM3: a domain service's result may be declared empty**, `returns {:id, :clinic}, optional: true`; without
+  `optional:` a `nil` result is still refused. `returns` is its own declaration now, and a function without one
+  does not compile (F2).
 - **EM2: `entity` in a domain** (ESDM's entity): reference data with an identity that no event of the log
   changes — `entity :period, "Okres", context: :client_month, identified_by: :period_id do field … end`. A field
   of a contract or of a domain value names one as `{:id, :period}`; it is an `:id` in the model, in the log and

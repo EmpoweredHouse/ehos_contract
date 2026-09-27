@@ -131,7 +131,8 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
     values = Enum.map(domain.values, & &1.name)
 
     for {where, function} <- Rules.Fields.returns(d),
-        name <- value_names(function.returns),
+        function.returns != nil,
+        name <- value_names(function.returns.type),
         name not in values do
       {"X3: #{where} returns #{inspect(name)}, which is neither a built-in type nor a value of " <>
          "#{inspect(domain.module)}; #{suggest(name, values)}", Links.at(function)}
@@ -151,7 +152,8 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
 
     returns =
       for {where, function} <- Rules.Fields.returns(d),
-          name <- Domain.Rules.references(function.returns),
+          function.returns != nil,
+          name <- Domain.Rules.references(function.returns.type),
           name not in entities do
         {"X3: #{where} returns {:id, #{inspect(name)}}, which names no entity of " <>
            "#{inspect(domain.module)}; #{suggest(name, entities)}", Links.at(function)}

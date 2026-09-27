@@ -131,6 +131,7 @@ spark_locals_without_parens = [
   relation: 1,
   relation: 2,
   returns: 1,
+  returns: 2,
   rule: 2,
   rule: 3,
   scenario: 1,

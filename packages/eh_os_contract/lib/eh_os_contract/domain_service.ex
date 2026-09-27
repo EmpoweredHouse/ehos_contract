@@ -49,7 +49,7 @@ defmodule EhOsContract.DomainService do
     end
 
     result = apply(implementation, function, args)
-    returns = [%{name: :result, type: f.returns, optional: false}]
+    returns = [%{name: :result, type: f.returns.type, optional: f.returns.optional}]
 
     case Codec.problems(returns, %{result: result}, values) do
       [] ->
@@ -57,7 +57,7 @@ defmodule EhOsContract.DomainService do
 
       [{:result, problem}] ->
         raise ArgumentError,
-              "#{where} returned a result that does not fit #{inspect(f.returns)} " <>
+              "#{where} returned a result that does not fit #{inspect(f.returns.type)} " <>
                 "(#{problem}); the declaration says what it returns"
     end
   end

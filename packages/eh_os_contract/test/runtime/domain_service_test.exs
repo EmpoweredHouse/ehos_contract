@@ -14,6 +14,15 @@ defmodule EhOsContract.DomainServiceTest do
     assert Seating.free_seats(1, 4) == 0
   end
 
+  test "a result declared optional may be nil, and one that is not may not" do
+    assert Seating.next_seat(2, 1) == 2
+    assert Seating.next_seat(2, 2) == nil
+
+    Process.put(:boundary_rig_seating_misbehaves_with_nil, true)
+    error = assert_raise ArgumentError, fn -> Seating.free_seats(3, 1) end
+    assert error.message =~ "returned a result that does not fit :integer (required)"
+  end
+
   test "an argument that does not fit its type is refused before the implementation runs" do
     error = assert_raise ArgumentError, fn -> Seating.free_seats("three-seats", 1) end
 
