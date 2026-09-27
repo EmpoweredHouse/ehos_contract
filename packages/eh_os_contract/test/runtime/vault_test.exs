@@ -227,6 +227,27 @@ defmodule EhOsContract.VaultTest do
       end
     end
 
+    test "a stream whose key does not unwrap fails the command in evolve" do
+      keys([{"kek-old", @kek}])
+      join!("membership-anna", "member-anna")
+      keys([{"kek-new", @new_kek}])
+
+      assert_raise ArgumentError, ~r/cannot be unwrapped/, fn ->
+        EhOsContract.dispatch(
+          Members,
+          %ShreddingRig.Members.Commands.Rename{
+            membership_id: "membership-anna",
+            member_id: "member-anna",
+            name: "Anna Kowalska"
+          },
+          actor: Actor.credential("u-clerk", ["shredding_rig.rename"])
+        )
+      end
+
+      assert %{outcome: "failed", failed_in: "evolve"} =
+               Repo.one(from(c in EhOsContract.CommandRecord, where: c.type == "rename"))
+    end
+
     test "the task reports how many keys it rewrapped" do
       keys([{"kek-old", @kek}])
       join!("membership-anna", "member-anna")

@@ -676,7 +676,10 @@ defmodule EhOsContract.Dispatcher do
       )
 
     if function_exported?(impl, :evolve, 2) do
-      Enum.reduce(decode_all!(job, recorded), state, fn event, state ->
+      # Reading the stream back — its keys too — is part of evolving, for the failed row.
+      events = stage("evolve", fn -> decode_all!(job, recorded) end)
+
+      Enum.reduce(events, state, fn event, state ->
         stage("evolve", fn -> impl.evolve(state, event) end)
       end)
     else
