@@ -175,6 +175,36 @@ defmodule EhOsContract.DispatchCommandTest do
     end
   end
 
+  describe "reading the stream back" do
+    test "an event is decoded by the contract that declares its type, whatever name the row stored" do
+      # A row appended before the contract's module was renamed keeps the old name in
+      # `contract`. The type is what the contract declares, so the stream still folds.
+      {:ok, _} =
+        Repo.transaction(fn ->
+          EhOsContract.Store.append(
+            Repo,
+            [
+              %{
+                type: "ledger.deposited",
+                contract: "DispatchRig.LedgerBeforeTheRename",
+                contract_version: "old",
+                correlation_id: Ecto.UUID.generate(),
+                actor: "system:old",
+                occurred_at: EhOsContract.Clock.now(),
+                payload: %{"account_id" => "a-renamed", "amount" => 100}
+              }
+            ],
+            {:stream, "account:a-renamed", 0}
+          )
+        end)
+
+      assert {:ok, %Receipt{events: [%Withdrawn{amount: 100}]}} =
+               EhOsContract.dispatch(Ledger, %Withdraw{account_id: "a-renamed", amount: 100},
+                 actor: clerk()
+               )
+    end
+  end
+
   describe "a conflict" do
     test "is retried when dispatch owns the transaction" do
       Process.put(:dispatch_rig_race, true)

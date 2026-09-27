@@ -729,20 +729,37 @@ defmodule EhOsContract.Dispatcher do
   end
 
   # A boundary reads events of the sibling contracts it consults too, and each is
-  # decoded by the contract that declares it; the log's order is kept.
+  # decoded by the contract that declares its type — found from this contract's model,
+  # not from the name the row stored, which a renamed module would leave behind. The
+  # log's order is kept.
   defp decode_all!(job, rows) do
+    own = MapSet.new(job.model.events, & &1.type)
+
     rows
-    |> Enum.group_by(& &1.contract)
-    |> Enum.flat_map(fn {contract, rows} ->
-      if contract == inspect(job.model.module) do
-        Enum.zip(rows, Consumer.decode_all!(job.model, job.values, rows))
-      else
-        sibling = Model.fetch(Module.safe_concat([contract]))
-        Enum.zip(rows, Consumer.decode_all!(sibling, Codec.values(sibling.domain), rows))
-      end
+    |> Enum.group_by(fn row ->
+      if MapSet.member?(own, row.type), do: job.model, else: declaring!(job.model, row)
+    end)
+    |> Enum.flat_map(fn {model, rows} ->
+      values = if model == job.model, do: job.values, else: Codec.values(model.domain)
+      Enum.zip(rows, Consumer.decode_all!(model, values, rows))
     end)
     |> Enum.sort_by(fn {row, _event} -> row.position end)
     |> Enum.map(&elem(&1, 1))
+  end
+
+  # The sibling contract this contract consumes the row's type from.
+  defp declaring!(model, row) do
+    Enum.find_value(model.consumes, fn
+      %{kind: :contract, from: from} ->
+        sibling = Model.fetch(from)
+        if Enum.any?(sibling.events, &(&1.type == row.type)), do: sibling
+
+      _published ->
+        nil
+    end) ||
+      raise ArgumentError,
+            "#{inspect(model.module)} neither declares nor consumes an event of type " <>
+              "#{inspect(row.type)}, which it read at position #{row.position}"
   end
 
   # --- holding the decision to its declaration ----------------------------------------------
