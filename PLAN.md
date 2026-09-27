@@ -140,7 +140,7 @@ gołe `git stash` (stos jest wspólny dla worktree).
   przy pomiarze.
 - ~~**Po E5b:** `mix eh_os_contract.check` nie powtarza L3 dla projektów bez zarejestrowanego kompilatora — E10.~~
   Zrobione w EL1.
-- **Przed EL2 — kształty DSL-a pól opisowych:** `constraints` na komendzie i query, inwarianty wartości,
+- ~~**Przed EL2 — kształty DSL-a pól opisowych:** `constraints` na komendzie i query, inwarianty wartości,
   tłumaczenie z definicją i `avoid` (w ESDM `avoid` ma też powód), relacja z systemem zewnętrznym jako końcem.
   **Plus (dopisane przez użytkownika 27 września, po EM): identyfikator nadawany przez system zewnętrzny** — numer
   zgłoszenia z P1, numer faktury z KSeF, numer rejestracji wizyty u płatnika (C-47 → E-85). Dziś działa jako atrybut
@@ -151,7 +151,8 @@ gołe `git stash` (stos jest wspólny dla worktree).
   asystenta: (b) — encja i wystawca to dwie różne rzeczy i pole bywa naraz jednym i drugim
   (`field :invoice_number, {:id, :invoice}, issued_by: :ksef`), czego (a) nie wyrazi; `orphan-external-system`
   policzy `issued_by:` jako użycie. Przy (a) lub (b): czytelnik w EL (strona elementu, `view`), krawędź w EG,
-  ewentualnie L5 „system wystawia identyfikator, a żaden efekt go nie woła”.
+  ewentualnie L5 „system wystawia identyfikator, a żaden efekt go nie woła”.~~ Rozstrzygnięte 27 września —
+  „Przed EL2 — decyzje użytkownika”.
 - **D1–D14** (v2 §16) przyjęte; pytania w §19: `scope` dla komend, transport v1 między kontenerami, kontrakt
   upcasterów.
 
@@ -924,6 +925,32 @@ Mechanika, rozstrzygnięta przez asystenta:
 **Do E9:** `event-name-with-aggregate-prefix` zapali się na nazwach z warsztatu, jeśli jednostka nazywa się jak
 początek zdarzenia (`accounting_month_opened` w jednostce `accounting_month`). Nazwy zdarzeń zostają z warsztatu
 (`CLAUDE.md`), więc albo jednostka dostaje inną nazwę z materiału, albo ostrzeżenie zostaje i jest prawdziwe.
+
+### Przed EL2 — decyzje użytkownika (27 września)
+
+Pytania po przeglądzie EL1, każde z przykładem z materiału; wszystkie pola są opisowe — nic ich nie wykonuje, czytają
+je `glossary`, `view`, strony dokumentacji (EL3) i grafy (EG).
+
+- **`constraints` i inwarianty wartości jako nazwane deklaracje:** `command :record_payment, … do constraint
+  :positive_amount, "Kwota płatności jest dodatnia" end` (tak samo w query) i `value :money, :integer, unit: :grosze
+  do invariant :not_negative, "Kwota nie jest ujemna" end` — kształt `invariant` agregatu, nazwa daje kotwicę na
+  stronie. Proza po polsku, więc lista miejsc w `CLAUDE.md` rośnie. *Odrzucone:* lista zdań w opcji,
+  `constraints: ["…"]` (bez nazw — nie ma do czego linkować ani czego przypiąć); inwarianty wykonywane przez MFA w
+  Codecu (nowa mechanika runtime, nie pole opisowe).
+- **Tłumaczenie jak w ESDM, definicja wymagana:** `translation :en, "Completed", definition: "…" do avoid "Done",
+  reason: "…" end`; `avoid` przy terminie też dostaje opcjonalne `reason:`. *Odrzucone:* definicja opcjonalna
+  (słownik w drugim języku bywa pusty); sama definicja bez `avoid` i `reason:` (luka względem ESDM w połowie).
+- **Relacja z systemem zewnętrznym tymi samymi kluczami:** `relation :conformist, upstream: :ksef, downstream:
+  :settlement`, gdzie `:ksef` to `external` domeny; tylko relacje kierunkowe, jak w ESDM; nowa reguła D pilnuje, że
+  żadna nazwa nie jest naraz kontekstem i systemem; `orphan-external-system` liczy relację jako użycie.
+  *Odrzucone:* jawny rodzaj końca, `upstream: {:external, :ksef}` (drugi zapis końca obok nazwy kontekstu); relacje
+  tylko między kontekstami (mapa w EG nie pokaże, kto się komu podporządkowuje).
+- **Identyfikator nadawany przez system zewnętrzny: `issued_by:`** (pytanie dopisane przez użytkownika):
+  `field :p1_report_id, :id, issued_by: :medical_event_registry`; składa się z encją (`field :invoice_number, {:id,
+  :invoice}, issued_by: :ksef`). Czytelnik: `view` i strona elementu w EL, krawędź w EG; `orphan-external-system`
+  liczy wystawcę jako użycie. *Odrzucone:* (a) `{:id, :system}`, zapis encji z EM2 (jeden zapis dla dwóch rzeczy,
+  pole naraz encją i numerem z systemu niewyrażalne); (c) proza w `source:` (ani `check`, ani grafy tego nie
+  zobaczą).
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
