@@ -162,7 +162,15 @@ defmodule EhOsContract.Pages do
   defp common_length(_as, _bs), do: 0
 
   defp link(text, to), do: {:link, text, to}
-  defp code(name), do: "`#{name}`"
+  # A code span; one holding a backtick is fenced by two, as CommonMark reads it.
+  defp code(name) do
+    text = to_string(name)
+    if String.contains?(text, "`"), do: "`` #{text} ``", else: "`#{text}`"
+  end
+
+  # The client's text in a table cell: a `|` would end the cell, a line break the row.
+  defp cell(nil), do: ""
+  defp cell(text), do: text |> String.replace("|", "\\|") |> String.replace(~r/\s*\n\s*/, " ")
 
   # An event as the contract names it: its own page, a sibling's, or plain text for
   # one received from another application.
@@ -202,7 +210,7 @@ defmodule EhOsContract.Pages do
           " | ",
           type(site, f),
           " | ",
-          Map.get(f, :label) || "",
+          cell(Map.get(f, :label)),
           " | ",
           notes(f),
           " |"

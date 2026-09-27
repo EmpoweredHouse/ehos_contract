@@ -269,6 +269,30 @@ defmodule EhOsContract.PagesTest do
              "| `clinics` | list of `:id` of [`clinic`](../../../entities/clinic.md) |"
   end
 
+  # The EL3 review: the client's text went into tables and code spans as it was.
+  test "a label with a bar or a line break stays in its cell, and a backtick in its span" do
+    till = EhOsContract.Model.fetch(ValueRig.Till)
+    [pay_in | commands] = till.commands
+    [till_id | fields] = pay_in.fields
+
+    till = %{
+      till
+      | commands: [
+          %{pay_in | fields: [%{till_id | label: "Kasa | punkt\nsprzedaży"} | fields]} | commands
+        ]
+    }
+
+    page = Pages.render(ValueRig.Domain, [till])["till/till/commands/pay_in.md"]
+    assert page =~ "| `till_id` | `:id` | Kasa \\| punkt sprzedaży |  |"
+
+    domain = EhOsContract.Model.fetch(ValueRig.Domain)
+    [amount | rest] = domain.values
+    [positive] = amount.invariants
+    amount = %{amount | invariants: [%{positive | violated_by: ["a`b"]}]}
+    page = Pages.render(%{domain | values: [amount | rest]}, [])["values/amount.md"]
+    assert page =~ ~s|Broken by: `` "a`b" ``|
+  end
+
   test "two contracts of one context that would share a directory are refused" do
     till = EhOsContract.Model.fetch(ValueRig.Till)
     twin = %{till | module: Module.concat([Other, Till])}
