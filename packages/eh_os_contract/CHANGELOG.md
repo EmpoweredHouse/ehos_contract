@@ -109,6 +109,9 @@ What changes otherwise is what a host has to do.
   a section per context, `--language` for a translation, `--context`, `--domain`, `--output`
   (`EhOsContract.Glossary.render/2`). `EhOsContract.Registry.domains/0` lists the domains of the configured
   applications.
+- **EL2: `mix eh_os_contract.view`** (ESDM's `view`): the domain as a tree — contexts, their contracts, each
+  contract's units with commands and events, consumers, read models, queries and domain services — with a path
+  to keep one branch and `--details` for what each row declares (`EhOsContract.View.render/3`).
 - **EL1: `EhOsContract.Domain.vocabulary/0`**, the domain DSL's words by entity path, as
   `EhOsContract.Next.Contract.vocabulary/0` has them for the contract; a test pins both.
 - **EM2: `domain_service` in a contract** (ESDM's domain service): pure functions no unit owns, each with

@@ -871,8 +871,8 @@ reguły z v1 i `emits-never-produced` (`619cd04`), powtórzenie L3 (`6078d92`), 
 - **Sandbox, siedem nowych ostrzeżeń, wszystkie o jedynym kontrakcie v2 i jego domenie:** `orphan-actor`
   (`:manager` w `Rehmed.Domain`), `bounded-context-without-content` (`:scheduling` — `ClinicalVisit` jest v1 i nie
   zna domeny), `orphan-context-mapping` (relacja `scheduling → settlement`, z tego samego powodu), cztery
-  `event-without-consumer` na `VisitSettlement` (rozliczenia nikt jeszcze nie czyta; trzy zdarzenia zamykające są
-  `terminal`). Zostają do E9, gdzie kontrakty powstają od nowa.
+  `event-without-consumer` na `VisitSettlement` (rozliczenia nikt jeszcze nie czyta; dwa zdarzenia zamykające są
+  `terminal` — pierwsza wersja tego zdania i opis `09a5c01` mówiły „trzy”, poprawione 27 września). Zostają do E9, gdzie kontrakty powstają od nowa.
 - **Silnik, 31 ostrzeżeń i 3 notki na wymyślonych fiksturach**, pisanych pod mechanizm, nie pod kompletność:
   14 `event-name-with-aggregate-prefix`, 10 `event-without-consumer`, 3 `read-model-without-query`, po jednym
   `consults-without-match` (celowe w `BoundaryRig`), `process-manager-without-event-reactions`,
