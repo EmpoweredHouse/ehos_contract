@@ -1,6 +1,6 @@
 defmodule EhOsContract.CheckRelationsTest do
   @moduledoc """
-  Plan EL2, "Po EL2" rule 1: **a reference between two contexts that runs against
+  Plan EL2, rule 1 of the prose review: **a reference between two contexts that runs against
   the relation declared between them** — from the upstream context of a directed
   relation into the downstream one, or across `separate_ways` at all. Each finding
   stands at the relation, with a control beside it.

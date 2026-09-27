@@ -1,6 +1,6 @@
 defmodule EhOsContract.CheckScenarioCoverageTest do
   @moduledoc """
-  Plan EL2, "Po EL2" rule 4: **a policy, a process manager or a query no scenario
+  Plan EL2, rule 4 of the prose review: **a policy, a process manager or a query no scenario
   runs** (ESDM's `feature-without-scenarios`), a warning at its declaration, with
   one of each covered beside it.
   """

@@ -197,7 +197,7 @@ defmodule EhOsContract.Check.Completeness do
   end
 
   # ESDM's `feature-without-scenarios`, per declaration a scenario can target (plan EL2,
-  # "Po EL2" rule 4): a policy, a process manager or a query no scenario runs, so nothing
+  # rule 4 of the prose review): a policy, a process manager or a query no scenario runs, so nothing
   # shows its implementation does what its label says. An effect is left out: its
   # outcome is outside the log, and no scenario can name it (S6).
   defp without_scenario(%{model: model} = c) do
@@ -400,7 +400,7 @@ defmodule EhOsContract.Check.Completeness do
     end
   end
 
-  # The library's own (plan EL2, "Po EL2" rule 1): a relation that says which way the
+  # The library's own (plan EL2, rule 1 of the prose review): a relation that says which way the
   # dependency runs, and a reference that runs the other way. `separate_ways` says
   # there is none, so any reference contradicts it; a directed relation says the
   # downstream context depends on the upstream one, so a reference from the upstream
@@ -445,7 +445,7 @@ defmodule EhOsContract.Check.Completeness do
       "relation #{inspect(relation.type)} from upstream #{inspect(relation.upstream)} to " <>
         "downstream #{inspect(relation.downstream)}"
 
-  # The library's own (plan EL2, "Po EL2" rule 2): a label of a contract that uses a
+  # The library's own (plan EL2, rule 2 of the prose review): a label of a contract that uses a
   # word its context's glossary says to avoid. Whole words, any case; the words a
   # translation avoids belong to another language, which labels are not written in.
   defp avoided_terms(model, contracts) do
@@ -510,27 +510,13 @@ defmodule EhOsContract.Check.Completeness do
   defp labelled(list) when is_list(list), do: Enum.flat_map(list, &labelled/1)
   defp labelled(_other), do: []
 
-  # The library's own (plan EL2, "Po EL2" rule 3): an external's `direction:` and how
-  # the model uses it. An effect `calls:` a system to send it something, so one that
-  # only sends to us (`:inbound`) cannot be called; a value `issued_by:` a system, and
-  # an actor `backed_by:` one, bring what it says into this application, so a system we
-  # only send to (`:outbound`) can do neither.
+  # The library's own (plan EL2, rule 3 of the prose review): an external's
+  # `direction:` and how the model uses it. A value `issued_by:` a system, and an actor
+  # `backed_by:` one, bring what it says into this application, so a system this
+  # application only sends to (`:outbound`) can do neither. A call says nothing: an
+  # effect calls to send, and to fetch what flows in.
   defp directions(model, declared, contracts) do
     direction = Map.new(model.externals, &{&1.name, &1.direction})
-
-    calls =
-      for c <- contracts,
-          effect <- c.declarations.effects,
-          external <- List.wrap(effect.calls),
-          direction[external] == :inbound do
-        Finding.new(
-          "external-direction-contradicted",
-          "effect #{inspect(effect.name)} of #{inspect(c.module)} calls #{inspect(external)}, " <>
-            "which #{inspect(model.module)} declares `direction: :inbound`: it only sends to this " <>
-            "application",
-          Links.at(effect)
-        )
-      end
 
     domain_fields =
       for owner <- declared.values ++ declared.entities, field <- owner.fields, do: field
@@ -567,7 +553,7 @@ defmodule EhOsContract.Check.Completeness do
         )
       end
 
-    calls ++ issued ++ backed
+    issued ++ backed
   end
 
   # Every reference from a contract into another context: `{contexts, contract, what,

@@ -1,6 +1,6 @@
 defmodule EhOsContract.CheckAvoidedTermsTest do
   @moduledoc """
-  Plan EL2, "Po EL2" rule 2: **a label that uses a word its context's glossary says
+  Plan EL2, rule 2 of the prose review: **a label that uses a word its context's glossary says
   to avoid**, whole words in any case, at the declaration of the label.
   """
 

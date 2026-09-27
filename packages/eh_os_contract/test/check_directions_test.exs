@@ -1,8 +1,9 @@
 defmodule EhOsContract.CheckDirectionsTest do
   @moduledoc """
-  Plan EL2, "Po EL2" rule 3: **an external used against its `direction:`** — called
+  Plan EL2, rule 3 of the prose review: **an external used against its `direction:`** — called
   though it only sends to us, or issuing a value or backing an actor though we only
-  send to it. Each finding stands at the use, with a `:bidirectional` control.
+  send to it; a call to a system that only sends to us is not one, since an effect
+  calls to fetch as well. Each finding stands at the use, with controls.
   """
 
   use EhOsContract.DslCase, async: false
@@ -23,6 +24,10 @@ defmodule EhOsContract.CheckDirectionsTest do
         external :bank, "Bank", direction: :inbound
         external :ksef, "KSeF", direction: :outbound
         external :p1, "P1", direction: :bidirectional
+
+        entity :invoice, "Faktura", context: :reporting, identified_by: :number do
+          field :number, :id, issued_by: :ksef
+        end
       end
 
       defmodule EhOsContract.CheckDirectionsTest.Reports do
@@ -55,7 +60,7 @@ defmodule EhOsContract.CheckDirectionsTest do
     :ok
   end
 
-  test "a call to an inbound system, a value and an actor from an outbound one; control: a bidirectional one" do
+  test "a value and an actor from an outbound system, in a contract and in the domain; control: a call to an inbound one, a bidirectional one" do
     found =
       for %Finding{rule: "external-direction-contradicted"} = f <-
             Completeness.findings([EhOsContract.CheckDirectionsTest.Reports]),
@@ -63,9 +68,8 @@ defmodule EhOsContract.CheckDirectionsTest do
 
     assert [
              {"actor :bank_feed is backed_by: :ksef" <> _, {"clinic.ex", 7}},
-             {"effect :ask_bank of EhOsContract.CheckDirectionsTest.Reports calls :bank" <> _,
-              {"clinic.ex", 30}},
-             {"field :invoice_no is issued_by: :ksef" <> _, {"clinic.ex", 23}}
+             {"field :invoice_no is issued_by: :ksef" <> _, _command},
+             {"field :number is issued_by: :ksef" <> _, {"clinic.ex", 14}}
            ] = Enum.sort(found)
   end
 end

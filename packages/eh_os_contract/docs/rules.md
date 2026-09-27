@@ -275,13 +275,13 @@ The words a translation avoids are another language's, which labels are not writ
 
 **warning** · reads v2 contracts
 
-An external is used against the `direction:` its declaration gives.
+An external this application only sends to issues a value or backs an actor.
 
-An effect `calls:` a system to send it something, so a system declared `:inbound`, one that only
-sends to this application, cannot be called. A value `issued_by:` a system, and an actor
-`backed_by:` one, bring what the system says into this application, so a system declared
-`:outbound`, one this application only sends to, can do neither. A system that does both is
-`:bidirectional`: P1 is called with a report and answers with its number.
+A value `issued_by:` a system, and an actor `backed_by:` one, bring what the system says into
+this application, so a system declared `direction: :outbound`, one the application only sends
+to, can do neither. A system that also answers is `:bidirectional`: P1 is sent a report and
+answers with its number. A call says nothing either way, since an effect calls a system to send
+and to fetch alike.
 
 ## `cross-bounded-context-reference-without-mapping`
 
