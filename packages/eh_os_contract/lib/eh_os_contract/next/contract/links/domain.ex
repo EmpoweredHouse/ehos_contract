@@ -14,6 +14,8 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
     a list as well; every `subject:` is a subject of the domain.
   - **X4.** An event's `depends_on` and an effect's `calls` name externals of the
     domain.
+  - **F7**, the part that needs the domain: a field F7 keeps from being personal
+    is not of a domain value that holds personal data, at any depth.
   - **D10.** Every actor in a scoped query's `by:` carries the query's `scope` as a
     scope dimension, `actor :reception, :human, "…", scope: [:clinic_id]`, since a
     grant to that actor carries the values the answer is narrowed to.
@@ -44,6 +46,7 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
       actors(c),
       types(c),
       subjects(c),
+      personal_values(c),
       externals(c),
       scopes(c),
       namespaces(c)
@@ -126,6 +129,41 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
          "of #{inspect(domain.module)}; #{suggest(subject, subjects)}", Links.at(field)}
     end
   end
+
+  # --- F7 ---------------------------------------------------------------------------
+
+  defp personal_values(%{declarations: d, domain: domain}) do
+    values = Map.new(domain.values, &{&1.name, &1})
+
+    for {where, field, why} <- Rules.Fields.outside_the_log(d, :fields),
+        Map.get(field, :personal) == nil,
+        personal?(field.type, values, MapSet.new()) do
+      {"F7: #{where} is of #{inspect(field.type)}, which holds personal data, and #{why}, " <>
+         "where erasure cannot reach it", Links.at(field)}
+    end
+  end
+
+  # Whether a type holds a personal field somewhere inside: a value's fields, what an
+  # alias stands for, a list's items. `seen` stops a value that refers to itself.
+  defp personal?({:list, inner}, values, seen), do: personal?(inner, values, seen)
+
+  defp personal?(name, values, seen) when is_atom(name) and is_map_key(values, name) do
+    if MapSet.member?(seen, name) do
+      false
+    else
+      seen = MapSet.put(seen, name)
+
+      case Map.fetch!(values, name) do
+        %{type: nil, fields: fields} ->
+          Enum.any?(fields, &(Map.get(&1, :personal) != nil or personal?(&1.type, values, seen)))
+
+        %{type: inner} ->
+          personal?(inner, values, seen)
+      end
+    end
+  end
+
+  defp personal?(_type, _values, _seen), do: false
 
   # The names of domain values a type refers to: none for a built-in type or an enum.
   defp value_names(type) when type in @built_in, do: []

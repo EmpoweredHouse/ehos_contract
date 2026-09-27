@@ -1,6 +1,7 @@
 defmodule EhOsContract.Next.ContractFieldsTest do
   @moduledoc """
-  v2 plan, E4: **F1–F6 of v2 §6** — the fields of every struct a contract declares.
+  v2 plan, E4: **F1–F6 of v2 §6** — the fields of every struct a contract declares —
+  and F7 from E8.
   Each refusal names the declaration's file and line, and has a control beside it
   that compiles.
   """
@@ -219,6 +220,89 @@ defmodule EhOsContract.Next.ContractFieldsTest do
                        field :patient_id, :id, subject: :patient
                        field :name, :string, personal: :patient_id
                  """)
+               )
+    end
+  end
+
+  describe "F7: nothing personal where the library keeps it outside the log" do
+    # Line 4 of the file is the first line of the body.
+    defp outside(state, params, scope) do
+      """
+        aggregate :visit, "Wizyta" do
+          identity :visit_id
+
+          command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+
+          event :visit_closed, "Wizyta zamknięta", terminal: true do
+            field :patient_id, :id, subject: :patient
+            field :name, :string, personal: :patient_id
+          end
+        end
+
+        process :visit, "Wizyta" do
+          correlate :visit_id
+        end
+
+        process_manager :chase, "Pogoń za dokumentacją" do
+          correlate :visit_id
+
+          state do
+      #{state}
+          end
+
+          starts_on :visit_closed
+        end
+
+        read_model :visits, "Wizyty", projects: :visit_closed do
+          field :patient_id, :id, subject: :patient
+          field :name, :string, personal: :patient_id
+        end
+
+        query :visits_of, "Wizyty pacjenta", reads: :visits, by: :reception do
+      #{params}
+          scope #{inspect(scope)}
+        end
+      """
+    end
+
+    # A query's parameter takes no `personal:` at all, so its scope is caught only
+    # when it is of a domain value that holds personal data: L3, in
+    # `contract_links_domain_test.exs`.
+    test "a process manager's state" do
+      message =
+        refuse_contract(
+          "PersonalOutside",
+          outside(
+            """
+                  field :patient_id, :id, subject: :patient
+                  field :phone, :string, personal: :patient_id
+            """,
+            """
+                  param :patient_id, :id
+            """,
+            :patient_id
+          )
+        )
+
+      assert message =~
+               "F7: process manager :chase, state, field :phone is personal, and a process " <>
+                 "manager's state is stored outside the log, where erasure cannot reach it " <>
+                 "(personal_outside.ex:24)"
+    end
+
+    test "control: personal in an event and in a read model's row" do
+      assert %{} =
+               compile_contract(
+                 "PersonalInside",
+                 outside(
+                   """
+                         field :patient_id, :id, subject: :patient
+                   """,
+                   """
+                         param :patient_id, :id
+                   """,
+                   :patient_id
+                 )
                )
     end
   end

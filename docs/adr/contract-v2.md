@@ -558,6 +558,13 @@ where it helps; every violation is reported as a diagnostic before the single ra
   used as identity, correlation, `match` or tags are neither `optional:` nor `personal:`. F5: `personal: f`
   needs `f` to be a required, non-personal `:id` field of the same struct declaring `subject:`. F6:
   redeclaring an injected identity field is an error.
+
+  > *Added 27 September 2026, E8.* **F7**: a field whose value the library keeps outside the log is not
+  > personal, since erasure (§14) reaches only what the log encrypts — a process manager's state, stored in
+  > `_process_managers`, and a query's `scope` parameter, whose value the authorization package writes with
+  > every decision. §14's gate list names the first and not the second; the second came from EA's security
+  > review. A query's `param` takes no `personal:`, so at L2 F7 sees only a manager's state; a domain value
+  > holding a personal field, at any depth, in either place is refused at L3, where the domain is known.
 - *Units.* A1: `emits` is non-empty and a subset of the unit's own events. A2: every event is emitted by at
   least one command of its unit **or declares `recorded_by`** — stricter than ESDM, because in an
   event-sourced system any other event can never occur. A3: `rejects` ⊆ the unit's invariants. A4: a DCB has

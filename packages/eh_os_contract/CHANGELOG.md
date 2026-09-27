@@ -265,6 +265,11 @@ What changes otherwise is what a host has to do.
 - `EhOsContract.Codec.decode/4` takes `strings: true`, to read an integer or a boolean written as text.
 - `EhOsContract.Meta` carries an event's `id` and `position` when it is read back from the log.
 - `EhOsContract.Store.lock/1` on the configured implementation.
+- **E8a: F7 refuses personal data where the library keeps it outside the log**, since erasure reaches only
+  what the log encrypts (v2 §14). A process manager's state field declared `personal:` does not compile (L2);
+  a process manager's state field, or a query's `scope` parameter, of a domain value holding a personal field
+  at any depth — directly, through an alias, in a list — is an L3 error. A query's parameter takes no
+  `personal:` itself.
 
 ### Changed
 
