@@ -19,6 +19,8 @@ defmodule EhOsContract.Next.ContractLinksSystemTest do
 
         context :settlement, "Rozliczenia", subdomain: :core
         actor :reception, :human, "Recepcja"
+
+        subdomain :core, "Core", type: :core
       end
       """,
       "system_clinic.ex"

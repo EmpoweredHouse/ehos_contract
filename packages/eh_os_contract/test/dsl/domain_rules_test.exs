@@ -17,6 +17,9 @@ defmodule EhOsContract.DomainRulesTest do
       use EhOsContract.Domain, name: :clinic, language: :pl
 
     #{body}
+
+      subdomain :supporting, "Supporting", type: :supporting
+      subdomain :core, "Core", type: :core
     end
     """
   end
@@ -112,8 +115,8 @@ defmodule EhOsContract.DomainRulesTest do
 
             term "Wizyta" do
               definition "Spotkanie"
-              translation :en, "Visit"
-              translation :en, "Appointment"
+              translation :en, "Visit", definition: "A patient's appointment with a specialist"
+              translation :en, "Appointment", definition: "An arranged meeting"
             end
           end
         """)
@@ -130,7 +133,7 @@ defmodule EhOsContract.DomainRulesTest do
 
             term "Wizyta" do
               definition "Spotkanie"
-              translation :pl, "Wizyta"
+              translation :pl, "Wizyta", definition: "Umówione spotkanie pacjenta ze specjalistą"
             end
           end
         """)
@@ -148,7 +151,7 @@ defmodule EhOsContract.DomainRulesTest do
 
             term "Visit" do
               definition "A patient's appointment"
-              translation :en, "Visit"
+              translation :en, "Visit", definition: "A patient's appointment with a specialist"
             end
           end
         """)
@@ -163,8 +166,8 @@ defmodule EhOsContract.DomainRulesTest do
 
           term "Wizyta" do
             definition "Spotkanie"
-            translation :en, "Visit"
-            translation :de, "Besuch"
+            translation :en, "Visit", definition: "A patient's appointment with a specialist"
+            translation :de, "Besuch", definition: "Termin eines Patienten bei einem Spezialisten"
           end
         end
       """)
@@ -383,6 +386,94 @@ defmodule EhOsContract.DomainRulesTest do
     end
   end
 
+  describe "D5 and D1, since plan EL2: a directed relation may end at an external system" do
+    test "control: settlement conforms to an external, as ESDM allows" do
+      compiles("ConformsToKsef", """
+        context :settlement, "Rozliczenia", subdomain: :supporting
+        external :ksef, "KSeF", direction: :outbound
+        relation :conformist, upstream: :ksef, downstream: :settlement
+      """)
+    end
+
+    test "two externals, a symmetric relation to one, and a name both kinds have are refused" do
+      message =
+        refused("ExternalsWrong", """
+          context :settlement, "Rozliczenia", subdomain: :supporting
+          external :ksef, "KSeF", direction: :outbound
+          external :p1, "P1", direction: :outbound
+          external :settlement, "Rozliczenia zewnętrzne", direction: :inbound
+          relation :conformist, upstream: :ksef, downstream: :p1
+          relation :partnership, between: [:settlement, :ksef]
+        """)
+
+      assert message =~
+               "D5: relation :conformist joins no context of this domain: one end has to be a " <>
+                 "context (externals_wrong.ex:8)"
+
+      assert message =~
+               "D5: relation :partnership is symmetric and names external :ksef: a symmetric " <>
+                 "relation joins contexts; an external may end a directed one (externals_wrong.ex:9)"
+
+      assert message =~
+               "D1: :settlement is a context and an external; a relation could not tell which it " <>
+                 "names (externals_wrong.ex:7)"
+    end
+  end
+
+  describe "D8: a field's issuer is an external of this domain (plan EL2)" do
+    test "an entity's field issued by an unknown external is refused; control: a known one" do
+      message =
+        refused("IssuedWrong", """
+          context :settlement, "Rozliczenia", subdomain: :supporting
+          external :ksef, "KSeF", direction: :outbound
+
+          entity :invoice, "Faktura", context: :settlement, identified_by: :invoice_no do
+            field :invoice_no, :id, issued_by: :kse
+          end
+        """)
+
+      assert message =~
+               "D8: entity :invoice, field :invoice_no is issued_by: :kse, which is not an external " <>
+                 "of this domain; did you mean :ksef? (issued_wrong.ex:8)"
+
+      compiles("IssuedRight", """
+        context :settlement, "Rozliczenia", subdomain: :supporting
+        external :ksef, "KSeF", direction: :outbound
+
+        entity :invoice, "Faktura", context: :settlement, identified_by: :invoice_no do
+          field :invoice_no, :id, issued_by: :ksef
+        end
+      """)
+
+      [invoice] = Module.concat(__MODULE__, IssuedRight).__eh_os_contract_model__().entities
+      assert [%{name: :invoice_no, issued_by: :ksef}] = invoice.fields
+    end
+  end
+
+  describe "D7: a context belongs to a subdomain the domain declares (plan EL2)" do
+    test "a context naming an undeclared subdomain is refused, with the closest name" do
+      message =
+        refused("UnknownSubdomain", """
+          context :settlement, "Rozliczenia", subdomain: :suporting
+        """)
+
+      assert message =~
+               "D7: context :settlement belongs to subdomain :suporting, which this domain does " <>
+                 "not declare; did you mean :supporting? (unknown_subdomain.ex:4)"
+    end
+
+    test "control: a context naming a declared one compiles, and the kind is the subdomain's" do
+      compiles("KnownSubdomain", """
+        context :settlement, "Rozliczenia", subdomain: :supporting
+      """)
+
+      model = Module.concat(__MODULE__, KnownSubdomain).__eh_os_contract_model__()
+
+      assert %{name: :supporting, type: :supporting} =
+               Enum.find(model.subdomains, &(&1.name == :supporting))
+    end
+  end
+
   describe "D5: a relation's roles fit its type, and its ends exist" do
     @contexts """
       context :scheduling, "Umawianie", subdomain: :core
@@ -418,7 +509,7 @@ defmodule EhOsContract.DomainRulesTest do
         )
 
       assert message =~
-               "D5: relation :customer_supplier names context :billing, which this domain does not declare"
+               "D5: relation :customer_supplier names context or external :billing, which this domain does not declare"
 
       assert message =~ "D5: relation :shared_kernel relates context :settlement to itself"
     end
@@ -604,11 +695,20 @@ defmodule EhOsContract.DomainRulesTest do
       compiles("NoEntities", @periods <> "  value :money, :integer\n")
       model = Module.concat(__MODULE__, NoEntities).__eh_os_contract_model__()
 
-      # The groups a domain was hashed over before the kind was added.
+      # The groups a domain was hashed over before the kind was added, and
+      # `subdomains`, which every domain has since plan EL2 (D7).
       before =
         EhOsContract.Digest.hash_groups(
           [domain: [%{name: model.name, language: model.language}]] ++
-            for key <- [:contexts, :actors, :subjects, :values, :externals, :relations] do
+            for key <- [
+                  :subdomains,
+                  :contexts,
+                  :actors,
+                  :subjects,
+                  :values,
+                  :externals,
+                  :relations
+                ] do
               {key, Enum.map(Map.fetch!(model, key), &digest_form/1)}
             end
         )
@@ -642,6 +742,20 @@ defmodule EhOsContract.DomainRulesTest do
 
       assert Exception.message(error) =~ "unknown options [:colour]"
       assert Exception.message(error) =~ "unknown_option_domain.ex:4"
+    end
+
+    test "a translation without its definition is refused (plan EL2, as in ESDM)" do
+      message =
+        refused("TranslationWithoutDefinition", """
+          context :settlement, "Rozliczenia", subdomain: :supporting do
+            term "Wizyta", definition: "Spotkanie" do
+              translation :en, "Visit"
+            end
+          end
+        """)
+
+      assert message =~ "required :definition option not found"
+      assert message =~ "translation_without_definition.ex:6"
     end
 
     test "a missing use option is refused" do

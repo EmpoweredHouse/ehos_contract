@@ -23,6 +23,8 @@ defmodule EhOsContract.CompilerTest do
 
     context :settlement, "Rozliczenia", subdomain: :core
     actor :reception, :human, "Recepcja"
+
+    subdomain :core, "Core", type: :core
   end
   """
 

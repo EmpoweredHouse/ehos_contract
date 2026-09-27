@@ -71,7 +71,8 @@ defmodule EhOsContract.Next.Contract.Build do
       process_managers:
         entities |> of(Dsl.ProcessManager) |> Enum.map(&process_manager(&1, events)),
       read_models: entities |> of(Dsl.ReadModel) |> Enum.map(&plain/1),
-      queries: entities |> of(Dsl.Query) |> Enum.map(&plain/1),
+      queries:
+        entities |> of(Dsl.Query) |> Enum.map(&(&1 |> plain() |> without_empty(:constraints))),
       domain_services: entities |> of(Dsl.DomainService) |> Enum.map(&plain/1),
       consumes: entities |> of(Dsl.Consumes) |> Enum.map(&consumes/1),
       publishes: entities |> of(Dsl.Publish) |> Enum.map(&plain/1),
@@ -95,6 +96,11 @@ defmodule EhOsContract.Next.Contract.Build do
   end
 
   defp of(entities, struct), do: for(%{__struct__: ^struct} = e <- entities, do: e)
+
+  # A key a later stage added, kept out of the model where it is empty so no
+  # declaration written without it moves its digest (plan EL2's constraints).
+  defp without_empty(map, key),
+    do: if(Map.get(map, key) == [], do: Map.delete(map, key), else: map)
 
   # --- declarations as data --------------------------------------------------------
 
@@ -124,6 +130,7 @@ defmodule EhOsContract.Next.Contract.Build do
     command
     |> plain()
     |> then(&if command.creates, do: &1, else: Map.delete(&1, :creates))
+    |> without_empty(:constraints)
     |> Map.merge(%{unit: unit.name, fields: identity ++ plain(command.fields)})
   end
 
@@ -378,7 +385,7 @@ defmodule EhOsContract.Next.Contract.Build do
   # `correlate`, stages, givens and expectations keep their order.
   @sets ~w(fields params invariants consults starts_on on timers ends_on includes promises
            by emits rejects handles issues calls projects recorded_by match sets cancels events
-           idempotent_on answers functions rules)a
+           idempotent_on answers functions rules constraints)a
 
   defp digest_form(%{} = declaration) do
     Map.new(declaration, fn

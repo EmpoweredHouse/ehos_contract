@@ -1,6 +1,15 @@
 defmodule EhOsContract.Domain.Rules do
   @moduledoc """
-  The rules a domain module must satisfy to compile: v2 §6, layer L2, rules D1–D6.
+  The rules a domain module must satisfy to compile: v2 §6, layer L2, rules D1–D7.
+
+  **D5**, since plan EL2: an end of a directed relation may be an external system, the
+  other end then a context; **D1** refuses a name that is both a context and an
+  external.
+
+  **D8** (plan EL2): a field's `issued_by:` names an external of this domain.
+
+  **D7** (plan EL2): a context's `subdomain:` names a subdomain the domain declares,
+  `subdomain :visits, "Wizyty", type: :core`; the kind is the subdomain's.
 
   **D6** (plan EM2): an entity belongs to a context this domain declares, and is
   identified by one of its own fields, a required, non-personal `:id`. Its fields are
@@ -17,7 +26,18 @@ defmodule EhOsContract.Domain.Rules do
 
   alias EhOsContract.Domain.Dsl
   alias EhOsContract.DslRules
-  alias EhOsContract.Domain.Dsl.{Actor, Context, Entity, External, Relation, Subject, Value}
+
+  alias EhOsContract.Domain.Dsl.{
+    Actor,
+    Context,
+    Entity,
+    External,
+    Relation,
+    Subdomain,
+    Subject,
+    Value
+  }
+
   alias Spark.Dsl.Transformer
 
   @doc false
@@ -39,11 +59,12 @@ defmodule EhOsContract.Domain.Rules do
     DslRules.result(dsl, [:domain], Enum.flat_map(rules(), & &1.(entities, domain)))
   end
 
-  defp rules, do: [&d1/2, &d2/2, &d3/2, &d4/2, &d5/2, &d6/2]
+  defp rules, do: [&d1/2, &d2/2, &d3/2, &d4/2, &d5/2, &d6/2, &d7/2, &d8/2]
 
   # --- D1: names are unique per kind ---------------------------------------------
 
   @kinds [
+    {Subdomain, "subdomain"},
     {Context, "context"},
     {Actor, "actor"},
     {Subject, "subject"},
@@ -80,7 +101,16 @@ defmodule EhOsContract.Domain.Rules do
            "is declared twice", duplicate}
       end
 
-    by_kind ++ terms ++ relations
+    # Plan EL2: a relation's end may be a context or an external, so no name is both.
+    contexts = for %Context{name: name} <- entities, do: name
+
+    both =
+      for %External{name: name} = external <- entities, name in contexts do
+        {"D1: #{inspect(name)} is a context and an external; a relation could not tell which " <>
+           "it names", external}
+      end
+
+    by_kind ++ terms ++ relations ++ both
   end
 
   # --- D2: one translation per language, none into the term's own ----------------
@@ -538,14 +568,15 @@ defmodule EhOsContract.Domain.Rules do
 
   defp d5(entities, _domain) do
     contexts = MapSet.new(for %Context{name: name} <- entities, do: name)
+    externals = MapSet.new(for %External{name: name} <- entities, do: name)
 
     for %Relation{} = relation <- entities,
-        violation <- relation_violations(relation, contexts) do
+        violation <- relation_violations(relation, contexts, externals) do
       violation
     end
   end
 
-  defp relation_violations(%Relation{type: type} = relation, contexts) do
+  defp relation_violations(%Relation{type: type} = relation, contexts, externals) do
     where = "D5: relation #{inspect(type)}"
     directed? = type in Dsl.directed_relations()
 
@@ -572,17 +603,74 @@ defmodule EhOsContract.Domain.Rules do
 
     ends = Enum.reject([relation.upstream, relation.downstream | relation.between], &is_nil/1)
 
+    # Plan EL2: an end of a directed relation may be an external system, as in ESDM
+    # (`conformist` to KSeF); the other end is then a context, since a relation between
+    # two systems outside is not this domain's. A symmetric relation joins contexts.
+    known = if directed?, do: MapSet.union(contexts, externals), else: contexts
+
     unknown =
-      for name <- Enum.uniq(ends), not MapSet.member?(contexts, name) do
-        {"#{where} names context #{inspect(name)}, which this domain does not declare", relation}
+      for name <- Enum.uniq(ends), not MapSet.member?(known, name) do
+        cond do
+          not directed? and MapSet.member?(externals, name) ->
+            {"#{where} is symmetric and names external #{inspect(name)}: a symmetric relation " <>
+               "joins contexts; an external may end a directed one", relation}
+
+          directed? ->
+            {"#{where} names context or external #{inspect(name)}, which this domain does not " <>
+               "declare", relation}
+
+          true ->
+            {"#{where} names context #{inspect(name)}, which this domain does not declare",
+             relation}
+        end
       end
 
+    outside =
+      if unknown == [] and ends != [] and Enum.all?(ends, &MapSet.member?(externals, &1)),
+        do: [{"#{where} joins no context of this domain: one end has to be a context", relation}],
+        else: []
+
     itself =
-      if roles == [] and length(Enum.uniq(ends)) == 1,
+      if roles == [] and outside == [] and length(Enum.uniq(ends)) == 1,
         do: [{"#{where} relates context #{inspect(hd(ends))} to itself", relation}],
         else: []
 
-    roles ++ unknown ++ itself
+    roles ++ unknown ++ outside ++ itself
+  end
+
+  # --- D7: a context belongs to a subdomain this domain declares (plan EL2) ---------
+
+  defp d7(entities, _domain) do
+    subdomains = for %Subdomain{name: name} <- entities, do: name
+
+    for %Context{} = context <- entities, context.subdomain not in subdomains do
+      {"D7: context #{inspect(context.name)} belongs to subdomain #{inspect(context.subdomain)}, " <>
+         "which this domain does not declare; " <> suggest(context.subdomain, subdomains),
+       context}
+    end
+  end
+
+  # --- D8: a field's issuer is an external of this domain (plan EL2) ---------------
+
+  defp d8(entities, _domain) do
+    externals = for %External{name: name} <- entities, do: name
+
+    for %{__struct__: struct, fields: fields} = owner <- entities,
+        struct in [Value, Entity],
+        field <- fields,
+        field.issued_by != nil,
+        field.issued_by not in externals do
+      {"D8: #{describe(owner)}, field #{inspect(field.name)} is issued_by: " <>
+         "#{inspect(field.issued_by)}, which is not an external of this domain; " <>
+         suggest(field.issued_by, externals), field}
+    end
+  end
+
+  defp suggest(name, names) do
+    case DslRules.closest(name, names) do
+      nil -> "it declares #{inspect(Enum.sort(names))}"
+      suggestion -> "did you mean #{inspect(suggestion)}?"
+    end
   end
 
   defp duplicates(list, key), do: DslRules.duplicates(list, key)

@@ -134,6 +134,27 @@ scenario        description!   scope · actor
                  rejected invariant, issues*, sets*, cancels*, ended]
 ```
 
+> *Changed 27 September 2026, plan EL2, the user's choice.* **A subdomain is named.** `subdomain name!, label!
+> type! :core|:supporting|:generic · source`, and a context's `subdomain!` names one of them (D7) instead of
+> giving the kind itself, as `entity …, context:` names its context. ESDM's subdomain lists its contexts
+> instead; the user chose the other direction, so that the context says where it belongs. §4.5's domain is
+> compiled with the two subdomains it needs added (`contract_examples_test.exs`, `@amendments`).
+>
+> *Changed 27 September 2026, plan EL2, the user's choice.* **A translation says what the term means in its
+> language and what to avoid there**, as in ESDM: `translation language!, text!, definition! [avoid*]`, and
+> `avoid text!, reason` at a term and at a translation.
+>
+> *Changed 27 September 2026, plan EL2, the user's choice.* **An end of a directed relation may be an external
+> system**, under the same keys, as ESDM allows: `relation :conformist, upstream: :ksef, downstream: :settlement`.
+> The other end is then a context, a symmetric relation joins contexts only, and D1 refuses a name that is both a
+> context and an external.
+>
+> *Added 27 September 2026, plan EL2, a question the user added after EM.* **A field may say which external
+> gives its value:** `field :p1_report_id, :id, issued_by: :medical_event_registry`, in a contract (X4) and in a
+> domain's value or entity (D8). It composes with an entity reference, `field :invoice_number, {:id, :invoice},
+> issued_by: :ksef`, which is why it is an option and not `{:id, :ksef}`. ESDM has no such field. An external
+> identifier that is personal data (a PESEL, a patient's number at a payer) is still never an `:id` (§14).
+
 - **Identity is injected.** A unit's identity fields appear in its state, commands and events without being
   declared there; declaring one again is an error.
 
@@ -650,6 +671,12 @@ where it helps; every violation is reported as a diagnostic before the single ra
   > clinic's visit is not in it" is often the point. The read model alone, ESDM's materialized variant, is not
   > a target: a scenario reaches it through a query. `answers` enters the model only on a query's scenario, so
   > the word moved no existing contract's version.
+  > *Added 27 September 2026, plan EL2, the user's choice after asking whether the engine can check it.*
+  > **A command's constraint is checked as an invariant is** (ESDM's `constraints`, which ESDM leaves prose):
+  > `constraint :positive_amount, "…"` inside the command; A3 lets `rejects:` name it; **A7**: it is named once,
+  > never as an invariant of the unit, and it is in the command's `rejects:`; **S8** asks a `rejected` scenario
+  > of that command for each; I5 lets `reject/1` name it. A query's constraint is prose, since a query refuses
+  > nothing. A value's invariants get a validator in their own stage (EL2b).
 - *Domain.* D1: unique names per kind. D2: at most one translation per language, none into the context's
   own. D3: a value has exactly one of type or fields; `unit` only on numeric types; no cycles. D4: a human
   actor has no `backed_by`. D5: relation roles fit the type; endpoints exist; no relation to itself.

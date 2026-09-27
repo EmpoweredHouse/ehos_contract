@@ -10,14 +10,19 @@ defmodule EhOsContract.DomainVocabularyTest do
 
   use ExUnit.Case, async: true
 
-  @field [:name, :type, :optional, :label, :personal, :subject, :default]
+  # Plan EL2: `issued_by`, the external that gives a value.
+  @field [:name, :type, :optional, :label, :personal, :subject, :default, :issued_by]
 
   test "the words did not change without this test changing with them" do
     assert EhOsContract.Domain.vocabulary() == %{
+             # Plan EL2: a named subdomain, which a context names.
+             [:subdomain] => [:name, :label, :type, :source],
              [:context] => [:name, :label, :subdomain, :language, :source],
              [:context, :term] => [:text, :definition, :source],
-             [:context, :term, :translation] => [:language, :text],
-             [:context, :term, :avoid] => [:text],
+             # Plan EL2: a translation means something, and says what to avoid, and why.
+             [:context, :term, :translation] => [:language, :text, :definition],
+             [:context, :term, :translation, :avoid] => [:text, :reason],
+             [:context, :term, :avoid] => [:text, :reason],
              [:actor] => [:name, :kind, :label, :backed_by, :context, :scope],
              [:subject] => [:name, :label],
              [:value] => [:name, :type, :unit, :label, :context],

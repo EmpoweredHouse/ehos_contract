@@ -19,8 +19,8 @@ defmodule EhOsContract.Next.Contract.Dsl do
 
   defmodule Field do
     @moduledoc false
-    defstruct [:name, :type, :label, :personal, :subject, :default, optional: false] ++
-                [__spark_metadata__: nil]
+    defstruct [:name, :type, :label, :personal, :subject, :default, :issued_by] ++
+                [optional: false, __spark_metadata__: nil]
   end
 
   defmodule Param do
@@ -38,10 +38,15 @@ defmodule EhOsContract.Next.Contract.Dsl do
     defstruct [:name, :label, :source, __spark_metadata__: nil]
   end
 
+  defmodule Constraint do
+    @moduledoc false
+    defstruct [:name, :label, :source, __spark_metadata__: nil]
+  end
+
   defmodule Command do
     @moduledoc false
     defstruct [:name, :label, :source, by: [], emits: [], rejects: [], fields: []] ++
-                [creates: false, __spark_metadata__: nil]
+                [constraints: [], creates: false, __spark_metadata__: nil]
   end
 
   defmodule Generated do
@@ -141,7 +146,7 @@ defmodule EhOsContract.Next.Contract.Dsl do
   defmodule Query do
     @moduledoc false
     defstruct [:name, :label, :reads, :scope, by: [], returns: :many, params: []] ++
-                [__spark_metadata__: nil]
+                [constraints: [], __spark_metadata__: nil]
   end
 
   defmodule Argument do
@@ -268,7 +273,11 @@ defmodule EhOsContract.Next.Contract.Dsl do
       label: [type: :string, doc: "What the business calls it."],
       personal: [type: :atom, doc: "The field holding the identifier of whose data this is."],
       subject: [type: :atom, doc: "The domain subject this identifier field identifies."],
-      default: [type: :any, doc: "The initial value; only in a state."]
+      default: [type: :any, doc: "The initial value; only in a state."],
+      issued_by: [
+        type: :atom,
+        doc: "The domain external that gives this value, e.g. a number another system assigns."
+      ]
     ]
   }
 
@@ -306,12 +315,28 @@ defmodule EhOsContract.Next.Contract.Dsl do
     ]
   }
 
+  # ESDM's constraint (plan EL2): a named rule prose states. A command's is checked
+  # as an invariant is — it is in `rejects:`, the implementation `reject/1`s on it, and
+  # a scenario refuses the command on it — but it is about the command's data alone.
+  # A query's is prose: a query refuses nothing.
+  @constraint %Spark.Dsl.Entity{
+    name: :constraint,
+    describe: "A rule the data of a command or a query must satisfy, as the business states it.",
+    target: Constraint,
+    args: [:name, :label],
+    schema: [
+      name: [type: :atom, required: true, doc: "The constraint's name."],
+      label: [type: :string, required: true, doc: "The rule, as the business states it."],
+      source: [type: :string, doc: "Where the rule comes from in the material."]
+    ]
+  }
+
   @command %Spark.Dsl.Entity{
     name: :command,
     describe: "An intention an actor or a reaction issues to a unit.",
     target: Command,
     args: [:name, :label],
-    entities: [fields: [@field]],
+    entities: [fields: [@field], constraints: [@constraint]],
     schema: [
       name: [type: :atom, required: true, doc: "The command's name."],
       label: [type: :string, required: true, doc: "What the business calls it."],
@@ -324,7 +349,7 @@ defmodule EhOsContract.Next.Contract.Dsl do
       rejects: [
         type: {:wrap_list, :atom},
         default: [],
-        doc: "The invariants of this unit it may refuse on."
+        doc: "The invariants of this unit, and the constraints of this command, it may refuse on."
       ],
       creates: [
         type: :boolean,
@@ -567,7 +592,7 @@ defmodule EhOsContract.Next.Contract.Dsl do
     describe: "A question an actor may ask of a read model; a capability, like a command (D10).",
     target: Query,
     args: [:name, :label],
-    entities: [params: [@param]],
+    entities: [params: [@param], constraints: [@constraint]],
     schema: [
       name: [type: :atom, required: true, doc: "The query's name."],
       label: [type: :string, required: true, doc: "What the business calls it."],

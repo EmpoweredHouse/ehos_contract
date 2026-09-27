@@ -6,12 +6,13 @@ defmodule EhOsContract.Domain do
       defmodule Rehmed.Domain do
         use EhOsContract.Domain, name: :rehmed, language: :pl
 
-        context :settlement, "Rozliczenia", subdomain: :supporting
+        subdomain :billing, "Rozliczenia z pacjentami", type: :supporting
+        context :settlement, "Rozliczenia", subdomain: :billing
         actor :reception, :human, "Recepcja"
         value :money, :integer, unit: :grosze, label: "Kwota"
       end
 
-  A domain module declares contexts with their glossary, actors, subjects of
+  A domain module declares subdomains, contexts with their glossary, actors, subjects of
   personal data, value types, external systems and the relations between contexts.
   It compiles to plain data, `__eh_os_contract_model__/0`, which
   `EhOsContract.Model.fetch/1` returns for it. The data carries a `version`: a digest

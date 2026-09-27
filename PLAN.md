@@ -29,10 +29,15 @@ kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`; `Taxvision
 - **EM1–EM3 są w `main`** (PR #24–#26: runtime DCB; encje i serwisy domenowe; pusty wynik serwisu, timery
   kalendarzowe, identyfikator nadawany przez bibliotekę). `main` = `origin/main` = `081877d`. Opis w „Po E8 —
   kolejność zmieniona” i „EM1/EM2/EM3 — co wyszło”. Użytkownik merguje PR-y jako merge.
+- **EL2 zbudowane** na `dsl-v2/el-glossary` (od EL1), niewypchnięte: `glossary`, `view`, nazwana subdomena,
+  tłumaczenie z definicją, sprawdzane ograniczenia komend, relacja z systemem zewnętrznym, `issued_by:`. Opis w „EL2 —
+  co wyszło”, decyzje w „Przed EL2 — decyzje użytkownika”; przegląd EL2 zrobiony; reguły 1–4 z „Po EL2 — proza,
+  którą da się sprawdzać” zbudowane na tej samej gałęzi. **Dalej:** przegląd reguł 1–4, potem EL2b (walidator
+  wartości i przykłady reguł serwisów), EL3 (strony dokumentacji).
 - **EL1 zbudowane** na `dsl-v2/el-warnings` (od `main`), niewypchnięte: ostrzeżenia L5 ze stałymi nazwami,
   `--format json`, `--warnings-as-errors`, `docs/rules.md`, powtórzenie L3, przypięcie słownika domeny. Opis w
   „EL1 — co wyszło”, decyzje w „Przed EL — decyzje użytkownika”. Przegląd zrobiony, notatka w `refs/notes/review`
-  na ostatnim commicie. **Dalej:** pytania o kształty pól opisowych przed EL2.
+  na ostatnim commicie.
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`) i nie ma
   tabel pakietu auth ani V05 (klucze i usunięcia z E8). Przed `mix phx.server`: `mix ecto.migrate` w `sandbox/`;
   bez tego dispatch z credentialem pada na zapisie decyzji.
@@ -110,6 +115,14 @@ gołe `git stash` (stos jest wspólny dla worktree).
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 27 września, na `b2fb6c0`** (EL2 z regułami 1–4 po przeglądzie): brama z `sandbox/` → **EXIT=0** —
+  sandbox 54 testy, `check` 0 / 12 / 19; silnik 1106, `check` 0 / 63 / 20; web 32; auth 51.
+- **Lokalnie, 27 września, na `61579c7`** (EL2 z regułami 1–4): brama z `sandbox/` → **EXIT=0** — sandbox 54
+  testy, `check` 0 / 12 / 19; silnik 1106, `check` 0 / 63 / 20; web 32; auth 51.
+- **Lokalnie, 27 września, na `87f9a4e`** (EL2 po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 54
+  testy, `check` 0 / 12 / 19; silnik 1101, `check` 0 / 50 / 20; web 32; auth 51.
+- **Lokalnie, 27 września, na `efda115`** (koniec budowy EL2): brama z `sandbox/` → **EXIT=0** — sandbox 54
+  testy, `check` 0 / 12 / 19; silnik 1096, `check` 0 / 50 / 20; web 32; auth 51.
 - **Lokalnie, 27 września, na `7d46602`** (EL1 po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 54
   testy, `check` 0 / 12 / 19; silnik 1075, `check` 0 / 50 / 20; web 32; auth 51. CI na gałęzi EL1 — nie było.
 - **Lokalnie, 27 września, na `081877d`** (main po #24–#26): EXIT=0 — sandbox 54, `check` 0 / 5 / 19; silnik 1040,
@@ -140,7 +153,7 @@ gołe `git stash` (stos jest wspólny dla worktree).
   przy pomiarze.
 - ~~**Po E5b:** `mix eh_os_contract.check` nie powtarza L3 dla projektów bez zarejestrowanego kompilatora — E10.~~
   Zrobione w EL1.
-- **Przed EL2 — kształty DSL-a pól opisowych:** `constraints` na komendzie i query, inwarianty wartości,
+- ~~**Przed EL2 — kształty DSL-a pól opisowych:** `constraints` na komendzie i query, inwarianty wartości,
   tłumaczenie z definicją i `avoid` (w ESDM `avoid` ma też powód), relacja z systemem zewnętrznym jako końcem.
   **Plus (dopisane przez użytkownika 27 września, po EM): identyfikator nadawany przez system zewnętrzny** — numer
   zgłoszenia z P1, numer faktury z KSeF, numer rejestracji wizyty u płatnika (C-47 → E-85). Dziś działa jako atrybut
@@ -151,7 +164,8 @@ gołe `git stash` (stos jest wspólny dla worktree).
   asystenta: (b) — encja i wystawca to dwie różne rzeczy i pole bywa naraz jednym i drugim
   (`field :invoice_number, {:id, :invoice}, issued_by: :ksef`), czego (a) nie wyrazi; `orphan-external-system`
   policzy `issued_by:` jako użycie. Przy (a) lub (b): czytelnik w EL (strona elementu, `view`), krawędź w EG,
-  ewentualnie L5 „system wystawia identyfikator, a żaden efekt go nie woła”.
+  ewentualnie L5 „system wystawia identyfikator, a żaden efekt go nie woła”.~~ Rozstrzygnięte 27 września —
+  „Przed EL2 — decyzje użytkownika”.
 - **D1–D14** (v2 §16) przyjęte; pytania w §19: `scope` dla komend, transport v1 między kontenerami, kontrakt
   upcasterów.
 
@@ -870,8 +884,8 @@ reguły z v1 i `emits-never-produced` (`619cd04`), powtórzenie L3 (`6078d92`), 
 - **Sandbox, siedem nowych ostrzeżeń, wszystkie o jedynym kontrakcie v2 i jego domenie:** `orphan-actor`
   (`:manager` w `Rehmed.Domain`), `bounded-context-without-content` (`:scheduling` — `ClinicalVisit` jest v1 i nie
   zna domeny), `orphan-context-mapping` (relacja `scheduling → settlement`, z tego samego powodu), cztery
-  `event-without-consumer` na `VisitSettlement` (rozliczenia nikt jeszcze nie czyta; trzy zdarzenia zamykające są
-  `terminal`). Zostają do E9, gdzie kontrakty powstają od nowa.
+  `event-without-consumer` na `VisitSettlement` (rozliczenia nikt jeszcze nie czyta; dwa zdarzenia zamykające są
+  `terminal` — pierwsza wersja tego zdania i opis `09a5c01` mówiły „trzy”, poprawione 27 września). Zostają do E9, gdzie kontrakty powstają od nowa.
 - **Silnik, 31 ostrzeżeń i 3 notki na wymyślonych fiksturach**, pisanych pod mechanizm, nie pod kompletność:
   14 `event-name-with-aggregate-prefix`, 10 `event-without-consumer`, 3 `read-model-without-query`, po jednym
   `consults-without-match` (celowe w `BoundaryRig`), `process-manager-without-event-reactions`,
@@ -924,6 +938,168 @@ Mechanika, rozstrzygnięta przez asystenta:
 **Do E9:** `event-name-with-aggregate-prefix` zapali się na nazwach z warsztatu, jeśli jednostka nazywa się jak
 początek zdarzenia (`accounting_month_opened` w jednostce `accounting_month`). Nazwy zdarzeń zostają z warsztatu
 (`CLAUDE.md`), więc albo jednostka dostaje inną nazwę z materiału, albo ostrzeżenie zostaje i jest prawdziwe.
+
+### Przed EL2 — decyzje użytkownika (27 września)
+
+Pytania po przeglądzie EL1, każde z przykładem z materiału; wszystkie pola są opisowe — nic ich nie wykonuje, czytają
+je `glossary`, `view`, strony dokumentacji (EL3) i grafy (EG).
+
+- **Zmienione tego samego dnia, po pytaniu użytkownika „czy silnik może to sprawdzić?”** — wyjaśnione na
+  `record_payment` i `value :money`, jak dziś działa inwariant agregatu (nazwa w kontrakcie, `reject` w
+  implementacji, S8, test ze scenariusza):
+  - **Ograniczenie komendy sprawdzane scenariuszem:** `constraint :positive_amount, "…"` w komendzie, komenda je
+    `rejects:`, implementacja `reject(:positive_amount)`, każde ograniczenie ma scenariusz odmowy (jak S8), test
+    generuje `ScenarioCase`. Query nie odmawia, więc tam ograniczenie zostaje prozą. *Odrzucone:* sama proza
+    (nic nie dowodzi, że kod trzyma regułę); scenariusz zalecany ostrzeżeniem `check` zamiast błędu (łagodniej niż
+    S8 dla inwariantów).
+  - **Inwariant wartości z walidatorem od razu:** domena generuje behaviour, implementacja wartości definiuje
+    funkcję na każdy inwariant, dispatch sprawdza pola tego typu, test z kontrprzykładu przy inwariancie.
+    Rekomendacja asystenta była inna — proza teraz, walidator, gdy E9 go potrzebuje; *odrzucone* przez użytkownika.
+    Kształty rozstrzygnięte zaraz potem:
+    - **sprawdzane w komendzie i w zdarzeniach**, także w listach i polach wartości złożonych: pole komendy —
+      odmowa przed decyzją, `{:error, {:invalid, [amount: {:invariant, :not_negative}]}}`, HTTP 422
+      `{"invalid": {"amount": "not_negative"}}`, bez wiersza w logu; zdarzenie z decyzji — błąd kodu, rzuca jak
+      niezadeklarowane zdarzenie; zdarzenie z `record/3` — odmowa jak przy komendzie. *Odrzucone:* tylko komenda
+      (zła wartość z decyzji albo nagrania zostaje w logu na zawsze); tylko zdarzenia (komenda z -500 wywraca
+      dispatch zamiast odmowy);
+    - **kontrprzykład i przykład poprawny, oba wymagane:** `invariant :not_negative, "…", violated_by: [-1],
+      satisfied_by: [0, 15_000]`; brak to błąd kompilacji; każdy daje wygenerowany test (walidator odrzuca
+      `violated_by` i przepuszcza `satisfied_by`). Wybór użytkownika zamiast rekomendacji asystenta (samo
+      `violated_by`, wymagane). *Odrzucone:* samo `violated_by`, wymagane (nie dowodzi, że walidator nie odrzuca
+      wszystkiego); `violated_by` opcjonalne z ostrzeżeniem (inwariant bez dowodu);
+    - **funkcja na inwariant:** `use Rehmed.Domain, value: :money`, `def not_negative(amount), do: amount >= 0`;
+      behaviour z `@callback not_negative(money()) :: boolean()`, L4 wymaga każdej funkcji. *Odrzucone:* jedno
+      `check/1` zwracające nazwę (kompilator nie sprawdzi, że każdy inwariant jest obsłużony);
+    - **osobny PR po EL2, przed EL3** (EL2b), z przeglądem po skończeniu. *Odrzucone:* w EL2 (diff łączy narzędzia
+      tekstowe z mechaniką dispatchu); po EL3 (dokumentacja EL3 nie pokazałaby kontrprzykładów).
+- *Pierwsza wersja, zastąpiona akapitem wyżej:* **`constraints` i inwarianty wartości jako nazwane deklaracje:** `command :record_payment, … do constraint
+  :positive_amount, "Kwota płatności jest dodatnia" end` (tak samo w query) i `value :money, :integer, unit: :grosze
+  do invariant :not_negative, "Kwota nie jest ujemna" end` — kształt `invariant` agregatu, nazwa daje kotwicę na
+  stronie. Proza po polsku, więc lista miejsc w `CLAUDE.md` rośnie. *Odrzucone:* lista zdań w opcji,
+  `constraints: ["…"]` (bez nazw — nie ma do czego linkować ani czego przypiąć); inwarianty wykonywane przez MFA w
+  Codecu (nowa mechanika runtime, nie pole opisowe).
+- **Tłumaczenie jak w ESDM, definicja wymagana:** `translation :en, "Completed", definition: "…" do avoid "Done",
+  reason: "…" end`; `avoid` przy terminie też dostaje opcjonalne `reason:`. *Odrzucone:* definicja opcjonalna
+  (słownik w drugim języku bywa pusty); sama definicja bez `avoid` i `reason:` (luka względem ESDM w połowie).
+- **Relacja z systemem zewnętrznym tymi samymi kluczami:** `relation :conformist, upstream: :ksef, downstream:
+  :settlement`, gdzie `:ksef` to `external` domeny; tylko relacje kierunkowe, jak w ESDM; nowa reguła D pilnuje, że
+  żadna nazwa nie jest naraz kontekstem i systemem; `orphan-external-system` liczy relację jako użycie.
+  *Odrzucone:* jawny rodzaj końca, `upstream: {:external, :ksef}` (drugi zapis końca obok nazwy kontekstu); relacje
+  tylko między kontekstami (mapa w EG nie pokaże, kto się komu podporządkowuje).
+- **Identyfikator nadawany przez system zewnętrzny: `issued_by:`** (pytanie dopisane przez użytkownika):
+  `field :p1_report_id, :id, issued_by: :medical_event_registry`; składa się z encją (`field :invoice_number, {:id,
+  :invoice}, issued_by: :ksef`). Czytelnik: `view` i strona elementu w EL, krawędź w EG; `orphan-external-system`
+  liczy wystawcę jako użycie. *Odrzucone:* (a) `{:id, :system}`, zapis encji z EM2 (jeden zapis dla dwóch rzeczy,
+  pole naraz encją i numerem z systemu niewyrażalne); (c) proza w `source:` (ani `check`, ani grafy tego nie
+  zobaczą).
+
+### EL2 — co wyszło (27 września)
+
+Na `dsl-v2/el-glossary` (od EL1), niewypchnięte. Dwa commity decyzji (`7d03eea`, `67c27e1`) i osiem budowy:
+`mix eh_os_contract.glossary` (`367ece8`), `mix eh_os_contract.view` (`9cbbf50`), nazwana subdomena (`1fa7403`),
+tłumaczenie z definicją i `avoid` z powodem (`0b46c5b`), sprawdzane ograniczenia komend (`458b8d9`), relacja z
+systemem zewnętrznym (`030ecc4`), `issued_by:` (`d1362d2`), poprawka z weryfikacji (`efda115`). Silnik 1075 → 1096
+testów; `check` bez zmian (sandbox 0 / 12 / 19, silnik 0 / 50 / 20).
+
+Mechanika, rozstrzygnięta przez asystenta:
+- **Każde pole razem z czytelnikiem:** subdomena — `view` i reguła `subdomain-without-bounded-context`;
+  tłumaczenie — `glossary --language`; ograniczenie — `view --details`, scenariusz i test; relacja z systemem i
+  `issued_by:` — `orphan-external-system` i `orphan-context-mapping` (mapę kontekstów rysuje EG).
+- **Rejestr zna domeny** (`Registry.domains/0`); oba taski zaczynają od domeny aplikacji, `--domain`, gdy jest ich
+  kilka. Słowa biblioteki w wyjściu po angielsku, słownik klienta dosłownie. Kolejność jak w deklaracji.
+- **Nazwana subdomena w fiksturach i sandboxie:** materiał nie nazywa subdomen (jest tylko `CTX-01` jako jedyny
+  `core`), więc każda domena dostała jedną subdomenę na rodzaj, który jej konteksty podawały — zapis kontekstów
+  bez zmian, deklaracje na końcu modułu, żeby nie ruszyć żadnej przypiętej linii. §4.5 ADR kompiluje się z
+  poprawką w `@amendments` testu przykładów, a nie z przepisanym ADR. Wersja każdej domeny się rusza.
+- **Ograniczenie komendy:** A3 wpuszcza je do `rejects:`, nowa A7 (nazwa raz, nigdy jak inwariant jednostki, musi
+  być w `rejects:`), S8 wymaga scenariusza odmowy tej komendy, I5 bez zmian (czyta `rejects:`). W odpowiedzi
+  odmowy nazwa ograniczenia stoi tam, gdzie nazwa inwariantu (`Rejection.invariant`, `{"rejected": …}`).
+- **Relacja z systemem:** tylko kierunkowa, drugi koniec kontekstem (D5); D1 odmawia nazwy naraz kontekstu i
+  systemu. `cross-bounded-context-reference-without-mapping` zostaje o kontekstach, jak w ESDM.
+- **`issued_by:`** bez ograniczenia typu (numer KSeF bywa napisem), sprawdzany w kontrakcie przez X4, w domenie
+  przez nową D8; w modelu tylko tam, gdzie zadeklarowany. **Niezbudowane:** L5 „system wystawia identyfikator, a
+  żaden efekt go nie woła” — numer bywa przepisywany przez człowieka, więc ostrzeżenie byłoby fałszywe bez
+  sposobu na wyciszenie.
+- **`CLAUDE.md` bez zmian**, choć „Przed EL” to zapowiadało: druga pozycja `constraint`, jak `invariant`, to
+  `label`, a `label` już jest na liście miejsc po polsku.
+- **Pułapka zapisana tutaj:** `mix format` w `sandbox/` i w pakiecie web pamięta eksport formattera zależności
+  (`_build/*/lib/*/.mix/cached_dot_formatter`), więc nowe słowo DSL-a dostaje tam nawiasy, dopóki się tego pliku
+  nie skasuje.
+
+Weryfikacja poza testami (`MIX_ENV=dev` w `sandbox/`): `view` pokazuje domenę Rehmedu z subdomenami; `glossary
+--language en` padało, bo atom `:en` nie istniał w maszynie, a sandbox nie ma angielskich tłumaczeń — poprawione
+(`efda115`), teraz „_No translation into en._”.
+
+**Przegląd EL2** (dwa równolegle na `dsl-v2/el-warnings..df06b36`):
+- **Poprawione, z testem i próbą odwrotną:** kolejność ograniczeń ruszała digest komendy (`0a51f81`); relacja z
+  systemem liczyła tylko część użyć, a `issuers/1` czytał dane scenariuszy (`1800fb3`); nazwy ograniczeń poza N1,
+  duplikat ograniczenia query przepuszczany, A7 zgłaszało duplikat dwa razy (`21a223e`); `view` z nieznaną
+  nazwą drukował puste drzewo, dwa argumenty dawały wyjątek, nazwa wiersza odczytywana z tekstu (`1c45152`).
+- **Poprawione słownie** (`87f9a4e`): I5 i dokumentacja `reject/1` / `Rejection` mówią o ograniczeniach; D5 dla
+  symetrycznej relacji z systemem; przykład w `DslWrappers`.
+- **Bez zmiany:** `String.to_atom` dla `--language` (jeden argument w tasku deweloperskim); `reason: nil` i
+  `avoid: []` w modelu domeny (wersja każdej domeny i tak ruszyła w EL2); etykieta ograniczenia w raporcie pokrycia
+  (S8 wymaga scenariusza odmowy dla każdego ograniczenia, więc taka odmowa nie jest nigdy niezadeklarowana).
+- Sprawdzone przez przegląd na prawdziwych danych: `VisitSettlement` ma na końcu EL2 tę samą wersję i te same 15
+  digestów co przed nim.
+
+### Po EL2 — proza, którą da się sprawdzać (27 września)
+
+Na prośbę użytkownika asystent przejrzał oba DSL-e pole po polu: co jest dziś prozą albo deklaracją, której w v2
+nikt nie czyta, a mogłoby być sprawdzane kompilatorem albo wygenerowanym testem. Wzorzec, który już działa:
+inwariant agregatu i od EL2 ograniczenie komendy (nazwa, `reject`, scenariusz odmowy, test).
+
+**Decyzja użytkownika: 1–4 do EL, 5 do EL2b, 6–9 odłożone.** 1–4 czytają pola z EL2 (`direction`, `avoid`,
+relacje, reakcje), więc wchodzą na gałąź EL2 po rozstrzygnięciu jej przeglądu, z przeglądem nowych commitów
+(rozstrzygnięcie asystenta — mechanika).
+
+1. **Kierunek relacji kontra to, kto kogo konsumuje.** `separate_ways` a `consumes` między kontekstami — sprzeczność;
+   `customer_supplier` i `conformist` — odwołanie tylko od downstream do upstream; `published_language` i
+   `open_host_service` — downstream przez `publish` (D11), nie przez `consumes`. Przykład: Rehmed `customer_supplier
+   scheduling → settlement`, a kontrakt `scheduling` konsumujący rozliczenia.
+2. **Słowa do unikania w etykietach.** Etykieta kontraktu danego kontekstu zawierająca słowo z `avoid` tego
+   kontekstu — ostrzeżenie (termin „Zrealizowana”, `avoid "Zakończona"`, zdarzenie „Wizyta zakończona”).
+3. **`direction` systemu kontra użycie.** `calls:` do systemu `:inbound`, albo `issued_by:` / nagrania aktora
+   `backed_by:` od systemu `:outbound` — sprzeczność; dziś `direction` jest wymagane i nikt go nie czyta.
+4. **Pokrycie scenariuszami reakcji i query.** Polityka, process manager i query bez scenariusza — dziś S8 wymaga
+   go tylko dla inwariantów i ograniczeń (ESDM: `feature-without-scenarios`). Poziom (ostrzeżenie czy błąd jak S8) —
+   rozstrzygnięcie przy budowie, z wyjaśnieniem.
+5. **Przykłady przy regule serwisu domenowego** — `rule :never_below_zero, "…", examples: [{[1, 3], 0}]`, każdy
+   daje test funkcji; ten sam mechanizm co `violated_by` / `satisfied_by` walidatora wartości, więc w EL2b.
+
+**1–4 zbudowane 27 września** na `dsl-v2/el-glossary`, po przeglądzie EL2: `relation-against-references`
+(`f82e470`), `label-with-avoided-term` (`4343068`), `external-direction-contradicted` (`acda05e`),
+`reaction-without-scenario` (`61579c7`). Rozstrzygnięcia asystenta:
+- **Z 1 pominięta część o `open_host_service` / `published_language` przez `publish`:** w jednej aplikacji
+  `consumes` rodzeństwa to właściwa droga, a `publish` (D11) jest między aplikacjami, więc reguła myliłaby się na
+  każdej takiej relacji wewnątrz aplikacji. Kierunek sprawdzany tylko między kontekstami: to, w którą stronę idzie
+  wywołanie systemu, nie mówi, kto od kogo zależy.
+- **2** czyta etykiety wszystkich deklaracji kontraktu (także pól), całe słowa bez względu na wielkość liter; słowa
+  z `avoid` tłumaczeń należą do innego języka i są pominięte.
+- **3:** `calls:` wymaga systemu `:outbound` albo `:bidirectional`; `issued_by:` i `backed_by:` — `:inbound` albo
+  `:bidirectional` (P1: wysłany raport, zwrócony numer).
+- **4 jako ostrzeżenie, nie błąd jak S8:** scenariusz odmowy to jedyny dowód, że inwariant trzyma, a reakcję
+  sprawdza też raport zgodności na logu; błąd wymusiłby scenariusze na fiksturach pisanych pod inny mechanizm.
+  Delta silnika 50 → 63 ostrzeżeń (13 reakcji i query fikstur), sandbox bez zmian.
+
+**Przegląd reguł 1–4** (dwa równolegle na `76d48ea..0513862`): poprawione `label-with-avoided-term` — puste `avoid`,
+termin zawierający słowo do unikania, etykiety członków enum, jeden wzorzec na słowo, „bez względu na wielkość
+liter”, odmian nie łapie (`7ad65b6`); `relation-against-references` stoi przy odwołaniu, nie przy relacji
+(`875dff5`); **reguła 3 zawężona**: wywołanie systemu `:inbound` nie jest sprzecznością, bo efekt woła też po to,
+żeby pobrać dane — zostały `issued_by:` i `backed_by:` przy systemie `:outbound` (`b2fb6c0`, zmiana względem opisu
+wyżej); polskie „Po EL2” w komentarzach zastąpione angielskim odwołaniem. Pominięte: trzy sposoby zbierania pól z
+`issued_by:` (ryzyko utrzymania, bez błędu dziś), `crossings/2` liczone kilka razy na domenę (koszt pomijalny).
+
+*Odłożone do E9* (zobaczyć na prawdziwych kontraktach, czy są potrzebne): 6 — ograniczenie query sprawdzane
+scenariuszem `answers` (przykład z testu okazał się `scope`, który już jest pilnowany); 7 — `expected_latency`
+systemu mierzone na jobach efektów w raporcie zgodności (w v2 nikt go nie czyta); 8 — scenariusz efektu z
+zaślepką systemu (najdroższe: dziś S6 wyklucza efekt jako cel scenariusza); 9 — `source:` i nazwy z warsztatu
+(notka dla zdarzenia bez `source:`, albo indeks identyfikatorów materiału w konfiguracji — wymaga decyzji, gdzie
+materiał żyje dla hosta).
+
+*Zostaje prozą, bo ma być:* `label`, `definition`, opis scenariusza, `unavailable_looks_like`, proza `where:` w
+`consults` (mechanika już jest konkretna: bez `match:` granica czyta wszystkie zdarzenia typu, co ma ostrzeżenie
+`consults-without-match`; proza mówi tylko dlaczego).
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 

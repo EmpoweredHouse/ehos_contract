@@ -6,7 +6,8 @@ defmodule EhOsContract.Next.Contract.Rules.Units do
   - **A2.** Every event is emitted by a command of its unit, or declares
     `recorded_by:` (D6). Stricter than ESDM on purpose: in an event-sourced log,
     an event nothing produces can never occur.
-  - **A3.** A command rejects only invariants of its own unit.
+  - **A3.** A command rejects only invariants of its own unit, and its own
+    constraints (plan EL2).
   - **A4.** A dynamic consistency boundary consults at least one event; each one
     is an event of this log — its own or a sibling contract's, not one received from
     another application (D12) — and says which by `match:`
@@ -16,6 +17,8 @@ defmodule EhOsContract.Next.Contract.Rules.Units do
     and a boundary finds what it consults by its tags. For an event consumed from a
     sibling contract the same is X6's, where the sibling is known.
   - **A5.** A unit, or a process manager, declares its state at most once.
+  - **A7** (plan EL2). A command's constraints are never named as an invariant of its
+    unit, and each is in the command's `rejects:`; N1 names each once.
   - **A6** (plan EM3). An aggregate whose identity is `generated:` has one identity
     field, and at least one command that `creates:` it, since nothing else could make
     a new one; `creates:` belongs only to such an aggregate's commands.
@@ -65,13 +68,43 @@ defmodule EhOsContract.Next.Contract.Rules.Units do
 
     rejects =
       for command <- unit.commands,
+          constraints = MapSet.new(command.constraints, & &1.name),
           invariant <- command.rejects,
-          not MapSet.member?(invariants, invariant) do
-        {"A3: command #{inspect(command.name)} rejects #{inspect(invariant)}, which is not an " <>
-           "invariant of #{where}", command}
+          not MapSet.member?(invariants, invariant),
+          not MapSet.member?(constraints, invariant) do
+        {"A3: command #{inspect(command.name)} rejects #{inspect(invariant)}, which is neither an " <>
+           "invariant of #{where} nor a constraint of the command", command}
       end
 
-    emits ++ unemitted ++ rejects ++ consults(unit, d) ++ generated(unit, where)
+    emits ++
+      unemitted ++
+      rejects ++ constraints(unit, invariants) ++ consults(unit, d) ++ generated(unit, where)
+  end
+
+  # A7 (plan EL2): a command's constraints are never named as an invariant of its unit,
+  # since `rejects:` and `reject/1` name both alike, and each is in `rejects:`:
+  # a constraint the command cannot refuse on is one nothing checks.
+  defp constraints(unit, invariants) do
+    for command <- unit.commands,
+        constraint <- command.constraints,
+        problem <- constraint_problems(command, constraint, invariants) do
+      {"A7: command #{inspect(command.name)}, constraint #{inspect(constraint.name)} #{problem}",
+       constraint}
+    end
+  end
+
+  # A name declared twice is N1's, reported once.
+  defp constraint_problems(command, constraint, invariants) do
+    Enum.concat([
+      if(MapSet.member?(invariants, constraint.name),
+        do: ["has the name of an invariant of the unit; give it its own"],
+        else: []
+      ),
+      if(constraint.name in command.rejects,
+        do: [],
+        else: ["is not in its rejects:, so nothing checks it; add it there"]
+      )
+    ])
   end
 
   defp generated(unit, where) do

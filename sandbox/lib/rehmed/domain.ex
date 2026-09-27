@@ -23,6 +23,12 @@ defmodule Rehmed.Domain do
   use EhOsContract.Domain, name: :rehmed, language: :pl
   use Boundary, deps: [EhOsContract], exports: [Values]
 
+  # The material names no subdomain: the context map gives each context a kind only,
+  # `CTX-01` the one `core`. So each kind is one subdomain here, until E9 writes the
+  # domain anew (plan EL2).
+  subdomain :core, "Rdzeń", type: :core, source: "CTX-01"
+  subdomain :supporting, "Wsparcie", type: :supporting
+
   # CTX-01. The term is the good end state of a booked visit as `AGG-01` and `E-51`
   # name it; v2 §4.6 puts `visit_completed` in scheduling.
   context :scheduling, "Umawianie i zasoby", subdomain: :core do

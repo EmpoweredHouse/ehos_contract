@@ -30,4 +30,6 @@ defmodule UniversalityGate.Domain do
     direction: :outbound,
     expected_latency: {5, :second},
     unavailable_looks_like: "no answer — eligibility undecided, not denied"
+
+  subdomain :core, "Core", type: :core
 end

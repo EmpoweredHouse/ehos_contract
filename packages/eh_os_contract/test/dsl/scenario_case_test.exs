@@ -279,6 +279,8 @@ defmodule EhOsContract.ScenarioCaseTest do
         use EhOsContract.Domain, name: :moments, language: :pl
         context :clinic, "Przychodnia", subdomain: :core
         value :moment, :timestamp
+
+        subdomain :core, "Core", type: :core
       end
 
       defmodule EhOsContract.Next.Fixtures.Moments do

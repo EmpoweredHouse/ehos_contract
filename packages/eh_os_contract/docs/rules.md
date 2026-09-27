@@ -172,6 +172,19 @@ An event's name starts with the name of its unit.
 `visit_closed` in the unit `visit`: the unit is where the event is declared and its type carries
 the process, so the prefix says twice what the name should not have to. Name what happened.
 
+## `reaction-without-scenario`
+
+**warning** · reads v2 contracts · ESDM: `esdm/gwt/feature-without-scenarios`
+
+No scenario runs a policy, a process manager or a query.
+
+Its label says what it does, and nothing shows its implementation does it: a scenario on the
+event it takes, with what it `issues`, or a query with what it `answers`, is the test that would.
+ESDM asks this of a feature; here of each declaration a scenario can run. An effect is left out,
+since its outcome is outside the log and no scenario can name it (S6). A warning, where an
+invariant without a rejecting scenario is an error (S8): the scenario is the only proof an
+invariant holds, and a reaction is also checked on the log by the conformance report.
+
 ## `consults-without-match`
 
 **warning** · reads v2 contracts
@@ -199,8 +212,8 @@ it work is not written yet.
 
 An external system of the domain is used by nothing.
 
-No actor is `backed_by:` it, no effect `calls:` it and no event `depends_on:` it. ESDM also
-counts an end of a context mapping, which a relation here cannot name yet.
+No actor is `backed_by:` it, no relation ends at it, no field is `issued_by:` it, no effect
+`calls:` it and no event `depends_on:` it.
 
 ## `bounded-context-without-content`
 
@@ -212,6 +225,15 @@ ESDM counts the aggregates, boundaries and read models in a context; here those 
 contracts, so a context is empty when no contract belongs to it. Values and entities it owns do
 not make it less empty: nothing is decided, recorded or read there.
 
+## `subdomain-without-bounded-context`
+
+**warning** · reads v2 contracts · ESDM: `esdm/modeling/subdomain-without-bounded-context`
+
+No context belongs to a subdomain of the domain.
+
+The subdomain names a part of the business, and nothing of the model is in it. Either a context
+should name it with `subdomain:`, or it is left over.
+
 ## `orphan-context-mapping`
 
 **warning** · reads v2 contracts · ESDM: `esdm/modeling/orphan-context-mapping`
@@ -219,8 +241,47 @@ not make it less empty: nothing is decided, recorded or read there.
 A relation between two contexts is crossed by no reference.
 
 No contract of one context consumes a contract of the other, and none names an entity the other
-owns (`{:id, entity}`), in either direction. The relation describes a dependency the contracts
-do not have.
+owns (`{:id, entity}`), in either direction; for a relation to an external system, no contract
+of the context calls it, depends on it, has a field it issues or acts through an actor it backs. The relation describes
+a dependency the contracts do not have.
+
+## `relation-against-references`
+
+**warning** · reads v2 contracts
+
+A reference between two contexts runs against the relation declared between them.
+
+A directed relation — `customer_supplier`, `conformist`, `anticorruption_layer`,
+`open_host_service`, `published_language` — says the downstream context depends on the upstream
+one, and a contract of the upstream context consumes a contract of the downstream one or names
+an entity it owns. Or the relation is `separate_ways`, which says the two do not depend on each
+other, and a reference crosses it anyway. Either the relation or the reference is wrong. Between
+contexts only: which way a call to an external system runs says nothing about who depends on
+whom.
+
+## `label-with-avoided-term`
+
+**warning** · reads v2 contracts
+
+A label of a contract uses a word its context's glossary says to avoid.
+
+The glossary says `avoid "Finished"` for the term "Completed", and an event of that context is
+labelled "Visit finished": the contract says what its own language says not to. The labels read
+are every declaration's and every enum member's; a word matches whole, regardless of letter case,
+and not inside the term itself. Inflected forms are not caught: `avoid` names each form to avoid.
+The words a translation avoids are another language's, which labels are not written in.
+
+## `external-direction-contradicted`
+
+**warning** · reads v2 contracts
+
+An external this application only sends to issues a value or backs an actor.
+
+A value `issued_by:` a system, and an actor `backed_by:` one, bring what the system says into
+this application, so a system declared `direction: :outbound`, one the application only sends
+to, can do neither. A system that also answers is `:bidirectional`: P1 is sent a report and
+answers with its number. A call says nothing either way, since an effect calls a system to send
+and to fetch alike.
 
 ## `cross-bounded-context-reference-without-mapping`
 

@@ -166,6 +166,8 @@ defmodule EhOsContract.CheckContractsTest do
           field :note, :string
           field :floor, :integer
         end
+
+        subdomain :core, "Core", type: :core
       end
 
       defmodule EhOsContract.CheckContractsTest.Desk do

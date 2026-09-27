@@ -35,7 +35,12 @@ defmodule EhOsContract.Next.ContractExamplesTest do
      "D11: public: retired; a sibling process consumes the event without a flag"},
     {"by: [:reception, :manager] do\n  field :business_date, :date",
      "by: [:reception, :manager] do\n  param :business_date, :date",
-     "D10: param replaces field for a query's parameters"}
+     "D10: param replaces field for a query's parameters"},
+    {~s|  context :scheduling, "Umawianie i zasoby", subdomain: :core|,
+     ~s|  subdomain :core, "Rdzeń", type: :core\n| <>
+       ~s|  subdomain :supporting, "Wsparcie", type: :supporting\n| <>
+       ~s|  context :scheduling, "Umawianie i zasoby", subdomain: :core|,
+     "plan EL2: a context names a subdomain the domain declares (D7)"}
   ]
 
   unless File.exists?(@adr),

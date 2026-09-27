@@ -37,6 +37,9 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
           field :clinic_id, :id
           field :city, :string
         end
+
+        subdomain :core, "Core", type: :core
+        subdomain :supporting, "Supporting", type: :supporting
       end
       """,
       "links_clinic.ex"
@@ -425,6 +428,29 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
   end
 
   describe "X4: externals are the domain's" do
+    test "since plan EL2, a field's issued_by naming no external; control: one naming one" do
+      right =
+        String.replace(
+          @body,
+          "field :amounts, {:list, :money}",
+          "field :amounts, {:list, :money}\n      field :claim_no, :id, issued_by: :payer_registry"
+        )
+
+      assert links("LinksIssuedRight", right) == []
+
+      violations =
+        links(
+          "LinksIssuedWrong",
+          String.replace(right, "issued_by: :payer_registry", "issued_by: :payer_regstry")
+        )
+
+      assert assert_linked(
+               violations,
+               "X4: event :payment_recorded, field :claim_no: issued_by :payer_regstry is not an external",
+               "links_issued_wrong.ex"
+             ) =~ "did you mean :payer_registry?"
+    end
+
     test "depends_on and calls naming no external" do
       body =
         @body

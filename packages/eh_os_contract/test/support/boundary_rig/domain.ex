@@ -11,4 +11,6 @@ defmodule BoundaryRig.Domain do
 
   actor :registrar, :human, "Registrar"
   actor :timetable, :system, "Timetable"
+
+  subdomain :core, "Core", type: :core
 end

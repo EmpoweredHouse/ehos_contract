@@ -22,8 +22,8 @@ defmodule EhOsContract.DomainTest do
 
       term "Wizyta" do
         definition("Spotkanie pacjenta ze specjalistą")
-        translation(:en, "Visit")
-        translation(:de, "Besuch")
+        translation(:en, "Visit", definition: "A patient's appointment with a specialist")
+        translation(:de, "Besuch", definition: "Termin eines Patienten bei einem Spezialisten")
         avoid("Seans")
       end
 
@@ -44,6 +44,9 @@ defmodule EhOsContract.DomainTest do
 
     external(:payer_registry, "Rejestr płatnika", direction: :outbound)
     relation(:customer_supplier, upstream: :scheduling, downstream: :settlement)
+
+    subdomain :core, "Core", type: :core
+    subdomain :supporting, "Supporting", type: :supporting
   end
 
   defmodule Reordered do
@@ -73,12 +76,15 @@ defmodule EhOsContract.DomainTest do
       term "Wizyta" do
         definition("Spotkanie pacjenta ze specjalistą")
         avoid("Seans")
-        translation(:de, "Besuch")
-        translation(:en, "Visit")
+        translation(:de, "Besuch", definition: "Termin eines Patienten bei einem Spezialisten")
+        translation(:en, "Visit", definition: "A patient's appointment with a specialist")
       end
     end
 
     context(:scheduling, "Umawianie", subdomain: :core)
+
+    subdomain :core, "Core", type: :core
+    subdomain :supporting, "Supporting", type: :supporting
   end
 
   defmodule Changed do
@@ -92,8 +98,8 @@ defmodule EhOsContract.DomainTest do
 
       term "Wizyta" do
         definition("Spotkanie pacjenta ze specjalistą")
-        translation(:en, "Visit")
-        translation(:de, "Besuch")
+        translation(:en, "Visit", definition: "A patient's appointment with a specialist")
+        translation(:de, "Besuch", definition: "Termin eines Patienten bei einem Spezialisten")
         avoid("Seans")
       end
 
@@ -115,6 +121,9 @@ defmodule EhOsContract.DomainTest do
 
     external(:payer_registry, "Rejestr płatnika", direction: :outbound)
     relation(:customer_supplier, upstream: :scheduling, downstream: :settlement)
+
+    subdomain :core, "Core", type: :core
+    subdomain :supporting, "Supporting", type: :supporting
   end
 
   describe "the model" do
@@ -132,8 +141,21 @@ defmodule EhOsContract.DomainTest do
                text: "Wizyta",
                definition: "Spotkanie pacjenta ze specjalistą",
                source: nil,
-               translations: [%{language: :en, text: "Visit"}, %{language: :de, text: "Besuch"}],
-               avoid: [%{text: "Seans"}]
+               translations: [
+                 %{
+                   language: :en,
+                   text: "Visit",
+                   definition: "A patient's appointment with a specialist",
+                   avoid: []
+                 },
+                 %{
+                   language: :de,
+                   text: "Besuch",
+                   definition: "Termin eines Patienten bei einem Spezialisten",
+                   avoid: []
+                 }
+               ],
+               avoid: [%{text: "Seans", reason: nil}]
              }
 
       assert [%{name: :money, type: :integer, unit: :grosze}, %{name: :address, fields: fields}] =
@@ -174,6 +196,8 @@ defmodule EhOsContract.DomainTest do
       defmodule EhOsContract.DomainTest.English do
         use EhOsContract.Domain, name: :clinic, language: :en
         context :scheduling, "Umawianie", subdomain: :core
+
+        subdomain :core, "Core", type: :core
       end
       """)
 
@@ -181,6 +205,8 @@ defmodule EhOsContract.DomainTest do
       defmodule EhOsContract.DomainTest.Polish do
         use EhOsContract.Domain, name: :clinic, language: :pl
         context :scheduling, "Umawianie", subdomain: :core
+
+        subdomain :core, "Core", type: :core
       end
       """)
 
@@ -201,6 +227,8 @@ defmodule EhOsContract.DomainTest do
                "domain:clinic",
                "external:payer_registry",
                "relation:customer_supplier:scheduling,settlement",
+               "subdomain:core",
+               "subdomain:supporting",
                "subject:patient",
                "value:address",
                "value:money"

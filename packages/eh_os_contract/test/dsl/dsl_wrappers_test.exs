@@ -23,6 +23,8 @@ defmodule EhOsContract.DslWrappersTest do
       use EhOsContract.Domain, name: :clinic, language: :pl
 
     #{body}
+
+      subdomain :supporting, "Supporting", type: :supporting
     end
     """
   end
@@ -43,7 +45,7 @@ defmodule EhOsContract.DslWrappersTest do
         compiled("Beside", """
           context :settlement, "Rozliczenia", subdomain: :supporting, source: "CTX-05" do
             term "Wizyta", definition: "Spotkanie pacjenta ze specjalistą" do
-              translation :en, "Visit"
+              translation :en, "Visit", definition: "A patient's appointment with a specialist"
               avoid "Seans"
             end
           end
@@ -61,7 +63,7 @@ defmodule EhOsContract.DslWrappersTest do
 
             term "Wizyta" do
               definition "Spotkanie pacjenta ze specjalistą"
-              translation :en, "Visit"
+              translation :en, "Visit", definition: "A patient's appointment with a specialist"
               avoid "Seans"
             end
           end
@@ -121,7 +123,7 @@ defmodule EhOsContract.DslWrappersTest do
         refused("UnknownTermOption", """
           context :settlement, "Rozliczenia", subdomain: :supporting do
             term "Wizyta", defintion: "Spotkanie" do
-              translation :en, "Visit"
+              translation :en, "Visit", definition: "A patient's appointment with a specialist"
             end
           end
         """)
@@ -153,7 +155,7 @@ defmodule EhOsContract.DslWrappersTest do
           context :settlement, "Rozliczenia", subdomain: :supporting do
             term "Wizyta", definition: "Spotkanie"
             term "Wizyta", definition: "Spotkanie" do
-              translation :pl, "Wizyta"
+              translation :pl, "Wizyta", definition: "Umówione spotkanie pacjenta ze specjalistą"
             end
           end
         """)
@@ -241,7 +243,7 @@ defmodule EhOsContract.DslWrappersTest do
     @source """
     context :settlement, "Rozliczenia", subdomain: :supporting do
       term "Wizyta", definition: "Spotkanie" do
-        translation :en, "Visit"
+        translation :en, "Visit", definition: "A patient's appointment with a specialist"
       end
     end
 
@@ -261,7 +263,10 @@ defmodule EhOsContract.DslWrappersTest do
       assert rewritten =~ ~s|context :settlement, "Rozliczenia", subdomain: :supporting do|
       assert rewritten =~ ~s|term "Wizyta", definition: "Spotkanie" do|
       assert rewritten =~ ~s|value :address, label: "Adres" do|
-      assert rewritten =~ ~s|translation(:en, "Visit")|
+
+      assert rewritten =~
+               ~s|translation(:en, "Visit", definition: "A patient's appointment with a specialist")|
+
       assert rewritten =~ ~s|field(:street, :string)|
     end
   end
