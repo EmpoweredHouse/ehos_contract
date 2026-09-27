@@ -68,6 +68,15 @@ defmodule EhOsContract.CheckOutputTest do
     end
   end
 
+  describe "the human format, a finding with nothing to add" do
+    test "is one line: no place and no page leave no blank second line" do
+      text = Check.render([Finding.compiler({"a row of read models", nil})], :human)
+
+      assert text ==
+               "ERROR L3: a row of read models\n\neh_os_contract.check: 1 errors, 0 warnings, 0 notices"
+    end
+  end
+
   describe "the JSON format" do
     test "one array, a finding an object with its rule, level, sentence, place and page" do
       json =

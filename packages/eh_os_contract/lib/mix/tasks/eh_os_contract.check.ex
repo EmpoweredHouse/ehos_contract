@@ -445,7 +445,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
   finding and a count; `:json`, one array and nothing else (plan EL1).
 
   A finding's second line says where the declaration it is about was written, when
-  anything does, and where its rule is documented. In JSON a finding is `rule`,
+  anything does, and where its rule is documented; a finding with neither has none. In JSON a finding is `rule`,
   `level` (`"error"`, `"warning"` or `"notice"`), `message`, `file` and `line` (`null`
   when nothing says where) and `documentation` (`null` for a repeated compiler rule,
   which the catalog does not document).
@@ -467,8 +467,12 @@ defmodule Mix.Tasks.EhOsContract.Check do
             {file, line} -> ["#{file}:#{line}"]
           end
 
-        second = Enum.join(where ++ List.wrap(documentation(finding)), " · ")
-        "#{prefix} #{finding.rule}: #{finding.message}\n      #{second}\n"
+        first = "#{prefix} #{finding.rule}: #{finding.message}\n"
+
+        case where ++ List.wrap(documentation(finding)) do
+          [] -> first
+          second -> first <> "      " <> Enum.join(second, " · ") <> "\n"
+        end
       end
 
     counts = Enum.frequencies_by(findings, & &1.level)
