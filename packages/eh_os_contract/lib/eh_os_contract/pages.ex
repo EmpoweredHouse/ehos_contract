@@ -553,7 +553,12 @@ defmodule EhOsContract.Pages do
         section(plural(word), Map.fetch!(model, key), &declaration_bullet(model, key, &1))
       end,
       consumes_section(site, model),
-      section("Published", model.publishes, &"- #{code(&1.as)} from #{code(&1.name)}"),
+      section("Published", model.publishes, fn p ->
+        bullet([
+          "#{code(p.name)}, published as #{code(p.as)}, from ",
+          event_link(site, model, p.from)
+        ])
+      end),
       scenarios(model, model.scenarios)
     ]
   end
@@ -627,14 +632,27 @@ defmodule EhOsContract.Pages do
 
   defp consumes_section(site, model) do
     section("Consumed", model.consumes, fn
-      %{kind: :contract, from: from, events: events} ->
+      # Each event linked to the sibling's page, under the name it has here.
+      %{kind: :contract, from: from, events: events} = c ->
+        sibling = Enum.find(site.contracts, &(&1.module == from))
+
         target =
-          case Enum.find(site.contracts, &(&1.module == from)) do
-            nil -> code(inspect(from))
-            sibling -> link(code(inspect(from)), contract_path(sibling))
+          if sibling,
+            do: link(code(inspect(from)), contract_path(sibling)),
+            else: code(inspect(from))
+
+        renames = Map.get(c, :renames, %{})
+
+        consumed =
+          for e <- events do
+            name =
+              if sibling, do: link(code(e), declaration_path(sibling, :events, e)), else: code(e)
+
+            as = Map.get(renames, e)
+            [name, if(as && as != e, do: " as #{code(as)}")]
           end
 
-        bullet([target, ": " | joined(Enum.map(events, &code/1))])
+        bullet([target, ": " | joined(consumed)])
 
       %{kind: :published} = c ->
         "- #{code(c.from)}, received as #{code(c.as)}"

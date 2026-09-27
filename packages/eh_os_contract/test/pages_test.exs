@@ -196,6 +196,35 @@ defmodule EhOsContract.PagesTest do
     assert page =~ "`half(5)` returns `{:ok, %{aa_pages_probe: 2, zz_pages_probe: 1}}`"
   end
 
+  # The EL3 review: "Published" printed the publication's name as its source, and
+  # "Consumed" neither linked a sibling's events nor said what they are called here.
+  test "what a contract publishes and consumes, linked, under the names it uses" do
+    till = EhOsContract.Model.fetch(ValueRig.Till)
+
+    publication = %{
+      name: :paid,
+      as: "till.paid.v1",
+      from: :paid_in,
+      fields: [],
+      idempotent_on: []
+    }
+
+    till = %{till | publishes: [publication]}
+    page = Pages.render(ValueRig.Domain, [till])["till/till/index.md"]
+    assert page =~ "- `paid`, published as `till.paid.v1`, from [`paid_in`](events/paid_in.md)"
+
+    branch = EhOsContract.Model.fetch(DispatchRig.Branch)
+    [consumed] = branch.consumes
+    branch = %{branch | consumes: [%{consumed | renames: %{account_opened: :opened}}]}
+
+    pages =
+      Pages.render(DispatchRig.Domain, [EhOsContract.Model.fetch(DispatchRig.Ledger), branch])
+
+    assert pages["ledger/branch/index.md"] =~
+             "- [`DispatchRig.Ledger`](../ledger/index.md): " <>
+               "[`account_opened`](../ledger/events/account_opened.md) as `opened`"
+  end
+
   test "two contracts of one context that would share a directory are refused" do
     till = EhOsContract.Model.fetch(ValueRig.Till)
     twin = %{till | module: Module.concat([Other, Till])}
