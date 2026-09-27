@@ -21,12 +21,8 @@ defmodule EhOsContract.DomainService do
   @doc false
   # Called by the functions of a generated `C.DomainServices.<Name>`.
   @spec call(module(), atom(), atom(), [term()]) :: term()
-  def call(contract, service, function, args) when is_list(args) do
-    # Declared first, so an undeclared service is said to be one, not to lack code.
-    resolved(contract, service)
-    implementation = Implementations.fetch!(Model.fetch(contract), :domain_service, service)
-    call(contract, service, function, args, implementation)
-  end
+  def call(contract, service, function, args) when is_list(args),
+    do: call(contract, service, function, args, implementation(contract, service))
 
   @doc false
   # The call, with the implementation given: a scenario's run finds its own, for a
@@ -77,6 +73,25 @@ defmodule EhOsContract.DomainService do
 
   defp describe({:invariant, invariant}), do: "it breaks invariant #{inspect(invariant)}"
   defp describe(problem), do: to_string(problem)
+
+  # The module implementing the service, looked up once and kept, as `resolved/2`
+  # is and for its reason: finding it in the index costs a scan of the loaded
+  # applications, and a decision may call once per line (the EL2b review). Declared
+  # first, so an undeclared service is said to be one, not to lack code.
+  defp implementation(contract, service) do
+    key = {__MODULE__, :implementation, contract, service}
+
+    case :persistent_term.get(key, nil) do
+      nil ->
+        resolved(contract, service)
+        implementation = Implementations.fetch!(Model.fetch(contract), :domain_service, service)
+        :persistent_term.put(key, implementation)
+        implementation
+
+      implementation ->
+        implementation
+    end
+  end
 
   # What a call needs that does not change while the node runs: the declared
   # functions, the domain and its values. Looked up once per service and kept in

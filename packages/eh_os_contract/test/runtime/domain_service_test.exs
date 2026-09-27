@@ -61,3 +61,32 @@ defmodule EhOsContract.DomainServiceTest do
     assert {:free_seats, 2} in Seating.behaviour_info(:callbacks)
   end
 end
+
+defmodule EhOsContract.DomainServiceLookupTest do
+  @moduledoc """
+  The EL2b review: a call finds its implementation once, not in the index on every
+  call, whose lookup scans the loaded applications. Shown by taking the
+  implementation out of the index after a first call: the next call still runs.
+  """
+
+  use ExUnit.Case, async: false
+
+  alias BoundaryRig.Enrolment.DomainServices.Seating
+  alias EhOsContract.Implementations
+
+  test "the implementation is looked up once" do
+    assert Seating.free_seats(3, 1) == 2
+
+    apps = Enum.uniq(List.wrap(Application.get_env(:eh_os_contract, :applications)))
+    key = {Implementations, apps}
+    index = Implementations.index(nil)
+    on_exit(fn -> :persistent_term.put(key, index) end)
+
+    declarations =
+      Map.delete(index.declarations, {BoundaryRig.Enrolment, :domain_service, :seating})
+
+    :persistent_term.put(key, %{index | declarations: declarations})
+
+    assert Seating.free_seats(3, 2) == 1
+  end
+end
