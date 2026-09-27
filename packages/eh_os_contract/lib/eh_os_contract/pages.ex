@@ -55,7 +55,8 @@ defmodule EhOsContract.Pages do
   The pages of `domain`, a domain module or its model, and of `contracts`, the v2
   contract modules or models naming it, as `%{relative path => Markdown}`. Contracts
   naming another domain are left out. Raises when two contracts of one context would
-  share a directory.
+  share a directory, when two elements would share a page, and when a name is not
+  snake_case, since pages are named after names.
   """
   @spec render(module() | map(), [module() | map()]) :: %{String.t() => String.t()}
   def render(domain, contracts) do
@@ -74,7 +75,28 @@ defmodule EhOsContract.Pages do
     |> Enum.concat(for e <- domain.entities, do: {entity_path(e.name), entity_page(site, e)})
     |> Enum.concat(for c <- domain.contexts, do: {context_path(c.name), context_page(site, c)})
     |> Enum.concat(Enum.flat_map(contracts, &contract_pages(site, &1)))
+    |> paths!()
     |> Map.new(fn {path, lines} -> {path, page(domain.name, path, lines)} end)
+  end
+
+  # A path is made of names, and the domain's are not held to snake_case the way a
+  # contract's are (N1): one written `:"../x"` would write outside the directory, and
+  # one with a space would break every link to it. Two elements of one path would
+  # leave one of them without a page.
+  defp paths!(pages) do
+    for {path, _lines} <- pages,
+        segment <- path |> String.trim_trailing(".md") |> Path.split(),
+        not (segment =~ ~r/^[a-z][a-z0-9_]*$/) do
+      raise ArgumentError,
+            "the page #{inspect(path)} would be named after #{inspect(segment)}; a page is " <>
+              "named after a snake_case name"
+    end
+
+    for path <- pages |> Enum.map(&elem(&1, 0)) |> EhOsContract.DslRules.duplicates(& &1) do
+      raise ArgumentError, "two elements would have the page #{path}; rename one of them"
+    end
+
+    pages
   end
 
   defp distinct!(contracts) do

@@ -133,6 +133,35 @@ defmodule EhOsContract.PagesTest do
                  end
   end
 
+  # The EL3 review: a domain's names are not held to snake_case as a contract's are.
+  test "a name that is no snake_case name, and two elements of one path, are refused" do
+    domain = EhOsContract.Model.fetch(ValueRig.Domain)
+    [amount | rest] = domain.values
+
+    escaping = %{domain | values: [%{amount | name: :"../../escape"} | rest]}
+
+    assert_raise ArgumentError,
+                 ~r|the page "values/../../escape.md" would be named after ".."|,
+                 fn ->
+                   Pages.render(escaping, [])
+                 end
+
+    spaced = %{domain | values: [%{amount | name: :"Money Amount"} | rest]}
+    assert_raise ArgumentError, ~r/named after "Money Amount"/, fn -> Pages.render(spaced, []) end
+
+    [till] = domain.contexts
+
+    clashing = %{
+      domain
+      | contexts: [%{till | name: :values}],
+        values: [%{amount | name: :index} | rest]
+    }
+
+    assert_raise ArgumentError, ~r|two elements would have the page values/index.md|, fn ->
+      Pages.render(clashing, [])
+    end
+  end
+
   describe "mix eh_os_contract.pages" do
     setup do
       Mix.shell(Mix.Shell.Process)
