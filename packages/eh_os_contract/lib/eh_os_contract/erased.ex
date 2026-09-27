@@ -12,6 +12,9 @@ defmodule EhOsContract.Erased do
   @enforce_keys [:subject, :id]
   defstruct [:subject, :id]
 
-  @typedoc "The subject whose data this was: its type, as the domain declares it, and its id."
-  @type t :: %__MODULE__{subject: atom(), id: String.t()}
+  @typedoc """
+  The subject whose data this was: its type, as the domain declares it, and its id.
+  The type is a string only in an erasure of a type no domain declares any more.
+  """
+  @type t :: %__MODULE__{subject: atom() | String.t(), id: String.t()}
 end

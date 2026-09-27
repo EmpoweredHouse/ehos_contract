@@ -175,6 +175,19 @@ defmodule EhOsContract.ErasureTest do
       assert names() == [{"member-bartek", "Bartek Nowak"}]
     end
 
+    test "an erasure of a subject type no domain declares any more reads, and is forgotten by none" do
+      type = "gone_#{System.unique_integer([:positive])}"
+      erased = Personal.erased_event(%{"subject_type" => type, "subject_id" => "gone-anna"})
+      assert erased == %Erased{subject: type, id: "gone-anna"}
+
+      members =
+        Implementations.subscribed()
+        |> Enum.find(&(&1.key == "ShreddingRig.Members:read_model:members"))
+        |> Implementations.taking(Personal.erased_type())
+
+      assert Consumer.handle!(members, erased, []) == :ok
+    end
+
     test "control: a read model with no personal data takes no erasure" do
       balances =
         Enum.find(

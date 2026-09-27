@@ -299,9 +299,20 @@ defmodule EhOsContract.Personal do
   The event `erase/3` appended, as a read model's `forget/2` is handed it:
   `%EhOsContract.Erased{}` naming the subject.
   """
+  #
+  # A type no domain declares any more has no atom, and no read model holds its data:
+  # it stays a string, so a replay goes past the event instead of stopping at it.
   @spec erased_event(map()) :: Erased.t()
-  def erased_event(%{"subject_type" => type, "subject_id" => id}),
-    do: %Erased{subject: String.to_existing_atom(type), id: id}
+  def erased_event(%{"subject_type" => type, "subject_id" => id}) do
+    subject =
+      try do
+        String.to_existing_atom(type)
+      rescue
+        ArgumentError -> type
+      end
+
+    %Erased{subject: subject, id: id}
+  end
 
   @doc """
   Raises when a read model that projects personal data defines no `forget/2`: it
