@@ -87,6 +87,25 @@ What changes otherwise is what a host has to do.
   and checks its result, raising on a mismatch without the value in the message
   (`EhOsContract.DomainService`). `mix eh_os_contract.check` counts it among what a contract implements. A
   contract declaring none keeps its version.
+- **EM3: the library may give a new aggregate its identity** (ESDM's `identifiedBy: generated`). An aggregate
+  declares `identity :booking_id, generated: :uuid`, and a command `creates: true`; that command arrives
+  without the identity, dispatch gives it a UUIDv7, and `%EhOsContract.Receipt{identity: %{booking_id: id}}`
+  returns it — the first command's for a duplicate. A creating command that brings an identity is refused
+  with `{:error, {:invalid, [booking_id: :generated]}}`, a new problem; every other command still needs one.
+  A6 keeps it to an aggregate with one identity field and at least one creating command. `Receipt` gains
+  `identity` for every command, and `EhOsContract.Plug`'s 200 body carries it as `"identity"` (the user's
+  choice after the EM3 review: over HTTP a creating command was otherwise blind to what it made).
+  A creating command needs an idempotency key, `{:error, :idempotency_key_required}` (a new refusal, 422 over
+  HTTP) without one, since a retry would otherwise make a second aggregate; a reaction's key is derived.
+  `EhOsContract.record/3` records an event of such an aggregate only for one a command created,
+  `{:error, :not_created}` otherwise, a new refusal.
+- **EM3: a process manager's timer may wait by the calendar**, `timer :review, wait: {1, :month}` — also
+  `:week` and `:year`. A month after 31 January is the last day of February (`EhOsContract.Duration.calendar_shift/2`,
+  `DateTime.shift/2`). `within` and `deadline` still take fixed units only, since the report measures elapsed time
+  against them.
+- **EM3: a domain service's result may be declared empty**, `returns {:id, :clinic}, optional: true`; without
+  `optional:` a `nil` result is still refused. `returns` is its own declaration now, and a function without one
+  does not compile (F2).
 - **EM2: `entity` in a domain** (ESDM's entity): reference data with an identity that no event of the log
   changes — `entity :period, "Okres", context: :client_month, identified_by: :period_id do field … end`. A field
   of a contract or of a domain value names one as `{:id, :period}`; it is an `:id` in the model, in the log and

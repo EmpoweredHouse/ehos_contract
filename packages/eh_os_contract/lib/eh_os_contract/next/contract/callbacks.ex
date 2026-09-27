@@ -169,7 +169,12 @@ defmodule EhOsContract.Next.Contract.Callbacks do
             if a.optional, do: quote(do: unquote(type.(a.type)) | nil), else: type.(a.type)
           end
 
-        callback(f.name, args, type.(f.returns), names: Enum.map(f.arguments, & &1.name))
+        returns =
+          if f.returns.optional,
+            do: quote(do: unquote(type.(f.returns.type)) | nil),
+            else: type.(f.returns.type)
+
+        callback(f.name, args, returns, names: Enum.map(f.arguments, & &1.name))
       end
 
     %{callbacks: callbacks, evolve: nil}

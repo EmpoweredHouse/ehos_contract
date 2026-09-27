@@ -11,5 +11,5 @@ defmodule BoundaryRig do
 
   use Boundary,
     deps: [EhOsContract],
-    exports: [Calendar, Courses, Domain, Enrolment]
+    exports: [Calendar, Courses, Domain, Enrolment, Waitlist]
 end

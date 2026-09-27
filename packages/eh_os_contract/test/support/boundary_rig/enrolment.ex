@@ -40,6 +40,15 @@ defmodule BoundaryRig.Enrolment do
     event :seat_released, "Seat released", recorded_by: :timetable
   end
 
+  # A month after a course is defined, somebody looks at how it filled, unless a
+  # student subscribed first: a timer that waits by the calendar (plan EM3).
+  process_manager :course_review, "Review a course a month after it is defined" do
+    correlate :course_id
+    starts_on :course_defined, sets: :review
+    timer :review, wait: {1, :month}
+    ends_on :student_subscribed
+  end
+
   # Logic no unit owns, which the seat's decision calls (plan EM2).
   domain_service :seating, "Seating" do
     function :free_seats, "Seats still free on a course" do
@@ -47,6 +56,12 @@ defmodule BoundaryRig.Enrolment do
       argument(:taken, :integer)
       returns :integer
       rule :never_below_zero, "A course never has fewer than no free seats"
+    end
+
+    function :next_seat, "The number of the next free seat, if there is one" do
+      argument :capacity, :integer
+      argument :taken, :integer
+      returns :integer, optional: true
     end
   end
 

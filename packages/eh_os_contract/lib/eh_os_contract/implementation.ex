@@ -116,13 +116,27 @@ defmodule EhOsContract.Implementation do
         quote do: alias(unquote(module), as: unquote(as), warn: false)
       end
 
+    # A declaration with nothing to define — a process manager whose reactions and
+    # timers issue nothing and whose state is its correlation — generates a module
+    # with no callback, which Elixir does not take as a behaviour.
+    behaviour =
+      if behaviour?(model, kind, name),
+        do: quote(do: @behaviour(unquote(Model.module_for(model, kind, name))))
+
     quote do
-      @behaviour unquote(Model.module_for(model, kind, name))
+      unquote(behaviour)
       Module.register_attribute(__MODULE__, :eh_os_contract_emitted, accumulate: true)
       import EhOsContract.Implementation, only: [emit: 1, reject: 1, issue: 1], warn: false
       unquote_splicing(aliases)
       @before_compile EhOsContract.Implementation
     end
+  end
+
+  defp behaviour?(_model, :read_model, _name), do: true
+
+  defp behaviour?(model, kind, name) do
+    %{callbacks: callbacks, evolve: evolve} = Callbacks.of(model, kind, name)
+    callbacks != [] or evolve != nil
   end
 
   # I1: exactly one kind, naming a declaration that exists.

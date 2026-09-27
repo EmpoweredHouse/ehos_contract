@@ -46,6 +46,14 @@ defmodule EhOsContract.ImplementationTest do
     policy :remind_on_payment, "Przypomnij po płatności", handles: :payment_recorded, issues: :remind
     effect :notify, "Powiadom", handles: :closed, idempotency: :downstream
 
+    # Marks time and issues nothing, so it has nothing to define.
+    process_manager :watch, "Obserwacja" do
+      correlate :visit_id
+      starts_on :payment_recorded, sets: :look
+      timer :look, wait: {1, :day}
+      ends_on :closed
+    end
+
     process_manager :chase, "Pogoń" do
       correlate :visit_id
 
@@ -458,6 +466,11 @@ defmodule EhOsContract.ImplementationTest do
           "among the commands :payment_recorded issues, [:remind]",
         6
       )
+    end
+
+    test "control: a process manager with nothing to define compiles without a warning" do
+      module = compiles_clean(implementation("Watch", "process_manager: :watch", ""))
+      assert %{kind: :process_manager, name: :watch} = module.__eh_os_implementation__()
     end
 
     test "control: a domain service compiles, and its functions are called through the contract" do

@@ -14,16 +14,18 @@ defmodule EhOsContract.Next.Contract.Rules.Process do
     application is not in this log at all (D12).
   - **R5.** A promise's `from`, `eventually` and `or_else` are events of the run:
     local events, and consumed events the process includes.
-  - **R6.** `within`, `deadline` and a timer's `wait` count a non-negative number
-    of a fixed unit (`EhOsContract.Duration`); `cadence` may also count weeks,
-    months and years, because nothing computes a deadline from it.
+  - **R6.** `within` and `deadline` count a non-negative number of a fixed unit
+    (`EhOsContract.Duration`), since the report measures elapsed time against them;
+    a timer's `wait` and `cadence` may also count weeks, months and years — a timer
+    by the calendar, the user's choice of 27 September 2026 (plan EM3), and
+    `cadence` because nothing computes a deadline from it.
   """
 
   alias EhOsContract.DslRules
   alias EhOsContract.Duration
   alias EhOsContract.Next.Contract.{Dsl, Rules}
 
-  @calendar [:week, :month, :year]
+  @calendar Duration.calendar_units()
 
   @doc false
   @spec check(map()) :: [DslRules.violation()]
@@ -159,13 +161,13 @@ defmodule EhOsContract.Next.Contract.Rules.Process do
         for(
           dl <- process.deadline,
           do: {"process #{inspect(process.name)}: deadline", dl.within, dl}
-        ) ++
+        )
+
+    calendar =
+      for(c <- process.cadence, do: {"process #{inspect(process.name)}: cadence", c.every, c}) ++
         for pm <- d.process_managers, t <- pm.timers, t.wait != nil do
           {"timer #{inspect(t.name)}: wait", t.wait, t}
         end
-
-    calendar =
-      for c <- process.cadence, do: {"process #{inspect(process.name)}: cadence", c.every, c}
 
     for(
       {what, duration, declaration} <- fixed,
@@ -197,7 +199,9 @@ defmodule EhOsContract.Next.Contract.Rules.Process do
           []
 
         unit in @calendar ->
-          ["is in #{inspect(unit)}, a calendar unit, which only cadence may use"]
+          [
+            "is in #{inspect(unit)}, a calendar unit, which only a timer's wait and cadence may use"
+          ]
 
         true ->
           ["is in #{inspect(unit)}, which is not one of #{inspect(units)}"]

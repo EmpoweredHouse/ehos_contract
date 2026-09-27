@@ -14,7 +14,7 @@ defmodule EhOsContract.Next.ContractVocabularyTest do
 
   @field [:name, :type, :optional, :label, :personal, :subject, :default]
   @event [:name, :label, :terminal, :depends_on, :recorded_by, :schema_version, :source]
-  @command [:name, :label, :by, :emits, :rejects, :source]
+  @command [:name, :label, :by, :emits, :rejects, :creates, :source]
 
   defp unit(kind) do
     %{
@@ -35,6 +35,8 @@ defmodule EhOsContract.Next.ContractVocabularyTest do
   test "the words did not change without this test changing with them" do
     expected =
       unit(:aggregate)
+      # Plan EM3: a new aggregate's identity may be the library's to give.
+      |> Map.put([:aggregate], [:name, :label, :identity, :generated, :source])
       |> Map.merge(unit(:dcb))
       |> Map.merge(%{
         [:dcb, :consults] => [:event, :match, :where],
@@ -53,7 +55,8 @@ defmodule EhOsContract.Next.ContractVocabularyTest do
         [:query, :param] => [:name, :type, :optional, :label],
         # Plan EM2: ESDM's domain service.
         [:domain_service] => [:name, :label, :source],
-        [:domain_service, :function] => [:name, :label, :returns],
+        [:domain_service, :function] => [:name, :label],
+        [:domain_service, :function, :returns] => [:type, :optional],
         [:domain_service, :function, :argument] => [:name, :type, :optional, :label],
         [:domain_service, :function, :rule] => [:name, :label, :source],
         [:consumes] => [:from, :events, :as],

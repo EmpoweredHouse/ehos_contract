@@ -95,6 +95,20 @@ defmodule EhOsContract.Next.ContractDomainServicesTest do
              """)
   end
 
+  test "a function that says nothing of what it returns is refused" do
+    assert refuse_contract("ServicesSilent", """
+             domain_service :pricing, "Cennik" do
+               function :price, "Cena" do
+                 argument :minutes, :integer
+               end
+             end
+
+           #{@process}
+           """) =~
+             "F2: domain service :pricing, function :price returns nothing: say what it returns " <>
+               "with `returns type` (services_silent.ex:5)"
+  end
+
   test "a malformed argument or result type is refused" do
     message =
       refuse_contract("ServicesTyped", """
@@ -114,7 +128,7 @@ defmodule EhOsContract.Next.ContractDomainServicesTest do
 
     assert message =~
              ~s|F2: domain service :pricing, function :price returns "integer" is not a type| <>
-               " (services_typed.ex:5)"
+               " (services_typed.ex:7)"
   end
 
   test "control: a service with functions, arguments of every shape and rules compiles into the model" do
@@ -130,7 +144,7 @@ defmodule EhOsContract.Next.ContractDomainServicesTest do
 
           function :free, "Czy bezpłatna" do
             argument :service_id, :id
-            returns :boolean
+            returns :boolean, optional: true
           end
         end
 
@@ -144,8 +158,8 @@ defmodule EhOsContract.Next.ContractDomainServicesTest do
              %{name: :minutes, type: :integer, optional: true}
            ] = price.arguments
 
-    assert %{returns: :money, rules: [%{name: :rounded}]} = price
-    assert %{name: :free, returns: :boolean} = free
+    assert %{returns: %{type: :money, optional: false}, rules: [%{name: :rounded}]} = price
+    assert %{name: :free, returns: %{type: :boolean, optional: true}} = free
     assert Map.has_key?(model.digests, "domain_service:pricing")
 
     assert EhOsContract.Model.module_for(model, :domain_service, :pricing) ==

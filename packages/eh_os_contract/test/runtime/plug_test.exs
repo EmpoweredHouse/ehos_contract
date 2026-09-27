@@ -49,6 +49,7 @@ defmodule EhOsContract.PlugTest do
     assert conn.status == 200
     body = json(conn)
     assert body["duplicate"] == false
+    assert body["identity"] == %{"account_id" => "a-1"}
     assert [%{"type" => "ledger.deposited", "position" => position}] = body["events"]
     assert body["positions"] == [position]
 
@@ -59,6 +60,45 @@ defmodule EhOsContract.PlugTest do
 
     assert json(again)["duplicate"] == true
     assert json(again)["positions"] == [position]
+  end
+
+  test "a command that creates its aggregate answers with the identity the library gave it" do
+    opts = EhOsContract.Plug.init(contracts: [BoundaryRig.Waitlist])
+
+    registrar =
+      Actor.credential("u-registrar", [
+        "boundary_rig.join_waitlist",
+        "boundary_rig.leave_waitlist"
+      ])
+
+    send = fn path, body, key ->
+      post(path, body)
+      |> put_req_header("idempotency-key", key)
+      |> assign(:eh_os_contract_actor, registrar)
+      |> EhOsContract.Plug.call(opts)
+    end
+
+    joined =
+      send.(
+        "/commands/boundary_rig.join_waitlist",
+        %{course_id: "course-math", student_id: "student-anna"},
+        "join-anna"
+      )
+
+    assert joined.status == 200
+    assert %{"identity" => %{"entry_id" => id}} = json(joined)
+
+    # With it, the client can address the entry it made.
+    left = send.("/commands/boundary_rig.leave_waitlist", %{entry_id: id}, "leave-anna")
+    assert {left.status, json(left)["identity"]} == {200, %{"entry_id" => id}}
+
+    # Without a key, a retry would make a second entry, so the command is refused.
+    unkeyed =
+      post("/commands/boundary_rig.join_waitlist", %{course_id: "c", student_id: "s"})
+      |> assign(:eh_os_contract_actor, registrar)
+      |> EhOsContract.Plug.call(opts)
+
+    assert {unkeyed.status, json(unkeyed)} == {422, %{"error" => "idempotency_key_required"}}
   end
 
   test "each outcome has its status, and no body carries a value the caller did not send" do

@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 27 września (po E8, przed E9)
+## Handoff — stan na 27 września (po EM1–EM3, przed EL)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -26,7 +26,13 @@ kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`; `Taxvision
 
 ### Stan repozytorium
 
-- `main` = `origin/main` = commit tego handoffu, na `f210b8b` (merge PR #23). Użytkownik merguje PR-y jako merge,
+- **EM1–EM3 zbudowane i przejrzane, niewypchnięte**, na trzech lokalnych gałęziach, każda od poprzedniej:
+  `dsl-v2/e9-em1-dcb` (runtime DCB), `dsl-v2/e9-em2-entities` (encje, serwisy domenowe),
+  `dsl-v2/e9-em3-runtime` (pusty wynik serwisu, timery kalendarzowe, identyfikator nadawany przez bibliotekę).
+  Pierwsze commity EM1 to zapis decyzji w tym pliku. Każda gałąź ma notatkę przeglądu w `refs/notes/review` na
+  swoim ostatnim commicie (EM3 — po zapisie tego stanu). Opis w „Po E8 — kolejność zmieniona” i „EM1/EM2/EM3 — co
+  wyszło”.
+- `main` = `origin/main` = `bce10fa` (handoff po E8), na `f210b8b` (merge PR #23). Użytkownik merguje PR-y jako merge,
   więc historia `main` ma merge commity; handoff idzie tak, jak zdecyduje użytkownik (poprzedni poszedł prosto na
   `main`).
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`) i nie ma
@@ -105,6 +111,10 @@ Praca przerwana w pół (np. na przegląd) — jako patch w scratchpadzie albo c
 gołe `git stash` (stos jest wspólny dla worktree).
 
 ### Ostatnia pełna weryfikacja
+
+- **Lokalnie, 27 września, na `c17bb50`** (koniec EM3): brama z `sandbox/` → **EXIT=0** — sandbox 54 testy,
+  `check` 0 / 5 / 19; silnik 1040, `check` 0 / 19 / 17 (plus cztery ostrzeżenia o `accountable` procesów fikstur
+  `BoundaryRig`, jak w `DispatchRig`); web 32; auth 51. CI na gałęziach EM — nie było (niewypchnięte).
 
 - **Lokalnie, 27 września**, brama z `sandbox/` → **EXIT=0** na `f210b8b` (merge PR #23, kod tego handoffu):
   sandbox 54 testy, `eh_os_contract.check` 0 / 5 / 19; silnik 972, `check` 0 / 15 / 17; web 32; auth 51.
@@ -742,6 +752,61 @@ Mechanika, rozstrzygnięta przez asystenta:
   mówi, że PESEL nigdy nie jest `:id`.
 - **Luka spoza EM2:** słownik DSL-a domeny nie ma testu przypinającego, jaki ma kontrakt
   (`contract_vocabulary_test`), więc `entity` weszło bez zmiany żadnego przypięcia.
+
+Rozstrzygnięte przez użytkownika 27 września po EM2, przed EM3:
+- **Wynik serwisu może być pusty, jeśli deklaracja tak mówi:** `returns {:id, :clinic}, optional: true`; bez tego
+  `nil` dalej jest błędem. *Odrzucone:* zostawić (funkcja zawsze coś zwraca, a „nic” trzeba wyrazić innym typem).
+- **EM3 obejmuje tylko to, co się wykonuje:** identyfikator nadawany przez bibliotekę, timery kalendarzowe i pusty
+  wynik serwisu. **Pola opisowe — `constraints`, inwarianty wartości, tłumaczenia z definicją, nazwana subdomena,
+  relacja do systemu zewnętrznego — wchodzą w EL i EG** razem ze stroną albo grafem, który je pokazuje (zasada
+  „rodzaj wchodzi razem ze swoim czytelnikiem”). *Odrzucone:* wszystko w EM3 (pełne pokrycie ESDM etap wcześniej,
+  ale deklaracje bez czytelnika przez jeden etap).
+- **Timer „za miesiąc” liczony kalendarzowo:** `wait: {1, :month}` to ta sama data w następnym miesiącu (31 stycznia
+  → koniec lutego), jak w ESDM; tylko w timerach, obietnice i `deadline` zostają w stałych jednostkach, bo raport
+  liczy z nich czas. *Odrzucone:* bez miesięcy (`{30, :day}` — rozjazd z ESDM).
+- **Zapis identyfikatora nadawanego przez bibliotekę:** `identity :booking_id, generated: :uuid` na agregacie i
+  `creates: true` na komendzie tworzącej — tylko ona przychodzi bez identyfikatora, a dispatch zwraca nadany w
+  `receipt.identity`. *Odrzucone:* samo `generated:`, gdzie każda komenda bez identyfikatora tworzy obiekt
+  (zapomniany identyfikator w zwykłej komendzie po cichu tworzyłby nowy obiekt zamiast błędu).
+
+### EM3 — co wyszło (27 września)
+
+Na `dsl-v2/e9-em3-runtime` (od EM2), niewypchnięte. Budowa: pusty wynik serwisu (`b922c27`), poprawka biblioteki
+znaleziona po drodze (`8ef1897` — process manager, który niczego nie wydaje, generował moduł bez callbacków, więc
+`@behaviour` w implementacji ostrzegał i pod `--warnings-as-errors` host nie mógł jej skompilować), timery
+kalendarzowe (`c2ad6f9`), identyfikator nadawany przez bibliotekę (`4d6ad1f`); z przeglądu `6ac44c5`..`c17bb50`.
+Silnik 1021 → 1040 testów; `check` silnika 18 → 19 ostrzeżeń (proces `waitlist` fikstury bez `accountable`),
+sandbox bez zmian (0 / 5 / 19, 54 testy).
+
+Mechanika, rozstrzygnięta przez asystenta:
+- **`returns` jest własną deklaracją** (`returns :typ, optional: true`), bo opcja Sparka przyjmuje jeden argument;
+  funkcja bez `returns` się nie kompiluje (F2).
+- **`identity :x, generated: :uuid` to makro biblioteki obok opcji Sparka**, rozwijane do `identity` i `generated`;
+  eksportowane do formattera ręcznie (`own_locals_without_parens`), bo `mix spark.formatter` go nie widzi.
+- **Nowe klucze nie wchodzą do modelu, kto ich nie używa** (`creates` tylko przy `true`, `generated` tylko ustawione),
+  więc żadna wersja kontraktu się nie rusza.
+- **Kalendarz timerów jest w UTC**, jak log; firma, która potrzebuje miesiąca swojej strefy, ustawia timer `at:`.
+- **UUIDv7**, nie v4: lepsza lokalność w indeksie `stream_id`; zdradza czas utworzenia — zapisane w ADR.
+
+**Przegląd** (dwa równolegle na `dsl-v2/e9-em2-entities..HEAD`):
+- **Poprawione, z testem i próbą odwrotną:** duplikat odpowiedzi komendy, która nie zdecydowała zdarzeń, zwracał
+  świeżo wygenerowany identyfikator (`6ac44c5`); A6 radził na DCB coś, co się nie kompiluje, a literówka w
+  `identity :x, generate: :uuid` dawała `KeyError` z wnętrza biblioteki (`808f018`).
+- **Poprawione bez testu** (`3b93c63`): `:generated` w dokumentacji dispatchera i Pluga, nieaktualny komunikat
+  `Duration`, jedna lista jednostek kalendarzowych zamiast trzech, UTC i UUIDv7 opisane, nawiasy w fiksturze.
+- **Rozstrzygnięte przez użytkownika** (kształty widoczne dla hosta), każde z testem:
+  - **odpowiedź HTTP niesie `identity`** przy każdej komendzie (`e1ac877`); *odrzucone:* tylko przy komendzie
+    tworzącej (kształt odpowiedzi zależny od komendy);
+  - **komenda tworząca wymaga klucza idempotencji**, `{:error, :idempotency_key_required}`, 422 przez HTTP
+    (`93205d7`); klucze reakcji są wyliczane, więc ich to nie dotyczy; *odrzucone:* klucz opcjonalny i opis
+    (ponowienie po timeoucie tworzyłoby drugi obiekt, o którym host się nie dowie);
+  - **`record/3` na agregacie z nadawanym identyfikatorem tylko do istniejącego**, `{:error, :not_created}`
+    (`c17bb50`); *odrzucone:* zostawić i opisać (host mógłby założyć obiekt z wymyślonym identyfikatorem).
+- **Pominięte:** ta sama jednostka wyszukiwana trzy razy na dispatch (koszt pomijalny).
+
+**EM zamknięte**: trzy gałęzie EM1 → EM2 → EM3, każda od poprzedniej, gotowe na trzy PR-y. Push i PR — na
+polecenie użytkownika. Dalej EL (ostrzeżenia kompletności, `view`, słownik, strony dokumentacji i pola opisowe
+odłożone z EM3), EG (cztery grafy), potem kontrakty sandboxa od nowa (E9).
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
