@@ -136,6 +136,16 @@ defmodule EhOsContract.Auth.Keys do
   @spec refresh(atom()) :: :ok | {:error, term()}
   def refresh(name \\ __MODULE__), do: GenServer.call(name, :refresh, @call_timeout)
 
+  @doc """
+  Trusts the public key `jwk` in memory until the process stops, through every
+  refresh, without writing it to the table; answers its thumbprint.
+
+  This is how `EhOsContract.Auth.Testing` gets its test key trusted, and nothing
+  else calls it: a key pinned here verifies credentials exactly as EHOS's do.
+  """
+  @spec pin(map(), atom()) :: String.t()
+  def pin(jwk, name \\ __MODULE__) when is_map(jwk), do: GenServer.call(name, {:pin, jwk})
+
   @doc "The thumbprints of the keys in force, sorted."
   @spec kids(atom()) :: [String.t()]
   def kids(name \\ __MODULE__),
@@ -167,7 +177,8 @@ defmodule EhOsContract.Auth.Keys do
       refresh_every: Keyword.get(opts, :refresh_every, @refresh_every),
       refetch_at_most_every: Keyword.get(opts, :refetch_at_most_every, @refetch_at_most_every),
       clock: Keyword.get(opts, :clock, fn -> System.monotonic_time(:millisecond) end),
-      fetched_at: nil
+      fetched_at: nil,
+      pinned: %{}
     }
 
     :ets.insert(name, {@next, state.clock, nil})
@@ -197,6 +208,14 @@ defmodule EhOsContract.Auth.Keys do
     else
       {:reply, :ok, state}
     end
+  end
+
+  def handle_call({:pin, jwk}, _from, state) do
+    {kid, public} =
+      ed25519(jwk) || raise ArgumentError, "only an Ed25519 public key can be pinned"
+
+    :ets.insert(state.name, {kid, signer(public)})
+    {:reply, kid, %{state | pinned: Map.put(state.pinned, kid, public)}}
   end
 
   def handle_call(:refresh, _from, state) do
@@ -309,7 +328,8 @@ defmodule EhOsContract.Auth.Keys do
         )
     end
 
-    for kid <- kids(state.name), not Map.has_key?(keys, kid), do: :ets.delete(state.name, kid)
+    keep = Map.merge(keys, state.pinned)
+    for kid <- kids(state.name), not Map.has_key?(keep, kid), do: :ets.delete(state.name, kid)
     :ets.insert(state.name, for({kid, jwk} <- keys, do: {kid, signer(jwk)}))
   end
 end

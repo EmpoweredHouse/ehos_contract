@@ -9,8 +9,9 @@ The engine verifies nothing: it asks an `EhOsContract.Authorizer` what a credent
 do, and this package is the implementation for EHOS's credentials (contract v2 §16, D14; `eh-os`
 D-33, D-34). The engine does not depend on it.
 
-> **State, 27 September 2026:** verification and the key store (stage EA1). The `Authorizer`
-> with its record of every decision, the bearer plug and the test helper follow in EA2.
+Four parts: `EhOsContract.Auth.verify/2` and the key store behind it, `EhOsContract.Auth` as the
+engine's `Authorizer` with a row for every decision, `EhOsContract.Auth.Plug` for a bearer token in
+front of `EhOsContract.Plug`, and `EhOsContract.Auth.Testing` for a host's tests.
 
 ## Installation
 
@@ -33,6 +34,8 @@ end
 
 ```elixir
 # config/config.exs
+config :eh_os_contract, authorizer: EhOsContract.Auth
+
 config :eh_os_contract_auth,
   issuer: "https://ehos.example.com",
   audience: "rehmed/production"
@@ -57,6 +60,65 @@ EhOsContract.Auth.verify(token)
 #=> {:ok, %EhOsContract.Actor{kind: :credential, subject: "u-81", capabilities: ..., scopes: ...}}
 #   | {:error, :expired | :unknown_key | :bad_signature | :wrong_audience | :wrong_issuer | :no_keys}
 ```
+
+## Deciding, and recording every decision
+
+`EhOsContract.Auth` is the `EhOsContract.Authorizer` the engine asks about every command and query
+that arrives with a credential. It decides with `EhOsContract.Authorizer.check/2` alone — the
+capability in `cap`, a scoped value among the values in `scp` — and writes one row to
+`eh_os_contract_auth_decisions` for every decision, a refusal as carefully as an acceptance (`eh-os`
+D-34): who, which capability, which contract and version, the scope value asked for, `allowed` or
+`refused`, and the reason.
+
+The row records the authorization, not the command. A command allowed here may still be rejected on
+an invariant, and that is the engine's row in `eh_os_contract_commands`: two facts, two rows. The row
+goes through the connection the call is on, so a caller that wraps `EhOsContract.dispatch/3` in a
+transaction of its own and rolls it back rolls the row back too. A row that cannot be written fails
+the call.
+
+## Over HTTP
+
+```elixir
+pipeline :commands do
+  plug :accepts, ["json"]
+  plug EhOsContract.Auth.Plug
+end
+
+scope "/api" do
+  pipe_through :commands
+  forward "/", EhOsContract.Plug, contracts: [Rehmed.Contracts.VisitSettlement]
+end
+```
+
+`EhOsContract.Auth.Plug` reads `authorization: Bearer <credential>`, and a credential `verify/2`
+accepts goes on as `conn.assigns.eh_os_contract_actor`. Anything else stops with 401 and
+`www-authenticate: Bearer`: `{"error": "no_credential"}` without one, `{"error": "<reason>"}` for
+a credential it refuses. A refused credential is logged with its reason and gets no row, because it
+names nobody; the rows are the decisions about actors that did verify.
+
+## In a host's tests
+
+```elixir
+use EhOsContract.Auth.Testing
+
+test "every entry point refuses a credential without the capability" do
+  assert_every_entry_refuses([Rehmed.Contracts.VisitSettlement], %{
+    "rehmed.record_payment" => fn token -> post_command(token, "rehmed.record_payment", ...) end,
+    # ... one entry per capability the contracts declare
+  })
+end
+
+token = credential("u-anna", ["rehmed.record_payment"])
+```
+
+The engine cannot drive a host's door, so the host maps every capability its contracts declare to a
+function that calls its own entry point with a token. The check calls each with a credential that
+grants every other capability, and asserts a `refused` row with `missing_capability` and nothing new
+in the engine's log or `eh_os_contract_commands`. A declared capability without an entry fails it,
+and so does an entry for one that is not declared, so a new command cannot be added unchecked.
+
+`credential/3` signs with a key made once per test run and pinned in the running key store: trusted
+like EHOS's, never written to the table, no EHOS or network needed.
 
 ## Where the keys come from, and what to configure at integration
 
