@@ -100,9 +100,11 @@ What changes otherwise is what a host has to do.
 - **EL3: `mix eh_os_contract.pages --output <dir>`** (ESDM's `documentation`): the domain and its v2 contracts
   as Markdown, a page per element — the domain with its tree, each context with its glossary and relations,
   each value and entity, each contract with its process, and each unit, command, event, reaction, read model,
-  query and domain service — linked to each other by relative links (`EhOsContract.Pages.render/2`). A page
-  the model no longer has is deleted, only when it carries the pages' marker line; `--check` writes nothing
-  and names every page that is missing, differs or is left over.
+  query and domain service — linked to each other by relative links (`EhOsContract.Pages.render/2`). Each page
+  starts with a marker line naming its domain: a marked page of the domain the model no longer has is deleted,
+  and a page is never written over a file without the marker or through a link — the task then writes nothing
+  and names what is in the way. `--check` writes nothing and names every page that is missing, differs, is left
+  over or is in the way.
 - **EL2b: a value's invariants, checked.** `value :money, :integer do invariant :not_negative, "…",
   violated_by: [-1], satisfied_by: [0, 15_000] end` (D9). The domain generates `D.Values.Money`, one callback
   per invariant; `use D, value: :money` binds the module defining them (I1, I2). Dispatch holds every value of
