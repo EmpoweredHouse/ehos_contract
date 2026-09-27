@@ -29,10 +29,14 @@ kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`; `Taxvision
 - **EM1–EM3 są w `main`** (PR #24–#26: runtime DCB; encje i serwisy domenowe; pusty wynik serwisu, timery
   kalendarzowe, identyfikator nadawany przez bibliotekę). `main` = `origin/main` = `081877d`. Opis w „Po E8 —
   kolejność zmieniona” i „EM1/EM2/EM3 — co wyszło”. Użytkownik merguje PR-y jako merge.
+- **EL2 zbudowane** na `dsl-v2/el-glossary` (od EL1), niewypchnięte: `glossary`, `view`, nazwana subdomena,
+  tłumaczenie z definicją, sprawdzane ograniczenia komend, relacja z systemem zewnętrznym, `issued_by:`. Opis w „EL2 —
+  co wyszło”, decyzje w „Przed EL2 — decyzje użytkownika”. **Dalej:** przegląd EL2, potem EL2b (walidator wartości,
+  kształty rozstrzygnięte), EL3 (strony dokumentacji).
 - **EL1 zbudowane** na `dsl-v2/el-warnings` (od `main`), niewypchnięte: ostrzeżenia L5 ze stałymi nazwami,
   `--format json`, `--warnings-as-errors`, `docs/rules.md`, powtórzenie L3, przypięcie słownika domeny. Opis w
   „EL1 — co wyszło”, decyzje w „Przed EL — decyzje użytkownika”. Przegląd zrobiony, notatka w `refs/notes/review`
-  na ostatnim commicie. **Dalej:** pytania o kształty pól opisowych przed EL2.
+  na ostatnim commicie.
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`) i nie ma
   tabel pakietu auth ani V05 (klucze i usunięcia z E8). Przed `mix phx.server`: `mix ecto.migrate` w `sandbox/`;
   bez tego dispatch z credentialem pada na zapisie decyzji.
@@ -110,6 +114,8 @@ gołe `git stash` (stos jest wspólny dla worktree).
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 27 września, na `efda115`** (koniec budowy EL2): brama z `sandbox/` → **EXIT=0** — sandbox 54
+  testy, `check` 0 / 12 / 19; silnik 1096, `check` 0 / 50 / 20; web 32; auth 51.
 - **Lokalnie, 27 września, na `7d46602`** (EL1 po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 54
   testy, `check` 0 / 12 / 19; silnik 1075, `check` 0 / 50 / 20; web 32; auth 51. CI na gałęzi EL1 — nie było.
 - **Lokalnie, 27 września, na `081877d`** (main po #24–#26): EXIT=0 — sandbox 54, `check` 0 / 5 / 19; silnik 1040,
@@ -979,6 +985,43 @@ je `glossary`, `view`, strony dokumentacji (EL3) i grafy (EG).
   liczy wystawcę jako użycie. *Odrzucone:* (a) `{:id, :system}`, zapis encji z EM2 (jeden zapis dla dwóch rzeczy,
   pole naraz encją i numerem z systemu niewyrażalne); (c) proza w `source:` (ani `check`, ani grafy tego nie
   zobaczą).
+
+### EL2 — co wyszło (27 września)
+
+Na `dsl-v2/el-glossary` (od EL1), niewypchnięte. Dwa commity decyzji (`7d03eea`, `67c27e1`) i osiem budowy:
+`mix eh_os_contract.glossary` (`367ece8`), `mix eh_os_contract.view` (`9cbbf50`), nazwana subdomena (`1fa7403`),
+tłumaczenie z definicją i `avoid` z powodem (`0b46c5b`), sprawdzane ograniczenia komend (`458b8d9`), relacja z
+systemem zewnętrznym (`030ecc4`), `issued_by:` (`d1362d2`), poprawka z weryfikacji (`efda115`). Silnik 1075 → 1096
+testów; `check` bez zmian (sandbox 0 / 12 / 19, silnik 0 / 50 / 20).
+
+Mechanika, rozstrzygnięta przez asystenta:
+- **Każde pole razem z czytelnikiem:** subdomena — `view` i reguła `subdomain-without-bounded-context`;
+  tłumaczenie — `glossary --language`; ograniczenie — `view --details`, scenariusz i test; relacja z systemem i
+  `issued_by:` — `orphan-external-system` i `orphan-context-mapping` (mapę kontekstów rysuje EG).
+- **Rejestr zna domeny** (`Registry.domains/0`); oba taski zaczynają od domeny aplikacji, `--domain`, gdy jest ich
+  kilka. Słowa biblioteki w wyjściu po angielsku, słownik klienta dosłownie. Kolejność jak w deklaracji.
+- **Nazwana subdomena w fiksturach i sandboxie:** materiał nie nazywa subdomen (jest tylko `CTX-01` jako jedyny
+  `core`), więc każda domena dostała jedną subdomenę na rodzaj, który jej konteksty podawały — zapis kontekstów
+  bez zmian, deklaracje na końcu modułu, żeby nie ruszyć żadnej przypiętej linii. §4.5 ADR kompiluje się z
+  poprawką w `@amendments` testu przykładów, a nie z przepisanym ADR. Wersja każdej domeny się rusza.
+- **Ograniczenie komendy:** A3 wpuszcza je do `rejects:`, nowa A7 (nazwa raz, nigdy jak inwariant jednostki, musi
+  być w `rejects:`), S8 wymaga scenariusza odmowy tej komendy, I5 bez zmian (czyta `rejects:`). W odpowiedzi
+  odmowy nazwa ograniczenia stoi tam, gdzie nazwa inwariantu (`Rejection.invariant`, `{"rejected": …}`).
+- **Relacja z systemem:** tylko kierunkowa, drugi koniec kontekstem (D5); D1 odmawia nazwy naraz kontekstu i
+  systemu. `cross-bounded-context-reference-without-mapping` zostaje o kontekstach, jak w ESDM.
+- **`issued_by:`** bez ograniczenia typu (numer KSeF bywa napisem), sprawdzany w kontrakcie przez X4, w domenie
+  przez nową D8; w modelu tylko tam, gdzie zadeklarowany. **Niezbudowane:** L5 „system wystawia identyfikator, a
+  żaden efekt go nie woła” — numer bywa przepisywany przez człowieka, więc ostrzeżenie byłoby fałszywe bez
+  sposobu na wyciszenie.
+- **`CLAUDE.md` bez zmian**, choć „Przed EL” to zapowiadało: druga pozycja `constraint`, jak `invariant`, to
+  `label`, a `label` już jest na liście miejsc po polsku.
+- **Pułapka zapisana tutaj:** `mix format` w `sandbox/` i w pakiecie web pamięta eksport formattera zależności
+  (`_build/*/lib/*/.mix/cached_dot_formatter`), więc nowe słowo DSL-a dostaje tam nawiasy, dopóki się tego pliku
+  nie skasuje.
+
+Weryfikacja poza testami (`MIX_ENV=dev` w `sandbox/`): `view` pokazuje domenę Rehmedu z subdomenami; `glossary
+--language en` padało, bo atom `:en` nie istniał w maszynie, a sandbox nie ma angielskich tłumaczeń — poprawione
+(`efda115`), teraz „_No translation into en._”.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
