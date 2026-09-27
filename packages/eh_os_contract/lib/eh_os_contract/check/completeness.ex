@@ -264,7 +264,7 @@ defmodule EhOsContract.Check.Completeness do
       MapSet.new(
         Enum.map(model.actors, & &1.backed_by) ++
           Enum.flat_map(model.relations, &Domain.Build.endpoints/1) ++
-          issuers(model.values ++ model.entities) ++
+          for({_context, external} <- domain_issuers(model), do: external) ++
           Enum.flat_map(contracts, &issuers(&1.model)) ++
           for(
             %{model: m} <- contracts,
@@ -322,9 +322,14 @@ defmodule EhOsContract.Check.Completeness do
     # external (plan EL2); only a relation between contexts counts as ESDM's mapping for
     # `cross-bounded-context-reference-without-mapping`, so these stay out of it.
     external_uses =
-      for c <- contracts,
-          external <- externals_used(c.model, model),
-          do: MapSet.new([external, c.model.context])
+      for(
+        c <- contracts,
+        external <- externals_used(c.model, model),
+        do: MapSet.new([external, c.model.context])
+      ) ++
+        for {context, external} <- domain_issuers(model),
+            context != nil,
+            do: MapSet.new([external, context])
 
     crossing =
       MapSet.new(Enum.map(crossings(model, contracts), &elem(&1, 0)) ++ external_uses)
@@ -391,14 +396,16 @@ defmodule EhOsContract.Check.Completeness do
   end
 
   # The externals a contract reaches: what its effects call, what its events depend on,
-  # what issues its fields' values, and what stands behind the actors its commands and
-  # recorded events are for.
+  # what issues its fields' values, and what stands behind the actors it names — in a
+  # command's or a query's `by:`, an event's `recorded_by:`, the process's `accountable`.
   defp externals_used(contract, domain) do
     backing = Map.new(domain.actors, &{&1.name, &1.backed_by})
 
     actors =
       Enum.flat_map(contract.commands, & &1.by) ++
-        Enum.flat_map(contract.events, & &1.recorded_by)
+        Enum.flat_map(contract.queries, & &1.by) ++
+        Enum.flat_map(contract.events, & &1.recorded_by) ++
+        List.wrap(contract.process && contract.process.accountable)
 
     Enum.flat_map(contract.effects, &List.wrap(&1.calls)) ++
       Enum.flat_map(contract.events, &List.wrap(&1.depends_on)) ++
@@ -406,13 +413,29 @@ defmodule EhOsContract.Check.Completeness do
       for(actor <- actors, backed = Map.get(backing, actor), do: backed)
   end
 
-  # Every external a field of the model says issues its value (plan EL2), at any depth.
-  defp issuers(%{issued_by: external} = map) when is_atom(external) and external != nil,
-    do: [external | map |> Map.delete(:issued_by) |> issuers()]
+  # Every external a field of the contract says issues its value (plan EL2), read off
+  # the model's lists of fields, not off every map in it: a scenario's data may have a
+  # key of that name.
+  defp issuers(contract) do
+    fields =
+      Enum.flat_map(contract.units, & &1.state.fields) ++
+        Enum.flat_map(contract.commands, & &1.fields) ++
+        Enum.flat_map(contract.events, & &1.fields) ++
+        Enum.flat_map(contract.read_models, & &1.fields) ++
+        Enum.flat_map(contract.process_managers, & &1.state.fields) ++
+        Enum.flat_map(contract.consumes, & &1.fields)
 
-  defp issuers(%{} = map), do: map |> Map.values() |> Enum.flat_map(&issuers/1)
-  defp issuers(list) when is_list(list), do: Enum.flat_map(list, &issuers/1)
-  defp issuers(_other), do: []
+    for field <- fields, external = Map.get(field, :issued_by), do: external
+  end
+
+  # `{context, external}` for every field of a domain value or entity an external
+  # issues: the entity's context, or the value's, when it names one.
+  defp domain_issuers(domain) do
+    for owner <- domain.values ++ domain.entities,
+        field <- Map.get(owner, :fields, []),
+        external = Map.get(field, :issued_by),
+        do: {Map.get(owner, :context), external}
+  end
 
   # A consumed contract outside the modules checked is looked up by name, as L3 does.
   defp context_of(module) do
