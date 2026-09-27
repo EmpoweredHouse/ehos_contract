@@ -246,6 +246,17 @@ other, and a reference crosses it anyway. Either the relation or the reference i
 contexts only: which way a call to an external system runs says nothing about who depends on
 whom.
 
+## `label-with-avoided-term`
+
+**warning** · reads v2 contracts
+
+A label of a contract uses a word its context's glossary says to avoid.
+
+The glossary says `avoid "Zakończona"` for the term "Zrealizowana", and an event of that context
+is labelled "Wizyta zakończona": the contract says what its own language says not to. Whole
+words in any case; the words a translation avoids are another language's, which labels are not
+written in. Rename the label with the term.
+
 ## `cross-bounded-context-reference-without-mapping`
 
 **warning** · reads v2 contracts · ESDM: `esdm/modeling/cross-bounded-context-reference-without-mapping`

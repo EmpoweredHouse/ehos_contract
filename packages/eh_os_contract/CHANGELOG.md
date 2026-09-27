@@ -134,6 +134,8 @@ What changes otherwise is what a host has to do.
 - **EL2: `relation-against-references`**, a warning of `check`: a contract of a directed relation's upstream
   context consumes a contract of the downstream one or names an entity it owns, or any such reference crosses
   `separate_ways`.
+- **EL2: `label-with-avoided-term`**, a warning of `check`: a label of a contract uses, as a whole word in any
+  case, a word its context's glossary says to `avoid`.
 - **EL2: `subdomain-without-bounded-context`**, ESDM's warning for a subdomain no context names; `view`
   shows each context's subdomain and its kind.
 - **EL1: `EhOsContract.Domain.vocabulary/0`**, the domain DSL's words by entity path, as

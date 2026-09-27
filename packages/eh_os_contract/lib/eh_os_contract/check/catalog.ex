@@ -313,6 +313,19 @@ defmodule EhOsContract.Check.Catalog do
       """
     },
     %{
+      id: "label-with-avoided-term",
+      level: :warn,
+      reads: :v2,
+      esdm: nil,
+      summary: "A label of a contract uses a word its context's glossary says to avoid.",
+      text: """
+      The glossary says `avoid "Zakończona"` for the term "Zrealizowana", and an event of that context
+      is labelled "Wizyta zakończona": the contract says what its own language says not to. Whole
+      words in any case; the words a translation avoids are another language's, which labels are not
+      written in. Rename the label with the term.
+      """
+    },
+    %{
       id: "cross-bounded-context-reference-without-mapping",
       level: :warn,
       reads: :v2,

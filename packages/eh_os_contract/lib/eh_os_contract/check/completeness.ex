@@ -208,7 +208,8 @@ defmodule EhOsContract.Check.Completeness do
       empty_subdomains(model, declared),
       orphan_relations(model, declared, contracts),
       unmapped_references(model, contracts),
-      relations_against_references(model, declared, contracts)
+      relations_against_references(model, declared, contracts),
+      avoided_terms(model, contracts)
     ])
   end
 
@@ -412,6 +413,50 @@ defmodule EhOsContract.Check.Completeness do
     do:
       "relation #{inspect(relation.type)} from upstream #{inspect(relation.upstream)} to " <>
         "downstream #{inspect(relation.downstream)}"
+
+  # The library's own (plan EL2, "Po EL2" rule 2): a label of a contract that uses a
+  # word its context's glossary says to avoid. Whole words, any case; the words a
+  # translation avoids belong to another language, which labels are not written in.
+  defp avoided_terms(model, contracts) do
+    avoided =
+      Map.new(model.contexts, fn context ->
+        {context.name, for(t <- context.terms, a <- t.avoid, do: {a.text, t.text})}
+      end)
+
+    for c <- contracts,
+        words = Map.get(avoided, c.model.context, []),
+        words != [],
+        declaration <- labelled(c.declarations),
+        {word, term} <- words,
+        String.match?(declaration.label, word_pattern(word)),
+        uniq: true do
+      Finding.new(
+        "label-with-avoided-term",
+        "#{inspect(c.module)}: the label #{inspect(declaration.label)} says #{inspect(word)}, which " <>
+          "context #{inspect(c.model.context)} avoids in favour of #{inspect(term)}",
+        Links.at(declaration)
+      )
+    end
+  end
+
+  defp word_pattern(word),
+    do: Regex.compile!("(?<![\\p{L}\\p{N}])#{Regex.escape(word)}(?![\\p{L}\\p{N}])", "iu")
+
+  # Every declaration of a contract that has a label, at any depth.
+  defp labelled(%{__struct__: _} = struct) do
+    own = if is_binary(Map.get(struct, :label)), do: [struct], else: []
+
+    own ++
+      (struct
+       |> Map.from_struct()
+       |> Map.delete(:__spark_metadata__)
+       |> Map.values()
+       |> labelled())
+  end
+
+  defp labelled(%{} = map), do: map |> Map.values() |> labelled()
+  defp labelled(list) when is_list(list), do: Enum.flat_map(list, &labelled/1)
+  defp labelled(_other), do: []
 
   # Every reference from a contract into another context: `{contexts, contract, what,
   # at}`, the contexts as an unordered pair, `at` the `consumes` it is made by or, for
