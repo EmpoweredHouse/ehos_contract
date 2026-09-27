@@ -54,6 +54,11 @@ defmodule EhOsContract.ScenarioCase do
   invariant and breaks another is no example of a value. An example is plain data,
   cast as a scenario's is.
 
+  **A domain service's rules** (plan EL2b). Every example of a rule,
+  `examples: [{[1, 3], 0}]`, is a test too: the function, called through the module
+  the contract generates, returns the example's result — compared as values, so a
+  decimal `2.50` is `2.5`.
+
   **Which implementation.** The one module of the contract's application whose
   `__eh_os_implementation__/0` names the scenario's target; `implementations:` names
   them instead, for contracts compiled outside an application. A target without
@@ -125,8 +130,101 @@ defmodule EhOsContract.ScenarioCase do
           )
         end
       end
+
+      for example <- EhOsContract.ScenarioCase.rule_examples(unquote(contract)) do
+        @eh_os_contract_rule_example example
+        test EhOsContract.ScenarioCase.describe(@eh_os_contract_rule_example) do
+          EhOsContract.ScenarioCase.run_rule_example(
+            unquote(contract),
+            @eh_os_contract_rule_example,
+            unquote(implementations)
+          )
+        end
+      end
     end
   end
+
+  @typedoc "One example of a domain service's rule, as a test runs it."
+  @type rule_example :: %{
+          service: atom(),
+          function: atom(),
+          rule: atom(),
+          arguments: [term()],
+          result: term()
+        }
+
+  @doc "Every example of every rule of `contract`'s domain services, in declaration order."
+  @spec rule_examples(module()) :: [rule_example()]
+  def rule_examples(contract) do
+    for service <- Model.fetch(contract).domain_services,
+        function <- service.functions,
+        rule <- function.rules,
+        {arguments, result} <- rule.examples do
+      %{
+        service: service.name,
+        function: function.name,
+        rule: rule.name,
+        arguments: arguments,
+        result: result
+      }
+    end
+  end
+
+  @doc """
+  Runs one example of a domain service's rule of `contract`: calls the function
+  through the module the contract generates — so its arguments and result are held
+  to their types and invariants, as a decision's call is — with the implementation
+  found as a scenario's is, and asserts it returns the example's result.
+  """
+  @spec run_rule_example(module(), rule_example(), [module()] | nil) :: true
+  def run_rule_example(contract, example, implementations \\ nil) do
+    model = Model.fetch(contract)
+
+    implementation =
+      implementation!(model, %{kind: :domain_service, name: example.service}, implementations)
+
+    service = Enum.find(model.domain_services, &(&1.name == example.service))
+    function = Enum.find(service.functions, &(&1.name == example.function))
+    domain = domain(model)
+
+    {arguments, expected} =
+      try do
+        {Enum.zip_with(function.arguments, example.arguments, &cast(&1.type, &2, domain)),
+         cast(function.returns.type, example.result, domain)}
+      catch
+        {:unfit, problem} -> flunk("example of #{describe(example)}: #{problem}")
+      end
+
+    returned =
+      EhOsContract.DomainService.call(
+        model.module,
+        example.service,
+        example.function,
+        arguments,
+        implementation
+      )
+
+    assert same?(returned, expected),
+           "#{call(example)} returned #{shown(returned)}, and rule #{inspect(example.rule)} " <>
+             "gives #{shown(expected)}"
+  end
+
+  defp call(example),
+    do: "#{example.function}(#{Enum.map_join(example.arguments, ", ", &shown/1)})"
+
+  # A list of small integers is a list here, never a charlist.
+  defp shown(term), do: inspect(term, charlists: :as_lists)
+
+  # What a decimal is, not how many digits it was written with: 2.50 is 2.5.
+  defp same?(%Decimal{} = a, %Decimal{} = b), do: Decimal.equal?(a, b)
+
+  defp same?(a, b) when is_list(a) and is_list(b),
+    do: length(a) == length(b) and Enum.all?(Enum.zip(a, b), fn {x, y} -> same?(x, y) end)
+
+  defp same?(%{} = a, %{} = b) when not is_struct(a) and not is_struct(b),
+    do: Map.keys(a) == Map.keys(b) and Enum.all?(a, fn {k, v} -> same?(v, Map.fetch!(b, k)) end)
+
+  defp same?(a, b), do: a == b
 
   @typedoc "One example of a value's invariant, as a test runs it."
   @type example :: %{
@@ -146,13 +244,18 @@ defmodule EhOsContract.ScenarioCase do
         do: %{value: value.name, invariant: invariant.name, kind: kind, data: data}
   end
 
-  @doc "The name of an example's test."
-  @spec describe(example()) :: String.t()
+  @doc "The name of an example's test: a value's invariant's, or a rule's."
+  @spec describe(example() | rule_example()) :: String.t()
+  def describe(%{rule: rule} = example) do
+    "rule #{inspect(rule)} of #{example.service}.#{example.function}: #{call(example)} returns " <>
+      shown(example.result)
+  end
+
   def describe(%{kind: kind} = example) do
     verb = if kind == :violated_by, do: "breaks", else: "keeps"
 
     "invariant #{inspect(example.invariant)} of value #{inspect(example.value)}: " <>
-      "#{inspect(example.data)} #{verb} it"
+      "#{shown(example.data)} #{verb} it"
   end
 
   @doc """

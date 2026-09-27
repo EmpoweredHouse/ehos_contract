@@ -207,6 +207,13 @@ scenario        description!   scope · actor
 > module the contract generates, `C.DomainServices.<Name>`: a decision calls the function there, which holds
 > the arguments and the result to their declared types and raises on a mismatch (the user's choice over a
 > compile-time check alone). No scenario targets it; ESDM has none for it either.
+>
+> *Added 28 September 2026, plan EL2b, the user's choice.* **A rule of a domain service is shown on examples, and
+> they are required:** `rule :never_below_zero, "…", examples: [{[1, 3], 0}]` — the arguments in the order the
+> function takes them, then the result, as plain data. S9 refuses a rule without one, and an example of the wrong
+> shape or types; X9 checks the values of domain types. `EhOsContract.ScenarioCase` makes each a test that calls
+> the function through `C.DomainServices.<Name>`, so its types and its values' invariants are held too, and
+> compares the result as a value. This is where a scenario of a domain service would have been.
 
 > **27 September 2026, EM3 — a generated identity.** ESDM's `identifiedBy: {source: generated}` is written
 > `identity :booking_id, generated: :uuid` on an aggregate, with `creates: true` on the command that makes
@@ -686,6 +693,11 @@ where it helps; every violation is reported as a diagnostic before the single ra
   > never as an invariant of the unit, and it is in the command's `rejects:`; **S8** asks a `rejected` scenario
   > of that command for each; I5 lets `reject/1` name it. A query's constraint is prose, since a query refuses
   > nothing. A value's invariants get a validator in their own stage (EL2b).
+  >
+  > *Added 28 September 2026, plan EL2b.* **S9**: a domain service's rule gives at least one example, each
+  > `{[argument, …], result}` with the function's arity, each value of its declared type (`nil` only where
+  > optional), none given twice, since each names its test. **X9** reads those examples too, for the values of
+  > domain types.
 - *Domain.* D1: unique names per kind. D2: at most one translation per language, none into the context's
   own. D3: a value has exactly one of type or fields; `unit` only on numeric types; no cycles. D4: a human
   actor has no `backed_by`. D5: relation roles fit the type; endpoints exist; no relation to itself.

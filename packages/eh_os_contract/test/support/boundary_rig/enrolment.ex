@@ -55,7 +55,9 @@ defmodule BoundaryRig.Enrolment do
       argument(:capacity, :integer)
       argument(:taken, :integer)
       returns :integer
-      rule :never_below_zero, "A course never has fewer than no free seats"
+
+      rule :never_below_zero, "A course never has fewer than no free seats",
+        examples: [{[1, 3], 0}, {[3, 1], 2}]
     end
 
     function :next_seat, "The number of the next free seat, if there is one" do

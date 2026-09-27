@@ -3,3 +3,9 @@ defmodule EhOsContract.ValueRigExamplesTest do
 
   use EhOsContract.ScenarioCase, domain: ValueRig.Domain
 end
+
+defmodule EhOsContract.ValueRigRulesTest do
+  @moduledoc "The examples of the invented `ValueRig.Till`'s domain service rules (plan EL2b)."
+
+  use EhOsContract.ScenarioCase, contract: ValueRig.Till
+end

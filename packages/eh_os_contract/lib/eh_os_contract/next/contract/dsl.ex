@@ -156,7 +156,7 @@ defmodule EhOsContract.Next.Contract.Dsl do
 
   defmodule Rule do
     @moduledoc false
-    defstruct [:name, :label, :source, __spark_metadata__: nil]
+    defstruct [:name, :label, :source, examples: [], __spark_metadata__: nil]
   end
 
   defmodule Returns do
@@ -622,14 +622,23 @@ defmodule EhOsContract.Next.Contract.Dsl do
     ]
   }
 
+  # A rule is shown on examples, each a test of the function (plan EL2b; required,
+  # the user's choice of 28 September 2026).
   @rule %Spark.Dsl.Entity{
     name: :rule,
-    describe: "A rule the function follows, in prose, as the business states it.",
+    describe: "A rule the function follows, as the business states it, with examples of it.",
     target: Rule,
     args: [:name, :label],
     schema: [
       name: [type: :atom, required: true, doc: "The rule's name."],
       label: [type: :string, required: true, doc: "The rule, as the business states it."],
+      examples: [
+        type: {:list, :any},
+        required: true,
+        doc:
+          "Calls that show the rule, `{[argument, …], result}`, as plain data: each is a test " <>
+            "that the function returns that result."
+      ],
       source: [type: :string, doc: "Where the rule comes from in the material."]
     ]
   }

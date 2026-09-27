@@ -32,6 +32,12 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
     successor of architecture §18's gate, kept an error although ESDM makes it a
     warning — and so is every constraint of a command, by a scenario of that command
     (plan EL2).
+  - **S9.** **A domain service's rule gives at least one example** (plan EL2b), and
+    each is `{[argument, …], result}`: as many arguments as the function takes, each
+    of its argument's type and the result of the one it returns, as plain data —
+    `nil` only where the declaration says optional — and none twice, since each
+    names its test. A value of a domain type is the Mix compiler's (X9), as a
+    scenario's is.
   """
 
   alias EhOsContract.DslRules
@@ -41,8 +47,83 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
   @spec check(map()) :: [DslRules.violation()]
   def check(declarations) do
     Enum.flat_map(declarations.scenarios, &scenario(&1, declarations)) ++
-      described_once(declarations) ++ covered(declarations)
+      described_once(declarations) ++ covered(declarations) ++ rule_examples(declarations)
   end
+
+  # --- S9: a rule of a domain service, on examples (plan EL2b) -----------------------
+
+  defp rule_examples(d) do
+    for s <- d.domain_services,
+        f <- s.functions,
+        r <- f.rules,
+        violation <- rule_violations(s, f, r) do
+      violation
+    end
+  end
+
+  defp rule_violations(service, function, %{examples: []} = rule) do
+    [
+      {"S9: rule #{inspect(rule.name)} of function #{inspect(function.name)} of domain service " <>
+         "#{inspect(service.name)} gives no example; give at least one, " <>
+         "`examples: [{[argument, …], result}]`, since each is a test", rule}
+    ]
+  end
+
+  defp rule_violations(_service, function, rule) do
+    where = "S9: rule #{inspect(rule.name)} of function #{inspect(function.name)}"
+    arity = length(function.arguments)
+
+    shapes =
+      for {example, index} <- Enum.with_index(rule.examples, 1),
+          problem <- example_problems(example, function, arity) do
+        {"#{where}, example #{index}: #{problem}", rule}
+      end
+
+    # Each example names its test, so one given twice would name two alike.
+    twice =
+      for example <- Enum.uniq(DslRules.duplicates(rule.examples, & &1)) do
+        {"#{where} gives the example #{inspect(example, charlists: :as_lists)} twice", rule}
+      end
+
+    shapes ++ twice
+  end
+
+  @doc """
+  The arguments and result of a well-formed example of a rule, each with what it
+  fills — `{argument or returns, value}` — or `:error` when S9 refuses its shape.
+  """
+  @spec example_values(term(), struct()) :: {:ok, [{struct(), term()}]} | :error
+  def example_values({arguments, result}, function)
+      when is_list(arguments) and length(arguments) == length(function.arguments),
+      do: {:ok, Enum.zip(function.arguments, arguments) ++ [{function.returns, result}]}
+
+  def example_values(_example, _function), do: :error
+
+  defp example_problems(example, function, arity) do
+    case example_values(example, function) do
+      :error ->
+        [
+          "#{inspect(example, charlists: :as_lists)} is not {[argument, …], result} with " <>
+            "#{arity} " <>
+            "argument#{if arity == 1, do: "", else: "s"}"
+        ]
+
+      {:ok, filled} ->
+        for {declared, value} <- filled,
+            # F2 refuses a function without `returns`.
+            declared != nil,
+            problem <- value_problems(declared, value) do
+          "#{describe(declared)}: #{problem}"
+        end
+    end
+  end
+
+  defp value_problems(%{optional: true}, nil), do: []
+  defp value_problems(_declared, nil), do: ["nil, and the declaration does not say optional"]
+  defp value_problems(declared, value), do: Data.problems(declared.type, value)
+
+  defp describe(%Dsl.Argument{name: name}), do: "argument #{inspect(name)}"
+  defp describe(%Dsl.Returns{}), do: "the result"
 
   # A scenario is named by its description, in the test `EhOsContract.ScenarioCase`
   # generates for it too.

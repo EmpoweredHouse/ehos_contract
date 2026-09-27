@@ -73,6 +73,7 @@ spark_locals_without_parens = [
   event: 3,
   events: 1,
   eventually: 1,
+  examples: 1,
   expect: 1,
   expect: 2,
   expect: 3,
