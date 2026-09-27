@@ -1111,6 +1111,19 @@ materiał żyje dla hosta).
 `consults` (mechanika już jest konkretna: bez `match:` granica czyta wszystkie zdarzenia typu, co ma ostrzeżenie
 `consults-without-match`; proza mówi tylko dlaczego).
 
+### Przed EL2b — decyzja użytkownika (28 września)
+
+Kształty walidatora wartości są z „Przed EL2 — decyzje użytkownika”, a zapis przykładu reguły — z pozycji 5 w „Po
+EL2” (`examples: [{[1, 3], 0}]`: argumenty w kolejności wywołania, potem wynik). Otwarte zostało jedno pytanie,
+zadane na fiksturze `BoundaryRig.Enrolment` (`function :free_seats`, `rule :never_below_zero`).
+
+- **Przykłady przy regule serwisu domenowego są wymagane:** reguła bez `examples:` albo z pustą listą się nie
+  kompiluje, tak jak inwariant wartości bez `violated_by:`. Funkcja serwisu jest czysta, więc każdą regułę da się
+  pokazać na parze argumenty → wynik. Każdy przykład daje test, który woła funkcję przez moduł kontraktu
+  (`C.DomainServices.Seating.free_seats(1, 3) == 0`), więc sprawdza też typy argumentów i wyniku. *Odrzucone:*
+  opcjonalne z ostrzeżeniem `check` (ostrzeżenia nie da się wyciszyć, a reguła bez dowodu i tak przejdzie
+  kompilację); opcjonalne bez ostrzeżenia (reguła zostaje prozą i nikt się o tym nie dowie).
+
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
 Po lekturze architektury EHOS-a (`~/Projects/ai/eh-os`, `docs/ADR.md` i `docs/ARCHITECTURE.md`; research w
