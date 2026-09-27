@@ -41,7 +41,8 @@ crypto-shredding). **E0–E7 i EA są w `main`** (PR #1–#20; EA poszło dwoma 
   [PR #21](https://github.com/EmpoweredHouse/eh-os-contract/pull/21), `dsl-v2/e8a-encryption` do `main` —
   „E8a — co wyszło”. **E8b** — [PR #22](https://github.com/EmpoweredHouse/eh-os-contract/pull/22),
   `dsl-v2/e8b-erasure` do gałęzi E8a, więc najpierw #21 — „E8b — co wyszło”. Oba po przeglądzie przed PR.
-  **Do użytkownika z przeglądu E8b:** czy `erase/3` ma dalej zwracać `:ok` dla identyfikatora, którego nie było.
+  Po wystawieniu, na polecenie użytkownika: wynik `erase/3` mówi, co zastał; błędy jobów Obana bez wartości; test
+  wpięcia `forget/2` przy starcie.
 - **Proces na porcie 4000 — użytkownika**: `beam.smp` z `/private/tmp/eh-os-test`, niezwiązany z repozytorium.
 - **Lista zmian do `eh-os`** — użytkownika: D-01, D-15, outbox, G-16, transport v1, D-34, D-40, plan etapu 4
   („D10–D12 — skąd się wzięły” i „D14 — autoryzacja” w dopisku Etap 6), logowanie frontendu zwykłej aplikacji.
@@ -443,6 +444,12 @@ dało się do nich wrócić bez odtwarzania rozmowy (prośba użytkownika):
   **naturalny moment na zmianę zdania to E10**, a zmiana dla hosta to tylko inny `actor:`. (b) **drugie usunięcie jako
   błąd** `{:error, :already_erased}` — mówi więcej, ale każdy host ponawiający żądanie RODO musiałby ten błąd
   połykać.
+  *Zmienione 27 września po przeglądzie E8b (decyzja użytkownika):* wynik mówi, co `erase/3` zastał —
+  `{:ok, :erased}`, `{:ok, :no_data}` (dla tego identyfikatora nie było danych osobowych; usunięcie i tak jest
+  zapisane) albo `{:ok, :already_erased}`. Powód: przy samym `:ok` literówka w identyfikatorze („P-17” zamiast
+  „p-17”) wyglądała jak usunięcie, a dane prawdziwej osoby zostawały czytelne. Dalej nigdy błąd. *Odrzucone:*
+  zostawić `:ok` (literówki nie da się wykryć); `{:error, :no_data}` bez zapisu (osoba, o której jeszcze nic nie
+  zapisano, nie byłaby zablokowana na przyszłość).
 - **`Vault`: lista KEK w konfiguracji, z rotacją.**
   `config :eh_os_contract, EhOsContract.Vault, keys: [{"2026-09", kek}, {"2026-03", stary}]`. Pierwszy klucz jest
   bieżący, pozostałe tylko rozpakowują. `mix eh_os_contract.rewrap` przepakowuje klucze osobowe bieżącym. Własny
@@ -1825,9 +1832,9 @@ już nie deklaruje, wywracało przebudowę (oba); nieimplementowany read model w
 sięga read modeli skonfigurowanych aplikacji (uwaga obu przeglądów — kontrakt spoza `applications:` jest też poza
 rejestrem, raportem i subskrypcjami, więc `erase/3` nie ma jak go znaleźć); `--skip` na usunięciu zostawia kopię,
 `--reset` ją zabiera. **Pominięte:** `oban_jobs.errors` może trzymać zdekodowane zdarzenie z wyjątku efektu, do
-czasu przycięcia przez Obana — kod sprzed E8, poza zakresem, do osobnej pracy. **Do użytkownika:** `erase/3` zwraca
-`:ok` także dla identyfikatora, którego nie było (literówka w wielkości liter „usuwa” nieistniejącą osobę i blokuje
-ten identyfikator); tak brzmi decyzja z 27 września — zmiana (np. liczba skasowanych kluczy) byłaby nowym kształtem.
+czasu przycięcia przez Obana — kod sprzed E8, poza zakresem, do osobnej pracy. **Do użytkownika:** `erase/3` zwracał
+`:ok` także dla identyfikatora, którego nie było — użytkownik zdecydował, że wynik ma mówić, co zastał (pod opisem
+E8 w „Etapach”).
 Po przeglądzie: silnik 959 → 963, `check` bez delty.
 
 ### Losy fikstur

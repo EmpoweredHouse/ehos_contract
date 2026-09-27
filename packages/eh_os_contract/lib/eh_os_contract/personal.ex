@@ -172,8 +172,12 @@ defmodule EhOsContract.Personal do
   end
 
   @doc """
-  Erases `subject` `id` (see the moduledoc): `:ok`, also when it was erased before,
-  and then nothing is appended again. `opts`: `actor:`, an `EhOsContract.Actor`,
+  Erases `subject` `id` (see the moduledoc), and says what it found:
+  `{:ok, :erased}` when the subject had personal data, `{:ok, :no_data}` when nothing
+  was held for that id — recorded all the same, so none is written later, but
+  perhaps a mistyped id, which the host can report — and `{:ok, :already_erased}`
+  when it was erased before, and then nothing is appended again. Never an error, so
+  a request can be repeated (the user's decision of 27 September 2026). `opts`: `actor:`, an `EhOsContract.Actor`,
   required — who asked, recorded with the erasure and as the event's actor. The event
   starts a correlation of its own: it continues no command. Who may erase is the
   host's to decide: the engine asks no `EhOsContract.Authorizer` (the user's decision
@@ -188,7 +192,8 @@ defmodule EhOsContract.Personal do
 
   Raises when no domain of the host's contracts declares `subject`.
   """
-  @spec erase(atom(), String.t(), keyword() | map()) :: :ok
+  @spec erase(atom(), String.t(), keyword() | map()) ::
+          {:ok, :erased | :no_data | :already_erased}
   def erase(subject, id, opts) when is_atom(subject) and is_binary(id) do
     opts = Map.new(opts)
 
@@ -206,16 +211,17 @@ defmodule EhOsContract.Personal do
     repo = Application.fetch_env!(:eh_os_contract, :repo)
     type = Atom.to_string(subject)
 
-    {:ok, appended} =
+    {:ok, found} =
       repo.transaction(fn ->
         :ok = Store.lock(repo)
 
         if MapSet.size(erased_among(repo, [{subject, id}])) == 0 do
           now = Clock.now()
 
-          repo.delete_all(
-            from(k in @keys, where: k.subject_type == ^type and k.subject_id == ^id)
-          )
+          {deleted, _} =
+            repo.delete_all(
+              from(k in @keys, where: k.subject_type == ^type and k.subject_id == ^id)
+            )
 
           repo.insert_all(@erasures, [
             %{
@@ -245,16 +251,16 @@ defmodule EhOsContract.Personal do
             )
 
           forget_inline!(repo, row, %Erased{subject: subject, id: id})
-          true
+          if deleted > 0, do: :erased, else: :no_data
         else
-          false
+          :already_erased
         end
       end)
 
-    if appended and Enum.any?(Implementations.subscribed(), &forgets_after?/1),
+    if found != :already_erased and Enum.any?(Implementations.subscribed(), &forgets_after?/1),
       do: EhOsContract.Subscription.Runner.notify()
 
-    :ok
+    {:ok, found}
   end
 
   defp forgets_after?(consumer),

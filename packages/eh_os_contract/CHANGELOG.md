@@ -304,8 +304,9 @@ What changes otherwise is what a host has to do.
   under the append lock: its data keys are deleted, the erasure recorded in `eh_os_contract_erasures`,
   `eh_os_contract.subject_erased` appended (the subject's type and id, nothing personal), and every read model
   delivered in the transaction that projects that subject type's data forgets it. A read model after the
-  transaction takes the same event in order, and a rebuild replays it. `:ok` also when the subject was erased
-  before, and then nothing is appended. The engine asks no `Authorizer`: who may erase is the host's to decide.
+  transaction takes the same event in order, and a rebuild replays it. It answers `{:ok, :erased}`,
+  `{:ok, :no_data}` when nothing was held for that id (recorded all the same; a mistyped id erases nobody), or
+  `{:ok, :already_erased}`, and then nothing is appended; never an error. The engine asks no `Authorizer`: who may erase is the host's to decide.
   **No verdict moves**: the conformance readers never read the event, and a test pins
   `EhOsContract.Conformance.as_data/2` identical before and after.
 - **E8b: dispatch refuses personal data of an erased subject**, `{:error, :subject_erased}` (a new refusal),

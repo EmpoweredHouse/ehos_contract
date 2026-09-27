@@ -162,10 +162,12 @@ defmodule EhOsContract do
 
       EhOsContract.erase(:patient, "p-17", actor: actor)
 
-  `:ok`, also when the subject was erased before. Who may erase is the host's to
+  `{:ok, :erased}`, `{:ok, :no_data}` when nothing was held for that id (a mistyped
+  one?), or `{:ok, :already_erased}`; never an error. Who may erase is the host's to
   decide.
   """
-  @spec erase(atom(), String.t(), keyword() | map()) :: :ok
+  @spec erase(atom(), String.t(), keyword() | map()) ::
+          {:ok, :erased | :no_data | :already_erased}
   defdelegate erase(subject, id, opts), to: EhOsContract.Personal
 
   defdelegate emit(contract, type, payload, ctx \\ %{}), to: EhOsContract.Emitter
