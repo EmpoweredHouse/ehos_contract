@@ -94,7 +94,8 @@ defmodule EhOsContractHost.MixProject do
         "eh_os_contract.check",
         "test",
         &package_test/1,
-        &package_test_web/1
+        &package_test_web/1,
+        &package_test_auth/1
       ]
     ]
   end
@@ -133,5 +134,19 @@ defmodule EhOsContractHost.MixProject do
 
     if status != 0,
       do: Mix.raise("the dashboard foundation's own gate failed (packages/eh_os_contract_web)")
+  end
+
+  # The credential verifier (v2 stage EA), the same shape again: a package that
+  # stands alone, whose gate is its own `mix check` in a separate Mix project.
+  defp package_test_auth(_args) do
+    {_output, status} =
+      System.cmd("mix", ["check"],
+        cd: "../packages/eh_os_contract_auth",
+        env: [{"MIX_ENV", "test"}],
+        into: IO.stream(:stdio, :line)
+      )
+
+    if status != 0,
+      do: Mix.raise("the credential verifier's own gate failed (packages/eh_os_contract_auth)")
   end
 end

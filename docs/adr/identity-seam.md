@@ -24,6 +24,11 @@
 > implements the contract's `EhOsContract.Authorizer` ([contract v2](contract-v2.md) §16 D14, `PLAN.md` stage
 > EA). The engine still verifies nothing. The three levels below still hold: level 2 is now the credential's
 > `cap`, derived from the contract's `by:`.
+>
+> **27 September 2026 — where the keys come from.** Who makes the signing key pair, where the public keys are
+> published, why the TLS certificate of EHOS's URL is the trust anchor, what an application configures at
+> integration and how rotation reaches it: `packages/eh_os_contract_auth/README.md`, "Where the keys come
+> from, and what to configure at integration". Nothing is delivered to an application but EHOS's address.
 
 # Identity — the boundary, before any decision
 
