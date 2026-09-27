@@ -13,7 +13,8 @@ defmodule Mix.Tasks.EhOsContract.Pages do
   `config :eh_os_contract, applications:`. The pages go where `--output` says: the
   host decides whether to commit them, add them to ExDoc's `extras`, or only read
   them. A page the model no longer has is deleted — only a file that starts with
-  the pages' marker line — and a page is never written over a file without it, nor
+  the marker line of the domain's pages, so another domain's pages in the same
+  directory stay — and a page is never written over a file without it, nor
   through a symbolic link: then nothing is written, and the task names what is in
   the way. Nothing outside `--output` is read or touched.
 
@@ -52,7 +53,7 @@ defmodule Mix.Tasks.EhOsContract.Pages do
         error in ArgumentError -> Mix.raise(Exception.message(error))
       end
 
-    found = found(output)
+    found = found(output, Pages.marker(domain.__eh_os_contract_model__().name))
     stale = for {path, :page} <- found, not Map.has_key?(pages, path), do: path
     blocked = blocked(pages, found)
 
@@ -118,18 +119,18 @@ defmodule Mix.Tasks.EhOsContract.Pages do
     end
   end
 
-  # What is under `output`, by relative path: a page this task wrote (`:page`), any
-  # other file, or a symbolic link. Walked, not globbed, so nothing in `output`'s own
+  # What is under `output`, by relative path: a page this task wrote for the domain
+  # (`:page`), any other file — another domain's page too — or a symbolic link. Walked, not globbed, so nothing in `output`'s own
   # name is read as a pattern, and a link is never followed: what it points at is
   # outside what the task was given.
-  defp found(output) do
+  defp found(output, marker) do
     case File.lstat(output) do
-      {:ok, _} -> walk(output, "")
+      {:ok, _} -> walk(output, "", marker)
       {:error, _} -> %{}
     end
   end
 
-  defp walk(output, relative) do
+  defp walk(output, relative, marker) do
     output
     |> Path.join(relative)
     |> File.ls!()
@@ -138,18 +139,16 @@ defmodule Mix.Tasks.EhOsContract.Pages do
       file = Path.join(output, path)
 
       case File.lstat!(file).type do
-        :directory -> Map.merge(acc, walk(output, path))
+        :directory -> Map.merge(acc, walk(output, path, marker))
         :symlink -> Map.put(acc, path, :link)
-        :regular -> Map.put(acc, path, if(page?(file), do: :page, else: :file))
+        :regular -> Map.put(acc, path, if(page?(file, marker), do: :page, else: :file))
         _other -> Map.put(acc, path, :file)
       end
     end)
   end
 
   # Only the marker's bytes are read: `--output` may be a large tree of documents.
-  defp page?(file) do
-    marker = Pages.marker()
-
+  defp page?(file, marker) do
     case File.open(file, [:read, :binary], &IO.binread(&1, byte_size(marker))) do
       {:ok, ^marker} -> true
       _other -> false

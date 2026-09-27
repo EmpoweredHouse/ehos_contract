@@ -29,7 +29,8 @@ defmodule EhOsContract.PagesTest do
                "#{inspect(domain)}: #{path} links to #{target}, which is not a page"
       end
 
-      for {path, text} <- pages, do: assert(String.starts_with?(text, Pages.marker()), path)
+      name = domain.__eh_os_contract_model__().name
+      for {path, text} <- pages, do: assert(String.starts_with?(text, Pages.marker(name)), path)
     end
   end
 
@@ -157,12 +158,17 @@ defmodule EhOsContract.PagesTest do
     @tag :tmp_dir
     test "--check names a page that differs, one missing and one left over", %{tmp_dir: dir} do
       run(["--output", dir])
-      File.write!(Path.join(dir, "values/amount.md"), Pages.marker() <> "\n\nedited by hand\n")
+
+      File.write!(
+        Path.join(dir, "values/amount.md"),
+        Pages.marker(:value_rig) <> "\n\nedited by hand\n"
+      )
+
       File.rm!(Path.join(dir, "values/fee.md"))
 
       File.write!(
         Path.join(dir, "values/tip.md"),
-        Pages.marker() <> "\n\nA value since removed.\n"
+        Pages.marker(:value_rig) <> "\n\nA value since removed.\n"
       )
 
       error = assert_raise Mix.Error, fn -> run(["--output", dir, "--check"]) end
@@ -181,7 +187,7 @@ defmodule EhOsContract.PagesTest do
 
       File.write!(
         Path.join(dir, "values/tip.md"),
-        Pages.marker() <> "\n\nA value since removed.\n"
+        Pages.marker(:value_rig) <> "\n\nA value since removed.\n"
       )
 
       File.write!(Path.join(dir, "README.md"), "# Written by a person\n")
@@ -225,7 +231,7 @@ defmodule EhOsContract.PagesTest do
       # A page left over, written by this task, behind a linked directory.
       File.write!(
         Path.join(elsewhere, "tip.md"),
-        Pages.marker() <> "\n\nA value since removed.\n"
+        Pages.marker(:value_rig) <> "\n\nA value since removed.\n"
       )
 
       File.ln_s!(elsewhere, Path.join(out, "shared"))
@@ -250,12 +256,17 @@ defmodule EhOsContract.PagesTest do
       out = Path.join(dir, "o[u]t")
       sibling = Path.join(dir, "out")
       File.mkdir_p!(Path.join(sibling, "values"))
-      File.write!(Path.join(sibling, "values/tip.md"), Pages.marker() <> "\n\nNot this one's.\n")
+
+      File.write!(
+        Path.join(sibling, "values/tip.md"),
+        Pages.marker(:value_rig) <> "\n\nNot this one's.\n"
+      )
+
       File.mkdir_p!(Path.join(out, "values"))
 
       File.write!(
         Path.join(out, "values/tip.md"),
-        Pages.marker() <> "\n\nA value since removed.\n"
+        Pages.marker(:value_rig) <> "\n\nA value since removed.\n"
       )
 
       run(["--output", out])
@@ -265,10 +276,31 @@ defmodule EhOsContract.PagesTest do
       assert File.exists?(Path.join(sibling, "values/tip.md"))
     end
 
+    # The EL3 review: a host with two domains may write both into one tree.
+    @tag :tmp_dir
+    test "leaves another domain's pages where they are", %{tmp_dir: dir} do
+      File.mkdir_p!(Path.join(dir, "shredding"))
+      page = Pages.marker(:shredding_rig) <> "\n\nAnother domain's.\n"
+      File.write!(Path.join(dir, "shredding/index.md"), page)
+
+      run(["--output", dir])
+      assert_received {:mix_shell, :info, [written]}
+      assert written == "#{dir}: 15 pages written"
+      assert File.read!(Path.join(dir, "shredding/index.md")) == page
+
+      run(["--output", dir, "--check"])
+      assert_received {:mix_shell, :info, [current]}
+      assert current == "#{dir}: current"
+    end
+
     @tag :tmp_dir
     test "a directory a deleted page leaves empty goes with it", %{tmp_dir: dir} do
       File.mkdir_p!(Path.join(dir, "gone/deeper"))
-      File.write!(Path.join(dir, "gone/deeper/page.md"), Pages.marker() <> "\n\nGone.\n")
+
+      File.write!(
+        Path.join(dir, "gone/deeper/page.md"),
+        Pages.marker(:value_rig) <> "\n\nGone.\n"
+      )
 
       run(["--output", dir])
       refute File.exists?(Path.join(dir, "gone"))
