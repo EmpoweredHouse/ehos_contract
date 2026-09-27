@@ -914,6 +914,10 @@ defmodule EhOsContract.Pages do
   end
 
   defp shown(list) when is_list(list), do: "[#{Enum.map_join(list, ", ", &shown/1)}]"
+
+  defp shown(tuple) when is_tuple(tuple),
+    do: "{#{tuple |> Tuple.to_list() |> Enum.map_join(", ", &shown/1)}}"
+
   defp shown(term), do: inspect(term)
 
   defp blank("", word), do: word

@@ -182,6 +182,20 @@ defmodule EhOsContract.PagesTest do
              "- an account opened sets the chase\n\n  on `account_opened`; sets `first_deposit_due`, ends the run"
   end
 
+  # The EL3 review: `inspect/1` prints a map's keys in the order their atoms were
+  # made, so a map inside a tuple printed differently on two builds.
+  test "an example prints the same on every build, maps inside tuples included" do
+    till = EhOsContract.Model.fetch(ValueRig.Till)
+    [splitting] = till.domain_services
+    [half] = splitting.functions
+    [rule | _] = half.rules
+    rule = %{rule | examples: [{[5], {:ok, %{zz_pages_probe: 1, aa_pages_probe: 2}}}]}
+    till = %{till | domain_services: [%{splitting | functions: [%{half | rules: [rule]}]}]}
+
+    page = Pages.render(ValueRig.Domain, [till])["till/till/domain_services/splitting.md"]
+    assert page =~ "`half(5)` returns `{:ok, %{aa_pages_probe: 2, zz_pages_probe: 1}}`"
+  end
+
   test "two contracts of one context that would share a directory are refused" do
     till = EhOsContract.Model.fetch(ValueRig.Till)
     twin = %{till | module: Module.concat([Other, Till])}
