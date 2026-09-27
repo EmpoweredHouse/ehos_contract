@@ -31,6 +31,8 @@ defmodule EhOsContract.Next.Contract.Rules.Fields do
   alias EhOsContract.DslRules
   alias EhOsContract.Next.Contract.Rules
 
+  require EhOsContract.Domain.Rules
+
   @doc false
   @spec check(map()) :: [DslRules.violation()]
   def check(declarations) do
@@ -226,7 +228,8 @@ defmodule EhOsContract.Next.Contract.Rules.Fields do
           {:ok, %{optional: true}} ->
             [{"F5: #{where} is personal to #{inspect(target)}, which is optional", field}]
 
-          {:ok, %{type: :id, subject: subject, personal: nil}} when subject != nil ->
+          {:ok, %{type: type, subject: subject, personal: nil}}
+          when subject != nil and Domain.Rules.is_id(type) ->
             []
 
           {:ok, _} ->

@@ -19,6 +19,13 @@ defmodule EhOsContract.Domain.Rules do
   alias EhOsContract.Domain.Dsl.{Actor, Context, Entity, External, Relation, Subject, Value}
   alias Spark.Dsl.Transformer
 
+  @doc false
+  # An identifier as declared: `:id`, or `{:id, entity}`, which the model stores as one.
+  defguard is_id(type)
+           when type == :id or
+                  (is_tuple(type) and tuple_size(type) == 2 and elem(type, 0) == :id and
+                     is_atom(elem(type, 1)))
+
   @impl true
   def before?(EhOsContract.Domain.Build), do: true
   def before?(_), do: false
@@ -175,7 +182,8 @@ defmodule EhOsContract.Domain.Rules do
         {:ok, %{optional: true}} ->
           [{"F5: #{where} is personal to #{inspect(field.personal)}, which is optional", field}]
 
-        {:ok, %{type: :id, subject: subject, personal: nil}} when subject != nil ->
+        {:ok, %{type: type, subject: subject, personal: nil}}
+        when subject != nil and is_id(type) ->
           []
 
         {:ok, _} ->

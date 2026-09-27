@@ -548,6 +548,25 @@ defmodule EhOsContract.DomainRulesTest do
       assert Map.has_key?(model.digests, "entity:period")
     end
 
+    test "control: a value's personal field may name a subject identifier that is an entity's" do
+      compiles(
+        "PersonalToEntity",
+        @periods <>
+          """
+            subject :patient, "Pacjent"
+
+            entity :card, "Karta", context: :month, identified_by: :card_id do
+              field :card_id, :id
+            end
+
+            value :contact do
+              field :patient_id, {:id, :card}, subject: :patient
+              field :phone, :string, personal: :patient_id
+            end
+          """
+      )
+    end
+
     test "a domain without entities hashes as it did before entities existed" do
       compiles("NoEntities", @periods <> "  value :money, :integer\n")
       model = Module.concat(__MODULE__, NoEntities).__eh_os_contract_model__()
