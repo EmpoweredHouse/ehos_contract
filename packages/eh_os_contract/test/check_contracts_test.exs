@@ -115,4 +115,38 @@ defmodule EhOsContract.CheckContractsTest do
     assert for(f <- Contracts.findings([@visits], []), f.rule == "emits-never-produced", do: f) ==
              []
   end
+
+  test "a reaction to an event of a contract nobody compiled is left to X5, and check goes on" do
+    # A project without the compiler: the consumed contract does not exist, and every
+    # finding is built before any is printed, so a raise here would hide X5 as well.
+    compile(
+      """
+      defmodule EhOsContract.CheckContractsTest.Orphaned do
+        use EhOsContract.Next.Contract, domain: Clinic, context: :settlement
+
+        consumes EhOsContract.CheckContractsTest.Nowhere, :arrived
+
+        aggregate :desk, "Recepcja" do
+          identity :visit_id
+          command :greet, "Powitaj", by: :reception, emits: :greeted
+          event :greeted, "Powitano"
+        end
+
+        policy :greet_on_arrival, "Powitanie", handles: :arrived, issues: :greet
+        policy :count_arrival, "Liczenie", handles: :arrived, issues: :greet
+
+        process :desk, "Recepcja" do
+          correlate :visit_id
+        end
+      end
+      """,
+      "orphaned.ex"
+    )
+
+    assert for(
+             f <- Contracts.findings([EhOsContract.CheckContractsTest.Orphaned], []),
+             f.rule == "competing-in-transaction-consumers",
+             do: f
+           ) == []
+  end
 end

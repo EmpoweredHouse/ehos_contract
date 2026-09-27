@@ -117,7 +117,7 @@ defmodule EhOsContract.Check.Contracts do
           declaration <- declarations,
           declaration.delivery == :in_transaction,
           event <- List.wrap(declaration.handles),
-          {publisher, %{name: original}} <- [Model.declaring(model, event)] do
+          {publisher, %{name: original}} <- [declaring(model, event)] do
         {{publisher, original},
          "#{kind} #{inspect(declaration.name)} of #{inspect(model.module)}", c}
       end
@@ -133,6 +133,16 @@ defmodule EhOsContract.Check.Contracts do
           "comes first. If one depends on the other, have it react to what the other decides",
         first.at
       )
+    end
+  end
+
+  # The contract and declaration of an event a contract takes, or `nil`. A consumed
+  # contract nobody compiled is X5's to report; `Model.declaring/2` would raise on it
+  # and take every other finding with it.
+  defp declaring(model, event) do
+    case Model.consumed(model, event) do
+      {:contract, from, _original} -> if Links.contract(from), do: Model.declaring(model, event)
+      _local_or_received -> Model.declaring(model, event)
     end
   end
 
