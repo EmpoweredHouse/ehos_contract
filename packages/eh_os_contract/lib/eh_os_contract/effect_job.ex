@@ -17,7 +17,9 @@ defmodule EhOsContract.EffectJob do
   `:ok` finishes the job; `{:error, reason}` or an exception is retried, three
   attempts in all. What Oban keeps of a failure names the effect, the event's position
   and the module or kind of what failed, never a value (`EhOsContract.EffectJob.Failure`):
-  a value may be personal data, and `oban_jobs` is beyond an erasure's reach. A job whose effect no module implements any more, or whose effect
+  a value may be personal data, and `oban_jobs` is beyond an erasure's reach. That holds
+  for an exception, an exit, a throw, and a linked process the effect started crashing:
+  exits are trapped while the effect runs. A job whose effect no module implements any more, or whose effect
   no longer takes the event's type, is cancelled, not retried: that wiring is not
   coming back, and two more identical failures would say nothing a third time.
 
@@ -64,29 +66,46 @@ defmodule EhOsContract.EffectJob do
   end
 
   # Oban keeps a failed attempt in `oban_jobs.errors`: the exception, blamed — a
-  # function clause's arguments — and formatted with its stacktrace, or the reason an
-  # effect returned. Any of those can be the decoded event, personal data in the clear
-  # that an erasure never reaches (v2 §14, §17). So Oban is handed only what the engine
-  # records everywhere else: which effect, which event, and the module of what failed.
+  # function clause's arguments — and formatted with its stacktrace, the banner of an
+  # exit or a throw, or the reason an effect returned. Any of those can be the decoded
+  # event, personal data in the clear that an erasure never reaches (v2 §14, §17). So
+  # Oban is handed only what the engine records everywhere else: which effect, which
+  # event, and the module or kind of what failed.
+  #
+  # Exits are trapped while the effect runs, so that a linked process it started —
+  # `Task.async/1` — crashing becomes an exit this catches, rather than a signal that
+  # kills the job with the crash's reason in hand. The flag goes back as it was.
   defp guarded(key, row, fun) do
-    case fun.() do
-      {:error, reason} ->
-        {:error,
-         "effect #{key} answered {:error, #{kind(reason)}} on the event at position " <>
-           "#{row.position}"}
+    trapping = Process.flag(:trap_exit, true)
 
-      other ->
-        other
+    try do
+      case fun.() do
+        {:error, reason} ->
+          {:error,
+           "effect #{key} answered {:error, #{kind(reason)}} on the event at position " <>
+             "#{row.position}"}
+
+        other ->
+          other
+      end
+    rescue
+      exception ->
+        failed(key, row, "raised #{inspect(exception.__struct__)}", __STACKTRACE__)
+    catch
+      :exit, reason ->
+        failed(key, row, "exited with #{kind(reason)}", __STACKTRACE__)
+
+      :throw, value ->
+        failed(key, row, "threw #{kind(value)}", __STACKTRACE__)
+    after
+      Process.flag(:trap_exit, trapping)
     end
-  rescue
-    exception ->
-      reraise EhOsContract.EffectJob.Failure,
-              [
-                message:
-                  "effect #{key} raised #{inspect(exception.__struct__)} on the event at " <>
-                    "position #{row.position}"
-              ],
-              without_arguments(__STACKTRACE__)
+  end
+
+  defp failed(key, row, what, stacktrace) do
+    reraise EhOsContract.EffectJob.Failure,
+            [message: "effect #{key} #{what} on the event at position #{row.position}"],
+            without_arguments(stacktrace)
   end
 
   defp kind(reason) when is_atom(reason), do: inspect(reason)
@@ -97,12 +116,15 @@ defmodule EhOsContract.EffectJob do
 
   defp kind(_reason), do: "a value"
 
-  # A stacktrace's first entry carries a function clause's arguments; the arity says
-  # enough.
+  # A stacktrace's first entry carries a function clause's arguments, and a fun's
+  # entry may too; the arity says enough.
   defp without_arguments(stacktrace) do
     Enum.map(stacktrace, fn
       {module, function, args, location} when is_list(args) ->
         {module, function, length(args), location}
+
+      {fun, args, location} when is_list(args) ->
+        {fun, length(args), location}
 
       entry ->
         entry
