@@ -1,0 +1,5 @@
+EL2b review, 8ab88ba..3e9b344, two reviews in parallel (code-review high; security and performance).
+Fixed, each with a test red on the old code: 43b430b domain service implementation looked up per call; fb2abb1 value implementation looked up per value checked; 4727123 D9 repeated example in one list; eaffa10 D9 keeping example listed as breaking another invariant or a part; 67ef206 satisfied_by test did not ask the parts; 419bf9a value bindings outside wiring_version; c418908 N2/D9 from one function (event :module_info passed N2); 404aca5 PLAN.md state.
+Skipped with reason (PLAN.md, EL2b — co wyszło): value implementation found via configured apps + domain app (as v2 §10.5); implementations: does not reach value checks (string fixtures only); no failed row for raises before the transaction (as Authorizer); stacktrace of an invariant exception (as deciders).
+No change, documented in ADR §6, to confirm with the user: an invariant added later refuses reactions built from old events.
+Gate on 404aca5: EXIT=0 — sandbox 54, check 0/12/19; engine 1162, check 0/65/21; web 32; auth 51.
