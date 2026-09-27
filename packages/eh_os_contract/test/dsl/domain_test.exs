@@ -22,8 +22,8 @@ defmodule EhOsContract.DomainTest do
 
       term "Wizyta" do
         definition("Spotkanie pacjenta ze specjalistą")
-        translation(:en, "Visit")
-        translation(:de, "Besuch")
+        translation(:en, "Visit", definition: "A patient's appointment with a specialist")
+        translation(:de, "Besuch", definition: "Termin eines Patienten bei einem Spezialisten")
         avoid("Seans")
       end
 
@@ -76,8 +76,8 @@ defmodule EhOsContract.DomainTest do
       term "Wizyta" do
         definition("Spotkanie pacjenta ze specjalistą")
         avoid("Seans")
-        translation(:de, "Besuch")
-        translation(:en, "Visit")
+        translation(:de, "Besuch", definition: "Termin eines Patienten bei einem Spezialisten")
+        translation(:en, "Visit", definition: "A patient's appointment with a specialist")
       end
     end
 
@@ -98,8 +98,8 @@ defmodule EhOsContract.DomainTest do
 
       term "Wizyta" do
         definition("Spotkanie pacjenta ze specjalistą")
-        translation(:en, "Visit")
-        translation(:de, "Besuch")
+        translation(:en, "Visit", definition: "A patient's appointment with a specialist")
+        translation(:de, "Besuch", definition: "Termin eines Patienten bei einem Spezialisten")
         avoid("Seans")
       end
 
@@ -141,8 +141,21 @@ defmodule EhOsContract.DomainTest do
                text: "Wizyta",
                definition: "Spotkanie pacjenta ze specjalistą",
                source: nil,
-               translations: [%{language: :en, text: "Visit"}, %{language: :de, text: "Besuch"}],
-               avoid: [%{text: "Seans"}]
+               translations: [
+                 %{
+                   language: :en,
+                   text: "Visit",
+                   definition: "A patient's appointment with a specialist",
+                   avoid: []
+                 },
+                 %{
+                   language: :de,
+                   text: "Besuch",
+                   definition: "Termin eines Patienten bei einem Spezialisten",
+                   avoid: []
+                 }
+               ],
+               avoid: [%{text: "Seans", reason: nil}]
              }
 
       assert [%{name: :money, type: :integer, unit: :grosze}, %{name: :address, fields: fields}] =

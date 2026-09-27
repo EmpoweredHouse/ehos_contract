@@ -127,6 +127,7 @@ spark_locals_without_parens = [
   read_model: 2,
   read_model: 3,
   reads: 1,
+  reason: 1,
   recorded_by: 1,
   rejected: 1,
   rejects: 1,

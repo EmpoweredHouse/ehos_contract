@@ -18,8 +18,11 @@ defmodule EhOsContract.GlossaryTest do
 
         context :scheduling, "Umawianie", subdomain: :core do
           term "Zrealizowana", definition: "Pacjent wyszedł z gabinetu", source: "AGG-01" do
-            translation :en, "Completed"
-            avoid "Zakończona"
+            translation :en, "Completed", definition: "The patient has left the room" do
+              avoid "Done", reason: "Done says nothing about the patient"
+            end
+
+            avoid "Zakończona", reason: "Zakończona bywa też wizyta odwołana"
           end
 
           term "Wizyta", definition: "Umówione spotkanie pacjenta ze specjalistą"
@@ -51,7 +54,7 @@ defmodule EhOsContract.GlossaryTest do
              ### Zrealizowana
 
              Pacjent wyszedł z gabinetu
-             _Avoid the term "Zakończona"._
+             _Avoid the term "Zakończona"._ Zakończona bywa też wizyta odwołana
              _Source: AGG-01_
 
              ### Wizyta
@@ -73,7 +76,11 @@ defmodule EhOsContract.GlossaryTest do
   test "in another language: a translation, a note where there is none, a context already in it" do
     text = Glossary.render(@domain, language: :en)
 
-    assert text =~ ~s|### Completed\n\n_Translates "Zrealizowana": Pacjent wyszedł z gabinetu_\n|
+    assert text =~
+             ~s|### Completed\n\nThe patient has left the room\n| <>
+               ~s|_Avoid the term "Done"._ Done says nothing about the patient\n| <>
+               ~s|_Translates "Zrealizowana"._\n|
+
     assert text =~ "### Wizyta\n\n_No translation into en._\n"
     assert text =~ "### Daily report\n\nWhat was settled on one day\n"
   end

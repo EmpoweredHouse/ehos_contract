@@ -115,8 +115,8 @@ defmodule EhOsContract.DomainRulesTest do
 
             term "Wizyta" do
               definition "Spotkanie"
-              translation :en, "Visit"
-              translation :en, "Appointment"
+              translation :en, "Visit", definition: "A patient's appointment with a specialist"
+              translation :en, "Appointment", definition: "An arranged meeting"
             end
           end
         """)
@@ -133,7 +133,7 @@ defmodule EhOsContract.DomainRulesTest do
 
             term "Wizyta" do
               definition "Spotkanie"
-              translation :pl, "Wizyta"
+              translation :pl, "Wizyta", definition: "Umówione spotkanie pacjenta ze specjalistą"
             end
           end
         """)
@@ -151,7 +151,7 @@ defmodule EhOsContract.DomainRulesTest do
 
             term "Visit" do
               definition "A patient's appointment"
-              translation :en, "Visit"
+              translation :en, "Visit", definition: "A patient's appointment with a specialist"
             end
           end
         """)
@@ -166,8 +166,8 @@ defmodule EhOsContract.DomainRulesTest do
 
           term "Wizyta" do
             definition "Spotkanie"
-            translation :en, "Visit"
-            translation :de, "Besuch"
+            translation :en, "Visit", definition: "A patient's appointment with a specialist"
+            translation :de, "Besuch", definition: "Termin eines Patienten bei einem Spezialisten"
           end
         end
       """)
@@ -678,6 +678,20 @@ defmodule EhOsContract.DomainRulesTest do
 
       assert Exception.message(error) =~ "unknown options [:colour]"
       assert Exception.message(error) =~ "unknown_option_domain.ex:4"
+    end
+
+    test "a translation without its definition is refused (plan EL2, as in ESDM)" do
+      message =
+        refused("TranslationWithoutDefinition", """
+          context :settlement, "Rozliczenia", subdomain: :supporting do
+            term "Wizyta", definition: "Spotkanie" do
+              translation :en, "Visit"
+            end
+          end
+        """)
+
+      assert message =~ "required :definition option not found"
+      assert message =~ "translation_without_definition.ex:6"
     end
 
     test "a missing use option is refused" do

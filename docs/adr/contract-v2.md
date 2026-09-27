@@ -139,6 +139,10 @@ scenario        description!   scope · actor
 > giving the kind itself, as `entity …, context:` names its context. ESDM's subdomain lists its contexts
 > instead; the user chose the other direction, so that the context says where it belongs. §4.5's domain is
 > compiled with the two subdomains it needs added (`contract_examples_test.exs`, `@amendments`).
+>
+> *Changed 27 September 2026, plan EL2, the user's choice.* **A translation says what the term means in its
+> language and what to avoid there**, as in ESDM: `translation language!, text!, definition! [avoid*]`, and
+> `avoid text!, reason` at a term and at a translation.
 
 - **Identity is injected.** A unit's identity fields appear in its state, commands and events without being
   declared there; declaring one again is an error.

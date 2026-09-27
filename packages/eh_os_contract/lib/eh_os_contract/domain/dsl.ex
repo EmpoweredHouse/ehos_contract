@@ -14,12 +14,12 @@ defmodule EhOsContract.Domain.Dsl do
 
   defmodule Translation do
     @moduledoc false
-    defstruct [:language, :text, __spark_metadata__: nil]
+    defstruct [:language, :text, :definition, avoid: [], __spark_metadata__: nil]
   end
 
   defmodule Avoid do
     @moduledoc false
-    defstruct [:text, __spark_metadata__: nil]
+    defstruct [:text, :reason, __spark_metadata__: nil]
   end
 
   defmodule Term do
@@ -115,23 +115,28 @@ defmodule EhOsContract.Domain.Dsl do
   @spec directed_relations() :: [atom()]
   def directed_relations, do: @directed_relations
 
-  @translation %Spark.Dsl.Entity{
-    name: :translation,
-    describe: "The term in another language.",
-    target: Translation,
-    args: [:language, :text],
+  @avoid %Spark.Dsl.Entity{
+    name: :avoid,
+    describe: "A word that must not be used for this term, and why.",
+    target: Avoid,
+    args: [:text],
     schema: [
-      language: [type: :atom, required: true, doc: "The language, e.g. `:en`."],
-      text: [type: :string, required: true, doc: "The term in that language."]
+      text: [type: :string, required: true, doc: "The word to avoid."],
+      reason: [type: :string, doc: "Why it must not be used (plan EL2)."]
     ]
   }
 
-  @avoid %Spark.Dsl.Entity{
-    name: :avoid,
-    describe: "A word that must not be used for this term.",
-    target: Avoid,
-    args: [:text],
-    schema: [text: [type: :string, required: true, doc: "The word to avoid."]]
+  @translation %Spark.Dsl.Entity{
+    name: :translation,
+    describe: "The term in another language, with what it means there (plan EL2, as in ESDM).",
+    target: Translation,
+    args: [:language, :text],
+    entities: [avoid: [@avoid]],
+    schema: [
+      language: [type: :atom, required: true, doc: "The language, e.g. `:en`."],
+      text: [type: :string, required: true, doc: "The term in that language."],
+      definition: [type: :string, required: true, doc: "What it means, in that language."]
+    ]
   }
 
   @term %Spark.Dsl.Entity{

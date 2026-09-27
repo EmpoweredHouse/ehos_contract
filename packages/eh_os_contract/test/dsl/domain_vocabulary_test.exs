@@ -18,8 +18,10 @@ defmodule EhOsContract.DomainVocabularyTest do
              [:subdomain] => [:name, :label, :type, :source],
              [:context] => [:name, :label, :subdomain, :language, :source],
              [:context, :term] => [:text, :definition, :source],
-             [:context, :term, :translation] => [:language, :text],
-             [:context, :term, :avoid] => [:text],
+             # Plan EL2: a translation means something, and says what to avoid, and why.
+             [:context, :term, :translation] => [:language, :text, :definition],
+             [:context, :term, :translation, :avoid] => [:text, :reason],
+             [:context, :term, :avoid] => [:text, :reason],
              [:actor] => [:name, :kind, :label, :backed_by, :context, :scope],
              [:subject] => [:name, :label],
              [:value] => [:name, :type, :unit, :label, :context],

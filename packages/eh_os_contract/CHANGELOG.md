@@ -40,6 +40,9 @@ What changes otherwise is what a host has to do.
   domain, then `context :scheduling, …, subdomain: :visits`; `subdomain:` on a context no longer takes the kind,
   and a name the domain does not declare fails the compile (D7). A domain keeping its old contexts can declare
   `subdomain :core, "…", type: :core` and leave them as they are. Every domain's version moves.
+- **EL2: a translation needs its `definition:`**, as in ESDM: `translation :en, "Completed", definition: "…"`;
+  one without fails the compile. A translation may name words to `avoid` in its language, and an `avoid` may
+  give its `reason:`. `mix eh_os_contract.glossary --language` prints them.
 - **EL1: `mix eh_os_contract.check` prints two lines a finding**, `LEVEL <rule>: <sentence>` and then where the
   declaration was written (v2 contracts) and the rule's entry in `docs/rules.md`. A script reading the old
   one-line output reads the first line of each pair; one reading it by program should move to `--format json`.

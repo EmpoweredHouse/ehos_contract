@@ -5,7 +5,8 @@ defmodule EhOsContract.Glossary do
 
   A context's terms are written in its language: its own `language:`, or the
   domain's. Asked for another language, a context written in it prints as it is,
-  and any other prints each term's translation into it, or says there is none. The
+  and any other prints each term's translation into it — its text, its definition
+  and its own words to avoid — or says there is none. The
   headings and the notes around the terms are the library's, in English; the terms,
   definitions and words to avoid are the client's, printed as declared.
 
@@ -53,8 +54,7 @@ defmodule EhOsContract.Glossary do
   defp term(term) do
     lines =
       ["### #{term.text}", "", term.definition] ++
-        Enum.map(term.avoid, &~s|_Avoid the term "#{&1.text}"._|) ++
-        if(term.source, do: ["_Source: #{term.source}_"], else: [])
+        avoid(term.avoid) ++ if(term.source, do: ["_Source: #{term.source}_"], else: [])
 
     Enum.join(lines, "\n") <> "\n"
   end
@@ -65,7 +65,21 @@ defmodule EhOsContract.Glossary do
         "### #{term.text}\n\n_No translation into #{language}._\n"
 
       translation ->
-        "### #{translation.text}\n\n_Translates #{inspect(term.text)}: #{term.definition}_\n"
+        lines =
+          ["### #{translation.text}", "", translation.definition] ++
+            avoid(translation.avoid) ++ [~s|_Translates "#{term.text}"._|]
+
+        Enum.join(lines, "\n") <> "\n"
+    end
+  end
+
+  # ESDM's form: the word, then why, when the domain says.
+  defp avoid(words) do
+    for word <- words do
+      case word.reason do
+        nil -> ~s|_Avoid the term "#{word.text}"._|
+        reason -> ~s|_Avoid the term "#{word.text}"._ #{reason}|
+      end
     end
   end
 end
