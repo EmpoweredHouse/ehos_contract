@@ -105,6 +105,10 @@ What changes otherwise is what a host has to do.
 - **EL1: `check` repeats the rules between modules (L3) as errors** in a project whose `compilers` has no
   `:eh_os_contract`, under the codes the compiler prints (`X2`, `D14`, …). A project that registers the
   compiler sees no change.
+- **EL2: `mix eh_os_contract.glossary`** (ESDM's `glossary`): the domain's ubiquitous language as Markdown,
+  a section per context, `--language` for a translation, `--context`, `--domain`, `--output`
+  (`EhOsContract.Glossary.render/2`). `EhOsContract.Registry.domains/0` lists the domains of the configured
+  applications.
 - **EL1: `EhOsContract.Domain.vocabulary/0`**, the domain DSL's words by entity path, as
   `EhOsContract.Next.Contract.vocabulary/0` has them for the contract; a test pins both.
 - **EM2: `domain_service` in a contract** (ESDM's domain service): pure functions no unit owns, each with

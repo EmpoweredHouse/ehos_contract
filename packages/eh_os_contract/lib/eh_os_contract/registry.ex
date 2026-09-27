@@ -49,7 +49,8 @@ defmodule EhOsContract.Registry do
   @spec load!(atom() | [atom()] | nil) :: %{
           handlers: [handler()],
           contracts: [module()],
-          v2_contracts: [module()]
+          v2_contracts: [module()],
+          domains: [module()]
         }
   def load!(app \\ nil) do
     apps =
@@ -101,13 +102,31 @@ defmodule EhOsContract.Registry do
           match?(%{kind: :contract, units: _}, module.__eh_os_contract_model__())
       end)
 
-    graph = %{handlers: handlers, contracts: contracts, v2_contracts: v2_contracts}
+    # The domains the v2 contracts share (plan EL2): what `glossary` and `view` start from.
+    domains =
+      Enum.filter(loaded, fn module ->
+        function_exported?(module, :__eh_os_contract_model__, 0) and
+          match?(%{kind: :domain}, module.__eh_os_contract_model__())
+      end)
+
+    graph = %{
+      handlers: handlers,
+      contracts: contracts,
+      v2_contracts: v2_contracts,
+      domains: domains
+    }
+
     :persistent_term.put(@key, graph)
     graph
   end
 
   @doc "The cached scan, loading it on first use."
-  @spec graph() :: %{handlers: [handler()], contracts: [module()], v2_contracts: [module()]}
+  @spec graph() :: %{
+          handlers: [handler()],
+          contracts: [module()],
+          v2_contracts: [module()],
+          domains: [module()]
+        }
   def graph do
     case :persistent_term.get(@key, nil) do
       nil -> load!()
@@ -130,6 +149,10 @@ defmodule EhOsContract.Registry do
   """
   @spec v2_contracts() :: [module()]
   def v2_contracts, do: Map.get(graph(), :v2_contracts, [])
+
+  @doc "Every `EhOsContract.Domain` found in the running binary (plan EL2)."
+  @spec domains() :: [module()]
+  def domains, do: Map.get(graph(), :domains, [])
 
   @doc "Handlers of an event that run inside the emitting transaction."
   @spec sync_handlers_for(atom()) :: [handler()]
