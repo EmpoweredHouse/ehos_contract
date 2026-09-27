@@ -8,6 +8,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **The graph screen opens on a v2 process**, and shows its declared shape — stages, endings, promises — in the
+  first panel, as for a v1 process, with its steps and the log in the second.
 - **The screens read v2 contracts** (engine E7c). The contract status screen renders a v2 contract's report —
   its steps, with what waits under a heading of its own, its promises, its wiring version and its scenarios —
   in `EhOsContract.Report.Sentence`'s words, as it renders a v1 one; the drift line is the shared sentence too.

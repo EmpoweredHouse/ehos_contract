@@ -441,9 +441,23 @@ defmodule EhOsContract.Graph do
   Payload fields, `identity`, `retain`, `owner`, `rule`. Those are for whoever
   writes the code. A diagram showing everything the contract holds would be the
   module again, and the module is what the reader could not read.
+
+  ## A v2 contract
+
+  The same picture (plan E7c): the process's stages as lanes, each titled by its
+  label where it has one; the contract's own events in the stage group they sit in,
+  and the events it includes where the `include` sits; each `promise` as an arrow;
+  the externals from the domain.
   """
   @spec declared_to_mermaid(module(), atom()) :: String.t()
   def declared_to_mermaid(contract, process_name) do
+    case Model.fetch(contract) do
+      %{units: _} = model -> declared_v2(model, process_name)
+      _v1 -> declared_v1(contract, process_name)
+    end
+  end
+
+  defp declared_v1(contract, process_name) do
     process =
       Model.process(contract, process_name) ||
         raise ArgumentError, "#{inspect(contract)} declares no process #{inspect(process_name)}"
@@ -456,23 +470,79 @@ defmodule EhOsContract.Graph do
         &(Model.process_of(contract, &1.from).name == process_name)
       )
 
+    externals = fn name -> (external = Model.external(contract, name)) && external.label end
+
     Enum.join(
       ["flowchart TB"] ++
-        declared_lanes(process, events) ++
+        declared_lanes(for(stage <- process.stages, do: {stage, "#{stage}"}), events) ++
         declared_assertions(traces) ++
-        declared_dependencies(contract, events) ++
+        declared_dependencies(externals, events) ++
         declared_classes(events),
       "\n"
     )
   end
 
-  defp declared_lanes(%{stages: []}, events) do
+  # **A v2 contract's process, drawn the same way** (plan E7c): its stages as lanes,
+  # titled by their label where they have one; its own events in the stage group they
+  # sit in, and the events it includes in the stage the `include` sits in; each
+  # `promise` as an arrow with its window; the externals from the domain. The steps
+  # between them are `steps_to_mermaid/2`'s picture, not this one.
+  defp declared_v2(%{process: %{name: process_name} = process} = model, process_name) do
+    own =
+      for e <- model.events do
+        %{
+          name: e.name,
+          label: e.label,
+          stage: e.stage,
+          terminal: e.terminal,
+          depends_on: e.depends_on
+        }
+      end
+
+    included =
+      for include <- process.includes,
+          {_contract, e} <- [Model.declaring(model, include.event)] do
+        %{
+          name: include.event,
+          label: e.label,
+          stage: include.stage,
+          terminal: include.terminal,
+          depends_on: e.depends_on
+        }
+      end
+
+    traces =
+      for p <- process.promises do
+        %{p | within: p.within && {p.within.amount, p.within.unit}}
+      end
+
+    domain = Model.fetch(model.domain)
+    externals = fn name -> Enum.find_value(domain.externals, &(&1.name == name && &1.label)) end
+
+    Enum.join(
+      ["flowchart TB"] ++
+        declared_lanes(
+          for(s <- process.stages, do: {s.name, s.label || "#{s.name}"}),
+          own ++ included
+        ) ++
+        declared_assertions(traces) ++
+        declared_dependencies(externals, own ++ included) ++
+        declared_classes(own ++ included),
+      "\n"
+    )
+  end
+
+  defp declared_v2(model, process_name) do
+    raise ArgumentError, "#{inspect(model.module)} declares no process #{inspect(process_name)}"
+  end
+
+  defp declared_lanes([], events) do
     for e <- events, do: ~s(    #{e.name}["#{escape(e.label)}"])
   end
 
-  defp declared_lanes(process, events) do
+  defp declared_lanes(stages, events) do
     lanes =
-      for stage <- process.stages do
+      for {stage, title} <- stages do
         in_stage = Enum.filter(events, &(&1.stage == stage))
 
         # A stage with no events prints an empty lane rather than disappearing.
@@ -484,13 +554,15 @@ defmodule EhOsContract.Graph do
             _ -> for e <- in_stage, do: ~s(        #{e.name}["#{escape(e.label)}"])
           end
 
-        [~s(    subgraph stage_#{stage}["#{lane_title(stage, in_stage)}"])] ++ body ++ ["    end"]
+        [~s(    subgraph stage_#{stage}["#{escape(lane_title(title, in_stage))}"])] ++
+          body ++ ["    end"]
       end
 
     # The order between stages is the only ordering claim a contract makes, so it
     # is the only arrow drawn between lanes.
     order =
-      process.stages
+      stages
+      |> Enum.map(&elem(&1, 0))
       |> Enum.chunk_every(2, 1, :discard)
       |> Enum.map(fn [a, b] -> "    stage_#{a} --> stage_#{b}" end)
 
@@ -506,8 +578,8 @@ defmodule EhOsContract.Graph do
   # point of putting this in front of a process owner is the corrections.
   #
   # One event alone carries no marker: there is nothing there to order.
-  defp lane_title(stage, [_, _ | _]), do: "#{stage} · no order claimed inside"
-  defp lane_title(stage, _one_or_none), do: "#{stage}"
+  defp lane_title(title, [_, _ | _]), do: "#{title} · no order claimed inside"
+  defp lane_title(title, _one_or_none), do: title
 
   # The assertions, and they are why this picture carries information the
   # inventory does not: an arrow with a number on it is a claim somebody can
@@ -531,13 +603,13 @@ defmodule EhOsContract.Graph do
   # A dashed line with **no arrowhead**, following the convention the overlay
   # already set for a relation that is not causation: a dependency is something a
   # fact rests on, not something it leads to.
-  defp declared_dependencies(contract, events) do
+  defp declared_dependencies(external_label, events) do
     depended_on = events |> Enum.map(& &1.depends_on) |> Enum.filter(& &1) |> Enum.uniq()
 
     nodes =
       for name <- depended_on,
-          external = Model.external(contract, name),
-          do: ~s|    #{name}[("#{escape(external.label)}")]|
+          label = external_label.(name),
+          do: ~s|    #{name}[("#{escape(label)}")]|
 
     links = for e <- events, e.depends_on, do: "    #{e.name} -.- #{e.depends_on}"
 
@@ -561,8 +633,6 @@ defmodule EhOsContract.Graph do
       ]
   end
 
-  # A label is the client's own sentence and may hold anything they wrote. Only
-  # the double quote actually breaks a quoted mermaid node.
   @doc """
   A v2 contract's graph as a mermaid diagram (v2 §13, plan E7c-2): **a node of every
   kind** — commands, events, the policies, process managers and effects that react,
@@ -725,6 +795,8 @@ defmodule EhOsContract.Graph do
     ]
   end
 
+  # A label is the client's own sentence and may hold anything they wrote. Only
+  # the double quote actually breaks a quoted mermaid node.
   defp escape(label), do: String.replace(label, ~s("), "'")
 
   @doc "The overlay as one line per edge, for a terminal."

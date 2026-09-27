@@ -18,10 +18,11 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   shape** — stages as lanes, how it can end, each assertion as an arrow carrying
   its window — for the process owner, before anything is built.
 
-  **A v2 contract's process** is drawn as its steps instead (plan E7c-2): commands,
-  events, the consumers between them and timers, each kind in its Event Storming
-  colour (`EhOsContract.Graph.steps_to_mermaid/2`). With `--overlay` too, the log is
-  laid over it: runs per step, and what waits or fails there.
+  **A v2 contract's process** has the same declared shape. With `--overlay` it is
+  drawn as its steps instead (plan E7c-2): commands, events, the consumers between
+  them and timers, each kind in its Event Storming colour
+  (`EhOsContract.Graph.steps_to_mermaid/2`), with the log laid over them — runs per
+  step, and what waits or fails there.
 
   It is per process and never global on purpose. The default inventory this task
   prints is 33 events from four contracts in one flat list, which is useful to
@@ -94,14 +95,14 @@ defmodule Mix.Tasks.EhOsContract.Graph do
       contract ->
         emit_output(EhOsContract.Graph.declared_to_mermaid(contract, name), opts)
 
-      v2 ->
+      v2 && opts[:overlay] ->
         emit_output(
-          EhOsContract.Graph.steps_to_mermaid(v2,
-            overlay: opts[:overlay] || false,
-            since: since(opts)
-          ),
+          EhOsContract.Graph.steps_to_mermaid(v2, overlay: true, since: since(opts)),
           opts
         )
+
+      v2 ->
+        emit_output(EhOsContract.Graph.declared_to_mermaid(v2, name), opts)
 
       true ->
         known =

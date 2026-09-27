@@ -60,14 +60,53 @@ defmodule EhOsContract.GraphV2Test do
     assert diagram =~ "event_request_refused -.->|async| policy_notify_on_refusal"
   end
 
+  describe "the declared shape of a v2 process" do
+    test "its stages are lanes, its promise an arrow with its window, its endings marked" do
+      shape = Graph.declared_to_mermaid(ProcessShapes.Next.Promised, :handling)
+
+      assert shape =~ "flowchart TB"
+      assert shape =~ ~s(subgraph stage_intake["intake · no order claimed inside"])
+      assert shape =~ ~s(        request_received["Request received"])
+      assert shape =~ "stage_intake --> stage_decision"
+      assert shape =~ "request_received ==>|within 2 days| request_completed"
+      assert shape =~ "request_received -.->|or else| refusal_notified"
+      assert shape =~ "class request_completed,refusal_notified terminal"
+    end
+
+    test "an included event is in its run's picture, and an external comes from the domain" do
+      assert Graph.declared_to_mermaid(DispatchRig.Branch, :branch) =~
+               ~s(    account_opened["Account opened"])
+
+      shape =
+        Graph.declared_to_mermaid(UniversalityGate.Next.TreatmentEpisode, :treatment_episode)
+
+      assert shape =~
+               ~s|payer_registry[("Payer registry: confirmation of eligibility for treatment")]|
+
+      assert shape =~ "payer_eligibility_checked -.- payer_registry"
+    end
+  end
+
   @tag :tmp_dir
-  test "mix eh_os_contract.graph --process draws a v2 process", %{tmp_dir: dir} do
-    path = Path.join(dir, "ledger.mmd")
+  test "mix eh_os_contract.graph --process draws a v2 process's shape, and with --overlay its steps",
+       %{tmp_dir: dir} do
+    path = Path.join(dir, "handling.mmd")
     Mix.shell(Mix.Shell.Process)
     on_exit(fn -> Mix.shell(Mix.Shell.IO) end)
 
     Mix.Tasks.EhOsContract.Graph.run(["--process", "ledger", "--mermaid", "--output", path])
+    assert File.read!(path) =~ ~s(    account_opened["Account opened"])
+    refute File.read!(path) =~ "command_open_account"
 
-    assert File.read!(path) =~ "command_open_account --> event_account_opened"
+    Mix.Tasks.EhOsContract.Graph.run([
+      "--process",
+      "ledger",
+      "--mermaid",
+      "--overlay",
+      "--output",
+      path
+    ])
+
+    assert File.read!(path) =~ "command_open_account -->|0/0 runs| event_account_opened"
   end
 end

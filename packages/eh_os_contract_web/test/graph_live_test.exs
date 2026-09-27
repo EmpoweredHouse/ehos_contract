@@ -30,8 +30,10 @@ defmodule EhOsContract.Web.Live.GraphTest do
     assert html =~ ~s(id="declared-graph")
     assert html =~ ~s(id="overlay-graph")
 
-    # The first process is the v2 one: both panels are its steps.
-    assert html =~ "command_open_case --&gt; event_case_opened"
+    # The screen opens on the v2 process, though the v1 one's label sorts first: its
+    # declared shape in the first panel, its steps with the log in the second.
+    assert html =~ "event_case_opened"
+    assert html =~ "command_open_case --&gt;"
     assert html =~ "Declared versus observed, this process"
   end
 
