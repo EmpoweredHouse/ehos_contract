@@ -93,6 +93,24 @@ defmodule EhOsContract.GeneratedIdentityTest do
     assert log() == []
   end
 
+  test "an event is recorded only for an entry a command created" do
+    alias BoundaryRig.Waitlist.Events.WaitlistReminded
+    timetable = Actor.system(:timetable)
+
+    # Recorded for an identity no command made, it would make the entry itself.
+    assert {:error, :not_created} =
+             EhOsContract.record(Waitlist, %WaitlistReminded{entry_id: "entry-made-up"},
+               actor: timetable
+             )
+
+    assert log() == []
+
+    {:ok, %Receipt{identity: %{entry_id: id}}} = join()
+
+    assert {:ok, %Receipt{identity: %{entry_id: ^id}}} =
+             EhOsContract.record(Waitlist, %WaitlistReminded{entry_id: id}, actor: timetable)
+  end
+
   test "the same idempotency key gives the same identity, and one entry" do
     {:ok, %Receipt{identity: first, duplicate: false}} = join(idempotency_key: "join-anna")
     {:ok, %Receipt{identity: again, duplicate: true}} = join(idempotency_key: "join-anna")

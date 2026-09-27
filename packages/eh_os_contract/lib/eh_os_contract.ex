@@ -149,7 +149,7 @@ defmodule EhOsContract do
   @doc "Records an event a v2 contract declares `recorded_by:` (`EhOsContract.Dispatcher.record/3`)."
   @spec record(module(), struct(), keyword() | map()) ::
           {:ok, EhOsContract.Receipt.t()}
-          | {:error, EhOsContract.Dispatcher.refusal() | :not_grantable}
+          | {:error, EhOsContract.Dispatcher.refusal() | :not_grantable | :not_created}
   defdelegate record(contract, event, opts), to: EhOsContract.Dispatcher
 
   @doc "Asks a query of a v2 contract (`EhOsContract.Dispatcher.query/3`)."

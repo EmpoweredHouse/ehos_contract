@@ -149,10 +149,12 @@ defmodule EhOsContract.Dispatcher do
   September 2026). Otherwise it goes as a command does — the fields checked, the
   idempotency key honoured, the unit's stream version as the append's condition,
   the consumers in the transaction run, the `accepted` row written with the type
-  `"record:<event>"` — only without a decider.
+  `"record:<event>"` — only without a decider. An event of an aggregate whose
+  identity is generated is recorded only for one a command created:
+  `{:error, :not_created}` otherwise.
   """
   @spec record(module(), struct(), keyword() | map()) ::
-          {:ok, Receipt.t()} | {:error, refusal() | :not_grantable}
+          {:ok, Receipt.t()} | {:error, refusal() | :not_grantable | :not_created}
   def record(contract, %module{} = event, opts) do
     model = model!(contract)
     declaration = recorded!(model, module)
@@ -502,8 +504,16 @@ defmodule EhOsContract.Dispatcher do
     with :new <- idempotent(repo, job) do
       unit = Enum.find(job.model.units, &(&1.name == job.declaration.unit))
       {recorded, condition} = read_unit(repo, job.model, unit, job.command)
-      job = Map.merge(job, %{condition: condition, given: recorded})
-      commit(job, [{job.declaration, job.command}], repo)
+
+      # An aggregate whose identity the library gives is made only by the command that
+      # creates it (A6), so an event recorded for one that does not exist would make
+      # it under an identity the host made up (the user's choice after the EM3 review).
+      if Map.get(unit, :generated) && recorded == [] do
+        {:error, :not_created}
+      else
+        job = Map.merge(job, %{condition: condition, given: recorded})
+        commit(job, [{job.declaration, job.command}], repo)
+      end
     end
   end
 
