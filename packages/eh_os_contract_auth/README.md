@@ -87,7 +87,9 @@ children = [
 ```
 
 Do not turn certificate verification off to make a first integration work: the keys would then come
-from whoever answers.
+from whoever answers. For the same reason the package refuses to boot when the key set would be
+fetched over anything but `https` (plain `http` is allowed for `localhost` only), and **follows no
+redirect**: a key set answered from anywhere but the configured URL is a failed fetch.
 
 **What the application configures, and nothing else:** `issuer`, which must be exactly the `iss`
 EHOS writes, `audience` (`<application>/<environment>`, exactly the `aud` EHOS issues for this
@@ -111,7 +113,8 @@ longer has it.
   instance, stops being trusted within that interval without a restart;
 - an unknown `kid` triggers an early fetch, at most once every thirty seconds;
 - a failed fetch changes nothing: it is logged and the last good set stays in force. A key set with
-  no Ed25519 key in it counts as a failed fetch;
+  no Ed25519 key in it counts as a failed fetch, and so does a redirect, a body over 64 KB and more
+  than 16 keys — a rotation holds two;
 - an application that has never seen a key set refuses every credential with `:no_keys`, and logs
   it at start. This is the one case where "EHOS is down" becomes "nobody gets in", and
   `EhOsContract.Auth.ready?/0` answers `false` for it, for the host's health check.
@@ -130,5 +133,8 @@ D-40):
  "scp": {"rehmed.open_visits_for_clinic": {"clinic_id": ["7"]}}}
 ```
 
-The grants travel in the credential. The application stores none and asks EHOS about none. `exp`
+The grants travel in the credential. The application stores none and asks EHOS about none. A
+credential whose `exp` is more than fifteen minutes away — EHOS's ten, and five for clocks that
+disagree — is refused as `:bad_signature`, whoever signed it, so a key that leaked cannot mint a
+credential that lives for a year; so is one whose header carries `crit`. `exp`
 is measured by `EhOsContract.Clock`, so a test moves time with `EhOsContract.Clock.at/2`.

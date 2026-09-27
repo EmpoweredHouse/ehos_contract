@@ -58,6 +58,11 @@ defmodule EhOsContract.Auth.VerifyTest do
                {:error, :bad_signature}
     end
 
+    test "a header naming critical parameters is refused", %{pair: pair, keys: keys} do
+      token = credential(pair, %{}, header: %{"crit" => ["exp"]})
+      assert Auth.verify(token, keys: keys) == {:error, :bad_signature}
+    end
+
     test "something that is not a JWT is refused", %{keys: keys} do
       assert Auth.verify("not-a-credential", keys: keys) == {:error, :bad_signature}
       assert Auth.verify("", keys: keys) == {:error, :bad_signature}
@@ -120,6 +125,18 @@ defmodule EhOsContract.Auth.VerifyTest do
 
       assert {:ok, _} = Clock.at(DateTime.add(exp, -1), fn -> Auth.verify(token, keys: keys) end)
       assert Clock.at(exp, fn -> Auth.verify(token, keys: keys) end) == {:error, :expired}
+    end
+
+    test "a credential that claims to live longer than EHOS issues is refused",
+         %{pair: pair, keys: keys} do
+      now = ~U[2026-09-27 10:00:00.000000Z]
+      exp = fn seconds -> credential(pair, %{"exp" => DateTime.to_unix(now) + seconds}) end
+
+      Clock.at(now, fn ->
+        assert {:ok, _} = Auth.verify(exp.(15 * 60), keys: keys)
+        assert Auth.verify(exp.(15 * 60 + 1), keys: keys) == {:error, :bad_signature}
+        assert Auth.verify(exp.(365 * 24 * 3600), keys: keys) == {:error, :bad_signature}
+      end)
     end
 
     test "a credential without exp is expired", %{pair: pair, keys: keys} do

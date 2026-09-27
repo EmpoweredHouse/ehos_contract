@@ -44,7 +44,10 @@ defmodule EhOsContract.Auth.KeysTest do
     for {failure, answer} <- [
           {"EHOS down", :down},
           {"an error status", {:status, 503}},
-          {"a key set with no Ed25519 key", {:keys, []}}
+          {"a key set with no Ed25519 key", {:keys, []}},
+          {"a redirect to another host", :redirect},
+          {"a body past the limit", :huge},
+          {"more keys than a rotation holds", :many}
         ] do
       test failure do
         pair = key_pair()

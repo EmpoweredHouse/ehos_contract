@@ -40,10 +40,14 @@ defmodule EhOsContract.Auth do
     * `iss` is the configured issuer, or `:wrong_issuer`;
     * `aud` is exactly the configured audience, one string, or `:wrong_audience`;
     * `exp` is later than `EhOsContract.Clock.now/0`, or `:expired`. A credential
-      without `exp` is expired: nothing here trusts a credential forever.
+      without `exp` is expired: nothing here trusts a credential forever;
+    * `exp` is at most fifteen minutes away — EHOS's ten, and five for clocks that
+      disagree — or `:bad_signature`: a credential claiming to live longer is not
+      one EHOS issues, whoever signed it.
 
   Anything that is not a well-formed credential in this form — not a JWT, no
-  `kid`, a `sub` that is not a string, a `cap` that is not a list of strings — is
+  `kid`, a `crit` header, a `sub` that is not a string, a `cap` that is not a list of
+  strings — is
   `:bad_signature`: it is not something EHOS signed, whatever its bytes say.
 
   An accepted credential becomes an `EhOsContract.Actor` of kind `:credential`,
@@ -59,6 +63,8 @@ defmodule EhOsContract.Auth do
   alias EhOsContract.Actor
   alias EhOsContract.Auth.Keys
 
+  @max_lifetime 15 * 60
+
   @typedoc "Why a credential is refused."
   @type reason ::
           :expired | :unknown_key | :bad_signature | :wrong_audience | :wrong_issuer | :no_keys
@@ -71,7 +77,8 @@ defmodule EhOsContract.Auth do
   repo: `EhOsContract.Auth` in the list of children.
 
   It reads `:issuer` and `:jwks_url` from `config :eh_os_contract_auth`, and raises
-  at boot without an issuer. `:audience` and `:issuer` are read by `verify/2` on
+  at boot without an issuer, or when the key set would be fetched over anything but
+  https (plain http is allowed for `localhost` only). `:audience` and `:issuer` are read by `verify/2` on
   every credential, and are checked here too, so a missing one fails the boot rather
   than every request.
   """
@@ -94,6 +101,23 @@ defmodule EhOsContract.Auth do
     url =
       config[:jwks_url] ||
         String.trim_trailing(config[:issuer], "/") <> "/.well-known/jwks.json"
+
+    # The key set is what every credential is trusted by, and over plain HTTP anyone
+    # on the path could hand it keys of their own. Only a machine's own loopback may
+    # be plain, for development.
+    case URI.parse(url) do
+      %URI{scheme: "https", host: host} when is_binary(host) and host != "" ->
+        :ok
+
+      %URI{scheme: "http", host: host} when host in ["localhost", "127.0.0.1", "::1"] ->
+        :ok
+
+      _other ->
+        raise ArgumentError,
+              "eh_os_contract_auth fetches EHOS's keys from #{inspect(url)}, which is not " <>
+                "https: keys fetched in the clear can be replaced on the way. Only localhost " <>
+                "may be plain http"
+    end
 
     %{
       id: __MODULE__,
@@ -127,22 +151,27 @@ defmodule EhOsContract.Auth do
   """
   @spec verify(String.t(), [option()]) :: {:ok, Actor.t()} | {:error, reason()}
   def verify(token, opts \\ []) when is_binary(token) do
-    config = Application.get_all_env(:eh_os_contract_auth)
-    issuer = Keyword.get_lazy(opts, :issuer, fn -> Keyword.fetch!(config, :issuer) end)
-    audience = Keyword.get_lazy(opts, :audience, fn -> Keyword.fetch!(config, :audience) end)
+    issuer = Keyword.get_lazy(opts, :issuer, fn -> config!(:issuer) end)
+    audience = Keyword.get_lazy(opts, :audience, fn -> config!(:audience) end)
 
     with {:ok, kid} <- kid(token),
          {:ok, signer} <- Keys.fetch(kid, Keyword.get(opts, :keys, Keys)),
          {:ok, claims} <- signed(token, signer),
          :ok <- claim(claims["iss"] == issuer, :wrong_issuer),
          :ok <- claim(claims["aud"] == audience, :wrong_audience),
-         :ok <- claim(unexpired?(claims["exp"]), :expired) do
+         :ok <- claim(unexpired?(claims["exp"]), :expired),
+         :ok <- claim(within_lifetime?(claims["exp"]), :bad_signature) do
       actor(claims)
     end
   end
 
+  defp config!(key), do: Application.fetch_env!(:eh_os_contract_auth, key)
+
   defp kid(token) do
     case Joken.peek_header(token) do
+      # `crit` names header parameters a verifier must understand or refuse (RFC 7515
+      # §4.1.11); this one understands none, and EHOS sets none.
+      {:ok, %{"crit" => _}} -> {:error, :bad_signature}
       {:ok, %{"alg" => "Ed25519", "kid" => kid}} when is_binary(kid) -> {:ok, kid}
       _ -> {:error, :bad_signature}
     end
@@ -166,6 +195,12 @@ defmodule EhOsContract.Auth do
     do: DateTime.to_unix(EhOsContract.Clock.now()) < exp
 
   defp unexpired?(_exp), do: false
+
+  # EHOS issues credentials for ten minutes (`eh-os` D-33); this allows five more for
+  # clocks that disagree. One that claims to live longer is not in EHOS's form,
+  # whoever signed it: a key that leaked must not mint credentials for a year.
+  defp within_lifetime?(exp),
+    do: exp - DateTime.to_unix(EhOsContract.Clock.now()) <= @max_lifetime
 
   # The claims' shapes are checked here, and the members' by `Actor.credential/3`,
   # whose ArgumentError is the one thing rescued: any other exception is a defect in
