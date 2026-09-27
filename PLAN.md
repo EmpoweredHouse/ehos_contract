@@ -36,10 +36,12 @@ crypto-shredding). **E0–E7 i EA są w `main`** (PR #1–#20; EA poszło dwoma 
 - **Trzy decyzje z EA rozstrzygnięte 27 września** (z odrzuconymi opcjami): `pin_keys: true` zostaje, limit
   15 min zostaje stały — oba w „EA2 — co wyszło”; publiczne wejście dla surowych danych wchodzi w E12 — przy opisie
   E12 w „Etapach”.
-- **E8 — zbudowane, czeka na push i PR-y (użytkownika).** Podział na dwa PR-y i kształty widoczne dla hosta
-  rozstrzygnięte 27 września, z odrzuconymi opcjami, pod opisem E8 w „Etapach”. **E8a** na
-  `dsl-v2/e8a-encryption` od `main`, po przeglądzie przed PR (notatka na `9455bc2`) — „E8a — co wyszło”. **E8b** na
-  `dsl-v2/e8b-erasure` od E8a — „E8b — co wyszło”. Oba niewypchnięte.
+- **E8 — wystawione, czeka na merge (użytkownika).** Podział na dwa PR-y i kształty widoczne dla hosta
+  rozstrzygnięte 27 września, z odrzuconymi opcjami, pod opisem E8 w „Etapach”. **E8a** —
+  [PR #21](https://github.com/EmpoweredHouse/eh-os-contract/pull/21), `dsl-v2/e8a-encryption` do `main` —
+  „E8a — co wyszło”. **E8b** — [PR #22](https://github.com/EmpoweredHouse/eh-os-contract/pull/22),
+  `dsl-v2/e8b-erasure` do gałęzi E8a, więc najpierw #21 — „E8b — co wyszło”. Oba po przeglądzie przed PR.
+  **Do użytkownika z przeglądu E8b:** czy `erase/3` ma dalej zwracać `:ok` dla identyfikatora, którego nie było.
 - **Proces na porcie 4000 — użytkownika**: `beam.smp` z `/private/tmp/eh-os-test`, niezwiązany z repozytorium.
 - **Lista zmian do `eh-os`** — użytkownika: D-01, D-15, outbox, G-16, transport v1, D-34, D-40, plan etapu 4
   („D10–D12 — skąd się wzięły” i „D14 — autoryzacja” w dopisku Etap 6), logowanie frontendu zwykłej aplikacji.
@@ -461,7 +463,8 @@ dało się do nich wrócić bez odtwarzania rozmowy (prośba użytkownika):
   osoby nigdzie nie trzymamy w pamięci podręcznej.
 Zgoda na commity bez pytania i zapis stanu obejmuje gałęzie `dsl-v2/e8…`.
 **E8a zrobione 27 września** na `dsl-v2/e8a-encryption`, niewypchnięte, po przeglądzie przed PR — „E8a — co
-wyszło” niżej. **E8b zrobione 27 września** na `dsl-v2/e8b-erasure` (od E8a), niewypchnięte — „E8b — co wyszło”.
+wyszło” niżej. **E8b zrobione 27 września** na `dsl-v2/e8b-erasure` (od E8a) — „E8b — co wyszło”. Wystawione jako PR #21 (E8a) i
+PR #22 (E8b, do gałęzi E8a).
 Odbiór E8 spełniony (mapa w „E8b — co wyszło”), poza snapshotami, które wypadły decyzją użytkownika.
 
 **E9 — Pozostałe kontrakty sandboxa.** Kolejność i zakres:
