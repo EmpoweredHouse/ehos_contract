@@ -291,8 +291,8 @@ defmodule EhOsContract.Codec do
   Fails with the fields that do not fit, and never creates an atom.
 
   `open:` opens the personal fields `encode/4` sealed (`t:open/0`): a field whose
-  subject is erased decodes to `EhOsContract.Erased`. Without it, a sealed field
-  does not fit.
+  subject is erased decodes to `EhOsContract.Erased`, and one holding clear text
+  does not fit. Without it, a sealed field does not fit.
   """
   #
   # `strings: true` also reads an integer or a boolean written as text, as a query
@@ -331,18 +331,29 @@ defmodule EhOsContract.Codec do
     here = path ++ [Atom.to_string(field.name)]
     target = Map.get(field, :personal)
 
-    if target != nil and open != nil and sealed?(raw) do
-      %{subject: subject} = Enum.find(fields, &(&1.name == target))
+    cond do
+      target != nil and open != nil and sealed?(raw) ->
+        %{subject: subject} = Enum.find(fields, &(&1.name == target))
 
-      with id when is_binary(id) <- fetch(external, target),
-           {:ok, opened} <- open.(Enum.join(here, "."), {subject, id}, raw) do
-        decode_value(field.type, opened, values, nil, here)
-      else
-        :erased -> {:ok, %Erased{subject: subject, id: fetch(external, target)}}
-        _ -> :error
-      end
-    else
-      decode_value(field.type, raw, values, open, here)
+        with id when is_binary(id) <- fetch(external, target),
+             {:ok, opened} <- open.(Enum.join(here, "."), {subject, id}, raw) do
+          decode_value(field.type, opened, values, nil, here)
+        else
+          :erased -> {:ok, %Erased{subject: subject, id: fetch(external, target)}}
+          _ -> :error
+        end
+
+      # Clear text where the log holds a seal: written around the sealing, and it
+      # would outlive an erasure.
+      target != nil and open != nil and raw != nil ->
+        :error
+
+      # A seal, and nothing to open it with: never read as the value it hides.
+      target != nil and sealed?(raw) ->
+        :error
+
+      true ->
+        decode_value(field.type, raw, values, open, here)
     end
   end
 

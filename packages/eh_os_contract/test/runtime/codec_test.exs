@@ -234,6 +234,42 @@ defmodule EhOsContract.CodecTest do
       end
     end
 
+    test "clear text where a seal belongs, and a seal with nothing to open it, do not fit" do
+      open = Personal.opener(@read, "shredding_rig.joined")
+      clear = %{"member_id" => "member-anna", "name" => "Anna Nowak", "note" => nil}
+      assert Codec.decode(@personal, clear, %{}, open: open) == {:error, [name: :type]}
+
+      # Control: an optional personal field left empty is empty, not clear text.
+      optional = Enum.map(@personal, &if(&1.name == :name, do: %{&1 | optional: true}, else: &1))
+
+      assert {:ok, %{name: nil}} =
+               Codec.decode(optional, %{clear | "name" => nil}, %{}, open: open)
+
+      # A domain value whose fields are all optional would take the envelope's keys
+      # for none of its own and decode empty.
+      values = %{
+        info: %{name: :info, type: nil, fields: [%{name: :phone, type: :string, optional: true}]}
+      }
+
+      fields = [
+        %{name: :member_id, type: :id, optional: false, subject: :member},
+        %{name: :info, type: :info, optional: false, personal: :member_id}
+      ]
+
+      stored =
+        Codec.encode(
+          fields,
+          %{member_id: "member-anna", info: %{phone: "+48 600 100 200"}},
+          values,
+          Personal.sealer(@keys, "t")
+        )
+
+      assert Codec.decode(fields, stored, values) == {:error, [info: :type]}
+
+      assert Codec.decode(fields, stored, values, open: Personal.opener(@read, "t")) ==
+               {:ok, %{member_id: "member-anna", info: %{phone: "+48 600 100 200"}}}
+    end
+
     test "a seal that fails names the field, never a key or the value" do
       [{_, {_, key}}] = Map.to_list(@keys)
 
