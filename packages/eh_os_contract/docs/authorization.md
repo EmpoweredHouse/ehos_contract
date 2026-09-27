@@ -142,8 +142,8 @@ request:
 | `{:error, :outside_scope}` | the value asked for is not among the granted values |
 
 `EhOsContract.Authorizer.Default`, used when nothing is configured, is `check/2` alone and records
-nothing. The auth package for EHOS credentials (stage EA) calls `check/2` and records a row for every
-decision.
+nothing. `EhOsContract.Auth`, in the package `eh_os_contract_auth` for EHOS credentials, calls
+`check/2` and records a row for every decision in `eh_os_contract_auth_decisions`.
 
 **An implementation may narrow what a credential grants, never widen it.** After an `:ok`, the engine
 runs `check/2` again from the actor and raises `EhOsContract.Authorizer.WidenedError` if it refuses.
@@ -214,13 +214,20 @@ carry a capability to record. Naming such a capability is left to stage E9.
 
 | Outcome | Event log | `eh_os_contract_commands` | Auth package's table, for a call with a credential |
 | --- | --- | --- | --- |
-| Refused by the Authorizer | nothing | nothing | one row (EA) |
-| Accepted | the events | an `accepted` row | one row (EA) |
-| Rejected on an invariant | nothing | a `rejected` row | one row (EA) |
-| Failed in code | nothing (rolled back) | a `failed` row | one row (EA) |
+| Refused by the Authorizer | nothing | nothing | a `refused` row, with the reason |
+| Accepted | the events | an `accepted` row | an `allowed` row |
+| Rejected on an invariant | nothing | a `rejected` row | an `allowed` row |
+| Failed in code | nothing (rolled back) | a `failed` row | an `allowed` row |
 
 A refusal leaves nothing in the engine's tables; the row that records it belongs to the
-`Authorizer`'s implementation. Queries write nothing to the log: a read is not a fact.
+`Authorizer`'s implementation. Queries write nothing to the log: a read is not a fact, but a query
+with a credential has its decision row like a command.
+
+The two rows of an accepted command are two facts, not one written twice: the auth package's row
+records that the credential allowed the call, `eh_os_contract_commands` what became of the command.
+The engine asks the `Authorizer` before its own transaction, so a caller that wraps `dispatch/3` in a
+transaction of its own and rolls it back rolls the decision row back too; `EhOsContract.Plug` never
+does.
 
 ## Over HTTP
 
@@ -305,6 +312,6 @@ Known limits, accepted deliberately:
 | `EhOsContract.Actor`, `EhOsContract.Authorizer` with `check/2` and the default | built (E6) |
 | Authorization in `dispatch/3`, `query/3` and `record/3`, scope checks, the row check | built (E6) |
 | `EhOsContract.Plug` | built (E6) |
-| Verifying EHOS credentials, keeping keys, the audit row, the bearer-token plug | stage EA, package `eh_os_contract_auth` |
+| Verifying EHOS credentials, keeping keys, the audit row, the bearer-token plug, the test helper | built (EA), package [`eh_os_contract_auth`](../../eh_os_contract_auth) |
 | The manifest EHOS reads | stage E10 |
 | Sign-in for a frontend's users | EHOS, not designed yet |

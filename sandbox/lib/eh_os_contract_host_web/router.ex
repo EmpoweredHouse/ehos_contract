@@ -1,9 +1,12 @@
 defmodule EhOsContractHostWeb.Router do
   @moduledoc """
-  Two mounts, both from `eh_os_contract_web`: the dashboard at `/dashboard` for a person, and
-  the read-only conformance API at `/api/eh_os_contract` for anything that is not one.
-  Nothing else lives here — this project has no other frontend, and
-  `docs/adr/architecture.md` §16-17 puts frontends outside the engine regardless.
+  Three mounts. Two from `eh_os_contract_web`: the dashboard at `/dashboard` for a person,
+  and the read-only conformance API at `/api/eh_os_contract` for anything that is not one.
+  And, since v2 stage EA, the commands of `Rehmed.Contracts.VisitSettlement` at
+  `/api/rehmed`, served by `EhOsContract.Plug` behind `EhOsContract.Auth.Plug`, which
+  verifies the bearer credential. Nothing else lives here — this project has no other
+  frontend, and `docs/adr/architecture.md` §16-17 puts frontends outside the engine
+  regardless.
   """
 
   use Phoenix.Router
@@ -29,6 +32,17 @@ defmodule EhOsContractHostWeb.Router do
     import EhOsContract.Web.Router
 
     eh_os_contract_dashboard "/dashboard", resolver: EhOsContractHostWeb.Resolver
+  end
+
+  # The same, and the credential verified before anything is routed.
+  pipeline :commands do
+    plug :accepts, ["json"]
+    plug EhOsContract.Auth.Plug
+  end
+
+  scope "/api/rehmed" do
+    pipe_through :commands
+    forward "/", EhOsContract.Plug, contracts: [Rehmed.Contracts.VisitSettlement]
   end
 
   scope "/" do

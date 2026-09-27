@@ -11,5 +11,5 @@ defmodule EhOsContractHostWeb do
   than a claim in a moduledoc.
   """
 
-  use Boundary, deps: [EhOsContract, EhOsContract.Web], exports: []
+  use Boundary, deps: [EhOsContract, EhOsContract.Auth, EhOsContract.Web], exports: []
 end
