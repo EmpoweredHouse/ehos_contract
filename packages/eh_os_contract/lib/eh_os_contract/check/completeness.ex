@@ -233,7 +233,7 @@ defmodule EhOsContract.Check.Completeness do
       empty_subdomains(model, declared),
       orphan_relations(model, declared, contracts),
       unmapped_references(model, contracts),
-      relations_against_references(model, declared, contracts),
+      relations_against_references(model, contracts),
       avoided_terms(model, contracts),
       directions(model, declared, contracts)
     ])
@@ -406,20 +406,23 @@ defmodule EhOsContract.Check.Completeness do
   # downstream context depends on the upstream one, so a reference from the upstream
   # context into the downstream one contradicts it. Between contexts only: which way
   # a call to an external system runs says nothing about who depends on whom.
-  defp relations_against_references(model, declared, contracts) do
+  defp relations_against_references(model, contracts) do
     references = crossings(model, contracts)
     directed = EhOsContract.Domain.Dsl.directed_relations()
 
-    for {relation, index} <- Enum.with_index(model.relations),
-        {pair, contract, what, _at} <- references,
-        pair == MapSet.new(Domain.Build.endpoints(relation)),
+    # At the reference, which is what the finding asks to check: the relation may be
+    # right and the `consumes` wrong, and three such references are three places.
+    for relation <- model.relations,
+        relation_pair = MapSet.new(Domain.Build.endpoints(relation)),
+        {pair, contract, what, at} <- references,
+        pair == relation_pair,
         against?(relation, contract.model.context, directed),
         uniq: true do
       Finding.new(
         "relation-against-references",
         "#{inspect(contract.module)} in context #{inspect(contract.model.context)} #{what}, " <>
           "and #{describe_relation(relation)} in #{inspect(model.module)} says #{says(relation)}",
-        declared.relations |> Enum.at(index) |> then(&(&1 && Links.at(&1)))
+        at
       )
     end
   end

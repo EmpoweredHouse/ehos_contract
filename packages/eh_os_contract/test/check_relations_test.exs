@@ -80,7 +80,7 @@ defmodule EhOsContract.CheckRelationsTest do
       EhOsContract.CheckRelationsTest.Planner
     ]
 
-    assert [{message, {"clinic.ex", 9}}] = findings(modules)
+    assert [{message, {"contracts.ex", 34}}] = findings(modules)
 
     assert message =~
              "EhOsContract.CheckRelationsTest.Planner in context :scheduling consumes " <>
@@ -101,7 +101,7 @@ defmodule EhOsContract.CheckRelationsTest do
       "separate.ex"
     )
 
-    assert [{message, {"clinic.ex", 10}}] =
+    assert [{message, {"separate.ex", 19}}] =
              findings([
                EhOsContract.CheckRelationsTest.Ledger,
                EhOsContract.CheckRelationsTest.Shelf
