@@ -710,6 +710,23 @@ not register the compiler):
   contract without code is legal, D3); a public event whose schema changed since the deployed version while
   another application may consume it (§7).
 
+  > *Made precise 27 September 2026, EL1, while L5 was written* (`EhOsContract.Check.Catalog`,
+  > `docs/rules.md`). **Every rule has a stable name**, the user's choice: ESDM's where the rule is ESDM's,
+  > without its `esdm/<category>/` prefix, and one in the same style for the library's own
+  > (`process-without-accountable`). L2 and L3 keep their codes. Levels are fixed per rule and nothing
+  > silences one, as in ESDM; `--format json` and `--warnings-as-errors` are ESDM's too. Where the list above
+  > was loose: **"event without consumer"** counts a promise naming the event, or `terminal: true`, as a
+  > reader, since the conformance report reads it — without that, every event a run ends on would warn with
+  > no way to silence it; **"aggregate without events"** covers a boundary as well, and ESDM's
+  > `aggregate-without-commands` is not a rule, since a unit of `recorded_by:` events has no command on
+  > purpose (D6); **"a context no contract uses"** is ESDM's `bounded-context-without-content`; **"a
+  > cross-context `consumes` with no relation"** also counts a field naming an entity another context owns
+  > (EM2), and so does `orphan-context-mapping`; **"only timer reactions"** leaves `ends_on` aside, as ESDM
+  > leaves `endsWhen`. **Not built:** the public-schema rule, which needs the deployed version from the
+  > database while every other rule reads compiled modules only — it comes with `publish` leaving the
+  > application (E12); and v1's "promises finer than their run", which no v2 contract can be asked about
+  > until the sandbox's are written anew (E9). **L5 repeats L3** for a project without the compiler.
+
 ## 7. A change to an event, and its subscribers
 
 A change to an event's structure in the publishing process is verified by the compiler at every subscriber,

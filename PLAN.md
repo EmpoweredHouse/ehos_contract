@@ -29,7 +29,10 @@ kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`; `Taxvision
 - **EM1–EM3 są w `main`** (PR #24–#26: runtime DCB; encje i serwisy domenowe; pusty wynik serwisu, timery
   kalendarzowe, identyfikator nadawany przez bibliotekę). `main` = `origin/main` = `081877d`. Opis w „Po E8 —
   kolejność zmieniona” i „EM1/EM2/EM3 — co wyszło”. Użytkownik merguje PR-y jako merge.
-- **EL w toku** na `dsl-v2/el-warnings` (EL1), od `main`. Decyzje przed budową — „Przed EL — decyzje użytkownika”.
+- **EL1 zbudowane** na `dsl-v2/el-warnings` (od `main`), niewypchnięte: ostrzeżenia L5 ze stałymi nazwami,
+  `--format json`, `--warnings-as-errors`, `docs/rules.md`, powtórzenie L3, przypięcie słownika domeny. Opis w
+  „EL1 — co wyszło”, decyzje w „Przed EL — decyzje użytkownika”. **Dalej:** przegląd EL1, potem pytania o
+  kształty pól opisowych przed EL2.
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`) i nie ma
   tabel pakietu auth ani V05 (klucze i usunięcia z E8). Przed `mix phx.server`: `mix ecto.migrate` w `sandbox/`;
   bez tego dispatch z credentialem pada na zapisie decyzji.
@@ -107,6 +110,10 @@ gołe `git stash` (stos jest wspólny dla worktree).
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 27 września, na `41d2c6b`** (koniec budowy EL1): brama z `sandbox/` → **EXIT=0** — sandbox 54 testy,
+  `check` 0 / 12 / 19; silnik 1070, `check` 0 / 50 / 20; web 32; auth 51. CI na gałęzi EL1 — nie było.
+- **Lokalnie, 27 września, na `081877d`** (main po #24–#26): EXIT=0 — sandbox 54, `check` 0 / 5 / 19; silnik 1040,
+  `check` 0 / 19 / 17; web 32; auth 51.
 - **Lokalnie, 27 września, na `c17bb50`** (koniec EM3): brama z `sandbox/` → **EXIT=0** — sandbox 54 testy,
   `check` 0 / 5 / 19; silnik 1040, `check` 0 / 19 / 17 (plus cztery ostrzeżenia o `accountable` procesów fikstur
   `BoundaryRig`, jak w `DispatchRig`); web 32; auth 51. CI na gałęziach EM — nie było (niewypchnięte).
@@ -131,7 +138,10 @@ gołe `git stash` (stos jest wspólny dla worktree).
 - **H177** z materiału Rehmedu przeczy DEC-18, na którym stoi `visit_handed_over`; czeka na klienta.
 - **Runner dla read modelu `:in_transaction`** odpytuje co sekundę, choć pracuje tylko przy przebudowie — wraca
   przy pomiarze.
-- **Po E5b:** `mix eh_os_contract.check` nie powtarza L3 dla projektów bez zarejestrowanego kompilatora — E10.
+- ~~**Po E5b:** `mix eh_os_contract.check` nie powtarza L3 dla projektów bez zarejestrowanego kompilatora — E10.~~
+  Zrobione w EL1.
+- **Przed EL2 — kształty DSL-a pól opisowych:** `constraints` na komendzie i query, inwarianty wartości,
+  tłumaczenie z definicją i `avoid` (w ESDM `avoid` ma też powód), relacja z systemem zewnętrznym jako końcem.
 - **D1–D14** (v2 §16) przyjęte; pytania w §19: `scope` dla komend, transport v1 między kontenerami, kontrakt
   upcasterów.
 
@@ -838,6 +848,55 @@ wyjścia. `view` rysuje drzewo w terminalu, `glossary` wypisuje Markdown (sekcja
 Rozstrzygnięte przez asystenta: narzędzia to taski Mixa, nie ekrany dashboardu (`CLAUDE.md`: ekran ma cztery
 pytania; grafy na `/graph` to osobna decyzja EG). Proza `constraints` i inwariantów wartości to zdania dla
 właściciela procesu, więc lista miejsc „po polsku” w `CLAUDE.md` rośnie o nie w EL2.
+
+### EL1 — co wyszło (27 września)
+
+Na `dsl-v2/el-warnings` (od `main` = `081877d`), niewypchnięte. Sześć commitów budowy po zapisie decyzji
+(`916595f`): katalog reguł i format wyjścia (`01070bf`), reguły domeny (`fa7463b`), reguły kontraktu (`09a5c01`),
+reguły z v1 i `emits-never-produced` (`619cd04`), powtórzenie L3 (`6078d92`), przypięcie słownika domeny
+(`41d2c6b`). Silnik 1040 → 1070 testów. Delta `check`: sandbox 0 / 5 / 19 → **0 / 12 / 19**, silnik 0 / 19 / 17 →
+**0 / 50 / 20**; każda nowa linia wyjaśniona w opisie commita, który ją wprowadził.
+
+- **Sandbox, siedem nowych ostrzeżeń, wszystkie o jedynym kontrakcie v2 i jego domenie:** `orphan-actor`
+  (`:manager` w `Rehmed.Domain`), `bounded-context-without-content` (`:scheduling` — `ClinicalVisit` jest v1 i nie
+  zna domeny), `orphan-context-mapping` (relacja `scheduling → settlement`, z tego samego powodu), cztery
+  `event-without-consumer` na `VisitSettlement` (rozliczenia nikt jeszcze nie czyta; trzy zdarzenia zamykające są
+  `terminal`). Zostają do E9, gdzie kontrakty powstają od nowa.
+- **Silnik, 31 ostrzeżeń i 3 notki na wymyślonych fiksturach**, pisanych pod mechanizm, nie pod kompletność:
+  14 `event-name-with-aggregate-prefix`, 10 `event-without-consumer`, 3 `read-model-without-query`, po jednym
+  `consults-without-match` (celowe w `BoundaryRig`), `process-manager-without-event-reactions`,
+  `competing-in-transaction-consumers`, `emits-never-produced` (celowe `misbehave` w `DispatchRig`) i 3
+  `free-text-not-personal`.
+
+Mechanika, rozstrzygnięta przez asystenta:
+- **Katalog w kodzie, strona z katalogu.** `EhOsContract.Check.Catalog` trzyma nazwę, poziom, co reguła czyta (v1,
+  v2, obie), odpowiednik w ESDM i akapit; `docs/rules.md` generuje `mix eh_os_contract.rules` (task deweloperski,
+  `--check` w bramie pakietu, strona w `extras`). `Finding.new/3` dla nazwy spoza katalogu rzuca, więc nic nie
+  wychodzi bez opisu. Link w wyjściu to adres hexdocs (`rules.html#<nazwa>`) — zadziała po publikacji, którą
+  decyduje użytkownik; plik jest w pakiecie od teraz.
+- **Wyjście:** dwie linie na ustalenie (`POZIOM nazwa: zdanie`, potem `plik:linia · link`); kolejność jak
+  dotąd (poziom, zdanie). JSON: `rule`, `level` (`error`/`warning`/`notice`), `message`, `file`, `line`,
+  `documentation`. Ustalenia v1 dostały nazwy i nie mają lokalizacji (v1 znika w E11). `no-contracts` liczy też
+  kontrakty v2 — wcześniej aplikacja z samymi v2 usłyszałaby, że nie ma kontraktów.
+- **Reguły czytają to, co L3:** `Links.contract/1` (model, deklaracje z plikiem i linią) i deklaracje domeny ze
+  Sparka, więc ustalenie wskazuje aktora, kontekst, relację, zdarzenie, pole albo `consumes`.
+- **Gdzie ESDM a my różnimy się świadomie** (notka z datą w v2 §6): obietnica i `terminal: true` liczą się jako
+  czytelnik zdarzenia (raport zgodności), bo bez wyciszania każde zdarzenie kończące przebieg ostrzegałoby na
+  zawsze; `aggregate-without-commands` pominięte (D6); odwołaniem między kontekstami jest też pole wskazujące
+  encję innego kontekstu (EM2); `ends_on` nie jest reakcją. Nazwa `process-manager-without-ends-on` — słowem
+  naszego DSL-a, z odpowiednikiem ESDM w opisie.
+- **Niezbudowane, z powodem:** reguła o zmianie schematu zdarzenia publicznego od wdrożonej wersji (jedyna, która
+  potrzebuje bazy — wraca z E12); v1-owe „obietnica drobniejsza niż przebieg” (nie ma kontraktu v2, na którym by
+  ją sprawdzić — E9).
+- **Powtórzenie L3:** `Check.compiler_findings/2`, gdy w `compilers` projektu nie ma `:eh_os_contract`; ustalenie ma
+  kod kompilatora (`X1`, `D14`) jako nazwę i nie ma linku (dokumentacją jest v2 §6).
+- **`emits-never-produced`** czyta `emitted` z `__eh_os_implementation__/0`; `emit/1` w funkcji pomocniczej liczy
+  się dla każdej komendy jednostki. Decyzja, która zwraca zdarzenie bez `emit/1`, dostaje ostrzeżenie — to też
+  sygnał (niczego nie sprawdza aż do dispatchu).
+
+**Do E9:** `event-name-with-aggregate-prefix` zapali się na nazwach z warsztatu, jeśli jednostka nazywa się jak
+początek zdarzenia (`accounting_month_opened` w jednostce `accounting_month`). Nazwy zdarzeń zostają z warsztatu
+(`CLAUDE.md`), więc albo jednostka dostaje inną nazwę z materiału, albo ostrzeżenie zostaje i jest prawdziwe.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
