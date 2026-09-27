@@ -116,7 +116,7 @@ It deletes the subject's data key, records the erasure and appends an event sayi
 subject's personal fields read back as `%EhOsContract.Erased{}` from then on, everything else
 stays, and a command that would write their personal data again is refused with
 `{:error, :subject_erased}`. It answers `{:ok, :erased}`, `{:ok, :already_erased}`, or
-`{:ok, :no_data}` when nothing was held for that id — recorded all the same, but worth
+`{:ok, :no_data}` when no data key was there for that id — recorded all the same, but worth
 reporting, since a mistyped id erases nobody. Who may erase is yours to decide: the engine asks no authorizer.
 A read model that projects personal data keeps a copy in your tables, so it defines
 `forget(subject_type, subject_id)`; without it the host does not boot. One delivered in the

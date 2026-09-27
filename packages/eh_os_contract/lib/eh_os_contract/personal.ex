@@ -173,15 +173,15 @@ defmodule EhOsContract.Personal do
 
   @doc """
   Erases `subject` `id` (see the moduledoc), and says what it found:
-  `{:ok, :erased}` when the subject had personal data, `{:ok, :no_data}` when nothing
-  was held for that id — recorded all the same, so none is written later, but
-  perhaps a mistyped id, which the host can report — and `{:ok, :already_erased}`
-  when it was erased before, and then nothing is appended again. Never an error, so
-  a request can be repeated (the user's decision of 27 September 2026). `opts`: `actor:`, an `EhOsContract.Actor`,
-  required — who asked, recorded with the erasure and as the event's actor. The event
-  starts a correlation of its own: it continues no command. Who may erase is the
-  host's to decide: the engine asks no `EhOsContract.Authorizer` (the user's decision
-  of 27 September 2026).
+  `{:ok, :erased}` when it deleted the subject's data key, `{:ok, :no_data}` when no
+  key was there for that id — nothing personal was written for it, or its keys went
+  some other way; recorded all the same, so none is written later, but perhaps a
+  mistyped id, which the host can report — and `{:ok, :already_erased}` when it was
+  erased before, and then nothing is appended again. Never `{:error, _}`, so a request
+  can be repeated (the user's decision of 27 September 2026). `opts`: `actor:`, an
+  `EhOsContract.Actor`, required — who asked, recorded with the erasure and as the
+  event's actor. The event starts a correlation of its own: it continues no command.
+  Who may erase is the host's to decide: the engine asks no `EhOsContract.Authorizer`.
 
   It reaches the read models of the configured applications,
   `config :eh_os_contract, applications:`, as the registry and the subscriptions do:

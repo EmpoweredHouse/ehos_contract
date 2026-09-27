@@ -1238,8 +1238,9 @@ the person's.
 > field's subject is its sibling's value, so the envelope carries no subject.
 
 > **27 September 2026, E8b — erasure as built.** (1) `erase/3` is host-gated and idempotent: `actor:` is
-> recorded, no `Authorizer` is asked, and it never fails. It says what it found — `{:ok, :erased}`,
-> `{:ok, :no_data}` (nothing held for that id, recorded all the same) or `{:ok, :already_erased}`, which
+> recorded, no `Authorizer` is asked, and it never returns `{:error, _}` (it raises only on a subject no domain
+> declares). It says what it found — `{:ok, :erased}`, `{:ok, :no_data}` (no data key for that id, recorded all
+> the same) or `{:ok, :already_erased}`, which
 > appends nothing (decisions of the user; the result replaced a plain `:ok` after the E8b review, since a
 > mistyped id was indistinguishable from an erasure). (2) The refusal is narrower than "an append for the subject": an event is refused,
 > `{:error, :subject_erased}`, only when it carries personal data of an erased subject — the one case where

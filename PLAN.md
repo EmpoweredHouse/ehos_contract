@@ -36,13 +36,12 @@ crypto-shredding). **E0–E7 i EA są w `main`** (PR #1–#20; EA poszło dwoma 
 - **Trzy decyzje z EA rozstrzygnięte 27 września** (z odrzuconymi opcjami): `pin_keys: true` zostaje, limit
   15 min zostaje stały — oba w „EA2 — co wyszło”; publiczne wejście dla surowych danych wchodzi w E12 — przy opisie
   E12 w „Etapach”.
-- **E8 — wystawione, czeka na merge (użytkownika).** Podział na dwa PR-y i kształty widoczne dla hosta
-  rozstrzygnięte 27 września, z odrzuconymi opcjami, pod opisem E8 w „Etapach”. **E8a** —
-  [PR #21](https://github.com/EmpoweredHouse/eh-os-contract/pull/21), `dsl-v2/e8a-encryption` do `main` —
-  „E8a — co wyszło”. **E8b** — [PR #22](https://github.com/EmpoweredHouse/eh-os-contract/pull/22),
-  `dsl-v2/e8b-erasure` do gałęzi E8a, więc najpierw #21 — „E8b — co wyszło”. Oba po przeglądzie przed PR.
-  Po wystawieniu, na polecenie użytkownika: wynik `erase/3` mówi, co zastał; błędy jobów Obana bez wartości; test
-  wpięcia `forget/2` przy starcie.
+- **E8 — zmergowane** jako [PR #21](https://github.com/EmpoweredHouse/eh-os-contract/pull/21) (E8a) i
+  [PR #22](https://github.com/EmpoweredHouse/eh-os-contract/pull/22) (E8b). Kształty widoczne dla hosta i
+  odrzucone opcje — pod opisem E8 w „Etapach”; co wyszło — „E8a — co wyszło”, „E8b — co wyszło”.
+- **Po merge'u E8 — gałąź `dsl-v2/e8c-followups` od `main`, do wystawienia jako PR (asystent, na polecenie
+  użytkownika)**: wynik `erase/3` mówi, co zastał; błędy efektów w Obanie bez wartości; test wpięcia `forget/2`
+  przy starcie. „Po E8 — poprawki” niżej. **Następny etap: E9.**
 - **Proces na porcie 4000 — użytkownika**: `beam.smp` z `/private/tmp/eh-os-test`, niezwiązany z repozytorium.
 - **Lista zmian do `eh-os`** — użytkownika: D-01, D-15, outbox, G-16, transport v1, D-34, D-40, plan etapu 4
   („D10–D12 — skąd się wzięły” i „D14 — autoryzacja” w dopisku Etap 6), logowanie frontendu zwykłej aplikacji.
@@ -447,7 +446,7 @@ dało się do nich wrócić bez odtwarzania rozmowy (prośba użytkownika):
   *Zmienione 27 września po przeglądzie E8b (decyzja użytkownika):* wynik mówi, co `erase/3` zastał —
   `{:ok, :erased}`, `{:ok, :no_data}` (dla tego identyfikatora nie było danych osobowych; usunięcie i tak jest
   zapisane) albo `{:ok, :already_erased}`. Powód: przy samym `:ok` literówka w identyfikatorze („P-17” zamiast
-  „p-17”) wyglądała jak usunięcie, a dane prawdziwej osoby zostawały czytelne. Dalej nigdy błąd. *Odrzucone:*
+  „p-17”) wyglądała jak usunięcie, a dane prawdziwej osoby zostawały czytelne. Dalej nigdy `{:error, _}`. *Odrzucone:*
   zostawić `:ok` (literówki nie da się wykryć); `{:error, :no_data}` bez zapisu (osoba, o której jeszcze nic nie
   zapisano, nie byłaby zablokowana na przyszłość).
 - **`Vault`: lista KEK w konfiguracji, z rotacją.**
@@ -1836,6 +1835,33 @@ czasu przycięcia przez Obana — kod sprzed E8, poza zakresem, do osobnej pracy
 `:ok` także dla identyfikatora, którego nie było — użytkownik zdecydował, że wynik ma mówić, co zastał (pod opisem
 E8 w „Etapach”).
 Po przeglądzie: silnik 959 → 963, `check` bez delty.
+
+### Po E8 — poprawki (27 września)
+
+Po wystawieniu #21 i #22 użytkownik zapytał o dwie pozycje z przeglądu E8b i zdecydował; #21 i #22 zmergował w
+trakcie, więc poprawki poszły na nową gałąź `dsl-v2/e8c-followups` od `main` (commit z wynikiem `erase/3`
+przeniesiony z gałęzi E8b cherry-pickiem, to samo drzewo, na którym brama przeszła).
+- **`erase/3` mówi, co zastał** — `{:ok, :erased | :no_data | :already_erased}` (decyzja pod opisem E8).
+- **Oban nie trzyma wartości z porażki efektu** (decyzja użytkownika: oczyścić u źródła). `EffectJob` podaje Obanowi
+  `EffectJob.Failure` (efekt, pozycja zdarzenia, moduł albo rodzaj porażki, stos bez argumentów) zamiast wyjątku,
+  wyjścia albo rzutu, a `{:error, reason}` tylko rodzajem. Wyjścia są łapane na czas efektu (`trap_exit`), więc
+  awaria podlinkowanego procesu wraca jako wyjście; po powrocie efektu strażnik czyta sygnały: awaria
+  podlinkowanego procesu to porażka joba, `:shutdown` jest honorowany. `TimerJob` nie potrzebuje niczego — tylko
+  dopisuje `timer_elapsed`; reakcja process managera pada w subskrypcji, która zapisuje moduł.
+- **Test wpięcia `check_forgetting!/1` w `Supervisor`** — podmieniony indeks implementacji w `:persistent_term`.
+
+**Przegląd przed PR** (dwa przeglądy równolegle na `origin/main..HEAD`). Bezpieczeństwo: `exit`/`throw` i awaria
+podlinkowanego procesu omijały strażnika (**poprawione**, `9cb510c`), ramki stosu funu z argumentami (**poprawione**
+tamże), v1 `EhOsContract.Job` trzyma payload w `oban_jobs.args` z założenia (**pominięte**: v1, znika w E11).
+Poprawność: to samo `exit`/`throw`; `trap_exit` zamieniało awarię niedoczekanego podlinkowanego procesu w `:ok`
+bez ponowienia (**poprawione**, `862f246`); „nigdy błąd” przy `erase/3`, który rzuca dla niezadeklarowanego
+podmiotu, i zbyt mocne „nic nie było” przy `:no_data` (**poprawione w dokumentacji**); wiersze `oban_jobs.errors`
+sprzed tej wersji (**notka w CHANGELOG**: usunąć albo zostawić pruningowi); test bootu odtwarza klucz indeksu
+(**wzmocniony**: sprawdza, że podmieniony indeks jest czytany). **Bez zmiany:** błędy samego silnika też dochodzą
+do Obana tylko jako moduł — komunikaty silnika potrafią zawierać `inspect` zwróconej wartości, więc przepuszczanie
+ich wprost przywróciłoby wyciek; efekt z imionami „Crash/Bounce/Exit/Throw/Link/Spawn” w wspólnej fiksturze
+(zmyślonej, wymaga `Testing.drain/1` przed raportem złotym — dopisane); atom w `{:error, atom}` przechodzi, bo atomy
+z danych zewnętrznych byłyby własnym błędem hosta.
 
 ### Losy fikstur
 

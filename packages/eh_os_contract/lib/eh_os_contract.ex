@@ -162,8 +162,9 @@ defmodule EhOsContract do
 
       EhOsContract.erase(:patient, "p-17", actor: actor)
 
-  `{:ok, :erased}`, `{:ok, :no_data}` when nothing was held for that id (a mistyped
-  one?), or `{:ok, :already_erased}`; never an error. Who may erase is the host's to
+  `{:ok, :erased}`, `{:ok, :no_data}` when no data key was there for that id (a
+  mistyped one?), or `{:ok, :already_erased}`; never `{:error, _}`, though it raises
+  on a subject no domain declares. Who may erase is the host's to
   decide.
   """
   @spec erase(atom(), String.t(), keyword() | map()) ::

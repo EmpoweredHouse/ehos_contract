@@ -58,6 +58,8 @@ defmodule EhOsContract.BootTest do
       end)
 
     :persistent_term.put(key, %{index | consumers: consumers})
+    # The key this test rebuilt is the one the boot reads; otherwise it tests nothing.
+    assert Implementations.index(nil).consumers == consumers
 
     assert {:error, {{%ArgumentError{message: message}, _}, _}} = start_supervised(EhOsContract)
     assert message =~ "read model :members of ShreddingRig.Members project personal data"
