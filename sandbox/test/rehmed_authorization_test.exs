@@ -30,19 +30,19 @@ defmodule Rehmed.AuthorizationTest do
   defp entries do
     %{
       "rehmed.hand_over_visit" =>
-        &command(&1, "rehmed.hand_over_visit", %{visit_id: "wizyta-anny", total: 20_000}),
+        &command(&1, "rehmed.hand_over_visit", %{visit_id: "visit-anna", total: 20_000}),
       "rehmed.add_service_line" =>
-        &command(&1, "rehmed.add_service_line", %{visit_id: "wizyta-anny", service_id: "usg"}),
+        &command(&1, "rehmed.add_service_line", %{visit_id: "visit-anna", service_id: "usg"}),
       "rehmed.record_payment" =>
         &command(&1, "rehmed.record_payment", %{
-          visit_id: "wizyta-anny",
+          visit_id: "visit-anna",
           method: "card",
           amount: 20_000
         }),
       "rehmed.close_settlement" =>
-        &command(&1, "rehmed.close_settlement", %{visit_id: "wizyta-anny"}),
+        &command(&1, "rehmed.close_settlement", %{visit_id: "visit-anna"}),
       "rehmed.book_correction" =>
-        &command(&1, "rehmed.book_correction", %{visit_id: "wizyta-anny", delta: -1_000})
+        &command(&1, "rehmed.book_correction", %{visit_id: "visit-anna", delta: -1_000})
     }
   end
 
@@ -58,14 +58,14 @@ defmodule Rehmed.AuthorizationTest do
   end
 
   test "the control: a credential with the capability goes through, and has its row too" do
-    token = credential("u-specjalistka", ["rehmed.hand_over_visit"])
-    conn = command(token, "rehmed.hand_over_visit", %{visit_id: "wizyta-anny", total: 20_000})
+    token = credential("u-specialist", ["rehmed.hand_over_visit"])
+    conn = command(token, "rehmed.hand_over_visit", %{visit_id: "visit-anna", total: 20_000})
 
     assert conn.status == 200
-    assert decisions("u-specjalistka") == [["rehmed.hand_over_visit", "allowed", nil]]
+    assert decisions("u-specialist") == [["rehmed.hand_over_visit", "allowed", nil]]
 
     assert Repo.all(from(e in Event, select: {e.type, e.actor})) ==
-             [{"visit_settlement.visit_handed_over", "actor:u-specjalistka"}]
+             [{"visit_settlement.visit_handed_over", "actor:u-specialist"}]
   end
 
   test "a request without a credential stops at the door, before any decision" do
@@ -76,6 +76,30 @@ defmodule Rehmed.AuthorizationTest do
 
     assert {conn.status, Jason.decode!(conn.resp_body)} == {401, %{"error" => "no_credential"}}
     assert Repo.query!("SELECT count(*) FROM eh_os_contract_auth_decisions").rows == [[0]]
+  end
+
+  test "fields that do not fit are refused first to a credential without the capability" do
+    body = %{visit_id: "visit-anna", total: "a lot"}
+
+    stranger = credential("u-stranger", [])
+    refused = command(stranger, "rehmed.hand_over_visit", body)
+
+    assert {refused.status, Jason.decode!(refused.resp_body)} ==
+             {403, %{"refused" => "missing_capability"}}
+
+    assert decisions("u-stranger") == [
+             ["rehmed.hand_over_visit", "refused", "missing_capability"]
+           ]
+
+    # The control: with the capability, the problem with the fields is the answer,
+    # and the request is still one decision.
+    specialist = credential("u-specialist", ["rehmed.hand_over_visit"])
+    invalid = command(specialist, "rehmed.hand_over_visit", body)
+
+    assert {invalid.status, Jason.decode!(invalid.resp_body)} ==
+             {422, %{"invalid" => %{"total" => "type"}}}
+
+    assert decisions("u-specialist") == [["rehmed.hand_over_visit", "allowed", nil]]
   end
 
   describe "the check itself" do

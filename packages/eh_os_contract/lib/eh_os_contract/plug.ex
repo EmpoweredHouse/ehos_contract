@@ -22,6 +22,13 @@ if Code.ensure_loaded?(Plug.Conn) do
     An `idempotency-key` header becomes the command's idempotency key, and an
     `x-correlation-id` header its correlation.
 
+    **Whether the caller may make the call is answered first.** A request that fails
+    before dispatch or query would run — a body that is not an object, fields that do
+    not decode, a correlation id that is not a UUID — is asked of the
+    `EhOsContract.Authorizer` all the same, as the call would have been: a caller
+    without the capability gets 403, not a description of the declaration's fields,
+    and every request is one decision for the `Authorizer` to record.
+
     | Outcome | Status | Body |
     | --- | --- | --- |
     | accepted | 200 | `command_id`, `positions`, `position`, `duplicate`, and each event's `type` and `position` |
@@ -41,7 +48,7 @@ if Code.ensure_loaded?(Plug.Conn) do
 
     import Plug.Conn
 
-    alias EhOsContract.{Actor, Codec, Model, Receipt, Rejection}
+    alias EhOsContract.{Actor, Codec, Dispatcher, Model, Receipt, Rejection}
 
     @doc "Takes `contracts:`, the v2 contracts whose commands and queries it serves."
     @impl true
@@ -64,24 +71,58 @@ if Code.ensure_loaded?(Plug.Conn) do
 
     defp serve(conn, contracts, kind, capability) do
       with {:ok, model, declaration} <- route(contracts, kind, capability),
-           {:ok, actor} <- actor(conn),
-           {:ok, conn, input} <- input(conn, kind) do
-        values = Codec.values(model.domain)
-        fields = if kind == :command, do: declaration.fields, else: declaration.params
+           {:ok, actor} <- actor(conn) do
+        case prepare(conn, model, kind, declaration) do
+          {:ok, conn, struct} ->
+            respond(conn, kind, model, declaration, struct, actor, Codec.values(model.domain))
 
-        case Codec.decode(fields, input, values, strings: kind == :query) do
-          {:ok, decoded} ->
-            module = Model.module_for(model, kind, declaration.name)
-            struct = struct!(module, decoded)
-            respond(conn, kind, model, declaration, struct, actor, values)
-
-          {:error, problems} ->
-            reply(conn, 422, %{invalid: Map.new(problems)})
+          # Whether the caller may make this call is answered before what is wrong
+          # with it, so a refusal is a refusal whatever was sent, and has its row.
+          {:error, conn, input, status, body} ->
+            case Dispatcher.permit_undecoded(model, kind, declaration, actor, input) do
+              :ok -> reply(conn, status, body)
+              {:error, reason} -> refused(conn, reason)
+            end
         end
       else
         {:error, status, body} -> reply(conn, status, body)
       end
     end
+
+    # The request as dispatch or query takes it, or what is wrong with it and the
+    # input as it was sent.
+    defp prepare(conn, model, kind, declaration) do
+      values = Codec.values(model.domain)
+      fields = if kind == :command, do: declaration.fields, else: declaration.params
+
+      with {:ok, conn, input} <- input(conn, kind),
+           {:ok, decoded} <- decode(conn, fields, input, values, kind),
+           :ok <- correlation(conn, input, kind) do
+        {:ok, conn, struct!(Model.module_for(model, kind, declaration.name), decoded)}
+      end
+    end
+
+    defp decode(conn, fields, input, values, kind) do
+      case Codec.decode(fields, input, values, strings: kind == :query) do
+        {:ok, decoded} -> {:ok, decoded}
+        {:error, problems} -> {:error, conn, input, 422, %{invalid: Map.new(problems)}}
+      end
+    end
+
+    defp correlation(conn, input, :command) do
+      case get_req_header(conn, "x-correlation-id") do
+        [] ->
+          :ok
+
+        [id | _] ->
+          case Ecto.UUID.cast(id) do
+            {:ok, _} -> :ok
+            :error -> {:error, conn, input, 400, %{error: "correlation_id_is_not_a_uuid"}}
+          end
+      end
+    end
+
+    defp correlation(_conn, _input, :query), do: :ok
 
     defp respond(conn, :command, model, _declaration, command, actor, _values) do
       opts =
@@ -89,10 +130,7 @@ if Code.ensure_loaded?(Plug.Conn) do
         |> put_header(conn, :idempotency_key, "idempotency-key")
         |> put_header(conn, :correlation_id, "x-correlation-id")
 
-      case Ecto.UUID.cast(Keyword.get(opts, :correlation_id, Ecto.UUID.generate())) do
-        {:ok, _} -> dispatch(conn, model, command, opts)
-        :error -> reply(conn, 400, %{error: "correlation_id_is_not_a_uuid"})
-      end
+      dispatch(conn, model, command, opts)
     end
 
     defp respond(conn, :query, model, declaration, params, actor, values) do
@@ -176,11 +214,11 @@ if Code.ensure_loaded?(Plug.Conn) do
         {:ok, body, conn} ->
           case Jason.decode(body) do
             {:ok, %{} = decoded} -> {:ok, conn, decoded}
-            _ -> {:error, 400, %{error: "body_is_not_a_json_object"}}
+            _ -> {:error, conn, %{}, 400, %{error: "body_is_not_a_json_object"}}
           end
 
         _ ->
-          {:error, 400, %{error: "unreadable_body"}}
+          {:error, conn, %{}, 400, %{error: "unreadable_body"}}
       end
     end
 

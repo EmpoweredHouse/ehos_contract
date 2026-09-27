@@ -258,7 +258,9 @@ over HTTP and is refused the same way.
 | no such capability | 404 |
 
 No response body carries a value the caller did not send: a problem names the field, a refusal its
-reason.
+reason. **Whether the caller may is answered first:** a request whose body or fields do not fit is
+asked of the `Authorizer` all the same, so a caller without the capability gets 403 and learns nothing
+about the declaration's fields, and every request is one decision, recorded by the auth package.
 
 ## Calling it from code
 

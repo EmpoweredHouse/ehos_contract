@@ -45,8 +45,6 @@ kontraktem v2 jest `Rehmed.Contracts.VisitSettlement`; TaxVision, `ClinicalVisit
 - **EA1 i EA2 — przegląd przed PR (`pre-pr-review`), push i PR-y — na polecenie użytkownika.** Dwa PR-y: EA1 do
   `main`, EA2 na gałęzi EA1. EA1 przeszło `/code-review` (siedem uwag poprawionych); EA2 jeszcze nie. Stan i
   ustalenia w „EA1 — co wyszło” i „EA2 — co wyszło”.
-- **Nieautoryzowany wywołujący dostaje 422 przed decyzją** — pytanie do użytkownika, „EA2 — co wyszło”,
-  ustalenie 3.
 - **E8 — asystenta, po EA**: przed budową zapytać o podział na PR-y i o kształty widoczne dla hosta
   (`erase/3`, `forget/2`, `Erased` przy odczycie, opcje `personal:`/`subject:`, konfiguracja `Vault` i KEK), jak
   przed E7a–E7c. Odbiór i bramki w opisie E8.
@@ -171,9 +169,11 @@ jest weryfikowana przez kompilator u każdego subskrybenta (v2 §7).
   (okno TaxVision do `unverified`) i usterka 5 (`open_month` ma źródło w US-MON-01) — jednolinijkowe commity z
   cytatem. Gdzie nowy DSL wymusza wybór, rozstrzyga materiał warsztatowy i jest cytowany.
 - **Wartości w scenariuszach mówią, czym są** (decyzja użytkownika z 27 września, propozycja z 26 września):
-  „konto-Anny”, „wizyta-Anny”, „krakow”, nie „a-1”, „b-7”. Dotyczy nowych scenariuszy i testów od teraz;
+  „account-anna”, „visit-anna”, „krakow”, nie „a-1”, „b-7”. Dotyczy nowych scenariuszy i testów od teraz;
   istniejące poprawia się przy okazji dotykania pliku, bez osobnego commita przepisującego. Szczegół asystenta,
-  nie użytkownika: wartość to identyfikator danych testowych, nie tekst dla klienta, więc bez diakrytyków.
+  nie użytkownika: wartość to identyfikator danych testowych, nie tekst dla klienta, więc słowa po angielsku
+  (reguła „kod po angielsku” z `CLAUDE.md`), a imiona i miasta bez diakrytyków. Pierwsza wersja tego akapitu
+  miała „konto-Anny” i „wizyta-Anny” — poprawione 27 września, gdy test EA2 dostał przez nią polskie słowa.
 - **Tryb pracy.** Gałąź na etap, `dsl-v2/eN-<nazwa>`, odgałęziona od poprzedniego etapu. Brama na każdym
   commicie przez `out=$(mix check 2>&1); rc=$?` — nigdy przez `tail` (powód w `CLAUDE.md`). **Push, PR, merge,
   tag i Hex są po stronie użytkownika.** Testy trafiają od razu do docelowych katalogów (`test/dsl/`,
@@ -1596,10 +1596,15 @@ niewrażliwości schematu `Bearer` na wielkość liter.
    `Actor.credential/3` z pominięciem weryfikacji; opisane w dokumentacji `pin/2`.
 2. **Pomocnik liczy na tabelach silnika w całości** (`eh_os_contract_events`, `eh_os_contract_commands` przed i po),
    więc działa tylko w teście z własnym połączeniem sandboxa — jak każdy test hosta, który dispatchuje.
-3. **Otwarte, do użytkownika: `EhOsContract.Plug` dekoduje treść przed autoryzacją.** Wywołujący bez uprawnienia,
-   który wyśle złe pola, dostaje 422 z nazwami pól, a nie 403, i nie ma wiersza decyzji. Nazwy pól to deklaracja
-   kontraktu, więc wyciek jest mały, ale „każda odmowa ma wiersz” trzyma się tylko dla poprawnych treści.
-   Poprawka jest w silniku (`plug.ex`: autoryzacja przed `Codec.decode`), więc poza EA — do decyzji.
+3. **`EhOsContract.Plug` dekodował treść przed autoryzacją** — wywołujący bez uprawnienia, który wysłał złe pola,
+   dostawał 422 z nazwami pól, a nie 403, i nie było wiersza decyzji. **Poprawione na polecenie użytkownika**, w
+   silniku: gdy żądanie pada przed dispatchem albo query (treść nie jest obiektem, pola się nie dekodują,
+   `x-correlation-id` nie jest UUID), Plug pyta `Authorizer` tym samym zapytaniem przez
+   `Dispatcher.permit_undecoded/5` (`@doc false`), z wartością `scope` taką, jak przyszła. Odmowa → 403, zgoda →
+   dotychczasowy 400/422; każde żądanie to dalej dokładnie jedno pytanie (test w `plug_test` silnika z
+   `Authorizer`, który liczy pytania; w sandboxie wiersz `refused` i, jako kontrola, 422 z jednym `allowed`).
+   Skutek widoczny: query ze `scope` bez parametru to 403 `outside_scope`, jak w `query/3`, nie 422 — linia w
+   `CHANGELOG.md` silnika. Wstecz: stary `plug.ex` wywraca trzy nowe testy silnika.
 4. **Sandbox w dev loguje przy starcie brak kluczy** (`ehos.invalid`) i co 5 minut nieudane pobranie, na poziomie
    `warning`/`error`. Zamierzone: tak wygląda aplikacja bez EHOS-a.
 5. Nazwa kontraktu w wierszu to `inspect(module)`, jak w `_commands`.

@@ -234,6 +234,32 @@ defmodule EhOsContract.Dispatcher do
 
   # --- who ---------------------------------------------------------------------------
 
+  # `EhOsContract.Plug`'s question when a request fails before dispatch or query would
+  # run — a body that is not an object, fields that do not decode, a correlation id
+  # that is not a UUID: the request either of them would make, with a scope value as
+  # it was sent. Asked first, a caller without the capability learns nothing about
+  # the declaration's fields, and every request is still one decision (v2 §11).
+  @doc false
+  @spec permit_undecoded(Model.t(), :command | :query, map(), Actor.t(), map()) ::
+          :ok | {:error, Authorizer.reason()}
+  def permit_undecoded(model, :command, declaration, actor, _input),
+    do: permit(model, declaration, actor)
+
+  def permit_undecoded(model, :query, declaration, actor, input) do
+    scope =
+      declaration.scope &&
+        %{
+          dimension: Atom.to_string(declaration.scope),
+          value:
+            case Map.get(input, Atom.to_string(declaration.scope)) do
+              value when is_binary(value) -> value
+              _missing_or_not_a_string -> nil
+            end
+        }
+
+    permit_query(model, declaration, actor, scope)
+  end
+
   defp permit(model, declaration, %Actor{kind: :credential} = actor) do
     Authorizer.run(actor, %Authorizer.Request{
       kind: :command,
