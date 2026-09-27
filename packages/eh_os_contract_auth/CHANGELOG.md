@@ -13,4 +13,5 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `:no_keys`. `EhOsContract.Auth` is a child for the application's supervision tree that keeps
   EHOS's public keys: loaded from `eh_os_contract_auth_keys` at start, fetched from the JWKS every
   five minutes and early on an unknown `kid`, at most once every thirty seconds, and unchanged by a
-  failed fetch. `EhOsContract.Auth.Migrations` creates the table.
+  failed fetch. `EhOsContract.Auth.ready?/0` answers whether any key is held, for the host's
+  health check. `EhOsContract.Auth.Migrations` creates the table.

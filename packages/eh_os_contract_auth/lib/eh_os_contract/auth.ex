@@ -98,6 +98,27 @@ defmodule EhOsContract.Auth do
   end
 
   @doc """
+  Whether this application holds at least one key to verify with, for the host's
+  health check (`eh-os` D-34).
+
+  `false` is the one state in which EHOS being down means nobody gets in: the key
+  process has never seen a key set, neither in its table nor from EHOS, and every
+  credential is refused with `:no_keys`. It is also `false` when the key process is
+  not running. It never fetches and never raises.
+
+  `:keys` names the `EhOsContract.Auth.Keys` process, as in `verify/2`.
+  """
+  @spec ready?([{:keys, atom()}]) :: boolean()
+  def ready?(opts \\ []) do
+    # `:undefined` when there is no table, and an atom compares greater than any
+    # number, so the size is matched rather than compared.
+    case :ets.info(Keyword.get(opts, :keys, Keys), :size) do
+      size when is_integer(size) -> size > 0
+      :undefined -> false
+    end
+  end
+
+  @doc """
   The actor of `token`, or why the credential is refused. See the module's doc for
   what is checked and in which order.
 

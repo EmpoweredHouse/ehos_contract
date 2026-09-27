@@ -112,6 +112,24 @@ defmodule EhOsContract.Auth.KeysTest do
     assert {:ok, _} = Auth.verify(credential(pair), keys: keys)
   end
 
+  test "ready? says whether any key is held, for the host's health check" do
+    refute Auth.ready?(keys: :not_started)
+
+    ehos = ehos(:down)
+    clock = clock()
+    keys = start_keys(ehos, clock: clock)
+    refute Auth.ready?(keys: keys)
+
+    answer(ehos, {:keys, [key_pair()]})
+    :ok = Keys.refresh(keys)
+    assert Auth.ready?(keys: keys)
+
+    # A failed fetch after that keeps the keys, so it stays ready.
+    answer(ehos, :down)
+    assert {:error, _} = Keys.refresh(keys)
+    assert Auth.ready?(keys: keys)
+  end
+
   test "a restart without EHOS verifies with the keys in the table" do
     pair = key_pair()
     ehos = ehos({:keys, [pair]})
