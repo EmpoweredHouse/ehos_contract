@@ -45,6 +45,9 @@ What changes otherwise is what a host has to do.
 - **And a second one, from E7**: `EhOsContract.Migrations.up(version: 4)` and `down(version: 4)`. V04 creates
   the tables of the consumers that run outside the dispatch transaction — `eh_os_contract_subscriptions`,
   `eh_os_contract_process_managers` and `eh_os_contract_event_runs` — and changes no existing table.
+- **And a third one, from E8**: `EhOsContract.Migrations.up(version: 5)` and `down(version: 5)`. V05 creates
+  `eh_os_contract_subject_keys` (a data key per subject, wrapped by a master key of `EhOsContract.Vault`) and
+  `eh_os_contract_erasures` (the subjects erased).
 - **The log is append-only.** Triggers refuse UPDATE, DELETE and TRUNCATE on `eh_os_contract_events`. A test
   that moved `occurred_at` afterwards has to emit in the past instead, with `EhOsContract.Clock.at/2`. A test
   database that leaked rows is recovered with `ecto.drop`.

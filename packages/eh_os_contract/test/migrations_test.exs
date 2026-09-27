@@ -1,6 +1,7 @@
 defmodule EhOsContract.MigrationsTest do
   @moduledoc """
-  v2 plan, E2: **V02 ↔ V03 both ways, on a log that already holds rows.**
+  v2 plan, E2: **V02 ↔ V03 both ways, on a log that already holds rows** — and each
+  later version's tables, both ways.
 
   V03 changes the log in place, and the log is the one table whose rows cannot be
   recreated. So the migration is tested the way it will run at a consumer: rows
@@ -15,6 +16,7 @@ defmodule EhOsContract.MigrationsTest do
 
   @v03 20_260_925_120_000
   @v04 20_260_926_120_000
+  @v05 20_260_927_130_000
 
   setup do
     # Whatever happens in the test, the database is back at the newest version for
@@ -174,7 +176,7 @@ defmodule EhOsContract.MigrationsTest do
     refute Enum.any?(tables, &table?/1)
 
     migrate(:up, all: true)
-    assert version() == "4"
+    assert version() == newest()
     assert Enum.all?(tables, &table?/1)
 
     # A status outside the four is refused by the table, whoever writes it.
@@ -182,6 +184,28 @@ defmodule EhOsContract.MigrationsTest do
       Repo.query!(
         "INSERT INTO eh_os_contract_subscriptions (name, kind, mode, version, status) " <>
           "VALUES ('MigrationsTest', 'read_model', 'ordered', 'v', 'skipped')"
+      )
+    end
+  end
+
+  test "V05 adds the tables of crypto-shredding, and its down drops them" do
+    tables = ~w(eh_os_contract_subject_keys eh_os_contract_erasures)
+    assert Enum.all?(tables, &table?/1)
+
+    migrate(:down, to: @v05)
+    assert version() == "4"
+    refute Enum.any?(tables, &table?/1)
+
+    migrate(:up, all: true)
+    assert version() == newest()
+    assert Enum.all?(tables, &table?/1)
+
+    # A key version starts at 1, whoever writes it.
+    assert_raise Postgrex.Error, ~r/eh_os_contract_subject_keys_version/, fn ->
+      Repo.query!(
+        "INSERT INTO eh_os_contract_subject_keys " <>
+          "(subject_type, subject_id, key_version, kek_id, wrapped_key) " <>
+          "VALUES ('patient', 'patient-anna', 0, 'kek-1', '\\x00')"
       )
     end
   end
