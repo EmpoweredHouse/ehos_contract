@@ -29,7 +29,10 @@ defmodule EhOsContract.Duration do
   day — 31 January, then the end of February (`calendar_shift/2`, which is
   `DateTime.shift/2`). `within` and `deadline` stay in fixed units, since the report
   measures elapsed time against them and a month there would make one run's window
-  longer than another's.
+  longer than another's. **The calendar is UTC's**, since the log is: an event at 00:30 in
+  Warsaw on 31 March is 22:30 UTC on the 30th, so a month later is 22:30 UTC on 30 April,
+  which is 1 May in Warsaw. A business that needs its own zone's month sets the timer
+  `at:` a moment its state computes.
   """
 
   @seconds %{second: 1, minute: 60, hour: 3600, day: 86_400}
@@ -81,9 +84,11 @@ defmodule EhOsContract.Duration do
     end
   end
 
+  @calendar [:week, :month, :year]
+
   @doc "The calendar units a timer may wait for, besides the fixed ones."
   @spec calendar_units() :: [:week | :month | :year]
-  def calendar_units, do: [:week, :month, :year]
+  def calendar_units, do: @calendar
 
   @doc """
   Shifts a moment by a duration that may count calendar units: a week, a month or a
@@ -91,7 +96,7 @@ defmodule EhOsContract.Duration do
   units shift as `shift/2` does.
   """
   @spec calendar_shift(DateTime.t(), {non_neg_integer(), atom()}) :: DateTime.t()
-  def calendar_shift(%DateTime{} = at, {n, unit}) when unit in [:week, :month, :year],
+  def calendar_shift(%DateTime{} = at, {n, unit}) when unit in @calendar,
     do: DateTime.shift(at, [{unit, n}])
 
   def calendar_shift(%DateTime{} = at, duration), do: shift(at, duration)
@@ -105,7 +110,7 @@ defmodule EhOsContract.Duration do
   @spec message(atom()) :: String.t()
   def message(unit) do
     "unsupported time unit #{inspect(unit)}. Allowed: #{inspect(units())}. " <>
-      "Calendar units need calendar arithmetic and a decision about what a month after " <>
-      "31 January is — and that is a decision, not an implementation detail."
+      "A window or a deadline is measured as elapsed time, so it counts fixed units; only a " <>
+      "timer's wait may count #{inspect(@calendar)}, by the calendar."
   end
 end

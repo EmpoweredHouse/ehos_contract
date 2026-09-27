@@ -15,7 +15,9 @@ defmodule EhOsContract.Dispatcher do
      is `{:error, reason}` and writes nothing, neither to the log nor to
      `_commands`.
   2. **What.** The command's fields against their types (`EhOsContract.Codec`):
-     `{:error, {:invalid, [{field, :required | :type}]}}`.
+     `{:error, {:invalid, [{field, :required | :type}]}}`. A command that `creates:`
+     an aggregate whose identity is generated gets a UUIDv7 here, and is refused
+     with `{field, :generated}` when it brings one of its own (plan EM3).
   3. **Once.** An idempotency key already accepted for the same command returns
      that command's receipt, `duplicate: true`, and appends nothing; accepted for
      another command, `{:error, :idempotency_key_reused}`. Only an accepted

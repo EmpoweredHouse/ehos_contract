@@ -25,7 +25,7 @@ defmodule EhOsContract.Next.Contract.Rules.Process do
   alias EhOsContract.Duration
   alias EhOsContract.Next.Contract.{Dsl, Rules}
 
-  @calendar [:week, :month, :year]
+  @calendar Duration.calendar_units()
 
   @doc false
   @spec check(map()) :: [DslRules.violation()]

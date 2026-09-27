@@ -61,7 +61,7 @@ defmodule BoundaryRig.Enrolment do
     function :next_seat, "The number of the next free seat, if there is one" do
       argument :capacity, :integer
       argument :taken, :integer
-      returns(:integer, optional: true)
+      returns :integer, optional: true
     end
   end
 

@@ -182,7 +182,11 @@ scenario        description!   scope · actor
 > `identity :booking_id, generated: :uuid` on an aggregate, with `creates: true` on the command that makes
 > one (the user's shapes). Dispatch gives that command a UUIDv7 and the receipt returns it; a creating command
 > that brings its own is refused, since two ways of making an identity would be one too many. A boundary has
-> no generated identity: its identity comes from the command, as ESDM's `command-payload` source does.
+> no generated identity: its identity comes from the command, as ESDM's `command-payload` source does. The
+> generator is **UUIDv7**, whose first 48 bits are the creation time to the millisecond: whoever holds an
+> identity — in a stream id, a tag, a URL — learns when it was made, and erasure leaves it, as §14 leaves
+> every identifier. Chosen over v4 for index locality in the log's `stream_id`; the rest is 74 random bits,
+> so identities are not guessable.
 
 ### 4.3 Field types and options
 

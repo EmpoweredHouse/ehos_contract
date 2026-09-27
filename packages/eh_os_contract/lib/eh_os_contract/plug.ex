@@ -34,7 +34,7 @@ if Code.ensure_loaded?(Plug.Conn) do
     | accepted | 200 | `command_id`, `positions`, `position`, `duplicate`, and each event's `type` and `position` |
     | query answered | 200 | `rows`, or `row`, in the log's form; an erased personal field is `null` |
     | rejected on an invariant | 422 | `{"rejected": "<invariant>"}` |
-    | fields that do not fit | 422 | `{"invalid": {"<field>": "required" \\| "type"}}` |
+    | fields that do not fit | 422 | `{"invalid": {"<field>": "required" \\| "type" \\| "generated"}}` — `generated` for an identity sent with a command that creates its aggregate, which the library gives |
     | refused | 403 | `{"refused": "<reason>"}` |
     | no actor | 401 | `{"error": "no_actor"}` |
     | conflict, or a reused key | 409 | `{"error": "<reason>"}` |
