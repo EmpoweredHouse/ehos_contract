@@ -1,22 +1,102 @@
-/* The dashboard's own default look — a host that mounts eh_os_contract_dashboard/2
-   gets this without doing anything, and can override every rule here with
-   its own stylesheet loaded after this one. Plain selectors on purpose,
-   no framework: this page is the whole document (root_layout replaces the
-   host's own layout for these routes), so tag selectors cannot leak
-   anywhere else. */
+/* The dashboard's own look, on the EmpoweredHouse design system
+   (docs/adr/dashboard-design-system.md, following eh-os D-42).
 
+   The design system's tokens come first, from the copy in vendor/empoweredhouse/, which is never
+   edited here: this file refers to its custom properties and never defines one of the same name
+   (test/design_system_test.exs compares the two). What this file adds is named
+   --eh-os-contract-*.
+
+   Plain selectors on purpose, no framework: this page is the whole document (root_layout replaces
+   the host's own layout for these routes), so tag selectors cannot leak anywhere else. */
+
+/* The tokens: dark by default, light under prefers-color-scheme, pinned by data-theme on <html>. */
+@import "./vendor/empoweredhouse/colors_and_type.css";
+
+/* Fonts, served beside this stylesheet by the Plug.Static line the host already has. Relative
+   URLs, so they follow wherever that line mounts the assets; the build leaves them as written
+   (--external in config/config.exs). Weights 400 and 500 only, which is all the design system
+   uses; latin-ext carries the Polish letters a contract's labels are written in. */
+@font-face {
+  font-family: "Albert Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("fonts/albert-sans-latin-400-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Albert Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("fonts/albert-sans-latin-ext-400-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Albert Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url("fonts/albert-sans-latin-500-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Albert Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url("fonts/albert-sans-latin-ext-500-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("fonts/jetbrains-mono-latin-ext-400-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url("fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url("fonts/jetbrains-mono-latin-ext-500-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* The host's override surface, as before: each property now points at a token, so it follows the
+   theme until a host sets it. `ok` and `warning` are neutral on purpose: the design system has no
+   colour for either, and the verdict's sentence already says which it is. */
 :root {
-  color-scheme: light;
-  --eh-os-contract-border: #d8dee4;
-  --eh-os-contract-bg: #ffffff;
-  --eh-os-contract-bg-muted: #f6f8fa;
-  --eh-os-contract-text: #1f2328;
-  --eh-os-contract-text-muted: #57606a;
-  --eh-os-contract-accent: #0969da;
-  --eh-os-contract-danger: #cf222e;
-  --eh-os-contract-warning: #9a6700;
-  --eh-os-contract-ok: #1a7f37;
-  --eh-os-contract-radius: 6px;
+  --eh-os-contract-bg: var(--canvas);
+  --eh-os-contract-bg-muted: var(--surface-1);
+  --eh-os-contract-border: var(--border-faint);
+  --eh-os-contract-text: var(--text-primary);
+  --eh-os-contract-text-muted: var(--text-tertiary);
+  --eh-os-contract-accent: var(--accent-ink);
+  --eh-os-contract-danger: var(--error-ink);
+  --eh-os-contract-warning: var(--text-primary);
+  --eh-os-contract-ok: var(--text-primary);
+  --eh-os-contract-radius: var(--radius-sm);
+  --eh-os-contract-focus-ring: 0 0 0 2px var(--canvas), 0 0 0 4px var(--accent-ink),
+    0 0 24px var(--focus-glow);
 }
 
 * {
@@ -25,210 +105,326 @@
 
 body {
   margin: 0;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  color: var(--eh-os-contract-text);
   background: var(--eh-os-contract-bg);
-  line-height: 1.5;
-}
-
-/* No edge-to-edge bar: nav sits inside the same padded column as
-   everything else, so it never needs to fight `main`'s own padding. */
-nav {
-  display: flex;
-  gap: 1.25rem;
-  padding: 1rem 0;
-  margin-bottom: 0.5rem;
-  border-bottom: 1px solid var(--eh-os-contract-border);
-}
-
-/* Log out is not a tab among tabs — pushed to the far side rather than
-   styled apart, so it stays a nav link without a new class hook. */
-nav a:last-child {
-  margin-left: auto;
-}
-
-nav a {
-  color: var(--eh-os-contract-text-muted);
-  text-decoration: none;
-  font-weight: 600;
-  padding-bottom: 0.25rem;
-  border-bottom: 2px solid transparent;
-}
-
-nav a:hover {
-  color: var(--eh-os-contract-accent);
-}
-
-nav a[aria-current="page"] {
   color: var(--eh-os-contract-text);
-  border-bottom-color: var(--eh-os-contract-accent);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: var(--body-lh);
+  letter-spacing: var(--body-track);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Weights 400 and 500 only: more authority is more size, never more weight. */
+b,
+strong,
+th {
+  font-weight: 500;
+}
+
+a {
+  color: inherit;
+  transition: color var(--dur-hover) var(--ease);
+}
+
+/* Focus is always visible, as the lime ring, and never removed without it. */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--eh-os-contract-focus-ring);
 }
 
 main {
   display: block;
-  padding: 0 1.25rem 2rem;
+  padding: 0 28px 48px;
   max-width: 60rem;
   margin: 0 auto;
 }
 
+/* No edge-to-edge bar: nav sits inside the same padded column as everything else. The page being
+   viewed is raised onto surface-2 with a hairline and carries the lime dot — the one signal on the
+   page, as in Shugyo's sidebar. */
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 20px 0 16px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--eh-os-contract-border);
+}
+
+nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--eh-os-contract-radius);
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+nav a:hover {
+  color: var(--eh-os-contract-text);
+}
+
+nav a[aria-current="page"] {
+  color: var(--eh-os-contract-text);
+  background: var(--surface-2);
+  border-color: var(--border-soft);
+}
+
+nav a[aria-current="page"]::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--eh-os-contract-accent);
+}
+
+/* A page's title at 21px; section titles smaller, never heavier. */
 h2 {
-  font-size: 1.4rem;
-  margin: 1.5rem 0 0.5rem;
+  font-size: 21px;
+  font-weight: 500;
+  letter-spacing: var(--h3-track);
+  line-height: var(--h3-lh);
+  margin: 32px 0 8px;
 }
 
 h3 {
-  font-size: 1.15rem;
-  margin: 1.25rem 0 0.5rem;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: var(--h3-track);
+  margin: 16px 0 8px;
 }
 
+/* A label above a group: mono, uppercase, tertiary — the design system's eyebrow. */
 h4 {
-  font-size: 0.85rem;
-  margin: 1rem 0 0.35rem;
-  color: var(--eh-os-contract-text-muted);
+  font-family: var(--mono);
+  font-size: var(--eyebrow-size);
+  font-weight: 400;
+  letter-spacing: var(--eyebrow-track);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  color: var(--eh-os-contract-text-muted);
+  margin: 20px 0 6px;
 }
 
 p {
-  margin: 0.35rem 0;
+  margin: 6px 0;
+  color: var(--text-secondary);
 }
 
 ul {
-  margin: 0.35rem 0;
-  padding-left: 1.25rem;
+  margin: 6px 0;
+  padding-left: 20px;
+  color: var(--text-secondary);
 }
 
 li {
-  margin: 0.15rem 0;
+  margin: 4px 0;
 }
 
+li::marker {
+  color: var(--text-muted);
+}
+
+/* A panel: surface-1, a faint hairline, 12px. No shadow — depth is the surfaces and the lines. */
 section {
+  background: var(--eh-os-contract-bg-muted);
   border: 1px solid var(--eh-os-contract-border);
-  border-radius: var(--eh-os-contract-radius);
-  padding: 0.25rem 1.25rem 1rem;
-  margin: 1rem 0;
+  border-radius: var(--radius-lg);
+  padding: 4px 20px 16px;
+  margin: 16px 0;
 }
 
+/* A table is its own panel, as in Shugyo: mono labels over the columns, faint lines between rows,
+   rows that brighten on hover. Scrolls inside itself rather than widening the page. */
 table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 0.5rem 0;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 8px 0;
+  background: var(--eh-os-contract-bg-muted);
+  border: 1px solid var(--eh-os-contract-border);
+  border-radius: var(--radius-lg);
 }
 
 th,
 td {
   text-align: left;
-  padding: 0.5rem 0.75rem;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--eh-os-contract-border);
 }
 
+tr:last-child td {
+  border-bottom: none;
+}
+
 th {
-  background: var(--eh-os-contract-bg-muted);
-  font-weight: 600;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: var(--eyebrow-track);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+td {
+  color: var(--text-secondary);
+}
+
+tbody tr {
+  transition: background-color var(--dur-hover) var(--ease);
+}
+
+tbody tr:hover {
+  background: var(--surface-2);
 }
 
 form {
   display: flex;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  gap: 8px;
   align-items: center;
-  margin: 0.5rem 0;
+  margin: 8px 0;
 }
 
-input[type="text"],
-input[type="email"] {
-  padding: 0.4rem 0.6rem;
-  border: 1px solid var(--eh-os-contract-border);
-  border-radius: var(--eh-os-contract-radius);
-  font-size: 0.9rem;
+input,
+select,
+button {
+  font: inherit;
+  font-size: 14px;
+  color: var(--eh-os-contract-text);
+  border-radius: var(--radius-md);
+  transition: border-color var(--dur-hover) var(--ease), background-color var(--dur-hover) var(--ease),
+    box-shadow 250ms var(--ease);
+}
+
+/* A field: surface-2, a soft hairline; focus turns the hairline lime and adds the ring. */
+input,
+select {
+  max-width: 100%;
+  padding: 7px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+}
+
+input:hover,
+select:hover {
+  border-color: var(--border-strong);
+}
+
+input:focus-visible,
+select:focus-visible {
+  border-color: var(--accent-border);
 }
 
 button {
-  padding: 0.4rem 0.8rem;
-  border: 1px solid var(--eh-os-contract-border);
-  border-radius: var(--eh-os-contract-radius);
-  background: var(--eh-os-contract-bg-muted);
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  font-weight: 500;
   cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--eh-os-contract-text);
 }
 
 button:hover {
-  background: var(--eh-os-contract-border);
+  background: var(--surface-3);
+  border-color: var(--border-strong);
 }
 
-/* The "revoke" button reads as a warning without needing a template-side
-   class — its own phx-click name already says what it does. */
-button[phx-click="revoke_role"] {
-  color: var(--eh-os-contract-danger);
-  border-color: var(--eh-os-contract-danger);
-  background: transparent;
-  padding: 0.15rem 0.5rem;
-  font-size: 0.8rem;
+button:active:not(:disabled) {
+  transform: translateY(0.5px);
 }
 
-button[phx-click="revoke_role"]:hover {
-  background: var(--eh-os-contract-danger);
-  color: white;
-}
-
-/* The access badge and the outcome sentences are the two places a glance
-   is supposed to be the whole answer — README's own pitch for the outcome
-   line ("BREACHED in 1 of 40 runs is the whole product on one line").
-   Plain color would be lost on a re-render diff either way, so these are
-   the one deliberate pair of class hooks in the templates themselves. */
+/* The access level is a role, and a role is mono. */
 .access-badge {
   display: inline-block;
-  padding: 0.15rem 0.6rem;
-  border-radius: 999px;
-  background: var(--eh-os-contract-bg-muted);
-  border: 1px solid var(--eh-os-contract-border);
-  font-size: 0.8rem;
-  font-weight: 600;
-  margin: 0.75rem 0;
+  padding: 3px 10px;
+  border-radius: var(--eh-os-contract-radius);
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  font-family: var(--mono);
+  font-size: var(--eyebrow-size);
+  letter-spacing: var(--eyebrow-track);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin: 12px 0;
+}
+
+/* The verdict is the one line the report exists to be read from, so it is the one place colour
+   carries the answer: breached in the error colour, with its dot, and nothing else coloured. Met
+   and in progress are said by the sentence, in the text colour, and a met promise is the ordinary
+   case rather than a signal. */
+.outcome-breached,
+.outcome-pending,
+.outcome-ok {
+  font-weight: 500;
 }
 
 .outcome-breached {
   color: var(--eh-os-contract-danger);
-  font-weight: 600;
+}
+
+.outcome-breached::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 8px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: currentColor;
 }
 
 .outcome-pending {
   color: var(--eh-os-contract-warning);
-  font-weight: 600;
 }
 
 .outcome-ok {
   color: var(--eh-os-contract-ok);
-  font-weight: 600;
 }
 
-/* Deliberately not coloured and deliberately quieter than the verdict above it.
-   A qualification explains what the verdict's number does *not* mean — one of
-   them says outright that an outage is not a breach on the client's side — and
-   inheriting the verdict's colour would make it contradict itself. */
+/* Deliberately not coloured and deliberately quieter than the verdict above it. A qualification
+   explains what the verdict's number does *not* mean — one of them says outright that an outage is
+   not a breach on the client's side — and inheriting the verdict's colour would make it contradict
+   itself. */
 .outcome-qualification {
   color: var(--eh-os-contract-text-muted);
-  font-size: 0.9rem;
-  margin-top: 0.15rem;
+  font-size: var(--caption-size);
+  margin-top: 2px;
 }
 
-/* The Mermaid hook replaces this element's content with an SVG once it
-   runs — the scroll container is needed before that happens too, since a
-   diagram wider than the column is the common case, not the exception. */
+/* The Mermaid hook replaces this element's content with an SVG once it runs — the scroll container
+   is needed before that happens too, since a diagram wider than the column is the common case, not
+   the exception. Its colours are the diagram's own background, set from the same tokens by
+   assets/js/app.js. */
 pre.mermaid {
   overflow-x: auto;
-  border: 1px solid var(--eh-os-contract-border);
-  border-radius: var(--eh-os-contract-radius);
-  padding: 1rem;
-  margin: 0.5rem 0;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin: 8px 0;
   background: var(--eh-os-contract-bg-muted);
+  color: var(--text-tertiary);
+  font-family: var(--mono);
+  font-size: var(--record-size);
 }
 
-select {
-  padding: 0.4rem 0.6rem;
-  border: 1px solid var(--eh-os-contract-border);
-  border-radius: var(--eh-os-contract-radius);
-  font-size: 0.9rem;
+/* Mermaid 11 wraps each label in a <p>, which the page's own `p` rule would otherwise reach: a
+   node's text colour is the diagram's (the theme, or the engine's classDef), not body text's. */
+pre.mermaid p {
+  margin: 0;
+  color: inherit;
+}
+
+@media (max-width: 640px) {
+  main {
+    padding: 0 16px 32px;
+  }
+
+  section {
+    padding: 4px 14px 12px;
+  }
 }
