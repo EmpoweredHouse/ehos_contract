@@ -211,6 +211,17 @@ defmodule EhOsContract.ErasureTest do
       assert {log(), keys(), Repo.all(CommandRecord)} == before
     end
 
+    test "a reaction's command refused for an erased subject leaves what set it off standing" do
+      two_members!()
+      :ok = EhOsContract.erase(:member, "member-anna", actor: @officer)
+
+      # Bartek's rename sets off a policy in the transaction that joins Anna again.
+      assert {:ok, %{events: [%{name: "Rejoin Anna"}]}} =
+               rename_member("membership-bartek", "member-bartek", "Rejoin Anna")
+
+      refute Enum.any?(log(), &(&1.stream_id == "membership:membership-anna-rejoined"))
+    end
+
     test "control: another member's command goes through" do
       two_members!()
       :ok = EhOsContract.erase(:member, "member-anna", actor: @officer)

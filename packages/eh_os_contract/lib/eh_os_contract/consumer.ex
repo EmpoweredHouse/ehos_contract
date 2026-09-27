@@ -247,6 +247,12 @@ defmodule EhOsContract.Consumer do
         {:error, %Rejection{}} ->
           :ok
 
+        # So is an erasure's: the command would have written an erased subject's data
+        # again (v2 §14), and nothing was. Raising would roll back what set the
+        # reaction off, or stop an ordered consumer for every subject.
+        {:error, :subject_erased} ->
+          :ok
+
         {:error, reason} ->
           raise ArgumentError,
                 "#{what} #{inspect(consumer.name)} issued #{describe(command)}, and dispatch " <>
