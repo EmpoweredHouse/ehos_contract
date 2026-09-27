@@ -122,6 +122,26 @@ defmodule EhOsContract.PagesTest do
     assert chase =~ "- `first_deposit_due` → [`flag_account`](../commands/flag_account.md)"
   end
 
+  # The EL3 review: the page stated a promise without its `or_else`, and left out
+  # what the process includes from other contracts.
+  test "a process shows its deadline, what it includes and its promises as declared" do
+    episode =
+      pages(UniversalityGate.Domain)["treatment/treatment_episode/index.md"]
+
+    assert episode =~ "Deadline: 30 days (unverified)."
+
+    assert episode =~
+             "- `referral_reaches_a_decision`: after [`referral_received`](events/referral_received.md), " <>
+               "eventually [`payer_eligibility_confirmed`](events/payer_eligibility_confirmed.md) within " <>
+               "3 days, or else [`payer_eligibility_denied`](events/payer_eligibility_denied.md)"
+
+    branch = pages(DispatchRig.Domain)["ledger/branch/index.md"]
+    assert branch =~ "## Included from other contracts"
+
+    assert branch =~
+             "[`account_opened` of DispatchRig.Ledger](../ledger/events/account_opened.md)"
+  end
+
   test "two contracts of one context that would share a directory are refused" do
     till = EhOsContract.Model.fetch(ValueRig.Till)
     twin = %{till | module: Module.concat([Other, Till])}

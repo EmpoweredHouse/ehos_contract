@@ -313,7 +313,7 @@ defmodule EhOsContract.Pages do
     extra =
       [
         if(e.unavailable_looks_like, do: "unavailable looks like: #{e.unavailable_looks_like}"),
-        if(e.expected_latency, do: "expected latency #{shown(e.expected_latency)}")
+        if(e.expected_latency, do: "expected latency #{duration(e.expected_latency)}")
       ]
       |> Enum.reject(&is_nil/1)
 
@@ -568,6 +568,8 @@ defmodule EhOsContract.Pages do
   defp process_section(_site, %{process: nil}), do: []
 
   defp process_section(site, %{process: p} = model) do
+    elsewhere = for i <- p.includes, i.stage == nil, do: include(site, model, i)
+
     [
       "",
       "## Process #{code(p.name)} — #{p.label}",
@@ -575,29 +577,53 @@ defmodule EhOsContract.Pages do
       facts([
         "Runs are told by #{Enum.map_join(p.correlate, ", ", &code/1)}.",
         if(p.accountable, do: "Accountable: #{code(p.accountable)}."),
-        if(p.deadline, do: "Deadline: #{code(shown(p.deadline))}."),
-        if(p.cadence, do: "Cadence: #{code(shown(p.cadence))}.")
+        if(p.deadline, do: "Deadline: #{duration(p.deadline)}."),
+        if(p.cadence, do: "Cadence: every #{duration(p.cadence)}.")
       ]),
       stages(site, model, p),
-      section("Promises", p.promises, &promise/1)
+      section("Included from other contracts", elsewhere, & &1),
+      section("Promises", p.promises, &promise(site, model, &1))
     ]
-    |> Enum.reject(&is_nil/1)
   end
 
+  # A stage's events: the unit's own in it, then those `include` places there.
   defp stages(site, model, p) do
     section("Stages", p.stages, fn stage ->
       events =
-        for e <- model.events, e.stage == stage.name, do: event_link(site, model, e.name)
+        for(e <- model.events, e.stage == stage.name, do: event_link(site, model, e.name)) ++
+          for i <- p.includes, i.stage == stage.name, do: include(site, model, i)
 
       bullet(["#{code(stage.name)}#{label(stage)}: " | joined(events)])
     end)
   end
 
-  defp promise(p) do
-    within = if Map.get(p, :within), do: " within #{shown(p.within)}", else: ""
+  defp include(site, model, i),
+    do: [event_link(site, model, i.event), if(i.terminal, do: " (ends a run)")]
 
-    "- #{code(p.name)}: from #{code(shown(p.from))}, eventually #{code(shown(p.eventually))}#{within}"
+  defp promise(site, model, p) do
+    events = &joined(Enum.map(List.wrap(&1), fn e -> event_link(site, model, e) end))
+
+    bullet([
+      "#{code(p.name)}: after ",
+      events.(p.from),
+      ", eventually ",
+      events.(p.eventually),
+      if(Map.get(p, :within), do: " within #{duration(p.within)}"),
+      if(Map.get(p, :or_else), do: [", or else ", events.(p.or_else)]),
+      if(Map.get(p, :unverified), do: " (unverified)")
+    ])
   end
+
+  # `%{amount: 3, unit: :day}` as "3 days", and what the owner has not confirmed.
+  defp duration(%{amount: amount, unit: unit} = d) do
+    word = if amount == 1, do: "#{unit}", else: "#{unit}s"
+    "#{amount} #{word}" <> if(Map.get(d, :unverified), do: " (unverified)", else: "")
+  end
+
+  defp duration({amount, unit}) when is_integer(amount),
+    do: duration(%{amount: amount, unit: unit})
+
+  defp duration(other), do: code(shown(other))
 
   defp consumes_section(site, model) do
     section("Consumed", model.consumes, fn
