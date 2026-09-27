@@ -5,69 +5,74 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 27 września (po EA, przed E8)
+## Handoff — stan na 27 września (po E8, przed E9)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
 
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności), jej
-dashboardu i — od EA — pakietu `eh_os_contract_auth`, który weryfikuje credentiale EHOS-a; `sandbox/` to dane
-testowe. **Trwa pivot do v2** (DSL na Sparku, model domeny w stylu ESDM, event sourcing na własnym magazynie,
-crypto-shredding). **E0–E7 i EA są w `main`** (PR #1–#20; EA poszło dwoma PR-ami:
-[#19](https://github.com/EmpoweredHouse/eh-os-contract/pull/19) — EA1, weryfikacja;
-[#20](https://github.com/EmpoweredHouse/eh-os-contract/pull/20) — EA2, autoryzacja). **Następny w planie: E8
-(crypto-shredding)**; E9–E12 niezaczęte. Jedynym kontraktem v2 sandboxa jest
-`Rehmed.Contracts.VisitSettlement`, od EA2 wystawiony po HTTP pod `/api/rehmed` za Plugiem bearer.
+dashboardu i pakietu `eh_os_contract_auth` (weryfikacja credentiali EHOS-a); `sandbox/` to dane testowe. **Trwa
+pivot do v2** (DSL na Sparku, model domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding).
+**E0–E8 i EA są w `main`** (PR #1–#23). E8 poszło trzema PR-ami:
+[#21](https://github.com/EmpoweredHouse/eh-os-contract/pull/21) — E8a, szyfrowanie pól osobowych;
+[#22](https://github.com/EmpoweredHouse/eh-os-contract/pull/22) — E8b, `erase/3` i `forget/2`;
+[#23](https://github.com/EmpoweredHouse/eh-os-contract/pull/23) — poprawki po E8 (wynik `erase/3`, błędy efektów
+w Obanie bez wartości). **Następny w planie: E9 (pozostałe kontrakty sandboxa)**; E10–E12 niezaczęte. Jedynym
+kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`; `Taxvision.Contracts.AccountingMonth`,
+`Rehmed.Contracts.ClinicalVisit` i `Rehmed.Contracts.PayerSettlement` są v1, a handlery v1 żyją w
+`sandbox/lib/taxvision/{accounting_month,notifications,tasks}.ex`.
 
 ### Stan repozytorium
 
-- `main` = `origin/main` = commit tego handoffu, na `737428f` (merge PR #19; #20 zmergowany przed nim do gałęzi EA1
-  jako `a2a056b`, więc wszedł razem z #19). Handoff poszedł prosto na `main`, bez PR-a, na polecenie użytkownika.
-  Użytkownik merguje PR-y jako merge, więc historia `main` ma merge commity.
-- **Baza dev nie ma tabel pakietu auth** (migracja `20260927120000_add_eh_os_contract_auth` nie była puszczana,
-  bo baza dev jest punktem odniesienia porównań bajtów, `~/Projects/ai/eh-os-contract-dev-reference/`). Przed
-  `mix phx.server`: `mix ecto.migrate` w `sandbox/`; bez tego dispatch z credentialem pada na zapisie decyzji.
-- **Przegląd przed PR** (`.claude/skills/pre-pr-review/`) odpala od 27 września **dwa przeglądy równolegle**:
-  `code-review high` i `engineering:code-review` (bezpieczeństwo i wydajność). Hook w `.claude/settings.json`
-  odmawia `gh pr create` bez notatki `refs/notes/review` na `HEAD` (notatki są lokalne).
+- `main` = `origin/main` = commit tego handoffu, na `f210b8b` (merge PR #23). Użytkownik merguje PR-y jako merge,
+  więc historia `main` ma merge commity; handoff idzie tak, jak zdecyduje użytkownik (poprzedni poszedł prosto na
+  `main`).
+- **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`) i nie ma
+  tabel pakietu auth ani V05 (klucze i usunięcia z E8). Przed `mix phx.server`: `mix ecto.migrate` w `sandbox/`;
+  bez tego dispatch z credentialem pada na zapisie decyzji.
+- **Przegląd przed PR** (`.claude/skills/pre-pr-review/`) to dwa przeglądy równolegle: `code-review high` i
+  `engineering:code-review` (bezpieczeństwo i wydajność). Hook w `.claude/settings.json` odmawia `gh pr create` bez
+  notatki `refs/notes/review` na `HEAD`; notatki są lokalne. W E8 użytkownik poprosił o przegląd **przed**
+  rozpoczęciem kolejnej części etapu, nie dopiero przed PR — „zawsze będzie mniej do sprawdzania”.
 
 ### Co zostało — i czyje to jest
 
-- **Trzy decyzje z EA rozstrzygnięte 27 września** (z odrzuconymi opcjami): `pin_keys: true` zostaje, limit
-  15 min zostaje stały — oba w „EA2 — co wyszło”; publiczne wejście dla surowych danych wchodzi w E12 — przy opisie
-  E12 w „Etapach”.
-- **E8 — zmergowane** jako [PR #21](https://github.com/EmpoweredHouse/eh-os-contract/pull/21) (E8a) i
-  [PR #22](https://github.com/EmpoweredHouse/eh-os-contract/pull/22) (E8b). Kształty widoczne dla hosta i
-  odrzucone opcje — pod opisem E8 w „Etapach”; co wyszło — „E8a — co wyszło”, „E8b — co wyszło”.
-- **Po merge'u E8 — gałąź `dsl-v2/e8c-followups` od `main`, do wystawienia jako PR (asystent, na polecenie
-  użytkownika)**: wynik `erase/3` mówi, co zastał; błędy efektów w Obanie bez wartości; test wpięcia `forget/2`
-  przy starcie. „Po E8 — poprawki” niżej. **Następny etap: E9.**
+- **E9 — asystenta, po pytaniach do użytkownika.** Opis i odbiór w „Etapach” (TaxVision, ClinicalVisit,
+  PayerSettlement, D6 dla 15 zdarzeń bez komendy, usuwanie kontraktów i handlerów v1). Jak przed E7, EA i E8:
+  **przed budową zapytać o podział na PR-y i o kształty widoczne dla hosta**, a każdą decyzję zapisać w
+  `PLAN.md` **razem z odrzuconymi opcjami** (prośba użytkownika z 27 września). Gałąź od `main`:
+  `dsl-v2/e9-<nazwa>`. Pytania, które E9 na pewno postawi — w „Otwartych pytaniach”.
 - **Proces na porcie 4000 — użytkownika**: `beam.smp` z `/private/tmp/eh-os-test`, niezwiązany z repozytorium.
+- **Wdrożenie E8 u hosta — użytkownika**: błędy jobów Obana zapisane przed #23 mogą trzymać dane osobowe; usunąć
+  nieudane joby `EhOsContract.EffectJob` z `oban_jobs` albo zostawić je pruningowi (linia w `CHANGELOG.md`
+  silnika). Kopie kluczy w backupach, WAL i replikach — decyzja właściciela produktu (v2 §14, README silnika).
 - **Lista zmian do `eh-os`** — użytkownika: D-01, D-15, outbox, G-16, transport v1, D-34, D-40, plan etapu 4
-  („D10–D12 — skąd się wzięły” i „D14 — autoryzacja” w dopisku Etap 6), logowanie frontendu zwykłej aplikacji.
-  Od EA także: D-34 zakłada „authorize/3” wołane przez hosta — w v2 to bramka w dispatchu (`Authorizer`); pakiet
-  odrzuca credential z `exp` > 15 min i `crit`, czego D-33 nie mówi.
+  („D10–D12 — skąd się wzięły” i „D14 — autoryzacja” w dopisku Etap 6), logowanie frontendu zwykłej aplikacji;
+  od EA: D-34 zakłada „authorize/3” wołane przez hosta — w v2 to bramka w dispatchu; pakiet auth odrzuca
+  credential z `exp` > 15 min i `crit`, czego D-33 nie mówi.
 - **Publikacja na Hex — użytkownika**, decyzja niepodjęta (tagi `v0.2.0`, `v0.2.1`; w `mix.exs` silnika
   `0.3.0-dev`, pakietu auth `0.1.0-dev`).
-- **F1, F2 i dziesięć usterek** z „Dopisek 25 września” — do właścicieli procesów, przez użytkownika.
-- **Odłożone z E7** — bez zmian, lista w „E7c-1/E7c-2 — co wyszło”.
+- **F1, F2 i dziesięć usterek** z „Dopisek 25 września” — do właścicieli procesów, przez użytkownika. Porty E9
+  tłumaczą, nie naprawiają (wyjątki: usterki 2 i 5 — „Strategia”).
+- **Odłożone z E7 i E8** — listy w „E7c-1/E7c-2 — co wyszło”, „E8a — co wyszło” (klucze per wiersz w runnerach,
+  do pomiaru) i „Po E8 — poprawki”.
 - Zasady trzymają się dalej: zmiany widoczne dla konsumenta idą do „Unreleased” w `CHANGELOG.md` swojego pakietu
   tym samym commitem; delta `eh_os_contract.check` jest raportowana i każda nowa linia wyjaśniona.
 
 ### Co przeczytać najpierw
 
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach, `boundary`,
-   zsh bez dzielenia słów. Od EA w tabeli katalogów jest czwarty projekt.
-2. `PLAN.md`, dopisek Etap 6: „Strategia” (reguły każdego commita, **konwencja wartości w scenariuszach** z 27
-   września) i **opis E8** w „Etapach”.
-3. `PLAN.md`, „EA1 — co wyszło” i „EA2 — co wyszło” — co EA zbudowało, trzy przeglądy i co z każdej uwagi wyszło,
-   otwarte decyzje.
-4. `docs/adr/contract-v2.md` §14 (crypto-shredding), §10.3 (tabele kluczy i usunięć), notka z 27 września pod
-   §16 D14 (dwa zapisy przyjętej komendy to dwa fakty).
-5. Pod E8: `packages/eh_os_contract/lib/eh_os_contract/codec.ex` (tu wchodzi szyfrowanie pól), `dispatcher.ex`,
-   `store/postgres.ex`, `domain/`; bramki `personal:` w `next/contract/rules/fields.ex`, `boundaries.ex`,
-   `links/siblings.ex`.
-6. `packages/eh_os_contract_auth/README.md` — skąd klucze, co host konfiguruje, koszt i retencja audytu.
+   zsh bez dzielenia słów, **nazwy zdarzeń z warsztatu** (źródło w `CLAUDE.md`).
+2. `PLAN.md`, dopisek Etap 6: „Strategia” (reguły każdego commita, porty tłumaczą, nie naprawiają, konwencja
+   wartości w scenariuszach) i **opis E9** w „Etapach”, z odbiorem.
+3. `PLAN.md`, „Dopisek 25 września — cztery kontrakty rzutowane na ESDM” — kontrakt po kontrakcie, co się
+   przekłada i jakie usterki wyszły; to materiał wejściowy E9.
+4. `PLAN.md`, „E8a/E8b — co wyszło” i „Po E8 — poprawki” — jak działa `personal:`, `erase/3`, `forget/2`, co
+   bramki odrzucają; E9 to pierwsze kontrakty sandboxa, które mogą mieć dane osobowe.
+5. `docs/adr/contract-v2.md` §4.5–4.6 (przykłady DSL, w tym `dcb`, process manager, `consumes`), §6 (reguły),
+   §10.1 (warunek `{:dcb, …}` dopisu — wchodzi w E9 z PayerSettlement), §14 z notkami z 27 września.
+6. Wzorzec portu: `sandbox/lib/rehmed/contracts/visit_settlement.ex` i `sandbox/lib/rehmed/settlement/` (kontrakt
+   v2 z implementacjami), oraz `store.ex` („Not yet”: DCB).
 7. Przed PR: `.claude/skills/pre-pr-review/SKILL.md`.
 
 ### Komendy
@@ -77,8 +82,8 @@ docker compose up -d && cd sandbox && mix ecto.setup
 out=$(mix check 2>&1); rc=$?; echo "$out" | tail -4; echo "EXIT=$rc"
 ```
 
-Brama idzie z `sandbox/` i od EA woła `mix check` trzech pakietów; Postgres słucha na **5433**. **W świeżym
-worktree** najpierw `MIX_ENV=test mix deps.get` w `packages/eh_os_contract`, `packages/eh_os_contract_web` i
+Brama idzie z `sandbox/` i woła `mix check` trzech pakietów; Postgres słucha na **5433**. **W świeżym worktree**
+najpierw `MIX_ENV=test mix deps.get` w `packages/eh_os_contract`, `packages/eh_os_contract_web` i
 `packages/eh_os_contract_auth` oraz `mix deps.get` w `sandbox/`. Do oglądania czegokolwiek `MIX_ENV=dev`. Commit
 wiąż wyłącznie z kodem wyjścia bramy. Dashboard: `cd sandbox && mix phx.server` → `http://localhost:4010/dashboard`.
 
@@ -92,31 +97,42 @@ git -c credential.helper='!gh auth git-credential' fetch https://github.com/Empo
 git -c credential.helper='!gh auth git-credential' push https://github.com/EmpoweredHouse/eh-os-contract.git <gałąź>:<gałąź>
 ```
 
+Praca przerwana w pół (np. na przegląd) — jako patch w scratchpadzie albo commit WIP na własnej gałęzi, nigdy
+gołe `git stash` (stos jest wspólny dla worktree).
+
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 27 września**, brama z `sandbox/` → **EXIT=0** na commicie tego handoffu (kod `737428f`): sandbox 54 testy, `eh_os_contract.check` 0 / 5 / 19; silnik 911, `check` 0 / 15 / 17; web 32; auth 51.
-- **CI**: PR #19 — przebieg `36303446729` na `8c28221`, job `check` `success`; PR #20 — przebieg `36303464618` na
-  `a54369b`, job `check` `success` (pierwszy raz z pakietem auth). `main` po merge'u, `737428f` — przebieg
-  `36303856942`, job `check` w toku przy pisaniu.
+- **Lokalnie, 27 września**, brama z `sandbox/` → **EXIT=0** na `f210b8b` (merge PR #23, kod tego handoffu):
+  sandbox 54 testy, `eh_os_contract.check` 0 / 5 / 19; silnik 972, `check` 0 / 15 / 17; web 32; auth 51.
+- **CI**: PR #23 — przebieg `36316976123` na `c546e11`, job `check` `success`; `main` po merge'u E8
+  (`7d69ebb`) — przebieg `36315853940`, job `check` `success`; `main` po merge'u #23 (`f210b8b`) — przebieg
+  `36317266361`, job `check` w toku przy pisaniu.
 
 ### Otwarte pytania
 
+- **E9, TaxVision: `registry_discrepancy_detected.diff` ma w v1 `retain: :hash` i jest w `identity`.** v2 nie ma
+  `retain:`; `personal:` wymaga podmiotu (osoby), a `diff` to dane firmy zestawione z rejestrami, i pole
+  tożsamości nie może być osobowe (F4). Kontrakt v2 tego wprost nie wyrazi — decyzja użytkownika przed portem
+  (np. implementacja liczy skrót i zdarzenie niesie tylko `diff_hash`; jawny `diff`; albo luka w DSL zapisana jako
+  wynik — „kontrakt, którego nie da się napisać, jest lepszym wynikiem”, `CLAUDE.md`).
+- **E9: które pola kontraktów Rehmedu są osobowe** (`ClinicalVisit` to dane pacjentów) i czy domena Rehmedu
+  deklaruje `subject :patient` — materiał warsztatowy, nie wyobraźnia.
+- **`record/3` z credentialem** — nazwa uprawnienia, E9.
+- **H177** z materiału Rehmedu przeczy DEC-18, na którym stoi `visit_handed_over`; czeka na klienta.
 - **Runner dla read modelu `:in_transaction`** odpytuje co sekundę, choć pracuje tylko przy przebudowie — wraca
   przy pomiarze.
-- **`record/3` z credentialem** — nazwa uprawnienia, E9.
 - **Po E5b:** `mix eh_os_contract.check` nie powtarza L3 dla projektów bez zarejestrowanego kompilatora — E10.
 - **D1–D14** (v2 §16) przyjęte; pytania w §19: `scope` dla komend, transport v1 między kontenerami, kontrakt
   upcasterów.
-- **H177** z materiału Rehmedu przeczy DEC-18, na którym stoi `visit_handed_over`; czeka na klienta.
 
 ### Zgoda i stałe uprawnienia
 
 **Ten blok jest do skasowania. Skasowanie go cofa uprawnienie — nie migruje ono samo między sesjami.**
 
-W sesji EA (27 września) użytkownik zgodził się na: commity bez pytania na gałęziach wybranego etapu przy
+W sesji E8 (27 września) użytkownik zgodził się na: commity bez pytania na gałęziach etapu (`dsl-v2/e8…`) przy
 zielonej bramie na każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. Zlecił push i PR-y
-#19 i #20 i je zmergował. **W nowej sesji obowiązuje to dopiero po ponownym potwierdzeniu przez użytkownika** i dla etapu, który
-wybierze. Push, PR, merge, tag i publikacja na Hex — tylko na wyraźne polecenie, a przed PR skill
+#21–#23 i je zmergował. **W nowej sesji obowiązuje to dopiero po ponownym potwierdzeniu przez użytkownika** i dla
+etapu, który wybierze. Push, PR, merge, tag i publikacja na Hex — tylko na wyraźne polecenie, a przed PR skill
 `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie piszemy nigdy.
 
 ### Język
