@@ -31,8 +31,9 @@ kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`; `Taxvision
   kolejność zmieniona” i „EM1/EM2/EM3 — co wyszło”. Użytkownik merguje PR-y jako merge.
 - **EL2 zbudowane** na `dsl-v2/el-glossary` (od EL1), niewypchnięte: `glossary`, `view`, nazwana subdomena,
   tłumaczenie z definicją, sprawdzane ograniczenia komend, relacja z systemem zewnętrznym, `issued_by:`. Opis w „EL2 —
-  co wyszło”, decyzje w „Przed EL2 — decyzje użytkownika”. **Dalej:** przegląd EL2, potem EL2b (walidator wartości,
-  kształty rozstrzygnięte), EL3 (strony dokumentacji).
+  co wyszło”, decyzje w „Przed EL2 — decyzje użytkownika”. **Dalej:** przegląd EL2, reguły 1–4 z „Po EL2 — proza,
+  którą da się sprawdzać” na tej samej gałęzi, potem EL2b (walidator wartości i przykłady reguł serwisów), EL3
+  (strony dokumentacji).
 - **EL1 zbudowane** na `dsl-v2/el-warnings` (od `main`), niewypchnięte: ostrzeżenia L5 ze stałymi nazwami,
   `--format json`, `--warnings-as-errors`, `docs/rules.md`, powtórzenie L3, przypięcie słownika domeny. Opis w
   „EL1 — co wyszło”, decyzje w „Przed EL — decyzje użytkownika”. Przegląd zrobiony, notatka w `refs/notes/review`
@@ -1022,6 +1023,41 @@ Mechanika, rozstrzygnięta przez asystenta:
 Weryfikacja poza testami (`MIX_ENV=dev` w `sandbox/`): `view` pokazuje domenę Rehmedu z subdomenami; `glossary
 --language en` padało, bo atom `:en` nie istniał w maszynie, a sandbox nie ma angielskich tłumaczeń — poprawione
 (`efda115`), teraz „_No translation into en._”.
+
+### Po EL2 — proza, którą da się sprawdzać (27 września)
+
+Na prośbę użytkownika asystent przejrzał oba DSL-e pole po polu: co jest dziś prozą albo deklaracją, której w v2
+nikt nie czyta, a mogłoby być sprawdzane kompilatorem albo wygenerowanym testem. Wzorzec, który już działa:
+inwariant agregatu i od EL2 ograniczenie komendy (nazwa, `reject`, scenariusz odmowy, test).
+
+**Decyzja użytkownika: 1–4 do EL, 5 do EL2b, 6–9 odłożone.** 1–4 czytają pola z EL2 (`direction`, `avoid`,
+relacje, reakcje), więc wchodzą na gałąź EL2 po rozstrzygnięciu jej przeglądu, z przeglądem nowych commitów
+(rozstrzygnięcie asystenta — mechanika).
+
+1. **Kierunek relacji kontra to, kto kogo konsumuje.** `separate_ways` a `consumes` między kontekstami — sprzeczność;
+   `customer_supplier` i `conformist` — odwołanie tylko od downstream do upstream; `published_language` i
+   `open_host_service` — downstream przez `publish` (D11), nie przez `consumes`. Przykład: Rehmed `customer_supplier
+   scheduling → settlement`, a kontrakt `scheduling` konsumujący rozliczenia.
+2. **Słowa do unikania w etykietach.** Etykieta kontraktu danego kontekstu zawierająca słowo z `avoid` tego
+   kontekstu — ostrzeżenie (termin „Zrealizowana”, `avoid "Zakończona"`, zdarzenie „Wizyta zakończona”).
+3. **`direction` systemu kontra użycie.** `calls:` do systemu `:inbound`, albo `issued_by:` / nagrania aktora
+   `backed_by:` od systemu `:outbound` — sprzeczność; dziś `direction` jest wymagane i nikt go nie czyta.
+4. **Pokrycie scenariuszami reakcji i query.** Polityka, process manager i query bez scenariusza — dziś S8 wymaga
+   go tylko dla inwariantów i ograniczeń (ESDM: `feature-without-scenarios`). Poziom (ostrzeżenie czy błąd jak S8) —
+   rozstrzygnięcie przy budowie, z wyjaśnieniem.
+5. **Przykłady przy regule serwisu domenowego** — `rule :never_below_zero, "…", examples: [{[1, 3], 0}]`, każdy
+   daje test funkcji; ten sam mechanizm co `violated_by` / `satisfied_by` walidatora wartości, więc w EL2b.
+
+*Odłożone do E9* (zobaczyć na prawdziwych kontraktach, czy są potrzebne): 6 — ograniczenie query sprawdzane
+scenariuszem `answers` (przykład z testu okazał się `scope`, który już jest pilnowany); 7 — `expected_latency`
+systemu mierzone na jobach efektów w raporcie zgodności (w v2 nikt go nie czyta); 8 — scenariusz efektu z
+zaślepką systemu (najdroższe: dziś S6 wyklucza efekt jako cel scenariusza); 9 — `source:` i nazwy z warsztatu
+(notka dla zdarzenia bez `source:`, albo indeks identyfikatorów materiału w konfiguracji — wymaga decyzji, gdzie
+materiał żyje dla hosta).
+
+*Zostaje prozą, bo ma być:* `label`, `definition`, opis scenariusza, `unavailable_looks_like`, proza `where:` w
+`consults` (mechanika już jest konkretna: bez `match:` granica czyta wszystkie zdarzenia typu, co ma ostrzeżenie
+`consults-without-match`; proza mówi tylko dlaczego).
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
