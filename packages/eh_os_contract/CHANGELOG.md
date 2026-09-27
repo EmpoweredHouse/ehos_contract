@@ -80,6 +80,11 @@ What changes otherwise is what a host has to do.
 
 ### Added
 
+- **EM2: `entity` in a domain** (ESDM's entity): reference data with an identity that no event of the log
+  changes — `entity :period, "Okres", context: :client_month, identified_by: :period_id do field … end`. A field
+  of a contract or of a domain value names one as `{:id, :period}`; it is an `:id` in the model, in the log and
+  in the tags, with `refers_to: :period` beside it. D6 checks the entity and every field naming one, X3 a
+  contract's. The library keeps no rows of it. A domain declaring no entity keeps its version.
 - **EM1: a command to a dynamic consistency boundary dispatches** (v2 §10.1), through `EhOsContract.dispatch/3`
   as a command to an aggregate does, and `EhOsContract.record/3` records a boundary's event. The decision folds
   what the boundary reads — its own events under its identity, and each event it `consults`, a sibling

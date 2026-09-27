@@ -19,6 +19,10 @@ defmodule EhOsContract.Next.ContractLinksSiblingsTest do
 
         context :settlement, "Rozliczenia", subdomain: :core
         actor :reception, :human, "Recepcja"
+
+        entity :visit, "Wizyta", context: :settlement, identified_by: :visit_id do
+          field :visit_id, :id
+        end
       end
       """,
       "siblings_clinic.ex"
@@ -106,6 +110,13 @@ defmodule EhOsContract.Next.ContractLinksSiblingsTest do
 
   test "control: a subscriber using the publisher's fields as declared passes" do
     assert pair("sib_right", @fields) == []
+  end
+
+  test "control: a publisher naming the field an entity's identifier is the same :id" do
+    # Stored as an :id either way, so correlating, starting on and matching it on the
+    # subscriber's side, where it is a plain :id, is the same field (plan EM2).
+    fields = String.replace(@fields, "field :visit_id, :id", "field :visit_id, {:id, :visit}")
+    assert pair("sib_entity", fields) == []
   end
 
   describe "X5: the sibling and its events exist" do

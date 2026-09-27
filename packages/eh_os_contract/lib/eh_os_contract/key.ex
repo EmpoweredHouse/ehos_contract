@@ -36,6 +36,8 @@ defmodule EhOsContract.Key do
   """
   @spec tag_field?(map()) :: boolean()
   def tag_field?(%{type: :id, optional: false, personal: nil}), do: true
+  # An entity's identifier as declared, before the model makes it an `:id` (plan EM2).
+  def tag_field?(%{type: {:id, _entity}, optional: false, personal: nil}), do: true
   def tag_field?(_field), do: false
 
   @doc "One value, with `%` and `|` percent-escaped."

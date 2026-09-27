@@ -162,6 +162,14 @@ scenario        description!   scope · actor
 > an event crosses only through `publish` and `consumes "<name>"`. The table above is left as it was
 > written; E4 and E5 build to D10–D12.
 
+> **27 September 2026, EM2.** `entity` is no longer deferred: ESDM coverage came before the sandbox contracts
+> (plan, "Po E8 — kolejność zmieniona"), and what reads an entity is the field that names it. The user
+> decided both shapes: an entity is declared in the domain, beside `value`, with the context that owns it
+> (`context:` required, `identified_by:` one of its fields, a required non-personal `:id`); and a field names
+> one as `{:id, entity}`, which the model stores as `type: :id, refers_to: entity`, so the codec, tags and
+> typespecs see a plain `:id`. No field of an entity is personal: its rows are the application's, outside the
+> log, where erasure cannot reach them. Rules: D6 in the domain, X3 in a contract.
+
 ### 4.3 Field types and options
 
 - Built-in types: `:id :string :integer :decimal :boolean :date :timestamp {:enum, [...]} {:list, t}`, plus

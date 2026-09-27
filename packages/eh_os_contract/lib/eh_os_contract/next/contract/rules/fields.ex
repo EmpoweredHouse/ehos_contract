@@ -7,8 +7,9 @@ defmodule EhOsContract.Next.Contract.Rules.Fields do
   - **F1.** Field names are unique within a struct, and none starts with `__`,
     which the generated structs keep for themselves (`__meta__`).
   - **F2.** A type is well formed: a built-in type, `{:list, type}`, a non-empty
-    `{:enum, members}` with no member twice, or the name of a domain value. Whether
-    that value exists is the domain's to say, and a Mix compiler checks it (L3, X3).
+    `{:enum, members}` with no member twice, the name of a domain value, or
+    `{:id, entity}`, the identifier of a domain entity. Whether that value or entity
+    exists is the domain's to say, and a Mix compiler checks it (L3, X3).
   - **F3.** Only a state gives a field a `default:`.
   - **F4.** A field that tells which run an event belongs to — named in the
     process's `correlate`, or in the `correlate` of a process manager handling the
@@ -219,6 +220,10 @@ defmodule EhOsContract.Next.Contract.Rules.Fields do
   """
   @spec type_problems(term()) :: [String.t()]
   def type_problems(type) when is_atom(type) and type not in [nil, true, false], do: []
+
+  def type_problems({:id, entity}) when is_atom(entity) and entity not in [nil, true, false],
+    do: []
+
   def type_problems({:list, inner}), do: type_problems(inner)
   def type_problems({:enum, _} = enum), do: Domain.Rules.type_problems(enum, MapSet.new())
   def type_problems(other), do: ["#{inspect(other)} is not a type"]

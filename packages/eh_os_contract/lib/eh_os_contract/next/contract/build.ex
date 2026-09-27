@@ -381,6 +381,7 @@ defmodule EhOsContract.Next.Contract.Build do
     |> Map.from_struct()
     |> Map.delete(:__spark_metadata__)
     |> Map.new(fn {key, value} -> {key, plain(value)} end)
+    |> EhOsContract.Domain.Build.reference()
   end
 
   defp plain(list) when is_list(list), do: Enum.map(list, &plain/1)

@@ -4,7 +4,7 @@ defmodule EhOsContract.Domain.Dsl do
 
   One top-level section, so every entity is written straight into the module body:
   contexts with their glossary, actors, subjects of personal data, value types,
-  external systems and the relations between contexts. The vocabulary is closed:
+  entities, external systems and the relations between contexts. The vocabulary is closed:
   a domain module cannot add extensions.
 
   The structs below are what Spark builds from each declaration. They are the
@@ -59,6 +59,19 @@ defmodule EhOsContract.Domain.Dsl do
   defmodule Value do
     @moduledoc false
     defstruct [:name, :type, :unit, :label, :context, fields: [], __spark_metadata__: nil]
+  end
+
+  defmodule Entity do
+    @moduledoc false
+    defstruct [
+      :name,
+      :label,
+      :context,
+      :identified_by,
+      :source,
+      fields: [],
+      __spark_metadata__: nil
+    ]
   end
 
   defmodule External do
@@ -209,6 +222,23 @@ defmodule EhOsContract.Domain.Dsl do
     ]
   }
 
+  @entity %Spark.Dsl.Entity{
+    name: :entity,
+    describe:
+      "Reference data with an identity that no event of this log changes: a period, an item of " <>
+        "a catalogue. Its rows are the application's; a field names one as `{:id, entity}`.",
+    target: Entity,
+    args: [:name, :label],
+    entities: [fields: [@field]],
+    schema: [
+      name: [type: :atom, required: true, doc: "The entity's name."],
+      label: [type: :string, required: true, doc: "What the business calls it."],
+      context: [type: :atom, required: true, doc: "The context that owns it."],
+      identified_by: [type: :atom, required: true, doc: "The field that identifies it."],
+      source: [type: :string, doc: "Where the entity comes from in the material."]
+    ]
+  }
+
   @external %Spark.Dsl.Entity{
     name: :external,
     describe: "An external system, named after the business fact rather than the vendor.",
@@ -253,14 +283,14 @@ defmodule EhOsContract.Domain.Dsl do
     ]
   }
 
-  # `context`, `term` and `value` take a block, so they also take their options
+  # `context`, `term`, `value` and `entity` take a block, so they also take their options
   # beside it (v2 §16, D13).
   @domain EhOsContract.DslWrappers.attach(
             %Spark.Dsl.Section{
               name: :domain,
               top_level?: true,
               describe: "The vocabulary contracts share.",
-              entities: [@context, @actor, @subject, @value, @external, @relation]
+              entities: [@context, @actor, @subject, @value, @entity, @external, @relation]
             },
             __MODULE__
           )
