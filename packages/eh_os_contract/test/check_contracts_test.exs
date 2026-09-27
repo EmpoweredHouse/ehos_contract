@@ -149,4 +149,50 @@ defmodule EhOsContract.CheckContractsTest do
              do: f
            ) == []
   end
+
+  test "free text inside a list, a value that is text, and a value's field is free text too" do
+    compile(
+      """
+      defmodule EhOsContract.CheckContractsTest.Notes do
+        use EhOsContract.Domain, name: :notes, language: :pl
+
+        context :desk, "Recepcja", subdomain: :core
+        actor :reception, :human, "Recepcja"
+        value :remark, :string
+        value :again, :remark
+
+        value :contact do
+          field :note, :string
+          field :floor, :integer
+        end
+      end
+
+      defmodule EhOsContract.CheckContractsTest.Desk do
+        use EhOsContract.Next.Contract, domain: EhOsContract.CheckContractsTest.Notes, context: :desk
+
+        aggregate :desk, "Recepcja" do
+          identity :visit_id
+          command :note, "Notatka", by: :reception, emits: :noted
+
+          event :noted, "Zanotowano" do
+            field :lines, {:list, :string}
+            field :remark, :again
+            field :contact, :contact
+            field :count, :integer
+          end
+        end
+
+        process :desk, "Recepcja" do
+          correlate :visit_id
+        end
+      end
+      """,
+      "notes.ex"
+    )
+
+    assert Contracts.findings([EhOsContract.CheckContractsTest.Desk], [])
+           |> Enum.filter(&(&1.rule == "free-text-not-personal"))
+           |> Enum.map(&(&1.message |> String.split(" of ") |> hd())) ==
+             [":noted.lines", ":noted.remark", ":noted.contact.note"]
+  end
 end

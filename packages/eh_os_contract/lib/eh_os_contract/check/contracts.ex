@@ -148,12 +148,15 @@ defmodule EhOsContract.Check.Contracts do
 
   # v1's `free-text-without-retain`, in v2's words: `:string` is text a person typed,
   # and unless it is personal, it stays in the log verbatim even after its subject
-  # is erased (v2 §14).
+  # is erased (v2 §14). Text is text in a list too, behind a domain value that is
+  # text, and in a field of a domain value; the finding names the path to it.
   defp free_text(%{model: model} = c) do
+    values = if c.domain, do: Map.new(c.domain.values, &{&1.name, &1}), else: %{}
+
     for event <- model.events,
         field <- event.fields,
-        field.type == :string,
-        field.personal == nil do
+        field.personal == nil,
+        path <- text_paths(field.type, values, [field.name], MapSet.new()) do
       at =
         with %{} = unit <- Enum.find(c.declarations.units, &(&1.name == event.unit)),
              %{} = declared <- Enum.find(Rules.events(unit), &(&1.name == event.name)),
@@ -161,12 +164,42 @@ defmodule EhOsContract.Check.Contracts do
 
       Finding.new(
         "free-text-not-personal",
-        "#{inspect(event.name)}.#{field.name} of #{inspect(model.module)} is free text and not " <>
-          "`personal:`, so it stays in the log as written, whoever it is about",
+        "#{inspect(event.name)}.#{Enum.join(path, ".")} of #{inspect(model.module)} is free text " <>
+          "and not `personal:`, so it stays in the log as written, whoever it is about",
         at
       )
     end
   end
+
+  # The paths under a field of `type` that hold text. `seen` stops a value that
+  # names itself, which D3 refuses, from looping here if it ever compiled.
+  defp text_paths(:string, _values, path, _seen), do: [path]
+  defp text_paths({:list, type}, values, path, seen), do: text_paths(type, values, path, seen)
+
+  defp text_paths(name, values, path, seen) when is_atom(name) do
+    case Map.get(values, name) do
+      %{fields: [_ | _] = fields} ->
+        if MapSet.member?(seen, name),
+          do: [],
+          else:
+            for(
+              f <- fields,
+              f.personal == nil,
+              p <- text_paths(f.type, values, path ++ [f.name], MapSet.put(seen, name)),
+              do: p
+            )
+
+      %{type: type} when type != nil ->
+        if MapSet.member?(seen, name),
+          do: [],
+          else: text_paths(type, values, path, MapSet.put(seen, name))
+
+      _built_in_or_unknown ->
+        []
+    end
+  end
+
+  defp text_paths(_type, _values, _path, _seen), do: []
 
   # An event a command may emit that its implementation never names in `emit/1`:
   # declared, and no path of the code produces it. Events emitted in a function that
