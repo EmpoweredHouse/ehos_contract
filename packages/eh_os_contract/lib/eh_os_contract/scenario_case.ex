@@ -50,9 +50,9 @@ defmodule EhOsContract.ScenarioCase do
   Rehmed.Domain` writes one test per example of every value's invariant, against the
   module bound with `use Rehmed.Domain, value: :name`: the invariant's function
   answers `false` for each of its `violated_by:`, and every invariant of the value
-  answers `true` for each of its `satisfied_by:`, since a value that keeps one
-  invariant and breaks another is no example of a value. An example is plain data,
-  cast as a scenario's is.
+  answers `true` for each of its `satisfied_by:` — and of what the value is made of,
+  as dispatch asks them — since a value that keeps one invariant and breaks another
+  is no example of a value. An example is plain data, cast as a scenario's is.
 
   **A domain service's rules** (plan EL2b). Every example of a rule,
   `examples: [{[1, 3], 0}]`, is a test too: the function, called through the module
@@ -268,7 +268,8 @@ defmodule EhOsContract.ScenarioCase do
     model = Model.fetch(domain)
     implementation = implementation!(model, %{kind: :value, name: example.value}, implementations)
     value = Enum.find(model.values, &(&1.name == example.value))
-    data = cast_example(example, Map.new(model.values, &{&1.name, &1}))
+    values = Map.new(model.values, &{&1.name, &1})
+    data = cast_example(example, values)
 
     checked =
       case example.kind do
@@ -298,8 +299,25 @@ defmodule EhOsContract.ScenarioCase do
              )
     end
 
+    # What the value is made of is held to its own invariants first, as dispatch holds
+    # it, through the implementations the application binds.
+    if example.kind == :satisfied_by do
+      problems = parts_problems(value, data, values, domain)
+
+      assert problems == [],
+             "#{shown(example.data)} is given as a value of #{inspect(example.value)} that keeps " <>
+               "#{inspect(example.invariant)}, and what it is made of breaks an invariant: " <>
+               inspect(problems)
+    end
+
     true
   end
+
+  defp parts_problems(%{type: nil, fields: fields}, data, values, domain),
+    do: EhOsContract.Codec.problems(fields, data, values, domain)
+
+  defp parts_problems(%{name: name, type: inner}, data, values, domain),
+    do: EhOsContract.Codec.problems([%{name: name, type: inner}], %{name => data}, values, domain)
 
   defp cast_example(example, domain) do
     cast(example.value, example.data, domain)

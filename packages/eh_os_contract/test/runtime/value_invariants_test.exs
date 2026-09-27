@@ -145,6 +145,21 @@ defmodule EhOsContract.ValueInvariantsTest do
     assert pay(amount: 0) == {:error, {:invalid, [amount: {:invariant, :positive}]}}
   end
 
+  test "an example that keeps a value's invariant fails its test when what the value is made of breaks one" do
+    # A fee is an amount, and 0 is no amount. D9 refuses this when the amount lists 0
+    # as breaking it; the test asks the code as well, which lists nothing.
+    example = %{value: :fee, invariant: :capped, kind: :satisfied_by, data: 0}
+
+    error =
+      assert_raise ExUnit.AssertionError, fn ->
+        EhOsContract.ScenarioCase.run_example(ValueRig.Domain, example)
+      end
+
+    assert error.message =~
+             "0 is given as a value of :fee that keeps :capped, and what it is made of breaks an " <>
+               "invariant: [fee: {:invariant, :positive}]"
+  end
+
   test "reading the log back never asks: an event written before an invariant still reads" do
     {:ok, _} = pay(amount: 3)
     [row] = log()
