@@ -46,6 +46,14 @@ defmodule EhOsContract.ImplementationTest do
     policy :remind_on_payment, "Przypomnij po płatności", handles: :payment_recorded, issues: :remind
     effect :notify, "Powiadom", handles: :closed, idempotency: :downstream
 
+    # Marks time and issues nothing, so it has nothing to define.
+    process_manager :watch, "Obserwacja" do
+      correlate :visit_id
+      starts_on :payment_recorded, sets: :look
+      timer :look, wait: {1, :day}
+      ends_on :closed
+    end
+
     process_manager :chase, "Pogoń" do
       correlate :visit_id
 
@@ -65,6 +73,14 @@ defmodule EhOsContract.ImplementationTest do
 
     query :payments_of, "Płatności wizyty", reads: :payments, by: :reception do
       param :visit_id, :id
+    end
+
+    domain_service :pricing, "Cennik" do
+      function :price, "Cena usługi" do
+        argument :service_id, :id
+        argument :minutes, :integer, optional: true
+        returns :integer
+      end
     end
 
     scenario "zapłacono za mało — zamknięcie odrzucone" do
@@ -216,7 +232,7 @@ defmodule EhOsContract.ImplementationTest do
       refused(
         implementation("UnknownKey", "saga: :visit", ""),
         "I1: use EhOsContract.Next.Fixtures.Billing takes one of [:aggregate, :dcb, :policy, " <>
-          ":effect, :process_manager, :read_model, :query]; [:saga] is not among them",
+          ":effect, :process_manager, :read_model, :query, :domain_service]; [:saga] is not among them",
         2
       )
     end
@@ -449,6 +465,48 @@ defmodule EhOsContract.ImplementationTest do
         "I6: issue/1 gets %EhOsContract.Next.Fixtures.Billing.Commands.Close{}, which is not " <>
           "among the commands :payment_recorded issues, [:remind]",
         6
+      )
+    end
+
+    test "control: a process manager with nothing to define compiles without a warning" do
+      module = compiles_clean(implementation("Watch", "process_manager: :watch", ""))
+      assert %{kind: :process_manager, name: :watch} = module.__eh_os_implementation__()
+    end
+
+    test "control: a domain service compiles, and its functions are called through the contract" do
+      module =
+        compiles_clean(
+          implementation("Pricing", "domain_service: :pricing", """
+            @impl true
+            def price(_service_id, nil), do: 100
+            def price(_service_id, minutes), do: minutes * 2
+          """)
+        )
+
+      assert %{kind: :domain_service, name: :pricing} = module.__eh_os_implementation__()
+    end
+
+    test "a domain service's missing function is named with the clause to add" do
+      message =
+        refused(
+          implementation("NoPrice", "domain_service: :pricing", ""),
+          "I2: EhOsContract.Next.Implementations.NoPrice does not define price/2, which " <>
+            "domain service :pricing of EhOsContract.Next.Fixtures.Billing expects. Add:",
+          2
+        )
+
+      assert message =~ "    @impl true\n    def price(service_id, minutes) do"
+    end
+
+    test "emit, reject and issue have no place in a domain service" do
+      refused(
+        implementation("EmitInService", "domain_service: :pricing", """
+          @impl true
+          def price(_service_id, _minutes), do: emit(%Reminded{visit_id: "w-1"})
+        """),
+        "I7: emit/1 belongs in an aggregate or a dcb, and this module implements domain service " <>
+          ":pricing",
+        5
       )
     end
 

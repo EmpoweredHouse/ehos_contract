@@ -203,6 +203,134 @@ defmodule EhOsContract.Store.Suite do
         end
       end
 
+      describe "#{inspect(@store)}: consistency boundaries" do
+        test "read_query returns what matches, types OR-ed and tags AND-ed, and the head it read to" do
+          [a, b, c] = [suite_name("q-a"), suite_name("q-b"), suite_name("q-c")]
+          payer = suite_name("payer")
+
+          {:ok, [a1, _a_other, b1, _c1]} =
+            suite_append(
+              [
+                suite_entry(a, %{tags: ["payer:#{payer}", "period:7"]}),
+                suite_entry(a, %{tags: ["payer:#{payer}", "period:8"]}),
+                suite_entry(b, %{tags: ["payer:#{payer}"]}),
+                suite_entry(c, %{tags: ["payer:#{payer}", "period:7"]})
+              ],
+              :none
+            )
+
+          query = [
+            %{types: [a], tags: ["payer:#{payer}", "period:7"]},
+            %{types: [b], tags: []}
+          ]
+
+          {events, head} = @store.read_query(@repo, query)
+
+          assert Enum.map(events, & &1.id) == [a1.id, b1.id]
+          assert head >= b1.position
+        end
+
+        test "an append under the head it read goes in without a stream" do
+          type = suite_name("dcb-ok")
+          query = [%{types: [type], tags: ["period:1"]}]
+          {[], head} = @store.read_query(@repo, query)
+
+          assert {:ok, [event]} =
+                   suite_append([suite_entry(type, %{tags: ["period:1"]})], {:dcb, query, head})
+
+          assert event.stream_id == nil and event.stream_version == nil
+        end
+
+        test "an event matching the query appended after the head fails the append, and nothing is written" do
+          type = suite_name("dcb-moved")
+          query = [%{types: [type], tags: ["period:1"]}]
+          {[], head} = @store.read_query(@repo, query)
+
+          {:ok, [_]} = suite_append([suite_entry(type, %{tags: ["period:1"]})], :none)
+          marker = suite_name("never-written")
+
+          assert {:error, :condition_failed} =
+                   suite_append(
+                     [suite_entry(type, %{tags: ["period:1", marker]})],
+                     {:dcb, query, head}
+                   )
+
+          assert {[_one], _} = @store.read_query(@repo, query)
+          assert {[], _} = @store.read_query(@repo, [%{types: [type], tags: [marker]}])
+        end
+
+        test "an event outside the query appended after the head does not fail it" do
+          type = suite_name("dcb-other")
+          query = [%{types: [type], tags: ["period:1"]}]
+          {[], head} = @store.read_query(@repo, query)
+
+          # The control for the test before: the same type under another tag, and
+          # another type under the same tag, are both outside the boundary.
+          {:ok, [_, _]} =
+            suite_append(
+              [
+                suite_entry(type, %{tags: ["period:2"]}),
+                suite_entry(suite_name("dcb-unrelated"), %{tags: ["period:1"]})
+              ],
+              :none
+            )
+
+          assert {:ok, [_]} =
+                   suite_append([suite_entry(type, %{tags: ["period:1"]})], {:dcb, query, head})
+        end
+
+        test "a stream on an entry, or an empty query, is refused" do
+          type = suite_name("dcb-refused")
+
+          assert_raise ArgumentError, fn ->
+            suite_append(
+              [suite_entry(type, %{stream_id: "s"})],
+              {:dcb, [%{types: [type], tags: []}], 0}
+            )
+          end
+
+          assert_raise ArgumentError, fn -> suite_append([suite_entry(type)], {:dcb, [], 0}) end
+          assert_raise ArgumentError, fn -> @store.read_query(@repo, [%{types: [], tags: []}]) end
+        end
+
+        test "two appenders that read the same boundary: exactly one goes in" do
+          type = suite_name("dcb-race")
+          query = [%{types: [type], tags: ["period:1"]}]
+          parent = self()
+
+          appender = fn ->
+            @repo.transaction(fn ->
+              {_, head} = @store.read_query(@repo, query)
+              send(parent, {:read, self()})
+              receive do: (:append -> :ok)
+
+              case @store.append(
+                     @repo,
+                     [suite_entry(type, %{tags: ["period:1"]})],
+                     {:dcb, query, head}
+                   ) do
+                {:ok, [_]} -> :appended
+                {:error, :condition_failed} -> @repo.rollback(:condition_failed)
+              end
+            end)
+          end
+
+          tasks = for _ <- 1..2, do: Task.async(appender)
+
+          readers =
+            for _ <- tasks do
+              assert_receive {:read, pid}, 5_000
+              pid
+            end
+
+          Enum.each(readers, &send(&1, :append))
+
+          results = tasks |> Enum.map(&Task.await(&1, 10_000)) |> Enum.sort()
+          assert results == [{:error, :condition_failed}, {:ok, :appended}]
+          assert {[_one], _} = @store.read_query(@repo, query)
+        end
+      end
+
       describe "#{inspect(@store)}: reading in position order" do
         test "read_all returns what follows a position, filtered by type, up to a limit" do
           [a, b] = [suite_name("read-a"), suite_name("read-b")]

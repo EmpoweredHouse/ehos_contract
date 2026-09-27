@@ -32,6 +32,11 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
 
         value :contact_ref, :contact
         external :payer_registry, "Rejestr płatnika", direction: :outbound
+
+        entity :clinic, "Przychodnia", context: :settlement, identified_by: :clinic_id do
+          field :clinic_id, :id
+          field :city, :string
+        end
       end
       """,
       "links_clinic.ex"
@@ -72,7 +77,7 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
 
       event :payment_recorded, "Zapłacono", depends_on: :payer_registry do
         field :amount, :money
-        field :clinic_id, :id
+        field :clinic_id, {:id, :clinic}
         field :amounts, {:list, :money}
         field :patient_id, :id, subject: :patient
       end
@@ -241,6 +246,82 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
                "is not a subject of #{inspect(@domain)}; did you mean :patient?"
 
       assert length(violations) == 3
+    end
+  end
+
+  describe "X3: an entity's identifier names an entity of the domain" do
+    test "{:id, entity} naming no entity of the domain is refused" do
+      body = String.replace(@body, "{:id, :clinic}", "{:id, :clinc}")
+      violations = links("LinksEntity", body)
+
+      assert assert_linked(
+               violations,
+               "X3: event :payment_recorded, field :clinic_id",
+               "links_entity.ex",
+               17
+             ) =~
+               "{:id, :clinc} names no entity of #{inspect(@domain)}; did you mean :clinic?"
+
+      assert length(violations) == 1
+    end
+
+    test "a domain service's result of a type that is no value of the domain is refused" do
+      body =
+        @body <>
+          """
+            domain_service :pricing, "Cennik" do
+              function :price, "Cena" do
+                argument :amount, :money
+                returns :mony
+              end
+            end
+          """
+
+      violations = links("LinksServiceReturns", body)
+
+      assert assert_linked(
+               violations,
+               "X3: domain service :pricing, function :price returns :mony",
+               "links_service_returns.ex",
+               56
+             ) =~
+               "which is neither a built-in type nor a value of #{inspect(@domain)}; did you mean :money?"
+
+      assert length(violations) == 1
+    end
+
+    test "a domain service returning the identifier of an entity the domain lacks is refused" do
+      body =
+        @body <>
+          """
+            domain_service :lookup, "Wyszukiwanie" do
+              function :nearest, "Najbliższa przychodnia" do
+                argument :city, :string
+                returns {:id, :clinc}
+              end
+            end
+          """
+
+      violations = links("LinksServiceEntity", body)
+
+      assert assert_linked(
+               violations,
+               "X3: domain service :lookup, function :nearest returns {:id, :clinc}",
+               "links_service_entity.ex",
+               56
+             ) =~ "which names no entity of #{inspect(@domain)}; did you mean :clinic?"
+
+      assert length(violations) == 1
+    end
+
+    test "control: the model holds it as an :id that refers to the entity, and tags it" do
+      assert links("LinksEntityRight", @body) == []
+      model = EhOsContract.Model.fetch(EhOsContract.Next.Fixtures.LinksEntityRight)
+      event = Enum.find(model.events, &(&1.name == :payment_recorded))
+      field = Enum.find(event.fields, &(&1.name == :clinic_id))
+
+      assert %{type: :id, refers_to: :clinic} = field
+      assert EhOsContract.Key.tag_field?(field)
     end
   end
 

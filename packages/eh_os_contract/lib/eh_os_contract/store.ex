@@ -18,6 +18,11 @@ defmodule EhOsContract.Store do
     The new events get `expected + 1`, `expected + 2`, …. Otherwise the append returns
     `{:error, :wrong_expected_version}` and writes nothing. The entries themselves name
     no stream: the condition does.
+  - **`{:dcb, query, after_position}` appends only when nothing matching `query` was
+    appended after `after_position`** — the head `c:read_query/2` returned with what it
+    read (v2 §10.4). Otherwise `{:error, :condition_failed}`, and nothing is written.
+    Such an append carries no stream: a consistency boundary is a query over the log,
+    not a stream of its own.
   - **`:none` appends without a condition**, and then no entry may carry a stream.
     A stream id with no check would be a version nobody verified.
   - **An event's runs are appended with it** (`t:entry/0`), so no event is in the log
@@ -43,11 +48,14 @@ defmodule EhOsContract.Store do
     that emits and then locks rows another emitter may hold. The lock is re-entrant,
     so taking it early costs nothing.
 
-  ## Not yet
+  ## A query
 
-  v2 §10.1 also has a `{:dcb, query, after}` condition and `read_query/2`. They arrive
-  with the first contract that needs a consistency boundary wider than one stream
-  (v2 plan, E9), so that the kind of condition comes with its first reader.
+  `t:query/0` is a list of items, **OR-ed**; an item matches an event of one of its
+  `types` carrying **every** one of its `tags`. An item with no tags matches every event
+  of its types. `c:read_query/2` returns what matches with the log's head, and the
+  head is what the condition checks against: every position up to it is committed,
+  since appends commit in position order, so nothing matching up to it means nothing
+  matching at all, and the check under the lock reads only what came after it.
   """
 
   alias EhOsContract.Event
@@ -66,19 +74,37 @@ defmodule EhOsContract.Store do
   """
   @type entry :: map()
 
+  @typedoc "Events of any of `types` carrying all of `tags`; the items of a query are OR-ed."
+  @type query_item :: %{types: [String.t(), ...], tags: [String.t()]}
+
+  @typedoc "What a consistency boundary reads: the items are OR-ed (v2 §10.1)."
+  @type query :: [query_item()]
+
   @typedoc "What must hold for an append to happen."
-  @type condition :: :none | {:stream, String.t(), expected_version :: non_neg_integer()}
+  @type condition ::
+          :none
+          | {:stream, String.t(), expected_version :: non_neg_integer()}
+          | {:dcb, query(), after_position :: non_neg_integer()}
+
+  @typedoc "Why an append was refused."
+  @type conflict :: :wrong_expected_version | :condition_failed
 
   @doc "Takes the append lock for the rest of the caller's transaction."
   @callback lock(repo :: module()) :: :ok
 
   @doc "Appends `entries`, in order, if `condition` holds."
   @callback append(repo :: module(), [entry()], condition()) ::
-              {:ok, [Event.t()]} | {:error, :wrong_expected_version}
+              {:ok, [Event.t()]} | {:error, conflict()}
 
   @doc "One stream's events after `after_version`, in version order."
   @callback read_stream(repo :: module(), String.t(), after_version :: non_neg_integer()) ::
               [Event.t()]
+
+  @doc """
+  The events matching `query`, in position order, and the head of the log they were
+  read up to: the position to hand to `{:dcb, query, head}`.
+  """
+  @callback read_query(repo :: module(), query()) :: {[Event.t()], head :: non_neg_integer()}
 
   @doc "Up to `limit` events after `after_position`, in position order, of the given types or all."
   @callback read_all(
@@ -100,9 +126,12 @@ defmodule EhOsContract.Store do
   def lock(repo), do: impl().lock(repo)
 
   @doc "`c:append/3` on the configured implementation."
-  @spec append(module(), [entry()], condition()) ::
-          {:ok, [Event.t()]} | {:error, :wrong_expected_version}
+  @spec append(module(), [entry()], condition()) :: {:ok, [Event.t()]} | {:error, conflict()}
   def append(repo, entries, condition), do: impl().append(repo, entries, condition)
+
+  @doc "`c:read_query/2` on the configured implementation."
+  @spec read_query(module(), query()) :: {[Event.t()], non_neg_integer()}
+  def read_query(repo, query), do: impl().read_query(repo, query)
 
   @doc "`c:read_stream/3` on the configured implementation."
   @spec read_stream(module(), String.t(), non_neg_integer()) :: [Event.t()]

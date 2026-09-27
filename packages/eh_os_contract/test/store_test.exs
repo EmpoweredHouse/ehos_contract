@@ -44,6 +44,62 @@ defmodule EhOsContract.StoreTest do
     assert %{num_rows: 1} = Task.await(around)
   end
 
+  test "a boundary's conflict check reads the positions after the head, not the history" do
+    # The check is the statement the store runs under the lock, captured as it runs
+    # and explained with its own parameters. The test table is small enough for the
+    # planner to prefer a sequential scan whatever the indexes, so sequential scans
+    # are switched off: what is asserted is that an index bounded by position can
+    # serve the check, which is what keeps it proportional to what was appended
+    # since the read rather than to the log (v2 §10.4).
+    type = "explained-#{System.unique_integer([:positive])}"
+    query = [%{types: [type], tags: ["period:1"]}]
+    parent = self()
+    handler = "store-test-explain-#{System.unique_integer([:positive])}"
+
+    :telemetry.attach(
+      handler,
+      [:eh_os_contract, :commit_repo, :query],
+      fn _event, _measurements, %{query: sql, params: params}, _ ->
+        if sql =~ "SELECT TRUE" and sql =~ ~s("position" > $1),
+          do: send(parent, {:check, sql, params})
+      end,
+      nil
+    )
+
+    try do
+      {:ok, {:ok, [_]}} =
+        Repo.transaction(fn ->
+          {_, head} = Postgres.read_query(Repo, query)
+          Postgres.append(Repo, [entry(type)], {:dcb, query, head})
+        end)
+    after
+      :telemetry.detach(handler)
+    end
+
+    assert_received {:check, sql, params}
+
+    {:ok, plan} =
+      Repo.transaction(fn ->
+        Repo.query!("SET LOCAL enable_seqscan = off")
+        Repo.query!("EXPLAIN " <> sql, params).rows |> List.flatten() |> Enum.join("\n")
+      end)
+
+    refute plan =~ "Seq Scan", plan
+    assert plan =~ ~r/Index Cond: .*"position" > /, plan
+  end
+
+  defp entry(type) do
+    %{
+      type: type,
+      contract: "StoreTest",
+      contract_version: "v",
+      tags: ["period:1"],
+      correlation_id: Ecto.UUID.generate(),
+      actor: "system",
+      occurred_at: DateTime.utc_now()
+    }
+  end
+
   test "refuses to append under a stricter isolation level than READ COMMITTED" do
     assert {:error, %ArgumentError{message: message}} =
              Repo.transaction(fn ->

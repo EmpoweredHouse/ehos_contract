@@ -31,12 +31,13 @@ if Code.ensure_loaded?(Plug.Conn) do
 
     | Outcome | Status | Body |
     | --- | --- | --- |
-    | accepted | 200 | `command_id`, `positions`, `position`, `duplicate`, and each event's `type` and `position` |
+    | accepted | 200 | `command_id`, `identity` (the unit's, the one the library gave when the command created it), `positions`, `position`, `duplicate`, and each event's `type` and `position` |
     | query answered | 200 | `rows`, or `row`, in the log's form; an erased personal field is `null` |
     | rejected on an invariant | 422 | `{"rejected": "<invariant>"}` |
-    | fields that do not fit | 422 | `{"invalid": {"<field>": "required" \\| "type"}}` |
+    | fields that do not fit | 422 | `{"invalid": {"<field>": "required" \\| "type" \\| "generated"}}` — `generated` for an identity sent with a command that creates its aggregate, which the library gives |
     | refused | 403 | `{"refused": "<reason>"}` |
     | no actor | 401 | `{"error": "no_actor"}` |
+    | a command that creates its aggregate, without an `idempotency-key` | 422 | `{"error": "idempotency_key_required"}` |
     | conflict, or a reused key | 409 | `{"error": "<reason>"}` |
     | personal data of an erased subject | 410 | `{"error": "subject_erased"}` |
     | no such capability | 404 | `{"error": "not_found"}` |
@@ -155,6 +156,7 @@ if Code.ensure_loaded?(Plug.Conn) do
         {:ok, %Receipt{} = receipt} ->
           reply(conn, 200, %{
             command_id: receipt.command_id,
+            identity: receipt.identity,
             positions: receipt.positions,
             position: receipt.position,
             duplicate: receipt.duplicate,
@@ -174,6 +176,9 @@ if Code.ensure_loaded?(Plug.Conn) do
     end
 
     defp refused(conn, {:invalid, problems}), do: reply(conn, 422, %{invalid: Map.new(problems)})
+
+    defp refused(conn, :idempotency_key_required),
+      do: reply(conn, 422, %{error: :idempotency_key_required})
 
     defp refused(conn, reason) when reason in [:conflict, :idempotency_key_reused],
       do: reply(conn, 409, %{error: reason})

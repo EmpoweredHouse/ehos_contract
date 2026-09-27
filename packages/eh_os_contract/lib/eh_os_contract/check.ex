@@ -493,7 +493,8 @@ defmodule EhOsContract.Check do
   end
 
   # What dispatch looks an implementation up for: every unit, every consumer, and
-  # every query, which `EhOsContract.Dispatcher.query/3` answers through its module.
+  # every query, which `EhOsContract.Dispatcher.query/3` answers through its module;
+  # and every domain service, which a decision calls through the contract.
   defp v2_implemented(model) do
     wanted =
       for(u <- model.units, do: {u.kind, u.name}) ++
@@ -501,7 +502,8 @@ defmodule EhOsContract.Check do
         for(e <- model.effects, do: {:effect, e.name}) ++
         for(pm <- model.process_managers, do: {:process_manager, pm.name}) ++
         for(r <- model.read_models, do: {:read_model, r.name}) ++
-        for q <- model.queries, do: {:query, q.name}
+        for(q <- model.queries, do: {:query, q.name}) ++
+        for s <- model.domain_services, do: {:domain_service, s.name}
 
     declarations = EhOsContract.Implementations.index(model.module).declarations
 

@@ -9,6 +9,11 @@ defmodule EhOsContract.Store.Postgres do
   therefore commit in the order they were handed out, and a stream's highest version
   cannot move between being read and being written.
 
+  A `{:dcb, query, head}` append checks, under the lock, whether anything matching the
+  query was appended after `head`. `read_query/2` reads the head first and the matching
+  events up to it, so the check is a range over the positions appended since the read,
+  never a scan of history (v2 §10.4).
+
   The isolation level must be READ COMMITTED. Each statement after the lock then sees
   whatever the previous lock holder committed. Under REPEATABLE READ the snapshot is
   older than the lock, and the version check would read a stale stream. This module
@@ -48,7 +53,7 @@ defmodule EhOsContract.Store.Postgres do
 
   @impl true
   @spec append(module(), [EhOsContract.Store.entry()], EhOsContract.Store.condition()) ::
-          {:ok, [Event.t()]} | {:error, :wrong_expected_version}
+          {:ok, [Event.t()]} | {:error, EhOsContract.Store.conflict()}
   def append(_repo, [], _condition), do: {:ok, []}
 
   def append(repo, entries, condition) when is_list(entries) do
@@ -104,6 +109,25 @@ defmodule EhOsContract.Store.Postgres do
   end
 
   @impl true
+  @spec read_query(module(), EhOsContract.Store.query()) :: {[Event.t()], non_neg_integer()}
+  def read_query(repo, query) do
+    matching = matching!(query)
+
+    # The head first. Every position up to it is committed, since appends commit in
+    # position order, so bounding the read by it reads exactly what the condition
+    # will be checked against: an event committed after the head is found under the
+    # lock instead.
+    head = repo.one(from(e in Event, select: coalesce(max(e.position), 0)))
+
+    events =
+      repo.all(
+        from(e in Event, where: e.position <= ^head, where: ^matching, order_by: e.position)
+      )
+
+    {events, head}
+  end
+
+  @impl true
   @spec read_all(module(), non_neg_integer(), pos_integer(), [String.t()] | :all) :: [Event.t()]
   def read_all(repo, after_position, limit, types) do
     query =
@@ -114,7 +138,7 @@ defmodule EhOsContract.Store.Postgres do
   end
 
   @spec apply_condition(module(), [map()], EhOsContract.Store.condition()) ::
-          {:ok, [map()]} | {:error, :wrong_expected_version}
+          {:ok, [map()]} | {:error, EhOsContract.Store.conflict()}
   defp apply_condition(_repo, rows, :none) do
     if Enum.any?(rows, &Map.get(&1, :stream_id)) do
       raise ArgumentError,
@@ -158,6 +182,52 @@ defmodule EhOsContract.Store.Postgres do
     else
       {:error, :wrong_expected_version}
     end
+  end
+
+  defp apply_condition(repo, rows, {:dcb, query, after_position})
+       when is_list(query) and is_integer(after_position) and after_position >= 0 do
+    if Enum.any?(rows, &(Map.get(&1, :stream_id) || Map.get(&1, :stream_version))) do
+      raise ArgumentError,
+            "an entry appended under {:dcb, _, _} carries a stream_id or stream_version. A " <>
+              "consistency boundary is a query over the log, not a stream, so leave both out"
+    end
+
+    matching = matching!(query)
+
+    # Under the lock, so nothing can be appended between this check and the insert.
+    moved? =
+      repo.exists?(from(e in Event, where: e.position > ^after_position, where: ^matching))
+
+    if moved?, do: {:error, :condition_failed}, else: {:ok, rows}
+  end
+
+  # A query's items OR-ed, each an event of one of its types carrying all its tags.
+  @spec matching!(EhOsContract.Store.query()) :: Ecto.Query.dynamic_expr()
+  defp matching!([_ | _] = query) do
+    query
+    |> Enum.map(&item!/1)
+    |> Enum.reduce(fn item, acc -> dynamic([e], ^acc or ^item) end)
+  end
+
+  defp matching!(query) do
+    raise ArgumentError,
+          "a query is a non-empty list of %{types: [...], tags: [...]}, and got #{inspect(query)}. " <>
+            "An empty one matches nothing, so a condition on it could never fail"
+  end
+
+  defp item!(%{types: [_ | _] = types, tags: tags} = item)
+       when map_size(item) == 2 and is_list(tags) do
+    if Enum.all?(types ++ tags, &is_binary/1) do
+      dynamic([e], e.type in ^types and fragment("? @> ?::text[]", e.tags, ^tags))
+    else
+      item!(nil)
+    end
+  end
+
+  defp item!(item) do
+    raise ArgumentError,
+          "a query item is %{types: [type, ...], tags: [tag]}: at least one type, any number of " <>
+            "tags (none matches every event of the types), all strings; got #{inspect(item)}"
   end
 
   # An entry becomes the row `insert_all/3` needs: only the writable columns, and

@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 27 września (po E8, przed E9)
+## Handoff — stan na 27 września (po EM1–EM3, przed EL)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -17,14 +17,22 @@ pivot do v2** (DSL na Sparku, model domeny w stylu ESDM, event sourcing na włas
 [#21](https://github.com/EmpoweredHouse/eh-os-contract/pull/21) — E8a, szyfrowanie pól osobowych;
 [#22](https://github.com/EmpoweredHouse/eh-os-contract/pull/22) — E8b, `erase/3` i `forget/2`;
 [#23](https://github.com/EmpoweredHouse/eh-os-contract/pull/23) — poprawki po E8 (wynik `erase/3`, błędy efektów
-w Obanie bez wartości). **Następny w planie: E9 (pozostałe kontrakty sandboxa)**; E10–E12 niezaczęte. Jedynym
+w Obanie bez wartości). **Następny w planie (zmienione 27 września, po E8): luki ESDM (EM), ostrzeżenia i
+narzędzia (EL), grafy (EG), dopiero potem kontrakty sandboxa od nowa (E9)** — „Po E8 — kolejność zmieniona” w
+„Etapach”; E10–E12 niezaczęte. Jedynym
 kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`; `Taxvision.Contracts.AccountingMonth`,
 `Rehmed.Contracts.ClinicalVisit` i `Rehmed.Contracts.PayerSettlement` są v1, a handlery v1 żyją w
 `sandbox/lib/taxvision/{accounting_month,notifications,tasks}.ex`.
 
 ### Stan repozytorium
 
-- `main` = `origin/main` = commit tego handoffu, na `f210b8b` (merge PR #23). Użytkownik merguje PR-y jako merge,
+- **EM1–EM3 zbudowane i przejrzane, niewypchnięte**, na trzech lokalnych gałęziach, każda od poprzedniej:
+  `dsl-v2/e9-em1-dcb` (runtime DCB), `dsl-v2/e9-em2-entities` (encje, serwisy domenowe),
+  `dsl-v2/e9-em3-runtime` (pusty wynik serwisu, timery kalendarzowe, identyfikator nadawany przez bibliotekę).
+  Pierwsze commity EM1 to zapis decyzji w tym pliku. Każda gałąź ma notatkę przeglądu w `refs/notes/review` na
+  swoim ostatnim commicie (EM3 — po zapisie tego stanu). Opis w „Po E8 — kolejność zmieniona” i „EM1/EM2/EM3 — co
+  wyszło”.
+- `main` = `origin/main` = `bce10fa` (handoff po E8), na `f210b8b` (merge PR #23). Użytkownik merguje PR-y jako merge,
   więc historia `main` ma merge commity; handoff idzie tak, jak zdecyduje użytkownik (poprzedni poszedł prosto na
   `main`).
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`) i nie ma
@@ -37,6 +45,8 @@ kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`; `Taxvision
 
 ### Co zostało — i czyje to jest
 
+- **Od 27 września przed E9 idą EM, EL i EG** („Po E8 — kolejność zmieniona”), a kontrakty sandboxa powstają od
+  nowa z materiału; akapit niżej opisuje E9 sprzed tej zmiany.
 - **E9 — asystenta, po pytaniach do użytkownika.** Opis i odbiór w „Etapach” (TaxVision, ClinicalVisit,
   PayerSettlement, D6 dla 15 zdarzeń bez komendy, usuwanie kontraktów i handlerów v1). Jak przed E7, EA i E8:
   **przed budową zapytać o podział na PR-y i o kształty widoczne dla hosta**, a każdą decyzję zapisać w
@@ -102,6 +112,10 @@ gołe `git stash` (stos jest wspólny dla worktree).
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 27 września, na `c17bb50`** (koniec EM3): brama z `sandbox/` → **EXIT=0** — sandbox 54 testy,
+  `check` 0 / 5 / 19; silnik 1040, `check` 0 / 19 / 17 (plus cztery ostrzeżenia o `accountable` procesów fikstur
+  `BoundaryRig`, jak w `DispatchRig`); web 32; auth 51. CI na gałęziach EM — nie było (niewypchnięte).
+
 - **Lokalnie, 27 września**, brama z `sandbox/` → **EXIT=0** na `f210b8b` (merge PR #23, kod tego handoffu):
   sandbox 54 testy, `eh_os_contract.check` 0 / 5 / 19; silnik 972, `check` 0 / 15 / 17; web 32; auth 51.
 - **CI**: PR #23 — przebieg `36316976123` na `c546e11`, job `check` `success`; `main` po merge'u E8
@@ -117,7 +131,8 @@ gołe `git stash` (stos jest wspólny dla worktree).
   wynik — „kontrakt, którego nie da się napisać, jest lepszym wynikiem”, `CLAUDE.md`).
 - **E9: które pola kontraktów Rehmedu są osobowe** (`ClinicalVisit` to dane pacjentów) i czy domena Rehmedu
   deklaruje `subject :patient` — materiał warsztatowy, nie wyobraźnia.
-- **`record/3` z credentialem** — nazwa uprawnienia, E9.
+- ~~**`record/3` z credentialem** — nazwa uprawnienia, E9.~~ Rozstrzygnięte 27 września: `<domena>.<zdarzenie>`
+  („Po E8 — kolejność zmieniona”).
 - **H177** z materiału Rehmedu przeczy DEC-18, na którym stoi `visit_handed_over`; czeka na klienta.
 - **Runner dla read modelu `:in_transaction`** odpytuje co sekundę, choć pracuje tylko przy przebudowie — wraca
   przy pomiarze.
@@ -546,6 +561,252 @@ dopiero tutaj — inbox zamienia przychodzące wiadomości w komendy, czyli też
 zgadywany z jednego przypadku; (b) **wcale** — każde przyszłe wejście (LiveView, job z credentialem) musiałoby samo
 pamiętać o kolejności „najpierw uprawnienie, potem pola”. Jeśli drugie drzwi pojawią się przed E12, wejście wchodzi
 razem z nimi.
+
+### Po E8 — kolejność zmieniona: najpierw luki ESDM, kontrakty na końcu (27 września)
+
+Przed budową E9 asystent zapytał o podział na PR-y i o kształt portów. Użytkownik odwrócił kolejność i rozstrzygnął
+zakres. Decyzje razem z odrzuconymi opcjami:
+
+- **Celem jest funkcjonalność ESDM, a kontrakty sandboxa są danymi testowymi.** „Nie zależy mi na tym, żeby naprawić
+  kontrakty TaxVision/Rehmed, mogą być wygenerowane od nowa.” Zasada ze „Strategii” „porty tłumaczą, nie naprawiają”
+  **przestaje obowiązywać dla kontraktów sandboxa**: powstają od nowa z materiału (konteksty, agregaty, polityki,
+  read modele tak, jak nazywa je materiał), a v1 nie jest ani wzorcem, ani listą kontrolną. Zostają reguły z
+  `CLAUDE.md`, w tym nazwy zdarzeń z warsztatu. Dziesięć usterek z dopisku 25 września przestaje być pytaniami,
+  które port musi nieść; kontrakt od nowa rozstrzyga je materiałem albo sam. *Odrzucone:* (a) tłumaczenie 1:1,
+  jeden kontrakt v1 → jeden v2 (mniej pracy, ale wychodzi v1 w nowej składni, bez kontekstów i z publikacją przez
+  handlery); (b) model po ESDM-owemu z v1 jako listą kontrolną (propozycja asystenta; zbędna, skoro kontrakty są
+  danymi testowymi).
+- **Kolejność: analiza pokrycia ESDM → uzupełnienie luk → grafy → kontrakty.** „Lepiej się zastanowić, czy mamy
+  pokrytą funkcjonalność ESDM na ten moment, przeanalizuj, czego nie ma, uzupełnijmy grafy, a na końcu zajmijmy się
+  istniejącymi kontraktami.” Dawne E9 przesuwa się za nowe etapy EM i EG (niżej). *Odrzucone:* E9 teraz, a luki i
+  grafy w E10 (tak stał plan: kontrakty sandboxa powstałyby na DSL-u, któremu brakuje rodzajów, i trzeba by je
+  przepisywać drugi raz).
+- **Luki modelu — wszystkie cztery grupy** (wybór użytkownika z listy): runtime DCB; `entity` i `domain_service`;
+  `constraints` i inwarianty value objectu; drobne pola ESDM (tożsamość generowana, timery kalendarzowe, relacja do
+  systemu zewnętrznego, tłumaczenie z definicją i `avoid`, nazwana subdomena). *Odrzucone:* nic z listy.
+- **Grafy — wszystkie cztery** (wybór użytkownika z listy): mapa kontekstów (domena → subdomeny → konteksty,
+  relacje, systemy zewnętrzne); widok systemu (kontrakty i krawędzie `consumes`, z nakładką z logu); pełny graf
+  kontraktu (dzisiejszy graf kroków plus read modele, query, aktorzy i systemy zewnętrzne); widok jednostki (stan,
+  komendy, zdarzenia, inwarianty, scenariusze). *Odrzucone:* nic z listy.
+- **Uprawnienie do `record/3` z credentialem: `<domena>.<zdarzenie>`** (np. `rehmed.visit_completed`), rodzaj
+  `:record` w `Model.capabilities/1`, ta sama reguła unikalności co komendy i query; manifest EHOS-a pozna ten rodzaj
+  w E10. Zamyka otwarte pytanie z handoffu. *Odrzucone:* `<domena>.record.<zdarzenie>` (od razu widać nagranie, ale
+  nowy wzorzec nazwy dla EHOS-a); obserwacje ludzi jako komendy (nazwy komend, których materiał nie ma).
+- **Reguła „miesiąc otwiera księgowa tej firmy”** — użytkownik bez preferencji, więc domyślna propozycja asystenta:
+  **`scope` dla komend**, jak dla query (D10); zamyka pytanie z v2 §19. Wchodzi razem z kontraktem TaxVision.
+  *Odrzucone:* przypisanie jako fakt sprawdzany w DCB (dispatch musiałby podawać deciderowi aktora — nowy kształt
+  API); reguła poza kontraktem, w kodzie hosta przed dispatchem (wypada z kontraktu i scenariuszy).
+
+**Analiza pokrycia ESDM (27 września).** Źródło: `thenativeweb/esdm` na `cf17780` (22 września), wydanie 0.15.0 z
+17 września; schematy `core`, `given-when-then` i `domain-storytelling` bez zmian od wydania. ESDM ma 18 rodzajów w
+rdzeniu, dwa rozszerzenia (`feature`, `domain-story`) i 73 reguły (47 rdzeń, 17 scenariusze, 9 domain storytelling).
+
+| ESDM | U nas | Luka |
+| --- | --- | --- |
+| `domain`, `bounded-context`, słownik | ✅ | tłumaczenie ma tylko słowo; w ESDM także definicję i `avoid` |
+| `subdomain` | ⚠️ typ na kontekście | nazwana subdomena grupująca konteksty |
+| `context-mapping` (8 typów) | ✅ `relation` | końcem relacji asymetrycznej może być system zewnętrzny; `terms` to pary słów z obu stron |
+| `aggregate` | ✅ | tożsamość generowana (`source: generated`) i stała (`static`) |
+| `dynamic-consistency-boundary` | ⚠️ DSL i reguły | runtime: `{:dcb, …}` w magazynie, `read_query`, dispatch |
+| `command` | ✅ | `constraints` — nazwane reguły prozą |
+| `event-handler` | ✅ `effect` | opis skutku ubocznego prozą |
+| `policy`, `event` | ✅ | — |
+| `process-manager` | ✅ | timery kalendarzowe (miesiące, lata); `endsWhen` w ESDM to warunek prozą |
+| `read-model`, `query` | ✅ | reguła projekcji i `constraints` query prozą |
+| `value-object` | ✅ `value` | inwarianty |
+| `actor`, `external-system` | ✅ | pola opisowe (`responsibilities`, `category`, `capabilities`) |
+| `entity` | ❌ odłożone w v2 §4.2 | cały rodzaj |
+| `domain-service` | ❌ | cały rodzaj |
+| `feature` + scenariusze | ✅ agregat, DCB, process manager, query | grupowanie w `feature` (kosmetyka, poza zakresem) |
+| `domain-story` | ❌ | poza zakresem: format odkrywania, sprzed modelu |
+
+Reguły strukturalne i scenariuszy ESDM mamy prawie wszystkie, i jako błędy kompilacji (tam, gdzie ESDM ostrzega, np.
+`uncovered-invariant`, u nas jest błąd S8). Brakuje około jedenastu **ostrzeżeń kompletności** (L5 z v2 §6, planowane
+na E10): `event-without-consumer`, `read-model-without-query`, `aggregate-without-commands` i `-events`,
+`bounded-context-without-content`, `orphan-actor`, `orphan-external-system`, `orphan-context-mapping`,
+`cross-bounded-context-reference-without-mapping`, `event-name-with-aggregate-prefix`,
+`process-manager-without-event-reactions`. ESDM ma też stałe identyfikatory reguł, stronę dokumentacji na każdą i
+wyjście JSON; u nas numery N1…X9 żyją tylko w ADR. Narzędzia ESDM poza `lint`: `view` (drzewo domena → kontekst →
+jednostka), `glossary` (słownik per kontekst i język), `documentation` (strona na element, z linkami) — u nas żadnego.
+Diagramów oficjalne narzędzie nie rysuje; zewnętrzny ESDM Visualizer rysuje tablicę węzłów. Czego ESDM nie ma, a my
+mamy: wykonywanie scenariuszy, obietnice, przebiegi i zgodność, crypto-shredding, wersję schematu zdarzenia.
+
+**Etapy po tej decyzji** (propozycja asystenta; podział na PR-y i kształty widoczne dla hosta — pytania do
+użytkownika przed budową):
+- **EM — luki modelu ESDM.** Każdy rodzaj razem ze swoim czytelnikiem (reguła ze „Strategii”).
+- **EL — ostrzeżenia kompletności i narzędzia** (wyciągnięte z E10): reguły L5 ze stałymi identyfikatorami, `view`,
+  `glossary`, strony dokumentacji.
+- **EG — grafy**, cztery z listy wyżej, w tasku `mix eh_os_contract.graph` i na `/graph`.
+- **E9 — kontrakty sandboxa od nowa**, pokrywające każdy rodzaj; odbiór E9 zostaje.
+- Dalej reszta E10 (eksport modelu, AsyncAPI, OpenAPI, manifest), E11, E12.
+
+Rozstrzygnięte przez użytkownika 27 września przed budową EM:
+- **Trzy PR-y, każdy na gałęzi od poprzedniego:** **EM1** — runtime DCB (warunek w magazynie, `read_query`,
+  dispatch, scenariusze DCB wykonywane); **EM2** — `entity` i `domain_service` z czytelnikami; **EM3** —
+  `constraints`, inwarianty value objectu i drobne pola ESDM. **Po skończonej implementacji każdej części zawsze
+  przegląd** (`pre-pr-review`), zanim ruszy następna. *Odrzucone:* dwa PR-y (drugi diff za duży); cztery PR-y
+  (`entity` i `domain_service` osobno — więcej scalania bez zysku na czytelności).
+- **`domain_service` w kontrakcie, z implementacją.** Kontrakt generuje behaviour z `@callback` i typami,
+  implementacja `use C, domain_service: :nazwa`, L4 wymaga każdej funkcji; decyzje wołają ją jak zwykły moduł;
+  reguły prozą czytają dokumentacja i grafy. *Odrzucone:* sama deklaracja w domenie, bez wiązania z kodem (nic by
+  nie sprawdzało, że funkcja istnieje — wbrew regule „rodzaj wchodzi razem z czytelnikiem”).
+- **`entity` w domenie, z kontekstem właścicielem** (`context:`), obok `value` — decyzja po wyjaśnieniu na przykładach
+  (okres TaxVision, usługa z cennika Rehmedu). Każdy kontrakt aplikacji może nazwać pole encją, więc model i graf
+  pokazują, że `period_id` Zadań, Miesiąca i Powiadomień to ten sam okres; własność opisuje `context:`, jak
+  `scope: bounded-context` w ESDM. Wierszy encji biblioteka nie przechowuje — trzyma je aplikacja. *Odrzucone:*
+  `entity` w kontrakcie (inne kontrakty zostają z gołym `:id` i powiązanie znika z modelu).
+- **Tożsamość generowana nadawana przez bibliotekę.** Komenda oznaczona jako tworząca nie niesie identyfikatora;
+  dispatch go nadaje i zwraca w odpowiedzi, a ponowienie z tym samym kluczem idempotencji zwraca ten sam. Przykład z
+  materiału: „Umów wizytę” (C-09 → E-14). *Odrzucone:* (b) nadaje aplikacja, a kontrakt tylko to zapisuje (deklaracja,
+  której nic nie wymusza; przy ponowieniu z nowym identyfikatorem powstają dwa obiekty); (c) pominąć, bo żaden
+  planowany kontrakt sandboxa tego nie potrzebuje (użytkownik wybrał pełne pokrycie ESDM).
+
+### EM1 — co wyszło (27 września)
+
+Na `dsl-v2/e9-em1-dcb` (od `main` z handoffem), niewypchnięte. Trzy commity budowy i trzy z przeglądu:
+magazyn (`4f45b2a` — `read_query/2` i warunek `{:dcb, zapytanie, głowa}` w behaviourze, w Postgresie i w suicie),
+tagi (`c3456a2`), dispatch komendy DCB i `record/3` zdarzenia DCB (`c6bf91b`), potem `3efffa7`, `36409b9`,
+`24f672f`. Silnik 972 → 995 testów; `check` silnika 15 → 18 ostrzeżeń (trzy procesy nowej fikstury bez
+`accountable`, jak w `DispatchRig`), sandbox bez zmian (0 / 5 / 19, 54 testy).
+
+Mechanika, rozstrzygnięta przez asystenta i wyjaśniona użytkownikowi przed budową:
+- **Tagami są wszystkie wymagane, nieosobowe pola `:id` zdarzenia**, nie tylko klucz jednostki: granica
+  PayerSettlement szuka zdarzeń wizyty po płatniku i okresie, a klucz wizyty to `visit_id`. Tagowanie tylko pól,
+  po których dziś ktoś szuka, zostawiłoby bez tagów zdarzenia sprzed nowej granicy. Nowa część A4: `match:`
+  wskazuje tylko takie pola (X6 wymagał tego już od zdarzeń kontraktu siostrzanego). Jeden predykat,
+  `EhOsContract.Key.tag_field?/1`, czytają i reguła, i dopis.
+- **Granica czyta swoje własne zdarzenia pod całą tożsamością** oraz każde zdarzenie z `consults`; `consults`
+  samym `where:` czyta wszystkie zdarzenia typu. Zdarzenia granicy nie mają strumienia.
+- **Konflikt granicy ponawia się jak konflikt strumienia** (trzy próby), a w transakcji wywołującego wraca jako
+  `{:error, :conflict}`.
+
+Odbiór z opisu E9, ta jego część, która dotyczy DCB, spełniony na wymyślonej fiksturze `BoundaryRig` (zapisy na
+kurs z limitem miejsc): **w wyścigu niezmiennik nigdy nie pęka** — dziesięciu rejestratorów na trzy miejsca daje
+3 przyjęte i 7 odmów na prawdziwych commitach, a po zamianie warunku na `:none` test zapisuje dziesięciu;
+**sprawdzenie konfliktu czyta tylko pozycje po głowie** — test Postgresa wyjaśnia przechwycone zapytanie i
+znajduje indeks ograniczony pozycją (`(type, position)`; przy wyłączonych skanach sekwencyjnych, bo mała tabela
+testowa ich nie potrzebuje). Scenariusze granicy (cztery) przechodzą przez `ScenarioCase`.
+
+**Przegląd przed kolejną częścią** (dwa przeglądy równolegle na `origin/main..HEAD`; prośba użytkownika — po
+każdej skończonej implementacji):
+- **Poprawione, z testem i próbą odwrotną:** `given_types` w `_commands` rosło z historią (jeden wpis na każde
+  przeczytane zdarzenie; granica czyta całą historię typu) → każdy typ raz (`3efffa7`); dekoder wybierany po
+  zapisanej w wierszu nazwie kontraktu psuł dispatch po przemianowaniu modułu, także zwykłych agregatów → po
+  typie zdarzenia (`36409b9`).
+- **Poprawione bez nowego testu** (`24f672f`): wspólny predykat tagu zamiast dwóch kopii; komunikat odmowy
+  pozycji zapytania; ograniczone ponowienia w teście na commitach; notka w ADR, że identyfikatory podmiotów są
+  teraz w indeksie tagów, którego usunięcie nie dotyka — więc naturalny identyfikator (PESEL) nie może być `:id`.
+- **Pominięte, do pomiaru** (obie recenzje): odczyt granicy nie ma limitu i odszyfrowuje każdy podmiot w
+  zbiorze przy każdej próbie; `consults` samym `where:` konfliktuje z każdym nowym zdarzeniem typu, a trzy próby
+  z jitterem 1–10 ms nie rozkładają ponowień przy długim odczycie, więc przy dużym ruchu na jedną granicę
+  większość wywołań dostanie `:conflict`; więcej wpisów GIN przy każdym dopisie pod globalną blokadą;
+  `record/3` na granicy czyta cały jej wynik, choć potrzebuje tylko głowy; `Model.declaring` liczone przy każdym
+  dispatchu. Wraca to przy pomiarze albo przy pierwszej granicy, która tego potrzebuje (snapshoty granicy,
+  jitter skalowany czasem odczytu, `fastupdate` indeksu).
+- **Bez zmiany:** plan zapytania pod blokadą (test już wyjaśnia faktycznie wykonane zapytanie; ogólny plan
+  przygotowanego zapytania mógłby wybrać inny indeks, co wraca przy pomiarze); zdarzenia dopisane przed tą
+  wersją mają węższe tagi i nigdy ich nie dostaną — dopuszczalne, bo zgodności wstecz nie ma, a kontrakty
+  sandboxa powstają od nowa, **ale to warunek dla każdej przyszłej bazy z historią**.
+- Weryfikacja poza testami: brak — żaden kontrakt sandboxa nie ma jeszcze granicy, więc nie ma czego oglądać w
+  `MIX_ENV=dev`.
+
+Rozstrzygnięte przez użytkownika 27 września przed budową EM2:
+- **Pole wskazujące encję: `field :period_id, {:id, :period}`.** W logu to dalej identyfikator (tag jak każde
+  `:id`), a model wie, że wskazuje okres. *Odrzucone:* nazwa encji jako typ, `field :period_id, :period` (krócej,
+  ale `field :period, :period` czyta się, jakby zdarzenie niosło cały okres).
+- **`domain_service` pilnowany także w działaniu.** Kontrakt generuje moduł, przez który się woła
+  (`C.DomainServices.RegistryComparison.differences(ours, theirs)`); sprawdza on argumenty i wynik względem
+  deklaracji i rzuca przy niezgodności, jak dispatch przy niezadeklarowanym zdarzeniu. *Odrzucone:* samo
+  sprawdzenie przy kompilacji, a decyzje wołają implementację wprost (deklaracja typów byłaby tylko opisem).
+
+### EM2 — co wyszło (27 września)
+
+Na `dsl-v2/e9-em2-entities` (od EM1), niewypchnięte. Dwa commity budowy — `e1f41d7` (encje), `febdd61` (serwisy
+domenowe) — i pięć z przeglądu (`e414c4f`..`aa415a1`). Silnik 995 → 1021 testów; `check` bez zmian (sandbox
+0 / 5 / 19, silnik 0 / 18 / 17).
+
+Mechanika, rozstrzygnięta przez asystenta:
+- **`{:id, encja}` normalizowane w budowie modelu** do `type: :id` z `refers_to:` — klucz tylko takich pól, więc
+  żaden digest się nie rusza, a Codec, tagi i typespeki widzą zwykłe `:id`. Reguły L2 czytają deklaracje przed
+  budową, więc tam `{:id, _}` obsługuje jeden strażnik, `Domain.Rules.is_id/1`.
+- **Nowy rodzaj nie rusza wersji tego, kto go nie deklaruje**: pusta kolekcja `entities` w domenie i
+  `domain_services` w kontrakcie nie wchodzi do skrótu. Sprawdzone na prawdziwych danych — `VisitSettlement` liczy
+  się dalej na `2ae1d0074cbc`, jak zapisała baza dev 26 września — i przypięte testem na `DispatchRig.Ledger`.
+- **Moduł `C.DomainServices.<Nazwa>` jest naraz behaviourem implementacji i modułem wywołań**; rozwiązanie
+  implementacji i wartości domeny trzymane w `:persistent_term` na serwis, jak indeks implementacji.
+- Reguły: D6 (encja), X3 (odwołania do encji, typ wyniku), N1/N2 (nazwy funkcji; `behaviour_info/1`,
+  `module_info/0,1`, `__info__/1` zajęte), F1/F2 (argumenty i wynik), I2 z podpowiedzią nazw argumentów, I7.
+
+**Przegląd** (dwa równolegle na `dsl-v2/e9-em1-dcb..HEAD`):
+- **Poprawione, z testem i próbą odwrotną:** X3 nie sprawdzał `returns {:id, …}`, a D6 aliasu
+  `value :ref, {:id, :nope}` (`e414c4f`); F5 odrzucał identyfikator encji jako identyfikator podmiotu (`d0de5c2`);
+  pola encji bez sprawdzenia powtórzeń, `subject:` i danych osobowych wewnątrz wartości (`4b354c7`); N2 odrzucał
+  funkcję `evolve` z powodem jednostki i przepuszczał `behaviour_info/1` i spółkę (`5e78363`); `call/4` przy złej
+  liczbie argumentów albo nieznanym serwisie padał mylącym błędem (`aa415a1`).
+- **Poprawione bez testu zachowania** (`aa415a1`): koszt każdego wywołania (indeks implementacji pytał kontroler
+  aplikacji i kopiował listy modułów), parowanie specyfikacji po nazwie zamiast po pozycji, eksport
+  `EhOsContract.DomainService` w `boundary`.
+- **Do użytkownika:** funkcja serwisu nie może zwrócić `nil` (np. wyszukiwanie, które nic nie znajduje) — to
+  kształt DSL-a, np. `returns :integer, optional: true`.
+- **Bez zmiany:** naturalny identyfikator jako identyfikator encji jest tak samo jawny jak zwykłe `:id` — ADR już
+  mówi, że PESEL nigdy nie jest `:id`.
+- **Luka spoza EM2:** słownik DSL-a domeny nie ma testu przypinającego, jaki ma kontrakt
+  (`contract_vocabulary_test`), więc `entity` weszło bez zmiany żadnego przypięcia.
+
+Rozstrzygnięte przez użytkownika 27 września po EM2, przed EM3:
+- **Wynik serwisu może być pusty, jeśli deklaracja tak mówi:** `returns {:id, :clinic}, optional: true`; bez tego
+  `nil` dalej jest błędem. *Odrzucone:* zostawić (funkcja zawsze coś zwraca, a „nic” trzeba wyrazić innym typem).
+- **EM3 obejmuje tylko to, co się wykonuje:** identyfikator nadawany przez bibliotekę, timery kalendarzowe i pusty
+  wynik serwisu. **Pola opisowe — `constraints`, inwarianty wartości, tłumaczenia z definicją, nazwana subdomena,
+  relacja do systemu zewnętrznego — wchodzą w EL i EG** razem ze stroną albo grafem, który je pokazuje (zasada
+  „rodzaj wchodzi razem ze swoim czytelnikiem”). *Odrzucone:* wszystko w EM3 (pełne pokrycie ESDM etap wcześniej,
+  ale deklaracje bez czytelnika przez jeden etap).
+- **Timer „za miesiąc” liczony kalendarzowo:** `wait: {1, :month}` to ta sama data w następnym miesiącu (31 stycznia
+  → koniec lutego), jak w ESDM; tylko w timerach, obietnice i `deadline` zostają w stałych jednostkach, bo raport
+  liczy z nich czas. *Odrzucone:* bez miesięcy (`{30, :day}` — rozjazd z ESDM).
+- **Zapis identyfikatora nadawanego przez bibliotekę:** `identity :booking_id, generated: :uuid` na agregacie i
+  `creates: true` na komendzie tworzącej — tylko ona przychodzi bez identyfikatora, a dispatch zwraca nadany w
+  `receipt.identity`. *Odrzucone:* samo `generated:`, gdzie każda komenda bez identyfikatora tworzy obiekt
+  (zapomniany identyfikator w zwykłej komendzie po cichu tworzyłby nowy obiekt zamiast błędu).
+
+### EM3 — co wyszło (27 września)
+
+Na `dsl-v2/e9-em3-runtime` (od EM2), niewypchnięte. Budowa: pusty wynik serwisu (`b922c27`), poprawka biblioteki
+znaleziona po drodze (`8ef1897` — process manager, który niczego nie wydaje, generował moduł bez callbacków, więc
+`@behaviour` w implementacji ostrzegał i pod `--warnings-as-errors` host nie mógł jej skompilować), timery
+kalendarzowe (`c2ad6f9`), identyfikator nadawany przez bibliotekę (`4d6ad1f`); z przeglądu `6ac44c5`..`c17bb50`.
+Silnik 1021 → 1040 testów; `check` silnika 18 → 19 ostrzeżeń (proces `waitlist` fikstury bez `accountable`),
+sandbox bez zmian (0 / 5 / 19, 54 testy).
+
+Mechanika, rozstrzygnięta przez asystenta:
+- **`returns` jest własną deklaracją** (`returns :typ, optional: true`), bo opcja Sparka przyjmuje jeden argument;
+  funkcja bez `returns` się nie kompiluje (F2).
+- **`identity :x, generated: :uuid` to makro biblioteki obok opcji Sparka**, rozwijane do `identity` i `generated`;
+  eksportowane do formattera ręcznie (`own_locals_without_parens`), bo `mix spark.formatter` go nie widzi.
+- **Nowe klucze nie wchodzą do modelu, kto ich nie używa** (`creates` tylko przy `true`, `generated` tylko ustawione),
+  więc żadna wersja kontraktu się nie rusza.
+- **Kalendarz timerów jest w UTC**, jak log; firma, która potrzebuje miesiąca swojej strefy, ustawia timer `at:`.
+- **UUIDv7**, nie v4: lepsza lokalność w indeksie `stream_id`; zdradza czas utworzenia — zapisane w ADR.
+
+**Przegląd** (dwa równolegle na `dsl-v2/e9-em2-entities..HEAD`):
+- **Poprawione, z testem i próbą odwrotną:** duplikat odpowiedzi komendy, która nie zdecydowała zdarzeń, zwracał
+  świeżo wygenerowany identyfikator (`6ac44c5`); A6 radził na DCB coś, co się nie kompiluje, a literówka w
+  `identity :x, generate: :uuid` dawała `KeyError` z wnętrza biblioteki (`808f018`).
+- **Poprawione bez testu** (`3b93c63`): `:generated` w dokumentacji dispatchera i Pluga, nieaktualny komunikat
+  `Duration`, jedna lista jednostek kalendarzowych zamiast trzech, UTC i UUIDv7 opisane, nawiasy w fiksturze.
+- **Rozstrzygnięte przez użytkownika** (kształty widoczne dla hosta), każde z testem:
+  - **odpowiedź HTTP niesie `identity`** przy każdej komendzie (`e1ac877`); *odrzucone:* tylko przy komendzie
+    tworzącej (kształt odpowiedzi zależny od komendy);
+  - **komenda tworząca wymaga klucza idempotencji**, `{:error, :idempotency_key_required}`, 422 przez HTTP
+    (`93205d7`); klucze reakcji są wyliczane, więc ich to nie dotyczy; *odrzucone:* klucz opcjonalny i opis
+    (ponowienie po timeoucie tworzyłoby drugi obiekt, o którym host się nie dowie);
+  - **`record/3` na agregacie z nadawanym identyfikatorem tylko do istniejącego**, `{:error, :not_created}`
+    (`c17bb50`); *odrzucone:* zostawić i opisać (host mógłby założyć obiekt z wymyślonym identyfikatorem).
+- **Pominięte:** ta sama jednostka wyszukiwana trzy razy na dispatch (koszt pomijalny).
+
+**EM zamknięte**: trzy gałęzie EM1 → EM2 → EM3, każda od poprzedniej, gotowe na trzy PR-y. Push i PR — na
+polecenie użytkownika. Dalej EL (ostrzeżenia kompletności, `view`, słownik, strony dokumentacji i pola opisowe
+odłożone z EM3), EG (cztery grafy), potem kontrakty sandboxa od nowa (E9).
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 

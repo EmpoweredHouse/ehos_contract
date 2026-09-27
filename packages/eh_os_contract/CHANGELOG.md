@@ -67,9 +67,55 @@ What changes otherwise is what a host has to do.
   starts one runner per subscription; dispatch wakes them through Oban's notifier after each commit it owns.
   **A host's tests set `config :eh_os_contract, subscriptions: :manual`**, which skips registration and
   runners, and drain with `EhOsContract.Testing.drain/1`. `EhOsContract.boot/0` is gone.
+- **EM1: an `EhOsContract.Store` implementation of the host's own needs `read_query/2`**, and its `append/3`
+  takes a third condition, `{:dcb, query, after_position}`, refused with `{:error, :condition_failed}`
+  (v2 §10.1). `EhOsContract.Store.Suite` checks both. `EhOsContract.Store.Postgres`, the default, has them.
+- **EM1: an appended event is tagged with every required, non-personal `:id` field it carries**, not only its
+  unit's identity: `["account_id:a-1", "branch_id:b-7"]` where it was `["account_id:a-1"]`. A consistency
+  boundary finds what it consults by these tags, so a `match:` names only such fields (A4 for a local event,
+  X6 already for a sibling's). Events appended before this version carry the narrower tags.
+- **EM1: a command's row in `eh_os_contract_commands` lists each type it was given once** (`given_types`), in
+  the order first read, where it listed one entry per event: a boundary may read the whole history of a type.
+  Scenario coverage compares these as sets, so no count moves.
 
 ### Added
 
+- **EM2: `domain_service` in a contract** (ESDM's domain service): pure functions no unit owns, each with
+  typed `argument`s, a `returns` type and prose `rule`s. The contract generates `C.DomainServices.<Name>`, a
+  behaviour for the implementation (`use C, domain_service: :name`, I2 asks for every function) and the module
+  a decision calls: `C.DomainServices.Seating.free_seats(3, 1)` checks the arguments, runs the implementation
+  and checks its result, raising on a mismatch without the value in the message
+  (`EhOsContract.DomainService`). `mix eh_os_contract.check` counts it among what a contract implements. A
+  contract declaring none keeps its version.
+- **EM3: the library may give a new aggregate its identity** (ESDM's `identifiedBy: generated`). An aggregate
+  declares `identity :booking_id, generated: :uuid`, and a command `creates: true`; that command arrives
+  without the identity, dispatch gives it a UUIDv7, and `%EhOsContract.Receipt{identity: %{booking_id: id}}`
+  returns it — the first command's for a duplicate. A creating command that brings an identity is refused
+  with `{:error, {:invalid, [booking_id: :generated]}}`, a new problem; every other command still needs one.
+  A6 keeps it to an aggregate with one identity field and at least one creating command. `Receipt` gains
+  `identity` for every command, and `EhOsContract.Plug`'s 200 body carries it as `"identity"` (the user's
+  choice after the EM3 review: over HTTP a creating command was otherwise blind to what it made).
+  A creating command needs an idempotency key, `{:error, :idempotency_key_required}` (a new refusal, 422 over
+  HTTP) without one, since a retry would otherwise make a second aggregate; a reaction's key is derived.
+  `EhOsContract.record/3` records an event of such an aggregate only for one a command created,
+  `{:error, :not_created}` otherwise, a new refusal.
+- **EM3: a process manager's timer may wait by the calendar**, `timer :review, wait: {1, :month}` — also
+  `:week` and `:year`. A month after 31 January is the last day of February (`EhOsContract.Duration.calendar_shift/2`,
+  `DateTime.shift/2`). `within` and `deadline` still take fixed units only, since the report measures elapsed time
+  against them.
+- **EM3: a domain service's result may be declared empty**, `returns {:id, :clinic}, optional: true`; without
+  `optional:` a `nil` result is still refused. `returns` is its own declaration now, and a function without one
+  does not compile (F2).
+- **EM2: `entity` in a domain** (ESDM's entity): reference data with an identity that no event of the log
+  changes — `entity :period, "Okres", context: :client_month, identified_by: :period_id do field … end`. A field
+  of a contract or of a domain value names one as `{:id, :period}`; it is an `:id` in the model, in the log and
+  in the tags, with `refers_to: :period` beside it. D6 checks the entity and every field naming one, X3 a
+  contract's. The library keeps no rows of it. A domain declaring no entity keeps its version.
+- **EM1: a command to a dynamic consistency boundary dispatches** (v2 §10.1), through `EhOsContract.dispatch/3`
+  as a command to an aggregate does, and `EhOsContract.record/3` records a boundary's event. The decision folds
+  what the boundary reads — its own events under its identity, and each event it `consults`, a sibling
+  contract's too, on the fields it matches or all of the type by `where:` — and the append goes in only if
+  none of it moved since the read; otherwise dispatch reads and decides again, as for a stream.
 - **E7a: effects run.** An effect delivered `:at_least_once` is an `EhOsContract.EffectJob` in Oban's
   `:events` queue, inserted in the dispatch transaction and holding only the effect's key and the event's id;
   the job reads the event from the log. An effect delivered `:in_transaction` acts before the dispatch commits,

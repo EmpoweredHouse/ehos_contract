@@ -198,7 +198,7 @@ defmodule EhOsContract.ProcessManager do
   end
 
   defp fires_at(%{wait: %{amount: n, unit: unit}}, _state, row),
-    do: Duration.shift(row.occurred_at, {n, unit})
+    do: Duration.calendar_shift(row.occurred_at, {n, unit})
 
   defp fires_at(%{at: field, name: name}, state, _row) do
     case Map.fetch!(state, field) do

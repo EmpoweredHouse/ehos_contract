@@ -178,6 +178,7 @@ defmodule EhOsContract.Model do
           | :process_manager
           | :read_model
           | :query
+          | :domain_service
 
   @doc """
   The module a v2 contract generates for a declaration (v2 §5): the struct of a
@@ -210,7 +211,8 @@ defmodule EhOsContract.Model do
     effect: {:effects, Effects},
     process_manager: {:process_managers, ProcessManagers},
     read_model: {:read_models, ReadModels},
-    query: {:queries, Queries}
+    query: {:queries, Queries},
+    domain_service: {:domain_services, DomainServices}
   ]
 
   defp generated(model, :event, name) do

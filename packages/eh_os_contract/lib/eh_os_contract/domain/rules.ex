@@ -1,6 +1,13 @@
 defmodule EhOsContract.Domain.Rules do
   @moduledoc """
-  The rules a domain module must satisfy to compile: v2 §6, layer L2, rules D1–D5.
+  The rules a domain module must satisfy to compile: v2 §6, layer L2, rules D1–D6.
+
+  **D6** (plan EM2): an entity belongs to a context this domain declares, and is
+  identified by one of its own fields, a required, non-personal `:id`. Its fields are
+  well formed and named once, as a value's are, each `subject:` a declared subject,
+  and none is personal, nor of a value that holds personal data: an entity's rows are
+  the application's, outside the log, where erasure cannot reach them. Every
+  `{:id, entity}`, in a value's field or an entity's, names an entity of this domain.
 
   A transformer, not a verifier, and every violation is reported at once, in one
   error that names each declaration's file and line (`EhOsContract.DslRules`).
@@ -10,8 +17,15 @@ defmodule EhOsContract.Domain.Rules do
 
   alias EhOsContract.Domain.Dsl
   alias EhOsContract.DslRules
-  alias EhOsContract.Domain.Dsl.{Actor, Context, External, Relation, Subject, Value}
+  alias EhOsContract.Domain.Dsl.{Actor, Context, Entity, External, Relation, Subject, Value}
   alias Spark.Dsl.Transformer
+
+  @doc false
+  # An identifier as declared: `:id`, or `{:id, entity}`, which the model stores as one.
+  defguard is_id(type)
+           when type == :id or
+                  (is_tuple(type) and tuple_size(type) == 2 and elem(type, 0) == :id and
+                     is_atom(elem(type, 1)))
 
   @impl true
   def before?(EhOsContract.Domain.Build), do: true
@@ -25,7 +39,7 @@ defmodule EhOsContract.Domain.Rules do
     DslRules.result(dsl, [:domain], Enum.flat_map(rules(), & &1.(entities, domain)))
   end
 
-  defp rules, do: [&d1/2, &d2/2, &d3/2, &d4/2, &d5/2]
+  defp rules, do: [&d1/2, &d2/2, &d3/2, &d4/2, &d5/2, &d6/2]
 
   # --- D1: names are unique per kind ---------------------------------------------
 
@@ -34,6 +48,7 @@ defmodule EhOsContract.Domain.Rules do
     {Actor, "actor"},
     {Subject, "subject"},
     {Value, "value"},
+    {Entity, "entity"},
     {External, "external"}
   ]
 
@@ -168,7 +183,8 @@ defmodule EhOsContract.Domain.Rules do
         {:ok, %{optional: true}} ->
           [{"F5: #{where} is personal to #{inspect(field.personal)}, which is optional", field}]
 
-        {:ok, %{type: :id, subject: subject, personal: nil}} when subject != nil ->
+        {:ok, %{type: type, subject: subject, personal: nil}}
+        when subject != nil and is_id(type) ->
           []
 
         {:ok, _} ->
@@ -249,9 +265,133 @@ defmodule EhOsContract.Domain.Rules do
 
   defp numeric?(_type, _aliases, _seen), do: false
 
+  # --- D6: an entity, and every field that names one --------------------------------
+
+  defp d6(entities, _domain) do
+    known = MapSet.new(for %Entity{name: name} <- entities, do: name)
+    contexts = MapSet.new(for %Context{name: name} <- entities, do: name)
+    subjects = MapSet.new(for %Subject{name: name} <- entities, do: name)
+    values = Map.new(for %Value{} = value <- entities, do: {value.name, value})
+    scope = %{contexts: contexts, subjects: subjects, values: values}
+
+    shapes = for %Entity{} = entity <- entities, v <- entity_shape(entity, scope), do: v
+
+    references =
+      for %{__struct__: kind, fields: fields} = declaration <- entities,
+          kind in [Value, Entity],
+          field <- fields,
+          name <- references(field.type),
+          not MapSet.member?(known, name) do
+        {"D6: #{describe(declaration)}, field #{inspect(field.name)}: {:id, #{inspect(name)}} names " <>
+           "an entity this domain does not declare", field}
+      end
+
+    # A value that is an entity's identifier, `value :period_ref, {:id, :period}`.
+    aliases =
+      for %Value{type: type} = value <- entities,
+          name <- references(type),
+          not MapSet.member?(known, name) do
+        {"D6: #{describe(value)} is {:id, #{inspect(name)}}, which names an entity this domain " <>
+           "does not declare", value}
+      end
+
+    shapes ++ references ++ aliases
+  end
+
+  defp entity_shape(entity, scope) do
+    where = "D6: entity #{inspect(entity.name)}"
+    by_name = Map.new(entity.fields, &{&1.name, &1})
+
+    twice =
+      for field <- duplicates(entity.fields, & &1.name) do
+        {"#{where} declares field #{inspect(field.name)} twice", field}
+      end
+
+    context =
+      if MapSet.member?(scope.contexts, entity.context),
+        do: [],
+        else: [
+          {"#{where} names context #{inspect(entity.context)}, which this domain does not declare",
+           entity}
+        ]
+
+    identity =
+      case Map.fetch(by_name, entity.identified_by) do
+        {:ok, %{type: :id, optional: false, personal: nil}} ->
+          []
+
+        {:ok, _field} ->
+          [
+            {"#{where} is identified by #{inspect(entity.identified_by)}, which is not a " <>
+               "required, non-personal :id field", entity}
+          ]
+
+        :error ->
+          [
+            {"#{where} is identified by #{inspect(entity.identified_by)}, which is not one of its " <>
+               "fields", entity}
+          ]
+      end
+
+    names = MapSet.new(Map.keys(scope.values))
+
+    fields =
+      for field <- entity.fields, problem <- type_problems(field.type, names) do
+        {"#{where}, field #{inspect(field.name)}: #{problem}", field}
+      end
+
+    subject =
+      for field <- entity.fields,
+          field.subject != nil,
+          not MapSet.member?(scope.subjects, field.subject) do
+        {"#{where}, field #{inspect(field.name)} names subject #{inspect(field.subject)}, which " <>
+           "this domain does not declare", field}
+      end
+
+    # Personal data inside a value is as far from erasure in an entity's row as a
+    # personal field is.
+    inside =
+      for field <- entity.fields,
+          field.personal == nil,
+          EhOsContract.Codec.personal_type?(field.type, scope.values) do
+        {"#{where}, field #{inspect(field.name)} is of #{inspect(field.type)}, which holds personal " <>
+           "data, and an entity's rows are the application's, outside the log, where erasure " <>
+           "cannot reach them", field}
+      end
+
+    options =
+      for field <- entity.fields,
+          {option, why} <- [
+            default: "only a contract's state has defaults",
+            personal:
+              "an entity's rows are the application's, outside the log, where erasure " <>
+                "cannot reach them"
+          ],
+          Map.get(field, option) != nil do
+        {"#{where}, field #{inspect(field.name)} has #{option}:, and #{why}", field}
+      end
+
+    twice ++ context ++ identity ++ fields ++ subject ++ options ++ inside
+  end
+
+  defp describe(%Value{name: name}), do: "value #{inspect(name)}"
+  defp describe(%Entity{name: name}), do: "entity #{inspect(name)}"
+
+  @doc false
+  # The entities a type names: `{:id, entity}`, inside a list as well.
+  @spec references(term()) :: [atom()]
+  def references({:id, entity}) when is_atom(entity), do: [entity]
+  def references({:list, inner}), do: references(inner)
+  def references(_type), do: []
+
   @doc false
   @spec type_problems(term(), MapSet.t(atom())) :: [String.t()]
   def type_problems(type, _values) when type in @built_in, do: []
+
+  # An identifier of an entity: an :id, whose entity D6 or X3 checks.
+  def type_problems({:id, entity}, _values)
+      when is_atom(entity) and entity not in [nil, true, false],
+      do: []
 
   def type_problems({:list, inner}, values), do: type_problems(inner, values)
 

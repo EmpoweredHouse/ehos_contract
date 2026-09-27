@@ -44,7 +44,7 @@ defmodule EhOsContract.DispatchCommandTest do
       assert event.type == "ledger.account_opened"
       assert event.stream_id == "account:a-1"
       assert event.stream_version == 1
-      assert event.tags == ["account_id:a-1"]
+      assert event.tags == ["account_id:a-1", "branch_id:b-7"]
       assert event.process == "ledger"
       assert event.instance_id == "ledger|a-1"
       assert event.actor == "actor:u-1"
@@ -76,10 +76,8 @@ defmodule EhOsContract.DispatchCommandTest do
 
       assert Enum.map(log(), & &1.stream_version) == [1, 2, 3]
 
-      assert Enum.map(rows(), & &1.given_types) |> List.last() == [
-               "ledger.deposited",
-               "ledger.deposited"
-             ]
+      # Two deposits read, one type recorded.
+      assert Enum.map(rows(), & &1.given_types) |> List.last() == ["ledger.deposited"]
     end
   end
 
@@ -174,6 +172,36 @@ defmodule EhOsContract.DispatchCommandTest do
     test "control: the same account takes a declared event" do
       assert %Receipt{events: [%Deposited{amount: 5}]} = deposit!("a-1", 5)
       assert length(log()) == 1
+    end
+  end
+
+  describe "reading the stream back" do
+    test "an event is decoded by the contract that declares its type, whatever name the row stored" do
+      # A row appended before the contract's module was renamed keeps the old name in
+      # `contract`. The type is what the contract declares, so the stream still folds.
+      {:ok, _} =
+        Repo.transaction(fn ->
+          EhOsContract.Store.append(
+            Repo,
+            [
+              %{
+                type: "ledger.deposited",
+                contract: "DispatchRig.LedgerBeforeTheRename",
+                contract_version: "old",
+                correlation_id: Ecto.UUID.generate(),
+                actor: "system:old",
+                occurred_at: EhOsContract.Clock.now(),
+                payload: %{"account_id" => "a-renamed", "amount" => 100}
+              }
+            ],
+            {:stream, "account:a-renamed", 0}
+          )
+        end)
+
+      assert {:ok, %Receipt{events: [%Withdrawn{amount: 100}]}} =
+               EhOsContract.dispatch(Ledger, %Withdraw{account_id: "a-renamed", amount: 100},
+                 actor: clerk()
+               )
     end
   end
 

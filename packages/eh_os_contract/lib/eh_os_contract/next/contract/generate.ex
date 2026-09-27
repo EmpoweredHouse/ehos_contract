@@ -29,9 +29,11 @@ defmodule EhOsContract.Next.Contract.Generate do
   is the only one (v2 §7, mechanism 1).
 
   **Behaviours.** `C.Aggregates.*`, `C.Dcbs.*`, `C.Policies.*`, `C.Effects.*`,
-  `C.ProcessManagers.*` and `C.ReadModels.*` each declare the callbacks an
-  implementation of that declaration defines; a query's one callback sits in
-  `C.Queries.*`, beside its parameters. Which callbacks, with which types, is
+  `C.ProcessManagers.*`, `C.ReadModels.*` and `C.DomainServices.*` each declare the
+  callbacks an implementation of that declaration defines; a query's one callback
+  sits in `C.Queries.*`, beside its parameters. A domain service's module also
+  defines each of its functions, which a decision calls: it checks the arguments,
+  calls the implementation, and checks the result (`EhOsContract.DomainService`). Which callbacks, with which types, is
   `EhOsContract.Next.Contract.Callbacks`: the same list the implementation macros
   check against.
   """
@@ -163,7 +165,11 @@ defmodule EhOsContract.Next.Contract.Generate do
         pm <- model.process_managers,
         do: {:process_manager, pm.name, {:process_manager, pm.name}}
       ),
-      for(r <- model.read_models, do: {:read_model, r.name, {:read_model, r.name}})
+      for(r <- model.read_models, do: {:read_model, r.name, {:read_model, r.name}}),
+      for(
+        s <- model.domain_services,
+        do: {:domain_service, s.name, {:domain_service, s.name}}
+      )
     ])
   end
 
@@ -177,7 +183,41 @@ defmodule EhOsContract.Next.Contract.Generate do
       @moduledoc unquote(doc)
       unquote(callbacks(model, kind, name))
       unquote(if kind == :read_model, do: reset())
+      unquote(if kind == :domain_service, do: calls(model, name))
     end
+  end
+
+  # A domain service is called through its behaviour's module, which holds each call
+  # to the declaration: the arguments before the implementation runs, its result
+  # after (plan EM2, the user's choice of 27 September 2026).
+  defp calls(model, name) do
+    service = Enum.find(model.domain_services, &(&1.name == name))
+    %{callbacks: callbacks} = Callbacks.of(model, :domain_service, name)
+
+    by_name = Map.new(callbacks, &{&1.name, &1})
+
+    functions =
+      for f <- service.functions, c = Map.fetch!(by_name, f.name) do
+        args = Macro.generate_arguments(length(f.arguments), __MODULE__)
+
+        quote do
+          @doc unquote(
+                 "#{f.label}. Calls the implementation of `#{inspect(name)}` and holds the " <>
+                   "arguments and the result to their declared types."
+               )
+          @spec unquote(f.name)(unquote_splicing(c.args)) :: unquote(c.returns)
+          def unquote(f.name)(unquote_splicing(args)) do
+            EhOsContract.DomainService.call(
+              unquote(model.module),
+              unquote(name),
+              unquote(f.name),
+              unquote(args)
+            )
+          end
+        end
+      end
+
+    quote(do: (unquote_splicing(functions)))
   end
 
   # A read model writes the host's tables, which the library does not know, so only
@@ -258,6 +298,7 @@ defmodule EhOsContract.Next.Contract.Generate do
   @doc false
   @spec typespec(term(), module()) :: Macro.t()
   def typespec({:list, inner}, values), do: quote(do: [unquote(typespec(inner, values))])
+  def typespec({:id, _entity}, _values), do: Domain.Build.typespec(:id)
   def typespec({:enum, _} = enum, _values), do: Domain.Build.typespec(enum)
   def typespec(type, _values) when type in @built_in, do: Domain.Build.typespec(type)
   def typespec(value, values) when is_atom(value), do: quote(do: unquote(values).unquote(value)())
@@ -290,7 +331,8 @@ defmodule EhOsContract.Next.Contract.Generate do
         for(p <- d.policies, do: {{:policy, p.name}, p}),
         for(e <- d.effects, do: {{:effect, e.name}, e}),
         for(r <- d.read_models, do: {{:read_model, r.name}, r}),
-        for(q <- d.queries, do: {{:query, q.name}, q})
+        for(q <- d.queries, do: {{:query, q.name}, q}),
+        for(s <- d.domain_services, do: {{:domain_service, s.name}, s})
       ])
 
     Map.new(pairs, fn {key, declaration} -> {key, Spark.Dsl.Entity.anno(declaration)} end)

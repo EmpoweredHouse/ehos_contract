@@ -162,6 +162,32 @@ scenario        description!   scope · actor
 > an event crosses only through `publish` and `consumes "<name>"`. The table above is left as it was
 > written; E4 and E5 build to D10–D12.
 
+> **27 September 2026, EM2.** `entity` is no longer deferred: ESDM coverage came before the sandbox contracts
+> (plan, "Po E8 — kolejność zmieniona"), and what reads an entity is the field that names it. The user
+> decided both shapes: an entity is declared in the domain, beside `value`, with the context that owns it
+> (`context:` required, `identified_by:` one of its fields, a required non-personal `:id`); and a field names
+> one as `{:id, entity}`, which the model stores as `type: :id, refers_to: entity`, so the codec, tags and
+> typespecs see a plain `:id`. No field of an entity is personal: its rows are the application's, outside the
+> log, where erasure cannot reach them. Rules: D6 in the domain, X3 in a contract.
+
+> **27 September 2026, EM2 — a domain service.** ESDM's `domain-service` was the one core kind the four
+> contracts did not need (the 25 September mapping), and it came with the coverage the user asked for. It is
+> declared in the contract, `domain_service :name, "label" do function :f, "label" do argument …; returns …;
+> rule … end end`, and bound like every other kind, `use C, domain_service: :name`. What reads it is the
+> module the contract generates, `C.DomainServices.<Name>`: a decision calls the function there, which holds
+> the arguments and the result to their declared types and raises on a mismatch (the user's choice over a
+> compile-time check alone). No scenario targets it; ESDM has none for it either.
+
+> **27 September 2026, EM3 — a generated identity.** ESDM's `identifiedBy: {source: generated}` is written
+> `identity :booking_id, generated: :uuid` on an aggregate, with `creates: true` on the command that makes
+> one (the user's shapes). Dispatch gives that command a UUIDv7 and the receipt returns it; a creating command
+> that brings its own is refused, since two ways of making an identity would be one too many. A boundary has
+> no generated identity: its identity comes from the command, as ESDM's `command-payload` source does. The
+> generator is **UUIDv7**, whose first 48 bits are the creation time to the millisecond: whoever holds an
+> identity — in a stream id, a tag, a URL — learns when it was made, and erasure leaves it, as §14 leaves
+> every identifier. Chosen over v4 for index locality in the log's `stream_id`; the rest is 74 random bits,
+> so identities are not guessable.
+
 ### 4.3 Field types and options
 
 - Built-in types: `:id :string :integer :decimal :boolean :date :timestamp {:enum, [...]} {:list, t}`, plus
@@ -807,6 +833,16 @@ contact with the compiler and with v1's readers:
   `read_query/2` come in E9 with PayerSettlement, the first contract that needs them. So the condition
   arrives together with its first reader.
 
+> **27 September 2026, EM1 — the boundary as built.** The condition and `read_query/2` came before
+> PayerSettlement, with the dispatch of a boundary's command as their reader (plan: the ESDM gaps before the
+> sandbox contracts). Three things the sketch did not say: (1) a boundary reads **its own events under its
+> whole identity** besides what it `consults`, as an aggregate reads its stream, so it sees its own history
+> without consulting itself — and consults its own events explicitly when a narrower match is the point, as
+> a seat consults every subscription to its course; (2) a `consults` with `where:` alone reads **every
+> event of the type**, since prose cannot be a tag, so any new one is a conflict — correct and coarse, and
+> L5's "a `consults` with only `where`" says so; (3) a boundary's events carry **no stream**: the condition
+> is the query, and the store refuses a stream on an entry appended under it.
+
 ### 10.2 Ordering: one global, transaction-scoped advisory lock
 
 Positions from a sequence commit out of order under concurrent writers, and a reader following
@@ -923,6 +959,17 @@ INSERT INTO eh_os_contract_events (...) VALUES (...), (...) RETURNING position, 
   used by stream ids, tags, instance ids and idempotency keys alike — otherwise the escaped-separator defect
   fixed on 21 August would exist in four copies. A unit's key fields are always tags, so DCBs can consult
   aggregate events.
+  > **27 September 2026, EM1.** "A unit's key fields are always tags" is too narrow for a boundary that
+  > consults another unit's events on fields that are not that unit's key — PayerSettlement matches
+  > `visit_marked_settled_with_payer` on `payer_id` and `period_id`, while the visit's key is `visit_id`.
+  > Tagging only the fields some boundary matches today would leave the events appended before a new
+  > boundary untagged, and it would never see them. So **every required, non-personal `:id` field of an
+  > event is a tag**, its unit's key among them, and `match:` names only such fields (A4 for a local event;
+  > X6 already required `:id` of a sibling's). A subject's identifier is such a field, so "every event about
+  > subject p-17" is now one lookup in the tags' index, which erasure leaves alone — as it leaves the same
+  > identifier in the payload and in stream ids, by the design above. That holds only while an `:id` is an
+  > opaque identifier: a natural one, such as a PESEL, must never be an `:id`, as it must never be an
+  > idempotency key.
 - **Idempotency.** The host supplies `ctx.idempotency_key` (opaque, never personal data). It is checked before
   loading and again under the lock; a hit returns the earlier events with `duplicate: true`; a hit for another
   command type is `{:error, :idempotency_key_reused}`. Only accepted outcomes bind the key, so a rejected

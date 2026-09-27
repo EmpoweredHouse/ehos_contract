@@ -27,6 +27,19 @@ defmodule EhOsContract.Key do
   @spec tag(atom(), term()) :: String.t()
   def tag(field, value) when is_atom(field), do: "#{field}:" <> escape(value)
 
+  @doc """
+  Whether a declared field is a tag of every event that carries it: a required,
+  non-personal field of the built-in type `:id` (v2 §10.4). A unit's identity is
+  injected as such fields, so it is always among them. A consistency boundary finds
+  what it consults by these tags, so its `match:` names only such fields (A4, X6);
+  the rule and the append read this one predicate, so they cannot disagree.
+  """
+  @spec tag_field?(map()) :: boolean()
+  def tag_field?(%{type: :id, optional: false, personal: nil}), do: true
+  # An entity's identifier as declared, before the model makes it an `:id` (plan EM2).
+  def tag_field?(%{type: {:id, _entity}, optional: false, personal: nil}), do: true
+  def tag_field?(_field), do: false
+
   @doc "One value, with `%` and `|` percent-escaped."
   @spec escape(term()) :: String.t()
   def escape(nil),

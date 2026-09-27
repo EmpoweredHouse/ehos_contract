@@ -152,6 +152,26 @@ defmodule EhOsContract.Next.ContractUnitsTest do
       refute message =~ "consults :period_closed"
     end
 
+    test "a match on a field the local event does not carry as a required :id is refused" do
+      # An appended event is tagged with its required, non-personal :id fields, and
+      # a boundary finds what it consults by tags: matched on a text field, it would
+      # read nothing and the invariant would hold vacuously.
+      message = refuse_contract("ConsultsUntagged", consulting_visit_marked(":string"))
+
+      assert message =~
+               "A4: dcb :payer_period consults :visit_marked matching :period_id, which the " <>
+                 "event does not carry as a required, non-personal :id field, so no appended " <>
+                 ":visit_marked is tagged with it and the boundary could never find one " <>
+                 "(consults_untagged.ex:17)"
+
+      refute message =~ "matching :payer_id"
+    end
+
+    test "control: the same match on required :id fields compiles" do
+      assert %{units: [_visit, %{consults: [%{match: [:payer_id, :period_id]}]}]} =
+               compile_contract("ConsultsTagged", consulting_visit_marked(":id"))
+    end
+
     test "control: consulting a consumed event, by prose, compiles" do
       assert %{units: [%{consults: [%{event: :visit_completed, where: "wykonana wizyta"}]}]} =
                compile_contract("ConsultsConsumed", """
@@ -207,6 +227,115 @@ defmodule EhOsContract.Next.ContractUnitsTest do
     end
   end
 
+  describe "A6: a generated identity, and the command that creates it" do
+    test "two identity fields, no creating command, and creates: without a generated identity" do
+      message =
+        refuse_contract("GeneratedWrong", """
+          aggregate :booking, "Rezerwacja" do
+            identity [:clinic_id, :booking_id], generated: :uuid
+            command :cancel, "Odwołanie", by: :reception, emits: :cancelled
+            event :cancelled, "Odwołano", terminal: true
+          end
+
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :open_visit, "Otwarcie", by: :reception, emits: :opened, creates: true
+            event :opened, "Otwarto"
+          end
+
+          process :booking, "Rezerwacja" do
+            correlate :clinic_id
+          end
+        """)
+
+      assert message =~
+               "A6: aggregate :booking is identified by [:clinic_id, :booking_id]; a generated " <>
+                 "identity is one field (generated_wrong.ex:4)"
+
+      assert message =~
+               "A6: aggregate :booking has a generated identity and no command that creates: it"
+
+      assert message =~
+               "A6: command :open_visit creates: aggregate :visit, whose identity is not " <>
+                 "generated; write `identity :visit_id, generated: :uuid` (generated_wrong.ex:12)"
+    end
+
+    test "creates: on a boundary's command says a boundary has no generated identity" do
+      assert refuse_contract("GeneratedOnBoundary", """
+               dcb :seat, "Miejsce" do
+                 identity :seat_id
+                 consults :seat_taken, match: :seat_id
+                 command :take_seat, "Zajęcie", by: :reception, emits: :seat_taken, creates: true
+                 event :seat_taken, "Zajęto"
+               end
+
+               process :seat, "Miejsce" do
+                 correlate :seat_id
+               end
+             """) =~
+               "A6: command :take_seat creates: dcb :seat, whose identity is not generated; a " <>
+                 "boundary's identity comes from its commands, so creates: belongs only to an " <>
+                 "aggregate's (generated_on_boundary.ex:7)"
+    end
+
+    test "identity with another option than generated: is refused at the declaration" do
+      source =
+        contract("GeneratedTypo", """
+          aggregate :booking, "Rezerwacja" do
+            identity :booking_id, generate: :uuid
+            command :book, "Rezerwacja", by: :reception, emits: :booked, creates: true
+            event :booked, "Zarezerwowano"
+          end
+
+          process :booking, "Rezerwacja" do
+            correlate :booking_id
+          end
+        """)
+
+      assert_refused(
+        source,
+        "generated_typo.ex",
+        "identity takes one option beside its fields, `generated: :uuid`, and got [generate: :uuid]",
+        5
+      )
+    end
+
+    test "control: a generated identity with a creating command compiles into the model" do
+      model =
+        compile_contract("GeneratedRight", """
+          aggregate :booking, "Rezerwacja" do
+            identity :booking_id, generated: :uuid
+
+            command :book_visit, "Umów wizytę", by: :reception, emits: :visit_booked, creates: true do
+              field :slot, :timestamp
+            end
+
+            command :cancel, "Odwołanie", by: :reception, emits: :cancelled
+
+            event :visit_booked, "Zarezerwowano" do
+              field :slot, :timestamp
+            end
+
+            event :cancelled, "Odwołano", terminal: true
+          end
+
+          process :booking, "Rezerwacja" do
+            correlate :booking_id
+          end
+        """)
+
+      assert [%{identity: [:booking_id], generated: :uuid}] = model.units
+
+      book = Enum.find(model.commands, &(&1.name == :book_visit))
+      cancel = Enum.find(model.commands, &(&1.name == :cancel))
+
+      assert book.creates
+      assert %{name: :booking_id, optional: true} = hd(book.fields)
+      refute Map.has_key?(cancel, :creates)
+      assert %{name: :booking_id, optional: false} = hd(cancel.fields)
+    end
+  end
+
   describe "C1: a command can be issued" do
     test "a command without by:, which no reaction issues, is refused" do
       message =
@@ -243,5 +372,33 @@ defmodule EhOsContract.Next.ContractUnitsTest do
                #{@process}
                """)
     end
+  end
+
+  # A visit marked for a payer's period, and the boundary that consults it on both
+  # fields; `type` is what the visit's event declares its period as.
+  defp consulting_visit_marked(type) do
+    """
+      aggregate :visit, "Wizyta" do
+        identity :visit_id
+        command :mark_visit, "Oznaczenie wizyty", by: :manager, emits: :visit_marked do
+          field :payer_id, :id
+          field :period_id, #{type}
+        end
+        event :visit_marked, "Oznaczono wizytę" do
+          field :payer_id, :id
+          field :period_id, #{type}
+        end
+      end
+      dcb :payer_period, "Okres płatnika" do
+        identity [:payer_id, :period_id]
+        consults :visit_marked, match: [:payer_id, :period_id]
+        command :close_period, "Zamknięcie okresu", by: :manager, emits: :period_closed
+        event :period_closed, "Zamknięto okres", terminal: true
+      end
+
+      process :payer, "Płatnik" do
+        correlate :payer_id
+      end
+    """
   end
 end
