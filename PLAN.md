@@ -37,7 +37,8 @@ crypto-shredding). **E0–E7 i EA są w `main`** (PR #1–#20; EA poszło dwoma 
   15 min zostaje stały — oba w „EA2 — co wyszło”; publiczne wejście dla surowych danych wchodzi w E12 — przy opisie
   E12 w „Etapach”.
 - **E8 — w toku, asystenta.** Podział na dwa PR-y i kształty widoczne dla hosta rozstrzygnięte 27 września, z
-  odrzuconymi opcjami, pod opisem E8 w „Etapach”. E8a na `dsl-v2/e8a-encryption` od `main`.
+  odrzuconymi opcjami, pod opisem E8 w „Etapach”. **E8a zbudowane** na `dsl-v2/e8a-encryption` od `main`,
+  niewypchnięte, bez przeglądu przed PR — „E8a — co wyszło”. E8b na gałęzi od E8a.
 - **Proces na porcie 4000 — użytkownika**: `beam.smp` z `/private/tmp/eh-os-test`, niezwiązany z repozytorium.
 - **Lista zmian do `eh-os`** — użytkownika: D-01, D-15, outbox, G-16, transport v1, D-34, D-40, plan etapu 4
   („D10–D12 — skąd się wzięły” i „D14 — autoryzacja” w dopisku Etap 6), logowanie frontendu zwykłej aplikacji.
@@ -458,6 +459,7 @@ dało się do nich wrócić bez odtwarzania rozmowy (prośba użytkownika):
   osobowe bez niego nie startuje; dispatch dotykający usuniętej osoby to odmowa `{:error, :subject_erased}`; klucza
   osoby nigdzie nie trzymamy w pamięci podręcznej.
 Zgoda na commity bez pytania i zapis stanu obejmuje gałęzie `dsl-v2/e8…`.
+**E8a zrobione 27 września** na `dsl-v2/e8a-encryption`, niewypchnięte — „E8a — co wyszło” niżej.
 
 **E9 — Pozostałe kontrakty sandboxa.** Kolejność i zakres:
 - **TaxVision**, dwa commity: kontrakt i domena; potem implementacje — `Taxvision.Tasks` jako polityka i
@@ -1689,6 +1691,48 @@ klucza, więc i tak była nieudana) — poprawiona, żeby niosła klucz. Pakiet 
 **Skill `pre-pr-review` odpala od teraz oba przeglądy równolegle** (prośba użytkownika): dwa subagenty w jednej
 wiadomości, `code-review high` i `engineering:code-review` z naciskiem na bezpieczeństwo i wydajność, wspólna pula
 uwag; plus dwa nowe rodzaje problemów i ostrzeżenie o mutacjach, które stosują się w połowie.
+
+### E8a — co wyszło (27 września)
+
+**Stan.** Na `dsl-v2/e8a-encryption` od `main` (`6aacc53`): decyzje (`39061ee`), F7 (`ba32639`), V05 (`0f81137`),
+szyfrowanie (`c8dbf4b`). Brama zielona na każdym. Silnik 911 → 937, sandbox 54, web 32, auth 51; `check` bez delty
+(0/5/19, 0/15/17). Niewypchnięte.
+
+**Co jest:** F7 (L2: pole osobowe w stanie process managera; L3: wartość domenowa z polem osobowym w stanie PM albo
+jako parametr `scope` query). V05: `eh_os_contract_subject_keys` i `eh_os_contract_erasures` (druga pusta do E8b).
+`EhOsContract.Personal` (klucze osób, pieczętowanie i otwieranie), `EhOsContract.Vault` + `Vault.Local`,
+`EhOsContract.Erased`, `mix eh_os_contract.rewrap`, sprawdzenie `Vault` przy starcie. `Codec` dostał `encode/4` z
+funkcją pieczętującą, `decode/4` z `open:`, `personal?/2`, `subjects/4`. Fikstura `ShreddingRig` (zmyślona):
+członek z imieniem, e-mailem i kontaktami, jedno zdarzenie z danymi dwóch osób.
+
+**Odbiór E8 w części E8a, jak sprawdzony:**
+- w `payload` nie ma jawnego tekstu pól osobowych — `personal_test` (JSON payloadu bez imienia, e-maila i
+  telefonów; `member_id` i pola nieosobowe jawne);
+- bez klucza odczyt daje `Erased`, reszta pól bez zmian; kontrola: osoba z kluczem czyta się normalnie — klucze
+  usuwane w teście wprost (`erase/3` to E8b);
+- bramki odrzucają pole osobowe w stanie PM i w `scope` (klucze, tagi, korelacja i `identity` były od E4).
+Wstecz: bez pieczętowania, z brakiem klucza jako błędem, z kluczami czytanymi per zdarzenie, bez sprawdzenia przy
+starcie i bez `Erased` w typach pada po teście; bez obu reguł F7 padają oba testy F7.
+
+**Ustalenia:**
+1. **Parametr query w ogóle nie przyjmuje `personal:` ani `subject:`**, więc bramka „pole osobowe nie może być
+   `scope`” z opisu E8 jest na L2 prawdziwa z konstrukcji. Zostaje przypadek wartości domenowej z polem osobowym —
+   to L3. Notka z datą pod v2 §6.
+2. **`Vault` dostał kontekst** w `wrap`/`unwrap` (wiersz klucza, `typ|id|wersja`) — zapakowany klucz przeniesiony do
+   wiersza innej osoby się nie rozpakuje; KMS przyjmuje to jako encryption context. Do tego `current/0` (dla
+   `rewrap`) i `check/0` (dla startu). Notka z datą pod v2 §14.
+3. **Które klucze czytać, wynika z deklaracji**: podmiot pola osobowego to wartość pola-rodzeństwa, więc koperta nie
+   niesie podmiotu (v2 §14 jej go nie daje). Fold strumienia to jedno zapytanie o klucze niezależnie od długości
+   (test liczy zapytania telemetrią); zdarzenie bez pól osobowych nie czyta i nie pisze kluczy.
+4. **Konsumenci po transakcji (subskrypcje, efekty, PM) czytają klucze per wiersz**, i to tylko dla wiersza z
+   zapieczętowanym polem. v2 §14 mówi „jedno zapytanie na partię”; w runnerze wiersz jest dekodowany w swoim
+   `rescue`, więc pobranie kluczy dla całej partii przed pętlą zmienia izolację błędu. Zostawione do pomiaru.
+5. **Pole osobowe z `nil` jest zapisywane jako `nil`**, nie pieczętowane: brak wartości nie jest daną osobową.
+6. **Zapis `Erased` jest odmawiany** (`ArgumentError` z nazwą pola). Decyzja, która przepisze `Erased` ze stanu do
+   nowego zdarzenia, padnie więc w E8a na zapisie; E8b odmówi wcześniej, `:subject_erased`, zanim cokolwiek się
+   zakoduje.
+7. Pierwszy przebieg bramki dał w `check` silnika 16 ostrzeżeń zamiast 15: fikstura miała proces bez
+   `accountable`. Poprawiona fikstura, nie wyjaśniana delta.
 
 ### Losy fikstur
 
