@@ -115,6 +115,8 @@ gołe `git stash` (stos jest wspólny dla worktree).
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 27 września, na `b2fb6c0`** (EL2 z regułami 1–4 po przeglądzie): brama z `sandbox/` → **EXIT=0** —
+  sandbox 54 testy, `check` 0 / 12 / 19; silnik 1106, `check` 0 / 63 / 20; web 32; auth 51.
 - **Lokalnie, 27 września, na `61579c7`** (EL2 z regułami 1–4): brama z `sandbox/` → **EXIT=0** — sandbox 54
   testy, `check` 0 / 12 / 19; silnik 1106, `check` 0 / 63 / 20; web 32; auth 51.
 - **Lokalnie, 27 września, na `87f9a4e`** (EL2 po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 54
@@ -1079,6 +1081,14 @@ relacje, reakcje), więc wchodzą na gałąź EL2 po rozstrzygnięciu jej przegl
 - **4 jako ostrzeżenie, nie błąd jak S8:** scenariusz odmowy to jedyny dowód, że inwariant trzyma, a reakcję
   sprawdza też raport zgodności na logu; błąd wymusiłby scenariusze na fiksturach pisanych pod inny mechanizm.
   Delta silnika 50 → 63 ostrzeżeń (13 reakcji i query fikstur), sandbox bez zmian.
+
+**Przegląd reguł 1–4** (dwa równolegle na `76d48ea..0513862`): poprawione `label-with-avoided-term` — puste `avoid`,
+termin zawierający słowo do unikania, etykiety członków enum, jeden wzorzec na słowo, „bez względu na wielkość
+liter”, odmian nie łapie (`7ad65b6`); `relation-against-references` stoi przy odwołaniu, nie przy relacji
+(`875dff5`); **reguła 3 zawężona**: wywołanie systemu `:inbound` nie jest sprzecznością, bo efekt woła też po to,
+żeby pobrać dane — zostały `issued_by:` i `backed_by:` przy systemie `:outbound` (`b2fb6c0`, zmiana względem opisu
+wyżej); polskie „Po EL2” w komentarzach zastąpione angielskim odwołaniem. Pominięte: trzy sposoby zbierania pól z
+`issued_by:` (ryzyko utrzymania, bez błędu dziś), `crossings/2` liczone kilka razy na domenę (koszt pomijalny).
 
 *Odłożone do E9* (zobaczyć na prawdziwych kontraktach, czy są potrzebne): 6 — ograniczenie query sprawdzane
 scenariuszem `answers` (przykład z testu okazał się `scope`, który już jest pilnowany); 7 — `expected_latency`
