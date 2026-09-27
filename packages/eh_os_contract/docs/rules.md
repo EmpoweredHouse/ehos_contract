@@ -265,10 +265,11 @@ whom.
 
 A label of a contract uses a word its context's glossary says to avoid.
 
-The glossary says `avoid "Zakończona"` for the term "Zrealizowana", and an event of that context
-is labelled "Wizyta zakończona": the contract says what its own language says not to. Whole
-words in any case; the words a translation avoids are another language's, which labels are not
-written in. Rename the label with the term.
+The glossary says `avoid "Finished"` for the term "Completed", and an event of that context is
+labelled "Visit finished": the contract says what its own language says not to. The labels read
+are every declaration's and every enum member's; a word matches whole, regardless of letter case,
+and not inside the term itself. Inflected forms are not caught: `avoid` names each form to avoid.
+The words a translation avoids are another language's, which labels are not written in.
 
 ## `external-direction-contradicted`
 

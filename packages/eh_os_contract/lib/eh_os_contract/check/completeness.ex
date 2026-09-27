@@ -446,23 +446,33 @@ defmodule EhOsContract.Check.Completeness do
   # word its context's glossary says to avoid. Whole words, any case; the words a
   # translation avoids belong to another language, which labels are not written in.
   defp avoided_terms(model, contracts) do
+    # One pattern per word, compiled once; a blank word would match between any two
+    # characters that are not letters.
     avoided =
       Map.new(model.contexts, fn context ->
-        {context.name, for(t <- context.terms, a <- t.avoid, do: {a.text, t.text})}
+        {context.name,
+         for(
+           t <- context.terms,
+           a <- t.avoid,
+           String.trim(a.text) != "",
+           do: {a.text, t.text, word_pattern(a.text), word_pattern(t.text)}
+         )}
       end)
 
     for c <- contracts,
         words = Map.get(avoided, c.model.context, []),
         words != [],
-        declaration <- labelled(c.declarations),
-        {word, term} <- words,
-        String.match?(declaration.label, word_pattern(word)),
+        {label, at} <- labelled(c.declarations),
+        {word, term, pattern, term_pattern} <- words,
+        # The term itself may contain the word it replaces ("Zaliczka na podatek"
+        # avoiding "Zaliczka"): what the label says as the term is not the word.
+        String.match?(String.replace(label, term_pattern, " "), pattern),
         uniq: true do
       Finding.new(
         "label-with-avoided-term",
-        "#{inspect(c.module)}: the label #{inspect(declaration.label)} says #{inspect(word)}, which " <>
+        "#{inspect(c.module)}: the label #{inspect(label)} says #{inspect(word)}, which " <>
           "context #{inspect(c.model.context)} avoids in favour of #{inspect(term)}",
-        Links.at(declaration)
+        at
       )
     end
   end
@@ -470,11 +480,22 @@ defmodule EhOsContract.Check.Completeness do
   defp word_pattern(word),
     do: Regex.compile!("(?<![\\p{L}\\p{N}])#{Regex.escape(word)}(?![\\p{L}\\p{N}])", "iu")
 
-  # Every declaration of a contract that has a label, at any depth.
+  # Every label of a contract's declarations, at any depth, with where it was written:
+  # a declaration's own, and the labels of an enum's members, at the field of that type.
   defp labelled(%{__struct__: _} = struct) do
-    own = if is_binary(Map.get(struct, :label)), do: [struct], else: []
+    own = if is_binary(Map.get(struct, :label)), do: [{struct.label, Links.at(struct)}], else: []
+
+    members =
+      case Map.get(struct, :type) do
+        {:enum, members} when is_list(members) ->
+          for {_value, label} <- members, is_binary(label), do: {label, Links.at(struct)}
+
+        _other ->
+          []
+      end
 
     own ++
+      members ++
       (struct
        |> Map.from_struct()
        |> Map.delete(:__spark_metadata__)

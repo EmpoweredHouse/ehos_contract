@@ -135,7 +135,8 @@ What changes otherwise is what a host has to do.
   context consumes a contract of the downstream one or names an entity it owns, or any such reference crosses
   `separate_ways`.
 - **EL2: `label-with-avoided-term`**, a warning of `check`: a label of a contract uses, as a whole word in any
-  case, a word its context's glossary says to `avoid`.
+  case (not its inflected forms), a word its context's glossary says to `avoid`, in declarations' labels and
+  enum members' labels.
 - **EL2: `external-direction-contradicted`**, a warning of `check`: an effect calls a system declared
   `:inbound`, or a value is `issued_by:` or an actor `backed_by:` a system declared `:outbound`.
 - **EL2: `reaction-without-scenario`**, a warning of `check` (ESDM's `feature-without-scenarios`): a policy, a
