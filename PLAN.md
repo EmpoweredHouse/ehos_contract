@@ -17,7 +17,9 @@ pivot do v2** (DSL na Sparku, model domeny w stylu ESDM, event sourcing na włas
 [#21](https://github.com/EmpoweredHouse/eh-os-contract/pull/21) — E8a, szyfrowanie pól osobowych;
 [#22](https://github.com/EmpoweredHouse/eh-os-contract/pull/22) — E8b, `erase/3` i `forget/2`;
 [#23](https://github.com/EmpoweredHouse/eh-os-contract/pull/23) — poprawki po E8 (wynik `erase/3`, błędy efektów
-w Obanie bez wartości). **Następny w planie: E9 (pozostałe kontrakty sandboxa)**; E10–E12 niezaczęte. Jedynym
+w Obanie bez wartości). **Następny w planie (zmienione 27 września, po E8): luki ESDM (EM), ostrzeżenia i
+narzędzia (EL), grafy (EG), dopiero potem kontrakty sandboxa od nowa (E9)** — „Po E8 — kolejność zmieniona” w
+„Etapach”; E10–E12 niezaczęte. Jedynym
 kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`; `Taxvision.Contracts.AccountingMonth`,
 `Rehmed.Contracts.ClinicalVisit` i `Rehmed.Contracts.PayerSettlement` są v1, a handlery v1 żyją w
 `sandbox/lib/taxvision/{accounting_month,notifications,tasks}.ex`.
@@ -37,6 +39,8 @@ kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`; `Taxvision
 
 ### Co zostało — i czyje to jest
 
+- **Od 27 września przed E9 idą EM, EL i EG** („Po E8 — kolejność zmieniona”), a kontrakty sandboxa powstają od
+  nowa z materiału; akapit niżej opisuje E9 sprzed tej zmiany.
 - **E9 — asystenta, po pytaniach do użytkownika.** Opis i odbiór w „Etapach” (TaxVision, ClinicalVisit,
   PayerSettlement, D6 dla 15 zdarzeń bez komendy, usuwanie kontraktów i handlerów v1). Jak przed E7, EA i E8:
   **przed budową zapytać o podział na PR-y i o kształty widoczne dla hosta**, a każdą decyzję zapisać w
@@ -117,7 +121,8 @@ gołe `git stash` (stos jest wspólny dla worktree).
   wynik — „kontrakt, którego nie da się napisać, jest lepszym wynikiem”, `CLAUDE.md`).
 - **E9: które pola kontraktów Rehmedu są osobowe** (`ClinicalVisit` to dane pacjentów) i czy domena Rehmedu
   deklaruje `subject :patient` — materiał warsztatowy, nie wyobraźnia.
-- **`record/3` z credentialem** — nazwa uprawnienia, E9.
+- ~~**`record/3` z credentialem** — nazwa uprawnienia, E9.~~ Rozstrzygnięte 27 września: `<domena>.<zdarzenie>`
+  („Po E8 — kolejność zmieniona”).
 - **H177** z materiału Rehmedu przeczy DEC-18, na którym stoi `visit_handed_over`; czeka na klienta.
 - **Runner dla read modelu `:in_transaction`** odpytuje co sekundę, choć pracuje tylko przy przebudowie — wraca
   przy pomiarze.
@@ -546,6 +551,96 @@ dopiero tutaj — inbox zamienia przychodzące wiadomości w komendy, czyli też
 zgadywany z jednego przypadku; (b) **wcale** — każde przyszłe wejście (LiveView, job z credentialem) musiałoby samo
 pamiętać o kolejności „najpierw uprawnienie, potem pola”. Jeśli drugie drzwi pojawią się przed E12, wejście wchodzi
 razem z nimi.
+
+### Po E8 — kolejność zmieniona: najpierw luki ESDM, kontrakty na końcu (27 września)
+
+Przed budową E9 asystent zapytał o podział na PR-y i o kształt portów. Użytkownik odwrócił kolejność i rozstrzygnął
+zakres. Decyzje razem z odrzuconymi opcjami:
+
+- **Celem jest funkcjonalność ESDM, a kontrakty sandboxa są danymi testowymi.** „Nie zależy mi na tym, żeby naprawić
+  kontrakty TaxVision/Rehmed, mogą być wygenerowane od nowa.” Zasada ze „Strategii” „porty tłumaczą, nie naprawiają”
+  **przestaje obowiązywać dla kontraktów sandboxa**: powstają od nowa z materiału (konteksty, agregaty, polityki,
+  read modele tak, jak nazywa je materiał), a v1 nie jest ani wzorcem, ani listą kontrolną. Zostają reguły z
+  `CLAUDE.md`, w tym nazwy zdarzeń z warsztatu. Dziesięć usterek z dopisku 25 września przestaje być pytaniami,
+  które port musi nieść; kontrakt od nowa rozstrzyga je materiałem albo sam. *Odrzucone:* (a) tłumaczenie 1:1,
+  jeden kontrakt v1 → jeden v2 (mniej pracy, ale wychodzi v1 w nowej składni, bez kontekstów i z publikacją przez
+  handlery); (b) model po ESDM-owemu z v1 jako listą kontrolną (propozycja asystenta; zbędna, skoro kontrakty są
+  danymi testowymi).
+- **Kolejność: analiza pokrycia ESDM → uzupełnienie luk → grafy → kontrakty.** „Lepiej się zastanowić, czy mamy
+  pokrytą funkcjonalność ESDM na ten moment, przeanalizuj, czego nie ma, uzupełnijmy grafy, a na końcu zajmijmy się
+  istniejącymi kontraktami.” Dawne E9 przesuwa się za nowe etapy EM i EG (niżej). *Odrzucone:* E9 teraz, a luki i
+  grafy w E10 (tak stał plan: kontrakty sandboxa powstałyby na DSL-u, któremu brakuje rodzajów, i trzeba by je
+  przepisywać drugi raz).
+- **Luki modelu — wszystkie cztery grupy** (wybór użytkownika z listy): runtime DCB; `entity` i `domain_service`;
+  `constraints` i inwarianty value objectu; drobne pola ESDM (tożsamość generowana, timery kalendarzowe, relacja do
+  systemu zewnętrznego, tłumaczenie z definicją i `avoid`, nazwana subdomena). *Odrzucone:* nic z listy.
+- **Grafy — wszystkie cztery** (wybór użytkownika z listy): mapa kontekstów (domena → subdomeny → konteksty,
+  relacje, systemy zewnętrzne); widok systemu (kontrakty i krawędzie `consumes`, z nakładką z logu); pełny graf
+  kontraktu (dzisiejszy graf kroków plus read modele, query, aktorzy i systemy zewnętrzne); widok jednostki (stan,
+  komendy, zdarzenia, inwarianty, scenariusze). *Odrzucone:* nic z listy.
+- **Uprawnienie do `record/3` z credentialem: `<domena>.<zdarzenie>`** (np. `rehmed.visit_completed`), rodzaj
+  `:record` w `Model.capabilities/1`, ta sama reguła unikalności co komendy i query; manifest EHOS-a pozna ten rodzaj
+  w E10. Zamyka otwarte pytanie z handoffu. *Odrzucone:* `<domena>.record.<zdarzenie>` (od razu widać nagranie, ale
+  nowy wzorzec nazwy dla EHOS-a); obserwacje ludzi jako komendy (nazwy komend, których materiał nie ma).
+- **Reguła „miesiąc otwiera księgowa tej firmy”** — użytkownik bez preferencji, więc domyślna propozycja asystenta:
+  **`scope` dla komend**, jak dla query (D10); zamyka pytanie z v2 §19. Wchodzi razem z kontraktem TaxVision.
+  *Odrzucone:* przypisanie jako fakt sprawdzany w DCB (dispatch musiałby podawać deciderowi aktora — nowy kształt
+  API); reguła poza kontraktem, w kodzie hosta przed dispatchem (wypada z kontraktu i scenariuszy).
+
+**Analiza pokrycia ESDM (27 września).** Źródło: `thenativeweb/esdm` na `cf17780` (22 września), wydanie 0.15.0 z
+17 września; schematy `core`, `given-when-then` i `domain-storytelling` bez zmian od wydania. ESDM ma 18 rodzajów w
+rdzeniu, dwa rozszerzenia (`feature`, `domain-story`) i 73 reguły (47 rdzeń, 17 scenariusze, 9 domain storytelling).
+
+| ESDM | U nas | Luka |
+| --- | --- | --- |
+| `domain`, `bounded-context`, słownik | ✅ | tłumaczenie ma tylko słowo; w ESDM także definicję i `avoid` |
+| `subdomain` | ⚠️ typ na kontekście | nazwana subdomena grupująca konteksty |
+| `context-mapping` (8 typów) | ✅ `relation` | końcem relacji asymetrycznej może być system zewnętrzny; `terms` to pary słów z obu stron |
+| `aggregate` | ✅ | tożsamość generowana (`source: generated`) i stała (`static`) |
+| `dynamic-consistency-boundary` | ⚠️ DSL i reguły | runtime: `{:dcb, …}` w magazynie, `read_query`, dispatch |
+| `command` | ✅ | `constraints` — nazwane reguły prozą |
+| `event-handler` | ✅ `effect` | opis skutku ubocznego prozą |
+| `policy`, `event` | ✅ | — |
+| `process-manager` | ✅ | timery kalendarzowe (miesiące, lata); `endsWhen` w ESDM to warunek prozą |
+| `read-model`, `query` | ✅ | reguła projekcji i `constraints` query prozą |
+| `value-object` | ✅ `value` | inwarianty |
+| `actor`, `external-system` | ✅ | pola opisowe (`responsibilities`, `category`, `capabilities`) |
+| `entity` | ❌ odłożone w v2 §4.2 | cały rodzaj |
+| `domain-service` | ❌ | cały rodzaj |
+| `feature` + scenariusze | ✅ agregat, DCB, process manager, query | grupowanie w `feature` (kosmetyka, poza zakresem) |
+| `domain-story` | ❌ | poza zakresem: format odkrywania, sprzed modelu |
+
+Reguły strukturalne i scenariuszy ESDM mamy prawie wszystkie, i jako błędy kompilacji (tam, gdzie ESDM ostrzega, np.
+`uncovered-invariant`, u nas jest błąd S8). Brakuje około jedenastu **ostrzeżeń kompletności** (L5 z v2 §6, planowane
+na E10): `event-without-consumer`, `read-model-without-query`, `aggregate-without-commands` i `-events`,
+`bounded-context-without-content`, `orphan-actor`, `orphan-external-system`, `orphan-context-mapping`,
+`cross-bounded-context-reference-without-mapping`, `event-name-with-aggregate-prefix`,
+`process-manager-without-event-reactions`. ESDM ma też stałe identyfikatory reguł, stronę dokumentacji na każdą i
+wyjście JSON; u nas numery N1…X9 żyją tylko w ADR. Narzędzia ESDM poza `lint`: `view` (drzewo domena → kontekst →
+jednostka), `glossary` (słownik per kontekst i język), `documentation` (strona na element, z linkami) — u nas żadnego.
+Diagramów oficjalne narzędzie nie rysuje; zewnętrzny ESDM Visualizer rysuje tablicę węzłów. Czego ESDM nie ma, a my
+mamy: wykonywanie scenariuszy, obietnice, przebiegi i zgodność, crypto-shredding, wersję schematu zdarzenia.
+
+**Etapy po tej decyzji** (propozycja asystenta; podział na PR-y i kształty widoczne dla hosta — pytania do
+użytkownika przed budową):
+- **EM — luki modelu ESDM.** Każdy rodzaj razem ze swoim czytelnikiem (reguła ze „Strategii”).
+- **EL — ostrzeżenia kompletności i narzędzia** (wyciągnięte z E10): reguły L5 ze stałymi identyfikatorami, `view`,
+  `glossary`, strony dokumentacji.
+- **EG — grafy**, cztery z listy wyżej, w tasku `mix eh_os_contract.graph` i na `/graph`.
+- **E9 — kontrakty sandboxa od nowa**, pokrywające każdy rodzaj; odbiór E9 zostaje.
+- Dalej reszta E10 (eksport modelu, AsyncAPI, OpenAPI, manifest), E11, E12.
+
+Rozstrzygnięte przez użytkownika 27 września przed budową EM:
+- **Trzy PR-y, każdy na gałęzi od poprzedniego:** **EM1** — runtime DCB (warunek w magazynie, `read_query`,
+  dispatch, scenariusze DCB wykonywane); **EM2** — `entity` i `domain_service` z czytelnikami; **EM3** —
+  `constraints`, inwarianty value objectu i drobne pola ESDM. **Po skończonej implementacji każdej części zawsze
+  przegląd** (`pre-pr-review`), zanim ruszy następna. *Odrzucone:* dwa PR-y (drugi diff za duży); cztery PR-y
+  (`entity` i `domain_service` osobno — więcej scalania bez zysku na czytelności).
+- **`domain_service` w kontrakcie, z implementacją.** Kontrakt generuje behaviour z `@callback` i typami,
+  implementacja `use C, domain_service: :nazwa`, L4 wymaga każdej funkcji; decyzje wołają ją jak zwykły moduł;
+  reguły prozą czytają dokumentacja i grafy. *Odrzucone:* sama deklaracja w domenie, bez wiązania z kodem (nic by
+  nie sprawdzało, że funkcja istnieje — wbrew regule „rodzaj wchodzi razem z czytelnikiem”).
+- Pytania o miejsce `entity` i o tożsamość generowaną wróciły do asystenta do wyjaśnienia prościej — czekają.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
