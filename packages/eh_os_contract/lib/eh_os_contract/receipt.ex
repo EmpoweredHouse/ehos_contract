@@ -9,7 +9,8 @@ defmodule EhOsContract.Receipt do
 
   `identity` is the identity of the unit the command went to, `%{booking_id: "0192…"}`:
   for a command that creates an aggregate whose identity is generated, the one the
-  library gave it (plan EM3), and for a duplicate, the first command's.
+  library gave it (plan EM3), and for a duplicate, the first command's — or `%{}`
+  when that command decided no event, since nothing then says which unit it was.
   """
 
   defstruct [:command_id, :position, identity: %{}, events: [], positions: [], duplicate: false]

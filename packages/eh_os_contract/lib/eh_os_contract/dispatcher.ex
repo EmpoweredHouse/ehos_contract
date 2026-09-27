@@ -962,11 +962,18 @@ defmodule EhOsContract.Dispatcher do
 
     positions = Enum.map(events, & &1.__meta__.position)
 
-    # The unit's identity as the events carry it — a duplicate's is the first
-    # command's, whatever this one generated — or as the command did, when it decided
-    # no event.
+    # The unit's identity as the events carry it, so a duplicate's is the first
+    # command's. When the command decided no event, a fresh one's is the command's; a
+    # duplicate's is unknown, since this command's may be one generated just now for
+    # the retry, or name another unit under a reused key.
     keys = Enum.find(job.model.units, &(&1.name == job.declaration.unit)).identity
-    identity = Map.take(List.first(events) || job.command, keys)
+
+    identity =
+      case {events, duplicate} do
+        {[first | _], _} -> Map.take(first, keys)
+        {[], false} -> Map.take(job.command, keys)
+        {[], true} -> %{}
+      end
 
     %Receipt{
       command_id: command_id,

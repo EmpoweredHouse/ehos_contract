@@ -67,6 +67,20 @@ defmodule EhOsContract.GeneratedIdentityTest do
              EhOsContract.dispatch(Waitlist, %LeaveWaitlist{entry_id: nil}, actor: registrar())
   end
 
+  test "a duplicate of a creating command that decided nothing names no identity" do
+    # The first receipt names the identity the command was given; nothing was
+    # appended under it. The retry generates another, which names nothing either.
+    Process.put(:boundary_rig_join_decides_nothing, true)
+
+    {:ok, %Receipt{identity: %{entry_id: _}, duplicate: false}} =
+      join(idempotency_key: "join-none")
+
+    {:ok, %Receipt{identity: again, duplicate: true}} = join(idempotency_key: "join-none")
+
+    assert again == %{}
+    assert log() == []
+  end
+
   test "the same idempotency key gives the same identity, and one entry" do
     {:ok, %Receipt{identity: first, duplicate: false}} = join(idempotency_key: "join-anna")
     {:ok, %Receipt{identity: again, duplicate: true}} = join(idempotency_key: "join-anna")
