@@ -93,6 +93,11 @@ What changes otherwise is what a host has to do.
   `orphan-external-system`, `bounded-context-without-content` (a context no contract belongs to),
   `orphan-context-mapping` and `cross-bounded-context-reference-without-mapping` — a reference being a
   `consumes` of another context's contract or a field naming another context's entity.
+- **EL1: ESDM's completeness rules that read one contract**, warnings of `check`: `aggregate-without-events`,
+  `event-without-consumer` (a promise or `terminal: true` counts as a reader, the conformance report),
+  `read-model-without-query`, `process-manager-without-ends-on` (ESDM's `-ends-when`),
+  `process-manager-without-event-reactions`, `event-name-with-aggregate-prefix`, and the library's own
+  `consults-without-match`.
 - **EM2: `domain_service` in a contract** (ESDM's domain service): pure functions no unit owns, each with
   typed `argument`s, a `returns` type and prose `rule`s. The contract generates `C.DomainServices.<Name>`, a
   behaviour for the implementation (`use C, domain_service: :name`, I2 asks for every function) and the module

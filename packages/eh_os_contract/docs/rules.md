@@ -81,6 +81,74 @@ A contract is implemented in part.
 The unit, consumer, query or domain service the finding names has no implementation, so
 dispatch refuses to run it. Add a module with `use <Contract>, <kind>: <name>`.
 
+## `aggregate-without-events`
+
+**warning** · reads v2 contracts · ESDM: `esdm/modeling/aggregate-without-events`
+
+A unit declares no event.
+
+A command has to emit (A1), so a unit with no event has no command either and can decide
+nothing. A boundary is held to this too. ESDM's `aggregate-without-commands` is not a rule here:
+a unit whose events are all `recorded_by:` has no command on purpose (v2 §16, D6).
+
+## `event-without-consumer`
+
+**warning** · reads v2 contracts · ESDM: `esdm/modeling/event-without-consumer`
+
+Nothing reacts to or reads an event.
+
+No policy, effect or process manager takes it, no read model projects it, no boundary consults
+it, no contract consumes it and no `publish` sends it. Unlike ESDM, an event a promise names, or
+one marked `terminal: true`, has a reader: the conformance report. The unit's own `evolve` does
+not count, as ESDM's aggregate does not.
+
+## `read-model-without-query`
+
+**warning** · reads v2 contracts · ESDM: `esdm/modeling/read-model-without-query`
+
+No query reads a read model.
+
+A read model nobody can ask is kept for nothing: every event it projects costs a write no answer
+ever reads.
+
+## `process-manager-without-ends-on`
+
+**warning** · reads v2 contracts · ESDM: `esdm/modeling/process-manager-without-ends-when`
+
+A process manager declares no `ends_on`.
+
+Every run it starts stays open for ever, and its state is kept for ever with it. ESDM's name for
+the same rule says `ends-when`, after its own key.
+
+## `process-manager-without-event-reactions`
+
+**warning** · reads v2 contracts · ESDM: `esdm/modeling/process-manager-without-event-reactions`
+
+A process manager reacts only to its own timers after it starts.
+
+It has timers and no `on` that names an event, so once it runs, what happens in the process can
+end it (`ends_on`, which is not a reaction, as ESDM's `endsWhen` is not) and not steer it: it is
+a schedule, and may be simpler as one.
+
+## `event-name-with-aggregate-prefix`
+
+**warning** · reads v2 contracts · ESDM: `esdm/modeling/event-name-with-aggregate-prefix`
+
+An event's name starts with the name of its unit.
+
+`visit_closed` in the unit `visit`: the unit is where the event is declared and its type carries
+the process, so the prefix says twice what the name should not have to. Name what happened.
+
+## `consults-without-match`
+
+**warning** · reads v2 contracts
+
+A boundary consults an event by `where:` alone.
+
+Without `match:` the boundary reads every event of that type, whoever it is about, and any new
+one conflicts with its decision, so under load most decisions are retried or refused with
+`:conflict`. Name the identity fields that narrow it with `match:`.
+
 ## `orphan-actor`
 
 **warning** · reads v2 contracts · ESDM: `esdm/modeling/orphan-actor`

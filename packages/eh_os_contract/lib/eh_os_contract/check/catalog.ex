@@ -115,6 +115,88 @@ defmodule EhOsContract.Check.Catalog do
       """
     },
     %{
+      id: "aggregate-without-events",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/aggregate-without-events",
+      summary: "A unit declares no event.",
+      text: """
+      A command has to emit (A1), so a unit with no event has no command either and can decide
+      nothing. A boundary is held to this too. ESDM's `aggregate-without-commands` is not a rule here:
+      a unit whose events are all `recorded_by:` has no command on purpose (v2 §16, D6).
+      """
+    },
+    %{
+      id: "event-without-consumer",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/event-without-consumer",
+      summary: "Nothing reacts to or reads an event.",
+      text: """
+      No policy, effect or process manager takes it, no read model projects it, no boundary consults
+      it, no contract consumes it and no `publish` sends it. Unlike ESDM, an event a promise names, or
+      one marked `terminal: true`, has a reader: the conformance report. The unit's own `evolve` does
+      not count, as ESDM's aggregate does not.
+      """
+    },
+    %{
+      id: "read-model-without-query",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/read-model-without-query",
+      summary: "No query reads a read model.",
+      text: """
+      A read model nobody can ask is kept for nothing: every event it projects costs a write no answer
+      ever reads.
+      """
+    },
+    %{
+      id: "process-manager-without-ends-on",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/process-manager-without-ends-when",
+      summary: "A process manager declares no `ends_on`.",
+      text: """
+      Every run it starts stays open for ever, and its state is kept for ever with it. ESDM's name for
+      the same rule says `ends-when`, after its own key.
+      """
+    },
+    %{
+      id: "process-manager-without-event-reactions",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/process-manager-without-event-reactions",
+      summary: "A process manager reacts only to its own timers after it starts.",
+      text: """
+      It has timers and no `on` that names an event, so once it runs, what happens in the process can
+      end it (`ends_on`, which is not a reaction, as ESDM's `endsWhen` is not) and not steer it: it is
+      a schedule, and may be simpler as one.
+      """
+    },
+    %{
+      id: "event-name-with-aggregate-prefix",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/event-name-with-aggregate-prefix",
+      summary: "An event's name starts with the name of its unit.",
+      text: """
+      `visit_closed` in the unit `visit`: the unit is where the event is declared and its type carries
+      the process, so the prefix says twice what the name should not have to. Name what happened.
+      """
+    },
+    %{
+      id: "consults-without-match",
+      level: :warn,
+      reads: :v2,
+      esdm: nil,
+      summary: "A boundary consults an event by `where:` alone.",
+      text: """
+      Without `match:` the boundary reads every event of that type, whoever it is about, and any new
+      one conflicts with its decision, so under load most decisions are retried or refused with
+      `:conflict`. Name the identity fields that narrow it with `match:`.
+      """
+    },
+    %{
       id: "orphan-actor",
       level: :warn,
       reads: :v2,

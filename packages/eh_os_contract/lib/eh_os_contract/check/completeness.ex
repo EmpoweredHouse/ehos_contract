@@ -15,7 +15,7 @@ defmodule EhOsContract.Check.Completeness do
 
   alias EhOsContract.Check.Finding
   alias EhOsContract.Domain
-  alias EhOsContract.Next.Contract.Links
+  alias EhOsContract.Next.Contract.{Links, Rules}
 
   @doc """
   Every finding of a completeness rule about `contracts`, v2 contract modules,
@@ -25,13 +25,177 @@ defmodule EhOsContract.Check.Completeness do
   def findings(contracts) do
     linked = contracts |> Enum.map(&Links.contract/1) |> Enum.reject(&is_nil/1)
 
-    for {domain, members} <- Enum.group_by(linked, & &1.model.domain),
-        members = Enum.reject(members, &is_nil(&1.domain)),
-        members != [],
-        finding <- domain(domain, members) do
-      finding
+    domains =
+      for {domain, members} <- Enum.group_by(linked, & &1.model.domain),
+          members = Enum.reject(members, &is_nil(&1.domain)),
+          members != [],
+          finding <- domain(domain, members),
+          do: finding
+
+    domains ++ Enum.flat_map(linked, &contract(&1, linked))
+  end
+
+  # --- one contract --------------------------------------------------------------
+
+  defp contract(c, all) do
+    Enum.concat([
+      units_without_events(c),
+      events_without_consumer(c, all),
+      read_models_without_query(c),
+      managers_without_ends_on(c),
+      managers_without_event_reactions(c),
+      prefixed_event_names(c),
+      consults_without_match(c)
+    ])
+  end
+
+  defp declared_unit(c, name), do: Enum.find(c.declarations.units, &(&1.name == name))
+
+  defp declared_event(c, unit, name) do
+    with %{} = declared <- declared_unit(c, unit),
+         %{} = event <- Enum.find(Rules.events(declared), &(&1.name == name)),
+         do: Links.at(event)
+  end
+
+  # ESDM's `aggregate-without-events`, and a boundary's alike: a unit that can
+  # decide nothing, since a command has to emit (A1) and there is nothing to emit.
+  defp units_without_events(%{model: model} = c) do
+    for unit <- model.units, not Enum.any?(model.events, &(&1.unit == unit.name)) do
+      Finding.new(
+        "aggregate-without-events",
+        "#{unit.kind} #{inspect(unit.name)} of #{inspect(model.module)} declares no event, so " <>
+          "no command of it can decide anything and nothing is ever recorded of it",
+        c.declarations.units |> Enum.find(&(&1.name == unit.name)) |> Links.at()
+      )
     end
   end
+
+  # ESDM's `event-without-consumer`. A consumer is what reacts to or reads the
+  # event: a policy, an effect, a process manager, a read model, a boundary that
+  # consults it, a contract that consumes it, a `publish`. So is the conformance
+  # half of this library, for an event a promise names or one that ends a run: the
+  # report reads it. The unit's own `evolve` does not count; ESDM's aggregate folds
+  # its events too.
+  defp events_without_consumer(%{model: model} = c, all) do
+    process = model.process
+
+    local =
+      Enum.flat_map(model.policies, &List.wrap(&1.handles)) ++
+        Enum.flat_map(model.effects, &List.wrap(&1.handles)) ++
+        Enum.flat_map(model.process_managers, fn pm ->
+          Enum.map(pm.starts_on, & &1.event) ++ Enum.map(pm.on, & &1.event) ++ pm.ends_on
+        end) ++
+        Enum.flat_map(model.read_models, &List.wrap(&1.projects)) ++
+        Enum.flat_map(model.units, fn u -> Enum.map(u.consults, & &1.event) end) ++
+        Enum.map(model.publishes, & &1.from) ++
+        if(process,
+          do: Enum.flat_map(process.promises, &[&1.from, &1.eventually, &1.or_else]),
+          else: []
+        )
+
+    siblings =
+      for %{model: other} <- all,
+          %{kind: :contract, from: from, events: events} <- other.consumes,
+          from == model.module,
+          event <- events,
+          do: event
+
+    consumed = MapSet.new(local ++ siblings)
+
+    for event <- model.events,
+        not event.terminal,
+        not MapSet.member?(consumed, event.name) do
+      Finding.new(
+        "event-without-consumer",
+        "event #{inspect(event.name)} of #{inspect(model.module)} has no consumer: no policy, " <>
+          "effect, process manager or read model takes it, no boundary consults it, no contract " <>
+          "consumes it, nothing publishes it, and no promise names it",
+        declared_event(c, event.unit, event.name)
+      )
+    end
+  end
+
+  # ESDM's `read-model-without-query`.
+  defp read_models_without_query(%{model: model} = c) do
+    read = MapSet.new(model.queries, & &1.reads)
+
+    for read_model <- model.read_models, not MapSet.member?(read, read_model.name) do
+      Finding.new(
+        "read-model-without-query",
+        "read model #{inspect(read_model.name)} of #{inspect(model.module)} is read by no query, " <>
+          "so nothing can ask it anything",
+        at(c.declarations.read_models, read_model.name)
+      )
+    end
+  end
+
+  # ESDM's `process-manager-without-ends-when`, under the word this DSL uses.
+  defp managers_without_ends_on(%{model: model} = c) do
+    for pm <- model.process_managers, pm.ends_on == [] do
+      Finding.new(
+        "process-manager-without-ends-on",
+        "process manager #{inspect(pm.name)} of #{inspect(model.module)} declares no `ends_on`, " <>
+          "so every run it starts stays open for ever",
+        at(c.declarations.process_managers, pm.name)
+      )
+    end
+  end
+
+  # ESDM's `process-manager-without-event-reactions`: a manager whose every reaction
+  # after its start is one of its own timers. `ends_on` is not a reaction, as ESDM's
+  # `endsWhen` is not.
+  defp managers_without_event_reactions(%{model: model} = c) do
+    for pm <- model.process_managers,
+        timers = MapSet.new(pm.timers, & &1.name),
+        pm.timers != [],
+        Enum.all?(pm.on, &MapSet.member?(timers, &1.event)) do
+      Finding.new(
+        "process-manager-without-event-reactions",
+        "process manager #{inspect(pm.name)} of #{inspect(model.module)} reacts to nothing after " <>
+          "it starts but its own timers — no `on` names an event — so what happens in the " <>
+          "process can end it, and not steer it",
+        at(c.declarations.process_managers, pm.name)
+      )
+    end
+  end
+
+  # ESDM's `event-name-with-aggregate-prefix`: the event's type already carries its
+  # process, and the unit is where it is declared.
+  defp prefixed_event_names(%{model: model} = c) do
+    for event <- model.events,
+        String.starts_with?(Atom.to_string(event.name), "#{event.unit}_") do
+      Finding.new(
+        "event-name-with-aggregate-prefix",
+        "event #{inspect(event.name)} repeats the name of its unit #{inspect(event.unit)} " <>
+          "(#{inspect(model.module)}); the unit is where it is declared, so the name can say " <>
+          "only what happened",
+        declared_event(c, event.unit, event.name)
+      )
+    end
+  end
+
+  # The library's own: a boundary consulting an event by `where:` alone reads every
+  # event of that type, and conflicts with every new one (plan EM1).
+  defp consults_without_match(%{model: model} = c) do
+    for unit <- model.units,
+        consults <- unit.consults,
+        consults.match == [] do
+      at =
+        with %{} = declared <- declared_unit(c, unit.name),
+             %{} = found <- Enum.find(declared.consults, &(&1.event == consults.event)),
+             do: Links.at(found)
+
+      Finding.new(
+        "consults-without-match",
+        "boundary #{inspect(unit.name)} of #{inspect(model.module)} consults " <>
+          "#{inspect(consults.event)} with `where:` alone, so it reads every such event and " <>
+          "any new one, whoever it is about, conflicts with its decision",
+        at
+      )
+    end
+  end
+
+  # --- a whole domain ------------------------------------------------------------
 
   defp domain(module, contracts) do
     model = hd(contracts).domain
