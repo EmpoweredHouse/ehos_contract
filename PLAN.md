@@ -459,7 +459,8 @@ dało się do nich wrócić bez odtwarzania rozmowy (prośba użytkownika):
   osobowe bez niego nie startuje; dispatch dotykający usuniętej osoby to odmowa `{:error, :subject_erased}`; klucza
   osoby nigdzie nie trzymamy w pamięci podręcznej.
 Zgoda na commity bez pytania i zapis stanu obejmuje gałęzie `dsl-v2/e8…`.
-**E8a zrobione 27 września** na `dsl-v2/e8a-encryption`, niewypchnięte — „E8a — co wyszło” niżej.
+**E8a zrobione 27 września** na `dsl-v2/e8a-encryption`, niewypchnięte, po przeglądzie przed PR — „E8a — co
+wyszło” niżej.
 
 **E9 — Pozostałe kontrakty sandboxa.** Kolejność i zakres:
 - **TaxVision**, dwa commity: kontrakt i domena; potem implementacje — `Taxvision.Tasks` jako polityka i
@@ -1733,6 +1734,38 @@ starcie i bez `Erased` w typach pada po teście; bez obu reguł F7 padają oba t
    zakoduje.
 7. Pierwszy przebieg bramki dał w `check` silnika 16 ostrzeżeń zamiast 15: fikstura miała proces bez
    `accountable`. Poprawiona fikstura, nie wyjaśniana delta.
+
+**Przegląd przed PR (27 września, na prośbę użytkownika przed E8b)** — skill `pre-pr-review`, dwa przeglądy
+równolegle na `main...dsl-v2/e8a-encryption`: `code-review high` (9 uwag) i `engineering:code-review`,
+bezpieczeństwo i wydajność (9 uwag). Po połączeniu duplikatów 15. **Dziesięć poprawionych**, każda osobnym
+commitem z testem sprawdzonym wstecz (`e783879`..`599ebb4`):
+1. `Erased` w wierszu query wywracał odpowiedź HTTP (500) — teraz poza logiem to `null` (**decyzja użytkownika**;
+   odrzucone: obiekt `{"$erased": "member"}` — pole raz tekst, raz obiekt; błąd jak dotąd — sprzeczny z typami).
+2. Brak klucza czytał się po cichu jako `Erased` — teraz `Erased` tylko dla osoby w `eh_os_contract_erasures`,
+   inaczej odczyt pada (częściowe odtworzenie bazy nie zamieni dobrych danych w „usunięte”).
+3. Praca z `Vault` (KMS) szła pod globalną blokadą dopisu — `prepare/2` czyta, rozpakowuje i pakuje przed nią,
+   pod nią zostaje `INSERT … ON CONFLICT DO NOTHING` (oba przeglądy).
+4. `Map.fetch!` w pieczętowaniu wkleiłby do wyjątku wszystkie klucze dispatchu, `Jason.encode!` — wartość
+   osobową; teraz komunikat nazywa pole.
+5. Jawny tekst w polu osobowym przy `open:` czytał się normalnie, a koperta bez `open:` przy wartości o polach
+   opcjonalnych dekodowała się pusto — oba „nie pasuje” (oba przeglądy).
+6. Fold po przejściu na partię wypadł spod `stage("evolve")` — `failed_in` wróciło do „evolve”.
+7. `rewrap` z `SKIP LOCKED` mógł zgłosić sukces, gdy równoległy przebieg trzymał klucze — liczy pozostałe i pada.
+8. `publish` wartości domenowej z polem osobowym w środku i pole `personal:` typu, który sam niesie dane osobowe
+   (zapieczętowane cudzym kluczem) — reguły L3 (D11, F5) i reguła domeny (F5), jeden predykat
+   `Codec.personal_type?/2` zamiast kopii w F7.
+9. Zapakowane klucze w logu zapytań Ecto (`:debug`) — `log: false` na `INSERT` i `UPDATE` kluczy.
+10. `@spec` w `Vault.Local`.
+
+**Do E8b** (prawdziwe, zamyka je odmowa `:subject_erased`): po ręcznym usunięciu kluczy następny zapis tworzy
+nowy klucz w wersji 1, a stare szyfrogramy przestają się otwierać; `problems/3` przyjmuje `Erased`, a zapis go
+odmawia. **E8b musi sprawdzać usunięcie pod blokadą, zanim cokolwiek się zapieczętuje** — patch E8b z
+rozgrzebanej pracy woła jeszcze stare `for_writing/2` i trzeba go dopasować do `prepare/2`.
+**Pominięte:** kopie klucza w kopiach zapasowych, WAL i replikach — decyzja właściciela produktu (v2 §14); w
+README silnika zdanie o retencji klucza głównego wobec retencji kopii. Klucze per wiersz w runnerach — ustalenie
+4 wyżej, do pomiaru. **Bez zmiany:** AAD bez identyfikatora zdarzenia — podmiana szyfrogramów między zdarzeniami
+wymaga UPDATE na logu, który odrzuca trigger.
+Po przeglądzie: silnik 937 → 947, `check` bez delty.
 
 ### Losy fikstur
 

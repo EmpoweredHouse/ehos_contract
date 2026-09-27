@@ -106,6 +106,11 @@ personal data. To rotate, put the new key first and keep the old one after it, d
 `mix eh_os_contract.rewrap`, and then drop the old key. A KMS goes behind the
 `EhOsContract.Vault` behaviour: `config :eh_os_contract, vault: MyApp.KmsVault`.
 
+Erasing a subject deletes its data key from the database, not from your backups: a
+backup, a WAL archive or a replica still holds the key, wrapped, and anyone who also
+has the master key can open the subject's data. Retire and destroy master keys on a
+cadence no longer than you keep backups, or keep the key store out of the log's backups.
+
 ## A contract
 
 ```elixir
