@@ -101,10 +101,20 @@ defmodule EhOsContract.Personal do
         {subject, {version, key}}
       end)
 
-    created =
+    missing =
       for {type, id} <- subjects,
+          not Map.has_key?(existing, {Atom.to_string(type), id}),
+          uniq: true,
+          do: {type, id}
+
+    # An erased subject has no key, and gets none: `for_writing/2` refuses it under
+    # the lock, and a key made here would be a vault call for nothing.
+    erased = erased_among(repo, missing)
+
+    created =
+      for {type, id} <- missing,
           subject = {Atom.to_string(type), id},
-          not Map.has_key?(existing, subject),
+          not MapSet.member?(erased, subject),
           into: %{} do
         {type, id} = subject
         key = :crypto.strong_rand_bytes(32)

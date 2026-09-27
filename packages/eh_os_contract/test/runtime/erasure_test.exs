@@ -222,6 +222,44 @@ defmodule EhOsContract.ErasureTest do
       refute Enum.any?(log(), &(&1.stream_id == "membership:membership-anna-rejoined"))
     end
 
+    defmodule WrapSpy do
+      @moduledoc false
+      @behaviour EhOsContract.Vault
+      alias EhOsContract.Vault.Local
+
+      @impl true
+      def wrap(key, context) do
+        send(self(), :wrapped)
+        Local.wrap(key, context)
+      end
+
+      @impl true
+      def unwrap(id, wrapped, context), do: Local.unwrap(id, wrapped, context)
+
+      @impl true
+      def current, do: Local.current()
+
+      @impl true
+      def check, do: Local.check()
+    end
+
+    test "a refused command makes no key for the erased subject, not even before the lock" do
+      two_members!()
+      :ok = EhOsContract.erase(:member, "member-anna", actor: @officer)
+
+      Application.put_env(:eh_os_contract, :vault, WrapSpy)
+      on_exit(fn -> Application.delete_env(:eh_os_contract, :vault) end)
+
+      assert join_member("membership-anna-2", "member-anna", "Anna Nowak") ==
+               {:error, :subject_erased}
+
+      refute_received :wrapped
+
+      # Control: a new member's key is made.
+      {:ok, _} = join_member("membership-celina", "member-celina", "Celina Nowak")
+      assert_received :wrapped
+    end
+
     test "control: another member's command goes through" do
       two_members!()
       :ok = EhOsContract.erase(:member, "member-anna", actor: @officer)
