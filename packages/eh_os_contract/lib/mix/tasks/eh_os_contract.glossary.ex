@@ -35,7 +35,9 @@ defmodule Mix.Tasks.EhOsContract.Glossary do
 
     text =
       EhOsContract.Glossary.render(domain,
-        language: EhOsContract.Tools.existing_atom(opts[:language], "--language"),
+        # Any language may be asked for, one nobody translated into too: the answer is
+        # then that there is no translation, so this is the one name made an atom here.
+        language: opts[:language] && String.to_atom(opts[:language]),
         context: EhOsContract.Tools.context!(domain, opts[:context])
       )
 
