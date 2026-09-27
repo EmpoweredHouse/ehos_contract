@@ -640,7 +640,16 @@ Rozstrzygnięte przez użytkownika 27 września przed budową EM:
   implementacja `use C, domain_service: :nazwa`, L4 wymaga każdej funkcji; decyzje wołają ją jak zwykły moduł;
   reguły prozą czytają dokumentacja i grafy. *Odrzucone:* sama deklaracja w domenie, bez wiązania z kodem (nic by
   nie sprawdzało, że funkcja istnieje — wbrew regule „rodzaj wchodzi razem z czytelnikiem”).
-- Pytania o miejsce `entity` i o tożsamość generowaną wróciły do asystenta do wyjaśnienia prościej — czekają.
+- **`entity` w domenie, z kontekstem właścicielem** (`context:`), obok `value` — decyzja po wyjaśnieniu na przykładach
+  (okres TaxVision, usługa z cennika Rehmedu). Każdy kontrakt aplikacji może nazwać pole encją, więc model i graf
+  pokazują, że `period_id` Zadań, Miesiąca i Powiadomień to ten sam okres; własność opisuje `context:`, jak
+  `scope: bounded-context` w ESDM. Wierszy encji biblioteka nie przechowuje — trzyma je aplikacja. *Odrzucone:*
+  `entity` w kontrakcie (inne kontrakty zostają z gołym `:id` i powiązanie znika z modelu).
+- **Tożsamość generowana nadawana przez bibliotekę.** Komenda oznaczona jako tworząca nie niesie identyfikatora;
+  dispatch go nadaje i zwraca w odpowiedzi, a ponowienie z tym samym kluczem idempotencji zwraca ten sam. Przykład z
+  materiału: „Umów wizytę” (C-09 → E-14). *Odrzucone:* (b) nadaje aplikacja, a kontrakt tylko to zapisuje (deklaracja,
+  której nic nie wymusza; przy ponowieniu z nowym identyfikatorem powstają dwa obiekty); (c) pominąć, bo żaden
+  planowany kontrakt sandboxa tego nie potrzebuje (użytkownik wybrał pełne pokrycie ESDM).
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
