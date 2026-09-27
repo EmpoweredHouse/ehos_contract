@@ -19,19 +19,42 @@ import { LiveSocket } from "phoenix_live_view"
 
 // Diagrams take their colours from the design system's tokens (the page's computed style), so they
 // follow the theme; Mermaid's own themes are light or dark, never these. Its theme engine reads hex
-// only, and a token may be rgba() — a hairline is a translucent line — so each is painted over the
-// surface it sits on and read back as one opaque colour.
-const paint = document.createElement("canvas").getContext("2d", { willReadFrequently: true })
+// only, and a token may be rgba() — a hairline is a translucent line — so each is resolved by the
+// browser on a hidden element and laid over the surface it sits on, as one opaque colour. Not
+// through a canvas: reading pixels back is what anti-fingerprinting browsers block or blur.
+const probe = document.createElement("span")
+probe.hidden = true
+document.body.append(probe)
 
-const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+const token = (name) => {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  if (!value) throw new Error(`the design system defines no ${name}`)
+  return value
+}
+
+// An invalid colour is ignored by the assignment, not refused, and would leave the previous
+// token's colour in place; so the probe is cleared first and the assignment checked.
+const channels = (name) => {
+  const value = token(name)
+  probe.style.color = ""
+  probe.style.color = value
+  if (!probe.style.color) throw new Error(`${name} is not a colour: ${value}`)
+  const color = getComputedStyle(probe).color
+  const match = color.match(/^rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)$/)
+  if (!match) throw new Error(`${name} is not a colour this can read: ${color}`)
+  const [r, g, b, a = "1"] = match.slice(1)
+  return [+r, +g, +b, +a]
+}
 
 const solid = (name, over = "--surface-1") => {
-  paint.fillStyle = token(over)
-  paint.fillRect(0, 0, 1, 1)
-  paint.fillStyle = token(name)
-  paint.fillRect(0, 0, 1, 1)
-  const [r, g, b] = paint.getImageData(0, 0, 1, 1).data
-  return "#" + [r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")
+  const [r, g, b, a] = channels(name)
+  const base = channels(over)
+  return (
+    "#" +
+    [r, g, b]
+      .map((c, i) => Math.round(c * a + base[i] * (1 - a)).toString(16).padStart(2, "0"))
+      .join("")
+  )
 }
 
 // The engine colours some nodes itself, with a `classDef` per state (EhOsContract.Graph). Those in
@@ -52,39 +75,56 @@ const classDef = (name, { fill, stroke, color, dash }) =>
   `classDef ${name} fill:${solid(fill)},stroke:${solid(stroke)},color:${solid(color)}` +
   (dash ? `,stroke-dasharray: ${dash}` : "")
 
+// Worked out once per theme, not once per draw.
+let classDefs = {}
+let fontFamily = "sans-serif"
+
 const themed = (source) =>
   source.replace(/^(\s*)classDef (\w+) .*$/gm, (line, indent, name) =>
-    NODE_CLASSES[name] ? indent + classDef(name, NODE_CLASSES[name]) : line,
+    classDefs[name] ? indent + classDefs[name] : line,
   )
 
 const themeMermaid = () => {
-  const fontFamily = token("--sans")
+  try {
+    const sans = token("--sans")
 
-  mermaid.initialize({
-    startOnLoad: false,
-    theme: "base",
-    fontFamily,
-    themeVariables: {
-      darkMode: getComputedStyle(document.documentElement).colorScheme === "dark",
-      fontFamily,
-      fontSize: "13px",
-      background: solid("--surface-1"),
-      primaryColor: solid("--surface-2"),
-      primaryTextColor: solid("--text-primary"),
-      primaryBorderColor: solid("--border-strong"),
-      secondaryColor: solid("--surface-2"),
-      tertiaryColor: solid("--surface-1"),
-      mainBkg: solid("--surface-2"),
-      nodeBorder: solid("--border-strong"),
-      nodeTextColor: solid("--text-primary"),
-      textColor: solid("--text-secondary"),
-      titleColor: solid("--text-primary"),
-      lineColor: solid("--text-tertiary"),
-      clusterBkg: solid("--surface-1"),
-      clusterBorder: solid("--border-soft"),
-      edgeLabelBackground: solid("--surface-1"),
-    },
-  })
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: "base",
+      fontFamily: sans,
+      themeVariables: {
+        darkMode: getComputedStyle(document.documentElement).colorScheme === "dark",
+        fontFamily: sans,
+        fontSize: "13px",
+        background: solid("--surface-1"),
+        primaryColor: solid("--surface-2"),
+        primaryTextColor: solid("--text-primary"),
+        primaryBorderColor: solid("--border-strong"),
+        secondaryColor: solid("--surface-2"),
+        tertiaryColor: solid("--surface-1"),
+        mainBkg: solid("--surface-2"),
+        nodeBorder: solid("--border-strong"),
+        nodeTextColor: solid("--text-primary"),
+        textColor: solid("--text-secondary"),
+        titleColor: solid("--text-primary"),
+        lineColor: solid("--text-tertiary"),
+        clusterBkg: solid("--surface-1"),
+        clusterBorder: solid("--border-soft"),
+        edgeLabelBackground: solid("--surface-1"),
+      },
+    })
+
+    classDefs = Object.fromEntries(
+      Object.entries(NODE_CLASSES).map(([name, style]) => [name, classDef(name, style)]),
+    )
+    fontFamily = sans
+  } catch (error) {
+    // A token the design system no longer defines, or one in a format this cannot read: the
+    // diagrams fall back to Mermaid's own look, and the rest of the page still connects.
+    console.error("eh_os_contract_web: the diagrams are not themed:", error)
+    classDefs = {}
+    mermaid.initialize({ startOnLoad: false })
+  }
 }
 
 // Every graph on the page, so that a change of theme draws them all again.
@@ -111,11 +151,10 @@ new MutationObserver(redraw).observe(document.documentElement, {
 // only on first mount.
 const Hooks = {
   MermaidRender: {
-    // After the fonts: Mermaid measures its labels once, and a label measured in the fallback
-    // font overflows its node when Albert Sans arrives.
     mounted() {
+      this.drawn = Promise.resolve()
       graphs.add(this)
-      document.fonts.ready.then(() => this.renderGraph())
+      this.renderGraph()
     },
     updated() {
       this.renderGraph()
@@ -123,12 +162,25 @@ const Hooks = {
     destroyed() {
       graphs.delete(this)
     },
+    // One draw at a time per diagram, each after the one before: a patch or a change of theme that
+    // arrives mid-draw waits for it, so what is left on screen is the last one asked for.
+    renderGraph() {
+      this.drawn = this.drawn.then(() => this.draw()).catch((error) => console.error(error))
+    },
+    // After the fonts its labels need: Mermaid measures a label once, and one measured in the
+    // fallback font overflows its node when Albert Sans arrives. Loading with the diagram's own text
+    // fetches the latin-ext subset when a label has Polish letters, which `document.fonts.ready`
+    // would not: nothing else on the page may have asked for it yet.
     // `data-processed` is Mermaid's mark on a node it has drawn, which it then skips. A LiveView
     // patch drops it, because the server never renders it; a redraw for the theme drops it here.
-    renderGraph() {
+    async draw() {
+      if (!graphs.has(this)) return
+      const source = this.el.dataset.graph
+      await document.fonts.load(`13px ${fontFamily}`, source).catch(() => {})
+      if (!graphs.has(this)) return
       this.el.removeAttribute("data-processed")
-      this.el.textContent = themed(this.el.dataset.graph)
-      mermaid.run({ nodes: [this.el] })
+      this.el.textContent = themed(source)
+      await mermaid.run({ nodes: [this.el] })
     },
   },
 }
