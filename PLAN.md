@@ -31,8 +31,8 @@ kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`; `Taxvision
   kolejność zmieniona” i „EM1/EM2/EM3 — co wyszło”. Użytkownik merguje PR-y jako merge.
 - **EL1 zbudowane** na `dsl-v2/el-warnings` (od `main`), niewypchnięte: ostrzeżenia L5 ze stałymi nazwami,
   `--format json`, `--warnings-as-errors`, `docs/rules.md`, powtórzenie L3, przypięcie słownika domeny. Opis w
-  „EL1 — co wyszło”, decyzje w „Przed EL — decyzje użytkownika”. **Dalej:** przegląd EL1, potem pytania o
-  kształty pól opisowych przed EL2.
+  „EL1 — co wyszło”, decyzje w „Przed EL — decyzje użytkownika”. Przegląd zrobiony, notatka w `refs/notes/review`
+  na ostatnim commicie. **Dalej:** pytania o kształty pól opisowych przed EL2.
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`) i nie ma
   tabel pakietu auth ani V05 (klucze i usunięcia z E8). Przed `mix phx.server`: `mix ecto.migrate` w `sandbox/`;
   bez tego dispatch z credentialem pada na zapisie decyzji.
@@ -110,8 +110,8 @@ gołe `git stash` (stos jest wspólny dla worktree).
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 27 września, na `41d2c6b`** (koniec budowy EL1): brama z `sandbox/` → **EXIT=0** — sandbox 54 testy,
-  `check` 0 / 12 / 19; silnik 1070, `check` 0 / 50 / 20; web 32; auth 51. CI na gałęzi EL1 — nie było.
+- **Lokalnie, 27 września, na `7d46602`** (EL1 po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 54
+  testy, `check` 0 / 12 / 19; silnik 1075, `check` 0 / 50 / 20; web 32; auth 51. CI na gałęzi EL1 — nie było.
 - **Lokalnie, 27 września, na `081877d`** (main po #24–#26): EXIT=0 — sandbox 54, `check` 0 / 5 / 19; silnik 1040,
   `check` 0 / 19 / 17; web 32; auth 51.
 - **Lokalnie, 27 września, na `c17bb50`** (koniec EM3): brama z `sandbox/` → **EXIT=0** — sandbox 54 testy,
@@ -903,6 +903,23 @@ Mechanika, rozstrzygnięta przez asystenta:
 - **`emits-never-produced`** czyta `emitted` z `__eh_os_implementation__/0`; `emit/1` w funkcji pomocniczej liczy
   się dla każdej komendy jednostki. Decyzja, która zwraca zdarzenie bez `emit/1`, dostaje ostrzeżenie — to też
   sygnał (niczego nie sprawdza aż do dispatchu).
+
+**Przegląd przed kolejną częścią** (dwa równolegle na `main..7034708`):
+- **Poprawione, z testem i próbą odwrotną:** `competing-in-transaction-consumers` wywracał cały `check`, gdy
+  `consumes` wskazywał nieskompilowany moduł — dokładnie projekt bez kompilatora, dla którego EL1 powtarza L3
+  (`9f7a41d`); `free-text-not-personal` nie widział `{:list, :string}`, wartości domeny będącej tekstem ani pól
+  tekstowych wartości złożonej (`03a6cc4`); ta sama reguła wskazywała linię `use`, nie reakcję (`1a9112e`);
+  pusta druga linia przy ustaleniu bez miejsca i linku (`471eee5`); skan `.beam` szedł zawsze i wywracał `check` w
+  korzeniu umbrelli (`50ab457`, gałąź umbrelli bez testu — w repozytorium nie ma umbrelli).
+- **Porządki i pokrycie** (`7d46602`): komentarz, `Catalog.known?/1`, `Catalog.level_word/1`; test konsumentów
+  (samo `ends_on`, obietnica, `publish`, `consumes` rodzeństwa) i reakcji dwóch kontraktów naraz.
+- **Bez zmiany:** `event-without-consumer` na zdarzeniach w etapach — raport zgodności czyta każde zdarzenie
+  przebiegu, ale policzenie tego jako czytelnika wyłączyłoby regułę całkiem, bo każde zdarzenie jest w przebiegu
+  swojego kontraktu (R2/R3); L3 powtarzane tylko na modułach projektu, jak w kompilatorze; ścieżka absolutna pliku
+  spoza katalogu roboczego, jak w diagnostyce kompilatora.
+- **Pominięte:** `Links.contract/1` budowany trzy razy na kontrakt (koszt pomijalny w tasku).
+- Weryfikacja poza testami: `MIX_ENV=dev mix eh_os_contract.check --format json` w `sandbox/` po kompilacji —
+  poprawny JSON, 31 ustaleń (12 ostrzeżeń, 19 notek), `orphan-actor` w `lib/rehmed/domain.ex:41`.
 
 **Do E9:** `event-name-with-aggregate-prefix` zapali się na nazwach z warsztatu, jeśli jednostka nazywa się jak
 początek zdarzenia (`accounting_month_opened` w jednostce `accounting_month`). Nazwy zdarzeń zostają z warsztatu
