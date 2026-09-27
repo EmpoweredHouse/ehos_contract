@@ -102,7 +102,7 @@ defmodule EhOsContract.Consumer do
 
   A personal field is opened with its subject's key, read for this row alone and
   only when the row has a sealed field; once the subject is erased it holds
-  `EhOsContract.Erased`.
+  `EhOsContract.Erased`. A key missing for a subject never erased raises.
   """
   @spec decode!(Event.t()) :: struct()
   def decode!(%Event{} = row) do
@@ -130,10 +130,20 @@ defmodule EhOsContract.Consumer do
           uniq: true,
           do: subject
 
-    keys = Personal.for_reading(Application.fetch_env!(:eh_os_contract, :repo), subjects)
+    repo = Application.fetch_env!(:eh_os_contract, :repo)
+    keys = Personal.for_reading(repo, subjects)
+
+    # Only a subject without any key can have been erased, and only then is it asked.
+    keyed = MapSet.new(Map.keys(keys), fn {type, id, _version} -> {type, id} end)
+
+    erased =
+      Personal.erased_among(
+        repo,
+        Enum.reject(subjects, fn {t, id} -> MapSet.member?(keyed, {Atom.to_string(t), id}) end)
+      )
 
     for {declaration, row} <- declared do
-      decode!(model, values, declaration, row, Personal.opener(keys, row.type))
+      decode!(model, values, declaration, row, Personal.opener(keys, row.type, erased))
     end
   end
 

@@ -280,7 +280,8 @@ What changes otherwise is what a host has to do.
   back — a decision's folded stream, a receipt, a consumer — opens its personal fields; a stream reads every
   key it needs in one query, and an event without personal fields reads none. **No verdict moves**: the
   conformance readers never read a payload's personal fields.
-- **E8a: `EhOsContract.Erased`** is what a personal field reads back as once its subject's key is gone,
+- **E8a: `EhOsContract.Erased`** is what a personal field reads back as once its subject is erased — its key
+  gone, and the subject recorded in `eh_os_contract_erasures`; a key gone without that record raises instead,
   `%EhOsContract.Erased{subject: :member, id: "member-anna"}`. The structs a contract generates, and the types of
   domain values, admit `EhOsContract.Erased.t()` on every personal field, and `EhOsContract.Codec.problems/3`
   accepts it there and nowhere else. Sealing it into the log is refused; out of the log — a query's rows over

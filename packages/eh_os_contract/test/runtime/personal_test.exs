@@ -44,8 +44,19 @@ defmodule EhOsContract.PersonalTest do
     )
   end
 
+  # What erasure leaves (E8b's `erase/3` does it in one transaction): no key, and a
+  # record that the subject was erased.
   defp erase_keys!(member) do
     Repo.delete_all(from(k in "eh_os_contract_subject_keys", where: k.subject_id == ^member))
+
+    Repo.insert_all("eh_os_contract_erasures", [
+      %{
+        subject_type: "member",
+        subject_id: member,
+        erased_at: DateTime.utc_now(),
+        requested_by: "actor:u-officer"
+      }
+    ])
   end
 
   # The queries that read or write subjects' keys while `fun` runs.
@@ -222,6 +233,15 @@ defmodule EhOsContract.PersonalTest do
                  %{member_id: "member-bartek", phone: "+48 600 300 400"}
                ]
              } = Consumer.decode!(row)
+    end
+
+    test "a key missing for a subject never erased does not read as Erased, and says so" do
+      join!("membership-anna", "member-anna")
+      Repo.delete_all(from(k in "eh_os_contract_subject_keys"))
+
+      assert_raise ArgumentError,
+                   ~r/the data key of subject member "member-anna", version 1, is missing, and the subject was never erased/,
+                   fn -> Enum.map(log(), &Consumer.decode!/1) end
     end
 
     test "control: a member whose key is there reads normally" do

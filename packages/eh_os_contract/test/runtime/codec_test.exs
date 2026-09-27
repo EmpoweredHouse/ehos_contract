@@ -194,11 +194,12 @@ defmodule EhOsContract.CodecTest do
                {:error, [name: :type]}
     end
 
-    test "without its key, a sealed field is Erased; without open:, it does not fit" do
+    test "without its key, an erased subject's field is Erased; without open:, it does not fit" do
       stored = sealed()
+      erased = MapSet.new([{"member", "member-anna"}])
 
       assert Codec.decode(@personal, stored, %{},
-               open: Personal.opener(%{}, "shredding_rig.joined")
+               open: Personal.opener(%{}, "shredding_rig.joined", erased)
              ) ==
                {:ok,
                 %{
@@ -208,6 +209,11 @@ defmodule EhOsContract.CodecTest do
                 }}
 
       assert Codec.decode(@personal, stored, %{}) == {:error, [name: :type]}
+
+      # Without its key and never erased: raised, never read as erased.
+      assert_raise ArgumentError, ~r/is missing, and the subject was never erased/, fn ->
+        Codec.decode(@personal, stored, %{}, open: Personal.opener(%{}, "shredding_rig.joined"))
+      end
     end
 
     test "Erased fits a personal field and nothing else, and cannot be sealed" do

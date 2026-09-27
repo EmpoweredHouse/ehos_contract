@@ -27,6 +27,7 @@ defmodule EhOsContract.Personal do
   alias EhOsContract.{Codec, Vault}
 
   @keys "eh_os_contract_subject_keys"
+  @erasures "eh_os_contract_erasures"
 
   @typedoc "A subject: its type, as the domain declares it, and its id."
   @type subject :: {atom(), String.t()}
@@ -132,6 +133,36 @@ defmodule EhOsContract.Personal do
     end)
   end
 
+  @doc """
+  The subjects among `subjects` that are erased, as `{type, id}` strings: the ones
+  whose missing key means `EhOsContract.Erased`. One query, none for no subjects.
+  """
+  @spec erased_among(module(), [subject()]) :: MapSet.t({String.t(), String.t()})
+  def erased_among(_repo, []), do: MapSet.new()
+
+  def erased_among(repo, subjects) do
+    {types, ids} =
+      subjects
+      |> Enum.uniq()
+      |> Enum.map(fn {t, id} -> {Atom.to_string(t), id} end)
+      |> Enum.unzip()
+
+    repo.all(
+      from(e in @erasures,
+        where:
+          fragment(
+            "(?, ?) IN (SELECT * FROM unnest(?::text[], ?::text[]))",
+            e.subject_type,
+            e.subject_id,
+            type(^types, {:array, :string}),
+            type(^ids, {:array, :string})
+          ),
+        select: {e.subject_type, e.subject_id}
+      )
+    )
+    |> MapSet.new()
+  end
+
   defp unwrap!(type, version, kek_id, wrapped, id) do
     case Vault.unwrap(kek_id, wrapped, context(type, id, version)) do
       {:ok, key} ->
@@ -162,40 +193,47 @@ defmodule EhOsContract.Personal do
 
   @doc """
   The function `EhOsContract.Codec.decode/4` opens the sealed fields of an event of
-  `type` with: `:erased` when `keys` has no key for the subject.
+  `type` with. A subject `keys` has no key for opens as `:erased` when it is among
+  `erased` (`erased_among/2`), and raises otherwise: a key that is gone without an
+  erasure is a key store that is not the log's — a partial restore, another
+  database — and reading on would turn good data into erased data for good.
   """
-  @spec opener(keys(), String.t()) :: Codec.open()
-  def opener(keys, type) do
+  @spec opener(keys(), String.t(), MapSet.t({String.t(), String.t()})) :: Codec.open()
+  def opener(keys, type, erased \\ MapSet.new()) do
     fn
       path, {subject, id}, %{"$eh" => "enc1", "k" => version, "d" => data}
       when is_integer(version) and is_binary(data) ->
-        with {:ok, key} <- Map.fetch(keys, {Atom.to_string(subject), id, version}),
-             {:ok, <<iv::binary-12, tag::binary-16, ct::binary>>} <- Base.decode64(data),
-             json when is_binary(json) <-
-               :crypto.crypto_one_time_aead(
-                 :aes_256_gcm,
-                 key,
-                 iv,
-                 ct,
-                 aad(type, path, subject, id, version),
-                 tag,
-                 false
-               ) do
-          Jason.decode(json)
-        else
-          # No key: the subject is erased. Anything else is a ciphertext that does
-          # not open, which the codec reports as a field that does not fit.
-          :error ->
-            if Map.has_key?(keys, {Atom.to_string(subject), id, version}),
-              do: :error,
-              else: :erased
-
-          _ ->
-            :error
+        case Map.fetch(keys, {Atom.to_string(subject), id, version}) do
+          {:ok, key} -> open(key, data, aad(type, path, subject, id, version))
+          :error -> missing(subject, id, version, erased)
         end
 
       _path, _subject, _other ->
         :error
+    end
+  end
+
+  defp open(key, data, aad) do
+    with {:ok, <<iv::binary-12, tag::binary-16, ct::binary>>} <- Base.decode64(data),
+         json when is_binary(json) <-
+           :crypto.crypto_one_time_aead(:aes_256_gcm, key, iv, ct, aad, tag, false),
+         {:ok, value} <- Jason.decode(json) do
+      {:ok, value}
+    else
+      # A ciphertext that does not open, which the codec reports as a field that
+      # does not fit.
+      _ -> :error
+    end
+  end
+
+  defp missing(subject, id, version, erased) do
+    if MapSet.member?(erased, {Atom.to_string(subject), id}) do
+      :erased
+    else
+      raise ArgumentError,
+            "the data key of subject #{subject} #{inspect(id)}, version #{version}, is missing, " <>
+              "and the subject was never erased; the key store is not the one this log was " <>
+              "written with"
     end
   end
 
