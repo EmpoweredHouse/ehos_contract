@@ -224,6 +224,21 @@ defmodule EhOsContract.Check.Catalog do
       """
     },
     %{
+      id: "reaction-without-scenario",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/gwt/feature-without-scenarios",
+      summary: "No scenario runs a policy, a process manager or a query.",
+      text: """
+      Its label says what it does, and nothing shows its implementation does it: a scenario on the
+      event it takes, with what it `issues`, or a query with what it `answers`, is the test that would.
+      ESDM asks this of a feature; here of each declaration a scenario can run. An effect is left out,
+      since its outcome is outside the log and no scenario can name it (S6). A warning, where an
+      invariant without a rejecting scenario is an error (S8): the scenario is the only proof an
+      invariant holds, and a reaction is also checked on the log by the conformance report.
+      """
+    },
+    %{
       id: "consults-without-match",
       level: :warn,
       reads: :v2,

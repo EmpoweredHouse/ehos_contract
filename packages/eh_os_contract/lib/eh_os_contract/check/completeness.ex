@@ -45,7 +45,8 @@ defmodule EhOsContract.Check.Completeness do
       managers_without_ends_on(c),
       managers_without_event_reactions(c),
       prefixed_event_names(c),
-      consults_without_match(c)
+      consults_without_match(c),
+      without_scenario(c)
     ])
   end
 
@@ -191,6 +192,30 @@ defmodule EhOsContract.Check.Completeness do
           "#{inspect(consults.event)} with `where:` alone, so it reads every such event and " <>
           "any new one, whoever it is about, conflicts with its decision",
         at
+      )
+    end
+  end
+
+  # ESDM's `feature-without-scenarios`, per declaration a scenario can target (plan EL2,
+  # "Po EL2" rule 4): a policy, a process manager or a query no scenario runs, so nothing
+  # shows its implementation does what its label says. An effect is left out: its
+  # outcome is outside the log, and no scenario can name it (S6).
+  defp without_scenario(%{model: model} = c) do
+    covered = MapSet.new(model.scenarios, &{&1.target.kind, &1.target.name})
+
+    for {kind, what, declarations, declared} <- [
+          {:policy, "policy", model.policies, c.declarations.policies},
+          {:process_manager, "process manager", model.process_managers,
+           c.declarations.process_managers},
+          {:query, "query", model.queries, c.declarations.queries}
+        ],
+        declaration <- declarations,
+        not MapSet.member?(covered, {kind, declaration.name}) do
+      Finding.new(
+        "reaction-without-scenario",
+        "#{what} #{inspect(declaration.name)} of #{inspect(model.module)} has no scenario, so " <>
+          "nothing shows its implementation does what #{inspect(declaration.label)} says",
+        at(declared, declaration.name)
       )
     end
   end

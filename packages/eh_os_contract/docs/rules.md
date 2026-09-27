@@ -172,6 +172,19 @@ An event's name starts with the name of its unit.
 `visit_closed` in the unit `visit`: the unit is where the event is declared and its type carries
 the process, so the prefix says twice what the name should not have to. Name what happened.
 
+## `reaction-without-scenario`
+
+**warning** · reads v2 contracts · ESDM: `esdm/gwt/feature-without-scenarios`
+
+No scenario runs a policy, a process manager or a query.
+
+Its label says what it does, and nothing shows its implementation does it: a scenario on the
+event it takes, with what it `issues`, or a query with what it `answers`, is the test that would.
+ESDM asks this of a feature; here of each declaration a scenario can run. An effect is left out,
+since its outcome is outside the log and no scenario can name it (S6). A warning, where an
+invariant without a rejecting scenario is an error (S8): the scenario is the only proof an
+invariant holds, and a reaction is also checked on the log by the conformance report.
+
 ## `consults-without-match`
 
 **warning** · reads v2 contracts
