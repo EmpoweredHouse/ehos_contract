@@ -566,6 +566,19 @@ defmodule EhOsContract.Check do
   end
 
   @doc """
+  The rules between modules, L3, repeated as errors for a project that does not run
+  them on every compile (v2 §6, L5; plan EL1): one whose `compilers` has no
+  `:eh_os_contract`. `modules` are the project's compiled modules. A project that
+  registers the compiler gets nothing here, since its build already failed on each.
+  """
+  @spec compiler_findings([atom()], [module()]) :: [Finding.t()]
+  def compiler_findings(compilers, modules) do
+    if :eh_os_contract in compilers,
+      do: [],
+      else: modules |> Links.check() |> Enum.map(&Finding.compiler/1)
+  end
+
+  @doc """
   Whether there is nothing at all to check.
 
   **A report of `0 errors, 0 warnings, 0 notices` is what a healthy repository looks

@@ -7,7 +7,8 @@ defmodule Mix.Tasks.EhOsContract.Check do
   The split is forced by the compilation model rather than chosen: a macro sees
   one file, so it checks what one file can show. That every declared event has a
   handler or is terminal, that there are no orphans, and that the declarations
-  agree with reality — all of that belongs here.
+  agree with reality — all of that belongs here. A project that does not register
+  the compiler `:eh_os_contract` gets its rules (L3) here too, as errors.
 
   Every finding names its rule (`EhOsContract.Check.Catalog`, documented in
   `docs/rules.md`) and, where it can, the file and line of the declaration it is
@@ -66,8 +67,15 @@ defmodule Mix.Tasks.EhOsContract.Check do
     findings = for {rule, message} <- findings, do: Finding.new(rule, message)
     v2 = EhOsContract.Registry.v2_contracts()
 
+    compiler =
+      EhOsContract.Check.compiler_findings(
+        Mix.Project.config()[:compilers] || Mix.compilers(),
+        Mix.Tasks.Compile.EhOsContract.modules(Mix.Project.compile_path())
+      )
+
     report(
-      EhOsContract.Check.v2_findings(v2) ++
+      compiler ++
+        EhOsContract.Check.v2_findings(v2) ++
         EhOsContract.Check.Completeness.findings(v2) ++
         EhOsContract.Check.Contracts.findings(v2) ++ findings,
       opts

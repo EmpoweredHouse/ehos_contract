@@ -35,6 +35,19 @@ defmodule EhOsContract.Check.Finding do
     %__MODULE__{rule: rule, level: Catalog.fetch!(rule).level, message: message, at: at}
   end
 
+  @doc """
+  A violation of a rule of the compiler, L2 or L3, as an error under the code its
+  message starts with (`"X2: …"` is rule `X2`), or `L3` when it names none. The
+  catalog does not document these; v2 §6 does.
+  """
+  @spec compiler({String.t(), :erl_anno.anno() | nil}) :: t()
+  def compiler({message, at}) do
+    case Regex.run(~r/\A([A-Z]+[0-9]+): (.*)\z/s, message) do
+      [_, code, rest] -> %__MODULE__{rule: code, level: :error, message: rest, at: at}
+      nil -> %__MODULE__{rule: "L3", level: :error, message: message, at: at}
+    end
+  end
+
   @doc "`file:line` relative to the working directory, or `nil` when nothing says where."
   @spec place(t()) :: {String.t(), pos_integer()} | nil
   def place(%__MODULE__{at: nil}), do: nil
