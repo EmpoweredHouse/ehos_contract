@@ -743,6 +743,22 @@ Mechanika, rozstrzygnięta przez asystenta:
 - **Luka spoza EM2:** słownik DSL-a domeny nie ma testu przypinającego, jaki ma kontrakt
   (`contract_vocabulary_test`), więc `entity` weszło bez zmiany żadnego przypięcia.
 
+Rozstrzygnięte przez użytkownika 27 września po EM2, przed EM3:
+- **Wynik serwisu może być pusty, jeśli deklaracja tak mówi:** `returns {:id, :clinic}, optional: true`; bez tego
+  `nil` dalej jest błędem. *Odrzucone:* zostawić (funkcja zawsze coś zwraca, a „nic” trzeba wyrazić innym typem).
+- **EM3 obejmuje tylko to, co się wykonuje:** identyfikator nadawany przez bibliotekę, timery kalendarzowe i pusty
+  wynik serwisu. **Pola opisowe — `constraints`, inwarianty wartości, tłumaczenia z definicją, nazwana subdomena,
+  relacja do systemu zewnętrznego — wchodzą w EL i EG** razem ze stroną albo grafem, który je pokazuje (zasada
+  „rodzaj wchodzi razem ze swoim czytelnikiem”). *Odrzucone:* wszystko w EM3 (pełne pokrycie ESDM etap wcześniej,
+  ale deklaracje bez czytelnika przez jeden etap).
+- **Timer „za miesiąc” liczony kalendarzowo:** `wait: {1, :month}` to ta sama data w następnym miesiącu (31 stycznia
+  → koniec lutego), jak w ESDM; tylko w timerach, obietnice i `deadline` zostają w stałych jednostkach, bo raport
+  liczy z nich czas. *Odrzucone:* bez miesięcy (`{30, :day}` — rozjazd z ESDM).
+- **Zapis identyfikatora nadawanego przez bibliotekę:** `identity :booking_id, generated: :uuid` na agregacie i
+  `creates: true` na komendzie tworzącej — tylko ona przychodzi bez identyfikatora, a dispatch zwraca nadany w
+  `receipt.identity`. *Odrzucone:* samo `generated:`, gdzie każda komenda bez identyfikatora tworzy obiekt
+  (zapomniany identyfikator w zwykłej komendzie po cichu tworzyłby nowy obiekt zamiast błędu).
+
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
 Po lekturze architektury EHOS-a (`~/Projects/ai/eh-os`, `docs/ADR.md` i `docs/ARCHITECTURE.md`; research w
