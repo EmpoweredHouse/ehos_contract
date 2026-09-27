@@ -131,6 +131,20 @@ defmodule EhOsContract.ValueInvariantsTest do
              {422, %{"invalid" => %{"amount" => "positive"}}}
   end
 
+  test "a value's check is looked up once, not in the index for every value" do
+    {:ok, _} = pay(amount: 1)
+
+    apps = Enum.uniq(List.wrap(Application.get_env(:eh_os_contract, :applications)))
+    key = {EhOsContract.Implementations, apps}
+    index = EhOsContract.Implementations.index(nil)
+    on_exit(fn -> :persistent_term.put(key, index) end)
+
+    declarations = Map.delete(index.declarations, {ValueRig.Domain, :value, :amount})
+    :persistent_term.put(key, %{index | declarations: declarations})
+
+    assert pay(amount: 0) == {:error, {:invalid, [amount: {:invariant, :positive}]}}
+  end
+
   test "reading the log back never asks: an event written before an invariant still reads" do
     {:ok, _} = pay(amount: 3)
     [row] = log()
@@ -165,6 +179,11 @@ defmodule EhOsContract.ValueWithoutImplementationTest do
 
     declarations = Map.delete(index.declarations, {ValueRig.Domain, :value, :amount})
     :persistent_term.put(key, %{index | declarations: declarations})
+
+    # What a check found before, and keeps (`EhOsContract.Value`), goes with it.
+    kept = {EhOsContract.Value, ValueRig.Domain, :amount}
+    :persistent_term.erase(kept)
+    on_exit(fn -> :persistent_term.erase(kept) end)
     :ok
   end
 

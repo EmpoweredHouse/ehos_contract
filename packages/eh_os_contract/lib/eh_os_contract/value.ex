@@ -32,9 +32,7 @@ defmodule EhOsContract.Value do
   """
   @spec violated(module(), atom(), term()) :: atom() | nil
   def violated(domain, name, value) do
-    model = Model.fetch(domain)
-    %{invariants: invariants} = Enum.find(model.values, &(&1.name == name))
-    implementation = Implementations.fetch!(model, :value, name)
+    {implementation, invariants} = resolved(domain, name)
 
     Enum.find_value(invariants, fn %{name: invariant} ->
       case apply(implementation, invariant, [value]) do
@@ -51,5 +49,26 @@ defmodule EhOsContract.Value do
                   "check of invariant #{inspect(invariant)} of value #{inspect(name)} answers one"
       end
     end)
+  end
+
+  # The implementation and the invariants, looked up once per value and kept in
+  # `:persistent_term`, as `EhOsContract.DomainService` keeps its own: the index's
+  # lookup scans the loaded applications, and a list of a thousand values is checked
+  # a thousand times, twice when its command's event carries it too (the EL2b
+  # review). A missing implementation is never kept, so it raises every time.
+  defp resolved(domain, name) do
+    key = {__MODULE__, domain, name}
+
+    case :persistent_term.get(key, nil) do
+      nil ->
+        model = Model.fetch(domain)
+        %{invariants: invariants} = Enum.find(model.values, &(&1.name == name))
+        resolved = {Implementations.fetch!(model, :value, name), invariants}
+        :persistent_term.put(key, resolved)
+        resolved
+
+      resolved ->
+        resolved
+    end
   end
 end
