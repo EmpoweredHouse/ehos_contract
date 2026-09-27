@@ -174,9 +174,10 @@ defmodule EhOsContract.Personal do
   @doc """
   Erases `subject` `id` (see the moduledoc): `:ok`, also when it was erased before,
   and then nothing is appended again. `opts`: `actor:`, an `EhOsContract.Actor`,
-  required — who asked, recorded with the erasure and as the event's actor — and
-  `correlation_id:`. Who may erase is the host's to decide: the engine asks no
-  `EhOsContract.Authorizer` (the user's decision of 27 September 2026).
+  required — who asked, recorded with the erasure and as the event's actor. The event
+  starts a correlation of its own: it continues no command. Who may erase is the
+  host's to decide: the engine asks no `EhOsContract.Authorizer` (the user's decision
+  of 27 September 2026).
 
   Raises when no domain of the host's contracts declares `subject`.
   """
@@ -203,6 +204,8 @@ defmodule EhOsContract.Personal do
         :ok = Store.lock(repo)
 
         if MapSet.size(erased_among(repo, [{subject, id}])) == 0 do
+          now = Clock.now()
+
           repo.delete_all(
             from(k in @keys, where: k.subject_type == ^type and k.subject_id == ^id)
           )
@@ -211,7 +214,7 @@ defmodule EhOsContract.Personal do
             %{
               subject_type: type,
               subject_id: id,
-              erased_at: Clock.now(),
+              erased_at: now,
               requested_by: Actor.label(actor)
             }
           ])
@@ -225,8 +228,8 @@ defmodule EhOsContract.Personal do
                   contract: inspect(EhOsContract),
                   contract_version: EhOsContract.version(),
                   actor: Actor.label(actor),
-                  correlation_id: Map.get(opts, :correlation_id) || Ecto.UUID.generate(),
-                  occurred_at: Clock.now(),
+                  correlation_id: Ecto.UUID.generate(),
+                  occurred_at: now,
                   payload: %{"subject_type" => type, "subject_id" => id},
                   metadata: %{"issued_by" => Actor.label(actor)}
                 }
@@ -234,7 +237,7 @@ defmodule EhOsContract.Personal do
               :none
             )
 
-          forget_inline!(repo, row)
+          forget_inline!(repo, row, %Erased{subject: subject, id: id})
           true
         else
           false
@@ -253,9 +256,14 @@ defmodule EhOsContract.Personal do
   # Every read model delivered in the transaction that forgets, as dispatch projects an
   # appended event: a registered one's row advances with it, one being rebuilt is left
   # to its runner (v2 §12).
-  defp forget_inline!(repo, row) do
-    consumers = Implementations.inline(nil, @erased)
-    event = Consumer.decode!(row)
+  defp forget_inline!(repo, row, erased) do
+    case Implementations.inline(nil, @erased) do
+      [] -> :ok
+      consumers -> forget_inline!(repo, row, erased, consumers)
+    end
+  end
+
+  defp forget_inline!(repo, row, erased, consumers) do
     keys = for c <- consumers, do: c.key
 
     rebuilding =
@@ -267,7 +275,7 @@ defmodule EhOsContract.Personal do
       )
 
     for consumer <- consumers, consumer.key not in rebuilding do
-      :ok = Consumer.handle!(consumer, event, [])
+      :ok = Consumer.handle!(consumer, erased, [])
     end
 
     repo.update_all(

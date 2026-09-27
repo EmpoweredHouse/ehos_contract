@@ -103,6 +103,12 @@ defmodule EhOsContract.ErasureTest do
       assert erased.contract == "EhOsContract"
       assert erased.stream_id == nil
 
+      # One moment: the erasure's record and its event say the same time.
+      assert Repo.one(
+               from(e in "eh_os_contract_erasures", select: type(e.erased_at, :utc_datetime_usec))
+             ) ==
+               erased.occurred_at
+
       # The read model delivered in the transaction forgot Anna, and only Anna.
       assert members() == [{"member-anna", nil}, {"member-bartek", "Bartek Nowak"}]
 
