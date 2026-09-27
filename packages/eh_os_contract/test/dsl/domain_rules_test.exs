@@ -548,6 +548,39 @@ defmodule EhOsContract.DomainRulesTest do
       assert Map.has_key?(model.digests, "entity:period")
     end
 
+    test "a field twice, an unknown subject and personal data inside a value are refused" do
+      message =
+        refused(
+          "EntityFields",
+          @periods <>
+            """
+              subject :patient, "Pacjent"
+
+              value :contact do
+                field :patient_id, :id, subject: :patient
+                field :phone, :string, personal: :patient_id
+              end
+
+              entity :card, "Karta", context: :month, identified_by: :card_id do
+                field :card_id, :id
+                field :card_id, :string
+                field :holder_id, :id, subject: :holder
+                field :contact, :contact
+              end
+            """
+        )
+
+      assert message =~ "D6: entity :card declares field :card_id twice (entity_fields.ex:14)"
+
+      assert message =~
+               "D6: entity :card, field :holder_id names subject :holder, which this domain does " <>
+                 "not declare (entity_fields.ex:15)"
+
+      assert message =~
+               "D6: entity :card, field :contact is of :contact, which holds personal data, and " <>
+                 "an entity's rows are the application's"
+    end
+
     test "control: a value's personal field may name a subject identifier that is an entity's" do
       compiles(
         "PersonalToEntity",

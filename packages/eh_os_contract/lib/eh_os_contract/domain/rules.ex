@@ -4,8 +4,9 @@ defmodule EhOsContract.Domain.Rules do
 
   **D6** (plan EM2): an entity belongs to a context this domain declares, and is
   identified by one of its own fields, a required, non-personal `:id`. Its fields are
-  well formed as a value's are, and none is personal: an entity's rows are the
-  application's, outside the log, where erasure cannot reach them. Every
+  well formed and named once, as a value's are, each `subject:` a declared subject,
+  and none is personal, nor of a value that holds personal data: an entity's rows are
+  the application's, outside the log, where erasure cannot reach them. Every
   `{:id, entity}`, in a value's field or an entity's, names an entity of this domain.
 
   A transformer, not a verifier, and every violation is reported at once, in one
@@ -269,10 +270,11 @@ defmodule EhOsContract.Domain.Rules do
   defp d6(entities, _domain) do
     known = MapSet.new(for %Entity{name: name} <- entities, do: name)
     contexts = MapSet.new(for %Context{name: name} <- entities, do: name)
-    values = MapSet.new(for %Value{name: name} <- entities, do: name)
+    subjects = MapSet.new(for %Subject{name: name} <- entities, do: name)
+    values = Map.new(for %Value{} = value <- entities, do: {value.name, value})
+    scope = %{contexts: contexts, subjects: subjects, values: values}
 
-    shapes =
-      for %Entity{} = entity <- entities, v <- entity_shape(entity, contexts, values), do: v
+    shapes = for %Entity{} = entity <- entities, v <- entity_shape(entity, scope), do: v
 
     references =
       for %{__struct__: kind, fields: fields} = declaration <- entities,
@@ -296,12 +298,17 @@ defmodule EhOsContract.Domain.Rules do
     shapes ++ references ++ aliases
   end
 
-  defp entity_shape(entity, contexts, values) do
+  defp entity_shape(entity, scope) do
     where = "D6: entity #{inspect(entity.name)}"
     by_name = Map.new(entity.fields, &{&1.name, &1})
 
+    twice =
+      for field <- duplicates(entity.fields, & &1.name) do
+        {"#{where} declares field #{inspect(field.name)} twice", field}
+      end
+
     context =
-      if MapSet.member?(contexts, entity.context),
+      if MapSet.member?(scope.contexts, entity.context),
         do: [],
         else: [
           {"#{where} names context #{inspect(entity.context)}, which this domain does not declare",
@@ -326,9 +333,30 @@ defmodule EhOsContract.Domain.Rules do
           ]
       end
 
+    names = MapSet.new(Map.keys(scope.values))
+
     fields =
-      for field <- entity.fields, problem <- type_problems(field.type, values) do
+      for field <- entity.fields, problem <- type_problems(field.type, names) do
         {"#{where}, field #{inspect(field.name)}: #{problem}", field}
+      end
+
+    subject =
+      for field <- entity.fields,
+          field.subject != nil,
+          not MapSet.member?(scope.subjects, field.subject) do
+        {"#{where}, field #{inspect(field.name)} names subject #{inspect(field.subject)}, which " <>
+           "this domain does not declare", field}
+      end
+
+    # Personal data inside a value is as far from erasure in an entity's row as a
+    # personal field is.
+    inside =
+      for field <- entity.fields,
+          field.personal == nil,
+          EhOsContract.Codec.personal_type?(field.type, scope.values) do
+        {"#{where}, field #{inspect(field.name)} is of #{inspect(field.type)}, which holds personal " <>
+           "data, and an entity's rows are the application's, outside the log, where erasure " <>
+           "cannot reach them", field}
       end
 
     options =
@@ -343,7 +371,7 @@ defmodule EhOsContract.Domain.Rules do
         {"#{where}, field #{inspect(field.name)} has #{option}:, and #{why}", field}
       end
 
-    context ++ identity ++ fields ++ options
+    twice ++ context ++ identity ++ fields ++ subject ++ options ++ inside
   end
 
   defp describe(%Value{name: name}), do: "value #{inspect(name)}"
