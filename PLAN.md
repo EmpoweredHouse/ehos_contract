@@ -1609,6 +1609,22 @@ niewrażliwości schematu `Bearer` na wielkość liter.
    `warning`/`error`. Zamierzone: tak wygląda aplikacja bez EHOS-a.
 5. Nazwa kontraktu w wierszu to `inspect(module)`, jak w `_commands`.
 
+**`/code-review` (high) na `dsl-v2/ea-verify...dsl-v2/ea-authorize`, na polecenie użytkownika — osiem uwag:**
+1. **`pin` ze złym kluczem rzucał w procesie kluczy** i zabierał z nim tabelę ze wszystkimi kluczami — poprawione:
+   sprawdzenie w wołającym (test; mutacja przenosząca je z powrotem do procesu go wywraca).
+2. **`Keys.pin/2` jest publiczne i działa w każdym środowisku** — każdy kod w VM może dodać ufany klucz.
+   **Do użytkownika**: bramka w konfiguracji (np. `config :eh_os_contract_auth, pin_keys: true` tylko w teście) to
+   kształt widoczny dla hosta.
+3. `credential/3` bez procesu kluczy kończył się gołym `:noproc` — teraz `ArgumentError` mówiący, co uruchomić (test).
+4. **Plug sięga do `Dispatcher.permit_undecoded/5` (`@doc false`)**, bo dekodowanie jest w Plugu, a autoryzacja w
+   dispatchu; drugie drzwi, które same dekodują, musiałyby o tym wiedzieć. **Do użytkownika**: wejście silnika
+   przyjmujące surowe dane (autoryzacja → dekodowanie → dispatch w jednym miejscu) to nowe publiczne API.
+5. Kształt zapytania o `scope` był budowany w dwóch miejscach — teraz jedno, `scope_request/2` w dispatcherze.
+6. `Codec.values/1` liczone dwa razy na żądanie — teraz raz.
+7. `EhOsContract.Auth.Plug.init/1` po cichu gubił nieznane opcje (literówka w `audience`) — teraz rzuca (test).
+8. Dev bez migracji pada przy dispatchu z credentialem — **bez zmian**, opisane wyżej w „Stanie repozytorium”.
+Poprawki 1, 3 i 7 sprawdzone wstecz. Pakiet auth 41 → 44.
+
 ### Losy fikstur
 
 | Fikstura | Los |

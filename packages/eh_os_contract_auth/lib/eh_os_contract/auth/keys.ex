@@ -144,7 +144,14 @@ defmodule EhOsContract.Auth.Keys do
   else calls it: a key pinned here verifies credentials exactly as EHOS's do.
   """
   @spec pin(map(), atom()) :: String.t()
-  def pin(jwk, name \\ __MODULE__) when is_map(jwk), do: GenServer.call(name, {:pin, jwk})
+  def pin(jwk, name \\ __MODULE__) when is_map(jwk) do
+    # Checked here, in the caller: raising in the process would take its table, and
+    # every key in force, with it.
+    {kid, public} =
+      ed25519(jwk) || raise ArgumentError, "only an Ed25519 public key can be pinned"
+
+    GenServer.call(name, {:pin, kid, public})
+  end
 
   @doc "The thumbprints of the keys in force, sorted."
   @spec kids(atom()) :: [String.t()]
@@ -210,10 +217,7 @@ defmodule EhOsContract.Auth.Keys do
     end
   end
 
-  def handle_call({:pin, jwk}, _from, state) do
-    {kid, public} =
-      ed25519(jwk) || raise ArgumentError, "only an Ed25519 public key can be pinned"
-
+  def handle_call({:pin, kid, public}, _from, state) do
     :ets.insert(state.name, {kid, signer(public)})
     {:reply, kid, %{state | pinned: Map.put(state.pinned, kid, public)}}
   end

@@ -72,9 +72,11 @@ if Code.ensure_loaded?(Plug.Conn) do
     defp serve(conn, contracts, kind, capability) do
       with {:ok, model, declaration} <- route(contracts, kind, capability),
            {:ok, actor} <- actor(conn) do
-        case prepare(conn, model, kind, declaration) do
+        values = Codec.values(model.domain)
+
+        case prepare(conn, model, kind, declaration, values) do
           {:ok, conn, struct} ->
-            respond(conn, kind, model, declaration, struct, actor, Codec.values(model.domain))
+            respond(conn, kind, model, declaration, struct, actor, values)
 
           # Whether the caller may make this call is answered before what is wrong
           # with it, so a refusal is a refusal whatever was sent, and has its row.
@@ -91,8 +93,7 @@ if Code.ensure_loaded?(Plug.Conn) do
 
     # The request as dispatch or query takes it, or what is wrong with it and the
     # input as it was sent.
-    defp prepare(conn, model, kind, declaration) do
-      values = Codec.values(model.domain)
+    defp prepare(conn, model, kind, declaration, values) do
       fields = if kind == :command, do: declaration.fields, else: declaration.params
 
       with {:ok, conn, input} <- input(conn, kind),

@@ -37,10 +37,19 @@ defmodule EhOsContract.Auth.Plug do
 
   require Logger
 
-  @doc "Keeps `verify/2`'s options."
+  @doc "Keeps `verify/2`'s options, and raises on any other: a misspelt one would be ignored."
   @impl Plug
   @spec init(keyword()) :: keyword()
-  def init(opts), do: Keyword.take(opts, [:audience, :issuer, :keys])
+  def init(opts) do
+    case Keyword.keys(opts) -- [:audience, :issuer, :keys] do
+      [] ->
+        opts
+
+      unknown ->
+        raise ArgumentError,
+              "EhOsContract.Auth.Plug takes :audience, :issuer and :keys, not #{inspect(unknown)}"
+    end
+  end
 
   @doc "Verifies the bearer token and assigns its actor, or answers 401."
   @impl Plug

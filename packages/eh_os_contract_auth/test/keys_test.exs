@@ -176,6 +176,19 @@ defmodule EhOsContract.Auth.KeysTest do
            ]).rows == [[0]]
   end
 
+  test "pinning something that is not an Ed25519 key raises in the caller, not the process" do
+    pair = key_pair()
+    keys = start_keys(ehos({:keys, [pair]}))
+    pid = Process.whereis(keys)
+
+    assert_raise ArgumentError, ~r/only an Ed25519 public key/, fn ->
+      Keys.pin(%{"kty" => "EC", "crv" => "P-256"}, keys)
+    end
+
+    assert Process.whereis(keys) == pid
+    assert {:ok, _} = Auth.verify(credential(pair), keys: keys)
+  end
+
   test "a key process that is not running refuses with :no_keys, and does not raise" do
     assert Auth.verify(credential(key_pair()), keys: :not_started) == {:error, :no_keys}
     refute Auth.ready?(keys: :not_started)

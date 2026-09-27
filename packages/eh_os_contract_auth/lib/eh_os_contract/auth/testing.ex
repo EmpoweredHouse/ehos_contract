@@ -66,7 +66,15 @@ defmodule EhOsContract.Auth.Testing do
           String.t()
   def credential(subject, capabilities, scopes \\ %{}, opts \\ []) do
     {private, public} = key()
-    kid = Keys.pin(public, Keyword.get(opts, :keys, Keys))
+    name = Keyword.get(opts, :keys, Keys)
+
+    unless Process.whereis(name) do
+      raise ArgumentError,
+            "#{inspect(name)} is not running, so the test key has nowhere to be trusted: start " <>
+              "EhOsContract.Auth in the application's supervision tree, after its repo"
+    end
+
+    kid = Keys.pin(public, name)
     config = Application.get_all_env(:eh_os_contract_auth)
     now = DateTime.to_unix(EhOsContract.Clock.now())
 

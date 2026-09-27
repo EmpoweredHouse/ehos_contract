@@ -27,6 +27,12 @@ defmodule EhOsContract.Auth.PlugTest do
 
   defp decisions, do: Repo.query!("SELECT count(*) FROM eh_os_contract_auth_decisions").rows
 
+  test "an option verify/2 does not take is refused at init, not ignored" do
+    assert_raise ArgumentError, ~r/not \[:audiance\]/, fn ->
+      BearerPlug.init(audiance: "rehmed/staging")
+    end
+  end
+
   test "a verified credential goes on, with its actor", %{pair: pair, opts: opts} do
     conn = call(opts, "Bearer " <> credential(pair, %{"sub" => "u-anna"}))
 
