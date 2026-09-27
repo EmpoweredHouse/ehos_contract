@@ -17,7 +17,8 @@ defmodule EhOsContract.Dispatcher do
   2. **What.** The command's fields against their types (`EhOsContract.Codec`):
      `{:error, {:invalid, [{field, :required | :type}]}}`. A command that `creates:`
      an aggregate whose identity is generated gets a UUIDv7 here, and is refused
-     with `{field, :generated}` when it brings one of its own (plan EM3).
+     with `{field, :generated}` when it brings one of its own, and with
+     `{:error, :idempotency_key_required}` without an idempotency key (plan EM3).
   3. **Once.** An idempotency key already accepted for the same command returns
      that command's receipt, `duplicate: true`, and appends nothing; accepted for
      another command, `{:error, :idempotency_key_reused}`. Only an accepted
@@ -101,6 +102,7 @@ defmodule EhOsContract.Dispatcher do
           | :not_declared
           | {:invalid, [Codec.problem() | {atom(), :generated}]}
           | :idempotency_key_reused
+          | :idempotency_key_required
           | :conflict
           | :not_caught_up
           | :subject_erased
@@ -122,7 +124,7 @@ defmodule EhOsContract.Dispatcher do
 
     with :ok <- permit(model, declaration, ctx.actor),
          :ok <- valid(declaration.fields, command, values),
-         {:ok, command} <- generate_identity(model, declaration, command) do
+         {:ok, command} <- generate_identity(model, declaration, command, ctx) do
       job = %{
         kind: :command,
         type: Atom.to_string(declaration.name),
@@ -419,17 +421,20 @@ defmodule EhOsContract.Dispatcher do
   # A command that creates an aggregate whose identity is generated arrives without
   # it, and gets a UUIDv7 here, once per dispatch, so a retried conflict keeps it
   # (plan EM3). One that brings its own is refused: the library gives it, and a host
-  # that made up its own would have two ways of doing so.
-  defp generate_identity(model, %{creates: true} = declaration, command) do
+  # that made up its own would have two ways of doing so. And it needs an idempotency
+  # key, since a retry without one would make a second aggregate the caller never
+  # hears of (the user's choice after the EM3 review); a reaction's is derived.
+  defp generate_identity(model, %{creates: true} = declaration, command, ctx) do
     [field] = Enum.find(model.units, &(&1.name == declaration.unit)).identity
 
-    case Map.fetch!(command, field) do
-      nil -> {:ok, Map.put(command, field, Ecto.UUID.generate(version: 7))}
-      _given -> {:error, {:invalid, [{field, :generated}]}}
+    cond do
+      Map.fetch!(command, field) != nil -> {:error, {:invalid, [{field, :generated}]}}
+      ctx.idempotency_key == nil -> {:error, :idempotency_key_required}
+      true -> {:ok, Map.put(command, field, Ecto.UUID.generate(version: 7))}
     end
   end
 
-  defp generate_identity(_model, _declaration, command), do: {:ok, command}
+  defp generate_identity(_model, _declaration, command, _ctx), do: {:ok, command}
 
   defp valid(fields, struct, values) do
     case Codec.problems(fields, struct, values) do

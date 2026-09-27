@@ -91,6 +91,14 @@ defmodule EhOsContract.PlugTest do
     # With it, the client can address the entry it made.
     left = send.("/commands/boundary_rig.leave_waitlist", %{entry_id: id}, "leave-anna")
     assert {left.status, json(left)["identity"]} == {200, %{"entry_id" => id}}
+
+    # Without a key, a retry would make a second entry, so the command is refused.
+    unkeyed =
+      post("/commands/boundary_rig.join_waitlist", %{course_id: "c", student_id: "s"})
+      |> assign(:eh_os_contract_actor, registrar)
+      |> EhOsContract.Plug.call(opts)
+
+    assert {unkeyed.status, json(unkeyed)} == {422, %{"error" => "idempotency_key_required"}}
   end
 
   test "each outcome has its status, and no body carries a value the caller did not send" do

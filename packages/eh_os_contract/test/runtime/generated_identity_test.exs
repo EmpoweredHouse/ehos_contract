@@ -19,12 +19,17 @@ defmodule EhOsContract.GeneratedIdentityTest do
         "boundary_rig.leave_waitlist"
       ])
 
+  # A creating command needs an idempotency key; each call gets its own unless the
+  # test names one.
   defp join(opts \\ []),
     do:
       EhOsContract.dispatch(
         Waitlist,
         %JoinWaitlist{course_id: "course-math", student_id: "student-anna"},
-        Keyword.merge([actor: registrar()], opts)
+        Keyword.merge(
+          [actor: registrar(), idempotency_key: "join-#{System.unique_integer([:positive])}"],
+          opts
+        )
       )
 
   defp log,
@@ -51,12 +56,19 @@ defmodule EhOsContract.GeneratedIdentityTest do
              EhOsContract.dispatch(Waitlist, %LeaveWaitlist{entry_id: id}, actor: registrar())
   end
 
+  test "a creating command without an idempotency key is refused, and nothing is written" do
+    # A retry of it would make a second entry the caller never hears of.
+    assert {:error, :idempotency_key_required} = join(idempotency_key: nil)
+    assert log() == []
+  end
+
   test "a creating command that brings its own identity is refused, and nothing is written" do
     assert {:error, {:invalid, [entry_id: :generated]}} =
              EhOsContract.dispatch(
                Waitlist,
                %JoinWaitlist{entry_id: "entry-made-up", course_id: "c", student_id: "s"},
-               actor: registrar()
+               actor: registrar(),
+               idempotency_key: "join-made-up"
              )
 
     assert log() == []
