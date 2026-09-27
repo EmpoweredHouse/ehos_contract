@@ -56,31 +56,8 @@ defmodule EhOsContract.Next.Contract do
   pins it notices every word added or removed.
   """
   @spec vocabulary() :: %{[atom()] => [atom()]}
-  def vocabulary do
-    EhOsContract.Next.Contract.Dsl.sections()
-    |> Enum.flat_map(& &1.entities)
-    |> Enum.flat_map(&words(&1, []))
-    |> Map.new()
-  end
-
-  defp words(entity, parent) do
-    path = parent ++ [entity.name]
-
-    args =
-      Enum.map(entity.args, fn
-        {:optional, name} -> name
-        {:optional, name, _default} -> name
-        name -> name
-      end)
-
-    nested =
-      for {_key, entities} <- entity.entities,
-          child <- entities,
-          pair <- words(child, path),
-          do: pair
-
-    [{path, args ++ (Keyword.keys(entity.schema) -- args)} | nested]
-  end
+  def vocabulary,
+    do: EhOsContract.DslWrappers.vocabulary(EhOsContract.Next.Contract.Dsl.sections())
 
   @impl Spark.Dsl
   def handle_opts(opts) do

@@ -203,4 +203,35 @@ defmodule EhOsContract.DslWrappers do
       {:ok, built}
     end
   end
+
+  @doc false
+  # The words of a DSL, for `vocabulary/0` of the contract and of the domain: for
+  # every entity, by its path from the module body, the keys it takes — positional
+  # arguments first, then options, in the order the entity defines them.
+  @spec vocabulary([Spark.Dsl.Section.t()]) :: %{[atom()] => [atom()]}
+  def vocabulary(sections) do
+    sections
+    |> Enum.flat_map(& &1.entities)
+    |> Enum.flat_map(&words(&1, []))
+    |> Map.new()
+  end
+
+  defp words(entity, parent) do
+    path = parent ++ [entity.name]
+
+    args =
+      Enum.map(entity.args, fn
+        {:optional, name} -> name
+        {:optional, name, _default} -> name
+        name -> name
+      end)
+
+    nested =
+      for {_key, entities} <- entity.entities,
+          child <- entities,
+          pair <- words(child, path),
+          do: pair
+
+    [{path, args ++ (Keyword.keys(entity.schema) -- args)} | nested]
+  end
 end

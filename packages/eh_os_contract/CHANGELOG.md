@@ -105,6 +105,8 @@ What changes otherwise is what a host has to do.
 - **EL1: `check` repeats the rules between modules (L3) as errors** in a project whose `compilers` has no
   `:eh_os_contract`, under the codes the compiler prints (`X2`, `D14`, …). A project that registers the
   compiler sees no change.
+- **EL1: `EhOsContract.Domain.vocabulary/0`**, the domain DSL's words by entity path, as
+  `EhOsContract.Next.Contract.vocabulary/0` has them for the contract; a test pins both.
 - **EM2: `domain_service` in a contract** (ESDM's domain service): pure functions no unit owns, each with
   typed `argument`s, a `returns` type and prose `rule`s. The contract generates `C.DomainServices.<Name>`, a
   behaviour for the implementation (`use C, domain_service: :name`, I2 asks for every function) and the module
