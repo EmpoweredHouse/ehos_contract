@@ -36,6 +36,13 @@ What changes otherwise is what a host has to do.
 
 ### Changed — a host has to act
 
+- **EL2b: a domain service's `rule` needs `examples:`**, `rule :never_below_zero, "…", examples: [{[1, 3],
+  0}]` — the arguments in the order the function takes them, then the result. A rule without one fails the
+  compile (S9), and so does an example of the wrong arity or types (S9, X9 for domain values). Each example is a
+  test in `use EhOsContract.ScenarioCase, contract: C`, run through `C.DomainServices.<Name>`.
+- **EL2b: N2 refuses a callback named after a function every module defines** at its arity: an event
+  `:module_info` (its handler would define `module_info/1`) fails the compile, as a domain service's function
+  of that name already did.
 - **EL2: a subdomain is named, and a context names it.** `subdomain :visits, "Wizyty", type: :core` in the
   domain, then `context :scheduling, …, subdomain: :visits`; `subdomain:` on a context no longer takes the kind,
   and a name the domain does not declare fails the compile (D7). A domain keeping its old contexts can declare
@@ -90,6 +97,18 @@ What changes otherwise is what a host has to do.
 
 ### Added
 
+- **EL2b: a value's invariants, checked.** `value :money, :integer do invariant :not_negative, "…",
+  violated_by: [-1], satisfied_by: [0, 15_000] end` (D9). The domain generates `D.Values.Money`, one callback
+  per invariant; `use D, value: :money` binds the module defining them (I1, I2). Dispatch holds every value of
+  the type to them: a command, a recorded event and a query's parameters are refused,
+  `{:invalid, [amount: {:invariant, :not_negative}]}`, 422 `{"invalid": {"amount": "not_negative"}}`; an event a
+  decision returns, and a domain service's arguments and result, raise. The log read back is never checked. A
+  domain declaring no invariant keeps its version, and so do its contracts' wiring versions.
+- **EL2b: `use EhOsContract.ScenarioCase, domain: D`** writes a test per example of each value's invariants.
+- **EL2b: `value-without-implementation`**, a warning of `check`: a value declares invariants and nothing checks
+  them, in a domain some contract of which has code.
+- **EL2b: a contract's wiring version includes the modules checking its domain's values**, so binding a value
+  to another module records a new deployment, as rebinding a unit does.
 - **EL1: every finding of `mix eh_os_contract.check` names a rule** of `EhOsContract.Check.Catalog`, a name
   that does not change between versions, documented in `docs/rules.md` (generated from the catalog). A
   finding about a v2 contract says the file and line of its declaration. `--format json` prints one array of
