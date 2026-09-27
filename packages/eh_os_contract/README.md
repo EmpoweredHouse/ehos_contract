@@ -115,7 +115,9 @@ EhOsContract.erase(:patient, "p-17", actor: actor)
 It deletes the subject's data key, records the erasure and appends an event saying so; the
 subject's personal fields read back as `%EhOsContract.Erased{}` from then on, everything else
 stays, and a command that would write their personal data again is refused with
-`{:error, :subject_erased}`. Who may erase is yours to decide: the engine asks no authorizer.
+`{:error, :subject_erased}`. It answers `{:ok, :erased}`, `{:ok, :already_erased}`, or
+`{:ok, :no_data}` when no data key was there for that id — recorded all the same, but worth
+reporting, since a mistyped id erases nobody. Who may erase is yours to decide: the engine asks no authorizer.
 A read model that projects personal data keeps a copy in your tables, so it defines
 `forget(subject_type, subject_id)`; without it the host does not boot. One delivered in the
 transaction forgets inside the erasure, under the lock every append takes, so index the

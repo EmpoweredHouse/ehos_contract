@@ -91,7 +91,7 @@ defmodule EhOsContract.ErasureTest do
       two_members!()
       assert keys() == ["member-anna", "member-bartek"]
 
-      assert EhOsContract.erase(:member, "member-anna", actor: @officer) == :ok
+      assert EhOsContract.erase(:member, "member-anna", actor: @officer) == {:ok, :erased}
 
       assert keys() == ["member-bartek"]
       assert erasures() == [{"member", "member-anna", "actor:u-officer"}]
@@ -122,12 +122,12 @@ defmodule EhOsContract.ErasureTest do
              ] = Enum.map(log(), &Consumer.decode!/1)
     end
 
-    test "a second erasure is :ok and appends nothing" do
+    test "a second erasure is {:ok, :already_erased} and appends nothing" do
       two_members!()
-      :ok = EhOsContract.erase(:member, "member-anna", actor: @officer)
+      {:ok, :erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)
       count = length(log())
 
-      assert EhOsContract.erase(:member, "member-anna", actor: @clerk) == :ok
+      assert EhOsContract.erase(:member, "member-anna", actor: @clerk) == {:ok, :already_erased}
       assert length(log()) == count
       assert erasures() == [{"member", "member-anna", "actor:u-officer"}]
     end
@@ -137,8 +137,21 @@ defmodule EhOsContract.ErasureTest do
 
       # `UniversalityGate` declares :patient; no read model of ShreddingRig holds a
       # patient's data, so none is asked to forget one.
-      assert EhOsContract.erase(:patient, "member-anna", actor: @officer) == :ok
+      assert EhOsContract.erase(:patient, "member-anna", actor: @officer) == {:ok, :no_data}
       assert members() == [{"member-anna", "Anna Kowalska"}, {"member-bartek", "Bartek Nowak"}]
+    end
+
+    test "an id nothing was held for says so, and is recorded all the same" do
+      two_members!()
+
+      # "Member-Anna" is not "member-anna": perhaps a typo, which the host can see.
+      assert EhOsContract.erase(:member, "Member-Anna", actor: @officer) == {:ok, :no_data}
+      assert keys() == ["member-anna", "member-bartek"]
+
+      assert {"member", "Member-Anna", "actor:u-officer"} in erasures()
+
+      assert join_member("membership-typo", "Member-Anna", "Anna Nowak") ==
+               {:error, :subject_erased}
     end
 
     test "a subject no domain declares, and no actor, are refused" do
@@ -162,7 +175,7 @@ defmodule EhOsContract.ErasureTest do
       Testing.drain(only: @names)
       assert names() == [{"member-anna", "Anna Nowak"}, {"member-bartek", "Bartek Nowak"}]
 
-      :ok = EhOsContract.erase(:member, "member-anna", actor: @officer)
+      {:ok, :erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)
       assert length(names()) == 2
 
       Testing.drain(only: @names)
@@ -171,7 +184,7 @@ defmodule EhOsContract.ErasureTest do
 
     test "a rebuilt read model replays the erasure too, and keeps nothing of the subject" do
       two_members!()
-      :ok = EhOsContract.erase(:member, "member-anna", actor: @officer)
+      {:ok, :erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)
       Testing.drain(only: @names)
 
       Subscription.register!(Repo, Implementations.subscribed())
@@ -226,7 +239,7 @@ defmodule EhOsContract.ErasureTest do
   describe "dispatch after erasure" do
     test "refuses personal data of an erased subject, and writes nothing" do
       two_members!()
-      :ok = EhOsContract.erase(:member, "member-anna", actor: @officer)
+      {:ok, :erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)
       before = {log(), keys(), Repo.all(CommandRecord)}
 
       assert join_member("membership-anna-2", "member-anna", "Anna Nowak") ==
@@ -242,7 +255,7 @@ defmodule EhOsContract.ErasureTest do
 
     test "a reaction's command refused for an erased subject leaves what set it off standing" do
       two_members!()
-      :ok = EhOsContract.erase(:member, "member-anna", actor: @officer)
+      {:ok, :erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)
 
       # Bartek's rename sets off a policy in the transaction that joins Anna again.
       assert {:ok, %{events: [%{name: "Rejoin Anna"}]}} =
@@ -274,7 +287,7 @@ defmodule EhOsContract.ErasureTest do
 
     test "a refused command makes no key for the erased subject, not even before the lock" do
       two_members!()
-      :ok = EhOsContract.erase(:member, "member-anna", actor: @officer)
+      {:ok, :erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)
 
       Application.put_env(:eh_os_contract, :vault, WrapSpy)
       on_exit(fn -> Application.delete_env(:eh_os_contract, :vault) end)
@@ -291,7 +304,7 @@ defmodule EhOsContract.ErasureTest do
 
     test "control: another member's command goes through" do
       two_members!()
-      :ok = EhOsContract.erase(:member, "member-anna", actor: @officer)
+      {:ok, :erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)
 
       assert {:ok, %{events: [%{name: "Bartek Kowalski", previous: "Bartek Nowak"}]}} =
                rename_member("membership-bartek", "member-bartek", "Bartek Kowalski")
@@ -299,7 +312,7 @@ defmodule EhOsContract.ErasureTest do
 
     test "over HTTP, the refusal is 410" do
       two_members!()
-      :ok = EhOsContract.erase(:member, "member-anna", actor: @officer)
+      {:ok, :erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)
 
       conn =
         conn(
@@ -344,9 +357,12 @@ defmodule EhOsContract.ErasureTest do
 
     test "reads the same before and after an erasure" do
       two_members!()
+      # Settled first, so the one difference left to see is the erasure's: what is in
+      # flight — the greeting effect's jobs — is a number of the report too.
+      Testing.drain()
       before = report()
 
-      :ok = EhOsContract.erase(:member, "member-anna", actor: @officer)
+      {:ok, :erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)
       Testing.drain()
 
       assert report() == before

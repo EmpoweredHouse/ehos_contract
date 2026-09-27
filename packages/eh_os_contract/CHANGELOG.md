@@ -304,10 +304,20 @@ What changes otherwise is what a host has to do.
   under the append lock: its data keys are deleted, the erasure recorded in `eh_os_contract_erasures`,
   `eh_os_contract.subject_erased` appended (the subject's type and id, nothing personal), and every read model
   delivered in the transaction that projects that subject type's data forgets it. A read model after the
-  transaction takes the same event in order, and a rebuild replays it. `:ok` also when the subject was erased
-  before, and then nothing is appended. The engine asks no `Authorizer`: who may erase is the host's to decide.
+  transaction takes the same event in order, and a rebuild replays it. It answers `{:ok, :erased}`,
+  `{:ok, :no_data}` when no data key was there for that id (recorded all the same; a mistyped id erases nobody),
+  or `{:ok, :already_erased}`, and then nothing is appended; never `{:error, _}`, though it raises on a subject no
+  domain declares. The engine asks no `Authorizer`: who may erase is the host's to decide.
   **No verdict moves**: the conformance readers never read the event, and a test pins
   `EhOsContract.Conformance.as_data/2` identical before and after.
+- **What Oban keeps of a failed effect carries no value.** `EhOsContract.EffectJob` hands Oban
+  `EhOsContract.EffectJob.Failure` in place of the effect's exception, exit or throw — the effect, the event's
+  position and the kind of what failed, with the stacktrace's arguments dropped — and an `{:error, reason}`
+  described by its kind only. Exits are trapped while the effect runs, so a linked process it started crashing
+  comes back as an exit rather than killing the job with the crash's reason. Oban writes both into `oban_jobs.errors`, where a decoded event's personal data would outlive an erasure.
+  A host that wants the full failure logs it in its own effect. **Failures recorded before this version may
+  still hold values**: delete the failed and discarded rows of `EhOsContract.EffectJob` from `oban_jobs`, or let
+  Oban's pruner take them, before counting on an erasure.
 - **E8b: dispatch refuses personal data of an erased subject**, `{:error, :subject_erased}` (a new refusal),
   checked under the append lock before anything is sealed; it writes no `_commands` row. `EhOsContract.Plug`
   answers it `410` with `{"error": "subject_erased"}`.

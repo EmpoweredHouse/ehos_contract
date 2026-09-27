@@ -8,7 +8,8 @@ defmodule ShreddingRig.Members do
   the state its stream folds to — so a rename reads personal data back. Two read
   models keep the name in the host's tables, one in the dispatch transaction and one
   after it, and each forgets an erased member. A policy exists only so that a
-  test can watch a reaction issue a command carrying an erased member's data.
+  test can watch a reaction issue a command carrying an erased member's data, and
+  an effect so that one can watch what Oban keeps of a failure holding a name.
   """
 
   use EhOsContract.Next.Contract, domain: ShreddingRig.Domain, context: :membership
@@ -62,6 +63,11 @@ defmodule ShreddingRig.Members do
   end
 
   policy :rejoin, "Rejoin a member named in a rename", handles: :renamed, issues: :join
+
+  effect :greet, "Greet a new member",
+    handles: :joined,
+    delivery: :at_least_once,
+    idempotency: :event_id
 
   process :membership, "Membership" do
     correlate :membership_id

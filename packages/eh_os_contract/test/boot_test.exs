@@ -36,6 +36,35 @@ defmodule EhOsContract.BootTest do
     assert Repo.all(SubscriptionRecord) == []
   end
 
+  defmodule Unforgetting do
+    @moduledoc false
+  end
+
+  test "a read model that projects personal data and defines no forget/2 stops the boot" do
+    # The index the boot reads, with one read model's module swapped for one without
+    # forget/2 — as a host that forgot to write it would have it.
+    apps = Enum.uniq(List.wrap(Application.get_env(:eh_os_contract, :applications)))
+    key = {Implementations, apps}
+    index = Implementations.index(nil)
+    on_exit(fn -> :persistent_term.put(key, index) end)
+
+    consumers =
+      Enum.map(index.consumers, fn
+        %{key: "ShreddingRig.Members:read_model:members"} = consumer ->
+          %{consumer | module: Unforgetting}
+
+        consumer ->
+          consumer
+      end)
+
+    :persistent_term.put(key, %{index | consumers: consumers})
+    # The key this test rebuilt is the one the boot reads; otherwise it tests nothing.
+    assert Implementations.index(nil).consumers == consumers
+
+    assert {:error, {{%ArgumentError{message: message}, _}, _}} = start_supervised(EhOsContract)
+    assert message =~ "read model :members of ShreddingRig.Members project personal data"
+  end
+
   describe "without :manual" do
     setup do
       Application.put_env(:eh_os_contract, :subscriptions, :run)
