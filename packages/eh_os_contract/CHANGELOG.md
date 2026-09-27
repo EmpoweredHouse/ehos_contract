@@ -122,6 +122,11 @@ What changes otherwise is what a host has to do.
 - **EL2: `constraint` in a command and a query** (ESDM's constraints). A command's is checked as an invariant
   is: `rejects:` names it, `reject/1` refuses on it, and a `rejected` scenario of the command is required for
   each (A7, S8); a query's is prose. A command or a query declaring none keeps its version.
+- **EL2: a directed relation may end at an external system**, `relation :conformist, upstream: :ksef,
+  downstream: :settlement`, with the other end a context (D5); a name both a context and an external fails the
+  compile (D1). `orphan-external-system` counts a relation's end as a use, and `orphan-context-mapping` counts a
+  relation to an external as crossed when a contract of its context calls it, depends on it or acts through an
+  actor it backs.
 - **EL2: `subdomain-without-bounded-context`**, ESDM's warning for a subdomain no context names; `view`
   shows each context's subdomain and its kind.
 - **EL1: `EhOsContract.Domain.vocabulary/0`**, the domain DSL's words by entity path, as

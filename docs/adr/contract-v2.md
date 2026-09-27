@@ -143,6 +143,11 @@ scenario        description!   scope · actor
 > *Changed 27 September 2026, plan EL2, the user's choice.* **A translation says what the term means in its
 > language and what to avoid there**, as in ESDM: `translation language!, text!, definition! [avoid*]`, and
 > `avoid text!, reason` at a term and at a translation.
+>
+> *Changed 27 September 2026, plan EL2, the user's choice.* **An end of a directed relation may be an external
+> system**, under the same keys, as ESDM allows: `relation :conformist, upstream: :ksef, downstream: :settlement`.
+> The other end is then a context, a symmetric relation joins contexts only, and D1 refuses a name that is both a
+> context and an external.
 
 - **Identity is injected.** A unit's identity fields appear in its state, commands and events without being
   declared there; declaring one again is an error.

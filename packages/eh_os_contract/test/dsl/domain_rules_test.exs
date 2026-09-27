@@ -386,6 +386,40 @@ defmodule EhOsContract.DomainRulesTest do
     end
   end
 
+  describe "D5 and D1, since plan EL2: a directed relation may end at an external system" do
+    test "control: settlement conforms to an external, as ESDM allows" do
+      compiles("ConformsToKsef", """
+        context :settlement, "Rozliczenia", subdomain: :supporting
+        external :ksef, "KSeF", direction: :outbound
+        relation :conformist, upstream: :ksef, downstream: :settlement
+      """)
+    end
+
+    test "two externals, a symmetric relation to one, and a name both kinds have are refused" do
+      message =
+        refused("ExternalsWrong", """
+          context :settlement, "Rozliczenia", subdomain: :supporting
+          external :ksef, "KSeF", direction: :outbound
+          external :p1, "P1", direction: :outbound
+          external :settlement, "Rozliczenia zewnętrzne", direction: :inbound
+          relation :conformist, upstream: :ksef, downstream: :p1
+          relation :partnership, between: [:settlement, :ksef]
+        """)
+
+      assert message =~
+               "D5: relation :conformist joins no context of this domain: one end has to be a " <>
+                 "context (externals_wrong.ex:8)"
+
+      assert message =~
+               "D5: relation :partnership names context :ksef, which this domain does not declare " <>
+                 "(externals_wrong.ex:9)"
+
+      assert message =~
+               "D1: :settlement is a context and an external; a relation could not tell which it " <>
+                 "names (externals_wrong.ex:7)"
+    end
+  end
+
   describe "D7: a context belongs to a subdomain the domain declares (plan EL2)" do
     test "a context naming an undeclared subdomain is refused, with the closest name" do
       message =
@@ -445,7 +479,7 @@ defmodule EhOsContract.DomainRulesTest do
         )
 
       assert message =~
-               "D5: relation :customer_supplier names context :billing, which this domain does not declare"
+               "D5: relation :customer_supplier names context or external :billing, which this domain does not declare"
 
       assert message =~ "D5: relation :shared_kernel relates context :settlement to itself"
     end

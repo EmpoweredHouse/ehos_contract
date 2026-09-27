@@ -154,4 +154,52 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
     assert [{message, {"clinic.ex", 27}}] = findings("subdomain-without-bounded-context")
     assert message =~ "subdomain :legacy of #{inspect(@domain)} is the `subdomain:` of no context"
   end
+
+  test "a relation to an external is crossed by a contract that calls it, and uses the external" do
+    compile(
+      """
+      defmodule EhOsContract.CheckCompletenessDomainTest.Billing do
+        use EhOsContract.Domain, name: :billing, language: :pl
+
+        subdomain :supporting, "Wsparcie", type: :supporting
+        context :invoicing, "Fakturowanie", subdomain: :supporting
+        context :archive, "Archiwum", subdomain: :supporting
+        actor :accountant, :human, "Księgowa"
+        external :ksef, "KSeF", direction: :outbound
+        external :registry, "Rejestr", direction: :outbound
+        relation :conformist, upstream: :ksef, downstream: :invoicing
+        relation :conformist, upstream: :registry, downstream: :archive
+      end
+
+      defmodule EhOsContract.CheckCompletenessDomainTest.Invoices do
+        use EhOsContract.Next.Contract,
+          domain: EhOsContract.CheckCompletenessDomainTest.Billing,
+          context: :invoicing
+
+        aggregate :invoice, "Faktura" do
+          identity :invoice_id
+          command :issue, "Wystaw", by: :accountant, emits: :issued
+          event :issued, "Wystawiono"
+        end
+
+        effect :send, "Wyślij do KSeF", handles: :issued, calls: :ksef, idempotency: :invoice_id
+
+        process :invoice, "Faktura" do
+          correlate :invoice_id
+        end
+      end
+      """,
+      "billing.ex"
+    )
+
+    rules =
+      for f <- Completeness.findings([EhOsContract.CheckCompletenessDomainTest.Invoices]),
+          f.rule in ["orphan-context-mapping", "orphan-external-system"],
+          do: {f.rule, f.message}
+
+    # :registry ends a relation, so it is not an orphan; nothing of :archive calls it,
+    # so that relation is. :ksef is called by the effect: its relation is crossed.
+    assert [{"orphan-context-mapping", message}] = rules
+    assert message =~ "relation :conformist between :registry and :archive"
+  end
 end

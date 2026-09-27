@@ -263,6 +263,7 @@ defmodule EhOsContract.Check.Completeness do
     named =
       MapSet.new(
         Enum.map(model.actors, & &1.backed_by) ++
+          Enum.flat_map(model.relations, &Domain.Build.endpoints/1) ++
           for(
             %{model: m} <- contracts,
             external <-
@@ -275,8 +276,8 @@ defmodule EhOsContract.Check.Completeness do
     for external <- model.externals, not MapSet.member?(named, external.name) do
       Finding.new(
         "orphan-external-system",
-        "external #{inspect(external.name)} of #{inspect(model.module)} backs no actor, and no " <>
-          "effect `calls:` it and no event `depends_on:` it",
+        "external #{inspect(external.name)} of #{inspect(model.module)} backs no actor, ends no " <>
+          "relation, and no effect `calls:` it and no event `depends_on:` it",
         at(declared.externals, external.name)
       )
     end
@@ -315,7 +316,16 @@ defmodule EhOsContract.Check.Completeness do
   # ESDM's `orphan-context-mapping`: a relation no reference crosses, in either
   # direction.
   defp orphan_relations(model, declared, contracts) do
-    crossing = MapSet.new(crossings(model, contracts), &elem(&1, 0))
+    # A relation to an external is crossed when a contract of its context uses the
+    # external (plan EL2); only a relation between contexts counts as ESDM's mapping for
+    # `cross-bounded-context-reference-without-mapping`, so these stay out of it.
+    external_uses =
+      for c <- contracts,
+          external <- externals_used(c.model, model),
+          do: MapSet.new([external, c.model.context])
+
+    crossing =
+      MapSet.new(Enum.map(crossings(model, contracts), &elem(&1, 0)) ++ external_uses)
 
     for {relation, index} <- Enum.with_index(model.relations),
         pair = relation |> Domain.Build.endpoints() |> MapSet.new(),
@@ -326,7 +336,7 @@ defmodule EhOsContract.Check.Completeness do
         "orphan-context-mapping",
         "relation #{inspect(relation.type)} between #{inspect(a)} and #{inspect(b)} in " <>
           "#{inspect(model.module)} is crossed by no reference: no contract of one consumes a " <>
-          "contract of the other or names an entity it owns",
+          "contract of the other or names an entity it owns, and none uses an external it ends at",
         declared.relations |> Enum.at(index) |> then(&(&1 && Links.at(&1)))
       )
     end
@@ -376,6 +386,20 @@ defmodule EhOsContract.Check.Completeness do
         other != nil and other != contract.model.context do
       {MapSet.new([other, contract.model.context]), contract, what, at}
     end
+  end
+
+  # The externals a contract reaches: what its effects call, what its events depend on,
+  # and what stands behind the actors its commands and recorded events are for.
+  defp externals_used(contract, domain) do
+    backing = Map.new(domain.actors, &{&1.name, &1.backed_by})
+
+    actors =
+      Enum.flat_map(contract.commands, & &1.by) ++
+        Enum.flat_map(contract.events, & &1.recorded_by)
+
+    Enum.flat_map(contract.effects, &List.wrap(&1.calls)) ++
+      Enum.flat_map(contract.events, &List.wrap(&1.depends_on)) ++
+      for(actor <- actors, backed = Map.get(backing, actor), do: backed)
   end
 
   # A consumed contract outside the modules checked is looked up by name, as L3 does.

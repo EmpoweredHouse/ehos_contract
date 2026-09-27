@@ -199,8 +199,8 @@ it work is not written yet.
 
 An external system of the domain is used by nothing.
 
-No actor is `backed_by:` it, no effect `calls:` it and no event `depends_on:` it. ESDM also
-counts an end of a context mapping, which a relation here cannot name yet.
+No actor is `backed_by:` it, no relation ends at it, no effect `calls:` it and no event
+`depends_on:` it.
 
 ## `bounded-context-without-content`
 
@@ -228,8 +228,9 @@ should name it with `subdomain:`, or it is left over.
 A relation between two contexts is crossed by no reference.
 
 No contract of one context consumes a contract of the other, and none names an entity the other
-owns (`{:id, entity}`), in either direction. The relation describes a dependency the contracts
-do not have.
+owns (`{:id, entity}`), in either direction; for a relation to an external system, no contract
+of the context calls it, depends on it or acts through an actor it backs. The relation describes
+a dependency the contracts do not have.
 
 ## `cross-bounded-context-reference-without-mapping`
 
