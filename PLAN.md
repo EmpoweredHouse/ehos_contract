@@ -5,93 +5,79 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 26 września (E7c-1 w PR #16, E7c-2 zbudowane i przejrzane, przed PR)
+## Handoff — stan na 27 września (EA zbudowane, przed PR-ami)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
 
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności) i jej
 dashboardu; `sandbox/` to dane testowe. **Trwa pivot do v2**: DSL na Sparku z modelem domeny w stylu ESDM
-(jeden kontrakt = jeden proces), event sourcing na własnym magazynie w Postgresie, crypto-shredding. **W `main`
-są E0–E7b (PR #1–#15).** E7 jest podzielony na trzy PR-y: **E7a** (efekty, uporządkowane subskrypcje,
-przebudowa, supervisor) — [PR #14](https://github.com/EmpoweredHouse/eh-os-contract/pull/14); **E7b** (process
-managery i timery) — [PR #15](https://github.com/EmpoweredHouse/eh-os-contract/pull/15). **E7c idzie dwoma PR-ami**
-(decyzja użytkownika z 26 września): **E7c-1 — werdykty** jest w
-[PR #16](https://github.com/EmpoweredHouse/eh-os-contract/pull/16) (CI zielone, czeka na merge użytkownika);
-**E7c-2 — wyjścia** jest zbudowane na `dsl-v2/e7c2-outputs`, przed przeglądem i niewypchnięte. E8–E12 i EA
-niezaczęte. Kontrakty v1 działają jak przed E6. Kontrakty v2 widzą od E7c wszystkie wyjścia zgodności: raport
-(task, dashboard, API `conformance.v2`), graf, `check`, wdrożenia z okablowaniem, pokrycie scenariuszy. Poza tym
-zostaje AsyncAPI (E10).
+(jeden kontrakt = jeden proces), event sourcing na własnym magazynie w Postgresie, crypto-shredding. **E0–E7 są
+w `main`** (PR #1–#18; E7 poszło czterema PR-ami: E7a #14, E7b #15, E7c-1 #16, E7c-2 #17, a #18 to poprawki
+po obejrzeniu dashboardu na bazie dev). **Trwa EA** (pakiet `eh_os_contract_auth`, wybór użytkownika z 27 września,
+przed E8): **EA1 — weryfikacja** na `dsl-v2/ea-verify` i **EA2 — autoryzacja** na `dsl-v2/ea-authorize` (od EA1)
+są zbudowane, niewypchnięte, bez PR-ów. Potem E8 (crypto-shredding). E9–E12 niezaczęte. Kontrakty v1 działają jak przed E6; kontrakty v2 mają od E7 runtime (dispatch, subskrypcje,
+process managery, timery, efekty) i wszystkie wyjścia zgodności poza AsyncAPI (E10). W sandboxie jedynym
+kontraktem v2 jest `Rehmed.Contracts.VisitSettlement`; TaxVision, `ClinicalVisit` i `PayerSettlement` są v1 do E9.
 
 ### Stan repozytorium
 
-- `main` = `origin/main` = `3e612f0` (merge PR #15). Użytkownik merguje PR-y jako merge, więc historia `main` ma
+- `main` = `origin/main` = `73eec0b` (merge PR #18). Użytkownik merguje PR-y jako merge, więc historia `main` ma
   merge commity.
-- **E7c-1: `dsl-v2/e7c-conformance`**, odgałęziona od `3e612f0`, wypchnięta jako PR #16 (`410bf82`, notatka
-  przeglądu na nim). **E7c-2: `dsl-v2/e7c2-outputs`** od `410bf82`, lokalna, niewypchnięta; spis commitów w
-  „E7c-2 — co wyszło”. Wymeldowana w worktree
-  `.claude/worktrees/dsl-v2-e7c-conformance-be3100`; nowa sesja w innym worktree najpierw `git -C
-  ~/Projects/ai/eh-os-contract/.claude/worktrees/dsl-v2-e7c-conformance-be3100 switch --detach`, potem `git switch
-  dsl-v2/e7c2-outputs`. Po merge'u PR #16 PR E7c-2 idzie na `main` (albo na `dsl-v2/e7c-conformance`, jeśli
-  #16 jest jeszcze otwarty).
+- **`dsl-v2/ea-verify`** (EA1), od `73eec0b`: cherry-pick poprzedniego handoffu (`8334a90`, commit `5bf8dcc` z
+  gałęzi #18 powstał po jej merge'u), zapis rozstrzygnięć (`d538ec3`), pakiet (`5d35927`) i zapis stanu.
+  Dalej `ready?/0` (`56d6910`) i poprawki z `/code-review` (`c42896d`). **Niewypchnięta, bez PR-a i bez notatki
+  `pre-pr-review`.**
+- **`dsl-v2/ea-authorize`** (EA2), od `c42896d`: pakiet (`a8dd701`), sandbox i dokumenty (`61ae0ef`), zapis stanu.
+  **Niewypchnięta, bez PR-a i bez przeglądu.** Wymeldowana w worktree `.claude/worktrees/dsl-v2-e8-ea-33a4ca`.
+- **Baza dev nie ma tabel pakietu auth**: migracja `20260927120000_add_eh_os_contract_auth` nie była puszczana na
+  dev, bo baza dev jest punktem odniesienia porównań bajtów. Przed `mix phx.server` — `mix ecto.migrate` w
+  `sandbox/`; bez tego dispatch z credentialem pada na zapisie decyzji.
 - **Przegląd przed PR**: hook w `.claude/settings.json` odmawia `gh pr create`, dopóki `HEAD` nie ma notatki
   `refs/notes/review` (notatki są lokalne). Skill: `.claude/skills/pre-pr-review/`.
+- **Baza dev ma od 27 września zasiane `VisitSettlement`** (sześć wizyt, 17 zdarzeń v2) i to jest nowy punkt
+  odniesienia porównań bajtów. Wyjścia i `pg_dump` przed i po zasiewie leżą **poza repozytorium**, w
+  `~/Projects/ai/eh-os-contract-dev-reference/` — szczegóły w „E7c-2 — co wyszło”, akapit „Po merge'u PR #16 i
+  #17”. Dashboard w dev: `http://localhost:4010/dashboard` (od PR #18; w `main` bez niego dalej 4000).
 
 ### Co zostało — i czyje to jest
 
-- **E7c-1 — użytkownika**: merge PR #16.
-- **E7c-2 — asystenta, do dokończenia**: przegląd zrobiony (notatka `refs/notes/review` na `HEAD`); push i PR na
-  polecenie użytkownika. Zakres zbudowany
-  jest w „E7c-1 — co wyszło”.
-- **E7c-2 — asystenta**, według podziału pod opisem E7 w dopisku Etap 6. Z listy niżej zostaje dla niego: graf,
-  `check` i `Registry` na v2, pokrycie scenariuszy, wersja okablowania i wdrożenia kontraktów v2 (od nich
-  zależy „since” w raporcie i granica deklaracji obietnicy — ustalenie 10 E7c-1), webowy `CaseHandling`,
-  poprawki ADR, `min_position`, pierwszy przebieg w dev. Pierwotna lista E7c:
-  - `_event_runs` (D7): tabela jest od V04, nikt jej nie pisze; wpis w transakcji dispatchu (przebieg domowy i
-    każdy `include` innego kontraktu), razem z czytelnikami `Trace` i `Run`;
-  - kontrakty v2 w raporcie, grafie i `check`; nowe źródła: **w toku** — oczekujące joby efektów i timerów,
-    opóźnienie subskrypcji; **padające** — wiersze `failed` w `_commands` (przez `failed_in`), subskrypcje
-    `failing`, efekty `discarded` (v2 §13);
-  - pokrycie scenariuszy (v2 §13, ostatni punkt);
-  - wersja okablowania liczona z kontraktu i implementacji — zmienia werdykt, więc linia w CHANGELOG;
-    `conformance.v2` w `Conformance.Wire`;
-  - fikstury według tabeli „Losy fikstur” (`ProcessShapes.Promised`, `Timed`, `Bare`, reszta `Rig`, webowy
-    `CaseHandling` z dwiema politykami);
-  - poprawki ADR z v2 §18: §9–10 („dispatch split survives as inline against async”) i wyzwalacz „jedno zdarzenie
-    w dwóch procesach” (architecture, review triggers);
-  - z E7a i E7b: `min_position` przy query (v2 §11); pierwszy przebieg sandboxa w dev (boot zapisuje wiersze
-    wdrożenia i subskrypcji do bazy dev — punktu odniesienia porównań bajtów raportu; zrobić świadomie, raz).
-  - **Rozstrzygnięte przez użytkownika 26 września**: dwa PR-y (E7c-1 werdykty, E7c-2 wyjścia), kształt
-    `conformance.v2` ze źródłami osobno, graf v2 z węzłami wszystkich rodzajów, nowa polityka startuje jak nowy
-    process manager — pełny zapis pod opisem E7 w dopisku Etap 6.
-- **Konwencja etykiet w scenariuszach — użytkownika**: propozycja z 26 września, żeby wartości w scenariuszach
-  mówiły, czym są („konto-Anny”, „Kraków”), a nie „a-1”, „b-7”; bez odpowiedzi.
-- **EA — asystenta**, może ruszyć równolegle: behaviour `Authorizer` i ścieżka dispatchu są.
+- **EA1 i EA2 — przegląd przed PR (`pre-pr-review`), push i PR-y — na polecenie użytkownika.** Dwa PR-y: EA1 do
+  `main`, EA2 na gałęzi EA1. EA1 przeszło `/code-review` (siedem uwag poprawionych); EA2 jeszcze nie. Stan i
+  ustalenia w „EA1 — co wyszło” i „EA2 — co wyszło”.
+- **E8 — asystenta, po EA**: przed budową zapytać o podział na PR-y i o kształty widoczne dla hosta
+  (`erase/3`, `forget/2`, `Erased` przy odczycie, opcje `personal:`/`subject:`, konfiguracja `Vault` i KEK), jak
+  przed E7a–E7c. Odbiór i bramki w opisie E8.
+- **Konwencja etykiet w scenariuszach** — rozstrzygnięta 27 września, w „Strategii”.
+- **Proces na porcie 4000 — użytkownika**: `beam.smp` z `/private/tmp/eh-os-test`, uruchomiony 14 września,
+  trzyma `localhost:4000`; nie należy do tego repozytorium i nikt go nie zatrzymywał.
 - **Lista zmian do `eh-os`** — użytkownika: D-01, D-15, outbox, G-16, transport v1, D-34, D-40, plan etapu 4
   („D10–D12 — skąd się wzięły” i „D14 — autoryzacja” w dopisku Etap 6) oraz od E6 logowanie frontendu zwykłej
   aplikacji, w `eh-os` niezaprojektowane (najbliżej G-3).
 - **Publikacja na Hex — użytkownika**, decyzja niepodjęta (tagi `v0.2.0`, `v0.2.1`; w `mix.exs` `0.3.0-dev`).
 - **F1, F2 i dziesięć usterek** z „Dopisek 25 września” — do właścicieli procesów, przez użytkownika.
+- **Odłożone do późniejszych etapów, z E7** (każde z uzasadnieniem w „E7c-1/E7c-2 — co wyszło”): uzupełnianie
+  `_event_runs` dla starych zdarzeń, gdy kontrakt zaczyna włączać ich typ (E9, `ClinicalVisit`); pokrycie
+  scenariusza z `given` spoza magazynu (E9, DCB); padające komendy i scenariusze ograniczane okresem po
+  `recorded_at` (dopóki `_commands` nie ma innej chwili); lag jako zapytanie na konsumenta (przy pomiarze);
+  `Fixtures.V1.CaseHandling` w webie tylko dla AsyncAPI (znika w E10); fikstury v1 `ProcessShapes` i
+  `ProcessShapes.Seed` (znikają w E11).
 - Zasady trzymają się dalej: **zmiany widoczne dla konsumenta idą do „Unreleased” w `CHANGELOG.md` tym samym
-  commitem** (w E7b raz nie poszły — „E7b — co wyszło”, ustalenie 6); dwa przebiegi `open_month` w bazie dev
-  zostają punktem odniesienia porównań bajtów.
+  commitem**; delta `eh_os_contract.check` jest raportowana i każda nowa linia wyjaśniona.
 
 ### Co przeczytać najpierw
 
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach,
    `boundary`, zsh bez dzielenia słów.
-2. `PLAN.md`, dopisek Etap 6: **opis E7 i jego podział** (zakres i odbiór E7c: te same scenariusze dają te same
-   liczby werdyktów, „jeszcze nie” przechodzi w „nigdy” dopiero po opróżnieniu kolejki), reguły commita w
-   „Strategia”, tabele „Losy fikstur” i „Losy testów”; potem „E7a — co wyszło” i „E7b — co wyszło”.
-3. `docs/adr/contract-v2.md` §13 (przebiegi, obietnice i zgodność na nowym logu, tabela losów modułów), §10.3
-   (`event_runs`), §16 D7, notki z 26 września w §12 (co zbudowały E7a i E7b).
-4. Czytelnicy v1, których E7c rozszerza: `lib/eh_os_contract/run.ex`, `trace.ex`, `conformance.ex`,
-   `conformance/wire.ex`, `report.ex`, `graph.ex`, `check.ex`, `deployment.ex`, i `model.ex` (szew z E1, przez
-   który czytają); fikstury `test/support/process_shapes/`.
-5. Runtime E7a/E7b, z którego E7c bierze źródła: `subscription.ex`, `subscription_record.ex`, `effect_job.ex`,
-   `timer_job.ex`, `process_manager.ex`, `command_record.ex`, `dispatcher.ex`; fikstura `test/support/dispatch_rig/`.
-6. `packages/eh_os_contract_web` — webowy `CaseHandling` i ekrany zgodności, które przejdą na nową fiksturę.
-7. Przed PR: `.claude/skills/pre-pr-review/SKILL.md`.
+2. `PLAN.md`, dopisek Etap 6: „Strategia” (reguły każdego commita), **opis E8 i EA** w „Etapy”, tabele „Losy
+   fikstur” i „Losy testów”.
+3. `PLAN.md`, „E7c-1 — co wyszło” i „E7c-2 — co wyszło” — co E7 zbudowało, dziesięć i osiem ustaleń, przeglądy,
+   delta `check`, pierwszy przebieg w dev.
+4. `docs/adr/contract-v2.md` §14 (crypto-shredding) i §16 D14 (autoryzacja) — pod etap, który wybierze
+   użytkownik; §10.3 (schemat: tabele kluczy i usunięć); notki z 26 września w §12–13 (co zbudowało E7).
+5. Pod E8: `lib/eh_os_contract/codec.ex` (tu wchodzi szyfrowanie pól), `dispatcher.ex`, `store/postgres.ex`,
+   `domain/` (tu `subject`); pod EA: `lib/eh_os_contract/authorizer.ex`, `plug.ex`, `docs/adr/identity-seam.md`.
+6. Przed PR: `.claude/skills/pre-pr-review/SKILL.md`.
 
 ### Komendy
 
@@ -103,7 +89,8 @@ out=$(mix check 2>&1); rc=$?; echo "$out" | tail -4; echo "EXIT=$rc"
 Brama idzie z `sandbox/`; Postgres słucha na **5433**. **W świeżym worktree** najpierw
 `MIX_ENV=test mix deps.get` w `packages/eh_os_contract` i `packages/eh_os_contract_web` oraz `mix deps.get` w
 `sandbox/`. Do oglądania czegokolwiek `MIX_ENV=dev`. Commit wiąż wyłącznie z kodem wyjścia bramy: skrypt, który
-kończy się jej `exit $rc`, dopiero po nim `git commit`.
+kończy się jej `exit $rc`, dopiero po nim `git commit`. Dashboard: `cd sandbox && mix phx.server` albo konfiguracja
+`eh_os_contract_host` z `.claude/launch.json`.
 
 **Z sesji Claude Code na tej maszynie SSH do GitHuba odmawia** (`Permission denied (publickey)`). Pobieranie i
 push szły przez HTTPS z credentialem `gh`, bez zmiany konfiguracji gita:
@@ -113,23 +100,22 @@ git -c credential.helper='!gh auth git-credential' fetch https://github.com/Empo
 ```
 
 ```bash
-git -c credential.helper='!gh auth git-credential' push https://github.com/EmpoweredHouse/eh-os-contract.git dsl-v2/e7c-conformance:dsl-v2/e7c-conformance
+git -c credential.helper='!gh auth git-credential' push https://github.com/EmpoweredHouse/eh-os-contract.git dsl-v2/e7c-dev-port:dsl-v2/e7c-dev-port
 ```
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 26 września**, na `dsl-v2/e7c2-outputs`, brama z `sandbox/` → **EXIT=0**. Sandbox: 47 testów,
-  `eh_os_contract.check` 0 / 5 / 19. Silnik: 906 testów, `check` 0 / 15 / 17. Web: 32 testy. Delta `check`
-  wyjaśniona w „E7c-2 — co wyszło”. Na `dsl-v2/e7c-conformance` (PR #16): 881 / 0/8/16, sandbox 0/4/19, web 31.
-- **CI**: PR #16 — dwa sprawdzenia zielone. `main` po PR #15 — `36239199828`, `success`.
+- **Lokalnie, 27 września**, na `dsl-v2/ea-authorize` (`61ae0ef`), brama z `sandbox/` → **EXIT=0**. Sandbox: 53
+  testy, `eh_os_contract.check` 0 / 5 / 19. Silnik: 908 testów, `check` 0 / 15 / 17. Web: 32 testy. Auth: 41
+  testów (nowy pakiet, w bramie od `5d35927`). Na `dsl-v2/ea-verify` (`c42896d`): sandbox 47, auth 32.
+- **CI**: nowego pakietu jeszcze nie widziało — krok w `ci.yml` dopisany w `5d35927`, sprawdzi go pierwszy PR.
 
 ### Otwarte pytania
 
-- **Konwencja etykiet w scenariuszach** — użytkownika (wyżej).
 - **Runner dla read modelu `:in_transaction`** odpytuje co sekundę, choć pracuje tylko przy przebudowie —
   pominięte w przeglądzie E7a (znalezisko 6), wraca przy pomiarze.
-- **`EhOsContract.Authorizer`**: podwójny zapis przyjętej komendy (pakiet auth i `_commands`) rozstrzyga EA; nazwę
-  uprawnienia dla `record/3` z credentialem — E9.
+- **`EhOsContract.Authorizer`**: nazwę uprawnienia dla `record/3` z credentialem — E9. (Podwójny zapis przyjętej
+  komendy rozstrzygnięty 27 września w opisie EA: to dwa fakty, nie jeden.)
 - **Po E5b:** `mix eh_os_contract.check` nie powtarza L3 dla projektów bez zarejestrowanego kompilatora — E10.
 - **D1–D14** (v2 §16) przyjęte; ponowne otwarcie to notka z datą w §16. Pytania w §19: `scope` dla komend,
   transport v1 między kontenerami, kontrakt upcasterów.
@@ -139,12 +125,11 @@ git -c credential.helper='!gh auth git-credential' push https://github.com/Empow
 
 **Ten blok jest do skasowania. Skasowanie go cofa uprawnienie — nie migruje ono samo między sesjami.**
 
-W sesjach E1–E7b użytkownik zgadzał się na: commity bez pytania na gałęziach etapów przy zielonej bramie na
-każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. 26 września potwierdził to dla
-`dsl-v2/e7-async` i `dsl-v2/e7b-process-managers`, zlecił push i PR #14 i #15, które sam zmergował, polecił
-zacząć E7c, i w sesji E7c potwierdził zgodę dla `dsl-v2/e7c-conformance` i gałęzi drugiego PR-a E7c. **W nowej sesji obowiązuje to dopiero po ponownym potwierdzeniu przez użytkownika.** Push, PR, merge,
-tag i publikacja na Hex — tylko na wyraźne polecenie, a przed PR skill `pre-pr-review`. Do
-`~/Projects/ai/empowered-house-context` nie piszemy nigdy.
+W sesjach E1–E7 użytkownik zgadzał się na: commity bez pytania na gałęziach etapów przy zielonej bramie na
+każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. W sesji E7c potwierdził to dla gałęzi
+E7c i `dsl-v2/e7c-dev-port`, zlecił push i PR #16, #17 i #18 i zmergował #16 i #17. **W nowej sesji obowiązuje to
+dopiero po ponownym potwierdzeniu przez użytkownika.** Push, PR, merge, tag i publikacja na Hex — tylko na
+wyraźne polecenie, a przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie piszemy nigdy.
 
 ### Język
 
@@ -183,6 +168,12 @@ jest weryfikowana przez kompilator u każdego subskrybenta (v2 §7).
 - **Porty tłumaczą, nie naprawiają.** Dziesięć usterek z dopisku niżej zostaje pytaniami. Wyjątki: usterka 2
   (okno TaxVision do `unverified`) i usterka 5 (`open_month` ma źródło w US-MON-01) — jednolinijkowe commity z
   cytatem. Gdzie nowy DSL wymusza wybór, rozstrzyga materiał warsztatowy i jest cytowany.
+- **Wartości w scenariuszach mówią, czym są** (decyzja użytkownika z 27 września, propozycja z 26 września):
+  „account-anna”, „visit-anna”, „krakow”, nie „a-1”, „b-7”. Dotyczy nowych scenariuszy i testów od teraz;
+  istniejące poprawia się przy okazji dotykania pliku, bez osobnego commita przepisującego. Szczegół asystenta,
+  nie użytkownika: wartość to identyfikator danych testowych, nie tekst dla klienta, więc słowa po angielsku
+  (reguła „kod po angielsku” z `CLAUDE.md`), a imiona i miasta bez diakrytyków. Pierwsza wersja tego akapitu
+  miała „konto-Anny” i „wizyta-Anny” — poprawione 27 września, gdy test EA2 dostał przez nią polskie słowa.
 - **Tryb pracy.** Gałąź na etap, `dsl-v2/eN-<nazwa>`, odgałęziona od poprzedniego etapu. Brama na każdym
   commicie przez `out=$(mix check 2>&1); rc=$?` — nigdy przez `tail` (powód w `CLAUDE.md`). **Push, PR, merge,
   tag i Hex są po stronie użytkownika.** Testy trafiają od razu do docelowych katalogów (`test/dsl/`,
@@ -334,6 +325,46 @@ innego `iss` odrzucone; uprawnienie ze `scope` bez wpisu w `scp` odrzucone; odmo
 log i `_commands` nie dostają niczego; pomocnik pada na komendzie bez mapowania — kontrola: credential z
 uprawnieniem przechodzi i też ma wiersz.
 
+Rozstrzygnięte przez użytkownika 27 września przed budową EA (EA przed E8):
+- **Dwa PR-y**, drugi na gałęzi od pierwszego. **EA1 — weryfikacja** (`dsl-v2/ea-verify`): pakiet z własnym
+  `mix check` w bramie sandboxa i w CI, `verify/1,2`, magazyn kluczy (tabela, pobieranie, odświeżanie, nieznany
+  `kid`), migracja; nie czyta kontraktu; wszystkie testy D-34 i odrzucenia `alg`/`aud`/`iss`. **EA2 —
+  autoryzacja** (od EA1): `Authorizer` z tabelą decyzji, Plug bearer, pomocnik testów, sandbox (VisitSettlement
+  przez pomocnika), CHANGELOG, poprawki ADR.
+- **Wpięcie wzorem silnika.** `EhOsContract.Auth` sam implementuje behaviour (`config :eh_os_contract,
+  authorizer: EhOsContract.Auth`); `config :eh_os_contract_auth, issuer:, audience:, jwks_url:` (domyślnie
+  `issuer <> "/.well-known/jwks.json"`), repo z `config :eh_os_contract, :repo`; dziecko `EhOsContract.Auth` w
+  drzewie hosta po Repo; `EhOsContract.Auth.Migrations.up/down` w migracji hosta; tabele
+  `eh_os_contract_auth_keys` i `eh_os_contract_auth_decisions`. `verify(token)` bierze `aud`/`iss` z
+  konfiguracji, `verify(token, audience: …)` je nadpisuje; zwraca `{:ok, %EhOsContract.Actor{kind:
+  :credential}}` albo jeden z sześciu powodów.
+- **Plug**: brak nagłówka → 401 `{"error": "no_credential"}`, zły token → 401 z powodem i linia w logu. Wiersz
+  audytu mają tylko decyzje `Authorizer`: przy złym tokenie nie ma zaufanego podmiotu, a zalew
+  nieuwierzytelnionych żądań zapełniałby tabelę.
+- **Pomocnik testów**: `assert_every_entry_refuses(contracts, %{"<uprawnienie>" => fn token -> … end})`, klucz to
+  nazwa uprawnienia z modelu; pomocnik wybija token kluczem testowym, który sam wstawia do magazynu kluczy, woła
+  każdą funkcję tokenem bez uprawnienia i sprawdza wiersz odmowy oraz pusty log i `_commands`; brak mapowania
+  albo klucz spoza modelu → pad. `EhOsContract.Auth.Testing.credential(sub, cap, scp \\ %{})` do testów
+  pozytywnych. Wariant z gotowym aktorem odrzucony: omijałby weryfikację, więc nie sprawdzałby całych drzwi.
+
+Mechanika, rozstrzygnięta przez asystenta 27 września (wyjaśniona użytkownikowi przed budową):
+- **Podwójny zapis przyjętej komendy (otwarte od D14) to dwa fakty.** Silnik pyta `Authorizer` przed
+  transakcją dispatchu (`permit/3` w `dispatcher.ex`), więc wiersz pakietu zapisuje decyzję o uprawnieniu, a
+  `_commands` wynik komendy — komenda może przejść autoryzację i paść na inwariancie. Oba zostają; notka w D14.
+- **Wiersz audytu idzie połączeniem wywołania.** Host, który sam otwiera transakcję wokół `dispatch` i ją
+  wycofuje, wycofuje też wiersz odmowy; na ścieżce przez Plug takiej transakcji nie ma. Osobne połączenie na
+  audyt komplikuje sandbox testów bez zysku na drzwiach, więc ograniczenie idzie do dokumentacji.
+- **Klucze w pamięci to ETS procesu kluczy, źródłem jest tabela**: restart procesu bez EHOS-a wczytuje tabelę
+  (to, czego brakuje `joken_jwks`, D-34). Nie `:persistent_term` — podmiana co 5 min to globalne GC.
+- **`exp` względem `EhOsContract.Clock.now()`**, nie zegara Jokena — test wygasłego credentiala ustawia zegar
+  przez `Clock.at/2`. Interwały procesu kluczy (5 min, 30 s) liczone zegarem monotonicznym wstrzykiwanym w
+  testach.
+- **Pobieranie przez Req**, w testach `Req.Test`; kryptografia Joken/JOSE, bez `joken_jwks`.
+
+**EA1 zrobione 27 września** na `dsl-v2/ea-verify` (`5d35927`..`c42896d`), niewypchnięte — „EA1 — co wyszło” niżej.
+**EA2 zrobione 27 września** na `dsl-v2/ea-authorize` (`a8dd701`, `61ae0ef`), niewypchnięte — „EA2 — co wyszło”.
+Odbiór EA spełniony w całości (mapa w „EA2 — co wyszło”).
+
 **E7 — Runtime asynchroniczny, fikstury, zgodność.** Efekty (Oban, joby tylko z identyfikatorami),
 uporządkowane subskrypcje, process managery i timery, przebudowa, `_event_runs` (D7), nowe źródła zgodności:
 w toku, padające, pokrycie scenariuszy (v2 §12–13). Wersja okablowania liczona z kontraktu i implementacji —
@@ -401,6 +432,9 @@ Interfejs widoczny dla hosta, rozstrzygnięty przez użytkownika 26 września pr
 **E8 — Crypto-shredding.** `subject` w domenie, `personal:`/`subject:` na polach, tabele kluczy i usunięć,
 `Vault`, szyfrowanie w `Codec`, `erase/3`, `forget/2`, bramki (v2 §14). Przed TaxVision, bo
 `registry_discrepancy_detected.diff` ma dziś `retain: :hash`. Poprawka ADR: retencja w §7–8.
+Od EA (27 września, przegląd bezpieczeństwa): **bramka „pole osobowe nie może być `scope` query”** — wartość
+`scope` trafia do `eh_os_contract_auth_decisions` pakietu auth, poza crypto-shreddingiem; v2 §14 wymienia klucze,
+tagi, korelację, `identity`, stan PM i pola publiczne, a `scope` nie.
 *Odbiór:* w `payload` nie ma jawnego tekstu pól osobowych; po usunięciu odczyt daje `Erased`, snapshoty z tą
 osobą znikają, `forget/2` się wykonało; `Conformance.as_data` identyczne przed i po (poza `generated_at`);
 bramki odrzucają pola osobowe w kluczach; kontrola: osoba nieusunięta czyta się normalnie.
@@ -1470,6 +1504,154 @@ poprawionych, jedno pominięte, jedno błędne:
    E7c.
 
 Silnik 904 → 906, web 32; `check` sandboxa 0/5/19, silnika 0/15/17.
+
+### EA1 — co wyszło (27 września)
+
+**Stan.** Na `dsl-v2/ea-verify`: zapis rozstrzygnięć (`d538ec3`) i pakiet jednym commitem (`5d35927`) — nowy
+katalog, trzy linie bramy (`sandbox/mix.exs`, `ci.yml`) i tabele katalogów w `CLAUDE.md` i `README.md`, więc
+dodawanie bez przemianowań. Brama zielona na każdym commicie. Silnik, web i sandbox bez zmian (908 / 32 / 47,
+`check` bez delty); pakiet auth 29 testów. `mix.exs` pakietu: `0.1.0-dev`, zależności `joken ~> 2.7` (2.7.0,
+JOSE 1.11.12), `req ~> 0.7` (0.7.4), `ecto_sql`/`postgrex` w wersjach silnika, `plug` tylko w testach.
+
+**Co jest:** `EhOsContract.Auth.verify/1,2`, dziecko `EhOsContract.Auth` (`child_spec/1` pada przy starcie bez
+`audience` albo bez `issuer`/`jwks_url`), `EhOsContract.Auth.Keys`, `EhOsContract.Auth.Migrations` (V01: tabela
+`eh_os_contract_auth_keys`, wersja w komentarzu tej tabeli). Odbiór D-34 — klucz usunięty z JWKS odrzucony po
+odświeżeniu, nieudane pobranie (EHOS leży, 503, zestaw bez klucza Ed25519) nie zmienia niczego, nieznany `kid`
+pobiera najwyżej raz na 30 s z kontrolą po upływie interwału, pierwszy start bez EHOS-a to `:no_keys` z kontrolą
+po powrocie, restart bez EHOS-a działa z tabeli — oraz `EdDSA`, obce `aud` (także poprawne w liście), obcy `iss`,
+brak `exp`, zegar `Clock.at/2`, zmieniony claim, obcy klucz pod znanym `kid`, rotacja z dwoma kluczami.
+
+**Ustalenia:**
+1. **Test `EdDSA` nie pilnuje sprawdzenia nagłówka.** Mutacja usuwająca warunek `alg` w `verify` zostawia go
+   zielonym, bo Joken sam nie weryfikuje tokenu `EdDSA` signerem `Ed25519`. Dwie warstwy odmawiają; test przypina
+   wynik i mówi to w komentarzu. Pozostałe siedem mutacji (bez `exp`, `aud` w liście, bez limitu 30 s, bez
+   wczytania tabeli, pusty zestaw jako sukces, klucz prywatny w tabeli, bez usuwania z pamięci) — każda wywraca
+   dokładnie swój test.
+2. **Kształt tokenu spoza formy EHOS-a to `:bad_signature`**, nie siódmy powód: nie-JWT, brak `kid`, `sub` nie
+   string, `cap` nie lista stringów. Sześć powodów z D-34 zostaje zbiorem zamkniętym.
+3. **Klucz jest znany po odcisku liczonym u siebie**, nigdy po `kid` wpisanym w JWKS obok klucza; z JWKS trafiają
+   do tabeli tylko `kty`, `crv`, `x` — wpis z częścią prywatną jej nie zapisze (test).
+4. **Zawieszony EHOS nie wywraca wołającego.** Pobieranie ma domyślnie 2 s na połączenie i 3 s na odpowiedź, bez
+   ponowień; wywołanie przy nieznanym `kid` czeka do 10 s i przy przekroczeniu odmawia z tym, co jest w pamięci.
+   Znalezione przeglądem własnym przed commitem (domyślny timeout Req 15 s > 5 s `GenServer.call`). **Bez testu**
+   — wymagałby 10 s czekania albo konfigurowalnego timeoutu wywołania; do decyzji przy przeglądzie przed PR.
+5. **Skąd klucze i co skonfigurować przy integracji** — na prośbę użytkownika w `README.md` pakietu (sekcja
+   „Where the keys come from, and what to configure at integration”): para kluczy w Secrecie z charta EHOS-a,
+   JWKS pod `/.well-known/jwks.json`, `kid` jako odcisk, **certyfikat TLS adresu EHOS-a jako kotwica zaufania**
+   (wewnętrzne CA przez `req_options` dziecka), rotacja ręczna po stronie EHOS-a. `docs/adr/identity-seam.md`
+   odsyła tam notką z datą.
+6. **Test migracji w dół nie powstał**: zestaw migruje się `up/0` jak konsument, `down/1` jest nieprzetestowane.
+   Silnik testuje migracje na `CommitRepo`; pakiet auth nie ma drugiego repo i przy jednej tabeli nie było warto.
+7. Health check dla `:no_keys` (D-34: „says so in its log and its health check”) — **`EhOsContract.Auth.ready?/0`,
+   na prośbę użytkownika** (`56d6910`): `false`, gdy nie ma żadnego klucza albo proces kluczy nie działa; nigdy nie
+   pobiera i nie rzuca.
+
+**`/code-review` (high) na `main...dsl-v2/ea-verify`, na polecenie użytkownika — siedem uwag, wszystkie
+poprawione:**
+1. **Jeden zepsuty wpis JWKS zabijał proces kluczy w pętli** — `x`, które nie jest kluczem Ed25519, rzucało w
+   `JOSE.JWK.from_map/1` w procesie; restart pobierał to samo i nadzorca w końcu kładł hosta. Teraz `x` musi mieć
+   32 bajty, zły wpis kosztuje tylko siebie, a każdy wyjątek przy pobieraniu to nieudane pobranie, nie crash.
+2. **`child_spec` przyjmował sam `jwks_url`, a `verify` i tak wymagał `issuer`** — każde żądanie rzucało
+   `KeyError`. `issuer` jest teraz wymagany przy starcie.
+3. **Proces kluczy w restarcie wywracał wołającego** (brak tabeli → `ArgumentError`, `:noproc` z wywołania).
+   Teraz to odmowa `:no_keys`, jak w `ready?/0`; zniknął komunikat „dodaj do drzewa nadzoru” — tę rolę przejmuje
+   `ready?/0` i log przy starcie.
+4. `refresh/1` miał 5 s na wywołanie przy pobieraniu do 5 s i zapisie — teraz 10 s, jak przy nieznanym `kid`.
+5. **Klucz parsowany przy każdym credentialu** — w pamięci jest teraz gotowy `Joken.Signer`, liczony raz na
+   pobranie.
+6. **Nieznany `kid` zawsze szedł przez proces**, także w oknie 30 s, więc zalew podrobionych `kid` kolejkował się
+   za trwającym pobraniem. Chwila następnego dozwolonego pobrania jest w tabeli ETS i wołający bez niej nie woła
+   procesu; proces sprawdza jeszcze raz u siebie.
+7. **`actor/1` łapał każdy wyjątek jako `:bad_signature`** — teraz kształty `sub`/`cap` w strażniku i tylko
+   `ArgumentError` z `Actor.credential/3`. Własne sprawdzenie `scp` wyleciało po mutacji: `Actor.credential/3`
+   odrzuca je sam.
+Nowe testy sprawdzone wstecz (cofnięcie każdej z poprawek 1, 2, 3 i 6 wywraca dokładnie swój test); 4, 5 i 7 bez
+osobnego testu — 5 i 7 nie zmieniają zachowania, 4 wymagałby wolnego EHOS-a. Pakiet 30 → 32 testy.
+
+### EA2 — co wyszło (27 września)
+
+**Stan.** Na `dsl-v2/ea-authorize` od `c42896d`: pakiet (`a8dd701`) i sandbox z dokumentami (`61ae0ef`). Brama zielona
+na obu. Silnik i web bez zmian (908 / 32), `check` bez delty (0/5/19, 0/15/17). Sandbox 47 → 53, pakiet auth 32 → 41.
+
+**Co jest:** `EhOsContract.Auth.authorize/2` (behaviour `EhOsContract.Authorizer`: samo `check/2` i wiersz w
+`eh_os_contract_auth_decisions`, migracja pakietu V02), `EhOsContract.Auth.Plug`, `EhOsContract.Auth.Testing`
+(`credential/3,4`, `assert_every_entry_refuses/2,3`), `EhOsContract.Auth.Keys.pin/2`. Sandbox: `authorizer:
+EhOsContract.Auth`, `issuer: "https://ehos.invalid"` (RFC 6761 — nigdy się nie rozwiąże, więc prawdziwe credentiale
+dostają `:no_keys`), `audience: "rehmed/sandbox"`, dziecko po `EhOsContract`, migracja, komendy `VisitSettlement` pod
+`/api/rehmed` za Plugiem bearer. `plug` przeszedł z zależności testowej do zwykłej.
+
+**Odbiór EA, jak sprawdzony:**
+- testy D-34 i odrzucenia `alg`/`aud`/`iss` — EA1;
+- uprawnienie ze `scope` bez wpisu w `scp` odrzucone — `authorize_test` (`:unscoped_grant` z wierszem, wartość i
+  wymiar w wierszu); w sandboxie nie ma query ze `scope`, więc przez HTTP niesprawdzone;
+- odmowa ma wiersz, a log i `_commands` nie dostają niczego — `assert_every_entry_refuses` dla pięciu komend
+  `VisitSettlement` przez HTTP;
+- pomocnik pada na komendzie bez mapowania (i na kluczu spoza kontraktu, i na wejściu, które nie pyta) —
+  kontrola: credential z uprawnieniem przechodzi (200, zdarzenie z `actor:u-specjalistka`) i ma wiersz `allowed`.
+Wstecz: bez Pluga bearer w routerze i z domyślnym `Authorizer` padają pomocnik i kontrola pozytywna; w pakiecie
+padają swoje testy po wyrzuceniu przypiętych kluczy przy odświeżeniu, wartości `scope`, samego wiersza i
+niewrażliwości schematu `Bearer` na wielkość liter.
+
+**Ustalenia:**
+1. **Klucz testowy przez `Keys.pin/2`, nie przez tabelę ani konfigurację.** Pomocnik wstawia połówkę publiczną do
+   pamięci działającego procesu kluczy hosta; przeżywa odświeżenia, do tabeli nie trafia, znika z restartem. To
+   funkcja publiczna, więc każdy kod w tej samej VM może dodać ufany klucz — tak samo, jak może zbudować
+   `Actor.credential/3` z pominięciem weryfikacji; opisane w dokumentacji `pin/2`.
+2. **Pomocnik liczy na tabelach silnika w całości** (`eh_os_contract_events`, `eh_os_contract_commands` przed i po),
+   więc działa tylko w teście z własnym połączeniem sandboxa — jak każdy test hosta, który dispatchuje.
+3. **`EhOsContract.Plug` dekodował treść przed autoryzacją** — wywołujący bez uprawnienia, który wysłał złe pola,
+   dostawał 422 z nazwami pól, a nie 403, i nie było wiersza decyzji. **Poprawione na polecenie użytkownika**, w
+   silniku: gdy żądanie pada przed dispatchem albo query (treść nie jest obiektem, pola się nie dekodują,
+   `x-correlation-id` nie jest UUID), Plug pyta `Authorizer` tym samym zapytaniem przez
+   `Dispatcher.permit_undecoded/5` (`@doc false`), z wartością `scope` taką, jak przyszła. Odmowa → 403, zgoda →
+   dotychczasowy 400/422; każde żądanie to dalej dokładnie jedno pytanie (test w `plug_test` silnika z
+   `Authorizer`, który liczy pytania; w sandboxie wiersz `refused` i, jako kontrola, 422 z jednym `allowed`).
+   Skutek widoczny: query ze `scope` bez parametru to 403 `outside_scope`, jak w `query/3`, nie 422 — linia w
+   `CHANGELOG.md` silnika. Wstecz: stary `plug.ex` wywraca trzy nowe testy silnika.
+4. **Sandbox w dev loguje przy starcie brak kluczy** (`ehos.invalid`) i co 5 minut nieudane pobranie, na poziomie
+   `warning`/`error`. Zamierzone: tak wygląda aplikacja bez EHOS-a.
+5. Nazwa kontraktu w wierszu to `inspect(module)`, jak w `_commands`.
+
+**`/code-review` (high) na `dsl-v2/ea-verify...dsl-v2/ea-authorize`, na polecenie użytkownika — osiem uwag:**
+1. **`pin` ze złym kluczem rzucał w procesie kluczy** i zabierał z nim tabelę ze wszystkimi kluczami — poprawione:
+   sprawdzenie w wołającym (test; mutacja przenosząca je z powrotem do procesu go wywraca).
+2. **`Keys.pin/2` jest publiczne i działa w każdym środowisku** — każdy kod w VM może dodać ufany klucz.
+   **Do użytkownika**: bramka w konfiguracji (np. `config :eh_os_contract_auth, pin_keys: true` tylko w teście) to
+   kształt widoczny dla hosta.
+3. `credential/3` bez procesu kluczy kończył się gołym `:noproc` — teraz `ArgumentError` mówiący, co uruchomić (test).
+4. **Plug sięga do `Dispatcher.permit_undecoded/5` (`@doc false`)**, bo dekodowanie jest w Plugu, a autoryzacja w
+   dispatchu; drugie drzwi, które same dekodują, musiałyby o tym wiedzieć. **Do użytkownika**: wejście silnika
+   przyjmujące surowe dane (autoryzacja → dekodowanie → dispatch w jednym miejscu) to nowe publiczne API.
+5. Kształt zapytania o `scope` był budowany w dwóch miejscach — teraz jedno, `scope_request/2` w dispatcherze.
+6. `Codec.values/1` liczone dwa razy na żądanie — teraz raz.
+7. `EhOsContract.Auth.Plug.init/1` po cichu gubił nieznane opcje (literówka w `audience`) — teraz rzuca (test).
+8. Dev bez migracji pada przy dispatchu z credentialem — **bez zmian**, opisane wyżej w „Stanie repozytorium”.
+Poprawki 1, 3 i 7 sprawdzone wstecz. Pakiet auth 41 → 44.
+
+**`engineering:code-review` (bezpieczeństwo i wydajność) na `main...dsl-v2/ea-authorize`, na polecenie
+użytkownika — dziesięć uwag, wszystkie poprawione** („popraw wszystko”; przy 3 i 4 asystent wziął domyślne):
+1. **`http://` jako `issuer`/`jwks_url` był przyjmowany** — klucze otwartym tekstem, podmienialne po drodze. Start
+   pada, jeśli adres nie jest `https` (`http` tylko dla `localhost`).
+2. **Req domyślnie idzie za 10 przekierowaniami** (sprawdzone w `req/lib/req/steps.ex`) — odpowiedź 302 na inny host
+   przenosiła źródło zaufania. `redirect: false`; przekierowanie to nieudane pobranie.
+3. **`Keys.pin/2` działał wszędzie** — teraz tylko przy `config :eh_os_contract_auth, pin_keys: true` (pakiet i
+   `sandbox/config/test.exs`); gdzie indziej rzuca. Domyślne asystenta, kształt dla hosta — do potwierdzenia.
+4. **Brak górnej granicy życia credentiala** — `exp` dalej niż 15 min (10 z D-33 i 5 na rozjazd zegarów) to
+   `:bad_signature`. Domyślne asystenta — do potwierdzenia.
+5. **Odpowiedź JWKS czytana w całości** — powyżej 64 KB (czytanie przerwane w `into:`) albo 16 kluczy to nieudane
+   pobranie.
+6. **`scope_value` może kiedyś być daną osobową** poza crypto-shreddingiem — bramka dopisana do opisu E8.
+7. **Synchroniczny INSERT audytu na każde żądanie**, także query — wymóg D-34, koszt opisany w `README.md` pakietu.
+8. **Tabela decyzji rośnie bez końca** — sekcja o retencji w `README.md` (decyzja hosta, przykład `DELETE`).
+9. **Nagłówek `crit` ignorowany** (RFC 7515 każe odrzucić) — `:bad_signature`.
+10. `verify/2` czytał całą konfigurację aplikacji na każdy credential — dwa `fetch_env`.
+Poprawki 1, 2, 4, 5, 9 na `dsl-v2/ea-verify` (`8c28221`), bo to kod EA1, scalone do EA2 (`f286f3a`); 3, 6, 7, 8 na
+EA2. Każda z 1–5 i 9 sprawdzona wstecz; przy 5 pierwsza wersja testu przeżyła mutację (za duża odpowiedź nie miała
+klucza, więc i tak była nieudana) — poprawiona, żeby niosła klucz. Pakiet auth 44 → 51.
+
+**Skill `pre-pr-review` odpala od teraz oba przeglądy równolegle** (prośba użytkownika): dwa subagenty w jednej
+wiadomości, `code-review high` i `engineering:code-review` z naciskiem na bezpieczeństwo i wydajność, wspólna pula
+uwag; plus dwa nowe rodzaje problemów i ostrzeżenie o mutacjach, które stosują się w połowie.
 
 ### Losy fikstur
 

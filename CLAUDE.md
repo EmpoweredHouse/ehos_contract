@@ -9,10 +9,11 @@ docelowo z Hexa.
 | --- | --- |
 | `packages/eh_os_contract/` | **biblioteka** — DSL kontraktu, dispatch, log, zgodność, `docs/contract.md` |
 | `packages/eh_os_contract_web/` | montowalny dashboard |
+| `packages/eh_os_contract_auth/` | weryfikacja credentiali EHOS-a, klucze z JWKS (etap EA; skąd klucze i co skonfigurować przy integracji — jego `README.md`) |
 | `sandbox/` | host deweloperski `:eh_os_contract_host` i dane testowe: TaxVision, Rehmed, endpoint Phoenixa |
 | `docs/` | założenia (`docs/adr/`) i materiał warsztatowy |
 
-Każdy z trzech to osobny projekt Mix. Pakiety budują się i testują same, bez `sandbox/` — i to jest
+Każdy z czterech to osobny projekt Mix. Pakiety budują się i testują same, bez `sandbox/` — i to jest
 własność, której pilnujemy: `sandbox/` jest pierwszym konsumentem biblioteki, nie jej częścią.
 
 **Do 23 września pakiet nazywał się `pns` (moduły `PNS.*`, host `:pns_prototype`, tabele `pns_*`).**
@@ -93,9 +94,9 @@ docker compose up -d && cd sandbox && mix ecto.setup && mix check
 `mix check` w `sandbox/` to `format --check-formatted`, `compile --force --warnings-as-errors`,
 `eh_os_contract.check`, testy sandboxa, a potem `mix check` każdego pakietu osobnym wywołaniem —
 `packages/eh_os_contract` (z `eh_os_contract.docs --check`, które pilnuje, że referencja kluczy w jego
-`docs/contract.md` jest wygenerowana z `EhOsContract.Contract.schema/0`, a nie pisana ręcznie) i
-`packages/eh_os_contract_web`. **Musi przechodzić.** Osobne wywołania, nie umbrella — pakiet ma stać sam,
-i to jest własność, której pilnujemy. Brama mieszka w `sandbox/`, bo tylko on widzi wszystkie trzy projekty;
+`docs/contract.md` jest wygenerowana z `EhOsContract.Contract.schema/0`, a nie pisana ręcznie),
+`packages/eh_os_contract_web` i `packages/eh_os_contract_auth`. **Musi przechodzić.** Osobne wywołania, nie umbrella — pakiet ma stać sam,
+i to jest własność, której pilnujemy. Brama mieszka w `sandbox/`, bo tylko on widzi wszystkie projekty;
 każdy pakiet ma też własne `mix check`, które przechodzi bez niego.
 `--warnings-as-errors` jest konieczne: `boundary` raportuje naruszenia jako ostrzeżenia, więc bez tego
 przełącznika granice są dokumentacją. Postgres słucha na **5433**.

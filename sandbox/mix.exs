@@ -52,6 +52,9 @@ defmodule EhOsContractHost.MixProject do
       # own supervisor references its modules directly (PLAN.md, dopisek 23
       # sierpnia (8)) instead of relying on the OTP application list.
       {:eh_os_contract_web, path: "../packages/eh_os_contract_web", runtime: false},
+      # The credential verifier (v2 stage EA): the `EhOsContract.Authorizer` this host
+      # configures, and the bearer plug in front of the commands it serves over HTTP.
+      {:eh_os_contract_auth, path: "../packages/eh_os_contract_auth"},
       # Direct, the same reasoning as `:telemetry` above: EhOsContractHostWeb calls
       # these by name (Endpoint, Router, PubSub, the Bandit adapter), and they
       # would otherwise be present only because :eh_os_contract_web happens to need them —
@@ -94,7 +97,8 @@ defmodule EhOsContractHost.MixProject do
         "eh_os_contract.check",
         "test",
         &package_test/1,
-        &package_test_web/1
+        &package_test_web/1,
+        &package_test_auth/1
       ]
     ]
   end
@@ -133,5 +137,19 @@ defmodule EhOsContractHost.MixProject do
 
     if status != 0,
       do: Mix.raise("the dashboard foundation's own gate failed (packages/eh_os_contract_web)")
+  end
+
+  # The credential verifier (v2 stage EA), the same shape again: a package that
+  # stands alone, whose gate is its own `mix check` in a separate Mix project.
+  defp package_test_auth(_args) do
+    {_output, status} =
+      System.cmd("mix", ["check"],
+        cd: "../packages/eh_os_contract_auth",
+        env: [{"MIX_ENV", "test"}],
+        into: IO.stream(:stdio, :line)
+      )
+
+    if status != 0,
+      do: Mix.raise("the credential verifier's own gate failed (packages/eh_os_contract_auth)")
   end
 end

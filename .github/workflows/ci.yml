@@ -54,6 +54,14 @@ jobs:
           path: packages/eh_os_contract_web/deps
           key: eh-os-contract-web-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_web/mix.lock') }}
 
+      # The credential verifier (v2 stage EA), same shape: its gate runs as a
+      # separate Mix project via package_test_auth/1 in sandbox/mix.exs.
+      - name: Cache credential verifier deps
+        uses: actions/cache@v4
+        with:
+          path: packages/eh_os_contract_auth/deps
+          key: eh-os-contract-auth-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_auth/mix.lock') }}
+
       - name: Install sandbox deps
         working-directory: sandbox
         run: mix deps.get
@@ -64,6 +72,10 @@ jobs:
 
       - name: Install dashboard foundation deps
         working-directory: packages/eh_os_contract_web
+        run: mix deps.get
+
+      - name: Install credential verifier deps
+        working-directory: packages/eh_os_contract_auth
         run: mix deps.get
 
       # No `mix ecto.setup` before this: `mix check` runs under MIX_ENV=test

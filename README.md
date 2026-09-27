@@ -204,9 +204,11 @@ no handlers wired up, the overlay view has zero edges and renders as disconnecte
 
 ## Using it in your application
 
-Both packages install from git — see [`packages/eh_os_contract`](packages/eh_os_contract#installation)
+The packages install from git — see [`packages/eh_os_contract`](packages/eh_os_contract#installation)
 for the engine (dependency, migration, configuration, the supervision-tree child) and
-[`packages/eh_os_contract_web`](packages/eh_os_contract_web#installation) for the dashboard.
+[`packages/eh_os_contract_web`](packages/eh_os_contract_web#installation) for the dashboard, and
+[`packages/eh_os_contract_auth`](packages/eh_os_contract_auth#installation) for verifying EHOS credentials —
+including [where the keys come from, and what to configure at integration](packages/eh_os_contract_auth#where-the-keys-come-from-and-what-to-configure-at-integration).
 
 ## Working on it
 
@@ -242,7 +244,8 @@ boundaries below would be documentation rather than a check.
 | --- | --- |
 | [`packages/eh_os_contract`](packages/eh_os_contract) | **the library** — contract DSL, dispatch, event log, conformance, [`docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
 | [`packages/eh_os_contract_web`](packages/eh_os_contract_web) | the mountable dashboard |
-| [`sandbox`](sandbox) | a host application around both, with the test material below |
+| [`packages/eh_os_contract_auth`](packages/eh_os_contract_auth) | verifies EHOS credentials against keys kept in the application's database |
+| [`sandbox`](sandbox) | a host application around the packages, with the test material below |
 | [`docs`](docs) | the starting assumptions (`docs/adr/`) and workshop material |
 
 The library is a self-contained Elixir package with its own `mix.exs` and its own test suite, none
