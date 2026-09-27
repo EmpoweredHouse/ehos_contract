@@ -14,7 +14,9 @@ defmodule EhOsContract.Domain.Rules do
   refusal already puts where an invariant's name goes — and shows itself on
   examples: `violated_by:` and `satisfied_by:` each give at least one, every one is
   plain data of the value's type, none is in both and none is in one twice, since
-  each names its test.
+  each names its test. And no example that keeps an invariant is one another
+  invariant breaks, of the value or of what it is made of, by its own
+  `violated_by:`.
 
   **D7** (plan EL2): a context's `subdomain:` names a subdomain the domain declares,
   `subdomain :visits, "Wizyty", type: :core`; the kind is the subdomain's.
@@ -744,8 +746,50 @@ defmodule EhOsContract.Domain.Rules do
         {"#{where} gives #{inspect(example)} twice in #{key}:", invariant}
       end
 
-    name ++ examples ++ both ++ twice
+    # A value that keeps one invariant is a value, so it breaks no other: neither
+    # another of this value's, nor one of what the value is made of, which dispatch
+    # asks first. Only what the declarations themselves say is compared.
+    contradicted =
+      for example <- Enum.uniq(invariant.satisfied_by),
+          {type, other} <- Enum.uniq(listed_as_breaking(value.name, example, values)),
+          {type, other.name} != {value.name, invariant.name} do
+        {"#{where} gives #{inspect(example)} in satisfied_by:, and invariant " <>
+           "#{inspect(other.name)} of value #{inspect(type)} gives " <>
+           "#{if type == value.name, do: "it", else: "what it holds there"} in violated_by:; a " <>
+           "value that keeps one invariant breaks no other", invariant}
+      end
+
+    name ++ examples ++ both ++ twice ++ contradicted
   end
+
+  # Every `{value, invariant}` whose `violated_by:` names `data`, or a part of it, as
+  # the value of that type it holds: the value itself, an item of a list, a field of a
+  # value with fields, the value an alias stands for.
+  defp listed_as_breaking(_type, nil, _values), do: []
+
+  defp listed_as_breaking({:list, inner}, data, values) when is_list(data),
+    do: Enum.flat_map(data, &listed_as_breaking(inner, &1, values))
+
+  defp listed_as_breaking(type, data, values) when is_atom(type) and is_map_key(values, type) do
+    value = Map.fetch!(values, type)
+    own = for i <- value.invariants, data in i.violated_by, do: {type, i}
+
+    parts =
+      case value do
+        %{type: nil, fields: fields} when is_map(data) ->
+          Enum.flat_map(fields, &listed_as_breaking(&1.type, Map.get(data, &1.name), values))
+
+        %{type: nil} ->
+          []
+
+        %{type: inner} ->
+          listed_as_breaking(inner, data, values)
+      end
+
+    own ++ parts
+  end
+
+  defp listed_as_breaking(_type, _data, _values), do: []
 
   defp example_violations(where, key, [], _value, invariant, _values),
     do: [

@@ -175,6 +175,37 @@ defmodule EhOsContract.DomainInvariantsTest do
              """) =~ "D9: invariant :not_negative of value :money gives 0 in both"
     end
 
+    test "no example that keeps one invariant is given as breaking another" do
+      message =
+        refuse("Contradicted", """
+          value :amount, :integer do
+            invariant :not_negative, "Nieujemna", violated_by: [-1], satisfied_by: [0]
+            invariant :non_zero, "Niezerowa", violated_by: [0], satisfied_by: [1]
+          end
+
+          value :fee, :amount do
+            invariant :capped, "Najwyżej tysiąc", violated_by: [1001], satisfied_by: [-1, 1000]
+          end
+
+          value :line do
+            field :amount, :amount
+            invariant :filled, "Wypełniona", violated_by: [%{amount: 1001}], satisfied_by: [%{amount: -1}]
+          end
+        """)
+
+      assert message =~
+               "D9: invariant :not_negative of value :amount gives 0 in satisfied_by:, and invariant " <>
+                 ":non_zero of value :amount gives it in violated_by:; a value that keeps one " <>
+                 "invariant breaks no other"
+
+      assert message =~
+               "invariant :capped of value :fee gives -1 in satisfied_by:, and invariant " <>
+                 ":not_negative of value :amount gives what it holds there in violated_by:"
+
+      assert message =~ "invariant :filled of value :line gives %{amount: -1} in satisfied_by:"
+      refute message =~ "gives 1000 in satisfied_by:"
+    end
+
     test "no example is given twice, since each names its test" do
       message =
         refuse("Twice", """
