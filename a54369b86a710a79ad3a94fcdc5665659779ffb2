@@ -1,0 +1,6 @@
+EA2 review, 27 September 2026.
+/code-review high on dsl-v2/ea-verify...dsl-v2/ea-authorize: 8 findings. Fixed in de713b5: pin raising in the key process, credential/3 :noproc, scope request built twice, Codec.values twice, Auth.Plug.init dropping options. Left to the user: an engine entry for raw input (altitude). Dev DB unmigrated: documented. Pin gating: fixed later in a54369b.
+The 422-before-403 leak found while building EA2: fixed in 07938d4 (authorize first in EhOsContract.Plug), reverse-checked.
+engineering:code-review (security and performance) on main...dsl-v2/ea-authorize: 10 findings, all addressed: 1,2,4,5,9,10 in EA1 (8c28221, merged f286f3a); 3 pin_keys gate, 6 E8 scope gate in PLAN, 7 audit cost and 8 retention in README (a54369b). Reverse-checked where code changed.
+The fix commits themselves were not re-run through either tool; they were reverse-checked by mutation.
+Gate at a54369b: EXIT=0 (sandbox 54, check 0/5/19; engine 911, 0/15/17; web 32; auth 51).
