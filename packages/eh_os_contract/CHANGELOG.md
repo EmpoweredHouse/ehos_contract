@@ -131,6 +131,9 @@ What changes otherwise is what a host has to do.
   `field :p1_report_id, :id, issued_by: :medical_event_registry`, with an entity reference too. An unknown
   external fails the compile (X4 in a contract, D8 in a domain). `view --details` shows it; `check` counts it as
   a use of the external. A field without it keeps its digest.
+- **EL2: `relation-against-references`**, a warning of `check`: a contract of a directed relation's upstream
+  context consumes a contract of the downstream one or names an entity it owns, or any such reference crosses
+  `separate_ways`.
 - **EL2: `subdomain-without-bounded-context`**, ESDM's warning for a subdomain no context names; `view`
   shows each context's subdomain and its kind.
 - **EL1: `EhOsContract.Domain.vocabulary/0`**, the domain DSL's words by entity path, as

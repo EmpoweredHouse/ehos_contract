@@ -296,6 +296,23 @@ defmodule EhOsContract.Check.Catalog do
       """
     },
     %{
+      id: "relation-against-references",
+      level: :warn,
+      reads: :v2,
+      esdm: nil,
+      summary:
+        "A reference between two contexts runs against the relation declared between them.",
+      text: """
+      A directed relation — `customer_supplier`, `conformist`, `anticorruption_layer`,
+      `open_host_service`, `published_language` — says the downstream context depends on the upstream
+      one, and a contract of the upstream context consumes a contract of the downstream one or names
+      an entity it owns. Or the relation is `separate_ways`, which says the two do not depend on each
+      other, and a reference crosses it anyway. Either the relation or the reference is wrong. Between
+      contexts only: which way a call to an external system runs says nothing about who depends on
+      whom.
+      """
+    },
+    %{
       id: "cross-bounded-context-reference-without-mapping",
       level: :warn,
       reads: :v2,

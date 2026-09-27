@@ -232,6 +232,20 @@ owns (`{:id, entity}`), in either direction; for a relation to an external syste
 of the context calls it, depends on it, has a field it issues or acts through an actor it backs. The relation describes
 a dependency the contracts do not have.
 
+## `relation-against-references`
+
+**warning** · reads v2 contracts
+
+A reference between two contexts runs against the relation declared between them.
+
+A directed relation — `customer_supplier`, `conformist`, `anticorruption_layer`,
+`open_host_service`, `published_language` — says the downstream context depends on the upstream
+one, and a contract of the upstream context consumes a contract of the downstream one or names
+an entity it owns. Or the relation is `separate_ways`, which says the two do not depend on each
+other, and a reference crosses it anyway. Either the relation or the reference is wrong. Between
+contexts only: which way a call to an external system runs says nothing about who depends on
+whom.
+
 ## `cross-bounded-context-reference-without-mapping`
 
 **warning** · reads v2 contracts · ESDM: `esdm/modeling/cross-bounded-context-reference-without-mapping`

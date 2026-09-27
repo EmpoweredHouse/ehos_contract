@@ -207,7 +207,8 @@ defmodule EhOsContract.Check.Completeness do
       empty_contexts(model, declared, contracts),
       empty_subdomains(model, declared),
       orphan_relations(model, declared, contracts),
-      unmapped_references(model, contracts)
+      unmapped_references(model, contracts),
+      relations_against_references(model, declared, contracts)
     ])
   end
 
@@ -369,6 +370,48 @@ defmodule EhOsContract.Check.Completeness do
       )
     end
   end
+
+  # The library's own (plan EL2, "Po EL2" rule 1): a relation that says which way the
+  # dependency runs, and a reference that runs the other way. `separate_ways` says
+  # there is none, so any reference contradicts it; a directed relation says the
+  # downstream context depends on the upstream one, so a reference from the upstream
+  # context into the downstream one contradicts it. Between contexts only: which way
+  # a call to an external system runs says nothing about who depends on whom.
+  defp relations_against_references(model, declared, contracts) do
+    references = crossings(model, contracts)
+    directed = EhOsContract.Domain.Dsl.directed_relations()
+
+    for {relation, index} <- Enum.with_index(model.relations),
+        {pair, contract, what, _at} <- references,
+        pair == MapSet.new(Domain.Build.endpoints(relation)),
+        against?(relation, contract.model.context, directed),
+        uniq: true do
+      Finding.new(
+        "relation-against-references",
+        "#{inspect(contract.module)} in context #{inspect(contract.model.context)} #{what}, " <>
+          "and #{describe_relation(relation)} in #{inspect(model.module)} says #{says(relation)}",
+        declared.relations |> Enum.at(index) |> then(&(&1 && Links.at(&1)))
+      )
+    end
+  end
+
+  defp against?(%{type: :separate_ways}, _from, _directed), do: true
+
+  defp against?(%{type: type, upstream: upstream}, from, directed),
+    do: type in directed and from == upstream
+
+  defp says(%{type: :separate_ways}), do: "the two contexts do not depend on each other"
+
+  defp says(relation),
+    do: "#{inspect(relation.upstream)} does not depend on #{inspect(relation.downstream)}"
+
+  defp describe_relation(%{type: :separate_ways, between: [a, b]}),
+    do: "relation :separate_ways between #{inspect(a)} and #{inspect(b)}"
+
+  defp describe_relation(relation),
+    do:
+      "relation #{inspect(relation.type)} from upstream #{inspect(relation.upstream)} to " <>
+        "downstream #{inspect(relation.downstream)}"
 
   # Every reference from a contract into another context: `{contexts, contract, what,
   # at}`, the contexts as an unordered pair, `at` the `consumes` it is made by or, for
