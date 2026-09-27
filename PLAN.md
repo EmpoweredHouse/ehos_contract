@@ -31,9 +31,9 @@ kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`; `Taxvision
   kolejność zmieniona” i „EM1/EM2/EM3 — co wyszło”. Użytkownik merguje PR-y jako merge.
 - **EL2 zbudowane** na `dsl-v2/el-glossary` (od EL1), niewypchnięte: `glossary`, `view`, nazwana subdomena,
   tłumaczenie z definicją, sprawdzane ograniczenia komend, relacja z systemem zewnętrznym, `issued_by:`. Opis w „EL2 —
-  co wyszło”, decyzje w „Przed EL2 — decyzje użytkownika”. **Dalej:** przegląd EL2, reguły 1–4 z „Po EL2 — proza,
-  którą da się sprawdzać” na tej samej gałęzi, potem EL2b (walidator wartości i przykłady reguł serwisów), EL3
-  (strony dokumentacji).
+  co wyszło”, decyzje w „Przed EL2 — decyzje użytkownika”; przegląd EL2 zrobiony; reguły 1–4 z „Po EL2 — proza,
+  którą da się sprawdzać” zbudowane na tej samej gałęzi. **Dalej:** przegląd reguł 1–4, potem EL2b (walidator
+  wartości i przykłady reguł serwisów), EL3 (strony dokumentacji).
 - **EL1 zbudowane** na `dsl-v2/el-warnings` (od `main`), niewypchnięte: ostrzeżenia L5 ze stałymi nazwami,
   `--format json`, `--warnings-as-errors`, `docs/rules.md`, powtórzenie L3, przypięcie słownika domeny. Opis w
   „EL1 — co wyszło”, decyzje w „Przed EL — decyzje użytkownika”. Przegląd zrobiony, notatka w `refs/notes/review`
@@ -115,6 +115,8 @@ gołe `git stash` (stos jest wspólny dla worktree).
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 27 września, na `61579c7`** (EL2 z regułami 1–4): brama z `sandbox/` → **EXIT=0** — sandbox 54
+  testy, `check` 0 / 12 / 19; silnik 1106, `check` 0 / 63 / 20; web 32; auth 51.
 - **Lokalnie, 27 września, na `87f9a4e`** (EL2 po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 54
   testy, `check` 0 / 12 / 19; silnik 1101, `check` 0 / 50 / 20; web 32; auth 51.
 - **Lokalnie, 27 września, na `efda115`** (koniec budowy EL2): brama z `sandbox/` → **EXIT=0** — sandbox 54
@@ -1062,6 +1064,21 @@ relacje, reakcje), więc wchodzą na gałąź EL2 po rozstrzygnięciu jej przegl
    rozstrzygnięcie przy budowie, z wyjaśnieniem.
 5. **Przykłady przy regule serwisu domenowego** — `rule :never_below_zero, "…", examples: [{[1, 3], 0}]`, każdy
    daje test funkcji; ten sam mechanizm co `violated_by` / `satisfied_by` walidatora wartości, więc w EL2b.
+
+**1–4 zbudowane 27 września** na `dsl-v2/el-glossary`, po przeglądzie EL2: `relation-against-references`
+(`f82e470`), `label-with-avoided-term` (`4343068`), `external-direction-contradicted` (`acda05e`),
+`reaction-without-scenario` (`61579c7`). Rozstrzygnięcia asystenta:
+- **Z 1 pominięta część o `open_host_service` / `published_language` przez `publish`:** w jednej aplikacji
+  `consumes` rodzeństwa to właściwa droga, a `publish` (D11) jest między aplikacjami, więc reguła myliłaby się na
+  każdej takiej relacji wewnątrz aplikacji. Kierunek sprawdzany tylko między kontekstami: to, w którą stronę idzie
+  wywołanie systemu, nie mówi, kto od kogo zależy.
+- **2** czyta etykiety wszystkich deklaracji kontraktu (także pól), całe słowa bez względu na wielkość liter; słowa
+  z `avoid` tłumaczeń należą do innego języka i są pominięte.
+- **3:** `calls:` wymaga systemu `:outbound` albo `:bidirectional`; `issued_by:` i `backed_by:` — `:inbound` albo
+  `:bidirectional` (P1: wysłany raport, zwrócony numer).
+- **4 jako ostrzeżenie, nie błąd jak S8:** scenariusz odmowy to jedyny dowód, że inwariant trzyma, a reakcję
+  sprawdza też raport zgodności na logu; błąd wymusiłby scenariusze na fiksturach pisanych pod inny mechanizm.
+  Delta silnika 50 → 63 ostrzeżeń (13 reakcji i query fikstur), sandbox bez zmian.
 
 *Odłożone do E9* (zobaczyć na prawdziwych kontraktach, czy są potrzebne): 6 — ograniczenie query sprawdzane
 scenariuszem `answers` (przykład z testu okazał się `scope`, który już jest pilnowany); 7 — `expected_latency`
