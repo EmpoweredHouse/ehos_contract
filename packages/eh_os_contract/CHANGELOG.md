@@ -36,6 +36,12 @@ What changes otherwise is what a host has to do.
 
 ### Changed — a host has to act
 
+- **E8b: a read model that projects personal data needs `forget/2`**; without it, the `EhOsContract` child
+  refuses to start, since an erased subject's data would stay in its tables.
+- **E8a: a host whose contract declares personal fields needs a master key**, `config :eh_os_contract,
+  EhOsContract.Vault, keys: [...]` (`README.md`); without one, the `EhOsContract` child refuses to start. A host
+  without personal fields configures nothing.
+
 - **A new migration is required.** Add one calling `EhOsContract.Migrations.up(version: 3)` and
   `down(version: 3)`, like the upgrade to version 2. V03 alters `eh_os_contract_events` in place:
   - a `position` column becomes its primary key, and existing rows are numbered in `occurred_at` order;
@@ -45,6 +51,9 @@ What changes otherwise is what a host has to do.
 - **And a second one, from E7**: `EhOsContract.Migrations.up(version: 4)` and `down(version: 4)`. V04 creates
   the tables of the consumers that run outside the dispatch transaction — `eh_os_contract_subscriptions`,
   `eh_os_contract_process_managers` and `eh_os_contract_event_runs` — and changes no existing table.
+- **And a third one, from E8**: `EhOsContract.Migrations.up(version: 5)` and `down(version: 5)`. V05 creates
+  `eh_os_contract_subject_keys` (a data key per subject, wrapped by a master key of `EhOsContract.Vault`) and
+  `eh_os_contract_erasures` (the subjects erased).
 - **The log is append-only.** Triggers refuse UPDATE, DELETE and TRUNCATE on `eh_os_contract_events`. A test
   that moved `occurred_at` afterwards has to emit in the past instead, with `EhOsContract.Clock.at/2`. A test
   database that leaked rows is recovered with `ecto.drop`.
@@ -265,6 +274,51 @@ What changes otherwise is what a host has to do.
 - `EhOsContract.Codec.decode/4` takes `strings: true`, to read an integer or a boolean written as text.
 - `EhOsContract.Meta` carries an event's `id` and `position` when it is read back from the log.
 - `EhOsContract.Store.lock/1` on the configured implementation.
+- **E8a: personal fields are encrypted in the log** (v2 §14). A field declared `personal:`, at any depth of a
+  domain value, is stored as `{"$eh": "enc1", "k": 1, "d": "…"}`: its value JSON-encoded and sealed with
+  AES-256-GCM under its subject's data key, bound to the event type, the field, the subject and the key
+  version. Each subject's key is made the first time an event carries its data — read, made and wrapped before
+  the append lock, so no writer waits on the vault, and stored under it — in `eh_os_contract_subject_keys`,
+  wrapped by a master key of `EhOsContract.Vault`. Reading an event
+  back — a decision's folded stream, a receipt, a consumer — opens its personal fields; a stream reads every
+  key it needs in one query, and an event without personal fields reads none. **No verdict moves**: the
+  conformance readers never read a payload's personal fields.
+- **E8a: `EhOsContract.Erased`** is what a personal field reads back as once its subject is erased — its key
+  gone, and the subject recorded in `eh_os_contract_erasures` — `%EhOsContract.Erased{subject: :member, id:
+  "member-anna"}`. A key gone without that record raises instead. The structs a contract generates, and the types of
+  domain values, admit `EhOsContract.Erased.t()` on every personal field, and `EhOsContract.Codec.problems/3`
+  accepts it there and nowhere else. Sealing it into the log is refused; out of the log — a query's rows over
+  HTTP — it is written as `null`.
+- **E8a: `EhOsContract.Vault`**, the behaviour of the master keys, with `EhOsContract.Vault.Local` as default: the
+  keys come from `config :eh_os_contract, EhOsContract.Vault, keys: [{id, base64}]`, the first wrapping, the
+  others only unwrapping. `mix eh_os_contract.rewrap` rewraps every data key a retired master key still
+  wraps. Another vault, a KMS, is `config :eh_os_contract, vault: MyVault`.
+- `EhOsContract.Codec.encode/4` takes a function that seals personal fields, `decode/4` takes `open:`, and
+  `personal?/2` and `subjects/4` say where personal fields are and whose they are.
+- **E8a: F7 refuses personal data where the library keeps it outside the log**, since erasure reaches only
+  what the log encrypts (v2 §14). A process manager's state field declared `personal:` does not compile (L2);
+  a process manager's state field, or a query's `scope` parameter, of a domain value holding a personal field
+  at any depth — directly, through an alias, in a list — is an L3 error. A query's parameter takes no
+  `personal:` itself.
+- **E8b: `EhOsContract.erase(subject_type, subject_id, actor: actor)`** erases a subject, in one transaction
+  under the append lock: its data keys are deleted, the erasure recorded in `eh_os_contract_erasures`,
+  `eh_os_contract.subject_erased` appended (the subject's type and id, nothing personal), and every read model
+  delivered in the transaction that projects that subject type's data forgets it. A read model after the
+  transaction takes the same event in order, and a rebuild replays it. `:ok` also when the subject was erased
+  before, and then nothing is appended. The engine asks no `Authorizer`: who may erase is the host's to decide.
+  **No verdict moves**: the conformance readers never read the event, and a test pins
+  `EhOsContract.Conformance.as_data/2` identical before and after.
+- **E8b: dispatch refuses personal data of an erased subject**, `{:error, :subject_erased}` (a new refusal),
+  checked under the append lock before anything is sealed; it writes no `_commands` row. `EhOsContract.Plug`
+  answers it `410` with `{"error": "subject_erased"}`.
+- **E8b: a read model's `forget(subject_type, subject_id) :: :ok`**, an optional callback of the generated
+  behaviour, called for the subject types whose personal data the read model projects.
+  `EhOsContract.Codec.personal_subjects/2` says which.
+- **E8a: personal data inside a domain value is held to the same rules as a personal field.** A field declared
+  `personal:` whose type holds personal fields of its own is refused — in a domain value (F5) and in a contract
+  (F5, L3) — since they would be sealed under the outer subject's key and outlive their own subject's erasure.
+  A `publish` carrying a field of such a type is refused (D11, L3), as one carrying a personal field was.
+  `EhOsContract.Codec.personal_type?/2` is the one predicate behind them and F7.
 
 ### Changed
 

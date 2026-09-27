@@ -1,7 +1,7 @@
 defmodule EhOsContract.Next.ContractLinksDomainTest do
   @moduledoc """
-  v2 plan, E5b: **the L3 rules that read the domain** — X1–X4, and the parts of D10
-  and D11 a contract cannot check alone (v2 §6, §16). Each violation names the
+  v2 plan, E5b: **the L3 rules that read the domain** — X1–X4, and the parts of D10,
+  D11 and (from E8) F7 a contract cannot check alone (v2 §6, §16). Each violation names the
   declaration's file and line, and has a control beside it that passes.
   """
 
@@ -24,6 +24,13 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
 
         subject :patient, "Pacjent"
         value :money, :integer, unit: :grosze
+
+        value :contact do
+          field :patient_id, :id, subject: :patient
+          field :phone, :string, personal: :patient_id
+        end
+
+        value :contact_ref, :contact
         external :payer_registry, "Rejestr płatnika", direction: :outbound
       end
       """,
@@ -234,6 +241,105 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
                "is not a subject of #{inspect(@domain)}; did you mean :patient?"
 
       assert length(violations) == 3
+    end
+  end
+
+  describe "F7: no domain value holding personal data where the library keeps it outside the log" do
+    test "in a process manager's state, directly, through an alias and in a list, and as a scope" do
+      body =
+        @body
+        |> String.replace(
+          "    param :clinic_id, :id\n    scope :clinic_id",
+          "    param :clinic_id, :contact\n    scope :clinic_id"
+        )
+        |> String.replace(
+          "    field :clinic_id, :id\n    field :amount, :money",
+          "    field :clinic_id, :contact\n    field :amount, :money"
+        )
+        |> Kernel.<>("""
+          process_manager :chase, "Pogoń" do
+            correlate :visit_id
+
+            state do
+              field :contact, :contact
+              field :aliased, :contact_ref
+              field :contacts, {:list, :contact}
+              field :amount, :money
+            end
+
+            starts_on :payment_recorded
+          end
+        """)
+
+      violations = links("LinksPersonalValues", body)
+
+      assert assert_linked(
+               violations,
+               "F7: process manager :chase, state, field :contact is of :contact",
+               "links_personal_values.ex",
+               59
+             ) =~
+               "which holds personal data, and a process manager's state is stored outside the log"
+
+      assert_linked(
+        violations,
+        "field :aliased is of :contact_ref",
+        "links_personal_values.ex",
+        60
+      )
+
+      assert_linked(
+        violations,
+        "field :contacts is of {:list, :contact}",
+        "links_personal_values.ex",
+        61
+      )
+
+      assert assert_linked(
+               violations,
+               "F7: query :payments_in_clinic, parameter :clinic_id is of :contact",
+               "links_personal_values.ex",
+               38
+             ) =~
+               "it is the query's scope, whose value is written with every authorization decision"
+
+      # :amount is of :money, which holds nothing personal: the control.
+      assert length(violations) == 4
+    end
+  end
+
+  describe "F5 and D11: personal data inside a domain value, where it would escape erasure" do
+    test "a personal field of such a value, and a publication carrying one" do
+      body =
+        @body
+        |> String.replace(
+          "field :patient_id, :id, subject: :patient\n    end\n  end",
+          "field :patient_id, :id, subject: :patient\n" <>
+            "      field :carer, :contact, personal: :patient_id\n" <>
+            "      field :contacts, {:list, :contact}\n    end\n  end"
+        )
+        |> String.replace(
+          "fields: [:visit_id, :amount]",
+          "fields: [:visit_id, :amount, :contacts]"
+        )
+
+      violations = links("LinksPersonalInside", body)
+
+      assert assert_linked(
+               violations,
+               "F5: event :payment_recorded, field :carer is personal",
+               "links_personal_inside.ex",
+               20
+             ) =~ ":contact holds personal data of its own, which would be sealed under"
+
+      assert assert_linked(
+               violations,
+               "D11: publication :payment_recorded carries :contacts",
+               "links_personal_inside.ex"
+             ) =~ "which holds personal data; a copy on a broker cannot be erased"
+
+      # Control: :contacts, not personal itself and not published before, was no problem.
+      assert length(violations) == 2
     end
   end
 

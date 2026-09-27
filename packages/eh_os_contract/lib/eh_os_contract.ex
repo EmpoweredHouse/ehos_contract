@@ -32,6 +32,7 @@ defmodule EhOsContract do
       Duration,
       Emission,
       Emitter,
+      Erased,
       Event,
       EventHandling,
       Graph,
@@ -64,7 +65,9 @@ defmodule EhOsContract do
       Testing,
       EffectJob,
       TimerJob,
-      Trace
+      Trace,
+      Vault,
+      Vault.Local
     ]
 
   # Read from `mix.exs` at compile time rather than through
@@ -103,6 +106,10 @@ defmodule EhOsContract do
      handlers, and `EhOsContract.Deployment.record!/1` writes what that binary
      declared and since when. Forgetting the first leaves an empty graph;
      forgetting the second leaves the report unable to tell history from drift.
+     Between the two, `EhOsContract.Vault.check!/1` refuses to go on when a v2
+     contract declares personal fields and the vault has no master key to seal
+     them with, and `EhOsContract.Personal.check_forgetting!/1` when a read model
+     projects personal data and defines no `forget/2`.
   2. `EhOsContract.Subscription.register!/2` writes a row for every consumer fed from
      the log, marks the read models whose declaration changed `stale`, and rebuilds
      those that define `reset/0` (v2 §12).
@@ -148,6 +155,18 @@ defmodule EhOsContract do
   @spec query(module(), struct(), keyword() | map()) ::
           {:ok, [struct()] | struct() | nil} | {:error, EhOsContract.Dispatcher.refusal()}
   defdelegate query(contract, params, opts), to: EhOsContract.Dispatcher
+
+  @doc """
+  Erases a subject's personal data from the log, and from every read model that
+  projects it (`EhOsContract.Personal.erase/3`, v2 §14):
+
+      EhOsContract.erase(:patient, "p-17", actor: actor)
+
+  `:ok`, also when the subject was erased before. Who may erase is the host's to
+  decide.
+  """
+  @spec erase(atom(), String.t(), keyword() | map()) :: :ok
+  defdelegate erase(subject, id, opts), to: EhOsContract.Personal
 
   defdelegate emit(contract, type, payload, ctx \\ %{}), to: EhOsContract.Emitter
   defdelegate emit!(contract, type, payload, ctx \\ %{}), to: EhOsContract.Emitter

@@ -133,4 +133,216 @@ defmodule EhOsContract.CodecTest do
       assert_raise ArgumentError, fn -> Key.join(["a", nil]) end
     end
   end
+
+  describe "personal fields (v2 §14)" do
+    alias EhOsContract.{Erased, Personal}
+
+    @personal [
+      %{name: :member_id, type: :id, optional: false, subject: :member},
+      %{name: :name, type: :string, optional: false, personal: :member_id},
+      %{name: :note, type: :string, optional: true}
+    ]
+
+    @key {"member", "member-anna"}
+    @keys %{@key => {1, :binary.copy(<<7>>, 32)}}
+    @read %{{"member", "member-anna", 1} => :binary.copy(<<7>>, 32)}
+
+    defp sealed(type \\ "shredding_rig.joined") do
+      Codec.encode(
+        @personal,
+        %{member_id: "member-anna", name: "Anna Nowak", note: "n"},
+        %{},
+        Personal.sealer(@keys, type)
+      )
+    end
+
+    test "sealed with a key, opened with it" do
+      stored = sealed()
+      assert %{"$eh" => "enc1", "k" => 1} = stored["name"]
+      assert stored["note"] == "n"
+
+      assert Codec.subjects(@personal, stored, %{}, :stored) == [{:member, "member-anna"}]
+
+      assert Codec.decode(@personal, stored, %{},
+               open: Personal.opener(@read, "shredding_rig.joined")
+             ) ==
+               {:ok, %{member_id: "member-anna", name: "Anna Nowak", note: "n"}}
+    end
+
+    test "a ciphertext moved to another event type, field or subject does not open" do
+      stored = sealed("shredding_rig.joined")
+      open = Personal.opener(@read, "shredding_rig.renamed")
+      assert Codec.decode(@personal, stored, %{}, open: open) == {:error, [name: :type]}
+
+      moved = %{stored | "note" => stored["name"]}
+
+      notes =
+        Enum.map(
+          @personal,
+          &if(&1.name == :note, do: Map.put(&1, :personal, :member_id), else: &1)
+        )
+
+      open = Personal.opener(@read, "shredding_rig.joined")
+      assert {:error, [note: :type]} = Codec.decode(notes, moved, %{}, open: open)
+
+      bartek = Map.put(@read, {"member", "member-bartek", 1}, :binary.copy(<<7>>, 32))
+      other = %{stored | "member_id" => "member-bartek"}
+
+      assert Codec.decode(@personal, other, %{},
+               open: Personal.opener(bartek, "shredding_rig.joined")
+             ) ==
+               {:error, [name: :type]}
+    end
+
+    test "without its key, an erased subject's field is Erased; without open:, it does not fit" do
+      stored = sealed()
+      erased = MapSet.new([{"member", "member-anna"}])
+
+      assert Codec.decode(@personal, stored, %{},
+               open: Personal.opener(%{}, "shredding_rig.joined", erased)
+             ) ==
+               {:ok,
+                %{
+                  member_id: "member-anna",
+                  name: %Erased{subject: :member, id: "member-anna"},
+                  note: "n"
+                }}
+
+      assert Codec.decode(@personal, stored, %{}) == {:error, [name: :type]}
+
+      # Without its key and never erased: raised, never read as erased.
+      assert_raise ArgumentError, ~r/is missing, and the subject was never erased/, fn ->
+        Codec.decode(@personal, stored, %{}, open: Personal.opener(%{}, "shredding_rig.joined"))
+      end
+    end
+
+    test "Erased fits a personal field and nothing else, and cannot be sealed" do
+      erased = %Erased{subject: :member, id: "member-anna"}
+
+      assert Codec.problems(@personal, %{member_id: "member-anna", name: erased}, %{}) == []
+
+      assert Codec.problems(@personal, %{member_id: "member-anna", name: "A", note: erased}, %{}) ==
+               [note: :type]
+
+      assert_raise ArgumentError, ~r/field name holds EhOsContract.Erased/, fn ->
+        Codec.encode(
+          @personal,
+          %{member_id: "member-anna", name: erased},
+          %{},
+          Personal.sealer(@keys, "t")
+        )
+      end
+    end
+
+    test "clear text where a seal belongs, and a seal with nothing to open it, do not fit" do
+      open = Personal.opener(@read, "shredding_rig.joined")
+      clear = %{"member_id" => "member-anna", "name" => "Anna Nowak", "note" => nil}
+      assert Codec.decode(@personal, clear, %{}, open: open) == {:error, [name: :type]}
+
+      # Control: an optional personal field left empty is empty, not clear text.
+      optional = Enum.map(@personal, &if(&1.name == :name, do: %{&1 | optional: true}, else: &1))
+
+      assert {:ok, %{name: nil}} =
+               Codec.decode(optional, %{clear | "name" => nil}, %{}, open: open)
+
+      # A domain value whose fields are all optional would take the envelope's keys
+      # for none of its own and decode empty.
+      values = %{
+        info: %{name: :info, type: nil, fields: [%{name: :phone, type: :string, optional: true}]}
+      }
+
+      fields = [
+        %{name: :member_id, type: :id, optional: false, subject: :member},
+        %{name: :info, type: :info, optional: false, personal: :member_id}
+      ]
+
+      stored =
+        Codec.encode(
+          fields,
+          %{member_id: "member-anna", info: %{phone: "+48 600 100 200"}},
+          values,
+          Personal.sealer(@keys, "t")
+        )
+
+      assert Codec.decode(fields, stored, values) == {:error, [info: :type]}
+
+      assert Codec.decode(fields, stored, values, open: Personal.opener(@read, "t")) ==
+               {:ok, %{member_id: "member-anna", info: %{phone: "+48 600 100 200"}}}
+    end
+
+    test "a seal that fails names the field, never a key or the value" do
+      [{_, {_, key}}] = Map.to_list(@keys)
+
+      missing =
+        assert_raise ArgumentError, fn ->
+          Codec.encode(
+            @personal,
+            %{member_id: "member-bartek", name: "Bartek Nowak"},
+            %{},
+            Personal.sealer(@keys, "t")
+          )
+        end
+
+      assert missing.message =~ "field name is personal to subject member \"member-bartek\""
+      refute missing.message =~ inspect(key)
+      refute missing.message =~ "Bartek Nowak"
+
+      not_utf8 =
+        assert_raise ArgumentError, fn ->
+          Codec.encode(
+            @personal,
+            %{member_id: "member-anna", name: "Anna " <> <<0xFF>>},
+            %{},
+            Personal.sealer(@keys, "t")
+          )
+        end
+
+      assert not_utf8.message =~ "field name holds a value that cannot be written as JSON"
+      refute not_utf8.message =~ "Anna"
+    end
+
+    test "out of the log, Erased is written as nil" do
+      erased = %Erased{subject: :member, id: "member-anna"}
+
+      assert Codec.encode(@personal, %{member_id: "member-anna", name: erased}, %{}) ==
+               %{"member_id" => "member-anna", "name" => nil, "note" => nil}
+    end
+
+    test "personal?/2 and subjects/4 look inside domain values, lists and aliases" do
+      values = %{
+        contact: %{
+          name: :contact,
+          type: nil,
+          fields: [
+            %{name: :member_id, type: :id, optional: false, subject: :member},
+            %{name: :phone, type: :string, optional: false, personal: :member_id}
+          ]
+        },
+        contact_ref: %{name: :contact_ref, type: :contact, fields: []}
+      }
+
+      fields = [
+        %{name: :contacts, type: {:list, :contact_ref}, optional: false},
+        %{name: :count, type: :integer, optional: false}
+      ]
+
+      assert Codec.personal?(fields, values)
+      refute Codec.personal?([%{name: :count, type: :integer, optional: false}], values)
+
+      data = %{
+        contacts: [
+          %{member_id: "member-anna", phone: "1"},
+          %{member_id: "member-bartek", phone: "2"},
+          %{member_id: "member-anna", phone: "3"}
+        ],
+        count: 3
+      }
+
+      assert Codec.subjects(fields, data, values, :value) ==
+               [{:member, "member-anna"}, {:member, "member-bartek"}]
+
+      # In the log's form only a sealed field needs a key.
+      assert Codec.subjects(fields, Codec.encode(fields, data, values), values, :stored) == []
+    end
+  end
 end

@@ -18,6 +18,12 @@ defmodule EhOsContract.Next.Contract.Rules.Fields do
     same struct that declares `subject:`. Whether the subject exists is X3's.
   - **F6.** A unit's identity is injected into its state, commands and events;
     declaring one of those fields there again is an error.
+  - **F7.** A field whose value the library keeps outside the log is not personal,
+    since erasure reaches only what the log encrypts (v2 §14): a process manager's
+    state, stored in `eh_os_contract_process_managers`, and a query's `scope`
+    parameter, whose value goes into every authorization decision. A parameter
+    takes no `personal:` at all, so here F7 refuses only a manager's state; a
+    domain value holding personal data in either place is the domain's to see (L3).
   """
 
   alias EhOsContract.Domain
@@ -29,9 +35,43 @@ defmodule EhOsContract.Next.Contract.Rules.Fields do
   def check(declarations) do
     correlated = correlated(declarations)
 
-    for {where, fields, injected, kind} <- structs(declarations),
-        violation <- struct_violations(where, fields, injected, kind, correlated) do
-      violation
+    structs =
+      for {where, fields, injected, kind} <- structs(declarations),
+          violation <- struct_violations(where, fields, injected, kind, correlated) do
+        violation
+      end
+
+    structs ++ outside_the_log(declarations)
+  end
+
+  @doc """
+  The fields F7 keeps from being personal, as `{where, field, why}`: every field of a
+  process manager's state, and every query's `scope` parameter. The rules between
+  modules read it too, for a domain value that holds personal data (L3).
+  """
+  @spec outside_the_log(map(), :fields) :: [{String.t(), struct(), String.t()}]
+  def outside_the_log(d, :fields) do
+    managers =
+      for pm <- d.process_managers, f <- Rules.state_fields(pm.state) do
+        {"process manager #{inspect(pm.name)}, state, field #{inspect(f.name)}", f,
+         "a process manager's state is stored outside the log"}
+      end
+
+    scopes =
+      for q <- d.queries,
+          Map.get(q, :scope) != nil,
+          f <- q.params,
+          f.name == q.scope do
+        {"query #{inspect(q.name)}, parameter #{inspect(f.name)}", f,
+         "it is the query's scope, whose value is written with every authorization decision"}
+      end
+
+    managers ++ scopes
+  end
+
+  defp outside_the_log(d) do
+    for {where, field, why} <- outside_the_log(d, :fields), Map.get(field, :personal) != nil do
+      {"F7: #{where} is personal, and #{why}, where erasure cannot reach it", field}
     end
   end
 

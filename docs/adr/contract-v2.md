@@ -558,6 +558,13 @@ where it helps; every violation is reported as a diagnostic before the single ra
   used as identity, correlation, `match` or tags are neither `optional:` nor `personal:`. F5: `personal: f`
   needs `f` to be a required, non-personal `:id` field of the same struct declaring `subject:`. F6:
   redeclaring an injected identity field is an error.
+
+  > *Added 27 September 2026, E8.* **F7**: a field whose value the library keeps outside the log is not
+  > personal, since erasure (§14) reaches only what the log encrypts — a process manager's state, stored in
+  > `_process_managers`, and a query's `scope` parameter, whose value the authorization package writes with
+  > every decision. §14's gate list names the first and not the second; the second came from EA's security
+  > review. A query's `param` takes no `personal:`, so at L2 F7 sees only a manager's state; a domain value
+  > holding a personal field, at any depth, in either place is refused at L3, where the domain is known.
 - *Units.* A1: `emits` is non-empty and a subset of the unit's own events. A2: every event is emitted by at
   least one command of its unit **or declares `recorded_by`** — stricter than ESDM, because in an
   event-sourced system any other event can never occur. A3: `rejects` ⊆ the unit's invariants. A4: a DCB has
@@ -1216,6 +1223,32 @@ the person's.
 - **For the product owner, not for engineering:** backups, WAL and replicas keep data keys until they expire
   (the key store can move behind the behaviour to shorter retention); and whether destroying a key counts as
   erasure is a question for counsel (EDPB, UODO).
+
+> **27 September 2026, E8a — what the build settled.** (1) The vault's `wrap` and `unwrap` take a context, the
+> data key's row (`subject_type|subject_id|key_version`), bound as additional data, so a wrapped key moved to
+> another subject's row does not unwrap; a KMS takes it as an encryption context. The vault also has `current/0`
+> and `check/0`: the engine refuses to boot when a contract declares personal fields and the vault cannot seal
+> them, and `mix eh_os_contract.rewrap` rewraps what a retired master key wraps. The default vault takes a list
+> of master keys from configuration, the first wrapping (decision of the user, 27 September). (2) The field's
+> path in the AAD is dotted, `contacts.phone`, with no list index. (3) A personal field left `nil` is stored
+> `nil`, not sealed: absence is not personal. (4) **Snapshots do not exist** — §10.3 describes their table and
+> no migration creates it — so erasure has none to delete; whoever builds them adds `subjects` and the deletion.
+> (5) **`key_version` is always 1**: rotating a subject's data key waits for someone who needs it (both by the
+> user's decision, `PLAN.md`, E8). (6) The keys a reader needs are found from the declared fields: a sealed
+> field's subject is its sibling's value, so the envelope carries no subject.
+
+> **27 September 2026, E8b — erasure as built.** (1) `erase/3` is host-gated and idempotent: `actor:` is
+> recorded, no `Authorizer` is asked, and a second call returns `:ok` and appends nothing (decision of the
+> user). (2) The refusal is narrower than "an append for the subject": an event is refused,
+> `{:error, :subject_erased}`, only when it carries personal data of an erased subject — the one case where
+> a key would be created again. An event naming the subject's id and nothing personal is appended. The
+> check runs under the append lock, after `prepare/2` and before anything is stored or sealed, and writes no
+> `_commands` row; over HTTP it is `410`. (3) `eh_os_contract.subject_erased` is stored with `contract:
+> "EhOsContract"`, no stream and no run, so no contract's conformance reads it. (4) A read model takes the
+> event only when it projects personal data, and `forget/2` is called only for the subject types whose data
+> it projects (`Codec.personal_subjects/2`); a read model that projects personal data without `forget/2`
+> fails boot. (5) A missing key reads as `Erased` only for a subject in `eh_os_contract_erasures`; any other
+> missing key raises (E8a review).
 
 ## 15. Integration hooks — designed, not built
 

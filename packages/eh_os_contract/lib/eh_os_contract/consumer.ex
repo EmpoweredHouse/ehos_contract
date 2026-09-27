@@ -17,7 +17,18 @@ defmodule EhOsContract.Consumer do
     `{:error, reason}`.
   """
 
-  alias EhOsContract.{Actor, Codec, Dispatcher, Event, Implementations, Meta, Model, Rejection}
+  alias EhOsContract.{
+    Actor,
+    Codec,
+    Dispatcher,
+    Erased,
+    Event,
+    Implementations,
+    Meta,
+    Model,
+    Personal,
+    Rejection
+  }
 
   @longest_chain 32
 
@@ -28,6 +39,15 @@ defmodule EhOsContract.Consumer do
   caller knows whether to roll back or to retry.
   """
   @spec handle!(Implementations.inline(), struct(), [String.t()]) :: :ok | {:error, term()}
+  # An erasure: the read model forgets the subject, if it holds that type's data at
+  # all (v2 §14). One nobody implemented has written nothing to forget, and must not
+  # stop every erasure of the type.
+  def handle!(%{kind: :read_model, callback: :forget} = consumer, %Erased{} = erased, _chain) do
+    if consumer.module != nil and MapSet.member?(consumer.forgets, erased.subject),
+      do: forget!(consumer, erased),
+      else: :ok
+  end
+
   def handle!(%{kind: :read_model} = consumer, event, _chain) do
     case apply(implemented!(consumer), consumer.callback, [event]) do
       :ok ->
@@ -85,32 +105,87 @@ defmodule EhOsContract.Consumer do
   @spec label(Implementations.inline() | Implementations.consumer()) :: String.t()
   def label(consumer), do: "#{consumer.kind}:#{consumer.name}"
 
+  defp forget!(consumer, erased) do
+    case implemented!(consumer).forget(erased.subject, erased.id) do
+      :ok ->
+        :ok
+
+      other ->
+        raise ArgumentError,
+              "read model #{inspect(consumer.name)} returned #{inspect(other)} from forget/2; " <>
+                "it returns :ok"
+    end
+  end
+
   @doc """
   An event as its consumers take it: the struct of the contract that declares its
   type, with `__meta__` from the row. Raises when no contract of the host declares the
   type, or the payload no longer fits it.
+
+  A personal field is opened with its subject's key, read for this row alone and
+  only when the row has a sealed field; once the subject is erased it holds
+  `EhOsContract.Erased`. A key missing for a subject never erased raises. The
+  erasure itself, `eh_os_contract.subject_erased`, is declared by no contract, and
+  reads as the `EhOsContract.Erased` it names.
   """
   @spec decode!(Event.t()) :: struct()
-  def decode!(%Event{} = row) do
+  def decode!(%Event{type: type, payload: payload} = row) do
+    if type == Personal.erased_type(),
+      do: Personal.erased_event(payload),
+      else: decode_declared!(row)
+  end
+
+  defp decode_declared!(row) do
     model =
       case Model.fetch(Module.safe_concat([row.contract])) do
         %{kind: :contract, units: _} = model -> model
         _v1 -> raise ArgumentError, "#{row.contract} is not a v2 contract"
       end
 
-    decode!(model, Codec.values(model.domain), row)
+    values = Codec.values(model.domain)
+    [decoded] = decode_all!(model, values, [row])
+    decoded
   end
 
   @doc false
-  @spec decode!(map(), map(), Event.t()) :: struct()
-  def decode!(model, values, %Event{} = row) do
-    declaration =
-      Enum.find(model.events, &(&1.type == row.type)) ||
-        raise ArgumentError,
-              "#{inspect(model.module)} declares no event of type #{inspect(row.type)}, " <>
-                "which its log holds at position #{row.position}"
+  # Rows of one contract's log, decoded with every key they need read in one query:
+  # a stream folded for a decision is one query, not one per event.
+  @spec decode_all!(map(), map(), [Event.t()]) :: [struct()]
+  def decode_all!(model, values, rows) do
+    declared = Enum.map(rows, &{declaration!(model, &1), &1})
 
-    case Codec.decode(declaration.fields, row.payload, values) do
+    subjects =
+      for {declaration, row} <- declared,
+          subject <- Codec.subjects(declaration.fields, row.payload, values, :stored),
+          uniq: true,
+          do: subject
+
+    repo = Application.fetch_env!(:eh_os_contract, :repo)
+    keys = Personal.for_reading(repo, subjects)
+
+    # Only a subject without any key can have been erased, and only then is it asked.
+    keyed = MapSet.new(Map.keys(keys), fn {type, id, _version} -> {type, id} end)
+
+    erased =
+      Personal.erased_among(
+        repo,
+        Enum.reject(subjects, fn {t, id} -> MapSet.member?(keyed, {Atom.to_string(t), id}) end)
+      )
+
+    for {declaration, row} <- declared do
+      decode!(model, values, declaration, row, Personal.opener(keys, row.type, erased))
+    end
+  end
+
+  defp declaration!(model, row) do
+    Enum.find(model.events, &(&1.type == row.type)) ||
+      raise ArgumentError,
+            "#{inspect(model.module)} declares no event of type #{inspect(row.type)}, " <>
+              "which its log holds at position #{row.position}"
+  end
+
+  defp decode!(model, values, declaration, row, open) do
+    case Codec.decode(declaration.fields, row.payload, values, open: open) do
       {:ok, fields} ->
         struct!(
           Model.module_for(model, :event, declaration.name),
@@ -173,6 +248,12 @@ defmodule EhOsContract.Consumer do
         # A rejection is the unit's answer, and its row is written: the reaction asked
         # and was told no. What set it off still stands.
         {:error, %Rejection{}} ->
+          :ok
+
+        # So is an erasure's: the command would have written an erased subject's data
+        # again (v2 §14), and nothing was. Raising would roll back what set the
+        # reaction off, or stop an ordered consumer for every subject.
+        {:error, :subject_erased} ->
           :ok
 
         {:error, reason} ->

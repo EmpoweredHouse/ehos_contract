@@ -115,7 +115,8 @@ defmodule EhOsContract.Domain.Rules do
 
     aliases = Map.new(values, &{&1.name, &1.type})
     shape = Enum.flat_map(values, &value_shape(&1, names, contexts, aliases))
-    options = Enum.flat_map(values, &field_options(&1, subjects))
+    by_name = Map.new(values, &{&1.name, &1})
+    options = Enum.flat_map(values, &field_options(&1, subjects, by_name))
     shape ++ options ++ cycles(values, names)
   end
 
@@ -123,17 +124,18 @@ defmodule EhOsContract.Domain.Rules do
   # those options are checked here with the rule letters v2 §6 gives them. F3: a
   # default belongs only to a contract's state. F5: `personal: f` needs `f` to be
   # a required, non-personal `:id` field of the same value declaring `subject:`,
-  # and that subject must be declared.
-  defp field_options(value, subjects) do
+  # and that subject must be declared; and a personal field is not of a value that
+  # holds personal data of its own, which would be sealed under this field's subject.
+  defp field_options(value, subjects, values) do
     by_name = Map.new(value.fields, &{&1.name, &1})
 
     for field <- value.fields,
-        violation <- field_option_violations(value, field, by_name, subjects) do
+        violation <- field_option_violations(value, field, by_name, subjects, values) do
       violation
     end
   end
 
-  defp field_option_violations(value, field, by_name, subjects) do
+  defp field_option_violations(value, field, by_name, subjects, values) do
     where = "value #{inspect(value.name)}, field #{inspect(field.name)}"
 
     default =
@@ -176,7 +178,15 @@ defmodule EhOsContract.Domain.Rules do
           ]
       end
 
-    default ++ subject ++ personal
+    nested =
+      if field.personal && EhOsContract.Codec.personal_type?(field.type, values),
+        do: [
+          {"F5: #{where} is personal, and #{inspect(field.type)} holds personal data of its own, " <>
+             "which would be sealed under this field's subject", field}
+        ],
+        else: []
+
+    default ++ subject ++ personal ++ nested
   end
 
   defp value_shape(value, names, contexts, aliases) do

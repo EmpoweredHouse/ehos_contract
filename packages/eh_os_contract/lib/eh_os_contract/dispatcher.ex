@@ -28,7 +28,11 @@ defmodule EhOsContract.Dispatcher do
      do not fit raises: that is a defect in the code, never a business outcome, and
      nothing is appended.
   6. **Append**, under the stream's version as it was read, and write the
-     `accepted` row. A rejection writes a `rejected` row and appends nothing.
+     `accepted` row. A rejection writes a `rejected` row and appends nothing. The
+     personal fields are sealed with their subjects' keys (`EhOsContract.Personal`);
+     an event carrying personal data of an erased subject is refused,
+     `{:error, :subject_erased}`, before anything is sealed, and writes no row: the
+     decision was the unit's, the refusal is the erasure's.
   7. **Inside the transaction** (v2 §12): every read model delivered
      `:in_transaction` projects the appended events, in order, then every such
      policy reacts, then every such effect acts (`EhOsContract.Consumer`). What a
@@ -74,6 +78,7 @@ defmodule EhOsContract.Dispatcher do
     Key,
     Meta,
     Model,
+    Personal,
     Receipt,
     Rejection,
     Store,
@@ -90,6 +95,7 @@ defmodule EhOsContract.Dispatcher do
           | :idempotency_key_reused
           | :conflict
           | :not_caught_up
+          | :subject_erased
 
   @doc """
   Dispatches `command`, a struct a v2 contract generated, to `contract`.
@@ -513,13 +519,18 @@ defmodule EhOsContract.Dispatcher do
   end
 
   defp commit(job, events, repo) do
+    # The subjects' keys are read and wrapped before the lock, where a vault's round
+    # trip holds up no other writer, and stored under it (v2 §14).
+    prepared = Personal.prepare(repo, subjects(job, events))
     :ok = Store.lock(repo)
 
     # Checked again under the lock: another transaction with the same key may have
-    # committed while this one decided.
-    with :new <- idempotent(repo, job) do
+    # committed while this one decided. Under the lock too, no subject whose data
+    # the events carry is erased, and none gets its key created again (v2 §14).
+    with :new <- idempotent(repo, job),
+         {:ok, keys} <- Personal.for_writing(repo, prepared) do
       command_id = Ecto.UUID.generate()
-      entries = Enum.map(events, &entry(job, &1, command_id))
+      entries = Enum.map(events, &entry(job, &1, command_id, keys))
 
       case Store.append(repo, entries, {:stream, job.stream, job.version}) do
         {:error, :wrong_expected_version} ->
@@ -654,7 +665,7 @@ defmodule EhOsContract.Dispatcher do
         events =
           repo.all(from(e in Event, where: e.command_id == ^accepted.id, order_by: e.position))
 
-        {:ok, receipt(accepted.id, Enum.map(events, &{decode!(job, &1), &1}), true)}
+        {:ok, receipt(accepted.id, Enum.zip(decode_all!(job, events), events), true)}
 
       true ->
         {:error, :idempotency_key_reused}
@@ -671,15 +682,18 @@ defmodule EhOsContract.Dispatcher do
       )
 
     if function_exported?(impl, :evolve, 2) do
-      Enum.reduce(recorded, state, fn event, state ->
-        stage("evolve", fn -> impl.evolve(state, decode!(job, event)) end)
+      # Reading the stream back — its keys too — is part of evolving, for the failed row.
+      events = stage("evolve", fn -> decode_all!(job, recorded) end)
+
+      Enum.reduce(events, state, fn event, state ->
+        stage("evolve", fn -> impl.evolve(state, event) end)
       end)
     else
       state
     end
   end
 
-  defp decode!(job, %Event{} = event), do: Consumer.decode!(job.model, job.values, event)
+  defp decode_all!(job, rows), do: Consumer.decode_all!(job.model, job.values, rows)
 
   # --- holding the decision to its declaration ----------------------------------------------
 
@@ -725,7 +739,15 @@ defmodule EhOsContract.Dispatcher do
 
   # --- writing ----------------------------------------------------------------------------
 
-  defp entry(job, {declaration, event}, command_id) do
+  # Whose personal data the events carry.
+  defp subjects(job, events) do
+    for {declaration, event} <- events,
+        subject <- Codec.subjects(declaration.fields, event, job.values, :value),
+        uniq: true,
+        do: subject
+  end
+
+  defp entry(job, {declaration, event}, command_id, keys) do
     %{model: model, ctx: ctx, values: values} = job
     unit = Enum.find(model.units, &(&1.name == declaration.unit))
 
@@ -744,7 +766,8 @@ defmodule EhOsContract.Dispatcher do
       causation_id: command_id,
       actor: Actor.label(ctx.actor),
       occurred_at: ctx.now,
-      payload: Codec.encode(declaration.fields, event, values),
+      payload:
+        Codec.encode(declaration.fields, event, values, Personal.sealer(keys, declaration.type)),
       metadata:
         %{
           "command" => job.type,

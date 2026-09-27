@@ -14,6 +14,13 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
     a list as well; every `subject:` is a subject of the domain.
   - **X4.** An event's `depends_on` and an effect's `calls` name externals of the
     domain.
+  - **F7**, the part that needs the domain: a field F7 keeps from being personal
+    is not of a domain value that holds personal data, at any depth.
+  - **F5**, the part that needs the domain: a personal field is not of a type that
+    holds personal data of its own, which would be sealed under this field's
+    subject and outlive the erasure of its own.
+  - **D11**, the part that needs the domain: a publication carries no field of a
+    type that holds personal data; a copy on a broker cannot be erased.
   - **D10.** Every actor in a scoped query's `by:` carries the query's `scope` as a
     scope dimension, `actor :reception, :human, "…", scope: [:clinic_id]`, since a
     grant to that actor carries the values the answer is narrowed to.
@@ -21,6 +28,7 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
     `name:`: `"rehmed.visit.closed.v1"` in the domain `:rehmed`.
   """
 
+  alias EhOsContract.Codec
   alias EhOsContract.Domain
   alias EhOsContract.DslRules
   alias EhOsContract.Next.Contract.{Links, Rules}
@@ -44,6 +52,7 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
       actors(c),
       types(c),
       subjects(c),
+      personal_values(c),
       externals(c),
       scopes(c),
       namespaces(c)
@@ -124,6 +133,47 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
         subject not in subjects do
       {"X3: #{where}, field #{inspect(field.name)}: subject #{inspect(subject)} is not a subject " <>
          "of #{inspect(domain.module)}; #{suggest(subject, subjects)}", Links.at(field)}
+    end
+  end
+
+  # --- F7, F5 and D11: personal data inside domain values ------------------------------
+
+  defp personal_values(%{declarations: d, domain: domain}) do
+    values = Map.new(domain.values, &{&1.name, &1})
+
+    outside =
+      for {where, field, why} <- Rules.Fields.outside_the_log(d, :fields),
+          Map.get(field, :personal) == nil,
+          Codec.personal_type?(field.type, values) do
+        {"F7: #{where} is of #{inspect(field.type)}, which holds personal data, and #{why}, " <>
+           "where erasure cannot reach it", Links.at(field)}
+      end
+
+    nested =
+      for {where, field} <- fields(d),
+          Map.get(field, :personal) != nil,
+          Codec.personal_type?(field.type, values) do
+        {"F5: #{where}, field #{inspect(field.name)} is personal, and #{inspect(field.type)} holds " <>
+           "personal data of its own, which would be sealed under this field's subject and outlive " <>
+           "its own subject's erasure; drop personal: here and let the inner fields say whose they are",
+         Links.at(field)}
+      end
+
+    outside ++ nested ++ published(d, values)
+  end
+
+  defp published(d, values) do
+    events = Map.new(Rules.local_events(d), &{&1.name, &1})
+
+    for publish <- d.publishes,
+        %{fields: declared} <- [Map.get(events, publish.from)],
+        field <- declared,
+        field.name in publish.fields,
+        Map.get(field, :personal) == nil,
+        Codec.personal_type?(field.type, values) do
+      {"D11: publication #{inspect(publish.name)} carries #{inspect(field.name)}, of " <>
+         "#{inspect(field.type)}, which holds personal data; a copy on a broker cannot be erased",
+       Links.at(publish)}
     end
   end
 

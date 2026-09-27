@@ -91,6 +91,41 @@ config :eh_os_contract, subscriptions: :manual
 
 and a test that needs them runs `EhOsContract.Testing.drain/1`.
 
+A contract that declares personal data (`personal:` on a field, v2 §14) has those fields
+encrypted in the log, each subject under its own data key, and the data keys wrapped by a
+master key. Give the master keys in `config/runtime.exs`, 32 bytes each in Base64, the
+current one first:
+
+```elixir
+config :eh_os_contract, EhOsContract.Vault,
+  keys: [{"2026-09", System.fetch_env!("EH_OS_CONTRACT_KEK")}]
+```
+
+Without one the host does not boot, rather than failing on the first command that carries
+personal data. To rotate, put the new key first and keep the old one after it, deploy, run
+`mix eh_os_contract.rewrap`, and then drop the old key. A KMS goes behind the
+`EhOsContract.Vault` behaviour: `config :eh_os_contract, vault: MyApp.KmsVault`.
+
+To erase a subject — a person who asked for their data to be removed:
+
+```elixir
+EhOsContract.erase(:patient, "p-17", actor: actor)
+```
+
+It deletes the subject's data key, records the erasure and appends an event saying so; the
+subject's personal fields read back as `%EhOsContract.Erased{}` from then on, everything else
+stays, and a command that would write their personal data again is refused with
+`{:error, :subject_erased}`. Who may erase is yours to decide: the engine asks no authorizer.
+A read model that projects personal data keeps a copy in your tables, so it defines
+`forget(subject_type, subject_id)`; without it the host does not boot. One delivered in the
+transaction forgets inside the erasure, under the lock every append takes, so index the
+column its `forget/2` looks the subject up by.
+
+Erasing a subject deletes its data key from the database, not from your backups: a
+backup, a WAL archive or a replica still holds the key, wrapped, and anyone who also
+has the master key can open the subject's data. Retire and destroy master keys on a
+cadence no longer than you keep backups, or keep the key store out of the log's backups.
+
 ## A contract
 
 ```elixir

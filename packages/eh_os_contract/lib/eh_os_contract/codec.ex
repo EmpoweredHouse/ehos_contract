@@ -17,7 +17,17 @@ defmodule EhOsContract.Codec do
 
   **Problems name the field and what is wrong, never the value** (v2 §17): they
   travel to logs, telemetry and HTTP callers, and a value may be personal data.
+
+  **Personal fields** (v2 §14) — `personal: :patient_id`, at any depth of a domain
+  value — are where the codec hands a value to someone else: `encode/4` to a
+  function that seals it, `decode/4` to one that opens it, both given by
+  `EhOsContract.Personal`. The codec only knows where they are and whose they are:
+  the subject is the one the named sibling field identifies. A personal field may
+  hold `EhOsContract.Erased`, which is what a sealed one reads back as once its
+  subject's key is gone.
   """
+
+  alias EhOsContract.Erased
 
   @typedoc "A declared field, as a model carries it."
   @type field :: %{
@@ -31,6 +41,21 @@ defmodule EhOsContract.Codec do
 
   @typedoc "What is wrong with one field: missing, or not of its type."
   @type problem :: {atom(), :required | :type}
+
+  @typedoc "A subject whose personal data a value carries: its type and its id."
+  @type subject :: {atom(), String.t()}
+
+  @typedoc """
+  Seals a personal field's value, in the log's form: given the field's path
+  (`"contact.phone"`) and its subject, returns what the log stores instead.
+  """
+  @type seal :: (String.t(), subject(), term() -> term())
+
+  @typedoc """
+  Opens what `t:seal/0` stored: the value in the log's form, `:erased` when the
+  subject's key is gone, `:error` when it does not open.
+  """
+  @type open :: (String.t(), subject(), term() -> {:ok, term()} | :erased | :error)
 
   @doc """
   The values a domain declares, by name. `%{}` when the domain is not a compiled
@@ -56,6 +81,10 @@ defmodule EhOsContract.Codec do
 
   defp field_problems(field, nil, _values),
     do: if(Map.get(field, :optional, false), do: [], else: [:required])
+
+  # What a personal field reads back as once its subject is erased, and nothing else.
+  defp field_problems(field, %Erased{}, _values),
+    do: if(Map.get(field, :personal), do: [], else: [:type])
 
   defp field_problems(field, value, values),
     do: if(fits?(field.type, value, values), do: [], else: [:type])
@@ -93,38 +122,210 @@ defmodule EhOsContract.Codec do
   `data`'s fields in the log's form: a map with string keys, JSON-encodable. Every
   declared field is written, `nil` included, so a payload says a field was absent
   rather than leaving it to be guessed. Assumes `problems/3` found nothing.
+
+  With `seal`, a personal field that holds a value is stored as `seal` returns it,
+  and `EhOsContract.Erased` cannot be written. Without — a query's rows over HTTP — a
+  personal field is written as it is, and `EhOsContract.Erased` as `nil`.
   """
-  @spec encode([field()], map(), values()) :: %{String.t() => term()}
-  def encode(fields, data, values) do
+  @spec encode([field()], map(), values(), seal() | nil) :: %{String.t() => term()}
+  def encode(fields, data, values, seal \\ nil), do: encode_fields(fields, data, values, seal, [])
+
+  defp encode_fields(fields, data, values, seal, path) do
     Map.new(fields, fn field ->
-      {Atom.to_string(field.name), encode_value(field.type, Map.get(data, field.name), values)}
+      value = Map.get(data, field.name)
+      here = path ++ [Atom.to_string(field.name)]
+      target = Map.get(field, :personal)
+
+      encoded =
+        cond do
+          is_struct(value, Erased) and seal != nil ->
+            raise ArgumentError,
+                  "field #{Enum.join(here, ".")} holds EhOsContract.Erased, and an erased value " <>
+                    "cannot be written"
+
+          # Out of the log — a query's row over HTTP — what was erased is absent.
+          is_struct(value, Erased) ->
+            nil
+
+          target != nil and seal != nil and value != nil ->
+            seal.(
+              Enum.join(here, "."),
+              subject!(fields, data, target),
+              encode_value(field.type, value, values, nil, here)
+            )
+
+          true ->
+            encode_value(field.type, value, values, seal, here)
+        end
+
+      {Atom.to_string(field.name), encoded}
     end)
   end
 
   @doc "One value in the log's form. What a scoped query compares, as a string."
   @spec encode_value(term(), term(), values()) :: term()
-  def encode_value(_type, nil, _values), do: nil
-  def encode_value(:decimal, value, _values), do: Decimal.to_string(value, :normal)
-  def encode_value(:date, value, _values), do: Date.to_iso8601(value)
-  def encode_value(:timestamp, value, _values), do: DateTime.to_iso8601(value)
-  def encode_value({:enum, _members}, value, _values), do: Atom.to_string(value)
+  def encode_value(type, value, values), do: encode_value(type, value, values, nil, [])
 
-  def encode_value({:list, inner}, value, values),
-    do: Enum.map(value, &encode_value(inner, &1, values))
+  defp encode_value(_type, nil, _values, _seal, _path), do: nil
+  defp encode_value(:decimal, value, _values, _seal, _path), do: Decimal.to_string(value, :normal)
+  defp encode_value(:date, value, _values, _seal, _path), do: Date.to_iso8601(value)
+  defp encode_value(:timestamp, value, _values, _seal, _path), do: DateTime.to_iso8601(value)
+  defp encode_value({:enum, _members}, value, _values, _seal, _path), do: Atom.to_string(value)
 
-  def encode_value(type, value, values) when is_atom(type) and is_map_key(values, type) do
+  defp encode_value({:list, inner}, value, values, seal, path),
+    do: Enum.map(value, &encode_value(inner, &1, values, seal, path))
+
+  defp encode_value(type, value, values, seal, path)
+       when is_atom(type) and is_map_key(values, type) do
     case Map.fetch!(values, type) do
-      %{type: nil, fields: fields} -> encode(fields, value, values)
-      %{type: inner} -> encode_value(inner, value, values)
+      %{type: nil, fields: fields} -> encode_fields(fields, value, values, seal, path)
+      %{type: inner} -> encode_value(inner, value, values, seal, path)
     end
   end
 
-  def encode_value(_type, value, _values), do: value
+  defp encode_value(_type, value, _values, _seal, _path), do: value
+
+  # The subject a personal field belongs to: the one its sibling identifies. F5
+  # makes the sibling a required `:id` field declaring `subject:`.
+  defp subject!(fields, data, target) do
+    %{subject: subject} = Enum.find(fields, &(&1.name == target))
+
+    case fetch(data, target) do
+      id when is_binary(id) -> {subject, id}
+      _ -> raise ArgumentError, "field #{target}, whose personal data this is, holds no id"
+    end
+  end
+
+  # A field of a struct, a map with atom keys, or the log's map with string keys.
+  defp fetch(data, name), do: Map.get(data, name, Map.get(data, Atom.to_string(name)))
+
+  @doc """
+  Whether `fields` declare a personal field, directly or in a domain value, at any
+  depth.
+  """
+  @spec personal?([field()], values()) :: boolean()
+  def personal?(fields, values), do: MapSet.size(personal_subjects(fields, values)) > 0
+
+  @doc """
+  The subject types whose personal data `fields` declare, at any depth: what a
+  consumer of them has to forget.
+  """
+  @spec personal_subjects([field()], values()) :: MapSet.t(atom())
+  def personal_subjects(fields, values), do: personal_subjects(fields, values, MapSet.new())
+
+  defp personal_subjects(fields, values, seen) do
+    for field <- fields, reduce: MapSet.new() do
+      acc ->
+        # A target F5 refuses — missing, or declaring no subject — still makes the
+        # field personal: the rules that ask run beside F5, not after it.
+        own =
+          case Map.get(field, :personal) do
+            nil ->
+              []
+
+            target ->
+              case Enum.find(fields, &(&1.name == target)) do
+                %{subject: subject} -> [subject]
+                nil -> [nil]
+              end
+          end
+
+        acc
+        |> MapSet.union(MapSet.new(own))
+        |> MapSet.union(type_subjects(field.type, values, seen))
+    end
+  end
+
+  defp type_subjects({:list, inner}, values, seen), do: type_subjects(inner, values, seen)
+
+  defp type_subjects(type, values, seen) when is_atom(type) and is_map_key(values, type) do
+    if MapSet.member?(seen, type) do
+      MapSet.new()
+    else
+      case Map.fetch!(values, type) do
+        %{type: nil, fields: fields} -> personal_subjects(fields, values, MapSet.put(seen, type))
+        %{type: inner} -> type_subjects(inner, values, MapSet.put(seen, type))
+      end
+    end
+  end
+
+  defp type_subjects(_type, _values, _seen), do: MapSet.new()
+
+  @doc """
+  Whether `type` holds a personal field somewhere inside: a domain value's fields,
+  what an alias stands for, a list's items. `values` maps each value's name to a map
+  with its `type` and `fields`, as a domain's model and its declarations both do.
+  """
+  @spec personal_type?(term(), map()) :: boolean()
+  def personal_type?(type, values),
+    do: MapSet.size(type_subjects(type, values, MapSet.new())) > 0
+
+  @doc """
+  The subjects whose personal data `data` carries, each once. `:value` reads a
+  struct's values, and counts every personal field that is not `nil`; `:stored` reads
+  the log's form, and counts only the fields `seal` stored, which are the ones
+  whose keys a reader needs.
+  """
+  @spec subjects([field()], map(), values(), :value | :stored) :: [subject()]
+  def subjects(fields, data, values, form) do
+    fields |> field_subjects(data, values, form) |> Enum.uniq()
+  end
+
+  defp field_subjects(fields, data, values, form) do
+    Enum.flat_map(fields, fn field ->
+      value = fetch(data, field.name)
+
+      case Map.get(field, :personal) do
+        nil ->
+          value_subjects(field.type, value, values, form)
+
+        target ->
+          sealed = form == :value or sealed?(value)
+
+          case fetch(data, target) do
+            id when is_binary(id) and value != nil and sealed ->
+              [{Enum.find(fields, &(&1.name == target)).subject, id}]
+
+            _ ->
+              []
+          end
+      end
+    end)
+  end
+
+  defp value_subjects(_type, nil, _values, _form), do: []
+
+  defp value_subjects({:list, inner}, value, values, form) when is_list(value),
+    do: Enum.flat_map(value, &value_subjects(inner, &1, values, form))
+
+  defp value_subjects(type, value, values, form)
+       when is_atom(type) and is_map_key(values, type) do
+    case Map.fetch!(values, type) do
+      %{type: nil, fields: fields} when is_map(value) ->
+        field_subjects(fields, value, values, form)
+
+      %{type: nil} ->
+        []
+
+      %{type: inner} ->
+        value_subjects(inner, value, values, form)
+    end
+  end
+
+  defp value_subjects(_type, _value, _values, _form), do: []
+
+  # What `EhOsContract.Personal` stores for a sealed field.
+  defp sealed?(%{"$eh" => _}), do: true
+  defp sealed?(_value), do: false
 
   @doc """
   Fields from their external form — the log's, or JSON a caller sent — to the values
   a struct holds. Keys are read as strings, or as atoms when the map has those.
   Fails with the fields that do not fit, and never creates an atom.
+
+  `open:` opens the personal fields `encode/4` sealed (`t:open/0`): a field whose
+  subject is erased decodes to `EhOsContract.Erased`, and one holding clear text
+  does not fit. Without it, a sealed field does not fit.
   """
   #
   # `strings: true` also reads an integer or a boolean written as text, as a query
@@ -133,13 +334,14 @@ defmodule EhOsContract.Codec do
   @spec decode([field()], map(), values(), keyword()) :: {:ok, map()} | {:error, [problem()]}
   def decode(fields, external, values, opts \\ []) when is_map(external) do
     strings = Keyword.get(opts, :strings, false)
+    open = Keyword.get(opts, :open)
 
     {decoded, problems} =
       Enum.reduce(fields, {%{}, []}, fn field, {decoded, problems} ->
         raw = Map.get(external, Atom.to_string(field.name), Map.get(external, field.name))
         raw = if strings, do: from_text(field.type, raw, values), else: raw
 
-        case decode_value(field.type, raw, values) do
+        case decode_field(field, raw, fields, external, values, open, []) do
           {:ok, nil} ->
             if Map.get(field, :optional, false),
               do: {Map.put(decoded, field.name, nil), problems},
@@ -154,6 +356,57 @@ defmodule EhOsContract.Codec do
       end)
 
     if problems == [], do: {:ok, decoded}, else: {:error, Enum.reverse(problems)}
+  end
+
+  # A sealed personal field is opened first; its value is then decoded as any other,
+  # and nothing inside it was sealed again.
+  defp decode_field(field, raw, fields, external, values, open, path) do
+    here = path ++ [Atom.to_string(field.name)]
+    target = Map.get(field, :personal)
+
+    cond do
+      target != nil and open != nil and sealed?(raw) ->
+        %{subject: subject} = Enum.find(fields, &(&1.name == target))
+
+        with id when is_binary(id) <- fetch(external, target),
+             {:ok, opened} <- open.(Enum.join(here, "."), {subject, id}, raw) do
+          decode_value(field.type, opened, values, nil, here)
+        else
+          :erased -> {:ok, %Erased{subject: subject, id: fetch(external, target)}}
+          _ -> :error
+        end
+
+      # Clear text where the log holds a seal: written around the sealing, and it
+      # would outlive an erasure.
+      target != nil and open != nil and raw != nil ->
+        :error
+
+      # A seal, and nothing to open it with: never read as the value it hides.
+      target != nil and sealed?(raw) ->
+        :error
+
+      true ->
+        decode_value(field.type, raw, values, open, here)
+    end
+  end
+
+  defp decode_fields(fields, external, values, open, path) do
+    Enum.reduce_while(fields, {:ok, %{}}, fn field, {:ok, decoded} ->
+      raw = fetch(external, field.name)
+
+      case decode_field(field, raw, fields, external, values, open, path) do
+        {:ok, nil} ->
+          if Map.get(field, :optional, false),
+            do: {:cont, {:ok, Map.put(decoded, field.name, nil)}},
+            else: {:halt, :error}
+
+        {:ok, value} ->
+          {:cont, {:ok, Map.put(decoded, field.name, value)}}
+
+        :error ->
+          {:halt, :error}
+      end
+    end)
   end
 
   defp from_text(type, value, values) when is_binary(value) do
@@ -184,36 +437,42 @@ defmodule EhOsContract.Codec do
 
   defp base(type, _values), do: type
 
-  defp decode_value(_type, nil, _values), do: {:ok, nil}
+  defp decode_value(_type, nil, _values, _open, _path), do: {:ok, nil}
 
-  defp decode_value(type, value, _values) when type in [:id, :string] and is_binary(value),
+  defp decode_value(type, value, _values, _open, _path)
+       when type in [:id, :string] and is_binary(value),
+       do: {:ok, value}
+
+  defp decode_value(:integer, value, _values, _open, _path) when is_integer(value),
     do: {:ok, value}
 
-  defp decode_value(:integer, value, _values) when is_integer(value), do: {:ok, value}
-  defp decode_value(:boolean, value, _values) when is_boolean(value), do: {:ok, value}
+  defp decode_value(:boolean, value, _values, _open, _path) when is_boolean(value),
+    do: {:ok, value}
 
-  defp decode_value(:decimal, value, _values) when is_binary(value) or is_integer(value) do
+  defp decode_value(:decimal, value, _values, _open, _path)
+       when is_binary(value) or is_integer(value) do
     case Decimal.cast(value) do
       {:ok, decimal} -> {:ok, decimal}
       :error -> :error
     end
   end
 
-  defp decode_value(:date, value, _values) when is_binary(value) do
+  defp decode_value(:date, value, _values, _open, _path) when is_binary(value) do
     case Date.from_iso8601(value) do
       {:ok, date} -> {:ok, date}
       {:error, _} -> :error
     end
   end
 
-  defp decode_value(:timestamp, value, _values) when is_binary(value) do
+  defp decode_value(:timestamp, value, _values, _open, _path) when is_binary(value) do
     case DateTime.from_iso8601(value) do
       {:ok, at, _offset} -> {:ok, at}
       {:error, _} -> :error
     end
   end
 
-  defp decode_value({:enum, members}, value, _values) when is_binary(value) or is_atom(value) do
+  defp decode_value({:enum, members}, value, _values, _open, _path)
+       when is_binary(value) or is_atom(value) do
     name = to_string(value)
 
     case Enum.find(names(members), &(Atom.to_string(&1) == name)) do
@@ -222,9 +481,9 @@ defmodule EhOsContract.Codec do
     end
   end
 
-  defp decode_value({:list, inner}, value, values) when is_list(value) do
+  defp decode_value({:list, inner}, value, values, open, path) when is_list(value) do
     Enum.reduce_while(value, {:ok, []}, fn item, {:ok, acc} ->
-      case decode_value(inner, item, values) do
+      case decode_value(inner, item, values, open, path) do
         {:ok, decoded} -> {:cont, {:ok, [decoded | acc]}}
         :error -> {:halt, :error}
       end
@@ -235,23 +494,21 @@ defmodule EhOsContract.Codec do
     end
   end
 
-  defp decode_value(type, value, values) when is_atom(type) and is_map_key(values, type) do
+  defp decode_value(type, value, values, open, path)
+       when is_atom(type) and is_map_key(values, type) do
     case Map.fetch!(values, type) do
       %{type: nil, fields: fields} when is_map(value) ->
-        case decode(fields, value, values) do
-          {:ok, decoded} -> {:ok, decoded}
-          {:error, _} -> :error
-        end
+        decode_fields(fields, value, values, open, path)
 
       %{type: nil} ->
         :error
 
       %{type: inner} ->
-        decode_value(inner, value, values)
+        decode_value(inner, value, values, open, path)
     end
   end
 
-  defp decode_value(_type, _value, _values), do: :error
+  defp decode_value(_type, _value, _values, _open, _path), do: :error
 
   # An enum's members: atoms, or `atom: label` pairs.
   defp names(members),

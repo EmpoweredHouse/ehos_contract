@@ -17,6 +17,12 @@ config :eh_os_contract,
   # own sandbox transaction (`EhOsContract.Testing.drain/1`).
   subscriptions: :manual
 
+# The master key of the invented fixtures' personal fields (`ShreddingRig`). A test
+# key, in a file only this package's suite reads; a host's comes from its runtime
+# environment (`EhOsContract.Vault`).
+config :eh_os_contract, EhOsContract.Vault,
+  keys: [{"test-2026-09", "D4NnXLZHJadFxy6qG6IvSNfTuDEXAyDnrH9SBQSjl6U="}]
+
 config :eh_os_contract, EhOsContract.TestRepo,
   username: "eh_os",
   password: "eh_os",

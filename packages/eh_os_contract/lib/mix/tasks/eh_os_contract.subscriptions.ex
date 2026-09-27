@@ -15,7 +15,8 @@ defmodule Mix.Tasks.EhOsContract.Subscriptions do
       mix eh_os_contract.subscriptions --reset DispatchRig.Ledger:read_model:ledger_lines
 
   `--skip` moves a `failing` subscription past the one event it fails on, which is
-  then never applied. `--reset` empties a read model through its `reset/0` and
+  then never applied — an erasure among them: the read model keeps that subject's
+  copy until it is reset. `--reset` empties a read model through its `reset/0` and
   replays the whole log into it; a read model without `reset/0` cannot be reset. A
   policy keeps no rows, so `--reset` moves it back to the beginning of the log, and
   it reacts to the history a new policy leaves alone.

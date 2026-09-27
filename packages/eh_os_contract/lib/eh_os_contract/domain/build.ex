@@ -59,11 +59,16 @@ defmodule EhOsContract.Domain.Build do
   end
 
   # `value :money, :integer` becomes `@type money :: integer()`; a value with fields
-  # becomes a map type with one key per field.
+  # becomes a map type with one key per field. A personal field may hold what it
+  # reads back as once its subject is erased (v2 §14).
   defp value_type(%{name: name, type: nil, fields: fields}) do
     pairs =
       for field <- fields do
         type = typespec(field.type)
+
+        type =
+          if field.personal, do: quote(do: unquote(type) | EhOsContract.Erased.t()), else: type
+
         {field.name, if(field.optional, do: quote(do: unquote(type) | nil), else: type)}
       end
 
