@@ -8,13 +8,33 @@ defmodule Mix.Tasks.EhOsContract.Check do
   one file, so it checks what one file can show. That every declared event has a
   handler or is terminal, that there are no orphans, and that the declarations
   agree with reality — all of that belongs here.
+
+  Every finding names its rule (`EhOsContract.Check.Catalog`, documented in
+  `docs/rules.md`) and, where it can, the file and line of the declaration it is
+  about. Nothing silences a rule; a finding goes when the model changes.
+
+      mix eh_os_contract.check                         # errors fail the task
+      mix eh_os_contract.check --warnings-as-errors    # so do warnings
+      mix eh_os_contract.check --format json           # one JSON array, see render/2
+
+  `--format json` prints the array and nothing else, but the compile this task runs
+  first prints what it prints: compile beforehand when the output is read by a
+  program. `--warnings-as-errors` changes the exit status and nothing it prints.
   """
 
   use Boundary, classify_to: EhOsContract
   use Mix.Task
 
+  alias EhOsContract.Check.{Catalog, Finding}
+
   @impl Mix.Task
-  def run(_args) do
+  def run(args) do
+    {opts, _rest} =
+      OptionParser.parse!(args, strict: [format: :string, warnings_as_errors: :boolean])
+
+    unless opts[:format] in [nil, "human", "json"],
+      do: Mix.raise("--format is human or json, got #{inspect(opts[:format])}")
+
     # Erlang keeps stdout in latin1 when the output is not a terminal, so
     # `mix eh_os_contract.check > report.txt` truncates every codepoint to a byte. Event
     # labels come from the contract and are written in the client's language.
@@ -42,7 +62,9 @@ defmodule Mix.Tasks.EhOsContract.Check do
       |> check_retain_on_free_text()
       |> check_unverified_declarations()
 
-    report(EhOsContract.Check.v2_findings() ++ findings)
+    # A v1 check says which rule it found and what; the rule's level is the catalog's.
+    findings = for {rule, message} <- findings, do: Finding.new(rule, message)
+    report(EhOsContract.Check.v2_findings() ++ findings, opts)
   end
 
   # **Nothing found is not the same as nothing wrong, and the report cannot tell
@@ -58,7 +80,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
       configured = Application.get_env(:eh_os_contract, :applications) || []
 
       [
-        {:warn,
+        {"no-contracts",
          "no contracts found in #{inspect(configured)}, so every check below has an empty list " <>
            "to work on and will report nothing. A clean report and a misconfigured scan look " <>
            "identical — set `config :eh_os_contract, applications: [...]` to the applications that hold " <>
@@ -80,7 +102,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
   defp check_names_declared_twice(findings) do
     events =
       for c <- EhOsContract.Check.event_names_declared_twice() do
-        {:error,
+        {"event-declared-twice",
          "event #{inspect(c.name)} is declared by #{length(c.contracts)} contracts: " <>
            "#{inspect(c.contracts)}. Handlers are selected by event name alone, so emitting it " <>
            "from one contract runs the other's handlers as well"}
@@ -88,7 +110,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
 
     processes =
       for c <- EhOsContract.Check.process_names_declared_twice() do
-        {:error,
+        {"process-declared-twice",
          "process #{inspect(c.name)} is declared by #{length(c.contracts)} contracts: " <>
            "#{inspect(c.contracts)}. A run identity is `\"<process>|<values>\"` and carries no " <>
            "contract, so runs of one are counted as runs of the other and the log cannot be " <>
@@ -97,7 +119,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
 
     commands =
       for c <- EhOsContract.Check.command_names_declared_twice() do
-        {:error,
+        {"command-declared-twice",
          "command #{inspect(c.name)} is declared by #{length(c.contracts)} contracts: " <>
            "#{inspect(c.contracts)}. The capability is derived from the name, so one permission " <>
            "would authorise two different things"}
@@ -112,7 +134,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
     for f <- EhOsContract.Check.processes_without_accountable(), reduce: findings do
       acc ->
         [
-          {:warn,
+          {"process-without-accountable",
            "process #{inspect(f.process)} names no `accountable` role, so a finding about it " <>
              "has no addressee (#{inspect(f.contract)})"}
           | acc
@@ -140,7 +162,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
             # to be visible, because the difference between "on purpose" and
             # "forgotten" lives in the author's head rather than in the code.
             [
-              {:info,
+              {"event-without-handler",
                "event #{inspect(event.name)} has no handler and is not marked terminal " <>
                  "(#{inspect(event.contract)})"}
               | acc
@@ -170,7 +192,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
       count = if length(events) == 1, do: "1 event", else: "#{length(events)} events"
 
       [
-        {:info,
+        {"owner-not-a-module",
          "owner #{inspect(owner)} does not exist as a module, and is declared for " <>
            "#{count}: #{inspect(events)}"}
         | acc
@@ -190,7 +212,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
           acc
         else
           [
-            {:error,
+            {"rule-function-missing",
              "rule #{inspect(rule.name)} names #{inspect(module)}.#{function}/#{arity}, " <>
                "which does not exist"}
             | acc
@@ -214,7 +236,11 @@ defmodule Mix.Tasks.EhOsContract.Check do
         if missing == [] do
           acc
         else
-          [{:error, "trace #{inspect(trace.name)} does not resolve #{inspect(missing)}"} | acc]
+          [
+            {"trace-unresolved",
+             "trace #{inspect(trace.name)} does not resolve #{inspect(missing)}"}
+            | acc
+          ]
         end
     end
   end
@@ -225,7 +251,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
   defp check_backward_edges(findings) do
     Enum.reduce(EhOsContract.Check.backward_edges(), findings, fn edge, acc ->
       [
-        {:warn,
+        {"backward-edge",
          "backward edge in #{inspect(edge.module)} — #{edge.process}: " <>
            "publishes in #{edge.publishes_in}, subscribes in #{edge.subscribes_in}"}
         | acc
@@ -238,7 +264,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
       order = item.modules |> Enum.map(&inspect/1) |> Enum.join(", ")
 
       [
-        {:warn,
+        {"competing-sync-handlers",
          "#{inspect(item.event)} has #{length(item.modules)} synchronous handlers. They run in " <>
            "this order: #{order} — alphabetically by module name, which reproduces but says " <>
            "nothing about the process. If the order matters, declare it: have one publish an " <>
@@ -267,7 +293,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
         reduce: findings do
       acc ->
         [
-          {:info,
+          {"free-text-without-retain",
            "#{inspect(event.name)}.#{field} is free text with no `retain` — " <>
              "it reaches the log verbatim"}
           | acc
@@ -287,7 +313,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
     for f <- EhOsContract.Check.assertions_finer_than_their_run(), reduce: findings do
       acc ->
         [
-          {:warn,
+          {"promise-finer-than-run",
            "assertion #{inspect(f.trace)} is finer than its run: `#{f.from}` is identified by " <>
              "#{inspect(f.identity)} while process #{inspect(f.process)} is a run per " <>
              "#{inspect(f.instance)}. Evaluated per item now — confirm `eventually`/`or_else` " <>
@@ -308,7 +334,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
     for f <- EhOsContract.Check.facts_not_keyed_by_their_run(), reduce: findings do
       acc ->
         [
-          {:warn,
+          {"fact-not-keyed-by-run",
            "event #{inspect(f.event)} is identified by #{inspect(f.identity)}, which does not " <>
              "contain #{inspect(f.missing)} — the field(s) process #{inspect(f.process)} keys a " <>
              "run by (`instance: #{inspect(f.instance)}`). Two of these facts in two different " <>
@@ -328,7 +354,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
     for f <- EhOsContract.Check.unfalsifiable_assertions(), reduce: findings do
       acc ->
         [
-          {:info,
+          {"promise-without-within",
            "assertion #{inspect(f.trace)} has no `within`, so it has no failing case: any " <>
              "#{inspect(f.eventually)} after #{inspect(f.from)} satisfies it and a run with " <>
              "none stays pending for ever (#{inspect(f.contract)})"}
@@ -344,7 +370,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
     for f <- EhOsContract.Check.unobservable_deadlines(), reduce: findings do
       acc ->
         [
-          {:info,
+          {"deadline-without-terminal-event",
            "process #{inspect(f.process)} declares `deadline` = #{inspect(f.deadline)} and no " <>
              "event of it is `terminal: true`, so no run can be observed to end and the " <>
              "duration cannot be measured (#{inspect(f.contract)})"}
@@ -366,7 +392,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
         process <- EhOsContract.Model.processes(contract),
         field <- process.unverified,
         reduce: findings do
-      acc -> [{:warn, unverified_message(contract, process, field)} | acc]
+      acc -> [{"unverified-declaration", unverified_message(contract, process, field)} | acc]
     end
   end
 
@@ -393,31 +419,84 @@ defmodule Mix.Tasks.EhOsContract.Check do
   code (v2 plan, E1). The plan compares this output commit to commit, so it has to
   come out the same for the same findings.
   """
-  @spec ordered([{:error | :warn | :info, String.t()}]) :: [{:error | :warn | :info, String.t()}]
+  @spec ordered([Finding.t()]) :: [Finding.t()]
   def ordered(findings) do
     rank = %{error: 0, warn: 1, info: 2}
-    Enum.sort_by(findings, fn {level, message} -> {Map.fetch!(rank, level), message} end)
+    Enum.sort_by(findings, &{Map.fetch!(rank, &1.level), &1.message, &1.rule})
   end
 
-  defp report(findings) do
-    for {level, message} <- ordered(findings) do
-      prefix =
-        case level do
-          :error -> "ERROR"
-          :warn -> "WARN "
-          :info -> "info "
-        end
+  @doc """
+  What the task prints for `findings`, as `format` says: `:human`, two lines a
+  finding and a count; `:json`, one array and nothing else (plan EL1).
 
-      Mix.shell().info("#{prefix} #{message}")
-    end
+  A finding's second line says where the declaration it is about was written, when
+  anything does, and where its rule is documented. In JSON a finding is `rule`,
+  `level` (`"error"`, `"warning"` or `"notice"`), `message`, `file` and `line` (`null`
+  when nothing says where) and `documentation` (`null` for a repeated compiler rule,
+  which the catalog does not document).
+  """
+  @spec render([Finding.t()], :human | :json) :: String.t()
+  def render(findings, :human) do
+    lines =
+      for finding <- ordered(findings) do
+        prefix =
+          case finding.level do
+            :error -> "ERROR"
+            :warn -> "WARN "
+            :info -> "info "
+          end
 
-    counts = Enum.frequencies_by(findings, &elem(&1, 0))
+        where =
+          case Finding.place(finding) do
+            nil -> []
+            {file, line} -> ["#{file}:#{line}"]
+          end
 
-    Mix.shell().info(
+        second = Enum.join(where ++ List.wrap(documentation(finding)), " · ")
+        "#{prefix} #{finding.rule}: #{finding.message}\n      #{second}\n"
+      end
+
+    counts = Enum.frequencies_by(findings, & &1.level)
+
+    Enum.join(lines) <>
       "\neh_os_contract.check: #{Map.get(counts, :error, 0)} errors, " <>
-        "#{Map.get(counts, :warn, 0)} warnings, #{Map.get(counts, :info, 0)} notices"
-    )
+      "#{Map.get(counts, :warn, 0)} warnings, #{Map.get(counts, :info, 0)} notices"
+  end
 
-    if Map.get(counts, :error, 0) > 0, do: exit({:shutdown, 1})
+  def render(findings, :json) do
+    findings
+    |> ordered()
+    |> Enum.map(fn finding ->
+      {file, line} = Finding.place(finding) || {nil, nil}
+
+      Jason.OrderedObject.new(
+        rule: finding.rule,
+        level: Map.fetch!(%{error: "error", warn: "warning", info: "notice"}, finding.level),
+        message: finding.message,
+        file: file,
+        line: line,
+        documentation: documentation(finding)
+      )
+    end)
+    |> Jason.encode!(pretty: true)
+  end
+
+  defp documentation(%Finding{rule: rule}) do
+    if Enum.any?(Catalog.rules(), &(&1.id == rule)), do: Catalog.url(rule)
+  end
+
+  @doc """
+  Whether `findings` fail the task: any error does, and a warning does when
+  `warnings_as_errors` is set. Notices never do. The output is the same either way.
+  """
+  @spec failed?([Finding.t()], boolean()) :: boolean()
+  def failed?(findings, warnings_as_errors) do
+    Enum.any?(findings, &(&1.level == :error or (warnings_as_errors and &1.level == :warn)))
+  end
+
+  defp report(findings, opts) do
+    format = if opts[:format] == "json", do: :json, else: :human
+    Mix.shell().info(render(findings, format))
+    if failed?(findings, opts[:warnings_as_errors] || false), do: exit({:shutdown, 1})
   end
 end

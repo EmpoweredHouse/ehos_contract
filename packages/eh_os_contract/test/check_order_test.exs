@@ -8,18 +8,19 @@ defmodule EhOsContract.CheckOrderTest do
 
   use ExUnit.Case, async: true
 
+  alias EhOsContract.Check.Finding
   alias Mix.Tasks.EhOsContract.Check
 
   @findings [
-    {:info, "owner B.Module does not exist"},
-    {:warn, "process :b names no `accountable` role"},
-    {:error, "rule :x names X.y/1, which does not exist"},
-    {:info, "owner A.Module does not exist"},
-    {:warn, "process :a names no `accountable` role"}
+    Finding.new("owner-not-a-module", "owner B.Module does not exist"),
+    Finding.new("process-without-accountable", "process :b names no `accountable` role"),
+    Finding.new("rule-function-missing", "rule :x names X.y/1, which does not exist"),
+    Finding.new("owner-not-a-module", "owner A.Module does not exist"),
+    Finding.new("process-without-accountable", "process :a names no `accountable` role")
   ]
 
   test "errors, then warnings, then notices, each by text" do
-    assert Check.ordered(@findings) == [
+    assert Enum.map(Check.ordered(@findings), &{&1.level, &1.message}) == [
              {:error, "rule :x names X.y/1, which does not exist"},
              {:warn, "process :a names no `accountable` role"},
              {:warn, "process :b names no `accountable` role"},

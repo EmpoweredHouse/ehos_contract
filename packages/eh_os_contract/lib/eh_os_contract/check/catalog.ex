@@ -1,0 +1,266 @@
+defmodule EhOsContract.Check.Catalog do
+  @moduledoc """
+  Every rule `mix eh_os_contract.check` reports on, under a name that does not
+  change (layer L5 of v2 §6; plan EL1).
+
+  A rule's name is what a reader searches for, what `--format json` carries, and
+  what a test pins; its sentence may be reworded, its name may not. Where the rule
+  is one of ESDM's, the name is ESDM's, without ESDM's `esdm/<category>/` prefix:
+  the library takes ESDM's functionality, not its namespace, and a rule of ours
+  sometimes means more or less than ESDM's does — `esdm` says which of ESDM's it
+  follows and the text says where it differs. The level is fixed per rule, as in
+  ESDM, and nothing silences one: a finding goes away when the model changes.
+
+  `docs/rules.md` is generated from this list (`mix eh_os_contract.rules`), one
+  entry per rule, and each finding links to its entry.
+
+  The rules of the compiler — `N1`, `X2` and the rest of L2 and L3 — are not here.
+  They are errors a contract cannot compile with, they keep the codes they are
+  printed with, and v2 §6 is their reference.
+  """
+
+  @typedoc """
+  One rule: its name, its level, which contracts it reads, the ESDM rule it follows
+  (`nil` when it is the library's own), one line saying what it finds, and the
+  paragraph `docs/rules.md` prints under it.
+  """
+  @type rule :: %{
+          id: String.t(),
+          level: :error | :warn | :info,
+          reads: :v1 | :v2 | :both,
+          esdm: String.t() | nil,
+          summary: String.t(),
+          text: String.t()
+        }
+
+  @rules [
+    %{
+      id: "no-contracts",
+      level: :warn,
+      reads: :both,
+      esdm: nil,
+      summary: "The applications `check` scans hold no contract.",
+      text: """
+      A clean report and a scan of the wrong application print the same thing, `0 errors, 0 warnings,
+      0 notices`. This is the one finding that tells them apart. Set `config :eh_os_contract,
+      applications: [...]` to the applications holding the contracts.
+      """
+    },
+    %{
+      id: "process-without-accountable",
+      level: :warn,
+      reads: :both,
+      esdm: nil,
+      summary: "A process names no `accountable` role.",
+      text: """
+      A finding about the process — a promise broken, a path never taken — has nobody to go to. Name
+      the role that answers for the process with `accountable`.
+      """
+    },
+    %{
+      id: "unverified-declaration",
+      level: :warn,
+      reads: :both,
+      esdm: nil,
+      summary: "A `cadence`, a `deadline` or a promise is marked `unverified: true`.",
+      text: """
+      The process owner has not confirmed the number. It is still evaluated, but it does not count
+      towards the evidence report, because a metric nobody agreed to is worse than none. Remove
+      `unverified: true` once the owner confirms it.
+      """
+    },
+    %{
+      id: "promise-without-within",
+      level: :info,
+      reads: :both,
+      esdm: nil,
+      summary: "A promise (a v1 `trace`) has no `within`.",
+      text: """
+      Any `eventually` after its `from` keeps it, and a run with none stays pending for ever, so the
+      promise has no failing case. That is an honest thing to say when nobody agreed a number; the
+      notice makes sure it is not read as a promise being kept.
+      """
+    },
+    %{
+      id: "deadline-without-terminal-event",
+      level: :info,
+      reads: :both,
+      esdm: nil,
+      summary: "A process has a `deadline` and no event of it is `terminal: true`.",
+      text: """
+      No run can be seen to end, so its duration cannot be measured and the deadline is never kept
+      or broken. Mark the event that ends a run `terminal: true`.
+      """
+    },
+    %{
+      id: "contract-without-implementation",
+      level: :info,
+      reads: :v2,
+      esdm: nil,
+      summary: "Nothing implements a contract.",
+      text: """
+      A contract may exist without code (v2 §16, D3): nothing of it can be dispatched, and its report
+      is of a process nobody runs.
+      """
+    },
+    %{
+      id: "declaration-without-implementation",
+      level: :warn,
+      reads: :v2,
+      esdm: nil,
+      summary: "A contract is implemented in part.",
+      text: """
+      The unit, consumer, query or domain service the finding names has no implementation, so
+      dispatch refuses to run it. Add a module with `use <Contract>, <kind>: <name>`.
+      """
+    },
+    %{
+      id: "event-declared-twice",
+      level: :error,
+      reads: :v1,
+      esdm: nil,
+      summary: "Two v1 contracts declare an event of one name.",
+      text: """
+      Handlers are selected by event name alone, so emitting it from one contract runs the other's
+      handlers too. A v2 contract cannot compile with this (X7).
+      """
+    },
+    %{
+      id: "process-declared-twice",
+      level: :error,
+      reads: :v1,
+      esdm: nil,
+      summary: "Two v1 contracts declare a process of one name.",
+      text: """
+      A run identity carries no contract, so runs of one are counted as runs of the other and the log
+      cannot be separated afterwards. A v2 contract cannot compile with this (X7).
+      """
+    },
+    %{
+      id: "command-declared-twice",
+      level: :error,
+      reads: :v1,
+      esdm: nil,
+      summary: "Two v1 contracts declare a command of one name.",
+      text: """
+      The capability is derived from the name, so one permission would authorise two different
+      things. A v2 contract cannot compile with this (D14).
+      """
+    },
+    %{
+      id: "event-without-handler",
+      level: :info,
+      reads: :v1,
+      esdm: nil,
+      summary: "A v1 event has no handler and is not `terminal`.",
+      text: """
+      Legal, and the plainest case of a declared path nobody takes. Whether it is on purpose lives in
+      the author's head, so it is said out loud.
+      """
+    },
+    %{
+      id: "owner-not-a-module",
+      level: :info,
+      reads: :v1,
+      esdm: nil,
+      summary: "A v1 event's `owner` names a module that does not exist.",
+      text: """
+      Normal while a stage is not yet implemented; a typo otherwise. One finding per owner, not per
+      event.
+      """
+    },
+    %{
+      id: "rule-function-missing",
+      level: :error,
+      reads: :v1,
+      esdm: nil,
+      summary: "A v1 `rule` names a function that does not exist.",
+      text: """
+      A `rule` points at a function by module, name and arity, so nothing else checks that it exists.
+      """
+    },
+    %{
+      id: "trace-unresolved",
+      level: :error,
+      reads: :v1,
+      esdm: nil,
+      summary: "A v1 `trace` names an event no contract declares.",
+      text: """
+      The assertion can never be evaluated. A v2 promise cannot compile with this (R5).
+      """
+    },
+    %{
+      id: "backward-edge",
+      level: :warn,
+      reads: :v1,
+      esdm: nil,
+      summary: "A reaction in a later stage publishes into an earlier one.",
+      text: """
+      The process goes back on itself, which the stage order says it does not. Either the stages are
+      in the wrong order or the reaction is a loop the process has not declared.
+      """
+    },
+    %{
+      id: "competing-sync-handlers",
+      level: :warn,
+      reads: :v1,
+      esdm: nil,
+      summary: "A v1 event has two or more synchronous handlers.",
+      text: """
+      They run in alphabetical order of module name, which reproduces but says nothing about the
+      process. If the order matters, have one publish an event the other subscribes to.
+      """
+    },
+    %{
+      id: "free-text-without-retain",
+      level: :info,
+      reads: :v1,
+      esdm: nil,
+      summary: "A v1 `:string` field has no `retain`.",
+      text: """
+      `:string` means text a person typed, and it reaches the log verbatim.
+      """
+    },
+    %{
+      id: "promise-finer-than-run",
+      level: :warn,
+      reads: :v1,
+      esdm: nil,
+      summary: "A v1 assertion's `from` event is identified by more than its run.",
+      text: """
+      The assertion is evaluated per item. An `eventually` or `or_else` that does not carry the
+      item's fields cannot resolve any item, so confirm that they do.
+      """
+    },
+    %{
+      id: "fact-not-keyed-by-run",
+      level: :warn,
+      reads: :v1,
+      esdm: nil,
+      summary: "A v1 event's identity does not contain its run's key.",
+      text: """
+      Two such facts in two runs share one identity, so the asynchronous idempotency key cannot tell
+      them apart and the second is deduplicated away.
+      """
+    }
+  ]
+
+  @by_id Map.new(@rules, &{&1.id, &1})
+
+  @doc "Every rule, in the order `docs/rules.md` prints them."
+  @spec rules() :: [rule()]
+  def rules, do: @rules
+
+  @doc "The rule named `id`. Raises for a name the catalog does not have."
+  @spec fetch!(String.t()) :: rule()
+  def fetch!(id) do
+    case Map.fetch(@by_id, id) do
+      {:ok, rule} -> rule
+      :error -> raise ArgumentError, "no rule #{inspect(id)} in EhOsContract.Check.Catalog"
+    end
+  end
+
+  @doc "Where a rule is documented: its entry in `docs/rules.md`, as the package's docs publish it."
+  @spec url(String.t()) :: String.t()
+  def url(id), do: "https://hexdocs.pm/eh_os_contract/rules.html##{fetch!(id).id}"
+end

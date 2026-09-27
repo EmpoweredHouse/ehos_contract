@@ -36,6 +36,9 @@ What changes otherwise is what a host has to do.
 
 ### Changed — a host has to act
 
+- **EL1: `mix eh_os_contract.check` prints two lines a finding**, `LEVEL <rule>: <sentence>` and then where the
+  declaration was written (v2 contracts) and the rule's entry in `docs/rules.md`. A script reading the old
+  one-line output reads the first line of each pair; one reading it by program should move to `--format json`.
 - **E8b: a read model that projects personal data needs `forget/2`**; without it, the `EhOsContract` child
   refuses to start, since an erased subject's data would stay in its tables.
 - **E8a: a host whose contract declares personal fields needs a master key**, `config :eh_os_contract,
@@ -80,6 +83,12 @@ What changes otherwise is what a host has to do.
 
 ### Added
 
+- **EL1: every finding of `mix eh_os_contract.check` names a rule** of `EhOsContract.Check.Catalog`, a name
+  that does not change between versions, documented in `docs/rules.md` (generated from the catalog). A
+  finding about a v2 contract says the file and line of its declaration. `--format json` prints one array of
+  `rule`, `level`, `message`, `file`, `line` and `documentation`; `--warnings-as-errors` fails the task on a
+  warning too. Nothing silences a rule. `no-contracts` now counts v2 contracts, so an application with only
+  v2 contracts no longer hears that it has none.
 - **EM2: `domain_service` in a contract** (ESDM's domain service): pure functions no unit owns, each with
   typed `argument`s, a `returns` type and prose `rule`s. The contract generates `C.DomainServices.<Name>`, a
   behaviour for the implementation (`use C, domain_service: :name`, I2 asks for every function) and the module
