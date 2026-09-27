@@ -96,8 +96,8 @@ defmodule EhOsContract.Next.ContractUnitsTest do
         """)
 
       assert message =~
-               "A3: command :close_visit rejects :booked, which is not an invariant of aggregate " <>
-                 ":visit (rejects_wrong.ex:8)"
+               "A3: command :close_visit rejects :booked, which is neither an invariant of " <>
+                 "aggregate :visit nor a constraint of the command (rejects_wrong.ex:8)"
 
       refute message =~ "rejects :paid"
     end

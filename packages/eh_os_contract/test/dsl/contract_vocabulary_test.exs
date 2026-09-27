@@ -24,6 +24,8 @@ defmodule EhOsContract.Next.ContractVocabularyTest do
       [kind, :invariant] => [:name, :label, :source],
       [kind, :command] => @command,
       [kind, :command, :field] => @field,
+      # Plan EL2: ESDM's constraint, checked as an invariant is.
+      [kind, :command, :constraint] => [:name, :label, :source],
       [kind, :event] => @event,
       [kind, :event, :field] => @field,
       [kind, :stage] => [:name],
@@ -53,6 +55,7 @@ defmodule EhOsContract.Next.ContractVocabularyTest do
         [:read_model, :field] => @field,
         [:query] => [:name, :label, :reads, :by, :returns, :scope],
         [:query, :param] => [:name, :type, :optional, :label],
+        [:query, :constraint] => [:name, :label, :source],
         # Plan EM2: ESDM's domain service.
         [:domain_service] => [:name, :label, :source],
         [:domain_service, :function] => [:name, :label],

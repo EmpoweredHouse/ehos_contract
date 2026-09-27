@@ -9,7 +9,7 @@ defmodule EhOsContract.View do
   context and its units, since a contract is what a context holds (v2 §4.1). Each
   row is a kind, a name and what connects it: `→` what it produces or reads, `←`
   what it is produced by or takes. `details: true` adds what a row declares
-  underneath it — identity, fields, invariants, projections.
+  underneath it — identity, fields, invariants, constraints.
 
   Everything comes in declaration order, as every reader of the model prints
   (v2 §9); labels are the client's, printed as declared.
@@ -106,7 +106,7 @@ defmodule EhOsContract.View do
     command_rows =
       for command <- commands do
         {"command #{command.name}  → #{Enum.join(command.emits, ", ")}",
-         if(details?, do: fields(command.fields), else: []), []}
+         if(details?, do: fields(command.fields) ++ constraints(command), else: []), []}
       end
 
     event_rows =
@@ -148,8 +148,8 @@ defmodule EhOsContract.View do
   end
 
   defp query(query, details?) do
-    {"query #{query.name}  → #{query.reads}", if(details?, do: fields(query.params), else: []),
-     []}
+    {"query #{query.name}  → #{query.reads}",
+     if(details?, do: fields(query.params) ++ constraints(query), else: []), []}
   end
 
   defp domain_service(service, details?) do
@@ -161,6 +161,9 @@ defmodule EhOsContract.View do
 
     {"domain service #{service.name}  #{plural(length(service.functions), "fn")}", [], functions}
   end
+
+  defp constraints(declaration),
+    do: for(c <- Map.get(declaration, :constraints, []), do: "constraint #{c.name} — #{c.label}")
 
   defp fields(fields), do: for(f <- fields, do: "#{f.name}: #{type(f)}")
 

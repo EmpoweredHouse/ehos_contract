@@ -36,6 +36,8 @@ spark_locals_without_parens = [
   command: 1,
   command: 2,
   command: 3,
+  constraint: 2,
+  constraint: 3,
   consults: 1,
   consults: 2,
   consumes: 1,

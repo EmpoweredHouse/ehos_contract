@@ -119,6 +119,9 @@ What changes otherwise is what a host has to do.
 - **EL2: `mix eh_os_contract.view`** (ESDM's `view`): the domain as a tree — contexts, their contracts, each
   contract's units with commands and events, consumers, read models, queries and domain services — with a path
   to keep one branch and `--details` for what each row declares (`EhOsContract.View.render/3`).
+- **EL2: `constraint` in a command and a query** (ESDM's constraints). A command's is checked as an invariant
+  is: `rejects:` names it, `reject/1` refuses on it, and a `rejected` scenario of the command is required for
+  each (A7, S8); a query's is prose. A command or a query declaring none keeps its version.
 - **EL2: `subdomain-without-bounded-context`**, ESDM's warning for a subdomain no context names; `view`
   shows each context's subdomain and its kind.
 - **EL1: `EhOsContract.Domain.vocabulary/0`**, the domain DSL's words by entity path, as

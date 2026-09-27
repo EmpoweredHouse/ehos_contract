@@ -34,8 +34,9 @@ defmodule EhOsContract.ViewTest do
           identity :visit_id
           invariant :paid_once, "Wizyta jest opłacona raz"
 
-          command :pay, "Zapłać", by: :reception, emits: :paid, rejects: :paid_once do
+          command :pay, "Zapłać", by: :reception, emits: :paid, rejects: [:paid_once, :positive] do
             field :amount, :integer
+            constraint :positive, "Kwota jest dodatnia"
           end
 
           event :paid, "Zapłacono" do
@@ -64,6 +65,11 @@ defmodule EhOsContract.ViewTest do
           given :paid, %{amount: 1}
           command :pay, %{amount: 1}
           rejected :paid_once
+        end
+
+        scenario "płatność 0 zł odrzucona" do
+          command :pay, %{amount: 0}
+          rejected :positive
         end
       end
       """,
@@ -103,6 +109,7 @@ defmodule EhOsContract.ViewTest do
                       ├─ command pay  → paid
                       │     visit_id: :id
                       │     amount: :integer
+                      │     constraint positive — Kwota jest dodatnia
                       ├─ event paid  ← pay
                       │     visit_id: :id
                       │     amount: :integer

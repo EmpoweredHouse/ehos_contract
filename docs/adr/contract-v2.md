@@ -660,6 +660,12 @@ where it helps; every violation is reported as a diagnostic before the single ra
   > clinic's visit is not in it" is often the point. The read model alone, ESDM's materialized variant, is not
   > a target: a scenario reaches it through a query. `answers` enters the model only on a query's scenario, so
   > the word moved no existing contract's version.
+  > *Added 27 September 2026, plan EL2, the user's choice after asking whether the engine can check it.*
+  > **A command's constraint is checked as an invariant is** (ESDM's `constraints`, which ESDM leaves prose):
+  > `constraint :positive_amount, "…"` inside the command; A3 lets `rejects:` name it; **A7**: it is named once,
+  > never as an invariant of the unit, and it is in the command's `rejects:`; **S8** asks a `rejected` scenario
+  > of that command for each; I5 lets `reject/1` name it. A query's constraint is prose, since a query refuses
+  > nothing. A value's invariants get a validator in their own stage (EL2b).
 - *Domain.* D1: unique names per kind. D2: at most one translation per language, none into the context's
   own. D3: a value has exactly one of type or fields; `unit` only on numeric types; no cycles. D4: a human
   actor has no `backed_by`. D5: relation roles fit the type; endpoints exist; no relation to itself.
