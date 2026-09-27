@@ -1,0 +1,5 @@
+EA1 review, 27 September 2026.
+/code-review high on main...dsl-v2/ea-verify (at 56d6910): 7 findings, all fixed in c42896d (bad JWKS entry crashed the key process in a loop; child_spec accepted jwks_url without issuer; verify raised while the key process restarted; refresh/1 timeout; signer parsed per credential; unknown kid always called the process; catch-all rescue in actor/1). Reverse-checked 1, 2, 3, 6.
+engineering:code-review (security and performance) on main...dsl-v2/ea-authorize: the EA1 items fixed in 8c28221 (https-only key set, no redirects, 64 KB / 16 key limit, 15 min lifetime cap, crit refused, fetch_env). Each reverse-checked.
+The fix commits themselves were not re-run through either tool; they were reverse-checked by mutation.
+Gate at 8c28221: EXIT=0 (sandbox 47, check 0/5/19; engine 908, 0/15/17; web 32; auth 38).
