@@ -24,6 +24,7 @@ defmodule EhOsContract.Domain.Build do
   alias Spark.Dsl.Transformer
 
   @kinds [
+    subdomains: :subdomain,
     contexts: :context,
     actors: :actor,
     subjects: :subject,
@@ -179,6 +180,7 @@ defmodule EhOsContract.Domain.Build do
 
   defp digest_form(other), do: other
 
+  defp entity_name(%EhOsContract.Domain.Dsl.Subdomain{}), do: :subdomain
   defp entity_name(%EhOsContract.Domain.Dsl.Context{}), do: :context
   defp entity_name(%EhOsContract.Domain.Dsl.Actor{}), do: :actor
   defp entity_name(%EhOsContract.Domain.Dsl.Subject{}), do: :subject

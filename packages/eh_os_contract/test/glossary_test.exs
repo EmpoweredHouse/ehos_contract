@@ -30,6 +30,9 @@ defmodule EhOsContract.GlossaryTest do
         end
 
         context :archive, "Archiwum", subdomain: :generic
+
+        subdomain :core, "Core", type: :core
+        subdomain :generic, "Generic", type: :generic
       end
       """,
       "clinic.ex"

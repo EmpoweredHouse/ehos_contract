@@ -1,6 +1,9 @@
 defmodule EhOsContract.Domain.Rules do
   @moduledoc """
-  The rules a domain module must satisfy to compile: v2 §6, layer L2, rules D1–D6.
+  The rules a domain module must satisfy to compile: v2 §6, layer L2, rules D1–D7.
+
+  **D7** (plan EL2): a context's `subdomain:` names a subdomain the domain declares,
+  `subdomain :visits, "Wizyty", type: :core`; the kind is the subdomain's.
 
   **D6** (plan EM2): an entity belongs to a context this domain declares, and is
   identified by one of its own fields, a required, non-personal `:id`. Its fields are
@@ -17,7 +20,18 @@ defmodule EhOsContract.Domain.Rules do
 
   alias EhOsContract.Domain.Dsl
   alias EhOsContract.DslRules
-  alias EhOsContract.Domain.Dsl.{Actor, Context, Entity, External, Relation, Subject, Value}
+
+  alias EhOsContract.Domain.Dsl.{
+    Actor,
+    Context,
+    Entity,
+    External,
+    Relation,
+    Subdomain,
+    Subject,
+    Value
+  }
+
   alias Spark.Dsl.Transformer
 
   @doc false
@@ -39,11 +53,12 @@ defmodule EhOsContract.Domain.Rules do
     DslRules.result(dsl, [:domain], Enum.flat_map(rules(), & &1.(entities, domain)))
   end
 
-  defp rules, do: [&d1/2, &d2/2, &d3/2, &d4/2, &d5/2, &d6/2]
+  defp rules, do: [&d1/2, &d2/2, &d3/2, &d4/2, &d5/2, &d6/2, &d7/2]
 
   # --- D1: names are unique per kind ---------------------------------------------
 
   @kinds [
+    {Subdomain, "subdomain"},
     {Context, "context"},
     {Actor, "actor"},
     {Subject, "subject"},
@@ -583,6 +598,25 @@ defmodule EhOsContract.Domain.Rules do
         else: []
 
     roles ++ unknown ++ itself
+  end
+
+  # --- D7: a context belongs to a subdomain this domain declares (plan EL2) ---------
+
+  defp d7(entities, _domain) do
+    subdomains = for %Subdomain{name: name} <- entities, do: name
+
+    for %Context{} = context <- entities, context.subdomain not in subdomains do
+      {"D7: context #{inspect(context.name)} belongs to subdomain #{inspect(context.subdomain)}, " <>
+         "which this domain does not declare; " <> suggest(context.subdomain, subdomains),
+       context}
+    end
+  end
+
+  defp suggest(name, names) do
+    case DslRules.closest(name, names) do
+      nil -> "it declares #{inspect(Enum.sort(names))}"
+      suggestion -> "did you mean #{inspect(suggestion)}?"
+    end
   end
 
   defp duplicates(list, key), do: DslRules.duplicates(list, key)

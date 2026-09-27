@@ -205,6 +205,7 @@ defmodule EhOsContract.Check.Completeness do
       orphan_actors(model, declared, contracts),
       orphan_externals(model, declared, contracts),
       empty_contexts(model, declared, contracts),
+      empty_subdomains(model, declared),
       orphan_relations(model, declared, contracts),
       unmapped_references(model, contracts)
     ])
@@ -216,6 +217,7 @@ defmodule EhOsContract.Check.Completeness do
     of = fn struct -> for %{__struct__: ^struct} = e <- entities, do: e end
 
     %{
+      subdomains: of.(Domain.Dsl.Subdomain),
       actors: of.(Domain.Dsl.Actor),
       externals: of.(Domain.Dsl.External),
       contexts: of.(Domain.Dsl.Context),
@@ -292,6 +294,20 @@ defmodule EhOsContract.Check.Completeness do
         "context #{inspect(context.name)} of #{inspect(model.module)} is the `context:` of no " <>
           "contract, so nothing is decided, recorded or read in it",
         at(declared.contexts, context.name)
+      )
+    end
+  end
+
+  # ESDM's `subdomain-without-bounded-context`: a subdomain no context names.
+  defp empty_subdomains(model, declared) do
+    named = MapSet.new(model.contexts, & &1.subdomain)
+
+    for subdomain <- model.subdomains, not MapSet.member?(named, subdomain.name) do
+      Finding.new(
+        "subdomain-without-bounded-context",
+        "subdomain #{inspect(subdomain.name)} of #{inspect(model.module)} is the `subdomain:` of " <>
+          "no context",
+        at(declared.subdomains, subdomain.name)
       )
     end
   end

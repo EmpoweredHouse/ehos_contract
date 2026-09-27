@@ -37,6 +37,9 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
           field :clinic_id, :id
           field :city, :string
         end
+
+        subdomain :core, "Core", type: :core
+        subdomain :supporting, "Supporting", type: :supporting
       end
       """,
       "links_clinic.ex"

@@ -23,6 +23,8 @@ defmodule EhOsContract.DslWrappersTest do
       use EhOsContract.Domain, name: :clinic, language: :pl
 
     #{body}
+
+      subdomain :supporting, "Supporting", type: :supporting
     end
     """
   end

@@ -151,6 +151,8 @@ spark_locals_without_parens = [
   state: 0,
   state: 1,
   subdomain: 1,
+  subdomain: 2,
+  subdomain: 3,
   subject: 1,
   subject: 2,
   subject: 3,

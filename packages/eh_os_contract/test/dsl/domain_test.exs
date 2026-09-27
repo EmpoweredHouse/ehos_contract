@@ -44,6 +44,9 @@ defmodule EhOsContract.DomainTest do
 
     external(:payer_registry, "Rejestr płatnika", direction: :outbound)
     relation(:customer_supplier, upstream: :scheduling, downstream: :settlement)
+
+    subdomain :core, "Core", type: :core
+    subdomain :supporting, "Supporting", type: :supporting
   end
 
   defmodule Reordered do
@@ -79,6 +82,9 @@ defmodule EhOsContract.DomainTest do
     end
 
     context(:scheduling, "Umawianie", subdomain: :core)
+
+    subdomain :core, "Core", type: :core
+    subdomain :supporting, "Supporting", type: :supporting
   end
 
   defmodule Changed do
@@ -115,6 +121,9 @@ defmodule EhOsContract.DomainTest do
 
     external(:payer_registry, "Rejestr płatnika", direction: :outbound)
     relation(:customer_supplier, upstream: :scheduling, downstream: :settlement)
+
+    subdomain :core, "Core", type: :core
+    subdomain :supporting, "Supporting", type: :supporting
   end
 
   describe "the model" do
@@ -174,6 +183,8 @@ defmodule EhOsContract.DomainTest do
       defmodule EhOsContract.DomainTest.English do
         use EhOsContract.Domain, name: :clinic, language: :en
         context :scheduling, "Umawianie", subdomain: :core
+
+        subdomain :core, "Core", type: :core
       end
       """)
 
@@ -181,6 +192,8 @@ defmodule EhOsContract.DomainTest do
       defmodule EhOsContract.DomainTest.Polish do
         use EhOsContract.Domain, name: :clinic, language: :pl
         context :scheduling, "Umawianie", subdomain: :core
+
+        subdomain :core, "Core", type: :core
       end
       """)
 
@@ -201,6 +214,8 @@ defmodule EhOsContract.DomainTest do
                "domain:clinic",
                "external:payer_registry",
                "relation:customer_supplier:scheduling,settlement",
+               "subdomain:core",
+               "subdomain:supporting",
                "subject:patient",
                "value:address",
                "value:money"

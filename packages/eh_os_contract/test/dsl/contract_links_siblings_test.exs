@@ -23,6 +23,8 @@ defmodule EhOsContract.Next.ContractLinksSiblingsTest do
         entity :visit, "Wizyta", context: :settlement, identified_by: :visit_id do
           field :visit_id, :id
         end
+
+        subdomain :core, "Core", type: :core
       end
       """,
       "siblings_clinic.ex"

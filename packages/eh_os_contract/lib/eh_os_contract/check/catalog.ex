@@ -272,6 +272,17 @@ defmodule EhOsContract.Check.Catalog do
       """
     },
     %{
+      id: "subdomain-without-bounded-context",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/subdomain-without-bounded-context",
+      summary: "No context belongs to a subdomain of the domain.",
+      text: """
+      The subdomain names a part of the business, and nothing of the model is in it. Either a context
+      should name it with `subdomain:`, or it is left over.
+      """
+    },
+    %{
       id: "orphan-context-mapping",
       level: :warn,
       reads: :v2,

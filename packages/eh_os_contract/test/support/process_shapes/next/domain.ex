@@ -21,4 +21,7 @@ defmodule ProcessShapes.Domain do
   actor :reviewer, :human, "Reviewer"
   actor :run_owner, :human, "Run owner"
   actor :batch_operator, :human, "Batch operator"
+
+  subdomain :core, "Core", type: :core
+  subdomain :supporting, "Supporting", type: :supporting
 end

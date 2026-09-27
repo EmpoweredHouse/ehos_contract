@@ -14,6 +14,8 @@ defmodule EhOsContract.DomainVocabularyTest do
 
   test "the words did not change without this test changing with them" do
     assert EhOsContract.Domain.vocabulary() == %{
+             # Plan EL2: a named subdomain, which a context names.
+             [:subdomain] => [:name, :label, :type, :source],
              [:context] => [:name, :label, :subdomain, :language, :source],
              [:context, :term] => [:text, :definition, :source],
              [:context, :term, :translation] => [:language, :text],

@@ -22,6 +22,9 @@ defmodule EhOsContract.ViewTest do
         context :archive, "Archiwum", subdomain: :generic
         actor :reception, :human, "Recepcja"
         external :sms, "Bramka SMS", direction: :outbound
+
+        subdomain :core, "Core", type: :core
+        subdomain :generic, "Generic", type: :generic
       end
 
       defmodule #{inspect(@visits)} do
@@ -74,7 +77,7 @@ defmodule EhOsContract.ViewTest do
     assert View.render(@domain, [@visits]) ==
              """
              domain clinic  2 contexts · 1 contract
-             ├─ context settlement  Rozliczenia · core · 1 contract
+             ├─ context settlement  Rozliczenia · subdomain core (core) · 1 contract
              │  └─ contract #{inspect(@visits)}  process visit
              │     ├─ aggregate visit  1 cmd · 2 evts
              │     │  ├─ command pay  → paid
@@ -84,7 +87,7 @@ defmodule EhOsContract.ViewTest do
              │     ├─ effect text  ← paid → sms
              │     ├─ read model payments  ← paid
              │     └─ query payments_of  → payments
-             └─ context archive  Archiwum · generic · no contract\
+             └─ context archive  Archiwum · subdomain generic (generic) · no contract\
              """
   end
 
@@ -92,7 +95,7 @@ defmodule EhOsContract.ViewTest do
     assert View.render(@domain, [@visits], path: [:settlement, :visit], details: true) ==
              """
              domain clinic  2 contexts · 1 contract
-             └─ context settlement  Rozliczenia · core · 1 contract
+             └─ context settlement  Rozliczenia · subdomain core (core) · 1 contract
                 └─ contract #{inspect(@visits)}  process visit
                    └─ aggregate visit  1 cmd · 2 evts
                       │  identity: visit_id

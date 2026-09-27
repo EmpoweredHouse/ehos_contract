@@ -134,6 +134,12 @@ scenario        description!   scope · actor
                  rejected invariant, issues*, sets*, cancels*, ended]
 ```
 
+> *Changed 27 September 2026, plan EL2, the user's choice.* **A subdomain is named.** `subdomain name!, label!
+> type! :core|:supporting|:generic · source`, and a context's `subdomain!` names one of them (D7) instead of
+> giving the kind itself, as `entity …, context:` names its context. ESDM's subdomain lists its contexts
+> instead; the user chose the other direction, so that the context says where it belongs. §4.5's domain is
+> compiled with the two subdomains it needs added (`contract_examples_test.exs`, `@amendments`).
+
 - **Identity is injected.** A unit's identity fields appear in its state, commands and events without being
   declared there; declaring one again is an error.
 

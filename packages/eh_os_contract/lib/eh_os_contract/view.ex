@@ -40,6 +40,8 @@ defmodule EhOsContract.View do
         [context, unit | _] -> {context, unit}
       end
 
+    types = Map.new(domain.subdomains, &{&1.name, &1.type})
+
     contexts =
       for context <- domain.contexts, context_filter in [nil, context.name] do
         mine = Enum.filter(contracts, &(&1.context == context.name))
@@ -51,7 +53,9 @@ defmodule EhOsContract.View do
             n -> "#{n} contracts"
           end
 
-        {"context #{context.name}  #{context.label} · #{context.subdomain} · #{count}", [],
+        subdomain = "subdomain #{context.subdomain} (#{Map.get(types, context.subdomain)})"
+
+        {"context #{context.name}  #{context.label} · #{subdomain} · #{count}", [],
          Enum.map(mine, &contract(&1, unit_filter, details?))}
       end
 

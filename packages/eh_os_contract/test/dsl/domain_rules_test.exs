@@ -17,6 +17,9 @@ defmodule EhOsContract.DomainRulesTest do
       use EhOsContract.Domain, name: :clinic, language: :pl
 
     #{body}
+
+      subdomain :supporting, "Supporting", type: :supporting
+      subdomain :core, "Core", type: :core
     end
     """
   end
@@ -383,6 +386,30 @@ defmodule EhOsContract.DomainRulesTest do
     end
   end
 
+  describe "D7: a context belongs to a subdomain the domain declares (plan EL2)" do
+    test "a context naming an undeclared subdomain is refused, with the closest name" do
+      message =
+        refused("UnknownSubdomain", """
+          context :settlement, "Rozliczenia", subdomain: :suporting
+        """)
+
+      assert message =~
+               "D7: context :settlement belongs to subdomain :suporting, which this domain does " <>
+                 "not declare; did you mean :supporting? (unknown_subdomain.ex:4)"
+    end
+
+    test "control: a context naming a declared one compiles, and the kind is the subdomain's" do
+      compiles("KnownSubdomain", """
+        context :settlement, "Rozliczenia", subdomain: :supporting
+      """)
+
+      model = Module.concat(__MODULE__, KnownSubdomain).__eh_os_contract_model__()
+
+      assert %{name: :supporting, type: :supporting} =
+               Enum.find(model.subdomains, &(&1.name == :supporting))
+    end
+  end
+
   describe "D5: a relation's roles fit its type, and its ends exist" do
     @contexts """
       context :scheduling, "Umawianie", subdomain: :core
@@ -604,11 +631,20 @@ defmodule EhOsContract.DomainRulesTest do
       compiles("NoEntities", @periods <> "  value :money, :integer\n")
       model = Module.concat(__MODULE__, NoEntities).__eh_os_contract_model__()
 
-      # The groups a domain was hashed over before the kind was added.
+      # The groups a domain was hashed over before the kind was added, and
+      # `subdomains`, which every domain has since plan EL2 (D7).
       before =
         EhOsContract.Digest.hash_groups(
           [domain: [%{name: model.name, language: model.language}]] ++
-            for key <- [:contexts, :actors, :subjects, :values, :externals, :relations] do
+            for key <- [
+                  :subdomains,
+                  :contexts,
+                  :actors,
+                  :subjects,
+                  :values,
+                  :externals,
+                  :relations
+                ] do
               {key, Enum.map(Map.fetch!(model, key), &digest_form/1)}
             end
         )

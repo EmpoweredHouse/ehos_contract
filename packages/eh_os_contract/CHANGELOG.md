@@ -36,6 +36,10 @@ What changes otherwise is what a host has to do.
 
 ### Changed — a host has to act
 
+- **EL2: a subdomain is named, and a context names it.** `subdomain :visits, "Wizyty", type: :core` in the
+  domain, then `context :scheduling, …, subdomain: :visits`; `subdomain:` on a context no longer takes the kind,
+  and a name the domain does not declare fails the compile (D7). A domain keeping its old contexts can declare
+  `subdomain :core, "…", type: :core` and leave them as they are. Every domain's version moves.
 - **EL1: `mix eh_os_contract.check` prints two lines a finding**, `LEVEL <rule>: <sentence>` and then where the
   declaration was written (v2 contracts) and the rule's entry in `docs/rules.md`. A script reading the old
   one-line output reads the first line of each pair; one reading it by program should move to `--format json`.
@@ -112,6 +116,8 @@ What changes otherwise is what a host has to do.
 - **EL2: `mix eh_os_contract.view`** (ESDM's `view`): the domain as a tree — contexts, their contracts, each
   contract's units with commands and events, consumers, read models, queries and domain services — with a path
   to keep one branch and `--details` for what each row declares (`EhOsContract.View.render/3`).
+- **EL2: `subdomain-without-bounded-context`**, ESDM's warning for a subdomain no context names; `view`
+  shows each context's subdomain and its kind.
 - **EL1: `EhOsContract.Domain.vocabulary/0`**, the domain DSL's words by entity path, as
   `EhOsContract.Next.Contract.vocabulary/0` has them for the contract; a test pins both.
 - **EM2: `domain_service` in a contract** (ESDM's domain service): pure functions no unit owns, each with

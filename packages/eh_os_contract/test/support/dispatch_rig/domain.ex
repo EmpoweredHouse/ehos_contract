@@ -14,4 +14,6 @@ defmodule DispatchRig.Domain do
   actor :clerk, :human, "Clerk", scope: [:branch_id]
   actor :auditor, :human, "Auditor"
   actor :nightly_import, :system, "Nightly import", scope: [:branch_id]
+
+  subdomain :core, "Core", type: :core
 end

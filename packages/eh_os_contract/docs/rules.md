@@ -212,6 +212,15 @@ ESDM counts the aggregates, boundaries and read models in a context; here those 
 contracts, so a context is empty when no contract belongs to it. Values and entities it owns do
 not make it less empty: nothing is decided, recorded or read there.
 
+## `subdomain-without-bounded-context`
+
+**warning** · reads v2 contracts · ESDM: `esdm/modeling/subdomain-without-bounded-context`
+
+No context belongs to a subdomain of the domain.
+
+The subdomain names a part of the business, and nothing of the model is in it. Either a context
+should name it with `subdomain:`, or it is left over.
+
 ## `orphan-context-mapping`
 
 **warning** · reads v2 contracts · ESDM: `esdm/modeling/orphan-context-mapping`

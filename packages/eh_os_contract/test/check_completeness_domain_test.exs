@@ -45,6 +45,11 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
 
         relation :customer_supplier, upstream: :scheduling, downstream: :settlement
         relation :partnership, between: [:scheduling, :archive]
+
+        subdomain :core, "Core", type: :core
+        subdomain :supporting, "Supporting", type: :supporting
+        subdomain :generic, "Generic", type: :generic
+        subdomain :legacy, "Dawne", type: :generic
       end
       """,
       "clinic.ex"
@@ -143,5 +148,10 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
     assert message =~
              "#{inspect(@reporting)} in context :reporting consumes #{inspect(@settlement)} " <>
                "of context :settlement"
+  end
+
+  test "a subdomain no context belongs to; control: the three contexts name theirs" do
+    assert [{message, {"clinic.ex", 27}}] = findings("subdomain-without-bounded-context")
+    assert message =~ "subdomain :legacy of #{inspect(@domain)} is the `subdomain:` of no context"
   end
 end
