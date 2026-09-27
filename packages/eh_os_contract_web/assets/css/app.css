@@ -81,9 +81,11 @@
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
-/* The host's override surface, as before: each property now points at a token, so it follows the
-   theme until a host sets it. `ok` and `warning` are neutral on purpose: the design system has no
-   colour for either, and the verdict's sentence already says which it is. */
+/* The dashboard's named colours, kept from before the design system, each now pointing at a token.
+   They were meant as a host's override surface, but the root layout loads this stylesheet alone, so
+   no host can reach them today; they are kept so that the hook which lets one in has names to set.
+   `ok` and `warning` are neutral on purpose: the design system has no colour for either, and the
+   verdict's sentence already says which it is. */
 :root {
   --eh-os-contract-bg: var(--canvas);
   --eh-os-contract-bg-muted: var(--surface-1);
@@ -117,8 +119,7 @@ body {
 
 /* Weights 400 and 500 only: more authority is more size, never more weight. */
 b,
-strong,
-th {
+strong {
   font-weight: 500;
 }
 
@@ -127,9 +128,10 @@ a {
   transition: color var(--dur-hover) var(--ease);
 }
 
-/* Focus is always visible, as the lime ring, and never removed without it. */
+/* Focus is always visible, as the lime ring, and never removed without it. The transparent outline
+   is what forced-colors mode draws in place of the ring, which it drops. */
 :focus-visible {
-  outline: none;
+  outline: 2px solid transparent;
   box-shadow: var(--eh-os-contract-focus-ring);
 }
 
@@ -236,52 +238,6 @@ section {
   margin: 16px 0;
 }
 
-/* A table is its own panel, as in Shugyo: mono labels over the columns, faint lines between rows,
-   rows that brighten on hover. Scrolls inside itself rather than widening the page. */
-table {
-  display: block;
-  max-width: 100%;
-  overflow-x: auto;
-  border-collapse: separate;
-  border-spacing: 0;
-  margin: 8px 0;
-  background: var(--eh-os-contract-bg-muted);
-  border: 1px solid var(--eh-os-contract-border);
-  border-radius: var(--radius-lg);
-}
-
-th,
-td {
-  text-align: left;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--eh-os-contract-border);
-}
-
-tr:last-child td {
-  border-bottom: none;
-}
-
-th {
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: var(--eyebrow-track);
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-}
-
-td {
-  color: var(--text-secondary);
-}
-
-tbody tr {
-  transition: background-color var(--dur-hover) var(--ease);
-}
-
-tbody tr:hover {
-  background: var(--surface-2);
-}
-
 form {
   display: flex;
   flex-wrap: wrap;
@@ -290,52 +246,26 @@ form {
   margin: 8px 0;
 }
 
-input,
-select,
-button {
-  font: inherit;
-  font-size: 14px;
-  color: var(--eh-os-contract-text);
-  border-radius: var(--radius-md);
-  transition: border-color var(--dur-hover) var(--ease), background-color var(--dur-hover) var(--ease),
-    box-shadow 250ms var(--ease);
-}
-
-/* A field: surface-2, a soft hairline; focus turns the hairline lime and adds the ring. */
-input,
+/* A field: surface-2, a soft hairline; focus turns the hairline lime and adds the ring. The graph
+   screen's process selector is the only one. */
 select {
   max-width: 100%;
   padding: 7px 10px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--eh-os-contract-text);
   background: var(--surface-2);
   border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  transition: border-color var(--dur-hover) var(--ease), box-shadow 250ms var(--ease);
 }
 
-input:hover,
 select:hover {
   border-color: var(--border-strong);
 }
 
-input:focus-visible,
 select:focus-visible {
   border-color: var(--accent-border);
-}
-
-button {
-  padding: 7px 14px;
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  border: 1px solid var(--border-soft);
-  font-weight: 500;
-  cursor: pointer;
-}
-
-button:hover {
-  background: var(--surface-3);
-  border-color: var(--border-strong);
-}
-
-button:active:not(:disabled) {
-  transform: translateY(0.5px);
 }
 
 /* The access level is a role, and a role is mono. */
