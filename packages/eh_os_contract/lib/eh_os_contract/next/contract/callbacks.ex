@@ -12,6 +12,7 @@ defmodule EhOsContract.Next.Contract.Callbacks do
   | process manager | one per starting or running reaction that issues, `(event, state) :: issued`; one per timer that issues, `(state) :: issued`; `evolve/2` when it declares a state |
   | read model | one per projected event, `(event) :: :ok` |
   | query | one, named after it, `(params, ctx) :: rows` |
+  | domain service | one per function, `(arguments…) :: result`, typed as declared |
 
   A decision is `{:ok, [event]}` or `{:error, %EhOsContract.Rejection{}}`; what is
   issued is `{:ok, [command]}`. `evolve/2` folds the events a state is kept from: a
@@ -32,7 +33,8 @@ defmodule EhOsContract.Next.Contract.Callbacks do
           returns: Macro.t(),
           emits: [atom()],
           rejects: [atom()],
-          issues: [atom()]
+          issues: [atom()],
+          names: [atom()]
         }
 
   @typedoc "What an implementation of one declaration defines."
@@ -155,6 +157,24 @@ defmodule EhOsContract.Next.Contract.Callbacks do
     %{callbacks: [callback(name, [params, quote(do: map())], returns)], evolve: nil}
   end
 
+  def of(model, :domain_service, name) do
+    service = Enum.find(model.domain_services, &(&1.name == name))
+    values = Module.concat(model.domain, Values)
+    type = &EhOsContract.Next.Contract.Generate.typespec(&1, values)
+
+    callbacks =
+      for f <- service.functions do
+        args =
+          for a <- f.arguments do
+            if a.optional, do: quote(do: unquote(type.(a.type)) | nil), else: type.(a.type)
+          end
+
+        callback(f.name, args, type.(f.returns), names: Enum.map(f.arguments, & &1.name))
+      end
+
+    %{callbacks: callbacks, evolve: nil}
+  end
+
   # One callback per name: two reactions of one process manager on the same trigger
   # issue into the same callback.
   defp merge(pairs) do
@@ -186,7 +206,9 @@ defmodule EhOsContract.Next.Contract.Callbacks do
       returns: returns,
       emits: Keyword.get(produces, :emits, []),
       rejects: Keyword.get(produces, :rejects, []),
-      issues: Keyword.get(produces, :issues, [])
+      issues: Keyword.get(produces, :issues, []),
+      # The arguments' names, where the declaration gives them: a domain service's.
+      names: Keyword.get(produces, :names, [])
     }
   end
 

@@ -117,6 +117,26 @@ defmodule EhOsContract.Next.Contract.Dsl do
                 [__spark_metadata__: nil]
   end
 
+  defmodule Argument do
+    @moduledoc false
+    defstruct [:name, :type, :label, optional: false, __spark_metadata__: nil]
+  end
+
+  defmodule Rule do
+    @moduledoc false
+    defstruct [:name, :label, :source, __spark_metadata__: nil]
+  end
+
+  defmodule ServiceFunction do
+    @moduledoc false
+    defstruct [:name, :label, :returns, arguments: [], rules: [], __spark_metadata__: nil]
+  end
+
+  defmodule DomainService do
+    @moduledoc false
+    defstruct [:name, :label, :source, functions: [], __spark_metadata__: nil]
+  end
+
   defmodule Consumes do
     @moduledoc false
     defstruct [:from, :as, events: [], fields: [], __spark_metadata__: nil]
@@ -519,6 +539,59 @@ defmodule EhOsContract.Next.Contract.Dsl do
 
   # --- what crosses a boundary ---------------------------------------------------
 
+  @argument %Spark.Dsl.Entity{
+    name: :argument,
+    describe: "One argument of a domain service's function, in the order it is passed.",
+    target: Argument,
+    args: [:name, :type],
+    schema: [
+      name: [type: :atom, required: true, doc: "The argument's name."],
+      type: [type: :any, required: true, doc: "A built-in type or a value of the domain."],
+      optional: [type: :boolean, default: false, doc: "Whether it may be nil."],
+      label: [type: :string, doc: "What the business calls it."]
+    ]
+  }
+
+  @rule %Spark.Dsl.Entity{
+    name: :rule,
+    describe: "A rule the function follows, in prose, as the business states it.",
+    target: Rule,
+    args: [:name, :label],
+    schema: [
+      name: [type: :atom, required: true, doc: "The rule's name."],
+      label: [type: :string, required: true, doc: "The rule, as the business states it."],
+      source: [type: :string, doc: "Where the rule comes from in the material."]
+    ]
+  }
+
+  @function %Spark.Dsl.Entity{
+    name: :function,
+    describe: "A pure function of a domain service: arguments in, a result out, nothing written.",
+    target: ServiceFunction,
+    args: [:name, :label],
+    entities: [arguments: [@argument], rules: [@rule]],
+    schema: [
+      name: [type: :atom, required: true, doc: "The function's name."],
+      label: [type: :string, required: true, doc: "What it computes, as the business says it."],
+      returns: [type: :any, required: true, doc: "The type of its result."]
+    ]
+  }
+
+  @domain_service %Spark.Dsl.Entity{
+    name: :domain_service,
+    describe:
+      "Domain logic that belongs to no unit (ESDM's domain service): pure functions a decision " <>
+        "calls through the module the contract generates, which holds them to their types.",
+    target: DomainService,
+    args: [:name, :label],
+    entities: [functions: [@function]],
+    schema: [
+      name: [type: :atom, required: true, doc: "The service's name."],
+      label: [type: :string, required: true, doc: "What the business calls it."],
+      source: [type: :string, doc: "Where the service comes from in the material."]
+    ]
+  }
+
   @consumes %Spark.Dsl.Entity{
     name: :consumes,
     describe:
@@ -792,6 +865,7 @@ defmodule EhOsContract.Next.Contract.Dsl do
                   @process_manager,
                   @read_model,
                   @query,
+                  @domain_service,
                   @consumes,
                   @publish,
                   @process,

@@ -11,6 +11,7 @@ defmodule BoundaryRig.Seat do
 
   alias BoundaryRig.Calendar.Events.EnrolmentClosed
   alias BoundaryRig.Courses.Events.CourseDefined
+  alias BoundaryRig.Enrolment.DomainServices.Seating
 
   @impl true
   def subscribe(%Subscribe{course_id: course, student_id: student}, %State{} = state) do
@@ -18,7 +19,8 @@ defmodule BoundaryRig.Seat do
 
     cond do
       state.closed -> reject(:enrolment_is_open)
-      state.capacity == nil or state.taken >= state.capacity -> reject(:a_seat_is_free)
+      state.capacity == nil -> reject(:a_seat_is_free)
+      Seating.free_seats(state.capacity, state.taken) == 0 -> reject(:a_seat_is_free)
       true -> emit(%StudentSubscribed{course_id: course, student_id: student})
     end
   end

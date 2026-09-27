@@ -72,6 +72,7 @@ defmodule EhOsContract.Next.Contract.Build do
         entities |> of(Dsl.ProcessManager) |> Enum.map(&process_manager(&1, events)),
       read_models: entities |> of(Dsl.ReadModel) |> Enum.map(&plain/1),
       queries: entities |> of(Dsl.Query) |> Enum.map(&plain/1),
+      domain_services: entities |> of(Dsl.DomainService) |> Enum.map(&plain/1),
       consumes: entities |> of(Dsl.Consumes) |> Enum.map(&consumes/1),
       publishes: entities |> of(Dsl.Publish) |> Enum.map(&plain/1),
       scenarios: entities |> of(Dsl.Scenario) |> Enum.map(&scenario(&1, declarations))
@@ -302,13 +303,23 @@ defmodule EhOsContract.Next.Contract.Build do
     process_managers: :process_manager,
     read_models: :read_model,
     queries: :query,
-    publishes: :publish
+    publishes: :publish,
+    domain_services: :domain_service
   ]
+
+  # Kinds that came after the first contracts were digested: a contract that declares
+  # none of one hashes as it did before the kind existed, so adding a kind to the
+  # library moves no contract's version.
+  @later [:domain_services]
 
   defp version(own, process, collections) do
     Digest.hash_groups(
       [contract: [own], process: List.wrap(process && digest_form(process))] ++
-        for({key, _} <- @collections, do: {key, Enum.map(collections[key], &digest_form/1)}) ++
+        for(
+          {key, _} <- @collections,
+          key not in @later or collections[key] != [],
+          do: {key, Enum.map(collections[key], &digest_form/1)}
+        ) ++
         [
           consumes: Enum.map(consumed(collections.consumes), &digest_form/1),
           scenarios: Enum.map(collections.scenarios, &digest_form/1)
@@ -357,7 +368,7 @@ defmodule EhOsContract.Next.Contract.Build do
   # `correlate`, stages, givens and expectations keep their order.
   @sets ~w(fields params invariants consults starts_on on timers ends_on includes promises
            by emits rejects handles issues calls projects recorded_by match sets cancels events
-           idempotent_on answers)a
+           idempotent_on answers functions rules)a
 
   defp digest_form(%{} = declaration) do
     Map.new(declaration, fn

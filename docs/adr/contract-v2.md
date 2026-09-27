@@ -170,6 +170,14 @@ scenario        description!   scope · actor
 > typespecs see a plain `:id`. No field of an entity is personal: its rows are the application's, outside the
 > log, where erasure cannot reach them. Rules: D6 in the domain, X3 in a contract.
 
+> **27 September 2026, EM2 — a domain service.** ESDM's `domain-service` was the one core kind the four
+> contracts did not need (the 25 September mapping), and it came with the coverage the user asked for. It is
+> declared in the contract, `domain_service :name, "label" do function :f, "label" do argument …; returns …;
+> rule … end end`, and bound like every other kind, `use C, domain_service: :name`. What reads it is the
+> module the contract generates, `C.DomainServices.<Name>`: a decision calls the function there, which holds
+> the arguments and the result to their declared types and raises on a mismatch (the user's choice over a
+> compile-time check alone). No scenario targets it; ESDM has none for it either.
+
 ### 4.3 Field types and options
 
 - Built-in types: `:id :string :integer :decimal :boolean :date :timestamp {:enum, [...]} {:list, t}`, plus

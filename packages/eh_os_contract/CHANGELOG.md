@@ -80,6 +80,13 @@ What changes otherwise is what a host has to do.
 
 ### Added
 
+- **EM2: `domain_service` in a contract** (ESDM's domain service): pure functions no unit owns, each with
+  typed `argument`s, a `returns` type and prose `rule`s. The contract generates `C.DomainServices.<Name>`, a
+  behaviour for the implementation (`use C, domain_service: :name`, I2 asks for every function) and the module
+  a decision calls: `C.DomainServices.Seating.free_seats(3, 1)` checks the arguments, runs the implementation
+  and checks its result, raising on a mismatch without the value in the message
+  (`EhOsContract.DomainService`). `mix eh_os_contract.check` counts it among what a contract implements. A
+  contract declaring none keeps its version.
 - **EM2: `entity` in a domain** (ESDM's entity): reference data with an identity that no event of the log
   changes — `entity :period, "Okres", context: :client_month, identified_by: :period_id do field … end`. A field
   of a contract or of a domain value names one as `{:id, :period}`; it is an `:id` in the model, in the log and

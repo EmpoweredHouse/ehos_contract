@@ -51,6 +51,11 @@ defmodule EhOsContract.Next.ContractVocabularyTest do
         [:read_model, :field] => @field,
         [:query] => [:name, :label, :reads, :by, :returns, :scope],
         [:query, :param] => [:name, :type, :optional, :label],
+        # Plan EM2: ESDM's domain service.
+        [:domain_service] => [:name, :label, :source],
+        [:domain_service, :function] => [:name, :label, :returns],
+        [:domain_service, :function, :argument] => [:name, :type, :optional, :label],
+        [:domain_service, :function, :rule] => [:name, :label, :source],
         [:consumes] => [:from, :events, :as],
         [:consumes, :field] => @field,
         [:publish] => [:name, :as, :from, :fields, :idempotent_on],

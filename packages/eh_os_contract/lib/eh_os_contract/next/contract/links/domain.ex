@@ -52,6 +52,7 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
       context(c),
       actors(c),
       types(c),
+      returns(c),
       entities(c),
       subjects(c),
       personal_values(c),
@@ -123,6 +124,17 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
         name not in values do
       {"X3: #{where}, field #{inspect(field.name)}: #{inspect(name)} is neither a built-in type " <>
          "nor a value of #{inspect(domain.module)}; #{suggest(name, values)}", Links.at(field)}
+    end
+  end
+
+  defp returns(%{declarations: d, domain: domain}) do
+    values = Enum.map(domain.values, & &1.name)
+
+    for {where, function} <- Rules.Fields.returns(d),
+        name <- value_names(function.returns),
+        name not in values do
+      {"X3: #{where} returns #{inspect(name)}, which is neither a built-in type nor a value of " <>
+         "#{inspect(domain.module)}; #{suggest(name, values)}", Links.at(function)}
     end
   end
 

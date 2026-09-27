@@ -42,7 +42,24 @@ defmodule EhOsContract.Next.Contract.Rules.Fields do
         violation
       end
 
-    structs ++ outside_the_log(declarations)
+    returns =
+      for {where, function} <- returns(declarations),
+          problem <- type_problems(function.returns) do
+        {"F2: #{where} returns #{problem}", function}
+      end
+
+    structs ++ returns ++ outside_the_log(declarations)
+  end
+
+  @doc """
+  Every function of a domain service, as `{where, function}`, for the type it
+  returns: F2 here, X3 between modules.
+  """
+  @spec returns(map()) :: [{String.t(), struct()}]
+  def returns(d) do
+    for s <- d.domain_services,
+        f <- s.functions,
+        do: {"domain service #{inspect(s.name)}, function #{inspect(f.name)}", f}
   end
 
   @doc """
@@ -105,6 +122,13 @@ defmodule EhOsContract.Next.Contract.Rules.Fields do
       ),
       for(r <- d.read_models, do: {"read model #{inspect(r.name)}", r.fields, [], :row}),
       for(q <- d.queries, do: {"query #{inspect(q.name)}", q.params, [], :params}),
+      for(
+        s <- d.domain_services,
+        f <- s.functions,
+        do:
+          {"domain service #{inspect(s.name)}, function #{inspect(f.name)}", f.arguments, [],
+           :arguments}
+      ),
       for(
         c <- d.consumes,
         is_binary(c.from),

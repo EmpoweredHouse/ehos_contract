@@ -265,6 +265,31 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
       assert length(violations) == 1
     end
 
+    test "a domain service's result of a type that is no value of the domain is refused" do
+      body =
+        @body <>
+          """
+            domain_service :pricing, "Cennik" do
+              function :price, "Cena" do
+                argument :amount, :money
+                returns :mony
+              end
+            end
+          """
+
+      violations = links("LinksServiceReturns", body)
+
+      assert assert_linked(
+               violations,
+               "X3: domain service :pricing, function :price returns :mony",
+               "links_service_returns.ex",
+               56
+             ) =~
+               "which is neither a built-in type nor a value of #{inspect(@domain)}; did you mean :money?"
+
+      assert length(violations) == 1
+    end
+
     test "control: the model holds it as an :id that refers to the entity, and tags it" do
       assert links("LinksEntityRight", @body) == []
       model = EhOsContract.Model.fetch(EhOsContract.Next.Fixtures.LinksEntityRight)

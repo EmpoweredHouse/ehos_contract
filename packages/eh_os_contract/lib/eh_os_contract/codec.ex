@@ -90,6 +90,8 @@ defmodule EhOsContract.Codec do
     do: if(fits?(field.type, value, values), do: [], else: [:type])
 
   defp fits?(type, value, _values) when type in [:id, :string], do: is_binary(value)
+  # An entity's identifier where the model keeps the declared type: a function's result.
+  defp fits?({:id, _entity}, value, _values), do: is_binary(value)
   defp fits?(:integer, value, _values), do: is_integer(value)
   defp fits?(:boolean, value, _values), do: is_boolean(value)
   defp fits?(:decimal, value, _values), do: is_struct(value, Decimal)
