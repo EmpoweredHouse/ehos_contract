@@ -700,6 +700,15 @@ każdej skończonej implementacji):
 - Weryfikacja poza testami: brak — żaden kontrakt sandboxa nie ma jeszcze granicy, więc nie ma czego oglądać w
   `MIX_ENV=dev`.
 
+Rozstrzygnięte przez użytkownika 27 września przed budową EM2:
+- **Pole wskazujące encję: `field :period_id, {:id, :period}`.** W logu to dalej identyfikator (tag jak każde
+  `:id`), a model wie, że wskazuje okres. *Odrzucone:* nazwa encji jako typ, `field :period_id, :period` (krócej,
+  ale `field :period, :period` czyta się, jakby zdarzenie niosło cały okres).
+- **`domain_service` pilnowany także w działaniu.** Kontrakt generuje moduł, przez który się woła
+  (`C.DomainServices.RegistryComparison.differences(ours, theirs)`); sprawdza on argumenty i wynik względem
+  deklaracji i rzuca przy niezgodności, jak dispatch przy niezadeklarowanym zdarzeniu. *Odrzucone:* samo
+  sprawdzenie przy kompilacji, a decyzje wołają implementację wprost (deklaracja typów byłaby tylko opisem).
+
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
 Po lekturze architektury EHOS-a (`~/Projects/ai/eh-os`, `docs/ADR.md` i `docs/ARCHITECTURE.md`; research w
