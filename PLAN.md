@@ -651,6 +651,55 @@ Rozstrzygnięte przez użytkownika 27 września przed budową EM:
   której nic nie wymusza; przy ponowieniu z nowym identyfikatorem powstają dwa obiekty); (c) pominąć, bo żaden
   planowany kontrakt sandboxa tego nie potrzebuje (użytkownik wybrał pełne pokrycie ESDM).
 
+### EM1 — co wyszło (27 września)
+
+Na `dsl-v2/e9-em1-dcb` (od `main` z handoffem), niewypchnięte. Trzy commity budowy i trzy z przeglądu:
+magazyn (`4f45b2a` — `read_query/2` i warunek `{:dcb, zapytanie, głowa}` w behaviourze, w Postgresie i w suicie),
+tagi (`c3456a2`), dispatch komendy DCB i `record/3` zdarzenia DCB (`c6bf91b`), potem `3efffa7`, `36409b9`,
+`24f672f`. Silnik 972 → 995 testów; `check` silnika 15 → 18 ostrzeżeń (trzy procesy nowej fikstury bez
+`accountable`, jak w `DispatchRig`), sandbox bez zmian (0 / 5 / 19, 54 testy).
+
+Mechanika, rozstrzygnięta przez asystenta i wyjaśniona użytkownikowi przed budową:
+- **Tagami są wszystkie wymagane, nieosobowe pola `:id` zdarzenia**, nie tylko klucz jednostki: granica
+  PayerSettlement szuka zdarzeń wizyty po płatniku i okresie, a klucz wizyty to `visit_id`. Tagowanie tylko pól,
+  po których dziś ktoś szuka, zostawiłoby bez tagów zdarzenia sprzed nowej granicy. Nowa część A4: `match:`
+  wskazuje tylko takie pola (X6 wymagał tego już od zdarzeń kontraktu siostrzanego). Jeden predykat,
+  `EhOsContract.Key.tag_field?/1`, czytają i reguła, i dopis.
+- **Granica czyta swoje własne zdarzenia pod całą tożsamością** oraz każde zdarzenie z `consults`; `consults`
+  samym `where:` czyta wszystkie zdarzenia typu. Zdarzenia granicy nie mają strumienia.
+- **Konflikt granicy ponawia się jak konflikt strumienia** (trzy próby), a w transakcji wywołującego wraca jako
+  `{:error, :conflict}`.
+
+Odbiór z opisu E9, ta jego część, która dotyczy DCB, spełniony na wymyślonej fiksturze `BoundaryRig` (zapisy na
+kurs z limitem miejsc): **w wyścigu niezmiennik nigdy nie pęka** — dziesięciu rejestratorów na trzy miejsca daje
+3 przyjęte i 7 odmów na prawdziwych commitach, a po zamianie warunku na `:none` test zapisuje dziesięciu;
+**sprawdzenie konfliktu czyta tylko pozycje po głowie** — test Postgresa wyjaśnia przechwycone zapytanie i
+znajduje indeks ograniczony pozycją (`(type, position)`; przy wyłączonych skanach sekwencyjnych, bo mała tabela
+testowa ich nie potrzebuje). Scenariusze granicy (cztery) przechodzą przez `ScenarioCase`.
+
+**Przegląd przed kolejną częścią** (dwa przeglądy równolegle na `origin/main..HEAD`; prośba użytkownika — po
+każdej skończonej implementacji):
+- **Poprawione, z testem i próbą odwrotną:** `given_types` w `_commands` rosło z historią (jeden wpis na każde
+  przeczytane zdarzenie; granica czyta całą historię typu) → każdy typ raz (`3efffa7`); dekoder wybierany po
+  zapisanej w wierszu nazwie kontraktu psuł dispatch po przemianowaniu modułu, także zwykłych agregatów → po
+  typie zdarzenia (`36409b9`).
+- **Poprawione bez nowego testu** (`24f672f`): wspólny predykat tagu zamiast dwóch kopii; komunikat odmowy
+  pozycji zapytania; ograniczone ponowienia w teście na commitach; notka w ADR, że identyfikatory podmiotów są
+  teraz w indeksie tagów, którego usunięcie nie dotyka — więc naturalny identyfikator (PESEL) nie może być `:id`.
+- **Pominięte, do pomiaru** (obie recenzje): odczyt granicy nie ma limitu i odszyfrowuje każdy podmiot w
+  zbiorze przy każdej próbie; `consults` samym `where:` konfliktuje z każdym nowym zdarzeniem typu, a trzy próby
+  z jitterem 1–10 ms nie rozkładają ponowień przy długim odczycie, więc przy dużym ruchu na jedną granicę
+  większość wywołań dostanie `:conflict`; więcej wpisów GIN przy każdym dopisie pod globalną blokadą;
+  `record/3` na granicy czyta cały jej wynik, choć potrzebuje tylko głowy; `Model.declaring` liczone przy każdym
+  dispatchu. Wraca to przy pomiarze albo przy pierwszej granicy, która tego potrzebuje (snapshoty granicy,
+  jitter skalowany czasem odczytu, `fastupdate` indeksu).
+- **Bez zmiany:** plan zapytania pod blokadą (test już wyjaśnia faktycznie wykonane zapytanie; ogólny plan
+  przygotowanego zapytania mógłby wybrać inny indeks, co wraca przy pomiarze); zdarzenia dopisane przed tą
+  wersją mają węższe tagi i nigdy ich nie dostaną — dopuszczalne, bo zgodności wstecz nie ma, a kontrakty
+  sandboxa powstają od nowa, **ale to warunek dla każdej przyszłej bazy z historią**.
+- Weryfikacja poza testami: brak — żaden kontrakt sandboxa nie ma jeszcze granicy, więc nie ma czego oglądać w
+  `MIX_ENV=dev`.
+
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
 Po lekturze architektury EHOS-a (`~/Projects/ai/eh-os`, `docs/ADR.md` i `docs/ARCHITECTURE.md`; research w
