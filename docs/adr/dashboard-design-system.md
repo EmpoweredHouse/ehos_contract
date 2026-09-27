@@ -33,6 +33,12 @@ Content-Security-Policy, and may run where there is no internet.
 6. A host can still restyle the dashboard with its own stylesheet, as it can today through the
    `--eh-os-contract-*` properties.
 
+   *Correction, 28 September 2026 (review of this change):* it cannot, and could not before. The root
+   layout replaces the host's and loads only the package's stylesheet, so no host stylesheet reaches
+   these pages. The properties are kept, pointing at tokens, as the names a future hook would set.
+   Adding that hook changes what a host sees, so it is the product owner's decision, not this
+   change's.
+
 ## Decision
 
 Same three layers as D-42, placed in the package:
@@ -44,8 +50,8 @@ Same three layers as D-42, placed in the package:
   compares its SHA-256 with `SOURCE.md`, and `.gitattributes` keeps git from converting its line
   endings.
 - **The dashboard's layer**, `assets/css/app.css`, plain CSS. It imports the copy first, then:
-  - keeps `--eh-os-contract-*` as the host's override surface, each now set to a token
-    (`--eh-os-contract-bg: var(--canvas)`), so an override still wins by cascade;
+  - keeps `--eh-os-contract-*`, each now set to a token (`--eh-os-contract-bg: var(--canvas)`) —
+    meant as the host's override surface, which driver 6's correction says no host can reach yet;
   - never redefines a property the copy defines (a test compares the two sets of names), and may add
     properties of its own, named `--eh-os-contract-*`;
   - declares the fonts' `@font-face` with URLs relative to the stylesheet.
@@ -60,8 +66,9 @@ stylesheet. This is driver 5, and the reason the fonts are not in `priv/static/f
 build leaves the URLs alone (esbuild's `--external`), and the tarball carries the fonts with their
 licence; `NOTICE` names them.
 
-**Themes** follow the copy: dark by default, light under `prefers-color-scheme: light`, pinned by
-`data-theme` on `<html>`. The dashboard has no switch of its own, and does not follow a host's: the
+**Themes** follow the copy: dark by default, light under `prefers-color-scheme: light`. The copy
+can also be pinned by `data-theme` on `<html>`, and the diagrams redraw when it changes, but the
+dashboard's layout never sets it. The dashboard has no switch of its own, and does not follow a host's: the
 EHOS console has one, but the dashboard's root layout replaces the host's, so a choice made there does
 not reach these pages. Following it would need the host to pass something in, which driver 5 rules out
 for now.
@@ -93,12 +100,12 @@ copy, which is the same file.
 ## Consequences
 
 - Good: the dashboard looks like the console it sits beside, in both themes, from the repository alone.
-- Good: a host changes nothing, and its existing overrides of `--eh-os-contract-*` keep working.
+- Good: a host changes nothing.
 - Bad: two repositories now hold the same copy, and a refresh has to be made in both. The hashes make a
   missed one visible, but nothing reports it.
 - Bad: the dashboard becomes dark by default for every host. A host with a light-only application sees
-  a dark dashboard on a machine set to dark. This is the design system's default, and a host can pin
-  `data-theme="light"` or override the properties.
+  a dark dashboard on a machine set to dark. This is the design system's default, and today a host
+  cannot change it (driver 6).
 - Bad: `eh_os_contract_web`'s tarball grows by eight font files, about 100 KB.
 - Neutral: the rules reach contributors through D-42 and `eh-os`'s `DESIGN.md`. Where `eh-os` cannot be
   read, the layer's comments are all a contributor here has.

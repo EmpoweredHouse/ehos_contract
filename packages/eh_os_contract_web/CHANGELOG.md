@@ -13,7 +13,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   host adds nothing — the fonts come through the `Plug.Static` line it already has. A breached verdict
   stays in the error colour; a met or in-progress one is no longer green or amber, because the design
   system has no colour for either and the sentence already says which. Diagrams follow the theme. The
-  `--eh-os-contract-*` properties still override, and now point at the tokens.
+  `--eh-os-contract-*` properties now point at the tokens; as before, no host stylesheet reaches the
+  dashboard's pages to override them.
 
 - **The graph screen opens on a v2 process**, and shows its declared shape — stages, endings, promises — in the
   first panel, as for a v1 process, with its steps and the log in the second.

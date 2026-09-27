@@ -229,6 +229,23 @@ nieczytelne. Reset `pre.mermaid p` w warstwie.
 
 Usunięte przy okazji martwe reguły z czasów panelu kont: `button[phx-click="revoke_role"]` i
 `nav a:last-child { margin-left: auto }` — ta druga przy dwóch linkach spychała „Graph” na prawą krawędź.
+Po przeglądzie także reguły `table`/`th`/`td`, `input` i `button`: żaden szablon ich nie renderuje.
+
+**Przegląd (dwa równolegle, `pre-pr-review`).** Naprawione: kolory przez odczyt pikseli z canvasa
+(przeglądarki antyfingerprintingowe blokują albo zaszumiają `getImageData`) — teraz przez ukryty element
+i złożenie alfy w JS; brakujący albo nieczytelny token dawał po cichu zły kolor — teraz nazwany błąd,
+diagramy spadają do wyglądu Mermaida, a LiveView łączy się mimo to (wcześniej wyjątek na górze `app.js`
+zabijał cały dashboard); nakładające się rysowania jednego diagramu — teraz kolejka per element;
+`document.fonts.ready` nie ładował podzbioru `latin-ext` przed pomiarem polskich etykiet — teraz
+`document.fonts.load` z tekstem diagramu; focus niewidoczny w forced-colors; kolory `classDef` liczone
+przy każdym rysowaniu zamiast raz na motyw. Testy: token czytany przez `app.css`/`app.js`, którego kopia
+nie definiuje; `url(data:…)`; komunikat przy skrypcie inline, który ginął w `MatchError`.
+
+**Poprawione założenie:** zmienne `--eh-os-contract-*` nie są i nie były powierzchnią nadpisywania dla
+hosta — root layout zastępuje layout hosta i ładuje tylko arkusz pakietu, więc żaden arkusz hosta ani
+`data-theme` tu nie dociera. README i ADR mówiły inaczej; poprawione (w ADR z datą). **Otwarte, do
+decyzji:** czy dać hostowi wejście (np. opcję makra z własnym arkuszem albo motywem) — to nowy kształt
+widoczny dla hosta, więc nie w tej zmianie.
 
 ## Dopisek 25 września (2) — Etap 6: pivot do DSL v2, plan wykonania
 

@@ -59,15 +59,14 @@ exception: the graph screen's diagrams need inline styles (see "Looks" below).
 ## Looks
 
 The dashboard is styled from the EmpoweredHouse design system, the one the EHOS
-console uses: dark by default, light when the system prefers it, pinned by
-`data-theme="light"` or `"dark"` on `<html>`. Its tokens are a copy kept in
-`assets/css/vendor/empoweredhouse/`, which is refreshed from the design system and
-never edited here; `SOURCE.md` beside it says where it came from.
+console uses: dark by default, light when the system prefers it. Its tokens are a
+copy kept in `assets/css/vendor/empoweredhouse/`, which is refreshed from the design
+system and never edited here; `SOURCE.md` beside it says where it came from.
 
-The `--eh-os-contract-*` custom properties are the surface a host overrides:
-`--eh-os-contract-bg`, `-bg-muted`, `-border`, `-text`, `-text-muted`, `-accent`,
-`-danger`, `-warning`, `-ok`, `-radius` and `-focus-ring`. Each points at a design
-system token until a host sets it.
+A host cannot restyle it or pin its theme yet. The dashboard's root layout replaces
+the host's for these routes and loads only this package's stylesheet, so neither a
+host stylesheet nor a `data-theme` attribute reaches the page. The
+`--eh-os-contract-*` custom properties are kept as the names such a hook would set.
 
 **The graph screen needs `style-src 'unsafe-inline'`.** Mermaid, which draws its
 diagrams in the browser, writes a `<style>` element into each one. Under a policy
