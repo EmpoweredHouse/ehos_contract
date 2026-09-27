@@ -17,7 +17,17 @@ defmodule EhOsContract.Consumer do
     `{:error, reason}`.
   """
 
-  alias EhOsContract.{Actor, Codec, Dispatcher, Event, Implementations, Meta, Model, Rejection}
+  alias EhOsContract.{
+    Actor,
+    Codec,
+    Dispatcher,
+    Event,
+    Implementations,
+    Meta,
+    Model,
+    Personal,
+    Rejection
+  }
 
   @longest_chain 32
 
@@ -89,6 +99,10 @@ defmodule EhOsContract.Consumer do
   An event as its consumers take it: the struct of the contract that declares its
   type, with `__meta__` from the row. Raises when no contract of the host declares the
   type, or the payload no longer fits it.
+
+  A personal field is opened with its subject's key, read for this row alone and
+  only when the row has a sealed field; once the subject is erased it holds
+  `EhOsContract.Erased`.
   """
   @spec decode!(Event.t()) :: struct()
   def decode!(%Event{} = row) do
@@ -98,19 +112,40 @@ defmodule EhOsContract.Consumer do
         _v1 -> raise ArgumentError, "#{row.contract} is not a v2 contract"
       end
 
-    decode!(model, Codec.values(model.domain), row)
+    values = Codec.values(model.domain)
+    [decoded] = decode_all!(model, values, [row])
+    decoded
   end
 
   @doc false
-  @spec decode!(map(), map(), Event.t()) :: struct()
-  def decode!(model, values, %Event{} = row) do
-    declaration =
-      Enum.find(model.events, &(&1.type == row.type)) ||
-        raise ArgumentError,
-              "#{inspect(model.module)} declares no event of type #{inspect(row.type)}, " <>
-                "which its log holds at position #{row.position}"
+  # Rows of one contract's log, decoded with every key they need read in one query:
+  # a stream folded for a decision is one query, not one per event.
+  @spec decode_all!(map(), map(), [Event.t()]) :: [struct()]
+  def decode_all!(model, values, rows) do
+    declared = Enum.map(rows, &{declaration!(model, &1), &1})
 
-    case Codec.decode(declaration.fields, row.payload, values) do
+    subjects =
+      for {declaration, row} <- declared,
+          subject <- Codec.subjects(declaration.fields, row.payload, values, :stored),
+          uniq: true,
+          do: subject
+
+    keys = Personal.for_reading(Application.fetch_env!(:eh_os_contract, :repo), subjects)
+
+    for {declaration, row} <- declared do
+      decode!(model, values, declaration, row, Personal.opener(keys, row.type))
+    end
+  end
+
+  defp declaration!(model, row) do
+    Enum.find(model.events, &(&1.type == row.type)) ||
+      raise ArgumentError,
+            "#{inspect(model.module)} declares no event of type #{inspect(row.type)}, " <>
+              "which its log holds at position #{row.position}"
+  end
+
+  defp decode!(model, values, declaration, row, open) do
+    case Codec.decode(declaration.fields, row.payload, values, open: open) do
       {:ok, fields} ->
         struct!(
           Model.module_for(model, :event, declaration.name),

@@ -5,7 +5,7 @@ defmodule EhOsContract.Supervisor do
 
   use Supervisor
 
-  alias EhOsContract.{Implementations, Subscription}
+  alias EhOsContract.{Implementations, Model, Subscription}
 
   require Logger
 
@@ -13,6 +13,7 @@ defmodule EhOsContract.Supervisor do
   @spec init(term()) :: {:ok, {Supervisor.sup_flags(), [Supervisor.child_spec()]}}
   def init(_opts) do
     EhOsContract.Registry.load!()
+    EhOsContract.Vault.check!(Enum.map(EhOsContract.Registry.v2_contracts(), &Model.fetch/1))
     EhOsContract.Deployment.record!()
 
     runners =

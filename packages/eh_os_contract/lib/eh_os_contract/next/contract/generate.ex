@@ -221,6 +221,12 @@ defmodule EhOsContract.Next.Contract.Generate do
       for f <- fields do
         type = typespec(f.type, values)
 
+        # What a personal field reads back as once its subject is erased (v2 §14).
+        type =
+          if Map.get(f, :personal),
+            do: quote(do: unquote(type) | EhOsContract.Erased.t()),
+            else: type
+
         {f.name,
          if(f.optional or shape != :message, do: quote(do: unquote(type) | nil), else: type)}
       end

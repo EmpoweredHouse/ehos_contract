@@ -1224,6 +1224,19 @@ the person's.
   (the key store can move behind the behaviour to shorter retention); and whether destroying a key counts as
   erasure is a question for counsel (EDPB, UODO).
 
+> **27 September 2026, E8a — what the build settled.** (1) The vault's `wrap` and `unwrap` take a context, the
+> data key's row (`subject_type|subject_id|key_version`), bound as additional data, so a wrapped key moved to
+> another subject's row does not unwrap; a KMS takes it as an encryption context. The vault also has `current/0`
+> and `check/0`: the engine refuses to boot when a contract declares personal fields and the vault cannot seal
+> them, and `mix eh_os_contract.rewrap` rewraps what a retired master key wraps. The default vault takes a list
+> of master keys from configuration, the first wrapping (decision of the user, 27 September). (2) The field's
+> path in the AAD is dotted, `contacts.phone`, with no list index. (3) A personal field left `nil` is stored
+> `nil`, not sealed: absence is not personal. (4) **Snapshots do not exist** — §10.3 describes their table and
+> no migration creates it — so erasure has none to delete; whoever builds them adds `subjects` and the deletion.
+> (5) **`key_version` is always 1**: rotating a subject's data key waits for someone who needs it (both by the
+> user's decision, `PLAN.md`, E8). (6) The keys a reader needs are found from the declared fields: a sealed
+> field's subject is its sibling's value, so the envelope carries no subject.
+
 ## 15. Integration hooks — designed, not built
 
 - `public: true` marks an event as published language: a stable subject such as

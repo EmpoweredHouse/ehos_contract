@@ -36,6 +36,10 @@ What changes otherwise is what a host has to do.
 
 ### Changed — a host has to act
 
+- **E8a: a host whose contract declares personal fields needs a master key**, `config :eh_os_contract,
+  EhOsContract.Vault, keys: [...]` (`README.md`); without one, the `EhOsContract` child refuses to start. A host
+  without personal fields configures nothing.
+
 - **A new migration is required.** Add one calling `EhOsContract.Migrations.up(version: 3)` and
   `down(version: 3)`, like the upgrade to version 2. V03 alters `eh_os_contract_events` in place:
   - a `position` column becomes its primary key, and existing rows are numbered in `occurred_at` order;
@@ -268,6 +272,24 @@ What changes otherwise is what a host has to do.
 - `EhOsContract.Codec.decode/4` takes `strings: true`, to read an integer or a boolean written as text.
 - `EhOsContract.Meta` carries an event's `id` and `position` when it is read back from the log.
 - `EhOsContract.Store.lock/1` on the configured implementation.
+- **E8a: personal fields are encrypted in the log** (v2 §14). A field declared `personal:`, at any depth of a
+  domain value, is stored as `{"$eh": "enc1", "k": 1, "d": "…"}`: its value JSON-encoded and sealed with
+  AES-256-GCM under its subject's data key, bound to the event type, the field, the subject and the key
+  version. Each subject's key is created under the append lock the first time an event carries its data, and
+  stored in `eh_os_contract_subject_keys` wrapped by a master key of `EhOsContract.Vault`. Reading an event
+  back — a decision's folded stream, a receipt, a consumer — opens its personal fields; a stream reads every
+  key it needs in one query, and an event without personal fields reads none. **No verdict moves**: the
+  conformance readers never read a payload's personal fields.
+- **E8a: `EhOsContract.Erased`** is what a personal field reads back as once its subject's key is gone,
+  `%EhOsContract.Erased{subject: :member, id: "member-anna"}`. The structs a contract generates, and the types of
+  domain values, admit `EhOsContract.Erased.t()` on every personal field, and `EhOsContract.Codec.problems/3`
+  accepts it there and nowhere else. Writing it is refused.
+- **E8a: `EhOsContract.Vault`**, the behaviour of the master keys, with `EhOsContract.Vault.Local` as default: the
+  keys come from `config :eh_os_contract, EhOsContract.Vault, keys: [{id, base64}]`, the first wrapping, the
+  others only unwrapping. `mix eh_os_contract.rewrap` rewraps every data key a retired master key still
+  wraps. Another vault, a KMS, is `config :eh_os_contract, vault: MyVault`.
+- `EhOsContract.Codec.encode/4` takes a function that seals personal fields, `decode/4` takes `open:`, and
+  `personal?/2` and `subjects/4` say where personal fields are and whose they are.
 - **E8a: F7 refuses personal data where the library keeps it outside the log**, since erasure reaches only
   what the log encrypts (v2 §14). A process manager's state field declared `personal:` does not compile (L2);
   a process manager's state field, or a query's `scope` parameter, of a domain value holding a personal field

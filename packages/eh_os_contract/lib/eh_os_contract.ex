@@ -32,6 +32,7 @@ defmodule EhOsContract do
       Duration,
       Emission,
       Emitter,
+      Erased,
       Event,
       EventHandling,
       Graph,
@@ -64,7 +65,9 @@ defmodule EhOsContract do
       Testing,
       EffectJob,
       TimerJob,
-      Trace
+      Trace,
+      Vault,
+      Vault.Local
     ]
 
   # Read from `mix.exs` at compile time rather than through
@@ -103,6 +106,9 @@ defmodule EhOsContract do
      handlers, and `EhOsContract.Deployment.record!/1` writes what that binary
      declared and since when. Forgetting the first leaves an empty graph;
      forgetting the second leaves the report unable to tell history from drift.
+     Between the two, `EhOsContract.Vault.check!/1` refuses to go on when a v2
+     contract declares personal fields and the vault has no master key to seal
+     them with.
   2. `EhOsContract.Subscription.register!/2` writes a row for every consumer fed from
      the log, marks the read models whose declaration changed `stale`, and rebuilds
      those that define `reset/0` (v2 §12).

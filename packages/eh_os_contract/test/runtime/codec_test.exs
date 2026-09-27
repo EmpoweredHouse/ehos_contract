@@ -133,4 +133,136 @@ defmodule EhOsContract.CodecTest do
       assert_raise ArgumentError, fn -> Key.join(["a", nil]) end
     end
   end
+
+  describe "personal fields (v2 §14)" do
+    alias EhOsContract.{Erased, Personal}
+
+    @personal [
+      %{name: :member_id, type: :id, optional: false, subject: :member},
+      %{name: :name, type: :string, optional: false, personal: :member_id},
+      %{name: :note, type: :string, optional: true}
+    ]
+
+    @key {"member", "member-anna"}
+    @keys %{@key => {1, :binary.copy(<<7>>, 32)}}
+    @read %{{"member", "member-anna", 1} => :binary.copy(<<7>>, 32)}
+
+    defp sealed(type \\ "shredding_rig.joined") do
+      Codec.encode(
+        @personal,
+        %{member_id: "member-anna", name: "Anna Nowak", note: "n"},
+        %{},
+        Personal.sealer(@keys, type)
+      )
+    end
+
+    test "sealed with a key, opened with it" do
+      stored = sealed()
+      assert %{"$eh" => "enc1", "k" => 1} = stored["name"]
+      assert stored["note"] == "n"
+
+      assert Codec.subjects(@personal, stored, %{}, :stored) == [{:member, "member-anna"}]
+
+      assert Codec.decode(@personal, stored, %{},
+               open: Personal.opener(@read, "shredding_rig.joined")
+             ) ==
+               {:ok, %{member_id: "member-anna", name: "Anna Nowak", note: "n"}}
+    end
+
+    test "a ciphertext moved to another event type, field or subject does not open" do
+      stored = sealed("shredding_rig.joined")
+      open = Personal.opener(@read, "shredding_rig.renamed")
+      assert Codec.decode(@personal, stored, %{}, open: open) == {:error, [name: :type]}
+
+      moved = %{stored | "note" => stored["name"]}
+
+      notes =
+        Enum.map(
+          @personal,
+          &if(&1.name == :note, do: Map.put(&1, :personal, :member_id), else: &1)
+        )
+
+      open = Personal.opener(@read, "shredding_rig.joined")
+      assert {:error, [note: :type]} = Codec.decode(notes, moved, %{}, open: open)
+
+      bartek = Map.put(@read, {"member", "member-bartek", 1}, :binary.copy(<<7>>, 32))
+      other = %{stored | "member_id" => "member-bartek"}
+
+      assert Codec.decode(@personal, other, %{},
+               open: Personal.opener(bartek, "shredding_rig.joined")
+             ) ==
+               {:error, [name: :type]}
+    end
+
+    test "without its key, a sealed field is Erased; without open:, it does not fit" do
+      stored = sealed()
+
+      assert Codec.decode(@personal, stored, %{},
+               open: Personal.opener(%{}, "shredding_rig.joined")
+             ) ==
+               {:ok,
+                %{
+                  member_id: "member-anna",
+                  name: %Erased{subject: :member, id: "member-anna"},
+                  note: "n"
+                }}
+
+      assert Codec.decode(@personal, stored, %{}) == {:error, [name: :type]}
+    end
+
+    test "Erased fits a personal field and nothing else, and cannot be written" do
+      erased = %Erased{subject: :member, id: "member-anna"}
+
+      assert Codec.problems(@personal, %{member_id: "member-anna", name: erased}, %{}) == []
+
+      assert Codec.problems(@personal, %{member_id: "member-anna", name: "A", note: erased}, %{}) ==
+               [note: :type]
+
+      assert_raise ArgumentError, ~r/field name holds EhOsContract.Erased/, fn ->
+        Codec.encode(
+          @personal,
+          %{member_id: "member-anna", name: erased},
+          %{},
+          Personal.sealer(@keys, "t")
+        )
+      end
+    end
+
+    test "personal?/2 and subjects/4 look inside domain values, lists and aliases" do
+      values = %{
+        contact: %{
+          name: :contact,
+          type: nil,
+          fields: [
+            %{name: :member_id, type: :id, optional: false, subject: :member},
+            %{name: :phone, type: :string, optional: false, personal: :member_id}
+          ]
+        },
+        contact_ref: %{name: :contact_ref, type: :contact, fields: []}
+      }
+
+      fields = [
+        %{name: :contacts, type: {:list, :contact_ref}, optional: false},
+        %{name: :count, type: :integer, optional: false}
+      ]
+
+      assert Codec.personal?(fields, values)
+      refute Codec.personal?([%{name: :count, type: :integer, optional: false}], values)
+
+      data = %{
+        contacts: [
+          %{member_id: "member-anna", phone: "1"},
+          %{member_id: "member-bartek", phone: "2"},
+          %{member_id: "member-anna", phone: "3"}
+        ],
+        count: 3
+      }
+
+      assert Codec.subjects(fields, data, values, :value) ==
+               [{:member, "member-anna"}, {:member, "member-bartek"}]
+
+      # In the log's form only a sealed field needs a key.
+      assert Codec.subjects(fields, Codec.encode(fields, data, values), values, :stored) == []
+    end
+  end
 end

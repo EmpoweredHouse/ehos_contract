@@ -91,6 +91,21 @@ config :eh_os_contract, subscriptions: :manual
 
 and a test that needs them runs `EhOsContract.Testing.drain/1`.
 
+A contract that declares personal data (`personal:` on a field, v2 §14) has those fields
+encrypted in the log, each subject under its own data key, and the data keys wrapped by a
+master key. Give the master keys in `config/runtime.exs`, 32 bytes each in Base64, the
+current one first:
+
+```elixir
+config :eh_os_contract, EhOsContract.Vault,
+  keys: [{"2026-09", System.fetch_env!("EH_OS_CONTRACT_KEK")}]
+```
+
+Without one the host does not boot, rather than failing on the first command that carries
+personal data. To rotate, put the new key first and keep the old one after it, deploy, run
+`mix eh_os_contract.rewrap`, and then drop the old key. A KMS goes behind the
+`EhOsContract.Vault` behaviour: `config :eh_os_contract, vault: MyApp.KmsVault`.
+
 ## A contract
 
 ```elixir
