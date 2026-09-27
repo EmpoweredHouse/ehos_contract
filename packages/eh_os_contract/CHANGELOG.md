@@ -309,6 +309,11 @@ What changes otherwise is what a host has to do.
   `{:ok, :already_erased}`, and then nothing is appended; never an error. The engine asks no `Authorizer`: who may erase is the host's to decide.
   **No verdict moves**: the conformance readers never read the event, and a test pins
   `EhOsContract.Conformance.as_data/2` identical before and after.
+- **What Oban keeps of a failed effect carries no value.** `EhOsContract.EffectJob` hands Oban
+  `EhOsContract.EffectJob.Failure` in place of the effect's exception — the effect, the event's position and the
+  exception's module, with the stacktrace's arguments dropped — and an `{:error, reason}` described by its kind
+  only. Oban writes both into `oban_jobs.errors`, where a decoded event's personal data would outlive an erasure.
+  A host that wants the full failure logs it in its own effect.
 - **E8b: dispatch refuses personal data of an erased subject**, `{:error, :subject_erased}` (a new refusal),
   checked under the append lock before anything is sealed; it writes no `_commands` row. `EhOsContract.Plug`
   answers it `410` with `{"error": "subject_erased"}`.

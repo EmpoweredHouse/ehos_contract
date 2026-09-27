@@ -15,7 +15,9 @@ defmodule EhOsContract.EffectJob do
   `EhOsContract.record/3`, as its `:system` actor.
 
   `:ok` finishes the job; `{:error, reason}` or an exception is retried, three
-  attempts in all. A job whose effect no module implements any more, or whose effect
+  attempts in all. What Oban keeps of a failure names the effect, the event's position
+  and the module or kind of what failed, never a value (`EhOsContract.EffectJob.Failure`):
+  a value may be personal data, and `oban_jobs` is beyond an erasure's reach. A job whose effect no module implements any more, or whose effect
   no longer takes the event's type, is cancelled, not retried: that wiring is not
   coming back, and two more identical failures would say nothing a third time.
 
@@ -45,7 +47,9 @@ defmodule EhOsContract.EffectJob do
            Implementations.consumer(key),
          row = repo().get!(Event, event_id),
          true <- Map.has_key?(effect.callbacks, row.type) || {:dropped, row.type} do
-      Consumer.handle!(Implementations.taking(effect, row.type), Consumer.decode!(row), [])
+      guarded(key, row, fn ->
+        Consumer.handle!(Implementations.taking(effect, row.type), Consumer.decode!(row), [])
+      end)
     else
       {:dropped, type} ->
         {:cancel,
@@ -59,5 +63,61 @@ defmodule EhOsContract.EffectJob do
     end
   end
 
+  # Oban keeps a failed attempt in `oban_jobs.errors`: the exception, blamed — a
+  # function clause's arguments — and formatted with its stacktrace, or the reason an
+  # effect returned. Any of those can be the decoded event, personal data in the clear
+  # that an erasure never reaches (v2 §14, §17). So Oban is handed only what the engine
+  # records everywhere else: which effect, which event, and the module of what failed.
+  defp guarded(key, row, fun) do
+    case fun.() do
+      {:error, reason} ->
+        {:error,
+         "effect #{key} answered {:error, #{kind(reason)}} on the event at position " <>
+           "#{row.position}"}
+
+      other ->
+        other
+    end
+  rescue
+    exception ->
+      reraise EhOsContract.EffectJob.Failure,
+              [
+                message:
+                  "effect #{key} raised #{inspect(exception.__struct__)} on the event at " <>
+                    "position #{row.position}"
+              ],
+              without_arguments(__STACKTRACE__)
+  end
+
+  defp kind(reason) when is_atom(reason), do: inspect(reason)
+  defp kind(%module{}), do: "%#{inspect(module)}{}"
+
+  defp kind(reason) when is_tuple(reason) and tuple_size(reason) > 0 and is_atom(elem(reason, 0)),
+    do: "{#{inspect(elem(reason, 0))}, ...}"
+
+  defp kind(_reason), do: "a value"
+
+  # A stacktrace's first entry carries a function clause's arguments; the arity says
+  # enough.
+  defp without_arguments(stacktrace) do
+    Enum.map(stacktrace, fn
+      {module, function, args, location} when is_list(args) ->
+        {module, function, length(args), location}
+
+      entry ->
+        entry
+    end)
+  end
+
   defp repo, do: Application.fetch_env!(:eh_os_contract, :repo)
+end
+
+defmodule EhOsContract.EffectJob.Failure do
+  @moduledoc """
+  What an `EhOsContract.EffectJob` raises in place of its effect's exception: the
+  effect, the event's position and the exception's module, and no value, since Oban
+  keeps it in `oban_jobs.errors`. The stacktrace is the effect's, without arguments.
+  """
+
+  defexception [:message]
 end

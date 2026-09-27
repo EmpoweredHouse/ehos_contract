@@ -357,6 +357,9 @@ defmodule EhOsContract.ErasureTest do
 
     test "reads the same before and after an erasure" do
       two_members!()
+      # Settled first, so the one difference left to see is the erasure's: what is in
+      # flight — the greeting effect's jobs — is a number of the report too.
+      Testing.drain()
       before = report()
 
       {:ok, :erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)
