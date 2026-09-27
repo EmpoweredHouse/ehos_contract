@@ -56,6 +56,7 @@ defmodule EhOsContract.Domain.Dsl do
       :personal,
       :subject,
       :default,
+      :issued_by,
       optional: false,
       __spark_metadata__: nil
     ]
@@ -226,7 +227,11 @@ defmodule EhOsContract.Domain.Dsl do
       label: [type: :string, doc: "What the business calls it."],
       personal: [type: :atom, doc: "The field holding the identifier of whose data this is."],
       subject: [type: :atom, doc: "The subject this identifier field identifies."],
-      default: [type: :any, doc: "Only in a contract's state."]
+      default: [type: :any, doc: "Only in a contract's state."],
+      issued_by: [
+        type: :atom,
+        doc: "The external of this domain that gives this value (plan EL2)."
+      ]
     ]
   }
 

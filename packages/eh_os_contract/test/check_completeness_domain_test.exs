@@ -202,4 +202,48 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
     assert [{"orphan-context-mapping", message}] = rules
     assert message =~ "relation :conformist between :registry and :archive"
   end
+
+  test "an external a field is issued by is used, and so is the relation to it" do
+    compile(
+      """
+      defmodule EhOsContract.CheckCompletenessDomainTest.ReportsDomain do
+        use EhOsContract.Domain, name: :reporting, language: :pl
+
+        subdomain :supporting, "Wsparcie", type: :supporting
+        context :reports, "Raporty", subdomain: :supporting
+        actor :specialist, :human, "Specjalista"
+        external :p1, "P1", direction: :outbound
+        relation :conformist, upstream: :p1, downstream: :reports
+      end
+
+      defmodule EhOsContract.CheckCompletenessDomainTest.Reports do
+        use EhOsContract.Next.Contract,
+          domain: EhOsContract.CheckCompletenessDomainTest.ReportsDomain,
+          context: :reports
+
+        aggregate :report, "Zgłoszenie" do
+          identity :visit_id
+          command :note_number, "Zapisz numer", by: :specialist, emits: :numbered do
+            field :p1_report_id, :id, issued_by: :p1
+          end
+
+          event :numbered, "Zapisano numer" do
+            field :p1_report_id, :id, issued_by: :p1
+          end
+        end
+
+        process :report, "Zgłoszenie" do
+          correlate :visit_id
+        end
+      end
+      """,
+      "reporting.ex"
+    )
+
+    assert for(
+             f <- Completeness.findings([EhOsContract.CheckCompletenessDomainTest.Reports]),
+             f.rule in ["orphan-context-mapping", "orphan-external-system"],
+             do: f
+           ) == []
+  end
 end

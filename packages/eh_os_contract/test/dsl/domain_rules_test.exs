@@ -420,6 +420,36 @@ defmodule EhOsContract.DomainRulesTest do
     end
   end
 
+  describe "D8: a field's issuer is an external of this domain (plan EL2)" do
+    test "an entity's field issued by an unknown external is refused; control: a known one" do
+      message =
+        refused("IssuedWrong", """
+          context :settlement, "Rozliczenia", subdomain: :supporting
+          external :ksef, "KSeF", direction: :outbound
+
+          entity :invoice, "Faktura", context: :settlement, identified_by: :invoice_no do
+            field :invoice_no, :id, issued_by: :kse
+          end
+        """)
+
+      assert message =~
+               "D8: entity :invoice, field :invoice_no is issued_by: :kse, which is not an external " <>
+                 "of this domain; did you mean :ksef? (issued_wrong.ex:8)"
+
+      compiles("IssuedRight", """
+        context :settlement, "Rozliczenia", subdomain: :supporting
+        external :ksef, "KSeF", direction: :outbound
+
+        entity :invoice, "Faktura", context: :settlement, identified_by: :invoice_no do
+          field :invoice_no, :id, issued_by: :ksef
+        end
+      """)
+
+      [invoice] = Module.concat(__MODULE__, IssuedRight).__eh_os_contract_model__().entities
+      assert [%{name: :invoice_no, issued_by: :ksef}] = invoice.fields
+    end
+  end
+
   describe "D7: a context belongs to a subdomain the domain declares (plan EL2)" do
     test "a context naming an undeclared subdomain is refused, with the closest name" do
       message =

@@ -199,8 +199,8 @@ it work is not written yet.
 
 An external system of the domain is used by nothing.
 
-No actor is `backed_by:` it, no relation ends at it, no effect `calls:` it and no event
-`depends_on:` it.
+No actor is `backed_by:` it, no relation ends at it, no field is `issued_by:` it, no effect
+`calls:` it and no event `depends_on:` it.
 
 ## `bounded-context-without-content`
 
@@ -229,7 +229,7 @@ A relation between two contexts is crossed by no reference.
 
 No contract of one context consumes a contract of the other, and none names an entity the other
 owns (`{:id, entity}`), in either direction; for a relation to an external system, no contract
-of the context calls it, depends on it or acts through an actor it backs. The relation describes
+of the context calls it, depends on it, has a field it issues or acts through an actor it backs. The relation describes
 a dependency the contracts do not have.
 
 ## `cross-bounded-context-reference-without-mapping`

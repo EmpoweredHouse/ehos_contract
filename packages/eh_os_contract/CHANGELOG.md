@@ -127,6 +127,10 @@ What changes otherwise is what a host has to do.
   compile (D1). `orphan-external-system` counts a relation's end as a use, and `orphan-context-mapping` counts a
   relation to an external as crossed when a contract of its context calls it, depends on it or acts through an
   actor it backs.
+- **EL2: `issued_by:` on a field**, the domain external that gives its value (a number P1 or KSeF assigns):
+  `field :p1_report_id, :id, issued_by: :medical_event_registry`, with an entity reference too. An unknown
+  external fails the compile (X4 in a contract, D8 in a domain). `view --details` shows it; `check` counts it as
+  a use of the external. A field without it keeps its digest.
 - **EL2: `subdomain-without-bounded-context`**, ESDM's warning for a subdomain no context names; `view`
   shows each context's subdomain and its kind.
 - **EL1: `EhOsContract.Domain.vocabulary/0`**, the domain DSL's words by entity path, as

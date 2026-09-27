@@ -168,9 +168,12 @@ defmodule EhOsContract.View do
   defp fields(fields), do: for(f <- fields, do: "#{f.name}: #{type(f)}")
 
   defp type(%{refers_to: entity} = field) when entity != nil,
-    do: "#{inspect(field.type)} of #{entity}#{optional(field)}"
+    do: "#{inspect(field.type)} of #{entity}#{issued(field)}#{optional(field)}"
 
-  defp type(field), do: "#{inspect(field.type)}#{optional(field)}"
+  defp type(field), do: "#{inspect(field.type)}#{issued(field)}#{optional(field)}"
+
+  defp issued(%{issued_by: external}), do: ", issued by #{external}"
+  defp issued(_field), do: ""
 
   defp optional(%{optional: true}), do: " (optional)"
   defp optional(_field), do: ""

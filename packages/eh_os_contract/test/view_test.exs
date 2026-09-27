@@ -43,7 +43,9 @@ defmodule EhOsContract.ViewTest do
             field :amount, :integer
           end
 
-          event :noted, "Zanotowano", recorded_by: :reception
+          event :noted, "Zanotowano", recorded_by: :reception do
+            field :sms_id, :id, issued_by: :sms
+          end
         end
 
         policy :thank, "Podziękuj", handles: :paid, issues: :pay
@@ -114,7 +116,8 @@ defmodule EhOsContract.ViewTest do
                       │     visit_id: :id
                       │     amount: :integer
                       └─ event noted  ← recorded by reception
-                            visit_id: :id\
+                            visit_id: :id
+                            sms_id: :id, issued by sms\
              """
   end
 

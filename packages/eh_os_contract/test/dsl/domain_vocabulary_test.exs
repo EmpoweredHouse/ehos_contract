@@ -10,7 +10,8 @@ defmodule EhOsContract.DomainVocabularyTest do
 
   use ExUnit.Case, async: true
 
-  @field [:name, :type, :optional, :label, :personal, :subject, :default]
+  # Plan EL2: `issued_by`, the external that gives a value.
+  @field [:name, :type, :optional, :label, :personal, :subject, :default, :issued_by]
 
   test "the words did not change without this test changing with them" do
     assert EhOsContract.Domain.vocabulary() == %{

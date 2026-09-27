@@ -148,6 +148,12 @@ scenario        description!   scope · actor
 > system**, under the same keys, as ESDM allows: `relation :conformist, upstream: :ksef, downstream: :settlement`.
 > The other end is then a context, a symmetric relation joins contexts only, and D1 refuses a name that is both a
 > context and an external.
+>
+> *Added 27 September 2026, plan EL2, a question the user added after EM.* **A field may say which external
+> gives its value:** `field :p1_report_id, :id, issued_by: :medical_event_registry`, in a contract (X4) and in a
+> domain's value or entity (D8). It composes with an entity reference, `field :invoice_number, {:id, :invoice},
+> issued_by: :ksef`, which is why it is an option and not `{:id, :ksef}`. ESDM has no such field. An external
+> identifier that is personal data (a PESEL, a patient's number at a payer) is still never an `:id` (§14).
 
 - **Identity is injected.** A unit's identity fields appear in its state, commands and events without being
   declared there; declaring one again is an error.

@@ -98,6 +98,7 @@ spark_locals_without_parens = [
   include: 2,
   invariant: 2,
   invariant: 3,
+  issued_by: 1,
   issues: 1,
   issues: 2,
   issues: 3,

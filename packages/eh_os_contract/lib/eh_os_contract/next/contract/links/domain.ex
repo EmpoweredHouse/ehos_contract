@@ -13,8 +13,8 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
   - **X3.** Every field type that is not built in is a value of the domain, inside
     a list as well; every `{:id, entity}` names an entity of the domain; every
     `subject:` is a subject of the domain.
-  - **X4.** An event's `depends_on` and an effect's `calls` name externals of the
-    domain.
+  - **X4.** An event's `depends_on`, an effect's `calls` and, since plan EL2, a field's
+    `issued_by` name externals of the domain.
   - **F7**, the part that needs the domain: a field F7 keeps from being personal
     is not of a domain value that holds personal data, at any depth.
   - **F5**, the part that needs the domain: a personal field is not of a type that
@@ -239,9 +239,17 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
         e.depends_on != nil,
         do: {e, "event #{inspect(e.name)}: depends_on", e.depends_on}
       ) ++
-        for effect <- d.effects,
-            x <- effect.calls,
-            do: {effect, "effect #{inspect(effect.name)}: calls", x}
+        for(
+          effect <- d.effects,
+          x <- effect.calls,
+          do: {effect, "effect #{inspect(effect.name)}: calls", x}
+        ) ++
+        for {where, fields, _injected, _kind} <- Rules.Fields.structs(d),
+            field <- fields,
+            # A query's parameter and a service's argument take no `issued_by:`.
+            issuer = Map.get(field, :issued_by),
+            issuer != nil,
+            do: {field, "#{where}, field #{inspect(field.name)}: issued_by", issuer}
 
     for {declaration, where, name} <- named, name not in externals do
       {"X4: #{where} #{inspect(name)} is not an external of #{inspect(domain.module)}; " <>

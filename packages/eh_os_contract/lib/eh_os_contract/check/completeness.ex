@@ -264,6 +264,8 @@ defmodule EhOsContract.Check.Completeness do
       MapSet.new(
         Enum.map(model.actors, & &1.backed_by) ++
           Enum.flat_map(model.relations, &Domain.Build.endpoints/1) ++
+          issuers(model.values ++ model.entities) ++
+          Enum.flat_map(contracts, &issuers(&1.model)) ++
           for(
             %{model: m} <- contracts,
             external <-
@@ -277,7 +279,7 @@ defmodule EhOsContract.Check.Completeness do
       Finding.new(
         "orphan-external-system",
         "external #{inspect(external.name)} of #{inspect(model.module)} backs no actor, ends no " <>
-          "relation, and no effect `calls:` it and no event `depends_on:` it",
+          "relation and issues no field, and no effect `calls:` it and no event `depends_on:` it",
         at(declared.externals, external.name)
       )
     end
@@ -389,7 +391,8 @@ defmodule EhOsContract.Check.Completeness do
   end
 
   # The externals a contract reaches: what its effects call, what its events depend on,
-  # and what stands behind the actors its commands and recorded events are for.
+  # what issues its fields' values, and what stands behind the actors its commands and
+  # recorded events are for.
   defp externals_used(contract, domain) do
     backing = Map.new(domain.actors, &{&1.name, &1.backed_by})
 
@@ -399,8 +402,17 @@ defmodule EhOsContract.Check.Completeness do
 
     Enum.flat_map(contract.effects, &List.wrap(&1.calls)) ++
       Enum.flat_map(contract.events, &List.wrap(&1.depends_on)) ++
+      issuers(contract) ++
       for(actor <- actors, backed = Map.get(backing, actor), do: backed)
   end
+
+  # Every external a field of the model says issues its value (plan EL2), at any depth.
+  defp issuers(%{issued_by: external} = map) when is_atom(external) and external != nil,
+    do: [external | map |> Map.delete(:issued_by) |> issuers()]
+
+  defp issuers(%{} = map), do: map |> Map.values() |> Enum.flat_map(&issuers/1)
+  defp issuers(list) when is_list(list), do: Enum.flat_map(list, &issuers/1)
+  defp issuers(_other), do: []
 
   # A consumed contract outside the modules checked is looked up by name, as L3 does.
   defp context_of(module) do

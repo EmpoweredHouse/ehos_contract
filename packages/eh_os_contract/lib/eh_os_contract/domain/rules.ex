@@ -6,6 +6,8 @@ defmodule EhOsContract.Domain.Rules do
   other end then a context; **D1** refuses a name that is both a context and an
   external.
 
+  **D8** (plan EL2): a field's `issued_by:` names an external of this domain.
+
   **D7** (plan EL2): a context's `subdomain:` names a subdomain the domain declares,
   `subdomain :visits, "Wizyty", type: :core`; the kind is the subdomain's.
 
@@ -57,7 +59,7 @@ defmodule EhOsContract.Domain.Rules do
     DslRules.result(dsl, [:domain], Enum.flat_map(rules(), & &1.(entities, domain)))
   end
 
-  defp rules, do: [&d1/2, &d2/2, &d3/2, &d4/2, &d5/2, &d6/2, &d7/2]
+  defp rules, do: [&d1/2, &d2/2, &d3/2, &d4/2, &d5/2, &d6/2, &d7/2, &d8/2]
 
   # --- D1: names are unique per kind ---------------------------------------------
 
@@ -634,6 +636,22 @@ defmodule EhOsContract.Domain.Rules do
       {"D7: context #{inspect(context.name)} belongs to subdomain #{inspect(context.subdomain)}, " <>
          "which this domain does not declare; " <> suggest(context.subdomain, subdomains),
        context}
+    end
+  end
+
+  # --- D8: a field's issuer is an external of this domain (plan EL2) ---------------
+
+  defp d8(entities, _domain) do
+    externals = for %External{name: name} <- entities, do: name
+
+    for %{__struct__: struct, fields: fields} = owner <- entities,
+        struct in [Value, Entity],
+        field <- fields,
+        field.issued_by != nil,
+        field.issued_by not in externals do
+      {"D8: #{describe(owner)}, field #{inspect(field.name)} is issued_by: " <>
+         "#{inspect(field.issued_by)}, which is not an external of this domain; " <>
+         suggest(field.issued_by, externals), field}
     end
   end
 
