@@ -142,6 +142,46 @@ defmodule EhOsContract.PagesTest do
              "[`account_opened` of DispatchRig.Ledger](../ledger/events/account_opened.md)"
   end
 
+  # The EL3 review: a timer named in `on` printed as an event received from another
+  # application, and a scenario that only sets a timer said "as declared".
+  test "a process manager's timer in `on`, and a scenario's timers and end" do
+    ledger = EhOsContract.Model.fetch(DispatchRig.Ledger)
+    [chase] = ledger.process_managers
+    on_timer = %{event: :review, issues: [:flag_account], sets: [], cancels: []}
+
+    scenario = %{
+      description: "an account opened sets the chase",
+      target: %{kind: :process_manager, name: :first_deposit_chase},
+      trigger: %{kind: :on, name: :account_opened, data: %{}},
+      given: [],
+      expect: [],
+      issues: [],
+      rejected: nil,
+      sets: [:first_deposit_due],
+      cancels: [],
+      ended: true,
+      actor: nil,
+      scope: nil
+    }
+
+    ledger = %{
+      ledger
+      | process_managers: [%{chase | on: chase.on ++ [on_timer]}],
+        scenarios: [scenario]
+    }
+
+    page =
+      Pages.render(DispatchRig.Domain, [ledger])[
+        "ledger/ledger/process_managers/first_deposit_chase.md"
+      ]
+
+    assert page =~ "- timer `review` → [`flag_account`](../commands/flag_account.md)"
+    refute page =~ "(received)"
+
+    assert page =~
+             "- an account opened sets the chase\n\n  on `account_opened`; sets `first_deposit_due`, ends the run"
+  end
+
   test "two contracts of one context that would share a directory are refused" do
     till = EhOsContract.Model.fetch(ValueRig.Till)
     twin = %{till | module: Module.concat([Other, Till])}

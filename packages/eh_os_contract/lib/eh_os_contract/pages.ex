@@ -647,8 +647,9 @@ defmodule EhOsContract.Pages do
     [
       "",
       "## Scenarios",
+      # The description, then what happens, as two paragraphs of one item.
       for s <- scenarios do
-        ["", "- #{s.description}", "  " <> scenario_line(model, s)]
+        ["", "- #{s.description}", "", "  " <> scenario_line(model, s)]
       end
     ]
   end
@@ -657,14 +658,22 @@ defmodule EhOsContract.Pages do
     given = Enum.map(s.given, &code(&1.event))
     trigger = "#{s.trigger.kind} #{code(s.trigger.name)}"
 
+    # What a process manager's scenario says of its timers and its end, too.
     outcome =
-      cond do
-        s.rejected -> "rejected on #{code(s.rejected)}"
-        s.expect != [] -> "expects #{Enum.map_join(s.expect, ", ", &code(&1.event))}"
-        s.issues != [] -> "issues #{Enum.map_join(s.issues, ", ", &code(&1.command))}"
-        Map.get(s, :answers) -> "answers #{length(List.wrap(s.answers))} row(s)"
-        true -> "as declared"
-      end
+      [
+        if(s.rejected, do: "rejected on #{code(s.rejected)}"),
+        if(s.expect != [], do: "expects #{Enum.map_join(s.expect, ", ", &code(&1.event))}"),
+        if(s.issues != [], do: "issues #{Enum.map_join(s.issues, ", ", &code(&1.command))}"),
+        if(Map.get(s, :sets, []) != [], do: "sets #{Enum.map_join(s.sets, ", ", &code/1)}"),
+        if(Map.get(s, :cancels, []) != [],
+          do: "cancels #{Enum.map_join(s.cancels, ", ", &code/1)}"
+        ),
+        if(Map.get(s, :ended), do: "ends the run"),
+        if(Map.has_key?(s, :answers), do: "answers #{length(List.wrap(s.answers))} row(s)")
+      ]
+      |> Enum.reject(&is_nil/1)
+      |> Enum.join(", ")
+      |> blank("as declared")
 
     given = if given == [], do: "", else: "given #{Enum.join(given, ", ")}; "
     "#{given}#{trigger}; #{outcome}"
@@ -798,7 +807,13 @@ defmodule EhOsContract.Pages do
             t <- List.wrap(Map.get(r, key)),
             do: "#{word} timer #{code(t)}"
 
-      bullet([event_link(site, model, r.event), " → " | joined(issues ++ timers)])
+      # `on` may name one of the manager's own timers, which fires, rather than an event.
+      trigger =
+        if Enum.any?(pm.timers, &(&1.name == r.event)),
+          do: "timer #{code(r.event)}",
+          else: event_link(site, model, r.event)
+
+      bullet([trigger, " → " | joined(issues ++ timers)])
     end
 
     [
