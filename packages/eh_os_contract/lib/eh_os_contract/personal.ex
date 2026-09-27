@@ -179,6 +179,13 @@ defmodule EhOsContract.Personal do
   host's to decide: the engine asks no `EhOsContract.Authorizer` (the user's decision
   of 27 September 2026).
 
+  It reaches the read models of the configured applications,
+  `config :eh_os_contract, applications:`, as the registry and the subscriptions do:
+  a contract dispatched from outside them has read models `erase/3` does not know.
+  A read model fed after the transaction that is moved past the erasure by
+  `mix eh_os_contract.subscriptions --skip` keeps its copy; `--reset` rebuilds it,
+  and the replay forgets. Calling `erase/3` again appends nothing.
+
   Raises when no domain of the host's contracts declares `subject`.
   """
   @spec erase(atom(), String.t(), keyword() | map()) :: :ok

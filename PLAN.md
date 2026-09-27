@@ -1810,6 +1810,23 @@ idempotencji `erase/3` pada po teście.
 6. Pomocniki `join/3` w teście kolidowały z importowanym `Ecto.Query.join/3` (błąd kompilacji testu) — nazwy
    `join_member/3`, `rename_member/3`.
 
+**Przegląd przed PR E8b (27 września)** — dwa przeglądy równolegle na `dsl-v2/e8a-encryption...dsl-v2/e8b-erasure`:
+`code-review high` (9 uwag) i `engineering:code-review` (8 uwag); po połączeniu 13. **Poprawione** (`6abb069`..`92f2d88`,
+testy sprawdzone wstecz, poza refaktorem): polityka albo process manager z odmową `:subject_erased` wywracał
+dispatch albo zatrzymywał subskrypcję dla wszystkich — teraz to odpowiedź, jak odrzucenie (oba przeglądy);
+`prepare/2` pakował przez `Vault` klucz dla usuniętej osoby (oba); stare `subject_erased` typu, którego żadna domena
+już nie deklaruje, wywracało przebudowę (oba); nieimplementowany read model w transakcji blokował każde `erase/3`;
+`erase/3` z dwoma odczytami zegara, dekodowaniem własnego wiersza, zapytaniami bez konsumentów i opcją
+`correlation_id:` rysującą fałszywą krawędź w grafie (opcja usunięta); podwójne przejście po polach osobowych w
+`Codec`. **Dokumentacja**: `forget/2` biegnie pod blokadą dopisu (indeks na identyfikatorze podmiotu); `erase/3`
+sięga read modeli skonfigurowanych aplikacji (uwaga obu przeglądów — kontrakt spoza `applications:` jest też poza
+rejestrem, raportem i subskrypcjami, więc `erase/3` nie ma jak go znaleźć); `--skip` na usunięciu zostawia kopię,
+`--reset` ją zabiera. **Pominięte:** `oban_jobs.errors` może trzymać zdekodowane zdarzenie z wyjątku efektu, do
+czasu przycięcia przez Obana — kod sprzed E8, poza zakresem, do osobnej pracy. **Do użytkownika:** `erase/3` zwraca
+`:ok` także dla identyfikatora, którego nie było (literówka w wielkości liter „usuwa” nieistniejącą osobę i blokuje
+ten identyfikator); tak brzmi decyzja z 27 września — zmiana (np. liczba skasowanych kluczy) byłaby nowym kształtem.
+Po przeglądzie: silnik 959 → 963, `check` bez delty.
+
 ### Losy fikstur
 
 | Fikstura | Los |

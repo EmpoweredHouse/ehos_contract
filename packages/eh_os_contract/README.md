@@ -117,7 +117,9 @@ subject's personal fields read back as `%EhOsContract.Erased{}` from then on, ev
 stays, and a command that would write their personal data again is refused with
 `{:error, :subject_erased}`. Who may erase is yours to decide: the engine asks no authorizer.
 A read model that projects personal data keeps a copy in your tables, so it defines
-`forget(subject_type, subject_id)`; without it the host does not boot.
+`forget(subject_type, subject_id)`; without it the host does not boot. One delivered in the
+transaction forgets inside the erasure, under the lock every append takes, so index the
+column its `forget/2` looks the subject up by.
 
 Erasing a subject deletes its data key from the database, not from your backups: a
 backup, a WAL archive or a replica still holds the key, wrapped, and anyone who also
