@@ -285,10 +285,27 @@ defmodule EhOsContract.Personal do
   @doc """
   Rewraps, with the vault's current master key, every data key another master key
   wraps: `mix eh_os_contract.rewrap`. Returns how many it rewrapped. Each batch of
-  `batch` keys is one transaction.
+  `batch` keys is one transaction, and skips keys another run holds; when any key
+  is left on another master key at the end, it raises, so "done" means none is.
   """
   @spec rewrap!(module(), pos_integer()) :: non_neg_integer()
-  def rewrap!(repo, batch \\ 500), do: rewrap!(repo, batch, Vault.current(), 0)
+  def rewrap!(repo, batch \\ 500) do
+    current = Vault.current()
+    count = rewrap!(repo, batch, current, 0)
+
+    # A batch skips the keys another run holds, so an empty batch does not mean that
+    # none is left; the old master key may only go when none is.
+    case repo.one(from(k in @keys, where: k.kek_id != ^current, select: count())) do
+      0 ->
+        count
+
+      left ->
+        raise ArgumentError,
+              "#{count} data keys rewrapped, and #{left} are still wrapped by another master key " <>
+                "than #{inspect(current)} — another rewrap holds them, or wrote them meanwhile; " <>
+                "run it again before the old master key leaves the vault"
+    end
+  end
 
   defp rewrap!(repo, batch, current, done) do
     {:ok, count} =
