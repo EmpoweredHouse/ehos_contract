@@ -40,9 +40,12 @@ defmodule EhOsContract.Consumer do
   """
   @spec handle!(Implementations.inline(), struct(), [String.t()]) :: :ok | {:error, term()}
   # An erasure: the read model forgets the subject, if it holds that type's data at
-  # all (v2 §14).
+  # all (v2 §14). One nobody implemented has written nothing to forget, and must not
+  # stop every erasure of the type.
   def handle!(%{kind: :read_model, callback: :forget} = consumer, %Erased{} = erased, _chain) do
-    if MapSet.member?(consumer.forgets, erased.subject), do: forget!(consumer, erased), else: :ok
+    if consumer.module != nil and MapSet.member?(consumer.forgets, erased.subject),
+      do: forget!(consumer, erased),
+      else: :ok
   end
 
   def handle!(%{kind: :read_model} = consumer, event, _chain) do

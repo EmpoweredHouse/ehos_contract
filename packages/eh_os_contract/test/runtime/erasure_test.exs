@@ -188,6 +188,16 @@ defmodule EhOsContract.ErasureTest do
       assert Consumer.handle!(members, erased, []) == :ok
     end
 
+    test "a read model nobody implemented has nothing to forget, and stops no erasure" do
+      members =
+        Implementations.subscribed()
+        |> Enum.find(&(&1.key == "ShreddingRig.Members:read_model:members"))
+        |> Implementations.taking(Personal.erased_type())
+
+      erased = %Erased{subject: :member, id: "member-anna"}
+      assert Consumer.handle!(%{members | module: nil}, erased, []) == :ok
+    end
+
     test "control: a read model with no personal data takes no erasure" do
       balances =
         Enum.find(
