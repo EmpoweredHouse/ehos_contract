@@ -67,7 +67,7 @@ defmodule Mix.Tasks.EhOsContract.Rules do
   end
 
   defp entry(rule) do
-    level = Map.fetch!(%{error: "error", warn: "warning", info: "notice"}, rule.level)
+    level = Catalog.level_word(rule.level)
     reads = Map.fetch!(%{v1: "v1 contracts", v2: "v2 contracts", both: "v1 and v2 contracts"}, rule.reads)
     esdm = if rule.esdm, do: " · ESDM: `#{rule.esdm}`", else: ""
 

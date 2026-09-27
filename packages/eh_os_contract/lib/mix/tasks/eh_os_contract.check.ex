@@ -495,7 +495,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
 
       Jason.OrderedObject.new(
         rule: finding.rule,
-        level: Map.fetch!(%{error: "error", warn: "warning", info: "notice"}, finding.level),
+        level: Catalog.level_word(finding.level),
         message: finding.message,
         file: file,
         line: line,
@@ -506,7 +506,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
   end
 
   defp documentation(%Finding{rule: rule}) do
-    if Enum.any?(Catalog.rules(), &(&1.id == rule)), do: Catalog.url(rule)
+    if Catalog.known?(rule), do: Catalog.url(rule)
   end
 
   @doc """

@@ -443,6 +443,16 @@ defmodule EhOsContract.Check.Catalog do
     end
   end
 
+  @doc "Whether the catalog has a rule named `id`."
+  @spec known?(String.t()) :: boolean()
+  def known?(id), do: Map.has_key?(@by_id, id)
+
+  @doc "The word a level is printed as in `docs/rules.md` and in `--format json`."
+  @spec level_word(:error | :warn | :info) :: String.t()
+  def level_word(:error), do: "error"
+  def level_word(:warn), do: "warning"
+  def level_word(:info), do: "notice"
+
   @doc "Where a rule is documented: its entry in `docs/rules.md`, as the package's docs publish it."
   @spec url(String.t()) :: String.t()
   def url(id), do: "https://hexdocs.pm/eh_os_contract/rules.html##{fetch!(id).id}"

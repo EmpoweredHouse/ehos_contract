@@ -58,7 +58,8 @@ defmodule EhOsContract.Check.Contracts do
   end
 
   # What each reaction of a contract reacts to and what it issues: a policy, and a
-  # process manager's start, reactions and timers' firings.
+  # process manager's start and its reactions to events. A timer's firing has no
+  # stage, so it cannot go back into one.
   defp reactions(model) do
     for(p <- model.policies, e <- List.wrap(p.handles), do: {:policy, p.name, e, p.issues}) ++
       Enum.flat_map(model.process_managers, fn pm ->

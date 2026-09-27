@@ -132,4 +132,72 @@ defmodule EhOsContract.CheckCompletenessContractTest do
     assert message =~
              "boundary :slot of #{inspect(@slots)} consults :room_closed with `where:` alone"
   end
+
+  test "an event read only by ends_on, a promise, a publish or a sibling has a consumer" do
+    compile(
+      """
+      defmodule EhOsContract.CheckCompletenessContractTest.Intake do
+        use EhOsContract.Next.Contract, domain: Clinic, context: :settlement
+
+        aggregate :referral, "Skierowanie" do
+          identity :visit_id
+
+          command :receive, "Przyjmij", by: :reception, emits: :received
+          command :withdraw, "Wycofaj", by: :reception, emits: :withdrawn
+          command :accept, "Zaakceptuj", by: :reception, emits: :accepted
+          command :forward, "Przekaż", by: :reception, emits: :forwarded
+          command :sign, "Podpisz", by: :reception, emits: :signed
+
+          event :received, "Przyjęto"
+          event :withdrawn, "Wycofano"
+          event :accepted, "Zaakceptowano"
+          event :forwarded, "Przekazano"
+          event :signed, "Podpisano"
+        end
+
+        process_manager :chase, "Ponaglenie" do
+          correlate :visit_id
+          starts_on :received
+          ends_on :withdrawn
+        end
+
+        publish :forwarded, as: "clinic.referral.forwarded.v1", from: :forwarded, fields: [:visit_id]
+
+        process :referral, "Skierowanie" do
+          correlate :visit_id
+
+          promise :accepted_in_time do
+            from :received
+            eventually :accepted
+            within {2, :day}
+          end
+        end
+      end
+
+      defmodule EhOsContract.CheckCompletenessContractTest.Archive do
+        use EhOsContract.Next.Contract, domain: Clinic, context: :settlement
+
+        consumes EhOsContract.CheckCompletenessContractTest.Intake, :signed
+
+        process :archive, "Archiwum" do
+          correlate :visit_id
+        end
+      end
+      """,
+      "intake.ex"
+    )
+
+    intake = EhOsContract.CheckCompletenessContractTest.Intake
+    archive = EhOsContract.CheckCompletenessContractTest.Archive
+
+    unread = fn contracts ->
+      for f <- Completeness.findings(contracts), f.rule == "event-without-consumer", do: f.message
+    end
+
+    assert unread.([intake, archive]) == []
+
+    # Control: the sibling is what reads :signed, so without it the event is unread.
+    assert [message] = unread.([intake])
+    assert message =~ "event :signed of #{inspect(intake)} has no consumer"
+  end
 end
