@@ -709,6 +709,40 @@ Rozstrzygnięte przez użytkownika 27 września przed budową EM2:
   deklaracji i rzuca przy niezgodności, jak dispatch przy niezadeklarowanym zdarzeniu. *Odrzucone:* samo
   sprawdzenie przy kompilacji, a decyzje wołają implementację wprost (deklaracja typów byłaby tylko opisem).
 
+### EM2 — co wyszło (27 września)
+
+Na `dsl-v2/e9-em2-entities` (od EM1), niewypchnięte. Dwa commity budowy — `e1f41d7` (encje), `febdd61` (serwisy
+domenowe) — i pięć z przeglądu (`e414c4f`..`aa415a1`). Silnik 995 → 1021 testów; `check` bez zmian (sandbox
+0 / 5 / 19, silnik 0 / 18 / 17).
+
+Mechanika, rozstrzygnięta przez asystenta:
+- **`{:id, encja}` normalizowane w budowie modelu** do `type: :id` z `refers_to:` — klucz tylko takich pól, więc
+  żaden digest się nie rusza, a Codec, tagi i typespeki widzą zwykłe `:id`. Reguły L2 czytają deklaracje przed
+  budową, więc tam `{:id, _}` obsługuje jeden strażnik, `Domain.Rules.is_id/1`.
+- **Nowy rodzaj nie rusza wersji tego, kto go nie deklaruje**: pusta kolekcja `entities` w domenie i
+  `domain_services` w kontrakcie nie wchodzi do skrótu. Sprawdzone na prawdziwych danych — `VisitSettlement` liczy
+  się dalej na `2ae1d0074cbc`, jak zapisała baza dev 26 września — i przypięte testem na `DispatchRig.Ledger`.
+- **Moduł `C.DomainServices.<Nazwa>` jest naraz behaviourem implementacji i modułem wywołań**; rozwiązanie
+  implementacji i wartości domeny trzymane w `:persistent_term` na serwis, jak indeks implementacji.
+- Reguły: D6 (encja), X3 (odwołania do encji, typ wyniku), N1/N2 (nazwy funkcji; `behaviour_info/1`,
+  `module_info/0,1`, `__info__/1` zajęte), F1/F2 (argumenty i wynik), I2 z podpowiedzią nazw argumentów, I7.
+
+**Przegląd** (dwa równolegle na `dsl-v2/e9-em1-dcb..HEAD`):
+- **Poprawione, z testem i próbą odwrotną:** X3 nie sprawdzał `returns {:id, …}`, a D6 aliasu
+  `value :ref, {:id, :nope}` (`e414c4f`); F5 odrzucał identyfikator encji jako identyfikator podmiotu (`d0de5c2`);
+  pola encji bez sprawdzenia powtórzeń, `subject:` i danych osobowych wewnątrz wartości (`4b354c7`); N2 odrzucał
+  funkcję `evolve` z powodem jednostki i przepuszczał `behaviour_info/1` i spółkę (`5e78363`); `call/4` przy złej
+  liczbie argumentów albo nieznanym serwisie padał mylącym błędem (`aa415a1`).
+- **Poprawione bez testu zachowania** (`aa415a1`): koszt każdego wywołania (indeks implementacji pytał kontroler
+  aplikacji i kopiował listy modułów), parowanie specyfikacji po nazwie zamiast po pozycji, eksport
+  `EhOsContract.DomainService` w `boundary`.
+- **Do użytkownika:** funkcja serwisu nie może zwrócić `nil` (np. wyszukiwanie, które nic nie znajduje) — to
+  kształt DSL-a, np. `returns :integer, optional: true`.
+- **Bez zmiany:** naturalny identyfikator jako identyfikator encji jest tak samo jawny jak zwykłe `:id` — ADR już
+  mówi, że PESEL nigdy nie jest `:id`.
+- **Luka spoza EM2:** słownik DSL-a domeny nie ma testu przypinającego, jaki ma kontrakt
+  (`contract_vocabulary_test`), więc `entity` weszło bez zmiany żadnego przypięcia.
+
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
 Po lekturze architektury EHOS-a (`~/Projects/ai/eh-os`, `docs/ADR.md` i `docs/ARCHITECTURE.md`; research w
