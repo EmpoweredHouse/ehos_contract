@@ -115,6 +115,66 @@ defmodule EhOsContract.Check.Catalog do
       """
     },
     %{
+      id: "orphan-actor",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/orphan-actor",
+      summary: "An actor of the domain is named by no contract.",
+      text: """
+      No command's or query's `by:`, no event's `recorded_by:` and no process's `accountable` names
+      it, so no contract gives it anything to do. A scenario's `actor` does not count: it has to be
+      in the command's `by:` already (S7). Either the actor is left over, or the contract that gives
+      it work is not written yet.
+      """
+    },
+    %{
+      id: "orphan-external-system",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/orphan-external-system",
+      summary: "An external system of the domain is used by nothing.",
+      text: """
+      No actor is `backed_by:` it, no effect `calls:` it and no event `depends_on:` it. ESDM also
+      counts an end of a context mapping, which a relation here cannot name yet.
+      """
+    },
+    %{
+      id: "bounded-context-without-content",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/bounded-context-without-content",
+      summary: "A context of the domain is the `context:` of no contract.",
+      text: """
+      ESDM counts the aggregates, boundaries and read models in a context; here those live in
+      contracts, so a context is empty when no contract belongs to it. Values and entities it owns do
+      not make it less empty: nothing is decided, recorded or read there.
+      """
+    },
+    %{
+      id: "orphan-context-mapping",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/orphan-context-mapping",
+      summary: "A relation between two contexts is crossed by no reference.",
+      text: """
+      No contract of one context consumes a contract of the other, and none names an entity the other
+      owns (`{:id, entity}`), in either direction. The relation describes a dependency the contracts
+      do not have.
+      """
+    },
+    %{
+      id: "cross-bounded-context-reference-without-mapping",
+      level: :warn,
+      reads: :v2,
+      esdm: "esdm/modeling/cross-bounded-context-reference-without-mapping",
+      summary: "A contract reaches into another context that no relation connects to its own.",
+      text: """
+      It consumes a contract of another context, or names an entity another context owns, and the
+      domain declares no `relation` between the two. Which way the dependency runs — who is upstream,
+      who conforms, who translates — is then written nowhere. One finding per reference.
+      """
+    },
+    %{
       id: "event-declared-twice",
       level: :error,
       reads: :v1,

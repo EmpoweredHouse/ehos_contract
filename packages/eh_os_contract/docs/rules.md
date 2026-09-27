@@ -81,6 +81,56 @@ A contract is implemented in part.
 The unit, consumer, query or domain service the finding names has no implementation, so
 dispatch refuses to run it. Add a module with `use <Contract>, <kind>: <name>`.
 
+## `orphan-actor`
+
+**warning** · reads v2 contracts · ESDM: `esdm/modeling/orphan-actor`
+
+An actor of the domain is named by no contract.
+
+No command's or query's `by:`, no event's `recorded_by:` and no process's `accountable` names
+it, so no contract gives it anything to do. A scenario's `actor` does not count: it has to be
+in the command's `by:` already (S7). Either the actor is left over, or the contract that gives
+it work is not written yet.
+
+## `orphan-external-system`
+
+**warning** · reads v2 contracts · ESDM: `esdm/modeling/orphan-external-system`
+
+An external system of the domain is used by nothing.
+
+No actor is `backed_by:` it, no effect `calls:` it and no event `depends_on:` it. ESDM also
+counts an end of a context mapping, which a relation here cannot name yet.
+
+## `bounded-context-without-content`
+
+**warning** · reads v2 contracts · ESDM: `esdm/modeling/bounded-context-without-content`
+
+A context of the domain is the `context:` of no contract.
+
+ESDM counts the aggregates, boundaries and read models in a context; here those live in
+contracts, so a context is empty when no contract belongs to it. Values and entities it owns do
+not make it less empty: nothing is decided, recorded or read there.
+
+## `orphan-context-mapping`
+
+**warning** · reads v2 contracts · ESDM: `esdm/modeling/orphan-context-mapping`
+
+A relation between two contexts is crossed by no reference.
+
+No contract of one context consumes a contract of the other, and none names an entity the other
+owns (`{:id, entity}`), in either direction. The relation describes a dependency the contracts
+do not have.
+
+## `cross-bounded-context-reference-without-mapping`
+
+**warning** · reads v2 contracts · ESDM: `esdm/modeling/cross-bounded-context-reference-without-mapping`
+
+A contract reaches into another context that no relation connects to its own.
+
+It consumes a contract of another context, or names an entity another context owns, and the
+domain declares no `relation` between the two. Which way the dependency runs — who is upstream,
+who conforms, who translates — is then written nowhere. One finding per reference.
+
 ## `event-declared-twice`
 
 **error** · reads v1 contracts

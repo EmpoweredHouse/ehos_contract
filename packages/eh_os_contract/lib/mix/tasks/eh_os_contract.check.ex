@@ -64,7 +64,13 @@ defmodule Mix.Tasks.EhOsContract.Check do
 
     # A v1 check says which rule it found and what; the rule's level is the catalog's.
     findings = for {rule, message} <- findings, do: Finding.new(rule, message)
-    report(EhOsContract.Check.v2_findings() ++ findings, opts)
+    v2 = EhOsContract.Registry.v2_contracts()
+
+    report(
+      EhOsContract.Check.v2_findings(v2) ++
+        EhOsContract.Check.Completeness.findings(v2) ++ findings,
+      opts
+    )
   end
 
   # **Nothing found is not the same as nothing wrong, and the report cannot tell

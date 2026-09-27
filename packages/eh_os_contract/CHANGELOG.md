@@ -89,6 +89,10 @@ What changes otherwise is what a host has to do.
   `rule`, `level`, `message`, `file`, `line` and `documentation`; `--warnings-as-errors` fails the task on a
   warning too. Nothing silences a rule. `no-contracts` now counts v2 contracts, so an application with only
   v2 contracts no longer hears that it has none.
+- **EL1: ESDM's completeness rules that read a whole domain**, warnings of `check`: `orphan-actor`,
+  `orphan-external-system`, `bounded-context-without-content` (a context no contract belongs to),
+  `orphan-context-mapping` and `cross-bounded-context-reference-without-mapping` — a reference being a
+  `consumes` of another context's contract or a field naming another context's entity.
 - **EM2: `domain_service` in a contract** (ESDM's domain service): pure functions no unit owns, each with
   typed `argument`s, a `returns` type and prose `rule`s. The contract generates `C.DomainServices.<Name>`, a
   behaviour for the implementation (`use C, domain_service: :name`, I2 asks for every function) and the module
