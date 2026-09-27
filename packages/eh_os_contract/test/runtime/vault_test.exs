@@ -94,6 +94,86 @@ defmodule EhOsContract.VaultTest do
     end
   end
 
+  describe "the append lock" do
+    # A vault that tells the test, on every call, whether the connection holds the
+    # append lock at that moment.
+    defmodule LockSpy do
+      @moduledoc false
+      @behaviour EhOsContract.Vault
+
+      @impl true
+      def wrap(key, context), do: spy(:wrap, fn -> Local.wrap(key, context) end)
+
+      @impl true
+      def unwrap(id, wrapped, context),
+        do: spy(:unwrap, fn -> Local.unwrap(id, wrapped, context) end)
+
+      @impl true
+      def current, do: Local.current()
+
+      @impl true
+      def check, do: Local.check()
+
+      defp spy(call, fun) do
+        %{rows: [[held]]} =
+          EhOsContract.TestRepo.query!(
+            "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND granted " <>
+              "AND pid = pg_backend_pid()"
+          )
+
+        send(self(), {:vault, call, held > 0})
+        fun.()
+      end
+    end
+
+    test "no vault call waits under it: keys are read and wrapped before it is taken" do
+      keys([{"kek-1", @kek}])
+      Application.put_env(:eh_os_contract, :vault, LockSpy)
+      on_exit(fn -> Application.delete_env(:eh_os_contract, :vault) end)
+
+      # Anna's key exists already, written the way dispatch writes it, without the lock
+      # that a dispatch in this sandboxed test would hold until the test ends.
+      key = :crypto.strong_rand_bytes(32)
+      {kek_id, wrapped} = Local.wrap(key, "eh_os_contract.subject_key|member|member-anna|1")
+
+      Repo.insert_all("eh_os_contract_subject_keys", [
+        %{
+          subject_type: "member",
+          subject_id: "member-anna",
+          key_version: 1,
+          kek_id: kek_id,
+          wrapped_key: wrapped
+        }
+      ])
+
+      {:ok, _} =
+        EhOsContract.dispatch(
+          Members,
+          %Join{
+            membership_id: "membership-anna",
+            member_id: "member-anna",
+            name: "Anna Nowak",
+            contacts: [%{member_id: "member-bartek", phone: "+48 600 300 400"}],
+            plan: :basic
+          },
+          actor: Actor.credential("u-clerk", ["shredding_rig.join"])
+        )
+
+      calls = collect_vault([])
+      assert {:unwrap, false} in calls
+      assert {:wrap, false} in calls
+      refute Enum.any?(calls, fn {_call, held} -> held end)
+    end
+  end
+
+  defp collect_vault(calls) do
+    receive do
+      {:vault, call, held} -> collect_vault([{call, held} | calls])
+    after
+      0 -> Enum.reverse(calls)
+    end
+  end
+
   describe "rotating the master key" do
     defp join!(membership, member) do
       {:ok, _} =

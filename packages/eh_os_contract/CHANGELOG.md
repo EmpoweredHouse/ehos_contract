@@ -275,14 +275,15 @@ What changes otherwise is what a host has to do.
 - **E8a: personal fields are encrypted in the log** (v2 §14). A field declared `personal:`, at any depth of a
   domain value, is stored as `{"$eh": "enc1", "k": 1, "d": "…"}`: its value JSON-encoded and sealed with
   AES-256-GCM under its subject's data key, bound to the event type, the field, the subject and the key
-  version. Each subject's key is created under the append lock the first time an event carries its data, and
-  stored in `eh_os_contract_subject_keys` wrapped by a master key of `EhOsContract.Vault`. Reading an event
+  version. Each subject's key is made the first time an event carries its data — read, made and wrapped before
+  the append lock, so no writer waits on the vault, and stored under it — in `eh_os_contract_subject_keys`,
+  wrapped by a master key of `EhOsContract.Vault`. Reading an event
   back — a decision's folded stream, a receipt, a consumer — opens its personal fields; a stream reads every
   key it needs in one query, and an event without personal fields reads none. **No verdict moves**: the
   conformance readers never read a payload's personal fields.
 - **E8a: `EhOsContract.Erased`** is what a personal field reads back as once its subject is erased — its key
-  gone, and the subject recorded in `eh_os_contract_erasures`; a key gone without that record raises instead,
-  `%EhOsContract.Erased{subject: :member, id: "member-anna"}`. The structs a contract generates, and the types of
+  gone, and the subject recorded in `eh_os_contract_erasures` — `%EhOsContract.Erased{subject: :member, id:
+  "member-anna"}`. A key gone without that record raises instead. The structs a contract generates, and the types of
   domain values, admit `EhOsContract.Erased.t()` on every personal field, and `EhOsContract.Codec.problems/3`
   accepts it there and nowhere else. Sealing it into the log is refused; out of the log — a query's rows over
   HTTP — it is written as `null`.

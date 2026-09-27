@@ -6,8 +6,10 @@ defmodule EhOsContract.Personal do
   **A key per subject.** A subject — a person whose data may be erased, `subject
   :patient` in the domain — gets a data key, 32 random bytes, the first time an
   event carries its personal data. The key is stored in
-  `eh_os_contract_subject_keys` only wrapped by `EhOsContract.Vault`, and it is
-  created under the append lock, so two dispatches never create two. Deleting a
+  `eh_os_contract_subject_keys` only wrapped by `EhOsContract.Vault`. It is made
+  and wrapped before the append lock and stored under it (`prepare/2`,
+  `for_writing/2`), so two dispatches never create two and no writer waits on the
+  vault. Deleting a
   subject's keys is what erases it: every personal field sealed with them reads
   back as `EhOsContract.Erased`.
 
@@ -45,14 +47,26 @@ defmodule EhOsContract.Personal do
     Enum.any?(model.events, &Codec.personal?(&1.fields, values))
   end
 
-  @doc """
-  The newest data key of each of `subjects`, creating the ones that do not exist.
-  Called under the append lock.
+  @typedoc """
+  What `prepare/2` read and wrapped before the append lock: the subjects' newest
+  keys, and a new key, already wrapped, for each subject that has none.
   """
-  @spec for_writing(module(), [subject()]) :: current_keys()
-  def for_writing(_repo, []), do: %{}
+  @type prepared :: %{
+          subjects: [subject()],
+          existing: current_keys(),
+          created: %{
+            {String.t(), String.t()} => {pos_integer(), binary(), Vault.kek_id(), binary()}
+          }
+        }
 
-  def for_writing(repo, subjects) do
+  @doc """
+  The first half of `for_writing/2`, before the append lock: reads and unwraps the
+  subjects' keys, and makes and wraps a key for each subject without one. Every
+  call to the vault — a KMS's network round trip — happens here, so no writer
+  waits on it.
+  """
+  @spec prepare(module(), [subject()]) :: prepared()
+  def prepare(repo, subjects) do
     existing =
       repo
       |> for_reading(subjects)
@@ -62,20 +76,27 @@ defmodule EhOsContract.Personal do
         {subject, {version, key}}
       end)
 
-    missing =
+    created =
       for {type, id} <- subjects,
           subject = {Atom.to_string(type), id},
           not Map.has_key?(existing, subject),
-          uniq: true,
-          do: subject
-
-    created =
-      Map.new(missing, fn {type, id} ->
+          into: %{} do
+        {type, id} = subject
         key = :crypto.strong_rand_bytes(32)
         {kek_id, wrapped} = Vault.wrap(key, context(type, id, 1))
-        {{type, id}, {1, key, kek_id, wrapped}}
-      end)
+        {subject, {1, key, kek_id, wrapped}}
+      end
 
+    %{subjects: subjects, existing: existing, created: created}
+  end
+
+  @doc """
+  The second half, under the append lock: stores the keys `prepare/2` made, and
+  returns the newest key of each subject. Creating them here is what keeps two
+  dispatches from creating two keys for one subject.
+  """
+  @spec for_writing(module(), prepared()) :: current_keys()
+  def for_writing(repo, %{existing: existing, created: created} = prepared) do
     rows =
       for {{type, id}, {version, _key, kek_id, wrapped}} <- created do
         %{
@@ -87,12 +108,14 @@ defmodule EhOsContract.Personal do
         }
       end
 
-    {inserted, _} = repo.insert_all(@keys, rows, on_conflict: :nothing)
+    {inserted, _} =
+      if rows == [], do: {0, nil}, else: repo.insert_all(@keys, rows, on_conflict: :nothing)
 
-    # Only a writer outside the append lock could have inserted one first; its key
-    # is the one to use, so read them back.
+    # Another dispatch created one between `prepare/2` and the lock; its key is the
+    # one its events are sealed with, so read them all again. Rare, and the only
+    # vault call under the lock.
     if inserted < length(rows) do
-      for_writing(repo, subjects)
+      for_writing(repo, %{prepare(repo, prepared.subjects) | created: %{}})
     else
       Map.merge(
         existing,

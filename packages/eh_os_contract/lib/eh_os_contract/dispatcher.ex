@@ -514,15 +514,16 @@ defmodule EhOsContract.Dispatcher do
   end
 
   defp commit(job, events, repo) do
+    # The subjects' keys are read and wrapped before the lock, where a vault's round
+    # trip holds up no other writer, and stored under it (v2 §14).
+    prepared = Personal.prepare(repo, subjects(job, events))
     :ok = Store.lock(repo)
 
     # Checked again under the lock: another transaction with the same key may have
     # committed while this one decided.
     with :new <- idempotent(repo, job) do
       command_id = Ecto.UUID.generate()
-      # Created under the lock, so two dispatches never create two keys for one
-      # subject (v2 §14).
-      keys = Personal.for_writing(repo, subjects(job, events))
+      keys = Personal.for_writing(repo, prepared)
       entries = Enum.map(events, &entry(job, &1, command_id, keys))
 
       case Store.append(repo, entries, {:stream, job.stream, job.version}) do
