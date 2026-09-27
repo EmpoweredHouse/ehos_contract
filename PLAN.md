@@ -115,6 +115,8 @@ gołe `git stash` (stos jest wspólny dla worktree).
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 27 września, na `87f9a4e`** (EL2 po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 54
+  testy, `check` 0 / 12 / 19; silnik 1101, `check` 0 / 50 / 20; web 32; auth 51.
 - **Lokalnie, 27 września, na `efda115`** (koniec budowy EL2): brama z `sandbox/` → **EXIT=0** — sandbox 54
   testy, `check` 0 / 12 / 19; silnik 1096, `check` 0 / 50 / 20; web 32; auth 51.
 - **Lokalnie, 27 września, na `7d46602`** (EL1 po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 54
@@ -1023,6 +1025,19 @@ Mechanika, rozstrzygnięta przez asystenta:
 Weryfikacja poza testami (`MIX_ENV=dev` w `sandbox/`): `view` pokazuje domenę Rehmedu z subdomenami; `glossary
 --language en` padało, bo atom `:en` nie istniał w maszynie, a sandbox nie ma angielskich tłumaczeń — poprawione
 (`efda115`), teraz „_No translation into en._”.
+
+**Przegląd EL2** (dwa równolegle na `dsl-v2/el-warnings..df06b36`):
+- **Poprawione, z testem i próbą odwrotną:** kolejność ograniczeń ruszała digest komendy (`0a51f81`); relacja z
+  systemem liczyła tylko część użyć, a `issuers/1` czytał dane scenariuszy (`1800fb3`); nazwy ograniczeń poza N1,
+  duplikat ograniczenia query przepuszczany, A7 zgłaszało duplikat dwa razy (`21a223e`); `view` z nieznaną
+  nazwą drukował puste drzewo, dwa argumenty dawały wyjątek, nazwa wiersza odczytywana z tekstu (`1c45152`).
+- **Poprawione słownie** (`87f9a4e`): I5 i dokumentacja `reject/1` / `Rejection` mówią o ograniczeniach; D5 dla
+  symetrycznej relacji z systemem; przykład w `DslWrappers`.
+- **Bez zmiany:** `String.to_atom` dla `--language` (jeden argument w tasku deweloperskim); `reason: nil` i
+  `avoid: []` w modelu domeny (wersja każdej domeny i tak ruszyła w EL2); etykieta ograniczenia w raporcie pokrycia
+  (S8 wymaga scenariusza odmowy dla każdego ograniczenia, więc taka odmowa nie jest nigdy niezadeklarowana).
+- Sprawdzone przez przegląd na prawdziwych danych: `VisitSettlement` ma na końcu EL2 tę samą wersję i te same 15
+  digestów co przed nim.
 
 ### Po EL2 — proza, którą da się sprawdzać (27 września)
 
