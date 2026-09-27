@@ -568,14 +568,15 @@ defmodule EhOsContract.Check do
   @doc """
   The rules between modules, L3, repeated as errors for a project that does not run
   them on every compile (v2 §6, L5; plan EL1): one whose `compilers` has no
-  `:eh_os_contract`. `modules` are the project's compiled modules. A project that
-  registers the compiler gets nothing here, since its build already failed on each.
+  `:eh_os_contract`. `modules` gives the project's compiled modules, and is called
+  only for such a project: one that registers the compiler gets nothing here, since
+  its build already failed on each, and reads no `.beam` for it.
   """
-  @spec compiler_findings([atom()], [module()]) :: [Finding.t()]
+  @spec compiler_findings([atom()], (-> [module()])) :: [Finding.t()]
   def compiler_findings(compilers, modules) do
     if :eh_os_contract in compilers,
       do: [],
-      else: modules |> Links.check() |> Enum.map(&Finding.compiler/1)
+      else: modules.() |> Links.check() |> Enum.map(&Finding.compiler/1)
   end
 
   @doc """

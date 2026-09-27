@@ -67,10 +67,15 @@ defmodule Mix.Tasks.EhOsContract.Check do
     findings = for {rule, message} <- findings, do: Finding.new(rule, message)
     v2 = EhOsContract.Registry.v2_contracts()
 
+    # An umbrella's root compiles no module of its own, and has no compile path to read.
     compiler =
       EhOsContract.Check.compiler_findings(
         Mix.Project.config()[:compilers] || Mix.compilers(),
-        Mix.Tasks.Compile.EhOsContract.modules(Mix.Project.compile_path())
+        fn ->
+          if Mix.Project.umbrella?(),
+            do: [],
+            else: Mix.Tasks.Compile.EhOsContract.modules(Mix.Project.compile_path())
+        end
       )
 
     report(

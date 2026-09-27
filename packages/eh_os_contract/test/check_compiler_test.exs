@@ -34,7 +34,7 @@ defmodule EhOsContract.CheckCompilerTest do
 
   test "without the compiler, its violations are errors of check, under their codes" do
     assert [%Finding{rule: "X1", level: :error, message: message} = finding] =
-             Check.compiler_findings([:elixir, :app], [@broken])
+             Check.compiler_findings([:elixir, :app], fn -> [@broken] end)
 
     assert message ==
              "#{inspect(@broken)} names domain Clinic, which is not a compiled EhOsContract.Domain"
@@ -42,8 +42,8 @@ defmodule EhOsContract.CheckCompilerTest do
     assert Finding.place(finding) == {"check_compiler_broken.ex", 2}
   end
 
-  test "control: with the compiler, nothing is repeated" do
-    assert Check.compiler_findings([:elixir, :eh_os_contract], [@broken]) == []
+  test "control: with the compiler, nothing is repeated, and nothing is scanned for it" do
+    assert Check.compiler_findings([:elixir, :eh_os_contract], fn -> flunk("scanned") end) == []
   end
 
   test "a message naming no code is still an error, of the compiler's layer" do
