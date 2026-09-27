@@ -308,6 +308,41 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
     end
   end
 
+  describe "F5 and D11: personal data inside a domain value, where it would escape erasure" do
+    test "a personal field of such a value, and a publication carrying one" do
+      body =
+        @body
+        |> String.replace(
+          "field :patient_id, :id, subject: :patient\n    end\n  end",
+          "field :patient_id, :id, subject: :patient\n" <>
+            "      field :carer, :contact, personal: :patient_id\n" <>
+            "      field :contacts, {:list, :contact}\n    end\n  end"
+        )
+        |> String.replace(
+          "fields: [:visit_id, :amount]",
+          "fields: [:visit_id, :amount, :contacts]"
+        )
+
+      violations = links("LinksPersonalInside", body)
+
+      assert assert_linked(
+               violations,
+               "F5: event :payment_recorded, field :carer is personal",
+               "links_personal_inside.ex",
+               20
+             ) =~ ":contact holds personal data of its own, which would be sealed under"
+
+      assert assert_linked(
+               violations,
+               "D11: publication :payment_recorded carries :contacts",
+               "links_personal_inside.ex"
+             ) =~ "which holds personal data; a copy on a broker cannot be erased"
+
+      # Control: :contacts, not personal itself and not published before, was no problem.
+      assert length(violations) == 2
+    end
+  end
+
   describe "X4: externals are the domain's" do
     test "depends_on and calls naming no external" do
       body =

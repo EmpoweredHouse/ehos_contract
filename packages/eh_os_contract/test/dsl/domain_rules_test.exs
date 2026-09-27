@@ -285,6 +285,31 @@ defmodule EhOsContract.DomainRulesTest do
                "D3: value :memo has unit :grosze"
     end
 
+    test "a personal field of a value that holds personal data of its own is refused" do
+      message =
+        refused("PersonalInPersonal", """
+          subject :patient, "Pacjent"
+
+          value :contact do
+            field :patient_id, :id, subject: :patient
+            field :phone, :string, personal: :patient_id
+          end
+
+          value :card do
+            field :patient_id, :id, subject: :patient
+            field :carer, :contact, personal: :patient_id
+            field :carers, {:list, :contact}
+          end
+        """)
+
+      assert message =~
+               "F5: value :card, field :carer is personal, and :contact holds personal data of its " <>
+                 "own, which would be sealed under this field's subject"
+
+      # Control: a list of contacts that is not itself personal says whose each is.
+      refute message =~ "field :carers"
+    end
+
     test "the control: a personal field of a required subject identifier compiles" do
       compiles("PersonalField", """
         subject :patient, "Pacjent"

@@ -206,6 +206,14 @@ defmodule EhOsContract.Codec do
   @spec personal?([field()], values()) :: boolean()
   def personal?(fields, values), do: personal?(fields, values, MapSet.new())
 
+  @doc """
+  Whether `type` holds a personal field somewhere inside: a domain value's fields,
+  what an alias stands for, a list's items. `values` maps each value's name to a map
+  with its `type` and `fields`, as a domain's model and its declarations both do.
+  """
+  @spec personal_type?(term(), map()) :: boolean()
+  def personal_type?(type, values), do: personal_type?(type, values, MapSet.new())
+
   defp personal?(fields, values, seen) do
     Enum.any?(fields, fn field ->
       Map.get(field, :personal) != nil or personal_type?(field.type, values, seen)

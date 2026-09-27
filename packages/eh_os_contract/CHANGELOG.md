@@ -298,6 +298,11 @@ What changes otherwise is what a host has to do.
   a process manager's state field, or a query's `scope` parameter, of a domain value holding a personal field
   at any depth — directly, through an alias, in a list — is an L3 error. A query's parameter takes no
   `personal:` itself.
+- **E8a: personal data inside a domain value is held to the same rules as a personal field.** A field declared
+  `personal:` whose type holds personal fields of its own is refused — in a domain value (F5) and in a contract
+  (F5, L3) — since they would be sealed under the outer subject's key and outlive their own subject's erasure.
+  A `publish` carrying a field of such a type is refused (D11, L3), as one carrying a personal field was.
+  `EhOsContract.Codec.personal_type?/2` is the one predicate behind them and F7.
 
 ### Changed
 
