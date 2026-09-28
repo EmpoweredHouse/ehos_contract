@@ -8,6 +8,10 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **The AsyncAPI endpoint now serves v2 contracts and their declared `publish` boundaries.** Its index lists
+  only v2 contracts; each document exposes public messages as AsyncAPI `send` operations and does not leak
+  internal domain events.
+
 - **The API mount serves v2 model documents** at `/model` and `/model/:contract`. Each document is
   `eh_os_contract.model.v1`, includes the derived capability surface, and carries its digest as an `ETag`;
   the host's existing resolver protects both routes.

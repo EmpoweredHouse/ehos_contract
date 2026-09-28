@@ -8,8 +8,14 @@ defmodule EhOsContract.AsyncAPI do
 
   ## What maps cleanly, and what is forced
 
-  Events map to messages and payload fields to JSON Schema, and that part is honest.
-  Past there, three things are worth saying out loud rather than burying:
+  In v2, only a `publish` crosses the application's boundary (D11), so every
+  declaration becomes one channel, one message and one `send` operation. Internal
+  domain events do not leak into the document. Payload fields map to JSON Schema
+  through `EhOsContract.JsonSchema`, the same projection OpenAPI uses.
+
+  The v1 projection stays until E11 removes v1 itself. It maps every event to a
+  message because v1 has no `publish` boundary. Past there, three things are worth
+  saying out loud rather than burying:
 
   **A channel is not a process.** A channel is an address messages flow over. An EhOsContract
   process is a *run* — it has identity, stages, an ending. There is no broker here
@@ -36,12 +42,11 @@ defmodule EhOsContract.AsyncAPI do
   `rule` and `example` are absent too, and correctly: they pin a pure function, and
   nothing about them is a message.
 
-  ## No `operations`
+  ## Operations
 
-  Handler edges map well to operations, and they are left out anyway. Including them
-  would make the document depend on the wiring version as well as the contract
-  version, so the digest would move when somebody renamed a handler — churn in the
-  one number this whole document exists to let people compare.
+  A v2 `publish` is an AsyncAPI `send` operation. Handler edges are still absent:
+  including them would make the document depend on the wiring version and move its
+  digest when somebody renamed an internal implementation.
 
   ## One document per contract
 
@@ -49,7 +54,7 @@ defmodule EhOsContract.AsyncAPI do
   would hide which contract moved.
   """
 
-  alias EhOsContract.Model
+  alias EhOsContract.{JsonSchema, Model}
 
   @asyncapi_version "3.0.0"
 
@@ -88,10 +93,10 @@ defmodule EhOsContract.AsyncAPI do
   """
   @spec index() :: [map()]
   def index do
-    for contract <- EhOsContract.Registry.contracts() do
+    for contract <- EhOsContract.Registry.v2_contracts() do
       %{
         "contract" => inspect(contract),
-        "version" => Model.version(contract),
+        "version" => Model.fetch(contract).version,
         "digest" => contract |> document() |> get_in(["info", "x-eh-os-contract-digest"])
       }
     end
@@ -100,24 +105,98 @@ defmodule EhOsContract.AsyncAPI do
 
   @spec body(module()) :: map()
   defp body(contract) do
+    case Model.fetch(contract) do
+      %{units: _} = model -> v2_body(model)
+      _v1 -> v1_body(contract)
+    end
+  end
+
+  defp v2_body(model) do
+    %{
+      "asyncapi" => @asyncapi_version,
+      "info" => %{
+        "title" => inspect(model.module),
+        "version" => model.version,
+        "x-eh-os-contract-engine" => EhOsContract.version()
+      },
+      "channels" => v2_channels(model),
+      "operations" => v2_operations(model),
+      "components" => %{"messages" => v2_messages(model)}
+    }
+  end
+
+  defp v2_channels(model) do
+    for publication <- model.publishes, into: %{} do
+      event = published_event(model, publication)
+      message = message_name(publication.name)
+
+      {to_string(publication.name),
+       %{
+         "address" => publication.as,
+         "title" => event.label,
+         "messages" => %{
+           message => %{"$ref" => "#/components/messages/#{message}"}
+         }
+       }}
+    end
+  end
+
+  defp v2_operations(model) do
+    for publication <- model.publishes, into: %{} do
+      channel = to_string(publication.name)
+      message = message_name(publication.name)
+
+      {"publish_#{publication.name}",
+       %{
+         "action" => "send",
+         "channel" => %{"$ref" => "#/channels/#{channel}"},
+         "messages" => [%{"$ref" => "#/channels/#{channel}/messages/#{message}"}]
+       }}
+    end
+  end
+
+  defp v2_messages(model) do
+    domain = Model.fetch(model.domain)
+
+    for publication <- model.publishes, into: %{} do
+      event = published_event(model, publication)
+      fields = Enum.filter(event.fields, &(&1.name in publication.fields))
+
+      {message_name(publication.name),
+       %{
+         "name" => publication.as,
+         "title" => event.label,
+         "contentType" => "application/json",
+         "payload" => JsonSchema.object(fields, domain),
+         "x-eh-os-contract-source-event" => to_string(publication.from),
+         "x-eh-os-contract-schema-version" => event.schema_version,
+         "x-eh-os-contract-idempotent-on" => Enum.map(publication.idempotent_on, &to_string/1)
+       }}
+    end
+  end
+
+  defp published_event(model, publication),
+    do: Enum.find(model.events, &(&1.name == publication.from))
+
+  defp v1_body(contract) do
     %{
       "asyncapi" => @asyncapi_version,
       "info" => %{
         "title" => inspect(contract),
         "version" => Model.version(contract),
         "x-eh-os-contract-engine" => EhOsContract.version(),
-        "x-eh-os-contract-traces" => traces(contract),
-        "x-eh-os-contract-commands" => commands(contract)
+        "x-eh-os-contract-traces" => v1_traces(contract),
+        "x-eh-os-contract-commands" => v1_commands(contract)
       },
-      "channels" => channels(contract),
-      "components" => %{"messages" => messages(contract)}
+      "channels" => v1_channels(contract),
+      "components" => %{"messages" => v1_messages(contract)}
     }
   end
 
   # `address: nil` is not an omission — see the moduledoc. A channel here groups the
   # messages of one run, and claims nothing about where they travel.
-  @spec channels(module()) :: map()
-  defp channels(contract) do
+  @spec v1_channels(module()) :: map()
+  defp v1_channels(contract) do
     for process <- Model.processes(contract), into: %{} do
       events = Model.events_of(contract, process.name)
 
@@ -141,14 +220,14 @@ defmodule EhOsContract.AsyncAPI do
     end
   end
 
-  @spec messages(module()) :: map()
-  defp messages(contract) do
+  @spec v1_messages(module()) :: map()
+  defp v1_messages(contract) do
     for event <- Model.events(contract), into: %{} do
       {message_name(event.name),
        %{
          "name" => to_string(event.name),
          "title" => event.label,
-         "payload" => schema(event.payload),
+         "payload" => v1_schema(event.payload),
          "x-eh-os-contract-retain" =>
            Map.new(event.retain, fn {k, v} -> {to_string(k), to_string(v)} end),
          "x-eh-os-contract-identity" => event.identity && Enum.map(event.identity, &to_string/1),
@@ -157,12 +236,12 @@ defmodule EhOsContract.AsyncAPI do
     end
   end
 
-  @spec schema(map()) :: map()
-  defp schema(payload) do
+  @spec v1_schema(map()) :: map()
+  defp v1_schema(payload) do
     %{
       "type" => "object",
       "properties" =>
-        Map.new(payload, fn {field, type} -> {to_string(field), property(type)} end),
+        Map.new(payload, fn {field, type} -> {to_string(field), v1_property(type)} end),
       # Every declared field is present on every emission — this DSL expresses
       # optionality by declaring a second event, never by omitting a field.
       "required" => payload |> Map.keys() |> Enum.map(&to_string/1) |> Enum.sort()
@@ -173,13 +252,14 @@ defmodule EhOsContract.AsyncAPI do
   # declaration: the distinction is what gives the retention check its signal. It
   # travels as `x-eh-os-contract-type` rather than as a `format`, because inventing a format
   # name is a private convention wearing a standard's clothes.
-  @spec property(atom() | {:enum, [term()]}) :: map()
-  defp property(:integer), do: %{"type" => "integer", "x-eh-os-contract-type" => "integer"}
+  @spec v1_property(atom() | {:enum, [term()]}) :: map()
+  defp v1_property(:integer),
+    do: %{"type" => "integer", "x-eh-os-contract-type" => "integer"}
 
-  defp property(:timestamp),
+  defp v1_property(:timestamp),
     do: %{"type" => "string", "format" => "date-time", "x-eh-os-contract-type" => "timestamp"}
 
-  defp property({:enum, values}) do
+  defp v1_property({:enum, values}) do
     %{
       "type" => "string",
       "enum" => Enum.map(values, &to_string/1),
@@ -187,10 +267,11 @@ defmodule EhOsContract.AsyncAPI do
     }
   end
 
-  defp property(type), do: %{"type" => "string", "x-eh-os-contract-type" => to_string(type)}
+  defp v1_property(type),
+    do: %{"type" => "string", "x-eh-os-contract-type" => to_string(type)}
 
-  @spec traces(module()) :: [map()]
-  defp traces(contract) do
+  @spec v1_traces(module()) :: [map()]
+  defp v1_traces(contract) do
     for trace <- Model.traces(contract) do
       %{
         "name" => to_string(trace.name),
@@ -202,15 +283,15 @@ defmodule EhOsContract.AsyncAPI do
     end
   end
 
-  @spec commands(module()) :: [map()]
-  defp commands(contract) do
+  @spec v1_commands(module()) :: [map()]
+  defp v1_commands(contract) do
     for command <- Model.commands(contract) do
       %{
         "name" => to_string(command.name),
         "title" => command.label,
         "process" => to_string(command.process),
         "principals" => Enum.map(command.principals, &to_string/1),
-        "payload" => schema(command.payload)
+        "payload" => v1_schema(command.payload)
       }
     end
   end

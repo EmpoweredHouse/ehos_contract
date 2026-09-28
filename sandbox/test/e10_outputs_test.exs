@@ -23,6 +23,31 @@ defmodule EhOsContractHost.E10OutputsTest do
     assert output =~ "eh_os_contract.check: 0 errors, 29 warnings, 9 notices"
   end
 
+  test "TaxVision's public event is the only AsyncAPI message boundary" do
+    document = EhOsContract.AsyncAPI.document(Taxvision.Contracts.AccountingMonth)
+
+    assert %{
+             "month_opened" => %{
+               "address" => "taxvision.accounting_month.opened.v1"
+             }
+           } = document["channels"]
+
+    assert %{
+             "publish_month_opened" => %{
+               "action" => "send",
+               "channel" => %{"$ref" => "#/channels/month_opened"},
+               "messages" => [
+                 %{"$ref" => "#/channels/month_opened/messages/MonthOpened"}
+               ]
+             }
+           } = document["operations"]
+
+    assert %{"MonthOpened" => message} = document["components"]["messages"]
+    assert message["x-eh-os-contract-source-event"] == "accounting_month_opened"
+    assert message["x-eh-os-contract-idempotent-on"] == ["company_id", "period_id"]
+    assert message["payload"]["required"] == ["company_id", "period_id"]
+  end
+
   @tag :tmp_dir
   test "the system graph connects TaxVision's contexts, contracts and publication", %{
     tmp_dir: dir

@@ -17,8 +17,8 @@ defmodule EhOsContract.Web.ApiTest do
 
   @endpoint EhOsContract.Web.TestHost.Endpoint
 
-  # Two contracts are registered, the v2 one and its v1 original kept for AsyncAPI,
-  # so a request names which it asks about.
+  # Two contracts are registered, the v2 one and its v1 graph-control original,
+  # so a conformance request names which it asks about.
   @contract "/api/conformance?contract=EhOsContract.Web.TestHost.Fixtures.CaseHandling"
 
   setup do
@@ -97,17 +97,21 @@ defmodule EhOsContract.Web.ApiTest do
 
       assert conn.status == 200
       %{"contracts" => contracts} = Jason.decode!(conn.resp_body)
-      assert length(contracts) == length(EhOsContract.Registry.contracts())
+
+      assert Enum.map(contracts, & &1["contract"]) ==
+               EhOsContract.Registry.v2_contracts() |> Enum.map(&inspect/1) |> Enum.sort()
+
       assert Enum.all?(contracts, &(byte_size(&1["digest"]) == 12))
     end
 
     test "a document is served, and its ETag is its digest", %{conn: conn} do
-      name = EhOsContract.Registry.contracts() |> List.first() |> inspect()
+      name = EhOsContract.Registry.v2_contracts() |> List.first() |> inspect()
       conn = get(conn, "/api/asyncapi/#{name}")
 
       assert conn.status == 200
       document = Jason.decode!(conn.resp_body)
       assert document["asyncapi"] == "3.0.0"
+      assert document["operations"] == %{}
 
       # Served twice on purpose: a consumer comparing what an instance claims
       # against what its build recorded can do it with a HEAD and no body.

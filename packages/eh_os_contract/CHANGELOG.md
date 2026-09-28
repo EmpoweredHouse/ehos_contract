@@ -124,6 +124,11 @@ What changes otherwise is what a host has to do.
 
 ### Added
 
+- **E10: `EhOsContract.AsyncAPI` projects v2 `publish` boundaries as AsyncAPI 3.0.** Each publication is one
+  addressed channel, one JSON Schema message carrying only its selected non-personal fields, and one `send`
+  operation. Internal events are absent. The index now lists v2 contracts; direct v1 document generation stays
+  available only until the E11 cut.
+
 - **E9c: a field typed by a domain value of `:id` is an identifier.** `value :period, :id` with an invariant
   keeps the value's check at dispatch, and the field is now also a tag, so a consistency boundary can `match:`
   on it, and X6 compares it with a plain `:id` on the other side as the same type. `EhOsContract.Key.tag_field?/2`
