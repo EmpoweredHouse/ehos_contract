@@ -149,10 +149,15 @@ new MutationObserver(redraw).observe(document.documentElement, {
 // back first. `updated()` fires on every diff LiveView applies to the
 // element (a process switch re-rendering the declared-shape diagram), not
 // only on first mount.
+// One draw at a time on the whole page. `mermaid.run` names each SVG from `Date.now()` and a count
+// that starts again at every call, so two diagrams whose draws start in the same millisecond get one
+// id, and the second is drawn into the first's element. With three diagrams on the graph screen
+// (plan EG2) that happened on every load.
+let drawn = Promise.resolve()
+
 const Hooks = {
   MermaidRender: {
     mounted() {
-      this.drawn = Promise.resolve()
       graphs.add(this)
       this.renderGraph()
     },
@@ -162,10 +167,10 @@ const Hooks = {
     destroyed() {
       graphs.delete(this)
     },
-    // One draw at a time per diagram, each after the one before: a patch or a change of theme that
-    // arrives mid-draw waits for it, so what is left on screen is the last one asked for.
+    // Each draw after the one before, this diagram's and every other's: a patch or a change of theme
+    // that arrives mid-draw waits for it, so what is left on screen is the last one asked for.
     renderGraph() {
-      this.drawn = this.drawn.then(() => this.draw()).catch((error) => console.error(error))
+      drawn = drawn.then(() => this.draw()).catch((error) => console.error(error))
     },
     // After the fonts its labels need: Mermaid measures a label once, and one measured in the
     // fallback font overflows its node when Albert Sans arrives. Loading with the diagram's own text
