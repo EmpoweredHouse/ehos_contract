@@ -1053,6 +1053,11 @@ INSERT INTO eh_os_contract_events (...) VALUES (...), (...) RETURNING position, 
   > identifier in the payload and in stream ids, by the design above. That holds only while an `:id` is an
   > opaque identifier: a natural one, such as a PESEL, must never be an `:id`, as it must never be an
   > idempotency key.
+  > **28 September 2026, E9c.** "`:id` field" includes a field typed by a domain value whose base type is `:id`:
+  > TaxVision names a period "2026-07" and holds the name to a format by the value's invariant, and a month's
+  > boundary matches Registry Watch's events on it. The value is still an opaque identifier in the sense above
+  > — a month's name, not a person's number. A unit's identity stays a plain `:id`, so the invariant holds where
+  > a field is typed by the value and not on an identity.
 - **Idempotency.** The host supplies `ctx.idempotency_key` (opaque, never personal data). It is checked before
   loading and again under the lock; a hit returns the earlier events with `duplicate: true`; a hit for another
   command type is `{:error, :idempotency_key_reused}`. Only accepted outcomes bind the key, so a rejected

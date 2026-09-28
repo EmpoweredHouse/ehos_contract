@@ -22,6 +22,7 @@ defmodule EhOsContract.Next.Contract.Links.Siblings do
   """
 
   alias EhOsContract.DslRules
+  alias EhOsContract.Key
   alias EhOsContract.Model
   alias EhOsContract.Next.Contract.{Links, Rules}
 
@@ -37,8 +38,10 @@ defmodule EhOsContract.Next.Contract.Links.Siblings do
 
     existence = Enum.flat_map(siblings, fn {consumes, sibling} -> x5(c, consumes, sibling) end)
     events = consumed_events(c, siblings)
+    values = EhOsContract.Codec.values(c.model.domain)
 
-    existence ++ correlation(c, events) ++ managers(c, events) ++ matches(c, events)
+    existence ++
+      correlation(c, events, values) ++ managers(c, events, values) ++ matches(c, events, values)
   end
 
   # --- X5 ---------------------------------------------------------------------------
@@ -97,7 +100,7 @@ defmodule EhOsContract.Next.Contract.Links.Siblings do
     end
   end
 
-  defp correlation(c, events) do
+  defp correlation(c, events, values) do
     types = local_types(c.model.events)
 
     for process <- c.declarations.processes,
@@ -105,13 +108,13 @@ defmodule EhOsContract.Next.Contract.Links.Siblings do
         consumed = events[include.event],
         consumed != nil,
         field <- process.correlate,
-        problem <- problems(consumed, field, types[field]) do
+        problem <- problems(consumed, field, types[field], values) do
       {"X6: process #{inspect(process.name)} includes #{inspect(include.event)} and correlates " <>
          "on #{inspect(field)}, #{problem}", Links.at(include)}
     end
   end
 
-  defp managers(c, events) do
+  defp managers(c, events, values) do
     for pm <- c.declarations.process_managers,
         model = Enum.find(c.model.process_managers, &(&1.name == pm.name)),
         types = Map.new(model.state.fields, &{&1.name, &1.type}),
@@ -119,20 +122,20 @@ defmodule EhOsContract.Next.Contract.Links.Siblings do
         consumed = events[trigger.event],
         consumed != nil,
         field <- pm.correlate,
-        problem <- problems(consumed, field, types[field]) do
+        problem <- problems(consumed, field, types[field], values) do
       {"X6: process manager #{inspect(pm.name)} handles #{inspect(trigger.event)} and " <>
          "correlates on #{inspect(field)}, #{problem}", Links.at(trigger)}
     end
   end
 
-  defp matches(c, events) do
+  defp matches(c, events, values) do
     for unit <- c.declarations.units,
         unit.kind == :dcb,
         consults <- unit.consults,
         consumed = events[consults.event],
         consumed != nil,
         field <- consults.match,
-        problem <- problems(consumed, field, :id) do
+        problem <- problems(consumed, field, :id, values) do
       {"X6: dcb #{inspect(unit.name)} consults #{inspect(consults.event)} matching " <>
          "#{inspect(field)}, #{problem}", Links.at(consults)}
     end
@@ -146,16 +149,24 @@ defmodule EhOsContract.Next.Contract.Links.Siblings do
     |> Map.new(&{&1.name, &1.type})
   end
 
-  defp problems(consumed, field, type) do
+  # Types are compared as what they come down to, so a domain value of `:id` on one
+  # side and a plain `:id` on the other are the same identifier (plan E9c).
+  defp problems(consumed, field, type, values) do
     event =
       "event #{inspect(consumed.event.name)} of #{inspect(consumed.sibling)} " <>
         "(#{Links.place(consumed.at)})"
 
-    case Enum.find(consumed.event.fields, &(&1.name == field)) do
+    theirs = Enum.find(consumed.event.fields, &(&1.name == field))
+
+    differs? =
+      theirs != nil and type != nil and
+        Key.base_type(theirs.type, values) != Key.base_type(type, values)
+
+    case theirs do
       nil ->
         ["which #{event} does not have"]
 
-      %{type: theirs} when type != nil and theirs != type ->
+      %{type: theirs} when differs? ->
         ["which #{event} has as #{inspect(theirs)}, not #{inspect(type)}"]
 
       %{optional: true} ->

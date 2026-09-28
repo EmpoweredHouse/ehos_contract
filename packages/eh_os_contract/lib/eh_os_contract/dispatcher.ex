@@ -878,7 +878,7 @@ defmodule EhOsContract.Dispatcher do
       type: declaration.type,
       contract: inspect(model.module),
       contract_version: model.version,
-      tags: tags(declaration, event),
+      tags: tags(declaration, event, values),
       process: model.process && Atom.to_string(model.process.name),
       instance_id: instance(model, event),
       # The runs of the processes that include it (D7), written with it.
@@ -906,9 +906,9 @@ defmodule EhOsContract.Dispatcher do
   # them, since that is what a consistency boundary may match on (A4, X6). Tagging
   # only the fields some boundary matches today would leave the events appended
   # before a new boundary untagged, and it would never see them.
-  defp tags(declaration, event) do
+  defp tags(declaration, event, values) do
     for field <- declaration.fields,
-        Key.tag_field?(field),
+        Key.tag_field?(field, values),
         do: Key.tag(field.name, Map.fetch!(event, field.name))
   end
 

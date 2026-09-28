@@ -115,6 +115,12 @@ What changes otherwise is what a host has to do.
 
 ### Added
 
+- **E9c: a field typed by a domain value of `:id` is an identifier.** `value :period, :id` with an invariant
+  keeps the value's check at dispatch, and the field is now also a tag, so a consistency boundary can `match:`
+  on it, and X6 compares it with a plain `:id` on the other side as the same type. `EhOsContract.Key.tag_field?/2`
+  takes the domain's values; without them, at compile time, only the built-in type counts. Events appended
+  before carry no tag for such a field.
+
 - **EG2: a domain's context map and its system.** `EhOsContract.Graph.context_map_to_mermaid/1` draws the
   subdomains as groups of their contexts, the domain's externals, and the relations between them — a directed
   one from upstream to downstream, either end of which may be an external, a symmetric one without an

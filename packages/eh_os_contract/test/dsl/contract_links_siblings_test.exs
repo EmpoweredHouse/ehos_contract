@@ -24,6 +24,9 @@ defmodule EhOsContract.Next.ContractLinksSiblingsTest do
           field :visit_id, :id
         end
 
+        value :visit_code, :id
+        value :room_name, :string
+
         subdomain :core, "Core", type: :core
       end
       """,
@@ -119,6 +122,25 @@ defmodule EhOsContract.Next.ContractLinksSiblingsTest do
     # subscriber's side, where it is a plain :id, is the same field (plan EM2).
     fields = String.replace(@fields, "field :visit_id, :id", "field :visit_id, {:id, :visit}")
     assert pair("sib_entity", fields) == []
+  end
+
+  test "control: a publisher naming the field by a domain value of :id is the same :id" do
+    # "2026-07" as a period's identifier is a value with its own invariant, and still
+    # an identifier: a subscriber correlating, starting on and matching it as a plain
+    # :id reads the same field (plan E9c).
+    fields = String.replace(@fields, "field :visit_id, :id", "field :visit_id, :visit_code")
+    assert pair("sib_value", fields) == []
+  end
+
+  test "a publisher naming the field by a domain value of another type is not an :id" do
+    fields = String.replace(@fields, "field :visit_id, :id", "field :visit_id, :room_name")
+    violations = pair("sib_value_string", fields)
+
+    assert Enum.any?(violations, fn %{message: message} ->
+             message =~ "X6: dcb :visit_slot consults :visit_booked matching :visit_id" and
+               message =~ "has as :room_name, not :id"
+           end),
+           inspect(violations)
   end
 
   describe "X5: the sibling and its events exist" do
