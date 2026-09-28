@@ -144,6 +144,10 @@ defmodule EhOsContract.DispatchRecordQueryTest do
       assert_received :dispatch_rig_asked
     end
 
+    test "a scope parameter that does not fit its type is asked with no value, and refused" do
+      assert ask(%{"not" => "a branch"}, clerk(["b-7"])) == {:error, :outside_scope}
+    end
+
     test "a scoped capability granted with no values is refused: fail closed" do
       assert ask("b-7", clerk([])) == {:error, :unscoped_grant}
 

@@ -50,4 +50,11 @@ defmodule EhOsContract.DispatchCommandScopeTest do
     assert move("b-7", clerk([])) == {:error, :unscoped_grant}
     assert move("b-7", Actor.credential("u-1", [@move])) == {:error, :unscoped_grant}
   end
+
+  test "a scope field that does not fit its type is asked with no value, and refused" do
+    # Asked before the fields are checked, so a caller without the grant learns nothing
+    # about them; the value that does not decode is no value (plan E9c review).
+    assert move(%{"not" => "an id"}, clerk(["b-7"])) == {:error, :outside_scope}
+    assert move(7, clerk(["b-7"])) == {:error, :outside_scope}
+  end
 end

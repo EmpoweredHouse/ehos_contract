@@ -38,7 +38,7 @@ defmodule EhOsContract.Authorizer do
   defmodule Request do
     @moduledoc """
     What an actor asks to do: the capability, under the name EHOS grants it by
-    (`EhOsContract.Model.capabilities/1`), and for a scoped query the dimension and the
+    (`EhOsContract.Model.capabilities/1`), and for a scoped query or command (plan E9c) the dimension and the
     value asked for, both as strings, in the form a credential's `scp` carries them.
     """
 
