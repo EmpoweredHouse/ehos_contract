@@ -109,8 +109,8 @@ defmodule Rehmed.Contracts.Settlement do
     # with it, since the price freezes at the close (`H177`, mockup).
     #
     # So do the payer and the period, when a payer covers the visit: the payer is set
-    # at booking and the settlement screen shows it on the line it covers (mockup,
-    # "Kto płaci"), and the period is the month of the visit. The settlement cannot
+    # at booking and the settlement screen shows it on the line it covers (the
+    # mockup's "who pays" column), and the period is the month of the visit. The settlement cannot
     # know either itself, since it opens only when the patient arrives.
     command :close_settlement, "Zamknij wizytę komercyjnie",
       by: :reception,

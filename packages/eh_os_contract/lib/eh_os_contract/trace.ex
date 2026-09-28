@@ -110,7 +110,8 @@ defmodule EhOsContract.Trace do
   whole repository (`ProcessShapes.Rig`'s `submission_reaches_inspection`) — the real
   case that found this, Rehmed's payer settlement, still cannot write the assertion
   at all, because its anchoring fact belongs to a different process. Quantification
-  does not reach that gap; see `lib/rehmed/contracts/payer_settlement.ex`.
+  does not reach that gap. Since v2's E9b the sandbox writes that invariant as a
+  dynamic consistency boundary instead (`Rehmed.Contracts.ExternalPayers`).
 
   ## The boundary of the report
 

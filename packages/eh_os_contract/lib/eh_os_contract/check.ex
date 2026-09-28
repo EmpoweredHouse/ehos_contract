@@ -98,7 +98,8 @@ defmodule EhOsContract.Check do
   Found in a monthly settlement, where a run is one counterparty in one month and
   the invariant is about each delivered item in it. That case still cannot reach a
   `trace` — its anchoring fact belongs to a different process, a separate gap
-  quantification does not touch, see `lib/rehmed/contracts/payer_settlement.ex`.
+  quantification does not touch; since v2's E9b the sandbox writes it as a dynamic
+  consistency boundary (`Rehmed.Contracts.ExternalPayers`).
   The case that did reach one is `ProcessShapes.Rig`, and
   `test/trace_granularity_test.exs` pins what quantification now does with it.
 
