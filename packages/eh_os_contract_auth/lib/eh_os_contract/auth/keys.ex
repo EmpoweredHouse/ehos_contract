@@ -16,7 +16,8 @@ defmodule EhOsContract.Auth.Keys do
     * **A failed fetch changes nothing.** It is logged, and the last good set stays
       in force until a later fetch succeeds. A key set with no Ed25519 key in it is
       a failed fetch too: replacing the keys with nothing would lock everyone out on
-      one bad answer.
+      one bad answer. So is a request not finished in five seconds, whatever the
+      request options say, so no answer can hold this process for longer.
     * **A successful fetch** replaces the set in the table and in memory.
 
   A key is known by its RFC 7638 thumbprint, computed here, never by the `kid` the
@@ -59,6 +60,13 @@ defmodule EhOsContract.Auth.Keys do
   # far beyond that is not EHOS's answer, and is not read into memory to find out.
   @max_body 64 * 1024
   @max_keys 16
+  # The request timeouts above bound a single step, not the fetch: `receive_timeout`
+  # starts again with every read, so an answer trickled a byte at a time never trips
+  # it, and the connect timeout is spent once on TCP and again on the TLS handshake.
+  # This bounds the request whole, a host's `:req_options` included, and stays well
+  # inside `@call_timeout`. Writing the table after it is outside the deadline,
+  # bounded by the repo's own timeouts.
+  @fetch_deadline 5_000
   @call_timeout 10_000
   # The one entry of the table that is not a key: `{@next, clock, at}`, when the next
   # early fetch is allowed, by the process's clock.
@@ -84,7 +92,8 @@ defmodule EhOsContract.Auth.Keys do
   to connect, three to receive. An option given replaces the default of the same
   name, except `:connect_options`, which is merged key by key: a host naming its
   certificate authority there keeps the two seconds unless it sets `:timeout` too,
-  there or inside `:transport_opts`, where Req lets it win.
+  there or inside `:transport_opts`, where Req lets it win. Whatever they say, a
+  fetch not finished in five seconds is abandoned as a failed one.
   """
   @spec start_link([option()]) :: GenServer.on_start()
   def start_link(opts) do
@@ -133,9 +142,10 @@ defmodule EhOsContract.Auth.Keys do
     ArgumentError -> false
   end
 
-  # A fetch is bounded by the request timeouts below, well inside this, so the call
-  # outlives it. Should the process not answer — too slow, or not running — the
-  # credential is refused with what memory holds rather than taking the caller down.
+  # The request is bounded by `@fetch_deadline`, well inside this, so the call
+  # outlives it unless writing the table is slow too. Should the process not answer
+  # — too slow, or not running — the credential is refused with what memory holds
+  # rather than taking the caller down.
   defp refetch(name) do
     GenServer.call(name, :refetch, @call_timeout)
   catch
@@ -296,7 +306,20 @@ defmodule EhOsContract.Auth.Keys do
     end
   end
 
+  # The request runs in a task of its own, so a fetch that outlives the deadline is
+  # killed rather than waited for, whichever step it is stuck in. Its socket, and its
+  # connection from the pool, go with it.
   defp get(state) do
+    task = Task.async(fn -> request(state) end)
+
+    case Task.yield(task, @fetch_deadline) || Task.shutdown(task, :brutal_kill) do
+      {:ok, result} -> result
+      nil -> {:error, :timeout}
+      {:exit, reason} -> {:error, {:exit, reason}}
+    end
+  end
+
+  defp request(state) do
     options =
       Keyword.merge([into: &at_most/2] ++ @request_options, state.req_options, &merge_option/3)
 
@@ -326,7 +349,11 @@ defmodule EhOsContract.Auth.Keys do
   rescue
     # Whatever the answer holds, it is a failed fetch, never a crash of this process:
     # a crash takes its table with it, and a restart would fetch the same answer.
+    # This runs in the task, which is linked to this process: an exit or a throw
+    # that got past here would take the process down with the task.
     exception -> {:error, exception}
+  catch
+    kind, reason -> {:error, {kind, reason}}
   end
 
   # Without the default connect timeout, Mint's is thirty seconds: an EHOS that

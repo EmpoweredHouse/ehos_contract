@@ -5,7 +5,8 @@ defmodule EhOsContract.Auth.KeyCase do
 
   The endpoint is a function plug handed to Req (`req_options: [plug: …]`), so no
   port is opened and the fetcher's own code — the request, the status, the body —
-  runs as it does against EHOS.
+  runs as it does against EHOS. A test that needs the network's own behaviour
+  opens a socket of its own and passes `url:`.
 
   The key process runs outside the test process and reads and writes the table, so
   these tests share the sandbox and are not async.
@@ -89,7 +90,7 @@ defmodule EhOsContract.Auth.KeyCase do
   @doc """
   Starts a key process fetching from `ehos`, under a name of its own, and waits
   until its start — the table loaded, the first fetch done — has run.
-  `req_options:` replaces the plug that plays `ehos`.
+  `req_options:` replaces the plug that plays `ehos`, and `url:` the JWKS URL.
   """
   def start_keys(ehos, opts \\ []) do
     name = Keyword.get_lazy(opts, :name, fn -> :"keys_#{System.unique_integer([:positive])}" end)
@@ -98,15 +99,15 @@ defmodule EhOsContract.Auth.KeyCase do
     spec =
       {Keys,
        name: name,
-       url: "https://ehos.test/.well-known/jwks.json",
+       url: Keyword.get(opts, :url, "https://ehos.test/.well-known/jwks.json"),
        repo: TestRepo,
        req_options: Keyword.get_lazy(opts, :req_options, fn -> [plug: &serve(ehos, &1)] end),
        clock: fn -> Agent.get(clock, & &1) end}
 
     start_supervised!(Supervisor.child_spec(spec, id: name))
     # A call is answered only after `handle_continue/2`, so this returns once the
-    # start has run.
-    :sys.get_state(name)
+    # start has run. Its fetch may take the whole deadline, so this waits past it.
+    :sys.get_state(name, 10_000)
     name
   end
 
