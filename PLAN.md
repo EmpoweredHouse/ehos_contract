@@ -25,14 +25,16 @@ ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); po E9c-1
   zmergował się do nieprzestawionej bazy `dsl-v2/e9-payer` (`dfc3451`), nie do `main`; do `main` idzie
   [#41](https://github.com/EmpoweredHouse/eh-os-contract/pull/41), ta sama głowa, z notatką przeglądu.
 - **E9c-2** na `dsl-v2/e9-e9c2`, od `60324a5` — zbudowane („Przed E9c-2 — decyzje użytkownika”, „E9c-2 — co
-  wyszło”), niewypchnięte, przed przeglądem (jedna runda, decyzja użytkownika).
+  wyszło”, „Przegląd E9c-2”), przejrzane jedną rundą, niewypchnięte. Brama na każdym commicie EXIT=0; sandbox 137
+  testów, `check` 0 / 28 / 10; silnik 1245, `check` 0 / 67 / 21; web 45; auth 55.
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
 ### Co zostało — i czyje to jest
 
-- **Merge #41, potem PR E9c-2** — użytkownika (push, PR, merge). Przed PR E9c-2 `pre-pr-review`, jedną rundą na
-  sandboksie. Gałąź E9c-2 stoi na głowie #41, więc po jego merge'u jej PR idzie prosto na `main`.
+- **Merge #41, potem push i PR E9c-2** — użytkownika. Przegląd E9c-2 zrobiony (notatka na głowie gałęzi). Do
+  decyzji użytkownika z przeglądu: jawność NIP-u sprzedawcy i obrotów JDG w logu; dopisek o `\d` z `u` do
+  `CLAUDE.md`. Gałąź E9c-2 stoi na głowie #41, więc po jego merge'u jej PR idzie prosto na `main`.
 - **E10–E12 — asystenta, po pytaniach.** Po E11 kontrakty sandboxa przechodzą do testów pakietu jako fikstury
   akceptacyjne („Przed E9c-2 — decyzje użytkownika”). Do E9 odłożone pozycje 6–9 z „Po EL2 — proza, którą da się
   sprawdzać” — do sprawdzenia, czy E9 je zamknęło.
@@ -1938,7 +1940,8 @@ wgraniu wyciągu lista obrotów, a dla każdego obrotu dopasowywanie — na tym 
 
 ### E9c-2 — co wyszło (28 września)
 
-Na `dsl-v2/e9-e9c2`, od E9c-1 (`60324a5`), niewypchnięte. Silnik bez zmian — wszystkie cztery rodzaje już tam były.
+Na `dsl-v2/e9-e9c2`, od E9c-1 (`60324a5`), niewypchnięte: zapis decyzji (`13c5d67`), budowa (`90925cc`), trzy
+poprawki z przeglądu. Silnik bez zmian — wszystkie cztery rodzaje już tam były.
 Sandbox 120 → **132** testy (scenariusze, przykłady usługi i wartości, test przebiegu); silnik 1245, web 45, auth 55;
 `check` sandboxa 0 / 26 / 9 → **0 / 28 / 10**.
 
@@ -1980,6 +1983,48 @@ razem z parowaniem jednego obrotu z wieloma fakturami i fakturą, która przycho
 
 **Nowe linie `check`:** `event-without-consumer` dla obu wyników dopasowywania — czytelnikiem byłyby wyjaśnienia
 (P8) i Shugyo, których E9 nie pisze — oraz `contract-without-implementation` dla Document Intake (ustalenie 1).
+
+**Przegląd E9c-2** (jedna runda, decyzja użytkownika: dwa przeglądy równolegle na `60324a5..90925cc` —
+`code-review high` i bezpieczeństwo z wydajnością). Sandbox 132 → **137** testów; `check` bez zmian, 0 / 28 / 10.
+
+*Poprawione przez asystenta, z testem i próbą odwrotną:*
+- **Numer KSeF w cyfrach spoza ASCII** (`3bb3a63`, oba przeglądy): z flagą `u` `\d` to każda cyfra Unicode, więc
+  data w cyfrach arabsko-indyjskich przechodziła wyrażenie, a `String.to_integer/1` rzucał wyjątek — nagranie
+  kończyło się wyjątkiem zamiast odmowy inwariantu — a NIP w takich cyfrach był drugą pisownią tego samego numeru.
+  Teraz `[0-9]`; trzy nowe przykłady łamiące, w tym niemożliwa data, której wcześniej żaden nie sprawdzał.
+- **Obrót rozstrzyga się raz, faktura paruje się raz niezależnie od kolejności w logu** (`bda39ca`, oba
+  przeglądy): wyciąg wgrany drugi raz wydawał `run_matching` dla obrotów już rozstrzygniętych — sparowany obrót
+  brał drugą fakturę na tę samą kwotę albo dostawał „bez faktury” i log miał oba fakty; faktura pobrana z KSeF
+  ponownie po sparowaniu wracała do puli. Boundary trzyma osobno to, co dał KSeF, co się sparowało i które obroty
+  są rozstrzygnięte; nowy inwariant `a_turnover_is_matched_once`, który polityka przyjmuje jako odpowiedź
+  jednostki. Przy okazji dopisywanie na początek zamiast `++`.
+- **Polskie cytaty w komentarzach i zbędne zależności granicy** (`46c7f9e`): pięć komentarzy i moduledoc cytowały
+  warsztat po polsku; `Taxvision.DocumentIntake` zależał od `EhOsContract` i kontraktów, których nie używa.
+
+*Pominięte, jako ustalenia o bibliotece:*
+- **Polityka wydająca N komend w transakcji żądania trzyma globalną blokadę dopisywania przez N dispatchy**
+  (bezpieczeństwo i wydajność, wysoka pewność): `:in_transaction` jest domyślne, blokada ma jeden klucz
+  (`eh_os_contract_append_lock()`), więc wyciąg z tysiącami obrotów wstrzymuje każdy zapis w aplikacji, a `read_body`
+  wpuszcza 8 MB. Mechanika silnika — do E10/E11: reguła `check` na politykę z fan-outem bez `delivery:
+  :at_least_once` albo limit długości listy w polu komendy.
+- **Boundary czyta wszystkie własne zdarzenia, także te, których `evolve` nie używa** (oba przeglądy): każde
+  `run_matching` dekoduje każde `bank_turnover_list_created` miesiąca z całą listą obrotów — O(N²) na wyciąg. DSL
+  nie pozwala boundary powiedzieć, które z własnych zdarzeń czyta; w sandboksie obeszłoby to przeniesienie wyciągu
+  do osobnej jednostki. Do E11.
+- **Usługa domenowa nie ma krawędzi na żadnym grafie** (weryfikacja w przeglądarce): graf kontraktu rysuje
+  `issued_by` („gives ksef_number”) i `backed_by`, `publish` jest na grafie systemu, a `:pairing` nie ma nigdzie —
+  ani w widoku boundary, który ją woła. Do E13 (graf jako API).
+- **`\d` z flagą `u`** — nowy rodzaj pułapki obok reguły o `u` w `CLAUDE.md`: format ASCII piszemy `[0-9]`.
+  Propozycja dopisku do `CLAUDE.md` czeka na użytkownika.
+
+*Pominięte, jako logika domeny (decyzja przed E9c-2):* dopasowywanie nie wymaga otwartego miesiąca (`stage
+:opening` przed `:matching` nie jest wymuszany); parowanie nie patrzy na kierunek obrotu (wpływ czy wydatek) — pod
+„tylko po kwocie”.
+
+*Do decyzji użytkownika:* **NIP sprzedawcy w numerze KSeF i obroty JDG są jawne w logu.** Numer KSeF zaczyna się
+NIP-em sprzedawcy, a gdy sprzedawca jest jednoosobową działalnością, to identyfikator osoby trzeciej; obroty z
+wyciągu to kwoty i daty z rachunku JDG. Decyzja „Dane JDG w logu zostają jawne” dotyczyła danych klienta (forma
+prawna, status VAT, różnice), nie kontrahentów ani rachunku. Zostają jawne do odpowiedzi.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
