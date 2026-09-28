@@ -44,7 +44,11 @@ defmodule EhOsContract.JsonSchema do
     |> maybe_put("x-eh-os-contract-personal", Map.get(field, :personal))
     |> maybe_put("x-eh-os-contract-subject", Map.get(field, :subject))
     |> maybe_put("x-eh-os-contract-issued-by", Map.get(field, :issued_by))
+    |> nullable(Map.get(field, :optional, false))
   end
+
+  defp nullable(schema, true), do: %{"anyOf" => [schema, %{"type" => "null"}]}
+  defp nullable(schema, false), do: schema
 
   defp property(type, values) do
     type

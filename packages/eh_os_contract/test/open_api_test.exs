@@ -88,17 +88,27 @@ defmodule EhOsContract.OpenAPITest do
            }
 
     assert schema["properties"]["payment"] == %{
-             "type" => "object",
-             "properties" => %{
-               "amount" => %{
-                 "type" => "integer",
-                 "x-eh-os-contract-type" => "amount"
+             "anyOf" => [
+               %{
+                 "type" => "object",
+                 "properties" => %{
+                   "amount" => %{
+                     "type" => "integer",
+                     "x-eh-os-contract-type" => "amount"
+                   },
+                   "note" => %{
+                     "anyOf" => [
+                       %{"type" => "string", "x-eh-os-contract-type" => "string"},
+                       %{"type" => "null"}
+                     ]
+                   }
+                 },
+                 "required" => ["amount"],
+                 "additionalProperties" => false,
+                 "x-eh-os-contract-type" => "payment"
                },
-               "note" => %{"type" => "string", "x-eh-os-contract-type" => "string"}
-             },
-             "required" => ["amount"],
-             "additionalProperties" => false,
-             "x-eh-os-contract-type" => "payment"
+               %{"type" => "null"}
+             ]
            }
   end
 

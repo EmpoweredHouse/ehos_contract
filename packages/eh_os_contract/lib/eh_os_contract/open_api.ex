@@ -227,9 +227,9 @@ defmodule EhOsContract.OpenAPI do
       "type" => "object",
       "properties" => %{
         "command_id" => %{"type" => "string"},
-        "identity" => %{},
+        "identity" => %{"type" => "object", "additionalProperties" => %{"type" => "string"}},
         "positions" => %{"type" => "array", "items" => %{"type" => "integer"}},
-        "position" => %{"type" => "integer"},
+        "position" => %{"anyOf" => [%{"type" => "integer"}, %{"type" => "null"}]},
         "duplicate" => %{"type" => "boolean"},
         "events" => %{"type" => "array", "items" => event}
       },
