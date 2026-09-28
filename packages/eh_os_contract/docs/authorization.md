@@ -205,10 +205,15 @@ stays in the application's code.
 
 ## Recording an event
 
-`EhOsContract.record/3` appends an event the contract declares `recorded_by:`, without a command. Only
-a `:system` actor the event names may record it. A credential is refused with
-`{:error, :not_grantable}`, because EHOS grants commands and queries only, so no credential could
-carry a capability to record. Naming such a capability is left to stage E9.
+`EhOsContract.record/3` appends an event the contract declares `recorded_by:`, without a command: an
+observation or an integration's answer (D6). Its capability is `<domain>.<event>`, with the roles of
+the actors in `recorded_by:`, and a credential is asked of the `Authorizer` for it as for a command —
+reception marking that the patient arrived needs `rehmed.patient_arrived`. A `:system` actor the
+event names records it without a credential. `EhOsContract.Plug` serves it as
+`POST <mount>/records/<capability>` with the event's fields as the body.
+
+Until 28 September 2026 (stage E9) a credential was refused with `{:error, :not_grantable}`, because no
+capability named a recording; the name `<domain>.<event>` was decided on 27 September.
 
 ## What is written
 

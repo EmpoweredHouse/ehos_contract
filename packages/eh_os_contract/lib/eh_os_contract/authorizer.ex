@@ -47,7 +47,7 @@ defmodule EhOsContract.Authorizer do
 
     @typedoc "One request to authorize."
     @type t :: %__MODULE__{
-            kind: :command | :query,
+            kind: :command | :query | :record,
             capability: String.t(),
             contract: module(),
             version: String.t(),

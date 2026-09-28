@@ -69,13 +69,22 @@ defmodule EhOsContract.DispatchRecordQueryTest do
       assert length(log()) == 4
     end
 
-    test "a credential is refused, since nothing can grant it a capability to record" do
+    test "a credential records a person's observation with the event's capability, and not without it" do
       assert EhOsContract.record(Ledger, %BalanceConfirmed{account_id: "a-1"},
                actor: clerk(["b-7"])
              ) ==
-               {:error, :not_grantable}
+               {:error, :missing_capability}
 
       assert length(log()) == 3
+
+      # The control: the auditor's credential, granted the recording by name.
+      auditor = Actor.credential("u-2", ["dispatch_rig.balance_confirmed"])
+
+      assert {:ok, _} =
+               EhOsContract.record(Ledger, %BalanceConfirmed{account_id: "a-1"}, actor: auditor)
+
+      assert %{type: "ledger.balance_confirmed", actor: "actor:u-2"} = List.last(log())
+      assert %{outcome: "accepted", type: "record:balance_confirmed"} = List.last(rows())
     end
 
     test "a :system actor the event does not name, or a person's name, is refused" do

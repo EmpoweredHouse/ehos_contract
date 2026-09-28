@@ -75,7 +75,7 @@ defmodule EhOsContract.Next.ContractLinksSystemTest do
     end
   end
 
-  describe "D14: a command or query name is the domain's" do
+  describe "D14: a command, query or recorded event name is the domain's" do
     test "a command of one name in two contracts, and a query named like a command" do
       query = """
         read_model :cases, "Sprawy", projects: :done do
@@ -109,6 +109,42 @@ defmodule EhOsContract.Next.ContractLinksSystemTest do
       )
 
       assert length(violations) == 2
+    end
+
+    test "a recorded event named like another contract's command (plan E9a)" do
+      # A person's recording has the capability `<domain>.<event>`, so it collides
+      # with a command of that name. The event is at line 8.
+      recorded = """
+      defmodule #{inspect(@fixtures)}.SysNameD do
+        use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+
+        aggregate :fourth, "Jednostka" do
+          identity :case_id
+          command :open_d, "Komenda", by: :reception, emits: :done
+          event :done, "Zrobione"
+          event :open_a, "Otwarte", recorded_by: :reception
+        end
+
+        process :fourth, "Proces" do
+          correlate :case_id
+        end
+      end
+      """
+
+      violations =
+        links([
+          unit_contract("SysNameCmd", process: :first_rec, command: :open_a),
+          {"sys_name_d.ex", recorded}
+        ])
+
+      assert assert_linked(
+               violations,
+               "D14: record :open_a of #{inspect(@fixtures)}.SysNameD",
+               "sys_name_d.ex",
+               8
+             ) =~ ~s|has the capability "clinic.open_a", which command :open_a of |
+
+      assert length(violations) == 1
     end
 
     test "control: distinct names pass" do

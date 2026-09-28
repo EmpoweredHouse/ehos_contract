@@ -103,9 +103,10 @@ defmodule EhOsContract.Model do
   @doc """
   The capabilities a v2 contract declares, under the names EHOS grants them by (v2
   §16, D14): `<domain>.<command>` for each command, `<domain>.<query>` for each
-  query, where `<domain>` is the domain's `name:`. Each says which roles may use it,
-  `<domain>.<actor>` for every actor in its `by:`, and a query also the field its
-  grant is scoped by (D10).
+  query and `<domain>.<event>` for each event a contract records (`recorded_by:`,
+  D6), where `<domain>` is the domain's `name:`. Each says which roles may use it,
+  `<domain>.<actor>` for every actor in its `by:` or `recorded_by:`, and a query also
+  the field its grant is scoped by (D10).
 
       %{"rehmed.record_payment" =>
           %{kind: :command, name: :record_payment, roles: ["rehmed.reception"], scope: nil}}
@@ -117,7 +118,7 @@ defmodule EhOsContract.Model do
   """
   @spec capabilities(contract() | module()) :: %{
           String.t() => %{
-            kind: :command | :query,
+            kind: :command | :query | :record,
             name: atom(),
             roles: [String.t()],
             scope: atom() | nil
@@ -137,7 +138,14 @@ defmodule EhOsContract.Model do
           for q <- model.queries,
               do: {role.(q.name), %{kind: :query, name: q.name, by: q.by, scope: q.scope}}
 
-        Map.new(commands ++ queries, fn {capability, declared} ->
+        # A person's observation reaches the log through `record/3` with a credential,
+        # so it is granted like a command (plan, "Po E8"; E9a).
+        records =
+          for e <- model.events,
+              e.recorded_by != [],
+              do: {role.(e.name), %{kind: :record, name: e.name, by: e.recorded_by, scope: nil}}
+
+        Map.new(commands ++ queries ++ records, fn {capability, declared} ->
           {by, declared} = Map.pop!(declared, :by)
           {capability, Map.put(declared, :roles, by |> Enum.map(role) |> Enum.sort())}
         end)
