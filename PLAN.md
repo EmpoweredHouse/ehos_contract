@@ -102,7 +102,7 @@ Grafy: `mix eh_os_contract.graph --map <domena> | --system <domena> [--overlay] 
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 28 września, na `bc4518e`** (E9c-1 po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 120
+- **Lokalnie, 28 września, na `7c67982`** (E9c-1 po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 120
   testów, `check` 0 / 26 / 9; silnik 1245, `check` 0 / 67 / 21; web 45; auth 51.
 - **Lokalnie, 28 września, na `cc07431`** (E9b po dwóch rundach przeglądu): brama z `sandbox/` → **EXIT=0** — sandbox 99
   testów, `check` 0 / 24 / 8; silnik 1222, `check` 0 / 65 / 21; web 45; auth 51. W przeglądarce: `/graph` z procesem
@@ -1800,9 +1800,9 @@ rozstrzygały trzech rzeczy; asystent zapytał na przykładzie firmy c-1 i sierp
 
 ### E9c-1 — co wyszło (28 września)
 
-Na `dsl-v2/e9-taxvision` (od E9b = `b010c06`), niewypchnięte. Trzy commity budowy po zapisie decyzji (`ee241e6`):
-wartość o bazie `:id` jako identyfikator w silniku (`bcb3d02`), `scope` komend w silniku (`1da9dbe`), TaxVision od nowa
-i koniec v1 w sandboxie (`5399584`). Brama zielona na każdym commicie. Sandbox 99 → **111** testów, silnik 1222 →
+Na `dsl-v2/e9-taxvision` (od E9b = `11084e0`), niewypchnięte. Trzy commity budowy po zapisie decyzji (`c7012a1`):
+wartość o bazie `:id` jako identyfikator w silniku (`f2e385d`), `scope` komend w silniku (`1c6228f`), TaxVision od nowa
+i koniec v1 w sandboxie (`a0e6faa`). Brama zielona na każdym commicie. Sandbox 99 → **111** testów, silnik 1222 →
 **1239**; `check` sandboxa 0 / 24 / 8 → **0 / 25 / 9**, silnika 0 / 65 / 21 → **0 / 67 / 21** (dwie linie nowej
 fikstury `DispatchRig.Transfer`).
 
@@ -1849,37 +1849,37 @@ fikstury `DispatchRig.Transfer`).
 W przeglądarce (baza dev, preview `eh_os_contract_host`): mapa kontekstów TaxVision, siedem diagramów na `/graph`,
 proces `client` i boundary miesiąca, żadna etykieta nie wystaje.
 
-**Przegląd E9c-1** (dwa równolegle na `b010c06..bdd7fb7`, potem po dwa na każdej rundzie poprawek). Sandbox 111 →
+**Przegląd E9c-1** (dwa równolegle na `11084e0..d44ff08`, potem po dwa na każdej rundzie poprawek). Sandbox 111 →
 **120** testów, silnik 1239 → **1245**; `check` sandboxa 0 / 25 / 9 → **0 / 26 / 9** (`registry_check_logged` bez czytelnika, odkąd
 pętla czyta potwierdzenie — czytelnikiem byłby read model „ostatnie sprawdzenie”, którego E9 nie pisze).
 
 *Poprawione przez asystenta, z testem i próbą odwrotną:*
-- **`scope` musi być jedną wartością i nie generowaną tożsamością** (`954ef8c`, aliasy w `4c77f00`): lista
+- **`scope` musi być jedną wartością i nie generowaną tożsamością** (`d4b369c`, aliasy w `e3f9c51`): lista
   `["b", "-7"]` przechodziła nadanie „b-7”, wartość złożona kończyła się 500, a `scope` na tożsamości generowanej przy
   `creates:` był `nil` dla każdego credentialu. Druga runda: alias wartości (`value :codes, {:list, :id}`, `value
   :home, :contact`) omijał obie reguły — L3 idzie teraz po aliasach.
-- **X6 rozróżnia dwie różne wartości o bazie `:id`** (`7224631`): `:period` i numer faktury przechodziły jako ten sam
+- **X6 rozróżnia dwie różne wartości o bazie `:id`** (`042453a`): `:period` i numer faktury przechodziły jako ten sam
   typ; teraz równe są tylko te same typy albo wartość `:id` wobec zwykłego `:id`. Poprawiony też opis `Key`.
-- **Źle wpisana wartość pola `scope` to brak wartości** (`e507117`): wyjątek w koderze zamiast odmowy, w komendach i —
+- **Źle wpisana wartość pola `scope` to brak wartości** (`297b1a9`): wyjątek w koderze zamiast odmowy, w komendach i —
   od E4 — w query. Skutek zamierzony: posiadacz nadania, który wyśle `company_id: 7`, dostaje 403 `outside_scope`, nie
   422 — kolejność „czy wolno, potem co jest nie tak” zostaje.
-- **Pętla P1** (`fb11d60`, potem `3df2ed7`): pięć minut awarii rejestrów 1. dnia zatrzymywało sprawdzanie na zawsze,
+- **Pętla P1** (`644fd10`, potem `feb1953`): pięć minut awarii rejestrów 1. dnia zatrzymywało sprawdzanie na zawsze,
   ponowienie starszego miesiąca cofało pętlę, a ponowienie 5. dnia przesuwało wszystkie następne na 5. Pierwsza
   poprawka (najpóźniejszy okres, `at:` z nazwy) oddała sterowanie wpisowi księgowej: „2062-08” blokował pętlę do 2062,
   a pierwsze sprawdzenie marca we wrześniu odpalało miesiąc po miesiącu zaległe sprawdzenia. Teraz przebieg rusza na
   potwierdzeniu i ustawia następne na 1. dzień kolejnego miesiąca **od czasu potwierdzenia**, sprawdzając miesiąc,
-  który się wtedy skończył; okres z komendy nie gra roli. Trzecia runda (`cd94293`): liczenie „od teraz” gubiło
+  który się wtedy skończył; okres z komendy nie gra roli. Trzecia runda (`b022078`): liczenie „od teraz” gubiło
   miesiące — spóźniony timer (2 listopada) pomijał październik, ponowienie tuż po terminie, a przed zadaniem,
   przestawiało należny timer, a zegar innego węzła cofał termin. Teraz przebieg trzyma datę należnego sprawdzenia:
   pierwsze potwierdzenie ustawia 1. dzień następnego miesiąca, sprawdzenie miesiąca, którego ta data dotyczy,
   przesuwa ją o miesiąc **od niej samej**, a inne ponowienie jej nie rusza; spóźniony timer nadrabia tylko to, co
   przegapił. Do tego nowy niezmiennik: **sprawdza się tylko miesiąc zakończony do czasu komendy** (rozliczenie
   miesiąc w tył, WF 00:34:40) — „2062-08” jest odrzucany, zanim zapyta rejestry, więc nie otwiera miesiąca 2062-08.
-  Czwarta runda (`bc4518e`, jeden przegląd łączony): niezmiennik obejmował też sprawdzenie z timera, którego komendę
+  Czwarta runda (`7c67982`, jeden przegląd łączony): niezmiennik obejmował też sprawdzenie z timera, którego komendę
   stempluje zegar węzła, więc sekunda rozbieżności o północy odrzucała je i pętla stawała bez śladu; dotyczy teraz
   tylko ponowienia przez księgową. Pierwsze sprawdzenie nie nadrabia miesięcy sprzed siebie — celowo, po rundzie
   drugiej.
-- **Resztki v1** (`9c0294e`, `14fae7d`): `Taxvision.Tasks` i `Notifications` bez handlerów, z UUID okresu; komentarz
+- **Resztki v1** (`bed5a87`, `533a9a3`): `Taxvision.Tasks` i `Notifications` bez handlerów, z UUID okresu; komentarz
   `setup` testu szwu; notka v1 w `Taxvision.Periods` na górze.
 
 *Pominięte, jako ustalenia:*
