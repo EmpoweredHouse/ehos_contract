@@ -2812,6 +2812,26 @@ Poprawki 1, 2, 4, 5, 9 na `dsl-v2/ea-verify` (`8c28221`), bo to kod EA1, scalone
 EA2. Każda z 1–5 i 9 sprawdzona wstecz; przy 5 pierwsza wersja testu przeżyła mutację (za duża odpowiedź nie miała
 klucza, więc i tak była nieudana) — poprawiona, żeby niosła klucz. Pakiet auth 44 → 51.
 
+**Poprawka 28 września — `:connect_options` hosta scalane, nie podmieniane.** Znalezione przy przeglądzie
+testu zamykającego Stage 4 w `eh-os` (`test/apps/ledger/lib/ledger/application.ex` powtarzał `timeout: 2_000`, żeby
+to obejść): `Keys` scalał `:req_options` hosta płytkim `Keyword.merge`, więc przykład z README i moduledocu
+`EhOsContract.Auth` (`connect_options: [transport_opts: [cacertfile: …]]`) gubił domyślne `connect_options:
+[timeout: 2_000]` i łączenie spadało do 30 s Minta — dłużej niż `@call_timeout` (10 s) procesu kluczy, gdy adres
+EHOS-a gubi pakiety, a pobranie wyzwala każdy z nieznanym `kid`. Teraz `:connect_options` scalane klucz po kluczu
+(`timeout:` hosta dalej wygrywa), reszta opcji jak dotąd. *Odrzucone:* sam przykład w dokumentacji powtarzający
+`timeout: 2_000` z wyjaśnieniem — każdy host musiałby o tym pamiętać, a pułapka zostaje. Test w `keys_test` (adapter
+Req zamiast sieci, łapie opcje transportu, które Req oddałby Mintowi); ze starym scalaniem pada. Linia w
+`CHANGELOG.md` pakietu.
+*Przegląd* (dwa równolegle na `origin/main..HEAD`): poprawione — `connect_options: nil` wywracał każde pobranie
+po cichu (`:no_keys`), teraz czytane jak brak opcji (test, sprawdzony wstecz); dokumentacja nazywa drugą drogę
+nadpisania timeoutu, `transport_opts: [timeout: …]`, którą Req przepuszcza (test); pomocnik nazwany
+`merge_option/3`. Bez zmian — scalanie tylko jeden poziom w głąb: pakiet nie ma domyślnych `transport_opts`.
+**Pominięte, sprzed tej zmiany, do użytkownika:** (1) `receive_timeout` ogranicza pojedynczy odczyt, nie całe
+pobranie (`request_timeout` Req to `:infinity`), więc EHOS sączący bajt co 2,9 s trzyma proces kluczy bez końca —
+komentarz przy `refetch/1` („a fetch is bounded by the request timeouts below”) nie jest prawdziwy; (2) host
+może nadpisać `redirect`, `into`, `retry` i `url` — obietnice README („follows no redirect”, limit 64 KB, tylko
+`https`) trzymają się, dopóki host ich nie ruszy. Oba zmieniają kształt widoczny dla hosta albo wymagają decyzji.
+
 **Skill `pre-pr-review` odpala od teraz oba przeglądy równolegle** (prośba użytkownika): dwa subagenty w jednej
 wiadomości, `code-review high` i `engineering:code-review` z naciskiem na bezpieczeństwo i wydajność, wspólna pula
 uwag; plus dwa nowe rodzaje problemów i ostrzeżenie o mutacjach, które stosują się w połowie.

@@ -171,6 +171,11 @@ children = [
 ]
 ```
 
+`:connect_options` given here are merged over the package's own, so the fetch keeps its two-second
+connect timeout: without it, an EHOS address that drops packets would hold every fetch for Mint's
+thirty seconds. A `timeout:` set in `connect_options`, or inside `transport_opts`, replaces the two
+seconds. Every other option replaces the package's of the same name.
+
 Do not turn certificate verification off to make a first integration work: the keys would then come
 from whoever answers. For the same reason the package refuses to boot when the key set would be
 fetched over anything but `https` (plain `http` is allowed for `localhost` only), and **follows no

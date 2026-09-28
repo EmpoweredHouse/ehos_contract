@@ -64,6 +64,60 @@ defmodule EhOsContract.Auth.KeysTest do
     end
   end
 
+  describe "a host's connect options" do
+    # An adapter in place of the network: it sends the test the transport options
+    # Req would hand Mint for this fetch, and answers as an EHOS that is down would.
+    setup do
+      test = self()
+
+      adapter = fn request ->
+        pool = Req.Finch.pool_options(request.options)
+        send(test, {:transport, pool[:conn_opts][:transport_opts]})
+        {request, Req.Response.new(status: 503)}
+      end
+
+      %{adapter: adapter}
+    end
+
+    test "keep the two-second connect timeout when naming a certificate authority", %{
+      adapter: adapter
+    } do
+      transport = [cacertfile: "/etc/ehos/ca.pem"]
+
+      start_keys(nil,
+        req_options: [adapter: adapter, connect_options: [transport_opts: transport]]
+      )
+
+      assert_received {:transport, options}
+      assert options[:timeout] == 2_000
+      assert options[:cacertfile] == "/etc/ehos/ca.pem"
+    end
+
+    test "that are nil keep the defaults, and the key set is fetched", %{adapter: adapter} do
+      start_keys(nil, req_options: [adapter: adapter, connect_options: nil])
+
+      assert_received {:transport, [timeout: 2_000]}
+    end
+
+    test "replace the connect timeout when they set one", %{adapter: adapter} do
+      start_keys(nil, req_options: [adapter: adapter, connect_options: [timeout: 500]])
+
+      assert_received {:transport, [timeout: 500]}
+    end
+
+    # Req's own rule, which the documentation names as the second way.
+    test "replace it with a timeout in the transport options too", %{adapter: adapter} do
+      transport = [cacertfile: "/etc/ehos/ca.pem", timeout: 30_000]
+
+      start_keys(nil,
+        req_options: [adapter: adapter, connect_options: [transport_opts: transport]]
+      )
+
+      assert_received {:transport, options}
+      assert options[:timeout] == 30_000
+    end
+  end
+
   test "an unknown kid fetches at most once per thirty seconds" do
     known = key_pair()
     ehos = ehos({:keys, [known]})
