@@ -1,7 +1,8 @@
 defmodule EhOsContract.GraphV2Test do
   @moduledoc """
   A v2 contract's graph (v2 §13, plan E7c-2): a node of every kind, in the Event
-  Storming colours, and each step as its edges; with the overlay, the log on it.
+  Storming colours, and each step as its edges; with the overlay, the log on it. What
+  the full graph adds around the steps (plan EG1) is `GraphContractTest`'s.
   """
 
   use EhOsContract.DataCase, async: false
@@ -10,7 +11,7 @@ defmodule EhOsContract.GraphV2Test do
   alias ProcessShapes.Seed
 
   test "every kind is a node of its own shape and colour" do
-    diagram = Graph.steps_to_mermaid(DispatchRig.Ledger)
+    diagram = Graph.contract_to_mermaid(DispatchRig.Ledger)
 
     assert diagram =~ ~s(command_deposit["Deposit"]:::command)
     assert diagram =~ ~s(event_deposited["Deposited"]:::event)
@@ -32,7 +33,7 @@ defmodule EhOsContract.GraphV2Test do
   end
 
   test "a reaction is the event reaching its consumer and the consumer's command" do
-    diagram = Graph.steps_to_mermaid(DispatchRig.Ledger)
+    diagram = Graph.contract_to_mermaid(DispatchRig.Ledger)
 
     assert diagram =~ "event_deposited --> policy_flag_large_deposit"
     assert diagram =~ "policy_flag_large_deposit --> command_flag_account"
@@ -48,7 +49,7 @@ defmodule EhOsContract.GraphV2Test do
     Seed.request(:v2, "r-1", :request_approved)
     Seed.request(:v2, "r-2", :request_refused)
 
-    diagram = Graph.steps_to_mermaid(ProcessShapes.Next.Promised, overlay: true)
+    diagram = Graph.contract_to_mermaid(ProcessShapes.Next.Promised, overlay: true)
 
     assert diagram =~ ~s|event_request_received["Request received (2x, 2 runs)"]:::event|
     assert diagram =~ "command_decide_request -->|1/2 runs| event_request_approved"
@@ -88,7 +89,7 @@ defmodule EhOsContract.GraphV2Test do
   end
 
   @tag :tmp_dir
-  test "mix eh_os_contract.graph --process draws a v2 process's shape, and with --overlay its steps",
+  test "mix eh_os_contract.graph --process draws a v2 process's shape, and with --overlay its graph",
        %{tmp_dir: dir} do
     path = Path.join(dir, "handling.mmd")
     Mix.shell(Mix.Shell.Process)

@@ -21,10 +21,11 @@ defmodule EhOsContract.Web.Live.Graph do
       engine work, not something this screen should paper over.
 
   **A v2 contract's process** (v2 plan, E7c) has its declared shape in the first
-  panel, as a v1 one does, and its steps with the log laid over them in the second
-  (`EhOsContract.Graph.steps_to_mermaid/2`), since a v2 contract is one process and
-  its overlay is that process's alone. The screen opens on a v2 process when there
-  is one.
+  panel, as a v1 one does, and in the second its contract's full graph with the log
+  laid over it (`EhOsContract.Graph.contract_to_mermaid/2`, plan EG1): the steps,
+  and the actors, read models, queries and external systems around them. A v2
+  contract is one process, so its overlay is that process's alone. The screen opens
+  on a v2 process when there is one.
 
   Rendering is client-side, through `app.js`'s `MermaidRender` hook: both
   diagram strings reach the template as plain data in a `data-graph`
@@ -82,7 +83,7 @@ defmodule EhOsContract.Web.Live.Graph do
     assign(socket,
       selected: key(process),
       declared_mermaid: EhOsContract.Graph.declared_to_mermaid(process.contract, process.name),
-      overlay_mermaid: EhOsContract.Graph.steps_to_mermaid(process.contract, overlay: true),
+      overlay_mermaid: EhOsContract.Graph.contract_to_mermaid(process.contract, overlay: true),
       overlay_heading: "Declared versus observed, this process"
     )
   end

@@ -756,6 +756,16 @@ defmodule EhOsContract.Pages do
 
     [
       facts(["Identity: #{Enum.map_join(u.identity, ", ", &code/1)}."]),
+      # The unit as a picture (plan EG1). GitHub draws the block; ExDoc needs Mermaid's
+      # script in `before_closing_body_tag`.
+      [
+        "",
+        "## Diagram",
+        "",
+        "```mermaid",
+        EhOsContract.Graph.Unit.to_mermaid(model, u.name),
+        "```"
+      ],
       section("Consults", u.consults, &consults(site, model, &1)),
       section("Invariants", u.invariants, fn i ->
         rejecting = for c <- commands, i.name in c.rejects, do: command_link(model, c.name)

@@ -19,10 +19,22 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   its window — for the process owner, before anything is built.
 
   **A v2 contract's process** has the same declared shape. With `--overlay` it is
-  drawn as its steps instead (plan E7c-2): commands, events, the consumers between
-  them and timers, each kind in its Event Storming colour
-  (`EhOsContract.Graph.steps_to_mermaid/2`), with the log laid over them — runs per
-  step, and what waits or fails there.
+  drawn as its contract's full graph instead, with the log laid over it (below).
+
+  ## `--contract` and `--unit`: a v2 contract, whole or one unit of it
+
+      mix eh_os_contract.graph --contract Rehmed.Contracts.VisitSettlement --output settlement.mmd
+      mix eh_os_contract.graph --contract Rehmed.Contracts.VisitSettlement --overlay --output settlement.mmd
+      mix eh_os_contract.graph --contract Rehmed.Contracts.VisitSettlement --unit visit_settlement --output unit.mmd
+
+  `--contract` draws the contract's full graph (plan EG1,
+  `EhOsContract.Graph.contract_to_mermaid/2`): commands, events, the consumers
+  between them and timers, each kind in its Event Storming colour, and the actors,
+  read models, queries and external systems around them. `--overlay` lays the log
+  over its steps — runs per step, and what waits or fails there. `--unit` draws one
+  unit instead (`EhOsContract.Graph.unit_to_mermaid/2`): its state, commands, events,
+  invariants, and how many scenarios pin each path. Both are Mermaid, so `--mermaid`
+  is not needed.
 
   It is per process and never global on purpose. The default inventory this task
   prints is 33 events from four contracts in one flat list, which is useful to
@@ -50,7 +62,9 @@ defmodule Mix.Tasks.EhOsContract.Graph do
           mermaid: :boolean,
           since: :string,
           output: :string,
-          process: :string
+          process: :string,
+          contract: :string,
+          unit: :string
         ]
       )
 
@@ -64,6 +78,8 @@ defmodule Mix.Tasks.EhOsContract.Graph do
     EhOsContract.Registry.load!()
 
     cond do
+      opts[:contract] -> contract(opts)
+      opts[:unit] -> Mix.raise("--unit names a unit of a contract; pass --contract too")
       opts[:process] -> declared(opts)
       opts[:overlay] -> overlay(opts)
       true -> static(opts)
@@ -97,7 +113,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
 
       v2 && opts[:overlay] ->
         emit_output(
-          EhOsContract.Graph.steps_to_mermaid(v2, overlay: true, since: since(opts)),
+          EhOsContract.Graph.contract_to_mermaid(v2, overlay: true, since: since(opts)),
           opts
         )
 
@@ -119,6 +135,39 @@ defmodule Mix.Tasks.EhOsContract.Graph do
 
         Mix.raise("no process #{inspect(name)}. Declared: #{known}")
     end
+  end
+
+  # A v2 contract's full graph, or one of its units.
+  defp contract(opts) do
+    contracts = EhOsContract.Registry.v2_contracts()
+    contract = Enum.find(contracts, &(inspect(&1) == opts[:contract]))
+
+    unless contract do
+      known = contracts |> Enum.map(&inspect/1) |> Enum.sort() |> Enum.join(", ")
+      Mix.raise("no v2 contract #{opts[:contract]}. Registered: #{known}")
+    end
+
+    text =
+      case opts[:unit] do
+        nil ->
+          EhOsContract.Graph.contract_to_mermaid(contract,
+            overlay: opts[:overlay] || false,
+            since: since(opts)
+          )
+
+        unit ->
+          units = Enum.map(EhOsContract.Model.fetch(contract).units, &Atom.to_string(&1.name))
+
+          unless unit in units,
+            do:
+              Mix.raise(
+                "#{opts[:contract]} has no unit #{unit}. Units: #{Enum.join(units, ", ")}"
+              )
+
+          EhOsContract.Graph.unit_to_mermaid(contract, String.to_existing_atom(unit))
+      end
+
+    emit_output(text, opts)
   end
 
   defp since(opts),

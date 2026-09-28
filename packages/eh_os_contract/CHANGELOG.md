@@ -36,6 +36,9 @@ What changes otherwise is what a host has to do.
 
 ### Changed — a host has to act
 
+- **EG1: `EhOsContract.Graph.steps_to_mermaid/2` is `contract_to_mermaid/2`**, and draws a v2 contract's full
+  graph (below). A caller renames the call; the options (`overlay:`, `since:`, `until:`) and the steps' nodes and
+  edges are the ones they were.
 - **EL2b: a domain service's `rule` needs `examples:`**, `rule :never_below_zero, "…", examples: [{[1, 3],
   0}]` — the arguments in the order the function takes them, then the result. A rule without one fails the
   compile (S9), and so does an example of the wrong arity or types (S9, X9 for domain values). Each example is a
@@ -96,6 +99,19 @@ What changes otherwise is what a host has to do.
   Scenario coverage compares these as sets, so no count moves.
 
 ### Added
+
+- **EG1: a v2 contract's full graph and one unit of it.** `EhOsContract.Graph.contract_to_mermaid/2` draws the
+  steps as before, and around them each unit's commands and events as a group, the actors issuing commands,
+  recording events and asking queries, the read models with what they project and the queries over them, and
+  the domain's externals the contract touches (an effect's `calls`, an event's `depends_on`, a system actor's
+  `backed_by`, a field an external issues, directly or as an entity's identifier). No verdict moves: the counts
+  on the overlay are the steps' as they were, and nothing new carries a count.
+  `EhOsContract.Graph.unit_to_mermaid/2` draws one unit: its state as a card of fields, its commands and events,
+  what builds its state (an aggregate's own events, a DCB's consulted ones), its invariants off the commands
+  they may refuse, and how many scenarios pin each path. `mix eh_os_contract.graph --contract MODULE [--overlay]
+  [--unit NAME]` draws either; `--process NAME --overlay` draws a v2 process's full graph. The unit's page from
+  `mix eh_os_contract.pages` carries its diagram as a Mermaid block, and the dashboard's graph screen draws a v2
+  process's full graph with the log.
 
 - **EL3: `mix eh_os_contract.pages --output <dir>`** (ESDM's `documentation`): the domain and its v2 contracts
   as Markdown, a page per element — the domain with its tree, each context with its glossary and relations,
