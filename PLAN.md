@@ -24,8 +24,9 @@ materiału) → E10–E12. Jedynym kontraktem v2 sandboxa jest dalej `Rehmed.Con
   EL3 razem do `main`. Wcześniej [#27](https://github.com/EmpoweredHouse/eh-os-contract/pull/27) i
   [#28](https://github.com/EmpoweredHouse/eh-os-contract/pull/28) — EL1 i EL2. Opisy: „Przed EL — decyzje
   użytkownika” … „EL3 — co wyszło”. Gałęzie `dsl-v2/el-*` są zmergowane.
-- **EG** jest na `dsl-v2/eg-graphs`, od `main`. Opis zakresu: „Po E8 — kolejność zmieniona”, akapit „Grafy —
-  wszystkie cztery”; decyzje przed budową — „Przed EG — decyzje użytkownika” (trzy części: EG1 poziom kontraktu,
+- **EG** jest na `dsl-v2/eg-graphs`, od `main`, niewypchnięte. **EG1 zrobione z przeglądem** („EG1 — co
+  wyszło”); następne EG2 (mapa kontekstów, widok systemu), potem EG3 (CSP). Opis zakresu: „Po E8 — kolejność
+  zmieniona”, akapit „Grafy — wszystkie cztery”; decyzje przed budową — „Przed EG — decyzje użytkownika” (trzy części: EG1 poziom kontraktu,
   EG2 poziom domeny, EG3 ekran grafu pod CSP).
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
@@ -88,6 +89,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 28 września, na głowie `dsl-v2/eg-graphs` po przeglądzie EG1** (`285a3ce`): brama z `sandbox/` →
+  **EXIT=0** — sandbox 54 testy, `check` 0 / 12 / 19; silnik 1204, `check` 0 / 65 / 21; web 41; auth 51.
 - **Lokalnie, 28 września, na `83a09ff`** (drzewo = dzisiejszy `main`): brama z `sandbox/` → **EXIT=0** — sandbox
   54 testy, `check` 0 / 12 / 19; silnik 1187, `check` 0 / 65 / 21; web 41; auth 51.
 - **CI `main`**: `0ada947` (przebieg `36357809151`) — `success`; `672ec46` (przebieg `36360773293`) — w toku przy
@@ -1244,6 +1247,49 @@ rozstrzygał. Wszystkie cztery odpowiedzi to propozycje asystenta:
 
 Rozstrzygnięte przez asystenta (mechanika): nowe grafy są tylko dla v2, grafy v1 w tasku i na ekranie zostają bez
 zmiany bajtu do wycięcia v1; kształt węzłów i kolory Event Stormingu jak w dzisiejszym grafie kroków.
+
+### EG1 — co wyszło (28 września)
+
+Na `dsl-v2/eg-graphs`, niewypchnięte: `0eca258` (EG1) i poprawki z przeglądu `8e194dc`, `1e3de9e`, `87a2beb`,
+`92d5d28`, `db1d0c9`, `285a3ce`. Brama zielona na każdym commicie. Silnik 1187 → **1204** testy, `check` bez zmian
+(sandbox 0 / 12 / 19, silnik 0 / 65 / 21), web 41, auth 51.
+
+- **Pełny graf kontraktu** (`EhOsContract.Graph.contract_to_mermaid/2`, dawne `steps_to_mermaid/2`): kroki jak
+  były, a wokół nich ramka każdej jednostki z jej komendami i zdarzeniami, aktorzy (`by:` → komenda i query,
+  `recorded_by:` → zdarzenie z napisem `records`), read modele (zdarzenie → read model, przerywana przy dostawie
+  po transakcji) i query (`reads`), systemy zewnętrzne domeny (`calls` efektu, `depends_on` zdarzenia bez grotu,
+  `backed by` aktora systemowego, `gives <pole>` — pole nadawane przez system, wprost albo jako identyfikator
+  encji). Nakładka tylko na krokach i zdarzeniach, liczniki bez zmian. Serwisy domenowe pominięte: model nie
+  wiąże ich z komendami, więc nie ma czego narysować poza pudełkiem.
+- **Widok jednostki** (`unit_to_mermaid/2`): karta stanu z polami (`identity`, `optional`), komendy → zdarzenia
+  → stan; w DCB do stanu wchodzą zdarzenia konsultowane (`consulted by <pola>` albo „where stated in prose”),
+  także cudze. Niezmiennik i ograniczenie komendy to romby przy komendzie, która może na nich odpaść. **Scenariusze
+  liczone na krawędziach** (`2 scenarios`), nie rysowane: krawędź bez liczby to ścieżka, której nic nie przypina.
+  Na stronie agregatu i DCB z `mix eh_os_contract.pages` jako blok ```` ```mermaid ````.
+- **Dane najpierw**: `Graph.Contract.build/2` i `Graph.Unit.build/2` dają węzły, krawędzie i grupy;
+  `Graph.Mermaid.render/2` rysuje. Wspólne `escape/1`, `runs/1` i identyfikatory węzłów używa też graf v1.
+- **Task**: `--contract <Moduł> [--overlay] [--unit <nazwa>]`; `--process <p> --overlay` dla v2 rysuje pełny graf.
+  Flaga, której obrazek by nie użył, jest odrzucana.
+- **`/graph`**: drugi panel procesu v2 to pełny graf z nakładką. Sprawdzone na bazie dev: 13 węzłów
+  `VisitSettlement` (5 komend, 6 zdarzeń, Specjalista, Recepcja), liczniki „4/6 runs” przy płatności; etykiety v1
+  AccountingMonth z polskimi znakami. **`graph --overlay --mermaid` v1 bajt w bajt jak punkt odniesienia**
+  `2026-09-27-po-zasiewie-visit-settlement`; graf `visit_settlement` różni się tylko dopisanymi węzłami i
+  krawędziami (z odniesienia ubyły wyłącznie `classDef` rodzajów, których ten kontrakt nie ma).
+
+**Przegląd (dwa równolegle, `pre-pr-review`).** Poprawione, każde z testem padającym na starym kodzie:
+ograniczenie komendy w `rejects:` dawało krawędź do niezadeklarowanego węzła (`8e194dc`); kontrakt z nieistniejącą
+domeną (v2 §8) wywracał pełny graf, który jako graf kroków się rysował (`1e3de9e`); złamanie linii w etykiecie
+zamykało blok Mermaida na stronie (`87a2beb`); task po cichu gubił `--overlay`/`--since` przy `--unit` i
+`--process` przy `--contract` (`92d5d28`); zdublowane pomocnicze funkcje, komentarz o ExDoc, README (`db1d0c9`).
+**Znalezione przy weryfikacji na bazie dev, nie przez przegląd:** poprawka `87a2beb` zamieniała złamania linii
+wyrażeniem `~r/\R/` bez flagi `u`, które łapie bajt `0x85` — drugi bajt „ą” w UTF-8 — więc psuła każdą polską
+etykietę; żaden test nie miał „ą” (`285a3ce`, test z polską etykietą). Bez zmian: `include`, którego rodzeństwo
+już nie deklaruje (R4 to wyklucza, stary kod miał to samo); aktorzy z `grants` zamiast z `by:`/`recorded_by:`
+(`grants` powstaje z tych samych deklaracji). Przegląd bezpieczeństwa: bez regresji — zapytania na ekranie te
+same co przy grafie kroków; ich koszt (N+1 w `Paths.lag/1`, podwójny mount, cały log bez `since:`) jest sprzed EG.
+
+**Pułapka do listy:** wyrażenie regularne na tekście klienta zawsze z flagą `u` — bez niej `\R`, `\s`, `\w` czytają
+bajty, a polszczyzna ma w UTF-8 bajty, które coś znaczą.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
