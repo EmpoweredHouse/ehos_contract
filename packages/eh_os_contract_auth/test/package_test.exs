@@ -57,14 +57,19 @@ defmodule EhOsContract.Auth.PackageTest do
             "http://ehos.example.com/jwks.json",
             "ftp://ehos.example.com/jwks.json",
             "ehos",
-            # Malformed, where a lenient parse would boot and every fetch go nowhere.
+            # Malformed, where a lenient parse would boot and every fetch go nowhere, or
+            # go elsewhere than checked: Req reads `[::1]a:8443` as port 443.
             "https://ehos.example.com:844e/jwks.json",
             "https://ehos.example.com]/jwks.json",
-            "https://ehos.example.com:8443:1/jwks.json"
+            "https://ehos.example.com:8443:1/jwks.json",
+            "https://[::1]a:8443/jwks.json",
+            "https://[2001:db8::1]8443/jwks.json"
           ] do
         Application.put_env(:eh_os_contract_auth, :jwks_url, url)
 
-        assert_raise ArgumentError, ~r/not https/, fn -> EhOsContract.Auth.child_spec([]) end
+        assert_raise ArgumentError, ~r/not https, or not a valid one/, fn ->
+          EhOsContract.Auth.child_spec([])
+        end
       end
 
       # An address with credentials is refused, https or not, and no refusal shows the
@@ -233,12 +238,16 @@ defmodule EhOsContract.Auth.PackageTest do
         EhOsContract.Auth.child_spec([])
       end
 
+      # Missing, not an address built from it, with a jwks_url and without one.
       Application.put_env(:eh_os_contract_auth, :audience, "rehmed/test")
       Application.put_env(:eh_os_contract_auth, :issuer, "")
-      Application.put_env(:eh_os_contract_auth, :jwks_url, "https://keys.ehos.test/jwks.json")
 
-      assert_raise ArgumentError, ~r/issuer:.* is missing/, fn ->
-        EhOsContract.Auth.child_spec([])
+      for jwks_url <- ["https://keys.ehos.test/jwks.json", nil] do
+        Application.put_env(:eh_os_contract_auth, :jwks_url, jwks_url)
+
+        assert_raise ArgumentError, ~r/issuer:.* is missing/, fn ->
+          EhOsContract.Auth.child_spec([])
+        end
       end
 
       Application.put_env(:eh_os_contract_auth, :issuer, "https://ehos.test")

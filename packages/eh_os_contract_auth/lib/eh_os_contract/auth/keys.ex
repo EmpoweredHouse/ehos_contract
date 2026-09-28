@@ -106,9 +106,9 @@ defmodule EhOsContract.Auth.Keys do
   certificate authority there keeps the two seconds unless it sets `:timeout` too.
 
   It raises on an option it does not take, when `:url` is not https (plain http is
-  allowed for `localhost` only), is not a string, or has any `@`, a query, a
-  fragment, or a character a URL is not sent with — the shapes a secret takes in
-  an address, which is logged — and on any
+  allowed for `localhost` only), is not a string, does not parse strictly (a port
+  typed `844e`), or has any `@`, a query, a fragment, or a character a URL is not
+  sent with — the shapes a secret takes in an address, which is logged — and on any
   `:req_options` but these, each given
   once: `connect_options` with `timeout` and `transport_opts` naming a certificate
   authority (`cacertfile` or `cacerts`); `receive_timeout`; `inet6`; and `plug` or
@@ -273,8 +273,10 @@ defmodule EhOsContract.Auth.Keys do
     end
 
     # `URI.new/1`, not `URI.parse/1`, which reads a port typed `844e` as 844 and lets
-    # a stray `]` through: the boot would pass, and every fetch go nowhere.
-    case URI.new(url) do
+    # a stray `]` through: the boot would pass, and every fetch go nowhere. And both
+    # must read the same host and port, since Req fetches by `URI.parse/1`: the two
+    # differ on `https://[::1]a:8443/`, 8443 checked here and 443 fetched.
+    case agreed(url) do
       {:ok, %URI{scheme: "https", host: host}} when is_binary(host) and host != "" ->
         :ok
 
@@ -305,6 +307,14 @@ defmodule EhOsContract.Auth.Keys do
                   "it answers is trusted as EHOS's keys. Set config :eh_os_contract_auth, " <>
                   "pin_keys: true in config/test.exs"
         end
+    end
+  end
+
+  defp agreed(url) do
+    with {:ok, strict} <- URI.new(url),
+         %URI{host: host, port: port} when {host, port} == {strict.host, strict.port} <-
+           URI.parse(url) do
+      {:ok, strict}
     end
   end
 

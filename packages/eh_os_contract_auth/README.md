@@ -208,8 +208,8 @@ for its own API replaces that store for this fetch too.
 **The address is written to the log with every failed fetch, so keep secrets out of it.** The boot
 refuses the shapes a secret takes in one: any `@` (a password with a `/` in it parses as the host,
 so every `@` is taken for credentials; a path that needs one takes it as `%40`), a query, a
-fragment, and any character a URL is not sent with. The key set is public and asked for with none
-of these. A token in the path itself is not something any check can tell apart; it does not belong
+fragment, any character a URL is not sent with, and an address that does not parse strictly (a
+port typed `844e`, a stray `]`). The key set is public and asked for with none of these. A token in the path itself is not something any check can tell apart; it does not belong
 there. The package's own messages never show an address they refuse; when `EhOsContract.Auth.Keys`
 is listed as a child directly, rather than through `EhOsContract.Auth`, OTP's report of a failed
 start shows its arguments, the address among them.
