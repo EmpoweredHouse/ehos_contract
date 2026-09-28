@@ -2861,12 +2861,21 @@ po cichu zdejmowały gwarancje z README. Przy pracy wyszło jeszcze `url:` w opc
   jaśniejsza nazwa, ale jeszcze jedna rzecz do ustawienia u hosta; bez bramki — linia zostawiona w `runtime.exs`
   wyłącza wszystkie gwarancje.
 Poprawione przez asystenta: `config :req, default_options` — Req nakłada je pod każde żądanie, więc
-`follow_redirects`, `auth`, `headers` czy `plug` stamtąd omijały listę; teraz sprawdzane jest żądanie takie, jakie
-Req by wysłał (`not_ours/2`): przy starcie pada boot, ustawione później (`Req.default_options/1`) — każde pobranie,
-i nic nie jest wysłane. `transport_opts: nil` przechodził i wywracał każde pobranie (Req robi na nim
+`follow_redirects`, `auth`, `headers` czy `plug` stamtąd omijały listę. Pierwsza poprawka sprawdzała żądanie takie,
+jakie Req by wysłał, i odrzucała obce opcje; trzecia runda przeglądów znalazła obok niej `plugins:` (Req uruchamia je
+przed opcjami, dokładają kroki, których żadna opcja nie pokazuje — sprawdzone: wtyczka podmienia adres i adapter,
+sprawdzenie widzi czyste żądanie), `body:` (pole, nie opcja) i dwa fałszywe alarmy (`inet6` z domyślnych Req
+wywracało boot, choć jest na liście; `jwks_url` z userinfo raportowany jako opcja z `config :req`). **Teraz
+pobranie w ogóle nie bierze domyślnych Req**: żądanie budowane jak w `Req.new/1`, ale bez nich —
+`Req.Request.new() |> Req.Steps.attach() |> Req.merge(...)`; `Req.merge/2` i `Req.get/1` na gotowym żądaniu ich
+nie czytają. Koszt: `Req.Steps.attach/1` jest `@doc false`; Req przypięty lockiem, a `keys_test` pada, jeśli
+aktualizacja wpuści domyślne z powrotem (sprawdzone wstecz na `Req.new/1`). *Odrzucone:* odrzucać domyślne Req
+przy starcie — aplikacja z globalnym `config :req` dla innych API nie wstałaby przez nasz pakiet, a wtyczek i tak
+nie widać. Komunikat o adresie spoza `https` nie pokazuje userinfo (test). `transport_opts: nil` przechodził i wywracał każde pobranie (Req robi na nim
 `Keyword.merge`) — teraz czytany jak brak. Nieznana opcja dziecka (literówka `req_option:`) ginęła bez słowa —
 teraz odrzucana. Komunikat o złym typie nie pokazuje wartości (mogą w niej być certyfikaty). Testy startu
-`Keys` wprost z własną nazwą. Każde sprawdzone wstecz, sześć mutacji, każda wywraca dokładnie swój test.
+`Keys` wprost z własną nazwą. Każde sprawdzone wstecz, każda mutacja wywraca dokładnie swój test. Bramka `pin_keys` w jednym miejscu
+(`test_trust?/0`) dla `pin/2` i zaślepek.
 *Bez zmian:* nakładać `redirect`/`into` po opcjach hosta — lista i `not_ours/2` już ich pilnują, a dopisanie ich
 do listy to świadoma zmiana, którą zobaczy przegląd. *Pominięte:* wartości nie są sprawdzane
 (`receive_timeout: :infinity`) — to czasy, zadanie z limitem całego pobrania.
