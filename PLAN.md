@@ -24,8 +24,9 @@ materiału) → E10–E12. Jedynym kontraktem v2 sandboxa jest dalej `Rehmed.Con
   EL3 razem do `main`. Wcześniej [#27](https://github.com/EmpoweredHouse/eh-os-contract/pull/27) i
   [#28](https://github.com/EmpoweredHouse/eh-os-contract/pull/28) — EL1 i EL2. Opisy: „Przed EL — decyzje
   użytkownika” … „EL3 — co wyszło”. Gałęzie `dsl-v2/el-*` są zmergowane.
-- **EG** jest na `dsl-v2/eg-graphs`, od `main`, niewypchnięte. **EG1 i EG2 zrobione z przeglądem** („EG1 — co
-  wyszło”, „EG2 — co wyszło”); następne EG3 (ekran grafu pod CSP). Opis zakresu: „Po E8 — kolejność
+- **EG** jest na `dsl-v2/eg-graphs`, od `main`, niewypchnięte. **EG1, EG2 i EG3 zrobione z przeglądem**
+  („EG1 — co wyszło”, „EG2 — co wyszło”, „EG3 — co wyszło”). EG jest skończone; push i PR — na polecenie
+  użytkownika. Opis zakresu: „Po E8 — kolejność
   zmieniona”, akapit „Grafy — wszystkie cztery”; decyzje przed budową — „Przed EG — decyzje użytkownika” (trzy części: EG1 poziom kontraktu,
   EG2 poziom domeny, EG3 ekran grafu pod CSP).
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
@@ -40,8 +41,8 @@ materiału) → E10–E12. Jedynym kontraktem v2 sandboxa jest dalej `Rehmed.Con
   usterek** — użytkownika, bez zmian od poprzedniego handoffu (opisane w „Po E8 — kolejność zmieniona” i
   dopiskach 25–27 września). Link w wyjściu `check` (`hexdocs.pm/eh_os_contract/rules.html`) zadziała dopiero po
   publikacji na Hex.
-- **Ekran grafu pod ścisłym CSP** (dopisek 28 września o design systemie) — osobna decyzja; dotyka EG, bo EG
-  dokłada diagramów na `/graph`.
+- **Ekran grafu pod ścisłym CSP** — zrobione w EG3; zostaje ~400 zablokowanych prób styli z pomiaru Mermaida
+  w konsoli i pytanie do EHOS-a o `report-uri`/RUM („EG3 — co wyszło”) — użytkownika.
 
 ### Co przeczytać najpierw
 
@@ -89,6 +90,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 28 września, na głowie `dsl-v2/eg-graphs` po przeglądzie EG3** (`2bd8316`): brama z `sandbox/` →
+  **EXIT=0** — sandbox 54 testy, `check` 0 / 12 / 19; silnik 1219, `check` 0 / 65 / 21; web 43; auth 51.
 - **Lokalnie, 28 września, na głowie `dsl-v2/eg-graphs` po przeglądzie EG2** (`207b0ea`): brama z `sandbox/` →
   **EXIT=0** — sandbox 54 testy, `check` 0 / 12 / 19; silnik 1217, `check` 0 / 65 / 21; web 41; auth 51.
 - **Lokalnie, 28 września, na głowie `dsl-v2/eg-graphs` po przeglądzie EG1** (`285a3ce`): brama z `sandbox/` →
@@ -1333,6 +1336,42 @@ identyfikatorów; alternatywa `mermaid.render` z własnym identyfikatorem to prz
 wybrany kontrakt obserwowany dwa razy przy mount (jeden kontrakt); podwójny filtr domeny w `mount` (potrzebny, żeby
 pominąć domeny bez kontraktów). Kontrakt bez procesu nie istnieje (R1), więc gałęzie `process: nil` w grafach to
 tylko ostrożność.
+
+### EG3 — co wyszło (28 września)
+
+Na `dsl-v2/eg-graphs`, niewypchnięte: `7dd58ae` (EG3) i poprawki z przeglądu `35e74ed`, `2bd8316`. Brama zielona
+na każdym commicie. Silnik 1217 → **1219**, web 41 → **43**, `check` bez zmian.
+
+- **Ekran grafu działa pod `default-src 'self'` EHOS-a.** Wcześniej każdy diagram był czarnym prostokątem.
+  Hook rysuje przez `mermaid.render` i przed wstawieniem przenosi `<style>` SVG do arkusza konstruowanego
+  (`document.adoptedStyleSheets`), a każdy atrybut `style` do `element.style` — CSSOM nie jest stylem inline i
+  polityka go nie blokuje (sprawdzone wprost: `style.cssText` przechodzi, `setAttribute("style")` nie).
+- **Sandbox serwuje politykę EHOS-a na dashboardzie na stałe** (`router.ex`, potok `:browser`), więc każde
+  oglądanie w dev jest też sprawdzeniem CSP. Ekran statusu: zero naruszeń.
+- **Zostaje:** przebieg pomiarowy Mermaida ustawia style inline na roboczej kopii (d3, `innerHTML`, kod
+  kształtów) i polityka blokuje każdy — około 400 wpisów w konsoli na załadowanie ekranu grafu w sandboxie, bez
+  wpływu na rysunek. *Odrzucone:* przekierowanie `setAttribute("style")` na CSSOM na czas rysowania (394 → 303,
+  globalna łatka na prototypie za mało dająca); etykiety SVG zamiast HTML (96 na diagram i inne łamanie
+  etykiet); `securityLevel: "sandbox"` (iframe dziedziczy politykę, `render` zwraca wtedy inny kształt).
+  Wyciszenie wszystkich wymagałoby łatania wywołań DOM Mermaida. **Pytanie do EHOS-a (użytkownika):** jeśli
+  EHOS ma `report-uri`/`report-to` albo Datadog RUM zbiera `securitypolicyviolation`, każde wejście na ekran
+  grafu wyśle kilkaset zgłoszeń.
+- **Sprawdzone w przeglądarce** (testy tego nie widzą): trzy diagramy z kolorami i układem jak bez polityki,
+  żadna z 20 etykiet nie wystaje, przełączenie procesu i zmiana motywu bez pustego bloku w żadnej chwili, trzy
+  arkusze przez cały czas, zepsuty diagram pokazuje zdanie w swoim bloku, a dwa pozostałe zostają.
+
+**Przegląd (dwa równolegle, `pre-pr-review`).** Poprawione: Mermaid przed rysowaniem usuwa element o
+identyfikatorze, który rysuje, więc rysowanie pod identyfikatorem bloku opróżniało diagram przy każdym
+przerysowaniu, a po błędzie zostawiało pusty blok i obrazek błędu na dole strony — teraz nowy identyfikator na
+rysowanie (bezpieczny dla selektora) i zdanie w bloku przy błędzie; pierwsze rysowanie mierzyło etykiety w foncie
+strony (14 px), kolejne w foncie diagramu — teraz robocza kopia w ukrytym kontenerze w foncie diagramu; do
+arkusza trafia tylko własny `<style>` Mermaida; `bindFunctions` jak w `run`; test źródła czyta też zbudowany
+plik (`2bd8316`). Z przeglądu bezpieczeństwa **usterka sprzed EG3**: `<`, `>` i `#` w etykiecie Mermaid czytał jako
+znacznik albo encję (`a<b`, `Faktura #12;`) — teraz encje Mermaida `#lt;`, `#gt;`, `#35;`, sprawdzone w
+przeglądarce; karta stanu jednostki łamie linie po stronie renderera (`35e74ed`). Wstawianie SVG samemu nie
+omija DOMPurify — `render` zwraca ten sam oczyszczony tekst, który `run` wstawiał. **Pominięte:** hałas w konsoli
+(wyżej); nagłówek sandboxa nie chroni przed clickjackingiem (`frame-ancestors`) — celowo odwzorowuje politykę
+EHOS-a, nie jest pełnym nagłówkiem utwardzającym.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
