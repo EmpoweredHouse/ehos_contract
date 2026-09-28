@@ -92,9 +92,13 @@ defmodule EhOsContract.Auth.PackageTest do
       for {url, message} <- [
             {"https://ehos.example.com/k?access_token=secret", ~r/with a query or a fragment/},
             {"https://ehos.example.com/k#secret", ~r/with a query or a fragment/},
-            {"https://ehos.example.com/k?t=secret\n", ~r/printable ASCII/},
-            {"https://ehos.example.com/k k/secret", ~r/printable ASCII/},
-            {"https://ehos.example.com/\u00e9/secret", ~r/printable ASCII/}
+            {"https://ehos.example.com/k?t=secret\n", ~r/with a query or a fragment/},
+            {"https://ehos.example.com/k/secret\n", ~r/characters of a URL/},
+            {"https://ehos.example.com/k k/secret", ~r/characters of a URL/},
+            {"https://ehos.example.com/\u00e9/secret", ~r/characters of a URL/},
+            # Mint sends neither, so the boot would pass and every fetch fail.
+            {"https://ehos.example.com/keys|v2", ~r/characters of a URL/},
+            {"https://ehos.example.com/k%zz", ~r/characters of a URL/}
           ] do
         Application.put_env(:eh_os_contract_auth, :jwks_url, url)
         error = assert_raise ArgumentError, message, fn -> EhOsContract.Auth.child_spec([]) end
@@ -111,6 +115,18 @@ defmodule EhOsContract.Auth.PackageTest do
       error = assert_raise ArgumentError, fn -> EhOsContract.Auth.child_spec([]) end
       assert error.message =~ "as a string"
       refute error.message =~ "secret"
+
+      # The control: a port, an encoded path, IPv6, and loopback plain for development.
+      for url <- [
+            "https://ehos.example.com:8443/.well-known/jwks.json",
+            "https://ehos.example.com/tenants/%40acme/jwks.json",
+            "https://[2001:db8::1]/.well-known/jwks.json",
+            "http://[::1]:4000/jwks.json"
+          ] do
+        Application.put_env(:eh_os_contract_auth, :jwks_url, url)
+        assert %{start: {_, _, [opts]}} = EhOsContract.Auth.child_spec([])
+        assert opts[:url] == url
+      end
 
       # The control: loopback may be plain, for development.
       Application.put_env(:eh_os_contract_auth, :jwks_url, "http://localhost:4100/jwks.json")
@@ -193,6 +209,14 @@ defmodule EhOsContract.Auth.PackageTest do
     test "fails the boot on an address given in its child options" do
       assert_raise ArgumentError, ~r/not from url: in its child options/, fn ->
         EhOsContract.Auth.child_spec(url: "https://elsewhere.example.com/jwks.json")
+      end
+    end
+
+    test "fails the boot on an audience that is not a string" do
+      Application.put_env(:eh_os_contract_auth, :audience, ~c"rehmed/test")
+
+      assert_raise ArgumentError, ~r/audience: takes a string/, fn ->
+        EhOsContract.Auth.child_spec([])
       end
     end
 

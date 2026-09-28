@@ -102,9 +102,10 @@ defmodule EhOsContract.Auth do
   repo: `EhOsContract.Auth` in the list of children.
 
   It reads `:issuer` and `:jwks_url` from `config :eh_os_contract_auth`, and raises
-  at boot without an issuer; when the key set's address is not a string, not https
-  (plain http is allowed for `localhost` only), or has anything in it that could be a
-  secret; on `url:` in `opts`; and on `req_options` other than the few
+  at boot without an issuer or an audience, or with one that is not a string; when
+  the key set's address is not https (plain http is allowed for `localhost` only) or
+  has an `@`, a query, a fragment or a character a URL is not sent with; on `url:` in
+  `opts`; and on `req_options` other than the few
   `EhOsContract.Auth.Keys.start_link/1` names. `:audience` and `:issuer` are read by
   `verify/2` on every credential, and are checked here too, so a missing one fails
   the boot rather than every request.
@@ -117,6 +118,10 @@ defmodule EhOsContract.Auth do
       raise ArgumentError,
             "config :eh_os_contract_auth, audience: \"<application>/<environment>\" is missing; " <>
               "it is the only audience a credential for this application may carry"
+    end
+
+    unless is_binary(config[:audience]) do
+      raise ArgumentError, "config :eh_os_contract_auth, audience: takes a string"
     end
 
     unless config[:issuer] do

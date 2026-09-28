@@ -45,8 +45,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   name `EhOsContract.Auth.Keys.start_link/1` does not take, which was dropped without a word.
   `start_link/1` checks all of it, the https address included, so starting it directly is no way
   around. `transport_opts: nil` is read as none, where it broke every fetch. The key set's address
-  is refused when it is not a string or has anything in it that could be a secret — any `@`, a
-  query, a fragment, a character outside printable ASCII — since it is written to the log with
-  every failed fetch; the package's messages never show a refused address.
+  is refused when it is not a string or has the shapes a secret takes in one — any `@`, a query,
+  a fragment — or a character a URL is not sent with, since it is written to the log with every
+  failed fetch; the package's messages never show a refused address. `issuer` and `audience`
+  must be strings.
 - **Req is held to 0.7.x** (`~> 0.7.4`): the fetch builds on Req's base request, which Req does
   not document.

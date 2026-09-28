@@ -205,11 +205,12 @@ certificates.** Without `cacertfile` or `cacerts`, EHOS's certificate is checked
 VM's store (`:public_key.cacerts_get/0`), and any library that calls `:public_key.cacerts_load/1`
 for its own API replaces that store for this fetch too.
 
-**Nothing that could be a secret may be in the address**, because it is written to the log with
-every failed fetch: the boot fails on any `@` (a password with a `/` in it parses as the host, so
-every `@` is taken for credentials; a path that needs one takes it as `%40`), on a query or a
-fragment, and on anything but printable ASCII. The key set is public and asked for with none of
-these. The package's own messages never show an address they refuse; when `EhOsContract.Auth.Keys`
+**The address is written to the log with every failed fetch, so keep secrets out of it.** The boot
+refuses the shapes a secret takes in one: any `@` (a password with a `/` in it parses as the host,
+so every `@` is taken for credentials; a path that needs one takes it as `%40`), a query, a
+fragment, and any character a URL is not sent with. The key set is public and asked for with none
+of these. A token in the path itself is not something any check can tell apart; it does not belong
+there. The package's own messages never show an address they refuse; when `EhOsContract.Auth.Keys`
 is listed as a child directly, rather than through `EhOsContract.Auth`, OTP's report of a failed
 start shows its arguments, the address among them.
 

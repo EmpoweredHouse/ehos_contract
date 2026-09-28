@@ -106,9 +106,9 @@ defmodule EhOsContract.Auth.Keys do
   certificate authority there keeps the two seconds unless it sets `:timeout` too.
 
   It raises on an option it does not take, when `:url` is not https (plain http is
-  allowed for `localhost` only), is not a string, or has anything in it that could
-  be a secret (any `@`, a query, a fragment, or a character outside printable
-  ASCII), and on any
+  allowed for `localhost` only), is not a string, or has any `@`, a query, a
+  fragment, or a character a URL is not sent with — the shapes a secret takes in
+  an address, which is logged — and on any
   `:req_options` but these, each given
   once: `connect_options` with `timeout` and `transport_opts` naming a certificate
   authority (`cacertfile` or `cacerts`); `receive_timeout`; `inet6`; and `plug` or
@@ -233,26 +233,21 @@ defmodule EhOsContract.Auth.Keys do
   def check_options!(opts) do
     check_allowed!(:options, opts)
     # Not `Keyword.fetch!/2`, whose error would show every option given.
-    url = Keyword.get(opts, :url) || raise(ArgumentError, "eh_os_contract_auth takes url:")
+    url = Keyword.get(opts, :url)
+    if url in [nil, ""], do: raise(ArgumentError, "eh_os_contract_auth takes url:")
 
     # The key set is what every credential is trusted by, and over plain HTTP anyone
     # on the path could hand it keys of their own. Only a machine's own loopback may
     # be plain, for development. The address goes to the log with every failed fetch,
-    # and to Mint's errors, so nothing that could be a secret may be in it — and no
+    # and to Mint's errors, so the shapes a secret takes in one are refused — and no
     # message here shows it, since one that fails may carry a password. Any `@` is
     # taken for one: a password with a `/` in it parses as the host, `user`, and no
     # userinfo at all. A query or fragment is refused whole, as is anything Mint
-    # would not send (a space, a trailing newline from a secret file), rather than
-    # cut out of each place the address is shown. The pattern reads bytes, not
-    # characters, on purpose: no `u`, so any byte of a non-ASCII one fails it.
+    # would not send (a space, a trailing newline from a secret file, `|`, a bare
+    # `%`), rather than cut out of each place the address is shown.
     cond do
       not is_binary(url) ->
         raise ArgumentError, "eh_os_contract_auth takes EHOS's address as a string"
-
-      not String.match?(url, ~r/\A[\x21-\x7E]+\z/) ->
-        raise ArgumentError,
-              "eh_os_contract_auth takes EHOS's address in printable ASCII, without spaces " <>
-                "or line breaks: a request is sent with nothing else"
 
       String.contains?(url, "@") ->
         raise ArgumentError,
@@ -264,6 +259,14 @@ defmodule EhOsContract.Auth.Keys do
         raise ArgumentError,
               "eh_os_contract_auth fetches EHOS's keys from an address with a query or a " <>
                 "fragment: the key set is asked for with neither, and the address is logged"
+
+      # RFC 3986's characters and `%XX`, what Mint's `validate_target` sends. The
+      # pattern reads bytes, not characters, on purpose: no `u`, so every byte of a
+      # non-ASCII one fails it.
+      not String.match?(url, ~r|\A(?:[A-Za-z0-9\-._~:/\[\]!$&'()*+,;=]\|%[0-9A-Fa-f]{2})+\z|) ->
+        raise ArgumentError,
+              "eh_os_contract_auth takes EHOS's address in the characters of a URL " <>
+                "(RFC 3986, anything else percent-encoded): no fetch could send another"
 
       true ->
         :ok

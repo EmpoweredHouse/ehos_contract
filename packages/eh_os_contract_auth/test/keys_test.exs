@@ -114,16 +114,18 @@ defmodule EhOsContract.Auth.KeysTest do
 
   describe "a key process started directly" do
     # `start_link/1` checks what `EhOsContract.Auth.child_spec/1` checks, so a host
-    # that lists `Keys` itself gets no way around it.
-    # A name of its own, so a check that stopped raising fails its assertion rather
-    # than a later test's start.
+    # that lists `Keys` itself gets no way around it. Each start has a name of its
+    # own, so a check that stopped raising fails its assertion rather than a later
+    # test's start.
     test "refuses a start without an address, and shows no option given" do
-      error =
-        assert_raise ArgumentError, fn ->
-          Keys.start_link(name: :keys_no_url, repo: Repo, req_options: [inet6: true])
-        end
+      for url <- [[], [url: ""]] do
+        error =
+          assert_raise ArgumentError, fn ->
+            Keys.start_link([name: :keys_no_url, repo: Repo, req_options: [inet6: true]] ++ url)
+          end
 
-      assert error.message == "eh_os_contract_auth takes url:"
+        assert error.message == "eh_os_contract_auth takes url:"
+      end
     end
 
     test "refuses an address that is not https" do
