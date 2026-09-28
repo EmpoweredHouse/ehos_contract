@@ -154,6 +154,7 @@ defmodule EhOsContract.Web.Live.Graph do
           <pre
             class="mermaid"
             phx-hook="MermaidRender"
+          phx-update="ignore"
             id={"map-graph-#{domain.name}"}
             data-graph={domain.map}
           ></pre>
@@ -164,6 +165,7 @@ defmodule EhOsContract.Web.Live.Graph do
           <pre
             class="mermaid"
             phx-hook="MermaidRender"
+          phx-update="ignore"
             id={"system-graph-#{domain.name}"}
             data-graph={domain.system}
           ></pre>
@@ -191,6 +193,7 @@ defmodule EhOsContract.Web.Live.Graph do
           :if={@declared_mermaid}
           class="mermaid"
           phx-hook="MermaidRender"
+          phx-update="ignore"
           id="declared-graph"
           data-graph={@declared_mermaid}
         ></pre>
@@ -201,6 +204,7 @@ defmodule EhOsContract.Web.Live.Graph do
         <pre
           class="mermaid"
           phx-hook="MermaidRender"
+          phx-update="ignore"
           id="overlay-graph"
           data-graph={@overlay_mermaid}
         ></pre>
@@ -211,6 +215,7 @@ defmodule EhOsContract.Web.Live.Graph do
         <pre
           class="mermaid"
           phx-hook="MermaidRender"
+          phx-update="ignore"
           id={"unit-graph-#{unit.name}"}
           data-graph={unit.mermaid}
         ></pre>

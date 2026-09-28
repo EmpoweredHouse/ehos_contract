@@ -50,6 +50,26 @@ defmodule EhOsContract.Web.Live.GraphTest do
     assert html =~ "Declared versus observed, this process"
   end
 
+  # Without it LiveView's patch takes the drawn SVG out of every block on every change — a
+  # process switch blanked the context map and the system too, which had not changed. The hook
+  # still hears of a changed `data-graph`: LiveView updates an ignored block's attributes.
+  test "every diagram block keeps what the browser drew in it across a patch" do
+    html =
+      build_conn()
+      |> Access.put_actor("admin", ["eh_os_contract_admin"])
+      |> get("/dashboard/graph")
+      |> html_response(200)
+
+    blocks = html |> LazyHTML.from_document() |> LazyHTML.query("pre.mermaid") |> Enum.to_list()
+
+    assert length(blocks) >= 4
+
+    for block <- blocks do
+      assert LazyHTML.attribute(block, "phx-update") == ["ignore"],
+             "#{inspect(LazyHTML.attribute(block, "id"))} is patched by LiveView"
+    end
+  end
+
   test "two processes of one name in two contracts are each reachable, a v1 one with its own panels" do
     # The v2 fixture and its v1 original both name their process `handling`.
     {:ok, view, _html} =

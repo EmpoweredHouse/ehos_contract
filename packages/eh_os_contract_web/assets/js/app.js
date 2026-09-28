@@ -198,10 +198,11 @@ const scratch = () => {
   return box
 }
 
-// The graph screen's `<pre class="mermaid" phx-hook="MermaidRender">` blocks carry the raw
-// diagram source in `data-graph`, and the hook draws it into the block. `updated()` fires on every
-// diff LiveView applies to the element (a process switch re-rendering the declared-shape
-// diagram), not only on first mount.
+// The graph screen's `<pre class="mermaid" phx-hook="MermaidRender" phx-update="ignore">` blocks
+// carry the raw diagram source in `data-graph`, and the hook draws it into the block. LiveView
+// leaves an ignored block's children alone — without that, every patch took the drawn SVG out of
+// every block, changed or not — and still updates its attributes, so `updated()` fires when
+// `data-graph` changes (a process switch re-rendering the declared-shape diagram).
 const Hooks = {
   MermaidRender: {
     mounted() {
