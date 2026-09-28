@@ -105,7 +105,8 @@ defmodule EhOsContract.Auth do
   `jwks_url` is unset, and the issuer's well-known path is used — and raises
   at boot without an issuer or an audience, or with one that is empty or not a
   string; when the key set's address is not https (plain http is allowed for
-  `localhost` only), does not parse strictly, or has an `@`, a query, a fragment or a
+  `localhost` only), does not parse strictly or alike for the check and for Req, or
+  has an `@`, a query, a fragment or a
   character a URL is not sent with; on `url:` in `opts`; and on `req_options` other than the few
   `EhOsContract.Auth.Keys.start_link/1` names. `:audience` and `:issuer` are read by
   `verify/2` on every credential, and are checked here too, so a missing one fails

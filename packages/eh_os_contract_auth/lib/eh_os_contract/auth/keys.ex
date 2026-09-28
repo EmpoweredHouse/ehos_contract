@@ -107,7 +107,7 @@ defmodule EhOsContract.Auth.Keys do
 
   It raises on an option it does not take, when `:url` is not https (plain http is
   allowed for `localhost` only), is not a string, does not parse strictly (a port
-  typed `844e`), or has any `@`, a query, a fragment, or a character a URL is not
+  typed `844e`) or alike for the check and for Req, or has any `@`, a query, a fragment, or a character a URL is not
   sent with — the shapes a secret takes in an address, which is logged — and on any
   `:req_options` but these, each given
   once: `connect_options` with `timeout` and `transport_opts` naming a certificate
@@ -275,7 +275,8 @@ defmodule EhOsContract.Auth.Keys do
     # `URI.new/1`, not `URI.parse/1`, which reads a port typed `844e` as 844 and lets
     # a stray `]` through: the boot would pass, and every fetch go nowhere. And both
     # must read the same host and port, since Req fetches by `URI.parse/1`: the two
-    # differ on `https://[::1]a:8443/`, 8443 checked here and 443 fetched.
+    # differ on `https://[::1]a:8443/`: host `::1]a` and port 8443 checked here, and
+    # `::1` on 443 fetched.
     case agreed(url) do
       {:ok, %URI{scheme: "https", host: host}} when is_binary(host) and host != "" ->
         :ok
