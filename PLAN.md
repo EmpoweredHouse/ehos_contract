@@ -22,9 +22,9 @@ StatutoryReporting, Settlement); v1 zostały `PayerSettlement` (do E9b) i TaxVis
 - **`origin/main` = `ff4f279`** (`VISION.md`, po merge [#32](https://github.com/EmpoweredHouse/eh-os-contract/pull/32),
   EG — cztery grafy, 28 września). CI `main` na `f2a54bd` (przebieg `36399198063`) — `success`. Gałąź `dsl-v2/eg-graphs` jest
   zmergowana. Opisy EG: „Przed EG — decyzje użytkownika” … „EG3 — co wyszło”.
-- **E9a** na `dsl-v2/e9-visit`, od `main` = `ff4f279`, **w PR [#33](https://github.com/EmpoweredHouse/eh-os-contract/pull/33)**
-  (merge — użytkownika): Rehmed, wizyta, zbudowane i przejrzane („E9a — co wyszło”, poprawki od `9e22beb`).
-  Następne: **E9b** na `dsl-v2/e9-payer`, od `dsl-v2/e9-visit`. Potem **E9b** (`dsl-v2/e9-payer`, od E9a) i **E9c** (`dsl-v2/e9-taxvision`, od E9b).
+- **E9a w `main`** — PR [#33](https://github.com/EmpoweredHouse/eh-os-contract/pull/33) zmergowany 28 września
+  (`451d068`). **E9b** na `dsl-v2/e9-payer`, od `main` = `451d068` — w budowie („Przed E9b — decyzja
+  użytkownika”). Potem **E9c** (`dsl-v2/e9-taxvision`, od E9b).
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
@@ -1642,6 +1642,24 @@ wykonywania zawodu jawny — rejestr KIF jest publiczny, decyzja zapisana tutaj.
 - **Specjalista podaje flagę P1 na zamknięciu** (`p1_reported`), więc przez HTTP może ją fałszować — to samo
   ustalenie co niewyrażalny niezmiennik „zamyka ten, kto wykonał”: decyzja regulacyjna na polu od wołającego.
 - Dokumentacja pakietów z przykładem `VisitSettlement` — E11.
+
+### Przed E9b — decyzja użytkownika (28 września)
+
+Zapisy rozstrzygały prawie wszystko: niezmiennik i kształt DCB (v2 §4.6), menedżer przy fakturze (`C-49` → `A-05`,
+14 sierpnia), `cadence {1, :month}`, relacja CTX-05 → CTX-06 (customer–supplier, *„which visits a payer owes for”*
+w `30-contexts.md`). Nie rozstrzygały jednego: **skąd kontekst płatników wie, że wizyta jest wykonaną wizytą
+płatnika w danym okresie** — płatnika nie niosło żadne zdarzenie sandboxa. Pytanie na przykładzie: pani Anna ma 12
+września fizjoterapię w wariancie LuxMed (`H99`), recepcja zamyka wizytę bez płatności, a 1 października menedżerka
+wystawia fakturę LuxMed za wrzesień — skąd `ExternalPayers` wie, że wizyta Anny należy do „LuxMed, wrzesień”?
+
+- **Settlement mówi** (propozycja asystenta, wybrana): przy zamknięciu wizyty z płatnikiem Settlement emituje
+  **nasze** zdarzenie z `payer_id`, `period_id` i `visit_id` (jak `p1_reporting_not_required` w E9a — model nie ma
+  faktu na to, co płynie przez CTX-05 → CTX-06), a DCB konsultuje je przez `match:`, więc czyta tylko „LuxMed,
+  wrzesień”. *Odrzucone:* **E-106 z warsztatu** („Podzielono rachunek między płatników”, `C-61`) — nazwa z
+  warsztatu, ale znaczy wizytę mieszaną, a wizyta w całości na płatnika nie jest podziałem; **DCB czyta
+  Scheduling** (`visit_booked` z płatnikiem i `visit_completed` przez `where:`) — same nazwy z warsztatu, ale
+  boundary czyta każdą wizytę każdego płatnika, więc każde wyjście pacjenta w klinice jest konfliktem przy fakturze,
+  a relacji Scheduling → płatnicy nie ma na mapie klienta.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
