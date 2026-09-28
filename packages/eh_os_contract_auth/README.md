@@ -173,13 +173,28 @@ children = [
 
 `:connect_options` given here are merged over the package's own, so the fetch keeps its two-second
 connect timeout: without it, an EHOS address that drops packets would hold every fetch for Mint's
-thirty seconds. A `timeout:` set in `connect_options`, or inside `transport_opts`, replaces the two
-seconds. Every other option replaces the package's of the same name.
+thirty seconds. A `timeout:` set in `connect_options` replaces the two seconds.
 
 Do not turn certificate verification off to make a first integration work: the keys would then come
 from whoever answers. For the same reason the package refuses to boot when the key set would be
 fetched over anything but `https` (plain `http` is allowed for `localhost` only), and **follows no
 redirect**: a key set answered from anywhere but the configured URL is a failed fetch.
+
+**`req_options` takes only what an integration needs**, each option once, and the boot fails on
+anything else:
+
+| Option | For |
+| --- | --- |
+| `connect_options: [transport_opts: [cacertfile: …]]` or `[cacerts: …]` | an internal certificate authority |
+| `connect_options: [proxy: …, proxy_headers: …]` | a proxy; TLS to EHOS is still checked through it |
+| `connect_options: [timeout: …]`, `receive_timeout: …`, `inet6: …` | tuning the connection |
+| `plug: …`, `adapter: …` | tests, in place of the network |
+
+It is a list of what is allowed, not of what is unsafe, because Req, Finch and Mint have many
+ways to undo what the key set is trusted by: an older name for `redirect`, TLS options that accept
+any certificate or check it against another name, a body read past the 64 KB limit. None of them is
+on the list. The address comes from the configuration only: `url:` in the child's options is refused
+too.
 
 **What the application configures, and nothing else:** `issuer`, which must be exactly the `iss`
 EHOS writes, `audience` (`<application>/<environment>`, exactly the `aud` EHOS issues for this

@@ -104,17 +104,25 @@ defmodule EhOsContract.Auth.KeysTest do
 
       assert_received {:transport, [timeout: 500]}
     end
+  end
 
-    # Req's own rule, which the documentation names as the second way.
-    test "replace it with a timeout in the transport options too", %{adapter: adapter} do
-      transport = [cacertfile: "/etc/ehos/ca.pem", timeout: 30_000]
+  describe "a key process started directly" do
+    # `start_link/1` checks what `EhOsContract.Auth.child_spec/1` checks, so a host
+    # that lists `Keys` itself gets no way around it.
+    test "refuses an address that is not https" do
+      assert_raise ArgumentError, ~r/not https/, fn ->
+        Keys.start_link(url: "http://ehos.example.com/jwks.json", repo: Repo)
+      end
+    end
 
-      start_keys(nil,
-        req_options: [adapter: adapter, connect_options: [transport_opts: transport]]
-      )
-
-      assert_received {:transport, options}
-      assert options[:timeout] == 30_000
+    test "refuses a request option outside the few it takes" do
+      assert_raise ArgumentError, ~r/does not take follow_redirects: in req_options/, fn ->
+        Keys.start_link(
+          url: "https://ehos.test/.well-known/jwks.json",
+          repo: Repo,
+          req_options: [follow_redirects: true]
+        )
+      end
     end
   end
 

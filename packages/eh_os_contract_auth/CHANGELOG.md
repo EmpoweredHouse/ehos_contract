@@ -30,5 +30,14 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **`req_options: [connect_options: …]` keeps the two-second connect timeout.** A host's
   `:connect_options` are merged over the package's key by key instead of replacing them, so naming
   an internal certificate authority (`transport_opts: [cacertfile: …]`) no longer drops the fetch's
-  connect timeout to Mint's thirty seconds. A `timeout:` given there, or inside `transport_opts`,
-  still replaces it, and `connect_options: nil` is read as none.
+  connect timeout to Mint's thirty seconds. A `timeout:` given there still replaces it, and
+  `connect_options: nil` is read as none.
+- **`req_options` takes only what an integration needs, and the boot fails on anything else**:
+  `connect_options` with `timeout`, `proxy`, `proxy_headers` and `transport_opts` naming a
+  certificate authority (`cacertfile`, `cacerts`), `receive_timeout`, `inet6`, and `plug` or
+  `adapter` for tests — each once. Before, any option was accepted, and several quietly took a
+  guarantee away: `redirect: true` or its old name `follow_redirects`, `into:`, `url:`,
+  `transport_opts: [verify: :verify_none]`, `verify_fun`, `server_name_indication`, `hostname`,
+  `finch_request`. `url:` in `EhOsContract.Auth`'s child options, which replaced the address the boot
+  had checked, is refused too. `EhOsContract.Auth.Keys.start_link/1` checks the same, the https
+  address included, so starting it directly is no way around either.

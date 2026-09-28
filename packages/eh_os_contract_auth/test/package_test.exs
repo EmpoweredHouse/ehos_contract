@@ -47,9 +47,9 @@ defmodule EhOsContract.Auth.PackageTest do
       assert opts[:url] == "https://ehos.test/.well-known/jwks.json"
 
       Application.put_env(:eh_os_contract_auth, :jwks_url, "https://keys.ehos.test/jwks.json")
-      assert %{start: {_, _, [opts]}} = EhOsContract.Auth.child_spec(req_options: [retry: false])
+      assert %{start: {_, _, [opts]}} = EhOsContract.Auth.child_spec(req_options: [inet6: true])
       assert opts[:url] == "https://keys.ehos.test/jwks.json"
-      assert opts[:req_options] == [retry: false]
+      assert opts[:req_options] == [inet6: true]
     end
 
     test "fails the boot when keys would be fetched over anything but https" do
@@ -63,6 +63,64 @@ defmodule EhOsContract.Auth.PackageTest do
       Application.put_env(:eh_os_contract_auth, :jwks_url, "http://localhost:4100/jwks.json")
       assert %{start: {_, _, [opts]}} = EhOsContract.Auth.child_spec([])
       assert opts[:url] == "http://localhost:4100/jwks.json"
+    end
+
+    test "fails the boot on request options outside the few it takes" do
+      # Each of these undoes what the key set is trusted by, and none is named in a
+      # list of what is unsafe: each is simply not among what is allowed.
+      for {req_options, message} <- [
+            {[follow_redirects: true], ~r/does not take follow_redirects: in req_options/},
+            {[redirect: true], ~r/does not take redirect: in req_options/},
+            {[into: :self], ~r/does not take into: in req_options/},
+            {[url: "http://ehos.example.com/jwks.json"], ~r/does not take url: in req_options/},
+            {[finch: SomePool], ~r/does not take finch: in req_options/},
+            {[finch_request: &Function.identity/1], ~r/does not take finch_request:/},
+            {[decoders: [:gz]], ~r/does not take decoders: in req_options/},
+            {[connect_options: [hostname: "other.example"]],
+             ~r/does not take hostname: in connect_options/},
+            {[connect_options: [transport_opts: [verify: :verify_none]]],
+             ~r/does not take verify: in transport_opts/},
+            {[
+               connect_options: [
+                 transport_opts: [verify_fun: {fn _, _, s -> {:valid, s} end, nil}]
+               ]
+             ], ~r/does not take verify_fun: in transport_opts/},
+            {[connect_options: [transport_opts: [server_name_indication: :disable]]],
+             ~r/does not take server_name_indication: in transport_opts/},
+            {[
+               connect_options: [
+                 transport_opts: [cacertfile: "/etc/ehos/ca.pem", timeout: 30_000]
+               ]
+             ], ~r/does not take timeout: in transport_opts/},
+            # Req reads the last of a key given twice, so a check of the first is fooled.
+            {[connect_options: [timeout: 1], connect_options: []],
+             ~r/takes connect_options: in req_options only once/},
+            {%{retry: false}, ~r/takes req_options as a keyword list/},
+            {[connect_options: "ca.pem"], ~r/takes connect_options as a keyword list/}
+          ] do
+        assert_raise ArgumentError, message, fn ->
+          EhOsContract.Auth.child_spec(req_options: req_options)
+        end
+      end
+
+      # The control: an internal authority, a proxy, tuned timeouts, and tests' stubs.
+      for req_options <- [
+            [connect_options: [transport_opts: [cacertfile: "/etc/ehos/ca.pem"]]],
+            [connect_options: [timeout: 1_000, transport_opts: [cacerts: []]]],
+            [connect_options: [proxy: {:http, "proxy.internal", 3128, []}]],
+            [connect_options: nil, receive_timeout: 2_000, inet6: true],
+            [plug: {Req.Test, __MODULE__}],
+            [adapter: &{&1, Req.Response.new(status: 503)}]
+          ] do
+        assert %{start: {_, _, [opts]}} = EhOsContract.Auth.child_spec(req_options: req_options)
+        assert opts[:req_options] == req_options
+      end
+    end
+
+    test "fails the boot on an address given in its child options" do
+      assert_raise ArgumentError, ~r/not from url: in its child options/, fn ->
+        EhOsContract.Auth.child_spec(url: "https://elsewhere.example.com/jwks.json")
+      end
     end
 
     test "fails the boot without an audience, or without an issuer even with a jwks_url" do

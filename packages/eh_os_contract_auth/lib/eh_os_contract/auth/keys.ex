@@ -63,6 +63,16 @@ defmodule EhOsContract.Auth.Keys do
   # The one entry of the table that is not a key: `{@next, clock, at}`, when the next
   # early fetch is allowed, by the process's clock.
   @next :next_early_fetch
+  # The only `:req_options` a host may give. Req, Finch and Mint have many ways to
+  # undo what the key set is trusted by — an old name for `redirect`, TLS options
+  # that accept any certificate, a name to check it against other than the URL's,
+  # a body read past the limit — so what is not here is refused, not what is known
+  # to be unsafe. `plug` and `adapter` are for hosts' tests.
+  @allowed [
+    req_options: [:connect_options, :receive_timeout, :inet6, :plug, :adapter],
+    connect_options: [:timeout, :proxy, :proxy_headers, :transport_opts],
+    transport_opts: [:cacertfile, :cacerts]
+  ]
 
   @typedoc "What `start_link/1` takes. Every option but `:url` has a default."
   @type option ::
@@ -83,11 +93,17 @@ defmodule EhOsContract.Auth.Keys do
   `:req_options` go to every `Req.get/2`, over its defaults: no retry, two seconds
   to connect, three to receive. An option given replaces the default of the same
   name, except `:connect_options`, which is merged key by key: a host naming its
-  certificate authority there keeps the two seconds unless it sets `:timeout` too,
-  there or inside `:transport_opts`, where Req lets it win.
+  certificate authority there keeps the two seconds unless it sets `:timeout` too.
+
+  It raises when `:url` is not https (plain http is allowed for `localhost` only),
+  and on any `:req_options` but these, each given once: `connect_options` with
+  `timeout`, `proxy`, `proxy_headers` and `transport_opts` naming a certificate
+  authority (`cacertfile` or `cacerts`); `receive_timeout`; `inet6`; and `plug` or
+  `adapter`, for tests. Anything else could undo what the key set is trusted by.
   """
   @spec start_link([option()]) :: GenServer.on_start()
   def start_link(opts) do
+    check_options!(opts)
     name = Keyword.get(opts, :name, __MODULE__)
     GenServer.start_link(__MODULE__, Keyword.put(opts, :name, name), name: name)
   end
@@ -192,6 +208,67 @@ defmodule EhOsContract.Auth.Keys do
   rescue
     # No table: the key process is not running.
     ArgumentError -> :error
+  end
+
+  @doc false
+  # Called by `start_link/1`, and by `EhOsContract.Auth.child_spec/1`, so a host's
+  # boot fails while its children are listed rather than when this one starts.
+  @spec check_options!(keyword()) :: :ok
+  def check_options!(opts) do
+    url = Keyword.fetch!(opts, :url)
+
+    # The key set is what every credential is trusted by, and over plain HTTP anyone
+    # on the path could hand it keys of their own. Only a machine's own loopback may
+    # be plain, for development.
+    case URI.parse(url) do
+      %URI{scheme: "https", host: host} when is_binary(host) and host != "" ->
+        :ok
+
+      %URI{scheme: "http", host: host} when host in ["localhost", "127.0.0.1", "::1"] ->
+        :ok
+
+      _other ->
+        raise ArgumentError,
+              "eh_os_contract_auth fetches EHOS's keys from #{inspect(url)}, which is not " <>
+                "https: keys fetched in the clear can be replaced on the way. Only localhost " <>
+                "may be plain http"
+    end
+
+    req_options = Keyword.get(opts, :req_options, [])
+    check_allowed!(:req_options, req_options)
+    connect_options = Keyword.get(req_options, :connect_options) || []
+    check_allowed!(:connect_options, connect_options)
+    check_allowed!(:transport_opts, Keyword.get(connect_options, :transport_opts) || [])
+  end
+
+  defp check_allowed!(level, options) do
+    allowed = @allowed[level]
+
+    unless is_list(options) and Keyword.keyword?(options) do
+      raise ArgumentError,
+            "eh_os_contract_auth takes #{level} as a keyword list, not #{inspect(options)}"
+    end
+
+    # Given twice, Req reads the last and a check of the first would be fooled.
+    case Keyword.keys(options) -- Enum.uniq(Keyword.keys(options)) do
+      [] ->
+        :ok
+
+      [twice | _] ->
+        raise ArgumentError, "eh_os_contract_auth takes #{twice}: in #{level} only once"
+    end
+
+    case Keyword.keys(options) -- allowed do
+      [] ->
+        :ok
+
+      [refused | _] ->
+        raise ArgumentError,
+              "eh_os_contract_auth does not take #{refused}: in #{level}, which takes only " <>
+                Enum.map_join(allowed, ", ", &"#{&1}:") <>
+                ". Any other option could undo what the key set is trusted by: its URL, " <>
+                "the check of EHOS's certificate, no redirect, and the 64 KB limit"
+    end
   end
 
   # --- the process ---------------------------------------------------------------------
