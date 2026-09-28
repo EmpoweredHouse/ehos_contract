@@ -1,0 +1,5 @@
+pre-pr-review on fix/auth-connect-timeout-merge..7fcd107 (stacked on #35). code-review high + engineering:code-review (security/perf) in parallel.
+Fixed: throw in the task crashed Keys via the link (16af818, test, reverse: only the throw test fails); {:exit,_} clause on the task result (16af818, unreachable today, no test); backwards link comment (16af818); deprecated adapter fn in the exit test -> plug (16af818); docs claimed the deadline bounds the whole fetch, store/2 is outside it (0500579); KeyCase moduledoc stale, test upper bound 6s -> 8s (16af818).
+No change needed: step timeouts sum to 7s > 5s (the deadline is the bound; log tells them apart); pool connection/socket release checked in Finch/NimblePool sources.
+Skipped, to user: store/load DB timeouts outside the deadline; refetch_at_most_every has no lower bound; PR #35 adapter-fn deprecation warnings.
+Gate from sandbox/ on 7fcd107: EXIT=0; sandbox 85, engine 1222, web 45, auth 58; check 0/22/11 and 0/65/21.
