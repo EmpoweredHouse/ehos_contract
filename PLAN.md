@@ -24,8 +24,8 @@ materiału) → E10–E12. Jedynym kontraktem v2 sandboxa jest dalej `Rehmed.Con
   EL3 razem do `main`. Wcześniej [#27](https://github.com/EmpoweredHouse/eh-os-contract/pull/27) i
   [#28](https://github.com/EmpoweredHouse/eh-os-contract/pull/28) — EL1 i EL2. Opisy: „Przed EL — decyzje
   użytkownika” … „EL3 — co wyszło”. Gałęzie `dsl-v2/el-*` są zmergowane.
-- **EG** jest na `dsl-v2/eg-graphs`, od `main`, niewypchnięte. **EG1 zrobione z przeglądem** („EG1 — co
-  wyszło”); następne EG2 (mapa kontekstów, widok systemu), potem EG3 (CSP). Opis zakresu: „Po E8 — kolejność
+- **EG** jest na `dsl-v2/eg-graphs`, od `main`, niewypchnięte. **EG1 i EG2 zrobione z przeglądem** („EG1 — co
+  wyszło”, „EG2 — co wyszło”); następne EG3 (ekran grafu pod CSP). Opis zakresu: „Po E8 — kolejność
   zmieniona”, akapit „Grafy — wszystkie cztery”; decyzje przed budową — „Przed EG — decyzje użytkownika” (trzy części: EG1 poziom kontraktu,
   EG2 poziom domeny, EG3 ekran grafu pod CSP).
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
@@ -89,6 +89,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 28 września, na głowie `dsl-v2/eg-graphs` po przeglądzie EG2** (`207b0ea`): brama z `sandbox/` →
+  **EXIT=0** — sandbox 54 testy, `check` 0 / 12 / 19; silnik 1217, `check` 0 / 65 / 21; web 41; auth 51.
 - **Lokalnie, 28 września, na głowie `dsl-v2/eg-graphs` po przeglądzie EG1** (`285a3ce`): brama z `sandbox/` →
   **EXIT=0** — sandbox 54 testy, `check` 0 / 12 / 19; silnik 1204, `check` 0 / 65 / 21; web 41; auth 51.
 - **Lokalnie, 28 września, na `83a09ff`** (drzewo = dzisiejszy `main`): brama z `sandbox/` → **EXIT=0** — sandbox
@@ -1290,6 +1292,47 @@ same co przy grafie kroków; ich koszt (N+1 w `Paths.lag/1`, podwójny mount, ca
 
 **Pułapka, od 28 września w `CLAUDE.md`:** wyrażenie regularne na tekście klienta zawsze z flagą `u` — bez niej `\R`, `\s`, `\w` czytają
 bajty, a polszczyzna ma w UTF-8 bajty, które coś znaczą.
+
+### EG2 — co wyszło (28 września)
+
+Na `dsl-v2/eg-graphs`, niewypchnięte: `3e9b509` (reguła o flagę `u` w `CLAUDE.md`, na polecenie użytkownika),
+`21fbb8e` (kolejka rysowania), `b1e861d` (EG2) i poprawki z przeglądu `31c149c`, `b031a1f`, `6f159a4`, `207b0ea`.
+Brama zielona na każdym commicie. Silnik 1204 → **1217** testów, `check` bez zmian (0 / 12 / 19, 0 / 65 / 21), web
+41, auth 51.
+
+- **Mapa kontekstów** (`Graph.context_map_to_mermaid/1`): subdomena to ramka z kontekstami („Rdzeń · core”),
+  systemy zewnętrzne domeny to walce, także te, do których nie dochodzi żadna relacja (znalezisko, nie szum).
+  Relacja kierunkowa to strzałka od upstream do downstream z nazwą wzorca, a na jej końcu może być system
+  zewnętrzny; symetryczna to linia bez grotu, `separate_ways` przerywana. Czyta tylko domenę. Na stronie
+  `index.md` domeny jako blok Mermaid i w tasku `--map <domena>`.
+- **Widok systemu** (`Graph.system_to_mermaid/3`): kontekst to ramka z kontraktami (etykieta: moduł · proces),
+  `consumes` rodzeństwa to strzałka z nazwami zdarzeń, publikacja to jeden węzeł, na którym spotykają się
+  `publish` i `consumes "<nazwa>"`. Nakładka: przebiegi procesu na kontrakcie; na krawędzi liczba konsumowanych
+  zdarzeń w logu i to, co czeka albo pada na krokach konsumenta, które od nich startują. Na `/graph` nad
+  panelami procesu, po jednym na domenę z kontraktami v2; w tasku `--system <domena> [--overlay]`.
+  Na Rehmedzie: jeden kontrakt, „VisitSettlement · Rozliczenie wizyty (6 runs)”, zero krawędzi — treść przyjdzie z
+  E9. Liczba „waiting/failing” na krawędzi nie ma testu z zasianą zaległością (fikstury nie mają konsumenta z
+  wierszem subskrypcji na cudzym zdarzeniu); arytmetyka jest ta sama co w pełnym grafie.
+- **Usterka ekranu znaleziona w przeglądarce, nie w testach** (`21fbb8e`): `mermaid.run` nadaje SVG identyfikator
+  z `Date.now()` i licznika od zera przy każdym wywołaniu, więc dwa rysowania z tej samej milisekundy dostawały
+  ten sam identyfikator i drugi diagram lądował w elemencie pierwszego. Przy trzech diagramach — przy każdym
+  ładowaniu. Kolejka rysowania jest teraz jedna na stronę. Bez testu: to zachowanie przeglądarki; sprawdzone po
+  przełączeniu procesu i zmianie motywu.
+
+**Przegląd (dwa równolegle, `pre-pr-review`).** Poprawione, z testem padającym na starym kodzie: `--unit` przy
+`--map`/`--system` był po cichu gubiony (`31c149c`); identyfikatory węzłów z samych nazw zderzały się
+(`Clinic.VisitSettlement` i `Clinic.Visit.Settlement`, `clinic.visit.settled.v1` i `clinic.visit_settled.v1`) —
+teraz `Mermaid.unique_ids/2` dopisuje kolejny numer (`b031a1f`); nakładka systemu czytała kroki każdego kontraktu,
+liczyła przebiegi drugi raz i jedno zapytanie `count(e.id)` na krawędź — teraz tylko konsumenci, przebiegi z ich
+kroków, jedno zapytanie pogrupowane po typie na `count(position)`, który obsłuży sam indeks `(type, position)`;
+na domenie DispatchRig 28 → 12 zapytań, test z budżetem liczonym przez telemetrię (`6f159a4`); komentarz kolejki
+w `app.js` i nieścisłe zdanie o `bounded/2` w CHANGELOG (`207b0ea`). **Pominięte, z powodem:** nakładka na ekranie
+bez granicy czasu i podwójny mount (wzorce sprzed EG; EG2 mnoży ich koszt przez liczbę kontraktów domeny — do
+pomiaru razem z runnerem read modelu); zawieszone rysowanie wstrzymuje kolejkę strony (świadomy koszt poprawki
+identyfikatorów; alternatywa `mermaid.render` z własnym identyfikatorem to przepisanie hooka, można przy EG3);
+wybrany kontrakt obserwowany dwa razy przy mount (jeden kontrakt); podwójny filtr domeny w `mount` (potrzebny, żeby
+pominąć domeny bez kontraktów). Kontrakt bez procesu nie istnieje (R1), więc gałęzie `process: nil` w grafach to
+tylko ostrożność.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
