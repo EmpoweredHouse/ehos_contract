@@ -1,0 +1,1 @@
+Documentation only (PLAN.md, not read by mix check; git diff --stat origin/main..HEAD: PLAN.md only). /code-review skipped as pre-pr-review allows for documentation alone; gate not run, nothing it reads changed. Checked by hand: the E13 text against main after EG and E9a (Graph.*.build/* exist, consumes in three Rehmed contracts).
