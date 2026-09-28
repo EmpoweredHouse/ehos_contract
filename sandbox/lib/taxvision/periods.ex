@@ -2,6 +2,13 @@ defmodule Taxvision.Periods do
   @moduledoc """
   The named source of truth for what an accounting period is.
 
+  > **28 September 2026, E9c.** Everything below this note describes v1. Since E9c a
+  > period's **name** is its identifier (plan, the decisions before E9c): the facts
+  > carry "2026-07", the domain's `:period` holds it to YYYY-MM (`name?/1`), the timer
+  > on the first of the month works the next one out with `next/1`, and the row keeps
+  > the dates. `Taxvision.Tasks` and the v1 month are gone; what follows is kept as it
+  > was written, since it is what E9c changed.
+
   This module exists to answer one question — *when does "2026-07" start and
   end* — for every other module that needs it, without any of them touching this
   table.
@@ -23,12 +30,6 @@ defmodule Taxvision.Periods do
 
   The alternative the doctrine rejects is a shared table read by everyone, which
   buys one query and sells the ability to ever change this shape.
-
-  > **28 September 2026, E9c.** The section below describes v1. Since E9c a period's
-  > **name** is its identifier (plan, the decisions before E9c): the facts carry
-  > "2026-07", the domain's `:period` holds it to YYYY-MM (`name?/1`), and the timer on
-  > the first of the month works the next one out with `next/1`. The row keeps the
-  > dates. What follows is kept as it was written, since it is what E9c changed.
 
   ## Names at the edge, identifiers inside
 
