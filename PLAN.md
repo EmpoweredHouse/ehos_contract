@@ -2892,7 +2892,10 @@ start, a potem padało każde pobranie) — teraz znaki RFC 3986 i `%XX`, jak `v
 musi być stringiem (lista znaków przechodziła start i odrzucała każdy credential); README, CHANGELOG i `@doc`
 wymieniają odrzucane kształty zamiast obiecywać „nic, co mogłoby być sekretem” — tokenu w samej ścieżce żadne
 sprawdzenie nie odróżni. *Bez zmian:* test logu bez zapytania usunięty bez następcy — adres jest sprawdzany przy
-starcie i potem się nie zmienia, a każda odmowa ma test. *Bez zmian:* `~> 0.7.4` dalej wpuszcza nowsze łatki 0.7 —
+starcie i potem się nie zmienia, a każda odmowa ma test. Ósma runda (bezpieczeństwo czyste, wyrażenie liniowe):
+`URI.parse/1` czytał port `844e` jako 844 i przepuszczał `]` — start przechodził, pobrania szły donikąd; teraz
+`URI.new/1`. Puste `audience`/`issuer` (`System.get_env("X", "")`) przechodziły start i odrzucały każdy credential —
+teraz brakujące; pusty `jwks_url` to nieustawiony, nie adres. *Bez zmian:* `~> 0.7.4` dalej wpuszcza nowsze łatki 0.7 —
 ryzyko nazwane, nie usunięte; `@req` w czasie kompilacji — Mix śledzi moduły Req. *Pominięte:* `SSLKEYLOGFILE` (Finch dopisuje sekrety TLS, jeśli operator ustawi zmienną — środowisko,
 nie konfiguracja), telemetria Finch (tylko obserwuje), `cacertfile` trzymany przez Mint do restartu. Magazyn
 certyfikatów VM (`:public_key.cacerts_load/1` innej biblioteki podmienia go i dla tego pobrania) — zdanie w README. `transport_opts: nil` przechodził i wywracał każde pobranie (Req robi na nim
