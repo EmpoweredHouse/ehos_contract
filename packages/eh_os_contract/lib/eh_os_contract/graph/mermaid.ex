@@ -43,7 +43,8 @@ defmodule EhOsContract.Graph.Mermaid do
 
   # The Event Storming palette: commands blue, events orange, policies lilac, process
   # managers purple, effects pink as the outside world, timers grey, actors and the
-  # state they decide on yellow, the read side green; an invariant is a rule, in red;
+  # state they decide on yellow, the read side green; an invariant is a rule, in red,
+  # and a command's constraint a paler one;
   # an external system grey and dashed, as the declared shape draws it.
   @classes [
     command: "fill:#a7c7e7,stroke:#3b6ea5,color:#000",
@@ -57,6 +58,7 @@ defmodule EhOsContract.Graph.Mermaid do
     read_model: "fill:#c5e1a5,stroke:#558b2f,color:#000",
     query: "fill:#dcedc8,stroke:#689f38,color:#000",
     invariant: "fill:#ffcdd2,stroke:#c62828,color:#000",
+    constraint: "fill:#ffebee,stroke:#c62828,color:#000",
     external: "fill:#eceff1,stroke:#546e7a,color:#000,stroke-dasharray: 4 3"
   ]
 
@@ -146,5 +148,6 @@ defmodule EhOsContract.Graph.Mermaid do
   defp shape(:read_model), do: {"[", "]"}
   defp shape(:query), do: {"[/", "/]"}
   defp shape(:invariant), do: {"{", "}"}
+  defp shape(:constraint), do: {"{", "}"}
   defp shape(:external), do: {"[(", ")]"}
 end

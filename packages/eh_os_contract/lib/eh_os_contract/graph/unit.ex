@@ -1,13 +1,15 @@
 defmodule EhOsContract.Graph.Unit do
   @moduledoc """
   One unit of a v2 contract as a graph (plan EG1): its state, its commands and the
-  events they emit, its invariants, and how many scenarios pin each of those paths.
+  events they emit, its invariants and its commands' constraints, and how many
+  scenarios pin each of those paths.
 
   The state is a card listing its fields. An aggregate's state is built from its own
   events, so each event points at it; a dynamic consistency boundary decides over
   the events it consults instead, its own among them only where it consults them,
   so those point at it, with the fields they are matched by. An invariant is a rule
-  hanging off each command it may refuse.
+  hanging off each command it may refuse; a command's constraint hangs off that
+  command alone.
 
   **Scenarios are counted, not drawn.** A scenario of the unit whose command is
   expected to emit an event counts on that edge; one refused on an invariant counts
@@ -51,7 +53,8 @@ defmodule EhOsContract.Graph.Unit do
         Enum.map(commands, &graph_node(:command, &1.name, &1.label)) ++
         Enum.map(events, &graph_node(:event, &1.name, &1.label)) ++
         from_elsewhere ++
-        Enum.map(unit.invariants, &graph_node(:invariant, &1.name, &1.label))
+        Enum.map(unit.invariants, &graph_node(:invariant, &1.name, &1.label)) ++
+        for(c <- commands, k <- Map.get(c, :constraints, []), do: constraint_node(c, k))
 
     emits =
       for c <- commands, event <- c.emits do
@@ -60,10 +63,10 @@ defmodule EhOsContract.Graph.Unit do
       end
 
     refuses =
-      for c <- commands, invariant <- c.rejects do
-        n = Enum.count(scenarios, &(&1.trigger.name == c.name and &1.rejected == invariant))
+      for c <- commands, rule <- c.rejects do
+        n = Enum.count(scenarios, &(&1.trigger.name == c.name and &1.rejected == rule))
 
-        Mermaid.edge(id(:command, c.name), id(:invariant, invariant),
+        Mermaid.edge(id(:command, c.name), refused_on(unit, c, rule),
           line: :dotted,
           label: Enum.join(Enum.reject(["may be refused", scenarios(n)], &is_nil/1), " · ")
         )
@@ -75,6 +78,25 @@ defmodule EhOsContract.Graph.Unit do
   @doc "Unit `name` of `contract` as a Mermaid flowchart."
   @spec to_mermaid(module() | map(), atom()) :: String.t()
   def to_mermaid(contract, name), do: contract |> build(name) |> Mermaid.render("LR")
+
+  # A command may be refused on an invariant of its unit or on a constraint of its own
+  # (plan EL2), and a constraint is the command's: two commands may name theirs alike.
+  defp refused_on(unit, command, rule) do
+    if Enum.any?(unit.invariants, &(&1.name == rule)),
+      do: id(:invariant, rule),
+      else: constraint_id(command, rule)
+  end
+
+  defp constraint_node(command, constraint) do
+    %{
+      id: constraint_id(command, constraint.name),
+      kind: :constraint,
+      name: constraint.name,
+      label: constraint.label
+    }
+  end
+
+  defp constraint_id(command, name), do: "constraint_#{command.name}_#{name}"
 
   # The card: the unit's label and kind, then a line per field of its state.
   defp state_node(unit) do

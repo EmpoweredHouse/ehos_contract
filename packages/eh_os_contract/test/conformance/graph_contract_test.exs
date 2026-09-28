@@ -15,6 +15,8 @@ defmodule EhOsContract.GraphContractTest do
 
   @domain EhOsContract.GraphContractTest.Clinic
   @contract EhOsContract.GraphContractTest.Invoicing
+  # Names a domain that does not exist, which a contract may (v2 §8).
+  @constrained EhOsContract.Next.Fixtures.GraphConstrained
 
   setup_all do
     compile(
@@ -72,7 +74,44 @@ defmodule EhOsContract.GraphContractTest do
       "graph_clinic.ex"
     )
 
+    compile(
+      contract("GraphConstrained", """
+        aggregate :visit, "Visit" do
+          identity :visit_id
+
+          command :record_payment, "Record a payment",
+            by: :reception, emits: :payment_recorded, rejects: :positive_amount do
+            field :amount, :integer
+            constraint :positive_amount, "A payment is more than nothing"
+          end
+
+          event :payment_recorded, "Payment recorded" do
+            field :amount, :integer
+          end
+        end
+
+        process :visit, "Visit" do
+          correlate :visit_id
+        end
+
+        scenario "nothing paid is refused" do
+          command :record_payment, %{amount: 0}
+          rejected :positive_amount
+        end
+      """),
+      "graph_constrained.ex"
+    )
+
     :ok
+  end
+
+  # Every edge of a graph built as data starts and ends at a node it declares.
+  defp declared_ends!(graph) do
+    ids = MapSet.new(graph.nodes, & &1.id)
+
+    for edge <- graph.edges, id <- [edge.from, edge.to] do
+      assert MapSet.member?(ids, id), "edge #{edge.from} -> #{edge.to}: #{id} is no node"
+    end
   end
 
   describe "the full graph" do
@@ -174,6 +213,27 @@ defmodule EhOsContract.GraphContractTest do
       assert diagram =~ ~s(event_course_defined["Course defined"]:::event)
       assert diagram =~ "event_course_defined -.->|consulted by course_id| state_seat"
       assert diagram =~ "event_enrolment_closed -.->|consulted, where stated in prose| state_seat"
+    end
+
+    test "a command refused on a constraint of its own points at that constraint" do
+      diagram = Graph.unit_to_mermaid(@constrained, :visit)
+
+      assert diagram =~
+               ~s(constraint_record_payment_positive_amount{"A payment is more than nothing"}:::constraint)
+
+      assert diagram =~
+               "command_record_payment -.->|may be refused · 1 scenario| constraint_record_payment_positive_amount"
+    end
+
+    test "every edge of every unit and contract ends at a node the graph declares" do
+      contracts = EhOsContract.Registry.v2_contracts() ++ [@contract, @constrained]
+
+      for contract <- contracts, unit <- EhOsContract.Model.fetch(contract).units do
+        declared_ends!(EhOsContract.Graph.Unit.build(contract, unit.name))
+      end
+
+      for contract <- contracts -- [@constrained],
+          do: declared_ends!(EhOsContract.Graph.Contract.build(contract))
     end
 
     test "a unit the contract does not have is refused, naming the ones it has" do
