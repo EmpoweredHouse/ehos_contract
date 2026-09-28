@@ -5,34 +5,32 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 28 września (E9b w `main`, E9c-1 w PR #41, E9c-2 zbudowane)
+## Handoff — stan na 28 września (E9c-1 w `main`, E9c-2 w PR)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
 
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności), jej
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa pivot do v2** (DSL na Sparku, model
-domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E8, EA, EM, EL, EG, E9a (#33) i
-E9b (#39) są w `main`.** Teraz **E9** — kontrakty sandboxa od nowa z materiału (decyzje: „Przed E9 — decyzje
-użytkownika”): E9c-1 czeka na merge, E9c-2 zbudowane; potem E10–E12. Po E9b Rehmed ma pięć kontraktów v2 (Scheduling,
+domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E8, EA, EM, EL, EG, E9a (#33),
+E9b (#39) i E9c-1 (#41) są w `main`.** Teraz **E9** — kontrakty sandboxa od nowa z materiału (decyzje: „Przed E9 — decyzje
+użytkownika”): E9c-2 w PR; potem E10–E12. Po E9b Rehmed ma pięć kontraktów v2 (Scheduling,
 ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); po E9c-1 w sandboxie nie ma kontraktu v1.
 
 ### Stan repozytorium
 
-- **`origin/main` = `afa1161`** (merge [#39](https://github.com/EmpoweredHouse/eh-os-contract/pull/39), E9b); CI
-  `main` po #39 (`36432758322`) — `success`.
-- **E9c-1** na `dsl-v2/e9-taxvision` (`60324a5`): PR [#40](https://github.com/EmpoweredHouse/eh-os-contract/pull/40)
-  zmergował się do nieprzestawionej bazy `dsl-v2/e9-payer` (`dfc3451`), nie do `main`; do `main` idzie
-  [#41](https://github.com/EmpoweredHouse/eh-os-contract/pull/41), ta sama głowa, z notatką przeglądu.
-- **E9c-2** na `dsl-v2/e9-e9c2`, od `60324a5` — zbudowane („Przed E9c-2 — decyzje użytkownika”, „E9c-2 — co
-  wyszło”, „Przegląd E9c-2”), przejrzane jedną rundą, niewypchnięte. Brama na każdym commicie EXIT=0; sandbox 137
+- **`origin/main` = `7bd4466`** (merge [#41](https://github.com/EmpoweredHouse/eh-os-contract/pull/41), E9c-1; CI
+  na połączeniu z `main` — `success`, przebieg `36441227320`). #40 zmergował się do nieprzestawionej bazy
+  `dsl-v2/e9-payer` (`dfc3451`), stąd #41 z tą samą głową.
+- **E9c-2** na `dsl-v2/e9-e9c2`, od `60324a5`, w PR do `main` — zbudowane („Przed E9c-2 — decyzje użytkownika”, „E9c-2 — co
+  wyszło”, „Przegląd E9c-2”), przejrzane jedną rundą. Brama na każdym commicie EXIT=0; sandbox 137
   testów, `check` 0 / 28 / 10; silnik 1245, `check` 0 / 67 / 21; web 45; auth 55.
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
 ### Co zostało — i czyje to jest
 
-- **Merge #41, potem push i PR E9c-2** — użytkownika. Przegląd E9c-2 zrobiony (notatka na głowie gałęzi). Do
+- **Merge PR E9c-2** — użytkownika. Przegląd zrobiony (notatka na głowie gałęzi). Do
   decyzji użytkownika z przeglądu: jawność NIP-u sprzedawcy i obrotów JDG w logu; dopisek o `\d` z `u` do
   `CLAUDE.md`. Gałąź E9c-2 stoi na głowie #41, więc po jego merge'u jej PR idzie prosto na `main`.
 - **E10–E12 — asystenta, po pytaniach.** Po E11 kontrakty sandboxa przechodzą do testów pakietu jako fikstury
