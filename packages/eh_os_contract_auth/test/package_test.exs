@@ -66,18 +66,34 @@ defmodule EhOsContract.Auth.PackageTest do
             "https://user:secret@ehos.example.com/k",
             "https://user:secret@/k",
             "user:secret@ehos.example.com/k",
-            "https:/user:secret@ehos.example.com/k"
+            "https:/user:secret@ehos.example.com/k",
+            # Unencoded, a `/` in the password makes `user` the host.
+            "https://user:se/cret@ehos.example.com/k"
           ] do
         Application.put_env(:eh_os_contract_auth, :jwks_url, url)
         error = assert_raise ArgumentError, fn -> EhOsContract.Auth.child_spec([]) end
         refute error.message =~ "secret", url
       end
 
-      Application.put_env(:eh_os_contract_auth, :jwks_url, "https://u:secret@ehos.example.com/k")
+      # Refused as credentials, before loopback may be plain.
+      for url <- ["https://u:se/cret@ehos.example.com/k", "http://user:pw@localhost:4100/k"] do
+        Application.put_env(:eh_os_contract_auth, :jwks_url, url)
 
-      assert_raise ArgumentError, ~r/with credentials in it/, fn ->
-        EhOsContract.Auth.child_spec([])
+        assert_raise ArgumentError, ~r/with credentials in it/, fn ->
+          EhOsContract.Auth.child_spec([])
+        end
       end
+
+      # From `:os.getenv/1`, a charlist: refused as not a string, and not shown.
+      Application.put_env(
+        :eh_os_contract_auth,
+        :jwks_url,
+        ~c"https://u:secret@ehos.example.com/k"
+      )
+
+      error = assert_raise ArgumentError, fn -> EhOsContract.Auth.child_spec([]) end
+      assert error.message =~ "as a string"
+      refute error.message =~ "secret"
 
       # The control: loopback may be plain, for development.
       Application.put_env(:eh_os_contract_auth, :jwks_url, "http://localhost:4100/jwks.json")

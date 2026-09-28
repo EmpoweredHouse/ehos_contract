@@ -12,6 +12,15 @@ defmodule EhOsContract.Auth.KeysTest do
   alias EhOsContract.Auth
   alias EhOsContract.Auth.Keys
 
+  test "a failed fetch logs the address without its query, which may carry a token" do
+    keys = start_keys(ehos({:status, 503}))
+    :sys.replace_state(keys, &%{&1 | url: "https://ehos.test/jwks.json?access_token=secret"})
+
+    log = ExUnit.CaptureLog.capture_log(fn -> Keys.refresh(keys) end)
+    assert log =~ "https://ehos.test/jwks.json"
+    refute log =~ "secret"
+  end
+
   test "a key removed from the JWKS is refused after the next refresh" do
     kept = key_pair()
     removed = key_pair()
@@ -149,39 +158,37 @@ defmodule EhOsContract.Auth.KeysTest do
 
     # Set for the host's other requests: none of it reaches this one — not an option,
     # a header, a body, nor a plugin's step — whether it was there at the boot or
-    # set after it.
+    # set after it, to something else.
     test "do not reach the fetch, set before the boot or after it" do
       test = self()
-      plugin = fn tag -> [fn request -> send(test, {:plugin, tag}) && request end] end
+
+      defaults = fn tag ->
+        [
+          follow_redirects: true,
+          auth: {:bearer, "#{tag}"},
+          headers: [authorization: "#{tag}"],
+          body: "#{tag}",
+          plugins: [fn request -> send(test, {:plugin, tag}) && request end]
+        ]
+      end
 
       adapter = fn request ->
         send(test, {:sent, request})
         {request, Req.Response.new(status: 503)}
       end
 
-      Application.put_env(:req, :default_options,
-        follow_redirects: true,
-        auth: {:bearer, "for another API"},
-        plugins: plugin.(:before)
-      )
-
+      Application.put_env(:req, :default_options, defaults.(:before))
       keys = start_keys(nil, req_options: [adapter: adapter])
-
-      assert_received {:sent, request}
-      refute Map.has_key?(request.options, :follow_redirects)
-      refute Map.has_key?(request.options, :auth)
-      refute Map.has_key?(request.headers, "authorization")
-
-      Req.default_options(
-        headers: [authorization: "for another API"],
-        body: "for another API",
-        plugins: plugin.(:after)
-      )
-
+      Req.default_options(defaults.(:after))
       assert {:error, {:status, 503}} = Keys.refresh(keys)
-      assert_received {:sent, request}
-      refute Map.has_key?(request.headers, "authorization")
-      assert request.body == nil
+
+      for _fetch <- [:at_the_boot, :after_it] do
+        assert_received {:sent, request}
+        refute Map.has_key?(request.options, :follow_redirects)
+        refute Map.has_key?(request.options, :auth)
+        refute Map.has_key?(request.headers, "authorization")
+        assert request.body == nil
+      end
 
       refute_received {:plugin, _}
     end

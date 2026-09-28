@@ -205,8 +205,10 @@ certificates.** Without `cacertfile` or `cacerts`, EHOS's certificate is checked
 VM's store (`:public_key.cacerts_get/0`), and any library that calls `:public_key.cacerts_load/1`
 for its own API replaces that store for this fetch too.
 
-**An address with credentials in it is refused** (`https://user:password@…`): the key set is
-public and asked for with none, and the address is written to the log with every failed fetch.
+**An address with a user or a password in it is refused** — any `@`, since a password with a `/`
+in it parses as the host: the key set is public and asked for with none, and the address is
+written to the log with every failed fetch. The log leaves out the query, but a token belongs in
+neither.
 
 **What the application configures, and nothing else:** `issuer`, which must be exactly the `iss`
 EHOS writes, `audience` (`<application>/<environment>`, exactly the `aud` EHOS issues for this
