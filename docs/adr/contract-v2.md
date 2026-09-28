@@ -1053,6 +1053,11 @@ INSERT INTO eh_os_contract_events (...) VALUES (...), (...) RETURNING position, 
   > identifier in the payload and in stream ids, by the design above. That holds only while an `:id` is an
   > opaque identifier: a natural one, such as a PESEL, must never be an `:id`, as it must never be an
   > idempotency key.
+  > **28 September 2026, E9c.** "`:id` field" includes a field typed by a domain value whose base type is `:id`:
+  > TaxVision names a period "2026-07" and holds the name to a format by the value's invariant, and a month's
+  > boundary matches Registry Watch's events on it. The value is still an opaque identifier in the sense above
+  > — a month's name, not a person's number. A unit's identity stays a plain `:id`, so the invariant holds where
+  > a field is typed by the value and not on an identity.
 - **Idempotency.** The host supplies `ctx.idempotency_key` (opaque, never personal data). It is checked before
   loading and again under the lock; a hit returns the earlier events with `duplicate: true`; a hit for another
   command type is `{:error, :idempotency_key_reused}`. Only accepted outcomes bind the key, so a rejected
@@ -1606,6 +1611,13 @@ layers; and [identity seam](identity-seam.md) — ESDM's actors are roles, not i
   needs it.
 - Whether commands get `scope` as queries do (D10). The TaxVision material has the case
   (`actor_company == company_id`, `PLAN.md` 22 September, step C).
+  > **28 September 2026, E9c — answered.** They do, the user's choice of 27 September (plan, "Po E8 —
+  > kolejność zmieniona"): `command :open_month, "…", by: :accountant, scope: :company_id`. The scope is one
+  > of the command's fields — its unit's identity or declared, and required; the command names `by:`; every
+  > actor in `by:` carries the dimension; the field is not personal (F7). Dispatch asks the `Authorizer`
+  > with the field's value, as it asks for a scoped query, and `EhOsContract.Plug` asks with the value as it
+  > was sent when a command does not decode. `Model.capabilities/1` gives the command its `scope:`. What it
+  > still does not do is what query `scope` does not: one field, equality against granted values.
 - What carries a message between two containers in EHOS's v1, where `eh-os` D-03 names "an in-process relay":
   only EHOS can answer, and only the `Bus` adapter depends on it.
 - The shape of the API EHOS will read: `Model.to_data/1` gets a named schema in E10; transport and versioning of

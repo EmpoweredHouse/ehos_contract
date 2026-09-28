@@ -60,6 +60,13 @@ defmodule EhOsContractHostWeb.Router do
       ]
   end
 
+  scope "/api/taxvision" do
+    pipe_through :commands
+
+    forward "/", EhOsContract.Plug,
+      contracts: [Taxvision.Contracts.RegistryWatch, Taxvision.Contracts.AccountingMonth]
+  end
+
   scope "/" do
     pipe_through :api
     import EhOsContract.Web.Router

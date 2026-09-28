@@ -36,6 +36,11 @@ What changes otherwise is what a host has to do.
 
 ### Changed — a host has to act
 
+- **E9c: a command may be scoped, as a query is (D10).** `command :x, "…", by: :actor, scope: :field` names one
+  of its fields; `EhOsContract.Model.capabilities/1` gives the command's capability that `scope:` instead of
+  `nil`, and dispatch — and `EhOsContract.Plug` — ask the `Authorizer` with the field's value. A credential
+  granted a scoped command without values for its dimension is refused `:unscoped_grant`, as for a query, so a
+  host granting one has to send the values (`scp`).
 - **E9a: an event a contract records has a capability, and a credential records with it.**
   `EhOsContract.Model.capabilities/1` gives each event declaring `recorded_by:` the capability
   `<domain>.<event>`, kind `:record`, with the roles of its `recorded_by:` actors; `EhOsContract.record/3` asks
@@ -114,6 +119,12 @@ What changes otherwise is what a host has to do.
   Scenario coverage compares these as sets, so no count moves.
 
 ### Added
+
+- **E9c: a field typed by a domain value of `:id` is an identifier.** `value :period, :id` with an invariant
+  keeps the value's check at dispatch, and the field is now also a tag, so a consistency boundary can `match:`
+  on it, and X6 compares it with a plain `:id` on the other side as the same type. `EhOsContract.Key.tag_field?/2`
+  takes the domain's values; without them, at compile time, only the built-in type counts. Events appended
+  before carry no tag for such a field.
 
 - **EG2: a domain's context map and its system.** `EhOsContract.Graph.context_map_to_mermaid/1` draws the
   subdomains as groups of their contexts, the domain's externals, and the relations between them — a directed

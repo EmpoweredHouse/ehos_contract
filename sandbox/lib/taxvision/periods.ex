@@ -2,6 +2,14 @@ defmodule Taxvision.Periods do
   @moduledoc """
   The named source of truth for what an accounting period is.
 
+  > **28 September 2026, E9c.** Everything below this note describes v1. Since E9c a
+  > period's **name** is its identifier (plan, the decisions before E9c): the facts
+  > carry "2026-07", the domain's `:period` holds it to YYYY-MM (`name?/1`), the timer
+  > on the first of the month works out when and which with `next_month_start/1` and
+  > `ended_before/1`, `ended_by?/2` refuses a month still running, and the row keeps
+  > the dates. `Taxvision.Tasks` and the v1 month are gone; what follows is kept as it
+  > was written, since it is what E9c changed.
+
   This module exists to answer one question — *when does "2026-07" start and
   end* — for every other module that needs it, without any of them touching this
   table.
@@ -39,7 +47,7 @@ defmodule Taxvision.Periods do
   because which runs are silent is a question about one company.
   """
 
-  use Boundary, deps: [Taxvision.Repo], exports: []
+  use Boundary, deps: [Taxvision.Repo, Taxvision.Domain], exports: []
 
   import Ecto.Query
 
@@ -52,10 +60,6 @@ defmodule Taxvision.Periods do
   @doc """
   The period identified by its canonical name, raising when it does not exist.
 
-  For the request edge, where a name arrives from outside. A sibling holding a fact
-  wants `fetch_by_id!/1` instead — by then the name has already been resolved and
-  looking it up again would reintroduce the string this table exists to retire.
-
   Raising rather than returning `nil` is deliberate: a handler that derives a
   deadline from a period cannot sensibly continue without one, and a silent `nil`
   would travel into a date column as a missing deadline nobody notices.
@@ -66,22 +70,6 @@ defmodule Taxvision.Periods do
       raise ArgumentError,
             "no period named #{inspect(name)}. Periods are canonical rows, not strings " <>
               "parsed on the fly, so a period has to exist before anything can be booked into it."
-  end
-
-  @doc """
-  The period a fact refers to, by identifier.
-
-  What every sibling uses, because a payload carries `period_id`. The failure it raises
-  on is a different one from `fetch!/1`'s: not "nobody created this month" but "this fact
-  points at a period that is gone", which is a broken foreign key rather than a missing
-  setup step.
-  """
-  @spec fetch_by_id!(id()) :: t()
-  def fetch_by_id!(id) do
-    one(dynamic([p], p.id == ^id)) ||
-      raise ArgumentError,
-            "no period with id #{inspect(id)}. An event refers to a period that does not " <>
-              "exist, which is a fact pointing at nothing rather than a period nobody created."
   end
 
   @spec one(Ecto.Query.dynamic_expr()) :: t() | nil
@@ -124,6 +112,38 @@ defmodule Taxvision.Periods do
     end
   end
 
+  @doc """
+  The first moment of the month after `at`'s, at midnight UTC (the sandbox has no
+  zone database): when the month `at` falls in has ended.
+  """
+  @spec next_month_start(DateTime.t()) :: DateTime.t()
+  def next_month_start(%DateTime{} = at) do
+    at
+    |> DateTime.to_date()
+    |> Date.end_of_month()
+    |> Date.add(1)
+    |> DateTime.new!(~T[00:00:00], "Etc/UTC")
+  end
+
+  @doc "Whether the month `name` has ended by `at`: August by 1 September, not before."
+  @spec ended_by?(name(), DateTime.t()) :: boolean()
+  def ended_by?(name, %DateTime{} = at), do: name < Calendar.strftime(at, "%Y-%m")
+
+  @doc "The name of the month that ended just before `at`: \"2026-09\" before 1 October."
+  @spec ended_before(DateTime.t()) :: name()
+  def ended_before(%DateTime{} = at),
+    do: at |> DateTime.add(-1, :second) |> Calendar.strftime("%Y-%m")
+
+  @doc """
+  Whether `name` names a month, "YYYY-MM": the invariant of the domain's `:period`
+  (`Taxvision.Periods.Name`), and the one place that knows the convention.
+  """
+  @spec name?(term()) :: boolean()
+  def name?(name) when is_binary(name),
+    do: Regex.match?(~r/^\d{4}-\d{2}$/u, name) and month_start(name) != :error
+
+  def name?(_name), do: false
+
   @spec month_start(name()) :: {:ok, Date.t()} | :error
   defp month_start(name) do
     with [year, month] <- String.split(name, "-"),
@@ -135,6 +155,15 @@ defmodule Taxvision.Periods do
       _ -> :error
     end
   end
+end
+
+defmodule Taxvision.Periods.Name do
+  @moduledoc "The invariant of `Taxvision.Domain`'s value `:period`: a month, named YYYY-MM."
+
+  use Taxvision.Domain, value: :period
+
+  @impl true
+  def named_by_month(name), do: Taxvision.Periods.name?(name)
 end
 
 defmodule Taxvision.Periods.Period do
