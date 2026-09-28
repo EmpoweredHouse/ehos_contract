@@ -1,13 +1,15 @@
 defmodule EhOsContract.Web.Live.Graph do
   @moduledoc """
-  Screen 3: the two Mermaid diagrams `mix eh_os_contract.graph` could already draw, now
-  live in the dashboard instead of dev-only CLI output — the second half of
-  a plan `packages/eh_os_contract/lib/mix/tasks/eh_os_contract.graph.ex`'s own moduledoc
-  called out from the start ("this is the seed of the dashboard"). See
-  PLAN.md, "23 sierpnia (10)" for why this was parked, then unparked.
+  Screen 3: the Mermaid diagrams `mix eh_os_contract.graph` draws, live in the
+  dashboard instead of dev-only CLI output — the second half of a plan
+  `packages/eh_os_contract/lib/mix/tasks/eh_os_contract.graph.ex`'s own moduledoc called
+  out from the start ("this is the seed of the dashboard"). See PLAN.md, "23 sierpnia
+  (10)" for why this was parked, then unparked. From the top: each domain's context
+  map and system, then the selected process's two panels, then its contract's units.
 
-  Two panels, asymmetric on purpose, per ADR §9 ("navigation is per-process,
-  never global"):
+  The process's two panels are asymmetric on purpose, per ADR §9 ("navigation is
+  per-process, never global"; the domain's pictures above them are a dated exception
+  there):
 
     * **Declared shape** — `EhOsContract.Graph.declared_to_mermaid/2`, scoped to
       whichever process the selector picks. The structural view: stages,
@@ -63,13 +65,12 @@ defmodule EhOsContract.Web.Live.Graph do
     processes = Enum.sort_by(v1 ++ v2, & &1.label)
 
     # Every registered domain has a map; one with a v2 contract has a system too.
+    by_domain =
+      Enum.group_by(EhOsContract.Registry.v2_contracts(), &EhOsContract.Model.fetch(&1).domain)
+
     domains =
       for domain <- EhOsContract.Registry.domains() do
-        contracts =
-          Enum.filter(
-            EhOsContract.Registry.v2_contracts(),
-            &(EhOsContract.Model.fetch(&1).domain == domain)
-          )
+        contracts = Map.get(by_domain, domain, [])
 
         %{
           name: EhOsContract.Model.fetch(domain).name,
@@ -175,7 +176,7 @@ defmodule EhOsContract.Web.Live.Graph do
       <section>
         <h3>Declared shape</h3>
 
-        <form :if={@processes != []} phx-change="select_process">
+        <form :if={@processes != []} id="process-select" phx-change="select_process">
           <select name="process">
             <option
               :for={process <- @processes}
@@ -210,7 +211,7 @@ defmodule EhOsContract.Web.Live.Graph do
         ></pre>
       </section>
 
-      <section :for={unit <- assigns[:units] || []}>
+      <section :for={unit <- @units}>
         <h3>{unit.kind} {unit.name} — {unit.label}</h3>
         <pre
           class="mermaid"

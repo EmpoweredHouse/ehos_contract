@@ -3,8 +3,9 @@
 A conformance dashboard for [EhOsContract](https://hex.pm/packages/eh_os_contract), mounted in your
 own router.
 
-Two screens and nothing else: the contract's conformance status, and the process
-graph — declared shape per process, declared versus observed across all of them.
+Two screens and nothing else: the contract's conformance status, and the graphs —
+each domain's context map and system, and per process its declared shape, its graph
+with the log laid over it, and its contract's units.
 
 ## Installation
 

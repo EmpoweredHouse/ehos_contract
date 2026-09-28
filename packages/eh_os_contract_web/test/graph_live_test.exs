@@ -45,8 +45,15 @@ defmodule EhOsContract.Web.Live.GraphTest do
     # And the domain's context map, and each unit of the selected contract (28 September).
     assert html =~ "Context map — domain web_test_host"
     assert html =~ ~r/id="map-graph-web_test_host"/
-    assert html =~ ~r/id="unit-graph-\w+"/
-    assert html =~ "state_"
+
+    assert [unit] =
+             html
+             |> LazyHTML.from_document()
+             |> LazyHTML.query("pre[id^=unit-graph-]")
+             |> Enum.to_list()
+
+    assert [graph] = LazyHTML.attribute(unit, "data-graph")
+    assert graph =~ ~r/^flowchart LR\n    state_\w+\["/
     assert html =~ "Declared versus observed, this process"
   end
 
@@ -90,12 +97,30 @@ defmodule EhOsContract.Web.Live.GraphTest do
     assert html =~ "Declared versus observed, this process"
   end
 
+  test "a domain with no v2 contract has its map, and no system" do
+    html =
+      render_component(&Graph.render/1, %{
+        eh_os_contract_web_access: :all,
+        eh_os_contract_web_base_path: "/dashboard",
+        domains: [%{name: :bare, map: "flowchart LR", system: false}],
+        units: [],
+        processes: [],
+        selected: nil,
+        declared_mermaid: nil,
+        overlay_mermaid: "flowchart LR"
+      })
+
+    assert html =~ ~s(id="map-graph-bare")
+    refute html =~ ~s(id="system-graph-bare")
+  end
+
   test "no process declared anywhere says so, and draws only the overlay diagram" do
     html =
       render_component(&Graph.render/1, %{
         eh_os_contract_web_access: :all,
         eh_os_contract_web_base_path: "/dashboard",
         domains: [],
+        units: [],
         processes: [],
         selected: nil,
         declared_mermaid: nil,
@@ -113,6 +138,7 @@ defmodule EhOsContract.Web.Live.GraphTest do
         eh_os_contract_web_access: :read_only,
         eh_os_contract_web_base_path: "/dashboard",
         domains: [],
+        units: [],
         processes: [
           %{contract: nil, name: :handling, label: "Case handling"},
           %{contract: nil, name: :billing, label: "Billing"}
