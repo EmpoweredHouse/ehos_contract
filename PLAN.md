@@ -102,7 +102,7 @@ Grafy: `mix eh_os_contract.graph --map <domena> | --system <domena> [--overlay] 
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 28 września, na `3df2ed7`** (E9c-1 po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 115
+- **Lokalnie, 28 września, na `cd94293`** (E9c-1 po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 120
   testów, `check` 0 / 26 / 9; silnik 1245, `check` 0 / 67 / 21; web 45; auth 51.
 - **Lokalnie, 28 września, na `cc07431`** (E9b po dwóch rundach przeglądu): brama z `sandbox/` → **EXIT=0** — sandbox 99
   testów, `check` 0 / 24 / 8; silnik 1222, `check` 0 / 65 / 21; web 45; auth 51. W przeglądarce: `/graph` z procesem
@@ -1849,8 +1849,8 @@ fikstury `DispatchRig.Transfer`).
 W przeglądarce (baza dev, preview `eh_os_contract_host`): mapa kontekstów TaxVision, siedem diagramów na `/graph`,
 proces `client` i boundary miesiąca, żadna etykieta nie wystaje.
 
-**Przegląd E9c-1** (dwa równolegle na `b010c06..bdd7fb7`, potem dwa na poprawkach `bdd7fb7..14fae7d`, potem dwa na
-ostatnich dwóch). Sandbox 111 → **115** testów, silnik 1239 → **1245**; `check` sandboxa 0 / 25 / 9 → **0 / 26 / 9** (`registry_check_logged` bez czytelnika, odkąd
+**Przegląd E9c-1** (dwa równolegle na `b010c06..bdd7fb7`, potem po dwa na każdej rundzie poprawek). Sandbox 111 →
+**120** testów, silnik 1239 → **1245**; `check` sandboxa 0 / 25 / 9 → **0 / 26 / 9** (`registry_check_logged` bez czytelnika, odkąd
 pętla czyta potwierdzenie — czytelnikiem byłby read model „ostatnie sprawdzenie”, którego E9 nie pisze).
 
 *Poprawione przez asystenta, z testem i próbą odwrotną:*
@@ -1868,7 +1868,13 @@ pętla czyta potwierdzenie — czytelnikiem byłby read model „ostatnie sprawd
   poprawka (najpóźniejszy okres, `at:` z nazwy) oddała sterowanie wpisowi księgowej: „2062-08” blokował pętlę do 2062,
   a pierwsze sprawdzenie marca we wrześniu odpalało miesiąc po miesiącu zaległe sprawdzenia. Teraz przebieg rusza na
   potwierdzeniu i ustawia następne na 1. dzień kolejnego miesiąca **od czasu potwierdzenia**, sprawdzając miesiąc,
-  który się wtedy skończył; okres z komendy nie gra roli.
+  który się wtedy skończył; okres z komendy nie gra roli. Trzecia runda (`cd94293`): liczenie „od teraz” gubiło
+  miesiące — spóźniony timer (2 listopada) pomijał październik, ponowienie tuż po terminie, a przed zadaniem,
+  przestawiało należny timer, a zegar innego węzła cofał termin. Teraz przebieg trzyma datę należnego sprawdzenia:
+  pierwsze potwierdzenie ustawia 1. dzień następnego miesiąca, sprawdzenie miesiąca, którego ta data dotyczy,
+  przesuwa ją o miesiąc **od niej samej**, a inne ponowienie jej nie rusza; spóźniony timer nadrabia tylko to, co
+  przegapił. Do tego nowy niezmiennik: **sprawdza się tylko miesiąc zakończony do czasu komendy** (rozliczenie
+  miesiąc w tył, WF 00:34:40) — „2062-08” jest odrzucany, zanim zapyta rejestry, więc nie otwiera miesiąca 2062-08.
 - **Resztki v1** (`9c0294e`, `14fae7d`): `Taxvision.Tasks` i `Notifications` bez handlerów, z UUID okresu; komentarz
   `setup` testu szwu; notka v1 w `Taxvision.Periods` na górze.
 
@@ -1879,7 +1885,12 @@ pętla czyta potwierdzenie — czytelnikiem byłby read model „ostatnie sprawd
 - **Brak limitu ponowień** — każde ponowienie pyta rejestry; limit jest sprawą hosta albo adaptera.
 - **Aktor ze `scope` wydający komendę bez `scope`** — nic tego nie wyłapuje; kandydat na regułę L5 (E10).
 - **Rejestry pytane `company_id`, nie NIP-em** — odziedziczone z v1; prawdziwy adapter potrzebuje NIP-u z profilu.
-- **Duplikacja** (`scope` komend i query w dispatchu i w D10) — do ujednolicenia przy E11.
+- **Jeden łańcuch timerów na firmę**: zadanie timera odrzucone po trzech porażkach zatrzymuje pętlę do ponowienia
+  przez księgową — mechanika silnika (`TimerJob`), poza E9.
+- **Północ w Warszawie to 22:00–23:00 UTC**: sprawdzenie tuż po niej ustawia termin za godzinę–dwie na ten sam
+  miesiąc; sandbox nie ma bazy stref czasowych, jak przy dniu R-07.
+- **Duplikacja** (`scope` komend i query w dispatchu i w D10; `one_value/2` obok `Key.base_type/2`) — do
+  ujednolicenia przy E11. Scenariusze procesu managera zależą od epoki scenariuszy (styczeń 2026), co mówi komentarz.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
