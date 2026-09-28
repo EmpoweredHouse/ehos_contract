@@ -2868,16 +2868,23 @@ sprawdzenie widzi czyste żądanie), `body:` (pole, nie opcja) i dwa fałszywe a
 wywracało boot, choć jest na liście; `jwks_url` z userinfo raportowany jako opcja z `config :req`). **Teraz
 pobranie w ogóle nie bierze domyślnych Req**: żądanie budowane jak w `Req.new/1`, ale bez nich —
 `Req.Request.new() |> Req.Steps.attach() |> Req.merge(...)`; `Req.merge/2` i `Req.get/1` na gotowym żądaniu ich
-nie czytają. Koszt: `Req.Steps.attach/1` jest `@doc false`; Req przypięty lockiem, a `keys_test` pada, jeśli
-aktualizacja wpuści domyślne z powrotem (sprawdzone wstecz na `Req.new/1`). *Odrzucone:* odrzucać domyślne Req
+nie czytają. Koszt: `Req.Steps.attach/1` jest `@doc false`. Lock biblioteki nie dociera do aplikacji, która ją instaluje
+(uwaga z czwartej rundy), więc `mix.exs` trzyma Req na 0.7.x (`~> 0.7.4`, było `~> 0.7`); `keys_test` pada, jeśli
+wersja wpuści domyślne z powrotem (sprawdzone wstecz na `Req.new/1`). Bazowe żądanie jest atrybutem modułu, jak
+`@req` w samym Req. *Odrzucone:* odrzucać domyślne Req
 przy starcie — aplikacja z globalnym `config :req` dla innych API nie wstałaby przez nasz pakiet, a wtyczek i tak
-nie widać. Komunikat o adresie spoza `https` nie pokazuje userinfo (test). `transport_opts: nil` przechodził i wywracał każde pobranie (Req robi na nim
+nie widać. **Adres z danymi logowania odrzucany przy starcie** (`https://user:hasło@…`): JWKS jest publiczny,
+a adres trafia do logu przy każdym nieudanym pobraniu (czwarta runda). Żaden komunikat odmowy nie pokazuje adresu —
+ścinanie userinfo przez `URI` gubi hasło w adresach z literówką (`user:secret@host`, `https:/…`), testy na czterech
+kształtach. *Pominięte:* `SSLKEYLOGFILE` (Finch dopisuje sekrety TLS, jeśli operator ustawi zmienną — środowisko,
+nie konfiguracja), telemetria Finch (tylko obserwuje), `cacertfile` trzymany przez Mint do restartu. Magazyn
+certyfikatów VM (`:public_key.cacerts_load/1` innej biblioteki podmienia go i dla tego pobrania) — zdanie w README. `transport_opts: nil` przechodził i wywracał każde pobranie (Req robi na nim
 `Keyword.merge`) — teraz czytany jak brak. Nieznana opcja dziecka (literówka `req_option:`) ginęła bez słowa —
 teraz odrzucana. Komunikat o złym typie nie pokazuje wartości (mogą w niej być certyfikaty). Testy startu
 `Keys` wprost z własną nazwą. Każde sprawdzone wstecz, każda mutacja wywraca dokładnie swój test. Bramka `pin_keys` w jednym miejscu
 (`test_trust?/0`) dla `pin/2` i zaślepek.
-*Bez zmian:* nakładać `redirect`/`into` po opcjach hosta — lista i `not_ours/2` już ich pilnują, a dopisanie ich
-do listy to świadoma zmiana, którą zobaczy przegląd. *Pominięte:* wartości nie są sprawdzane
+*Bez zmian:* nakładać `redirect`/`into` po opcjach hosta — pilnuje ich lista (a domyślnych Req pobranie nie bierze
+wcale, niżej), a dopisanie ich do listy to świadoma zmiana, którą zobaczy przegląd. *Pominięte:* wartości nie są sprawdzane
 (`receive_timeout: :infinity`) — to czasy, zadanie z limitem całego pobrania.
 
 Sprawdzenie w `Keys.check_options!/1` (`@doc false`), wołane przez `Keys.start_link/1` i przez
