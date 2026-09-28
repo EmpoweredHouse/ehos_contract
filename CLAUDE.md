@@ -161,6 +161,10 @@ mix ecto.migrate`.
 - **Polski cudzysłów zamykający to `”` (U+201D), nie `"`.** Wpisanie ASCII-owego `"` w środku
   stringu kończy string i wywala kompilację z komunikatem o nieoczekiwanym tokenie w miejscu
   **otwierającego** `„`, czyli kilka znaków przed prawdziwą przyczyną. Zdarzyło się trzy razy w jeden dzień.
+- **Wyrażenie regularne na tekście klienta zawsze z flagą `u`.** Bez niej `\R`, `\s` i `\w` czytają bajty, a
+  polszczyzna ma w UTF-8 bajty, które coś znaczą: `~r/\R/` łapie `0x85`, drugi bajt „ą”. Zdarzyło się 28 września
+  w grafach EG1 — każda polska etykieta traciła „ą”, a testy przechodziły, bo żaden nie miał „ą”. Test tekstu
+  klienta pisz z polską etykietą.
 - Przy pisaniu do pliku pamiętaj o `encoding: :unicode` — Erlang trzyma stdout w latin1, kiedy wyjście
   nie jest terminalem, i psuje każdy polski znak.
 - **W skryptach powłoki nie licz na dzielenie na słowa.** Shell to zsh, a zsh **nie dzieli** nierozdzielonych

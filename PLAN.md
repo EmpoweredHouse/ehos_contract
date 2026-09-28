@@ -1288,7 +1288,7 @@ już nie deklaruje (R4 to wyklucza, stary kod miał to samo); aktorzy z `grants`
 (`grants` powstaje z tych samych deklaracji). Przegląd bezpieczeństwa: bez regresji — zapytania na ekranie te
 same co przy grafie kroków; ich koszt (N+1 w `Paths.lag/1`, podwójny mount, cały log bez `since:`) jest sprzed EG.
 
-**Pułapka do listy:** wyrażenie regularne na tekście klienta zawsze z flagą `u` — bez niej `\R`, `\s`, `\w` czytają
+**Pułapka, od 28 września w `CLAUDE.md`:** wyrażenie regularne na tekście klienta zawsze z flagą `u` — bez niej `\R`, `\s`, `\w` czytają
 bajty, a polszczyzna ma w UTF-8 bajty, które coś znaczą.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
