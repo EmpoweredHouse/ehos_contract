@@ -99,6 +99,12 @@ defmodule EhOsContract.Auth.KeysTest do
       assert_received {:transport, [timeout: 2_000]}
     end
 
+    test "with nil transport options keep the timeout, and nothing breaks", %{adapter: adapter} do
+      start_keys(nil, req_options: [adapter: adapter, connect_options: [transport_opts: nil]])
+
+      assert_received {:transport, [timeout: 2_000]}
+    end
+
     test "replace the connect timeout when they set one", %{adapter: adapter} do
       start_keys(nil, req_options: [adapter: adapter, connect_options: [timeout: 500]])
 
@@ -109,21 +115,36 @@ defmodule EhOsContract.Auth.KeysTest do
   describe "a key process started directly" do
     # `start_link/1` checks what `EhOsContract.Auth.child_spec/1` checks, so a host
     # that lists `Keys` itself gets no way around it.
+    # A name of its own, so a check that stopped raising fails its assertion rather
+    # than a later test's start.
     test "refuses an address that is not https" do
       assert_raise ArgumentError, ~r/not https/, fn ->
-        Keys.start_link(url: "http://ehos.example.com/jwks.json", repo: Repo)
+        Keys.start_link(name: :keys_http, url: "http://ehos.example.com/jwks.json", repo: Repo)
       end
     end
 
     test "refuses a request option outside the few it takes" do
       assert_raise ArgumentError, ~r/does not take follow_redirects: in req_options/, fn ->
         Keys.start_link(
+          name: :keys_redirect,
           url: "https://ehos.test/.well-known/jwks.json",
           repo: Repo,
           req_options: [follow_redirects: true]
         )
       end
     end
+  end
+
+  test "a Req default set after the boot fails every fetch, and the keys in force stay" do
+    pair = key_pair()
+    ehos = ehos({:keys, [pair]})
+    keys = start_keys(ehos)
+    on_exit(fn -> Req.default_options([]) end)
+
+    Req.default_options(follow_redirects: true)
+    assert Keys.refresh(keys) == {:error, {:not_allowed, [:follow_redirects]}}
+    assert requests(ehos) == 1, "nothing was sent"
+    assert {:ok, _} = Auth.verify(credential(pair), keys: keys)
   end
 
   test "an unknown kid fetches at most once per thirty seconds" do

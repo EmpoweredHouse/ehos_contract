@@ -78,6 +78,10 @@ defmodule EhOsContract.Auth.PackageTest do
             {[decoders: [:gz]], ~r/does not take decoders: in req_options/},
             {[connect_options: [hostname: "other.example"]],
              ~r/does not take hostname: in connect_options/},
+            # Mint connects to a proxy with its own thirty seconds, and to one for an
+            # http address in the clear.
+            {[connect_options: [proxy: {:http, "proxy.internal", 3128, []}]],
+             ~r/does not take proxy: in connect_options/},
             {[connect_options: [transport_opts: [verify: :verify_none]]],
              ~r/does not take verify: in transport_opts/},
             {[
@@ -95,25 +99,60 @@ defmodule EhOsContract.Auth.PackageTest do
             # Req reads the last of a key given twice, so a check of the first is fooled.
             {[connect_options: [timeout: 1], connect_options: []],
              ~r/takes connect_options: in req_options only once/},
-            {%{retry: false}, ~r/takes req_options as a keyword list/},
-            {[connect_options: "ca.pem"], ~r/takes connect_options as a keyword list/}
+            {%{retry: false}, ~r/takes req_options as a keyword list$/},
+            {[connect_options: "ca.pem"], ~r/takes connect_options as a keyword list$/}
           ] do
         assert_raise ArgumentError, message, fn ->
           EhOsContract.Auth.child_spec(req_options: req_options)
         end
       end
 
-      # The control: an internal authority, a proxy, tuned timeouts, and tests' stubs.
+      # The control: an internal authority, tuned timeouts, and tests' stubs.
       for req_options <- [
             [connect_options: [transport_opts: [cacertfile: "/etc/ehos/ca.pem"]]],
             [connect_options: [timeout: 1_000, transport_opts: [cacerts: []]]],
-            [connect_options: [proxy: {:http, "proxy.internal", 3128, []}]],
+            [connect_options: [transport_opts: nil]],
             [connect_options: nil, receive_timeout: 2_000, inet6: true],
             [plug: {Req.Test, __MODULE__}],
             [adapter: &{&1, Req.Response.new(status: 503)}]
           ] do
         assert %{start: {_, _, [opts]}} = EhOsContract.Auth.child_spec(req_options: req_options)
         assert opts[:req_options] == req_options
+      end
+    end
+
+    test "fails the boot on a stub in place of the network, except in a test" do
+      Application.put_env(:eh_os_contract_auth, :pin_keys, false)
+
+      for req_options <- [[plug: {Req.Test, __MODULE__}], [adapter: &{&1, Req.Response.new()}]] do
+        assert_raise ArgumentError, ~r/in req_options only in a test/, fn ->
+          EhOsContract.Auth.child_spec(req_options: req_options)
+        end
+      end
+    end
+
+    test "fails the boot on Req's own defaults that no allowed option would give" do
+      on_exit(fn -> Application.delete_env(:req, :default_options) end)
+
+      for {defaults, message} <- [
+            {[follow_redirects: true], ~r/does not take follow_redirects: from config :req/},
+            {[auth: {:bearer, "for another API"}], ~r/does not take auth: from config :req/},
+            {[headers: [authorization: "for another API"]], ~r/does not take headers:/},
+            {[adapter: &{&1, Req.Response.new()}], ~r/does not take adapter: from config :req/}
+          ] do
+        Application.put_env(:req, :default_options, defaults)
+
+        assert_raise ArgumentError, message, fn -> EhOsContract.Auth.child_spec([]) end
+      end
+
+      # The control: a default the package sets itself is overridden, not refused.
+      Application.put_env(:req, :default_options, redirect: true, receive_timeout: 60_000)
+      assert %{start: {_, _, [_opts]}} = EhOsContract.Auth.child_spec([])
+    end
+
+    test "fails the boot on an option it does not take, rather than dropping it" do
+      assert_raise ArgumentError, ~r/does not take req_option: in options/, fn ->
+        EhOsContract.Auth.child_spec(req_option: [inet6: true])
       end
     end
 

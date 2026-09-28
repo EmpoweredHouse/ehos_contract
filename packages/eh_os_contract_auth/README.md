@@ -186,15 +186,20 @@ anything else:
 | Option | For |
 | --- | --- |
 | `connect_options: [transport_opts: [cacertfile: …]]` or `[cacerts: …]` | an internal certificate authority |
-| `connect_options: [proxy: …, proxy_headers: …]` | a proxy; TLS to EHOS is still checked through it |
 | `connect_options: [timeout: …]`, `receive_timeout: …`, `inet6: …` | tuning the connection |
-| `plug: …`, `adapter: …` | tests, in place of the network |
+| `plug: …`, `adapter: …` | tests, in place of the network — only with `config :eh_os_contract_auth, pin_keys: true` |
 
 It is a list of what is allowed, not of what is unsafe, because Req, Finch and Mint have many
 ways to undo what the key set is trusted by: an older name for `redirect`, TLS options that accept
 any certificate or check it against another name, a body read past the 64 KB limit. None of them is
-on the list. The address comes from the configuration only: `url:` in the child's options is refused
-too.
+on the list. A proxy is not on it either: Mint connects to one with its own thirty-second timeouts.
+The address comes from the configuration only: `url:` in the child's options is refused too.
+
+**Req's own defaults count too.** Req applies `config :req, default_options` to every request,
+this one included. An option there that the list does not give — `follow_redirects`, `auth`,
+`headers`, `plug` — fails the boot, and one set later, through `Req.default_options/1`, fails every
+fetch until it is gone. A default the package sets itself (`redirect`, `receive_timeout`, …) is
+overridden, not refused.
 
 **What the application configures, and nothing else:** `issuer`, which must be exactly the `iss`
 EHOS writes, `audience` (`<application>/<environment>`, exactly the `aud` EHOS issues for this

@@ -63,16 +63,22 @@ defmodule EhOsContract.Auth.Keys do
   # The one entry of the table that is not a key: `{@next, clock, at}`, when the next
   # early fetch is allowed, by the process's clock.
   @next :next_early_fetch
-  # The only `:req_options` a host may give. Req, Finch and Mint have many ways to
-  # undo what the key set is trusted by — an old name for `redirect`, TLS options
-  # that accept any certificate, a name to check it against other than the URL's,
-  # a body read past the limit — so what is not here is refused, not what is known
-  # to be unsafe. `plug` and `adapter` are for hosts' tests.
+  # The options `start_link/1` takes, and the only `:req_options` among them a host
+  # may give. Req, Finch and Mint have many ways to undo what the key set is trusted
+  # by — an old name for `redirect`, TLS options that accept any certificate, a name
+  # to check it against other than the URL's, a body read past the limit — so what
+  # is not here is refused, not what is known to be unsafe.
   @allowed [
+    options: [:name, :url, :repo, :req_options, :refresh_every, :refetch_at_most_every, :clock],
     req_options: [:connect_options, :receive_timeout, :inet6, :plug, :adapter],
-    connect_options: [:timeout, :proxy, :proxy_headers, :transport_opts],
+    connect_options: [:timeout, :transport_opts],
     transport_opts: [:cacertfile, :cacerts]
   ]
+  # In place of the network, so whatever they answer is trusted: only where keys
+  # EHOS did not publish may be, as for `pin/2`.
+  @stubs [:plug, :adapter]
+  @trusted_by ". Any other option could undo what the key set is trusted by: its URL, " <>
+                "the check of EHOS's certificate, no redirect, and the 64 KB limit"
 
   @typedoc "What `start_link/1` takes. Every option but `:url` has a default."
   @type option ::
@@ -95,11 +101,14 @@ defmodule EhOsContract.Auth.Keys do
   name, except `:connect_options`, which is merged key by key: a host naming its
   certificate authority there keeps the two seconds unless it sets `:timeout` too.
 
-  It raises when `:url` is not https (plain http is allowed for `localhost` only),
-  and on any `:req_options` but these, each given once: `connect_options` with
-  `timeout`, `proxy`, `proxy_headers` and `transport_opts` naming a certificate
+  It raises on an option it does not take, when `:url` is not https (plain http is
+  allowed for `localhost` only), and on any `:req_options` but these, each given
+  once: `connect_options` with `timeout` and `transport_opts` naming a certificate
   authority (`cacertfile` or `cacerts`); `receive_timeout`; `inet6`; and `plug` or
-  `adapter`, for tests. Anything else could undo what the key set is trusted by.
+  `adapter`, only with `config :eh_os_contract_auth, pin_keys: true`, as in a test.
+  Anything else could undo what the key set is trusted by — Req's own defaults too
+  (`config :req, default_options`), which it applies to every request: set at boot
+  they fail it, and set later they fail every fetch.
   """
   @spec start_link([option()]) :: GenServer.on_start()
   def start_link(opts) do
@@ -215,6 +224,7 @@ defmodule EhOsContract.Auth.Keys do
   # boot fails while its children are listed rather than when this one starts.
   @spec check_options!(keyword()) :: :ok
   def check_options!(opts) do
+    check_allowed!(:options, opts)
     url = Keyword.fetch!(opts, :url)
 
     # The key set is what every credential is trusted by, and over plain HTTP anyone
@@ -239,18 +249,43 @@ defmodule EhOsContract.Auth.Keys do
     connect_options = Keyword.get(req_options, :connect_options) || []
     check_allowed!(:connect_options, connect_options)
     check_allowed!(:transport_opts, Keyword.get(connect_options, :transport_opts) || [])
+
+    case Enum.filter(@stubs, &Keyword.has_key?(req_options, &1)) do
+      [stub | _] ->
+        unless Application.get_env(:eh_os_contract_auth, :pin_keys, false) == true do
+          raise ArgumentError,
+                "eh_os_contract_auth takes #{stub}: in req_options only in a test: whatever " <>
+                  "it answers is trusted as EHOS's keys. Set config :eh_os_contract_auth, " <>
+                  "pin_keys: true in config/test.exs"
+        end
+
+      [] ->
+        :ok
+    end
+
+    case not_ours(request(url, req_options), req_options) do
+      [] ->
+        :ok
+
+      [option | _] ->
+        raise ArgumentError,
+              "eh_os_contract_auth does not take #{option}: from config :req, " <>
+                "default_options, which Req applies to every request" <> @trusted_by
+    end
   end
 
   defp check_allowed!(level, options) do
     allowed = @allowed[level]
 
+    # Named, not shown: the value may hold a proxy's credentials or certificates.
     unless is_list(options) and Keyword.keyword?(options) do
-      raise ArgumentError,
-            "eh_os_contract_auth takes #{level} as a keyword list, not #{inspect(options)}"
+      raise ArgumentError, "eh_os_contract_auth takes #{level} as a keyword list"
     end
 
+    keys = Keyword.keys(options)
+
     # Given twice, Req reads the last and a check of the first would be fooled.
-    case Keyword.keys(options) -- Enum.uniq(Keyword.keys(options)) do
+    case keys -- Enum.uniq(keys) do
       [] ->
         :ok
 
@@ -258,7 +293,7 @@ defmodule EhOsContract.Auth.Keys do
         raise ArgumentError, "eh_os_contract_auth takes #{twice}: in #{level} only once"
     end
 
-    case Keyword.keys(options) -- allowed do
+    case keys -- allowed do
       [] ->
         :ok
 
@@ -266,8 +301,7 @@ defmodule EhOsContract.Auth.Keys do
         raise ArgumentError,
               "eh_os_contract_auth does not take #{refused}: in #{level}, which takes only " <>
                 Enum.map_join(allowed, ", ", &"#{&1}:") <>
-                ". Any other option could undo what the key set is trusted by: its URL, " <>
-                "the check of EHOS's certificate, no redirect, and the 64 KB limit"
+                if(level == :options, do: "", else: @trusted_by)
     end
   end
 
@@ -374,10 +408,7 @@ defmodule EhOsContract.Auth.Keys do
   end
 
   defp get(state) do
-    options =
-      Keyword.merge([into: &at_most/2] ++ @request_options, state.req_options, &merge_option/3)
-
-    case Req.get(state.url, options) do
+    case send_request(request(state.url, state.req_options), state.req_options) do
       {:ok, %Req.Response{status: 200, body: :too_large}} ->
         {:error, :too_large}
 
@@ -406,10 +437,40 @@ defmodule EhOsContract.Auth.Keys do
     exception -> {:error, exception}
   end
 
+  # The request every fetch makes: the package's defaults, the host's options over
+  # them, and Req's own (`config :req, default_options`) under both.
+  defp request(url, req_options) do
+    options = Keyword.merge([into: &at_most/2] ++ @request_options, req_options, &merge_option/3)
+    Req.new([url: url] ++ options)
+  end
+
+  # Checked again at every fetch: Req's defaults can change after the boot.
+  defp send_request(request, req_options) do
+    case not_ours(request, req_options) do
+      [] -> Req.get(request)
+      options -> {:error, {:not_allowed, options}}
+    end
+  end
+
+  # What Req would send that neither the package nor the host gave: an option or a
+  # header from Req's defaults, or an adapter in place of the network.
+  defp not_ours(request, req_options) do
+    options = Map.keys(request.options) -- Keyword.keys(@request_options ++ req_options)
+    headers = if request.headers == %{}, do: [], else: [:headers]
+    stubbed = Enum.any?(@stubs, &Keyword.has_key?(req_options, &1))
+    adapter = if request.adapter == Req.Finch or stubbed, do: [], else: [:adapter]
+    options ++ headers ++ adapter
+  end
+
   # Without the default connect timeout, Mint's is thirty seconds: an EHOS that
   # drops packets would hold this process past `@call_timeout`.
-  # `nil` is what Req reads as no options, so it is merged as none.
-  defp merge_option(:connect_options, default, given), do: Keyword.merge(default, given || [])
+  # `nil` is what Req reads as no options, so it is merged as none; Req does not
+  # read a `nil` `:transport_opts` so, and it goes.
+  defp merge_option(:connect_options, default, given) do
+    merged = Keyword.merge(default, given || [])
+    if merged[:transport_opts], do: merged, else: Keyword.delete(merged, :transport_opts)
+  end
+
   defp merge_option(_option, _default, given), do: given
 
   # Collects the body up to `@max_body` and gives up past it.

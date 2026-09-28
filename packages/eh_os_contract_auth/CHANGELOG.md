@@ -33,11 +33,14 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   connect timeout to Mint's thirty seconds. A `timeout:` given there still replaces it, and
   `connect_options: nil` is read as none.
 - **`req_options` takes only what an integration needs, and the boot fails on anything else**:
-  `connect_options` with `timeout`, `proxy`, `proxy_headers` and `transport_opts` naming a
-  certificate authority (`cacertfile`, `cacerts`), `receive_timeout`, `inet6`, and `plug` or
-  `adapter` for tests — each once. Before, any option was accepted, and several quietly took a
-  guarantee away: `redirect: true` or its old name `follow_redirects`, `into:`, `url:`,
-  `transport_opts: [verify: :verify_none]`, `verify_fun`, `server_name_indication`, `hostname`,
-  `finch_request`. `url:` in `EhOsContract.Auth`'s child options, which replaced the address the boot
-  had checked, is refused too. `EhOsContract.Auth.Keys.start_link/1` checks the same, the https
-  address included, so starting it directly is no way around either.
+  `connect_options` with `timeout` and `transport_opts` naming a certificate authority
+  (`cacertfile`, `cacerts`), `receive_timeout`, `inet6`, and `plug` or `adapter` only with
+  `config :eh_os_contract_auth, pin_keys: true` — each once. Before, any option was accepted, and
+  several quietly took a guarantee away: `redirect: true` or its old name `follow_redirects`,
+  `into:`, `url:`, `transport_opts: [verify: :verify_none]`, `verify_fun`, `server_name_indication`,
+  `hostname`, `finch_request`, a proxy. Options Req takes from `config :req, default_options`
+  are held to the same list: set at boot they fail it, set later they fail every fetch. The child's
+  own options are checked too: `url:`, which replaced the address the boot had checked, and any
+  name `EhOsContract.Auth.Keys.start_link/1` does not take, which was dropped without a word.
+  `start_link/1` checks all of it, the https address included, so starting it directly is no way
+  around. `transport_opts: nil` is read as none, where it broke every fetch.
