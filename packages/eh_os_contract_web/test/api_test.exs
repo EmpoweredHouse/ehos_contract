@@ -175,6 +175,46 @@ defmodule EhOsContract.Web.ApiTest do
     end
   end
 
+  describe "the generated command-and-query API" do
+    setup %{conn: conn} do
+      {:ok, conn: Access.put_actor(conn, "u-1", ["eh_os_contract_read"])}
+    end
+
+    test "the index lists v2 contracts with OpenAPI digests", %{conn: conn} do
+      conn = get(conn, "/api/openapi")
+
+      assert conn.status == 200
+      %{"contracts" => contracts} = Jason.decode!(conn.resp_body)
+
+      assert Enum.map(contracts, & &1["contract"]) ==
+               EhOsContract.Registry.v2_contracts() |> Enum.map(&inspect/1) |> Enum.sort()
+
+      assert Enum.all?(contracts, &(byte_size(&1["digest"]) == 12))
+    end
+
+    test "a document is served with relative plug paths and its digest as the ETag", %{conn: conn} do
+      name = inspect(EhOsContract.Web.TestHost.Fixtures.CaseHandling)
+      conn = get(conn, "/api/openapi/#{name}")
+
+      assert conn.status == 200
+      document = Jason.decode!(conn.resp_body)
+      assert document["openapi"] == "3.1.2"
+      assert Map.has_key?(document["paths"], "/commands/web_test_host.open_case")
+
+      assert get_resp_header(conn, "etag") == [
+               ~s("#{document["info"]["x-eh-os-contract-digest"]}")
+             ]
+    end
+
+    test "unknown and unauthenticated requests receive no specification", %{conn: conn} do
+      assert get(conn, "/api/openapi/Not.A.Contract").status == 404
+
+      public = build_conn() |> put_req_header("accept", "application/json")
+      assert get(public, "/api/openapi").status == 403
+      assert get(public, "/api/openapi/Anything").status == 403
+    end
+  end
+
   describe "the screens still work" do
     test "the dashboard's HTML routes are untouched by the API mount" do
       conn =

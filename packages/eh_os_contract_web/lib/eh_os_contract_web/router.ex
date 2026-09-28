@@ -63,7 +63,8 @@ defmodule EhOsContract.Web.Router do
   end
 
   @doc """
-  Mounts the read-only conformance API at `path`: `path <> "/conformance"`.
+  Mounts the read-only conformance and generated-document API at `path`:
+  `conformance`, `model`, `asyncapi` and `openapi` live below that mount.
 
   Separate from `eh_os_contract_dashboard/2` and mounted in its own scope on purpose, because
   the two need opposite pipelines. A dashboard route wants a session and CSRF
@@ -107,6 +108,13 @@ defmodule EhOsContract.Web.Router do
 
       get path <> "/model/:contract",
           EhOsContract.Web.Api.Model,
+          resolver: resolver,
+          base_path: path
+
+      get path <> "/openapi", EhOsContract.Web.Api.OpenAPI, resolver: resolver, base_path: path
+
+      get path <> "/openapi/:contract",
+          EhOsContract.Web.Api.OpenAPI,
           resolver: resolver,
           base_path: path
     end

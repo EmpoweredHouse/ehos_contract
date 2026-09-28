@@ -21,6 +21,7 @@ defmodule EhOsContract.Web do
       Api.AsyncAPI,
       Api.Conformance,
       Api.Model,
+      Api.OpenAPI,
       Resolver,
       Router,
       Router.RedirectToContract,

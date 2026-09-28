@@ -124,6 +124,11 @@ What changes otherwise is what a host has to do.
 
 ### Added
 
+- **E10: `EhOsContract.OpenAPI` projects the v2 model's human command and query capabilities as OpenAPI
+  3.1.2.** Paths match `EhOsContract.Plug`, field and read-model schemas share AsyncAPI's JSON Schema
+  projection, scoped operations name their dimension, and commands only application code may issue stay
+  absent. Each per-contract document and the v2 index carry a digest.
+
 - **E10: `EhOsContract.AsyncAPI` projects v2 `publish` boundaries as AsyncAPI 3.0.** Each publication is one
   addressed channel, one JSON Schema message carrying only its selected non-personal fields, and one `send`
   operation. Internal events are absent. The index now lists v2 contracts; direct v1 document generation stays

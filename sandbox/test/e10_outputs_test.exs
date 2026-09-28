@@ -48,6 +48,18 @@ defmodule EhOsContractHost.E10OutputsTest do
     assert message["payload"]["required"] == ["company_id", "period_id"]
   end
 
+  test "TaxVision's OpenAPI surface contains human commands but not policy commands" do
+    document = EhOsContract.OpenAPI.document(Taxvision.Contracts.AccountingMonth)
+
+    assert Map.has_key?(document["paths"], "/commands/taxvision.open_month")
+    assert Map.has_key?(document["paths"], "/commands/taxvision.ingest_bank_statement")
+    refute Map.has_key?(document["paths"], "/commands/taxvision.run_matching")
+
+    operation = document["paths"]["/commands/taxvision.open_month"]["post"]
+    assert operation["x-eh-os-contract-scope"] == "company_id"
+    assert operation["x-eh-os-contract-roles"] == ["taxvision.accountant"]
+  end
+
   @tag :tmp_dir
   test "the system graph connects TaxVision's contexts, contracts and publication", %{
     tmp_dir: dir

@@ -18,7 +18,7 @@ defmodule EhOsContract.JsonSchema do
 
     %{
       "type" => "object",
-      "properties" => Map.new(fields, &{to_string(&1.name), field(&1, values)}),
+      "properties" => Map.new(fields, &{to_string(&1.name), field_schema(&1, values)}),
       "required" =>
         fields
         |> Enum.reject(&Map.get(&1, :optional, false))
@@ -28,7 +28,16 @@ defmodule EhOsContract.JsonSchema do
     }
   end
 
-  defp field(field, values) do
+  @doc "The schema of one declared field, resolving domain values through `domain`."
+  @spec field(map(), module() | map()) :: map()
+  def field(field, domain) do
+    values =
+      domain |> Model.fetch() |> then(&Map.new(&1.values, fn value -> {value.name, value} end))
+
+    field_schema(field, values)
+  end
+
+  defp field_schema(field, values) do
     field.type
     |> property(values)
     |> maybe_put("title", Map.get(field, :label))
@@ -68,7 +77,7 @@ defmodule EhOsContract.JsonSchema do
   defp object_fields(fields, values) do
     %{
       "type" => "object",
-      "properties" => Map.new(fields, &{to_string(&1.name), field(&1, values)}),
+      "properties" => Map.new(fields, &{to_string(&1.name), field_schema(&1, values)}),
       "required" =>
         fields
         |> Enum.reject(&Map.get(&1, :optional, false))

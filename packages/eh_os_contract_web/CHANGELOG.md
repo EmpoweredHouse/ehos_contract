@@ -8,6 +8,10 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **The API mount serves OpenAPI 3.1.2 documents** at `/openapi` and `/openapi/:contract`, with one
+  command-and-query document per v2 contract and its digest as the `ETag`. The host's existing resolver
+  protects both routes.
+
 - **The AsyncAPI endpoint now serves v2 contracts and their declared `publish` boundaries.** Its index lists
   only v2 contracts; each document exposes public messages as AsyncAPI `send` operations and does not leak
   internal domain events.
