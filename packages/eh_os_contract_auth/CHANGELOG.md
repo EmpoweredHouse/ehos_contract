@@ -30,4 +30,5 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **`req_options: [connect_options: …]` keeps the two-second connect timeout.** A host's
   `:connect_options` are merged over the package's key by key instead of replacing them, so naming
   an internal certificate authority (`transport_opts: [cacertfile: …]`) no longer drops the fetch's
-  connect timeout to Mint's thirty seconds. A `timeout:` given there still replaces it.
+  connect timeout to Mint's thirty seconds. A `timeout:` given there, or inside `transport_opts`,
+  still replaces it, and `connect_options: nil` is read as none.

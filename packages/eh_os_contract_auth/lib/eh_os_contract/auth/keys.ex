@@ -83,7 +83,8 @@ defmodule EhOsContract.Auth.Keys do
   `:req_options` go to every `Req.get/2`, over its defaults: no retry, two seconds
   to connect, three to receive. An option given replaces the default of the same
   name, except `:connect_options`, which is merged key by key: a host naming its
-  certificate authority there keeps the two seconds unless it sets `:timeout` too.
+  certificate authority there keeps the two seconds unless it sets `:timeout` too,
+  there or inside `:transport_opts`, where Req lets it win.
   """
   @spec start_link([option()]) :: GenServer.on_start()
   def start_link(opts) do
