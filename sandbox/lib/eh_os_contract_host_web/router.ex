@@ -55,7 +55,8 @@ defmodule EhOsContractHostWeb.Router do
         Rehmed.Contracts.Scheduling,
         Rehmed.Contracts.ClinicalDocumentation,
         Rehmed.Contracts.StatutoryReporting,
-        Rehmed.Contracts.Settlement
+        Rehmed.Contracts.Settlement,
+        Rehmed.Contracts.ExternalPayers
       ]
   end
 

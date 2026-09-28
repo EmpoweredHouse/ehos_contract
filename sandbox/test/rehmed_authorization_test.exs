@@ -16,9 +16,16 @@ defmodule Rehmed.AuthorizationTest do
   import Plug.Conn
 
   alias EhOsContract.Event
-  alias Rehmed.Contracts.{ClinicalDocumentation, Scheduling, Settlement, StatutoryReporting}
 
-  @contracts [Scheduling, ClinicalDocumentation, StatutoryReporting, Settlement]
+  alias Rehmed.Contracts.{
+    ClinicalDocumentation,
+    ExternalPayers,
+    Scheduling,
+    Settlement,
+    StatutoryReporting
+  }
+
+  @contracts [Scheduling, ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers]
 
   @endpoint EhOsContractHostWeb.Endpoint
 
@@ -43,6 +50,7 @@ defmodule Rehmed.AuthorizationTest do
   end
 
   @visit %{visit_id: "visit-anna"}
+  @payer_period %{payer_id: "payer-luxmed", period_id: "2026-09"}
   @close %{
     visit_id: "visit-anna",
     patient_id: "patient-anna",
@@ -52,7 +60,7 @@ defmodule Rehmed.AuthorizationTest do
     practitioner_number: "practitioner-ewa"
   }
 
-  # Every capability of the four contracts. What only the application's own code
+  # Every capability of the five contracts. What only the application's own code
   # does — the reactions' commands, the integration's recordings — has none, and the
   # door answers 404 for it (the last test).
   defp entries do
@@ -71,7 +79,12 @@ defmodule Rehmed.AuthorizationTest do
       "rehmed.add_service_line" => %{visit_id: "visit-anna", service_id: "usg"},
       "rehmed.record_payment" => %{visit_id: "visit-anna", method: "card", amount: 20_000},
       "rehmed.close_settlement" => %{visit_id: "visit-anna", total: 20_000},
-      "rehmed.book_correction" => %{visit_id: "visit-anna", delta: -1_000}
+      "rehmed.book_correction" => %{visit_id: "visit-anna", delta: -1_000},
+      "rehmed.mark_settled_with_payer" => Map.put(@payer_period, :visit_id, "visit-anna"),
+      "rehmed.exclude_visit_from_invoice" =>
+        Map.merge(@payer_period, %{visit_id: "visit-anna", reason: "duplicate"}),
+      "rehmed.issue_payer_invoice" =>
+        Map.put(@payer_period, :invoice_id, "invoice-luxmed-2026-09")
     }
 
     records = ~w(rehmed.patient_arrived rehmed.visit_completed)
