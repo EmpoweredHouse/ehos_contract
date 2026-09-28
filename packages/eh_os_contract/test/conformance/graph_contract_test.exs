@@ -308,7 +308,7 @@ defmodule EhOsContract.GraphContractTest do
       assert File.read!(path) =~ "state_account["
     end
 
-    test "an unknown contract or unit, and a unit without its contract, are refused" do
+    test "an unknown contract or unit, a unit without its contract, and a flag it would drop are refused" do
       assert_raise Mix.Error,
                    ~r/no v2 contract Nonesuch\. Registered: .*DispatchRig\.Ledger/,
                    fn ->
@@ -322,6 +322,16 @@ defmodule EhOsContract.GraphContractTest do
           "--unit",
           "nonesuch"
         ])
+      end
+
+      assert_raise Mix.Error, ~r/--unit draws the declarations only/, fn ->
+        Mix.Tasks.EhOsContract.Graph.run(
+          ~w(--contract DispatchRig.Ledger --unit account --overlay)
+        )
+      end
+
+      assert_raise Mix.Error, ~r/pass one of them/, fn ->
+        Mix.Tasks.EhOsContract.Graph.run(~w(--contract DispatchRig.Ledger --process ledger))
       end
 
       assert_raise Mix.Error, ~r/pass --contract too/, fn ->

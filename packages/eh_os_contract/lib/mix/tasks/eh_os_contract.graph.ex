@@ -68,6 +68,8 @@ defmodule Mix.Tasks.EhOsContract.Graph do
         ]
       )
 
+    refuse_ignored!(opts)
+
     if opts[:overlay] do
       Mix.Task.run("app.start")
     else
@@ -134,6 +136,21 @@ defmodule Mix.Tasks.EhOsContract.Graph do
           |> Enum.join(", ")
 
         Mix.raise("no process #{inspect(name)}. Declared: #{known}")
+    end
+  end
+
+  # A flag the picture asked for would not use is refused rather than dropped: a unit
+  # draws no log, and a contract and a process are two different pictures.
+  defp refuse_ignored!(opts) do
+    cond do
+      opts[:unit] && (opts[:overlay] || opts[:since]) ->
+        Mix.raise("--unit draws the declarations only; --overlay and --since apply to --contract")
+
+      opts[:contract] && opts[:process] ->
+        Mix.raise("--contract and --process draw different pictures; pass one of them")
+
+      true ->
+        :ok
     end
   end
 
