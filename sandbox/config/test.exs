@@ -5,6 +5,21 @@ config :eh_os_contract_host, Taxvision.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: 10
 
+# A second database for the tests the sandbox cannot host: dispatches racing over
+# one consistency boundary need real commits (`Taxvision.CommitRepo`, which
+# `test_helper.exs` drops and creates afresh before every run). Named after this
+# checkout, since every worktree's tests use the same Postgres and a run dropping
+# the database another is using would break that one.
+config :eh_os_contract_host, Taxvision.CommitRepo,
+  username: "eh_os",
+  password: "eh_os",
+  hostname: "localhost",
+  port: 5433,
+  database: "eh_os_contract_host_test_commits_#{:erlang.phash2(__DIR__)}",
+  # Ten desks and the manager at once. The sandbox's phase of the gate then holds
+  # 22 of Postgres's 100 connections; the engine's phase holds 70 on its own.
+  pool_size: 12
+
 # Jobs do not run by themselves. The tests check that a job was inserted in the
 # same transaction, and run it explicitly.
 config :eh_os_contract_host, Oban, testing: :manual

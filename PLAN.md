@@ -13,18 +13,19 @@ zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisan
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności), jej
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa pivot do v2** (DSL na Sparku, model
 domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E8, EA, EM, EL i EG są w
-`main`** (PR #1–#32). Teraz **E9** — kontrakty sandboxa od nowa z materiału — w trzech częściach (decyzje: „Przed
-E9 — decyzje użytkownika”), potem E10–E12. Po E9a Rehmed ma cztery kontrakty v2 (Scheduling, ClinicalDocumentation,
-StatutoryReporting, Settlement); v1 zostały `PayerSettlement` (do E9b) i TaxVision (do E9c).
+`main`** (PR #1–#32), **E9a też** (#33). Teraz **E9** — kontrakty sandboxa od nowa z materiału — w trzech częściach
+(decyzje: „Przed E9 — decyzje użytkownika”), potem E10–E12. Po E9b Rehmed ma pięć kontraktów v2 (Scheduling,
+ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); v1 został tylko TaxVision (do E9c).
 
 ### Stan repozytorium
 
 - **`origin/main` = `ff4f279`** (`VISION.md`, po merge [#32](https://github.com/EmpoweredHouse/eh-os-contract/pull/32),
   EG — cztery grafy, 28 września). CI `main` na `f2a54bd` (przebieg `36399198063`) — `success`. Gałąź `dsl-v2/eg-graphs` jest
   zmergowana. Opisy EG: „Przed EG — decyzje użytkownika” … „EG3 — co wyszło”.
-- **E9a** na `dsl-v2/e9-visit`, od `main` = `ff4f279`, **w PR [#33](https://github.com/EmpoweredHouse/eh-os-contract/pull/33)**
-  (merge — użytkownika): Rehmed, wizyta, zbudowane i przejrzane („E9a — co wyszło”, poprawki od `9e22beb`).
-  Następne: **E9b** na `dsl-v2/e9-payer`, od `dsl-v2/e9-visit`. Potem **E9b** (`dsl-v2/e9-payer`, od E9a) i **E9c** (`dsl-v2/e9-taxvision`, od E9b).
+- **E9a w `main`** — PR [#33](https://github.com/EmpoweredHouse/eh-os-contract/pull/33) zmergowany 28 września
+  (`451d068`). **E9b** na `dsl-v2/e9-payer`, od `main` = `06c6e11` (po rebase od `451d068`) — w budowie („Przed E9b — decyzja
+  użytkownika”, „E9b — co wyszło”): zbudowane i przejrzane („Przegląd E9b”), niewypchnięte. Potem **E9c**
+  (`dsl-v2/e9-taxvision`, od E9b).
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
@@ -100,6 +101,9 @@ Grafy: `mix eh_os_contract.graph --map <domena> | --system <domena> [--overlay] 
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 28 września, na `cc07431`** (E9b po dwóch rundach przeglądu): brama z `sandbox/` → **EXIT=0** — sandbox 99
+  testów, `check` 0 / 24 / 8; silnik 1222, `check` 0 / 65 / 21; web 45; auth 51. W przeglądarce: `/graph` z procesem
+  `payer_settlement` i mapą z płatnikami.
 - **Lokalnie, 28 września, na `9b7306d`** (E9a po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 85 testów,
   `check` 0 / 22 / 11; silnik 1222, `check` 0 / 65 / 21; web 45; auth 51. W przeglądarce (na `7058167`): `/graph`
   pod CSP EHOS-a.
@@ -1642,6 +1646,130 @@ wykonywania zawodu jawny — rejestr KIF jest publiczny, decyzja zapisana tutaj.
 - **Specjalista podaje flagę P1 na zamknięciu** (`p1_reported`), więc przez HTTP może ją fałszować — to samo
   ustalenie co niewyrażalny niezmiennik „zamyka ten, kto wykonał”: decyzja regulacyjna na polu od wołającego.
 - Dokumentacja pakietów z przykładem `VisitSettlement` — E11.
+
+### Przed E9b — decyzja użytkownika (28 września)
+
+Zapisy rozstrzygały prawie wszystko: niezmiennik i kształt DCB (v2 §4.6), menedżer przy fakturze (`C-49` → `A-05`,
+14 sierpnia), `cadence {1, :month}`, relacja CTX-05 → CTX-06 (customer–supplier, *„which visits a payer owes for”*
+w `30-contexts.md`). Nie rozstrzygały jednego: **skąd kontekst płatników wie, że wizyta jest wykonaną wizytą
+płatnika w danym okresie** — płatnika nie niosło żadne zdarzenie sandboxa. Pytanie na przykładzie: pani Anna ma 12
+września fizjoterapię w wariancie LuxMed (`H99`), recepcja zamyka wizytę bez płatności, a 1 października menedżerka
+wystawia fakturę LuxMed za wrzesień — skąd `ExternalPayers` wie, że wizyta Anny należy do „LuxMed, wrzesień”?
+
+- **Settlement mówi** (propozycja asystenta, wybrana): przy zamknięciu wizyty z płatnikiem Settlement emituje
+  **nasze** zdarzenie z `payer_id`, `period_id` i `visit_id` (jak `p1_reporting_not_required` w E9a — model nie ma
+  faktu na to, co płynie przez CTX-05 → CTX-06), a DCB konsultuje je przez `match:`, więc czyta tylko „LuxMed,
+  wrzesień”. *Odrzucone:* **E-106 z warsztatu** („Podzielono rachunek między płatników”, `C-61`) — nazwa z
+  warsztatu, ale znaczy wizytę mieszaną, a wizyta w całości na płatnika nie jest podziałem; **DCB czyta
+  Scheduling** (`visit_booked` z płatnikiem i `visit_completed` przez `where:`) — same nazwy z warsztatu, ale
+  boundary czyta każdą wizytę każdego płatnika, więc każde wyjście pacjenta w klinice jest konfliktem przy fakturze,
+  a relacji Scheduling → płatnicy nie ma na mapie klienta.
+
+### E9b — co wyszło (28 września)
+
+Na `dsl-v2/e9-payer` (od `main` = `06c6e11` (po rebase od `451d068`)), niewypchnięte. Trzy commity budowy po zapisie decyzji (`b0770e7`):
+domena i obciążenie płatnika w Settlement (`875cd00`), `ExternalPayers` w miejsce v1 `PayerSettlement` (`cb1e21e`),
+testy odbioru na bazie z commitami (`31e8f15`). Brama zielona na każdym commicie. Sandbox 85 → **95** testów, silnik
+bez zmian (1222); `check` sandboxa 0 / 22 / 11 → **0 / 24 / 8** (każda linia wyjaśniona w opisie commita), silnika bez
+zmian.
+
+**Co jest.**
+- Domena: kontekst `external_payers` (CTX-06, generic), relacje z mapy — customer–supplier settlement → external
+  payers i anticorruption layer od systemu płatnika (`X-02`–`X-04` jako jeden `external`, trzy konfiguracje).
+- Settlement: `close_settlement` niesie opcjonalnie `payer_id` i `period_id` i przy wizycie z płatnikiem emituje obok
+  zamknięcia `visit_charged_to_payer` (nasze, decyzja wyżej); płatnik bez okresu i odwrotnie — ograniczenie komendy.
+- `Rehmed.Contracts.ExternalPayers` (AGG-11): `dcb :payer_period`, tożsamość `[:payer_id, :period_id]`, konsultuje
+  `visit_charged_to_payer` po obu polach; komendy `C-48` (recepcja, `S-58`), wykluczenie z makiety (menedżer, z
+  powodem) i `C-49` (menedżer); niezmienniki: faktura dopiero, gdy każda obciążona wizyta jest oznaczona u płatnika
+  albo wykluczona, i zafakturowany okres się nie zmienia. Proces `payer_settlement` z `accountable: :manager` i
+  `cadence {1, :month}`.
+
+**Odbiór E9, część o DCB** (`rehmed_payer_period_race_test`, na `Taxvision.CommitRepo` — osobna baza z commitami,
+tworzona od nowa przed każdym przebiegiem, jak `EhOsContract.CommitRepo` w silniku):
+- **deterministycznie**: transakcja trzyma blokadę dopisu, faktura czyta boundary i czeka; pod blokadą recepcja
+  zamyka wizytę Bena; faktura trafia na przesunięty boundary, decyduje od nowa i jest odrzucona;
+- **pod obciążeniem**: dziesięć wizyt zamykanych i oznaczanych naraz, menedżer ponawia fakturę — jedyna faktura ma
+  każdą wcześniej obciążoną wizytę oznaczoną;
+- **plan sprawdzenia konfliktu** (złapane zapytanie magazynu, `EXPLAIN` z jego parametrami, po `ANALYZE`): `Index
+  Scan using eh_os_contract_events_pkey`, `position > head`, żaden inny indeks.
+- Próba odwrotna: z warunkiem DCB wyłączonym w magazynie faktura wychodzi z nieoznaczoną wizytą Bena, a test obciążenia
+  znajduje dziesięć obciążonych i żadnej oznaczonej przed fakturą.
+
+**Ustalenia o bibliotece:**
+1. **Plan sprawdzenia konfliktu zależy od statystyk.** Na świeżej tabeli (bez `ANALYZE`) planner przyjmuje domyślną
+   selektywność `position > head` i przy dwóch elementach zapytania (własne zdarzenia boundary i konsultowane)
+   wybrał bitmapę po indeksach typu — konsultowany typ szedł po indeksie **samego `type`**, bez ograniczenia pozycją,
+   czyli czytał całą historię tego typu. Po `ANALYZE` — zakres klucza głównego. Test silnika tego nie widział, bo jego
+   zapytanie ma jeden element. Indeks `(type)` jest pozostałością v1 (v2 §10.3 ma tylko `(type, position)`). Do
+   rozważenia przy pomiarze: skasować `(type)` albo wymusić zakres w kształcie zapytania; tabela pod autovacuum ma
+   statystyki, więc w produkcji to raczej świeża baza po imporcie.
+2. **Agregat nie widzi faktów innego kontekstu, więc płatnik i okres przychodzą z komendą.** Rozliczenie otwiera się
+   przy obecności pacjenta i nie ma drogi do płatnika z rezerwacji bez własnego zdarzenia (polityka albo process
+   manager — dwie deklaracje więcej). To trzecie pole decyzyjne od wołającego po fladze P1 i „zamyka ten, kto
+   wykonał” (E9a): okres ustala host (miesiąc wizyty), a boundary mu ufa.
+3. **Graf kontraktu nie rysuje `consults`.** W `--contract Rehmed.Contracts.ExternalPayers` konsultowane
+   `visit_charged_to_payer` wisi jako węzeł bez krawędzi; w procesie jest dołączone i widać je w etapie `charging`.
+   Krawędź „boundary czyta” — do EG, jeśli ma być widać, na czym boundary decyduje.
+4. `event-without-consumer` ostrzega o własnych zdarzeniach boundary czytanych tylko przez jego decyzję — tak samo jak o
+   zdarzeniach agregatu czytanych tylko przez `evolve`, więc spójnie; zostaje.
+
+**Ustalenia o materiale:**
+- **Makieta (K1, `51-mock.md` §4.8) zastąpiła „wystaw fakturę” eksportem i ręcznym „oznacz jako zafakturowane”**
+  (`S-121`, fakturowanie poza zakresem, `H62`). `C-49`/`E-87` zostają nazwami z katalogu i znaczą to oznaczenie z
+  numerem faktury zrobionej gdzie indziej.
+- **Relacja do systemu płatnika jest przekraczana przez człowieka**, więc `orphan-context-mapping` na anticorruption
+  layer zostaje prawdziwe (v1, ustalenie 4: bez `depends_on`, bo niedostępności nic nie zobaczy).
+- Poza zakresem, z powodem w moduledocu: rejestracja u płatnika przed wizytą (`E-85`, `C-47`, PESEL — `H159`),
+  przywrócenie wykluczonej wizyty, wizyta obciążona po fakturze okresu (fakt z Settlement nie da się tu odrzucić —
+  trafia poza zafakturowany okres), `H47`, `H38`.
+
+**Pozycje 6–9 z „Po EL2”** — żadna nie była potrzebna: boundary nie ma ograniczenia prozą (6), płatnik nie ma czasu
+odpowiedzi (7), bez efektu (8), każda deklaracja ma `source:` (9).
+
+W przeglądarce (baza dev, preview `eh_os_contract_host`): mapa kontekstów z płatnikami i systemem płatnika, proces
+`payer_settlement` z trzema etapami, żadna etykieta nie wystaje.
+
+**Przegląd E9b** (dwa równolegle na `origin/main..cdbecf2`, potem dwa na poprawkach `cdbecf2..f21512a`). Sandbox 95 → **99** testów, `check` bez zmian (0 / 24 / 8).
+
+*Poprawione przez asystenta, z testem i próbą odwrotną:*
+- **`ExternalPayers` nie był za drzwiami hosta** (`3f898de`): trzy uprawnienia bez wejścia, a test D-34 zielony, bo
+  chodził tylko po czterech starszych kontraktach; teraz po pięciu i na starym routerze pada.
+- **Oznaczenie i wykluczenie brały dowolną wizytę** (`edd4fa1`): literówka, wizyta innego płatnika albo zły miesiąc
+  trafiały na fakturę, a jedna wizyta dawała się oznaczyć dwa razy albo oznaczyć i wykluczyć — niezmiennik
+  `only_a_charged_visit_is_marked_or_excluded`.
+- **Faktura za okres bez żadnej oznaczonej wizyty** (`6ffe85b`) zamykała miesiąc przed pierwszym zamknięciem wizyty i
+  cały miesiąc zostawał niezafakturowany — niezmiennik `an_invoice_covers_a_marked_visit`; test obciążenia sprawdza
+  teraz, że przed fakturą była obciążona wizyta, więc nie przejdzie na fakturze sprzed wyścigu.
+- **`reset!` repo z commitami** (`c0f2c4d`) kończył się `MatchError`, gdy inny przebieg trzymał bazę; teraz mówi
+  dlaczego. Pula 20 → 12: brama dostała `too_many_connections`, gdy inny worktree puszczał testy silnika (Postgres ma
+  100 połączeń, repo z commitami silnika bierze 60).
+- **Wizyta mieszana** (`ed32f39`, dopięte po drugim przeglądzie): scenariusz `P-31` z dodaną usługą, przekazaniem i
+  płatnością pacjenta. **`total` znaczy dwie rzeczy** — przy płatnościach to ich suma (przy wizycie mieszanej część
+  pacjenta), bez płatności cena, którą pokrywa ktoś inny; komentarz mówi teraz oba, a kształt jest z E9a
+  (`visit_closed_without_payment` niesie pełną cenę). Kto czyta `total` jako wartość wizyty, zaniży każdą mieszaną.
+- **Jedna nazwa bazy z commitami dla wszystkich worktree** (`01c225e`, drugi przegląd): dwa nakładające się przebiegi
+  łamały się nawzajem (drop między create a migrate drugiego, te same płatnicy z `System.unique_integer` w dwóch VM);
+  baza nazywa się teraz według checkoutu.
+
+*Pominięte, jako ustalenia:*
+- **Plan sprawdzenia konfliktu bez statystyk** (ustalenie 1 wyżej) — skasowanie indeksu `(type)` to migracja, którą
+  wykonuje host, więc decyzja użytkownika; test planu sprawdza stan po `ANALYZE`.
+- **Płatnik i okres od wołającego tworzą boundary, którego nikt nie zafakturuje**, gdy przyjdą w złym kształcie
+  (`"2026-9"`, spacja w identyfikatorze): wizyta cicho wypada z „LuxMed, wrzesień”, a niezmiennik tam dalej trzyma.
+  Format okresu to inwariant wartości — rodzaj zostawiony dla E9c; do tego ustalenie 2 wyżej.
+- **Faktura przed końcem miesiąca** — kalendarza decyzja nie widzi (bez zegara w decyzji); ekran miesięczny jest
+  po weryfikacji danych (`S-60`).
+- **Pacjent płaci całość, a zamknięcie wskazuje też płatnika** — wizyta jest obciążona dwa razy; żadne zdarzenie nie
+  niesie kwoty płatnika, więc nic tego nie zauważy.
+- **`reason` wykluczenia nie jest osobowy** — zdarzenie nie zna pacjenta, więc nie ma podmiotu, pod którym dałoby się
+  go zaszyfrować; uwaga `free-text-not-personal` zostaje.
+- **Każda komenda boundary czyta i konfliktuje na całym okresie**: oznaczenie przy biurku trafia na konflikt z każdym
+  równoległym zamknięciem wizyty tego płatnika w tym miesiącu, a dispatch ponawia trzy razy — test obciążenia
+  potrzebuje własnego ponawiania. `consults` jest per boundary, nie per komenda; do rozważenia w bibliotece.
+- Stan jako listy, nie zbiory — po niezmienniku bez duplikatów, rozmiar to liczba wizyt płatnika w miesiącu.
+- **Oznaczenia nie da się cofnąć, a miesiąc z samymi wykluczeniami się nie kończy** (drugi przegląd): pomyłkowo
+  oznaczona wizyta trafi na fakturę, a okres bez oznaczonej wizyty nie ma faktury ani innego zakończenia (v1 miał
+  „zamknięto okres bez faktury”). Obie to następne komendy, nie nowy rodzaj — zapisane w moduledocu.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 

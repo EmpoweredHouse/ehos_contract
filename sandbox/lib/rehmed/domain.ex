@@ -70,6 +70,10 @@ defmodule Rehmed.Domain do
     end
   end
 
+  # `AGG-11`. The map's advice is "assume no API ever arrives": the registration and
+  # the settlement mark are a person retyping into the payer's own panel (`F-05`).
+  context :external_payers, "Płatnicy zewnętrzni", subdomain: :generic, source: "CTX-06"
+
   # Plain CRUD by the map's own account; it is here because it owns the catalogue.
   context :configuration, "Konfiguracja i ludzie", subdomain: :supporting, source: "CTX-10"
 
@@ -78,8 +82,10 @@ defmodule Rehmed.Domain do
   # closes are independent".
   relation :partnership, between: [:scheduling, :clinical_documentation], terms: ["Wizyta"]
   relation :customer_supplier, upstream: :scheduling, downstream: :settlement
+  relation :customer_supplier, upstream: :settlement, downstream: :external_payers
   relation :conformist, upstream: :clinical_documentation, downstream: :statutory_reporting
   relation :conformist, upstream: :p1, downstream: :statutory_reporting
+  relation :anticorruption_layer, upstream: :payer_system, downstream: :external_payers
   relation :open_host_service, upstream: :configuration, downstream: :scheduling
   relation :open_host_service, upstream: :configuration, downstream: :settlement
 
@@ -115,6 +121,16 @@ defmodule Rehmed.Domain do
     direction: :bidirectional,
     unavailable_looks_like:
       "odrzucenie zgłoszenia albo brak łączności z rejestrem; certyfikat wygasł albo nie został wgrany"
+
+  # X-02, X-03, X-04: LuxMed, Enelmed and TuZdrowie, which work identically
+  # (2026-08-14), so one system with three configurations, not three. Nothing calls
+  # it and nothing can see it fail: an outage is a person who did not retype
+  # something, which is why no event depends on it.
+  external :payer_system,
+           "System rozliczeniowy płatnika zewnętrznego (LuxMed, Enelmed, TuZdrowie)",
+           direction: :outbound,
+           unavailable_looks_like:
+             "panel płatnika niedostępny albo wizyta nie została w nim odnotowana przez człowieka — czego nasz system nie widzi"
 
   value :money, :integer, unit: :grosze, label: "Kwota"
 
