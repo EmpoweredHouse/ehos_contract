@@ -85,8 +85,8 @@ defmodule EhOsContract.Auth.Keys do
   are in milliseconds, measured by `:clock`, which defaults to the monotonic clock.
   EHOS's certificate is checked against the system's authorities, or against the
   one `:cacertfile` (a PEM file) or `:cacerts` (DER certificates) names. The fetch
-  follows no redirect, is not retried, and gives up after two seconds to connect and
-  three to receive; nothing else about it is the host's to set.
+  follows no redirect, is not retried, and waits two seconds to connect and three
+  for each part of the answer; nothing else about it is the host's to set.
 
   `:plug` answers in place of the network, as `Req.Test` does, and is taken only
   with `config :eh_os_contract_auth, pin_keys: true`, as in a test: whatever it

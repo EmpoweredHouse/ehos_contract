@@ -2846,7 +2846,10 @@ wtyczkami, sekrety i różnice parserów w adresie), +666 linii. Błąd leżał 
 hostem, którego konfiguracja jest zaufanym kodem, zamiast zawęzić interfejs, który wystawiał całe Req.
 (b) Cicho nakładać opcje pakietu po opcjach hosta — konfiguracja kłamie. (c) Tylko dokumentacja — pułapka zostaje.
 Pominięte świadomie: `config :req, default_options` hosta dalej działa pod tym pobraniem — to globalna decyzja
-hosta, tym samym kodem, co on sam.
+hosta, tym samym kodem, co on sam (zdanie w README). Zła *wartość* CA (`nil` z pustej zmiennej, zła ścieżka) przechodzi
+start i wywraca każde pobranie — zamyka szczelnie i głośno (`ready?/0`, ostrzeżenie), jak każda literówka w
+konfiguracji. **Znane ograniczenie:** proxy ani certyfikatu klienta (mTLS) nie da się podać; host, który ich
+potrzebuje, prosi, i dochodzi jedna nazwana opcja.
 
 **Skill `pre-pr-review` odpala od teraz oba przeglądy równolegle** (prośba użytkownika): dwa subagenty w jednej
 wiadomości, `code-review high` i `engineering:code-review` z naciskiem na bezpieczeństwo i wydajność, wspólna pula

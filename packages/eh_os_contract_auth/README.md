@@ -171,12 +171,14 @@ children = [
 
 `cacerts:` takes the certificates themselves (DER) instead of a file. That is all an application
 sets about the fetch. It does not take Req's options: the fetch **follows no redirect**, is not
-retried, reads at most 64 KB, and gives up after two seconds to connect and three to receive, and
-Req has options that would undo each of these, or the check of the certificate. An option the
-package does not take fails the boot.
+retried, reads at most 64 KB, and waits two seconds to connect and three for each part of the
+answer, and Req has options that would undo each of these, or the check of the certificate. An
+option the package does not take fails the boot. (What an application sets for every Req request
+it makes, in `config :req, default_options`, applies to this one too.) A proxy or a client
+certificate is not supported.
 
-Certificate verification cannot be turned off, so a first integration cannot be made to work that
-way: the keys would then come from whoever answers. For the same reason the package refuses to boot
+Certificate verification cannot be turned off through the package, so a first integration cannot
+be made to work that way: the keys would then come from whoever answers. For the same reason the package refuses to boot
 when the key set would be fetched over anything but `https` (plain `http` is allowed for
 `localhost` only), whether `EhOsContract.Auth` starts the key process or the application lists
 `EhOsContract.Auth.Keys` itself, and takes the address only from the configuration.

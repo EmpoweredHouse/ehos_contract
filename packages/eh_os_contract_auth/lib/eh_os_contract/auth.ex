@@ -25,8 +25,7 @@ defmodule EhOsContract.Auth do
   public halves at `/.well-known/jwks.json`; this package fetches them from there
   (`EhOsContract.Auth.Keys`). What proves the key set is EHOS's is the TLS
   certificate of that URL, checked against the system's certificate authorities. An
-  EHOS behind an internal authority needs it named, through the options every fetch
-  takes:
+  EHOS behind an internal authority needs it named, as an option of the child:
 
       {EhOsContract.Auth, cacertfile: "/etc/ehos/ca.pem"}
 
