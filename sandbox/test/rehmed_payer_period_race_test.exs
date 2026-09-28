@@ -130,7 +130,6 @@ defmodule Rehmed.PayerPeriodRaceTest do
     end
 
     # An invoice needs a marked visit, so it cannot have gone out before the race began.
-
     assert MapSet.size(visits.("visit_charged_to_payer")) > 0
 
     assert MapSet.subset?(

@@ -6,7 +6,7 @@ defmodule Taxvision.CommitRepo do
   `Taxvision.Repo` runs every test inside a transaction that rolls back, with one
   connection per test, so no two decisions ever read the same boundary at once. A
   committed row in the log can never be deleted, since the log is append-only, so
-  these tests get a database of their own, created afresh before each run and
+  these tests get a database of their own, one per checkout, created afresh before each run and
   migrated with the host's own migrations — the engine's `EhOsContract.CommitRepo`,
   on the host's side of the seam.
 
@@ -24,8 +24,8 @@ defmodule Taxvision.CommitRepo do
   def reset! do
     config = config()
 
-    # Every worktree's run uses the same database on the same Postgres, so a drop
-    # refused because another run holds it is said as that, not as a mismatch later.
+    # A drop refused because another run of this checkout holds the database is said
+    # as that, not as a mismatch later.
     case Ecto.Adapters.Postgres.storage_down(config) do
       result when result in [:ok, {:error, :already_down}] ->
         :ok
