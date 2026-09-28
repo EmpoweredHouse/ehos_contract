@@ -16,7 +16,7 @@ defmodule EhOsContract.Auth.Keys do
     * **A failed fetch changes nothing.** It is logged, and the last good set stays
       in force until a later fetch succeeds. A key set with no Ed25519 key in it is
       a failed fetch too: replacing the keys with nothing would lock everyone out on
-      one bad answer. So is a fetch not finished in five seconds, whatever the
+      one bad answer. So is a request not finished in five seconds, whatever the
       request options say, so no answer can hold this process for longer.
     * **A successful fetch** replaces the set in the table and in memory.
 
@@ -64,8 +64,9 @@ defmodule EhOsContract.Auth.Keys do
   # The request timeouts above bound a single step, not the fetch: `receive_timeout`
   # starts again with every read, so an answer trickled a byte at a time never trips
   # it, and the connect timeout is spent once on TCP and again on the TLS handshake.
-  # This bounds the fetch whole, a host's `:req_options` included, and stays well
-  # inside `@call_timeout`, so a caller waiting on a fetch gets an answer.
+  # This bounds the request whole, a host's `:req_options` included, and stays well
+  # inside `@call_timeout`. Writing the table after it is outside the deadline,
+  # bounded by the repo's own timeouts.
   @fetch_deadline 5_000
   @call_timeout 10_000
   # The one entry of the table that is not a key: `{@next, clock, at}`, when the next
@@ -154,9 +155,10 @@ defmodule EhOsContract.Auth.Keys do
     ArgumentError -> false
   end
 
-  # A fetch is bounded by `@fetch_deadline`, well inside this, so the call outlives
-  # it. Should the process not answer — too slow, or not running — the credential
-  # is refused with what memory holds rather than taking the caller down.
+  # The request is bounded by `@fetch_deadline`, well inside this, so the call
+  # outlives it unless writing the table is slow too. Should the process not answer
+  # — too slow, or not running — the credential is refused with what memory holds
+  # rather than taking the caller down.
   defp refetch(name) do
     GenServer.call(name, :refetch, @call_timeout)
   catch
