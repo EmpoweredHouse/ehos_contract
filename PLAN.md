@@ -30,9 +30,8 @@ ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); po E9c-1
 
 ### Co zostało — i czyje to jest
 
-- **Merge PR E9c-2** — użytkownika. Przegląd zrobiony (notatka na głowie gałęzi). Do
-  decyzji użytkownika z przeglądu: jawność NIP-u sprzedawcy i obrotów JDG w logu; dopisek o `\d` z `u` do
-  `CLAUDE.md`. Gałąź E9c-2 stoi na głowie #41, więc po jego merge'u jej PR idzie prosto na `main`.
+- **Merge PR E9c-2** — użytkownika. Przegląd zrobiony (notatka na głowie gałęzi); obie decyzje z przeglądu
+  zapisane („Po przeglądzie E9c-2 — decyzje użytkownika”). Gałąź E9c-2 stoi na głowie #41, więc po jego merge'u jej PR idzie prosto na `main`.
 - **E10–E12 — asystenta, po pytaniach.** Po E11 kontrakty sandboxa przechodzą do testów pakietu jako fikstury
   akceptacyjne („Przed E9c-2 — decyzje użytkownika”). Do E9 odłożone pozycje 6–9 z „Po EL2 — proza, którą da się
   sprawdzać” — do sprawdzenia, czy E9 je zamknęło.
@@ -2013,16 +2012,21 @@ razem z parowaniem jednego obrotu z wieloma fakturami i fakturą, która przycho
   `issued_by` („gives ksef_number”) i `backed_by`, `publish` jest na grafie systemu, a `:pairing` nie ma nigdzie —
   ani w widoku boundary, który ją woła. Do E13 (graf jako API).
 - **`\d` z flagą `u`** — nowy rodzaj pułapki obok reguły o `u` w `CLAUDE.md`: format ASCII piszemy `[0-9]`.
-  Propozycja dopisku do `CLAUDE.md` czeka na użytkownika.
+  Dopisane do `CLAUDE.md` (decyzja niżej).
 
 *Pominięte, jako logika domeny (decyzja przed E9c-2):* dopasowywanie nie wymaga otwartego miesiąca (`stage
 :opening` przed `:matching` nie jest wymuszany); parowanie nie patrzy na kierunek obrotu (wpływ czy wydatek) — pod
 „tylko po kwocie”.
 
-*Do decyzji użytkownika:* **NIP sprzedawcy w numerze KSeF i obroty JDG są jawne w logu.** Numer KSeF zaczyna się
-NIP-em sprzedawcy, a gdy sprzedawca jest jednoosobową działalnością, to identyfikator osoby trzeciej; obroty z
-wyciągu to kwoty i daty z rachunku JDG. Decyzja „Dane JDG w logu zostają jawne” dotyczyła danych klienta (forma
-prawna, status VAT, różnice), nie kontrahentów ani rachunku. Zostają jawne do odpowiedzi.
+### Po przeglądzie E9c-2 — decyzje użytkownika (28 września)
+
+Asystent zapytał o dwie rzeczy z przeglądu; odpowiedź: „tak” na obie.
+- **NIP sprzedawcy w numerze KSeF i obroty JDG zostają w logu jawne.** Numer KSeF zaczyna się NIP-em sprzedawcy —
+  przy jednoosobowej działalności identyfikatorem osoby trzeciej — a obroty z wyciągu to kwoty i daty z rachunku
+  JDG; decyzja „Dane JDG w logu zostają jawne” obejmowała dotąd tylko dane klienta. *Odrzucone:* numer i obroty
+  jako `personal:` (crypto-shredding pod sprzedawcą albo pod firmą klienta); numer KSeF jako skrót w logu.
+- **Reguła o `\d` z flagą `u` w `CLAUDE.md`** — format ASCII piszemy `[0-9]`, obok reguły o `u`. *Odrzucone:*
+  zostawienie jej tylko w ustaleniach przeglądu.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
