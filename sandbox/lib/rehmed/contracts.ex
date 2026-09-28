@@ -10,5 +10,11 @@ defmodule Rehmed.Contracts do
 
   use Boundary,
     deps: [EhOsContract],
-    exports: [ClinicalVisit, PayerSettlement, {Scheduling, []}, {VisitSettlement, []}]
+    exports: [
+      ClinicalVisit,
+      PayerSettlement,
+      {ClinicalDocumentation, []},
+      {Scheduling, []},
+      {VisitSettlement, []}
+    ]
 end

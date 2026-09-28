@@ -15,3 +15,9 @@ config :eh_os_contract_host, EhOsContractHostWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT") || "4010")]
 
 config :logger, level: :info
+
+# The master key of Rehmed's personal fields — a PESEL, the ICD codes (E9). A key
+# made for this sandbox's development database and nothing else; a real host reads
+# its keys from the runtime environment (`EhOsContract.Vault`).
+config :eh_os_contract, EhOsContract.Vault,
+  keys: [{"sandbox-dev-2026-09", "pineNKIpeYQWgh3+i0ce+w6ITjYjHEwnd9SwBXbQGUM="}]
