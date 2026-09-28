@@ -108,8 +108,8 @@ What changes otherwise is what a host has to do.
   node its publisher and a consumer of its name meet on; `overlay: true` puts a process's runs on its contract
   and, on each edge, how many consumed events the log holds and what waits or fails at the consumer. No verdict
   moves. `mix eh_os_contract.graph --map NAME` and `--system NAME [--overlay]` draw them; the domain's page from
-  `mix eh_os_contract.pages` carries its map, and the dashboard's graph screen draws each domain's system with
-  the log above the per-process panels. `EhOsContract.Graph.bounded/2` narrows a query over events to a period,
+  `mix eh_os_contract.pages` carries its map, and the dashboard's graph screen draws each domain's map, and its
+  system with the log, above the per-process panels. `EhOsContract.Graph.bounded/2` narrows a query over events to a period,
   for the graphs' own queries (`EhOsContract.Paths` and `EhOsContract.Trace` keep their copies, which bound the
   same way).
 

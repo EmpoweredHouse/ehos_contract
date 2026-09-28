@@ -41,6 +41,12 @@ defmodule EhOsContract.Web.Live.GraphTest do
     assert html =~ "The system, declared versus observed — domain"
     assert html =~ ~r/id="system-graph-\w+"/
     assert html =~ "contract_eh_os_contract_web_test_host_fixtures_case_handling"
+
+    # And the domain's context map, and each unit of the selected contract (28 September).
+    assert html =~ "Context map — domain web_test_host"
+    assert html =~ ~r/id="map-graph-web_test_host"/
+    assert html =~ ~r/id="unit-graph-\w+"/
+    assert html =~ "state_"
     assert html =~ "Declared versus observed, this process"
   end
 
@@ -55,6 +61,8 @@ defmodule EhOsContract.Web.Live.GraphTest do
     html = render_change(view, "select_process", %{"process" => v1})
 
     assert html =~ "flowchart TB"
+    # A v1 contract has no units to draw.
+    refute html =~ ~s(id="unit-graph-)
     assert html =~ "Declared versus observed, every contract"
 
     v2 = "#{inspect(EhOsContract.Web.TestHost.Fixtures.CaseHandling)}:handling"
@@ -67,7 +75,7 @@ defmodule EhOsContract.Web.Live.GraphTest do
       render_component(&Graph.render/1, %{
         eh_os_contract_web_access: :all,
         eh_os_contract_web_base_path: "/dashboard",
-        systems: [],
+        domains: [],
         processes: [],
         selected: nil,
         declared_mermaid: nil,
@@ -84,7 +92,7 @@ defmodule EhOsContract.Web.Live.GraphTest do
       render_component(&Graph.render/1, %{
         eh_os_contract_web_access: :read_only,
         eh_os_contract_web_base_path: "/dashboard",
-        systems: [],
+        domains: [],
         processes: [
           %{contract: nil, name: :handling, label: "Case handling"},
           %{contract: nil, name: :billing, label: "Billing"}

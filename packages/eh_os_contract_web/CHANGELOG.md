@@ -14,9 +14,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   policy does not refuse. Mermaid still tries inline styles while it measures a diagram; the policy blocks
   them and the browser logs each (about 400 lines for the sandbox's three diagrams), without effect on what is
   drawn. The host needs no `style-src 'unsafe-inline'` any more.
-- **The graph screen draws each domain's system** above the per-process panels (engine EG2), and a v2
-  process's full graph — steps, actors, read side, external systems — with the log in the second panel
-  (engine EG1).
+- **The graph screen draws each domain's context map and system** above the per-process panels (engine
+  EG2), a v2 process's full graph — steps, actors, read side, external systems — with the log in the second
+  panel, and each unit of that process's contract below it (engine EG1).
 
 - **The dashboard looks like the EHOS console**: the EmpoweredHouse design system's tokens, Albert Sans and
   JetBrains Mono served beside the stylesheet, dark by default and light when the system prefers it. The

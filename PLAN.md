@@ -1250,6 +1250,12 @@ rozstrzygał. Wszystkie cztery odpowiedzi to propozycje asystenta:
   nowe diagramy nie pokazują się w jedynym hoście, który istnieje. *Odrzucone:* osobno po EG (zakres zostaje przy
   grafach, ale ekran, na który EG dokłada, dalej wymaga `style-src 'unsafe-inline'`).
 
+**Zmienione 28 września, po EG3, na polecenie użytkownika:** „dodaj mapę kontekstów i widok jednostki na
+/graph”. Ekran pokazuje teraz wszystkie cztery: na górze każdej domeny jej mapę kontekstów i system, pod panelami
+procesu — każdą jednostkę kontraktu wybranego procesu v2. Mapa i jednostka zostają też na stronach i w tasku.
+Poprzednia decyzja („na `/graph` tylko nakładki”) przegrała z tym, że ekran jest miejscem, w którym ludzie oglądają
+model; cztery pytania z `CLAUDE.md` dalej odpowiadają nakładki, a mapa i jednostka są opisem obok nich.
+
 Rozstrzygnięte przez asystenta (mechanika): nowe grafy są tylko dla v2, grafy v1 w tasku i na ekranie zostają bez
 zmiany bajtu do wycięcia v1; kształt węzłów i kolory Event Stormingu jak w dzisiejszym grafie kroków.
 
