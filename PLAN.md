@@ -25,8 +25,8 @@ ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); po E9c-1
 - **E9a w `main`** — PR [#33](https://github.com/EmpoweredHouse/eh-os-contract/pull/33) zmergowany 28 września
   (`451d068`). **E9b** na `dsl-v2/e9-payer`, od `main` = `06c6e11` (po rebase od `451d068`) — w budowie („Przed E9b — decyzja
   użytkownika”, „E9b — co wyszło”): zbudowane i przejrzane („Przegląd E9b”), niewypchnięte. **E9c-1** na
-  `dsl-v2/e9-taxvision`, od E9b — zbudowane, **przed przeglądem** („Przed E9c — decyzje użytkownika”, „E9c-1 — co
-  wyszło”), potem E9c-2.
+  `dsl-v2/e9-taxvision`, od E9b — zbudowane i przejrzane („Przed E9c — decyzje użytkownika”, „E9c-1 — co
+  wyszło”, „Przegląd E9c-1”), potem E9c-2.
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
@@ -102,8 +102,8 @@ Grafy: `mix eh_os_contract.graph --map <domena> | --system <domena> [--overlay] 
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 28 września, na `5399584`** (E9c-1, przed przeglądem): brama z `sandbox/` → **EXIT=0** — sandbox 111
-  testów, `check` 0 / 25 / 9; silnik 1239, `check` 0 / 67 / 21; web 45; auth 51.
+- **Lokalnie, 28 września, na `3df2ed7`** (E9c-1 po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 115
+  testów, `check` 0 / 26 / 9; silnik 1245, `check` 0 / 67 / 21; web 45; auth 51.
 - **Lokalnie, 28 września, na `cc07431`** (E9b po dwóch rundach przeglądu): brama z `sandbox/` → **EXIT=0** — sandbox 99
   testów, `check` 0 / 24 / 8; silnik 1222, `check` 0 / 65 / 21; web 45; auth 51. W przeglądarce: `/graph` z procesem
   `payer_settlement` i mapą z płatnikami.
@@ -1848,6 +1848,38 @@ fikstury `DispatchRig.Transfer`).
 
 W przeglądarce (baza dev, preview `eh_os_contract_host`): mapa kontekstów TaxVision, siedem diagramów na `/graph`,
 proces `client` i boundary miesiąca, żadna etykieta nie wystaje.
+
+**Przegląd E9c-1** (dwa równolegle na `b010c06..bdd7fb7`, potem dwa na poprawkach `bdd7fb7..14fae7d`, potem dwa na
+ostatnich dwóch). Sandbox 111 → **115** testów, silnik 1239 → **1245**; `check` sandboxa 0 / 25 / 9 → **0 / 26 / 9** (`registry_check_logged` bez czytelnika, odkąd
+pętla czyta potwierdzenie — czytelnikiem byłby read model „ostatnie sprawdzenie”, którego E9 nie pisze).
+
+*Poprawione przez asystenta, z testem i próbą odwrotną:*
+- **`scope` musi być jedną wartością i nie generowaną tożsamością** (`954ef8c`, aliasy w `4c77f00`): lista
+  `["b", "-7"]` przechodziła nadanie „b-7”, wartość złożona kończyła się 500, a `scope` na tożsamości generowanej przy
+  `creates:` był `nil` dla każdego credentialu. Druga runda: alias wartości (`value :codes, {:list, :id}`, `value
+  :home, :contact`) omijał obie reguły — L3 idzie teraz po aliasach.
+- **X6 rozróżnia dwie różne wartości o bazie `:id`** (`7224631`): `:period` i numer faktury przechodziły jako ten sam
+  typ; teraz równe są tylko te same typy albo wartość `:id` wobec zwykłego `:id`. Poprawiony też opis `Key`.
+- **Źle wpisana wartość pola `scope` to brak wartości** (`e507117`): wyjątek w koderze zamiast odmowy, w komendach i —
+  od E4 — w query. Skutek zamierzony: posiadacz nadania, który wyśle `company_id: 7`, dostaje 403 `outside_scope`, nie
+  422 — kolejność „czy wolno, potem co jest nie tak” zostaje.
+- **Pętla P1** (`fb11d60`, potem `3df2ed7`): pięć minut awarii rejestrów 1. dnia zatrzymywało sprawdzanie na zawsze,
+  ponowienie starszego miesiąca cofało pętlę, a ponowienie 5. dnia przesuwało wszystkie następne na 5. Pierwsza
+  poprawka (najpóźniejszy okres, `at:` z nazwy) oddała sterowanie wpisowi księgowej: „2062-08” blokował pętlę do 2062,
+  a pierwsze sprawdzenie marca we wrześniu odpalało miesiąc po miesiącu zaległe sprawdzenia. Teraz przebieg rusza na
+  potwierdzeniu i ustawia następne na 1. dzień kolejnego miesiąca **od czasu potwierdzenia**, sprawdzając miesiąc,
+  który się wtedy skończył; okres z komendy nie gra roli.
+- **Resztki v1** (`9c0294e`, `14fae7d`): `Taxvision.Tasks` i `Notifications` bez handlerów, z UUID okresu; komentarz
+  `setup` testu szwu; notka v1 w `Taxvision.Periods` na górze.
+
+*Pominięte, jako ustalenia:*
+- **Czy dane JDG w logu są osobowe** — forma prawna, status VAT i VIES oraz różnice dotyczą przy jednoosobowej
+  działalności osoby fizycznej; v1 trzymał różnicę jako skrót (`retain: :hash`). Pytanie do użytkownika (kształt
+  danych w logu).
+- **Brak limitu ponowień** — każde ponowienie pyta rejestry; limit jest sprawą hosta albo adaptera.
+- **Aktor ze `scope` wydający komendę bez `scope`** — nic tego nie wyłapuje; kandydat na regułę L5 (E10).
+- **Rejestry pytane `company_id`, nie NIP-em** — odziedziczone z v1; prawdziwy adapter potrzebuje NIP-u z profilu.
+- **Duplikacja** (`scope` komend i query w dispatchu i w D10) — do ujednolicenia przy E11.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
