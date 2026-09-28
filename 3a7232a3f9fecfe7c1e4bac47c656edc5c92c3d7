@@ -1,0 +1,18 @@
+E9b review (pre-pr-review), origin/main..HEAD.
+
+Round 1, two reviews in parallel on origin/main..baf42b1 (code-review high; engineering:code-review, security and performance).
+Fixed, each with a test failing on the old code and verified in reverse:
+- ExternalPayers not mounted at the host door (6d7478d; D-34 test now walks five contracts).
+- mark/exclude of an uncharged or already settled visit (68ae7da; invariant only_a_charged_visit_is_marked_or_excluded).
+- invoice for a period with nothing marked (633347a; invariant an_invoice_covers_a_marked_visit; load test asserts a charge before the invoice).
+- commit repo reset failing unclearly; pool 20 -> 12 after too_many_connections (66f8a3c).
+- mixed visit total undocumented; P-31 scenario (52b9a86); Polish scenario data -> English (68ae7da).
+Round 2, two reviews on baf42b1..a7cae84:
+- total comment wrong for closes without payment; mixed scenario without the added service (834611e).
+- one commit DB name for every worktree (b327225; named per checkout).
+Skipped, recorded in PLAN.md "Przeglad E9b": conflict-check plan without statistics (engine migration, the user decides); caller-supplied payer/period can orphan a visit; no undo of a mark, all-excluded month never ends; exclusion reason not personal; boundary-wide conflicts and list state; full payment plus payer double-charges.
+No third round on b327225 and 834611e (config name, comments, one scenario); covered by the gate.
+Gate on 834611e and b010c06 (docs only after it): EXIT=0, sandbox 99, check 0/24/8; engine 1222, check 0/65/21; web 45; auth 51.
+Browser (dev DB, eh_os_contract_host preview): context map with payers and the payer system, payer_settlement with three stages, no label overflows.
+
+Rebased onto origin/main 06c6e11 (PR #34, #35: auth connect options, plan E13; no overlap but PLAN.md); SHAs in PLAN.md rewritten (3a7232a). Gate on 3a7232a: EXIT=0, sandbox 99, check 0/24/8; engine 1222, 0/65/21; web 45; auth 55.
