@@ -49,6 +49,15 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
   aggregate :visit_documentation, "Dokumentacja wizyty" do
     identity :visit_id
 
+    state do
+      field :closed, :boolean, default: false
+    end
+
+    # `AGG-02`'s clinical close is its final state, and each close queues a report to
+    # P1: a second close would send the registry the same visit twice.
+    invariant :closed_clinically_once, "Wizytę zamyka się klinicznie raz",
+      source: "AGG-02, stan ZamkniętaKlinicznie"
+
     command :code_diagnosis, "Wybierz kody ICD",
       by: :specialist,
       emits: :diagnosis_coded,
@@ -65,7 +74,7 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
     command :close_visit_clinically, "Zamknij wizytę klinicznie",
       by: :specialist,
       emits: :visit_closed_clinically,
-      rejects: :codes_before_clinical_close,
+      rejects: [:closed_clinically_once, :codes_before_clinical_close],
       source: "C-29, aktor A-03" do
       field :patient_id, :id, subject: :patient
       field :pesel, :string, personal: :patient_id
@@ -172,6 +181,24 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
     }
 
     expect :visit_closed_clinically, %{p1_reported: false}
+  end
+
+  scenario "wizyta już zamknięta klinicznie — drugie zamknięcie odrzucone" do
+    given :visit_closed_clinically, %{
+      patient_id: "patient-anna",
+      pesel: "85010112345",
+      practitioner_number: "practitioner-ewa",
+      p1_reported: false
+    }
+
+    command :close_visit_clinically, %{
+      patient_id: "patient-anna",
+      pesel: "85010112345",
+      practitioner_number: "practitioner-ewa",
+      p1_reported: false
+    }
+
+    rejected :closed_clinically_once
   end
 
   scenario "doba po wyjściu pacjenta bez zamknięcia — zadanie o zaległej dokumentacji" do

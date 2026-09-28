@@ -1,8 +1,8 @@
 defmodule Rehmed.ClinicalDocumentation.VisitDocumentation do
   @moduledoc """
   Decides the codes and the clinical close of a visit (`AGG-02`). A service
-  reported to P1 is refused a close without both codes (`DEC-19`); nothing else is
-  refused, so the state is empty.
+  reported to P1 is refused a close without both codes (`DEC-19`), and a visit is
+  closed once: each close queues a report to P1.
   """
 
   use Rehmed.Contracts.ClinicalDocumentation, aggregate: :visit_documentation
@@ -18,6 +18,8 @@ defmodule Rehmed.ClinicalDocumentation.VisitDocumentation do
   end
 
   @impl true
+  def close_visit_clinically(_close, %State{closed: true}), do: reject(:closed_clinically_once)
+
   def close_visit_clinically(%CloseVisitClinically{p1_reported: true, icd10: nil}, _state),
     do: reject(:codes_before_clinical_close)
 
@@ -39,4 +41,8 @@ defmodule Rehmed.ClinicalDocumentation.VisitDocumentation do
   @impl true
   def create_documentation_overdue_task(%CreateDocumentationOverdueTask{visit_id: id}, _state),
     do: emit(%DocumentationOverdueTaskCreated{visit_id: id})
+
+  @impl true
+  def evolve(state, %VisitClosedClinically{}), do: %{state | closed: true}
+  def evolve(state, _event), do: state
 end
