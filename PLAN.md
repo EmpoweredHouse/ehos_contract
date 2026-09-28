@@ -2831,6 +2831,32 @@ pobranie (`request_timeout` Req to `:infinity`), więc EHOS sączący bajt co 2,
 komentarz przy `refetch/1` („a fetch is bounded by the request timeouts below”) nie jest prawdziwy; (2) host
 może nadpisać `redirect`, `into`, `retry` i `url` — obietnice README („follows no redirect”, limit 64 KB, tylko
 `https`) trzymają się, dopóki host ich nie ruszy. Oba zmieniają kształt widoczny dla hosta albo wymagają decyzji.
+(1) — osobne zadanie; (2) — „Poprawka 28 września (2)” niżej.
+
+**Poprawka 28 września (2) — `req_options` tylko z białej listy, odmowa przy starcie.** Punkt (2) wyżej. Opcje hosta
+wygrywały z domyślnymi pakietu, więc `redirect: true`, `into:`, `url:` czy `transport_opts: [verify: :verify_none]`
+po cichu zdejmowały gwarancje z README. Przy pracy wyszło jeszcze `url:` w opcjach samego dziecka:
+`Keyword.merge([url: url], opts)` podmieniało adres, który start właśnie sprawdził.
+**Decyzje użytkownika 28 września, dwie po kolei:**
+1. **Odmowa przy starcie** (`ArgumentError` z nazwą opcji i powodem, jak przy adresie `http`). *Odrzucone:* cicho
+   nakładać opcje pakietu po opcjach hosta — konfiguracja kłamie; tylko dokumentacja — pułapka zostaje.
+2. **Biała lista, nie czarna.** Pierwsza wersja miała listę zakazanych (`url`, `method`, `redirect`, `into`,
+   `verify: :verify_none`). Oba przeglądy znalazły osiem dróg obok niej, wszystkie sprawdzone w Req 0.7.4:
+   `follow_redirects` (stara nazwa `redirect`, czytana przed nią), `verify_fun`, `partial_chain`,
+   `customize_hostname_check`, `server_name_indication: :disable`, `connect_options: [hostname:]`, klucz podany
+   dwa razy (sprawdzenie czyta pierwszy, Req i `ssl` ostatni), `finch_request` (omija limit 64 KB), `finch:`,
+   `decoders: [:gz]`, a do tego `Keys.start_link/1` wołane wprost, które omijało wszystko razem z `https`.
+   *Odrzucone:* (a) dopisać te do czarnej listy — następny alias albo opcja TLS przejdzie znowu;
+   (b) porzucić i tylko opisać.
+   Dozwolone: `connect_options` z `timeout`, `proxy`, `proxy_headers` i `transport_opts` z `cacertfile`/`cacerts`;
+   `receive_timeout`; `inet6`; `plug` i `adapter` (testy hostów); każda raz. `retry` poza listą — czasy należą do
+   zadania z limitem całego pobrania; jeśli uzna, że host ma coś tam zmieniać, dopisze tę jedną opcję.
+Sprawdzenie w `Keys.check_options!/1` (`@doc false`), wołane przez `Keys.start_link/1` i przez
+`EhOsContract.Auth.child_spec/1` (start pada przy budowaniu listy dzieci); sprawdzenie `https` przeniesione tam z
+`child_spec/1`. Gałąź na PR #35, bo biała lista zamyka drugą drogę nadpisania timeoutu (`transport_opts:
+[timeout:]`), którą #35 dokumentował i testował — test i zdania poprawione tutaj. Testy: `package_test` (każda z
+dróg z przeglądu odrzucona, kontrola dozwolonych przechodzi), `keys_test` (start wprost); wstecz — bez białej listy,
+bez sprawdzenia duplikatów i bez sprawdzenia w `start_link/1` padają dokładnie ich testy.
 
 **Skill `pre-pr-review` odpala od teraz oba przeglądy równolegle** (prośba użytkownika): dwa subagenty w jednej
 wiadomości, `code-review high` i `engineering:code-review` z naciskiem na bezpieczeństwo i wydajność, wspólna pula
