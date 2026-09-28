@@ -1,1 +1,15 @@
-Rebased with E9b onto origin/main 06c6e11; SHAs in PLAN.md rewritten (60324a5); cd755f4 became the leave-as-is decision record. Gate on 60324a5: EXIT=0, sandbox 120, check 0/26/9; engine 1245, 0/67/21; web 45; auth 55.
+E9c-1 review (pre-pr-review), b010c06..HEAD (E9c-1 on top of E9b, whose note is on b010c06).
+
+Round 1, two reviews in parallel on b010c06..bdd7fb7 (code-review high; engineering:code-review security and performance). Round 2 and 3: two reviews each on the fixes. Round 4: one combined review on cd94293.
+Fixed, each with a test failing on the old code and verified in reverse:
+- scope one value, not a generated identity (954ef8c), aliases followed (4c77f00);
+- X6 keeps two different values of :id apart (7224631);
+- ill-typed scope value asked as no value, commands and queries (e507117);
+- P1 monthly loop: outage, set back, drift (fb11d60); caller-steered, catch-up loops (3df2ed7); lost months when late or retried before the due job, clock going back (cd94293); timer check refused by node clock skew (bc4518e);
+- only an ended month is checked by the accountant (cd94293, bc4518e);
+- v1 leftovers Tasks/Notifications, seam test comment, Periods note (9c0294e, 14fae7d).
+Skipped, recorded in PLAN.md "Przegląd E9c-1": JDG registry data unsealed (question for the user); no retrigger limit; lookup by company_id not NIP; scoped actor issuing unscoped commands (L5 candidate); one timer chain per company (engine TimerJob); UTC month boundary; duplication for E11.
+Gate on bc4518e: EXIT=0, sandbox 120, check 0/26/9; engine 1245, check 0/67/21; web 45; auth 51. e14f691 is PLAN.md only.
+Browser (dev DB, preview): TaxVision context map, seven diagrams on /graph, client process and the month boundary, no label overflows (on 5399584).
+
+After the review: cd755f4 (PLAN.md only) recorded the user leaving JDG data and the (type) index as they are. Rebased with E9b onto origin/main 06c6e11; SHAs in PLAN.md rewritten (60324a5). Gate on 60324a5: EXIT=0, sandbox 120, check 0/26/9; engine 1245, 0/67/21; web 45; auth 55.
