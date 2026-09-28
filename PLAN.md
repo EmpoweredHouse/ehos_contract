@@ -23,7 +23,7 @@ ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); v1 zosta
   EG — cztery grafy, 28 września). CI `main` na `f2a54bd` (przebieg `36399198063`) — `success`. Gałąź `dsl-v2/eg-graphs` jest
   zmergowana. Opisy EG: „Przed EG — decyzje użytkownika” … „EG3 — co wyszło”.
 - **E9a w `main`** — PR [#33](https://github.com/EmpoweredHouse/eh-os-contract/pull/33) zmergowany 28 września
-  (`451d068`). **E9b** na `dsl-v2/e9-payer`, od `main` = `451d068` — w budowie („Przed E9b — decyzja
+  (`451d068`). **E9b** na `dsl-v2/e9-payer`, od `main` = `06c6e11` (po rebase od `451d068`) — w budowie („Przed E9b — decyzja
   użytkownika”, „E9b — co wyszło”): zbudowane i przejrzane („Przegląd E9b”), niewypchnięte. Potem **E9c**
   (`dsl-v2/e9-taxvision`, od E9b).
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
@@ -101,7 +101,7 @@ Grafy: `mix eh_os_contract.graph --map <domena> | --system <domena> [--overlay] 
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 28 września, na `834611e`** (E9b po dwóch rundach przeglądu): brama z `sandbox/` → **EXIT=0** — sandbox 99
+- **Lokalnie, 28 września, na `cc07431`** (E9b po dwóch rundach przeglądu): brama z `sandbox/` → **EXIT=0** — sandbox 99
   testów, `check` 0 / 24 / 8; silnik 1222, `check` 0 / 65 / 21; web 45; auth 51. W przeglądarce: `/graph` z procesem
   `payer_settlement` i mapą z płatnikami.
 - **Lokalnie, 28 września, na `9b7306d`** (E9a po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 85 testów,
@@ -1667,9 +1667,9 @@ wystawia fakturę LuxMed za wrzesień — skąd `ExternalPayers` wie, że wizyta
 
 ### E9b — co wyszło (28 września)
 
-Na `dsl-v2/e9-payer` (od `main` = `451d068`), niewypchnięte. Trzy commity budowy po zapisie decyzji (`759533c`):
-domena i obciążenie płatnika w Settlement (`07048e8`), `ExternalPayers` w miejsce v1 `PayerSettlement` (`2fe7036`),
-testy odbioru na bazie z commitami (`4aec24d`). Brama zielona na każdym commicie. Sandbox 85 → **95** testów, silnik
+Na `dsl-v2/e9-payer` (od `main` = `06c6e11` (po rebase od `451d068`)), niewypchnięte. Trzy commity budowy po zapisie decyzji (`b0770e7`):
+domena i obciążenie płatnika w Settlement (`875cd00`), `ExternalPayers` w miejsce v1 `PayerSettlement` (`cb1e21e`),
+testy odbioru na bazie z commitami (`31e8f15`). Brama zielona na każdym commicie. Sandbox 85 → **95** testów, silnik
 bez zmian (1222); `check` sandboxa 0 / 22 / 11 → **0 / 24 / 8** (każda linia wyjaśniona w opisie commita), silnika bez
 zmian.
 
@@ -1729,25 +1729,25 @@ odpowiedzi (7), bez efektu (8), każda deklaracja ma `source:` (9).
 W przeglądarce (baza dev, preview `eh_os_contract_host`): mapa kontekstów z płatnikami i systemem płatnika, proces
 `payer_settlement` z trzema etapami, żadna etykieta nie wystaje.
 
-**Przegląd E9b** (dwa równolegle na `origin/main..baf42b1`, potem dwa na poprawkach `baf42b1..a7cae84`). Sandbox 95 → **99** testów, `check` bez zmian (0 / 24 / 8).
+**Przegląd E9b** (dwa równolegle na `origin/main..cdbecf2`, potem dwa na poprawkach `cdbecf2..f21512a`). Sandbox 95 → **99** testów, `check` bez zmian (0 / 24 / 8).
 
 *Poprawione przez asystenta, z testem i próbą odwrotną:*
-- **`ExternalPayers` nie był za drzwiami hosta** (`6d7478d`): trzy uprawnienia bez wejścia, a test D-34 zielony, bo
+- **`ExternalPayers` nie był za drzwiami hosta** (`3f898de`): trzy uprawnienia bez wejścia, a test D-34 zielony, bo
   chodził tylko po czterech starszych kontraktach; teraz po pięciu i na starym routerze pada.
-- **Oznaczenie i wykluczenie brały dowolną wizytę** (`68ae7da`): literówka, wizyta innego płatnika albo zły miesiąc
+- **Oznaczenie i wykluczenie brały dowolną wizytę** (`edd4fa1`): literówka, wizyta innego płatnika albo zły miesiąc
   trafiały na fakturę, a jedna wizyta dawała się oznaczyć dwa razy albo oznaczyć i wykluczyć — niezmiennik
   `only_a_charged_visit_is_marked_or_excluded`.
-- **Faktura za okres bez żadnej oznaczonej wizyty** (`633347a`) zamykała miesiąc przed pierwszym zamknięciem wizyty i
+- **Faktura za okres bez żadnej oznaczonej wizyty** (`6ffe85b`) zamykała miesiąc przed pierwszym zamknięciem wizyty i
   cały miesiąc zostawał niezafakturowany — niezmiennik `an_invoice_covers_a_marked_visit`; test obciążenia sprawdza
   teraz, że przed fakturą była obciążona wizyta, więc nie przejdzie na fakturze sprzed wyścigu.
-- **`reset!` repo z commitami** (`66f8a3c`) kończył się `MatchError`, gdy inny przebieg trzymał bazę; teraz mówi
+- **`reset!` repo z commitami** (`c0f2c4d`) kończył się `MatchError`, gdy inny przebieg trzymał bazę; teraz mówi
   dlaczego. Pula 20 → 12: brama dostała `too_many_connections`, gdy inny worktree puszczał testy silnika (Postgres ma
   100 połączeń, repo z commitami silnika bierze 60).
-- **Wizyta mieszana** (`52b9a86`, dopięte po drugim przeglądzie): scenariusz `P-31` z dodaną usługą, przekazaniem i
+- **Wizyta mieszana** (`ed32f39`, dopięte po drugim przeglądzie): scenariusz `P-31` z dodaną usługą, przekazaniem i
   płatnością pacjenta. **`total` znaczy dwie rzeczy** — przy płatnościach to ich suma (przy wizycie mieszanej część
   pacjenta), bez płatności cena, którą pokrywa ktoś inny; komentarz mówi teraz oba, a kształt jest z E9a
   (`visit_closed_without_payment` niesie pełną cenę). Kto czyta `total` jako wartość wizyty, zaniży każdą mieszaną.
-- **Jedna nazwa bazy z commitami dla wszystkich worktree** (`b327225`, drugi przegląd): dwa nakładające się przebiegi
+- **Jedna nazwa bazy z commitami dla wszystkich worktree** (`01c225e`, drugi przegląd): dwa nakładające się przebiegi
   łamały się nawzajem (drop między create a migrate drugiego, te same płatnicy z `System.unique_integer` w dwóch VM);
   baza nazywa się teraz według checkoutu.
 
