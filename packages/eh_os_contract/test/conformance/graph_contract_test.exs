@@ -165,6 +165,11 @@ defmodule EhOsContract.GraphContractTest do
       refute Graph.contract_to_mermaid(DispatchRig.Ledger) =~ "external"
     end
 
+    test "a contract whose domain does not exist draws its actors by name" do
+      assert Graph.contract_to_mermaid(@constrained) =~
+               ~s|actor_reception("reception"):::actor|
+    end
+
     test "every node and edge is drawn once, in the same order on every call" do
       diagram = Graph.contract_to_mermaid(DispatchRig.Ledger)
       lines = String.split(diagram, "\n")
@@ -232,8 +237,7 @@ defmodule EhOsContract.GraphContractTest do
         declared_ends!(EhOsContract.Graph.Unit.build(contract, unit.name))
       end
 
-      for contract <- contracts -- [@constrained],
-          do: declared_ends!(EhOsContract.Graph.Contract.build(contract))
+      for contract <- contracts, do: declared_ends!(EhOsContract.Graph.Contract.build(contract))
     end
 
     test "a unit the contract does not have is refused, naming the ones it has" do

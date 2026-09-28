@@ -30,7 +30,7 @@ defmodule EhOsContract.Graph.Contract do
   @spec build(module() | map(), keyword()) :: Mermaid.graph()
   def build(contract, opts \\ []) do
     model = Model.fetch(contract)
-    domain = Model.fetch(model.domain)
+    domain = domain(model.domain)
     overlay? = Keyword.get(opts, :overlay, false)
 
     steps = if overlay?, do: Paths.observe(model, opts), else: Paths.declared(model)
@@ -80,6 +80,14 @@ defmodule EhOsContract.Graph.Contract do
   @doc "The full graph of `contract` as a Mermaid flowchart; `opts` as `build/2`."
   @spec to_mermaid(module() | map(), keyword()) :: String.t()
   def to_mermaid(contract, opts \\ []), do: contract |> build(opts) |> Mermaid.render("LR")
+
+  # A contract may name a domain that does not exist (v2 §8): its actors and externals
+  # are then drawn by name, with nothing to label them.
+  defp domain(module) do
+    if Code.ensure_loaded?(module) and function_exported?(module, :__eh_os_contract_model__, 0),
+      do: Model.fetch(module),
+      else: %{actors: [], externals: [], entities: []}
+  end
 
   # --- nodes ---------------------------------------------------------------------------
 
