@@ -2849,6 +2849,23 @@ czeka pełne 5 s. Test w `keys_test` na prawdziwym gniazdzie `127.0.0.1` (nie pl
 nagłówki, potem bajt co sekundę, poniżej 3 s `receive_timeout`; start procesu kończy się w 5–6 s, klucz z tabeli
 zostaje. Sprawdzony wstecz: bez terminu proces po 10 s dalej wisi. Komentarz przy `refetch/1` poprawiony, linia
 w `CHANGELOG.md`, zdanie w README i w `@doc` `start_link/1`. Gałąź na PR #35 (te same linie `keys.ex`).
+*Przegląd* (dwa równolegle na `fix/auth-connect-timeout-merge..HEAD`): poprawione — `throw` z pluga albo adaptera
+hosta dalej wywracał proces kluczy przez link z taskiem (łapany był tylko `exit`), teraz każdy rodzaj (test na
+`exit` i na `throw`, plugiem zamiast przestarzałego adaptera-funkcji; sprawdzony wstecz: przy `catch :exit` pada
+tylko test `throw`); `case` na wyniku taska dostał klauzulę `{:exit, _}` (dziś nieosiągalna, bo proces nie łapie
+exitów); komentarz przy `catch` mówił odwrotnie, po co jest link; dokumentacja obiecywała, że termin obejmuje całe
+pobranie, a `store/2` idzie po nim, poza terminem — sformułowania zawężone do żądania; moduledoc `KeyCase` („no
+port is opened”) nieaktualny; górna granica testu 6 s → 8 s (zmierzone 5,003 s, ale wlicza start i odczyt tabeli).
+Bez zmian — suma timeoutów kroków (2 s TCP + 2 s TLS + 3 s odczytu) przekracza 5 s: tak ma być, termin jest
+granicą; log odróżnia go (`(:timeout)`) od timeoutu kroku (`%Req.TransportError{reason: :timeout}`). Zwolnienie
+gniazda i połączenia z puli po zabiciu taska sprawdzone w źródłach Finch/NimblePool (HTTP/1: gniazdo należy do
+taska; HTTP/2: pula anuluje strumienie na DOWN). **Pominięte, sprzed tej zmiany, do użytkownika:** (1) `store/2`
+i `load/1` idą z domyślnym timeoutem repo (15 s), poza terminem — zablokowana tabela (migracja, `VACUUM FULL`)
+trzyma proces dłużej niż `@call_timeout`, a przy starcie każde żądanie z pierwszych sekund czeka i dostaje
+`:no_keys`; krótki `timeout:` na wywołaniach repo to osobna decyzja. (2) `refetch_at_most_every` nie ma dolnej
+granicy, a `fetched_at` jest stemplowane na starcie pobrania: host z wartością poniżej 5 s dostaje pobrania
+jedno za drugim i rosnącą skrzynkę przy atakującym z nieznanymi `kid`. Walidacja przy starcie zmienia kształt
+widoczny dla hosta. (3) Cztery testy PR #35 z adapterem-funkcją wypisują ostrzeżenie o przestarzałości Req.
 
 **Skill `pre-pr-review` odpala od teraz oba przeglądy równolegle** (prośba użytkownika): dwa subagenty w jednej
 wiadomości, `code-review high` i `engineering:code-review` z naciskiem na bezpieczeństwo i wydajność, wspólna pula
