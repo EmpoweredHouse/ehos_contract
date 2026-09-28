@@ -291,17 +291,33 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
     # fields cannot be one (plan E9c): it would reach the check as a map.
     values = Map.new(domain.values, &{&1.name, &1})
 
+    # Followed through aliases, `value :home, :contact` or `value :codes, {:list, :id}`,
+    # which L2 cannot see without the domain.
     composite =
       for {kind, name, scope, fields} <- scoped_fields(d),
           field = Enum.find(fields, &(&1.name == scope)),
           field != nil,
-          %{type: nil} <- [Map.get(values, field.type)] do
+          shape = one_value(field.type, values),
+          shape != :one do
         {"D10: #{kind} #{inspect(name)} is scoped by #{inspect(scope)}, a #{inspect(field.type)} " <>
-           "made of fields; a scope is one value", Links.at(field)}
+           "#{shape}; a scope is one value", Links.at(field)}
       end
 
     queries ++ commands ++ composite
   end
+
+  # Whether a domain value comes down to one value, followed through the values it
+  # names; a literal list is L2's to refuse.
+  defp one_value(type, values) when is_atom(type) do
+    case Map.get(values, type) do
+      %{type: nil} -> "made of fields"
+      %{type: {:list, _}} -> "which is a list"
+      %{type: next} when is_atom(next) -> one_value(next, Map.delete(values, type))
+      _built_in_or_undeclared -> :one
+    end
+  end
+
+  defp one_value(_type, _values), do: :one
 
   defp scoped_fields(d) do
     for(q <- d.queries, q.scope != nil, do: {"query", q.name, q.scope, q.params}) ++

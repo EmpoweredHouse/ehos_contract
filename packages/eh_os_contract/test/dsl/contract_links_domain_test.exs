@@ -31,6 +31,7 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
         end
 
         value :contact_ref, :contact
+        value :clinic_ids, {:list, :id}
         external :payer_registry, "Rejestr płatnika", direction: :outbound
 
         entity :clinic, "Przychodnia", context: :settlement, identified_by: :clinic_id do
@@ -550,6 +551,37 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
                    "a scope is one value"
              end),
              inspect(violations)
+    end
+
+    test "a scope typed by an alias of a value made of fields, or of a list" do
+      command = """
+          command :contact_patient, "Kontakt", by: :reception, emits: :payment_recorded,
+            scope: :contact do
+            field :contact, :contact_ref
+          end
+
+          command :move_patient, "Przeniesienie", by: :reception, emits: :payment_recorded,
+            scope: :clinics do
+            field :clinics, :clinic_ids
+          end
+
+          command :record_payment,\\
+      """
+
+      body = String.replace(@body, "    command :record_payment,", command, global: false)
+      messages = Enum.map(links("LinksAliasScope", body), & &1.message)
+
+      assert Enum.any?(
+               messages,
+               &(&1 =~
+                   "command :contact_patient is scoped by :contact, a :contact_ref made of fields")
+             )
+
+      assert Enum.any?(
+               messages,
+               &(&1 =~
+                   "command :move_patient is scoped by :clinics, a :clinic_ids which is a list")
+             )
     end
   end
 
