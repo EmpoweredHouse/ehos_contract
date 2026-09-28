@@ -45,7 +45,9 @@ defmodule EhOsContract.Graph.Mermaid do
   # managers purple, effects pink as the outside world, timers grey, actors and the
   # state they decide on yellow, the read side green; an invariant is a rule, in red,
   # and a command's constraint a paler one;
-  # an external system grey and dashed, as the declared shape draws it.
+  # an external system grey and dashed, as the declared shape draws it. On the maps
+  # between them, a context is blue, a contract grey, and a publication on the wire
+  # teal.
   @classes [
     command: "fill:#a7c7e7,stroke:#3b6ea5,color:#000",
     event: "fill:#ffb86c,stroke:#c46a00,color:#000",
@@ -59,7 +61,10 @@ defmodule EhOsContract.Graph.Mermaid do
     query: "fill:#dcedc8,stroke:#689f38,color:#000",
     invariant: "fill:#ffcdd2,stroke:#c62828,color:#000",
     constraint: "fill:#ffebee,stroke:#c62828,color:#000",
-    external: "fill:#eceff1,stroke:#546e7a,color:#000,stroke-dasharray: 4 3"
+    external: "fill:#eceff1,stroke:#546e7a,color:#000,stroke-dasharray: 4 3",
+    context: "fill:#e3f2fd,stroke:#1565c0,color:#000",
+    contract: "fill:#f5f5f5,stroke:#424242,color:#000",
+    publication: "fill:#e0f7fa,stroke:#00838f,color:#000"
   ]
 
   @doc """
@@ -131,12 +136,12 @@ defmodule EhOsContract.Graph.Mermaid do
     do: label |> String.replace(~s("), "'") |> String.replace(["\r\n", "\r", "\n"], " ")
 
   @doc "A node of `kind` named `name`, with its label or, lacking one, its name."
-  @spec graph_node(atom(), atom(), String.t() | nil) :: graph_node()
+  @spec graph_node(atom(), atom() | String.t(), String.t() | nil) :: graph_node()
   def graph_node(kind, name, label),
-    do: %{id: id(kind, name), kind: kind, name: name, label: label || Atom.to_string(name)}
+    do: %{id: id(kind, name), kind: kind, name: name, label: label || to_string(name)}
 
   @doc "The id of the node of `kind` named `name`, which edges and groups join on."
-  @spec id(atom(), atom()) :: String.t()
+  @spec id(atom(), atom() | String.t()) :: String.t()
   def id(kind, name), do: "#{kind}_#{name}"
 
   @doc "`1 run`, `3 runs`."
@@ -164,4 +169,7 @@ defmodule EhOsContract.Graph.Mermaid do
   defp shape(:invariant), do: {"{", "}"}
   defp shape(:constraint), do: {"{", "}"}
   defp shape(:external), do: {"[(", ")]"}
+  defp shape(:context), do: {"(", ")"}
+  defp shape(:contract), do: {"[", "]"}
+  defp shape(:publication), do: {"[/", "\\]"}
 end

@@ -27,7 +27,15 @@ defmodule EhOsContract.Web.Live.Graph do
   contract is one process, so its overlay is that process's alone. The screen opens
   on a v2 process when there is one.
 
-  Rendering is client-side, through `app.js`'s `MermaidRender` hook: both
+  **Above both, the system** (plan EG2): each domain's v2 contracts in their
+  contexts, what one consumes from another, and the log over it —
+  `EhOsContract.Graph.system_to_mermaid/3`. It is the one picture here between
+  contracts rather than inside one, and the way to see which contract's process to
+  pick below. A domain's context map and a unit's picture describe the model rather
+  than answer the screen's questions, so they are on the pages
+  `mix eh_os_contract.pages` writes, not here.
+
+  Rendering is client-side, through `app.js`'s `MermaidRender` hook: every
   diagram strings reach the template as plain data in a `data-graph`
   attribute, never as trusted HTML — HEEx escapes them like any other
   interpolated value, and the hook reads the attribute back out before
@@ -52,8 +60,25 @@ defmodule EhOsContract.Web.Live.Graph do
 
     processes = Enum.sort_by(v1 ++ v2, & &1.label)
 
+    systems =
+      for domain <- EhOsContract.Registry.domains(),
+          model = EhOsContract.Model.fetch(domain),
+          # Every v2 contract, one without a process too: the system is not a process's.
+          contracts =
+            Enum.filter(
+              EhOsContract.Registry.v2_contracts(),
+              &(EhOsContract.Model.fetch(&1).domain == domain)
+            ),
+          contracts != [] do
+        %{
+          name: model.name,
+          mermaid: EhOsContract.Graph.system_to_mermaid(domain, contracts, overlay: true)
+        }
+      end
+
     socket =
       socket
+      |> assign(:systems, systems)
       |> assign(:processes, processes)
       |> assign(:every_contract, EhOsContract.Graph.overlay() |> EhOsContract.Graph.to_mermaid())
       # A v2 process first when there is one: it is what the screen has most to say
@@ -105,6 +130,16 @@ defmodule EhOsContract.Web.Live.Graph do
     <div>
       <EhOsContract.Web.Layouts.nav base_path={@eh_os_contract_web_base_path} current={:graph} />
       <p class="access-badge">Access: {access_label(@eh_os_contract_web_access)}</p>
+
+      <section :for={system <- @systems}>
+        <h3>The system, declared versus observed — domain {system.name}</h3>
+        <pre
+          class="mermaid"
+          phx-hook="MermaidRender"
+          id={"system-graph-#{system.name}"}
+          data-graph={system.mermaid}
+        ></pre>
+      </section>
 
       <section>
         <h3>Declared shape</h3>

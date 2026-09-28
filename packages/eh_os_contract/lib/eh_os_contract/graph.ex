@@ -654,6 +654,24 @@ defmodule EhOsContract.Graph do
   @spec unit_to_mermaid(module(), atom()) :: String.t()
   def unit_to_mermaid(contract, unit), do: EhOsContract.Graph.Unit.to_mermaid(contract, unit)
 
+  @doc """
+  A domain's context map as a Mermaid diagram (plan EG2): its subdomains as groups of
+  their contexts, its external systems, and the relations between them. See
+  `EhOsContract.Graph.ContextMap`.
+  """
+  @spec context_map_to_mermaid(module()) :: String.t()
+  def context_map_to_mermaid(domain), do: EhOsContract.Graph.ContextMap.to_mermaid(domain)
+
+  @doc """
+  A domain's v2 contracts as one Mermaid diagram (plan EG2): each context a group of
+  its contracts, and what one consumes from another, or through a publication, as
+  the edges between them. `overlay: true` lays the log over it, `since:` and
+  `until:` bound it. See `EhOsContract.Graph.System`.
+  """
+  @spec system_to_mermaid(module(), [module()], keyword()) :: String.t()
+  def system_to_mermaid(domain, contracts, opts \\ []),
+    do: EhOsContract.Graph.System.to_mermaid(domain, contracts, opts)
+
   @doc "The overlay as one line per edge, for a terminal."
   @spec to_text([map()]) :: String.t()
   def to_text(overlay) do
@@ -677,6 +695,14 @@ defmodule EhOsContract.Graph do
       "  #{state} #{mode}  #{edge.from} -> #{edge.to}  (#{edge.count}x, #{traversals}#{queue})"
     end)
   end
+
+  @doc """
+  `query`, over events bound as `:event`, narrowed to the period `opts` names with
+  `:since` and `:until`, as every reader of the log narrows it.
+  """
+  @spec bounded(Ecto.Query.t(), keyword()) :: Ecto.Query.t()
+  def bounded(query, opts),
+    do: query |> maybe_since(opts[:since]) |> maybe_until(opts[:until])
 
   @spec maybe_since(Ecto.Query.t(), DateTime.t() | nil) :: Ecto.Query.t()
   defp maybe_since(query, nil), do: query

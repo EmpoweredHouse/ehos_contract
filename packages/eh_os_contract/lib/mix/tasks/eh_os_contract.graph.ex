@@ -36,10 +36,25 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   invariants, and how many scenarios pin each path. Both are Mermaid, so `--mermaid`
   is not needed.
 
-  It is per process and never global on purpose. The default inventory this task
-  prints is 33 events from four contracts in one flat list, which is useful to
-  nobody outside the team and is the counter-example ADR §9 had in mind with
-  *navigation is per-process, never global*.
+  ## `--map` and `--system`: a domain
+
+      mix eh_os_contract.graph --map rehmed --output map.mmd
+      mix eh_os_contract.graph --system rehmed --overlay --output system.mmd
+
+  `--map` draws the domain's context map (plan EG2,
+  `EhOsContract.Graph.context_map_to_mermaid/1`): subdomains, their contexts, the
+  external systems and the relations between them. `--system` draws its v2
+  contracts in their contexts and what one consumes from another
+  (`EhOsContract.Graph.system_to_mermaid/3`); `--overlay` lays the log over it —
+  runs per contract, and per edge the consumed events and what waits or fails at
+  the consumer. Both take the domain's `name:`.
+
+  A process's picture is per process and never global on purpose. The default
+  inventory this task prints is 33 events from four contracts in one flat list,
+  which is useful to nobody outside the team and is the counter-example ADR §9 had
+  in mind with *navigation is per-process, never global*. The system is not that
+  list: it draws contracts and what flows between them, and leaves each contract's
+  own steps to `--contract`.
 
   Use `--output`: Erlang keeps stdout in latin1 when it is not a terminal, and
   every node on this diagram is written in the client's language.
@@ -64,7 +79,9 @@ defmodule Mix.Tasks.EhOsContract.Graph do
           output: :string,
           process: :string,
           contract: :string,
-          unit: :string
+          unit: :string,
+          map: :string,
+          system: :string
         ]
       )
 
@@ -80,6 +97,8 @@ defmodule Mix.Tasks.EhOsContract.Graph do
     EhOsContract.Registry.load!()
 
     cond do
+      opts[:map] -> domain_picture(opts[:map], &EhOsContract.Graph.context_map_to_mermaid/1, opts)
+      opts[:system] -> domain_picture(opts[:system], &system(&1, opts), opts)
       opts[:contract] -> contract(opts)
       opts[:unit] -> Mix.raise("--unit names a unit of a contract; pass --contract too")
       opts[:process] -> declared(opts)
@@ -142,16 +161,43 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   # A flag the picture asked for would not use is refused rather than dropped: a unit
   # draws no log, and a contract and a process are two different pictures.
   defp refuse_ignored!(opts) do
+    pictures = for key <- [:map, :system, :contract, :process], opts[key], do: "--#{key}"
+
     cond do
       opts[:unit] && (opts[:overlay] || opts[:since]) ->
         Mix.raise("--unit draws the declarations only; --overlay and --since apply to --contract")
 
-      opts[:contract] && opts[:process] ->
-        Mix.raise("--contract and --process draw different pictures; pass one of them")
+      opts[:map] && (opts[:overlay] || opts[:since]) ->
+        Mix.raise(
+          "--map draws the domain's declarations only; --overlay and --since apply to --system"
+        )
+
+      length(pictures) > 1 ->
+        Mix.raise("#{Enum.join(pictures, " and ")} draw different pictures; pass one of them")
 
       true ->
         :ok
     end
+  end
+
+  # A picture of the domain named `name`, drawn by `draw` from its module.
+  defp domain_picture(name, draw, opts) do
+    domains = EhOsContract.Registry.domains()
+    domain = Enum.find(domains, &(Atom.to_string(EhOsContract.Model.fetch(&1).name) == name))
+
+    unless domain do
+      known = domains |> Enum.map(&EhOsContract.Model.fetch(&1).name) |> Enum.sort()
+      Mix.raise("no domain #{name}. Registered: #{Enum.join(known, ", ")}")
+    end
+
+    emit_output(draw.(domain), opts)
+  end
+
+  defp system(domain, opts) do
+    EhOsContract.Graph.system_to_mermaid(domain, EhOsContract.Registry.v2_contracts(),
+      overlay: opts[:overlay] || false,
+      since: since(opts)
+    )
   end
 
   # A v2 contract's full graph, or one of its units.

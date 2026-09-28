@@ -36,6 +36,11 @@ defmodule EhOsContract.Web.Live.GraphTest do
     assert html =~ "event_case_opened"
     assert html =~ "command_open_case --&gt;"
     assert html =~ "actor_case_officer --&gt; command_open_case"
+
+    # Above them, the system of each domain with a v2 contract (plan EG2), with the log.
+    assert html =~ "The system, declared versus observed — domain"
+    assert html =~ ~r/id="system-graph-\w+"/
+    assert html =~ "contract_eh_os_contract_web_test_host_fixtures_case_handling"
     assert html =~ "Declared versus observed, this process"
   end
 
@@ -62,6 +67,7 @@ defmodule EhOsContract.Web.Live.GraphTest do
       render_component(&Graph.render/1, %{
         eh_os_contract_web_access: :all,
         eh_os_contract_web_base_path: "/dashboard",
+        systems: [],
         processes: [],
         selected: nil,
         declared_mermaid: nil,
@@ -78,6 +84,7 @@ defmodule EhOsContract.Web.Live.GraphTest do
       render_component(&Graph.render/1, %{
         eh_os_contract_web_access: :read_only,
         eh_os_contract_web_base_path: "/dashboard",
+        systems: [],
         processes: [
           %{contract: nil, name: :handling, label: "Case handling"},
           %{contract: nil, name: :billing, label: "Billing"}

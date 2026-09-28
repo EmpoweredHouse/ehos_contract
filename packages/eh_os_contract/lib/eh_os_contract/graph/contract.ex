@@ -328,15 +328,9 @@ defmodule EhOsContract.Graph.Contract do
       group_by: e.type,
       select: {e.type, count(e.id), count(r.instance_id, :distinct)}
     )
-    |> bounded(opts)
+    |> EhOsContract.Graph.bounded(opts)
     |> repo().all()
     |> Map.new(fn {type, count, runs} -> {{:event, Map.fetch!(by_type, type)}, {count, runs}} end)
-  end
-
-  defp bounded(query, opts) do
-    query
-    |> then(&if s = opts[:since], do: where(&1, [event: e], e.occurred_at >= ^s), else: &1)
-    |> then(&if u = opts[:until], do: where(&1, [event: e], e.occurred_at <= ^u), else: &1)
   end
 
   defp repo, do: Application.fetch_env!(:eh_os_contract, :repo)

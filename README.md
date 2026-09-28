@@ -234,6 +234,7 @@ boundaries below would be documentation rather than a check.
 | `mix eh_os_contract.graph --overlay --mermaid` | the observed graph: edges and counts from the log |
 | `mix eh_os_contract.graph --mermaid --process <name>` | the declared shape of one process, no code required; with `--overlay`, a v2 process's full graph over the log |
 | `mix eh_os_contract.graph --contract <Module> [--overlay] [--unit <name>]` | a v2 contract's full graph — steps, actors, read side, external systems — or one unit of it |
+| `mix eh_os_contract.graph --map <domain>` / `--system <domain> [--overlay]` | a domain's context map, or its v2 contracts and what flows between them |
 | `mix eh_os_contract.brief --process <name> --output brief.html` | a document for a client-facing review |
 | `mix eh_os_contract.trace` | trace assertions evaluated against the log |
 | `mix eh_os_contract.report --since … --until …` | the conformance report for a period |

@@ -254,11 +254,14 @@ defmodule EhOsContract.Pages do
   defp domain_page(site) do
     d = site.domain
     tree = EhOsContract.View.render(d, site.contracts)
+    map = EhOsContract.Graph.ContextMap.to_mermaid(d)
 
     [
       "# Domain #{code(d.name)}",
       "",
       "Written in #{code(d.language)}. Version #{code(d.version)}.",
+      # The context map (plan EG2), drawn from the block as a unit's diagram is.
+      ["", "## Context map", "", "```mermaid", map, "```"],
       "",
       "## Contexts",
       "",

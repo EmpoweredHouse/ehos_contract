@@ -100,6 +100,18 @@ What changes otherwise is what a host has to do.
 
 ### Added
 
+- **EG2: a domain's context map and its system.** `EhOsContract.Graph.context_map_to_mermaid/1` draws the
+  subdomains as groups of their contexts, the domain's externals, and the relations between them — a directed
+  one from upstream to downstream, either end of which may be an external, a symmetric one without an
+  arrowhead, `separate_ways` dashed. `EhOsContract.Graph.system_to_mermaid/3` draws a domain's v2 contracts in
+  their contexts, what one consumes from another as an arrow carrying the events' names, and a publication as a
+  node its publisher and a consumer of its name meet on; `overlay: true` puts a process's runs on its contract
+  and, on each edge, how many consumed events the log holds and what waits or fails at the consumer. No verdict
+  moves. `mix eh_os_contract.graph --map NAME` and `--system NAME [--overlay]` draw them; the domain's page from
+  `mix eh_os_contract.pages` carries its map, and the dashboard's graph screen draws each domain's system with
+  the log above the per-process panels. `EhOsContract.Graph.bounded/2` narrows a query over events to a period,
+  as the graphs' readers of the log share it.
+
 - **EG1: a v2 contract's full graph and one unit of it.** `EhOsContract.Graph.contract_to_mermaid/2` draws the
   steps as before, and around them each unit's commands and events as a group, the actors issuing commands,
   recording events and asking queries, the read models with what they project and the queries over them, and
