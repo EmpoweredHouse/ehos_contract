@@ -1884,8 +1884,7 @@ pętla czyta potwierdzenie — czytelnikiem byłby read model „ostatnie sprawd
 
 *Pominięte, jako ustalenia:*
 - **Czy dane JDG w logu są osobowe** — forma prawna, status VAT i VIES oraz różnice dotyczą przy jednoosobowej
-  działalności osoby fizycznej; v1 trzymał różnicę jako skrót (`retain: :hash`). Pytanie do użytkownika (kształt
-  danych w logu).
+  działalności osoby fizycznej; v1 trzymał różnicę jako skrót (`retain: :hash`). Zostają jawne — decyzja niżej.
 - **Brak limitu ponowień** — każde ponowienie pyta rejestry; limit jest sprawą hosta albo adaptera.
 - **Aktor ze `scope` wydający komendę bez `scope`** — nic tego nie wyłapuje; kandydat na regułę L5 (E10).
 - **Rejestry pytane `company_id`, nie NIP-em** — odziedziczone z v1; prawdziwy adapter potrzebuje NIP-u z profilu.
@@ -1898,6 +1897,14 @@ pętla czyta potwierdzenie — czytelnikiem byłby read model „ostatnie sprawd
   miesiąc; sandbox nie ma bazy stref czasowych, jak przy dniu R-07.
 - **Duplikacja** (`scope` komend i query w dispatchu i w D10; `one_value/2` obok `Key.base_type/2`) — do
   ujednolicenia przy E11. Scenariusze procesu managera zależą od epoki scenariuszy (styczeń 2026), co mówi komentarz.
+
+### Po przeglądzie E9c-1 — decyzje użytkownika (28 września)
+
+Asystent zapytał o dwie rzeczy, które przegląd zostawił użytkownikowi; odpowiedź: „zostaw jak jest”.
+- **Dane JDG w logu zostają jawne** (forma prawna, status VAT i VIES, różnice). *Odrzucone:* pola osobowe szyfrowane
+  pod firmą jako podmiotem (crypto-shredding po końcu współpracy); skrót różnicy jak `retain: :hash` w v1.
+- **Indeks `(type)` zostaje** (ustalenie 1 z E9b: bez statystyk planner czytał nim historię typu). *Odrzucone:*
+  skasowanie indeksu (migracja po stronie hosta); zakres wymuszony w kształcie zapytania sprawdzenia konfliktu.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
