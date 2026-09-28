@@ -10,11 +10,15 @@ defmodule Taxvision.Contracts.RegistryWatch do
 
   P1: when a month starts, check the registries. The month is settled one month
   behind, so on 1 September August is checked (WF 00:34:40). A process manager does
-  it: every logged check sets a timer a month on, which checks the next period — the
-  name of the period is its identifier, so it works "2026-09" out of "2026-08"
-  itself. The first check is the accountant's (`RetriggerVerification`, the one
-  command on the workshop's diagram); a check refused because the company's data is
-  incomplete logs nothing, so the timer waits for the accountant too.
+  it: every check that starts — the company's data confirmed — sets a timer for the
+  first of the month after the next period, which checks that period. The name of
+  the period is its identifier, so it works "2026-09" and 1 October out of "2026-08"
+  itself. The period it keeps only moves forward, so the accountant retrying an
+  older month does not set the watch back, and the registries being down for one
+  check leaves that month to be retried while the next one is still checked. The
+  first check is the accountant's (`RetriggerVerification`, the one command on the
+  workshop's diagram); a check refused because the company's data is incomplete
+  starts nothing, so the watch waits for the accountant too.
 
   ## A check is three steps, and the middle one is the registries'
 
@@ -148,11 +152,12 @@ defmodule Taxvision.Contracts.RegistryWatch do
 
     state do
       field :period_id, :period, optional: true
+      field :check_at, :timestamp, optional: true
     end
 
-    starts_on :registry_check_logged, sets: :next_month
-    on :registry_check_logged, sets: :next_month
-    timer :next_month, wait: {1, :month}, issues: :check_registries
+    starts_on :data_completeness_confirmed, sets: :next_month
+    on :data_completeness_confirmed, sets: :next_month
+    timer :next_month, at: :check_at, issues: :check_registries
   end
 
   process :client, "Firma klienta: dane i zgodność z rejestrami", accountable: :accountant do
@@ -219,9 +224,17 @@ defmodule Taxvision.Contracts.RegistryWatch do
     issues :log_registry_check, %{period_id: "2026-08", vat_status: "czynny"}
   end
 
-  scenario "miesiąc po sprawdzeniu sierpnia sprawdza się wrzesień" do
+  scenario "po sprawdzeniu sierpnia 1 października sprawdza się wrzesień" do
     scope :monthly_registry_check
-    given :registry_check_logged, %{period_id: "2026-08"}
+    given :data_completeness_confirmed, %{period_id: "2026-08"}
+    on :next_month
+    issues :check_registries, %{period_id: "2026-09"}
+  end
+
+  scenario "ponowienie starszego miesiąca nie cofa sprawdzania" do
+    scope :monthly_registry_check
+    given :data_completeness_confirmed, %{period_id: "2026-08"}
+    given :data_completeness_confirmed, %{period_id: "2026-03"}
     on :next_month
     issues :check_registries, %{period_id: "2026-09"}
   end

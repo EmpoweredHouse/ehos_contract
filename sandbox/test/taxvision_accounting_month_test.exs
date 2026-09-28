@@ -151,6 +151,53 @@ defmodule Taxvision.AccountingMonthTest do
            ]
   end
 
+  defp of_period(period) do
+    Repo.all(
+      from(e in Event,
+        where: fragment("? @> ?::text[]", e.tags, ^["period_id:#{period}"]),
+        order_by: e.position,
+        select: e.type
+      )
+    )
+  end
+
+  test "the registries down for September's check: October is still checked on 1 November" do
+    profile!("c-1")
+    retrigger!("c-1", "2026-08")
+
+    registries(%{"c-1" => {:error, :unavailable}})
+    Clock.at(~U[2026-10-01 07:00:00Z], fn -> Testing.drain() end)
+
+    # Started, and never answered: not a negative check, and nothing opened.
+    assert of_period("2026-09") == ["client.data_completeness_confirmed"]
+
+    Application.put_env(:eh_os_contract_host, Taxvision.Adapters.RegistryLookup.Fake,
+      responses: %{}
+    )
+
+    Clock.at(~U[2026-11-01 07:00:00Z], fn -> Testing.drain() end)
+
+    assert "accounting_month.accounting_month_opened" in of_period("2026-10")
+  end
+
+  test "retrying an older month does not set the watch back, nor off the first of the month" do
+    profile!("c-1")
+    retrigger!("c-1", "2026-08")
+
+    {:ok, _} =
+      Clock.at(~U[2026-09-15 10:00:00Z], fn ->
+        EhOsContract.dispatch(
+          RegistryWatch,
+          %RetriggerVerification{company_id: "c-1", period_id: "2026-03"},
+          actor: accountant("c-1")
+        )
+      end)
+
+    Clock.at(~U[2026-10-01 01:00:00Z], fn -> Testing.drain() end)
+    assert "accounting_month.accounting_month_opened" in of_period("2026-09")
+    assert of_period("2026-04") == []
+  end
+
   test "a period named otherwise than YYYY-MM is refused before anything is decided" do
     profile!("c-1")
 

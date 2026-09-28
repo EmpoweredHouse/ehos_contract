@@ -123,6 +123,15 @@ defmodule Taxvision.Periods do
     end
   end
 
+  @doc "The first moment of the month `name`, at midnight UTC (the sandbox has no zone database)."
+  @spec first_moment(name()) :: DateTime.t()
+  def first_moment(name) do
+    case month_start(name) do
+      {:ok, start} -> DateTime.new!(start, ~T[00:00:00], "Etc/UTC")
+      :error -> raise ArgumentError, "period name #{inspect(name)} is not in YYYY-MM form"
+    end
+  end
+
   @doc """
   Whether `name` names a month, "YYYY-MM": the invariant of the domain's `:period`
   (`Taxvision.Periods.Name`), and the one place that knows the convention.
