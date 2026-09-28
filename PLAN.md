@@ -25,8 +25,8 @@ materiału) → E10–E12. Jedynym kontraktem v2 sandboxa jest dalej `Rehmed.Con
   [#28](https://github.com/EmpoweredHouse/eh-os-contract/pull/28) — EL1 i EL2. Opisy: „Przed EL — decyzje
   użytkownika” … „EL3 — co wyszło”. Gałęzie `dsl-v2/el-*` są zmergowane.
 - **EG** jest na `dsl-v2/eg-graphs`, od `main`, niewypchnięte. **EG1, EG2 i EG3 zrobione z przeglądem**
-  („EG1 — co wyszło”, „EG2 — co wyszło”, „EG3 — co wyszło”). EG jest skończone; push i PR — na polecenie
-  użytkownika. Opis zakresu: „Po E8 — kolejność
+  („EG1 — co wyszło”, „EG2 — co wyszło”, „EG3 — co wyszło”). EG jest skończone i w PR
+  [#32](https://github.com/EmpoweredHouse/eh-os-contract/pull/32); merge — użytkownika. Opis zakresu: „Po E8 — kolejność
   zmieniona”, akapit „Grafy — wszystkie cztery”; decyzje przed budową — „Przed EG — decyzje użytkownika” (trzy części: EG1 poziom kontraktu,
   EG2 poziom domeny, EG3 ekran grafu pod CSP).
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
@@ -90,6 +90,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 28 września, na głowie `dsl-v2/eg-graphs`** (`8e0a745`, mapa i jednostki na `/graph`): brama →
+  **EXIT=0** — sandbox 54, `check` 0 / 12 / 19; silnik 1219, `check` 0 / 65 / 21; web 45; auth 51.
 - **Lokalnie, 28 września, na głowie `dsl-v2/eg-graphs` po przeglądzie EG3** (`2bd8316`): brama z `sandbox/` →
   **EXIT=0** — sandbox 54 testy, `check` 0 / 12 / 19; silnik 1219, `check` 0 / 65 / 21; web 43; auth 51.
 - **Lokalnie, 28 września, na głowie `dsl-v2/eg-graphs` po przeglądzie EG2** (`207b0ea`): brama z `sandbox/` →
@@ -1255,6 +1257,13 @@ rozstrzygał. Wszystkie cztery odpowiedzi to propozycje asystenta:
 procesu — każdą jednostkę kontraktu wybranego procesu v2. Mapa i jednostka zostają też na stronach i w tasku.
 Poprzednia decyzja („na `/graph` tylko nakładki”) przegrała z tym, że ekran jest miejscem, w którym ludzie oglądają
 model; cztery pytania z `CLAUDE.md` dalej odpowiadają nakładki, a mapa i jednostka są opisem obok nich.
+Zrobione w `e6b915a`; przegląd (dwa równolegle) znalazł, że bloki diagramów nie miały `phx-update="ignore"`, więc
+każda łatka LiveView wyjmowała narysowane SVG ze wszystkich bloków — zmiana procesu opróżniała też mapę i system,
+które się nie zmieniły (zmierzone w przeglądarce przed i po; `453cc0c`, test na atrybut). Poza tym `@units` zamiast
+`assigns[:units] || []`, test domeny bez kontraktów v2, jedno grupowanie po domenie, moduledoc, README i notka z
+datą w `technology-notes.md` przy „navigation is per-process” (`8e0a745`). Pominięte: dwie domeny o jednym `name:`
+dałyby zdublowane identyfikatory bloków — nazwa domeny jest prefiksem uprawnień EHOS-a, więc to sprawa rejestru.
+Web 43 → 45 testów.
 
 Rozstrzygnięte przez asystenta (mechanika): nowe grafy są tylko dla v2, grafy v1 w tasku i na ekranie zostają bez
 zmiany bajtu do wycięcia v1; kształt węzłów i kolory Event Stormingu jak w dzisiejszym grafie kroków.
