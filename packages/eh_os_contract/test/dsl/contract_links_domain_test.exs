@@ -31,6 +31,7 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
         end
 
         value :contact_ref, :contact
+        value :clinic_ids, {:list, :id}
         external :payer_registry, "Rejestr płatnika", direction: :outbound
 
         entity :clinic, "Przychodnia", context: :settlement, identified_by: :clinic_id do
@@ -387,8 +388,16 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
              ) =~
                "it is the query's scope, whose value is written with every authorization decision"
 
+      # Since E9c the same scope is also refused for being made of fields (D10).
+      assert_linked(
+        violations,
+        "D10: query :payments_in_clinic is scoped by :clinic_id, a :contact made of fields",
+        "links_personal_values.ex",
+        38
+      )
+
       # :amount is of :money, which holds nothing personal: the control.
-      assert length(violations) == 4
+      assert length(violations) == 5
     end
   end
 
@@ -495,6 +504,84 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
 
       # :reception carries it, which is the control.
       assert length(violations) == 1
+    end
+  end
+
+  describe "D10: an actor issuing a scoped command carries its scope" do
+    test "an actor without the scope dimension" do
+      body =
+        @body
+        |> String.replace(
+          "rejects: :paid_once do\n      field :amount, :money",
+          "rejects: :paid_once, scope: :clinic_id do\n      field :clinic_id, :id\n      field :amount, :money"
+        )
+        |> String.replace(
+          ~s|%{amount: 100, patient_id: "p-1"}|,
+          ~s|%{amount: 100, patient_id: "p-1", clinic_id: "c-1"}|
+        )
+
+      violations = links("LinksCommandScope", body)
+
+      assert assert_linked(violations, "D10:", "links_command_scope.ex", 9) =~
+               "command :record_payment is scoped by :clinic_id, and actor :cashier of " <>
+                 "#{inspect(@domain)} does not carry it"
+
+      # :reception carries it, which is the control.
+      assert length(violations) == 1
+    end
+
+    test "a scope typed by a value made of fields" do
+      command = """
+          command :contact_patient, "Kontakt", by: :reception, emits: :payment_recorded,
+            scope: :contact do
+            field :contact, :contact
+          end
+
+          command :record_payment,\
+      """
+
+      body = String.replace(@body, "    command :record_payment,", command, global: false)
+      assert body != @body
+
+      violations = links("LinksCompositeScope", body)
+
+      assert Enum.any?(violations, fn %{message: message} ->
+               message =~
+                 "D10: command :contact_patient is scoped by :contact, a :contact made of fields; " <>
+                   "a scope is one value"
+             end),
+             inspect(violations)
+    end
+
+    test "a scope typed by an alias of a value made of fields, or of a list" do
+      command = """
+          command :contact_patient, "Kontakt", by: :reception, emits: :payment_recorded,
+            scope: :contact do
+            field :contact, :contact_ref
+          end
+
+          command :move_patient, "Przeniesienie", by: :reception, emits: :payment_recorded,
+            scope: :clinics do
+            field :clinics, :clinic_ids
+          end
+
+          command :record_payment,\\
+      """
+
+      body = String.replace(@body, "    command :record_payment,", command, global: false)
+      messages = Enum.map(links("LinksAliasScope", body), & &1.message)
+
+      assert Enum.any?(
+               messages,
+               &(&1 =~
+                   "command :contact_patient is scoped by :contact, a :contact_ref made of fields")
+             )
+
+      assert Enum.any?(
+               messages,
+               &(&1 =~
+                   "command :move_patient is scoped by :clinics, a :clinic_ids which is a list")
+             )
     end
   end
 

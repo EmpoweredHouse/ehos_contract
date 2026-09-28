@@ -138,7 +138,9 @@ defmodule EhOsContract.Model do
 
         commands =
           for c <- model.commands,
-              do: {role.(c.name), %{kind: :command, name: c.name, by: c.by, scope: nil}}
+              do:
+                {role.(c.name),
+                 %{kind: :command, name: c.name, by: c.by, scope: Map.get(c, :scope)}}
 
         queries =
           for q <- model.queries,

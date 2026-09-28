@@ -15,7 +15,7 @@ dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa p
 domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E8, EA, EM, EL i EG są w
 `main`** (PR #1–#32), **E9a też** (#33). Teraz **E9** — kontrakty sandboxa od nowa z materiału — w trzech częściach
 (decyzje: „Przed E9 — decyzje użytkownika”), potem E10–E12. Po E9b Rehmed ma pięć kontraktów v2 (Scheduling,
-ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); v1 został tylko TaxVision (do E9c).
+ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); po E9c-1 w sandboxie nie ma kontraktu v1.
 
 ### Stan repozytorium
 
@@ -24,8 +24,9 @@ ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); v1 zosta
   zmergowana. Opisy EG: „Przed EG — decyzje użytkownika” … „EG3 — co wyszło”.
 - **E9a w `main`** — PR [#33](https://github.com/EmpoweredHouse/eh-os-contract/pull/33) zmergowany 28 września
   (`451d068`). **E9b** na `dsl-v2/e9-payer`, od `main` = `06c6e11` (po rebase od `451d068`) — w budowie („Przed E9b — decyzja
-  użytkownika”, „E9b — co wyszło”): zbudowane i przejrzane („Przegląd E9b”), niewypchnięte. Potem **E9c**
-  (`dsl-v2/e9-taxvision`, od E9b).
+  użytkownika”, „E9b — co wyszło”): zbudowane i przejrzane („Przegląd E9b”), niewypchnięte. **E9c-1** na
+  `dsl-v2/e9-taxvision`, od E9b — zbudowane i przejrzane („Przed E9c — decyzje użytkownika”, „E9c-1 — co
+  wyszło”, „Przegląd E9c-1”), potem E9c-2.
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
@@ -101,6 +102,8 @@ Grafy: `mix eh_os_contract.graph --map <domena> | --system <domena> [--overlay] 
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 28 września, na `7c67982`** (E9c-1 po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 120
+  testów, `check` 0 / 26 / 9; silnik 1245, `check` 0 / 67 / 21; web 45; auth 51.
 - **Lokalnie, 28 września, na `cc07431`** (E9b po dwóch rundach przeglądu): brama z `sandbox/` → **EXIT=0** — sandbox 99
   testów, `check` 0 / 24 / 8; silnik 1222, `check` 0 / 65 / 21; web 45; auth 51. W przeglądarce: `/graph` z procesem
   `payer_settlement` i mapą z płatnikami.
@@ -1770,6 +1773,138 @@ W przeglądarce (baza dev, preview `eh_os_contract_host`): mapa kontekstów z p�
 - **Oznaczenia nie da się cofnąć, a miesiąc z samymi wykluczeniami się nie kończy** (drugi przegląd): pomyłkowo
   oznaczona wizyta trafi na fakturę, a okres bez oznaczonej wizyty nie ma faktury ani innego zakończenia (v1 miał
   „zamknięto okres bez faktury”). Obie to następne komendy, nie nowy rodzaj — zapisane w moduledocu.
+
+### Przed E9c — decyzje użytkownika (28 września)
+
+Zapisy rozstrzygały konteksty (`03-ddd-architecture.md` §3–4: Registry Watch, Accounting Month, Work Orchestration,
+Notifications), kolejność polityk (§5: cron → sprawdzenie rejestrów → otwarcie miesiąca → taski → powiadomienia; §5 i
+§4.5 wygrywają z diagramem §3.1 z `02`, na którym taski stoją przed otwarciem) i nazwy zdarzeń (`02` §3.1, §10). Nie
+rozstrzygały trzech rzeczy; asystent zapytał na przykładzie firmy c-1 i sierpnia:
+
+- **Kto otwiera miesiąc: księgowa ręcznie** (`open_month` ze `scope: :company_id`, obok polityki z materiału, która
+  otwiera miesiąc po zgodnej weryfikacji). Wybór użytkownika wbrew propozycji asystenta. *Odrzucone:* `scope` na
+  „Ponów weryfikację” i otwarcie wyłącznie polityką, jak w materiale (propozycja asystenta). Skutek w mechanice
+  (asystenta): ręczne otwarcie ma sprawdzić zgodność rejestrów, a agregat nie widzi faktów Registry Watch — więc
+  miesiąc jest boundary `[company_id, period_id]` konsultującym wynik weryfikacji; v2 §2 wymienia „opening a month by
+  hand” jako przypadek DCB.
+- **Identyfikator okresu to nazwa „2026-07”**, pilnowana inwariantem wartości w domenie (propozycja asystenta,
+  wybrana). Timer kalendarzowy P1 wylicza następny okres sam, bez bazy; tabela okresów zostaje źródłem dat; zamyka też
+  ustalenie z E9b (zły format okresu tworzy boundary, którego nikt nie zafakturuje). *Odrzucone:* UUID jak dotąd
+  (timer musiałby pytać bazę, więc comiesięczne sprawdzenie zlecałby harmonogram hosta, a timer kalendarzowy
+  zostałby bez przykładu z materiału). Skutek w mechanice: wartość o bazie `:id` musi być tagiem, żeby boundary
+  dopasował zdarzenia po okresie — zmiana w silniku.
+- **Dwie części** (propozycja asystenta, wybrana): **E9c-1** — domena, Registry Watch, otwarcie miesiąca, `scope`
+  komend, wejście HTTP, `identity_seam_test` i `periods_test` od nowa, koniec kontraktów v1; **E9c-2** — Work
+  Orchestration, Notifications, parowanie jako `domain_service`, `publish` do Shugyo, numer KSeF z `issued_by`. Każda
+  część osobnym PR-em z przeglądem. *Odrzucone:* jeden PR (diff około dwa razy większy niż E9a).
+
+### E9c-1 — co wyszło (28 września)
+
+Na `dsl-v2/e9-taxvision` (od E9b = `11084e0`), niewypchnięte. Trzy commity budowy po zapisie decyzji (`c7012a1`):
+wartość o bazie `:id` jako identyfikator w silniku (`f2e385d`), `scope` komend w silniku (`1c6228f`), TaxVision od nowa
+i koniec v1 w sandboxie (`a0e6faa`). Brama zielona na każdym commicie. Sandbox 99 → **111** testów, silnik 1222 →
+**1239**; `check` sandboxa 0 / 24 / 8 → **0 / 25 / 9**, silnika 0 / 65 / 21 → **0 / 67 / 21** (dwie linie nowej
+fikstury `DispatchRig.Transfer`).
+
+**Co jest.**
+- **Silnik, `scope` komend** (D10 dla komend, pytanie z v2 §19 zamknięte): `command …, by:, scope: :pole` — pole
+  komendy (tożsamość jednostki albo zadeklarowane, wymagane), komenda ma `by:`, każdy aktor z `by:` niesie wymiar,
+  pole nie jest osobowe (F7); dispatch i `EhOsContract.Plug` pytają `Authorizer` z wartością pola;
+  `Model.capabilities/1` daje uprawnieniu `scope:`. Linia w CHANGELOG pod „a host has to act”.
+- **Silnik, wartość o bazie `:id`**: pole typu `value :period, :id` jest tagiem i dla X6 tym samym typem co `:id`;
+  `Key.tag_field?/2` bierze wartości domeny. Tożsamość jednostki zostaje zwykłym `:id`, więc inwariant pilnuje pól
+  typowanych wartością (np. okresu w komendach Registry Watch), a nie tożsamości.
+- **`Taxvision.Domain`**: Registry Watch (supporting) → miesiąc (core), księgowa ze `scope: [:company_id]`,
+  integracja rejestrów, `value :period` z inwariantem RRRR-MM, `value :registry_difference`.
+- **`Taxvision.Contracts.RegistryWatch`**: profil firmy, sprawdzenie (komplet danych), efekt pytający rejestry poza
+  transakcją i nagrywający odpowiedź jako integracja, polityka porównania, process manager P1 z timerem
+  kalendarzowym (miesiąc po zapisanym sprawdzeniu sprawdza następny okres, wyliczony z nazwy).
+- **`Taxvision.Contracts.AccountingMonth`**: boundary `[company_id, period_id]` konsultujący werdykty Registry
+  Watch; otwiera polityka (§5) albo księgowa tej firmy (`scope`), tylko po zgodnym ostatnim sprawdzeniu i raz;
+  obietnica v1 (dwa dni albo rozjazd) jako `promise` z `or_else`.
+- **Koniec v1 w sandboxie**: kontrakt v1, trzy handlery, `Taxvision.Api`, `Authorization`, `Identity` (token HMAC
+  TaxVision), `RegistryCheck`, test przykładów v1. Wejście: `EhOsContract.Plug` pod `/api/taxvision` za credentialem
+  EHOS-a. `identity_seam_test` od nowa (401, brak uprawnienia, poza firmą; D-34 dla obu kontraktów),
+  `periods_test` od nowa (nazwa, następny okres, daty wiersza), test przebiegu (otwarcie sierpnia, blokada c-2 po
+  wykreśleniu z VAT i odmowa ręcznego otwarcia, wrzesień sprawdzony przez timer miesiąc później, odmowa „2026-8”).
+
+**Ustalenia o bibliotece:**
+1. **Inwariant wartości nie sięga tożsamości.** Tożsamość jest wstrzykiwana jako `:id`, więc `open_month` dla
+   „2026-7” przechodzi walidację i zostaje odrzucony dopiero niezmiennikiem miesiąca (brak zgodnego sprawdzenia).
+   Bezpiecznie, ale format pilnuje tylko komend, które niosą okres jako pole. Do rozważenia: tożsamość typowana
+   wartością.
+2. **Agregat nie widzi faktów innego kontekstu — drugi raz** (po E9b): ręczne otwarcie miesiąca musiało być boundary.
+   Ten sam kształt, co przy płatniku: kontekst, który decyduje na cudzym fakcie, to DCB albo pole od wołającego.
+3. **Process manager bez `ends_on`** (`process-manager-without-ends-on`) jest tu prawdziwy: comiesięczne
+   sprawdzenie trwa, póki firma jest klientem, a koniec współpracy nie jest w E9.
+
+**Ustalenia o materiale:**
+- **Kolejność §3.1 (`02`) i §5 (`03`) się różni** — taski przed otwarciem albo po nim; poszło za `03`.
+- **Dane „w Abilii”, z którymi porównuje się rejestry, są w profilu firmy z onboardingu** (§4.1), którego E9 nie
+  pisze; ukończenie profilu jest tu nagrane jako nasze.
+- **Relacja Registry Watch → miesiąc jest na mapie bez typu** (strzałka z nazwami zdarzeń) — zapisana jako
+  customer–supplier.
+- `deadline {25, :day}` z v1 zdjęty: bez zdarzenia końcowego nie ma czego mierzyć, a 25. nikt z TaxVision nie podał.
+
+W przeglądarce (baza dev, preview `eh_os_contract_host`): mapa kontekstów TaxVision, siedem diagramów na `/graph`,
+proces `client` i boundary miesiąca, żadna etykieta nie wystaje.
+
+**Przegląd E9c-1** (dwa równolegle na `11084e0..d44ff08`, potem po dwa na każdej rundzie poprawek). Sandbox 111 →
+**120** testów, silnik 1239 → **1245**; `check` sandboxa 0 / 25 / 9 → **0 / 26 / 9** (`registry_check_logged` bez czytelnika, odkąd
+pętla czyta potwierdzenie — czytelnikiem byłby read model „ostatnie sprawdzenie”, którego E9 nie pisze).
+
+*Poprawione przez asystenta, z testem i próbą odwrotną:*
+- **`scope` musi być jedną wartością i nie generowaną tożsamością** (`d4b369c`, aliasy w `e3f9c51`): lista
+  `["b", "-7"]` przechodziła nadanie „b-7”, wartość złożona kończyła się 500, a `scope` na tożsamości generowanej przy
+  `creates:` był `nil` dla każdego credentialu. Druga runda: alias wartości (`value :codes, {:list, :id}`, `value
+  :home, :contact`) omijał obie reguły — L3 idzie teraz po aliasach.
+- **X6 rozróżnia dwie różne wartości o bazie `:id`** (`042453a`): `:period` i numer faktury przechodziły jako ten sam
+  typ; teraz równe są tylko te same typy albo wartość `:id` wobec zwykłego `:id`. Poprawiony też opis `Key`.
+- **Źle wpisana wartość pola `scope` to brak wartości** (`297b1a9`): wyjątek w koderze zamiast odmowy, w komendach i —
+  od E4 — w query. Skutek zamierzony: posiadacz nadania, który wyśle `company_id: 7`, dostaje 403 `outside_scope`, nie
+  422 — kolejność „czy wolno, potem co jest nie tak” zostaje.
+- **Pętla P1** (`644fd10`, potem `feb1953`): pięć minut awarii rejestrów 1. dnia zatrzymywało sprawdzanie na zawsze,
+  ponowienie starszego miesiąca cofało pętlę, a ponowienie 5. dnia przesuwało wszystkie następne na 5. Pierwsza
+  poprawka (najpóźniejszy okres, `at:` z nazwy) oddała sterowanie wpisowi księgowej: „2062-08” blokował pętlę do 2062,
+  a pierwsze sprawdzenie marca we wrześniu odpalało miesiąc po miesiącu zaległe sprawdzenia. Teraz przebieg rusza na
+  potwierdzeniu i ustawia następne na 1. dzień kolejnego miesiąca **od czasu potwierdzenia**, sprawdzając miesiąc,
+  który się wtedy skończył; okres z komendy nie gra roli. Trzecia runda (`b022078`): liczenie „od teraz” gubiło
+  miesiące — spóźniony timer (2 listopada) pomijał październik, ponowienie tuż po terminie, a przed zadaniem,
+  przestawiało należny timer, a zegar innego węzła cofał termin. Teraz przebieg trzyma datę należnego sprawdzenia:
+  pierwsze potwierdzenie ustawia 1. dzień następnego miesiąca, sprawdzenie miesiąca, którego ta data dotyczy,
+  przesuwa ją o miesiąc **od niej samej**, a inne ponowienie jej nie rusza; spóźniony timer nadrabia tylko to, co
+  przegapił. Do tego nowy niezmiennik: **sprawdza się tylko miesiąc zakończony do czasu komendy** (rozliczenie
+  miesiąc w tył, WF 00:34:40) — „2062-08” jest odrzucany, zanim zapyta rejestry, więc nie otwiera miesiąca 2062-08.
+  Czwarta runda (`7c67982`, jeden przegląd łączony): niezmiennik obejmował też sprawdzenie z timera, którego komendę
+  stempluje zegar węzła, więc sekunda rozbieżności o północy odrzucała je i pętla stawała bez śladu; dotyczy teraz
+  tylko ponowienia przez księgową. Pierwsze sprawdzenie nie nadrabia miesięcy sprzed siebie — celowo, po rundzie
+  drugiej.
+- **Resztki v1** (`bed5a87`, `533a9a3`): `Taxvision.Tasks` i `Notifications` bez handlerów, z UUID okresu; komentarz
+  `setup` testu szwu; notka v1 w `Taxvision.Periods` na górze.
+
+*Pominięte, jako ustalenia:*
+- **Czy dane JDG w logu są osobowe** — forma prawna, status VAT i VIES oraz różnice dotyczą przy jednoosobowej
+  działalności osoby fizycznej; v1 trzymał różnicę jako skrót (`retain: :hash`). Zostają jawne — decyzja niżej.
+- **Brak limitu ponowień** — każde ponowienie pyta rejestry; limit jest sprawą hosta albo adaptera.
+- **Aktor ze `scope` wydający komendę bez `scope`** — nic tego nie wyłapuje; kandydat na regułę L5 (E10).
+- **Rejestry pytane `company_id`, nie NIP-em** — odziedziczone z v1; prawdziwy adapter potrzebuje NIP-u z profilu.
+- **Jeden łańcuch timerów na firmę**: zadanie timera odrzucone po trzech porażkach albo zgubione przy `reconcile!`
+  zatrzymuje pętlę do ponowienia przez księgową, a ponowienie późniejszego miesiąca przy zaległym timerze sprawdza ten
+  miesiąc dwa razy — mechanika silnika (`TimerJob`), poza E9.
+- **Ponowienie 1. dnia między 00:00 a 02:00 czasu polskiego jest odrzucane** (koniec miesiąca liczony w UTC) —
+  odrzuca za dużo, nigdy za mało; ta sama granica co dzień R-07.
+- **Północ w Warszawie to 22:00–23:00 UTC**: sprawdzenie tuż po niej ustawia termin za godzinę–dwie na ten sam
+  miesiąc; sandbox nie ma bazy stref czasowych, jak przy dniu R-07.
+- **Duplikacja** (`scope` komend i query w dispatchu i w D10; `one_value/2` obok `Key.base_type/2`) — do
+  ujednolicenia przy E11. Scenariusze procesu managera zależą od epoki scenariuszy (styczeń 2026), co mówi komentarz.
+
+### Po przeglądzie E9c-1 — decyzje użytkownika (28 września)
+
+Asystent zapytał o dwie rzeczy, które przegląd zostawił użytkownikowi; odpowiedź: „zostaw jak jest”.
+- **Dane JDG w logu zostają jawne** (forma prawna, status VAT i VIES, różnice). *Odrzucone:* pola osobowe szyfrowane
+  pod firmą jako podmiotem (crypto-shredding po końcu współpracy); skrót różnicy jak `retain: :hash` w v1.
+- **Indeks `(type)` zostaje** (ustalenie 1 z E9b: bez statystyk planner czytał nim historię typu). *Odrzucone:*
+  skasowanie indeksu (migracja po stronie hosta); zakres wymuszony w kształcie zapytania sprawdzenia konfliktu.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 

@@ -24,7 +24,8 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
     type that holds personal data; a copy on a broker cannot be erased.
   - **D10.** Every actor in a scoped query's `by:` carries the query's `scope` as a
     scope dimension, `actor :reception, :human, "…", scope: [:clinic_id]`, since a
-    grant to that actor carries the values the answer is narrowed to.
+    grant to that actor carries the values the answer is narrowed to. The same for a
+    scoped command's `by:` (plan E9c): the grant carries what it may be issued for.
   - **D11.** A `publish` is named under the application's namespace, the domain's
     `name:`: `"rehmed.visit.closed.v1"` in the domain `:rehmed`.
   """
@@ -262,16 +263,65 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
   defp scopes(%{declarations: d, domain: domain}) do
     known = Map.new(domain.actors, &{&1.name, &1})
 
-    for query <- d.queries,
-        query.scope != nil,
-        name <- query.by,
-        {:ok, actor} <- [Map.fetch(known, name)],
-        query.scope not in actor.scope do
-      {"D10: query #{inspect(query.name)} is scoped by #{inspect(query.scope)}, and actor " <>
-         "#{inspect(name)} of #{inspect(domain.module)} does not carry it, so no grant to it " <>
-         "could say which rows it may read; declare it with scope: [#{inspect(query.scope)}]",
-       Links.at(query)}
+    queries =
+      for query <- d.queries,
+          query.scope != nil,
+          name <- query.by,
+          {:ok, actor} <- [Map.fetch(known, name)],
+          query.scope not in actor.scope do
+        {"D10: query #{inspect(query.name)} is scoped by #{inspect(query.scope)}, and actor " <>
+           "#{inspect(name)} of #{inspect(domain.module)} does not carry it, so no grant to it " <>
+           "could say which rows it may read; declare it with scope: [#{inspect(query.scope)}]",
+         Links.at(query)}
+      end
+
+    commands =
+      for command <- Rules.commands(d),
+          command.scope != nil,
+          name <- command.by,
+          {:ok, actor} <- [Map.fetch(known, name)],
+          command.scope not in actor.scope do
+        {"D10: command #{inspect(command.name)} is scoped by #{inspect(command.scope)}, and " <>
+           "actor #{inspect(name)} of #{inspect(domain.module)} does not carry it, so no grant " <>
+           "to it could say what it may be issued for; declare it with " <>
+           "scope: [#{inspect(command.scope)}]", Links.at(command)}
+      end
+
+    # A scope is one value compared with a grant as a string, so a value made of
+    # fields cannot be one (plan E9c): it would reach the check as a map.
+    values = Map.new(domain.values, &{&1.name, &1})
+
+    # Followed through aliases, `value :home, :contact` or `value :codes, {:list, :id}`,
+    # which L2 cannot see without the domain.
+    composite =
+      for {kind, name, scope, fields} <- scoped_fields(d),
+          field = Enum.find(fields, &(&1.name == scope)),
+          field != nil,
+          shape = one_value(field.type, values),
+          shape != :one do
+        {"D10: #{kind} #{inspect(name)} is scoped by #{inspect(scope)}, a #{inspect(field.type)} " <>
+           "#{shape}; a scope is one value", Links.at(field)}
+      end
+
+    queries ++ commands ++ composite
+  end
+
+  # Whether a domain value comes down to one value, followed through the values it
+  # names; a literal list is L2's to refuse.
+  defp one_value(type, values) when is_atom(type) do
+    case Map.get(values, type) do
+      %{type: nil} -> "made of fields"
+      %{type: {:list, _}} -> "which is a list"
+      %{type: next} when is_atom(next) -> one_value(next, Map.delete(values, type))
+      _built_in_or_undeclared -> :one
     end
+  end
+
+  defp one_value(_type, _values), do: :one
+
+  defp scoped_fields(d) do
+    for(q <- d.queries, q.scope != nil, do: {"query", q.name, q.scope, q.params}) ++
+      for c <- Rules.commands(d), c.scope != nil, do: {"command", c.name, c.scope, c.fields}
   end
 
   defp namespaces(%{declarations: d, domain: domain}) do

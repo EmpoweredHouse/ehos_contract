@@ -124,7 +124,8 @@ defmodule EhOsContract.Dispatcher do
     ctx = context(opts)
     values = Codec.values(model.domain)
 
-    with :ok <- permit(model, declaration, ctx.actor),
+    with :ok <-
+           permit(model, declaration, ctx.actor, command_scope(declaration, command, values)),
          :ok <- valid(declaration.fields, command, values, model.domain),
          {:ok, command} <- generate_identity(model, declaration, command, ctx) do
       job = %{
@@ -268,8 +269,15 @@ defmodule EhOsContract.Dispatcher do
   @doc false
   @spec permit_undecoded(Model.t(), :command | :record | :query, map(), Actor.t(), map()) ::
           :ok | {:error, Authorizer.reason()}
-  def permit_undecoded(model, :command, declaration, actor, _input),
-    do: permit(model, declaration, actor)
+  def permit_undecoded(model, :command, declaration, actor, input) do
+    scope =
+      case Map.get(declaration, :scope) do
+        nil -> nil
+        dimension -> scope_request(dimension, sent(input, dimension))
+      end
+
+    permit(model, declaration, actor, scope)
+  end
 
   def permit_undecoded(model, :record, declaration, actor, _input),
     do: permit_record(model, declaration, actor)
@@ -278,34 +286,48 @@ defmodule EhOsContract.Dispatcher do
     do: permit_query(model, declaration, actor, nil)
 
   def permit_undecoded(model, :query, declaration, actor, input) do
-    value =
-      case Map.get(input, Atom.to_string(declaration.scope)) do
-        value when is_binary(value) -> value
-        _missing_or_not_a_string -> nil
-      end
-
-    permit_query(model, declaration, actor, scope_request(declaration.scope, value))
+    permit_query(
+      model,
+      declaration,
+      actor,
+      scope_request(declaration.scope, sent(input, declaration.scope))
+    )
   end
 
-  defp permit(model, declaration, %Actor{kind: :credential} = actor) do
+  # A scope value as the request sent it, when it is a string.
+  defp sent(input, dimension) do
+    case Map.get(input, Atom.to_string(dimension)) do
+      value when is_binary(value) -> value
+      _missing_or_not_a_string -> nil
+    end
+  end
+
+  defp permit(model, declaration, actor), do: permit(model, declaration, actor, nil)
+
+  # A credential is asked for the command's capability, and for a scoped command with
+  # the value of its scope field (plan E9c), as a scoped query is (D10).
+  defp permit(model, declaration, %Actor{kind: :credential} = actor, scope) do
     ask(actor, %Authorizer.Request{
       kind: :command,
       capability: capability(model, :command, declaration.name),
       contract: model.module,
-      version: model.version
+      version: model.version,
+      scope: scope && {scope.dimension, scope.value}
     })
   end
 
-  defp permit(model, declaration, %Actor{kind: :system, name: name}),
+  defp permit(model, declaration, actor, _scope), do: permit_code(model, declaration, actor)
+
+  defp permit_code(model, declaration, %Actor{kind: :system, name: name}),
     do: named(model, declaration.by, name)
 
-  defp permit(model, declaration, %Actor{kind: :reaction, name: {:policy, name}}) do
+  defp permit_code(model, declaration, %Actor{kind: :reaction, name: {:policy, name}}) do
     policy = Enum.find(model.policies, &(&1.name == name))
     if policy && declaration.name in policy.issues, do: :ok, else: {:error, :not_declared}
   end
 
   # A process manager issues what its reactions and its timers name.
-  defp permit(model, declaration, %Actor{kind: :reaction, name: {:pm, name}}) do
+  defp permit_code(model, declaration, %Actor{kind: :reaction, name: {:pm, name}}) do
     case Enum.find(model.process_managers, &(&1.name == name)) do
       nil ->
         {:error, :not_declared}
@@ -316,7 +338,7 @@ defmodule EhOsContract.Dispatcher do
     end
   end
 
-  defp permit(_model, _declaration, actor) do
+  defp permit_code(_model, _declaration, actor) do
     raise ArgumentError,
           "dispatch takes `actor:`, an EhOsContract.Actor — a credential's or a :system actor " <>
             "of the domain — and got #{inspect(actor)}"
@@ -355,13 +377,38 @@ defmodule EhOsContract.Dispatcher do
 
   defp permit_query(model, declaration, actor, _scope), do: permit(model, declaration, actor)
 
+  # A scoped command's dimension, and the value it carries, as a scoped query's. It is
+  # asked before the fields are checked, so a value that does not fit its type is no
+  # value, refused as one, rather than an exception in the encoder.
+  defp command_scope(declaration, command, values) do
+    case Map.get(declaration, :scope) do
+      nil ->
+        nil
+
+      dimension ->
+        field = Enum.find(declaration.fields, &(&1.name == dimension))
+        value = Map.get(command, dimension)
+
+        encoded =
+          if Codec.problems([field], command, values) == [],
+            do: scoped(field.type, value, values)
+
+        scope_request(dimension, encoded)
+    end
+  end
+
   # A scoped query's dimension, and the value asked for, in the form a credential's
   # `scp` carries: a string, or nil when the parameter is missing.
   defp scope(%{scope: nil}, _params, _values), do: nil
 
+  # As a command's (plan E9c review): a value that does not fit is no value.
   defp scope(declaration, params, values) do
     param = Enum.find(declaration.params, &(&1.name == declaration.scope))
-    value = scoped(param.type, Map.get(params, declaration.scope), values)
+
+    value =
+      if Codec.problems([param], params, values) == [],
+        do: scoped(param.type, Map.get(params, declaration.scope), values)
+
     declaration.scope |> scope_request(value) |> Map.put(:type, param.type)
   end
 
@@ -878,7 +925,7 @@ defmodule EhOsContract.Dispatcher do
       type: declaration.type,
       contract: inspect(model.module),
       contract_version: model.version,
-      tags: tags(declaration, event),
+      tags: tags(declaration, event, values),
       process: model.process && Atom.to_string(model.process.name),
       instance_id: instance(model, event),
       # The runs of the processes that include it (D7), written with it.
@@ -906,9 +953,9 @@ defmodule EhOsContract.Dispatcher do
   # them, since that is what a consistency boundary may match on (A4, X6). Tagging
   # only the fields some boundary matches today would leave the events appended
   # before a new boundary untagged, and it would never see them.
-  defp tags(declaration, event) do
+  defp tags(declaration, event, values) do
     for field <- declaration.fields,
-        Key.tag_field?(field),
+        Key.tag_field?(field, values),
         do: Key.tag(field.name, Map.fetch!(event, field.name))
   end
 

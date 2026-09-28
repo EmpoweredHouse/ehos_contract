@@ -32,13 +32,43 @@ defmodule EhOsContract.Key do
   non-personal field of the built-in type `:id` (v2 §10.4). A unit's identity is
   injected as such fields, so it is always among them. A consistency boundary finds
   what it consults by these tags, so its `match:` names only such fields (A4, X6);
-  the rule and the append read this one predicate, so they cannot disagree.
+  the rule and the append read this one predicate. Since E9c the append also counts
+  a field typed by a domain value of `:id`, which A4, at compile time and without
+  the domain, cannot see: it refuses a local `match:` on one, conservatively.
   """
-  @spec tag_field?(map()) :: boolean()
-  def tag_field?(%{type: :id, optional: false, personal: nil}), do: true
+  #
+  # With the domain's `values` (`EhOsContract.Codec.values/1`), a field typed by a
+  # value whose base type is `:id` is one too: "2026-07" is a period's identifier
+  # with an invariant of its own, and still an identifier (plan E9c). Without them,
+  # at compile time where a contract has no domain, only the built-in type counts.
+  @spec tag_field?(map(), map()) :: boolean()
+  def tag_field?(field, values \\ %{})
+  def tag_field?(%{type: :id, optional: false, personal: nil}, _values), do: true
   # An entity's identifier as declared, before the model makes it an `:id` (plan EM2).
-  def tag_field?(%{type: {:id, _entity}, optional: false, personal: nil}), do: true
-  def tag_field?(_field), do: false
+  def tag_field?(%{type: {:id, _entity}, optional: false, personal: nil}, _values), do: true
+
+  def tag_field?(%{type: type, optional: false, personal: nil}, values) when is_atom(type),
+    do: base_type(type, values) == :id
+
+  def tag_field?(_field, _values), do: false
+
+  @doc """
+  The built-in type a field's type comes down to: a domain value's type followed to
+  the built-in one it rests on, `value :fee, :amount` to `:amount`'s. A value made of
+  fields, or a name the domain does not declare, comes down to itself.
+  """
+  @spec base_type(term(), map()) :: term()
+  def base_type(type, values) when is_atom(type) do
+    case values do
+      %{^type => %{type: base}} when is_atom(base) and base != nil and base != type ->
+        base_type(base, Map.delete(values, type))
+
+      _ ->
+        type
+    end
+  end
+
+  def base_type(type, _values), do: type
 
   @doc "One value, with `%` and `|` percent-escaped."
   @spec escape(term()) :: String.t()

@@ -21,8 +21,8 @@ defmodule EhOsContract.Next.Contract.Rules.Fields do
     declaring one of those fields there again is an error.
   - **F7.** A field whose value the library keeps outside the log is not personal,
     since erasure reaches only what the log encrypts (v2 §14): a process manager's
-    state, stored in `eh_os_contract_process_managers`, and a query's `scope`
-    parameter, whose value goes into every authorization decision. A parameter
+    state, stored in `eh_os_contract_process_managers`, and a query's or a command's
+    `scope` field, whose value goes into every authorization decision. A parameter
     takes no `personal:` at all, so here F7 refuses only a manager's state; a
     domain value holding personal data in either place is the domain's to see (L3).
   """
@@ -90,7 +90,19 @@ defmodule EhOsContract.Next.Contract.Rules.Fields do
          "it is the query's scope, whose value is written with every authorization decision"}
       end
 
-    managers ++ scopes
+    # A command's scope field, the same way (plan E9c). Its identity fields are
+    # injected non-personal, so only a declared field can be one.
+    commands =
+      for u <- d.units,
+          c <- u.commands,
+          c.scope != nil,
+          f <- c.fields,
+          f.name == c.scope do
+        {"command #{inspect(c.name)}, field #{inspect(f.name)}", f,
+         "it is the command's scope, whose value is written with every authorization decision"}
+      end
+
+    managers ++ scopes ++ commands
   end
 
   defp outside_the_log(d) do

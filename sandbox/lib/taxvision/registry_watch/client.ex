@@ -1,0 +1,79 @@
+defmodule Taxvision.RegistryWatch.Client do
+  @moduledoc """
+  Decides for one company (`Company / Client`, 02 §12): the registries are checked
+  only once the profile is complete, for the accountant only a month that has ended
+  by the command's time, and their answer is held against the profile —
+  legal form and VAT status, the fields the check compares (WF 00:35:41).
+  """
+
+  use Taxvision.Contracts.RegistryWatch, aggregate: :client
+
+  # The fields the workshop compares, in the order a diff reads them.
+  @compared [:legal_form, :vat_status]
+
+  @impl true
+  def complete_company_profile(%CompleteCompanyProfile{} = profile, _state) do
+    %CompleteCompanyProfile{company_id: id, legal_form: form, vat_status: vat} = profile
+    emit(%CompanyProfileCompleted{company_id: id, legal_form: form, vat_status: vat})
+  end
+
+  @impl true
+  def check_registries(%CheckRegistries{company_id: id, period_id: p}, state),
+    do: confirm(id, p, state, nil)
+
+  @impl true
+  def retrigger_verification(
+        %RetriggerVerification{company_id: id, period_id: p, __meta__: m},
+        state
+      ),
+      do: confirm(id, p, state, m)
+
+  @impl true
+  def log_registry_check(%LogRegistryCheck{company_id: id, period_id: period} = answer, state) do
+    case differences(state, answer) do
+      [] ->
+        emit([
+          %RegistryCheckLogged{company_id: id, period_id: period},
+          %RegistryDataConsistent{company_id: id, period_id: period}
+        ])
+
+      differences ->
+        emit([
+          %RegistryCheckLogged{company_id: id, period_id: period},
+          %RegistryDiscrepancyDetected{
+            company_id: id,
+            period_id: period,
+            differences: differences
+          }
+        ])
+    end
+  end
+
+  defp confirm(id, period, state, meta) do
+    cond do
+      meta != nil and not Taxvision.Periods.ended_by?(period, meta.occurred_at) ->
+        reject(:only_an_ended_month_is_checked)
+
+      not state.profile_complete ->
+        reject(:checked_only_with_complete_data)
+
+      true ->
+        emit(%DataCompletenessConfirmed{company_id: id, period_id: period})
+    end
+  end
+
+  # "This is what we hold, this is what the registries say" [WF 00:32:27].
+  defp differences(state, answer) do
+    for field <- @compared,
+        ours = Map.fetch!(state, field),
+        theirs = Map.fetch!(answer, field),
+        ours != theirs,
+        do: %{field: Atom.to_string(field), ours: ours, theirs: theirs}
+  end
+
+  @impl true
+  def evolve(state, %CompanyProfileCompleted{legal_form: form, vat_status: vat}),
+    do: %{state | profile_complete: true, legal_form: form, vat_status: vat}
+
+  def evolve(state, _changes_nothing), do: state
+end

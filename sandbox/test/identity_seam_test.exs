@@ -1,138 +1,145 @@
 defmodule Taxvision.IdentitySeamTest do
   @moduledoc """
-  Three IAM levels on one request path, each with a different answer.
+  Three levels of access on one request path, each with a different answer (v2
+  plan, E9c; until then through `Taxvision.Api` and a token of TaxVision's own).
 
-  The third level is the whole claim here: if it could be satisfied by an identity
-  provider's configuration, the levels would not be separated and the whole value
-  would be bought.
+  | Level | Whose | Answer on refusal |
+  |---|---|---|
+  | who is this | EHOS's credential, verified by `EhOsContract.Auth.Plug` | 401 |
+  | may they open a month at all | the capability EHOS granted | 403 `missing_capability` |
+  | may they open **this company's** month | the grant's scope (D10 for commands) | 403 `outside_scope` |
+
+  The third row is the rule "the month is opened by the accountant of this company",
+  which v1 wrote as a rule in the contract and a function in `Taxvision.Authorization`.
+  It is now what the grant carries, declared on the command and checked before
+  anything is decided; what the domain still decides is whether the month may open.
   """
 
   use Taxvision.DataCase, async: false
-  use Oban.Testing, repo: Taxvision.Repo
+  use EhOsContract.Auth.Testing
 
-  @params %{company_id: "c-1", period: "2026-07"}
+  import Phoenix.ConnTest
+  import Plug.Conn
 
-  describe "level 1 — authentication, bought" do
-    test "no token: refused" do
-      assert {:error, :unauthenticated} = Taxvision.Api.open_month(nil, @params)
-    end
+  alias EhOsContract.{Actor, Event, Testing}
+  alias Taxvision.Contracts.{AccountingMonth, RegistryWatch}
+  alias Taxvision.Contracts.RegistryWatch.Commands.CompleteCompanyProfile
 
-    test "a token signed with the wrong key: refused" do
-      forged =
-        Base.url_encode64(~s({"sub":"someone","roles":["accounting"]}), padding: false) <>
-          "." <> Base.url_encode64("an-invalid-signature", padding: false)
+  @endpoint EhOsContractHostWeb.Endpoint
+  @open "taxvision.open_month"
 
-      assert {:error, :unauthenticated} = Taxvision.Api.open_month(forged, @params)
-    end
-
-    test "a token with an appended claim: refused, because the signature does not match" do
-      valid = accountant("c-1")
-      [body, mac] = String.split(valid, ".")
-      {:ok, decoded} = Base.url_decode64(body, padding: false)
-      tampered = String.replace(decoded, ~s("c-1"), ~s("c-2"))
-      forged = Base.url_encode64(tampered, padding: false) <> "." <> mac
-
-      assert {:error, :unauthenticated} = Taxvision.Api.open_month(forged, @params)
-    end
-  end
-
-  describe "level 2 — entitlement, bought, one claim from the token" do
-    test "a token without the accounting role: refused before any domain code" do
-      assert {:error, :forbidden} = Taxvision.Api.open_month(client("c-1"), @params)
-
-      # Verified by the absence of a row in the log rather than by the content of
-      # the response. If the cut-off happened too late, the event would exist.
-      assert Repo.aggregate(EhOsContract.Event, :count) == 0
-    end
-  end
-
-  describe "level 3 — the domain rule, ours, in the contract" do
-    test "another company's accountant: a rejection with a reason, not a 403 from the provider" do
-      # The role is there and entitlement passes. What stops it is the rule that
-      # knows what a company and a month are — which the identity provider does
-      # not.
-      assert {:error, :not_this_company} = Taxvision.Api.open_month(accountant("c-2"), @params)
-    end
-
-    test "the company's own accountant: the month opens" do
-      assert {:ok, correlation_id} = Taxvision.Api.open_month(accountant("c-1"), @params)
-
-      assert [opened] = events_of(:accounting_month_opened)
-      assert opened.correlation_id == correlation_id
-      # `actor` carries the `sub` from the token — an opaque identifier, not an
-      # email. This is the only place the log records who did it; the payload no
-      # longer duplicates that.
-      assert opened.actor == accountant_sub()
-    end
-  end
-
-  describe "the structure of the seam" do
-    test "the engine has no credentials table" do
-      tables =
-        Repo.query!(
-          "select table_name from information_schema.tables where table_schema = 'public'"
-        )
-        |> Map.get(:rows)
-        |> List.flatten()
-
-      for table <- tables, column <- columns(table) do
-        refute column in ~w(password password_hash hashed_password encrypted_password secret credential),
-               "table #{table} has a #{column} column — the seam is broken, the engine holds credentials"
-      end
-    end
-
-    test "no domain module calls token signing" do
-      # `sign/1` is the first thing to disappear when a real provider takes over.
-      # If the domain calls it, the swap becomes a rewrite rather than a
-      # configuration change.
-      callers = callers_of(:eh_os_contract_host, {Taxvision.Identity, :sign, 1})
-
-      # A positive control. Without it this test would pass vacuously if the
-      # detector stopped working — and a test that always passes is worse than no
-      # test. `Taxvision.DataCase` calls `sign/1` and has to be visible.
-      assert Taxvision.DataCase in callers,
-             "the call detector is not working — it cannot even see a known caller"
-
-      domain = callers -- [Taxvision.Identity, Taxvision.DataCase]
-      assert domain == [], "domain code calls token signing: #{inspect(domain)}"
-    end
-  end
-
-  defp columns(table) do
-    Repo.query!(
-      "select column_name from information_schema.columns where table_name = $1",
-      [table]
+  defp open(token, company, period \\ "2026-08") do
+    build_conn()
+    |> put_req_header("authorization", "Bearer " <> token)
+    |> put_req_header("content-type", "application/json")
+    |> post(
+      "/api/taxvision/commands/#{@open}",
+      Jason.encode!(%{company_id: company, period_id: period})
     )
-    |> Map.get(:rows)
-    |> List.flatten()
   end
 
-  # Walking Erlang's abstract forms directly. The first version went through
-  # `:erl_syntax_lib.fold/3` with a `rescue` at the end — and the `rescue`
-  # swallowed a missing module, so the test passed vacuously. The positive control
-  # above caught it.
-  defp callers_of(app, mfa) do
-    {:ok, modules} = :application.get_key(app, :modules)
+  defp accountant(companies),
+    do: credential("u-accountant", [@open], %{@open => %{"company_id" => companies}})
 
-    for caller <- modules,
-        Code.ensure_loaded?(caller),
-        {:ok, {_, [{:abstract_code, {:raw_abstract_v1, forms}}]}} =
-          :beam_lib.chunks(:code.which(caller), [:abstract_code]),
-        calls?(forms, mfa),
-        do: caller
+  defp opened,
+    do: Repo.all(from(e in Event, where: e.type == "accounting_month.accounting_month_opened"))
+
+  # c-1's profile complete and August never checked, so that past the door the
+  # domain's answer is its own: no consistent check, no month.
+  setup do
+    Testing.drain()
+
+    {:ok, _} =
+      EhOsContract.dispatch(
+        RegistryWatch,
+        %CompleteCompanyProfile{company_id: "c-1", legal_form: "JDG", vat_status: "czynny"},
+        actor:
+          Actor.credential("u-accountant", ["taxvision.complete_company_profile"], %{
+            "taxvision.complete_company_profile" => %{"company_id" => ["c-1"]}
+          })
+      )
+
+    :ok
   end
 
-  defp calls?(
-         {:call, _, {:remote, _, {:atom, _, module}, {:atom, _, function}}, args},
-         {module, function, arity}
-       )
-       when length(args) == arity,
-       do: true
+  test "no credential: 401, before any decision" do
+    decisions = fn -> Repo.query!("SELECT count(*) FROM eh_os_contract_auth_decisions").rows end
+    before = decisions.()
 
-  defp calls?(term, mfa) when is_list(term), do: Enum.any?(term, &calls?(&1, mfa))
+    conn =
+      build_conn()
+      |> put_req_header("content-type", "application/json")
+      |> post("/api/taxvision/commands/#{@open}", "{}")
 
-  defp calls?(term, mfa) when is_tuple(term),
-    do: term |> Tuple.to_list() |> Enum.any?(&calls?(&1, mfa))
+    assert conn.status == 401
+    assert decisions.() == before
+  end
 
-  defp calls?(_term, _mfa), do: false
+  test "a credential without the capability: 403, and nothing in the log" do
+    conn = open(credential("u-client", []), "c-1")
+
+    assert {conn.status, Jason.decode!(conn.resp_body)} ==
+             {403, %{"refused" => "missing_capability"}}
+
+    assert opened() == []
+  end
+
+  test "another company's accountant: 403 outside the grant, not a rule the domain decides" do
+    conn = open(accountant(["c-2"]), "c-1")
+    assert {conn.status, Jason.decode!(conn.resp_body)} == {403, %{"refused" => "outside_scope"}}
+    assert opened() == []
+  end
+
+  test "the company's own accountant: the domain decides, and without a consistent check refuses" do
+    conn = open(accountant(["c-1"]), "c-1")
+    assert conn.status == 422
+    assert Jason.decode!(conn.resp_body)["rejected"] == "opens_only_on_consistent_registry"
+  end
+
+  test "every entry point of TaxVision's contracts refuses a credential without its capability" do
+    entries = %{
+      "taxvision.complete_company_profile" => fn token ->
+        command(token, "taxvision.complete_company_profile", %{
+          company_id: "c-1",
+          legal_form: "JDG",
+          vat_status: "czynny"
+        })
+      end,
+      "taxvision.retrigger_verification" => fn token ->
+        command(token, "taxvision.retrigger_verification", %{
+          company_id: "c-1",
+          period_id: "2026-08"
+        })
+      end,
+      @open => fn token -> open(token, "c-1") end
+    }
+
+    assert assert_every_entry_refuses([RegistryWatch, AccountingMonth], entries) == :ok
+  end
+
+  defp command(token, capability, body) do
+    build_conn()
+    |> put_req_header("authorization", "Bearer " <> token)
+    |> put_req_header("content-type", "application/json")
+    |> post("/api/taxvision/commands/#{capability}", Jason.encode!(body))
+  end
+
+  test "the engine holds no credentials" do
+    tables =
+      Repo.query!(
+        "select table_name from information_schema.tables where table_schema = 'public'"
+      ).rows
+      |> List.flatten()
+
+    for table <- tables,
+        column <-
+          Repo.query!(
+            "select column_name from information_schema.columns where table_name = $1",
+            [table]
+          ).rows
+          |> List.flatten() do
+      refute column in ~w(password password_hash hashed_password encrypted_password secret credential),
+             "table #{table} has a #{column} column — the engine holds credentials"
+    end
+  end
 end
