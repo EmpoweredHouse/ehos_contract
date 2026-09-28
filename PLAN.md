@@ -19,11 +19,11 @@ StatutoryReporting, Settlement); v1 zostały `PayerSettlement` (do E9b) i TaxVis
 
 ### Stan repozytorium
 
-- **`origin/main` = `f2a54bd`** (merge [#32](https://github.com/EmpoweredHouse/eh-os-contract/pull/32), EG — cztery
-  grafy, 28 września). CI `main` na `f2a54bd` (przebieg `36399198063`) — `success`. Gałąź `dsl-v2/eg-graphs` jest
+- **`origin/main` = `ff4f279`** (`VISION.md`, po merge [#32](https://github.com/EmpoweredHouse/eh-os-contract/pull/32),
+  EG — cztery grafy, 28 września). CI `main` na `f2a54bd` (przebieg `36399198063`) — `success`. Gałąź `dsl-v2/eg-graphs` jest
   zmergowana. Opisy EG: „Przed EG — decyzje użytkownika” … „EG3 — co wyszło”.
 - **E9a** na `dsl-v2/e9-visit`, od `main`, niewypchnięte: Rehmed, wizyta — **zbudowane** („E9a — co wyszło”),
-  przegląd przed E9b w toku. Potem **E9b** (`dsl-v2/e9-payer`, od E9a) i **E9c** (`dsl-v2/e9-taxvision`, od E9b).
+  z przeglądem (poprawki od `9e22beb`). Następne: E9b. Potem **E9b** (`dsl-v2/e9-payer`, od E9a) i **E9c** (`dsl-v2/e9-taxvision`, od E9b).
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
@@ -96,8 +96,9 @@ Grafy: `mix eh_os_contract.graph --map <domena> | --system <domena> [--overlay] 
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 28 września, na `de5f635`** (koniec budowy E9a): brama z `sandbox/` → **EXIT=0** — sandbox 81 testów,
-  `check` 0 / 22 / 11; silnik 1221, `check` 0 / 65 / 21; web 45; auth 51. W przeglądarce: `/graph` pod CSP EHOS-a.
+- **Lokalnie, 28 września, na `9b7306d`** (E9a po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 85 testów,
+  `check` 0 / 22 / 11; silnik 1222, `check` 0 / 65 / 21; web 45; auth 51. W przeglądarce (na `7058167`): `/graph`
+  pod CSP EHOS-a.
 - **Lokalnie, 28 września, na `f2a54bd`** (czysty `main`, przed E9): brama z `sandbox/` → **EXIT=0** — sandbox 54
   testy, `check` 0 / 12 / 19; silnik 1219, `check` 0 / 65 / 21; web 45; auth 51.
 - **CI `main`**: `f2a54bd` (przebieg `36399198063`) — `success`.
@@ -1431,10 +1432,10 @@ sprawdzać” — każda wchodzi tylko, jeśli prawdziwy kontrakt jej potrzebuje
 
 ### E9a — co wyszło (28 września)
 
-Na `dsl-v2/e9-visit` (od `main` = `f2a54bd`), niewypchnięte. Siedem commitów budowy po zapisie decyzji (`0c14ec2`):
-domena od nowa z `30-contexts.md` (`2efaec8`), Scheduling (`1257a30`), ClinicalDocumentation (`956dd09`),
-StatutoryReporting z procesem `clinical_visit` i usunięciem v1 `ClinicalVisit` (`6c2c15e`), Settlement w miejsce
-`VisitSettlement` (`c0ccfc2`), uprawnienie do nagrania w silniku (`954757e`), host i testy odbioru (`de5f635`).
+Na `dsl-v2/e9-visit` (od `main` = `f2a54bd`, po rebase od `ff4f279` — na `main` doszedł `VISION.md`), niewypchnięte. Siedem commitów budowy po zapisie decyzji (`d34c10b`):
+domena od nowa z `30-contexts.md` (`97396f2`), Scheduling (`05ec3b5`), ClinicalDocumentation (`2d5e76e`),
+StatutoryReporting z procesem `clinical_visit` i usunięciem v1 `ClinicalVisit` (`b833982`), Settlement w miejsce
+`VisitSettlement` (`250e739`), uprawnienie do nagrania w silniku (`799d586`), host i testy odbioru (`7058167`).
 Brama zielona na każdym commicie. Sandbox 54 → **81** testów, silnik 1219 → **1221**; `check` sandboxa 0 / 12 / 19 →
 **0 / 22 / 11** (każda linia wyjaśniona w opisie commita, który ją wprowadził), silnika bez zmian.
 
@@ -1464,8 +1465,8 @@ jej poprawie L3 zgłasza te same cztery X9). Wyścig DCB — E9b.
 zmieniona”; do E9 `record/3` odrzucał każdy credential): `Model.capabilities/1` daje każdemu zdarzeniu z
 `recorded_by:` uprawnienie `<domena>.<zdarzenie>` rodzaju `:record` z rolami aktorów z `recorded_by:`, `record/3`
 pyta `Authorizer` jak dispatch komendy, `EhOsContract.Plug` serwuje `POST /records/<uprawnienie>`, D14 obejmuje
-nagrania. Mechanika asystenta: role jak przy `by:` komend (także aktorzy systemowi — manifest E10 i tak ich nie
-wystawia jako ról). Linia w CHANGELOG pakietu. Manifest EHOS-a pozna rodzaj w E10.
+nagrania. Mechanika asystenta w pierwszej wersji: role jak przy `by:` komend, także aktorzy systemowi —
+**zmienione po przeglądzie** decyzją użytkownika (niżej): uprawnienie i role tylko z ludzi. Linia w CHANGELOG pakietu. Manifest EHOS-a pozna rodzaj w E10.
 
 **Ustalenia o bibliotece:**
 1. **F5 nie pozwala trzymać w stanie agregatu pola osobowego, którego podmiot poznaje się z pierwszym
@@ -1509,6 +1510,47 @@ uprawnienia bez roli.
 Weryfikacja w przeglądarce (baza dev, CSP EHOS-a): pięć diagramów na `/graph`, mapa kontekstów z sześcioma
 relacjami, system z czterema krawędziami `consumes`, `clinical_visit` z trzema torami, obietnicą i `or else`; żadna
 etykieta nie wystaje; w konsoli tylko znane blokady stylu z pomiaru Mermaida.
+
+**Przegląd E9a** (dwa równolegle na `origin/main..572cd6f`, po rebase).
+
+*Decyzje użytkownika* (pytanie przed poprawką, bo host widzi kształt):
+- **Uprawnienie tylko dla tego, co robi człowiek** (`9e22beb`). Po E9a każde zdarzenie z `recorded_by:` dostało
+  uprawnienie, także `rehmed.p1_report_sent` z jedyną rolą systemową `rehmed.p1_integration`, a komenda reakcji
+  (`queue_p1_report`, bez `by:`) miała uprawnienie bez ról, które router serwował. Credential z omyłkowym nadaniem
+  mógłby nagrać „wysłano do P1” bez wysyłki — obietnica ustawowa zielona na ekranie, który ma pokazać naruszenie —
+  albo zakolejkować zgłoszenie z dowolnym PESEL-em. Teraz `Model.capabilities/1` daje uprawnienie tylko deklaracji,
+  której `by:`/`recorded_by:` nazywa aktora `:human`, role tylko z ludzi; reszta nie ma uprawnienia, credential
+  dostaje `:missing_capability`, Plug 404. *Odrzucone:* poprawić tylko nagrania (komendy reakcji to ta sama luka,
+  starsza niż E9a); zostawić i zapisać ryzyko (bezpieczeństwo oparte na tym, że EHOS nie nada).
+- **`:not_created` przez HTTP to 404 `{"error": "not_created"}`** (`c12ece7`), nie 403: nagranie przyjścia na
+  wizytę, której nikt nie umówił, to brak wizyty, nie brak uprawnienia. *Odrzucone:* 422 (treść żądania jest
+  dobra); zostawić 403.
+
+*Poprawione przez asystenta, z testem i próbą odwrotną:* drugie zamknięcie kliniczne wysyłało drugie zgłoszenie do
+P1 — niezmiennik `closed_clinically_once` (`d59ab66`, AGG-02 stan końcowy); zamknięte rozliczenie przyjmowało
+płatność i drugie zamknięcie, dzień korekty się przesuwał — niezmiennik 4 AGG-03,
+`closed_settlement_changes_only_by_correction` (`89dc99a`). Słowem (`9b7306d`): notka z datą w v2 §11, opisy
+pakietów, moduledoci `Rehmed` i `Rehmed.Contracts`, polszczyzna w moduledocach i komentarzach, słabsza asercja
+testu pola.
+
+*Bez zmiany:* `String.to_existing_atom` w query R-07 (tabelę pisze tylko projekcja z enumu); R-07 nie czyta korekt
+(materiał: R-07 czyta E-55 i E-83, korekty należą do zamknięcia dnia, poza E9); query i nagranie o jednej nazwie w
+jednym kontrakcie przepuszcza N1, ale odrzuca D14 w L3 (warunek `kind != first_kind`, dodany w E9a); numer prawa
+wykonywania zawodu jawny — rejestr KIF jest publiczny, decyzja zapisana tutaj.
+
+*Pominięte, jako ustalenia:*
+- **`or_else` obietnicy P1 przychodzi dopiero z zamknięciem klinicznym**, więc masaż zamknięty po trzech dniach
+  wygląda na naruszenie ustawy, choć niczego P1 nie jest winien. Flaga jest znana przy rezerwacji, ale nie leży na
+  fakcie, od którego liczy się obietnica (`visit_completed`), a zwolnienie przed `from` nie wiadomo czy się liczy.
+  Wraca przy E9b/E9c albo jako pytanie o kształt obietnicy („warunek na `from`”).
+- **Dzień R-07 i dzień zamknięcia to dzień UTC**, nie Warszawy — sandbox nie ma bazy stref czasowych; prawdziwy
+  host liczy dzień w strefie placówki.
+- **Obserwacje nie mają decydenta** (D6): `visit_completed` da się nagrać po odwołaniu albo dwa razy, a pogoń za
+  dokumentacją rusza po `visit_completed` nagranym już po zamknięciu klinicznym i zakłada zadanie dla
+  udokumentowanej wizyty.
+- **Specjalista podaje flagę P1 na zamknięciu** (`p1_reported`), więc przez HTTP może ją fałszować — to samo
+  ustalenie co niewyrażalny niezmiennik „zamyka ten, kto wykonał”: decyzja regulacyjna na polu od wołającego.
+- Dokumentacja pakietów z przykładem `VisitSettlement` — E11.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
