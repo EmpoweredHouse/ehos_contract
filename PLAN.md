@@ -15,7 +15,7 @@ dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa p
 domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E8, EA, EM, EL i EG są w
 `main`** (PR #1–#32), **E9a też** (#33). Teraz **E9** — kontrakty sandboxa od nowa z materiału — w trzech częściach
 (decyzje: „Przed E9 — decyzje użytkownika”), potem E10–E12. Po E9b Rehmed ma pięć kontraktów v2 (Scheduling,
-ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); v1 został tylko TaxVision (do E9c).
+ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); po E9c-1 w sandboxie nie ma kontraktu v1.
 
 ### Stan repozytorium
 
@@ -25,7 +25,8 @@ ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); v1 zosta
 - **E9a w `main`** — PR [#33](https://github.com/EmpoweredHouse/eh-os-contract/pull/33) zmergowany 28 września
   (`451d068`). **E9b** na `dsl-v2/e9-payer`, od `main` = `06c6e11` (po rebase od `451d068`) — w budowie („Przed E9b — decyzja
   użytkownika”, „E9b — co wyszło”): zbudowane i przejrzane („Przegląd E9b”), niewypchnięte. **E9c-1** na
-  `dsl-v2/e9-taxvision`, od E9b — w budowie („Przed E9c — decyzje użytkownika”), potem E9c-2.
+  `dsl-v2/e9-taxvision`, od E9b — zbudowane, **przed przeglądem** („Przed E9c — decyzje użytkownika”, „E9c-1 — co
+  wyszło”), potem E9c-2.
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
@@ -101,6 +102,8 @@ Grafy: `mix eh_os_contract.graph --map <domena> | --system <domena> [--overlay] 
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 28 września, na `5399584`** (E9c-1, przed przeglądem): brama z `sandbox/` → **EXIT=0** — sandbox 111
+  testów, `check` 0 / 25 / 9; silnik 1239, `check` 0 / 67 / 21; web 45; auth 51.
 - **Lokalnie, 28 września, na `cc07431`** (E9b po dwóch rundach przeglądu): brama z `sandbox/` → **EXIT=0** — sandbox 99
   testów, `check` 0 / 24 / 8; silnik 1222, `check` 0 / 65 / 21; web 45; auth 51. W przeglądarce: `/graph` z procesem
   `payer_settlement` i mapą z płatnikami.
@@ -1794,6 +1797,57 @@ rozstrzygały trzech rzeczy; asystent zapytał na przykładzie firmy c-1 i sierp
   komend, wejście HTTP, `identity_seam_test` i `periods_test` od nowa, koniec kontraktów v1; **E9c-2** — Work
   Orchestration, Notifications, parowanie jako `domain_service`, `publish` do Shugyo, numer KSeF z `issued_by`. Każda
   część osobnym PR-em z przeglądem. *Odrzucone:* jeden PR (diff około dwa razy większy niż E9a).
+
+### E9c-1 — co wyszło (28 września)
+
+Na `dsl-v2/e9-taxvision` (od E9b = `b010c06`), niewypchnięte. Trzy commity budowy po zapisie decyzji (`ee241e6`):
+wartość o bazie `:id` jako identyfikator w silniku (`bcb3d02`), `scope` komend w silniku (`1da9dbe`), TaxVision od nowa
+i koniec v1 w sandboxie (`5399584`). Brama zielona na każdym commicie. Sandbox 99 → **111** testów, silnik 1222 →
+**1239**; `check` sandboxa 0 / 24 / 8 → **0 / 25 / 9**, silnika 0 / 65 / 21 → **0 / 67 / 21** (dwie linie nowej
+fikstury `DispatchRig.Transfer`).
+
+**Co jest.**
+- **Silnik, `scope` komend** (D10 dla komend, pytanie z v2 §19 zamknięte): `command …, by:, scope: :pole` — pole
+  komendy (tożsamość jednostki albo zadeklarowane, wymagane), komenda ma `by:`, każdy aktor z `by:` niesie wymiar,
+  pole nie jest osobowe (F7); dispatch i `EhOsContract.Plug` pytają `Authorizer` z wartością pola;
+  `Model.capabilities/1` daje uprawnieniu `scope:`. Linia w CHANGELOG pod „a host has to act”.
+- **Silnik, wartość o bazie `:id`**: pole typu `value :period, :id` jest tagiem i dla X6 tym samym typem co `:id`;
+  `Key.tag_field?/2` bierze wartości domeny. Tożsamość jednostki zostaje zwykłym `:id`, więc inwariant pilnuje pól
+  typowanych wartością (np. okresu w komendach Registry Watch), a nie tożsamości.
+- **`Taxvision.Domain`**: Registry Watch (supporting) → miesiąc (core), księgowa ze `scope: [:company_id]`,
+  integracja rejestrów, `value :period` z inwariantem RRRR-MM, `value :registry_difference`.
+- **`Taxvision.Contracts.RegistryWatch`**: profil firmy, sprawdzenie (komplet danych), efekt pytający rejestry poza
+  transakcją i nagrywający odpowiedź jako integracja, polityka porównania, process manager P1 z timerem
+  kalendarzowym (miesiąc po zapisanym sprawdzeniu sprawdza następny okres, wyliczony z nazwy).
+- **`Taxvision.Contracts.AccountingMonth`**: boundary `[company_id, period_id]` konsultujący werdykty Registry
+  Watch; otwiera polityka (§5) albo księgowa tej firmy (`scope`), tylko po zgodnym ostatnim sprawdzeniu i raz;
+  obietnica v1 (dwa dni albo rozjazd) jako `promise` z `or_else`.
+- **Koniec v1 w sandboxie**: kontrakt v1, trzy handlery, `Taxvision.Api`, `Authorization`, `Identity` (token HMAC
+  TaxVision), `RegistryCheck`, test przykładów v1. Wejście: `EhOsContract.Plug` pod `/api/taxvision` za credentialem
+  EHOS-a. `identity_seam_test` od nowa (401, brak uprawnienia, poza firmą; D-34 dla obu kontraktów),
+  `periods_test` od nowa (nazwa, następny okres, daty wiersza), test przebiegu (otwarcie sierpnia, blokada c-2 po
+  wykreśleniu z VAT i odmowa ręcznego otwarcia, wrzesień sprawdzony przez timer miesiąc później, odmowa „2026-8”).
+
+**Ustalenia o bibliotece:**
+1. **Inwariant wartości nie sięga tożsamości.** Tożsamość jest wstrzykiwana jako `:id`, więc `open_month` dla
+   „2026-7” przechodzi walidację i zostaje odrzucony dopiero niezmiennikiem miesiąca (brak zgodnego sprawdzenia).
+   Bezpiecznie, ale format pilnuje tylko komend, które niosą okres jako pole. Do rozważenia: tożsamość typowana
+   wartością.
+2. **Agregat nie widzi faktów innego kontekstu — drugi raz** (po E9b): ręczne otwarcie miesiąca musiało być boundary.
+   Ten sam kształt, co przy płatniku: kontekst, który decyduje na cudzym fakcie, to DCB albo pole od wołającego.
+3. **Process manager bez `ends_on`** (`process-manager-without-ends-on`) jest tu prawdziwy: comiesięczne
+   sprawdzenie trwa, póki firma jest klientem, a koniec współpracy nie jest w E9.
+
+**Ustalenia o materiale:**
+- **Kolejność §3.1 (`02`) i §5 (`03`) się różni** — taski przed otwarciem albo po nim; poszło za `03`.
+- **Dane „w Abilii”, z którymi porównuje się rejestry, są w profilu firmy z onboardingu** (§4.1), którego E9 nie
+  pisze; ukończenie profilu jest tu nagrane jako nasze.
+- **Relacja Registry Watch → miesiąc jest na mapie bez typu** (strzałka z nazwami zdarzeń) — zapisana jako
+  customer–supplier.
+- `deadline {25, :day}` z v1 zdjęty: bez zdarzenia końcowego nie ma czego mierzyć, a 25. nikt z TaxVision nie podał.
+
+W przeglądarce (baza dev, preview `eh_os_contract_host`): mapa kontekstów TaxVision, siedem diagramów na `/graph`,
+proces `client` i boundary miesiąca, żadna etykieta nie wystaje.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
