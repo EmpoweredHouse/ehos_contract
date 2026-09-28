@@ -83,9 +83,10 @@ defmodule Rehmed.Domain do
   relation :open_host_service, upstream: :configuration, downstream: :scheduling
   relation :open_host_service, upstream: :configuration, downstream: :settlement
 
-  # A-02, A-03
+  # A-02, A-03, A-05
   actor :reception, :human, "Recepcja"
   actor :specialist, :human, "Specjalista"
+  actor :manager, :human, "Manager gabinetu"
 
   # The material names no actor for it: `AGG-10` has no commands and `X-01` answers
   # the send. It is the integration that records what the registry answered (D6).

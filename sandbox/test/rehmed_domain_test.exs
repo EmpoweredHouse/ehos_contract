@@ -26,7 +26,13 @@ defmodule Rehmed.DomainTest do
                :configuration
              ]
 
-    assert Enum.map(model.actors, & &1.name) == [:reception, :specialist, :p1_integration]
+    assert Enum.map(model.actors, & &1.name) == [
+             :reception,
+             :specialist,
+             :manager,
+             :p1_integration
+           ]
+
     assert Enum.map(model.values, & &1.name) == [:money, :payment_method]
 
     assert Enum.map(model.relations, & &1.type) ==
