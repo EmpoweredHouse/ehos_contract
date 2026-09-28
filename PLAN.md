@@ -24,7 +24,7 @@ ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); v1 zosta
   zmergowana. Opisy EG: „Przed EG — decyzje użytkownika” … „EG3 — co wyszło”.
 - **E9a w `main`** — PR [#33](https://github.com/EmpoweredHouse/eh-os-contract/pull/33) zmergowany 28 września
   (`451d068`). **E9b** na `dsl-v2/e9-payer`, od `main` = `451d068` — w budowie („Przed E9b — decyzja
-  użytkownika”, „E9b — co wyszło”): zbudowane, **przed przeglądem** (`pre-pr-review`). Potem **E9c**
+  użytkownika”, „E9b — co wyszło”): zbudowane i przejrzane („Przegląd E9b”), niewypchnięte. Potem **E9c**
   (`dsl-v2/e9-taxvision`, od E9b).
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
@@ -101,7 +101,7 @@ Grafy: `mix eh_os_contract.graph --map <domena> | --system <domena> [--overlay] 
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 28 września, na `4aec24d`** (E9b, przed przeglądem): brama z `sandbox/` → **EXIT=0** — sandbox 95
+- **Lokalnie, 28 września, na `52b9a86`** (E9b po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 99
   testów, `check` 0 / 24 / 8; silnik 1222, `check` 0 / 65 / 21; web 45; auth 51. W przeglądarce: `/graph` z procesem
   `payer_settlement` i mapą z płatnikami.
 - **Lokalnie, 28 września, na `9b7306d`** (E9a po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 85 testów,
@@ -1728,6 +1728,39 @@ odpowiedzi (7), bez efektu (8), każda deklaracja ma `source:` (9).
 
 W przeglądarce (baza dev, preview `eh_os_contract_host`): mapa kontekstów z płatnikami i systemem płatnika, proces
 `payer_settlement` z trzema etapami, żadna etykieta nie wystaje.
+
+**Przegląd E9b** (dwa równolegle na `origin/main..baf42b1`). Sandbox 95 → **99** testów, `check` bez zmian (0 / 24 / 8).
+
+*Poprawione przez asystenta, z testem i próbą odwrotną:*
+- **`ExternalPayers` nie był za drzwiami hosta** (`6d7478d`): trzy uprawnienia bez wejścia, a test D-34 zielony, bo
+  chodził tylko po czterech starszych kontraktach; teraz po pięciu i na starym routerze pada.
+- **Oznaczenie i wykluczenie brały dowolną wizytę** (`68ae7da`): literówka, wizyta innego płatnika albo zły miesiąc
+  trafiały na fakturę, a jedna wizyta dawała się oznaczyć dwa razy albo oznaczyć i wykluczyć — niezmiennik
+  `only_a_charged_visit_is_marked_or_excluded`.
+- **Faktura za okres bez żadnej oznaczonej wizyty** (`633347a`) zamykała miesiąc przed pierwszym zamknięciem wizyty i
+  cały miesiąc zostawał niezafakturowany — niezmiennik `an_invoice_covers_a_marked_visit`; test obciążenia sprawdza
+  teraz, że przed fakturą była obciążona wizyta, więc nie przejdzie na fakturze sprzed wyścigu.
+- **`reset!` repo z commitami** (`66f8a3c`) kończył się `MatchError`, gdy inny przebieg trzymał bazę; teraz mówi
+  dlaczego. Pula 20 → 12: brama dostała `too_many_connections`, gdy inny worktree puszczał testy silnika (Postgres ma
+  100 połączeń, repo z commitami silnika bierze 60).
+- **Wizyta mieszana** (`52b9a86`): komentarz nie mówił, że `total` to część pacjenta; jest scenariusz `P-31`.
+
+*Pominięte, jako ustalenia:*
+- **Plan sprawdzenia konfliktu bez statystyk** (ustalenie 1 wyżej) — skasowanie indeksu `(type)` to migracja, którą
+  wykonuje host, więc decyzja użytkownika; test planu sprawdza stan po `ANALYZE`.
+- **Płatnik i okres od wołającego tworzą boundary, którego nikt nie zafakturuje**, gdy przyjdą w złym kształcie
+  (`"2026-9"`, spacja w identyfikatorze): wizyta cicho wypada z „LuxMed, wrzesień”, a niezmiennik tam dalej trzyma.
+  Format okresu to inwariant wartości — rodzaj zostawiony dla E9c; do tego ustalenie 2 wyżej.
+- **Faktura przed końcem miesiąca** — kalendarza decyzja nie widzi (bez zegara w decyzji); ekran miesięczny jest
+  po weryfikacji danych (`S-60`).
+- **Pacjent płaci całość, a zamknięcie wskazuje też płatnika** — wizyta jest obciążona dwa razy; żadne zdarzenie nie
+  niesie kwoty płatnika, więc nic tego nie zauważy.
+- **`reason` wykluczenia nie jest osobowy** — zdarzenie nie zna pacjenta, więc nie ma podmiotu, pod którym dałoby się
+  go zaszyfrować; uwaga `free-text-not-personal` zostaje.
+- **Każda komenda boundary czyta i konfliktuje na całym okresie**: oznaczenie przy biurku trafia na konflikt z każdym
+  równoległym zamknięciem wizyty tego płatnika w tym miesiącu, a dispatch ponawia trzy razy — test obciążenia
+  potrzebuje własnego ponawiania. `consults` jest per boundary, nie per komenda; do rozważenia w bibliotece.
+- Stan jako listy, nie zbiory — po niezmienniku bez duplikatów, rozmiar to liczba wizyt płatnika w miesiącu.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
