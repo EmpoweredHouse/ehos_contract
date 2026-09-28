@@ -24,8 +24,8 @@ ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); v1 zosta
   zmergowana. Opisy EG: „Przed EG — decyzje użytkownika” … „EG3 — co wyszło”.
 - **E9a w `main`** — PR [#33](https://github.com/EmpoweredHouse/eh-os-contract/pull/33) zmergowany 28 września
   (`451d068`). **E9b** na `dsl-v2/e9-payer`, od `main` = `06c6e11` (po rebase od `451d068`) — w budowie („Przed E9b — decyzja
-  użytkownika”, „E9b — co wyszło”): zbudowane i przejrzane („Przegląd E9b”), niewypchnięte. Potem **E9c**
-  (`dsl-v2/e9-taxvision`, od E9b).
+  użytkownika”, „E9b — co wyszło”): zbudowane i przejrzane („Przegląd E9b”), niewypchnięte. **E9c-1** na
+  `dsl-v2/e9-taxvision`, od E9b — w budowie („Przed E9c — decyzje użytkownika”), potem E9c-2.
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
@@ -1770,6 +1770,30 @@ W przeglądarce (baza dev, preview `eh_os_contract_host`): mapa kontekstów z p�
 - **Oznaczenia nie da się cofnąć, a miesiąc z samymi wykluczeniami się nie kończy** (drugi przegląd): pomyłkowo
   oznaczona wizyta trafi na fakturę, a okres bez oznaczonej wizyty nie ma faktury ani innego zakończenia (v1 miał
   „zamknięto okres bez faktury”). Obie to następne komendy, nie nowy rodzaj — zapisane w moduledocu.
+
+### Przed E9c — decyzje użytkownika (28 września)
+
+Zapisy rozstrzygały konteksty (`03-ddd-architecture.md` §3–4: Registry Watch, Accounting Month, Work Orchestration,
+Notifications), kolejność polityk (§5: cron → sprawdzenie rejestrów → otwarcie miesiąca → taski → powiadomienia; §5 i
+§4.5 wygrywają z diagramem §3.1 z `02`, na którym taski stoją przed otwarciem) i nazwy zdarzeń (`02` §3.1, §10). Nie
+rozstrzygały trzech rzeczy; asystent zapytał na przykładzie firmy c-1 i sierpnia:
+
+- **Kto otwiera miesiąc: księgowa ręcznie** (`open_month` ze `scope: :company_id`, obok polityki z materiału, która
+  otwiera miesiąc po zgodnej weryfikacji). Wybór użytkownika wbrew propozycji asystenta. *Odrzucone:* `scope` na
+  „Ponów weryfikację” i otwarcie wyłącznie polityką, jak w materiale (propozycja asystenta). Skutek w mechanice
+  (asystenta): ręczne otwarcie ma sprawdzić zgodność rejestrów, a agregat nie widzi faktów Registry Watch — więc
+  miesiąc jest boundary `[company_id, period_id]` konsultującym wynik weryfikacji; v2 §2 wymienia „opening a month by
+  hand” jako przypadek DCB.
+- **Identyfikator okresu to nazwa „2026-07”**, pilnowana inwariantem wartości w domenie (propozycja asystenta,
+  wybrana). Timer kalendarzowy P1 wylicza następny okres sam, bez bazy; tabela okresów zostaje źródłem dat; zamyka też
+  ustalenie z E9b (zły format okresu tworzy boundary, którego nikt nie zafakturuje). *Odrzucone:* UUID jak dotąd
+  (timer musiałby pytać bazę, więc comiesięczne sprawdzenie zlecałby harmonogram hosta, a timer kalendarzowy
+  zostałby bez przykładu z materiału). Skutek w mechanice: wartość o bazie `:id` musi być tagiem, żeby boundary
+  dopasował zdarzenia po okresie — zmiana w silniku.
+- **Dwie części** (propozycja asystenta, wybrana): **E9c-1** — domena, Registry Watch, otwarcie miesiąca, `scope`
+  komend, wejście HTTP, `identity_seam_test` i `periods_test` od nowa, koniec kontraktów v1; **E9c-2** — Work
+  Orchestration, Notifications, parowanie jako `domain_service`, `publish` do Shugyo, numer KSeF z `issued_by`. Każda
+  część osobnym PR-em z przeglądem. *Odrzucone:* jeden PR (diff około dwa razy większy niż E9a).
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
