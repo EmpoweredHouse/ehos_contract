@@ -27,13 +27,19 @@ allows.
 Names are derived from the contract, never written by hand, so the list EHOS grants from cannot drift
 from the code (`EhOsContract.Model.capabilities/1`):
 
-- a **capability** per command and per query: `<domain>.<name>`, e.g. `rehmed.record_payment`,
-  `rehmed.open_visits_for_clinic`, where `<domain>` is the domain's `name:`;
-- a **role** per actor of the domain: `<domain>.<actor>`, e.g. `rehmed.reception`. A role grants the
-  capabilities of every declaration whose `by:` names that actor.
+- a **capability** per command, per query and per recorded event a person may use: `<domain>.<name>`,
+  e.g. `rehmed.record_payment`, `rehmed.open_visits_for_clinic`, `rehmed.patient_arrived`, where
+  `<domain>` is the domain's `name:`;
+- a **role** per `:human` actor of the domain: `<domain>.<actor>`, e.g. `rehmed.reception`. A role
+  grants the capabilities of every declaration whose `by:` or `recorded_by:` names that actor.
 
-Because a capability is `<domain>.<name>`, a command or query name is unique across the whole
-application, which the compiler checks (D14).
+**Only what a person may do is a capability.** A declaration whose `by:` or `recorded_by:` names no
+`:human` actor — a command only a policy issues, an event only an integration records — has none, so
+no credential can be granted it, even by mistake; the application's own `:system` actor reaches it
+without a credential.
+
+Because a capability is `<domain>.<name>`, a command, query or recorded event name is unique across the
+whole application, which the compiler checks (D14).
 
 ## The flow, end to end
 
@@ -236,8 +242,8 @@ does.
 
 ## Over HTTP
 
-`EhOsContract.Plug` serves the commands and queries of the contracts it is given, under their
-capabilities:
+`EhOsContract.Plug` serves the commands, recordings and queries of the contracts it is given, under
+their capabilities:
 
 ```elixir
 # in the host's router, after the plug that verifies the credential

@@ -52,8 +52,9 @@ defmodule Rehmed.AuthorizationTest do
     practitioner_number: "practitioner-ewa"
   }
 
-  # Every capability of the four contracts, the reactions' commands included: EHOS
-  # grants those to no role, and the door must refuse them all the same.
+  # Every capability of the four contracts. What only the application's own code
+  # does — the reactions' commands, the integration's recordings — has none, and the
+  # door answers 404 for it (the last test).
   defp entries do
     commands = %{
       "rehmed.book_visit" => %{
@@ -66,9 +67,6 @@ defmodule Rehmed.AuthorizationTest do
       "rehmed.record_no_show" => @visit,
       "rehmed.code_diagnosis" => Map.take(@close, [:visit_id, :patient_id, :icd10, :icd9]),
       "rehmed.close_visit_clinically" => Map.put(@close, :p1_reported, true),
-      "rehmed.create_documentation_overdue_task" => @visit,
-      "rehmed.queue_p1_report" => @close,
-      "rehmed.waive_p1_report" => @visit,
       "rehmed.hand_over_visit" => @visit,
       "rehmed.add_service_line" => %{visit_id: "visit-anna", service_id: "usg"},
       "rehmed.record_payment" => %{visit_id: "visit-anna", method: "card", amount: 20_000},
@@ -76,8 +74,7 @@ defmodule Rehmed.AuthorizationTest do
       "rehmed.book_correction" => %{visit_id: "visit-anna", delta: -1_000}
     }
 
-    records = ~w(rehmed.patient_arrived rehmed.visit_completed rehmed.p1_report_sent
-                 rehmed.p1_report_failed)
+    records = ~w(rehmed.patient_arrived rehmed.visit_completed)
 
     Map.new(commands, fn {capability, body} -> {capability, &command(&1, capability, body)} end)
     |> Map.merge(Map.new(records, &{&1, fn token -> record(token, &1, @visit) end}))
@@ -143,6 +140,22 @@ defmodule Rehmed.AuthorizationTest do
              {422, %{"invalid" => %{"total" => "type"}}}
 
     assert decisions("u-reception") == [["rehmed.close_settlement", "allowed", nil]]
+  end
+
+  test "what only the application's own code does is not a door, whatever the credential names" do
+    # A credential granted these by mistake could otherwise record "sent to P1"
+    # without a send, or queue a report with any PESEL (plan, "E9a — przegląd").
+    token =
+      credential("u-mistaken", [
+        "rehmed.p1_report_sent",
+        "rehmed.queue_p1_report",
+        "rehmed.create_documentation_overdue_task"
+      ])
+
+    assert record(token, "rehmed.p1_report_sent", @visit).status == 404
+    assert command(token, "rehmed.queue_p1_report", @close).status == 404
+    assert command(token, "rehmed.create_documentation_overdue_task", @visit).status == 404
+    assert Repo.all(from(e in Event, select: e.type)) == []
   end
 
   describe "the check itself" do

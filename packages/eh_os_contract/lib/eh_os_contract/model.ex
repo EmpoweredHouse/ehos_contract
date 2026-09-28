@@ -105,8 +105,13 @@ defmodule EhOsContract.Model do
   §16, D14): `<domain>.<command>` for each command, `<domain>.<query>` for each
   query and `<domain>.<event>` for each event a contract records (`recorded_by:`,
   D6), where `<domain>` is the domain's `name:`. Each says which roles may use it,
-  `<domain>.<actor>` for every actor in its `by:` or `recorded_by:`, and a query also
-  the field its grant is scoped by (D10).
+  `<domain>.<actor>` for every `:human` actor in its `by:` or `recorded_by:`, and a
+  query also the field its grant is scoped by (D10).
+
+  **Only what a person may do is a capability.** A declaration whose `by:` or
+  `recorded_by:` names no `:human` actor — a command only a reaction issues, an event
+  only an integration records — has none, so no credential can be granted it; the
+  application's own `:system` actor and the reactions reach it as before.
 
       %{"rehmed.record_payment" =>
           %{kind: :command, name: :record_payment, roles: ["rehmed.reception"], scope: nil}}
@@ -127,8 +132,9 @@ defmodule EhOsContract.Model do
   def capabilities(contract) do
     case fetch(contract) do
       %{kind: :contract, grants: _} = model ->
-        prefix = domain_name!(model)
-        role = &"#{prefix}.#{&1}"
+        domain = domain!(model)
+        role = &"#{domain.name}.#{&1}"
+        people = for %{kind: :human, name: name} <- domain.actors, into: MapSet.new(), do: name
 
         commands =
           for c <- model.commands,
@@ -145,10 +151,17 @@ defmodule EhOsContract.Model do
               e.recorded_by != [],
               do: {role.(e.name), %{kind: :record, name: e.name, by: e.recorded_by, scope: nil}}
 
-        Map.new(commands ++ queries ++ records, fn {capability, declared} ->
-          {by, declared} = Map.pop!(declared, :by)
-          {capability, Map.put(declared, :roles, by |> Enum.map(role) |> Enum.sort())}
-        end)
+        # Only a person holds a credential, so only a declaration a person may use has a
+        # capability, and its roles are the people's. What only the application's own
+        # code does — a reaction's command, an integration's recording — is not
+        # grantable at all: a credential granted it by mistake could otherwise write
+        # "sent to P1" without a send (plan, "E9a — przegląd").
+        for {capability, declared} <- commands ++ queries ++ records,
+            {by, declared} = Map.pop!(declared, :by),
+            humans = Enum.filter(by, &MapSet.member?(people, &1)),
+            humans != [],
+            into: %{},
+            do: {capability, Map.put(declared, :roles, humans |> Enum.map(role) |> Enum.sort())}
 
       %{kind: :contract, module: module} ->
         raise ArgumentError, "#{inspect(module)} is a v1 contract, which declares no capabilities"
@@ -158,15 +171,15 @@ defmodule EhOsContract.Model do
     end
   end
 
-  defp domain_name!(%{domain: domain, module: module}) do
+  defp domain!(%{domain: domain, module: module}) do
     # Only a compiled model is asked: `fetch/1` on any other module would try it as a
     # v1 contract and fail with that error instead of this one.
     compiled? =
       Code.ensure_loaded?(domain) and function_exported?(domain, :__eh_os_contract_model__, 0)
 
     case compiled? && domain.__eh_os_contract_model__() do
-      %{kind: :domain, name: name} ->
-        name
+      %{kind: :domain} = model ->
+        model
 
       _ ->
         raise ArgumentError,
