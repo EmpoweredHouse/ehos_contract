@@ -47,9 +47,9 @@ defmodule EhOsContract.Auth.PackageTest do
       assert opts[:url] == "https://ehos.test/.well-known/jwks.json"
 
       Application.put_env(:eh_os_contract_auth, :jwks_url, "https://keys.ehos.test/jwks.json")
-      assert %{start: {_, _, [opts]}} = EhOsContract.Auth.child_spec(req_options: [retry: false])
+      assert %{start: {_, _, [opts]}} = EhOsContract.Auth.child_spec(cacertfile: "/etc/ca.pem")
       assert opts[:url] == "https://keys.ehos.test/jwks.json"
-      assert opts[:req_options] == [retry: false]
+      assert opts[:cacertfile] == "/etc/ca.pem"
     end
 
     test "fails the boot when keys would be fetched over anything but https" do
@@ -63,6 +63,26 @@ defmodule EhOsContract.Auth.PackageTest do
       Application.put_env(:eh_os_contract_auth, :jwks_url, "http://localhost:4100/jwks.json")
       assert %{start: {_, _, [opts]}} = EhOsContract.Auth.child_spec([])
       assert opts[:url] == "http://localhost:4100/jwks.json"
+    end
+
+    test "fails the boot on an address in its child options, which would replace the checked one" do
+      assert_raise ArgumentError, ~r/not from url: in its child options/, fn ->
+        EhOsContract.Auth.child_spec(url: "http://ehos.example.com/jwks.json")
+      end
+    end
+
+    test "fails the boot on an option the key process does not take" do
+      assert_raise ArgumentError, ~r/unknown keys \[:req_options\]/, fn ->
+        EhOsContract.Auth.child_spec(req_options: [redirect: true])
+      end
+    end
+
+    test "fails the boot on a plug in place of the network, except in a test" do
+      Application.put_env(:eh_os_contract_auth, :pin_keys, false)
+
+      assert_raise ArgumentError, ~r/plug: only in a test/, fn ->
+        EhOsContract.Auth.child_spec(plug: {Req.Test, __MODULE__})
+      end
     end
 
     test "fails the boot without an audience, or without an issuer even with a jwks_url" do

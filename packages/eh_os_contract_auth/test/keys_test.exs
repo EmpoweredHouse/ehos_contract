@@ -64,57 +64,46 @@ defmodule EhOsContract.Auth.KeysTest do
     end
   end
 
-  describe "a host's connect options" do
-    # An adapter in place of the network: it sends the test the transport options
-    # Req would hand Mint for this fetch, and answers as an EHOS that is down would.
-    setup do
-      test = self()
+  describe "the fetch's transport options" do
+    # What Req would hand Mint: the host's authority, beside the two seconds to
+    # connect, which Mint would otherwise make thirty.
+    defp transport(keys) do
+      options = Map.new(:sys.get_state(keys).request_options)
+      Req.Finch.pool_options(options)[:conn_opts][:transport_opts]
+    end
 
-      adapter = fn request ->
-        pool = Req.Finch.pool_options(request.options)
-        send(test, {:transport, pool[:conn_opts][:transport_opts]})
-        {request, Req.Response.new(status: 503)}
+    test "name the host's certificate authority, and keep the connect timeout" do
+      keys = start_keys(ehos({:keys, [key_pair()]}), cacertfile: "/etc/ehos/ca.pem")
+      assert transport(keys) == [timeout: 2_000, cacertfile: "/etc/ehos/ca.pem"]
+
+      keys = start_keys(ehos({:keys, [key_pair()]}), cacerts: [<<1, 2, 3>>])
+      assert transport(keys) == [timeout: 2_000, cacerts: [<<1, 2, 3>>]]
+    end
+
+    test "are the connect timeout alone, when no authority is named" do
+      assert transport(start_keys(ehos({:keys, [key_pair()]}))) == [timeout: 2_000]
+    end
+  end
+
+  describe "a key process started directly" do
+    # `start_link/1` checks what `EhOsContract.Auth.child_spec/1` checks, so a host
+    # that lists `Keys` itself gets no way around it. A name of its own for each, so
+    # a check that stopped raising fails its assertion rather than a later start.
+    test "refuses an address that is not https" do
+      assert_raise ArgumentError, ~r/not https/, fn ->
+        Keys.start_link(name: :keys_http, url: "http://ehos.example.com/jwks.json", repo: Repo)
       end
-
-      %{adapter: adapter}
     end
 
-    test "keep the two-second connect timeout when naming a certificate authority", %{
-      adapter: adapter
-    } do
-      transport = [cacertfile: "/etc/ehos/ca.pem"]
-
-      start_keys(nil,
-        req_options: [adapter: adapter, connect_options: [transport_opts: transport]]
-      )
-
-      assert_received {:transport, options}
-      assert options[:timeout] == 2_000
-      assert options[:cacertfile] == "/etc/ehos/ca.pem"
-    end
-
-    test "that are nil keep the defaults, and the key set is fetched", %{adapter: adapter} do
-      start_keys(nil, req_options: [adapter: adapter, connect_options: nil])
-
-      assert_received {:transport, [timeout: 2_000]}
-    end
-
-    test "replace the connect timeout when they set one", %{adapter: adapter} do
-      start_keys(nil, req_options: [adapter: adapter, connect_options: [timeout: 500]])
-
-      assert_received {:transport, [timeout: 500]}
-    end
-
-    # Req's own rule, which the documentation names as the second way.
-    test "replace it with a timeout in the transport options too", %{adapter: adapter} do
-      transport = [cacertfile: "/etc/ehos/ca.pem", timeout: 30_000]
-
-      start_keys(nil,
-        req_options: [adapter: adapter, connect_options: [transport_opts: transport]]
-      )
-
-      assert_received {:transport, options}
-      assert options[:timeout] == 30_000
+    test "refuses an option it does not take, as req_options: from before" do
+      assert_raise ArgumentError, ~r/unknown keys \[:req_options\]/, fn ->
+        Keys.start_link(
+          name: :keys_req_options,
+          url: "https://ehos.test/.well-known/jwks.json",
+          repo: Repo,
+          req_options: [redirect: true]
+        )
+      end
     end
   end
 

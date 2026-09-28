@@ -2831,6 +2831,27 @@ pobranie (`request_timeout` Req to `:infinity`), więc EHOS sączący bajt co 2,
 komentarz przy `refetch/1` („a fetch is bounded by the request timeouts below”) nie jest prawdziwy; (2) host
 może nadpisać `redirect`, `into`, `retry` i `url` — obietnice README („follows no redirect”, limit 64 KB, tylko
 `https`) trzymają się, dopóki host ich nie ruszy. Oba zmieniają kształt widoczny dla hosta albo wymagają decyzji.
+(1) — osobne zadanie; (2) — „Poprawka 28 września (2)” niżej.
+
+**Poprawka 28 września (2) — `req_options` zastąpione jawną opcją na CA.** Punkt (2) wyżej: host mógł podać
+dowolne opcje Req, więc `redirect: true` czy `verify: :verify_none` po cichu zdejmowały gwarancje z README, a
+`url:` w opcjach dziecka podmieniało adres po sprawdzeniu `https`. **Decyzja użytkownika 28 września:** pakiet
+bierze tylko `cacertfile:`/`cacerts:`; opcje pobrania są jego; `plug:` do testów tylko przy `pin_keys: true`;
+nieznana opcja (także stare `req_options:`) wywraca start; `url:` w opcjach dziecka odrzucany, a `https`
+sprawdzany też w `Keys.start_link/1`. `eh-os` (`ledger/application.ex`) przechodzi na `cacertfile:`.
+*Odrzucone:* (a) biała lista opcji Req z odmową przy starcie — zrobione i zamknięte jako
+[PR #37](https://github.com/EmpoweredHouse/eh-os-contract/pull/37): dziesięć rund przeglądów, każda znajdowała
+kolejną drogę przez powierzchnię Req/Finch/Mint/`ssl` (stare nazwy opcji, opcje TLS, globalne `config :req` z
+wtyczkami, sekrety i różnice parserów w adresie), +666 linii. Błąd leżał w podejściu, nie w liście: bronił przed
+hostem, którego konfiguracja jest zaufanym kodem, zamiast zawęzić interfejs, który wystawiał całe Req.
+(b) Cicho nakładać opcje pakietu po opcjach hosta — konfiguracja kłamie. (c) Tylko dokumentacja — pułapka zostaje.
+Pominięte świadomie: `config :req, default_options` hosta dalej działa pod tym pobraniem — to globalna decyzja
+hosta, tym samym kodem, co on sam (zdanie w README). Zła *wartość* CA (`nil` z pustej zmiennej, zła ścieżka) przechodzi
+start i wywraca każde pobranie. Przy pierwszym starcie zamyka szczelnie (`ready?/0` false); gdy tabela ma już
+klucze, **zostają w mocy bez końca, a sygnałem jest tylko ostrzeżenie w logu** — klucz usunięty z JWKS dalej
+weryfikuje (uwaga z przeglądu ostatniego commita). Do zadania z limitem pobrania: brak całkowitego limitu czasu
+(`request_timeout` Req to `:infinity`), `refresh/1` bez `catch` i sygnał starego zestawu kluczy. **Znane ograniczenie:** proxy ani certyfikatu klienta (mTLS) nie da się podać; host, który ich
+potrzebuje, prosi, i dochodzi jedna nazwana opcja.
 
 **Skill `pre-pr-review` odpala od teraz oba przeglądy równolegle** (prośba użytkownika): dwa subagenty w jednej
 wiadomości, `code-review high` i `engineering:code-review` z naciskiem na bezpieczeństwo i wydajność, wspólna pula
