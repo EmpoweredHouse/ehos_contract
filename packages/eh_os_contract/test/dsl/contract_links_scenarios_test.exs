@@ -252,4 +252,67 @@ defmodule EhOsContract.Next.ContractLinksScenariosTest do
       assert length(violations) == 3
     end
   end
+
+  describe "the examples of a domain service's rule (plan EL2b)" do
+    # The rule at line 10.
+    defp pricing(name, examples) do
+      {"#{Macro.underscore(name)}.ex",
+       """
+       defmodule #{inspect(Module.concat(@fixtures, name))} do
+         use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+
+         domain_service :pricing, "Cennik" do
+           function :fee, "Opłata" do
+             argument :status, :status
+             argument :address, :address
+             returns :money
+
+             rule :by_status, "Zależna od statusu",
+               examples: #{examples}
+           end
+         end
+
+         aggregate :visit, "Wizyta" do
+           identity :visit_id
+           command :close, "Zamknięcie", by: :reception, emits: :closed
+           event :closed, "Zamknięto", terminal: true
+         end
+
+         process :visit, "Wizyta" do
+           correlate :visit_id
+         end
+       end
+       """}
+    end
+
+    test "control: arguments and a result of domain types that fit pass" do
+      assert links([
+               pricing(
+                 "RuleValuesRight",
+                 ~s|[{[:active, %{street: "Polna", city: "Kraków"}], 100}]|
+               )
+             ]) == []
+    end
+
+    test "an argument or a result not of its domain type is refused at the rule" do
+      violations =
+        links([
+          pricing(
+            "RuleValuesWrong",
+            ~s|[{[:lapsed, %{street: "Polna"}], "sto"}]|
+          )
+        ])
+
+      assert_linked(
+        violations,
+        "X9: rule :by_status of function :fee, example 1: argument :status: :lapsed is not " <>
+          "one of [:active, :expired]",
+        "rule_values_wrong.ex",
+        10
+      )
+
+      assert_linked(violations, "argument :address: :address needs :city", "rule_values_wrong.ex")
+      assert_linked(violations, ~s|the result: "sto" is not an :integer|, "rule_values_wrong.ex")
+    end
+  end
 end

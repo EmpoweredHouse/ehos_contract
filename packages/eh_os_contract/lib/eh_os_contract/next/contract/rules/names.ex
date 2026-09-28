@@ -22,8 +22,10 @@ defmodule EhOsContract.Next.Contract.Rules.Names do
   implementation aliases its struct by its name, and `State` and `Row` are taken.
   A domain service's function is defined, with its arguments' arity, both by the
   implementation and by the module the contract generates to call it, which is also
-  a behaviour: `behaviour_info/1`, `module_info/0,1` and `__info__/1` are taken there,
-  and `evolve` is not.
+  a behaviour, and `evolve` is not taken there. Every module defines
+  `behaviour_info/1`, `module_info/0,1` and `__info__/1`, so no callback takes one
+  of those at its arity: an event handled with one argument may not be called
+  `module_info` (the EL2b review).
   """
 
   alias EhOsContract.DslRules
@@ -247,34 +249,44 @@ defmodule EhOsContract.Next.Contract.Rules.Names do
 
   defp aliased(_kind, _name, _declaration), do: []
 
+  # A callback is defined in the implementation, and a domain service's function in
+  # the module the contract generates too, which is a behaviour: at every arity it is
+  # called with, it may take no name Elixir reserves or defines already. `evolve/2`
+  # is a unit's, and a service's module has none.
   defp clash(kind, name, arities, declaration) do
     cond do
-      name in @reserved ->
-        [{"N2: #{kind} #{inspect(name)} is a word Elixir reserves", declaration}]
-
-      # A function is defined in the module the contract generates for its service,
-      # which is a behaviour: Elixir defines these there already.
-      kind == "function" and {name, hd(arities)} in @module_functions ->
-        [
-          {"N2: #{kind} #{inspect(name)} would define #{name}/#{hd(arities)}, which every " <>
-             "module defines already", declaration}
-        ]
-
-      # `evolve/2` is a unit's, and a service's module has none.
       name in @taken and kind != "function" ->
         [
           {"N2: #{kind} #{inspect(name)} would clash with evolve/2, which every unit defines",
            declaration}
         ]
 
-      clash = Enum.find(arities, &kernel?(name, &1)) ->
-        [
-          {"N2: #{kind} #{inspect(name)} would define #{name}/#{clash}, which clashes with " <>
-             "#{kernel_module(name, clash)}.#{name}/#{clash}", declaration}
-        ]
+      reason = Enum.find_value(arities, &elixir_clash(name, &1)) ->
+        [{"N2: #{kind} #{inspect(name)} #{reason}", declaration}]
 
       true ->
         []
+    end
+  end
+
+  @doc false
+  # What a function `name/arity` would clash with where a module defines it: N2's
+  # answer, and D9's for a domain value's check (plan EL2b). `nil` when nothing.
+  @spec elixir_clash(atom(), arity()) :: String.t() | nil
+  def elixir_clash(name, arity) do
+    cond do
+      name in @reserved ->
+        "is a word Elixir reserves"
+
+      {name, arity} in @module_functions ->
+        "would define #{name}/#{arity}, which every module defines already"
+
+      kernel?(name, arity) ->
+        "would define #{name}/#{arity}, which clashes with #{kernel_module(name, arity)}." <>
+          "#{name}/#{arity}"
+
+      true ->
+        nil
     end
   end
 

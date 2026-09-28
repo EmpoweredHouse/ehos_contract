@@ -14,8 +14,10 @@ defmodule EhOsContract.Dispatcher do
      names in `by:`; a reaction's, one whose `issues:` names the command. A refusal
      is `{:error, reason}` and writes nothing, neither to the log nor to
      `_commands`.
-  2. **What.** The command's fields against their types (`EhOsContract.Codec`):
-     `{:error, {:invalid, [{field, :required | :type}]}}`. A command that `creates:`
+  2. **What.** The command's fields against their types (`EhOsContract.Codec`), and
+     each value against the invariants of its domain value (plan EL2b):
+     `{:error, {:invalid, [{field, :required | :type | {:invariant, name}}]}}`,
+     before anything is decided or written. A command that `creates:`
      an aggregate whose identity is generated gets a UUIDv7 here, and is refused
      with `{field, :generated}` when it brings one of its own, and with
      `{:error, :idempotency_key_required}` without an idempotency key (plan EM3).
@@ -33,8 +35,8 @@ defmodule EhOsContract.Dispatcher do
      the log's order.
   5. **Hold the decision to its declaration.** An event the command does not emit,
      a rejection on an invariant it does not reject on, or an event whose fields
-     do not fit raises: that is a defect in the code, never a business outcome, and
-     nothing is appended.
+     do not fit — their types, or the invariants of their values — raises: that is a
+     defect in the code, never a business outcome, and nothing is appended.
   6. **Append**, under the stream's version as it was read — for a boundary, only
      if nothing it read was appended since (`{:dcb, query, head}`) — and write the
      `accepted` row. A rejection writes a `rejected` row and appends nothing. The
@@ -123,7 +125,7 @@ defmodule EhOsContract.Dispatcher do
     values = Codec.values(model.domain)
 
     with :ok <- permit(model, declaration, ctx.actor),
-         :ok <- valid(declaration.fields, command, values),
+         :ok <- valid(declaration.fields, command, values, model.domain),
          {:ok, command} <- generate_identity(model, declaration, command, ctx) do
       job = %{
         kind: :command,
@@ -162,7 +164,7 @@ defmodule EhOsContract.Dispatcher do
     values = Codec.values(model.domain)
 
     with :ok <- permit_record(model, declaration, ctx.actor),
-         :ok <- valid(declaration.fields, event, values) do
+         :ok <- valid(declaration.fields, event, values, model.domain) do
       job = %{
         kind: :record,
         type: "record:#{declaration.name}",
@@ -208,7 +210,7 @@ defmodule EhOsContract.Dispatcher do
     scope = scope(declaration, params, values)
 
     with :ok <- permit_query(model, declaration, ctx.actor, scope),
-         :ok <- valid(declaration.params, params, values),
+         :ok <- valid(declaration.params, params, values, model.domain),
          :ok <- caught_up(model, declaration, Map.new(opts)) do
       impl = Implementations.fetch!(model, :query, declaration.name)
       answer = apply(impl, declaration.name, [params, %{actor: ctx.actor}])
@@ -438,8 +440,8 @@ defmodule EhOsContract.Dispatcher do
 
   defp generate_identity(_model, _declaration, command, _ctx), do: {:ok, command}
 
-  defp valid(fields, struct, values) do
-    case Codec.problems(fields, struct, values) do
+  defp valid(fields, struct, values, domain) do
+    case Codec.problems(fields, struct, values, domain) do
       [] -> :ok
       problems -> {:error, {:invalid, problems}}
     end
@@ -824,7 +826,7 @@ defmodule EhOsContract.Dispatcher do
                 "unit that decided it. Nothing was appended."
       end
 
-      case Codec.problems(event_declaration.fields, event, values) do
+      case Codec.problems(event_declaration.fields, event, values, model.domain) do
         [] ->
           {event_declaration, event}
 

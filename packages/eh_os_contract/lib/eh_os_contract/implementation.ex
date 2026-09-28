@@ -12,8 +12,8 @@ defmodule EhOsContract.Implementation do
       end
 
   `use C, aggregate: :name` — or `dcb:`, `policy:`, `effect:`, `process_manager:`,
-  `read_model:`, `query:` — names exactly one declaration of the contract `C`, and
-  brings in:
+  `read_model:`, `query:`, `domain_service:` — names exactly one declaration of the
+  contract `C`, and brings in:
 
   - `@behaviour` of the module `C` generated for it (`EhOsContract.Next.Contract.Callbacks`
     says which callbacks);
@@ -28,6 +28,18 @@ defmodule EhOsContract.Implementation do
 
   The dependency runs one way: the implementation compiles against the contract and
   the structs it expands, and the contract names no implementation (v2 §8).
+
+  **A domain's value** is bound the same way, `use Rehmed.Domain, value: :money`
+  (plan EL2b): the behaviour is `Rehmed.Domain.Values.Money`, with one function per
+  invariant the value declares, and I1 and I2 hold as they do for a contract. There
+  is nothing to alias and nothing to emit.
+
+      defmodule Rehmed.Money do
+        use Rehmed.Domain, value: :money
+
+        @impl true
+        def not_negative(amount), do: amount >= 0
+      end
 
   **The rules** (v2 §6, L4), each a `CompileError` at the call site, or at the
   `use` line for the ones checked before the module compiles:
@@ -69,7 +81,13 @@ defmodule EhOsContract.Implementation do
     :domain_service
   ]
 
-  @typedoc "What `__eh_os_implementation__/0` says about an implementation."
+  # What a domain's `use` binds (plan EL2b).
+  @domain_kinds [:value]
+
+  @typedoc """
+  What `__eh_os_implementation__/0` says about an implementation. `contract` is the
+  module bound to: a contract, or a domain for a `:value`.
+  """
   @type t :: %{
           contract: module(),
           kind: atom(),
@@ -142,16 +160,17 @@ defmodule EhOsContract.Implementation do
   # I1: exactly one kind, naming a declaration that exists.
   defp declaration!(model, opts, caller) do
     where = "use #{inspect(model.module)}"
-    unknown = Keyword.keys(opts) -- @kinds
+    kinds = kinds(model)
+    unknown = Keyword.keys(opts) -- kinds
 
     if unknown != [] do
       refuse!(
         caller,
-        "I1: #{where} takes one of #{inspect(@kinds)}; #{inspect(unknown)} is not among them"
+        "I1: #{where} takes one of #{inspect(kinds)}; #{inspect(unknown)} is not among them"
       )
     end
 
-    case Keyword.take(opts, @kinds) do
+    case Keyword.take(opts, kinds) do
       [{kind, name}] ->
         names = names(model, kind)
 
@@ -162,17 +181,28 @@ defmodule EhOsContract.Implementation do
         end
 
       [] ->
-        refuse!(caller, "I1: #{where} names no declaration; write `#{where}, aggregate: :name`")
+        refuse!(
+          caller,
+          "I1: #{where} names no declaration; write `#{where}, #{hd(kinds)}: :name`"
+        )
 
       many ->
         refuse!(caller, "I1: #{where} names #{inspect(many)}; an implementation binds to one")
     end
   end
 
+  defp kinds(%{kind: :domain}), do: @domain_kinds
+  defp kinds(_contract), do: @kinds
+
   defp unknown_name(model, kind, name, names) do
-    elsewhere = for other <- @kinds, other != kind, name in names(model, other), do: other
+    elsewhere =
+      for other <- kinds(model), other != kind, name in names(model, other), do: other
 
     cond do
+      # A value without invariants has nothing to check, and so nothing to implement.
+      kind == :value and Enum.any?(model.values, &(&1.name == name)) ->
+        "value #{inspect(name)} declares no invariant, so there is nothing to implement"
+
       elsewhere != [] ->
         "#{inspect(name)} is not #{a(kind)} but #{Enum.map_join(elsewhere, " and ", &a/1)}"
 
@@ -180,9 +210,12 @@ defmodule EhOsContract.Implementation do
         "there is no #{human(kind)} #{inspect(name)}; did you mean #{inspect(suggestion)}?"
 
       true ->
-        "there is no #{human(kind)} #{inspect(name)}; the contract declares #{inspect(names)}"
+        "there is no #{human(kind)} #{inspect(name)}; the #{model.kind} declares " <>
+          inspect(names)
     end
   end
+
+  defp names(model, :value), do: for(%{invariants: [_ | _]} = v <- model.values, do: v.name)
 
   defp names(model, kind) when kind in [:aggregate, :dcb],
     do: for(u <- model.units, u.kind == kind, do: u.name)
@@ -258,7 +291,7 @@ defmodule EhOsContract.Implementation do
           reads = Model.module_for(model, :read_model, query.reads)
           [{behaviour, camel(name)}, {Module.concat(reads, Row), Row}]
 
-        :domain_service ->
+        kind when kind in [:domain_service, :value] ->
           []
       end
 

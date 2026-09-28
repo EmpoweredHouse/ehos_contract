@@ -46,6 +46,19 @@ defmodule EhOsContract.ScenarioCase do
   `id` and a `position`, 1, 2, … in the order listed, as an event read back from the
   log has.
 
+  **A domain's examples** (plan EL2b). `use EhOsContract.ScenarioCase, domain:
+  Rehmed.Domain` writes one test per example of every value's invariant, against the
+  module bound with `use Rehmed.Domain, value: :name`: the invariant's function
+  answers `false` for each of its `violated_by:`, and every invariant of the value
+  answers `true` for each of its `satisfied_by:` — and of what the value is made of,
+  as dispatch asks them — since a value that keeps one invariant and breaks another
+  is no example of a value. An example is plain data, cast as a scenario's is.
+
+  **A domain service's rules** (plan EL2b). Every example of a rule,
+  `examples: [{[1, 3], 0}]`, is a test too: the function, called through the module
+  the contract generates, returns the example's result — compared as values, so a
+  decimal `2.50` is `2.5`.
+
   **Which implementation.** The one module of the contract's application whose
   `__eh_os_implementation__/0` names the scenario's target; `implementations:` names
   them instead, for contracts compiled outside an application. A target without
@@ -66,6 +79,31 @@ defmodule EhOsContract.ScenarioCase do
 
   @doc false
   defmacro __using__(opts) do
+    if Keyword.has_key?(opts, :domain), do: domain_case(opts), else: contract_case(opts)
+  end
+
+  defp domain_case(opts) do
+    domain = Keyword.fetch!(opts, :domain)
+    implementations = Keyword.get(opts, :implementations)
+    async = Keyword.get(opts, :async, true)
+
+    quote do
+      use ExUnit.Case, async: unquote(async)
+
+      for example <- EhOsContract.ScenarioCase.examples(unquote(domain)) do
+        @eh_os_contract_example example
+        test EhOsContract.ScenarioCase.describe(example) do
+          EhOsContract.ScenarioCase.run_example(
+            unquote(domain),
+            @eh_os_contract_example,
+            unquote(implementations)
+          )
+        end
+      end
+    end
+  end
+
+  defp contract_case(opts) do
     contract = Keyword.fetch!(opts, :contract)
     implementations = Keyword.get(opts, :implementations)
     async = Keyword.get(opts, :async, true)
@@ -92,7 +130,199 @@ defmodule EhOsContract.ScenarioCase do
           )
         end
       end
+
+      for example <- EhOsContract.ScenarioCase.rule_examples(unquote(contract)) do
+        @eh_os_contract_rule_example example
+        test EhOsContract.ScenarioCase.describe(@eh_os_contract_rule_example) do
+          EhOsContract.ScenarioCase.run_rule_example(
+            unquote(contract),
+            @eh_os_contract_rule_example,
+            unquote(implementations)
+          )
+        end
+      end
     end
+  end
+
+  @typedoc "One example of a domain service's rule, as a test runs it."
+  @type rule_example :: %{
+          service: atom(),
+          function: atom(),
+          rule: atom(),
+          arguments: [term()],
+          result: term()
+        }
+
+  @doc "Every example of every rule of `contract`'s domain services, in declaration order."
+  @spec rule_examples(module()) :: [rule_example()]
+  def rule_examples(contract) do
+    for service <- Model.fetch(contract).domain_services,
+        function <- service.functions,
+        rule <- function.rules,
+        {arguments, result} <- rule.examples do
+      %{
+        service: service.name,
+        function: function.name,
+        rule: rule.name,
+        arguments: arguments,
+        result: result
+      }
+    end
+  end
+
+  @doc """
+  Runs one example of a domain service's rule of `contract`: calls the function
+  through the module the contract generates — so its arguments and result are held
+  to their types and invariants, as a decision's call is — with the implementation
+  found as a scenario's is, and asserts it returns the example's result.
+  """
+  @spec run_rule_example(module(), rule_example(), [module()] | nil) :: true
+  def run_rule_example(contract, example, implementations \\ nil) do
+    model = Model.fetch(contract)
+
+    implementation =
+      implementation!(model, %{kind: :domain_service, name: example.service}, implementations)
+
+    service = Enum.find(model.domain_services, &(&1.name == example.service))
+    function = Enum.find(service.functions, &(&1.name == example.function))
+    domain = domain(model)
+
+    {arguments, expected} =
+      try do
+        {Enum.zip_with(function.arguments, example.arguments, &cast(&1.type, &2, domain)),
+         cast(function.returns.type, example.result, domain)}
+      catch
+        {:unfit, problem} -> flunk("example of #{describe(example)}: #{problem}")
+      end
+
+    returned =
+      EhOsContract.DomainService.call(
+        model.module,
+        example.service,
+        example.function,
+        arguments,
+        implementation
+      )
+
+    assert same?(returned, expected),
+           "#{call(example)} returned #{shown(returned)}, and rule #{inspect(example.rule)} " <>
+             "gives #{shown(expected)}"
+  end
+
+  defp call(example),
+    do: "#{example.function}(#{Enum.map_join(example.arguments, ", ", &shown/1)})"
+
+  # A list of small integers is a list here, never a charlist.
+  defp shown(term), do: inspect(term, charlists: :as_lists)
+
+  # What a decimal is, not how many digits it was written with: 2.50 is 2.5.
+  defp same?(%Decimal{} = a, %Decimal{} = b), do: Decimal.equal?(a, b)
+
+  defp same?(a, b) when is_list(a) and is_list(b),
+    do: length(a) == length(b) and Enum.all?(Enum.zip(a, b), fn {x, y} -> same?(x, y) end)
+
+  defp same?(%{} = a, %{} = b) when not is_struct(a) and not is_struct(b),
+    do: Map.keys(a) == Map.keys(b) and Enum.all?(a, fn {k, v} -> same?(v, Map.fetch!(b, k)) end)
+
+  defp same?(a, b), do: a == b
+
+  @typedoc "One example of a value's invariant, as a test runs it."
+  @type example :: %{
+          value: atom(),
+          invariant: atom(),
+          kind: :violated_by | :satisfied_by,
+          data: term()
+        }
+
+  @doc "Every example of every invariant of `domain`'s values, in declaration order."
+  @spec examples(module()) :: [example()]
+  def examples(domain) do
+    for value <- Model.fetch(domain).values,
+        invariant <- value.invariants,
+        kind <- [:violated_by, :satisfied_by],
+        data <- Map.fetch!(invariant, kind),
+        do: %{value: value.name, invariant: invariant.name, kind: kind, data: data}
+  end
+
+  @doc "The name of an example's test: a value's invariant's, or a rule's."
+  @spec describe(example() | rule_example()) :: String.t()
+  def describe(%{rule: rule} = example) do
+    "rule #{inspect(rule)} of #{example.service}.#{example.function}: #{call(example)} returns " <>
+      shown(example.result)
+  end
+
+  def describe(%{kind: kind} = example) do
+    verb = if kind == :violated_by, do: "breaks", else: "keeps"
+
+    "invariant #{inspect(example.invariant)} of value #{inspect(example.value)}: " <>
+      "#{shown(example.data)} #{verb} it"
+  end
+
+  @doc """
+  Runs one example of a value's invariant of `domain` against the value's
+  implementation. `implementations`, when given, is where it is looked for instead
+  of the domain's application.
+  """
+  @spec run_example(module(), example(), [module()] | nil) :: true
+  def run_example(domain, example, implementations \\ nil) do
+    model = Model.fetch(domain)
+    implementation = implementation!(model, %{kind: :value, name: example.value}, implementations)
+    value = Enum.find(model.values, &(&1.name == example.value))
+    values = Map.new(model.values, &{&1.name, &1})
+    data = cast_example(example, values)
+
+    checked =
+      case example.kind do
+        :violated_by -> [example.invariant]
+        :satisfied_by -> Enum.map(value.invariants, & &1.name)
+      end
+
+    for invariant <- checked do
+      answer = apply(implementation, invariant, [data])
+      expected = example.kind == :satisfied_by
+
+      assert is_boolean(answer),
+             "#{inspect(implementation)}.#{invariant}/1 answered #{inspect(answer)}; the check " <>
+               "of an invariant answers true or false"
+
+      assert answer == expected,
+             if(expected,
+               do:
+                 "#{inspect(example.data)} is given as a value of #{inspect(example.value)} " <>
+                   "that keeps #{inspect(example.invariant)}, and " <>
+                   "#{inspect(implementation)}.#{invariant}/1 answers that it breaks " <>
+                   "#{inspect(invariant)}",
+               else:
+                 "#{inspect(example.data)} breaks invariant #{inspect(invariant)} of value " <>
+                   "#{inspect(example.value)}, and #{inspect(implementation)}.#{invariant}/1 " <>
+                   "lets it through"
+             )
+    end
+
+    # What the value is made of is held to its own invariants first, as dispatch holds
+    # it, through the implementations the application binds.
+    if example.kind == :satisfied_by do
+      problems = parts_problems(value, data, values, domain)
+
+      assert problems == [],
+             "#{shown(example.data)} is given as a value of #{inspect(example.value)} that keeps " <>
+               "#{inspect(example.invariant)}, and what it is made of breaks an invariant: " <>
+               inspect(problems)
+    end
+
+    true
+  end
+
+  defp parts_problems(%{type: nil, fields: fields}, data, values, domain),
+    do: EhOsContract.Codec.problems(fields, data, values, domain)
+
+  defp parts_problems(%{name: name, type: inner}, data, values, domain),
+    do: EhOsContract.Codec.problems([%{name: name, type: inner}], %{name => data}, values, domain)
+
+  defp cast_example(example, domain) do
+    cast(example.value, example.data, domain)
+  catch
+    {:unfit, problem} -> flunk("example of #{describe(example)}: #{problem}")
   end
 
   @doc """

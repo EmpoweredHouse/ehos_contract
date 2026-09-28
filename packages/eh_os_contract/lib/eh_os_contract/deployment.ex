@@ -126,7 +126,9 @@ defmodule EhOsContract.Deployment do
 
   # A v2 contract's paths are its steps (`EhOsContract.Paths`), declared by the
   # contract itself, so they move its version. What only the code says is which
-  # module implements each declaration: that, with the steps, is its wiring. A
+  # module implements each declaration — the contract's own, and the checks of its
+  # domain's values, which decide what dispatch accepts (plan EL2b) — and that, with
+  # the steps, is its wiring. A
   # promise gets a digest of its own here, so a changed promise has a boundary
   # (`declaration_boundaries/1`) where the model only digests the whole process.
   @spec v2_row(module(), DateTime.t()) :: map()
@@ -134,9 +136,12 @@ defmodule EhOsContract.Deployment do
     model = Model.fetch(contract)
     edges = contract |> v2_edge_labels() |> Enum.sort()
 
+    domain = model.domain
+
     bindings =
-      for {{^contract, kind, name}, modules} <-
+      for {{owner, kind, name}, modules} <-
             EhOsContract.Implementations.index(contract).declarations,
+          owner == contract or (owner == domain and kind == :value),
           module <- modules,
           do: "#{kind}:#{name}=#{inspect(module)}"
 

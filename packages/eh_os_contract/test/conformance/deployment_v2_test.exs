@@ -31,6 +31,32 @@ defmodule EhOsContract.DeploymentV2Test do
     assert Map.has_key?(row.declaration_digests, "promise:completed_or_refusal_notified")
   end
 
+  test "the wiring holds which module checks each value of the contract's domain" do
+    Deployment.record!()
+    before = row(ValueRig.Till).wiring_version
+
+    apps = Enum.uniq(List.wrap(Application.get_env(:eh_os_contract, :applications)))
+    key = {EhOsContract.Implementations, apps}
+    index = EhOsContract.Implementations.index(nil)
+    on_exit(fn -> :persistent_term.put(key, index) end)
+
+    # The amount's check moves to another module: what dispatch accepts may change,
+    # and the contract's declarations do not.
+    declarations =
+      Map.put(index.declarations, {ValueRig.Domain, :value, :amount}, [ValueRig.Fee])
+
+    :persistent_term.put(key, %{index | declarations: declarations})
+    Deployment.record!()
+
+    wirings =
+      Repo.all(
+        from(d in Deployment, where: d.contract == "ValueRig.Till", select: d.wiring_version)
+      )
+
+    assert length(wirings) == 2
+    assert before in wirings
+  end
+
   test "a promise's digest is its rule: confirming it or citing it anew is no change" do
     [promise] = Promised.__eh_os_contract_model__().process.promises
     digest = Deployment.promise_digest(promise)

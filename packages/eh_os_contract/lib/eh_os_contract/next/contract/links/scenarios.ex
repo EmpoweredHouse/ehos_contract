@@ -10,6 +10,8 @@ defmodule EhOsContract.Next.Contract.Links.Scenarios do
     fields declares — in lists too (`EhOsContract.Next.Contract.Data.problems/3`);
   - **a query's parameters and the rows its scenario answers**, whose fields are
     this contract's, for the values of domain types among them;
+  - **the examples of a domain service's rule** (plan EL2b), for the arguments and
+    results of domain types, whose shape S9 has checked;
   - **the data of an event consumed from a sibling contract**, whose fields are the
     sibling's: every key a field of the sibling's event, every required field given
     where S3 requires one (a `given` and the trigger, not what is expected or
@@ -27,10 +29,33 @@ defmodule EhOsContract.Next.Contract.Links.Scenarios do
   defp contract(c, system) do
     values = if c.domain, do: Map.new(c.domain.values, &{&1.name, &1}), else: %{}
 
-    for {model, declaration} <- Enum.zip(c.model.scenarios, c.declarations.scenarios),
-        {what, shape, data, at, required?} <- entries(c, system, model, declaration),
-        problem <- problems(shape, data, values, required?) do
-      {"X9: scenario #{inspect(model.description)}: #{what}#{problem}", at}
+    scenarios =
+      for {model, declaration} <- Enum.zip(c.model.scenarios, c.declarations.scenarios),
+          {what, shape, data, at, required?} <- entries(c, system, model, declaration),
+          problem <- problems(shape, data, values, required?) do
+        {"X9: scenario #{inspect(model.description)}: #{what}#{problem}", at}
+      end
+
+    scenarios ++ rule_examples(c, values)
+  end
+
+  defp rule_examples(c, values) do
+    for s <- c.declarations.domain_services,
+        f <- s.functions,
+        r <- f.rules,
+        {example, index} <- Enum.with_index(r.examples, 1),
+        {:ok, filled} <- [Rules.Scenarios.example_values(example, f)],
+        {declared, value} <- filled,
+        declared != nil,
+        problem <- Data.problems(declared.type, value, values) do
+      what =
+        case declared do
+          %{name: name} -> "argument #{inspect(name)}"
+          _returns -> "the result"
+        end
+
+      {"X9: rule #{inspect(r.name)} of function #{inspect(f.name)}, example #{index}: " <>
+         "#{what}: #{problem}", Links.at(r)}
     end
   end
 

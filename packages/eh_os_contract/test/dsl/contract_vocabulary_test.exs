@@ -62,7 +62,7 @@ defmodule EhOsContract.Next.ContractVocabularyTest do
         [:domain_service, :function] => [:name, :label],
         [:domain_service, :function, :returns] => [:type, :optional],
         [:domain_service, :function, :argument] => [:name, :type, :optional, :label],
-        [:domain_service, :function, :rule] => [:name, :label, :source],
+        [:domain_service, :function, :rule] => [:name, :label, :examples, :source],
         [:consumes] => [:from, :events, :as],
         [:consumes, :field] => @field,
         [:publish] => [:name, :as, :from, :fields, :idempotent_on],

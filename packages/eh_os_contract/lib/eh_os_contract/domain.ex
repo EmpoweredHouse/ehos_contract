@@ -14,6 +14,20 @@ defmodule EhOsContract.Domain do
 
   A domain module declares subdomains, contexts with their glossary, actors, subjects of
   personal data, value types, external systems and the relations between contexts.
+
+  A value may declare invariants, each with values that break it and keep it
+  (plan EL2b):
+
+      value :money, :integer, unit: :grosze do
+        invariant :not_negative, "Kwota nie jest ujemna",
+          violated_by: [-1],
+          satisfied_by: [0, 15_000]
+      end
+
+  The domain then generates a behaviour, `Rehmed.Domain.Values.Money`, and a module
+  bound with `use Rehmed.Domain, value: :money` defines one function per invariant.
+  Dispatch holds every value of the type to them (`EhOsContract.Value`), and
+  `use EhOsContract.ScenarioCase, domain: Rehmed.Domain` tests each example.
   It compiles to plain data, `__eh_os_contract_model__/0`, which
   `EhOsContract.Model.fetch/1` returns for it. The data carries a `version`: a digest
   that ignores the order declarations are written in.

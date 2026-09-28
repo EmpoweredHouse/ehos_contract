@@ -13,6 +13,7 @@ defmodule EhOsContract.Next.Contract.Callbacks do
   | read model | one per projected event, `(event) :: :ok` |
   | query | one, named after it, `(params, ctx) :: rows` |
   | domain service | one per function, `(arguments…) :: result`, typed as declared |
+  | value, of a domain | one per invariant, `(value) :: boolean` (plan EL2b) |
 
   A decision is `{:ok, [event]}` or `{:error, %EhOsContract.Rejection{}}`; what is
   issued is `{:ok, [command]}`. `evolve/2` folds the events a state is kept from: a
@@ -180,6 +181,21 @@ defmodule EhOsContract.Next.Contract.Callbacks do
     %{callbacks: callbacks, evolve: nil}
   end
 
+  # `model` is the domain's here: a value belongs to the domain, not to a contract.
+  def of(model, :value, name) do
+    value = Enum.find(model.values, &(&1.name == name))
+    type = quote(do: unquote(Module.concat(model.module, Values)).unquote(name)())
+
+    %{
+      callbacks:
+        for(
+          i <- value.invariants,
+          do: callback(i.name, [type], quote(do: boolean()), names: [name])
+        ),
+      evolve: nil
+    }
+  end
+
   # One callback per name: two reactions of one process manager on the same trigger
   # issue into the same callback.
   defp merge(pairs) do
@@ -212,7 +228,8 @@ defmodule EhOsContract.Next.Contract.Callbacks do
       emits: Keyword.get(produces, :emits, []),
       rejects: Keyword.get(produces, :rejects, []),
       issues: Keyword.get(produces, :issues, []),
-      # The arguments' names, where the declaration gives them: a domain service's.
+      # The arguments' names, where the declaration gives them: a domain service's, and
+      # a value's check, which takes the value by its name.
       names: Keyword.get(produces, :names, [])
     }
   end

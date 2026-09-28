@@ -154,6 +154,15 @@ scenario        description!   scope · actor
 > domain's value or entity (D8). It composes with an entity reference, `field :invoice_number, {:id, :invoice},
 > issued_by: :ksef`, which is why it is an option and not `{:id, :ksef}`. ESDM has no such field. An external
 > identifier that is personal data (a PESEL, a patient's number at a payer) is still never an `:id` (§14).
+>
+> *Added 28 September 2026, plan EL2b, the user's choice of 27 September.* **A value's invariant is checked, and
+> shown on examples:** `value :money, :integer do invariant :not_negative, "…", violated_by: [-1],
+> satisfied_by: [0, 15_000] end` — both lists required, each example plain data of the value's type, as a
+> scenario's is. The domain generates a behaviour, `D.Values.Money`, with one callback per invariant, `(value) ::
+> boolean`, and a module bound with `use D, value: :money` defines each (I1, I2). Dispatch holds every value of
+> the type to them (§11), and `use EhOsContract.ScenarioCase, domain: D` writes a test per example. ESDM's
+> value-object invariants are prose; this is the library's addition, in the shape the aggregate's invariant already
+> had.
 
 - **Identity is injected.** A unit's identity fields appear in its state, commands and events without being
   declared there; declaring one again is an error.
@@ -198,6 +207,13 @@ scenario        description!   scope · actor
 > module the contract generates, `C.DomainServices.<Name>`: a decision calls the function there, which holds
 > the arguments and the result to their declared types and raises on a mismatch (the user's choice over a
 > compile-time check alone). No scenario targets it; ESDM has none for it either.
+>
+> *Added 28 September 2026, plan EL2b, the user's choice.* **A rule of a domain service is shown on examples, and
+> they are required:** `rule :never_below_zero, "…", examples: [{[1, 3], 0}]` — the arguments in the order the
+> function takes them, then the result, as plain data. S9 refuses a rule without one, and an example of the wrong
+> shape or types; X9 checks the values of domain types. `EhOsContract.ScenarioCase` makes each a test that calls
+> the function through `C.DomainServices.<Name>`, so its types and its values' invariants are held too, and
+> compares the result as a value. This is where a scenario of a domain service would have been.
 
 > **27 September 2026, EM3 — a generated identity.** ESDM's `identifiedBy: {source: generated}` is written
 > `identity :booking_id, generated: :uuid` on an aggregate, with `creates: true` on the command that makes
@@ -677,9 +693,32 @@ where it helps; every violation is reported as a diagnostic before the single ra
   > never as an invariant of the unit, and it is in the command's `rejects:`; **S8** asks a `rejected` scenario
   > of that command for each; I5 lets `reject/1` name it. A query's constraint is prose, since a query refuses
   > nothing. A value's invariants get a validator in their own stage (EL2b).
+  >
+  > *Added 28 September 2026, plan EL2b.* **S9**: a domain service's rule gives at least one example, each
+  > `{[argument, …], result}` with the function's arity, each value of its declared type (`nil` only where
+  > optional), none given twice, since each names its test. **X9** reads those examples too, for the values of
+  > domain types.
 - *Domain.* D1: unique names per kind. D2: at most one translation per language, none into the context's
   own. D3: a value has exactly one of type or fields; `unit` only on numeric types; no cycles. D4: a human
   actor has no `backed_by`. D5: relation roles fit the type; endpoints exist; no relation to itself.
+
+  > *Added 28 September 2026, plan EL2b.* **D9**: a value's invariant is named as the function that checks it
+  > is — snake_case, once in its value, no clash with what Elixir defines at arity one (N2's list), and not
+  > `:required`, `:type` or `:generated`, which a refusal puts where an invariant's name goes — and it gives at
+  > least one `violated_by:` and one `satisfied_by:`, each plain data of the value's type, none `nil` and none
+  > in both. **At run time** a value that fits its type is held to its invariants wherever a type is:
+  > a command's fields and a recorded event's are refused, `{field, {:invariant, name}}`, 422 `{"invalid":
+  > {"<field>": "<invariant>"}}`; an event a decision returns raises, as one not fitting its type does; a
+  > query's parameters are refused and a domain service's arguments and result raise. What the value is made of
+  > is asked first — a list's items, a value's fields, the value an alias stands for — then its own. **The log
+  > read back is never held to them**, so an invariant added later leaves history readable. `check` warns,
+  > `value-without-implementation`, of a value nobody checks in a domain whose contracts have code.
+  > **What history can still meet:** a policy or process manager that builds a command from an old event's
+  > value is refused on an invariant added since, and the refusal of a reaction's command rolls back the
+  > command that set it off, or stops an ordered consumer at that event. Adding an invariant is therefore a
+  > change to the model, like narrowing a type: the values already in the log need a look first. A value's
+  > implementation is found as a declaration's is (§10.5): among the configured applications and the
+  > domain's own; its binding joins the wiring version of every contract of the domain (§13).
 
 **L3 — a Mix compiler, `compile.eh_os_contract`** (hard diagnostics on every compile, because references
 between DSL modules record no compile dependency, §8):

@@ -226,6 +226,26 @@ defmodule EhOsContract.Next.ContractNamesTest do
                "N2: event :spawn would define spawn/1, which clashes with Kernel.spawn/1 (event_clash.ex:7)"
     end
 
+    # The EL2b review: a handler's callback module_info/1 compiles in no module.
+    test "an event is not named after a function every module defines" do
+      message =
+        refuse_contract("EventModuleInfo", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :module_info
+            event :module_info, "Coś", terminal: true
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      assert message =~
+               "N2: event :module_info would define module_info/1, which every module defines " <>
+                 "already (event_module_info.ex:7)"
+    end
+
     test "state and row, which an implementation aliases as State and Row" do
       message =
         refuse_contract("Aliased", """

@@ -717,7 +717,11 @@ defmodule EhOsContract.DomainRulesTest do
     end
   end
 
-  # The digest's form of a declaration, as `EhOsContract.Domain.Build` sorts it.
+  # The digest's form of a declaration, as `EhOsContract.Domain.Build` sorts it. A value
+  # without invariants is hashed without the key (plan EL2b).
+  defp digest_form(%{invariants: []} = value),
+    do: value |> Map.delete(:invariants) |> digest_form()
+
   defp digest_form(declaration) do
     Map.new(declaration, fn
       {key, list} when key in [:terms, :translations, :avoid, :fields] and is_list(list) ->

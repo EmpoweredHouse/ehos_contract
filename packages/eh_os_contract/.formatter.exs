@@ -73,6 +73,7 @@ spark_locals_without_parens = [
   event: 3,
   events: 1,
   eventually: 1,
+  examples: 1,
   expect: 1,
   expect: 2,
   expect: 3,
@@ -140,6 +141,7 @@ spark_locals_without_parens = [
   returns: 2,
   rule: 2,
   rule: 3,
+  satisfied_by: 1,
   scenario: 1,
   scenario: 2,
   schema_version: 1,
@@ -176,6 +178,7 @@ spark_locals_without_parens = [
   value: 1,
   value: 2,
   value: 3,
+  violated_by: 1,
   wait: 1,
   where: 1,
   within: 1

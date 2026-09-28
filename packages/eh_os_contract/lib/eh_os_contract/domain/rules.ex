@@ -8,6 +8,16 @@ defmodule EhOsContract.Domain.Rules do
 
   **D8** (plan EL2): a field's `issued_by:` names an external of this domain.
 
+  **D9** (plan EL2b): a value's invariant is named as a function is — snake_case,
+  once in its value, never clashing with what Elixir defines, as N2 holds a
+  contract's names, and never `:required`, `:type` or `:generated`, the words a
+  refusal already puts where an invariant's name goes — and shows itself on
+  examples: `violated_by:` and `satisfied_by:` each give at least one, every one is
+  plain data of the value's type, none is in both and none is in one twice, since
+  each names its test. And no example that keeps an invariant is one another
+  invariant breaks, of the value or of what it is made of, by its own
+  `violated_by:`.
+
   **D7** (plan EL2): a context's `subdomain:` names a subdomain the domain declares,
   `subdomain :visits, "Wizyty", type: :core`; the kind is the subdomain's.
 
@@ -59,7 +69,7 @@ defmodule EhOsContract.Domain.Rules do
     DslRules.result(dsl, [:domain], Enum.flat_map(rules(), & &1.(entities, domain)))
   end
 
-  defp rules, do: [&d1/2, &d2/2, &d3/2, &d4/2, &d5/2, &d6/2, &d7/2, &d8/2]
+  defp rules, do: [&d1/2, &d2/2, &d3/2, &d4/2, &d5/2, &d6/2, &d7/2, &d8/2, &d9/2]
 
   # --- D1: names are unique per kind ---------------------------------------------
 
@@ -665,6 +675,139 @@ defmodule EhOsContract.Domain.Rules do
          suggest(field.issued_by, externals), field}
     end
   end
+
+  # --- D9: a value's invariant is named as a function, with examples (plan EL2b) ----
+
+  # What `EhOsContract.Codec` already reports for a field in the place an invariant's
+  # name takes in `{:invalid, …}` and in a 422's body.
+  @refusals [:required, :type, :generated]
+
+  defp d9(entities, _domain) do
+    values = Map.new(for(%Value{} = value <- entities, do: {value.name, value}))
+
+    for %Value{} = value <- entities,
+        violation <-
+          Enum.flat_map(value.invariants, &invariant_violations(value, &1, values)) ++
+            for(
+              duplicate <- duplicates(value.invariants, & &1.name),
+              do:
+                {"D9: value #{inspect(value.name)} declares the invariant " <>
+                   "#{inspect(duplicate.name)} twice", duplicate}
+            ) do
+      violation
+    end
+  end
+
+  defp invariant_violations(value, invariant, values) do
+    where = "D9: invariant #{inspect(invariant.name)} of value #{inspect(value.name)}"
+
+    name =
+      cond do
+        not (Atom.to_string(invariant.name) =~ ~r/^[a-z][a-z0-9_]*$/) ->
+          [
+            {"#{where} is not snake_case; it is the name of the function that checks it",
+             invariant}
+          ]
+
+        clash = EhOsContract.Next.Contract.Rules.Names.elixir_clash(invariant.name, 1) ->
+          [{"#{where} #{clash}; it is the name of the function that checks it", invariant}]
+
+        invariant.name in @refusals ->
+          [
+            {"#{where} is named like a refusal of a field, #{inspect(@refusals)}; a refusal " <>
+               "could not tell them apart", invariant}
+          ]
+
+        true ->
+          []
+      end
+
+    examples =
+      for {key, list} <- [
+            violated_by: invariant.violated_by,
+            satisfied_by: invariant.satisfied_by
+          ],
+          violation <- example_violations(where, key, list, value, invariant, values) do
+        violation
+      end
+
+    both =
+      for example <- Enum.uniq(invariant.violated_by), example in invariant.satisfied_by do
+        {"#{where} gives #{inspect(example)} in both violated_by: and satisfied_by:", invariant}
+      end
+
+    # Each example names its test, so one given twice would name two alike.
+    twice =
+      for {key, list} <- [
+            violated_by: invariant.violated_by,
+            satisfied_by: invariant.satisfied_by
+          ],
+          example <- Enum.uniq(duplicates(list, & &1)) do
+        {"#{where} gives #{inspect(example)} twice in #{key}:", invariant}
+      end
+
+    # A value that keeps one invariant is a value, so it breaks no other: neither
+    # another of this value's, nor one of what the value is made of, which dispatch
+    # asks first. Only what the declarations themselves say is compared.
+    contradicted =
+      for example <- Enum.uniq(invariant.satisfied_by),
+          {type, other} <- Enum.uniq(listed_as_breaking(value.name, example, values)),
+          {type, other.name} != {value.name, invariant.name} do
+        {"#{where} gives #{inspect(example)} in satisfied_by:, and invariant " <>
+           "#{inspect(other.name)} of value #{inspect(type)} gives " <>
+           "#{if type == value.name, do: "it", else: "what it holds there"} in violated_by:; a " <>
+           "value that keeps one invariant breaks no other", invariant}
+      end
+
+    name ++ examples ++ both ++ twice ++ contradicted
+  end
+
+  # Every `{value, invariant}` whose `violated_by:` names `data`, or a part of it, as
+  # the value of that type it holds: the value itself, an item of a list, a field of a
+  # value with fields, the value an alias stands for.
+  defp listed_as_breaking(_type, nil, _values), do: []
+
+  defp listed_as_breaking({:list, inner}, data, values) when is_list(data),
+    do: Enum.flat_map(data, &listed_as_breaking(inner, &1, values))
+
+  defp listed_as_breaking(type, data, values) when is_atom(type) and is_map_key(values, type) do
+    value = Map.fetch!(values, type)
+    own = for i <- value.invariants, data in i.violated_by, do: {type, i}
+
+    parts =
+      case value do
+        %{type: nil, fields: fields} when is_map(data) ->
+          Enum.flat_map(fields, &listed_as_breaking(&1.type, Map.get(data, &1.name), values))
+
+        %{type: nil} ->
+          []
+
+        %{type: inner} ->
+          listed_as_breaking(inner, data, values)
+      end
+
+    own ++ parts
+  end
+
+  defp listed_as_breaking(_type, _data, _values), do: []
+
+  defp example_violations(where, key, [], _value, invariant, _values),
+    do: [
+      {"#{where} gives no #{key}: example; give at least one, since each is a test", invariant}
+    ]
+
+  defp example_violations(where, key, examples, value, invariant, values) do
+    for example <- examples,
+        problem <- example_problems(value.name, example, values) do
+      {"#{where}, #{key}: #{problem}", invariant}
+    end
+  end
+
+  defp example_problems(_type, nil, _values),
+    do: ["nil is no value; an absent field is never checked"]
+
+  defp example_problems(type, example, values),
+    do: EhOsContract.Next.Contract.Data.problems(type, example, values)
 
   defp suggest(name, names) do
     case DslRules.closest(name, names) do

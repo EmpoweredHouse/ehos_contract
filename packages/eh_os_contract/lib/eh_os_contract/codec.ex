@@ -15,6 +15,13 @@ defmodule EhOsContract.Codec do
   member as its name. Reading back never creates an atom: a member is found among
   the declared ones, and a name the contract no longer declares does not fit.
 
+  **Invariants** (plan EL2b). Given the domain, `problems/4` also holds a value that
+  fits its type to the invariants of its domain value, through the value's
+  implementation (`EhOsContract.Value`): the ones of what it is made of first — the
+  items of a list, the fields of a value with fields, the value an alias stands for —
+  and then its own. The first one broken is the field's problem,
+  `{field, {:invariant, name}}`. Decoding never asks: what is read back was written.
+
   **Problems name the field and what is wrong, never the value** (v2 §17): they
   travel to logs, telemetry and HTTP callers, and a value may be personal data.
 
@@ -39,8 +46,11 @@ defmodule EhOsContract.Codec do
   @typedoc "A domain's values, by name: `values/1`."
   @type values :: %{atom() => map()}
 
-  @typedoc "What is wrong with one field: missing, or not of its type."
-  @type problem :: {atom(), :required | :type}
+  @typedoc """
+  What is wrong with one field: missing, not of its type, or breaking an invariant of
+  its domain value.
+  """
+  @type problem :: {atom(), :required | :type | {:invariant, atom()}}
 
   @typedoc "A subject whose personal data a value carries: its type and its id."
   @type subject :: {atom(), String.t()}
@@ -71,23 +81,62 @@ defmodule EhOsContract.Codec do
   @doc """
   What is wrong with `data`, a struct or a map with atom keys, against `fields`: a
   required field that is `nil`, or a value not of its type. `[]` when nothing is.
+
+  With `domain`, the domain module `values` are of, a value that fits its type is
+  also held to the invariants of its domain value, and the first one it breaks is
+  the problem: `{:invariant, name}`.
   """
-  @spec problems([field()], map(), values()) :: [problem()]
-  def problems(fields, data, values) do
+  @spec problems([field()], map(), values(), module() | nil) :: [problem()]
+  def problems(fields, data, values, domain \\ nil) do
     for field <- fields,
-        problem <- field_problems(field, Map.get(data, field.name), values),
+        problem <- field_problems(field, Map.get(data, field.name), values, domain),
         do: {field.name, problem}
   end
 
-  defp field_problems(field, nil, _values),
+  defp field_problems(field, nil, _values, _domain),
     do: if(Map.get(field, :optional, false), do: [], else: [:required])
 
   # What a personal field reads back as once its subject is erased, and nothing else.
-  defp field_problems(field, %Erased{}, _values),
+  defp field_problems(field, %Erased{}, _values, _domain),
     do: if(Map.get(field, :personal), do: [], else: [:type])
 
-  defp field_problems(field, value, values),
-    do: if(fits?(field.type, value, values), do: [], else: [:type])
+  defp field_problems(field, value, values, domain) do
+    cond do
+      not fits?(field.type, value, values) -> [:type]
+      domain == nil -> []
+      invariant = broken(field.type, value, values, domain) -> [{:invariant, invariant}]
+      true -> []
+    end
+  end
+
+  # The first invariant `value`, which fits `type`, breaks: of what it is made of, then
+  # its own.
+  defp broken(_type, nil, _values, _domain), do: nil
+  defp broken(_type, %Erased{}, _values, _domain), do: nil
+
+  defp broken({:list, inner}, value, values, domain),
+    do: Enum.find_value(value, &broken(inner, &1, values, domain))
+
+  defp broken(type, value, values, domain) when is_atom(type) and is_map_key(values, type) do
+    declared = Map.fetch!(values, type)
+
+    parts =
+      case declared do
+        %{type: nil, fields: fields} ->
+          Enum.find_value(fields, &broken(&1.type, Map.get(value, &1.name), values, domain))
+
+        %{type: inner} ->
+          broken(inner, value, values, domain)
+      end
+
+    cond do
+      parts -> parts
+      Map.get(declared, :invariants, []) == [] -> nil
+      true -> EhOsContract.Value.violated(domain, type, value)
+    end
+  end
+
+  defp broken(_type, _value, _values, _domain), do: nil
 
   defp fits?(type, value, _values) when type in [:id, :string], do: is_binary(value)
   # An entity's identifier where the model keeps the declared type: a function's result.
