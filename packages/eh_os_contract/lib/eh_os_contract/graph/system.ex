@@ -41,6 +41,7 @@ defmodule EhOsContract.Graph.System do
       |> Enum.filter(&(&1.domain == domain.module))
 
     here = MapSet.new(models, & &1.module)
+    ids = Mermaid.unique_ids(Enum.map(models, & &1.module), &("contract_" <> slug(&1)))
 
     # Each consumer's steps with the log, read once however many edges reach it.
     observed =
@@ -48,7 +49,7 @@ defmodule EhOsContract.Graph.System do
 
     contract_nodes =
       for m <- models do
-        node = Mermaid.graph_node(:contract, slug(m.module), contract_label(m))
+        node = %{id: ids[m.module], kind: :contract, name: m.module, label: contract_label(m)}
         if overlay? and m.process, do: Map.put(node, :runs, runs(m, opts)), else: node
       end
 
@@ -57,10 +58,10 @@ defmodule EhOsContract.Graph.System do
           %{kind: :contract, from: from} = c <- m.consumes,
           MapSet.member?(here, from) do
         sibling = Enum.find(models, &(&1.module == from))
-        consumed(sibling, m, c, observed, opts)
+        consumed(ids, sibling, m, c, observed, opts)
       end
 
-    {topic_nodes, topic_edges} = publications(models)
+    {topic_nodes, topic_edges} = publications(models, ids)
 
     groups =
       for context <- domain.contexts,
@@ -69,7 +70,7 @@ defmodule EhOsContract.Graph.System do
         %{
           id: Mermaid.id(:context, context.name),
           label: "#{context.label} · context",
-          nodes: Enum.map(members, &Mermaid.id(:contract, slug(&1.module)))
+          nodes: Enum.map(members, &ids[&1.module])
         }
       end
 
@@ -92,7 +93,8 @@ defmodule EhOsContract.Graph.System do
 
   defp short(module), do: module |> Module.split() |> List.last()
 
-  # A module as a node id: every segment, so two contexts' `Settlement` stay apart.
+  # A module as a node id: every segment, so two contexts' `Settlement` stay apart;
+  # `Mermaid.unique_ids/2` keeps apart the rest, `A.BC` and `A.B.C`.
   defp slug(module),
     do: module |> Module.split() |> Enum.map_join("_", &Macro.underscore/1)
 
@@ -101,12 +103,13 @@ defmodule EhOsContract.Graph.System do
 
   defp with_runs(node), do: node
 
-  # A name on the wire as a node id; the name itself is its label.
+  # A name on the wire as a node id, before `Mermaid.unique_ids/2`; the name itself is
+  # its label.
   defp topic_id(name), do: "publication_" <> String.replace(name, ~r/[^A-Za-z0-9_]/u, "_")
 
   # --- edges ---------------------------------------------------------------------------
 
-  defp consumed(sibling, consumer, c, observed, opts) do
+  defp consumed(ids, sibling, consumer, c, observed, opts) do
     label = Enum.map_join(c.events, ", ", &Atom.to_string/1)
 
     label =
@@ -115,19 +118,23 @@ defmodule EhOsContract.Graph.System do
         :error -> label
       end
 
-    Mermaid.edge(
-      Mermaid.id(:contract, slug(sibling.module)),
-      Mermaid.id(:contract, slug(consumer.module)),
-      label: label
-    )
+    Mermaid.edge(ids[sibling.module], ids[consumer.module], label: label)
   end
 
   # Each `publish` into its publication, and each publication a `consumes` reads.
-  defp publications(models) do
+  defp publications(models, ids) do
+    names =
+      Enum.uniq(
+        for(m <- models, p <- m.publishes, do: p.as) ++
+          for(m <- models, %{kind: :published, from: name} <- m.consumes, do: name)
+      )
+
+    topic = Mermaid.unique_ids(names, &topic_id/1)
+
     out =
       for m <- models, p <- m.publishes do
         {p.as,
-         Mermaid.edge(Mermaid.id(:contract, slug(m.module)), topic_id(p.as),
+         Mermaid.edge(ids[m.module], topic[p.as],
            line: :dotted,
            label: "publishes #{p.from}"
          )}
@@ -136,15 +143,13 @@ defmodule EhOsContract.Graph.System do
     into =
       for m <- models, %{kind: :published, from: name} = c <- m.consumes do
         {name,
-         Mermaid.edge(topic_id(name), Mermaid.id(:contract, slug(m.module)),
+         Mermaid.edge(topic[name], ids[m.module],
            line: :dotted,
            label: "as #{c.as}"
          )}
       end
 
-    nodes =
-      for name <- (out ++ into) |> Enum.map(&elem(&1, 0)) |> Enum.uniq(),
-          do: %{id: topic_id(name), kind: :publication, name: name, label: name}
+    nodes = for name <- names, do: %{id: topic[name], kind: :publication, name: name, label: name}
 
     {nodes, Enum.map(out ++ into, &elem(&1, 1))}
   end

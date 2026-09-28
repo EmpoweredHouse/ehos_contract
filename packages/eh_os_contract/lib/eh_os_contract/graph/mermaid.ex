@@ -144,6 +144,28 @@ defmodule EhOsContract.Graph.Mermaid do
   @spec id(atom(), atom() | String.t()) :: String.t()
   def id(kind, name), do: "#{kind}_#{name}"
 
+  @doc """
+  An id for each of `names`, in their order: `base` of the name, or, when an earlier
+  name took that already, the first of `base_2`, `base_3`, … still free. Ids made
+  from a client's names can meet — `visit.settled` and `visit_settled` both read
+  `visit_settled` — and two nodes of one id are one node to Mermaid.
+  """
+  @spec unique_ids([term()], (term() -> String.t())) :: %{term() => String.t()}
+  def unique_ids(names, base) do
+    {pairs, _taken} =
+      Enum.map_reduce(names, MapSet.new(), fn name, taken ->
+        id =
+          Stream.iterate(2, &(&1 + 1))
+          |> Stream.map(&"#{base.(name)}_#{&1}")
+          |> then(&Stream.concat([base.(name)], &1))
+          |> Enum.find(&(not MapSet.member?(taken, &1)))
+
+        {{name, id}, MapSet.put(taken, id)}
+      end)
+
+    Map.new(pairs)
+  end
+
   @doc "`1 run`, `3 runs`."
   @spec runs(non_neg_integer()) :: String.t()
   def runs(1), do: "1 run"

@@ -154,6 +154,63 @@ defmodule EhOsContract.GraphDomainTest do
       assert length(String.split(diagram, "publication_clinic_visit_booked_v1[")) == 2
     end
 
+    test "two contracts, and two names on the wire, whose ids would meet stay two nodes" do
+      compile(
+        """
+        defmodule EhOsContract.GraphDomainTest.VisitSettlement do
+          use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :settle, "Rozlicz", by: :reception, emits: :settled
+            event :settled, "Rozliczono"
+          end
+
+          publish :settled, as: "clinic.visit.settled.v1", from: :settled, fields: [:visit_id]
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        end
+
+        defmodule EhOsContract.GraphDomainTest.Visit.Settlement do
+          use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :settle, "Rozlicz", by: :reception, emits: :settled
+            event :settled, "Rozliczono"
+          end
+
+          publish :settled, as: "clinic.visit_settled.v1", from: :settled, fields: [:visit_id]
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        end
+        """,
+        "graph_domain_twins.ex"
+      )
+
+      graph =
+        EhOsContract.Graph.System.build(@domain, [
+          EhOsContract.GraphDomainTest.VisitSettlement,
+          EhOsContract.GraphDomainTest.Visit.Settlement
+        ])
+
+      ids = Enum.map(graph.nodes, & &1.id)
+
+      assert ids == [
+               "contract_eh_os_contract_graph_domain_test_visit_settlement",
+               "contract_eh_os_contract_graph_domain_test_visit_settlement_2",
+               "publication_clinic_visit_settled_v1",
+               "publication_clinic_visit_settled_v1_2"
+             ]
+
+      assert %{from: "contract_eh_os_contract_graph_domain_test_visit_settlement_2"} =
+               Enum.find(graph.edges, &(&1.to == "publication_clinic_visit_settled_v1_2"))
+    end
+
     test "a contract naming another domain is left out, and so is a context with no contract" do
       diagram = Graph.system_to_mermaid(@domain, [@scheduling, @settlement, DispatchRig.Ledger])
 
