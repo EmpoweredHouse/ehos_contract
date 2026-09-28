@@ -1906,6 +1906,36 @@ Asystent zapytał o dwie rzeczy, które przegląd zostawił użytkownikowi; odpo
 - **Indeks `(type)` zostaje** (ustalenie 1 z E9b: bez statystyk planner czytał nim historię typu). *Odrzucone:*
   skasowanie indeksu (migracja po stronie hosta); zakres wymuszony w kształcie zapytania sprawdzenia konfliktu.
 
+### Przed E9c-2 — decyzje użytkownika (28 września)
+
+Pytanie z refleksji użytkownika: kontrakty Rehmedu i TaxVision i tak wylecą z repozytorium biblioteki, więc jak
+walidować implementację szybko i bez przepalania tokenów. Asystent pokazał na sandboksie, co jest tanie, a co
+drogie: 48 scenariuszy to czyste funkcje (komenda wchodzi, zdarzenia wychodzą — bez bazy, HTTP i timerów), a
+testy przebiegu (pętla P1, `identity_seam_test`, Plug) zjadły cztery rundy przeglądu, broniąc zachowania danych
+testowych. Trzy propozycje asystenta, wszystkie przyjęte:
+
+- **Po E11 kontrakty sandboxa przechodzą do testów pakietu jako fikstury akceptacyjne** (obok
+  `UniversalityGate`): kontrakt ze scenariuszami i po jednym teście przebiegu na mechanizm silnika, nie na regułę
+  domeny. Adaptery, HTTP i `Periods` nie muszą przeżyć. *Odrzucone:* osobne repozytorium przykładów (bez
+  zgodności wstecz psułoby się przy każdej zmianie DSL-a, czyli drugie repozytorium do utrzymania); sandbox bez
+  zmian.
+- **E9c-2 węższe — tylko to, czego rodzaje DSL-a nie mają jeszcze na prawdziwym kontrakcie:** `domain_service`,
+  `publish`, `issued_by` (w silniku są od EM/EL, sandbox nie używa żadnego) i polityka wydająca kilka komend
+  naraz (silnik ją ma — klucz `…:<index>` — a każda polityka sandboxa wydaje jedną). *Odrzucone:* pełny zakres
+  z „Przed E9c” — Work Orchestration i Notifications to agregat, polityka i efekt, które są już na prawdziwych
+  kontraktach (5 / 3 / 2 razy), więc dodałyby modelowanie domeny bez sygnału dla biblioteki.
+- **Przegląd kontraktów sandboxa jedną rundą**: pytanie, czy rodzaj trzyma się na materiale i czy silnik nie
+  pęka; poprawność logiki domeny idzie do ustaleń, nie do kolejnych rund. Kod silnika, który E9c-2 zmieni, dalej
+  dostaje pełny przegląd. *Odrzucone:* przegląd do skutku jak w E9c-1.
+- **E9c-1 do `main` nowym PR-em** — #40 zmergował się do nieprzestawionej bazy `dsl-v2/e9-payer` (`dfc3451`), więc
+  do `main` nie trafił; [#41](https://github.com/EmpoweredHouse/eh-os-contract/pull/41) to ta sama głowa `60324a5`.
+
+**Gdzie wydaje kilka komend — wybór asystenta** (mechanika danych testowych). Nie taski z szablonu (Work
+Orchestration): wymagałyby nowego kontekstu, agregatu szablonu i nazwy zdarzenia, której materiał nie ma (§4.5
+publikuje `MonthlyTasksGenerated`, jedno zdarzenie, a dla `CreateTask` żadnego). Zamiast tego P6 (`02` §10): po
+wgraniu wyciągu lista obrotów, a dla każdego obrotu dopasowywanie — na tym samym przepływie co `domain_service`
+(parowanie, P7) i numer KSeF, z nazwami z `02` §3.3.
+
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
 Po lekturze architektury EHOS-a (`~/Projects/ai/eh-os`, `docs/ADR.md` i `docs/ARCHITECTURE.md`; research w
