@@ -18,7 +18,7 @@ defmodule EhOsContract.Graph.Mermaid do
   @type graph_node :: %{
           required(:id) => String.t(),
           required(:kind) => atom(),
-          required(:label) => String.t(),
+          required(:label) => String.t() | [String.t()],
           optional(:counts) => {non_neg_integer(), non_neg_integer()} | nil
         }
 
@@ -102,7 +102,7 @@ defmodule EhOsContract.Graph.Mermaid do
   @spec node_line(graph_node()) :: String.t()
   def node_line(node) do
     {open, close} = shape(node.kind)
-    text = escape(node.label) <> count_suffix(Map.get(node, :counts))
+    text = lines(node.label) <> count_suffix(Map.get(node, :counts))
     ~s(#{node.id}#{open}"#{text}"#{close}:::#{node.kind})
   end
 
@@ -127,13 +127,27 @@ defmodule EhOsContract.Graph.Mermaid do
   end
 
   @doc """
-  A label with what would end it replaced: a double quote, which ends a quoted
-  Mermaid label, and a line break, which ends the line the label is on — and in a
-  Markdown page, a line of three backticks after it would end the diagram's block.
+  A label with what would end it or be read as markup replaced: a double quote, which
+  ends a quoted Mermaid label; a line break, which ends the line the label is on — and
+  in a Markdown page, a line of three backticks after it would end the diagram's
+  block; and `<`, `>` and `#`, which Mermaid would read as a tag or an entity, so
+  `a<b` and `Faktura #12;` print as written. The last three become Mermaid's own
+  entity codes.
   """
   @spec escape(String.t()) :: String.t()
-  def escape(label),
-    do: label |> String.replace(~s("), "'") |> String.replace(["\r\n", "\r", "\n"], " ")
+  def escape(label) do
+    label
+    |> String.replace("#", "#35;")
+    |> String.replace("<", "#lt;")
+    |> String.replace(">", "#gt;")
+    |> String.replace(~s("), "'")
+    |> String.replace(["\r\n", "\r", "\n"], " ")
+  end
+
+  # A label given as lines is drawn as them, each escaped: the break is the renderer's,
+  # not a character of the client's.
+  defp lines(label) when is_list(label), do: Enum.map_join(label, "<br/>", &escape/1)
+  defp lines(label), do: escape(label)
 
   @doc "A node of `kind` named `name`, with its label or, lacking one, its name."
   @spec graph_node(atom(), atom() | String.t(), String.t() | nil) :: graph_node()

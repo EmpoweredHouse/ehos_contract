@@ -110,7 +110,7 @@ defmodule EhOsContract.Graph.Unit do
         "#{field.name}: #{type(field.type)}#{suffix}"
       end
 
-    label = Enum.join(["#{unit.label} · #{unit.kind}" | lines], "<br/>")
+    label = ["#{unit.label} · #{unit.kind}" | lines]
     %{id: id(:state, unit.name), kind: :state, name: unit.name, label: label}
   end
 

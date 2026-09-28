@@ -282,6 +282,18 @@ defmodule EhOsContract.GraphContractTest do
                "Linie sumują się do „całości”"
     end
 
+    test "a label's angle brackets and hash print as written, not as a tag or an entity" do
+      assert EhOsContract.Graph.Mermaid.escape("kwota < 200 zł, faktura #12; <b>") ==
+               "kwota #lt; 200 zł, faktura #35;12; #lt;b#gt;"
+    end
+
+    test "the state card's lines are broken by the renderer, and a field's text is escaped" do
+      node = %{id: "state_x", kind: :state, label: ["Wizyta · aggregate", "a<b: id"]}
+
+      assert EhOsContract.Graph.Mermaid.node_line(node) ==
+               ~s(state_x["Wizyta · aggregate<br/>a#lt;b: id"]:::state)
+    end
+
     test "a unit the contract does not have is refused, naming the ones it has" do
       assert_raise ArgumentError, ~r/has no unit :nonesuch; it has \[:account\]/, fn ->
         Graph.unit_to_mermaid(DispatchRig.Ledger, :nonesuch)
