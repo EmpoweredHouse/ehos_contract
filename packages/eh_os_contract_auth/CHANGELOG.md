@@ -66,5 +66,5 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **A key set fetch that has not finished in five seconds is a failed fetch.** The request timeouts
   bounded each step but not the fetch, so an endpoint sending a byte every few seconds held the key
   process indefinitely: the scheduled refresh stopped, and every credential with an unknown `kid`
-  waited the full ten seconds. The deadline is not configurable. An exit inside the request is now a
-  failed fetch too, not a crash of the key process.
+  waited the full ten seconds. The deadline is not configurable. An exit or a throw inside the request
+  is now a failed fetch too, not a crash of the key process.

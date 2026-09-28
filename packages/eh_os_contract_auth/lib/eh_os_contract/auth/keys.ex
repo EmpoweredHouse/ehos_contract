@@ -376,6 +376,7 @@ defmodule EhOsContract.Auth.Keys do
     case Task.yield(task, @fetch_deadline) || Task.shutdown(task, :brutal_kill) do
       {:ok, result} -> result
       nil -> {:error, :timeout}
+      {:exit, reason} -> {:error, {:exit, reason}}
     end
   end
 
@@ -406,10 +407,11 @@ defmodule EhOsContract.Auth.Keys do
   rescue
     # Whatever the answer holds, it is a failed fetch, never a crash of this process:
     # a crash takes its table with it, and a restart would fetch the same answer.
-    # The task is linked to this process, so an exit in it is caught here too.
+    # This runs in the task, which is linked to this process: an exit or a throw
+    # that got past here would take the process down with the task.
     exception -> {:error, exception}
   catch
-    :exit, reason -> {:error, {:exit, reason}}
+    kind, reason -> {:error, {kind, reason}}
   end
 
   defp request_options(opts) do
