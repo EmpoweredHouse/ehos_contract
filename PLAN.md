@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 28 września (EL2b zrobione na gałęzi, przed EL3)
+## Handoff — stan na 28 września (EL2b i EL3 zrobione na gałęziach, przed EG)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -15,7 +15,7 @@ dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa p
 domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E8, EA i EM są w `main`** (PR
 #1–#26), **EL1 i EL2 też** (PR #27–#28). Kolejność od 27 września: **EL** (ostrzeżenia, narzędzia, pola
 opisowe) → **EG** (cztery grafy) → **E9** (kontrakty sandboxa od nowa z materiału) → E10–E12. **EL2b jest
-zrobione** na `dsl-v2/el-values`, z przeglądem; z EL zostało EL3.
+zrobione** na `dsl-v2/el-values`, **EL3** na `dsl-v2/el-docs` (od niej), oba z przeglądem; EL jest skończone.
 Jedynym kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`.
 
 ### Stan repozytorium
@@ -29,7 +29,9 @@ Jedynym kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`.
   wyszło”, „Po EL2 — proza, którą da się sprawdzać”.
 - **EL2b** jest na lokalnej gałęzi `dsl-v2/el-values`, niewypchniętej. Stoi na `dsl-v2/el-handoff` (`8ab88ba`,
   poprzedni handoff, `main` + jeden commit), więc PR z niej niesie i ten handoff. Opis: „Przed EL2b — decyzja
-  użytkownika”, „EL2b — co wyszło”. Push i PR — na polecenie użytkownika.
+  użytkownika”, „EL2b — co wyszło”. **EL3** jest na `dsl-v2/el-docs`, od `dsl-v2/el-values` (PR z niej, jeśli
+  EL2b wejdzie pierwsze, będzie miał tylko EL3); opis: „Przed EL3 — decyzje użytkownika”, „EL3 — co wyszło”.
+  Push i PR-y — na polecenie użytkownika.
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
@@ -37,8 +39,7 @@ Jedynym kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`.
 
 - **EL2b — zrobione**, czeka na decyzję użytkownika o pushu i PR. Jedyne rozstrzygnięcie asystenta do
   potwierdzenia (stare zdarzenie a inwariant dodany później) użytkownik potwierdził 28 września.
-- **EL3 — asystenta**: strony dokumentacji (ESDM `documentation`: strona na element, Markdown, linki). Przed
-  budową zapytać o kształt wyjścia (katalog, nazwy plików, czy razem z `view`).
+- **EL3 — zrobione**, czeka na decyzję użytkownika o pushu i PR.
 - **EG, E9, E10–E12 — asystenta, po pytaniach**; opisy w „Etapach” i „Po E8 — kolejność zmieniona”. Do E9
   odłożone pozycje 6–9 z „Po EL2 — proza, którą da się sprawdzać” i uwaga o `event-name-with-aggregate-prefix` na
   nazwach z warsztatu („EL1 — co wyszło”).
@@ -56,8 +57,8 @@ Jedynym kontraktem v2 sandboxa jest dalej `Rehmed.Contracts.VisitSettlement`.
 4. `PLAN.md`, „EL1 — co wyszło” i „EL2 — co wyszło” — mechanika i pułapki etapu.
 5. `docs/adr/contract-v2.md` §4.2, §4.6 i §6 — notki z 27 i 28 września (subdomena, tłumaczenie, relacja z
    systemem, `issued_by:`, ograniczenia, L5, D9, S9).
-6. Do EL3: `lib/eh_os_contract/view.ex` i `glossary.ex` — dwa czytelniki modelu, które strony dokumentacji
-   poszerzą; przed budową pytanie o kształt wyjścia.
+6. Do EG: `lib/eh_os_contract/graph.ex` (graf v1 i `/graph`), `view.ex` i `pages.ex` — czytelniki modelu v2,
+   obok których staną cztery grafy; opis EG w „Etapach”.
 7. Przed PR: `.claude/skills/pre-pr-review/SKILL.md`.
 
 ### Komendy
@@ -94,6 +95,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 28 września, na głowie `dsl-v2/el-docs`** (po przeglądzie EL3): brama z `sandbox/` → **EXIT=0** —
+  sandbox 54 testy, `check` 0 / 12 / 19; silnik 1187, `check` 0 / 65 / 21; web 32; auth 51.
 - **Lokalnie, 28 września, na głowie `dsl-v2/el-values`** (po przeglądzie EL2b): brama z `sandbox/` → **EXIT=0**
   — sandbox 54 testy, `check` 0 / 12 / 19; silnik 1162, `check` 0 / 65 / 21; web 32; auth 51.
 - **Lokalnie, 28 września, na `main` = `5344273` z tym handoffem** (`dsl-v2/el-handoff`): brama z `sandbox/` →
@@ -1173,6 +1176,58 @@ Mechanika, rozstrzygnięta przez asystenta:
   września): dodanie inwariantu to zmiana modelu jak zawężenie typu. *Odrzucone:* komendy reakcji bez sprawdzania
   inwariantów (zła wartość wraca do logu tą drogą); ostrzeżenie `check` o wartościach w logu (potrzebuje bazy, jak
   reguła o zmianie schematu odłożona do E12).
+
+### Przed EL3 — decyzje użytkownika (28 września)
+
+Pytanie zadane na Rehmedzie (domena `rehmed`, kontekst `:settlement`, `VisitSettlement` z `:record_payment`,
+`:payment_recorded` i wartością `:money`), z podglądem układu plików przy każdej opcji.
+
+- **Strona na element, jak w ESDM:** osobny plik dla domeny, kontekstu, kontraktu i każdej deklaracji w nim, dla
+  wartości i encji domeny, z linkami między nimi (komenda → zdarzenie, pole → wartość). *Odrzucone:* strona na
+  kontrakt z kotwicami (link trafia w długą stronę); strona na kontekst (kontekst z kilkoma kontraktami to jedna
+  bardzo długa strona).
+- **`--output <katalog>`, jak `esdm documentation --output`:** host decyduje, czy pliki commituje, czy wkłada do
+  ExDoc (`extras`), czy tylko ogląda; `--check` mówi, czy katalog jest aktualny. *Odrzucone:* stały katalog z
+  `--check` w bramie hosta (wymaganie, o które host nie prosił); tylko `extras` przy `mix docs` (bez plików w
+  repozytorium nie ma ich w przeglądzie PR-a).
+
+### EL3 — co wyszło (28 września)
+
+Na `dsl-v2/el-docs` (od `dsl-v2/el-values`), niewypchnięte. Commit decyzji (`f2af33b`), jeden budowy
+(`1eed5c2`) i dziesięć z przeglądu. Silnik 1162 → 1187 testów; `check` bez zmian (sandbox 0 / 12 / 19, silnik 0
+/ 65 / 21). Na Rehmedzie w `MIX_ENV=dev`: 18 stron, `--check` → `current`, po ręcznej edycji → `differs`.
+
+Mechanika, rozstrzygnięta przez asystenta:
+- **`EhOsContract.Pages.render/2`** jest czysta: model domeny i kontraktów → `%{ścieżka => Markdown}`; task
+  `mix eh_os_contract.pages --output <katalog> [--check] [--domain]` tylko pisze i porównuje.
+- **Układ:** `index.md` domeny (z drzewem `view`), `values/`, `entities/`, `<kontekst>/index.md`,
+  `<kontekst>/<kontrakt>/index.md` i **katalog na rodzaj** deklaracji (`commands/`, `events/`, `aggregates/`,
+  …) — odejście od podglądu z pytania, gdzie komendy i zdarzenia leżały płasko, bo przestrzenie nazw kontraktu
+  się nakładają (model odczytu może się nazywać jak jednostka). Kontrakt pod ostatnim członem modułu.
+- **Treść:** słowa biblioteki po angielsku, etykiety i słownik klienta dosłownie; strona wartości z
+  inwariantami i przykładami oraz „Used by”, encji z „Referred to by”, zdarzenia z „Emitted by” i „Read by”
+  (także kontrakty rodzeństwa), serwisu domenowego z przykładami reguł jako wywołaniami. Linki względne.
+- **Znacznik w pierwszej linii, z nazwą domeny:** task kasuje tylko swoje strony tej domeny, niczego nie
+  nadpisuje ani nie pisze przez link, a wtedy nie pisze nic i wymienia, co stoi na drodze.
+- **Deterministycznie:** przykłady wypisane z posortowanymi kluczami map, także w krotkach — `inspect/1` na OTP
+  28 wypisuje klucze w kolejności tworzenia atomów.
+
+**Przegląd EL3** (dwa równolegle na `9ae9198..1eed5c2`):
+- **Poprawione, z testem i próbą odwrotną:** task nadpisywał pliki, których nie napisał, szedł za linkami
+  przy zapisie i kasowaniu, czytał `--output` jako wzorzec globa (`o[u]t` kasowało w `out`), przyjmował puste
+  `--output`, czytał całe pliki i zostawiał puste katalogi (`f13828c`); kasował strony innej domeny w tym samym
+  drzewie (`19cac2e`); nazwa domeny spoza snake_case wychodziła poza katalog albo psuła linki, a dwa elementy
+  jednej ścieżki gubiły stronę (`6654e53`); obietnica bez `or_else` (strona podawała surowszą obietnicę niż
+  zadeklarowana), pominięte `include`, surowe termy czasu (`f6d411b`); timer w `on` jako zdarzenie
+  „received”, scenariusz process managera bez `sets`/`cancels`/`ended`, opis sklejony z przebiegiem
+  (`6a9c114`); mapa w krotce niedeterministyczna (`388d7db`); „Published” z nazwą publikacji zamiast źródła,
+  „Consumed” bez linków i przemianowań (`3834eaf`); „Used by” bez encji i process managerów, encja bez
+  „Referred to by”, lista referencji jako `{:list, :id}` (`d30eb45`); `|` i nowa linia w etykiecie, backtick w
+  przykładzie (`067eb87`); `relative/2` zastąpione `Path.relative_to/3` (`cbee11a`).
+- **Pominięte, z powodem:** surowy HTML w etykiecie przechodzi do ExDoc — etykiety pisze autor kodu, więc to
+  nie granica zaufania, a escapowanie zmieniłoby etykiety zawierające `<` w każdym czytniku; pętle kwadratowe
+  po deklaracjach (setki elementów, raz na uruchomienie); pola odbieranego zdarzenia publikowanego w „Used by”
+  (nie mają własnej strony).
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
