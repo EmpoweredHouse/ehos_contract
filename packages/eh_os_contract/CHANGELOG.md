@@ -36,6 +36,10 @@ What changes otherwise is what a host has to do.
 
 ### Changed — a host has to act
 
+- **E10: `EhOsContract.Model.to_data/1` publishes the complete v2 model under the named schema
+  `eh_os_contract.model.v1`.** The JSON-ready document includes the contract, its domain, derived human
+  capabilities and a digest of that projection.
+
 - **E9c: a command may be scoped, as a query is (D10).** `command :x, "…", by: :actor, scope: :field` names one
   of its fields; `EhOsContract.Model.capabilities/1` gives the command's capability that `scope:` instead of
   `nil`, and dispatch — and `EhOsContract.Plug` — ask the `Authorizer` with the field's value. A credential

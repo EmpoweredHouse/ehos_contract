@@ -20,6 +20,7 @@ defmodule EhOsContract.Web do
     exports: [
       Api.AsyncAPI,
       Api.Conformance,
+      Api.Model,
       Resolver,
       Router,
       Router.RedirectToContract,

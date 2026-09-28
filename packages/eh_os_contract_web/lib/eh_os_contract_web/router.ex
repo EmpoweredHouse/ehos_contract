@@ -102,6 +102,13 @@ defmodule EhOsContract.Web.Router do
           EhOsContract.Web.Api.AsyncAPI,
           resolver: resolver,
           base_path: path
+
+      get path <> "/model", EhOsContract.Web.Api.Model, resolver: resolver, base_path: path
+
+      get path <> "/model/:contract",
+          EhOsContract.Web.Api.Model,
+          resolver: resolver,
+          base_path: path
     end
   end
 

@@ -100,6 +100,35 @@ defmodule EhOsContract.ModelTest do
     assert error.message =~ "Enum is not an EhOsContract contract"
   end
 
+  test "to_data names and digests the JSON-ready v2 model, domain and capabilities" do
+    document = Model.to_data(DispatchRig.Transfer)
+
+    assert document["schema"] == "eh_os_contract.model.v1"
+    assert document["contract"]["module"] == "DispatchRig.Transfer"
+    assert document["domain"]["module"] == "DispatchRig.Domain"
+
+    assert document["capabilities"]["dispatch_rig.move_account"] == %{
+             "kind" => "command",
+             "name" => "move_account",
+             "roles" => ["dispatch_rig.clerk"],
+             "scope" => "branch_id"
+           }
+
+    assert byte_size(document["digest"]) == 12
+    assert Jason.decode!(Jason.encode!(document)) == document
+    assert Model.to_data(DispatchRig.Transfer) == document
+  end
+
+  test "to_data is for v2 contracts, not domains or v1 contracts" do
+    assert_raise ArgumentError, ~r/is a domain, not a contract/, fn ->
+      Model.to_data(DispatchRig.Domain)
+    end
+
+    assert_raise ArgumentError, ~r/is a v1 contract/, fn ->
+      Model.to_data(ProcessShapes.Bare)
+    end
+  end
+
   # A contract whose module exists on the code path but is not loaded yet, which is
   # the ordinary state of any module in dev before first use. `function_exported?/3`
   # alone answers false for it. The module is private to this test, so unloading it

@@ -8,6 +8,10 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **The API mount serves v2 model documents** at `/model` and `/model/:contract`. Each document is
+  `eh_os_contract.model.v1`, includes the derived capability surface, and carries its digest as an `ETag`;
+  the host's existing resolver protects both routes.
+
 - **The graph screen works under a strict Content-Security-Policy** (plan EG3), `default-src 'self'` as EHOS
   serves it: the diagrams were black boxes there. The hook draws with `mermaid.render` and hands the SVG's
   stylesheet and `style` attributes to the CSSOM — a constructed stylesheet and `element.style` — which such a

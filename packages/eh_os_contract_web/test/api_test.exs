@@ -132,6 +132,45 @@ defmodule EhOsContract.Web.ApiTest do
     end
   end
 
+  describe "the exported model" do
+    setup %{conn: conn} do
+      {:ok, conn: Access.put_actor(conn, "u-1", ["eh_os_contract_read"])}
+    end
+
+    test "the index names its schema and lists v2 contracts only", %{conn: conn} do
+      conn = get(conn, "/api/model")
+
+      assert conn.status == 200
+
+      assert %{"schema" => "eh_os_contract.model-index.v1", "contracts" => contracts} =
+               Jason.decode!(conn.resp_body)
+
+      assert Enum.map(contracts, & &1["contract"]) ==
+               EhOsContract.Registry.v2_contracts() |> Enum.map(&inspect/1) |> Enum.sort()
+
+      assert Enum.all?(contracts, &(byte_size(&1["digest"]) == 12))
+    end
+
+    test "a model document is served with its digest as the ETag", %{conn: conn} do
+      name = EhOsContract.Registry.v2_contracts() |> List.first() |> inspect()
+      conn = get(conn, "/api/model/#{name}")
+
+      assert conn.status == 200
+      document = Jason.decode!(conn.resp_body)
+      assert document["schema"] == "eh_os_contract.model.v1"
+      assert document["contract"]["module"] == name
+      assert get_resp_header(conn, "etag") == [~s("#{document["digest"]}")]
+    end
+
+    test "an unknown or unauthenticated request receives no model", %{conn: conn} do
+      assert get(conn, "/api/model/Not.A.Contract").status == 404
+
+      public = build_conn() |> put_req_header("accept", "application/json")
+      assert get(public, "/api/model").status == 403
+      assert get(public, "/api/model/Anything").status == 403
+    end
+  end
+
   describe "the screens still work" do
     test "the dashboard's HTML routes are untouched by the API mount" do
       conn =
