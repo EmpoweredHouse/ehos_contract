@@ -159,27 +159,27 @@ address. What each side holds:
 against a key from the JWKS, and the JWKS is trusted because it came over HTTPS from the configured
 issuer. Whoever could answer for that URL could publish keys of their own. So the certificate of
 the issuer's URL is the one thing an integration has to get right. The fetch checks it against the
-system's certificate authorities. An EHOS behind an internal authority needs that authority named,
-through the options every fetch takes:
+system's certificate authorities. An EHOS behind an internal authority needs that authority named:
 
 ```elixir
 children = [
   MyApp.Repo,
   EhOsContract,
-  {EhOsContract.Auth,
-   req_options: [connect_options: [transport_opts: [cacertfile: "/etc/ehos/ca.pem"]]]}
+  {EhOsContract.Auth, cacertfile: "/etc/ehos/ca.pem"}
 ]
 ```
 
-`:connect_options` given here are merged over the package's own, so the fetch keeps its two-second
-connect timeout: without it, an EHOS address that drops packets would hold every fetch for Mint's
-thirty seconds. A `timeout:` set in `connect_options`, or inside `transport_opts`, replaces the two
-seconds. Every other option replaces the package's of the same name.
+`cacerts:` takes the certificates themselves (DER) instead of a file. That is all an application
+sets about the fetch. It does not take Req's options: the fetch **follows no redirect**, is not
+retried, reads at most 64 KB, and gives up after two seconds to connect and three to receive, and
+Req has options that would undo each of these, or the check of the certificate. An option the
+package does not take fails the boot.
 
-Do not turn certificate verification off to make a first integration work: the keys would then come
-from whoever answers. For the same reason the package refuses to boot when the key set would be
-fetched over anything but `https` (plain `http` is allowed for `localhost` only), and **follows no
-redirect**: a key set answered from anywhere but the configured URL is a failed fetch.
+Certificate verification cannot be turned off, so a first integration cannot be made to work that
+way: the keys would then come from whoever answers. For the same reason the package refuses to boot
+when the key set would be fetched over anything but `https` (plain `http` is allowed for
+`localhost` only), whether `EhOsContract.Auth` starts the key process or the application lists
+`EhOsContract.Auth.Keys` itself, and takes the address only from the configuration.
 
 **What the application configures, and nothing else:** `issuer`, which must be exactly the `iss`
 EHOS writes, `audience` (`<application>/<environment>`, exactly the `aud` EHOS issues for this

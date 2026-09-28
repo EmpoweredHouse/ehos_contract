@@ -27,8 +27,13 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **`EhOsContract.Auth.Testing`**: `credential/3` signs with a test key pinned in the running key
   store (`EhOsContract.Auth.Keys.pin/2`), and `assert_every_entry_refuses/3` calls a host's entry
   point for every capability its contracts declare with a credential that lacks it.
-- **`req_options: [connect_options: …]` keeps the two-second connect timeout.** A host's
-  `:connect_options` are merged over the package's key by key instead of replacing them, so naming
-  an internal certificate authority (`transport_opts: [cacertfile: …]`) no longer drops the fetch's
-  connect timeout to Mint's thirty seconds. A `timeout:` given there, or inside `transport_opts`,
-  still replaces it, and `connect_options: nil` is read as none.
+- **`cacertfile:` or `cacerts:` names an internal certificate authority, in place of
+  `req_options:`**, which is gone. `req_options` handed the host all of Req's options, so
+  `connect_options: [transport_opts: [cacertfile: …]]` dropped the fetch's two-second connect
+  timeout to Mint's thirty seconds, and `redirect: true` or `verify: :verify_none` quietly undid
+  what the key set is trusted by. The fetch's options are now the package's, with the host's
+  authority beside the two seconds. An option the key process does not take — `req_options:`
+  among them — fails the boot. `url:` in `EhOsContract.Auth`'s child options, which replaced the
+  address after its https check, is refused, and `EhOsContract.Auth.Keys.start_link/1` checks
+  the address itself, so a key process listed directly is held to https too. `plug:`, for tests,
+  needs `config :eh_os_contract_auth, pin_keys: true`.

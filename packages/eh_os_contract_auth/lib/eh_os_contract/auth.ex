@@ -28,11 +28,10 @@ defmodule EhOsContract.Auth do
   EHOS behind an internal authority needs it named, through the options every fetch
   takes:
 
-      {EhOsContract.Auth,
-       req_options: [connect_options: [transport_opts: [cacertfile: "/etc/ehos/ca.pem"]]]}
+      {EhOsContract.Auth, cacertfile: "/etc/ehos/ca.pem"}
 
-  These `:connect_options` are merged over the fetch's own, so its two-second
-  connect timeout stays (`EhOsContract.Auth.Keys.start_link/1`).
+  That, or `cacerts:`, is all a host sets about the fetch
+  (`EhOsContract.Auth.Keys.start_link/1`).
 
   **A credential** is a JWT signed with Ed25519 (`eh-os` D-33). `verify/2` accepts
   one when all of these hold, and answers the first that does not:
@@ -103,9 +102,11 @@ defmodule EhOsContract.Auth do
 
   It reads `:issuer` and `:jwks_url` from `config :eh_os_contract_auth`, and raises
   at boot without an issuer, or when the key set would be fetched over anything but
-  https (plain http is allowed for `localhost` only). `:audience` and `:issuer` are read by `verify/2` on
-  every credential, and are checked here too, so a missing one fails the boot rather
-  than every request.
+  https (plain http is allowed for `localhost` only). `opts` go to
+  `EhOsContract.Auth.Keys.start_link/1`, which raises on one it does not take; the
+  address is the configuration's, and `url:` among them is refused. `:audience` and
+  `:issuer` are read by `verify/2` on every credential, and are checked here too, so
+  a missing one fails the boot rather than every request.
   """
   @spec child_spec(keyword()) :: Supervisor.child_spec()
   def child_spec(opts) do
@@ -127,26 +128,20 @@ defmodule EhOsContract.Auth do
       config[:jwks_url] ||
         String.trim_trailing(config[:issuer], "/") <> "/.well-known/jwks.json"
 
-    # The key set is what every credential is trusted by, and over plain HTTP anyone
-    # on the path could hand it keys of their own. Only a machine's own loopback may
-    # be plain, for development.
-    case URI.parse(url) do
-      %URI{scheme: "https", host: host} when is_binary(host) and host != "" ->
-        :ok
-
-      %URI{scheme: "http", host: host} when host in ["localhost", "127.0.0.1", "::1"] ->
-        :ok
-
-      _other ->
-        raise ArgumentError,
-              "eh_os_contract_auth fetches EHOS's keys from #{inspect(url)}, which is not " <>
-                "https: keys fetched in the clear can be replaced on the way. Only localhost " <>
-                "may be plain http"
+    # The address is the configuration's, which the check holds to https: a `url:`
+    # here replaced it after the check.
+    if Keyword.has_key?(opts, :url) do
+      raise ArgumentError,
+            "eh_os_contract_auth takes EHOS's address from config :eh_os_contract_auth, " <>
+              "issuer: or jwks_url:, not from url: in its child options"
     end
+
+    opts = Keyword.put(opts, :url, url)
+    Keys.check!(opts)
 
     %{
       id: __MODULE__,
-      start: {Keys, :start_link, [Keyword.merge([url: url], opts)]},
+      start: {Keys, :start_link, [opts]},
       type: :worker
     }
   end

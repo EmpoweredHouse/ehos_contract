@@ -3,7 +3,7 @@ defmodule EhOsContract.Auth.KeyCase do
   EHOS, as far as this package can see it: a key pair that signs credentials, and a
   JWKS endpoint a test can change, break and count.
 
-  The endpoint is a function plug handed to Req (`req_options: [plug: …]`), so no
+  The endpoint is a function plug handed to the key process (`plug:`), so no
   port is opened and the fetcher's own code — the request, the status, the body —
   runs as it does against EHOS.
 
@@ -89,7 +89,7 @@ defmodule EhOsContract.Auth.KeyCase do
   @doc """
   Starts a key process fetching from `ehos`, under a name of its own, and waits
   until its start — the table loaded, the first fetch done — has run.
-  `req_options:` replaces the plug that plays `ehos`.
+  `cacertfile:` and `cacerts:` go to it as they are.
   """
   def start_keys(ehos, opts \\ []) do
     name = Keyword.get_lazy(opts, :name, fn -> :"keys_#{System.unique_integer([:positive])}" end)
@@ -97,11 +97,13 @@ defmodule EhOsContract.Auth.KeyCase do
 
     spec =
       {Keys,
-       name: name,
-       url: "https://ehos.test/.well-known/jwks.json",
-       repo: TestRepo,
-       req_options: Keyword.get_lazy(opts, :req_options, fn -> [plug: &serve(ehos, &1)] end),
-       clock: fn -> Agent.get(clock, & &1) end}
+       [
+         name: name,
+         url: "https://ehos.test/.well-known/jwks.json",
+         repo: TestRepo,
+         plug: &serve(ehos, &1),
+         clock: fn -> Agent.get(clock, & &1) end
+       ] ++ Keyword.take(opts, [:cacertfile, :cacerts])}
 
     start_supervised!(Supervisor.child_spec(spec, id: name))
     # A call is answered only after `handle_continue/2`, so this returns once the

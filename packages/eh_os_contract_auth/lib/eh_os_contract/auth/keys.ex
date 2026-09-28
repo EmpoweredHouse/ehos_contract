@@ -49,12 +49,13 @@ defmodule EhOsContract.Auth.Keys do
   # is treated as down, and the keys in force stay.
   # No redirect is followed: the keys come from the configured URL or not at all,
   # so an answer pointing elsewhere cannot move where trust comes from.
-  @request_options [
-    retry: false,
-    redirect: false,
-    connect_options: [timeout: 2_000],
-    receive_timeout: 3_000
-  ]
+  # These are the fetch's, and a host adds only the authority its certificate is
+  # checked against: Req has many options that would undo what the key set is
+  # trusted by, so none of them is the host's to give.
+  @request_options [retry: false, redirect: false, receive_timeout: 3_000]
+  # Without it, Mint's is thirty seconds: an EHOS that drops packets would hold
+  # this process past `@call_timeout`.
+  @connect_timeout 2_000
   # A key set holds a current key and, during a rotation, a previous one. Anything
   # far beyond that is not EHOS's answer, and is not read into memory to find out.
   @max_body 64 * 1024
@@ -69,7 +70,9 @@ defmodule EhOsContract.Auth.Keys do
           {:name, atom()}
           | {:url, String.t()}
           | {:repo, module()}
-          | {:req_options, keyword()}
+          | {:cacertfile, Path.t()}
+          | {:cacerts, [binary()]}
+          | {:plug, term()}
           | {:refresh_every, pos_integer()}
           | {:refetch_at_most_every, non_neg_integer()}
           | {:clock, (-> integer())}
@@ -80,14 +83,21 @@ defmodule EhOsContract.Auth.Keys do
 
   `:repo` defaults to the engine's (`config :eh_os_contract, :repo`). The intervals
   are in milliseconds, measured by `:clock`, which defaults to the monotonic clock.
-  `:req_options` go to every `Req.get/2`, over its defaults: no retry, two seconds
-  to connect, three to receive. An option given replaces the default of the same
-  name, except `:connect_options`, which is merged key by key: a host naming its
-  certificate authority there keeps the two seconds unless it sets `:timeout` too,
-  there or inside `:transport_opts`, where Req lets it win.
+  EHOS's certificate is checked against the system's authorities, or against the
+  one `:cacertfile` (a PEM file) or `:cacerts` (DER certificates) names. The fetch
+  follows no redirect, is not retried, and gives up after two seconds to connect and
+  three to receive; nothing else about it is the host's to set.
+
+  `:plug` answers in place of the network, as `Req.Test` does, and is taken only
+  with `config :eh_os_contract_auth, pin_keys: true`, as in a test: whatever it
+  answers is trusted as EHOS's keys.
+
+  It raises on an option it does not take, when `:url` is not https (plain http is
+  allowed for `localhost` only), and on `:plug` anywhere but a test.
   """
   @spec start_link([option()]) :: GenServer.on_start()
   def start_link(opts) do
+    check!(opts)
     name = Keyword.get(opts, :name, __MODULE__)
     GenServer.start_link(__MODULE__, Keyword.put(opts, :name, name), name: name)
   end
@@ -165,7 +175,7 @@ defmodule EhOsContract.Auth.Keys do
   """
   @spec pin(map(), atom()) :: String.t()
   def pin(jwk, name \\ __MODULE__) when is_map(jwk) do
-    unless Application.get_env(:eh_os_contract_auth, :pin_keys, false) == true do
+    unless test_trust?() do
       raise ArgumentError,
             "pinning a key is for tests, and this environment does not allow it: set " <>
               "config :eh_os_contract_auth, pin_keys: true in config/test.exs"
@@ -196,6 +206,56 @@ defmodule EhOsContract.Auth.Keys do
 
   # --- the process ---------------------------------------------------------------------
 
+  @doc false
+  # Called by `start_link/1`, and by `EhOsContract.Auth.child_spec/1`, so a host's
+  # boot fails while its children are listed rather than when this one starts.
+  @spec check!(keyword()) :: :ok
+  def check!(opts) do
+    Keyword.validate!(opts, [
+      :name,
+      :url,
+      :repo,
+      :cacertfile,
+      :cacerts,
+      :plug,
+      :refresh_every,
+      :refetch_at_most_every,
+      :clock
+    ])
+
+    url = Keyword.fetch!(opts, :url)
+
+    # The key set is what every credential is trusted by, and over plain HTTP anyone
+    # on the path could hand it keys of their own. Only a machine's own loopback may
+    # be plain, for development.
+    case URI.parse(url) do
+      %URI{scheme: "https", host: host} when is_binary(host) and host != "" ->
+        :ok
+
+      %URI{scheme: "http", host: host} when host in ["localhost", "127.0.0.1", "::1"] ->
+        :ok
+
+      _other ->
+        raise ArgumentError,
+              "eh_os_contract_auth fetches EHOS's keys from #{inspect(url)}, which is not " <>
+                "https: keys fetched in the clear can be replaced on the way. Only localhost " <>
+                "may be plain http"
+    end
+
+    if Keyword.has_key?(opts, :plug) and not test_trust?() do
+      raise ArgumentError,
+            "eh_os_contract_auth takes plug: only in a test: whatever it answers is trusted " <>
+              "as EHOS's keys. Set config :eh_os_contract_auth, pin_keys: true in " <>
+              "config/test.exs"
+    end
+
+    :ok
+  end
+
+  # Whether this is where keys EHOS did not publish may be trusted: a pinned one, or
+  # whatever a plug in place of the network answers.
+  defp test_trust?, do: Application.get_env(:eh_os_contract_auth, :pin_keys, false) == true
+
   @impl GenServer
   def init(opts) do
     name = Keyword.fetch!(opts, :name)
@@ -206,7 +266,7 @@ defmodule EhOsContract.Auth.Keys do
       url: Keyword.fetch!(opts, :url),
       repo:
         Keyword.get_lazy(opts, :repo, fn -> Application.fetch_env!(:eh_os_contract, :repo) end),
-      req_options: Keyword.get(opts, :req_options, []),
+      request_options: request_options(opts),
       refresh_every: Keyword.get(opts, :refresh_every, @refresh_every),
       refetch_at_most_every: Keyword.get(opts, :refetch_at_most_every, @refetch_at_most_every),
       clock: Keyword.get(opts, :clock, fn -> System.monotonic_time(:millisecond) end),
@@ -297,10 +357,7 @@ defmodule EhOsContract.Auth.Keys do
   end
 
   defp get(state) do
-    options =
-      Keyword.merge([into: &at_most/2] ++ @request_options, state.req_options, &merge_option/3)
-
-    case Req.get(state.url, options) do
+    case Req.get(state.url, state.request_options) do
       {:ok, %Req.Response{status: 200, body: :too_large}} ->
         {:error, :too_large}
 
@@ -329,11 +386,16 @@ defmodule EhOsContract.Auth.Keys do
     exception -> {:error, exception}
   end
 
-  # Without the default connect timeout, Mint's is thirty seconds: an EHOS that
-  # drops packets would hold this process past `@call_timeout`.
-  # `nil` is what Req reads as no options, so it is merged as none.
-  defp merge_option(:connect_options, default, given), do: Keyword.merge(default, given || [])
-  defp merge_option(_option, _default, given), do: given
+  defp request_options(opts) do
+    connect_options =
+      case Keyword.take(opts, [:cacertfile, :cacerts]) do
+        [] -> [timeout: @connect_timeout]
+        authority -> [timeout: @connect_timeout, transport_opts: authority]
+      end
+
+    [into: &at_most/2, connect_options: connect_options] ++
+      @request_options ++ Keyword.take(opts, [:plug])
+  end
 
   # Collects the body up to `@max_body` and gives up past it.
   defp at_most({:data, data}, {request, response}) do
