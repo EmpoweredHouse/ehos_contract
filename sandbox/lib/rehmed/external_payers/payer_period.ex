@@ -18,26 +18,37 @@ defmodule Rehmed.ExternalPayers.PayerPeriod do
   def mark_settled_with_payer(_command, %State{invoiced: true}),
     do: reject(:invoiced_period_does_not_change)
 
-  def mark_settled_with_payer(%MarkSettledWithPayer{} = mark, _state) do
+  def mark_settled_with_payer(%MarkSettledWithPayer{} = mark, %State{} = state) do
     %MarkSettledWithPayer{payer_id: payer, period_id: period, visit_id: visit} = mark
-    emit(%VisitMarkedSettledWithPayer{payer_id: payer, period_id: period, visit_id: visit})
+
+    if open?(state, visit),
+      do: emit(%VisitMarkedSettledWithPayer{payer_id: payer, period_id: period, visit_id: visit}),
+      else: reject(:only_a_charged_visit_is_marked_or_excluded)
   end
 
   @impl true
   def exclude_visit_from_invoice(_command, %State{invoiced: true}),
     do: reject(:invoiced_period_does_not_change)
 
-  def exclude_visit_from_invoice(%ExcludeVisitFromInvoice{} = exclusion, _state) do
+  def exclude_visit_from_invoice(%ExcludeVisitFromInvoice{} = exclusion, %State{} = state) do
     %ExcludeVisitFromInvoice{payer_id: payer, period_id: period, visit_id: visit, reason: why} =
       exclusion
 
-    emit(%VisitExcludedFromInvoice{
-      payer_id: payer,
-      period_id: period,
-      visit_id: visit,
-      reason: why
-    })
+    if open?(state, visit) do
+      emit(%VisitExcludedFromInvoice{
+        payer_id: payer,
+        period_id: period,
+        visit_id: visit,
+        reason: why
+      })
+    else
+      reject(:only_a_charged_visit_is_marked_or_excluded)
+    end
   end
+
+  # Charged to this payer in this period, and neither marked nor excluded yet.
+  defp open?(%State{} = state, visit),
+    do: visit in state.charged and visit not in state.marked and visit not in state.excluded
 
   @impl true
   def issue_payer_invoice(_command, %State{invoiced: true}),

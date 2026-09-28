@@ -84,12 +84,19 @@ defmodule Rehmed.Contracts.ExternalPayers do
               "Zafakturowanego okresu się nie zmienia — faktura jest jedna, a oznaczenia i wykluczenia są przed nią",
               source: "51-mock.md §4.8: stan „zafakturowana” blokuje ponowne ujęcie"
 
+    # Counting too much is the other way the invoice fails: a mark for a visit the
+    # payer was never charged for in this period — a typo, another payer's visit, the
+    # wrong month — would be billed.
+    invariant :only_a_charged_visit_is_marked_or_excluded,
+              "Oznacza się albo wyklucza tylko wizytę obciążającą płatnika w tym okresie, i tylko raz",
+              source: "AGG-11 niezmiennik 4: „jeśli wyliczy za dużo to będzie problem z LuxMed”"
+
     # `S-58`: at reception, per visit, at the moment of settlement — a step on the
     # settlement screen, not a monthly sweep (2026-08-14).
     command :mark_settled_with_payer, "Oznacz rozliczenie u płatnika",
       by: :reception,
       emits: :visit_marked_settled_with_payer,
-      rejects: :invoiced_period_does_not_change,
+      rejects: [:invoiced_period_does_not_change, :only_a_charged_visit_is_marked_or_excluded],
       source: "C-48, aktor A-02; S-58" do
       field :visit_id, :id
     end
@@ -99,7 +106,7 @@ defmodule Rehmed.Contracts.ExternalPayers do
     command :exclude_visit_from_invoice, "Wyłącz wizytę z rozliczenia",
       by: :manager,
       emits: :visit_excluded_from_invoice,
-      rejects: :invoiced_period_does_not_change,
+      rejects: [:invoiced_period_does_not_change, :only_a_charged_visit_is_marked_or_excluded],
       source: "51-mock.md §4.8; AGG-11 niezmiennik 4" do
       field :visit_id, :id
       field :reason, :string
@@ -211,7 +218,7 @@ defmodule Rehmed.Contracts.ExternalPayers do
 
     given :visit_excluded_from_invoice, %{
       visit_id: "visit-ben",
-      reason: "pacjent wykorzystał limit sesji u płatnika"
+      reason: "the patient used up the payer's allowance elsewhere"
     }
 
     command :issue_payer_invoice, %{invoice_id: "invoice-luxmed-2026-09"}
@@ -240,5 +247,28 @@ defmodule Rehmed.Contracts.ExternalPayers do
 
     command :mark_settled_with_payer, %{visit_id: "visit-anna"}
     expect :visit_marked_settled_with_payer, %{visit_id: "visit-anna"}
+  end
+
+  scenario "wizyta nieobciążona w tym okresie — oznaczenie odrzucone" do
+    given :visit_charged_to_payer, %{
+      visit_id: "visit-anna",
+      payer_id: "payer-luxmed",
+      period_id: "2026-09"
+    }
+
+    command :mark_settled_with_payer, %{visit_id: "visit-ben"}
+    rejected :only_a_charged_visit_is_marked_or_excluded
+  end
+
+  scenario "wizyta już oznaczona — wykluczenie jej odrzucone" do
+    given :visit_charged_to_payer, %{
+      visit_id: "visit-anna",
+      payer_id: "payer-luxmed",
+      period_id: "2026-09"
+    }
+
+    given :visit_marked_settled_with_payer, %{visit_id: "visit-anna"}
+    command :exclude_visit_from_invoice, %{visit_id: "visit-anna", reason: "duplicate"}
+    rejected :only_a_charged_visit_is_marked_or_excluded
   end
 end
