@@ -37,6 +37,9 @@ StatutoryReporting, Settlement); v1 zostały `PayerSettlement` (do E9b) i TaxVis
 - **Proces na porcie 4000, wdrożenie E8 u hosta, lista zmian do `eh-os`, publikacja na Hex, F1/F2 i dziesięć
   usterek** — użytkownika, bez zmian (opisane w „Po E8 — kolejność zmieniona” i dopiskach 25–27 września). Link w
   wyjściu `check` (`hexdocs.pm/eh_os_contract/rules.html`) zadziała dopiero po publikacji na Hex.
+- **E13 — graf jako API i osobny renderer, w miejsce Mermaida** — pomysł użytkownika z 28 września, bez miejsca w
+  kolejności; opis, decyzje i szacunek w „Etapach”, po E12. Przed budową: kolejność względem E9–E11 i los stron
+  modelu (`mix eh_os_contract.pages`).
 - **Pytanie do EHOS-a (z EG3)** — ekran grafu pod ich CSP loguje ~400 zablokowanych prób stylu inline z pomiaru
   Mermaida; jeśli EHOS ma `report-uri`/`report-to` albo RUM zbiera `securitypolicyviolation`, każde wejście wyśle
   kilkaset zgłoszeń („EG3 — co wyszło”) — użytkownika.
@@ -595,6 +598,93 @@ dopiero tutaj — inbox zamienia przychodzące wiadomości w komendy, czyli też
 zgadywany z jednego przypadku; (b) **wcale** — każde przyszłe wejście (LiveView, job z credentialem) musiałoby samo
 pamiętać o kolejności „najpierw uprawnienie, potem pola”. Jeśli drugie drzwi pojawią się przed E12, wejście wchodzi
 razem z nimi.
+
+**E13 — Graf jako API i osobny renderer, w miejsce Mermaida.** Pomysł użytkownika z 28 września, **bez miejsca w
+kolejności**. To jest ponowne rozważenie, które EG odłożyło („interaktywny `/graph` z JSON-a (…) jak EventCatalog —
+do ponownego rozważenia, gdy grafy będą miały treść po E9”, „Przed EG — decyzje użytkownika”); po E9a Rehmed ma
+cztery kontrakty v2, więc widok systemu ma już krawędzie. Cel: cztery grafy EG (pełny graf kontraktu, jednostka,
+mapa kontekstów, system) wyglądające jak w EventCatalogu (v2 §3, pkt 6), oglądane i lokalnie przy developmencie, i
+w EHOS Console (LiveView), która uruchamia aplikacje klienckie. Użytkownikowi na Mermaidzie nie zależy.
+Rozstrzygnięte przez użytkownika 28 września:
+- **Silnik wystawia graf tak, jak wystawia AsyncAPI** (`EhOsContract.AsyncAPI.document/1` i `index/0`, endpoint z
+  digestem w `ETag`, za tym samym `Resolver`): opublikowany format `eh_os_contract.graph.v1` z **JSON Schemą w
+  pakiecie** (`priv/schema/graph.v1.json`) i testem walidującym każdy wygenerowany dokument. W webie `GET
+  <mount>/graph` (indeks: domeny z mapą kontekstów i systemem) i `GET <mount>/graph/:contract` (pełny graf
+  kontraktu z jego jednostkami); dokładne ścieżki — przy budowie. **Krawędzie wyprowadza silnik, nie renderer**:
+  zgodność liczy przejścia niezadeklarowane na tym samym grafie statycznym, więc reguła „polityka konsumuje
+  zdarzenie i wydaje komendę” żyje w jednym miejscu. Renderer zna słownik rodzajów węzłów i relacji, nie semantykę.
+- **Dwa dokumenty**: statyczny opis (ten sam kontrakt → te same bajty, bez bazy, do wygenerowania w CI i
+  przypięcia digestem) i nakładka z logu, `GET <mount>/graph/:contract/overlay?since=…` (oraz odpowiednik dla
+  systemu domeny) — liczniki przebiegów, to, co czeka i pada, ścieżki nigdy nieprzejechane, kluczowane tymi samymi
+  `id` węzłów i krawędzi; renderer nakłada jedno na drugie. *Odrzucone:* jeden dokument z `?overlay=true` —
+  prostszy dla konsumenta, ale przestaje być opisem kontraktu, a jego digest przestaje cokolwiek znaczyć.
+- **Renderer to nowy pakiet w tym repozytorium**, `packages/eh_os_contract_graph`: komponent funkcyjny Phoenixa i
+  hook LiveView (kontener z `phx-update="ignore"`, jak bloki diagramów po EG3), bundle JS zbudowany esbuildem i
+  commitowany w `priv/static` (wzorzec `assets.build` z `eh_os_contract_web`), więc host nie instaluje npm. **Nie
+  zależy od `eh_os_contract`**, tylko od `phoenix_live_view` — przyjmuje dokument, niezależnie skąd przyszedł: w
+  dashboardzie z wywołania funkcji, w Console z API aplikacji klienta. Tokeny design systemu EmpoweredHouse
+  (dopisek z 28 września) i paleta rodzajów w jednej tabeli, bo paleta Event Stormingu „w niedalekiej przyszłości
+  będzie zmieniana”. Brama wywołuje jego `mix check` jak pozostałych pakietów. *Odrzucone:* osobne repozytorium
+  (użytkownik: pakiet tutaj); web component — obaj konsumenci są na LiveView, więc niepotrzebny; renderer
+  wyprowadzający graf sam z `Model.to_data/1` — dwie implementacje reguł krawędzi w dwóch językach.
+- **Mermaid wypada w całości**: `Graph.Mermaid` i `to_mermaid` w `Graph.Contract`, `Graph.Unit`,
+  `Graph.ContextMap`, `Graph.System` i `Graph` (dane pod nimi — `build/*`, `Paths`, `overlay/1`, liczniki —
+  zostają, bo z nich powstaje dokument); w webie zwendorowany `mermaid.min.js` (3,5MB), `NOTICE`, hook z kolejką
+  rysowania, obejście CSP z EG3 (arkusze konstruowane, przenoszenie `style`), motyw Mermaida z tokenów, reset
+  `pre.mermaid p` i zdanie w README o `style-src`; flagi Mermaida w `mix eh_os_contract.graph` — task wypisuje
+  dokument JSON; asercje Mermaida w testach silnika, weba i sandboxa. Porównania bajtów na bazie dev robione dotąd
+  na Mermaidzie przechodzą na dokument JSON. Grafy v1 EG zostawiło „bez zmiany bajtu do wycięcia v1”, więc albo
+  E13 idzie po E11, albo ich Mermaid znika dopiero w E11 — do rozstrzygnięcia z kolejnością.
+- **`Brief` przenosi się na ekran** z nowym rendererem i przestaje być wydawany jako plik:
+  `mix eh_os_contract.brief` znika, a strona dashboardu pokazuje graf procesu obok listy (zdarzenia słowami
+  klienta, obietnice zdaniami, co od każdego zdarzenia zależy) — obie połowy, bo moduledoc `Brief` zapisuje, że
+  łapią różne błędy. Mieści się w decyzji po EG3: ekran jest miejscem, w którym ludzie oglądają model; na cztery
+  pytania z `CLAUDE.md` odpowiadają nakładki, a opis stoi obok nich. *Odrzucone:* (a) mały serializer dokumentu do
+  Mermaida tylko dla `Brief` — trzymałby Mermaida w silniku dla jednego czytelnika; (c) `Brief` bez rysunku — gubi
+  połowę, która znalazła brakujące zależności kolejności.
+- **Renderer — do rozstrzygnięcia prototypem**, nie z góry. Kandydat pierwszy: `@eventcatalog/visualiser` (npm,
+  MIT, 4.1.4 z 7 września, React + `@xyflow/react` + dagre; `NodeGraph` przyjmuje ogólny `DslGraph`, rysuje karty
+  EventCatalogu). Przeciw niemu: grafy EG mają 16 rodzajów węzłów, a `DslGraph` pokrywa kilka (komenda, zdarzenie,
+  query, aktor, system zewnętrzny) — polityka, process manager, efekt, timer, read model, stan, niezmiennik,
+  ograniczenie, kontekst, kontrakt i publikacja tylko przez surowe węzły React Flow typu `custom`; nakładka mieści
+  się jedynie w `label` krawędzi; `NodeGraph` importuje statycznie `MermaidView` (Mermaid jest jego zależnością —
+  3,5MB może wrócić do bundla); własny build Tailwinda może gryźć się z CSS hosta; format `DslGraph` jest ich
+  wewnętrzny. Wyjście awaryjne: `@xyflow/react` z dagre albo ELK i własne karty. Mapowanie `graph.v1` → format
+  renderera żyje w pakiecie renderera, więc zmiana renderera nie dotyka silnika ani EHOS-a. **Warunek dla obu:
+  działa pod `default-src 'self'` EHOS-a** — sandbox serwuje tę politykę na dashboardzie na stałe (EG3), więc
+  prototyp sprawdza ją sam. React ustawia style przez CSSOM, który polityka przepuszcza; do sprawdzenia, czy nic w
+  bundlu nie wstawia `<style>`. Przy okazji znika ~400 zablokowanych stylów z pomiaru Mermaida, czyli pytanie do
+  EHOS-a z EG3. *Odrzucone:* Mermaid (bez interakcji, stały wygląd, walka z CSP), Cytoscape.js (węzły na
+  canvasie, karty tylko przez rozszerzenia do etykiet HTML), SVG liczony w Elixirze (bez interakcji), DOT (odrzucony
+  już w EG).
+
+**Co w silniku jest, a czego brakuje.** Grafy EG są „najpierw dane”: `Graph.Contract.build/2`, `Graph.Unit.build/2`,
+`Graph.ContextMap.build/1` i `Graph.System.build/3` dają węzły, krawędzie i grupy. Do formatu publicznego brakuje
+trzech rzeczy: typy siedzą w `Graph.Mermaid` (do neutralnego modułu); krawędź niesie wygląd (`line`, `head`) zamiast
+rodzaju relacji (`emits`, `issues`, `records`, `reads`, `calls`, `backed_by`, `gives`, `consumes`, …) — wygląd
+wybiera renderer; nakładka jest dziś wpisana w etykiety krawędzi i w `counts` węzłów tego samego grafu, a ma być
+osobnym dokumentem liczb. Identyfikatory są dziś mermaidowe (`<rodzaj>_<nazwa>`, `unique_ids/2` z numerem
+kolejnym) i muszą stać się stabilne między wersjami, bo po nich łączy się nakładkę i liczy digest.
+
+Kolejność pracy i szacunek (zgrubny, sprzed prototypu): (0) prototyp renderera na pełnym grafie jednego kontraktu
+Rehmedu w `sandbox/` — ½–1 dnia, rozstrzyga renderer, mierzy bundel i sprawdza CSP; (1) format: neutralne typy,
+rodzaje relacji, stabilne identyfikatory, nakładka jako liczby, schema — 2–3 dni; (2) endpointy i task z JSON-em —
+~1 dnia; (3) pakiet renderera: 16 rodzajów, grupy (jednostka, subdomena, kontekst), karta stanu — 3–4 dni z
+visualiserem, 4–6 z własnymi kartami; (4) web: `/graph` na nowym komponencie, usunięcie Mermaida i obejścia CSP —
+1–1½ dnia; (5) `Brief` na ekranie — 1–1½ dnia. Razem ~9–12 dni z visualiserem, ~10–14 z własnymi kartami.
+Integracja w Console jest po stronie `eh-os`. Jeśli E13 wejdzie przed E10, zabiera z E10 graf systemu na `/graph`
+(zbudowany już w EG2) i endpoint grafu.
+
+Otwarte: **strony modelu** (`mix eh_os_contract.pages`, EL3) wstawiają Mermaida do `index.md` domeny (mapa
+kontekstów) i na strony agregatów (jednostka). Decyzja o `Brief` ich nie obejmuje: albo strony idą na ekran jak
+`Brief`, albo zostają plikami bez rysunku, albo zostaje dla nich Mermaid — decyzja użytkownika przed budową.
+Przy E13 poprawka z datą w `docs/adr/technology-notes.md` §12 (renderer zbudowany) i v2 §3.
+*Odbiór:* dokumenty i nakładki przechodzą walidację JSON Schemą dla każdego kontraktu i domeny sandboxa; ten sam
+kontrakt daje ten sam digest przed i po restarcie; ta sama strona renderuje się w dashboardzie z dokumentu z
+funkcji i z dokumentu pobranego przez HTTP z `/graph/:contract`; ścieżka zadeklarowana, nigdy nieprzejechana, jest
+na grafie odróżnialna od przejechanej; ekran grafu pod polityką EHOS-a bez żadnego naruszenia CSP w konsoli;
+`grep -ri mermaid packages sandbox` (poza `CHANGELOG.md`) nic nie znajduje; kontrola: kontrakt spoza rejestru daje
+404, nie pusty graf.
 
 ### Po E8 — kolejność zmieniona: najpierw luki ESDM, kontrakty na końcu (27 września)
 
