@@ -14,7 +14,9 @@ config :eh_os_contract_host, Taxvision.CommitRepo,
   hostname: "localhost",
   port: 5433,
   database: "eh_os_contract_host_test_commits",
-  pool_size: 20
+  # Ten desks and the manager at once, and no more: every worktree's gate shares
+  # one Postgres of 100 connections, and the engine's own commit repo takes 60.
+  pool_size: 12
 
 # Jobs do not run by themselves. The tests check that a job was inserted in the
 # same transaction, and run it explicitly.

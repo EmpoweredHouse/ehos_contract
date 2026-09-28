@@ -23,7 +23,18 @@ defmodule Taxvision.CommitRepo do
   @spec reset!() :: :ok
   def reset! do
     config = config()
-    _ = Ecto.Adapters.Postgres.storage_down(config)
+
+    # Every worktree's run uses the same database on the same Postgres, so a drop
+    # refused because another run holds it is said as that, not as a mismatch later.
+    case Ecto.Adapters.Postgres.storage_down(config) do
+      result when result in [:ok, {:error, :already_down}] ->
+        :ok
+
+      {:error, reason} ->
+        raise "cannot drop #{config[:database]} for a fresh run, most likely because " <>
+                "another test run is using it: #{inspect(reason)}"
+    end
+
     :ok = Ecto.Adapters.Postgres.storage_up(config)
     {:ok, _} = start_link()
 
