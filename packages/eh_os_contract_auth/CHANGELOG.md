@@ -44,4 +44,7 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   own options are checked too: `url:`, which replaced the address the boot had checked, and any
   name `EhOsContract.Auth.Keys.start_link/1` does not take, which was dropped without a word.
   `start_link/1` checks all of it, the https address included, so starting it directly is no way
-  around. `transport_opts: nil` is read as none, where it broke every fetch.
+  around. `transport_opts: nil` is read as none, where it broke every fetch. An address with
+  credentials in it is refused, and no refusal of an address shows it.
+- **Req is held to 0.7.x** (`~> 0.7.4`): the fetch builds on Req's base request, which Req does
+  not document.

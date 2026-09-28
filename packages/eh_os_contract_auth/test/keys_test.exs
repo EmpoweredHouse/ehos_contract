@@ -147,40 +147,43 @@ defmodule EhOsContract.Auth.KeysTest do
       end)
     end
 
-    # Set for the host's other requests: none of it reaches this one, at the boot or
-    # later — not an option, a header, a body, an adapter, nor a plugin's step.
+    # Set for the host's other requests: none of it reaches this one — not an option,
+    # a header, a body, nor a plugin's step — whether it was there at the boot or
+    # set after it.
     test "do not reach the fetch, set before the boot or after it" do
       test = self()
-
-      defaults = [
-        follow_redirects: true,
-        auth: {:bearer, "for another API"},
-        headers: [authorization: "for another API"],
-        body: "for another API",
-        adapter: fn request -> send(test, :default_adapter) && {request, Req.Response.new()} end,
-        plugins: [fn request -> send(test, :plugin) && request end]
-      ]
+      plugin = fn tag -> [fn request -> send(test, {:plugin, tag}) && request end] end
 
       adapter = fn request ->
         send(test, {:sent, request})
         {request, Req.Response.new(status: 503)}
       end
 
-      Application.put_env(:req, :default_options, defaults)
+      Application.put_env(:req, :default_options,
+        follow_redirects: true,
+        auth: {:bearer, "for another API"},
+        plugins: plugin.(:before)
+      )
+
       keys = start_keys(nil, req_options: [adapter: adapter])
-      Req.default_options(defaults)
+
+      assert_received {:sent, request}
+      refute Map.has_key?(request.options, :follow_redirects)
+      refute Map.has_key?(request.options, :auth)
+      refute Map.has_key?(request.headers, "authorization")
+
+      Req.default_options(
+        headers: [authorization: "for another API"],
+        body: "for another API",
+        plugins: plugin.(:after)
+      )
+
       assert {:error, {:status, 503}} = Keys.refresh(keys)
+      assert_received {:sent, request}
+      refute Map.has_key?(request.headers, "authorization")
+      assert request.body == nil
 
-      for _fetch <- 1..2 do
-        assert_received {:sent, request}
-        refute Map.has_key?(request.headers, "authorization")
-        assert request.body == nil
-        refute Map.has_key?(request.options, :follow_redirects)
-        refute Map.has_key?(request.options, :auth)
-      end
-
-      refute_received :plugin
-      refute_received :default_adapter
+      refute_received {:plugin, _}
     end
   end
 

@@ -100,8 +100,10 @@ defmodule EhOsContract.Auth.MixProject do
       # Not `joken_jwks`, which refreshes only on an unknown key and keeps its keys
       # only in memory — D-34 has both reasons.
       {:joken, "~> 2.7"},
-      # The key set is fetched over HTTP, by the small fetcher D-34 chose.
-      {:req, "~> 0.7"},
+      # The key set is fetched over HTTP, by the small fetcher D-34 chose. Held to
+      # 0.7.x: the fetch builds on `Req.Steps.attach/1`, which is not documented
+      # (`EhOsContract.Auth.Keys`).
+      {:req, "~> 0.7.4"},
       {:boundary, "~> 0.10", runtime: false},
       # `EhOsContract.Auth.Plug`, the bearer plug in front of `EhOsContract.Plug`. The
       # suite also plays EHOS's JWKS endpoint as a function plug handed to Req.

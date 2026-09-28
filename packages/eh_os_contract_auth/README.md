@@ -198,7 +198,15 @@ The address comes from the configuration only: `url:` in the child's options is 
 **Req's own defaults do not apply to this fetch.** Req applies `config :req, default_options`,
 plugins included, to every request an application makes; the key fetch is built without them, so
 what the application sets there for its other requests — `follow_redirects`, `auth`, headers, a
-stub, a plugin's steps — never reaches EHOS, at the boot or later.
+stub, a plugin's steps — does not apply to it, at the boot or later.
+
+**Name the authority even when it is a public one, if other code in the application loads
+certificates.** Without `cacertfile` or `cacerts`, EHOS's certificate is checked against the
+VM's store (`:public_key.cacerts_get/0`), and any library that calls `:public_key.cacerts_load/1`
+for its own API replaces that store for this fetch too.
+
+**An address with credentials in it is refused** (`https://user:password@…`): the key set is
+public and asked for with none, and the address is written to the log with every failed fetch.
 
 **What the application configures, and nothing else:** `issuer`, which must be exactly the `iss`
 EHOS writes, `audience` (`<application>/<environment>`, exactly the `aud` EHOS issues for this

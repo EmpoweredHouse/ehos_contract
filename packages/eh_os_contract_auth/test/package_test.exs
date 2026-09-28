@@ -59,15 +59,25 @@ defmodule EhOsContract.Auth.PackageTest do
         assert_raise ArgumentError, ~r/not https/, fn -> EhOsContract.Auth.child_spec([]) end
       end
 
-      # Credentials in the address stay out of the message, and so out of the logs.
-      Application.put_env(
-        :eh_os_contract_auth,
-        :jwks_url,
-        "http://user:secret@ehos.example.com/k"
-      )
+      # An address with credentials is refused, https or not, and no refusal shows the
+      # address: a boot crash is logged, and a mistyped one hides a password from
+      # any parse.
+      for url <- [
+            "https://user:secret@ehos.example.com/k",
+            "https://user:secret@/k",
+            "user:secret@ehos.example.com/k",
+            "https:/user:secret@ehos.example.com/k"
+          ] do
+        Application.put_env(:eh_os_contract_auth, :jwks_url, url)
+        error = assert_raise ArgumentError, fn -> EhOsContract.Auth.child_spec([]) end
+        refute error.message =~ "secret", url
+      end
 
-      error = assert_raise ArgumentError, fn -> EhOsContract.Auth.child_spec([]) end
-      refute error.message =~ "secret"
+      Application.put_env(:eh_os_contract_auth, :jwks_url, "https://u:secret@ehos.example.com/k")
+
+      assert_raise ArgumentError, ~r/with credentials in it/, fn ->
+        EhOsContract.Auth.child_spec([])
+      end
 
       # The control: loopback may be plain, for development.
       Application.put_env(:eh_os_contract_auth, :jwks_url, "http://localhost:4100/jwks.json")

@@ -77,6 +77,10 @@ defmodule EhOsContract.Auth.Keys do
   # In place of the network, so whatever they answer is trusted: only where keys
   # EHOS did not publish may be, as for `pin/2`.
   @stubs [:plug, :adapter]
+  # Req's base request, as `Req.new/1` starts from it (`req.ex`, `@req`). `attach/1`
+  # is not documented, so `mix.exs` holds Req to 0.7.x, and `keys_test` fails if a
+  # version lets its defaults back into the fetch.
+  @req Req.Steps.attach(Req.Request.new())
   @trusted_by ". Any other option could undo what the key set is trusted by: its URL, " <>
                 "the check of EHOS's certificate, no redirect, and the 64 KB limit"
 
@@ -229,8 +233,14 @@ defmodule EhOsContract.Auth.Keys do
 
     # The key set is what every credential is trusted by, and over plain HTTP anyone
     # on the path could hand it keys of their own. Only a machine's own loopback may
-    # be plain, for development.
+    # be plain, for development. Neither message shows the address: one that fails
+    # here may carry a password in a shape no parse finds, and a boot crash is logged.
     case URI.parse(url) do
+      %URI{userinfo: userinfo} when is_binary(userinfo) ->
+        raise ArgumentError,
+              "eh_os_contract_auth fetches EHOS's keys from an address with credentials in " <>
+                "it: the key set is public and asked for with none, and the address is logged"
+
       %URI{scheme: "https", host: host} when is_binary(host) and host != "" ->
         :ok
 
@@ -239,10 +249,9 @@ defmodule EhOsContract.Auth.Keys do
 
       _other ->
         raise ArgumentError,
-              "eh_os_contract_auth fetches EHOS's keys from #{inspect(without_userinfo(url))}, " <>
-                "which is not " <>
-                "https: keys fetched in the clear can be replaced on the way. Only localhost " <>
-                "may be plain http"
+              "eh_os_contract_auth fetches EHOS's keys from an address which is not https: " <>
+                "keys fetched in the clear can be replaced on the way. Only localhost may be " <>
+                "plain http"
     end
 
     req_options = Keyword.get(opts, :req_options, [])
@@ -264,8 +273,6 @@ defmodule EhOsContract.Auth.Keys do
         end
     end
   end
-
-  defp without_userinfo(url), do: url |> URI.parse() |> Map.put(:userinfo, nil) |> URI.to_string()
 
   # Whether this is where keys EHOS did not publish may be trusted: a pinned one, or
   # whatever a stub in place of the network answers.
@@ -438,15 +445,11 @@ defmodule EhOsContract.Auth.Keys do
   # them, and nothing else. `Req.new/1` would add Req's own defaults under both —
   # `config :req, default_options`, set for the host's other requests, plugins
   # included, which add steps no option shows — so this is what it builds without
-  # them: Req's steps, then `Req.merge/2`, which reads no defaults. `Req.get/1` on
-  # the result reads none either. `attach/1` is not documented; Req is pinned by
-  # the lock, and `keys_test` fails if an upgrade lets the defaults back in.
+  # them: `@req`, Req's own base, then `Req.merge/2`, which reads no defaults.
+  # `Req.get/1` on the result reads none either.
   defp request(url, req_options) do
     options = Keyword.merge([into: &at_most/2] ++ @request_options, req_options, &merge_option/3)
-
-    Req.Request.new()
-    |> Req.Steps.attach()
-    |> Req.merge([url: url] ++ options)
+    Req.merge(@req, [url: url] ++ options)
   end
 
   # Without the default connect timeout, Mint's is thirty seconds: an EHOS that
