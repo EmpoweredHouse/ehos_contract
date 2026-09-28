@@ -54,6 +54,9 @@ defmodule Rehmed.ExternalPayers.PayerPeriod do
   def issue_payer_invoice(_command, %State{invoiced: true}),
     do: reject(:invoiced_period_does_not_change)
 
+  def issue_payer_invoice(_command, %State{marked: []}),
+    do: reject(:an_invoice_covers_a_marked_visit)
+
   def issue_payer_invoice(%IssuePayerInvoice{} = invoice, %State{} = state) do
     %IssuePayerInvoice{payer_id: payer, period_id: period, invoice_id: number} = invoice
 

@@ -91,6 +91,13 @@ defmodule Rehmed.Contracts.ExternalPayers do
               "Oznacza się albo wyklucza tylko wizytę obciążającą płatnika w tym okresie, i tylko raz",
               source: "AGG-11 niezmiennik 4: „jeśli wyliczy za dużo to będzie problem z LuxMed”"
 
+    # An invoice for a period nothing was marked in — invoiced before the first close
+    # of the month, or the wrong month — would close the period to every visit charged
+    # after it, and the month would go unbilled.
+    invariant :an_invoice_covers_a_marked_visit,
+              "Faktura obejmuje co najmniej jedną wizytę oznaczoną u płatnika",
+              source: "AGG-11; S-60: moduł miesięczny po weryfikacji danych"
+
     # `S-58`: at reception, per visit, at the moment of settlement — a step on the
     # settlement screen, not a monthly sweep (2026-08-14).
     command :mark_settled_with_payer, "Oznacz rozliczenie u płatnika",
@@ -115,7 +122,11 @@ defmodule Rehmed.Contracts.ExternalPayers do
     command :issue_payer_invoice, "Wystaw fakturę płatnikowi",
       by: :manager,
       emits: :payer_invoice_issued,
-      rejects: [:invoiced_period_does_not_change, :every_delivered_visit_settled_or_excluded],
+      rejects: [
+        :invoiced_period_does_not_change,
+        :an_invoice_covers_a_marked_visit,
+        :every_delivered_visit_settled_or_excluded
+      ],
       source: "C-49, aktor A-05 (2026-08-14); S-121" do
       field :invoice_id, :id
     end
@@ -270,5 +281,15 @@ defmodule Rehmed.Contracts.ExternalPayers do
     given :visit_marked_settled_with_payer, %{visit_id: "visit-anna"}
     command :exclude_visit_from_invoice, %{visit_id: "visit-anna", reason: "duplicate"}
     rejected :only_a_charged_visit_is_marked_or_excluded
+  end
+
+  scenario "nic nie oznaczono we wrześniu — faktura odrzucona, okres zostaje otwarty" do
+    command :issue_payer_invoice, %{
+      payer_id: "payer-luxmed",
+      period_id: "2026-09",
+      invoice_id: "invoice-luxmed-2026-09"
+    }
+
+    rejected :an_invoice_covers_a_marked_visit
   end
 end

@@ -129,6 +129,10 @@ defmodule Rehmed.PayerPeriodRaceTest do
       for {type, p} <- before, type =~ suffix, into: MapSet.new(), do: p["visit_id"]
     end
 
+    # An invoice needs a marked visit, so it cannot have gone out before the race began.
+
+    assert MapSet.size(visits.("visit_charged_to_payer")) > 0
+
     assert MapSet.subset?(
              visits.("visit_charged_to_payer"),
              visits.("visit_marked_settled_with_payer")
@@ -148,8 +152,8 @@ defmodule Rehmed.PayerPeriodRaceTest do
     until_settled(fn -> mark(payer, visit) end, 20)
   end
 
-  # The manager tries again while a charged visit is unmarked, as the monthly screen
-  # would be opened again once reception catches up.
+  # The manager tries again while nothing is marked yet or a charged visit is
+  # unmarked, as the monthly screen would be opened again once reception catches up.
   defp invoice_until_issued(_payer, 0), do: flunk("the invoice was never issued")
 
   defp invoice_until_issued(payer, tries) do
@@ -157,7 +161,11 @@ defmodule Rehmed.PayerPeriodRaceTest do
       {:ok, _} = issued ->
         issued
 
-      {:error, %Rejection{invariant: :every_delivered_visit_settled_or_excluded}} ->
+      {:error, %Rejection{invariant: invariant}}
+      when invariant in [
+             :an_invoice_covers_a_marked_visit,
+             :every_delivered_visit_settled_or_excluded
+           ] ->
         Process.sleep(5)
         invoice_until_issued(payer, tries - 1)
     end
