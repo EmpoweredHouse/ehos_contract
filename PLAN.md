@@ -5,42 +5,35 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 28 września (E9c-1 w `main`, E9c-2 w PR)
+## Handoff — stan na 28 września (E9 w `main`, E10 w toku)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
 
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności), jej
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa pivot do v2** (DSL na Sparku, model
-domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E8, EA, EM, EL, EG, E9a (#33),
-E9b (#39) i E9c-1 (#41) są w `main`.** Teraz **E9** — kontrakty sandboxa od nowa z materiału (decyzje: „Przed E9 — decyzje
-użytkownika”): E9c-2 w PR; potem E10–E12. Po E9b Rehmed ma pięć kontraktów v2 (Scheduling,
+domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E8, EA, EM, EL, EG i całe E9
+(E9a #33, E9b #39, E9c-1 #41, E9c-2 #42) są w `main`.** Teraz **E10 — wyjścia** (decyzje: „Przed E10 — decyzje
+użytkownika”), potem E11, E12 i E13. Po E9b Rehmed ma pięć kontraktów v2 (Scheduling,
 ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); po E9c-1 w sandboxie nie ma kontraktu v1.
 
 ### Stan repozytorium
 
-- **`origin/main` = `7bd4466`** (merge [#41](https://github.com/EmpoweredHouse/eh-os-contract/pull/41), E9c-1; CI
-  na połączeniu z `main` — `success`, przebieg `36441227320`). #40 zmergował się do nieprzestawionej bazy
-  `dsl-v2/e9-payer` (`dfc3451`), stąd #41 z tą samą głową.
-- **E9c-2** na `dsl-v2/e9-e9c2`, od `60324a5`, w PR do `main` — zbudowane („Przed E9c-2 — decyzje użytkownika”, „E9c-2 — co
-  wyszło”, „Przegląd E9c-2”), przejrzane jedną rundą. Brama na każdym commicie EXIT=0; sandbox 137
-  testów, `check` 0 / 28 / 10; silnik 1245, `check` 0 / 67 / 21; web 45; auth 55.
+- **`origin/main` = `e7709c2`** (merge [#42](https://github.com/EmpoweredHouse/eh-os-contract/pull/42), E9c-2; CI
+  `main` — `success`, przebieg `36451295950`).
+- **E10** na `dsl-v2/e10-outputs`, od `e7709c2`. Świeży worktree ma pobrane zależności, przygotowaną bazę i zieloną
+  bramę bazową (`EXIT=0`).
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
 ### Co zostało — i czyje to jest
 
-- **Merge PR E9c-2** — użytkownika. Przegląd zrobiony (notatka na głowie gałęzi); obie decyzje z przeglądu
-  zapisane („Po przeglądzie E9c-2 — decyzje użytkownika”). Gałąź E9c-2 stoi na głowie #41, więc po jego merge'u jej PR idzie prosto na `main`.
-- **E10–E12 — asystenta, po pytaniach.** Po E11 kontrakty sandboxa przechodzą do testów pakietu jako fikstury
-  akceptacyjne („Przed E9c-2 — decyzje użytkownika”). Do E9 odłożone pozycje 6–9 z „Po EL2 — proza, którą da się
-  sprawdzać” — do sprawdzenia, czy E9 je zamknęło.
+- **E10–E12 — asystenta.** Zakres i kolejność E10 są w „Przed E10 — decyzje użytkownika”. Po E11 kontrakty
+  sandboxa przechodzą do testów pakietu jako fikstury akceptacyjne („Przed E9c-2 — decyzje użytkownika”).
 - **Proces na porcie 4000, wdrożenie E8 u hosta, lista zmian do `eh-os`, publikacja na Hex, F1/F2 i dziesięć
   usterek** — użytkownika, bez zmian (opisane w „Po E8 — kolejność zmieniona” i dopiskach 25–27 września). Link w
   wyjściu `check` (`hexdocs.pm/eh_os_contract/rules.html`) zadziała dopiero po publikacji na Hex.
-- **E13 — graf jako API i osobny renderer, w miejsce Mermaida** — pomysł użytkownika z 28 września, bez miejsca w
-  kolejności; opis, decyzje i szacunek w „Etapach”, po E12. Przed budową: kolejność względem E9–E11 i los stron
-  modelu (`mix eh_os_contract.pages`).
+- **E13 — graf jako API i osobny renderer, w miejsce Mermaida** — po E12. Opis, decyzje i szacunek w „Etapach”.
 - **Pytanie do EHOS-a (z EG3)** — ekran grafu pod ich CSP loguje ~400 zablokowanych prób stylu inline z pomiaru
   Mermaida; jeśli EHOS ma `report-uri`/`report-to` albo RUM zbiera `securitypolicyviolation`, każde wejście wyśle
   kilkaset zgłoszeń („EG3 — co wyszło”) — użytkownika.
@@ -2027,6 +2020,22 @@ Asystent zapytał o dwie rzeczy z przeglądu; odpowiedź: „tak” na obie.
   jako `personal:` (crypto-shredding pod sprzedawcą albo pod firmą klienta); numer KSeF jako skrót w logu.
 - **Reguła o `\d` z flagą `u` w `CLAUDE.md`** — format ASCII piszemy `[0-9]`, obok reguły o `u`. *Odrzucone:*
   zostawienie jej tylko w ustaleniach przeglądu.
+
+### Przed E10 — decyzje użytkownika (28 września)
+
+- **E13 idzie po E12.** Graf systemu zbudowany w EG spełnia graficzną część odbioru E10; E10 przypina ją testem,
+  bez rozpoczynania formatu `graph.v1` ani wymiany renderera. Optymalizacja boundary, które dekoduje nieużywane
+  własne zdarzenia, zostaje w E11, a brak krawędzi usług domenowych — w E13.
+- **Dwie reguły kompletności z E9 wchodzą do E10:** aktor z wymiarem `scope`, który może wydać komendę bez
+  `scope`, oraz zawężenie `contract-without-implementation`, aby nie zgłaszało kontraktu złożonego wyłącznie ze
+  zdarzeń nagrywanych przez `recorded_by:`.
+- **Fan-out polityki `:in_transaction` dostaje ostrzeżenie L5**, gdy scenariusz pokazuje wydanie więcej niż jednej
+  komendy. Nie ma arbitralnego limitu długości listy w runtime; ostrzeżenie mówi o globalnej blokadzie dopisywania
+  i wskazuje `delivery: :at_least_once`. *Odrzucone:* limit danych wejściowych udający limit pracy oraz odłożenie
+  znanego ryzyka bez żadnego sygnału dla autora kontraktu.
+- **Reszta E10 idzie małymi commitami:** nazwany eksport `Model.to_data/1` i endpoint web, AsyncAPI z `publish`,
+  OpenAPI z komend i query, a na końcu manifest `ehos.manifest/v1` w pakiecie auth, równy fixture'owi TaxVision
+  po ograniczeniu do pól schematu EHOS-a.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
