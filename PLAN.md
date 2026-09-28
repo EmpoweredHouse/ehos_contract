@@ -2879,7 +2879,15 @@ a adres trafia do logu przy każdym nieudanym pobraniu (czwarta runda). Żaden k
 kształtach. Piąta runda: hasło z `/` bez kodowania (`https://user:pa/ss@host`) parsuje się jako host `user` bez
 userinfo i przechodziło — teraz odrzucany każdy `@`; adres, który nie jest stringiem (lista znaków z
 `:os.getenv/1`), wywracał `URI.parse/1` z hasłem w raporcie — teraz odrzucany bez pokazania; logi pobrania
-pokazują adres bez zapytania (`?access_token=…`). *Bez zmian:* `~> 0.7.4` dalej wpuszcza nowsze łatki 0.7 —
+pokazywały adres bez zapytania (`?access_token=…`). Szósta runda znalazła token z zapytania w `inspect(reason)`
+tej samej linii (Mint wkłada tam cel żądania, gdy zawiera znak, którego nie wyśle — np. końcowy `\n` z pliku z
+sekretem), więc ścinanie z każdego miejsca, w którym adres się pokazuje, zastąpione odmową przy starcie: adres z
+zapytaniem, fragmentem albo znakiem spoza drukowalnego ASCII nie wstaje (i tak żadne pobranie by nie przeszło).
+`@` w ścieżce też odmawiany, komunikat mówi o `%40`. Do tego: brak `url:` przy starcie `Keys` wprost dawał
+`KeyError` ze wszystkimi opcjami (`cacerts` też), a `issuer` jako lista znaków padał w `String.trim_trailing/2` z
+wartością w raporcie — oba mają własny komunikat bez wartości. Obietnica „komunikaty nie pokazują adresu” zawężona
+w README do komunikatów pakietu: `Keys` wpisany w drzewo wprost, gdy nie wstanie, ma argumenty startu w raporcie
+OTP. *Bez zmian:* `~> 0.7.4` dalej wpuszcza nowsze łatki 0.7 —
 ryzyko nazwane, nie usunięte; `@req` w czasie kompilacji — Mix śledzi moduły Req. *Pominięte:* `SSLKEYLOGFILE` (Finch dopisuje sekrety TLS, jeśli operator ustawi zmienną — środowisko,
 nie konfiguracja), telemetria Finch (tylko obserwuje), `cacertfile` trzymany przez Mint do restartu. Magazyn
 certyfikatów VM (`:public_key.cacerts_load/1` innej biblioteki podmienia go i dla tego pobrania) — zdanie w README. `transport_opts: nil` przechodził i wywracał każde pobranie (Req robi na nim
