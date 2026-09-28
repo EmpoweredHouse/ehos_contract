@@ -111,7 +111,14 @@ defmodule Taxvision.IdentitySeamTest do
           period_id: "2026-08"
         })
       end,
-      @open => fn token -> open(token, "c-1") end
+      @open => fn token -> open(token, "c-1") end,
+      "taxvision.ingest_bank_statement" => fn token ->
+        command(token, "taxvision.ingest_bank_statement", %{
+          company_id: "c-1",
+          period_id: "2026-08",
+          turnovers: [%{turnover_id: "t-1", amount_minor: 12_300, booked_on: "2026-08-20"}]
+        })
+      end
     }
 
     assert assert_every_entry_refuses([RegistryWatch, AccountingMonth], entries) == :ok
