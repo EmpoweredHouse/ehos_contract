@@ -1,6 +1,6 @@
 defmodule Rehmed.AuthorizationTest do
   @moduledoc """
-  `Rehmed.Contracts.Settlement` behind the host's door (v2 plan, EA): a bearer
+  Rehmed's v2 contracts behind the host's door (v2 plan, EA): a bearer
   credential verified by `EhOsContract.Auth.Plug`, every command served by
   `EhOsContract.Plug` over HTTP, and every decision recorded by `EhOsContract.Auth`.
 
@@ -16,7 +16,9 @@ defmodule Rehmed.AuthorizationTest do
   import Plug.Conn
 
   alias EhOsContract.Event
-  alias Rehmed.Contracts.Settlement
+  alias Rehmed.Contracts.{ClinicalDocumentation, Scheduling, Settlement, StatutoryReporting}
+
+  @contracts [Scheduling, ClinicalDocumentation, StatutoryReporting, Settlement]
 
   @endpoint EhOsContractHostWeb.Endpoint
 
@@ -33,25 +35,56 @@ defmodule Rehmed.AuthorizationTest do
     |> get("/api/rehmed/queries/#{capability}?#{params}")
   end
 
+  defp record(token, capability, body) do
+    build_conn()
+    |> put_req_header("authorization", "Bearer " <> token)
+    |> put_req_header("content-type", "application/json")
+    |> post("/api/rehmed/records/#{capability}", Jason.encode!(body))
+  end
+
+  @visit %{visit_id: "visit-anna"}
+  @close %{
+    visit_id: "visit-anna",
+    patient_id: "patient-anna",
+    pesel: "85010112345",
+    icd10: "M54.5",
+    icd9: "93.39",
+    practitioner_number: "practitioner-ewa"
+  }
+
+  # Every capability of the four contracts, the reactions' commands included: EHOS
+  # grants those to no role, and the door must refuse them all the same.
   defp entries do
-    %{
-      "rehmed.hand_over_visit" =>
-        &command(&1, "rehmed.hand_over_visit", %{visit_id: "visit-anna"}),
-      "rehmed.add_service_line" =>
-        &command(&1, "rehmed.add_service_line", %{visit_id: "visit-anna", service_id: "usg"}),
-      "rehmed.record_payment" =>
-        &command(&1, "rehmed.record_payment", %{
-          visit_id: "visit-anna",
-          method: "card",
-          amount: 20_000
-        }),
-      "rehmed.close_settlement" =>
-        &command(&1, "rehmed.close_settlement", %{visit_id: "visit-anna", total: 20_000}),
-      "rehmed.book_correction" =>
-        &command(&1, "rehmed.book_correction", %{visit_id: "visit-anna", delta: -1_000}),
-      "rehmed.daily_totals_for" =>
-        &query(&1, "rehmed.daily_totals_for", "business_date=2026-09-28")
+    commands = %{
+      "rehmed.book_visit" => %{
+        patient_id: "patient-anna",
+        service_id: "service-physiotherapy",
+        specialist_id: "specialist-ewa",
+        scheduled_at: "2026-10-05T09:00:00Z"
+      },
+      "rehmed.cancel_visit" => @visit,
+      "rehmed.record_no_show" => @visit,
+      "rehmed.code_diagnosis" => Map.take(@close, [:visit_id, :patient_id, :icd10, :icd9]),
+      "rehmed.close_visit_clinically" => Map.put(@close, :p1_reported, true),
+      "rehmed.create_documentation_overdue_task" => @visit,
+      "rehmed.queue_p1_report" => @close,
+      "rehmed.waive_p1_report" => @visit,
+      "rehmed.hand_over_visit" => @visit,
+      "rehmed.add_service_line" => %{visit_id: "visit-anna", service_id: "usg"},
+      "rehmed.record_payment" => %{visit_id: "visit-anna", method: "card", amount: 20_000},
+      "rehmed.close_settlement" => %{visit_id: "visit-anna", total: 20_000},
+      "rehmed.book_correction" => %{visit_id: "visit-anna", delta: -1_000}
     }
+
+    records = ~w(rehmed.patient_arrived rehmed.visit_completed rehmed.p1_report_sent
+                 rehmed.p1_report_failed)
+
+    Map.new(commands, fn {capability, body} -> {capability, &command(&1, capability, body)} end)
+    |> Map.merge(Map.new(records, &{&1, fn token -> record(token, &1, @visit) end}))
+    |> Map.put(
+      "rehmed.daily_totals_for",
+      &query(&1, "rehmed.daily_totals_for", "business_date=2026-09-28")
+    )
   end
 
   defp decisions(subject) do
@@ -62,7 +95,7 @@ defmodule Rehmed.AuthorizationTest do
   end
 
   test "every entry point refuses a credential without its capability" do
-    assert assert_every_entry_refuses([Settlement], entries()) == :ok
+    assert assert_every_entry_refuses(@contracts, entries()) == :ok
   end
 
   test "the control: a credential with the capability goes through, and has its row too" do
@@ -118,7 +151,7 @@ defmodule Rehmed.AuthorizationTest do
 
       error =
         assert_raise ExUnit.AssertionError, fn ->
-          assert_every_entry_refuses([Settlement], entries)
+          assert_every_entry_refuses(@contracts, entries)
         end
 
       assert error.message =~ "no entry for: rehmed.book_correction"
@@ -129,7 +162,7 @@ defmodule Rehmed.AuthorizationTest do
 
       error =
         assert_raise ExUnit.AssertionError, fn ->
-          assert_every_entry_refuses([Settlement], entries)
+          assert_every_entry_refuses(@contracts, entries)
         end
 
       assert error.message =~ "not declared: rehmed.pay_everything"
@@ -140,7 +173,7 @@ defmodule Rehmed.AuthorizationTest do
 
       error =
         assert_raise ExUnit.AssertionError, fn ->
-          assert_every_entry_refuses([Settlement], entries)
+          assert_every_entry_refuses(@contracts, entries)
         end
 
       assert error.message =~ "the entry point for rehmed.close_settlement did not ask"
