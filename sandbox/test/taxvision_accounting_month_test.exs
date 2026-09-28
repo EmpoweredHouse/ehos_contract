@@ -217,6 +217,49 @@ defmodule Taxvision.AccountingMonthTest do
     assert "accounting_month.accounting_month_opened" in of_period("2026-09")
   end
 
+  test "a timer run late catches up the months it missed, and no more" do
+    profile!("c-1")
+    retrigger!("c-1", "2026-08")
+
+    # The 1 October check runs only on 2 November: September, then October, at once.
+    Clock.at(~U[2026-11-02 08:00:00Z], fn -> Testing.drain() end)
+
+    assert "accounting_month.accounting_month_opened" in of_period("2026-09")
+    assert "accounting_month.accounting_month_opened" in of_period("2026-10")
+    assert of_period("2026-11") == []
+  end
+
+  test "a retry just before the due check runs does not lose it" do
+    profile!("c-1")
+    retrigger!("c-1", "2026-08")
+
+    # 1 October 00:05: the check is due and has not run when the accountant retries March.
+    {:ok, _} =
+      Clock.at(~U[2026-10-01 00:05:00Z], fn ->
+        EhOsContract.dispatch(
+          RegistryWatch,
+          %RetriggerVerification{company_id: "c-1", period_id: "2026-03"},
+          actor: accountant("c-1")
+        )
+      end)
+
+    Clock.at(~U[2026-10-01 01:00:00Z], fn -> Testing.drain() end)
+    assert "accounting_month.accounting_month_opened" in of_period("2026-09")
+  end
+
+  test "a month still running is not checked" do
+    profile!("c-1")
+
+    assert {:error, %EhOsContract.Rejection{invariant: :only_an_ended_month_is_checked}} =
+             Clock.at(~U[2026-09-15 10:00:00Z], fn ->
+               EhOsContract.dispatch(
+                 RegistryWatch,
+                 %RetriggerVerification{company_id: "c-1", period_id: "2062-08"},
+                 actor: accountant("c-1")
+               )
+             end)
+  end
+
   test "a period named otherwise than YYYY-MM is refused before anything is decided" do
     profile!("c-1")
 

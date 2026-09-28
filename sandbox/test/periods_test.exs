@@ -26,13 +26,20 @@ defmodule Taxvision.PeriodsTest do
       refute Taxvision.Periods.name?(nil)
     end
 
-    test "the next one is worked out from it, across a year" do
-      assert Taxvision.Periods.next("2026-08") == "2026-09"
-      assert Taxvision.Periods.next("2026-12") == "2027-01"
+    test "when the next check is due, and of which month, across a year" do
+      alias Taxvision.Periods
 
-      assert_raise ArgumentError, ~r/not in YYYY-MM form/, fn ->
-        Taxvision.Periods.next("2026-13")
-      end
+      assert Periods.next_month_start(~U[2026-09-15 10:30:00Z]) == ~U[2026-10-01 00:00:00Z]
+      assert Periods.next_month_start(~U[2026-12-31 23:59:59Z]) == ~U[2027-01-01 00:00:00Z]
+      assert Periods.ended_before(~U[2027-01-01 00:00:00Z]) == "2026-12"
+      assert Periods.ended_before(~U[2026-10-01 00:00:00Z]) == "2026-09"
+    end
+
+    test "a month has ended by the first of the next one, and not before" do
+      assert Taxvision.Periods.ended_by?("2026-08", ~U[2026-09-01 00:00:00Z])
+      refute Taxvision.Periods.ended_by?("2026-09", ~U[2026-09-30 23:59:59Z])
+      refute Taxvision.Periods.ended_by?("2062-08", ~U[2026-09-15 10:00:00Z])
+      assert Taxvision.Periods.ended_by?("2026-12", ~U[2027-01-01 00:00:00Z])
     end
   end
 

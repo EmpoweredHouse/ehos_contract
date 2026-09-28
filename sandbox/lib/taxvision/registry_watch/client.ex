@@ -1,7 +1,8 @@
 defmodule Taxvision.RegistryWatch.Client do
   @moduledoc """
   Decides for one company (`Company / Client`, 02 §12): the registries are checked
-  only once its profile is complete, and their answer is held against the profile —
+  for a month that has ended by the command's time, only once the profile is
+  complete, and their answer is held against the profile —
   legal form and VAT status, the fields the check compares (WF 00:35:41).
   """
 
@@ -17,12 +18,15 @@ defmodule Taxvision.RegistryWatch.Client do
   end
 
   @impl true
-  def check_registries(%CheckRegistries{company_id: id, period_id: period}, state),
-    do: confirm(id, period, state)
+  def check_registries(%CheckRegistries{company_id: id, period_id: p, __meta__: m}, state),
+    do: confirm(id, p, state, m)
 
   @impl true
-  def retrigger_verification(%RetriggerVerification{company_id: id, period_id: period}, state),
-    do: confirm(id, period, state)
+  def retrigger_verification(
+        %RetriggerVerification{company_id: id, period_id: p, __meta__: m},
+        state
+      ),
+      do: confirm(id, p, state, m)
 
   @impl true
   def log_registry_check(%LogRegistryCheck{company_id: id, period_id: period} = answer, state) do
@@ -45,11 +49,18 @@ defmodule Taxvision.RegistryWatch.Client do
     end
   end
 
-  defp confirm(_id, _period, %State{profile_complete: false}),
-    do: reject(:checked_only_with_complete_data)
+  defp confirm(id, period, state, meta) do
+    cond do
+      not Taxvision.Periods.ended_by?(period, meta.occurred_at) ->
+        reject(:only_an_ended_month_is_checked)
 
-  defp confirm(id, period, _state),
-    do: emit(%DataCompletenessConfirmed{company_id: id, period_id: period})
+      not state.profile_complete ->
+        reject(:checked_only_with_complete_data)
+
+      true ->
+        emit(%DataCompletenessConfirmed{company_id: id, period_id: period})
+    end
+  end
 
   # "This is what we hold, this is what the registries say" [WF 00:32:27].
   defp differences(state, answer) do

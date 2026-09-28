@@ -10,13 +10,16 @@ defmodule Taxvision.Contracts.RegistryWatch do
 
   P1: when a month starts, check the registries. The month is settled one month
   behind, so on 1 September August is checked (WF 00:34:40). A process manager does
-  it: every check that starts — the company's data confirmed — sets a timer for the
-  first of the next month, which checks the month that has just ended. The day comes
-  from when the check started, not from the period it named, so a mistyped
-  "2062-08", or the accountant retrying March in September, moves nothing; and the
-  registries being down for one check leaves that month to be retried while the next
-  one is still checked. The period's name is its identifier, so the month to check
-  is worked out from the date, without the database. The first check is the
+  it keeps one date, the first of the month the next check is due. The first check
+  that starts — the company's data confirmed — sets it to the first of the next
+  month; the check of the month that date is for moves it one month on, from the
+  date, so a timer run late catches up the months it missed and no more; any other
+  check, the accountant retrying March in September, leaves it be. Only a month that
+  has ended is checked at all, so a mistyped "2062-08" is refused before the
+  registries are asked. The registries being down for one check leaves that month to
+  be retried while the next one is still checked. The period's name is its
+  identifier, so the month to check is worked out from the date, without the
+  database. The first check is the
   accountant's (`RetriggerVerification`, the one command on the workshop's
   diagram); a check refused because the company's data is incomplete starts nothing,
   so the watch waits for the accountant too.
@@ -54,6 +57,11 @@ defmodule Taxvision.Contracts.RegistryWatch do
       field :vat_status, :string, optional: true
     end
 
+    # Settled a month behind [WF 00:34:40]: on 1 September August is checked, and a
+    # month still running has nothing to check. The command's time says which.
+    invariant :only_an_ended_month_is_checked, "Sprawdza się miesiąc, który już się skończył",
+      source: "02 §3.1; WF 00:34:40 (rozliczenie miesiąc w tył)"
+
     invariant :checked_only_with_complete_data,
               "Rejestry sprawdza się tylko dla firmy z kompletem danych",
               source: "02 §3.1 (DataCompletenessConfirmed przed sprawdzeniem); 03 §4.1"
@@ -70,7 +78,7 @@ defmodule Taxvision.Contracts.RegistryWatch do
     # Issued by the timer on the first of the month, never by a person.
     command :check_registries, "Sprawdź rejestry",
       emits: :data_completeness_confirmed,
-      rejects: :checked_only_with_complete_data,
+      rejects: [:only_an_ended_month_is_checked, :checked_only_with_complete_data],
       source: "03 §4.2 CheckRegistries; P1" do
       field :period_id, :period
     end
@@ -79,7 +87,7 @@ defmodule Taxvision.Contracts.RegistryWatch do
       by: :accountant,
       scope: :company_id,
       emits: :data_completeness_confirmed,
-      rejects: :checked_only_with_complete_data,
+      rejects: [:only_an_ended_month_is_checked, :checked_only_with_complete_data],
       source: "02 §3.1 RetriggerVerification, jedyna komenda na diagramie" do
       field :period_id, :period
     end
@@ -172,34 +180,34 @@ defmodule Taxvision.Contracts.RegistryWatch do
   end
 
   scenario "profil nieuzupełniony — rejestrów się nie sprawdza" do
-    command :check_registries, %{period_id: "2026-08"}
+    command :check_registries, %{period_id: "2025-12"}
     rejected :checked_only_with_complete_data
   end
 
-  scenario "1 września — sprawdzenie sierpnia zaczyna się od potwierdzenia kompletu danych" do
+  scenario "1 stycznia — sprawdzenie grudnia zaczyna się od potwierdzenia kompletu danych" do
     given :company_profile_completed, %{legal_form: "JDG", vat_status: "czynny"}
-    command :check_registries, %{period_id: "2026-08"}
-    expect :data_completeness_confirmed, %{period_id: "2026-08"}
+    command :check_registries, %{period_id: "2025-12"}
+    expect :data_completeness_confirmed, %{period_id: "2025-12"}
   end
 
   scenario "rejestry mówią to samo co Abilia — dane zgodne" do
     given :company_profile_completed, %{legal_form: "JDG", vat_status: "czynny"}
 
     command :log_registry_check, %{
-      period_id: "2026-08",
+      period_id: "2025-12",
       legal_form: "JDG",
       vat_status: "czynny"
     }
 
-    expect :registry_check_logged, %{period_id: "2026-08"}
-    expect :registry_data_consistent, %{period_id: "2026-08"}
+    expect :registry_check_logged, %{period_id: "2025-12"}
+    expect :registry_data_consistent, %{period_id: "2025-12"}
   end
 
   scenario "firma wykreślona z VAT — rozjazd z różnicą" do
     given :company_profile_completed, %{legal_form: "JDG", vat_status: "czynny"}
 
     command :log_registry_check, %{
-      period_id: "2026-08",
+      period_id: "2025-12",
       legal_form: "JDG",
       vat_status: "wykreślony"
     }
@@ -215,13 +223,13 @@ defmodule Taxvision.Contracts.RegistryWatch do
     scope :compare_with_registries
 
     on :registry_status_checked, %{
-      period_id: "2026-08",
+      period_id: "2025-12",
       legal_form: "JDG",
       vat_status: "czynny",
       vies_status: "aktywny"
     }
 
-    issues :log_registry_check, %{period_id: "2026-08", vat_status: "czynny"}
+    issues :log_registry_check, %{period_id: "2025-12", vat_status: "czynny"}
   end
 
   # A scenario's facts happen in January 2026, so the next check is on 1 February.
@@ -232,10 +240,17 @@ defmodule Taxvision.Contracts.RegistryWatch do
     issues :check_registries, %{period_id: "2026-01"}
   end
 
-  scenario "literówka w okresie nie przestawia sprawdzania" do
+  scenario "ponowienie innego miesiąca nie przestawia należnego sprawdzenia" do
     scope :monthly_registry_check
-    given :data_completeness_confirmed, %{period_id: "2062-08"}
+    given :data_completeness_confirmed, %{period_id: "2025-12"}
+    given :data_completeness_confirmed, %{period_id: "2025-03"}
     on :next_month
     issues :check_registries, %{period_id: "2026-01"}
+  end
+
+  scenario "miesiąc, który trwa, nie jest sprawdzany" do
+    given :company_profile_completed, %{legal_form: "JDG", vat_status: "czynny"}
+    command :retrigger_verification, %{period_id: "2026-01"}
+    rejected :only_an_ended_month_is_checked
   end
 end
