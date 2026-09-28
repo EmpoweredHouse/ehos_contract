@@ -68,10 +68,13 @@ the host's for these routes and loads only this package's stylesheet, so neither
 host stylesheet nor a `data-theme` attribute reaches the page. The
 `--eh-os-contract-*` custom properties are kept as the names such a hook would set.
 
-**The graph screen needs `style-src 'unsafe-inline'`.** Mermaid, which draws its
-diagrams in the browser, writes a `<style>` element into each one. Under a policy
-that forbids inline styles the status screen works and the diagrams render as black
-boxes.
+**The dashboard works under a strict Content-Security-Policy**, `default-src 'self'`
+as EHOS serves it. Mermaid, which draws the graph screen's diagrams in the browser,
+writes a `<style>` element and `style` attributes into each; the dashboard hands both
+to the CSSOM, which such a policy leaves alone. Mermaid still tries inline styles
+while it measures a diagram, so the browser's console logs blocked inline styles on
+the graph screen; the diagrams are drawn in full regardless. The sandbox host serves
+this policy on the dashboard, so it is looked at there as it runs in EHOS.
 
 ## Who may see it
 

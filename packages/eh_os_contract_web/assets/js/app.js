@@ -142,22 +142,50 @@ new MutationObserver(redraw).observe(document.documentElement, {
   attributeFilter: ["data-theme"],
 })
 
-// One draw at a time on the whole page. `mermaid.run` names each SVG from `Date.now()` and a count
-// that starts again at every call, so two diagrams whose draws start in the same millisecond get one
-// id, and the second is drawn into the first's element. With three diagrams on the graph screen
-// (plan EG2) that happened on every load.
-let drawn = Promise.resolve()
+// A drawn diagram under a strict Content-Security-Policy (plan EG3). EHOS serves
+// `default-src 'self'`, which refuses every inline style: the `<style>` Mermaid writes into each
+// SVG, and every `style` attribute on its elements. Styles set through the CSSOM are not inline
+// styles, and the policy leaves them alone. So the SVG Mermaid returns is parsed in a document of
+// its own, where no policy applies, and before it joins the page its stylesheet becomes a
+// constructed one and each `style` attribute is set again through `element.style`.
+const sheets = new Map()
 
-// The graph screen's `<pre class="mermaid" phx-hook="MermaidRender">` blocks
-// carry the raw diagram source in `data-graph` rather than as text content:
-// mermaid replaces a node's content with rendered SVG in place, so a second
-// `run` on the same node has nothing left to read unless the source is put
-// back first. `updated()` fires on every diff LiveView applies to the
-// element (a process switch re-rendering the declared-shape diagram), not
-// only on first mount.
+const place = (el, svgText) => {
+  const parsed = new DOMParser().parseFromString(svgText, "text/html").body.firstElementChild
+  const css = [...parsed.querySelectorAll("style")].map((style) => style.textContent).join("\n")
+  parsed.querySelectorAll("style").forEach((style) => style.remove())
+
+  const inline = [...parsed.querySelectorAll("[style]")]
+    .concat(parsed.hasAttribute("style") ? [parsed] : [])
+    .map((node) => [node, node.getAttribute("style")])
+  inline.forEach(([node]) => node.removeAttribute("style"))
+
+  const sheet = sheets.get(el) || new CSSStyleSheet()
+  sheet.replaceSync(css)
+  if (!sheets.has(el)) {
+    sheets.set(el, sheet)
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet]
+  }
+
+  const svg = document.adoptNode(parsed)
+  el.replaceChildren(svg)
+  inline.forEach(([node, text]) => (node.style.cssText = text))
+}
+
+const forget = (el) => {
+  const sheet = sheets.get(el)
+  sheets.delete(el)
+  document.adoptedStyleSheets = document.adoptedStyleSheets.filter((s) => s !== sheet)
+}
+
+// The graph screen's `<pre class="mermaid" phx-hook="MermaidRender">` blocks carry the raw
+// diagram source in `data-graph`, and the hook draws it into the block. `updated()` fires on every
+// diff LiveView applies to the element (a process switch re-rendering the declared-shape
+// diagram), not only on first mount.
 const Hooks = {
   MermaidRender: {
     mounted() {
+      this.drawn = Promise.resolve()
       graphs.add(this)
       this.renderGraph()
     },
@@ -166,26 +194,28 @@ const Hooks = {
     },
     destroyed() {
       graphs.delete(this)
+      forget(this.el)
     },
-    // Each draw after the one before, this diagram's and every other's: a patch or a change of theme
-    // that arrives mid-draw waits for it, so what is left on screen is the last one asked for.
+    // One draw at a time per diagram, each after the one before: a patch or a change of theme that
+    // arrives mid-draw waits for it, so what is left on screen is the last one asked for.
     renderGraph() {
-      drawn = drawn.then(() => this.draw()).catch((error) => console.error(error))
+      this.drawn = this.drawn.then(() => this.draw()).catch((error) => console.error(error))
     },
     // After the fonts its labels need: Mermaid measures a label once, and one measured in the
     // fallback font overflows its node when Albert Sans arrives. Loading with the diagram's own text
     // fetches the latin-ext subset when a label has Polish letters, which `document.fonts.ready`
     // would not: nothing else on the page may have asked for it yet.
-    // `data-processed` is Mermaid's mark on a node it has drawn, which it then skips. A LiveView
-    // patch drops it, because the server never renders it; a redraw for the theme drops it here.
+    //
+    // `mermaid.render` with the block's own id rather than `mermaid.run`: `run` names each SVG from
+    // `Date.now()` and a count that starts again at every call, so two diagrams drawn in the same
+    // millisecond shared an id, and the second was drawn into the first's element.
     async draw() {
       if (!graphs.has(this)) return
-      const source = this.el.dataset.graph
+      const source = themed(this.el.dataset.graph)
       await document.fonts.load(`13px ${fontFamily}`, source).catch(() => {})
       if (!graphs.has(this)) return
-      this.el.removeAttribute("data-processed")
-      this.el.textContent = themed(source)
-      await mermaid.run({ nodes: [this.el] })
+      const { svg } = await mermaid.render(`${this.el.id}-svg`, source)
+      if (graphs.has(this)) place(this.el, svg)
     },
   },
 }

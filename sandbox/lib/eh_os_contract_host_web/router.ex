@@ -18,7 +18,14 @@ defmodule EhOsContractHostWeb.Router do
     plug :accepts, ["html"]
     plug :fetch_session
     plug :protect_from_forgery
+    plug :content_security_policy
   end
+
+  # EHOS's policy (plan EG3), so the dashboard is looked at here as it runs there: nothing
+  # inline, nothing from elsewhere. A diagram that needs an inline style shows up as
+  # black boxes on this host first.
+  defp content_security_policy(conn, _opts),
+    do: put_resp_header(conn, "content-security-policy", "default-src 'self'")
 
   # No session and no CSRF, and `accepts` says json. Each is the opposite of what the
   # dashboard's pipeline needs, which is why this is a second pipeline rather than a
