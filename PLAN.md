@@ -13,9 +13,9 @@ zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisan
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności), jej
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa pivot do v2** (DSL na Sparku, model
 domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E8, EA, EM, EL i EG są w
-`main`** (PR #1–#32). Teraz **E9** — kontrakty sandboxa od nowa z materiału — w trzech częściach (decyzje: „Przed
-E9 — decyzje użytkownika”), potem E10–E12. Po E9a Rehmed ma cztery kontrakty v2 (Scheduling, ClinicalDocumentation,
-StatutoryReporting, Settlement); v1 zostały `PayerSettlement` (do E9b) i TaxVision (do E9c).
+`main`** (PR #1–#32), **E9a też** (#33). Teraz **E9** — kontrakty sandboxa od nowa z materiału — w trzech częściach
+(decyzje: „Przed E9 — decyzje użytkownika”), potem E10–E12. Po E9b Rehmed ma pięć kontraktów v2 (Scheduling,
+ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); v1 został tylko TaxVision (do E9c).
 
 ### Stan repozytorium
 
@@ -24,7 +24,8 @@ StatutoryReporting, Settlement); v1 zostały `PayerSettlement` (do E9b) i TaxVis
   zmergowana. Opisy EG: „Przed EG — decyzje użytkownika” … „EG3 — co wyszło”.
 - **E9a w `main`** — PR [#33](https://github.com/EmpoweredHouse/eh-os-contract/pull/33) zmergowany 28 września
   (`451d068`). **E9b** na `dsl-v2/e9-payer`, od `main` = `451d068` — w budowie („Przed E9b — decyzja
-  użytkownika”). Potem **E9c** (`dsl-v2/e9-taxvision`, od E9b).
+  użytkownika”, „E9b — co wyszło”): zbudowane, **przed przeglądem** (`pre-pr-review`). Potem **E9c**
+  (`dsl-v2/e9-taxvision`, od E9b).
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
@@ -100,6 +101,9 @@ Grafy: `mix eh_os_contract.graph --map <domena> | --system <domena> [--overlay] 
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 28 września, na `4aec24d`** (E9b, przed przeglądem): brama z `sandbox/` → **EXIT=0** — sandbox 95
+  testów, `check` 0 / 24 / 8; silnik 1222, `check` 0 / 65 / 21; web 45; auth 51. W przeglądarce: `/graph` z procesem
+  `payer_settlement` i mapą z płatnikami.
 - **Lokalnie, 28 września, na `9b7306d`** (E9a po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 85 testów,
   `check` 0 / 22 / 11; silnik 1222, `check` 0 / 65 / 21; web 45; auth 51. W przeglądarce (na `7058167`): `/graph`
   pod CSP EHOS-a.
@@ -1660,6 +1664,70 @@ wystawia fakturę LuxMed za wrzesień — skąd `ExternalPayers` wie, że wizyta
   Scheduling** (`visit_booked` z płatnikiem i `visit_completed` przez `where:`) — same nazwy z warsztatu, ale
   boundary czyta każdą wizytę każdego płatnika, więc każde wyjście pacjenta w klinice jest konfliktem przy fakturze,
   a relacji Scheduling → płatnicy nie ma na mapie klienta.
+
+### E9b — co wyszło (28 września)
+
+Na `dsl-v2/e9-payer` (od `main` = `451d068`), niewypchnięte. Trzy commity budowy po zapisie decyzji (`759533c`):
+domena i obciążenie płatnika w Settlement (`07048e8`), `ExternalPayers` w miejsce v1 `PayerSettlement` (`2fe7036`),
+testy odbioru na bazie z commitami (`4aec24d`). Brama zielona na każdym commicie. Sandbox 85 → **95** testów, silnik
+bez zmian (1222); `check` sandboxa 0 / 22 / 11 → **0 / 24 / 8** (każda linia wyjaśniona w opisie commita), silnika bez
+zmian.
+
+**Co jest.**
+- Domena: kontekst `external_payers` (CTX-06, generic), relacje z mapy — customer–supplier settlement → external
+  payers i anticorruption layer od systemu płatnika (`X-02`–`X-04` jako jeden `external`, trzy konfiguracje).
+- Settlement: `close_settlement` niesie opcjonalnie `payer_id` i `period_id` i przy wizycie z płatnikiem emituje obok
+  zamknięcia `visit_charged_to_payer` (nasze, decyzja wyżej); płatnik bez okresu i odwrotnie — ograniczenie komendy.
+- `Rehmed.Contracts.ExternalPayers` (AGG-11): `dcb :payer_period`, tożsamość `[:payer_id, :period_id]`, konsultuje
+  `visit_charged_to_payer` po obu polach; komendy `C-48` (recepcja, `S-58`), wykluczenie z makiety (menedżer, z
+  powodem) i `C-49` (menedżer); niezmienniki: faktura dopiero, gdy każda obciążona wizyta jest oznaczona u płatnika
+  albo wykluczona, i zafakturowany okres się nie zmienia. Proces `payer_settlement` z `accountable: :manager` i
+  `cadence {1, :month}`.
+
+**Odbiór E9, część o DCB** (`rehmed_payer_period_race_test`, na `Taxvision.CommitRepo` — osobna baza z commitami,
+tworzona od nowa przed każdym przebiegiem, jak `EhOsContract.CommitRepo` w silniku):
+- **deterministycznie**: transakcja trzyma blokadę dopisu, faktura czyta boundary i czeka; pod blokadą recepcja
+  zamyka wizytę Bena; faktura trafia na przesunięty boundary, decyduje od nowa i jest odrzucona;
+- **pod obciążeniem**: dziesięć wizyt zamykanych i oznaczanych naraz, menedżer ponawia fakturę — jedyna faktura ma
+  każdą wcześniej obciążoną wizytę oznaczoną;
+- **plan sprawdzenia konfliktu** (złapane zapytanie magazynu, `EXPLAIN` z jego parametrami, po `ANALYZE`): `Index
+  Scan using eh_os_contract_events_pkey`, `position > head`, żaden inny indeks.
+- Próba odwrotna: z warunkiem DCB wyłączonym w magazynie faktura wychodzi z nieoznaczoną wizytą Bena, a test obciążenia
+  znajduje dziesięć obciążonych i żadnej oznaczonej przed fakturą.
+
+**Ustalenia o bibliotece:**
+1. **Plan sprawdzenia konfliktu zależy od statystyk.** Na świeżej tabeli (bez `ANALYZE`) planner przyjmuje domyślną
+   selektywność `position > head` i przy dwóch elementach zapytania (własne zdarzenia boundary i konsultowane)
+   wybrał bitmapę po indeksach typu — konsultowany typ szedł po indeksie **samego `type`**, bez ograniczenia pozycją,
+   czyli czytał całą historię tego typu. Po `ANALYZE` — zakres klucza głównego. Test silnika tego nie widział, bo jego
+   zapytanie ma jeden element. Indeks `(type)` jest pozostałością v1 (v2 §10.3 ma tylko `(type, position)`). Do
+   rozważenia przy pomiarze: skasować `(type)` albo wymusić zakres w kształcie zapytania; tabela pod autovacuum ma
+   statystyki, więc w produkcji to raczej świeża baza po imporcie.
+2. **Agregat nie widzi faktów innego kontekstu, więc płatnik i okres przychodzą z komendą.** Rozliczenie otwiera się
+   przy obecności pacjenta i nie ma drogi do płatnika z rezerwacji bez własnego zdarzenia (polityka albo process
+   manager — dwie deklaracje więcej). To trzecie pole decyzyjne od wołającego po fladze P1 i „zamyka ten, kto
+   wykonał” (E9a): okres ustala host (miesiąc wizyty), a boundary mu ufa.
+3. **Graf kontraktu nie rysuje `consults`.** W `--contract Rehmed.Contracts.ExternalPayers` konsultowane
+   `visit_charged_to_payer` wisi jako węzeł bez krawędzi; w procesie jest dołączone i widać je w etapie `charging`.
+   Krawędź „boundary czyta” — do EG, jeśli ma być widać, na czym boundary decyduje.
+4. `event-without-consumer` ostrzega o własnych zdarzeniach boundary czytanych tylko przez jego decyzję — tak samo jak o
+   zdarzeniach agregatu czytanych tylko przez `evolve`, więc spójnie; zostaje.
+
+**Ustalenia o materiale:**
+- **Makieta (K1, `51-mock.md` §4.8) zastąpiła „wystaw fakturę” eksportem i ręcznym „oznacz jako zafakturowane”**
+  (`S-121`, fakturowanie poza zakresem, `H62`). `C-49`/`E-87` zostają nazwami z katalogu i znaczą to oznaczenie z
+  numerem faktury zrobionej gdzie indziej.
+- **Relacja do systemu płatnika jest przekraczana przez człowieka**, więc `orphan-context-mapping` na anticorruption
+  layer zostaje prawdziwe (v1, ustalenie 4: bez `depends_on`, bo niedostępności nic nie zobaczy).
+- Poza zakresem, z powodem w moduledocu: rejestracja u płatnika przed wizytą (`E-85`, `C-47`, PESEL — `H159`),
+  przywrócenie wykluczonej wizyty, wizyta obciążona po fakturze okresu (fakt z Settlement nie da się tu odrzucić —
+  trafia poza zafakturowany okres), `H47`, `H38`.
+
+**Pozycje 6–9 z „Po EL2”** — żadna nie była potrzebna: boundary nie ma ograniczenia prozą (6), płatnik nie ma czasu
+odpowiedzi (7), bez efektu (8), każda deklaracja ma `source:` (9).
+
+W przeglądarce (baza dev, preview `eh_os_contract_host`): mapa kontekstów z płatnikami i systemem płatnika, proces
+`payer_settlement` z trzema etapami, żadna etykieta nie wystaje.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
