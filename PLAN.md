@@ -2051,6 +2051,12 @@ Na `dsl-v2/e10-outputs`, od `e7709c2`, niewypchnięte: decyzje (`d4140bf`), komp
 Pełna brama po każdym commicie: `EXIT=0`. Sandboxowy test E10 przypina rzeczywiste wyjście `check`, graf systemu,
 AsyncAPI i OpenAPI TaxVision oraz plik manifestu z taska.
 
+**Zewnętrzna walidacja po researchu bibliotek (28 września).** Wygenerowane dokumenty wszystkich ośmiu
+kontraktów v2 — pięciu Rehmedu i trzech TaxVision — przeszły Redocly CLI 2.55.0 dla OpenAPI (profil `spec`)
+oraz AsyncAPI CLI 6.2.0 dla AsyncAPI. Wszystkie osiem dokumentów AsyncAPI ma 0 błędów i 0 ostrzeżeń;
+każdy dostaje wyłącznie informację o dostępności AsyncAPI 3.1.0. Zgodnie z wcześniejszą decyzją walidatory
+pozostają ręcznym, przypiętym wersją pomiarem poza repozytorium i bramą — projekt nie dostał zależności Node.
+
 **Co jest.**
 
 - **L5 z E9:** `scoped-actor-with-unscoped-command`; brak `contract-without-implementation` dla kontraktu
