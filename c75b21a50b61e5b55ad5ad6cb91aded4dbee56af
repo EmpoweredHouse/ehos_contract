@@ -9,3 +9,5 @@ Skipped as library findings (PLAN.md, Przegląd E9c-2): fan-out held under the o
 Gate on 3bb3a63, bda39ca, 46c7f9e: EXIT=0; sandbox 137, check 0 / 28 / 10; engine 1245, 0 / 67 / 21; web 45; auth 55. f665778 is PLAN.md only. Browser (dev database, preview): TaxVision context map with Document Intake and KSeF, the intake contract graph draws records / backed by / gives ksef_number, publish on the system graph; no graph shows the domain service.
 
 430d629: PLAN.md handoff only (E9c-1 merged as #41), documentation; gate unchanged from 46c7f9e.
+
+c75b21a: CLAUDE.md and PLAN.md only (the user's answers after the review), documentation; gate unchanged from 46c7f9e.
