@@ -14,15 +14,16 @@ Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, s
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa pivot do v2** (DSL na Sparku, model
 domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E8, EA, EM, EL i EG są w
 `main`** (PR #1–#32). Teraz **E9** — kontrakty sandboxa od nowa z materiału — w trzech częściach (decyzje: „Przed
-E9 — decyzje użytkownika”), potem E10–E12. Jedynym kontraktem v2 sandboxa jest do E9a `Rehmed.Contracts.VisitSettlement`.
+E9 — decyzje użytkownika”), potem E10–E12. Po E9a Rehmed ma cztery kontrakty v2 (Scheduling, ClinicalDocumentation,
+StatutoryReporting, Settlement); v1 zostały `PayerSettlement` (do E9b) i TaxVision (do E9c).
 
 ### Stan repozytorium
 
 - **`origin/main` = `f2a54bd`** (merge [#32](https://github.com/EmpoweredHouse/eh-os-contract/pull/32), EG — cztery
   grafy, 28 września). CI `main` na `f2a54bd` (przebieg `36399198063`) — `success`. Gałąź `dsl-v2/eg-graphs` jest
   zmergowana. Opisy EG: „Przed EG — decyzje użytkownika” … „EG3 — co wyszło”.
-- **E9a** na `dsl-v2/e9-visit`, od `main`, niewypchnięte: Rehmed, wizyta. Potem **E9b** (`dsl-v2/e9-payer`, od E9a)
-  i **E9c** (`dsl-v2/e9-taxvision`, od E9b).
+- **E9a** na `dsl-v2/e9-visit`, od `main`, niewypchnięte: Rehmed, wizyta — **zbudowane** („E9a — co wyszło”),
+  przegląd przed E9b w toku. Potem **E9b** (`dsl-v2/e9-payer`, od E9a) i **E9c** (`dsl-v2/e9-taxvision`, od E9b).
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
@@ -95,6 +96,8 @@ Grafy: `mix eh_os_contract.graph --map <domena> | --system <domena> [--overlay] 
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 28 września, na `de5f635`** (koniec budowy E9a): brama z `sandbox/` → **EXIT=0** — sandbox 81 testów,
+  `check` 0 / 22 / 11; silnik 1221, `check` 0 / 65 / 21; web 45; auth 51. W przeglądarce: `/graph` pod CSP EHOS-a.
 - **Lokalnie, 28 września, na `f2a54bd`** (czysty `main`, przed E9): brama z `sandbox/` → **EXIT=0** — sandbox 54
   testy, `check` 0 / 12 / 19; silnik 1219, `check` 0 / 65 / 21; web 45; auth 51.
 - **CI `main`**: `f2a54bd` (przebieg `36399198063`) — `success`.
@@ -1425,6 +1428,87 @@ cztery rzeczy. Wszystkie cztery odpowiedzi to propozycje asystenta:
 Rozstrzygane przez asystenta przy budowie, z zapisem w „co wyszło” każdej części: które pola są osobowe (z tabel
 retencji destylacji), kształt `registry_discrepancy_detected` (E9c), pozycje 6–9 z „Po EL2 — proza, którą da się
 sprawdzać” — każda wchodzi tylko, jeśli prawdziwy kontrakt jej potrzebuje.
+
+### E9a — co wyszło (28 września)
+
+Na `dsl-v2/e9-visit` (od `main` = `f2a54bd`), niewypchnięte. Siedem commitów budowy po zapisie decyzji (`0c14ec2`):
+domena od nowa z `30-contexts.md` (`2efaec8`), Scheduling (`1257a30`), ClinicalDocumentation (`956dd09`),
+StatutoryReporting z procesem `clinical_visit` i usunięciem v1 `ClinicalVisit` (`6c2c15e`), Settlement w miejsce
+`VisitSettlement` (`c0ccfc2`), uprawnienie do nagrania w silniku (`954757e`), host i testy odbioru (`de5f635`).
+Brama zielona na każdym commicie. Sandbox 54 → **81** testów, silnik 1219 → **1221**; `check` sandboxa 0 / 12 / 19 →
+**0 / 22 / 11** (każda linia wyjaśniona w opisie commita, który ją wprowadził), silnika bez zmian.
+
+**Co jest.** Cztery kontrakty v2 Rehmedu, każdy na kontekst z mapy klienta, z implementacjami i scenariuszami:
+- `Scheduling` (CTX-01, AGG-01) — tożsamość generowana (`book_visit`, C-09), obserwacje ludzi (`patient_arrived`,
+  `visit_completed`);
+- `ClinicalDocumentation` (CTX-03, AGG-02) — ograniczenie komendy (DEC-19) i process manager doby (decyzja klienta z
+  13 sierpnia);
+- `StatutoryReporting` (CTX-04, AGG-10) — `process :clinical_visit` przez trzy konteksty, obietnica dwóch dni od
+  wyjścia pacjenta z `or_else`, polityka P-07, efekt wołający P1, odpowiedzi rejestru nagrywane przez aktora
+  systemowego;
+- `Settlement` (CTX-05, AGG-03) — przekazanie według K5-20, read model i query R-07.
+
+Domena ma trzy subdomeny, pięć kontekstów, sześć relacji z mapy, słownik per kontekst z tłumaczeniami, podmiot
+`patient`, encję `service` i system zewnętrzny `p1`. Pierwsze pola osobowe sandboxa (PESEL, kody ICD), więc sandbox
+dostał klucz główny na środowisko w `config/dev.exs` i `config/test.exs`.
+
+**Odbiór E9, części o wizycie:** obietnica `clinical_visit` spełniona przez `or_else` na przebiegu zasianym
+dispatchem z credentialami (`rehmed_clinical_visit_test`, próba odwrotna: bez `or_else` czerwony), razem z
+drogą przez efekt, naruszeniem po dwóch dniach i pogonią za dokumentacją; zmiana pola zdarzenia konsumowanego psuje
+kontrakt subskrybenta (X9 przy obu scenariuszach, ze wskazaniem zdarzenia wydawcy) i jego politykę (nieznany klucz),
+a pole nieużywane i pole zdarzenia, którego nikt nie konsumuje, nie dotykają żadnej strony
+(`rehmed_consumed_field_change_test`, na kopiach prawdziwych plików; na prawdziwym drzewie najpierw pada polityka, po
+jej poprawie L3 zgłasza te same cztery X9). Wyścig DCB — E9b.
+
+**Uprawnienie do nagrania z credentialem, zbudowane w E9a** (decyzja z 27 września w „Po E8 — kolejność
+zmieniona”; do E9 `record/3` odrzucał każdy credential): `Model.capabilities/1` daje każdemu zdarzeniu z
+`recorded_by:` uprawnienie `<domena>.<zdarzenie>` rodzaju `:record` z rolami aktorów z `recorded_by:`, `record/3`
+pyta `Authorizer` jak dispatch komendy, `EhOsContract.Plug` serwuje `POST /records/<uprawnienie>`, D14 obejmuje
+nagrania. Mechanika asystenta: role jak przy `by:` komend (także aktorzy systemowi — manifest E10 i tak ich nie
+wystawia jako ról). Linia w CHANGELOG pakietu. Manifest EHOS-a pozna rodzaj w E10.
+
+**Ustalenia o bibliotece:**
+1. **F5 nie pozwala trzymać w stanie agregatu pola osobowego, którego podmiot poznaje się z pierwszym
+   zdarzeniem.** Bramka DEC-19 najpierw siedziała w stanie dokumentacji (kody z `diagnosis_coded`); weszła jako
+   ograniczenie zamknięcia, które niesie kody. Dla dokumentacji to naturalne, ale agregat, którego pacjent jest
+   znany dopiero z pierwszego zdarzenia, nie ma drogi do stanu z danymi osobowymi.
+2. **Inwariant o tym, kto wydaje komendę, jest niewyrażalny.** AGG-02 niezmiennik 3 („zamyka tylko specjalista,
+   który wykonał wizytę”, egzekwowany dziś) wymaga, żeby decyzja widziała aktora; widzi komendę i stan, a
+   uprawnienie mówi tylko „jakiś specjalista”. To samo pytanie co odrzucona opcja przy „miesiąc otwiera księgowa
+   tej firmy” (27 września) — wraca z TaxVision w E9c.
+3. **Odpowiedź query nie jest sprawdzana względem typów wiersza.** `sum()` w Postgresie dało `Decimal` w polu
+   `:money` (`:integer`), a silnik to przepuścił; wyszło w scenariuszu `answers` tylko dlatego, że porównuje
+   wartości. Do rozważenia: kontrola typów wiersza przy odpowiedzi, jak przy komendzie.
+4. **Kolejność kompilatorów:** zmiana pola konsumowanego zdarzenia w prawdziwym drzewie pokazuje najpierw błąd
+   implementacji (kompilator Elixira pada przed `compile.eh_os_contract`), a dopiero po jego poprawie błąd kontraktu
+   (L3). Obie strony są wskazane, ale nie naraz.
+
+**Ustalenia o materiale:**
+- **Mapa kontekstów nie ma relacji scheduling → statutory reporting**, a termin ustawowy liczy się od faktu ze
+  scheduling (`visit_completed`). Ostrzeżenie `cross-bounded-context-reference-without-mapping` zostaje prawdziwe;
+  relacji, której klient nie narysował, nie dopisuję.
+- **Pliki `10`/`20`/`30` modelu Rehmedu nie mają poprawek K5/K6.** Rozliczenie idzie za K5-20 (przekazanie tylko po
+  zmianie zakresu, dwa niezmienniki) i odpowiedzią makiety na H177 (rozliczenie otwiera obecność pacjenta, cena
+  zamarza przy zamknięciu, więc `total` jest w `close_settlement`); H177 jest otwarte do passu 2 i makieta sama mówi,
+  że przeczy DEC-18. F1 z v2 §16 (skąd kwota) ma więc teraz odpowiedź z materiału, tymczasową.
+- **`p1_reporting_not_required` jest nasze** — model nie ma faktu dla wizyty niezgłaszanej („absence by filter”), a
+  obietnica jest per przebieg; bez niego każdy masaż naruszałby ustawę.
+- Zostają poza zakresem, z powodem w moduledocach: potwierdzenia i telefony (U-10), reguły zasobów, PESEL płatnika
+  (E9b), wizyta dwuosobowa (H35), ponowienia P1 (S-46), zamknięcie dnia.
+
+**Pozycje 6–9 z „Po EL2”** — żadna nie była potrzebna w E9a: query R-07 nie ma ograniczenia prozą (6); P1 nie ma
+podanego czasu odpowiedzi (7); efekt wysyłki jest sprawdzony testem hosta, bez scenariusza z zaślepką (8); każde
+zdarzenie i komenda E9a ma `source:` z identyfikatorem materiału (9). Wracają przy E9b/E9c, jeśli tam będą potrzebne.
+
+**Poza zakresem, zapisane:** dokumentacja pakietów używa `Rehmed.Contracts.VisitSettlement` jako przykładu z v2 §4.5,
+nie jako odwołania do sandboxa — do E11, który przepisuje dokumentację; `CLAUDE.md` mówi, że Rehmed „nie ma tu kodu
+i nie będzie miał” — nieprawda od E6 (moduledoc `Rehmed` poprawiony), poprawka `CLAUDE.md` należy do E11. Komendy
+wydawane tylko przez reakcje (bez `by:`) mają uprawnienia bez ról i Plug je serwuje — jak dotąd; EHOS nie nada
+uprawnienia bez roli.
+
+Weryfikacja w przeglądarce (baza dev, CSP EHOS-a): pięć diagramów na `/graph`, mapa kontekstów z sześcioma
+relacjami, system z czterema krawędziami `consumes`, `clinical_visit` z trzema torami, obietnicą i `or else`; żadna
+etykieta nie wystaje; w konsoli tylko znane blokady stylu z pomiaru Mermaida.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
