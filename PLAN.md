@@ -22,8 +22,9 @@ StatutoryReporting, Settlement); v1 zostały `PayerSettlement` (do E9b) i TaxVis
 - **`origin/main` = `ff4f279`** (`VISION.md`, po merge [#32](https://github.com/EmpoweredHouse/eh-os-contract/pull/32),
   EG — cztery grafy, 28 września). CI `main` na `f2a54bd` (przebieg `36399198063`) — `success`. Gałąź `dsl-v2/eg-graphs` jest
   zmergowana. Opisy EG: „Przed EG — decyzje użytkownika” … „EG3 — co wyszło”.
-- **E9a** na `dsl-v2/e9-visit`, od `main`, niewypchnięte: Rehmed, wizyta — **zbudowane** („E9a — co wyszło”),
-  z przeglądem (poprawki od `9e22beb`). Następne: E9b. Potem **E9b** (`dsl-v2/e9-payer`, od E9a) i **E9c** (`dsl-v2/e9-taxvision`, od E9b).
+- **E9a** na `dsl-v2/e9-visit`, od `main` = `ff4f279`, **w PR [#33](https://github.com/EmpoweredHouse/eh-os-contract/pull/33)**
+  (merge — użytkownika): Rehmed, wizyta, zbudowane i przejrzane („E9a — co wyszło”, poprawki od `9e22beb`).
+  Następne: **E9b** na `dsl-v2/e9-payer`, od `dsl-v2/e9-visit`. Potem **E9b** (`dsl-v2/e9-payer`, od E9a) i **E9c** (`dsl-v2/e9-taxvision`, od E9b).
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
