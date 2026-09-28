@@ -1,0 +1,5 @@
+Native pre-PR review completed (correctness plus security/performance); CodeRabbit was not used.
+
+Fixed 8 findings: erased OpenAPI rows, query serialization/runtime decoding, ambiguous manifest domains, AsyncAPI component collisions, missing command 400, receipt nullability regression coverage, personal-value model leaks, and document digest canonicalization. Deliberately left index caching unchanged: 8 immutable authenticated contracts and no measured hotspot.
+
+Verification: mix check exited 0; sandbox check anchor 0 errors / 29 warnings / 9 notices; core 1269, web 51, auth 62 tests all passed. Redocly 8/8 and AsyncAPI CLI 8/8 documents valid. MODEL_HAS_PESEL=false; DOCUMENT_HASH_COLLISION=false.
