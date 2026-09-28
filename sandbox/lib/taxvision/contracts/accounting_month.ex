@@ -39,7 +39,7 @@ defmodule Taxvision.Contracts.AccountingMonth do
 
   ## Out to Shugyo
 
-  Shugyo reads the month's events (03 §3, "Wszystko -> Shugyo", A9); the opening
+  Shugyo reads the month's events (03 §3, the event stream from every context to Shugyo, A9); the opening
   leaves as `taxvision.accounting_month.opened.v1`. The relay is E12's, so nothing
   leaves yet.
 
@@ -172,7 +172,7 @@ defmodule Taxvision.Contracts.AccountingMonth do
     handles: :registry_data_consistent,
     issues: :open_month
 
-  # P6: "kiedy wgrano wyciąg (CSV/MT940), sparsuj do listy obrotów i uruchom matching".
+  # P6: when a statement (CSV/MT940) is uploaded, parse it into turnovers and match them.
   policy :match_each_turnover, "Wyciąg wgrany — dopasuj każdy obrót",
     handles: :bank_turnover_list_created,
     issues: :run_matching

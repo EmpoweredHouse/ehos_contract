@@ -23,7 +23,7 @@ defmodule Taxvision.Contracts.DocumentIntake do
     identity :company_id
 
     # The period the invoice is settled in, which the integration works out; pulled
-    # "w miesiącu poprzedzającym księgowanie" (WF 01:17:14).
+    # in the month before it is booked (WF 01:17:14).
     event :invoice_pulled_from_ksef, "Pobrano fakturę z KSeF",
       recorded_by: :ksef_integration,
       depends_on: :ksef,

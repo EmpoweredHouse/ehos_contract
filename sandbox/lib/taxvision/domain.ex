@@ -43,8 +43,8 @@ defmodule Taxvision.Domain do
   # those facts, so it is written as customer–supplier.
   relation :customer_supplier, upstream: :client_lifecycle, downstream: :accounting_month
 
-  # 03 §3's table: "Intake dostarcza kanoniczne dokumenty (po deduplikacji); miesiąc
-  # jest klientem".
+  # 03 §3's table: intake supplies canonical documents, deduplicated, and the month
+  # is its customer.
   relation :customer_supplier, upstream: :document_intake, downstream: :accounting_month
 
   # 03 §4.10: one type of TaxVision employee, "because the work comes from duties,
@@ -64,8 +64,8 @@ defmodule Taxvision.Domain do
     expected_latency: {10, :second},
     unavailable_looks_like: "timeout albo pusta odpowiedź — weryfikacja zawieszona, nie negatywna"
 
-  # 03 §4.3, P: "cron: pobieraj z KSeF na bieżąco". The material names the port, not
-  # an actor; it records the invoices KSeF gives (D6).
+  # 03 §4.3's policy pulls from KSeF continuously, on a cron. The material names the
+  # port, not an actor; it records the invoices KSeF gives (D6).
   actor :ksef_integration, :system, "Integracja z KSeF",
     backed_by: :ksef,
     context: :document_intake

@@ -6,6 +6,6 @@ defmodule Taxvision.DocumentIntake do
   """
 
   use Boundary,
-    deps: [EhOsContract, Taxvision.Contracts, Taxvision.Domain],
+    deps: [Taxvision.Domain],
     exports: [KsefNumber]
 end
