@@ -247,6 +247,42 @@ defmodule EhOsContract.GraphDomainTest do
     end
   end
 
+  # How many queries `fun` sends to the repo.
+  defp queries(fun) do
+    handler = "graph-queries-#{System.unique_integer([:positive])}"
+    counter = :counters.new(1, [])
+
+    :telemetry.attach(
+      handler,
+      [:eh_os_contract, :test_repo, :query],
+      fn _event, _measurements, _meta, _config -> :counters.add(counter, 1, 1) end,
+      nil
+    )
+
+    try do
+      fun.()
+      :counters.get(counter, 1)
+    after
+      :telemetry.detach(handler)
+    end
+  end
+
+  test "the system's overlay reads the steps of consumers only, and counts every edge at once" do
+    contracts = EhOsContract.Registry.v2_contracts()
+    ours = Enum.filter(contracts, &(EhOsContract.Model.fetch(&1).domain == DispatchRig.Domain))
+
+    # DispatchRig.Branch is the one consumer: its steps, each process's runs (Branch has no
+    # steps of its own to carry them), and one count for every edge. Before, every
+    # contract's steps were read and every edge counted apart: 28 queries here.
+    with_process = Enum.count(ours, &(EhOsContract.Model.fetch(&1).process != nil))
+    budget = queries(fn -> EhOsContract.Paths.observe(DispatchRig.Branch) end) + with_process + 1
+
+    assert queries(fn ->
+             Graph.system_to_mermaid(DispatchRig.Domain, contracts, overlay: true)
+           end) <=
+             budget
+  end
+
   describe "mix eh_os_contract.graph" do
     setup do
       Mix.shell(Mix.Shell.Process)

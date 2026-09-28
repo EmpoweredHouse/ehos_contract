@@ -43,23 +43,33 @@ defmodule EhOsContract.Graph.System do
     here = MapSet.new(models, & &1.module)
     ids = Mermaid.unique_ids(Enum.map(models, & &1.module), &("contract_" <> slug(&1)))
 
-    # Each consumer's steps with the log, read once however many edges reach it.
-    observed =
-      if overlay?, do: Map.new(models, &{&1.module, Paths.observe(&1, opts)}), else: %{}
+    edges =
+      for m <- models,
+          %{kind: :contract, from: from} = c <- m.consumes,
+          MapSet.member?(here, from),
+          do: {Enum.find(models, &(&1.module == from)), m, c}
+
+    # Only a consumer's steps are read, once however many edges reach it, and the
+    # consumed events are counted in one query for every edge.
+    {observed, counts} =
+      if overlay? do
+        consumers = edges |> Enum.map(&elem(&1, 1)) |> Enum.uniq_by(& &1.module)
+        types = for {sibling, _m, c} <- edges, e <- sibling.events, e.name in c.events, do: e.type
+
+        {Map.new(consumers, &{&1.module, Paths.observe(&1, opts)}), counts(types, opts)}
+      else
+        {%{}, %{}}
+      end
 
     contract_nodes =
       for m <- models do
         node = %{id: ids[m.module], kind: :contract, name: m.module, label: contract_label(m)}
-        if overlay? and m.process, do: Map.put(node, :runs, runs(m, opts)), else: node
+        if overlay?, do: Map.put(node, :runs, runs(m, observed, opts)), else: node
       end
 
     between =
-      for m <- models,
-          %{kind: :contract, from: from} = c <- m.consumes,
-          MapSet.member?(here, from) do
-        sibling = Enum.find(models, &(&1.module == from))
-        consumed(ids, sibling, m, c, observed, opts)
-      end
+      for {sibling, m, c} <- edges,
+          do: consumed(ids, sibling, m, c, Map.get(observed, m.module), counts)
 
     {topic_nodes, topic_edges} = publications(models, ids)
 
@@ -98,6 +108,8 @@ defmodule EhOsContract.Graph.System do
   defp slug(module),
     do: module |> Module.split() |> Enum.map_join("_", &Macro.underscore/1)
 
+  defp with_runs(%{runs: nil} = node), do: Map.delete(node, :runs)
+
   defp with_runs(%{runs: runs} = node),
     do: node |> Map.delete(:runs) |> Map.update!(:label, &"#{&1} (#{Mermaid.runs(runs)})")
 
@@ -109,14 +121,13 @@ defmodule EhOsContract.Graph.System do
 
   # --- edges ---------------------------------------------------------------------------
 
-  defp consumed(ids, sibling, consumer, c, observed, opts) do
+  defp consumed(ids, sibling, consumer, c, steps, counts) do
     label = Enum.map_join(c.events, ", ", &Atom.to_string/1)
 
     label =
-      case Map.fetch(observed, consumer.module) do
-        {:ok, steps} -> Enum.join([label | traffic(sibling, c, steps, opts)], " · ")
-        :error -> label
-      end
+      if steps,
+        do: Enum.join([label | traffic(sibling, c, steps, counts)], " · "),
+        else: label
 
     Mermaid.edge(ids[sibling.module], ids[consumer.module], label: label)
   end
@@ -156,18 +167,38 @@ defmodule EhOsContract.Graph.System do
 
   # --- the log -------------------------------------------------------------------------
 
-  defp runs(model, opts), do: Paths.runs_of(model, Atom.to_string(model.process.name), opts)
+  # A process's runs, which a consumer's observed steps already carry.
+  defp runs(%{process: nil}, _observed, _opts), do: nil
+
+  defp runs(model, observed, opts) do
+    case Map.get(observed, model.module) do
+      [step | _] -> step.of_runs
+      _none -> Paths.runs_of(model, Atom.to_string(model.process.name), opts)
+    end
+  end
+
+  # How many events of each type the log holds, in the period. `count(position)`
+  # rather than of the id, so the `(type, position)` index answers it alone.
+  defp counts([], _opts), do: %{}
+
+  defp counts(types, opts) do
+    from(e in Event,
+      as: :event,
+      where: e.type in ^Enum.uniq(types),
+      group_by: e.type,
+      select: {e.type, count(e.position)}
+    )
+    |> EhOsContract.Graph.bounded(opts)
+    |> repo().all()
+    |> Map.new()
+  end
 
   # How many of the consumed events the log holds, and what waits or fails at the
   # consumer's steps that start from them — under the names they have there.
-  defp traffic(sibling, c, steps, opts) do
+  defp traffic(sibling, c, steps, counts) do
     types = for e <- sibling.events, e.name in c.events, do: e.type
     local = MapSet.new(c.events, &Map.get(c.renames, &1, &1))
-
-    count =
-      from(e in Event, as: :event, where: e.type in ^types, select: count(e.id))
-      |> EhOsContract.Graph.bounded(opts)
-      |> repo().one()
+    count = types |> Enum.map(&Map.get(counts, &1, 0)) |> Enum.sum()
 
     steps =
       for step <- steps,
