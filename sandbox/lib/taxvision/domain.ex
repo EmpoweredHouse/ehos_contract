@@ -91,13 +91,17 @@ defmodule Taxvision.Domain do
   # The number KSeF gives an invoice, and the first key of deduplication (P9). Read
   # from a PDF by OCR it can lose a digit, so the material asks for a format check
   # (02 §3.2). The format is the Ministry of Finance's — the seller's NIP, the date,
-  # twelve hex digits and a two-digit checksum — not the workshop's; the checksum
-  # itself is not computed here.
+  # twelve hex digits and a checksum of two hex digits — not the workshop's; the
+  # checksum itself is not computed here. Digits are ASCII: a NIP or a date in other
+  # digits, as text pasted from a PDF can carry, is not a KSeF number.
   value :ksef_number, :id, label: "Numer KSeF" do
     invariant :ksef_format, "Numer KSeF to NIP, data RRRRMMDD, identyfikator i suma kontrolna",
       violated_by: [
         "5265877635-20260714-0A1B2C3D4E5F",
         "526587763-20260714-0A1B2C3D4E5F-9A",
+        "5265877635-20261340-0A1B2C3D4E5F-9A",
+        "٥٢٦٥٨٧٧٦٣٥-20260714-0A1B2C3D4E5F-9A",
+        "5265877635-٢٠٢٦٠٧١٤-0A1B2C3D4E5F-9A",
         "FV/7/2026"
       ],
       satisfied_by: ["5265877635-20260714-0A1B2C3D4E5F-9A"]

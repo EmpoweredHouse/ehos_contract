@@ -1,13 +1,15 @@
 defmodule Taxvision.DocumentIntake.KsefNumber do
   @moduledoc """
   The invariant of `Taxvision.Domain`'s value `:ksef_number`: the seller's NIP, the
-  date as YYYYMMDD, twelve hex digits and a two-hex-digit checksum, joined by dashes.
-  The checksum's value is not checked.
+  date as YYYYMMDD, twelve hex digits and a two-hex-digit checksum, joined by
+  dashes, in ASCII digits. The checksum's value is not checked.
   """
 
   use Taxvision.Domain, value: :ksef_number
 
-  @format ~r/\A\d{10}-(\d{4})(\d{2})(\d{2})-[0-9A-F]{12}-[0-9A-F]{2}\z/u
+  # `[0-9]`, not `\d`: with `u`, `\d` is any Unicode digit, which the date's
+  # `String.to_integer/1` does not read.
+  @format ~r/\A[0-9]{10}-([0-9]{4})([0-9]{2})([0-9]{2})-[0-9A-F]{12}-[0-9A-F]{2}\z/u
 
   @impl true
   def ksef_format(number) do
