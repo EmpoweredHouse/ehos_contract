@@ -101,7 +101,7 @@ if Code.ensure_loaded?(Plug.Conn) do
     defp prepare(conn, model, kind, declaration, values) do
       fields = if kind == :query, do: declaration.params, else: declaration.fields
 
-      with {:ok, conn, input} <- input(conn, kind),
+      with {:ok, conn, input} <- input(conn, kind, fields, values),
            {:ok, decoded} <- decode(conn, fields, input, values, kind),
            :ok <- correlation(conn, input, kind) do
         generated = if kind == :record, do: :event, else: kind
@@ -248,12 +248,12 @@ if Code.ensure_loaded?(Plug.Conn) do
       end
     end
 
-    defp input(conn, :query) do
-      conn = fetch_query_params(conn)
-      {:ok, conn, conn.query_params}
+    defp input(conn, :query, fields, values) do
+      {conn, input} = decode_query_params(conn, fields, values)
+      {:ok, conn, input}
     end
 
-    defp input(%{body_params: %Plug.Conn.Unfetched{}} = conn, :command) do
+    defp input(%{body_params: %Plug.Conn.Unfetched{}} = conn, :command, _fields, _values) do
       case read_body(conn) do
         {:ok, "", conn} ->
           {:ok, conn, %{}}
@@ -269,8 +269,39 @@ if Code.ensure_loaded?(Plug.Conn) do
       end
     end
 
-    defp input(conn, :command), do: {:ok, conn, conn.body_params}
-    defp input(conn, :record), do: input(conn, :command)
+    defp input(conn, :command, _fields, _values), do: {:ok, conn, conn.body_params}
+    defp input(conn, :record, fields, values), do: input(conn, :command, fields, values)
+
+    @doc false
+    @spec decode_query_params(Plug.Conn.t(), [map()], map()) :: {Plug.Conn.t(), map()}
+    def decode_query_params(conn, fields, values) do
+      conn = fetch_query_params(conn)
+      pairs = Enum.to_list(URI.query_decoder(conn.query_string))
+
+      input =
+        Enum.reduce(fields, conn.query_params, fn field, params ->
+          if list_type?(field.type, values) do
+            name = Atom.to_string(field.name)
+            repeated = for {^name, value} <- pairs, do: value
+            if repeated == [], do: params, else: Map.put(params, name, repeated)
+          else
+            params
+          end
+        end)
+
+      {conn, input}
+    end
+
+    defp list_type?({:list, _inner}, _values), do: true
+
+    defp list_type?(type, values) when is_atom(type) and is_map_key(values, type) do
+      case Map.fetch!(values, type) do
+        %{type: nil} -> false
+        %{type: inner} -> list_type?(inner, values)
+      end
+    end
+
+    defp list_type?(_type, _values), do: false
 
     defp put_header(opts, conn, key, header) do
       case get_req_header(conn, header) do

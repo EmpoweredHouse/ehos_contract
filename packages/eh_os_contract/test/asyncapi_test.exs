@@ -75,6 +75,33 @@ defmodule EhOsContract.AsyncAPITest do
     end
   end
 
+  defmodule CollidingNames do
+    @moduledoc false
+    use EhOsContract.Next.Contract, domain: DispatchRig.Domain, context: :ledger
+
+    aggregate :probe, "Probe" do
+      identity :probe_id
+      event :first, "First", recorded_by: :clerk
+      event :second, "Second", recorded_by: :clerk
+    end
+
+    publish :foo1,
+      as: "dispatch_rig.foo1.v1",
+      from: :first,
+      fields: [:probe_id],
+      idempotent_on: [:probe_id]
+
+    publish :foo_1,
+      as: "dispatch_rig.foo_1.v1",
+      from: :second,
+      fields: [:probe_id],
+      idempotent_on: [:probe_id]
+
+    process :probe, "Probe" do
+      correlate :probe_id
+    end
+  end
+
   describe "a v2 publication" do
     test "is the only event boundary and becomes one send operation" do
       document = EhOsContract.AsyncAPI.document(Published)
@@ -83,8 +110,8 @@ defmodule EhOsContract.AsyncAPITest do
                "transfer_completed" => %{
                  "address" => "dispatch_rig.transfer.completed.v1",
                  "messages" => %{
-                   "TransferCompleted" => %{
-                     "$ref" => "#/components/messages/TransferCompleted"
+                   "dispatch_rig.transfer.completed.v1" => %{
+                     "$ref" => "#/components/messages/dispatch_rig.transfer.completed.v1"
                    }
                  }
                }
@@ -95,12 +122,17 @@ defmodule EhOsContract.AsyncAPITest do
                  "action" => "send",
                  "channel" => %{"$ref" => "#/channels/transfer_completed"},
                  "messages" => [
-                   %{"$ref" => "#/channels/transfer_completed/messages/TransferCompleted"}
+                   %{
+                     "$ref" =>
+                       "#/channels/transfer_completed/messages/dispatch_rig.transfer.completed.v1"
+                   }
                  ]
                }
              } = document["operations"]
 
-      assert %{"TransferCompleted" => message} = document["components"]["messages"]
+      assert %{"dispatch_rig.transfer.completed.v1" => message} =
+               document["components"]["messages"]
+
       assert message["name"] == "dispatch_rig.transfer.completed.v1"
       assert message["x-eh-os-contract-source-event"] == "completed"
       assert message["x-eh-os-contract-idempotent-on"] == ["transfer_id"]
@@ -110,7 +142,7 @@ defmodule EhOsContract.AsyncAPITest do
     test "carries only selected fields as a closed JSON Schema object" do
       payload =
         EhOsContract.AsyncAPI.document(Published)["components"]["messages"][
-          "TransferCompleted"
+          "dispatch_rig.transfer.completed.v1"
         ]["payload"]
 
       assert payload["required"] == ["amount", "branch_id", "transfer_id"]
@@ -135,6 +167,15 @@ defmodule EhOsContract.AsyncAPITest do
       assert document["channels"] == %{}
       assert document["operations"] == %{}
       assert document["components"]["messages"] == %{}
+    end
+
+    test "exact publication names cannot overwrite one another after normalisation" do
+      messages = EhOsContract.AsyncAPI.document(CollidingNames)["components"]["messages"]
+
+      assert Map.keys(messages) |> Enum.sort() == [
+               "dispatch_rig.foo1.v1",
+               "dispatch_rig.foo_1.v1"
+             ]
     end
   end
 

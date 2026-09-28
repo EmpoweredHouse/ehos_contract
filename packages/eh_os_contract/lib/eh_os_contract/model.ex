@@ -183,6 +183,11 @@ defmodule EhOsContract.Model do
   strings, module atoms lose the `Elixir.` prefix, and tuples become arrays, so
   `Jason` can encode the result without knowing any Elixir representation.
 
+  Scenario, rule and invariant examples keep their structure, but values of fields
+  declared personal become `null`, including personal fields nested in domain
+  values. The public model is documentation, not a second store for fixtures that
+  may contain a real person's data.
+
   The digest covers exactly the generated document before the digest is inserted.
   It therefore moves when the projection changes, when the contract changes or
   when a domain change moves roles or capabilities.
@@ -190,15 +195,17 @@ defmodule EhOsContract.Model do
   @spec to_data(contract()) :: map()
   def to_data(contract) do
     model = v2!(contract)
+    domain = domain!(model)
+    {exported_model, exported_domain} = EhOsContract.Model.Export.redact(model, domain)
 
     body = %{
       "schema" => "eh_os_contract.model.v1",
-      "contract" => json_data(model),
-      "domain" => model |> domain!() |> json_data(),
+      "contract" => json_data(exported_model),
+      "domain" => json_data(exported_domain),
       "capabilities" => model |> capabilities() |> json_data()
     }
 
-    Map.put(body, "digest", EhOsContract.Digest.hash(body))
+    Map.put(body, "digest", EhOsContract.Digest.document_hash(body))
   end
 
   defp json_data(nil), do: nil

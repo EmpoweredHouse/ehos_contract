@@ -34,7 +34,7 @@ defmodule Mix.Tasks.EhOsContract.Manifest do
     Application.load(:eh_os_contract)
     EhOsContract.Registry.load!()
 
-    domain = domain!(EhOsContract.Registry.domains(), opts[:domain])
+    domain = select_domain!(EhOsContract.Registry.domains(), opts[:domain])
     domain_module = domain.module
 
     contracts =
@@ -50,21 +50,36 @@ defmodule Mix.Tasks.EhOsContract.Manifest do
     error in ArgumentError -> Mix.raise(Exception.message(error))
   end
 
-  defp domain!([], _wanted), do: Mix.raise("no EhOsContract.Domain is registered")
+  @doc false
+  def select_domain!([], _wanted), do: Mix.raise("no EhOsContract.Domain is registered")
 
-  defp domain!(domains, nil) do
+  def select_domain!(domains, nil) do
     case Enum.map(domains, &EhOsContract.Model.fetch/1) do
       [domain] -> domain
       many -> Mix.raise("choose a domain with --domain: #{known_domains(many)}")
     end
   end
 
-  defp domain!(domains, wanted) do
+  def select_domain!(domains, wanted) do
     models = Enum.map(domains, &EhOsContract.Model.fetch/1)
 
-    Enum.find(models, &(to_string(&1.name) == wanted)) ||
-      Mix.raise("no domain #{inspect(wanted)}. Registered: #{known_domains(models)}")
+    case Enum.filter(models, &(to_string(&1.name) == wanted)) do
+      [domain] ->
+        domain
+
+      [] ->
+        Mix.raise("no domain #{inspect(wanted)}. Registered: #{known_domains(models)}")
+
+      many ->
+        modules = many |> Enum.map(&inspect(&1.module)) |> Enum.sort() |> Enum.join(", ")
+        Mix.raise("domain #{inspect(wanted)} is ambiguous; matching modules: #{modules}")
+    end
   end
 
-  defp known_domains(models), do: models |> Enum.map(& &1.name) |> Enum.sort() |> Enum.join(", ")
+  defp known_domains(models) do
+    models
+    |> Enum.map(&"#{&1.name} (#{inspect(&1.module)})")
+    |> Enum.sort()
+    |> Enum.join(", ")
+  end
 end

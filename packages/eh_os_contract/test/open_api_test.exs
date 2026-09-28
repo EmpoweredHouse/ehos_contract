@@ -8,6 +8,56 @@ defmodule EhOsContract.OpenAPITest do
 
   alias EhOsContract.OpenAPI
 
+  defmodule ListQuery do
+    @moduledoc false
+    use EhOsContract.Next.Contract, domain: DispatchRig.Domain, context: :ledger
+
+    aggregate :account, "Account" do
+      identity :account_id
+      event :account_seen, "Account seen", recorded_by: :auditor
+    end
+
+    read_model :accounts, "Accounts", projects: :account_seen do
+      field :account_id, :id
+    end
+
+    query :selected_accounts, "Selected accounts", reads: :accounts, by: :auditor do
+      param :account_ids, {:list, :id}
+    end
+
+    process :accounts, "Accounts" do
+      correlate :account_id
+    end
+  end
+
+  defmodule PersonalRows do
+    @moduledoc false
+    use EhOsContract.Next.Contract, domain: ShreddingRig.Domain, context: :membership
+
+    aggregate :profile, "Profile" do
+      identity :profile_id
+
+      event :profile_seen, "Profile seen", recorded_by: :clerk do
+        field :member_id, :id, subject: :member
+        field :name, :string, personal: :member_id
+      end
+    end
+
+    read_model :profiles, "Profiles", projects: :profile_seen do
+      field :profile_id, :id
+      field :member_id, :id, subject: :member
+      field :name, :string, personal: :member_id
+    end
+
+    query :profiles, "Profiles", reads: :profiles, by: :clerk do
+      param :contact, :contact, optional: true
+    end
+
+    process :profiles, "Profiles" do
+      correlate :profile_id
+    end
+  end
+
   test "only human command and query capabilities become paths" do
     document = OpenAPI.document(DispatchRig.Ledger)
     paths = document["paths"]
@@ -68,12 +118,56 @@ defmodule EhOsContract.OpenAPITest do
     assert parameter["name"] == "branch_id"
     assert parameter["in"] == "query"
     assert parameter["required"]
+    assert parameter["style"] == "form"
+    assert parameter["explode"]
     assert parameter["schema"]["x-eh-os-contract-type"] == "id"
 
     response = operation["responses"]["200"]["content"]["application/json"]["schema"]
     rows = response["properties"]["rows"]
     assert rows["type"] == "array"
     assert rows["items"]["required"] == ["account_id", "balance", "branch_id"]
+  end
+
+  test "a list query parameter uses repeated form keys" do
+    operation =
+      OpenAPI.document(ListQuery)["paths"][
+        "/queries/dispatch_rig.selected_accounts"
+      ]["get"]
+
+    assert [parameter] = operation["parameters"]
+    assert parameter["name"] == "account_ids"
+    assert parameter["style"] == "form"
+    assert parameter["explode"]
+    assert parameter["schema"]["type"] == "array"
+  end
+
+  test "an erased personal value remains a required row key but admits null" do
+    operation =
+      OpenAPI.document(PersonalRows)["paths"]["/queries/shredding_rig.profiles"]["get"]
+
+    row = operation["responses"]["200"]["content"]["application/json"]["schema"]
+    row = row["properties"]["rows"]["items"]
+
+    assert "name" in row["required"]
+
+    assert row["properties"]["name"]["anyOf"] == [
+             %{
+               "type" => "string",
+               "x-eh-os-contract-personal" => "member_id",
+               "x-eh-os-contract-type" => "string"
+             },
+             %{"type" => "null"}
+           ]
+  end
+
+  test "a structured query parameter uses Plug-compatible deep-object keys" do
+    operation =
+      OpenAPI.document(PersonalRows)["paths"]["/queries/shredding_rig.profiles"]["get"]
+
+    assert [parameter] = operation["parameters"]
+    assert parameter["name"] == "contact"
+    assert parameter["style"] == "deepObject"
+    assert parameter["explode"]
   end
 
   test "domain values retain both their wire schema and DSL type" do
@@ -120,5 +214,21 @@ defmodule EhOsContract.OpenAPITest do
     assert byte_size(digest) == 12
     assert OpenAPI.digest(document) == digest
     assert OpenAPI.digest(tampered) == digest
+  end
+
+  test "command responses describe malformed input and the nullable receipt position" do
+    responses =
+      OpenAPI.document(DispatchRig.Ledger)["paths"][
+        "/commands/dispatch_rig.open_account"
+      ]["post"]["responses"]
+
+    assert responses["400"]["description"] =~ "Invalid JSON"
+
+    receipt = responses["200"]["content"]["application/json"]["schema"]
+
+    assert receipt["properties"]["position"]["anyOf"] == [
+             %{"type" => "integer"},
+             %{"type" => "null"}
+           ]
   end
 end

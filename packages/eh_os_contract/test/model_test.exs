@@ -15,6 +15,68 @@ defmodule EhOsContract.ModelTest do
 
   alias EhOsContract.Model
 
+  defmodule PersonalExport do
+    @moduledoc false
+    use EhOsContract.Next.Contract, domain: ShreddingRig.Domain, context: :membership
+
+    aggregate :profile, "Profile" do
+      identity :profile_id
+
+      command :register, "Register", by: :clerk, emits: :registered do
+        field :member_id, :id, subject: :member
+        field :name, :string, personal: :member_id
+        field :contacts, {:list, :contact}
+      end
+
+      event :registered, "Registered" do
+        field :member_id, :id, subject: :member
+        field :name, :string, personal: :member_id
+        field :contacts, {:list, :contact}
+      end
+    end
+
+    process :profile, "Profile" do
+      correlate :profile_id
+    end
+
+    read_model :profiles, "Profiles", projects: :registered do
+      field :member_id, :id, subject: :member
+      field :name, :string, personal: :member_id
+      field :contacts, {:list, :contact}
+    end
+
+    query :profiles, "Profiles", reads: :profiles, by: :clerk do
+      param :member_id, :id
+    end
+
+    scenario "a profile carries direct and nested personal values" do
+      command :register, %{
+        profile_id: "profile-1",
+        member_id: "member-1",
+        name: "Ada Example",
+        contacts: [%{member_id: "member-2", phone: "+48-555-0100"}]
+      }
+
+      expect :registered, %{
+        member_id: "member-1",
+        name: "Ada Example",
+        contacts: [%{member_id: "member-2", phone: "+48-555-0100"}]
+      }
+    end
+
+    scenario "a query answer carries direct and nested personal values" do
+      query :profiles, %{member_id: "member-1"}
+
+      answers [
+        %{
+          member_id: "member-1",
+          name: "Ada Example",
+          contacts: [%{member_id: "member-2", phone: "+48-555-0100"}]
+        }
+      ]
+    end
+  end
+
   @contracts [
     ProcessShapes.Bare,
     ProcessShapes.Promised,
@@ -117,6 +179,10 @@ defmodule EhOsContract.ModelTest do
     assert byte_size(document["digest"]) == 12
     assert Jason.decode!(Jason.encode!(document)) == document
     assert Model.to_data(DispatchRig.Transfer) == document
+
+    ledger = Model.to_data(DispatchRig.Ledger)
+    query = Enum.find(ledger["contract"]["queries"], &(&1["name"] == "balances_for_branch"))
+    refute Map.has_key?(hd(query["params"]), "default")
   end
 
   test "to_data is for v2 contracts, not domains or v1 contracts" do
@@ -127,6 +193,29 @@ defmodule EhOsContract.ModelTest do
     assert_raise ArgumentError, ~r/is a v1 contract/, fn ->
       Model.to_data(ProcessShapes.Bare)
     end
+  end
+
+  test "to_data keeps example structure but redacts direct and nested personal values" do
+    document = Model.to_data(PersonalExport)
+    encoded = Jason.encode!(document)
+
+    refute encoded =~ "Ada Example"
+    refute encoded =~ "+48-555-0100"
+    assert encoded =~ "member-1"
+    assert encoded =~ "member-2"
+
+    scenario = hd(document["contract"]["scenarios"])
+    assert scenario["trigger"]["data"]["name"] == nil
+    assert hd(scenario["trigger"]["data"]["contacts"])["phone"] == nil
+    assert hd(scenario["expect"])["data"]["name"] == nil
+
+    query_scenario = List.last(document["contract"]["scenarios"])
+    assert hd(query_scenario["answers"])["name"] == nil
+    assert hd(hd(query_scenario["answers"])["contacts"])["phone"] == nil
+
+    register = Enum.find(document["contract"]["commands"], &(&1["name"] == "register"))
+    name = Enum.find(register["fields"], &(&1["name"] == "name"))
+    assert name["personal"] == "member_id"
   end
 
   # A contract whose module exists on the code path but is not loaded yet, which is

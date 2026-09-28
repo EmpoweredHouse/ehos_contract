@@ -164,6 +164,15 @@ defmodule EhOsContract.PlugTest do
     assert {outside.status, json(outside)} == {403, %{"refused" => "outside_scope"}}
   end
 
+  test "a list query parameter preserves every repeated form key" do
+    fields = [%{name: :account_ids, type: {:list, :id}}]
+    conn = conn(:get, "/?account_ids=a-1&account_ids=a-2")
+
+    {_conn, input} = EhOsContract.Plug.decode_query_params(conn, fields, %{})
+
+    assert input == %{"account_ids" => ["a-1", "a-2"]}
+  end
+
   test "a scoped command is refused for a branch the credential does not grant" do
     move = "dispatch_rig.move_account"
     clerk = Actor.credential("u-1", [move], %{move => %{"branch_id" => ["b-7"]}})

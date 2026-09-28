@@ -119,6 +119,27 @@ defmodule EhOsContract.CodecTest do
              {:error, [visit_id: :required]}
   end
 
+  test "query strings convert values recursively inside lists and structured values" do
+    values =
+      Map.put(@values, :window, %{
+        name: :window,
+        type: nil,
+        fields: [%{name: :count, type: :integer, optional: false}]
+      })
+
+    fields = [
+      %{name: :counts, type: {:list, :integer}, optional: false},
+      %{name: :window, type: :window, optional: false}
+    ]
+
+    assert Codec.decode(
+             fields,
+             %{"counts" => ["1", "2"], "window" => %{"count" => "3"}},
+             values,
+             strings: true
+           ) == {:ok, %{counts: [1, 2], window: %{count: 3}}}
+  end
+
   test "a field typed with a value the domain does not declare fits nothing" do
     assert Codec.problems([%{name: :x, type: :unknown}], %{x: 1}, @values) == [x: :type]
   end

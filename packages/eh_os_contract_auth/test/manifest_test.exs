@@ -20,6 +20,14 @@ defmodule EhOsContract.Auth.ManifestTest do
     actor(:scheduler, :system, "Scheduler")
   end
 
+  defmodule DuplicateDomain do
+    @moduledoc false
+    use EhOsContract.Domain, name: :manifest_rig, language: :en
+
+    subdomain(:other, "Other", type: :supporting)
+    context(:other, "Other", subdomain: :other)
+  end
+
   defmodule Work do
     @moduledoc false
     use EhOsContract.Next.Contract, domain: Domain, context: :work
@@ -101,5 +109,16 @@ defmodule EhOsContract.Auth.ManifestTest do
 
   test "refuses a domain with no contracts instead of writing an invalid empty manifest" do
     assert_raise ArgumentError, ~r/has no v2 contracts/, fn -> Manifest.build(Domain, []) end
+  end
+
+  test "the task refuses an ambiguous public domain name" do
+    assert_raise Mix.Error,
+                 ~r/domain "manifest_rig" is ambiguous.*Domain.*DuplicateDomain/s,
+                 fn ->
+                   Mix.Tasks.EhOsContract.Manifest.select_domain!(
+                     [Domain, DuplicateDomain],
+                     "manifest_rig"
+                   )
+                 end
   end
 end

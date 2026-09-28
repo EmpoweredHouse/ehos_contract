@@ -576,6 +576,14 @@ odrzucane; aktor bez żadnego uprawnienia i aktorzy `:system` nie są rolami —
 (rola `taxvision.accountant`, „Księgowa”); jeśli task dopisuje `engine` i `contracts`, digest odchodzi od
 przypiętego w EHOS i porównanie je pomija — rozstrzygnięte przy tym etapie.
 
+*Korekta 29 września po pre-PR review:* publiczny model zachowuje strukturę scenariuszy i przykładów, ale
+wartości pól `personal:` (także zagnieżdżonych w value) wystawia jako `null`; nie jest magazynem danych
+fixture. Digest dokumentów E10 dostał osobne, długościowane kodowanie — historyczny hash wersji kontraktu nie
+zmienia się. OpenAPI opisuje listy query jako powtórzone klucze `form`/`explode`, obiekty jako `deepObject`,
+odpowiedź 400 i nullable po erasure; Plug zachowuje powtórzone klucze. Komponent wiadomości AsyncAPI nazywa
+dokładne, wersjonowane `publish as:`, bez nieiniektywnej normalizacji. Task manifestu odmawia wyboru, gdy dwa
+moduły domen mają tę samą publiczną nazwę.
+
 **E11 — Cięcie.** Osobne commity: usunięcie v1 (DSL, `Handler`, `Emitter`, `Job`, handlerowe części rejestru,
 `dev/mix/tasks/eh_os_contract.docs.ex`, testy v1, `Rig`) — samo usuwanie; przemianowanie `Next` — samo
 przemianowanie; zwinięcie migracji (D2) i regeneracja trzech katalogów `priv`; `docs/contract.md` z

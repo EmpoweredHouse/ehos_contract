@@ -37,12 +37,17 @@ defmodule EhOsContractHost.E10OutputsTest do
                "action" => "send",
                "channel" => %{"$ref" => "#/channels/month_opened"},
                "messages" => [
-                 %{"$ref" => "#/channels/month_opened/messages/MonthOpened"}
+                 %{
+                   "$ref" =>
+                     "#/channels/month_opened/messages/taxvision.accounting_month.opened.v1"
+                 }
                ]
              }
            } = document["operations"]
 
-    assert %{"MonthOpened" => message} = document["components"]["messages"]
+    assert %{"taxvision.accounting_month.opened.v1" => message} =
+             document["components"]["messages"]
+
     assert message["x-eh-os-contract-source-event"] == "accounting_month_opened"
     assert message["x-eh-os-contract-idempotent-on"] == ["company_id", "period_id"]
     assert message["payload"]["required"] == ["company_id", "period_id"]

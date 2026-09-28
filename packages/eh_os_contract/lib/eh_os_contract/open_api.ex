@@ -35,7 +35,7 @@ defmodule EhOsContract.OpenAPI do
   def digest(document) do
     document
     |> update_in(["info"], &Map.delete(&1, "x-eh-os-contract-digest"))
-    |> EhOsContract.Digest.hash()
+    |> EhOsContract.Digest.document_hash()
   end
 
   @doc "Every registered v2 contract, with its contract version and OpenAPI digest."
@@ -166,17 +166,35 @@ defmodule EhOsContract.OpenAPI do
   end
 
   defp query_parameter(field, domain) do
-    %{
+    parameter = %{
       "name" => to_string(field.name),
       "in" => "query",
       "required" => not Map.get(field, :optional, false),
       "schema" => JsonSchema.field(field, domain)
     }
+
+    case query_shape(field.type, domain) do
+      :object -> Map.merge(parameter, %{"style" => "deepObject", "explode" => true})
+      _scalar_or_array -> Map.merge(parameter, %{"style" => "form", "explode" => true})
+    end
   end
+
+  defp query_shape({:list, _inner}, _domain), do: :array
+
+  defp query_shape(type, domain) when is_atom(type) do
+    case Enum.find(domain.values, &(&1.name == type)) do
+      %{type: nil} -> :object
+      %{type: inner} -> query_shape(inner, domain)
+      nil -> :scalar
+    end
+  end
+
+  defp query_shape(_type, _domain), do: :scalar
 
   defp command_responses do
     %{
       "200" => %{"description" => "Command accepted", "content" => json(receipt_schema())},
+      "400" => %{"description" => "Invalid JSON body or correlation identifier"},
       "401" => %{"description" => "No verified actor"},
       "403" => %{"description" => "Capability or scope refused"},
       "404" => %{"description" => "Capability not found"},
@@ -189,7 +207,7 @@ defmodule EhOsContract.OpenAPI do
   end
 
   defp query_responses(query, read_model, domain) do
-    row = JsonSchema.object(read_model.fields, domain)
+    row = JsonSchema.object(read_model.fields, domain, erased: true)
 
     {key, answer} =
       if query.returns == :one,

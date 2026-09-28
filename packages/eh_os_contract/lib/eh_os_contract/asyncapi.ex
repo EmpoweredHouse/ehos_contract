@@ -83,7 +83,7 @@ defmodule EhOsContract.AsyncAPI do
   def digest(document) do
     document
     |> update_in(["info"], &Map.delete(&1, "x-eh-os-contract-digest"))
-    |> EhOsContract.Digest.hash()
+    |> EhOsContract.Digest.document_hash()
   end
 
   @doc """
@@ -128,7 +128,7 @@ defmodule EhOsContract.AsyncAPI do
   defp v2_channels(model) do
     for publication <- model.publishes, into: %{} do
       event = published_event(model, publication)
-      message = message_name(publication.name)
+      message = publication.as
 
       {to_string(publication.name),
        %{
@@ -144,7 +144,7 @@ defmodule EhOsContract.AsyncAPI do
   defp v2_operations(model) do
     for publication <- model.publishes, into: %{} do
       channel = to_string(publication.name)
-      message = message_name(publication.name)
+      message = publication.as
 
       {"publish_#{publication.name}",
        %{
@@ -162,7 +162,7 @@ defmodule EhOsContract.AsyncAPI do
       event = published_event(model, publication)
       fields = Enum.filter(event.fields, &(&1.name in publication.fields))
 
-      {message_name(publication.name),
+      {publication.as,
        %{
          "name" => publication.as,
          "title" => event.label,
@@ -206,7 +206,7 @@ defmodule EhOsContract.AsyncAPI do
          "title" => process.label,
          "messages" =>
            Map.new(events, fn e ->
-             {to_string(e.name), %{"$ref" => "#/components/messages/#{message_name(e.name)}"}}
+             {to_string(e.name), %{"$ref" => "#/components/messages/#{v1_message_name(e.name)}"}}
            end),
          "x-eh-os-contract-process" => %{
            "instance" => Enum.map(process.instance, &to_string/1),
@@ -223,7 +223,7 @@ defmodule EhOsContract.AsyncAPI do
   @spec v1_messages(module()) :: map()
   defp v1_messages(contract) do
     for event <- Model.events(contract), into: %{} do
-      {message_name(event.name),
+      {v1_message_name(event.name),
        %{
          "name" => to_string(event.name),
          "title" => event.label,
@@ -300,10 +300,10 @@ defmodule EhOsContract.AsyncAPI do
   defp duration(nil), do: nil
   defp duration({count, unit}), do: %{"count" => count, "unit" => to_string(unit)}
 
-  # AsyncAPI message names are identifiers in a document, not event names. Kept
-  # distinct so the `name` field stays the contract's own spelling.
-  @spec message_name(atom()) :: String.t()
-  defp message_name(event_name) do
+  # Kept only for the v1 projection, which E11 removes. A v2 publication's exact,
+  # globally versioned name is already an injective component key.
+  @spec v1_message_name(atom()) :: String.t()
+  defp v1_message_name(event_name) do
     event_name |> to_string() |> String.split("_") |> Enum.map_join(&String.capitalize/1)
   end
 end

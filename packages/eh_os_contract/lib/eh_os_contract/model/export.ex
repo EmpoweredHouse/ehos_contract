@@ -1,0 +1,214 @@
+defmodule EhOsContract.Model.Export do
+  @moduledoc false
+
+  @doc false
+  @spec redact(map(), map()) :: {map(), map()}
+  def redact(model, domain) do
+    values = Map.new(domain.values, &{&1.name, &1})
+
+    contract =
+      model
+      |> redact_scenarios(values)
+      |> redact_service_examples(values)
+      |> redact_contract_defaults(values)
+
+    {contract, redact_domain_examples(domain, values)}
+  end
+
+  defp redact_scenarios(model, values) do
+    Map.update!(model, :scenarios, fn scenarios ->
+      Enum.map(scenarios, &redact_scenario(&1, model, values))
+    end)
+  end
+
+  defp redact_scenario(scenario, model, values) do
+    scenario
+    |> update_many(:given, &redact_named(&1, :event, model.events, values))
+    |> update_one(:trigger, &redact_trigger(&1, model, values))
+    |> update_many(:expect, &redact_named(&1, :event, model.events, values))
+    |> update_many(:issues, &redact_named(&1, :command, model.commands, values))
+    |> redact_answers(model, values)
+  end
+
+  defp redact_trigger(%{kind: :command} = trigger, model, values),
+    do: redact_named(trigger, :name, model.commands, values)
+
+  defp redact_trigger(%{kind: :on} = trigger, model, values),
+    do: redact_named(trigger, :name, model.events, values)
+
+  defp redact_trigger(%{kind: :query} = trigger, model, values),
+    do: redact_named(trigger, :name, model.queries, values, :params)
+
+  defp redact_trigger(trigger, _model, _values), do: trigger
+
+  defp redact_named(item, name_key, declarations, values, fields_key \\ :fields) do
+    case Enum.find(declarations, &(&1.name == Map.get(item, name_key))) do
+      nil ->
+        item
+
+      declaration ->
+        Map.update(item, :data, %{}, &redact_fields(&1, declaration[fields_key], values))
+    end
+  end
+
+  defp redact_answers(%{trigger: %{kind: :query, name: name}} = scenario, model, values) do
+    query = Enum.find(model.queries, &(&1.name == name))
+    read_model = query && Enum.find(model.read_models, &(&1.name == query.reads))
+
+    if read_model do
+      Map.update!(scenario, :answers, &redact_rows(&1, read_model.fields, values))
+    else
+      scenario
+    end
+  end
+
+  defp redact_answers(scenario, _model, _values), do: scenario
+
+  defp redact_rows(rows, fields, values) when is_list(rows),
+    do: Enum.map(rows, &redact_fields(&1, fields, values))
+
+  defp redact_rows(%{} = row, fields, values), do: redact_fields(row, fields, values)
+  defp redact_rows(nil, _fields, _values), do: nil
+
+  defp redact_fields(data, fields, values) when is_map(data) do
+    Enum.reduce(fields, data, fn field, redacted ->
+      case fetch_key(redacted, field.name) do
+        :error ->
+          redacted
+
+        {:ok, key, value} ->
+          replacement =
+            if Map.get(field, :personal),
+              do: nil,
+              else: redact_value(field.type, value, values)
+
+          Map.put(redacted, key, replacement)
+      end
+    end)
+  end
+
+  defp redact_fields(value, _fields, _values), do: value
+
+  defp redact_value(_type, nil, _values), do: nil
+
+  defp redact_value({:list, inner}, values_to_redact, values) when is_list(values_to_redact),
+    do: Enum.map(values_to_redact, &redact_value(inner, &1, values))
+
+  defp redact_value(type, value, values) when is_atom(type) and is_map_key(values, type) do
+    case Map.fetch!(values, type) do
+      %{type: nil, fields: fields} -> redact_fields(value, fields, values)
+      %{type: inner} -> redact_value(inner, value, values)
+    end
+  end
+
+  defp redact_value(_type, value, _values), do: value
+
+  defp redact_service_examples(model, values) do
+    Map.update!(model, :domain_services, fn services ->
+      Enum.map(services, fn service ->
+        Map.update!(service, :functions, fn functions ->
+          Enum.map(functions, &redact_function_examples(&1, values))
+        end)
+      end)
+    end)
+  end
+
+  defp redact_function_examples(function, values) do
+    Map.update!(function, :rules, fn rules ->
+      Enum.map(rules, fn rule ->
+        Map.update!(rule, :examples, fn examples ->
+          Enum.map(examples, &redact_call(&1, function, values))
+        end)
+      end)
+    end)
+  end
+
+  defp redact_call({arguments, result}, function, values) when is_list(arguments) do
+    arguments =
+      function.arguments
+      |> Enum.zip(arguments)
+      |> Enum.map(fn {argument, value} -> redact_value(argument.type, value, values) end)
+
+    result = redact_value(function.returns.type, result, values)
+    {arguments, result}
+  end
+
+  defp redact_call(example, _function, _values), do: example
+
+  defp redact_contract_defaults(model, values) do
+    model
+    |> update_fields(:commands, :fields, values)
+    |> update_fields(:events, :fields, values)
+    |> update_fields(:read_models, :fields, values)
+    |> update_fields(:queries, :params, values)
+    |> update_fields(:consumes, :fields, values)
+    |> update_state_fields(:units, values)
+    |> update_state_fields(:process_managers, values)
+  end
+
+  defp redact_domain_examples(domain, values) do
+    domain
+    |> Map.update!(:values, fn domain_values ->
+      Enum.map(domain_values, fn value ->
+        value
+        |> Map.update!(:fields, &redact_defaults(&1, values))
+        |> Map.update!(:invariants, fn invariants ->
+          Enum.map(invariants, fn invariant ->
+            invariant
+            |> Map.update!(
+              :violated_by,
+              &Enum.map(&1, fn item -> redact_value(value.name, item, values) end)
+            )
+            |> Map.update!(
+              :satisfied_by,
+              &Enum.map(&1, fn item -> redact_value(value.name, item, values) end)
+            )
+          end)
+        end)
+      end)
+    end)
+    |> update_fields(:entities, :fields, values)
+  end
+
+  defp update_fields(model, collection, fields_key, values) do
+    Map.update!(model, collection, fn declarations ->
+      Enum.map(
+        declarations,
+        &Map.update!(&1, fields_key, fn fields -> redact_defaults(fields, values) end)
+      )
+    end)
+  end
+
+  defp update_state_fields(model, collection, values) do
+    Map.update!(model, collection, fn declarations ->
+      Enum.map(declarations, fn declaration ->
+        Map.update!(declaration, :state, fn state ->
+          Map.update!(state, :fields, &redact_defaults(&1, values))
+        end)
+      end)
+    end)
+  end
+
+  defp redact_defaults(fields, values) do
+    Enum.map(fields, fn field ->
+      if Map.has_key?(field, :default) do
+        Map.update!(field, :default, fn default ->
+          if Map.get(field, :personal), do: nil, else: redact_value(field.type, default, values)
+        end)
+      else
+        field
+      end
+    end)
+  end
+
+  defp update_many(map, key, fun), do: Map.update(map, key, [], &Enum.map(&1, fun))
+  defp update_one(map, key, fun), do: Map.update(map, key, nil, &if(&1, do: fun.(&1), else: nil))
+
+  defp fetch_key(map, key) do
+    cond do
+      Map.has_key?(map, key) -> {:ok, key, Map.fetch!(map, key)}
+      Map.has_key?(map, to_string(key)) -> {:ok, to_string(key), Map.fetch!(map, to_string(key))}
+      true -> :error
+    end
+  end
+end
