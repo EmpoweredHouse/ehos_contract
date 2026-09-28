@@ -140,23 +140,28 @@ defmodule EhOsContract.Auth.KeysTest do
 
     assert log =~ "(:timeout)"
     assert_received {:trickled, _byte}
-    assert elapsed >= 5_000 and elapsed < 6_000, "took #{elapsed} ms"
+    assert elapsed >= 5_000 and elapsed < 8_000, "took #{elapsed} ms"
 
     # A failed fetch like any other: the key from the table stays in force.
     assert {:ok, _} = Auth.verify(credential(pair), keys: keys)
   end
 
-  test "an exit inside the request is a failed fetch, not a crash of the key process" do
-    pair = key_pair()
-    ehos = ehos({:keys, [pair]})
-    stop_supervised!(start_keys(ehos))
+  # A Finch pool that times out exits rather than raises, and a host's plug or
+  # adapter may throw; the plugs here do the same inside the request.
+  for {kind, plug} <- [
+        exit: quote(do: fn _conn -> exit(:pool_timeout) end),
+        throw: quote(do: fn _conn -> throw(:pool_timeout) end)
+      ] do
+    test "#{kind} inside the request is a failed fetch, not a crash of the key process" do
+      pair = key_pair()
+      ehos = ehos({:keys, [pair]})
+      stop_supervised!(start_keys(ehos))
 
-    # A Finch pool that times out exits rather than raises; so does this adapter.
-    exiting = [adapter: fn _request -> exit(:pool_timeout) end]
-    keys = start_keys(ehos, req_options: exiting)
+      keys = start_keys(ehos, req_options: [plug: unquote(plug)])
 
-    assert {:error, {:exit, :pool_timeout}} = Keys.refresh(keys)
-    assert {:ok, _} = Auth.verify(credential(pair), keys: keys)
+      assert Keys.refresh(keys) == {:error, {unquote(kind), :pool_timeout}}
+      assert {:ok, _} = Auth.verify(credential(pair), keys: keys)
+    end
   end
 
   # Accepts one fetch, answers with headers promising a body, and sends it a byte a

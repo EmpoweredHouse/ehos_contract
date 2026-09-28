@@ -5,7 +5,8 @@ defmodule EhOsContract.Auth.KeyCase do
 
   The endpoint is a function plug handed to Req (`req_options: [plug: …]`), so no
   port is opened and the fetcher's own code — the request, the status, the body —
-  runs as it does against EHOS.
+  runs as it does against EHOS. A test that needs the network's own behaviour
+  opens a socket of its own and passes `url:`.
 
   The key process runs outside the test process and reads and writes the table, so
   these tests share the sandbox and are not async.
