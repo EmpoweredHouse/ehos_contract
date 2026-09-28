@@ -92,6 +92,12 @@ defmodule EhOsContract.Auth.KeysTest do
       assert options[:transport_opts] == transport
     end
 
+    test "that are nil keep the defaults, and the key set is fetched", %{adapter: adapter} do
+      start_keys(nil, req_options: [adapter: adapter, connect_options: nil])
+
+      assert_received {:connect_options, [timeout: 2_000]}
+    end
+
     test "replace the connect timeout when they set one", %{adapter: adapter} do
       start_keys(nil, req_options: [adapter: adapter, connect_options: [timeout: 500]])
 

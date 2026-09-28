@@ -296,7 +296,8 @@ defmodule EhOsContract.Auth.Keys do
   end
 
   defp get(state) do
-    options = Keyword.merge([into: &at_most/2] ++ @request_options, state.req_options, &merge/3)
+    options =
+      Keyword.merge([into: &at_most/2] ++ @request_options, state.req_options, &merge_option/3)
 
     case Req.get(state.url, options) do
       {:ok, %Req.Response{status: 200, body: :too_large}} ->
@@ -329,8 +330,9 @@ defmodule EhOsContract.Auth.Keys do
 
   # Without the default connect timeout, Mint's is thirty seconds: an EHOS that
   # drops packets would hold this process past `@call_timeout`.
-  defp merge(:connect_options, default, given), do: Keyword.merge(default, given)
-  defp merge(_option, _default, given), do: given
+  # `nil` is what Req reads as no options, so it is merged as none.
+  defp merge_option(:connect_options, default, given), do: Keyword.merge(default, given || [])
+  defp merge_option(_option, _default, given), do: given
 
   # Collects the body up to `@max_body` and gives up past it.
   defp at_most({:data, data}, {request, response}) do
