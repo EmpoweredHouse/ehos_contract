@@ -1,14 +1,18 @@
 defmodule Rehmed.Contracts do
   @moduledoc """
-  Contracts, one per process — the same division as `Taxvision.Contracts` and for
-  the same reason (notes §1): a handler depends on exactly one contract, so adding
-  an event recompiles that process's handlers rather than every handler there is.
-
-  Rehmed has no handlers here yet. The division is kept anyway, because the point
-  at which it starts to matter is the point at which changing it is expensive.
+  Contracts, one per context of the client's context map, each with its one process
+  (plan, the decisions before E9): an implementation depends on exactly one
+  contract, so a change to one context recompiles that context's implementations
+  rather than every one there is.
   """
 
   use Boundary,
     deps: [EhOsContract],
-    exports: [ClinicalVisit, PayerSettlement, {VisitSettlement, []}]
+    exports: [
+      PayerSettlement,
+      {ClinicalDocumentation, []},
+      {Scheduling, []},
+      {Settlement, []},
+      {StatutoryReporting, []}
+    ]
 end

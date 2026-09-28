@@ -36,6 +36,21 @@ What changes otherwise is what a host has to do.
 
 ### Changed — a host has to act
 
+- **E9a: an event a contract records has a capability, and a credential records with it.**
+  `EhOsContract.Model.capabilities/1` gives each event declaring `recorded_by:` the capability
+  `<domain>.<event>`, kind `:record`, with the roles of its `recorded_by:` actors; `EhOsContract.record/3` asks
+  the `Authorizer` for it, as `dispatch/3` does for a command, instead of refusing every credential with
+  `{:error, :not_grantable}`, which is gone. `EhOsContract.Plug` serves it as `POST <mount>/records/<capability>`,
+  and answers a recording for a unit no command created (`{:error, :not_created}`) with 404 `{"error":
+  "not_created"}`.
+  A host that checks every capability has an entry point (`EhOsContract.Auth.Testing`, `eh-os` D-34) maps the
+  recordings too; D14 now also refuses a recorded event named like another declaration's capability.
+- **E9a: only what a person may do is a capability.** `EhOsContract.Model.capabilities/1` gives a command, a
+  query or a recorded event a capability only when its `by:` or `recorded_by:` names a `:human` actor, and its
+  roles are those people only. A command only a reaction issues (no `by:`) and an event only a `:system` actor
+  records have none: a credential naming them is refused `:missing_capability`, and `EhOsContract.Plug`
+  answers 404. A host's entry-point check drops them; the application's own `:system` actor reaches them as
+  before.
 - **EG1: `EhOsContract.Graph.steps_to_mermaid/2` is `contract_to_mermaid/2`**, and draws a v2 contract's full
   graph (below). A caller renames the call; the options (`overlay:`, `since:`, `until:`) and the steps' nodes and
   edges are the ones they were.

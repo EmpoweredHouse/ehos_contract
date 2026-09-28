@@ -23,3 +23,7 @@ config :eh_os_contract_host, EhOsContractHostWeb.Endpoint,
   http: [port: 4001]
 
 config :logger, level: :warning
+
+# The same for the test database, a key of its own (`EhOsContract.Vault`).
+config :eh_os_contract, EhOsContract.Vault,
+  keys: [{"sandbox-test-2026-09", "u+W3CGlDJWesQODZ3d76HCOB24UM3/Y4tY009lASskw="}]

@@ -9,9 +9,9 @@ defmodule EhOsContract.Next.Contract.Links.System do
   - **X8.** A declaration that code implements — a unit, a policy, an effect, a
     process manager, a read model, a query — has at most one implementation, since
     dispatch and scenarios have to know which one runs.
-  - **D14.** A command's or a query's name is unique across the contracts of one
-    domain: its capability is `<domain>.<name>`, which EHOS grants by, so two
-    declarations of one name would share it.
+  - **D14.** A command's, a query's or a recorded event's name is unique across
+    the contracts of one domain: its capability is `<domain>.<name>`, which EHOS
+    grants by, so two declarations of one name would share it.
 
   Of two declarations that collide, the error stands at the one in the module
   that sorts later and names the other with its file and line.
@@ -41,18 +41,27 @@ defmodule EhOsContract.Next.Contract.Links.System do
       for %{domain: %{name: domain}} = c <- system.contracts,
           {kind, declaration} <-
             Enum.map(Rules.commands(c.declarations), &{:command, &1}) ++
-              Enum.map(c.declarations.queries, &{:query, &1}) do
+              Enum.map(c.declarations.queries, &{:query, &1}) ++
+              Enum.map(recorded(c.declarations), &{:record, &1}) do
         {"#{domain}.#{declaration.name}", c.module, {kind, declaration}}
       end
 
     for {capability, {module, {kind, declaration}}, {first, {first_kind, first_declaration}}} <-
           collisions(named),
-        module != first do
+        module != first or kind != first_kind do
       {"D14: #{kind} #{inspect(declaration.name)} of #{inspect(module)} has the capability " <>
          "#{inspect(capability)}, which #{first_kind} #{inspect(first_declaration.name)} of " <>
          "#{inspect(first)} (#{Links.place(Links.at(first_declaration))}) has already; a " <>
-         "command or a query is named once in the domain", Links.at(declaration)}
+         "command, a query or a recorded event is named once in the domain",
+       Links.at(declaration)}
     end
+  end
+
+  defp recorded(declarations) do
+    for unit <- declarations.units,
+        event <- Rules.events(unit),
+        event.recorded_by != [],
+        do: event
   end
 
   defp implementations(system) do

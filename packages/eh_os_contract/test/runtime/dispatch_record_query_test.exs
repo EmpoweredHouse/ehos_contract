@@ -69,11 +69,40 @@ defmodule EhOsContract.DispatchRecordQueryTest do
       assert length(log()) == 4
     end
 
-    test "a credential is refused, since nothing can grant it a capability to record" do
+    test "a credential records a person's observation with the event's capability, and not without it" do
       assert EhOsContract.record(Ledger, %BalanceConfirmed{account_id: "a-1"},
                actor: clerk(["b-7"])
              ) ==
-               {:error, :not_grantable}
+               {:error, :missing_capability}
+
+      assert length(log()) == 3
+
+      # The control: the auditor's credential, granted the recording by name.
+      auditor = Actor.credential("u-2", ["dispatch_rig.balance_confirmed"])
+
+      assert {:ok, _} =
+               EhOsContract.record(Ledger, %BalanceConfirmed{account_id: "a-1"}, actor: auditor)
+
+      assert %{type: "ledger.balance_confirmed", actor: "actor:u-2"} = List.last(log())
+      assert %{outcome: "accepted", type: "record:balance_confirmed"} = List.last(rows())
+    end
+
+    test "what only the application's own code does is granted to no credential, whatever it carries" do
+      # `interest_recorded` is only the nightly import's to record, and `flag_account`
+      # only a reaction's to issue: neither has a capability, so a credential that
+      # names them anyway — a grant made by mistake — is refused (plan, E9a review).
+      mistaken =
+        Actor.credential("u-3", ["dispatch_rig.interest_recorded", "dispatch_rig.flag_account"])
+
+      assert EhOsContract.record(Ledger, %InterestRecorded{account_id: "a-1", amount: 5},
+               actor: mistaken
+             ) == {:error, :missing_capability}
+
+      assert EhOsContract.dispatch(
+               Ledger,
+               %DispatchRig.Ledger.Commands.FlagAccount{account_id: "a-1"},
+               actor: mistaken
+             ) == {:error, :missing_capability}
 
       assert length(log()) == 3
     end

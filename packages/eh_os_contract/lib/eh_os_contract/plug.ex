@@ -1,13 +1,14 @@
 if Code.ensure_loaded?(Plug.Conn) do
   defmodule EhOsContract.Plug do
     @moduledoc """
-    The commands and queries of v2 contracts over HTTP, under the names EHOS grants
-    them by (v2 §16, D10 and D14):
+    The commands, recordings and queries of v2 contracts over HTTP, under the names
+    EHOS grants them by (v2 §16, D10 and D14):
 
         # in the host's router, after whatever verifies the credential
         forward "/api", EhOsContract.Plug, contracts: [Rehmed.Contracts.VisitSettlement]
 
         POST /api/commands/rehmed.record_payment   {"visit_id": "w-1", "method": "card", "amount": 20000}
+        POST /api/records/rehmed.patient_arrived   {"visit_id": "w-1"}
         GET  /api/queries/rehmed.open_visits_for_clinic?clinic_id=7
 
     **It authenticates nobody.** The actor is `conn.assigns.eh_os_contract_actor`,
@@ -40,6 +41,7 @@ if Code.ensure_loaded?(Plug.Conn) do
     | a command that creates its aggregate, without an `idempotency-key` | 422 | `{"error": "idempotency_key_required"}` |
     | conflict, or a reused key | 409 | `{"error": "<reason>"}` |
     | personal data of an erased subject | 410 | `{"error": "subject_erased"}` |
+    | a recording for a unit no command created (its identity is the library's) | 404 | `{"error": "not_created"}` |
     | no such capability | 404 | `{"error": "not_found"}` |
 
     No body ever carries a field value the caller did not send: a problem names
@@ -52,7 +54,7 @@ if Code.ensure_loaded?(Plug.Conn) do
 
     alias EhOsContract.{Actor, Codec, Dispatcher, Model, Receipt, Rejection}
 
-    @doc "Takes `contracts:`, the v2 contracts whose commands and queries it serves."
+    @doc "Takes `contracts:`, the v2 contracts whose commands, recordings and queries it serves."
     @impl true
     @spec init(keyword()) :: %{contracts: [module()]}
     def init(opts) do
@@ -66,6 +68,7 @@ if Code.ensure_loaded?(Plug.Conn) do
     def call(conn, %{contracts: contracts}) do
       case {conn.method, conn.path_info} do
         {"POST", ["commands", capability]} -> serve(conn, contracts, :command, capability)
+        {"POST", ["records", capability]} -> serve(conn, contracts, :record, capability)
         {"GET", ["queries", capability]} -> serve(conn, contracts, :query, capability)
         _ -> reply(conn, 404, %{error: "not_found"})
       end
@@ -96,12 +99,13 @@ if Code.ensure_loaded?(Plug.Conn) do
     # The request as dispatch or query takes it, or what is wrong with it and the
     # input as it was sent.
     defp prepare(conn, model, kind, declaration, values) do
-      fields = if kind == :command, do: declaration.fields, else: declaration.params
+      fields = if kind == :query, do: declaration.params, else: declaration.fields
 
       with {:ok, conn, input} <- input(conn, kind),
            {:ok, decoded} <- decode(conn, fields, input, values, kind),
            :ok <- correlation(conn, input, kind) do
-        {:ok, conn, struct!(Model.module_for(model, kind, declaration.name), decoded)}
+        generated = if kind == :record, do: :event, else: kind
+        {:ok, conn, struct!(Model.module_for(model, generated, declaration.name), decoded)}
       end
     end
 
@@ -125,6 +129,7 @@ if Code.ensure_loaded?(Plug.Conn) do
       end
     end
 
+    defp correlation(conn, input, :record), do: correlation(conn, input, :command)
     defp correlation(_conn, _input, :query), do: :ok
 
     defp respond(conn, :command, model, _declaration, command, actor, _values) do
@@ -134,6 +139,16 @@ if Code.ensure_loaded?(Plug.Conn) do
         |> put_header(conn, :correlation_id, "x-correlation-id")
 
       dispatch(conn, model, command, opts)
+    end
+
+    defp respond(conn, :record, model, _declaration, event, actor, _values) do
+      opts =
+        [actor: actor]
+        |> put_header(conn, :idempotency_key, "idempotency-key")
+        |> put_header(conn, :correlation_id, "x-correlation-id")
+
+      conn
+      |> reply_to(model, EhOsContract.record(model.module, event, opts))
     end
 
     defp respond(conn, :query, model, declaration, params, actor, values) do
@@ -151,8 +166,11 @@ if Code.ensure_loaded?(Plug.Conn) do
       end
     end
 
-    defp dispatch(conn, model, command, opts) do
-      case EhOsContract.dispatch(model.module, command, opts) do
+    defp dispatch(conn, model, command, opts),
+      do: reply_to(conn, model, EhOsContract.dispatch(model.module, command, opts))
+
+    defp reply_to(conn, model, result) do
+      case result do
         {:ok, %Receipt{} = receipt} ->
           reply(conn, 200, %{
             command_id: receipt.command_id,
@@ -195,6 +213,10 @@ if Code.ensure_loaded?(Plug.Conn) do
 
     defp refused(conn, :subject_erased), do: reply(conn, 410, %{error: :subject_erased})
 
+    # A recording for a unit whose identity the library gives, and that no command
+    # created: there is no such unit, which is not a refusal of the caller.
+    defp refused(conn, :not_created), do: reply(conn, 404, %{error: :not_created})
+
     defp refused(conn, reason), do: reply(conn, 403, %{refused: reason})
 
     # The declaration a capability names, among the contracts this plug serves.
@@ -204,7 +226,13 @@ if Code.ensure_loaded?(Plug.Conn) do
 
         case Map.get(Model.capabilities(model), capability) do
           %{kind: ^kind, name: name} ->
-            declarations = if kind == :command, do: model.commands, else: model.queries
+            declarations =
+              case kind do
+                :command -> model.commands
+                :record -> model.events
+                :query -> model.queries
+              end
+
             {:ok, model, Enum.find(declarations, &(&1.name == name))}
 
           _ ->
@@ -242,6 +270,7 @@ if Code.ensure_loaded?(Plug.Conn) do
     end
 
     defp input(conn, :command), do: {:ok, conn, conn.body_params}
+    defp input(conn, :record), do: input(conn, :command)
 
     defp put_header(opts, conn, key, header) do
       case get_req_header(conn, header) do

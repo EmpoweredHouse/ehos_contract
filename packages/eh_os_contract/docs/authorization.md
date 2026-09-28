@@ -27,13 +27,19 @@ allows.
 Names are derived from the contract, never written by hand, so the list EHOS grants from cannot drift
 from the code (`EhOsContract.Model.capabilities/1`):
 
-- a **capability** per command and per query: `<domain>.<name>`, e.g. `rehmed.record_payment`,
-  `rehmed.open_visits_for_clinic`, where `<domain>` is the domain's `name:`;
-- a **role** per actor of the domain: `<domain>.<actor>`, e.g. `rehmed.reception`. A role grants the
-  capabilities of every declaration whose `by:` names that actor.
+- a **capability** per command, per query and per recorded event a person may use: `<domain>.<name>`,
+  e.g. `rehmed.record_payment`, `rehmed.open_visits_for_clinic`, `rehmed.patient_arrived`, where
+  `<domain>` is the domain's `name:`;
+- a **role** per `:human` actor of the domain: `<domain>.<actor>`, e.g. `rehmed.reception`. A role
+  grants the capabilities of every declaration whose `by:` or `recorded_by:` names that actor.
 
-Because a capability is `<domain>.<name>`, a command or query name is unique across the whole
-application, which the compiler checks (D14).
+**Only what a person may do is a capability.** A declaration whose `by:` or `recorded_by:` names no
+`:human` actor — a command only a policy issues, an event only an integration records — has none, so
+no credential can be granted it, even by mistake; the application's own `:system` actor reaches it
+without a credential.
+
+Because a capability is `<domain>.<name>`, a command, query or recorded event name is unique across the
+whole application, which the compiler checks (D14).
 
 ## The flow, end to end
 
@@ -205,10 +211,15 @@ stays in the application's code.
 
 ## Recording an event
 
-`EhOsContract.record/3` appends an event the contract declares `recorded_by:`, without a command. Only
-a `:system` actor the event names may record it. A credential is refused with
-`{:error, :not_grantable}`, because EHOS grants commands and queries only, so no credential could
-carry a capability to record. Naming such a capability is left to stage E9.
+`EhOsContract.record/3` appends an event the contract declares `recorded_by:`, without a command: an
+observation or an integration's answer (D6). Its capability is `<domain>.<event>`, with the roles of
+the actors in `recorded_by:`, and a credential is asked of the `Authorizer` for it as for a command —
+reception marking that the patient arrived needs `rehmed.patient_arrived`. A `:system` actor the
+event names records it without a credential. `EhOsContract.Plug` serves it as
+`POST <mount>/records/<capability>` with the event's fields as the body.
+
+Until 28 September 2026 (stage E9) a credential was refused with `{:error, :not_grantable}`, because no
+capability named a recording; the name `<domain>.<event>` was decided on 27 September.
 
 ## What is written
 
@@ -231,8 +242,8 @@ does.
 
 ## Over HTTP
 
-`EhOsContract.Plug` serves the commands and queries of the contracts it is given, under their
-capabilities:
+`EhOsContract.Plug` serves the commands, recordings and queries of the contracts it is given, under
+their capabilities:
 
 ```elixir
 # in the host's router, after the plug that verifies the credential

@@ -1,6 +1,6 @@
 defmodule EhOsContract.PlugTest do
   @moduledoc """
-  The model's commands and queries over HTTP (v2 §16, D10): the same checks as a
+  The model's commands, recordings and queries over HTTP (v2 §16, D10): the same checks as a
   function call, under the capability's name, with the actor another plug built.
   """
 
@@ -60,6 +60,25 @@ defmodule EhOsContract.PlugTest do
 
     assert json(again)["duplicate"] == true
     assert json(again)["positions"] == [position]
+  end
+
+  test "a person's observation is recorded under the event's capability, and not without it" do
+    auditor = Actor.credential("u-2", ["dispatch_rig.balance_confirmed"])
+
+    conn = call(post("/records/dispatch_rig.balance_confirmed", %{account_id: "a-1"}), auditor)
+
+    assert conn.status == 200
+    assert [%{"type" => "ledger.balance_confirmed"}] = json(conn)["events"]
+
+    # The control: the clerk has no capability to record it.
+    refused = call(post("/records/dispatch_rig.balance_confirmed", %{account_id: "a-1"}))
+    assert {refused.status, json(refused)} == {403, %{"refused" => "missing_capability"}}
+
+    # A command's capability is not a recording's, and the other way round.
+    assert call(post("/records/dispatch_rig.deposit", %{account_id: "a-1"})).status == 404
+
+    assert call(post("/commands/dispatch_rig.balance_confirmed", %{account_id: "a-1"}), auditor).status ==
+             404
   end
 
   test "a command that creates its aggregate answers with the identity the library gave it" do

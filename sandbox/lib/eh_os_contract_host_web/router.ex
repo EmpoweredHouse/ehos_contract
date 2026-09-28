@@ -2,8 +2,8 @@ defmodule EhOsContractHostWeb.Router do
   @moduledoc """
   Three mounts. Two from `eh_os_contract_web`: the dashboard at `/dashboard` for a person,
   and the read-only conformance API at `/api/eh_os_contract` for anything that is not one.
-  And, since v2 stage EA, the commands of `Rehmed.Contracts.VisitSettlement` at
-  `/api/rehmed`, served by `EhOsContract.Plug` behind `EhOsContract.Auth.Plug`, which
+  And, since v2 stage EA, the commands, recordings and queries of Rehmed's v2
+  contracts at `/api/rehmed`, served by `EhOsContract.Plug` behind `EhOsContract.Auth.Plug`, which
   verifies the bearer credential. Nothing else lives here — this project has no other
   frontend, and `docs/adr/architecture.md` §16-17 puts frontends outside the engine
   regardless.
@@ -49,7 +49,14 @@ defmodule EhOsContractHostWeb.Router do
 
   scope "/api/rehmed" do
     pipe_through :commands
-    forward "/", EhOsContract.Plug, contracts: [Rehmed.Contracts.VisitSettlement]
+
+    forward "/", EhOsContract.Plug,
+      contracts: [
+        Rehmed.Contracts.Scheduling,
+        Rehmed.Contracts.ClinicalDocumentation,
+        Rehmed.Contracts.StatutoryReporting,
+        Rehmed.Contracts.Settlement
+      ]
   end
 
   scope "/" do

@@ -3,9 +3,13 @@ defmodule Rehmed do
   The second client case, and the first one the engine did not grow up with.
 
   `lib/taxvision/` is here as a full application — schemas, handlers, a repo. This
-  tree is deliberately **only contracts**. Rehmed has no code in this repository
-  and may never have any; what it has is a modelled process, and the question this
-  tree answers is whether the DSL can carry it.
+  tree is **contracts and the code they need to run**: no screen and no real
+  integration. Until 26 September 2026 it was contracts only; since v2 a
+  contract's scenarios are tests, and a test needs an implementation to run
+  against, so each contract has one beside it (`Rehmed.Scheduling`,
+  `Rehmed.Settlement`, …): pure decisions and policies, one read model with its
+  table, and an effect that stands in for the P1 registry. The question the tree answers is unchanged: whether the
+  DSL can carry a modelled process.
 
   That makes it a different kind of evidence from `UniversalityGate`, which is an
   invented domain written by the author to prove the vocabulary needs no new words.

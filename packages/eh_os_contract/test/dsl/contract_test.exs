@@ -298,6 +298,10 @@ defmodule EhOsContract.Next.ContractTest do
       compile("""
       defmodule EhOsContract.Next.ContractTest.ClinicDomain do
         use EhOsContract.Domain, name: :clinic, language: :pl
+
+        actor :reception, :human, "Recepcja"
+        actor :manager, :human, "Menedżer"
+        actor :registry, :system, "Rejestr"
       end
 
       defmodule EhOsContract.Next.ContractTest.Named do
@@ -307,9 +311,15 @@ defmodule EhOsContract.Next.ContractTest do
 
         aggregate :visit, "Wizyta" do
           identity :visit_id
-          command :close, "Zamknięcie", by: [:reception, :manager], emits: :closed
+          command :close, "Zamknięcie", by: [:reception, :manager, :registry], emits: :closed
+          command :remind, "Przypomnienie", emits: :reminded
           event :closed, "Zamknięto", terminal: true
+          event :reminded, "Przypomniano"
+          event :arrived, "Przyszedł", recorded_by: :reception
+          event :reported, "Zgłoszono", recorded_by: :registry
         end
+
+        policy :remind_on_close, "Przypomnienie po zamknięciu", handles: :closed, issues: :remind
 
         process :visit, "Wizyta" do
           correlate :visit_id
@@ -326,11 +336,20 @@ defmodule EhOsContract.Next.ContractTest do
       end
       """)
 
+      # Only what a person may do is a capability, and its roles are the people's: the
+      # system actor is not a role of :close, and :remind (a reaction's) and :reported
+      # (the registry's) have none (plan, E9a review).
       assert Model.capabilities(EhOsContract.Next.ContractTest.Named) == %{
                "clinic.close" => %{
                  kind: :command,
                  name: :close,
                  roles: ["clinic.manager", "clinic.reception"],
+                 scope: nil
+               },
+               "clinic.arrived" => %{
+                 kind: :record,
+                 name: :arrived,
+                 roles: ["clinic.reception"],
                  scope: nil
                },
                "clinic.open_for_clinic" => %{

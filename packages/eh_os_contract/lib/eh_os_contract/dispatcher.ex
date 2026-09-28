@@ -145,10 +145,15 @@ defmodule EhOsContract.Dispatcher do
   Records `event`, which the contract declares `recorded_by:` — an observation, or
   an integration's answer — without a decision (v2 §11, D6).
 
-  Only a `:system` actor the event's `recorded_by:` names may record it. A
-  credential is refused with `:not_grantable`: EHOS grants commands and queries,
-  so no credential could carry a capability to record (v2 §11, the note of 26
-  September 2026). Otherwise it goes as a command does — the fields checked, the
+  A credential's actor is asked of the `EhOsContract.Authorizer` for the event's
+  capability, `<domain>.<event>` (`EhOsContract.Model.capabilities/1`), as a
+  command's is — a person who saw something, reception marking the patient's
+  arrival. An event only `:system` actors record has no capability, and a
+  credential is refused `:missing_capability`. A `:system` actor records it when the
+  event's `recorded_by:` names it: an integration writing down what a system
+  answered. Until E9a a credential was
+  refused, because no capability named a recording. Otherwise it goes as a command
+  does — the fields checked, the
   idempotency key honoured, the unit's stream version as the append's condition,
   the consumers in the transaction run, the `accepted` row written with the type
   `"record:<event>"` — only without a decider. An event of an aggregate whose
@@ -156,7 +161,7 @@ defmodule EhOsContract.Dispatcher do
   `{:error, :not_created}` otherwise.
   """
   @spec record(module(), struct(), keyword() | map()) ::
-          {:ok, Receipt.t()} | {:error, refusal() | :not_grantable | :not_created}
+          {:ok, Receipt.t()} | {:error, refusal() | :not_created}
   def record(contract, %module{} = event, opts) do
     model = model!(contract)
     declaration = recorded!(model, module)
@@ -261,10 +266,13 @@ defmodule EhOsContract.Dispatcher do
   # it was sent. Asked first, a caller without the capability learns nothing about
   # the declaration's fields, and every request is still one decision (v2 §11).
   @doc false
-  @spec permit_undecoded(Model.t(), :command | :query, map(), Actor.t(), map()) ::
+  @spec permit_undecoded(Model.t(), :command | :record | :query, map(), Actor.t(), map()) ::
           :ok | {:error, Authorizer.reason()}
   def permit_undecoded(model, :command, declaration, actor, _input),
     do: permit(model, declaration, actor)
+
+  def permit_undecoded(model, :record, declaration, actor, _input),
+    do: permit_record(model, declaration, actor)
 
   def permit_undecoded(model, :query, %{scope: nil} = declaration, actor, _input),
     do: permit_query(model, declaration, actor, nil)
@@ -280,7 +288,7 @@ defmodule EhOsContract.Dispatcher do
   end
 
   defp permit(model, declaration, %Actor{kind: :credential} = actor) do
-    Authorizer.run(actor, %Authorizer.Request{
+    ask(actor, %Authorizer.Request{
       kind: :command,
       capability: capability(model, :command, declaration.name),
       contract: model.module,
@@ -314,8 +322,14 @@ defmodule EhOsContract.Dispatcher do
             "of the domain — and got #{inspect(actor)}"
   end
 
-  defp permit_record(_model, _declaration, %Actor{kind: :credential}),
-    do: {:error, :not_grantable}
+  defp permit_record(model, declaration, %Actor{kind: :credential} = actor) do
+    ask(actor, %Authorizer.Request{
+      kind: :record,
+      capability: capability(model, :record, declaration.name),
+      contract: model.module,
+      version: model.version
+    })
+  end
 
   defp permit_record(model, declaration, %Actor{kind: :system, name: name}),
     do: named(model, declaration.recorded_by, name)
@@ -324,7 +338,7 @@ defmodule EhOsContract.Dispatcher do
   defp permit_record(model, declaration, actor), do: permit(model, declaration, actor)
 
   defp permit_query(model, declaration, %Actor{kind: :credential} = actor, scope) do
-    Authorizer.run(actor, %Authorizer.Request{
+    ask(actor, %Authorizer.Request{
       kind: :query,
       capability: capability(model, :query, declaration.name),
       contract: model.module,
@@ -412,6 +426,11 @@ defmodule EhOsContract.Dispatcher do
         &(&1.name == name and &1.kind == :system)
       )
   end
+
+  # A declaration no person may use has no capability (`Model.capabilities/1`), so
+  # no credential is granted it and none is asked about.
+  defp ask(_actor, %Authorizer.Request{capability: nil}), do: {:error, :missing_capability}
+  defp ask(actor, request), do: Authorizer.run(actor, request)
 
   defp capability(model, kind, name) do
     Enum.find_value(Model.capabilities(model), fn
