@@ -47,8 +47,8 @@ defmodule Rehmed.Settlement.VisitSettlement do
       when is_nil(payer) != is_nil(period),
       do: reject(:payer_visit_names_its_period)
 
-  # A visit no payer covers charges nobody. A mixed one is paid for the patient's part,
-  # which is its total, and charges the payer for the rest (`P-31`).
+  # A visit no payer covers charges nobody. A mixed one closes with the patient's part
+  # as its total, paid, and charges the payer for the rest (`P-31`).
   def close_settlement(%CloseSettlement{} = close, %State{payments: paid}) do
     %CloseSettlement{visit_id: id, total: total, payer_id: payer, period_id: period} = close
 

@@ -49,8 +49,10 @@ defmodule Rehmed.Contracts.ExternalPayers do
     run's period, as v1 found: a visit booked two months ahead can move.
   - **Restoring an excluded visit** (the mockup's restore), and a visit charged
     after its period was invoiced: settlement's fact cannot be refused here, so a
-    late close lands outside an invoiced period. Both are the next command, not a
-    new kind.
+    late close lands outside an invoiced period. Nor can a mark be undone, and a
+    month whose every charged visit was excluded has nothing to invoice and so
+    never ends; v1 had an ending for it, closed without invoice. Each is the next
+    command, not a new kind.
   - **`H47`**, whether reception clicks anything in the payer's panel after the
     visit: the mark stays, since without it the payer does not pay.
   - **`H38`**, seeing a LuxMed patient within seven days: unconfirmed, and it

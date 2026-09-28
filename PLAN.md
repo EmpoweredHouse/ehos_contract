@@ -1729,7 +1729,7 @@ odpowiedzi (7), bez efektu (8), każda deklaracja ma `source:` (9).
 W przeglądarce (baza dev, preview `eh_os_contract_host`): mapa kontekstów z płatnikami i systemem płatnika, proces
 `payer_settlement` z trzema etapami, żadna etykieta nie wystaje.
 
-**Przegląd E9b** (dwa równolegle na `origin/main..baf42b1`). Sandbox 95 → **99** testów, `check` bez zmian (0 / 24 / 8).
+**Przegląd E9b** (dwa równolegle na `origin/main..baf42b1`, potem dwa na poprawkach `baf42b1..a7cae84`). Sandbox 95 → **99** testów, `check` bez zmian (0 / 24 / 8).
 
 *Poprawione przez asystenta, z testem i próbą odwrotną:*
 - **`ExternalPayers` nie był za drzwiami hosta** (`6d7478d`): trzy uprawnienia bez wejścia, a test D-34 zielony, bo
@@ -1743,7 +1743,13 @@ W przeglądarce (baza dev, preview `eh_os_contract_host`): mapa kontekstów z p�
 - **`reset!` repo z commitami** (`66f8a3c`) kończył się `MatchError`, gdy inny przebieg trzymał bazę; teraz mówi
   dlaczego. Pula 20 → 12: brama dostała `too_many_connections`, gdy inny worktree puszczał testy silnika (Postgres ma
   100 połączeń, repo z commitami silnika bierze 60).
-- **Wizyta mieszana** (`52b9a86`): komentarz nie mówił, że `total` to część pacjenta; jest scenariusz `P-31`.
+- **Wizyta mieszana** (`52b9a86`, dopięte po drugim przeglądzie): scenariusz `P-31` z dodaną usługą, przekazaniem i
+  płatnością pacjenta. **`total` znaczy dwie rzeczy** — przy płatnościach to ich suma (przy wizycie mieszanej część
+  pacjenta), bez płatności cena, którą pokrywa ktoś inny; komentarz mówi teraz oba, a kształt jest z E9a
+  (`visit_closed_without_payment` niesie pełną cenę). Kto czyta `total` jako wartość wizyty, zaniży każdą mieszaną.
+- **Jedna nazwa bazy z commitami dla wszystkich worktree** (`b327225`, drugi przegląd): dwa nakładające się przebiegi
+  łamały się nawzajem (drop między create a migrate drugiego, te same płatnicy z `System.unique_integer` w dwóch VM);
+  baza nazywa się teraz według checkoutu.
 
 *Pominięte, jako ustalenia:*
 - **Plan sprawdzenia konfliktu bez statystyk** (ustalenie 1 wyżej) — skasowanie indeksu `(type)` to migracja, którą
@@ -1761,6 +1767,9 @@ W przeglądarce (baza dev, preview `eh_os_contract_host`): mapa kontekstów z p�
   równoległym zamknięciem wizyty tego płatnika w tym miesiącu, a dispatch ponawia trzy razy — test obciążenia
   potrzebuje własnego ponawiania. `consults` jest per boundary, nie per komenda; do rozważenia w bibliotece.
 - Stan jako listy, nie zbiory — po niezmienniku bez duplikatów, rozmiar to liczba wizyt płatnika w miesiącu.
+- **Oznaczenia nie da się cofnąć, a miesiąc z samymi wykluczeniami się nie kończy** (drugi przegląd): pomyłkowo
+  oznaczona wizyta trafi na fakturę, a okres bez oznaczonej wizyty nie ma faktury ani innego zakończenia (v1 miał
+  „zamknięto okres bez faktury”). Obie to następne komendy, nie nowy rodzaj — zapisane w moduledocu.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
