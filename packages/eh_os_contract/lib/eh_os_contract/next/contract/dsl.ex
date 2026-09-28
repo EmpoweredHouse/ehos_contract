@@ -45,7 +45,7 @@ defmodule EhOsContract.Next.Contract.Dsl do
 
   defmodule Command do
     @moduledoc false
-    defstruct [:name, :label, :source, by: [], emits: [], rejects: [], fields: []] ++
+    defstruct [:name, :label, :source, :scope, by: [], emits: [], rejects: [], fields: []] ++
                 [constraints: [], creates: false, __spark_metadata__: nil]
   end
 
@@ -356,6 +356,11 @@ defmodule EhOsContract.Next.Contract.Dsl do
         default: false,
         doc:
           "Whether it creates the aggregate, which the library then gives its generated identity."
+      ],
+      scope: [
+        type: :atom,
+        doc:
+          "The field a grant narrows it to: a field of the command, and a scope of every actor in `by:`."
       ],
       source: [type: :string, doc: "Where the command comes from in the material."]
     ]

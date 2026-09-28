@@ -30,6 +30,96 @@ defmodule EhOsContract.Next.ContractBoundariesTest do
     end
   """
 
+  describe "D10: a command narrowed by its scope (plan E9c)" do
+    test "no by:, a scope that is not one of its fields, and an optional one" do
+      message =
+        refuse_contract("CommandScopeWrong", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+
+            command :close_visit, "Zamknięcie", emits: :visit_closed, scope: :visit_id
+
+            command :bill_visit, "Rozliczenie", by: :reception, emits: :visit_closed,
+              scope: :clinic_id
+
+            command :move_visit, "Przeniesienie", by: :reception, emits: :visit_closed,
+              scope: :clinic_id do
+              field :clinic_id, :id, optional: true
+            end
+
+            event :visit_closed, "Wizyta zamknięta", terminal: true
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      assert message =~
+               "D10: command :close_visit is scoped by :visit_id, and names no by:, so no grant " <>
+                 "could carry its scope (command_scope_wrong.ex:7)"
+
+      assert message =~
+               "D10: command :bill_visit is scoped by :clinic_id, which is not one of its fields " <>
+                 "(command_scope_wrong.ex:9)"
+
+      assert message =~
+               "D10: command :move_visit is scoped by :clinic_id, which it declares optional; a " <>
+                 "grant cannot narrow a missing value (command_scope_wrong.ex:12)"
+    end
+
+    test "F7: a command's scope field is not personal" do
+      message =
+        refuse_contract("CommandScopePersonal", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+
+            command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed,
+              scope: :patient_name do
+              field :patient_id, :id, subject: :patient
+              field :patient_name, :string, personal: :patient_id
+            end
+
+            event :visit_closed, "Wizyta zamknięta", terminal: true
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      assert message =~
+               "F7: command :close_visit, field :patient_name is personal, and it is the " <>
+                 "command's scope, whose value is written with every authorization decision"
+    end
+
+    test "control: scoped by its identity, and by a declared field" do
+      model =
+        compile_contract("CommandScopeRight", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+
+            command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed,
+              scope: :visit_id
+
+            command :move_visit, "Przeniesienie", by: :reception, emits: :visit_closed,
+              scope: :clinic_id do
+              field :clinic_id, :id
+            end
+
+            event :visit_closed, "Wizyta zamknięta", terminal: true
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      scopes = Map.new(model.commands, &{&1.name, Map.get(&1, :scope)})
+      assert scopes == %{close_visit: :visit_id, move_visit: :clinic_id}
+    end
+  end
+
   describe "D10: a query is a capability, narrowed by its scope" do
     test "no by:, and a scope missing from the row, from the params, or of another type" do
       message =

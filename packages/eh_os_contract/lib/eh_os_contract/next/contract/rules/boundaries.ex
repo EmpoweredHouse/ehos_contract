@@ -7,6 +7,9 @@ defmodule EhOsContract.Next.Contract.Rules.Boundaries do
   - A query names `by:`; nobody could be granted one that does not.
   - Its `scope` is a field of the read model it reads and a parameter of the query,
     of the same type.
+  - A command's `scope` (plan E9c) is one of its fields, its unit's identity or
+    declared, and required; and the command names `by:`, since no grant to a
+    reaction could carry it.
 
   **D11, an event leaves only through `publish`.**
   - `from:` is an event of this contract, and `fields:` are some of its fields,
@@ -18,7 +21,7 @@ defmodule EhOsContract.Next.Contract.Rules.Boundaries do
     `as:`, and lists the fields it reads; it lists no events, since the name is one.
 
   Two checks of the same decisions need the domain, and a Mix compiler has it (L3):
-  that every actor in a query's `by:` declares its scope, and that a publication's
+  that every actor in a scoped query's or command's `by:` declares its scope, and that a publication's
   name is under the application's own namespace.
   """
 
@@ -42,6 +45,7 @@ defmodule EhOsContract.Next.Contract.Rules.Boundaries do
 
     Enum.concat([
       Enum.flat_map(declarations.queries, &query(&1, read_models)),
+      for(u <- declarations.units, c <- u.commands, v <- command(c, u), do: v),
       Enum.flat_map(declarations.publishes, &publish(&1, events, identity, unit_of)),
       shared_names(declarations.publishes),
       for(%{from: from} = c <- declarations.consumes, is_binary(from), v <- published(c), do: v)
@@ -88,6 +92,30 @@ defmodule EhOsContract.Next.Contract.Rules.Boundaries do
       end
 
     by ++ scope
+  end
+
+  defp command(%{scope: nil}, _unit), do: []
+
+  defp command(command, unit) do
+    where = "D10: command #{inspect(command.name)} is scoped by #{inspect(command.scope)}"
+    declared = Enum.find(command.fields, &(&1.name == command.scope))
+
+    cond do
+      command.by == [] ->
+        [{"#{where}, and names no by:, so no grant could carry its scope", command}]
+
+      command.scope in List.wrap(unit.identity) ->
+        []
+
+      declared == nil ->
+        [{"#{where}, which is not one of its fields", command}]
+
+      declared.optional ->
+        [{"#{where}, which it declares optional; a grant cannot narrow a missing value", command}]
+
+      true ->
+        []
+    end
   end
 
   defp publish(publish, events, identity, unit_of) do

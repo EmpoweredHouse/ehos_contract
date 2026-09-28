@@ -11,7 +11,7 @@ defmodule EhOsContract.PlugTest do
 
   alias EhOsContract.{Actor, Event}
 
-  @opts EhOsContract.Plug.init(contracts: [DispatchRig.Ledger])
+  @opts EhOsContract.Plug.init(contracts: [DispatchRig.Ledger, DispatchRig.Transfer])
   @query "dispatch_rig.balances_for_branch"
 
   @clerk Actor.credential(
@@ -164,6 +164,17 @@ defmodule EhOsContract.PlugTest do
     assert {outside.status, json(outside)} == {403, %{"refused" => "outside_scope"}}
   end
 
+  test "a scoped command is refused for a branch the credential does not grant" do
+    move = "dispatch_rig.move_account"
+    clerk = Actor.credential("u-1", [move], %{move => %{"branch_id" => ["b-7"]}})
+
+    outside = call(post("/commands/#{move}", %{account_id: "a-1", branch_id: "b-9"}), clerk)
+    assert {outside.status, json(outside)} == {403, %{"refused" => "outside_scope"}}
+
+    within = call(post("/commands/#{move}", %{account_id: "a-1", branch_id: "b-7"}), clerk)
+    assert within.status == 200
+  end
+
   describe "whether the caller may is answered before what is wrong with the request" do
     # Tells the test process about every question, so a request asked twice or not at
     # all shows. The plug runs in the test process under `Plug.Test`.
@@ -225,6 +236,16 @@ defmodule EhOsContract.PlugTest do
       valid = call(post("/commands/dispatch_rig.deposit", %{account_id: "a-1", amount: 1}))
       assert valid.status == 200
       assert asked() == [{"dispatch_rig.deposit", nil}], "asked once, by dispatch, as before"
+    end
+
+    test "a scoped command that does not decode is asked with the value as it was sent" do
+      move = "dispatch_rig.move_account"
+      clerk = Actor.credential("u-1", [move], %{move => %{"branch_id" => ["b-7"]}})
+
+      body = %{account_id: "a-1", branch_id: "b-9", extra: [1]}
+      undecoded = call(post("/commands/#{move}", Map.put(body, :account_id, 7)), clerk)
+      assert {undecoded.status, json(undecoded)} == {403, %{"refused" => "outside_scope"}}
+      assert asked() == [{move, {"branch_id", "b-9"}}]
     end
 
     test "a scoped query that does not decode is asked with the value as it was sent" do

@@ -498,6 +498,30 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
     end
   end
 
+  describe "D10: an actor issuing a scoped command carries its scope" do
+    test "an actor without the scope dimension" do
+      body =
+        @body
+        |> String.replace(
+          "rejects: :paid_once do\n      field :amount, :money",
+          "rejects: :paid_once, scope: :clinic_id do\n      field :clinic_id, :id\n      field :amount, :money"
+        )
+        |> String.replace(
+          ~s|%{amount: 100, patient_id: "p-1"}|,
+          ~s|%{amount: 100, patient_id: "p-1", clinic_id: "c-1"}|
+        )
+
+      violations = links("LinksCommandScope", body)
+
+      assert assert_linked(violations, "D10:", "links_command_scope.ex", 9) =~
+               "command :record_payment is scoped by :clinic_id, and actor :cashier of " <>
+                 "#{inspect(@domain)} does not carry it"
+
+      # :reception carries it, which is the control.
+      assert length(violations) == 1
+    end
+  end
+
   describe "D11: a publication is named under the application's namespace" do
     test "a name under another application's" do
       violations =

@@ -36,6 +36,11 @@ What changes otherwise is what a host has to do.
 
 ### Changed — a host has to act
 
+- **E9c: a command may be scoped, as a query is (D10).** `command :x, "…", by: :actor, scope: :field` names one
+  of its fields; `EhOsContract.Model.capabilities/1` gives the command's capability that `scope:` instead of
+  `nil`, and dispatch — and `EhOsContract.Plug` — ask the `Authorizer` with the field's value. A credential
+  granted a scoped command without values for its dimension is refused `:unscoped_grant`, as for a query, so a
+  host granting one has to send the values (`scp`).
 - **E9a: an event a contract records has a capability, and a credential records with it.**
   `EhOsContract.Model.capabilities/1` gives each event declaring `recorded_by:` the capability
   `<domain>.<event>`, kind `:record`, with the roles of its `recorded_by:` actors; `EhOsContract.record/3` asks

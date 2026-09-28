@@ -24,7 +24,8 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
     type that holds personal data; a copy on a broker cannot be erased.
   - **D10.** Every actor in a scoped query's `by:` carries the query's `scope` as a
     scope dimension, `actor :reception, :human, "…", scope: [:clinic_id]`, since a
-    grant to that actor carries the values the answer is narrowed to.
+    grant to that actor carries the values the answer is narrowed to. The same for a
+    scoped command's `by:` (plan E9c): the grant carries what it may be issued for.
   - **D11.** A `publish` is named under the application's namespace, the domain's
     `name:`: `"rehmed.visit.closed.v1"` in the domain `:rehmed`.
   """
@@ -262,16 +263,31 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
   defp scopes(%{declarations: d, domain: domain}) do
     known = Map.new(domain.actors, &{&1.name, &1})
 
-    for query <- d.queries,
-        query.scope != nil,
-        name <- query.by,
-        {:ok, actor} <- [Map.fetch(known, name)],
-        query.scope not in actor.scope do
-      {"D10: query #{inspect(query.name)} is scoped by #{inspect(query.scope)}, and actor " <>
-         "#{inspect(name)} of #{inspect(domain.module)} does not carry it, so no grant to it " <>
-         "could say which rows it may read; declare it with scope: [#{inspect(query.scope)}]",
-       Links.at(query)}
-    end
+    queries =
+      for query <- d.queries,
+          query.scope != nil,
+          name <- query.by,
+          {:ok, actor} <- [Map.fetch(known, name)],
+          query.scope not in actor.scope do
+        {"D10: query #{inspect(query.name)} is scoped by #{inspect(query.scope)}, and actor " <>
+           "#{inspect(name)} of #{inspect(domain.module)} does not carry it, so no grant to it " <>
+           "could say which rows it may read; declare it with scope: [#{inspect(query.scope)}]",
+         Links.at(query)}
+      end
+
+    commands =
+      for command <- Rules.commands(d),
+          command.scope != nil,
+          name <- command.by,
+          {:ok, actor} <- [Map.fetch(known, name)],
+          command.scope not in actor.scope do
+        {"D10: command #{inspect(command.name)} is scoped by #{inspect(command.scope)}, and " <>
+           "actor #{inspect(name)} of #{inspect(domain.module)} does not carry it, so no grant " <>
+           "to it could say what it may be issued for; declare it with " <>
+           "scope: [#{inspect(command.scope)}]", Links.at(command)}
+      end
+
+    queries ++ commands
   end
 
   defp namespaces(%{declarations: d, domain: domain}) do

@@ -1611,6 +1611,13 @@ layers; and [identity seam](identity-seam.md) — ESDM's actors are roles, not i
   needs it.
 - Whether commands get `scope` as queries do (D10). The TaxVision material has the case
   (`actor_company == company_id`, `PLAN.md` 22 September, step C).
+  > **28 September 2026, E9c — answered.** They do, the user's choice of 27 September (plan, "Po E8 —
+  > kolejność zmieniona"): `command :open_month, "…", by: :accountant, scope: :company_id`. The scope is one
+  > of the command's fields — its unit's identity or declared, and required; the command names `by:`; every
+  > actor in `by:` carries the dimension; the field is not personal (F7). Dispatch asks the `Authorizer`
+  > with the field's value, as it asks for a scoped query, and `EhOsContract.Plug` asks with the value as it
+  > was sent when a command does not decode. `Model.capabilities/1` gives the command its `scope:`. What it
+  > still does not do is what query `scope` does not: one field, equality against granted values.
 - What carries a message between two containers in EHOS's v1, where `eh-os` D-03 names "an in-process relay":
   only EHOS can answer, and only the `Bus` adapter depends on it.
 - The shape of the API EHOS will read: `Model.to_data/1` gets a named schema in E10; transport and versioning of

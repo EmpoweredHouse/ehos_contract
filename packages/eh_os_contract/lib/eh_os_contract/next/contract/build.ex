@@ -130,6 +130,8 @@ defmodule EhOsContract.Next.Contract.Build do
     command
     |> plain()
     |> then(&if command.creates, do: &1, else: Map.delete(&1, :creates))
+    # Kept only where it is set, for the same reason (plan E9c).
+    |> then(&if command.scope, do: &1, else: Map.delete(&1, :scope))
     |> without_empty(:constraints)
     |> Map.merge(%{unit: unit.name, fields: identity ++ plain(command.fields)})
   end
