@@ -68,6 +68,48 @@ defmodule EhOsContract.Next.ContractBoundariesTest do
                  "grant cannot narrow a missing value (command_scope_wrong.ex:12)"
     end
 
+    test "a scope is one value, and not an identity the library generates" do
+      message =
+        refuse_contract("CommandScopeShape", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id, generated: :uuid
+
+            command :book_visit, "Rezerwacja", by: :reception, emits: :visit_booked,
+              creates: true, scope: :visit_id
+
+            command :move_visit, "Przeniesienie", by: :reception, emits: :visit_booked,
+              scope: :clinic_ids do
+              field :clinic_ids, {:list, :id}
+            end
+
+            event :visit_booked, "Wizyta zarezerwowana"
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+
+          read_model :visits, "Wizyty", projects: :visit_booked do
+            field :clinic_ids, {:list, :id}
+          end
+
+          query :by_clinics, "Według przychodni", reads: :visits, by: :reception do
+            param :clinic_ids, {:list, :id}
+            scope :clinic_ids
+          end
+        """)
+
+      assert message =~
+               "D10: command :book_visit is scoped by :visit_id, the identity the library " <>
+                 "generates, which the command that creates the aggregate arrives without"
+
+      assert message =~
+               "D10: command :move_visit is scoped by :clinic_ids, a {:list, :id}; a scope is one value"
+
+      assert message =~
+               "D10: query :by_clinics is scoped by :clinic_ids, a {:list, :id}; a scope is one value"
+    end
+
     test "F7: a command's scope field is not personal" do
       message =
         refuse_contract("CommandScopePersonal", """

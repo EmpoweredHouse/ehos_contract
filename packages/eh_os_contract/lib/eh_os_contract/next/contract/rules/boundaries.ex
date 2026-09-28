@@ -9,7 +9,11 @@ defmodule EhOsContract.Next.Contract.Rules.Boundaries do
     of the same type.
   - A command's `scope` (plan E9c) is one of its fields, its unit's identity or
     declared, and required; and the command names `by:`, since no grant to a
-    reaction could carry it.
+    reaction could carry it. A generated identity is no scope: a command that
+    creates its aggregate arrives without it.
+  - A scope, a query's or a command's, is one value: not a list, whose elements
+    would be compared with a grant as one string. A value made of fields is the
+    domain's to see (L3).
 
   **D11, an event leaves only through `publish`.**
   - `from:` is an event of this contract, and `fields:` are some of its fields,
@@ -86,6 +90,9 @@ defmodule EhOsContract.Next.Contract.Rules.Boundaries do
                    "model and a #{inspect(param.type)} param", query}
               ]
 
+            match?({:list, _}, param.type) ->
+              [{"#{where} is scoped by #{inspect(scope)}, #{list(param.type)}", query}]
+
             true ->
               []
           end
@@ -104,6 +111,12 @@ defmodule EhOsContract.Next.Contract.Rules.Boundaries do
       command.by == [] ->
         [{"#{where}, and names no by:, so no grant could carry its scope", command}]
 
+      command.scope in List.wrap(unit.identity) and command.creates and unit.generated != nil ->
+        [
+          {"#{where}, the identity the library generates, which the command that creates the " <>
+             "aggregate arrives without", command}
+        ]
+
       command.scope in List.wrap(unit.identity) ->
         []
 
@@ -113,10 +126,18 @@ defmodule EhOsContract.Next.Contract.Rules.Boundaries do
       declared.optional ->
         [{"#{where}, which it declares optional; a grant cannot narrow a missing value", command}]
 
+      match?({:list, _}, declared.type) ->
+        [{"#{where}, #{list(declared.type)}", command}]
+
       true ->
         []
     end
   end
+
+  defp list(type),
+    do:
+      "a #{inspect(type)}; a scope is one value, and a list's elements would be compared " <>
+        "with the grant as one string"
 
   defp publish(publish, events, identity, unit_of) do
     where = "D11: publication #{inspect(publish.name)}"

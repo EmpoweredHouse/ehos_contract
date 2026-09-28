@@ -387,8 +387,16 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
              ) =~
                "it is the query's scope, whose value is written with every authorization decision"
 
+      # Since E9c the same scope is also refused for being made of fields (D10).
+      assert_linked(
+        violations,
+        "D10: query :payments_in_clinic is scoped by :clinic_id, a :contact made of fields",
+        "links_personal_values.ex",
+        38
+      )
+
       # :amount is of :money, which holds nothing personal: the control.
-      assert length(violations) == 4
+      assert length(violations) == 5
     end
   end
 
@@ -519,6 +527,29 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
 
       # :reception carries it, which is the control.
       assert length(violations) == 1
+    end
+
+    test "a scope typed by a value made of fields" do
+      command = """
+          command :contact_patient, "Kontakt", by: :reception, emits: :payment_recorded,
+            scope: :contact do
+            field :contact, :contact
+          end
+
+          command :record_payment,\
+      """
+
+      body = String.replace(@body, "    command :record_payment,", command, global: false)
+      assert body != @body
+
+      violations = links("LinksCompositeScope", body)
+
+      assert Enum.any?(violations, fn %{message: message} ->
+               message =~
+                 "D10: command :contact_patient is scoped by :contact, a :contact made of fields; " <>
+                   "a scope is one value"
+             end),
+             inspect(violations)
     end
   end
 

@@ -287,7 +287,25 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
            "scope: [#{inspect(command.scope)}]", Links.at(command)}
       end
 
-    queries ++ commands
+    # A scope is one value compared with a grant as a string, so a value made of
+    # fields cannot be one (plan E9c): it would reach the check as a map.
+    values = Map.new(domain.values, &{&1.name, &1})
+
+    composite =
+      for {kind, name, scope, fields} <- scoped_fields(d),
+          field = Enum.find(fields, &(&1.name == scope)),
+          field != nil,
+          %{type: nil} <- [Map.get(values, field.type)] do
+        {"D10: #{kind} #{inspect(name)} is scoped by #{inspect(scope)}, a #{inspect(field.type)} " <>
+           "made of fields; a scope is one value", Links.at(field)}
+      end
+
+    queries ++ commands ++ composite
+  end
+
+  defp scoped_fields(d) do
+    for(q <- d.queries, q.scope != nil, do: {"query", q.name, q.scope, q.params}) ++
+      for c <- Rules.commands(d), c.scope != nil, do: {"command", c.name, c.scope, c.fields}
   end
 
   defp namespaces(%{declarations: d, domain: domain}) do
