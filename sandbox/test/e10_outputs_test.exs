@@ -61,6 +61,66 @@ defmodule EhOsContractHost.E10OutputsTest do
   end
 
   @tag :tmp_dir
+  test "the manifest task writes TaxVision's current command authority", %{tmp_dir: dir} do
+    path = Path.join(dir, "taxvision.json")
+    Mix.Task.reenable("eh_os_contract.manifest")
+
+    output =
+      capture_io(fn ->
+        Mix.Tasks.EhOsContract.Manifest.run(["--domain", "taxvision", "--output", path])
+      end)
+
+    assert output =~ "written: #{path}"
+
+    assert Jason.decode!(File.read!(path)) == %{
+             "schema" => "ehos.manifest/v1",
+             "application" => "taxvision",
+             "capabilities" => [
+               %{
+                 "name" => "taxvision.complete_company_profile",
+                 "command" => "complete_company_profile",
+                 "label" => "Uzupełnij profil firmy",
+                 "process" => "client",
+                 "principals" => ["human"]
+               },
+               %{
+                 "name" => "taxvision.ingest_bank_statement",
+                 "command" => "ingest_bank_statement",
+                 "label" => "Wgraj wyciąg bankowy",
+                 "process" => "accounting_month",
+                 "principals" => ["human"]
+               },
+               %{
+                 "name" => "taxvision.open_month",
+                 "command" => "open_month",
+                 "label" => "Otwórz miesiąc księgowy",
+                 "process" => "accounting_month",
+                 "principals" => ["human"]
+               },
+               %{
+                 "name" => "taxvision.retrigger_verification",
+                 "command" => "retrigger_verification",
+                 "label" => "Ponów weryfikację",
+                 "process" => "client",
+                 "principals" => ["human"]
+               }
+             ],
+             "roles" => [
+               %{
+                 "name" => "taxvision.accountant",
+                 "label" => "Księgowa",
+                 "capabilities" => [
+                   "taxvision.complete_company_profile",
+                   "taxvision.ingest_bank_statement",
+                   "taxvision.open_month",
+                   "taxvision.retrigger_verification"
+                 ]
+               }
+             ]
+           }
+  end
+
+  @tag :tmp_dir
   test "the system graph connects TaxVision's contexts, contracts and publication", %{
     tmp_dir: dir
   } do

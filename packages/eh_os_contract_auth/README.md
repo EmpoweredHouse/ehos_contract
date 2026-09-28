@@ -9,9 +9,10 @@ The engine verifies nothing: it asks an `EhOsContract.Authorizer` what a credent
 do, and this package is the implementation for EHOS's credentials (contract v2 §16, D14; `eh-os`
 D-33, D-34). The engine does not depend on it.
 
-Four parts: `EhOsContract.Auth.verify/2` and the key store behind it, `EhOsContract.Auth` as the
+Five parts: `EhOsContract.Auth.verify/2` and the key store behind it, `EhOsContract.Auth` as the
 engine's `Authorizer` with a row for every decision, `EhOsContract.Auth.Plug` for a bearer token in
-front of `EhOsContract.Plug`, and `EhOsContract.Auth.Testing` for a host's tests.
+front of `EhOsContract.Plug`, `mix eh_os_contract.manifest` for EHOS's application manifest, and
+`EhOsContract.Auth.Testing` for a host's tests.
 
 ## Installation
 
@@ -60,6 +61,22 @@ EhOsContract.Auth.verify(token)
 #=> {:ok, %EhOsContract.Actor{kind: :credential, subject: "u-81", capabilities: ..., scopes: ...}}
 #   | {:error, :expired | :unknown_key | :bad_signature | :wrong_audience | :wrong_issuer | :no_keys}
 ```
+
+## Generating the EHOS application manifest
+
+At build time, write the authority EHOS will version:
+
+```bash
+mix eh_os_contract.manifest --output ehos.manifest.json
+# Add --domain taxvision when the host registers more than one domain.
+```
+
+The task reads the v2 contracts registered through `config :eh_os_contract, applications:` and emits
+strict `ehos.manifest/v1`: human command capabilities and the human actors that hold at least one of
+them as roles. It deliberately omits system actors, actors with no command capability, queries,
+recordings, scopes, publications and private metadata. Manifest v1 has no fields for those, and EHOS
+rejects unknown fields; they need the later EHOS schema rather than an extension invented by this
+package.
 
 ## Deciding, and recording every decision
 
