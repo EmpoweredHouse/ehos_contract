@@ -5,6 +5,17 @@ config :eh_os_contract_host, Taxvision.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: 10
 
+# A second database for the tests the sandbox cannot host: dispatches racing over
+# one consistency boundary need real commits (`Taxvision.CommitRepo`, which
+# `test_helper.exs` creates afresh before every run).
+config :eh_os_contract_host, Taxvision.CommitRepo,
+  username: "eh_os",
+  password: "eh_os",
+  hostname: "localhost",
+  port: 5433,
+  database: "eh_os_contract_host_test_commits",
+  pool_size: 20
+
 # Jobs do not run by themselves. The tests check that a job was inserted in the
 # same transaction, and run it explicitly.
 config :eh_os_contract_host, Oban, testing: :manual
