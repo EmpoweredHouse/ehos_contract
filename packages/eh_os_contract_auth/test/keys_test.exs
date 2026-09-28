@@ -12,6 +12,8 @@ defmodule EhOsContract.Auth.KeysTest do
   alias EhOsContract.Auth
   alias EhOsContract.Auth.Keys
 
+  import ExUnit.CaptureLog, only: [with_log: 1]
+
   test "a key removed from the JWKS is refused after the next refresh" do
     kept = key_pair()
     removed = key_pair()
@@ -115,6 +117,77 @@ defmodule EhOsContract.Auth.KeysTest do
 
       assert_received {:transport, options}
       assert options[:timeout] == 30_000
+    end
+  end
+
+  # A real socket, not a plug: the step this guards against is Finch's, whose
+  # receive timeout starts again with every read. A byte a second never trips the
+  # three-second one, so only the deadline can end this fetch.
+  test "an EHOS that trickles its answer holds a fetch for five seconds, not longer" do
+    pair = key_pair()
+
+    Repo.insert_all("eh_os_contract_auth_keys", [
+      %{kid: pair.kid, jwk: pair.public, fetched_at: DateTime.utc_now()}
+    ])
+
+    url = "http://127.0.0.1:#{trickling_ehos()}/jwks.json"
+
+    {elapsed, {keys, log}} =
+      :timer.tc(
+        fn -> with_log(fn -> start_keys(nil, url: url, req_options: []) end) end,
+        :millisecond
+      )
+
+    assert log =~ "(:timeout)"
+    assert_received {:trickled, _byte}
+    assert elapsed >= 5_000 and elapsed < 6_000, "took #{elapsed} ms"
+
+    # A failed fetch like any other: the key from the table stays in force.
+    assert {:ok, _} = Auth.verify(credential(pair), keys: keys)
+  end
+
+  test "an exit inside the request is a failed fetch, not a crash of the key process" do
+    pair = key_pair()
+    ehos = ehos({:keys, [pair]})
+    stop_supervised!(start_keys(ehos))
+
+    # A Finch pool that times out exits rather than raises; so does this adapter.
+    exiting = [adapter: fn _request -> exit(:pool_timeout) end]
+    keys = start_keys(ehos, req_options: exiting)
+
+    assert {:error, {:exit, :pool_timeout}} = Keys.refresh(keys)
+    assert {:ok, _} = Auth.verify(credential(pair), keys: keys)
+  end
+
+  # Accepts one fetch, answers with headers promising a body, and sends it a byte a
+  # second until the fetch hangs up; tells the test of every byte it sent.
+  defp trickling_ehos do
+    test = self()
+    {:ok, listen} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
+    {:ok, port} = :inet.port(listen)
+
+    spawn_link(fn ->
+      {:ok, socket} = :gen_tcp.accept(listen)
+      {:ok, _request} = :gen_tcp.recv(socket, 0)
+
+      :ok =
+        :gen_tcp.send(
+          socket,
+          "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: 1000\r\n\r\n"
+        )
+
+      trickle(socket, test)
+    end)
+
+    port
+  end
+
+  defp trickle(socket, test) do
+    Process.sleep(1_000)
+
+    with :ok <- :gen_tcp.send(socket, " ") do
+      send(test, {:trickled, " "})
+      trickle(socket, test)
     end
   end
 

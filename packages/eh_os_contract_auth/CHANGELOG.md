@@ -32,3 +32,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   an internal certificate authority (`transport_opts: [cacertfile: …]`) no longer drops the fetch's
   connect timeout to Mint's thirty seconds. A `timeout:` given there, or inside `transport_opts`,
   still replaces it, and `connect_options: nil` is read as none.
+- **A key set fetch that has not finished in five seconds is a failed fetch**, whatever
+  `:req_options` say. Before, the request timeouts bounded each step but not the fetch, so an
+  endpoint sending a byte every few seconds held the key process indefinitely: the scheduled
+  refresh stopped, and every credential with an unknown `kid` waited the full ten seconds. The
+  deadline is not configurable. An exit inside the request is now a failed fetch too, not a crash
+  of the key process.
