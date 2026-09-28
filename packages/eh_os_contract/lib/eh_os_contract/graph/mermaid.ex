@@ -129,6 +129,15 @@ defmodule EhOsContract.Graph.Mermaid do
   @spec escape(String.t()) :: String.t()
   def escape(label), do: label |> String.replace(~s("), "'") |> String.replace(~r/\R/, " ")
 
+  @doc "A node of `kind` named `name`, with its label or, lacking one, its name."
+  @spec graph_node(atom(), atom(), String.t() | nil) :: graph_node()
+  def graph_node(kind, name, label),
+    do: %{id: id(kind, name), kind: kind, name: name, label: label || Atom.to_string(name)}
+
+  @doc "The id of the node of `kind` named `name`, which edges and groups join on."
+  @spec id(atom(), atom()) :: String.t()
+  def id(kind, name), do: "#{kind}_#{name}"
+
   @doc "`1 run`, `3 runs`."
   @spec runs(non_neg_integer()) :: String.t()
   def runs(1), do: "1 run"

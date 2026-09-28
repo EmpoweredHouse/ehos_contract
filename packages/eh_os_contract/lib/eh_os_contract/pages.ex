@@ -756,8 +756,8 @@ defmodule EhOsContract.Pages do
 
     [
       facts(["Identity: #{Enum.map_join(u.identity, ", ", &code/1)}."]),
-      # The unit as a picture (plan EG1). GitHub draws the block; ExDoc needs Mermaid's
-      # script in `before_closing_body_tag`.
+      # The unit as a picture (plan EG1). GitHub draws the block; a host that puts the
+      # pages in ExDoc's `extras` adds Mermaid's script to its ExDoc configuration.
       [
         "",
         "## Diagram",

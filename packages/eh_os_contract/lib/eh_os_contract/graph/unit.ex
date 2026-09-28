@@ -166,8 +166,6 @@ defmodule EhOsContract.Graph.Unit do
   defp enum_value({value, _label}), do: value
   defp enum_value(value), do: value
 
-  defp graph_node(kind, name, label),
-    do: %{id: id(kind, name), kind: kind, name: name, label: label || Atom.to_string(name)}
-
-  defp id(kind, name), do: "#{kind}_#{name}"
+  defp graph_node(kind, name, label), do: Mermaid.graph_node(kind, name, label)
+  defp id(kind, name), do: Mermaid.id(kind, name)
 end

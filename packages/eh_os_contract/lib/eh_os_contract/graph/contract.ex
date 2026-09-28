@@ -93,11 +93,9 @@ defmodule EhOsContract.Graph.Contract do
 
   defp graph_node(%{kind: kind, name: name, label: label}), do: graph_node(kind, name, label)
   defp graph_node(kind, %{name: name, label: label}), do: graph_node(kind, name, label)
+  defp graph_node(kind, name, label), do: Mermaid.graph_node(kind, name, label)
 
-  defp graph_node(kind, name, label),
-    do: %{id: id(kind, name), kind: kind, name: name, label: label || Atom.to_string(name)}
-
-  defp id(kind, name), do: "#{kind}_#{name}"
+  defp id(kind, name), do: Mermaid.id(kind, name)
   defp ids(nodes), do: Enum.map(nodes, & &1.id)
 
   # An event of this contract or of the one it consumes it from, with its label.

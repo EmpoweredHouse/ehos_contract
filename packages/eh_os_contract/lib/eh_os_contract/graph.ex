@@ -18,6 +18,7 @@ defmodule EhOsContract.Graph do
   import Ecto.Query
 
   alias EhOsContract.{Event, Model, Registry}
+  alias EhOsContract.Graph.Mermaid
 
   @no_traffic %{count: 0, instances: 0}
 
@@ -357,7 +358,7 @@ defmodule EhOsContract.Graph do
         # Occurrences and runs side by side on the diagram too. An occurrence
         # count alone in a picture is the same half-truth as in the text report,
         # and more people look at the picture.
-        suffix = if entry, do: " (#{entry.count}x, #{runs(entry.instances)})", else: ""
+        suffix = if entry, do: " (#{entry.count}x, #{Mermaid.runs(entry.instances)})", else: ""
         ~s(    #{event}["#{label}#{suffix}"])
       end
 
@@ -537,7 +538,7 @@ defmodule EhOsContract.Graph do
   end
 
   defp declared_lanes([], events) do
-    for e <- events, do: ~s(    #{e.name}["#{escape(e.label)}"])
+    for e <- events, do: ~s(    #{e.name}["#{Mermaid.escape(e.label)}"])
   end
 
   defp declared_lanes(stages, events) do
@@ -551,10 +552,10 @@ defmodule EhOsContract.Graph do
         body =
           case in_stage do
             [] -> [~s(        stage_#{stage}_empty[" "])]
-            _ -> for e <- in_stage, do: ~s(        #{e.name}["#{escape(e.label)}"])
+            _ -> for e <- in_stage, do: ~s(        #{e.name}["#{Mermaid.escape(e.label)}"])
           end
 
-        [~s(    subgraph stage_#{stage}["#{escape(lane_title(title, in_stage))}"])] ++
+        [~s(    subgraph stage_#{stage}["#{Mermaid.escape(lane_title(title, in_stage))}"])] ++
           body ++ ["    end"]
       end
 
@@ -609,7 +610,7 @@ defmodule EhOsContract.Graph do
     nodes =
       for name <- depended_on,
           label = external_label.(name),
-          do: ~s|    #{name}[("#{escape(label)}")]|
+          do: ~s|    #{name}[("#{Mermaid.escape(label)}")]|
 
     links = for e <- events, e.depends_on, do: "    #{e.name} -.- #{e.depends_on}"
 
@@ -653,10 +654,6 @@ defmodule EhOsContract.Graph do
   @spec unit_to_mermaid(module(), atom()) :: String.t()
   def unit_to_mermaid(contract, unit), do: EhOsContract.Graph.Unit.to_mermaid(contract, unit)
 
-  # A label is the client's own sentence and may hold anything they wrote. Only
-  # the double quote actually breaks a quoted mermaid node.
-  defp escape(label), do: String.replace(label, ~s("), "'")
-
   @doc "The overlay as one line per edge, for a terminal."
   @spec to_text([map()]) :: String.t()
   def to_text(overlay) do
@@ -680,10 +677,6 @@ defmodule EhOsContract.Graph do
       "  #{state} #{mode}  #{edge.from} -> #{edge.to}  (#{edge.count}x, #{traversals}#{queue})"
     end)
   end
-
-  @spec runs(non_neg_integer()) :: String.t()
-  defp runs(1), do: "1 run"
-  defp runs(n), do: "#{n} runs"
 
   @spec maybe_since(Ecto.Query.t(), DateTime.t() | nil) :: Ecto.Query.t()
   defp maybe_since(query, nil), do: query
