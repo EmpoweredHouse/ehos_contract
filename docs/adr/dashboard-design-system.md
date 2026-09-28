@@ -120,6 +120,24 @@ result with the stylesheet and script from before this change, so it is not caus
 not fixed by it either. Driver 4 holds for what the dashboard *loads*; it does not yet hold for what
 Mermaid *injects*. Recorded in `PLAN.md` as its own piece of work.
 
+> **28 September 2026, plan EG3 — fixed, with one thing left.** The hook draws with `mermaid.render` and
+> moves the returned SVG's `<style>` into a constructed stylesheet and each `style` attribute into
+> `element.style`; the CSSOM is not an inline style, and `default-src 'self'` does not refuse it (checked:
+> `element.style.cssText` applies with no violation, `setAttribute("style", …)` is blocked). The sandbox
+> host now serves EHOS's policy on the dashboard for good. On it the three diagrams draw with their colours
+> and layout as without the policy, no label overflows its node, and the status screen logs no violation.
+> **Left:** Mermaid's measuring pass sets inline styles on its scratch copy — through d3, `innerHTML` and
+> its shape code — and the policy blocks each: about 400 console lines for the sandbox's graph screen
+> (394, then 397 once `bindFunctions` is called), none changing what is drawn. Silencing them would mean patching Mermaid's DOM calls; redirecting
+> `setAttribute("style")` alone took 394 to 303, and SVG labels instead of HTML ones to 96 per diagram, so
+> neither was kept. The confirmation line below, "no CSP error", holds for the status screen, not the graph
+> screen. After review, the same day: each draw takes a new SVG id, since Mermaid removes the element
+> holding the id it draws — drawing the one on screen blanked it on every redraw, and left it blank when
+> drawing failed — and lays out its scratch copy in an off-screen box in the diagrams' font, so a first
+> draw measures labels as later ones do. `<`, `>` and `#` in a label are Mermaid entity codes
+> (`EhOsContract.Graph.Mermaid.escape/1`), so no label's text reaches the SVG as markup, and only
+> Mermaid's own stylesheet is taken from it.
+
 ## Confirmation
 
 `packages/eh_os_contract_web/test/design_system_test.exs`:

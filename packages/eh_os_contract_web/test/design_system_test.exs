@@ -140,6 +140,37 @@ defmodule EhOsContract.Web.DesignSystemTest do
     end
   end
 
+  # EHOS serves `default-src 'self'` (plan EG3), which refuses every inline style.
+  # What the server sends; the diagrams are drawn in the browser, and the test below is about them.
+  test "no page carries an inline style as the server sends it" do
+    for path <- ["/dashboard/contract", "/dashboard/graph"] do
+      document =
+        build_conn()
+        |> Access.put_actor("admin", ["eh_os_contract_admin"])
+        |> get(path)
+        |> html_response(200)
+        |> LazyHTML.from_document()
+
+      assert Enum.empty?(LazyHTML.query(document, "style")), "#{path}: a <style> element"
+      assert Enum.empty?(LazyHTML.query(document, "[style]")), "#{path}: a style attribute"
+    end
+  end
+
+  # What Mermaid returns carries a `<style>` and `style` attributes, which the policy blocks on
+  # the page; `mermaid.run` puts them there as they are. The hook draws with `render` and hands
+  # both to the CSSOM, which the policy leaves alone. The browser is where this is seen; this
+  # keeps the hook from going back.
+  test "the diagrams reach the page with their styles through the CSSOM, not inline" do
+    for path <- [@script, Path.join(@root, "priv/static/assets/app.js")] do
+      js = File.read!(path)
+
+      refute js =~ "mermaid.run(", "#{path} lets Mermaid put its styles on the page"
+      assert js =~ "mermaid.render(", path
+      assert js =~ "adoptedStyleSheets", path
+      assert js =~ ".style.cssText", path
+    end
+  end
+
   test "the nav marks the page being viewed, and only that page" do
     conn = Access.put_actor(build_conn(), "admin", ["eh_os_contract_admin"])
 

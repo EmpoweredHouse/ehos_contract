@@ -851,6 +851,10 @@ Store the last computed state per process rather than recomputing on page load.
   navigation unit. *Unimplemented as of 5 August, and it took a second contract to notice:* the graph module
   has no narrowing to a process or a contract, because it was written while only one contract existed and the
   assumption "there is only one" was invisible. A gap against this line, not a preference against it.
+  > **28 September 2026, plan EG2 and after:** the graph screen now also draws two pictures per *domain* —
+  > its context map and its system, contracts and what flows between them — above the per-process panels.
+  > They stay readable because their nodes are contexts and contracts, not events: a domain has a handful of
+  > each where a process has dozens of steps. Navigation inside a contract is still per process.
 - **Business labels beside technical names.** `invoice_issued` means nothing to an accountant. Satisfied for
   every declaration except the trace assertion, which has an identifier and no label — deliberately, since a
   label there would restate what the assertion already says in full and could then drift from it. The report

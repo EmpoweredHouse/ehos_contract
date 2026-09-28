@@ -1,13 +1,15 @@
 defmodule EhOsContract.Web.Live.Graph do
   @moduledoc """
-  Screen 3: the two Mermaid diagrams `mix eh_os_contract.graph` could already draw, now
-  live in the dashboard instead of dev-only CLI output — the second half of
-  a plan `packages/eh_os_contract/lib/mix/tasks/eh_os_contract.graph.ex`'s own moduledoc
-  called out from the start ("this is the seed of the dashboard"). See
-  PLAN.md, "23 sierpnia (10)" for why this was parked, then unparked.
+  Screen 3: the Mermaid diagrams `mix eh_os_contract.graph` draws, live in the
+  dashboard instead of dev-only CLI output — the second half of a plan
+  `packages/eh_os_contract/lib/mix/tasks/eh_os_contract.graph.ex`'s own moduledoc called
+  out from the start ("this is the seed of the dashboard"). See PLAN.md, "23 sierpnia
+  (10)" for why this was parked, then unparked. From the top: each domain's context
+  map and system, then the selected process's two panels, then its contract's units.
 
-  Two panels, asymmetric on purpose, per ADR §9 ("navigation is per-process,
-  never global"):
+  The process's two panels are asymmetric on purpose, per ADR §9 ("navigation is
+  per-process, never global"; the domain's pictures above them are a dated exception
+  there):
 
     * **Declared shape** — `EhOsContract.Graph.declared_to_mermaid/2`, scoped to
       whichever process the selector picks. The structural view: stages,
@@ -21,12 +23,23 @@ defmodule EhOsContract.Web.Live.Graph do
       engine work, not something this screen should paper over.
 
   **A v2 contract's process** (v2 plan, E7c) has its declared shape in the first
-  panel, as a v1 one does, and its steps with the log laid over them in the second
-  (`EhOsContract.Graph.steps_to_mermaid/2`), since a v2 contract is one process and
-  its overlay is that process's alone. The screen opens on a v2 process when there
-  is one.
+  panel, as a v1 one does, and in the second its contract's full graph with the log
+  laid over it (`EhOsContract.Graph.contract_to_mermaid/2`, plan EG1): the steps,
+  and the actors, read models, queries and external systems around them. A v2
+  contract is one process, so its overlay is that process's alone. The screen opens
+  on a v2 process when there is one.
 
-  Rendering is client-side, through `app.js`'s `MermaidRender` hook: both
+  **Above both, each domain** (plan EG2): its context map —
+  `EhOsContract.Graph.context_map_to_mermaid/1`, subdomains, contexts, externals and
+  their relations — and its system, the v2 contracts in their contexts, what one
+  consumes from another, and the log over it (`EhOsContract.Graph.system_to_mermaid/3`).
+  **Below both, the units** of the selected v2 process's contract, each its own
+  picture (`EhOsContract.Graph.unit_to_mermaid/2`): state, commands, events,
+  invariants and the scenarios that pin each path. The map and the units describe
+  the model rather than the log; they are here since 28 September at the user's
+  word, beside the pages `mix eh_os_contract.pages` writes (plan, "Przed EG").
+
+  Rendering is client-side, through `app.js`'s `MermaidRender` hook: every
   diagram strings reach the template as plain data in a `data-graph`
   attribute, never as trusted HTML — HEEx escapes them like any other
   interpolated value, and the hook reads the attribute back out before
@@ -51,8 +64,26 @@ defmodule EhOsContract.Web.Live.Graph do
 
     processes = Enum.sort_by(v1 ++ v2, & &1.label)
 
+    # Every registered domain has a map; one with a v2 contract has a system too.
+    by_domain =
+      Enum.group_by(EhOsContract.Registry.v2_contracts(), &EhOsContract.Model.fetch(&1).domain)
+
+    domains =
+      for domain <- EhOsContract.Registry.domains() do
+        contracts = Map.get(by_domain, domain, [])
+
+        %{
+          name: EhOsContract.Model.fetch(domain).name,
+          map: EhOsContract.Graph.context_map_to_mermaid(domain),
+          system:
+            contracts != [] &&
+              EhOsContract.Graph.system_to_mermaid(domain, contracts, overlay: true)
+        }
+      end
+
     socket =
       socket
+      |> assign(:domains, domains)
       |> assign(:processes, processes)
       |> assign(:every_contract, EhOsContract.Graph.overlay() |> EhOsContract.Graph.to_mermaid())
       # A v2 process first when there is one: it is what the screen has most to say
@@ -74,16 +105,28 @@ defmodule EhOsContract.Web.Live.Graph do
       selected: nil,
       declared_mermaid: nil,
       overlay_mermaid: socket.assigns.every_contract,
-      overlay_heading: nil
+      overlay_heading: nil,
+      units: []
     )
   end
 
   defp select_process(socket, %{v2: true} = process) do
+    units =
+      for unit <- EhOsContract.Model.fetch(process.contract).units do
+        %{
+          name: unit.name,
+          label: unit.label,
+          kind: unit.kind,
+          mermaid: EhOsContract.Graph.unit_to_mermaid(process.contract, unit.name)
+        }
+      end
+
     assign(socket,
       selected: key(process),
       declared_mermaid: EhOsContract.Graph.declared_to_mermaid(process.contract, process.name),
-      overlay_mermaid: EhOsContract.Graph.steps_to_mermaid(process.contract, overlay: true),
-      overlay_heading: "Declared versus observed, this process"
+      overlay_mermaid: EhOsContract.Graph.contract_to_mermaid(process.contract, overlay: true),
+      overlay_heading: "Declared versus observed, this process",
+      units: units
     )
   end
 
@@ -94,7 +137,8 @@ defmodule EhOsContract.Web.Live.Graph do
       selected: key(process),
       declared_mermaid: mermaid,
       overlay_mermaid: socket.assigns.every_contract,
-      overlay_heading: nil
+      overlay_heading: nil,
+      units: []
     )
   end
 
@@ -105,10 +149,34 @@ defmodule EhOsContract.Web.Live.Graph do
       <EhOsContract.Web.Layouts.nav base_path={@eh_os_contract_web_base_path} current={:graph} />
       <p class="access-badge">Access: {access_label(@eh_os_contract_web_access)}</p>
 
+      <%= for domain <- @domains do %>
+        <section>
+          <h3>Context map — domain {domain.name}</h3>
+          <pre
+            class="mermaid"
+            phx-hook="MermaidRender"
+          phx-update="ignore"
+            id={"map-graph-#{domain.name}"}
+            data-graph={domain.map}
+          ></pre>
+        </section>
+
+        <section :if={domain.system}>
+          <h3>The system, declared versus observed — domain {domain.name}</h3>
+          <pre
+            class="mermaid"
+            phx-hook="MermaidRender"
+          phx-update="ignore"
+            id={"system-graph-#{domain.name}"}
+            data-graph={domain.system}
+          ></pre>
+        </section>
+      <% end %>
+
       <section>
         <h3>Declared shape</h3>
 
-        <form :if={@processes != []} phx-change="select_process">
+        <form :if={@processes != []} id="process-select" phx-change="select_process">
           <select name="process">
             <option
               :for={process <- @processes}
@@ -126,6 +194,7 @@ defmodule EhOsContract.Web.Live.Graph do
           :if={@declared_mermaid}
           class="mermaid"
           phx-hook="MermaidRender"
+          phx-update="ignore"
           id="declared-graph"
           data-graph={@declared_mermaid}
         ></pre>
@@ -136,8 +205,20 @@ defmodule EhOsContract.Web.Live.Graph do
         <pre
           class="mermaid"
           phx-hook="MermaidRender"
+          phx-update="ignore"
           id="overlay-graph"
           data-graph={@overlay_mermaid}
+        ></pre>
+      </section>
+
+      <section :for={unit <- @units}>
+        <h3>{unit.kind} {unit.name} — {unit.label}</h3>
+        <pre
+          class="mermaid"
+          phx-hook="MermaidRender"
+          phx-update="ignore"
+          id={"unit-graph-#{unit.name}"}
+          data-graph={unit.mermaid}
         ></pre>
       </section>
     </div>

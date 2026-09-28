@@ -91,6 +91,14 @@ defmodule EhOsContract.PagesTest do
       assert counted =~ "- read model [`payments`](../read_models/payments.md)"
     end
 
+    test "a unit draws itself, as the graph task does (plan EG1)", %{pages: pages} do
+      till = pages["till/till/aggregates/till.md"]
+
+      assert till =~
+               "## Diagram\n\n```mermaid\n" <>
+                 EhOsContract.Graph.unit_to_mermaid(ValueRig.Till, :till) <> "\n```\n"
+    end
+
     test "a domain service shows each rule with its examples as calls", %{pages: pages} do
       splitting = pages["till/till/domain_services/splitting.md"]
 

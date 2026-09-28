@@ -8,6 +8,16 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **The graph screen works under a strict Content-Security-Policy** (plan EG3), `default-src 'self'` as EHOS
+  serves it: the diagrams were black boxes there. The hook draws with `mermaid.render` and hands the SVG's
+  stylesheet and `style` attributes to the CSSOM — a constructed stylesheet and `element.style` — which such a
+  policy does not refuse. Mermaid still tries inline styles while it measures a diagram; the policy blocks
+  them and the browser logs each (about 400 lines for the sandbox's three diagrams), without effect on what is
+  drawn. The host needs no `style-src 'unsafe-inline'` any more.
+- **The graph screen draws each domain's context map and system** above the per-process panels (engine
+  EG2), a v2 process's full graph — steps, actors, read side, external systems — with the log in the second
+  panel, and each unit of that process's contract below it (engine EG1).
+
 - **The dashboard looks like the EHOS console**: the EmpoweredHouse design system's tokens, Albert Sans and
   JetBrains Mono served beside the stylesheet, dark by default and light when the system prefers it. The
   host adds nothing — the fonts come through the `Plug.Static` line it already has. A breached verdict
