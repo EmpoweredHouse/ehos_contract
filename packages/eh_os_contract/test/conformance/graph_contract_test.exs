@@ -240,6 +240,42 @@ defmodule EhOsContract.GraphContractTest do
       for contract <- contracts, do: declared_ends!(EhOsContract.Graph.Contract.build(contract))
     end
 
+    test "a label written over several lines stays on its node's line" do
+      compile(
+        contract("GraphMultiline", ~S'''
+          aggregate :visit, "Visit" do
+            identity :visit_id
+
+            invariant :paid, """
+            Paid in full
+            ```
+            and "nothing" owed
+            """
+
+            command :close, "Close", by: :reception, emits: :closed, rejects: :paid
+            event :closed, "Closed"
+          end
+
+          process :visit, "Visit" do
+            correlate :visit_id
+          end
+
+          scenario "unpaid" do
+            command :close
+            rejected :paid
+          end
+        '''),
+        "graph_multiline.ex"
+      )
+
+      diagram = Graph.unit_to_mermaid(EhOsContract.Next.Fixtures.GraphMultiline, :visit)
+
+      assert diagram =~
+               ~s(invariant_paid{"Paid in full ``` and 'nothing' owed "}:::invariant\n)
+
+      refute diagram =~ "\n```"
+    end
+
     test "a unit the contract does not have is refused, naming the ones it has" do
       assert_raise ArgumentError, ~r/has no unit :nonesuch; it has \[:account\]/, fn ->
         Graph.unit_to_mermaid(DispatchRig.Ledger, :nonesuch)

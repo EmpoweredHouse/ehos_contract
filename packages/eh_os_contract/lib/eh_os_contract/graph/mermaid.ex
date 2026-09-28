@@ -10,8 +10,8 @@ defmodule EhOsContract.Graph.Mermaid do
   is a relation that is not a delivery, drawn without an arrowhead. A group is
   `%{id, label, nodes}`, drawn as a subgraph holding those nodes.
 
-  Labels are the client's and may hold anything they wrote; the one character that
-  breaks a quoted Mermaid label is the double quote.
+  Labels are the client's and may hold anything they wrote; what breaks a quoted
+  Mermaid label is a double quote and a line break (`escape/1`).
   """
 
   @typedoc "A node of a graph built as data."
@@ -121,9 +121,13 @@ defmodule EhOsContract.Graph.Mermaid do
     }
   end
 
-  @doc "A label with the double quotes that would end it replaced."
+  @doc """
+  A label with what would end it replaced: a double quote, which ends a quoted
+  Mermaid label, and a line break, which ends the line the label is on — and in a
+  Markdown page, a line of three backticks after it would end the diagram's block.
+  """
   @spec escape(String.t()) :: String.t()
-  def escape(label), do: String.replace(label, ~s("), "'")
+  def escape(label), do: label |> String.replace(~s("), "'") |> String.replace(~r/\R/, " ")
 
   @doc "`1 run`, `3 runs`."
   @spec runs(non_neg_integer()) :: String.t()
