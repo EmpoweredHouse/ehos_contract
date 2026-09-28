@@ -198,6 +198,25 @@ defmodule Taxvision.AccountingMonthTest do
     assert of_period("2026-04") == []
   end
 
+  test "a first check of an old month does not catch up month by month" do
+    profile!("c-1")
+
+    {:ok, _} =
+      Clock.at(~U[2026-09-15 10:00:00Z], fn ->
+        EhOsContract.dispatch(
+          RegistryWatch,
+          %RetriggerVerification{company_id: "c-1", period_id: "2026-03"},
+          actor: accountant("c-1")
+        )
+      end)
+
+    Clock.at(~U[2026-09-15 10:05:00Z], fn -> Testing.drain() end)
+    assert of_period("2026-04") == []
+
+    Clock.at(~U[2026-10-01 01:00:00Z], fn -> Testing.drain() end)
+    assert "accounting_month.accounting_month_opened" in of_period("2026-09")
+  end
+
   test "a period named otherwise than YYYY-MM is refused before anything is decided" do
     profile!("c-1")
 

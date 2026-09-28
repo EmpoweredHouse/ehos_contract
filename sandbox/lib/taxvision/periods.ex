@@ -5,7 +5,8 @@ defmodule Taxvision.Periods do
   > **28 September 2026, E9c.** Everything below this note describes v1. Since E9c a
   > period's **name** is its identifier (plan, the decisions before E9c): the facts
   > carry "2026-07", the domain's `:period` holds it to YYYY-MM (`name?/1`), the timer
-  > on the first of the month works the next one out with `next/1`, and the row keeps
+  > on the first of the month works out when and which with `next_month_start/1` and
+  > `ended_before/1`, and the row keeps
   > the dates. `Taxvision.Tasks` and the v1 month are gone; what follows is kept as it
   > was written, since it is what E9c changed.
 
@@ -124,14 +125,23 @@ defmodule Taxvision.Periods do
     end
   end
 
-  @doc "The first moment of the month `name`, at midnight UTC (the sandbox has no zone database)."
-  @spec first_moment(name()) :: DateTime.t()
-  def first_moment(name) do
-    case month_start(name) do
-      {:ok, start} -> DateTime.new!(start, ~T[00:00:00], "Etc/UTC")
-      :error -> raise ArgumentError, "period name #{inspect(name)} is not in YYYY-MM form"
-    end
+  @doc """
+  The first moment of the month after `at`'s, at midnight UTC (the sandbox has no
+  zone database): when the month `at` falls in has ended.
+  """
+  @spec next_month_start(DateTime.t()) :: DateTime.t()
+  def next_month_start(%DateTime{} = at) do
+    at
+    |> DateTime.to_date()
+    |> Date.end_of_month()
+    |> Date.add(1)
+    |> DateTime.new!(~T[00:00:00], "Etc/UTC")
   end
+
+  @doc "The name of the month that ended just before `at`: \"2026-09\" before 1 October."
+  @spec ended_before(DateTime.t()) :: name()
+  def ended_before(%DateTime{} = at),
+    do: at |> DateTime.add(-1, :second) |> Calendar.strftime("%Y-%m")
 
   @doc """
   Whether `name` names a month, "YYYY-MM": the invariant of the domain's `:period`

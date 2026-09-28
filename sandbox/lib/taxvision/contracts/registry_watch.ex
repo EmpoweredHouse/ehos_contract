@@ -11,14 +11,15 @@ defmodule Taxvision.Contracts.RegistryWatch do
   P1: when a month starts, check the registries. The month is settled one month
   behind, so on 1 September August is checked (WF 00:34:40). A process manager does
   it: every check that starts — the company's data confirmed — sets a timer for the
-  first of the month after the next period, which checks that period. The name of
-  the period is its identifier, so it works "2026-09" and 1 October out of "2026-08"
-  itself. The period it keeps only moves forward, so the accountant retrying an
-  older month does not set the watch back, and the registries being down for one
-  check leaves that month to be retried while the next one is still checked. The
-  first check is the accountant's (`RetriggerVerification`, the one command on the
-  workshop's diagram); a check refused because the company's data is incomplete
-  starts nothing, so the watch waits for the accountant too.
+  first of the next month, which checks the month that has just ended. The day comes
+  from when the check started, not from the period it named, so a mistyped
+  "2062-08", or the accountant retrying March in September, moves nothing; and the
+  registries being down for one check leaves that month to be retried while the next
+  one is still checked. The period's name is its identifier, so the month to check
+  is worked out from the date, without the database. The first check is the
+  accountant's (`RetriggerVerification`, the one command on the workshop's
+  diagram); a check refused because the company's data is incomplete starts nothing,
+  so the watch waits for the accountant too.
 
   ## A check is three steps, and the middle one is the registries'
 
@@ -151,7 +152,6 @@ defmodule Taxvision.Contracts.RegistryWatch do
     correlate :company_id
 
     state do
-      field :period_id, :period, optional: true
       field :check_at, :timestamp, optional: true
     end
 
@@ -224,18 +224,18 @@ defmodule Taxvision.Contracts.RegistryWatch do
     issues :log_registry_check, %{period_id: "2026-08", vat_status: "czynny"}
   end
 
-  scenario "po sprawdzeniu sierpnia 1 października sprawdza się wrzesień" do
+  # A scenario's facts happen in January 2026, so the next check is on 1 February.
+  scenario "sprawdzenie w styczniu — 1 lutego sprawdza się styczeń" do
     scope :monthly_registry_check
-    given :data_completeness_confirmed, %{period_id: "2026-08"}
+    given :data_completeness_confirmed, %{period_id: "2025-12"}
     on :next_month
-    issues :check_registries, %{period_id: "2026-09"}
+    issues :check_registries, %{period_id: "2026-01"}
   end
 
-  scenario "ponowienie starszego miesiąca nie cofa sprawdzania" do
+  scenario "literówka w okresie nie przestawia sprawdzania" do
     scope :monthly_registry_check
-    given :data_completeness_confirmed, %{period_id: "2026-08"}
-    given :data_completeness_confirmed, %{period_id: "2026-03"}
+    given :data_completeness_confirmed, %{period_id: "2062-08"}
     on :next_month
-    issues :check_registries, %{period_id: "2026-09"}
+    issues :check_registries, %{period_id: "2026-01"}
   end
 end
