@@ -118,10 +118,10 @@ defmodule EhOsContract.Auth.KeysTest do
     # own, so a check that stopped raising fails its assertion rather than a later
     # test's start.
     test "refuses a start without an address, and shows no option given" do
-      for url <- [[], [url: ""]] do
+      for {name, url} <- [keys_no_url: [], keys_empty_url: [url: ""]] do
         error =
           assert_raise ArgumentError, fn ->
-            Keys.start_link([name: :keys_no_url, repo: Repo, req_options: [inet6: true]] ++ url)
+            Keys.start_link([name: name, repo: Repo, req_options: [inet6: true]] ++ url)
           end
 
         assert error.message == "eh_os_contract_auth takes url:"

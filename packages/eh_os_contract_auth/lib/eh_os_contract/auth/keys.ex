@@ -272,11 +272,13 @@ defmodule EhOsContract.Auth.Keys do
         :ok
     end
 
-    case URI.parse(url) do
-      %URI{scheme: "https", host: host} when is_binary(host) and host != "" ->
+    # `URI.new/1`, not `URI.parse/1`, which reads a port typed `844e` as 844 and lets
+    # a stray `]` through: the boot would pass, and every fetch go nowhere.
+    case URI.new(url) do
+      {:ok, %URI{scheme: "https", host: host}} when is_binary(host) and host != "" ->
         :ok
 
-      %URI{scheme: "http", host: host} when host in ["localhost", "127.0.0.1", "::1"] ->
+      {:ok, %URI{scheme: "http", host: host}} when host in ["localhost", "127.0.0.1", "::1"] ->
         :ok
 
       _other ->

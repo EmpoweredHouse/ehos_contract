@@ -47,7 +47,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   around. `transport_opts: nil` is read as none, where it broke every fetch. The key set's address
   is refused when it is not a string or has the shapes a secret takes in one — any `@`, a query,
   a fragment — or a character a URL is not sent with, since it is written to the log with every
-  failed fetch; the package's messages never show a refused address. `issuer` and `audience`
-  must be strings.
+  failed fetch, and when a strict parse refuses it (a port typed `844e`); the package's messages
+  never show a refused address. `issuer` and `audience` must be strings, and an empty one is
+  missing; an empty `jwks_url` is unset.
 - **Req is held to 0.7.x** (`~> 0.7.4`): the fetch builds on Req's base request, which Req does
   not document.

@@ -114,7 +114,9 @@ defmodule EhOsContract.Auth do
   def child_spec(opts) do
     config = Application.get_all_env(:eh_os_contract_auth)
 
-    unless config[:audience] do
+    # Empty, as `System.get_env("AUDIENCE", "")` gives it, is missing too: the boot
+    # would pass, and every credential be refused.
+    if config[:audience] in [nil, ""] do
       raise ArgumentError,
             "config :eh_os_contract_auth, audience: \"<application>/<environment>\" is missing; " <>
               "it is the only audience a credential for this application may carry"
@@ -124,7 +126,7 @@ defmodule EhOsContract.Auth do
       raise ArgumentError, "config :eh_os_contract_auth, audience: takes a string"
     end
 
-    unless config[:issuer] do
+    if config[:issuer] in [nil, ""] do
       raise ArgumentError,
             "config :eh_os_contract_auth, issuer: \"<EHOS's public URL>\" is missing; it is " <>
               "the only iss a credential may carry, and the default place of its keys"
@@ -136,8 +138,13 @@ defmodule EhOsContract.Auth do
     end
 
     url =
-      config[:jwks_url] ||
-        String.trim_trailing(config[:issuer], "/") <> "/.well-known/jwks.json"
+      case config[:jwks_url] do
+        unset when unset in [nil, ""] ->
+          String.trim_trailing(config[:issuer], "/") <> "/.well-known/jwks.json"
+
+        jwks_url ->
+          jwks_url
+      end
 
     # The address is the configuration's, which the check below holds to https.
     if Keyword.has_key?(opts, :url) do

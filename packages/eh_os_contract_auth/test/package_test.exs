@@ -53,7 +53,15 @@ defmodule EhOsContract.Auth.PackageTest do
     end
 
     test "fails the boot when keys would be fetched over anything but https" do
-      for url <- ["http://ehos.example.com/jwks.json", "ftp://ehos.example.com/jwks.json", "ehos"] do
+      for url <- [
+            "http://ehos.example.com/jwks.json",
+            "ftp://ehos.example.com/jwks.json",
+            "ehos",
+            # Malformed, where a lenient parse would boot and every fetch go nowhere.
+            "https://ehos.example.com:844e/jwks.json",
+            "https://ehos.example.com]/jwks.json",
+            "https://ehos.example.com:8443:1/jwks.json"
+          ] do
         Application.put_env(:eh_os_contract_auth, :jwks_url, url)
 
         assert_raise ArgumentError, ~r/not https/, fn -> EhOsContract.Auth.child_spec([]) end
@@ -121,17 +129,13 @@ defmodule EhOsContract.Auth.PackageTest do
             "https://ehos.example.com:8443/.well-known/jwks.json",
             "https://ehos.example.com/tenants/%40acme/jwks.json",
             "https://[2001:db8::1]/.well-known/jwks.json",
-            "http://[::1]:4000/jwks.json"
+            "http://[::1]:4000/jwks.json",
+            "http://localhost:4100/jwks.json"
           ] do
         Application.put_env(:eh_os_contract_auth, :jwks_url, url)
         assert %{start: {_, _, [opts]}} = EhOsContract.Auth.child_spec([])
         assert opts[:url] == url
       end
-
-      # The control: loopback may be plain, for development.
-      Application.put_env(:eh_os_contract_auth, :jwks_url, "http://localhost:4100/jwks.json")
-      assert %{start: {_, _, [opts]}} = EhOsContract.Auth.child_spec([])
-      assert opts[:url] == "http://localhost:4100/jwks.json"
     end
 
     test "fails the boot on request options outside the few it takes" do
@@ -218,6 +222,29 @@ defmodule EhOsContract.Auth.PackageTest do
       assert_raise ArgumentError, ~r/audience: takes a string/, fn ->
         EhOsContract.Auth.child_spec([])
       end
+    end
+
+    # As `System.get_env("AUDIENCE", "")` gives them: missing, not a value no
+    # credential carries.
+    test "fails the boot on an empty audience or issuer, and reads an empty jwks_url as unset" do
+      Application.put_env(:eh_os_contract_auth, :audience, "")
+
+      assert_raise ArgumentError, ~r/audience:.* is missing/, fn ->
+        EhOsContract.Auth.child_spec([])
+      end
+
+      Application.put_env(:eh_os_contract_auth, :audience, "rehmed/test")
+      Application.put_env(:eh_os_contract_auth, :issuer, "")
+      Application.put_env(:eh_os_contract_auth, :jwks_url, "https://keys.ehos.test/jwks.json")
+
+      assert_raise ArgumentError, ~r/issuer:.* is missing/, fn ->
+        EhOsContract.Auth.child_spec([])
+      end
+
+      Application.put_env(:eh_os_contract_auth, :issuer, "https://ehos.test")
+      Application.put_env(:eh_os_contract_auth, :jwks_url, "")
+      assert %{start: {_, _, [opts]}} = EhOsContract.Auth.child_spec([])
+      assert opts[:url] == "https://ehos.test/.well-known/jwks.json"
     end
 
     test "fails the boot on an issuer that is not a string, without showing it" do
