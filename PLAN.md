@@ -102,7 +102,7 @@ Grafy: `mix eh_os_contract.graph --map <domena> | --system <domena> [--overlay] 
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 28 września, na `cd94293`** (E9c-1 po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 120
+- **Lokalnie, 28 września, na `bc4518e`** (E9c-1 po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 120
   testów, `check` 0 / 26 / 9; silnik 1245, `check` 0 / 67 / 21; web 45; auth 51.
 - **Lokalnie, 28 września, na `cc07431`** (E9b po dwóch rundach przeglądu): brama z `sandbox/` → **EXIT=0** — sandbox 99
   testów, `check` 0 / 24 / 8; silnik 1222, `check` 0 / 65 / 21; web 45; auth 51. W przeglądarce: `/graph` z procesem
@@ -1875,6 +1875,10 @@ pętla czyta potwierdzenie — czytelnikiem byłby read model „ostatnie sprawd
   przesuwa ją o miesiąc **od niej samej**, a inne ponowienie jej nie rusza; spóźniony timer nadrabia tylko to, co
   przegapił. Do tego nowy niezmiennik: **sprawdza się tylko miesiąc zakończony do czasu komendy** (rozliczenie
   miesiąc w tył, WF 00:34:40) — „2062-08” jest odrzucany, zanim zapyta rejestry, więc nie otwiera miesiąca 2062-08.
+  Czwarta runda (`bc4518e`, jeden przegląd łączony): niezmiennik obejmował też sprawdzenie z timera, którego komendę
+  stempluje zegar węzła, więc sekunda rozbieżności o północy odrzucała je i pętla stawała bez śladu; dotyczy teraz
+  tylko ponowienia przez księgową. Pierwsze sprawdzenie nie nadrabia miesięcy sprzed siebie — celowo, po rundzie
+  drugiej.
 - **Resztki v1** (`9c0294e`, `14fae7d`): `Taxvision.Tasks` i `Notifications` bez handlerów, z UUID okresu; komentarz
   `setup` testu szwu; notka v1 w `Taxvision.Periods` na górze.
 
@@ -1885,8 +1889,11 @@ pętla czyta potwierdzenie — czytelnikiem byłby read model „ostatnie sprawd
 - **Brak limitu ponowień** — każde ponowienie pyta rejestry; limit jest sprawą hosta albo adaptera.
 - **Aktor ze `scope` wydający komendę bez `scope`** — nic tego nie wyłapuje; kandydat na regułę L5 (E10).
 - **Rejestry pytane `company_id`, nie NIP-em** — odziedziczone z v1; prawdziwy adapter potrzebuje NIP-u z profilu.
-- **Jeden łańcuch timerów na firmę**: zadanie timera odrzucone po trzech porażkach zatrzymuje pętlę do ponowienia
-  przez księgową — mechanika silnika (`TimerJob`), poza E9.
+- **Jeden łańcuch timerów na firmę**: zadanie timera odrzucone po trzech porażkach albo zgubione przy `reconcile!`
+  zatrzymuje pętlę do ponowienia przez księgową, a ponowienie późniejszego miesiąca przy zaległym timerze sprawdza ten
+  miesiąc dwa razy — mechanika silnika (`TimerJob`), poza E9.
+- **Ponowienie 1. dnia między 00:00 a 02:00 czasu polskiego jest odrzucane** (koniec miesiąca liczony w UTC) —
+  odrzuca za dużo, nigdy za mało; ta sama granica co dzień R-07.
 - **Północ w Warszawie to 22:00–23:00 UTC**: sprawdzenie tuż po niej ustawia termin za godzinę–dwie na ten sam
   miesiąc; sandbox nie ma bazy stref czasowych, jak przy dniu R-07.
 - **Duplikacja** (`scope` komend i query w dispatchu i w D10; `one_value/2` obok `Key.base_type/2`) — do
