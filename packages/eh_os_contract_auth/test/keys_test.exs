@@ -135,16 +135,53 @@ defmodule EhOsContract.Auth.KeysTest do
     end
   end
 
-  test "a Req default set after the boot fails every fetch, and the keys in force stay" do
-    pair = key_pair()
-    ehos = ehos({:keys, [pair]})
-    keys = start_keys(ehos)
-    on_exit(fn -> Req.default_options([]) end)
+  describe "Req's own defaults" do
+    setup do
+      saved = Application.fetch_env(:req, :default_options)
 
-    Req.default_options(follow_redirects: true)
-    assert Keys.refresh(keys) == {:error, {:not_allowed, [:follow_redirects]}}
-    assert requests(ehos) == 1, "nothing was sent"
-    assert {:ok, _} = Auth.verify(credential(pair), keys: keys)
+      on_exit(fn ->
+        case saved do
+          {:ok, defaults} -> Application.put_env(:req, :default_options, defaults)
+          :error -> Application.delete_env(:req, :default_options)
+        end
+      end)
+    end
+
+    # Set for the host's other requests: none of it reaches this one, at the boot or
+    # later — not an option, a header, a body, an adapter, nor a plugin's step.
+    test "do not reach the fetch, set before the boot or after it" do
+      test = self()
+
+      defaults = [
+        follow_redirects: true,
+        auth: {:bearer, "for another API"},
+        headers: [authorization: "for another API"],
+        body: "for another API",
+        adapter: fn request -> send(test, :default_adapter) && {request, Req.Response.new()} end,
+        plugins: [fn request -> send(test, :plugin) && request end]
+      ]
+
+      adapter = fn request ->
+        send(test, {:sent, request})
+        {request, Req.Response.new(status: 503)}
+      end
+
+      Application.put_env(:req, :default_options, defaults)
+      keys = start_keys(nil, req_options: [adapter: adapter])
+      Req.default_options(defaults)
+      assert {:error, {:status, 503}} = Keys.refresh(keys)
+
+      for _fetch <- 1..2 do
+        assert_received {:sent, request}
+        refute Map.has_key?(request.headers, "authorization")
+        assert request.body == nil
+        refute Map.has_key?(request.options, :follow_redirects)
+        refute Map.has_key?(request.options, :auth)
+      end
+
+      refute_received :plugin
+      refute_received :default_adapter
+    end
   end
 
   test "an unknown kid fetches at most once per thirty seconds" do

@@ -195,11 +195,10 @@ any certificate or check it against another name, a body read past the 64 KB lim
 on the list. A proxy is not on it either: Mint connects to one with its own thirty-second timeouts.
 The address comes from the configuration only: `url:` in the child's options is refused too.
 
-**Req's own defaults count too.** Req applies `config :req, default_options` to every request,
-this one included. An option there that the list does not give — `follow_redirects`, `auth`,
-`headers`, `plug` — fails the boot, and one set later, through `Req.default_options/1`, fails every
-fetch until it is gone. A default the package sets itself (`redirect`, `receive_timeout`, …) is
-overridden, not refused.
+**Req's own defaults do not apply to this fetch.** Req applies `config :req, default_options`,
+plugins included, to every request an application makes; the key fetch is built without them, so
+what the application sets there for its other requests — `follow_redirects`, `auth`, headers, a
+stub, a plugin's steps — never reaches EHOS, at the boot or later.
 
 **What the application configures, and nothing else:** `issuer`, which must be exactly the `iss`
 EHOS writes, `audience` (`<application>/<environment>`, exactly the `aud` EHOS issues for this

@@ -38,8 +38,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `config :eh_os_contract_auth, pin_keys: true` — each once. Before, any option was accepted, and
   several quietly took a guarantee away: `redirect: true` or its old name `follow_redirects`,
   `into:`, `url:`, `transport_opts: [verify: :verify_none]`, `verify_fun`, `server_name_indication`,
-  `hostname`, `finch_request`, a proxy. Options Req takes from `config :req, default_options`
-  are held to the same list: set at boot they fail it, set later they fail every fetch. The child's
+  `hostname`, `finch_request`, a proxy. The fetch no longer takes Req's own defaults either
+  (`config :req, default_options`, plugins included), which reached it from the application's
+  configuration for its other requests. The child's
   own options are checked too: `url:`, which replaced the address the boot had checked, and any
   name `EhOsContract.Auth.Keys.start_link/1` does not take, which was dropped without a word.
   `start_link/1` checks all of it, the https address included, so starting it directly is no way

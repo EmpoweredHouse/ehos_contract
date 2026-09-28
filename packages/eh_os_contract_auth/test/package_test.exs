@@ -59,6 +59,16 @@ defmodule EhOsContract.Auth.PackageTest do
         assert_raise ArgumentError, ~r/not https/, fn -> EhOsContract.Auth.child_spec([]) end
       end
 
+      # Credentials in the address stay out of the message, and so out of the logs.
+      Application.put_env(
+        :eh_os_contract_auth,
+        :jwks_url,
+        "http://user:secret@ehos.example.com/k"
+      )
+
+      error = assert_raise ArgumentError, fn -> EhOsContract.Auth.child_spec([]) end
+      refute error.message =~ "secret"
+
       # The control: loopback may be plain, for development.
       Application.put_env(:eh_os_contract_auth, :jwks_url, "http://localhost:4100/jwks.json")
       assert %{start: {_, _, [opts]}} = EhOsContract.Auth.child_spec([])
@@ -129,25 +139,6 @@ defmodule EhOsContract.Auth.PackageTest do
           EhOsContract.Auth.child_spec(req_options: req_options)
         end
       end
-    end
-
-    test "fails the boot on Req's own defaults that no allowed option would give" do
-      on_exit(fn -> Application.delete_env(:req, :default_options) end)
-
-      for {defaults, message} <- [
-            {[follow_redirects: true], ~r/does not take follow_redirects: from config :req/},
-            {[auth: {:bearer, "for another API"}], ~r/does not take auth: from config :req/},
-            {[headers: [authorization: "for another API"]], ~r/does not take headers:/},
-            {[adapter: &{&1, Req.Response.new()}], ~r/does not take adapter: from config :req/}
-          ] do
-        Application.put_env(:req, :default_options, defaults)
-
-        assert_raise ArgumentError, message, fn -> EhOsContract.Auth.child_spec([]) end
-      end
-
-      # The control: a default the package sets itself is overridden, not refused.
-      Application.put_env(:req, :default_options, redirect: true, receive_timeout: 60_000)
-      assert %{start: {_, _, [_opts]}} = EhOsContract.Auth.child_spec([])
     end
 
     test "fails the boot on an option it does not take, rather than dropping it" do

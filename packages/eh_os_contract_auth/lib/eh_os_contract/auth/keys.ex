@@ -106,9 +106,9 @@ defmodule EhOsContract.Auth.Keys do
   once: `connect_options` with `timeout` and `transport_opts` naming a certificate
   authority (`cacertfile` or `cacerts`); `receive_timeout`; `inet6`; and `plug` or
   `adapter`, only with `config :eh_os_contract_auth, pin_keys: true`, as in a test.
-  Anything else could undo what the key set is trusted by — Req's own defaults too
-  (`config :req, default_options`), which it applies to every request: set at boot
-  they fail it, and set later they fail every fetch.
+  Anything else could undo what the key set is trusted by. For the same reason Req's
+  own defaults (`config :req, default_options`, plugins included), which it applies
+  to every other request, are not applied to this one.
   """
   @spec start_link([option()]) :: GenServer.on_start()
   def start_link(opts) do
@@ -190,7 +190,7 @@ defmodule EhOsContract.Auth.Keys do
   """
   @spec pin(map(), atom()) :: String.t()
   def pin(jwk, name \\ __MODULE__) when is_map(jwk) do
-    unless Application.get_env(:eh_os_contract_auth, :pin_keys, false) == true do
+    unless test_trust?() do
       raise ArgumentError,
             "pinning a key is for tests, and this environment does not allow it: set " <>
               "config :eh_os_contract_auth, pin_keys: true in config/test.exs"
@@ -239,7 +239,8 @@ defmodule EhOsContract.Auth.Keys do
 
       _other ->
         raise ArgumentError,
-              "eh_os_contract_auth fetches EHOS's keys from #{inspect(url)}, which is not " <>
+              "eh_os_contract_auth fetches EHOS's keys from #{inspect(without_userinfo(url))}, " <>
+                "which is not " <>
                 "https: keys fetched in the clear can be replaced on the way. Only localhost " <>
                 "may be plain http"
     end
@@ -250,29 +251,25 @@ defmodule EhOsContract.Auth.Keys do
     check_allowed!(:connect_options, connect_options)
     check_allowed!(:transport_opts, Keyword.get(connect_options, :transport_opts) || [])
 
-    case Enum.filter(@stubs, &Keyword.has_key?(req_options, &1)) do
-      [stub | _] ->
-        unless Application.get_env(:eh_os_contract_auth, :pin_keys, false) == true do
+    case Enum.find(@stubs, &Keyword.has_key?(req_options, &1)) do
+      nil ->
+        :ok
+
+      stub ->
+        unless test_trust?() do
           raise ArgumentError,
                 "eh_os_contract_auth takes #{stub}: in req_options only in a test: whatever " <>
                   "it answers is trusted as EHOS's keys. Set config :eh_os_contract_auth, " <>
                   "pin_keys: true in config/test.exs"
         end
-
-      [] ->
-        :ok
-    end
-
-    case not_ours(request(url, req_options), req_options) do
-      [] ->
-        :ok
-
-      [option | _] ->
-        raise ArgumentError,
-              "eh_os_contract_auth does not take #{option}: from config :req, " <>
-                "default_options, which Req applies to every request" <> @trusted_by
     end
   end
+
+  defp without_userinfo(url), do: url |> URI.parse() |> Map.put(:userinfo, nil) |> URI.to_string()
+
+  # Whether this is where keys EHOS did not publish may be trusted: a pinned one, or
+  # whatever a stub in place of the network answers.
+  defp test_trust?, do: Application.get_env(:eh_os_contract_auth, :pin_keys, false) == true
 
   defp check_allowed!(level, options) do
     allowed = @allowed[level]
@@ -408,7 +405,7 @@ defmodule EhOsContract.Auth.Keys do
   end
 
   defp get(state) do
-    case send_request(request(state.url, state.req_options), state.req_options) do
+    case Req.get(request(state.url, state.req_options)) do
       {:ok, %Req.Response{status: 200, body: :too_large}} ->
         {:error, :too_large}
 
@@ -438,28 +435,18 @@ defmodule EhOsContract.Auth.Keys do
   end
 
   # The request every fetch makes: the package's defaults, the host's options over
-  # them, and Req's own (`config :req, default_options`) under both.
+  # them, and nothing else. `Req.new/1` would add Req's own defaults under both —
+  # `config :req, default_options`, set for the host's other requests, plugins
+  # included, which add steps no option shows — so this is what it builds without
+  # them: Req's steps, then `Req.merge/2`, which reads no defaults. `Req.get/1` on
+  # the result reads none either. `attach/1` is not documented; Req is pinned by
+  # the lock, and `keys_test` fails if an upgrade lets the defaults back in.
   defp request(url, req_options) do
     options = Keyword.merge([into: &at_most/2] ++ @request_options, req_options, &merge_option/3)
-    Req.new([url: url] ++ options)
-  end
 
-  # Checked again at every fetch: Req's defaults can change after the boot.
-  defp send_request(request, req_options) do
-    case not_ours(request, req_options) do
-      [] -> Req.get(request)
-      options -> {:error, {:not_allowed, options}}
-    end
-  end
-
-  # What Req would send that neither the package nor the host gave: an option or a
-  # header from Req's defaults, or an adapter in place of the network.
-  defp not_ours(request, req_options) do
-    options = Map.keys(request.options) -- Keyword.keys(@request_options ++ req_options)
-    headers = if request.headers == %{}, do: [], else: [:headers]
-    stubbed = Enum.any?(@stubs, &Keyword.has_key?(req_options, &1))
-    adapter = if request.adapter == Req.Finch or stubbed, do: [], else: [:adapter]
-    options ++ headers ++ adapter
+    Req.Request.new()
+    |> Req.Steps.attach()
+    |> Req.merge([url: url] ++ options)
   end
 
   # Without the default connect timeout, Mint's is thirty seconds: an EHOS that
