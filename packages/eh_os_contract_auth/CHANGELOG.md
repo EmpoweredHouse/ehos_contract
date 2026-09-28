@@ -63,3 +63,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   address after its https check, is refused, and `EhOsContract.Auth.Keys.start_link/1` checks
   the address itself, so a key process listed directly is held to https too. `plug:`, for tests,
   needs `config :eh_os_contract_auth, pin_keys: true`.
+- **A key set fetch that has not finished in five seconds is a failed fetch.** The request timeouts
+  bounded each step but not the fetch, so an endpoint sending a byte every few seconds held the key
+  process indefinitely: the scheduled refresh stopped, and every credential with an unknown `kid`
+  waited the full ten seconds. The deadline is not configurable. An exit inside the request is now a
+  failed fetch too, not a crash of the key process.

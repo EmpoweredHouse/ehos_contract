@@ -5032,6 +5032,24 @@ weryfikuje (uwaga z przeglądu ostatniego commita). Do zadania z limitem pobrani
 (`request_timeout` Req to `:infinity`), `refresh/1` bez `catch` i sygnał starego zestawu kluczy. **Znane ograniczenie:** proxy ani certyfikatu klienta (mTLS) nie da się podać; host, który ich
 potrzebuje, prosi, i dochodzi jedna nazwana opcja.
 
+**Poprawka 28 września (2) — jeden termin na całe pobranie klucza, 5 s.** Punkt (1) z pominiętych wyżej. Timeouty Req
+ograniczają pojedyncze kroki: `receive_timeout` liczy się od nowa przy każdym odczycie, `:ssl.connect` wydaje
+timeout połączenia dwa razy (TCP, potem uzgadnianie TLS), a `request_timeout` Finch sprawdza dopiero, gdy odczyt
+wróci, i nie obejmuje ani łączenia, ani pobrania połączenia z puli. Teraz `Keys` puszcza żądanie w osobnym
+`Task`, czeka `Task.yield/2` 5 s, potem `Task.shutdown(:brutal_kill)`: pobranie, które nie skończyło się w 5 s, jest
+nieudanym pobraniem (`{:error, :timeout}`), klucze w mocy zostają. 5 s to połowa `@call_timeout` (10 s), więc
+wołający na nieznanym `kid` dostaje odpowiedź, a `connect_options: [timeout: 30_000]` hosta nie wydłuża już
+niczego ponad termin. Przy okazji `exit` z wnętrza Req (np. timeout puli Finch) jest nieudanym pobraniem, a nie
+wywrotką procesu: wcześniej `rescue` go nie łapał. *Odrzucone:* `request_timeout:` jako domyślna opcja Req —
+najgorszy przypadek to termin plus `receive_timeout`, bez łączenia i puli, i działa tylko z adapterem Finch.
+**Decyzja użytkownika: termin stały, host go nie zmienia.** Przegrały: opcja `:fetch_timeout` z górną granicą
+(start pada `ArgumentError` przy wartości za bliskiej 10 s) i opcja bez granicy — jedyny powód, żeby ją
+podnieść, to podejście pod `@call_timeout`, czyli przywrócenie błędu; klucz to kilkaset bajtów. Koszt: test
+czeka pełne 5 s. Test w `keys_test` na prawdziwym gniazdzie `127.0.0.1` (nie plug — chodzi o zachowanie Finch):
+nagłówki, potem bajt co sekundę, poniżej 3 s `receive_timeout`; start procesu kończy się w 5–6 s, klucz z tabeli
+zostaje. Sprawdzony wstecz: bez terminu proces po 10 s dalej wisi. Komentarz przy `refetch/1` poprawiony, linia
+w `CHANGELOG.md`, zdanie w README i w `@doc` `start_link/1`. Gałąź na PR #35 (te same linie `keys.ex`).
+
 **Skill `pre-pr-review` odpala od teraz oba przeglądy równolegle** (prośba użytkownika): dwa subagenty w jednej
 wiadomości, `code-review high` i `engineering:code-review` z naciskiem na bezpieczeństwo i wydajność, wspólna pula
 uwag; plus dwa nowe rodzaje problemów i ostrzeżenie o mutacjach, które stosują się w połowie.
