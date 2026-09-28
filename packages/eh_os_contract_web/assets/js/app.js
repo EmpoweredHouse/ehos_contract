@@ -142,6 +142,12 @@ new MutationObserver(redraw).observe(document.documentElement, {
   attributeFilter: ["data-theme"],
 })
 
+// One draw at a time on the whole page. `mermaid.run` names each SVG from `Date.now()` and a count
+// that starts again at every call, so two diagrams whose draws start in the same millisecond get one
+// id, and the second is drawn into the first's element. With three diagrams on the graph screen
+// (plan EG2) that happened on every load.
+let drawn = Promise.resolve()
+
 // The graph screen's `<pre class="mermaid" phx-hook="MermaidRender">` blocks
 // carry the raw diagram source in `data-graph` rather than as text content:
 // mermaid replaces a node's content with rendered SVG in place, so a second
@@ -149,12 +155,6 @@ new MutationObserver(redraw).observe(document.documentElement, {
 // back first. `updated()` fires on every diff LiveView applies to the
 // element (a process switch re-rendering the declared-shape diagram), not
 // only on first mount.
-// One draw at a time on the whole page. `mermaid.run` names each SVG from `Date.now()` and a count
-// that starts again at every call, so two diagrams whose draws start in the same millisecond get one
-// id, and the second is drawn into the first's element. With three diagrams on the graph screen
-// (plan EG2) that happened on every load.
-let drawn = Promise.resolve()
-
 const Hooks = {
   MermaidRender: {
     mounted() {

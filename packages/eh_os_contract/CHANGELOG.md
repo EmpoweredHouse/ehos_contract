@@ -110,7 +110,8 @@ What changes otherwise is what a host has to do.
   moves. `mix eh_os_contract.graph --map NAME` and `--system NAME [--overlay]` draw them; the domain's page from
   `mix eh_os_contract.pages` carries its map, and the dashboard's graph screen draws each domain's system with
   the log above the per-process panels. `EhOsContract.Graph.bounded/2` narrows a query over events to a period,
-  as the graphs' readers of the log share it.
+  for the graphs' own queries (`EhOsContract.Paths` and `EhOsContract.Trace` keep their copies, which bound the
+  same way).
 
 - **EG1: a v2 contract's full graph and one unit of it.** `EhOsContract.Graph.contract_to_mermaid/2` draws the
   steps as before, and around them each unit's commands and events as a group, the actors issuing commands,
