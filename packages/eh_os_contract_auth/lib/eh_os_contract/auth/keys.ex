@@ -81,8 +81,9 @@ defmodule EhOsContract.Auth.Keys do
   `:repo` defaults to the engine's (`config :eh_os_contract, :repo`). The intervals
   are in milliseconds, measured by `:clock`, which defaults to the monotonic clock.
   `:req_options` go to every `Req.get/2`, over its defaults: no retry, two seconds
-  to connect, three to receive — an option given replaces the default of the same
-  name whole, `:connect_options` included.
+  to connect, three to receive. An option given replaces the default of the same
+  name, except `:connect_options`, which is merged key by key: a host naming its
+  certificate authority there keeps the two seconds unless it sets `:timeout` too.
   """
   @spec start_link([option()]) :: GenServer.on_start()
   def start_link(opts) do
@@ -295,7 +296,7 @@ defmodule EhOsContract.Auth.Keys do
   end
 
   defp get(state) do
-    options = Keyword.merge([into: &at_most/2] ++ @request_options, state.req_options)
+    options = Keyword.merge([into: &at_most/2] ++ @request_options, state.req_options, &merge/3)
 
     case Req.get(state.url, options) do
       {:ok, %Req.Response{status: 200, body: :too_large}} ->
@@ -325,6 +326,11 @@ defmodule EhOsContract.Auth.Keys do
     # a crash takes its table with it, and a restart would fetch the same answer.
     exception -> {:error, exception}
   end
+
+  # Without the default connect timeout, Mint's is thirty seconds: an EHOS that
+  # drops packets would hold this process past `@call_timeout`.
+  defp merge(:connect_options, default, given), do: Keyword.merge(default, given)
+  defp merge(_option, _default, given), do: given
 
   # Collects the body up to `@max_body` and gives up past it.
   defp at_most({:data, data}, {request, response}) do

@@ -64,6 +64,41 @@ defmodule EhOsContract.Auth.KeysTest do
     end
   end
 
+  describe "a host's connect options" do
+    # An adapter in place of the network: it sends the test the options the fetch
+    # was made with, and answers as an EHOS that is down would.
+    setup do
+      test = self()
+
+      adapter = fn request ->
+        send(test, {:connect_options, request.options[:connect_options]})
+        {request, Req.Response.new(status: 503)}
+      end
+
+      %{adapter: adapter}
+    end
+
+    test "keep the two-second connect timeout when naming a certificate authority", %{
+      adapter: adapter
+    } do
+      transport = [cacertfile: "/etc/ehos/ca.pem"]
+
+      start_keys(nil,
+        req_options: [adapter: adapter, connect_options: [transport_opts: transport]]
+      )
+
+      assert_received {:connect_options, options}
+      assert options[:timeout] == 2_000
+      assert options[:transport_opts] == transport
+    end
+
+    test "replace the connect timeout when they set one", %{adapter: adapter} do
+      start_keys(nil, req_options: [adapter: adapter, connect_options: [timeout: 500]])
+
+      assert_received {:connect_options, [timeout: 500]}
+    end
+  end
+
   test "an unknown kid fetches at most once per thirty seconds" do
     known = key_pair()
     ehos = ehos({:keys, [known]})

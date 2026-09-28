@@ -31,6 +31,9 @@ defmodule EhOsContract.Auth do
       {EhOsContract.Auth,
        req_options: [connect_options: [transport_opts: [cacertfile: "/etc/ehos/ca.pem"]]]}
 
+  These `:connect_options` are merged over the fetch's own, so its two-second
+  connect timeout stays (`EhOsContract.Auth.Keys.start_link/1`).
+
   **A credential** is a JWT signed with Ed25519 (`eh-os` D-33). `verify/2` accepts
   one when all of these hold, and answers the first that does not:
 
