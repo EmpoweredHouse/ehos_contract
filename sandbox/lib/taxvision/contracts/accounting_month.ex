@@ -31,10 +31,11 @@ defmodule Taxvision.Contracts.AccountingMonth do
   The accountant uploads the statement already parsed — parsers are the client's
   cost, not the library's — and a policy issues one `run_matching` per turnover.
   P7: the turnover is paired with an invoice KSeF gave for that company and month,
-  by a domain service, `:pairing`. Pairing here is by amount alone, and an invoice
-  pairs once; the material's margin of days, one turnover paying many invoices and
-  an invoice arriving after its turnover are left out (plan, the decisions before
-  E9c-2: the kinds, not the domain's detail).
+  by a domain service, `:pairing`. Pairing here is by amount alone; an invoice pairs
+  once, and a turnover is decided once, so a statement uploaded again changes
+  nothing already decided. The material's margin of days, one turnover paying many
+  invoices and an invoice arriving after its turnover are left out (plan, the
+  decisions before E9c-2: the kinds, not the domain's detail).
 
   ## Out to Shugyo
 
@@ -99,7 +100,14 @@ defmodule Taxvision.Contracts.AccountingMonth do
 
     state do
       field :invoices, {:list, :invoice}, default: []
+      field :paired, {:list, :ksef_number}, default: []
+      field :decided, {:list, :id}, default: []
     end
+
+    # A statement uploaded again, or one overlapping the last, issues a match for a
+    # turnover already decided; the first answer stands.
+    invariant :a_turnover_is_matched_once, "Obrót dopasowuje się raz",
+      source: "02 §3.3 (tabela ciągła; obroty doklejają się na bieżąco)"
 
     command :ingest_bank_statement, "Wgraj wyciąg bankowy",
       by: :accountant,
@@ -112,6 +120,7 @@ defmodule Taxvision.Contracts.AccountingMonth do
     # Issued by the policy, one per turnover, never by a person.
     command :run_matching, "Dopasuj obrót do faktury",
       emits: [:turnover_matched_with_invoice, :turnover_without_invoice_flagged],
+      rejects: :a_turnover_is_matched_once,
       source: "03 §4.4 RunMatching; P7" do
       field :turnover, :turnover
     end
@@ -269,6 +278,64 @@ defmodule Taxvision.Contracts.AccountingMonth do
     given :turnover_matched_with_invoice, %{
       turnover_id: "t-1",
       ksef_number: "5265877635-20260814-0A1B2C3D4E5F-9A"
+    }
+
+    command :run_matching, %{
+      turnover: %{turnover_id: "t-2", amount_minor: 12_300, booked_on: "2026-08-21"}
+    }
+
+    expect :turnover_without_invoice_flagged, %{turnover_id: "t-2"}
+  end
+
+  scenario "obrót już rozstrzygnięty — ponowne dopasowanie odrzucone" do
+    given :invoice_pulled_from_ksef, %{
+      company_id: "c-1",
+      period_id: "2026-08",
+      ksef_number: "5265877635-20260814-0A1B2C3D4E5F-9A",
+      amount_minor: 12_300,
+      issued_on: "2026-08-14"
+    }
+
+    given :invoice_pulled_from_ksef, %{
+      company_id: "c-1",
+      period_id: "2026-08",
+      ksef_number: "5265877635-20260815-0A1B2C3D4E60-3C",
+      amount_minor: 12_300,
+      issued_on: "2026-08-15"
+    }
+
+    given :turnover_matched_with_invoice, %{
+      turnover_id: "t-1",
+      ksef_number: "5265877635-20260814-0A1B2C3D4E5F-9A"
+    }
+
+    command :run_matching, %{
+      turnover: %{turnover_id: "t-1", amount_minor: 12_300, booked_on: "2026-08-20"}
+    }
+
+    rejected :a_turnover_is_matched_once
+  end
+
+  scenario "faktura pobrana z KSeF drugi raz — sparowana nie paruje się ponownie" do
+    given :invoice_pulled_from_ksef, %{
+      company_id: "c-1",
+      period_id: "2026-08",
+      ksef_number: "5265877635-20260814-0A1B2C3D4E5F-9A",
+      amount_minor: 12_300,
+      issued_on: "2026-08-14"
+    }
+
+    given :turnover_matched_with_invoice, %{
+      turnover_id: "t-1",
+      ksef_number: "5265877635-20260814-0A1B2C3D4E5F-9A"
+    }
+
+    given :invoice_pulled_from_ksef, %{
+      company_id: "c-1",
+      period_id: "2026-08",
+      ksef_number: "5265877635-20260814-0A1B2C3D4E5F-9A",
+      amount_minor: 12_300,
+      issued_on: "2026-08-14"
     }
 
     command :run_matching, %{
