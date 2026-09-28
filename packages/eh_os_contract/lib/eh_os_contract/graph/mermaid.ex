@@ -127,7 +127,8 @@ defmodule EhOsContract.Graph.Mermaid do
   Markdown page, a line of three backticks after it would end the diagram's block.
   """
   @spec escape(String.t()) :: String.t()
-  def escape(label), do: label |> String.replace(~s("), "'") |> String.replace(~r/\R/, " ")
+  def escape(label),
+    do: label |> String.replace(~s("), "'") |> String.replace(["\r\n", "\r", "\n"], " ")
 
   @doc "A node of `kind` named `name`, with its label or, lacking one, its name."
   @spec graph_node(atom(), atom(), String.t() | nil) :: graph_node()

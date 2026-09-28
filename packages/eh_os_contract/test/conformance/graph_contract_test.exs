@@ -276,6 +276,12 @@ defmodule EhOsContract.GraphContractTest do
       refute diagram =~ "\n```"
     end
 
+    # "ą" is C4 85 in UTF-8, and 85 is a line break to a regex that reads bytes.
+    test "a label's own letters are left alone, whatever bytes spell them" do
+      assert EhOsContract.Graph.Mermaid.escape("Linie sumują się\ndo „całości”") ==
+               "Linie sumują się do „całości”"
+    end
+
     test "a unit the contract does not have is refused, naming the ones it has" do
       assert_raise ArgumentError, ~r/has no unit :nonesuch; it has \[:account\]/, fn ->
         Graph.unit_to_mermaid(DispatchRig.Ledger, :nonesuch)
