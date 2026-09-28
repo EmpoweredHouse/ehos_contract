@@ -2895,7 +2895,13 @@ sprawdzenie nie odróżni. *Bez zmian:* test logu bez zapytania usunięty bez na
 starcie i potem się nie zmienia, a każda odmowa ma test. Ósma runda (bezpieczeństwo czyste, wyrażenie liniowe):
 `URI.parse/1` czytał port `844e` jako 844 i przepuszczał `]` — start przechodził, pobrania szły donikąd; teraz
 `URI.new/1`. Puste `audience`/`issuer` (`System.get_env("X", "")`) przechodziły start i odrzucały każdy credential —
-teraz brakujące; pusty `jwks_url` to nieustawiony, nie adres. *Bez zmian:* `~> 0.7.4` dalej wpuszcza nowsze łatki 0.7 —
+teraz brakujące; pusty `jwks_url` to nieustawiony, nie adres. Dziewiąta runda (bezpieczeństwo czyste; fuzz 3 mln
+adresów): `URI.new/1` i `URI.parse/1`, którym pobiera Req, różnią się na `https://[::1]a:8443/` (8443 sprawdzone,
+443 pobrane) — start wymaga, żeby oba czytały ten sam host i port. `@doc` i README mówią o ścisłym parsowaniu i
+pustym `jwks_url`. **Tu zatrzymane:** kolejne uwagi to już ta sama klasa — literówka w konfiguracji, przy której
+start przechodzi, a każdy credential jest odrzucany (`audience` z końcowym `\n`, port 99999, `%20` w hoście).
+Wszystkie zamykają się szczelnie (nikt nie wchodzi) i są głośne (`ready?/0` false dla health checku, ostrzeżenie
+co pobranie); literówek jest nieskończenie wiele, więc pakiet nie próbuje wyliczyć każdej. *Bez zmian:* `~> 0.7.4` dalej wpuszcza nowsze łatki 0.7 —
 ryzyko nazwane, nie usunięte; `@req` w czasie kompilacji — Mix śledzi moduły Req. *Pominięte:* `SSLKEYLOGFILE` (Finch dopisuje sekrety TLS, jeśli operator ustawi zmienną — środowisko,
 nie konfiguracja), telemetria Finch (tylko obserwuje), `cacertfile` trzymany przez Mint do restartu. Magazyn
 certyfikatów VM (`:public_key.cacerts_load/1` innej biblioteki podmienia go i dla tego pobrania) — zdanie w README. `transport_opts: nil` przechodził i wywracał każde pobranie (Req robi na nim
