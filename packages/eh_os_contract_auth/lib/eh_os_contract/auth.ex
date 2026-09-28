@@ -102,13 +102,12 @@ defmodule EhOsContract.Auth do
   repo: `EhOsContract.Auth` in the list of children.
 
   It reads `:issuer` and `:jwks_url` from `config :eh_os_contract_auth`, and raises
-  at boot without an issuer, or when the key set would be fetched over anything but
-  https (plain http is allowed for `localhost` only) or has credentials in it, and on
-  `url:` in `opts` or on
-  `req_options` other than the few `EhOsContract.Auth.Keys.start_link/1` names.
-  `:audience` and `:issuer` are read by `verify/2` on
-  every credential, and are checked here too, so a missing one fails the boot rather
-  than every request.
+  at boot without an issuer; when the key set's address is not a string, not https
+  (plain http is allowed for `localhost` only), or has anything in it that could be a
+  secret; on `url:` in `opts`; and on `req_options` other than the few
+  `EhOsContract.Auth.Keys.start_link/1` names. `:audience` and `:issuer` are read by
+  `verify/2` on every credential, and are checked here too, so a missing one fails
+  the boot rather than every request.
   """
   @spec child_spec(keyword()) :: Supervisor.child_spec()
   def child_spec(opts) do
@@ -124,6 +123,11 @@ defmodule EhOsContract.Auth do
       raise ArgumentError,
             "config :eh_os_contract_auth, issuer: \"<EHOS's public URL>\" is missing; it is " <>
               "the only iss a credential may carry, and the default place of its keys"
+    end
+
+    # Checked before it is read, so a charlist from `:os.getenv/1` is not shown.
+    unless is_binary(config[:issuer]) do
+      raise ArgumentError, "config :eh_os_contract_auth, issuer: takes a string"
     end
 
     url =

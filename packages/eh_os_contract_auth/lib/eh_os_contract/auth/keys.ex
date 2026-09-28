@@ -106,7 +106,9 @@ defmodule EhOsContract.Auth.Keys do
   certificate authority there keeps the two seconds unless it sets `:timeout` too.
 
   It raises on an option it does not take, when `:url` is not https (plain http is
-  allowed for `localhost` only) or has credentials in it (any `@`), and on any
+  allowed for `localhost` only), is not a string, or has anything in it that could
+  be a secret (any `@`, a query, a fragment, or a character outside printable
+  ASCII), and on any
   `:req_options` but these, each given
   once: `connect_options` with `timeout` and `transport_opts` naming a certificate
   authority (`cacertfile` or `cacerts`); `receive_timeout`; `inet6`; and `plug` or
@@ -230,21 +232,38 @@ defmodule EhOsContract.Auth.Keys do
   @spec check_options!(keyword()) :: :ok
   def check_options!(opts) do
     check_allowed!(:options, opts)
-    url = Keyword.fetch!(opts, :url)
+    # Not `Keyword.fetch!/2`, whose error would show every option given.
+    url = Keyword.get(opts, :url) || raise(ArgumentError, "eh_os_contract_auth takes url:")
 
     # The key set is what every credential is trusted by, and over plain HTTP anyone
     # on the path could hand it keys of their own. Only a machine's own loopback may
-    # be plain, for development. No message shows the address: one that fails here
-    # may carry a password, and a boot crash is logged. Any `@` is taken for one — a
-    # password with a `/` in it parses as the host, `user`, and no userinfo at all.
+    # be plain, for development. The address goes to the log with every failed fetch,
+    # and to Mint's errors, so nothing that could be a secret may be in it — and no
+    # message here shows it, since one that fails may carry a password. Any `@` is
+    # taken for one: a password with a `/` in it parses as the host, `user`, and no
+    # userinfo at all. A query or fragment is refused whole, as is anything Mint
+    # would not send (a space, a trailing newline from a secret file), rather than
+    # cut out of each place the address is shown. The pattern reads bytes, not
+    # characters, on purpose: no `u`, so any byte of a non-ASCII one fails it.
     cond do
       not is_binary(url) ->
         raise ArgumentError, "eh_os_contract_auth takes EHOS's address as a string"
 
+      not String.match?(url, ~r/\A[\x21-\x7E]+\z/) ->
+        raise ArgumentError,
+              "eh_os_contract_auth takes EHOS's address in printable ASCII, without spaces " <>
+                "or line breaks: a request is sent with nothing else"
+
       String.contains?(url, "@") ->
         raise ArgumentError,
-              "eh_os_contract_auth fetches EHOS's keys from an address with credentials in " <>
-                "it: the key set is public and asked for with none, and the address is logged"
+              "eh_os_contract_auth fetches EHOS's keys from an address with an @ in it, which " <>
+                "is read as credentials: the key set is public and asked for with none, and " <>
+                "the address is logged. A path that needs one takes it as %40"
+
+      String.contains?(url, ["?", "#"]) ->
+        raise ArgumentError,
+              "eh_os_contract_auth fetches EHOS's keys from an address with a query or a " <>
+                "fragment: the key set is asked for with neither, and the address is logged"
 
       true ->
         :ok
@@ -283,10 +302,6 @@ defmodule EhOsContract.Auth.Keys do
         end
     end
   end
-
-  # The address as the log shows it: without its query, which may carry a token.
-  # Credentials in the address never boot (`check_options!/1`).
-  defp shown(url), do: URI.to_string(%{URI.parse(url) | query: nil, fragment: nil})
 
   # Whether this is where keys EHOS did not publish may be trusted: a pinned one, or
   # whatever a stub in place of the network answers.
@@ -354,7 +369,7 @@ defmodule EhOsContract.Auth.Keys do
 
     if held(state.name) == 0 do
       Logger.error(
-        "eh_os_contract_auth has never seen a key set from #{shown(state.url)}, and refuses every " <>
+        "eh_os_contract_auth has never seen a key set from #{state.url}, and refuses every " <>
           "credential with :no_keys until a fetch succeeds"
       )
     end
@@ -417,7 +432,7 @@ defmodule EhOsContract.Auth.Keys do
 
       {:error, reason} = error ->
         Logger.warning(
-          "eh_os_contract_auth could not fetch the key set from #{shown(state.url)} (#{inspect(reason)}); " <>
+          "eh_os_contract_auth could not fetch the key set from #{state.url} (#{inspect(reason)}); " <>
             "#{held(state.name)} keys stay in force"
         )
 

@@ -76,12 +76,29 @@ defmodule EhOsContract.Auth.PackageTest do
       end
 
       # Refused as credentials, before loopback may be plain.
-      for url <- ["https://u:se/cret@ehos.example.com/k", "http://user:pw@localhost:4100/k"] do
+      for url <- [
+            "https://u:se/cret@ehos.example.com/k",
+            "http://user:pw@localhost:4100/k",
+            "https://ehos.example.com/@acme/k"
+          ] do
         Application.put_env(:eh_os_contract_auth, :jwks_url, url)
 
-        assert_raise ArgumentError, ~r/with credentials in it/, fn ->
+        assert_raise ArgumentError, ~r/with an @ in it/, fn ->
           EhOsContract.Auth.child_spec([])
         end
+      end
+
+      # Whatever could hide a secret in what the log shows, and what Mint would not send.
+      for {url, message} <- [
+            {"https://ehos.example.com/k?access_token=secret", ~r/with a query or a fragment/},
+            {"https://ehos.example.com/k#secret", ~r/with a query or a fragment/},
+            {"https://ehos.example.com/k?t=secret\n", ~r/printable ASCII/},
+            {"https://ehos.example.com/k k/secret", ~r/printable ASCII/},
+            {"https://ehos.example.com/\u00e9/secret", ~r/printable ASCII/}
+          ] do
+        Application.put_env(:eh_os_contract_auth, :jwks_url, url)
+        error = assert_raise ArgumentError, message, fn -> EhOsContract.Auth.child_spec([]) end
+        refute error.message =~ "secret", url
       end
 
       # From `:os.getenv/1`, a charlist: refused as not a string, and not shown.
@@ -177,6 +194,15 @@ defmodule EhOsContract.Auth.PackageTest do
       assert_raise ArgumentError, ~r/not from url: in its child options/, fn ->
         EhOsContract.Auth.child_spec(url: "https://elsewhere.example.com/jwks.json")
       end
+    end
+
+    test "fails the boot on an issuer that is not a string, without showing it" do
+      Application.delete_env(:eh_os_contract_auth, :jwks_url)
+      Application.put_env(:eh_os_contract_auth, :issuer, ~c"https://u:secret@ehos.example.com")
+
+      error = assert_raise ArgumentError, fn -> EhOsContract.Auth.child_spec([]) end
+      assert error.message =~ "issuer: takes a string"
+      refute error.message =~ "secret"
     end
 
     test "fails the boot without an audience, or without an issuer even with a jwks_url" do

@@ -12,15 +12,6 @@ defmodule EhOsContract.Auth.KeysTest do
   alias EhOsContract.Auth
   alias EhOsContract.Auth.Keys
 
-  test "a failed fetch logs the address without its query, which may carry a token" do
-    keys = start_keys(ehos({:status, 503}))
-    :sys.replace_state(keys, &%{&1 | url: "https://ehos.test/jwks.json?access_token=secret"})
-
-    log = ExUnit.CaptureLog.capture_log(fn -> Keys.refresh(keys) end)
-    assert log =~ "https://ehos.test/jwks.json"
-    refute log =~ "secret"
-  end
-
   test "a key removed from the JWKS is refused after the next refresh" do
     kept = key_pair()
     removed = key_pair()
@@ -126,6 +117,15 @@ defmodule EhOsContract.Auth.KeysTest do
     # that lists `Keys` itself gets no way around it.
     # A name of its own, so a check that stopped raising fails its assertion rather
     # than a later test's start.
+    test "refuses a start without an address, and shows no option given" do
+      error =
+        assert_raise ArgumentError, fn ->
+          Keys.start_link(name: :keys_no_url, repo: Repo, req_options: [inet6: true])
+        end
+
+      assert error.message == "eh_os_contract_auth takes url:"
+    end
+
     test "refuses an address that is not https" do
       assert_raise ArgumentError, ~r/not https/, fn ->
         Keys.start_link(name: :keys_http, url: "http://ehos.example.com/jwks.json", repo: Repo)
