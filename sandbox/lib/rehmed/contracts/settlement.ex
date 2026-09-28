@@ -108,6 +108,9 @@ defmodule Rehmed.Contracts.Settlement do
     # `C-30` produces `E-53 / E-56`: both endings are this command's. The total comes
     # with it, since the price freezes at the close (`H177`, mockup).
     #
+    # The total is what the payment lines sum to, so for a visit a payer covers in
+    # part it is the patient's part: the payer's line settles at 0 (`P-31`).
+    #
     # So do the payer and the period, when a payer covers the visit: the payer is set
     # at booking and the settlement screen shows it on the line it covers (the
     # mockup's "who pays" column), and the period is the month of the visit. The settlement cannot
@@ -244,6 +247,15 @@ defmodule Rehmed.Contracts.Settlement do
   scenario "wizyta w całości na LuxMed — zamyka się bez płatności i obciąża płatnika za wrzesień" do
     command :close_settlement, %{total: 18_000, payer_id: "payer-luxmed", period_id: "2026-09"}
     expect :visit_closed_without_payment
+    expect :visit_charged_to_payer, %{payer_id: "payer-luxmed", period_id: "2026-09"}
+  end
+
+  # P-31: the service booked for LuxMed settles at 0, and what was added in the room
+  # the patient pays.
+  scenario "wizyta mieszana — pacjent płaci 50 zł za dodaną usługę, reszta obciąża LuxMed" do
+    given :payment_recorded, %{method: :card, amount: 5_000}
+    command :close_settlement, %{total: 5_000, payer_id: "payer-luxmed", period_id: "2026-09"}
+    expect :visit_closed_commercially, %{total: 5_000}
     expect :visit_charged_to_payer, %{payer_id: "payer-luxmed", period_id: "2026-09"}
   end
 
