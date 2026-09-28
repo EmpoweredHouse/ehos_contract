@@ -44,8 +44,8 @@ defmodule Taxvision.IdentitySeamTest do
   defp opened,
     do: Repo.all(from(e in Event, where: e.type == "accounting_month.accounting_month_opened"))
 
-  # August of c-1 checked and agreeing, recorded as the registries' integration would,
-  # so that only who may open it is in question.
+  # c-1's profile complete and August never checked, so that past the door the
+  # domain's answer is its own: no consistent check, no month.
   setup do
     Testing.drain()
 
