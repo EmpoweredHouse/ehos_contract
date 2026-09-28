@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 28 września (E9 w `main`, E10 w toku)
+## Handoff — stan na 28 września (E10 gotowe lokalnie, następne E11)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -13,24 +13,26 @@ zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisan
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności), jej
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa pivot do v2** (DSL na Sparku, model
 domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E8, EA, EM, EL, EG i całe E9
-(E9a #33, E9b #39, E9c-1 #41, E9c-2 #42) są w `main`.** Teraz **E10 — wyjścia** (decyzje: „Przed E10 — decyzje
-użytkownika”), potem E11, E12 i E13. Po E9b Rehmed ma pięć kontraktów v2 (Scheduling,
+(E9a #33, E9b #39, E9c-1 #41, E9c-2 #42) są w `main`.** **E10 — wyjścia jest gotowe lokalnie** (wynik:
+„E10 — co wyszło”), następne są E11, E12 i E13. Po E9b Rehmed ma pięć kontraktów v2 (Scheduling,
 ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); po E9c-1 w sandboxie nie ma kontraktu v1.
 
 ### Stan repozytorium
 
 - **`origin/main` = `e7709c2`** (merge [#42](https://github.com/EmpoweredHouse/eh-os-contract/pull/42), E9c-2; CI
   `main` — `success`, przebieg `36451295950`).
-- **E10** na `dsl-v2/e10-outputs`, od `e7709c2`. Świeży worktree ma pobrane zależności, przygotowaną bazę i zieloną
-  bramę bazową (`EXIT=0`).
+- **E10** na `dsl-v2/e10-outputs`, od `e7709c2`; commity kodu przez `dfa4455`, końcowy zapis planu w HEAD;
+  niewypchnięte, bez PR-a. Pełna brama po kodzie i poprawce z przeglądu: `EXIT=0`.
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
 ### Co zostało — i czyje to jest
 
-- **E10–E12 — asystenta.** Zakres i kolejność E10 są w „Przed E10 — decyzje użytkownika”. Po E11 kontrakty
+- **E11–E12 — asystenta.** Po E11 kontrakty
   sandboxa przechodzą do testów pakietu jako fikstury akceptacyjne („Przed E9c-2 — decyzje użytkownika”).
-- **Proces na porcie 4000, wdrożenie E8 u hosta, lista zmian do `eh-os`, publikacja na Hex, F1/F2 i dziesięć
+- **Lista zmian do `eh-os` ma nową pozycję z E10:** fixture i przykład manifestu TaxVision są starsze od modelu
+  po E9; dokładny diff jest w „E10 — co wyszło”. Nie zmieniono drugiego repozytorium.
+- **Proces na porcie 4000, wdrożenie E8 u hosta, reszta listy zmian do `eh-os`, publikacja na Hex, F1/F2 i dziesięć
   usterek** — użytkownika, bez zmian (opisane w „Po E8 — kolejność zmieniona” i dopiskach 25–27 września). Link w
   wyjściu `check` (`hexdocs.pm/eh_os_contract/rules.html`) zadziała dopiero po publikacji na Hex.
 - **E13 — graf jako API i osobny renderer, w miejsce Mermaida** — po E12. Opis, decyzje i szacunek w „Etapach”.
@@ -42,7 +44,7 @@ ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); po E9c-1
 
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach, wyrażenia
    regularne na tekście klienta z flagą `u`, zsh bez dzielenia słów, nazwy zdarzeń z warsztatu.
-2. `PLAN.md`, „Przed E9 — decyzje użytkownika” i „Po E8 — kolejność zmieniona” (odbiór E9 i analiza pokrycia ESDM).
+2. `PLAN.md`, opis „E11 — Cięcie”, „Przed E9c-2 — decyzje użytkownika” (los fikstur po E11) i „E10 — co wyszło”.
 3. Materiał: `docs/rehmed-2026-08-18-distillation.md`, mapa kontekstów Rehmedu
    `~/Projects/ai/rehmed-process-native/2-Solution/30-contexts.md`, TaxVision
    `~/Projects/ai/taxvision-process-native/workshop_output/02-event-storming.md` i `03-ddd-architecture.md` — tylko
@@ -62,6 +64,7 @@ najpierw `MIX_ENV=test mix deps.get` w `packages/eh_os_contract`, `packages/eh_o
 `packages/eh_os_contract_auth` oraz `mix deps.get` w `sandbox/`. Nowe narzędzia: `mix eh_os_contract.view`,
 `mix eh_os_contract.glossary`, `mix eh_os_contract.check --format json`; `docs/rules.md` regeneruje
 `mix eh_os_contract.rules` (w pakiecie silnika, `MIX_ENV=test`). Do oglądania czegokolwiek `MIX_ENV=dev`.
+Manifest dla EHOS-a: `mix eh_os_contract.manifest --domain <domena> --output ehos.manifest.json`.
 
 **Z sesji Claude Code na tej maszynie SSH do GitHuba odmawia.** Pobieranie i push przez HTTPS z credentialem `gh`:
 
@@ -94,6 +97,9 @@ Grafy: `mix eh_os_contract.graph --map <domena> | --system <domena> [--overlay] 
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 28 września, na HEAD E10** (kod przez `dfa4455`, potem końcowy zapis planu): brama z `sandbox/` → **EXIT=0**;
+  `check` sandboxa **0 / 29 / 9**. CodeRabbit CLI 0.8.0 był wylogowany, więc przegląd wykonano lokalnie; znalazł i
+  poprawił nullable pól opcjonalnych oraz `Receipt.position` w JSON Schema.
 - **Lokalnie, 28 września, na `7c67982`** (E9c-1 po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 120
   testów, `check` 0 / 26 / 9; silnik 1245, `check` 0 / 67 / 21; web 45; auth 51.
 - **Lokalnie, 28 września, na `cc07431`** (E9b po dwóch rundach przeglądu): brama z `sandbox/` → **EXIT=0** — sandbox 99
@@ -559,7 +565,8 @@ przez `or_else` na zasianym przebiegu; **zmiana struktury zdarzenia konsumowaneg
 implementacji subskrybenta ze wskazaniem obu stron — kontrola: zmiana pola, którego subskrybent nie używa, go
 nie dotyka.**
 
-**E10 — Wyjścia.** Ostrzeżenia L5 (v2 §6) przypięte testem na wyjściu sandboxa; graf systemu (domena →
+**E10 — Wyjścia. Zrobione lokalnie 28 września** („E10 — co wyszło”; manifest ujawnił zmianę potrzebną w
+fixture `eh-os`). Ostrzeżenia L5 (v2 §6) przypięte testem na wyjściu sandboxa; graf systemu (domena →
 konteksty → kontrakty, krawędzie `consumes`) w `mix eh_os_contract.graph` i na `/graph`; `Model.to_data/1` z
 nazwanym schematem dla EHOS-a, z uprawnieniami, i endpoint w API pakietu web; AsyncAPI z deklaracji `publish` (D11)
 i OpenAPI z komend i query modelu (D10). W pakiecie auth (D14) task manifestu dla EHOS-a: `ehos.manifest/v1`
@@ -2036,6 +2043,60 @@ Asystent zapytał o dwie rzeczy z przeglądu; odpowiedź: „tak” na obie.
 - **Reszta E10 idzie małymi commitami:** nazwany eksport `Model.to_data/1` i endpoint web, AsyncAPI z `publish`,
   OpenAPI z komend i query, a na końcu manifest `ehos.manifest/v1` w pakiecie auth, równy fixture'owi TaxVision
   po ograniczeniu do pól schematu EHOS-a.
+
+### E10 — co wyszło (28 września)
+
+Na `dsl-v2/e10-outputs`, od `e7709c2`, niewypchnięte: decyzje (`d4140bf`), kompletność (`7c1d551`), eksport modelu
+(`ce0547b`), AsyncAPI (`da06ddc`), OpenAPI (`7dcf101`), manifest (`97047d5`) i poprawka z przeglądu (`dfa4455`).
+Pełna brama po każdym commicie: `EXIT=0`. Sandboxowy test E10 przypina rzeczywiste wyjście `check`, graf systemu,
+AsyncAPI i OpenAPI TaxVision oraz plik manifestu z taska.
+
+**Co jest.**
+
+- **L5 z E9:** `scoped-actor-with-unscoped-command`; brak `contract-without-implementation` dla kontraktu
+  złożonego wyłącznie ze zdarzeń `recorded_by:`; `in-transaction-policy-fan-out`, gdy scenariusz polityki pokazuje
+  więcej niż jedną wydaną komendę. TaxVision daje ostatnie ostrzeżenie na `match_each_turnover`; nie ma limitu
+  runtime, zgodnie z decyzją. Wynik sandboxa: **0 błędów, 29 ostrzeżeń, 9 uwag**.
+- **Graf systemu:** istniejący wynik EG2 jest przypięty na TaxVision — konteksty, krawędź
+  Document Intake → Accounting Month i publikacja miesiąca. E10 nie wprowadza formatu grafu jako danych.
+- **Model jako dane:** `EhOsContract.Model.to_data/1` zwraca JSON-ready `eh_os_contract.model.v1` z kontraktem,
+  domeną, wyprowadzonymi uprawnieniami i digestem projekcji. Chronione endpointy webowe: `/model` i
+  `/model/:contract`, digest dokumentu jako `ETag`.
+- **AsyncAPI 3.0:** tylko `publish` staje się kanałem, wiadomością i operacją `send`; zdarzenia wewnętrzne są
+  nieobecne. Payload to zamknięty JSON Schema wybranych pól, z nazwą publikacji, zdarzeniem źródłowym,
+  `schema_version` i `idempotent_on`. `/asyncapi` czyta wyłącznie kontrakty v2; bezpośrednia projekcja v1 zostaje
+  tylko do cięcia E11.
+- **OpenAPI 3.1.2:** osobny dokument na kontrakt, ścieżki względne wobec mountu `EhOsContract.Plug`:
+  `POST /commands/<capability>` i `GET /queries/<capability>`. Widać role i `scope`; nie ma komend tylko dla kodu
+  aplikacji. Komenda tworząca nie pokazuje generowanej tożsamości i wymaga `idempotency-key`; query opisuje pola
+  read modelu. `/openapi` i `/openapi/:contract` są chronione jak reszta API i podają digest w `ETag`.
+- **Jeden JSON Schema dla AsyncAPI i OpenAPI:** typy wbudowane, aliasy i wartości domeny, listy, enumy,
+  identyfikatory, pola osobowe/`issued_by`, wymagane pola i `additionalProperties: false`. Przegląd znalazł, że
+  `Codec` zapisuje opcjonalne pole jako `null`, nie tylko pomija klucz; oba dokumenty dopuszczają teraz oba
+  kształty. `Receipt.position` też jest `integer | null`, bo komenda może nie dać zdarzenia.
+- **Manifest EHOS-a:** `EhOsContract.Auth.Manifest.build/2` i
+  `mix eh_os_contract.manifest --domain taxvision --output ehos.manifest.json` generują wyłącznie ścisłe pola
+  `ehos.manifest/v1`. Capability to każda komenda dostępna człowiekowi; rolą jest każdy aktor `:human` z co
+  najmniej jedną taką komendą. Aktor systemowy, aktor bez uprawnień, query, nagranie, scope i publikacja nie są
+  prywatnymi rozszerzeniami, które EHOS odrzuciłby. `engine` i `contracts` są pominięte, więc metadane nie ruszają
+  digestu autoryzacji.
+
+**Rozjazd odbioru manifestu.** Wymaganie „równy fixture'owi TaxVision w `eh-os`” nie zachodzi po E9 i nie da się go
+spełnić wierną projekcją obecnego modelu. Fixture z 25 września ma dwie komendy; model ma cztery. Do listy zmian po
+stronie `eh-os`:
+
+1. dodać `taxvision.complete_company_profile` (`Uzupełnij profil firmy`, proces `client`) i
+   `taxvision.ingest_bank_statement` (`Wgraj wyciąg bankowy`, proces `accounting_month`);
+2. etykietę `open_month` zmienić z „Otwarcie miesiąca księgowego” na „Otwórz miesiąc księgowy”;
+3. etykietę `retrigger_verification` zmienić z „Ponowienie weryfikacji rejestrowej” na „Ponów weryfikację”, a
+   proces z `accounting_month` na `client`;
+4. rozszerzyć `taxvision.accountant` o wszystkie cztery capability i przeliczyć digest fixture'u oraz asercje,
+   które go przypinają.
+
+Generator nie dostał ręcznego filtra do dwóch historycznych komend: taki filtr przywróciłby drift, przed którym
+manifest istnieje. Drugie repozytorium nie zostało zmienione. `ehos.manifest/v1` przyjmuje tylko komendy; query,
+scope, `publish`/`consumes` czekają w EHOS D-40/D-41 na v2, a capability nagrywania potrzebuje tam pola, którego
+proponowane v2 jeszcze nie opisuje.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
