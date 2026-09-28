@@ -2847,8 +2847,10 @@ hostem, którego konfiguracja jest zaufanym kodem, zamiast zawęzić interfejs, 
 (b) Cicho nakładać opcje pakietu po opcjach hosta — konfiguracja kłamie. (c) Tylko dokumentacja — pułapka zostaje.
 Pominięte świadomie: `config :req, default_options` hosta dalej działa pod tym pobraniem — to globalna decyzja
 hosta, tym samym kodem, co on sam (zdanie w README). Zła *wartość* CA (`nil` z pustej zmiennej, zła ścieżka) przechodzi
-start i wywraca każde pobranie — zamyka szczelnie i głośno (`ready?/0`, ostrzeżenie), jak każda literówka w
-konfiguracji. **Znane ograniczenie:** proxy ani certyfikatu klienta (mTLS) nie da się podać; host, który ich
+start i wywraca każde pobranie. Przy pierwszym starcie zamyka szczelnie (`ready?/0` false); gdy tabela ma już
+klucze, **zostają w mocy bez końca, a sygnałem jest tylko ostrzeżenie w logu** — klucz usunięty z JWKS dalej
+weryfikuje (uwaga z przeglądu ostatniego commita). Do zadania z limitem pobrania: brak całkowitego limitu czasu
+(`request_timeout` Req to `:infinity`), `refresh/1` bez `catch` i sygnał starego zestawu kluczy. **Znane ograniczenie:** proxy ani certyfikatu klienta (mTLS) nie da się podać; host, który ich
 potrzebuje, prosi, i dochodzi jedna nazwana opcja.
 
 **Skill `pre-pr-review` odpala od teraz oba przeglądy równolegle** (prośba użytkownika): dwa subagenty w jednej

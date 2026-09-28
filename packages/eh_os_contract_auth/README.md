@@ -169,13 +169,18 @@ children = [
 ]
 ```
 
-`cacerts:` takes the certificates themselves (DER) instead of a file. That is all an application
-sets about the fetch. It does not take Req's options: the fetch **follows no redirect**, is not
+`cacerts:` takes the certificates themselves (DER) instead of a file. That is all the package
+takes about the fetch. It does not take Req's options: the fetch **follows no redirect**, is not
 retried, reads at most 64 KB, and waits two seconds to connect and three for each part of the
 answer, and Req has options that would undo each of these, or the check of the certificate. An
-option the package does not take fails the boot. (What an application sets for every Req request
-it makes, in `config :req, default_options`, applies to this one too.) A proxy or a client
-certificate is not supported.
+option the package does not take fails the boot. A proxy or a client certificate is not supported.
+
+Req still merges an application's own `config :req, default_options` into this request, under the
+package's options: what the package sets — the connection with its authority, the timeouts,
+retries and redirects — replaces the application's, and the rest reaches the fetch. A global
+`plug:` or `adapter:` replaces the network here too, `auth:` or `headers:` are sent to EHOS, and
+`finch:` makes every fetch fail, since the package always sets the connection. Keep those out of
+the global defaults.
 
 Certificate verification cannot be turned off through the package, so a first integration cannot
 be made to work that way: the keys would then come from whoever answers. For the same reason the package refuses to boot

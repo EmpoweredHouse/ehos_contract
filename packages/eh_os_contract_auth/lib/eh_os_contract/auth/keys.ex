@@ -86,7 +86,8 @@ defmodule EhOsContract.Auth.Keys do
   EHOS's certificate is checked against the system's authorities, or against the
   one `:cacertfile` (a PEM file) or `:cacerts` (DER certificates) names. The fetch
   follows no redirect, is not retried, and waits two seconds to connect and three
-  for each part of the answer; nothing else about it is the host's to set.
+  for each part of the answer; nothing else about it is taken here. Req's own
+  `config :req, default_options` still applies, under these.
 
   `:plug` answers in place of the network, as `Req.Test` does, and is taken only
   with `config :eh_os_contract_auth, pin_keys: true`, as in a test: whatever it

@@ -29,7 +29,7 @@ defmodule EhOsContract.Auth do
 
       {EhOsContract.Auth, cacertfile: "/etc/ehos/ca.pem"}
 
-  That, or `cacerts:`, is all a host sets about the fetch
+  That, or `cacerts:`, is all the package takes about the fetch
   (`EhOsContract.Auth.Keys.start_link/1`).
 
   **A credential** is a JWT signed with Ed25519 (`eh-os` D-33). `verify/2` accepts
