@@ -6,5 +6,7 @@ defmodule Taxvision.Contracts do
   implementations rather than every one there is.
   """
 
-  use Boundary, deps: [EhOsContract], exports: [{AccountingMonth, []}, {RegistryWatch, []}]
+  use Boundary,
+    deps: [EhOsContract],
+    exports: [{AccountingMonth, []}, {DocumentIntake, []}, {RegistryWatch, []}]
 end

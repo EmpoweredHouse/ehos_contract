@@ -5,37 +5,36 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 28 września (EG w `main`, E9 w toku)
+## Handoff — stan na 28 września (E9c-1 w `main`, E9c-2 w PR)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
 
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności), jej
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa pivot do v2** (DSL na Sparku, model
-domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E8, EA, EM, EL i EG są w
-`main`** (PR #1–#32), **E9a też** (#33). Teraz **E9** — kontrakty sandboxa od nowa z materiału — w trzech częściach
-(decyzje: „Przed E9 — decyzje użytkownika”), potem E10–E12. Po E9b Rehmed ma pięć kontraktów v2 (Scheduling,
+domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E8, EA, EM, EL, EG, E9a (#33),
+E9b (#39) i E9c-1 (#41) są w `main`.** Teraz **E9** — kontrakty sandboxa od nowa z materiału (decyzje: „Przed E9 — decyzje
+użytkownika”): E9c-2 w PR; potem E10–E12. Po E9b Rehmed ma pięć kontraktów v2 (Scheduling,
 ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); po E9c-1 w sandboxie nie ma kontraktu v1.
 
 ### Stan repozytorium
 
-- **`origin/main` = `ff4f279`** (`VISION.md`, po merge [#32](https://github.com/EmpoweredHouse/eh-os-contract/pull/32),
-  EG — cztery grafy, 28 września). CI `main` na `f2a54bd` (przebieg `36399198063`) — `success`. Gałąź `dsl-v2/eg-graphs` jest
-  zmergowana. Opisy EG: „Przed EG — decyzje użytkownika” … „EG3 — co wyszło”.
-- **E9a w `main`** — PR [#33](https://github.com/EmpoweredHouse/eh-os-contract/pull/33) zmergowany 28 września
-  (`451d068`). **E9b** na `dsl-v2/e9-payer`, od `main` = `06c6e11` (po rebase od `451d068`) — w budowie („Przed E9b — decyzja
-  użytkownika”, „E9b — co wyszło”): zbudowane i przejrzane („Przegląd E9b”), niewypchnięte. **E9c-1** na
-  `dsl-v2/e9-taxvision`, od E9b — zbudowane i przejrzane („Przed E9c — decyzje użytkownika”, „E9c-1 — co
-  wyszło”, „Przegląd E9c-1”), potem E9c-2.
+- **`origin/main` = `7bd4466`** (merge [#41](https://github.com/EmpoweredHouse/eh-os-contract/pull/41), E9c-1; CI
+  na połączeniu z `main` — `success`, przebieg `36441227320`). #40 zmergował się do nieprzestawionej bazy
+  `dsl-v2/e9-payer` (`dfc3451`), stąd #41 z tą samą głową.
+- **E9c-2** na `dsl-v2/e9-e9c2`, od `60324a5`, w PR do `main` — zbudowane („Przed E9c-2 — decyzje użytkownika”, „E9c-2 — co
+  wyszło”, „Przegląd E9c-2”), przejrzane jedną rundą. Brama na każdym commicie EXIT=0; sandbox 137
+  testów, `check` 0 / 28 / 10; silnik 1245, `check` 0 / 67 / 21; web 45; auth 55.
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
 ### Co zostało — i czyje to jest
 
-- **E9, E10–E12 — asystenta, po pytaniach.** Zakres E9: „Po E8 — kolejność zmieniona” i „Przed E9 — decyzje
-  użytkownika”; stary akapit „E9 — Pozostałe kontrakty sandboxa” w „Etapach” opisuje port 1:1 i nie obowiązuje,
-  zostaje z niego tylko odbiór. Po każdej skończonej części E9 `pre-pr-review`, zanim ruszy następna. Do E9 odłożone
-  pozycje 6–9 z „Po EL2 — proza, którą da się sprawdzać”.
+- **Merge PR E9c-2** — użytkownika. Przegląd zrobiony (notatka na głowie gałęzi); obie decyzje z przeglądu
+  zapisane („Po przeglądzie E9c-2 — decyzje użytkownika”). Gałąź E9c-2 stoi na głowie #41, więc po jego merge'u jej PR idzie prosto na `main`.
+- **E10–E12 — asystenta, po pytaniach.** Po E11 kontrakty sandboxa przechodzą do testów pakietu jako fikstury
+  akceptacyjne („Przed E9c-2 — decyzje użytkownika”). Do E9 odłożone pozycje 6–9 z „Po EL2 — proza, którą da się
+  sprawdzać” — do sprawdzenia, czy E9 je zamknęło.
 - **Proces na porcie 4000, wdrożenie E8 u hosta, lista zmian do `eh-os`, publikacja na Hex, F1/F2 i dziesięć
   usterek** — użytkownika, bez zmian (opisane w „Po E8 — kolejność zmieniona” i dopiskach 25–27 września). Link w
   wyjściu `check` (`hexdocs.pm/eh_os_contract/rules.html`) zadziała dopiero po publikacji na Hex.
@@ -1905,6 +1904,129 @@ Asystent zapytał o dwie rzeczy, które przegląd zostawił użytkownikowi; odpo
   pod firmą jako podmiotem (crypto-shredding po końcu współpracy); skrót różnicy jak `retain: :hash` w v1.
 - **Indeks `(type)` zostaje** (ustalenie 1 z E9b: bez statystyk planner czytał nim historię typu). *Odrzucone:*
   skasowanie indeksu (migracja po stronie hosta); zakres wymuszony w kształcie zapytania sprawdzenia konfliktu.
+
+### Przed E9c-2 — decyzje użytkownika (28 września)
+
+Pytanie z refleksji użytkownika: kontrakty Rehmedu i TaxVision i tak wylecą z repozytorium biblioteki, więc jak
+walidować implementację szybko i bez przepalania tokenów. Asystent pokazał na sandboksie, co jest tanie, a co
+drogie: 48 scenariuszy to czyste funkcje (komenda wchodzi, zdarzenia wychodzą — bez bazy, HTTP i timerów), a
+testy przebiegu (pętla P1, `identity_seam_test`, Plug) zjadły cztery rundy przeglądu, broniąc zachowania danych
+testowych. Trzy propozycje asystenta, wszystkie przyjęte:
+
+- **Po E11 kontrakty sandboxa przechodzą do testów pakietu jako fikstury akceptacyjne** (obok
+  `UniversalityGate`): kontrakt ze scenariuszami i po jednym teście przebiegu na mechanizm silnika, nie na regułę
+  domeny. Adaptery, HTTP i `Periods` nie muszą przeżyć. *Odrzucone:* osobne repozytorium przykładów (bez
+  zgodności wstecz psułoby się przy każdej zmianie DSL-a, czyli drugie repozytorium do utrzymania); sandbox bez
+  zmian.
+- **E9c-2 węższe — tylko to, czego rodzaje DSL-a nie mają jeszcze na prawdziwym kontrakcie:** `domain_service`,
+  `publish`, `issued_by` (w silniku są od EM/EL, sandbox nie używa żadnego) i polityka wydająca kilka komend
+  naraz (silnik ją ma — klucz `…:<index>` — a każda polityka sandboxa wydaje jedną). *Odrzucone:* pełny zakres
+  z „Przed E9c” — Work Orchestration i Notifications to agregat, polityka i efekt, które są już na prawdziwych
+  kontraktach (5 / 3 / 2 razy), więc dodałyby modelowanie domeny bez sygnału dla biblioteki.
+- **Przegląd kontraktów sandboxa jedną rundą**: pytanie, czy rodzaj trzyma się na materiale i czy silnik nie
+  pęka; poprawność logiki domeny idzie do ustaleń, nie do kolejnych rund. Kod silnika, który E9c-2 zmieni, dalej
+  dostaje pełny przegląd. *Odrzucone:* przegląd do skutku jak w E9c-1.
+- **E9c-1 do `main` nowym PR-em** — #40 zmergował się do nieprzestawionej bazy `dsl-v2/e9-payer` (`dfc3451`), więc
+  do `main` nie trafił; [#41](https://github.com/EmpoweredHouse/eh-os-contract/pull/41) to ta sama głowa `60324a5`.
+
+**Gdzie wydaje kilka komend — wybór asystenta** (mechanika danych testowych). Nie taski z szablonu (Work
+Orchestration): wymagałyby nowego kontekstu, agregatu szablonu i nazwy zdarzenia, której materiał nie ma (§4.5
+publikuje `MonthlyTasksGenerated`, jedno zdarzenie, a dla `CreateTask` żadnego). Zamiast tego P6 (`02` §10): po
+wgraniu wyciągu lista obrotów, a dla każdego obrotu dopasowywanie — na tym samym przepływie co `domain_service`
+(parowanie, P7) i numer KSeF, z nazwami z `02` §3.3.
+
+### E9c-2 — co wyszło (28 września)
+
+Na `dsl-v2/e9-e9c2`, od E9c-1 (`60324a5`), niewypchnięte: zapis decyzji (`13c5d67`), budowa (`90925cc`), trzy
+poprawki z przeglądu. Silnik bez zmian — wszystkie cztery rodzaje już tam były.
+Sandbox 120 → **132** testy (scenariusze, przykłady usługi i wartości, test przebiegu); silnik 1245, web 45, auth 55;
+`check` sandboxa 0 / 26 / 9 → **0 / 28 / 10**.
+
+**Co jest.**
+- **`Taxvision.Domain`**: kontekst Document Intake (supporting) i jego relacja customer–supplier do miesiąca
+  (tabela `03` §3), system `:ksef` (`:inbound`) z aktorem integracji, `value :ksef_number, :id` z inwariantem
+  formatu (NIP, RRRRMMDD, 12 cyfr szesnastkowych, suma kontrolna — format Ministerstwa Finansów, nie z
+  warsztatu; samej sumy kontrolnej się nie liczy), `value :turnover`, `value :invoice`.
+- **`Taxvision.Contracts.DocumentIntake`**: jedno zdarzenie, `invoice_pulled_from_ksef`, nagrywane przez
+  integrację, z polem `ksef_number … issued_by: :ksef`. Bez implementacji: nikt tu nic nie decyduje.
+- **`Taxvision.Contracts.AccountingMonth`**: boundary `:turnover_matching` `[company_id, period_id]` konsultujący
+  faktury z KSeF; `ingest_bank_statement` (księgowa ze `scope`) daje `bank_turnover_list_created`; polityka
+  `match_each_turnover` (P6) wydaje `run_matching` na każdy obrót; decyzja woła `domain_service :pairing`
+  (`invoice_for/2`, dwie reguły z przykładami) i daje `turnover_matched_with_invoice` albo
+  `turnover_without_invoice_flagged`; faktura paruje się raz. `publish :month_opened` jako
+  `taxvision.accounting_month.opened.v1` dla Shugyo — relay to E12, więc na razie nic nie wychodzi.
+- Test przebiegu (`taxvision_matching_test.exs`): faktura z KSeF, wyciąg z dwoma obrotami, jeden sparowany,
+  drugi oznaczony; numer bez sumy kontrolnej nie zostaje nagrany. `identity_seam_test` dostał wejście
+  `ingest_bank_statement` — D-34 (każde uprawnienie ma wejście, które go odmawia) złapał jego brak przy pierwszej
+  bramie. Próby odwrotne: polityka wydająca jedną komendę,
+  parowanie zwracające zawsze `nil` i faktura parująca się dwa razy — każda kładzie co najmniej jeden test.
+
+**Ustalenia o bibliotece:**
+1. **Kontrakt tylko z nagrywanymi zdarzeniami nie ma czego implementować**, a `contract-without-implementation`
+   mówi o nim „nothing of it can be dispatched, and its report is of a process nobody runs” — choć integracja
+   do niego nagrywa i proces biegnie. Kandydat na zawężenie reguły w E10 (nie zgłaszać, gdy każde zdarzenie
+   ma `recorded_by:`).
+2. **Pusty agregat i `@impl`**: implementacja agregatu bez stanu i komend nie ma callbacku `evolve`, więc moduł
+   z samym `use` jest zbędny, a z `evolve` daje ostrzeżenie kompilatora. Zgodne z (1), do opisania w
+   `docs/contract.md` przy E11.
+3. **Nagranie z wartością łamiącą inwariant to `{:error, {:invalid, …}}`**, nie wyjątek — jak przy komendzie;
+   test to przypina.
+4. **Przykłady usługi domenowej z listą wartości są rozwlekłe** (mapa na każdą fakturę w każdym przykładzie), ale
+   działają; typy i inwarianty wartości w przykładach są sprawdzane.
+5. `publish` bez relaya jest dziś deklaracją sprawdzaną tylko przy kompilacji; czytelnik (relay i `Bus`) jest w E12.
+
+**Ustalenia o materiale:** margines dni między fakturą a płatnością jest „kilku dni” bez liczby (BANK); pominięty
+razem z parowaniem jednego obrotu z wieloma fakturami i fakturą, która przychodzi po obrocie (P7 „on-going”).
+
+**Nowe linie `check`:** `event-without-consumer` dla obu wyników dopasowywania — czytelnikiem byłyby wyjaśnienia
+(P8) i Shugyo, których E9 nie pisze — oraz `contract-without-implementation` dla Document Intake (ustalenie 1).
+
+**Przegląd E9c-2** (jedna runda, decyzja użytkownika: dwa przeglądy równolegle na `60324a5..90925cc` —
+`code-review high` i bezpieczeństwo z wydajnością). Sandbox 132 → **137** testów; `check` bez zmian, 0 / 28 / 10.
+
+*Poprawione przez asystenta, z testem i próbą odwrotną:*
+- **Numer KSeF w cyfrach spoza ASCII** (`3bb3a63`, oba przeglądy): z flagą `u` `\d` to każda cyfra Unicode, więc
+  data w cyfrach arabsko-indyjskich przechodziła wyrażenie, a `String.to_integer/1` rzucał wyjątek — nagranie
+  kończyło się wyjątkiem zamiast odmowy inwariantu — a NIP w takich cyfrach był drugą pisownią tego samego numeru.
+  Teraz `[0-9]`; trzy nowe przykłady łamiące, w tym niemożliwa data, której wcześniej żaden nie sprawdzał.
+- **Obrót rozstrzyga się raz, faktura paruje się raz niezależnie od kolejności w logu** (`bda39ca`, oba
+  przeglądy): wyciąg wgrany drugi raz wydawał `run_matching` dla obrotów już rozstrzygniętych — sparowany obrót
+  brał drugą fakturę na tę samą kwotę albo dostawał „bez faktury” i log miał oba fakty; faktura pobrana z KSeF
+  ponownie po sparowaniu wracała do puli. Boundary trzyma osobno to, co dał KSeF, co się sparowało i które obroty
+  są rozstrzygnięte; nowy inwariant `a_turnover_is_matched_once`, który polityka przyjmuje jako odpowiedź
+  jednostki. Przy okazji dopisywanie na początek zamiast `++`.
+- **Polskie cytaty w komentarzach i zbędne zależności granicy** (`46c7f9e`): pięć komentarzy i moduledoc cytowały
+  warsztat po polsku; `Taxvision.DocumentIntake` zależał od `EhOsContract` i kontraktów, których nie używa.
+
+*Pominięte, jako ustalenia o bibliotece:*
+- **Polityka wydająca N komend w transakcji żądania trzyma globalną blokadę dopisywania przez N dispatchy**
+  (bezpieczeństwo i wydajność, wysoka pewność): `:in_transaction` jest domyślne, blokada ma jeden klucz
+  (`eh_os_contract_append_lock()`), więc wyciąg z tysiącami obrotów wstrzymuje każdy zapis w aplikacji, a `read_body`
+  wpuszcza 8 MB. Mechanika silnika — do E10/E11: reguła `check` na politykę z fan-outem bez `delivery:
+  :at_least_once` albo limit długości listy w polu komendy.
+- **Boundary czyta wszystkie własne zdarzenia, także te, których `evolve` nie używa** (oba przeglądy): każde
+  `run_matching` dekoduje każde `bank_turnover_list_created` miesiąca z całą listą obrotów — O(N²) na wyciąg. DSL
+  nie pozwala boundary powiedzieć, które z własnych zdarzeń czyta; w sandboksie obeszłoby to przeniesienie wyciągu
+  do osobnej jednostki. Do E11.
+- **Usługa domenowa nie ma krawędzi na żadnym grafie** (weryfikacja w przeglądarce): graf kontraktu rysuje
+  `issued_by` („gives ksef_number”) i `backed_by`, `publish` jest na grafie systemu, a `:pairing` nie ma nigdzie —
+  ani w widoku boundary, który ją woła. Do E13 (graf jako API).
+- **`\d` z flagą `u`** — nowy rodzaj pułapki obok reguły o `u` w `CLAUDE.md`: format ASCII piszemy `[0-9]`.
+  Dopisane do `CLAUDE.md` (decyzja niżej).
+
+*Pominięte, jako logika domeny (decyzja przed E9c-2):* dopasowywanie nie wymaga otwartego miesiąca (`stage
+:opening` przed `:matching` nie jest wymuszany); parowanie nie patrzy na kierunek obrotu (wpływ czy wydatek) — pod
+„tylko po kwocie”.
+
+### Po przeglądzie E9c-2 — decyzje użytkownika (28 września)
+
+Asystent zapytał o dwie rzeczy z przeglądu; odpowiedź: „tak” na obie.
+- **NIP sprzedawcy w numerze KSeF i obroty JDG zostają w logu jawne.** Numer KSeF zaczyna się NIP-em sprzedawcy —
+  przy jednoosobowej działalności identyfikatorem osoby trzeciej — a obroty z wyciągu to kwoty i daty z rachunku
+  JDG; decyzja „Dane JDG w logu zostają jawne” obejmowała dotąd tylko dane klienta. *Odrzucone:* numer i obroty
+  jako `personal:` (crypto-shredding pod sprzedawcą albo pod firmą klienta); numer KSeF jako skrót w logu.
+- **Reguła o `\d` z flagą `u` w `CLAUDE.md`** — format ASCII piszemy `[0-9]`, obok reguły o `u`. *Odrzucone:*
+  zostawienie jej tylko w ustaleniach przeglądu.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 

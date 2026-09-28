@@ -5,8 +5,8 @@ defmodule Taxvision.Contracts.AccountingMonth do
 
   Written anew on 28 September 2026 (v2 plan, E9c) from `03-ddd-architecture.md`
   §4.4 and §5 and phase 3.1 of `02-event-storming.md`. It replaces the v1 contract
-  of the same name; its stepper past the opening — collection, matching, result — is
-  E9c-2's and later.
+  of the same name. Matching was added with E9c-2 (phase 3.3); the rest of the
+  stepper — collection, clarifications, the result — is not in E9.
 
   ## Two ways to open, one rule
 
@@ -25,6 +25,24 @@ defmodule Taxvision.Contracts.AccountingMonth do
   month that is open. The later document is followed here, and the tasks are
   E9c-2's.
 
+  ## Matching
+
+  P6: a bank statement becomes a list of turnovers, and every turnover is matched.
+  The accountant uploads the statement already parsed — parsers are the client's
+  cost, not the library's — and a policy issues one `run_matching` per turnover.
+  P7: the turnover is paired with an invoice KSeF gave for that company and month,
+  by a domain service, `:pairing`. Pairing here is by amount alone; an invoice pairs
+  once, and a turnover is decided once, so a statement uploaded again changes
+  nothing already decided. The material's margin of days, one turnover paying many
+  invoices and an invoice arriving after its turnover are left out (plan, the
+  decisions before E9c-2: the kinds, not the domain's detail).
+
+  ## Out to Shugyo
+
+  Shugyo reads the month's events (03 §3, the event stream from every context to Shugyo, A9); the opening
+  leaves as `taxvision.accounting_month.opened.v1`. The relay is E12's, so nothing
+  leaves yet.
+
   ## The promise
 
   Two days from the confirmed data to an open month, or a discrepancy that blocks
@@ -40,6 +58,8 @@ defmodule Taxvision.Contracts.AccountingMonth do
     :registry_data_consistent,
     :registry_discrepancy_detected
   ]
+
+  consumes Taxvision.Contracts.DocumentIntake, [:invoice_pulled_from_ksef]
 
   dcb :accounting_month, "Miesiąc księgowy firmy" do
     identity [:company_id, :period_id]
@@ -72,10 +92,96 @@ defmodule Taxvision.Contracts.AccountingMonth do
     end
   end
 
+  # 03 §4.4: TurnoverInvoiceMatch, "tabela ciągła" of one company's month.
+  dcb :turnover_matching, "Dopasowywanie obrotów z fakturami" do
+    identity [:company_id, :period_id]
+
+    consults :invoice_pulled_from_ksef, match: [:company_id, :period_id]
+
+    state do
+      field :invoices, {:list, :invoice}, default: []
+      field :paired, {:list, :ksef_number}, default: []
+      field :decided, {:list, :id}, default: []
+    end
+
+    # A statement uploaded again, or one overlapping the last, issues a match for a
+    # turnover already decided; the first answer stands.
+    invariant :a_turnover_is_matched_once, "Obrót dopasowuje się raz",
+      source: "02 §3.3 (tabela ciągła; obroty doklejają się na bieżąco)"
+
+    command :ingest_bank_statement, "Wgraj wyciąg bankowy",
+      by: :accountant,
+      scope: :company_id,
+      emits: :bank_turnover_list_created,
+      source: "03 §4.4 IngestBankStatement; 02 §3.3 (MT940/CSV)" do
+      field :turnovers, {:list, :turnover}
+    end
+
+    # Issued by the policy, one per turnover, never by a person.
+    command :run_matching, "Dopasuj obrót do faktury",
+      emits: [:turnover_matched_with_invoice, :turnover_without_invoice_flagged],
+      rejects: :a_turnover_is_matched_once,
+      source: "03 §4.4 RunMatching; P7" do
+      field :turnover, :turnover
+    end
+
+    stage :matching do
+      event :bank_turnover_list_created, "Utworzono listę obrotów z wyciągu",
+        source: "02 §3.3 BankTurnoverListCreated; WF 01:05:01" do
+        field :turnovers, {:list, :turnover}
+      end
+
+      event :turnover_matched_with_invoice, "Połączono obrót z fakturą",
+        source: "02 §3.3 TurnoverMatchedWithInvoice; WF 01:07:12" do
+        field :turnover_id, :id
+        field :ksef_number, :ksef_number
+      end
+
+      event :turnover_without_invoice_flagged, "Obrót bez faktury",
+        source: "02 §3.3 TurnoverWithoutInvoiceFlagged; WF 01:19:25" do
+        field :turnover_id, :id
+      end
+    end
+  end
+
+  domain_service :pairing, "Parowanie obrotów z fakturami" do
+    function :invoice_for, "Faktura, z którą paruje się obrót" do
+      argument :amount_minor, :integer, label: "Kwota obrotu"
+      argument :invoices, {:list, :invoice}, label: "Faktury bez pary"
+      returns :ksef_number, optional: true
+
+      rule :same_amount, "Obrót paruje się z fakturą na tę samą kwotę",
+        examples: [
+          {[
+             12_300,
+             [%{ksef_number: "5265877635-20260714-0A1B2C3D4E5F-9A", amount_minor: 12_300}]
+           ], "5265877635-20260714-0A1B2C3D4E5F-9A"}
+        ]
+
+      rule :none_without_same_amount, "Bez faktury na tę samą kwotę obrót zostaje bez pary",
+        examples: [
+          {[12_300, [%{ksef_number: "5265877635-20260714-0A1B2C3D4E5F-9A", amount_minor: 9_900}]],
+           nil},
+          {[12_300, []], nil}
+        ]
+    end
+  end
+
   # 03 §5, step 2.
   policy :month_opens_on_consistent_registry, "Zgodne rejestry — miesiąc się otwiera",
     handles: :registry_data_consistent,
     issues: :open_month
+
+  # P6: when a statement (CSV/MT940) is uploaded, parse it into turnovers and match them.
+  policy :match_each_turnover, "Wyciąg wgrany — dopasuj każdy obrót",
+    handles: :bank_turnover_list_created,
+    issues: :run_matching
+
+  publish :month_opened,
+    as: "taxvision.accounting_month.opened.v1",
+    from: :accounting_month_opened,
+    fields: [:company_id, :period_id],
+    idempotent_on: [:company_id, :period_id]
 
   process :accounting_month, "Cykl miesięczny księgowy", accountable: :accountant do
     correlate [:company_id, :period_id]
@@ -87,6 +193,7 @@ defmodule Taxvision.Contracts.AccountingMonth do
     end
 
     stage :opening
+    stage :matching
 
     # Settled a month behind, checked on the first [WF 00:34:40].
     cadence {1, :month}
@@ -138,6 +245,125 @@ defmodule Taxvision.Contracts.AccountingMonth do
     given :accounting_month_opened
     command :open_month
     rejected :opens_once
+  end
+
+  scenario "obrót na kwotę faktury z KSeF — sparowany" do
+    given :invoice_pulled_from_ksef, %{
+      company_id: "c-1",
+      period_id: "2026-08",
+      ksef_number: "5265877635-20260814-0A1B2C3D4E5F-9A",
+      amount_minor: 12_300,
+      issued_on: "2026-08-14"
+    }
+
+    command :run_matching, %{
+      turnover: %{turnover_id: "t-1", amount_minor: 12_300, booked_on: "2026-08-20"}
+    }
+
+    expect :turnover_matched_with_invoice, %{
+      turnover_id: "t-1",
+      ksef_number: "5265877635-20260814-0A1B2C3D4E5F-9A"
+    }
+  end
+
+  scenario "faktura już sparowana — drugi obrót na tę kwotę bez faktury" do
+    given :invoice_pulled_from_ksef, %{
+      company_id: "c-1",
+      period_id: "2026-08",
+      ksef_number: "5265877635-20260814-0A1B2C3D4E5F-9A",
+      amount_minor: 12_300,
+      issued_on: "2026-08-14"
+    }
+
+    given :turnover_matched_with_invoice, %{
+      turnover_id: "t-1",
+      ksef_number: "5265877635-20260814-0A1B2C3D4E5F-9A"
+    }
+
+    command :run_matching, %{
+      turnover: %{turnover_id: "t-2", amount_minor: 12_300, booked_on: "2026-08-21"}
+    }
+
+    expect :turnover_without_invoice_flagged, %{turnover_id: "t-2"}
+  end
+
+  scenario "obrót już rozstrzygnięty — ponowne dopasowanie odrzucone" do
+    given :invoice_pulled_from_ksef, %{
+      company_id: "c-1",
+      period_id: "2026-08",
+      ksef_number: "5265877635-20260814-0A1B2C3D4E5F-9A",
+      amount_minor: 12_300,
+      issued_on: "2026-08-14"
+    }
+
+    given :invoice_pulled_from_ksef, %{
+      company_id: "c-1",
+      period_id: "2026-08",
+      ksef_number: "5265877635-20260815-0A1B2C3D4E60-3C",
+      amount_minor: 12_300,
+      issued_on: "2026-08-15"
+    }
+
+    given :turnover_matched_with_invoice, %{
+      turnover_id: "t-1",
+      ksef_number: "5265877635-20260814-0A1B2C3D4E5F-9A"
+    }
+
+    command :run_matching, %{
+      turnover: %{turnover_id: "t-1", amount_minor: 12_300, booked_on: "2026-08-20"}
+    }
+
+    rejected :a_turnover_is_matched_once
+  end
+
+  scenario "faktura pobrana z KSeF drugi raz — sparowana nie paruje się ponownie" do
+    given :invoice_pulled_from_ksef, %{
+      company_id: "c-1",
+      period_id: "2026-08",
+      ksef_number: "5265877635-20260814-0A1B2C3D4E5F-9A",
+      amount_minor: 12_300,
+      issued_on: "2026-08-14"
+    }
+
+    given :turnover_matched_with_invoice, %{
+      turnover_id: "t-1",
+      ksef_number: "5265877635-20260814-0A1B2C3D4E5F-9A"
+    }
+
+    given :invoice_pulled_from_ksef, %{
+      company_id: "c-1",
+      period_id: "2026-08",
+      ksef_number: "5265877635-20260814-0A1B2C3D4E5F-9A",
+      amount_minor: 12_300,
+      issued_on: "2026-08-14"
+    }
+
+    command :run_matching, %{
+      turnover: %{turnover_id: "t-2", amount_minor: 12_300, booked_on: "2026-08-21"}
+    }
+
+    expect :turnover_without_invoice_flagged, %{turnover_id: "t-2"}
+  end
+
+  scenario "wyciąg z dwoma obrotami — dwa dopasowania" do
+    scope :match_each_turnover
+
+    on :bank_turnover_list_created, %{
+      company_id: "c-1",
+      period_id: "2026-08",
+      turnovers: [
+        %{turnover_id: "t-1", amount_minor: 12_300, booked_on: "2026-08-20"},
+        %{turnover_id: "t-2", amount_minor: 4_500, booked_on: "2026-08-21"}
+      ]
+    }
+
+    issues :run_matching, %{
+      turnover: %{turnover_id: "t-1", amount_minor: 12_300, booked_on: "2026-08-20"}
+    }
+
+    issues :run_matching, %{
+      turnover: %{turnover_id: "t-2", amount_minor: 4_500, booked_on: "2026-08-21"}
+    }
   end
 
   scenario "zgodne rejestry otwierają miesiąc" do

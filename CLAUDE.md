@@ -165,6 +165,9 @@ mix ecto.migrate`.
   polszczyzna ma w UTF-8 bajty, które coś znaczą: `~r/\R/` łapie `0x85`, drugi bajt „ą”. Zdarzyło się 28 września
   w grafach EG1 — każda polska etykieta traciła „ą”, a testy przechodziły, bo żaden nie miał „ą”. Test tekstu
   klienta pisz z polską etykietą.
+- **Z flagą `u` `\d` to każda cyfra Unicode, nie `[0-9]`.** Format ASCII — numer KSeF, NIP, data — pisz
+  `[0-9]`. Zdarzyło się 28 września w E9c-2: data zapisana cyframi arabsko-indyjskimi przechodziła wyrażenie,
+  `String.to_integer/1` rzucał wyjątek i nagranie faktury kończyło się wyjątkiem zamiast odmowy inwariantu.
 - Przy pisaniu do pliku pamiętaj o `encoding: :unicode` — Erlang trzyma stdout w latin1, kiedy wyjście
   nie jest terminalem, i psuje każdy polski znak.
 - **W skryptach powłoki nie licz na dzielenie na słowa.** Shell to zsh, a zsh **nie dzieli** nierozdzielonych
