@@ -1,6 +1,6 @@
 defmodule Rehmed.AuthorizationTest do
   @moduledoc """
-  `Rehmed.Contracts.VisitSettlement` behind the host's door (v2 plan, EA): a bearer
+  `Rehmed.Contracts.Settlement` behind the host's door (v2 plan, EA): a bearer
   credential verified by `EhOsContract.Auth.Plug`, every command served by
   `EhOsContract.Plug` over HTTP, and every decision recorded by `EhOsContract.Auth`.
 
@@ -16,7 +16,7 @@ defmodule Rehmed.AuthorizationTest do
   import Plug.Conn
 
   alias EhOsContract.Event
-  alias Rehmed.Contracts.VisitSettlement
+  alias Rehmed.Contracts.Settlement
 
   @endpoint EhOsContractHostWeb.Endpoint
 
@@ -27,10 +27,16 @@ defmodule Rehmed.AuthorizationTest do
     |> post("/api/rehmed/commands/#{capability}", Jason.encode!(body))
   end
 
+  defp query(token, capability, params) do
+    build_conn()
+    |> put_req_header("authorization", "Bearer " <> token)
+    |> get("/api/rehmed/queries/#{capability}?#{params}")
+  end
+
   defp entries do
     %{
       "rehmed.hand_over_visit" =>
-        &command(&1, "rehmed.hand_over_visit", %{visit_id: "visit-anna", total: 20_000}),
+        &command(&1, "rehmed.hand_over_visit", %{visit_id: "visit-anna"}),
       "rehmed.add_service_line" =>
         &command(&1, "rehmed.add_service_line", %{visit_id: "visit-anna", service_id: "usg"}),
       "rehmed.record_payment" =>
@@ -40,9 +46,11 @@ defmodule Rehmed.AuthorizationTest do
           amount: 20_000
         }),
       "rehmed.close_settlement" =>
-        &command(&1, "rehmed.close_settlement", %{visit_id: "visit-anna"}),
+        &command(&1, "rehmed.close_settlement", %{visit_id: "visit-anna", total: 20_000}),
       "rehmed.book_correction" =>
-        &command(&1, "rehmed.book_correction", %{visit_id: "visit-anna", delta: -1_000})
+        &command(&1, "rehmed.book_correction", %{visit_id: "visit-anna", delta: -1_000}),
+      "rehmed.daily_totals_for" =>
+        &query(&1, "rehmed.daily_totals_for", "business_date=2026-09-28")
     }
   end
 
@@ -54,18 +62,20 @@ defmodule Rehmed.AuthorizationTest do
   end
 
   test "every entry point refuses a credential without its capability" do
-    assert assert_every_entry_refuses([VisitSettlement], entries()) == :ok
+    assert assert_every_entry_refuses([Settlement], entries()) == :ok
   end
 
   test "the control: a credential with the capability goes through, and has its row too" do
-    token = credential("u-specialist", ["rehmed.hand_over_visit"])
-    conn = command(token, "rehmed.hand_over_visit", %{visit_id: "visit-anna", total: 20_000})
+    token = credential("u-specialist", ["rehmed.add_service_line"])
+
+    conn =
+      command(token, "rehmed.add_service_line", %{visit_id: "visit-anna", service_id: "usg"})
 
     assert conn.status == 200
-    assert decisions("u-specialist") == [["rehmed.hand_over_visit", "allowed", nil]]
+    assert decisions("u-specialist") == [["rehmed.add_service_line", "allowed", nil]]
 
     assert Repo.all(from(e in Event, select: {e.type, e.actor})) ==
-             [{"visit_settlement.visit_handed_over", "actor:u-specialist"}]
+             [{"visit_settlement.service_line_added", "actor:u-specialist"}]
   end
 
   test "a request without a credential stops at the door, before any decision" do
@@ -82,24 +92,24 @@ defmodule Rehmed.AuthorizationTest do
     body = %{visit_id: "visit-anna", total: "a lot"}
 
     stranger = credential("u-stranger", [])
-    refused = command(stranger, "rehmed.hand_over_visit", body)
+    refused = command(stranger, "rehmed.close_settlement", body)
 
     assert {refused.status, Jason.decode!(refused.resp_body)} ==
              {403, %{"refused" => "missing_capability"}}
 
     assert decisions("u-stranger") == [
-             ["rehmed.hand_over_visit", "refused", "missing_capability"]
+             ["rehmed.close_settlement", "refused", "missing_capability"]
            ]
 
     # The control: with the capability, the problem with the fields is the answer,
     # and the request is still one decision.
-    specialist = credential("u-specialist", ["rehmed.hand_over_visit"])
-    invalid = command(specialist, "rehmed.hand_over_visit", body)
+    reception = credential("u-reception", ["rehmed.close_settlement"])
+    invalid = command(reception, "rehmed.close_settlement", body)
 
     assert {invalid.status, Jason.decode!(invalid.resp_body)} ==
              {422, %{"invalid" => %{"total" => "type"}}}
 
-    assert decisions("u-specialist") == [["rehmed.hand_over_visit", "allowed", nil]]
+    assert decisions("u-reception") == [["rehmed.close_settlement", "allowed", nil]]
   end
 
   describe "the check itself" do
@@ -108,7 +118,7 @@ defmodule Rehmed.AuthorizationTest do
 
       error =
         assert_raise ExUnit.AssertionError, fn ->
-          assert_every_entry_refuses([VisitSettlement], entries)
+          assert_every_entry_refuses([Settlement], entries)
         end
 
       assert error.message =~ "no entry for: rehmed.book_correction"
@@ -119,7 +129,7 @@ defmodule Rehmed.AuthorizationTest do
 
       error =
         assert_raise ExUnit.AssertionError, fn ->
-          assert_every_entry_refuses([VisitSettlement], entries)
+          assert_every_entry_refuses([Settlement], entries)
         end
 
       assert error.message =~ "not declared: rehmed.pay_everything"
@@ -130,7 +140,7 @@ defmodule Rehmed.AuthorizationTest do
 
       error =
         assert_raise ExUnit.AssertionError, fn ->
-          assert_every_entry_refuses([VisitSettlement], entries)
+          assert_every_entry_refuses([Settlement], entries)
         end
 
       assert error.message =~ "the entry point for rehmed.close_settlement did not ask"

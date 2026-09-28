@@ -14,7 +14,7 @@ defmodule Rehmed.Contracts do
       PayerSettlement,
       {ClinicalDocumentation, []},
       {Scheduling, []},
-      {StatutoryReporting, []},
-      {VisitSettlement, []}
+      {Settlement, []},
+      {StatutoryReporting, []}
     ]
 end
