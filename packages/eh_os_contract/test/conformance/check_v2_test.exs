@@ -79,4 +79,23 @@ defmodule EhOsContract.CheckV2Test do
                 _}
            ] = findings(module)
   end
+
+  test "a contract made only of recorded events needs no implementation" do
+    Code.compile_string("""
+    defmodule EhOsContract.CheckV2Test.RecordedOnly do
+      use EhOsContract.Next.Contract, domain: ProcessShapes.Domain, context: :batching
+
+      aggregate :inbox, "Inbox" do
+        identity :message_id
+        event :message_received, "Message received", recorded_by: :batch_operator
+      end
+
+      process :intake, "Intake", accountable: :batch_operator do
+        correlate :message_id
+      end
+    end
+    """)
+
+    assert findings(EhOsContract.CheckV2Test.RecordedOnly) == []
+  end
 end

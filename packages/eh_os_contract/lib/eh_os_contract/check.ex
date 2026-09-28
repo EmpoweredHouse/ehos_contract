@@ -525,7 +525,7 @@ defmodule EhOsContract.Check do
   # and every domain service, which a decision calls through the contract.
   defp v2_implemented(%{model: model, at: at}) do
     wanted =
-      for(u <- model.units, do: {u.kind, u.name}) ++
+      for(u <- model.units, Enum.any?(model.commands, &(&1.unit == u.name)), do: {u.kind, u.name}) ++
         for(p <- model.policies, do: {:policy, p.name}) ++
         for(e <- model.effects, do: {:effect, e.name}) ++
         for(pm <- model.process_managers, do: {:process_manager, pm.name}) ++
