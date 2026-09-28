@@ -1,0 +1,5 @@
+E9a review (origin/main..572cd6f, two in parallel: code-review high; security and performance).
+Fixed: capabilities only for what a person may do, at the user's word (9e22beb); not_created over HTTP is 404, at the user's word (c12ece7); clinical close once (d59ab66); closed settlement changes only by correction (89dc99a); stale docs, Polish in comments, weak test assertion (9b7306d).
+No change: to_existing_atom on projection-only table; R-07 reads no corrections per material; query/record name clash caught by D14; practitioner number public.
+Skipped as findings in PLAN: P1 or_else arrives with the close; UTC day; observations have no decider (chase ordering); specialist supplies the P1 flag.
+Gate on 9b7306d: EXIT=0 (sandbox 85, engine 1222, web 45, auth 51; check 0/22/11 and 0/65/21). Browser check of /graph under EHOS CSP on 7058167.
