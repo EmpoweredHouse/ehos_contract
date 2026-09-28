@@ -107,16 +107,28 @@ defmodule Rehmed.Contracts.Settlement do
 
     # `C-30` produces `E-53 / E-56`: both endings are this command's. The total comes
     # with it, since the price freezes at the close (`H177`, mockup).
+    #
+    # So do the payer and the period, when a payer covers the visit: the payer is set
+    # at booking and the settlement screen shows it on the line it covers (mockup,
+    # "Kto płaci"), and the period is the month of the visit. The settlement cannot
+    # know either itself, since it opens only when the patient arrives.
     command :close_settlement, "Zamknij wizytę komercyjnie",
       by: :reception,
-      emits: [:visit_closed_commercially, :visit_closed_without_payment],
+      emits: [:visit_closed_commercially, :visit_closed_without_payment, :visit_charged_to_payer],
       rejects: [
         :closed_settlement_changes_only_by_correction,
         :changed_scope_handed_over_before_settlement,
-        :payment_lines_sum_to_total
+        :payment_lines_sum_to_total,
+        :payer_visit_names_its_period
       ],
       source: "C-30, aktor A-02" do
       field :total, :money
+      field :payer_id, :id, optional: true
+      field :period_id, :id, optional: true
+
+      constraint :payer_visit_names_its_period,
+                 "Wizyta na płatnika wskazuje okres rozliczenia, a okres — płatnika",
+                 source: "AGG-11 niezmiennik 4: płatnik × okres"
     end
 
     command :book_correction, "Zaksięguj korektę",
@@ -156,6 +168,17 @@ defmodule Rehmed.Contracts.Settlement do
         terminal: true,
         source: "E-53, P-08" do
         field :total, :money
+      end
+
+      # What crosses to external payers (`30-contexts.md`: "which visits a payer owes
+      # for"), next to either close: a mixed visit is paid by the patient for what the
+      # payer does not cover (`P-31`). The model has no fact for it, so this one is
+      # ours (plan, the decision before E9b), and no amount: the payer's invoice is
+      # made outside the system (`H62`).
+      event :visit_charged_to_payer, "Wizyta obciąża płatnika zewnętrznego",
+        source: "30-contexts.md, CTX-05 → CTX-06" do
+        field :payer_id, :id
+        field :period_id, :id
       end
 
       # `E-84`. `delta` may be negative, so a refund needs no event of its own.
@@ -216,6 +239,17 @@ defmodule Rehmed.Contracts.Settlement do
   scenario "nic nie zapłacono — wizyta zamyka się bez płatności, i to jest legalne" do
     command :close_settlement, %{total: 20_000}
     expect :visit_closed_without_payment
+  end
+
+  scenario "wizyta w całości na LuxMed — zamyka się bez płatności i obciąża płatnika za wrzesień" do
+    command :close_settlement, %{total: 18_000, payer_id: "payer-luxmed", period_id: "2026-09"}
+    expect :visit_closed_without_payment
+    expect :visit_charged_to_payer, %{payer_id: "payer-luxmed", period_id: "2026-09"}
+  end
+
+  scenario "płatnik bez okresu — rozliczenie odrzucone, zanim płatnik zgubi wizytę" do
+    command :close_settlement, %{total: 18_000, payer_id: "payer-luxmed"}
+    rejected :payer_visit_names_its_period
   end
 
   scenario "zakres bez zmian — specjalista nie ma czego przekazywać" do

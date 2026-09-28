@@ -23,6 +23,7 @@ defmodule Rehmed.DomainTest do
                :clinical_documentation,
                :statutory_reporting,
                :settlement,
+               :external_payers,
                :configuration
              ]
 
@@ -39,8 +40,10 @@ defmodule Rehmed.DomainTest do
              [
                :partnership,
                :customer_supplier,
+               :customer_supplier,
                :conformist,
                :conformist,
+               :anticorruption_layer,
                :open_host_service,
                :open_host_service
              ]

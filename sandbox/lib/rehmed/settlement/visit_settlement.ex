@@ -43,11 +43,35 @@ defmodule Rehmed.Settlement.VisitSettlement do
   def close_settlement(_command, %State{scope_changed: true, handed_over: false}),
     do: reject(:changed_scope_handed_over_before_settlement)
 
-  def close_settlement(%CloseSettlement{visit_id: id, total: total}, %State{payments: paid}) do
-    case Enum.sum(paid) do
-      0 -> emit(%VisitClosedWithoutPayment{visit_id: id, total: total})
-      ^total -> emit(%VisitClosedCommercially{visit_id: id, total: total})
-      _short_or_over -> reject(:payment_lines_sum_to_total)
+  def close_settlement(%CloseSettlement{payer_id: payer, period_id: period}, _state)
+      when is_nil(payer) != is_nil(period),
+      do: reject(:payer_visit_names_its_period)
+
+  # A visit no payer covers charges nobody; a mixed one is paid for the rest (`P-31`).
+  def close_settlement(%CloseSettlement{} = close, %State{payments: paid}) do
+    %CloseSettlement{visit_id: id, total: total, payer_id: payer, period_id: period} = close
+
+    case {Enum.sum(paid), payer} do
+      {0, nil} ->
+        emit(%VisitClosedWithoutPayment{visit_id: id, total: total})
+
+      {0, _payer} ->
+        emit([
+          %VisitClosedWithoutPayment{visit_id: id, total: total},
+          %VisitChargedToPayer{visit_id: id, payer_id: payer, period_id: period}
+        ])
+
+      {^total, nil} ->
+        emit(%VisitClosedCommercially{visit_id: id, total: total})
+
+      {^total, _payer} ->
+        emit([
+          %VisitClosedCommercially{visit_id: id, total: total},
+          %VisitChargedToPayer{visit_id: id, payer_id: payer, period_id: period}
+        ])
+
+      _short_or_over ->
+        reject(:payment_lines_sum_to_total)
     end
   end
 
