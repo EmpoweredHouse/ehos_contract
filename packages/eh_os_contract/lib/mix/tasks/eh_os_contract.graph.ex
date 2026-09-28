@@ -100,7 +100,6 @@ defmodule Mix.Tasks.EhOsContract.Graph do
       opts[:map] -> domain_picture(opts[:map], &EhOsContract.Graph.context_map_to_mermaid/1, opts)
       opts[:system] -> domain_picture(opts[:system], &system(&1, opts), opts)
       opts[:contract] -> contract(opts)
-      opts[:unit] -> Mix.raise("--unit names a unit of a contract; pass --contract too")
       opts[:process] -> declared(opts)
       opts[:overlay] -> overlay(opts)
       true -> static(opts)
@@ -164,6 +163,9 @@ defmodule Mix.Tasks.EhOsContract.Graph do
     pictures = for key <- [:map, :system, :contract, :process], opts[key], do: "--#{key}"
 
     cond do
+      opts[:unit] && !opts[:contract] ->
+        Mix.raise("--unit names a unit of a contract; pass --contract too")
+
       opts[:unit] && (opts[:overlay] || opts[:since]) ->
         Mix.raise("--unit draws the declarations only; --overlay and --since apply to --contract")
 

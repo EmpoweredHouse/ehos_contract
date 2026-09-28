@@ -209,13 +209,17 @@ defmodule EhOsContract.GraphDomainTest do
                "contract_dispatch_rig_ledger -->|account_opened · 0 events| contract_dispatch_rig_branch"
     end
 
-    test "an unknown domain, a map with the log, and two pictures at once are refused" do
+    test "an unknown domain, a map with the log, a unit of a domain, and two pictures at once are refused" do
       assert_raise Mix.Error, ~r/no domain nonesuch\. Registered: .*dispatch_rig/, fn ->
         Mix.Tasks.EhOsContract.Graph.run(~w(--map nonesuch))
       end
 
       assert_raise Mix.Error, ~r/--map draws the domain's declarations only/, fn ->
         Mix.Tasks.EhOsContract.Graph.run(~w(--map dispatch_rig --overlay))
+      end
+
+      assert_raise Mix.Error, ~r/pass --contract too/, fn ->
+        Mix.Tasks.EhOsContract.Graph.run(~w(--system dispatch_rig --unit account))
       end
 
       assert_raise Mix.Error, ~r/--map and --system draw different pictures/, fn ->
