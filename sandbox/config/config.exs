@@ -37,19 +37,12 @@ config :eh_os_contract_host, Oban,
   repo: Taxvision.Repo,
   queues: [events: 10]
 
-config :eh_os_contract_host, Taxvision.Identity,
-  # A dev-only secret. A real provider does not hand out its signing secret —
-  # the request edge validates the signature with a public key from JWKS and
-  # cannot issue a token at all.
-  secret: "dev-only-secret-not-for-production"
-
 # The real host (PLAN.md, dopisek 23 sierpnia (8)) — `server:`/`http:` differ
 # per env (config/dev.exs, config/test.exs) so `mix test` never binds a port.
 config :eh_os_contract_host, EhOsContractHostWeb.Endpoint,
   adapter: Bandit.PhoenixAdapter,
   url: [host: "localhost"],
-  # Dev-only, same status as Taxvision.Identity's secret above — a real
-  # deployment generates its own with `mix phx.gen.secret`.
+  # Dev-only — a real deployment generates its own with `mix phx.gen.secret`.
   secret_key_base: String.duplicate("c", 64),
   live_view: [signing_salt: "eh-os-contract-host-live-salt"],
   pubsub_server: EhOsContractHostWeb.PubSub,
