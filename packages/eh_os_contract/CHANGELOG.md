@@ -40,7 +40,9 @@ What changes otherwise is what a host has to do.
   `EhOsContract.Model.capabilities/1` gives each event declaring `recorded_by:` the capability
   `<domain>.<event>`, kind `:record`, with the roles of its `recorded_by:` actors; `EhOsContract.record/3` asks
   the `Authorizer` for it, as `dispatch/3` does for a command, instead of refusing every credential with
-  `{:error, :not_grantable}`, which is gone. `EhOsContract.Plug` serves it as `POST <mount>/records/<capability>`.
+  `{:error, :not_grantable}`, which is gone. `EhOsContract.Plug` serves it as `POST <mount>/records/<capability>`,
+  and answers a recording for a unit no command created (`{:error, :not_created}`) with 404 `{"error":
+  "not_created"}`.
   A host that checks every capability has an entry point (`EhOsContract.Auth.Testing`, `eh-os` D-34) maps the
   recordings too; D14 now also refuses a recorded event named like another declaration's capability.
 - **E9a: only what a person may do is a capability.** `EhOsContract.Model.capabilities/1` gives a command, a

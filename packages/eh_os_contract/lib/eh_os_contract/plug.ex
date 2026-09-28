@@ -41,6 +41,7 @@ if Code.ensure_loaded?(Plug.Conn) do
     | a command that creates its aggregate, without an `idempotency-key` | 422 | `{"error": "idempotency_key_required"}` |
     | conflict, or a reused key | 409 | `{"error": "<reason>"}` |
     | personal data of an erased subject | 410 | `{"error": "subject_erased"}` |
+    | a recording for a unit no command created (its identity is the library's) | 404 | `{"error": "not_created"}` |
     | no such capability | 404 | `{"error": "not_found"}` |
 
     No body ever carries a field value the caller did not send: a problem names
@@ -211,6 +212,10 @@ if Code.ensure_loaded?(Plug.Conn) do
       do: reply(conn, 409, %{error: reason})
 
     defp refused(conn, :subject_erased), do: reply(conn, 410, %{error: :subject_erased})
+
+    # A recording for a unit whose identity the library gives, and that no command
+    # created: there is no such unit, which is not a refusal of the caller.
+    defp refused(conn, :not_created), do: reply(conn, 404, %{error: :not_created})
 
     defp refused(conn, reason), do: reply(conn, 403, %{refused: reason})
 

@@ -158,6 +158,16 @@ defmodule Rehmed.AuthorizationTest do
     assert Repo.all(from(e in Event, select: e.type)) == []
   end
 
+  test "recording the arrival at a visit nobody booked answers 404, not a refusal" do
+    # The visit's identity is the library's, so an arrival for an identifier no booking
+    # returned names no visit; 403 would read as a missing capability.
+    token = credential("u-reception", ["rehmed.patient_arrived"])
+    conn = record(token, "rehmed.patient_arrived", %{visit_id: Ecto.UUID.generate()})
+
+    assert {conn.status, Jason.decode!(conn.resp_body)} == {404, %{"error" => "not_created"}}
+    assert decisions("u-reception") == [["rehmed.patient_arrived", "allowed", nil]]
+  end
+
   describe "the check itself" do
     test "fails on a declared capability with no entry point, naming it" do
       entries = Map.delete(entries(), "rehmed.book_correction")
