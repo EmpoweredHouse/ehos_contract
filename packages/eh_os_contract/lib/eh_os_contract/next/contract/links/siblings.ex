@@ -149,8 +149,8 @@ defmodule EhOsContract.Next.Contract.Links.Siblings do
     |> Map.new(&{&1.name, &1.type})
   end
 
-  # Types are compared as what they come down to, so a domain value of `:id` on one
-  # side and a plain `:id` on the other are the same identifier (plan E9c).
+  # A domain value of `:id` on one side and a plain `:id` on the other are the same
+  # identifier (plan E9c); two different values are not, whatever they rest on.
   defp problems(consumed, field, type, values) do
     event =
       "event #{inspect(consumed.event.name)} of #{inspect(consumed.sibling)} " <>
@@ -158,9 +158,7 @@ defmodule EhOsContract.Next.Contract.Links.Siblings do
 
     theirs = Enum.find(consumed.event.fields, &(&1.name == field))
 
-    differs? =
-      theirs != nil and type != nil and
-        Key.base_type(theirs.type, values) != Key.base_type(type, values)
+    differs? = theirs != nil and type != nil and not same_type?(theirs.type, type, values)
 
     case theirs do
       nil ->
@@ -183,4 +181,11 @@ defmodule EhOsContract.Next.Contract.Links.Siblings do
         []
     end
   end
+
+  defp same_type?(type, type, _values), do: true
+
+  defp same_type?(theirs, ours, values) when :id in [theirs, ours],
+    do: Key.base_type(theirs, values) == Key.base_type(ours, values)
+
+  defp same_type?(_theirs, _ours, _values), do: false
 end

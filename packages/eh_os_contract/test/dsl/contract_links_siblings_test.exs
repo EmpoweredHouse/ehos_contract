@@ -25,6 +25,7 @@ defmodule EhOsContract.Next.ContractLinksSiblingsTest do
         end
 
         value :visit_code, :id
+        value :other_code, :id
         value :room_name, :string
 
         subdomain :core, "Core", type: :core
@@ -130,6 +131,46 @@ defmodule EhOsContract.Next.ContractLinksSiblingsTest do
     # :id reads the same field (plan E9c).
     fields = String.replace(@fields, "field :visit_id, :id", "field :visit_id, :visit_code")
     assert pair("sib_value", fields) == []
+  end
+
+  test "two different domain values of :id are not the same type" do
+    # "2026-07" and a room's code both rest on :id, and are not each other: a run
+    # correlated on one is not a run of the other.
+    fields = String.replace(@fields, "field :visit_id, :id", "field :visit_id, :other_code")
+
+    subscriber = """
+    defmodule #{inspect(Module.concat(@fixtures, "SibTwoValuesBilling"))} do
+      use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+
+      consumes #{inspect(Module.concat(@fixtures, "SibTwoValuesBooking"))}, :visit_booked
+
+      aggregate :billing, "Rozliczenie" do
+        identity :billing_id
+        command :bill_visit, "Rozliczenie wizyty", by: :reception, emits: :visit_billed
+
+        event :visit_billed, "Wizyta rozliczona" do
+          field :visit_id, :visit_code
+        end
+      end
+
+      process :billing, "Rozliczenie" do
+        correlate :visit_id
+        include :visit_booked
+      end
+    end
+    """
+
+    violations =
+      links([
+        {"sib_two_values_booking.ex", publisher("SibTwoValuesBooking", fields)},
+        {"sib_two_values_billing.ex", subscriber}
+      ])
+
+    assert Enum.any?(violations, fn %{message: message} ->
+             message =~ "X6: process :billing includes :visit_booked and correlates on :visit_id" and
+               message =~ "has as :other_code, not :visit_code"
+           end),
+           inspect(violations)
   end
 
   test "a publisher naming the field by a domain value of another type is not an :id" do
