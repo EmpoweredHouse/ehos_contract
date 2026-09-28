@@ -10,19 +10,21 @@ defmodule Taxvision.Contracts.RegistryWatch do
 
   P1: when a month starts, check the registries. The month is settled one month
   behind, so on 1 September August is checked (WF 00:34:40). A process manager does
-  it keeps one date, the first of the month the next check is due. The first check
-  that starts — the company's data confirmed — sets it to the first of the next
-  month; the check of the month that date is for moves it one month on, from the
-  date, so a timer run late catches up the months it missed and no more; any other
-  check, the accountant retrying March in September, leaves it be. Only a month that
-  has ended is checked at all, so a mistyped "2062-08" is refused before the
-  registries are asked. The registries being down for one check leaves that month to
-  be retried while the next one is still checked. The period's name is its
-  identifier, so the month to check is worked out from the date, without the
-  database. The first check is the
-  accountant's (`RetriggerVerification`, the one command on the workshop's
-  diagram); a check refused because the company's data is incomplete starts nothing,
-  so the watch waits for the accountant too.
+  it: it keeps one date, the first of the month the next check is due. The first
+  check that starts — the company's data confirmed — sets it to the first of the next
+  month, and does not reach back for the months before; the check of the month that
+  date is for moves it one month on, from the date, so a timer run late catches up
+  the months it missed and no more; any other check, the accountant retrying March
+  in September, leaves it be. The accountant may retry only a month that has ended,
+  so a mistyped "2062-08" is refused before the registries are asked; the timer
+  checks the month before its date, which has ended by construction, so its check is
+  not held to the clock of whichever node dispatches it. The registries being down
+  for one check leaves that month to be retried while the next one is still checked.
+  The period's name is its identifier, so the month to check is worked out from the
+  date, without the database. The first check is the accountant's
+  (`RetriggerVerification`, the one command on the workshop's diagram); a check
+  refused because the company's data is incomplete starts nothing, so the watch
+  waits for the accountant too.
 
   ## A check is three steps, and the middle one is the registries'
 
@@ -58,7 +60,8 @@ defmodule Taxvision.Contracts.RegistryWatch do
     end
 
     # Settled a month behind [WF 00:34:40]: on 1 September August is checked, and a
-    # month still running has nothing to check. The command's time says which.
+    # month still running has nothing to check. The accountant's command's time says
+    # which; the timer names a month that has ended by its own date.
     invariant :only_an_ended_month_is_checked, "Sprawdza się miesiąc, który już się skończył",
       source: "02 §3.1; WF 00:34:40 (rozliczenie miesiąc w tył)"
 
@@ -78,7 +81,7 @@ defmodule Taxvision.Contracts.RegistryWatch do
     # Issued by the timer on the first of the month, never by a person.
     command :check_registries, "Sprawdź rejestry",
       emits: :data_completeness_confirmed,
-      rejects: [:only_an_ended_month_is_checked, :checked_only_with_complete_data],
+      rejects: :checked_only_with_complete_data,
       source: "03 §4.2 CheckRegistries; P1" do
       field :period_id, :period
     end
@@ -240,12 +243,12 @@ defmodule Taxvision.Contracts.RegistryWatch do
     issues :check_registries, %{period_id: "2026-01"}
   end
 
-  scenario "ponowienie innego miesiąca nie przestawia należnego sprawdzenia" do
-    scope :monthly_registry_check
-    given :data_completeness_confirmed, %{period_id: "2025-12"}
-    given :data_completeness_confirmed, %{period_id: "2025-03"}
-    on :next_month
-    issues :check_registries, %{period_id: "2026-01"}
+  # The timer checks the month before its own date. A node whose clock is still a
+  # second before that date must not refuse it, or the monthly watch stops.
+  scenario "sprawdzenie z timera nie zależy od zegara węzła" do
+    given :company_profile_completed, %{legal_form: "JDG", vat_status: "czynny"}
+    command :check_registries, %{period_id: "2026-01"}
+    expect :data_completeness_confirmed, %{period_id: "2026-01"}
   end
 
   scenario "miesiąc, który trwa, nie jest sprawdzany" do

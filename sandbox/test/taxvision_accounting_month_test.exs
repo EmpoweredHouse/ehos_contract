@@ -247,14 +247,26 @@ defmodule Taxvision.AccountingMonthTest do
     assert "accounting_month.accounting_month_opened" in of_period("2026-09")
   end
 
-  test "a month still running is not checked" do
+  test "a month still running is not checked, nor one years ahead" do
     profile!("c-1")
 
-    assert {:error, %EhOsContract.Rejection{invariant: :only_an_ended_month_is_checked}} =
-             Clock.at(~U[2026-09-15 10:00:00Z], fn ->
+    for period <- ["2026-09", "2062-08"] do
+      assert {:error, %EhOsContract.Rejection{invariant: :only_an_ended_month_is_checked}} =
+               Clock.at(~U[2026-09-30 23:59:00Z], fn ->
+                 EhOsContract.dispatch(
+                   RegistryWatch,
+                   %RetriggerVerification{company_id: "c-1", period_id: period},
+                   actor: accountant("c-1")
+                 )
+               end)
+    end
+
+    # The control: a minute later September has ended.
+    assert {:ok, _} =
+             Clock.at(~U[2026-10-01 00:00:00Z], fn ->
                EhOsContract.dispatch(
                  RegistryWatch,
-                 %RetriggerVerification{company_id: "c-1", period_id: "2062-08"},
+                 %RetriggerVerification{company_id: "c-1", period_id: "2026-09"},
                  actor: accountant("c-1")
                )
              end)
