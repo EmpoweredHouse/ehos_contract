@@ -338,7 +338,7 @@ defmodule EhOsContract.Next.ContractTest do
 
       # Only what a person may do is a capability, and its roles are the people's: the
       # system actor is not a role of :close, and :remind (a reaction's) and :reported
-      # (the registry's) have none (plan, "E9a — przegląd").
+      # (the registry's) have none (plan, E9a review).
       assert Model.capabilities(EhOsContract.Next.ContractTest.Named) == %{
                "clinic.close" => %{
                  kind: :command,

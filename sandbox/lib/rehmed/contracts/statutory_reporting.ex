@@ -37,7 +37,7 @@ defmodule Rehmed.Contracts.StatutoryReporting do
 
   `AGG-10` has no commands: the report is queued by policy on the clinical close and
   sent by an effect, and what the registry answers is recorded by the integration
-  (D6) — sent (`E-54`, observed), or rejected (`Błąd`). The outage is `X-01`'s, and
+  (D6) — sent (`E-54`, observed), or rejected (its error state). The outage is `X-01`'s, and
   a promise whose window saw the registry unavailable is suspended rather than
   breached. The regulation's own rule is different — three days from the end of the
   outage — and suspension only approximates it (distillation, finding 3). Whether
@@ -85,7 +85,7 @@ defmodule Rehmed.Contracts.StatutoryReporting do
         terminal: true,
         source: "E-54"
 
-      # `AGG-10`, state `Błąd`: "odrzucenie lub brak łączności". Not an end: the
+      # `AGG-10`'s error state: a rejection or no connection. Not an end: the
       # report is retried.
       event :p1_report_failed, "Zgłoszenie do P1 odrzucone albo nie doszło do rejestru",
         recorded_by: :p1_integration,

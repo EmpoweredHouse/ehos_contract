@@ -145,7 +145,7 @@ defmodule EhOsContract.Model do
               do: {role.(q.name), %{kind: :query, name: q.name, by: q.by, scope: q.scope}}
 
         # A person's observation reaches the log through `record/3` with a credential,
-        # so it is granted like a command (plan, "Po E8"; E9a).
+        # so it is granted like a command (plan, decided before E9, built in E9a).
         records =
           for e <- model.events,
               e.recorded_by != [],
@@ -155,7 +155,7 @@ defmodule EhOsContract.Model do
         # capability, and its roles are the people's. What only the application's own
         # code does — a reaction's command, an integration's recording — is not
         # grantable at all: a credential granted it by mistake could otherwise write
-        # "sent to P1" without a send (plan, "E9a — przegląd").
+        # "sent to P1" without a send (plan, E9a review).
         for {capability, declared} <- commands ++ queries ++ records,
             {by, declared} = Map.pop!(declared, :by),
             humans = Enum.filter(by, &MapSet.member?(people, &1)),

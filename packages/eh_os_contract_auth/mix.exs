@@ -4,7 +4,7 @@ defmodule EhOsContract.Auth.MixProject do
   @version "0.1.0-dev"
   @source_url "https://github.com/EmpoweredHouse/eh-os-contract"
   @git_url "#{@source_url}.git"
-  @description "Verifies EHOS credentials and authorizes EhOsContract commands and queries."
+  @description "Verifies EHOS credentials and authorizes EhOsContract commands, recordings and queries."
 
   @moduledoc """
   The third package beside the engine and the dashboard (v2 §16, D14).

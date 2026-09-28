@@ -1152,6 +1152,11 @@ the person's.
 - **A credential recording an event through `record/3` is refused** until E9 names the capability for it:
   EHOS grants commands and queries only, so nothing could grant it. A `:system` actor records as before.
 
+  > **28 September 2026, E9a:** named and built. An event a person records has the capability
+  > `<domain>.<event>` (kind `:record`), asked of the `Authorizer` as a command's is, and served as
+  > `POST /records/<capability>`. Only what a person may do has a capability: an event only a `:system`
+  > actor records, and a command only a reaction issues, have none (plan, E9a review).
+
 > **26 September 2026, E6 — what the sketch above left open, as built.** `EhOsContract.Dispatcher` behind
 > `EhOsContract.dispatch/3`, `record/3` and `query/3`; the modules the sketch names (`Registry.command!`,
 > `Capability`, `Loader`, `Decider`, `Emits`, `Enrich`) are steps of it, not modules. **Order**: the actor,

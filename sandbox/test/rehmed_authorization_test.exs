@@ -144,7 +144,7 @@ defmodule Rehmed.AuthorizationTest do
 
   test "what only the application's own code does is not a door, whatever the credential names" do
     # A credential granted these by mistake could otherwise record "sent to P1"
-    # without a send, or queue a report with any PESEL (plan, "E9a — przegląd").
+    # without a send, or queue a report with any PESEL (plan, E9a review).
     token =
       credential("u-mistaken", [
         "rehmed.p1_report_sent",

@@ -13,8 +13,8 @@ defmodule Rehmed.Contracts.Settlement do
   ## The handover is a gate only when the scope changed
 
   `DEC-18` made the specialist hand every visit over, which froze the price. The
-  client answered it (`K5-20`): *„przekazana do rozliczenia ma być wyłącznie w
-  przypadku gdy specjalista doda lub zmieni usługę”*, and the mockup built it on
+  client answered it (`K5-20`): a visit is handed over for settlement only when the
+  specialist adds or changes a service, and the mockup built it on
   2026-09-14 — no button without a scope change, one button with it, and reception's
   settle greyed out until the handover. So two invariants: a handover needs a scope
   change, and a changed scope is settled only after the handover.
@@ -35,7 +35,7 @@ defmodule Rehmed.Contracts.Settlement do
 
   ## The day
 
-  `R-07`, „Zestawienie dnia per metoda płatności”, answers reception's question "is
+  `R-07`, the day's summary per payment method, answers reception's question "is
   the till right". It reads the payments, per day and method; the day is the day the
   payment was taken. A correction carries the day it belongs to — the close's —
   never the day it was entered, which is the incumbent's defect (`E-84`). The day
@@ -150,7 +150,7 @@ defmodule Rehmed.Contracts.Settlement do
         field :total, :money
       end
 
-      # The other meaning `C-30` carried; a visit a payer or a karnet covers ends so
+      # The other meaning `C-30` carried; a visit a payer or a prepaid pass covers ends so
       # (`AGG-01` invariant 9), and `P-08` exists to notice the others.
       event :visit_closed_without_payment, "Zamknięto wizytę bez płatności",
         terminal: true,

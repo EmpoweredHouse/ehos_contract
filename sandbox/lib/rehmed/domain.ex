@@ -14,7 +14,7 @@ defmodule Rehmed.Domain do
   Only the contexts E9 writes contracts for are declared, plus configuration, which
   owns the service catalogue the other contracts point at (`AGG-15`). The map has
   ten; patient messaging, work coordination and analytics are threads through the
-  others, and nothing in the stage needs them (plan, "Przed E9").
+  others, and nothing in the stage needs them (plan, the decisions before E9).
   """
 
   use EhOsContract.Domain, name: :rehmed, language: :pl
@@ -109,7 +109,7 @@ defmodule Rehmed.Domain do
   end
 
   # X-01. It answers each report, which is why it is bidirectional: out goes the
-  # medical event, back comes an acceptance or a rejection (`AGG-10`, state `Błąd`).
+  # medical event, back comes an acceptance or a rejection (`AGG-10`, its error state).
   # Its outage is the distillation's sentence, and v2 §13 reads it as suspension.
   external :p1, "Rejestr zdarzeń medycznych P1",
     direction: :bidirectional,

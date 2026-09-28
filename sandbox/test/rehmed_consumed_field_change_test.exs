@@ -115,9 +115,12 @@ defmodule Rehmed.ConsumedFieldChangeTest do
 
       assert message =~
                "event :visit_closed_clinically of #{ns}.ClinicalDocumentation (#{@publisher}:"
-
-      assert message =~ "no field :p1_reported" or message =~ "needs :reported_to_p1"
     end
+
+    # At each of the two scenarios, both halves of the rename: the old field is gone,
+    # and the new one is required.
+    assert Enum.count(violations, fn {m, _, _} -> m =~ "no field :p1_reported" end) == 2
+    assert Enum.count(violations, fn {m, _, _} -> m =~ "needs :reported_to_p1" end) == 2
 
     # The subscriber's implementation, at the pattern that reads the field.
     assert {refusal, file, {policy_line, _column}} = policy(ns)

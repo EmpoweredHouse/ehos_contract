@@ -12,7 +12,7 @@ defmodule Rehmed.Contracts.Scheduling do
 
   A booking, a cancellation and a no-show are reception's acts, and a visit that
   already happened can be neither cancelled nor missed: the state machine in `AGG-01`
-  reaches `Odwołana` and `Nieobecność` only from states before the patient arrives.
+  reaches cancelled and no-show only from states before the patient arrives.
   That is the one invariant.
 
   The patient arriving and the patient leaving the room are observations, not
@@ -34,7 +34,7 @@ defmodule Rehmed.Contracts.Scheduling do
 
   `visit_booked`, `visit_completed` and `visit_cancelled` start with the aggregate's
   name and `check` says so (`event-name-with-aggregate-prefix`): the names are the
-  distillation's and the aggregate is `AGG-01`'s "Wizyta" (plan, "Przed E9").
+  distillation's and the aggregate is `AGG-01`'s (plan, the decisions before E9).
   """
 
   use EhOsContract.Next.Contract, domain: Rehmed.Domain, context: :scheduling
@@ -96,7 +96,7 @@ defmodule Rehmed.Contracts.Scheduling do
         recorded_by: :reception,
         source: "E-27"
 
-      # `E-51`, the good end, `Zrealizowana`. The statutory two days to P1 count from
+      # `E-51`, the good end, `AGG-01`'s delivered state. The statutory two days to P1 count from
       # here (Dz.U. 2025 poz. 866), which is why `StatutoryReporting` includes it.
       event :visit_completed, "Pacjent wyszedł z gabinetu",
         recorded_by: :specialist,

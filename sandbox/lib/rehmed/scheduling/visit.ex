@@ -2,7 +2,7 @@ defmodule Rehmed.Scheduling.Visit do
   @moduledoc """
   Decides a visit's booking and its early ends (`AGG-01`). A cancellation or a
   no-show is refused once the patient has arrived or left: `AGG-01` reaches
-  `Odwołana` and `Nieobecność` only from the states before `Obecny`.
+  cancelled and no-show only from the states before the patient is present.
   """
 
   use Rehmed.Contracts.Scheduling, aggregate: :visit

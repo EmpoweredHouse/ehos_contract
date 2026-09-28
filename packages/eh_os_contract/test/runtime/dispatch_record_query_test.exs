@@ -90,7 +90,7 @@ defmodule EhOsContract.DispatchRecordQueryTest do
     test "what only the application's own code does is granted to no credential, whatever it carries" do
       # `interest_recorded` is only the nightly import's to record, and `flag_account`
       # only a reaction's to issue: neither has a capability, so a credential that
-      # names them anyway — a grant made by mistake — is refused (plan, "E9a — przegląd").
+      # names them anyway — a grant made by mistake — is refused (plan, E9a review).
       mistaken =
         Actor.credential("u-3", ["dispatch_rig.interest_recorded", "dispatch_rig.flag_account"])
 
