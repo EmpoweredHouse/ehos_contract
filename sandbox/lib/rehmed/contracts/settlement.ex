@@ -73,12 +73,19 @@ defmodule Rehmed.Contracts.Settlement do
     invariant :payment_lines_sum_to_total, "Linie płatności sumują się do wartości rozliczenia",
       source: "W1 02:02:07; AGG-03 niezmiennik 1"
 
+    # Without it a closed visit takes a payment and a second close, and the day its
+    # corrections belong to moves with the second close.
+    invariant :closed_settlement_changes_only_by_correction,
+              "Rozliczonej wizyty nie zmienia się po cichu — zmiana to korekta",
+              source: "AGG-03 niezmiennik 4"
+
     # `E-45`, and the one write a specialist may not defer: adding a service changes
     # the price and the duration, and the patient does not leave until it is
     # confirmed. No amount: the fact is that a service joined.
     command :add_service_line, "Dodaj usługę do rozliczenia",
       by: :specialist,
       emits: :service_line_added,
+      rejects: :closed_settlement_changes_only_by_correction,
       source: "C-23, aktor A-03" do
       field :service_id, {:id, :service}
     end
@@ -92,6 +99,7 @@ defmodule Rehmed.Contracts.Settlement do
     command :record_payment, "Przyjmij płatność",
       by: :reception,
       emits: :payment_recorded,
+      rejects: :closed_settlement_changes_only_by_correction,
       source: "C-31, aktor A-02" do
       field :method, :payment_method
       field :amount, :money
@@ -102,7 +110,11 @@ defmodule Rehmed.Contracts.Settlement do
     command :close_settlement, "Zamknij wizytę komercyjnie",
       by: :reception,
       emits: [:visit_closed_commercially, :visit_closed_without_payment],
-      rejects: [:changed_scope_handed_over_before_settlement, :payment_lines_sum_to_total],
+      rejects: [
+        :closed_settlement_changes_only_by_correction,
+        :changed_scope_handed_over_before_settlement,
+        :payment_lines_sum_to_total
+      ],
       source: "C-30, aktor A-02" do
       field :total, :money
     end
@@ -222,6 +234,13 @@ defmodule Rehmed.Contracts.Settlement do
     given :payment_recorded, %{method: :card, amount: 20_000}
     command :close_settlement, %{total: 20_000}
     rejected :changed_scope_handed_over_before_settlement
+  end
+
+  scenario "wizyta rozliczona — kolejna płatność odrzucona, zmiana idzie korektą" do
+    given :payment_recorded, %{method: :card, amount: 20_000}
+    given :visit_closed_commercially, %{total: 20_000}
+    command :record_payment, %{method: :cash, amount: 5_000}
+    rejected :closed_settlement_changes_only_by_correction
   end
 
   scenario "dzień: dwie płatności kartą i jedna gotówką — suma per metoda" do

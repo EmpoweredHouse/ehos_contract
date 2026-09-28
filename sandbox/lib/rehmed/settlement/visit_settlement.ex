@@ -1,7 +1,8 @@
 defmodule Rehmed.Settlement.VisitSettlement do
   @moduledoc """
   Decides the commercial side of one visit (`AGG-03`): `K5-20`'s two invariants on
-  the handover, and invariant 1 — payment lines sum to the total.
+  the handover, invariant 1 — payment lines sum to the total — and invariant 4: once
+  closed, a settlement changes only by a correction.
 
   ## The partial-payment assumption, stated because it is ours
 
@@ -16,6 +17,9 @@ defmodule Rehmed.Settlement.VisitSettlement do
   use Rehmed.Contracts.Settlement, aggregate: :visit_settlement
 
   @impl true
+  def add_service_line(_command, %State{closed_on: %Date{}}),
+    do: reject(:closed_settlement_changes_only_by_correction)
+
   def add_service_line(%AddServiceLine{visit_id: id, service_id: s}, _state),
     do: emit(%ServiceLineAdded{visit_id: id, service_id: s})
 
@@ -26,10 +30,16 @@ defmodule Rehmed.Settlement.VisitSettlement do
   def hand_over_visit(_command, _state), do: reject(:handover_only_after_scope_change)
 
   @impl true
+  def record_payment(_command, %State{closed_on: %Date{}}),
+    do: reject(:closed_settlement_changes_only_by_correction)
+
   def record_payment(%RecordPayment{visit_id: id, method: m, amount: a}, _state),
     do: emit(%PaymentRecorded{visit_id: id, method: m, amount: a})
 
   @impl true
+  def close_settlement(_command, %State{closed_on: %Date{}}),
+    do: reject(:closed_settlement_changes_only_by_correction)
+
   def close_settlement(_command, %State{scope_changed: true, handed_over: false}),
     do: reject(:changed_scope_handed_over_before_settlement)
 
