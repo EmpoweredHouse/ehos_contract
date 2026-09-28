@@ -2848,9 +2848,29 @@ po cichu zdejmowały gwarancje z README. Przy pracy wyszło jeszcze `url:` w opc
    `decoders: [:gz]`, a do tego `Keys.start_link/1` wołane wprost, które omijało wszystko razem z `https`.
    *Odrzucone:* (a) dopisać te do czarnej listy — następny alias albo opcja TLS przejdzie znowu;
    (b) porzucić i tylko opisać.
-   Dozwolone: `connect_options` z `timeout`, `proxy`, `proxy_headers` i `transport_opts` z `cacertfile`/`cacerts`;
-   `receive_timeout`; `inet6`; `plug` i `adapter` (testy hostów); każda raz. `retry` poza listą — czasy należą do
+   Dozwolone (po drugiej rundzie niżej): `connect_options` z `timeout` i `transport_opts` z `cacertfile`/`cacerts`;
+   `receive_timeout`; `inet6`; `plug` i `adapter` tylko przy `pin_keys: true`; każda raz. `retry` poza listą — czasy należą do
    zadania z limitem całego pobrania; jeśli uzna, że host ma coś tam zmieniać, dopisze tę jedną opcję.
+*Druga runda przeglądów* (na białej liście) i **dwie kolejne decyzje użytkownika 28 września**:
+- **`proxy` i `proxy_headers` zdjęte z listy.** Mint łączy się z proxy własnymi 30 s i drugie 30 s czeka na
+  `CONNECT` — nasze 2 s tam nie sięgają, więc proxy, które milczy, trzyma proces kluczy ok. minuty; z adresem
+  `http://localhost` pobranie idzie do proxy otwartym tekstem. Nikt go nie używa (sandbox, `eh-os`). *Odrzucone:*
+  zostawić i odrzucać tylko przy `http`, opisać 30 s w README do czasu zadania z limitem pobrania.
+- **`plug:` i `adapter:` tylko przy `pin_keys: true`** — ten sam przełącznik co `Keys.pin/2`: test może ufać
+  kluczom spoza EHOS-a, a zaślepka sieci to to samo zaufanie. *Odrzucone:* osobny przełącznik (`stub_fetch:`) —
+  jaśniejsza nazwa, ale jeszcze jedna rzecz do ustawienia u hosta; bez bramki — linia zostawiona w `runtime.exs`
+  wyłącza wszystkie gwarancje.
+Poprawione przez asystenta: `config :req, default_options` — Req nakłada je pod każde żądanie, więc
+`follow_redirects`, `auth`, `headers` czy `plug` stamtąd omijały listę; teraz sprawdzane jest żądanie takie, jakie
+Req by wysłał (`not_ours/2`): przy starcie pada boot, ustawione później (`Req.default_options/1`) — każde pobranie,
+i nic nie jest wysłane. `transport_opts: nil` przechodził i wywracał każde pobranie (Req robi na nim
+`Keyword.merge`) — teraz czytany jak brak. Nieznana opcja dziecka (literówka `req_option:`) ginęła bez słowa —
+teraz odrzucana. Komunikat o złym typie nie pokazuje wartości (mogą w niej być certyfikaty). Testy startu
+`Keys` wprost z własną nazwą. Każde sprawdzone wstecz, sześć mutacji, każda wywraca dokładnie swój test.
+*Bez zmian:* nakładać `redirect`/`into` po opcjach hosta — lista i `not_ours/2` już ich pilnują, a dopisanie ich
+do listy to świadoma zmiana, którą zobaczy przegląd. *Pominięte:* wartości nie są sprawdzane
+(`receive_timeout: :infinity`) — to czasy, zadanie z limitem całego pobrania.
+
 Sprawdzenie w `Keys.check_options!/1` (`@doc false`), wołane przez `Keys.start_link/1` i przez
 `EhOsContract.Auth.child_spec/1` (start pada przy budowaniu listy dzieci); sprawdzenie `https` przeniesione tam z
 `child_spec/1`. Gałąź na PR #35, bo biała lista zamyka drugą drogę nadpisania timeoutu (`transport_opts:
