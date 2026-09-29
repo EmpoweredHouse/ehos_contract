@@ -2479,6 +2479,12 @@ bazy nie ma; (b) most z wersji 5 przerabiający schemat w miejscu — historia, 
 zapisana w przeglądzie: baza z komentarzem „5” przy `up/1` milczy (jej schemat jest nadzbiorem nowego, więc nowy kod
 na niej działa), a `down/1` na niej pada na nieistniejącym `V05`.
 
+**Zmiana 29 września, po komentarzu CodeRabbita do #46 — na polecenie użytkownika („rozwiąż komentarze
+coderabbit”).** `up/1` i `down/1` odmawiają (`ArgumentError`) bazie, której komentarz wersji jest wyższy niż
+`current_version/0`, z komunikatem „odtwórz bazę”. To odwraca odrzuconą wyżej opcję (a) — powód: bez odmowy baza
+zapisana jako „5” pominęłaby po cichu przyszłe V02, a to już nie sprawa bazy sprzed cięcia, tylko każdej wersji
+naprzód. Ścieżki migracji z bazy sprzed cięcia dalej nie ma. Test na `CommitRepo`, sprawdzony odwrotnie.
+
 **Wybory asystenta (mechanika):**
 - **Czas zostaje `timestamp`** (Ecto `utc_datetime_usec`), nie `timestamptz` ze szkicu §10.3 — silnik pisze i czyta
   tylko UTC, zmiany typu nie zapowiadano. *Odrzucone:* `timestamptz` przy okazji — zmiana typu każdej kolumny czasu
