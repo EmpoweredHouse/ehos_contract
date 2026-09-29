@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.ContractDomainServicesTest do
+defmodule EhOsContract.ContractDomainServicesTest do
   @moduledoc """
   Plan EM2: **what a contract refuses in a domain service** — the names (N1, N2),
   the types of its arguments and results (F1, F2) and, since EL2b, the examples of
@@ -170,7 +170,7 @@ defmodule EhOsContract.Next.ContractDomainServicesTest do
     assert Map.has_key?(model.digests, "domain_service:pricing")
 
     assert EhOsContract.Model.module_for(model, :domain_service, :pricing) ==
-             EhOsContract.Next.Fixtures.ServicesRight.DomainServices.Pricing
+             EhOsContract.Fixtures.ServicesRight.DomainServices.Pricing
   end
 
   describe "S9: a rule is shown on examples (plan EL2b)" do
@@ -260,7 +260,7 @@ defmodule EhOsContract.Next.ContractDomainServicesTest do
         [{module, _}] =
           compile(
             """
-            defmodule EhOsContract.Next.Fixtures.#{name} do
+            defmodule EhOsContract.Fixtures.#{name} do
               use #{inspect(model.module)}, domain_service: :pricing
 
               @impl true

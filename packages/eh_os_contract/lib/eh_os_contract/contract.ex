@@ -1,10 +1,9 @@
-defmodule EhOsContract.Next.Contract do
+defmodule EhOsContract.Contract do
   @moduledoc """
-  One process, written down (v2 §4.1): the contract DSL, named `Next` until the
-  rename that follows v1's removal (v2 plan, E11).
+  One process, written down (v2 §4.1): the contract DSL.
 
       defmodule Rehmed.Contracts.VisitSettlement do
-        use EhOsContract.Next.Contract, domain: Rehmed.Domain, context: :settlement
+        use EhOsContract.Contract, domain: Rehmed.Domain, context: :settlement
 
         aggregate :visit_settlement, "Rozliczenie wizyty" do
           identity :visit_id
@@ -37,13 +36,13 @@ defmodule EhOsContract.Next.Contract do
 
   It compiles, it refuses what v2 §6 refuses, its model is data, and it generates a
   struct for every command, event, state, row and query and a behaviour for
-  everything code implements (`EhOsContract.Next.Contract.Generate`). Code binds to
+  everything code implements (`EhOsContract.Contract.Generate`). Code binds to
   it with `use Contract, aggregate: :name` (`EhOsContract.Implementation`), and
   `EhOsContract.dispatch/3` runs a command through it (`EhOsContract.Dispatcher`).
   """
 
   use Spark.Dsl,
-    default_extensions: [extensions: [EhOsContract.Next.Contract.Dsl]],
+    default_extensions: [extensions: [EhOsContract.Contract.Dsl]],
     opt_schema: [
       domain: [type: :atom, required: true, doc: "The application's domain module."],
       context: [type: :atom, required: true, doc: "The domain context the process belongs to."]
@@ -57,7 +56,7 @@ defmodule EhOsContract.Next.Contract do
   """
   @spec vocabulary() :: %{[atom()] => [atom()]}
   def vocabulary,
-    do: EhOsContract.DslWrappers.vocabulary(EhOsContract.Next.Contract.Dsl.sections())
+    do: EhOsContract.DslWrappers.vocabulary(EhOsContract.Contract.Dsl.sections())
 
   @impl Spark.Dsl
   def handle_opts(opts) do

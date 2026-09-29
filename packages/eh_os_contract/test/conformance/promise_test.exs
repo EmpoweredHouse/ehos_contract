@@ -18,7 +18,7 @@ defmodule EhOsContract.PromiseTest do
   @start ~U[2026-07-01 09:00:00.000000Z]
 
   defp evaluate(opts \\ []),
-    do: EhOsContract.Trace.evaluate(ProcessShapes.Next.Promised, @promise, opts)
+    do: EhOsContract.Trace.evaluate(ProcessShapes.Promised, @promise, opts)
 
   describe "the promise" do
     setup do: Seed.deploy()
@@ -127,7 +127,7 @@ defmodule EhOsContract.PromiseTest do
   describe "a v2 contract" do
     test "names its promise, and refuses one it does not declare" do
       assert_raise ArgumentError, ~r/does not declare promise :nothing/, fn ->
-        EhOsContract.Trace.evaluate(ProcessShapes.Next.Promised, :nothing)
+        EhOsContract.Trace.evaluate(ProcessShapes.Promised, :nothing)
       end
     end
   end

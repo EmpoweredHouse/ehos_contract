@@ -17,14 +17,14 @@ defmodule EhOsContract.ReportRenderV2Test do
 
   Several tests below change the report data before rendering it. Rendering is pure,
   so a branch is exercised with the shape it is contracted to accept rather than by
-  bending the fixture until it produces that shape — `ProcessShapes.Next.Promised`
+  bending the fixture until it produces that shape — `ProcessShapes.Promised`
   declares no external dependency, so it cannot suspend a run at all.
   """
 
   use EhOsContract.DataCase, async: false
 
   alias EhOsContract.{Conformance, Deployment, Report}
-  alias ProcessShapes.Next.Promised
+  alias ProcessShapes.Promised
   alias ProcessShapes.Seed
 
   setup do: Seed.deploy()
@@ -67,7 +67,7 @@ defmodule EhOsContract.ReportRenderV2Test do
       # `unverified` rather than the renderer being unable to print a deadline.
       Seed.start_run("r-1", ~U[2026-09-01 09:00:00.000000Z])
 
-      assert ProcessShapes.Next.Timed |> Conformance.report() |> Report.render() =~ "Deadline:"
+      assert ProcessShapes.Timed |> Conformance.report() |> Report.render() =~ "Deadline:"
     end
 
     test "nor anywhere else in the report data, whatever key a later stage adds" do
@@ -264,7 +264,7 @@ defmodule EhOsContract.ReportRenderV2Test do
   end
 
   describe "the agreed duration, measured" do
-    # `ProcessShapes.Next.Timed` confirms `deadline {1, :hour}`. These sentences are
+    # `ProcessShapes.Timed` confirms `deadline {1, :hour}`. These sentences are
     # the only place the report turns that declaration into a finding, and each
     # counts only what can be known: a finished run's duration, or an open run's
     # lower bound, never the two in one count.
@@ -272,7 +272,7 @@ defmodule EhOsContract.ReportRenderV2Test do
     @noon ~U[2026-09-01 12:00:00.000000Z]
 
     defp timed_text do
-      ProcessShapes.Next.Timed |> Conformance.report(now: @noon) |> Report.render()
+      ProcessShapes.Timed |> Conformance.report(now: @noon) |> Report.render()
     end
 
     test "the sentence counts only the runs that finished" do

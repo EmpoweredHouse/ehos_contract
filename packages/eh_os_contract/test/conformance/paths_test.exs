@@ -25,7 +25,7 @@ defmodule EhOsContract.PathsTest do
     setup do: Seed.deploy()
 
     test "declares each command's emits and each policy's issues, in declaration order" do
-      assert Enum.map(Paths.declared(ProcessShapes.Next.Promised), &names/1) == [
+      assert Enum.map(Paths.declared(ProcessShapes.Promised), &names/1) == [
                {:submit_request, nil, :request_received},
                {:decide_request, nil, :request_approved},
                {:decide_request, nil, :request_refused},
@@ -37,7 +37,7 @@ defmodule EhOsContract.PathsTest do
                {:request_refused, :notify_on_refusal, :notify_refusal}
              ]
 
-      [emits | _] = declared = Paths.declared(ProcessShapes.Next.Promised)
+      [emits | _] = declared = Paths.declared(ProcessShapes.Promised)
 
       # What it promises, and nothing `observe/2` uses to find a step's rows.
       assert Enum.all?(declared, &(Enum.sort(Map.keys(&1)) == [:from, :mode, :to, :via]))
@@ -48,7 +48,7 @@ defmodule EhOsContract.PathsTest do
 
     test "an approved request takes six steps in its one run, and not the refusal's three" do
       Seed.request("r-1", :request_approved)
-      steps = Paths.observe(ProcessShapes.Next.Promised)
+      steps = Paths.observe(ProcessShapes.Promised)
 
       assert Enum.all?(steps, &(&1.of_runs == 1))
 
@@ -68,7 +68,7 @@ defmodule EhOsContract.PathsTest do
       Seed.request("r-1", :request_refused)
 
       waiting =
-        ProcessShapes.Next.Promised
+        ProcessShapes.Promised
         |> Paths.observe()
         |> step(:request_refused, :notify_on_refusal, :notify_refusal)
 
@@ -77,7 +77,7 @@ defmodule EhOsContract.PathsTest do
       Seed.run_queue()
 
       assert %{runs: 1, in_flight: %{lag: 0}} =
-               ProcessShapes.Next.Promised
+               ProcessShapes.Promised
                |> Paths.observe()
                |> step(:request_refused, :notify_on_refusal, :notify_refusal)
     end
@@ -87,7 +87,7 @@ defmodule EhOsContract.PathsTest do
         Seed.request("r-1", :request_approved)
       end)
 
-      steps = Paths.observe(ProcessShapes.Next.Promised, since: ~U[2026-08-01 00:00:00Z])
+      steps = Paths.observe(ProcessShapes.Promised, since: ~U[2026-08-01 00:00:00Z])
       assert Enum.all?(steps, &(&1.runs == 0 and &1.of_runs == 0))
     end
   end

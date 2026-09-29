@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.ContractVocabularyTest do
+defmodule EhOsContract.ContractVocabularyTest do
   @moduledoc """
   v2 plan, E4: **the contract DSL's vocabulary, pinned.** `vocabulary/0` is derived
   from the extension's entity definitions, not from a list kept beside them, so this
@@ -93,10 +93,10 @@ defmodule EhOsContract.Next.ContractVocabularyTest do
         [:scenario, :answers] => [:rows]
       })
 
-    assert EhOsContract.Next.Contract.vocabulary() == expected
+    assert EhOsContract.Contract.vocabulary() == expected
   end
 
   test "public: is not a word: an event leaves the application only through publish (D11)" do
-    refute :public in EhOsContract.Next.Contract.vocabulary()[[:aggregate, :event]]
+    refute :public in EhOsContract.Contract.vocabulary()[[:aggregate, :event]]
   end
 end

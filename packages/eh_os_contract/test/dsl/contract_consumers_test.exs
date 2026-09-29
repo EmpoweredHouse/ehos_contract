@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.ContractConsumersTest do
+defmodule EhOsContract.ContractConsumersTest do
   @moduledoc """
   v2 plan, E4: **P1–P5 of v2 §6** — what reacts to events, and what is read. Each
   refusal names the declaration's file and line, and has a control beside it that

@@ -42,7 +42,7 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
   which E9 does not write; the fact that it was created is this context's.
   """
 
-  use EhOsContract.Next.Contract, domain: Rehmed.Domain, context: :clinical_documentation
+  use EhOsContract.Contract, domain: Rehmed.Domain, context: :clinical_documentation
 
   consumes Rehmed.Contracts.Scheduling, :visit_completed
 

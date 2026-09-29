@@ -7,7 +7,7 @@ defmodule EhOsContract.ImplementationTest do
 
   use EhOsContract.DslCase, async: false
 
-  alias EhOsContract.Next.Fixtures.Billing
+  alias EhOsContract.Fixtures.Billing
 
   @contract """
     aggregate :visit, "Wizyta" do
@@ -114,12 +114,12 @@ defmodule EhOsContract.ImplementationTest do
     :ok
   end
 
-  # An implementation `EhOsContract.Next.Implementations.<name>` whose body starts at
+  # An implementation `EhOsContract.Fixtures.Implementations.<name>` whose body starts at
   # line 4 of `<name, underscored>.ex`.
   defp implementation(name, binding, body) do
     source = """
-    defmodule EhOsContract.Next.Implementations.#{name} do
-      use EhOsContract.Next.Fixtures.Billing, #{binding}
+    defmodule EhOsContract.Fixtures.Implementations.#{name} do
+      use EhOsContract.Fixtures.Billing, #{binding}
 
     #{body}
     end
@@ -135,7 +135,11 @@ defmodule EhOsContract.ImplementationTest do
   defp compiles_clean({source, file}) do
     {_, diagnostics} = Code.with_diagnostics(fn -> compile(source, file) end)
     assert diagnostics == []
-    Module.concat(EhOsContract.Next.Implementations, file |> Path.rootname() |> Macro.camelize())
+
+    Module.concat(
+      EhOsContract.Fixtures.Implementations,
+      file |> Path.rootname() |> Macro.camelize()
+    )
   end
 
   describe "binding" do
@@ -204,7 +208,7 @@ defmodule EhOsContract.ImplementationTest do
     test "a misspelled name gets a did-you-mean" do
       refused(
         implementation("Misspelled", "aggregate: :vist", @aggregate),
-        "I1: use EhOsContract.Next.Fixtures.Billing: there is no aggregate :vist; did you " <>
+        "I1: use EhOsContract.Fixtures.Billing: there is no aggregate :vist; did you " <>
           "mean :visit?",
         2
       )
@@ -213,13 +217,13 @@ defmodule EhOsContract.ImplementationTest do
     test "a name of another kind, no kind, two kinds, an unknown key" do
       refused(
         implementation("OtherKind", "policy: :visit", ""),
-        "I1: use EhOsContract.Next.Fixtures.Billing: :visit is not a policy but an aggregate",
+        "I1: use EhOsContract.Fixtures.Billing: :visit is not a policy but an aggregate",
         2
       )
 
       refused(
         implementation("NoKind", "[]", ""),
-        "I1: use EhOsContract.Next.Fixtures.Billing names no declaration",
+        "I1: use EhOsContract.Fixtures.Billing names no declaration",
         2
       )
 
@@ -231,7 +235,7 @@ defmodule EhOsContract.ImplementationTest do
 
       refused(
         implementation("UnknownKey", "saga: :visit", ""),
-        "I1: use EhOsContract.Next.Fixtures.Billing takes one of [:aggregate, :dcb, :policy, " <>
+        "I1: use EhOsContract.Fixtures.Billing takes one of [:aggregate, :dcb, :policy, " <>
           ":effect, :process_manager, :read_model, :query, :domain_service]; [:saga] is not among them",
         2
       )
@@ -242,13 +246,13 @@ defmodule EhOsContract.ImplementationTest do
     test "a second binding in the same module is refused" do
       refused(
         implementation("BoundTwice", "effect: :notify", """
-          use EhOsContract.Next.Fixtures.Billing, read_model: :payments
+          use EhOsContract.Fixtures.Billing, read_model: :payments
 
           @impl true
           def closed(%Closed{}), do: :ok
         """),
-        "I1: EhOsContract.Next.Implementations.BoundTwice already implements effect :notify of " <>
-          "EhOsContract.Next.Fixtures.Billing; one module implements one declaration",
+        "I1: EhOsContract.Fixtures.Implementations.BoundTwice already implements effect :notify of " <>
+          "EhOsContract.Fixtures.Billing; one module implements one declaration",
         4
       )
     end
@@ -266,8 +270,8 @@ defmodule EhOsContract.ImplementationTest do
       message =
         refused(
           implementation("NoRemind", "aggregate: :visit", body),
-          "I2: EhOsContract.Next.Implementations.NoRemind does not define remind/2, which " <>
-            "aggregate :visit of EhOsContract.Next.Fixtures.Billing expects. Add:",
+          "I2: EhOsContract.Fixtures.Implementations.NoRemind does not define remind/2, which " <>
+            "aggregate :visit of EhOsContract.Fixtures.Billing expects. Add:",
           2
         )
 
@@ -279,7 +283,7 @@ defmodule EhOsContract.ImplementationTest do
 
       refused(
         implementation("Uncovered", "aggregate: :visit", body),
-        "I3: EhOsContract.Next.Implementations.Uncovered.evolve/2 has no clause for %Closed{}, " <>
+        "I3: EhOsContract.Fixtures.Implementations.Uncovered.evolve/2 has no clause for %Closed{}, " <>
           "%ClosedWithoutPayment{}, %Reminded{}. Add one for each, or a catch-all",
         2
       )
@@ -295,7 +299,7 @@ defmodule EhOsContract.ImplementationTest do
 
       refused(
         implementation("GuardedVariable", "aggregate: :visit", body),
-        "I3: EhOsContract.Next.Implementations.GuardedVariable.evolve/2 has no clause for " <>
+        "I3: EhOsContract.Fixtures.Implementations.GuardedVariable.evolve/2 has no clause for " <>
           "%Closed{}, %ClosedWithoutPayment{}, %Reminded{}.",
         2
       )
@@ -340,8 +344,8 @@ defmodule EhOsContract.ImplementationTest do
       message =
         assert_refused(
           """
-          defmodule EhOsContract.Next.Implementations.SelfConsulting do
-            use EhOsContract.Next.Fixtures.SelfConsulting, dcb: :invoicing
+          defmodule EhOsContract.Fixtures.Implementations.SelfConsulting do
+            use EhOsContract.Fixtures.SelfConsulting, dcb: :invoicing
 
             @impl true
             def issue(%Issue{payer_id: id}, _state), do: emit(%InvoiceIssued{payer_id: id})
@@ -351,7 +355,7 @@ defmodule EhOsContract.ImplementationTest do
           end
           """,
           "self_consulting_impl.ex",
-          "I3: EhOsContract.Next.Implementations.SelfConsulting.evolve/2 has no clause for " <>
+          "I3: EhOsContract.Fixtures.Implementations.SelfConsulting.evolve/2 has no clause for " <>
             "%InvoiceIssued{}. Add"
         )
 
@@ -370,7 +374,7 @@ defmodule EhOsContract.ImplementationTest do
 
       refused(
         implementation("WrongEvent", "aggregate: :visit", body),
-        "I4: emit/1 gets %EhOsContract.Next.Fixtures.Billing.Events.Closed{}, which is not " <>
+        "I4: emit/1 gets %EhOsContract.Fixtures.Billing.Events.Closed{}, which is not " <>
           "among the events command :record_payment emits, [:payment_recorded]",
         6
       )
@@ -460,9 +464,9 @@ defmodule EhOsContract.ImplementationTest do
         implementation("WrongIssue", "policy: :remind_on_payment", """
           @impl true
           def payment_recorded(%PaymentRecorded{visit_id: id}),
-            do: issue(%EhOsContract.Next.Fixtures.Billing.Commands.Close{visit_id: id})
+            do: issue(%EhOsContract.Fixtures.Billing.Commands.Close{visit_id: id})
         """),
-        "I6: issue/1 gets %EhOsContract.Next.Fixtures.Billing.Commands.Close{}, which is not " <>
+        "I6: issue/1 gets %EhOsContract.Fixtures.Billing.Commands.Close{}, which is not " <>
           "among the commands :payment_recorded issues, [:remind]",
         6
       )
@@ -490,8 +494,8 @@ defmodule EhOsContract.ImplementationTest do
       message =
         refused(
           implementation("NoPrice", "domain_service: :pricing", ""),
-          "I2: EhOsContract.Next.Implementations.NoPrice does not define price/2, which " <>
-            "domain service :pricing of EhOsContract.Next.Fixtures.Billing expects. Add:",
+          "I2: EhOsContract.Fixtures.Implementations.NoPrice does not define price/2, which " <>
+            "domain service :pricing of EhOsContract.Fixtures.Billing expects. Add:",
           2
         )
 

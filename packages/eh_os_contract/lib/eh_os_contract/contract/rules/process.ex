@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.Contract.Rules.Process do
+defmodule EhOsContract.Contract.Rules.Process do
   @moduledoc """
   R1–R6 of v2 §6: the one process a contract describes.
 
@@ -24,7 +24,7 @@ defmodule EhOsContract.Next.Contract.Rules.Process do
 
   alias EhOsContract.DslRules
   alias EhOsContract.Duration
-  alias EhOsContract.Next.Contract.{Dsl, Rules}
+  alias EhOsContract.Contract.{Dsl, Rules}
 
   @calendar Duration.calendar_units()
 

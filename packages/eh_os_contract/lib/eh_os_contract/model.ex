@@ -3,7 +3,7 @@ defmodule EhOsContract.Model do
   A contract or a domain as plain data, and the one way every reader asks one
   anything (v2 §9).
 
-  A module compiled from the DSL — `use EhOsContract.Next.Contract` or
+  A module compiled from the DSL — `use EhOsContract.Contract` or
   `use EhOsContract.Domain` — carries its model as `__eh_os_contract_model__/0`, and
   readers ask for it through `fetch/1` rather than calling that function themselves.
 

@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.ContractLinksDomainTest do
+defmodule EhOsContract.ContractLinksDomainTest do
   @moduledoc """
   v2 plan, E5b: **the L3 rules that read the domain** — X1–X4, and the parts of D10,
   D11 and (from E8) F7 a contract cannot check alone (v2 §6, §16). Each violation names the
@@ -7,7 +7,7 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
 
   use EhOsContract.DslCase, async: false
 
-  @domain EhOsContract.Next.Fixtures.LinksClinic
+  @domain EhOsContract.Fixtures.LinksClinic
 
   setup_all do
     compile(
@@ -55,8 +55,8 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
     context = Keyword.get(opts, :context, :settlement)
 
     """
-    defmodule EhOsContract.Next.Fixtures.#{name} do
-      use EhOsContract.Next.Contract, domain: #{domain}, context: #{inspect(context)}
+    defmodule EhOsContract.Fixtures.#{name} do
+      use EhOsContract.Contract, domain: #{domain}, context: #{inspect(context)}
 
     #{body}
     end
@@ -127,10 +127,10 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
 
   describe "X1: the domain and the context" do
     test "domain: naming a module that is not a compiled domain points at the use line" do
-      violations = links("LinksNoDomain", @body, domain: "EhOsContract.Next.Fixtures.Nowhere")
+      violations = links("LinksNoDomain", @body, domain: "EhOsContract.Fixtures.Nowhere")
 
       assert assert_linked(violations, "X1:", "links_no_domain.ex", 2) =~
-               "names domain EhOsContract.Next.Fixtures.Nowhere, which is not a compiled " <>
+               "names domain EhOsContract.Fixtures.Nowhere, which is not a compiled " <>
                  "EhOsContract.Domain"
 
       # With no domain there is nothing to check the rest against.
@@ -320,7 +320,7 @@ defmodule EhOsContract.Next.ContractLinksDomainTest do
 
     test "control: the model holds it as an :id that refers to the entity, and tags it" do
       assert links("LinksEntityRight", @body) == []
-      model = EhOsContract.Model.fetch(EhOsContract.Next.Fixtures.LinksEntityRight)
+      model = EhOsContract.Model.fetch(EhOsContract.Fixtures.LinksEntityRight)
       event = Enum.find(model.events, &(&1.name == :payment_recorded))
       field = Enum.find(event.fields, &(&1.name == :clinic_id))
 

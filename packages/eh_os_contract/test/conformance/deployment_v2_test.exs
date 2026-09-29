@@ -8,7 +8,7 @@ defmodule EhOsContract.DeploymentV2Test do
   use EhOsContract.DataCase, async: false
 
   alias EhOsContract.{Conformance, Deployment, Report}
-  alias ProcessShapes.Next.Promised
+  alias ProcessShapes.Promised
   alias ProcessShapes.Seed
 
   defp row(contract),

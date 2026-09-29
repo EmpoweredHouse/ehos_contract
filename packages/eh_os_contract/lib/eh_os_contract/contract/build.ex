@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.Contract.Build do
+defmodule EhOsContract.Contract.Build do
   @moduledoc """
   Builds a v2 contract's model and compiles it into the module as
   `__eh_os_contract_model__/0` (v2 §9).
@@ -30,7 +30,7 @@ defmodule EhOsContract.Next.Contract.Build do
   use Spark.Dsl.Transformer
 
   alias EhOsContract.Digest
-  alias EhOsContract.Next.Contract.{Dsl, Rules}
+  alias EhOsContract.Contract.{Dsl, Rules}
   alias Spark.Dsl.Transformer
 
   @impl true

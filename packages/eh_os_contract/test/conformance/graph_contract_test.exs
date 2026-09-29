@@ -16,7 +16,7 @@ defmodule EhOsContract.GraphContractTest do
   @domain EhOsContract.GraphContractTest.Clinic
   @contract EhOsContract.GraphContractTest.Invoicing
   # Names a domain that does not exist, which a contract may (v2 §8).
-  @constrained EhOsContract.Next.Fixtures.GraphConstrained
+  @constrained EhOsContract.Fixtures.GraphConstrained
 
   setup_all do
     compile(
@@ -40,7 +40,7 @@ defmodule EhOsContract.GraphContractTest do
       end
 
       defmodule #{inspect(@contract)} do
-        use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :invoicing
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :invoicing
 
         aggregate :draft, "Draft" do
           identity :draft_id
@@ -268,7 +268,7 @@ defmodule EhOsContract.GraphContractTest do
         "graph_multiline.ex"
       )
 
-      diagram = Graph.unit_to_mermaid(EhOsContract.Next.Fixtures.GraphMultiline, :visit)
+      diagram = Graph.unit_to_mermaid(EhOsContract.Fixtures.GraphMultiline, :visit)
 
       assert diagram =~
                ~s(invariant_paid{"Paid in full ``` and 'nothing' owed "}:::invariant\n)

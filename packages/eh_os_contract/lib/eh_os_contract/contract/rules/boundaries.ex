@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.Contract.Rules.Boundaries do
+defmodule EhOsContract.Contract.Rules.Boundaries do
   @moduledoc """
   The layer-L2 rules of D10 and D11 (v2 §16): who may read what, and what crosses
   to another application. v2 §6 gives them no letter, so they carry the decision's.
@@ -30,7 +30,7 @@ defmodule EhOsContract.Next.Contract.Rules.Boundaries do
   """
 
   alias EhOsContract.DslRules
-  alias EhOsContract.Next.Contract.Rules
+  alias EhOsContract.Contract.Rules
 
   @versioned ~r/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+\.v[1-9][0-9]*$/
 

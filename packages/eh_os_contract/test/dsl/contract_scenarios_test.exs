@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.ContractScenariosTest do
+defmodule EhOsContract.ContractScenariosTest do
   @moduledoc """
   v2 plan, E5: **S1–S8 of v2 §6** — scenarios. Each refusal names the declaration's
   file and line, and has a control beside it that compiles.

@@ -14,7 +14,7 @@ defmodule EhOsContract.Check do
   """
 
   alias EhOsContract.Check.Finding
-  alias EhOsContract.Next.Contract.Links
+  alias EhOsContract.Contract.Links
 
   @doc """
   What `mix eh_os_contract.check` says about v2 contracts (plan E7c-2), each finding

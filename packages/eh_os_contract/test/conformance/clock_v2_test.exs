@@ -33,8 +33,8 @@ defmodule EhOsContract.ClockV2Test do
   defp start_run(id) do
     {:ok, _} =
       EhOsContract.dispatch(
-        ProcessShapes.Next.Timed,
-        %ProcessShapes.Next.Timed.Commands.StartRun{run_id: id},
+        ProcessShapes.Timed,
+        %ProcessShapes.Timed.Commands.StartRun{run_id: id},
         actor: @owner
       )
   end
@@ -42,8 +42,8 @@ defmodule EhOsContract.ClockV2Test do
   test "an event dispatched inside at/2 carries that time, and so does its inline policy's" do
     Clock.at(@nine, fn -> start_run("r-1") end)
 
-    assert [%{occurred_at: @nine}] = events(ProcessShapes.Next.Timed, :run_started)
-    assert [%{occurred_at: @nine}] = events(ProcessShapes.Next.Timed, :run_acknowledged)
+    assert [%{occurred_at: @nine}] = events(ProcessShapes.Timed, :run_started)
+    assert [%{occurred_at: @nine}] = events(ProcessShapes.Timed, :run_acknowledged)
   end
 
   test "a subscription drained inside at/2 stamps its events with that time too" do
@@ -54,7 +54,7 @@ defmodule EhOsContract.ClockV2Test do
       Seed.run_queue()
     end)
 
-    notified = events(ProcessShapes.Next.Promised, :refusal_notified)
+    notified = events(ProcessShapes.Promised, :refusal_notified)
     assert notified != [], "the fixture's subscription issued nothing"
     assert Enum.all?(notified, &(&1.occurred_at == @nine))
   end
@@ -63,6 +63,6 @@ defmodule EhOsContract.ClockV2Test do
     Clock.at(~U[2026-07-01 09:00:00Z], fn -> start_run("r-1") end)
 
     assert [%{occurred_at: ~U[2026-07-01 09:00:00.000000Z]}] =
-             events(ProcessShapes.Next.Timed, :run_started)
+             events(ProcessShapes.Timed, :run_started)
   end
 end

@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.ContractNamesTest do
+defmodule EhOsContract.ContractNamesTest do
   @moduledoc """
   v2 plan, E4: **N1 and N2 of v2 §6** — what a contract's names may not be. Each
   refusal names the declaration's file and line, and has a control beside it that

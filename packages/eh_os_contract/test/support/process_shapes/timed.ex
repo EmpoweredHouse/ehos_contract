@@ -1,4 +1,4 @@
-defmodule ProcessShapes.Next.Timed do
+defmodule ProcessShapes.Timed do
   @moduledoc """
   # THIS IS NOT A DOMAIN EITHER. See `ProcessShapes`.
 
@@ -10,7 +10,7 @@ defmodule ProcessShapes.Next.Timed do
   run that ended as it started could never be open past its hour.
   """
 
-  use EhOsContract.Next.Contract, domain: ProcessShapes.Domain, context: :timing
+  use EhOsContract.Contract, domain: ProcessShapes.Domain, context: :timing
 
   aggregate :timed, "Timed run" do
     identity :run_id
@@ -44,10 +44,10 @@ defmodule ProcessShapes.Next.Timed do
   end
 end
 
-defmodule ProcessShapes.Next.TimedRun do
-  @moduledoc "The decider of `ProcessShapes.Next.Timed`'s run."
+defmodule ProcessShapes.TimedRun do
+  @moduledoc "The decider of `ProcessShapes.Timed`'s run."
 
-  use ProcessShapes.Next.Timed, aggregate: :timed
+  use ProcessShapes.Timed, aggregate: :timed
 
   @impl true
   def start_run(%StartRun{run_id: id}, _state), do: emit(%RunStarted{run_id: id})
@@ -60,10 +60,10 @@ defmodule ProcessShapes.Next.TimedRun do
   def finish_run(%FinishRun{run_id: id}, _state), do: emit(%RunFinished{run_id: id})
 end
 
-defmodule ProcessShapes.Next.AcknowledgeStart do
+defmodule ProcessShapes.AcknowledgeStart do
   @moduledoc "Acknowledges the start. One declared path, taken by every run."
 
-  use ProcessShapes.Next.Timed, policy: :acknowledge_start
+  use ProcessShapes.Timed, policy: :acknowledge_start
 
   @impl true
   def run_started(%RunStarted{run_id: id}), do: issue(%AcknowledgeRun{run_id: id})

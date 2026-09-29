@@ -124,7 +124,7 @@ defmodule EhOsContract.CheckOutputTest do
       compile(
         """
         defmodule EhOsContract.CheckOutputTest.Unaddressed do
-          use EhOsContract.Next.Contract, domain: ProcessShapes.Domain, context: :batching
+          use EhOsContract.Contract, domain: ProcessShapes.Domain, context: :batching
 
           aggregate :pile, "Pile" do
             identity :pile_id

@@ -1,7 +1,7 @@
-defmodule EhOsContract.Next.UniversalityGateTest do
+defmodule EhOsContract.UniversalityGateTest do
   @moduledoc """
   v2 plan, E4: **the universality gate's invented contract, in the v2 DSL.**
-  `UniversalityGate.Next.TreatmentEpisode` is compiled by `mix compile` from
+  `UniversalityGate.TreatmentEpisode` is compiled by `mix compile` from
   `test/support/`, like a consumer's contract, and describes a domain with nothing
   to do with accounting in the words `vocabulary/0` pins
   (`contract_vocabulary_test.exs`) — none added for it.
@@ -14,7 +14,7 @@ defmodule EhOsContract.Next.UniversalityGateTest do
 
   alias EhOsContract.Model
 
-  @contract UniversalityGate.Next.TreatmentEpisode
+  @contract UniversalityGate.TreatmentEpisode
 
   test "the shapes TaxVision does not have survive the translation" do
     model = Model.fetch(@contract)

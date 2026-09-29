@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.Contract.Generate do
+defmodule EhOsContract.Contract.Generate do
   @moduledoc """
   Generates the modules a v2 contract names (v2 §5), structs and behaviours, after
   `Build` has made its model.
@@ -34,7 +34,7 @@ defmodule EhOsContract.Next.Contract.Generate do
   sits in `C.Queries.*`, beside its parameters. A domain service's module also
   defines each of its functions, which a decision calls: it checks the arguments,
   calls the implementation, and checks the result (`EhOsContract.DomainService`). Which callbacks, with which types, is
-  `EhOsContract.Next.Contract.Callbacks`: the same list the implementation macros
+  `EhOsContract.Contract.Callbacks`: the same list the implementation macros
   check against.
   """
 
@@ -42,7 +42,7 @@ defmodule EhOsContract.Next.Contract.Generate do
 
   alias EhOsContract.Domain
   alias EhOsContract.Model
-  alias EhOsContract.Next.Contract.{Build, Callbacks, Rules}
+  alias EhOsContract.Contract.{Build, Callbacks, Rules}
   alias Spark.Dsl.Transformer
 
   @built_in Domain.Rules.built_in_types()

@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.Contract.Data do
+defmodule EhOsContract.Contract.Data do
   @moduledoc """
   Values written in a contract — a scenario's data — against the types of the
   fields they fill.

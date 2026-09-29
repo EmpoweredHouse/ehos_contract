@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.ContractConstraintsTest do
+defmodule EhOsContract.ContractConstraintsTest do
   @moduledoc """
   Plan EL2, the user's choice after asking whether the engine can check it: **a
   command's constraint is checked as an invariant is**. The contract names it and
@@ -60,8 +60,8 @@ defmodule EhOsContract.Next.ContractConstraintsTest do
     compile(contract("Payments", @payments), "payments.ex")
 
     compile("""
-    defmodule EhOsContract.Next.Implementations.PaymentsVisit do
-      use EhOsContract.Next.Fixtures.Payments, aggregate: :visit
+    defmodule EhOsContract.Fixtures.Implementations.PaymentsVisit do
+      use EhOsContract.Fixtures.Payments, aggregate: :visit
 
       @impl true
       def record_payment(%RecordPayment{amount: a}, _state) when a <= 0,
@@ -74,8 +74,8 @@ defmodule EhOsContract.Next.ContractConstraintsTest do
       def note(%Note{visit_id: id}, _state), do: emit(%Noted{visit_id: id})
     end
 
-    defmodule EhOsContract.Next.Implementations.PaymentsLax do
-      use EhOsContract.Next.Fixtures.Payments, aggregate: :visit
+    defmodule EhOsContract.Fixtures.Implementations.PaymentsLax do
+      use EhOsContract.Fixtures.Payments, aggregate: :visit
 
       @impl true
       def record_payment(%RecordPayment{visit_id: id, amount: a}, _state),
@@ -91,7 +91,7 @@ defmodule EhOsContract.Next.ContractConstraintsTest do
 
   describe "a command's constraint" do
     test "is in the model with its command, and a command without one has no such key" do
-      model = Model.fetch(EhOsContract.Next.Fixtures.Payments)
+      model = Model.fetch(EhOsContract.Fixtures.Payments)
       record = Enum.find(model.commands, &(&1.name == :record_payment))
 
       assert record.constraints == [
@@ -104,19 +104,19 @@ defmodule EhOsContract.Next.ContractConstraintsTest do
     test "the scenario refusing on it passes against code that refuses, and fails against code that does not" do
       scenario =
         Enum.find(
-          Model.fetch(EhOsContract.Next.Fixtures.Payments).scenarios,
+          Model.fetch(EhOsContract.Fixtures.Payments).scenarios,
           &(&1.description == "płatność 0 zł — odmowa")
         )
 
       assert ScenarioCase.run(
-               EhOsContract.Next.Fixtures.Payments,
+               EhOsContract.Fixtures.Payments,
                scenario,
-               [EhOsContract.Next.Implementations.PaymentsVisit]
+               [EhOsContract.Fixtures.Implementations.PaymentsVisit]
              )
 
       assert_raise ExUnit.AssertionError, fn ->
-        ScenarioCase.run(EhOsContract.Next.Fixtures.Payments, scenario, [
-          EhOsContract.Next.Implementations.PaymentsLax
+        ScenarioCase.run(EhOsContract.Fixtures.Payments, scenario, [
+          EhOsContract.Fixtures.Implementations.PaymentsLax
         ])
       end
     end
@@ -124,7 +124,7 @@ defmodule EhOsContract.Next.ContractConstraintsTest do
     test "a query's constraint is prose in the model" do
       query =
         Enum.find(
-          Model.fetch(EhOsContract.Next.Fixtures.Payments).queries,
+          Model.fetch(EhOsContract.Fixtures.Payments).queries,
           &(&1.name == :payments_of)
         )
 

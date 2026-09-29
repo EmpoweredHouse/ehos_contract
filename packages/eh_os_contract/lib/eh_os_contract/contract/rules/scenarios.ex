@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.Contract.Rules.Scenarios do
+defmodule EhOsContract.Contract.Rules.Scenarios do
   @moduledoc """
   S1–S8 of v2 §6: scenarios, the examples a process owner reads.
 
@@ -12,7 +12,7 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
     keeps no state, so it takes no `given`.
   - **S3.** Data names declared fields only. `given` and the trigger supply every
     required field, except the target's identity, which a scenario fills in itself:
-    it is one stream. A value of a built-in type fits it (`EhOsContract.Next.Contract.Data`);
+    it is one stream. A value of a built-in type fits it (`EhOsContract.Contract.Data`);
     one of a domain value is the Mix compiler's (X9). An event consumed from a
     sibling contract has its fields in the sibling, so its data is X9's as well.
   - **S4.** `rejected` names an invariant or a constraint in the command's `rejects:`.
@@ -41,7 +41,7 @@ defmodule EhOsContract.Next.Contract.Rules.Scenarios do
   """
 
   alias EhOsContract.DslRules
-  alias EhOsContract.Next.Contract.{Data, Dsl, Rules}
+  alias EhOsContract.Contract.{Data, Dsl, Rules}
 
   @doc false
   @spec check(map()) :: [DslRules.violation()]

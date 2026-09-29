@@ -48,7 +48,7 @@ defmodule Rehmed.Contracts.Settlement do
   to budget for.
   """
 
-  use EhOsContract.Next.Contract, domain: Rehmed.Domain, context: :settlement
+  use EhOsContract.Contract, domain: Rehmed.Domain, context: :settlement
 
   consumes Rehmed.Contracts.Scheduling, :patient_arrived
 

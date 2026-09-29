@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.Contract.Rules do
+defmodule EhOsContract.Contract.Rules do
   @moduledoc """
   The rules a v2 contract must satisfy to compile: v2 §6, layer L2.
 
@@ -9,7 +9,7 @@ defmodule EhOsContract.Next.Contract.Rules do
   structure on its own.
 
   What L2 cannot see is left to L3, the Mix compiler `compile.eh_os_contract`
-  (`EhOsContract.Next.Contract.Links`): whether an actor, a value type, a subject or
+  (`EhOsContract.Contract.Links`): whether an actor, a value type, a subject or
   an external exists in the domain, and whether a consumed contract has the events
   and fields this one reads. The domain and the consumed contracts are named without
   a compile dependency (v2 §8), so a transformer has nothing to look them up in.
@@ -18,8 +18,8 @@ defmodule EhOsContract.Next.Contract.Rules do
   use Spark.Dsl.Transformer
 
   alias EhOsContract.DslRules
-  alias EhOsContract.Next.Contract.Dsl
-  alias EhOsContract.Next.Contract.Rules
+  alias EhOsContract.Contract.Dsl
+  alias EhOsContract.Contract.Rules
   alias Spark.Dsl.Transformer
 
   @groups [
@@ -34,7 +34,7 @@ defmodule EhOsContract.Next.Contract.Rules do
   ]
 
   @impl true
-  def before?(EhOsContract.Next.Contract.Build), do: true
+  def before?(EhOsContract.Contract.Build), do: true
   def before?(_), do: false
 
   @impl true

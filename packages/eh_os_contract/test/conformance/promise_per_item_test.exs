@@ -42,7 +42,7 @@ defmodule EhOsContract.PromisePerItemTest do
     Items of one case, each submitted and then inspected or rejected.
     """
 
-    use EhOsContract.Next.Contract,
+    use EhOsContract.Contract,
       domain: EhOsContract.PromisePerItemTest.Domain,
       context: :inspection
 

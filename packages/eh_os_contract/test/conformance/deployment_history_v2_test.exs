@@ -19,7 +19,7 @@ defmodule EhOsContract.DeploymentHistoryV2Test do
   use EhOsContract.DataCase, async: false
 
   alias EhOsContract.{Conformance, Deployment, Model, Report}
-  alias ProcessShapes.Next.Promised
+  alias ProcessShapes.Promised
   alias ProcessShapes.Seed
 
   @promise_key "promise:completed_or_refusal_notified"

@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.Contract.Links do
+defmodule EhOsContract.Contract.Links do
   @moduledoc """
   The rules between modules: v2 §6, layer L3.
 
@@ -23,7 +23,7 @@ defmodule EhOsContract.Next.Contract.Links do
   contract — its domain, its context — points at the contract's `use` line.
   """
 
-  alias EhOsContract.Next.Contract.{Links, Rules}
+  alias EhOsContract.Contract.{Links, Rules}
 
   @typedoc "A broken rule, and where it was written: `nil` when nothing says where."
   @type violation :: {String.t(), :erl_anno.anno() | nil}

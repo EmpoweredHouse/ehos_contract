@@ -2,8 +2,8 @@ defmodule ProcessShapes.Domain do
   @moduledoc """
   # THIS DOMAIN IS INVENTED. IT IS NOT CLIENT MATERIAL.
 
-  The vocabulary the v2 process shapes name (v2 plan, E7c): `ProcessShapes.Next.Promised`,
-  `ProcessShapes.Next.Timed` and `ProcessShapes.Next.Bare`. English, like the shapes:
+  The vocabulary the v2 process shapes name (v2 plan, E7c): `ProcessShapes.Promised`,
+  `ProcessShapes.Timed` and `ProcessShapes.Bare`. English, like the shapes:
   nobody reads it as a process owner.
   """
 

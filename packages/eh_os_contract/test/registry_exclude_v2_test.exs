@@ -36,7 +36,7 @@ defmodule EhOsContract.RegistryExcludeV2Test do
     test "a fixture contract and its domain are in the scan" do
       Registry.load!()
 
-      assert ProcessShapes.Next.Promised in Registry.v2_contracts()
+      assert ProcessShapes.Promised in Registry.v2_contracts()
       assert ProcessShapes.Domain in Registry.domains()
     end
   end
@@ -46,19 +46,19 @@ defmodule EhOsContract.RegistryExcludeV2Test do
       Application.put_env(:eh_os_contract, :exclude, ["ProcessShapes"])
       Registry.load!()
 
-      refute ProcessShapes.Next.Promised in Registry.v2_contracts()
+      refute ProcessShapes.Promised in Registry.v2_contracts()
       refute ProcessShapes.Domain in Registry.domains()
 
       # The control: a namespace nobody named stays in the scan, so this is a filter
       # on the one prefix given, not an accident that emptied everything.
-      assert UniversalityGate.Next.TreatmentEpisode in Registry.v2_contracts()
+      assert UniversalityGate.TreatmentEpisode in Registry.v2_contracts()
     end
 
     test "an unmatched prefix excludes nothing" do
       Application.put_env(:eh_os_contract, :exclude, ["NoSuchNamespace"])
       Registry.load!()
 
-      assert ProcessShapes.Next.Promised in Registry.v2_contracts()
+      assert ProcessShapes.Promised in Registry.v2_contracts()
       assert ProcessShapes.Domain in Registry.domains()
     end
   end

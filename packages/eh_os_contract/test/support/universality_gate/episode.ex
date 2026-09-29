@@ -1,6 +1,6 @@
-defmodule UniversalityGate.Next.Episode do
+defmodule UniversalityGate.Episode do
   @moduledoc """
-  **Invented, like the whole of `UniversalityGate.Next.TreatmentEpisode`.**
+  **Invented, like the whole of `UniversalityGate.TreatmentEpisode`.**
 
   The decider of its `:episode` aggregate (v2 plan, E5): v1's decision function
   written as an implementation. The decision is the same. What changed is its
@@ -14,7 +14,7 @@ defmodule UniversalityGate.Next.Episode do
   was checked is the command's time, which dispatch sets.
   """
 
-  use UniversalityGate.Next.TreatmentEpisode, aggregate: :episode
+  use UniversalityGate.TreatmentEpisode, aggregate: :episode
 
   alias EhOsContract.Meta
 

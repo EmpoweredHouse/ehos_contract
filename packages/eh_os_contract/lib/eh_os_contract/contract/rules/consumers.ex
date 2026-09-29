@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.Contract.Rules.Consumers do
+defmodule EhOsContract.Contract.Rules.Consumers do
   @moduledoc """
   P1–P5 of v2 §6: what reacts to events, and what is read.
 
@@ -23,7 +23,7 @@ defmodule EhOsContract.Next.Contract.Rules.Consumers do
   """
 
   alias EhOsContract.DslRules
-  alias EhOsContract.Next.Contract.Rules
+  alias EhOsContract.Contract.Rules
 
   @doc false
   @spec check(map()) :: [DslRules.violation()]

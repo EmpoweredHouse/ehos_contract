@@ -10,7 +10,7 @@ defmodule EhOsContract.DeadlineTest do
 
   use EhOsContract.DataCase, async: false
 
-  alias ProcessShapes.Next.Timed
+  alias ProcessShapes.Timed
   alias ProcessShapes.Seed
 
   @nine ~U[2026-09-01 09:00:00.000000Z]
@@ -67,7 +67,7 @@ defmodule EhOsContract.DeadlineTest do
       Seed.request("r-1", :request_approved)
 
       assert [%{instance_id: "handling|r-1", outcome: :within}] =
-               EhOsContract.Run.evaluate(ProcessShapes.Next.Promised, :handling)
+               EhOsContract.Run.evaluate(ProcessShapes.Promised, :handling)
     end
   end
 

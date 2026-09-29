@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.Contract.Rules.Consumes do
+defmodule EhOsContract.Contract.Rules.Consumes do
   @moduledoc """
   K1 of v2 §6: what a contract takes in from a sibling contract of the same
   application, `consumes Contract, events`.

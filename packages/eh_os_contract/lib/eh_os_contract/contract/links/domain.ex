@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.Contract.Links.Domain do
+defmodule EhOsContract.Contract.Links.Domain do
   @moduledoc """
   X1–X4 of v2 §6, and the parts of D10 and D11 that need the domain: what a
   contract names in the domain it says it belongs to.
@@ -33,7 +33,7 @@ defmodule EhOsContract.Next.Contract.Links.Domain do
   alias EhOsContract.Codec
   alias EhOsContract.Domain
   alias EhOsContract.DslRules
-  alias EhOsContract.Next.Contract.{Links, Rules}
+  alias EhOsContract.Contract.{Links, Rules}
 
   @built_in Domain.Rules.built_in_types()
 

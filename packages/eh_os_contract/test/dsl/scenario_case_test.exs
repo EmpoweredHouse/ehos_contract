@@ -92,8 +92,8 @@ defmodule EhOsContract.ScenarioCaseTest do
   """
 
   @visit """
-  defmodule EhOsContract.Next.Implementations.ScenarioVisit do
-    use EhOsContract.Next.Fixtures.Scenarios, aggregate: :visit
+  defmodule EhOsContract.Fixtures.Implementations.ScenarioVisit do
+    use EhOsContract.Fixtures.Scenarios, aggregate: :visit
 
     @impl true
     def record_payment(%RecordPayment{visit_id: id, amount: a, paid_at: at}, _state),
@@ -111,15 +111,15 @@ defmodule EhOsContract.ScenarioCaseTest do
     def evolve(state, _event), do: state
   end
 
-  defmodule EhOsContract.Next.Implementations.ScenarioPolicy do
-    use EhOsContract.Next.Fixtures.Scenarios, policy: :remind_on_payment
+  defmodule EhOsContract.Fixtures.Implementations.ScenarioPolicy do
+    use EhOsContract.Fixtures.Scenarios, policy: :remind_on_payment
 
     @impl true
     def payment_recorded(%PaymentRecorded{visit_id: id}), do: issue(%Remind{visit_id: id})
   end
 
-  defmodule EhOsContract.Next.Implementations.ScenarioChase do
-    use EhOsContract.Next.Fixtures.Scenarios, process_manager: :chase
+  defmodule EhOsContract.Fixtures.Implementations.ScenarioChase do
+    use EhOsContract.Fixtures.Scenarios, process_manager: :chase
 
     @impl true
     def later(%State{visit_id: id}), do: issue(%Remind{visit_id: id})
@@ -133,14 +133,14 @@ defmodule EhOsContract.ScenarioCaseTest do
   end
 
   @right [
-    EhOsContract.Next.Implementations.ScenarioVisit,
-    EhOsContract.Next.Implementations.ScenarioPolicy,
-    EhOsContract.Next.Implementations.ScenarioChase
+    EhOsContract.Fixtures.Implementations.ScenarioVisit,
+    EhOsContract.Fixtures.Implementations.ScenarioPolicy,
+    EhOsContract.Fixtures.Implementations.ScenarioChase
   ]
 
   defp scenario(description) do
     Enum.find(
-      Model.fetch(EhOsContract.Next.Fixtures.Scenarios).scenarios,
+      Model.fetch(EhOsContract.Fixtures.Scenarios).scenarios,
       &(&1.description == description)
     )
   end
@@ -148,7 +148,7 @@ defmodule EhOsContract.ScenarioCaseTest do
   defp run(description, implementations),
     do:
       ScenarioCase.run(
-        EhOsContract.Next.Fixtures.Scenarios,
+        EhOsContract.Fixtures.Scenarios,
         scenario(description),
         implementations
       )
@@ -161,20 +161,20 @@ defmodule EhOsContract.ScenarioCaseTest do
   # A second implementation of the aggregate, compiled as `name` with `body`.
   defp visit(name, body) do
     compile("""
-    defmodule EhOsContract.Next.Implementations.#{name} do
-      use EhOsContract.Next.Fixtures.Scenarios, aggregate: :visit
+    defmodule EhOsContract.Fixtures.Implementations.#{name} do
+      use EhOsContract.Fixtures.Scenarios, aggregate: :visit
 
     #{body}
     end
     """)
 
-    Module.concat(EhOsContract.Next.Implementations, name)
+    Module.concat(EhOsContract.Fixtures.Implementations, name)
   end
 
   describe "the right implementation" do
     test "passes every scenario, of a unit, a policy and a process manager" do
-      for scenario <- Model.fetch(EhOsContract.Next.Fixtures.Scenarios).scenarios do
-        assert ScenarioCase.run(EhOsContract.Next.Fixtures.Scenarios, scenario, @right)
+      for scenario <- Model.fetch(EhOsContract.Fixtures.Scenarios).scenarios do
+        assert ScenarioCase.run(EhOsContract.Fixtures.Scenarios, scenario, @right)
       end
     end
   end
@@ -269,13 +269,13 @@ defmodule EhOsContract.ScenarioCaseTest do
         """)
 
       assert failure("sam paragon wystarcza", [sly]) =~
-               "EhOsContract.Next.Fixtures.Scenarios.Events.Closed is not among what command " <>
+               "EhOsContract.Fixtures.Scenarios.Events.Closed is not among what command " <>
                  ":record_payment emits, [:payment_recorded, :receipt_issued]"
     end
 
     test "data of a domain type that does not fit, which only the run can see" do
       compile("""
-      defmodule EhOsContract.Next.Fixtures.MomentDomain do
+      defmodule EhOsContract.Fixtures.MomentDomain do
         use EhOsContract.Domain, name: :moments, language: :pl
         context :clinic, "Przychodnia", subdomain: :core
         value :moment, :timestamp
@@ -283,8 +283,8 @@ defmodule EhOsContract.ScenarioCaseTest do
         subdomain :core, "Core", type: :core
       end
 
-      defmodule EhOsContract.Next.Fixtures.Moments do
-        use EhOsContract.Next.Contract, domain: EhOsContract.Next.Fixtures.MomentDomain, context: :clinic
+      defmodule EhOsContract.Fixtures.Moments do
+        use EhOsContract.Contract, domain: EhOsContract.Fixtures.MomentDomain, context: :clinic
 
         aggregate :visit, "Wizyta" do
           identity :visit_id
@@ -313,8 +313,8 @@ defmodule EhOsContract.ScenarioCaseTest do
         end
       end
 
-      defmodule EhOsContract.Next.Implementations.Moments do
-        use EhOsContract.Next.Fixtures.Moments, aggregate: :visit
+      defmodule EhOsContract.Fixtures.Implementations.Moments do
+        use EhOsContract.Fixtures.Moments, aggregate: :visit
 
         @impl true
         def arrive(%Arrive{visit_id: id, at: %DateTime{} = at}, _state),
@@ -322,19 +322,19 @@ defmodule EhOsContract.ScenarioCaseTest do
       end
       """)
 
-      [yesterday, nine] = Model.fetch(EhOsContract.Next.Fixtures.Moments).scenarios
-      implementations = [EhOsContract.Next.Implementations.Moments]
+      [yesterday, nine] = Model.fetch(EhOsContract.Fixtures.Moments).scenarios
+      implementations = [EhOsContract.Fixtures.Implementations.Moments]
 
       error =
         assert_raise ExUnit.AssertionError, fn ->
-          ScenarioCase.run(EhOsContract.Next.Fixtures.Moments, yesterday, implementations)
+          ScenarioCase.run(EhOsContract.Fixtures.Moments, yesterday, implementations)
         end
 
       assert error.message ==
                ~s|scenario data, field :at: "wczoraj" is not an ISO 8601 timestamp with an | <>
                  ~s|offset, "2026-09-01T09:00:00Z"|
 
-      assert ScenarioCase.run(EhOsContract.Next.Fixtures.Moments, nine, implementations)
+      assert ScenarioCase.run(EhOsContract.Fixtures.Moments, nine, implementations)
     end
 
     test "a decision that returns a map, not a struct" do
@@ -360,7 +360,7 @@ defmodule EhOsContract.ScenarioCaseTest do
 
     test "no implementation, and two" do
       assert failure("sam paragon wystarcza", []) =~
-               "no module implements aggregate :visit of EhOsContract.Next.Fixtures.Scenarios, so " <>
+               "no module implements aggregate :visit of EhOsContract.Fixtures.Scenarios, so " <>
                  "its scenario has nothing to run"
 
       twin =
@@ -380,7 +380,7 @@ defmodule EhOsContract.ScenarioCaseTest do
 
       assert failure("sam paragon wystarcza", [twin | @right]) =~
                "aggregate :visit of " <>
-                 "EhOsContract.Next.Fixtures.Scenarios has 2 implementations"
+                 "EhOsContract.Fixtures.Scenarios has 2 implementations"
     end
   end
 end

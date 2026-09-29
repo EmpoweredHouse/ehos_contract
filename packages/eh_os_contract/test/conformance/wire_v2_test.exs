@@ -17,7 +17,7 @@ defmodule EhOsContract.Conformance.WireV2Test do
   use EhOsContract.DataCase, async: false
 
   alias EhOsContract.{Conformance, Deployment}
-  alias ProcessShapes.Next.Promised
+  alias ProcessShapes.Promised
   alias ProcessShapes.Seed
 
   @clerk EhOsContract.Actor.credential("u-1", ["dispatch_rig.open_account"])
@@ -88,7 +88,7 @@ defmodule EhOsContract.Conformance.WireV2Test do
       Seed.deploy()
       Seed.start_run("r-1", ~U[2026-09-01 09:00:00.000000Z])
 
-      data = Conformance.as_data(ProcessShapes.Next.Timed, now: ~U[2026-09-01 12:00:00.000000Z])
+      data = Conformance.as_data(ProcessShapes.Timed, now: ~U[2026-09-01 12:00:00.000000Z])
 
       assert_json_only(data)
 
@@ -120,7 +120,7 @@ defmodule EhOsContract.Conformance.WireV2Test do
       # `EhOsContract.Deployment` writes `inspect(contract)` into the log's `contract`
       # column, so a consumer joining the two does not have to know that one side
       # spells it differently.
-      assert Conformance.as_data(Promised)["report"]["contract"] == "ProcessShapes.Next.Promised"
+      assert Conformance.as_data(Promised)["report"]["contract"] == "ProcessShapes.Promised"
     end
 
     test "a duration is named, not positional" do

@@ -1,6 +1,6 @@
-defmodule EhOsContract.Next.Contract.Dsl do
+defmodule EhOsContract.Contract.Dsl do
   @moduledoc """
-  The Spark extension behind `use EhOsContract.Next.Contract` (v2 §4.1–4.3).
+  The Spark extension behind `use EhOsContract.Contract` (v2 §4.1–4.3).
 
   One top-level section, so every entity is written straight into the module body:
   the units that decide (aggregates and dynamic consistency boundaries) with their
@@ -973,8 +973,8 @@ defmodule EhOsContract.Next.Contract.Dsl do
   use Spark.Dsl.Extension,
     sections: [@contract],
     transformers: [
-      EhOsContract.Next.Contract.Rules,
-      EhOsContract.Next.Contract.Build,
-      EhOsContract.Next.Contract.Generate
+      EhOsContract.Contract.Rules,
+      EhOsContract.Contract.Build,
+      EhOsContract.Contract.Generate
     ]
 end

@@ -1,4 +1,4 @@
-defmodule ProcessShapes.Next.Bare do
+defmodule ProcessShapes.Bare do
   @moduledoc """
   # THIS IS NOT A DOMAIN EITHER. See `ProcessShapes`.
 
@@ -7,7 +7,7 @@ defmodule ProcessShapes.Next.Bare do
   v2 is decided or recorded, never written around dispatch.
   """
 
-  use EhOsContract.Next.Contract, domain: ProcessShapes.Domain, context: :batching
+  use EhOsContract.Contract, domain: ProcessShapes.Domain, context: :batching
 
   aggregate :batch, "Batch" do
     identity [:tenant_id, :batch_id]
@@ -28,10 +28,10 @@ defmodule ProcessShapes.Next.Bare do
   end
 end
 
-defmodule ProcessShapes.Next.Batch do
-  @moduledoc "The decider of `ProcessShapes.Next.Bare`'s batch."
+defmodule ProcessShapes.Batch do
+  @moduledoc "The decider of `ProcessShapes.Bare`'s batch."
 
-  use ProcessShapes.Next.Bare, aggregate: :batch
+  use ProcessShapes.Bare, aggregate: :batch
 
   @impl true
   def open_batch(%OpenBatch{tenant_id: tenant, batch_id: batch}, _state),

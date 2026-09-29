@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.Contract.Links.System do
+defmodule EhOsContract.Contract.Links.System do
   @moduledoc """
   X7, X8 and the part of D14 no single contract can check: names that have to be
   unique across the application, and one implementation per declaration.
@@ -17,7 +17,7 @@ defmodule EhOsContract.Next.Contract.Links.System do
   that sorts later and names the other with its file and line.
   """
 
-  alias EhOsContract.Next.Contract.{Links, Rules}
+  alias EhOsContract.Contract.{Links, Rules}
 
   @doc false
   @spec check(map()) :: [Links.violation()]

@@ -15,7 +15,7 @@ defmodule EhOsContract.Check.Completeness do
 
   alias EhOsContract.Check.Finding
   alias EhOsContract.Domain
-  alias EhOsContract.Next.Contract.{Links, Rules}
+  alias EhOsContract.Contract.{Links, Rules}
 
   @doc """
   Every finding of a completeness rule about `contracts`, v2 contract modules,
@@ -600,7 +600,7 @@ defmodule EhOsContract.Check.Completeness do
     contract_fields =
       for c <- contracts,
           {_where, fields, _injected, _kind} <-
-            EhOsContract.Next.Contract.Rules.Fields.structs(c.declarations),
+            EhOsContract.Contract.Rules.Fields.structs(c.declarations),
           field <- fields,
           do: field
 

@@ -252,7 +252,7 @@ defmodule EhOsContract.Domain.Dsl do
   # A value's invariant is checked (plan EL2b): the implementation of the value
   # defines one function per invariant, dispatch holds every value of the type to
   # them, and each example becomes a test. Examples are plain data, as a scenario's
-  # are (`EhOsContract.Next.Contract.Data`).
+  # are (`EhOsContract.Contract.Data`).
   @value_invariant %Spark.Dsl.Entity{
     name: :invariant,
     describe: "What is true of every value of the type, with values that break it and keep it.",

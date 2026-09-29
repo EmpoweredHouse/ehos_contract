@@ -17,7 +17,7 @@ defmodule EhOsContract.ScaleV2Test do
 
   use EhOsContract.DataCase, async: false
 
-  alias ProcessShapes.Next.Promised
+  alias ProcessShapes.Promised
 
   @promise :completed_or_refusal_notified
   @received ~U[2026-07-01 09:00:00.000000Z]

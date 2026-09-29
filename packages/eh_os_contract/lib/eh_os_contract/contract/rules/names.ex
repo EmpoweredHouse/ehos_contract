@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.Contract.Rules.Names do
+defmodule EhOsContract.Contract.Rules.Names do
   @moduledoc """
   N1 and N2 of v2 §6: names.
 
@@ -29,7 +29,7 @@ defmodule EhOsContract.Next.Contract.Rules.Names do
   """
 
   alias EhOsContract.DslRules
-  alias EhOsContract.Next.Contract.Rules
+  alias EhOsContract.Contract.Rules
 
   @reserved ~w(do end fn and or not in when catch rescue after else true false nil)a
   @taken [:evolve]

@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.Contract.Links.Scenarios do
+defmodule EhOsContract.Contract.Links.Scenarios do
   @moduledoc """
   X9 of v2 §6: scenario values fit their types, where L2 could not tell.
 
@@ -7,7 +7,7 @@ defmodule EhOsContract.Next.Contract.Links.Scenarios do
 
   - **a value of a domain type**, anywhere a scenario gives one: one member of an
     enum, a value of the type a value names, a map of the fields a value with
-    fields declares — in lists too (`EhOsContract.Next.Contract.Data.problems/3`);
+    fields declares — in lists too (`EhOsContract.Contract.Data.problems/3`);
   - **a query's parameters and the rows its scenario answers**, whose fields are
     this contract's, for the values of domain types among them;
   - **the examples of a domain service's rule** (plan EL2b), for the arguments and
@@ -20,7 +20,7 @@ defmodule EhOsContract.Next.Contract.Links.Scenarios do
   """
 
   alias EhOsContract.Model
-  alias EhOsContract.Next.Contract.{Data, Links, Rules}
+  alias EhOsContract.Contract.{Data, Links, Rules}
 
   @doc false
   @spec check(map()) :: [Links.violation()]

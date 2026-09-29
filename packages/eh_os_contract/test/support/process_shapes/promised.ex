@@ -1,4 +1,4 @@
-defmodule ProcessShapes.Next.Promised do
+defmodule ProcessShapes.Promised do
   @moduledoc """
   # THIS IS NOT A DOMAIN EITHER. See `ProcessShapes`.
 
@@ -13,7 +13,7 @@ defmodule ProcessShapes.Next.Promised do
   event, the policy's command, the command's event.
   """
 
-  use EhOsContract.Next.Contract, domain: ProcessShapes.Domain, context: :handling
+  use EhOsContract.Contract, domain: ProcessShapes.Domain, context: :handling
 
   aggregate :request, "Request" do
     identity :request_id
@@ -85,10 +85,10 @@ defmodule ProcessShapes.Next.Promised do
   end
 end
 
-defmodule ProcessShapes.Next.Request do
-  @moduledoc "The decider of `ProcessShapes.Next.Promised`'s request."
+defmodule ProcessShapes.Request do
+  @moduledoc "The decider of `ProcessShapes.Promised`'s request."
 
-  use ProcessShapes.Next.Promised, aggregate: :request
+  use ProcessShapes.Promised, aggregate: :request
 
   @impl true
   def submit_request(%SubmitRequest{request_id: id}, _state),
@@ -113,29 +113,29 @@ defmodule ProcessShapes.Next.Request do
     do: emit(%RefusalNotified{request_id: id})
 end
 
-defmodule ProcessShapes.Next.LogArrival do
+defmodule ProcessShapes.LogArrival do
   @moduledoc "Logs the arrival. One path, taken by every run."
 
-  use ProcessShapes.Next.Promised, policy: :log_arrival
+  use ProcessShapes.Promised, policy: :log_arrival
 
   @impl true
   def request_received(%RequestReceived{request_id: id}), do: issue(%LogRequest{request_id: id})
 end
 
-defmodule ProcessShapes.Next.CompleteApproved do
+defmodule ProcessShapes.CompleteApproved do
   @moduledoc "The ordinary ending, reached inside the transaction that approved."
 
-  use ProcessShapes.Next.Promised, policy: :complete_approved
+  use ProcessShapes.Promised, policy: :complete_approved
 
   @impl true
   def request_approved(%RequestApproved{request_id: id}),
     do: issue(%CompleteRequest{request_id: id})
 end
 
-defmodule ProcessShapes.Next.NotifyOnRefusal do
+defmodule ProcessShapes.NotifyOnRefusal do
   @moduledoc "The other ending, through the log after the transaction."
 
-  use ProcessShapes.Next.Promised, policy: :notify_on_refusal
+  use ProcessShapes.Promised, policy: :notify_on_refusal
 
   @impl true
   def request_refused(%RequestRefused{request_id: id}), do: issue(%NotifyRefusal{request_id: id})

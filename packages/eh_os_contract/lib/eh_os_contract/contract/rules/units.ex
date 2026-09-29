@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.Contract.Rules.Units do
+defmodule EhOsContract.Contract.Rules.Units do
   @moduledoc """
   A1–A5 and C1 of v2 §6: what a unit decides, and who can ask it to.
 
@@ -27,7 +27,7 @@ defmodule EhOsContract.Next.Contract.Rules.Units do
   """
 
   alias EhOsContract.DslRules
-  alias EhOsContract.Next.Contract.Rules
+  alias EhOsContract.Contract.Rules
 
   @doc false
   @spec check(map()) :: [DslRules.violation()]

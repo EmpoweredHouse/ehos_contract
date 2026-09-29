@@ -37,7 +37,7 @@ defmodule Rehmed.Contracts.Scheduling do
   distillation's and the aggregate is `AGG-01`'s (plan, the decisions before E9).
   """
 
-  use EhOsContract.Next.Contract, domain: Rehmed.Domain, context: :scheduling
+  use EhOsContract.Contract, domain: Rehmed.Domain, context: :scheduling
 
   aggregate :visit, "Wizyta" do
     # `C-09` creates the visit, and the library gives it its identifier: a booking

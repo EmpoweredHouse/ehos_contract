@@ -17,7 +17,7 @@ defmodule EhOsContract.ReportV2Test do
   use Oban.Testing, repo: EhOsContract.TestRepo
 
   alias EhOsContract.{Conformance, Report}
-  alias ProcessShapes.Next.{Promised, Timed}
+  alias ProcessShapes.{Promised, Timed}
   alias ProcessShapes.Seed
 
   @noon ~U[2026-09-01 12:00:00.000000Z]
@@ -263,7 +263,7 @@ defmodule EhOsContract.ReportV2Test do
 
     entry = %{
       type: "handling.#{name}",
-      contract: inspect(ProcessShapes.Next.Promised),
+      contract: inspect(ProcessShapes.Promised),
       contract_version: "gone",
       process: "handling",
       instance_id: "handling|#{request_id}",
@@ -285,7 +285,7 @@ defmodule EhOsContract.ReportV2Test do
     test "a v2 contract's report is conformance.v2, and Jason takes it" do
       Seed.request("r-1", :request_refused)
 
-      wire = Conformance.as_data(ProcessShapes.Next.Promised)
+      wire = Conformance.as_data(ProcessShapes.Promised)
       assert wire["schema"] == "eh_os_contract.conformance.v2"
 
       assert {:ok, _json} = Jason.encode(wire)

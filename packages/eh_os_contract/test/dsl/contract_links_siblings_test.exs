@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.ContractLinksSiblingsTest do
+defmodule EhOsContract.ContractLinksSiblingsTest do
   @moduledoc """
   v2 plan, E5b: **X5–X6** (v2 §6, §7) — a subscriber checked against the sibling
   contract it consumes from, as that sibling is compiled now. A violation stands at
@@ -8,8 +8,8 @@ defmodule EhOsContract.Next.ContractLinksSiblingsTest do
 
   use EhOsContract.DslCase, async: false
 
-  @fixtures EhOsContract.Next.Fixtures
-  @domain EhOsContract.Next.Fixtures.SiblingsClinic
+  @fixtures EhOsContract.Fixtures
+  @domain EhOsContract.Fixtures.SiblingsClinic
 
   setup_all do
     compile(
@@ -43,7 +43,7 @@ defmodule EhOsContract.Next.ContractLinksSiblingsTest do
 
     """
     defmodule #{inspect(Module.concat(@fixtures, name))} do
-      use EhOsContract.Next.Contract, domain: #{domain}, context: :settlement
+      use EhOsContract.Contract, domain: #{domain}, context: :settlement
 
       aggregate :booking, "Rezerwacja" do
         identity :booking_id
@@ -73,7 +73,7 @@ defmodule EhOsContract.Next.ContractLinksSiblingsTest do
   defp subscriber(name, publisher, consumes \\ ":visit_booked") do
     """
     defmodule #{inspect(Module.concat(@fixtures, name))} do
-      use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+      use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
 
       consumes #{inspect(Module.concat(@fixtures, publisher))}, #{consumes}
 
@@ -140,7 +140,7 @@ defmodule EhOsContract.Next.ContractLinksSiblingsTest do
 
     subscriber = """
     defmodule #{inspect(Module.concat(@fixtures, "SibTwoValuesBilling"))} do
-      use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+      use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
 
       consumes #{inspect(Module.concat(@fixtures, "SibTwoValuesBooking"))}, :visit_booked
 

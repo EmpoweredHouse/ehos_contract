@@ -17,7 +17,7 @@ defmodule Mix.Tasks.Compile.EhOsContract do
   or implement a v2 contract, are loaded.
 
   A violation is an error diagnostic at the file and line of the declaration at
-  fault, and it fails the compile (`EhOsContract.Next.Contract.Links`).
+  fault, and it fails the compile (`EhOsContract.Contract.Links`).
 
   The modules are the project's own, the `.beam` files in its compile path, and no
   configuration names them. A domain or a sibling that a contract names is looked
@@ -27,7 +27,7 @@ defmodule Mix.Tasks.Compile.EhOsContract do
   use Boundary, classify_to: EhOsContract
   use Mix.Task.Compiler
 
-  alias EhOsContract.Next.Contract.Links
+  alias EhOsContract.Contract.Links
   alias Mix.Task.Compiler.Diagnostic
 
   @markers [__eh_os_contract_model__: 0, __eh_os_implementation__: 0]

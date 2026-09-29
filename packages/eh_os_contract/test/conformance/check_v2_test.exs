@@ -32,10 +32,10 @@ defmodule EhOsContract.CheckV2Test do
   test "a process with no addressee, and a deadline its owner has not confirmed" do
     assert {:warn, "process-without-accountable",
             "process :handling names no `accountable` role" <> _} =
-             List.keyfind(findings(ProcessShapes.Next.Promised), :warn, 0)
+             List.keyfind(findings(ProcessShapes.Promised), :warn, 0)
 
     assert Enum.any?(
-             findings(ProcessShapes.Next.Promised),
+             findings(ProcessShapes.Promised),
              &match?(
                {:warn, "unverified-declaration",
                 "process :handling: `deadline` = {3, :day} is not confirmed" <> _},
@@ -51,7 +51,7 @@ defmodule EhOsContract.CheckV2Test do
   end
 
   test "control: a confirmed, addressed, implemented process has nothing to say" do
-    assert findings(ProcessShapes.Next.Timed) == []
+    assert findings(ProcessShapes.Timed) == []
   end
 
   test "a contract implemented in part names what dispatch will refuse, its query too" do
@@ -66,7 +66,7 @@ defmodule EhOsContract.CheckV2Test do
   test "a contract with no implementation is legal, and noted" do
     Code.compile_string("""
     defmodule EhOsContract.CheckV2Test.Unimplemented do
-      use EhOsContract.Next.Contract, domain: ProcessShapes.Domain, context: :batching
+      use EhOsContract.Contract, domain: ProcessShapes.Domain, context: :batching
 
       aggregate :pile, "Pile" do
         identity :pile_id
@@ -100,7 +100,7 @@ defmodule EhOsContract.CheckV2Test do
   test "a contract made only of recorded events needs no implementation" do
     Code.compile_string("""
     defmodule EhOsContract.CheckV2Test.RecordedOnly do
-      use EhOsContract.Next.Contract, domain: ProcessShapes.Domain, context: :batching
+      use EhOsContract.Contract, domain: ProcessShapes.Domain, context: :batching
 
       aggregate :inbox, "Inbox" do
         identity :message_id

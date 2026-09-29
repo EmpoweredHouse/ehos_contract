@@ -10,7 +10,7 @@ defmodule ProcessShapes.Seed do
   """
 
   alias EhOsContract.{Actor, Testing}
-  alias ProcessShapes.Next
+  alias ProcessShapes.{Promised, Timed}
 
   @actor Actor.credential("u-1", [
            "process_shapes.submit_request",
@@ -31,9 +31,9 @@ defmodule ProcessShapes.Seed do
   @doc "A request arrives and is decided, `:request_approved` or `:request_refused`."
   @spec request(String.t(), :request_approved | :request_refused) :: :ok
   def request(id, decision) do
-    dispatch(Next.Promised, %Next.Promised.Commands.SubmitRequest{request_id: id})
+    dispatch(Promised, %Promised.Commands.SubmitRequest{request_id: id})
 
-    dispatch(Next.Promised, %Next.Promised.Commands.DecideRequest{
+    dispatch(Promised, %Promised.Commands.DecideRequest{
       request_id: id,
       approve: decision == :request_approved
     })
@@ -57,8 +57,8 @@ defmodule ProcessShapes.Seed do
 
     entry = %{
       type: "handling.#{name}",
-      contract: inspect(Next.Promised),
-      contract_version: EhOsContract.Model.fetch(Next.Promised).version,
+      contract: inspect(Promised),
+      contract_version: EhOsContract.Model.fetch(Promised).version,
       process: "handling",
       instance_id: "handling|#{request_id}",
       correlation_id: Ecto.UUID.generate(),
@@ -76,12 +76,12 @@ defmodule ProcessShapes.Seed do
   @doc "A timed run starts at a moment."
   @spec start_run(String.t(), DateTime.t()) :: :ok
   def start_run(id, at),
-    do: at(at, fn -> dispatch(Next.Timed, %Next.Timed.Commands.StartRun{run_id: id}) end)
+    do: at(at, fn -> dispatch(Timed, %Timed.Commands.StartRun{run_id: id}) end)
 
   @doc "A timed run finishes at a moment."
   @spec finish_run(String.t(), DateTime.t()) :: :ok
   def finish_run(id, at),
-    do: at(at, fn -> dispatch(Next.Timed, %Next.Timed.Commands.FinishRun{run_id: id}) end)
+    do: at(at, fn -> dispatch(Timed, %Timed.Commands.FinishRun{run_id: id}) end)
 
   defp at(at, fun) do
     EhOsContract.Clock.at(at, fun)

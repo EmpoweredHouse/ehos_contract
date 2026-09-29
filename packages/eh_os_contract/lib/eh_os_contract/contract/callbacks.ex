@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.Contract.Callbacks do
+defmodule EhOsContract.Contract.Callbacks do
   @moduledoc """
   What an implementation of one declaration has to define (v2 §5): the one list the
   generated behaviour is written from and `EhOsContract.Implementation` checks
@@ -161,7 +161,7 @@ defmodule EhOsContract.Next.Contract.Callbacks do
   def of(model, :domain_service, name) do
     service = Enum.find(model.domain_services, &(&1.name == name))
     values = Module.concat(model.domain, Values)
-    type = &EhOsContract.Next.Contract.Generate.typespec(&1, values)
+    type = &EhOsContract.Contract.Generate.typespec(&1, values)
 
     callbacks =
       for f <- service.functions do

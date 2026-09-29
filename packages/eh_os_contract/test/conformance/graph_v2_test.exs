@@ -49,7 +49,7 @@ defmodule EhOsContract.GraphV2Test do
     Seed.request("r-1", :request_approved)
     Seed.request("r-2", :request_refused)
 
-    diagram = Graph.contract_to_mermaid(ProcessShapes.Next.Promised, overlay: true)
+    diagram = Graph.contract_to_mermaid(ProcessShapes.Promised, overlay: true)
 
     assert diagram =~ ~s|event_request_received["Request received (2x, 2 runs)"]:::event|
     assert diagram =~ "command_decide_request -->|1/2 runs| event_request_approved"
@@ -84,7 +84,7 @@ defmodule EhOsContract.GraphV2Test do
 
   describe "the declared shape of a v2 process" do
     test "its stages are lanes, its promise an arrow with its window, its endings marked" do
-      shape = Graph.declared_to_mermaid(ProcessShapes.Next.Promised, :handling)
+      shape = Graph.declared_to_mermaid(ProcessShapes.Promised, :handling)
 
       assert shape =~ "flowchart TB"
       assert shape =~ ~s(subgraph stage_intake["intake · no order claimed inside"])
@@ -100,7 +100,7 @@ defmodule EhOsContract.GraphV2Test do
                ~s(    account_opened["Account opened"])
 
       shape =
-        Graph.declared_to_mermaid(UniversalityGate.Next.TreatmentEpisode, :treatment_episode)
+        Graph.declared_to_mermaid(UniversalityGate.TreatmentEpisode, :treatment_episode)
 
       assert shape =~
                ~s|payer_registry[("Payer registry: confirmation of eligibility for treatment")]|

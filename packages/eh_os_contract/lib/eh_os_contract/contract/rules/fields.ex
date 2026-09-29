@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.Contract.Rules.Fields do
+defmodule EhOsContract.Contract.Rules.Fields do
   @moduledoc """
   F1–F6 of v2 §6: the fields of every struct a contract declares — a unit's or a
   process manager's state, a command, an event, a read model's row, a query's
@@ -29,7 +29,7 @@ defmodule EhOsContract.Next.Contract.Rules.Fields do
 
   alias EhOsContract.Domain
   alias EhOsContract.DslRules
-  alias EhOsContract.Next.Contract.Rules
+  alias EhOsContract.Contract.Rules
 
   require EhOsContract.Domain.Rules
 

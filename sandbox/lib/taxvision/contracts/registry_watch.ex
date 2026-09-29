@@ -48,7 +48,7 @@ defmodule Taxvision.Contracts.RegistryWatch do
   notification with the diff, which is E9c-2's (Notifications).
   """
 
-  use EhOsContract.Next.Contract, domain: Taxvision.Domain, context: :client_lifecycle
+  use EhOsContract.Contract, domain: Taxvision.Domain, context: :client_lifecycle
 
   aggregate :client, "Firma klienta" do
     identity :company_id

@@ -30,7 +30,7 @@ defmodule EhOsContract.Auth.ManifestTest do
 
   defmodule Work do
     @moduledoc false
-    use EhOsContract.Next.Contract, domain: Domain, context: :work
+    use EhOsContract.Contract, domain: Domain, context: :work
 
     aggregate :job, "Job" do
       identity(:job_id)

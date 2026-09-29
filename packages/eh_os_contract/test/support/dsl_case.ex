@@ -35,15 +35,15 @@ defmodule EhOsContract.DslCase do
   end
 
   @doc """
-  The source of a v2 contract `EhOsContract.Next.Fixtures.<name>` whose `body` starts
+  The source of a v2 contract `EhOsContract.Fixtures.<name>` whose `body` starts
   at line 4 of the file. Its domain is named and does not exist, which a contract
   may do (v2 §8).
   """
   @spec contract(String.t(), String.t()) :: String.t()
   def contract(name, body) do
     """
-    defmodule EhOsContract.Next.Fixtures.#{name} do
-      use EhOsContract.Next.Contract, domain: Clinic, context: :settlement
+    defmodule EhOsContract.Fixtures.#{name} do
+      use EhOsContract.Contract, domain: Clinic, context: :settlement
 
     #{body}
     end
@@ -63,7 +63,7 @@ defmodule EhOsContract.DslCase do
   @spec compile_contract(String.t(), String.t()) :: map()
   def compile_contract(name, body) do
     compile(contract(name, body), "#{Macro.underscore(name)}.ex")
-    EhOsContract.Model.fetch(Module.concat(EhOsContract.Next.Fixtures, name))
+    EhOsContract.Model.fetch(Module.concat(EhOsContract.Fixtures, name))
   end
 
   @doc """
@@ -148,7 +148,7 @@ defmodule EhOsContract.DslCase do
 
   @doc """
   Compiles each `{file, source}` and returns what the rules between modules (L3,
-  `EhOsContract.Next.Contract.Links`) find among the modules they define, as
+  `EhOsContract.Contract.Links`) find among the modules they define, as
   `%{message:, file:, line:}`. The sources have to compile: L3 reads compiled
   modules.
   """
@@ -159,7 +159,7 @@ defmodule EhOsContract.DslCase do
     modules =
       for {file, source} <- sources, {module, _binary} <- compile(source, file), do: module
 
-    for {message, anno} <- EhOsContract.Next.Contract.Links.check(modules) do
+    for {message, anno} <- EhOsContract.Contract.Links.check(modules) do
       %{
         message: message,
         file: anno && anno |> :erl_anno.file() |> to_string() |> Path.relative_to_cwd(),

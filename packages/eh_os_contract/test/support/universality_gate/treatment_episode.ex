@@ -1,4 +1,4 @@
-defmodule UniversalityGate.Next.TreatmentEpisode do
+defmodule UniversalityGate.TreatmentEpisode do
   @moduledoc """
   # THIS CONTRACT IS INVENTED. IT IS NOT CLIENT MATERIAL.
 
@@ -32,7 +32,7 @@ defmodule UniversalityGate.Next.TreatmentEpisode do
   - *The rule becomes an invariant*, named as v1's rule was, and the examples
     become scenarios. v1's decision function received the payer registry's answer
     as input; here the command carries it. That function became this unit's decider
-    in E5, `UniversalityGate.Next.Episode`.
+    in E5, `UniversalityGate.Episode`.
   - *`:enum` needs its members.* `document_type` has the one the fake produces;
     v1's `scope` was declared `:enum` and filled with a sentence, so it is a
     `:string`.
@@ -40,7 +40,7 @@ defmodule UniversalityGate.Next.TreatmentEpisode do
     both.
   """
 
-  use EhOsContract.Next.Contract, domain: UniversalityGate.Domain, context: :treatment
+  use EhOsContract.Contract, domain: UniversalityGate.Domain, context: :treatment
 
   aggregate :episode, "Treatment episode" do
     identity :episode_id

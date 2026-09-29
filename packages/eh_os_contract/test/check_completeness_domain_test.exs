@@ -58,7 +58,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
     compile(
       """
       defmodule #{inspect(@settlement)} do
-        use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
 
         aggregate :visit, "Wizyta" do
           identity :visit_id
@@ -80,7 +80,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
       end
 
       defmodule #{inspect(@scheduling)} do
-        use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :scheduling
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :scheduling
 
         aggregate :slot, "Termin" do
           identity :slot_id
@@ -94,7 +94,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
       end
 
       defmodule #{inspect(@reporting)} do
-        use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :reporting
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :reporting
 
         consumes #{inspect(@settlement)}, :payment_recorded
 
@@ -137,7 +137,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
       end
 
       defmodule EhOsContract.CheckCompletenessDomainTest.ScopedContract do
-        use EhOsContract.Next.Contract,
+        use EhOsContract.Contract,
           domain: EhOsContract.CheckCompletenessDomainTest.ScopedDomain,
           context: :work
 
@@ -221,7 +221,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
       end
 
       defmodule EhOsContract.CheckCompletenessDomainTest.Invoices do
-        use EhOsContract.Next.Contract,
+        use EhOsContract.Contract,
           domain: EhOsContract.CheckCompletenessDomainTest.Billing,
           context: :invoicing
 
@@ -266,7 +266,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
       end
 
       defmodule EhOsContract.CheckCompletenessDomainTest.Reports do
-        use EhOsContract.Next.Contract,
+        use EhOsContract.Contract,
           domain: EhOsContract.CheckCompletenessDomainTest.ReportsDomain,
           context: :reports
 
@@ -318,7 +318,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
       end
 
       defmodule EhOsContract.CheckCompletenessDomainTest.Invoicing do
-        use EhOsContract.Next.Contract,
+        use EhOsContract.Contract,
           domain: EhOsContract.CheckCompletenessDomainTest.Ledger,
           context: :invoicing
 
@@ -334,7 +334,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
       end
 
       defmodule EhOsContract.CheckCompletenessDomainTest.Reports do
-        use EhOsContract.Next.Contract,
+        use EhOsContract.Contract,
           domain: EhOsContract.CheckCompletenessDomainTest.Ledger,
           context: :reports
 
@@ -382,7 +382,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
       end
 
       defmodule EhOsContract.CheckCompletenessDomainTest.Notes do
-        use EhOsContract.Next.Contract,
+        use EhOsContract.Contract,
           domain: EhOsContract.CheckCompletenessDomainTest.Desk,
           context: :desk
 

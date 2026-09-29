@@ -28,7 +28,7 @@ defmodule EhOsContract.ViewTest do
       end
 
       defmodule #{inspect(@visits)} do
-        use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
 
         aggregate :visit, "Wizyta" do
           identity :visit_id
@@ -122,7 +122,7 @@ defmodule EhOsContract.ViewTest do
   end
 
   test "control: a contract of another domain is not in the tree" do
-    refute View.render(@domain, [ProcessShapes.Next.Bare]) =~ "ProcessShapes"
+    refute View.render(@domain, [ProcessShapes.Bare]) =~ "ProcessShapes"
   end
 
   test "a path naming nothing is refused, not printed as an empty branch" do

@@ -35,7 +35,7 @@ defmodule EhOsContract.CheckAvoidedTermsTest do
       end
 
       defmodule EhOsContract.CheckAvoidedTermsTest.Visits do
-        use EhOsContract.Next.Contract,
+        use EhOsContract.Contract,
           domain: EhOsContract.CheckAvoidedTermsTest.Clinic,
           context: :scheduling
 

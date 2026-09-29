@@ -15,7 +15,7 @@ defmodule EhOsContract.Implementation do
   `read_model:`, `query:`, `domain_service:` — names exactly one declaration of the
   contract `C`, and brings in:
 
-  - `@behaviour` of the module `C` generated for it (`EhOsContract.Next.Contract.Callbacks`
+  - `@behaviour` of the module `C` generated for it (`EhOsContract.Contract.Callbacks`
     says which callbacks);
   - aliases for the structs it touches: a unit's commands, events and `State`; a
     reaction's events and the commands it issues; a read model's events and `Row`; a
@@ -68,7 +68,7 @@ defmodule EhOsContract.Implementation do
 
   alias EhOsContract.DslRules
   alias EhOsContract.Model
-  alias EhOsContract.Next.Contract.Callbacks
+  alias EhOsContract.Contract.Callbacks
 
   @kinds [
     :aggregate,

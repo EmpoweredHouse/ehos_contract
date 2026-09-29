@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.Contract.Links.Siblings do
+defmodule EhOsContract.Contract.Links.Siblings do
   @moduledoc """
   X5–X6 of v2 §6: what a contract consumes from a sibling contract of the same
   application, `consumes Sibling, events`, checked against the sibling as it is
@@ -24,7 +24,7 @@ defmodule EhOsContract.Next.Contract.Links.Siblings do
   alias EhOsContract.DslRules
   alias EhOsContract.Key
   alias EhOsContract.Model
-  alias EhOsContract.Next.Contract.{Links, Rules}
+  alias EhOsContract.Contract.{Links, Rules}
 
   @doc false
   @spec check(map()) :: [Links.violation()]
