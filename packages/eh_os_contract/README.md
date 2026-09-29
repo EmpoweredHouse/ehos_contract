@@ -100,9 +100,11 @@ config :eh_os_contract, subscriptions: :manual
 
 and a test that needs them runs `EhOsContract.Testing.drain/1`.
 
-Every append takes one lock, held to the end of its transaction, which is what keeps the log's order. In
+Every append takes one lock, held to the end of its transaction, which is what keeps the log's order — so
+whatever runs `:in_transaction` holds every other write while it runs, and belongs in the database only. In
 the Ecto sandbox a test's transaction lasts the whole test, so two `async: true` tests that write the log
-run one after the other; mark them `async: false`, or expect the wait.
+wait for each other, and the one waiting fails once the other outlasts the repo's timeout: mark them
+`async: false`.
 
 A contract that declares personal data (`personal:` on a field) has those fields
 encrypted in the log, each subject under its own data key, and the data keys wrapped by a
@@ -253,8 +255,10 @@ What is unambiguously wrong never gets that far: it does not compile.
 ## What it deliberately does not do
 
 It does not know what a company is, what a tenant is, or what any of your fields mean, and it does not
-know who anybody is: an actor is an opaque subject your application authenticated, checked against the
-contract's `by:`, and authentication, accounts and tenants stay on your side. A library that knows one
+know who anybody is: an actor is an opaque subject with the capabilities and scopes its verified credential
+grants — EHOS derives them from the contract's `by:` — and only a `:system` actor is checked against `by:`
+directly. An actor built from a credential nobody verified is a hole the host opened. Authentication,
+accounts and tenants stay on your side. A library that knows one
 client's domain is a library for one client.
 
 ## Licence

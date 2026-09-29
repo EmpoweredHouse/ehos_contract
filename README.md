@@ -23,7 +23,12 @@ its delivery says:
 | --- | --- | --- |
 | a read model or a policy, `:in_transaction` (their default) | inside the dispatch transaction; if it raises, nothing is appended | projections and follow-up commands in the same database |
 | a read model, a policy or a process manager, `:at_least_once` | fed from the log in order, after the commit, by a subscription that resumes where it stopped | whatever may lag the command |
-| an effect, `:at_least_once` (the only way it runs when it `calls:` a system) | as an Oban job inserted **in the dispatch transaction** | anything with outside I/O: mail, HTTP, another system |
+| an effect, `:at_least_once` (its default, and the only way it runs when it `calls:` a system) | as an Oban job inserted **in the dispatch transaction** | anything with outside I/O: mail, HTTP, another system |
+| an effect without `calls:`, `:in_transaction` | inside the dispatch transaction, after the policies | a side effect in the same database |
+
+Every append takes one lock, held until its transaction commits, which is what keeps the log's order. So
+whatever runs `:in_transaction` holds every other write in the application while it runs: keep it to the
+database, and put anything slow behind `:at_least_once`.
 
 A policy or an effect delivered at least once does not compile unless it names what makes a second
 delivery harmless, because the event *will* arrive twice.
@@ -110,12 +115,10 @@ A module implements the `case` aggregate, and a command goes through `EhOsContra
 month, 40 cases were opened. 39 look completely uneventful — filed or flagged, no exceptions anywhere. One
 didn't: a code path that should have flagged it never ran, for reasons that have nothing to do with this
 library (a bug, a missed deploy, an edge case nobody tested). No error, so nothing paged anyone. This is
-what `mix eh_os_contract.report` prints about that month, in the shape it prints it:
+the part of what `mix eh_os_contract.report` prints for that month about the process, in the sentences it
+prints — the header and the contract's version, deployed since when, come before it:
 
 ```
-CONFORMANCE REPORT — 2026-07-01 – 2026-07-31
-Whether the deployed code does what the agreed process says.
-
 PROCESS: Invoice filing
   Runs in this period: 40.
   All agreed steps were carried out in this period.
@@ -186,10 +189,10 @@ runs it with `--check`, failing the build if the two drift apart. A reference th
 exact failure mode this project exists to catch in other people's systems, so it doesn't get to have one
 of its own.
 
-`mix eh_os_contract.graph` draws for two readers: a contract's declared graph — its steps, actors, read
-side and external systems — says something about a contract with no implementation yet, for the process
-owner before anything is built; the same graph with `--overlay` puts the log's counts on it, for the team
-that runs it.
+`mix eh_os_contract.graph` draws for two readers. `--process <name> --mermaid` is one process's declared
+shape — its stages, where it ends, each promise as an arrow carrying its window — for the process owner,
+before anything is built; `--contract` is a contract's full graph, its steps, actors, read side and external
+systems; either with `--overlay` puts the log over it, for the team that runs it.
 
 ## Using it in your application
 
@@ -221,10 +224,12 @@ boundaries below would be documentation rather than a check.
 | --- | --- |
 | `mix eh_os_contract.check` | whole-program checks over the contracts and their implementations, each finding under a stable name |
 | `mix eh_os_contract.report --since … --until …` | the conformance report for a period |
+| `mix eh_os_contract.graph --process <name> --mermaid [--overlay]` | one process's declared shape, no code required; with `--overlay`, its contract's full graph over the log |
 | `mix eh_os_contract.graph --contract <Module> [--overlay] [--unit <name>]` | a contract's full graph — steps, actors, read side, external systems — or one unit of it |
 | `mix eh_os_contract.graph --map <domain>` / `--system <domain> [--overlay]` | a domain's context map, or its contracts and what flows between them |
 | `mix eh_os_contract.view` / `glossary` / `pages` | the domain as a tree, its ubiquitous language, or Markdown pages, one per element |
 | `mix eh_os_contract.subscriptions` | where each subscription stands, and a way past a poison event |
+| `mix eh_os_contract.rewrap` | rewraps the subjects' data keys with the vault's current master key |
 | `mix eh_os_contract.docs` / `rules` | inside `packages/eh_os_contract` only: regenerate `docs/dsl/` and `docs/rules.md` |
 | `mix eh_os_contract.manifest --domain <domain>` | from `eh_os_contract_auth`: the EHOS application manifest |
 
@@ -259,7 +264,7 @@ from the first commit, so it's a fact the compiler checks, not a promise in a do
 | An opinion on the API layer | REST vs. GraphQL is an open question this project has no standing to close by building one. |
 | A project generator (`mix eh_os_contract.new`) | Worth building once something has been copied twice — at a second real client, not before. |
 | Real registries, real mail | A behaviour plus a fake. Real integrations are the client's domain cost and carry no signal for the library. |
-| Identity: login, users, accounts | The library takes an actor as an opaque subject, checked against the contract's `by:`. Authentication belongs to EHOS and the application — `eh_os_contract_auth` verifies EHOS's credential — and access to the dashboard to the host that mounts it. |
+| Identity: login, users, accounts | The library takes an actor as an opaque subject with the capabilities and scopes its verified credential grants; EHOS derives those from the contract's `by:` through the application manifest, and only a `:system` actor is checked against `by:` directly. Authentication belongs to EHOS and the application — `eh_os_contract_auth` verifies EHOS's credential — and access to the dashboard to the host that mounts it. |
 | Alerts, ops dashboards, metrics collection | Performance is your APM's job, errors are your error tracker's job, business state is the client application's job. |
 | Anything that answers a question about one specific customer | The moment this library can tell you "which customer's order hasn't shipped yet," it has stopped checking conformance and started being a worse copy of the client's own application. |
 

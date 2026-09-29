@@ -5,7 +5,7 @@
 **A change that can move a verdict raises the MINOR version and gets a line here.**
 
 A verdict is anything the conformance report prints as a number or a state: an
-overlay edge's state, a `trace` verdict, a path counted as untraversed, a run
+overlay edge's state, a promise's verdict, a path counted as untraversed, a run
 counted as exceeding a deadline, a declaration counted as changed. Wording,
 docstrings, tests and fixtures do not.
 
@@ -41,11 +41,13 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   model (`Model.V1`), and the first DSL's findings in `check`, its AsyncAPI projection, report, trace, run,
   graph overlay and deployment rows.
 - `mix eh_os_contract.trace` and `mix eh_os_contract.brief`. A promise's verdicts are in the report; a Brief
-  for a process owner comes back on the dashboard. `mix eh_os_contract.graph` without a picture flag prints
-  its usage instead of drawing the first DSL's graph.
+  for a process owner comes back on the dashboard. `mix eh_os_contract.graph` without a picture flag refuses,
+  exiting non-zero with its usage, instead of drawing the first DSL's graph: a script that ran it bare fails.
 - The dashboard's "every contract" panel on `/graph`, which drew the first DSL's handler graph.
 - **Jobs of `EhOsContract.Job` still in a host's Oban queue have no worker.** Drain the queue before the
-  upgrade, or discard them after it.
+  upgrade. A job left behind fails and is discarded, and the handler's work it carried never happens, with
+  nothing recording that. Its args hold the event's payload and actor, which erasure does not reach, so after
+  draining delete the rows (`worker = 'EhOsContract.Job'`) rather than waiting for a pruner.
 - The direct `:telemetry` dependency. It stays in the lock through Ecto and Oban.
 
 ### Changed — a host has to act
@@ -57,8 +59,12 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   **`Registry.contracts/0` and `Check.findings/1` existed before and meant the first DSL's contracts**: a
   call written before E11 still compiles, and now gets the second DSL's.
 - **E11c: the engine's storage is one migration.** `EhOsContract.Migrations.current_version/0` is 1, and V01
-  creates the whole store in its final shape. The upgrades to versions 2–5 are gone, and a database migrated
-  with them has no path forward: recreate it. The final shape differs from what V05 left: text columns are
+  creates the whole store in its final shape. The upgrades to versions 2–5 are gone, and nothing migrates a
+  database from them: **a database that holds data stays on 0.2.x.** A development database is recreated —
+  delete the host's migrations that call `up(version: 2..5)` first, since on a fresh database they would
+  run versions that no longer exist, then `ecto.drop`, `ecto.create` and `ecto.migrate`; what the old log,
+  subject keys and erasures held is gone with it. Left as it is, such a database is not refused: `up/1`
+  does nothing on it, the new code runs on its wider schema, and `down/1` fails on the missing version. The final shape differs from what V05 left: text columns are
   `text`, not `varchar(255)`; `eh_os_contract_event_handlings` and `eh_os_contract_handler_failures` are not
   created; the indexes on `type`, `causation_id`, `instance_id` and `(process, instance_id)` of
   `eh_os_contract_events` are not created, since runs are read through `eh_os_contract_event_runs`.
