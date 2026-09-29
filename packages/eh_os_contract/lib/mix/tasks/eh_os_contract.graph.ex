@@ -4,7 +4,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   @moduledoc """
   One picture of the contracts the registry finds — that is, of the binary that
   runs — as a Mermaid diagram. Which picture is a flag, and with none the task
-  prints the forms it takes.
+  refuses, printing the forms it takes.
 
   ## `--process`: one process, for the process owner
 
@@ -15,7 +15,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   anything is built. With `--overlay` it is drawn as its contract's full graph
   instead, with the log laid over it (below).
 
-  ## `--contract` and `--unit`: a v2 contract, whole or one unit of it
+  ## `--contract` and `--unit`: a contract, whole or one unit of it
 
       mix eh_os_contract.graph --contract Rehmed.Contracts.VisitSettlement --output settlement.mmd
       mix eh_os_contract.graph --contract Rehmed.Contracts.VisitSettlement --overlay --output settlement.mmd
@@ -37,7 +37,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
 
   `--map` draws the domain's context map (plan EG2,
   `EhOsContract.Graph.context_map_to_mermaid/1`): subdomains, their contexts, the
-  external systems and the relations between them. `--system` draws its v2
+  external systems and the relations between them. `--system` draws its
   contracts in their contexts and what one consumes from another
   (`EhOsContract.Graph.system_to_mermaid/3`); `--overlay` lays the log over it —
   runs per contract, and per edge the consumed events and what waits or fails at

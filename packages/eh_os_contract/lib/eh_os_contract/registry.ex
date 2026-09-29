@@ -104,7 +104,7 @@ defmodule EhOsContract.Registry do
   @spec contracts() :: [module()]
   def contracts, do: Map.get(graph(), :contracts, [])
 
-  @doc "Every `EhOsContract.Domain` found in the running binary (plan EL2)."
+  @doc "Every `EhOsContract.Domain` found in the running binary."
   @spec domains() :: [module()]
   def domains, do: Map.get(graph(), :domains, [])
 

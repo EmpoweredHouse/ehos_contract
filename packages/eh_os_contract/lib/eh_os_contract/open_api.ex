@@ -1,6 +1,6 @@
 defmodule EhOsContract.OpenAPI do
   @moduledoc """
-  An OpenAPI document generated from a v2 contract's HTTP capabilities.
+  An OpenAPI document generated from a contract's HTTP capabilities.
 
   Paths are relative to the mount of `EhOsContract.Plug`: a human command is
   `POST /commands/<capability>` and a query is

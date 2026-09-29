@@ -13,8 +13,8 @@ defmodule Mix.Tasks.Compile.EhOsContract do
   compile dependency (v2 §8), so an incremental compile that changes a domain or a
   sibling recompiles none of the contracts that name it. That is why this runs every
   time and over the whole project, not only when a contract changed. What it costs
-  is reading each `.beam`'s table of exports; only the modules that carry a v2 model,
-  or implement a v2 contract, are loaded.
+  is reading each `.beam`'s table of exports; only the modules that carry a model,
+  or implement a contract, are loaded.
 
   A violation is an error diagnostic at the file and line of the declaration at
   fault, and it fails the compile (`EhOsContract.Contract.Links`).

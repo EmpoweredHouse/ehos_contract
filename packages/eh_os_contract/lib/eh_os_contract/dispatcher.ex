@@ -1,6 +1,6 @@
 defmodule EhOsContract.Dispatcher do
   @moduledoc """
-  A command to a v2 contract, from the actor who issues it to the events in the log
+  A command to a contract, from the actor who issues it to the events in the log
   (v2 §11). `EhOsContract.dispatch/3` is how a host calls it.
 
       EhOsContract.dispatch(Rehmed.Contracts.VisitSettlement,
