@@ -8,6 +8,14 @@ defmodule EhOsContract.ContractVocabularyTest do
 
   The shapes that repeat — a field, an event, a command, a unit's body — are named
   once below; the paths are every place the DSL lets them be written.
+
+  > **Pinned anew 29 September 2026, E11d.** Until the cut this literal was the v2
+  > vocabulary beside v1's, and the universality gate's "no word added for it" was
+  > measured against v1's keys. v2 did not add to v1's vocabulary; it replaced it
+  > wholesale by taking ESDM's, so a comparison with v1 no longer measures anything.
+  > From here on the gate counts from this literal: a word added for one domain's
+  > sake is a change here, in the commit that adds it, and has to say which domain
+  > needed it.
   """
 
   use ExUnit.Case, async: true
