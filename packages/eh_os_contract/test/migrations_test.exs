@@ -150,10 +150,11 @@ defmodule EhOsContract.MigrationsTest do
 
     on_exit(fn ->
       Repo.query!("DELETE FROM schema_migrations WHERE version = $1", [@host_version])
-      Repo.query!("COMMENT ON TABLE eh_os_contract_events IS '1'")
+      current = EhOsContract.Migrations.current_version()
+      Repo.query!("COMMENT ON TABLE eh_os_contract_events IS '#{current}'")
     end)
 
-    refused = ~r/records version 5, and this release knows versions up to 1/
+    refused = ~r/records version 5, and this release of eh_os_contract knows versions up to/
 
     assert_raise ArgumentError, refused, fn ->
       Ecto.Migrator.down(Repo, @host_version, EhOsContract.MigrationsTest.Host, log: false)
@@ -168,6 +169,16 @@ defmodule EhOsContract.MigrationsTest do
     # Nothing ran: the tables are there, and the database still says what it said.
     assert tables() == @tables
     assert version() == "5"
+  end
+
+  test "a version this release does not have is refused as a target" do
+    assert_raise ArgumentError, ~r/and 2 is not one of them/, fn ->
+      EhOsContract.Migrations.up(version: 2)
+    end
+
+    assert_raise ArgumentError, ~r/and 0 is not one of them/, fn ->
+      EhOsContract.Migrations.down(version: 0)
+    end
   end
 
   test "the tables refuse what their checks refuse, whoever writes it" do
