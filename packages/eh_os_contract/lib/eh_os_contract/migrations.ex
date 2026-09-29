@@ -77,11 +77,16 @@ defmodule EhOsContract.Migrations do
 
   Defaults to `current_version/0`. Idempotent: a database already at or beyond
   the target is left alone, so re-running a consumer's migration is safe.
+
+  Raises on a database that records a version this release does not know — one
+  migrated before the cut (plan E11c), whose versions 2–5 are gone, or by a later
+  release. Left alone, such a database would pass as current, and a later version
+  of this module would skip what it adds.
   """
   @spec up(keyword()) :: :ok
   def up(opts \\ []) when is_list(opts) do
     target = Keyword.get(opts, :version, @current_version)
-    recorded = migrated_version()
+    recorded = known!(migrated_version())
 
     cond do
       recorded == 0 -> change(@initial_version..target, :up)
@@ -93,12 +98,13 @@ defmodule EhOsContract.Migrations do
   @doc """
   Rolls back from what the database has down to and including `:version`.
 
-  Defaults to `initial_version/0`, which drops the engine's storage entirely.
+  Defaults to `initial_version/0`, which drops the engine's storage entirely. Raises,
+  as `up/1` does, on a version this release does not know.
   """
   @spec down(keyword()) :: :ok
   def down(opts \\ []) when is_list(opts) do
     target = Keyword.get(opts, :version, @initial_version)
-    recorded = max(migrated_version(), @initial_version)
+    recorded = max(known!(migrated_version()), @initial_version)
 
     if recorded >= target, do: change(recorded..target//-1, :down), else: :ok
   end
@@ -124,6 +130,15 @@ defmodule EhOsContract.Migrations do
       _ -> 0
     end
   end
+
+  defp known!(recorded) when recorded > @current_version do
+    raise ArgumentError,
+          "eh_os_contract_events records version #{recorded}, and this release knows versions " <>
+            "up to #{@current_version}. A database migrated before the cut (0.3.0) is not " <>
+            "migrated: recreate it (see CHANGELOG.md)."
+  end
+
+  defp known!(recorded), do: recorded
 
   defp change(range, direction) do
     for index <- range do

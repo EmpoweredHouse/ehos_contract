@@ -1,3 +1,12 @@
+defmodule EhOsContract.MigrationsTest.Host do
+  @moduledoc "A host's migration, as the moduledoc of `EhOsContract.Migrations` tells one to write."
+
+  use Ecto.Migration
+
+  def up, do: EhOsContract.Migrations.up()
+  def down, do: EhOsContract.Migrations.down()
+end
+
 defmodule EhOsContract.MigrationsTest do
   @moduledoc """
   v2 plan, E11c: **the engine's storage is one version, V01, in its final shape** —
@@ -125,6 +134,40 @@ defmodule EhOsContract.MigrationsTest do
     assert version() == "1"
     assert tables() == @tables
     assert functions() == @functions
+  end
+
+  # A version no migration file in the test database has, so running it touches
+  # nothing but this test's row in `schema_migrations`.
+  @host_version 99_990_101_000_000
+
+  test "a database recording a version this release does not know is refused, both ways" do
+    Repo.query!("COMMENT ON TABLE eh_os_contract_events IS '5'")
+
+    Repo.query!(
+      "INSERT INTO schema_migrations (version, inserted_at) VALUES ($1, now())",
+      [@host_version]
+    )
+
+    on_exit(fn ->
+      Repo.query!("DELETE FROM schema_migrations WHERE version = $1", [@host_version])
+      Repo.query!("COMMENT ON TABLE eh_os_contract_events IS '1'")
+    end)
+
+    refused = ~r/records version 5, and this release knows versions up to 1/
+
+    assert_raise ArgumentError, refused, fn ->
+      Ecto.Migrator.down(Repo, @host_version, EhOsContract.MigrationsTest.Host, log: false)
+    end
+
+    Repo.query!("DELETE FROM schema_migrations WHERE version = $1", [@host_version])
+
+    assert_raise ArgumentError, refused, fn ->
+      Ecto.Migrator.up(Repo, @host_version, EhOsContract.MigrationsTest.Host, log: false)
+    end
+
+    # Nothing ran: the tables are there, and the database still says what it said.
+    assert tables() == @tables
+    assert version() == "5"
   end
 
   test "the tables refuse what their checks refuse, whoever writes it" do
