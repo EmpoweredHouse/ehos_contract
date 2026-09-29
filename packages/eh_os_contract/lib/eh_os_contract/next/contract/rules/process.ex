@@ -3,8 +3,9 @@ defmodule EhOsContract.Next.Contract.Rules.Process do
   R1–R6 of v2 §6: the one process a contract describes.
 
   - **R1.** Exactly one `process`: one contract, one process (v2 §3).
-  - **R2.** Every field the process correlates on is in every local event, where
-    a unit's identity counts as declared.
+  - **R2.** The process correlates on at least one field, and every such field is
+    in every local event, where a unit's identity counts as declared. With no field
+    every event of the contract would land in one run named after the process.
   - **R3.** Stages are all or nothing. When the process declares stages, every
     local event sits in a stage group of its unit, every `include` in a stage, and
     a stage group names a stage the process declares. When it declares none, there
@@ -59,6 +60,13 @@ defmodule EhOsContract.Next.Contract.Rules.Process do
       nil -> :infinity
       anno -> :erl_anno.line(anno)
     end
+  end
+
+  defp correlation(%{correlate: []} = process, _d) do
+    [
+      {"R2: process #{inspect(process.name)} correlates on no field, so every event of it " <>
+         "would belong to one run; name the fields that tell one run from another", process}
+    ]
   end
 
   defp correlation(process, d) do

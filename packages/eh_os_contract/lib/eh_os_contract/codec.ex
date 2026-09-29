@@ -4,7 +4,7 @@ defmodule EhOsContract.Codec do
   §11): what the compiler cannot check, since a struct can be built with any value
   in any field.
 
-  **Types.** `:id` and `:string` are binaries, `:integer` and `:boolean` what they
+  **Types.** `:string` is a binary and `:id` a non-empty one, `:integer` and `:boolean` what they
   say, `:decimal` a `Decimal`, `:date` a `Date`, `:timestamp` a `DateTime` in UTC,
   `{:enum, members}` one of the member atoms, `{:list, type}` a list of them. A
   domain value is its own type: an alias of a type (`value :money, :integer`), or a
@@ -138,9 +138,12 @@ defmodule EhOsContract.Codec do
 
   defp broken(_type, _value, _values, _domain), do: nil
 
-  defp fits?(type, value, _values) when type in [:id, :string], do: is_binary(value)
+  defp fits?(:string, value, _values), do: is_binary(value)
+  # An empty identifier names nothing: it would key a stream, a tag and a run with
+  # nothing after the colon, one for every caller that forgot to fill it in.
+  defp fits?(:id, value, _values), do: is_binary(value) and value != ""
   # An entity's identifier where the model keeps the declared type: a function's result.
-  defp fits?({:id, _entity}, value, _values), do: is_binary(value)
+  defp fits?({:id, _entity}, value, values), do: fits?(:id, value, values)
   defp fits?(:integer, value, _values), do: is_integer(value)
   defp fits?(:boolean, value, _values), do: is_boolean(value)
   defp fits?(:decimal, value, _values), do: is_struct(value, Decimal)
