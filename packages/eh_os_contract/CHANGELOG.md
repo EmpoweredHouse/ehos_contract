@@ -63,8 +63,10 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   database from them: **a database that holds data stays on 0.2.x.** A development database is recreated —
   delete the host's migrations that call `up(version: 2..5)` first, since on a fresh database they would
   run versions that no longer exist, then `ecto.drop`, `ecto.create` and `ecto.migrate`; what the old log,
-  subject keys and erasures held is gone with it. Left as it is, such a database is not refused: `up/1`
-  does nothing on it, the new code runs on its wider schema, and `down/1` fails on the missing version. The final shape differs from what V05 left: text columns are
+  subject keys and erasures held is gone with it. Left as it is, such a database is refused: `up/1` and
+  `down/1` raise on a recorded version above 1, and on a target outside the versions the release has — a
+  leftover `up(version: 3)` migration fails with that message. The final shape differs from what V05 left:
+  text columns are
   `text`, not `varchar(255)`; `eh_os_contract_event_handlings` and `eh_os_contract_handler_failures` are not
   created; the indexes on `type`, `causation_id`, `instance_id` and `(process, instance_id)` of
   `eh_os_contract_events` are not created, since runs are read through `eh_os_contract_event_runs`.

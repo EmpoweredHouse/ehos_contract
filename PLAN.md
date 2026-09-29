@@ -42,7 +42,9 @@ nazwy `Next` ani historii migracji.
 ### Co zostało — i czyje to jest
 
 - **Merge #46 i PR-a E11d** — użytkownika.
-- **Odmowa w `up/1` dla bazy z wersją > 1** (z przeglądu E11d-2) — do decyzji użytkownika, w otwartych pytaniach.
+- **Odmowa w `up/1` dla bazy z wersją > 1 — zrobiona 29 września** na polecenie użytkownika („rozwiąż komentarze
+  coderabbit”, komentarz do #46): `e36c30e`, `ef33f89` na E11c, przeniesione na E11d cherry-pickiem (`03957b3`,
+  `7e8d0d1`); CHANGELOG to mówi.
 - **Klucz idempotencji jest globalny, nie per aktor** (z przeglądu E11d-1, sprzed E11) — do decyzji użytkownika;
   opis w otwartych pytaniach.
 - **E11e–E11f** — asystenta, po kolei, z przeglądem `pre-pr-review` po każdej części przed następną. Zakres każdej
@@ -169,12 +171,6 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
   niezgadywalnego w dokumentacji. (2) Partia `rewrap!` trzyma `FOR UPDATE` na 500 wierszach kluczy z wywołaniem
   vaulta na wiersz, a `erase/3` bierze blokadę dopisu i czeka na te wiersze — przy wolnym KMS wszystkie dispatche
   czekają. (3) `mix eh_os_contract.rewrap` uruchamia całego hosta (`app.start`: Endpoint, kolejki Obana, runnery).
-- **Z przeglądu E11d-2, do decyzji użytkownika: odmowa w `up/1`, gdy baza ma wersję wyższą niż
-  `current_version/0`.** Dziś `up/1` na bazie z komentarzem „2”–„5” nic nie robi, a `down/1` pada na nieistniejącym
-  `V05`. Groźniejsze jest to na później: gdy wydanie podniesie `current_version` do 2, baza zapisana jako „5” po
-  cichu pominie nowe V02. Użytkownik 29 września odrzucił ścieżkę z bazy sprzed cięcia („nie mamy klienta”); odmowa
-  z komunikatem to nie ścieżka, tylko jedna linijka — pytanie, czy ją dodać, czy zostawić CHANGELOG jako jedyne
-  ostrzeżenie.
 - **D1–D14** przyjęte; w v2 §19: transport v1 między kontenerami, kontrakt upcasterów.
 
 ### Zgoda i stałe uprawnienia
