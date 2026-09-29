@@ -2254,6 +2254,10 @@ najważniejszej:
    które dotyka kodu, z którego task manifestu czyta model. Manifest v2 po akceptacji: po E11 na ostatecznych
    nazwach albo, jeśli Stage 5 czeka, mały etap przed E11 — decyzja użytkownika.
 
+**Decyzja użytkownika (29 września): manifest v2 po E11**, po akceptacji D-51 i D-52 — pisany na ostatecznych
+nazwach, bez `Next`. *Odrzucone:* mały etap przed E11 — skróciłby czekanie Stage 5, ale kod manifestu czyta model
+przez moduły, które E11 przemianowuje, więc byłby ruszany dwa razy.
+
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
 Po lekturze architektury EHOS-a (`~/Projects/ai/eh-os`, `docs/ADR.md` i `docs/ARCHITECTURE.md`; research w
