@@ -2295,9 +2295,17 @@ v2 je czyta.
   na sandboksie jak dziś. *Odrzucone:* ostatnia część E11 — mieszałaby cięcie z przenoszeniem danych testowych w
   jednym przeglądzie.
 
-### E11a — co wyszło (29 września, w toku)
+### E11a — co wyszło (29 września)
 
-Na `dsl-v2/e11a-remove-v1`, od `68a6917`. **Najpierw przeniesienie, potem usuwanie:** każdy test v1, który
+Na `dsl-v2/e11a-remove-v1`, od `68a6917`, niewypchnięte: przeniesienie (`2881504`, `e6af4ca`, `763cec0`,
+`334502f`), usunięcie testów i fikstur v1 (`1693efb`, −8 633 linii), usunięcie v1 z bibliotek (`b4924f3`, 15 plików,
+−6 228 linii). Pełna brama po każdym commicie: `EXIT=0`. Po cięciu: silnik 967 testów, `check` 0 / 66 / 5 (było
+0 / 74 / 21 — zniknęły wyłącznie ustalenia o fiksturach v1); web 50; auth 62; sandbox 143, `check` 0 / 29 / 9 bez
+zmian. W przeglądarce: `/dashboard/graph` i `/dashboard/contract` bez błędów poza znanym CSP Mermaida (EG3).
+**Zostaje do dalszych części:** nazwy `Next`, `v2_contracts/0`, `report_v2` i pliki `*_v2_test.exs` (E11b); tabele
+v1 w migracjach (E11c); `docs/contract.md` nieaktualny od `b4924f3`, bo generował go usunięty task `docs` (E11d).
+`mix eh_os_contract.graph` bez flagi obrazu wypisuje teraz sposób użycia zamiast rysować graf v1. Katalog reguł nie
+ma już żadnej reguły poziomu `error` — błędy są dziś wyłącznie bramami kompilacji. **Najpierw przeniesienie, potem usuwanie:** każdy test v1, który
 przypina mechanikę współdzieloną z v2, dostał test v2 tej samej własności, zanim cokolwiek zniknie. Dwie analizy
 pokrycia (9 plików „do przeniesienia” z inwentarza, potem pozostałe 23), ~115 testów v1 przeniesionych, reszta to
 semantyka tylko v1 (handlery, `emit`, `retain`, klucze z `identity`, `Brief`, telemetria handlerów).
