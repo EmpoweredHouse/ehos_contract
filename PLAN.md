@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 28 września (E10 gotowe lokalnie, następne E11)
+## Handoff — stan na 29 września (E10 w `main`, trwa E11)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -13,16 +13,15 @@ zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisan
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności), jej
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa pivot do v2** (DSL na Sparku, model
 domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E8, EA, EM, EL, EG i całe E9
-(E9a #33, E9b #39, E9c-1 #41, E9c-2 #42) są w `main`.** **E10 — wyjścia jest gotowe lokalnie** (wynik:
-„E10 — co wyszło”), następne są E11, E12 i E13. Po E9b Rehmed ma pięć kontraktów v2 (Scheduling,
+(E9a #33, E9b #39, E9c-1 #41, E9c-2 #42) i E10 (#43) są w `main`.** Trwa **E11 — Cięcie** na `dsl-v2/e11-cut`;
+potem E12 i E13. EHOS zaproponował D-51 i D-52 (manifest v2) — uwagi przed akceptacją w „D-51 i D-52 w `eh-os`”. Po E9b Rehmed ma pięć kontraktów v2 (Scheduling,
 ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); po E9c-1 w sandboxie nie ma kontraktu v1.
 
 ### Stan repozytorium
 
-- **`origin/main` = `e7709c2`** (merge [#42](https://github.com/EmpoweredHouse/eh-os-contract/pull/42), E9c-2; CI
-  `main` — `success`, przebieg `36451295950`).
-- **E10** na `dsl-v2/e10-outputs`, od `e7709c2`, w PR [#43](https://github.com/EmpoweredHouse/eh-os-contract/pull/43)
-  do `main`. Po przeglądzie PR-a 29 września poprawka przecieku danych osobowych w `/model` („Przegląd PR-a E10”).
+- **`origin/main` = `91c6fbc`** (merge [#43](https://github.com/EmpoweredHouse/eh-os-contract/pull/43), E10 z
+  poprawką przecieku w `/model`; CI `main` — `success`, przebieg `36561057338`). Brak otwartych PR-ów.
+- **E11** na `dsl-v2/e11-cut`, od `91c6fbc`.
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
@@ -99,6 +98,8 @@ Grafy: `mix eh_os_contract.graph --map <domena> | --system <domena> [--overlay] 
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 29 września, na `91c6fbc`** (czysty `main`, przed E11): brama z `sandbox/` → **EXIT=0** — sandbox 143
+  testy, `check` 0 / 29 / 9; silnik 1274, `check` 0 / 74 / 21; web 51; auth 62.
 - **Lokalnie, 28 września, na HEAD E10** (kod przez `dfa4455`, potem końcowy zapis planu): brama z `sandbox/` → **EXIT=0**;
   `check` sandboxa **0 / 29 / 9**. CodeRabbit CLI 0.8.0 był wylogowany, więc przegląd wykonano lokalnie; znalazł i
   poprawił nullable pól opcjonalnych oraz `Receipt.position` w JSON Schema.
@@ -2206,6 +2207,52 @@ EHOS przyjmuje v1. Etap w kolejności — do ustalenia po odpowiedzi EHOS-a.
 nich Console przy deploymencie widzi, co Sales wysyła, ale nie widzi, na których polach polega Delivery. Czy
 OpenAPI ma wskazywać capability tylko po nazwie, bez powtarzania ról i `scope`. Czy każdy wygenerowany dokument
 niesie digest modelu, z którego powstał, żeby Console odrzuciła zestaw z dwóch buildów.
+
+### D-51 i D-52 w `eh-os` — uwagi przed akceptacją (29 września)
+
+EHOS zapisał kierunek z sekcji wyżej w dwóch rekordach, oba `proposed`, na gałęzi `stage-5/01-plan` w `eh-os`
+(`c03d44e`): **D-51** — format `ehos.yaml` należy tylko do EHOS-a, jako JSON Schema `ehos.yaml/v1`; **D-52** —
+`mix eh_os_contract.manifest` czyta `ehos.yaml` i pisze `ehos.manifest/v2`, czyli `ehos.yaml` rozszerzony o
+`application`, `engine`, `contracts` i `offers`. Jedna różnica wobec naszej propozycji: `serves` zostaje na
+najwyższym poziomie, a nie w `offers`, żeby klucze dewelopera miały te same ścieżki — przyjmujemy bez uwag.
+**Nic nie implementujemy przed akceptacją rekordów.** Przeczytane w `eh-os` (tylko do czytania); nic tam nie
+zapisano, komentarz do ich PR-a — na polecenie użytkownika.
+
+**Z modelem v2 nic nie jest sprzeczne.** `application` to `name:` domeny (task już bierze `--domain`),
+`offers` to dzisiejsze capability i role, a `consumes` dojdzie jako własny klucz w `needs` po D-41. Uwagi, od
+najważniejszej:
+
+1. **Digest uprawnień obejmuje `contracts`, a `contracts[].version` zmienia się przy każdej edycji kontraktu.**
+   `version` to hash całego kontraktu — deklaracji i scenariuszy (`next/contract/build.ex`, `version/3`).
+   Przykład: nowy scenariusz w AccountingMonth TaxVision albo poprawiona etykieta zdarzenia zmienia `version`,
+   capability i role zostają te same — a według D-52 powstaje nowa wersja aplikacji, która wymaga przeglądu w
+   Console. To jest dokładnie ten szum, którego driver 3 D-52 chce uniknąć, i powód, dla którego task E10 pomija
+   `engine` i `contracts` w v1. Propozycja: digest uprawnień z `application` i `offers`, a `contracts` tylko w
+   digeście manifestu (zapisanym na wdrożeniu, więc weryfikacja D-16 w Stage 8 i tak ma z czym porównać).
+2. **Adres schematu z `https://ehos.localhost/…` nie jest osiągalny z naszego CI**, a repozytorium `eh-os` jest
+   prywatne. Test „fikstury spełniają opublikowany schemat” potrzebuje kopii. Propozycja: przypięta kopia
+   `ehos.yaml/v1.json` w pakiecie auth z wersją i sha256, odświeżana świadomie; D-51 powinien powiedzieć, że
+   przypięta kopia nie jest „powtórzeniem formatu”, tylko jego cytatem z wersją.
+3. **„Ta sama wartość pod tą samą ścieżką” zależy od parsera YAML.** Generator potrzebuje parsera (nowa
+   zależność pakietu auth), a strona sprawdzania w Console ma własny. YAML 1.1 czyta `public: yes` jako `true`,
+   a `version: 16` jako liczbę; YAML 1.2 core — inaczej. Jeśli parsery się różnią, deweloper zobaczy na stronie
+   sprawdzania co innego, niż generator zapisze w manifeście, a EHOS przy wdrożeniu widzi już tylko manifest. D-51
+   powinien nazwać regułę parsowania (np. YAML 1.2 core schema) i to, że duplikaty kluczy i aliasy są odmawiane
+   **przed** walidacją także przez generator — inaczej duplikat po cichu daje ostatnią wartość. Czy wybrany parser
+   Elixira odmawia duplikatów — do sprawdzenia przy wyborze.
+4. **Ścieżki dewelopera i generatora muszą być rozłączne na zawsze**, bo `needs` jest wspólne. Reguła do
+   zapisania: żadna wersja `ehos.yaml` nie dostanie ścieżki, którą pisze generator (np. `needs.consumes` po
+   D-41), a generator przy kolizji odmawia zamiast nadpisać.
+5. **`schema` jest wyjątkiem od reguły „każdy klucz bez zmian”** — test property musi go pominąć; drobiazg w
+   sformułowaniu D-52.
+6. **Potwierdzenie „manifest `ledger` równy fixture'owi w `eh-os`” nie może żyć w tym repozytorium** — kod
+   `ledger` jest w `EmpoweredHouse/ehos-ledger`, a tu nie budujemy aplikacji klienta. Propozycja: to porównanie
+   w CI `ehos-ledger` (albo fixture `eh-os` brany z artefaktu jego CI); po naszej stronie test property i
+   TaxVision.
+7. **Kolejność.** #43 jest już w `main` (`91c6fbc`, CI `success`), więc warunek „najpierw merge E10” jest
+   spełniony, a D-52 nazywa go jeszcze „in review”. U nas następne jest E11 (cięcie v1 i przemianowanie `Next`),
+   które dotyka kodu, z którego task manifestu czyta model. Manifest v2 po akceptacji: po E11 na ostatecznych
+   nazwach albo, jeśli Stage 5 czeka, mały etap przed E11 — decyzja użytkownika.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
