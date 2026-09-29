@@ -8,6 +8,11 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **E11: the engine's first DSL is gone, and so is what the dashboard drew of it.** The `/graph` screen has no
+  "every contract" panel, which drew the first DSL's handler graph, and every list — the contract status, the
+  graphs, the API indexes — is of the engine's `Registry.contracts/0`, which from 0.3.0 of `eh_os_contract`
+  is the only kind of contract there is.
+
 - **The API mount serves OpenAPI 3.1.2 documents** at `/openapi` and `/openapi/:contract`, with one
   command-and-query document per v2 contract and its digest as the `ETag`. The host's existing resolver
   protects both routes. Repeated query keys are the documented list encoding; structured parameters use

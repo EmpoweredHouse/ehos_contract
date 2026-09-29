@@ -1609,6 +1609,9 @@ Each correction is a dated note under the original claim, added in the stage who
 Still valid: §2 — the contract is code and the only source, with no YAML beside it; §5–6; §11–12; §13's three
 layers; and [identity seam](identity-seam.md) — ESDM's actors are roles, not identities.
 
+> *29 September 2026, E11d.* Every row above has its dated note: the last, technology-notes §1, §2, §12 and
+> §13, went in with the cut, which deleted the v1 code those sections describe.
+
 ## 19. Open questions
 
 - The ten defects found in the four contracts (`PLAN.md`, 25 September) stay questions; ports translate, they do

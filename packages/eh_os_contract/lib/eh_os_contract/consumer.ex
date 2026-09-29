@@ -139,7 +139,7 @@ defmodule EhOsContract.Consumer do
     model =
       case Model.fetch(Module.safe_concat([row.contract])) do
         %{kind: :contract, units: _} = model -> model
-        _other -> raise ArgumentError, "#{row.contract} is not a v2 contract"
+        _other -> raise ArgumentError, "#{row.contract} is not a contract"
       end
 
     values = Codec.values(model.domain)

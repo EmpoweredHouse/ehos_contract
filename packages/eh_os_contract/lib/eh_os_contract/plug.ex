@@ -54,7 +54,7 @@ if Code.ensure_loaded?(Plug.Conn) do
 
     alias EhOsContract.{Actor, Codec, Dispatcher, Model, Receipt, Rejection}
 
-    @doc "Takes `contracts:`, the v2 contracts whose commands, recordings and queries it serves."
+    @doc "Takes `contracts:`, the contracts whose commands, recordings and queries it serves."
     @impl true
     @spec init(keyword()) :: %{contracts: [module()]}
     def init(opts) do

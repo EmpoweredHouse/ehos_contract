@@ -1,5 +1,5 @@
 defmodule Mix.Tasks.EhOsContract.Manifest do
-  @shortdoc "Writes an EHOS application manifest from v2 contracts"
+  @shortdoc "Writes an EHOS application manifest from contracts"
 
   @moduledoc """
   Writes the selected domain's human command capabilities and roles as the strict
