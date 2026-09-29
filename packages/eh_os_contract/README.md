@@ -1,25 +1,27 @@
 # EhOsContract
 
-A contract per business process, and two things built on it: event dispatch for an
-event-driven Elixir application, and a continuous check that what happened is what
-the contract says should.
+A contract per business process, and two things built on it: an event-sourced application that
+dispatches through the contract, and a continuous check that what happened is what the contract says
+should.
 
-You declare a process as an Elixir module — its events, the run they belong to,
-the promises it makes about them. `EhOsContract.emit/4` refuses anything the contract
-does not declare and writes the rest to an event log; handlers react to those events,
-synchronously inside the emitting transaction or asynchronously through an Oban job
-inserted in that same transaction. Then EhOsContract compares the log with the contract
-and answers four questions about the difference:
+You write the process down as two Elixir modules, in the manner of [ESDM](https://www.esdm.io): a
+**domain** — the words, the contexts, the actors and the systems it depends on — and a **contract** — the
+units that decide, their commands, events and invariants, what reacts to them, what is read, and the
+promises the process owner agreed to. The compiler refuses a model that contradicts itself and code that
+contradicts the model. `EhOsContract.dispatch/3` runs a command through it: who may issue it, what its
+fields must be, what the implementation decides, and nothing the contract does not declare is appended to
+the log, which is the engine's own. Then EhOsContract compares the log with the contract and answers four
+questions about the difference:
 
-- which declared paths have never been traversed,
-- which transitions happened without being declared,
-- which `trace` assertions are being violated,
+- which declared steps have never been taken,
+- what happened that the contract does not declare,
+- which promises are being broken,
 - which contract version is deployed, and since when.
 
-Nothing else. Performance belongs to your APM, errors to your error tracker, and
-the state of your business to your own application. A tool that starts answering
-"which customer has not closed July" has become a second, worse copy of the screen
-you already have.
+Nothing else. Performance belongs to your APM, errors to your error tracker, and the state of your
+business to your own application — which the library helps you build, through read models and queries,
+but does not show on its dashboard. A tool that starts answering "which customer has not closed July" has
+become a second, worse copy of the screen you already have.
 
 ## Installation
 
@@ -68,9 +70,16 @@ config :eh_os_contract,
   repo: MyApp.Repo
 ```
 
+The rules between a contract, its domain and its siblings are a Mix compiler, because those
+references record no compile dependency. Register it after Elixir's, in `mix.exs`:
+
+```elixir
+compilers: Mix.compilers() ++ [:eh_os_contract]
+```
+
 And add EhOsContract to your supervision tree, after the repo and Oban. At boot it
-scans the running binary for contracts and handlers and records which contract
-version is deployed; without it the report has nothing to compare against.
+scans the running binary for contracts and their implementations and records which
+contract version is deployed; without it the report has nothing to compare against.
 
 ```elixir
 children = [
@@ -81,7 +90,7 @@ children = [
 ]
 ```
 
-The child is a supervisor: it also starts one runner per consumer a v2 contract feeds
+The child is a supervisor: it also starts one runner per consumer a contract feeds
 from the log after the transaction. A test cannot use those runners, because they would
 not see the rows of its sandbox transaction, so in `config/test.exs`:
 
@@ -91,7 +100,7 @@ config :eh_os_contract, subscriptions: :manual
 
 and a test that needs them runs `EhOsContract.Testing.drain/1`.
 
-A contract that declares personal data (`personal:` on a field, v2 §14) has those fields
+A contract that declares personal data (`personal:` on a field) has those fields
 encrypted in the log, each subject under its own data key, and the data keys wrapped by a
 master key. Give the master keys in `config/runtime.exs`, 32 bytes each in Base64, the
 current one first:
@@ -128,99 +137,109 @@ backup, a WAL archive or a replica still holds the key, wrapped, and anyone who 
 has the master key can open the subject's data. Retire and destroy master keys on a
 cadence no longer than you keep backups, or keep the key store out of the log's backups.
 
-## A contract
+## A domain and a contract
 
 ```elixir
+defmodule MyApp.Domain do
+  use EhOsContract.Domain, name: :my_app, language: :en
+
+  subdomain :core, "Core", type: :core
+
+  context :onboarding, "Onboarding", subdomain: :core
+
+  actor :applicant, :human, "Applicant"
+  actor :reviewer, :human, "Reviewer"
+end
+
 defmodule MyApp.Contracts.Onboarding do
-  use EhOsContract.Contract
+  use EhOsContract.Contract, domain: MyApp.Domain, context: :onboarding
 
-  event :application_received,
-    label: "Application received",
-    payload: %{application_id: :id},
-    identity: [:application_id],
-    process: :onboarding,
-    stage: :intake
+  aggregate :application, "Application" do
+    identity :application_id
 
-  event :application_approved,
-    label: "Application approved",
-    payload: %{application_id: :id},
-    process: :onboarding,
-    stage: :decision,
-    terminal: true
+    command :submit_application, "Submit an application",
+      by: :applicant,
+      emits: :application_received
 
-  command :submit_application,
-    label: "Submit an application",
-    process: :onboarding,
-    principals: [:human],
-    payload: %{application_id: :id}
+    command :approve_application, "Approve an application",
+      by: :reviewer,
+      emits: :application_approved
 
-  process :onboarding,
-    label: "Onboarding",
-    stages: [:intake, :decision],
-    instance: [:application_id],
-    accountable: "Head of onboarding"
+    event :application_received, "Application received"
+    event :application_approved, "Application approved", terminal: true
+  end
 
-  trace :decided_within_a_week do
-    from :application_received
-    eventually :application_approved, within: {7, :day}
+  process :onboarding, "Onboarding" do
+    correlate :application_id
+    accountable :reviewer
+
+    promise :decided_within_a_week do
+      from :application_received
+      eventually :application_approved
+      within {7, :day}
+    end
   end
 end
 ```
 
-Read the `trace` aloud: *after an application is received, within seven days it is
-approved.* That sentence is what a process owner confirms or corrects, and it is
-the reason the declarations carry a `label` in the client's own language.
+Read the promise aloud: *after an application is received, within seven days it is approved.* That
+sentence is what a process owner confirms or corrects, and it is the reason every declaration carries a
+label in the words of the people in the process.
 
-The full key reference — every declaration, every key, and the list of things that
-will not compile — is generated from `EhOsContract.Contract.schema/0` and lives in
-[`docs/contract.md`](docs/contract.md), inside this package.
+## The code that decides
 
-## Emitting and reacting
+A contract names no implementation. A module binds to one of its declarations and gets the structs and
+the behaviour the contract generates:
 
 ```elixir
-EhOsContract.emit(MyApp.Contracts.Onboarding, :application_received, %{application_id: id})
+defmodule MyApp.Onboarding.Application do
+  use MyApp.Contracts.Onboarding, aggregate: :application
 
-defmodule MyApp.Onboarding.OnApplicationReceived do
-  use EhOsContract.Handler,
-    contract: MyApp.Contracts.Onboarding,
-    event: :application_received,
-    async: true
+  @impl true
+  def submit_application(%SubmitApplication{application_id: id}, _state),
+    do: emit(%ApplicationReceived{application_id: id})
 
-  @impl EhOsContract.Handler
-  def handle(%{application_id: id}, ctx) do
-    # ctx.idempotency_key: the queue delivers at least once
-    MyApp.Mailer.acknowledge(id, ctx.idempotency_key)
-    :ok
-  end
+  @impl true
+  def approve_application(%ApproveApplication{application_id: id}, _state),
+    do: emit(%ApplicationApproved{application_id: id})
 end
 ```
 
-A handler for an event the contract does not declare does not compile. Neither does
-an asynchronous one whose event has no `identity:` to derive an idempotency key from.
+and a command goes through dispatch, with the actor your application authenticated:
+
+```elixir
+EhOsContract.dispatch(MyApp.Contracts.Onboarding, %SubmitApplication{application_id: id}, actor: actor)
+```
+
+An implementation that emits an event its command does not declare, or leaves a callback out, does not
+compile. How to write both modules, and every refusal with its code, is in
+[`docs/contract.md`](docs/contract.md); every key of both DSLs is in the reference generated from them,
+[the domain](docs/dsl/domain.md) and [the contract](docs/dsl/contract.md). Who the actor is, and how a
+credential becomes one, is in [`docs/authorization.md`](docs/authorization.md).
 
 ## What you get
 
 ```
-mix eh_os_contract.check      whole-program checks the compiler cannot make
-mix eh_os_contract.report     the conformance report for a period
-mix eh_os_contract.graph      the declared graph, and declared versus observed
-mix eh_os_contract.trace      assertion verdicts, per run
-mix eh_os_contract.brief      one process, rendered for the person who owns it
+mix eh_os_contract.check          whole-program checks over the contracts and their implementations
+mix eh_os_contract.report         the conformance report for a period: the four questions, one page
+mix eh_os_contract.graph          a process, a contract, a unit or a domain, declared or observed
+mix eh_os_contract.view           the domain as a tree: contexts, contracts, units and consumers
+mix eh_os_contract.glossary       the domain's ubiquitous language
+mix eh_os_contract.pages          the domain and its contracts as Markdown pages, one per element
+mix eh_os_contract.subscriptions  where each subscription stands, and a way past a poison event
+mix eh_os_contract.rewrap         the subjects' data keys, rewrapped with the current master key
 ```
 
-`mix eh_os_contract.check` is the one to put in CI. It refuses a build for the things that are
-unambiguously wrong — a rule whose function does not exist, two contracts claiming
-one event name — and reports as warnings or notices the things that need a person's
-judgment.
+`mix eh_os_contract.check` is the one to put in CI. Its findings are warnings and notices, each under a
+stable name [listed with its reason](docs/rules.md); `--warnings-as-errors` fails the build on a warning.
+What is unambiguously wrong never gets that far: it does not compile.
 
 ## What it deliberately does not do
 
-It does not know what a company is, what a tenant is, or what any of your fields
-mean, and it does not know who anybody is: an event's actor is an opaque subject the
-emitting application supplies, and authentication, roles and tenants stay on that
-application's side. Every payload type describes the shape of a value rather than
-the name of a thing. A library that knows one client's domain is a library for one
-client.
+It does not know what a company is, what a tenant is, or what any of your fields mean, and it does not
+know who anybody is: an actor is an opaque subject your application authenticated, checked against the
+contract's `by:`, and authentication, accounts and tenants stay on your side. A library that knows one
+client's domain is a library for one client.
 
 ## Licence
 
