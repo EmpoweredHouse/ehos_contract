@@ -86,15 +86,30 @@ defmodule EhOsContract.Dependency do
   caller is an adapter and the name arrives as a value — but it is the same rule the
   compile gate applies to `depends_on`: an observation about something undeclared cannot
   reach any assertion, so recording it would be writing to a place nothing reads.
+
+  A v2 contract declares its externals in the domain, and a promise reads an
+  observation only through an event of this contract that `depends_on` it
+  (`EhOsContract.Trace`), so that event is what the name has to match.
   """
   @spec unavailable!(module(), atom(), String.t() | nil) :: t()
   def unavailable!(contract, external, reason \\ nil, now \\ DateTime.utc_now()) do
-    unless EhOsContract.Model.external(contract, external) do
-      raise ArgumentError,
-            "#{inspect(contract)} does not declare `external #{inspect(external)}`, so an " <>
-              "observation about it could never reach an assertion. Declare the dependency " <>
-              "in the contract, which is also where the client says what its being " <>
-              "unavailable looks like."
+    case EhOsContract.Model.fetch(contract) do
+      %{units: _, events: events} ->
+        unless Enum.any?(events, &(&1.depends_on == external)) do
+          raise ArgumentError,
+                "no event of #{inspect(contract)} declares `depends_on: #{inspect(external)}`, " <>
+                  "so an observation about it could never reach a promise. Declare the " <>
+                  "dependency on the event whose arrival it can hold up."
+        end
+
+      _v1 ->
+        unless EhOsContract.Model.external(contract, external) do
+          raise ArgumentError,
+                "#{inspect(contract)} does not declare `external #{inspect(external)}`, so an " <>
+                  "observation about it could never reach an assertion. Declare the dependency " <>
+                  "in the contract, which is also where the client says what its being " <>
+                  "unavailable looks like."
+        end
     end
 
     repo().insert!(%__MODULE__{
