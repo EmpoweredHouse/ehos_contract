@@ -438,6 +438,44 @@ defmodule EhOsContract.Next.ContractTest do
 
       assert version.([:payer_id, :period_id]) != version.([:period_id, :payer_id])
     end
+
+    test "moves when a command's source changes, which the model carries" do
+      # `source:` is where the owner can check a declaration against the material it
+      # came from. Pointing a command at another place in the material is a change to
+      # the agreement, and a digest blind to it would let the deployment table say
+      # nothing had changed.
+      model = fn source ->
+        name = "Source#{System.unique_integer([:positive])}"
+
+        compile("""
+        defmodule EhOsContract.Next.ContractTest.#{name} do
+          use EhOsContract.Next.Contract, domain: Clinic, context: :settlement
+
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed#{source}
+            event :visit_closed, "Wizyta zamknięta", terminal: true
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        end
+        """)
+
+        Model.fetch(Module.concat(__MODULE__, name))
+      end
+
+      without = model.("")
+      sourced = model.(~s(, source: "CMD-07"))
+
+      assert [%{source: nil}] = without.commands
+      assert [%{source: "CMD-07"}] = sourced.commands
+
+      moved = for {key, digest} <- without.digests, sourced.digests[key] != digest, do: key
+      assert moved == ["command:close_visit"]
+      assert without.version != sourced.version
+    end
   end
 
   describe "the domain" do

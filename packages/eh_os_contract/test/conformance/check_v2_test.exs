@@ -12,6 +12,23 @@ defmodule EhOsContract.CheckV2Test do
   defp findings(contract),
     do: for(f <- Check.v2_findings([contract]), do: {f.level, f.rule, f.message})
 
+  describe "nothing to check" do
+    test "an empty registry is recognised as such" do
+      # Without this, a scan pointed at the wrong application prints the same three
+      # zeroes as a clean build. It is not a hypothetical: it is what this engine did
+      # the first time it compiled as its own package, scanning itself.
+      assert Check.no_contracts?([])
+    end
+
+    test "control: this package has something to check, in its v2 contracts alone" do
+      # A predicate that answered "empty" for everything would satisfy the test above
+      # and silence the whole task. The v2 contracts are named on their own, so this
+      # still says something once v1's registry is gone.
+      refute Check.no_contracts?()
+      refute Check.no_contracts?(EhOsContract.Registry.v2_contracts())
+    end
+  end
+
   test "a process with no addressee, and a deadline its owner has not confirmed" do
     assert {:warn, "process-without-accountable",
             "process :handling names no `accountable` role" <> _} =

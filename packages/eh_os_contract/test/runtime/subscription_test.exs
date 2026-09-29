@@ -156,6 +156,65 @@ defmodule EhOsContract.SubscriptionTest do
       assert flag.metadata["issued_by"] == "policy:flag_large_withdrawal"
     end
 
+    test "one already on the event's chain is stopped: the subscription fails, nothing is appended" do
+      # A loop through the log never exhausts a stack: each lap is an ordinary append
+      # and an ordinary delivery, so without the chain crossing into the event's
+      # metadata it would run for ever, one drain at a time. No policy of the rig closes
+      # such a loop, so the withdrawal is dispatched with the chain its second lap would
+      # carry — the one `flag_large_withdrawal` wrote when it reacted the first time.
+      Testing.drain()
+      deposit(900)
+      deposit(900)
+
+      link = "DispatchRig.Ledger:flag_large_withdrawal:ledger.withdrawn"
+
+      {:ok, _} =
+        EhOsContract.dispatch(Ledger, %Withdraw{account_id: "a-1", amount: 1500},
+          actor: @clerk,
+          chain: [link]
+        )
+
+      [withdrawn] = Repo.all(from(e in Event, where: e.type == "ledger.withdrawn"))
+      assert withdrawn.metadata["chain"] == [link]
+
+      assert %{failing: [@flag]} = Testing.drain(only: @flag)
+      assert flagged() == []
+
+      # Only the exception's module is kept (v2 §17: a message may quote the event's
+      # values), so the path the message names does not reach the row. The inline
+      # test in `dispatch_inline_test.exs` pins the message itself.
+      assert %SubscriptionRecord{status: "failing", failure: "ArgumentError", attempts: 3} =
+               row = row(@flag)
+
+      assert row.failed_position == withdrawn.position
+
+      # And more drains do not move it past the event.
+      assert %{applied: 0, failing: [@flag]} = Testing.drain(only: @flag)
+      assert flagged() == []
+    end
+
+    test "control: a chain of other policies is continued, not stopped" do
+      Testing.drain()
+      deposit(900)
+      deposit(900)
+
+      other = "DispatchRig.Ledger:return_small_change:ledger.withdrawn"
+
+      {:ok, _} =
+        EhOsContract.dispatch(Ledger, %Withdraw{account_id: "a-1", amount: 1500},
+          actor: @clerk,
+          chain: [other]
+        )
+
+      assert %{failing: []} = Testing.drain(only: @flag)
+      assert [flag] = flagged()
+
+      assert flag.metadata["chain"] == [
+               "DispatchRig.Ledger:flag_large_withdrawal:ledger.withdrawn",
+               other
+             ]
+    end
+
     test "delivered a second time, appends nothing" do
       Testing.drain(only: @flag)
 

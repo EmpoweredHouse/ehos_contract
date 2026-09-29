@@ -81,6 +81,17 @@ defmodule EhOsContract.Next.UniversalityGateTest do
     assert Enum.any?(domain.contexts, &(&1.name == contract.context))
   end
 
+  test "the built-in types are a closed set, pinned as a literal" do
+    # The filter above trusts this list: a type in it is a shape and needs no
+    # declaration, anything else is a domain's value. So the set is closed, as v1's
+    # `payload_types/0` was — each type names a shape, never a thing somebody's
+    # business calls a thing, and a new one is a decision about the DSL, written down
+    # where decisions are, not a drive-by in `Domain.Rules`. Pinned as a literal, so
+    # adding one fails here the same day.
+    assert EhOsContract.Domain.Rules.built_in_types() ==
+             [:id, :string, :integer, :decimal, :boolean, :date, :timestamp]
+  end
+
   test "v1's registry does not see it, so v1's check and report are unchanged" do
     refute @contract in EhOsContract.Registry.contracts()
     assert UniversalityGate.TreatmentEpisode in EhOsContract.Registry.contracts()

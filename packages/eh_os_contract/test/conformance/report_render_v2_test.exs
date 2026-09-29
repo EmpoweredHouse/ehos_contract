@@ -262,4 +262,46 @@ defmodule EhOsContract.ReportRenderV2Test do
       refute text() =~ "Suspended"
     end
   end
+
+  describe "the agreed duration, measured" do
+    # `ProcessShapes.Next.Timed` confirms `deadline {1, :hour}`. These sentences are
+    # the only place the report turns that declaration into a finding, and each
+    # counts only what can be known: a finished run's duration, or an open run's
+    # lower bound, never the two in one count.
+    @nine ~U[2026-09-01 09:00:00.000000Z]
+    @noon ~U[2026-09-01 12:00:00.000000Z]
+
+    defp timed_text do
+      ProcessShapes.Next.Timed |> Conformance.report(now: @noon) |> Report.render()
+    end
+
+    test "the sentence counts only the runs that finished" do
+      Seed.start_run(:v2, "r-1", @nine)
+      Seed.finish_run(:v2, "r-1", ~U[2026-09-01 09:30:00.000000Z])
+      Seed.start_run(:v2, "r-2", @nine)
+      Seed.finish_run(:v2, "r-2", ~U[2026-09-01 10:30:00.000000Z])
+
+      assert timed_text() =~ "The agreed duration was exceeded in 1 of 2 runs that finished."
+    end
+
+    test "a run still open past its hour gets its own line, not a place in the count" do
+      Seed.start_run(:v2, "r-1", @nine)
+      Seed.finish_run(:v2, "r-1", ~U[2026-09-01 09:30:00.000000Z])
+      Seed.start_run(:v2, "r-2", @nine)
+
+      t = timed_text()
+
+      assert t =~ "The agreed duration was kept in all 1 run that finished."
+      assert t =~ "1 run still open and already past it."
+    end
+
+    test "a run still inside its time is no finding, and nothing finished cannot be judged" do
+      Seed.start_run(:v2, "r-1", ~U[2026-09-01 11:50:00.000000Z])
+
+      t = timed_text()
+
+      refute t =~ "still open and already past it"
+      assert t =~ "No run finished in this period, so the agreed duration cannot be judged."
+    end
+  end
 end

@@ -61,6 +61,27 @@ defmodule EhOsContract.GraphV2Test do
     assert diagram =~ "event_request_refused -.->|async| policy_notify_on_refusal"
   end
 
+  test "the overlay counts occurrences and runs apart: two events of one run are one run" do
+    # A process that repeats an event inside a run — two deposits on one account —
+    # has more occurrences than runs, and a step is measured in runs. Were the two
+    # one number, a single busy account would read as a well-travelled path.
+    clerk =
+      EhOsContract.Actor.credential("u-1", ["dispatch_rig.open_account", "dispatch_rig.deposit"])
+
+    for command <- [
+          %DispatchRig.Ledger.Commands.OpenAccount{account_id: "a-1", branch_id: "b-7"},
+          %DispatchRig.Ledger.Commands.Deposit{account_id: "a-1", amount: 5},
+          %DispatchRig.Ledger.Commands.Deposit{account_id: "a-1", amount: 6}
+        ] do
+      {:ok, _} = EhOsContract.dispatch(DispatchRig.Ledger, command, actor: clerk)
+    end
+
+    diagram = Graph.contract_to_mermaid(DispatchRig.Ledger, overlay: true)
+
+    assert diagram =~ ~s|event_deposited["Deposited (2x, 1 run)"]:::event|
+    assert diagram =~ "command_deposit -->|1/1 runs| event_deposited"
+  end
+
   describe "the declared shape of a v2 process" do
     test "its stages are lanes, its promise an arrow with its window, its endings marked" do
       shape = Graph.declared_to_mermaid(ProcessShapes.Next.Promised, :handling)

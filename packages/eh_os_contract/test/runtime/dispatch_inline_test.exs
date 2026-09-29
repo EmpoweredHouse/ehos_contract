@@ -142,11 +142,69 @@ defmodule EhOsContract.DispatchInlineTest do
     end
 
     test "a policy that reacts to what it already reacted to down one chain is stopped" do
-      assert_raise ArgumentError, ~r/again down one chain of dispatches/, fn ->
-        dispatch(%Deposit{account_id: "a-1", amount: 777})
-      end
+      error =
+        assert_raise ArgumentError, ~r/again down one chain of dispatches/, fn ->
+          dispatch(%Deposit{account_id: "a-1", amount: 777})
+        end
+
+      # The message names the path that closed the loop, link by link from the root.
+      # One that only said "cycle" would leave somebody reading every policy of the
+      # contract to find the two that feed each other.
+      link = "DispatchRig.Ledger:echo_deposit:ledger.deposited"
+      assert error.message =~ "never end: #{inspect([link, link])}"
 
       assert Enum.map(log(), & &1.type) == ["ledger.account_opened"]
+    end
+
+    test "two events of one decision that each set a policy off are not a cycle" do
+      alias DispatchRig.Ledger.Commands.SplitDeposit
+
+      # The case that kills the cheap rule "this policy already ran in this
+      # transaction": both deposits are flagged, and neither flag is an ancestor of
+      # the other. Each sibling starts its own chain from the decision.
+      {:ok, _} = dispatch(%SplitDeposit{account_id: "a-1", first: 1000, second: 1000})
+
+      assert Enum.map(log(), & &1.type) == [
+               "ledger.account_opened",
+               "ledger.deposited",
+               "ledger.deposited",
+               "ledger.account_flagged",
+               "ledger.account_flagged"
+             ]
+
+      assert Enum.count(rows(), &(&1.type == "flag_account" and &1.outcome == "accepted")) == 2
+    end
+
+    test "a command it does not declare it issues is refused at run time, and nothing is appended" do
+      # I6 reads the struct literals `issue/1` gets; a command built in a helper and
+      # returned without it gets past the compiler, and this is the backstop.
+      Process.put(:dispatch_rig_flag_strays, true)
+
+      assert_raise ArgumentError,
+                   ~r/policy :flag_large_deposit issued %DispatchRig.Ledger.Commands.Deposit\{\}, which is not among the commands it issues: \[:flag_account\]/,
+                   fn -> dispatch(%Deposit{account_id: "a-1", amount: 1000}) end
+
+      # Neither the deposit that set it off nor anything the stray command would have
+      # written: the refusal rolls the whole dispatch back.
+      assert Enum.map(log(), & &1.type) == ["ledger.account_opened"]
+      assert balance("a-1") == 0
+
+      assert [%{type: "deposit", failed_in: "policy:flag_large_deposit", error: "ArgumentError"}] =
+               Enum.filter(rows(), &(&1.outcome == "failed"))
+    end
+
+    test "the stack trace of a failing consumer points at its implementation" do
+      # Dispatch notes where an exception came from and raises it again, and it has to
+      # raise it with the stack trace it came with: a trace that ends in the dispatcher
+      # sends whoever reads it to the library instead of the projection that failed.
+      stacktrace =
+        try do
+          dispatch(%Deposit{account_id: "a-1", amount: 13})
+        rescue
+          RuntimeError -> __STACKTRACE__
+        end
+
+      assert [{DispatchRig.Movements, :deposited, 1, _location} | _] = stacktrace
     end
   end
 end

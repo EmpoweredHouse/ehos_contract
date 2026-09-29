@@ -185,6 +185,48 @@ defmodule EhOsContract.ReportV2Test do
       assert Report.render(Conformance.report(DispatchRig.Ledger)) =~
                "· Deposited → Flag the account for review (via: Flag an account on a large deposit) — failing: a command failed in 1 run"
     end
+
+    @tag :capture_log
+    test "count runs, not failures" do
+      # Two failures of one account are one run in trouble, and a second account is
+      # a second: the count answers how much of the business a broken step touches,
+      # and a retry loop hammering one run would otherwise read as a wide outage.
+      EhOsContract.Testing.drain()
+
+      for account <- ["a-1", "a-2"] do
+        {:ok, _} =
+          EhOsContract.dispatch(
+            DispatchRig.Ledger,
+            %DispatchRig.Ledger.Commands.OpenAccount{account_id: account, branch_id: "b-7"},
+            actor: @clerk
+          )
+      end
+
+      fail = fn account ->
+        Process.put(:dispatch_rig_flag_fails, true)
+
+        assert_raise RuntimeError, fn ->
+          EhOsContract.dispatch(
+            DispatchRig.Ledger,
+            %DispatchRig.Ledger.Commands.Deposit{account_id: account, amount: 1500},
+            actor: @clerk
+          )
+        end
+      end
+
+      step = "· Deposited → Flag the account for review (via: Flag an account on a large deposit)"
+
+      fail.("a-1")
+      fail.("a-1")
+
+      assert Report.render(Conformance.report(DispatchRig.Ledger)) =~
+               step <> " — failing: a command failed in 1 run"
+
+      fail.("a-2")
+
+      assert Report.render(Conformance.report(DispatchRig.Ledger)) =~
+               step <> " — failing: a command failed in 2 runs"
+    end
   end
 
   describe "drift" do
@@ -203,6 +245,41 @@ defmodule EhOsContract.ReportV2Test do
       assert data(:v2).drift == []
       assert text(:v2) =~ "None: nothing happened outside the agreement"
     end
+
+    test "history under an older version of the contract is not drift" do
+      # What an earlier version appended was judged against the declarations it had:
+      # a command it declared then may be gone today, and reporting its events as
+      # drift would put every change of a contract in front of the client as a breach
+      # of the new one. The same event under today's version, in the same log, is.
+      old_version(:request_completed, "r-1")
+      assert data(:v2).drift == []
+
+      Seed.fact(:v2, :request_completed, "r-2", @noon)
+      assert [%{to: %{name: :request_completed}, count: 1}] = data(:v2).drift
+    end
+  end
+
+  # One event of request handling written as an earlier version of the contract wrote
+  # it, which `Seed.fact/4` cannot: it stamps today's version.
+  defp old_version(name, request_id) do
+    repo = Application.fetch_env!(:eh_os_contract, :repo)
+
+    entry = %{
+      type: Seed.stored(:v2, "handling", name),
+      contract: inspect(ProcessShapes.Next.Promised),
+      contract_version: "gone",
+      process: "handling",
+      instance_id: "handling|#{request_id}",
+      correlation_id: Ecto.UUID.generate(),
+      actor: EhOsContract.Event.system_actor(),
+      payload: %{"request_id" => request_id},
+      occurred_at: @noon
+    }
+
+    {:ok, {:ok, [_event]}} =
+      repo.transaction(fn -> EhOsContract.Store.append(repo, [entry], :none) end)
+
+    :ok
   end
 
   describe "on the wire" do

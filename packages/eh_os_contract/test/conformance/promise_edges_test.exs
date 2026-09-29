@@ -329,6 +329,28 @@ defmodule EhOsContract.PromiseEdgesTest do
     end
   end
 
+  describe "a suspension replaces a breach, and nothing else" do
+    setup do
+      insert(:opened, @opened)
+      Dependency.unavailable!(Edges, :inspector, "test", ~U[2026-07-01 12:00:00.000000Z])
+      :ok
+    end
+
+    test "a promise kept in spite of the outage is satisfied" do
+      # The dependency came back and the run answered in time: that is a kept promise,
+      # and calling it suspended would take a success out of the count.
+      insert(:inspected, ~U[2026-07-01 15:00:00.000000Z])
+
+      assert %{verdict: :satisfied, via: :eventually} = verdict(:inspected_within_a_day)
+    end
+
+    test "a run whose window is still open is pending, outage or not" do
+      # Nothing is decided yet, so there is nothing for the outage to excuse.
+      assert verdict(:inspected_within_a_day, ~U[2026-07-01 18:00:00.000000Z]).verdict ==
+               :pending
+    end
+  end
+
   describe "a dependency on the fallback only" do
     test "an outage of it suspends the run, although the wanted route depended on nothing" do
       # Decided, 21 August 2026, for v1's `awaited_outages/2`, and kept by v2's
@@ -357,6 +379,15 @@ defmodule EhOsContract.PromiseEdgesTest do
                {:error, :timeout}
 
       assert %{"inspector" => [_one]} = Dependency.observations_by_external(Edges)
+    end
+
+    test "an adapter's `{:ok, _}` passes through, and records nothing" do
+      # The common case, and the one that must cost nothing: a row per successful call
+      # would make the table of outages the busiest table of the application.
+      assert Dependency.observe(Edges, :inspector, fn -> {:ok, :inspected} end) ==
+               {:ok, :inspected}
+
+      assert Dependency.observations_by_external(Edges) == %{}
     end
   end
 
