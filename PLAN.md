@@ -5,40 +5,45 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 29 września (E11b gotowe lokalnie, następne E11c)
+## Handoff — stan na 29 września (E11c gotowe lokalnie, następne E11d)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
 
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności), jej
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa pivot do v2** (DSL na Sparku, model
-domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E10 i E11a są w `main`**
-(ostatnio E11a, #44). **E11 — Cięcie** idzie częściami E11a–E11f („Przed E11 — podział i decyzje użytkownika”):
-**E11b — przemianowanie `Next` — jest gotowe i przejrzane lokalnie** („E11b — co wyszło”), niewypchnięte.
-Następne jest **E11c — migracje do jednego V01 (D2)**. W bibliotekach nie ma już kodu v1 ani nazwy `Next`.
+domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E10, E11a i E11b są w `main`**
+(ostatnio E11b, #45). **E11 — Cięcie** idzie częściami E11a–E11f („Przed E11 — podział i decyzje użytkownika”):
+**E11c — migracje do jednego V01 (D2) — jest gotowe i przejrzane lokalnie** („E11c — co wyszło”), niewypchnięte.
+Następne jest **E11d — dokumentacja**. W bibliotekach nie ma już kodu v1, nazwy `Next` ani historii migracji.
 
 ### Stan repozytorium
 
-- **`origin/main` = `9dc47c6`** (merge #44, E11a; CI `main`, przebieg `36608060436`, job `check` — `success`).
-- **E11b** na `dsl-v2/e11b-rename-next`, od `9dc47c6`, **niewypchnięte**: `b25aa40`, `1afaeb4`, `b3f42bc` i zapis
-  planu. Historia liniowa. Notatka przeglądu (`refs/notes/review`) na głowie — lokalna.
-- Lokalne `dsl-v2/e11-cut` skasowane po merge'u #44 (w całości w `main`). Lokalne `dsl-v2/e11a-remove-v1` też jest w
-  całości w `main`, ale jest wyciągnięte w worktree `dsl-v2-eg-graphs-409665`, więc git go nie skasuje — do
-  skasowania razem z tamtym worktree.
-- **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
-  `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
+- **`origin/main` = `563a251`** (merge #45, E11b; CI `main`, przebieg `36620412345`, job `check` — `success`).
+- **E11c** na `dsl-v2/e11c-migrations`, od `563a251`, **niewypchnięte**: `a1e4c98`, `6ac26d7`, `f9edf9c`, `c2544a8`
+  (ADR), `418c966` (po przeglądzie) i zapis planu. Historia liniowa. Notatka przeglądu na głowie — lokalna.
+- **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
+  `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`). W E11c wszystkie
+  skasowane i odtworzone z nowego V01 — worktree na kodzie sprzed E11c, który je zmigruje, zepsuje je dla reszty
+  (`ecto.drop` naprawia). Bazę dev odtworzono z danymi: zrzut sprzed E11c (29 zdarzeń, 21 wdrożeń, 18 komend)
+  przywrócony `pg_restore --data-only` do tabel, które przetrwały.
+- Lokalne `dsl-v2/e11b-rename-next` jest w całości w `main`; `dsl-v2/e11a-remove-v1` też, ale wyciągnięte w
+  worktree `dsl-v2-eg-graphs-409665`.
+- **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`, zrzuty
+  sprzed E11c — w starym schemacie, do odtworzenia tylko danymi); przed `mix phx.server` — `mix ecto.migrate` w
+  `sandbox/`.
 
 ### Co zostało — i czyje to jest
 
-- **Push i PR E11b** — na polecenie użytkownika (przegląd i notatka są na głowie). E11c może iść od głowy E11b na
-  własnej gałęzi `dsl-v2/e11c-…`; przy PR-ze na stosie pilnować bazy (#40 zmergował się kiedyś do nieprzestawionej
-  bazy, „Przed E9c-2”).
-- **E11c–E11f** — asystenta, po kolei, z przeglądem `pre-pr-review` po każdej części przed następną. Zakres każdej
+- **Push i PR E11c** — na polecenie użytkownika (przegląd i notatka są na głowie).
+- **E11d–E11f** — asystenta, po kolei, z przeglądem `pre-pr-review` po każdej części przed następną. Zakres każdej
   części: „Przed E11 — podział i decyzje użytkownika”. Potem osobny etap: kontrakty sandboxa do testów pakietu jako
   fikstury akceptacyjne, potem **manifest v2** (po akceptacji D-51/D-52 w `eh-os` — decyzja z 29 września).
 - **Z E11b do E11d i E11e** — lista w „E11b — co wyszło”: wpis CHANGELOG-u o zmianie nazw publicznego API (z
   pułapką `Registry.contracts/0`, które w v1 znaczyło co innego), proza „v2 contract” w komunikatach i dokach,
   sześć skilli z `EhOsContract.Next.Contract` w nagłówku.
+- **Z E11c do E11d** — „Unreleased” w `CHANGELOG.md` każe hostowi dopisać migracje `up(version: 3|4|5)`, których
+  już nie ma: wpis 0.3.0 mówi o jednym V01 i odtworzeniu bazy sprzed cięcia („E11c — co wyszło”).
 - **Poza E11, bez zmian** — użytkownika: proces na porcie 4000, wdrożenie E8 u hosta, lista zmian do `eh-os` (w tym
   fixture manifestu TaxVision z „E10 — co wyszło” i uwagi do D-51/D-52 — komentarz do PR-a w `eh-os` tylko na
   polecenie, link w materiale EHOS-a był pusty), publikacja na Hex, F1/F2 i dziesięć usterek, pytanie do EHOS-a o CSP
@@ -50,11 +55,10 @@ Następne jest **E11c — migracje do jednego V01 (D2)**. W bibliotekach nie ma 
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach, wyrażenia
    regularne z flagą `u` i `[0-9]`, zsh bez dzielenia słów. Uwaga: jego opis bramy wymienia jeszcze
    `eh_os_contract.docs --check`, którego od E11a nie ma — poprawka należy do E11d.
-2. `PLAN.md`: „Przed E11 — podział i decyzje użytkownika” (części i decyzje), „E11a — co wyszło” i „E11b — co
-   wyszło” (co zostało na później, usterki, przegląd), opis „E11 — Cięcie” w „Etapach”.
+2. `PLAN.md`: „Przed E11 — podział i decyzje użytkownika” (części i decyzje), „E11a — co wyszło”, „E11b — co
+   wyszło” i „E11c — co wyszło” (co zostało na później, usterki, przegląd), opis „E11 — Cięcie” w „Etapach”.
 3. `.claude/skills/pre-pr-review/SKILL.md` — przed PR-em każdej części.
-4. Przy E11c: `docs/adr/contract-v2.md` §10.3 i D2 (§16). Przy E11d: `docs/adr/contract-v2.md` §18 i
-   `packages/eh_os_contract/docs/rules.md`.
+4. Przy E11d: `docs/adr/contract-v2.md` §18 i `packages/eh_os_contract/docs/rules.md`.
 
 ### Komendy
 
@@ -101,6 +105,12 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 29 września, na `418c966`** (E11c po przeglądzie; potem tylko zapis planu), **na bazach skasowanych i
+  odtworzonych z V01**: brama z `sandbox/` → **EXIT=0** — sandbox 143 testy, `check` 0 / 29 / 9; silnik 972 (−3 stare
+  testy migracji, +4 nowe), `check` 0 / 66 / 5; web 52; auth 62. `pg_dump` schematu dev przed i po różni się tylko
+  zamierzonym. Dane dev przywrócone do nowego schematu: wyjścia `MIX_ENV=dev` bajt w bajt jak na E11b, przy starcie
+  żaden nowy wiersz wdrożenia. W przeglądarce `/dashboard/graph` i `/dashboard/contract` jak przed zmianą (Settlement
+  6 przebiegów), bez błędów serwera.
 - **Lokalnie, 29 września, na `b3f42bc`** (E11b; potem tylko zapis planu): brama z `sandbox/` → **EXIT=0** — sandbox
   143 testy, `check` 0 / 29 / 9; silnik 971, `check` 0 / 66 / 5; web 52; auth 62 — liczby co do jednego jak na
   `9dc47c6`. Wyjścia `MIX_ENV=dev` (`check` tekst i JSON, `report`, `view`, `glossary`, wszystkie grafy, manifesty,
@@ -111,7 +121,7 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
   W przeglądarce, na `b4924f3`: `/dashboard/graph` i `/dashboard/contract` bez błędów poza znanym CSP Mermaida.
 - **Lokalnie, 29 września, na `91c6fbc`** (czysty `main`, przed E11): brama → **EXIT=0** — sandbox 143, `check`
   0 / 29 / 9; silnik 1274, `check` 0 / 74 / 21; web 51; auth 62.
-- **CI `main`**: `9dc47c6` (merge #44, przebieg `36608060436`, job `check`) — `success`.
+- **CI `main`**: `563a251` (merge #45, przebieg `36620412345`, job `check`) — `success`.
 
 ### Otwarte pytania
 
@@ -126,6 +136,11 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
   modułu (`"ProcessShapes.Promised"` wycina też `ProcessShapes.PromisedLate`), a `Implementations.build/1` go nie
   stosuje (konsumenci wyłączonego kontraktu dostają wpisy dispatchu i wiersze subskrypcji). Zmiana zmienia znaczenie
   konfiguracji hosta — do użytkownika; kandydat na E11f.
+- **Z przeglądu E11c, sprzed E11c, bez decyzji:** (1) wartość pola korelacji albo nagłówek `idempotency-key`
+  dłuższe niż ~2,7 KB wywracają dopis błędem Postgresa („index row size exceeds maximum” w indeksie `_event_runs`,
+  strumienia albo idempotencji) — 500 zamiast odmowy; (2) `_commands` ma tylko indeks idempotencji, więc `Paths`
+  (filtr po `contract`, `outcome`, `issued_by LIKE`) czyta całą tabelę przy każdym raporcie — do pomiaru razem z
+  runnerem read modelu.
 - **D1–D14** przyjęte; w v2 §19: transport v1 między kontenerami, kontrakt upcasterów.
 
 ### Zgoda i stałe uprawnienia
@@ -2435,6 +2450,56 @@ przez rejestr, redakcja danych osobowych i wersje kontraktów bez zmian. Rozstrz
   — *pominięte*, w otwartych pytaniach (zmiana znaczenia konfiguracji hosta idzie do użytkownika).
 - **Stary kształt `%{v2_contracts: …}` w `persistent_term` po przeładowaniu kodu bez restartu** — *bez zmiany*:
   biblioteka nie wspiera gorącej podmiany, a moduł rejestru sam mówi, że nowy moduł widać po restarcie.
+
+### E11c — co wyszło (29 września)
+
+Na `dsl-v2/e11c-migrations`, od `563a251` (merge #45), niewypchnięte. Pełna brama po każdym commicie z kodem
+`EXIT=0`, na bazach skasowanych i odtworzonych z nowych migracji.
+
+- **`a1e4c98` — jeden V01 silnika (D2).** Kształt z v2 §10.3 w jednym kroku, `current_version/0` = 1, V02–V05
+  skasowane, a z nimi migracje `upgrade_…_to_v2…v5` w trzech katalogach `priv` (silnik, web, sandbox). Zmiany
+  kształtu, które §10.3 i notatki E2 zapowiadały na cięcie: `text` zamiast `varchar(255)`; bez
+  `_event_handlings` i `_handler_failures` (od E11a nic ich nie pisze); bez indeksów v1 na `events` — `type`
+  (pokrywa go `(type, position)`), `causation_id` (żadne zapytanie po nim nie filtruje), `instance_id` i
+  `(process, instance_id)` (przebiegi czyta się przez `_event_runs`). Przegląd przeszedł każde zapytanie po
+  `events` i nazwał indeks, na którym stoi. `pg_dump` schematu dev przed i po różni się tylko tym i komentarzem
+  wersji. Test migracji od nowa: jedna wersja, dziewięć tabel i trzy funkcje, `down` bez resztek, żadnej kolumny
+  `varchar` (sprawdzone odwrotnie).
+- **`6ac26d7`** — cztery migracje `DispatchRig` w bazie testowej silnika jako jedna.
+- **`f9edf9c`** — w sandboxie odpadają `taxvision_tasks`, `_accounting_months`, `_notifications` (tabele modułów v1
+  TaxVision, od E9c nieczytane); `taxvision_periods` powstaje jedną migracją z unikalną nazwą i trzema `CHECK`-ami,
+  bajt w bajt ta sama w `pg_dump`.
+- **`c2544a8`** — poprawka z datą w v2 §10.3: czym V01 różni się od szkicu.
+- **`418c966`** (po przeglądzie) — test przypina tożsamość `position` (`GENERATED ALWAYS`, sprawdzone odwrotnie
+  mutacją na `BY DEFAULT`) i unikalność `id`; cztery komentarze wskazywały usunięte V03.
+
+**Decyzja użytkownika (29 września): bez ścieżki z bazy sprzed cięcia.** Nie ma klienta, więc baza w wersji 2–5 jest
+kasowana i tworzona od nowa. *Odrzucone:* (a) odmowa w `up/1` z komunikatem „odtwórz bazę” — nikt poza nami takiej
+bazy nie ma; (b) most z wersji 5 przerabiający schemat w miejscu — historia, którą D2 każe zwinąć. Konsekwencja
+zapisana w przeglądzie: baza z komentarzem „5” przy `up/1` milczy (jej schemat jest nadzbiorem nowego, więc nowy kod
+na niej działa), a `down/1` na niej pada na nieistniejącym `V05`.
+
+**Wybory asystenta (mechanika):**
+- **Czas zostaje `timestamp`** (Ecto `utc_datetime_usec`), nie `timestamptz` ze szkicu §10.3 — silnik pisze i czyta
+  tylko UTC, zmiany typu nie zapowiadano. *Odrzucone:* `timestamptz` przy okazji — zmiana typu każdej kolumny czasu
+  bez powodu z kodu.
+- **Pakiet auth bez zmian** — jego dwie wersje to dwa `create` bez historii poprawek, a zakres E11c to trzy
+  katalogi `priv` silnika. *Odrzucone:* zwinięcie auth razem — osobny pakiet z osobnym mechanizmem wersji.
+- **Dane dev przywrócone do nowego schematu** zrzutem tylko danych, zamiast zasiewu od nowa — dzięki temu wyjścia
+  narzędzi dało się porównać bajt w bajt z E11b (identyczne).
+
+**Przegląd E11c (pre-pr-review, 29 września).** Dwa przeglądy równolegle na `origin/main..c2544a8`. Bezpieczeństwo
+i wydajność: żadnej regresji — blokada dopisu, wyzwalacze tylko-do-dopisu, tożsamość i wszystkie `CHECK`-i jak w
+starym V03, żaden usunięty indeks nie był używany, `text` nie zdjął ograniczenia, na którym coś polegało. Rozstrzygnięte:
+- **cztery komentarze z V03** — *poprawione* (`418c966`);
+- **test nie przypinał tożsamości ani unikalności `id`** — *poprawione* (`418c966`), odwrotnie sprawdzone;
+- **brak zapisu E11c w `PLAN.md`** — *poprawione* (ten zapis);
+- **`up/1` milczy, a `down/1` pada na bazie z wersją > 1** — *bez zmiany*, decyzja użytkownika wyżej;
+- **przykład `up(version: 2)` w moduledoku `Migrations`** — *bez zmiany*: jest opisany jako „gdy późniejsze wydanie
+  podniesie `current_version/0`”;
+- **`CHANGELOG.md` każe dopisać `up(version: 3|4|5)`** — *pominięte do E11d* (CHANGELOG 0.3.0);
+- **stara baza dev z tabelami v1 TaxVision** — *bez zmiany*, bazy się odtwarza;
+- **500 przy bardzo długim polu korelacji, pełne skany `_commands`** — sprzed E11c, w otwartych pytaniach.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
