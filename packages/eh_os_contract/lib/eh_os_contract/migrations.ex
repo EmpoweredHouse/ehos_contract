@@ -75,17 +75,18 @@ defmodule EhOsContract.Migrations do
   @doc """
   Runs every version between what the database has and `:version`.
 
-  Defaults to `current_version/0`. Idempotent: a database already at or beyond
-  the target is left alone, so re-running a consumer's migration is safe.
+  Defaults to `current_version/0`. Idempotent: a database already at the target,
+  or beyond it within the versions this release knows, is left alone, so re-running
+  a consumer's migration is safe.
 
-  Raises on a database that records a version this release does not know — one
-  migrated before the cut (plan E11c), whose versions 2–5 are gone, or by a later
-  release. Left alone, such a database would pass as current, and a later version
-  of this module would skip what it adds.
+  Raises on a target this release does not have, and on a database that records a
+  version it does not know: one migrated by a newer release, or before 0.3.0, whose
+  versions 2–5 are gone (plan E11c). Left alone, such a database would pass as
+  current, and a later version of this module would skip what it adds.
   """
   @spec up(keyword()) :: :ok
   def up(opts \\ []) when is_list(opts) do
-    target = Keyword.get(opts, :version, @current_version)
+    target = target!(Keyword.get(opts, :version, @current_version))
     recorded = known!(migrated_version())
 
     cond do
@@ -103,7 +104,7 @@ defmodule EhOsContract.Migrations do
   """
   @spec down(keyword()) :: :ok
   def down(opts \\ []) when is_list(opts) do
-    target = Keyword.get(opts, :version, @initial_version)
+    target = target!(Keyword.get(opts, :version, @initial_version))
     recorded = max(known!(migrated_version()), @initial_version)
 
     if recorded >= target, do: change(recorded..target//-1, :down), else: :ok
@@ -133,12 +134,23 @@ defmodule EhOsContract.Migrations do
 
   defp known!(recorded) when recorded > @current_version do
     raise ArgumentError,
-          "eh_os_contract_events records version #{recorded}, and this release knows versions " <>
-            "up to #{@current_version}. A database migrated before the cut (0.3.0) is not " <>
-            "migrated: recreate it (see CHANGELOG.md)."
+          "eh_os_contract_events records version #{recorded}, and this release of " <>
+            "eh_os_contract knows versions up to #{@current_version}. If a newer release " <>
+            "migrated it, use that release. If it was migrated before 0.3.0, it cannot be " <>
+            "upgraded, since 0.3.0 has a single version 1: drop the database and create it " <>
+            "again, or keep it on 0.2."
   end
 
   defp known!(recorded), do: recorded
+
+  defp target!(version) when version in @initial_version..@current_version//1, do: version
+
+  defp target!(version) do
+    raise ArgumentError,
+          "eh_os_contract has migration versions #{@initial_version} to #{@current_version}, " <>
+            "and #{inspect(version)} is not one of them. A host migration calling " <>
+            "`up(version: 2..5)` is from before 0.3.0: delete it."
+  end
 
   defp change(range, direction) do
     for index <- range do
