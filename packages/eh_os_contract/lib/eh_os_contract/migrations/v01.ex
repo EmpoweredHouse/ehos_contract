@@ -1,90 +1,314 @@
 defmodule EhOsContract.Migrations.V01 do
   @moduledoc false
 
-  # The engine's storage as it stood on 2026-08-21, created in one step.
+  # The engine's storage as it stood at the cut (v2 §10.3, D2; plan stage E11c),
+  # created in one step.
   #
-  # **The final shape, not the history.** The tables reached this shape through
-  # four migrations and one alter in the host application, and replaying those
-  # increments here would make every new consumer pay for a week of our
-  # indecision. `instance_id` and `process` are columns of `eh_os_contract_events` from the
-  # first `create`; that they were added a day later is a fact about this
-  # repository, not about anybody's database.
+  # **The final shape, not the history.** Five versions reached this shape, one of
+  # them altering v1's log in place so that v1 kept running until it was deleted.
+  # Replaying them would make every new consumer pay for the move, and create two v1
+  # tables nothing reads. Nothing is migrated from before the cut: there was no
+  # consumer to migrate, so a database with an older schema is recreated.
   #
-  # The comments below are the ones the original migrations carried. They are the
-  # reason each column exists, and dropping them in a move would have been the
-  # expensive half of the move.
+  # Text is `text`, never `varchar(255)`: a limit nobody chose is a failure waiting
+  # for the first long name. Times are Ecto's `utc_datetime_usec`, as they were.
+  #
+  # The comments below are the reasons the earlier versions gave for each table and
+  # column. They are the expensive half of a collapse to lose.
 
   use Ecto.Migration
+
+  # The key of the append lock: the first eight bytes of
+  # sha256("eh_os_contract_events append"), read as a signed integer. Its value does
+  # not matter, as long as it never changes and nothing else in the database takes
+  # the same one.
+  @lock_key -1_231_462_987_025_514_095
 
   @doc false
   @spec up() :: :ok
   def up do
+    events()
+    event_runs()
+    commands()
+    subscriptions()
+    process_managers()
+    subject_keys()
+    erasures()
+    deployments()
+    dependency_observations()
+    :ok
+  end
+
+  @doc false
+  @spec down() :: :ok
+  def down do
+    drop table(:eh_os_contract_dependency_observations)
+    drop table(:eh_os_contract_deployments)
+    drop table(:eh_os_contract_erasures)
+    drop table(:eh_os_contract_subject_keys)
+    drop table(:eh_os_contract_process_managers)
+    drop table(:eh_os_contract_subscriptions)
+    drop table(:eh_os_contract_commands)
+    drop table(:eh_os_contract_event_runs)
+    drop table(:eh_os_contract_events)
+
+    execute "DROP FUNCTION eh_os_contract_events_refuse_change()"
+    execute "DROP FUNCTION eh_os_contract_events_take_append_lock()"
+    execute "DROP FUNCTION eh_os_contract_append_lock()"
+
+    :ok
+  end
+
+  # The log (v2 §10). Append-only, ordered by `position`, one advisory lock for every
+  # append.
+  defp events do
     create table(:eh_os_contract_events, primary_key: false) do
-      add :id, :binary_id, primary_key: true
-      add :type, :string, null: false
-      add :contract, :string, null: false
-      # Without this column, every deploy that removes an event produces false
-      # alarms in the overlay. Cheap now, impossible to add later.
-      add :contract_version, :string, null: false
+      # The order of appends. `id` is unique and is what the Ecto schema calls its
+      # primary key; `position` is the table's.
+      add :position, :bigint, primary_key: true
+      add :id, :binary_id, null: false
+      # "<process>.<event>"
+      add :type, :text, null: false
+      add :schema_version, :integer, null: false, default: 1
+      add :contract, :text, null: false
+      # Which agreement was in force. Without it, every deploy that removes an event
+      # produces false alarms in the overlay.
+      add :contract_version, :text, null: false
+      # 'accounting_month:c-1|p-7'; nil for an event that belongs to no stream.
+      add :stream_id, :text
+      add :stream_version, :bigint
+      # 'payer_id:p-1', 'visit_id:w-1'
+      add :tags, {:array, :text}, null: false, default: []
+      # The home run, computed at append from the fields the process correlates on.
+      # Computing it in a query from the payload would tie every query to today's
+      # contract version, and the log spans every version since the first deploy.
+      # Every run an event belongs to is in `_event_runs`.
+      add :process, :text
+      add :instance_id, :text
+      add :command_id, :binary_id
       add :correlation_id, :binary_id, null: false
+      # The command, or the timer event, that caused it.
       add :causation_id, :binary_id
-      add :payload, :map, null: false, default: "{}"
-      add :actor, :string
+      add :actor, :text, null: false
+      # The dispatcher's clock, injectable: what `Trace` and `Run` measure.
       add :occurred_at, :utc_datetime_usec, null: false
-      # Run identity, computed at emit time from the fields declared in
-      # `instance:`. Computing it in a query from the payload would be possible,
-      # but it would tie every query to **today's** contract version — and the log
-      # spans every version since the first deploy. That is the same argument that
-      # put `contract_version` here.
-      add :process, :string
-      add :instance_id, :string
+      add :recorded_at, :utc_datetime_usec, null: false, default: fragment("clock_timestamp()")
+      # Personal fields as ciphertext.
+      add :payload, :map, null: false, default: %{}
+      # The command's type, who issued it, the chain, the idempotency key.
+      add :metadata, :map, null: false, default: %{}
     end
 
-    create index(:eh_os_contract_events, [:type])
+    execute """
+    ALTER TABLE eh_os_contract_events
+      ALTER COLUMN position ADD GENERATED ALWAYS AS IDENTITY (CACHE 1),
+      ADD CONSTRAINT eh_os_contract_events_id_key UNIQUE (id),
+      ADD CONSTRAINT eh_os_contract_events_stream_pair
+        CHECK ((stream_id IS NULL) = (stream_version IS NULL)),
+      ADD CONSTRAINT eh_os_contract_events_stream_version_positive CHECK (stream_version > 0)
+    """
+
+    create unique_index(:eh_os_contract_events, [:stream_id, :stream_version],
+             where: "stream_id IS NOT NULL",
+             name: :eh_os_contract_events_stream_index
+           )
+
+    create index(:eh_os_contract_events, [:tags], using: :gin)
+    create index(:eh_os_contract_events, [:type, :position])
     create index(:eh_os_contract_events, [:correlation_id])
-    # An observed edge is a `causation_id` — this is what the query
-    # reconstructing the actual graph runs on.
-    create index(:eh_os_contract_events, [:causation_id])
+    create index(:eh_os_contract_events, [:command_id])
     create index(:eh_os_contract_events, [:occurred_at])
-    # Every per-run query runs on this: the `trace` assertion, the instance
-    # counter on an edge, the list of one run's events.
-    create index(:eh_os_contract_events, [:instance_id])
-    create index(:eh_os_contract_events, [:process, :instance_id])
+    create index(:eh_os_contract_events, [:contract, :contract_version])
 
-    create table(:eh_os_contract_event_handlings, primary_key: false) do
-      add :id, :binary_id, primary_key: true
-      add :event_id, :binary_id, null: false
-      add :handler, :string, null: false
-      add :attempt, :integer, null: false, default: 1
-      add :status, :string, null: false
-      add :duration_us, :integer
-      add :error, :text
-      add :inserted_at, :utc_datetime_usec, null: false
+    # The key lives in exactly one place, `eh_os_contract_append_lock()`.
+    # `EhOsContract.Store.Postgres` calls it, and so does a statement-level trigger
+    # that catches an insert going around the store. The lock is transaction-scoped
+    # and re-entrant, so taking it twice costs nothing.
+    execute """
+    CREATE FUNCTION eh_os_contract_append_lock() RETURNS void LANGUAGE sql AS
+    $$ SELECT pg_advisory_xact_lock(#{@lock_key}) $$
+    """
+
+    execute """
+    CREATE FUNCTION eh_os_contract_events_take_append_lock() RETURNS trigger LANGUAGE plpgsql AS
+    $$ BEGIN PERFORM eh_os_contract_append_lock(); RETURN NULL; END $$
+    """
+
+    # UPDATE, DELETE and TRUNCATE are refused. A test database that leaked rows is
+    # recovered with `ecto.drop`, as `CLAUDE.md` says.
+    execute """
+    CREATE FUNCTION eh_os_contract_events_refuse_change() RETURNS trigger LANGUAGE plpgsql AS
+    $$ BEGIN
+      RAISE EXCEPTION 'eh_os_contract_events is append-only: % is refused', TG_OP
+        USING ERRCODE = 'restrict_violation';
+    END $$
+    """
+
+    execute """
+    CREATE TRIGGER eh_os_contract_events_append_lock
+    BEFORE INSERT ON eh_os_contract_events
+    FOR EACH STATEMENT EXECUTE FUNCTION eh_os_contract_events_take_append_lock()
+    """
+
+    execute """
+    CREATE TRIGGER eh_os_contract_events_append_only
+    BEFORE UPDATE OR DELETE ON eh_os_contract_events
+    FOR EACH STATEMENT EXECUTE FUNCTION eh_os_contract_events_refuse_change()
+    """
+
+    execute """
+    CREATE TRIGGER eh_os_contract_events_no_truncate
+    BEFORE TRUNCATE ON eh_os_contract_events
+    FOR EACH STATEMENT EXECUTE FUNCTION eh_os_contract_events_refuse_change()
+    """
+  end
+
+  # Every run an event belongs to (D7). Rebuildable from the log.
+  defp event_runs do
+    create table(:eh_os_contract_event_runs, primary_key: false) do
+      add :position, :bigint, primary_key: true
+      add :process, :text, primary_key: true
+      add :instance_id, :text, null: false
     end
 
-    create index(:eh_os_contract_event_handlings, [:event_id])
-    create index(:eh_os_contract_event_handlings, [:handler, :status])
+    # Every per-run query runs on this: a promise, the runs on a step, one run's events.
+    create index(:eh_os_contract_event_runs, [:process, :instance_id])
+  end
 
-    # What was declared, and when it was in force.
-    #
-    # `contract_version` on an event answers which agreement was in force. It
-    # cannot answer whether a **path** was declared at the time, because
-    # `version/0` hashes the contract and paths come from handlers — so deleting a
-    # handler changes the graph without changing any version stamped anywhere.
-    #
-    # One row per distinct wiring that has booted. Written at startup, so the
-    # graph still comes from the binary that actually runs.
+  # One row per command: accepted, rejected on an invariant, or failed. A rejected or
+  # failed command appends nothing, and this row is what survives it.
+  defp commands do
+    create table(:eh_os_contract_commands, primary_key: false) do
+      add :id, :binary_id, primary_key: true
+      add :contract, :text, null: false
+      add :type, :text, null: false
+      # 'actor:<subject>' | 'policy:<n>' | 'pm:<n>' | 'effect:<n>'
+      add :issued_by, :text, null: false
+      add :idempotency_key, :text
+      add :causation_event_id, :binary_id
+      add :correlation_id, :binary_id, null: false
+      add :outcome, :text, null: false
+      add :invariant, :text
+      add :failed_in, :text
+      add :error, :text
+      add :given_types, {:array, :text}, null: false, default: []
+      add :emitted_types, {:array, :text}, null: false, default: []
+      add :first_position, :bigint
+      add :last_position, :bigint
+      add :process, :text
+      add :instance_id, :text
+      add :recorded_at, :utc_datetime_usec, null: false, default: fragment("clock_timestamp()")
+    end
+
+    create constraint(:eh_os_contract_commands, :eh_os_contract_commands_outcome,
+             check: "outcome IN ('accepted', 'rejected', 'failed')"
+           )
+
+    create unique_index(:eh_os_contract_commands, [:idempotency_key],
+             where: "outcome = 'accepted' AND idempotency_key IS NOT NULL",
+             name: :eh_os_contract_commands_idempotency_index
+           )
+  end
+
+  # One row per ordered consumer, and per read model delivered in the transaction.
+  # `position` is the last event it applied. A runner takes the row `FOR UPDATE SKIP
+  # LOCKED`, so two nodes never apply one batch, and advances it in the transaction
+  # that applied the batch, so a batch is applied exactly once. `status` is
+  # `running`, `stale` (its declaration changed and it has not been rebuilt),
+  # `rebuilding` or `failing` (an event it could not apply, at `failed_position`;
+  # never skipped by itself).
+  defp subscriptions do
+    create table(:eh_os_contract_subscriptions, primary_key: false) do
+      add :name, :text, primary_key: true
+      add :kind, :text, null: false
+      add :mode, :text, null: false
+      add :position, :bigint, null: false, default: 0
+      add :version, :text, null: false
+      add :status, :text, null: false, default: "running"
+      add :failed_position, :bigint
+      add :failure, :text
+      add :attempts, :integer, null: false, default: 0
+      add :updated_at, :utc_datetime_usec, null: false, default: fragment("clock_timestamp()")
+    end
+
+    create constraint(:eh_os_contract_subscriptions, :eh_os_contract_subscriptions_status,
+             check: "status IN ('running', 'stale', 'rebuilding', 'failing')"
+           )
+
+    create constraint(:eh_os_contract_subscriptions, :eh_os_contract_subscriptions_mode,
+             check: "mode IN ('inline', 'ordered')"
+           )
+  end
+
+  # One row per running process manager: its state, its timers, the last event it took.
+  defp process_managers do
+    create table(:eh_os_contract_process_managers, primary_key: false) do
+      add :name, :text, primary_key: true
+      add :correlation, :text, primary_key: true
+      add :state, :binary, null: false
+      add :timers, :map, null: false, default: %{}
+      add :position, :bigint, null: false
+      add :completed_at, :utc_datetime_usec
+    end
+  end
+
+  # One data key per subject and key version (v2 §14), wrapped by a master key of
+  # `EhOsContract.Vault`, `kek_id` naming which. The personal fields of a subject's
+  # events are encrypted with it; deleting its rows is what erases the subject.
+  # `key_version` is always 1 until a subject's key can be rotated, which waits for
+  # someone who needs it. Not append-only: rotating a master key rewraps every data
+  # key in place.
+  defp subject_keys do
+    create table(:eh_os_contract_subject_keys, primary_key: false) do
+      add :subject_type, :text, primary_key: true
+      add :subject_id, :text, primary_key: true
+      add :key_version, :integer, primary_key: true
+      add :kek_id, :text, null: false
+      add :wrapped_key, :binary, null: false
+      add :inserted_at, :utc_datetime_usec, null: false, default: fragment("clock_timestamp()")
+    end
+
+    create constraint(:eh_os_contract_subject_keys, :eh_os_contract_subject_keys_version,
+             check: "key_version > 0"
+           )
+
+    # `mix eh_os_contract.rewrap` looks for the keys a retired master key still wraps.
+    create index(:eh_os_contract_subject_keys, [:kek_id])
+  end
+
+  # One row per erased subject, so that nothing is appended for it again.
+  defp erasures do
+    create table(:eh_os_contract_erasures, primary_key: false) do
+      add :subject_type, :text, primary_key: true
+      add :subject_id, :text, primary_key: true
+      add :erased_at, :utc_datetime_usec, null: false
+      add :requested_by, :text, null: false
+    end
+  end
+
+  # What was declared, and when it was in force.
+  #
+  # `contract_version` on an event answers which agreement was in force. It cannot
+  # answer whether a **path** was wired at the time: the wiring is the modules that
+  # implement the steps, and changing them changes no version stamped anywhere. One
+  # row per distinct wiring that has booted, written at startup, so the graph still
+  # comes from the binary that actually runs.
+  defp deployments do
     create table(:eh_os_contract_deployments, primary_key: false) do
       add :id, :binary_id, primary_key: true
-      add :contract, :string, null: false
-      add :contract_version, :string, null: false
-      # Hash of the declared edges. Separate from `contract_version` on purpose:
-      # a handler change alters what the code does without altering what the
-      # client agreed to, and conflating the two would either hide wiring
-      # changes or bump the agreement for a refactor.
-      add :wiring_version, :string, null: false
-      add :events, {:array, :string}, null: false
-      add :edges, {:array, :string}, null: false
+      add :contract, :text, null: false
+      add :contract_version, :text, null: false
+      # Separate from `contract_version` on purpose: an implementation change alters
+      # what the code does without altering what the client agreed to, and conflating
+      # the two would either hide wiring changes or bump the agreement for a refactor.
+      add :wiring_version, :text, null: false
+      add :events, {:array, :text}, null: false
+      add :edges, {:array, :text}, null: false
+      # One digest per declaration, so a change to a single declaration is
+      # attributable. **Nullable, and deliberately without a default**: `%{}` would
+      # claim the contract declared nothing, and `EhOsContract.Deployment.diff/2` has
+      # to be able to say "could not compare" instead of "nothing changed".
+      add :declaration_digests, :map
       add :first_seen_at, :utc_datetime_usec, null: false
     end
 
@@ -97,62 +321,27 @@ defmodule EhOsContract.Migrations.V01 do
            )
 
     create index(:eh_os_contract_deployments, [:first_seen_at])
+  end
 
-    # What a synchronous handler was doing when it died.
-    #
-    # A synchronous handler runs inside the emitting transaction, so when it
-    # raises, the transaction takes the handling row and the event down with it.
-    # That is correct — nothing happened, so the log must not claim it did — and it
-    # leaves the most interesting failure invisible in the artifact that exists to
-    # make failures visible (ADR §13).
-    #
-    # **Deliberately no foreign key to `eh_os_contract_events`.** There is nothing to point
-    # at: the event was rolled back and never existed. What survives a rollback is
-    # the correlation id, generated before the transaction opened, so that is the
-    # handle this table carries. A row here says "this command was attempted and
-    # died", which is a different kind of statement from every other row in the
-    # log — hence a different table rather than a status on `eh_os_contract_event_handlings`.
-    create table(:eh_os_contract_handler_failures, primary_key: false) do
-      add :id, :binary_id, primary_key: true
-      add :contract, :string, null: false
-      add :event_type, :string, null: false
-      add :handler, :string, null: false
-      add :correlation_id, :binary_id
-      # Known even though the event was rolled back: it is computed from the
-      # payload, not read from the log. It is what lets the path report say how
-      # many runs are failing rather than only that something is.
-      add :instance_id, :string
-      add :error, :text, null: false
-      add :occurred_at, :utc_datetime_usec, null: false
-    end
-
-    create index(:eh_os_contract_handler_failures, [:handler])
-    create index(:eh_os_contract_handler_failures, [:occurred_at])
-
-    # When a declared external dependency was seen to be unavailable.
-    #
-    # The fourth assertion verdict needs this and nothing else can supply it.
-    # Without it a registry outage inside an assertion window counts as a
-    # **violation** — the report tells a client they broke their own agreement when
-    # somebody else's server was down, which is the most expensive kind of false
-    # positive this product can produce.
-    #
-    # **Observations, not intervals.** An adapter learns that one call failed. It
-    # never learns when the service came back, because nothing tells it — it would
-    # have to keep asking, and a health-checker is a different product. So each row
-    # is one moment, and "was it down during this window" is answered by whether
-    # any moment falls inside it.
-    #
-    # No reference to a run. A registry being down is not something that happens to
-    # one company's month; it happens to everybody at once, which is why the row is
-    # keyed by dependency and time rather than by `instance_id`.
+  # When a declared external dependency was seen to be unavailable.
+  #
+  # A promise's fourth verdict needs this and nothing else can supply it. Without it
+  # a registry outage inside a promise's window counts as a **violation** — the
+  # report tells a client they broke their own agreement when somebody else's server
+  # was down, which is the most expensive kind of false positive this product can
+  # produce.
+  #
+  # **Observations, not intervals.** An adapter learns that one call failed. It never
+  # learns when the service came back, because nothing tells it. So each row is one
+  # moment, and "was it down during this window" is answered by whether any moment
+  # falls inside it. No reference to a run: a registry being down happens to
+  # everybody at once.
+  defp dependency_observations do
     create table(:eh_os_contract_dependency_observations, primary_key: false) do
       add :id, :binary_id, primary_key: true
-      add :contract, :string, null: false
-      # The name from the contract's `external` declaration, never a vendor's. An
-      # observation about "KSeF" would tie the log to a supplier the contract is
-      # written to outlive.
-      add :external, :string, null: false
+      add :contract, :text, null: false
+      # The name from the domain's `external` declaration, never a vendor's.
+      add :external, :text, null: false
       add :reason, :text
       add :observed_at, :utc_datetime_usec, null: false
     end
@@ -161,19 +350,5 @@ defmodule EhOsContract.Migrations.V01 do
     create index(:eh_os_contract_dependency_observations, [:contract, :external, :observed_at],
              name: :eh_os_contract_dependency_observations_lookup_index
            )
-
-    :ok
-  end
-
-  @doc false
-  @spec down() :: :ok
-  def down do
-    drop table(:eh_os_contract_dependency_observations)
-    drop table(:eh_os_contract_handler_failures)
-    drop table(:eh_os_contract_deployments)
-    drop table(:eh_os_contract_event_handlings)
-    drop table(:eh_os_contract_events)
-
-    :ok
   end
 end

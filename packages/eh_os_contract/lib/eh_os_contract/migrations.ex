@@ -2,7 +2,7 @@ defmodule EhOsContract.Migrations do
   @moduledoc """
   The tables the engine owns, as a migration a consumer calls.
 
-  Until 2026-08-21 these five tables lived in the host application's
+  Until 2026-08-21 the tables lived in the host application's
   `priv/repo/migrations/`, interleaved with the client tree's own. That made the
   storage the host's to maintain, which is exactly backwards: the schemas are in
   this package, the queries are in this package, and a host that fell a column
@@ -62,7 +62,7 @@ defmodule EhOsContract.Migrations do
   use Ecto.Migration
 
   @initial_version 1
-  @current_version 5
+  @current_version 1
 
   @doc "The oldest version this module can create."
   @spec initial_version() :: pos_integer()
