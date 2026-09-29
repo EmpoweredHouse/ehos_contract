@@ -77,6 +77,50 @@ defmodule EhOsContract.ModelTest do
     end
   end
 
+  # A consumer's scenario names the sibling's event, whose personal fields are
+  # declared there, not here.
+  defmodule PersonalConsumer do
+    @moduledoc false
+    use EhOsContract.Next.Contract, domain: ShreddingRig.Domain, context: :membership
+
+    consumes EhOsContract.ModelTest.PersonalExport, :registered
+
+    aggregate :welcome, "Welcome" do
+      identity :profile_id
+
+      command :welcome, "Welcome", emits: :welcomed do
+        field :member_id, :id, subject: :member
+        field :name, :string, personal: :member_id
+      end
+
+      event :welcomed, "Welcomed" do
+        field :member_id, :id, subject: :member
+        field :name, :string, personal: :member_id
+      end
+    end
+
+    policy :welcome_registered, "Welcome a registered member",
+      handles: :registered,
+      issues: :welcome
+
+    process :welcome, "Welcome" do
+      correlate :profile_id
+    end
+
+    scenario "a sibling's registration carries direct and nested personal values" do
+      scope :welcome_registered
+
+      on :registered, %{
+        profile_id: "profile-1",
+        member_id: "member-1",
+        name: "Ada Example",
+        contacts: [%{member_id: "member-2", phone: "+48-555-0100"}]
+      }
+
+      issues :welcome, %{member_id: "member-1", name: "Ada Example"}
+    end
+  end
+
   @contracts [
     ProcessShapes.Bare,
     ProcessShapes.Promised,
@@ -216,6 +260,20 @@ defmodule EhOsContract.ModelTest do
     register = Enum.find(document["contract"]["commands"], &(&1["name"] == "register"))
     name = Enum.find(register["fields"], &(&1["name"] == "name"))
     assert name["personal"] == "member_id"
+  end
+
+  test "to_data redacts a consumed sibling event by the sibling's personal fields" do
+    document = Model.to_data(PersonalConsumer)
+    encoded = Jason.encode!(document)
+
+    refute encoded =~ "Ada Example"
+    refute encoded =~ "+48-555-0100"
+
+    [scenario] = document["contract"]["scenarios"]
+    assert scenario["trigger"]["data"]["member_id"] == "member-1"
+    assert scenario["trigger"]["data"]["name"] == nil
+    assert hd(scenario["trigger"]["data"]["contacts"])["phone"] == nil
+    assert hd(scenario["issues"])["data"]["name"] == nil
   end
 
   # A contract whose module exists on the code path but is not loaded yet, which is

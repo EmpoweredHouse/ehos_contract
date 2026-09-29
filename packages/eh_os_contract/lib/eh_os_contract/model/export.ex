@@ -23,9 +23,9 @@ defmodule EhOsContract.Model.Export do
 
   defp redact_scenario(scenario, model, values) do
     scenario
-    |> update_many(:given, &redact_named(&1, :event, model.events, values))
+    |> update_many(:given, &redact_event(&1, :event, model, values))
     |> update_one(:trigger, &redact_trigger(&1, model, values))
-    |> update_many(:expect, &redact_named(&1, :event, model.events, values))
+    |> update_many(:expect, &redact_event(&1, :event, model, values))
     |> update_many(:issues, &redact_named(&1, :command, model.commands, values))
     |> redact_answers(model, values)
   end
@@ -34,7 +34,7 @@ defmodule EhOsContract.Model.Export do
     do: redact_named(trigger, :name, model.commands, values)
 
   defp redact_trigger(%{kind: :on} = trigger, model, values),
-    do: redact_named(trigger, :name, model.events, values)
+    do: redact_event(trigger, :name, model, values)
 
   defp redact_trigger(%{kind: :query} = trigger, model, values),
     do: redact_named(trigger, :name, model.queries, values, :params)
@@ -42,14 +42,43 @@ defmodule EhOsContract.Model.Export do
   defp redact_trigger(trigger, _model, _values), do: trigger
 
   defp redact_named(item, name_key, declarations, values, fields_key \\ :fields) do
-    case Enum.find(declarations, &(&1.name == Map.get(item, name_key))) do
-      nil ->
-        item
+    fields =
+      case Enum.find(declarations, &(&1.name == Map.get(item, name_key))) do
+        nil -> :unknown
+        declaration -> declaration[fields_key]
+      end
 
-      declaration ->
-        Map.update(item, :data, %{}, &redact_fields(&1, declaration[fields_key], values))
-    end
+    redact_data(item, fields, values)
   end
+
+  # A scenario of a consumer names a sibling's event by its local name, and the
+  # sibling declares which of its fields are personal: the contract's own events are
+  # not enough to know (a policy on `ClinicalDocumentation`'s closing carries a PESEL).
+  defp redact_event(item, name_key, model, values) do
+    name = Map.get(item, name_key)
+
+    fields =
+      case EhOsContract.Model.declaring(model, name) do
+        {_contract, %{fields: fields}} ->
+          fields
+
+        _published_or_unknown ->
+          case EhOsContract.Model.consumed(model, name) do
+            {:published, fields} -> fields
+            nil -> :unknown
+          end
+      end
+
+    redact_data(item, fields, values)
+  end
+
+  # Data whose declaration cannot be found is dropped rather than published: nothing
+  # says which of its fields are personal. A timer's trigger carries none.
+  defp redact_data(item, :unknown, _values),
+    do: Map.update(item, :data, %{}, &drop_values/1)
+
+  defp redact_data(item, fields, values),
+    do: Map.update(item, :data, %{}, &redact_fields(&1, fields, values))
 
   defp redact_answers(%{trigger: %{kind: :query, name: name}} = scenario, model, values) do
     query = Enum.find(model.queries, &(&1.name == name))
@@ -88,6 +117,9 @@ defmodule EhOsContract.Model.Export do
   end
 
   defp redact_fields(value, _fields, _values), do: value
+
+  defp drop_values(data) when is_map(data), do: Map.new(data, fn {key, _value} -> {key, nil} end)
+  defp drop_values(_data), do: nil
 
   defp redact_value(_type, nil, _values), do: nil
 

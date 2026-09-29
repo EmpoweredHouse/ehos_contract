@@ -40,7 +40,9 @@ What changes otherwise is what a host has to do.
   `eh_os_contract.model.v1`.** The JSON-ready document includes the contract, its domain, derived human
   capabilities and a digest of that projection. Its declaration and example structure is complete, but
   personal values in scenarios, rule examples, invariant examples and defaults are `null`: the public model
-  is not a second store for fixture data.
+  is not a second store for fixture data. A scenario's event is redacted by the fields of the contract that
+  declares it, so a consumer's scenario on a sibling's event does not publish that sibling's personal
+  values, and the data of an event whose declaration cannot be found is `null` rather than verbatim.
 
 - **E9c: a command may be scoped, as a query is (D10).** `command :x, "…", by: :actor, scope: :field` names one
   of its fields; `EhOsContract.Model.capabilities/1` gives the command's capability that `scope:` instead of

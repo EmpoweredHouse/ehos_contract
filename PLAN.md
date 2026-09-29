@@ -21,8 +21,8 @@ ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); po E9c-1
 
 - **`origin/main` = `e7709c2`** (merge [#42](https://github.com/EmpoweredHouse/eh-os-contract/pull/42), E9c-2; CI
   `main` — `success`, przebieg `36451295950`).
-- **E10** na `dsl-v2/e10-outputs`, od `e7709c2`; commity kodu przez `dfa4455`, końcowy zapis planu w HEAD;
-  niewypchnięte, bez PR-a. Pełna brama po kodzie i poprawce z przeglądu: `EXIT=0`.
+- **E10** na `dsl-v2/e10-outputs`, od `e7709c2`, w PR [#43](https://github.com/EmpoweredHouse/eh-os-contract/pull/43)
+  do `main`. Po przeglądzie PR-a 29 września poprawka przecieku danych osobowych w `/model` („Przegląd PR-a E10”).
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
@@ -2111,6 +2111,29 @@ Generator nie dostał ręcznego filtra do dwóch historycznych komend: taki filt
 manifest istnieje. Drugie repozytorium nie zostało zmienione. `ehos.manifest/v1` przyjmuje tylko komendy; query,
 scope, `publish`/`consumes` czekają w EHOS D-40/D-41 na v2, a capability nagrywania potrzebuje tam pola, którego
 proponowane v2 jeszcze nie opisuje.
+
+### Przegląd PR-a E10 — przeciek i decyzja o grafach (29 września)
+
+**Przeciek w `/model`.** Wygenerowane dokumenty wszystkich ośmiu kontraktów pokazały PESEL, ICD-10 i ICD-9
+w `Rehmed.Contracts.StatutoryReporting`: dwa scenariusze polityki startują od `visit_closed_clinically`
+rodzeństwa (ClinicalDocumentation), a redakcja szukała deklaracji zdarzenia tylko w zdarzeniach własnego
+kontraktu — nie znalazła, więc zostawiła dane. Założenie z opisu PR-a („generated model contains no fixture
+PESEL”) było sprawdzone ręcznie i nie na tym kontrakcie. Poprawka: zdarzenie w `given`, `on` i `expect` jest
+rozwiązywane przez `Model.declaring/2` (własne albo rodzeństwa, z `as:`) i pola odebranej publikacji; dane
+zdarzenia, którego deklaracji nie da się znaleźć, wychodzą jako `null` zamiast dosłownie. Zweryfikowane
+odwrotnie: na `export.ex` z PR-a nowy test silnika pada na `refute encoded =~ "Ada Example"`. Sandbox dostał
+test, że żaden model nie niesie wartości osobowych Rehmedu.
+
+**Decyzja użytkownika: EHOS rysuje procesy z `/model`, AsyncAPI zostaje granicą `publish`.** Pytanie było, czy
+AsyncAPI nie powinien pokazywać też zdarzeń wewnętrznych, skoro EHOS ma rysować procesy aplikacji. Pomiar:
+AsyncAPI jest pusty w siedmiu z ośmiu kontraktów sandboxa — procesy płyną przez `consumes` wewnątrz aplikacji,
+a jedynym `publish` jest `taxvision.accounting_month.opened.v1`. `/model` ma wszystko, czego graf potrzebuje:
+zdarzenia, jednostki, polityki, process managery i krawędzie `consumes`; docelowy format grafu to `graph.v1` z E13.
+*Odrzucone:* zdarzenia wewnętrzne w AsyncAPI oznaczone rozszerzeniem `x-eh-os-contract-internal` — zamazuje
+granicę D11 (dokument udawałby kanały, których nie ma na brokerze i które zmieniają się bez wersji), a każda
+wewnętrzna zmiana ruszałaby digest dokumentu, który istnieje po to, żeby porównywać interfejs zewnętrzny.
+Konsekwencja: skoro EHOS czyta `/model`, redakcja modelu jest granicą danych osobowych — stąd poprawka wyżej przed
+merge'em, nie po.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 

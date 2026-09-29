@@ -23,6 +23,18 @@ defmodule EhOsContractHost.E10OutputsTest do
     assert output =~ "eh_os_contract.check: 0 errors, 29 warnings, 9 notices"
   end
 
+  # StatutoryReporting's policy scenarios start from ClinicalDocumentation's closing,
+  # a sibling's event: its personal fields are declared there, not in the consumer.
+  test "no exported model carries Rehmed's personal scenario values" do
+    for contract <- EhOsContract.Registry.v2_contracts() do
+      encoded = contract |> EhOsContract.Model.to_data() |> Jason.encode!()
+
+      for personal <- ["85010112345", "M54.5", "93.39"] do
+        refute encoded =~ personal, "#{inspect(contract)} exports #{personal}"
+      end
+    end
+  end
+
   test "TaxVision's public event is the only AsyncAPI message boundary" do
     document = EhOsContract.AsyncAPI.document(Taxvision.Contracts.AccountingMonth)
 
