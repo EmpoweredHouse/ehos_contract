@@ -2345,6 +2345,34 @@ plikach testów (poza rejestrem, jak w v1).
   spoza payloadu. Częściowo pokryte: dwie komendy jednej nazwy w kontrakcie, `by: []`, jednostka kalendarzowa w
   `within` — do dopisania przy E11d, gdy tabela bram w `docs/contract.md` powstaje od nowa.
 
+**Przegląd E11a (pre-pr-review, 29 września).** Dwa przeglądy równolegle na `origin/main..e03f534`: poprawność
+(`code-review high`) i bezpieczeństwo z wydajnością. Dostęp, rozwiązywanie nazw kontraktów z URL-a (zawsze przez
+rejestr, bez `String.to_atom`) i redakcja danych osobowych — bez zmian. Poprawione, każde osobnym commitem z testem
+zweryfikowanym odwrotnie:
+- **process manager z `correlate: []`** się kompilował (poprawka R2 objęła tylko proces) — wszystkie przebiegi
+  dzieliłyby jeden rekord, stan i timery; P4 odmawia;
+- **pusty `:id` w danych scenariusza** przechodził przy kompilacji (`Data.problems`), a padał dopiero w
+  wygenerowanym teście — teraz odmawia jak `Codec`;
+- **`Dependency.observe/3` rzucał w środku awarii** dla systemu, który kontrakt tylko wywołuje (`calls:` efektu),
+  a moduł domeny dawał `MatchError`. **Decyzja użytkownika:** obserwacja jest zapisywana także dla systemu z
+  `calls:` — obietnice i tak czytają tylko zdarzenia z `depends_on`, więc niczego nie zawiesza. *Odrzucone:*
+  przepuszczanie bez zapisu (obserwacja by przepadła) i zostawienie wyjątku (autor dopisywałby `depends_on`, żeby
+  adapter nie padał). Odmowa zostaje dla systemu, którego kontrakt nie używa, choćby domena go deklarowała;
+- **dwa testy weba zniknęły z fiksturą v1** (dwa kontrakty o jednej nazwie procesu na `/graph`, 400 „several
+  contracts” w API zgodności) — druga fikstura v2 w hoście testowym weba, z własną domeną (X7);
+- **zależność `:telemetry`** bez użytkownika po usunięciu `EhOsContract.Telemetry` — usunięta (zostaje pośrednio z
+  Ecto i Obana, `mix.lock` bez zmian).
+
+Pominięte, z powodem: pusty `:string` jako pole korelacji daje przebieg `"proc:"` (odmowa w `run_key` to nowy
+powód odmowy widoczny dla hosta; pola korelacji są dziś zawsze `:id`); **brak odpowiednika `promise-finer-than-run`
+w v2** — gdy jednostka `eventually` nie ma pól tożsamości jednostki `from`, każdy element dostaje pusty klucz i
+przebieg jest zawsze naruszony, a `check` milczy (sprzed E11a; kandydat na regułę L3 w E11f); koszt raportu rośnie z
+całą historią (`Run` i `Trace` czytają wszystkie przebiegi procesu, sprzed E11a); powielone `bounded` w `trace.ex`
+(uproszczenie, nie usterka); zadania Obana starego `EhOsContract.Job` w kolejce hosta — linijka do CHANGELOG-u w
+E11d. Bez zmian: `:id` z samych spacji (tak samo jak v1 — `Codec` nie normalizuje tekstu). Pomiar przeglądu: na
+2 mln zdarzeń zapytanie przebiegów to złączenie haszujące w 85–90 ms, także przy statystykach z pustych tabel —
+17 s z testu skali mogło pochodzić z dopisywania w `Store`, nie z oceny; do złapania `auto_explain` przy pomiarze.
+
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
 Po lekturze architektury EHOS-a (`~/Projects/ai/eh-os`, `docs/ADR.md` i `docs/ARCHITECTURE.md`; research w
