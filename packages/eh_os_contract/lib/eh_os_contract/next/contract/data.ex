@@ -25,6 +25,8 @@ defmodule EhOsContract.Next.Contract.Data do
   """
   @spec problems(type(), term()) :: [String.t()]
   def problems(_type, nil), do: []
+  # As `EhOsContract.Codec` refuses it at dispatch: an identifier that names nothing.
+  def problems(:id, ""), do: [~s|"" is not an identifier, which names something|]
   def problems(:id, value) when is_binary(value), do: []
   def problems({:id, _entity}, value), do: problems(:id, value)
   def problems(:string, value) when is_binary(value), do: []
