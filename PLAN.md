@@ -31,7 +31,9 @@ ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); po E9c-1
 - **E11–E12 — asystenta.** Po E11 kontrakty
   sandboxa przechodzą do testów pakietu jako fikstury akceptacyjne („Przed E9c-2 — decyzje użytkownika”).
 - **Lista zmian do `eh-os` ma nową pozycję z E10:** fixture i przykład manifestu TaxVision są starsze od modelu
-  po E9; dokładny diff jest w „E10 — co wyszło”. Nie zmieniono drugiego repozytorium.
+  po E9; dokładny diff jest w „E10 — co wyszło”. Nie zmieniono drugiego repozytorium. Druga pozycja z 29
+  września: propozycja jednego generowanego deskryptora aplikacji w miejsce manifestu i pełnego ręcznego
+  `ehos.yaml` („Po E10 — decyzja użytkownika: deweloper pisze minimum, deskryptor aplikacji generujemy”).
 - **Proces na porcie 4000, wdrożenie E8 u hosta, reszta listy zmian do `eh-os`, publikacja na Hex, F1/F2 i dziesięć
   usterek** — użytkownika, bez zmian (opisane w „Po E8 — kolejność zmieniona” i dopiskach 25–27 września). Link w
   wyjściu `check` (`hexdocs.pm/eh_os_contract/rules.html`) zadziała dopiero po publikacji na Hex.
@@ -2134,6 +2136,56 @@ granicę D11 (dokument udawałby kanały, których nie ma na brokerze i które z
 wewnętrzna zmiana ruszałaby digest dokumentu, który istnieje po to, żeby porównywać interfejs zewnętrzny.
 Konsekwencja: skoro EHOS czyta `/model`, redakcja modelu jest granicą danych osobowych — stąd poprawka wyżej przed
 merge'em, nie po.
+
+### Po E10 — decyzja użytkownika: deweloper pisze minimum, deskryptor aplikacji generujemy (29 września)
+
+**Skąd pytanie.** Ta sama wiedza występuje w kilku dokumentach naraz. Przykład: komenda `open_month`, którą wydaje
+Księgowa, jest w kontrakcie, w `capabilities` modelu, w rozszerzeniach operacji OpenAPI i w manifeście. `publish`
+z kontraktu wraca w AsyncAPI i w ręcznie pisanym `publishes:` pliku `ehos.yaml` (`eh-os`, `ARCHITECTURE.md`
+§5.1). Powtórzenie w dokumentach wygenerowanych nie jest problemem. Problemem jest fakt pisany ręcznie dwa razy
+i dokumenty, które się rozjeżdżają, jak fixture manifestu TaxVision w `eh-os`. Manifest (co aplikacja oferuje)
+i `ehos.yaml` (czego potrzebuje) okazały się dwiema stronami jednego grafu uprawnień: capability dla człowieka
+przez rolę i capability innej aplikacji dla workloadu przez `needs.capabilities`. Rozdzielenie ich na dwa pliki
+jest historyczne: manifest powstał osobno w D-32, bo `ehos.yaml` opisywał tylko potrzeby.
+
+**Decyzja.** Deweloper podaje w `ehos.yaml` tylko minimum, czyli to, czego kontrakt wiedzieć nie może: bazę,
+sekrety, `serves` i `health`. Przy deploymencie biblioteka generuje za niego kompletny deskryptor aplikacji i to
+on trafia do EHOS-a. Deskryptor ma dwie sekcje:
+
+- `offers` z kontraktu: capability, role, publikacje; do tego `serves` z `ehos.yaml`;
+- `needs` z `ehos.yaml`: baza, sekrety; z kontraktu `consumes` i ta część `needs.capabilities`, którą da się
+  wyprowadzić, a resztę z `ehos.yaml`.
+
+Każdy fakt jest pisany ręcznie dokładnie raz: to, co wynika z procesu, w kontrakcie, a runtime w `ehos.yaml`.
+Wygenerowanego pliku nikt nie edytuje.
+
+**Co z dzisiejszego rozdziału zostaje, jako reguły wewnątrz deskryptora.**
+
+- Uprawnienia mają osobny digest i osobną aktywację. Rola, która urosła, daje ludziom więcej i wymaga przeglądu w
+  Console; zmiana portu albo wersji sekretu nie. EHOS liczy digest sam (D-38), więc może go liczyć z samej części
+  uprawnień.
+- Część ręczna i generowana nie mieszają się w jednym edytowanym pliku. Wejście (`ehos.yaml`) pisze deweloper,
+  wyjście składa build.
+
+OpenAPI, AsyncAPI i `/model` zostają obok jako widoki dla narzędzi i grafu.
+
+*Odrzucone:* dwa osobne dokumenty, manifest i kompletny ręczny `ehos.yaml`, jak dziś. Ta sama capability żyje w
+nich po dwóch stronach grafu, a `publishes` pisze się dwa razy. *Odrzucone:* Console sama wyprowadza manifest i
+resztę z `/model`. Logika „kto ma jaką capability” (aktorzy, `by:`, `scope`) istniałaby wtedy w dwóch
+repozytoriach i rozjechałaby się przy pierwszej zmianie reguł, więc wyprowadzanie zostaje w bibliotece.
+*Odrzucone:* jeden plik, w którym deweloper edytuje połowę, a build nadpisuje drugą. To zły DX, bo nie wiadomo, co
+przetrwa następny build.
+
+**Czyje to jest.** Schemat deskryptora jest EHOS-a: `ehos.manifest/v1` (D-32, D-38) i `ehos.yaml` (§5.1) są ich.
+Na liście zmian do `eh-os` jest propozycja: jeden deskryptor z `offers`/`needs` i digestem uprawnień liczonym z
+`offers`, najlepiej razem z ich planowanym manifestem v2 (D-40/D-41), który i tak ma dołożyć query, scope i
+`publish`/`consumes`. Dziś po naszej stronie nic się nie zmienia: `mix eh_os_contract.manifest` pisze v1, dopóki
+EHOS przyjmuje v1. Etap w kolejności — do ustalenia po odpowiedzi EHOS-a.
+
+**Otwarte, bez decyzji.** Czy AsyncAPI dostaje operacje `receive` z `consumes` publikacji innej aplikacji. Bez
+nich Console przy deploymencie widzi, co Sales wysyła, ale nie widzi, na których polach polega Delivery. Czy
+OpenAPI ma wskazywać capability tylko po nazwie, bez powtarzania ról i `scope`. Czy każdy wygenerowany dokument
+niesie digest modelu, z którego powstał, żeby Console odrzuciła zestaw z dwóch buildów.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
