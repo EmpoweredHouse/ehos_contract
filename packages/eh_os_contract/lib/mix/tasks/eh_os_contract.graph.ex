@@ -201,7 +201,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
 
     unless contract do
       known = contracts |> Enum.map(&inspect/1) |> Enum.sort() |> Enum.join(", ")
-      Mix.raise("no v2 contract #{opts[:contract]}. Registered: #{known}")
+      Mix.raise("no contract #{opts[:contract]}. Registered: #{known}")
     end
 
     text =

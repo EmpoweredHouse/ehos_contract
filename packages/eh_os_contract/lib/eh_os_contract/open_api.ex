@@ -23,7 +23,7 @@ defmodule EhOsContract.OpenAPI do
 
   @openapi_version "3.1.2"
 
-  @doc "The OpenAPI document for one v2 contract, including its digest."
+  @doc "The OpenAPI document for one contract, including its digest."
   @spec document(module() | map()) :: map()
   def document(contract) do
     body = body(contract)
@@ -38,7 +38,7 @@ defmodule EhOsContract.OpenAPI do
     |> EhOsContract.Digest.document_hash()
   end
 
-  @doc "Every registered v2 contract, with its contract version and OpenAPI digest."
+  @doc "Every registered contract, with its contract version and OpenAPI digest."
   @spec index() :: [map()]
   def index do
     for contract <- EhOsContract.Registry.contracts() do

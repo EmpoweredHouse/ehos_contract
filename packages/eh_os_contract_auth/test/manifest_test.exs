@@ -108,7 +108,7 @@ defmodule EhOsContract.Auth.ManifestTest do
   end
 
   test "refuses a domain with no contracts instead of writing an invalid empty manifest" do
-    assert_raise ArgumentError, ~r/has no v2 contracts/, fn -> Manifest.build(Domain, []) end
+    assert_raise ArgumentError, ~r/has no contracts/, fn -> Manifest.build(Domain, []) end
   end
 
   test "the task refuses an ambiguous public domain name" do

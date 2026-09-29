@@ -202,7 +202,7 @@ defmodule EhOsContract.Model do
     end
   end
 
-  @typedoc "What a v2 contract generates a module for (v2 §5)."
+  @typedoc "What a contract generates a module for."
   @type generated ::
           :command
           | :event

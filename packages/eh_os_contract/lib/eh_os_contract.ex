@@ -128,7 +128,7 @@ defmodule EhOsContract do
   def start_link(_opts \\ []), do: Supervisor.start_link(__MODULE__.Supervisor, [])
 
   @doc """
-  Dispatches a command to a v2 contract: authorizes its actor, decides, appends
+  Dispatches a command to a contract: authorizes its actor, decides, appends
   (`EhOsContract.Dispatcher`).
   """
   @spec dispatch(module(), struct(), keyword() | map()) ::
@@ -136,13 +136,13 @@ defmodule EhOsContract do
           | {:error, EhOsContract.Rejection.t() | EhOsContract.Dispatcher.refusal()}
   defdelegate dispatch(contract, command, opts), to: EhOsContract.Dispatcher
 
-  @doc "Records an event a v2 contract declares `recorded_by:` (`EhOsContract.Dispatcher.record/3`)."
+  @doc "Records an event a contract declares `recorded_by:` (`EhOsContract.Dispatcher.record/3`)."
   @spec record(module(), struct(), keyword() | map()) ::
           {:ok, EhOsContract.Receipt.t()}
           | {:error, EhOsContract.Dispatcher.refusal() | :not_created}
   defdelegate record(contract, event, opts), to: EhOsContract.Dispatcher
 
-  @doc "Asks a query of a v2 contract (`EhOsContract.Dispatcher.query/3`)."
+  @doc "Asks a query of a contract (`EhOsContract.Dispatcher.query/3`)."
   @spec query(module(), struct(), keyword() | map()) ::
           {:ok, [struct()] | struct() | nil} | {:error, EhOsContract.Dispatcher.refusal()}
   defdelegate query(contract, params, opts), to: EhOsContract.Dispatcher

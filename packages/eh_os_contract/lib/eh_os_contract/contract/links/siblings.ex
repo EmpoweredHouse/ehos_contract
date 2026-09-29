@@ -48,7 +48,7 @@ defmodule EhOsContract.Contract.Links.Siblings do
 
   defp x5(_c, consumes, nil) do
     [
-      {"X5: consumes #{inspect(consumes.from)}, which is not a compiled v2 contract",
+      {"X5: consumes #{inspect(consumes.from)}, which is not a compiled contract",
        Links.at(consumes)}
     ]
   end

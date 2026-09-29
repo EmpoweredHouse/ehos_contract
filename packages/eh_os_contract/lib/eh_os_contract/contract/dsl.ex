@@ -1,6 +1,6 @@
 defmodule EhOsContract.Contract.Dsl do
   @moduledoc """
-  The Spark extension behind `use EhOsContract.Contract` (v2 §4.1–4.3).
+  The Spark extension behind `use EhOsContract.Contract`.
 
   One top-level section, so every entity is written straight into the module body:
   the units that decide (aggregates and dynamic consistency boundaries) with their
@@ -10,8 +10,7 @@ defmodule EhOsContract.Contract.Dsl do
   the one process; and scenarios. The vocabulary is closed: a contract cannot add
   extensions.
 
-  Options may stand beside a `do` block, as v2 §4.5 writes them (D13,
-  `EhOsContract.DslWrappers`).
+  Options may stand beside a `do` block (`EhOsContract.DslWrappers`).
 
   The structs below are what Spark builds from each declaration. They stay inside the
   extension: readers get plain data from `EhOsContract.Model`, never these structs.
@@ -594,7 +593,7 @@ defmodule EhOsContract.Contract.Dsl do
 
   @query %Spark.Dsl.Entity{
     name: :query,
-    describe: "A question an actor may ask of a read model; a capability, like a command (D10).",
+    describe: "A question an actor may ask of a read model; a capability, like a command.",
     target: Query,
     args: [:name, :label],
     entities: [params: [@param], constraints: [@constraint]],
@@ -712,7 +711,7 @@ defmodule EhOsContract.Contract.Dsl do
 
   @publish %Spark.Dsl.Entity{
     name: :publish,
-    describe: "An integration event: the one way an event leaves the application (D11).",
+    describe: "An integration event: the one way an event leaves the application.",
     target: Publish,
     args: [:name],
     schema: [

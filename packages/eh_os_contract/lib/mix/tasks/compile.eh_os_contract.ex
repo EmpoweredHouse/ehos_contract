@@ -1,5 +1,5 @@
 defmodule Mix.Tasks.Compile.EhOsContract do
-  @shortdoc "Checks v2 contracts against their domain and each other (L3)"
+  @shortdoc "Checks contracts against their domain and each other (L3)"
 
   @moduledoc """
   The rules between modules, layer L3 of v2 §6, as a Mix compiler. It runs on every

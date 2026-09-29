@@ -92,7 +92,7 @@ defmodule EhOsContract.Check.Catalog do
       esdm: nil,
       summary: "Nothing implements a contract.",
       text: """
-      A contract may exist without code (v2 §16, D3): nothing of it can be dispatched, and its report
+      A contract may exist without code: nothing of it can be dispatched, and its report
       is of a process nobody runs. A unit made only of events entering through `record/3` needs no
       implementation and does not cause this notice.
       """
@@ -136,7 +136,7 @@ defmodule EhOsContract.Check.Catalog do
       esdm: nil,
       summary: "A value declares invariants, and no module checks them.",
       text: """
-      Dispatch holds every value of the type to its invariants (plan EL2b), so a command, an event or
+      Dispatch holds every value of the type to its invariants, so a command, an event or
       a query carrying one raises without the code that checks them. Add a module with
       `use <Domain>, value: <name>`. Said only of a domain some contract of which is implemented:
       a domain whose contracts have no code yet has nothing to run either.
@@ -161,7 +161,7 @@ defmodule EhOsContract.Check.Catalog do
       summary: "A `:string` field of an event is not `personal:`.",
       text: """
       `:string` is text a person typed. Unless it is marked `personal:` it is not sealed with its
-      subject's key and stays in the log as written after the subject is erased (v2 §14). A code, a
+      subject's key and stays in the log as written after the subject is erased. A code, a
       number or a choice has a type of its own.
       """
     },
@@ -185,7 +185,7 @@ defmodule EhOsContract.Check.Catalog do
       text: """
       A command has to emit (A1), so a unit with no event has no command either and can decide
       nothing. A boundary is held to this too. ESDM's `aggregate-without-commands` is not a rule here:
-      a unit whose events are all `recorded_by:` has no command on purpose (v2 §16, D6).
+      a unit whose events are all `recorded_by:` has no command on purpose.
       """
     },
     %{

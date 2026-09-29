@@ -185,7 +185,7 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
   end
 
   describe "X5: the sibling and its events exist" do
-    test "a module that is not a compiled v2 contract" do
+    test "a module that is not a compiled contract" do
       violations = links([{"sib_nowhere.ex", subscriber("SibNowhere", "Nowhere")}])
 
       assert assert_linked(
@@ -194,7 +194,7 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
                "sib_nowhere.ex",
                4
              ) =~
-               "which is not a compiled v2 contract"
+               "which is not a compiled contract"
     end
 
     test "a sibling of another domain is another application's" do

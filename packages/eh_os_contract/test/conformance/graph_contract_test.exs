@@ -328,7 +328,7 @@ defmodule EhOsContract.GraphContractTest do
 
     test "an unknown contract or unit, a unit without its contract, and a flag it would drop are refused" do
       assert_raise Mix.Error,
-                   ~r/no v2 contract Nonesuch\. Registered: .*DispatchRig\.Ledger/,
+                   ~r/no contract Nonesuch\. Registered: .*DispatchRig\.Ledger/,
                    fn ->
                      Mix.Tasks.EhOsContract.Graph.run(["--contract", "Nonesuch"])
                    end

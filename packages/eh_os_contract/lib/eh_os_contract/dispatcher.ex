@@ -1105,7 +1105,7 @@ defmodule EhOsContract.Dispatcher do
         model
 
       %{module: module} ->
-        raise ArgumentError, "#{inspect(module)} is not a v2 contract"
+        raise ArgumentError, "#{inspect(module)} is not a contract"
     end
   end
 

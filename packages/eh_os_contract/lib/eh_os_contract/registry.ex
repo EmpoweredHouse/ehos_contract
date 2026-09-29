@@ -100,7 +100,7 @@ defmodule EhOsContract.Registry do
     end
   end
 
-  @doc "Every contract found in the running binary (v2 plan, E7c)."
+  @doc "Every contract found in the running binary."
   @spec contracts() :: [module()]
   def contracts, do: Map.get(graph(), :contracts, [])
 

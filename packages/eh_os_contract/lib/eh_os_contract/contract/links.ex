@@ -85,7 +85,7 @@ defmodule EhOsContract.Contract.Links do
   @spec contract(map(), module()) :: contract() | nil
   def contract(system, module), do: Map.get(system.by_module, module) || contract(module)
 
-  @doc "A v2 contract as the rules read it, or `nil` when `module` is not one."
+  @doc "A contract as the rules read it, or `nil` when `module` is not one."
   @spec contract(module()) :: contract() | nil
   def contract(module) do
     with %{kind: :contract, units: _} = model <- compiled(module) do
