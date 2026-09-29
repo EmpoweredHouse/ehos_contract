@@ -26,7 +26,7 @@ defmodule EhOsContract.Web.Live.ContractStatus do
   @impl true
   def mount(_params, _session, socket) do
     reports =
-      Enum.map(EhOsContract.Registry.v2_contracts(), &Conformance.report(&1, []))
+      Enum.map(EhOsContract.Registry.contracts(), &Conformance.report(&1, []))
 
     {:ok, assign(socket, :reports, reports)}
   end

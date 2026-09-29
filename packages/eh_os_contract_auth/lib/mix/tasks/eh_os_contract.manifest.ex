@@ -38,7 +38,7 @@ defmodule Mix.Tasks.EhOsContract.Manifest do
     domain_module = domain.module
 
     contracts =
-      Enum.filter(EhOsContract.Registry.v2_contracts(), fn contract ->
+      Enum.filter(EhOsContract.Registry.contracts(), fn contract ->
         EhOsContract.Model.fetch(contract).domain == domain_module
       end)
 

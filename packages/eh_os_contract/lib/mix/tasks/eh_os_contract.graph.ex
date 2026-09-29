@@ -113,8 +113,8 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   defp declared(opts) do
     name = String.to_atom(opts[:process])
 
-    v2 =
-      Enum.find(EhOsContract.Registry.v2_contracts(), fn c ->
+    contract =
+      Enum.find(EhOsContract.Registry.contracts(), fn c ->
         match?(%{process: %{name: ^name}}, EhOsContract.Model.fetch(c))
       end)
 
@@ -122,19 +122,19 @@ defmodule Mix.Tasks.EhOsContract.Graph do
       not opts[:mermaid] ->
         Mix.raise("--process draws a diagram; pass --mermaid (and --output to keep the accents)")
 
-      v2 && opts[:overlay] ->
+      contract && opts[:overlay] ->
         emit_output(
-          EhOsContract.Graph.contract_to_mermaid(v2, overlay: true, since: since(opts)),
+          EhOsContract.Graph.contract_to_mermaid(contract, overlay: true, since: since(opts)),
           opts
         )
 
-      v2 ->
-        emit_output(EhOsContract.Graph.declared_to_mermaid(v2, name), opts)
+      contract ->
+        emit_output(EhOsContract.Graph.declared_to_mermaid(contract, name), opts)
 
       true ->
         known =
           for(
-            c <- EhOsContract.Registry.v2_contracts(),
+            c <- EhOsContract.Registry.contracts(),
             %{process: %{name: n}} <- [EhOsContract.Model.fetch(c)],
             do: n
           )
@@ -188,7 +188,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   end
 
   defp system(domain, opts) do
-    EhOsContract.Graph.system_to_mermaid(domain, EhOsContract.Registry.v2_contracts(),
+    EhOsContract.Graph.system_to_mermaid(domain, EhOsContract.Registry.contracts(),
       overlay: opts[:overlay] || false,
       since: since(opts)
     )
@@ -196,7 +196,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
 
   # A v2 contract's full graph, or one of its units.
   defp contract(opts) do
-    contracts = EhOsContract.Registry.v2_contracts()
+    contracts = EhOsContract.Registry.contracts()
     contract = Enum.find(contracts, &(inspect(&1) == opts[:contract]))
 
     unless contract do

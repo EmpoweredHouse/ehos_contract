@@ -58,7 +58,7 @@ defmodule Mix.Tasks.EhOsContract.View do
 
     text =
       try do
-        EhOsContract.View.render(domain, EhOsContract.Registry.v2_contracts(),
+        EhOsContract.View.render(domain, EhOsContract.Registry.contracts(),
           details: opts[:details] || false,
           path: path
         )

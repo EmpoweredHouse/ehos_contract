@@ -29,18 +29,18 @@ defmodule EhOsContract.Check do
   contract is implemented — not at all is legal and noted (D3), in part is a
   command or a consumer dispatch will refuse, and a warning.
   """
-  @spec v2_findings([module()] | nil) :: [Finding.t()]
-  def v2_findings(contracts \\ nil) do
-    for contract <- contracts || EhOsContract.Registry.v2_contracts(),
+  @spec findings([module()] | nil) :: [Finding.t()]
+  def findings(contracts \\ nil) do
+    for contract <- contracts || EhOsContract.Registry.contracts(),
         %{} = linked <- [Links.contract(contract)],
-        finding <- v2_process(linked) ++ v2_implemented(linked) do
+        finding <- process_findings(linked) ++ implemented_findings(linked) do
       finding
     end
   end
 
-  defp v2_process(%{model: %{process: nil}}), do: []
+  defp process_findings(%{model: %{process: nil}}), do: []
 
-  defp v2_process(%{model: %{process: process} = model, declarations: declarations}) do
+  defp process_findings(%{model: %{process: process} = model, declarations: declarations}) do
     name = inspect(model.module)
     declared = Enum.find(declarations.processes, &(&1.name == process.name))
     at = declared && Links.at(declared)
@@ -122,7 +122,7 @@ defmodule EhOsContract.Check do
   # What dispatch looks an implementation up for: every unit, every consumer, and
   # every query, which `EhOsContract.Dispatcher.query/3` answers through its module;
   # and every domain service, which a decision calls through the contract.
-  defp v2_implemented(%{model: model, at: at}) do
+  defp implemented_findings(%{model: model, at: at}) do
     wanted =
       for(u <- model.units, Enum.any?(model.commands, &(&1.unit == u.name)), do: {u.kind, u.name}) ++
         for(p <- model.policies, do: {:policy, p.name}) ++
@@ -200,5 +200,5 @@ defmodule EhOsContract.Check do
   """
   @spec no_contracts?([module()] | nil) :: boolean()
   def no_contracts?(contracts \\ nil),
-    do: (contracts || EhOsContract.Registry.v2_contracts()) == []
+    do: (contracts || EhOsContract.Registry.contracts()) == []
 end

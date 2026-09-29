@@ -68,7 +68,7 @@ defmodule EhOsContract.Conformance do
   promise; the report is the only thing that omits it.
   """
   @spec report(module(), keyword()) :: map()
-  def report(contract, opts \\ []), do: contract |> Model.fetch() |> report_v2(opts)
+  def report(contract, opts \\ []), do: contract |> Model.fetch() |> from_model(opts)
 
   @doc """
   The same report, projected onto values that survive JSON.
@@ -98,8 +98,8 @@ defmodule EhOsContract.Conformance do
   # declaration or a promise the owner has not confirmed, and every step when no run
   # happened.
 
-  @spec report_v2(map(), keyword()) :: map()
-  defp report_v2(model, opts) do
+  @spec from_model(map(), keyword()) :: map()
+  defp from_model(model, opts) do
     deployment = Deployment.report(model.module, opts)
 
     %{
@@ -110,14 +110,14 @@ defmodule EhOsContract.Conformance do
       # The code's half of the deployment, beside the agreement's: a v2 contract's
       # wiring is its steps and the modules that implement them.
       wiring: %{version: deployment.deployed.wiring_version, since: deployment.deployed.since},
-      processes: List.wrap(model.process && process_v2(model, opts)),
+      processes: List.wrap(model.process && process_report(model, opts)),
       scenarios: EhOsContract.Coverage.of(model, opts),
-      drift: drift_v2(model, opts)
+      drift: drift(model, opts)
     }
   end
 
-  @spec process_v2(map(), keyword()) :: map()
-  defp process_v2(model, opts) do
+  @spec process_report(map(), keyword()) :: map()
+  defp process_report(model, opts) do
     process = model.process
     steps = EhOsContract.Paths.observe(model, opts)
     runs = EhOsContract.Paths.runs_of(model, Atom.to_string(process.name), opts)
@@ -150,7 +150,7 @@ defmodule EhOsContract.Conformance do
       untraversed: untraversed,
       in_flight: in_flight,
       failing: failing,
-      duration: duration_v2(model, opts),
+      duration: duration(model, opts),
       promises: promises(model, opts)
     }
   end
@@ -192,14 +192,14 @@ defmodule EhOsContract.Conformance do
   # The process `deadline`, measured. `nil` — not a map of zeroes — when the process
   # declares none or has not confirmed the one it declares. A number the client never
   # agreed to, printed next to numbers they did, reads as measured.
-  defp duration_v2(%{process: %{deadline: %{unverified: false} = deadline}} = model, opts) do
+  defp duration(%{process: %{deadline: %{unverified: false} = deadline}} = model, opts) do
     model.module
     |> EhOsContract.Run.evaluate(model.process.name, opts)
     |> EhOsContract.Run.summary()
     |> Map.put(:deadline, {deadline.amount, deadline.unit})
   end
 
-  defp duration_v2(_model, _opts), do: nil
+  defp duration(_model, _opts), do: nil
 
   defp promises(model, opts) do
     label = fn name ->
@@ -233,8 +233,8 @@ defmodule EhOsContract.Conformance do
   # not come through dispatch under today's declarations: an event of the deployed
   # version that no command it declares emits — written around dispatch, when it
   # names no command at all. History under an older version is not drift.
-  @spec drift_v2(map(), keyword()) :: [map()]
-  defp drift_v2(model, opts) do
+  @spec drift(map(), keyword()) :: [map()]
+  defp drift(model, opts) do
     declared =
       MapSet.new(
         for(c <- model.commands, e <- c.emits, do: {Atom.to_string(c.name), e}) ++

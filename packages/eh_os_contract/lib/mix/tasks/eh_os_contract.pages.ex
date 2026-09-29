@@ -48,7 +48,7 @@ defmodule Mix.Tasks.EhOsContract.Pages do
 
     pages =
       try do
-        Pages.render(domain, EhOsContract.Registry.v2_contracts())
+        Pages.render(domain, EhOsContract.Registry.contracts())
       rescue
         error in ArgumentError -> Mix.raise(Exception.message(error))
       end

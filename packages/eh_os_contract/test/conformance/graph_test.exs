@@ -1,4 +1,4 @@
-defmodule EhOsContract.GraphV2Test do
+defmodule EhOsContract.GraphTest do
   @moduledoc """
   A v2 contract's graph (v2 §13, plan E7c-2): a node of every kind, in the Event
   Storming colours, and each step as its edges; with the overlay, the log on it. What

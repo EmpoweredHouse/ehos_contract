@@ -1,10 +1,10 @@
-defmodule EhOsContract.RegistryExcludeV2Test do
+defmodule EhOsContract.RegistryExcludeTest do
   @moduledoc """
   **`config :eh_os_contract, exclude: [...]` keeps a namespace out of the scan** — for
   v2 contracts and the domains they share.
 
   `EhOsContract.Registry.load!/1` is where every reader of v2 starts:
-  `v2_contracts/0` feeds the deployment table, the check and the graphs, and
+  `contracts/0` feeds the deployment table, the check and the graphs, and
   `domains/0` feeds the glossary and the view. Filtering there once is the point —
   a namespace dropped from one of those lists and not the other would put a domain in
   the glossary whose contracts no report knows. Which binary runs is an operational
@@ -36,7 +36,7 @@ defmodule EhOsContract.RegistryExcludeV2Test do
     test "a fixture contract and its domain are in the scan" do
       Registry.load!()
 
-      assert ProcessShapes.Promised in Registry.v2_contracts()
+      assert ProcessShapes.Promised in Registry.contracts()
       assert ProcessShapes.Domain in Registry.domains()
     end
   end
@@ -46,19 +46,19 @@ defmodule EhOsContract.RegistryExcludeV2Test do
       Application.put_env(:eh_os_contract, :exclude, ["ProcessShapes"])
       Registry.load!()
 
-      refute ProcessShapes.Promised in Registry.v2_contracts()
+      refute ProcessShapes.Promised in Registry.contracts()
       refute ProcessShapes.Domain in Registry.domains()
 
       # The control: a namespace nobody named stays in the scan, so this is a filter
       # on the one prefix given, not an accident that emptied everything.
-      assert UniversalityGate.TreatmentEpisode in Registry.v2_contracts()
+      assert UniversalityGate.TreatmentEpisode in Registry.contracts()
     end
 
     test "an unmatched prefix excludes nothing" do
       Application.put_env(:eh_os_contract, :exclude, ["NoSuchNamespace"])
       Registry.load!()
 
-      assert ProcessShapes.Promised in Registry.v2_contracts()
+      assert ProcessShapes.Promised in Registry.contracts()
       assert ProcessShapes.Domain in Registry.domains()
     end
   end

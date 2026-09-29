@@ -73,7 +73,7 @@ defmodule EhOsContract.AsyncAPI do
   """
   @spec index() :: [map()]
   def index do
-    for contract <- EhOsContract.Registry.v2_contracts() do
+    for contract <- EhOsContract.Registry.contracts() do
       %{
         "contract" => inspect(contract),
         "version" => Model.fetch(contract).version,
@@ -84,9 +84,9 @@ defmodule EhOsContract.AsyncAPI do
   end
 
   @spec body(module()) :: map()
-  defp body(contract), do: contract |> Model.fetch() |> v2_body()
+  defp body(contract), do: contract |> Model.fetch() |> from_model()
 
-  defp v2_body(model) do
+  defp from_model(model) do
     %{
       "asyncapi" => @asyncapi_version,
       "info" => %{
@@ -94,13 +94,13 @@ defmodule EhOsContract.AsyncAPI do
         "version" => model.version,
         "x-eh-os-contract-engine" => EhOsContract.version()
       },
-      "channels" => v2_channels(model),
-      "operations" => v2_operations(model),
-      "components" => %{"messages" => v2_messages(model)}
+      "channels" => channels(model),
+      "operations" => operations(model),
+      "components" => %{"messages" => messages(model)}
     }
   end
 
-  defp v2_channels(model) do
+  defp channels(model) do
     for publication <- model.publishes, into: %{} do
       event = published_event(model, publication)
       message = publication.as
@@ -116,7 +116,7 @@ defmodule EhOsContract.AsyncAPI do
     end
   end
 
-  defp v2_operations(model) do
+  defp operations(model) do
     for publication <- model.publishes, into: %{} do
       channel = to_string(publication.name)
       message = publication.as
@@ -130,7 +130,7 @@ defmodule EhOsContract.AsyncAPI do
     end
   end
 
-  defp v2_messages(model) do
+  defp messages(model) do
     domain = Model.fetch(model.domain)
 
     for publication <- model.publishes, into: %{} do

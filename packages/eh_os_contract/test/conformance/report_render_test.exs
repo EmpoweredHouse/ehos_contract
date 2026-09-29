@@ -1,10 +1,10 @@
-defmodule EhOsContract.ReportRenderV2Test do
+defmodule EhOsContract.ReportRenderTest do
   @moduledoc """
   The conformance report of a v2 contract **as a reader gets it**: what it leaves out,
   what one page holds, the period it is about, and the sentences that qualify a
   promise's count.
 
-  `report_v2_test.exs` pins the numbers v2 computes and the steps it names. This file
+  `report_test.exs` pins the numbers v2 computes and the steps it names. This file
   pins what the report promises its reader, which v1's `report_test.exs` pinned on
   the v1 shape and which has to stay true when v1 goes:
 

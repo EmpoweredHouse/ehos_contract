@@ -1,4 +1,4 @@
-defmodule EhOsContract.ReportV2Test do
+defmodule EhOsContract.ReportTest do
   @moduledoc """
   The conformance report of a v2 contract (v2 §13, plan E7c): the four questions on
   the new log, `conformance.v2` on the wire, and the sentences that say which source

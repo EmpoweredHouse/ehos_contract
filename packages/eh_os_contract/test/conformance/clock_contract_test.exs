@@ -1,4 +1,4 @@
-defmodule EhOsContract.ClockV2Test do
+defmodule EhOsContract.ClockContractTest do
   @moduledoc """
   `EhOsContract.Clock.at/2` on a v2 contract: **the time an event is stamped with is
   chosen before it is written, whichever way the event got into the log.**

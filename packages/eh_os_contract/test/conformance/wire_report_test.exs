@@ -1,4 +1,4 @@
-defmodule EhOsContract.Conformance.WireV2Test do
+defmodule EhOsContract.Conformance.WireReportTest do
   @moduledoc """
   A v2 contract's report **as values that survive a wire** (`conformance.v2`).
 

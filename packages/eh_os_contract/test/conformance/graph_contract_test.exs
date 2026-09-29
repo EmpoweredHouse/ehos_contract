@@ -1,7 +1,7 @@
 defmodule EhOsContract.GraphContractTest do
   @moduledoc """
   Plan EG1: a v2 contract's full graph and one unit of it. The full graph is the
-  steps `GraphV2Test` pins, and around them each unit's group, the actors, the read
+  steps `GraphTest` pins, and around them each unit's group, the actors, the read
   side and the external systems; the unit is its state, commands, events and
   invariants, with the scenarios counted on each path.
 
@@ -231,7 +231,7 @@ defmodule EhOsContract.GraphContractTest do
     end
 
     test "every edge of every unit and contract ends at a node the graph declares" do
-      contracts = EhOsContract.Registry.v2_contracts() ++ [@contract, @constrained]
+      contracts = EhOsContract.Registry.contracts() ++ [@contract, @constrained]
 
       for contract <- contracts, unit <- EhOsContract.Model.fetch(contract).units do
         declared_ends!(EhOsContract.Graph.Unit.build(contract, unit.name))

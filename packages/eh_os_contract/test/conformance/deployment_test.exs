@@ -1,4 +1,4 @@
-defmodule EhOsContract.DeploymentV2Test do
+defmodule EhOsContract.DeploymentTest do
   @moduledoc """
   The deployment of a v2 contract (v2 §13, plan E7c-2): which version is deployed,
   since when, and what its wiring is — the steps the contract declares, and which

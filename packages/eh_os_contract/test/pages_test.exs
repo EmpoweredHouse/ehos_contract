@@ -10,7 +10,7 @@ defmodule EhOsContract.PagesTest do
 
   alias EhOsContract.{Pages, Registry}
 
-  defp pages(domain), do: Pages.render(domain, Registry.v2_contracts())
+  defp pages(domain), do: Pages.render(domain, Registry.contracts())
 
   # Every relative Markdown link on a page, resolved against the page's directory.
   defp links(path, text) do

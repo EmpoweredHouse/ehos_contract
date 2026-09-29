@@ -78,7 +78,7 @@ defmodule EhOsContract.Deployment do
   """
   @spec record!(DateTime.t()) :: :ok
   def record!(now \\ DateTime.utc_now()) do
-    rows = for contract <- EhOsContract.Registry.v2_contracts(), do: v2_row(contract, now)
+    rows = for contract <- EhOsContract.Registry.contracts(), do: row(contract, now)
 
     # `{:replace, ...}` rather than `:nothing`, and the difference matters exactly
     # once: the first boot after the column exists meets a row recorded before it,
@@ -109,10 +109,10 @@ defmodule EhOsContract.Deployment do
   # The edges and bindings are sorted, so the list order carries no meaning by the
   # time they are hashed — the one case where `EhOsContract.Digest` needs the
   # caller's help, since it preserves list order on purpose.
-  @spec v2_row(module(), DateTime.t()) :: map()
-  defp v2_row(contract, now) do
+  @spec row(module(), DateTime.t()) :: map()
+  defp row(contract, now) do
     model = Model.fetch(contract)
-    edges = contract |> v2_edge_labels() |> Enum.sort()
+    edges = contract |> edge_labels() |> Enum.sort()
 
     domain = model.domain
 
@@ -155,8 +155,8 @@ defmodule EhOsContract.Deployment do
   `"<kind>:<name>-><kind>:<name>"`, with the consumer between them for a reaction,
   a timer and an effect.
   """
-  @spec v2_edge_labels(module()) :: [String.t()]
-  def v2_edge_labels(contract) do
+  @spec edge_labels(module()) :: [String.t()]
+  def edge_labels(contract) do
     for step <- EhOsContract.Paths.declared(contract) do
       [step.from, step.via, step.to]
       |> Enum.reject(&is_nil/1)

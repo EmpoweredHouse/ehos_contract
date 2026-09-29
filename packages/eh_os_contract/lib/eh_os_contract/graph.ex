@@ -62,14 +62,14 @@ defmodule EhOsContract.Graph do
   """
   @spec declared_to_mermaid(module(), atom()) :: String.t()
   def declared_to_mermaid(contract, process_name),
-    do: contract |> Model.fetch() |> declared_v2(process_name)
+    do: contract |> Model.fetch() |> declared(process_name)
 
   # **A contract's process** (plan E7c): its stages as lanes, titled by their label
   # where they have one; its own events in the stage group they
   # sit in, and the events it includes in the stage the `include` sits in; each
   # `promise` as an arrow with its window; the externals from the domain. The steps
   # between them are `contract_to_mermaid/2`'s picture, not this one.
-  defp declared_v2(%{process: %{name: process_name} = process} = model, process_name) do
+  defp declared(%{process: %{name: process_name} = process} = model, process_name) do
     own =
       for e <- model.events do
         %{
@@ -114,7 +114,7 @@ defmodule EhOsContract.Graph do
     )
   end
 
-  defp declared_v2(model, process_name) do
+  defp declared(model, process_name) do
     raise ArgumentError, "#{inspect(model.module)} declares no process #{inspect(process_name)}"
   end
 

@@ -1,9 +1,9 @@
-defmodule EhOsContract.DeploymentHistoryV2Test do
+defmodule EhOsContract.DeploymentHistoryTest do
   @moduledoc """
   The deployment table's history for a v2 contract: **one row per wiring that booted,
   and what moved between two of them.**
 
-  `deployment_v2_test.exs` pins what a v2 row holds — its steps as paths, its wiring,
+  `deployment_test.exs` pins what a v2 row holds — its steps as paths, its wiring,
   a promise's digest being its rule. This file pins the mechanism around the row, which
   the fourth question of the report rests on: recording is idempotent, a row written
   before the digests column is repaired rather than left blind, the diff between the

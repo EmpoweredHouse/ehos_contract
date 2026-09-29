@@ -5,7 +5,7 @@ defmodule EhOsContract.ClockTest do
   it is now.
 
   That the time reaches the events a command, a policy and a drained subscription
-  write is pinned on a contract, in `conformance/clock_v2_test.exs`.
+  write is pinned on a contract, in `conformance/clock_contract_test.exs`.
   """
 
   use ExUnit.Case, async: true

@@ -1,4 +1,4 @@
-defmodule EhOsContract.CheckV2Test do
+defmodule EhOsContract.CheckTest do
   @moduledoc """
   What `mix eh_os_contract.check` says about v2 contracts (plan E7c-2): the sentences
   v1 contracts get, where a v2 contract may legally say the thing, and whether it is
@@ -10,7 +10,7 @@ defmodule EhOsContract.CheckV2Test do
   alias EhOsContract.Check
 
   defp findings(contract),
-    do: for(f <- Check.v2_findings([contract]), do: {f.level, f.rule, f.message})
+    do: for(f <- Check.findings([contract]), do: {f.level, f.rule, f.message})
 
   describe "nothing to check" do
     test "an empty registry is recognised as such" do
@@ -25,7 +25,7 @@ defmodule EhOsContract.CheckV2Test do
       # and silence the whole task. The v2 contracts are named on their own, so this
       # still says something once v1's registry is gone.
       refute Check.no_contracts?()
-      refute Check.no_contracts?(EhOsContract.Registry.v2_contracts())
+      refute Check.no_contracts?(EhOsContract.Registry.contracts())
     end
   end
 
@@ -65,7 +65,7 @@ defmodule EhOsContract.CheckV2Test do
 
   test "a contract with no implementation is legal, and noted" do
     Code.compile_string("""
-    defmodule EhOsContract.CheckV2Test.Unimplemented do
+    defmodule EhOsContract.CheckTest.Unimplemented do
       use EhOsContract.Contract, domain: ProcessShapes.Domain, context: :batching
 
       aggregate :pile, "Pile" do
@@ -86,20 +86,20 @@ defmodule EhOsContract.CheckV2Test do
     end
     """)
 
-    module = EhOsContract.CheckV2Test.Unimplemented
+    module = EhOsContract.CheckTest.Unimplemented
 
     assert [
              {:info, "promise-without-within",
               "promise :stays_stacked has no `within`, so it has no failing case" <> _},
              {:info, "contract-without-implementation",
-              "EhOsContract.CheckV2Test.Unimplemented has no implementation, which a contract may (D3)" <>
+              "EhOsContract.CheckTest.Unimplemented has no implementation, which a contract may (D3)" <>
                 _}
            ] = findings(module)
   end
 
   test "a contract made only of recorded events needs no implementation" do
     Code.compile_string("""
-    defmodule EhOsContract.CheckV2Test.RecordedOnly do
+    defmodule EhOsContract.CheckTest.RecordedOnly do
       use EhOsContract.Contract, domain: ProcessShapes.Domain, context: :batching
 
       aggregate :inbox, "Inbox" do
@@ -113,6 +113,6 @@ defmodule EhOsContract.CheckV2Test do
     end
     """)
 
-    assert findings(EhOsContract.CheckV2Test.RecordedOnly) == []
+    assert findings(EhOsContract.CheckTest.RecordedOnly) == []
   end
 end

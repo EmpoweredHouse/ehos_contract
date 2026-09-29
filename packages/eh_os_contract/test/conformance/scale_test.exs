@@ -1,4 +1,4 @@
-defmodule EhOsContract.ScaleV2Test do
+defmodule EhOsContract.ScaleTest do
   @moduledoc """
   **Volume, and the two instants a report's period is bounded by** — on a v2 promise,
   whose runs come from `eh_os_contract_event_runs` rather than from the event row.
