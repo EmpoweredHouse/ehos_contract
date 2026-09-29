@@ -1,0 +1,1 @@
+Adds to E11d the guard from #46 (cherry-picked 03957b3, 7e8d0d1; reviewed there, see the note on aa0e1d4 of dsl-v2/e11c-migrations) and corrects the CHANGELOG entry that said a pre-cut database is not refused. Gate on HEAD EXIT=0: sandbox 143 / 0-29-9, engine 985 / 0-66-5, web 52, auth 62. The E11d reviews are in the notes on ad01460 and 1bae14a.
