@@ -2137,6 +2137,26 @@ wewnętrzna zmiana ruszałaby digest dokumentu, który istnieje po to, żeby por
 Konsekwencja: skoro EHOS czyta `/model`, redakcja modelu jest granicą danych osobowych — stąd poprawka wyżej przed
 merge'em, nie po.
 
+**Pre-PR review poprawki (29 września).** Oba przeglądy (poprawność; bezpieczeństwo i wydajność) znalazły cztery
+ścieżki, którymi dane bez deklaracji wychodziły dosłownie albo rzucały wyjątkiem w kontrakcie, którego kompilator nie
+sprawdził: rodzeństwo bez konsumowanego zdarzenia (`CaseClauseError`, 500 na `/model`), klucz danych bez pola,
+odpowiedź query bez read modelu i przykład wartości strukturalnej, który nie jest mapą. Wszystkie dają teraz `null`
+(`5790ca7`, zweryfikowane odwrotnie; 27 wygenerowanych dokumentów sandboxa identycznych bajt w bajt przed i po).
+Pominięte: wspólny helper z `Links.Scenarios.event/6` (drobiazg, osobno) i obsługa `If-None-Match` na endpointach
+dokumentów (7 ms na indeks — nie teraz).
+
+**Decyzja użytkownika: ryzyko hashy przyjęte i zapisane.** `version` kontraktu i `digests["scenario:*"]` są
+liczone ze scenariuszy **przed** redakcją (`build.ex`, `version/3` i `digests/3`), mają 48 bitów i wychodzą w
+`/model`, OpenAPI i AsyncAPI. Kto widzi dokument, zna wszystkie pozostałe wejścia hasha, więc przy jednym polu
+osobowym może offline zgadywać zredagowaną wartość — PESEL to około 2^28 możliwości; przy kilku polach osobowych
+naraz przestrzeń przekracza 48 bitów i zgadywanie daje fałszywe trafienia, ale nie jest niemożliwe. Dostęp do
+dokumentów jest za resolverem hosta. **Reguła, która z tego wynika: wartości pól `personal:` w scenariuszach,
+przykładach reguł, niezmiennikach i wartościach domyślnych są zmyślone, nigdy prawdziwe** — kontrakt nie jest
+miejscem na dane pacjenta, a hash z niego jest publiczny. *Odrzucone:* hash liczony z redakcji — zamyka lukę, ale
+przesuwa jeden raz wersję każdego kontraktu z danymi osobowymi w scenariuszach, a zmiana samej wartości osobowej
+w przykładzie przestaje ruszać wersję. *Odrzucone:* usunięcie tylko `digests` z eksportu — nie zamyka luki, bo
+`version` jest hashem z tych samych scenariuszy i leży też w OpenAPI i AsyncAPI.
+
 ### Po E10 — decyzja użytkownika: deweloper pisze minimum, deskryptor aplikacji generujemy (29 września)
 
 **Skąd pytanie.** Ta sama wiedza występuje w kilku dokumentach naraz. Przykład: komenda `open_month`, którą wydaje
