@@ -31,7 +31,7 @@ defmodule EhOsContract.CheckDirectionsTest do
       end
 
       defmodule EhOsContract.CheckDirectionsTest.Reports do
-        use EhOsContract.Next.Contract,
+        use EhOsContract.Contract,
           domain: EhOsContract.CheckDirectionsTest.Clinic,
           context: :reporting
 

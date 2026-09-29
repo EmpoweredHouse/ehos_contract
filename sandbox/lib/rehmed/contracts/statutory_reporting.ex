@@ -45,7 +45,7 @@ defmodule Rehmed.Contracts.StatutoryReporting do
   overdue state are not written: the promise's breach is that state.
   """
 
-  use EhOsContract.Next.Contract, domain: Rehmed.Domain, context: :statutory_reporting
+  use EhOsContract.Contract, domain: Rehmed.Domain, context: :statutory_reporting
 
   consumes Rehmed.Contracts.Scheduling, :visit_completed
   consumes Rehmed.Contracts.ClinicalDocumentation, :visit_closed_clinically

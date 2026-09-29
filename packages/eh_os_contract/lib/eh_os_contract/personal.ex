@@ -301,7 +301,7 @@ defmodule EhOsContract.Personal do
 
   defp declared!(subject) do
     declared =
-      for contract <- Registry.v2_contracts(),
+      for contract <- Registry.contracts(),
           domain = EhOsContract.Model.fetch(contract).domain,
           Code.ensure_loaded?(domain) and
             function_exported?(domain, :__eh_os_contract_model__, 0),

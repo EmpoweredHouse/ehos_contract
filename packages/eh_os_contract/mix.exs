@@ -82,7 +82,7 @@ defmodule EhOsContract.MixProject do
         "compile --force --warnings-as-errors",
         "eh_os_contract.check",
         "eh_os_contract.rules --check",
-        "spark.formatter --extensions EhOsContract.Domain.Dsl,EhOsContract.Next.Contract.Dsl --check",
+        "spark.formatter --extensions EhOsContract.Domain.Dsl,EhOsContract.Contract.Dsl --check",
         "test"
       ]
     ]

@@ -32,7 +32,7 @@ defmodule Mix.Tasks.EhOsContract.Report do
     period = [since: at(opts[:since]), until: at(opts[:until])]
 
     text =
-      EhOsContract.Registry.v2_contracts()
+      EhOsContract.Registry.contracts()
       |> Enum.map(
         &(&1
           |> EhOsContract.Conformance.report(period)

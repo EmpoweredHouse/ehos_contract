@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.ContractFieldsTest do
+defmodule EhOsContract.ContractFieldsTest do
   @moduledoc """
   v2 plan, E4: **F1–F6 of v2 §6** — the fields of every struct a contract declares —
   and F7 from E8.

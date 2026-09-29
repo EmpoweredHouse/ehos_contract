@@ -1,11 +1,11 @@
-defmodule EhOsContract.Next.ContractTest do
+defmodule EhOsContract.ContractTest do
   @moduledoc """
   v2 plan, E4: **a v2 contract compiles to plain data** (v2 §9), whose version does
   not see declaration order.
 
   The fixtures are declared inside this file on purpose: modules defined in a `.exs`
   are not in the application's module list, so the registry never sees them.
-  Their domain, `EhOsContract.Next.ContractTest.Clinic`, does not exist, and that is
+  Their domain, `EhOsContract.ContractTest.Clinic`, does not exist, and that is
   the point of one test: `domain:` records no compile dependency (v2 §8).
   """
 
@@ -15,8 +15,8 @@ defmodule EhOsContract.Next.ContractTest do
 
   defmodule Golden do
     @moduledoc false
-    use EhOsContract.Next.Contract,
-      domain: EhOsContract.Next.ContractTest.Clinic,
+    use EhOsContract.Contract,
+      domain: EhOsContract.ContractTest.Clinic,
       context: :settlement
 
     aggregate :visit, "Wizyta", source: "AGG-03" do
@@ -61,8 +61,8 @@ defmodule EhOsContract.Next.ContractTest do
 
   defmodule Reordered do
     @moduledoc false
-    use EhOsContract.Next.Contract,
-      domain: EhOsContract.Next.ContractTest.Clinic,
+    use EhOsContract.Contract,
+      domain: EhOsContract.ContractTest.Clinic,
       context: :settlement
 
     process :visit, "Wizyta" do
@@ -107,8 +107,8 @@ defmodule EhOsContract.Next.ContractTest do
 
   defmodule Changed do
     @moduledoc false
-    use EhOsContract.Next.Contract,
-      domain: EhOsContract.Next.ContractTest.Clinic,
+    use EhOsContract.Contract,
+      domain: EhOsContract.ContractTest.Clinic,
       context: :settlement
 
     aggregate :visit, "Wizyta", source: "AGG-03" do
@@ -163,7 +163,7 @@ defmodule EhOsContract.Next.ContractTest do
                format: 1,
                kind: :contract,
                module: Golden,
-               domain: EhOsContract.Next.ContractTest.Clinic,
+               domain: EhOsContract.ContractTest.Clinic,
                context: :settlement,
                process: %{
                  name: :visit,
@@ -304,7 +304,7 @@ defmodule EhOsContract.Next.ContractTest do
 
     test "names its capabilities after the domain, which has to be compiled (D14)" do
       compile("""
-      defmodule EhOsContract.Next.ContractTest.ClinicDomain do
+      defmodule EhOsContract.ContractTest.ClinicDomain do
         use EhOsContract.Domain, name: :clinic, language: :pl
 
         actor :reception, :human, "Recepcja"
@@ -312,9 +312,9 @@ defmodule EhOsContract.Next.ContractTest do
         actor :registry, :system, "Rejestr"
       end
 
-      defmodule EhOsContract.Next.ContractTest.Named do
-        use EhOsContract.Next.Contract,
-          domain: EhOsContract.Next.ContractTest.ClinicDomain,
+      defmodule EhOsContract.ContractTest.Named do
+        use EhOsContract.Contract,
+          domain: EhOsContract.ContractTest.ClinicDomain,
           context: :settlement
 
         aggregate :visit, "Wizyta" do
@@ -347,7 +347,7 @@ defmodule EhOsContract.Next.ContractTest do
       # Only what a person may do is a capability, and its roles are the people's: the
       # system actor is not a role of :close, and :remind (a reaction's) and :reported
       # (the registry's) have none (plan, E9a review).
-      assert Model.capabilities(EhOsContract.Next.ContractTest.Named) == %{
+      assert Model.capabilities(EhOsContract.ContractTest.Named) == %{
                "clinic.close" => %{
                  kind: :command,
                  name: :close,
@@ -373,7 +373,7 @@ defmodule EhOsContract.Next.ContractTest do
       error = assert_raise ArgumentError, fn -> Model.capabilities(Golden) end
 
       assert error.message =~
-               "names domain EhOsContract.Next.ContractTest.Clinic, which is not a compiled"
+               "names domain EhOsContract.ContractTest.Clinic, which is not a compiled"
 
       # A module that exists and is no domain at all: named as the contract's domain,
       # not refused as a module without a model.
@@ -406,8 +406,8 @@ defmodule EhOsContract.Next.ContractTest do
         name = "Identity#{System.unique_integer([:positive])}"
 
         compile("""
-        defmodule EhOsContract.Next.ContractTest.#{name} do
-          use EhOsContract.Next.Contract, domain: Clinic, context: :billing
+        defmodule EhOsContract.ContractTest.#{name} do
+          use EhOsContract.Contract, domain: Clinic, context: :billing
 
           dcb :payer_period, "Okres płatnika" do
             identity #{inspect(identity)}
@@ -437,8 +437,8 @@ defmodule EhOsContract.Next.ContractTest do
         name = "Source#{System.unique_integer([:positive])}"
 
         compile("""
-        defmodule EhOsContract.Next.ContractTest.#{name} do
-          use EhOsContract.Next.Contract, domain: Clinic, context: :settlement
+        defmodule EhOsContract.ContractTest.#{name} do
+          use EhOsContract.Contract, domain: Clinic, context: :settlement
 
           aggregate :visit, "Wizyta" do
             identity :visit_id
@@ -469,8 +469,8 @@ defmodule EhOsContract.Next.ContractTest do
 
   describe "the domain" do
     test "is named without being compiled or even existing (v2 §8)" do
-      refute Code.ensure_loaded?(EhOsContract.Next.ContractTest.Clinic)
-      assert Model.fetch(Golden).domain == EhOsContract.Next.ContractTest.Clinic
+      refute Code.ensure_loaded?(EhOsContract.ContractTest.Clinic)
+      assert Model.fetch(Golden).domain == EhOsContract.ContractTest.Clinic
     end
   end
 
@@ -479,8 +479,8 @@ defmodule EhOsContract.Next.ContractTest do
       error =
         compile_error(
           """
-          defmodule EhOsContract.Next.ContractTest.UnknownOption do
-            use EhOsContract.Next.Contract, domain: Clinic, context: :settlement
+          defmodule EhOsContract.ContractTest.UnknownOption do
+            use EhOsContract.Contract, domain: Clinic, context: :settlement
 
             aggregate :visit, "Wizyta" do
               identity :visit_id

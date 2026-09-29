@@ -26,7 +26,7 @@ defmodule EhOsContractHost.E10OutputsTest do
   # StatutoryReporting's policy scenarios start from ClinicalDocumentation's closing,
   # a sibling's event: its personal fields are declared there, not in the consumer.
   test "no exported model carries Rehmed's personal scenario values" do
-    contracts = EhOsContract.Registry.v2_contracts()
+    contracts = EhOsContract.Registry.contracts()
     assert Rehmed.Contracts.StatutoryReporting in contracts
 
     for contract <- contracts do

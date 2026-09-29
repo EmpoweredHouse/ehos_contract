@@ -10,7 +10,7 @@ defmodule EhOsContract.CheckCompilerTest do
   alias EhOsContract.Check
   alias EhOsContract.Check.Finding
 
-  @broken EhOsContract.Next.Fixtures.CheckCompilerBroken
+  @broken EhOsContract.Fixtures.CheckCompilerBroken
 
   setup_all do
     # A contract naming a domain nobody compiled: X1.

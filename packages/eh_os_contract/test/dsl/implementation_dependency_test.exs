@@ -4,15 +4,15 @@ defmodule EhOsContract.ImplementationDependencyTest do
   from a contract to its implementation** (v2 §8). The implementation compiles
   against the contract, and the contract names nothing, not even its domain.
 
-  Read from the package's own fixture, `UniversalityGate.Next`, through the real
+  Read from the package's own fixture, `UniversalityGate`, through the real
   `mix xref` over this build's manifest, so it is the compiler's record and not a
   claim about it.
   """
 
   use ExUnit.Case, async: true
 
-  @contract "test/support/universality_gate/next/treatment_episode.ex"
-  @implementation "test/support/universality_gate/next/episode.ex"
+  @contract "test/support/universality_gate/treatment_episode.ex"
+  @implementation "test/support/universality_gate/episode.ex"
   @domain "test/support/universality_gate/domain.ex"
 
   test "the contract has no compile-time edge to its implementation or its domain" do
@@ -22,7 +22,7 @@ defmodule EhOsContract.ImplementationDependencyTest do
     refute from_contract =~ @domain
 
     # Control: the graph is not empty; the contract compiles against the library.
-    assert from_contract =~ "lib/eh_os_contract/next/contract/dsl.ex"
+    assert from_contract =~ "lib/eh_os_contract/contract/dsl.ex"
   end
 
   test "the implementation depends on the contract at compile time" do

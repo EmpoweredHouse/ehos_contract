@@ -6,7 +6,7 @@ defmodule BoundaryRig.Courses do
   consults from a sibling contract.
   """
 
-  use EhOsContract.Next.Contract, domain: BoundaryRig.Domain, context: :enrolment
+  use EhOsContract.Contract, domain: BoundaryRig.Domain, context: :enrolment
 
   aggregate :course, "Course" do
     identity :course_id

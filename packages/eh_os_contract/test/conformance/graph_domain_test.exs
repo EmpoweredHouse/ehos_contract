@@ -44,7 +44,7 @@ defmodule EhOsContract.GraphDomainTest do
       end
 
       defmodule #{inspect(@scheduling)} do
-        use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :scheduling
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :scheduling
 
         aggregate :slot, "Termin" do
           identity :visit_id
@@ -60,7 +60,7 @@ defmodule EhOsContract.GraphDomainTest do
       end
 
       defmodule #{inspect(@settlement)} do
-        use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
 
         consumes #{inspect(@scheduling)}, :booked
         consumes "clinic.visit.booked.v1", as: :booked_elsewhere do
@@ -158,7 +158,7 @@ defmodule EhOsContract.GraphDomainTest do
       compile(
         """
         defmodule EhOsContract.GraphDomainTest.VisitSettlement do
-          use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+          use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
 
           aggregate :visit, "Wizyta" do
             identity :visit_id
@@ -174,7 +174,7 @@ defmodule EhOsContract.GraphDomainTest do
         end
 
         defmodule EhOsContract.GraphDomainTest.Visit.Settlement do
-          use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+          use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
 
           aggregate :visit, "Wizyta" do
             identity :visit_id
@@ -231,7 +231,7 @@ defmodule EhOsContract.GraphDomainTest do
       end
 
       diagram =
-        Graph.system_to_mermaid(DispatchRig.Domain, EhOsContract.Registry.v2_contracts(),
+        Graph.system_to_mermaid(DispatchRig.Domain, EhOsContract.Registry.contracts(),
           overlay: true
         )
 
@@ -242,7 +242,7 @@ defmodule EhOsContract.GraphDomainTest do
                "contract_dispatch_rig_ledger -->|account_opened · 2 events| contract_dispatch_rig_branch"
 
       # Without the overlay, the edge names what flows and nothing counts it.
-      assert Graph.system_to_mermaid(DispatchRig.Domain, EhOsContract.Registry.v2_contracts()) =~
+      assert Graph.system_to_mermaid(DispatchRig.Domain, EhOsContract.Registry.contracts()) =~
                "contract_dispatch_rig_ledger -->|account_opened| contract_dispatch_rig_branch"
     end
   end
@@ -268,7 +268,7 @@ defmodule EhOsContract.GraphDomainTest do
   end
 
   test "the system's overlay reads the steps of consumers only, and counts every edge at once" do
-    contracts = EhOsContract.Registry.v2_contracts()
+    contracts = EhOsContract.Registry.contracts()
     ours = Enum.filter(contracts, &(EhOsContract.Model.fetch(&1).domain == DispatchRig.Domain))
 
     # DispatchRig.Branch is the one consumer: its steps, each process's runs (Branch has no

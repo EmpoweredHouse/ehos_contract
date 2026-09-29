@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.ContractLinksScenariosTest do
+defmodule EhOsContract.ContractLinksScenariosTest do
   @moduledoc """
   v2 plan, E5b: **X9** (v2 §6) — scenario values L2 could not check: values of
   domain types, and the data of an event consumed from a sibling contract. Each
@@ -7,8 +7,8 @@ defmodule EhOsContract.Next.ContractLinksScenariosTest do
 
   use EhOsContract.DslCase, async: false
 
-  @fixtures EhOsContract.Next.Fixtures
-  @domain EhOsContract.Next.Fixtures.ScenariosClinic
+  @fixtures EhOsContract.Fixtures
+  @domain EhOsContract.Fixtures.ScenariosClinic
 
   setup_all do
     compile(
@@ -43,7 +43,7 @@ defmodule EhOsContract.Next.ContractLinksScenariosTest do
       {"#{Macro.underscore(name)}.ex",
        """
        defmodule #{inspect(Module.concat(@fixtures, name))} do
-         use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
 
          aggregate :visit, "Wizyta" do
            identity :visit_id
@@ -111,7 +111,7 @@ defmodule EhOsContract.Next.ContractLinksScenariosTest do
       {"#{Macro.underscore(name)}.ex",
        """
        defmodule #{inspect(Module.concat(@fixtures, name))} do
-         use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
 
          aggregate :visit, "Wizyta" do
            identity :visit_id
@@ -167,7 +167,7 @@ defmodule EhOsContract.Next.ContractLinksScenariosTest do
       {"#{Macro.underscore(name)}.ex",
        """
        defmodule #{inspect(Module.concat(@fixtures, name))} do
-         use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
 
          aggregate :booking, "Rezerwacja" do
            identity :booking_id
@@ -193,7 +193,7 @@ defmodule EhOsContract.Next.ContractLinksScenariosTest do
       {"#{Macro.underscore(name)}.ex",
        """
        defmodule #{inspect(Module.concat(@fixtures, name))} do
-         use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
 
          consumes #{inspect(Module.concat(@fixtures, booking))}, :visit_booked
 
@@ -259,7 +259,7 @@ defmodule EhOsContract.Next.ContractLinksScenariosTest do
       {"#{Macro.underscore(name)}.ex",
        """
        defmodule #{inspect(Module.concat(@fixtures, name))} do
-         use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
 
          domain_service :pricing, "Cennik" do
            function :fee, "Opłata" do

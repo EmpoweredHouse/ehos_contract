@@ -36,7 +36,7 @@ defmodule EhOsContract.ScenarioCase do
   test module with a query's scenario checks out an Ecto sandbox connection when the
   repo's pool is the sandbox.
 
-  **Data.** Scenario data is plain data (`EhOsContract.Next.Contract.Data`): an ISO
+  **Data.** Scenario data is plain data (`EhOsContract.Contract.Data`): an ISO
   8601 string becomes the `DateTime` or `Date` of a `:timestamp` or `:date` field
   here, and a digit string or an integer the `Decimal` of a `:decimal`, including
   inside a domain value. The unit's identity is the scenario's own: the value a
@@ -69,7 +69,7 @@ defmodule EhOsContract.ScenarioCase do
   import ExUnit.Assertions
 
   alias EhOsContract.{Meta, Model, Rejection}
-  alias EhOsContract.Next.Contract.{Callbacks, Data}
+  alias EhOsContract.Contract.{Callbacks, Data}
 
   @epoch ~U[2026-01-01 09:00:00Z]
   @built_in EhOsContract.Domain.Rules.built_in_types()

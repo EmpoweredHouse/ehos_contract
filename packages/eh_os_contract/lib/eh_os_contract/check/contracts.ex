@@ -17,7 +17,7 @@ defmodule EhOsContract.Check.Contracts do
 
   alias EhOsContract.Check.Finding
   alias EhOsContract.Model
-  alias EhOsContract.Next.Contract.{Callbacks, Links, Rules}
+  alias EhOsContract.Contract.{Callbacks, Links, Rules}
 
   @doc """
   Every finding of these rules about `contracts`, v2 contract modules. Their

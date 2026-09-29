@@ -42,7 +42,7 @@ defmodule EhOsContract.Web.Live.Graph do
   def mount(_params, _session, socket) do
     processes =
       for(
-        contract <- EhOsContract.Registry.v2_contracts(),
+        contract <- EhOsContract.Registry.contracts(),
         %{process: %{} = process} <- [EhOsContract.Model.fetch(contract)],
         do: %{contract: contract, name: process.name, label: process.label}
       )
@@ -50,7 +50,7 @@ defmodule EhOsContract.Web.Live.Graph do
 
     # Every registered domain has a map; one with a v2 contract has a system too.
     by_domain =
-      Enum.group_by(EhOsContract.Registry.v2_contracts(), &EhOsContract.Model.fetch(&1).domain)
+      Enum.group_by(EhOsContract.Registry.contracts(), &EhOsContract.Model.fetch(&1).domain)
 
     domains =
       for domain <- EhOsContract.Registry.domains() do

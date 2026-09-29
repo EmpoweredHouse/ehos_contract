@@ -2,7 +2,7 @@ defmodule UniversalityGate.Domain do
   @moduledoc """
   # THIS DOMAIN IS INVENTED. IT IS NOT CLIENT MATERIAL.
 
-  The vocabulary `UniversalityGate.Next.TreatmentEpisode` names (v2 plan, E4). Like
+  The vocabulary `UniversalityGate.TreatmentEpisode` names (v2 plan, E4). Like
   the contract, everything here comes from the author's imagination, and its
   strings are English for the same reason: nobody reads it as a process owner.
 

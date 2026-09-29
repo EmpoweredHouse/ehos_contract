@@ -19,8 +19,8 @@ defmodule ProcessShapes do
     deps: [EhOsContract],
     exports: [
       Domain,
-      Next.Promised,
-      Next.Timed,
-      Next.Bare
+      Promised,
+      Timed,
+      Bare
     ]
 end

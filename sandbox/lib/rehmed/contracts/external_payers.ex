@@ -62,7 +62,7 @@ defmodule Rehmed.Contracts.ExternalPayers do
     not retype something, which nothing here can observe (v1, finding 4).
   """
 
-  use EhOsContract.Next.Contract, domain: Rehmed.Domain, context: :external_payers
+  use EhOsContract.Contract, domain: Rehmed.Domain, context: :external_payers
 
   consumes Rehmed.Contracts.Settlement, :visit_charged_to_payer
 

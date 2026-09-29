@@ -15,7 +15,7 @@ defmodule Rehmed.ConsumedFieldChangeTest do
   The subscriber's contract breaks through its scenario, which feeds the policy a
   `visit_closed_clinically` with `p1_reported:`; the contract has no compile
   dependency on its sibling (v2 §8), so the refusal is the rules between modules
-  (L3, `EhOsContract.Next.Contract.Links`), which the project's compiler runs.
+  (L3, `EhOsContract.Contract.Links`), which the project's compiler runs.
   """
 
   use ExUnit.Case, async: false
@@ -62,7 +62,7 @@ defmodule Rehmed.ConsumedFieldChangeTest do
       compile(copy(@publisher, namespace, change), @publisher) ++
         compile(copy(@subscriber, namespace), @subscriber)
 
-    for {message, anno} <- EhOsContract.Next.Contract.Links.check(modules),
+    for {message, anno} <- EhOsContract.Contract.Links.check(modules),
         do: {message, anno && to_string(:erl_anno.file(anno)), anno && :erl_anno.line(anno)}
   end
 

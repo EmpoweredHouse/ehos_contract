@@ -74,11 +74,11 @@ defmodule EhOsContract.Domain.Build do
 
   # `D.Values.Money`: one callback per invariant of `value :money`, taking a value of
   # the type and answering whether it keeps the invariant (plan EL2b). Written from
-  # `EhOsContract.Next.Contract.Callbacks`, the list `use D, value: :money` checks
+  # `EhOsContract.Contract.Callbacks`, the list `use D, value: :money` checks
   # against.
   defp behaviour(model, value) do
     module = Module.concat([model.module, Values, Macro.camelize(Atom.to_string(value.name))])
-    %{callbacks: callbacks} = EhOsContract.Next.Contract.Callbacks.of(model, :value, value.name)
+    %{callbacks: callbacks} = EhOsContract.Contract.Callbacks.of(model, :value, value.name)
     labels = Map.new(value.invariants, &{&1.name, &1.label})
 
     specs =

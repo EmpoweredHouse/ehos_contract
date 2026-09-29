@@ -10,7 +10,7 @@ defmodule EhOsContract.Web.TestHost.Fixtures.CaseHandling do
   untraversed steps rather than ones asserted into existence.
   """
 
-  use EhOsContract.Next.Contract,
+  use EhOsContract.Contract,
     domain: EhOsContract.Web.TestHost.Fixtures.Domain,
     context: :cases
 

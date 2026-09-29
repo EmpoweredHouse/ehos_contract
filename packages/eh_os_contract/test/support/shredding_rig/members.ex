@@ -12,7 +12,7 @@ defmodule ShreddingRig.Members do
   an effect so that one can watch what Oban keeps of a failure holding a name.
   """
 
-  use EhOsContract.Next.Contract, domain: ShreddingRig.Domain, context: :membership
+  use EhOsContract.Contract, domain: ShreddingRig.Domain, context: :membership
 
   aggregate :membership, "Membership" do
     identity :membership_id

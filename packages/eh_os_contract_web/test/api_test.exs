@@ -64,7 +64,7 @@ defmodule EhOsContract.Web.ApiTest do
     end
 
     test "a named contract is served", %{conn: conn} do
-      contract = EhOsContract.Registry.v2_contracts() |> List.first() |> inspect()
+      contract = EhOsContract.Registry.contracts() |> List.first() |> inspect()
       conn = get(conn, "/api/conformance?contract=#{contract}")
 
       assert conn.status == 200
@@ -107,13 +107,13 @@ defmodule EhOsContract.Web.ApiTest do
       %{"contracts" => contracts} = Jason.decode!(conn.resp_body)
 
       assert Enum.map(contracts, & &1["contract"]) ==
-               EhOsContract.Registry.v2_contracts() |> Enum.map(&inspect/1) |> Enum.sort()
+               EhOsContract.Registry.contracts() |> Enum.map(&inspect/1) |> Enum.sort()
 
       assert Enum.all?(contracts, &(byte_size(&1["digest"]) == 12))
     end
 
     test "a document is served, and its ETag is its digest", %{conn: conn} do
-      name = EhOsContract.Registry.v2_contracts() |> List.first() |> inspect()
+      name = EhOsContract.Registry.contracts() |> List.first() |> inspect()
       conn = get(conn, "/api/asyncapi/#{name}")
 
       assert conn.status == 200
@@ -158,13 +158,13 @@ defmodule EhOsContract.Web.ApiTest do
                Jason.decode!(conn.resp_body)
 
       assert Enum.map(contracts, & &1["contract"]) ==
-               EhOsContract.Registry.v2_contracts() |> Enum.map(&inspect/1) |> Enum.sort()
+               EhOsContract.Registry.contracts() |> Enum.map(&inspect/1) |> Enum.sort()
 
       assert Enum.all?(contracts, &(byte_size(&1["digest"]) == 12))
     end
 
     test "a model document is served with its digest as the ETag", %{conn: conn} do
-      name = EhOsContract.Registry.v2_contracts() |> List.first() |> inspect()
+      name = EhOsContract.Registry.contracts() |> List.first() |> inspect()
       conn = get(conn, "/api/model/#{name}")
 
       assert conn.status == 200
@@ -195,7 +195,7 @@ defmodule EhOsContract.Web.ApiTest do
       %{"contracts" => contracts} = Jason.decode!(conn.resp_body)
 
       assert Enum.map(contracts, & &1["contract"]) ==
-               EhOsContract.Registry.v2_contracts() |> Enum.map(&inspect/1) |> Enum.sort()
+               EhOsContract.Registry.contracts() |> Enum.map(&inspect/1) |> Enum.sort()
 
       assert Enum.all?(contracts, &(byte_size(&1["digest"]) == 12))
     end

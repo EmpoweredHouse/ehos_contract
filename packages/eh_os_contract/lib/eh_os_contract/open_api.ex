@@ -41,7 +41,7 @@ defmodule EhOsContract.OpenAPI do
   @doc "Every registered v2 contract, with its contract version and OpenAPI digest."
   @spec index() :: [map()]
   def index do
-    for contract <- EhOsContract.Registry.v2_contracts() do
+    for contract <- EhOsContract.Registry.contracts() do
       document = document(contract)
 
       %{

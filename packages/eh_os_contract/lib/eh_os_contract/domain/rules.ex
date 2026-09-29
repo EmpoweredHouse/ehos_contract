@@ -709,7 +709,7 @@ defmodule EhOsContract.Domain.Rules do
              invariant}
           ]
 
-        clash = EhOsContract.Next.Contract.Rules.Names.elixir_clash(invariant.name, 1) ->
+        clash = EhOsContract.Contract.Rules.Names.elixir_clash(invariant.name, 1) ->
           [{"#{where} #{clash}; it is the name of the function that checks it", invariant}]
 
         invariant.name in @refusals ->
@@ -807,7 +807,7 @@ defmodule EhOsContract.Domain.Rules do
     do: ["nil is no value; an absent field is never checked"]
 
   defp example_problems(type, example, values),
-    do: EhOsContract.Next.Contract.Data.problems(type, example, values)
+    do: EhOsContract.Contract.Data.problems(type, example, values)
 
   defp suggest(name, names) do
     case DslRules.closest(name, names) do

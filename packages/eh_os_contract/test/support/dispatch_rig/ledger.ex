@@ -10,7 +10,7 @@ defmodule DispatchRig.Ledger do
   deposit of 777, a cycle for dispatch's guard to stop.
   """
 
-  use EhOsContract.Next.Contract, domain: DispatchRig.Domain, context: :ledger
+  use EhOsContract.Contract, domain: DispatchRig.Domain, context: :ledger
 
   aggregate :account, "Account" do
     identity :account_id

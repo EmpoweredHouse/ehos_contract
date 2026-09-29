@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.ContractLinksSystemTest do
+defmodule EhOsContract.ContractLinksSystemTest do
   @moduledoc """
   v2 plan, E5b: **X7, X8 and D14's names** (v2 §6, §16) — what has to be unique
   across one application. Of two that collide, the one in the module sorting later
@@ -8,8 +8,8 @@ defmodule EhOsContract.Next.ContractLinksSystemTest do
 
   use EhOsContract.DslCase, async: false
 
-  @fixtures EhOsContract.Next.Fixtures
-  @domain EhOsContract.Next.Fixtures.SystemClinic
+  @fixtures EhOsContract.Fixtures
+  @domain EhOsContract.Fixtures.SystemClinic
 
   setup_all do
     compile(
@@ -40,7 +40,7 @@ defmodule EhOsContract.Next.ContractLinksSystemTest do
 
     source = """
     defmodule #{inspect(Module.concat(@fixtures, name))} do
-      use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+      use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
 
       aggregate #{inspect(process)}, "Jednostka" do
         identity :case_id
@@ -116,7 +116,7 @@ defmodule EhOsContract.Next.ContractLinksSystemTest do
       # with a command of that name. The event is at line 8.
       recorded = """
       defmodule #{inspect(@fixtures)}.SysNameD do
-        use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :settlement
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
 
         aggregate :fourth, "Jednostka" do
           identity :case_id
@@ -160,7 +160,7 @@ defmodule EhOsContract.Next.ContractLinksSystemTest do
     defp implementation(name) do
       {"#{Macro.underscore(name)}.ex",
        """
-       defmodule EhOsContract.Next.Implementations.#{name} do
+       defmodule EhOsContract.Fixtures.Implementations.#{name} do
          use #{inspect(@fixtures)}.SysImplemented, aggregate: :implemented
 
          @impl true
@@ -173,9 +173,9 @@ defmodule EhOsContract.Next.ContractLinksSystemTest do
       violations = links([implementation("SysFirst"), implementation("SysSecond")])
 
       assert assert_linked(violations, "X8:", "sys_second.ex", 2) =~
-               "EhOsContract.Next.Implementations.SysSecond implements aggregate :implemented of " <>
+               "EhOsContract.Fixtures.Implementations.SysSecond implements aggregate :implemented of " <>
                  "#{inspect(@fixtures)}.SysImplemented, which " <>
-                 "EhOsContract.Next.Implementations.SysFirst (sys_first.ex:2) implements already"
+                 "EhOsContract.Fixtures.Implementations.SysFirst (sys_first.ex:2) implements already"
 
       assert length(violations) == 1
     end
@@ -185,7 +185,7 @@ defmodule EhOsContract.Next.ContractLinksSystemTest do
       # a consumer's build may hold one after upgrading the library.
       stale =
         for name <- [SysStaleFirst, SysStaleSecond] do
-          module = Module.concat(EhOsContract.Next.Implementations, name)
+          module = Module.concat(EhOsContract.Fixtures.Implementations, name)
 
           {:module, ^module, _, _} =
             Module.create(
@@ -193,7 +193,7 @@ defmodule EhOsContract.Next.ContractLinksSystemTest do
               quote do
                 def __eh_os_implementation__,
                   do: %{
-                    contract: EhOsContract.Next.Fixtures.SysImplemented,
+                    contract: EhOsContract.Fixtures.SysImplemented,
                     kind: :aggregate,
                     name: :implemented,
                     emitted: %{}
@@ -205,8 +205,8 @@ defmodule EhOsContract.Next.ContractLinksSystemTest do
           module
         end
 
-      assert [{"X8: EhOsContract.Next.Implementations.SysStaleSecond implements" <> _, nil}] =
-               EhOsContract.Next.Contract.Links.check(stale)
+      assert [{"X8: EhOsContract.Fixtures.Implementations.SysStaleSecond implements" <> _, nil}] =
+               EhOsContract.Contract.Links.check(stale)
     end
 
     test "control: one implementation passes" do

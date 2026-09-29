@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.ContractUnitsTest do
+defmodule EhOsContract.ContractUnitsTest do
   @moduledoc """
   v2 plan, E4: **A1–A5 and C1 of v2 §6** — what a unit decides, and who can ask it
   to. Each refusal names the declaration's file and line, and has a control beside

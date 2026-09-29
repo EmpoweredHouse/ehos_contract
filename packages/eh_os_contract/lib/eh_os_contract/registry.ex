@@ -38,7 +38,7 @@ defmodule EhOsContract.Registry do
   the graph comes from the binary that actually runs, in full — is unchanged
   unless a deployer opts into narrowing it.
   """
-  @spec load!(atom() | [atom()] | nil) :: %{v2_contracts: [module()], domains: [module()]}
+  @spec load!(atom() | [atom()] | nil) :: %{contracts: [module()], domains: [module()]}
   def load!(app \\ nil) do
     apps =
       case app || Application.get_env(:eh_os_contract, :applications) do
@@ -72,7 +72,7 @@ defmodule EhOsContract.Registry do
       |> Enum.filter(&Code.ensure_loaded?/1)
       |> Enum.reject(&excluded?/1)
 
-    v2_contracts =
+    contracts =
       Enum.filter(loaded, fn module ->
         function_exported?(module, :__eh_os_contract_model__, 0) and
           match?(%{kind: :contract, units: _}, module.__eh_os_contract_model__())
@@ -85,14 +85,14 @@ defmodule EhOsContract.Registry do
           match?(%{kind: :domain}, module.__eh_os_contract_model__())
       end)
 
-    graph = %{v2_contracts: v2_contracts, domains: domains}
+    graph = %{contracts: contracts, domains: domains}
 
     :persistent_term.put(@key, graph)
     graph
   end
 
   @doc "The cached scan, loading it on first use."
-  @spec graph() :: %{v2_contracts: [module()], domains: [module()]}
+  @spec graph() :: %{contracts: [module()], domains: [module()]}
   def graph do
     case :persistent_term.get(@key, nil) do
       nil -> load!()
@@ -100,9 +100,9 @@ defmodule EhOsContract.Registry do
     end
   end
 
-  @doc "Every v2 contract found in the running binary (v2 plan, E7c)."
-  @spec v2_contracts() :: [module()]
-  def v2_contracts, do: Map.get(graph(), :v2_contracts, [])
+  @doc "Every contract found in the running binary (v2 plan, E7c)."
+  @spec contracts() :: [module()]
+  def contracts, do: Map.get(graph(), :contracts, [])
 
   @doc "Every `EhOsContract.Domain` found in the running binary (plan EL2)."
   @spec domains() :: [module()]

@@ -17,7 +17,7 @@ defmodule EhOsContract.CheckContractsTest do
     compile(
       """
       defmodule #{inspect(@visits)} do
-        use EhOsContract.Next.Contract, domain: Clinic, context: :settlement
+        use EhOsContract.Contract, domain: Clinic, context: :settlement
 
         aggregate :visit, "Wizyta" do
           identity :visit_id
@@ -123,7 +123,7 @@ defmodule EhOsContract.CheckContractsTest do
     compile(
       """
       defmodule EhOsContract.CheckContractsTest.Orphaned do
-        use EhOsContract.Next.Contract, domain: Clinic, context: :settlement
+        use EhOsContract.Contract, domain: Clinic, context: :settlement
 
         consumes EhOsContract.CheckContractsTest.Nowhere, :arrived
 
@@ -171,7 +171,7 @@ defmodule EhOsContract.CheckContractsTest do
       end
 
       defmodule EhOsContract.CheckContractsTest.Desk do
-        use EhOsContract.Next.Contract, domain: EhOsContract.CheckContractsTest.Notes, context: :desk
+        use EhOsContract.Contract, domain: EhOsContract.CheckContractsTest.Notes, context: :desk
 
         aggregate :desk, "Recepcja" do
           identity :visit_id
@@ -203,7 +203,7 @@ defmodule EhOsContract.CheckContractsTest do
     compile(
       """
       defmodule EhOsContract.CheckContractsTest.Reception do
-        use EhOsContract.Next.Contract, domain: Clinic, context: :settlement
+        use EhOsContract.Contract, domain: Clinic, context: :settlement
 
         consumes #{inspect(@visits)}, :booked, as: [booked: :visit_booked]
 

@@ -4,7 +4,7 @@
 # call rather than like a declaration — which is the whole point of the DSL's shape.
 #
 # The v2 DSLs' entities, maintained by Spark rather than by hand:
-# `mix spark.formatter --extensions EhOsContract.Domain.Dsl,EhOsContract.Next.Contract.Dsl`
+# `mix spark.formatter --extensions EhOsContract.Domain.Dsl,EhOsContract.Contract.Dsl`
 # rewrites this list, and the package's `mix check` runs it with `--check`, so it cannot
 # fall behind the DSLs.
 spark_locals_without_parens = [

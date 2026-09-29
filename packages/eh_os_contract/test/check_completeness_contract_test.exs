@@ -18,7 +18,7 @@ defmodule EhOsContract.CheckCompletenessContractTest do
     compile(
       """
       defmodule #{inspect(@visits)} do
-        use EhOsContract.Next.Contract, domain: Clinic, context: :settlement
+        use EhOsContract.Contract, domain: Clinic, context: :settlement
 
         aggregate :visit, "Wizyta" do
           identity :visit_id
@@ -69,7 +69,7 @@ defmodule EhOsContract.CheckCompletenessContractTest do
       end
 
       defmodule #{inspect(@slots)} do
-        use EhOsContract.Next.Contract, domain: Clinic, context: :settlement
+        use EhOsContract.Contract, domain: Clinic, context: :settlement
 
         dcb :slot, "Termin" do
           identity [:room_id, :slot_id]
@@ -137,7 +137,7 @@ defmodule EhOsContract.CheckCompletenessContractTest do
     compile(
       """
       defmodule EhOsContract.CheckCompletenessContractTest.FanOut do
-        use EhOsContract.Next.Contract, domain: Clinic, context: :settlement
+        use EhOsContract.Contract, domain: Clinic, context: :settlement
 
         aggregate :batch, "Paczka" do
           identity :batch_id
@@ -189,7 +189,7 @@ defmodule EhOsContract.CheckCompletenessContractTest do
     compile(
       """
       defmodule EhOsContract.CheckCompletenessContractTest.Intake do
-        use EhOsContract.Next.Contract, domain: Clinic, context: :settlement
+        use EhOsContract.Contract, domain: Clinic, context: :settlement
 
         aggregate :referral, "Skierowanie" do
           identity :visit_id
@@ -227,7 +227,7 @@ defmodule EhOsContract.CheckCompletenessContractTest do
       end
 
       defmodule EhOsContract.CheckCompletenessContractTest.Archive do
-        use EhOsContract.Next.Contract, domain: Clinic, context: :settlement
+        use EhOsContract.Contract, domain: Clinic, context: :settlement
 
         consumes EhOsContract.CheckCompletenessContractTest.Intake, :signed
 

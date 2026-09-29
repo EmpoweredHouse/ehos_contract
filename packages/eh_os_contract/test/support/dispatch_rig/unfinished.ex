@@ -7,7 +7,7 @@ defmodule DispatchRig.Unfinished do
   project and to answer. Nothing here is dispatched.
   """
 
-  use EhOsContract.Next.Contract, domain: DispatchRig.Domain, context: :ledger
+  use EhOsContract.Contract, domain: DispatchRig.Domain, context: :ledger
 
   aggregate :note, "Note" do
     identity :note_id

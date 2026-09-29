@@ -34,7 +34,7 @@ defmodule EhOsContract.Web.Api.Model do
   @spec index() :: map()
   defp index do
     contracts =
-      for contract <- EhOsContract.Registry.v2_contracts(),
+      for contract <- EhOsContract.Registry.contracts(),
           document = EhOsContract.Model.to_data(contract) do
         %{
           "contract" => inspect(contract),
@@ -49,7 +49,7 @@ defmodule EhOsContract.Web.Api.Model do
 
   @spec one(Plug.Conn.t(), String.t()) :: Plug.Conn.t()
   defp one(conn, name) do
-    case Enum.find(EhOsContract.Registry.v2_contracts(), &(inspect(&1) == name)) do
+    case Enum.find(EhOsContract.Registry.contracts(), &(inspect(&1) == name)) do
       nil ->
         json(conn, 404, %{"error" => "not_found", "detail" => "unknown contract #{name}"})
 

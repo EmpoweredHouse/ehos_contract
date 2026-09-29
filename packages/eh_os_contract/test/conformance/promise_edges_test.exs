@@ -76,7 +76,7 @@ defmodule EhOsContract.PromiseEdgesTest do
     because nothing here is a claim about one — these are the corners of an interval.
     """
 
-    use EhOsContract.Next.Contract, domain: EhOsContract.PromiseEdgesTest.Domain, context: :edge
+    use EhOsContract.Contract, domain: EhOsContract.PromiseEdgesTest.Domain, context: :edge
 
     aggregate :case, "Case" do
       identity :case_id

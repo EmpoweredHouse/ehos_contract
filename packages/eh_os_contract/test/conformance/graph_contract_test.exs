@@ -1,7 +1,7 @@
 defmodule EhOsContract.GraphContractTest do
   @moduledoc """
   Plan EG1: a v2 contract's full graph and one unit of it. The full graph is the
-  steps `GraphV2Test` pins, and around them each unit's group, the actors, the read
+  steps `GraphTest` pins, and around them each unit's group, the actors, the read
   side and the external systems; the unit is its state, commands, events and
   invariants, with the scenarios counted on each path.
 
@@ -16,7 +16,7 @@ defmodule EhOsContract.GraphContractTest do
   @domain EhOsContract.GraphContractTest.Clinic
   @contract EhOsContract.GraphContractTest.Invoicing
   # Names a domain that does not exist, which a contract may (v2 §8).
-  @constrained EhOsContract.Next.Fixtures.GraphConstrained
+  @constrained EhOsContract.Fixtures.GraphConstrained
 
   setup_all do
     compile(
@@ -40,7 +40,7 @@ defmodule EhOsContract.GraphContractTest do
       end
 
       defmodule #{inspect(@contract)} do
-        use EhOsContract.Next.Contract, domain: #{inspect(@domain)}, context: :invoicing
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :invoicing
 
         aggregate :draft, "Draft" do
           identity :draft_id
@@ -231,7 +231,7 @@ defmodule EhOsContract.GraphContractTest do
     end
 
     test "every edge of every unit and contract ends at a node the graph declares" do
-      contracts = EhOsContract.Registry.v2_contracts() ++ [@contract, @constrained]
+      contracts = EhOsContract.Registry.contracts() ++ [@contract, @constrained]
 
       for contract <- contracts, unit <- EhOsContract.Model.fetch(contract).units do
         declared_ends!(EhOsContract.Graph.Unit.build(contract, unit.name))
@@ -268,7 +268,7 @@ defmodule EhOsContract.GraphContractTest do
         "graph_multiline.ex"
       )
 
-      diagram = Graph.unit_to_mermaid(EhOsContract.Next.Fixtures.GraphMultiline, :visit)
+      diagram = Graph.unit_to_mermaid(EhOsContract.Fixtures.GraphMultiline, :visit)
 
       assert diagram =~
                ~s(invariant_paid{"Paid in full ``` and 'nothing' owed "}:::invariant\n)

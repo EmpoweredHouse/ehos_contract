@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.ContractBoundariesTest do
+defmodule EhOsContract.ContractBoundariesTest do
   @moduledoc """
   v2 plan, E4: **the L2 rules of D10 and D11** (v2 §16) — a query's scope, and what
   crosses to another application. Each refusal names the declaration's file and
@@ -341,7 +341,7 @@ defmodule EhOsContract.Next.ContractBoundariesTest do
   describe "D10 in the domain" do
     test "an actor carries the scope dimensions a grant narrows by" do
       compile("""
-      defmodule EhOsContract.Next.ContractBoundariesTest.Domain do
+      defmodule EhOsContract.ContractBoundariesTest.Domain do
         use EhOsContract.Domain, name: :clinic, language: :pl
         actor :reception, :human, "Recepcja", scope: [:clinic_id]
         actor :manager, :human, "Menedżer"
@@ -349,7 +349,7 @@ defmodule EhOsContract.Next.ContractBoundariesTest do
       """)
 
       assert [%{name: :reception, scope: [:clinic_id]}, %{name: :manager, scope: []}] =
-               EhOsContract.Model.fetch(EhOsContract.Next.ContractBoundariesTest.Domain).actors
+               EhOsContract.Model.fetch(EhOsContract.ContractBoundariesTest.Domain).actors
     end
   end
 end

@@ -124,7 +124,7 @@ defmodule EhOsContract.CheckOutputTest do
       compile(
         """
         defmodule EhOsContract.CheckOutputTest.Unaddressed do
-          use EhOsContract.Next.Contract, domain: ProcessShapes.Domain, context: :batching
+          use EhOsContract.Contract, domain: ProcessShapes.Domain, context: :batching
 
           aggregate :pile, "Pile" do
             identity :pile_id
@@ -143,7 +143,7 @@ defmodule EhOsContract.CheckOutputTest do
       assert %Finding{rule: "process-without-accountable"} =
                finding =
                Enum.find(
-                 EhOsContract.Check.v2_findings([EhOsContract.CheckOutputTest.Unaddressed]),
+                 EhOsContract.Check.findings([EhOsContract.CheckOutputTest.Unaddressed]),
                  &(&1.rule == "process-without-accountable")
                )
 

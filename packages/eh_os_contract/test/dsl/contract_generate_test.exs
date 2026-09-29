@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.ContractGenerateTest do
+defmodule EhOsContract.ContractGenerateTest do
   @moduledoc """
   v2 plan, E5: **the structs a contract generates** (v2 §5) — their fields, what they
   enforce, their types, and where they say they were defined.
@@ -8,11 +8,11 @@ defmodule EhOsContract.Next.ContractGenerateTest do
 
   alias EhOsContract.Model
 
-  @fixtures EhOsContract.Next.Fixtures
+  @fixtures EhOsContract.Fixtures
 
   # Line 4 of generate.ex is the first line of this body.
   @body """
-    consumes EhOsContract.Next.Fixtures.Booking, [:visit_booked, :visit_moved], as: [visit_moved: :rebooked]
+    consumes EhOsContract.Fixtures.Booking, [:visit_booked, :visit_moved], as: [visit_moved: :rebooked]
 
     consumes "clinic.visit.closed.v1", as: :visit_closed do
       field :visit_id, :id
@@ -102,7 +102,7 @@ defmodule EhOsContract.Next.ContractGenerateTest do
     test "type their fields, a domain value as a remote type of the domain's Values",
          %{binaries: binaries} do
       assert type(binaries, [Commands, RecordPayment]) ==
-               "%EhOsContract.Next.Fixtures.Generated.Commands.RecordPayment{" <>
+               "%EhOsContract.Fixtures.Generated.Commands.RecordPayment{" <>
                  "__meta__: EhOsContract.Meta.t() | nil, " <>
                  "amount: Clinic.Values.money(), " <>
                  "note: String.t() | nil, " <>
@@ -189,15 +189,15 @@ defmodule EhOsContract.Next.ContractGenerateTest do
       refute Code.ensure_loaded?(generated([Events, VisitBooked]))
 
       assert Model.module_for(model, :event, :visit_booked) ==
-               EhOsContract.Next.Fixtures.Booking.Events.VisitBooked
+               EhOsContract.Fixtures.Booking.Events.VisitBooked
 
       assert Model.module_for(model, :event, :rebooked) ==
-               EhOsContract.Next.Fixtures.Booking.Events.VisitMoved
+               EhOsContract.Fixtures.Booking.Events.VisitMoved
     end
 
     test "Model.consumed/2 says where each comes from, by the name it has here" do
       model = Model.fetch(generated([]))
-      booking = EhOsContract.Next.Fixtures.Booking
+      booking = EhOsContract.Fixtures.Booking
 
       assert Model.consumed(model, :visit_booked) == {:contract, booking, :visit_booked}
       assert Model.consumed(model, :rebooked) == {:contract, booking, :visit_moved}
@@ -244,17 +244,17 @@ defmodule EhOsContract.Next.ContractGenerateTest do
     test "the types name the generated structs, a sibling's own, and what a decision returns",
          %{binaries: binaries} do
       assert spec(binaries, [Aggregates, Visit], :record_payment) ==
-               "record_payment(EhOsContract.Next.Fixtures.Generated.Commands.RecordPayment.t(), " <>
-                 "EhOsContract.Next.Fixtures.Generated.Aggregates.Visit.State.t()) :: " <>
+               "record_payment(EhOsContract.Fixtures.Generated.Commands.RecordPayment.t(), " <>
+                 "EhOsContract.Fixtures.Generated.Aggregates.Visit.State.t()) :: " <>
                  "{:ok, [struct()]} | {:error, EhOsContract.Rejection.t()}"
 
       assert spec(binaries, [ProcessManagers, Chase], :evolve) =~
-               "EhOsContract.Next.Fixtures.Generated.Events.PaymentRecorded.t() | " <>
-                 "EhOsContract.Next.Fixtures.Booking.Events.VisitBooked.t() | " <>
-                 "EhOsContract.Next.Fixtures.Generated.Received.VisitClosed.t()"
+               "EhOsContract.Fixtures.Generated.Events.PaymentRecorded.t() | " <>
+                 "EhOsContract.Fixtures.Booking.Events.VisitBooked.t() | " <>
+                 "EhOsContract.Fixtures.Generated.Received.VisitClosed.t()"
 
       assert spec(binaries, [Queries, PaymentsOf], :payments_of) =~
-               ":: [EhOsContract.Next.Fixtures.Generated.ReadModels.Payments.Row.t()]"
+               ":: [EhOsContract.Fixtures.Generated.ReadModels.Payments.Row.t()]"
     end
   end
 

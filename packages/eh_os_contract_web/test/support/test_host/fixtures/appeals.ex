@@ -21,7 +21,7 @@ defmodule EhOsContract.Web.TestHost.Fixtures.Appeals do
   API asked for a report without naming which contract.
   """
 
-  use EhOsContract.Next.Contract,
+  use EhOsContract.Contract,
     domain: EhOsContract.Web.TestHost.Fixtures.AppealsDomain,
     context: :appeals
 

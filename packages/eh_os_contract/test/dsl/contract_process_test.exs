@@ -1,4 +1,4 @@
-defmodule EhOsContract.Next.ContractProcessTest do
+defmodule EhOsContract.ContractProcessTest do
   @moduledoc """
   v2 plan, E4: **R1–R6 and K1 of v2 §6** — the one process a contract describes,
   and what it consumes from a sibling. Each refusal names the declaration's file and
@@ -353,7 +353,7 @@ defmodule EhOsContract.Next.ContractProcessTest do
     test "itself, nothing, a rename of what it does not consume, and an atom as: are refused" do
       message =
         refuse_contract("ConsumesWrong", """
-          consumes EhOsContract.Next.Fixtures.ConsumesWrong, :visit_closed
+          consumes EhOsContract.Fixtures.ConsumesWrong, :visit_closed
           consumes Clinic.Contracts.Scheduling, []
           consumes Clinic.Contracts.Booking, :visit_booked, as: [visit_moved: :moved]
           consumes Clinic.Contracts.Reporting, :report_sent, as: :sent
@@ -366,7 +366,7 @@ defmodule EhOsContract.Next.ContractProcessTest do
 
       assert message =~
                "K1: a contract cannot consume its own events: consumes " <>
-                 "EhOsContract.Next.Fixtures.ConsumesWrong (consumes_wrong.ex:4)"
+                 "EhOsContract.Fixtures.ConsumesWrong (consumes_wrong.ex:4)"
 
       assert message =~
                "K1: consumes Clinic.Contracts.Scheduling names no events (consumes_wrong.ex:5)"

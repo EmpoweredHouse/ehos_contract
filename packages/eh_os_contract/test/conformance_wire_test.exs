@@ -5,7 +5,7 @@ defmodule EhOsContract.Conformance.WireTest do
 
   A value the encoder has no decided shape for raises rather than being guessed at.
   The structural walk over a whole report, which does not assert on any particular
-  key and so covers the ones a later stage adds, is in `conformance/wire_v2_test.exs`.
+  key and so covers the ones a later stage adds, is in `conformance/wire_report_test.exs`.
   """
 
   use ExUnit.Case, async: true

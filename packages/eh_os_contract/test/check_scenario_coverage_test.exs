@@ -9,7 +9,7 @@ defmodule EhOsContract.CheckScenarioCoverageTest do
 
   alias EhOsContract.Check.{Completeness, Finding}
 
-  @visits EhOsContract.Next.Fixtures.CoverageVisits
+  @visits EhOsContract.Fixtures.CoverageVisits
 
   setup_all do
     compile(

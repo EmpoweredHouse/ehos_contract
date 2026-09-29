@@ -3,7 +3,7 @@ defmodule EhOsContract.Model do
   A contract or a domain as plain data, and the one way every reader asks one
   anything (v2 §9).
 
-  A module compiled from the DSL — `use EhOsContract.Next.Contract` or
+  A module compiled from the DSL — `use EhOsContract.Contract` or
   `use EhOsContract.Domain` — carries its model as `__eh_os_contract_model__/0`, and
   readers ask for it through `fetch/1` rather than calling that function themselves.
 
@@ -149,7 +149,7 @@ defmodule EhOsContract.Model do
   """
   @spec to_data(contract()) :: map()
   def to_data(contract) do
-    model = v2!(contract)
+    model = contract!(contract)
     domain = domain!(model)
     {exported_model, exported_domain} = EhOsContract.Model.Export.redact(model, domain)
 
@@ -255,7 +255,7 @@ defmodule EhOsContract.Model do
   end
 
   def module_for(contract, kind, name) do
-    model = v2!(contract)
+    model = contract!(contract)
 
     generated(model, kind, name) ||
       raise ArgumentError, "#{inspect(model.module)} declares no #{kind} #{inspect(name)}"
@@ -315,7 +315,7 @@ defmodule EhOsContract.Model do
   @spec consumed(contract() | map(), atom()) ::
           {:contract, module(), atom()} | {:published, [map()]} | nil
   def consumed(contract, name) do
-    Enum.find_value(v2!(contract).consumes, fn
+    Enum.find_value(contract!(contract).consumes, fn
       %{kind: :published, as: ^name, fields: fields} ->
         {:published, fields}
 
@@ -336,7 +336,7 @@ defmodule EhOsContract.Model do
   """
   @spec declaring(contract() | map(), atom()) :: {module(), map()} | nil
   def declaring(contract, name) do
-    model = v2!(contract)
+    model = contract!(contract)
 
     case Enum.find(model.events, &(&1.name == name)) do
       %{} = event ->
@@ -353,7 +353,7 @@ defmodule EhOsContract.Model do
     end
   end
 
-  defp v2!(contract) do
+  defp contract!(contract) do
     case fetch(contract) do
       %{kind: :contract} = model ->
         model
@@ -365,12 +365,12 @@ defmodule EhOsContract.Model do
 
   @doc "The contract version: a hash of every declaration, stamped on every event."
   @spec version(contract()) :: String.t()
-  def version(contract), do: v2!(contract).version
+  def version(contract), do: contract!(contract).version
 
   @doc """
   One digest per declaration, keyed `"<kind>:<name>"`. What
   `EhOsContract.Deployment` records to say which declaration moved.
   """
   @spec digests(contract()) :: %{String.t() => String.t()}
-  def digests(contract), do: v2!(contract).digests
+  def digests(contract), do: contract!(contract).digests
 end

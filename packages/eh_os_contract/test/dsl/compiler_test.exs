@@ -31,7 +31,7 @@ defmodule EhOsContract.CompilerTest do
   # Line 7 is the command.
   @visit """
   defmodule Fx.Visit do
-    use EhOsContract.Next.Contract, domain: Fx.Domain, context: :settlement
+    use EhOsContract.Contract, domain: Fx.Domain, context: :settlement
 
     aggregate :visit, "Wizyta" do
       identity :visit_id
@@ -91,7 +91,7 @@ defmodule EhOsContract.CompilerTest do
   # Line 9 is the event, line 10 the field the subscriber correlates on.
   @booking """
   defmodule Fx.Booking do
-    use EhOsContract.Next.Contract, domain: Fx.Domain, context: :settlement
+    use EhOsContract.Contract, domain: Fx.Domain, context: :settlement
 
     aggregate :booking, "Rezerwacja" do
       identity :booking_id
@@ -113,7 +113,7 @@ defmodule EhOsContract.CompilerTest do
   # Line 14 includes the publisher's event in the run.
   @billing """
   defmodule Fx.Billing do
-    use EhOsContract.Next.Contract, domain: Fx.Domain, context: :settlement
+    use EhOsContract.Contract, domain: Fx.Domain, context: :settlement
 
     consumes Fx.Booking, :visit_booked
 

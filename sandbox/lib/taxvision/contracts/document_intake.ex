@@ -17,7 +17,7 @@ defmodule Taxvision.Contracts.DocumentIntake do
   (02 §3.2).
   """
 
-  use EhOsContract.Next.Contract, domain: Taxvision.Domain, context: :document_intake
+  use EhOsContract.Contract, domain: Taxvision.Domain, context: :document_intake
 
   aggregate :ksef_inbox, "Faktury firmy z KSeF" do
     identity :company_id

@@ -48,18 +48,18 @@ defmodule EhOsContract.EventRunsTest do
   end
 
   describe "a run keyed by two fields" do
-    alias ProcessShapes.Next.Bare.Commands.OpenBatch
+    alias ProcessShapes.Bare.Commands.OpenBatch
 
     @operator Actor.credential("u-1", ["process_shapes.open_batch"])
 
     test "is one run per pair of values, and a value shared with another pair merges nothing" do
-      # `ProcessShapes.Next.Bare` correlates on `[:tenant_id, :batch_id]`. Each pair
+      # `ProcessShapes.Bare` correlates on `[:tenant_id, :batch_id]`. Each pair
       # below shares one value with another, so a key built from either field alone
       # would merge two of them into one run.
       for {tenant, batch} <- [{"t-1", "b-1"}, {"t-1", "b-2"}, {"t-2", "b-1"}] do
         {:ok, _} =
           EhOsContract.dispatch(
-            ProcessShapes.Next.Bare,
+            ProcessShapes.Bare,
             %OpenBatch{tenant_id: tenant, batch_id: batch},
             actor: @operator
           )
