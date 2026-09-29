@@ -60,6 +60,10 @@ defmodule EhOsContract.PromiseEdgesTest do
 
     external :inspector, "Inspector", direction: :outbound
     external :chaser, "Chaser", direction: :outbound
+    # Called by an effect and depended on by no event: observed, never awaited.
+    external :notifier, "Notifier", direction: :outbound
+    # Declared by the domain and used by nothing of the contract.
+    external :archive, "Archive", direction: :outbound
 
     subdomain :core, "Core", type: :core
   end
@@ -82,6 +86,11 @@ defmodule EhOsContract.PromiseEdgesTest do
       event :inspected, "Inspected", recorded_by: :observer, depends_on: :inspector
       event :chased, "Chased", recorded_by: :observer, depends_on: :chaser
     end
+
+    effect :notify_closing, "Notify a closing",
+      handles: :closed,
+      calls: :notifier,
+      idempotency: :event_id
 
     process :edge, "Edge" do
       correlate :case_id
@@ -364,11 +373,35 @@ defmodule EhOsContract.PromiseEdgesTest do
   end
 
   describe "recording an observation" do
-    test "an external no event of the contract depends on is refused" do
-      # Written, it would reach no promise: a row in a place nothing reads.
-      assert_raise ArgumentError,
-                   ~r/no event of EhOsContract.PromiseEdgesTest.Edges declares `depends_on: :nobody`/,
-                   fn -> Dependency.unavailable!(Edges, :nobody, "test", @opened) end
+    test "an external the contract does not use is refused, even one its domain declares" do
+      # Written, it would be about nothing the contract does: a row in a place nothing
+      # reads. The domain declaring it is not enough, and neither is a name nobody
+      # declares.
+      for external <- [:archive, :nobody] do
+        assert_raise ArgumentError,
+                     ~r/EhOsContract.PromiseEdgesTest.Edges uses no external :#{external}/,
+                     fn -> Dependency.unavailable!(Edges, external, "test", @opened) end
+      end
+    end
+
+    test "an external only an effect calls is recorded, and suspends nothing" do
+      # Decided by the user in the review of E11a: the adapter an effect wraps in
+      # `observe/3` gets its `{:error, :unavailable}` back instead of a crash in the
+      # middle of the outage. No event depends on the notifier, so no promise waits
+      # on it, and the run is judged as if nothing had been observed.
+      insert(:opened, @opened)
+
+      assert Dependency.observe(Edges, :notifier, fn -> {:error, :unavailable} end) ==
+               {:error, :unavailable}
+
+      assert %{"notifier" => [_one]} = Dependency.observations_by_external(Edges)
+      assert verdict(:closes_within_a_day).verdict == :violated
+    end
+
+    test "a domain is refused by name, not with a match error" do
+      assert_raise ArgumentError, ~r/is a domain, not a contract/, fn ->
+        Dependency.unavailable!(Domain, :inspector, "test", @opened)
+      end
     end
 
     test "an adapter's `{:error, :unavailable}` is recorded, anything else is not" do

@@ -82,24 +82,31 @@ defmodule EhOsContract.Dependency do
   @doc """
   Records one observation that a dependency was unavailable.
 
-  Refuses a dependency the contract does not declare. That is a runtime check because the
+  Refuses a dependency the contract does not use. That is a runtime check because the
   caller is an adapter and the name arrives as a value — but it is the same rule the
-  compile gate applies to `depends_on`: an observation about something undeclared cannot
-  reach any assertion, so recording it would be writing to a place nothing reads.
+  compile gate applies to `depends_on`: an observation about something the contract
+  never touches could not be about it, so recording it would be writing to a place
+  nothing reads.
 
-  A contract's externals are declared in its domain, and a promise reads an
-  observation only through an event of this contract that `depends_on` it
-  (`EhOsContract.Trace`), so that event is what the name has to match.
+  A contract's externals are declared in its domain, and the contract uses one in two
+  ways: an event `depends_on` it, or an effect `calls:` it. A promise reads an
+  observation only through the first (`EhOsContract.Trace`), so an observation about
+  an external only an effect calls suspends nothing. It is recorded all the same,
+  because the adapter that makes the call is the one wrapped in `observe/3`, and
+  refusing there would crash the effect in the middle of the outage it reports
+  (decided by the user, 29 September 2026, in the review of plan E11a).
+
+  A domain, or any module that is not a contract, is refused by name.
   """
+  @spec unavailable!(module(), atom()) :: t()
   @spec unavailable!(module(), atom(), String.t() | nil) :: t()
+  @spec unavailable!(module(), atom(), String.t() | nil, DateTime.t()) :: t()
   def unavailable!(contract, external, reason \\ nil, now \\ DateTime.utc_now()) do
-    %{units: _, events: events} = EhOsContract.Model.fetch(contract)
-
-    unless Enum.any?(events, &(&1.depends_on == external)) do
+    unless external in used(contract) do
       raise ArgumentError,
-            "no event of #{inspect(contract)} declares `depends_on: #{inspect(external)}`, " <>
-              "so an observation about it could never reach a promise. Declare the " <>
-              "dependency on the event whose arrival it can hold up."
+            "#{inspect(contract)} uses no external #{inspect(external)}: no event of it " <>
+              "`depends_on:` it and no effect `calls:` it, so an observation about it would " <>
+              "be about nothing the contract does."
     end
 
     repo().insert!(%__MODULE__{
@@ -108,6 +115,20 @@ defmodule EhOsContract.Dependency do
       reason: reason,
       observed_at: now
     })
+  end
+
+  @spec used(module()) :: [atom()]
+  defp used(contract) do
+    case EhOsContract.Model.fetch(contract) do
+      %{kind: :contract, units: _} = model ->
+        Enum.flat_map(model.events, &List.wrap(&1.depends_on)) ++
+          Enum.flat_map(model.effects, &List.wrap(&1.calls))
+
+      %{kind: kind} ->
+        raise ArgumentError,
+              "#{inspect(contract)} is a #{kind}, not a contract; an observation is recorded " <>
+                "under the contract whose event or effect uses the external"
+    end
   end
 
   @doc """
