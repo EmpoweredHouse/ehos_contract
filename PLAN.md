@@ -2295,6 +2295,48 @@ v2 je czyta.
   na sandboksie jak dziś. *Odrzucone:* ostatnia część E11 — mieszałaby cięcie z przenoszeniem danych testowych w
   jednym przeglądzie.
 
+### E11a — co wyszło (29 września, w toku)
+
+Na `dsl-v2/e11a-remove-v1`, od `68a6917`. **Najpierw przeniesienie, potem usuwanie:** każdy test v1, który
+przypina mechanikę współdzieloną z v2, dostał test v2 tej samej własności, zanim cokolwiek zniknie. Dwie analizy
+pokrycia (9 plików „do przeniesienia” z inwentarza, potem pozostałe 23), ~115 testów v1 przeniesionych, reszta to
+semantyka tylko v1 (handlery, `emit`, `retain`, klucze z `identity`, `Brief`, telemetria handlerów).
+
+**Usterki v2, które przeniesienie wyciągnęło** (każda zweryfikowana odwrotnie):
+1. **Obietnica v2 nie mogła zostać zawieszona.** `Dependency.unavailable!` przyjmowało tylko kontrakt v1, więc
+   obserwacji niedostępności do kontraktu v2 nie dało się zapisać, choć `Trace.promised_outages` je czyta. Teraz
+   przyjmuje kontrakt v2, którego zdarzenie `depends_on` tego systemu (`2881504`).
+2. **`correlate []` się kompilowało**, a wtedy każde zdarzenie kontraktu dostawało za przebieg samą nazwę procesu
+   (`Enum.all?([])` w `Dispatcher.run_key/2`) — raport liczył jeden przebieg na wszystko, `check` milczał. R2
+   odmawia teraz pustej korelacji.
+3. **Pusty `:id` przechodził** (`Codec.fits?` = `is_binary`), choć v1 go odmawiało: identyfikator, który nic nie
+   identyfikuje, klucze strumienia, tagu i przebiegu z niczym po dwukropku. Odmawiany dla `:id` i `{:id, encja}`;
+   odczyt historii (`decode_value`) dalej przyjmuje pusty, więc zapisana historia się czyta.
+
+**Ścieżki v2, które nigdy nie biegły:** liczenie obietnicy per element (`evaluate_quantified`) — żadna fikstura v2
+nie miała tożsamości jednostki węższej niż `correlate`; zawieszenie; krawędzie okien; klucz przebiegu z dwóch pól;
+cykl polityki `:at_least_once`; strażnik `Consumer.issue!`. Wszystkie mają teraz testy na fiksturach v2 w samych
+plikach testów (poza rejestrem, jak w v1).
+
+**Zapisane, bez zmiany kodu:**
+- **Termin `{1, :hour}` wychodzi w raporcie jako „Deadline: hour from the start.”** — `Duration.humanize` gubi
+  jedynkę (słusznie w „every day”), a `Sentence.declaration(:deadline)` go używa. Tak samo w v1. Do poprawki
+  osobno.
+- **Plan zapytania przebiegów v2 zależy od statystyk planisty.** Test 50 000 przebiegów raz trwał 17 s i padł na
+  anulowanym zapytaniu — pętla zagnieżdżona przy statystykach „prawie pusto”; po autovacuum zniknęło, nie dało
+  się odtworzyć na żądanie. Test woła `ANALYZE` po wstawieniu; w produkcji statystyki prowadzi autovacuum. Do
+  pomiaru razem z runnerem read modelu (otwarte pytania).
+- **Cykl na ścieżce `:at_least_once` zapisuje w wierszu subskrypcji tylko moduł wyjątku** (v2 §17: żadnych
+  wartości w rekordach awarii), więc ścieżka cyklu, którą niesie komunikat, ginie — v1 trzymało komunikat.
+  Strażnik v2 zatrzymuje też każdy łańcuch dłuższy niż 32 (limit głębokości, którego v1 świadomie nie miało).
+  `chain:` jest publiczną opcją `EhOsContract.dispatch/3`, więc aplikacja może go ustawić.
+- **Strażnik tego, co wydaje polityka, jest podwójny**: bez `Consumer.issue!` komendę spoza `issues:` i tak
+  odrzuca dispatch (`:not_declared`, aktor polityki nie ma uprawnienia).
+- **Bramy v1 bez odpowiednika v2 i bez pojęcia w v2** (nie do przeniesienia): komenda w niezadeklarowanym
+  procesie, reguła jako capture zamiast MFA, `identity` spoza payloadu, `events:` na procesie, `retain` na polu
+  spoza payloadu. Częściowo pokryte: dwie komendy jednej nazwy w kontrakcie, `by: []`, jednostka kalendarzowa w
+  `within` — do dopisania przy E11d, gdy tabela bram w `docs/contract.md` powstaje od nowa.
+
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
 Po lekturze architektury EHOS-a (`~/Projects/ai/eh-os`, `docs/ADR.md` i `docs/ARCHITECTURE.md`; research w
