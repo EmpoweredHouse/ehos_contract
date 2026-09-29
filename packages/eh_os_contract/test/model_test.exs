@@ -77,13 +77,14 @@ defmodule EhOsContract.ModelTest do
     end
   end
 
-  # A consumer's scenario names the sibling's event, whose personal fields are
-  # declared there, not here.
+  # A consumer's scenario names the sibling's event, under its local name, and its
+  # personal fields are declared there, not here.
   defmodule PersonalConsumer do
     @moduledoc false
     use EhOsContract.Next.Contract, domain: ShreddingRig.Domain, context: :membership
 
-    consumes EhOsContract.ModelTest.PersonalExport, :registered
+    consumes EhOsContract.ModelTest.PersonalExport, :registered,
+      as: [registered: :member_registered]
 
     aggregate :welcome, "Welcome" do
       identity :profile_id
@@ -100,7 +101,7 @@ defmodule EhOsContract.ModelTest do
     end
 
     policy :welcome_registered, "Welcome a registered member",
-      handles: :registered,
+      handles: :member_registered,
       issues: :welcome
 
     process :welcome, "Welcome" do
@@ -110,7 +111,7 @@ defmodule EhOsContract.ModelTest do
     scenario "a sibling's registration carries direct and nested personal values" do
       scope :welcome_registered
 
-      on :registered, %{
+      on :member_registered, %{
         profile_id: "profile-1",
         member_id: "member-1",
         name: "Ada Example",
@@ -274,6 +275,74 @@ defmodule EhOsContract.ModelTest do
     assert scenario["trigger"]["data"]["name"] == nil
     assert hd(scenario["trigger"]["data"]["contacts"])["phone"] == nil
     assert hd(scenario["issues"])["data"]["name"] == nil
+  end
+
+  # What the compiler refuses in a contract it checks (X5, X9, S1, S3) can still reach
+  # the export from one it never saw: each case is published as `null`, never verbatim.
+  describe "to_data fails closed" do
+    test "on a sibling that no longer declares the consumed event" do
+      model =
+        Map.update!(Model.fetch(PersonalConsumer), :consumes, fn [consumed] ->
+          [%{consumed | events: [:ghost], renames: %{ghost: :member_registered}}]
+        end)
+
+      {redacted, _domain} = redact(model)
+      [scenario] = redacted.scenarios
+
+      assert Enum.all?(Map.values(scenario.trigger.data), &is_nil/1)
+    end
+
+    test "on a data key no field declares" do
+      model =
+        update_scenario(PersonalExport, 0, fn scenario ->
+          put_in(scenario.trigger.data[:nickname], "Ada")
+        end)
+
+      {redacted, _domain} = redact(model)
+      data = hd(redacted.scenarios).trigger.data
+
+      assert data.nickname == nil
+      assert data.member_id == "member-1"
+    end
+
+    test "on an answer whose query cannot be found" do
+      model =
+        update_scenario(PersonalExport, 1, fn scenario ->
+          put_in(scenario.trigger.name, :ghost)
+        end)
+
+      {redacted, _domain} = redact(model)
+      [row] = List.last(redacted.scenarios).answers
+
+      assert Enum.all?(Map.values(row), &is_nil/1)
+    end
+
+    test "on a structured value's example that is not a map" do
+      domain =
+        Map.update!(Model.fetch(ShreddingRig.Domain), :values, fn values ->
+          Enum.map(values, fn
+            %{name: :contact} = contact ->
+              Map.put(contact, :invariants, [
+                %{violated_by: ["+48-555-0100"], satisfied_by: []}
+              ])
+
+            value ->
+              value
+          end)
+        end)
+
+      {_model, redacted} = EhOsContract.Model.Export.redact(Model.fetch(PersonalExport), domain)
+      contact = Enum.find(redacted.values, &(&1.name == :contact))
+
+      assert [%{violated_by: [nil]}] = contact.invariants
+    end
+  end
+
+  defp redact(model),
+    do: EhOsContract.Model.Export.redact(model, Model.fetch(ShreddingRig.Domain))
+
+  defp update_scenario(contract, index, fun) do
+    Map.update!(Model.fetch(contract), :scenarios, &List.update_at(&1, index, fun))
   end
 
   # A contract whose module exists on the code path but is not loaded yet, which is

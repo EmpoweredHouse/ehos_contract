@@ -42,7 +42,9 @@ What changes otherwise is what a host has to do.
   personal values in scenarios, rule examples, invariant examples and defaults are `null`: the public model
   is not a second store for fixture data. A scenario's event is redacted by the fields of the contract that
   declares it, so a consumer's scenario on a sibling's event does not publish that sibling's personal
-  values, and the data of an event whose declaration cannot be found is `null` rather than verbatim.
+  values. What no declaration covers is `null` rather than verbatim: the data of an event or command
+  that cannot be found, a query's answer without its read model, a key no field declares, and a
+  structured value's example that is not a map but holds a personal field.
 
 - **E9c: a command may be scoped, as a query is (D10).** `command :x, "…", by: :actor, scope: :field` names one
   of its fields; `EhOsContract.Model.capabilities/1` gives the command's capability that `scope:` instead of

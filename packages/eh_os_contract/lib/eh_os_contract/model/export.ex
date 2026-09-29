@@ -54,22 +54,27 @@ defmodule EhOsContract.Model.Export do
   # A scenario of a consumer names a sibling's event by its local name, and the
   # sibling declares which of its fields are personal: the contract's own events are
   # not enough to know (a policy on `ClinicalDocumentation`'s closing carries a PESEL).
-  defp redact_event(item, name_key, model, values) do
-    name = Map.get(item, name_key)
+  defp redact_event(item, name_key, model, values),
+    do: redact_data(item, event_fields(model, Map.get(item, name_key)), values)
 
-    fields =
-      case EhOsContract.Model.declaring(model, name) do
-        {_contract, %{fields: fields}} ->
-          fields
-
-        _published_or_unknown ->
-          case EhOsContract.Model.consumed(model, name) do
-            {:published, fields} -> fields
+  defp event_fields(model, name) do
+    with nil <- Enum.find(model.events, &(&1.name == name)) do
+      case EhOsContract.Model.consumed(model, name) do
+        {:contract, from, original} ->
+          case Enum.find(EhOsContract.Model.fetch(from).events, &(&1.name == original)) do
+            %{fields: fields} -> fields
             nil -> :unknown
           end
-      end
 
-    redact_data(item, fields, values)
+        {:published, fields} ->
+          fields
+
+        nil ->
+          :unknown
+      end
+    else
+      %{fields: fields} -> fields
+    end
   end
 
   # Data whose declaration cannot be found is dropped rather than published: nothing
@@ -84,11 +89,9 @@ defmodule EhOsContract.Model.Export do
     query = Enum.find(model.queries, &(&1.name == name))
     read_model = query && Enum.find(model.read_models, &(&1.name == query.reads))
 
-    if read_model do
-      Map.update!(scenario, :answers, &redact_rows(&1, read_model.fields, values))
-    else
-      scenario
-    end
+    if read_model,
+      do: Map.update!(scenario, :answers, &redact_rows(&1, read_model.fields, values)),
+      else: Map.update!(scenario, :answers, &redact_rows(&1, [], values))
   end
 
   defp redact_answers(scenario, _model, _values), do: scenario
@@ -99,19 +102,17 @@ defmodule EhOsContract.Model.Export do
   defp redact_rows(%{} = row, fields, values), do: redact_fields(row, fields, values)
   defp redact_rows(nil, _fields, _values), do: nil
 
+  # Per key, not per declared field: a key no field declares is dropped, since nothing
+  # says it is not personal. The compiler refuses such keys (S3, X9) in a contract it
+  # checks, so this only matters for one it never saw.
   defp redact_fields(data, fields, values) when is_map(data) do
-    Enum.reduce(fields, data, fn field, redacted ->
-      case fetch_key(redacted, field.name) do
-        :error ->
-          redacted
+    declared = Map.new(fields, &{Atom.to_string(&1.name), &1})
 
-        {:ok, key, value} ->
-          replacement =
-            if Map.get(field, :personal),
-              do: nil,
-              else: redact_value(field.type, value, values)
-
-          Map.put(redacted, key, replacement)
+    Map.new(data, fn {key, value} ->
+      case Map.get(declared, to_string(key)) do
+        nil -> {key, nil}
+        %{personal: personal} when not is_nil(personal) -> {key, nil}
+        field -> {key, redact_value(field.type, value, values)}
       end
     end)
   end
@@ -128,12 +129,32 @@ defmodule EhOsContract.Model.Export do
 
   defp redact_value(type, value, values) when is_atom(type) and is_map_key(values, type) do
     case Map.fetch!(values, type) do
-      %{type: nil, fields: fields} -> redact_fields(value, fields, values)
+      %{type: nil, fields: fields} when is_map(value) -> redact_fields(value, fields, values)
+      # A structured value written as something else, as an invariant's
+      # `violated_by` may be: it could be any of its fields, personal ones included.
+      %{type: nil} = structured -> if personal_inside?(structured, values), do: nil, else: value
       %{type: inner} -> redact_value(inner, value, values)
     end
   end
 
   defp redact_value(_type, value, _values), do: value
+
+  defp personal_inside?(%{fields: fields}, values) do
+    Enum.any?(fields, fn field ->
+      Map.get(field, :personal) != nil or personal_type?(field.type, values)
+    end)
+  end
+
+  defp personal_type?({:list, inner}, values), do: personal_type?(inner, values)
+
+  defp personal_type?(type, values) when is_atom(type) and is_map_key(values, type) do
+    case Map.fetch!(values, type) do
+      %{type: nil} = structured -> personal_inside?(structured, values)
+      %{type: inner} -> personal_type?(inner, values)
+    end
+  end
+
+  defp personal_type?(_type, _values), do: false
 
   defp redact_service_examples(model, values) do
     Map.update!(model, :domain_services, fn services ->
@@ -235,12 +256,4 @@ defmodule EhOsContract.Model.Export do
 
   defp update_many(map, key, fun), do: Map.update(map, key, [], &Enum.map(&1, fun))
   defp update_one(map, key, fun), do: Map.update(map, key, nil, &if(&1, do: fun.(&1), else: nil))
-
-  defp fetch_key(map, key) do
-    cond do
-      Map.has_key?(map, key) -> {:ok, key, Map.fetch!(map, key)}
-      Map.has_key?(map, to_string(key)) -> {:ok, to_string(key), Map.fetch!(map, to_string(key))}
-      true -> :error
-    end
-  end
 end
