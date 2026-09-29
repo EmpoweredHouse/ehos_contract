@@ -11,7 +11,9 @@ defmodule EhOsContract.Next.Contract.Rules.Consumers do
     not: its commands and timers take keys the library derives from the run, so a
     replay or a second delivery repeats nothing (v2 §17). v2 §4.6 writes one
     without `idempotency`, and this is why it compiles.
-  - **P4.** A process manager starts on at least one event. Its triggers are
+  - **P4.** A process manager starts on at least one event and correlates on at
+    least one field: with none, every run would share one record, one state and
+    one set of timers, and the first ending would end it for all. Its triggers are
     events or its own timers; its `sets:` and `cancels:` name its own timers; a
     timer fires after `wait:` or `at:` a `:timestamp` field of the state, exactly
     one of them; what it issues is a command of this contract; it is delivered
@@ -75,6 +77,11 @@ defmodule EhOsContract.Next.Contract.Rules.Consumers do
         do: [{"P4: #{where} starts on no event", pm}],
         else: []
 
+    uncorrelated =
+      if pm.correlate == [],
+        do: [{"P4: #{where} correlates on no field, so every run would share one record", pm}],
+        else: []
+
     triggers =
       for(s <- pm.starts_on, not MapSet.member?(events, s.event), do: {s, s.event, "starts on"}) ++
         for(e <- pm.ends_on, not MapSet.member?(events, e.event), do: {e, e.event, "ends on"}) ++
@@ -114,7 +121,7 @@ defmodule EhOsContract.Next.Contract.Rules.Consumers do
         ],
         else: []
 
-    starts ++ triggers ++ references ++ timer_shape ++ issued ++ delivery
+    starts ++ uncorrelated ++ triggers ++ references ++ timer_shape ++ issued ++ delivery
   end
 
   defp timer(where, timer, state) do

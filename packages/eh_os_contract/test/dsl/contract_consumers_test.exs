@@ -94,6 +94,22 @@ defmodule EhOsContract.Next.ContractConsumersTest do
   end
 
   describe "P4: a process manager's triggers, timers and commands" do
+    test "one that correlates on no field is refused, since every run would share one record" do
+      # Found in the review of E11a, beside R2's `correlate []`: the runtime joins no
+      # values into one correlation, and the first ending would complete every run.
+      message =
+        refuse_contract("ManagerUncorrelated", """
+        #{@unit}
+          process_manager :chase, "Pogoń", correlate: [] do
+            starts_on :visit_closed
+            ends_on :visit_closed
+          end
+        """)
+
+      assert message =~
+               "P4: process manager :chase correlates on no field, so every run would share one record"
+    end
+
     test "what it starts, reacts and ends on, sets, cancels and issues is its own" do
       message =
         refuse_contract("ManagerWrong", """
