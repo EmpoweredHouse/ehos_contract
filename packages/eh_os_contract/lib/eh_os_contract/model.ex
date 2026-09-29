@@ -173,6 +173,63 @@ defmodule EhOsContract.Model do
     end
   end
 
+  @doc """
+  A v2 contract, its domain and its derived capabilities as JSON-ready data for
+  EHOS and other tooling.
+
+  The top-level `schema` is the contract of this export. It is deliberately
+  separate from the DSL model's internal `format`: the latter can evolve without
+  making an unversioned transport shape look stable. Atom keys and values become
+  strings, module atoms lose the `Elixir.` prefix, and tuples become arrays, so
+  `Jason` can encode the result without knowing any Elixir representation.
+
+  Scenario, rule and invariant examples keep their structure, but values of fields
+  declared personal become `null`, including personal fields nested in domain
+  values. The public model is documentation, not a second store for fixtures that
+  may contain a real person's data.
+
+  The digest covers exactly the generated document before the digest is inserted.
+  It therefore moves when the projection changes, when the contract changes or
+  when a domain change moves roles or capabilities.
+  """
+  @spec to_data(contract()) :: map()
+  def to_data(contract) do
+    model = v2!(contract)
+    domain = domain!(model)
+    {exported_model, exported_domain} = EhOsContract.Model.Export.redact(model, domain)
+
+    body = %{
+      "schema" => "eh_os_contract.model.v1",
+      "contract" => json_data(exported_model),
+      "domain" => json_data(exported_domain),
+      "capabilities" => model |> capabilities() |> json_data()
+    }
+
+    Map.put(body, "digest", EhOsContract.Digest.document_hash(body))
+  end
+
+  defp json_data(nil), do: nil
+  defp json_data(value) when is_boolean(value) or is_binary(value) or is_number(value), do: value
+
+  defp json_data(value) when is_atom(value) do
+    case Atom.to_string(value) do
+      "Elixir." <> module -> module
+      name -> name
+    end
+  end
+
+  defp json_data(value) when is_tuple(value), do: value |> Tuple.to_list() |> json_data()
+  defp json_data(value) when is_list(value), do: Enum.map(value, &json_data/1)
+
+  defp json_data(value) when is_map(value) do
+    value
+    |> :maps.to_list()
+    |> Map.new(fn {key, item} -> {json_key(key), json_data(item)} end)
+  end
+
+  defp json_key(key) when is_atom(key), do: Atom.to_string(key)
+  defp json_key(key) when is_binary(key), do: key
+
   defp domain!(%{domain: domain, module: module}) do
     # Only a compiled model is asked: `fetch/1` on any other module would try it as a
     # v1 contract and fail with that error instead of this one.

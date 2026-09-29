@@ -44,6 +44,7 @@ defmodule EhOsContract.Check.Completeness do
       read_models_without_query(c),
       managers_without_ends_on(c),
       managers_without_event_reactions(c),
+      in_transaction_fan_out(c),
       prefixed_event_names(c),
       consults_without_match(c),
       without_scenario(c)
@@ -56,6 +57,12 @@ defmodule EhOsContract.Check.Completeness do
     with %{} = declared <- declared_unit(c, unit),
          %{} = event <- Enum.find(Rules.events(declared), &(&1.name == name)),
          do: Links.at(event)
+  end
+
+  defp declared_command(c, unit, name) do
+    with %{} = declared <- declared_unit(c, unit),
+         %{} = command <- Enum.find(declared.commands, &(&1.name == name)),
+         do: Links.at(command)
   end
 
   # ESDM's `aggregate-without-events`, and a boundary's alike: a unit that can
@@ -160,6 +167,27 @@ defmodule EhOsContract.Check.Completeness do
     end
   end
 
+  # A scenario is the contract's executable example of cardinality. More than one
+  # issued command proves the policy fans out while the append transaction holds
+  # the store's global lock (plan E10); no guessed runtime list limit is needed.
+  defp in_transaction_fan_out(%{model: model} = c) do
+    for policy <- model.policies,
+        policy.delivery == :in_transaction,
+        scenario <- model.scenarios,
+        scenario.target == %{kind: :policy, name: policy.name},
+        length(scenario.issues) > 1 do
+      Finding.new(
+        "in-transaction-policy-fan-out",
+        "policy #{inspect(policy.name)} of #{inspect(model.module)} is delivered " <>
+          "`:in_transaction`, and scenario #{inspect(scenario.description)} shows it issuing " <>
+          "#{length(scenario.issues)} commands while the global append lock is held; use " <>
+          "`delivery: :at_least_once` for fan-out",
+        at(c.declarations.policies, policy.name)
+      )
+    end
+    |> Enum.uniq_by(&{&1.rule, &1.at})
+  end
+
   # ESDM's `event-name-with-aggregate-prefix`: the event's type already carries its
   # process, and the unit is where it is declared.
   defp prefixed_event_names(%{model: model} = c) do
@@ -236,8 +264,32 @@ defmodule EhOsContract.Check.Completeness do
       relations_against_references(model, contracts),
       avoided_terms(model, contracts),
       directions(model, declared, contracts),
+      scoped_actors_with_unscoped_commands(model, contracts),
       unchecked_values(model, declared, contracts)
     ])
+  end
+
+  # A scoped actor has a grant narrowed to rows or units identified by those
+  # dimensions. Letting the same actor issue an unscoped command makes that grant
+  # unexpectedly application-wide (plan E10).
+  defp scoped_actors_with_unscoped_commands(model, contracts) do
+    scoped = Map.new(model.actors, &{&1.name, &1.scope})
+
+    for %{model: contract, declarations: declarations} <- contracts,
+        command <- contract.commands,
+        Map.get(command, :scope) == nil,
+        actor <- command.by,
+        Map.get(scoped, actor, []) != [] do
+      dimensions = scoped |> Map.fetch!(actor) |> Enum.map_join(", ", &inspect/1)
+
+      Finding.new(
+        "scoped-actor-with-unscoped-command",
+        "actor #{inspect(actor)} of #{inspect(model.module)} has scope #{dimensions}, but command " <>
+          "#{inspect(command.name)} of #{inspect(contract.module)} grants it without a `scope`, so " <>
+          "the capability is application-wide",
+        declared_command(%{declarations: declarations}, command.unit, command.name)
+      )
+    end
   end
 
   # A value whose invariants no module checks, in a domain whose contracts have code:

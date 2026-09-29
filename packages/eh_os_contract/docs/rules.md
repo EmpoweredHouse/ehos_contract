@@ -70,7 +70,29 @@ or broken. Mark the event that ends a run `terminal: true`.
 Nothing implements a contract.
 
 A contract may exist without code (v2 §16, D3): nothing of it can be dispatched, and its report
-is of a process nobody runs.
+is of a process nobody runs. A unit made only of events entering through `record/3` needs no
+implementation and does not cause this notice.
+
+## `in-transaction-policy-fan-out`
+
+**warning** · reads v2 contracts
+
+A scenario shows an in-transaction policy issuing more than one command.
+
+Every command is dispatched while the transaction that recorded the triggering event holds the
+store's global append lock. A scenario issuing more than one proves that the policy fans out and
+makes every other append wait for the whole list. Deliver fan-out `:at_least_once`; the ordered
+subscription gives each command its idempotent key without extending the original transaction.
+
+## `scoped-actor-with-unscoped-command`
+
+**warning** · reads v2 contracts
+
+An actor with scope dimensions may issue an unscoped command.
+
+The actor's other grants can be narrowed to named dimensions, but this command's capability is
+application-wide. Declare the command's `scope` when it acts on one of those dimensions, or use
+a different actor when application-wide authority is deliberate.
 
 ## `declaration-without-implementation`
 

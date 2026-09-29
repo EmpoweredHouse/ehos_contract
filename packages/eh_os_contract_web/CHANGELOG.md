@@ -8,6 +8,20 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **The API mount serves OpenAPI 3.1.2 documents** at `/openapi` and `/openapi/:contract`, with one
+  command-and-query document per v2 contract and its digest as the `ETag`. The host's existing resolver
+  protects both routes. Repeated query keys are the documented list encoding; structured parameters use
+  deep-object keys, and erased personal fields in rows are nullable.
+
+- **The AsyncAPI endpoint now serves v2 contracts and their declared `publish` boundaries.** Its index lists
+  only v2 contracts; each document exposes public messages as AsyncAPI `send` operations and does not leak
+  internal domain events. A message component is keyed by the exact versioned publication name.
+
+- **The API mount serves v2 model documents** at `/model` and `/model/:contract`. Each document is
+  `eh_os_contract.model.v1`, includes the derived capability surface, and carries its digest as an `ETag`;
+  the host's existing resolver protects both routes. Personal values in exported examples and defaults are
+  `null`, including fields nested in domain values.
+
 - **The graph screen works under a strict Content-Security-Policy** (plan EG3), `default-src 'self'` as EHOS
   serves it: the diagrams were black boxes there. The hook draws with `mermaid.render` and hands the SVG's
   stylesheet and `style` attributes to the CSSOM — a constructed stylesheet and `element.style` — which such a

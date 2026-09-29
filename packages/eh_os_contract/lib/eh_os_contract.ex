@@ -49,6 +49,7 @@ defmodule EhOsContract do
       Model,
       Next.Contract,
       {Next.Contract.Dsl, []},
+      OpenAPI,
       Payload,
       Plug,
       ProcessManager,

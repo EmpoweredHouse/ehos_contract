@@ -94,6 +94,23 @@ defmodule EhOsContract.DigestTest do
     end
   end
 
+  describe "exported document hashes" do
+    test "length-prefix strings, so delimiters cannot make different documents collide" do
+      left = ["Wizyta", "Pacjent"]
+      right = ["Wizyta,s:Pacjent"]
+
+      # Contract versions retain the historical encoding; E10 documents do not
+      # inherit its delimiter ambiguity.
+      assert EhOsContract.Digest.canonical(left) == EhOsContract.Digest.canonical(right)
+      refute EhOsContract.Digest.document_hash(left) == EhOsContract.Digest.document_hash(right)
+    end
+
+    test "remain independent of map insertion order" do
+      assert EhOsContract.Digest.document_hash(%{"b" => 1, "a" => 2}) ==
+               EhOsContract.Digest.document_hash(%{"a" => 2, "b" => 1})
+    end
+  end
+
   defmodule WithCommand do
     @moduledoc false
     use EhOsContract.Contract

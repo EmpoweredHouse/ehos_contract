@@ -7,6 +7,13 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **`mix eh_os_contract.manifest --output PATH`** writes the selected domain's human command
+  capabilities and roles as strict `ehos.manifest/v1`. `EhOsContract.Auth.Manifest.build/2` is the same
+  projection as data. System actors and actors with no command capability are not roles; query and record
+  capabilities wait for a later EHOS manifest schema instead of appearing under fields v1 would reject. If
+  two registered modules expose the same public domain name, `--domain` refuses the ambiguity and names both
+  modules instead of silently taking the first scan result.
+
 - **The package** (contract v2 §16, D14; `eh-os` D-33, D-34). `EhOsContract.Auth.verify/1,2`
   turns an EHOS credential — a JWT signed with Ed25519 — into an `EhOsContract.Actor`, or refuses
   it with `:expired`, `:unknown_key`, `:bad_signature`, `:wrong_audience`, `:wrong_issuer` or

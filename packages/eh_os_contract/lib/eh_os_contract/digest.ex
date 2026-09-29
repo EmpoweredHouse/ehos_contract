@@ -87,6 +87,65 @@ defmodule EhOsContract.Digest do
   end
 
   @doc """
+  A short hash for an exported JSON-ready document.
+
+  Contract versions keep using `hash/1`: changing their historical encoding would
+  make an unchanged agreement look new in an existing event log. Documents are a
+  newer boundary and use a length-prefixed encoding instead, so delimiters inside a
+  string cannot make two different values canonicalise alike.
+  """
+  @spec document_hash(term()) :: String.t()
+  def document_hash(term) do
+    term
+    |> document_canonical()
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+    |> binary_part(0, 12)
+  end
+
+  defp document_canonical(nil), do: "z"
+  defp document_canonical(false), do: "b0"
+  defp document_canonical(true), do: "b1"
+  defp document_canonical(value) when is_binary(value), do: framed("s", value)
+  defp document_canonical(value) when is_integer(value), do: framed("i", Integer.to_string(value))
+
+  defp document_canonical(value) when is_float(value) do
+    # IEEE-754 bytes are the value, rather than an OTP release's choice of shortest
+    # decimal spelling for it.
+    framed("f", Base.encode16(<<value::float-64>>, case: :lower))
+  end
+
+  defp document_canonical(value) when is_atom(value),
+    do: value |> Atom.to_string() |> then(&framed("a", &1))
+
+  defp document_canonical(value) when is_list(value) do
+    value
+    |> Enum.map(&document_canonical/1)
+    |> framed_many("l")
+  end
+
+  defp document_canonical(value) when is_tuple(value) do
+    value
+    |> Tuple.to_list()
+    |> Enum.map(&document_canonical/1)
+    |> framed_many("t")
+  end
+
+  defp document_canonical(value) when is_map(value) do
+    value
+    |> :maps.to_list()
+    |> Enum.map(fn {key, item} ->
+      encoded_key = document_canonical(key)
+      framed("k", encoded_key) <> framed("v", document_canonical(item))
+    end)
+    |> Enum.sort()
+    |> framed_many("m")
+  end
+
+  defp framed_many(values, tag), do: framed(tag, Enum.join(values))
+  defp framed(tag, value), do: tag <> Integer.to_string(byte_size(value)) <> ":" <> value
+
+  @doc """
   A hash of named groups of declarations, with each group's members sorted.
 
   Sorting happens on the canonical form of a whole declaration rather than on a

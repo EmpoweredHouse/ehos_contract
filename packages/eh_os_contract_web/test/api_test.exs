@@ -17,8 +17,8 @@ defmodule EhOsContract.Web.ApiTest do
 
   @endpoint EhOsContract.Web.TestHost.Endpoint
 
-  # Two contracts are registered, the v2 one and its v1 original kept for AsyncAPI,
-  # so a request names which it asks about.
+  # Two contracts are registered, the v2 one and its v1 graph-control original,
+  # so a conformance request names which it asks about.
   @contract "/api/conformance?contract=EhOsContract.Web.TestHost.Fixtures.CaseHandling"
 
   setup do
@@ -97,17 +97,21 @@ defmodule EhOsContract.Web.ApiTest do
 
       assert conn.status == 200
       %{"contracts" => contracts} = Jason.decode!(conn.resp_body)
-      assert length(contracts) == length(EhOsContract.Registry.contracts())
+
+      assert Enum.map(contracts, & &1["contract"]) ==
+               EhOsContract.Registry.v2_contracts() |> Enum.map(&inspect/1) |> Enum.sort()
+
       assert Enum.all?(contracts, &(byte_size(&1["digest"]) == 12))
     end
 
     test "a document is served, and its ETag is its digest", %{conn: conn} do
-      name = EhOsContract.Registry.contracts() |> List.first() |> inspect()
+      name = EhOsContract.Registry.v2_contracts() |> List.first() |> inspect()
       conn = get(conn, "/api/asyncapi/#{name}")
 
       assert conn.status == 200
       document = Jason.decode!(conn.resp_body)
       assert document["asyncapi"] == "3.0.0"
+      assert document["operations"] == %{}
 
       # Served twice on purpose: a consumer comparing what an instance claims
       # against what its build recorded can do it with a HEAD and no body.
@@ -129,6 +133,85 @@ defmodule EhOsContract.Web.ApiTest do
 
       assert get(conn, "/api/asyncapi").status == 403
       assert get(conn, "/api/asyncapi/Anything").status == 403
+    end
+  end
+
+  describe "the exported model" do
+    setup %{conn: conn} do
+      {:ok, conn: Access.put_actor(conn, "u-1", ["eh_os_contract_read"])}
+    end
+
+    test "the index names its schema and lists v2 contracts only", %{conn: conn} do
+      conn = get(conn, "/api/model")
+
+      assert conn.status == 200
+
+      assert %{"schema" => "eh_os_contract.model-index.v1", "contracts" => contracts} =
+               Jason.decode!(conn.resp_body)
+
+      assert Enum.map(contracts, & &1["contract"]) ==
+               EhOsContract.Registry.v2_contracts() |> Enum.map(&inspect/1) |> Enum.sort()
+
+      assert Enum.all?(contracts, &(byte_size(&1["digest"]) == 12))
+    end
+
+    test "a model document is served with its digest as the ETag", %{conn: conn} do
+      name = EhOsContract.Registry.v2_contracts() |> List.first() |> inspect()
+      conn = get(conn, "/api/model/#{name}")
+
+      assert conn.status == 200
+      document = Jason.decode!(conn.resp_body)
+      assert document["schema"] == "eh_os_contract.model.v1"
+      assert document["contract"]["module"] == name
+      assert get_resp_header(conn, "etag") == [~s("#{document["digest"]}")]
+    end
+
+    test "an unknown or unauthenticated request receives no model", %{conn: conn} do
+      assert get(conn, "/api/model/Not.A.Contract").status == 404
+
+      public = build_conn() |> put_req_header("accept", "application/json")
+      assert get(public, "/api/model").status == 403
+      assert get(public, "/api/model/Anything").status == 403
+    end
+  end
+
+  describe "the generated command-and-query API" do
+    setup %{conn: conn} do
+      {:ok, conn: Access.put_actor(conn, "u-1", ["eh_os_contract_read"])}
+    end
+
+    test "the index lists v2 contracts with OpenAPI digests", %{conn: conn} do
+      conn = get(conn, "/api/openapi")
+
+      assert conn.status == 200
+      %{"contracts" => contracts} = Jason.decode!(conn.resp_body)
+
+      assert Enum.map(contracts, & &1["contract"]) ==
+               EhOsContract.Registry.v2_contracts() |> Enum.map(&inspect/1) |> Enum.sort()
+
+      assert Enum.all?(contracts, &(byte_size(&1["digest"]) == 12))
+    end
+
+    test "a document is served with relative plug paths and its digest as the ETag", %{conn: conn} do
+      name = inspect(EhOsContract.Web.TestHost.Fixtures.CaseHandling)
+      conn = get(conn, "/api/openapi/#{name}")
+
+      assert conn.status == 200
+      document = Jason.decode!(conn.resp_body)
+      assert document["openapi"] == "3.1.2"
+      assert Map.has_key?(document["paths"], "/commands/web_test_host.open_case")
+
+      assert get_resp_header(conn, "etag") == [
+               ~s("#{document["info"]["x-eh-os-contract-digest"]}")
+             ]
+    end
+
+    test "unknown and unauthenticated requests receive no specification", %{conn: conn} do
+      assert get(conn, "/api/openapi/Not.A.Contract").status == 404
+
+      public = build_conn() |> put_req_header("accept", "application/json")
+      assert get(public, "/api/openapi").status == 403
+      assert get(public, "/api/openapi/Anything").status == 403
     end
   end
 

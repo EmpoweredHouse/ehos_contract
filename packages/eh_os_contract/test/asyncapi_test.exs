@@ -40,6 +40,145 @@ defmodule EhOsContract.AsyncAPITest do
     process :p, label: "P", instance: [:case_id]
   end
 
+  defmodule Published do
+    @moduledoc false
+    use EhOsContract.Next.Contract, domain: DispatchRig.Domain, context: :ledger
+
+    aggregate :transfer, "Transfer" do
+      identity :transfer_id
+
+      command :complete, "Complete the transfer",
+        by: :clerk,
+        scope: :branch_id,
+        emits: :completed do
+        field :branch_id, :id
+        field :amount, :integer
+        field :internal_note, :string, optional: true
+      end
+
+      event :completed, "Transfer completed" do
+        field :branch_id, :id
+        field :amount, :integer
+        field :internal_note, :string, optional: true
+      end
+    end
+
+    publish :transfer_completed,
+      as: "dispatch_rig.transfer.completed.v1",
+      from: :completed,
+      fields: [:transfer_id, :branch_id, :amount],
+      idempotent_on: [:transfer_id]
+
+    process :transfer, "Transfer" do
+      correlate :transfer_id
+      accountable :clerk
+    end
+  end
+
+  defmodule CollidingNames do
+    @moduledoc false
+    use EhOsContract.Next.Contract, domain: DispatchRig.Domain, context: :ledger
+
+    aggregate :probe, "Probe" do
+      identity :probe_id
+      event :first, "First", recorded_by: :clerk
+      event :second, "Second", recorded_by: :clerk
+    end
+
+    publish :foo1,
+      as: "dispatch_rig.foo1.v1",
+      from: :first,
+      fields: [:probe_id],
+      idempotent_on: [:probe_id]
+
+    publish :foo_1,
+      as: "dispatch_rig.foo_1.v1",
+      from: :second,
+      fields: [:probe_id],
+      idempotent_on: [:probe_id]
+
+    process :probe, "Probe" do
+      correlate :probe_id
+    end
+  end
+
+  describe "a v2 publication" do
+    test "is the only event boundary and becomes one send operation" do
+      document = EhOsContract.AsyncAPI.document(Published)
+
+      assert %{
+               "transfer_completed" => %{
+                 "address" => "dispatch_rig.transfer.completed.v1",
+                 "messages" => %{
+                   "dispatch_rig.transfer.completed.v1" => %{
+                     "$ref" => "#/components/messages/dispatch_rig.transfer.completed.v1"
+                   }
+                 }
+               }
+             } = document["channels"]
+
+      assert %{
+               "publish_transfer_completed" => %{
+                 "action" => "send",
+                 "channel" => %{"$ref" => "#/channels/transfer_completed"},
+                 "messages" => [
+                   %{
+                     "$ref" =>
+                       "#/channels/transfer_completed/messages/dispatch_rig.transfer.completed.v1"
+                   }
+                 ]
+               }
+             } = document["operations"]
+
+      assert %{"dispatch_rig.transfer.completed.v1" => message} =
+               document["components"]["messages"]
+
+      assert message["name"] == "dispatch_rig.transfer.completed.v1"
+      assert message["x-eh-os-contract-source-event"] == "completed"
+      assert message["x-eh-os-contract-idempotent-on"] == ["transfer_id"]
+      refute message["name"] == "completed"
+    end
+
+    test "carries only selected fields as a closed JSON Schema object" do
+      payload =
+        EhOsContract.AsyncAPI.document(Published)["components"]["messages"][
+          "dispatch_rig.transfer.completed.v1"
+        ]["payload"]
+
+      assert payload["required"] == ["amount", "branch_id", "transfer_id"]
+      assert payload["additionalProperties"] == false
+
+      assert payload["properties"]["transfer_id"] == %{
+               "type" => "string",
+               "x-eh-os-contract-type" => "id"
+             }
+
+      assert payload["properties"]["amount"] == %{
+               "type" => "integer",
+               "x-eh-os-contract-type" => "integer"
+             }
+
+      refute Map.has_key?(payload["properties"], "internal_note")
+    end
+
+    test "a contract with no publications promises no message boundary" do
+      document = EhOsContract.AsyncAPI.document(DispatchRig.Transfer)
+
+      assert document["channels"] == %{}
+      assert document["operations"] == %{}
+      assert document["components"]["messages"] == %{}
+    end
+
+    test "exact publication names cannot overwrite one another after normalisation" do
+      messages = EhOsContract.AsyncAPI.document(CollidingNames)["components"]["messages"]
+
+      assert Map.keys(messages) |> Enum.sort() == [
+               "dispatch_rig.foo1.v1",
+               "dispatch_rig.foo_1.v1"
+             ]
+    end
+  end
+
   describe "the catalogue" do
     test "every declared event appears exactly once as a message" do
       messages = EhOsContract.AsyncAPI.document(Contract)["components"]["messages"]

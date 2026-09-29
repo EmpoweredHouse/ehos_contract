@@ -1,9 +1,8 @@
 defmodule EhOsContract.Web.TestHost.Fixtures.V1.CaseHandling do
   @moduledoc """
   INVENTED — not a domain. **The v1 original of
-  `EhOsContract.Web.TestHost.Fixtures.CaseHandling`, kept for the AsyncAPI endpoint
-  alone**: `EhOsContract.AsyncAPI` reads v1 contracts until E10 derives it from v2's
-  `publish` (v2 plan). Goes then, or at the cut (E11) at the latest.
+  `EhOsContract.Web.TestHost.Fixtures.CaseHandling`, kept as a v1 graph control until
+  E11 removes v1**. AsyncAPI has read v2 `publish` boundaries since E10.
 
   Two declared endings from one decision point, mirroring
   `packages/eh_os_contract`'s own `ProcessShapes.Promised` at a smaller size: this

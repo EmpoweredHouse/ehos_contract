@@ -124,6 +124,55 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
     assert message =~ "actor :auditor of #{inspect(@domain)} is in no command's or query's `by:`"
   end
 
+  test "a scoped actor may not get an application-wide command; control: scoped and unscoped actors" do
+    compile(
+      """
+      defmodule EhOsContract.CheckCompletenessDomainTest.ScopedDomain do
+        use EhOsContract.Domain, name: :scoped, language: :pl
+
+        subdomain :core, "Core", type: :core
+        context :work, "Praca", subdomain: :core
+        actor :clerk, :human, "Księgowa", scope: [:company_id]
+        actor :administrator, :human, "Administrator"
+      end
+
+      defmodule EhOsContract.CheckCompletenessDomainTest.ScopedContract do
+        use EhOsContract.Next.Contract,
+          domain: EhOsContract.CheckCompletenessDomainTest.ScopedDomain,
+          context: :work
+
+        aggregate :company, "Firma" do
+          identity :company_id
+          command :rename, "Zmień nazwę", by: :clerk, emits: :renamed
+          command :archive, "Archiwizuj", by: :clerk, scope: :company_id, emits: :archived
+          command :restore, "Przywróć", by: :administrator, emits: :restored
+          event :renamed, "Zmieniono nazwę"
+          event :archived, "Zarchiwizowano"
+          event :restored, "Przywrócono"
+        end
+
+        process :company, "Firma", accountable: :clerk do
+          correlate :company_id
+        end
+      end
+      """,
+      "scoped_actor.ex"
+    )
+
+    contract = EhOsContract.CheckCompletenessDomainTest.ScopedContract
+
+    assert [%Finding{message: message} = finding] =
+             for(
+               f <- Completeness.findings([contract]),
+               f.rule == "scoped-actor-with-unscoped-command",
+               do: f
+             )
+
+    assert message =~ "actor :clerk"
+    assert message =~ "command :rename"
+    assert Finding.place(finding) == {"scoped_actor.ex", 17}
+  end
+
   test "an external nothing uses; control: one an actor stands for, one an effect calls" do
     assert [{message, {"clinic.ex", 15}}] = findings("orphan-external-system")
     assert message =~ "external :ledger"

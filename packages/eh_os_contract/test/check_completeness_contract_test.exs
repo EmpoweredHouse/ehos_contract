@@ -133,6 +133,58 @@ defmodule EhOsContract.CheckCompletenessContractTest do
              "boundary :slot of #{inspect(@slots)} consults :room_closed with `where:` alone"
   end
 
+  test "a scenario that proves an in-transaction policy fans out; control: one command" do
+    compile(
+      """
+      defmodule EhOsContract.CheckCompletenessContractTest.FanOut do
+        use EhOsContract.Next.Contract, domain: Clinic, context: :settlement
+
+        aggregate :batch, "Paczka" do
+          identity :batch_id
+          command :start, "Rozpocznij", by: :reception, emits: :started
+          command :handle_item, "Obsłuż", emits: :item_handled
+          event :started, "Rozpoczęto"
+          event :item_handled, "Obsłużono"
+        end
+
+        policy :handle_each, "Obsłuż każdy", handles: :started, issues: :handle_item
+        policy :handle_one, "Obsłuż jeden", handles: :started, issues: :handle_item
+
+        process :batch, "Paczka" do
+          correlate :batch_id
+        end
+
+        scenario "dwa elementy" do
+          scope :handle_each
+          on :started
+          issues :handle_item
+          issues :handle_item
+        end
+
+        scenario "jeden element" do
+          scope :handle_one
+          on :started
+          issues :handle_item
+        end
+      end
+      """,
+      "fan_out.ex"
+    )
+
+    module = EhOsContract.CheckCompletenessContractTest.FanOut
+
+    assert [%Finding{message: message} = finding] =
+             for(
+               f <- Completeness.findings([module]),
+               f.rule == "in-transaction-policy-fan-out",
+               do: f
+             )
+
+    assert message =~ "policy :handle_each"
+    assert message =~ "scenario \"dwa elementy\" shows it issuing 2 commands"
+    assert Finding.place(finding) == {"fan_out.ex", 12}
+  end
+
   test "an event read only by ends_on, a promise, a publish or a sibling has a consumer" do
     compile(
       """

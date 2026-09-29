@@ -36,6 +36,16 @@ What changes otherwise is what a host has to do.
 
 ### Changed — a host has to act
 
+- **E10: `EhOsContract.Model.to_data/1` publishes the v2 model under the named schema
+  `eh_os_contract.model.v1`.** The JSON-ready document includes the contract, its domain, derived human
+  capabilities and a digest of that projection. Its declaration and example structure is complete, but
+  personal values in scenarios, rule examples, invariant examples and defaults are `null`: the public model
+  is not a second store for fixture data. A scenario's event is redacted by the fields of the contract that
+  declares it, so a consumer's scenario on a sibling's event does not publish that sibling's personal
+  values. What no declaration covers is `null` rather than verbatim: the data of an event or command
+  that cannot be found, a query's answer without its read model, a key no field declares, and a
+  structured value's example that is not a map but holds a personal field.
+
 - **E9c: a command may be scoped, as a query is (D10).** `command :x, "…", by: :actor, scope: :field` names one
   of its fields; `EhOsContract.Model.capabilities/1` gives the command's capability that `scope:` instead of
   `nil`, and dispatch — and `EhOsContract.Plug` — ask the `Authorizer` with the field's value. A credential
@@ -119,6 +129,20 @@ What changes otherwise is what a host has to do.
   Scenario coverage compares these as sets, so no count moves.
 
 ### Added
+
+- **E10: `EhOsContract.OpenAPI` projects the v2 model's human command and query capabilities as OpenAPI
+  3.1.2.** Paths match `EhOsContract.Plug`, field and read-model schemas share AsyncAPI's JSON Schema
+  projection, scoped operations name their dimension, and commands only application code may issue stay
+  absent. List query parameters use repeated `form` keys and structured values use `deepObject`, matching
+  what the Plug decodes; a crypto-shredded personal field in a query row is nullable while its key remains
+  required. Each per-contract document and the v2 index carry an injective document digest, deliberately
+  separate from the historical contract-version encoding.
+
+- **E10: `EhOsContract.AsyncAPI` projects v2 `publish` boundaries as AsyncAPI 3.0.** Each publication is one
+  addressed channel, one JSON Schema message carrying only its selected non-personal fields, and one `send`
+  operation. The exact versioned publication name is its component key, so two local names cannot collapse
+  under case conversion and overwrite one another. Internal events are absent. The index now lists v2
+  contracts; direct v1 document generation stays available only until the E11 cut.
 
 - **E9c: a field typed by a domain value of `:id` is an identifier.** `value :period, :id` with an invariant
   keeps the value's check at dispatch, and the field is now also a tag, so a consistency boundary can `match:`

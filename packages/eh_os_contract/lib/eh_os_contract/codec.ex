@@ -460,6 +460,35 @@ defmodule EhOsContract.Codec do
     end)
   end
 
+  defp from_text({:list, inner}, value, values) when is_list(value),
+    do: Enum.map(value, &from_text(inner, &1, values))
+
+  defp from_text(type, value, values) when is_atom(type) and is_map_key(values, type) do
+    case Map.fetch!(values, type) do
+      %{type: nil, fields: fields} when is_map(value) ->
+        Enum.reduce(fields, value, fn field, converted ->
+          string_key = Atom.to_string(field.name)
+
+          cond do
+            Map.has_key?(converted, field.name) ->
+              Map.update!(converted, field.name, &from_text(field.type, &1, values))
+
+            Map.has_key?(converted, string_key) ->
+              Map.update!(converted, string_key, &from_text(field.type, &1, values))
+
+            true ->
+              converted
+          end
+        end)
+
+      %{type: inner} ->
+        from_text(inner, value, values)
+
+      _structured_value_given_as_text ->
+        value
+    end
+  end
+
   defp from_text(type, value, values) when is_binary(value) do
     case base(type, values) do
       :integer ->
