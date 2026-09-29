@@ -326,6 +326,26 @@ defmodule EhOsContract.ContractProcessTest do
       assert message =~ "R6: promise :closed_quickly: within is 24, which is not {count, unit}"
     end
 
+    test "a calendar unit in a promise's within is refused as in a deadline" do
+      message =
+        refuse_contract("CalendarWithin", """
+        #{@unit}
+          process :visit, "Wizyta" do
+            correlate :visit_id
+
+            promise :closed_quickly do
+              from :visit_closed
+              eventually :visit_closed
+              within {1, :month}
+            end
+          end
+        """)
+
+      assert message =~
+               "R6: promise :closed_quickly: within is in :month, a calendar unit, which only a " <>
+                 "timer's wait and cadence may use"
+    end
+
     test "control: a monthly cadence, a zero window and fixed units compile" do
       model =
         compile_contract("DurationsRight", """
