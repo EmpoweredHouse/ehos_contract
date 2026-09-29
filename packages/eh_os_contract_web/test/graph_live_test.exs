@@ -57,6 +57,24 @@ defmodule EhOsContract.Web.Live.GraphTest do
     assert html =~ "Declared versus observed, this process"
   end
 
+  test "two processes of one name in two contracts are each reachable" do
+    # Both fixtures name their process `handling`: a key by name alone would make one
+    # of them unreachable, so the selector keys by contract and name.
+    {:ok, view, _html} =
+      build_conn()
+      |> Access.put_actor("admin", ["eh_os_contract_admin"])
+      |> live("/dashboard/graph")
+
+    appeals = "#{inspect(EhOsContract.Web.TestHost.Fixtures.Appeals)}:handling"
+    html = render_change(view, "select_process", %{"process" => appeals})
+    assert html =~ "event_appeal_lodged"
+    refute html =~ "event_case_opened"
+
+    cases = "#{inspect(EhOsContract.Web.TestHost.Fixtures.CaseHandling)}:handling"
+    html = render_change(view, "select_process", %{"process" => cases})
+    assert html =~ "event_case_opened"
+  end
+
   # Without it LiveView's patch takes the drawn SVG out of every block on every change — a
   # process switch blanked the context map and the system too, which had not changed. The hook
   # still hears of a changed `data-graph`: LiveView updates an ignored block's attributes.

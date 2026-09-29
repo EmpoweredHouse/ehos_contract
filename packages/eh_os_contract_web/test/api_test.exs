@@ -71,6 +71,15 @@ defmodule EhOsContract.Web.ApiTest do
       assert Jason.decode!(conn.resp_body)["report"]["contract"] == contract
     end
 
+    test "without `contract=`, several registered contracts are a bad request", %{conn: conn} do
+      # The host registers two, and a report of whichever came first would answer a
+      # question nobody asked.
+      conn = get(conn, "/api/conformance")
+
+      assert conn.status == 400
+      assert Jason.decode!(conn.resp_body)["detail"] =~ "several contracts are registered"
+    end
+
     test "an unknown contract is a bad request, not a crash", %{conn: conn} do
       conn = get(conn, "/api/conformance?contract=Not.A.Contract")
 
