@@ -23,18 +23,55 @@ against it.
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## Unreleased — 0.3.0
 
-Stages E1–E6 of the move to a v2 contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`). **No verdict of a v1
-contract moves.** `mix eh_os_contract.report` and `mix eh_os_contract.graph --overlay --mermaid` gave
-byte-identical output on the development database before and after each of E1–E5.
+The move to the second contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`), from E1 to the cut, E11.
+**The first DSL is gone**: a contract written with `event`, `payload:`, `trace` and `EhOsContract.Handler`
+no longer compiles, and nothing of it is migrated — there was no consumer to migrate. What 0.3.0 is, and
+how to write a domain and a contract for it, is in `README.md` and `docs/contract.md`; every key of both
+DSLs is in `docs/dsl/`. Until E11, E1–E5 moved no verdict of a first-DSL contract — `mix
+eh_os_contract.report` and `graph --overlay --mermaid` gave byte-identical output before and after each —
+and from E6 the second DSL ran beside it. The entries below each name their stage.
 
-**The version is 0.3.0-dev from E6**, where v2 contracts start to run. A host that ports a contract to v2 sees
-it leave what the v1 readers — the report, the graph, `check` — cover, until E7 reads the new log; the
-sandbox's `Rehmed.Contracts.VisitSettlement` is the first, and its five lines left `check`'s output with it.
-What changes otherwise is what a host has to do.
+### Removed — E11a, the first DSL
+
+- `use EhOsContract.Contract` with `event`, `process`, `trace`, `rule`, `example`, `external` and `command`
+  keyword declarations, and everything that read them: `EhOsContract.Handler`, `EhOsContract.emit/4` and its
+  emitter, `EhOsContract.Job`, handler failures, `EhOsContract.Telemetry`, `EhOsContract.Brief`, the first
+  model (`Model.V1`), and the first DSL's findings in `check`, its AsyncAPI projection, report, trace, run,
+  graph overlay and deployment rows.
+- `mix eh_os_contract.trace` and `mix eh_os_contract.brief`. A promise's verdicts are in the report; a Brief
+  for a process owner comes back on the dashboard. `mix eh_os_contract.graph` without a picture flag prints
+  its usage instead of drawing the first DSL's graph.
+- The dashboard's "every contract" panel on `/graph`, which drew the first DSL's handler graph.
+- **Jobs of `EhOsContract.Job` still in a host's Oban queue have no worker.** Drain the queue before the
+  upgrade, or discard them after it.
+- The direct `:telemetry` dependency. It stays in the lock through Ecto and Oban.
 
 ### Changed — a host has to act
+
+- **E11b: the second DSL takes the first one's names.** `use EhOsContract.Next.Contract` is
+  `use EhOsContract.Contract`, and every `EhOsContract.Next.*` module drops `Next`. `Registry.v2_contracts/0`
+  is `Registry.contracts/0`, and the scan's key `graph().v2_contracts` is `graph().contracts`;
+  `Check.v2_findings/1` is `Check.findings/1`; `Deployment.v2_edge_labels/1` is `Deployment.edge_labels/1`.
+  **`Registry.contracts/0` and `Check.findings/1` existed before and meant the first DSL's contracts**: a
+  call written before E11 still compiles, and now gets the second DSL's.
+- **E11c: the engine's storage is one migration.** `EhOsContract.Migrations.current_version/0` is 1, and V01
+  creates the whole store in its final shape. The upgrades to versions 2–5 are gone, and a database migrated
+  with them has no path forward: recreate it. The final shape differs from what V05 left: text columns are
+  `text`, not `varchar(255)`; `eh_os_contract_event_handlings` and `eh_os_contract_handler_failures` are not
+  created; the indexes on `type`, `causation_id`, `instance_id` and `(process, instance_id)` of
+  `eh_os_contract_events` are not created, since runs are read through `eh_os_contract_event_runs`.
+- **E11a: R2 refuses a process with `correlate []`, and P4 a process manager with `correlate: []`.** Both
+  compiled, and then every event of the contract joined one run — the report counted one run for everything
+  — and every run of the manager shared one record, state and set of timers.
+- **E11a: an empty `:id` is refused**, at dispatch (`{field, :type}`) and in scenario data at compile (S3), as
+  an entity's id is. The log read back still accepts one, so what is already written keeps reading.
+- **E11a: a promise can be suspended.** `EhOsContract.Dependency.unavailable!/4` takes a contract with an
+  event that `depends_on` the external, where it accepted only a first-DSL contract, so an outage recorded
+  inside a promise's window now suspends it instead of counting as a violation. `Dependency.observe/3`
+  records an outage of an external the contract only `calls:`, where it raised; such an observation
+  suspends nothing, since promises read only `depends_on` events.
 
 - **E10: `EhOsContract.Model.to_data/1` publishes the v2 model under the named schema
   `eh_os_contract.model.v1`.** The JSON-ready document includes the contract, its domain, derived human
@@ -92,18 +129,6 @@ What changes otherwise is what a host has to do.
   EhOsContract.Vault, keys: [...]` (`README.md`); without one, the `EhOsContract` child refuses to start. A host
   without personal fields configures nothing.
 
-- **A new migration is required.** Add one calling `EhOsContract.Migrations.up(version: 3)` and
-  `down(version: 3)`, like the upgrade to version 2. V03 alters `eh_os_contract_events` in place:
-  - a `position` column becomes its primary key, and existing rows are numbered in `occurred_at` order;
-  - streams, tags, `schema_version`, `command_id`, `metadata` and `recorded_at` are added;
-  - `actor` becomes NOT NULL, and rows without one get the system actor;
-  - the `eh_os_contract_commands` table is created.
-- **And a second one, from E7**: `EhOsContract.Migrations.up(version: 4)` and `down(version: 4)`. V04 creates
-  the tables of the consumers that run outside the dispatch transaction — `eh_os_contract_subscriptions`,
-  `eh_os_contract_process_managers` and `eh_os_contract_event_runs` — and changes no existing table.
-- **And a third one, from E8**: `EhOsContract.Migrations.up(version: 5)` and `down(version: 5)`. V05 creates
-  `eh_os_contract_subject_keys` (a data key per subject, wrapped by a master key of `EhOsContract.Vault`) and
-  `eh_os_contract_erasures` (the subjects erased).
 - **The log is append-only.** Triggers refuse UPDATE, DELETE and TRUNCATE on `eh_os_contract_events`. A test
   that moved `occurred_at` afterwards has to emit in the past instead, with `EhOsContract.Clock.at/2`. A test
   database that leaked rows is recovered with `ecto.drop`.

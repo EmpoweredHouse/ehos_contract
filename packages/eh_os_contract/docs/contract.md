@@ -149,6 +149,10 @@ end
 way round, so changing the code never recompiles the contract, and the engine finds them in the running
 binary (`config :eh_os_contract, applications: [...]`).
 
+A unit whose events all declare `recorded_by:` has nothing to implement: no command reaches it, and an
+integration records its events with `EhOsContract.record/3`. A module with only the `use` for it adds
+nothing, and one with an `evolve/2` warns that no behaviour asks for it.
+
 A command goes through `EhOsContract.dispatch/3`, with the actor the host authenticated:
 
 ```elixir

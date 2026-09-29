@@ -7,6 +7,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **E11: the manifest reads `EhOsContract.Registry.contracts/0`**, the engine's one list of contracts from its
+  0.3.0; `Manifest.build/2` raises "has no contracts" for a domain with none.
+
 - **`mix eh_os_contract.manifest --output PATH`** writes the selected domain's human command
   capabilities and roles as strict `ehos.manifest/v1`. `EhOsContract.Auth.Manifest.build/2` is the same
   projection as data. System actors and actors with no command capability are not roles; query and record

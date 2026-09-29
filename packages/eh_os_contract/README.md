@@ -100,6 +100,10 @@ config :eh_os_contract, subscriptions: :manual
 
 and a test that needs them runs `EhOsContract.Testing.drain/1`.
 
+Every append takes one lock, held to the end of its transaction, which is what keeps the log's order. In
+the Ecto sandbox a test's transaction lasts the whole test, so two `async: true` tests that write the log
+run one after the other; mark them `async: false`, or expect the wait.
+
 A contract that declares personal data (`personal:` on a field) has those fields
 encrypted in the log, each subject under its own data key, and the data keys wrapped by a
 master key. Give the master keys in `config/runtime.exs`, 32 bytes each in Base64, the
