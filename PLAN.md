@@ -2258,6 +2258,43 @@ najważniejszej:
 nazwach, bez `Next`. *Odrzucone:* mały etap przed E11 — skróciłby czekanie Stage 5, ale kod manifestu czyta model
 przez moduły, które E11 przemianowuje, więc byłby ruszany dwa razy.
 
+### Przed E11 — podział i decyzje użytkownika (29 września)
+
+**Inwentarz** (na `91c6fbc`): v1 żyje tylko w pakiecie silnika i dwóch miejscach dashboardu; sandbox ma same
+komentarze. 14 plików lib/dev tylko v1 (~3 000 linii), ~2 400 linii v1 w 22 plikach mieszanych, 41 plików testów i
+fikstur v1 (~8 150), 25 modułów `Next` i ~300 odwołań w 83 plikach, pięć wersji migracji i trzy katalogi `priv`.
+Twardsze miejsca: szew `Model.fetch` z `Model.V1` (każda gałąź `_v1`), dwie listy rejestru (`contracts` i
+`v2_contracts`, ~43 wywołania), nakładka grafu v1 zasilająca panel `/graph`, raport zgodności w dwóch kształtach i
+`Dependency.unavailable!`, które waliduje przez deklarację v1 — do kontraktu v2 obserwacji nie da się zapisać, choć
+v2 je czyta.
+
+**Podział (wybór asystenta), przegląd po każdej części przed następną:**
+- **E11a — usunięcie v1.** Najpierw testy wspólnej mechaniki (`Clock`, `Digest`, `Conformance.Wire`, krawędzie
+  okien, `Deployment.diff`, `Report`) na fikstury v2, potem samo usuwanie; `Seed` przycięty do połowy v2; jedna
+  lista kontraktów w rejestrze; `Dependency.unavailable!` sprawdza `external` domeny.
+- **E11b — przemianowanie `Next`**, samo przemianowanie; testowe `Next.Implementations.*` dostają inny prefiks, bo
+  bez `Next` wpadłyby pod prawdziwe `EhOsContract.Implementations`. Z nim usunięcie 16 przypadkowo scommitowanych
+  plików (wyjście `pages` w pakiecie z `38132d8`, plik w `tmp/`).
+- **E11c — migracje do jednego V01 (D2)** i trzy katalogi `priv`; w sandboxie odpadają tabele TaxVision z v1.
+- **E11d — dokumentacja**: `docs/contract.md` z `Spark.CheatSheet`, `docs_test`, brama uniwersalności od nowa,
+  `rules.md`, READMEs, `CLAUDE.md`, CHANGELOG 0.3.0, reszta v2 §18, zaległości „do E11” w dokumentacji.
+- **E11e — skille**: pięć przepisanych, `write-handler` → `write-decider` i `write-reaction`.
+- **E11f — zaległości silnika „do E11”**: duplikacja `scope` (dispatch i D10), boundary dekodujące nieużywane
+  własne zdarzenia (O(N²) na wyciąg TaxVision). Nowe słowo DSL-a, jeśli okaże się potrzebne — do użytkownika z
+  przykładem.
+- Generator `gen.impl` na Igniterze (opcjonalny w opisie E11) — pominięty.
+
+**Decyzje użytkownika:**
+- **`Brief` i `mix eh_os_contract.brief` znikają w E11**; E13 buduje Brief na ekranie od nowa na v2. *Odrzucone:*
+  przeniesienie na v2 jako plik teraz — ta sama praca dwa razy, a dziś Brief nie działa dla żadnego kontraktu
+  sandboxa.
+- **`mix eh_os_contract.trace` znika.** *Odrzucone:* przepisanie na obietnice — `report` już je pokazuje.
+- **Panel „every contract” na `/graph` znika** (nakładka grafu handlerów v1, dla v2 pusta). *Odrzucone:* w jego
+  miejscu graf systemu z nakładką — jest już osobnym widokiem, a E13 przerabia cały ekran.
+- **Kontrakty sandboxa do testów pakietu — osobny etap po E11**, przed manifestem v2; E11 kończy się weryfikacją
+  na sandboksie jak dziś. *Odrzucone:* ostatnia część E11 — mieszałaby cięcie z przenoszeniem danych testowych w
+  jednym przeglądzie.
+
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
 Po lekturze architektury EHOS-a (`~/Projects/ai/eh-os`, `docs/ADR.md` i `docs/ARCHITECTURE.md`; research w
