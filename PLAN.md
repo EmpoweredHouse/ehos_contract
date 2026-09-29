@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 29 września (E11c i E11d-1 gotowe lokalnie, następne E11d-2)
+## Handoff — stan na 29 września (E11c w PR #46, E11d gotowe, następne E11e)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -14,17 +14,20 @@ Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, s
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa pivot do v2** (DSL na Sparku, model
 domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E10, E11a i E11b są w `main`**
 (ostatnio E11b, #45). **E11 — Cięcie** idzie częściami E11a–E11f („Przed E11 — podział i decyzje użytkownika”):
-**E11c — migracje do jednego V01 (D2) — i E11d-1 — dokumentacja pakietu — są gotowe i przejrzane lokalnie**
-(„E11c — co wyszło”, „E11d-1 — co wyszło”), niewypchnięte. Następne jest **E11d-2 — proza**. W bibliotekach nie ma
-już kodu v1, nazwy `Next` ani historii migracji.
+**E11c — migracje do jednego V01 (D2) — jest w PR [#46](https://github.com/EmpoweredHouse/eh-os-contract/pull/46);
+E11d — dokumentacja (E11d-1 i E11d-2) — jest gotowe i przejrzane** („E11c — co wyszło”, „E11d-1 — co wyszło”,
+„E11d-2 — co wyszło”), PR na stosie nad E11c. Następne jest **E11e — skille**. W bibliotekach nie ma już kodu v1,
+nazwy `Next` ani historii migracji.
 
 ### Stan repozytorium
 
 - **`origin/main` = `563a251`** (merge #45, E11b; CI `main`, przebieg `36620412345`, job `check` — `success`).
 - **E11c** na `dsl-v2/e11c-migrations`, od `563a251`, **niewypchnięte**: `a1e4c98`, `6ac26d7`, `f9edf9c`, `c2544a8`
   (ADR), `418c966` (po przeglądzie), `a2973fb` (plan; notatka przeglądu E11c na nim).
-- **E11d-1** na `dsl-v2/e11d-docs`, od `a2973fb`: `14dc852`, `7b3c293`, `ccb1474`, `d969398` i zapis planu;
-  notatka przeglądu na głowie. Obie gałęzie lokalne, historia liniowa.
+- **E11c** wypchnięte, PR #46 do `main`. **E11d** na `dsl-v2/e11d-docs`, od `a2973fb`: E11d-1 (`14dc852`–`ad01460`)
+  i E11d-2 (`6bfea09`–`2d696a6`) z zapisem planu; notatki przeglądu na `ad01460` i na głowie. PR E11d ma bazę
+  `dsl-v2/e11c-migrations` — **po merge'u #46 przestawić bazę na `main`**, zanim zmerguje się E11d (#40 zmergował
+  się kiedyś do nieprzestawionej bazy).
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
   `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`). W E11c wszystkie
   skasowane i odtworzone z nowego V01 — worktree na kodzie sprzed E11c, który je zmigruje, zepsuje je dla reszty
@@ -38,20 +41,21 @@ już kodu v1, nazwy `Next` ani historii migracji.
 
 ### Co zostało — i czyje to jest
 
-- **Push i PR E11c, E11d** — na polecenie użytkownika (przeglądy i notatki są na głowach).
+- **Merge #46 i PR-a E11d** — użytkownika.
+- **Odmowa w `up/1` dla bazy z wersją > 1** (z przeglądu E11d-2) — do decyzji użytkownika, w otwartych pytaniach.
 - **Klucz idempotencji jest globalny, nie per aktor** (z przeglądu E11d-1, sprzed E11) — do decyzji użytkownika;
   opis w otwartych pytaniach.
-- **E11d-2–E11f** — asystenta, po kolei, z przeglądem `pre-pr-review` po każdej części przed następną. Zakres każdej
+- **E11e–E11f** — asystenta, po kolei, z przeglądem `pre-pr-review` po każdej części przed następną. Zakres każdej
   części: „Przed E11 — podział i decyzje użytkownika”. Potem osobny etap: kontrakty sandboxa do testów pakietu jako
   fikstury akceptacyjne, potem **manifest v2** (po akceptacji D-51/D-52 w `eh-os` — decyzja z 29 września).
 - **Z E11b do E11d i E11e** — lista w „E11b — co wyszło”: wpis CHANGELOG-u o zmianie nazw publicznego API (z
   pułapką `Registry.contracts/0`, które w v1 znaczyło co innego), proza „v2 contract” w komunikatach i dokach,
   sześć skilli z `EhOsContract.Next.Contract` w nagłówku.
-- **E11d-2 w szczegółach:** główne `README.md` (opis `mix eh_os_contract.docs` sprzed E11d-1), `CLAUDE.md` (opis
+- **E11d-2 zrobione** (była tu lista:  główne `README.md` (opis `mix eh_os_contract.docs` sprzed E11d-1), `CLAUDE.md` (opis
   bramy, tabela „Zanim cokolwiek zmienisz”, „MFA, nigdy capture”, Rehmed „nie ma kodu”, `emit`/handlery, „assercje
   `trace`”), CHANGELOG 0.3.0, reszta v2 §18, proza „v2 contract” w komunikatach i dokach (lista w „E11b — co
   wyszło”) oraz odwołania „v2 §N”, „plan EM3”, „D13” w opisach DSL-a, które od E11d-1 idą do HexDocs przez
-  `docs/dsl/`.
+  `docs/dsl/`) — „E11d-2 — co wyszło”.
 - **Z E11c do E11d** — „Unreleased” w `CHANGELOG.md` każe hostowi dopisać migracje `up(version: 3|4|5)`, których
   już nie ma: wpis 0.3.0 mówi o jednym V01 i odtworzeniu bazy sprzed cięcia („E11c — co wyszło”).
 - **Poza E11, bez zmian** — użytkownika: proces na porcie 4000, wdrożenie E8 u hosta, lista zmian do `eh-os` (w tym
@@ -115,6 +119,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 29 września, na `2d696a6`** (E11d-2 po przeglądzie; potem tylko zapis planu): brama z `sandbox/` →
+  **EXIT=0** — sandbox 143, `check` 0 / 29 / 9; silnik 983, `check` 0 / 66 / 5; web 52; auth 62.
 - **Lokalnie, 29 września, na `d969398`** (E11d-1 po przeglądzie; potem tylko zapis planu): brama z `sandbox/` →
   **EXIT=0** — sandbox 143, `check` 0 / 29 / 9; silnik 983 (+8 `docs_test`, +3 testy bram), `check` 0 / 66 / 5; web
   52; auth 62. `mix eh_os_contract.docs --check` i `rules --check` — aktualne.
@@ -163,6 +169,12 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
   niezgadywalnego w dokumentacji. (2) Partia `rewrap!` trzyma `FOR UPDATE` na 500 wierszach kluczy z wywołaniem
   vaulta na wiersz, a `erase/3` bierze blokadę dopisu i czeka na te wiersze — przy wolnym KMS wszystkie dispatche
   czekają. (3) `mix eh_os_contract.rewrap` uruchamia całego hosta (`app.start`: Endpoint, kolejki Obana, runnery).
+- **Z przeglądu E11d-2, do decyzji użytkownika: odmowa w `up/1`, gdy baza ma wersję wyższą niż
+  `current_version/0`.** Dziś `up/1` na bazie z komentarzem „2”–„5” nic nie robi, a `down/1` pada na nieistniejącym
+  `V05`. Groźniejsze jest to na później: gdy wydanie podniesie `current_version` do 2, baza zapisana jako „5” po
+  cichu pominie nowe V02. Użytkownik 29 września odrzucił ścieżkę z bazy sprzed cięcia („nie mamy klienta”); odmowa
+  z komunikatem to nie ścieżka, tylko jedna linijka — pytanie, czy ją dodać, czy zostawić CHANGELOG jako jedyne
+  ostrzeżenie.
 - **D1–D14** przyjęte; w v2 §19: transport v1 między kontenerami, kontrakt upcasterów.
 
 ### Zgoda i stałe uprawnienia
@@ -2565,6 +2577,44 @@ Użytkownik zapytał o to w trakcie; wyjaśnione, bez zmiany decyzji.
   powtórzenie;
 - **klucz idempotencji globalny, blokady `rewrap!` a `erase/3`, `mix rewrap` uruchamia hosta** — sprzed E11, w
   otwartych pytaniach, klucz idempotencji do użytkownika.
+
+### E11d-2 — co wyszło (29 września)
+
+Na `dsl-v2/e11d-docs`, po E11d-1:
+- **`6bfea09`** — komunikaty, `@shortdoc`, jednolinijkowe `@doc`, opisy obu DSL-i i katalog reguł bez „v2 contract” i
+  bez odwołań do ADR-a i planu (te trafiają do HexDocs przez `docs/dsl/` i `docs/rules.md`); moduledoki i komentarze
+  zachowują „v2 §N” — czyta je ktoś z repozytorium.
+- **`8069e58`** — CHANGELOG 0.3.0: „Removed — E11a”, zmiany nazw E11b z pułapką `Registry.contracts/0`, jedna migracja
+  E11c w miejsce trzech nieaktualnych instrukcji, odmowy R2/P4/pusty `:id` i zawieszenie obietnicy z E11a; wpisy w
+  CHANGELOG-ach weba i auth. Dwie zaległości planu: jednostka samych nagrań nie ma czego implementować, testy
+  `async: true` piszące log czekają na siebie.
+- **`fcede91`** — główne README od nowa (domena i kontrakt, dispatch, trzy sposoby dostarczania reakcji, obietnica w
+  zdaniach raportu, taski, `docs/dsl/`, broker według E12).
+- **`42442dd`** — `CLAUDE.md`: brama, tabela „Zanim cokolwiek zmienisz”, Rehmed z kodem, „czym biblioteka jest”,
+  obietnice zamiast `trace`, „implementacje wskazują kontrakt, nigdy odwrotnie” zamiast „MFA, nigdy capture”, literały
+  `emit/1` i `issue/1`, lista polskich stringów bez kluczy v1, dashboard bez stanu biznesu mimo read modeli.
+- **`029ca1e`** — ostatnie wiersze v2 §18: dopiski z datą w `technology-notes` §1, §2, §12, §13.
+- **`32d99a3`**, **`2d696a6`** (po przeglądzie) — niżej.
+
+**Przegląd E11d-2 (pre-pr-review, 29 września).** Dwa przeglądy równolegle na `ad01460..029ca1e`. Rozstrzygnięte:
+- **CHANGELOG: „odtwórz bazę” bez szczegółów** (utrata danych przy literalnym czytaniu, stare pliki migracji
+  wywracają świeżą bazę) — *poprawione* (`2d696a6`): baza z danymi zostaje na 0.2.x, kroki dla deweloperskiej;
+- **CHANGELOG: zadania `EhOsContract.Job`** (praca ginie, argumenty trzymają ładunek i aktora) — *poprawione*;
+- **CHANGELOG: `graph` bez flagi wychodzi z błędem, reguła pliku mówi o `trace`** — *poprawione*;
+- **README: aktor „sprawdzany względem `by:`”** — nieprawda dla aktora z credentiala (uprawnienia i zakresy z
+  credentiala; `by:` bezpośrednio tylko dla `:system`) — *poprawione* w obu README;
+- **README: blokada dopisu przy reakcjach `:in_transaction`, efekt w transakcji, „expect the wait” (timeout)** —
+  *poprawione*;
+- **README: wycinek raportu opisany jak całość, brak `--process`, brak `rewrap`** — *poprawione*;
+- **przewodnik: jednostka samych nagrań ze stanem potrzebuje `evolve/2`** — *poprawione*;
+- **`check` wypisywał „(D3)”, którego katalog już nie ma** — *poprawione* (`32d99a3`), razem z „v2 contract” w
+  moduledokach dotkniętych plików (to, co wypisuje `mix help`);
+- **format i miejsce dopisków w `technology-notes`** — *poprawione*;
+- **brak odmowy w `up/1` dla bazy z wersją > 1** — *do użytkownika* (otwarte pytania);
+- **„idempotency to tylko nazwa”** — *bez zmiany*: README mówi „names what makes a second delivery harmless”, co jest
+  dokładnie tym, co P3 sprawdza;
+- **„v2 §N” w moduledokach niedotkniętych plików** — *bez zmiany*: odwołania do dokumentu repozytorium, dla czytelnika
+  repozytorium.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
