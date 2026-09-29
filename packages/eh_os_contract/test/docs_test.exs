@@ -65,40 +65,71 @@ defmodule EhOsContract.DocsTest do
     end
   end
 
-  # The codes the library refuses with: every message that starts with one.
+  # Where a code is refused decides its layer: the rules of one module (L2), the
+  # rules between modules (L3), the implementation macros (L4). Nothing else in
+  # `lib/` refuses a model, so a code mentioned anywhere else — a docstring's example
+  # — does not count.
+  @layers [
+    {"lib/eh_os_contract/contract/rules.ex", "L2"},
+    {"lib/eh_os_contract/contract/rules/*.ex", "L2"},
+    {"lib/eh_os_contract/domain/rules.ex", "L2"},
+    {"lib/eh_os_contract/contract/links.ex", "L3"},
+    {"lib/eh_os_contract/contract/links/*.ex", "L3"},
+    {"lib/eh_os_contract/implementation.ex", "L4"}
+  ]
+
+  # %{code => layers}, for every message that starts with a code.
   defp codes_in_lib do
-    for path <- Path.wildcard("lib/**/*.ex"),
-        [code] <- Regex.scan(~r/"([A-Z][0-9]+): /u, read(path), capture: :all_but_first),
-        into: MapSet.new(),
-        do: code
+    for {glob, layer} <- @layers,
+        path <- Path.wildcard(glob),
+        [code] <- Regex.scan(~r/"([A-Z]+[0-9]+): /u, read(path), capture: :all_but_first),
+        reduce: %{} do
+      codes -> Map.update(codes, code, MapSet.new([layer]), &MapSet.put(&1, layer))
+    end
   end
 
+  # %{code => layers}, from the table's first two columns.
   defp codes_in_table do
-    for [code] <-
-          Regex.scan(~r/^\| `([A-Z][0-9]+)` \|/mu, read("docs/contract.md"),
+    for [code, layers] <-
+          Regex.scan(~r/^\| `([A-Z]+[0-9]+)` \| ([^|]+) \|/mu, read("docs/contract.md"),
             capture: :all_but_first
           ),
-        into: MapSet.new(),
-        do: code
+        into: %{},
+        do:
+          {code,
+           layers |> String.split(",", trim: true) |> Enum.map(&String.trim/1) |> MapSet.new()}
   end
 
-  test "the table of refusals names exactly the codes the library refuses with" do
+  test "the table of refusals names exactly the codes the library refuses with, and where" do
     in_lib = codes_in_lib()
     in_table = codes_in_table()
 
-    assert MapSet.size(in_lib) > 50
+    assert map_size(in_lib) > 50
 
-    assert MapSet.difference(in_lib, in_table) |> Enum.sort() == [],
-           "codes missing from the table"
+    missing = Map.keys(in_lib) -- Map.keys(in_table)
+    assert Enum.sort(missing) == [], "codes missing from the table"
 
-    assert MapSet.difference(in_table, in_lib) |> Enum.sort() == [],
-           "codes the library never uses"
+    unused = Map.keys(in_table) -- Map.keys(in_lib)
+    assert Enum.sort(unused) == [], "codes the library never refuses with"
+
+    wrong =
+      for {code, layers} <- in_lib,
+          in_table[code] != layers,
+          do: {code, table: Enum.sort(in_table[code]), lib: Enum.sort(layers)}
+
+    assert Enum.sort(wrong) == [], "codes whose layer the table gets wrong"
   end
 
   test "every code in the table has a test in test/dsl that asserts it" do
-    tests = "test/dsl/**/*_test.exs" |> Path.wildcard() |> Enum.map_join("\n", &read/1)
+    # Comment lines do not count: a test that mentions a code is not one that asserts it.
+    tests =
+      "test/dsl/**/*_test.exs"
+      |> Path.wildcard()
+      |> Enum.flat_map(&(&1 |> read() |> String.split("\n")))
+      |> Enum.reject(&String.starts_with?(String.trim_leading(&1), "#"))
+      |> Enum.join("\n")
 
-    untested = for code <- codes_in_table(), not (tests =~ "#{code}: "), do: code
+    untested = for code <- Map.keys(codes_in_table()), not (tests =~ "#{code}: "), do: code
 
     assert Enum.sort(untested) == []
   end

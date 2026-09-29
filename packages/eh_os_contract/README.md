@@ -111,9 +111,13 @@ config :eh_os_contract, EhOsContract.Vault,
 ```
 
 Without one the host does not boot, rather than failing on the first command that carries
-personal data. To rotate, put the new key first and keep the old one after it, deploy, run
-`mix eh_os_contract.rewrap`, and then drop the old key. A KMS goes behind the
-`EhOsContract.Vault` behaviour: `config :eh_os_contract, vault: MyApp.KmsVault`.
+personal data. A data key is wrapped by the first master key and unwrapped by the one it names, so
+rotate in three deploys: add the new key **after** the current one and deploy, so that every node can
+unwrap what the new key will wrap; move it first and deploy; then rewrap every data key with it —
+`mix eh_os_contract.rewrap`, or `EhOsContract.Personal.rewrap!(MyApp.Repo)` from a release, which has
+no `mix` — and drop the old key in the third. Putting the new key first in one step leaves the nodes
+still on the old configuration unable to read what the new ones write until the rollout ends. A KMS
+goes behind the `EhOsContract.Vault` behaviour: `config :eh_os_contract, vault: MyApp.KmsVault`.
 
 To erase a subject — a person who asked for their data to be removed:
 
@@ -136,6 +140,10 @@ Erasing a subject deletes its data key from the database, not from your backups:
 backup, a WAL archive or a replica still holds the key, wrapped, and anyone who also
 has the master key can open the subject's data. Retire and destroy master keys on a
 cadence no longer than you keep backups, or keep the key store out of the log's backups.
+Either has a price at restore: a backup older than the destroyed master key, or restored without
+the key store, cannot unwrap any subject's data, erased or not. And a read model's copy of personal
+data is plain text in your own tables, so its backups hold it whatever happens to the keys:
+`forget/2` reaches the live table, and only your backup policy reaches the rest.
 
 ## A domain and a contract
 
@@ -208,7 +216,11 @@ end
 and a command goes through dispatch, with the actor your application authenticated:
 
 ```elixir
-EhOsContract.dispatch(MyApp.Contracts.Onboarding, %SubmitApplication{application_id: id}, actor: actor)
+alias MyApp.Contracts.Onboarding
+
+EhOsContract.dispatch(Onboarding, %Onboarding.Commands.SubmitApplication{application_id: id},
+  actor: actor
+)
 ```
 
 An implementation that emits an event its command does not declare, or leaves a callback out, does not

@@ -117,7 +117,9 @@ What reacts to events is declared beside the units: a `policy` issues a command 
 ## The code that decides
 
 A contract names no implementation. A module binds to one of its declarations, and the contract generates
-the structs and the behaviour that module implements:
+the structs and the behaviour that module implements. The structs live under the contract —
+`Lending.Contracts.Loans.Commands.OpenLoan`, `Lending.Contracts.Loans.Events.LoanOpened` — and a module
+bound to the unit has them by their short names:
 
 ```elixir
 defmodule Lending.Loan do
@@ -150,9 +152,10 @@ binary (`config :eh_os_contract, applications: [...]`).
 A command goes through `EhOsContract.dispatch/3`, with the actor the host authenticated:
 
 ```elixir
-EhOsContract.dispatch(Lending.Contracts.Loans, %OpenLoan{loan_id: id, copy_id: copy, member_id: member},
-  actor: actor
-)
+alias Lending.Contracts.Loans
+
+command = %Loans.Commands.OpenLoan{loan_id: id, copy_id: copy, member_id: member}
+EhOsContract.dispatch(Loans, command, actor: actor)
 ```
 
 Who the actor is, and how the credential EHOS issues becomes one, is in [authorization](authorization.md).
@@ -180,71 +183,71 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 
 | Code | Layer | What is refused |
 | --- | --- | --- |
-| `N1` | L2 | a name that is not snake_case, or not unique where it has to be: units; a unit's commands, events, timers and consumed aliases together; invariants per unit; stages; promises |
-| `N2` | L2 | a reserved word, or a name that clashes with a Kernel function at its callback's arity |
+| `N1` | L2 | a name not snake_case; a name twice among: declarations of one kind; a unit's invariants or stage groups; a command's or query's constraints; the process's stages or promises; a service's functions; a function's rules; commands, events, timers and consumed events together; a query named like a command |
+| `N2` | L2 | a command, query, event, timer, consumed event or service function whose callback would be a reserved word, clash with `Kernel` or with `module_info`/`__info__`/`behaviour_info` at its arity, or take `evolve`; a command, query, event or consumed event named `state` or `row` |
 | `F1` | L2 | a field named twice in one struct, or starting with `__` |
-| `F2` | L2 | a malformed type; an enum that is empty or repeats a member |
-| `F3` | L2 | `default:` outside a `state` |
-| `F4` | L2 | an optional or personal field used as identity, correlation, `match` or a tag |
-| `F5` | L2 | `personal:` naming anything but a required, non-personal `:id` field of the same struct that declares `subject:` |
-| `F6` | L2 | an injected identity field declared again |
-| `F7` | L2, L3 | a personal field where the library keeps the value outside the log: a process manager's state, a query's scope |
-| `A1` | L2 | an empty `emits:`, or one naming an event of another unit |
+| `F2` | L2 | a malformed field type; an enum that is empty, has a member that is not an atom or `{atom, label}`, or repeats one; a domain service function without `returns`, or with a malformed return type |
+| `F3` | L2 | `default:` on a field outside a `state`, including a domain value's field |
+| `F4` | L2 | an `optional:` or `personal:` event field that the process's `correlate`, or the `correlate` of a process manager handling the event, names |
+| `F5` | L2, L3 | `personal:` naming what is not a required, non-personal `:id` field with `subject:` in the same struct; a domain value's field naming an undeclared subject; a personal field whose type holds personal data of its own |
+| `F6` | L2 | a unit's identity field declared again in its state, a command or an event |
+| `F7` | L2, L3 | a process manager's state field, or a command's or query's scope field, that is `personal:` (L2) or of a domain value holding personal data (L3) |
+| `A1` | L2 | a command with an empty `emits:`, or one naming an event of another unit |
 | `A2` | L2 | an event no command of its unit emits and that declares no `recorded_by:` |
 | `A3` | L2 | `rejects:` naming what is neither an invariant of the unit nor a constraint of the command |
-| `A4` | L2 | a boundary without `consults`, or one naming an unknown event, without `match` or `where`, or matching outside its identity |
-| `A5` | L2 | `state` declared twice |
-| `A6` | L2 | a generated identity with no command that `creates:` it, or `creates:` on a unit whose identity is not generated |
-| `A7` | L2 | a command's constraint named twice, as an invariant of its unit, or missing from its `rejects:` |
+| `A4` | L2 | a boundary consulting nothing; consulting an event neither local nor consumed, or one received from another application; a consult without `match:` or `where:`; `match:` on a field outside the boundary's identity, or one a local event lacks as a required, non-personal `:id` |
+| `A5` | L2 | a unit or a process manager declaring `state` twice |
+| `A6` | L2 | a generated identity of more than one field, or with no command that `creates:` it; `creates:` on a command whose unit's identity is not generated |
+| `A7` | L2 | a command's constraint with the name of an invariant of its unit, or missing from the command's `rejects:` |
 | `C1` | L2 | a command nobody can issue: no `by:`, and no policy or process manager of the contract issues it |
-| `P1` | L2 | a policy handling events that are neither local nor consumed, or issuing a command of another contract |
+| `P1` | L2 | a policy or an effect handling an event neither local nor consumed; a policy issuing a command not of this contract |
 | `P2` | L2 | an effect with `calls:` delivered `:in_transaction` |
 | `P3` | L2 | a policy or an effect delivered `:at_least_once` without `idempotency` |
-| `P4` | L2 | a process manager reacting to anything but events and its own timers; a timer without exactly one of `wait` and `at`; `at` naming anything but a timestamp of its state; `sets` or `cancels` naming a timer it does not have; `correlate: []` |
-| `P5` | L2 | `projects` naming an event that is neither local nor consumed; `reads` naming a read model of another contract |
+| `P4` | L2 | a process manager starting on nothing, with `correlate: []`, or `:in_transaction`; a trigger neither a local or consumed event nor (for `on`) its own timer; `sets`/`cancels` naming another timer; a timer without exactly one of `wait`/`at`, or `at` not a `:timestamp` state field; issuing a foreign command |
+| `P5` | L2 | a read model projecting an event neither local nor consumed; a query reading what is not a read model of this contract |
 | `R1` | L2 | a contract without exactly one `process` |
-| `R2` | L2 | a `correlate` field missing from a local event, or no `correlate` field at all |
-| `R3` | L2 | stages declared and an event outside every stage, or an `include` without one; no stages and a group |
-| `R4` | L2 | `include` naming an event that is not consumed |
-| `R5` | L2 | a promise's `from`, `eventually` or `or_else` naming an event outside the run |
-| `R6` | L2 | a `within`, `deadline` or `wait` in a calendar unit, or with a negative count |
-| `K1` | L2 | a contract consuming itself, naming no events, or renaming one it does not consume |
-| `S1` | L2 | a scenario without exactly one trigger, or one naming what does not exist |
-| `S2` | L2 | `given` or `expect` naming an event outside the unit, what it consults, or what the query's read model projects |
-| `S3` | L2 | scenario data naming undeclared fields, missing required ones, or of the wrong built-in type |
+| `R2` | L2 | a process with `correlate: []`, or a local event missing a `correlate` field (the unit's identity counts) |
+| `R3` | L2 | with stages declared: an event outside a stage group, a process-level `include` outside a stage, or a group naming an undeclared stage; with no stages, any stage group |
+| `R4` | L2 | `include` naming a local event, an event received from another application, or one the contract does not consume |
+| `R5` | L2 | a promise's `from`, `eventually` or `or_else` naming neither a local event nor an included consumed one |
+| `R6` | L2 | a duration that is not `{count, unit}`, counts a negative or non-integer number, or has an unknown unit; a calendar unit in `within` or `deadline` (a timer's `wait` and `cadence` may use one); `cadence` or `deadline` declared twice |
+| `K1` | L2 | a sibling `consumes` of the contract itself, naming no events, renaming an event it does not consume, giving `as:` other than `[old: :new]`, or declaring fields |
+| `S1` | L2 | a scenario with no trigger or several; a trigger naming no command or query of the contract, or an event nothing handles; several handlers and no `scope:`, or a `scope:` that does not handle it; two scenarios with one description |
+| `S2` | L2 | `given` outside the target's state: not the unit's own or consulted events, not a process manager's handled events, not events the query's read model projects; any `given` for a policy |
+| `S3` | L2 | scenario data naming undeclared fields or of the wrong built-in type; a `given` or a trigger missing a required field (identity excepted) |
 | `S4` | L2 | `rejected` naming what the command does not `rejects:` |
 | `S5` | L2 | `expect` naming an event outside the command's `emits:` |
-| `S6` | L2 | a trigger and an outcome that do not fit the kind of what is triggered |
-| `S7` | L2 | a scenario's `actor` outside the command's `by:` |
-| `S8` | L2 | an invariant or a constraint that no `rejected` scenario covers |
-| `S9` | L2 | a domain service's rule without examples, or with an example of the wrong arity or type, or given twice |
-| `D1` | L2 | a domain name given twice within its kind |
-| `D2` | L2 | two translations into one language, or one into the context's own |
-| `D3` | L2 | a value with both or neither of a type and fields; `unit` on a type that is not numeric; values in a cycle |
-| `D4` | L2 | a human actor `backed_by` a system |
-| `D5` | L2 | a relation whose roles do not fit its type, whose ends do not exist, or which relates a context to itself |
-| `D6` | L2 | `{:id, entity}` naming an entity the domain does not declare |
+| `S6` | L2 | an outcome unfit for the target: a command without exactly one of `expect`/`rejected`; a reaction with no outcome, or issuing, setting, cancelling or ending what it does not; a query without one `answers` shaped as it returns; another kind's outcome; an effect or read model as target |
+| `S7` | L2 | an `actor` outside the command's `by:`, or on a scenario whose trigger is not a command |
+| `S8` | L2 | an invariant, or a command's constraint, that no `rejected` scenario (of that command, for a constraint) covers |
+| `S9` | L2 | a domain service's rule without examples; an example not `{[argument, …], result}` of the function's arity, with an argument or result of the wrong built-in type or `nil` where not optional; an example given twice |
+| `D1` | L2 | two subdomains, contexts, actors, subjects, values, entities or externals of one name; a term defined twice in a context; a relation declared twice; a name that is both a context and an external |
+| `D2` | L2 | two translations of a term into one language, or one into the context's own |
+| `D3` | L2 | a value with both or neither of a type and fields; `unit` on a value that is not numeric; an undeclared `context:`; a malformed or unknown type, or a bad enum; values in a cycle |
+| `D4` | L2 | a human actor with `backed_by`; `backed_by` naming no external; an actor's `context:` the domain does not declare |
+| `D5` | L2 | a relation whose roles do not fit its type (directed or symmetric); an end the domain does not declare; an external in a symmetric relation; a directed one with no context end; a context related to itself |
+| `D6` | L2 | `{:id, entity}` naming an undeclared entity; an entity with an undeclared context, identified by what is not its own required, non-personal `:id` field, or with a field twice, malformed, of an undeclared subject, with `default:` or `personal:`, or holding personal data |
 | `D7` | L2 | a context in a subdomain the domain does not declare |
-| `D8` | L2 | `issued_by:` naming what is not an external of the domain |
-| `D9` | L2 | a value's invariant misnamed, or without both a `violated_by:` and a `satisfied_by:` example |
-| `D10` | L2, L3 | a scope that is not one required, non-personal field, or an actor in `by:` that does not carry its dimension |
-| `D11` | L2, L3 | a publication named outside the domain's `name:`, unversioned, or carrying a field that is not plain data |
-| `D14` | L3 | two commands or queries of one domain with the same name, and so the same capability |
-| `X1` | L3 | `domain:` naming a module that is not a domain declaring `context:` |
-| `X2` | L3 | `by:`, `recorded_by:`, `accountable` or a scenario's `actor` naming no actor of this context |
-| `X3` | L3 | a field type that is not built in and not a value of the domain; a `subject:` the domain does not declare |
-| `X4` | L3 | `depends_on` or `calls` naming no external of the domain |
-| `X5` | L3 | `consumes` naming what is not a compiled contract of the same domain, or an event it does not declare |
-| `X6` | L3 | a field a subscriber relies on — in `correlate`, `match` or `include` — missing from the publisher, or of another type |
+| `D8` | L2 | a value's or entity's field `issued_by:` naming what is not an external of the domain |
+| `D9` | L2 | a value invariant not snake_case, clashing with Elixir at arity 1, named `:required`/`:type`/`:generated`, or twice; no `violated_by:` or `satisfied_by:` example; an example `nil`, not of the value's type, in both lists or twice in one; a satisfying example another invariant lists as violating |
+| `D10` | L2, L3 | a query without `by:`; a query scope not a same-typed read-model field and param; a command scope without `by:`, not its field or identity, optional, or a generated identity it creates; a list scope, or a value with fields; a `by:` actor not carrying the scope |
+| `D11` | L2, L3 | a publication from no local event, with no fields, unknown, personal or personal-data fields, or `idempotent_on:` outside them; a name unversioned, shared, or outside the domain's `name:`; `consumes "<name>"` unversioned, without `as:`, listing events, or listing no fields |
+| `D14` | L3 | two commands, queries or recorded events of one domain with the same name, and so the same capability |
+| `X1` | L3 | `domain:` naming a module that is not a compiled domain, or `context:` naming none of its contexts |
+| `X2` | L3 | `by:`, `recorded_by:`, `accountable` or a scenario's `actor` naming no actor of the domain, or an actor of another context |
+| `X3` | L3 | a field or return type that is neither built in nor a value of the domain; `{:id, entity}` naming no entity of the domain; a `subject:` the domain does not declare |
+| `X4` | L3 | `depends_on`, `calls` or a field's `issued_by` naming no external of the domain |
+| `X5` | L3 | `consumes` naming what is not a compiled contract, a contract of another domain, or an event the sibling does not declare |
+| `X6` | L3 | a sibling event's field that a `correlate` (on an include or a handled event) or a boundary's `match` relies on, missing there, of another type, optional or personal |
 | `X7` | L3 | two processes of the system with one name, and so one event type |
 | `X8` | L3 | a declaration with two implementations |
-| `X9` | L3 | a scenario value that does not fit its domain type, or data of a consumed event that does not fit it |
-| `I1` | L4 | `use` naming no declaration, or one of another kind |
+| `X9` | L3 | a scenario value or a rule example not fitting its domain type; a sibling event's scenario data with unknown fields, missing required ones (in `given` or the trigger) or ill-typed values |
+| `I1` | L4 | `use` with an unknown kind, no declaration or several, or naming one that does not exist, is of another kind, or is a value without invariants; a module binding a second declaration |
 | `I2` | L4 | a callback the declaration needs and the module does not define |
-| `I3` | L4 | `evolve` without a clause for an event of the unit |
-| `I4` | L4 | `emit` given anything but literal structs the command may emit |
-| `I5` | L4 | `reject` naming what the command does not `rejects:` |
-| `I6` | L4 | `issue` naming a command outside `issues:` |
+| `I3` | L4 | `evolve` without a clause for an event its state is kept from, and no unguarded catch-all |
+| `I4` | L4 | `emit` or `issue` given anything but struct literals (a list, or a `for` without `into:`/`reduce:`); `emit` of an event the enclosing command, or outside a command any command of the unit, does not emit |
+| `I5` | L4 | `reject` given no atom literal, or one the enclosing command (outside one, any command of the unit) does not `rejects:` |
+| `I6` | L4 | `issue` of a command outside the `issues:` of the enclosing reaction, or outside a reaction of any |
 | `I7` | L4 | a macro where its kind does not allow it: `emit` and `reject` outside a unit, `issue` outside a policy or process manager |
 
 The longer reasons for each rule are in `docs/adr/contract-v2.md` §6, in the repository.
