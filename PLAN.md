@@ -5,53 +5,64 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 29 września (E10 w `main`, trwa E11)
+## Handoff — stan na 29 września (E11a w PR #44, następne E11b)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
 
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności), jej
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa pivot do v2** (DSL na Sparku, model
-domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E8, EA, EM, EL, EG i całe E9
-(E9a #33, E9b #39, E9c-1 #41, E9c-2 #42) i E10 (#43) są w `main`.** Trwa **E11 — Cięcie** na `dsl-v2/e11-cut`;
-potem E12 i E13. EHOS zaproponował D-51 i D-52 (manifest v2) — uwagi przed akceptacją w „D-51 i D-52 w `eh-os`”. Po E9b Rehmed ma pięć kontraktów v2 (Scheduling,
-ClinicalDocumentation, StatutoryReporting, Settlement, ExternalPayers); po E9c-1 w sandboxie nie ma kontraktu v1.
+domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E10 są w `main`** (ostatnio E10,
+#43). **E11 — Cięcie** idzie częściami E11a–E11f („Przed E11 — podział i decyzje użytkownika”): **E11a — usunięcie
+v1 — jest gotowe, przejrzane i w PR [#44](https://github.com/EmpoweredHouse/eh-os-contract/pull/44)** („E11a — co
+wyszło”). Następne jest **E11b — przemianowanie `Next`**, samo przemianowanie. W bibliotekach nie ma już kodu v1.
 
 ### Stan repozytorium
 
-- **`origin/main` = `91c6fbc`** (merge [#43](https://github.com/EmpoweredHouse/eh-os-contract/pull/43), E10 z
-  poprawką przecieku w `/model`; CI `main` — `success`, przebieg `36561057338`). Brak otwartych PR-ów.
-- **E11** na `dsl-v2/e11-cut`, od `91c6fbc`.
+- **`origin/main` = `91c6fbc`** (merge #43, E10; CI `main`, przebieg `36561057338`, job `check` — `success`).
+- **E11a** na `dsl-v2/e11a-remove-v1`, od `91c6fbc`, wypchnięte, PR #44 do `main`. Historia liniowa, bez merge'y
+  na gałęzi. Notatka przeglądu (`refs/notes/review`) na każdej głowie, dla której otwierano/pchano PR — notatki są
+  lokalne. CI PR-a w chwili pisania: w toku (przebieg `36607823554`).
+- `dsl-v2/e11-cut` (`650aa6a`–`68a6917`, trzy zapisy planu) to baza E11a; jest w całości w E11a, niewypchnięta i do
+  skasowania po merge'u #44.
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
 ### Co zostało — i czyje to jest
 
-- **E11–E12 — asystenta.** Po E11 kontrakty
-  sandboxa przechodzą do testów pakietu jako fikstury akceptacyjne („Przed E9c-2 — decyzje użytkownika”).
-- **Lista zmian do `eh-os` ma nową pozycję z E10:** fixture i przykład manifestu TaxVision są starsze od modelu
-  po E9; dokładny diff jest w „E10 — co wyszło”. Nie zmieniono drugiego repozytorium. Druga pozycja z 29
-  września: propozycja jednego generowanego deskryptora aplikacji w miejsce manifestu i pełnego ręcznego
-  `ehos.yaml` („Po E10 — decyzja użytkownika: deweloper pisze minimum, deskryptor aplikacji generujemy”).
-- **Proces na porcie 4000, wdrożenie E8 u hosta, reszta listy zmian do `eh-os`, publikacja na Hex, F1/F2 i dziesięć
-  usterek** — użytkownika, bez zmian (opisane w „Po E8 — kolejność zmieniona” i dopiskach 25–27 września). Link w
-  wyjściu `check` (`hexdocs.pm/eh_os_contract/rules.html`) zadziała dopiero po publikacji na Hex.
-- **E13 — graf jako API i osobny renderer, w miejsce Mermaida** — po E12. Opis, decyzje i szacunek w „Etapach”.
-- **Pytanie do EHOS-a (z EG3)** — ekran grafu pod ich CSP loguje ~400 zablokowanych prób stylu inline z pomiaru
-  Mermaida; jeśli EHOS ma `report-uri`/`report-to` albo RUM zbiera `securitypolicyviolation`, każde wejście wyśle
-  kilkaset zgłoszeń („EG3 — co wyszło”) — użytkownika.
+- **Merge #44** — użytkownika. Po nim E11b od świeżego `origin/main`. Jeśli #44 nie jest jeszcze zmergowany, E11b
+  zaczyna się od głowy `dsl-v2/e11a-remove-v1` na własnej gałęzi `dsl-v2/e11b-…`, a PR E11b czeka na merge #44
+  (przy PR-ze na stosie pilnować bazy — #40 zmergował się kiedyś do nieprzestawionej bazy, „Przed E9c-2”).
+- **E11b–E11f** — asystenta, po kolei, z przeglądem `pre-pr-review` po każdej części przed następną. Zakres każdej
+  części: „Przed E11 — podział i decyzje użytkownika”. Potem osobny etap: kontrakty sandboxa do testów pakietu jako
+  fikstury akceptacyjne, potem **manifest v2** (po akceptacji D-51/D-52 w `eh-os` — decyzja z 29 września).
+- **E11b w szczegółach** (inwentarz na `91c6fbc`, z tej sesji): 20 modułów `EhOsContract.Next.*` w
+  `packages/eh_os_contract/lib/eh_os_contract/next/` (`Next.Contract` z `Build`, `Callbacks`, `Data`, `Dsl`,
+  `Generate`, `Links.*`, `Rules.*`) → bez `Next`; po E11a `EhOsContract.Contract` jest wolne. Do tego:
+  `ProcessShapes.Next.*` i `UniversalityGate.Next.*` w `test/support` (ich pliki v1 już usunięte, więc bez kolizji);
+  `Registry.v2_contracts/0` → `contracts/0`, `Conformance.report_v2`, `Graph.declared_v2`, pliki `*_v2_test.exs`;
+  osiem `use EhOsContract.Next.Contract` w `sandbox/lib/{rehmed,taxvision}/contracts/` i
+  `sandbox/test/rehmed_consumed_field_change_test.exs`; `--extensions …Next.Contract.Dsl` w `mix.exs` i
+  `.formatter.exs` pakietu; poprawka ADR w `test/dsl/contract_examples_test.exs:31` staje się tożsamością i znika;
+  proza „named `Next` until the rename” w `next/contract.ex:4`. **Pułapka:** testowe
+  `EhOsContract.Next.Implementations.*` bez `Next` wpadłyby pod prawdziwy moduł `EhOsContract.Implementations` —
+  inny prefiks.
+- **Poza E11, bez zmian** — użytkownika: proces na porcie 4000, wdrożenie E8 u hosta, lista zmian do `eh-os` (w tym
+  fixture manifestu TaxVision z „E10 — co wyszło” i uwagi do D-51/D-52 — komentarz do PR-a w `eh-os` tylko na
+  polecenie, link w materiale EHOS-a był pusty), publikacja na Hex, F1/F2 i dziesięć usterek, pytanie do EHOS-a o CSP
+  (EG3).
+- **E13** (graf jako API, renderer w miejsce Mermaida) — po E12.
 
 ### Co przeczytać najpierw
 
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach, wyrażenia
-   regularne na tekście klienta z flagą `u`, zsh bez dzielenia słów, nazwy zdarzeń z warsztatu.
-2. `PLAN.md`, opis „E11 — Cięcie”, „Przed E9c-2 — decyzje użytkownika” (los fikstur po E11) i „E10 — co wyszło”.
-3. Materiał: `docs/rehmed-2026-08-18-distillation.md`, mapa kontekstów Rehmedu
-   `~/Projects/ai/rehmed-process-native/2-Solution/30-contexts.md`, TaxVision
-   `~/Projects/ai/taxvision-process-native/workshop_output/02-event-storming.md` i `03-ddd-architecture.md` — tylko
-   do czytania.
-4. `docs/adr/contract-v2.md` §4.5–4.6 i `packages/eh_os_contract/docs/rules.md`.
-5. Przed PR: `.claude/skills/pre-pr-review/SKILL.md`.
+   regularne z flagą `u` i `[0-9]`, zsh bez dzielenia słów. Uwaga: jego opis bramy wymienia jeszcze
+   `eh_os_contract.docs --check`, którego od E11a nie ma — poprawka należy do E11d.
+2. `PLAN.md`: „Przed E11 — podział i decyzje użytkownika” (części i decyzje), „E11a — co wyszło” (co zostało na
+   później, usterki, przegląd), opis „E11 — Cięcie” w „Etapach”.
+3. `.claude/skills/pre-pr-review/SKILL.md` — przed PR-em każdej części.
+4. Przy E11c: `docs/adr/contract-v2.md` §10.3 i D2 (§16). Przy E11d: `docs/adr/contract-v2.md` §18 i
+   `packages/eh_os_contract/docs/rules.md`.
 
 ### Komendy
 
@@ -62,10 +73,11 @@ out=$(mix check 2>&1); rc=$?; echo "$out" | tail -4; echo "EXIT=$rc"
 
 Brama idzie z `sandbox/` i woła `mix check` trzech pakietów; Postgres słucha na **5433**. **W świeżym worktree**
 najpierw `MIX_ENV=test mix deps.get` w `packages/eh_os_contract`, `packages/eh_os_contract_web` i
-`packages/eh_os_contract_auth` oraz `mix deps.get` w `sandbox/`. Nowe narzędzia: `mix eh_os_contract.view`,
-`mix eh_os_contract.glossary`, `mix eh_os_contract.check --format json`; `docs/rules.md` regeneruje
-`mix eh_os_contract.rules` (w pakiecie silnika, `MIX_ENV=test`). Do oglądania czegokolwiek `MIX_ENV=dev`.
-Manifest dla EHOS-a: `mix eh_os_contract.manifest --domain <domena> --output ehos.manifest.json`.
+`packages/eh_os_contract_auth` oraz `mix deps.get` w `sandbox/`. `docs/rules.md` regeneruje
+`MIX_ENV=test mix eh_os_contract.rules` w pakiecie silnika. Do oglądania czegokolwiek `MIX_ENV=dev`. Grafy:
+`mix eh_os_contract.graph --map <domena> | --system <domena> [--overlay] | --contract <Moduł> [--overlay] [--unit
+<nazwa>]` — bez flagi obrazu task od E11a wypisuje sposób użycia. Ekran `/dashboard/graph` w preview
+`eh_os_contract_host` (port 4010, CSP EHOS-a).
 
 **Z sesji Claude Code na tej maszynie SSH do GitHuba odmawia.** Pobieranie i push przez HTTPS z credentialem `gh`:
 
@@ -79,58 +91,49 @@ git -c credential.helper='!gh auth git-credential' push https://github.com/Empow
 
 Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej gałęzi, nigdy gołe `git stash`.
 
-**Pułapki z EL** (poza listą w `CLAUDE.md`):
+**Pułapki** (poza listą w `CLAUDE.md`):
 - nowe słowo DSL-a → `MIX_ENV=test mix spark.formatter --extensions EhOsContract.Domain.Dsl,EhOsContract.Next.Contract.Dsl`
-  w pakiecie silnika, a w `sandbox/` i pakiecie web skasować `_build/*/lib/*/.mix/cached_dot_formatter`, inaczej
-  `mix format` doda nawiasy;
+  w pakiecie silnika (po E11b — nowa nazwa modułu), a w `sandbox/` i pakiecie web skasować
+  `_build/*/lib/*/.mix/cached_dot_formatter`, inaczej `mix format` doda nawiasy;
 - fikstury kompilowane ze stringów w testach: numer linii w asercji to linia w stringu, nie w pliku testu;
-- próba odwrotna: `git diff <plik> > $S/x.patch; git apply -R …; git apply …`, nie `git stash`.
-
-**Pułapki z EG:**
-- `~s(...)` kończy się na pierwszym `)` — etykieta z „(1 run)” wymaga `~s|...|`;
-- fikstury v2: kontrakt bez procesu się nie kompiluje (R1); `publish … as:` wersjonowane, co najmniej dwa segmenty i
-  `.v<n>` (D11); `consumes "<nazwa>"` wymaga pól; komenda `send` koliduje z `Kernel.send/2` (N2);
-- skrypt Pythona z potrójnym cudzysłowem nie zniesie heredoca Elixira w środku — takie zmiany edytorem;
+- próba odwrotna: kopia pliku w scratchpadzie, mutacja, test, `cp` z kopii i `cmp` — nie `git stash`;
+- `~s(...)` kończy się na pierwszym `)`; fikstury v2: kontrakt bez procesu się nie kompiluje (R1), `publish … as:`
+  wersjonowane (D11), `consumes "<nazwa>"` wymaga pól, `send` koliduje z `Kernel.send/2` (N2); opcja encji Sparka z
+  blokiem idzie **do środka bloku** (`promise :x do unverified true … end`);
+- dwa kontrakty o jednej nazwie procesu muszą mieć różne domeny (X7);
+- test pakietu z bazą i drugi `mix` w tym samym pakiecie naraz się gryzą (wspólne `_build` i bazy testowe
+  `eh_os_contract_test`, `…_commits`, bez partycji) — agentów z testami puszczać po kolei;
 - Mermaid przed rysowaniem usuwa element o identyfikatorze, który rysuje (opis w `assets/js/app.js`).
-
-Grafy: `mix eh_os_contract.graph --map <domena> | --system <domena> [--overlay] | --contract <Moduł> [--overlay]
-[--unit <nazwa>]`; ekran `/dashboard/graph` w preview `eh_os_contract_host` (port 4010, CSP EHOS-a).
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 29 września, na `91c6fbc`** (czysty `main`, przed E11): brama z `sandbox/` → **EXIT=0** — sandbox 143
-  testy, `check` 0 / 29 / 9; silnik 1274, `check` 0 / 74 / 21; web 51; auth 62.
-- **Lokalnie, 28 września, na HEAD E10** (kod przez `dfa4455`, potem końcowy zapis planu): brama z `sandbox/` → **EXIT=0**;
-  `check` sandboxa **0 / 29 / 9**. CodeRabbit CLI 0.8.0 był wylogowany, więc przegląd wykonano lokalnie; znalazł i
-  poprawił nullable pól opcjonalnych oraz `Receipt.position` w JSON Schema.
-- **Lokalnie, 28 września, na `7c67982`** (E9c-1 po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 120
-  testów, `check` 0 / 26 / 9; silnik 1245, `check` 0 / 67 / 21; web 45; auth 51.
-- **Lokalnie, 28 września, na `cc07431`** (E9b po dwóch rundach przeglądu): brama z `sandbox/` → **EXIT=0** — sandbox 99
-  testów, `check` 0 / 24 / 8; silnik 1222, `check` 0 / 65 / 21; web 45; auth 51. W przeglądarce: `/graph` z procesem
-  `payer_settlement` i mapą z płatnikami.
-- **Lokalnie, 28 września, na `9b7306d`** (E9a po przeglądzie): brama z `sandbox/` → **EXIT=0** — sandbox 85 testów,
-  `check` 0 / 22 / 11; silnik 1222, `check` 0 / 65 / 21; web 45; auth 51. W przeglądarce (na `7058167`): `/graph`
-  pod CSP EHOS-a.
-- **Lokalnie, 28 września, na `f2a54bd`** (czysty `main`, przed E9): brama z `sandbox/` → **EXIT=0** — sandbox 54
-  testy, `check` 0 / 12 / 19; silnik 1219, `check` 0 / 65 / 21; web 45; auth 51.
-- **CI `main`**: `f2a54bd` (przebieg `36399198063`) — `success`.
+- **Lokalnie, 29 września, na drzewie `060613c`** (E11a po przeglądzie; ostatni commit to sam `PLAN.md`): brama z
+  `sandbox/` → **EXIT=0** — sandbox 143 testy, `check` 0 / 29 / 9; silnik 971, `check` 0 / 66 / 5; web 52; auth 62.
+  W przeglądarce, na `b4924f3`: `/dashboard/graph` i `/dashboard/contract` bez błędów poza znanym CSP Mermaida.
+- **Lokalnie, 29 września, na `91c6fbc`** (czysty `main`, przed E11): brama → **EXIT=0** — sandbox 143, `check`
+  0 / 29 / 9; silnik 1274, `check` 0 / 74 / 21; web 51; auth 62.
+- **CI `main`**: `91c6fbc` (przebieg `36561057338`, job `check`) — `success`. **CI #44**: w toku przy pisaniu.
 
 ### Otwarte pytania
 
 - **H177** z materiału Rehmedu przeczy DEC-18 — czeka na klienta.
 - **Runner read modelu `:in_transaction`** odpytuje co sekundę — wraca przy pomiarze; tam też nakładka na `/graph`
-  bez granicy czasu i podwójny mount.
+  bez granicy czasu, podwójny mount, koszt raportu z całej historii przebiegów i 17 s testu skali (niezłapane;
+  „E11a — co wyszło”).
 - **Dwie domeny o jednym `name:`** dałyby zdublowane identyfikatory bloków na `/graph` — sprawa rejestru.
+- **Z E11a, bez decyzji:** reguła v2 w miejsce `promise-finer-than-run` (kandydat na E11f); pusty `:string` jako
+  wartość pola korelacji; termin `{1, :hour}` w raporcie bez liczby.
 - **D1–D14** przyjęte; w v2 §19: transport v1 między kontenerami, kontrakt upcasterów.
 
 ### Zgoda i stałe uprawnienia
 
 **Ten blok jest do skasowania. Skasowanie go cofa uprawnienie — nie migruje ono samo między sesjami.**
 
-W sesji E9 (28 września) użytkownik zgodził się na: commity bez pytania na gałęziach `dsl-v2/e9-…` przy zielonej
-bramie na każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. **W nowej sesji obowiązuje to
-dopiero po ponownym potwierdzeniu przez użytkownika.** Push, PR, merge, tag i Hex — tylko na wyraźne polecenie,
-przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie piszemy nigdy.
+W sesji E11a (29 września) użytkownik zgodził się na: commity bez pytania na gałęziach `dsl-v2/e11…` przy zielonej
+bramie na każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. Push i PR E11a — na jego
+wyraźne polecenie. **W nowej sesji obowiązuje to dopiero po ponownym potwierdzeniu przez użytkownika.** Push, PR,
+merge, tag i Hex — tylko na wyraźne polecenie, przed PR skill `pre-pr-review`. Do
+`~/Projects/ai/empowered-house-context` nie piszemy nigdy; do `~/Projects/ai/eh-os` też nie (tylko czytanie).
 
 ### Język
 
