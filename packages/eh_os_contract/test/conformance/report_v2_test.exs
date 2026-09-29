@@ -52,6 +52,9 @@ defmodule EhOsContract.ReportV2Test do
                  ~s(Rule: after "Request received" within 2 days, "Request completed" follows, or else "Refusal notified".)
 
         assert text(shape) =~ "Met in all 4 runs."
+        # The refusal is a correct ending, and says so: a report that called it a
+        # problem would be switched off after the first period.
+        assert text(shape) =~ "conforms to the rule"
       end
 
       @tag shape: shape

@@ -289,6 +289,14 @@ defmodule EhOsContract.Next.ContractTest do
              ]
     end
 
+    test "each digest is twelve hex characters, so it can be read out of a report" do
+      # The contract version's shape, for the same reason: the deployment table stores
+      # these, and the report names the declaration whose digest moved.
+      for {_key, digest} <- Model.fetch(Golden).digests do
+        assert digest =~ ~r/^[0-9a-f]{12}$/
+      end
+    end
+
     test "holds no Spark struct and no source annotation" do
       refute inspect(Model.fetch(Golden), limit: :infinity) =~
                ~r/__spark_metadata__|__struct__|Spark\./

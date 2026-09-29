@@ -89,8 +89,8 @@ defmodule EhOsContract.DigestTest do
       # raises `Protocol.UndefinedError` in the middle of compiling somebody's
       # contract. No declaration holds a struct today, which is exactly why this
       # would have been found late.
-      assert EhOsContract.Digest.canonical(%EhOsContract.Emission{name: :x, payload: %{}}) =~
-               "EhOsContract.Emission"
+      assert EhOsContract.Digest.canonical(%EhOsContract.Meta{actor: "u-1"}) =~
+               "EhOsContract.Meta"
     end
   end
 
