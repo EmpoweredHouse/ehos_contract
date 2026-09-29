@@ -6,9 +6,9 @@ defmodule Mix.Tasks.EhOsContract.Rules do
   to, from `EhOsContract.Check.Catalog` — the whole file, one entry per rule, each
   under a heading that is the rule's name, so the name is its anchor.
 
-  `--check` verifies the file is current and exits non-zero otherwise, for the same
-  reason as `mix eh_os_contract.docs`: a page describing rules beside the list of
-  rules is a second copy, and a second copy drifts. The package's `mix check` runs
+  `--check` verifies the file is current and exits non-zero otherwise: a page
+  describing rules beside the list of rules is a second copy, and a second copy
+  drifts. The package's `mix check` runs
   it.
   """
 
@@ -59,7 +59,6 @@ defmodule Mix.Tasks.EhOsContract.Rules do
       model changes.
     - Where a rule is one of [ESDM](https://www.esdm.io/reference/linter-rules/)'s, it has ESDM's name,
       and its entry says which ESDM rule it follows and how it differs.
-    - A rule that reads **v1 contracts** leaves with the v1 DSL.
     - The rules a contract cannot compile without — `N1`, `X2` and the rest — are the compiler's, not
       this task's, and keep the codes they are printed with.
 
@@ -68,13 +67,12 @@ defmodule Mix.Tasks.EhOsContract.Rules do
 
   defp entry(rule) do
     level = Catalog.level_word(rule.level)
-    reads = Map.fetch!(%{v1: "v1 contracts", v2: "v2 contracts", both: "v1 and v2 contracts"}, rule.reads)
     esdm = if rule.esdm, do: " · ESDM: `#{rule.esdm}`", else: ""
 
     """
     ## `#{rule.id}`
 
-    **#{level}** · reads #{reads}#{esdm}
+    **#{level}**#{esdm}
 
     #{rule.summary}
 

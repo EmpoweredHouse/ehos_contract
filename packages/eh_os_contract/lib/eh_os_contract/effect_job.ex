@@ -5,8 +5,8 @@ defmodule EhOsContract.EffectJob do
   Dispatch inserts it in the transaction that appends the event, so the job exists
   exactly when the event does. **Its arguments are the effect's key and the event's
   id, and nothing else**: the job reads the event from the log when it runs, so no
-  payload ever lands in `oban_jobs` — the hole v1's jobs had, where the queue kept
-  what retention meant to remove.
+  payload ever lands in `oban_jobs`, where the queue would keep what erasure means to
+  remove.
 
   Oban delivers at least once, so an effect **will** see an event a second time. The
   contract names what makes that harmless (`idempotency:`, rule P3), and the event's
@@ -23,8 +23,7 @@ defmodule EhOsContract.EffectJob do
   no longer takes the event's type, is cancelled, not retried: that wiring is not
   coming back, and two more identical failures would say nothing a third time.
 
-  The queue is `:events`, the one v1's handler jobs used, so a host's Oban
-  configuration does not change. Oban has to run on the repo dispatch appends
+  The queue is `:events`. Oban has to run on the repo dispatch appends
   through, or the job would not commit with the event, and dispatch refuses to
   insert it otherwise.
   """

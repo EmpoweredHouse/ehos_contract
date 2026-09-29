@@ -22,7 +22,7 @@ defmodule EhOsContract.Run do
     * *The last event.* A run in progress always has one, so every open run would
       get a duration and be compared against the deadline. This report may not turn
       an absence of an answer into the answer "no", and that would do exactly that.
-    * *The assertion's `eventually`.* A different promise with a different window,
+    * *A promise's `eventually`.* A different promise with a different window,
       which already has its own verdict in `EhOsContract.Trace`.
     * *The latest terminal occurrence.* A run that reached its ending has ended; a
       later event does not un-end it. Taking the earliest also means `ended_at` is a
@@ -54,10 +54,9 @@ defmodule EhOsContract.Run do
   measurement are different questions, and the duration comes from the run's whole
   history however narrow the window on it.
 
-  ## A v2 process
+  ## The runs
 
-  **Measured the same way, on the new log** (v2 §13, plan E7c). A v2 contract's one
-  `process` declares its `deadline`, and its runs are the rows of
+  A contract's one `process` declares its `deadline` (v2 §13, plan E7c), and its runs are the rows of
   `eh_os_contract_event_runs` for that process, over its own events' types and the
   ones it includes (D7): an included event can start a run, and an included one
   declared `terminal:` ends it.
@@ -100,14 +99,6 @@ defmodule EhOsContract.Run do
 
       %{units: _} ->
         []
-
-      _v1 ->
-        process = Model.process(contract, process_name)
-
-        case process && process.deadline do
-          nil -> []
-          deadline -> measure({:contract, contract, process}, deadline, opts)
-        end
     end
   end
 
@@ -155,8 +146,8 @@ defmodule EhOsContract.Run do
   end
 
   # `EhOsContract.Duration.shift/2` rather than a second arithmetic: the same function
-  # computes a `trace` window, so a duration cannot come to mean one thing in an
-  # assertion and another in a deadline.
+  # computes a promise's window, so a duration cannot come to mean one thing in a
+  # promise and another in a deadline.
   @spec outcome(DateTime.t(), DateTime.t() | nil, EhOsContract.Duration.t(), DateTime.t()) ::
           :within | :exceeded | :overdue | :open
   defp outcome(started_at, ended_at, deadline, now) do
@@ -171,11 +162,10 @@ defmodule EhOsContract.Run do
   # One grouped query per process. The terminal end is a filtered aggregate over the
   # same rows rather than a second query, so a run cannot be seen to start in one
   # snapshot and end in another.
-  # Which rows make the runs of a process, and which of their types end one. A v1
-  # process's runs are its contract's events' own `instance_id`; a v2 process's are
-  # the rows of `eh_os_contract_event_runs` of its events' types, its own and the ones
-  # it includes (D7), so an event another contract decided starts or ends a run too.
-  @typep source :: {:contract, module(), map()} | {:runs, String.t(), [String.t()], [String.t()]}
+  # Which rows make the runs of a process, and which of their types end one: the rows
+  # of `eh_os_contract_event_runs` of its events' types, its own and the ones it
+  # includes (D7), so an event another contract decided starts or ends a run too.
+  @typep source :: {:runs, String.t(), [String.t()], [String.t()]}
 
   @spec runs_of(map()) :: source()
   defp runs_of(model) do
@@ -206,6 +196,9 @@ defmodule EhOsContract.Run do
       select:
         {r.instance_id, min(e.occurred_at),
          type(
+           # `type/2` is not decoration here: a bare fragment has no Ecto type, so
+           # this comes back as a `NaiveDateTime` and every comparison against a
+           # `DateTime` raises. Silent in the query, loud one function later.
            fragment("min(?) FILTER (WHERE ? = ANY(?))", e.occurred_at, e.type, ^terminal),
            :utc_datetime_usec
          )}
@@ -216,47 +209,11 @@ defmodule EhOsContract.Run do
     |> repo().all()
   end
 
-  defp spans({:contract, contract, process}, opts) do
-    terminal =
-      contract
-      |> events_of(process)
-      |> Enum.filter(& &1.terminal)
-      |> Enum.map(&to_string(&1.name))
-
-    from(e in Event,
-      as: :event,
-      where: e.contract == ^inspect(contract),
-      where: e.process == ^to_string(process.name),
-      where: not is_nil(e.instance_id),
-      group_by: e.instance_id,
-      select:
-        {e.instance_id, min(e.occurred_at),
-         type(
-           # `type/2` is not decoration here: a bare fragment has no Ecto type, so
-           # this comes back as a `NaiveDateTime` and every comparison against a
-           # `DateTime` raises. Silent in the query, loud one function later.
-           fragment("min(?) FILTER (WHERE ? = ANY(?))", e.occurred_at, e.type, ^terminal),
-           :utc_datetime_usec
-         )}
-    )
-    |> bound(:>=, Keyword.get(opts, :since))
-    |> bound(:<=, Keyword.get(opts, :until))
-    |> maybe_instance(Keyword.get(opts, :instance))
-    |> repo().all()
-  end
-
-  @spec events_of(module(), map()) :: [map()]
-  defp events_of(contract, process), do: Model.events_of(contract, process.name)
-
   # `having` on the run's minimum, never `where` on the row — see the moduledoc.
   @spec bound(Ecto.Query.t(), :>= | :<=, DateTime.t() | nil) :: Ecto.Query.t()
   defp bound(query, _direction, nil), do: query
   defp bound(query, :>=, at), do: having(query, [event: e], min(e.occurred_at) >= ^at)
   defp bound(query, :<=, at), do: having(query, [event: e], min(e.occurred_at) <= ^at)
-
-  @spec maybe_instance(Ecto.Query.t(), String.t() | nil) :: Ecto.Query.t()
-  defp maybe_instance(query, nil), do: query
-  defp maybe_instance(query, id), do: where(query, [e], e.instance_id == ^id)
 
   @spec maybe_run(Ecto.Query.t(), String.t() | nil) :: Ecto.Query.t()
   defp maybe_run(query, nil), do: query

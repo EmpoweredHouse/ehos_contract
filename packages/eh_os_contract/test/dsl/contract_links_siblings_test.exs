@@ -185,17 +185,8 @@ defmodule EhOsContract.Next.ContractLinksSiblingsTest do
   end
 
   describe "X5: the sibling and its events exist" do
-    test "a module that is not a compiled v2 contract, and one that is v1" do
-      violations =
-        links([
-          {"sib_nowhere.ex", subscriber("SibNowhere", "Nowhere")},
-          {"sib_v1.ex",
-           String.replace(
-             subscriber("SibV1", "Nowhere"),
-             inspect(Module.concat(@fixtures, Nowhere)),
-             "ProcessShapes.Bare"
-           )}
-        ])
+    test "a module that is not a compiled v2 contract" do
+      violations = links([{"sib_nowhere.ex", subscriber("SibNowhere", "Nowhere")}])
 
       assert assert_linked(
                violations,
@@ -204,8 +195,6 @@ defmodule EhOsContract.Next.ContractLinksSiblingsTest do
                4
              ) =~
                "which is not a compiled v2 contract"
-
-      assert_linked(violations, "X5: consumes ProcessShapes.Bare, which is not", "sib_v1.ex", 4)
     end
 
     test "a sibling of another domain is another application's" do

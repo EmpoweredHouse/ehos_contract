@@ -57,7 +57,7 @@ defmodule EhOsContract.Web.Api.Conformance do
   # answer to "is this one of ours" belongs to the registry that already knows.
   @spec contract(String.t() | nil) :: {:ok, module()} | {:error, String.t()}
   defp contract(nil) do
-    case EhOsContract.Registry.contracts() ++ EhOsContract.Registry.v2_contracts() do
+    case EhOsContract.Registry.v2_contracts() do
       [only] -> {:ok, only}
       [] -> {:error, "no contract is registered"}
       _many -> {:error, "several contracts are registered; name one with `contract=`"}
@@ -65,10 +65,7 @@ defmodule EhOsContract.Web.Api.Conformance do
   end
 
   defp contract(name) do
-    case Enum.find(
-           EhOsContract.Registry.contracts() ++ EhOsContract.Registry.v2_contracts(),
-           &(inspect(&1) == name)
-         ) do
+    case Enum.find(EhOsContract.Registry.v2_contracts(), &(inspect(&1) == name)) do
       nil -> {:error, "unknown contract #{name}"}
       contract -> {:ok, contract}
     end

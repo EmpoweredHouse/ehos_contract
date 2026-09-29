@@ -3,8 +3,8 @@ defmodule EhOsContract.Paths do
   The declared paths of a v2 contract, and what the log says about each (v2 §13,
   plan E7c).
 
-  A v1 path went from an event to an event through a handler. A v2 contract makes
-  the command a node of its own, so a path is one **step** of three kinds:
+  A contract makes the command a node of its own, so a path is one **step** of
+  these kinds:
 
   | Step | from | via | to |
   | --- | --- | --- | --- |
@@ -18,7 +18,7 @@ defmodule EhOsContract.Paths do
 
   ## Taken, waiting, failing
 
-  **Taken** is counted in runs, as in v1: the distinct runs of the contract's
+  **Taken** is counted in runs: the distinct runs of the contract's
   process in which the step happened. A command emitted an event when the event's
   row names the command's row (`command_id`); a reaction issued a command when a row
   of `eh_os_contract_commands` names its actor and, as its cause, an event of the

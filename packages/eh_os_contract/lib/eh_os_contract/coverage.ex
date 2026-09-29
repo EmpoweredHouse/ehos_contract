@@ -7,8 +7,7 @@ defmodule EhOsContract.Coverage do
   scenario's `given` types among the stream's (`given_types` of the command's row in
   `eh_os_contract_commands`) and either was accepted with the scenario's `expect`
   types as a subsequence of what it emitted, or was rejected on the scenario's
-  invariant — the semantics `ScenarioCase` gives a scenario, as v1's
-  `ContractExample` gave an example. **By type only**: matching on data would mean
+  invariant — the semantics `ScenarioCase` gives a scenario. **By type only**: matching on data would mean
   storing command payloads, and those are personal data.
 
   Only a scenario whose trigger is a command can be observed: a query leaves no row,

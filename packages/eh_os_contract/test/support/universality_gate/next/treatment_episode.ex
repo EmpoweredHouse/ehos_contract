@@ -2,12 +2,10 @@ defmodule UniversalityGate.Next.TreatmentEpisode do
   @moduledoc """
   # THIS CONTRACT IS INVENTED. IT IS NOT CLIENT MATERIAL.
 
-  `UniversalityGate.TreatmentEpisode` in the v2 DSL (v2 plan, E4). It translates and
+  The universality gate's v1 contract in the v2 DSL (v2 plan, E4). It translates and
   adds nothing, and what v1 said and v2 cannot say the same way is listed below
-  rather than smoothed over. The v1 contract stays until the tests that read it —
-  report, trace, brief, AsyncAPI — have v2 successors; a v1 test goes only with the
-  v2 test that takes its behaviour over. Until then there are two, and they are
-  never one module that is both.
+  rather than smoothed over. The v1 contract went with v1's tests (v2 plan, E11a),
+  once each had a v2 test that took its behaviour over.
 
   The gate's shapes, the ones TaxVision does not have, all survive:
 
@@ -33,9 +31,8 @@ defmodule UniversalityGate.Next.TreatmentEpisode do
     `:string` until then, and that is a gap, not a decision.
   - *The rule becomes an invariant*, named as v1's rule was, and the examples
     become scenarios. v1's decision function received the payer registry's answer
-    as input (`UniversalityGate.Eligibility`); here the command carries it.
-    `Eligibility.decide/1` became this unit's decider in E5,
-    `UniversalityGate.Next.Episode`.
+    as input; here the command carries it. That function became this unit's decider
+    in E5, `UniversalityGate.Next.Episode`.
   - *`:enum` needs its members.* `document_type` has the one the fake produces;
     v1's `scope` was declared `:enum` and filled with a sentence, so it is a
     `:string`.

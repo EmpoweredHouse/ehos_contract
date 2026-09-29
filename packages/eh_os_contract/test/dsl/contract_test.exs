@@ -3,8 +3,8 @@ defmodule EhOsContract.Next.ContractTest do
   v2 plan, E4: **a v2 contract compiles to plain data** (v2 §9), whose version does
   not see declaration order.
 
-  The fixtures are declared inside this file, as in `digest_test`: modules defined in
-  a `.exs` are not in the application's module list, so the registry never sees them.
+  The fixtures are declared inside this file on purpose: modules defined in a `.exs`
+  are not in the application's module list, so the registry never sees them.
   Their domain, `EhOsContract.Next.ContractTest.Clinic`, does not exist, and that is
   the point of one test: `domain:` records no compile dependency (v2 §8).
   """
@@ -289,6 +289,14 @@ defmodule EhOsContract.Next.ContractTest do
              ]
     end
 
+    test "each digest is twelve hex characters, so it can be read out of a report" do
+      # The contract version's shape, for the same reason: the deployment table stores
+      # these, and the report names the declaration whose digest moved.
+      for {_key, digest} <- Model.fetch(Golden).digests do
+        assert digest =~ ~r/^[0-9a-f]{12}$/
+      end
+    end
+
     test "holds no Spark struct and no source annotation" do
       refute inspect(Model.fetch(Golden), limit: :infinity) =~
                ~r/__spark_metadata__|__struct__|Spark\./
@@ -361,31 +369,20 @@ defmodule EhOsContract.Next.ContractTest do
              }
     end
 
-    test "refuses capabilities for a domain that is not compiled, and for a v1 contract" do
+    test "refuses capabilities for a domain that is not compiled" do
       error = assert_raise ArgumentError, fn -> Model.capabilities(Golden) end
 
       assert error.message =~
                "names domain EhOsContract.Next.ContractTest.Clinic, which is not a compiled"
 
-      # A module that exists and is no domain at all: named as such, not tried as a
-      # v1 contract.
+      # A module that exists and is no domain at all: named as the contract's domain,
+      # not refused as a module without a model.
       error =
         assert_raise ArgumentError, fn ->
           Model.capabilities(%{Model.fetch(Golden) | domain: Enum})
         end
 
       assert error.message =~ "names domain Enum, which is not a compiled EhOsContract.Domain"
-
-      error = assert_raise ArgumentError, fn -> Model.capabilities(ProcessShapes.Bare) end
-
-      assert error.message =~
-               "ProcessShapes.Bare is a v1 contract, which declares no capabilities"
-    end
-
-    test "is refused by the v1 accessors, by name" do
-      error = assert_raise ArgumentError, fn -> Model.events(Golden) end
-      assert error.message =~ "EhOsContract.Next.ContractTest.Golden is a v2 contract"
-      refute Model.contract?(Golden)
     end
   end
 
@@ -429,6 +426,44 @@ defmodule EhOsContract.Next.ContractTest do
       end
 
       assert version.([:payer_id, :period_id]) != version.([:period_id, :payer_id])
+    end
+
+    test "moves when a command's source changes, which the model carries" do
+      # `source:` is where the owner can check a declaration against the material it
+      # came from. Pointing a command at another place in the material is a change to
+      # the agreement, and a digest blind to it would let the deployment table say
+      # nothing had changed.
+      model = fn source ->
+        name = "Source#{System.unique_integer([:positive])}"
+
+        compile("""
+        defmodule EhOsContract.Next.ContractTest.#{name} do
+          use EhOsContract.Next.Contract, domain: Clinic, context: :settlement
+
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed#{source}
+            event :visit_closed, "Wizyta zamknięta", terminal: true
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        end
+        """)
+
+        Model.fetch(Module.concat(__MODULE__, name))
+      end
+
+      without = model.("")
+      sourced = model.(~s(, source: "CMD-07"))
+
+      assert [%{source: nil}] = without.commands
+      assert [%{source: "CMD-07"}] = sourced.commands
+
+      moved = for {key, digest} <- without.digests, sourced.digests[key] != digest, do: key
+      assert moved == ["command:close_visit"]
+      assert without.version != sourced.version
     end
   end
 

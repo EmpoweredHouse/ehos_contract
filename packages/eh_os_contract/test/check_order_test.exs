@@ -12,10 +12,10 @@ defmodule EhOsContract.CheckOrderTest do
   alias Mix.Tasks.EhOsContract.Check
 
   @findings [
-    Finding.new("owner-not-a-module", "owner B.Module does not exist"),
+    Finding.new("promise-without-within", "promise :b has no `within`"),
     Finding.new("process-without-accountable", "process :b names no `accountable` role"),
-    Finding.new("rule-function-missing", "rule :x names X.y/1, which does not exist"),
-    Finding.new("owner-not-a-module", "owner A.Module does not exist"),
+    Finding.compiler({"X2: rule :x names X.y/1, which does not exist", nil}),
+    Finding.new("promise-without-within", "promise :a has no `within`"),
     Finding.new("process-without-accountable", "process :a names no `accountable` role")
   ]
 
@@ -24,8 +24,8 @@ defmodule EhOsContract.CheckOrderTest do
              {:error, "rule :x names X.y/1, which does not exist"},
              {:warn, "process :a names no `accountable` role"},
              {:warn, "process :b names no `accountable` role"},
-             {:info, "owner A.Module does not exist"},
-             {:info, "owner B.Module does not exist"}
+             {:info, "promise :a has no `within`"},
+             {:info, "promise :b has no `within`"}
            ]
   end
 

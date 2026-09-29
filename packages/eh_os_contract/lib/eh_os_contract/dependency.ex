@@ -2,14 +2,14 @@ defmodule EhOsContract.Dependency do
   @moduledoc """
   Observations that a declared external dependency was unavailable.
 
-  `external` and `unavailable_looks_like` have been in the contract since the first day
-  and nothing read them — the sentence *"a timeout or an empty response: verification is
-  suspended, not negative"* was prose in Elixir syntax. This is its reader, and the fourth
-  assertion verdict is what it buys.
+  A domain declares its `external` systems and what their being unavailable looks like
+  (`unavailable_looks_like`), and without a reader the sentence *"a timeout or an empty
+  response: verification is suspended, not negative"* would be prose in Elixir syntax.
+  This is its reader, and the fourth promise verdict is what it buys.
 
   ## Why the engine needs this at all
 
-  A `trace` says *after X, eventually Y within N days*. When Y does not arrive, there are
+  A promise says *after X, eventually Y within N days*. When Y does not arrive, there are
   two completely different reasons and the log cannot tell them apart: the client's process
   stalled, or the authority the process depends on was not answering. Reported as one
   thing, they are reported as the first — so the evidence report tells a client they broke
@@ -60,8 +60,8 @@ defmodule EhOsContract.Dependency do
   unavailable.
 
   Wrapping rather than asking each call site to remember, for the reason that keeps
-  recurring here: a rule nobody is forced to follow is a rule that lapses. The same shape
-  as `EhOsContract.Telemetry.handler_span/2` — structure instead of discipline.
+  recurring here: a rule nobody is forced to follow is a rule that lapses — structure
+  instead of discipline.
 
   Only `{:error, :unavailable}` counts. Every other result, including other errors, passes
   through untouched and unrecorded, because a suspension deletes a violation from the
@@ -82,19 +82,31 @@ defmodule EhOsContract.Dependency do
   @doc """
   Records one observation that a dependency was unavailable.
 
-  Refuses a dependency the contract does not declare. That is a runtime check because the
+  Refuses a dependency the contract does not use. That is a runtime check because the
   caller is an adapter and the name arrives as a value — but it is the same rule the
-  compile gate applies to `depends_on`: an observation about something undeclared cannot
-  reach any assertion, so recording it would be writing to a place nothing reads.
+  compile gate applies to `depends_on`: an observation about something the contract
+  never touches could not be about it, so recording it would be writing to a place
+  nothing reads.
+
+  A contract's externals are declared in its domain, and the contract uses one in two
+  ways: an event `depends_on` it, or an effect `calls:` it. A promise reads an
+  observation only through the first (`EhOsContract.Trace`), so an observation about
+  an external only an effect calls suspends nothing. It is recorded all the same,
+  because the adapter that makes the call is the one wrapped in `observe/3`, and
+  refusing there would crash the effect in the middle of the outage it reports
+  (decided by the user, 29 September 2026, in the review of plan E11a).
+
+  A domain, or any module that is not a contract, is refused by name.
   """
+  @spec unavailable!(module(), atom()) :: t()
   @spec unavailable!(module(), atom(), String.t() | nil) :: t()
+  @spec unavailable!(module(), atom(), String.t() | nil, DateTime.t()) :: t()
   def unavailable!(contract, external, reason \\ nil, now \\ DateTime.utc_now()) do
-    unless EhOsContract.Model.external(contract, external) do
+    unless external in used(contract) do
       raise ArgumentError,
-            "#{inspect(contract)} does not declare `external #{inspect(external)}`, so an " <>
-              "observation about it could never reach an assertion. Declare the dependency " <>
-              "in the contract, which is also where the client says what its being " <>
-              "unavailable looks like."
+            "#{inspect(contract)} uses no external #{inspect(external)}: no event of it " <>
+              "`depends_on:` it and no effect `calls:` it, so an observation about it would " <>
+              "be about nothing the contract does."
     end
 
     repo().insert!(%__MODULE__{
@@ -105,11 +117,24 @@ defmodule EhOsContract.Dependency do
     })
   end
 
+  @spec used(module()) :: [atom()]
+  defp used(contract) do
+    case EhOsContract.Model.fetch(contract) do
+      %{kind: :contract, units: _} = model ->
+        Enum.flat_map(model.events, &List.wrap(&1.depends_on)) ++
+          Enum.flat_map(model.effects, &List.wrap(&1.calls))
+
+      %{kind: kind} ->
+        raise ArgumentError,
+              "#{inspect(contract)} is a #{kind}, not a contract; an observation is recorded " <>
+                "under the contract whose event or effect uses the external"
+    end
+  end
+
   @doc """
   The moments each dependency of a contract was seen unavailable, by dependency name.
 
-  One query for the whole evaluation, then filtered per run in memory — the same shape as
-  `EhOsContract.HandlerFailure.runs_by_handler/1`, and for the same reason: an assertion is
+  One query for the whole evaluation, then filtered per run in memory: a promise is
   evaluated once per run, and a query per run would make the report's cost grow with the
   client's traffic.
   """

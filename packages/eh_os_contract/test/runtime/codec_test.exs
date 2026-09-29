@@ -144,6 +144,84 @@ defmodule EhOsContract.CodecTest do
     assert Codec.problems([%{name: :x, type: :unknown}], %{x: 1}, @values) == [x: :type]
   end
 
+  describe "the edges of the round trip" do
+    # What the payload types accept at their corners, and what the log's form does to
+    # it — the edges v1's `payload_edges_test.exs` pinned, on the codec v2 reads and
+    # writes through. Each failure here would be silent: a value that is merely
+    # different when it comes back, in a field the engine never looks at.
+
+    @edges [
+      %{name: :amount, type: :integer, optional: true},
+      %{name: :at, type: :timestamp, optional: true},
+      %{name: :note, type: :string, optional: true}
+    ]
+
+    defp round_trip(data) do
+      encoded = Codec.encode(@edges, data, %{}) |> Jason.encode!() |> Jason.decode!()
+      {:ok, decoded} = Codec.decode(@edges, encoded, %{})
+      decoded
+    end
+
+    test "negative, zero and an integer far beyond 64 bits come back as they went" do
+      # A correction or a reversal is counted negative, and zero is a value, not an
+      # absence. The column is JSON and the BEAM has bignums, so nothing truncates.
+      huge = 12_345_678_901_234_567_890_123_456_789
+
+      for amount <- [-1, 0, huge] do
+        assert Codec.problems(@edges, %{amount: amount}, %{}) == []
+        assert round_trip(%{amount: amount}).amount == amount
+      end
+    end
+
+    test "before 1970 and far into the future both survive" do
+      # A date of birth and a statutory retention horizon, both on a process's first
+      # day. Epoch arithmetic anywhere on the way would break the first and overflow
+      # the second, and neither would raise.
+      for at <- [~U[1969-07-20 20:17:00.000000Z], ~U[9999-12-31 23:59:59.000000Z]] do
+        assert round_trip(%{at: at}).at == at
+      end
+    end
+
+    test "microsecond precision is kept exactly as given, and so is its absence" do
+      # `DateTime.compare/2` calls the last two the same instant and `==` does not; the
+      # evaluator compares with `compare`, and this is what notices if a round trip
+      # started turning one into the other.
+      with_micro = ~U[2026-08-05 09:00:00.123456Z]
+      without = ~U[2026-08-05 09:00:00Z]
+
+      assert round_trip(%{at: with_micro}).at == with_micro
+      assert round_trip(%{at: without}).at == without
+      refute without == ~U[2026-08-05 09:00:00.000000Z]
+    end
+
+    test "whitespace, newlines and unicode in a string come back unchanged" do
+      # The log is what a report quotes from. Text mangled on the way in cannot be
+      # repaired later, and the damage shows only to somebody who reads the language.
+      text = "  zażółć\ngęślą jaźń\t— ✓  "
+
+      assert round_trip(%{note: text}).note == text
+    end
+
+    test "an empty :string is a value, and an empty :id is refused" do
+      # Not an inconsistency, and the reason v1 gave: `:string` is text somebody typed,
+      # and typing nothing is a fact worth keeping; `:id` names something, and an
+      # identifier that identifies nothing is a missing value wearing a type. An empty
+      # one would also key a stream, a tag and a run with nothing after the colon, one
+      # for every command that forgot to fill it in.
+      required = fn type -> [%{name: :f, type: type, optional: false}] end
+
+      assert Codec.problems(required.(:string), %{f: ""}, %{}) == []
+      assert Codec.problems(required.(:id), %{f: ""}, %{}) == [f: :type]
+
+      # An entity's identifier is an `:id` too, wherever the model keeps its entity.
+      assert Codec.problems(required.({:id, :invoice}), %{f: ""}, %{}) == [f: :type]
+
+      # The control: a one-character id is an id.
+      assert Codec.problems(required.(:id), %{f: "x"}, %{}) == []
+      assert Codec.problems(required.({:id, :invoice}), %{f: "x"}, %{}) == []
+    end
+  end
+
   describe "Key" do
     test "streams, tags and joined keys escape the separator, so two keys never merge" do
       assert Key.stream(:visit_settlement, ["w-1"]) == "visit_settlement:w-1"
@@ -152,6 +230,10 @@ defmodule EhOsContract.CodecTest do
       refute Key.join(["a|b", "c"]) == Key.join(["a", "b|c"])
       assert Key.join(["100%", "|"]) == "100%25|%7C"
       assert_raise ArgumentError, fn -> Key.join(["a", nil]) end
+    end
+
+    test "unicode passes through untouched; only the separator and the escape are escaped" do
+      assert Key.join(["episode", "żółw-✓"]) == "episode|żółw-✓"
     end
   end
 

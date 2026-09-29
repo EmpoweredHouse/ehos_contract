@@ -41,6 +41,49 @@ defmodule EhOsContract.Next.ContractProcessTest do
     end
   end
 
+  describe "the correlation is declared" do
+    test "a process without `correlate` is refused, at the process" do
+      # Without it the engine cannot tell one run from another, and every reader —
+      # coverage, promises, the deadline — counts runs. A default would pick a field
+      # for the owner; the owner names it.
+      message =
+        refuse_contract("NoCorrelate", """
+        #{@unit}
+          process :visit, "Wizyta" do
+          end
+        """)
+
+      assert message =~ "required :correlate option not found"
+      assert message =~ "no_correlate.ex:10"
+    end
+
+    test "an empty `correlate` is refused too, since it makes the whole contract one run" do
+      # Found porting v1's tests (plan E11a): `correlate []` compiled, every event got the
+      # bare process name as its run, and the report counted one run for everything.
+      message =
+        refuse_contract("EmptyCorrelate", """
+        #{@unit}
+          process :visit, "Wizyta" do
+            correlate []
+          end
+        """)
+
+      assert message =~ "R2: process :visit correlates on no field, so every event of it"
+    end
+
+    test "control: with it, the process compiles and keeps the fields in order" do
+      model =
+        compile_contract("Correlated", """
+        #{@unit}
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      assert model.process.correlate == [:visit_id]
+    end
+  end
+
   describe "R2: the correlation is in every local event" do
     test "an event without the field is refused, and identity counts as declared" do
       message =

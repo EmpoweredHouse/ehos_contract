@@ -258,6 +258,22 @@ defmodule EhOsContract.Next.ContractScenariosTest do
       assert message =~ ~s|field :amount: "sto" is not an :integer (time_wrong.ex:37)|
     end
 
+    test "an empty identifier is refused here, as dispatch refuses it" do
+      # Found in the review of E11a: the codec refused `""` for an `:id` at dispatch,
+      # while a scenario carrying one compiled and failed only when its test ran.
+      message =
+        refuse_contract("EmptyId", """
+        #{@unit}
+          scenario "zapłacono bez wizyty" do
+            given :payment_recorded, %{visit_id: "", amount: 100}
+            command :remind
+            expect :reminded
+          end
+        """)
+
+      assert message =~ ~s|field :visit_id: "" is not an identifier, which names something|
+    end
+
     test "control: the identity is the scenario's own, and a timestamp is a string" do
       assert [_, %{given: [%{data: %{paid_at: "2026-09-01T09:00:00Z"}}, _]}] =
                compile_contract("DataRight", """

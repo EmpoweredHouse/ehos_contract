@@ -1,27 +1,19 @@
 defmodule EhOsContract.Model do
   @moduledoc """
-  A contract as plain data, and the one way every reader asks a contract anything
-  (v2 §9).
+  A contract or a domain as plain data, and the one way every reader asks one
+  anything (v2 §9).
 
-  Readers — `EhOsContract.Trace`, `EhOsContract.Graph`, `EhOsContract.Conformance`
-  and the rest — used to call the query functions `use EhOsContract.Contract`
-  generates on every contract module (`events/0`, `processes/0`, `traces/0`, …).
-  They now call the accessors here, and only `EhOsContract.Model.V1` calls those
-  functions. That is the seam the move to v2 runs through: a v2 contract answers
-  with its own compiled model, and no reader has to know which DSL wrote it.
+  A module compiled from the DSL — `use EhOsContract.Next.Contract` or
+  `use EhOsContract.Domain` — carries its model as `__eh_os_contract_model__/0`, and
+  readers ask for it through `fetch/1` rather than calling that function themselves.
 
   ## The data
 
       %{format: 1, kind: :contract, module: MyApp.Contracts.Month,
-        events: [...], processes: [...], commands: [...], traces: [...],
-        externals: [...], rules: [...], examples: [...],
+        domain: MyApp.Domain, context: :settlement, process: %{...},
+        events: [...], commands: [...], units: [...], policies: [...],
+        scenarios: [...], ...,
         version: "3f9c…", digests: %{"event:month_opened" => "…"}}
-
-  It is the subset of v2 §9 that v1 has. v1 has no domain, context, units,
-  policies or scenarios, so those keys are absent rather than empty: an empty
-  collection would claim the contract declares none, which is a statement v1
-  cannot make. A v1 contract may hold several processes, so `processes` is a list
-  where v2 has one `process`.
 
   **Collections are lists in declaration order**, not the maps keyed by name that
   v2 §9 sketches. Readers print in declaration order — the graph lists its nodes
@@ -30,47 +22,28 @@ defmodule EhOsContract.Model do
   insignificant, and that is where v2 §9's "declaration order does not matter"
   belongs.
 
-  Declarations keep the shape v1 builds them in (`EhOsContract.Contract`), so a
-  reader moving onto this module changes the function it calls and nothing else.
+  A domain's model is plain data with its own keys (`contexts`, `actors`, `values`,
+  …), read directly until a reader needs more.
   """
 
   @typedoc "A contract module, or the model already built from one."
   @type contract :: module() | t()
 
-  @typedoc "One contract as data."
+  @typedoc "One contract as data: the keys every reader relies on, and the rest."
   @type t :: %{
           required(:format) => 1,
           required(:kind) => :contract,
           required(:module) => module(),
-          required(:events) => [map()],
-          required(:processes) => [map()],
-          required(:commands) => [map()],
-          required(:traces) => [map()],
-          required(:externals) => [map()],
-          required(:rules) => [map()],
-          required(:examples) => [map()],
           required(:version) => String.t(),
-          required(:digests) => %{String.t() => String.t()}
+          required(:digests) => %{String.t() => String.t()},
+          optional(atom()) => term()
         }
-
-  @doc """
-  Whether a module is a contract. Used by the registry's scan and by the handler
-  gate, which is why it takes any module and never raises.
-  """
-  @spec contract?(module()) :: boolean()
-  def contract?(module) when is_atom(module), do: EhOsContract.Model.V1.contract?(module)
 
   @doc """
   The model of a contract, or of a domain. Passing a model returns it unchanged, so a
   reader that asks many questions can build it once.
 
-  A module compiled from a v2 DSL carries its model as `__eh_os_contract_model__/0`
-  (v2 §9), and that is returned as it is. The first such module is a domain
-  (`EhOsContract.Domain`, `kind: :domain`). A v1 contract has no compiled model, and
-  `EhOsContract.Model.V1` builds one from its generated functions.
-
-  The accessors below read contracts. A domain's model is plain data with its own
-  keys (`contexts`, `actors`, `values`, …), read directly until a reader needs more.
+  A module that carries no compiled model is refused by name.
   """
   @spec fetch(contract() | module()) :: t() | map()
   def fetch(%{format: 1, kind: kind} = model) when kind in [:contract, :domain], do: model
@@ -78,26 +51,11 @@ defmodule EhOsContract.Model do
   def fetch(module) when is_atom(module) do
     if Code.ensure_loaded?(module) and function_exported?(module, :__eh_os_contract_model__, 0),
       do: module.__eh_os_contract_model__(),
-      else: EhOsContract.Model.V1.build(module)
-  end
-
-  # The accessors below read a contract. A domain module has a model too, with other
-  # keys, so asking one for events would fail on a missing key; it is refused by name.
-  @spec contract!(contract()) :: t()
-  defp contract!(contract) do
-    case fetch(contract) do
-      # A v2 contract's model has other keys (`units`, one `process`), and nothing
-      # reads one before dispatch does (v2 plan, E6).
-      %{kind: :contract, units: _, module: module} ->
-        raise ArgumentError,
-              "#{inspect(module)} is a v2 contract, and these accessors read v1 contracts"
-
-      %{kind: :contract} = model ->
-        model
-
-      %{kind: kind, module: module} ->
-        raise ArgumentError, "#{inspect(module)} is a #{kind}, not a contract"
-    end
+      else:
+        raise(
+          ArgumentError,
+          "#{inspect(module)} is not a contract or a domain compiled from EhOsContract's DSL"
+        )
   end
 
   @doc """
@@ -118,8 +76,8 @@ defmodule EhOsContract.Model do
 
   Derived from the declarations, never written down. The domain's name is read from
   the compiled domain at the call, since a contract records no compile dependency on
-  its domain (v2 §8); a domain that is not compiled is refused by name, and so are a
-  v1 contract, which declares no capabilities, and a domain.
+  its domain (v2 §8); a domain that is not compiled is refused by name, and so is a
+  domain.
   """
   @spec capabilities(contract() | module()) :: %{
           String.t() => %{
@@ -164,9 +122,6 @@ defmodule EhOsContract.Model do
             humans != [],
             into: %{},
             do: {capability, Map.put(declared, :roles, humans |> Enum.map(role) |> Enum.sort())}
-
-      %{kind: :contract, module: module} ->
-        raise ArgumentError, "#{inspect(module)} is a v1 contract, which declares no capabilities"
 
       %{kind: kind, module: module} ->
         raise ArgumentError, "#{inspect(module)} is a #{kind}, not a contract"
@@ -231,8 +186,8 @@ defmodule EhOsContract.Model do
   defp json_key(key) when is_binary(key), do: key
 
   defp domain!(%{domain: domain, module: module}) do
-    # Only a compiled model is asked: `fetch/1` on any other module would try it as a
-    # v1 contract and fail with that error instead of this one.
+    # Only a compiled model is asked: `fetch/1` on any other module would fail with
+    # its own error instead of this one.
     compiled? =
       Code.ensure_loaded?(domain) and function_exported?(domain, :__eh_os_contract_model__, 0)
 
@@ -400,124 +355,6 @@ defmodule EhOsContract.Model do
 
   defp v2!(contract) do
     case fetch(contract) do
-      %{kind: :contract, units: _} = model ->
-        model
-
-      %{kind: :contract, module: module} ->
-        raise ArgumentError, "#{inspect(module)} is a v1 contract, which generates no modules"
-
-      %{kind: kind, module: module} ->
-        raise ArgumentError, "#{inspect(module)} is a #{kind}, not a contract"
-    end
-  end
-
-  @doc "The contract module the model was built from."
-  @spec module(contract()) :: module()
-  def module(contract), do: contract!(contract).module
-
-  @doc "Every declared event, in declaration order."
-  @spec events(contract()) :: [map()]
-  def events(contract), do: contract!(contract).events
-
-  @doc "The names of every declared event, in declaration order."
-  @spec event_names(contract()) :: [atom()]
-  def event_names(contract), do: Enum.map(events(contract), & &1.name)
-
-  @doc "Whether the contract declares an event under that name."
-  @spec event?(contract(), atom()) :: boolean()
-  def event?(contract, name), do: Enum.any?(events(contract), &(&1.name == name))
-
-  @doc "One declared event by name. Raises when the contract does not declare it."
-  @spec event(contract(), atom()) :: map()
-  def event(contract, name) do
-    model = contract!(contract)
-
-    Enum.find(model.events, &(&1.name == name)) ||
-      raise ArgumentError, "#{inspect(model.module)}: no such event #{inspect(name)}"
-  end
-
-  @doc "Every declared process, in declaration order."
-  @spec processes(contract()) :: [map()]
-  def processes(contract), do: contract!(contract).processes
-
-  @doc "One declared process by name, or `nil`."
-  @spec process(contract(), atom()) :: map() | nil
-  def process(contract, name), do: Enum.find(processes(contract), &(&1.name == name))
-
-  @doc """
-  The process an event belongs to, or `nil` — for an event the contract does not
-  declare as well as for one that names no process.
-  """
-  @spec process_of(contract(), atom()) :: map() | nil
-  def process_of(contract, event_name) do
-    model = contract!(contract)
-
-    case Enum.find(model.events, &(&1.name == event_name)) do
-      %{process: nil} -> nil
-      %{process: name} -> process(model, name)
-      nil -> nil
-    end
-  end
-
-  @doc "The events belonging to a process, in declaration order."
-  @spec events_of(contract(), atom()) :: [map()]
-  def events_of(contract, process_name),
-    do: Enum.filter(events(contract), &(&1.process == process_name))
-
-  @doc "Every declared trace assertion, in declaration order."
-  @spec traces(contract()) :: [map()]
-  def traces(contract), do: contract!(contract).traces
-
-  @doc "One declared trace assertion by name, or `nil`."
-  @spec trace(contract(), atom()) :: map() | nil
-  def trace(contract, name), do: Enum.find(traces(contract), &(&1.name == name))
-
-  @doc "Every declared external dependency, in declaration order."
-  @spec externals(contract()) :: [map()]
-  def externals(contract), do: contract!(contract).externals
-
-  @doc "One declared external dependency by name, or `nil`."
-  @spec external(contract(), atom()) :: map() | nil
-  def external(contract, name), do: Enum.find(externals(contract), &(&1.name == name))
-
-  @doc "Every declared rule, in declaration order."
-  @spec rules(contract()) :: [map()]
-  def rules(contract), do: contract!(contract).rules
-
-  @doc "One declared rule by name, or `nil`."
-  @spec rule(contract(), atom()) :: map() | nil
-  def rule(contract, name), do: Enum.find(rules(contract), &(&1.name == name))
-
-  @doc "Every declared example, in declaration order."
-  @spec examples(contract()) :: [map()]
-  def examples(contract), do: contract!(contract).examples
-
-  @doc "Every declared command, in declaration order."
-  @spec commands(contract()) :: [map()]
-  def commands(contract), do: contract!(contract).commands
-
-  @doc "One declared command by name, or `nil`."
-  @spec command(contract(), atom()) :: map() | nil
-  def command(contract, name), do: Enum.find(commands(contract), &(&1.name == name))
-
-  @doc """
-  The contract version: a hash of every declaration, stamped on every event. A v2
-  contract's too, which is a key both models have.
-  """
-  @spec version(contract()) :: String.t()
-  def version(contract), do: any_contract!(contract).version
-
-  @doc """
-  One digest per declaration, keyed `"<kind>:<name>"`. What
-  `EhOsContract.Deployment` records to say which declaration moved. A v2 contract's
-  too.
-  """
-  @spec digests(contract()) :: %{String.t() => String.t()}
-  def digests(contract), do: any_contract!(contract).digests
-
-  # A contract of either DSL, for the keys both models have.
-  defp any_contract!(contract) do
-    case fetch(contract) do
       %{kind: :contract} = model ->
         model
 
@@ -525,4 +362,15 @@ defmodule EhOsContract.Model do
         raise ArgumentError, "#{inspect(module)} is a #{kind}, not a contract"
     end
   end
+
+  @doc "The contract version: a hash of every declaration, stamped on every event."
+  @spec version(contract()) :: String.t()
+  def version(contract), do: v2!(contract).version
+
+  @doc """
+  One digest per declaration, keyed `"<kind>:<name>"`. What
+  `EhOsContract.Deployment` records to say which declaration moved.
+  """
+  @spec digests(contract()) :: %{String.t() => String.t()}
+  def digests(contract), do: v2!(contract).digests
 end

@@ -96,7 +96,7 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
       for edge <- process.failing,
           do: assert(html =~ escape(EhOsContract.Report.Sentence.step_failing(edge)))
 
-      for assertion <- Map.get(process, :assertions) || process.promises do
+      for assertion <- process.promises do
         assert html =~ escape(EhOsContract.Report.Sentence.rule(assertion))
         assert html =~ escape(EhOsContract.Report.Sentence.outcome(assertion))
       end
@@ -125,7 +125,7 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
       violated: 3,
       pending: 1,
       suspended: 1,
-      trace: :closed_in_time,
+      promise: :closed_in_time,
       under_earlier_declaration: 4,
       declaration_changed_at: ~U[2026-08-05 09:00:00.000000Z]
     }
@@ -133,7 +133,7 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     assigns = %{
       eh_os_contract_web_access: :all,
       eh_os_contract_web_base_path: "/dashboard",
-      reports: [report(processes: [process(assertions: [assertion])])]
+      reports: [report(processes: [process(promises: [assertion])])]
     }
 
     html = render_component(&ContractStatus.render/1, assigns)
@@ -194,7 +194,7 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     assigns = %{
       eh_os_contract_web_access: :read_only,
       eh_os_contract_web_base_path: "/dashboard",
-      reports: [report(processes: [process(assertions: [assertion])])]
+      reports: [report(processes: [process(promises: [assertion])])]
     }
 
     html = render_component(&ContractStatus.render/1, assigns)
@@ -227,7 +227,7 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     assigns = %{
       eh_os_contract_web_access: :all,
       eh_os_contract_web_base_path: "/dashboard",
-      reports: [report(processes: [process(assertions: [assertion])])]
+      reports: [report(processes: [process(promises: [assertion])])]
     }
 
     html = render_component(&ContractStatus.render/1, assigns)
@@ -236,13 +236,19 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     assert html =~ "Rule: after &quot;Case opened&quot;, &quot;Case closed&quot; follows."
   end
 
+  @drift %{
+    from: %{kind: :command, name: :a, label: "A"},
+    to: %{kind: :event, name: :b, label: "B"},
+    count: 4
+  }
+
   test "drift renders the undeclared edge, and its absence renders as none" do
     with_drift =
       render_component(&ContractStatus.render/1, %{
         eh_os_contract_web_access: :all,
         eh_os_contract_web_base_path: "/dashboard",
         reports: [
-          report(drift: [%{from: "a", to: "b", from_label: "A", to_label: "B", count: 4}])
+          report(drift: [@drift])
         ]
       })
 
@@ -253,14 +259,7 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
         reports: [report()]
       })
 
-    assert with_drift =~
-             EhOsContract.Report.Sentence.drift(%{
-               from: "a",
-               to: "b",
-               from_label: "A",
-               to_label: "B",
-               count: 4
-             })
+    assert with_drift =~ EhOsContract.Report.Sentence.drift(@drift)
 
     assert without_drift =~ "None: nothing happened outside the agreement."
   end
@@ -282,6 +281,7 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
         contract: CaseHandling,
         period: %{since: nil, until: nil},
         deployment: deployment(),
+        wiring: %{version: "def456", since: nil},
         processes: [],
         drift: []
       },
@@ -314,7 +314,7 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
         untraversed: [],
         in_flight: [],
         failing: [],
-        assertions: []
+        promises: []
       },
       Map.new(overrides)
     )

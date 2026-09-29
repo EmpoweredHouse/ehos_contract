@@ -40,7 +40,7 @@ defmodule EhOsContract.Migrations do
 
   ## Oban's tables are not ours
 
-  The engine dispatches asynchronous handlers through Oban, so a consumer needs
+  The engine runs effects and timers through Oban, so a consumer needs
   Oban's tables too. Those are Oban's to create, and `up/1` deliberately does not
   wrap `Oban.Migration.up/1`: wrapping it would tie the engine's version to
   Oban's, hide an upgrade the consumer must decide about, and break the moment a

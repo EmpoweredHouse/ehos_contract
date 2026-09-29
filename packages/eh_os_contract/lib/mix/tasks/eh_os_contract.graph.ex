@@ -1,25 +1,19 @@
 defmodule Mix.Tasks.EhOsContract.Graph do
-  @shortdoc "The event graph: static, and with --overlay laid over the log"
+  @shortdoc "Draws a process, a contract, a unit or a domain as a Mermaid diagram"
 
   @moduledoc """
-  The static graph comes from the registry, that is, from the binary that runs.
-  With `--overlay` it gains the counters from the log and the edge states.
+  One picture of the contracts the registry finds — that is, of the binary that
+  runs — as a Mermaid diagram. Which picture is a flag, and with none the task
+  prints the forms it takes.
 
-  `--mermaid` prints a diagram. This is the seed of the dashboard — data without a
-  screen, deliberately in that order: first check whether the difference is
-  signal, then draw it.
-
-  ## `--process` draws something else, for somebody else
+  ## `--process`: one process, for the process owner
 
       mix eh_os_contract.graph --mermaid --process clinical_visit --output visit.mmd
 
-  The two pictures above are **for the team**: what the binary wires together, and
-  what the log says actually ran. `--process` draws one process's **declared
-  shape** — stages as lanes, how it can end, each assertion as an arrow carrying
-  its window — for the process owner, before anything is built.
-
-  **A v2 contract's process** has the same declared shape. With `--overlay` it is
-  drawn as its contract's full graph instead, with the log laid over it (below).
+  `--process` draws one process's **declared shape** — stages as lanes, how it can
+  end, each promise as an arrow carrying its window — for the process owner, before
+  anything is built. With `--overlay` it is drawn as its contract's full graph
+  instead, with the log laid over it (below).
 
   ## `--contract` and `--unit`: a v2 contract, whole or one unit of it
 
@@ -49,12 +43,10 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   runs per contract, and per edge the consumed events and what waits or fails at
   the consumer. Both take the domain's `name:`.
 
-  A process's picture is per process and never global on purpose. The default
-  inventory this task prints is 33 events from four contracts in one flat list,
-  which is useful to nobody outside the team and is the counter-example ADR §9 had
-  in mind with *navigation is per-process, never global*. The system is not that
-  list: it draws contracts and what flows between them, and leaves each contract's
-  own steps to `--contract`.
+  A process's picture is per process and never global on purpose: ADR §9 says
+  *navigation is per-process, never global*. The system is not a global list of
+  events: it draws contracts and what flows between them, and leaves each
+  contract's own steps to `--contract`.
 
   Use `--output`: Erlang keeps stdout in latin1 when it is not a terminal, and
   every node on this diagram is written in the client's language.
@@ -62,6 +54,17 @@ defmodule Mix.Tasks.EhOsContract.Graph do
 
   use Boundary, classify_to: EhOsContract
   use Mix.Task
+
+  @usage """
+  mix eh_os_contract.graph draws one picture; name which:
+
+      mix eh_os_contract.graph --process NAME --mermaid [--overlay [--since AT]]
+      mix eh_os_contract.graph --contract MODULE [--unit NAME | --overlay [--since AT]]
+      mix eh_os_contract.graph --map DOMAIN
+      mix eh_os_contract.graph --system DOMAIN [--overlay [--since AT]]
+
+  and --output PATH to write it to a file.
+  """
 
   @impl Mix.Task
   def run(args) do
@@ -101,23 +104,14 @@ defmodule Mix.Tasks.EhOsContract.Graph do
       opts[:system] -> domain_picture(opts[:system], &system(&1, opts), opts)
       opts[:contract] -> contract(opts)
       opts[:process] -> declared(opts)
-      opts[:overlay] -> overlay(opts)
-      true -> static(opts)
     end
   end
 
   # The declared shape of one process, for a person who has not read the module.
   # Deliberately per process rather than global: ADR §9 says navigation is per
-  # process and never global, and the flat inventory this task prints by default
-  # is the counter-example — 33 events from four contracts in one list, useful to
-  # nobody outside the team.
+  # process and never global.
   defp declared(opts) do
     name = String.to_atom(opts[:process])
-
-    contract =
-      Enum.find(EhOsContract.Registry.contracts(), fn c ->
-        Enum.any?(EhOsContract.Model.processes(c), &(&1.name == name))
-      end)
 
     v2 =
       Enum.find(EhOsContract.Registry.v2_contracts(), fn c ->
@@ -127,9 +121,6 @@ defmodule Mix.Tasks.EhOsContract.Graph do
     cond do
       not opts[:mermaid] ->
         Mix.raise("--process draws a diagram; pass --mermaid (and --output to keep the accents)")
-
-      contract ->
-        emit_output(EhOsContract.Graph.declared_to_mermaid(contract, name), opts)
 
       v2 && opts[:overlay] ->
         emit_output(
@@ -142,14 +133,11 @@ defmodule Mix.Tasks.EhOsContract.Graph do
 
       true ->
         known =
-          (Enum.flat_map(EhOsContract.Registry.contracts(), fn c ->
-             Enum.map(EhOsContract.Model.processes(c), & &1.name)
-           end) ++
-             for(
-               c <- EhOsContract.Registry.v2_contracts(),
-               %{process: %{name: n}} <- [EhOsContract.Model.fetch(c)],
-               do: n
-             ))
+          for(
+            c <- EhOsContract.Registry.v2_contracts(),
+            %{process: %{name: n}} <- [EhOsContract.Model.fetch(c)],
+            do: n
+          )
           |> Enum.sort()
           |> Enum.join(", ")
 
@@ -158,7 +146,8 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   end
 
   # A flag the picture asked for would not use is refused rather than dropped: a unit
-  # draws no log, and a contract and a process are two different pictures.
+  # draws no log, and a contract and a process are two different pictures. No picture
+  # at all is refused with the forms the task takes.
   defp refuse_ignored!(opts) do
     pictures = for key <- [:map, :system, :contract, :process], opts[key], do: "--#{key}"
 
@@ -176,6 +165,9 @@ defmodule Mix.Tasks.EhOsContract.Graph do
 
       length(pictures) > 1 ->
         Mix.raise("#{Enum.join(pictures, " and ")} draw different pictures; pass one of them")
+
+      pictures == [] ->
+        Mix.raise(String.trim_trailing(@usage))
 
       true ->
         :ok
@@ -247,147 +239,6 @@ defmodule Mix.Tasks.EhOsContract.Graph do
       path ->
         File.write!(path, text)
         Mix.shell().info("written: #{path}")
-    end
-  end
-
-  defp static(opts) do
-    graph = EhOsContract.Graph.static()
-
-    Mix.shell().info("Declared events: #{length(graph.nodes)}")
-    Mix.shell().info("Edges from the handler registry: #{length(graph.edges)}\n")
-
-    if opts[:mermaid] do
-      edges =
-        for edge <- graph.edges do
-          arrow = if edge.async, do: "-. async .->", else: "-->"
-          "    #{edge.from} #{arrow} #{edge.to}"
-        end
-
-      emit_output(Enum.join(["flowchart LR" | edges], "\n"), opts)
-    else
-      for node <- graph.nodes do
-        marks = [node.terminal? && "terminal", node.depends_on && "depends on #{node.depends_on}"]
-        suffix = marks |> Enum.filter(& &1) |> Enum.join(", ")
-        suffix = if suffix == "", do: "", else: "  [#{suffix}]"
-        Mix.shell().info("  #{node.event}  — #{node.label}#{suffix}")
-      end
-
-      Mix.shell().info("")
-
-      for edge <- graph.edges do
-        mode = if edge.async, do: "async", else: "sync "
-        Mix.shell().info("  #{mode}  #{edge.from} -> #{edge.to}  (#{inspect(edge.handler)})")
-      end
-    end
-  end
-
-  defp overlay(opts) do
-    since = since(opts)
-    overlay = EhOsContract.Graph.overlay(since: since)
-
-    if opts[:mermaid] do
-      emit_output(EhOsContract.Graph.to_mermaid(overlay), opts)
-    else
-      versions()
-      Mix.shell().info("\nDeclared versus observed overlay:\n")
-      Mix.shell().info(EhOsContract.Graph.to_text(overlay))
-
-      paths(since)
-
-      dead = EhOsContract.Graph.declared_never_observed(since: since)
-
-      if dead != [] do
-        Mix.shell().info("\nDeclared, never observed:")
-
-        for event <- dead do
-          window =
-            if event.cadence,
-              do: "cycle #{inspect(event.cadence)}",
-              else: "no cadence — window guessed"
-
-          Mix.shell().info("  #{event.event}  — #{event.label}  [#{window}]")
-        end
-      end
-    end
-  end
-
-  # The fourth of the screen's four questions: which version is deployed, since
-  # when, which versions the log holds, and what changed.
-  defp versions do
-    for contract <- EhOsContract.Registry.contracts() do
-      r = EhOsContract.Deployment.report(contract)
-
-      since =
-        if r.deployed.since,
-          do: DateTime.to_iso8601(r.deployed.since),
-          else: "nothing emitted yet"
-
-      Mix.shell().info("#{inspect(contract)}")
-
-      Mix.shell().info(
-        "  contract #{r.deployed.contract_version}, wiring " <>
-          "#{r.deployed.wiring_version || "not recorded"} — since #{since}"
-      )
-
-      case r.in_log do
-        [] ->
-          Mix.shell().info("  log empty")
-
-        in_log ->
-          Mix.shell().info(
-            "  versions in the log: #{length(in_log)}, " <>
-              "events from versions other than the deployed one: #{r.from_earlier_versions}"
-          )
-      end
-
-      case r.changed do
-        nil ->
-          Mix.shell().info("  one recorded deployment — nothing to compare against")
-
-        change ->
-          Mix.shell().info(
-            "  last change: events +#{length(change.events_added)}/-#{length(change.events_removed)}, " <>
-              "paths +#{length(change.paths_added)}/-#{length(change.paths_removed)}"
-          )
-      end
-    end
-  end
-
-  # The first of the screen's four questions, counted **per run**: which declared
-  # paths no run has taken.
-  defp paths(since) do
-    for report <- EhOsContract.Conformance.untraversed_paths(since: since) do
-      Mix.shell().info("\nUntraversed paths — process #{inspect(report.process)}:")
-
-      case report do
-        %{basis: :no_paths} ->
-          # Staying silent about such a process would be silence pretending to be
-          # health.
-          Mix.shell().info("  the contract declares no path at all for this process")
-
-        %{basis: :no_runs} ->
-          # Zero runs is no basis, neither a green nor a red report.
-          Mix.shell().info("  no runs in the log — nothing to judge")
-
-        %{untraversed: [], in_flight: []} ->
-          Mix.shell().info("  all #{report.paths} paths traversed (#{report.instances} runs)")
-
-        %{untraversed: untraversed} ->
-          Mix.shell().info(
-            "  #{length(untraversed)} of #{report.paths} untraversed, " <>
-              "#{report.instances} runs in the log"
-          )
-
-          for edge <- untraversed do
-            Mix.shell().info("    #{edge.from} -> #{edge.to}   (#{inspect(edge.handler)})")
-          end
-
-          for edge <- report.in_flight do
-            Mix.shell().info(
-              "    #{edge.from} -> #{edge.to}   — #{edge.in_flight} queued, so not yet"
-            )
-          end
-      end
     end
   end
 end

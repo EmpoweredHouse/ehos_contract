@@ -27,30 +27,21 @@ defmodule EhOsContract do
       Conformance,
       DomainService,
       Conformance.Wire,
-      Contract,
-      ContractExample,
       Deployment,
       Domain,
       {Domain.Dsl, []},
       Duration,
-      Emission,
-      Emitter,
       Erased,
       Event,
-      EventHandling,
       Graph,
-      Handler,
       Implementation,
-      Instance,
       Key,
-      Job,
       Meta,
       Migrations,
       Model,
       Next.Contract,
       {Next.Contract.Dsl, []},
       OpenAPI,
-      Payload,
       Plug,
       ProcessManager,
       ProcessManagerRecord,
@@ -107,7 +98,7 @@ defmodule EhOsContract do
   The child is a supervisor. While it starts it does, in this order:
 
   1. `EhOsContract.Registry.load!/1` scans the running binary for contracts and
-     handlers, and `EhOsContract.Deployment.record!/1` writes what that binary
+     domains, and `EhOsContract.Deployment.record!/1` writes what that binary
      declared and since when. Forgetting the first leaves an empty graph;
      forgetting the second leaves the report unable to tell history from drift.
      Between the two, `EhOsContract.Vault.check!/1` refuses to go on when a v2
@@ -135,10 +126,6 @@ defmodule EhOsContract do
   @doc "Starts the engine's supervisor (`child_spec/1`)."
   @spec start_link(term()) :: Supervisor.on_start()
   def start_link(_opts \\ []), do: Supervisor.start_link(__MODULE__.Supervisor, [])
-
-  @doc "An intention to emit an event, returned by a pure decision function."
-  @spec event(atom(), map()) :: EhOsContract.Emission.t()
-  def event(name, payload \\ %{}), do: %EhOsContract.Emission{name: name, payload: payload}
 
   @doc """
   Dispatches a command to a v2 contract: authorizes its actor, decides, appends
@@ -174,8 +161,4 @@ defmodule EhOsContract do
   @spec erase(atom(), String.t(), keyword() | map()) ::
           {:ok, :erased | :no_data | :already_erased}
   defdelegate erase(subject, id, opts), to: EhOsContract.Personal
-
-  defdelegate emit(contract, type, payload, ctx \\ %{}), to: EhOsContract.Emitter
-  defdelegate emit!(contract, type, payload, ctx \\ %{}), to: EhOsContract.Emitter
-  defdelegate emit_all(contract, emissions, ctx \\ %{}), to: EhOsContract.Emitter
 end

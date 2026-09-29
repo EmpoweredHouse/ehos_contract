@@ -3,8 +3,8 @@ defmodule EhOsContract.DomainTest do
   v2 plan, E3: **a domain module compiles to plain data whose version does not see
   declaration order.**
 
-  The fixtures are declared inside this file, as in `digest_test`: modules defined in
-  a `.exs` are not in the application's module list, so the registry never sees them.
+  The fixtures are declared inside this file on purpose: modules defined in a `.exs`
+  are not in the application's module list, so the registry never sees them.
   """
 
   use ExUnit.Case, async: true
@@ -132,7 +132,6 @@ defmodule EhOsContract.DomainTest do
 
       assert %{format: 1, kind: :domain, module: Ordered, name: :clinic, language: :pl} = model
       assert Model.fetch(model) == model
-      refute Model.contract?(Ordered)
 
       assert [%{name: :scheduling, subdomain: :core}, %{name: :settlement, terms: [visit, _]}] =
                model.contexts
@@ -165,7 +164,7 @@ defmodule EhOsContract.DomainTest do
     end
 
     test "a contract accessor refuses a domain by name" do
-      error = assert_raise ArgumentError, fn -> Model.events(Ordered) end
+      error = assert_raise ArgumentError, fn -> Model.version(Ordered) end
       assert error.message =~ "EhOsContract.DomainTest.Ordered is a domain, not a contract"
     end
 

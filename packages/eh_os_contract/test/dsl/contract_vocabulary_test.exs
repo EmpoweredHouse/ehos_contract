@@ -4,7 +4,7 @@ defmodule EhOsContract.Next.ContractVocabularyTest do
   from the extension's entity definitions, not from a list kept beside them, so this
   literal is the one place a word is written down twice — on purpose. A word added
   or removed fails this test, and the change it records belongs in the commit that
-  makes it, like v1's universality gate (`universality_gate_test.exs`).
+  makes it.
 
   The shapes that repeat — a field, an event, a command, a unit's body — are named
   once below; the paths are every place the DSL lets them be written.

@@ -1,7 +1,7 @@
 defmodule UniversalityGate do
   @moduledoc """
   **An engine fixture, not a client tree.** Everything in it is invented — see
-  `UniversalityGate.TreatmentEpisode`.
+  `UniversalityGate.Next.TreatmentEpisode`.
 
   Having its own boundary rather than hanging off `Taxvision` matters here: the
   universality gate is meant to prove the DSL works **without** access to anything
@@ -12,11 +12,7 @@ defmodule UniversalityGate do
   use Boundary,
     deps: [EhOsContract],
     exports: [
-      TreatmentEpisode,
       Next.TreatmentEpisode,
-      Domain,
-      Eligibility,
-      PayerRegistry,
-      PayerRegistry.Fake
+      Domain
     ]
 end

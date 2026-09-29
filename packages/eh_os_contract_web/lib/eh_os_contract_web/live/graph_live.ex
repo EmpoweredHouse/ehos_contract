@@ -7,27 +7,17 @@ defmodule EhOsContract.Web.Live.Graph do
   (10)" for why this was parked, then unparked. From the top: each domain's context
   map and system, then the selected process's two panels, then its contract's units.
 
-  The process's two panels are asymmetric on purpose, per ADR §9 ("navigation is
-  per-process, never global"; the domain's pictures above them are a dated exception
-  there):
+  Both of the process's panels are scoped to whichever process the selector picks,
+  per ADR §9 ("navigation is per-process, never global"; the domain's pictures above
+  them are a dated exception there):
 
-    * **Declared shape** — `EhOsContract.Graph.declared_to_mermaid/2`, scoped to
-      whichever process the selector picks. The structural view: stages,
-      endings, `trace` windows — true even for a contract with zero runs.
-    * **Declared versus observed** — `EhOsContract.Graph.overlay/1` +
-      `EhOsContract.Graph.to_mermaid/2`, every contract at once. This one stays
-      global: `to_mermaid/2` always derives its node set from the full
-      static graph regardless of which edges are passed in, so filtering
-      the overlay list first would drop edges without dropping nodes,
-      leaving orphaned boxes rather than a scoped picture. Narrowing that is
-      engine work, not something this screen should paper over.
-
-  **A v2 contract's process** (v2 plan, E7c) has its declared shape in the first
-  panel, as a v1 one does, and in the second its contract's full graph with the log
-  laid over it (`EhOsContract.Graph.contract_to_mermaid/2`, plan EG1): the steps,
-  and the actors, read models, queries and external systems around them. A v2
-  contract is one process, so its overlay is that process's alone. The screen opens
-  on a v2 process when there is one.
+    * **Declared shape** — `EhOsContract.Graph.declared_to_mermaid/2`. The
+      structural view: stages, endings, promise windows — true even for a contract
+      with zero runs.
+    * **Declared versus observed** — its contract's full graph with the log laid
+      over it (`EhOsContract.Graph.contract_to_mermaid/2`, v2 plan E7c, plan EG1):
+      the steps, and the actors, read models, queries and external systems around
+      them. A contract is one process, so its overlay is that process's alone.
 
   **Above both, each domain** (plan EG2): its context map —
   `EhOsContract.Graph.context_map_to_mermaid/1`, subdomains, contexts, externals and
@@ -50,19 +40,13 @@ defmodule EhOsContract.Web.Live.Graph do
 
   @impl true
   def mount(_params, _session, socket) do
-    v1 =
-      for contract <- EhOsContract.Registry.contracts(),
-          process <- EhOsContract.Model.processes(contract) do
-        %{contract: contract, name: process.name, label: process.label, v2: false}
-      end
-
-    v2 =
-      for contract <- EhOsContract.Registry.v2_contracts(),
-          %{process: %{} = process} <- [EhOsContract.Model.fetch(contract)] do
-        %{contract: contract, name: process.name, label: process.label, v2: true}
-      end
-
-    processes = Enum.sort_by(v1 ++ v2, & &1.label)
+    processes =
+      for(
+        contract <- EhOsContract.Registry.v2_contracts(),
+        %{process: %{} = process} <- [EhOsContract.Model.fetch(contract)],
+        do: %{contract: contract, name: process.name, label: process.label}
+      )
+      |> Enum.sort_by(& &1.label)
 
     # Every registered domain has a map; one with a v2 contract has a system too.
     by_domain =
@@ -85,10 +69,7 @@ defmodule EhOsContract.Web.Live.Graph do
       socket
       |> assign(:domains, domains)
       |> assign(:processes, processes)
-      |> assign(:every_contract, EhOsContract.Graph.overlay() |> EhOsContract.Graph.to_mermaid())
-      # A v2 process first when there is one: it is what the screen has most to say
-      # about, and the label order would otherwise open on whichever came first.
-      |> select_process(Enum.find(processes, & &1.v2) || List.first(processes))
+      |> select_process(List.first(processes))
 
     {:ok, socket}
   end
@@ -101,16 +82,10 @@ defmodule EhOsContract.Web.Live.Graph do
 
   @spec select_process(Phoenix.LiveView.Socket.t(), map() | nil) :: Phoenix.LiveView.Socket.t()
   defp select_process(socket, nil) do
-    assign(socket,
-      selected: nil,
-      declared_mermaid: nil,
-      overlay_mermaid: socket.assigns.every_contract,
-      overlay_heading: nil,
-      units: []
-    )
+    assign(socket, selected: nil, declared_mermaid: nil, overlay_mermaid: nil, units: [])
   end
 
-  defp select_process(socket, %{v2: true} = process) do
+  defp select_process(socket, process) do
     units =
       for unit <- EhOsContract.Model.fetch(process.contract).units do
         %{
@@ -125,20 +100,7 @@ defmodule EhOsContract.Web.Live.Graph do
       selected: key(process),
       declared_mermaid: EhOsContract.Graph.declared_to_mermaid(process.contract, process.name),
       overlay_mermaid: EhOsContract.Graph.contract_to_mermaid(process.contract, overlay: true),
-      overlay_heading: "Declared versus observed, this process",
       units: units
-    )
-  end
-
-  defp select_process(socket, process) do
-    mermaid = EhOsContract.Graph.declared_to_mermaid(process.contract, process.name)
-
-    assign(socket,
-      selected: key(process),
-      declared_mermaid: mermaid,
-      overlay_mermaid: socket.assigns.every_contract,
-      overlay_heading: nil,
-      units: []
     )
   end
 
@@ -200,8 +162,8 @@ defmodule EhOsContract.Web.Live.Graph do
         ></pre>
       </section>
 
-      <section>
-        <h3>{assigns[:overlay_heading] || "Declared versus observed, every contract"}</h3>
+      <section :if={@overlay_mermaid}>
+        <h3>Declared versus observed, this process</h3>
         <pre
           class="mermaid"
           phx-hook="MermaidRender"
@@ -226,7 +188,7 @@ defmodule EhOsContract.Web.Live.Graph do
   end
 
   # A process by its contract and its name: two contracts may name their processes
-  # alike — a v2 port beside its v1 original — and each has to be reachable.
+  # alike, and each has to be reachable.
   @spec key(map()) :: String.t()
   defp key(process), do: "#{inspect(process.contract)}:#{process.name}"
 

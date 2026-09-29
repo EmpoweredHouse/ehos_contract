@@ -1,11 +1,8 @@
 # Exported so a consumer's `mix format` leaves a contract looking like the ones in
-# `docs/contract.md`. Without this, `event :x, label: "..."` is rewritten with
+# `docs/contract.md`. Without this, `event :paid, "Paid"` is rewritten with
 # parentheses and every contract in every consuming project reads like a function
 # call rather than like a declaration — which is the whole point of the DSL's shape.
 #
-# `packages/eh_os_contract_web/.formatter.exs` used to hand-copy this list for its own fixture,
-# because this file did not exist. That copy had already gone stale: it was missing
-# `external: 2`, `rule: 2` and `example: 2`.
 # The v2 DSLs' entities, maintained by Spark rather than by hand:
 # `mix spark.formatter --extensions EhOsContract.Domain.Dsl,EhOsContract.Next.Contract.Dsl`
 # rewrites this list, and the package's `mix check` runs it with `--check`, so it cannot
@@ -184,28 +181,11 @@ spark_locals_without_parens = [
   within: 1
 ]
 
-# The v1 contract DSL's, by hand, until v1 is removed (v2 plan, E11).
-v1_locals_without_parens = [
-  event: 1,
-  event: 2,
-  process: 2,
-  external: 2,
-  rule: 2,
-  example: 2,
-  command: 2,
-  trace: 1,
-  from: 1,
-  eventually: 1,
-  eventually: 2,
-  or_else: 1
-]
-
 # Macros of the library's own beside Spark's, which `mix spark.formatter` cannot see:
 # `identity :booking_id, generated: :uuid` in an aggregate (plan EM3).
 own_locals_without_parens = [identity: 2]
 
-locals_without_parens =
-  v1_locals_without_parens ++ spark_locals_without_parens ++ own_locals_without_parens
+locals_without_parens = spark_locals_without_parens ++ own_locals_without_parens
 
 [
   # `:ecto_sql` for `EhOsContract.Migrations`' version modules.

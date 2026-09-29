@@ -6,11 +6,11 @@ defmodule Mix.Tasks.EhOsContract.Report do
 
   Moved here from `taxvision.report` (6 August) when rendering moved into the
   engine: the report stopped being a client-tree concern, so it sits beside
-  `eh_os_contract.check`, `eh_os_contract.graph` and `eh_os_contract.trace` rather than in `taxvision.*`.
+  `eh_os_contract.check` and `eh_os_contract.graph` rather than in `taxvision.*`.
 
       mix eh_os_contract.report --since 2026-07-01T00:00:00Z --until 2026-07-31T23:59:59Z
 
-  Every contract the registry finds, v1 and v2 alike (plan E7c), one section each.
+  Every contract the registry finds (plan E7c), one section each.
   """
 
   use Boundary, classify_to: EhOsContract
@@ -32,7 +32,7 @@ defmodule Mix.Tasks.EhOsContract.Report do
     period = [since: at(opts[:since]), until: at(opts[:until])]
 
     text =
-      (EhOsContract.Registry.contracts() ++ EhOsContract.Registry.v2_contracts())
+      EhOsContract.Registry.v2_contracts()
       |> Enum.map(
         &(&1
           |> EhOsContract.Conformance.report(period)

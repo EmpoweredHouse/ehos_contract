@@ -4,7 +4,7 @@ defmodule EhOsContract.Store do
 
   It isolates the SQL, not the transaction model. **Every call runs inside the
   caller's Ecto transaction**, so an append commits or rolls back together with
-  whatever else the caller wrote, as a v1 emission always has.
+  whatever else the caller wrote.
 
   ## What an implementation promises
 
@@ -37,15 +37,16 @@ defmodule EhOsContract.Store do
 
   - **READ COMMITTED.** `EhOsContract.Store.Postgres` refuses to append at any other
     isolation level, because under a stricter one the stream check reads a snapshot
-    older than the lock. An emission inside a REPEATABLE READ or SERIALIZABLE
+    older than the lock. An append inside a REPEATABLE READ or SERIALIZABLE
     transaction now raises.
-  - **Take the append lock before any row lock that an emission's handlers also
-    take.** The lock is held from the first append to the end of the transaction.
-    Take this order: transaction A locks row R and then emits, while transaction B
-    emits and its synchronous handler then locks R. A waits for the append lock and
-    B waits for R, so Postgres aborts one of them as a deadlock. A transaction that
-    locks rows and then emits should call `lock/1` first. So should any transaction
-    that emits and then locks rows another emitter may hold. The lock is re-entrant,
+  - **Take the append lock before any row lock that a reaction in the same
+    transaction also takes.** The lock is held from the first append to the end of
+    the transaction. Take this order: transaction A locks row R and then appends,
+    while transaction B appends and a reaction delivered in its transaction then
+    locks R. A waits for the append lock and B waits for R, so Postgres aborts one of
+    them as a deadlock. A transaction that locks rows and then appends should call
+    `lock/1` first. So should any transaction that appends and then locks rows
+    another appender may hold. The lock is re-entrant,
     so taking it early costs nothing.
 
   ## A query

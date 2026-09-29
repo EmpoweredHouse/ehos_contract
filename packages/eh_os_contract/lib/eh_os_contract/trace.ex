@@ -1,22 +1,23 @@
 defmodule EhOsContract.Trace do
   @moduledoc """
-  Evaluation of `trace` assertions **per run**.
+  Evaluation of a process's `promise`s **per run**.
 
-  This is the first moment anything at run time **reads** a `trace`. Until now an
-  assertion was declared in the contract and checked only for whether its event
-  names existed — that is, it was prose in Elixir syntax. The log knew what
-  happened; nobody asked whether that agreed with the contract.
+  This is where anything at run time **reads** a promise. Without it a promise
+  would be declared in the contract and checked only for whether its event names
+  exist — that is, prose in Elixir syntax. The log knows what happened; this asks
+  whether that agrees with the contract.
 
-  An assertion reads like this:
+  A promise reads like this:
 
-      trace :month_opens_or_is_blocked do
+      promise :month_opens_or_is_blocked do
         from :data_completeness_confirmed
-        eventually :accounting_month_opened, within: {2, :day}
-        or_else :discrepancy_notification_sent
+        eventually :accounting_month_opened
+        within {2, :day}
+        or_else :registry_discrepancy_detected
       end
 
   *"After the data set is confirmed complete, within two days the month either
-  opens or a divergence notification goes out."*
+  opens or a registry discrepancy is detected."*
 
   ## Four verdicts
 
@@ -48,10 +49,10 @@ defmodule EhOsContract.Trace do
   **This union is `eventually`'s dependency `or` `or_else`'s, not their intersection —
   decided rather than assumed, 21 August 2026.** A narrower reading was on the table: a
   wanted route with no dependency at all can never be blocked by an outage, so suspend
-  only when every still-possible route was. Rejected, because the promise a `trace`
-  makes is the disjunction itself — "X or Y" — and here Y was impossible, which stands
-  as a reason to withhold judgement on the run even when X depended on nothing.
-  `test/trace_edges_test.exs` pins this.
+  only when every still-possible route was. Rejected, because the promise is the
+  disjunction itself — "X or Y" — and here Y was impossible, which stands as a reason
+  to withhold judgement on the run even when X depended on nothing.
+  `test/conformance/promise_edges_test.exs` pins this.
 
   ## Three decisions with teeth
 
@@ -72,17 +73,9 @@ defmodule EhOsContract.Trace do
 
   ## Quantification: a promise made per item inside a run
 
-  **Fixed 21 August 2026** — until then an assertion was evaluated once per run
-  regardless of how many times the thing it promised about occurred inside it: the
-  window opened on the first `from` and closed on the first hit after it, so one
-  fulfilment satisfied every promise in the run, and the hit did not even have to
-  concern the same item — nothing compared payloads. `test/trace_granularity_test.exs`
-  pins that shape as history now, not as the requirement.
-
-  `EhOsContract.Check.assertions_finer_than_their_run/1` already had the signal: when the
-  `from` event's `identity` is strictly finer than its process's `instance`, the run
-  holds more than one of the thing the assertion is about. `evaluate/3` reads that
-  same signal and switches modes:
+  When the unit identity of `from`'s event is strictly finer than the process's
+  correlation, the run holds more than one of the thing the promise is about, and
+  `evaluate/3` switches modes:
 
   - **One item per distinct value of `from`'s `identity`** inside the run, each with
     its own window opened by its own earliest `from` and judged by the same rules as
@@ -104,14 +97,8 @@ defmodule EhOsContract.Trace do
   means to the process owner is a modelling question the workshop has not been asked,
   not an engineering one this module can answer on its own.
 
-  The ordinary case — `identity` equal to `instance`, one of the thing per run — is
-  untouched: same query, same function, same cost. Quantification only runs for the
-  shape `EhOsContract.Check` already flags, and today that is exactly one assertion in the
-  whole repository (`ProcessShapes.Rig`'s `submission_reaches_inspection`) — the real
-  case that found this, Rehmed's payer settlement, still cannot write the assertion
-  at all, because its anchoring fact belongs to a different process. Quantification
-  does not reach that gap. Since v2's E9b the sandbox writes that invariant as a
-  dynamic consistency boundary instead (`Rehmed.Contracts.ExternalPayers`).
+  The ordinary case — the identity equal to the correlation, one of the thing per
+  run — is untouched: same query, same function, same cost.
 
   ## The boundary of the report
 
@@ -119,17 +106,13 @@ defmodule EhOsContract.Trace do
   them correctly and the only way to test them. Notes §9 also foresee a
   single-run view — for debugging, "what happened to invoice 4712".
 
-  ## A v2 contract's `promise`
+  ## The runs
 
-  **The same arithmetic, on the new log** (v2 §13, plan E7c). A v2 contract declares
-  `promise` in its one `process`, and `evaluate/3` takes the promise's name where it
-  takes a trace's. The runs are the rows of `eh_os_contract_event_runs` for that
-  process, so an event another contract decided and this one includes counts in its
-  run (D7), and the events are named by their stored types, `"<process>.<event>"`.
-  Quantification switches on the same signal: the unit identity of `from`'s event
-  strictly finer than the process's correlation. `test/conformance/promise_test.exs`
-  runs the scenarios of `trace_test.exs` on a v1 shape and its v2 port and expects
-  the same verdicts from both.
+  A contract declares `promise` in its one `process` (v2 §13, plan E7c). The runs
+  are the rows of `eh_os_contract_event_runs` for that process, so an event another
+  contract decided and this one includes counts in its run (D7), and the events are
+  named by their stored types, `"<process>.<event>"`.
+  `test/conformance/promise_test.exs` pins the verdicts.
 
   But **the report aggregates to numbers** (`summary/1`). "Which company has no
   open July" is a question about the state of the business and belongs to the
@@ -140,7 +123,7 @@ defmodule EhOsContract.Trace do
 
   alias EhOsContract.{Event, EventRun, Model}
 
-  @typedoc "One run's verdict for one assertion."
+  @typedoc "One run's verdict for one promise."
   @type verdict :: %{
           instance_id: String.t(),
           verdict: :satisfied | :violated | :pending | :suspended,
@@ -151,49 +134,19 @@ defmodule EhOsContract.Trace do
         }
 
   @doc """
-  Verdicts for every run in which this assertion's `from` occurred.
+  Verdicts for every run in which this promise's `from` occurred.
 
-  `now:` allows the assertion to be evaluated at a given moment — without it the
+  `now:` allows the promise to be evaluated at a given moment — without it the
   difference between `:pending` and `:violated` could not be tested.
   """
   @spec evaluate(module(), atom(), keyword()) :: [verdict()]
-  def evaluate(contract, trace_name, opts \\ []) do
-    case Model.fetch(contract) do
-      %{units: _} = model -> evaluate_promise(model, trace_name, opts)
-      _v1 -> evaluate_trace(contract, trace_name, opts)
-    end
-  end
+  def evaluate(contract, name, opts \\ []),
+    do: contract |> Model.fetch() |> evaluate_promise(name, opts)
 
-  @spec evaluate_trace(module(), atom(), keyword()) :: [verdict()]
-  defp evaluate_trace(contract, trace_name, opts) do
-    trace =
-      Model.trace(contract, trace_name) ||
-        raise ArgumentError,
-              "#{inspect(contract)} does not declare assertion #{inspect(trace_name)}"
-
-    now = Keyword.get(opts, :now) || DateTime.utc_now()
-
-    # One query for the whole evaluation rather than one per run: an assertion is judged
-    # per run, and a query per run would make the report cost grow with the client's
-    # traffic. Deliberately **not** bounded by `opts` — an outage is dated by when it was
-    # observed, and a report for July has to see an outage observed in July even when the
-    # window it asks about was opened by an event from June.
-    outages = awaited_outages(contract, trace)
-    source = {:contract, contract}
-
-    if quantified?(contract, trace) do
-      identity = Model.event(contract, trace.from).identity
-      evaluate_quantified(source, trace, identity, opts, now, outages)
-    else
-      evaluate_per_run(source, trace, opts, now, outages)
-    end
-  end
-
-  # A v2 contract's `promise` (v2 §13): the same arithmetic, over the runs of the
-  # contract's one process as `eh_os_contract_event_runs` records them, so an event
-  # another contract decided counts in a run that includes it (D7). Its events are
-  # named by their stored types, `"<process>.<event>"`, the sibling's for an included
-  # one, and the verdicts carry the promise's name where a v1 one has the trace's.
+  # A contract's `promise` (v2 §13), over the runs of the contract's one process as
+  # `eh_os_contract_event_runs` records them, so an event another contract decided
+  # counts in a run that includes it (D7). Its events are named by their stored types,
+  # `"<process>.<event>"`, the sibling's for an included one.
   @spec evaluate_promise(map(), atom(), keyword()) :: [verdict()]
   defp evaluate_promise(model, name, opts) do
     promise =
@@ -208,6 +161,10 @@ defmodule EhOsContract.Trace do
     }
 
     now = Keyword.get(opts, :now) || DateTime.utc_now()
+
+    # Deliberately **not** bounded by `opts` — an outage is dated by when it was
+    # observed, and a report for July has to see an outage observed in July even when
+    # the window it asks about was opened by an event from June.
     outages = promised_outages(model, promise)
     source = {:runs, Atom.to_string(model.process.name)}
     identity = identity_of(model, promise.from)
@@ -235,8 +192,14 @@ defmodule EhOsContract.Trace do
     Enum.find(Model.fetch(contract).units, &(&1.name == event.unit)).identity
   end
 
-  # As `awaited_outages/2`, from the events that did not arrive: the externals their
-  # declarations depend on, as observed by the contract that declares each.
+  # The unavailability moments that could explain **this** promise failing: the ones
+  # belonging to the externals the events that were awaited and did not arrive depend
+  # on, as observed by the contract that declares each.
+  #
+  # `from` is left out on purpose. It happened, so whatever it depends on was working —
+  # and including it would suspend runs on the strength of an outage that demonstrably
+  # did not stop anything. Taking every dependency in the contract would be worse
+  # still: a run would be excused because something it never touched was down.
   @spec promised_outages(map(), map()) :: [DateTime.t()]
   defp promised_outages(model, promise) do
     for name <- [promise.eventually, promise.or_else],
@@ -268,18 +231,6 @@ defmodule EhOsContract.Trace do
       end
     end)
     |> Enum.sort_by(& &1.from_at, DateTime)
-  end
-
-  # The same shape `EhOsContract.Check.assertions_finer_than_their_run/1` flags statically: the
-  # `from` event is identified by more than its run is, so the run holds several of the
-  # thing the assertion is about. Kept local rather than shared with `EhOsContract.Check` — a
-  # runtime evaluator reaching into a compile-gate module for a three-line set comparison
-  # would be the wrong direction of dependency for a three-line comparison to justify.
-  @spec quantified?(module(), map()) :: boolean()
-  defp quantified?(contract, trace) do
-    event = Model.event(contract, trace.from)
-    process = Model.process_of(contract, trace.from)
-    event.identity != nil and process != nil and finer?(event.identity, process.instance)
   end
 
   @spec finer?([atom()], [atom()]) :: boolean()
@@ -363,18 +314,6 @@ defmodule EhOsContract.Trace do
   defp aggregate_resolved(item_verdicts, :satisfied),
     do: Enum.max_by(item_verdicts, & &1.resolved_at, DateTime).resolved_at
 
-  @doc "Verdicts for every assertion of every registered contract."
-  @spec evaluate_all(keyword()) :: [%{contract: module(), trace: atom(), verdicts: [verdict()]}]
-  def evaluate_all(opts \\ []) do
-    for contract <- EhOsContract.Registry.contracts(), trace <- Model.traces(contract) do
-      %{
-        contract: contract,
-        trace: trace.name,
-        verdicts: evaluate(contract, trace.name, opts)
-      }
-    end
-  end
-
   @doc """
   Verdicts collapsed to numbers — this is the shape that goes into the report.
 
@@ -429,26 +368,6 @@ defmodule EhOsContract.Trace do
       deadline_at: deadline_at,
       resolved_at: at
     }
-  end
-
-  # The unavailability moments that could explain **this** assertion failing: the ones
-  # belonging to dependencies declared by the events that were awaited and did not arrive.
-  #
-  # `from` is left out on purpose. It happened, so whatever it depends on was working — and
-  # including it would suspend runs on the strength of an outage that demonstrably did not
-  # stop anything. Taking every dependency in the contract would be worse still: a run
-  # would be excused because something it never touched was down.
-  @spec awaited_outages(module(), map()) :: [DateTime.t()]
-  defp awaited_outages(contract, trace) do
-    observed = EhOsContract.Dependency.observations_by_external(contract)
-
-    for name <- [trace.eventually, trace.or_else],
-        name != nil,
-        external = Model.event(contract, name).depends_on,
-        external != nil,
-        at <- Map.get(observed, to_string(external), []) do
-      at
-    end
   end
 
   # An assertion with no `within` never reaches this — it cannot be violated, so there is
@@ -525,8 +444,7 @@ defmodule EhOsContract.Trace do
 
   # A tuple of raw values, not a joined string: two payload fields have no separator
   # to escape or collide on if they are never joined in the first place, which is a
-  # cheaper way to avoid the exact class of bug closed elsewhere today in `EhOsContract.Instance`
-  # and `EhOsContract.Job`.
+  # cheaper way to avoid a separator colliding with a value than escaping one.
   @spec item_key(map(), [String.t()]) :: tuple()
   defp item_key(payload, identity),
     do: identity |> Enum.map(&Map.get(payload, &1)) |> List.to_tuple()
@@ -538,30 +456,13 @@ defmodule EhOsContract.Trace do
     |> Enum.map(&to_string/1)
   end
 
-  # The rows an assertion is judged on, each with the run it belongs to: `{instance_id,
-  # type, occurred_at}`, and the payload after them for `:payloads`. A v1 contract's
-  # runs are its events' own `instance_id`; a v2 contract's are the rows of
-  # `eh_os_contract_event_runs` for its process, whichever contract decided the event.
-  @typep source :: {:contract, module()} | {:runs, String.t()}
+  # The rows a promise is judged on, each with the run it belongs to: `{instance_id,
+  # type, occurred_at}`, and the payload after them for `:payloads`. The runs are the
+  # rows of `eh_os_contract_event_runs` for the process, whichever contract decided
+  # the event.
+  @typep source :: {:runs, String.t()}
 
   @spec rows(source(), [String.t()], keyword(), :times | :payloads) :: Ecto.Query.t()
-  defp rows({:contract, contract}, types, opts, shape) do
-    query =
-      from(e in Event,
-        as: :event,
-        where: e.contract == ^inspect(contract),
-        where: e.type in ^types,
-        where: not is_nil(e.instance_id)
-      )
-      |> bounded(opts)
-      |> maybe_instance(Keyword.get(opts, :instance), :event)
-
-    case shape do
-      :times -> select(query, [event: e], {e.instance_id, e.type, e.occurred_at})
-      :payloads -> select(query, [event: e], {e.instance_id, e.type, e.occurred_at, e.payload})
-    end
-  end
-
   defp rows({:runs, process}, types, opts, shape) do
     query =
       from(r in EventRun,
@@ -573,7 +474,7 @@ defmodule EhOsContract.Trace do
         where: e.type in ^types
       )
       |> bounded(opts)
-      |> maybe_instance(Keyword.get(opts, :instance), :run)
+      |> maybe_instance(Keyword.get(opts, :instance))
 
     case shape do
       :times ->
@@ -599,10 +500,9 @@ defmodule EhOsContract.Trace do
   defp maybe_until(query, nil), do: query
   defp maybe_until(query, until), do: where(query, [event: e], e.occurred_at <= ^until)
 
-  @spec maybe_instance(Ecto.Query.t(), String.t() | nil, :event | :run) :: Ecto.Query.t()
-  defp maybe_instance(query, nil, _binding), do: query
-  defp maybe_instance(query, id, :event), do: where(query, [event: e], e.instance_id == ^id)
-  defp maybe_instance(query, id, :run), do: where(query, [run: r], r.instance_id == ^id)
+  @spec maybe_instance(Ecto.Query.t(), String.t() | nil) :: Ecto.Query.t()
+  defp maybe_instance(query, nil), do: query
+  defp maybe_instance(query, id), do: where(query, [run: r], r.instance_id == ^id)
 
   # **Read at run time, not at compile time — and that changed when the engine
   # became its own application (2026-08-20).** `Application.compile_env!/2`

@@ -22,7 +22,7 @@ defmodule EhOsContract.PathsTest do
   defp step(steps, from, via, to), do: Enum.find(steps, &(names(&1) == {from, via, to}))
 
   describe "request handling, ported" do
-    setup do: Seed.deploy(:v2)
+    setup do: Seed.deploy()
 
     test "declares each command's emits and each policy's issues, in declaration order" do
       assert Enum.map(Paths.declared(ProcessShapes.Next.Promised), &names/1) == [
@@ -47,7 +47,7 @@ defmodule EhOsContract.PathsTest do
     end
 
     test "an approved request takes six steps in its one run, and not the refusal's three" do
-      Seed.request(:v2, "r-1", :request_approved)
+      Seed.request("r-1", :request_approved)
       steps = Paths.observe(ProcessShapes.Next.Promised)
 
       assert Enum.all?(steps, &(&1.of_runs == 1))
@@ -65,7 +65,7 @@ defmodule EhOsContract.PathsTest do
     end
 
     test "a refusal waits in the lag of its policy until it is drained, then is taken" do
-      Seed.request(:v2, "r-1", :request_refused)
+      Seed.request("r-1", :request_refused)
 
       waiting =
         ProcessShapes.Next.Promised
@@ -74,7 +74,7 @@ defmodule EhOsContract.PathsTest do
 
       assert %{runs: 0, mode: :async, in_flight: %{lag: 1, timers: 0, effects: 0}} = waiting
 
-      Seed.run_queue(:v2)
+      Seed.run_queue()
 
       assert %{runs: 1, in_flight: %{lag: 0}} =
                ProcessShapes.Next.Promised
@@ -84,7 +84,7 @@ defmodule EhOsContract.PathsTest do
 
     test "since and until bound what counts as taken" do
       EhOsContract.Clock.at(~U[2026-07-01 09:00:00Z], fn ->
-        Seed.request(:v2, "r-1", :request_approved)
+        Seed.request("r-1", :request_approved)
       end)
 
       steps = Paths.observe(ProcessShapes.Next.Promised, since: ~U[2026-08-01 00:00:00Z])

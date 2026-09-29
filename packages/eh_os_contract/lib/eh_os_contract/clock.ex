@@ -8,17 +8,16 @@ defmodule EhOsContract.Clock do
   past asks for the past up front:
 
       EhOsContract.Clock.at(~U[2026-07-01 09:00:00Z], fn ->
-        EhOsContract.emit!(Contract, :request_received, %{request_id: "r-1"})
+        EhOsContract.dispatch(Contract, %Receive{request_id: "r-1"}, actor: actor)
       end)
 
-  **Scoped to the calling process, not passed in `ctx`.** A `ctx` key reaches the
-  events the caller emits and stops there. Handlers emit further events: a
-  synchronous handler does it in the caller's process, and an asynchronous one does
-  it from a job. `Oban.drain_queue/2` in a test also runs the job in the caller's
-  process, but the job builds its `ctx` from its arguments. Carrying the time
-  through job arguments would be wrong outside tests: a queued handler runs later,
-  and it must stamp the time it actually ran. The process scope reaches every event
-  emitted while `fun` runs, and no event emitted by another process.
+  **Scoped to the calling process, not passed as an option.** An option reaches the
+  events the call appends and stops there. Reactions append further events: one
+  delivered in the transaction does it in the caller's process, and one delivered
+  later does it from a job or a subscription. Carrying the time through a job's
+  arguments would be wrong outside tests: a queued reaction runs later, and it must
+  stamp the time it actually ran. The process scope reaches every event appended
+  while `fun` runs, and no event appended by another process.
 
   Outside `at/2` this is `DateTime.utc_now/0`, so a host has nothing to configure.
   """
@@ -30,7 +29,7 @@ defmodule EhOsContract.Clock do
   def now, do: Process.get(@key) || DateTime.utc_now()
 
   @doc """
-  Runs `fun` with every event it emits in this process stamped `at`. Restores
+  Runs `fun` with every event it appends in this process stamped `at`. Restores
   whatever was set before, so calls nest.
 
   `at` may be written to any precision. The log stores microseconds, so it is

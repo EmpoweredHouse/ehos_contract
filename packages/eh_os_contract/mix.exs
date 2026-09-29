@@ -57,10 +57,10 @@ defmodule EhOsContract.MixProject do
   # belong to the engine and not to any client, so they compile here. They are
   # the material a client-free test suite is built from.
   #
-  # `dev/` holds tooling for developing this package itself — `mix eh_os_contract.docs`,
-  # which rewrites `docs/contract.md` inside this package, and `mix eh_os_contract.rules`,
-  # which writes `docs/rules.md`. A dependency always compiles in `:prod`, so none of it reaches a
-  # consumer, where it had nothing to rewrite and failed with a `File.Error`.
+  # `dev/` holds tooling for developing this package itself — `mix eh_os_contract.rules`,
+  # which writes `docs/rules.md` inside this package. A dependency always compiles in
+  # `:prod`, so none of it reaches a consumer, where it had nothing to rewrite and failed
+  # with a `File.Error`.
   defp elixirc_paths(:test), do: ["lib", "test/support", "dev"]
   defp elixirc_paths(:dev), do: ["lib", "dev"]
   defp elixirc_paths(_), do: ["lib"]
@@ -81,7 +81,6 @@ defmodule EhOsContract.MixProject do
         "format --check-formatted",
         "compile --force --warnings-as-errors",
         "eh_os_contract.check",
-        "eh_os_contract.docs --check",
         "eh_os_contract.rules --check",
         "spark.formatter --extensions EhOsContract.Domain.Dsl,EhOsContract.Next.Contract.Dsl --check",
         "test"
@@ -128,15 +127,14 @@ defmodule EhOsContract.MixProject do
       # tables and ships the migration for them.
       {:ecto_sql, "~> 3.14"},
       {:postgrex, "~> 0.22"},
-      # Asynchronous handlers cross a process boundary through a queue.
+      # What is delivered at least once — effects, timers — crosses a process
+      # boundary through a queue.
       {:oban, "~> 2.20"},
       {:jason, "~> 1.4"},
-      # Declared explicitly rather than inherited: a package whose dependency is
-      # satisfied only because a neighbour happens to need it breaks when the
-      # neighbour goes.
-      {:telemetry, "~> 1.3"},
       # `EhOsContract.Codec` writes a `:decimal` field as a string and reads it back as a
-      # `Decimal`, so the engine calls it by name; the same reasoning as `:telemetry`.
+      # `Decimal`, so the engine calls it by name. Declared explicitly rather than
+      # inherited: a package whose dependency is satisfied only because a neighbour
+      # happens to need it breaks when the neighbour goes.
       {:decimal, "~> 2.0 or ~> 3.0"},
       # `EhOsContract.Plug` serves the model's commands, recordings and queries over
       # HTTP. Optional: a host without Plug does not get it, and the module compiles

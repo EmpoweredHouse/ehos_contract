@@ -1,11 +1,10 @@
 defmodule ProcessShapes.Next.Bare do
   @moduledoc """
-  # THIS IS NOT A DOMAIN EITHER. See `ProcessShapes.Rig`.
+  # THIS IS NOT A DOMAIN EITHER. See `ProcessShapes`.
 
-  `ProcessShapes.Bare` in the v2 DSL (v2 plan, E7c): a periodic process that
-  promises nothing, a run keyed by two fields, and a `cadence`. v1's had no handler
-  and was written to directly; here its two events come from two commands, since an
-  event in v2 is decided or recorded, never written around dispatch.
+  A periodic process that promises nothing, a run keyed by two fields, and a
+  `cadence` (v2 plan, E7c). Its two events come from two commands, since an event in
+  v2 is decided or recorded, never written around dispatch.
   """
 
   use EhOsContract.Next.Contract, domain: ProcessShapes.Domain, context: :batching

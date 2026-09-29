@@ -1,25 +1,17 @@
 defmodule EhOsContract.Registry do
   @moduledoc """
-  The registry of handlers and contracts (notes §2).
+  The registry of contracts and domains (notes §2).
 
   Not a generated module holding the whole graph — a per-module macro cannot
-  arrange that, because it would require every handler to be compiled already.
-  Instead a `__eh_os_contract_handler__/0` marker plus a scan at boot.
+  arrange that, because it would require every contract to be compiled already.
+  Instead each module compiled from the DSL carries its model as
+  `__eh_os_contract_model__/0`, and a scan at boot collects them.
 
   That property is the whole point: **the graph comes from the binary that
   actually runs.**
   """
 
   @key {__MODULE__, :graph}
-
-  @typedoc "One handler's declaration, as recorded by `use EhOsContract.Handler`."
-  @type handler :: %{
-          module: module(),
-          contract: module(),
-          event: atom(),
-          publishes: [atom()],
-          async: boolean()
-        }
 
   @doc """
   Scans the configured applications and caches the result in `:persistent_term`.
@@ -38,7 +30,7 @@ defmodule EhOsContract.Registry do
   **`config :eh_os_contract, exclude: [...]` names namespace prefixes, matched against
   `inspect/1`, to drop from the scan before anything downstream ever sees them.**
   `mix eh_os_contract.check`, `mix eh_os_contract.report`, `EhOsContract.Graph`, and `EhOsContract.Trace` all read
-  contracts and handlers through this one registry, so one config key keeps a
+  contracts through this one registry, so one config key keeps a
   namespace out of every one of them at once — the alternative would be an
   exception written into each report by hand. Not a DSL word: which binary is
   running is an operational fact a deployer states in configuration, never a
@@ -46,12 +38,7 @@ defmodule EhOsContract.Registry do
   the graph comes from the binary that actually runs, in full — is unchanged
   unless a deployer opts into narrowing it.
   """
-  @spec load!(atom() | [atom()] | nil) :: %{
-          handlers: [handler()],
-          contracts: [module()],
-          v2_contracts: [module()],
-          domains: [module()]
-        }
+  @spec load!(atom() | [atom()] | nil) :: %{v2_contracts: [module()], domains: [module()]}
   def load!(app \\ nil) do
     apps =
       case app || Application.get_env(:eh_os_contract, :applications) do
@@ -85,48 +72,27 @@ defmodule EhOsContract.Registry do
       |> Enum.filter(&Code.ensure_loaded?/1)
       |> Enum.reject(&excluded?/1)
 
-    handlers =
-      loaded
-      |> Enum.filter(&function_exported?(&1, :__eh_os_contract_handler__, 0))
-      |> Enum.map(& &1.__eh_os_contract_handler__())
-
-    contracts =
-      loaded
-      |> Enum.filter(&EhOsContract.Model.contract?/1)
-
-    # Beside the v1 contracts rather than among them: every v1 reader asks a contract
-    # the questions only a v1 one answers, and each reader of v2 says so by name.
     v2_contracts =
       Enum.filter(loaded, fn module ->
         function_exported?(module, :__eh_os_contract_model__, 0) and
           match?(%{kind: :contract, units: _}, module.__eh_os_contract_model__())
       end)
 
-    # The domains the v2 contracts share (plan EL2): what `glossary` and `view` start from.
+    # The domains the contracts share (plan EL2): what `glossary` and `view` start from.
     domains =
       Enum.filter(loaded, fn module ->
         function_exported?(module, :__eh_os_contract_model__, 0) and
           match?(%{kind: :domain}, module.__eh_os_contract_model__())
       end)
 
-    graph = %{
-      handlers: handlers,
-      contracts: contracts,
-      v2_contracts: v2_contracts,
-      domains: domains
-    }
+    graph = %{v2_contracts: v2_contracts, domains: domains}
 
     :persistent_term.put(@key, graph)
     graph
   end
 
   @doc "The cached scan, loading it on first use."
-  @spec graph() :: %{
-          handlers: [handler()],
-          contracts: [module()],
-          v2_contracts: [module()],
-          domains: [module()]
-        }
+  @spec graph() :: %{v2_contracts: [module()], domains: [module()]}
   def graph do
     case :persistent_term.get(@key, nil) do
       nil -> load!()
@@ -134,78 +100,13 @@ defmodule EhOsContract.Registry do
     end
   end
 
-  @doc "Every handler found in the running binary."
-  @spec handlers() :: [handler()]
-  def handlers, do: graph().handlers
-
-  @doc "Every v1 contract found in the running binary."
-  @spec contracts() :: [module()]
-  def contracts, do: graph().contracts
-
-  @doc """
-  Every v2 contract found in the running binary (v2 plan, E7c): kept apart from
-  `contracts/0`, which v1's readers ask what only a v1 contract answers, until v1 is
-  cut and the two lists become one.
-  """
+  @doc "Every v2 contract found in the running binary (v2 plan, E7c)."
   @spec v2_contracts() :: [module()]
   def v2_contracts, do: Map.get(graph(), :v2_contracts, [])
 
   @doc "Every `EhOsContract.Domain` found in the running binary (plan EL2)."
   @spec domains() :: [module()]
   def domains, do: Map.get(graph(), :domains, [])
-
-  @doc "Handlers of an event that run inside the emitting transaction."
-  @spec sync_handlers_for(atom()) :: [handler()]
-  def sync_handlers_for(event) do
-    # Sorted, because the scan order is the order modules happen to be listed in the
-    # application, and that is not a promise. Two synchronous handlers on one event
-    # ran in whichever order a build produced, so behaviour could differ between two
-    # deploys of identical code — and "these two are order-independent" was a claim
-    # nobody had checked.
-    #
-    # Sorting makes it reproducible and no more than that: the order is still
-    # arbitrary. If it matters, the contract is expressing sequence through an
-    # alphabetical coincidence, which `mix eh_os_contract.check` reports as a warning rather
-    # than this function pretending to solve.
-    handlers()
-    |> Enum.filter(&(&1.event == event and not &1.async))
-    |> Enum.sort_by(&inspect(&1.module))
-  end
-
-  @doc "Handlers of an event that run through the queue."
-  @spec async_handlers_for(atom()) :: [handler()]
-  def async_handlers_for(event), do: for(h <- handlers(), h.event == event, h.async, do: h)
-
-  @doc "Every handler of an event, synchronous and asynchronous alike."
-  @spec handlers_for(atom()) :: [handler()]
-  def handlers_for(event), do: for(h <- handlers(), h.event == event, do: h)
-
-  @doc """
-  The static graph's edges: incoming event -> handler -> published events. This is
-  what the dashboard overlays on the log (notes §9).
-  """
-  @spec edges() :: [%{from: atom(), to: atom(), handler: module(), async: boolean()}]
-  def edges do
-    for h <- handlers(), published <- h.publishes do
-      %{from: h.event, to: published, handler: h.module, async: h.async}
-    end
-  end
-
-  @doc "Events declared across every contract, each tagged with its contract."
-  @spec declared_events() :: [map()]
-  def declared_events do
-    for contract <- contracts(), event <- EhOsContract.Model.events(contract) do
-      Map.put(event, :contract, contract)
-    end
-  end
-
-  @doc "Commands declared across every contract, each tagged with its contract."
-  @spec declared_commands() :: [map()]
-  def declared_commands do
-    for contract <- contracts(), command <- EhOsContract.Model.commands(contract) do
-      Map.put(command, :contract, contract)
-    end
-  end
 
   @spec excluded?(module()) :: boolean()
   defp excluded?(module) do

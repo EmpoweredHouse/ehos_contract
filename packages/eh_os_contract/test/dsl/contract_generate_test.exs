@@ -269,7 +269,7 @@ defmodule EhOsContract.Next.ContractGenerateTest do
       assert Model.module_for(model, :read_model, :payments) == generated([ReadModels, Payments])
     end
 
-    test "refuses what the contract does not declare, and a v1 contract" do
+    test "refuses what the contract does not declare" do
       error =
         assert_raise ArgumentError, fn -> Model.module_for(generated([]), :command, :close) end
 
@@ -277,11 +277,6 @@ defmodule EhOsContract.Next.ContractGenerateTest do
 
       error = assert_raise ArgumentError, fn -> Model.module_for(generated([]), :dcb, :visit) end
       assert error.message =~ "declares no dcb :visit"
-
-      error =
-        assert_raise ArgumentError, fn -> Model.module_for(ProcessShapes.Bare, :event, :x) end
-
-      assert error.message =~ "ProcessShapes.Bare is a v1 contract, which generates no modules"
     end
   end
 

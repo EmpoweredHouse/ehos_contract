@@ -1,7 +1,7 @@
 defmodule EhOsContract.ReportTaskTest do
   @moduledoc """
   `mix eh_os_contract.report` (plan E7c-2): one section for every contract the
-  registry finds, v2 contracts too.
+  registry finds.
   """
 
   use EhOsContract.DataCase, async: false
@@ -9,9 +9,9 @@ defmodule EhOsContract.ReportTaskTest do
   alias ProcessShapes.Seed
 
   @tag :tmp_dir
-  test "reports a v2 contract beside the v1 ones", %{tmp_dir: dir} do
-    Seed.deploy(:v2)
-    Seed.request(:v2, "r-1", :request_approved)
+  test "reports every contract the registry finds, one section each", %{tmp_dir: dir} do
+    Seed.deploy()
+    Seed.request("r-1", :request_approved)
     path = Path.join(dir, "report.txt")
 
     Mix.shell(Mix.Shell.Process)
@@ -20,9 +20,9 @@ defmodule EhOsContract.ReportTaskTest do
 
     text = File.read!(path)
 
-    # The v2 port and its v1 original, each with its own section and its own steps.
+    # Each process in a section of its own, with its own steps, and once.
     assert text =~ "· Decide a request → Request refused"
     assert text =~ "PROCESS: Batch run"
-    assert length(String.split(text, "PROCESS: Request handling")) == 3
+    assert length(String.split(text, "PROCESS: Request handling")) == 2
   end
 end

@@ -1,15 +1,13 @@
 defmodule ProcessShapes.Next.Timed do
   @moduledoc """
-  # THIS IS NOT A DOMAIN EITHER. See `ProcessShapes.Rig`.
+  # THIS IS NOT A DOMAIN EITHER. See `ProcessShapes`.
 
-  `ProcessShapes.Timed` in the v2 DSL (v2 plan, E7c), kept beside it so that the
-  same runs are measured on both. A run starts, is acknowledged, and ends, and the
+  A timed run (v2 plan, E7c). A run starts, is acknowledged, and ends, and the
   process promises it takes an hour: the confirmed `deadline`, and the terminal
   event it is measured to.
 
-  The acknowledgement is a policy inside the transaction and does not end the run,
-  for the reason v1's handler did not: a run that ended as it started could never be
-  open past its hour.
+  The acknowledgement is a policy inside the transaction and does not end the run: a
+  run that ended as it started could never be open past its hour.
   """
 
   use EhOsContract.Next.Contract, domain: ProcessShapes.Domain, context: :timing

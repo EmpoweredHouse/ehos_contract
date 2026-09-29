@@ -6,13 +6,11 @@ defmodule EhOsContract.EventRun do
   An event's home run is the process of the contract that decided it, and the
   event's own `process` and `instance_id` say which. A contract may also `include`
   a sibling's event in its own process, and then the event belongs to that run too,
-  keyed by that process's correlation. v1 could not say that: one event, one
-  process. Here every run is a row, the home run included, so a reader asking for
+  keyed by that process's correlation. Every run is a row, the home run included, so a reader asking for
   the runs of a process reads one table whichever contract decided the events.
 
   `EhOsContract.Store` writes the rows with the events, in the same append, so an
-  event cannot be in the log without its runs. A v1 event has its home run too; the
-  v1 readers do not read this table.
+  event cannot be in the log without its runs.
   """
 
   use Ecto.Schema
