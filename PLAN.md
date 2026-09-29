@@ -5,48 +5,40 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 29 września (E11a w PR #44, następne E11b)
+## Handoff — stan na 29 września (E11b gotowe lokalnie, następne E11c)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
 
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności), jej
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa pivot do v2** (DSL na Sparku, model
-domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E10 są w `main`** (ostatnio E10,
-#43). **E11 — Cięcie** idzie częściami E11a–E11f („Przed E11 — podział i decyzje użytkownika”): **E11a — usunięcie
-v1 — jest gotowe, przejrzane i w PR [#44](https://github.com/EmpoweredHouse/eh-os-contract/pull/44)** („E11a — co
-wyszło”). Następne jest **E11b — przemianowanie `Next`**, samo przemianowanie. W bibliotekach nie ma już kodu v1.
+domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E10 i E11a są w `main`**
+(ostatnio E11a, #44). **E11 — Cięcie** idzie częściami E11a–E11f („Przed E11 — podział i decyzje użytkownika”):
+**E11b — przemianowanie `Next` — jest gotowe i przejrzane lokalnie** („E11b — co wyszło”), niewypchnięte.
+Następne jest **E11c — migracje do jednego V01 (D2)**. W bibliotekach nie ma już kodu v1 ani nazwy `Next`.
 
 ### Stan repozytorium
 
-- **`origin/main` = `91c6fbc`** (merge #43, E10; CI `main`, przebieg `36561057338`, job `check` — `success`).
-- **E11a** na `dsl-v2/e11a-remove-v1`, od `91c6fbc`, wypchnięte, PR #44 do `main`. Historia liniowa, bez merge'y
-  na gałęzi. Notatka przeglądu (`refs/notes/review`) na każdej głowie, dla której otwierano/pchano PR — notatki są
-  lokalne. CI PR-a w chwili pisania: w toku (przebieg `36607823554`).
-- `dsl-v2/e11-cut` (`650aa6a`–`68a6917`, trzy zapisy planu) to baza E11a; jest w całości w E11a, niewypchnięta i do
-  skasowania po merge'u #44.
+- **`origin/main` = `9dc47c6`** (merge #44, E11a; CI `main`, przebieg `36608060436`, job `check` — `success`).
+- **E11b** na `dsl-v2/e11b-rename-next`, od `9dc47c6`, **niewypchnięte**: `b25aa40`, `1afaeb4`, `b3f42bc` i zapis
+  planu. Historia liniowa. Notatka przeglądu (`refs/notes/review`) na głowie — lokalna.
+- Lokalne `dsl-v2/e11-cut` skasowane po merge'u #44 (w całości w `main`). Lokalne `dsl-v2/e11a-remove-v1` też jest w
+  całości w `main`, ale jest wyciągnięte w worktree `dsl-v2-eg-graphs-409665`, więc git go nie skasuje — do
+  skasowania razem z tamtym worktree.
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`); przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
 ### Co zostało — i czyje to jest
 
-- **Merge #44** — użytkownika. Po nim E11b od świeżego `origin/main`. Jeśli #44 nie jest jeszcze zmergowany, E11b
-  zaczyna się od głowy `dsl-v2/e11a-remove-v1` na własnej gałęzi `dsl-v2/e11b-…`, a PR E11b czeka na merge #44
-  (przy PR-ze na stosie pilnować bazy — #40 zmergował się kiedyś do nieprzestawionej bazy, „Przed E9c-2”).
-- **E11b–E11f** — asystenta, po kolei, z przeglądem `pre-pr-review` po każdej części przed następną. Zakres każdej
+- **Push i PR E11b** — na polecenie użytkownika (przegląd i notatka są na głowie). E11c może iść od głowy E11b na
+  własnej gałęzi `dsl-v2/e11c-…`; przy PR-ze na stosie pilnować bazy (#40 zmergował się kiedyś do nieprzestawionej
+  bazy, „Przed E9c-2”).
+- **E11c–E11f** — asystenta, po kolei, z przeglądem `pre-pr-review` po każdej części przed następną. Zakres każdej
   części: „Przed E11 — podział i decyzje użytkownika”. Potem osobny etap: kontrakty sandboxa do testów pakietu jako
   fikstury akceptacyjne, potem **manifest v2** (po akceptacji D-51/D-52 w `eh-os` — decyzja z 29 września).
-- **E11b w szczegółach** (inwentarz na `91c6fbc`, z tej sesji): 20 modułów `EhOsContract.Next.*` w
-  `packages/eh_os_contract/lib/eh_os_contract/next/` (`Next.Contract` z `Build`, `Callbacks`, `Data`, `Dsl`,
-  `Generate`, `Links.*`, `Rules.*`) → bez `Next`; po E11a `EhOsContract.Contract` jest wolne. Do tego:
-  `ProcessShapes.Next.*` i `UniversalityGate.Next.*` w `test/support` (ich pliki v1 już usunięte, więc bez kolizji);
-  `Registry.v2_contracts/0` → `contracts/0`, `Conformance.report_v2`, `Graph.declared_v2`, pliki `*_v2_test.exs`;
-  osiem `use EhOsContract.Next.Contract` w `sandbox/lib/{rehmed,taxvision}/contracts/` i
-  `sandbox/test/rehmed_consumed_field_change_test.exs`; `--extensions …Next.Contract.Dsl` w `mix.exs` i
-  `.formatter.exs` pakietu; poprawka ADR w `test/dsl/contract_examples_test.exs:31` staje się tożsamością i znika;
-  proza „named `Next` until the rename” w `next/contract.ex:4`. **Pułapka:** testowe
-  `EhOsContract.Next.Implementations.*` bez `Next` wpadłyby pod prawdziwy moduł `EhOsContract.Implementations` —
-  inny prefiks.
+- **Z E11b do E11d i E11e** — lista w „E11b — co wyszło”: wpis CHANGELOG-u o zmianie nazw publicznego API (z
+  pułapką `Registry.contracts/0`, które w v1 znaczyło co innego), proza „v2 contract” w komunikatach i dokach,
+  sześć skilli z `EhOsContract.Next.Contract` w nagłówku.
 - **Poza E11, bez zmian** — użytkownika: proces na porcie 4000, wdrożenie E8 u hosta, lista zmian do `eh-os` (w tym
   fixture manifestu TaxVision z „E10 — co wyszło” i uwagi do D-51/D-52 — komentarz do PR-a w `eh-os` tylko na
   polecenie, link w materiale EHOS-a był pusty), publikacja na Hex, F1/F2 i dziesięć usterek, pytanie do EHOS-a o CSP
@@ -58,8 +50,8 @@ wyszło”). Następne jest **E11b — przemianowanie `Next`**, samo przemianowa
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach, wyrażenia
    regularne z flagą `u` i `[0-9]`, zsh bez dzielenia słów. Uwaga: jego opis bramy wymienia jeszcze
    `eh_os_contract.docs --check`, którego od E11a nie ma — poprawka należy do E11d.
-2. `PLAN.md`: „Przed E11 — podział i decyzje użytkownika” (części i decyzje), „E11a — co wyszło” (co zostało na
-   później, usterki, przegląd), opis „E11 — Cięcie” w „Etapach”.
+2. `PLAN.md`: „Przed E11 — podział i decyzje użytkownika” (części i decyzje), „E11a — co wyszło” i „E11b — co
+   wyszło” (co zostało na później, usterki, przegląd), opis „E11 — Cięcie” w „Etapach”.
 3. `.claude/skills/pre-pr-review/SKILL.md` — przed PR-em każdej części.
 4. Przy E11c: `docs/adr/contract-v2.md` §10.3 i D2 (§16). Przy E11d: `docs/adr/contract-v2.md` §18 i
    `packages/eh_os_contract/docs/rules.md`.
@@ -92,8 +84,8 @@ git -c credential.helper='!gh auth git-credential' push https://github.com/Empow
 Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej gałęzi, nigdy gołe `git stash`.
 
 **Pułapki** (poza listą w `CLAUDE.md`):
-- nowe słowo DSL-a → `MIX_ENV=test mix spark.formatter --extensions EhOsContract.Domain.Dsl,EhOsContract.Next.Contract.Dsl`
-  w pakiecie silnika (po E11b — nowa nazwa modułu), a w `sandbox/` i pakiecie web skasować
+- nowe słowo DSL-a → `MIX_ENV=test mix spark.formatter --extensions EhOsContract.Domain.Dsl,EhOsContract.Contract.Dsl`
+  w pakiecie silnika, a w `sandbox/` i pakiecie web skasować
   `_build/*/lib/*/.mix/cached_dot_formatter`, inaczej `mix format` doda nawiasy;
 - fikstury kompilowane ze stringów w testach: numer linii w asercji to linia w stringu, nie w pliku testu;
 - próba odwrotna: kopia pliku w scratchpadzie, mutacja, test, `cp` z kopii i `cmp` — nie `git stash`;
@@ -103,16 +95,23 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 - dwa kontrakty o jednej nazwie procesu muszą mieć różne domeny (X7);
 - test pakietu z bazą i drugi `mix` w tym samym pakiecie naraz się gryzą (wspólne `_build` i bazy testowe
   `eh_os_contract_test`, `…_commits`, bez partycji) — agentów z testami puszczać po kolei;
-- Mermaid przed rysowaniem usuwa element o identyfikatorze, który rysuje (opis w `assets/js/app.js`).
+- Mermaid przed rysowaniem usuwa element o identyfikatorze, który rysuje (opis w `assets/js/app.js`);
+- `git grep -E` na tej maszynie nie rozumie `\b` i milczy, zamiast odmówić (w E11b `git grep -iP` też raz dał zero
+  przy 38 plikach z trafieniem) — wynik „nic nie zostało” potwierdzać drugim narzędziem (`grep -rE`, `git grep -w`).
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 29 września, na `b3f42bc`** (E11b; potem tylko zapis planu): brama z `sandbox/` → **EXIT=0** — sandbox
+  143 testy, `check` 0 / 29 / 9; silnik 971, `check` 0 / 66 / 5; web 52; auth 62 — liczby co do jednego jak na
+  `9dc47c6`. Wyjścia `MIX_ENV=dev` (`check` tekst i JSON, `report`, `view`, `glossary`, wszystkie grafy, manifesty,
+  strony obu domen) bajt w bajt jak na `9dc47c6`. W przeglądarce: `/dashboard/graph` i `/dashboard/contract` bez
+  błędów poza znanym CSP Mermaida.
 - **Lokalnie, 29 września, na drzewie `060613c`** (E11a po przeglądzie; ostatni commit to sam `PLAN.md`): brama z
   `sandbox/` → **EXIT=0** — sandbox 143 testy, `check` 0 / 29 / 9; silnik 971, `check` 0 / 66 / 5; web 52; auth 62.
   W przeglądarce, na `b4924f3`: `/dashboard/graph` i `/dashboard/contract` bez błędów poza znanym CSP Mermaida.
 - **Lokalnie, 29 września, na `91c6fbc`** (czysty `main`, przed E11): brama → **EXIT=0** — sandbox 143, `check`
   0 / 29 / 9; silnik 1274, `check` 0 / 74 / 21; web 51; auth 62.
-- **CI `main`**: `91c6fbc` (przebieg `36561057338`, job `check`) — `success`. **CI #44**: w toku przy pisaniu.
+- **CI `main`**: `9dc47c6` (merge #44, przebieg `36608060436`, job `check`) — `success`.
 
 ### Otwarte pytania
 
@@ -123,15 +122,18 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 - **Dwie domeny o jednym `name:`** dałyby zdublowane identyfikatory bloków na `/graph` — sprawa rejestru.
 - **Z E11a, bez decyzji:** reguła v2 w miejsce `promise-finer-than-run` (kandydat na E11f); pusty `:string` jako
   wartość pola korelacji; termin `{1, :hour}` w raporcie bez liczby.
+- **Z przeglądu E11b, sprzed E11b, bez decyzji:** `config :eh_os_contract, exclude:` dopasowuje prefiks bez granicy
+  modułu (`"ProcessShapes.Promised"` wycina też `ProcessShapes.PromisedLate`), a `Implementations.build/1` go nie
+  stosuje (konsumenci wyłączonego kontraktu dostają wpisy dispatchu i wiersze subskrypcji). Zmiana zmienia znaczenie
+  konfiguracji hosta — do użytkownika; kandydat na E11f.
 - **D1–D14** przyjęte; w v2 §19: transport v1 między kontenerami, kontrakt upcasterów.
 
 ### Zgoda i stałe uprawnienia
 
 **Ten blok jest do skasowania. Skasowanie go cofa uprawnienie — nie migruje ono samo między sesjami.**
 
-W sesji E11a (29 września) użytkownik zgodził się na: commity bez pytania na gałęziach `dsl-v2/e11…` przy zielonej
-bramie na każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. Push i PR E11a — na jego
-wyraźne polecenie. **W nowej sesji obowiązuje to dopiero po ponownym potwierdzeniu przez użytkownika.** Push, PR,
+W sesji E11b (29 września) użytkownik potwierdził: commity bez pytania na gałęziach `dsl-v2/e11…` przy zielonej
+bramie na każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. **W nowej sesji obowiązuje to dopiero po ponownym potwierdzeniu przez użytkownika.** Push, PR,
 merge, tag i Hex — tylko na wyraźne polecenie, przed PR skill `pre-pr-review`. Do
 `~/Projects/ai/empowered-house-context` nie piszemy nigdy; do `~/Projects/ai/eh-os` też nie (tylko czytanie).
 
@@ -2375,6 +2377,64 @@ całą historią (`Run` i `Trace` czytają wszystkie przebiegi procesu, sprzed E
 E11d. Bez zmian: `:id` z samych spacji (tak samo jak v1 — `Codec` nie normalizuje tekstu). Pomiar przeglądu: na
 2 mln zdarzeń zapytanie przebiegów to złączenie haszujące w 85–90 ms, także przy statystykach z pustych tabel —
 17 s z testu skali mogło pochodzić z dopisywania w `Store`, nie z oceny; do złapania `auto_explain` przy pomiarze.
+
+### E11b — co wyszło (29 września)
+
+Na `dsl-v2/e11b-rename-next`, od `9dc47c6` (merge #44), niewypchnięte. Trzy commity, pełna brama po każdym `EXIT=0`,
+liczby testów i ustaleń `check` co do jednego jak przed zmianą (sandbox 143, 0 / 29 / 9; silnik 971, 0 / 66 / 5; web
+52; auth 62). Wyjścia `MIX_ENV=dev` obu domen — `check` (tekst i JSON), `report` z wersjami kontraktów, `view`,
+`glossary`, `--map`, `--system` z nakładką i bez, `--contract` każdego z ośmiu kontraktów z nakładką i bez, manifesty,
+strony — bajt w bajt te same przed i po. Wersje kontraktów się nie ruszyły (digest zdejmuje tagi struktur Sparka, więc
+nazwa modułu DSL-a do niego nie wchodzi), wiersze wdrożeń też.
+
+- **`b25aa40`** — 15 stron wyjścia `pages` w korzeniu pakietu, scommitowanych z `38132d8`. Szesnasty plik z
+  inwentarza (w `tmp/`) zniknął już w E11a (`1693efb`). Po skasowaniu test `pages` ich nie odtwarza.
+- **`1afaeb4`** — `EhOsContract.Next.*` → `EhOsContract.*`, pliki za modułami (`lib/eh_os_contract/next/` →
+  `lib/eh_os_contract/`), `ProcessShapes.Next.*` → `ProcessShapes.*`, `UniversalityGate.Next.*` →
+  `UniversalityGate.*`, `universality_gate_next_test.exs` → `universality_gate_test.exs`, `--extensions` w `mix.exs`
+  i `.formatter.exs`, eksporty `boundary`. Poprawka przykładu ADR w `contract_examples_test.exs` (tożsamość) znika.
+- **`b3f42bc`** — nazwy z `v2`, które odróżniały v2 od v1: `Registry.v2_contracts/0` → `contracts/0` (i klucz
+  skanu w `persistent_term`), `Check.v2_findings/1` → `findings/1`, `Deployment.v2_edge_labels/1` →
+  `edge_labels/1`, prywatne `report_v2`, `process_v2`, `drift_v2`, `duration_v2`, `declared_v2`, `v2_row`, `v2_body`
+  (+ `v2_channels`/`v2_operations`/`v2_messages`), `Model.v2!` → `contract!`, zmienne `v2` w taskach `check` i
+  `graph`; pliki `*_v2_test.exs` i ich moduły bez `V2`.
+
+**Wybory asystenta (mechanika, bez pytania):**
+- **Testowe implementacje → `EhOsContract.Fixtures.Implementations.*`**, obok `EhOsContract.Fixtures.*`, gdzie już
+  są kontrakty, które implementują. *Odrzucone:* `EhOsContract.Implementations.*` — prawdziwy moduł indeksu
+  implementacji, fikstura pod jego nazwą czytałaby się jak jego część; `EhOsContract.TestImplementations.*` — nowy
+  prefiks obok istniejącego `Fixtures` bez powodu.
+- **Dwa pliki testów z nazwą zajętą przez test mechaniki obok:** `clock_v2_test.exs` → `clock_contract_test.exs` (obok
+  `clock_test.exs`, zegar poza kontraktem), `wire_v2_test.exs` → `wire_report_test.exs` (obok
+  `conformance_wire_test.exs`, kodowanie poza raportem). *Odrzucone:* scalenie z plikiem obok — to już nie
+  przemianowanie.
+- **`eh_os_contract.conformance.v2` zostaje** — to nazwa kształtu na drucie, którą porównuje konsument, nie nazwa
+  DSL-a. *Odrzucone:* `…conformance.v3` albo bez wersji — zmiana kształtu widocznego dla hosta bez zmiany kształtu.
+- **Zostały ze starą nazwą, świadomie:** `CHANGELOG.md` i `docs/adr/` (zapis, nie opis stanu — jak `PNS.X` w ADR-ach);
+  sześć skilli (`add-event`, `change-contract`, `contract-distillation`, `module-boundary-check`, `review-pr`,
+  `write-handler`) — ich nagłówek mówi „v1 `EhOsContract.Contract` … v2 (`EhOsContract.Next.Contract`)”, podmiana dałaby
+  zdanie z tą samą nazwą po obu stronach, a E11e je przepisuje.
+
+**Przegląd E11b (pre-pr-review, 29 września).** Dwa przeglądy równolegle na `origin/main..b3f42bc`: poprawność
+(`code-review high`) i bezpieczeństwo z wydajnością. Żadnej usterki w przemianowaniu: skan rejestru i `exclude` bez
+zmian w logice, indeks implementacji nie widzi fikstur (moduły z `.exs`), rozwiązywanie kontraktu z URL-a dalej
+przez rejestr, redakcja danych osobowych i wersje kontraktów bez zmian. Rozstrzygnięte:
+- **CHANGELOG nie odnotowuje zmiany nazw publicznego API** — *pominięte do E11d* (CHANGELOG 0.3.0). Do wpisu:
+  `use EhOsContract.Next.Contract` → `use EhOsContract.Contract`; `Registry.graph().v2_contracts` → `.contracts`;
+  `Check.v2_findings/1` → `findings/1`; `Deployment.v2_edge_labels/1` → `edge_labels/1`. **Pułapka dla hosta:**
+  `Registry.contracts/0` i `Check.findings/1` istniały w v1 i znaczyły kontrakty v1 — wywołanie sprzed E11a dalej się
+  kompiluje i po cichu dostaje kontrakty v2 (`CHANGELOG.md:341` mówi jeszcze, że `contracts/0` „stays v1's”).
+- **Proza „v2 contract” w komunikatach i dokach** (38 plików w `lib/`) — *pominięte do E11d*: E11b zmienia
+  identyfikatory, a komunikat widziany przez hosta to jego kształt. Komunikaty: `eh_os_contract.graph.ex:204`,
+  `dispatcher.ex:1108`, `consumer.ex:142`, `contract/links/siblings.ex:51` (X5), `auth/manifest.ex:48`; `@shortdoc`
+  `compile.eh_os_contract` i `eh_os_contract.manifest`; `@doc` w `eh_os_contract.ex`, `open_api.ex`, `check.ex`,
+  `deployment.ex`, `plug.ex`, `personal.ex`, `model.ex`; komentarz „The v2 DSLs” w `.formatter.exs`. Odwołania
+  „v2 §N” do `docs/adr/contract-v2.md` zostają — to nazwa dokumentu.
+- **Skille ze starą nazwą** — *pominięte do E11e*, jak wyżej.
+- **`exclude:` bez granicy modułu i pomijany przez `Implementations.build/1`** — prawdziwe, sprzed E11b, oba przeglądy
+  — *pominięte*, w otwartych pytaniach (zmiana znaczenia konfiguracji hosta idzie do użytkownika).
+- **Stary kształt `%{v2_contracts: …}` w `persistent_term` po przeładowaniu kodu bez restartu** — *bez zmiany*:
+  biblioteka nie wspiera gorącej podmiany, a moduł rejestru sam mówi, że nowy moduł widać po restarcie.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
