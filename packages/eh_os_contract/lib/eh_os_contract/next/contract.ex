@@ -1,7 +1,7 @@
 defmodule EhOsContract.Next.Contract do
   @moduledoc """
-  One process, written down (v2 §4.1): the v2 contract DSL, growing beside v1's
-  `EhOsContract.Contract` until the cut renames it (v2 plan, E11).
+  One process, written down (v2 §4.1): the contract DSL, named `Next` until the
+  rename that follows v1's removal (v2 plan, E11).
 
       defmodule Rehmed.Contracts.VisitSettlement do
         use EhOsContract.Next.Contract, domain: Rehmed.Domain, context: :settlement

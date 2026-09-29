@@ -28,9 +28,9 @@ defmodule EhOsContract.Report do
   def render(report) do
     [
       header(report),
-      deployment(report.deployment, Map.get(report, :wiring)),
+      deployment(report.deployment, report.wiring),
       Enum.map(report.processes, &process/1),
-      scenarios(Map.get(report, :scenarios)),
+      scenarios(report.scenarios),
       drift(report.drift)
     ]
     |> List.flatten()
@@ -60,7 +60,7 @@ defmodule EhOsContract.Report do
   @spec day(DateTime.t()) :: String.t()
   defp day(at), do: at |> DateTime.to_date() |> Date.to_string()
 
-  @spec deployment(map(), map() | nil) :: [String.t()]
+  @spec deployment(map(), map()) :: [String.t()]
   defp deployment(deployment, wiring) do
     since =
       case deployment.deployed.since do
@@ -91,19 +91,19 @@ defmodule EhOsContract.Report do
         []
       end
 
-    # A v2 contract's wiring is the code's half of what is deployed, so it is named.
+    # A contract's wiring is the code's half of what is deployed, so it is named.
     wired =
       case wiring do
         %{version: version} when is_binary(version) -> ["  Wiring #{version}."]
-        _v1_or_not_recorded -> []
+        _not_recorded -> []
       end
 
     ["CONTRACT", "  Version #{deployment.deployed.contract_version}, #{since}."] ++
       wired ++ change ++ earlier ++ [""]
   end
 
-  # The line events and paths could never carry: a `trace` whose window moved, or an
-  # event whose `retain` moved, adds and removes nothing. Named rather than counted,
+  # The line events and paths could never carry: a promise whose window moved, or an
+  # event whose field became `personal:`, adds and removes nothing. Named rather than counted,
   # because "2 declarations changed" sends the reader looking and the names end the
   # search.
   @spec declarations_changed(map() | :not_recorded) :: [String.t()]
@@ -151,7 +151,7 @@ defmodule EhOsContract.Report do
       declarations(p.declarations) ++
       duration(p.duration) ++
       paths(p) ++
-      assertions(Map.get(p, :assertions) || Map.get(p, :promises)) ++
+      assertions(p.promises) ++
       [""]
   end
 
@@ -163,10 +163,10 @@ defmodule EhOsContract.Report do
   @spec paths(map()) :: [String.t()]
   defp paths(%{runs: 0}), do: ["  " <> Sentence.no_runs()]
 
-  # A v2 process: what waits has a heading of its own, never the list of what nobody
-  # did, and "carried out" is said only when nothing waits either — a v2 branch is
-  # several steps, and only its head waits in a queue. v1 keeps its layout.
-  defp paths(%{promises: _} = p) do
+  # What waits has a heading of its own, never the list of what nobody did, and
+  # "carried out" is said only when nothing waits either — a branch is several steps,
+  # and only its head waits in a queue.
+  defp paths(p) do
     untraversed =
       case {p.untraversed, p.in_flight} do
         {[], []} ->
@@ -193,22 +193,6 @@ defmodule EhOsContract.Report do
     untraversed ++ waiting ++ failing(p.failing)
   end
 
-  defp paths(p) do
-    untraversed =
-      case p.untraversed do
-        [] ->
-          ["  " <> Sentence.all_steps_carried_out()]
-
-        steps ->
-          ["  Agreed steps that were never carried out:"] ++
-            for s <- steps, do: "    · " <> Sentence.step(s)
-      end
-
-    waiting = for s <- p.in_flight, do: "    · " <> Sentence.step_in_flight(s)
-
-    untraversed ++ waiting ++ failing(p.failing)
-  end
-
   defp failing([]), do: []
 
   defp failing(steps) do
@@ -221,10 +205,7 @@ defmodule EhOsContract.Report do
     Enum.flat_map(list, fn a -> ["  " <> Sentence.rule(a), "    " <> Sentence.outcome(a)] end)
   end
 
-  # A v2 contract's scenarios; a v1 one has none to say anything about.
-  @spec scenarios(map() | nil) :: [String.t()]
-  defp scenarios(nil), do: []
-
+  @spec scenarios(map()) :: [String.t()]
   defp scenarios(s) do
     never =
       case s.never_observed do

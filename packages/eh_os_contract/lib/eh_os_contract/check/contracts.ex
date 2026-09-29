@@ -1,8 +1,7 @@
 defmodule EhOsContract.Check.Contracts do
   @moduledoc """
-  The rules of `mix eh_os_contract.check` v1 contracts had, over v2 contracts, and
-  one only an implementation can answer (v2 §6, L5, "kept from v1" and "new"; plan
-  EL1).
+  Rules of `mix eh_os_contract.check` over v2 contracts, the last of them one only
+  an implementation can answer (v2 §6, L5; plan EL1).
 
   - `backward-edge` — a reaction that issues a command whose events sit in an
     earlier stage than the event it reacts to.
@@ -12,10 +11,8 @@ defmodule EhOsContract.Check.Contracts do
   - `emits-never-produced` — an event a command `emits:` that no `emit/1` of its
     implementation names.
 
-  v1's `promise-finer-than-run` is not repeated: a v2 run is keyed by its
-  `correlate`, R2 puts those fields in every event of the run, and how a promise
-  over a finer unit is evaluated has no v2 contract to be asked on until the
-  sandbox's are written anew (E9).
+  No rule compares a promise's unit with its run: a run is keyed by its
+  `correlate`, and R2 puts those fields in every event of the run.
   """
 
   alias EhOsContract.Check.Finding
@@ -108,7 +105,7 @@ defmodule EhOsContract.Check.Contracts do
 
   defp backward(_contract), do: []
 
-  # v1's `competing-sync-handlers`: several reactions in one transaction, to one
+  # Several reactions in one transaction, to one
   # event, in an order the contract does not state. A read model is not counted: it
   # projects, and decides nothing another reaction could depend on.
   defp competing(linked) do
@@ -150,7 +147,7 @@ defmodule EhOsContract.Check.Contracts do
     end
   end
 
-  # v1's `free-text-without-retain`, in v2's words: `:string` is text a person typed,
+  # `:string` is text a person typed,
   # and unless it is personal, it stays in the log verbatim even after its subject
   # is erased (v2 §14). Text is text in a list too, behind a domain value that is
   # text, and in a field of a domain value; the finding names the path to it.

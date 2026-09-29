@@ -41,7 +41,7 @@ defmodule EhOsContract.Duration do
   A duration as a count of one supported unit.
 
   Zero is legal — it reads as "in the same instant" — and enforced together with the
-  unit at the `trace` compile gate (`EhOsContract.Contract`). Negative is not: the deadline
+  unit by the contract's rule R6 at compile time. Negative is not: the deadline
   would land before the window opened.
   """
   @type t :: {non_neg_integer(), unit()}

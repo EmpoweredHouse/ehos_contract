@@ -9,13 +9,9 @@ defmodule EhOsContract.Deployment do
   event. It answers *which agreement was in force when this happened*, and that
   is the question it should answer.
 
-  It cannot answer *was this path declared at the time*, and the reason is
-  structural: paths come from handlers' `publishes:` declarations, and handlers
-  are not part of the contract. Delete a handler and the graph loses an edge
-  while every version stamped anywhere stays identical. The overlay then sees an
-  observed edge that is no longer declared, finds the contract version still
-  current, and reports **drift** — for a path that was legitimately declared
-  when it ran.
+  It cannot answer *which code ran it*, and the reason is structural: which module
+  implements each declaration is not part of the contract. Swap an implementation
+  and every version stamped anywhere stays identical.
 
   So a deployment has two identities. The contract version is the agreement; the
   wiring version is the code. A refactor moves one and not the other, which is
@@ -28,10 +24,7 @@ defmodule EhOsContract.Deployment do
   every event — and the log stays the artifact it was.
 
   The price is that provenance is only as good as the record: a log written
-  before this table existed has no deployment covering it, and those edges fall
-  back to the older heuristic based on `contract_version` alone. That fallback is
-  documented rather than silent, because a report that guesses without saying so
-  is worse than one that admits the gap.
+  before this table existed has no deployment covering it.
 
   Both hashes now come from `EhOsContract.Digest`, so neither depends on term encoding,
   module load order or OTP release. That was originally true here and not of
@@ -54,10 +47,10 @@ defmodule EhOsContract.Deployment do
     field(:wiring_version, :string)
     field(:events, {:array, :string})
     field(:edges, {:array, :string})
-    # One digest per declaration, from the contract's generated `declaration_digests/0`
-    # — a function on each contract module, not on `EhOsContract.Contract`. Nullable,
-    # because a row written before this column existed does not know what its
-    # contract declared, and `%{}` would claim it declared nothing.
+    # One digest per declaration, from the contract's model
+    # (`EhOsContract.Model.digests/1`). Nullable, because a row written before this
+    # column existed does not know what its contract declared, and `%{}` would claim
+    # it declared nothing.
     field(:declaration_digests, :map)
     field(:first_seen_at, :utc_datetime_usec)
   end
@@ -85,26 +78,7 @@ defmodule EhOsContract.Deployment do
   """
   @spec record!(DateTime.t()) :: :ok
   def record!(now \\ DateTime.utc_now()) do
-    rows =
-      for(contract <- EhOsContract.Registry.v2_contracts(), do: v2_row(contract, now)) ++
-        for contract <- EhOsContract.Registry.contracts() do
-          events = contract |> Model.event_names() |> Enum.map(&to_string/1) |> Enum.sort()
-          edges = contract |> edge_labels() |> Enum.sort()
-
-          %{
-            id: Ecto.UUID.generate(),
-            contract: inspect(contract),
-            contract_version: Model.version(contract),
-            # Sorted above, so the list order carries no meaning by the time it gets
-            # here — which is the one case where `EhOsContract.Digest` needs the caller's help,
-            # since it preserves list order on purpose.
-            wiring_version: EhOsContract.Digest.hash(edges),
-            events: events,
-            edges: edges,
-            declaration_digests: Model.digests(contract),
-            first_seen_at: now
-          }
-        end
+    rows = for contract <- EhOsContract.Registry.v2_contracts(), do: v2_row(contract, now)
 
     # `{:replace, ...}` rather than `:nothing`, and the difference matters exactly
     # once: the first boot after the column exists meets a row recorded before it,
@@ -131,6 +105,10 @@ defmodule EhOsContract.Deployment do
   # the steps, is its wiring. A
   # promise gets a digest of its own here, so a changed promise has a boundary
   # (`declaration_boundaries/1`) where the model only digests the whole process.
+  #
+  # The edges and bindings are sorted, so the list order carries no meaning by the
+  # time they are hashed — the one case where `EhOsContract.Digest` needs the
+  # caller's help, since it preserves list order on purpose.
   @spec v2_row(module(), DateTime.t()) :: map()
   defp v2_row(contract, now) do
     model = Model.fetch(contract)
@@ -200,27 +178,14 @@ defmodule EhOsContract.Deployment do
   end
 
   @doc """
-  Whether an edge was declared under **any** recorded deployment.
-
-  This is what separates legitimate history from drift for paths. `false` means
-  either genuine drift or a log older than this table; the caller decides how to
-  read that, and `EhOsContract.Graph` says which.
-  """
-  @spec declared_edge?(module(), {atom() | String.t(), atom() | String.t()}) :: boolean()
-  def declared_edge?(contract, {from, to}) do
-    label = edge_label(from, to)
-    Enum.any?(all(contract), &(label in &1.edges))
-  end
-
-  @doc """
   What changed between two recorded deployments.
 
   Paths are reported separately from events because they move independently: a
-  handler can add a path without the contract changing at all.
+  reaction can add a path without an event being added or removed.
 
-  `declarations` is the part event names and edges could never show. A `trace`
-  whose `within` moved, an event whose `retain` or `identity` moved, a process
-  whose `instance` moved, a payload type that changed — all of them move
+  `declarations` is the part event names and edges could never show. A promise
+  whose `within` moved, an event whose field became `personal:`, a process whose
+  `correlate` moved, a field type that changed — all of them move
   `contract_version` and none of them adds or removes an event or a path, so
   until this key existed the diff reported a change to the agreement as four
   empty lists.
@@ -358,18 +323,6 @@ defmodule EhOsContract.Deployment do
   end
 
   defp last_change(_), do: nil
-
-  @spec edge_labels(module()) :: [String.t()]
-  defp edge_labels(contract) do
-    for handler <- EhOsContract.Registry.handlers(),
-        handler.contract == contract,
-        published <- handler.publishes do
-      edge_label(handler.event, published)
-    end
-  end
-
-  @spec edge_label(atom() | String.t(), atom() | String.t()) :: String.t()
-  defp edge_label(from, to), do: "#{from}->#{to}"
 
   # **Read at run time, not at compile time — and that changed when the engine
   # became its own application (2026-08-20).** `Application.compile_env!/2`

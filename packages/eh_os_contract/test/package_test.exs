@@ -46,14 +46,14 @@ defmodule EhOsContract.PackageTest do
 
   test "the formatter export ships, so a consumer's contracts keep their shape", %{config: config} do
     # Without this file in the tarball, `mix format` in a consuming project rewrites
-    # every contract as `event(:x, label: "...")`. The list here is the reason the
+    # every contract as `event(:paid, "Paid")`. The list here is the reason the
     # DSL reads like `Ecto.Schema` rather than like a pile of function calls.
     assert ".formatter.exs" in config[:package][:files]
 
     {formatter, _} = Code.eval_file(".formatter.exs")
     exported = formatter[:export][:locals_without_parens]
 
-    for declaration <- [:event, :process, :external, :rule, :example, :command, :trace] do
+    for declaration <- [:aggregate, :command, :event, :policy, :process, :promise, :scenario] do
       assert Enum.any?(exported, fn {name, _arity} -> name == declaration end),
              "#{declaration} is a declaration macro and is not exported to consumers' formatters"
     end

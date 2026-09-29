@@ -12,9 +12,9 @@ defmodule EhOsContract.Web.Live.ContractStatus do
   a run suspended by an external outage, a run judged under a rule that had since
   changed, which met runs reached the fallback, and queued work at all.
 
-  No contract picker: the registry's v1 and v2 contracts are the same source
+  No contract picker: the registry's contracts are the same source
   `mix eh_os_contract.report` reads, and this screen renders every contract it finds the
-  same way that task does, one section per contract. A v2 contract's report has its
+  same way that task does, one section per contract. A contract's report has its
   steps, its promises, its wiring and its scenarios (v2 plan, E7c).
   """
 
@@ -26,10 +26,7 @@ defmodule EhOsContract.Web.Live.ContractStatus do
   @impl true
   def mount(_params, _session, socket) do
     reports =
-      Enum.map(
-        EhOsContract.Registry.contracts() ++ EhOsContract.Registry.v2_contracts(),
-        &Conformance.report(&1, [])
-      )
+      Enum.map(EhOsContract.Registry.v2_contracts(), &Conformance.report(&1, []))
 
     {:ok, assign(socket, :reports, reports)}
   end
@@ -51,7 +48,7 @@ defmodule EhOsContract.Web.Live.ContractStatus do
               report.deployment.deployed.since
             )}.
           </p>
-          <p :if={wiring(report)}>Wiring {wiring(report)}.</p>
+          <p :if={report.wiring.version}>Wiring {report.wiring.version}.</p>
         </section>
 
         <section :for={process <- report.processes}>
@@ -88,10 +85,10 @@ defmodule EhOsContract.Web.Live.ContractStatus do
             </div>
           </div>
 
-          <div :if={rules(process) != []}>
-            <h4>{if Map.has_key?(process, :promises), do: "Promises", else: "Trace assertions"}</h4>
+          <div :if={process.promises != []}>
+            <h4>Promises</h4>
             <ul>
-              <li :for={assertion <- rules(process)}>
+              <li :for={assertion <- process.promises}>
                 <p>{Sentence.rule(assertion)}</p>
                 <p class={outcome_class(assertion)}>{Sentence.verdict(assertion)}</p>
                 <p
@@ -136,21 +133,10 @@ defmodule EhOsContract.Web.Live.ContractStatus do
     """
   end
 
-  # A v1 process's assertions, a v2 process's promises: judged and worded alike.
-  @spec rules(map()) :: [map()]
-  defp rules(process), do: Map.get(process, :assertions) || Map.get(process, :promises) || []
-
-  # As in the text report: a v2 branch is several steps behind one queue, so "carried
-  # out" is said only when nothing of it waits either. A v1 process keeps its layout.
+  # As in the text report: a branch is several steps behind one queue, so "carried
+  # out" is said only when nothing of it waits either.
   @spec carried_out?(map()) :: boolean()
-  defp carried_out?(%{promises: _} = process),
-    do: process.untraversed == [] and process.in_flight == []
-
-  defp carried_out?(process), do: process.untraversed == []
-
-  @spec wiring(map()) :: String.t() | nil
-  defp wiring(%{wiring: %{version: version}}), do: version
-  defp wiring(_v1), do: nil
+  defp carried_out?(process), do: process.untraversed == [] and process.in_flight == []
 
   @spec access_label(:all | :read_only) :: String.t()
   defp access_label(:all), do: "all"

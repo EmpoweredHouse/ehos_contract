@@ -22,7 +22,6 @@ defmodule EhOsContract.CheckOutputTest do
     test "says what each rule finds, and why, and which ESDM rule it follows" do
       for rule <- Catalog.rules() do
         assert rule.level in [:error, :warn, :info]
-        assert rule.reads in [:v1, :v2, :both]
         assert String.trim(rule.summary) != "", rule.id
         assert String.trim(rule.text) != "", rule.id
         assert rule.esdm == nil or rule.esdm =~ ~r{\Aesdm/[a-z]+/[a-z-]+\z}, rule.id
@@ -37,7 +36,7 @@ defmodule EhOsContract.CheckOutputTest do
 
     test "a finding takes its rule's level" do
       assert %Finding{level: :info} = Finding.new("promise-without-within", "p")
-      assert %Finding{level: :error} = Finding.new("trace-unresolved", "t")
+      assert %Finding{level: :warn} = Finding.new("process-without-accountable", "a")
     end
   end
 
@@ -83,20 +82,20 @@ defmodule EhOsContract.CheckOutputTest do
         Check.render(
           [
             Finding.new("promise-without-within", "promise :paid has no `within`", @at),
-            Finding.new("trace-unresolved", "trace :t does not resolve [:x]")
+            Finding.new("no-contracts", "no contracts found in [:x]")
           ],
           :json
         )
 
-      assert [error, notice] = Jason.decode!(json)
+      assert [warning, notice] = Jason.decode!(json)
 
-      assert error == %{
-               "rule" => "trace-unresolved",
-               "level" => "error",
-               "message" => "trace :t does not resolve [:x]",
+      assert warning == %{
+               "rule" => "no-contracts",
+               "level" => "warning",
+               "message" => "no contracts found in [:x]",
                "file" => nil,
                "line" => nil,
-               "documentation" => "https://hexdocs.pm/eh_os_contract/rules.html#trace-unresolved"
+               "documentation" => "https://hexdocs.pm/eh_os_contract/rules.html#no-contracts"
              }
 
       assert %{"level" => "notice", "file" => "lib/clinic/contract.ex", "line" => 12} = notice
@@ -107,7 +106,7 @@ defmodule EhOsContract.CheckOutputTest do
   describe "the exit status" do
     @warning Finding.new("process-without-accountable", "w")
     @notice Finding.new("promise-without-within", "n")
-    @error Finding.new("trace-unresolved", "e")
+    @error Finding.compiler({"X2: e", nil})
 
     test "an error fails the task, a warning only under --warnings-as-errors" do
       assert Check.failed?([@error], false)

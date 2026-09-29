@@ -30,10 +30,9 @@ defmodule EhOsContract.Report.Sentence do
   """
 
   @doc """
-  What the assertion promises, as a sentence a process owner can be read.
+  What the promise says, as a sentence a process owner can be read.
 
-  `trace` is the one declaration with no `label`, so a technical name is all there
-  would otherwise be — and a report saying `month_opens_or_is_blocked` does not meet
+  A promise has no `label`, so a technical name is all there would otherwise be — and a report saying `month_opens_or_is_blocked` does not meet
   the "readable without explanation" criterion.
   """
   @spec rule(map()) :: String.t()
@@ -151,7 +150,7 @@ defmodule EhOsContract.Report.Sentence do
   @doc """
   A step, by its business labels. The technical names are for whoever writes code.
 
-  A v2 step (`EhOsContract.Paths`) goes from a command to its event, or from an
+  A step (`EhOsContract.Paths`) goes from a command to its event, or from an
   event through a consumer to a command, and says which consumer: `"Deposited →
   Flag the account for review (via: Flag an account on a large deposit)"`. An
   effect's step ends at the effect.
@@ -163,11 +162,9 @@ defmodule EhOsContract.Report.Sentence do
   def step(%{from: %{} = from, via: %{} = via, to: %{} = to}),
     do: "#{name(from)} → #{name(to)} (via: #{name(via)})"
 
-  def step(s), do: "#{s.from_label} → #{s.to_label}"
-
   @doc """
-  A step whose work is sitting in a queue — which is not a step nobody took. A v2
-  step names each source that waits, since each goes to somebody else: events its
+  A step whose work is sitting in a queue — which is not a step nobody took. It
+  names each source that waits, since each goes to somebody else: events its
   consumer has not reached yet, timers scheduled, effects queued.
   """
   @spec step_in_flight(map()) :: String.t()
@@ -184,8 +181,6 @@ defmodule EhOsContract.Report.Sentence do
 
     "#{step(s)} — in progress: #{Enum.join(parts, ", ")}"
   end
-
-  def step_in_flight(s), do: "#{step(s)} — in progress, #{s.in_flight} queued"
 
   @doc """
   A step that is attempted and does not succeed.
@@ -210,8 +205,6 @@ defmodule EhOsContract.Report.Sentence do
     "#{step(s)} — failing: #{Enum.join(parts, "; ")}"
   end
 
-  def step_failing(s), do: "#{step(s)} — failed in #{runs(s.failing)}"
-
   @doc "A count of runs, with the numeral where it belongs."
   @spec runs(non_neg_integer()) :: String.t()
   def runs(1), do: "1 run"
@@ -226,9 +219,8 @@ defmodule EhOsContract.Report.Sentence do
   def all_steps_carried_out, do: "All agreed steps were carried out in this period."
 
   @doc """
-  One thing that happened though it was not agreed. A v1 drift is an edge nobody
-  declared; a v2 one is an event no declared command emits, by a command that does
-  not emit it or written around dispatch.
+  One thing that happened though it was not agreed: an event no declared command
+  emits, by a command that does not emit it or written around dispatch.
   """
   @spec drift(map()) :: String.t()
   def drift(%{from: nil, to: %{} = to} = e),
@@ -236,8 +228,6 @@ defmodule EhOsContract.Report.Sentence do
 
   def drift(%{from: %{} = from, to: %{} = to} = e),
     do: "#{name(from)} → #{name(to)}  (#{e.count}x)"
-
-  def drift(e), do: "#{e.from_label || e.from} → #{e.to_label || e.to}  (#{e.count}x)"
 
   @doc """
   How many of a v2 contract's command scenarios the log saw happen

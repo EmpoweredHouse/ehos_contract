@@ -10,7 +10,7 @@ defmodule ProcessShapes do
   the proof would be worth as much as one carried out inside the first domain.
 
   The repo comes **from configuration**, not from a reference to a client module —
-  exactly as in `EhOsContract.Emitter`. The first version named `Taxvision.Repo` directly
+  exactly as the engine reads it. The first version named `Taxvision.Repo` directly
   and `boundary` rejected it, rightly: an engine fixture has no business reaching
   into the client tree, not even for the repo.
   """

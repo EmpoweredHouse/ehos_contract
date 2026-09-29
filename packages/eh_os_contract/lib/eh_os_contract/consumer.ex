@@ -81,7 +81,7 @@ defmodule EhOsContract.Consumer do
     policy = Enum.find(model.policies, &(&1.name == consumer.name))
     link = link(consumer)
 
-    # The cycle guard v1's emitter had: a policy that reacts, down one chain, to the
+    # A cycle guard: a policy that reacts, down one chain, to the
     # kind of event it has already reacted to would dispatch for ever.
     if link in chain or length(chain) >= @longest_chain do
       raise ArgumentError,
@@ -139,7 +139,7 @@ defmodule EhOsContract.Consumer do
     model =
       case Model.fetch(Module.safe_concat([row.contract])) do
         %{kind: :contract, units: _} = model -> model
-        _v1 -> raise ArgumentError, "#{row.contract} is not a v2 contract"
+        _other -> raise ArgumentError, "#{row.contract} is not a v2 contract"
       end
 
     values = Codec.values(model.domain)

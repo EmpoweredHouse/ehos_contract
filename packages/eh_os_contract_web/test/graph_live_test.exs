@@ -94,7 +94,7 @@ defmodule EhOsContract.Web.Live.GraphTest do
     refute html =~ ~s(id="system-graph-bare")
   end
 
-  test "no process declared anywhere says so, and draws only the overlay diagram" do
+  test "no process declared anywhere says so, and draws no process diagram" do
     html =
       render_component(&Graph.render/1, %{
         eh_os_contract_web_access: :all,
@@ -104,12 +104,12 @@ defmodule EhOsContract.Web.Live.GraphTest do
         processes: [],
         selected: nil,
         declared_mermaid: nil,
-        overlay_mermaid: "flowchart LR"
+        overlay_mermaid: nil
       })
 
     assert html =~ "No process is declared in any registered contract."
     refute html =~ ~s(id="declared-graph")
-    assert html =~ ~s(id="overlay-graph")
+    refute html =~ ~s(id="overlay-graph")
   end
 
   test "the selected process's option is marked, others are not" do

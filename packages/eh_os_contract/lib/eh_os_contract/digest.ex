@@ -3,8 +3,8 @@ defmodule EhOsContract.Digest do
   The canonical form of a declaration, and the hash taken over it.
 
   Both identities of a deployment are hashes — the contract version is a hash of
-  the contract's declarations, the wiring version a hash of the handlers' published
-  edges (`EhOsContract.Deployment`). They are compared against values written into the log
+  the contract's declarations, the wiring version a hash of its steps and the modules
+  implementing them (`EhOsContract.Deployment`). They are compared against values written into the log
   weeks earlier, which makes one property non-negotiable: **the same agreement must
   hash the same way every time, on every machine, forever.**
 
@@ -27,11 +27,11 @@ defmodule EhOsContract.Digest do
 
   ## What is deliberately significant
 
-  **The order of a list value stays.** `instance: [:company_id, :period]` and
+  **The order of a list value stays.** `correlate [:company_id, :period]` and
   `[:period, :company_id]` are different agreements: the run key is those values
   joined in order, so sorting them would make two different keys hash alike.
-  `stages:` is the same case — stage order is what makes a backward edge backward
-  (`EhOsContract.Check`). So collections *of declarations* are sorted and values *inside* a
+  Stages are the same case — stage order is what makes a backward edge backward
+  (`EhOsContract.Check.Contracts`). So collections *of declarations* are sorted and values *inside* a
   declaration are not, which is the whole distinction this module exists to hold.
   """
 

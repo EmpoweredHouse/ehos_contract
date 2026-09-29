@@ -11,13 +11,12 @@ below, and the name does not change between versions; the sentence may.
   model changes.
 - Where a rule is one of [ESDM](https://www.esdm.io/reference/linter-rules/)'s, it has ESDM's name,
   and its entry says which ESDM rule it follows and how it differs.
-- A rule that reads **v1 contracts** leaves with the v1 DSL.
 - The rules a contract cannot compile without — `N1`, `X2` and the rest — are the compiler's, not
   this task's, and keep the codes they are printed with.
 
 ## `no-contracts`
 
-**warning** · reads v1 and v2 contracts
+**warning**
 
 The applications `check` scans hold no contract.
 
@@ -27,7 +26,7 @@ applications: [...]` to the applications holding the contracts.
 
 ## `process-without-accountable`
 
-**warning** · reads v1 and v2 contracts
+**warning**
 
 A process names no `accountable` role.
 
@@ -36,7 +35,7 @@ the role that answers for the process with `accountable`.
 
 ## `unverified-declaration`
 
-**warning** · reads v1 and v2 contracts
+**warning**
 
 A `cadence`, a `deadline` or a promise is marked `unverified: true`.
 
@@ -46,9 +45,9 @@ towards the evidence report, because a metric nobody agreed to is worse than non
 
 ## `promise-without-within`
 
-**notice** · reads v1 and v2 contracts
+**notice**
 
-A promise (a v1 `trace`) has no `within`.
+A promise has no `within`.
 
 Any `eventually` after its `from` keeps it, and a run with none stays pending for ever, so the
 promise has no failing case. That is an honest thing to say when nobody agreed a number; the
@@ -56,7 +55,7 @@ notice makes sure it is not read as a promise being kept.
 
 ## `deadline-without-terminal-event`
 
-**notice** · reads v1 and v2 contracts
+**notice**
 
 A process has a `deadline` and no event of it is `terminal: true`.
 
@@ -65,7 +64,7 @@ or broken. Mark the event that ends a run `terminal: true`.
 
 ## `contract-without-implementation`
 
-**notice** · reads v2 contracts
+**notice**
 
 Nothing implements a contract.
 
@@ -75,7 +74,7 @@ implementation and does not cause this notice.
 
 ## `in-transaction-policy-fan-out`
 
-**warning** · reads v2 contracts
+**warning**
 
 A scenario shows an in-transaction policy issuing more than one command.
 
@@ -86,7 +85,7 @@ subscription gives each command its idempotent key without extending the origina
 
 ## `scoped-actor-with-unscoped-command`
 
-**warning** · reads v2 contracts
+**warning**
 
 An actor with scope dimensions may issue an unscoped command.
 
@@ -96,7 +95,7 @@ a different actor when application-wide authority is deliberate.
 
 ## `declaration-without-implementation`
 
-**warning** · reads v2 contracts
+**warning**
 
 A contract is implemented in part.
 
@@ -105,7 +104,7 @@ dispatch refuses to run it. Add a module with `use <Contract>, <kind>: <name>`.
 
 ## `value-without-implementation`
 
-**warning** · reads v2 contracts
+**warning**
 
 A value declares invariants, and no module checks them.
 
@@ -116,29 +115,28 @@ a domain whose contracts have no code yet has nothing to run either.
 
 ## `competing-in-transaction-consumers`
 
-**warning** · reads v2 contracts
+**warning**
 
 Two or more reactions take one event inside the transaction that records it.
 
 Policies and effects delivered `:in_transaction`, of this contract or of any that consumes the
 event, run one after another in an order the contract does not state. If one depends on what
 the other does, have it react to the event the other decides, so the order is a path the
-process shows. Read models are not counted: they decide nothing. v1's
-`competing-sync-handlers`, in v2's words.
+process shows. Read models are not counted: they decide nothing.
 
 ## `free-text-not-personal`
 
-**notice** · reads v2 contracts
+**notice**
 
 A `:string` field of an event is not `personal:`.
 
 `:string` is text a person typed. Unless it is marked `personal:` it is not sealed with its
 subject's key and stays in the log as written after the subject is erased (v2 §14). A code, a
-number or a choice has a type of its own. v1's `free-text-without-retain`, in v2's words.
+number or a choice has a type of its own.
 
 ## `emits-never-produced`
 
-**warning** · reads v2 contracts
+**warning**
 
 A command may emit an event that no `emit/1` of its implementation names.
 
@@ -149,7 +147,7 @@ of the unit, since nothing says which one calls it.
 
 ## `aggregate-without-events`
 
-**warning** · reads v2 contracts · ESDM: `esdm/modeling/aggregate-without-events`
+**warning** · ESDM: `esdm/modeling/aggregate-without-events`
 
 A unit declares no event.
 
@@ -159,7 +157,7 @@ a unit whose events are all `recorded_by:` has no command on purpose (v2 §16, D
 
 ## `event-without-consumer`
 
-**warning** · reads v2 contracts · ESDM: `esdm/modeling/event-without-consumer`
+**warning** · ESDM: `esdm/modeling/event-without-consumer`
 
 Nothing reacts to or reads an event.
 
@@ -170,7 +168,7 @@ not count, as ESDM's aggregate does not.
 
 ## `read-model-without-query`
 
-**warning** · reads v2 contracts · ESDM: `esdm/modeling/read-model-without-query`
+**warning** · ESDM: `esdm/modeling/read-model-without-query`
 
 No query reads a read model.
 
@@ -179,7 +177,7 @@ ever reads.
 
 ## `process-manager-without-ends-on`
 
-**warning** · reads v2 contracts · ESDM: `esdm/modeling/process-manager-without-ends-when`
+**warning** · ESDM: `esdm/modeling/process-manager-without-ends-when`
 
 A process manager declares no `ends_on`.
 
@@ -188,7 +186,7 @@ the same rule says `ends-when`, after its own key.
 
 ## `process-manager-without-event-reactions`
 
-**warning** · reads v2 contracts · ESDM: `esdm/modeling/process-manager-without-event-reactions`
+**warning** · ESDM: `esdm/modeling/process-manager-without-event-reactions`
 
 A process manager reacts only to its own timers after it starts.
 
@@ -198,7 +196,7 @@ a schedule, and may be simpler as one.
 
 ## `event-name-with-aggregate-prefix`
 
-**warning** · reads v2 contracts · ESDM: `esdm/modeling/event-name-with-aggregate-prefix`
+**warning** · ESDM: `esdm/modeling/event-name-with-aggregate-prefix`
 
 An event's name starts with the name of its unit.
 
@@ -207,7 +205,7 @@ the process, so the prefix says twice what the name should not have to. Name wha
 
 ## `reaction-without-scenario`
 
-**warning** · reads v2 contracts · ESDM: `esdm/gwt/feature-without-scenarios`
+**warning** · ESDM: `esdm/gwt/feature-without-scenarios`
 
 No scenario runs a policy, a process manager or a query.
 
@@ -220,7 +218,7 @@ invariant holds, and a reaction is also checked on the log by the conformance re
 
 ## `consults-without-match`
 
-**warning** · reads v2 contracts
+**warning**
 
 A boundary consults an event by `where:` alone.
 
@@ -230,7 +228,7 @@ one conflicts with its decision, so under load most decisions are retried or ref
 
 ## `orphan-actor`
 
-**warning** · reads v2 contracts · ESDM: `esdm/modeling/orphan-actor`
+**warning** · ESDM: `esdm/modeling/orphan-actor`
 
 An actor of the domain is named by no contract.
 
@@ -241,7 +239,7 @@ it work is not written yet.
 
 ## `orphan-external-system`
 
-**warning** · reads v2 contracts · ESDM: `esdm/modeling/orphan-external-system`
+**warning** · ESDM: `esdm/modeling/orphan-external-system`
 
 An external system of the domain is used by nothing.
 
@@ -250,7 +248,7 @@ No actor is `backed_by:` it, no relation ends at it, no field is `issued_by:` it
 
 ## `bounded-context-without-content`
 
-**warning** · reads v2 contracts · ESDM: `esdm/modeling/bounded-context-without-content`
+**warning** · ESDM: `esdm/modeling/bounded-context-without-content`
 
 A context of the domain is the `context:` of no contract.
 
@@ -260,7 +258,7 @@ not make it less empty: nothing is decided, recorded or read there.
 
 ## `subdomain-without-bounded-context`
 
-**warning** · reads v2 contracts · ESDM: `esdm/modeling/subdomain-without-bounded-context`
+**warning** · ESDM: `esdm/modeling/subdomain-without-bounded-context`
 
 No context belongs to a subdomain of the domain.
 
@@ -269,7 +267,7 @@ should name it with `subdomain:`, or it is left over.
 
 ## `orphan-context-mapping`
 
-**warning** · reads v2 contracts · ESDM: `esdm/modeling/orphan-context-mapping`
+**warning** · ESDM: `esdm/modeling/orphan-context-mapping`
 
 A relation between two contexts is crossed by no reference.
 
@@ -280,7 +278,7 @@ a dependency the contracts do not have.
 
 ## `relation-against-references`
 
-**warning** · reads v2 contracts
+**warning**
 
 A reference between two contexts runs against the relation declared between them.
 
@@ -294,7 +292,7 @@ whom.
 
 ## `label-with-avoided-term`
 
-**warning** · reads v2 contracts
+**warning**
 
 A label of a contract uses a word its context's glossary says to avoid.
 
@@ -306,7 +304,7 @@ The words a translation avoids are another language's, which labels are not writ
 
 ## `external-direction-contradicted`
 
-**warning** · reads v2 contracts
+**warning**
 
 An external this application only sends to issues a value or backs an actor.
 
@@ -318,7 +316,7 @@ and to fetch alike.
 
 ## `cross-bounded-context-reference-without-mapping`
 
-**warning** · reads v2 contracts · ESDM: `esdm/modeling/cross-bounded-context-reference-without-mapping`
+**warning** · ESDM: `esdm/modeling/cross-bounded-context-reference-without-mapping`
 
 A contract reaches into another context that no relation connects to its own.
 
@@ -326,109 +324,12 @@ It consumes a contract of another context, or names an entity another context ow
 domain declares no `relation` between the two. Which way the dependency runs — who is upstream,
 who conforms, who translates — is then written nowhere. One finding per reference.
 
-## `event-declared-twice`
-
-**error** · reads v1 contracts
-
-Two v1 contracts declare an event of one name.
-
-Handlers are selected by event name alone, so emitting it from one contract runs the other's
-handlers too. A v2 contract cannot compile with this (X7).
-
-## `process-declared-twice`
-
-**error** · reads v1 contracts
-
-Two v1 contracts declare a process of one name.
-
-A run identity carries no contract, so runs of one are counted as runs of the other and the log
-cannot be separated afterwards. A v2 contract cannot compile with this (X7).
-
-## `command-declared-twice`
-
-**error** · reads v1 contracts
-
-Two v1 contracts declare a command of one name.
-
-The capability is derived from the name, so one permission would authorise two different
-things. A v2 contract cannot compile with this (D14).
-
-## `event-without-handler`
-
-**notice** · reads v1 contracts
-
-A v1 event has no handler and is not `terminal`.
-
-Legal, and the plainest case of a declared path nobody takes. Whether it is on purpose lives in
-the author's head, so it is said out loud.
-
-## `owner-not-a-module`
-
-**notice** · reads v1 contracts
-
-A v1 event's `owner` names a module that does not exist.
-
-Normal while a stage is not yet implemented; a typo otherwise. One finding per owner, not per
-event.
-
-## `rule-function-missing`
-
-**error** · reads v1 contracts
-
-A v1 `rule` names a function that does not exist.
-
-A `rule` points at a function by module, name and arity, so nothing else checks that it exists.
-
-## `trace-unresolved`
-
-**error** · reads v1 contracts
-
-A v1 `trace` names an event no contract declares.
-
-The assertion can never be evaluated. A v2 promise cannot compile with this (R5).
-
 ## `backward-edge`
 
-**warning** · reads v1 and v2 contracts
+**warning**
 
 A reaction in a later stage publishes into an earlier one.
 
-The process goes back on itself, which the stage order says it does not. Either the stages are
-in the wrong order or the reaction is a loop the process has not declared. In a v2 contract, a
-policy or a process manager reacting to an event of one stage issues a command whose events
-sit in an earlier one.
-
-## `competing-sync-handlers`
-
-**warning** · reads v1 contracts
-
-A v1 event has two or more synchronous handlers.
-
-They run in alphabetical order of module name, which reproduces but says nothing about the
-process. If the order matters, have one publish an event the other subscribes to.
-
-## `free-text-without-retain`
-
-**notice** · reads v1 contracts
-
-A v1 `:string` field has no `retain`.
-
-`:string` means text a person typed, and it reaches the log verbatim.
-
-## `promise-finer-than-run`
-
-**warning** · reads v1 contracts
-
-A v1 assertion's `from` event is identified by more than its run.
-
-The assertion is evaluated per item. An `eventually` or `or_else` that does not carry the
-item's fields cannot resolve any item, so confirm that they do.
-
-## `fact-not-keyed-by-run`
-
-**warning** · reads v1 contracts
-
-A v1 event's identity does not contain its run's key.
-
-Two such facts in two runs share one identity, so the asynchronous idempotency key cannot tell
-them apart and the second is deduplicated away.
+A policy or a process manager reacting to an event of one stage issues a command whose events
+sit in an earlier one. The process goes back on itself, which the stage order says it does not.
+Either the stages are in the wrong order or the reaction is a loop the process has not declared.
