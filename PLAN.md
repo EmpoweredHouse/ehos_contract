@@ -2483,7 +2483,12 @@ na niej działa), a `down/1` na niej pada na nieistniejącym `V05`.
 coderabbit”).** `up/1` i `down/1` odmawiają (`ArgumentError`) bazie, której komentarz wersji jest wyższy niż
 `current_version/0`, z komunikatem „odtwórz bazę”. To odwraca odrzuconą wyżej opcję (a) — powód: bez odmowy baza
 zapisana jako „5” pominęłaby po cichu przyszłe V02, a to już nie sprawa bazy sprzed cięcia, tylko każdej wersji
-naprzód. Ścieżki migracji z bazy sprzed cięcia dalej nie ma. Test na `CommitRepo`, sprawdzony odwrotnie.
+naprzód. Ścieżki migracji z bazy sprzed cięcia dalej nie ma. Test na `CommitRepo`, sprawdzony odwrotnie. Po przeglądzie tej poprawki
+(`code-review high`): komunikat rozróżnia bazę z nowszego wydania (użyj tamtego wydania) od bazy sprzed 0.3.0
+(odtwórz albo zostań na 0.2), a `up/1` i `down/1` odmawiają też wersji docelowej spoza znanych — migracja hosta
+wołająca `up(version: 2..5)` padała na nieistniejącym `V02`. Bez zmiany: baza z sierpnia zapisana jako „1” w starym
+schemacie (żadna taka nie istnieje), `down/1` na bazie bez tabel (sprzed tej zmiany), ślad „5” po zabitym przebiegu
+testu (naprawia `ecto.drop`).
 
 **Wybory asystenta (mechanika):**
 - **Czas zostaje `timestamp`** (Ecto `utc_datetime_usec`), nie `timestamptz` ze szkicu §10.3 — silnik pisze i czyta
