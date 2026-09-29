@@ -127,15 +127,14 @@ defmodule EhOsContract.MixProject do
       # tables and ships the migration for them.
       {:ecto_sql, "~> 3.14"},
       {:postgrex, "~> 0.22"},
-      # Asynchronous handlers cross a process boundary through a queue.
+      # What is delivered at least once — effects, timers — crosses a process
+      # boundary through a queue.
       {:oban, "~> 2.20"},
       {:jason, "~> 1.4"},
-      # Declared explicitly rather than inherited: a package whose dependency is
-      # satisfied only because a neighbour happens to need it breaks when the
-      # neighbour goes.
-      {:telemetry, "~> 1.3"},
       # `EhOsContract.Codec` writes a `:decimal` field as a string and reads it back as a
-      # `Decimal`, so the engine calls it by name; the same reasoning as `:telemetry`.
+      # `Decimal`, so the engine calls it by name. Declared explicitly rather than
+      # inherited: a package whose dependency is satisfied only because a neighbour
+      # happens to need it breaks when the neighbour goes.
       {:decimal, "~> 2.0 or ~> 3.0"},
       # `EhOsContract.Plug` serves the model's commands, recordings and queries over
       # HTTP. Optional: a host without Plug does not get it, and the module compiles
