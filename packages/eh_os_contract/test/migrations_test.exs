@@ -88,6 +88,18 @@ defmodule EhOsContract.MigrationsTest do
            FROM pg_index i JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
            WHERE i.indrelid = 'eh_os_contract_events'::regclass AND i.indisprimary
            """) == "position"
+
+    # The database hands out positions, and nothing may choose one: `a` is ALWAYS.
+    assert one("""
+           SELECT attidentity FROM pg_attribute
+           WHERE attrelid = 'eh_os_contract_events'::regclass AND attname = 'position'
+           """) == "a"
+
+    # `id` is not the primary key any more, and still unique.
+    assert one("""
+           SELECT pg_get_constraintdef(oid) FROM pg_constraint
+           WHERE conname = 'eh_os_contract_events_id_key'
+           """) == "UNIQUE (id)"
   end
 
   test "no column of the engine's tables is limited to 255 characters" do

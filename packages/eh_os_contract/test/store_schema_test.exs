@@ -1,6 +1,6 @@
 defmodule EhOsContract.StoreSchemaTest do
   @moduledoc """
-  v2 plan, E2: **what migration V03 makes the database itself refuse or guarantee.**
+  v2 plan, E2: **what migration V01 makes the database itself refuse or guarantee.**
 
   Everything here holds for any writer, the store or not, because it lives in the
   table: the log is append-only, every insert takes the append lock, positions are
