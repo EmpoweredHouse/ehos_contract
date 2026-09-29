@@ -11,8 +11,8 @@ defmodule EhOsContract.ClockV2Test do
   would leave a run spread across two dates, one of them today, and every duration and
   promise measured on it would be wrong by however long ago the test meant.
 
-  `clock_test.exs` pins the same on v1 and the parts of `at/2` that are not about any
-  contract: a zone other than UTC, nesting, and what happens outside it.
+  `clock_test.exs` pins the parts of `at/2` that are not about any contract: a zone
+  other than UTC, nesting, and what happens outside it.
   """
 
   use EhOsContract.DataCase, async: false
@@ -47,11 +47,11 @@ defmodule EhOsContract.ClockV2Test do
   end
 
   test "a subscription drained inside at/2 stamps its events with that time too" do
-    Seed.deploy(:v2)
+    Seed.deploy()
 
     Clock.at(@nine, fn ->
-      Seed.request(:v2, "r-1", :request_refused)
-      Seed.run_queue(:v2)
+      Seed.request("r-1", :request_refused)
+      Seed.run_queue()
     end)
 
     notified = events(ProcessShapes.Next.Promised, :refusal_notified)

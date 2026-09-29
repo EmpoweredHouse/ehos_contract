@@ -30,7 +30,7 @@ defmodule EhOsContract.BootTest do
 
     supervisor = start_supervised!(EhOsContract)
 
-    refute EhOsContract.Registry.contracts() == []
+    refute EhOsContract.Registry.v2_contracts() == []
     refute EhOsContract.TestRepo.all(EhOsContract.Deployment) == []
     assert runners(supervisor) == []
     assert Repo.all(SubscriptionRecord) == []

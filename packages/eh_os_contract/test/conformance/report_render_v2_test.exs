@@ -27,7 +27,7 @@ defmodule EhOsContract.ReportRenderV2Test do
   alias ProcessShapes.Next.Promised
   alias ProcessShapes.Seed
 
-  setup do: Seed.deploy(:v2)
+  setup do: Seed.deploy()
 
   defp data(opts \\ []), do: Conformance.report(Promised, opts)
   defp text(opts \\ []), do: opts |> data() |> Report.render()
@@ -50,8 +50,8 @@ defmodule EhOsContract.ReportRenderV2Test do
 
   defp run_at(id, at, decision \\ :request_approved) do
     EhOsContract.Clock.at(at, fn ->
-      Seed.request(:v2, id, decision)
-      Seed.run_queue(:v2)
+      Seed.request(id, decision)
+      Seed.run_queue()
     end)
   end
 
@@ -65,7 +65,7 @@ defmodule EhOsContract.ReportRenderV2Test do
 
       # The control: a confirmed deadline does print, so the filter acts on
       # `unverified` rather than the renderer being unable to print a deadline.
-      Seed.start_run(:v2, "r-1", ~U[2026-09-01 09:00:00.000000Z])
+      Seed.start_run("r-1", ~U[2026-09-01 09:00:00.000000Z])
 
       assert ProcessShapes.Next.Timed |> Conformance.report() |> Report.render() =~ "Deadline:"
     end
@@ -276,18 +276,18 @@ defmodule EhOsContract.ReportRenderV2Test do
     end
 
     test "the sentence counts only the runs that finished" do
-      Seed.start_run(:v2, "r-1", @nine)
-      Seed.finish_run(:v2, "r-1", ~U[2026-09-01 09:30:00.000000Z])
-      Seed.start_run(:v2, "r-2", @nine)
-      Seed.finish_run(:v2, "r-2", ~U[2026-09-01 10:30:00.000000Z])
+      Seed.start_run("r-1", @nine)
+      Seed.finish_run("r-1", ~U[2026-09-01 09:30:00.000000Z])
+      Seed.start_run("r-2", @nine)
+      Seed.finish_run("r-2", ~U[2026-09-01 10:30:00.000000Z])
 
       assert timed_text() =~ "The agreed duration was exceeded in 1 of 2 runs that finished."
     end
 
     test "a run still open past its hour gets its own line, not a place in the count" do
-      Seed.start_run(:v2, "r-1", @nine)
-      Seed.finish_run(:v2, "r-1", ~U[2026-09-01 09:30:00.000000Z])
-      Seed.start_run(:v2, "r-2", @nine)
+      Seed.start_run("r-1", @nine)
+      Seed.finish_run("r-1", ~U[2026-09-01 09:30:00.000000Z])
+      Seed.start_run("r-2", @nine)
 
       t = timed_text()
 
@@ -296,7 +296,7 @@ defmodule EhOsContract.ReportRenderV2Test do
     end
 
     test "a run still inside its time is no finding, and nothing finished cannot be judged" do
-      Seed.start_run(:v2, "r-1", ~U[2026-09-01 11:50:00.000000Z])
+      Seed.start_run("r-1", ~U[2026-09-01 11:50:00.000000Z])
 
       t = timed_text()
 

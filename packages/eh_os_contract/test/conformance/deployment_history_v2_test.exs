@@ -104,8 +104,8 @@ defmodule EhOsContract.DeploymentHistoryV2Test do
     end
 
     test "versions in the log with counts and ranges" do
-      Seed.deploy(:v2)
-      Seed.request(:v2, "r-1", :request_approved)
+      Seed.deploy()
+      Seed.request("r-1", :request_approved)
 
       record_event!(%{
         type: "handling.request_received",

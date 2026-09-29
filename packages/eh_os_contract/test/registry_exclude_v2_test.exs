@@ -1,8 +1,7 @@
 defmodule EhOsContract.RegistryExcludeV2Test do
   @moduledoc """
   **`config :eh_os_contract, exclude: [...]` keeps a namespace out of the scan** — for
-  v2 contracts and the domains they share, as `registry_exclude_test.exs` pins it for
-  v1 contracts and their handlers.
+  v2 contracts and the domains they share.
 
   `EhOsContract.Registry.load!/1` is where every reader of v2 starts:
   `v2_contracts/0` feeds the deployment table, the check and the graphs, and

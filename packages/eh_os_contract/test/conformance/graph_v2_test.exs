@@ -45,9 +45,9 @@ defmodule EhOsContract.GraphV2Test do
   end
 
   test "the overlay puts the runs on each step and the occurrences on each event" do
-    Seed.deploy(:v2)
-    Seed.request(:v2, "r-1", :request_approved)
-    Seed.request(:v2, "r-2", :request_refused)
+    Seed.deploy()
+    Seed.request("r-1", :request_approved)
+    Seed.request("r-2", :request_refused)
 
     diagram = Graph.contract_to_mermaid(ProcessShapes.Next.Promised, overlay: true)
 

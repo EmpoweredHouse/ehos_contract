@@ -1,18 +1,16 @@
 defmodule ProcessShapes.Next.Promised do
   @moduledoc """
-  # THIS IS NOT A DOMAIN EITHER. See `ProcessShapes.Rig`.
+  # THIS IS NOT A DOMAIN EITHER. See `ProcessShapes`.
 
-  `ProcessShapes.Promised` in the v2 DSL (v2 plan, E7c), kept beside it so that the
-  same runs are judged on both and give the same verdicts. The shape is the same:
-  a request arrives and is logged, is approved or refused, and then completes or has
-  its refusal notified — the notice through the log after the transaction, so that
-  "not yet" has somewhere to wait. The promise is the same: after it arrives, within
-  two days it completes, or else the refusal has gone out.
+  **The shape of a promise with two endings, one of which crosses the queue**
+  (v2 plan, E7c). A request arrives and is logged, is approved or refused, and then
+  completes or has its refusal notified — the notice through the log after the
+  transaction, so that "not yet" has somewhere to wait. The promise: after it
+  arrives, within two days it completes, or else the refusal has gone out.
 
-  Where v1 put two facts in one emission, v2 has two commands: the request is
-  submitted, then decided. v1's three synchronous and asynchronous handlers are
-  three policies, and each of their paths is two steps here, since a command is a
-  node of the graph: the event, the policy's command, the command's event.
+  The request is submitted, then decided: two commands. Three policies follow, and
+  each of their paths is two steps, since a command is a node of the graph: the
+  event, the policy's command, the command's event.
   """
 
   use EhOsContract.Next.Contract, domain: ProcessShapes.Domain, context: :handling
@@ -56,8 +54,8 @@ defmodule ProcessShapes.Next.Promised do
     handles: :request_approved,
     issues: :complete_request
 
-  # Through the log, after the transaction, as v1's asynchronous handler was: while
-  # it waits, the promise has been neither kept nor broken.
+  # Through the log, after the transaction: while it waits, the promise has been
+  # neither kept nor broken.
   policy :notify_on_refusal, "Notify a refused request",
     handles: :request_refused,
     issues: :notify_refusal,
@@ -72,7 +70,9 @@ defmodule ProcessShapes.Next.Promised do
     stage :closing
 
     # Confirmed, in the fiction of this fixture. The deadline is not, and is three
-    # days where the promise is two, for the reasons v1's moduledoc gives.
+    # days where the promise is two. Two numbers, so that a test can tell whether a
+    # value in the report came from the promise or from the deadline; unconfirmed, so
+    # that the evidence report has a declaration to leave out.
     cadence {1, :day}
     deadline {3, :day}, unverified: true
 

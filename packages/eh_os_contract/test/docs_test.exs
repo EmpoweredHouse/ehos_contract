@@ -5,15 +5,17 @@ defmodule EhOsContract.DocsTest do
   In one day we found four such divergences between the record and the code,
   including a DSL example in notes §1 using types that are not in the vocabulary.
 
-  These tests are the mechanism that lets that file exist. Three things:
+  These tests are the mechanism that lets that file exist. Two things:
 
   1. **The example from the documentation compiles.** It is not an illustration,
      it is a fixture. The same rule the contract applies to rules, applied to its
      own documentation.
   2. **Every DSL key is described in the document.** Adding a key without
      describing it breaks a test.
-  3. **Every gate in the "what refuses to compile" table has a test.** The table
-     promises a compile error; the test proves the promise is true.
+
+  A third test counted the rows of the "what refuses to compile" table against the
+  tests of `compile_gates_test.exs`. Those tests pinned v1's gates and went with v1's
+  tests (v2 plan, E11a); the document and this file go with v1's library.
 
   The generated reference block guards itself — `mix eh_os_contract.docs --check` in
   this package's `mix check` breaks the build if it is out of date.
@@ -22,7 +24,6 @@ defmodule EhOsContract.DocsTest do
   use ExUnit.Case, async: true
 
   @path "docs/contract.md"
-  @gates "test/compile_gates_test.exs"
 
   setup_all do
     {:ok, doc: File.read!(@path)}
@@ -64,45 +65,10 @@ defmodule EhOsContract.DocsTest do
     end
   end
 
-  describe "the gate table promises a compile error" do
-    test "the table has no more rows than there are gate tests", %{doc: doc} do
-      # A weaker condition than a one-to-one mapping, but checkable, and it catches
-      # the case that actually threatens: adding a promise to the table that nobody
-      # has proven.
-      promises = gate_table_rows(doc)
-      tests = gate_tests()
-
-      assert promises > 0
-
-      assert promises <= tests,
-             "the \"what refuses to compile\" table promises #{promises} gates, and there are " <>
-               "#{tests} gate tests. A promise with no test is a sentence in prose."
-    end
-  end
-
   defp contract_blocks(doc) do
     ~r/```elixir\n(.*?)```/s
     |> Regex.scan(doc, capture: :all_but_first)
     |> Enum.map(&List.first/1)
     |> Enum.filter(&String.contains?(&1, "use EhOsContract.Contract"))
-  end
-
-  defp gate_table_rows(doc) do
-    doc
-    |> String.split("## What refuses to compile", parts: 2)
-    |> List.last()
-    |> String.split("\n## ", parts: 2)
-    |> List.first()
-    |> String.split("\n")
-    |> Enum.count(&String.match?(&1, ~r/^\| .* \| .* \|$/))
-    # minus the header and the separator
-    |> Kernel.-(2)
-  end
-
-  defp gate_tests do
-    @gates
-    |> File.read!()
-    |> then(&Regex.scan(~r/^\s+test "/m, &1))
-    |> length()
   end
 end

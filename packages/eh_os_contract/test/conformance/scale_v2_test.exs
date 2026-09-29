@@ -13,8 +13,6 @@ defmodule EhOsContract.ScaleV2Test do
   different axis: what happens at the exact edge. Both bounds are inclusive, which has a
   consequence for anybody generating consecutive periods and is pinned below rather
   than left to be discovered by a number that is off by one event.
-
-  `scale_edges_test.exs` pins the same on v1, with a fixture of its own.
   """
 
   use EhOsContract.DataCase, async: false

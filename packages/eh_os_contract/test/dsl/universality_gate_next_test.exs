@@ -91,9 +91,4 @@ defmodule EhOsContract.Next.UniversalityGateTest do
     assert EhOsContract.Domain.Rules.built_in_types() ==
              [:id, :string, :integer, :decimal, :boolean, :date, :timestamp]
   end
-
-  test "v1's registry does not see it, so v1's check and report are unchanged" do
-    refute @contract in EhOsContract.Registry.contracts()
-    assert UniversalityGate.TreatmentEpisode in EhOsContract.Registry.contracts()
-  end
 end

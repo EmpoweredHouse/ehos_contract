@@ -30,9 +30,9 @@ defmodule EhOsContract.Web.Live.GraphTest do
     assert html =~ ~s(id="declared-graph")
     assert html =~ ~s(id="overlay-graph")
 
-    # The screen opens on the v2 process, though the v1 one's label sorts first: its
-    # declared shape in the first panel, its contract's full graph with the log in the
-    # second — the steps, and the actor issuing them.
+    # The screen opens on the process: its declared shape in the first panel, its
+    # contract's full graph with the log in the second — the steps, and the actor
+    # issuing them.
     assert html =~ "event_case_opened"
     assert html =~ "command_open_case --&gt;"
     assert html =~ "actor_case_officer --&gt; command_open_case"
@@ -75,26 +75,6 @@ defmodule EhOsContract.Web.Live.GraphTest do
       assert LazyHTML.attribute(block, "phx-update") == ["ignore"],
              "#{inspect(LazyHTML.attribute(block, "id"))} is patched by LiveView"
     end
-  end
-
-  test "two processes of one name in two contracts are each reachable, a v1 one with its own panels" do
-    # The v2 fixture and its v1 original both name their process `handling`.
-    {:ok, view, _html} =
-      build_conn()
-      |> Access.put_actor("admin", ["eh_os_contract_admin"])
-      |> live("/dashboard/graph")
-
-    v1 = "#{inspect(EhOsContract.Web.TestHost.Fixtures.V1.CaseHandling)}:handling"
-    html = render_change(view, "select_process", %{"process" => v1})
-
-    assert html =~ "flowchart TB"
-    # A v1 contract has no units to draw.
-    refute html =~ ~s(id="unit-graph-)
-    assert html =~ "Declared versus observed, every contract"
-
-    v2 = "#{inspect(EhOsContract.Web.TestHost.Fixtures.CaseHandling)}:handling"
-    html = render_change(view, "select_process", %{"process" => v2})
-    assert html =~ "Declared versus observed, this process"
   end
 
   test "a domain with no v2 contract has its map, and no system" do

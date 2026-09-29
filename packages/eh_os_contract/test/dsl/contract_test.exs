@@ -3,8 +3,8 @@ defmodule EhOsContract.Next.ContractTest do
   v2 plan, E4: **a v2 contract compiles to plain data** (v2 §9), whose version does
   not see declaration order.
 
-  The fixtures are declared inside this file, as in `digest_test`: modules defined in
-  a `.exs` are not in the application's module list, so the registry never sees them.
+  The fixtures are declared inside this file on purpose: modules defined in a `.exs`
+  are not in the application's module list, so the registry never sees them.
   Their domain, `EhOsContract.Next.ContractTest.Clinic`, does not exist, and that is
   the point of one test: `domain:` records no compile dependency (v2 §8).
   """
@@ -369,7 +369,7 @@ defmodule EhOsContract.Next.ContractTest do
              }
     end
 
-    test "refuses capabilities for a domain that is not compiled, and for a v1 contract" do
+    test "refuses capabilities for a domain that is not compiled" do
       error = assert_raise ArgumentError, fn -> Model.capabilities(Golden) end
 
       assert error.message =~
@@ -383,11 +383,6 @@ defmodule EhOsContract.Next.ContractTest do
         end
 
       assert error.message =~ "names domain Enum, which is not a compiled EhOsContract.Domain"
-
-      error = assert_raise ArgumentError, fn -> Model.capabilities(ProcessShapes.Bare) end
-
-      assert error.message =~
-               "ProcessShapes.Bare is a v1 contract, which declares no capabilities"
     end
 
     test "is refused by the v1 accessors, by name" do

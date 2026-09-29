@@ -9,60 +9,12 @@ defmodule EhOsContract.DigestTest do
   reclassifies the whole log as belonging to an older agreement, which is the
   evidence report announcing a contract change on a day nothing changed.
 
-  The fixtures below are declared **inside this file on purpose**. The registry scans
-  the application's module list, and modules defined in a `.exs` are not in it — so
-  these contracts are invisible to the graph, the deployment table and every path
-  report. A fixture that exists to be hashed should not turn up in a client's report
-  as an unobserved process.
+  What is pinned here is the hash itself: the canonical form, the grouping of
+  declarations and the document hash. That a contract's digests have the shape the
+  deployment table stores is pinned on a contract, in `dsl/contract_test.exs`.
   """
 
   use ExUnit.Case, async: true
-
-  defmodule Ordered do
-    @moduledoc false
-    use EhOsContract.Contract
-
-    event :first, label: "Pierwsze", payload: %{case_id: :id, seq: :integer}
-    event :second, label: "Drugie", payload: %{case_id: :id, seq: :integer}
-  end
-
-  defmodule Reordered do
-    @moduledoc false
-    use EhOsContract.Contract
-
-    # The same two declarations, swapped. This is an ordinary edit — nobody would
-    # expect it to change what was agreed.
-    event :second, label: "Drugie", payload: %{case_id: :id, seq: :integer}
-    event :first, label: "Pierwsze", payload: %{case_id: :id, seq: :integer}
-  end
-
-  defmodule Changed do
-    @moduledoc false
-    use EhOsContract.Contract
-
-    # One payload type differs. That *is* a change to the agreement.
-    event :first, label: "Pierwsze", payload: %{case_id: :id, seq: :string}
-    event :second, label: "Drugie", payload: %{case_id: :id, seq: :integer}
-  end
-
-  describe "the contract version" do
-    test "does not move when declarations are only reordered" do
-      # The likelier of the two defects the old hash had, and the reason this is
-      # worth a module: an OTP upgrade is an event somebody notices, moving an
-      # `event` block up two lines is not.
-      assert Ordered.version() == Reordered.version()
-    end
-
-    test "moves when a declaration actually changes" do
-      # The control. Without it the test above would also pass for a hash that
-      # returned a constant.
-      refute Ordered.version() == Changed.version()
-    end
-
-    test "is twelve hex characters, so it can be read out of a report" do
-      assert Ordered.version() =~ ~r/^[0-9a-f]{12}$/
-    end
-  end
 
   describe "the canonical form" do
     test "sorts map keys, so encoding order cannot leak into the hash" do
@@ -108,78 +60,6 @@ defmodule EhOsContract.DigestTest do
     test "remain independent of map insertion order" do
       assert EhOsContract.Digest.document_hash(%{"b" => 1, "a" => 2}) ==
                EhOsContract.Digest.document_hash(%{"a" => 2, "b" => 1})
-    end
-  end
-
-  defmodule WithCommand do
-    @moduledoc false
-    use EhOsContract.Contract
-
-    event :first, label: "Pierwsze", payload: %{case_id: :id, seq: :integer}, process: :p
-    command :start_it, label: "Start it", process: :p, principals: [:human]
-    process :p, label: "P", instance: [:case_id]
-  end
-
-  defmodule WithoutCommand do
-    @moduledoc false
-    use EhOsContract.Contract
-
-    event :first, label: "Pierwsze", payload: %{case_id: :id, seq: :integer}, process: :p
-    process :p, label: "P", instance: [:case_id]
-  end
-
-  describe "the seventh declaration group" do
-    test "a declared command moves the contract version" do
-      # The group is in `hash_groups/1`'s keyword list, and this is what says so.
-      # Without it the whole seventh declaration could be added to a contract with
-      # no effect on its recorded version, and the log would keep classifying events
-      # under an agreement that had changed.
-      refute WithCommand.version() == WithoutCommand.version()
-    end
-
-    test "and gets its own entry among the declaration digests" do
-      assert Map.has_key?(WithCommand.declaration_digests(), "command:start_it")
-      refute Map.has_key?(WithoutCommand.declaration_digests(), "command:start_it")
-    end
-  end
-
-  describe "per-declaration digests" do
-    test "every named declaration gets an entry, plus one for the examples" do
-      # Derived rather than a literal: `ProcessShapes.Rig`'s own moduledoc warns that
-      # adding an event moves counts a dozen tests assert against, and this test has
-      # no opinion about how many declarations a fixture holds — only that none is
-      # missing.
-      contract = ProcessShapes.Rig
-
-      expected =
-        length(contract.events()) + length(contract.processes()) + length(contract.traces()) +
-          length(contract.externals()) + length(contract.rules()) + 1
-
-      assert map_size(contract.declaration_digests()) == expected
-      assert Map.has_key?(contract.declaration_digests(), "process:pairing")
-    end
-
-    test "does not move when declarations are only reordered" do
-      # The same property `version/0` has, for the same reason: moving an `event`
-      # block up two lines is an edit, not a change to the agreement.
-      assert Ordered.declaration_digests() == Reordered.declaration_digests()
-    end
-
-    test "a changed declaration moves its own entry and no other" do
-      # This is the whole point. `version/0` only says something moved; here the
-      # changed payload type is attributable to `event:first` and `event:second` is
-      # demonstrably untouched.
-      ordered = Ordered.declaration_digests()
-      changed = Changed.declaration_digests()
-
-      refute ordered["event:first"] == changed["event:first"]
-      assert ordered["event:second"] == changed["event:second"]
-    end
-
-    test "each entry is twelve hex characters, like the contract version" do
-      for {_key, digest} <- Ordered.declaration_digests() do
-        assert digest =~ ~r/^[0-9a-f]{12}$/
-      end
     end
   end
 

@@ -37,11 +37,11 @@ defmodule EhOsContract.DataCase do
   end
 
   @doc """
-  Writes one row to the log directly, bypassing `EhOsContract.emit/4`: an event from an
+  Writes one row to the log directly, bypassing dispatch: an event from an
   older contract version, one the contract never declared, or one dated in the past.
 
   **The one place the suite writes the log itself**, and it writes through
-  `EhOsContract.Store` like the emitter does. Until v2 plan stage E2, eleven test files
+  `EhOsContract.Store` like dispatch does. Until v2 plan stage E2, eleven test files
   each did their own `Repo.insert!(%EhOsContract.Event{})`. The one exception is
   `store_schema_test.exs`, which tests what the table refuses from any writer and so
   inserts around the store on purpose.

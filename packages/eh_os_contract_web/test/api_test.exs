@@ -17,8 +17,7 @@ defmodule EhOsContract.Web.ApiTest do
 
   @endpoint EhOsContract.Web.TestHost.Endpoint
 
-  # Two contracts are registered, the v2 one and its v1 graph-control original,
-  # so a conformance request names which it asks about.
+  # A conformance request names the contract it asks about.
   @contract "/api/conformance?contract=EhOsContract.Web.TestHost.Fixtures.CaseHandling"
 
   setup do
@@ -65,7 +64,7 @@ defmodule EhOsContract.Web.ApiTest do
     end
 
     test "a named contract is served", %{conn: conn} do
-      contract = EhOsContract.Registry.contracts() |> List.first() |> inspect()
+      contract = EhOsContract.Registry.v2_contracts() |> List.first() |> inspect()
       conn = get(conn, "/api/conformance?contract=#{contract}")
 
       assert conn.status == 200

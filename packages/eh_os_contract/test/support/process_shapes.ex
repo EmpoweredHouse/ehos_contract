@@ -1,6 +1,9 @@
 defmodule ProcessShapes do
   @moduledoc """
-  **A test rig, not a domain.** See `ProcessShapes.Rig`.
+  **A test rig, not a domain.** The names are deliberately colourless — a request,
+  a run, a batch — because if they sounded like accounting or like medicine,
+  somebody would read them as knowledge about a domain. There is not a single claim
+  about anybody's process here.
 
   Its own boundary rather than hanging off `Taxvision`: process shapes are meant
   to be checked **without** access to anything belonging to the client, otherwise
@@ -15,12 +18,6 @@ defmodule ProcessShapes do
   use Boundary,
     deps: [EhOsContract],
     exports: [
-      Rig,
-      Bare,
-      Promised,
-      Intake,
-      Matching,
-      Resolution,
       Domain,
       Next.Promised,
       Next.Timed,

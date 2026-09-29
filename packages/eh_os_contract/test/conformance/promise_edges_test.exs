@@ -152,7 +152,7 @@ defmodule EhOsContract.PromiseEdgesTest do
   @one_microsecond_late ~U[2026-07-02 09:00:00.000001Z]
   @long_after ~U[2026-07-10 09:00:00.000000Z]
 
-  # Through the store, as `ProcessShapes.Seed.fact/4` writes a fact: the append is what
+  # Through the store, as `ProcessShapes.Seed.fact/3` writes a fact: the append is what
   # puts the event in its run, and a v2 promise reads nothing else.
   defp insert(name, at, case_id \\ "c-1") do
     repo = Application.fetch_env!(:eh_os_contract, :repo)

@@ -1,49 +1,19 @@
 defmodule EhOsContract.ClockTest do
   @moduledoc """
-  v2 plan, E2: **the time an event is stamped with is chosen before it is written.**
+  **The parts of `EhOsContract.Clock.at/2` that are not about any contract**: a zone
+  other than UTC is refused at the call, calls nest and restore, and outside `at/2`
+  it is now.
 
-  The log becomes append-only in this stage, so the three test files that used to
-  move `occurred_at` with an `UPDATE` now emit in the past through
-  `EhOsContract.Clock.at/2`. This file pins what they rely on: the time reaches the
-  events a synchronous handler emits and the events a drained job emits, and it
-  stops at the end of `at/2`.
+  That the time reaches the events a command, a policy and a drained subscription
+  write is pinned on a contract, in `conformance/clock_v2_test.exs`.
   """
 
-  use EhOsContract.DataCase, async: false
+  use ExUnit.Case, async: true
 
   alias EhOsContract.Clock
 
   @nine ~U[2026-09-01 09:00:00.000000Z]
   @noon ~U[2026-09-01 12:00:00.000000Z]
-
-  test "an event emitted inside at/2 carries that time, and so does its synchronous handler's" do
-    Clock.at(@nine, fn ->
-      EhOsContract.emit!(ProcessShapes.Timed, :run_started, %{run_id: "r-1"})
-    end)
-
-    assert [%{occurred_at: @nine}] = events_of(:run_started)
-    assert [%{occurred_at: @nine}] = events_of(:run_acknowledged)
-  end
-
-  test "a job drained inside at/2 stamps its events with that time too" do
-    Clock.at(@nine, fn ->
-      EhOsContract.emit!(ProcessShapes.Promised, :request_received, %{request_id: "r-1"})
-      EhOsContract.emit!(ProcessShapes.Promised, :request_refused, %{request_id: "r-1"})
-      Oban.drain_queue(queue: :events)
-    end)
-
-    emitted_by_jobs = events_of(:refusal_notified)
-    assert emitted_by_jobs != [], "the fixture's asynchronous handler emitted nothing"
-    assert Enum.all?(emitted_by_jobs, &(&1.occurred_at == @nine))
-  end
-
-  test "a time written to the second is accepted, as the moduledoc's example writes it" do
-    Clock.at(~U[2026-07-01 09:00:00Z], fn ->
-      EhOsContract.emit!(ProcessShapes.Timed, :run_started, %{run_id: "r-1"})
-    end)
-
-    assert [%{occurred_at: ~U[2026-07-01 09:00:00.000000Z]}] = events_of(:run_started)
-  end
 
   test "a time in another zone is refused at the call, not later at the append" do
     # Built by hand, because a zone other than UTC needs a time zone database and this

@@ -2,9 +2,9 @@ defmodule EhOsContract.Conformance.WireV2Test do
   @moduledoc """
   A v2 contract's report **as values that survive a wire** (`conformance.v2`).
 
-  The structural walk below is the point of this file, as in `conformance_wire_test.exs`
-  for v1. It does not assert on any particular key, so it covers the ones a later stage
-  adds — and the v2 report already carries keys v1 never had: steps as
+  The structural walk below is the point of this file. It does not assert on any
+  particular key, so it covers the ones a later stage adds — and the v2 report already
+  carries keys v1 never had: steps as
   `%{kind, name, label}`, waiting and failing split by source, the wiring, the
   scenarios. A test naming the keys it knows about would pass while the next one
   arrived carrying a tuple or a `DateTime` struct, and `Jason` refuses a tuple outright.
@@ -48,8 +48,8 @@ defmodule EhOsContract.Conformance.WireV2Test do
   # beside an earlier one whose promise said something else, so the promise carries
   # the date its declaration last moved.
   defp promised_with_history do
-    Seed.deploy(:v2)
-    Seed.request(:v2, "r-1", :request_refused)
+    Seed.deploy()
+    Seed.request("r-1", :request_refused)
 
     Repo.insert!(%Deployment{
       contract: inspect(Promised),
@@ -85,8 +85,8 @@ defmodule EhOsContract.Conformance.WireV2Test do
     end
 
     test "for a timed run, whose confirmed deadline is measured" do
-      Seed.deploy(:v2)
-      Seed.start_run(:v2, "r-1", ~U[2026-09-01 09:00:00.000000Z])
+      Seed.deploy()
+      Seed.start_run("r-1", ~U[2026-09-01 09:00:00.000000Z])
 
       data = Conformance.as_data(ProcessShapes.Next.Timed, now: ~U[2026-09-01 12:00:00.000000Z])
 

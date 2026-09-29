@@ -69,11 +69,11 @@ defmodule EhOsContract.DeploymentV2Test do
   end
 
   test "a v2 report says since when its version is in force" do
-    Seed.deploy(:v2)
+    Seed.deploy()
     Deployment.record!()
 
     EhOsContract.Clock.at(~U[2026-09-02 09:00:00.000000Z], fn ->
-      Seed.request(:v2, "r-1", :request_approved)
+      Seed.request("r-1", :request_approved)
     end)
 
     report = Conformance.report(Promised)
@@ -83,13 +83,13 @@ defmodule EhOsContract.DeploymentV2Test do
   end
 
   test "a promise that changed does not judge the runs before it" do
-    Seed.deploy(:v2)
+    Seed.deploy()
 
     for {id, at} <- [
           {"r-old", ~U[2026-08-02 09:00:00.000000Z]},
           {"r-new", ~U[2026-08-09 09:00:00.000000Z]}
         ] do
-      EhOsContract.Clock.at(at, fn -> Seed.request(:v2, id, :request_approved) end)
+      EhOsContract.Clock.at(at, fn -> Seed.request(id, :request_approved) end)
     end
 
     for {digest, seen} <- [

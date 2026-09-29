@@ -2,19 +2,16 @@ defmodule UniversalityGate.Next.Episode do
   @moduledoc """
   **Invented, like the whole of `UniversalityGate.Next.TreatmentEpisode`.**
 
-  The decider of its `:episode` aggregate (v2 plan, E5): `UniversalityGate.Eligibility.decide/1`
+  The decider of its `:episode` aggregate (v2 plan, E5): v1's decision function
   written as an implementation. The decision is the same. What changed is its
   shape: the command carries the payer registry's answer instead of a map of
   inputs; the events are the contract's structs rather than names with maps, so
   `emit/1` checks at compile time that `qualify_referral` may produce them; and the
   refusal names the contract's invariant rather than an atom of its own.
 
-  The registry's answer still arrives as input, for v1's reason: a decision that
-  called the registry could not tell "the payer refused" from "the registry is not
-  answering". When it was checked is the command's time, which dispatch sets.
-
-  `Eligibility` stays for v1's contract, whose rule names it, until that contract
-  goes (v2 plan, E11).
+  The registry's answer still arrives as input: a decision that called the registry
+  could not tell "the payer refused" from "the registry is not answering". When it
+  was checked is the command's time, which dispatch sets.
   """
 
   use UniversalityGate.Next.TreatmentEpisode, aggregate: :episode
