@@ -76,7 +76,13 @@ defmodule EhOsContract.Bus.Suite do
         start_supervised!(Supervisor.child_spec(spec, id: {:bus_suite_consumer, name}))
       end
 
-      defp bus_stop(name), do: :ok = stop_supervised({:bus_suite_consumer, name})
+      # A consumer killed under `start_supervised` may already be gone or restarted.
+      defp bus_stop(name) do
+        case stop_supervised({:bus_suite_consumer, name}) do
+          :ok -> :ok
+          {:error, :not_found} -> :ok
+        end
+      end
 
       defp bus_received(name, count) do
         for _ <- 1..count//1 do
@@ -213,23 +219,27 @@ defmodule EhOsContract.Bus.Suite do
           end
         end
 
-        test "a message a stopped consumer had in hand comes again when it is back" do
+        test "a message a consumer had in hand when it was killed comes again" do
           name = bus_name("in-hand")
           consumer = bus_name("consumer")
           test = self()
 
-          bus_consume(consumer, [name], fn _message ->
-            send(test, :bus_suite_holding)
-            Process.sleep(:infinity)
-          end)
+          hold =
+            bus_first_time(fn ->
+              send(test, :bus_suite_holding)
+              Process.sleep(:infinity)
+            end)
+
+          pid = bus_consume(consumer, [name], hold)
 
           sent = bus_message(name)
           bus_publish([sent])
           assert [^sent] = bus_received(consumer, 1)
           assert_receive :bus_suite_holding, @bus_suite_wait
+          Process.exit(pid, :kill)
           bus_stop(consumer)
 
-          bus_consume(consumer, [name])
+          bus_consume(consumer, [name], hold)
           assert [^sent] = bus_received(consumer, 1)
         end
 

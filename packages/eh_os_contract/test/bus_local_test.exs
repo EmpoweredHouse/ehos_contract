@@ -56,6 +56,27 @@ defmodule EhOsContract.Bus.LocalTest do
       assert [^sent, ^sent] = bus_received(consumer, 2)
     end
 
+    test "a handler whose linked process crashes gets the message again, from the same consumer" do
+      name = bus_name("linked")
+      consumer = bus_name("consumer")
+
+      crash_linked =
+        bus_first_time(fn ->
+          linked = spawn_link(fn -> raise "linked defect" end)
+          ref = Process.monitor(linked)
+          assert_receive {:DOWN, ^ref, :process, ^linked, _reason}
+          :ack
+        end)
+
+      pid = bus_consume(consumer, [name], crash_linked)
+
+      sent = bus_message(name)
+      bus_publish([sent])
+
+      assert [^sent, ^sent] = bus_received(consumer, 2)
+      assert Process.alive?(pid)
+    end
+
     test "a consumer stops when the broker does" do
       consumer = bus_name("consumer")
       pid = bus_consume(consumer, [bus_name("gone")])
