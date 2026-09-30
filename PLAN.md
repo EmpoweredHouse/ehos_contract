@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 30 września (E11, #51 i klucz blokady w `main`, #50 w PR-ze #55)
+## Handoff — stan na 30 września (E11, #51, klucz blokady i #50 w `main`; `name:` domeny na gałęzi)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -15,16 +15,18 @@ dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. Pivot do
 stylu ESDM, event sourcing na własnym magazynie, crypto-shredding) **ma za sobą E0–E11: wszystko jest w `main`**
 (ostatnio #48: E11e — skille, #52: E11f — zaległości silnika). W bibliotekach nie ma kodu v1, dokumentacja i skille
 opisują jeden DSL. Po E11 użytkownik zmergował #53 (tabele poza `public`, #51) i #54 (klucz blokady dopisu per
-schemat, z innej sesji) i wybrał **#50** — PR #55, z przeglądem, czeka na merge użytkownika („#50 — co wyszło”).
+schemat, z innej sesji) i #55 (#50, myślnik w przestrzeni nazw), a potem wybrał **sprawdzenie `name:` domeny** —
+gałąź `dsl-v2/domain-name-check`, z przeglądem, niewypchnięta („`name:` domeny jako przestrzeń nazw — co wyszło”).
 
 ### Stan repozytorium
 
-- **`origin/main` = `0ca5383`** (merge #54, 30 września; przedtem `50eb771` — merge #53, `6f08572` — ten zapis,
-  fast-forward — i `fb410c1`, merge #52). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
-- **`dsl-v2/d11-dashed-namespace`** (worktree `ehos-dsl-v2-handoff-640427`) — od `0ca5383`, wypchnięta, **PR #55**:
-  #50 i zapis w `PLAN.md`; nota przeglądu w `refs/notes/review` na głowie (lokalnie).
+- **`origin/main` = `0e6e10f`** (merge #55, 30 września; przedtem `0ca5383` — merge #54, `50eb771` — merge #53,
+  `6f08572` — zapis, fast-forward — i `fb410c1`, merge #52). Historia `main` z merge'ami PR-ów; gałęzie etapów
+  liniowe.
+- **`dsl-v2/domain-name-check`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `0e6e10f`, **niewypchnięta**:
+  reguła `name:` domeny i zapis w `PLAN.md`; nota przeglądu w `refs/notes/review` na głowie (lokalnie). Push i PR —
+  na polecenie użytkownika.
 - **Otwarte na GitHubie:**
-  - **PR #55** — #50 (zamyka go); merge użytkownika.
   - **Issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza repozytorium; zaparkowane 30 września, z
     propozycją `EmpoweredHouse/eh-os-contract-sandbox`.
 - **Lokalne gałęzie w całości w `main`** (do skasowania): `claude/e11-ciecie-88267b`,
@@ -42,8 +44,7 @@ schemat, z innej sesji) i wybrał **#50** — PR #55, z przeglądem, czeka na me
 ### Co zostało — i czyje to jest
 
 - **Wybór następnego etapu — użytkownika.** Kandydaci, każdy z tym, co go blokuje:
-  - **#50** — PR #55; zostaje merge użytkownika.
-  - **`name:` domeny bez sprawdzenia** (z przeglądu #50, otwarte pytania niżej) — mała reguła, przed E12.
+  - **`name:` domeny** — zrobione na `dsl-v2/domain-name-check`; zostaje push, PR i merge użytkownika.
   - **„Po E11” z planu: kontrakty sandboxa jako fikstury akceptacyjne pakietu, potem manifest v2** (po akceptacji
     D-51/D-52 w `eh-os`). **Fikstury kolidują z #49**: kontrakty klientów w pakiecie to dokładnie to, czego #49 chce
     uniknąć — do rozstrzygnięcia przed startem (propozycja z E11: zmyślone odpowiedniki tego samego kształtu).
@@ -57,8 +58,9 @@ schemat, z innej sesji) i wybrał **#50** — PR #55, z przeglądem, czeka na me
 
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach, wyrażenia
    regularne z flagą `u` i `[0-9]`, zsh bez dzielenia słów.
-2. `PLAN.md`: „E11f — co wyszło, część 1” i „Przed E11f — decyzja użytkownika” — ostatnie decyzje (nazwa modułu jako
-   tożsamość kontraktu, jednostka czytająca tylko to, co składa, klucz w zakresie aktora) i co zostało otwarte.
+2. `PLAN.md`: „`name:` domeny jako przestrzeń nazw — co wyszło”, „#50 — co wyszło”, „Klucz blokady dopisu per
+   schemat — co wyszło” i „#51 — co wyszło” — ostatnie decyzje z odrzuconymi opcjami; starsze: „E11f — co wyszło,
+   część 1”.
 3. `PLAN.md`, „Etapy” — opis E12 i „Po E11”, żeby ocenić kandydatów na następny etap.
 4. Issues #49, #50 i PR #53 na GitHubie — `gh issue view <n>`, `gh pr view 53` — bo każdy zmienia wybór.
 5. `packages/eh_os_contract/docs/contract.md` i `.claude/skills/` — DSL i skille, z których pisze się kod.
@@ -112,7 +114,10 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 30 września, na `dsl-v2/d11-dashed-namespace` od `0ca5383`** (#50 na `main` z #53 i #54): brama z
+- **Lokalnie, 30 września, na `dsl-v2/domain-name-check` od `0e6e10f`**: brama z `sandbox/` → **EXIT=0** — sandbox
+  144, `check` 0 / 29 / 9; silnik **1015** (1012 w `main` + 3), `check` 0 / 66 / 5; web 52; auth 66; `docs/dsl` i
+  `docs/rules.md` aktualne.
+- **Wcześniej, na `dsl-v2/d11-dashed-namespace` od `0ca5383`** (#50 na `main` z #53 i #54): brama z
   `sandbox/` → **EXIT=0** — sandbox 144 testy, `check` 0 / 29 / 9; silnik **1012** (1005 w `main` + 7 z #50),
   `check` 0 / 66 / 5; web 52; auth **66**; `docs/dsl` i `docs/rules.md` aktualne. Na samym `6f08572` przedtem:
   144 / 996 / 52 / 62, EXIT=0.
@@ -138,14 +143,22 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
   konfiguracji hosta — do użytkownika; kandydat na E11f.
 - **Z PR-a #53:** klucz blokady dopisu jest stały, a blokady doradcze są wspólne dla całej bazy — *rozstrzygnięte
   30 września: klucz per schemat, osobny PR* („Klucz blokady dopisu per schemat — co wyszło”).
-- **Z przeglądu #50, sprzed #50, do decyzji użytkownika: `name:` domeny nie jest sprawdzane**, a to ono jest
-  przestrzenią nazw publikacji. `name: :"acme.billing"` publikuje `"acme.billing.x.v1"` — przechodzi oba
+- **Z przeglądu #50, sprzed #50: `name:` domeny nie jest sprawdzane** — *rozstrzygnięte 30 września: odmowa D11 w
+  regułach domeny, z podkreślnikiem* („`name:` domeny jako przestrzeń nazw — co wyszło”). Opis sprzed decyzji: `name:`
+  jest przestrzenią nazw publikacji. `name: :"acme.billing"` publikuje `"acme.billing.x.v1"` — przechodzi oba
   sprawdzenia D11, a na brokerze leży w przestrzeni aplikacji `acme` (`acme.>`); wraca w E12, gdy nazwy staną się
   tematami i capability `<nazwa>.subscribe`. Inne złe nazwy (`:"shop-"`, `:"my shop"`, wielkie litery) zamykają się
   same — żadna publikacja nie przejdzie — ale odmowa wskazuje publikację, nie domenę. Możliwe: odmowa w regułach
   domeny dla `name:` spoza gramatyki segmentu przestrzeni nazw (z `_` albo bez — bez `_` odpada `:dispatch_rig` z
   fikstur i każda domena OTP nazwana z podkreślnikiem); albo w `namespaces/1` porównanie pierwszego segmentu z
   nazwą domeny. Nowy powód odmowy widoczny dla hosta.
+- **Z przeglądu `name:` domeny, sprzed tej zmiany, do decyzji użytkownika** (nowe powody odmowy widoczne dla hosta):
+  (1) **N1, D9 i ścieżki stron kończą wzorzec na `$`**, nie `\z` (`contract/rules/names.ex`, `domain/rules.ex` przy
+  D9, `pages.ex`) — `command :"pay\n"` przechodzi N1, a capability `"acme.pay\n"` trafia do `Model.capabilities`,
+  ścieżki OpenAPI i manifestu EHOS-a; ta sama klasa co `$` → `\z` w #55. (2) **Nazwy aktorów domeny nie mają
+  sprawdzenia formy** — `actor :"*"` albo `:"billing.clerk"` w domenie `acme` daje rolę `acme.*` /
+  `acme.billing.clerk` w manifeście; z przestrzeni aplikacji nie wychodzi, ale czy EHOS czyta `*` albo `>` w roli jako
+  wzorzec, jest poza tym repozytorium. Możliwe: snake_case jak N1, z `\z`.
 - **Z E11f, bez decyzji:** klucz idempotencji z etykietą aktora dłuższy niż ~2,7 KB daje 500 (limit długości byłby
   nowym powodem odmowy, widocznym dla hosta); ten sam aktor z tym samym kluczem dostaje stary paragon, także gdy nowa
   komenda ma inny zakres albo treść (opcja „skrót treści” odrzucona).
@@ -3035,6 +3048,63 @@ wskaźniku JSON i w kluczu komponentu AsyncAPI; wzorzec liniowy na wejściu do 1
   #50, nowy powód odmowy widoczny dla hosta, do użytkownika (otwarte pytania);
 - brak flagi `u` na przepisanej linii — *bez zmiany*: nazwa to identyfikator ASCII, nie tekst klienta, a klasy są
   ASCII.
+
+### `name:` domeny jako przestrzeń nazw — co wyszło (30 września)
+
+**Decyzja użytkownika** (30 września, po merge'u #55): sprawdzenie `name:` przed E12, **z podkreślnikiem**.
+*Odrzucone:* **bez `_`** — nazwa domeny byłaby dokładnie etykietą DNS aplikacji EHOS-a, ale odpadłoby 16 fikstur
+(`:dispatch_rig`, `:universality_gate`, `:manifest_rig`, …) i podkreślnik z pierwszego segmentu `publish as:`,
+który #55 świadomie zostawił; **E12 albo fikstury akceptacyjne najpierw** — E12 zrobiłby z nazw tematy na brokerze
+z niesprawdzoną przestrzenią nazw, fikstury czekają na #49.
+
+**Co jest.** Domena odmawia kompilacji, gdy `name:` nie jest jednym segmentem przestrzeni nazw: małe litery, cyfry,
+`_` i `-`, na początku litera, bez myślnika na końcu — ta sama gramatyka co pierwszy segment `@versioned` w
+`Contract.Rules.Boundaries`. `name: :"acme.billing"` (publikowało `"acme.billing.x.v1"` w przestrzeni `acme`),
+`:"shop-"`, `:My_shop`, `:"my shop"`, `:"shop\n"`, `:""` — odmowa; `:"my-shop"`, `:dispatch_rig`, `:shop_` —
+kompilują się. Odmowa wskazuje linię `use`: domena zapisuje ją w `persist` jak kontrakt (`:eh_os_contract_line`), a
+`DslRules` przyjmuje adnotację źródła tam, gdzie żadna encja Sparka nie trzyma opcji. Wpis w CHANGELOG-u w „a host
+has to act”: odmawia też domena, która niczego nie publikuje.
+
+**Kod odmowy — wybór asystenta: `D11`, nie `D10` z kolejnej liczby reguł domeny.** Reguły domeny mają D1–D9, ale
+`D10`, `D11` i `D14` są już kodami z decyzji (zakres zapytań, publikacje, capability) i leżą w tej samej tabeli
+odmów; nazwa domeny jest przestrzenią nazw publikacji z decyzji D11, więc wiersz D11 w `docs/contract.md` dostał
+jeszcze jeden przypadek. *Odrzucone:* **`D10`** — koliduje z istniejącym kodem zakresu zapytań; **nowa litera**
+(np. `N` dla nazw) — kod bez decyzji, która go uzasadnia, a v2 §6 nie daje literze miejsca.
+**Gdzie sprawdzenie — w regułach domeny (transformer), nie w `opt_schema`** (`{:custom, …}` Sparka): typ
+niestandardowy odmawia `Spark.Options.ValidationError` bez kodu i poza jednym komunikatem z pozostałymi odmowami
+domeny. *Odrzucone też:* porównanie pierwszego segmentu z nazwą w `namespaces/1` kontraktu (L3) — domena bez
+publikacji dalej by przechodziła, a odmowa wskazywałaby publikację zamiast domeny.
+**Bez limitu długości** (etykieta DNS ma do 63 znaków) — nikt go nie zgłosił, a to kolejny powód odmowy widoczny
+dla hosta; wraca, gdyby EHOS odrzucał długie nazwy aplikacji.
+
+**Testy i próby odwrotne** (`test/dsl/domain_rules_test.exs`, „D11: the domain's name…”): jedenaście złych nazw
+(z `nil` i `true`) z treścią odmowy i linią `use`, siedem kontroli, odmowa razem z innymi naruszeniami domeny. Bez reguły → padają dwa
+testy odmów; `$` zamiast `\z` → pada test złych nazw (`:"shop\n"`); myślnik dozwolony na końcu → ten sam; bez
+myślnika → pada kontrola (`:"my-shop"`); `_` na początku dozwolone → pada test złych nazw.
+
+**Przegląd** (`code-review high` i bezpieczeństwo/wydajność, równolegle; regresji żaden nie znalazł — każda nazwa
+domeny w repozytorium przechodzi, a z nazw, które mogły publikować, odpadają tylko te z kropką):
+- `name: nil`, `true`, `false` się kompilowały — `Atom.to_string(nil)` to `"nil"`, a wymagana opcja przyjmuje `nil`;
+  publikacje pod `nil.`, capability `nil.<komenda>`, aplikacja `"nil"` w manifeście — *poprawione* (`28fcaa0`), test
+  czerwony bez poprawki;
+- wzorzec segmentu przepisany ręcznie z `@versioned`, związany komentarzem — *poprawione* (`e21e81a`): jeden
+  `DslRules.namespace?/1` dla domeny i publikacji; wzorzec bez myślnika wywraca kontrolki w obu DSL-ach naraz;
+- linia `contract.md` poza szerokością zawijania — *poprawione* (`2cfbbfb`);
+- `use_at/1` w regułach domeny obok `Links.use_at/1`, bez gałęzi `nil` — *bez zmiany*: inny kształt (adnotacja
+  Erlanga dla `DslRules`, lista opcji dla `Links`), a linię zapisuje zawsze `handle_opts` tego samego modułu, `:file`
+  — Spark;
+- `DslRules` przyjmuje jako miejsce dowolny termin niebędący strukturą — *bez zmiany*: naruszenia tworzą tylko
+  reguły biblioteki, typ to opisuje, a dialyzer go sprawdza;
+- pomocnik `named/3` obok `domain/2` w teście — *bez zmiany*: `domain/2` ma nazwę `:clinic` i poddziedziny na
+  sztywno;
+- manifest z ręcznie złożonej mapy domeny omija sprawdzenie — *bez zmiany*: wejście to kod hosta, `Model.fetch/1`
+  czyta skompilowane moduły;
+- `_` i brak limitu 63 znaków, choć EHOS nazywa aplikację etykietą DNS — *bez zmiany*: decyzja użytkownika wyżej;
+- `$` w N1, D9 i ścieżkach stron, nazwy aktorów bez sprawdzenia formy — *pominięte*: sprzed tej zmiany, nowe powody
+  odmowy widoczne dla hosta, do użytkownika (otwarte pytania w handoffie).
+
+**Brama** (30 września, na głowie gałęzi od `0e6e10f`): EXIT=0 — sandbox 144 (`check` 0/29/9), silnik **1015**
+(1012 + 3), `check` 0/66/5, web 52, auth 66; `docs/dsl` i `docs/rules.md` aktualne.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
