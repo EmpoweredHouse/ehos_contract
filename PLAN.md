@@ -26,8 +26,9 @@ gałąź `dsl-v2/domain-name-check`, z przeglądem, niewypchnięta („`name:` d
 - **`dsl-v2/domain-name-check`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `0e6e10f`, **niewypchnięta**:
   reguła `name:` domeny, `$` → `\z` w nazwach, nazwy aktorów i zapis w `PLAN.md`; nota przeglądu w `refs/notes/review` na głowie (lokalnie). Push i PR —
   na polecenie użytkownika.
-- **`dsl-v2/domain-names-snake-case`** (ten sam worktree) — od `c607b09`, **niewypchnięta**: nazwy elementów domeny
-  pod D1; nota przeglądu na głowie (lokalnie). Osobny PR, na `dsl-v2/domain-name-check` albo po jej merge'u na `main`.
+- **`dsl-v2/domain-names-snake-case`** (ten sam worktree) — od `0e6e10f` przez `dsl-v2/domain-name-check`,
+  wypchnięta, **PR #56** do `main`: wszystkie części (nazwa domeny, `$`, aktorzy, nazwy domeny, kolizja nazw
+  kontraktu, nazwy pól); nota przeglądu na głowie (lokalnie). Merge — użytkownika.
 - **Otwarte na GitHubie:**
   - **Issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza repozytorium; zaparkowane 30 września, z
     propozycją `EmpoweredHouse/eh-os-contract-sandbox`.
@@ -117,8 +118,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 30 września, na `dsl-v2/domain-names-snake-case`** (`0224222`): brama → **EXIT=0** — sandbox 144,
-  `check` 0 / 29 / 9; silnik **1021**, `check` 0 / 66 / 5; web 52; auth 66.
+- **Lokalnie, 30 września, na `dsl-v2/domain-names-snake-case`** (głowa PR-a #56): brama → **EXIT=0** — sandbox
+  144, `check` 0 / 29 / 9; silnik **1028**, `check` 0 / 66 / 5; web 52; auth 66.
 - **Lokalnie, 30 września, na `dsl-v2/domain-name-check` od `0e6e10f`**: brama z `sandbox/` → **EXIT=0** — sandbox
   144, `check` 0 / 29 / 9; silnik **1018** (1012 w `main` + 3 za `name:` + 3 za `$` i aktorów), `check` 0 / 66 / 5;
   web 52; auth 66; `docs/dsl` i `docs/rules.md` aktualne.
@@ -176,8 +177,9 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
   poza F1 (wraca, gdy manifest poniesie zakresy); `Model.capabilities/1` przy zapytaniu i zdarzeniu nagrywanym o
   jednej nazwie traci jedno bez kompilatora L3 (D14 łapie to w L3, zamyka się bezpiecznie); mapa capability liczona
   od nowa przy każdym dispatchu z credentialem (do pomiaru).
-- **Z przeglądu nazw elementów domeny, sprzed tej zmiany, do decyzji użytkownika** (nowe powody odmowy widoczne
-  dla hosta): (1) **kolizja nazw kontraktu po `Macro.camelize`** — N1 sprawdza tylko równość, a `event :visit_closed`
+- **Z przeglądu nazw elementów domeny, sprzed tej zmiany** — *(1) i (2) zrobione 30 września na polecenie
+  użytkownika, w PR-ze #56* („Kolizja nazw kontraktu i nazwy pól — co wyszło”); (3) i (4) zostają. Opis sprzed
+  decyzji: (1) **kolizja nazw kontraktu po `Macro.camelize`** — N1 sprawdza tylko równość, a `event :visit_closed`
   obok `event :visit_closed_` kompiluje się z ostrzeżeniem „redefining module …Events.VisitClosed” (sprawdzone
   tymczasowym testem 30 września): jedno zdarzenie dostaje strukturę drugiego; bez `--warnings-as-errors` host tego
   nie zobaczy. Możliwe: ta sama odmowa co D1 dla wartości, w N1, w przestrzeni nazw, która generuje moduły. (2) **Nazwy
@@ -3222,6 +3224,53 @@ test swojej części. D9 odmawiał `true` już wcześniej jako słowa zarezerwow
 
 **Brama** (30 września, na `0224222`): EXIT=0 — sandbox 144 (`check` 0/29/9), silnik **1021** (1018 + 3), `check`
 0/66/5, web 52, auth 66; `docs/dsl` i `docs/rules.md` aktualne.
+
+### Kolizja nazw kontraktu i nazwy pól — co wyszło (30 września)
+
+**Polecenie użytkownika** (30 września, przy komentarzach do #56): poprawić też kolizję nazw kontraktu i nazwy pól.
+Na tej samej gałęzi, w #56 — ta sama klasa („nazwa trzymana w formie”).
+
+**Komentarz CodeRabbita do #56** (tłumaczyć polskie etykiety w fiksturach) — *bez zmiany*: `label` w domenie i
+kontrakcie to miejsce, gdzie `CLAUDE.md` pozwala na polszczyznę; odpowiedź w wątku, wątek zamknięty, CodeRabbit
+przyznał i zapisał to jako regułę.
+
+**Co jest:**
+- **N1: dwie nazwy, które `Macro.camelize` daje jednakowo** (`bfd6054`, `93c3b6b`) — tam, gdzie nazwa staje się
+  modułem albo aliasem: komendy, zdarzenia i zdarzenia konsumowane (implementacja aliasuje struktury po nazwie) oraz
+  agregaty, dcb, polityki, efekty, process managery, read modele, zapytania i serwisy domenowe, każdy w swojej
+  przestrzeni modułów. `event :visit_closed` obok `:visit_closed_` kompilowało się z „redefining module
+  …Events.VisitClosed”. N2 porównuje po `camelize` też `:state`/`:row` — `command :state_` był aliasem `State`.
+  Wspólny `DslRules.camel_collisions/2` dla D1 i N1, w kolejności deklaracji.
+- **F1, D3, D6: nazwa pola snake_case** (`f9a6278`), pole wartości raz (dziś nie sprawdzane — JSON Schema brała
+  późniejszą definicję z `required` wcześniejszej); **`identity` jednostki jak pole** (`d769a98`) — `identity
+  :"a|b"` trafiało przez `consults` do krawędzi grafu i tabeli strony; argument serwisu domenowego zostaje N1
+  (`91b5fe7`, bez podwójnej odmowy).
+
+*Odrzucone:*
+- **kolizja jednostek łącznie** (pierwsza wersja) — agregat i dcb to moduły dwóch przestrzeni, `Aggregates` i
+  `Dcbs`, więc `aggregate :visit` obok `dcb :visit_` nie jest kolizją; przestrzeń nazw zostaje wspólna;
+- **kolizja timerów i publikacji** — nie generują modułu ani aliasu;
+- **escapowanie `|` w etykietach krawędzi Mermaida** (obrona w głąb z przeglądu) — po tej zmianie każda etykieta
+  to tekst biblioteki albo sprawdzona nazwa; wraca, gdyby etykieta niosła tekst klienta.
+
+**Testy i próby odwrotne:** N1 — zdarzenie/zdarzenie, read model/read model, komenda/zdarzenie, zapytania
+`:visits2`/`:visits_2`, kontrola z agregatem i dcb; N2 — `:state_`, `:row_`; F1 — pola komendy, `identity`
+(forma, `__`, powtórzenie); D3/D6 — pola wartości i encji; argument serwisu raz. Bez każdej części pada dokładnie
+jej test (kolizje w obu przestrzeniach N1, F1 forma, `identity`, D3, D6, jednostki łącznie, N2 dokładne, argument).
+
+**Przegląd** (`code-review high` i bezpieczeństwo/wydajność, na `3eb24c8..f9a6278`):
+- `identity` bez sprawdzenia — *poprawione* (`d769a98`);
+- `:state_`/`:row_` zasłaniały aliasy `State`/`Row` — *poprawione* (`93c3b6b`);
+- agregat i dcb jako jeden moduł — *poprawione* (`93c3b6b`);
+- rodzaj w komunikacie szukany z timerami — *poprawione*; kolejność odmów alfabetyczna — *poprawione*;
+- argument serwisu odmawiany dwa razy — *poprawione*; zmienna `twice` w D6 z odmowami formy — *poprawione*;
+- testy bez kolizji między rodzajami i `:x2`/`:x_2` — *poprawione*;
+- escapowanie etykiet Mermaida — *bez zmiany* (wyżej); pierwszy element kolizji w przestrzeni komend według
+  kolejności rodzajów, nie źródła — *bez zmiany*: dotyczy tylko tego, która z dwóch nazw jest „pierwsza” w
+  komunikacie.
+
+**Brama** (30 września, na głowie): EXIT=0 — sandbox 144 (`check` 0/29/9), silnik **1028**, `check` 0/66/5, web
+52, auth 66.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
