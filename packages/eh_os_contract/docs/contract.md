@@ -11,7 +11,7 @@ contradicts the model. At run time it dispatches commands through the model, app
 its own log, and compares what the log holds with what the contract promised.
 
 This page is how to start and what will not compile. Every key of both DSLs, with its type, default and
-description, is in the generated reference: [the domain](dsl/domain.md) and [the contract](dsl/contract.md).
+description, is in the generated reference: [the domain](dsl/domain-dsl.md) and [the contract](dsl/contract-dsl.md).
 What `mix eh_os_contract.check` reports about a model that compiles is in [its rules](rules.md).
 
 ## A domain

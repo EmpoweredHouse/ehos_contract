@@ -13,7 +13,8 @@ defmodule EhOsContract.DocsTest do
       library refuses with, each of which a test in `test/dsl/` asserts;
     * every section, entity, argument and option of both DSLs says what it is, since
       the generated reference prints nothing else;
-    * every relative link between the pages leads to a page.
+    * every relative link between the pages leads to a page, and no two pages share
+      the basename ExDoc names a page after.
   """
 
   use EhOsContract.DslCase, async: false
@@ -168,6 +169,16 @@ defmodule EhOsContract.DocsTest do
 
       assert undescribed == []
     end
+  end
+
+  # ExDoc names an extra's page after its basename, and two with one basename get
+  # pages numbered in the order they are listed: a link to either stops being stable.
+  test "no two pages of the documentation share a basename" do
+    extras = Mix.Project.config()[:docs][:extras]
+    names = Enum.map(extras, &(&1 |> Path.basename() |> Path.rootname() |> String.downcase()))
+
+    assert names -- Enum.uniq(names) == []
+    assert Enum.all?(extras, &File.exists?/1)
   end
 
   test "every relative link between the pages leads to a page" do

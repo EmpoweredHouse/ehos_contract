@@ -2,11 +2,15 @@ defmodule Mix.Tasks.EhOsContract.Docs do
   @shortdoc "Regenerates the DSL reference in docs/dsl/ from the Spark extensions"
 
   @moduledoc """
-  Writes the reference of the two DSLs — `docs/dsl/domain.md` for
-  `use EhOsContract.Domain` and `docs/dsl/contract.md` for `use EhOsContract.Contract`
+  Writes the reference of the two DSLs — `docs/dsl/domain-dsl.md` for
+  `use EhOsContract.Domain` and `docs/dsl/contract-dsl.md` for `use EhOsContract.Contract`
   — from their Spark extensions, with `Spark.CheatSheet.cheat_sheet/1`: every
   entity, where it nests, its arguments and options, which are required, their types,
   defaults and docs.
+
+  The pages are named `*-dsl.md` so that neither shares a basename with another page
+  of the package: ExDoc names a page after its basename, and `docs/contract.md`, the
+  guide, would otherwise have to share `contract.html` with the reference.
 
   Only the reference is generated. `docs/contract.md` is prose a generator has no
   business writing: how to start, what each layer of checks refuses, and why.
@@ -21,8 +25,8 @@ defmodule Mix.Tasks.EhOsContract.Docs do
   use Mix.Task
 
   @pages [
-    {"docs/dsl/domain.md", EhOsContract.Domain.Dsl},
-    {"docs/dsl/contract.md", EhOsContract.Contract.Dsl}
+    {"docs/dsl/domain-dsl.md", EhOsContract.Domain.Dsl},
+    {"docs/dsl/contract-dsl.md", EhOsContract.Contract.Dsl}
   ]
 
   @impl Mix.Task

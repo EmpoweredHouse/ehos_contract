@@ -115,8 +115,8 @@ defmodule EhOsContract.MixProject do
         "docs/contract.md",
         "docs/authorization.md",
         "docs/rules.md",
-        "docs/dsl/domain.md",
-        "docs/dsl/contract.md",
+        "docs/dsl/domain-dsl.md",
+        "docs/dsl/contract-dsl.md",
         "CHANGELOG.md"
       ],
       source_ref: "v#{@version}"
