@@ -760,6 +760,19 @@ agent to do something before writing code, and nothing checked after the fact ca
 Skills rot the way all prose does. The mitigation is to keep them short and make them point at
 code and checks, which the compiler and CI keep honest.
 
+*Corrected 30 September 2026, plan E11e.* What exists, in `.claude/skills/`, is not the table above.
+The decision function is `write-decider`: an aggregate's or a boundary's callback per command, with
+`emit/1`, `reject/1` and `evolve/2`. "Write a handler" and "Add a projection" are one skill,
+`write-reaction` — policy, effect, process manager, read model and query — because the question
+they share is where a failure leaves the log, not what the code looks like. "Declare a rule and its
+examples" has no skill of its own: a rule is an invariant or a constraint with its `rejected`
+scenario, and a domain service's rule carries its examples, so `add-event`, `write-decider` and
+`contract-distillation` cover it. "Declare a process" and "Add an adapter" are not written. Two were
+added that the table does not name: `module-boundary-check`, which decides whether a feature goes
+through a contract at all, and `review-pr`, for the reviewer rather than the writer. The skills
+point at the refusal codes in `packages/eh_os_contract/docs/contract.md` and the rule names in
+`packages/eh_os_contract/docs/rules.md`, which do not change between versions, rather than at lines of source.
+
 ## 9. Dashboard
 
 ### The overlay
