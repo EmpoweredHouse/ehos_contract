@@ -203,6 +203,60 @@ defmodule EhOsContract.DispatchCommandTest do
                  actor: clerk()
                )
     end
+
+    # History is decoded by today's declaration every time a stream is folded, and no
+    # upcaster exists: a row the declaration no longer fits has to stop the stream
+    # loudly, since folding past it would decide on a state that is not the log's.
+    test "a row the declaration no longer fits stops the stream, and appends nothing" do
+      stored!("ledger.deposited", %{"account_id" => "a-old"}, "account:a-old")
+
+      assert_raise ArgumentError,
+                   ~r/no longer fits "ledger.deposited" as declared: \[amount: :required\]/,
+                   fn ->
+                     EhOsContract.dispatch(Ledger, %Withdraw{account_id: "a-old", amount: 1},
+                       actor: clerk()
+                     )
+                   end
+
+      assert length(log()) == 1
+      assert [%{outcome: "failed", failed_in: "evolve", error: "ArgumentError"}] = rows()
+    end
+
+    test "a row of a type the contract no longer declares stops the stream too" do
+      stored!("ledger.gone", %{"account_id" => "a-old"}, "account:a-old")
+
+      assert_raise ArgumentError,
+                   ~r/neither declares nor consumes an event of type "ledger.gone"/,
+                   fn ->
+                     EhOsContract.dispatch(Ledger, %Withdraw{account_id: "a-old", amount: 1},
+                       actor: clerk()
+                     )
+                   end
+
+      assert [%{outcome: "failed", failed_in: "evolve"}] = rows()
+    end
+  end
+
+  # A row as an older declaration wrote it, appended around dispatch.
+  defp stored!(type, payload, stream) do
+    {:ok, {:ok, [_row]}} =
+      Repo.transaction(fn ->
+        EhOsContract.Store.append(
+          Repo,
+          [
+            %{
+              type: type,
+              contract: "DispatchRig.Ledger",
+              contract_version: "old",
+              correlation_id: Ecto.UUID.generate(),
+              actor: "system:old",
+              occurred_at: EhOsContract.Clock.now(),
+              payload: payload
+            }
+          ],
+          {:stream, stream, 0}
+        )
+      end)
   end
 
   describe "a conflict" do
@@ -264,7 +318,7 @@ defmodule EhOsContract.DispatchCommandTest do
     test "is reused only within its actor: another actor's other command with the same key runs" do
       deposit!("a-1", 10, idempotency_key: "k-1")
 
-      assert {:ok, %Receipt{duplicate: false}} =
+      assert {:ok, %Receipt{duplicate: false, events: [%Withdrawn{amount: 1}]}} =
                EhOsContract.dispatch(Ledger, %Withdraw{account_id: "a-1", amount: 1},
                  actor: Actor.credential("u-2", @all),
                  idempotency_key: "k-1"
