@@ -2803,6 +2803,20 @@ kolejnymi częściami.
       `change-contract` o tym mówi.
   - **Weryfikacja:** brama `EXIT=0` — sandbox **144** (+1), `check` 0/29/9; silnik **996** (+6), `check` 0/66/5;
     web 52; auth 62.
+- **Przegląd E11f-4 i E11f-5** (dwa przeglądy równolegle; nic wysokiego, zawężenie warunku DCB uznane za poprawne:
+  decyzja zależy tylko od stanu, a stan tylko od składanych zdarzeń) — rozstrzygnięte:
+  - `folded_types` szukało implementacji w indeksie drugi raz na każdy dispatch, a pominięcie liczyło typy
+    zadeklarowane dla każdego wiersza — *poprawione*: typy z modułu, który dispatch już ma, zbiór raz na dispatch;
+  - boundary, które nie składa żadnego zdarzenia, wraca do pełnego zapytania (magazyn odmawia pustego), wbrew
+    zdaniu w CHANGELOG-u — *poprawione* w CHANGELOG-u i ADR; w tym wypadku pomijane są też konsultowane typy
+    rodzeństwa, nie tylko własne;
+  - nieprawdziwy komentarz w `Coverage` (agregat zapisuje cały strumień) i opis testu pokrycia — *poprawione*;
+  - `Coverage` bez implementacji w indeksie (zła konfiguracja `applications:` węzła) porównuje pełne `given`,
+    a dispatch by odmówił — *bez zmiany*: zła konfiguracja wywraca już dispatch;
+  - `folds/3` i I3 przechodzą po klauzulach osobno — *pominięte*, porządki; jedna wspólna analiza przy następnej
+    zmianie kształtów klauzul;
+  - agregat dalej pobiera z bazy całe wiersze strumienia, oszczędza tylko dekodowanie — *bez zmiany*, zapisane w
+    „Obserwacjach” wyżej.
 - **Weryfikacja:** brama po wycofaniu i poprawkach przeglądu `EXIT=0` — sandbox 143, `check` 0/29/9; silnik **990**
   (986 + 2 testy klucza + 2 testy historii), `check` 0/66/5; web 52; auth 62.
 

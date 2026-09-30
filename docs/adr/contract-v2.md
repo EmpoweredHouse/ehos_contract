@@ -1223,7 +1223,8 @@ the person's.
 > state`, the implementation records the events it folds (`__eh_os_implementation__/0`, `folds`), and
 > dispatch decodes only those. An aggregate still reads its whole stream, whose version is the condition,
 > and records every type it met in `given_types`. A boundary's query, and so its conflict condition, is
-> narrowed to the folded types: nothing else can change its state, so nothing else can change a decision.
+> narrowed to the folded types: nothing else can change its state, so nothing else can change a decision. A
+> boundary that folds none of its events keeps its whole query, since a store query cannot be empty.
 > A type the contract no longer declares is still decoded, and stops the stream. `Coverage` compares a
 > scenario's `given` on the folded types, since a boundary's `given_types` hold no other. Any other
 > catch-all, or a guarded variable, reads everything, as before. *Rejected:* a DSL word listing the folded
