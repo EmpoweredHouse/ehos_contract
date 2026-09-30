@@ -5,69 +5,69 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 30 września (E11, #51, klucz blokady i #50 w `main`; `name:` domeny na gałęzi)
+## Handoff — stan na 1 października (E0–E11, #50–#56 w `main`; E12 w toku)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
 
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności), jej
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. Pivot do v2 (DSL na Sparku, model domeny w
-stylu ESDM, event sourcing na własnym magazynie, crypto-shredding) **ma za sobą E0–E11: wszystko jest w `main`**
-(ostatnio #48: E11e — skille, #52: E11f — zaległości silnika). W bibliotekach nie ma kodu v1, dokumentacja i skille
-opisują jeden DSL. Po E11 użytkownik zmergował #53 (tabele poza `public`, #51) i #54 (klucz blokady dopisu per
-schemat, z innej sesji) i #55 (#50, myślnik w przestrzeni nazw), a potem wybrał **sprawdzenie `name:` domeny** —
-gałąź `dsl-v2/domain-name-check`, z przeglądem, niewypchnięta („`name:` domeny jako przestrzeń nazw — co wyszło”).
+stylu ESDM, event sourcing na własnym magazynie, crypto-shredding) **ma za sobą E0–E11: wszystko jest w `main`**.
+Po E11 w `main` są: #53 (tabele poza `public`, #51), #54 (klucz blokady dopisu per schemat), #55 (#50, myślnik w
+przestrzeni nazw) i **#56 — każda nazwa w formie**: `name:` domeny jako segment przestrzeni nazw (D11), `\z`
+zamiast `$` we wzorcach nazw (N1, D9, strony, dziesiętna scenariusza), nazwy aktorów (D4) i pozostałych elementów
+domeny (D1, z kolizją wartości po `Macro.camelize` i nazwami typów wbudowanych), kolizja nazw kontraktu po
+`camelize` (N1, N2 dla `State`/`Row`), nazwy pól i `identity` (F1, D3, D6). **W toku: E12** (wybór użytkownika z
+1 października, „Przed E12 — decyzje użytkownika”); **E12a** — `EhOsContract.Bus`, adapter lokalny, suita — jest
+gotowe, przejrzane i wystawione jako PR z gałęzi `dsl-v2/e12-bus`; E12b (relay) po komentarzach CodeRabbita.
 
 ### Stan repozytorium
 
-- **`origin/main` = `0e6e10f`** (merge #55, 30 września; przedtem `0ca5383` — merge #54, `50eb771` — merge #53,
-  `6f08572` — zapis, fast-forward — i `fb410c1`, merge #52). Historia `main` z merge'ami PR-ów; gałęzie etapów
-  liniowe.
-- **`dsl-v2/domain-name-check`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `0e6e10f`, **niewypchnięta**:
-  reguła `name:` domeny, `$` → `\z` w nazwach, nazwy aktorów i zapis w `PLAN.md`; nota przeglądu w `refs/notes/review` na głowie (lokalnie). Push i PR —
-  na polecenie użytkownika.
-- **`dsl-v2/domain-names-snake-case`** (ten sam worktree) — od `0e6e10f` przez `dsl-v2/domain-name-check`,
-  wypchnięta, **PR #56** do `main`: wszystkie części (nazwa domeny, `$`, aktorzy, nazwy domeny, kolizja nazw
-  kontraktu, nazwy pól); nota przeglądu na głowie (lokalnie). Merge — użytkownika.
-- **Otwarte na GitHubie:**
-  - **Issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza repozytorium; zaparkowane 30 września, z
-    propozycją `EmpoweredHouse/eh-os-contract-sandbox`.
-- **Lokalne gałęzie w całości w `main`** (do skasowania): `claude/e11-ciecie-88267b`,
-  `claude/e11e-skills-dsl-v2-ab38c4`, `dsl-v2/e10-outputs`, `dsl-v2/e11a-remove-v1`, `dsl-v2/e11b-rename-next`,
-  `dsl-v2/e11c-migrations`, `dsl-v2/e11d-docs`, `dsl-v2/e11e-skills`, `dsl-v2/e11f-engine`. Część jest wyciągnięta w
-  innych worktree (`git worktree list`).
+- **`origin/main` = `6e1658a`** (merge #56, 30 września; przedtem `0e6e10f` — merge #55, `0ca5383` — merge #54,
+  `50eb771` — merge #53). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
+- **`dsl-v2/e12-bus`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `6e1658a`: handoff po #56 (`2d870ee`, z
+  gałęzi `dsl-v2/handoff-after-56`, która zostaje w całości w tej), decyzje przed E12, E12a i poprawki z przeglądu;
+  PR do `main` na polecenie użytkownika z 1 października.
+- **Otwarte na GitHubie:** tylko **issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza
+  repozytorium; zaparkowane 30 września, z propozycją `EmpoweredHouse/eh-os-contract-sandbox`. Otwartych PR-ów brak.
+- **Lokalne gałęzie w całości w `main`** — kilkadziesiąt, w tym wszystkie `dsl-v2/e*`, `dsl-v2/d11-dashed-namespace`,
+  `dsl-v2/domain-name-check`, `dsl-v2/domain-names-snake-case` (`git branch --merged origin/main`). Do skasowania;
+  część jest wyciągnięta w innych worktree (`git worktree list`), więc najpierw worktree.
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
   `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`) i mają schemat V01.
   **Indeks idempotencji w nich przebudowano ręcznie w E11f** na `(issued_by, idempotency_key)`, jak w dzisiejszym V01
   (dane zostały). **Klucz blokady dopisu mają stary, jeden na bazę** — V01 zmieniony w #54 w miejscu, więc do
-  `ecto.drop` dalej poprawny, tylko wspólny. **Worktree na kodzie sprzed E11c nie wolno migrować wspólnych baz** — dołoży swoje V02–V05
-  (`ecto.drop` naprawia). Baza dev ma dane sprzed E11c w nowym schemacie; przed `mix phx.server` — `mix ecto.migrate`
-  w `sandbox/`.
+  `ecto.drop` dalej poprawny, tylko wspólny. **Worktree na kodzie sprzed E11c nie wolno migrować wspólnych baz** —
+  dołoży swoje V02–V05 (`ecto.drop` naprawia). Baza dev ma dane sprzed E11c w nowym schemacie; przed
+  `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
 ### Co zostało — i czyje to jest
 
-- **Wybór następnego etapu — użytkownika.** Kandydaci, każdy z tym, co go blokuje:
-  - **`name:` domeny** — zrobione na `dsl-v2/domain-name-check`; zostaje push, PR i merge użytkownika.
-  - **Nazwy elementów domeny** — zrobione na `dsl-v2/domain-names-snake-case`; to samo.
+- **E12 — w toku** (asystenta): po merge'u E12a — E12b (relay), E12c (inbox, `.subscribe`, test dwóch aplikacji),
+  E12d (publiczne wejście), E12e (dokumentacja); podział w „Przed E12 — decyzje użytkownika”.
+- **Kandydaci na później** (wybór użytkownika), każdy z tym, co go blokuje:
   - **„Po E11” z planu: kontrakty sandboxa jako fikstury akceptacyjne pakietu, potem manifest v2** (po akceptacji
     D-51/D-52 w `eh-os`). **Fikstury kolidują z #49**: kontrakty klientów w pakiecie to dokładnie to, czego #49 chce
     uniknąć — do rozstrzygnięcia przed startem (propozycja z E11: zmyślone odpowiedniki tego samego kształtu).
-  - **E12 — integracja między aplikacjami** (`EhOsContract.Bus`, relay, inbox) — opis w „Etapach”.
+  - **Drobne reguły z „Otwartych pytań”**, każda nowym powodem odmowy albo pomiarem — do decyzji użytkownika.
 - **Poza etapami, bez zmian** — użytkownika: proces na porcie 4000, wdrożenie E8 u hosta, lista zmian do `eh-os` (w
   tym fixture manifestu TaxVision z „E10 — co wyszło” i uwagi do D-51/D-52 — komentarz do PR-a w `eh-os` tylko na
   polecenie), publikacja na Hex, F1/F2 i dziesięć usterek, pytanie do EHOS-a o CSP (EG3).
 - **E13** (graf jako API, renderer w miejsce Mermaida) — po E12.
+- **Sprzątanie gałęzi i worktree** w całości w `main` — asystenta, na zgodę użytkownika (kasowanie).
 
 ### Co przeczytać najpierw
 
-1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach, wyrażenia
-   regularne z flagą `u` i `[0-9]`, zsh bez dzielenia słów.
-2. `PLAN.md`: „`name:` domeny jako przestrzeń nazw — co wyszło”, „#50 — co wyszło”, „Klucz blokady dopisu per
-   schemat — co wyszło” i „#51 — co wyszło” — ostatnie decyzje z odrzuconymi opcjami; starsze: „E11f — co wyszło,
-   część 1”.
-3. `PLAN.md`, „Etapy” — opis E12 i „Po E11”, żeby ocenić kandydatów na następny etap.
-4. Issues #49, #50 i PR #53 na GitHubie — `gh issue view <n>`, `gh pr view 53` — bo każdy zmienia wybór.
-5. `packages/eh_os_contract/docs/contract.md` i `.claude/skills/` — DSL i skille, z których pisze się kod.
+1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach (także w
+   fiksturach testów: `label` po polsku jest dozwolony — CodeRabbit to już przyjął), wyrażenia regularne z flagą `u`
+   i `[0-9]`, zsh bez dzielenia słów.
+2. `PLAN.md`: cztery ostatnie zapisy „co wyszło” — „`name:` domeny jako przestrzeń nazw”, „`$` w nazwach i nazwy
+   aktorów”, „Nazwy elementów domeny”, „Kolizja nazw kontraktu i nazwy pól” — decyzje z odrzuconymi opcjami.
+3. `PLAN.md`, „Otwarte pytania” — co zostało z przeglądów #56 (etykiety Mermaida, kolizja stron, pole `scope:`,
+   mapa capability) i starsze pozycje bez decyzji.
+4. `PLAN.md`, „Etapy” — opis E12 i „Po E11”, żeby ocenić kandydatów; `gh issue view 49`.
+5. `packages/eh_os_contract/docs/contract.md` (tabela odmów z kodami) i `.claude/skills/` — DSL i skille, z których
+   pisze się kod.
 6. `.claude/skills/pre-pr-review/SKILL.md` — przed PR-em; przegląd po każdej części etapu, nie tylko przed PR-em.
 
 ### Komendy
@@ -113,22 +113,23 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 - test pakietu z bazą i drugi `mix` w tym samym pakiecie naraz się gryzą (wspólne `_build` i bazy testowe
   `eh_os_contract_test`, `…_commits`, bez partycji) — agentów z testami puszczać po kolei;
 - Mermaid przed rysowaniem usuwa element o identyfikatorze, który rysuje (opis w `assets/js/app.js`);
+- `\n` w heredocu `"""` testu z fiksturą to prawdziwa nowa linia w kompilowanym źródle — atom `:"x\n"` zajmuje
+  wtedy dwie linie i przesuwa numery linii w asercjach; nazwę z nową linią pisz `#{"\\n"}` albo licz linie od nowa;
+- `for` w Elixirze musi zaczynać się generatorem — filtr (`kind != …`, `:x in list`) idzie po generatorze;
 - `git grep -E` na tej maszynie nie rozumie `\b` i milczy, zamiast odmówić (w E11b `git grep -iP` też raz dał zero
   przy 38 plikach z trafieniem) — wynik „nic nie zostało” potwierdzać drugim narzędziem (`grep -rE`, `git grep -w`).
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 30 września, na `dsl-v2/domain-names-snake-case`** (głowa PR-a #56): brama → **EXIT=0** — sandbox
-  144, `check` 0 / 29 / 9; silnik **1028**, `check` 0 / 66 / 5; web 52; auth 66.
-- **Lokalnie, 30 września, na `dsl-v2/domain-name-check` od `0e6e10f`**: brama z `sandbox/` → **EXIT=0** — sandbox
-  144, `check` 0 / 29 / 9; silnik **1018** (1012 w `main` + 3 za `name:` + 3 za `$` i aktorów), `check` 0 / 66 / 5;
-  web 52; auth 66; `docs/dsl` i `docs/rules.md` aktualne.
-- **Wcześniej, na `dsl-v2/d11-dashed-namespace` od `0ca5383`** (#50 na `main` z #53 i #54): brama z
-  `sandbox/` → **EXIT=0** — sandbox 144 testy, `check` 0 / 29 / 9; silnik **1012** (1005 w `main` + 7 z #50),
-  `check` 0 / 66 / 5; web 52; auth **66**; `docs/dsl` i `docs/rules.md` aktualne. Na samym `6f08572` przedtem:
-  144 / 996 / 52 / 62, EXIT=0.
-- **CI `main`** — `success` na `50eb771` (przebieg `36731477429`), `6f08572` (`36730980344`) i `fb410c1`
-  (`36730607553`); na `0ca5383` — w toku w chwili zapisu (`gh run list --branch main -L 1`).
+- **Lokalnie, 1 października, na `fb6bf46`** (głowa kodu E12a po przeglądzie): brama z `sandbox/` → **EXIT=0** —
+  sandbox 144, `check` 0 / 29 / 9; silnik **1059** (1028 + 31 testów `Bus.Local` i suity), `check` 0 / 66 / 5; web
+  52; auth 66. Te same liczby `check`, co przed E12a. Commity poprawek między `5ce8c90` a `fb6bf46` sprawdzane
+  testem `bus_local_test.exs` i kompilacją z `--warnings-as-errors`, pełna brama na `5ce8c90` i na `fb6bf46`.
+- **Lokalnie, 30 września, na `main` = `6e1658a`** (po merge'u #56): brama z `sandbox/` → **EXIT=0** — sandbox 144
+  testy, `eh_os_contract.check` 0 / 29 / 9; silnik **1028**, `check` 0 / 66 / 5; web 52; auth 66; `docs/dsl` i
+  `docs/rules.md` aktualne. Drzewo `6e1658a` jest identyczne z głową #56 (`e002519`).
+- **CI:** PR #56 na `e002519` (przebieg `36778876263`, job `check`) — `success`; `main` na `0e6e10f`
+  (`36761436783`) — `success`; `main` na `6e1658a` (`36779783368`) — `success`.
 - **Dwie bramy naraz z dwóch worktree gryzą się o wspólne bazy** — 30 września pierwsza brama tej sesji padła na
   `too_many_connections`, bo w tej samej minucie bramę puszczała sesja PR-a #53. Przed bramą sprawdzić, czy żaden
   inny BEAM z worktree tego repozytorium nie chodzi.
@@ -214,7 +215,7 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 **Ten blok jest do skasowania. Skasowanie go cofa uprawnienie — nie migruje ono samo między sesjami.**
 
-W sesjach E11b–E11f (29–30 września) użytkownik potwierdzał: commity bez pytania na gałęziach etapu przy zielonej
+W sesjach E11b–E11f (29–30 września) i w sesji #56 (30 września) użytkownik potwierdzał: commity bez pytania na gałęziach etapu przy zielonej
 bramie na każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. **W nowej sesji obowiązuje to
 dopiero po ponownym potwierdzeniu przez użytkownika.** Push, PR, merge, tag i Hex — tylko na wyraźne polecenie,
 przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie piszemy nigdy; do
@@ -3271,6 +3272,102 @@ jej test (kolizje w obu przestrzeniach N1, F1 forma, `identity`, D3, D6, jednost
 
 **Brama** (30 września, na głowie): EXIT=0 — sandbox 144 (`check` 0/29/9), silnik **1028**, `check` 0/66/5, web
 52, auth 66.
+
+### Przed E12 — decyzje użytkownika (1 października)
+
+**Następny etap: E12** (integracja między aplikacjami). *Odrzucone na teraz:* fikstury akceptacyjne i manifest v2 —
+czekają na rozstrzygnięcie #49 i akceptację D-51/D-52 w `eh-os`; drobne reguły z „Otwartych pytań” — każda to
+osobny powód odmowy z małym sygnałem. Zgody z bloku „Zgoda i stałe uprawnienia” potwierdzone w tej sesji.
+**Test odbioru na zmyślonych domenach w pakiecie, nie w `sandbox/`** (wybór asystenta, zgodny z propozycją #49):
+nie dokłada materiału klienta, który #49 chce wynieść.
+
+**`Bus` nie obiecuje kolejności** (pytanie użytkownika, rekomendacja asystenta przyjęta). Wiadomości jednego wydawcy
+wychodzą w kolejności logu, ale odbiorca może je dostać w dowolnej; między dwoma wydawcami kolejności nie ma nigdy.
+*Odrzucone:* **kolejność od jednego wydawcy** — zawęża transport do szeregowego konsumenta (JetStream z jedną
+niepotwierdzoną wiadomością naraz, HTTP wysyłane szeregowo do każdego odbiorcy), jedna wiadomość, której odbiorca
+nie weźmie, zatrzymuje wszystko za nią, a drugi węzeł odbiorcy nic nie daje; **kolejność po kluczu**
+(`publish … ordered_by:`) — nowe słowo DSL-a i konsumenci z partycjami, zanim jakikolwiek odbiorca o to poprosił.
+Cena: odbiorca, któremu zależy na kolejności dwóch wiadomości, czeka na obie process managerem. **Odwracalne w
+jedną stronę:** dołożenie kolejności później jest addytywne (odbiorca pisany bez niej dalej działa), odwrotnie
+zepsułoby każdego, kto na niej polegał; `ordered_by:` wchodziłoby obok, a adapter, który go nie utrzyma, odmawia
+publikacji zamiast po cichu zgubić kolejność. Dopisek z datą w `docs/adr/contract-v2.md` §16.
+
+**Relay nie przez Obana** (pytanie użytkownika o transakcyjny outbox). Log jest outboxem (D11): stan jednostki to
+ciąg jej zdarzeń, więc dispatch robi jeden dopis, nie dwa zapisy; relay czyta tylko zatwierdzone zdarzenia w
+kolejności zatwierdzenia (§10.2) i przesuwa checkpoint po potwierdzeniu z `Bus`, więc wiadomość może przyjść dwa
+razy, nigdy zero razy i nigdy bez swojego faktu. Oban zostaje outboxem efektów (zadanie w transakcji zdarzenia).
+*Odrzucone:* zadanie Obana na każde publikowane zdarzenie — drugi outbox obok logu, zadania bez kolejności, stan
+wyjścia rozproszony po zadaniach zamiast jednej pozycji. Ten sam dopisek w §16.
+
+**Podział E12 na części** (wybór asystenta), każda z przeglądem przed następną:
+- **E12a** — behaviour `EhOsContract.Bus`, adapter lokalny, suita adapterów (`EhOsContract.Bus.Suite`, jak
+  `Store.Suite`);
+- **E12b** — relay: uporządkowana subskrypcja nad logiem, wiadomość tylko z `fields`, id
+  `<id zdarzenia>/<nazwa publish>`, checkpoint po potwierdzeniu;
+- **E12c** — inbox i runner subskrybenta, capability `<nazwa>.subscribe`, test dwóch aplikacji;
+- **E12d** — publiczne wejście dla surowych danych, Plug na nim, bez `Dispatcher.permit_undecoded/5`;
+- **E12e** — poprawka z datą `architecture.md` §9–10, `docs/contract.md`, CHANGELOG, skill `write-reaction`,
+  handoff.
+
+### E12a — co wyszło (1 października)
+
+**Co jest** (gałąź `dsl-v2/e12-bus`, od `2d870ee`): `EhOsContract.Bus` z dwoma callbackami — `publish(opts,
+messages)` (`:ok`, gdy transport trzyma całą partię; `{:error, _}` dla transportu niedostępnego, wyjątek dla
+wiadomości, której żaden transport nie przeniesie) i `consumer(opts, consumer)` (dziecko trwałego konsumenta, którego
+handler odpowiada `:ack` albo `:nack`); `EhOsContract.Bus.Message` z czterema polami (`id`, `name`,
+`correlation_id`, `payload` jako JSON); `EhOsContract.Bus.Local` w pamięci jednego BEAM-a; `EhOsContract.Bus.Suite`
+w `lib/`, jak `Store.Suite`. Konfiguracja `config :eh_os_contract, bus: {Adapter, opts}`, domyślnie żadna. Nic
+jeszcze przez `Bus` nie publikuje.
+
+**Wybory asystenta:**
+- **Ack jako odpowiedź handlera, nie osobne wywołanie** — ADR wymienia trzy operacje (publikacja, subskrypcja,
+  potwierdzenie); tu potwierdzenie to wartość, którą handler zwraca. Tak wygląda `Gnat.Jetstream.PullConsumer`
+  (`handle_message/2` zwraca `:ack`/`:nack`), a runner inboxu (E12c) i tak potwierdza dopiero po commicie, w tym
+  samym miejscu. *Odrzucone:* model pull z `fetch/2` i `ack/2` — cztery operacje zamiast dwóch i dzierżawa
+  wiadomości w każdym adapterze; model push na pid — adapter musiałby sam pilnować, kto żyje.
+- **Adapter lokalny w pamięci, nie na Postgresie** — ADR: „dla testów i jednej aplikacji”; wersja na bazie udawałaby
+  broker między aplikacjami, czego D-41 nie chce (tabela u EHOS-a odrzucona).
+- **Lokalny nie odrzuca duplikatów** — test inboxu w E12c potrzebuje drugiego doręczenia, a suita deduplikacji nie
+  wymaga.
+- **Payload przez JSON w lokalnym** — term, którego transport nie przeniesie (krotka, atom jako klucz), pada w
+  teście, a nie na produkcji.
+- **Domyślnie żaden adapter** — lokalny jako domyślny oznaczałby produkcję, która po cichu gubi wiadomości przy
+  restarcie.
+
+**Przegląd** (`code-review high` i bezpieczeństwo/wydajność, równolegle, na `2d870ee..5ce8c90`; żaden nie znalazł
+utraty wiadomości przy żywej subskrypcji):
+- linkowany proces handlera, który pada, zabijał konsumenta z pełnym powodem w logu nadzorcy — *poprawione*
+  (`9499087`): wyjścia łapane na czas handlera, jak w `EffectJob`; dekodowanie payloadu w tym samym miejscu
+  (nieosiągalne w lokalnym, więc bez testu);
+- wiadomość zabitego konsumenta wracała na początek kolejki od razu — jedna trująca wiadomość przekraczała limit
+  restartów nadzorcy — *poprawione* (`9a95887`): wraca po `retry_after`;
+- obcy `DOWN` albo komunikat z handlera zatrzymywał konsumenta — *poprawione* (`7e9952f`);
+- `id` i nazwa wiadomości surowo w logu — *poprawione* (`07e6053`), `inspect`;
+- `take` dla nieznanej nazwy wywracał brokera przez `Map.fetch!` (z mapą kolejek w komunikacie) — *poprawione*
+  (`a7697c5`);
+- `:sys.get_status/1` i raport padnięcia z payloadami — *poprawione* (`df67523`), `format_status/1`;
+- powrót z węższą listą nazw zostawiał w kolejce wiadomości porzuconych nazw — *poprawione* (`cae1d5d`);
+- identyfikator dziecka konsumenta bez nazwy brokera — *poprawione* (`0a028bb`);
+- `:name` spoza atomów uruchamiał brokera, do którego żaden konsument się nie podłączy — *poprawione* (`cdf12d7`);
+- `publish` wychodził exitem zamiast `{:error, _}`, z wiadomościami w powodzie — *poprawione* (`5f08f3c`);
+  doc callbacku mówi, czego relay może się spodziewać;
+- suita za ostra wobec „co najmniej raz” (dokładne liczby doręczeń; test potwierdzenia zatrzymywał konsumenta przed
+  `:ack`) — *poprawione* (`921dc71`); lokalny zmutowany na podwójne doręczenie: stara suita pada na trzech testach,
+  nowa przechodzi;
+- `publish` przebudowywał mapę konsumentów na każdą wiadomość, zbędny zbiór monitorów — *poprawione* (`fc52afa`);
+- test „konsument staje, gdy broker staje” zostawiał pętlę restartów — *poprawione* (`5adea29`);
+- ADR „nigdy zero razy” bez zastrzeżenia o konsumencie późniejszym niż publikacja; moduledoc `Bus` przypisywał suicie
+  więcej, niż widzi — *poprawione* (`fb6bf46`);
+- brak terminu potwierdzenia, limitu prób i usuwania subskrypcji w lokalnym; trwali konsumenci suity na brokerze —
+  *pominięte w kodzie, opisane* (`fb6bf46`): adapter deweloperski, a limit prób należy do transportu albo inboxu;
+- `Bus.adapter/0` przyjmuje dowolny atom — *bez zmiany*: konfiguracja hosta, błąd przy pierwszym użyciu.
+
+**Do E12b i E12c z przeglądu:**
+- relay: wyjątek z `publish` to defekt wydawcy, `{:error, _}` — ponowienie bez przesunięcia checkpointu; loguje
+  tylko rodzaj (`Protocol.UndefinedError` Jasona niesie w komunikacie wartość, której nie zakodował);
+- **otwarte do E12c:** kiedy powstaje konsument subskrybenta względem relaya wydawcy — lokalny daje nowemu
+  konsumentowi tylko to, co opublikowano po jego pierwszej subskrypcji, więc relay uruchomiony wcześniej publikuje
+  w próżnię (dwie aplikacje w jednym BEAM-ie w developmencie).
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 

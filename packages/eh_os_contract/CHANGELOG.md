@@ -225,6 +225,15 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Added
 
+- **E12a: `EhOsContract.Bus`, the seam between two applications (D11, D12).** A behaviour with two
+  callbacks: `publish/2` hands a batch of `EhOsContract.Bus.Message`s to a transport, and `consumer/2`
+  gives the child that runs a durable consumer, whose handler answers `:ack` or `:nack`. It promises
+  at-least-once delivery and no order, and requires no deduplication: the inbox (E12c) drops a second
+  delivery by the message's id. `EhOsContract.Bus.Local` runs it inside one BEAM, for tests and
+  development, and sends the payload through JSON so a term no transport could carry fails in a test.
+  `EhOsContract.Bus.Suite` holds the tests every adapter has to pass, for the transport adapters EHOS
+  writes. Nothing publishes or consumes through it yet: the relay is E12b. Configured with
+  `config :eh_os_contract, bus: {Adapter, opts}`; nothing is configured by default.
 - **D11: an application's namespace may hold a dash (#50).** The first segment of a `publish as:` or a
   `consumes "<name>"` may now contain `-`, not at either end, so a domain named as EHOS names an
   application, `name: :"my-shop"`, publishes `"my-shop.entry.recorded.v1"`. Before, no name could satisfy

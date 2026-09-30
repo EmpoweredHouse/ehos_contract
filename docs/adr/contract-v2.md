@@ -1632,6 +1632,35 @@ policy :invoice_on_visit_close, "Faktura po zamknięciu wizyty",
   v1 relay, JetStream through `gnat`) are EHOS's, and one shared test suite runs against every adapter. The
   library does not depend on NATS.
 
+> **1 October 2026, before E12 — what the relay guarantees, and what `Bus` does not.**
+>
+> - **Why the log can be the outbox.** With event sourcing the state change and the fact are one append: a
+>   unit's state is the fold of its events, so there is no table written beside an outbox row, and nothing
+>   to tear apart. The relay reads only committed events and, by §10.2, sees positions in commit order, so it
+>   neither publishes a fact that did not commit nor skips one that committed late. It advances its
+>   checkpoint only after `Bus` confirms the batch, so a relay that stops between the two publishes the batch
+>   again under the same message ids. A message can therefore arrive twice at a consumer subscribed when it
+>   was published, never zero times and never without its fact. The inbox makes a second arrival harmless;
+>   deduplication by the transport (JetStream's `Nats-Msg-Id`) is welcome and not required. What a consumer
+>   subscribed later gets is the adapter's (`EhOsContract.Bus` promises only what is published after it
+>   first subscribed), so when a subscriber's consumer is created, relative to the publisher's relay, is
+>   E12c's to settle.
+> - **Not through Oban.** An effect's Oban job is an outbox because the effect calls a system no transaction
+>   reaches, and the job is inserted in the event's transaction (§11, `technology-notes.md` on Oban). A relay
+>   built the same way, a job per published event, was rejected: `oban_jobs` would be a second outbox beside
+>   the log; jobs carry no order, where the log's comes free; and what has left would be the state of many
+>   jobs instead of one position.
+> - **`Bus` promises no order.** Messages of one publisher leave in log order, but a subscriber may receive
+>   them in any order, and after a redelivery an earlier message may arrive after a later one. Between two
+>   publishers there is no order to keep. *Rejected:* order per publisher, which narrows the transport to a
+>   serial consumer (JetStream with one unacknowledged message at a time, or HTTP sent serially to each
+>   subscriber) and lets one message a subscriber cannot take stop everything behind it; order per key
+>   (`publish … ordered_by:`), a new DSL key and partitioned consumers before any subscriber has asked for
+>   it. The price: a subscriber whose reaction depends on two messages arriving in order waits for both, with
+>   a process manager. Adding order later is additive, since a subscriber written for no order still works,
+>   and the reverse would break every subscriber that relied on it; so a later `ordered_by:` goes in beside,
+>   and an adapter that cannot keep it refuses the publication instead of dropping the order silently.
+
 ## 17. Risks
 
 | Risk | Mitigation |
