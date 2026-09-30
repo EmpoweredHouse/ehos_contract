@@ -24,15 +24,24 @@ defmodule EhOsContract.RelayTest do
 
     # Runs in the process that drains, so the test steers it through its own
     # dictionary: `:relay_test_answer` is `:ok` (the default), `{:error, reason}`,
-    # `:raise`, or `{:during, fun}`, which runs `fun` and then answers `:ok`.
+    # `:raise`, `{:raise_on, total}`, which raises for a batch holding an order of that
+    # total, or `{:during, fun}`, which runs `fun` and then answers `:ok`.
     @impl true
     def publish(opts, messages) do
       send(Keyword.fetch!(opts, :to), {:published, messages})
 
       case Process.get(:relay_test_answer, :ok) do
-        :raise -> raise "transport defect"
-        {:during, fun} -> Process.delete(:relay_test_answer) && fun.() && :ok
-        answer -> answer
+        :raise ->
+          raise "transport defect"
+
+        {:raise_on, total} ->
+          if Enum.any?(messages, &(&1.payload["total"] == total)), do: raise("defect"), else: :ok
+
+        {:during, fun} ->
+          Process.delete(:relay_test_answer) && fun.() && :ok
+
+        answer ->
+          answer
       end
     end
 
@@ -169,6 +178,25 @@ defmodule EhOsContract.RelayTest do
 
     assert %{status: "failing", position: ^before, attempts: 3, failure: "RuntimeError"} = row()
     assert row().failed_position == placed("o-1").position
+  end
+
+  test "a raise in a batch is pinned on its event in one pass, not one pass per event before it" do
+    deploy()
+
+    for {id, total} <- [{"o-1", 1}, {"o-2", 2}, {"o-3", 3}, {"o-4", 4}, {"o-5", 666}],
+        do: place(id, total)
+
+    Process.put(:relay_test_answer, {:raise_on, 666})
+
+    assert %{failing: [@relay]} = Testing.drain(only: @relay)
+
+    assert %{position: position, failed_position: failed, attempts: 3} = row()
+    assert position == placed("o-4").position
+    assert failed == placed("o-5").position
+
+    # Once in the batch that raised, once alone.
+    counts = Enum.frequencies(published_ids())
+    for id <- ~w(o-1 o-2 o-3 o-4), do: assert(counts["#{placed(id).id}/#{@name}"] == 2)
   end
 
   test "a rebuild publishes the log again, under the same ids" do

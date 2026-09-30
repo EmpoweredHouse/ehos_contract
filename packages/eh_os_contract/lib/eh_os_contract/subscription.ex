@@ -144,6 +144,12 @@ defmodule EhOsContract.Subscription do
       {:ok, :at_head} ->
         caught_up!(repo, consumer)
 
+      # A relay's batch went one event at a time: what passed is committed, and the
+      # event that raised is recorded as a failure of its own.
+      {:ok, {:applied_then_failed, _applied, position, exception}} ->
+        failed!(repo, consumer, position, exception)
+        {:failed, position}
+
       {:ok, step} ->
         step
 
@@ -162,13 +168,19 @@ defmodule EhOsContract.Subscription do
              Store.read_all(repo, row.position, Relay.batch(), Map.keys(consumer.callbacks)),
              row
            ) do
-      case relay!(repo, consumer, events) do
+      case relay(consumer, events) do
         :ok ->
           advance!(repo, row, List.last(events).position)
           {:applied, length(events)}
 
         {:error, _reason} ->
           {:unavailable, first.position}
+
+        {:raised, exception} when length(events) == 1 ->
+          repo.rollback({:failed, first.position, exception})
+
+        {:raised, _exception} ->
+          one_by_one(repo, consumer, row, events, 0)
       end
     else
       _nothing -> :idle
@@ -238,12 +250,38 @@ defmodule EhOsContract.Subscription do
     exception -> repo.rollback({:failed, row.position, exception})
   end
 
-  # A raise is a defect, a failure of the batch's first event; an exit is an adapter
-  # breaking `c:EhOsContract.Bus.publish/2`'s promise to return an error instead.
-  defp relay!(repo, consumer, [first | _] = events) do
+  # A batch that raised says nothing of which event is at fault, so it goes again one
+  # event at a time: those before the culprit are published and passed, and the
+  # culprit is the failure, counted where it is, as a policy's is.
+  defp one_by_one(repo, consumer, row, [event | rest], applied) do
+    case relay(consumer, [event]) do
+      :ok ->
+        advance!(repo, row, event.position)
+
+        if rest == [],
+          do: {:applied, applied + 1},
+          else: one_by_one(repo, consumer, row, rest, applied + 1)
+
+      {:error, _reason} when applied > 0 ->
+        {:applied, applied}
+
+      {:error, _reason} ->
+        {:unavailable, event.position}
+
+      {:raised, exception} when applied > 0 ->
+        {:applied_then_failed, applied, event.position, exception}
+
+      {:raised, exception} ->
+        repo.rollback({:failed, event.position, exception})
+    end
+  end
+
+  # A raise is a defect; an exit is an adapter breaking `c:EhOsContract.Bus.publish/2`'s
+  # promise to return an error instead.
+  defp relay(consumer, events) do
     Bus.publish(Enum.map(events, &Relay.message(consumer, &1)))
   rescue
-    exception -> repo.rollback({:failed, first.position, exception})
+    exception -> {:raised, exception}
   catch
     :exit, _reason -> {:error, :exit}
   end
