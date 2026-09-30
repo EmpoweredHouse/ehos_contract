@@ -35,6 +35,13 @@ defmodule EhOsContract.DslRules do
   @spec snake_case?(term()) :: boolean()
   def snake_case?(text), do: is_binary(text) and text =~ @snake_case
 
+  @doc false
+  # A declared name that is snake_case: an atom, but not `nil`, `true` or `false`,
+  # whose text fits.
+  @spec name?(term()) :: boolean()
+  def name?(name),
+    do: is_atom(name) and name not in [nil, true, false] and snake_case?(Atom.to_string(name))
+
   @doc """
   `{:ok, dsl}` when there are no violations, and otherwise the one error that
   reports them all.

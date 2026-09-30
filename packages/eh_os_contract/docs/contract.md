@@ -229,7 +229,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `S7` | L2 | an `actor` outside the command's `by:`, or on a scenario whose trigger is not a command |
 | `S8` | L2 | an invariant, or a command's constraint, that no `rejected` scenario (of that command, for a constraint) covers |
 | `S9` | L2 | a domain service's rule without examples; an example not `{[argument, …], result}` of the function's arity, with an argument or result of the wrong built-in type or `nil` where not optional; an example given twice |
-| `D1` | L2 | two subdomains, contexts, actors, subjects, values, entities or externals of one name; a term defined twice in a context; a relation declared twice; a name that is both a context and an external |
+| `D1` | L2 | a subdomain's, context's, subject's, value's, entity's or external's name not snake_case, or holding `__`; two subdomains, contexts, actors, subjects, values, entities or externals of one name; a term defined twice in a context; a relation declared twice; a name that is both a context and an external |
 | `D2` | L2 | two translations of a term into one language, or one into the context's own |
 | `D3` | L2 | a value with both or neither of a type and fields; `unit` on a value that is not numeric; an undeclared `context:`; a malformed or unknown type, or a bad enum; values in a cycle |
 | `D4` | L2 | an actor's name not snake_case; a human actor with `backed_by`; `backed_by` naming no external; an actor's `context:` the domain does not declare |

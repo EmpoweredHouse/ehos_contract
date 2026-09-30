@@ -34,7 +34,7 @@ defmodule EhOsContract.DomainRulesTest do
     assert Module.concat(__MODULE__, name) in compiled
   end
 
-  describe "D1: names are unique per kind" do
+  describe "D1: names are snake_case, and unique per kind" do
     test "two contexts of one name are refused at the second" do
       message =
         refused("TwoContexts", """
@@ -62,6 +62,50 @@ defmodule EhOsContract.DomainRulesTest do
       assert message =~ "two subjects are named :patient (every_kind.ex:7)"
       assert message =~ "two values are named :money (every_kind.ex:9)"
       assert message =~ "two externals are named :registry (every_kind.ex:11)"
+    end
+
+    test "a name that is not snake_case, or holds __, is refused, whatever it names" do
+      message =
+        refused("NameForms", """
+          context :"front desk", "Recepcja", subdomain: :supporting
+          subject :Patient, "Pacjent"
+          value :"a/b", :integer
+          value :money__amount, :integer
+          external :"registry\n", "Rejestr", direction: :outbound
+          subdomain true, "Prawda", type: :generic
+          context :settlement, "Rozliczenia", subdomain: :supporting
+
+          entity :"Invoice", "Faktura", context: :settlement, identified_by: :invoice_no do
+            field :invoice_no, :id
+          end
+        """)
+
+      for {kind, name, line} <- [
+            {"context", ~s|:"front desk"|, 4},
+            {"subject", ":Patient", 5},
+            {"value", ~s|:"a/b"|, 6},
+            {"value", ":money__amount", 7},
+            {"external", ~s|:"registry\\n"|, 8},
+            # The newline in the external's name is one in the source, too.
+            {"subdomain", "true", 10},
+            {"entity", ":Invoice", 13}
+          ] do
+        assert message =~
+                 "D1: #{kind} #{name} is not snake_case with no __, as the domain's names are: " <>
+                   "they name its modules, pages and graph nodes (name_forms.ex:#{line})"
+      end
+
+      refute message =~ ":settlement is not"
+      refute message =~ ":invoice_no"
+    end
+
+    test "control: snake_case names with digits and single underscores compile" do
+      compiles("NameFormsValid", """
+        context :front_desk2, "Recepcja", subdomain: :supporting
+        subject :patient, "Pacjent"
+        value :money_amount_, :integer
+        external :registry_v2, "Rejestr", direction: :outbound
+      """)
     end
 
     test "a term defined twice in one context is refused" do

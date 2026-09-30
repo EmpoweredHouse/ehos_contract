@@ -6,6 +6,15 @@ defmodule EhOsContract.Domain.Rules do
   other end then a context; **D1** refuses a name that is both a context and an
   external.
 
+  **D1**, since the review of the actors' names: a subdomain's, context's, subject's,
+  value's, entity's and external's name is snake_case, as an actor's is (D4) and a
+  contract's (N1). The names become modules — `value :"a/b"` was
+  `<Domain>.Values.A.B`, a module nested in another — node identifiers of the context
+  map, where `context :"front desk"` broke the diagram, and page paths, which refused
+  such a name only when the pages were generated. Uniqueness alone let
+  `:money_amount` and `:money__amount` become one module, `MoneyAmount`, so a name
+  holds no `__` either.
+
   **D4**, since the review of the domain's `name:`: an actor's name is snake_case, as a
   contract's names are (N1). A person's is a role, `<domain>.<actor>`, in the manifest
   EHOS reads — `actor :"*", :human` would have been the role `"acme.*"` — and a
@@ -108,7 +117,7 @@ defmodule EhOsContract.Domain.Rules do
     :erl_anno.set_file(file, :erl_anno.new(Transformer.get_persisted(dsl, :eh_os_contract_line)))
   end
 
-  # --- D1: names are unique per kind ---------------------------------------------
+  # --- D1: names are snake_case, and unique per kind -----------------------------
 
   @kinds [
     {Subdomain, "subdomain"},
@@ -157,7 +166,16 @@ defmodule EhOsContract.Domain.Rules do
            "it names", external}
       end
 
-    by_kind ++ terms ++ relations ++ both
+    forms =
+      for {struct, kind} <- @kinds,
+          struct != Actor,
+          %{__struct__: ^struct, name: name} = declaration <- entities,
+          not DslRules.name?(name) or String.contains?(Atom.to_string(name), "__") do
+        {"D1: #{kind} #{inspect(name)} is not snake_case with no __, as the domain's names are: " <>
+           "they name its modules, pages and graph nodes", declaration}
+      end
+
+    forms ++ by_kind ++ terms ++ relations ++ both
   end
 
   # --- D2: one translation per language, none into the term's own ----------------
@@ -580,10 +598,9 @@ defmodule EhOsContract.Domain.Rules do
   defp actor_violations(actor, externals, contexts, domain) do
     where = "D4: actor #{inspect(actor.name)}"
 
-    # `nil`, `true` and `false` are atoms whose text fits.
     name =
       cond do
-        actor.name not in [nil, true, false] and DslRules.snake_case?(Atom.to_string(actor.name)) ->
+        DslRules.name?(actor.name) ->
           []
 
         actor.kind == :human ->

@@ -58,6 +58,11 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   domain whose name is not lowercase letters, digits, `_` and `-`, starting with a letter and not ending with a
   dash, no longer compiles, even one that publishes nothing, and the refusal points at its `use`. Of the names
   that could publish before, only those with a dot are refused.
+- **D1: every other name of a domain is snake_case, with no `__`.** A subdomain's, context's, subject's,
+  value's, entity's and external's name was held only to uniqueness: `value :"a/b"` generated
+  `<Domain>.Values.A.B`, a module nested in another, `:money_amount` and `:money__amount` generated one
+  module, and `context :"front desk"` broke the context map's diagram. `mix eh_os_contract.pages` refused such
+  a name, but only when it ran. A domain that declared one no longer compiles.
 - **D4: an actor's name is snake_case.** A person's is a role, `<domain>.<actor>`, in the manifest EHOS
   reads, and nothing checked its form: `actor :"*", :human` in a domain `acme` was the role `"acme.*"`, and
   `:"billing.clerk"` a role of two segments. A system actor is held to the same form, since `by:` names it as
