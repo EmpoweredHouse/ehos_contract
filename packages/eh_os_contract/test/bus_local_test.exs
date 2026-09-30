@@ -102,6 +102,25 @@ defmodule EhOsContract.Bus.LocalTest do
       assert_receive {:slow, ^id}, 2_000
     end
 
+    test "what a handler leaves in the consumer's mailbox does not stop the consumer" do
+      name = bus_name("stray")
+      consumer = bus_name("consumer")
+
+      pid =
+        bus_consume(consumer, [name], fn _message ->
+          Process.monitor(spawn(fn -> :ok end))
+          send(self(), :stray)
+          :ack
+        end)
+
+      bus_publish([bus_message(name)])
+      assert [_first] = bus_received(consumer, 1)
+      bus_publish([bus_message(name)])
+      assert [_second] = bus_received(consumer, 1)
+
+      assert Process.alive?(pid)
+    end
+
     test "a consumer stops when the broker does" do
       consumer = bus_name("consumer")
       pid = bus_consume(consumer, [bus_name("gone")])

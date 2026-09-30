@@ -21,10 +21,10 @@ defmodule EhOsContract.Bus.Local.Consumer do
 
   @impl GenServer
   def init({server, consumer}) do
-    Process.monitor(server)
+    broker = Process.monitor(server)
     :ok = GenServer.call(server, {:subscribe, consumer.name, consumer.names})
     send(self(), :take)
-    {:ok, %{server: server, consumer: consumer, parent: parent()}}
+    {:ok, %{server: server, broker: broker, consumer: consumer, parent: parent()}}
   end
 
   @impl GenServer
@@ -45,7 +45,11 @@ defmodule EhOsContract.Bus.Local.Consumer do
     end
   end
 
-  def handle_info({:DOWN, _ref, :process, _server, reason}, state), do: {:stop, reason, state}
+  def handle_info({:DOWN, ref, :process, _server, reason}, %{broker: ref} = state),
+    do: {:stop, reason, state}
+
+  # The handler runs in this process, so what it monitors or is sent lands here.
+  def handle_info(_other, state), do: {:noreply, state}
 
   # Exits are trapped while the handler runs, as `EhOsContract.EffectJob` does it: a
   # process the handler linked to that crashes is a failed delivery, not a signal
