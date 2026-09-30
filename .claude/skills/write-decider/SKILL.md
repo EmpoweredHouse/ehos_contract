@@ -117,6 +117,10 @@ stream will ever hold, written under every version of the code:
   Fold it without matching on the value, or keep personal data out of the state altogether.
 - **A catch-all satisfies `I3` and hides the event you forgot.** Write the clauses that change state
   explicitly, and name the catch-all for what it lets through, as `_changes_nothing` above.
+- **Keep the catch-all exactly `def evolve(state, _), do: state`.** Then dispatch reads and decodes only
+  the events the other clauses name, and a boundary conflicts only on them. Any other catch-all, or a
+  guard on the event, makes it read everything the unit could see — for `TurnoverMatching`, every
+  statement of the month on every match.
 - Time for the state comes from the event, `event.__meta__.occurred_at`, as `closed_on` does in
   `VisitSettlement`.
 

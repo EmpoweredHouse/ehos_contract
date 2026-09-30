@@ -20,7 +20,8 @@ if Code.ensure_loaded?(Plug.Conn) do
     The body, or the query string, is decoded against the declaration's fields
     (`EhOsContract.Codec`), and the call goes through `EhOsContract.dispatch/3` or
     `EhOsContract.query/3`, so everything they check is checked here the same way.
-    An `idempotency-key` header becomes the command's idempotency key, and an
+    An `idempotency-key` header becomes the command's idempotency key — the
+    caller's own, since a key belongs to the actor who sent it — and an
     `x-correlation-id` header its correlation.
 
     **Whether the caller may make the call is answered first.** A request that fails

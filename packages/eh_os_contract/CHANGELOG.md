@@ -52,6 +52,26 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Changed — a host has to act
 
+- **E11f: a unit reads only what its `evolve/2` folds.** When every clause of `evolve/2` that does not name
+  an event is exactly `def evolve(state, _), do: state`, dispatch decodes only the events it names. A
+  boundary's query and its conflict condition narrow to those types, so appending an event it passes
+  over no longer conflicts with its decisions, and its commands' `given_types` list only folded types —
+  unless it folds none of its events, when it reads and conflicts on all of them as before, since a store
+  query cannot be empty.
+  Scenario coverage compares a scenario's `given` on the folded types too, so no verdict moves for a
+  scenario that names an event the unit passes over. A row of a passed-over type that no longer fits its
+  declaration no longer stops the stream; a type the contract no longer declares still does.
+- **E11f: an idempotency key belongs to the actor who sent it.** Dispatch looks an accepted key up by the
+  actor and the key together, and the unique index is on both (`issued_by`, `idempotency_key`). Before, the
+  key was one for the whole application: a second actor sending a key the first had used got the first
+  one's receipt — its events, personal fields opened — and its own command was not run. Now it is its own
+  command. A host that shared one key between actors on purpose, to run a command once whoever sends it,
+  no longer gets that. A retry therefore has to come from the same subject, and whatever shares one
+  credential or one `:system` actor shares one key space (`docs/authorization.md`). A credential with an
+  empty subject is refused, since it would make every such credential one actor. A development database
+  created before this change keeps the old index: recreate it,
+  or rebuild the index with `DROP INDEX eh_os_contract_commands_idempotency_index` and the `CREATE UNIQUE
+  INDEX` V01 now runs.
 - **E11b: the second DSL takes the first one's names.** `use EhOsContract.Next.Contract` is
   `use EhOsContract.Contract`, and every `EhOsContract.Next.*` module drops `Next`. `Registry.v2_contracts/0`
   is `Registry.contracts/0`, and the scan's key `graph().v2_contracts` is `graph().contracts`;

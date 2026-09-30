@@ -7,7 +7,7 @@ defmodule Taxvision.MatchingTest do
 
   use Taxvision.DataCase, async: false
 
-  alias EhOsContract.{Actor, Event, Testing}
+  alias EhOsContract.{Actor, CommandRecord, Event, Testing}
   alias Taxvision.Contracts.{AccountingMonth, DocumentIntake}
   alias Taxvision.Contracts.AccountingMonth.Commands.IngestBankStatement
   alias Taxvision.Contracts.DocumentIntake.Events.InvoicePulledFromKsef
@@ -67,6 +67,43 @@ defmodule Taxvision.MatchingTest do
 
     assert [%{"turnover_id" => "t-2"}] =
              payloads("accounting_month.turnover_without_invoice_flagged")
+  end
+
+  # `evolve/2` passes statements over, so a match does not read them (plan E11f-5): before,
+  # every match decoded every statement of the month, whole lists of turnovers each time.
+  test "a match reads the month's invoices and decisions, not the statements it came from" do
+    assert {:ok, _} = invoice!("c-1", @number)
+
+    for turnovers <- [[{"t-1", 12_300}], [{"t-2", 4_500}]] do
+      assert {:ok, _} =
+               EhOsContract.dispatch(
+                 AccountingMonth,
+                 %IngestBankStatement{
+                   company_id: "c-1",
+                   period_id: "2026-08",
+                   turnovers:
+                     for(
+                       {id, amount} <- turnovers,
+                       do: %{turnover_id: id, amount_minor: amount, booked_on: ~D[2026-08-20]}
+                     )
+                 },
+                 actor: accountant("c-1")
+               )
+
+      Testing.drain()
+    end
+
+    read =
+      Repo.all(
+        from(c in CommandRecord,
+          where: c.type == "run_matching" and c.outcome == "accepted",
+          select: c.given_types
+        )
+      )
+
+    assert length(read) == 2
+    assert Enum.all?(read, &("ksef_intake.invoice_pulled_from_ksef" in &1))
+    refute Enum.any?(read, &("accounting_month.bank_turnover_list_created" in &1))
   end
 
   test "KSeF's number is held to its format: a number missing its checksum is not recorded" do

@@ -556,6 +556,21 @@ Domain types are referenced as remote types from the `Values` module the domain 
 create no compile dependency. The event type stored in the log is the stable string
 `"<process>.<event>"`, never a module name, so renaming a module does not orphan history.
 
+> *Corrected 30 September 2026, plan E11f.* **True of dispatch's fold, not of the rest of the engine.**
+> Every row also stores its contract's module name in `contract`, and every `_commands` row does too, and
+> most readers select or resolve by it:
+> - ordered subscriptions, process managers and effect jobs decode a row through that name, and fail on the
+>   first row written under the old one;
+> - a consumer's key, `"<contract>:<kind>:<name>"`, carries it: subscriptions, process-manager runs,
+>   timers and queued effect jobs belong to the old key;
+> - an idempotent retry is replayed only for the same contract name;
+> - the conformance report — `Paths`, `Coverage`, drift, `Deployment`, `Dependency` — filters on
+>   `contract == inspect(module)`.
+>
+> Decoding by the reader alone was tried in E11f and reverted: the renamed read model, registered anew at
+> position 0 with no `reset/0`, then projected the log a second time, silently. A module rename is a change
+> with history (`change-contract`) until the engine recognises a contract by something that survives one.
+
 **Binding.** `use C, aggregate: :visit_settlement` (or `policy:`, `effect:`, `read_model:`,
 `process_manager:`, `dcb:`) checks that exactly one unit is named and exists — a misspelling gets a
 did-you-mean — and returns `@behaviour`, aliases for the unit's commands, events and state, an import of the
@@ -1083,6 +1098,16 @@ INSERT INTO eh_os_contract_events (...) VALUES (...), (...) RETURNING position, 
   command type is `{:error, :idempotency_key_reused}`. Only accepted outcomes bind the key, so a rejected
   command can be retried once state has changed. Internal dispatches — policy, process manager, effect, timer
   — get deterministic keys, `"<issued_by>:<source_event_id>:<index>"`, so redelivery cannot append twice.
+
+  > *Corrected 30 September 2026, plan E11f, the user's decision.* **A key belongs to the actor who sent it.**
+  > As first built, a hit was looked up by the key alone and the unique index was on the key alone, so one key
+  > was shared by the whole application. A second actor with the same capability sending a key the first had
+  > used got the first one's receipt — its events, with personal fields opened, whatever the second actor's
+  > scope — and its own command was not run. Two clients numbering their requests the same way would lose
+  > commands without a trace. The lookup and the index are now on the actor's label and the key together
+  > (`issued_by`, `idempotency_key`). *Rejected:* a global key with the documentation asking for an
+  > unguessable one, which leaves safety to every client and fails silently; the actor's key plus a digest of
+  > the command, which `_commands` would hold beside no payload, and which low-variety fields make guessable.
 - **Conflicts.** On `:wrong_expected_version` or `:condition_failed` the dispatcher rolls back, reloads,
   decides again, and retries up to three times with jitter — only when it owns the transaction. Inside a
   caller's transaction it returns `{:error, :conflict}`, the same rule `HandlerFailure` follows in v1.
@@ -1199,6 +1224,22 @@ the person's.
 > applications, kept in `:persistent_term` (`EhOsContract.Implementations`), not by the boot registry of
 > §10.5; failing boot on a duplicate type is not built either. **HTTP**: `EhOsContract.Plug` serves
 > `POST …/commands/<capability>` and `GET …/queries/<capability>` with the actor another plug built.
+
+> *Added 30 September 2026, plan E11f, the user's choice.* **A unit reads only what its `evolve/2` folds.**
+> TaxVision's `TurnoverMatching` decoded every statement of the month, each a whole list of turnovers, on
+> every match, although its `evolve/2` passes statements over — quadratic in a statement's length. When
+> every clause of `evolve/2` that does not name an event struct is exactly `def evolve(state, _), do:
+> state`, the implementation records the events it folds (`__eh_os_implementation__/0`, `folds`), and
+> dispatch decodes only those. An aggregate still reads its whole stream, whose version is the condition,
+> and records every type it met in `given_types`. A boundary's query, and so its conflict condition, is
+> narrowed to the folded types: nothing else can change its state, so nothing else can change a decision. A
+> boundary that folds none of its events keeps its whole query, since a store query cannot be empty.
+> A type the contract no longer declares is still decoded, and stops the stream. `Coverage` compares a
+> scenario's `given` on the folded types, since a boundary's `given_types` hold no other. Any other
+> catch-all, or a guarded variable, reads everything, as before. *Rejected:* a DSL word listing the folded
+> events (`folds [...]` on the unit), which repeats what `evolve/2` already says and can drift from it;
+> restructuring the sandbox so the statement lives in a unit of its own, which leaves the trap for the next
+> client; leaving it until measured.
 
 ## 12. Consumers
 

@@ -203,6 +203,71 @@ defmodule EhOsContract.DispatchCommandTest do
                  actor: clerk()
                )
     end
+
+    # History is decoded by today's declaration every time a stream is folded, and no
+    # upcaster exists: a row the declaration no longer fits has to stop the stream
+    # loudly, since folding past it would decide on a state that is not the log's.
+    test "a row the declaration no longer fits stops the stream, and appends nothing" do
+      stored!("ledger.deposited", %{"account_id" => "a-old"}, "account:a-old")
+
+      assert_raise ArgumentError,
+                   ~r/no longer fits "ledger.deposited" as declared: \[amount: :required\]/,
+                   fn ->
+                     EhOsContract.dispatch(Ledger, %Withdraw{account_id: "a-old", amount: 1},
+                       actor: clerk()
+                     )
+                   end
+
+      assert length(log()) == 1
+      assert [%{outcome: "failed", failed_in: "evolve", error: "ArgumentError"}] = rows()
+    end
+
+    # `DispatchRig.Account` folds deposits, withdrawals and interest, and passes the
+    # opening over with `def evolve(state, _opened), do: state` (plan E11f-5).
+    test "a row of a type evolve/2 passes over is not read, so it cannot stop the stream" do
+      stored!("ledger.account_opened", %{"account_id" => "a-old"}, "account:a-old")
+
+      assert {:ok, %Receipt{events: [%Deposited{amount: 5}]}} =
+               EhOsContract.dispatch(Ledger, %Deposit{account_id: "a-old", amount: 5},
+                 actor: clerk()
+               )
+    end
+
+    test "a row of a type the contract no longer declares stops the stream too" do
+      stored!("ledger.gone", %{"account_id" => "a-old"}, "account:a-old")
+
+      assert_raise ArgumentError,
+                   ~r/neither declares nor consumes an event of type "ledger.gone"/,
+                   fn ->
+                     EhOsContract.dispatch(Ledger, %Withdraw{account_id: "a-old", amount: 1},
+                       actor: clerk()
+                     )
+                   end
+
+      assert [%{outcome: "failed", failed_in: "evolve"}] = rows()
+    end
+  end
+
+  # A row as an older declaration wrote it, appended around dispatch.
+  defp stored!(type, payload, stream) do
+    {:ok, {:ok, [_row]}} =
+      Repo.transaction(fn ->
+        EhOsContract.Store.append(
+          Repo,
+          [
+            %{
+              type: type,
+              contract: "DispatchRig.Ledger",
+              contract_version: "old",
+              correlation_id: Ecto.UUID.generate(),
+              actor: "system:old",
+              occurred_at: EhOsContract.Clock.now(),
+              payload: payload
+            }
+          ],
+          {:stream, stream, 0}
+        )
+      end)
   end
 
   describe "a conflict" do
@@ -248,6 +313,27 @@ defmodule EhOsContract.DispatchCommandTest do
                actor: clerk(),
                idempotency_key: "k-1"
              ) == {:error, :idempotency_key_reused}
+    end
+
+    test "belongs to the actor who sent it: another actor's command with the same key is its own" do
+      first = deposit!("a-1", 10, idempotency_key: "k-1")
+      other = deposit!("a-2", 99, idempotency_key: "k-1", actor: Actor.credential("u-2", @all))
+
+      refute other.duplicate
+      refute other.command_id == first.command_id
+      assert [%Deposited{account_id: "a-2", amount: 99}] = other.events
+      assert length(log()) == 2
+      assert [%{issued_by: "actor:u-1"}, %{issued_by: "actor:u-2"}] = rows()
+    end
+
+    test "is reused only within its actor: another actor's other command with the same key runs" do
+      deposit!("a-1", 10, idempotency_key: "k-1")
+
+      assert {:ok, %Receipt{duplicate: false, events: [%Withdrawn{amount: 1}]}} =
+               EhOsContract.dispatch(Ledger, %Withdraw{account_id: "a-1", amount: 1},
+                 actor: Actor.credential("u-2", @all),
+                 idempotency_key: "k-1"
+               )
     end
 
     test "a rejected command does not bind its key, so it can be sent again" do

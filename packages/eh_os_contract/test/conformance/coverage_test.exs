@@ -51,6 +51,39 @@ defmodule EhOsContract.CoverageTest do
     assert %{observed: 0} = Coverage.of(Ledger)
   end
 
+  # A boundary reads only what its `evolve/2` folds, so its command's `given_types` lack
+  # the rest, and a scenario's `given` is compared on the folded types alone (plan
+  # E11f-5). No boundary of the rigs passes an event over, so this uses an aggregate's
+  # folds: `DispatchRig.Account` passes `account_opened` over, and the row is written as
+  # a boundary's would be, with the deposit alone. The scenario giving both still counts.
+  test "a scenario's given counts only the types its unit's evolve/2 folds" do
+    model = EhOsContract.Model.fetch(Ledger)
+
+    scenarios =
+      Enum.map(model.scenarios, fn
+        %{description: @through, given: given} = scenario ->
+          opened = %{hd(given) | event: :account_opened, data: %{}}
+          %{scenario | given: [opened | given]}
+
+        scenario ->
+          scenario
+      end)
+
+    Repo.insert!(%EhOsContract.CommandRecord{
+      id: Ecto.UUID.generate(),
+      contract: inspect(Ledger),
+      type: "withdraw",
+      issued_by: "actor:u-1",
+      correlation_id: Ecto.UUID.generate(),
+      outcome: "accepted",
+      given_types: ["ledger.deposited"],
+      emitted_types: ["ledger.withdrawn"]
+    })
+
+    assert %{observed: 1, never_observed: [@refused]} =
+             Coverage.of(%{model | scenarios: scenarios})
+  end
+
   test "a decision no scenario of its command declares is an outcome to ask about" do
     assert [%{command: %{name: :open_account}, emitted: ["Account opened"], rejected: nil}] =
              Coverage.of(Ledger).undeclared_outcomes

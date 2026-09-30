@@ -5,50 +5,52 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 30 września (E11a–E11d w `main`, E11e na gałęzi, następne E11f)
+## Handoff — stan na 30 września (E11 zamknięte w `main`, następne do wyboru użytkownika)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
 
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności), jej
-dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa pivot do v2** (DSL na Sparku, model
-domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E10 i E11a–E11d są w `main`**
-(ostatnio #46: E11c — migracje do jednego V01, i E11d — dokumentacja, które zmergowały się razem). **E11 — Cięcie**
-idzie częściami E11a–E11f („Przed E11 — podział i decyzje użytkownika”); **E11e — skille — jest zrobione na gałęzi**
-(bez PR-a), **następne jest E11f**.
-W bibliotekach nie ma już kodu v1, nazwy `Next` ani historii migracji; dokumentacja pakietu jest v2 i test trzyma ją
-przy kodzie.
+dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. Pivot do v2 (DSL na Sparku, model domeny w
+stylu ESDM, event sourcing na własnym magazynie, crypto-shredding) **ma za sobą E0–E11: wszystko jest w `main`**
+(ostatnio #48: E11e — skille, #52: E11f — zaległości silnika). W bibliotekach nie ma kodu v1, dokumentacja i skille
+opisują jeden DSL. **Następny etap nie jest wybrany** — kandydaci niżej, wybór należy do użytkownika.
 
 ### Stan repozytorium
 
-- **`origin/main` = `6df5bc7`** (merge #46, 30 września). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
-- **`claude/e11e-skills-dsl-v2-ab38c4`** (worktree `ehos-sync-status-ad37a3`) — lokalna, niewypchnięta: `6df5bc7`,
-  handoff `306ed55` (wciągnięty z `dsl-v2/e11e-skills` na polecenie użytkownika), sześć commitów E11e
-  (`7a7884d`..`2bf5546`) i ten zapis. `dsl-v2/e11e-skills` w worktree `e9c-1-taxvision-registry-18c799` stoi na
-  `306ed55` i jest w całości w tej gałęzi (do skasowania po PR-ze).
-- Lokalne `dsl-v2/e11c-migrations`, `dsl-v2/e11d-docs`, `dsl-v2/e11b-rename-next` są w całości w `main` (do
-  skasowania); `dsl-v2/e11a-remove-v1` też, ale wyciągnięte w worktree `dsl-v2-eg-graphs-409665`.
+- **`origin/main` = `fb410c1`** (merge #52, 30 września). Historia `main` z merge'ami PR-ów; gałęzie etapów
+  liniowe. Drzewo `fb410c1` jest identyczne z `a4f1d91`, głową #52.
+- **`dsl-v2/e11-handoff`** (worktree `ehos-sync-status-ad37a3`) — lokalna, od `fb410c1`, z samym tym zapisem.
+- **Otwarte na GitHubie, spoza tej linii prac** (użytkownika, z innej sesji):
+  - **PR #53** (`claude/practical-edison-2207ce`) — tabele obu pakietów w schemacie innym niż `public` (zamyka #51);
+    otwiera też pytanie o klucz blokady dopisu wspólny dla całej bazy (niżej). Może się zderzyć z tym zapisem w
+    `PLAN.md`.
+  - **Issue #50** — D11 odmawia każdej publikacji domeny, której nazwa ma myślnik (nazwa aplikacji EHOS-a).
+  - **Issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza repozytorium; zaparkowane 30 września, z
+    propozycją `EmpoweredHouse/eh-os-contract-sandbox`.
+- **Lokalne gałęzie w całości w `main`** (do skasowania): `claude/e11-ciecie-88267b`,
+  `claude/e11e-skills-dsl-v2-ab38c4`, `dsl-v2/e10-outputs`, `dsl-v2/e11a-remove-v1`, `dsl-v2/e11b-rename-next`,
+  `dsl-v2/e11c-migrations`, `dsl-v2/e11d-docs`, `dsl-v2/e11e-skills`, `dsl-v2/e11f-engine`. Część jest wyciągnięta w
+  innych worktree (`git worktree list`).
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
-  `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`) i mają schemat
-  V01 z E11c. **Worktree na kodzie sprzed E11c nie ma odmowy w `up/1` i nie wolno mu migrować wspólnych baz** —
-  dołoży do V01 swoje V02–V05 (`ecto.drop` naprawia). Kod od E11c na bazie zapisanej jako „2”–„5” dostaje komunikat.
-- **Baza dev** ma dane sprzed E11c przywrócone do nowego schematu (29 zdarzeń, 21 wdrożeń, 18 komend). Zrzuty w
-  `~/Projects/ai/eh-os-contract-dev-reference/` są w starym schemacie — do odtworzenia tylko danymi. Przed
-  `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
+  `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`) i mają schemat V01.
+  **Indeks idempotencji w nich przebudowano ręcznie w E11f** na `(issued_by, idempotency_key)`, jak w dzisiejszym V01
+  (dane zostały). **Worktree na kodzie sprzed E11c nie wolno migrować wspólnych baz** — dołoży swoje V02–V05
+  (`ecto.drop` naprawia). Baza dev ma dane sprzed E11c w nowym schemacie; przed `mix phx.server` — `mix ecto.migrate`
+  w `sandbox/`.
 
 ### Co zostało — i czyje to jest
 
-- **E11e — PR** — push i PR tylko na polecenie użytkownika. Przegląd zrobiony (sama dokumentacja: agent sprawdził
-  twierdzenia skilli z kodem, 13 ustaleń, wszystkie poprawione — „E11e — co wyszło”); przed PR-em notatka
-  `git notes --ref=review` na HEAD i `pre-pr-review` krok 2 (rebase na `origin/main`).
-- **E11f — zaległości silnika „do E11”** — asystenta: **klucz idempotencji w zakresie aktora** (decyzja
-  użytkownika z 30 września, „Przed E11f — decyzja użytkownika”); duplikacja `scope` (dispatch i D10), boundary
-  dekodujące nieużywane własne zdarzenia (O(N²) na wyciąg TaxVision); z E11e — test, że strumień ze starym
-  niepasującym wierszem odmawia głośno, i nazwa modułu kontraktu na wierszach (niżej); kandydaci z otwartych pytań.
-- **Po E11:** kontrakty sandboxa do testów pakietu jako fikstury akceptacyjne, potem **manifest v2** (po akceptacji
-  D-51/D-52 w `eh-os` — decyzja z 29 września).
-- **Poza E11, bez zmian** — użytkownika: proces na porcie 4000, wdrożenie E8 u hosta, lista zmian do `eh-os` (w tym
-  fixture manifestu TaxVision z „E10 — co wyszło” i uwagi do D-51/D-52 — komentarz do PR-a w `eh-os` tylko na
+- **Wybór następnego etapu — użytkownika.** Kandydaci, każdy z tym, co go blokuje:
+  - **#50, myślnik w nazwie domeny** — mała poprawka reguły D11; issue ma proponowaną zmianę; blokuje szablon
+    ehos-tools. Asystenta po zgodzie.
+  - **PR #53** — przegląd i merge użytkownika; po nim **decyzja o kluczu blokady dopisu** (niżej).
+  - **„Po E11” z planu: kontrakty sandboxa jako fikstury akceptacyjne pakietu, potem manifest v2** (po akceptacji
+    D-51/D-52 w `eh-os`). **Fikstury kolidują z #49**: kontrakty klientów w pakiecie to dokładnie to, czego #49 chce
+    uniknąć — do rozstrzygnięcia przed startem (propozycja z E11: zmyślone odpowiedniki tego samego kształtu).
+  - **E12 — integracja między aplikacjami** (`EhOsContract.Bus`, relay, inbox) — opis w „Etapach”.
+- **Poza etapami, bez zmian** — użytkownika: proces na porcie 4000, wdrożenie E8 u hosta, lista zmian do `eh-os` (w
+  tym fixture manifestu TaxVision z „E10 — co wyszło” i uwagi do D-51/D-52 — komentarz do PR-a w `eh-os` tylko na
   polecenie), publikacja na Hex, F1/F2 i dziesięć usterek, pytanie do EHOS-a o CSP (EG3).
 - **E13** (graf jako API, renderer w miejsce Mermaida) — po E12.
 
@@ -56,11 +58,12 @@ przy kodzie.
 
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach, wyrażenia
    regularne z flagą `u` i `[0-9]`, zsh bez dzielenia słów.
-2. `PLAN.md`: „E11e — co wyszło” (ustalenia dla E11f), „Przed E11 — podział i decyzje użytkownika” (zakres E11f),
-   otwarte pytania niżej.
-3. `.claude/skills/write-decider/`, `write-reaction/`, `change-contract/` — to, co E11f może unieważnić: tabela
-   `change-contract` opisuje dzisiejsze dekodowanie historii i brak upcasterów.
-4. `.claude/skills/pre-pr-review/SKILL.md` — przed PR-em.
+2. `PLAN.md`: „E11f — co wyszło, część 1” i „Przed E11f — decyzja użytkownika” — ostatnie decyzje (nazwa modułu jako
+   tożsamość kontraktu, jednostka czytająca tylko to, co składa, klucz w zakresie aktora) i co zostało otwarte.
+3. `PLAN.md`, „Etapy” — opis E12 i „Po E11”, żeby ocenić kandydatów na następny etap.
+4. Issues #49, #50 i PR #53 na GitHubie — `gh issue view <n>`, `gh pr view 53` — bo każdy zmienia wybór.
+5. `packages/eh_os_contract/docs/contract.md` i `.claude/skills/` — DSL i skille, z których pisze się kod.
+6. `.claude/skills/pre-pr-review/SKILL.md` — przed PR-em; przegląd po każdej części etapu, nie tylko przed PR-em.
 
 ### Komendy
 
@@ -95,7 +98,9 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
   w pakiecie silnika, a w `sandbox/` i pakiecie web skasować
   `_build/*/lib/*/.mix/cached_dot_formatter`, inaczej `mix format` doda nawiasy;
 - fikstury kompilowane ze stringów w testach: numer linii w asercji to linia w stringu, nie w pliku testu;
-- próba odwrotna: kopia pliku w scratchpadzie, mutacja, test, `cp` z kopii i `cmp` — nie `git stash`;
+- próba odwrotna: kopia pliku w scratchpadzie, mutacja, test, `cp` z kopii i `cmp` — nie `git stash` i **nie
+  `git checkout -- plik`**, które cofa do HEAD razem z niezacommitowaną zmianą (E11f: zmazało refaktor, nałożony
+  ponownie z tego samego skryptu);
 - `~s(...)` kończy się na pierwszym `)`; fikstury v2: kontrakt bez procesu się nie kompiluje (R1), `publish … as:`
   wersjonowane (D11), `consumes "<nazwa>"` wymaga pól, `send` koliduje z `Kernel.send/2` (N2); opcja encji Sparka z
   blokiem idzie **do środka bloku** (`promise :x do unverified true … end`);
@@ -108,14 +113,14 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 30 września, na `6df5bc7`** (czysty `main` po #46): brama z `sandbox/` → **EXIT=0** — sandbox 143 testy,
-  `check` 0 / 29 / 9; silnik 986, `check` 0 / 66 / 5; web 52; auth 62; `docs --check`, `rules --check` — aktualne.
-- **Lokalnie, 30 września, po E11e** (drzewo E11e przed poprawkami przeglądu, które dotknęły już tylko
-  `.claude/skills/`, a tych brama nie czyta): **EXIT=0**, liczby jak wyżej.
-- **CI `main`**: `6df5bc7` (merge #46, przebieg `36688140188`, job `check`) — `success`.
-- **CI PR-ów E11**: #46 na `ea71d32` (przebieg `36682765233`) — `success`.
-- Wcześniejsze przebiegi (E11a–E11d, z porównaniem wyjść dev bajt w bajt i `pg_dump`) — w „E11a — co wyszło” do
-  „E11d-2 — co wyszło”.
+- **Lokalnie, 30 września, na drzewie `4e8cf7f`** (kod E11f w wersji z `main`; późniejsze commity #52 to sam
+  `PLAN.md`, CHANGELOG i ADR): brama z `sandbox/` → **EXIT=0** — sandbox 144 testy, `check` 0 / 29 / 9; silnik 996,
+  `check` 0 / 66 / 5; web 52; auth 62; `docs/dsl` i `docs/rules.md` aktualne.
+- **CI PR-a #52** na `a4f1d91` (przebieg `36729508957`, job `check`) — `success`.
+- **CI `main`** na `fb410c1` (przebieg `36730607553`, job `check`) — **w toku w chwili zapisu**; poprzedni `main`,
+  `406bb07` (przebieg `36697702828`) — `success`. Sprawdzić:
+  `gh run view 36730607553 --repo EmpoweredHouse/eh-os-contract --json jobs`.
+- Wcześniejsze przebiegi — w zapisach „co wyszło” poszczególnych etapów.
 
 ### Otwarte pytania
 
@@ -130,13 +135,20 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
   modułu (`"ProcessShapes.Promised"` wycina też `ProcessShapes.PromisedLate`), a `Implementations.build/1` go nie
   stosuje (konsumenci wyłączonego kontraktu dostają wpisy dispatchu i wiersze subskrypcji). Zmiana zmienia znaczenie
   konfiguracji hosta — do użytkownika; kandydat na E11f.
+- **Z PR-a #53, do decyzji użytkownika:** klucz blokady dopisu jest stały, a blokady doradcze są wspólne dla całej
+  bazy; EHOS trzyma wszystkie aplikacje instancji w jednej bazie `apps`, więc ich dopisy się szeregują — opcje w
+  opisie #53 i w jego zmianie `PLAN.md` (klucz z dwóch liczb z nazwy schematu, `SET search_path` na funkcjach V01).
+  Rozstrzygnąć, zanim pierwsza aplikacja uruchomi V01 na wspólnej instancji.
+- **Z E11f, bez decyzji:** klucz idempotencji z etykietą aktora dłuższy niż ~2,7 KB daje 500 (limit długości byłby
+  nowym powodem odmowy, widocznym dla hosta); ten sam aktor z tym samym kluczem dostaje stary paragon, także gdy nowa
+  komenda ma inny zakres albo treść (opcja „skrót treści” odrzucona).
 - **Z przeglądu E11c, sprzed E11c, bez decyzji:** (1) wartość pola korelacji albo nagłówek `idempotency-key`
   dłuższe niż ~2,7 KB wywracają dopis błędem Postgresa („index row size exceeds maximum” w indeksie `_event_runs`,
   strumienia albo idempotencji) — 500 zamiast odmowy; (2) `_commands` ma tylko indeks idempotencji, więc `Paths`
   (filtr po `contract`, `outcome`, `issued_by LIKE`) czyta całą tabelę przy każdym raporcie — do pomiaru razem z
   runnerem read modelu.
-- **Z przeglądu E11d-1, sprzed E11:** (1) **klucz idempotencji jest globalny** (*rozstrzygnięte 30 września: w
-  zakresie aktora, w E11f*) —
+- **Z przeglądu E11d-1, sprzed E11:** (1) **klucz idempotencji jest globalny** (*zrobione w E11f-1: w zakresie
+  aktora*; zostaje odtworzenie paragonu przez tego samego aktora po zawężeniu jego zakresu — „E11f — co wyszło”) —
   `Dispatcher` szuka przyjętej komendy po `idempotency_key`, `contract` i `type`, a unikalny indeks jest na samym
   kluczu; przez HTTP klucz to nagłówek klienta. Aktor B z tym samym uprawnieniem, który zgadnie klucz A (np.
   `"req-81"` z `docs/authorization.md`), dostaje paragon A — `command_id`, wygenerowaną tożsamość, pozycje; w kodzie
@@ -145,23 +157,19 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
   niezgadywalnego w dokumentacji. (2) Partia `rewrap!` trzyma `FOR UPDATE` na 500 wierszach kluczy z wywołaniem
   vaulta na wiersz, a `erase/3` bierze blokadę dopisu i czeka na te wiersze — przy wolnym KMS wszystkie dispatche
   czekają. (3) `mix eh_os_contract.rewrap` uruchamia całego hosta (`app.start`: Endpoint, kolejki Obana, runnery).
-- **Z #51, bez decyzji:** klucz blokady dopisu jest jeden na bazę, więc w bazie `apps` EHOS-a dopisy wszystkich
-  aplikacji się serializują — opcje w „#51 — tabele poza `public` — co wyszło”.
-- **Z E11e, bez decyzji:** (1) żaden test nie przypina „no longer fits” przy składaniu strumienia; (2) upcasterów
-  nie ma, `schema_version` nic nie czyta; (3) wiersz logu trzyma nazwę modułu kontraktu, a subskrypcje, process
-  managery i zadania efektów rozwiązują przez nią deklarację — v2 §5 twierdzi, że zmiana nazwy modułu nie osieroca
-  historii. Opis w „E11e — co wyszło”.
+- **Z E11e:** test „no longer fits” — *zrobione w E11f-2*; upcasterów nie ma — bez decyzji; nazwa modułu kontraktu
+  na wierszach — *rozstrzygnięte w E11f*: zostaje tożsamością kontraktu, zmiany nazwy modułu z historią się nie robi.
 - **D1–D14** przyjęte; w v2 §19: transport v1 między kontenerami, kontrakt upcasterów.
 
 ### Zgoda i stałe uprawnienia
 
 **Ten blok jest do skasowania. Skasowanie go cofa uprawnienie — nie migruje ono samo między sesjami.**
 
-W sesji E11b–E11d (29–30 września), i ponownie w sesji E11e (30 września, także dla gałęzi
-`claude/e11e-skills-dsl-v2-ab38c4`), użytkownik potwierdził: commity bez pytania na gałęziach `dsl-v2/e11…` przy
-zielonej bramie na każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. **W nowej sesji obowiązuje to dopiero po ponownym potwierdzeniu przez użytkownika.** Push, PR,
-merge, tag i Hex — tylko na wyraźne polecenie, przed PR skill `pre-pr-review`. Do
-`~/Projects/ai/empowered-house-context` nie piszemy nigdy; do `~/Projects/ai/eh-os` też nie (tylko czytanie).
+W sesjach E11b–E11f (29–30 września) użytkownik potwierdzał: commity bez pytania na gałęziach etapu przy zielonej
+bramie na każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. **W nowej sesji obowiązuje to
+dopiero po ponownym potwierdzeniu przez użytkownika.** Push, PR, merge, tag i Hex — tylko na wyraźne polecenie,
+przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie piszemy nigdy; do
+`~/Projects/ai/eh-os` też nie (tylko czytanie).
 
 ### Język
 
@@ -2707,6 +2715,122 @@ każde twierdzenie skilli z kodem silnika. Znalazł 3 błędy i 10 nieścisłoś
   - wymyślony przykład prefiksu zastąpiony prawdziwym (`accounting_month_opened`), z decyzją z EL1: nazwa
     zostaje z warsztatu;
   - wycinek `VisitSettlement` oznaczony jako wycinek.
+
+### E11f — co wyszło, część 1 (30 września)
+
+Na `dsl-v2/e11f-engine`, od `406bb07`; przegląd (`pre-pr-review`, dwa przeglądy równolegle) na E11f-1 przed
+kolejnymi częściami.
+- **E11f-1, `510b1fb`** — klucz idempotencji w zakresie aktora (decyzja niżej): wyszukiwanie i unikalny indeks po
+  `(issued_by, idempotency_key)`. V01 poprawione w miejscu — 0.3.0 nie jest wydane, więc nie ma bazy do
+  aktualizowania (*odrzucone:* V02 — kolidowałby z odmową dla baz zapisanych jako „2”–„5” sprzed E11c). **Wspólne
+  bazy lokalne dostały nowy indeks ręcznie** (`DROP INDEX` i `CREATE UNIQUE INDEX` w pięciu bazach z tabelami
+  silnika; dane zostały). Sprawdzone odwrotnie: bez nowego wyszukiwania i przy starym indeksie padają te same dwa
+  testy.
+- **Przegląd E11f-1** — rozstrzygnięte:
+  - pusty `sub` daje etykietę `actor:` wspólną dla wszystkich — *poprawione* (`291c27c`, sprawdzone odwrotnie);
+  - zmiana `sub` między próbą a ponowieniem uruchamia komendę drugi raz; wspólny credential i wspólny aktor
+    `:system` dzielą przestrzeń kluczy — *poprawione* w dokumentacji (`1272cf2`: `docs/authorization.md`,
+    CHANGELOG);
+  - moduledoc `Migrations` obiecywał, że V01 się nie przepisuje — *poprawione* (`1272cf2`);
+  - nieaktualne komentarze w `v01.ex` i `dispatcher.ex`, słaba asercja drugiego testu — *poprawione*;
+  - klucz z etykietą ponad ~2,7 KB wywraca zapis wiersza `accepted` (500) — *pominięte*, rozszerza otwarte pytanie
+    z przeglądu E11c (limit długości to nowy powód odmowy, do użytkownika);
+  - ten sam aktor z tym samym kluczem i komendą o innym zakresie albo treści dostaje stary paragon — *pominięte*:
+    to opcja „skrót treści”, odrzucona w decyzji niżej; zostaje w otwartych pytaniach;
+  - testy nie pokrywają `record/3` ani ścieżki pod blokadą — *bez zmiany*: wszystko idzie przez jedno
+    `idempotent/2`.
+- **E11f-2, `d718cee`** — testy, że strumień ze starym wierszem, który nie pasuje do deklaracji (brak wymaganego
+  pola, typ już niezadeklarowany), odmawia głośno: `failed` w `evolve`, nic nie dopisane. Zachowanie było, testu
+  nie było (ustalenie E11e). Sprawdzone odwrotnie mutacjami dekodera.
+- **E11f-3, `0af122d`, wycofane w `28620e9`** — subskrypcja, process manager i zadanie efektu dekodują wiersz przez
+  nazwę modułu zapisaną na nim, więc po zmianie nazwy modułu kontraktu subskrypcja ląduje w `failing` na pierwszym
+  starym wierszu. Poprawka szukała deklaracji od kontraktu czytającego, jak dispatch. **Przegląd pokazał, że to
+  pogarsza sprawę:** klucz konsumenta niesie nazwę modułu, więc przemianowany read model rejestruje się od nowa od
+  pozycji 0, bez `reset/0`, i po poprawce **po cichu projektował log drugi raz**, zamiast odmówić głośno. Zmiana
+  nazwy dalej psuje ponowienie idempotentne (`idempotency_key_reused`), zadania efektów w kolejce (anulowane) i
+  timery process managerów (ignorowane). Pół-obsługa, która działa po cichu, jest gorsza od głośnej odmowy.
+- **Przegląd E11f-2 i E11f-3** — rozstrzygnięte:
+  - cicha podwójna projekcja i pozostałe skutki zmiany nazwy — *wycofane* (`28620e9`); poprawiona nota w
+    `docs/adr/contract-v2.md` §5 i wiersz `change-contract` („nie przemianowuj modułu kontraktu z historią”);
+  - strażnik podmiotu przepuszczał same białe znaki i nie był opisany — *poprawione* (odmowa pustego po `trim`,
+    `@doc` `Actor.credential/3`, moduledoc `Auth`);
+  - host składający `%Actor{}` literałem omija strażnika — *bez zmiany*: jedyną udokumentowaną drogą jest
+    `credential/3`, a ścieżka przez pakiet auth jest zamknięta;
+  - istniejąca baza ze starym indeksem idempotencji daje 500 zamiast dwóch komend — *bez zmiany*: 0.3.0 nie jest
+    wydane, CHANGELOG mówi, jak przebudować indeks;
+  - `sibling!` nie sprawdza, czy czytający konsumuje akurat to zdarzenie rodzeństwa — *pominięte*, sprzed E11f, w
+    dispatchu; niskie (typy są unikalne w systemie, X7).
+- **Decyzja użytkownika (30 września), z E11f-3: silnik dalej rozpoznaje kontrakt po nazwie modułu.**
+  Dekodowanie w subskrypcjach, klucze konsumentów, ponowienia i raport zgodności zostają, jak są. Zmiany nazwy
+  modułu kontraktu z historią się nie robi — mówi to `change-contract` i v2 §5. *Odrzucone:* rozpoznawanie po
+  nazwie procesu (unikalnej w systemie, X7, i obecnej w typie każdego zdarzenia) — zmienia klucze konsumentów,
+  zapytania raportu, idempotencję i odczyt w trzech czytelnikach, a nikt jeszcze nie przemianowuje kontraktów z
+  historią.
+- **Decyzja użytkownika (30 września), E11f-5: wariant B** (jednostka czyta tylko to, co składa `evolve/2`).
+  *Odrzucone:* (A) słowo DSL-a z listą składanych zdarzeń — powtarza `evolve/2` i może się z nim rozjechać; (C)
+  przebudowa sandboksa — pułapka zostaje dla następnego klienta; (D) zostawić do pomiaru.
+- **E11f-4, `005bcad`** — jeden odczyt zakresu komendy i query w dispatchu (były dwie kopie) i jedna pętla D10
+  po zakresowanych komendach i query; `one_value/2` oparte na `Key.base_type/2`. Zachowanie bez zmian: testy D10 i
+  zakresu przechodzą, a padają przy zepsutej gałęzi listy (1) i kodowaniu zakresu (7).
+- **E11f-5 — jednostka czyta tylko to, co składa jej `evolve/2`** (decyzja użytkownika niżej, wariant B).
+  - **Problem.** `TurnoverMatching` (TaxVision) przy każdym `run_matching` czytał i dekodował wszystkie
+    `bank_turnover_list_created` miesiąca, każdy z całą listą obrotów, choć jego `evolve/2` przepuszcza je bez
+    zmiany (`def evolve(state, _event), do: state`). Wyciąg z N obrotami daje N komend, a każda czyta wszystkie
+    dotychczasowe wyciągi: O(N²). Do tego każde wgranie wyciągu kolidowało z trwającym dopasowaniem, bo warunek
+    konfliktu DCB obejmował typ, od którego decyzja nie zależy.
+  - **Obserwacje.**
+    - Stan jednostki jest funkcją tylko tych zdarzeń, które `evolve/2` zmienia. Informacja „które” już jest w
+      kodzie — w głowach klauzul — i I3 już je skanuje.
+    - Da się ją odczytać pewnie tylko w jednym kształcie: każda klauzula bez struktury zdarzenia to dosłownie
+      `def evolve(state, _), do: state`. Każdy inny catch-all albo strażnik na zmiennej mogą składać cokolwiek.
+    - Agregat i tak musi czytać cały strumień, bo wersja strumienia jest warunkiem dopisu — zysk jest tam tylko
+      w dekodowaniu. W DCB zawęża się też zapytanie i warunek konfliktu.
+    - `given_types` komendy boundary tracą pominięte typy, a pokrycie scenariuszy porównuje na nich `given`;
+      bez zmiany w `Coverage` scenariusz z `given` pominiętego zdarzenia przestałby być obserwowany.
+    - Typ, którego kontrakt już nie deklaruje, nie może być „pominięty”: to historia po zmienionym kontrakcie
+      i ma dalej zatrzymywać strumień (pierwsza wersja go przepuszczała; wyłapał to test E11f-2).
+  - **Zrobione.**
+    - `Implementation` zapisuje `folds` (lista albo `:all`) w `__eh_os_implementation__/0`;
+      `Implementations.folded_types/2` daje z tego typy logu.
+    - Dispatch dekoduje tylko typy składane i niezadeklarowane, a zapytanie boundary zawęża do składanych;
+      gdy nie zostaje nic, zostaje pełne zapytanie, bo magazyn odmawia pustego.
+    - `Coverage` porównuje `given` na typach składanych.
+    - `record/3` czyta jednostkę w całości, jak przedtem.
+  - **Testy i próby odwrotne.**
+    - `implementation_test`: cztery kształty `evolve/2`;
+    - dispatch: niepasujący wiersz pominiętego `account_opened` nie blokuje wpłaty;
+    - `coverage_test`: scenariusz z `given` pominiętego typu dalej jest obserwowany;
+    - sandbox: `run_matching` nie ma w `given_types` wyciągów, a ma faktury.
+    - Każdy z tych testów pada przy swojej mutacji: bez zawężenia zapytania pada test sandboksa, bez pomijania —
+      test dispatchu, przy catch-allu uznawanym zawsze za „bez zmian” — dwa testy `folds`, bez filtra w
+      `Coverage` — test pokrycia.
+  - **Wnioski.**
+    - Skoro „które zdarzenia” jest już w `evolve/2`, drugie miejsce na tę informację (słowo DSL-a) mogłoby się z
+      nim rozjechać. Dlatego wybór B, a nie A.
+    - Koszt B: zysk dostaje tylko kod pisany w jednym kształcie. `write-decider` mówi teraz, żeby catch-all był
+      dokładnie `def evolve(state, _), do: state`, i dlaczego.
+    - Warunek konfliktu DCB zawęża się poprawnie, bo od pominiętych zdarzeń decyzja nie zależy — ale to zmiana
+      zachowania widoczna dla hosta (mniej `:conflict`), więc wpis w CHANGELOG-u.
+    - Wiersz pominiętego typu, który przestał pasować do deklaracji, nie blokuje już strumienia. Tabela
+      `change-contract` o tym mówi.
+  - **Weryfikacja:** brama `EXIT=0` — sandbox **144** (+1), `check` 0/29/9; silnik **996** (+6), `check` 0/66/5;
+    web 52; auth 62.
+- **Przegląd E11f-4 i E11f-5** (dwa przeglądy równolegle; nic wysokiego, zawężenie warunku DCB uznane za poprawne:
+  decyzja zależy tylko od stanu, a stan tylko od składanych zdarzeń) — rozstrzygnięte:
+  - `folded_types` szukało implementacji w indeksie drugi raz na każdy dispatch, a pominięcie liczyło typy
+    zadeklarowane dla każdego wiersza — *poprawione*: typy z modułu, który dispatch już ma, zbiór raz na dispatch;
+  - boundary, które nie składa żadnego zdarzenia, wraca do pełnego zapytania (magazyn odmawia pustego), wbrew
+    zdaniu w CHANGELOG-u — *poprawione* w CHANGELOG-u i ADR; w tym wypadku pomijane są też konsultowane typy
+    rodzeństwa, nie tylko własne;
+  - nieprawdziwy komentarz w `Coverage` (agregat zapisuje cały strumień) i opis testu pokrycia — *poprawione*;
+  - `Coverage` bez implementacji w indeksie (zła konfiguracja `applications:` węzła) porównuje pełne `given`,
+    a dispatch by odmówił — *bez zmiany*: zła konfiguracja wywraca już dispatch;
+  - `folds/3` i I3 przechodzą po klauzulach osobno — *pominięte*, porządki; jedna wspólna analiza przy następnej
+    zmianie kształtów klauzul;
+  - agregat dalej pobiera z bazy całe wiersze strumienia, oszczędza tylko dekodowanie — *bez zmiany*, zapisane w
+    „Obserwacjach” wyżej.
+- **Weryfikacja:** brama po wycofaniu i poprawkach przeglądu `EXIT=0` — sandbox 143, `check` 0/29/9; silnik **990**
+  (986 + 2 testy klucza + 2 testy historii), `check` 0/66/5; web 52; auth 62.
 
 ### Przed E11f — decyzja użytkownika (30 września)
 

@@ -49,8 +49,8 @@ defmodule EhOsContract.Auth do
       one EHOS issues, whoever signed it.
 
   Anything that is not a well-formed credential in this form — not a JWT, no
-  `kid`, a `crit` header, a `sub` that is not a string, a `cap` that is not a list of
-  strings — is
+  `kid`, a `crit` header, a `sub` that is not a string or is blank, a `cap` that is not
+  a list of strings — is
   `:bad_signature`: it is not something EHOS signed, whatever its bytes say.
 
   An accepted credential becomes an `EhOsContract.Actor` of kind `:credential`,
