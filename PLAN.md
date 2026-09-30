@@ -135,10 +135,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
   modułu (`"ProcessShapes.Promised"` wycina też `ProcessShapes.PromisedLate`), a `Implementations.build/1` go nie
   stosuje (konsumenci wyłączonego kontraktu dostają wpisy dispatchu i wiersze subskrypcji). Zmiana zmienia znaczenie
   konfiguracji hosta — do użytkownika; kandydat na E11f.
-- **Z PR-a #53, do decyzji użytkownika:** klucz blokady dopisu jest stały, a blokady doradcze są wspólne dla całej
-  bazy; EHOS trzyma wszystkie aplikacje instancji w jednej bazie `apps`, więc ich dopisy się szeregują — opcje w
-  opisie #53 i w jego zmianie `PLAN.md` (klucz z dwóch liczb z nazwy schematu, `SET search_path` na funkcjach V01).
-  Rozstrzygnąć, zanim pierwsza aplikacja uruchomi V01 na wspólnej instancji.
+- **Z PR-a #53:** klucz blokady dopisu jest stały, a blokady doradcze są wspólne dla całej bazy — *rozstrzygnięte
+  30 września: klucz per schemat, osobny PR* („Klucz blokady dopisu per schemat — co wyszło”).
 - **Z E11f, bez decyzji:** klucz idempotencji z etykietą aktora dłuższy niż ~2,7 KB daje 500 (limit długości byłby
   nowym powodem odmowy, widocznym dla hosta); ten sam aktor z tym samym kluczem dostaje stary paragon, także gdy nowa
   komenda ma inny zakres albo treść (opcja „skrót treści” odrzucona).
@@ -2900,7 +2898,8 @@ w `public` czytało ich „1” i nie tworzyło niczego, a `down/1` przy pustym 
   Wszystko to zmienia V01 — dziś „ostateczny kształt” bez wdrożonego konsumenta. Po pierwszym wdrożeniu zmiana to
   V02 podmieniająca funkcję pod ruchem, a przez okno podmiany dopisy pod starym i nowym kluczem mijają się i
   czytelnik gubi pozycje, więc bezpieczna V02 bierze oba klucze przez wydanie. **Do rozstrzygnięcia przed
-  pierwszą aplikacją na współdzielonej instancji** (przegląd bezpieczeństwa).
+  pierwszą aplikacją na współdzielonej instancji** (przegląd bezpieczeństwa). *Zrobione 30 września, po
+  merge'u #53 — „Klucz blokady dopisu per schemat — co wyszło”.*
 
 **Testy.** `packages/eh_os_contract/test/schema_test.exs` i `packages/eh_os_contract_auth/test/schema_test.exs`:
 losowy schemat z właścicielem i rolą aplikacji jak u EHOS-a (warunki wstępne sprawdzane, nie zakładane — brak
@@ -2927,6 +2926,41 @@ Pominięte: klucz blokady i `SET search_path` funkcji (wyżej, do decyzji); `up(
 ignorowane po cichu — odmowa nieznanych opcji zmienia kształt widoczny dla hosta, więc do użytkownika;
 wspólny pomocnik źródła `Oban.Job` dla `Paths` i `ProcessManager` — nie, bo `reconcile!/2` zawsze działa z
 Obanem (zaraz potem go woła), a raport nie musi.
+
+### Klucz blokady dopisu per schemat — co wyszło (30 września)
+
+**Decyzja użytkownika** (30 września, po merge'u #53): „rób, osobny PR”. Problem opisany w „#51 — co wyszło”:
+jeden stały klucz blokady na bazę, więc w bazie `apps` EHOS-a dopisy wszystkich aplikacji czekały na siebie.
+
+**Co jest.** V01 bierze `pg_catalog.pg_advisory_xact_lock(class, log)`. `class` to pierwsze cztery bajty
+sha256("eh_os_contract_events append"), wspólne dla silnika; `log` to pierwsze cztery bajty sha256 nazwy schematu,
+w którym migracja tworzy log (`current_schema()`). Oba liczy Elixir przy migracji (`V01.lock_key/1`) i wpisuje jako
+stałe w `eh_os_contract_append_lock()` oraz w funkcję wyzwalacza. Wyzwalacz nie woła już funkcji przez ścieżkę,
+więc `SET search_path` na funkcjach okazał się niepotrzebny: nic nie jest rozwiązywane w runtime. Migracja bez
+istniejącego schematu na ścieżce odmawia z opisem. V01 zmieniony w miejscu (przed pierwszym wydaniem 0.3.0, jak
+indeks idempotencji w E11f); bazy zmigrowane wcześniej — wspólne bazy testowe i dev — mają stary klucz, dalej
+poprawny, tylko wspólny, do `ecto.drop`.
+
+*Odrzucone:*
+- **`hashtext('<schemat>')` liczone w SQL** — `hashtext` to wewnętrzna funkcja Postgresa bez obietnicy stałości
+  między wersjami; sha256 w Elixirze to ten sam sposób, którym powstał stary klucz;
+- **oid tabeli logu** — wypieczony w funkcji nie przeżywa `pg_dump`/odtworzenia schematu, którym D-54 odtwarza
+  jedną aplikację;
+- **klucz liczony w runtime** (`TG_TABLE_SCHEMA` w wyzwalaczu, `current_schema()` w `Store`) — dynamiczny SQL
+  przy każdym dopisie, a dwa miejsca wyliczałyby klucz z dwóch różnych nazw, gdy pierwszy schemat ścieżki
+  aplikacji nie jest schematem logu;
+- **wyzwalacz wołający funkcję z nazwą schematu** — klucz w jednym miejscu SQL, ale zmiana nazwy albo odtworzenie
+  schematu pod inną nazwą wywraca każdy dopis; dwa ciała z jedną wartością z `lock_key/1` przeżywają obie.
+
+**Czego nie daje:** blokady doradcze nie mają uprawnień, więc sąsiad, który zna klucz, nadal może go wziąć — cena
+przyjęta w D-54. Zderzenie 32-bitowego `log` dwóch schematów wraca dla tej pary do dzisiejszego czekania, bez
+błędów.
+
+**Test** `packages/eh_os_contract/test/append_lock_test.exs`: dwa schematy w bazie `CommitRepo`, każdy zmigrowany
+jak u hosta. Gdy transakcja w pierwszym trzyma blokadę, dopis do drugiego przechodzi — przez funkcję `Store` i
+przez wyzwalacz — a do pierwszego czeka (`lock_timeout`, któremu blokada doradcza podlega); obie funkcje schematu
+mają jego klucz. Odwrotnie: ze stałym `log` padają „własny klucz” i „inny schemat nie czeka”, a „ten sam log
+czeka” zostaje zielony — szeregowanie w jednym logu było i jest.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
