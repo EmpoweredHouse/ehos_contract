@@ -431,7 +431,7 @@ defmodule EhOsContract.DomainRulesTest do
       """
     end
 
-    test "a name with a dot, a dash at an end, a capital, a space or a newline is refused at use" do
+    test "a name with a dot, a dash at an end, a capital, a space, a newline, or nil is refused at use" do
       for {name, index} <-
             Enum.with_index([
               :"acme.billing",
@@ -442,7 +442,9 @@ defmodule EhOsContract.DomainRulesTest do
               :"1shop",
               :_shop,
               :"shop\n",
-              :""
+              :"",
+              nil,
+              true
             ]) do
         module = "BadName#{index}"
         file = "#{Macro.underscore(module)}.ex"

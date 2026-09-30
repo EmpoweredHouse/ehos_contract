@@ -90,8 +90,9 @@ defmodule EhOsContract.Domain.Rules do
   # The first segment of D11's versioned name (`Contract.Rules.Boundaries`); `\z`, not `$`.
   @namespace ~r/^[a-z]([-a-z0-9_]*[a-z0-9_])?\z/
 
+  # `nil`, `true` and `false` are atoms whose text fits, and the option is required.
   defp d11(dsl, %{name: name}) do
-    if Atom.to_string(name) =~ @namespace,
+    if name not in [nil, true, false] and Atom.to_string(name) =~ @namespace,
       do: [],
       else: [
         {"D11: the domain's name: #{inspect(name)} is not an application's namespace: lowercase " <>
