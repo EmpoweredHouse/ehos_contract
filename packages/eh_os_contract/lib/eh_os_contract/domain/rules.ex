@@ -6,6 +6,10 @@ defmodule EhOsContract.Domain.Rules do
   other end then a context; **D1** refuses a name that is both a context and an
   external.
 
+  **D4**, since the review of the domain's `name:`: an actor's name is snake_case, as a
+  contract's names are (N1), because it is a role, `<domain>.<actor>`, in the manifest
+  EHOS reads; `actor :"*"` would have been the role `"acme.*"`.
+
   **D8** (plan EL2): a field's `issued_by:` names an external of this domain.
 
   **D9** (plan EL2b): a value's invariant is named as a function is — snake_case,
@@ -562,17 +566,27 @@ defmodule EhOsContract.Domain.Rules do
 
   # --- D4: a person is not backed by a system ------------------------------------
 
-  defp d4(entities, _domain) do
+  defp d4(entities, domain) do
     externals = MapSet.new(for %External{name: name} <- entities, do: name)
     contexts = MapSet.new(for %Context{name: name} <- entities, do: name)
 
-    for %Actor{} = actor <- entities, violation <- actor_violations(actor, externals, contexts) do
+    for %Actor{} = actor <- entities,
+        violation <- actor_violations(actor, externals, contexts, domain) do
       violation
     end
   end
 
-  defp actor_violations(actor, externals, contexts) do
+  defp actor_violations(actor, externals, contexts, domain) do
     where = "D4: actor #{inspect(actor.name)}"
+
+    # `\z`, not `$`, which also matches before a final newline.
+    name =
+      if Atom.to_string(actor.name) =~ ~r/^[a-z][a-z0-9_]*\z/,
+        do: [],
+        else: [
+          {"#{where} is not snake_case; it is the role " <>
+             "#{inspect("#{domain.name}.#{actor.name}")}", actor}
+        ]
 
     backed_by =
       cond do
@@ -603,7 +617,7 @@ defmodule EhOsContract.Domain.Rules do
         ],
         else: []
 
-    backed_by ++ context
+    name ++ backed_by ++ context
   end
 
   # --- D5: a relation's roles fit its type, and its ends exist --------------------

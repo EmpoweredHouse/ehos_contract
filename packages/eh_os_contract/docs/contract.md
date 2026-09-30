@@ -232,7 +232,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `D1` | L2 | two subdomains, contexts, actors, subjects, values, entities or externals of one name; a term defined twice in a context; a relation declared twice; a name that is both a context and an external |
 | `D2` | L2 | two translations of a term into one language, or one into the context's own |
 | `D3` | L2 | a value with both or neither of a type and fields; `unit` on a value that is not numeric; an undeclared `context:`; a malformed or unknown type, or a bad enum; values in a cycle |
-| `D4` | L2 | a human actor with `backed_by`; `backed_by` naming no external; an actor's `context:` the domain does not declare |
+| `D4` | L2 | an actor's name not snake_case; a human actor with `backed_by`; `backed_by` naming no external; an actor's `context:` the domain does not declare |
 | `D5` | L2 | a relation whose roles do not fit its type (directed or symmetric); an end the domain does not declare; an external in a symmetric relation; a directed one with no context end; a context related to itself |
 | `D6` | L2 | `{:id, entity}` naming an undeclared entity; an entity with an undeclared context, identified by what is not its own required, non-personal `:id` field, or with a field twice, malformed, of an undeclared subject, with `default:` or `personal:`, or holding personal data |
 | `D7` | L2 | a context in a subdomain the domain does not declare |

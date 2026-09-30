@@ -350,6 +350,27 @@ defmodule EhOsContract.DomainRulesTest do
   end
 
   describe "D4: a person is not backed by a system" do
+    test "an actor whose name is not snake_case is refused, since it is a role" do
+      message =
+        refused("ActorNames", """
+          actor :"*", :human, "Wszyscy"
+          actor :"billing.clerk", :human, "Księgowa"
+          actor :Reception, :human, "Recepcja"
+          actor :"clerk\n", :human, "Urzędnik"
+          actor :front_desk2, :human, "Recepcja 2"
+        """)
+
+      assert message =~
+               ~s|D4: actor :* is not snake_case; it is the role "clinic.*" (actor_names.ex:4)|
+
+      assert message =~
+               ~s|D4: actor :"billing.clerk" is not snake_case; it is the role "clinic.billing.clerk"|
+
+      assert message =~ "D4: actor :Reception is not snake_case"
+      assert message =~ ~s|D4: actor :"clerk\\n" is not snake_case|
+      refute message =~ "front_desk2"
+    end
+
     test "a human actor with backed_by is refused" do
       message =
         refused("BackedPerson", """
