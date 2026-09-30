@@ -1639,9 +1639,12 @@ policy :invoice_on_visit_close, "Faktura po zamknięciu wizyty",
 >   to tear apart. The relay reads only committed events and, by §10.2, sees positions in commit order, so it
 >   neither publishes a fact that did not commit nor skips one that committed late. It advances its
 >   checkpoint only after `Bus` confirms the batch, so a relay that stops between the two publishes the batch
->   again under the same message ids. A message can therefore arrive twice, never zero times and never without
->   its fact. The inbox makes a second arrival harmless; deduplication by the transport (JetStream's
->   `Nats-Msg-Id`) is welcome and not required.
+>   again under the same message ids. A message can therefore arrive twice at a consumer subscribed when it
+>   was published, never zero times and never without its fact. The inbox makes a second arrival harmless;
+>   deduplication by the transport (JetStream's `Nats-Msg-Id`) is welcome and not required. What a consumer
+>   subscribed later gets is the adapter's (`EhOsContract.Bus` promises only what is published after it
+>   first subscribed), so when a subscriber's consumer is created, relative to the publisher's relay, is
+>   E12c's to settle.
 > - **Not through Oban.** An effect's Oban job is an outbox because the effect calls a system no transaction
 >   reaches, and the job is inserted in the event's transaction (§11, `technology-notes.md` on Oban). A relay
 >   built the same way, a job per published event, was rejected: `oban_jobs` would be a second outbox beside

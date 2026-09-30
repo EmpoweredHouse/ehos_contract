@@ -21,6 +21,12 @@ defmodule EhOsContract.Bus.Local do
   they were published until one is redelivered; `EhOsContract.Bus` promises no order,
   and nothing may rely on this one.
 
+  **What it leaves out, and a transport adapter should not copy.** No acknowledgement
+  deadline: a handler that hangs keeps its message until its process dies. No limit on
+  attempts: a message that always fails comes again every `:retry_after`, logged each
+  time. No way to remove a subscription: the queue of a consumer that never comes
+  back — renamed in development, say — grows until the node stops.
+
   **The payload goes through JSON** on the way, encoded in the publisher's process, so
   a term a real transport could not carry raises there, and what a handler gets is
   what `Jason` decodes. A message published twice is delivered twice: the inbox, not

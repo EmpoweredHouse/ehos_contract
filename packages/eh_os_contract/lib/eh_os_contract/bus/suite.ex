@@ -25,7 +25,9 @@ defmodule EhOsContract.Bus.Suite do
   every assertion about several messages compares them as a set, since no order is
   promised, and a message published twice is asserted to arrive, not to arrive once.
   Every test works under names of its own, so a transport that keeps messages between
-  tests does not mix them up. Keep the case `async: false`.
+  tests does not mix them up. On a broker that outlives the test run, those names stay:
+  each test leaves durable consumers, named `bus-suite.…`, for the adapter's own test to
+  remove. Keep the case `async: false`.
   """
 
   @doc false

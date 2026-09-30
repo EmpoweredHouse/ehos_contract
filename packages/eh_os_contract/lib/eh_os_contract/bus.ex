@@ -15,7 +15,9 @@ defmodule EhOsContract.Bus do
 
   ## What an adapter promises
 
-  `EhOsContract.Bus.Suite` checks all of this. Any adapter can run it.
+  `EhOsContract.Bus.Suite` checks what a test can see of this, and any adapter can run
+  it. It cannot see the absence of an order, nor how a relay treats an error, which is
+  E12b's.
 
   - **`:ok` from `c:publish/2` means the transport holds every message of the batch.**
     An error means it may hold some of them: the relay publishes the whole batch again,
@@ -34,6 +36,9 @@ defmodule EhOsContract.Bus do
   - **Where a new consumer starts** is the adapter's, beyond one thing: it gets what is
     published after it first subscribed. `EhOsContract.Bus.Local` gives it nothing
     older.
+  - **No bound on redelivery.** A message whose handler never succeeds comes again for
+    as long as the transport keeps it. What stops it is the transport's own limit
+    (JetStream's `MaxDeliver`) or the subscriber's inbox (E12c), not this behaviour.
 
   Who may consume a name is not the engine's question either. The subscriber's
   `consumes` derives the capability `<name>.subscribe`, EHOS grants it per environment,
