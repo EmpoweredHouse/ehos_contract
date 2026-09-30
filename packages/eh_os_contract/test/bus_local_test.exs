@@ -157,6 +157,20 @@ defmodule EhOsContract.Bus.LocalTest do
       refute status =~ "held-payload-value"
     end
 
+    test "a consumer that comes back taking fewer names gets only those" do
+      [kept, dropped] = for tag <- ~w(kept dropped), do: bus_name(tag)
+      consumer = bus_name("consumer")
+      bus_consume(consumer, [kept, dropped])
+      bus_stop(consumer)
+
+      sent = bus_message(kept)
+      bus_publish([sent, bus_message(dropped)])
+
+      bus_consume(consumer, [kept])
+      assert [^sent] = bus_received(consumer, 1)
+      bus_nothing_more(consumer)
+    end
+
     test "a consumer stops when the broker does" do
       consumer = bus_name("consumer")
       pid = bus_consume(consumer, [bus_name("gone")])

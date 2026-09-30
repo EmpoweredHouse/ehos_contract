@@ -78,13 +78,20 @@ defmodule EhOsContract.Bus.Local do
   end
 
   @impl GenServer
+  # A consumer that comes back taking fewer names drops what it queued of the others.
   def handle_call({:subscribe, name, names}, {pid, _tag}, state) do
+    names = MapSet.new(names)
+
     consumers =
       Map.update(
         state.consumers,
         name,
-        %{names: MapSet.new(names), queue: :queue.new(), waiting: MapSet.new()},
-        &%{&1 | names: MapSet.new(names)}
+        %{names: names, queue: :queue.new(), waiting: MapSet.new()},
+        &%{
+          &1
+          | names: names,
+            queue: :queue.filter(fn m -> MapSet.member?(names, m.name) end, &1.queue)
+        }
       )
 
     {:reply, :ok, monitor(%{state | consumers: consumers}, pid)}
