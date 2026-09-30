@@ -14,8 +14,18 @@ defmodule EhOsContract.DslRules do
   what no struct holds, such as an option of `use`.
   """
 
+  # `\z`, not `$`, which also matches before a final newline.
+  @namespace ~r/^[a-z]([-a-z0-9_]*[a-z0-9_])?\z/
+
   @typedoc "A broken rule, and the declaration it points at, or where it was written."
   @type violation :: {String.t(), struct() | :erl_anno.anno()}
+
+  @doc false
+  # One segment of an application's namespace (D11): a domain's `name:`, and the first
+  # segment of every name its contracts publish or consume. One pattern for both, so a
+  # domain cannot compile under a name none of its publications could start with.
+  @spec namespace?(term()) :: boolean()
+  def namespace?(segment), do: is_binary(segment) and segment =~ @namespace
 
   @doc """
   `{:ok, dsl}` when there are no violations, and otherwise the one error that

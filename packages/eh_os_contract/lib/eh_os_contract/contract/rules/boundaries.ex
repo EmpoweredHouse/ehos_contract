@@ -38,8 +38,9 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
   alias EhOsContract.DslRules
   alias EhOsContract.Contract.Rules
 
-  # `\z`, not `$`, which also matches before a final newline.
-  @versioned ~r/^[a-z]([-a-z0-9_]*[a-z0-9_])?(\.[a-z][a-z0-9_]*)+\.v[1-9][0-9]*\z/
+  # What follows the namespace (`DslRules.namespace?/1`); `\z`, not `$`, which also
+  # matches before a final newline.
+  @versioned ~r/^(\.[a-z][a-z0-9_]*)+\.v[1-9][0-9]*\z/
 
   @doc false
   @spec check(map()) :: [DslRules.violation()]
@@ -219,7 +220,7 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
   end
 
   defp name(where, name, declaration) do
-    if is_binary(name) and name =~ @versioned,
+    if versioned?(name),
       do: [],
       else: [
         {"#{where}: #{inspect(name)} is not a versioned name: the application's namespace, " <>
@@ -227,4 +228,13 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
            "in .v<n>, like \"my-shop.visit.closed.v1\"", declaration}
       ]
   end
+
+  defp versioned?(name) when is_binary(name) do
+    case String.split(name, ".", parts: 2) do
+      [namespace, rest] -> DslRules.namespace?(namespace) and "." <> rest =~ @versioned
+      [_] -> false
+    end
+  end
+
+  defp versioned?(_name), do: false
 end
