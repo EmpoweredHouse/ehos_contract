@@ -171,18 +171,30 @@ defmodule EhOsContract.DocsTest do
     end
   end
 
-  # ExDoc names an extra's page after its basename, and two with one basename get
-  # pages numbered in the order they are listed: a link to either stops being stable.
-  test "no two pages of the documentation share a basename" do
-    extras = Mix.Project.config()[:docs][:extras]
-    names = Enum.map(extras, &(&1 |> Path.basename() |> Path.rootname() |> String.downcase()))
+  # The pages ExDoc builds, as `mix.exs` lists them.
+  defp extras, do: Mix.Project.config()[:docs][:extras]
 
-    assert names -- Enum.uniq(names) == []
-    assert Enum.all?(extras, &File.exists?/1)
+  # The id ExDoc gives an extra's page (`ExDoc.Utils.text_to_id/1` on its basename):
+  # two pages of one id are numbered in the order they are listed, so a link to
+  # either stops being stable.
+  defp page_id(path) do
+    path
+    |> Path.basename()
+    |> Path.rootname()
+    |> String.downcase()
+    |> String.replace(~r/\W+/u, "-")
+    |> String.trim("-")
+  end
+
+  test "every page of the documentation exists, and no two share the id ExDoc names it by" do
+    assert Enum.reject(extras(), &File.exists?/1) == []
+
+    ids = Enum.map(extras(), &page_id/1)
+    assert ids -- Enum.uniq(ids) == []
   end
 
   test "every relative link between the pages leads to a page" do
-    pages = @pages ++ ["docs/rules.md"]
+    pages = extras()
 
     broken =
       for page <- pages,
