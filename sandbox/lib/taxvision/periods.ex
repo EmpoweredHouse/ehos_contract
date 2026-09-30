@@ -140,7 +140,7 @@ defmodule Taxvision.Periods do
   """
   @spec name?(term()) :: boolean()
   def name?(name) when is_binary(name),
-    do: Regex.match?(~r/^\d{4}-\d{2}$/u, name) and month_start(name) != :error
+    do: Regex.match?(~r/^[0-9]{4}-[0-9]{2}\z/, name) and month_start(name) != :error
 
   def name?(_name), do: false
 
