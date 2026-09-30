@@ -132,6 +132,14 @@ defmodule EhOsContract.Subscription do
   """
   @spec step(module(), Implementations.consumer()) :: step()
   def step(repo, consumer) do
+    # A relay with no bus has nothing to do, and needs no transaction and no lock on
+    # its row to find that out, every second and on every dispatch.
+    if consumer.kind == :relay and Bus.adapter() == nil,
+      do: :idle,
+      else: stepped(repo, consumer)
+  end
+
+  defp stepped(repo, consumer) do
     result =
       repo.transaction(fn ->
         case take(repo, consumer.key, fed(consumer)) do
@@ -159,11 +167,10 @@ defmodule EhOsContract.Subscription do
     end
   end
 
-  # A relay publishes what it read, and moves only once the transport holds it; with
-  # no bus configured it waits where it is (`EhOsContract.Relay`).
+  # A relay publishes what it read, and moves only once the transport holds it
+  # (`EhOsContract.Relay`); `step/2` has already seen that a bus is configured.
   defp apply_next(repo, %{kind: :relay} = consumer, row) do
-    with {_adapter, _opts} <- Bus.adapter(),
-         [first | _] = events <-
+    with [first | _] = events <-
            fenced(
              Store.read_all(repo, row.position, Relay.batch(), Map.keys(consumer.callbacks)),
              row
