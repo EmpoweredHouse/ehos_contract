@@ -1,0 +1,5 @@
+pre-pr-review of 3eb24c8..HEAD: contract name collisions (N1/N2) and field names (F1/D3/D6, identity).
+code-review high on 3eb24c8..f9a6278: :state_/:row_ shadowed State/Row - fixed in 93c3b6b; aggregate and dcb treated as one module - fixed in 93c3b6b; kind looked up with timers, alphabetical order - fixed in 93c3b6b; argument refused twice, D6 variable name - fixed in 91b5fe7; cross-kind and x2/x_2 tests - added; first of a callback pair by kind order - no change (message only).
+security and performance: identity names unchecked (graph edge, page table, key tag) - fixed in d769a98; Mermaid edge labels unescaped - no change, every label is library text or a checked name.
+CodeRabbit on #56 (Polish fixture labels) - no change, CLAUDE.md allows Polish labels; thread answered and resolved.
+Gate from sandbox/ on 91b5fe7: EXIT=0; sandbox 144 (check 0/29/9), engine 1028 (check 0/66/5), web 52, auth 66; docs/dsl and docs/rules.md current.
