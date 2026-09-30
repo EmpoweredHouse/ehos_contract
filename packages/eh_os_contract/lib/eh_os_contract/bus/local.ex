@@ -103,6 +103,11 @@ defmodule EhOsContract.Bus.Local do
     {:reply, :ok, wake(%{state | consumers: consumers})}
   end
 
+  # A consumer that sent itself `:take` before this broker restarted asks it for a
+  # name it has never heard of; it is told so, and resubscribes when it restarts.
+  def handle_call({:take, name}, _from, state) when not is_map_key(state.consumers, name),
+    do: {:reply, {:error, :unsubscribed}, state}
+
   def handle_call({:take, name}, {pid, _tag}, state) do
     consumer = Map.fetch!(state.consumers, name)
 

@@ -137,6 +137,13 @@ defmodule EhOsContract.Bus.LocalTest do
       refute log =~ "\n[error] forged line"
     end
 
+    test "a take for a name nobody subscribed is refused, and the broker stays up" do
+      broker = GenServer.whereis(__MODULE__.Bus)
+
+      assert {:error, :unsubscribed} = GenServer.call(broker, {:take, bus_name("never")})
+      assert GenServer.whereis(__MODULE__.Bus) == broker
+    end
+
     test "a consumer stops when the broker does" do
       consumer = bus_name("consumer")
       pid = bus_consume(consumer, [bus_name("gone")])

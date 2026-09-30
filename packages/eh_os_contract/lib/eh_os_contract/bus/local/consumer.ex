@@ -42,6 +42,9 @@ defmodule EhOsContract.Bus.Local.Consumer do
 
       :empty ->
         {:noreply, state}
+
+      {:error, :unsubscribed} ->
+        {:stop, {:shutdown, :unsubscribed}, state}
     end
   end
 
