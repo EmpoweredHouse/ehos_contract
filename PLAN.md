@@ -40,8 +40,8 @@ przy kodzie.
 
 - **E11f — reszta** — asystenta: duplikacja `scope` (dispatch i D10), boundary dekodujące nieużywane własne
   zdarzenia (O(N²) na wyciąg TaxVision; może wymagać nowego słowa DSL-a — wtedy do użytkownika z przykładem).
-- **Do decyzji użytkownika, z E11f:** czym raport zgodności wybiera historię kontraktu — dziś nazwą modułu, więc
-  przemianowany moduł czyta się jak kontrakt bez historii („E11f — co wyszło, część 1”).
+- **Do decyzji użytkownika, z E11f:** czym silnik rozpoznaje kontrakt przez zmianę nazwy modułu — dziś nazwą
+  modułu wszędzie poza składaniem strumienia w dispatchu („E11f — co wyszło, część 1”, E11f-3).
 - **Po E11:** kontrakty sandboxa do testów pakietu jako fikstury akceptacyjne, potem **manifest v2** (po akceptacji
   D-51/D-52 w `eh-os` — decyzja z 29 września).
 - **Poza E11, bez zmian** — użytkownika: proces na porcie 4000, wdrożenie E8 u hosta, lista zmian do `eh-os` (w tym
@@ -2729,16 +2729,31 @@ kolejnymi częściami.
 - **E11f-2, `d718cee`** — testy, że strumień ze starym wierszem, który nie pasuje do deklaracji (brak wymaganego
   pola, typ już niezadeklarowany), odmawia głośno: `failed` w `evolve`, nic nie dopisane. Zachowanie było, testu
   nie było (ustalenie E11e). Sprawdzone odwrotnie mutacjami dekodera.
-- **E11f-3, `0af122d`** — subskrypcja, process manager i zadanie efektu dekodowały wiersz przez nazwę modułu
-  zapisaną na nim (`Module.safe_concat`); po zmianie nazwy modułu kontraktu subskrypcja lądowała w `failing` na
-  pierwszym starym wierszu. Teraz deklarację znajduje kontrakt czytającego, jak w dispatchu; dwie kopie tego
-  szukania to jedna (`Consumer.declaring!/2`). Test pada na starym kodzie.
-- **Ustalenie z E11f-3, do decyzji użytkownika:** raport zgodności wybiera historię po nazwie modułu (`Paths`,
-  `Coverage`, dryf, `Deployment`, `Dependency`; także klucz subskrypcji). Przemianowany moduł kontraktu czyta się
-  jak kontrakt bez historii. Poprawka z datą w `docs/adr/contract-v2.md` §5; `change-contract` mówi o tym w wierszu
-  zmiany nazwy modułu.
-- **Weryfikacja:** brama po E11f-3 `EXIT=0` — sandbox 143, `check` 0/29/9; silnik **991** (986 + 5), `check`
-  0/66/5; web 52; auth 62.
+- **E11f-3, `0af122d`, wycofane w `28620e9`** — subskrypcja, process manager i zadanie efektu dekodują wiersz przez
+  nazwę modułu zapisaną na nim, więc po zmianie nazwy modułu kontraktu subskrypcja ląduje w `failing` na pierwszym
+  starym wierszu. Poprawka szukała deklaracji od kontraktu czytającego, jak dispatch. **Przegląd pokazał, że to
+  pogarsza sprawę:** klucz konsumenta niesie nazwę modułu, więc przemianowany read model rejestruje się od nowa od
+  pozycji 0, bez `reset/0`, i po poprawce **po cichu projektował log drugi raz**, zamiast odmówić głośno. Zmiana
+  nazwy dalej psuje ponowienie idempotentne (`idempotency_key_reused`), zadania efektów w kolejce (anulowane) i
+  timery process managerów (ignorowane). Pół-obsługa, która działa po cichu, jest gorsza od głośnej odmowy.
+- **Przegląd E11f-2 i E11f-3** — rozstrzygnięte:
+  - cicha podwójna projekcja i pozostałe skutki zmiany nazwy — *wycofane* (`28620e9`); poprawiona nota w
+    `docs/adr/contract-v2.md` §5 i wiersz `change-contract` („nie przemianowuj modułu kontraktu z historią”);
+  - strażnik podmiotu przepuszczał same białe znaki i nie był opisany — *poprawione* (odmowa pustego po `trim`,
+    `@doc` `Actor.credential/3`, moduledoc `Auth`);
+  - host składający `%Actor{}` literałem omija strażnika — *bez zmiany*: jedyną udokumentowaną drogą jest
+    `credential/3`, a ścieżka przez pakiet auth jest zamknięta;
+  - istniejąca baza ze starym indeksem idempotencji daje 500 zamiast dwóch komend — *bez zmiany*: 0.3.0 nie jest
+    wydane, CHANGELOG mówi, jak przebudować indeks;
+  - `sibling!` nie sprawdza, czy czytający konsumuje akurat to zdarzenie rodzeństwa — *pominięte*, sprzed E11f, w
+    dispatchu; niskie (typy są unikalne w systemie, X7).
+- **Do decyzji użytkownika, z E11f-3:** czym silnik rozpoznaje kontrakt przez zmianę nazwy modułu. Dziś nazwą
+  modułu: dekodowanie w subskrypcjach, klucze konsumentów, ponowienia, raport zgodności. *Możliwe:* (1) zostawić —
+  zmiana nazwy modułu z historią jest niedozwolona i `change-contract` tak mówi (rekomendacja asystenta); (2)
+  rozpoznawać kontrakt po nazwie procesu, unikalnej w systemie (X7) i obecnej w typie każdego zdarzenia — zmienia
+  klucze konsumentów, zapytania raportu, idempotencję i odczyt w trzech czytelnikach.
+- **Weryfikacja:** brama po wycofaniu i poprawkach przeglądu `EXIT=0` — sandbox 143, `check` 0/29/9; silnik **990**
+  (986 + 2 testy klucza + 2 testy historii), `check` 0/66/5; web 52; auth 62.
 
 ### Przed E11f — decyzja użytkownika (30 września)
 

@@ -556,16 +556,20 @@ Domain types are referenced as remote types from the `Values` module the domain 
 create no compile dependency. The event type stored in the log is the stable string
 `"<process>.<event>"`, never a module name, so renaming a module does not orphan history.
 
-> *Corrected 30 September 2026, plan E11f.* **True of decoding, not of everything that reads the log.**
-> Every row also stores its contract's module name in `contract`, and every `_commands` row does too.
-> Decoding now finds the declaration from the reader — dispatch's fold always did, and from E11f so do
-> ordered subscriptions, process managers and effect jobs, which before failed on the first row written
-> under the old name. But the conformance report selects history by that name: `Paths` (taken steps,
-> failures), `Coverage`, `Conformance`'s drift, `Deployment` and `Dependency` all filter on
-> `contract == inspect(module)`. So does a consumer's subscription key, `"<contract>:<kind>:<name>"`. A
-> renamed contract module therefore reads as a contract with no history: every path untraversed, no
-> deployment before today, and a policy registered anew at the head. Until the report selects by
-> something that survives a rename, a module rename is a change with history (`change-contract`).
+> *Corrected 30 September 2026, plan E11f.* **True of dispatch's fold, not of the rest of the engine.**
+> Every row also stores its contract's module name in `contract`, and every `_commands` row does too, and
+> most readers select or resolve by it:
+> - ordered subscriptions, process managers and effect jobs decode a row through that name, and fail on the
+>   first row written under the old one;
+> - a consumer's key, `"<contract>:<kind>:<name>"`, carries it: subscriptions, process-manager runs,
+>   timers and queued effect jobs belong to the old key;
+> - an idempotent retry is replayed only for the same contract name;
+> - the conformance report — `Paths`, `Coverage`, drift, `Deployment`, `Dependency` — filters on
+>   `contract == inspect(module)`.
+>
+> Decoding by the reader alone was tried in E11f and reverted: the renamed read model, registered anew at
+> position 0 with no `reset/0`, then projected the log a second time, silently. A module rename is a change
+> with history (`change-contract`) until the engine recognises a contract by something that survives one.
 
 **Binding.** `use C, aggregate: :visit_settlement` (or `policy:`, `effect:`, `read_model:`,
 `process_manager:`, `dcb:`) checks that exactly one unit is named and exists — a misspelling gets a
