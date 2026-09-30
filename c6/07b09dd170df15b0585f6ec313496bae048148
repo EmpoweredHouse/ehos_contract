@@ -1,0 +1,5 @@
+pre-pr-review of origin/main(0e6e10f)..HEAD. Part 1 (d1c8abe..90d93db, domain name: under D11): see the record in PLAN.md; fixed nil/true/false names, one namespace pattern, contract.md wrap.
+Part 2 (58ce3da..HEAD, $ -> \z in N1/D9/pages/decimal, actor names snake_case under D4), reviewed on 90d93db..1ebe67c.
+code-review high: D4 told a system actor it is a role (only people are) - fixed in 360bd47 with a test; actor true passed - fixed in 360bd47; four copies of the snake_case pattern - fixed in 360bd47 (DslRules.snake_case?/1); sandbox period pattern with \d and $ - fixed in a8a1826, no behaviour change; CHANGELOG claimed pages fail compilation - fixed; stale D4 headers - fixed; D4 message with name: nil, decimal stricter than Decimal.cast - no change.
+security and performance: nothing in the range; remaining name forms of other domain elements, scope: field names, capability map without L3, per-dispatch capability map cost - skipped, pre-existing, to the user.
+Gate from sandbox/ on this tree: EXIT=0; sandbox 144 (check 0/29/9), engine 1018 (check 0/66/5), web 52, auth 66; docs/dsl and docs/rules.md current.
