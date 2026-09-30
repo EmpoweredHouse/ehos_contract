@@ -52,6 +52,14 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Changed — a host has to act
 
+- **E11f: an idempotency key belongs to the actor who sent it.** Dispatch looks an accepted key up by the
+  actor and the key together, and the unique index is on both (`issued_by`, `idempotency_key`). Before, the
+  key was one for the whole application: a second actor sending a key the first had used got the first
+  one's receipt — its events, personal fields opened — and its own command was not run. Now it is its own
+  command. A host that shared one key between actors on purpose, to run a command once whoever sends it,
+  no longer gets that. A development database created before this change keeps the old index: recreate it,
+  or rebuild the index with `DROP INDEX eh_os_contract_commands_idempotency_index` and the `CREATE UNIQUE
+  INDEX` V01 now runs.
 - **E11b: the second DSL takes the first one's names.** `use EhOsContract.Next.Contract` is
   `use EhOsContract.Contract`, and every `EhOsContract.Next.*` module drops `Next`. `Registry.v2_contracts/0`
   is `Registry.contracts/0`, and the scan's key `graph().v2_contracts` is `graph().contracts`;

@@ -265,7 +265,7 @@ over HTTP and is refused the same way.
 | rejected on an invariant, or fields that do not fit | 422 |
 | refused (`missing_capability`, `outside_scope`, …) | 403 |
 | no credential's actor | 401 |
-| conflict, or an idempotency key used by another command | 409 |
+| conflict, or an idempotency key the same actor used for another command | 409 |
 | no such capability | 404 |
 
 No response body carries a value the caller did not send: a problem names the field, a refusal its

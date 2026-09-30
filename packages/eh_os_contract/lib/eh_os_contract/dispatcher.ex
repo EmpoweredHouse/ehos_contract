@@ -21,7 +21,9 @@ defmodule EhOsContract.Dispatcher do
      an aggregate whose identity is generated gets a UUIDv7 here, and is refused
      with `{field, :generated}` when it brings one of its own, and with
      `{:error, :idempotency_key_required}` without an idempotency key (plan EM3).
-  3. **Once.** An idempotency key already accepted for the same command returns
+  3. **Once.** A key belongs to the actor who sent it: another actor's command
+     with the same key is its own, and never sees the first one's receipt. An
+     idempotency key the actor already had accepted for the same command returns
      that command's receipt, `duplicate: true`, and appends nothing; accepted for
      another command, `{:error, :idempotency_key_reused}`. Only an accepted
      command binds its key, so a rejected one can be sent again once the state has
@@ -758,7 +760,11 @@ defmodule EhOsContract.Dispatcher do
   defp idempotent(repo, %{ctx: %{idempotency_key: key}} = job) do
     accepted =
       repo.one(
-        from(c in CommandRecord, where: c.idempotency_key == ^key and c.outcome == "accepted")
+        from(c in CommandRecord,
+          where:
+            c.idempotency_key == ^key and c.issued_by == ^Actor.label(job.ctx.actor) and
+              c.outcome == "accepted"
+        )
       )
 
     cond do

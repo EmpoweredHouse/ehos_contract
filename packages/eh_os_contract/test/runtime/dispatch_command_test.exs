@@ -250,6 +250,27 @@ defmodule EhOsContract.DispatchCommandTest do
              ) == {:error, :idempotency_key_reused}
     end
 
+    test "belongs to the actor who sent it: another actor's command with the same key is its own" do
+      first = deposit!("a-1", 10, idempotency_key: "k-1")
+      other = deposit!("a-2", 99, idempotency_key: "k-1", actor: Actor.credential("u-2", @all))
+
+      refute other.duplicate
+      refute other.command_id == first.command_id
+      assert [%Deposited{account_id: "a-2", amount: 99}] = other.events
+      assert length(log()) == 2
+      assert [%{issued_by: "actor:u-1"}, %{issued_by: "actor:u-2"}] = rows()
+    end
+
+    test "is reused only within its actor: another actor's other command with the same key runs" do
+      deposit!("a-1", 10, idempotency_key: "k-1")
+
+      assert {:ok, %Receipt{duplicate: false}} =
+               EhOsContract.dispatch(Ledger, %Withdraw{account_id: "a-1", amount: 1},
+                 actor: Actor.credential("u-2", @all),
+                 idempotency_key: "k-1"
+               )
+    end
+
     test "a rejected command does not bind its key, so it can be sent again" do
       withdraw = %Withdraw{account_id: "a-1", amount: 10}
 

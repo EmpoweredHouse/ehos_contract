@@ -204,7 +204,8 @@ defmodule EhOsContract.Migrations.V01 do
              check: "outcome IN ('accepted', 'rejected', 'failed')"
            )
 
-    create unique_index(:eh_os_contract_commands, [:idempotency_key],
+    # A key belongs to whoever sent it: two actors with one key are two commands.
+    create unique_index(:eh_os_contract_commands, [:issued_by, :idempotency_key],
              where: "outcome = 'accepted' AND idempotency_key IS NOT NULL",
              name: :eh_os_contract_commands_idempotency_index
            )

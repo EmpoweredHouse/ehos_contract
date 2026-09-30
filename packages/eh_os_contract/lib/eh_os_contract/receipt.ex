@@ -4,7 +4,7 @@ defmodule EhOsContract.Receipt do
   contract's structs with `__meta__` set, and their positions. `position` is the
   last of them, what a later query can wait for (v2 §11).
 
-  `duplicate: true` when the idempotency key had already been accepted: the events
+  `duplicate: true` when the same actor's idempotency key had already been accepted: the events
   are that command's, read back, and nothing was appended this time (v2 §10.4).
 
   `identity` is the identity of the unit the command went to, `%{booking_id: "0192…"}`:

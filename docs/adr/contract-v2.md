@@ -1074,6 +1074,16 @@ INSERT INTO eh_os_contract_events (...) VALUES (...), (...) RETURNING position, 
   command type is `{:error, :idempotency_key_reused}`. Only accepted outcomes bind the key, so a rejected
   command can be retried once state has changed. Internal dispatches — policy, process manager, effect, timer
   — get deterministic keys, `"<issued_by>:<source_event_id>:<index>"`, so redelivery cannot append twice.
+
+  > *Corrected 30 September 2026, plan E11f, the user's decision.* **A key belongs to the actor who sent it.**
+  > As first built, a hit was looked up by the key alone and the unique index was on the key alone, so one key
+  > was shared by the whole application. A second actor with the same capability sending a key the first had
+  > used got the first one's receipt — its events, with personal fields opened, whatever the second actor's
+  > scope — and its own command was not run. Two clients numbering their requests the same way would lose
+  > commands without a trace. The lookup and the index are now on the actor's label and the key together
+  > (`issued_by`, `idempotency_key`). *Rejected:* a global key with the documentation asking for an
+  > unguessable one, which leaves safety to every client and fails silently; the actor's key plus a digest of
+  > the command, which `_commands` would hold beside no payload, and which low-variety fields make guessable.
 - **Conflicts.** On `:wrong_expected_version` or `:condition_failed` the dispatcher rolls back, reloads,
   decides again, and retries up to three times with jitter — only when it owns the transaction. Inside a
   caller's transaction it returns `{:error, :conflict}`, the same rule `HandlerFailure` follows in v1.
