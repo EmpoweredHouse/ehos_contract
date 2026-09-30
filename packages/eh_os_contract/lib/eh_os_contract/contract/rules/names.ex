@@ -102,27 +102,31 @@ defmodule EhOsContract.Contract.Rules.Names do
   defp unique(d) do
     process = List.first(d.processes)
 
+    # Each list is a namespace of names, a namespace of generated modules, or both: an
+    # aggregate and a dcb share one of names and are modules of two, Aggregates and
+    # Dcbs; a publication generates no module.
     kinds =
       [
-        {"units", d.units},
-        {"policies", d.policies},
-        {"effects", d.effects},
-        {"process managers", d.process_managers},
-        {"read models", d.read_models},
-        {"queries", d.queries},
-        {"domain services", d.domain_services},
-        {"publications", d.publishes}
+        {"units", d.units, [:names]},
+        {"aggregates", Enum.filter(d.units, &(&1.kind == :aggregate)), [:modules]},
+        {"dcbs", Enum.filter(d.units, &(&1.kind == :dcb)), [:modules]},
+        {"policies", d.policies, [:names, :modules]},
+        {"effects", d.effects, [:names, :modules]},
+        {"process managers", d.process_managers, [:names, :modules]},
+        {"read models", d.read_models, [:names, :modules]},
+        {"queries", d.queries, [:names, :modules]},
+        {"domain services", d.domain_services, [:names, :modules]},
+        {"publications", d.publishes, [:names]}
       ]
-      |> Enum.flat_map(fn {kind, list} ->
+      |> Enum.flat_map(fn {kind, list, checks} ->
         twice =
-          for duplicate <- DslRules.duplicates(list, & &1.name) do
+          for duplicate <- DslRules.duplicates(list, & &1.name), :names in checks do
             {"N1: two #{kind} are named #{inspect(duplicate.name)}", duplicate}
           end
 
-        # A publication generates no module.
         alike =
           for {other, first, camel} <- DslRules.camel_collisions(list, & &1.name),
-              kind != "publications" do
+              :modules in checks do
             {"N1: #{inspect(other.name)} camelizes to #{camel}, as #{inspect(first)} does, and " <>
                "two #{kind} would be one generated module; rename one of them", other}
           end
@@ -218,13 +222,12 @@ defmodule EhOsContract.Contract.Rules.Names do
 
     # An implementation aliases a command's, an event's and a consumed event's struct by
     # its camelized name, so two that camelize alike would be one alias.
+    aliased = Enum.reject(entries, &(elem(&1, 1) == "timer"))
+
     alike =
       for {{name, kind, declaration}, first, camel} <-
-            DslRules.camel_collisions(
-              Enum.reject(entries, &(elem(&1, 1) == "timer")),
-              &elem(&1, 0)
-            ) do
-        {_, first_kind, _} = Enum.find(entries, &(elem(&1, 0) == first))
+            DslRules.camel_collisions(aliased, &elem(&1, 0)) do
+        {_, first_kind, _} = Enum.find(aliased, &(elem(&1, 0) == first))
 
         {"N1: #{kind} #{inspect(name)} camelizes to #{camel}, as #{first_kind} " <>
            "#{inspect(first)} does, and an implementation would alias both as #{camel}; " <>
@@ -272,15 +275,21 @@ defmodule EhOsContract.Contract.Rules.Names do
 
   # An implementation aliases each struct it touches by its name, and a unit's state
   # and a read model's row as `State` and `Row` (`EhOsContract.Implementation`).
-  defp aliased(kind, name, declaration)
-       when kind not in ["timer", "function"] and name in @aliases do
+  # Compared camelized, since `:state_` is aliased `State` as `:state` is.
+  defp aliased(kind, name, declaration) when kind not in ["timer", "function"] do
     alias = name |> Atom.to_string() |> Macro.camelize()
 
-    [
-      {"N2: #{kind} #{inspect(name)} would be aliased #{alias} in an implementation, which is " <>
-         "the alias of a #{if name == :state, do: "unit's state", else: "read model's row"}",
-       declaration}
-    ]
+    case Enum.find(@aliases, &(Macro.camelize(Atom.to_string(&1)) == alias)) do
+      nil ->
+        []
+
+      taken ->
+        [
+          {"N2: #{kind} #{inspect(name)} would be aliased #{alias} in an implementation, which " <>
+             "is the alias of a #{if taken == :state, do: "unit's state", else: "read model's row"}",
+           declaration}
+        ]
+    end
   end
 
   defp aliased(_kind, _name, _declaration), do: []

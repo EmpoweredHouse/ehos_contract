@@ -190,7 +190,38 @@ defmodule EhOsContract.ContractNamesTest do
       refute message =~ ":close_visit_2 camelizes"
     end
 
-    test "control: names that camelize differently compile" do
+    test "across a command and an event, and two queries with a digit" do
+      message =
+        refuse_contract("CamelizeAcross", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :close_visit_
+            event :close_visit_, "Wizyta zamknięta", terminal: true
+          end
+
+          read_model :closed_visits, "Zamknięte wizyty", projects: :close_visit_ do
+            field :closed_on, :date
+          end
+
+          query :visits2, "Wizyty", reads: :closed_visits, by: :reception
+          query :visits_2, "Wizyty 2", reads: :closed_visits, by: :reception
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      assert message =~
+               "N1: event :close_visit_ camelizes to CloseVisit, as command :close_visit does, and " <>
+                 "an implementation would alias both as CloseVisit; rename one of them " <>
+                 "(camelize_across.ex:7)"
+
+      assert message =~
+               "N1: :visits_2 camelizes to Visits2, as :visits2 does, and two queries would be " <>
+                 "one generated module; rename one of them (camelize_across.ex:15)"
+    end
+
+    test "control: names that camelize differently, and an aggregate and a dcb alike, compile" do
       assert %{version: _} =
                compile_contract("CamelizeApart", """
                  aggregate :visit, "Wizyta" do
@@ -198,6 +229,13 @@ defmodule EhOsContract.ContractNamesTest do
                    command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
                    command :close_visit2, "Zamknięcie 2", by: :reception, emits: :visit_closed
                    event :visit_closed, "Wizyta zamknięta", terminal: true
+                 end
+
+                 dcb :visit_, "Wizyta 2" do
+                   identity :visit_id
+                   command :hold_visit, "Wstrzymanie", by: :reception, emits: :visit_held
+                   event :visit_held, "Wizyta wstrzymana"
+                   consults :visit_closed, match: :visit_id
                  end
 
                  process :visit, "Wizyta" do
@@ -358,6 +396,27 @@ defmodule EhOsContract.ContractNamesTest do
       assert message =~
                "N2: event :row would be aliased Row in an implementation, which is the alias of " <>
                  "a read model's row (aliased.ex:7)"
+    end
+
+    test "state_ and row_, which camelize as state and row do" do
+      message =
+        refuse_contract("AliasedAlike", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :state_, "Stan", by: :reception, emits: :row_
+            event :row_, "Wiersz", terminal: true
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      assert message =~
+               "N2: command :state_ would be aliased State in an implementation, which is the " <>
+                 "alias of a unit's state (aliased_alike.ex:6)"
+
+      assert message =~ "N2: event :row_ would be aliased Row in an implementation"
     end
 
     test "control: a name that only begins like a Kernel function compiles" do

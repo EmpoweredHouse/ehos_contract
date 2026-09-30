@@ -50,13 +50,14 @@ defmodule EhOsContract.DslRules do
   @spec camel_collisions([item], (item -> atom())) :: [{item, atom(), String.t()}]
         when item: term()
   def camel_collisions(items, name) do
-    items
-    |> Enum.filter(&name?(name.(&1)))
-    |> Enum.group_by(&camelize(name.(&1)))
-    |> Enum.flat_map(fn {camel, [head | _] = group} ->
-      first = name.(head)
-      for item <- Enum.uniq_by(group, name), name.(item) != first, do: {item, first, camel}
-    end)
+    named = Enum.filter(items, &name?(name.(&1)))
+    first = Enum.reduce(Enum.reverse(named), %{}, &Map.put(&2, camelize(name.(&1)), name.(&1)))
+
+    # In declaration order, so the error's location is the earliest collision.
+    for item <- Enum.uniq_by(named, name),
+        camel = camelize(name.(item)),
+        Map.fetch!(first, camel) != name.(item),
+        do: {item, Map.fetch!(first, camel), camel}
   end
 
   defp camelize(name), do: name |> Atom.to_string() |> Macro.camelize()
