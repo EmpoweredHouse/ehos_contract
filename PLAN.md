@@ -57,12 +57,14 @@ migracji.
 ### Co przeczytać najpierw
 
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach, wyrażenia
-   regularne z flagą `u` i `[0-9]`, zsh bez dzielenia słów. Uwaga: jego opis bramy wymienia jeszcze
-   `eh_os_contract.docs --check`, którego od E11a nie ma — poprawka należy do E11d.
-2. `PLAN.md`: „Przed E11 — podział i decyzje użytkownika” (części i decyzje), „E11a — co wyszło”, „E11b — co
-   wyszło” i „E11c — co wyszło” (co zostało na później, usterki, przegląd), opis „E11 — Cięcie” w „Etapach”.
+   regularne z flagą `u` i `[0-9]`, zsh bez dzielenia słów; od E11d opisuje bibliotekę v2.
+2. `PLAN.md`: „Przed E11 — podział i decyzje użytkownika” (części i decyzje), „E11a — co wyszło” do „E11d-2 — co
+   wyszło” i „Komentarze CodeRabbita do #46” (co zostało na później, usterki, przeglądy), opis „E11 — Cięcie” w
+   „Etapach”.
 3. `.claude/skills/pre-pr-review/SKILL.md` — przed PR-em każdej części.
-4. Przy E11d: `docs/adr/contract-v2.md` §18 i `packages/eh_os_contract/docs/rules.md`.
+4. Przy E11e: skille w `.claude/skills/` (sześć ma w nagłówku `EhOsContract.Next.Contract`), `write-handler` do
+   wycofania na rzecz `write-decider` i `write-reaction`; stan DSL-a — `packages/eh_os_contract/docs/contract.md` i
+   `docs/dsl/`.
 
 ### Komendy
 
@@ -2523,7 +2525,8 @@ starym V03, żaden usunięty indeks nie był używany, `text` nie zdjął ograni
 - **cztery komentarze z V03** — *poprawione* (`418c966`);
 - **test nie przypinał tożsamości ani unikalności `id`** — *poprawione* (`418c966`), odwrotnie sprawdzone;
 - **brak zapisu E11c w `PLAN.md`** — *poprawione* (ten zapis);
-- **`up/1` milczy, a `down/1` pada na bazie z wersją > 1** — *bez zmiany*, decyzja użytkownika wyżej;
+- **`up/1` milczy, a `down/1` pada na bazie z wersją > 1** — *bez zmiany* w tym przeglądzie, decyzją użytkownika wyżej;
+  *poprawione* 29 września po komentarzu CodeRabbita (zmiana decyzji opisana wyżej);
 - **przykład `up(version: 2)` w moduledoku `Migrations`** — *bez zmiany*: jest opisany jako „gdy późniejsze wydanie
   podniesie `current_version/0`”;
 - **`CHANGELOG.md` każe dopisać `up(version: 3|4|5)`** — *pominięte do E11d* (CHANGELOG 0.3.0);
