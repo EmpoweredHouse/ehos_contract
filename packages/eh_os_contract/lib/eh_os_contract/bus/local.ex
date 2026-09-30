@@ -164,6 +164,34 @@ defmodule EhOsContract.Bus.Local do
      wake(%{state | consumers: consumers, monitored: MapSet.delete(state.monitored, pid)})}
   end
 
+  # What `:sys.get_status/1` and a crash report print: how much is held, never a
+  # message. A queue holds payloads, and a crash report is written to the log.
+  @impl GenServer
+  def format_status(status) do
+    status
+    |> Map.update(:state, nil, &held/1)
+    |> Map.update(:message, nil, fn
+      {:publish, messages} -> {:publish, length(messages)}
+      other -> other
+    end)
+  end
+
+  defp held(%{consumers: consumers, in_hand: in_hand} = state) do
+    consumers =
+      Map.new(consumers, fn {name, consumer} ->
+        {name,
+         %{
+           names: consumer.names,
+           queued: :queue.len(consumer.queue),
+           waiting: MapSet.size(consumer.waiting)
+         }}
+      end)
+
+    %{state | consumers: consumers, in_hand: map_size(in_hand)}
+  end
+
+  defp held(other), do: other
+
   defp update_queue(state, name, fun) do
     case state.consumers do
       %{^name => consumer} ->

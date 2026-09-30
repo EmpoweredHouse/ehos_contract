@@ -144,6 +144,19 @@ defmodule EhOsContract.Bus.LocalTest do
       assert GenServer.whereis(__MODULE__.Bus) == broker
     end
 
+    test "the broker's status says how much it holds, never what" do
+      name = bus_name("status")
+      consumer = bus_name("consumer")
+      bus_consume(consumer, [name])
+      bus_stop(consumer)
+      bus_publish([bus_message(name, %{"marker" => "held-payload-value"})])
+
+      status = inspect(:sys.get_status(__MODULE__.Bus), limit: :infinity)
+
+      assert status =~ "queued: 1"
+      refute status =~ "held-payload-value"
+    end
+
     test "a consumer stops when the broker does" do
       consumer = bus_name("consumer")
       pid = bus_consume(consumer, [bus_name("gone")])
