@@ -5,69 +5,67 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 30 września (E11, #51, klucz blokady i #50 w `main`; `name:` domeny na gałęzi)
+## Handoff — stan na 30 września (E0–E11, #50–#56 w `main`)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
 
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności), jej
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. Pivot do v2 (DSL na Sparku, model domeny w
-stylu ESDM, event sourcing na własnym magazynie, crypto-shredding) **ma za sobą E0–E11: wszystko jest w `main`**
-(ostatnio #48: E11e — skille, #52: E11f — zaległości silnika). W bibliotekach nie ma kodu v1, dokumentacja i skille
-opisują jeden DSL. Po E11 użytkownik zmergował #53 (tabele poza `public`, #51) i #54 (klucz blokady dopisu per
-schemat, z innej sesji) i #55 (#50, myślnik w przestrzeni nazw), a potem wybrał **sprawdzenie `name:` domeny** —
-gałąź `dsl-v2/domain-name-check`, z przeglądem, niewypchnięta („`name:` domeny jako przestrzeń nazw — co wyszło”).
+stylu ESDM, event sourcing na własnym magazynie, crypto-shredding) **ma za sobą E0–E11: wszystko jest w `main`**.
+Po E11 w `main` są: #53 (tabele poza `public`, #51), #54 (klucz blokady dopisu per schemat), #55 (#50, myślnik w
+przestrzeni nazw) i **#56 — każda nazwa w formie**: `name:` domeny jako segment przestrzeni nazw (D11), `\z`
+zamiast `$` we wzorcach nazw (N1, D9, strony, dziesiętna scenariusza), nazwy aktorów (D4) i pozostałych elementów
+domeny (D1, z kolizją wartości po `Macro.camelize` i nazwami typów wbudowanych), kolizja nazw kontraktu po
+`camelize` (N1, N2 dla `State`/`Row`), nazwy pól i `identity` (F1, D3, D6). **Nic nie jest w toku.** Następny etap
+wybiera użytkownik.
 
 ### Stan repozytorium
 
-- **`origin/main` = `0e6e10f`** (merge #55, 30 września; przedtem `0ca5383` — merge #54, `50eb771` — merge #53,
-  `6f08572` — zapis, fast-forward — i `fb410c1`, merge #52). Historia `main` z merge'ami PR-ów; gałęzie etapów
-  liniowe.
-- **`dsl-v2/domain-name-check`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `0e6e10f`, **niewypchnięta**:
-  reguła `name:` domeny, `$` → `\z` w nazwach, nazwy aktorów i zapis w `PLAN.md`; nota przeglądu w `refs/notes/review` na głowie (lokalnie). Push i PR —
-  na polecenie użytkownika.
-- **`dsl-v2/domain-names-snake-case`** (ten sam worktree) — od `0e6e10f` przez `dsl-v2/domain-name-check`,
-  wypchnięta, **PR #56** do `main`: wszystkie części (nazwa domeny, `$`, aktorzy, nazwy domeny, kolizja nazw
-  kontraktu, nazwy pól); nota przeglądu na głowie (lokalnie). Merge — użytkownika.
-- **Otwarte na GitHubie:**
-  - **Issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza repozytorium; zaparkowane 30 września, z
-    propozycją `EmpoweredHouse/eh-os-contract-sandbox`.
-- **Lokalne gałęzie w całości w `main`** (do skasowania): `claude/e11-ciecie-88267b`,
-  `claude/e11e-skills-dsl-v2-ab38c4`, `dsl-v2/e10-outputs`, `dsl-v2/e11a-remove-v1`, `dsl-v2/e11b-rename-next`,
-  `dsl-v2/e11c-migrations`, `dsl-v2/e11d-docs`, `dsl-v2/e11e-skills`, `dsl-v2/e11f-engine`. Część jest wyciągnięta w
-  innych worktree (`git worktree list`).
+- **`origin/main` = `6e1658a`** (merge #56, 30 września; przedtem `0e6e10f` — merge #55, `0ca5383` — merge #54,
+  `50eb771` — merge #53). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
+- **`dsl-v2/handoff-after-56`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `6e1658a`, jeden commit: ten zapis;
+  **niewypchnięta** — push (fast-forward `main` albo PR) na polecenie użytkownika.
+- **Otwarte na GitHubie:** tylko **issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza
+  repozytorium; zaparkowane 30 września, z propozycją `EmpoweredHouse/eh-os-contract-sandbox`. Otwartych PR-ów brak.
+- **Lokalne gałęzie w całości w `main`** — kilkadziesiąt, w tym wszystkie `dsl-v2/e*`, `dsl-v2/d11-dashed-namespace`,
+  `dsl-v2/domain-name-check`, `dsl-v2/domain-names-snake-case` (`git branch --merged origin/main`). Do skasowania;
+  część jest wyciągnięta w innych worktree (`git worktree list`), więc najpierw worktree.
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
   `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`) i mają schemat V01.
   **Indeks idempotencji w nich przebudowano ręcznie w E11f** na `(issued_by, idempotency_key)`, jak w dzisiejszym V01
   (dane zostały). **Klucz blokady dopisu mają stary, jeden na bazę** — V01 zmieniony w #54 w miejscu, więc do
-  `ecto.drop` dalej poprawny, tylko wspólny. **Worktree na kodzie sprzed E11c nie wolno migrować wspólnych baz** — dołoży swoje V02–V05
-  (`ecto.drop` naprawia). Baza dev ma dane sprzed E11c w nowym schemacie; przed `mix phx.server` — `mix ecto.migrate`
-  w `sandbox/`.
+  `ecto.drop` dalej poprawny, tylko wspólny. **Worktree na kodzie sprzed E11c nie wolno migrować wspólnych baz** —
+  dołoży swoje V02–V05 (`ecto.drop` naprawia). Baza dev ma dane sprzed E11c w nowym schemacie; przed
+  `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
 
 ### Co zostało — i czyje to jest
 
 - **Wybór następnego etapu — użytkownika.** Kandydaci, każdy z tym, co go blokuje:
-  - **`name:` domeny** — zrobione na `dsl-v2/domain-name-check`; zostaje push, PR i merge użytkownika.
-  - **Nazwy elementów domeny** — zrobione na `dsl-v2/domain-names-snake-case`; to samo.
+  - **E12 — integracja między aplikacjami** (`EhOsContract.Bus`, relay, inbox) — opis w „Etapach”. Przestrzeń
+    nazw publikacji jest od #56 domknięta (nazwa domeny to jeden segment), więc nazwy mogą stać się tematami.
   - **„Po E11” z planu: kontrakty sandboxa jako fikstury akceptacyjne pakietu, potem manifest v2** (po akceptacji
     D-51/D-52 w `eh-os`). **Fikstury kolidują z #49**: kontrakty klientów w pakiecie to dokładnie to, czego #49 chce
     uniknąć — do rozstrzygnięcia przed startem (propozycja z E11: zmyślone odpowiedniki tego samego kształtu).
-  - **E12 — integracja między aplikacjami** (`EhOsContract.Bus`, relay, inbox) — opis w „Etapach”.
+  - **Drobne reguły z „Otwartych pytań”**, każda nowym powodem odmowy albo pomiarem — do decyzji użytkownika.
 - **Poza etapami, bez zmian** — użytkownika: proces na porcie 4000, wdrożenie E8 u hosta, lista zmian do `eh-os` (w
   tym fixture manifestu TaxVision z „E10 — co wyszło” i uwagi do D-51/D-52 — komentarz do PR-a w `eh-os` tylko na
   polecenie), publikacja na Hex, F1/F2 i dziesięć usterek, pytanie do EHOS-a o CSP (EG3).
 - **E13** (graf jako API, renderer w miejsce Mermaida) — po E12.
+- **Sprzątanie gałęzi i worktree** w całości w `main` — asystenta, na zgodę użytkownika (kasowanie).
 
 ### Co przeczytać najpierw
 
-1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach, wyrażenia
-   regularne z flagą `u` i `[0-9]`, zsh bez dzielenia słów.
-2. `PLAN.md`: „`name:` domeny jako przestrzeń nazw — co wyszło”, „#50 — co wyszło”, „Klucz blokady dopisu per
-   schemat — co wyszło” i „#51 — co wyszło” — ostatnie decyzje z odrzuconymi opcjami; starsze: „E11f — co wyszło,
-   część 1”.
-3. `PLAN.md`, „Etapy” — opis E12 i „Po E11”, żeby ocenić kandydatów na następny etap.
-4. Issues #49, #50 i PR #53 na GitHubie — `gh issue view <n>`, `gh pr view 53` — bo każdy zmienia wybór.
-5. `packages/eh_os_contract/docs/contract.md` i `.claude/skills/` — DSL i skille, z których pisze się kod.
+1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach (także w
+   fiksturach testów: `label` po polsku jest dozwolony — CodeRabbit to już przyjął), wyrażenia regularne z flagą `u`
+   i `[0-9]`, zsh bez dzielenia słów.
+2. `PLAN.md`: cztery ostatnie zapisy „co wyszło” — „`name:` domeny jako przestrzeń nazw”, „`$` w nazwach i nazwy
+   aktorów”, „Nazwy elementów domeny”, „Kolizja nazw kontraktu i nazwy pól” — decyzje z odrzuconymi opcjami.
+3. `PLAN.md`, „Otwarte pytania” — co zostało z przeglądów #56 (etykiety Mermaida, kolizja stron, pole `scope:`,
+   mapa capability) i starsze pozycje bez decyzji.
+4. `PLAN.md`, „Etapy” — opis E12 i „Po E11”, żeby ocenić kandydatów; `gh issue view 49`.
+5. `packages/eh_os_contract/docs/contract.md` (tabela odmów z kodami) i `.claude/skills/` — DSL i skille, z których
+   pisze się kod.
 6. `.claude/skills/pre-pr-review/SKILL.md` — przed PR-em; przegląd po każdej części etapu, nie tylko przed PR-em.
 
 ### Komendy
@@ -113,22 +111,20 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 - test pakietu z bazą i drugi `mix` w tym samym pakiecie naraz się gryzą (wspólne `_build` i bazy testowe
   `eh_os_contract_test`, `…_commits`, bez partycji) — agentów z testami puszczać po kolei;
 - Mermaid przed rysowaniem usuwa element o identyfikatorze, który rysuje (opis w `assets/js/app.js`);
+- `\n` w heredocu `"""` testu z fiksturą to prawdziwa nowa linia w kompilowanym źródle — atom `:"x\n"` zajmuje
+  wtedy dwie linie i przesuwa numery linii w asercjach; nazwę z nową linią pisz `#{"\\n"}` albo licz linie od nowa;
+- `for` w Elixirze musi zaczynać się generatorem — filtr (`kind != …`, `:x in list`) idzie po generatorze;
 - `git grep -E` na tej maszynie nie rozumie `\b` i milczy, zamiast odmówić (w E11b `git grep -iP` też raz dał zero
   przy 38 plikach z trafieniem) — wynik „nic nie zostało” potwierdzać drugim narzędziem (`grep -rE`, `git grep -w`).
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 30 września, na `dsl-v2/domain-names-snake-case`** (głowa PR-a #56): brama → **EXIT=0** — sandbox
-  144, `check` 0 / 29 / 9; silnik **1028**, `check` 0 / 66 / 5; web 52; auth 66.
-- **Lokalnie, 30 września, na `dsl-v2/domain-name-check` od `0e6e10f`**: brama z `sandbox/` → **EXIT=0** — sandbox
-  144, `check` 0 / 29 / 9; silnik **1018** (1012 w `main` + 3 za `name:` + 3 za `$` i aktorów), `check` 0 / 66 / 5;
-  web 52; auth 66; `docs/dsl` i `docs/rules.md` aktualne.
-- **Wcześniej, na `dsl-v2/d11-dashed-namespace` od `0ca5383`** (#50 na `main` z #53 i #54): brama z
-  `sandbox/` → **EXIT=0** — sandbox 144 testy, `check` 0 / 29 / 9; silnik **1012** (1005 w `main` + 7 z #50),
-  `check` 0 / 66 / 5; web 52; auth **66**; `docs/dsl` i `docs/rules.md` aktualne. Na samym `6f08572` przedtem:
-  144 / 996 / 52 / 62, EXIT=0.
-- **CI `main`** — `success` na `50eb771` (przebieg `36731477429`), `6f08572` (`36730980344`) i `fb410c1`
-  (`36730607553`); na `0ca5383` — w toku w chwili zapisu (`gh run list --branch main -L 1`).
+- **Lokalnie, 30 września, na `main` = `6e1658a`** (po merge'u #56): brama z `sandbox/` → **EXIT=0** — sandbox 144
+  testy, `eh_os_contract.check` 0 / 29 / 9; silnik **1028**, `check` 0 / 66 / 5; web 52; auth 66; `docs/dsl` i
+  `docs/rules.md` aktualne. Drzewo `6e1658a` jest identyczne z głową #56 (`e002519`).
+- **CI:** PR #56 na `e002519` (przebieg `36778876263`, job `check`) — `success`; `main` na `0e6e10f`
+  (`36761436783`) — `success`; `main` na `6e1658a` (`36779783368`) — w toku w chwili zapisu
+  (`gh run view 36779783368 --json jobs`).
 - **Dwie bramy naraz z dwóch worktree gryzą się o wspólne bazy** — 30 września pierwsza brama tej sesji padła na
   `too_many_connections`, bo w tej samej minucie bramę puszczała sesja PR-a #53. Przed bramą sprawdzić, czy żaden
   inny BEAM z worktree tego repozytorium nie chodzi.
@@ -214,7 +210,7 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 **Ten blok jest do skasowania. Skasowanie go cofa uprawnienie — nie migruje ono samo między sesjami.**
 
-W sesjach E11b–E11f (29–30 września) użytkownik potwierdzał: commity bez pytania na gałęziach etapu przy zielonej
+W sesjach E11b–E11f (29–30 września) i w sesji #56 (30 września) użytkownik potwierdzał: commity bez pytania na gałęziach etapu przy zielonej
 bramie na każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. **W nowej sesji obowiązuje to
 dopiero po ponownym potwierdzeniu przez użytkownika.** Push, PR, merge, tag i Hex — tylko na wyraźne polecenie,
 przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie piszemy nigdy; do
