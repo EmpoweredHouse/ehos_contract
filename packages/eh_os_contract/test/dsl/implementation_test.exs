@@ -155,6 +155,7 @@ defmodule EhOsContract.ImplementationTest do
                  {:close, 2} => [:closed_without_payment, :closed],
                  {:remind, 2} => [:reminded]
                },
+               folds: [:payment_recorded],
                file: "visit.ex",
                line: 2
              }
@@ -314,6 +315,53 @@ defmodule EhOsContract.ImplementationTest do
         """)
 
       compiles_clean(implementation("Covered", "aggregate: :visit", body))
+    end
+  end
+
+  # What dispatch reads and decodes to rebuild the state (plan E11f-5).
+  describe "what evolve/2 folds" do
+    test "a clause per event, and every other event passed over unchanged: those events" do
+      module = compiles_clean(implementation("FoldsNamed", "aggregate: :visit", @aggregate))
+      assert module.__eh_os_implementation__().folds == [:payment_recorded]
+    end
+
+    test "a clause for every event, no catch-all: every event" do
+      body =
+        String.replace(@aggregate, "  def evolve(state, _event), do: state\n", """
+          def evolve(state, %Closed{}), do: state
+          def evolve(state, %ClosedWithoutPayment{}), do: state
+          def evolve(state, %Reminded{}), do: state
+        """)
+
+      module = compiles_clean(implementation("FoldsEvery", "aggregate: :visit", body))
+
+      assert Enum.sort(module.__eh_os_implementation__().folds) ==
+               [:closed, :closed_without_payment, :payment_recorded, :reminded]
+    end
+
+    test "a catch-all that changes the state may fold anything" do
+      body =
+        String.replace(
+          @aggregate,
+          "  def evolve(state, _event), do: state\n",
+          "  def evolve(state, _event), do: %{state | paid: state.paid}\n"
+        )
+
+      module = compiles_clean(implementation("FoldsAnyChanged", "aggregate: :visit", body))
+      assert module.__eh_os_implementation__().folds == :all
+    end
+
+    test "a guarded variable may fold anything" do
+      body =
+        String.replace(
+          @aggregate,
+          "  def evolve(state, _event), do: state\n",
+          "  def evolve(state, event) when is_struct(event, Reminded), do: state\n" <>
+            "  def evolve(state, _event), do: state\n"
+        )
+
+      module = compiles_clean(implementation("FoldsAnyGuarded", "aggregate: :visit", body))
+      assert module.__eh_os_implementation__().folds == :all
     end
   end
 

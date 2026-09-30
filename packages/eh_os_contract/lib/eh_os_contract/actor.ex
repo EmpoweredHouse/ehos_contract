@@ -48,10 +48,19 @@ defmodule EhOsContract.Actor do
   Nothing here verifies anything: an actor built from a credential nobody checked
   is a hole the host opened, and the one place that builds these from a request
   is the package that verifies the credential.
+
+  A blank subject raises: the subject is the actor's label and the space its
+  idempotency keys live in, so a blank one would make every such credential one
+  actor.
   """
   @spec credential(String.t(), [String.t()] | MapSet.t(String.t()), scopes()) :: t()
   def credential(subject, capabilities, scopes \\ %{}) when is_binary(subject) do
     capabilities = MapSet.new(capabilities)
+
+    # The subject is who the actor is: its label in the log, and the space its
+    # idempotency keys live in. An empty one would be one actor for every credential
+    # that has it.
+    if String.trim(subject) == "", do: raise(ArgumentError, "a credential's subject is not blank")
 
     unless Enum.all?(capabilities, &is_binary/1) and scopes?(scopes) do
       raise ArgumentError,

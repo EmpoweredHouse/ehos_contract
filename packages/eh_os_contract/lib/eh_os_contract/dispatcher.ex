@@ -21,7 +21,9 @@ defmodule EhOsContract.Dispatcher do
      an aggregate whose identity is generated gets a UUIDv7 here, and is refused
      with `{field, :generated}` when it brings one of its own, and with
      `{:error, :idempotency_key_required}` without an idempotency key (plan EM3).
-  3. **Once.** An idempotency key already accepted for the same command returns
+  3. **Once.** A key belongs to the actor who sent it: another actor's command
+     with the same key is its own, and never sees the first one's receipt. An
+     idempotency key the actor already had accepted for the same command returns
      that command's receipt, `duplicate: true`, and appends nothing; accepted for
      another command, `{:error, :idempotency_key_reused}`. Only an accepted
      command binds its key, so a rejected one can be sent again once the state has
@@ -32,7 +34,9 @@ defmodule EhOsContract.Dispatcher do
      the log (v2 §10.1): its own events carrying its identity, and every event it
      `consults` — on the fields it `match`es, or every one of that type when it
      consults by `where:` alone — each decoded by the contract that declares it, in
-     the log's order.
+     the log's order. Only what `evolve/2` folds is decoded, when its one catch-all
+     is `def evolve(state, _), do: state`, and a boundary reads, and conflicts on,
+     those types alone (plan E11f-5).
   5. **Hold the decision to its declaration.** An event the command does not emit,
      a rejection on an invariant it does not reject on, or an event whose fields
      do not fit — their types, or the invariants of their values — raises: that is a
@@ -125,7 +129,12 @@ defmodule EhOsContract.Dispatcher do
     values = Codec.values(model.domain)
 
     with :ok <-
-           permit(model, declaration, ctx.actor, command_scope(declaration, command, values)),
+           permit(
+             model,
+             declaration,
+             ctx.actor,
+             scope(declaration, declaration.fields, command, values)
+           ),
          :ok <- valid(declaration.fields, command, values, model.domain),
          {:ok, command} <- generate_identity(model, declaration, command, ctx) do
       job = %{
@@ -213,7 +222,7 @@ defmodule EhOsContract.Dispatcher do
     declaration = query!(model, module)
     ctx = context(opts)
     values = Codec.values(model.domain)
-    scope = scope(declaration, params, values)
+    scope = scope(declaration, declaration.params, params, values)
 
     with :ok <- permit_query(model, declaration, ctx.actor, scope),
          :ok <- valid(declaration.params, params, values, model.domain),
@@ -377,39 +386,25 @@ defmodule EhOsContract.Dispatcher do
 
   defp permit_query(model, declaration, actor, _scope), do: permit(model, declaration, actor)
 
-  # A scoped command's dimension, and the value it carries, as a scoped query's. It is
-  # asked before the fields are checked, so a value that does not fit its type is no
-  # value, refused as one, rather than an exception in the encoder.
-  defp command_scope(declaration, command, values) do
+  # A scoped command's or query's dimension, the value it carries in the form a
+  # credential's `scp` carries — a string, or nil when it is missing — and the field's
+  # type. `fields` are a command's fields or a query's params. It is asked before the
+  # fields are checked, so a value that does not fit its type is no value, refused as
+  # one (plan E9c review), rather than an exception in the encoder.
+  defp scope(declaration, fields, data, values) do
     case Map.get(declaration, :scope) do
       nil ->
         nil
 
       dimension ->
-        field = Enum.find(declaration.fields, &(&1.name == dimension))
-        value = Map.get(command, dimension)
+        field = Enum.find(fields, &(&1.name == dimension))
 
-        encoded =
-          if Codec.problems([field], command, values) == [],
-            do: scoped(field.type, value, values)
+        value =
+          if Codec.problems([field], data, values) == [],
+            do: scoped(field.type, Map.get(data, dimension), values)
 
-        scope_request(dimension, encoded)
+        dimension |> scope_request(value) |> Map.put(:type, field.type)
     end
-  end
-
-  # A scoped query's dimension, and the value asked for, in the form a credential's
-  # `scp` carries: a string, or nil when the parameter is missing.
-  defp scope(%{scope: nil}, _params, _values), do: nil
-
-  # As a command's (plan E9c review): a value that does not fit is no value.
-  defp scope(declaration, params, values) do
-    param = Enum.find(declaration.params, &(&1.name == declaration.scope))
-
-    value =
-      if Codec.problems([param], params, values) == [],
-        do: scoped(param.type, Map.get(params, declaration.scope), values)
-
-    declaration.scope |> scope_request(value) |> Map.put(:type, param.type)
   end
 
   # What a scoped request carries, decoded or as it was sent: the one place that
@@ -443,7 +438,8 @@ defmodule EhOsContract.Dispatcher do
     end
 
     with %Actor{kind: :credential} <- actor,
-         %{dimension: dimension, type: type} <- scope(declaration, %{}, values) do
+         %{dimension: dimension, type: type} <-
+           scope(declaration, declaration.params, %{}, values) do
       granted = Authorizer.granted(actor, capability(model, :query, declaration.name), dimension)
 
       for row <- rows, scoped(type, Map.get(row, declaration.scope), values) not in granted do
@@ -571,7 +567,8 @@ defmodule EhOsContract.Dispatcher do
   defp attempt(%{kind: :record} = job, repo) do
     with :new <- idempotent(repo, job) do
       unit = Enum.find(job.model.units, &(&1.name == job.declaration.unit))
-      {recorded, condition} = read_unit(repo, job.model, unit, job.command)
+      # Nothing is decided, so nothing is folded: the unit is read whole, as before.
+      {recorded, condition} = read_unit(repo, job.model, unit, job.command, :all)
 
       # An aggregate whose identity the library gives is made only by the command that
       # creates it (A6), so an event recorded for one that does not exist would make
@@ -591,8 +588,9 @@ defmodule EhOsContract.Dispatcher do
     with :new <- idempotent(repo, job) do
       unit = Enum.find(model.units, &(&1.name == declaration.unit))
       impl = Implementations.fetch!(model, unit.kind, unit.name)
-      {recorded, condition} = read_unit(repo, model, unit, command)
-      state = fold(job, unit, impl, recorded)
+      folded = Implementations.folded_types(model, impl)
+      {recorded, condition} = read_unit(repo, model, unit, command, folded)
+      state = fold(job, unit, impl, folded_only(recorded, model, unit, folded))
 
       command = %{command | __meta__: meta(ctx)}
       decision = stage("decider", fn -> apply(impl, declaration.name, [command, state]) end)
@@ -758,7 +756,11 @@ defmodule EhOsContract.Dispatcher do
   defp idempotent(repo, %{ctx: %{idempotency_key: key}} = job) do
     accepted =
       repo.one(
-        from(c in CommandRecord, where: c.idempotency_key == ^key and c.outcome == "accepted")
+        from(c in CommandRecord,
+          where:
+            c.idempotency_key == ^key and c.issued_by == ^Actor.label(job.ctx.actor) and
+              c.outcome == "accepted"
+        )
       )
 
     cond do
@@ -784,15 +786,39 @@ defmodule EhOsContract.Dispatcher do
   # is a query over the log (v2 §10.1): its own events carrying its identity, and each
   # event it consults, on the fields it matches — every one of them when it matches on
   # none — appended only if nothing it reads was appended after the head it read to.
-  defp read_unit(repo, _model, %{kind: :aggregate} = unit, command) do
+  # A row of a type the contract declares and `evolve/2` does not fold is not decoded
+  # (plan E11f-5): the state is a function of the folded ones alone, so it can neither
+  # change a decision nor stop one. A type the contract no longer declares is still
+  # decoded, and stops the stream: that is history a changed contract left behind.
+  defp folded_only(recorded, _model, _unit, :all), do: recorded
+
+  defp folded_only(recorded, model, unit, folded) do
+    consulted =
+      for consults <- Map.get(unit, :consults, []) do
+        {_contract, declaration} = Model.declaring(model, consults.event)
+        declaration.type
+      end
+
+    declared = MapSet.new(Enum.map(model.events, & &1.type) ++ consulted)
+
+    Enum.reject(
+      recorded,
+      &(MapSet.member?(declared, &1.type) and not MapSet.member?(folded, &1.type))
+    )
+  end
+
+  # An aggregate reads its whole stream, whose version is the append's condition.
+  defp read_unit(repo, _model, %{kind: :aggregate} = unit, command, _folded) do
     stream = Key.stream(unit.name, Enum.map(unit.identity, &Map.fetch!(command, &1)))
     recorded = Store.read_stream(repo, stream, 0)
     version = if recorded == [], do: 0, else: List.last(recorded).stream_version
     {recorded, {:stream, stream, version}}
   end
 
-  defp read_unit(repo, model, %{kind: :dcb} = unit, command) do
-    query = boundary(model, unit, command)
+  # A boundary reads, and conflicts on, only the types its `evolve/2` folds. When it
+  # folds none of them, the whole query stays: a store query cannot be empty.
+  defp read_unit(repo, model, %{kind: :dcb} = unit, command, folded) do
+    query = model |> boundary(unit, command) |> narrowed(folded)
     {recorded, head} = Store.read_query(repo, query)
     {recorded, {:dcb, query, head}}
   end
@@ -808,6 +834,18 @@ defmodule EhOsContract.Dispatcher do
       end
 
     [%{types: own, tags: tag.(unit.identity)} | consulted]
+  end
+
+  defp narrowed(query, :all), do: query
+
+  defp narrowed(query, folded) do
+    narrow =
+      for item <- query,
+          types = Enum.filter(item.types, &MapSet.member?(folded, &1)),
+          types != [],
+          do: %{item | types: types}
+
+    if narrow == [], do: query, else: narrow
   end
 
   # --- reading a stream --------------------------------------------------------------------

@@ -518,6 +518,7 @@ defmodule EhOsContract.Implementation do
       kind: impl.kind,
       name: impl.name,
       emitted: emitted,
+      folds: folds(env, model, evolve),
       file: env.file,
       line: impl.line
     }
@@ -559,6 +560,37 @@ defmodule EhOsContract.Implementation do
       end
     end
   end
+
+  # The events `evolve/2` folds (plan E11f-5): those a clause names by struct, when every
+  # other clause is `def evolve(state, _), do: state` and so changes nothing — the
+  # state is then a function of those events alone, and dispatch reads no other. Any
+  # other clause that catches events, a guarded variable or a body that is not the
+  # state, may fold anything: `:all`.
+  defp folds(_env, _model, nil), do: :all
+
+  defp folds(env, model, evolve) do
+    {:v1, _kind, _meta, clauses} = Module.get_definition(env.module, {:evolve, 2})
+
+    named =
+      MapSet.new(
+        Enum.flat_map(clauses, fn {_meta, [_state, event], _, _} -> struct_modules(event) end)
+      )
+
+    passing =
+      Enum.reject(clauses, fn {_meta, [_state, event], _guards, _body} ->
+        struct_modules(event) != []
+      end)
+
+    if Enum.all?(passing, &unchanged?/1),
+      do: for(event <- evolve.events, Model.module_for(model, :event, event) in named, do: event),
+      else: :all
+  end
+
+  defp unchanged?({_meta, [{state, _, context}, event], [], {state, _, context}})
+       when is_atom(state) and is_atom(context),
+       do: catch_all?(event)
+
+  defp unchanged?(_clause), do: false
 
   defp catch_all?({name, _meta, context}) when is_atom(name) and is_atom(context), do: true
   defp catch_all?({:=, _, [left, right]}), do: catch_all?(left) and catch_all?(right)

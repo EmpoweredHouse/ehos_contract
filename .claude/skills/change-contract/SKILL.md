@@ -18,7 +18,9 @@ subscription, a process manager or an effect job takes it**. A row that no longe
 skipped: decoding raises "no longer fits". Every command on that aggregate's stream fails — every
 decision of a boundary that consults the type, whatever stream the row is in; an ordered
 subscription stops at that position, `failing`; an effect job is retried three times and
-discarded. Only a unit with no `evolve/2` never reads its history back. `schema_version` exists on
+discarded. A unit with no `evolve/2` never reads its history back, and one whose only catch-all is
+`def evolve(state, _), do: state` reads back only the events it has a clause for: an old row of a
+type it passes over is not decoded, so it breaks nothing. `schema_version` exists on
 every event, but **no upcaster is built** (§10.6 describes one; nothing calls it), so there is no
 way yet to carry old rows across a breaking change. By the time the compiler runs, the file already
 says whatever it says — which is why the analysis comes first.
@@ -56,7 +58,7 @@ as its rows: before `declaration_digests` were recorded it answers `:not_recorde
 | An event renamed, removed, or moved to another contract | `removed` + `added` | The log stores the type as `"<process>.<event>"`. Folding a stream that holds the old type raises ("declares no event of type"); the report loses its runs. Renaming the process renames every type. An event a person records has a capability, `<domain>.<event>`, and a rename withdraws its grant (see the command row). |
 | A unit renamed | `removed` + `added` | An aggregate reads its stream by id, the unit's name and its key values: old streams are left under their old ids, and the unit decides from an empty state — silently. A boundary reads by types and tags, not by its name. |
 | A unit's `identity` changed | `changed` | For an aggregate, the same as a rename: new stream ids, an empty state. For a boundary, it now reads what the new tags select. |
-| The contract module renamed | — | Every row records the contract's module name, and an ordered subscription, a process manager and an effect job resolve the declaration through it; the subscriptions' keys carry it too, so a policy starts again at the head. Treat it as a change with history. |
+| The contract module renamed | — | Every row stores the contract's module name, and most of the engine goes by it: ordered subscriptions, process managers and effect jobs fail on the first old row; consumers' keys carry it, so their subscriptions, runs, timers and queued jobs are left behind; an idempotent retry is not replayed; the conformance report reads the renamed contract as one with no history. Do not rename a contract module with history in the log. |
 | The process's `correlate` | `changed` | Runs are computed at append and stored; old events keep the runs they were given. A report across the change counts two keying schemes as one. |
 | A new invariant or constraint | `changed` | History is never checked against it; a command that passed before may now be refused. `S8` asks for its `rejected` scenario. |
 | A new invariant of a domain **value** | the domain's | History is not held to it, but a policy or a process manager that builds a command from an old event's value is refused, and the refusal rolls back the command that set it off, or stops an ordered consumer at that event (§6, D9). Look at the values in the log first. |
