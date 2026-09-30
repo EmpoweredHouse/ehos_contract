@@ -196,9 +196,7 @@ defmodule EhOsContract.VaultTest do
     end
 
     defp names,
-      do:
-        Repo.all(from(e in Event, order_by: e.position))
-        |> Enum.map(&Consumer.decode!(&1, Members))
+      do: Repo.all(from(e in Event, order_by: e.position)) |> Enum.map(&Consumer.decode!/1)
 
     test "rewraps every key the old one wraps, and the log reads the same with the old key gone" do
       keys([{"kek-old", @kek}])

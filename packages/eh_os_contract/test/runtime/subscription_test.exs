@@ -82,32 +82,6 @@ defmodule EhOsContract.SubscriptionTest do
       assert %{applied: 0} = Testing.drain(only: @lines)
       assert amounts() == [10]
     end
-
-    test "takes a row written before its contract's module was renamed" do
-      # The row keeps the old module name in `contract`; the consumer's own contract
-      # declares the type, and that is what decodes it.
-      {:ok, {:ok, [_row]}} =
-        Repo.transaction(fn ->
-          EhOsContract.Store.append(
-            Repo,
-            [
-              %{
-                type: "ledger.deposited",
-                contract: "DispatchRig.LedgerBeforeTheRename",
-                contract_version: "old",
-                correlation_id: Ecto.UUID.generate(),
-                actor: "system:old",
-                occurred_at: EhOsContract.Clock.now(),
-                payload: %{"account_id" => "a-renamed", "amount" => 40}
-              }
-            ],
-            {:stream, "account:a-renamed", 0}
-          )
-        end)
-
-      assert %{applied: 1, failing: []} = Testing.drain(only: @lines)
-      assert amounts() == [40]
-    end
   end
 
   describe "a poison event" do

@@ -49,11 +49,7 @@ defmodule EhOsContract.EffectJob do
          row = repo().get!(Event, event_id),
          true <- Map.has_key?(effect.callbacks, row.type) || {:dropped, row.type} do
       guarded(key, row, fn ->
-        Consumer.handle!(
-          Implementations.taking(effect, row.type),
-          Consumer.decode!(row, effect.contract),
-          []
-        )
+        Consumer.handle!(Implementations.taking(effect, row.type), Consumer.decode!(row), [])
       end)
     else
       {:dropped, type} ->

@@ -173,7 +173,7 @@ defmodule EhOsContract.PersonalTest do
                  actor: @clerk
                )
 
-      assert [joined, renamed] = Enum.map(log(), &Consumer.decode!(&1, Members))
+      assert [joined, renamed] = Enum.map(log(), &Consumer.decode!/1)
 
       assert %Joined{
                name: "Anna Nowak",
@@ -232,7 +232,7 @@ defmodule EhOsContract.PersonalTest do
                  # Control: the other member's key is there, so their phone reads.
                  %{member_id: "member-bartek", phone: "+48 600 300 400"}
                ]
-             } = Consumer.decode!(row, Members)
+             } = Consumer.decode!(row)
     end
 
     test "a key missing for a subject never erased does not read as Erased, and says so" do
@@ -241,7 +241,7 @@ defmodule EhOsContract.PersonalTest do
 
       assert_raise ArgumentError,
                    ~r/the data key of subject member "member-anna", version 1, is missing, and the subject was never erased/,
-                   fn -> Enum.map(log(), &Consumer.decode!(&1, Members)) end
+                   fn -> Enum.map(log(), &Consumer.decode!/1) end
     end
 
     test "control: a member whose key is there reads normally" do
@@ -251,7 +251,7 @@ defmodule EhOsContract.PersonalTest do
       erase_keys!("member-anna")
 
       assert [%Joined{name: %Erased{}}, %Joined{name: "Bartek Nowak"}] =
-               Enum.map(log(), &Consumer.decode!(&1, Members))
+               Enum.map(log(), &Consumer.decode!/1)
     end
   end
 

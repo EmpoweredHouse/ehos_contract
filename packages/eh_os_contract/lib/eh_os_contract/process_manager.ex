@@ -88,7 +88,7 @@ defmodule EhOsContract.ProcessManager do
 
   def handle!(repo, consumer, %Event{} = row, chain, replay?) do
     {model, pm} = declaration(consumer)
-    event = Consumer.decode!(row, consumer.contract)
+    event = Consumer.decode!(row)
     name = Map.fetch!(consumer.callbacks, row.type)
     values = Enum.map(pm.correlate, &Map.get(event, &1))
 
