@@ -1,0 +1,7 @@
+pre-pr-review of origin/main(50eb771)..HEAD, #50.
+Reviews in parallel: /code-review high (correctness) and engineering:code-review (security and performance).
+Neither found a defect in the change: no reader of a publish as: or consumes name splits it or builds atoms from it; a dash is legal in a NATS subject, a JSON pointer and an AsyncAPI component key; the pattern is linear on 1 MB input.
+Fixed (c962975): refusal text says where a dash is allowed (test red on the old text); moduledoc says the underscore stays on purpose; consumes from: doc names the grammar; newline refusal moved to CHANGELOG "a host has to act". Fixed (668538a): decision and state recorded in PLAN.md.
+Skipped: the domain name: is unchecked, and a dot in it escapes the namespace (both reviews); older than #50, a new host-visible refusal, left to the user in PLAN.md open questions.
+No change needed: no u flag on the rewritten pattern; the name is an ASCII identifier, not client text.
+Gate from sandbox/: EXIT=0; sandbox 144 (check 0/29/9), engine 1007 (check 0/66/5), web 52, auth 65.
