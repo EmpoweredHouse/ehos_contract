@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 29 września (E11c w PR #46, E11d gotowe, następne E11e)
+## Handoff — stan na 30 września (E11c i E11d razem w PR #46, następne E11e)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -14,52 +14,40 @@ Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, s
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa pivot do v2** (DSL na Sparku, model
 domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E10, E11a i E11b są w `main`**
 (ostatnio E11b, #45). **E11 — Cięcie** idzie częściami E11a–E11f („Przed E11 — podział i decyzje użytkownika”):
-**E11c — migracje do jednego V01 (D2) — jest w PR [#46](https://github.com/EmpoweredHouse/eh-os-contract/pull/46);
-E11d — dokumentacja (E11d-1 i E11d-2) — jest gotowe i przejrzane** („E11c — co wyszło”, „E11d-1 — co wyszło”,
-„E11d-2 — co wyszło”), PR na stosie nad E11c. Następne jest **E11e — skille**. W bibliotekach nie ma już kodu v1,
-nazwy `Next` ani historii migracji.
+**E11c — migracje do jednego V01 (D2) — i E11d — dokumentacja — są gotowe, przejrzane i razem w PR
+[#46](https://github.com/EmpoweredHouse/eh-os-contract/pull/46)** („E11c — co wyszło”, „E11d-1 — co wyszło”,
+„E11d-2 — co wyszło”). Następne jest **E11e — skille**. W bibliotekach nie ma już kodu v1, nazwy `Next` ani historii
+migracji.
 
 ### Stan repozytorium
 
 - **`origin/main` = `563a251`** (merge #45, E11b; CI `main`, przebieg `36620412345`, job `check` — `success`).
-- **E11c** na `dsl-v2/e11c-migrations`, od `563a251`, **niewypchnięte**: `a1e4c98`, `6ac26d7`, `f9edf9c`, `c2544a8`
-  (ADR), `418c966` (po przeglądzie), `a2973fb` (plan; notatka przeglądu E11c na nim).
-- **E11c** wypchnięte, PR #46 do `main`. **E11d** na `dsl-v2/e11d-docs`, od `a2973fb`: E11d-1 (`14dc852`–`ad01460`)
-  i E11d-2 (`6bfea09`–`2d696a6`) z zapisem planu; notatki przeglądu na `ad01460` i na głowie. PR E11d ma bazę
-  `dsl-v2/e11c-migrations` — **po merge'u #46 przestawić bazę na `main`**, zanim zmerguje się E11d (#40 zmergował
-  się kiedyś do nieprzestawionej bazy).
+- **`dsl-v2/e11c-migrations`**, od `563a251`, wypchnięte, PR #46 do `main`. **#47 (E11d) zmergował się 29 września do
+  swojej bazy, `dsl-v2/e11c-migrations`, nie do `main`** — ta sama pułapka co #40 — więc #46 niesie teraz E11c i
+  E11d (merge `3ded342`), a po nim poprawki z komentarzy CodeRabbita do #46 (odmowa w `up/1`: `e36c30e`, `ef33f89`;
+  nazwy stron `docs/dsl/*-dsl.md` i plan — 30 września). Odmowa jest w historii dwa razy (na E11c i cherry-pickiem na
+  E11d, `03957b3`, `7e8d0d1`) — te same zmiany, merge je scala. Notatki przeglądu: `a2973fb`, `aa0e1d4`, `ad01460`,
+  `1bae14a`, `4660eee` i głowa.
+- Lokalne `dsl-v2/e11d-docs` i `dsl-v2/e11b-rename-next` są w całości w swoich bazach; `dsl-v2/e11a-remove-v1` też, ale
+  wyciągnięte w worktree `dsl-v2-eg-graphs-409665`.
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
   `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`). W E11c wszystkie
   skasowane i odtworzone z nowego V01 — worktree na kodzie sprzed E11c, który je zmigruje, zepsuje je dla reszty
-  (`ecto.drop` naprawia). Bazę dev odtworzono z danymi: zrzut sprzed E11c (29 zdarzeń, 21 wdrożeń, 18 komend)
-  przywrócony `pg_restore --data-only` do tabel, które przetrwały.
-- Lokalne `dsl-v2/e11b-rename-next` jest w całości w `main`; `dsl-v2/e11a-remove-v1` też, ale wyciągnięte w
-  worktree `dsl-v2-eg-graphs-409665`.
+  (`ecto.drop` naprawia; od odmowy w `up/1` taki worktree dostanie komunikat zamiast cichego sukcesu). Bazę dev
+  odtworzono z danymi: zrzut sprzed E11c (29 zdarzeń, 21 wdrożeń, 18 komend) przywrócony `pg_restore --data-only`.
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`, zrzuty
   sprzed E11c — w starym schemacie, do odtworzenia tylko danymi); przed `mix phx.server` — `mix ecto.migrate` w
   `sandbox/`.
 
 ### Co zostało — i czyje to jest
 
-- **Merge #46 i PR-a E11d** — użytkownika.
-- **Odmowa w `up/1` dla bazy z wersją > 1 — zrobiona 29 września** na polecenie użytkownika („rozwiąż komentarze
-  coderabbit”, komentarz do #46): `e36c30e`, `ef33f89` na E11c, przeniesione na E11d cherry-pickiem (`03957b3`,
-  `7e8d0d1`); CHANGELOG to mówi.
+- **Merge #46** — użytkownika. Niesie E11c i E11d; po nim E11e od świeżego `origin/main`.
 - **Klucz idempotencji jest globalny, nie per aktor** (z przeglądu E11d-1, sprzed E11) — do decyzji użytkownika;
   opis w otwartych pytaniach.
 - **E11e–E11f** — asystenta, po kolei, z przeglądem `pre-pr-review` po każdej części przed następną. Zakres każdej
-  części: „Przed E11 — podział i decyzje użytkownika”. Potem osobny etap: kontrakty sandboxa do testów pakietu jako
-  fikstury akceptacyjne, potem **manifest v2** (po akceptacji D-51/D-52 w `eh-os` — decyzja z 29 września).
-- **Z E11b do E11d i E11e** — lista w „E11b — co wyszło”: wpis CHANGELOG-u o zmianie nazw publicznego API (z
-  pułapką `Registry.contracts/0`, które w v1 znaczyło co innego), proza „v2 contract” w komunikatach i dokach,
-  sześć skilli z `EhOsContract.Next.Contract` w nagłówku.
-- **E11d-2 zrobione** (była tu lista:  główne `README.md` (opis `mix eh_os_contract.docs` sprzed E11d-1), `CLAUDE.md` (opis
-  bramy, tabela „Zanim cokolwiek zmienisz”, „MFA, nigdy capture”, Rehmed „nie ma kodu”, `emit`/handlery, „assercje
-  `trace`”), CHANGELOG 0.3.0, reszta v2 §18, proza „v2 contract” w komunikatach i dokach (lista w „E11b — co
-  wyszło”) oraz odwołania „v2 §N”, „plan EM3”, „D13” w opisach DSL-a, które od E11d-1 idą do HexDocs przez
-  `docs/dsl/`) — „E11d-2 — co wyszło”.
-- **Z E11c do E11d** — „Unreleased” w `CHANGELOG.md` każe hostowi dopisać migracje `up(version: 3|4|5)`, których
-  już nie ma: wpis 0.3.0 mówi o jednym V01 i odtworzeniu bazy sprzed cięcia („E11c — co wyszło”).
+  części: „Przed E11 — podział i decyzje użytkownika”. **E11e** zaczyna od sześciu skilli, które w nagłówku mają
+  jeszcze `EhOsContract.Next.Contract` („E11b — co wyszło”). Potem osobny etap: kontrakty sandboxa do testów pakietu
+  jako fikstury akceptacyjne, potem **manifest v2** (po akceptacji D-51/D-52 w `eh-os` — decyzja z 29 września).
 - **Poza E11, bez zmian** — użytkownika: proces na porcie 4000, wdrożenie E8 u hosta, lista zmian do `eh-os` (w tym
   fixture manifestu TaxVision z „E10 — co wyszło” i uwagi do D-51/D-52 — komentarz do PR-a w `eh-os` tylko na
   polecenie, link w materiale EHOS-a był pusty), publikacja na Hex, F1/F2 i dziesięć usterek, pytanie do EHOS-a o CSP
@@ -2617,11 +2605,25 @@ Na `dsl-v2/e11d-docs`, po E11d-1:
 - **`check` wypisywał „(D3)”, którego katalog już nie ma** — *poprawione* (`32d99a3`), razem z „v2 contract” w
   moduledokach dotkniętych plików (to, co wypisuje `mix help`);
 - **format i miejsce dopisków w `technology-notes`** — *poprawione*;
-- **brak odmowy w `up/1` dla bazy z wersją > 1** — *do użytkownika* (otwarte pytania);
+- **brak odmowy w `up/1` dla bazy z wersją > 1** — *poprawione* po komentarzu CodeRabbita do #46, na polecenie
+  użytkownika (`e36c30e`, `ef33f89`; opis w „E11c — co wyszło”);
 - **„idempotency to tylko nazwa”** — *bez zmiany*: README mówi „names what makes a second delivery harmless”, co jest
   dokładnie tym, co P3 sprawdza;
 - **„v2 §N” w moduledokach niedotkniętych plików** — *bez zmiany*: odwołania do dokumentu repozytorium, dla czytelnika
   repozytorium.
+
+### Komentarze CodeRabbita do #46 (29–30 września)
+
+Na polecenie użytkownika („rozwiąż komentarze coderabbit”, „sprawdź komentarz code rabbita”). #47 zmergował się do
+gałęzi E11c, więc CodeRabbit ocenia E11d w #46.
+- **Odmowa w `up/1` dla bazy z wersją > 1** (29 września) — *poprawione*, opis w „E11c — co wyszło”.
+- **`docs/contract.md` i `docs/dsl/contract.md` dzielą w ExDocu nazwę strony** (30 września) — *poprawione*.
+  CodeRabbit pisze, że referencja nadpisuje przewodnik; na ExDocu 0.40.4 nie nadpisuje, tylko numeruje strony
+  (`contract-1.html`, `contract-2.html`) w kolejności `extras`, więc adres przewodnika zależałby od kolejności listy.
+  Strony referencji to `docs/dsl/domain-dsl.md` i `docs/dsl/contract-dsl.md`, a `docs_test` pilnuje, że żadne dwie
+  strony dokumentacji nie mają jednej nazwy bazowej (sprawdzone odwrotnie). Zapis E11d-1 wyżej wymienia stare nazwy.
+- **Handoff z nieaktualnymi pozycjami** (30 września) — *poprawione*: pozycja „Z E11c do E11d” zrobiona, odmowa w
+  `up/1` w zapisie przeglądu E11d-2 oznaczona jako poprawiona, stan gałęzi po merge'u #47 do bazy E11c.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
