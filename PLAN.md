@@ -2612,6 +2612,95 @@ gałęzi E11c, więc CodeRabbit ocenia E11d w #46.
 - **Handoff z nieaktualnymi pozycjami** (30 września) — *poprawione*: pozycja „Z E11c do E11d” zrobiona, odmowa w
   `up/1` w zapisie przeglądu E11d-2 oznaczona jako poprawiona, stan gałęzi po merge'u #47 do bazy E11c.
 
+### E11e — co wyszło (30 września)
+
+Samą dokumentację w `.claude/skills/` i dopisek w `docs/adr/technology-notes.md` §8 zrobiono na gałęzi
+`claude/e11e-skills-dsl-v2-ab38c4`, od `6df5bc7`. Handoff `306ed55` z `dsl-v2/e11e-skills` został w tamtej
+gałęzi.
+- **Pięć przepisanych:** `add-event`, `change-contract`, `contract-distillation` (z `output-template.md`),
+  `module-boundary-check`, `review-pr`. **`write-handler` usunięty**, w jego miejsce `write-decider` (agregat i
+  DCB: `emit/1`, `reject/1`, `evolve/2`, czysta decyzja) i `write-reaction` (policy, effect, process manager,
+  read model z query: `delivery`, `idempotency`, gdzie startuje nowy konsument).
+- **`pre-pr-review`:** `docs/contract.md` nie jest „samą dokumentacją”, bo `test/docs_test.exs` kompiluje jego
+  przykłady i trzyma tabelę odmów przy kodzie, a `docs/dsl/` i `docs/rules.md` porównują `docs --check` i
+  `rules --check`. Przy okazji „MFA rather than capture” zamienione na regułę z `CLAUDE.md` („implementacje
+  wskazują kontrakt”).
+- **Dopisek z datą w `technology-notes` §8:** co z tabeli planowanych skilli faktycznie istnieje.
+
+**Decyzja użytkownika (30 września, w trakcie):** skille opisują jeden DSL jako fakty, bez „v1/v2” i bez
+porównań ze starym — „nie mamy żadnej aplikacji w v1 ani w v2, nie potrzebujemy zgodności wstecz”. *Odrzucone:*
+pierwsza wersja tej roboty, która pisała „written for the v2 DSL”, „v1 kept old rows…”, „the v1 question is
+gone” — każde takie zdanie uczy czytelnika wersji, której nie ma. Zostają tylko nazwy plików
+(`docs/adr/contract-v2.md`) i wersjonowane nazwy publikacji (`….v1` w `publish … as:`), bo to pojęcia DSL-a.
+
+**Wybory asystenta:**
+- Skille wskazują **kody odmów** z `docs/contract.md` i **nazwy reguł** z `docs/rules.md`, nie numery linii
+  źródła, które skille v1 cytowały i które zgniły. *Odrzucone:* cytaty `plik:linia` — `technology-notes` §8
+  mówi, że skille mają być krótkie i wskazywać kod i sprawdzenia, a kody i nazwy są stałe między wersjami.
+- **Jeden `write-reaction` zamiast czterech** (po jednym na rodzaj). Wspólne pytanie — co zostawia w logu
+  awaria po każdej stronie granicy transakcji — jest to samo dla wszystkich; tabela rodzajów jest na górze.
+  *Odrzucone:* osobny `add-projection` z `technology-notes` §8 — powtórzyłby połowę `write-reaction`.
+- **`change-contract` od nowa z kodu, nie z tabeli v1.** Tabela v1 była o logu, którego nikt nie czyta
+  ponownie. Tutaj każdy stary wiersz jest dekodowany dzisiejszą deklaracją przy każdym złożeniu strumienia, więc
+  wiersze tabeli są inne. Pięć z nich sprawdzone wprost na `Codec.decode/4` w `MIX_ENV=dev mix run --no-start`:
+  dodane pole wymagane daje `:required`, usunięte pole jest pomijane, zmiana typu i usunięty element enuma dają
+  `:type`, dodane opcjonalne daje `nil`.
+- **Lista plików wyzwalających pytanie o CHANGELOG** (w `review-pr`, jedyne jej miejsce według CHANGELOG-a)
+  rozszerzona o `paths.ex`, `coverage.ex`, `event_run.ex`, `dependency.ex`, `digest.ex`, `duration.ex`,
+  `conformance/`, `report/`, `graph/`.
+
+**Ustalenia z pisania (do E11f albo dalej, bez zmian w kodzie):**
+- **Żaden test nie przypina, że strumień ze starym wierszem, który nie pasuje do deklaracji, odmawia głośno**
+  („no longer fits” w `Consumer.decode!/5`). Na tym stoi cała tabela `change-contract`. Kandydat na E11f.
+- **Upcasterów nie ma.** `schema_version` jest na każdym zdarzeniu, ale nic go nie czyta poza AsyncAPI.
+  v2 §10.6 opisuje upcaster i regułę `check` („digest danych ruszył, a log ma wiersze tego typu”); jedno i
+  drugie niezbudowane. Do tego czasu każda niekompatybilna zmiana zdarzenia z historią to nowe zdarzenie albo
+  robota na danych.
+- **Wiersz logu zapisuje nazwę modułu kontraktu**, a subskrypcje, process managery i zadania efektów rozwiązują
+  przez nią deklarację (`Module.safe_concat([row.contract])`). v2 §5 mówi, że typ `"<process>.<event>"` chroni
+  historię przed zmianą nazwy modułu — dla typu tak, dla tych trzech czytelników nie. Do sprawdzenia w E11f,
+  potem poprawka z datą w v2 §5.
+- **Przykład `rejestry` z `sandbox/lib/taxvision/registry_check.ex`**, na który wskazywał stary `review-pr`,
+  już nie istnieje (plik zniknął w E9c-1, `a0e6faa`). Lekcja zostaje w `CLAUDE.md` i w `review-pr`, bez ścieżki.
+
+**Weryfikacja:**
+- Brama bazowa na `6df5bc7` przed zmianą: `EXIT=0`, liczby jak w handoffie (sandbox 143, `check` 0/29/9;
+  silnik 986, 0/66/5; web 52; auth 62).
+- Skrypt w scratchpadzie sprawdził każdy kod odmowy, nazwę reguły, ścieżkę i moduł cytowane w dziesięciu plikach
+  skilli: wszystkie się rozwiązują (poza nazwami, które nie są regułami: `process-extraction`, `eh-os`,
+  `code-review`).
+- Stare słownictwo (`Handler`, `Next`, `Emitter`, `retain`, `trace`, `instance`, `payload`, `v1`, `v2`,
+  `DRAFT`) szukane dwoma narzędziami, `grep -rE` i `git grep -w --untracked` (bez `--untracked` pomija nowe
+  pliki). Zostały tylko angielskie słowa i nazwy plików.
+- Brama po zmianie skilli: `EXIT=0`, liczby bez zmian (sandbox 143, `check` 0/29/9; silnik 986, 0/66/5; web 52;
+  auth 62). Poprawki po przeglądzie niżej dotknęły już tylko `.claude/skills/`, których brama nie czyta.
+
+**Przegląd E11e (30 września).** Zmiana jest samą dokumentacją, więc zamiast `/code-review` agent sprawdził
+każde twierdzenie skilli z kodem silnika. Znalazł 3 błędy i 10 nieścisłości; wszystkie *poprawione*:
+- **błędy:**
+  - `change-contract` pisał `changed` przy przemianowaniu jednostki i komendy — digest jest kluczowany
+    `"<kind>:<name>"`, więc przemianowanie to `removed` + `added`;
+  - `pre-pr-review` liczył `docs/` jako czytane przez nikogo, a `contract_examples_test.exs` kompiluje przykłady
+    z `docs/adr/contract-v2.md`, `docs_test` przykłady README pakietu i `authorization.md`, a linki sprawdza w
+    CHANGELOG-u;
+  - na liście plików do CHANGELOG-a brakowało `contract/build.ex`, z którego bierze się wersja i digesty
+    deklaracji; dopisane, razem z `store/postgres.ex`, `key.ex` i `dispatcher.ex` przy zmianach runów, kluczy
+    i etykiet awarii;
+- **nieścisłości:**
+  - jednostka bez `evolve/2` nie czyta historii, więc jej nie łamie;
+  - jeden zły wiersz typu konsultowanego przez DCB łamie każdą decyzję tego DCB;
+  - zadanie efektu po trzech próbach jest odrzucane, a nie `failing`;
+  - niektóre zmiany typu dalej się dekodują (`:integer` → `:decimal`);
+  - DCB czyta po typach i tagach, nie po `stream_id`;
+  - process manager też bywa `stale`;
+  - zdarzenie rejestrowane przez człowieka ma własne uprawnienie;
+  - `publish` edytowany nie jest odmawiany (to reguła projektu, nie kod `D11`);
+  - read model ma partie po 500;
+  - zdarzenie bez pól `correlate` process managera przechodzi kompilację i nie trafia do żadnego runu;
+  - wymyślony przykład prefiksu zastąpiony prawdziwym (`accounting_month_opened`), z decyzją z EL1: nazwa
+    zostaje z warsztatu;
+  - wycinek `VisitSettlement` oznaczony jako wycinek.
+
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
 Po lekturze architektury EHOS-a (`~/Projects/ai/eh-os`, `docs/ADR.md` i `docs/ARCHITECTURE.md`; research w
