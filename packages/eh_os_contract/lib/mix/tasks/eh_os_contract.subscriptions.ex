@@ -59,6 +59,12 @@ defmodule Mix.Tasks.EhOsContract.Subscriptions do
           %{kind: :policy} ->
             Mix.shell().info("#{key}: moved back to the beginning of the log, to react to it")
 
+          %{kind: :relay} ->
+            Mix.shell().info(
+              "#{key}: moved back to the beginning of the log, to publish it again under the " <>
+                "same ids"
+            )
+
           _rebuilt ->
             Mix.shell().info("#{key}: emptied, and replayed from the beginning of the log")
         end

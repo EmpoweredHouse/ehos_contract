@@ -80,6 +80,14 @@ defmodule EhOsContract.SubscriptionsTaskTest do
     end
   end
 
+  test "--reset of a relay moves it back, to publish the log again" do
+    task(["--reset", "BusRig.Orders:relay:order_placed"])
+    assert output() =~ "moved back to the beginning of the log, to publish it again"
+
+    assert Repo.get!(EhOsContract.SubscriptionRecord, "BusRig.Orders:relay:order_placed").position ==
+             0
+  end
+
   test "--reset of a policy moves it back, to react to the log" do
     task(["--reset", "DispatchRig.Ledger:policy:flag_large_withdrawal"])
     assert output() =~ "moved back to the beginning of the log, to react to it"
