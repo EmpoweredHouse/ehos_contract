@@ -3268,6 +3268,42 @@ jej test (kolizje w obu przestrzeniach N1, F1 forma, `identity`, D3, D6, jednost
 **Brama** (30 września, na głowie): EXIT=0 — sandbox 144 (`check` 0/29/9), silnik **1028**, `check` 0/66/5, web
 52, auth 66.
 
+### Przed E12 — decyzje użytkownika (1 października)
+
+**Następny etap: E12** (integracja między aplikacjami). *Odrzucone na teraz:* fikstury akceptacyjne i manifest v2 —
+czekają na rozstrzygnięcie #49 i akceptację D-51/D-52 w `eh-os`; drobne reguły z „Otwartych pytań” — każda to
+osobny powód odmowy z małym sygnałem. Zgody z bloku „Zgoda i stałe uprawnienia” potwierdzone w tej sesji.
+**Test odbioru na zmyślonych domenach w pakiecie, nie w `sandbox/`** (wybór asystenta, zgodny z propozycją #49):
+nie dokłada materiału klienta, który #49 chce wynieść.
+
+**`Bus` nie obiecuje kolejności** (pytanie użytkownika, rekomendacja asystenta przyjęta). Wiadomości jednego wydawcy
+wychodzą w kolejności logu, ale odbiorca może je dostać w dowolnej; między dwoma wydawcami kolejności nie ma nigdy.
+*Odrzucone:* **kolejność od jednego wydawcy** — zawęża transport do szeregowego konsumenta (JetStream z jedną
+niepotwierdzoną wiadomością naraz, HTTP wysyłane szeregowo do każdego odbiorcy), jedna wiadomość, której odbiorca
+nie weźmie, zatrzymuje wszystko za nią, a drugi węzeł odbiorcy nic nie daje; **kolejność po kluczu**
+(`publish … ordered_by:`) — nowe słowo DSL-a i konsumenci z partycjami, zanim jakikolwiek odbiorca o to poprosił.
+Cena: odbiorca, któremu zależy na kolejności dwóch wiadomości, czeka na obie process managerem. **Odwracalne w
+jedną stronę:** dołożenie kolejności później jest addytywne (odbiorca pisany bez niej dalej działa), odwrotnie
+zepsułoby każdego, kto na niej polegał; `ordered_by:` wchodziłoby obok, a adapter, który go nie utrzyma, odmawia
+publikacji zamiast po cichu zgubić kolejność. Dopisek z datą w `docs/adr/contract-v2.md` §16.
+
+**Relay nie przez Obana** (pytanie użytkownika o transakcyjny outbox). Log jest outboxem (D11): stan jednostki to
+ciąg jej zdarzeń, więc dispatch robi jeden dopis, nie dwa zapisy; relay czyta tylko zatwierdzone zdarzenia w
+kolejności zatwierdzenia (§10.2) i przesuwa checkpoint po potwierdzeniu z `Bus`, więc wiadomość może przyjść dwa
+razy, nigdy zero razy i nigdy bez swojego faktu. Oban zostaje outboxem efektów (zadanie w transakcji zdarzenia).
+*Odrzucone:* zadanie Obana na każde publikowane zdarzenie — drugi outbox obok logu, zadania bez kolejności, stan
+wyjścia rozproszony po zadaniach zamiast jednej pozycji. Ten sam dopisek w §16.
+
+**Podział E12 na części** (wybór asystenta), każda z przeglądem przed następną:
+- **E12a** — behaviour `EhOsContract.Bus`, adapter lokalny, suita adapterów (`EhOsContract.Bus.Suite`, jak
+  `Store.Suite`);
+- **E12b** — relay: uporządkowana subskrypcja nad logiem, wiadomość tylko z `fields`, id
+  `<id zdarzenia>/<nazwa publish>`, checkpoint po potwierdzeniu;
+- **E12c** — inbox i runner subskrybenta, capability `<nazwa>.subscribe`, test dwóch aplikacji;
+- **E12d** — publiczne wejście dla surowych danych, Plug na nim, bez `Dispatcher.permit_undecoded/5`;
+- **E12e** — poprawka z datą `architecture.md` §9–10, `docs/contract.md`, CHANGELOG, skill `write-reaction`,
+  handoff.
+
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
 Po lekturze architektury EHOS-a (`~/Projects/ai/eh-os`, `docs/ADR.md` i `docs/ARCHITECTURE.md`; research w
