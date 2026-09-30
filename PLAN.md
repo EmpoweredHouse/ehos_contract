@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 30 września (E11a–E11e w `main`, E11f w toku)
+## Handoff — stan na 30 września (E11a–E11e w `main`, E11f gotowe na gałęzi)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -14,17 +14,17 @@ Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, s
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa pivot do v2** (DSL na Sparku, model
 domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E10 i E11a–E11d są w `main`**
 (ostatnio #48: E11e — skille). **E11 — Cięcie** idzie częściami E11a–E11f („Przed E11 — podział i decyzje
-użytkownika”); **E11f jest w toku** na gałęzi, bez PR-a („E11f — co wyszło, część 1”): klucz idempotencji w
-zakresie aktora, testy starej historii, jeden `scope`, jednostka czytająca tylko to, co składa; zostaje przegląd
-ostatnich części i PR.
+użytkownika”); **E11f jest gotowe na gałęzi**, z przeglądem każdej części, bez PR-a („E11f — co wyszło,
+część 1”): klucz idempotencji w zakresie aktora, testy starej historii, jeden `scope`, jednostka czytająca tylko
+to, co składa. Po nim E11 jest zamknięte.
 W bibliotekach nie ma już kodu v1, nazwy `Next` ani historii migracji; dokumentacja pakietu jest v2 i test trzyma ją
 przy kodzie.
 
 ### Stan repozytorium
 
 - **`origin/main` = `406bb07`** (merge #48, 30 września). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
-- **`dsl-v2/e11f-engine`** (worktree `ehos-sync-status-ad37a3`) — lokalna, niewypchnięta, od `406bb07`: E11f-1 do
-  E11f-3 i ten zapis. `claude/e11e-skills-dsl-v2-ab38c4` i `dsl-v2/e11e-skills` (worktree
+- **`dsl-v2/e11f-engine`** (worktree `ehos-sync-status-ad37a3`) — lokalna, niewypchnięta, od `406bb07`: całe E11f
+  i ten zapis; notatka `git notes --ref=review` na HEAD. `claude/e11e-skills-dsl-v2-ab38c4` i `dsl-v2/e11e-skills` (worktree
   `e9c-1-taxvision-registry-18c799`) są w całości w `main` (do skasowania).
 - **Issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza repozytorium biblioteki; zaparkowane przez
   użytkownika 30 września, z propozycją `EmpoweredHouse/eh-os-contract-sandbox`.
@@ -40,7 +40,7 @@ przy kodzie.
 
 ### Co zostało — i czyje to jest
 
-- **E11f — domknięcie** — asystenta: przegląd E11f-4 i E11f-5, potem PR (push i PR na polecenie użytkownika).
+- **E11f — PR** — push i PR na polecenie użytkownika; przeglądy zrobione, notatka na HEAD.
 - **Po E11:** kontrakty sandboxa do testów pakietu jako fikstury akceptacyjne, potem **manifest v2** (po akceptacji
   D-51/D-52 w `eh-os` — decyzja z 29 września).
 - **Poza E11, bez zmian** — użytkownika: proces na porcie 4000, wdrożenie E8 u hosta, lista zmian do `eh-os` (w tym
