@@ -15,8 +15,8 @@ dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa p
 domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E10 i E11a–E11d są w `main`**
 (ostatnio #48: E11e — skille). **E11 — Cięcie** idzie częściami E11a–E11f („Przed E11 — podział i decyzje
 użytkownika”); **E11f jest w toku** na gałęzi, bez PR-a („E11f — co wyszło, część 1”): klucz idempotencji w
-zakresie aktora, testy starej historii, jeden `scope`; ostatnia część (boundary a nieużywane zdarzenia) czeka na
-decyzję użytkownika.
+zakresie aktora, testy starej historii, jeden `scope`, jednostka czytająca tylko to, co składa; zostaje przegląd
+ostatnich części i PR.
 W bibliotekach nie ma już kodu v1, nazwy `Next` ani historii migracji; dokumentacja pakietu jest v2 i test trzyma ją
 przy kodzie.
 
@@ -40,10 +40,7 @@ przy kodzie.
 
 ### Co zostało — i czyje to jest
 
-- **E11f — reszta** — boundary dekodujące własne zdarzenia, których `evolve/2` nie składa (O(N²) na wyciąg
-  TaxVision) — **do decyzji użytkownika**, opcje w „E11f — co wyszło, część 1”. Potem przegląd E11f-4 i PR.
-- **Do decyzji użytkownika, z E11f:** czym silnik rozpoznaje kontrakt przez zmianę nazwy modułu — dziś nazwą
-  modułu wszędzie poza składaniem strumienia w dispatchu („E11f — co wyszło, część 1”, E11f-3).
+- **E11f — domknięcie** — asystenta: przegląd E11f-4 i E11f-5, potem PR (push i PR na polecenie użytkownika).
 - **Po E11:** kontrakty sandboxa do testów pakietu jako fikstury akceptacyjne, potem **manifest v2** (po akceptacji
   D-51/D-52 w `eh-os` — decyzja z 29 września).
 - **Poza E11, bez zmian** — użytkownika: proces na porcie 4000, wdrożenie E8 u hosta, lista zmian do `eh-os` (w tym
@@ -2751,22 +2748,61 @@ kolejnymi częściami.
     wydane, CHANGELOG mówi, jak przebudować indeks;
   - `sibling!` nie sprawdza, czy czytający konsumuje akurat to zdarzenie rodzeństwa — *pominięte*, sprzed E11f, w
     dispatchu; niskie (typy są unikalne w systemie, X7).
-- **Do decyzji użytkownika, z E11f-3:** czym silnik rozpoznaje kontrakt przez zmianę nazwy modułu. Dziś nazwą
-  modułu: dekodowanie w subskrypcjach, klucze konsumentów, ponowienia, raport zgodności. *Możliwe:* (1) zostawić —
-  zmiana nazwy modułu z historią jest niedozwolona i `change-contract` tak mówi (rekomendacja asystenta); (2)
-  rozpoznawać kontrakt po nazwie procesu, unikalnej w systemie (X7) i obecnej w typie każdego zdarzenia — zmienia
-  klucze konsumentów, zapytania raportu, idempotencję i odczyt w trzech czytelnikach.
+- **Decyzja użytkownika (30 września), z E11f-3: silnik dalej rozpoznaje kontrakt po nazwie modułu.**
+  Dekodowanie w subskrypcjach, klucze konsumentów, ponowienia i raport zgodności zostają, jak są. Zmiany nazwy
+  modułu kontraktu z historią się nie robi — mówi to `change-contract` i v2 §5. *Odrzucone:* rozpoznawanie po
+  nazwie procesu (unikalnej w systemie, X7, i obecnej w typie każdego zdarzenia) — zmienia klucze konsumentów,
+  zapytania raportu, idempotencję i odczyt w trzech czytelnikach, a nikt jeszcze nie przemianowuje kontraktów z
+  historią.
+- **Decyzja użytkownika (30 września), E11f-5: wariant B** (jednostka czyta tylko to, co składa `evolve/2`).
+  *Odrzucone:* (A) słowo DSL-a z listą składanych zdarzeń — powtarza `evolve/2` i może się z nim rozjechać; (C)
+  przebudowa sandboksa — pułapka zostaje dla następnego klienta; (D) zostawić do pomiaru.
 - **E11f-4, `005bcad`** — jeden odczyt zakresu komendy i query w dispatchu (były dwie kopie) i jedna pętla D10
   po zakresowanych komendach i query; `one_value/2` oparte na `Key.base_type/2`. Zachowanie bez zmian: testy D10 i
   zakresu przechodzą, a padają przy zepsutej gałęzi listy (1) i kodowaniu zakresu (7).
-- **E11f-5, do decyzji użytkownika — boundary czyta własne zdarzenia, których nie składa.** `TurnoverMatching`
-  (TaxVision) przy każdym `run_matching` czyta i dekoduje wszystkie swoje `bank_turnover_list_created` z całymi
-  listami obrotów, choć `evolve/2` przepuszcza je bez zmiany (`def evolve(state, _event), do: state`) — O(N²) na
-  wyciąg. *Możliwe:* (A) słowo DSL-a przy jednostce, np. `folds [...]`, i odczyt tylko tych typów, sprawdzany z
-  `evolve/2`; (B) bez słowa: silnik czyta tylko typy, dla których `evolve/2` ma własną klauzulę, gdy jedyny
-  catch-all to dosłownie `def evolve(state, _), do: state` — stan i tak nie zależy od reszty, więc warunek
-  konfliktu DCB zawęża się poprawnie; (C) przebudować sandbox — wyciąg do osobnej jednostki, biblioteka bez zmian;
-  (D) zostawić do pomiaru.
+- **E11f-5 — jednostka czyta tylko to, co składa jej `evolve/2`** (decyzja użytkownika niżej, wariant B).
+  - **Problem.** `TurnoverMatching` (TaxVision) przy każdym `run_matching` czytał i dekodował wszystkie
+    `bank_turnover_list_created` miesiąca, każdy z całą listą obrotów, choć jego `evolve/2` przepuszcza je bez
+    zmiany (`def evolve(state, _event), do: state`). Wyciąg z N obrotami daje N komend, a każda czyta wszystkie
+    dotychczasowe wyciągi: O(N²). Do tego każde wgranie wyciągu kolidowało z trwającym dopasowaniem, bo warunek
+    konfliktu DCB obejmował typ, od którego decyzja nie zależy.
+  - **Obserwacje.**
+    - Stan jednostki jest funkcją tylko tych zdarzeń, które `evolve/2` zmienia. Informacja „które” już jest w
+      kodzie — w głowach klauzul — i I3 już je skanuje.
+    - Da się ją odczytać pewnie tylko w jednym kształcie: każda klauzula bez struktury zdarzenia to dosłownie
+      `def evolve(state, _), do: state`. Każdy inny catch-all albo strażnik na zmiennej mogą składać cokolwiek.
+    - Agregat i tak musi czytać cały strumień, bo wersja strumienia jest warunkiem dopisu — zysk jest tam tylko
+      w dekodowaniu. W DCB zawęża się też zapytanie i warunek konfliktu.
+    - `given_types` komendy boundary tracą pominięte typy, a pokrycie scenariuszy porównuje na nich `given`;
+      bez zmiany w `Coverage` scenariusz z `given` pominiętego zdarzenia przestałby być obserwowany.
+    - Typ, którego kontrakt już nie deklaruje, nie może być „pominięty”: to historia po zmienionym kontrakcie
+      i ma dalej zatrzymywać strumień (pierwsza wersja go przepuszczała; wyłapał to test E11f-2).
+  - **Zrobione.**
+    - `Implementation` zapisuje `folds` (lista albo `:all`) w `__eh_os_implementation__/0`;
+      `Implementations.folded_types/2` daje z tego typy logu.
+    - Dispatch dekoduje tylko typy składane i niezadeklarowane, a zapytanie boundary zawęża do składanych;
+      gdy nie zostaje nic, zostaje pełne zapytanie, bo magazyn odmawia pustego.
+    - `Coverage` porównuje `given` na typach składanych.
+    - `record/3` czyta jednostkę w całości, jak przedtem.
+  - **Testy i próby odwrotne.**
+    - `implementation_test`: cztery kształty `evolve/2`;
+    - dispatch: niepasujący wiersz pominiętego `account_opened` nie blokuje wpłaty;
+    - `coverage_test`: scenariusz z `given` pominiętego typu dalej jest obserwowany;
+    - sandbox: `run_matching` nie ma w `given_types` wyciągów, a ma faktury.
+    - Każdy z tych testów pada przy swojej mutacji: bez zawężenia zapytania pada test sandboksa, bez pomijania —
+      test dispatchu, przy catch-allu uznawanym zawsze za „bez zmian” — dwa testy `folds`, bez filtra w
+      `Coverage` — test pokrycia.
+  - **Wnioski.**
+    - Skoro „które zdarzenia” jest już w `evolve/2`, drugie miejsce na tę informację (słowo DSL-a) mogłoby się z
+      nim rozjechać. Dlatego wybór B, a nie A.
+    - Koszt B: zysk dostaje tylko kod pisany w jednym kształcie. `write-decider` mówi teraz, żeby catch-all był
+      dokładnie `def evolve(state, _), do: state`, i dlaczego.
+    - Warunek konfliktu DCB zawęża się poprawnie, bo od pominiętych zdarzeń decyzja nie zależy — ale to zmiana
+      zachowania widoczna dla hosta (mniej `:conflict`), więc wpis w CHANGELOG-u.
+    - Wiersz pominiętego typu, który przestał pasować do deklaracji, nie blokuje już strumienia. Tabela
+      `change-contract` o tym mówi.
+  - **Weryfikacja:** brama `EXIT=0` — sandbox **144** (+1), `check` 0/29/9; silnik **996** (+6), `check` 0/66/5;
+    web 52; auth 62.
 - **Weryfikacja:** brama po wycofaniu i poprawkach przeglądu `EXIT=0` — sandbox 143, `check` 0/29/9; silnik **990**
   (986 + 2 testy klucza + 2 testy historii), `check` 0/66/5; web 52; auth 62.
 

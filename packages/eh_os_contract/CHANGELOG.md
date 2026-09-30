@@ -52,6 +52,13 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Changed — a host has to act
 
+- **E11f: a unit reads only what its `evolve/2` folds.** When every clause of `evolve/2` that does not name
+  an event is exactly `def evolve(state, _), do: state`, dispatch decodes only the events it names. A
+  boundary's query and its conflict condition narrow to those types, so appending an event it passes
+  over no longer conflicts with its decisions, and its commands' `given_types` list only folded types.
+  Scenario coverage compares a scenario's `given` on the folded types too, so no verdict moves for a
+  scenario that names an event the unit passes over. A row of a passed-over type that no longer fits its
+  declaration no longer stops the stream; a type the contract no longer declares still does.
 - **E11f: an idempotency key belongs to the actor who sent it.** Dispatch looks an accepted key up by the
   actor and the key together, and the unique index is on both (`issued_by`, `idempotency_key`). Before, the
   key was one for the whole application: a second actor sending a key the first had used got the first

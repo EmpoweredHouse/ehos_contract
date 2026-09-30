@@ -1216,6 +1216,21 @@ the person's.
 > §10.5; failing boot on a duplicate type is not built either. **HTTP**: `EhOsContract.Plug` serves
 > `POST …/commands/<capability>` and `GET …/queries/<capability>` with the actor another plug built.
 
+> *Added 30 September 2026, plan E11f, the user's choice.* **A unit reads only what its `evolve/2` folds.**
+> TaxVision's `TurnoverMatching` decoded every statement of the month, each a whole list of turnovers, on
+> every match, although its `evolve/2` passes statements over — quadratic in a statement's length. When
+> every clause of `evolve/2` that does not name an event struct is exactly `def evolve(state, _), do:
+> state`, the implementation records the events it folds (`__eh_os_implementation__/0`, `folds`), and
+> dispatch decodes only those. An aggregate still reads its whole stream, whose version is the condition,
+> and records every type it met in `given_types`. A boundary's query, and so its conflict condition, is
+> narrowed to the folded types: nothing else can change its state, so nothing else can change a decision.
+> A type the contract no longer declares is still decoded, and stops the stream. `Coverage` compares a
+> scenario's `given` on the folded types, since a boundary's `given_types` hold no other. Any other
+> catch-all, or a guarded variable, reads everything, as before. *Rejected:* a DSL word listing the folded
+> events (`folds [...]` on the unit), which repeats what `evolve/2` already says and can drift from it;
+> restructuring the sandbox so the statement lives in a unit of its own, which leaves the trap for the next
+> client; leaving it until measured.
+
 ## 12. Consumers
 
 - **Inline projections and policies** run in the dispatch transaction. A projection writes only its own

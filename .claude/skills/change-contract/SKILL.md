@@ -18,7 +18,9 @@ subscription, a process manager or an effect job takes it**. A row that no longe
 skipped: decoding raises "no longer fits". Every command on that aggregate's stream fails — every
 decision of a boundary that consults the type, whatever stream the row is in; an ordered
 subscription stops at that position, `failing`; an effect job is retried three times and
-discarded. Only a unit with no `evolve/2` never reads its history back. `schema_version` exists on
+discarded. A unit with no `evolve/2` never reads its history back, and one whose only catch-all is
+`def evolve(state, _), do: state` reads back only the events it has a clause for: an old row of a
+type it passes over is not decoded, so it breaks nothing. `schema_version` exists on
 every event, but **no upcaster is built** (§10.6 describes one; nothing calls it), so there is no
 way yet to carry old rows across a breaking change. By the time the compiler runs, the file already
 says whatever it says — which is why the analysis comes first.
