@@ -41,11 +41,10 @@ przy kodzie.
 - **E11e — PR** — push i PR tylko na polecenie użytkownika. Przegląd zrobiony (sama dokumentacja: agent sprawdził
   twierdzenia skilli z kodem, 13 ustaleń, wszystkie poprawione — „E11e — co wyszło”); przed PR-em notatka
   `git notes --ref=review` na HEAD i `pre-pr-review` krok 2 (rebase na `origin/main`).
-- **E11f — zaległości silnika „do E11”** — asystenta: duplikacja `scope` (dispatch i D10), boundary
+- **E11f — zaległości silnika „do E11”** — asystenta: **klucz idempotencji w zakresie aktora** (decyzja
+  użytkownika z 30 września, „Przed E11f — decyzja użytkownika”); duplikacja `scope` (dispatch i D10), boundary
   dekodujące nieużywane własne zdarzenia (O(N²) na wyciąg TaxVision); z E11e — test, że strumień ze starym
   niepasującym wierszem odmawia głośno, i nazwa modułu kontraktu na wierszach (niżej); kandydaci z otwartych pytań.
-- **Klucz idempotencji jest globalny, nie per aktor** (z przeglądu E11d-1, sprzed E11) — **do decyzji użytkownika**;
-  opis w otwartych pytaniach. Asystent proponował zawężenie do aktora, jako część E11f albo osobno.
 - **Po E11:** kontrakty sandboxa do testów pakietu jako fikstury akceptacyjne, potem **manifest v2** (po akceptacji
   D-51/D-52 w `eh-os` — decyzja z 29 września).
 - **Poza E11, bez zmian** — użytkownika: proces na porcie 4000, wdrożenie E8 u hosta, lista zmian do `eh-os` (w tym
@@ -136,7 +135,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
   strumienia albo idempotencji) — 500 zamiast odmowy; (2) `_commands` ma tylko indeks idempotencji, więc `Paths`
   (filtr po `contract`, `outcome`, `issued_by LIKE`) czyta całą tabelę przy każdym raporcie — do pomiaru razem z
   runnerem read modelu.
-- **Z przeglądu E11d-1, sprzed E11, do decyzji użytkownika:** (1) **klucz idempotencji jest globalny** —
+- **Z przeglądu E11d-1, sprzed E11:** (1) **klucz idempotencji jest globalny** (*rozstrzygnięte 30 września: w
+  zakresie aktora, w E11f*) —
   `Dispatcher` szuka przyjętej komendy po `idempotency_key`, `contract` i `type`, a unikalny indeks jest na samym
   kluczu; przez HTTP klucz to nagłówek klienta. Aktor B z tym samym uprawnieniem, który zgadnie klucz A (np.
   `"req-81"` z `docs/authorization.md`), dostaje paragon A — `command_id`, wygenerowaną tożsamość, pozycje; w kodzie
@@ -2705,6 +2705,25 @@ każde twierdzenie skilli z kodem silnika. Znalazł 3 błędy i 10 nieścisłoś
   - wymyślony przykład prefiksu zastąpiony prawdziwym (`accounting_month_opened`), z decyzją z EL1: nazwa
     zostaje z warsztatu;
   - wycinek `VisitSettlement` oznaczony jako wycinek.
+
+### Przed E11f — decyzja użytkownika (30 września)
+
+**Klucz idempotencji w zakresie aktora.** Dziś `Dispatcher.idempotent/2` szuka przyjętej komendy po samym kluczu
+(porównuje tylko kontrakt i typ), a unikalny indeks `eh_os_contract_commands_idempotency_index` jest na samym
+`idempotency_key`. Dwie osoby z tym samym uprawnieniem i tym samym kluczem — przypadkiem (dwie instancje klienta
+numerujące od `req-1`) albo celowo — dają dwa skutki. Komenda drugiej osoby po cichu się nie wykonuje
+(`duplicate: true`). Druga osoba dostaje też paragon pierwszej: zdarzenia z odszyfrowanymi polami osobowymi, także
+spoza jej zakresu, bo zakres sprawdzono na jej własnej komendzie. Decyzja: szukanie i unikalny indeks po parze
+(kto wysłał, klucz), w E11f. Powtórzenie przez tego samego aktora dalej zwraca paragon, a ten sam klucz z inną
+komendą dalej daje `idempotency_key_reused`. Komendy reakcji i timerów mają deterministyczne klucze i własnego
+aktora, więc zmiana ich nie rusza. Zmiana jest widoczna dla hosta: dwie osoby z tym samym kluczem przestają się
+blokować.
+*Odrzucone:*
+- **globalny klucz plus wymóg UUID w dokumentacji** — bezpieczeństwo zależałoby od każdego klienta, a błąd jest
+  cichy;
+- **zakres aktora plus skrót treści komendy** — `_commands` celowo nie trzyma treści, a skrót pól o małej
+  zmienności (kwota, identyfikator pacjenta) da się odtworzyć zgadywaniem; wraca, gdy ktoś będzie potrzebował
+  wykrywać ten sam klucz z inną treścią.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
