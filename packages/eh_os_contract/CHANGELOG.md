@@ -52,6 +52,12 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Changed — a host has to act
 
+- **D11: a domain's `name:` is one segment of an application's namespace.** It begins every name the domain's
+  contracts publish and every capability, and nothing checked it: `name: :"acme.billing"` published
+  `"acme.billing.x.v1"`, which passed both D11 checks and lies in the namespace of an application `acme`. A
+  domain whose name is not lowercase letters, digits, `_` and `-`, starting with a letter and not ending with a
+  dash, no longer compiles, even one that publishes nothing, and the refusal points at its `use`. Of the names
+  that could publish before, only those with a dot are refused.
 - **D11: a published or consumed name ending in a newline is refused.** The pattern ended in `$`, which
   also matches before a final newline, so `"rehmed.visit.closed.v1\n"` compiled; on a broker such a name
   breaks the subject line. A contract that declared one no longer compiles.

@@ -29,7 +29,9 @@ end
 ```
 
 `name:` is the application's name towards EHOS: capabilities are `lending.<command>` and roles
-`lending.<actor>`. `language:` is the language the labels are written in — labels are the words of the
+`lending.<actor>`, and every name its contracts publish begins with `lending.`. So it is one segment of a
+namespace — lowercase letters, digits, `_` and `-`, starting with a letter and not ending with a dash, like
+`:"my-shop"` — and a domain named otherwise does not compile (`D11`). `language:` is the language the labels are written in — labels are the words of the
 people in the process, in their language, and the engine prints them as written.
 
 ## A contract
@@ -236,7 +238,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `D8` | L2 | a value's or entity's field `issued_by:` naming what is not an external of the domain |
 | `D9` | L2 | a value invariant not snake_case, clashing with Elixir at arity 1, named `:required`/`:type`/`:generated`, or twice; no `violated_by:` or `satisfied_by:` example; an example `nil`, not of the value's type, in both lists or twice in one; a satisfying example another invariant lists as violating |
 | `D10` | L2, L3 | a query without `by:`; a query scope not a same-typed read-model field and param; a command scope without `by:`, not its field or identity, optional, or a generated identity it creates; a list scope, or a value with fields; a `by:` actor not carrying the scope |
-| `D11` | L2, L3 | a publication from no local event, with no fields, unknown, personal or personal-data fields, or `idempotent_on:` outside them; a name unversioned, shared, or outside the domain's `name:`; `consumes "<name>"` unversioned, without `as:`, listing events, or listing no fields |
+| `D11` | L2, L3 | a domain's `name:` that is not one lowercase segment of letters, digits, `_` and `-`, starting with a letter and not ending with a dash; a publication from no local event, with no fields, unknown, personal or personal-data fields, or `idempotent_on:` outside them; a name unversioned, shared, or outside the domain's `name:`; `consumes "<name>"` unversioned, without `as:`, listing events, or listing no fields |
 | `D14` | L3 | two commands, queries or recorded events of one domain with the same name, and so the same capability |
 | `X1` | L3 | `domain:` naming a module that is not a compiled domain, or `context:` naming none of its contexts |
 | `X2` | L3 | `by:`, `recorded_by:`, `accountable` or a scenario's `actor` naming no actor of the domain, or an actor of another context |

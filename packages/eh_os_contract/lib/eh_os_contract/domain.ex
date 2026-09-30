@@ -33,13 +33,22 @@ defmodule EhOsContract.Domain do
   that ignores the order declarations are written in.
 
   `name:` is the domain's name, and `language:` is the language its labels and terms
-  are written in, unless a context says otherwise.
+  are written in, unless a context says otherwise. The name is the application's
+  namespace, the first segment of every name its contracts publish and of every
+  capability, so it is one such segment: lowercase letters, digits, `_` and `-`,
+  starting with a letter and not ending with a dash (D11, `EhOsContract.Domain.Rules`).
   """
 
   use Spark.Dsl,
     default_extensions: [extensions: [EhOsContract.Domain.Dsl]],
     opt_schema: [
-      name: [type: :atom, required: true, doc: "The domain's name."],
+      name: [
+        type: :atom,
+        required: true,
+        doc:
+          "The domain's name, the application's namespace: lowercase letters, digits, `_` " <>
+            "and `-`, starting with a letter and not ending with a dash, like `:\"my-shop\"`."
+      ],
       language: [
         type: :atom,
         required: true,
@@ -61,6 +70,7 @@ defmodule EhOsContract.Domain do
     quote do
       @persist {:eh_os_contract_domain,
                 %{name: unquote(opts[:name]), language: unquote(opts[:language])}}
+      @persist {:eh_os_contract_line, __ENV__.line}
     end
   end
 end

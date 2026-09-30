@@ -10,11 +10,12 @@ defmodule EhOsContract.DslRules do
   `Spark.Error.DslError`: its location is the first violation's, and its message
   lists every violation with the file and line of the declaration at fault. A
   violation is `{message, declaration}`, where the declaration is the Spark struct
-  whose source annotation says where it was written.
+  whose source annotation says where it was written, or that annotation itself, for
+  what no struct holds, such as an option of `use`.
   """
 
-  @typedoc "A broken rule, and the declaration it points at."
-  @type violation :: {String.t(), struct()}
+  @typedoc "A broken rule, and the declaration it points at, or where it was written."
+  @type violation :: {String.t(), struct() | :erl_anno.anno()}
 
   @doc """
   `{:ok, dsl}` when there are no violations, and otherwise the one error that
@@ -28,7 +29,7 @@ defmodule EhOsContract.DslRules do
      Spark.Error.DslError.exception(
        module: Spark.Dsl.Transformer.get_persisted(dsl, :module),
        path: path,
-       location: Spark.Dsl.Entity.anno(first),
+       location: anno(first),
        message: Enum.map_join(violations, "\n  ", &describe/1)
      )}
   end
@@ -64,8 +65,11 @@ defmodule EhOsContract.DslRules do
     |> elem(0)
   end
 
+  defp anno(%_{} = declaration), do: Spark.Dsl.Entity.anno(declaration)
+  defp anno(anno), do: anno
+
   defp describe({message, declaration}) do
-    case Spark.Dsl.Entity.anno(declaration) do
+    case anno(declaration) do
       nil ->
         message
 

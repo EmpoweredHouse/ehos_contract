@@ -28,6 +28,16 @@ defmodule EhOsContract.Domain.Rules do
   the application's, outside the log, where erasure cannot reach them. Every
   `{:id, entity}`, in a value's field or an entity's, names an entity of this domain.
 
+  **D11** (plan, after #50): the domain's `name:` is the application's namespace, the
+  first segment of every name its contracts publish (`EhOsContract.Contract.Rules.Boundaries`)
+  and of every capability, so it is such a segment: lowercase letters, digits, `_` and
+  `-`, starting with a letter and not ending with a dash. A dot would put the domain's
+  publications inside another application's namespace — `:"acme.billing"` publishes
+  under `acme.` — and a name no publication could start with would be refused only at
+  each publication. The underscore stays, as it does in a publication's name: EHOS
+  names an application with a DNS label, which has none, but `:dispatch_rig` is a
+  domain the library's own tests publish from. The refusal points at `use`.
+
   A transformer, not a verifier, and every violation is reported at once, in one
   error that names each declaration's file and line (`EhOsContract.DslRules`).
   """
@@ -66,10 +76,34 @@ defmodule EhOsContract.Domain.Rules do
     entities = Transformer.get_entities(dsl, [:domain])
     domain = Transformer.get_persisted(dsl, :eh_os_contract_domain)
 
-    DslRules.result(dsl, [:domain], Enum.flat_map(rules(), & &1.(entities, domain)))
+    DslRules.result(
+      dsl,
+      [:domain],
+      d11(dsl, domain) ++ Enum.flat_map(rules(), & &1.(entities, domain))
+    )
   end
 
   defp rules, do: [&d1/2, &d2/2, &d3/2, &d4/2, &d5/2, &d6/2, &d7/2, &d8/2, &d9/2]
+
+  # --- D11: the name is one segment of a namespace --------------------------------
+
+  # The first segment of D11's versioned name (`Contract.Rules.Boundaries`); `\z`, not `$`.
+  @namespace ~r/^[a-z]([-a-z0-9_]*[a-z0-9_])?\z/
+
+  defp d11(dsl, %{name: name}) do
+    if Atom.to_string(name) =~ @namespace,
+      do: [],
+      else: [
+        {"D11: the domain's name: #{inspect(name)} is not an application's namespace: lowercase " <>
+           "letters, digits, _ and -, starting with a letter and not ending with a dash, like " <>
+           ":\"my-shop\"; it begins every name the domain's contracts publish", use_at(dsl)}
+      ]
+  end
+
+  defp use_at(dsl) do
+    file = dsl |> Transformer.get_persisted(:file) |> String.to_charlist()
+    :erl_anno.set_file(file, :erl_anno.new(Transformer.get_persisted(dsl, :eh_os_contract_line)))
+  end
 
   # --- D1: names are unique per kind ---------------------------------------------
 

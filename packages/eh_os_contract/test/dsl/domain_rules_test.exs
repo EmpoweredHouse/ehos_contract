@@ -420,6 +420,70 @@ defmodule EhOsContract.DomainRulesTest do
     end
   end
 
+  describe "D11: the domain's name is one segment of an application's namespace (after #50)" do
+    defp named(module, name, body \\ "") do
+      """
+      defmodule EhOsContract.DomainRulesTest.#{module} do
+        use EhOsContract.Domain, name: #{inspect(name)}, language: :pl
+
+      #{body}
+      end
+      """
+    end
+
+    test "a name with a dot, a dash at an end, a capital, a space or a newline is refused at use" do
+      for {name, index} <-
+            Enum.with_index([
+              :"acme.billing",
+              :"shop-",
+              :"-shop",
+              :My_shop,
+              :"my shop",
+              :"1shop",
+              :_shop,
+              :"shop\n",
+              :""
+            ]) do
+        module = "BadName#{index}"
+        file = "#{Macro.underscore(module)}.ex"
+        message = Exception.message(compile_error(named(module, name), file))
+
+        assert message =~
+                 "D11: the domain's name: #{inspect(name)} is not an application's namespace: " <>
+                   "lowercase letters, digits, _ and -, starting with a letter and not ending " <>
+                   "with a dash, like :\"my-shop\"; it begins every name the domain's contracts " <>
+                   "publish (#{file}:2)"
+      end
+    end
+
+    test "control: a dash inside, an underscore anywhere after the first letter, digits" do
+      for {name, index} <-
+            Enum.with_index([:"my-shop", :dispatch_rig, :shop_, :rehmed, :a, :shop2, :"a-b_c-9"]) do
+        module = "GoodName#{index}"
+        compiled = Code.compile_string(named(module, name)) |> Enum.map(&elem(&1, 0))
+        assert Module.concat(__MODULE__, module) in compiled
+        assert Module.concat(__MODULE__, module).__eh_os_contract_model__().name == name
+      end
+    end
+
+    test "is reported with the domain's other violations, at once" do
+      message =
+        Exception.message(
+          compile_error(
+            named("BadNameAndMore", :"acme.billing", """
+              actor :reception, :human, "Recepcja"
+              actor :reception, :human, "Recepcja"
+            """),
+            "bad_name_and_more.ex"
+          )
+        )
+
+      assert message =~ ~s|D11: the domain's name: :"acme.billing"|
+      assert message =~ "publish (bad_name_and_more.ex:2)"
+      assert message =~ "D1: two actors are named :reception (bad_name_and_more.ex:5)"
+    end
+  end
+
   describe "D8: a field's issuer is an external of this domain (plan EL2)" do
     test "an entity's field issued by an unknown external is refused; control: a known one" do
       message =

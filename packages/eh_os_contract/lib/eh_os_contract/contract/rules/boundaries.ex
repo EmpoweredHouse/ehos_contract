@@ -25,8 +25,8 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
     application with a DNS label, so `my_shop`'s domain is `:"my-shop"` there
     (`"my-shop.entry.recorded.v1"`). The other segments are snake_case. The namespace
     keeps the underscore the pattern always allowed, so a domain named `:dispatch_rig`
-    still publishes; whether a domain's `name:` is a name EHOS can give an
-    application is not checked here.
+    still publishes. The domain's `name:` is held to the same segment by the domain
+    (`EhOsContract.Domain.Rules`), so the namespace is never more than one.
   - `consumes "<name>"` names such a versioned name, gives it a local name with
     `as:`, and lists the fields it reads; it lists no events, since the name is one.
 
