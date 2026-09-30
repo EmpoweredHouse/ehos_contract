@@ -223,8 +223,10 @@ defmodule EhOsContract.Contract.Rules.Fields do
            "for itself", f}
       end
 
+    # A domain service's argument is a name N1 refuses already, as an argument.
     form =
       for f <- fields,
+          kind != :arguments,
           not (is_atom(f.name) and String.starts_with?(Atom.to_string(f.name), "__")),
           not DslRules.name?(f.name) do
         {"F1: #{where}: field #{inspect(f.name)} is not snake_case", f}

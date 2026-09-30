@@ -447,7 +447,7 @@ defmodule EhOsContract.Domain.Rules do
     where = "D6: entity #{inspect(entity.name)}"
     by_name = Map.new(entity.fields, &{&1.name, &1})
 
-    twice =
+    field_names =
       for(
         field <- entity.fields,
         not DslRules.name?(field.name),
@@ -521,7 +521,7 @@ defmodule EhOsContract.Domain.Rules do
         {"#{where}, field #{inspect(field.name)} has #{option}:, and #{why}", field}
       end
 
-    twice ++ context ++ identity ++ fields ++ subject ++ options ++ inside
+    field_names ++ context ++ identity ++ fields ++ subject ++ options ++ inside
   end
 
   defp describe(%Value{name: name}), do: "value #{inspect(name)}"
