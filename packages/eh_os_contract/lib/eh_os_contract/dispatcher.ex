@@ -127,7 +127,12 @@ defmodule EhOsContract.Dispatcher do
     values = Codec.values(model.domain)
 
     with :ok <-
-           permit(model, declaration, ctx.actor, command_scope(declaration, command, values)),
+           permit(
+             model,
+             declaration,
+             ctx.actor,
+             scope(declaration, declaration.fields, command, values)
+           ),
          :ok <- valid(declaration.fields, command, values, model.domain),
          {:ok, command} <- generate_identity(model, declaration, command, ctx) do
       job = %{
@@ -215,7 +220,7 @@ defmodule EhOsContract.Dispatcher do
     declaration = query!(model, module)
     ctx = context(opts)
     values = Codec.values(model.domain)
-    scope = scope(declaration, params, values)
+    scope = scope(declaration, declaration.params, params, values)
 
     with :ok <- permit_query(model, declaration, ctx.actor, scope),
          :ok <- valid(declaration.params, params, values, model.domain),
@@ -379,39 +384,25 @@ defmodule EhOsContract.Dispatcher do
 
   defp permit_query(model, declaration, actor, _scope), do: permit(model, declaration, actor)
 
-  # A scoped command's dimension, and the value it carries, as a scoped query's. It is
-  # asked before the fields are checked, so a value that does not fit its type is no
-  # value, refused as one, rather than an exception in the encoder.
-  defp command_scope(declaration, command, values) do
+  # A scoped command's or query's dimension, the value it carries in the form a
+  # credential's `scp` carries — a string, or nil when it is missing — and the field's
+  # type. `fields` are a command's fields or a query's params. It is asked before the
+  # fields are checked, so a value that does not fit its type is no value, refused as
+  # one (plan E9c review), rather than an exception in the encoder.
+  defp scope(declaration, fields, data, values) do
     case Map.get(declaration, :scope) do
       nil ->
         nil
 
       dimension ->
-        field = Enum.find(declaration.fields, &(&1.name == dimension))
-        value = Map.get(command, dimension)
+        field = Enum.find(fields, &(&1.name == dimension))
 
-        encoded =
-          if Codec.problems([field], command, values) == [],
-            do: scoped(field.type, value, values)
+        value =
+          if Codec.problems([field], data, values) == [],
+            do: scoped(field.type, Map.get(data, dimension), values)
 
-        scope_request(dimension, encoded)
+        dimension |> scope_request(value) |> Map.put(:type, field.type)
     end
-  end
-
-  # A scoped query's dimension, and the value asked for, in the form a credential's
-  # `scp` carries: a string, or nil when the parameter is missing.
-  defp scope(%{scope: nil}, _params, _values), do: nil
-
-  # As a command's (plan E9c review): a value that does not fit is no value.
-  defp scope(declaration, params, values) do
-    param = Enum.find(declaration.params, &(&1.name == declaration.scope))
-
-    value =
-      if Codec.problems([param], params, values) == [],
-        do: scoped(param.type, Map.get(params, declaration.scope), values)
-
-    declaration.scope |> scope_request(value) |> Map.put(:type, param.type)
   end
 
   # What a scoped request carries, decoded or as it was sent: the one place that
@@ -445,7 +436,8 @@ defmodule EhOsContract.Dispatcher do
     end
 
     with %Actor{kind: :credential} <- actor,
-         %{dimension: dimension, type: type} <- scope(declaration, %{}, values) do
+         %{dimension: dimension, type: type} <-
+           scope(declaration, declaration.params, %{}, values) do
       granted = Authorizer.granted(actor, capability(model, :query, declaration.name), dimension)
 
       for row <- rows, scoped(type, Map.get(row, declaration.scope), values) not in granted do
