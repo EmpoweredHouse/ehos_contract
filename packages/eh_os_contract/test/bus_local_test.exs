@@ -77,6 +77,31 @@ defmodule EhOsContract.Bus.LocalTest do
       assert Process.alive?(pid)
     end
 
+    test "a message a killed consumer had in hand waits retry_after before it comes again" do
+      slow = [name: __MODULE__.Slow, retry_after: 300]
+      start_supervised!({Local, slow})
+      name = bus_name("slow")
+      test = self()
+
+      hold = bus_first_time(fn -> Process.sleep(:infinity) end)
+
+      handler = fn message ->
+        send(test, {:slow, message.id})
+        hold.(message)
+      end
+
+      spec = Local.consumer(slow, %{name: bus_name("consumer"), names: [name], handler: handler})
+      pid = start_supervised!(spec)
+      %Message{id: id} = sent = bus_message(name)
+      :ok = Local.publish(slow, [sent])
+      assert_receive {:slow, ^id}
+
+      Process.exit(pid, :kill)
+
+      refute_receive {:slow, ^id}, 150
+      assert_receive {:slow, ^id}, 2_000
+    end
+
     test "a consumer stops when the broker does" do
       consumer = bus_name("consumer")
       pid = bus_consume(consumer, [bus_name("gone")])

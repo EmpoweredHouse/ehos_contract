@@ -16,7 +16,7 @@ defmodule EhOsContract.Bus.Local do
 
   **Durable for as long as the node runs.** A consumer's subscription outlives its
   process: what is published while the consumer is stopped waits for it, and a message
-  it had in hand when it stopped goes back to the front of its queue. A consumer takes
+  it had in hand when it stopped comes again after `:retry_after`. A consumer takes
   one message at a time, so a single consumer happens to see its messages in the order
   they were published until one is redelivered; `EhOsContract.Bus` promises no order,
   and nothing may rely on this one.
@@ -137,16 +137,18 @@ defmodule EhOsContract.Bus.Local do
   def handle_info({:again, name, message}, state),
     do: {:noreply, wake(update_queue(state, name, &:queue.in(message, &1)))}
 
-  # A consumer that stops with messages in hand gets them back first.
+  # What a consumer had in hand when it stopped comes back after `retry_after`, as a
+  # nacked message does: a message that kills its consumer would otherwise be taken
+  # again at once by the restarted one, and kill it again, faster than any
+  # supervisor's restart intensity allows.
   def handle_info({:DOWN, _ref, :process, pid, _reason}, state) do
     {back, in_hand} =
       Enum.split_with(state.in_hand, fn {_delivery, {_n, _m, taker}} -> taker == pid end)
 
-    state =
-      Enum.reduce(back, %{state | in_hand: Map.new(in_hand)}, fn {_delivery, {name, message, _}},
-                                                                 state ->
-        update_queue(state, name, &:queue.in_r(message, &1))
-      end)
+    for {_delivery, {name, message, _taker}} <- back,
+        do: Process.send_after(self(), {:again, name, message}, state.retry_after)
+
+    state = %{state | in_hand: Map.new(in_hand)}
 
     consumers =
       Map.new(state.consumers, fn {name, c} ->
