@@ -197,8 +197,15 @@ defmodule EhOsContract.Bus.LocalTest do
     end
 
     test "a consumer stops when the broker does" do
-      consumer = bus_name("consumer")
-      pid = bus_consume(consumer, [bus_name("gone")])
+      consumer = %{
+        name: bus_name("consumer"),
+        names: [bus_name("gone")],
+        handler: fn _ -> :ack end
+      }
+
+      # Temporary: restarted without a broker, it would fail in init until the test ends.
+      spec = Supervisor.child_spec(Local.consumer(@opts, consumer), restart: :temporary)
+      pid = start_supervised!(spec)
       ref = Process.monitor(pid)
 
       :ok = stop_supervised({Local, __MODULE__.Bus})
