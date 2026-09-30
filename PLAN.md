@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 30 września (E11a–E11d w `main`, E11e na gałęzi, następne E11f)
+## Handoff — stan na 30 września (E11a–E11e w `main`, E11f w toku)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -13,19 +13,19 @@ zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisan
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności), jej
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa pivot do v2** (DSL na Sparku, model
 domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E10 i E11a–E11d są w `main`**
-(ostatnio #46: E11c — migracje do jednego V01, i E11d — dokumentacja, które zmergowały się razem). **E11 — Cięcie**
-idzie częściami E11a–E11f („Przed E11 — podział i decyzje użytkownika”); **E11e — skille — jest zrobione na gałęzi**
-(bez PR-a), **następne jest E11f**.
+(ostatnio #48: E11e — skille). **E11 — Cięcie** idzie częściami E11a–E11f („Przed E11 — podział i decyzje
+użytkownika”); **E11f jest w toku**: trzy części zrobione na gałęzi, bez PR-a („E11f — co wyszło, część 1”).
 W bibliotekach nie ma już kodu v1, nazwy `Next` ani historii migracji; dokumentacja pakietu jest v2 i test trzyma ją
 przy kodzie.
 
 ### Stan repozytorium
 
-- **`origin/main` = `6df5bc7`** (merge #46, 30 września). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
-- **`claude/e11e-skills-dsl-v2-ab38c4`** (worktree `ehos-sync-status-ad37a3`) — lokalna, niewypchnięta: `6df5bc7`,
-  handoff `306ed55` (wciągnięty z `dsl-v2/e11e-skills` na polecenie użytkownika), sześć commitów E11e
-  (`7a7884d`..`2bf5546`) i ten zapis. `dsl-v2/e11e-skills` w worktree `e9c-1-taxvision-registry-18c799` stoi na
-  `306ed55` i jest w całości w tej gałęzi (do skasowania po PR-ze).
+- **`origin/main` = `406bb07`** (merge #48, 30 września). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
+- **`dsl-v2/e11f-engine`** (worktree `ehos-sync-status-ad37a3`) — lokalna, niewypchnięta, od `406bb07`: E11f-1 do
+  E11f-3 i ten zapis. `claude/e11e-skills-dsl-v2-ab38c4` i `dsl-v2/e11e-skills` (worktree
+  `e9c-1-taxvision-registry-18c799`) są w całości w `main` (do skasowania).
+- **Issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza repozytorium biblioteki; zaparkowane przez
+  użytkownika 30 września, z propozycją `EmpoweredHouse/eh-os-contract-sandbox`.
 - Lokalne `dsl-v2/e11c-migrations`, `dsl-v2/e11d-docs`, `dsl-v2/e11b-rename-next` są w całości w `main` (do
   skasowania); `dsl-v2/e11a-remove-v1` też, ale wyciągnięte w worktree `dsl-v2-eg-graphs-409665`.
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
@@ -38,13 +38,10 @@ przy kodzie.
 
 ### Co zostało — i czyje to jest
 
-- **E11e — PR** — push i PR tylko na polecenie użytkownika. Przegląd zrobiony (sama dokumentacja: agent sprawdził
-  twierdzenia skilli z kodem, 13 ustaleń, wszystkie poprawione — „E11e — co wyszło”); przed PR-em notatka
-  `git notes --ref=review` na HEAD i `pre-pr-review` krok 2 (rebase na `origin/main`).
-- **E11f — zaległości silnika „do E11”** — asystenta: **klucz idempotencji w zakresie aktora** (decyzja
-  użytkownika z 30 września, „Przed E11f — decyzja użytkownika”); duplikacja `scope` (dispatch i D10), boundary
-  dekodujące nieużywane własne zdarzenia (O(N²) na wyciąg TaxVision); z E11e — test, że strumień ze starym
-  niepasującym wierszem odmawia głośno, i nazwa modułu kontraktu na wierszach (niżej); kandydaci z otwartych pytań.
+- **E11f — reszta** — asystenta: duplikacja `scope` (dispatch i D10), boundary dekodujące nieużywane własne
+  zdarzenia (O(N²) na wyciąg TaxVision; może wymagać nowego słowa DSL-a — wtedy do użytkownika z przykładem).
+- **Do decyzji użytkownika, z E11f:** czym raport zgodności wybiera historię kontraktu — dziś nazwą modułu, więc
+  przemianowany moduł czyta się jak kontrakt bez historii („E11f — co wyszło, część 1”).
 - **Po E11:** kontrakty sandboxa do testów pakietu jako fikstury akceptacyjne, potem **manifest v2** (po akceptacji
   D-51/D-52 w `eh-os` — decyzja z 29 września).
 - **Poza E11, bez zmian** — użytkownika: proces na porcie 4000, wdrożenie E8 u hosta, lista zmian do `eh-os` (w tym
@@ -135,8 +132,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
   strumienia albo idempotencji) — 500 zamiast odmowy; (2) `_commands` ma tylko indeks idempotencji, więc `Paths`
   (filtr po `contract`, `outcome`, `issued_by LIKE`) czyta całą tabelę przy każdym raporcie — do pomiaru razem z
   runnerem read modelu.
-- **Z przeglądu E11d-1, sprzed E11:** (1) **klucz idempotencji jest globalny** (*rozstrzygnięte 30 września: w
-  zakresie aktora, w E11f*) —
+- **Z przeglądu E11d-1, sprzed E11:** (1) **klucz idempotencji jest globalny** (*zrobione w E11f-1: w zakresie
+  aktora*; zostaje odtworzenie paragonu przez tego samego aktora po zawężeniu jego zakresu — „E11f — co wyszło”) —
   `Dispatcher` szuka przyjętej komendy po `idempotency_key`, `contract` i `type`, a unikalny indeks jest na samym
   kluczu; przez HTTP klucz to nagłówek klienta. Aktor B z tym samym uprawnieniem, który zgadnie klucz A (np.
   `"req-81"` z `docs/authorization.md`), dostaje paragon A — `command_id`, wygenerowaną tożsamość, pozycje; w kodzie
@@ -2705,6 +2702,43 @@ każde twierdzenie skilli z kodem silnika. Znalazł 3 błędy i 10 nieścisłoś
   - wymyślony przykład prefiksu zastąpiony prawdziwym (`accounting_month_opened`), z decyzją z EL1: nazwa
     zostaje z warsztatu;
   - wycinek `VisitSettlement` oznaczony jako wycinek.
+
+### E11f — co wyszło, część 1 (30 września)
+
+Na `dsl-v2/e11f-engine`, od `406bb07`; przegląd (`pre-pr-review`, dwa przeglądy równolegle) na E11f-1 przed
+kolejnymi częściami.
+- **E11f-1, `510b1fb`** — klucz idempotencji w zakresie aktora (decyzja niżej): wyszukiwanie i unikalny indeks po
+  `(issued_by, idempotency_key)`. V01 poprawione w miejscu — 0.3.0 nie jest wydane, więc nie ma bazy do
+  aktualizowania (*odrzucone:* V02 — kolidowałby z odmową dla baz zapisanych jako „2”–„5” sprzed E11c). **Wspólne
+  bazy lokalne dostały nowy indeks ręcznie** (`DROP INDEX` i `CREATE UNIQUE INDEX` w pięciu bazach z tabelami
+  silnika; dane zostały). Sprawdzone odwrotnie: bez nowego wyszukiwania i przy starym indeksie padają te same dwa
+  testy.
+- **Przegląd E11f-1** — rozstrzygnięte:
+  - pusty `sub` daje etykietę `actor:` wspólną dla wszystkich — *poprawione* (`291c27c`, sprawdzone odwrotnie);
+  - zmiana `sub` między próbą a ponowieniem uruchamia komendę drugi raz; wspólny credential i wspólny aktor
+    `:system` dzielą przestrzeń kluczy — *poprawione* w dokumentacji (`1272cf2`: `docs/authorization.md`,
+    CHANGELOG);
+  - moduledoc `Migrations` obiecywał, że V01 się nie przepisuje — *poprawione* (`1272cf2`);
+  - nieaktualne komentarze w `v01.ex` i `dispatcher.ex`, słaba asercja drugiego testu — *poprawione*;
+  - klucz z etykietą ponad ~2,7 KB wywraca zapis wiersza `accepted` (500) — *pominięte*, rozszerza otwarte pytanie
+    z przeglądu E11c (limit długości to nowy powód odmowy, do użytkownika);
+  - ten sam aktor z tym samym kluczem i komendą o innym zakresie albo treści dostaje stary paragon — *pominięte*:
+    to opcja „skrót treści”, odrzucona w decyzji niżej; zostaje w otwartych pytaniach;
+  - testy nie pokrywają `record/3` ani ścieżki pod blokadą — *bez zmiany*: wszystko idzie przez jedno
+    `idempotent/2`.
+- **E11f-2, `d718cee`** — testy, że strumień ze starym wierszem, który nie pasuje do deklaracji (brak wymaganego
+  pola, typ już niezadeklarowany), odmawia głośno: `failed` w `evolve`, nic nie dopisane. Zachowanie było, testu
+  nie było (ustalenie E11e). Sprawdzone odwrotnie mutacjami dekodera.
+- **E11f-3, `0af122d`** — subskrypcja, process manager i zadanie efektu dekodowały wiersz przez nazwę modułu
+  zapisaną na nim (`Module.safe_concat`); po zmianie nazwy modułu kontraktu subskrypcja lądowała w `failing` na
+  pierwszym starym wierszu. Teraz deklarację znajduje kontrakt czytającego, jak w dispatchu; dwie kopie tego
+  szukania to jedna (`Consumer.declaring!/2`). Test pada na starym kodzie.
+- **Ustalenie z E11f-3, do decyzji użytkownika:** raport zgodności wybiera historię po nazwie modułu (`Paths`,
+  `Coverage`, dryf, `Deployment`, `Dependency`; także klucz subskrypcji). Przemianowany moduł kontraktu czyta się
+  jak kontrakt bez historii. Poprawka z datą w `docs/adr/contract-v2.md` §5; `change-contract` mówi o tym w wierszu
+  zmiany nazwy modułu.
+- **Weryfikacja:** brama po E11f-3 `EXIT=0` — sandbox 143, `check` 0/29/9; silnik **991** (986 + 5), `check`
+  0/66/5; web 52; auth 62.
 
 ### Przed E11f — decyzja użytkownika (30 września)
 

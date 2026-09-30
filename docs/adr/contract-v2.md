@@ -556,6 +556,17 @@ Domain types are referenced as remote types from the `Values` module the domain 
 create no compile dependency. The event type stored in the log is the stable string
 `"<process>.<event>"`, never a module name, so renaming a module does not orphan history.
 
+> *Corrected 30 September 2026, plan E11f.* **True of decoding, not of everything that reads the log.**
+> Every row also stores its contract's module name in `contract`, and every `_commands` row does too.
+> Decoding now finds the declaration from the reader — dispatch's fold always did, and from E11f so do
+> ordered subscriptions, process managers and effect jobs, which before failed on the first row written
+> under the old name. But the conformance report selects history by that name: `Paths` (taken steps,
+> failures), `Coverage`, `Conformance`'s drift, `Deployment` and `Dependency` all filter on
+> `contract == inspect(module)`. So does a consumer's subscription key, `"<contract>:<kind>:<name>"`. A
+> renamed contract module therefore reads as a contract with no history: every path untraversed, no
+> deployment before today, and a policy registered anew at the head. Until the report selects by
+> something that survives a rename, a module rename is a change with history (`change-contract`).
+
 **Binding.** `use C, aggregate: :visit_settlement` (or `policy:`, `effect:`, `read_model:`,
 `process_manager:`, `dcb:`) checks that exactly one unit is named and exists — a misspelling gets a
 did-you-mean — and returns `@behaviour`, aliases for the unit's commands, events and state, an import of the
