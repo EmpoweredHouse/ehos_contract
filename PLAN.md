@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 30 września (E11a–E11d w `main`, następne E11e)
+## Handoff — stan na 30 września (E11a–E11d w `main`, E11e na gałęzi, następne E11f)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -14,14 +14,18 @@ Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, s
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa pivot do v2** (DSL na Sparku, model
 domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E10 i E11a–E11d są w `main`**
 (ostatnio #46: E11c — migracje do jednego V01, i E11d — dokumentacja, które zmergowały się razem). **E11 — Cięcie**
-idzie częściami E11a–E11f („Przed E11 — podział i decyzje użytkownika”); **następne jest E11e — skille**, potem E11f.
+idzie częściami E11a–E11f („Przed E11 — podział i decyzje użytkownika”); **E11e — skille — jest zrobione na gałęzi**
+(bez PR-a), **następne jest E11f**.
 W bibliotekach nie ma już kodu v1, nazwy `Next` ani historii migracji; dokumentacja pakietu jest v2 i test trzyma ją
 przy kodzie.
 
 ### Stan repozytorium
 
 - **`origin/main` = `6df5bc7`** (merge #46, 30 września). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
-- **`dsl-v2/e11e-skills`** — lokalna, od `6df5bc7`, z samym tym zapisem planu; nic z E11e jeszcze nie zrobione.
+- **`claude/e11e-skills-dsl-v2-ab38c4`** (worktree `ehos-sync-status-ad37a3`) — lokalna, niewypchnięta: `6df5bc7`,
+  handoff `306ed55` (wciągnięty z `dsl-v2/e11e-skills` na polecenie użytkownika), sześć commitów E11e
+  (`7a7884d`..`2bf5546`) i ten zapis. `dsl-v2/e11e-skills` w worktree `e9c-1-taxvision-registry-18c799` stoi na
+  `306ed55` i jest w całości w tej gałęzi (do skasowania po PR-ze).
 - Lokalne `dsl-v2/e11c-migrations`, `dsl-v2/e11d-docs`, `dsl-v2/e11b-rename-next` są w całości w `main` (do
   skasowania); `dsl-v2/e11a-remove-v1` też, ale wyciągnięte w worktree `dsl-v2-eg-graphs-409665`.
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
@@ -34,14 +38,12 @@ przy kodzie.
 
 ### Co zostało — i czyje to jest
 
-- **E11e — skille** — asystenta, z przeglądem `pre-pr-review` przed PR-em. Zakres z „Przed E11 — podział i decyzje
-  użytkownika”: pięć przepisanych — `add-event`, `change-contract`, `contract-distillation`, `module-boundary-check`,
-  `review-pr` (każdy w nagłówku mówi, że opisuje v1, i wymienia `EhOsContract.Next.Contract`) — oraz `write-handler`
-  wycofany na rzecz `write-decider` i `write-reaction`. Do tego jedno zdanie w `pre-pr-review`: `docs/contract.md`
-  nie jest „samą dokumentacją”, bo czyta ją `test/docs_test.exs`, a nie „`eh_os_contract.docs --check` ze schematem”.
-  `handoff` i `sync-design-system` bez zmian.
-- **E11f — zaległości silnika „do E11”** — asystenta, po E11e: duplikacja `scope` (dispatch i D10), boundary
-  dekodujące nieużywane własne zdarzenia (O(N²) na wyciąg TaxVision); kandydaci z otwartych pytań niżej.
+- **E11e — PR** — push i PR tylko na polecenie użytkownika. Przegląd zrobiony (sama dokumentacja: agent sprawdził
+  twierdzenia skilli z kodem, 13 ustaleń, wszystkie poprawione — „E11e — co wyszło”); przed PR-em notatka
+  `git notes --ref=review` na HEAD i `pre-pr-review` krok 2 (rebase na `origin/main`).
+- **E11f — zaległości silnika „do E11”** — asystenta: duplikacja `scope` (dispatch i D10), boundary
+  dekodujące nieużywane własne zdarzenia (O(N²) na wyciąg TaxVision); z E11e — test, że strumień ze starym
+  niepasującym wierszem odmawia głośno, i nazwa modułu kontraktu na wierszach (niżej); kandydaci z otwartych pytań.
 - **Klucz idempotencji jest globalny, nie per aktor** (z przeglądu E11d-1, sprzed E11) — **do decyzji użytkownika**;
   opis w otwartych pytaniach. Asystent proponował zawężenie do aktora, jako część E11f albo osobno.
 - **Po E11:** kontrakty sandboxa do testów pakietu jako fikstury akceptacyjne, potem **manifest v2** (po akceptacji
@@ -54,16 +56,12 @@ przy kodzie.
 ### Co przeczytać najpierw
 
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach, wyrażenia
-   regularne z flagą `u` i `[0-9]`, zsh bez dzielenia słów; od E11d opisuje bibliotekę v2.
-2. `PLAN.md`: „Przed E11 — podział i decyzje użytkownika” (zakres E11e i E11f), „E11b — co wyszło” (skille ze starą
-   nazwą), „E11d-1 — co wyszło” i „E11d-2 — co wyszło” (co dokumentacja już mówi), opis „E11 — Cięcie” w „Etapach”.
-3. Stan DSL-a, z którego skille mają uczyć: `packages/eh_os_contract/docs/contract.md` (przewodnik i każda odmowa
-   z kodem), `packages/eh_os_contract/docs/dsl/contract-dsl.md` i `domain-dsl.md` (każdy klucz, generowane),
-   `packages/eh_os_contract/docs/rules.md` (ustalenia `check`).
-4. `.claude/skills/*/SKILL.md` — sześć do zmiany; `pre-pr-review` to wzór skilla, który już jest aktualny.
-5. `docs/adr/contract-v2.md` §4 (DSL), §6 (warstwy sprawdzeń), §12 (reakcje i dostarczanie) — powody, na które
-   skille mają wskazywać.
-6. `.claude/skills/pre-pr-review/SKILL.md` — przed PR-em.
+   regularne z flagą `u` i `[0-9]`, zsh bez dzielenia słów.
+2. `PLAN.md`: „E11e — co wyszło” (ustalenia dla E11f), „Przed E11 — podział i decyzje użytkownika” (zakres E11f),
+   otwarte pytania niżej.
+3. `.claude/skills/write-decider/`, `write-reaction/`, `change-contract/` — to, co E11f może unieważnić: tabela
+   `change-contract` opisuje dzisiejsze dekodowanie historii i brak upcasterów.
+4. `.claude/skills/pre-pr-review/SKILL.md` — przed PR-em.
 
 ### Komendy
 
@@ -113,6 +111,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 - **Lokalnie, 30 września, na `6df5bc7`** (czysty `main` po #46): brama z `sandbox/` → **EXIT=0** — sandbox 143 testy,
   `check` 0 / 29 / 9; silnik 986, `check` 0 / 66 / 5; web 52; auth 62; `docs --check`, `rules --check` — aktualne.
+- **Lokalnie, 30 września, po E11e** (drzewo E11e przed poprawkami przeglądu, które dotknęły już tylko
+  `.claude/skills/`, a tych brama nie czyta): **EXIT=0**, liczby jak wyżej.
 - **CI `main`**: `6df5bc7` (merge #46, przebieg `36688140188`, job `check`) — `success`.
 - **CI PR-ów E11**: #46 na `ea71d32` (przebieg `36682765233`) — `success`.
 - Wcześniejsze przebiegi (E11a–E11d, z porównaniem wyjść dev bajt w bajt i `pg_dump`) — w „E11a — co wyszło” do
@@ -145,13 +145,18 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
   niezgadywalnego w dokumentacji. (2) Partia `rewrap!` trzyma `FOR UPDATE` na 500 wierszach kluczy z wywołaniem
   vaulta na wiersz, a `erase/3` bierze blokadę dopisu i czeka na te wiersze — przy wolnym KMS wszystkie dispatche
   czekają. (3) `mix eh_os_contract.rewrap` uruchamia całego hosta (`app.start`: Endpoint, kolejki Obana, runnery).
+- **Z E11e, bez decyzji:** (1) żaden test nie przypina „no longer fits” przy składaniu strumienia; (2) upcasterów
+  nie ma, `schema_version` nic nie czyta; (3) wiersz logu trzyma nazwę modułu kontraktu, a subskrypcje, process
+  managery i zadania efektów rozwiązują przez nią deklarację — v2 §5 twierdzi, że zmiana nazwy modułu nie osieroca
+  historii. Opis w „E11e — co wyszło”.
 - **D1–D14** przyjęte; w v2 §19: transport v1 między kontenerami, kontrakt upcasterów.
 
 ### Zgoda i stałe uprawnienia
 
 **Ten blok jest do skasowania. Skasowanie go cofa uprawnienie — nie migruje ono samo między sesjami.**
 
-W sesji E11b–E11d (29–30 września) użytkownik potwierdził: commity bez pytania na gałęziach `dsl-v2/e11…` przy
+W sesji E11b–E11d (29–30 września), i ponownie w sesji E11e (30 września, także dla gałęzi
+`claude/e11e-skills-dsl-v2-ab38c4`), użytkownik potwierdził: commity bez pytania na gałęziach `dsl-v2/e11…` przy
 zielonej bramie na każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. **W nowej sesji obowiązuje to dopiero po ponownym potwierdzeniu przez użytkownika.** Push, PR,
 merge, tag i Hex — tylko na wyraźne polecenie, przed PR skill `pre-pr-review`. Do
 `~/Projects/ai/empowered-house-context` nie piszemy nigdy; do `~/Projects/ai/eh-os` też nie (tylko czytanie).
@@ -2615,8 +2620,8 @@ gałęzi E11c, więc CodeRabbit ocenia E11d w #46.
 ### E11e — co wyszło (30 września)
 
 Samą dokumentację w `.claude/skills/` i dopisek w `docs/adr/technology-notes.md` §8 zrobiono na gałęzi
-`claude/e11e-skills-dsl-v2-ab38c4`, od `6df5bc7`. Handoff `306ed55` z `dsl-v2/e11e-skills` został w tamtej
-gałęzi.
+`claude/e11e-skills-dsl-v2-ab38c4`, od `6df5bc7`, z wciągniętym handoffem `306ed55` z `dsl-v2/e11e-skills`
+(polecenie użytkownika).
 - **Pięć przepisanych:** `add-event`, `change-contract`, `contract-distillation` (z `output-template.md`),
   `module-boundary-check`, `review-pr`. **`write-handler` usunięty**, w jego miejsce `write-decider` (agregat i
   DCB: `emit/1`, `reject/1`, `evolve/2`, czysta decyzja) i `write-reaction` (policy, effect, process manager,
