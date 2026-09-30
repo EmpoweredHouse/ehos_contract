@@ -31,8 +31,9 @@ end
 `name:` is the application's name towards EHOS: capabilities are `lending.<command>` and roles
 `lending.<actor>`, and every name its contracts publish begins with `lending.`. So it is one segment of a
 namespace — lowercase letters, digits, `_` and `-`, starting with a letter and not ending with a dash, like
-`:"my-shop"` — and a domain named otherwise does not compile (`D11`). `language:` is the language the labels are written in — labels are the words of the
-people in the process, in their language, and the engine prints them as written.
+`:"my-shop"` — and a domain named otherwise does not compile (`D11`). `language:` is the language the labels
+are written in — labels are the words of the people in the process, in their language, and the engine prints
+them as written.
 
 ## A contract
 
