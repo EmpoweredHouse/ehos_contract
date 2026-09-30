@@ -53,8 +53,9 @@ defmodule EhOsContract.CoverageTest do
 
   # A boundary reads only what its `evolve/2` folds, so its command's `given_types` lack
   # the rest, and a scenario's `given` is compared on the folded types alone (plan
-  # E11f-5). `DispatchRig.Account` passes `account_opened` over; a scenario giving it, and
-  # a decision that read only the deposit, are still the scenario.
+  # E11f-5). No boundary of the rigs passes an event over, so this uses an aggregate's
+  # folds: `DispatchRig.Account` passes `account_opened` over, and the row is written as
+  # a boundary's would be, with the deposit alone. The scenario giving both still counts.
   test "a scenario's given counts only the types its unit's evolve/2 folds" do
     model = EhOsContract.Model.fetch(Ledger)
 

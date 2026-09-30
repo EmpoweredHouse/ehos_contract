@@ -588,9 +588,9 @@ defmodule EhOsContract.Dispatcher do
     with :new <- idempotent(repo, job) do
       unit = Enum.find(model.units, &(&1.name == declaration.unit))
       impl = Implementations.fetch!(model, unit.kind, unit.name)
-      folded = Implementations.folded_types(model, unit)
+      folded = Implementations.folded_types(model, impl)
       {recorded, condition} = read_unit(repo, model, unit, command, folded)
-      state = fold(job, unit, impl, Enum.reject(recorded, &passed_over?(model, folded, &1.type)))
+      state = fold(job, unit, impl, folded_only(recorded, model, unit, folded))
 
       command = %{command | __meta__: meta(ctx)}
       decision = stage("decider", fn -> apply(impl, declaration.name, [command, state]) end)
@@ -790,10 +790,22 @@ defmodule EhOsContract.Dispatcher do
   # (plan E11f-5): the state is a function of the folded ones alone, so it can neither
   # change a decision nor stop one. A type the contract no longer declares is still
   # decoded, and stops the stream: that is history a changed contract left behind.
-  defp passed_over?(_model, :all, _type), do: false
+  defp folded_only(recorded, _model, _unit, :all), do: recorded
 
-  defp passed_over?(model, folded, type),
-    do: not MapSet.member?(folded, type) and Enum.any?(model.events, &(&1.type == type))
+  defp folded_only(recorded, model, unit, folded) do
+    consulted =
+      for consults <- Map.get(unit, :consults, []) do
+        {_contract, declaration} = Model.declaring(model, consults.event)
+        declaration.type
+      end
+
+    declared = MapSet.new(Enum.map(model.events, & &1.type) ++ consulted)
+
+    Enum.reject(
+      recorded,
+      &(MapSet.member?(declared, &1.type) and not MapSet.member?(folded, &1.type))
+    )
+  end
 
   # An aggregate reads its whole stream, whose version is the append's condition.
   defp read_unit(repo, _model, %{kind: :aggregate} = unit, command, _folded) do

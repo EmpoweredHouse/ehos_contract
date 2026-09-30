@@ -41,9 +41,11 @@ defmodule EhOsContract.Coverage do
     model = Model.fetch(contract)
     rows = decisions(model, opts)
 
+    implementations = EhOsContract.Implementations.index(model.module).declarations
+
     scenarios =
       for %{trigger: %{kind: :command}} = scenario <- model.scenarios,
-          do: expected(model, scenario, folded(model, scenario))
+          do: expected(model, scenario, folded(model, implementations, scenario))
 
     observed = Enum.filter(scenarios, fn s -> Enum.any?(rows, &matches?(s, &1)) end)
 
@@ -56,8 +58,10 @@ defmodule EhOsContract.Coverage do
   end
 
   # A scenario in the log's terms: stored types, names as strings. Its `given` counts
-  # only the types its unit's `evolve/2` folds, since those are all dispatch reads and
-  # records as the command's `given_types` (plan E11f-5).
+  # only the types its unit's `evolve/2` folds (plan E11f-5): a boundary reads, and
+  # records as the command's `given_types`, only those. An aggregate still records its
+  # whole stream, of which the folded types are a part, so the comparison stays a
+  # subset, never an equality.
   defp expected(model, scenario, folded) do
     %{
       description: scenario.description,
@@ -72,10 +76,17 @@ defmodule EhOsContract.Coverage do
     }
   end
 
-  defp folded(model, scenario) do
+  defp folded(model, implementations, scenario) do
     command = Enum.find(model.commands, &(&1.name == scenario.trigger.name))
     unit = Enum.find(model.units, &(&1.name == command.unit))
-    EhOsContract.Implementations.folded_types(model, unit)
+
+    module =
+      case Map.get(implementations, {model.module, unit.kind, unit.name}) do
+        [module] -> module
+        _none_or_several -> nil
+      end
+
+    EhOsContract.Implementations.folded_types(model, module)
   end
 
   defp type!(model, name) do
