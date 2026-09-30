@@ -699,7 +699,9 @@ defmodule EhOsContract.Contract.Dsl do
       from: [
         type: {:or, [:atom, :string]},
         required: true,
-        doc: "The sibling contract, or the published name."
+        doc:
+          "The sibling contract, or the published name, versioned as `publish as:` is, " <>
+            "like `\"my-shop.entry.recorded.v1\"`."
       ],
       events: [type: {:wrap_list, :atom}, default: [], doc: "The sibling contract's events."],
       as: [
@@ -716,7 +718,13 @@ defmodule EhOsContract.Contract.Dsl do
     args: [:name],
     schema: [
       name: [type: :atom, required: true, doc: "The publication's name."],
-      as: [type: :string, required: true, doc: "The versioned name under the application's."],
+      as: [
+        type: :string,
+        required: true,
+        doc:
+          "The versioned name, under the domain's `name:`, like `\"my-shop.entry.recorded.v1\"`; " <>
+            "only that first segment may hold a dash."
+      ],
       from: [type: :atom, required: true, doc: "The local event it is built from."],
       fields: [
         type: {:wrap_list, :atom},

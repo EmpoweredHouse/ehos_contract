@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 30 września (E11 zamknięte w `main`, następne do wyboru użytkownika)
+## Handoff — stan na 30 września (E11, #51 i klucz blokady w `main`, #50 w PR-ze #55)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -14,18 +14,17 @@ Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, s
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. Pivot do v2 (DSL na Sparku, model domeny w
 stylu ESDM, event sourcing na własnym magazynie, crypto-shredding) **ma za sobą E0–E11: wszystko jest w `main`**
 (ostatnio #48: E11e — skille, #52: E11f — zaległości silnika). W bibliotekach nie ma kodu v1, dokumentacja i skille
-opisują jeden DSL. **Następny etap nie jest wybrany** — kandydaci niżej, wybór należy do użytkownika.
+opisują jeden DSL. Po E11 użytkownik zmergował #53 (tabele poza `public`, #51) i #54 (klucz blokady dopisu per
+schemat, z innej sesji) i wybrał **#50** — PR #55, z przeglądem, czeka na merge użytkownika („#50 — co wyszło”).
 
 ### Stan repozytorium
 
-- **`origin/main` = `fb410c1`** (merge #52, 30 września). Historia `main` z merge'ami PR-ów; gałęzie etapów
-  liniowe. Drzewo `fb410c1` jest identyczne z `a4f1d91`, głową #52.
-- **`dsl-v2/e11-handoff`** (worktree `ehos-sync-status-ad37a3`) — lokalna, od `fb410c1`, z samym tym zapisem.
-- **Otwarte na GitHubie, spoza tej linii prac** (użytkownika, z innej sesji):
-  - **PR #53** (`claude/practical-edison-2207ce`) — tabele obu pakietów w schemacie innym niż `public` (zamyka #51);
-    otwiera też pytanie o klucz blokady dopisu wspólny dla całej bazy (niżej). Może się zderzyć z tym zapisem w
-    `PLAN.md`.
-  - **Issue #50** — D11 odmawia każdej publikacji domeny, której nazwa ma myślnik (nazwa aplikacji EHOS-a).
+- **`origin/main` = `0ca5383`** (merge #54, 30 września; przedtem `50eb771` — merge #53, `6f08572` — ten zapis,
+  fast-forward — i `fb410c1`, merge #52). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
+- **`dsl-v2/d11-dashed-namespace`** (worktree `ehos-dsl-v2-handoff-640427`) — od `0ca5383`, wypchnięta, **PR #55**:
+  #50 i zapis w `PLAN.md`; nota przeglądu w `refs/notes/review` na głowie (lokalnie).
+- **Otwarte na GitHubie:**
+  - **PR #55** — #50 (zamyka go); merge użytkownika.
   - **Issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza repozytorium; zaparkowane 30 września, z
     propozycją `EmpoweredHouse/eh-os-contract-sandbox`.
 - **Lokalne gałęzie w całości w `main`** (do skasowania): `claude/e11-ciecie-88267b`,
@@ -35,16 +34,16 @@ opisują jeden DSL. **Następny etap nie jest wybrany** — kandydaci niżej, wy
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
   `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`) i mają schemat V01.
   **Indeks idempotencji w nich przebudowano ręcznie w E11f** na `(issued_by, idempotency_key)`, jak w dzisiejszym V01
-  (dane zostały). **Worktree na kodzie sprzed E11c nie wolno migrować wspólnych baz** — dołoży swoje V02–V05
+  (dane zostały). **Klucz blokady dopisu mają stary, jeden na bazę** — V01 zmieniony w #54 w miejscu, więc do
+  `ecto.drop` dalej poprawny, tylko wspólny. **Worktree na kodzie sprzed E11c nie wolno migrować wspólnych baz** — dołoży swoje V02–V05
   (`ecto.drop` naprawia). Baza dev ma dane sprzed E11c w nowym schemacie; przed `mix phx.server` — `mix ecto.migrate`
   w `sandbox/`.
 
 ### Co zostało — i czyje to jest
 
 - **Wybór następnego etapu — użytkownika.** Kandydaci, każdy z tym, co go blokuje:
-  - **#50, myślnik w nazwie domeny** — mała poprawka reguły D11; issue ma proponowaną zmianę; blokuje szablon
-    ehos-tools. Asystenta po zgodzie.
-  - **PR #53** — przegląd i merge użytkownika; po nim **decyzja o kluczu blokady dopisu** (niżej).
+  - **#50** — PR #55; zostaje merge użytkownika.
+  - **`name:` domeny bez sprawdzenia** (z przeglądu #50, otwarte pytania niżej) — mała reguła, przed E12.
   - **„Po E11” z planu: kontrakty sandboxa jako fikstury akceptacyjne pakietu, potem manifest v2** (po akceptacji
     D-51/D-52 w `eh-os`). **Fikstury kolidują z #49**: kontrakty klientów w pakiecie to dokładnie to, czego #49 chce
     uniknąć — do rozstrzygnięcia przed startem (propozycja z E11: zmyślone odpowiedniki tego samego kształtu).
@@ -113,13 +112,15 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 30 września, na drzewie `4e8cf7f`** (kod E11f w wersji z `main`; późniejsze commity #52 to sam
-  `PLAN.md`, CHANGELOG i ADR): brama z `sandbox/` → **EXIT=0** — sandbox 144 testy, `check` 0 / 29 / 9; silnik 996,
-  `check` 0 / 66 / 5; web 52; auth 62; `docs/dsl` i `docs/rules.md` aktualne.
-- **CI PR-a #52** na `a4f1d91` (przebieg `36729508957`, job `check`) — `success`.
-- **CI `main`** na `fb410c1` (przebieg `36730607553`, job `check`) — **w toku w chwili zapisu**; poprzedni `main`,
-  `406bb07` (przebieg `36697702828`) — `success`. Sprawdzić:
-  `gh run view 36730607553 --repo EmpoweredHouse/eh-os-contract --json jobs`.
+- **Lokalnie, 30 września, na `dsl-v2/d11-dashed-namespace` od `0ca5383`** (#50 na `main` z #53 i #54): brama z
+  `sandbox/` → **EXIT=0** — sandbox 144 testy, `check` 0 / 29 / 9; silnik **1012** (1005 w `main` + 7 z #50),
+  `check` 0 / 66 / 5; web 52; auth **66**; `docs/dsl` i `docs/rules.md` aktualne. Na samym `6f08572` przedtem:
+  144 / 996 / 52 / 62, EXIT=0.
+- **CI `main`** — `success` na `50eb771` (przebieg `36731477429`), `6f08572` (`36730980344`) i `fb410c1`
+  (`36730607553`); na `0ca5383` — w toku w chwili zapisu (`gh run list --branch main -L 1`).
+- **Dwie bramy naraz z dwóch worktree gryzą się o wspólne bazy** — 30 września pierwsza brama tej sesji padła na
+  `too_many_connections`, bo w tej samej minucie bramę puszczała sesja PR-a #53. Przed bramą sprawdzić, czy żaden
+  inny BEAM z worktree tego repozytorium nie chodzi.
 - Wcześniejsze przebiegi — w zapisach „co wyszło” poszczególnych etapów.
 
 ### Otwarte pytania
@@ -137,6 +138,14 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
   konfiguracji hosta — do użytkownika; kandydat na E11f.
 - **Z PR-a #53:** klucz blokady dopisu jest stały, a blokady doradcze są wspólne dla całej bazy — *rozstrzygnięte
   30 września: klucz per schemat, osobny PR* („Klucz blokady dopisu per schemat — co wyszło”).
+- **Z przeglądu #50, sprzed #50, do decyzji użytkownika: `name:` domeny nie jest sprawdzane**, a to ono jest
+  przestrzenią nazw publikacji. `name: :"acme.billing"` publikuje `"acme.billing.x.v1"` — przechodzi oba
+  sprawdzenia D11, a na brokerze leży w przestrzeni aplikacji `acme` (`acme.>`); wraca w E12, gdy nazwy staną się
+  tematami i capability `<nazwa>.subscribe`. Inne złe nazwy (`:"shop-"`, `:"my shop"`, wielkie litery) zamykają się
+  same — żadna publikacja nie przejdzie — ale odmowa wskazuje publikację, nie domenę. Możliwe: odmowa w regułach
+  domeny dla `name:` spoza gramatyki segmentu przestrzeni nazw (z `_` albo bez — bez `_` odpada `:dispatch_rig` z
+  fikstur i każda domena OTP nazwana z podkreślnikiem); albo w `namespaces/1` porównanie pierwszego segmentu z
+  nazwą domeny. Nowy powód odmowy widoczny dla hosta.
 - **Z E11f, bez decyzji:** klucz idempotencji z etykietą aktora dłuższy niż ~2,7 KB daje 500 (limit długości byłby
   nowym powodem odmowy, widocznym dla hosta); ten sam aktor z tym samym kluczem dostaje stary paragon, także gdy nowa
   komenda ma inny zakres albo treść (opcja „skrót treści” odrzucona).
@@ -2985,6 +2994,47 @@ tworzony w migracji hosta dostaje swój klucz. W auth: schemat tworzony w migrac
 Odwrotnie: ze stałym `log` padają „własny klucz” i „inny schemat nie czeka”, a „ten sam log czeka” zostaje
 zielony — szeregowanie w jednym logu było i jest; wyzwalacz wołający funkcję przez ścieżkę przepuszcza dopis z
 cudzej sesji; bez `flush()` schemat tworzony przez hosta nie dostaje niczego, w obu pakietach.
+
+### #50 — myślnik w przestrzeni nazw publikacji — co wyszło (30 września)
+
+**Zgłoszenie** (issue #50, z budowy szablonu ehos-tools): EHOS nazywa aplikację etykietą DNS (`eh-os` D-43, D-51,
+D-55), więc aplikacja OTP `my_shop` jest w EHOS-ie `my-shop`, a jej domena — `name: :"my-shop"`. Wtedy D11 nie
+przepuszczał żadnej publikacji: wzorzec `@versioned` (L2) nie znał myślnika, a sprawdzenie przestrzeni nazw (L3)
+odrzucało `"my_shop."`.
+
+**Zrobione** (wybór użytkownika z 30 września: #50 przed pozostałymi kandydatami — *odrzucone na teraz:* brama na
+#53 i decyzja o kluczu blokady, E12, rozstrzygnięcie #49 i fikstur):
+- **Pierwszy segment nazwy może mieć myślnik, nie na końcach**; pozostałe segmenty snake_case jak były. Dotyczy
+  `publish as:` i `consumes "<nazwa>"` (jedno sprawdzenie).
+  *Odrzucone:* **wzorzec z issue** (`^[a-z]([-a-z0-9]*[a-z0-9])?…`) — wycina podkreślnik z pierwszego segmentu, a
+  `dispatch_rig.transfer.completed.v1` jest dziś publikacją fikstury; każda domena OTP nazwana z podkreślnikiem
+  przestałaby publikować. To, czy `name:` domeny jest nazwą, jaką EHOS może dać aplikacji, zostaje poza tą zmianą
+  (otwarte pytanie w handoffie).
+- **`$` → `\z`**: `$` pasuje też przed końcowym znakiem nowej linii, więc `"rehmed.visit.closed.v1\n"` przechodził
+  — na brokerze łamie linię tematu. Osobny commit, wpis w CHANGELOG-u w „a host has to act”.
+- Opisy `publish as:` i `consumes from:` w DSL-u (i `docs/dsl/`), moduledoc reguły, treść odmowy mówi, gdzie wolno
+  myślnik. `docs/rules.md`, o które prosi issue, to katalog ostrzeżeń `mix eh_os_contract.check`, nie odmów
+  kompilacji — D11 jest opisany w moduledocu, w `docs/dsl/` i w tabeli odmów `docs/contract.md` (bez zmiany).
+
+**Testy i próby odwrotne.** L2 (`contract_boundaries_test`): kontrola `publish` i `consumes` pod `"my-shop."`;
+odmowy myślnika na początku, na końcu i w dalszym segmencie; odmowa nazwy z `\n`. L3
+(`contract_links_domain_test`): druga domena `:"my-shop"`, kontrola `"my-shop.payment.recorded.v1"` bez naruszeń i
+`"my_shop.…"` poza przestrzenią. Stary wzorzec → padają trzy kontrole i nic więcej; wzorzec przepuszczający myślnik
+na końcach → padają dwie odmowy; `$` zamiast `\z` → pada test nowej linii; stara treść odmowy → pada jej test.
+
+**Przegląd** (`code-review high` i bezpieczeństwo/wydajność, równolegle; błędu w zmianie żaden nie znalazł —
+żaden czytelnik nazwy nie dzieli jej po kropkach ani nie robi z niej atomów, `-` jest legalny w temacie NATS-a, we
+wskaźniku JSON i w kluczu komponentu AsyncAPI; wzorzec liniowy na wejściu do 1 MB):
+- stan i decyzja tylko w commicie, nie w `PLAN.md` — *poprawione* (ten zapis);
+- odmowa nie mówi, gdzie wolno myślnik — *poprawione*, z testem;
+- moduledoc uzasadnia myślnik etykietą DNS, a wzorzec przepuszcza `_` — *poprawione*: moduledoc mówi, że `_`
+  zostaje świadomie;
+- `consumes from:` bez opisu gramatyki — *poprawione*;
+- nowa odmowa nowej linii schowana w „Added” — *poprawione*: „Changed — a host has to act”;
+- `name:` domeny bez sprawdzenia, z kropką wychodzi poza przestrzeń nazw (oba przeglądy) — *pominięte*: sprzed
+  #50, nowy powód odmowy widoczny dla hosta, do użytkownika (otwarte pytania);
+- brak flagi `u` na przepisanej linii — *bez zmiany*: nazwa to identyfikator ASCII, nie tekst klienta, a klasy są
+  ASCII.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 

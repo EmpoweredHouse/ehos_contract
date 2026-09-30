@@ -52,6 +52,9 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Changed — a host has to act
 
+- **D11: a published or consumed name ending in a newline is refused.** The pattern ended in `$`, which
+  also matches before a final newline, so `"rehmed.visit.closed.v1\n"` compiled; on a broker such a name
+  breaks the subject line. A contract that declared one no longer compiles.
 - **E11f: a unit reads only what its `evolve/2` folds.** When every clause of `evolve/2` that does not name
   an event is exactly `def evolve(state, _), do: state`, dispatch decodes only the events it names. A
   boundary's query and its conflict condition narrow to those types, so appending an event it passes
@@ -183,6 +186,11 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Added
 
+- **D11: an application's namespace may hold a dash (#50).** The first segment of a `publish as:` or a
+  `consumes "<name>"` may now contain `-`, not at either end, so a domain named as EHOS names an
+  application, `name: :"my-shop"`, publishes `"my-shop.entry.recorded.v1"`. Before, no name could satisfy
+  both D11 checks for such a domain: the pattern refused the dash, and the namespace refused
+  `"my_shop."`. The other segments stay snake_case, and a namespace with an underscore stays valid.
 - **E10: `EhOsContract.OpenAPI` projects the v2 model's human command and query capabilities as OpenAPI
   3.1.2.** Paths match `EhOsContract.Plug`, field and read-model schemas share AsyncAPI's JSON Schema
   projection, scoped operations name their dimension, and commands only application code may issue stay

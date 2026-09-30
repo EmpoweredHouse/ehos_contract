@@ -9,44 +9,53 @@ defmodule EhOsContract.ContractLinksDomainTest do
 
   @domain EhOsContract.Fixtures.LinksClinic
 
+  # The same domain under an EHOS application's name, which may hold a dash (#50).
+  @dashed EhOsContract.Fixtures.LinksDashedShop
+
   setup_all do
-    compile(
-      """
-      defmodule #{inspect(@domain)} do
-        use EhOsContract.Domain, name: :clinic, language: :pl
-
-        context :settlement, "Rozliczenia", subdomain: :core
-        context :scheduling, "Terminarz", subdomain: :supporting
-
-        actor :reception, :human, "Recepcja", scope: [:clinic_id]
-        actor :cashier, :human, "Kasjer"
-        actor :scheduler, :human, "Rejestracja", context: :scheduling
-
-        subject :patient, "Pacjent"
-        value :money, :integer, unit: :grosze
-
-        value :contact do
-          field :patient_id, :id, subject: :patient
-          field :phone, :string, personal: :patient_id
-        end
-
-        value :contact_ref, :contact
-        value :clinic_ids, {:list, :id}
-        external :payer_registry, "Rejestr płatnika", direction: :outbound
-
-        entity :clinic, "Przychodnia", context: :settlement, identified_by: :clinic_id do
-          field :clinic_id, :id
-          field :city, :string
-        end
-
-        subdomain :core, "Core", type: :core
-        subdomain :supporting, "Supporting", type: :supporting
-      end
-      """,
-      "links_clinic.ex"
-    )
+    for {module, name, file} <- [
+          {@domain, :clinic, "links_clinic.ex"},
+          {@dashed, :"my-shop", "links_dashed_shop.ex"}
+        ] do
+      compile(domain_source(module, name), file)
+    end
 
     :ok
+  end
+
+  defp domain_source(module, name) do
+    """
+    defmodule #{inspect(module)} do
+      use EhOsContract.Domain, name: #{inspect(name)}, language: :pl
+
+      context :settlement, "Rozliczenia", subdomain: :core
+      context :scheduling, "Terminarz", subdomain: :supporting
+
+      actor :reception, :human, "Recepcja", scope: [:clinic_id]
+      actor :cashier, :human, "Kasjer"
+      actor :scheduler, :human, "Rejestracja", context: :scheduling
+
+      subject :patient, "Pacjent"
+      value :money, :integer, unit: :grosze
+
+      value :contact do
+        field :patient_id, :id, subject: :patient
+        field :phone, :string, personal: :patient_id
+      end
+
+      value :contact_ref, :contact
+      value :clinic_ids, {:list, :id}
+      external :payer_registry, "Rejestr płatnika", direction: :outbound
+
+      entity :clinic, "Przychodnia", context: :settlement, identified_by: :clinic_id do
+        field :clinic_id, :id
+        field :city, :string
+      end
+
+      subdomain :core, "Core", type: :core
+      subdomain :supporting, "Supporting", type: :supporting
+    end
+    """
   end
 
   # Line 4 of the file is the first line of the body.
@@ -601,5 +610,24 @@ defmodule EhOsContract.ContractLinksDomainTest do
                ~s|publish :payment_recorded is named "billing.payment.recorded.v1", outside the | <>
                  ~s|application's namespace "clinic."|
     end
+
+    test "control: a namespace with a dash, the domain's name: (#50)" do
+      body = dashed(@body, "my-shop.payment.recorded.v1")
+      assert links("LinksDashedRight", body, domain: inspect(@dashed)) == []
+    end
+
+    test "the same name with an underscore is outside it" do
+      violations =
+        links("LinksDashedWrong", dashed(@body, "my_shop.payment.recorded.v1"),
+          domain: inspect(@dashed)
+        )
+
+      assert assert_linked(violations, "D11:", "links_dashed_wrong.ex", 42) =~
+               ~s|publish :payment_recorded is named "my_shop.payment.recorded.v1", outside the | <>
+                 ~s|application's namespace "my-shop."|
+    end
   end
+
+  defp dashed(body, name),
+    do: String.replace(body, ~s|"clinic.payment.recorded.v1"|, inspect(name))
 end

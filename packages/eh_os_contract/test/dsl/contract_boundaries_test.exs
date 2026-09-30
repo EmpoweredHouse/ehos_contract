@@ -263,8 +263,48 @@ defmodule EhOsContract.ContractBoundariesTest do
         """)
 
       assert message =~
-               ~s|D11: publication :visit_closed: "Rehmed/VisitClosed" is not a versioned name, | <>
-                 "dotted lowercase segments ending in .v<n>"
+               ~s|D11: publication :visit_closed: "Rehmed/VisitClosed" is not a versioned name: | <>
+                 "the application's namespace, which may hold a dash but not at either end, then " <>
+                 "dotted snake_case segments, ending in .v<n>"
+    end
+
+    test "a name ending in a newline is refused" do
+      message =
+        refuse_contract("PublishNewline", """
+        #{@unit}
+          publish :visit_closed, as: "rehmed.visit.closed.v1\\n", from: :visit_closed, fields: [:visit_id]
+        """)
+
+      assert message =~
+               ~s|D11: publication :visit_closed: "rehmed.visit.closed.v1\\n" is not a versioned name|
+    end
+
+    test "a dash only inside the namespace, the first segment" do
+      message =
+        refuse_contract("PublishDashed", """
+        #{@unit}
+          publish :leading, as: "-shop.visit.closed.v1", from: :visit_closed, fields: [:visit_id]
+          publish :trailing, as: "shop-.visit.closed.v1", from: :visit_closed, fields: [:visit_id]
+          publish :inner, as: "my-shop.visit-closed.v1", from: :visit_closed, fields: [:visit_id]
+        """)
+
+      for {name, as} <- [
+            leading: "-shop.visit.closed.v1",
+            trailing: "shop-.visit.closed.v1",
+            inner: "my-shop.visit-closed.v1"
+          ] do
+        assert message =~ ~s|D11: publication #{inspect(name)}: "#{as}" is not a versioned name|
+      end
+    end
+
+    test "control: an application's namespace with a dash, as EHOS names one (#50)" do
+      assert %{publishes: [%{as: "my-shop.visit.closed.v1"}]} =
+               compile_contract("PublishDashedRight", """
+               #{@unit}
+                 publish :visit_closed, as: "my-shop.visit.closed.v1",
+                   from: :visit_closed,
+                   fields: [:visit_id]
+               """)
     end
 
     test "control: v2 §16's publication compiles, identity among its fields" do
@@ -311,6 +351,33 @@ defmodule EhOsContract.ContractBoundariesTest do
 
       assert message =~ ~s|D11: consumes "rehmed.visit.opened.v1" lists no fields|
       assert message =~ ~s|D11: consumes "visit_moved": "visit_moved" is not a versioned name|
+    end
+
+    test "a dash only inside the namespace, as in a publication" do
+      message =
+        refuse_contract("ConsumesDashedWrong", """
+          consumes "shop-.visit.closed.v1", as: :visit_closed_elsewhere do
+            field :visit_id, :id
+          end
+
+        #{@unit}
+        """)
+
+      assert message =~
+               ~s|D11: consumes "shop-.visit.closed.v1": "shop-.visit.closed.v1" is not a|
+    end
+
+    test "control: another application's event, named under a namespace with a dash" do
+      model =
+        compile_contract("ConsumesDashedRight", """
+          consumes "my-shop.visit.closed.v1", as: :visit_closed_elsewhere do
+            field :visit_id, :id
+          end
+
+        #{@unit}
+        """)
+
+      assert [%{kind: :published, from: "my-shop.visit.closed.v1"}] = model.consumes
     end
 
     test "control: v2 §16's subscriber, with a policy on the consumed event" do
