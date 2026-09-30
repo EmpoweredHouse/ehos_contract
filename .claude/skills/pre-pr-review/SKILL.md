@@ -23,9 +23,19 @@ found first.
 
 Skip `/code-review` only for a change to documentation alone, and say so in the pull request.
 Documentation alone means Markdown that no part of `mix check` reads: `PLAN.md`, `CLAUDE.md`,
-`README.md`, `docs/`, `.claude/skills/`. `packages/eh_os_contract/docs/contract.md` does not
-qualify, because `eh_os_contract.docs --check` compares it with the schema. The hook still asks
-for the note: record it once you have checked the diff is documentation only
+the root `README.md`, `.claude/skills/`, and `docs/` except `docs/adr/contract-v2.md`. The gate
+reads more than it seems to:
+
+- `packages/eh_os_contract/test/docs_test.exs` compiles the examples of the package's `README.md`,
+  `packages/eh_os_contract/docs/contract.md` and `packages/eh_os_contract/docs/authorization.md`,
+  holds the refusal table of the first to the code, and checks the links of every ExDoc extra, the
+  package's `CHANGELOG.md` included;
+- `packages/eh_os_contract/test/dsl/contract_examples_test.exs` compiles the examples of
+  `docs/adr/contract-v2.md`;
+- `eh_os_contract.docs --check` and `eh_os_contract.rules --check` compare the generated
+  `packages/eh_os_contract/docs/dsl/` and `packages/eh_os_contract/docs/rules.md` with the code.
+
+The hook still asks for the note: record it once you have checked the diff is documentation only
 (`git diff --stat origin/main..HEAD`).
 
 ## Steps
@@ -99,12 +109,12 @@ The traps this repository has already paid for are written down once. Check the 
 them, not against memory:
 
 - `CLAUDE.md`, sections "Brama" and "Konwencje, które łatwo złamać": the gate without `tail`,
-  `MIX_ENV=test mix run`, `boundary` siblings, MFA rather than capture, checks in the macro body,
-  literal event names, English code and where Polish is allowed, the closing `”`,
+  `MIX_ENV=test mix run`, `boundary` siblings, implementations pointing at the contract and never
+  the other way round, checks in the macro body, `emit/1` and `issue/1` taking struct literals, English code and where Polish is allowed, the closing `”`,
   `encoding: :unicode`, zsh not splitting words.
 - `.claude/skills/review-pr/SKILL.md`: what the gate already guarantees, and where a human
   reviewer's attention goes instead.
-- On a v2 stage branch (`dsl-v2/eN-*`): the rules of every commit and the stage's acceptance
+- On a stage branch (`dsl-v2/eN-*`): the rules of every commit and the stage's acceptance
   criteria in `PLAN.md`, "Dopisek 25 września (2) — Etap 6".
 
 Kinds of problems a review here found that neither file names yet:
