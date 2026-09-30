@@ -26,6 +26,8 @@ gałąź `dsl-v2/domain-name-check`, z przeglądem, niewypchnięta („`name:` d
 - **`dsl-v2/domain-name-check`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `0e6e10f`, **niewypchnięta**:
   reguła `name:` domeny, `$` → `\z` w nazwach, nazwy aktorów i zapis w `PLAN.md`; nota przeglądu w `refs/notes/review` na głowie (lokalnie). Push i PR —
   na polecenie użytkownika.
+- **`dsl-v2/domain-names-snake-case`** (ten sam worktree) — od `c607b09`, **niewypchnięta**: nazwy elementów domeny
+  pod D1; nota przeglądu na głowie (lokalnie). Osobny PR, na `dsl-v2/domain-name-check` albo po jej merge'u na `main`.
 - **Otwarte na GitHubie:**
   - **Issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza repozytorium; zaparkowane 30 września, z
     propozycją `EmpoweredHouse/eh-os-contract-sandbox`.
@@ -45,6 +47,7 @@ gałąź `dsl-v2/domain-name-check`, z przeglądem, niewypchnięta („`name:` d
 
 - **Wybór następnego etapu — użytkownika.** Kandydaci, każdy z tym, co go blokuje:
   - **`name:` domeny** — zrobione na `dsl-v2/domain-name-check`; zostaje push, PR i merge użytkownika.
+  - **Nazwy elementów domeny** — zrobione na `dsl-v2/domain-names-snake-case`; to samo.
   - **„Po E11” z planu: kontrakty sandboxa jako fikstury akceptacyjne pakietu, potem manifest v2** (po akceptacji
     D-51/D-52 w `eh-os`). **Fikstury kolidują z #49**: kontrakty klientów w pakiecie to dokładnie to, czego #49 chce
     uniknąć — do rozstrzygnięcia przed startem (propozycja z E11: zmyślone odpowiedniki tego samego kształtu).
@@ -114,6 +117,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 30 września, na `dsl-v2/domain-names-snake-case`** (`0224222`): brama → **EXIT=0** — sandbox 144,
+  `check` 0 / 29 / 9; silnik **1021**, `check` 0 / 66 / 5; web 52; auth 66.
 - **Lokalnie, 30 września, na `dsl-v2/domain-name-check` od `0e6e10f`**: brama z `sandbox/` → **EXIT=0** — sandbox
   144, `check` 0 / 29 / 9; silnik **1018** (1012 w `main` + 3 za `name:` + 3 za `$` i aktorów), `check` 0 / 66 / 5;
   web 52; auth 66; `docs/dsl` i `docs/rules.md` aktualne.
@@ -160,8 +165,9 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
   sprawdzenia formy** — `actor :"*"` albo `:"billing.clerk"` w domenie `acme` daje rolę `acme.*` /
   `acme.billing.clerk` w manifeście; z przestrzeni aplikacji nie wychodzi, ale czy EHOS czyta `*` albo `>` w roli jako
   wzorzec, jest poza tym repozytorium. Możliwe: snake_case jak N1, z `\z`.
-- **Z przeglądu poprawek `$` i aktorów, sprzed nich, do decyzji użytkownika** (nowe powody odmowy widoczne dla
-  hosta): **nazwy pozostałych elementów domeny nie mają sprawdzenia formy** — wartości, encje, konteksty, podmioty,
+- **Z przeglądu poprawek `$` i aktorów, sprzed nich** — *nazwy elementów domeny zrobione 30 września, na polecenie
+  użytkownika, na `dsl-v2/domain-names-snake-case`* („Nazwy elementów domeny — co wyszło”); zostaje reszta z tego
+  punktu. Opis sprzed decyzji: **nazwy pozostałych elementów domeny nie mają sprawdzenia formy** — wartości, encje, konteksty, podmioty,
   systemy zewnętrzne, poddziedziny; sprawdzana jest tylko unikalność (D1). `value :"a/b"` daje moduł zagnieżdżony
   `D.Values.A.B`, `:money_amount` i `:money__amount` — ten sam `MoneyAmount`; `context :"front desk"` psuje
   identyfikator węzła Mermaida na mapie kontekstów; strony (`mix eh_os_contract.pages`) odmawiają dopiero przy
@@ -170,6 +176,16 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
   poza F1 (wraca, gdy manifest poniesie zakresy); `Model.capabilities/1` przy zapytaniu i zdarzeniu nagrywanym o
   jednej nazwie traci jedno bez kompilatora L3 (D14 łapie to w L3, zamyka się bezpiecznie); mapa capability liczona
   od nowa przy każdym dispatchu z credentialem (do pomiaru).
+- **Z przeglądu nazw elementów domeny, sprzed tej zmiany, do decyzji użytkownika** (nowe powody odmowy widoczne
+  dla hosta): (1) **kolizja nazw kontraktu po `Macro.camelize`** — N1 sprawdza tylko równość, a `event :visit_closed`
+  obok `event :visit_closed_` kompiluje się z ostrzeżeniem „redefining module …Events.VisitClosed” (sprawdzone
+  tymczasowym testem 30 września): jedno zdarzenie dostaje strukturę drugiego; bez `--warnings-as-errors` host tego
+  nie zobaczy. Możliwe: ta sama odmowa co D1 dla wartości, w N1, w przestrzeni nazw, która generuje moduły. (2) **Nazwy
+  pól** — wartości, encji i kontraktu — mają tylko unikalność (encje) i zakaz wiodącego `__` (F1); `field :"Invoice
+  No"` trafia do klucza typespeca, JSON Schemy i strony, a pole wartości zadeklarowane dwa razy daje w JSON Schemie
+  ostatnią definicję przy `required` z pierwszej. (3) Etykiety krawędzi Mermaida nie są escapowane (`pipes/1`), a
+  trafiają do nich nazwy pól kontraktu — (2) zamyka to przy okazji. (4) Kolizja stron `context :values` z
+  `value :index` (`values/index.md`) — odmawia dopiero `mix eh_os_contract.pages`.
 - **Z E11f, bez decyzji:** klucz idempotencji z etykietą aktora dłuższy niż ~2,7 KB daje 500 (limit długości byłby
   nowym powodem odmowy, widocznym dla hosta); ten sam aktor z tym samym kluczem dostaje stary paragon, także gdy nowa
   komenda ma inny zakres albo treść (opcja „skrót treści” odrzucona).
@@ -3152,6 +3168,60 @@ pada ten sam (komunikat systemowego); bez odmowy `true` → ten sam.
   przed zmianą, zmiana dołożyła tylko `\z` i `[0-9]`;
 - nazwy pozostałych elementów domeny, pole `scope:`, mapa capability bez L3, koszt mapy przy dispatchu —
   *pominięte*: sprzed tej zmiany, nowe powody odmowy albo pomiar, do użytkownika (otwarte pytania w handoffie).
+
+### Nazwy elementów domeny — co wyszło (30 września)
+
+**Polecenie użytkownika** (30 września): poprawić lukę z przeglądu `$` i aktorów, po sprawdzeniu, czy nie ma na nią
+issue. *Nie ma* — na GitHubie trzy issues (#49 otwarte, #50 i #51 zamknięte), żadne o formie nazw; `PLAN.md` nie ma
+decyzji przeciw — przegląd EL3 (`6654e53`) zablokował złe nazwy tylko przy generowaniu stron. Gałąź
+**`dsl-v2/domain-names-snake-case`**, od głowy `dsl-v2/domain-name-check` (`c607b09`), bo korzysta z
+`DslRules.snake_case?/1` — osobny PR, żeby tamten nie urósł; PR tej gałęzi idzie na tamtą albo po jej merge'u na
+`main`.
+
+**Co jest, pod D1** (reguła nazw domeny; aktorzy zostają pod D4):
+- nazwa poddziedziny, kontekstu, podmiotu, wartości, encji i systemu zewnętrznego jest snake_case (`DslRules.name?/1`
+  — atom, nie `nil`/`true`/`false`, wspólny z D4). `value :"a/b"` dawało moduł zagnieżdżony `Values.A.B`, `context
+  :"front desk"` psuło węzeł mapy kontekstów, strony odmawiały dopiero przy generowaniu;
+- dwie wartości, których nazwy po `Macro.camelize` są równe (`:money_amount`, `:money_amount_`, `:money__amount`,
+  `:desk2`/`:desk_2`), są odmawiane jak dwie o jednej nazwie — moduł niezmienników `Values.MoneyAmount` byłby jeden;
+  odmowa także bez niezmienników, bo niezmiennik można dopisać później;
+- wartość nazwana jak typ, którego `@type` nie da się zdefiniować (`:map`, `:bool`) — pytanie do
+  `:erl_internal.is_type/2` plus sześć nazw, które dokłada Elixir; dziś padała w `Build` z `TypespecError`
+  wskazującym bibliotekę;
+- wartość nazwana jak typ pola biblioteki (`:date`, `:id`, `:decimal`, `:timestamp`) — pole tego typu znaczyło
+  wbudowany, więc wartość była nieużywalna, po cichu.
+
+*Odrzucone:*
+- **zakaz `__` w nazwie** (pierwsza wersja, `740d349`) — przegląd pokazał, że nie zamyka kolizji, którą miał
+  zamknąć (`Macro.camelize` gubi też końcowe `_` i `_` przed cyfrą), a sam `__` niczego nie psuje; zastąpione
+  porównaniem po `camelize` (`75a6e7b`);
+- **ręczna lista typów Elixira** (`75a6e7b`) — pominęła `:bool`, `:var`, `:char_list`; `:erl_internal` odpowiada
+  za OTP, który kompiluje, a odmowa `@type` i tak od niego zależy, więc reguła nie jest mniej deterministyczna niż
+  błąd, który zastępuje (`f0614bf`);
+- **kolizja tylko dla wartości z niezmiennikami** — dopisanie niezmiennika zmieniłoby werdykt D1 dla nazwy, której
+  nikt nie ruszał;
+- **odmowa kolizji dla każdego rodzaju** — tylko nazwa wartości staje się modułem; ścieżki stron i identyfikatory
+  Mermaida odróżniają `front_desk` od `front_desk_`.
+
+**Testy i próby odwrotne** (`domain_rules_test.exs`, D1): sześć rodzajów ze złą formą (z nową linią i `true`),
+aktor tylko pod D4; kolizje z odmową raz na nazwę; typy Elixira i typy pól; kontrola. Bez reguły formy, bez
+porównania po `camelize`, z D1 na aktorach, bez `:erl_internal`, bez typów pól, bez `uniq_by` — pada dokładnie
+test swojej części. D9 odmawiał `true` już wcześniej jako słowa zarezerwowanego — test to przypina.
+
+**Przegląd** (dwie rundy, `code-review high` i bezpieczeństwo/wydajność):
+- runda 1 (`740d349`): `__` nie zamyka kolizji — *poprawione* (`75a6e7b`); komunikat przypisywał moduł, stronę i
+  węzeł każdemu rodzajowi — *poprawione*; test kontrolny uznawał `:money_amount_` za bezpieczne — *poprawione*;
+  wartość nazwana jak typ Elixira — *poprawione*; nieaktualny komentarz w `pages.ex` — *poprawione*; brak testu,
+  że aktor dostaje tylko D4 — *poprawione*;
+- runda 2 (`75a6e7b`): lista typów bez `:bool`/`:var`/`:char_list` — *poprawione* (`f0614bf`); wartość nazwana jak
+  typ pola — *poprawione* (`0224222`); komunikat „is the module” dla wartości bez niezmienników — *poprawione*;
+  podwójna odmowa powtórzonej nazwy — *poprawione* (`group_by`); przykład w komentarzu stron i „kolumna” podmiotu —
+  *poprawione*; zależność od OTP — *bez zmiany* (wyżej);
+- obie rundy: kolizja nazw kontraktu (sprawdzona — jest), nazwy pól, etykiety krawędzi Mermaida, kolizja
+  `context :values`/`value :index` — *pominięte*: sprzed tej zmiany, nowe odmowy, do użytkownika (otwarte pytania).
+
+**Brama** (30 września, na `0224222`): EXIT=0 — sandbox 144 (`check` 0/29/9), silnik **1021** (1018 + 3), `check`
+0/66/5, web 52, auth 66; `docs/dsl` i `docs/rules.md` aktualne.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
