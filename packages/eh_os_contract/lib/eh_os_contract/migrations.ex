@@ -24,7 +24,9 @@ defmodule EhOsContract.Migrations do
       end
 
   When a later release raises `current_version/0`, the upgrade is another
-  generated migration and not a rewrite of the one above:
+  generated migration and not a rewrite of the one above. Until 0.3.0 is first
+  released, V01 itself is still rewritten in place (the idempotency index in plan
+  E11f): there is no database it has to upgrade.
 
       defmodule MyApp.Repo.Migrations.UpgradeEhOsContractToV2 do
         use Ecto.Migration

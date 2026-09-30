@@ -57,7 +57,10 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   key was one for the whole application: a second actor sending a key the first had used got the first
   one's receipt — its events, personal fields opened — and its own command was not run. Now it is its own
   command. A host that shared one key between actors on purpose, to run a command once whoever sends it,
-  no longer gets that. A development database created before this change keeps the old index: recreate it,
+  no longer gets that. A retry therefore has to come from the same subject, and whatever shares one
+  credential or one `:system` actor shares one key space (`docs/authorization.md`). A credential with an
+  empty subject is refused, since it would make every such credential one actor. A development database
+  created before this change keeps the old index: recreate it,
   or rebuild the index with `DROP INDEX eh_os_contract_commands_idempotency_index` and the `CREATE UNIQUE
   INDEX` V01 now runs.
 - **E11b: the second DSL takes the first one's names.** `use EhOsContract.Next.Contract` is

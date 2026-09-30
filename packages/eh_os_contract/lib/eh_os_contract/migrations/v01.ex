@@ -182,7 +182,9 @@ defmodule EhOsContract.Migrations.V01 do
       add :id, :binary_id, primary_key: true
       add :contract, :text, null: false
       add :type, :text, null: false
-      # 'actor:<subject>' | 'policy:<n>' | 'pm:<n>' | 'effect:<n>'
+
+      # `EhOsContract.Actor.label/1`: 'actor:<subject>' | 'system:<name>' | 'policy:<n>' | 'pm:<n>'.
+      # Half of an idempotency key's scope.
       add :issued_by, :text, null: false
       add :idempotency_key, :text
       add :causation_event_id, :binary_id

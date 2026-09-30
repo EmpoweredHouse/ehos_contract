@@ -293,6 +293,16 @@ EhOsContract.dispatch(MyApp.Contracts.Ledger, %Deposit{account_id: "a-1", amount
 `Actor.credential/3` verifies nothing. Build it only from a credential that was verified, which in a
 host means the auth package's plug.
 
+**An idempotency key belongs to the actor who sent it**: to the credential's subject, or to the
+`:system` actor's name. Two actors with one key are two commands, and neither sees the other's receipt.
+What that asks of a host:
+
+- a retry has to come from the same subject: if EHOS gives a user another `sub` between the first try
+  and the retry, the retry is a new command and runs;
+- everything that shares one credential, or runs as one `:system` actor, shares one key space: two jobs
+  importing as `:nightly_import` both sending `"row-1"` are one command, so give each job's keys a
+  prefix of its own.
+
 ## How strong this is
 
 It is the standard, well-understood level: the same as an application validating Auth0, Keycloak or
