@@ -32,8 +32,9 @@ migracji.
   wyciągnięte w worktree `dsl-v2-eg-graphs-409665`.
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
   `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`). W E11c wszystkie
-  skasowane i odtworzone z nowego V01 — worktree na kodzie sprzed E11c, który je zmigruje, zepsuje je dla reszty
-  (`ecto.drop` naprawia; od odmowy w `up/1` taki worktree dostanie komunikat zamiast cichego sukcesu). Bazę dev
+  skasowane i odtworzone z nowego V01. **Worktree na kodzie sprzed E11c nie ma odmowy w `up/1` i nie wolno mu
+  migrować wspólnych baz**: dołoży do V01 swoje V02–V05 i zepsuje je dla reszty (`ecto.drop` naprawia). Odmowa działa
+  w drugą stronę — kod od E11c trafiający na bazę zapisaną jako „2”–„5” dostaje komunikat zamiast cichego sukcesu. Bazę dev
   odtworzono z danymi: zrzut sprzed E11c (29 zdarzeń, 21 wdrożeń, 18 komend) przywrócony `pg_restore --data-only`.
 - **Baza dev jest punktem odniesienia porównań bajtów** (`~/Projects/ai/eh-os-contract-dev-reference/`, zrzuty
   sprzed E11c — w starym schemacie, do odtworzenia tylko danymi); przed `mix phx.server` — `mix ecto.migrate` w
