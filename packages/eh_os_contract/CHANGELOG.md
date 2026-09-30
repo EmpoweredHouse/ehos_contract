@@ -58,6 +58,12 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   domain whose name is not lowercase letters, digits, `_` and `-`, starting with a letter and not ending with a
   dash, no longer compiles, even one that publishes nothing, and the refusal points at its `use`. Of the names
   that could publish before, only those with a dot are refused.
+- **N1: two names that camelize alike are refused where they become one module or alias.** N1 compared names
+  exactly, so `event :visit_closed` beside `event :visit_closed_` compiled, with a warning that
+  `<Contract>.Events.VisitClosed` was redefined: one event carried the other's struct. The same held for a
+  command, event or consumed event (an implementation aliases each as `<Camelized>`) and for two units,
+  reactions, read models, queries or domain services of one kind. A contract that declared such a pair no
+  longer compiles.
 - **D1: a subdomain's, context's, subject's, value's, entity's and external's name is snake_case.** They were
   held only to uniqueness: `value :"a/b"` generated `<Domain>.Values.A.B`, a module nested in another, and
   `context :"front desk"` broke the context map's diagram; `mix eh_os_contract.pages` refused such a name, but

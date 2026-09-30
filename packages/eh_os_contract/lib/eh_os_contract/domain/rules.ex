@@ -185,13 +185,8 @@ defmodule EhOsContract.Domain.Rules do
 
     values = for %Value{name: name} = value <- entities, DslRules.name?(name), do: value
 
-    # Each name that camelizes as an earlier, different one does, at its first
-    # declaration; two of one name are refused above already.
     modules =
-      for {camel, [%Value{name: first} | _] = group} <-
-            Enum.group_by(values, &camelize(&1.name)),
-          other <- Enum.uniq_by(group, & &1.name),
-          other.name != first do
+      for {other, first, camel} <- DslRules.camel_collisions(values, & &1.name) do
         {"D1: value #{inspect(other.name)} camelizes to #{camel}, as value #{inspect(first)} " <>
            "does, and a value's invariants are the module Values.#{camel}; rename one of them",
          other}
@@ -216,8 +211,6 @@ defmodule EhOsContract.Domain.Rules do
 
     forms ++ by_kind ++ modules ++ types ++ terms ++ relations ++ both
   end
-
-  defp camelize(name), do: name |> Atom.to_string() |> Macro.camelize()
 
   defp built_in_type?(name), do: :erl_internal.is_type(name, 0) or name in @elixir_types
 

@@ -10,7 +10,13 @@ defmodule EhOsContract.Contract.Rules.Names do
   take a command's name, since both become a capability `<domain>.<name>` (D14). Invariants and stage
   groups are unique within their unit, and the process's stages and promises within
   the process. A domain service's functions are unique within it, and a function's
-  rules within the function.
+  rules within the function. Since the review of the domain's names, two names of one
+  namespace that `Macro.camelize` alike — `:visit_closed` and `:visit_closed_`, `:x2`
+  and `:x_2` — are refused as two of one name where the name becomes a module or an
+  alias: a unit, a reaction, a read model, a query or a domain service is a module
+  `<Contract>.<Kind>.<Camelized>`, and an implementation aliases a command's, an
+  event's or a consumed event's struct as `<Camelized>`. `:visit_closed` beside
+  `:visit_closed_` compiled with a warning that one struct redefined the other.
 
   **N2.** No name is a word Elixir reserves, and none becomes a callback that
   clashes with a `Kernel` function or special form of the same arity (v2 §4.4): a
@@ -108,9 +114,20 @@ defmodule EhOsContract.Contract.Rules.Names do
         {"publications", d.publishes}
       ]
       |> Enum.flat_map(fn {kind, list} ->
-        for duplicate <- DslRules.duplicates(list, & &1.name) do
-          {"N1: two #{kind} are named #{inspect(duplicate.name)}", duplicate}
-        end
+        twice =
+          for duplicate <- DslRules.duplicates(list, & &1.name) do
+            {"N1: two #{kind} are named #{inspect(duplicate.name)}", duplicate}
+          end
+
+        # A publication generates no module.
+        alike =
+          for {other, first, camel} <- DslRules.camel_collisions(list, & &1.name),
+              kind != "publications" do
+            {"N1: #{inspect(other.name)} camelizes to #{camel}, as #{inspect(first)} does, and " <>
+               "two #{kind} would be one generated module; rename one of them", other}
+          end
+
+        twice ++ alike
       end)
 
     per_unit =
@@ -191,12 +208,30 @@ defmodule EhOsContract.Contract.Rules.Names do
   defp callback_namespace(d) do
     entries = callback_entries(d)
 
-    for {name, kind, declaration} = entry <- DslRules.duplicates(entries, &elem(&1, 0)) do
-      {_, first, _} = Enum.find(entries, &(elem(&1, 0) == name and &1 != entry))
+    twice =
+      for {name, kind, declaration} = entry <- DslRules.duplicates(entries, &elem(&1, 0)) do
+        {_, first, _} = Enum.find(entries, &(elem(&1, 0) == name and &1 != entry))
 
-      {"N1: #{kind} #{inspect(name)} has the name of #{article(first)} #{first}; commands, events, " <>
-         "timers and consumed events share one namespace", declaration}
-    end
+        {"N1: #{kind} #{inspect(name)} has the name of #{article(first)} #{first}; commands, " <>
+           "events, timers and consumed events share one namespace", declaration}
+      end
+
+    # An implementation aliases a command's, an event's and a consumed event's struct by
+    # its camelized name, so two that camelize alike would be one alias.
+    alike =
+      for {{name, kind, declaration}, first, camel} <-
+            DslRules.camel_collisions(
+              Enum.reject(entries, &(elem(&1, 1) == "timer")),
+              &elem(&1, 0)
+            ) do
+        {_, first_kind, _} = Enum.find(entries, &(elem(&1, 0) == first))
+
+        {"N1: #{kind} #{inspect(name)} camelizes to #{camel}, as #{first_kind} " <>
+           "#{inspect(first)} does, and an implementation would alias both as #{camel}; " <>
+           "rename one of them", declaration}
+      end
+
+    twice ++ alike
   end
 
   defp article("event"), do: "an"

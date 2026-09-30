@@ -154,6 +154,58 @@ defmodule EhOsContract.ContractNamesTest do
       assert message =~ "N1: process :visit has two promises named :closed (nested.ex:28)"
     end
 
+    test "two names that camelize alike, where the name is a module or an alias" do
+      message =
+        refuse_contract("CamelizeAlike", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: [:visit_closed, :visit_closed_]
+            command :close_visit_2, "Zamknięcie 2", by: :reception, emits: :visit_closed
+            event :visit_closed, "Wizyta zamknięta", terminal: true
+            event :visit_closed_, "Wizyta zamknięta 2", terminal: true
+          end
+
+          read_model :closed_visits, "Zamknięte wizyty", projects: :visit_closed do
+            field :closed_on, :date
+          end
+
+          read_model :closed__visits, "Zamknięte wizyty 2", projects: :visit_closed do
+            field :closed_on, :date
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      assert message =~
+               "N1: event :visit_closed_ camelizes to VisitClosed, as event :visit_closed does, " <>
+                 "and an implementation would alias both as VisitClosed; rename one of them " <>
+                 "(camelize_alike.ex:9)"
+
+      assert message =~
+               "N1: :closed__visits camelizes to ClosedVisits, as :closed_visits does, and two " <>
+                 "read models would be one generated module; rename one of them (camelize_alike.ex:16)"
+
+      refute message =~ ":close_visit_2 camelizes"
+    end
+
+    test "control: names that camelize differently compile" do
+      assert %{version: _} =
+               compile_contract("CamelizeApart", """
+                 aggregate :visit, "Wizyta" do
+                   identity :visit_id
+                   command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+                   command :close_visit2, "Zamknięcie 2", by: :reception, emits: :visit_closed
+                   event :visit_closed, "Wizyta zamknięta", terminal: true
+                 end
+
+                 process :visit, "Wizyta" do
+                   correlate :visit_id
+                 end
+               """)
+    end
+
     test "a query with a command's name, since both are capabilities <domain>.<name> (D14)" do
       message =
         refuse_contract("QueryLikeCommand", """

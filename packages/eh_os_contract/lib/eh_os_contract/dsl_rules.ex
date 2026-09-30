@@ -42,6 +42,25 @@ defmodule EhOsContract.DslRules do
   def name?(name),
     do: is_atom(name) and name not in [nil, true, false] and snake_case?(Atom.to_string(name))
 
+  @doc false
+  # Each item whose snake_case name camelizes as an earlier, different name does, with
+  # that earlier name and the camelized form, once per name: `Macro.camelize` drops a
+  # trailing `_`, an `_` before a digit and a doubled `_`, so `:paid` and `:paid_`
+  # would be one generated module and one alias. Two of one name are the caller's.
+  @spec camel_collisions([item], (item -> atom())) :: [{item, atom(), String.t()}]
+        when item: term()
+  def camel_collisions(items, name) do
+    items
+    |> Enum.filter(&name?(name.(&1)))
+    |> Enum.group_by(&camelize(name.(&1)))
+    |> Enum.flat_map(fn {camel, [head | _] = group} ->
+      first = name.(head)
+      for item <- Enum.uniq_by(group, name), name.(item) != first, do: {item, first, camel}
+    end)
+  end
+
+  defp camelize(name), do: name |> Atom.to_string() |> Macro.camelize()
+
   @doc """
   `{:ok, dsl}` when there are no violations, and otherwise the one error that
   reports them all.
