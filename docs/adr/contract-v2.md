@@ -950,8 +950,9 @@ still works. Moving to `xid8` later is an internal change: all historical rows a
 > one database, `apps`, each in a schema of its own (`eh-os` D-54, which says so of advisory locks), so every
 > application built on the engine there takes the same lock: their appends serialize with each other's, and
 > the capacity argument above is shared by all of them. Correctness holds — each log still sees its positions
-> in commit order — and nothing is changed yet; the options (a key derived from the schema, or the two-integer
-> form keyed by the log table's oid) are in `PLAN.md`.
+> in commit order — and nothing is changed yet; the options (a two-integer key derived from the schema) are in
+> `PLAN.md`. A key per schema removes only the accidental coupling: advisory locks carry no privileges, so a
+> neighbour that takes the key can still stall the log, which D-54 accepts.
 
 ### 10.3 Schema
 

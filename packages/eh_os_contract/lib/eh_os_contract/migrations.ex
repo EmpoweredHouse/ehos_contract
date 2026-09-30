@@ -61,19 +61,29 @@ defmodule EhOsContract.Migrations do
   ## In a schema other than `public`
 
   Nothing here names a schema. The tables, the functions and the triggers are
-  created unqualified, so they land in the first schema of the connection's
-  `search_path`; the version is read with `to_regclass/1` and written with an
-  unqualified `COMMENT ON TABLE`, which resolve `eh_os_contract_events` through the
-  same path; and every query at run time is unqualified too. So an application
-  whose tables live in their own schema sets it on the repo and nothing else:
+  created unqualified, so they land in `current_schema()`, the first schema of the
+  connection's `search_path`; the version is read there and written with an
+  unqualified `COMMENT ON TABLE`; and every query at run time is unqualified too. So
+  an application whose tables live in their own schema sets it on the repo, and
+  gives Oban the same schema as its prefix, without creating it:
 
       config :my_app, MyApp.Repo, parameters: [search_path: "ledger_production"]
 
-  The role that migrates needs to create in that schema and nowhere else, and the
-  role the application runs as needs only `SELECT`, `INSERT`, `UPDATE` and `DELETE`
-  on the tables and `USAGE` on the sequences: nothing at run time creates, alters or
-  drops anything. Oban's tables go where its `prefix:` says, and the engine reads
-  them there.
+      def up do
+        Oban.Migration.up(prefix: "ledger_production", create_schema: false)
+        EhOsContract.Migrations.up()
+      end
+
+  The role that migrates needs to create in that schema and nowhere else. The role
+  the application runs as needs `SELECT`, `INSERT`, `UPDATE` and `DELETE` on the
+  tables, `USAGE` on the sequences, and `EXECUTE` on the engine's three functions,
+  which PostgreSQL grants to `PUBLIC` unless the database revokes it: nothing at run
+  time creates, alters or drops anything. Oban's tables go where its `prefix:` says,
+  and the engine reads them there.
+
+  **Ecto's migration prefix is not supported** (`mix ecto.migrate --prefix`,
+  `:migration_default_prefix`): `create table` would follow it while the functions,
+  the triggers and the version follow the `search_path`. Set the path instead.
 
   Until 2026-09-30 the version was read from and written to `public` by name,
   whatever the path said, and in any other schema the first `up/0` failed on a
@@ -121,12 +131,14 @@ defmodule EhOsContract.Migrations do
   Rolls back from what the database has down to and including `:version`.
 
   Defaults to `initial_version/0`, which drops the engine's storage entirely. Raises,
-  as `up/1` does, on a version this release does not know.
+  as `up/1` does, on a version this release does not know. A schema with no version
+  recorded is left alone: the unqualified drops would otherwise find the tables of
+  the next schema on the `search_path`.
   """
   @spec down(keyword()) :: :ok
   def down(opts \\ []) when is_list(opts) do
     target = target!(Keyword.get(opts, :version, @initial_version))
-    recorded = max(known!(migrated_version()), @initial_version)
+    recorded = known!(migrated_version())
 
     if recorded >= target, do: change(recorded..target//-1, :down), else: :ok
   end
@@ -139,7 +151,16 @@ defmodule EhOsContract.Migrations do
   """
   @spec migrated_version() :: non_neg_integer()
   def migrated_version do
-    query = "SELECT pg_catalog.obj_description(to_regclass('eh_os_contract_events'), 'pg_class')"
+    # In `current_schema()`, where `CREATE TABLE` puts the tables, and not the first
+    # match on the path: with `search_path: "ledger, public"` and the tables already
+    # in `public`, that match would be theirs.
+    query = """
+    SELECT pg_catalog.obj_description(pg_class.oid, 'pg_class')
+    FROM pg_class
+    JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
+    WHERE pg_class.relname = 'eh_os_contract_events'
+    AND pg_namespace.nspname = current_schema()
+    """
 
     case repo().query(query, [], log: false) do
       {:ok, %{rows: [[version]]}} when is_binary(version) -> String.to_integer(version)

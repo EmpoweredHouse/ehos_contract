@@ -390,8 +390,12 @@ defmodule EhOsContract.Paths do
   end
 
   # Oban's jobs are where its `prefix:` puts them, which need not be on the
-  # connection's `search_path` that finds the engine's own tables.
-  defp oban_jobs, do: from(Oban.Job, prefix: ^Oban.config().prefix)
+  # connection's `search_path` that finds the engine's own tables. A node that runs
+  # no Oban still reports, as before: its jobs are looked for on the path.
+  defp oban_jobs do
+    prefix = if Oban.whereis(Oban), do: Oban.config().prefix
+    from(Oban.Job, prefix: ^prefix)
+  end
 
   # Only this contract's consumers' jobs: a report per contract must not scan every
   # job of the application.

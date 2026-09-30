@@ -62,8 +62,15 @@ defmodule EhOsContract.Auth.Migrations do
   @doc "The version the database is at, or `0` when the package's storage is absent."
   @spec migrated_version() :: non_neg_integer()
   def migrated_version do
-    query =
-      "SELECT pg_catalog.obj_description(to_regclass('eh_os_contract_auth_keys'), 'pg_class')"
+    # In `current_schema()`, where `CREATE TABLE` puts the tables, and not the first
+    # match on the path, as `EhOsContract.Migrations.migrated_version/0` reads its own.
+    query = """
+    SELECT pg_catalog.obj_description(pg_class.oid, 'pg_class')
+    FROM pg_class
+    JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
+    WHERE pg_class.relname = 'eh_os_contract_auth_keys'
+    AND pg_namespace.nspname = current_schema()
+    """
 
     case repo().query(query, [], log: false) do
       {:ok, %{rows: [[version]]}} when is_binary(version) -> String.to_integer(version)

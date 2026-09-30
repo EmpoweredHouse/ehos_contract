@@ -591,15 +591,20 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   `EhOsContract.Migrations` read and wrote its version on `public.eh_os_contract_events` by name, while the
   tables were created unqualified, in the connection's `search_path`. In a schema of the application's own,
   `up/0` failed on a `public.eh_os_contract_events` that did not exist, or, where `public` already had the
-  tables, read their version, created nothing, and left the application to fail on its first write. It now
-  resolves the table through the search path (`to_regclass/1`, an unqualified `COMMENT ON TABLE`), as every
-  query at run time already did. A host sets the schema as its repo's `parameters: [search_path: ...]` and
-  nothing else. Nothing at run time creates, alters or drops anything: the role the application runs as needs
-  only `SELECT`, `INSERT`, `UPDATE` and `DELETE` on the tables and `USAGE` on the sequences.
+  tables, read their version, created nothing, and left the application to fail on its first write. The
+  version is now read in `current_schema()`, where the tables are created, and written with an unqualified
+  `COMMENT ON TABLE`; every query at run time was already unqualified. A host sets the schema as its repo's
+  `parameters: [search_path: ...]` and gives Oban the same prefix. Nothing at run time creates, alters or
+  drops anything: the role the application runs as needs `SELECT`, `INSERT`, `UPDATE` and `DELETE` on the
+  tables, `USAGE` on the sequences, and `EXECUTE` on the engine's functions, which PostgreSQL grants to
+  `PUBLIC` by default. Ecto's migration prefix (`--prefix`) is not supported, and says so.
+- **`down/1` leaves a schema with no version recorded alone.** It ran V01's drops regardless, and with
+  another schema later on the `search_path` (`"ledger, public"`) those unqualified drops found that
+  schema's tables.
 - **Oban's jobs are read where Oban's `prefix:` puts them.** The report's counts of waiting and discarded
   effect jobs and scheduled timers, and a process manager's check for a queued timer after a rebuild, read an
-  unqualified `oban_jobs`, which failed when Oban's prefix was not on the search path. No verdict moves where
-  it was on the path.
+  unqualified `oban_jobs`, which failed when Oban's prefix was not on the search path. A node running no
+  Oban still reports, looking on the path as before. No verdict moves where the jobs were on the path.
 
 ## 0.2.1 — 2026-09-23
 

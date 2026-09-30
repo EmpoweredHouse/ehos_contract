@@ -73,8 +73,6 @@ defmodule EhOsContract.SchemaTest do
   alias ShreddingRig.Members
   alias ShreddingRig.Members.Commands.Join
 
-  @password "eh_os_contract_schema"
-
   alias EhOsContract.SchemaTest.{Host, HostWithObanApart}
 
   @tables ~w(
@@ -93,10 +91,12 @@ defmodule EhOsContract.SchemaTest do
     schema = "eh_os_contract_schema_" <> Base.encode16(:crypto.strong_rand_bytes(4), case: :lower)
     owner = schema <> "_owner"
     app = schema <> "_app"
+    password = Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)
 
-    admin!("CREATE ROLE #{owner} LOGIN PASSWORD '#{@password}'")
-    admin!("CREATE ROLE #{app} LOGIN PASSWORD '#{@password}'")
-    on_exit(fn -> drop!([schema, schema <> "_jobs"], owner, app) end)
+    # Before anything is created, so a failure halfway leaves nothing behind.
+    on_exit(fn -> drop!([schema, schema <> "_jobs"], [owner, app]) end)
+    admin!("CREATE ROLE #{owner} LOGIN PASSWORD '#{password}'")
+    admin!("CREATE ROLE #{app} LOGIN PASSWORD '#{password}'")
 
     # What EHOS's operator and its grants Job do (D-54), and the same for the schema
     # `HostWithObanApart` puts Oban in, which EHOS does not give.
@@ -121,32 +121,34 @@ defmodule EhOsContract.SchemaTest do
     refute privilege?("has_database_privilege($1, current_database(), 'CREATE')", [owner])
     refute privilege?("has_schema_privilege($1, $2, 'CREATE')", [app, schema])
 
-    %{schema: schema, owner: owner, app: app}
+    %{schema: schema, owner: owner, app: app, password: password}
   end
 
   defp admin!(sql, params \\ []), do: CommitRepo.query!(sql, params, log: false)
 
   defp privilege?(sql, params), do: admin!("SELECT " <> sql, params).rows == [[true]]
 
-  defp drop!(schemas, owner, app) do
+  defp drop!(schemas, roles) do
     admin!("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = ANY($1)", [
-      [owner, app]
+      roles
     ])
 
     for schema <- schemas, do: admin!("DROP SCHEMA IF EXISTS #{schema} CASCADE")
-    # Revokes the grants and default privileges in this database, which the roles'
-    # drop would otherwise refuse over.
-    admin!("DROP OWNED BY #{owner}, #{app}")
-    admin!("DROP ROLE #{app}")
-    admin!("DROP ROLE #{owner}")
+
+    for role <- roles, admin!("SELECT 1 FROM pg_roles WHERE rolname = $1", [role]).rows != [] do
+      # Revokes the grants and default privileges in this database, which the drop
+      # would otherwise refuse over.
+      admin!("DROP OWNED BY #{role}")
+      admin!("DROP ROLE #{role}")
+    end
   end
 
   # In the application's environment, as a host configures its repo: Oban's
   # notifier opens a connection of its own from it.
-  defp connect(role, schema) do
+  defp connect(%{password: password}, role, path) do
     config =
       Keyword.take(CommitRepo.config(), [:hostname, :port, :database]) ++
-        [username: role, password: @password, pool_size: 2, parameters: [search_path: schema]]
+        [username: role, password: password, pool_size: 2, parameters: [search_path: path]]
 
     Application.put_env(:eh_os_contract, SchemaRepo, config)
     on_exit(fn -> Application.delete_env(:eh_os_contract, SchemaRepo) end)
@@ -202,9 +204,9 @@ defmodule EhOsContract.SchemaTest do
   end
 
   test "an owner that cannot create in public migrates the schema up, down and up again",
-       %{schema: schema, owner: owner} do
+       %{schema: schema, owner: owner} = context do
     public = tables("public")
-    connect(owner, schema)
+    connect(context, owner, schema)
 
     migrate(:up)
 
@@ -237,14 +239,36 @@ defmodule EhOsContract.SchemaTest do
     assert tables("public") == public
   end
 
+  # `public` holds the engine's tables at "1" here, and the owner may read them.
+  test "with public on the path too, the version is the schema's, and public is left alone",
+       %{schema: schema, owner: owner} = context do
+    public = tables("public")
+    connect(context, owner, schema <> ", public")
+
+    migrate(:up)
+    assert engine_tables(schema) == @tables
+    assert version(schema) == "1"
+
+    migrate(:down)
+    assert tables(schema) == ["schema_migrations"]
+
+    # A rollback of a schema that records nothing, which the unqualified drops would
+    # have taken to `public`'s tables.
+    admin!("INSERT INTO #{schema}.schema_migrations (version, inserted_at) VALUES (1, now())")
+    migrate(:down)
+
+    assert tables("public") == public
+    assert version("public") == "1"
+  end
+
   # Migrated by the owner, run by the role the application runs as, with Oban where
   # `host` puts it.
-  defp boot_as_app!(%{schema: schema, owner: owner, app: app}, host) do
-    connect(owner, schema)
+  defp boot_as_app!(%{schema: schema, owner: owner, app: app} = context, host) do
+    connect(context, owner, schema)
     migrate(:up, host)
     oban_prefix = if host == Host, do: schema, else: schema <> "_jobs"
     stop_supervised!(owner)
-    connect(app, schema)
+    connect(context, app, schema)
 
     previous = Application.fetch_env!(:eh_os_contract, :repo)
     Application.put_env(:eh_os_contract, :repo, SchemaRepo)
@@ -259,6 +283,9 @@ defmodule EhOsContract.SchemaTest do
       {:ok, pid} = Oban.start_link(Application.fetch_env!(:eh_os_contract, Oban))
       Process.unlink(pid)
     end)
+
+    # A node that runs no Oban still reports, looking for its jobs on the path.
+    if host == Host, do: assert(is_list(Paths.observe(Ledger)))
 
     start_supervised!(
       {Oban, repo: SchemaRepo, prefix: oban_prefix, queues: [events: 10], testing: :manual}

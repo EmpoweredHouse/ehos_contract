@@ -29,7 +29,6 @@ defmodule EhOsContract.Auth.SchemaTest do
   alias EhOsContract.{Actor, Auth, Authorizer}
   alias EhOsContract.Auth.{Keys, SchemaRepo, SchemaTest.Host, TestRepo}
 
-  @password "eh_os_contract_auth_schema"
   @tables ["eh_os_contract_auth_decisions", "eh_os_contract_auth_keys", "schema_migrations"]
 
   setup do
@@ -38,24 +37,15 @@ defmodule EhOsContract.Auth.SchemaTest do
 
     owner = schema <> "_owner"
     app = schema <> "_app"
+    password = Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)
+
+    # Before anything is created, so a failure halfway leaves nothing behind.
+    on_exit(fn -> drop!(schema, [owner, app]) end)
 
     admin!([
-      "CREATE ROLE #{owner} LOGIN PASSWORD '#{@password}'",
-      "CREATE ROLE #{app} LOGIN PASSWORD '#{@password}'"
+      "CREATE ROLE #{owner} LOGIN PASSWORD '#{password}'",
+      "CREATE ROLE #{app} LOGIN PASSWORD '#{password}'"
     ])
-
-    on_exit(fn ->
-      admin!([
-        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity " <>
-          "WHERE usename IN ('#{owner}', '#{app}')",
-        "DROP SCHEMA IF EXISTS #{schema} CASCADE",
-        # Revokes the grants and default privileges, which the roles' drop would
-        # otherwise refuse over.
-        "DROP OWNED BY #{owner}, #{app}",
-        "DROP ROLE #{app}",
-        "DROP ROLE #{owner}"
-      ])
-    end)
 
     # What EHOS's operator and its grants Job do (D-54).
     admin!([
@@ -69,31 +59,50 @@ defmodule EhOsContract.Auth.SchemaTest do
 
     # Not assumed: a database that let either create elsewhere would prove nothing.
     assert admin!([
-             "SELECT has_schema_privilege('#{owner}', 'public', 'CREATE'), " <>
-               "has_database_privilege('#{owner}', current_database(), 'CREATE'), " <>
-               "has_schema_privilege('#{app}', '#{schema}', 'CREATE')"
+             {"SELECT has_schema_privilege($1, 'public', 'CREATE'), " <>
+                "has_database_privilege($1, current_database(), 'CREATE'), " <>
+                "has_schema_privilege($2, $3, 'CREATE')", [owner, app, schema]}
            ]) == [[false, false, false]]
 
-    %{schema: schema, owner: owner, app: app}
+    %{schema: schema, owner: owner, app: app, password: password}
   end
 
-  # Each statement on a connection of its own, which a test's end does not take down;
-  # the rows of the last.
+  # Each call on a connection of its own, which a test's end does not take down; the
+  # rows of the last statement. A statement is SQL, or SQL with its parameters.
   defp admin!(statements) do
     config = Keyword.take(TestRepo.config(), [:hostname, :port, :username, :password, :database])
     {:ok, conn} = Postgrex.start_link(config)
 
     try do
-      statements |> Enum.map(&Postgrex.query!(conn, &1, [])) |> List.last() |> Map.fetch!(:rows)
+      statements
+      |> Enum.map(fn
+        {sql, params} -> Postgrex.query!(conn, sql, params)
+        sql -> Postgrex.query!(conn, sql, [])
+      end)
+      |> List.last()
+      |> Map.fetch!(:rows)
     after
       GenServer.stop(conn)
     end
   end
 
-  defp connect(role, schema) do
+  defp drop!(schema, roles) do
+    admin!([
+      {"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = ANY($1)", [roles]},
+      "DROP SCHEMA IF EXISTS #{schema} CASCADE"
+    ])
+
+    for role <- roles, admin!([{"SELECT 1 FROM pg_roles WHERE rolname = $1", [role]}]) != [] do
+      # Revokes the grants and default privileges, which the drop would otherwise
+      # refuse over.
+      admin!(["DROP OWNED BY #{role}", "DROP ROLE #{role}"])
+    end
+  end
+
+  defp connect(%{password: password}, role, path) do
     config =
       Keyword.take(TestRepo.config(), [:hostname, :port, :database]) ++
-        [username: role, password: @password, pool_size: 2, parameters: [search_path: schema]]
+        [username: role, password: password, pool_size: 2, parameters: [search_path: path]]
 
     start_supervised!({SchemaRepo, config}, id: role)
   end
@@ -103,8 +112,8 @@ defmodule EhOsContract.Auth.SchemaTest do
 
   defp tables(schema) do
     admin!([
-      "SELECT table_name FROM information_schema.tables " <>
-        "WHERE table_schema = '#{schema}' ORDER BY 1"
+      {"SELECT table_name FROM information_schema.tables WHERE table_schema = $1 ORDER BY 1",
+       [schema]}
     ])
     |> List.flatten()
   end
@@ -112,19 +121,20 @@ defmodule EhOsContract.Auth.SchemaTest do
   defp version(schema) do
     [[version]] =
       admin!([
-        "SELECT obj_description('#{schema}.eh_os_contract_auth_keys'::regclass, 'pg_class')"
+        {"SELECT obj_description(to_regclass($1), 'pg_class')",
+         [schema <> ".eh_os_contract_auth_keys"]}
       ])
 
     version
   end
 
   defp owned(role),
-    do: admin!(["SELECT count(*) FROM pg_class WHERE relowner = '#{role}'::regrole"])
+    do: admin!([{"SELECT count(*) FROM pg_class WHERE relowner = $1::text::regrole", [role]}])
 
   test "an owner that cannot create in public migrates the schema up, down and up again",
-       %{schema: schema, owner: owner} do
+       %{schema: schema, owner: owner} = context do
     public = tables("public")
-    connect(owner, schema)
+    connect(context, owner, schema)
 
     migrate(:up)
     assert tables(schema) == @tables
@@ -143,12 +153,28 @@ defmodule EhOsContract.Auth.SchemaTest do
     assert tables("public") == public
   end
 
+  # `public` holds the package's tables at "2" here, and the owner may read them.
+  test "with public on the path too, the version is the schema's, and public is left alone",
+       %{schema: schema, owner: owner} = context do
+    public = tables("public")
+    connect(context, owner, schema <> ", public")
+
+    migrate(:up)
+    assert tables(schema) == @tables
+    assert version(schema) == "2"
+
+    migrate(:down)
+    assert tables(schema) == ["schema_migrations"]
+    assert tables("public") == public
+    assert version("public") == "2"
+  end
+
   test "the role the application runs as keeps the keys and records the decisions",
-       %{schema: schema, owner: owner, app: app} do
-    connect(owner, schema)
+       %{schema: schema, owner: owner, app: app} = context do
+    connect(context, owner, schema)
     migrate(:up)
     stop_supervised!(owner)
-    connect(app, schema)
+    connect(context, app, schema)
     assert owned(app) == [[0]]
 
     # Loaded from the table, fetched, stored; refreshed, stored again.
