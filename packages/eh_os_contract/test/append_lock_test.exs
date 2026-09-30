@@ -7,6 +7,24 @@ defmodule EhOsContract.AppendLockTest.Host do
   def down, do: EhOsContract.Migrations.down()
 end
 
+defmodule EhOsContract.AppendLockTest.HostCreatingSchema do
+  @moduledoc """
+  A host's migration that creates its schema itself, queued before the engine's: the
+  first schema of the repo's `search_path`, which does not exist until it runs.
+  """
+
+  use Ecto.Migration
+
+  def up do
+    [[path]] = repo().query!("SHOW search_path").rows
+    [schema | _] = String.split(path, ", ")
+    execute "CREATE SCHEMA #{schema}"
+    EhOsContract.Migrations.up()
+  end
+
+  def down, do: EhOsContract.Migrations.down()
+end
+
 defmodule EhOsContract.AppendLockTest do
   @moduledoc """
   **One append lock per log, not per database** (v2 §10.2, its note of 30 September
@@ -24,15 +42,17 @@ defmodule EhOsContract.AppendLockTest do
   use ExUnit.Case, async: false
 
   alias EhOsContract.{CommitRepo, SchemaRepo}
+  alias EhOsContract.AppendLockTest.{Host, HostCreatingSchema}
   alias EhOsContract.Migrations.V01
 
   setup do
     suffix = Base.encode16(:crypto.strong_rand_bytes(4), case: :lower)
     first = "eh_os_contract_lock_a_" <> suffix
     second = "eh_os_contract_lock_b_" <> suffix
+    third = "eh_os_contract_lock_c_" <> suffix
 
     on_exit(fn ->
-      for schema <- [first, second],
+      for schema <- [first, second, third],
           do: CommitRepo.query!("DROP SCHEMA IF EXISTS #{schema} CASCADE", [], log: false)
     end)
 
@@ -41,7 +61,7 @@ defmodule EhOsContract.AppendLockTest do
       migrate!(schema)
     end
 
-    %{first: first, second: second}
+    %{first: first, second: second, third: third}
   end
 
   defp config(schema) do
@@ -49,17 +69,30 @@ defmodule EhOsContract.AppendLockTest do
       [parameters: [search_path: schema]]
   end
 
-  defp migrate!(schema) do
-    Application.put_env(:eh_os_contract, SchemaRepo, config(schema) ++ [pool_size: 2])
-    start_supervised!(SchemaRepo, id: schema)
+  defp migrate!(path, host \\ Host, version \\ 1) do
+    Application.put_env(:eh_os_contract, SchemaRepo, config(path) ++ [pool_size: 2])
+    on_exit(fn -> Application.delete_env(:eh_os_contract, SchemaRepo) end)
+    start_supervised!(SchemaRepo, id: path)
+    Ecto.Migrator.run(SchemaRepo, [{version, host}], :up, all: true, log: false)
+    stop_supervised!(path)
+  end
 
-    Ecto.Migrator.run(SchemaRepo, [{1, EhOsContract.AppendLockTest.Host}], :up,
-      all: true,
-      log: false
-    )
+  defp lock_sql(schema, function) do
+    [[definition]] =
+      CommitRepo.query!("SELECT pg_get_functiondef(to_regproc($1))", ["#{schema}.#{function}"]).rows
 
-    stop_supervised!(schema)
-    Application.delete_env(:eh_os_contract, SchemaRepo)
+    [call] = Regex.run(~r/pg_catalog\.pg_advisory_xact_lock\([^)]*\)/, definition)
+    call
+  end
+
+  defp locks(schema) do
+    for function <- ["eh_os_contract_append_lock", "eh_os_contract_events_take_append_lock"],
+        do: lock_sql(schema, function)
+  end
+
+  defp lock_call(schema) do
+    {class, log} = V01.lock_key(schema)
+    "pg_catalog.pg_advisory_xact_lock(#{class}, #{log})"
   end
 
   defp connect(schema), do: start_supervised!({Postgrex, config(schema)}, id: make_ref())
@@ -89,7 +122,7 @@ defmodule EhOsContract.AppendLockTest do
 
   defp release(holder) do
     send(holder, :release)
-    assert_receive :released
+    assert_receive :released, 1_000
   end
 
   # The statement, in a transaction of its own, given 200 ms to get its lock.
@@ -122,16 +155,11 @@ defmodule EhOsContract.AppendLockTest do
   VALUES (gen_random_uuid(), 'lock.tested', 'AppendLockTest', 'v', gen_random_uuid(), 'system:test', now())
   """
 
-  test "each log has a key of its own, and both of its functions take it", %{first: first} do
-    {class, log} = V01.lock_key(first)
-    assert {class, log} != V01.lock_key("public")
-
-    for function <- ["eh_os_contract_append_lock", "eh_os_contract_events_take_append_lock"] do
-      [[definition]] =
-        CommitRepo.query!("SELECT pg_get_functiondef(to_regproc($1))", ["#{first}.#{function}"]).rows
-
-      assert definition =~ "pg_catalog.pg_advisory_xact_lock(#{class}, #{log})"
-    end
+  test "each log has a key of its own, and both of its functions take it",
+       %{first: first, second: second} do
+    assert V01.lock_key(first) != V01.lock_key(second)
+    assert locks(first) == [lock_call(first), lock_call(first)]
+    assert locks(second) == [lock_call(second), lock_call(second)]
   end
 
   test "an append to another schema's log does not wait for this one's",
@@ -153,5 +181,32 @@ defmodule EhOsContract.AppendLockTest do
 
     release(holder)
     assert within_timeout(first, @insert) == :went_through
+  end
+
+  test "the trigger takes its own log's lock, whatever the inserting session's path",
+       %{first: first, second: second} do
+    holder = hold(first)
+
+    qualified =
+      String.replace(@insert, "INTO eh_os_contract_events", "INTO #{first}.eh_os_contract_events")
+
+    assert within_timeout(second, qualified) == :waited
+
+    release(holder)
+  end
+
+  # `public` is on the path, and holds the engine's log at "1". Ecto records the
+  # migration in `public.schema_migrations`, since it reads its table before the
+  # schema exists, so the version is one of the test's own and its row goes after it.
+  test "a schema the host's own migration creates gets the log and its key", %{third: third} do
+    version = 900_000_000 + :rand.uniform(99_999_999)
+
+    on_exit(fn ->
+      CommitRepo.query!("DELETE FROM public.schema_migrations WHERE version = $1", [version])
+    end)
+
+    migrate!(third <> ", public", HostCreatingSchema, version)
+
+    assert locks(third) == [lock_call(third), lock_call(third)]
   end
 end

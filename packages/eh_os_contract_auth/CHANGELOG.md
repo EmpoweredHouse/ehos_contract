@@ -7,6 +7,10 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **`up/1` and `down/1` run what the host's migration queued before them first**, as the engine's do: a
+  `CREATE SCHEMA` queued ahead of them left the version to be read in `public`, and with `search_path:
+  "ledger, public"` nothing was created in `ledger`.
+
 - **The tables work in a schema other than `public`** (issue #51; `eh-os` D-54, D-56).
   `EhOsContract.Auth.Migrations` read and wrote its version on `public.eh_os_contract_auth_keys` by name, and
   in a schema of the application's own failed or, where `public` had the tables, created nothing. It now

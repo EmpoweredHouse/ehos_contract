@@ -614,6 +614,12 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   and the log's trigger at migration, so neither resolves anything through the `search_path` at run time.
   V01 is changed in place, as before 0.3.0 is first released: a database migrated earlier keeps the old key
   until it is created again, which is still correct, only shared.
+- **`up/1` and `down/1` run what the host's migration queued before them first.** Ecto runs `execute` and
+  `create` only when a migration flushes, and the version and the lock's key were read before that: a
+  `CREATE SCHEMA` queued ahead of `up/0` — `Oban.Migration.up(prefix: ...)` without `create_schema: false`
+  queues one — left `current_schema()` empty, or with `search_path: "ledger, public"` read `public`'s version
+  and key. The schema should still exist before the migrations run: Ecto places its own `schema_migrations`
+  through the path before any of them does.
 - **The storage works in a schema other than `public`** (issue #51; `eh-os` D-54, D-56).
   `EhOsContract.Migrations` read and wrote its version on `public.eh_os_contract_events` by name, while the
   tables were created unqualified, in the connection's `search_path`. In a schema of the application's own,

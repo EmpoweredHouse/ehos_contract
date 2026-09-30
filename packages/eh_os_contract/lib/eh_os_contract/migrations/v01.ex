@@ -27,8 +27,10 @@ defmodule EhOsContract.Migrations.V01 do
   # schema of its own (`eh-os` D-54): a single fixed key made all of them append one
   # after another (issue #51, v2 §10.2). Two integers are PostgreSQL's other key
   # space, apart from every single-integer key anybody takes. The key is computed
-  # here and written into the SQL, so no call resolves anything through a
-  # `search_path` at run time, and `pg_dump` of one schema carries its key with it.
+  # here and written into the SQL, so neither function resolves anything through a
+  # `search_path`, and `pg_dump` of one schema carries its key with it. The store's
+  # call of `eh_os_contract_append_lock()` finds it through the path, as it finds the
+  # table: V01 creates both in one schema.
   <<lock_class::signed-32, _::binary>> = :crypto.hash(:sha256, "eh_os_contract_events append")
   @lock_class lock_class
 
@@ -74,8 +76,8 @@ defmodule EhOsContract.Migrations.V01 do
     :ok
   end
 
-  # The log (v2 §10). Append-only, ordered by `position`, one advisory lock for every
-  # append.
+  # Where `create table` puts the log: the first schema of the `search_path` that
+  # exists. `EhOsContract.Migrations` has flushed what the host queued before it.
   defp current_schema! do
     case repo().query!("SELECT current_schema()", [], log: false).rows do
       [[schema]] when is_binary(schema) ->
@@ -83,11 +85,13 @@ defmodule EhOsContract.Migrations.V01 do
 
       _none ->
         raise ArgumentError,
-              "eh_os_contract creates its tables in the first schema of the search_path, " <>
-                "and this connection's search_path names no schema that exists"
+              "eh_os_contract creates its tables in the first schema of the search_path " <>
+                "that exists, and this connection's search_path names none"
     end
   end
 
+  # The log (v2 §10). Append-only, ordered by `position`, one advisory lock for every
+  # append to it.
   defp events(schema) do
     create table(:eh_os_contract_events, primary_key: false) do
       # The order of appends. `id` is unique and is what the Ecto schema calls its

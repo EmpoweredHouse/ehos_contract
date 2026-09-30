@@ -42,6 +42,9 @@ defmodule EhOsContract.Auth.Migrations do
   @spec up(keyword()) :: :ok
   def up(opts \\ []) when is_list(opts) do
     target = Keyword.get(opts, :version, @current_version)
+    # What the host queued before this call has to have run before the version is
+    # read: a `CREATE SCHEMA` or `SET search_path` changes which schema it is read in.
+    flush()
     recorded = migrated_version()
 
     if recorded < target, do: change(max(recorded + 1, @initial_version)..target, :up), else: :ok
@@ -54,6 +57,7 @@ defmodule EhOsContract.Auth.Migrations do
   @spec down(keyword()) :: :ok
   def down(opts \\ []) when is_list(opts) do
     target = Keyword.get(opts, :version, @initial_version)
+    flush()
     recorded = migrated_version()
 
     if recorded >= target, do: change(recorded..target//-1, :down), else: :ok
