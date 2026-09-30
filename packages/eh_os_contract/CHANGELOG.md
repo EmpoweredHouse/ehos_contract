@@ -58,6 +58,12 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   domain whose name is not lowercase letters, digits, `_` and `-`, starting with a letter and not ending with a
   dash, no longer compiles, even one that publishes nothing, and the refusal points at its `use`. Of the names
   that could publish before, only those with a dot are refused.
+- **F1, D3 and D6: a field's name is snake_case, and a value's field is named once.** A contract's fields
+  were checked only for uniqueness and a leading `__`, a value's and an entity's only for uniqueness (an
+  entity's) or not at all (a value's): `field :"Invoice No"` became a key of the typespec, the JSON Schema and
+  the page, `:"a|b"` broke the unit graph's edge it labelled, and a value's field declared twice gave the JSON
+  Schema the later definition with the earlier one's `required`. A contract or domain declaring such a field
+  no longer compiles.
 - **N1: two names that camelize alike are refused where they become one module or alias.** N1 compared names
   exactly, so `event :visit_closed` beside `event :visit_closed_` compiled, with a warning that
   `<Contract>.Events.VisitClosed` was redefined: one event carried the other's struct. The same held for a

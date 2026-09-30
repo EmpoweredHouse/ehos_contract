@@ -5,7 +5,11 @@ defmodule EhOsContract.Contract.Rules.Fields do
   parameters, and a published event this contract consumes.
 
   - **F1.** Field names are unique within a struct, and none starts with `__`,
-    which the generated structs keep for themselves (`__meta__`).
+    which the generated structs keep for themselves (`__meta__`). Since the review
+    of the domain's names, a field's name is snake_case, as every other name is
+    (N1): it is a key of the struct, of the JSON Schema and the payload, a column of
+    a read model's row, and a label on the unit's graph, where `:"a|b"` broke the
+    edge it named.
   - **F2.** A type is well formed: a built-in type, `{:list, type}`, a non-empty
     `{:enum, members}` with no member twice, the name of a domain value, or
     `{:id, entity}`, the identifier of a domain entity. Whether that value or entity
@@ -187,6 +191,13 @@ defmodule EhOsContract.Contract.Rules.Fields do
            "for itself", f}
       end
 
+    form =
+      for f <- fields,
+          not (is_atom(f.name) and String.starts_with?(Atom.to_string(f.name), "__")),
+          not DslRules.name?(f.name) do
+        {"F1: #{where}: field #{inspect(f.name)} is not snake_case", f}
+      end
+
     twice =
       for f <- DslRules.duplicates(fields, & &1.name) do
         {"F1: #{where} declares field #{inspect(f.name)} twice", f}
@@ -223,7 +234,7 @@ defmodule EhOsContract.Contract.Rules.Fields do
 
     personal = for f <- fields, v <- personal_violations(where, f, by_name), do: v
 
-    reserved ++ twice ++ redeclared ++ types ++ defaults ++ correlation ++ personal
+    reserved ++ form ++ twice ++ redeclared ++ types ++ defaults ++ correlation ++ personal
   end
 
   defp personal_violations(where, field, by_name) do

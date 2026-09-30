@@ -18,6 +18,11 @@ defmodule EhOsContract.Domain.Rules do
   Elixir builds in, `:map` or `:integer`, whose `@type` it could not define, nor after a
   built-in field type, `:date`, which a field of that type would mean instead.
 
+  **D3** and **D6**, since the review of the domain's names: a value's and an
+  entity's field is snake_case and named once — a value's fields were not checked
+  for either, and one declared twice gave the JSON Schema the later definition with
+  the earlier one's `required`.
+
   **D4**, since the review of the domain's `name:`: an actor's name is snake_case, as a
   contract's names are (N1). A person's is a role, `<domain>.<actor>`, in the manifest
   EHOS reads — `actor :"*", :human` would have been the role `"acme.*"` — and a
@@ -381,7 +386,16 @@ defmodule EhOsContract.Domain.Rules do
         {"#{where}, field #{inspect(field.name)}: #{problem}", field}
       end
 
-    one_of ++ unit ++ context ++ types ++ fields
+    field_names =
+      for(
+        field <- value.fields,
+        not DslRules.name?(field.name),
+        do: {"#{where}, field #{inspect(field.name)} is not snake_case", field}
+      ) ++
+        for field <- duplicates(value.fields, & &1.name),
+            do: {"#{where} declares field #{inspect(field.name)} twice", field}
+
+    one_of ++ unit ++ context ++ types ++ fields ++ field_names
   end
 
   # A number counts something whether it is written as :integer or as a value that
@@ -434,9 +448,14 @@ defmodule EhOsContract.Domain.Rules do
     by_name = Map.new(entity.fields, &{&1.name, &1})
 
     twice =
-      for field <- duplicates(entity.fields, & &1.name) do
-        {"#{where} declares field #{inspect(field.name)} twice", field}
-      end
+      for(
+        field <- entity.fields,
+        not DslRules.name?(field.name),
+        do: {"#{where}, field #{inspect(field.name)} is not snake_case", field}
+      ) ++
+        for field <- duplicates(entity.fields, & &1.name) do
+          {"#{where} declares field #{inspect(field.name)} twice", field}
+        end
 
     context =
       if MapSet.member?(scope.contexts, entity.context),

@@ -26,7 +26,30 @@ defmodule EhOsContract.ContractFieldsTest do
     """
   end
 
-  describe "F1: unique, and not starting with __" do
+  describe "F1: snake_case, unique, and not starting with __" do
+    test "a field whose name is not snake_case is refused, once, and __ keeps its own refusal" do
+      message =
+        refuse_contract(
+          "FieldForms",
+          unit("""
+                field :"a|b", :string
+                field :Note, :string
+                field :"note\\n", :string
+                field :__meta__, :string
+                field :note_2, :string
+          """)
+        )
+
+      for {name, line} <- [{~s|:"a\|b"|, 8}, {":Note", 9}, {~s|:"note\\n"|, 10}] do
+        assert message =~
+                 "F1: command :close_visit: field #{name} is not snake_case (field_forms.ex:#{line})"
+      end
+
+      refute message =~ ":__meta__ is not snake_case"
+      assert message =~ "field :__meta__ starts with __"
+      refute message =~ ":note_2"
+    end
+
     test "a field declared twice, and one the generated struct keeps" do
       message =
         refuse_contract(

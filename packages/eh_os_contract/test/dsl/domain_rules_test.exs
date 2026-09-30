@@ -613,6 +613,34 @@ defmodule EhOsContract.DomainRulesTest do
     end
   end
 
+  describe "D3 and D6: a field's name is snake_case, and named once" do
+    test "a value's and an entity's field is snake_case and named once" do
+      message =
+        refused("FieldNames", """
+          context :settlement, "Rozliczenia", subdomain: :supporting
+
+          value :address do
+            field :City, :string
+            field :street, :string
+            field :street, :string, optional: true
+          end
+
+          entity :invoice, "Faktura", context: :settlement, identified_by: :invoice_no do
+            field :invoice_no, :id
+            field :"Invoice No", :string
+          end
+        """)
+
+      assert message =~ "D3: value :address, field :City is not snake_case (field_names.ex:7)"
+      assert message =~ "D3: value :address declares field :street twice (field_names.ex:9)"
+
+      assert message =~
+               ~s|D6: entity :invoice, field :"Invoice No" is not snake_case (field_names.ex:14)|
+
+      refute message =~ ":invoice_no is not"
+    end
+  end
+
   describe "D8: a field's issuer is an external of this domain (plan EL2)" do
     test "an entity's field issued by an unknown external is refused; control: a known one" do
       message =
