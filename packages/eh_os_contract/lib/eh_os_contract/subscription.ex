@@ -192,7 +192,7 @@ defmodule EhOsContract.Subscription do
           ProcessManager.handle!(repo, consumer, row, chain, status == "rebuilding")
 
         _other ->
-          Consumer.handle!(consumer, Consumer.decode!(row), chain)
+          Consumer.handle!(consumer, Consumer.decode!(row, consumer.contract), chain)
       end
 
     case handled do

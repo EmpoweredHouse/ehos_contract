@@ -52,7 +52,8 @@ defmodule EhOsContract.Dispatcher do
      policy issues is dispatched at once, in the same transaction, as the policy's
      own actor, with the event as its cause and a key derived from it,
      `"policy:<contract>:<name>:<event id>:<index>"` — the contract too, since the
-     index of accepted keys spans the application. A rejection of it is the unit's
+     policy's actor is labelled by its name alone, and two contracts may each have a
+     policy of one name. A rejection of it is the unit's
      answer and leaves the first command standing; anything else it raises, and an
      effect's `{:error, reason}`, rolls everything back. A policy reacting to the
      kind of event it already reacted to down one chain is a cycle, and raises. A
@@ -846,7 +847,7 @@ defmodule EhOsContract.Dispatcher do
 
     rows
     |> Enum.group_by(fn row ->
-      if MapSet.member?(own, row.type), do: job.model, else: declaring!(job.model, row)
+      if MapSet.member?(own, row.type), do: job.model, else: Consumer.declaring!(job.model, row)
     end)
     |> Enum.flat_map(fn {model, rows} ->
       values = if model == job.model, do: job.values, else: Codec.values(model.domain)
@@ -854,21 +855,6 @@ defmodule EhOsContract.Dispatcher do
     end)
     |> Enum.sort_by(fn {row, _event} -> row.position end)
     |> Enum.map(&elem(&1, 1))
-  end
-
-  # The sibling contract this contract consumes the row's type from.
-  defp declaring!(model, row) do
-    Enum.find_value(model.consumes, fn
-      %{kind: :contract, from: from} ->
-        sibling = Model.fetch(from)
-        if Enum.any?(sibling.events, &(&1.type == row.type)), do: sibling
-
-      _published ->
-        nil
-    end) ||
-      raise ArgumentError,
-            "#{inspect(model.module)} neither declares nor consumes an event of type " <>
-              "#{inspect(row.type)}, which it read at position #{row.position}"
   end
 
   # --- holding the decision to its declaration ----------------------------------------------

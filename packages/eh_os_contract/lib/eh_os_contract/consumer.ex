@@ -118,9 +118,11 @@ defmodule EhOsContract.Consumer do
   end
 
   @doc """
-  An event as its consumers take it: the struct of the contract that declares its
-  type, with `__meta__` from the row. Raises when no contract of the host declares the
-  type, or the payload no longer fits it.
+  An event as a consumer of `contract` takes it: the struct of the contract that
+  declares its type — `contract` itself, or a sibling it consumes — with `__meta__`
+  from the row. Raises when neither declares the type, or the payload no longer fits
+  it. The contract is found from the reader, never from the module name the row
+  stored, which a renamed module leaves behind.
 
   A personal field is opened with its subject's key, read for this row alone and
   only when the row has a sealed field; once the subject is erased it holds
@@ -128,23 +130,41 @@ defmodule EhOsContract.Consumer do
   erasure itself, `eh_os_contract.subject_erased`, is declared by no contract, and
   reads as the `EhOsContract.Erased` it names.
   """
-  @spec decode!(Event.t()) :: struct()
-  def decode!(%Event{type: type, payload: payload} = row) do
+  @spec decode!(Event.t(), module()) :: struct()
+  def decode!(%Event{type: type, payload: payload} = row, contract) do
     if type == Personal.erased_type(),
       do: Personal.erased_event(payload),
-      else: decode_declared!(row)
+      else: decode_declared!(row, Model.fetch(contract))
   end
 
-  defp decode_declared!(row) do
-    model =
-      case Model.fetch(Module.safe_concat([row.contract])) do
-        %{kind: :contract, units: _} = model -> model
-        _other -> raise ArgumentError, "#{row.contract} is not a contract"
-      end
-
-    values = Codec.values(model.domain)
-    [decoded] = decode_all!(model, values, [row])
+  defp decode_declared!(row, reader) do
+    model = declaring!(reader, row)
+    [decoded] = decode_all!(model, Codec.values(model.domain), [row])
     decoded
+  end
+
+  @doc false
+  # The contract that declares the row's type, from the model of the contract that
+  # reads it: that one, or the sibling it consumes the type from.
+  @spec declaring!(map(), Event.t()) :: map()
+  def declaring!(model, row) do
+    if Enum.any?(model.events, &(&1.type == row.type)),
+      do: model,
+      else: sibling!(model, row)
+  end
+
+  defp sibling!(model, row) do
+    Enum.find_value(model.consumes, fn
+      %{kind: :contract, from: from} ->
+        sibling = Model.fetch(from)
+        if Enum.any?(sibling.events, &(&1.type == row.type)), do: sibling
+
+      _published ->
+        nil
+    end) ||
+      raise ArgumentError,
+            "#{inspect(model.module)} neither declares nor consumes an event of type " <>
+              "#{inspect(row.type)}, which it read at position #{row.position}"
   end
 
   @doc false

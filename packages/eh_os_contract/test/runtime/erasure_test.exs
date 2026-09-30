@@ -119,7 +119,7 @@ defmodule EhOsContract.ErasureTest do
                %{name: ^anna, previous: ^anna},
                %Joined{name: "Bartek Nowak"},
                ^anna
-             ] = Enum.map(log(), &Consumer.decode!/1)
+             ] = Enum.map(log(), &Consumer.decode!(&1, Members))
     end
 
     test "a second erasure is {:ok, :already_erased} and appends nothing" do
