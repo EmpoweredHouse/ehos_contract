@@ -64,16 +64,16 @@ defmodule EhOsContract.DomainRulesTest do
       assert message =~ "two externals are named :registry (every_kind.ex:11)"
     end
 
-    test "a name that is not snake_case, or holds __, is refused, whatever it names" do
+    test "a name that is not snake_case is refused, whatever it names" do
       message =
         refused("NameForms", """
           context :"front desk", "Recepcja", subdomain: :supporting
           subject :Patient, "Pacjent"
           value :"a/b", :integer
-          value :money__amount, :integer
-          external :"registry\n", "Rejestr", direction: :outbound
+          external :"registry-v2", "Rejestr", direction: :outbound
           subdomain true, "Prawda", type: :generic
           context :settlement, "Rozliczenia", subdomain: :supporting
+          actor :Reception, :human, "Recepcja"
 
           entity :"Invoice", "Faktura", context: :settlement, identified_by: :invoice_no do
             field :invoice_no, :id
@@ -84,27 +84,65 @@ defmodule EhOsContract.DomainRulesTest do
             {"context", ~s|:"front desk"|, 4},
             {"subject", ":Patient", 5},
             {"value", ~s|:"a/b"|, 6},
-            {"value", ":money__amount", 7},
-            {"external", ~s|:"registry\\n"|, 8},
-            # The newline in the external's name is one in the source, too.
-            {"subdomain", "true", 10},
-            {"entity", ":Invoice", 13}
+            {"external", ~s|:"registry-v2"|, 7},
+            {"subdomain", "true", 8},
+            {"entity", ":Invoice", 12}
           ] do
         assert message =~
-                 "D1: #{kind} #{name} is not snake_case with no __, as the domain's names are: " <>
-                   "they name its modules, pages and graph nodes (name_forms.ex:#{line})"
+                 "D1: #{kind} #{name} is not snake_case, as every name of a domain is " <>
+                   "(name_forms.ex:#{line})"
       end
 
       refute message =~ ":settlement is not"
       refute message =~ ":invoice_no"
+      # An actor's name is D4's, refused once.
+      refute message =~ "D1: actor"
+      assert message =~ "D4: actor :Reception is not snake_case"
     end
 
-    test "control: snake_case names with digits and single underscores compile" do
-      compiles("NameFormsValid", """
+    test "two values that camelize alike are refused, since they would be one module" do
+      message =
+        refused("OneModule", """
+          value :money_amount, :integer
+          value :money_amount_, :integer
+          value :money__amount, :integer
+          value :desk2, :integer
+          value :desk_2, :integer
+          value :money_amount, :integer
+        """)
+
+      assert message =~
+               "D1: value :money_amount_ is the module MoneyAmount, as value :money_amount is; " <>
+                 "rename one of them (one_module.ex:5)"
+
+      assert message =~
+               "D1: value :money__amount is the module MoneyAmount, as value :money_amount is"
+
+      assert message =~ "D1: value :desk_2 is the module Desk2, as value :desk2 is"
+      assert message =~ "D1: two values are named :money_amount (one_module.ex:9)"
+      refute message =~ "value :money_amount is the module"
+    end
+
+    test "a value named after a type Elixir builds in is refused; control: snake_case names" do
+      message =
+        refused("BuiltInName", """
+          value :map, :string
+          value :integer, :integer
+        """)
+
+      assert message =~
+               "D1: value :map is named after a type Elixir builds in, and its @type could not " <>
+                 "be defined; name it after what it holds (built_in_name.ex:4)"
+
+      assert message =~ "D1: value :integer is named after a type Elixir builds in"
+
+      compiles("NotBuiltInName", """
         context :front_desk2, "Recepcja", subdomain: :supporting
         subject :patient, "Pacjent"
-        value :money_amount_, :integer
         external :registry_v2, "Rejestr", direction: :outbound
+        value :money, :integer
+        value :money_amount, :integer
+        value :desk2, :integer
       """)
     end
 

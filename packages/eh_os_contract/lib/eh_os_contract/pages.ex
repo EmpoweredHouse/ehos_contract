@@ -79,10 +79,11 @@ defmodule EhOsContract.Pages do
     |> Map.new(fn {path, lines} -> {path, page(domain.name, path, lines)} end)
   end
 
-  # A path is made of names, and the domain's are not held to snake_case the way a
-  # contract's are (N1): one written `:"../x"` would write outside the directory, and
-  # one with a space would break every link to it. Two elements of one path would
-  # leave one of them without a page.
+  # A path is made of names. Every name of a domain and a contract is snake_case (D1,
+  # N1), but a model can be built by hand, and one written `:"../x"` would write
+  # outside the directory, one with a space would break every link to it. Two elements
+  # of one path, `context :values` beside the values' index, would leave one of them
+  # without a page.
   defp paths!(pages) do
     for {path, _lines} <- pages,
         segment <- path |> String.trim_trailing(".md") |> Path.split(),

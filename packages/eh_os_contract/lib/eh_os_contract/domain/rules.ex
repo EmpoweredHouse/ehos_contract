@@ -8,12 +8,14 @@ defmodule EhOsContract.Domain.Rules do
 
   **D1**, since the review of the actors' names: a subdomain's, context's, subject's,
   value's, entity's and external's name is snake_case, as an actor's is (D4) and a
-  contract's (N1). The names become modules — `value :"a/b"` was
+  contract's (N1). The names become a value's module — `value :"a/b"` was
   `<Domain>.Values.A.B`, a module nested in another — node identifiers of the context
-  map, where `context :"front desk"` broke the diagram, and page paths, which refused
-  such a name only when the pages were generated. Uniqueness alone let
-  `:money_amount` and `:money__amount` become one module, `MoneyAmount`, so a name
-  holds no `__` either.
+  map, where `context :"front desk"` broke the diagram, page paths, which refused such
+  a name only when the pages were generated, and a subject's column. Two values whose
+  names camelize alike, `:money_amount` and `:money_amount_` or `:money__amount`, would
+  be one module, `MoneyAmount`, so they are refused as two of one name; and a value is
+  not named after a type Elixir builds in, `:map` or `:integer`, whose `@type` it could
+  not define.
 
   **D4**, since the review of the domain's `name:`: an actor's name is snake_case, as a
   contract's names are (N1). A person's is a role, `<domain>.<actor>`, in the manifest
@@ -119,6 +121,14 @@ defmodule EhOsContract.Domain.Rules do
 
   # --- D1: names are snake_case, and unique per kind -----------------------------
 
+  # The built-in types `@type` refuses to redefine, as of Elixir 1.18.
+  @elixir_types ~w(any none atom map pid port reference struct tuple float integer neg_integer
+                   non_neg_integer pos_integer list nonempty_list maybe_improper_list
+                   nonempty_maybe_improper_list term arity binary nonempty_binary bitstring
+                   nonempty_bitstring boolean byte char charlist nonempty_charlist function
+                   identifier iodata iolist keyword module mfa no_return node number timeout
+                   string nonempty_string dynamic)a
+
   @kinds [
     {Subdomain, "subdomain"},
     {Context, "context"},
@@ -166,17 +176,38 @@ defmodule EhOsContract.Domain.Rules do
            "it names", external}
       end
 
+    # An actor's name is D4's.
     forms =
       for {struct, kind} <- @kinds,
           struct != Actor,
           %{__struct__: ^struct, name: name} = declaration <- entities,
-          not DslRules.name?(name) or String.contains?(Atom.to_string(name), "__") do
-        {"D1: #{kind} #{inspect(name)} is not snake_case with no __, as the domain's names are: " <>
-           "they name its modules, pages and graph nodes", declaration}
+          not DslRules.name?(name) do
+        {"D1: #{kind} #{inspect(name)} is not snake_case, as every name of a domain is",
+         declaration}
       end
 
-    forms ++ by_kind ++ terms ++ relations ++ both
+    values = for %Value{name: name} = value <- entities, DslRules.name?(name), do: value
+
+    # Two of one name are refused above already.
+    modules =
+      for duplicate <- duplicates(values, &camelize(&1.name)),
+          %Value{name: first} =
+            Enum.find(values, &(camelize(&1.name) == camelize(duplicate.name))),
+          first != duplicate.name do
+        {"D1: value #{inspect(duplicate.name)} is the module #{camelize(duplicate.name)}, as " <>
+           "value #{inspect(first)} is; rename one of them", duplicate}
+      end
+
+    types =
+      for %Value{name: name} = value <- values, name in @elixir_types do
+        {"D1: value #{inspect(name)} is named after a type Elixir builds in, and its @type " <>
+           "could not be defined; name it after what it holds", value}
+      end
+
+    forms ++ by_kind ++ modules ++ types ++ terms ++ relations ++ both
   end
+
+  defp camelize(name), do: name |> Atom.to_string() |> Macro.camelize()
 
   # --- D2: one translation per language, none into the term's own ----------------
 

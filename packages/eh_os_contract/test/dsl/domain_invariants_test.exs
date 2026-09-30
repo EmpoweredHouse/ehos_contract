@@ -233,12 +233,14 @@ defmodule EhOsContract.DomainInvariantsTest do
             invariant :module_info, "E", violated_by: [-4], satisfied_by: [3]
             invariant :type, "F", violated_by: [-5], satisfied_by: [4]
             invariant :"small\n", "G", violated_by: [-6], satisfied_by: [5]
+            invariant true, "H", violated_by: [-7], satisfied_by: [6]
           end
         """)
 
       assert message =~ "D9: value :money declares the invariant :not_negative twice"
       assert message =~ "invariant :NotHuge of value :money is not snake_case"
       assert message =~ ~s|invariant :"small\\n" of value :money is not snake_case|
+      assert message =~ "invariant true of value :money is a word Elixir reserves"
 
       assert message =~
                "invariant :abs of value :money would define abs/1, which clashes with Kernel.abs/1"
