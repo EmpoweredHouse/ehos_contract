@@ -91,6 +91,20 @@ defmodule EhOsContract.Bus.Suite do
         end
       end
 
+      # Receives until every message of `wanted` has arrived at least as often as it
+      # says, and returns what arrived: a redelivery or a duplicate on the way is
+      # allowed, since the promise is at least once.
+      defp bus_until(name, wanted, received \\ []) do
+        if Enum.all?(wanted, fn {message, times} ->
+             Enum.count(received, &(&1 == message)) >= times
+           end) do
+          received
+        else
+          assert_receive {:bus_suite_delivered, ^name, message}, @bus_suite_wait
+          bus_until(name, wanted, [message | received])
+        end
+      end
+
       defp bus_nothing_more(name), do: refute_receive({:bus_suite_delivered, ^name, _}, 200)
 
       # Answers `:nack` (or does `fail`) the first time it sees a message, `:ack` after.
@@ -131,7 +145,7 @@ defmodule EhOsContract.Bus.Suite do
           sent = for n <- 1..3, do: bus_message(name, %{"n" => n})
           bus_publish(sent)
 
-          assert MapSet.new(bus_received(consumer, 3)) == MapSet.new(sent)
+          assert MapSet.new(bus_until(consumer, Map.new(sent, &{&1, 1}))) == MapSet.new(sent)
         end
 
         test "an empty batch is accepted" do
@@ -146,8 +160,8 @@ defmodule EhOsContract.Bus.Suite do
           sent = [bus_message(taken), bus_message(also)]
           bus_publish([bus_message(other) | sent])
 
-          assert MapSet.new(bus_received(consumer, 2)) == MapSet.new(sent)
-          bus_nothing_more(consumer)
+          assert MapSet.new(bus_until(consumer, Map.new(sent, &{&1, 1}))) == MapSet.new(sent)
+          refute_receive {:bus_suite_delivered, ^consumer, %Message{name: ^other}}, 200
         end
 
         test "every consumer of a name gets the message" do
@@ -198,9 +212,7 @@ defmodule EhOsContract.Bus.Suite do
           assert [^first] = bus_received(consumer, 1)
           bus_publish([second])
 
-          received = bus_received(consumer, 3)
-          assert Enum.count(received, &(&1 == first)) == 1
-          assert Enum.count(received, &(&1 == second)) == 2
+          bus_until(consumer, %{first => 1, second => 2})
         end
 
         test "a handler that exits or throws gets the message again" do
@@ -265,10 +277,18 @@ defmodule EhOsContract.Bus.Suite do
           sent = bus_message(name)
           bus_publish([sent])
           assert [^sent] = bus_received(consumer, 1)
+
+          # The handler reports before it returns `:ack`, so the report alone does not
+          # say the acknowledgement is in; a stop in between would rightly bring the
+          # message back. A consumer that takes the next message has finished with
+          # the first.
+          marker = bus_message(name)
+          bus_publish([marker])
+          bus_until(consumer, %{marker => 1})
           bus_stop(consumer)
 
           bus_consume(consumer, [name])
-          bus_nothing_more(consumer)
+          refute_receive {:bus_suite_delivered, ^consumer, ^sent}, 200
         end
       end
     end
