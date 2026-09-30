@@ -24,7 +24,7 @@ gałąź `dsl-v2/domain-name-check`, z przeglądem, niewypchnięta („`name:` d
   `6f08572` — zapis, fast-forward — i `fb410c1`, merge #52). Historia `main` z merge'ami PR-ów; gałęzie etapów
   liniowe.
 - **`dsl-v2/domain-name-check`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `0e6e10f`, **niewypchnięta**:
-  reguła `name:` domeny i zapis w `PLAN.md`; nota przeglądu w `refs/notes/review` na głowie (lokalnie). Push i PR —
+  reguła `name:` domeny, `$` → `\z` w nazwach, nazwy aktorów i zapis w `PLAN.md`; nota przeglądu w `refs/notes/review` na głowie (lokalnie). Push i PR —
   na polecenie użytkownika.
 - **Otwarte na GitHubie:**
   - **Issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza repozytorium; zaparkowane 30 września, z
@@ -115,8 +115,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 ### Ostatnia pełna weryfikacja
 
 - **Lokalnie, 30 września, na `dsl-v2/domain-name-check` od `0e6e10f`**: brama z `sandbox/` → **EXIT=0** — sandbox
-  144, `check` 0 / 29 / 9; silnik **1015** (1012 w `main` + 3), `check` 0 / 66 / 5; web 52; auth 66; `docs/dsl` i
-  `docs/rules.md` aktualne.
+  144, `check` 0 / 29 / 9; silnik **1018** (1012 w `main` + 3 za `name:` + 3 za `$` i aktorów), `check` 0 / 66 / 5;
+  web 52; auth 66; `docs/dsl` i `docs/rules.md` aktualne.
 - **Wcześniej, na `dsl-v2/d11-dashed-namespace` od `0ca5383`** (#50 na `main` z #53 i #54): brama z
   `sandbox/` → **EXIT=0** — sandbox 144 testy, `check` 0 / 29 / 9; silnik **1012** (1005 w `main` + 7 z #50),
   `check` 0 / 66 / 5; web 52; auth **66**; `docs/dsl` i `docs/rules.md` aktualne. Na samym `6f08572` przedtem:
@@ -152,13 +152,24 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
   domeny dla `name:` spoza gramatyki segmentu przestrzeni nazw (z `_` albo bez — bez `_` odpada `:dispatch_rig` z
   fikstur i każda domena OTP nazwana z podkreślnikiem); albo w `namespaces/1` porównanie pierwszego segmentu z
   nazwą domeny. Nowy powód odmowy widoczny dla hosta.
-- **Z przeglądu `name:` domeny, sprzed tej zmiany, do decyzji użytkownika** (nowe powody odmowy widoczne dla hosta):
+- **Z przeglądu `name:` domeny, sprzed tej zmiany** — *oba zrobione 30 września na tej samej gałęzi, na polecenie
+  użytkownika* („`$` w nazwach i nazwy aktorów — co wyszło”). Opis sprzed decyzji:
   (1) **N1, D9 i ścieżki stron kończą wzorzec na `$`**, nie `\z` (`contract/rules/names.ex`, `domain/rules.ex` przy
   D9, `pages.ex`) — `command :"pay\n"` przechodzi N1, a capability `"acme.pay\n"` trafia do `Model.capabilities`,
   ścieżki OpenAPI i manifestu EHOS-a; ta sama klasa co `$` → `\z` w #55. (2) **Nazwy aktorów domeny nie mają
   sprawdzenia formy** — `actor :"*"` albo `:"billing.clerk"` w domenie `acme` daje rolę `acme.*` /
   `acme.billing.clerk` w manifeście; z przestrzeni aplikacji nie wychodzi, ale czy EHOS czyta `*` albo `>` w roli jako
   wzorzec, jest poza tym repozytorium. Możliwe: snake_case jak N1, z `\z`.
+- **Z przeglądu poprawek `$` i aktorów, sprzed nich, do decyzji użytkownika** (nowe powody odmowy widoczne dla
+  hosta): **nazwy pozostałych elementów domeny nie mają sprawdzenia formy** — wartości, encje, konteksty, podmioty,
+  systemy zewnętrzne, poddziedziny; sprawdzana jest tylko unikalność (D1). `value :"a/b"` daje moduł zagnieżdżony
+  `D.Values.A.B`, `:money_amount` i `:money__amount` — ten sam `MoneyAmount`; `context :"front desk"` psuje
+  identyfikator węzła Mermaida na mapie kontekstów; strony (`mix eh_os_contract.pages`) odmawiają dopiero przy
+  generowaniu. Możliwe: jedna reguła snake_case dla wszystkich nazw domeny (`DslRules.snake_case?/1` już jest), jak
+  N1 dla kontraktu. Obok, niżej: pole użyte jako `scope:` staje się kluczem w `scp` EHOS-a i nie ma sprawdzenia formy
+  poza F1 (wraca, gdy manifest poniesie zakresy); `Model.capabilities/1` przy zapytaniu i zdarzeniu nagrywanym o
+  jednej nazwie traci jedno bez kompilatora L3 (D14 łapie to w L3, zamyka się bezpiecznie); mapa capability liczona
+  od nowa przy każdym dispatchu z credentialem (do pomiaru).
 - **Z E11f, bez decyzji:** klucz idempotencji z etykietą aktora dłuższy niż ~2,7 KB daje 500 (limit długości byłby
   nowym powodem odmowy, widocznym dla hosta); ten sam aktor z tym samym kluczem dostaje stary paragon, także gdy nowa
   komenda ma inny zakres albo treść (opcja „skrót treści” odrzucona).
@@ -3105,6 +3116,42 @@ domeny w repozytorium przechodzi, a z nazw, które mogły publikować, odpadają
 
 **Brama** (30 września, na głowie gałęzi od `0e6e10f`): EXIT=0 — sandbox 144 (`check` 0/29/9), silnik **1015**
 (1012 + 3), `check` 0/66/5, web 52, auth 66; `docs/dsl` i `docs/rules.md` aktualne.
+
+### `$` w nazwach i nazwy aktorów — co wyszło (30 września)
+
+**Polecenie użytkownika** (30 września): poprawić na tej samej gałęzi obie luki z przeglądu `name:` domeny.
+
+**`$` → `\z`** (`58ce3da`): N1 (nazwy kontraktu — `command :"pay\n"` dawało capability `"<domena>.pay\n"` w
+`Model.capabilities/1`, OpenAPI i manifeście), D9 (nazwa niezmiennika — funkcja z nową linią w nazwie), ścieżki stron
+(`mix eh_os_contract.pages`) i dziesiętna w danych scenariusza (`"12.50\n"`; przy okazji `[0-9]` zamiast `\d`,
+jak każe `CLAUDE.md`). W sandboksie to samo w nazwie okresu TaxVision (`a8a1826`) — bez zmiany zachowania, bo
+`month_start/1` i tak odmawiał.
+
+**Nazwa aktora snake_case, pod D4** (`1ebe67c`, `360bd47`): nazwa człowieka to rola `<domena>.<aktor>` w manifeście —
+`actor :"*", :human` było rolą `"acme.*"`, `:"billing.clerk"` rolą dwusegmentową. Aktor systemowy roli nie ma
+(`Model.capabilities/1` bierze tylko ludzi), ale ta sama forma go obowiązuje, bo `by:` wymienia go jak człowieka —
+odmowa mówi to osobnym zdaniem. `nil`, `true`, `false` odmawiane jawnie, jak w D11. *Wybór asystenta:* kod **D4**
+(reguła aktorów), nie nowy; *odrzucone:* osobny kod — D4 jest już „regułą aktora”, a tabela odmów nie potrzebuje
+kolejnego wiersza dla jednej formy. N1, D4, D9 i ścieżki stron wołają jeden `DslRules.snake_case?/1`.
+
+**Testy i próby odwrotne:** N1 z komendą `:"close\n"`; D9 z `:"small\n"`; strony z wartością `:"amount\n"`;
+`test/contract_data_test.exs` (nowy) — `"12\n"`, `"12."`, `".5"`, `"1e3"`, cyfry arabsko-indyjskie; D4 — `:"*"`,
+`:"billing.clerk"`, `:Reception`, `:"clerk\n"`, `true`, systemowy `:"Registry Bot"`, kontrola `:front_desk2`.
+Każdy `$` przywrócony osobno → pada dokładnie jego test; bez reguły D4 → pada test D4; bez rozróżnienia rodzaju →
+pada ten sam (komunikat systemowego); bez odmowy `true` → ten sam.
+
+**Przegląd** (`code-review high` i bezpieczeństwo/wydajność, na `90d93db..1ebe67c`):
+- komunikat D4 twierdził, że aktor systemowy jest rolą — *poprawione* (`360bd47`), z testem;
+- `actor true` przechodziło — *poprawione* (`360bd47`);
+- wzorzec snake_case w czterech kopiach — *poprawione* (`360bd47`);
+- wzorzec okresu w sandboksie z `\d` i `$` — *poprawione* (`a8a1826`);
+- CHANGELOG mówił, że strona z nową linią się nie kompiluje, a odmawia task — *poprawione*;
+- nagłówek D4 w kodzie i w teście nie mówił o nazwie — *poprawione*;
+- komunikat D4 przy dziwnej nazwie domeny (`".*"` przy `name: nil`) — *bez zmiany*: D11 odmawia obok;
+- dziesiętna w scenariuszu ostrzejsza niż `Decimal.cast` w runtime (`"1e3"`, `".5"`) — *bez zmiany*: tak było
+  przed zmianą, zmiana dołożyła tylko `\z` i `[0-9]`;
+- nazwy pozostałych elementów domeny, pole `scope:`, mapa capability bez L3, koszt mapy przy dispatchu —
+  *pominięte*: sprzed tej zmiany, nowe powody odmowy albo pomiar, do użytkownika (otwarte pytania w handoffie).
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
