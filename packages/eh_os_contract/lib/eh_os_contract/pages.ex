@@ -86,7 +86,7 @@ defmodule EhOsContract.Pages do
   defp paths!(pages) do
     for {path, _lines} <- pages,
         segment <- path |> String.trim_trailing(".md") |> Path.split(),
-        not (segment =~ ~r/^[a-z][a-z0-9_]*$/) do
+        not (segment =~ ~r/^[a-z][a-z0-9_]*\z/) do
       raise ArgumentError,
             "the page #{inspect(path)} would be named after #{inspect(segment)}; a page is " <>
               "named after a snake_case name"

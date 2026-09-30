@@ -41,6 +41,23 @@ defmodule EhOsContract.ContractNamesTest do
       assert message =~ "N1: aggregate :Visit is not snake_case (not_snake_case.ex:4)"
       assert message =~ "N1: command :closeVisit is not snake_case (not_snake_case.ex:6)"
     end
+
+    test "a name ending in a newline is refused, since it becomes a capability" do
+      message =
+        refuse_contract("NewlineName", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :"close\n", "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+            event :visit_closed, "Wizyta zamknięta", terminal: true
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      assert message =~ ~s|N1: command :"close\\n" is not snake_case (newline_name.ex:6)|
+    end
   end
 
   describe "N1: one name per namespace" do

@@ -735,7 +735,7 @@ defmodule EhOsContract.Domain.Rules do
 
     name =
       cond do
-        not (Atom.to_string(invariant.name) =~ ~r/^[a-z][a-z0-9_]*$/) ->
+        not (Atom.to_string(invariant.name) =~ ~r/^[a-z][a-z0-9_]*\z/) ->
           [
             {"#{where} is not snake_case; it is the name of the function that checks it",
              invariant}

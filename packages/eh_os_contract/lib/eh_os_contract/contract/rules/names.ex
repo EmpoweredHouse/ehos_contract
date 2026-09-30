@@ -50,7 +50,9 @@ defmodule EhOsContract.Contract.Rules.Names do
     end
   end
 
-  defp snake_case?(name), do: is_atom(name) and Atom.to_string(name) =~ ~r/^[a-z][a-z0-9_]*$/
+  # `\z`, not `$`, which also matches before a final newline: a command `:"pay\n"` would
+  # have been the capability `"<domain>.pay\n"`.
+  defp snake_case?(name), do: is_atom(name) and Atom.to_string(name) =~ ~r/^[a-z][a-z0-9_]*\z/
 
   # Every declared name, with what it names.
   defp named(d) do

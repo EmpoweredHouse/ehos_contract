@@ -328,6 +328,9 @@ defmodule EhOsContract.PagesTest do
     spaced = %{domain | values: [%{amount | name: :"Money Amount"} | rest]}
     assert_raise ArgumentError, ~r/named after "Money Amount"/, fn -> Pages.render(spaced, []) end
 
+    broken = %{domain | values: [%{amount | name: :"amount\n"} | rest]}
+    assert_raise ArgumentError, ~r/named after "amount\\n"/, fn -> Pages.render(broken, []) end
+
     [till] = domain.contexts
 
     clashing = %{

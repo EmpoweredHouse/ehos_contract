@@ -35,7 +35,7 @@ defmodule EhOsContract.Contract.Data do
   def problems(:decimal, value) when is_integer(value), do: []
 
   def problems(:decimal, value) when is_binary(value) do
-    if value =~ ~r/^-?\d+(\.\d+)?$/,
+    if value =~ ~r/^-?[0-9]+(\.[0-9]+)?\z/,
       do: [],
       else: ["#{inspect(value)} is not a decimal; write an integer or a string of digits"]
   end
