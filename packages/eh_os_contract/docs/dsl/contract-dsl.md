@@ -1492,7 +1492,7 @@ Events born elsewhere: a sibling contract's (a module), or another application's
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`from`](#contract-consumes-from){: #contract-consumes-from .spark-required} | `atom \| String.t` |  | The sibling contract, or the published name. |
+| [`from`](#contract-consumes-from){: #contract-consumes-from .spark-required} | `atom \| String.t` |  | The sibling contract, or the published name, versioned as `publish as:` is, like `"my-shop.entry.recorded.v1"`. |
 | [`events`](#contract-consumes-events){: #contract-consumes-events } | `atom \| list(atom) \| keyword` | `[]` | The sibling contract's events. |
 ### Options
 

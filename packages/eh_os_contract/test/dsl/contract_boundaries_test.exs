@@ -263,8 +263,9 @@ defmodule EhOsContract.ContractBoundariesTest do
         """)
 
       assert message =~
-               ~s|D11: publication :visit_closed: "Rehmed/VisitClosed" is not a versioned name, | <>
-                 "dotted lowercase segments ending in .v<n>"
+               ~s|D11: publication :visit_closed: "Rehmed/VisitClosed" is not a versioned name: | <>
+                 "the application's namespace, which may hold a dash but not at either end, then " <>
+                 "dotted snake_case segments, ending in .v<n>"
     end
 
     test "a name ending in a newline is refused" do

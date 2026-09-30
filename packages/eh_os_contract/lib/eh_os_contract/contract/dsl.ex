@@ -699,7 +699,9 @@ defmodule EhOsContract.Contract.Dsl do
       from: [
         type: {:or, [:atom, :string]},
         required: true,
-        doc: "The sibling contract, or the published name."
+        doc:
+          "The sibling contract, or the published name, versioned as `publish as:` is, " <>
+            "like `\"my-shop.entry.recorded.v1\"`."
       ],
       events: [type: {:wrap_list, :atom}, default: [], doc: "The sibling contract's events."],
       as: [
