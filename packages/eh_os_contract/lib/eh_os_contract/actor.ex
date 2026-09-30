@@ -53,6 +53,11 @@ defmodule EhOsContract.Actor do
   def credential(subject, capabilities, scopes \\ %{}) when is_binary(subject) do
     capabilities = MapSet.new(capabilities)
 
+    # The subject is who the actor is: its label in the log, and the space its
+    # idempotency keys live in. An empty one would be one actor for every credential
+    # that has it.
+    if subject == "", do: raise(ArgumentError, "a credential's subject is not empty")
+
     unless Enum.all?(capabilities, &is_binary/1) and scopes?(scopes) do
       raise ArgumentError,
             "a credential's capabilities are strings, and its scopes map a capability to " <>
