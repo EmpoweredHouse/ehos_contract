@@ -90,8 +90,7 @@ defmodule EhOsContract.Bus.Local do
      %{
        retry_after: Keyword.get(opts, :retry_after, @default_retry),
        consumers: %{},
-       in_hand: %{},
-       monitored: MapSet.new()
+       in_hand: %{}
      }}
   end
 
@@ -112,17 +111,15 @@ defmodule EhOsContract.Bus.Local do
         }
       )
 
-    {:reply, :ok, monitor(%{state | consumers: consumers}, pid)}
+    Process.monitor(pid)
+    {:reply, :ok, %{state | consumers: consumers}}
   end
 
   def handle_call({:publish, messages}, _from, state) do
     consumers =
-      Enum.reduce(messages, state.consumers, fn message, consumers ->
-        Map.new(consumers, fn {name, consumer} ->
-          if MapSet.member?(consumer.names, message.name),
-            do: {name, %{consumer | queue: :queue.in(message, consumer.queue)}},
-            else: {name, consumer}
-        end)
+      Map.new(state.consumers, fn {name, consumer} ->
+        taken = Enum.filter(messages, &MapSet.member?(consumer.names, &1.name))
+        {name, %{consumer | queue: :queue.join(consumer.queue, :queue.from_list(taken))}}
       end)
 
     {:reply, :ok, wake(%{state | consumers: consumers})}
@@ -185,8 +182,7 @@ defmodule EhOsContract.Bus.Local do
         {name, %{c | waiting: MapSet.delete(c.waiting, pid)}}
       end)
 
-    {:noreply,
-     wake(%{state | consumers: consumers, monitored: MapSet.delete(state.monitored, pid)})}
+    {:noreply, wake(%{state | consumers: consumers})}
   end
 
   # What `:sys.get_status/1` and a crash report print: how much is held, never a
@@ -243,14 +239,5 @@ defmodule EhOsContract.Bus.Local do
       end)
 
     %{state | consumers: consumers}
-  end
-
-  defp monitor(state, pid) do
-    if MapSet.member?(state.monitored, pid) do
-      state
-    else
-      Process.monitor(pid)
-      %{state | monitored: MapSet.put(state.monitored, pid)}
-    end
   end
 end
