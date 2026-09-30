@@ -1,153 +1,190 @@
-# Output Template - Contract Distillation
+# Output template — contract distillation
 
-Use this exact markdown structure for each process the material describes.
-
-Do not invent missing details. Mark unknowns explicitly. Every important claim needs a source
-(transcript timestamp, speaker, whiteboard/photo reference, event-storming board reference) or an
-explicit `unverified`.
+The domain once, then one section per process. Do not invent missing details; mark unknowns
+explicitly. Every claim that matters carries a source (transcript timestamp, speaker, board
+reference) or an explicit `unverified`.
 
 ---
 
 ```markdown
+# [Client] — distillation, [date]
+
+**Input used:** [process-extraction output / raw transcripts / mixed — say which]
+
+## Domain
+
+### Subdomains and contexts
+
+| Context (client's words) | Technical name | Subdomain | Core / supporting / generic | Evidence |
+|---|---|---|---|---|
+| [...] | `snake_case` | [...] | [...] | [source] |
+
+### Glossary, per context
+
+| Context | Term | Definition, as people gave it | Words to avoid | Translation | Evidence |
+|---|---|---|---|---|---|
+| [...] | [...] | [...] | [...] | [or none] | [source] |
+
+### Relations between contexts
+
+| Upstream | Downstream | How (conforms / translates / separate ways / …) | Evidence |
+|---|---|---|---|
+| [...] | [...] | [...] | [source] |
+
+### Actors
+
+| Actor (client's words) | Human / system | Backed by (system only) | Context | Evidence |
+|---|---|---|---|---|
+| [...] | [...] | [external or —] | [...] | [source] |
+
+### Subjects of personal data
+
+| Subject | Identified by | Evidence |
+|---|---|---|
+| [patient / employee / …] | [which identifier — never a natural one such as a PESEL as the key] | [source] |
+
+### Values
+
+| Value | Shape and unit | What makes one invalid | A valid example | An invalid example | Evidence |
+|---|---|---|---|---|---|
+| [money / period / tax number] | [integer, grosze / "YYYY-MM" / …] | [...] | [...] | [...] | [source] |
+
+### External systems
+
+| System (business fact, not vendor) | Sends / receives / both | What "unavailable" looks like, in the client's words | "No answer" = "answered no"? | Evidence |
+|---|---|---|---|---|
+| [...] | [...] | [...] | [...] | [source] |
+
+---
+
 ## [Process name, in the client's words]
 
-**Input used:** [process-extraction output / raw transcripts / mixed — state which]
-**Evidence quality:** [observed | stakeholder-stated | inferred | hypothesis | unclear]
+**Context:** [...] · **Evidence quality:** [observed | stakeholder-stated | inferred | hypothesis | unclear]
 
-### Event candidates
+### Facts, and the candidates that are not
 
-| # | Event (client's words, past tense) | Proposed technical name | **What depends on it having happened** | Verdict | Evidence |
-|---|-------------------------------------|--------------------------|-----------------------------------------|---------|----------|
-| 1 | [...] | `snake_case_name` | [a policy, an actor waiting, a deadline running, a terminal state, the fallback of a promise — or **nothing**] | fact / **field** | [source] |
+| # | Candidate (client's words, past tense) | Proposed name | **What depends on it having happened** | Verdict | Evidence |
+|---|---|---|---|---|---|
+| 1 | [...] | `snake_case` | [a rule refuses after it, a reaction takes it, an actor waits, a promise runs from it, it ends the run — or **nothing**] | fact / **field** | [source] |
 
-*An empty dependency cell means `field`, and a field does not go into the contract. Keep the rejected
-rows: they are what stops the next reader re-adding them, and the ratio of facts to fields is worth
-knowing — on the run this column was added after, it was 7 to 15.*
+*An empty dependency cell means `field`, and a field is not a fact. Keep the rejected rows: they
+stop the next reader re-adding them, and the ratio is worth knowing — on the run this column was
+added after, it was 7 facts to 15 fields.*
 
-### Payload shape, per event
+### Decided or recorded
 
-| Event | Field | What it means (plain language) | Closest DSL type fit | Evidence |
-|-------|-------|----------------------------------|------------------------|----------|
-| [event] | [field] | [meaning] | [:id / :string / :integer / :timestamp / :enum / does not fit — say why] | [source] |
+| Fact | Decided by a command (its name, who may issue it) | Or recorded (observed by whom, answered by which system) | Can the asking be refused? | Evidence |
+|---|---|---|---|---|
+| [...] | [...] | [...] | [yes, by which rule / no] | [source] |
 
-### Identity
+### What must stay true
 
-- **Same-fact-twice rule:** [what the material says distinguishes a genuine duplicate from a new
-  fact, or "not addressed" / "unclear"]
+| Rule (client's sentence) | Over one thing, or across several | Refused case, with real data | Evidence |
+|---|---|---|---|
+| [...] | [one visit / every visit of a payer in a period] | [...] | [source] |
+
+*Rules on one command's own data (an amount is positive) are that command's constraints; mark them.*
+
+### Fields
+
+| Fact or command | Field | What it means | Closest type | Personal, and whose | Evidence |
+|---|---|---|---|---|---|
+| [...] | [...] | [...] | [identifier / typed text / number / decimal / yes-no / date / time / one of / list / a domain value / does not fit — why] | [no / yes, the patient's] | [source] |
+
+### The run
+
+- **One case, start to end:** [...]
+- **Two in parallel for one actor:** [yes / no / unclear] — **what tells them apart:** [...]
+- **Facts that repeat within one case**, and what distinguishes the second: [...]
 - **Evidence:** [source]
-
-### Instance
-
-- **What is "one case":** [description]
-- **Can two run in parallel for the same actor:** [yes/no/unclear] — **what distinguishes them if so:** [...]
-- **Evidence:** [source]
-
-### Repeated events within one instance
-
-| Event | Happens more than once per case? | What distinguishes occurrence 2 from occurrence 1 | Evidence |
-|-------|-----------------------------------|----------------------------------------------------|----------|
-| [event] | [yes/no/unclear] | [...] | [source] |
 
 ### Terminal states
 
-| Ending | Good/bad | Evidence |
-|--------|----------|----------|
-| [...] | [good/bad/neutral] | [source] |
-
-### Stages / gates
-
-| Gate | What it blocks | Evidence |
-|------|-----------------|----------|
-| [X must happen before Y is possible] | [...] | [source] |
-
-*Note if the material only supports "no claim about order" — do not invent a linear sequence.*
-
-### Rejected as fields, not facts
-
-| Candidate | Why nothing depends on it | Evidence |
-|-----------|----------------------------|----------|
+| Ending | Good / bad / neutral | Evidence |
+|---|---|---|
 | [...] | [...] | [source] |
 
-*Not a leftovers list — this is where a later reader checks whether a "missing" event was
-overlooked or deliberately excluded, and absence cannot distinguish those two.*
+### Stages and gates
 
-### Trace candidates
-
-| # | After (event) | Within (N, unit) | Then (event) | Or else (event) | Does timing bind the fallback too? | Who is this promised to | Evidence |
-|---|----------------|--------------------|--------------|-------------------|-------------------------------------|--------------------------|----------|
-| 1 | [...] | [...] | [...] | [...] | [yes/no/not stated] | [patient/payer/regulator/internal] | [source] |
-
-### Cadence
-
-- **Recurring on a schedule, or purely event-triggered:** [schedule / event-driven / unclear]
-- **If scheduled, how often:** [...]
-- **Evidence:** [source]
-
-### Retain / sensitive data
-
-| Field | Category | Handler needs raw value? | Suggested policy | Evidence |
-|-------|----------|----------------------------|--------------------|----------|
-| [field] | [health data / other PII / not sensitive] | [yes/no/unclear] | [persist/hash/drop — tentative] | [source] |
-
-### External dependencies
-
-| Dependency (business fact, not vendor name) | What "unavailable" looks like, in the client's words | Does "no answer" mean the same as "answered no"? | Evidence |
-|-----------------------------------------------|--------------------------------------------------------|-----------------------------------------------------|----------|
+| Gate (X must happen before Y is possible) | What it blocks | Claimed or merely typical | Evidence |
+|---|---|---|---|
 | [...] | [...] | [...] | [source] |
 
-### Rules and examples
+*If the material supports no claim about order, say so; do not invent a sequence.*
 
-| Rule ("when X then Y") | Example that worked (real numbers) | Example that went wrong (real numbers) | Evidence |
-|--------------------------|--------------------------------------|-------------------------------------------|----------|
-| [...] | [...] | [...] | [source] |
+### Reactions
 
-### Source / unverified summary
+| When (fact) | Then | Kind (automatic step / tell or ask a system / chase if not in time) | Together with the fact, or may follow it | Evidence |
+|---|---|---|---|---|
+| [...] | [...] | [...] | [...] | [source] |
 
-| Claim or number | Source | Or: unverified (team's own placeholder) |
-|-------------------|--------|--------------------------------------------|
+### What people read
+
+| What (list, total) | Who reads it | Narrowed to what | Evidence |
+|---|---|---|---|
+| [...] | [...] | [their clinic / their clients / all] | [source] |
+
+### Promises
+
+| # | After (fact) | Within (N, unit) | Then (fact) | Or else (fact) | Does the time bind the fallback? | Promised to whom | Evidence |
+|---|---|---|---|---|---|---|---|
+| 1 | [...] | [...] | [...] | [...] | [yes / no / not stated] | [patient / payer / regulator / internal] | [source] |
+
+### Deadline, cadence, accountability
+
+- **Deadline on the whole case:** [N, unit / none stated] — [source]
+- **Recurring on a schedule, or triggered:** [schedule, how often / triggered / unclear] — [source]
+- **Who answers for the process:** [role] — [source]
+
+### Scenarios
+
+| Given (what had happened) | When (asked, or arrived) | Then (what followed, or which rule refused it) | Real case? | Evidence |
+|---|---|---|---|---|
+| [...] | [...] | [...] | [yes, from … / constructed] | [source] |
+
+*Every rule above needs a row where it refused.*
+
+### Source / unverified
+
+| Claim or number | Source | Or: unverified (the team's placeholder) |
+|---|---|---|
 | [...] | [...] | [...] |
 
-### Open questions for this process
+### Open questions
 
-| Question | Blocks | Evidence gap |
-|----------|--------|----------------|
-| [...] | [contract-writing / a specific DSL key] | [what's missing] |
+| Question | Blocks | What is missing |
+|---|---|---|
+| [...] | [a declaration, a promise, a field] | [...] |
 ```
 
 ---
 
-After all processes, add:
+After all processes:
 
 ```markdown
-## Summary across processes
+## Across processes
 
-| # | Process | Claimed orderings (gates) | Terminal states | Trace candidates | Payload fields not fitting the closed type set | Biggest gap |
-|---|---------|----------------------------|------------------|-------------------|---------------------------------------------------|-------------|
-| 1 | [name] | [count] | [count, incl. bad endings] | [count] | [list, or none] | [...] |
+| Process | Facts / fields rejected | Rules with refused cases | Gates | Terminal states | Promises | Fields not fitting a type |
+|---|---|---|---|---|---|---|
+| [name] | [n / n] | [n of n] | [n] | [n, bad endings included] | [n] | [list, or none] |
 
-*The first three columns are what the overlay verifies without a clock. The fourth is the timed
-half, and it is normal for it to be small.*
+*Gates, terminal states and the declared paths are what the report verifies without a clock. The
+promises are the timed half, and it is normal for that column to be small.*
 
-## Cross-process findings
-
-### Shared identity/instance patterns
+### Values and identifiers several processes share
 - [...]
 
-### Fields repeatedly not fitting the closed type set
-- [field kind]: [which processes, and what workaround was considered]
+### Processes with no promise
+- [name]: [a fact about the domain, not a verdict. Say what it verifies structurally instead, and
+  whether one of its orderings is one nobody enforces today — which is what the report surfaces]
 
-### Processes with zero trace candidates
-- [name]: [a fact about the domain, not a verdict on the process. Say what it verifies
-  structurally instead — claimed orderings, gates, terminal states — and whether any of those
-  orderings is one nobody enforces today, which is what the overlay exists to surface]
+### Reminders anchored before a scheduled moment
+- [name]: [not a promise, which runs forward from an observed fact; a timer, or the client's own
+  scheduling]
 
-### Promises anchored backwards from a scheduled moment
-- [name]: [not expressible as `trace`, which runs forwards from an observed fact. Say so, and say
-  it belongs to the client application's reminder mechanism rather than to the contract]
-
-### Readiness signal
-- **Processes ready for a first contract draft:** [...]
-- **Processes needing another confirmation pass with the client:** [...]
-- **Judge readiness on structure first.** A process with clear instance, ordered stages and
-  honest terminal states is ready whether or not it has a single `trace`.
+### Readiness
+- **Ready for a first domain and contract:** [...]
+- **Needing another pass with the client:** [...]
+- **Judge readiness on structure first.** A process with a clear run, ordered stages, honest
+  terminal states and rules with refused cases is ready whether or not it has a promise.
 ```
