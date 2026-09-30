@@ -62,9 +62,11 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   held only to uniqueness: `value :"a/b"` generated `<Domain>.Values.A.B`, a module nested in another, and
   `context :"front desk"` broke the context map's diagram; `mix eh_os_contract.pages` refused such a name, but
   only when it ran. Two values whose names camelize alike (`:money_amount`, `:money_amount_`, `:money__amount`)
-  generated one module and are now refused as two of one name, and a value named after a type Elixir builds
-  in (`:map`, `:integer`), whose `@type` failed to compile with an error pointing at the library, is refused
-  with a code. A domain that declared one no longer compiles. Field names are not covered.
+  generated one module of invariants once either had one, and are now refused as two of one name. A value
+  named after a type Elixir builds in (`:map`, `:bool`), whose `@type` failed to compile with an error pointing
+  at the library, and one named after a built-in field type (`:date`, `:id`), which a field of that type
+  silently meant instead, are refused with a code. A domain that declared one no longer compiles. Field names
+  are not covered.
 - **D4: an actor's name is snake_case.** A person's is a role, `<domain>.<actor>`, in the manifest EHOS
   reads, and nothing checked its form: `actor :"*", :human` in a domain `acme` was the role `"acme.*"`, and
   `:"billing.clerk"` a role of two segments. A system actor is held to the same form, since `by:` names it as

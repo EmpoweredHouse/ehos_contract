@@ -11,11 +11,12 @@ defmodule EhOsContract.Domain.Rules do
   contract's (N1). The names become a value's module — `value :"a/b"` was
   `<Domain>.Values.A.B`, a module nested in another — node identifiers of the context
   map, where `context :"front desk"` broke the diagram, page paths, which refused such
-  a name only when the pages were generated, and a subject's column. Two values whose
-  names camelize alike, `:money_amount` and `:money_amount_` or `:money__amount`, would
-  be one module, `MoneyAmount`, so they are refused as two of one name; and a value is
-  not named after a type Elixir builds in, `:map` or `:integer`, whose `@type` it could
-  not define.
+  a name only when the pages were generated, and the type a subject's key is stored
+  under. Two values whose names camelize alike, `:money_amount` and `:money_amount_` or
+  `:money__amount`, would be one module of invariants, `Values.MoneyAmount`, so they
+  are refused as two of one name, invariants or not. A value is not named after a type
+  Elixir builds in, `:map` or `:integer`, whose `@type` it could not define, nor after a
+  built-in field type, `:date`, which a field of that type would mean instead.
 
   **D4**, since the review of the domain's `name:`: an actor's name is snake_case, as a
   contract's names are (N1). A person's is a role, `<domain>.<actor>`, in the manifest
@@ -184,21 +185,34 @@ defmodule EhOsContract.Domain.Rules do
 
     values = for %Value{name: name} = value <- entities, DslRules.name?(name), do: value
 
-    # Two of one name are refused above already.
+    # Each name that camelizes as an earlier, different one does, at its first
+    # declaration; two of one name are refused above already.
     modules =
-      for duplicate <- duplicates(values, &camelize(&1.name)),
-          %Value{name: first} =
-            Enum.find(values, &(camelize(&1.name) == camelize(duplicate.name))),
-          first != duplicate.name do
-        {"D1: value #{inspect(duplicate.name)} is the module #{camelize(duplicate.name)}, as " <>
-           "value #{inspect(first)} is; rename one of them", duplicate}
+      for {camel, [%Value{name: first} | _] = group} <-
+            Enum.group_by(values, &camelize(&1.name)),
+          other <- Enum.uniq_by(group, & &1.name),
+          other.name != first do
+        {"D1: value #{inspect(other.name)} camelizes to #{camel}, as value #{inspect(first)} " <>
+           "does, and a value's invariants are the module Values.#{camel}; rename one of them",
+         other}
       end
 
     types =
-      for %Value{name: name} = value <- values, built_in_type?(name) do
-        {"D1: value #{inspect(name)} is named after a type Elixir builds in, and its @type " <>
-           "could not be defined; name it after what it holds", value}
+      for %Value{name: name} = value <- values do
+        cond do
+          built_in_type?(name) ->
+            {"D1: value #{inspect(name)} is named after a type Elixir builds in, and its @type " <>
+               "could not be defined; name it after what it holds", value}
+
+          name in built_in_types() ->
+            {"D1: value #{inspect(name)} is named after a built-in field type, which a field " <>
+               "of type #{inspect(name)} would mean instead; name it after what it holds", value}
+
+          true ->
+            nil
+        end
       end
+      |> Enum.reject(&is_nil/1)
 
     forms ++ by_kind ++ modules ++ types ++ terms ++ relations ++ both
   end

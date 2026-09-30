@@ -111,21 +111,26 @@ defmodule EhOsContract.DomainRulesTest do
           value :desk2, :integer
           value :desk_2, :integer
           value :money_amount, :integer
+          value :money_amount_, :integer
         """)
 
       assert message =~
-               "D1: value :money_amount_ is the module MoneyAmount, as value :money_amount is; " <>
-                 "rename one of them (one_module.ex:5)"
+               "D1: value :money_amount_ camelizes to MoneyAmount, as value :money_amount does, " <>
+                 "and a value's invariants are the module Values.MoneyAmount; rename one of them " <>
+                 "(one_module.ex:5)"
 
       assert message =~
-               "D1: value :money__amount is the module MoneyAmount, as value :money_amount is"
+               "D1: value :money__amount camelizes to MoneyAmount, as value :money_amount does"
 
-      assert message =~ "D1: value :desk_2 is the module Desk2, as value :desk2 is"
+      assert message =~ "D1: value :desk_2 camelizes to Desk2, as value :desk2 does"
       assert message =~ "D1: two values are named :money_amount (one_module.ex:9)"
-      refute message =~ "value :money_amount is the module"
+      assert message =~ "D1: two values are named :money_amount_ (one_module.ex:10)"
+      refute message =~ "value :money_amount camelizes"
+      # A repeated name is refused once, as two of one name.
+      assert length(String.split(message, "value :money_amount_ camelizes")) == 2
     end
 
-    test "a value named after a type Elixir builds in is refused; control: snake_case names" do
+    test "a value named after a built-in type is refused; control: snake_case names" do
       message =
         refused("BuiltInName", """
           value :map, :string
@@ -133,6 +138,8 @@ defmodule EhOsContract.DomainRulesTest do
           value :bool, :boolean
           value :var, :string
           value :char_list, :string
+          value :date, :string
+          value :id, :string
         """)
 
       assert message =~
@@ -142,6 +149,12 @@ defmodule EhOsContract.DomainRulesTest do
       for name <- [:integer, :bool, :var, :char_list],
           do:
             assert(message =~ "D1: value #{inspect(name)} is named after a type Elixir builds in")
+
+      assert message =~
+               "D1: value :date is named after a built-in field type, which a field of type " <>
+                 ":date would mean instead; name it after what it holds (built_in_name.ex:9)"
+
+      assert message =~ "D1: value :id is named after a built-in field type"
 
       compiles("NotBuiltInName", """
         context :front_desk2, "Recepcja", subdomain: :supporting
