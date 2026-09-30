@@ -14,7 +14,9 @@ Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, s
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. **Trwa pivot do v2** (DSL na Sparku, model
 domeny w stylu ESDM, event sourcing na własnym magazynie, crypto-shredding). **E0–E10 i E11a–E11d są w `main`**
 (ostatnio #48: E11e — skille). **E11 — Cięcie** idzie częściami E11a–E11f („Przed E11 — podział i decyzje
-użytkownika”); **E11f jest w toku**: trzy części zrobione na gałęzi, bez PR-a („E11f — co wyszło, część 1”).
+użytkownika”); **E11f jest w toku** na gałęzi, bez PR-a („E11f — co wyszło, część 1”): klucz idempotencji w
+zakresie aktora, testy starej historii, jeden `scope`; ostatnia część (boundary a nieużywane zdarzenia) czeka na
+decyzję użytkownika.
 W bibliotekach nie ma już kodu v1, nazwy `Next` ani historii migracji; dokumentacja pakietu jest v2 i test trzyma ją
 przy kodzie.
 
@@ -38,8 +40,8 @@ przy kodzie.
 
 ### Co zostało — i czyje to jest
 
-- **E11f — reszta** — asystenta: duplikacja `scope` (dispatch i D10), boundary dekodujące nieużywane własne
-  zdarzenia (O(N²) na wyciąg TaxVision; może wymagać nowego słowa DSL-a — wtedy do użytkownika z przykładem).
+- **E11f — reszta** — boundary dekodujące własne zdarzenia, których `evolve/2` nie składa (O(N²) na wyciąg
+  TaxVision) — **do decyzji użytkownika**, opcje w „E11f — co wyszło, część 1”. Potem przegląd E11f-4 i PR.
 - **Do decyzji użytkownika, z E11f:** czym silnik rozpoznaje kontrakt przez zmianę nazwy modułu — dziś nazwą
   modułu wszędzie poza składaniem strumienia w dispatchu („E11f — co wyszło, część 1”, E11f-3).
 - **Po E11:** kontrakty sandboxa do testów pakietu jako fikstury akceptacyjne, potem **manifest v2** (po akceptacji
@@ -92,7 +94,9 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
   w pakiecie silnika, a w `sandbox/` i pakiecie web skasować
   `_build/*/lib/*/.mix/cached_dot_formatter`, inaczej `mix format` doda nawiasy;
 - fikstury kompilowane ze stringów w testach: numer linii w asercji to linia w stringu, nie w pliku testu;
-- próba odwrotna: kopia pliku w scratchpadzie, mutacja, test, `cp` z kopii i `cmp` — nie `git stash`;
+- próba odwrotna: kopia pliku w scratchpadzie, mutacja, test, `cp` z kopii i `cmp` — nie `git stash` i **nie
+  `git checkout -- plik`**, które cofa do HEAD razem z niezacommitowaną zmianą (E11f: zmazało refaktor, nałożony
+  ponownie z tego samego skryptu);
 - `~s(...)` kończy się na pierwszym `)`; fikstury v2: kontrakt bez procesu się nie kompiluje (R1), `publish … as:`
   wersjonowane (D11), `consumes "<nazwa>"` wymaga pól, `send` koliduje z `Kernel.send/2` (N2); opcja encji Sparka z
   blokiem idzie **do środka bloku** (`promise :x do unverified true … end`);
@@ -2752,6 +2756,17 @@ kolejnymi częściami.
   zmiana nazwy modułu z historią jest niedozwolona i `change-contract` tak mówi (rekomendacja asystenta); (2)
   rozpoznawać kontrakt po nazwie procesu, unikalnej w systemie (X7) i obecnej w typie każdego zdarzenia — zmienia
   klucze konsumentów, zapytania raportu, idempotencję i odczyt w trzech czytelnikach.
+- **E11f-4, `005bcad`** — jeden odczyt zakresu komendy i query w dispatchu (były dwie kopie) i jedna pętla D10
+  po zakresowanych komendach i query; `one_value/2` oparte na `Key.base_type/2`. Zachowanie bez zmian: testy D10 i
+  zakresu przechodzą, a padają przy zepsutej gałęzi listy (1) i kodowaniu zakresu (7).
+- **E11f-5, do decyzji użytkownika — boundary czyta własne zdarzenia, których nie składa.** `TurnoverMatching`
+  (TaxVision) przy każdym `run_matching` czyta i dekoduje wszystkie swoje `bank_turnover_list_created` z całymi
+  listami obrotów, choć `evolve/2` przepuszcza je bez zmiany (`def evolve(state, _event), do: state`) — O(N²) na
+  wyciąg. *Możliwe:* (A) słowo DSL-a przy jednostce, np. `folds [...]`, i odczyt tylko tych typów, sprawdzany z
+  `evolve/2`; (B) bez słowa: silnik czyta tylko typy, dla których `evolve/2` ma własną klauzulę, gdy jedyny
+  catch-all to dosłownie `def evolve(state, _), do: state` — stan i tak nie zależy od reszty, więc warunek
+  konfliktu DCB zawęża się poprawnie; (C) przebudować sandbox — wyciąg do osobnej jednostki, biblioteka bez zmian;
+  (D) zostawić do pomiaru.
 - **Weryfikacja:** brama po wycofaniu i poprawkach przeglądu `EXIT=0` — sandbox 143, `check` 0/29/9; silnik **990**
   (986 + 2 testy klucza + 2 testy historii), `check` 0/66/5; web 52; auth 62.
 
