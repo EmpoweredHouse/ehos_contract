@@ -16,6 +16,7 @@ defmodule EhOsContract.DslRules do
 
   # `\z`, not `$`, which also matches before a final newline.
   @namespace ~r/^[a-z]([-a-z0-9_]*[a-z0-9_])?\z/
+  @snake_case ~r/^[a-z][a-z0-9_]*\z/
 
   @typedoc "A broken rule, and the declaration it points at, or where it was written."
   @type violation :: {String.t(), struct() | :erl_anno.anno()}
@@ -26,6 +27,13 @@ defmodule EhOsContract.DslRules do
   # domain cannot compile under a name none of its publications could start with.
   @spec namespace?(term()) :: boolean()
   def namespace?(segment), do: is_binary(segment) and segment =~ @namespace
+
+  @doc false
+  # A snake_case name, as text: what a contract's names (N1), a domain's actors (D4), a
+  # value's invariants (D9) and a page's path are held to. One pattern, so that a
+  # newline let through by one of them cannot be let through by another.
+  @spec snake_case?(term()) :: boolean()
+  def snake_case?(text), do: is_binary(text) and text =~ @snake_case
 
   @doc """
   `{:ok, dsl}` when there are no violations, and otherwise the one error that

@@ -7,8 +7,9 @@ defmodule EhOsContract.Domain.Rules do
   external.
 
   **D4**, since the review of the domain's `name:`: an actor's name is snake_case, as a
-  contract's names are (N1), because it is a role, `<domain>.<actor>`, in the manifest
-  EHOS reads; `actor :"*"` would have been the role `"acme.*"`.
+  contract's names are (N1). A person's is a role, `<domain>.<actor>`, in the manifest
+  EHOS reads — `actor :"*", :human` would have been the role `"acme.*"` — and a
+  system's is named in `by:` as a person's is.
 
   **D8** (plan EL2): a field's `issued_by:` names an external of this domain.
 
@@ -564,7 +565,7 @@ defmodule EhOsContract.Domain.Rules do
     end
   end
 
-  # --- D4: a person is not backed by a system ------------------------------------
+  # --- D4: an actor is named as a role, and a person is not backed by a system ---
 
   defp d4(entities, domain) do
     externals = MapSet.new(for %External{name: name} <- entities, do: name)
@@ -579,14 +580,21 @@ defmodule EhOsContract.Domain.Rules do
   defp actor_violations(actor, externals, contexts, domain) do
     where = "D4: actor #{inspect(actor.name)}"
 
-    # `\z`, not `$`, which also matches before a final newline.
+    # `nil`, `true` and `false` are atoms whose text fits.
     name =
-      if Atom.to_string(actor.name) =~ ~r/^[a-z][a-z0-9_]*\z/,
-        do: [],
-        else: [
-          {"#{where} is not snake_case; it is the role " <>
-             "#{inspect("#{domain.name}.#{actor.name}")}", actor}
-        ]
+      cond do
+        actor.name not in [nil, true, false] and DslRules.snake_case?(Atom.to_string(actor.name)) ->
+          []
+
+        actor.kind == :human ->
+          [
+            {"#{where} is not snake_case; it is the role " <>
+               "#{inspect("#{domain.name}.#{actor.name}")}", actor}
+          ]
+
+        true ->
+          [{"#{where} is not snake_case, as every name in by: is", actor}]
+      end
 
     backed_by =
       cond do
@@ -749,7 +757,7 @@ defmodule EhOsContract.Domain.Rules do
 
     name =
       cond do
-        not (Atom.to_string(invariant.name) =~ ~r/^[a-z][a-z0-9_]*\z/) ->
+        not DslRules.snake_case?(Atom.to_string(invariant.name)) ->
           [
             {"#{where} is not snake_case; it is the name of the function that checks it",
              invariant}

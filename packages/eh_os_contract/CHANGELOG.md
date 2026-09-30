@@ -58,15 +58,16 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   domain whose name is not lowercase letters, digits, `_` and `-`, starting with a letter and not ending with a
   dash, no longer compiles, even one that publishes nothing, and the refusal points at its `use`. Of the names
   that could publish before, only those with a dot are refused.
-- **D4: an actor's name is snake_case.** It is a role, `<domain>.<actor>`, in the manifest EHOS reads, and
-  nothing checked its form: `actor :"*"` in a domain `acme` was the role `"acme.*"`, and `:"billing.clerk"`
-  a role of two segments. A domain that declared one no longer compiles.
+- **D4: an actor's name is snake_case.** A person's is a role, `<domain>.<actor>`, in the manifest EHOS
+  reads, and nothing checked its form: `actor :"*", :human` in a domain `acme` was the role `"acme.*"`, and
+  `:"billing.clerk"` a role of two segments. A system actor is held to the same form, since `by:` names it as
+  it names a person. A domain that declared one no longer compiles.
 - **N1 and D9: a name ending in a newline is refused, and so is a decimal in scenario data.** Their patterns
   ended in `$`, which also matches before a final newline: `command :"pay\n"` compiled, and its capability
   `"<domain>.pay\n"` reached `EhOsContract.Model.capabilities/1`, the OpenAPI document and the EHOS manifest.
-  The same held for a value invariant's name, a page named after a domain's element in
-  `mix eh_os_contract.pages`, and a scenario's decimal written `"12.50\n"`. A contract or a domain that
-  declared one no longer compiles.
+  The same held for a value invariant's name and a scenario's decimal written `"12.50\n"`: a contract or a
+  domain that declared one no longer compiles. `mix eh_os_contract.pages` refuses a page named after a
+  domain's element ending in a newline, as it refuses one with a space.
 - **D11: a published or consumed name ending in a newline is refused.** The pattern ended in `$`, which
   also matches before a final newline, so `"rehmed.visit.closed.v1\n"` compiled; on a broker such a name
   breaks the subject line. A contract that declared one no longer compiles.
