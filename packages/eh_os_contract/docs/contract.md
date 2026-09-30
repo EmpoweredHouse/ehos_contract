@@ -29,8 +29,11 @@ end
 ```
 
 `name:` is the application's name towards EHOS: capabilities are `lending.<command>` and roles
-`lending.<actor>`. `language:` is the language the labels are written in — labels are the words of the
-people in the process, in their language, and the engine prints them as written.
+`lending.<actor>`, and every name its contracts publish begins with `lending.`. So it is one segment of a
+namespace — lowercase letters, digits, `_` and `-`, starting with a letter and not ending with a dash, like
+`:"my-shop"` — and a domain named otherwise does not compile (`D11`). `language:` is the language the labels
+are written in — labels are the words of the people in the process, in their language, and the engine prints
+them as written.
 
 ## A contract
 
@@ -188,9 +191,9 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 
 | Code | Layer | What is refused |
 | --- | --- | --- |
-| `N1` | L2 | a name not snake_case; a name twice among: declarations of one kind; a unit's invariants or stage groups; a command's or query's constraints; the process's stages or promises; a service's functions; a function's rules; commands, events, timers and consumed events together; a query named like a command |
+| `N1` | L2 | a name not snake_case; a name twice among: declarations of one kind; a unit's invariants or stage groups; a command's or query's constraints; the process's stages or promises; a service's functions; a function's rules; commands, events, timers and consumed events together; a query named like a command; two names that camelize alike among units, reactions, read models, queries or services of one kind, or among commands, events and consumed events |
 | `N2` | L2 | a command, query, event, timer, consumed event or service function whose callback would be a reserved word, clash with `Kernel` or with `module_info`/`__info__`/`behaviour_info` at its arity, or take `evolve`; a command, query, event or consumed event named `state` or `row` |
-| `F1` | L2 | a field named twice in one struct, or starting with `__` |
+| `F1` | L2 | a field named twice in one struct, starting with `__`, or otherwise not snake_case |
 | `F2` | L2 | a malformed field type; an enum that is empty, has a member that is not an atom or `{atom, label}`, or repeats one; a domain service function without `returns`, or with a malformed return type |
 | `F3` | L2 | `default:` on a field outside a `state`, including a domain value's field |
 | `F4` | L2 | an `optional:` or `personal:` event field that the process's `correlate`, or the `correlate` of a process manager handling the event, names |
@@ -226,17 +229,17 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `S7` | L2 | an `actor` outside the command's `by:`, or on a scenario whose trigger is not a command |
 | `S8` | L2 | an invariant, or a command's constraint, that no `rejected` scenario (of that command, for a constraint) covers |
 | `S9` | L2 | a domain service's rule without examples; an example not `{[argument, …], result}` of the function's arity, with an argument or result of the wrong built-in type or `nil` where not optional; an example given twice |
-| `D1` | L2 | two subdomains, contexts, actors, subjects, values, entities or externals of one name; a term defined twice in a context; a relation declared twice; a name that is both a context and an external |
+| `D1` | L2 | a subdomain's, context's, subject's, value's, entity's or external's name not snake_case; two values that camelize alike; a value named after a type Elixir builds in or a built-in field type; two subdomains, contexts, actors, subjects, values, entities or externals of one name; a term defined twice in a context; a relation declared twice; a name that is both a context and an external |
 | `D2` | L2 | two translations of a term into one language, or one into the context's own |
-| `D3` | L2 | a value with both or neither of a type and fields; `unit` on a value that is not numeric; an undeclared `context:`; a malformed or unknown type, or a bad enum; values in a cycle |
-| `D4` | L2 | a human actor with `backed_by`; `backed_by` naming no external; an actor's `context:` the domain does not declare |
+| `D3` | L2 | a value with both or neither of a type and fields; `unit` on a value that is not numeric; an undeclared `context:`; a malformed or unknown type, or a bad enum; values in a cycle; a value's field not snake_case, or named twice |
+| `D4` | L2 | an actor's name not snake_case; a human actor with `backed_by`; `backed_by` naming no external; an actor's `context:` the domain does not declare |
 | `D5` | L2 | a relation whose roles do not fit its type (directed or symmetric); an end the domain does not declare; an external in a symmetric relation; a directed one with no context end; a context related to itself |
-| `D6` | L2 | `{:id, entity}` naming an undeclared entity; an entity with an undeclared context, identified by what is not its own required, non-personal `:id` field, or with a field twice, malformed, of an undeclared subject, with `default:` or `personal:`, or holding personal data |
+| `D6` | L2 | `{:id, entity}` naming an undeclared entity; an entity with an undeclared context, identified by what is not its own required, non-personal `:id` field, or with a field twice, not snake_case, malformed, of an undeclared subject, with `default:` or `personal:`, or holding personal data |
 | `D7` | L2 | a context in a subdomain the domain does not declare |
 | `D8` | L2 | a value's or entity's field `issued_by:` naming what is not an external of the domain |
 | `D9` | L2 | a value invariant not snake_case, clashing with Elixir at arity 1, named `:required`/`:type`/`:generated`, or twice; no `violated_by:` or `satisfied_by:` example; an example `nil`, not of the value's type, in both lists or twice in one; a satisfying example another invariant lists as violating |
 | `D10` | L2, L3 | a query without `by:`; a query scope not a same-typed read-model field and param; a command scope without `by:`, not its field or identity, optional, or a generated identity it creates; a list scope, or a value with fields; a `by:` actor not carrying the scope |
-| `D11` | L2, L3 | a publication from no local event, with no fields, unknown, personal or personal-data fields, or `idempotent_on:` outside them; a name unversioned, shared, or outside the domain's `name:`; `consumes "<name>"` unversioned, without `as:`, listing events, or listing no fields |
+| `D11` | L2, L3 | a domain's `name:` that is not one lowercase segment of letters, digits, `_` and `-`, starting with a letter and not ending with a dash; a publication from no local event, with no fields, unknown, personal or personal-data fields, or `idempotent_on:` outside them; a name unversioned, shared, or outside the domain's `name:`; `consumes "<name>"` unversioned, without `as:`, listing events, or listing no fields |
 | `D14` | L3 | two commands, queries or recorded events of one domain with the same name, and so the same capability |
 | `X1` | L3 | `domain:` naming a module that is not a compiled domain, or `context:` naming none of its contexts |
 | `X2` | L3 | `by:`, `recorded_by:`, `accountable` or a scenario's `actor` naming no actor of the domain, or an actor of another context |

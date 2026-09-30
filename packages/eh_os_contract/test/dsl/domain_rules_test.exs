@@ -34,7 +34,7 @@ defmodule EhOsContract.DomainRulesTest do
     assert Module.concat(__MODULE__, name) in compiled
   end
 
-  describe "D1: names are unique per kind" do
+  describe "D1: names are snake_case, and unique per kind" do
     test "two contexts of one name are refused at the second" do
       message =
         refused("TwoContexts", """
@@ -62,6 +62,108 @@ defmodule EhOsContract.DomainRulesTest do
       assert message =~ "two subjects are named :patient (every_kind.ex:7)"
       assert message =~ "two values are named :money (every_kind.ex:9)"
       assert message =~ "two externals are named :registry (every_kind.ex:11)"
+    end
+
+    test "a name that is not snake_case is refused, whatever it names" do
+      message =
+        refused("NameForms", """
+          context :"front desk", "Recepcja", subdomain: :supporting
+          subject :Patient, "Pacjent"
+          value :"a/b", :integer
+          external :"registry-v2", "Rejestr", direction: :outbound
+          subdomain true, "Prawda", type: :generic
+          context :"desk#{"\\n"}", "Recepcja 2", subdomain: :supporting
+          context :settlement, "Rozliczenia", subdomain: :supporting
+          actor :Reception, :human, "Recepcja"
+
+          entity :"Invoice", "Faktura", context: :settlement, identified_by: :invoice_no do
+            field :invoice_no, :id
+          end
+        """)
+
+      for {kind, name, line} <- [
+            {"context", ~s|:"front desk"|, 4},
+            {"subject", ":Patient", 5},
+            {"value", ~s|:"a/b"|, 6},
+            {"external", ~s|:"registry-v2"|, 7},
+            {"subdomain", "true", 8},
+            {"context", ~s|:"desk\\n"|, 9},
+            {"entity", ":Invoice", 13}
+          ] do
+        assert message =~
+                 "D1: #{kind} #{name} is not snake_case, as every name of a domain is " <>
+                   "(name_forms.ex:#{line})"
+      end
+
+      refute message =~ ":settlement is not"
+      refute message =~ ":invoice_no"
+      # An actor's name is D4's, refused once.
+      refute message =~ "D1: actor"
+      assert message =~ "D4: actor :Reception is not snake_case"
+    end
+
+    test "two values that camelize alike are refused, since they would be one module" do
+      message =
+        refused("OneModule", """
+          value :money_amount, :integer
+          value :money_amount_, :integer
+          value :money__amount, :integer
+          value :desk2, :integer
+          value :desk_2, :integer
+          value :money_amount, :integer
+          value :money_amount_, :integer
+        """)
+
+      assert message =~
+               "D1: value :money_amount_ camelizes to MoneyAmount, as value :money_amount does, " <>
+                 "and a value's invariants are the module Values.MoneyAmount; rename one of them " <>
+                 "(one_module.ex:5)"
+
+      assert message =~
+               "D1: value :money__amount camelizes to MoneyAmount, as value :money_amount does"
+
+      assert message =~ "D1: value :desk_2 camelizes to Desk2, as value :desk2 does"
+      assert message =~ "D1: two values are named :money_amount (one_module.ex:9)"
+      assert message =~ "D1: two values are named :money_amount_ (one_module.ex:10)"
+      refute message =~ "value :money_amount camelizes"
+      # A repeated name is refused once, as two of one name.
+      assert length(String.split(message, "value :money_amount_ camelizes")) == 2
+    end
+
+    test "a value named after a built-in type is refused; control: snake_case names" do
+      message =
+        refused("BuiltInName", """
+          value :map, :string
+          value :integer, :integer
+          value :bool, :boolean
+          value :var, :string
+          value :char_list, :string
+          value :date, :string
+          value :id, :string
+        """)
+
+      assert message =~
+               "D1: value :map is named after a type Elixir builds in, and its @type could not " <>
+                 "be defined; name it after what it holds (built_in_name.ex:4)"
+
+      for name <- [:integer, :bool, :var, :char_list],
+          do:
+            assert(message =~ "D1: value #{inspect(name)} is named after a type Elixir builds in")
+
+      assert message =~
+               "D1: value :date is named after a built-in field type, which a field of type " <>
+                 ":date would mean instead; name it after what it holds (built_in_name.ex:9)"
+
+      assert message =~ "D1: value :id is named after a built-in field type"
+
+      compiles("NotBuiltInName", """
+        context :front_desk2, "Recepcja", subdomain: :supporting
+        subject :patient, "Pacjent"
+        external :registry_v2, "Rejestr", direction: :outbound
+        value :money, :integer
+        value :money_amount, :integer
+        value :desk2, :integer
+      """)
     end
 
     test "a term defined twice in one context is refused" do
@@ -349,7 +451,32 @@ defmodule EhOsContract.DomainRulesTest do
     end
   end
 
-  describe "D4: a person is not backed by a system" do
+  describe "D4: an actor is named as a role, and a person is not backed by a system" do
+    test "an actor whose name is not snake_case is refused, since it is a role" do
+      message =
+        refused("ActorNames", """
+          actor :"*", :human, "Wszyscy"
+          actor :"billing.clerk", :human, "Księgowa"
+          actor :Reception, :human, "Recepcja"
+          actor :"clerk\n", :human, "Urzędnik"
+          actor :front_desk2, :human, "Recepcja 2"
+          actor :"Registry Bot", :system, "Robot rejestru"
+          actor true, :human, "Prawda"
+        """)
+
+      assert message =~
+               ~s|D4: actor :* is not snake_case; it is the role "clinic.*" (actor_names.ex:4)|
+
+      assert message =~
+               ~s|D4: actor :"billing.clerk" is not snake_case; it is the role "clinic.billing.clerk"|
+
+      assert message =~ "D4: actor :Reception is not snake_case"
+      assert message =~ ~s|D4: actor :"clerk\\n" is not snake_case|
+      assert message =~ ~s|D4: actor :"Registry Bot" is not snake_case, as every name in by: is|
+      assert message =~ ~s|D4: actor true is not snake_case; it is the role "clinic.true"|
+      refute message =~ "front_desk2"
+    end
+
     test "a human actor with backed_by is refused" do
       message =
         refused("BackedPerson", """
@@ -417,6 +544,100 @@ defmodule EhOsContract.DomainRulesTest do
       assert message =~
                "D1: :settlement is a context and an external; a relation could not tell which it " <>
                  "names (externals_wrong.ex:7)"
+    end
+  end
+
+  describe "D11: the domain's name is one segment of an application's namespace (after #50)" do
+    defp named(module, name, body \\ "") do
+      """
+      defmodule EhOsContract.DomainRulesTest.#{module} do
+        use EhOsContract.Domain, name: #{inspect(name)}, language: :pl
+
+      #{body}
+      end
+      """
+    end
+
+    test "a name with a dot, a dash at an end, a capital, a space, a newline, or nil is refused at use" do
+      for {name, index} <-
+            Enum.with_index([
+              :"acme.billing",
+              :"shop-",
+              :"-shop",
+              :My_shop,
+              :"my shop",
+              :"1shop",
+              :_shop,
+              :"shop\n",
+              :"",
+              nil,
+              true
+            ]) do
+        module = "BadName#{index}"
+        file = "#{Macro.underscore(module)}.ex"
+        message = Exception.message(compile_error(named(module, name), file))
+
+        assert message =~
+                 "D11: the domain's name: #{inspect(name)} is not an application's namespace: " <>
+                   "lowercase letters, digits, _ and -, starting with a letter and not ending " <>
+                   "with a dash, like :\"my-shop\"; it begins every name the domain's contracts " <>
+                   "publish (#{file}:2)"
+      end
+    end
+
+    test "control: a dash inside, an underscore anywhere after the first letter, digits" do
+      for {name, index} <-
+            Enum.with_index([:"my-shop", :dispatch_rig, :shop_, :rehmed, :a, :shop2, :"a-b_c-9"]) do
+        module = "GoodName#{index}"
+        compiled = Code.compile_string(named(module, name)) |> Enum.map(&elem(&1, 0))
+        assert Module.concat(__MODULE__, module) in compiled
+        assert Module.concat(__MODULE__, module).__eh_os_contract_model__().name == name
+      end
+    end
+
+    test "is reported with the domain's other violations, at once" do
+      message =
+        Exception.message(
+          compile_error(
+            named("BadNameAndMore", :"acme.billing", """
+              actor :reception, :human, "Recepcja"
+              actor :reception, :human, "Recepcja"
+            """),
+            "bad_name_and_more.ex"
+          )
+        )
+
+      assert message =~ ~s|D11: the domain's name: :"acme.billing"|
+      assert message =~ "publish (bad_name_and_more.ex:2)"
+      assert message =~ "D1: two actors are named :reception (bad_name_and_more.ex:5)"
+    end
+  end
+
+  describe "D3 and D6: a field's name is snake_case, and named once" do
+    test "a value's and an entity's field is snake_case and named once" do
+      message =
+        refused("FieldNames", """
+          context :settlement, "Rozliczenia", subdomain: :supporting
+
+          value :address do
+            field :City, :string
+            field :street, :string
+            field :street, :string, optional: true
+          end
+
+          entity :invoice, "Faktura", context: :settlement, identified_by: :invoice_no do
+            field :invoice_no, :id
+            field :"Invoice No", :string
+          end
+        """)
+
+      assert message =~ "D3: value :address, field :City is not snake_case (field_names.ex:7)"
+      assert message =~ "D3: value :address declares field :street twice (field_names.ex:9)"
+
+      assert message =~
+               ~s|D6: entity :invoice, field :"Invoice No" is not snake_case (field_names.ex:14)|
+
+      refute message =~ ":invoice_no is not"
     end
   end
 

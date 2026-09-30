@@ -39,7 +39,7 @@ defmodule EhOsContract.ContractDomainServicesTest do
 
           function :send, "Wyślij" do
             argument :to, :string
-            argument :what, :string
+            argument :What, :string
             returns :boolean
           end
         end
@@ -52,6 +52,10 @@ defmodule EhOsContract.ContractDomainServicesTest do
 
     assert message =~ "N1: function :price has two rules named :rounded (services_named.ex:10)"
     assert message =~ "N2: function :send would define send/2, which clashes with Kernel.send/2"
+
+    # An argument's name is N1's, refused once.
+    assert message =~ "N1: argument :What is not snake_case"
+    refute message =~ "field :What"
 
     assert message =~
              "F1: domain service :pricing, function :price declares field :minutes twice " <>

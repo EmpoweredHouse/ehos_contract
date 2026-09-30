@@ -26,7 +26,55 @@ defmodule EhOsContract.ContractFieldsTest do
     """
   end
 
-  describe "F1: unique, and not starting with __" do
+  describe "F1: snake_case, unique, and not starting with __" do
+    test "a unit's identity is held to a field's name, at the unit" do
+      message =
+        refuse_contract("IdentityForms", """
+          aggregate :visit, "Wizyta" do
+            identity [:"a|b", :__meta__, :visit_id, :visit_id]
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+            event :visit_closed, "Wizyta zamknięta", terminal: true
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      assert message =~
+               ~s|F1: aggregate :visit: identity :"a\|b" is not snake_case (identity_forms.ex:4)|
+
+      assert message =~
+               "F1: aggregate :visit: identity :__meta__ starts with __, which the generated " <>
+                 "struct keeps for itself"
+
+      assert message =~ "F1: aggregate :visit: identity names :visit_id twice"
+      refute message =~ ":visit_id is not snake_case"
+    end
+
+    test "a field whose name is not snake_case is refused, once, and __ keeps its own refusal" do
+      message =
+        refuse_contract(
+          "FieldForms",
+          unit("""
+                field :"a|b", :string
+                field :Note, :string
+                field :"note\\n", :string
+                field :__meta__, :string
+                field :note_2, :string
+          """)
+        )
+
+      for {name, line} <- [{~s|:"a\|b"|, 8}, {":Note", 9}, {~s|:"note\\n"|, 10}] do
+        assert message =~
+                 "F1: command :close_visit: field #{name} is not snake_case (field_forms.ex:#{line})"
+      end
+
+      refute message =~ ":__meta__ is not snake_case"
+      assert message =~ "field :__meta__ starts with __"
+      refute message =~ ":note_2"
+    end
+
     test "a field declared twice, and one the generated struct keeps" do
       message =
         refuse_contract(

@@ -41,6 +41,23 @@ defmodule EhOsContract.ContractNamesTest do
       assert message =~ "N1: aggregate :Visit is not snake_case (not_snake_case.ex:4)"
       assert message =~ "N1: command :closeVisit is not snake_case (not_snake_case.ex:6)"
     end
+
+    test "a name ending in a newline is refused, since it becomes a capability" do
+      message =
+        refuse_contract("NewlineName", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :"close\n", "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+            event :visit_closed, "Wizyta zamknięta", terminal: true
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      assert message =~ ~s|N1: command :"close\\n" is not snake_case (newline_name.ex:6)|
+    end
   end
 
   describe "N1: one name per namespace" do
@@ -135,6 +152,96 @@ defmodule EhOsContract.ContractNamesTest do
       assert message =~ "N1: aggregate :visit groups stage :closing twice (nested.ex:14)"
       assert message =~ "N1: process :visit has two stages named :closing (nested.ex:21)"
       assert message =~ "N1: process :visit has two promises named :closed (nested.ex:28)"
+    end
+
+    test "two names that camelize alike, where the name is a module or an alias" do
+      message =
+        refuse_contract("CamelizeAlike", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: [:visit_closed, :visit_closed_]
+            command :close_visit_2, "Zamknięcie 2", by: :reception, emits: :visit_closed
+            event :visit_closed, "Wizyta zamknięta", terminal: true
+            event :visit_closed_, "Wizyta zamknięta 2", terminal: true
+          end
+
+          read_model :closed_visits, "Zamknięte wizyty", projects: :visit_closed do
+            field :closed_on, :date
+          end
+
+          read_model :closed__visits, "Zamknięte wizyty 2", projects: :visit_closed do
+            field :closed_on, :date
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      assert message =~
+               "N1: event :visit_closed_ camelizes to VisitClosed, as event :visit_closed does, " <>
+                 "and an implementation would alias both as VisitClosed; rename one of them " <>
+                 "(camelize_alike.ex:9)"
+
+      assert message =~
+               "N1: :closed__visits camelizes to ClosedVisits, as :closed_visits does, and two " <>
+                 "read models would be one generated module; rename one of them (camelize_alike.ex:16)"
+
+      refute message =~ ":close_visit_2 camelizes"
+    end
+
+    test "across a command and an event, and two queries with a digit" do
+      message =
+        refuse_contract("CamelizeAcross", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :close_visit_
+            event :close_visit_, "Wizyta zamknięta", terminal: true
+          end
+
+          read_model :closed_visits, "Zamknięte wizyty", projects: :close_visit_ do
+            field :closed_on, :date
+          end
+
+          query :visits2, "Wizyty", reads: :closed_visits, by: :reception
+          query :visits_2, "Wizyty 2", reads: :closed_visits, by: :reception
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      assert message =~
+               "N1: event :close_visit_ camelizes to CloseVisit, as command :close_visit does, and " <>
+                 "an implementation would alias both as CloseVisit; rename one of them " <>
+                 "(camelize_across.ex:7)"
+
+      assert message =~
+               "N1: :visits_2 camelizes to Visits2, as :visits2 does, and two queries would be " <>
+                 "one generated module; rename one of them (camelize_across.ex:15)"
+    end
+
+    test "control: names that camelize differently, and an aggregate and a dcb alike, compile" do
+      assert %{version: _} =
+               compile_contract("CamelizeApart", """
+                 aggregate :visit, "Wizyta" do
+                   identity :visit_id
+                   command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+                   command :close_visit2, "Zamknięcie 2", by: :reception, emits: :visit_closed
+                   event :visit_closed, "Wizyta zamknięta", terminal: true
+                 end
+
+                 dcb :visit_, "Wizyta 2" do
+                   identity :visit_id
+                   command :hold_visit, "Wstrzymanie", by: :reception, emits: :visit_held
+                   event :visit_held, "Wizyta wstrzymana"
+                   consults :visit_closed, match: :visit_id
+                 end
+
+                 process :visit, "Wizyta" do
+                   correlate :visit_id
+                 end
+               """)
     end
 
     test "a query with a command's name, since both are capabilities <domain>.<name> (D14)" do
@@ -289,6 +396,27 @@ defmodule EhOsContract.ContractNamesTest do
       assert message =~
                "N2: event :row would be aliased Row in an implementation, which is the alias of " <>
                  "a read model's row (aliased.ex:7)"
+    end
+
+    test "state_ and row_, which camelize as state and row do" do
+      message =
+        refuse_contract("AliasedAlike", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :state_, "Stan", by: :reception, emits: :row_
+            event :row_, "Wiersz", terminal: true
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      assert message =~
+               "N2: command :state_ would be aliased State in an implementation, which is the " <>
+                 "alias of a unit's state (aliased_alike.ex:6)"
+
+      assert message =~ "N2: event :row_ would be aliased Row in an implementation"
     end
 
     test "control: a name that only begins like a Kernel function compiles" do

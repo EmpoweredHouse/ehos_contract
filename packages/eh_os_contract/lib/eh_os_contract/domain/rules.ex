@@ -6,6 +6,28 @@ defmodule EhOsContract.Domain.Rules do
   other end then a context; **D1** refuses a name that is both a context and an
   external.
 
+  **D1**, since the review of the actors' names: a subdomain's, context's, subject's,
+  value's, entity's and external's name is snake_case, as an actor's is (D4) and a
+  contract's (N1). The names become a value's module — `value :"a/b"` was
+  `<Domain>.Values.A.B`, a module nested in another — node identifiers of the context
+  map, where `context :"front desk"` broke the diagram, page paths, which refused such
+  a name only when the pages were generated, and the type a subject's key is stored
+  under. Two values whose names camelize alike, `:money_amount` and `:money_amount_` or
+  `:money__amount`, would be one module of invariants, `Values.MoneyAmount`, so they
+  are refused as two of one name, invariants or not. A value is not named after a type
+  Elixir builds in, `:map` or `:integer`, whose `@type` it could not define, nor after a
+  built-in field type, `:date`, which a field of that type would mean instead.
+
+  **D3** and **D6**, since the review of the domain's names: a value's and an
+  entity's field is snake_case and named once — a value's fields were not checked
+  for either, and one declared twice gave the JSON Schema the later definition with
+  the earlier one's `required`.
+
+  **D4**, since the review of the domain's `name:`: an actor's name is snake_case, as a
+  contract's names are (N1). A person's is a role, `<domain>.<actor>`, in the manifest
+  EHOS reads — `actor :"*", :human` would have been the role `"acme.*"` — and a
+  system's is named in `by:` as a person's is.
+
   **D8** (plan EL2): a field's `issued_by:` names an external of this domain.
 
   **D9** (plan EL2b): a value's invariant is named as a function is — snake_case,
@@ -27,6 +49,16 @@ defmodule EhOsContract.Domain.Rules do
   and none is personal, nor of a value that holds personal data: an entity's rows are
   the application's, outside the log, where erasure cannot reach them. Every
   `{:id, entity}`, in a value's field or an entity's, names an entity of this domain.
+
+  **D11** (plan, after #50): the domain's `name:` is the application's namespace, the
+  first segment of every name its contracts publish (`EhOsContract.Contract.Rules.Boundaries`)
+  and of every capability, so it is such a segment: lowercase letters, digits, `_` and
+  `-`, starting with a letter and not ending with a dash. A dot would put the domain's
+  publications inside another application's namespace — `:"acme.billing"` publishes
+  under `acme.` — and a name no publication could start with would be refused only at
+  each publication. The underscore stays, as it does in a publication's name: EHOS
+  names an application with a DNS label, which has none, but `:dispatch_rig` is a
+  domain the library's own tests publish from. The refusal points at `use`.
 
   A transformer, not a verifier, and every violation is reported at once, in one
   error that names each declaration's file and line (`EhOsContract.DslRules`).
@@ -66,12 +98,38 @@ defmodule EhOsContract.Domain.Rules do
     entities = Transformer.get_entities(dsl, [:domain])
     domain = Transformer.get_persisted(dsl, :eh_os_contract_domain)
 
-    DslRules.result(dsl, [:domain], Enum.flat_map(rules(), & &1.(entities, domain)))
+    DslRules.result(
+      dsl,
+      [:domain],
+      d11(dsl, domain) ++ Enum.flat_map(rules(), & &1.(entities, domain))
+    )
   end
 
   defp rules, do: [&d1/2, &d2/2, &d3/2, &d4/2, &d5/2, &d6/2, &d7/2, &d8/2, &d9/2]
 
-  # --- D1: names are unique per kind ---------------------------------------------
+  # --- D11: the name is one segment of a namespace --------------------------------
+
+  # `nil`, `true` and `false` are atoms whose text fits, and the option is required.
+  defp d11(dsl, %{name: name}) do
+    if name not in [nil, true, false] and DslRules.namespace?(Atom.to_string(name)),
+      do: [],
+      else: [
+        {"D11: the domain's name: #{inspect(name)} is not an application's namespace: lowercase " <>
+           "letters, digits, _ and -, starting with a letter and not ending with a dash, like " <>
+           ":\"my-shop\"; it begins every name the domain's contracts publish", use_at(dsl)}
+      ]
+  end
+
+  defp use_at(dsl) do
+    file = dsl |> Transformer.get_persisted(:file) |> String.to_charlist()
+    :erl_anno.set_file(file, :erl_anno.new(Transformer.get_persisted(dsl, :eh_os_contract_line)))
+  end
+
+  # --- D1: names are snake_case, and unique per kind -----------------------------
+
+  # The types `@type` refuses to redefine are Erlang's, which the running OTP answers
+  # for, and these, which Elixir adds (`Kernel.Typespec`).
+  @elixir_types ~w(char_list charlist struct nonempty_charlist keyword var)a
 
   @kinds [
     {Subdomain, "subdomain"},
@@ -120,8 +178,46 @@ defmodule EhOsContract.Domain.Rules do
            "it names", external}
       end
 
-    by_kind ++ terms ++ relations ++ both
+    # An actor's name is D4's.
+    forms =
+      for {struct, kind} <- @kinds,
+          struct != Actor,
+          %{__struct__: ^struct, name: name} = declaration <- entities,
+          not DslRules.name?(name) do
+        {"D1: #{kind} #{inspect(name)} is not snake_case, as every name of a domain is",
+         declaration}
+      end
+
+    values = for %Value{name: name} = value <- entities, DslRules.name?(name), do: value
+
+    modules =
+      for {other, first, camel} <- DslRules.camel_collisions(values, & &1.name) do
+        {"D1: value #{inspect(other.name)} camelizes to #{camel}, as value #{inspect(first)} " <>
+           "does, and a value's invariants are the module Values.#{camel}; rename one of them",
+         other}
+      end
+
+    types =
+      for %Value{name: name} = value <- values do
+        cond do
+          built_in_type?(name) ->
+            {"D1: value #{inspect(name)} is named after a type Elixir builds in, and its @type " <>
+               "could not be defined; name it after what it holds", value}
+
+          name in built_in_types() ->
+            {"D1: value #{inspect(name)} is named after a built-in field type, which a field " <>
+               "of type #{inspect(name)} would mean instead; name it after what it holds", value}
+
+          true ->
+            nil
+        end
+      end
+      |> Enum.reject(&is_nil/1)
+
+    forms ++ by_kind ++ modules ++ types ++ terms ++ relations ++ both
   end
+
+  defp built_in_type?(name), do: :erl_internal.is_type(name, 0) or name in @elixir_types
 
   # --- D2: one translation per language, none into the term's own ----------------
 
@@ -290,7 +386,16 @@ defmodule EhOsContract.Domain.Rules do
         {"#{where}, field #{inspect(field.name)}: #{problem}", field}
       end
 
-    one_of ++ unit ++ context ++ types ++ fields
+    field_names =
+      for(
+        field <- value.fields,
+        not DslRules.name?(field.name),
+        do: {"#{where}, field #{inspect(field.name)} is not snake_case", field}
+      ) ++
+        for field <- duplicates(value.fields, & &1.name),
+            do: {"#{where} declares field #{inspect(field.name)} twice", field}
+
+    one_of ++ unit ++ context ++ types ++ fields ++ field_names
   end
 
   # A number counts something whether it is written as :integer or as a value that
@@ -342,10 +447,15 @@ defmodule EhOsContract.Domain.Rules do
     where = "D6: entity #{inspect(entity.name)}"
     by_name = Map.new(entity.fields, &{&1.name, &1})
 
-    twice =
-      for field <- duplicates(entity.fields, & &1.name) do
-        {"#{where} declares field #{inspect(field.name)} twice", field}
-      end
+    field_names =
+      for(
+        field <- entity.fields,
+        not DslRules.name?(field.name),
+        do: {"#{where}, field #{inspect(field.name)} is not snake_case", field}
+      ) ++
+        for field <- duplicates(entity.fields, & &1.name) do
+          {"#{where} declares field #{inspect(field.name)} twice", field}
+        end
 
     context =
       if MapSet.member?(scope.contexts, entity.context),
@@ -411,7 +521,7 @@ defmodule EhOsContract.Domain.Rules do
         {"#{where}, field #{inspect(field.name)} has #{option}:, and #{why}", field}
       end
 
-    twice ++ context ++ identity ++ fields ++ subject ++ options ++ inside
+    field_names ++ context ++ identity ++ fields ++ subject ++ options ++ inside
   end
 
   defp describe(%Value{name: name}), do: "value #{inspect(name)}"
@@ -528,19 +638,35 @@ defmodule EhOsContract.Domain.Rules do
     end
   end
 
-  # --- D4: a person is not backed by a system ------------------------------------
+  # --- D4: an actor is named as a role, and a person is not backed by a system ---
 
-  defp d4(entities, _domain) do
+  defp d4(entities, domain) do
     externals = MapSet.new(for %External{name: name} <- entities, do: name)
     contexts = MapSet.new(for %Context{name: name} <- entities, do: name)
 
-    for %Actor{} = actor <- entities, violation <- actor_violations(actor, externals, contexts) do
+    for %Actor{} = actor <- entities,
+        violation <- actor_violations(actor, externals, contexts, domain) do
       violation
     end
   end
 
-  defp actor_violations(actor, externals, contexts) do
+  defp actor_violations(actor, externals, contexts, domain) do
     where = "D4: actor #{inspect(actor.name)}"
+
+    name =
+      cond do
+        DslRules.name?(actor.name) ->
+          []
+
+        actor.kind == :human ->
+          [
+            {"#{where} is not snake_case; it is the role " <>
+               "#{inspect("#{domain.name}.#{actor.name}")}", actor}
+          ]
+
+        true ->
+          [{"#{where} is not snake_case, as every name in by: is", actor}]
+      end
 
     backed_by =
       cond do
@@ -571,7 +697,7 @@ defmodule EhOsContract.Domain.Rules do
         ],
         else: []
 
-    backed_by ++ context
+    name ++ backed_by ++ context
   end
 
   # --- D5: a relation's roles fit its type, and its ends exist --------------------
@@ -703,7 +829,7 @@ defmodule EhOsContract.Domain.Rules do
 
     name =
       cond do
-        not (Atom.to_string(invariant.name) =~ ~r/^[a-z][a-z0-9_]*$/) ->
+        not DslRules.snake_case?(Atom.to_string(invariant.name)) ->
           [
             {"#{where} is not snake_case; it is the name of the function that checks it",
              invariant}

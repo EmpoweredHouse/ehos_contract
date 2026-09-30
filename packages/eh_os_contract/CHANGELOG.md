@@ -52,6 +52,45 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Changed — a host has to act
 
+- **D11: a domain's `name:` is one segment of an application's namespace.** It begins every name the domain's
+  contracts publish and every capability, and nothing checked it: `name: :"acme.billing"` published
+  `"acme.billing.x.v1"`, which passed both D11 checks and lies in the namespace of an application `acme`. A
+  domain whose name is not lowercase letters, digits, `_` and `-`, starting with a letter and not ending with a
+  dash, no longer compiles, even one that publishes nothing, and the refusal points at its `use`. Of the names
+  that could publish before, only those with a dot are refused.
+- **F1, D3 and D6: a field's name is snake_case, and a value's field is named once.** A contract's fields
+  were checked only for uniqueness and a leading `__`, a value's and an entity's only for uniqueness (an
+  entity's) or not at all (a value's): `field :"Invoice No"` became a key of the typespec, the JSON Schema and
+  the page, `:"a|b"` broke the unit graph's edge it labelled, and a value's field declared twice gave the JSON
+  Schema the later definition with the earlier one's `required`. A unit's `identity` is held to the same,
+  named once, at the unit: `identity :"a|b"` reached a graph edge and a page table through `consults`. A
+  contract or domain declaring such a field no longer compiles.
+- **N1: two names that camelize alike are refused where they become one module or alias.** N1 compared names
+  exactly, so `event :visit_closed` beside `event :visit_closed_` compiled, with a warning that
+  `<Contract>.Events.VisitClosed` was redefined: one event carried the other's struct. The same held for a
+  command, event or consumed event (an implementation aliases each as `<Camelized>`) and for two aggregates,
+  dcbs, reactions, read models, queries or domain services of one kind. N2 compares `:state` and `:row`, the
+  aliases of a unit's state and a read model's row, camelized too, so `command :state_` is refused. A contract
+  that declared such a pair no longer compiles.
+- **D1: a subdomain's, context's, subject's, value's, entity's and external's name is snake_case.** They were
+  held only to uniqueness: `value :"a/b"` generated `<Domain>.Values.A.B`, a module nested in another, and
+  `context :"front desk"` broke the context map's diagram; `mix eh_os_contract.pages` refused such a name, but
+  only when it ran. Two values whose names camelize alike (`:money_amount`, `:money_amount_`, `:money__amount`)
+  generated one module of invariants once either had one, and are now refused as two of one name. A value
+  named after a type Elixir builds in (`:map`, `:bool`), whose `@type` failed to compile with an error pointing
+  at the library, and one named after a built-in field type (`:date`, `:id`), which a field of that type
+  silently meant instead, are refused with a code. A domain that declared one no longer compiles. Field names
+  are not covered.
+- **D4: an actor's name is snake_case.** A person's is a role, `<domain>.<actor>`, in the manifest EHOS
+  reads, and nothing checked its form: `actor :"*", :human` in a domain `acme` was the role `"acme.*"`, and
+  `:"billing.clerk"` a role of two segments. A system actor is held to the same form, since `by:` names it as
+  it names a person. A domain that declared one no longer compiles.
+- **N1 and D9: a name ending in a newline is refused, and so is a decimal in scenario data.** Their patterns
+  ended in `$`, which also matches before a final newline: `command :"pay\n"` compiled, and its capability
+  `"<domain>.pay\n"` reached `EhOsContract.Model.capabilities/1`, the OpenAPI document and the EHOS manifest.
+  The same held for a value invariant's name and a scenario's decimal written `"12.50\n"`: a contract or a
+  domain that declared one no longer compiles. `mix eh_os_contract.pages` refuses a page named after a
+  domain's element ending in a newline, as it refuses one with a space.
 - **D11: a published or consumed name ending in a newline is refused.** The pattern ended in `$`, which
   also matches before a final newline, so `"rehmed.visit.closed.v1\n"` compiled; on a broker such a name
   breaks the subject line. A contract that declared one no longer compiles.

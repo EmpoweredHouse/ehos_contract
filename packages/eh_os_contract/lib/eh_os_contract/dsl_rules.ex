@@ -10,11 +10,57 @@ defmodule EhOsContract.DslRules do
   `Spark.Error.DslError`: its location is the first violation's, and its message
   lists every violation with the file and line of the declaration at fault. A
   violation is `{message, declaration}`, where the declaration is the Spark struct
-  whose source annotation says where it was written.
+  whose source annotation says where it was written, or that annotation itself, for
+  what no struct holds, such as an option of `use`.
   """
 
-  @typedoc "A broken rule, and the declaration it points at."
-  @type violation :: {String.t(), struct()}
+  # `\z`, not `$`, which also matches before a final newline.
+  @namespace ~r/^[a-z]([-a-z0-9_]*[a-z0-9_])?\z/
+  @snake_case ~r/^[a-z][a-z0-9_]*\z/
+
+  @typedoc "A broken rule, and the declaration it points at, or where it was written."
+  @type violation :: {String.t(), struct() | :erl_anno.anno()}
+
+  @doc false
+  # One segment of an application's namespace (D11): a domain's `name:`, and the first
+  # segment of every name its contracts publish or consume. One pattern for both, so a
+  # domain cannot compile under a name none of its publications could start with.
+  @spec namespace?(term()) :: boolean()
+  def namespace?(segment), do: is_binary(segment) and segment =~ @namespace
+
+  @doc false
+  # A snake_case name, as text: what a contract's names (N1), a domain's actors (D4), a
+  # value's invariants (D9) and a page's path are held to. One pattern, so that a
+  # newline let through by one of them cannot be let through by another.
+  @spec snake_case?(term()) :: boolean()
+  def snake_case?(text), do: is_binary(text) and text =~ @snake_case
+
+  @doc false
+  # A declared name that is snake_case: an atom, but not `nil`, `true` or `false`,
+  # whose text fits.
+  @spec name?(term()) :: boolean()
+  def name?(name),
+    do: is_atom(name) and name not in [nil, true, false] and snake_case?(Atom.to_string(name))
+
+  @doc false
+  # Each item whose snake_case name camelizes as an earlier, different name does, with
+  # that earlier name and the camelized form, once per name: `Macro.camelize` drops a
+  # trailing `_`, an `_` before a digit and a doubled `_`, so `:paid` and `:paid_`
+  # would be one generated module and one alias. Two of one name are the caller's.
+  @spec camel_collisions([item], (item -> atom())) :: [{item, atom(), String.t()}]
+        when item: term()
+  def camel_collisions(items, name) do
+    named = Enum.filter(items, &name?(name.(&1)))
+    first = Enum.reduce(Enum.reverse(named), %{}, &Map.put(&2, camelize(name.(&1)), name.(&1)))
+
+    # In declaration order, so the error's location is the earliest collision.
+    for item <- Enum.uniq_by(named, name),
+        camel = camelize(name.(item)),
+        Map.fetch!(first, camel) != name.(item),
+        do: {item, Map.fetch!(first, camel), camel}
+  end
+
+  defp camelize(name), do: name |> Atom.to_string() |> Macro.camelize()
 
   @doc """
   `{:ok, dsl}` when there are no violations, and otherwise the one error that
@@ -28,7 +74,7 @@ defmodule EhOsContract.DslRules do
      Spark.Error.DslError.exception(
        module: Spark.Dsl.Transformer.get_persisted(dsl, :module),
        path: path,
-       location: Spark.Dsl.Entity.anno(first),
+       location: anno(first),
        message: Enum.map_join(violations, "\n  ", &describe/1)
      )}
   end
@@ -64,8 +110,11 @@ defmodule EhOsContract.DslRules do
     |> elem(0)
   end
 
+  defp anno(%_{} = declaration), do: Spark.Dsl.Entity.anno(declaration)
+  defp anno(anno), do: anno
+
   defp describe({message, declaration}) do
-    case Spark.Dsl.Entity.anno(declaration) do
+    case anno(declaration) do
       nil ->
         message
 

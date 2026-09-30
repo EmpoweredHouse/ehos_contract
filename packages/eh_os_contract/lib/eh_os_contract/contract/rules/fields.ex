@@ -5,7 +5,12 @@ defmodule EhOsContract.Contract.Rules.Fields do
   parameters, and a published event this contract consumes.
 
   - **F1.** Field names are unique within a struct, and none starts with `__`,
-    which the generated structs keep for themselves (`__meta__`).
+    which the generated structs keep for themselves (`__meta__`). Since the review
+    of the domain's names, a field's name is snake_case, as every other name is
+    (N1): it is a key of the struct, of the JSON Schema and the payload, a column of
+    a read model's row, and a label on the unit's graph, where `:"a|b"` broke the
+    edge it named. A unit's `identity` is held to the same, named once, since it is
+    a field of the unit's state, commands and events.
   - **F2.** A type is well formed: a built-in type, `{:list, type}`, a non-empty
     `{:enum, members}` with no member twice, the name of a domain value, or
     `{:id, entity}`, the identifier of a domain entity. Whether that value or entity
@@ -54,7 +59,38 @@ defmodule EhOsContract.Contract.Rules.Fields do
         {"F2: #{where} returns #{problem}", function.returns || function}
       end
 
-    structs ++ returns ++ outside_the_log(declarations)
+    structs ++ returns ++ identities(declarations) ++ outside_the_log(declarations)
+  end
+
+  # A unit's identity is a field injected into its state, commands and events, so its
+  # names are held to what a declared field's are (F1), at the unit.
+  defp identities(d) do
+    for u <- d.units, violation <- identity_violations(u), do: violation
+  end
+
+  defp identity_violations(unit) do
+    where = "F1: #{unit.kind} #{inspect(unit.name)}: identity"
+
+    form =
+      for name <- unit.identity do
+        cond do
+          is_atom(name) and String.starts_with?(Atom.to_string(name), "__") ->
+            {"#{where} #{inspect(name)} starts with __, which the generated struct keeps for " <>
+               "itself", unit}
+
+          not DslRules.name?(name) ->
+            {"#{where} #{inspect(name)} is not snake_case", unit}
+
+          true ->
+            nil
+        end
+      end
+
+    twice =
+      for name <- DslRules.duplicates(unit.identity, & &1),
+          do: {"#{where} names #{inspect(name)} twice", unit}
+
+    Enum.reject(form, &is_nil/1) ++ twice
   end
 
   @doc """
@@ -187,6 +223,15 @@ defmodule EhOsContract.Contract.Rules.Fields do
            "for itself", f}
       end
 
+    # A domain service's argument is a name N1 refuses already, as an argument.
+    form =
+      for f <- fields,
+          kind != :arguments,
+          not (is_atom(f.name) and String.starts_with?(Atom.to_string(f.name), "__")),
+          not DslRules.name?(f.name) do
+        {"F1: #{where}: field #{inspect(f.name)} is not snake_case", f}
+      end
+
     twice =
       for f <- DslRules.duplicates(fields, & &1.name) do
         {"F1: #{where} declares field #{inspect(f.name)} twice", f}
@@ -223,7 +268,7 @@ defmodule EhOsContract.Contract.Rules.Fields do
 
     personal = for f <- fields, v <- personal_violations(where, f, by_name), do: v
 
-    reserved ++ twice ++ redeclared ++ types ++ defaults ++ correlation ++ personal
+    reserved ++ form ++ twice ++ redeclared ++ types ++ defaults ++ correlation ++ personal
   end
 
   defp personal_violations(where, field, by_name) do
