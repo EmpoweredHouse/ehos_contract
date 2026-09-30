@@ -45,10 +45,17 @@ defmodule EhOsContract.Bus.Local do
   def start_link(opts), do: GenServer.start_link(__MODULE__, opts, name: server(opts))
 
   @impl EhOsContract.Bus
-  @spec publish(keyword(), [Message.t()]) :: :ok
+  @spec publish(keyword(), [Message.t()]) :: :ok | {:error, :unavailable | :timeout}
   def publish(opts, messages) do
     encoded = Enum.map(messages, &%{&1 | payload: Jason.encode!(&1.payload)})
-    GenServer.call(server(opts), {:publish, encoded})
+
+    try do
+      GenServer.call(server(opts), {:publish, encoded})
+    catch
+      # The exit's reason carries the call, messages and all: only its kind leaves.
+      :exit, {:timeout, _call} -> {:error, :timeout}
+      :exit, _reason -> {:error, :unavailable}
+    end
   end
 
   @impl EhOsContract.Bus

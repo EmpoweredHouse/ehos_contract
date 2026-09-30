@@ -191,6 +191,11 @@ defmodule EhOsContract.Bus.LocalTest do
       end
     end
 
+    test "publishing to a broker that is not running is an error, not an exit" do
+      assert {:error, :unavailable} =
+               Local.publish([name: __MODULE__.Nowhere], [bus_message(bus_name("nowhere"))])
+    end
+
     test "a consumer stops when the broker does" do
       consumer = bus_name("consumer")
       pid = bus_consume(consumer, [bus_name("gone")])

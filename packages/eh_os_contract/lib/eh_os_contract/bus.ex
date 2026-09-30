@@ -63,7 +63,14 @@ defmodule EhOsContract.Bus do
   """
   @type consumer :: %{name: String.t(), names: [String.t(), ...], handler: handler()}
 
-  @doc "Hands `messages` to the transport, returning once it holds every one."
+  @doc """
+  Hands `messages` to the transport, returning once it holds every one.
+
+  A transport that is down or slow is `{:error, reason}`, never an exit, so the relay
+  keeps its checkpoint and tries again. A message the transport cannot carry at all —
+  a payload JSON cannot encode — raises: that is a defect of the publisher, and
+  trying again would not change it.
+  """
   @callback publish(opts :: keyword(), messages :: [Message.t()]) :: :ok | {:error, term()}
 
   @doc """
