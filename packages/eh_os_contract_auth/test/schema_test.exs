@@ -7,6 +7,24 @@ defmodule EhOsContract.Auth.SchemaTest.Host do
   def down, do: EhOsContract.Auth.Migrations.down()
 end
 
+defmodule EhOsContract.Auth.SchemaTest.HostCreatingSchema do
+  @moduledoc """
+  A host's migration that creates its schema itself, queued before the package's: the
+  first schema of the repo's `search_path`, which does not exist until it runs.
+  """
+
+  use Ecto.Migration
+
+  def up do
+    [[path]] = repo().query!("SHOW search_path").rows
+    [schema | _] = String.split(path, ", ")
+    execute "CREATE SCHEMA #{schema}"
+    EhOsContract.Auth.Migrations.up()
+  end
+
+  def down, do: EhOsContract.Auth.Migrations.down()
+end
+
 defmodule EhOsContract.Auth.SchemaTest do
   @moduledoc """
   Issue #51: **the package's tables in a schema other than `public`**, as EHOS gives
@@ -27,7 +45,8 @@ defmodule EhOsContract.Auth.SchemaTest do
   use EhOsContract.Auth.KeyCase, async: false
 
   alias EhOsContract.{Actor, Auth, Authorizer}
-  alias EhOsContract.Auth.{Keys, SchemaRepo, SchemaTest.Host, TestRepo}
+  alias EhOsContract.Auth.{Keys, SchemaRepo, TestRepo}
+  alias EhOsContract.Auth.SchemaTest.{Host, HostCreatingSchema}
 
   @tables ["eh_os_contract_auth_decisions", "eh_os_contract_auth_keys", "schema_migrations"]
 
@@ -167,6 +186,31 @@ defmodule EhOsContract.Auth.SchemaTest do
     assert tables(schema) == ["schema_migrations"]
     assert tables("public") == public
     assert version("public") == "2"
+  end
+
+  # As the database's superuser, since the owner may not create a schema. `public` is
+  # on the path and holds the tables at "2". Ecto records the migration in
+  # `public.schema_migrations`, since it reads its table before the schema exists, so
+  # the version is one of the test's own and its row goes after it.
+  test "a schema the host's own migration creates gets the tables" do
+    new =
+      "eh_os_contract_auth_created_" <> Base.encode16(:crypto.strong_rand_bytes(4), case: :lower)
+
+    version = 900_000_000 + :rand.uniform(99_999_999)
+
+    on_exit(fn ->
+      admin!([
+        "DROP SCHEMA IF EXISTS #{new} CASCADE",
+        {"DELETE FROM public.schema_migrations WHERE version = $1", [version]}
+      ])
+    end)
+
+    superuser = %{password: TestRepo.config()[:password]}
+    connect(superuser, TestRepo.config()[:username], new <> ", public")
+    Ecto.Migrator.run(SchemaRepo, [{version, HostCreatingSchema}], :up, all: true, log: false)
+
+    assert tables(new) == @tables -- ["schema_migrations"]
+    assert version(new) == "2"
   end
 
   test "the role the application runs as keeps the keys and records the decisions",

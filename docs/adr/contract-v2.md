@@ -969,6 +969,11 @@ still works. Moving to `xid8` later is an internal change: all historical rows a
 > `PLAN.md`. A key per schema removes only the accidental coupling: advisory locks carry no privileges, so a
 > neighbour that takes the key can still stall the log, which D-54 accepts.
 
+> **30 September 2026, later — one key per log.** V01 now takes `pg_advisory_xact_lock(class, log)`: `class` is
+> the engine's, and `log` comes from the name of the schema the log is created in, both computed at migration
+> and written into the lock function and the trigger. Appends to one log still serialize; logs in two schemas
+> of one database no longer wait for each other. The "one fixed 64-bit lock key" above is one fixed key per log.
+
 ### 10.3 Schema
 
 Final shape. E2 reaches it by altering v1's table in place, so v1 keeps running until E11 collapses the

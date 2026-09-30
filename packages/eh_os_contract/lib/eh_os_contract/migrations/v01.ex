@@ -18,16 +18,33 @@ defmodule EhOsContract.Migrations.V01 do
 
   use Ecto.Migration
 
-  # The key of the append lock: the first eight bytes of
-  # sha256("eh_os_contract_events append"), read as a signed integer. Its value does
-  # not matter, as long as it never changes and nothing else in the database takes
-  # the same one.
-  @lock_key -1_231_462_987_025_514_095
+  # The append lock's key is two integers, one per log: the first four bytes of
+  # sha256("eh_os_contract_events append") — the engine's — and the first four of
+  # sha256 of the schema the log is created in, each read as a signed integer.
+  #
+  # One per schema, not one per database. An advisory lock belongs to the whole
+  # database, and EHOS keeps every application of an instance in one, each in a
+  # schema of its own (`eh-os` D-54): a single fixed key made all of them append one
+  # after another (issue #51, v2 §10.2). Two integers are PostgreSQL's other key
+  # space, apart from every single-integer key anybody takes. The key is computed
+  # here and written into the SQL, so neither function resolves anything through a
+  # `search_path`, and `pg_dump` of one schema carries its key with it. The store's
+  # call of `eh_os_contract_append_lock()` finds it through the path, as it finds the
+  # table: V01 creates both in one schema.
+  <<lock_class::signed-32, _::binary>> = :crypto.hash(:sha256, "eh_os_contract_events append")
+  @lock_class lock_class
+
+  @doc false
+  @spec lock_key(String.t()) :: {integer(), integer()}
+  def lock_key(schema) do
+    <<log::signed-32, _::binary>> = :crypto.hash(:sha256, schema)
+    {@lock_class, log}
+  end
 
   @doc false
   @spec up() :: :ok
   def up do
-    events()
+    events(current_schema!())
     event_runs()
     commands()
     subscriptions()
@@ -59,9 +76,23 @@ defmodule EhOsContract.Migrations.V01 do
     :ok
   end
 
+  # Where `create table` puts the log: the first schema of the `search_path` that
+  # exists. `EhOsContract.Migrations` has flushed what the host queued before it.
+  defp current_schema! do
+    case repo().query!("SELECT current_schema()", [], log: false).rows do
+      [[schema]] when is_binary(schema) ->
+        schema
+
+      _none ->
+        raise ArgumentError,
+              "eh_os_contract creates its tables in the first schema of the search_path " <>
+                "that exists, and this connection's search_path names none"
+    end
+  end
+
   # The log (v2 §10). Append-only, ordered by `position`, one advisory lock for every
-  # append.
-  defp events do
+  # append to it.
+  defp events(schema) do
     create table(:eh_os_contract_events, primary_key: false) do
       # The order of appends. `id` is unique and is what the Ecto schema calls its
       # primary key; `position` is the table's.
@@ -120,18 +151,21 @@ defmodule EhOsContract.Migrations.V01 do
     create index(:eh_os_contract_events, [:occurred_at])
     create index(:eh_os_contract_events, [:contract, :contract_version])
 
-    # The key lives in exactly one place, `eh_os_contract_append_lock()`.
-    # `EhOsContract.Store.Postgres` calls it, and so does a statement-level trigger
-    # that catches an insert going around the store. The lock is transaction-scoped
-    # and re-entrant, so taking it twice costs nothing.
+    # One key, `lock_key/1`'s, written into two places: `eh_os_contract_append_lock()`,
+    # which `EhOsContract.Store.Postgres` calls, and a statement-level trigger that
+    # catches an insert going around the store. Neither names anything the path could
+    # resolve elsewhere. The lock is transaction-scoped and re-entrant, so taking it
+    # twice costs nothing.
+    {class, log} = lock_key(schema)
+
     execute """
     CREATE FUNCTION eh_os_contract_append_lock() RETURNS void LANGUAGE sql AS
-    $$ SELECT pg_advisory_xact_lock(#{@lock_key}) $$
+    $$ SELECT pg_catalog.pg_advisory_xact_lock(#{class}, #{log}) $$
     """
 
     execute """
     CREATE FUNCTION eh_os_contract_events_take_append_lock() RETURNS trigger LANGUAGE plpgsql AS
-    $$ BEGIN PERFORM eh_os_contract_append_lock(); RETURN NULL; END $$
+    $$ BEGIN PERFORM pg_catalog.pg_advisory_xact_lock(#{class}, #{log}); RETURN NULL; END $$
     """
 
     # UPDATE, DELETE and TRUNCATE are refused. A test database that leaked rows is

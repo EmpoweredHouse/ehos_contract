@@ -3,9 +3,11 @@ defmodule EhOsContract.Store.Postgres do
   `EhOsContract.Store` on the table migration V01 builds (v2 §10.2–10.4).
 
   Every append takes `eh_os_contract_append_lock()`, a transaction-scoped advisory
-  lock with one fixed key. The table's own trigger takes the same lock for inserts
-  that go around this module, and the lock is re-entrant, so the second acquisition
-  costs nothing. While one transaction holds it, every other append waits. Positions
+  lock with one key per log, derived from the schema it lives in. The table's own
+  trigger takes the same lock for inserts that go around this module, and the lock is
+  re-entrant, so the second acquisition costs nothing. While one transaction holds
+  it, every other append to the same log waits; a log in another schema of the same
+  database does not. Positions
   therefore commit in the order they were handed out, and a stream's highest version
   cannot move between being read and being written.
 

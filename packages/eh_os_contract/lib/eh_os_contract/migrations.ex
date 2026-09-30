@@ -26,7 +26,7 @@ defmodule EhOsContract.Migrations do
   When a later release raises `current_version/0`, the upgrade is another
   generated migration and not a rewrite of the one above. Until 0.3.0 is first
   released, V01 itself is still rewritten in place (the idempotency index in plan
-  E11f): there is no database it has to upgrade.
+  E11f, the append lock's key per schema): there is no database it has to upgrade.
 
       defmodule MyApp.Repo.Migrations.UpgradeEhOsContractToV2 do
         use Ecto.Migration
@@ -76,6 +76,10 @@ defmodule EhOsContract.Migrations do
         EhOsContract.Migrations.up()
       end
 
+  The schema has to exist before the migrations run, as EHOS creates it: Ecto reads
+  and writes its own `schema_migrations` through the same path before any migration
+  runs, so a schema created by one of them leaves that table in the next one.
+
   The role that migrates needs to create in that schema and nowhere else. The role
   the application runs as needs `SELECT`, `INSERT`, `UPDATE` and `DELETE` on the
   tables, `USAGE` on the sequences, and `EXECUTE` on the engine's three functions,
@@ -120,6 +124,10 @@ defmodule EhOsContract.Migrations do
   @spec up(keyword()) :: :ok
   def up(opts \\ []) when is_list(opts) do
     target = target!(Keyword.get(opts, :version, @current_version))
+    # What the host queued before this call has to have run before anything is read:
+    # a `CREATE SCHEMA` or `SET search_path` changes which schema the version, the
+    # tables and the append lock's key belong to.
+    flush()
     recorded = known!(migrated_version())
 
     cond do
@@ -140,6 +148,7 @@ defmodule EhOsContract.Migrations do
   @spec down(keyword()) :: :ok
   def down(opts \\ []) when is_list(opts) do
     target = target!(Keyword.get(opts, :version, @initial_version))
+    flush()
     recorded = known!(migrated_version())
 
     if recorded >= target, do: change(recorded..target//-1, :down), else: :ok
