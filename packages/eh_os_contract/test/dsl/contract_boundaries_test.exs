@@ -267,6 +267,17 @@ defmodule EhOsContract.ContractBoundariesTest do
                  "dotted lowercase segments ending in .v<n>"
     end
 
+    test "a name ending in a newline is refused" do
+      message =
+        refuse_contract("PublishNewline", """
+        #{@unit}
+          publish :visit_closed, as: "rehmed.visit.closed.v1\\n", from: :visit_closed, fields: [:visit_id]
+        """)
+
+      assert message =~
+               ~s|D11: publication :visit_closed: "rehmed.visit.closed.v1\\n" is not a versioned name|
+    end
+
     test "a dash only inside the namespace, the first segment" do
       message =
         refuse_contract("PublishDashed", """

@@ -35,7 +35,8 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
   alias EhOsContract.DslRules
   alias EhOsContract.Contract.Rules
 
-  @versioned ~r/^[a-z]([-a-z0-9_]*[a-z0-9_])?(\.[a-z][a-z0-9_]*)+\.v[1-9][0-9]*$/
+  # `\z`, not `$`, which also matches before a final newline.
+  @versioned ~r/^[a-z]([-a-z0-9_]*[a-z0-9_])?(\.[a-z][a-z0-9_]*)+\.v[1-9][0-9]*\z/
 
   @doc false
   @spec check(map()) :: [DslRules.violation()]
