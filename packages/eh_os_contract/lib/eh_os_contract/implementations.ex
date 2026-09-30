@@ -35,6 +35,25 @@ defmodule EhOsContract.Implementations do
     end
   end
 
+  @doc """
+  The stored types a unit's `evolve/2` folds, or `:all`: what dispatch has to read
+  and decode to rebuild its state, and what a scenario's `given` is compared on
+  (plan E11f-5). `:all` too when no module implements the unit.
+  """
+  @spec folded_types(map(), map()) :: MapSet.t(String.t()) | :all
+  def folded_types(model, unit) do
+    with [module] <-
+           Map.get(index(model.module).declarations, {model.module, unit.kind, unit.name}),
+         names when is_list(names) <- Map.get(module.__eh_os_implementation__(), :folds, :all) do
+      MapSet.new(names, fn name ->
+        {_contract, declaration} = EhOsContract.Model.declaring(model, name)
+        declaration.type
+      end)
+    else
+      _ -> :all
+    end
+  end
+
   @typedoc """
   A declaration that reacts to events: a read model, a policy or an effect of a v2
   contract of the host's applications.

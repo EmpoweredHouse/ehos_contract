@@ -34,7 +34,9 @@ defmodule EhOsContract.Dispatcher do
      the log (v2 §10.1): its own events carrying its identity, and every event it
      `consults` — on the fields it `match`es, or every one of that type when it
      consults by `where:` alone — each decoded by the contract that declares it, in
-     the log's order.
+     the log's order. Only what `evolve/2` folds is decoded, when its one catch-all
+     is `def evolve(state, _), do: state`, and a boundary reads, and conflicts on,
+     those types alone (plan E11f-5).
   5. **Hold the decision to its declaration.** An event the command does not emit,
      a rejection on an invariant it does not reject on, or an event whose fields
      do not fit — their types, or the invariants of their values — raises: that is a
@@ -565,7 +567,8 @@ defmodule EhOsContract.Dispatcher do
   defp attempt(%{kind: :record} = job, repo) do
     with :new <- idempotent(repo, job) do
       unit = Enum.find(job.model.units, &(&1.name == job.declaration.unit))
-      {recorded, condition} = read_unit(repo, job.model, unit, job.command)
+      # Nothing is decided, so nothing is folded: the unit is read whole, as before.
+      {recorded, condition} = read_unit(repo, job.model, unit, job.command, :all)
 
       # An aggregate whose identity the library gives is made only by the command that
       # creates it (A6), so an event recorded for one that does not exist would make
@@ -585,8 +588,9 @@ defmodule EhOsContract.Dispatcher do
     with :new <- idempotent(repo, job) do
       unit = Enum.find(model.units, &(&1.name == declaration.unit))
       impl = Implementations.fetch!(model, unit.kind, unit.name)
-      {recorded, condition} = read_unit(repo, model, unit, command)
-      state = fold(job, unit, impl, recorded)
+      folded = Implementations.folded_types(model, unit)
+      {recorded, condition} = read_unit(repo, model, unit, command, folded)
+      state = fold(job, unit, impl, Enum.reject(recorded, &passed_over?(model, folded, &1.type)))
 
       command = %{command | __meta__: meta(ctx)}
       decision = stage("decider", fn -> apply(impl, declaration.name, [command, state]) end)
@@ -782,15 +786,27 @@ defmodule EhOsContract.Dispatcher do
   # is a query over the log (v2 §10.1): its own events carrying its identity, and each
   # event it consults, on the fields it matches — every one of them when it matches on
   # none — appended only if nothing it reads was appended after the head it read to.
-  defp read_unit(repo, _model, %{kind: :aggregate} = unit, command) do
+  # A row of a type the contract declares and `evolve/2` does not fold is not decoded
+  # (plan E11f-5): the state is a function of the folded ones alone, so it can neither
+  # change a decision nor stop one. A type the contract no longer declares is still
+  # decoded, and stops the stream: that is history a changed contract left behind.
+  defp passed_over?(_model, :all, _type), do: false
+
+  defp passed_over?(model, folded, type),
+    do: not MapSet.member?(folded, type) and Enum.any?(model.events, &(&1.type == type))
+
+  # An aggregate reads its whole stream, whose version is the append's condition.
+  defp read_unit(repo, _model, %{kind: :aggregate} = unit, command, _folded) do
     stream = Key.stream(unit.name, Enum.map(unit.identity, &Map.fetch!(command, &1)))
     recorded = Store.read_stream(repo, stream, 0)
     version = if recorded == [], do: 0, else: List.last(recorded).stream_version
     {recorded, {:stream, stream, version}}
   end
 
-  defp read_unit(repo, model, %{kind: :dcb} = unit, command) do
-    query = boundary(model, unit, command)
+  # A boundary reads, and conflicts on, only the types its `evolve/2` folds. When it
+  # folds none of them, the whole query stays: a store query cannot be empty.
+  defp read_unit(repo, model, %{kind: :dcb} = unit, command, folded) do
+    query = model |> boundary(unit, command) |> narrowed(folded)
     {recorded, head} = Store.read_query(repo, query)
     {recorded, {:dcb, query, head}}
   end
@@ -806,6 +822,18 @@ defmodule EhOsContract.Dispatcher do
       end
 
     [%{types: own, tags: tag.(unit.identity)} | consulted]
+  end
+
+  defp narrowed(query, :all), do: query
+
+  defp narrowed(query, folded) do
+    narrow =
+      for item <- query,
+          types = Enum.filter(item.types, &MapSet.member?(folded, &1)),
+          types != [],
+          do: %{item | types: types}
+
+    if narrow == [], do: query, else: narrow
   end
 
   # --- reading a stream --------------------------------------------------------------------

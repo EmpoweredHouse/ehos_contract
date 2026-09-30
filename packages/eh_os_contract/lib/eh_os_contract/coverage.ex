@@ -43,7 +43,7 @@ defmodule EhOsContract.Coverage do
 
     scenarios =
       for %{trigger: %{kind: :command}} = scenario <- model.scenarios,
-          do: expected(model, scenario)
+          do: expected(model, scenario, folded(model, scenario))
 
     observed = Enum.filter(scenarios, fn s -> Enum.any?(rows, &matches?(s, &1)) end)
 
@@ -55,15 +55,27 @@ defmodule EhOsContract.Coverage do
     }
   end
 
-  # A scenario in the log's terms: stored types, names as strings.
-  defp expected(model, scenario) do
+  # A scenario in the log's terms: stored types, names as strings. Its `given` counts
+  # only the types its unit's `evolve/2` folds, since those are all dispatch reads and
+  # records as the command's `given_types` (plan E11f-5).
+  defp expected(model, scenario, folded) do
     %{
       description: scenario.description,
       command: Atom.to_string(scenario.trigger.name),
-      given: scenario.given |> Enum.map(&type!(model, &1.event)) |> MapSet.new(),
+      given:
+        scenario.given
+        |> Enum.map(&type!(model, &1.event))
+        |> Enum.filter(&(folded == :all or MapSet.member?(folded, &1)))
+        |> MapSet.new(),
       expect: Enum.map(scenario.expect, &type!(model, &1.event)),
       rejected: scenario.rejected && Atom.to_string(scenario.rejected)
     }
+  end
+
+  defp folded(model, scenario) do
+    command = Enum.find(model.commands, &(&1.name == scenario.trigger.name))
+    unit = Enum.find(model.units, &(&1.name == command.unit))
+    EhOsContract.Implementations.folded_types(model, unit)
   end
 
   defp type!(model, name) do

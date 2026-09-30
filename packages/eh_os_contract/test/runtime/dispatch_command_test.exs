@@ -222,6 +222,17 @@ defmodule EhOsContract.DispatchCommandTest do
       assert [%{outcome: "failed", failed_in: "evolve", error: "ArgumentError"}] = rows()
     end
 
+    # `DispatchRig.Account` folds deposits, withdrawals and interest, and passes the
+    # opening over with `def evolve(state, _opened), do: state` (plan E11f-5).
+    test "a row of a type evolve/2 passes over is not read, so it cannot stop the stream" do
+      stored!("ledger.account_opened", %{"account_id" => "a-old"}, "account:a-old")
+
+      assert {:ok, %Receipt{events: [%Deposited{amount: 5}]}} =
+               EhOsContract.dispatch(Ledger, %Deposit{account_id: "a-old", amount: 5},
+                 actor: clerk()
+               )
+    end
+
     test "a row of a type the contract no longer declares stops the stream too" do
       stored!("ledger.gone", %{"account_id" => "a-old"}, "account:a-old")
 
