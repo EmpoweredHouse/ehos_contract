@@ -17,7 +17,9 @@ defmodule EhOsContract.Auth.Migrations do
   calling `up(version: n)`, never an edit to the one above.
 
   The version is recorded in a comment on `eh_os_contract_auth_keys`, as the engine
-  records its own on `eh_os_contract_events`.
+  records its own on `eh_os_contract_events` — and, like it, through the connection's
+  `search_path` rather than in `public` by name, so the tables work in a schema of the
+  application's own ("In a schema other than `public`" in `EhOsContract.Migrations`).
   """
 
   use Ecto.Migration
@@ -60,12 +62,14 @@ defmodule EhOsContract.Auth.Migrations do
   @doc "The version the database is at, or `0` when the package's storage is absent."
   @spec migrated_version() :: non_neg_integer()
   def migrated_version do
+    # In `current_schema()`, where `CREATE TABLE` puts the tables, and not the first
+    # match on the path, as `EhOsContract.Migrations.migrated_version/0` reads its own.
     query = """
     SELECT pg_catalog.obj_description(pg_class.oid, 'pg_class')
     FROM pg_class
-    LEFT JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
+    JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
     WHERE pg_class.relname = 'eh_os_contract_auth_keys'
-    AND pg_namespace.nspname = 'public'
+    AND pg_namespace.nspname = current_schema()
     """
 
     case repo().query(query, [], log: false) do
@@ -90,6 +94,6 @@ defmodule EhOsContract.Auth.Migrations do
   defp record_version(0), do: :ok
 
   defp record_version(version) do
-    execute("COMMENT ON TABLE \"public\".eh_os_contract_auth_keys IS '#{version}'")
+    execute("COMMENT ON TABLE eh_os_contract_auth_keys IS '#{version}'")
   end
 end

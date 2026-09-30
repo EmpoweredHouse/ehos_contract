@@ -960,6 +960,15 @@ COMMITTED, asserted by the store; transaction-scoped and row locks only, so PgBo
 still works. Moving to `xid8` later is an internal change: all historical rows are committed, so a
 `transaction_id` column can be back-filled with a constant.
 
+> **30 September 2026, issue #51 — "one" lock is one per database, not one per log.** The key is fixed, and an
+> advisory lock belongs to the whole database, not to a schema. EHOS puts every application of an instance in
+> one database, `apps`, each in a schema of its own (`eh-os` D-54, which says so of advisory locks), so every
+> application built on the engine there takes the same lock: their appends serialize with each other's, and
+> the capacity argument above is shared by all of them. Correctness holds — each log still sees its positions
+> in commit order — and nothing is changed yet; the options (a two-integer key derived from the schema) are in
+> `PLAN.md`. A key per schema removes only the accidental coupling: advisory locks carry no privileges, so a
+> neighbour that takes the key can still stall the log, which D-54 accepts.
+
 ### 10.3 Schema
 
 Final shape. E2 reaches it by altering v1's table in place, so v1 keeps running until E11 collapses the

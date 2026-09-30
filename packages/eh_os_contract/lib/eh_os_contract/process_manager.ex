@@ -261,8 +261,10 @@ defmodule EhOsContract.ProcessManager do
   defp queued?(repo, key, record, timer, entry) do
     args = TimerJob.job(key, record.correlation, timer, entry).changes.args
 
+    # Where Oban's `prefix:` puts its jobs, as `EhOsContract.Paths` reads them.
     repo.exists?(
       from(j in Oban.Job,
+        prefix: ^Oban.config().prefix,
         where:
           j.worker == "EhOsContract.TimerJob" and
             j.state in ["available", "scheduled", "executing", "retryable", "suspended"] and

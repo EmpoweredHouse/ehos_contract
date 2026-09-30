@@ -2851,6 +2851,83 @@ blokować.
   zmienności (kwota, identyfikator pacjenta) da się odtworzyć zgadywaniem; wraca, gdy ktoś będzie potrzebował
   wykrywać ten sam klucz z inną treścią.
 
+### #51 — tabele poza `public` — co wyszło (30 września)
+
+**Zgłoszenie** (issue #51, z budowy pierwszej aplikacji klienta z szablonu ehos-tools): EHOS daje aplikacji
+własny schemat `<aplikacja>_<środowisko>` z dwiema rolami (`eh-os` D-54, D-56) — właściciel migruje i nie ma
+`CREATE` na `public`, rola aplikacji ma tylko `SELECT`/`INSERT`/`UPDATE`/`DELETE` (i `USAGE` na sekwencjach, z
+domyślnych uprawnień). Aplikacja ustawia schemat jako `search_path` połączenia. Obie migracje tworzyły tabele
+bez kwalifikacji (czyli w schemacie ze ścieżki), ale wersję czytały i zapisywały na `public` po nazwie
+(`nspname = 'public'`, `COMMENT ON TABLE "public"....`).
+
+**Gorzej, niż mówi zgłoszenie.** Zgłoszenie opisuje błąd `relation "public.eh_os_contract_events" does not
+exist` — tak jest, gdy `public` jest pusty. Gdy `public` **ma** tabele (jak nasza baza testowa), `up/0` czytało
+ich „1”, nie tworzyło w schemacie niczego i przechodziło; aplikacja padała dopiero na pierwszym zapisie przy
+starcie (`Deployment.record!`). Sprawdzone odwróceniem poprawki.
+
+**Wybór: przez `search_path`, nie opcja `prefix:`.** Wersję czyta w `current_schema()` (tam, gdzie `CREATE
+TABLE` kładzie tabele), zapisuje niekwalifikowanym `COMMENT ON TABLE`, który po utworzeniu trafia w tę samą
+tabelę, bo `current_schema()` jest pierwszy na ścieżce; tak samo rozwiązuje każde zapytanie w runtime (schematy Ecto nie mają `@schema_prefix`, `Store`, `Personal`, klucze auth — wszystko
+niekwalifikowane; wyzwalacze wołają `eh_os_contract_append_lock()` też bez schematu). *Odrzucone:* **`prefix:`
+dla tworzenia, odczytu i komentarza** — migracja z prefiksem przy zapytaniach runtime bez prefiksu to dwa źródła
+prawdy o tym, gdzie są tabele; spójnie wymagałoby prefiksu w każdym zapytaniu silnika i auth, czyli dużego diffu
+i opcji, którą host musi podać dwa razy (repo i migracja), a EHOS i tak ustawia `search_path`. Wraca, gdy ktoś
+będzie potrzebował tabel silnika poza ścieżką połączenia. *Odrzucone też, po przeglądzie:* **`to_regclass`**
+(pierwsza wersja poprawki) — znajduje pierwsze trafienie na całej ścieżce, więc przy `"ledger, public"` z tabelami
+w `public` czytało ich „1” i nie tworzyło niczego, a `down/1` przy pustym schemacie zrzucał tabele `public`.
+
+**Przegląd reszty obu pakietów** (zapytania runtime, DDL):
+- **Znalezione i naprawione: `oban_jobs` bez prefiksu Obana.** `Paths` (liczniki zadań efektów i timerów w
+  raporcie) i `ProcessManager.queued?/5` (czy timer ma zadanie w kolejce przy przebudowie) czytały
+  niekwalifikowane `oban_jobs`, więc padały, gdy prefiks Obana nie jest na ścieżce. Teraz `prefix:
+  ^Oban.config().prefix` na samym źródle `Oban.Job` (złączenie z `Event` zostaje na ścieżce). W układzie EHOS-a
+  (Oban w tym samym schemacie, ehos-tools#3) działało i przedtem — werdykt się nie rusza.
+- **DDL w runtime: żadnego.** `execute`/`CREATE`/`ALTER`/`DROP`/`TRUNCATE` są tylko w migracjach; przebudowa read
+  modeli rigów robi `DELETE`. Test to przypina: rola aplikacji nie posiada żadnej relacji ani przed, ani po całym
+  przebiegu (tabela tymczasowa też by się policzyła).
+- **Znalezione, niezmienione — do decyzji: klucz blokady dopisu jest jeden na bazę, nie na log** (v2 §10.2,
+  poprawka z datą w `docs/adr/contract-v2.md`). Blokada doradcza należy do całej bazy, a EHOS trzyma wszystkie
+  aplikacje instancji w jednej bazie `apps` — D-54 mówi to wprost. Dopisy wszystkich aplikacji na silniku
+  serializują się więc wzajemnie. Poprawność zostaje (każdy log widzi pozycje w kolejności commitów), cierpi
+  przepustowość wspólna dla wszystkich: blokada trzyma się do commitu, przez reakcje w transakcji, więc wolna
+  reakcja aplikacji A wstrzymuje dispatch aplikacji B. Możliwe: dwuargumentowe `pg_advisory_xact_lock(<stała
+  int4>, hashtext('<schemat>'))` wypieczone przy migracji — osobna przestrzeń kluczy i przeżywa `pg_dump`
+  schematu, którym D-54 odtwarza jedną aplikację; oid tabeli logu wypieczony w funkcji odtworzenia nie przeżywa.
+  Przy tej zmianie przypiąć `SET search_path` funkcjom V01 (wyzwalacz woła `eh_os_contract_append_lock()` bez
+  schematu, więc przez ścieżkę sesji — sesja operatora z inną ścieżką dostaje dziś „function does not exist”, a z
+  kluczem per schemat mogłaby wziąć klucz cudzego schematu). Klucz per schemat usuwa tylko przypadkowe sprzężenie:
+  blokady doradcze nie mają uprawnień, więc wrogi albo błędny sąsiad nadal może je wziąć — cena przyjęta w D-54.
+  Wszystko to zmienia V01 — dziś „ostateczny kształt” bez wdrożonego konsumenta. Po pierwszym wdrożeniu zmiana to
+  V02 podmieniająca funkcję pod ruchem, a przez okno podmiany dopisy pod starym i nowym kluczem mijają się i
+  czytelnik gubi pozycje, więc bezpieczna V02 bierze oba klucze przez wydanie. **Do rozstrzygnięcia przed
+  pierwszą aplikacją na współdzielonej instancji** (przegląd bezpieczeństwa).
+
+**Testy.** `packages/eh_os_contract/test/schema_test.exs` i `packages/eh_os_contract_auth/test/schema_test.exs`:
+losowy schemat z właścicielem i rolą aplikacji jak u EHOS-a (warunki wstępne sprawdzane, nie zakładane — brak
+`CREATE` na `public`, na bazie i w schemacie). Właściciel migruje w górę, drugi raz (bez zmian), w dół i znów w
+górę, a `public` się nie zmienia. Rola aplikacji w silniku: zapis wdrożenia przy starcie, dispatch z read modelami
+i polityką w transakcji, efekt przez Obana, kolejne read modele, process manager z timerami, query, erasure
+(klucze podmiotów), raport, przebudowa read modeli i process managera z przeterminowanym timerem — dwa razy: z
+Obanem w schemacie (jak szablon) i w osobnym schemacie spoza ścieżki (to przypina poprawkę `oban_jobs`). Rola
+aplikacji w auth: magazyn kluczy (odczyt przy starcie, zapis po pobraniu, odświeżenie, restart bez EHOS-a z
+tabeli) i tabela decyzji. Każda poprawka ma odwrotne sprawdzenie: bez niej odpowiedni test jest czerwony.
+Testy podmieniają na czas testu globalną instancję `Oban` (silnik woła ją po nazwie) i stawiają ją z powrotem;
+role i schematy sprzątają (sprawdzone: nic nie zostaje w klastrze). Pule ról testowych są po 2 połączenia:
+Postgres ma tu 100, `CommitRepo` trzyma 60, a rola bez superusera nie wchodzi w trzy zarezerwowane — przy 4
+brama łapała `too_many_connections` (testy przechodziły dopiero po ponownym połączeniu).
+
+**Przegląd** (`code-review` i bezpieczeństwo/wydajność, równolegle). Naprawione, każde z testem czerwonym bez
+poprawki: odczyt wersji przez `to_regclass` zamiast w `current_schema()` (oba przeglądy), `down/1` przy niczym
+niezapisanym schodzący w tabele następnego schematu na ścieżce (poprawność), raport wymagający uruchomionego
+`Oban` (oba — teraz bez niego szuka na ścieżce jak przedtem), wyciek ról testowych przy błędzie w połowie
+(oba — `on_exit` przed utworzeniem, losowe hasło). Poprawione w dokumentacji: `EXECUTE` na funkcjach silnika w
+uprawnieniach roli aplikacji (z `PUBLIC`, domyślnie), przykład `Oban.Migration.up()` w moduledoc, który pod
+właścicielem EHOS-a pada (teraz z `prefix:` i `create_schema: false`), nieobsługiwany prefiks migracji Ecto.
+Pominięte: klucz blokady i `SET search_path` funkcji (wyżej, do decyzji); `up(prefix: ...)` przyjmowane i
+ignorowane po cichu — odmowa nieznanych opcji zmienia kształt widoczny dla hosta, więc do użytkownika;
+wspólny pomocnik źródła `Oban.Job` dla `Paths` i `ProcessManager` — nie, bo `reconcile!/2` zawsze działa z
+Obanem (zaraz potem go woła), a raport nie musi.
+
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
 Po lekturze architektury EHOS-a (`~/Projects/ai/eh-os`, `docs/ADR.md` i `docs/ARCHITECTURE.md`; research w

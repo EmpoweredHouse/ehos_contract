@@ -389,10 +389,18 @@ defmodule EhOsContract.Paths do
     )
   end
 
+  # Oban's jobs are where its `prefix:` puts them, which need not be on the
+  # connection's `search_path` that finds the engine's own tables. A node that runs
+  # no Oban still reports, as before: its jobs are looked for on the path.
+  defp oban_jobs do
+    prefix = if Oban.whereis(Oban), do: Oban.config().prefix
+    from(Oban.Job, prefix: ^prefix)
+  end
+
   # Only this contract's consumers' jobs: a report per contract must not scan every
   # job of the application.
   defp scheduled_timers(keys) do
-    from(j in Oban.Job,
+    from(j in oban_jobs(),
       where: j.worker == "EhOsContract.TimerJob" and j.state in @waiting,
       where: fragment("?->>'process_manager'", j.args) in ^keys,
       group_by: [fragment("?->>'process_manager'", j.args), fragment("?->>'timer'", j.args)],
@@ -407,7 +415,7 @@ defmodule EhOsContract.Paths do
   # and discarded by Oban after its attempts.
   defp effect_jobs(keys) do
     rows =
-      from(j in Oban.Job,
+      from(j in oban_jobs(),
         join: e in Event,
         on: fragment("(?->>'event_id')::uuid", j.args) == e.id,
         where: j.worker == "EhOsContract.EffectJob",
