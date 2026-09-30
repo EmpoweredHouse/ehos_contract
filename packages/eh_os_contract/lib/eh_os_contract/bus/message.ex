@@ -2,8 +2,8 @@ defmodule EhOsContract.Bus.Message do
   @moduledoc """
   One integration event on the way between two applications (v2 §16).
 
-  - `id` — `<source event id>/<publish name>`, the same every time the relay publishes
-    it, so the subscriber's inbox recognises a second delivery;
+  - `id` — `<source event id>/<name>`, the same every time the relay publishes it, so
+    the subscriber's inbox recognises a second delivery;
   - `name` — the versioned name the `publish` declares, `"rehmed.visit.closed.v1"`;
   - `correlation_id` — the source event's, which the subscriber's fact carries on, so a
     run across two applications can be assembled;

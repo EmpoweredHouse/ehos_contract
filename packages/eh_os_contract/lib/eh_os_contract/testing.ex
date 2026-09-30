@@ -95,6 +95,7 @@ defmodule EhOsContract.Testing do
       :idle -> applied
       {:applied, n} -> catch_up(repo, consumer, applied + n)
       {:failed, _position} -> catch_up(repo, consumer, applied)
+      {:unavailable, _position} -> applied
     end
   end
 

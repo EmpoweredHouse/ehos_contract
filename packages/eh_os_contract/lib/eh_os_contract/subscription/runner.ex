@@ -12,6 +12,8 @@ defmodule EhOsContract.Subscription.Runner do
   An event that fails is retried after a pause that doubles with each attempt, and
   a step that raises for another reason — the database gone, say — is logged and
   retried after five seconds, so a runner never takes the host's tree down with it.
+  A relay whose transport does not take a batch tries again after five seconds too,
+  with no attempt counted (`EhOsContract.Relay`).
   """
 
   use GenServer
@@ -23,6 +25,7 @@ defmodule EhOsContract.Subscription.Runner do
   @channel :eh_os_contract
   @poll 1_000
   @after_crash 5_000
+  @unavailable 5_000
 
   @doc false
   @spec start_link(String.t()) :: GenServer.on_start()
@@ -97,6 +100,16 @@ defmodule EhOsContract.Subscription.Runner do
           end
 
         min(100 * Integer.pow(2, attempts), 30_000)
+
+      # A relay whose transport did not take the batch: nothing moved, and no attempt
+      # is counted, so it tries again after a pause rather than stopping.
+      {:unavailable, position} ->
+        Logger.warning(
+          "subscription #{consumer.key}: the bus did not take the batch from position " <>
+            "#{position}; it tries again in #{@unavailable} ms"
+        )
+
+        @unavailable
 
       :idle ->
         @poll

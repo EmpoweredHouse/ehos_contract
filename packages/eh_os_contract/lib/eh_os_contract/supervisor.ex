@@ -29,6 +29,15 @@ defmodule EhOsContract.Supervisor do
   defp subscribe!(repo) do
     consumers = Implementations.subscribed()
 
+    if EhOsContract.Bus.adapter() == nil do
+      for %{kind: :relay, key: key} <- consumers do
+        Logger.warning(
+          "subscription #{key}: no bus is configured (config :eh_os_contract, bus:), so " <>
+            "its relay publishes nothing and waits at its position"
+        )
+      end
+    end
+
     for %{status: "stale", name: key} <- Subscription.register!(repo, consumers) do
       case Subscription.rebuild(repo, key) do
         :ok ->
