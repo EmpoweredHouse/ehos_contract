@@ -185,6 +185,12 @@ defmodule EhOsContract.Bus.LocalTest do
       start_supervised!(Local.consumer(other, consumer))
     end
 
+    test "a broker's name is an atom" do
+      assert_raise ArgumentError, ~r/:name must be an atom/, fn ->
+        Local.child_spec(name: {:global, :bus})
+      end
+    end
+
     test "a consumer stops when the broker does" do
       consumer = bus_name("consumer")
       pid = bus_consume(consumer, [bus_name("gone")])

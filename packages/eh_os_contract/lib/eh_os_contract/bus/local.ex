@@ -10,8 +10,8 @@ defmodule EhOsContract.Bus.Local do
       children = [{EhOsContract.Bus.Local, []}, ...]
       config :eh_os_contract, bus: {EhOsContract.Bus.Local, []}
 
-  Options: `:name`, the registered name (`EhOsContract.Bus.Local` by default), so two
-  can run at once; and `:retry_after`, how long a message a handler did not acknowledge
+  Options: `:name`, the registered name, an atom (`EhOsContract.Bus.Local` by
+  default), so two can run at once; and `:retry_after`, how long a message a handler did not acknowledge
   waits before it is delivered again, in milliseconds (1 000 by default).
 
   **Durable for as long as the node runs.** A consumer's subscription outlives its
@@ -60,7 +60,18 @@ defmodule EhOsContract.Bus.Local do
     }
   end
 
-  defp server(opts), do: Keyword.get(opts, :name, __MODULE__)
+  # An atom only: a consumer monitors its broker by name, and `Process.monitor/1`
+  # takes no `{:via, …}` or `{:global, …}`.
+  defp server(opts) do
+    case Keyword.get(opts, :name, __MODULE__) do
+      name when is_atom(name) ->
+        name
+
+      name ->
+        raise ArgumentError,
+              "EhOsContract.Bus.Local's :name must be an atom, got: #{inspect(name)}"
+    end
+  end
 
   # The broker. `consumers` maps a consumer's name to the names it takes, its queue of
   # messages and the processes waiting for one; `in_hand` maps a delivery to the
