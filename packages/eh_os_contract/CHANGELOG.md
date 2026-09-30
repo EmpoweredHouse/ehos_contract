@@ -183,6 +183,11 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Added
 
+- **D11: an application's namespace may hold a dash (#50).** The first segment of a `publish as:` or a
+  `consumes "<name>"` may now contain `-`, not at either end, so a domain named as EHOS names an
+  application, `name: :"my-shop"`, publishes `"my-shop.entry.recorded.v1"`. Before, no name could satisfy
+  both D11 checks for such a domain: the pattern refused the dash, and the namespace refused
+  `"my_shop."`. The other segments stay snake_case, and a namespace with an underscore stays valid.
 - **E10: `EhOsContract.OpenAPI` projects the v2 model's human command and query capabilities as OpenAPI
   3.1.2.** Paths match `EhOsContract.Plug`, field and read-model schemas share AsyncAPI's JSON Schema
   projection, scoped operations name their dimension, and commands only application code may issue stay

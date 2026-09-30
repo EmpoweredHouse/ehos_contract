@@ -20,7 +20,10 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
     none of them personal: a copy on a broker cannot be crypto-shredded (v2 §14).
   - `idempotent_on:` names fields among `fields:`.
   - `as:` is a versioned name, dotted lowercase segments ending in `.v<n>`, and two
-    publications do not share one.
+    publications do not share one. The first segment is the application's namespace,
+    the domain's `name:`, and may also hold a dash, not at either end: EHOS names an
+    application with a DNS label, so `my_shop`'s domain is `:"my-shop"` there
+    (`"my-shop.entry.recorded.v1"`). The other segments are snake_case.
   - `consumes "<name>"` names such a versioned name, gives it a local name with
     `as:`, and lists the fields it reads; it lists no events, since the name is one.
 
@@ -32,7 +35,7 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
   alias EhOsContract.DslRules
   alias EhOsContract.Contract.Rules
 
-  @versioned ~r/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+\.v[1-9][0-9]*$/
+  @versioned ~r/^[a-z]([-a-z0-9_]*[a-z0-9_])?(\.[a-z][a-z0-9_]*)+\.v[1-9][0-9]*$/
 
   @doc false
   @spec check(map()) :: [DslRules.violation()]

@@ -1560,7 +1560,7 @@ An integration event: the one way an event leaves the application.
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`as`](#contract-publish-as){: #contract-publish-as .spark-required} | `String.t` |  | The versioned name under the application's. |
+| [`as`](#contract-publish-as){: #contract-publish-as .spark-required} | `String.t` |  | The versioned name, under the domain's `name:`, like `"my-shop.entry.recorded.v1"`; only that first segment may hold a dash. |
 | [`from`](#contract-publish-from){: #contract-publish-from .spark-required} | `atom` |  | The local event it is built from. |
 | [`fields`](#contract-publish-fields){: #contract-publish-fields .spark-required} | `atom \| list(atom)` |  | The fields of that event it carries. |
 | [`idempotent_on`](#contract-publish-idempotent_on){: #contract-publish-idempotent_on } | `atom \| list(atom)` | `[]` | The fields that make two deliveries the same fact. |
