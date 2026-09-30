@@ -21,7 +21,8 @@ This is the author's half. The reviewer's half is `.claude/skills/review-pr/SKIL
 before step 3, because what it tells the reviewer to look at is what your review should have
 found first.
 
-Skip `/code-review` only for a change to documentation alone, and say so in the pull request.
+Skip the two reviews of step 3 only for a change to documentation alone, and say so in the pull
+request.
 Documentation alone means Markdown that no part of `mix check` reads: `PLAN.md`, `CLAUDE.md`,
 the root `README.md`, `.claude/skills/`, and `docs/` except `docs/adr/contract-v2.md`. The gate
 reads more than it seems to:
@@ -43,8 +44,10 @@ The hook still asks for the note: record it once you have checked the diff is do
 1. **Commit everything.** The review reads committed history, and the note covers one commit.
 2. **Rebase onto the current `origin/main`** (`git fetch origin && git rebase origin/main`), so the
    review covers only this change.
-3. **Review the exact range with two reviews, in parallel.** They look for different things, and
-   neither found what the other did when both were first run on the same change (stage EA, 27
+3. **Review the exact range with two reviews, in parallel** — unless the change is documentation
+   alone (above). Then neither review has code to read: check the documentation's claims against the
+   code instead, and say in the pull request how. Otherwise the two reviews look for different
+   things, and neither found what the other did when both were first run on the same change (stage EA, 27
    September 2026: `/code-review` found crashes and dead ends in the key store, the
    security-and-performance pass found that an `http` issuer and a followed redirect let the key
    set be replaced). Start both as subagents in one message (the Agent tool, two calls), each told to

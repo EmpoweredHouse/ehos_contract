@@ -95,9 +95,12 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
   model, boundary, sibling `consumes` or `publish`, and no promise names it nor is it `terminal`.
   An event that nothing depends on is usually a field of another event (`contract-distillation`,
   step 1).
-- **A scenario shows it.** Add `expect :new_event` to a scenario of the command that emits it, with
-  data from a real case. `S5` refuses an `expect` outside the command's `emits:`, and `S3` data of
-  undeclared fields.
+- **A scenario shows it.** A decided event: `expect :new_event` in a scenario of the command that
+  emits it, with data from a real case (`S5` refuses an `expect` outside the command's `emits:`). A
+  recorded event has no command to expect it from: it appears as a `given` in its unit's scenarios,
+  or as the `on` trigger of a reaction's scenario, and a test records it with
+  `EhOsContract.record/3` as an actor in its `recorded_by:`. `S3` refuses data of undeclared fields
+  either way.
 - **Leaving the application** is a separate declaration, `publish :name, as: "<domain>.<name>.v1",
   from: :event, fields: [...]` — a versioned name with the fields that cross, and no personal ones
   (`D11`), as `Taxvision.Contracts.AccountingMonth` publishes the opened month. Not every event.
@@ -110,7 +113,8 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
 4. Write the fields: types from the built-in set or domain values, correlation present, personal
    data marked.
 5. Place it: its unit, its stage group, `terminal:` if it ends a run.
-6. Add it to the command's `emits:`, and to a scenario's `expect`.
+6. Decided: add it to the command's `emits:` and to a scenario's `expect`. Recorded: use it as a
+   scenario's `given` or `on`, and test `EhOsContract.record/3` with an actor from `recorded_by:`.
 7. Compile. Every refusal starts with its code; `packages/eh_os_contract/docs/contract.md`, "What will not compile", says
    what each means.
 8. Run the gate from `sandbox/` and read any new `check` line naming the event

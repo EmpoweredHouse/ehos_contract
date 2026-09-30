@@ -42,9 +42,11 @@ This is the decision the kind leaves open, and it is about the log, not about sp
 appended the event (`EhOsContract.Dispatcher`, step 7): read models project, then policies react,
 then effects act. What a policy issues is dispatched at once, in the same transaction.
 
-- An exception in the reaction, or an effect's `{:error, _}`, **rolls back the command that caused
-  it**: the person's command fails for a reason that is not theirs, and dispatch writes a `failed`
-  row naming the reaction (`policy:<name>`, `read_model:<name>`).
+- An exception in the reaction, or the `{:error, _}` of an effect delivered `:in_transaction` —
+  one without `calls:`, which `P2` requires — **rolls back the command that caused it**: the
+  person's command fails for a reason that is not theirs, and dispatch writes a `failed` row naming
+  the reaction (`policy:<name>`, `read_model:<name>`, `effect:<name>`). An effect delivered
+  `:at_least_once` fails after the commit and is retried, below.
 - A rejection of what a policy issues is the unit's answer, not a failure: the first command stands.
 - Every reaction runs while the transaction holds the store's global append lock, so every other
   append waits for it.
@@ -137,8 +139,10 @@ it, say so in the pull request.
 5. Bind the module (`use <Contract>, policy: :name`), compile, and add what `I2` asks for. `issue/1`
    takes command struct literals within the declaration's `issues:` (`I4`, `I6`).
 6. Test what runs after the commit with `config :eh_os_contract, subscriptions: :manual` and
-   `EhOsContract.Testing.drain/1`. The first `drain/1` is the deploy: drain once before dispatching
-   what the reaction takes, or the reaction sees history and does nothing.
+   `EhOsContract.Testing.drain/1`. The first `drain/1` is the deploy. For a policy or a process
+   manager, drain once before dispatching what it takes, or it treats that event as history and does
+   nothing. An ordered read model starts at position 0, so its first `drain/1` projects what the log
+   already holds.
 7. Run the gate from `sandbox/` and read any new `check` line naming the reaction.
 
 ## Not this skill
