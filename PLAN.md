@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 1 października (E0–E11, #50–#56 w `main`; E12 w toku)
+## Handoff — stan na 1 października (E0–E11, #50–#57 w `main`; E12 w toku)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -18,16 +18,16 @@ przestrzeni nazw) i **#56 — każda nazwa w formie**: `name:` domeny jako segme
 zamiast `$` we wzorcach nazw (N1, D9, strony, dziesiętna scenariusza), nazwy aktorów (D4) i pozostałych elementów
 domeny (D1, z kolizją wartości po `Macro.camelize` i nazwami typów wbudowanych), kolizja nazw kontraktu po
 `camelize` (N1, N2 dla `State`/`Row`), nazwy pól i `identity` (F1, D3, D6). **W toku: E12** (wybór użytkownika z
-1 października, „Przed E12 — decyzje użytkownika”); **E12a** — `EhOsContract.Bus`, adapter lokalny, suita — jest
-gotowe, przejrzane i wystawione jako PR z gałęzi `dsl-v2/e12-bus`; E12b (relay) po komentarzach CodeRabbita.
+1 października, „Przed E12 — decyzje użytkownika”); **E12a** — `EhOsContract.Bus`, adapter lokalny, suita — w
+`main` (#57); **E12b** — relay — gotowe, przejrzane i wystawione jako PR z gałęzi `dsl-v2/e12b-relay`.
 
 ### Stan repozytorium
 
-- **`origin/main` = `6e1658a`** (merge #56, 30 września; przedtem `0e6e10f` — merge #55, `0ca5383` — merge #54,
-  `50eb771` — merge #53). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
-- **`dsl-v2/e12-bus`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `6e1658a`: handoff po #56 (`2d870ee`, z
-  gałęzi `dsl-v2/handoff-after-56`, która zostaje w całości w tej), decyzje przed E12, E12a i poprawki z przeglądu;
-  PR do `main` na polecenie użytkownika z 1 października.
+- **`origin/main` = `7e4e4cc`** (merge #57, E12a, 1 października; przedtem `6e1658a` — merge #56, `0e6e10f` —
+  merge #55). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
+- **`dsl-v2/e12b-relay`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `7e4e4cc`: relay, poprawki z przeglądu,
+  ten zapis; PR do `main` na polecenie użytkownika. `dsl-v2/e12-bus` i `dsl-v2/handoff-after-56` są w całości w
+  `main`.
 - **Otwarte na GitHubie:** tylko **issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza
   repozytorium; zaparkowane 30 września, z propozycją `EmpoweredHouse/eh-os-contract-sandbox`. Otwartych PR-ów brak.
 - **Lokalne gałęzie w całości w `main`** — kilkadziesiąt, w tym wszystkie `dsl-v2/e*`, `dsl-v2/d11-dashed-namespace`,
@@ -43,8 +43,9 @@ gotowe, przejrzane i wystawione jako PR z gałęzi `dsl-v2/e12-bus`; E12b (relay
 
 ### Co zostało — i czyje to jest
 
-- **E12 — w toku** (asystenta): po merge'u E12a — E12b (relay), E12c (inbox, `.subscribe`, test dwóch aplikacji),
-  E12d (publiczne wejście), E12e (dokumentacja); podział w „Przed E12 — decyzje użytkownika”.
+- **E12 — w toku** (asystenta): po merge'u E12b — E12c (inbox, `.subscribe`, test dwóch aplikacji), E12d
+  (publiczne wejście), E12e (dokumentacja); podział w „Przed E12 — decyzje użytkownika”, sprawy przeniesione do
+  E12c i E12e w „E12a — co wyszło” i „E12b — co wyszło”.
 - **Kandydaci na później** (wybór użytkownika), każdy z tym, co go blokuje:
   - **„Po E11” z planu: kontrakty sandboxa jako fikstury akceptacyjne pakietu, potem manifest v2** (po akceptacji
     D-51/D-52 w `eh-os`). **Fikstury kolidują z #49**: kontrakty klientów w pakiecie to dokładnie to, czego #49 chce
@@ -121,6 +122,13 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 1 października, na `25e51d5`** (głowa kodu E12b po przeglądzie): brama z `sandbox/` → **EXIT=0** —
+  sandbox 144, `check` 0 / 29 / 9; silnik **1073** (1059 + 14: relay 12, runner na `CommitRepo` 1, `--reset`
+  relaya 1), `check` **0 / 67 / 6** — o jedno ostrzeżenie i jedną uwagę więcej, obie z fikstury `BusRig` i
+  zamierzone (`event-without-consumer` dla `:cancelled`, kontroli zdarzenia, które nie wychodzi;
+  `free-text-not-personal` dla notatki, która zostaje w sklepie); web 52; auth 66. Pełna brama także na `472102e`;
+  commity poprawek sprawdzane testami relaya, runnera i taska oraz kompilacją z `--warnings-as-errors`. CI `main`
+  na `7e4e4cc` (merge #57) — `success`.
 - **Lokalnie, 1 października, na `fb6bf46`** (głowa kodu E12a po przeglądzie): brama z `sandbox/` → **EXIT=0** —
   sandbox 144, `check` 0 / 29 / 9; silnik **1059** (1028 + 31 testów `Bus.Local` i suity), `check` 0 / 66 / 5; web
   52; auth 66. Te same liczby `check`, co przed E12a. Commity poprawek między `5ce8c90` a `fb6bf46` sprawdzane
@@ -3303,7 +3311,8 @@ wyjścia rozproszony po zadaniach zamiast jednej pozycji. Ten sam dopisek w §16
 - **E12a** — behaviour `EhOsContract.Bus`, adapter lokalny, suita adapterów (`EhOsContract.Bus.Suite`, jak
   `Store.Suite`);
 - **E12b** — relay: uporządkowana subskrypcja nad logiem, wiadomość tylko z `fields`, id
-  `<id zdarzenia>/<nazwa publish>`, checkpoint po potwierdzeniu;
+  `<id zdarzenia>/<nazwa publish>` (zbudowane: `<id zdarzenia>/<nazwa wersjonowana>`, „E12b — co wyszło”),
+  checkpoint po potwierdzeniu;
 - **E12c** — inbox i runner subskrybenta, capability `<nazwa>.subscribe`, test dwóch aplikacji;
 - **E12d** — publiczne wejście dla surowych danych, Plug na nim, bez `Dispatcher.permit_undecoded/5`;
 - **E12e** — poprawka z datą `architecture.md` §9–10, `docs/contract.md`, CHANGELOG, skill `write-reaction`,
@@ -3368,6 +3377,67 @@ utraty wiadomości przy żywej subskrypcji):
 - **otwarte do E12c:** kiedy powstaje konsument subskrybenta względem relaya wydawcy — lokalny daje nowemu
   konsumentowi tylko to, co opublikowano po jego pierwszej subskrypcji, więc relay uruchomiony wcześniej publikuje
   w próżnię (dwie aplikacje w jednym BEAM-ie w developmencie).
+
+### E12b — co wyszło (1 października)
+
+**Co jest** (gałąź `dsl-v2/e12b-relay`, od `7e4e4cc`): `EhOsContract.Relay` — relay każdego `publish` jako
+konsument rodzaju `:relay` w `Implementations` (klucz `"<kontrakt>:relay:<nazwa>"`), na wierszach i runnerze
+subskrypcji, jak polityka. Krok czyta do 100 zdarzeń typu, który `publish` bierze, buduje wiadomości z samych
+`fields` (id `<id zdarzenia>/<nazwa wersjonowana>`, korelacja zdarzenia) i przesuwa pozycję w tej samej transakcji,
+gdy `Bus.publish/1` odda `:ok`. Fikstura `BusRig` (zmyślony sklep, test/support) — publikuje złożenie zamówienia
+bez notatki sprzedawcy; anulowanie nie wychodzi.
+
+**Wybory asystenta** (dopisek „as built” w v2 §16):
+- **id kończy się nazwą wersjonowaną (`as:`), nie nazwą deklaracji** — deklaracja jest wewnętrzna dla wydawcy, jak
+  zdarzenie źródłowe, którego D-41 nie wpuszcza do manifestu; dwie publikacje jednego zdarzenia (v1 obok v2) i tak
+  mają dwa id;
+- **`{:error, _}` z transportu nie jest porażką zdarzenia** — bez liczenia prób, pozycja stoi, ponowienie po 5 s.
+  *Odrzucone:* liczenie jak u polityki — kilkusekundowa awaria brokera zostawiłaby relay `failing` do ręcznego
+  zdjęcia, a `--skip` zgubiłby zdarzenie. Wyjątek to defekt i liczy się jak u polityki;
+- **bez skonfigurowanego busa relay czeka** na swojej pozycji, start loguje ostrzeżenie. *Odrzucone:* odmowa startu
+  (host bez brokera w developmencie by nie wstał); rejestracja relaya dopiero z busem (zacząłby od głowy, a to, co
+  dopisano w międzyczasie, nigdy by nie wyszło);
+- **relay startuje od głowy logu, jak polityka** — `publish` dodany do kontraktu z historią jej nie wysyła; reset
+  wysyła log jeszcze raz, pod tymi samymi id.
+
+**Decyzja użytkownika po przeglądzie (1 października): broker wołany w transakcji kroku, z limitem czasu na
+adapterze.** Blokada wiersza (`FOR UPDATE SKIP LOCKED`) daje jednego wydawcę na relay w klastrze; kosztem jest
+połączenie z puli trzymane podczas publikacji, więc `Bus.publish/2` ma wracać w kilka sekund, wyraźnie poniżej
+timeoutu repo (inaczej Ecto zrywa połączenie po tym, jak broker wziął partię, pozycja nie rusza i partia wychodzi w
+kółko). *Odrzucone:* publikacja poza transakcją i przesunięcie pozycji potem, tylko gdy nikt jej nie ruszył — bez
+połączenia trzymanego przez sieć, ale każdy węzeł publikowałby każdą partię (mnożenie ruchu na brokerze), a zapis
+porażek ścigałby się między węzłami.
+
+**Przegląd** (`code-review high` i bezpieczeństwo/wydajność, równolegle, na `797ae76..472102e`; żaden nie znalazł
+zgubionej wiadomości poza zamierzonym `--skip` i zmianą nazwy `publish`):
+- powiadomienie z każdego dispatchu omijało przerwę po awarii — przy awarii brokera próba i ostrzeżenie na każdy
+  dispatch (oba przeglądy) — *poprawione* (`77e47e9`), test na `CommitRepo`;
+- publikacja w transakcji bez limitu czasu (pula, pętla po timeoucie repo; oba przeglądy) — *decyzja użytkownika*
+  wyżej, *poprawione w dokumentacji callbacku* (`25e51d5`);
+- wyjątek partii przypisany pierwszemu zdarzeniu — cykl na każde zdarzenie przed winnym, a wyjątek zależny od
+  wielkości partii nigdy nie dawał `failing` — *poprawione* (`8146016`): partia jeszcze raz, po jednym;
+- `throw` z adaptera wywracał runner (z wartością w raporcie) — *poprawione* (`31c5f39`), także `catch` w runnerze;
+- zła konfiguracja `bus:` w komunikacie w całości (np. token brokera) — *poprawione* (`a08e72d`), sam kształt;
+- `--reset` relaya mówił „emptied, and replayed” — *poprawione* (`f5601b4`);
+- relay bez busa otwierał transakcję i blokował wiersz co sekundę — *poprawione* (`4e5a654`), bez testu (wynik ten
+  sam: `:idle`);
+- trwała odmowa brokera jako `{:error, _}` blokowałaby relay na zawsze po cichu — *poprawione w dokumentacji*
+  (`25e51d5`): `{:error, _}` tylko dla tego, co naprawia ponowienie, reszta to wyjątek; widoczność długiej awarii —
+  *bez zmiany*: ostrzeżenie w logu, a błędy to Datadog (`CLAUDE.md`);
+- zmiana nazwy `publish` porzuca wiersz (zaległe nie wychodzi), usunięcie i powrót wznawia od starej pozycji; pola
+  zapieczętowane wcześniejszą wersją wychodzą zapieczętowane; tożsamości jawnie; relay tylko w skonfigurowanych
+  aplikacjach — *opisane* w moduledocu `Relay` (`25e51d5`), do skilla `change-contract` w E12e;
+- `read_all` z `type = ANY($1)` może nie użyć indeksu `(type, position)` dla rzadkiego typu — *pominięte*: sprzed
+  E12b (to samo zapytanie karmi polityki), do pomiaru razem z runnerem read modelu (otwarte pytania);
+- relay niewidoczny w `Paths` i na ekranie zgodności — *bez zmiany*: widać go w `mix eh_os_contract.subscriptions`;
+  cztery pytania ekranu go nie obejmują;
+- test „dopisane w trakcie” nie ćwiczy współbieżności — *poprawione* (nazwa i komentarz, `25e51d5`): współbieżność
+  to obietnica `Store.Suite`.
+
+**Do E12c i E12e:**
+- E12c: inbox kluczuje `(nazwa, id wiadomości)`; `idempotent_on` (FM-08 w `eh-os`: ta sama treść pod nowym id) — do
+  rozstrzygnięcia, czy wiadomość ma je nieść; kiedy powstaje konsument odbiorcy (z „E12a — co wyszło”);
+- E12e: `change-contract` o zmianie nazwy i usunięciu `publish`; poprawka `architecture.md` §9–10.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
