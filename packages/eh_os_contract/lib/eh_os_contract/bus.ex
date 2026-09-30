@@ -71,10 +71,21 @@ defmodule EhOsContract.Bus do
   @doc """
   Hands `messages` to the transport, returning once it holds every one.
 
-  A transport that is down or slow is `{:error, reason}`, never an exit, so the relay
-  keeps its checkpoint and tries again. A message the transport cannot carry at all —
-  a payload JSON cannot encode — raises: that is a defect of the publisher, and
-  trying again would not change it.
+  **It is called inside a database transaction** — the relay's step, which holds its
+  row and a pooled connection until this returns — **so it returns within a few
+  seconds**, well under the repo's timeout (15 seconds by default): a broker that has
+  not confirmed by then is `{:error, :timeout}`. Wait for the confirmations of a
+  batch together, not one after another. `EhOsContract.Bus.Local` gives up after 5.
+  A call that outlives the repo's timeout loses the connection after the transport
+  took the batch, so the position never moves and the same batch goes out again and
+  again.
+
+  `{:error, reason}`, never an exit, **only for what trying again can fix**: a
+  transport that is down or slow. The relay then keeps its position, counts no
+  attempt, and tries again in five seconds, for as long as it takes. Anything trying
+  again will not fix raises — a payload JSON cannot encode, a message over the
+  broker's size limit, a subject it refuses — so that the relay stops at that event,
+  `failing`, where a person sees it, instead of retrying it forever.
   """
   @callback publish(opts :: keyword(), messages :: [Message.t()]) :: :ok | {:error, term()}
 

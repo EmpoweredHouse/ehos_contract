@@ -28,6 +28,30 @@ defmodule EhOsContract.Relay do
     `publish` is first deployed is history, and nothing publishes it by itself.
     `EhOsContract.Subscription.rebuild/2` moves it back to position 0, and it
     publishes the whole log again under the same ids — a person's decision.
+  - **A batch that raises goes again one event at a time**, so the failure lands on
+    the event at fault and what comes before it leaves.
+
+  What a host should know besides:
+
+  - **It holds a pooled connection while it publishes**, one per relay per node, for
+    as long as `c:EhOsContract.Bus.publish/2` takes, which is why that callback has to
+    return within seconds (a decision of 1 October 2026, `PLAN.md`).
+  - **Its row is keyed by the `publish`'s name, not its `as:`.** Renaming the
+    declaration makes a new relay at the head of the log, and what the old one had
+    not yet published — behind an outage, or with no bus configured — never leaves;
+    the old row stays. Removing a `publish` and adding it back later finds the old row,
+    and the relay resumes from where it stood, publishing everything since.
+  - **It publishes the fields as stored.** Rule D11 refuses a `personal:` field in a
+    `publish`, and that holds for today's declaration: a field that was `personal:` in
+    an earlier version of the contract is still sealed in the events written then, and
+    goes out sealed. The key never leaves, so it is not readable, but it is not the
+    value either.
+  - **Identities go out in the clear**, as they are stored: a unit's identity or an
+    `{:id, subject}` field in `fields` names its subject, also after the subject is
+    erased, when a reset publishes the log again.
+  - **Only a contract of a configured application has a relay**
+    (`config :eh_os_contract, applications:`, as for every ordered consumer): a
+    `publish` elsewhere is compiled and never published.
   """
 
   alias EhOsContract.{Bus, Event}

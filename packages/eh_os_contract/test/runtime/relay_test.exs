@@ -146,7 +146,10 @@ defmodule EhOsContract.RelayTest do
     assert row().position == placed("o-1").position
   end
 
-  test "an event appended while the relay publishes is published by the next step, not skipped" do
+  # Appended inside the relay's own transaction, which the test owns: this pins that the
+  # relay moves to the last event it published and not to the head. Commits in position
+  # order under concurrent writers are the store's promise (`EhOsContract.Store.Suite`).
+  test "the relay moves to the last event it published, so one appended meanwhile leaves next" do
     deploy()
     place("o-1")
     Process.put(:relay_test_answer, {:during, fn -> place("o-2") end})

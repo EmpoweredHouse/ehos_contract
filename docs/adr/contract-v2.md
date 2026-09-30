@@ -1680,6 +1680,14 @@ policy :invoice_on_visit_close, "Faktura po zamknięciu wizyty",
 > - **It starts at the head of the log**, as a policy does: a `publish` added to a contract with history does
 >   not publish that history. A rebuild moves it to position 0, and it publishes the log again under the same
 >   ids.
+> - **The broker is called inside the step's transaction**, which keeps one publisher per relay across nodes
+>   (the row is taken `FOR UPDATE SKIP LOCKED`) at the price of a pooled connection held while it publishes;
+>   so `EhOsContract.Bus.publish/2` has to return within seconds, well under the repo's timeout. *Rejected:*
+>   publishing outside the transaction and advancing afterwards only if no one else did — no connection held
+>   over the network, but every node would publish every batch, multiplying the traffic on the broker, and
+>   the failure bookkeeping would race. Decided by the user after the E12b review.
+> - **`{:error, _}` is only for what retrying fixes.** An adapter raises for a message the broker refuses for
+>   good (over its size limit, say), so the relay stops at it instead of retrying it forever out of sight.
 
 ## 17. Risks
 
