@@ -61,7 +61,7 @@ defmodule EhOsContract.Personal do
   @typedoc "Data keys for writing: the newest version of each subject's key."
   @type current_keys :: %{{String.t(), String.t()} => {pos_integer(), binary()}}
 
-  @doc "Whether `model`, a v2 contract's, declares an event with a personal field, at any depth."
+  @doc "Whether `model`, a contract's, declares an event with a personal field, at any depth."
   @spec declares?(map()) :: boolean()
   def declares?(model) do
     values = Codec.values(model.domain)

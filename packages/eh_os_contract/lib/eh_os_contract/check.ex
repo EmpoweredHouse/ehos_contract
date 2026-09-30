@@ -17,7 +17,7 @@ defmodule EhOsContract.Check do
   alias EhOsContract.Contract.Links
 
   @doc """
-  What `mix eh_os_contract.check` says about v2 contracts (plan E7c-2), each finding
+  What `mix eh_os_contract.check` says about contracts (plan E7c-2), each finding
   at the declaration it is about (plan EL1).
 
   Much of what a whole-program check could look for a contract cannot compile
@@ -147,7 +147,7 @@ defmodule EhOsContract.Check do
         [
           Finding.new(
             "contract-without-implementation",
-            "#{inspect(model.module)} has no implementation, which a contract may (D3): nothing " <>
+            "#{inspect(model.module)} has no implementation, which a contract may: nothing " <>
               "of it can be dispatched, and its report is of a process nobody runs",
             at
           )

@@ -354,6 +354,23 @@ defmodule EhOsContract.ContractUnitsTest do
                  "a process manager of this contract issue it (unreachable.ex:6)"
     end
 
+    test "an empty by: is no one either" do
+      message =
+        refuse_contract("EmptyBy", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: [], emits: :visit_closed
+            event :visit_closed, "Wizyta zamknięta", terminal: true
+          end
+
+        #{@process}
+        """)
+
+      assert message =~
+               "C1: command :close_visit can be issued by no one: give it by:, or have a policy or " <>
+                 "a process manager of this contract issue it (empty_by.ex:6)"
+    end
+
     test "control: a command only a policy issues compiles" do
       assert %{commands: [_, %{name: :issue_invoice, by: []}]} =
                compile_contract("IssuedByPolicy", """

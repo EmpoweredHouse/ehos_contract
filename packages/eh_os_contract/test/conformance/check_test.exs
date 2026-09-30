@@ -92,7 +92,7 @@ defmodule EhOsContract.CheckTest do
              {:info, "promise-without-within",
               "promise :stays_stacked has no `within`, so it has no failing case" <> _},
              {:info, "contract-without-implementation",
-              "EhOsContract.CheckTest.Unimplemented has no implementation, which a contract may (D3)" <>
+              "EhOsContract.CheckTest.Unimplemented has no implementation, which a contract may" <>
                 _}
            ] = findings(module)
   end

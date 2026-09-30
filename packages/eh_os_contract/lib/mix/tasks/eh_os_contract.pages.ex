@@ -2,7 +2,7 @@ defmodule Mix.Tasks.EhOsContract.Pages do
   @shortdoc "Writes the domain and its contracts as Markdown pages, one per element"
 
   @moduledoc """
-  The application's domain and its v2 contracts as linked Markdown pages, one per
+  The application's domain and its contracts as linked Markdown pages, one per
   element (`EhOsContract.Pages`; ESDM's `documentation`).
 
       mix eh_os_contract.pages --output docs/model                  # write the pages

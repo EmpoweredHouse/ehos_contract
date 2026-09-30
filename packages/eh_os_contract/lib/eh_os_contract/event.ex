@@ -30,7 +30,7 @@ defmodule EhOsContract.Event do
     field(:actor, :string)
     field(:occurred_at, :utc_datetime_usec)
 
-    # The store's columns (v2 §10.3, migration V03). `position` is the order of
+    # The store's columns (v2 §10.3, migration V01). `position` is the order of
     # appends and the table's primary key; `id` stays this schema's primary key, so
     # every lookup by id works as before. Both `position` and `recorded_at` are the
     # database's to assign.

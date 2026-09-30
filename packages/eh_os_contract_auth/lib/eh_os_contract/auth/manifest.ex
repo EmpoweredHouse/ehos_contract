@@ -16,7 +16,7 @@ defmodule EhOsContract.Auth.Manifest do
 
   alias EhOsContract.Model
 
-  @doc "Builds an `ehos.manifest/v1` document from one domain and its v2 contracts."
+  @doc "Builds an `ehos.manifest/v1` document from one domain and its contracts."
   @spec build(module() | map(), [module() | map()]) :: map()
   def build(domain, contracts) do
     domain = Model.fetch(domain)
@@ -45,7 +45,7 @@ defmodule EhOsContract.Auth.Manifest do
   end
 
   defp ensure_contracts!(domain, []) do
-    raise ArgumentError, "#{inspect(domain.module)} has no v2 contracts"
+    raise ArgumentError, "#{inspect(domain.module)} has no contracts"
   end
 
   defp ensure_contracts!(domain, models) do

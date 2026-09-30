@@ -83,6 +83,15 @@ defmodule Taxvision.Contract.Invoicing do
 end
 ```
 
+*Corrected 29 September 2026, v2 plan E11* ([contract v2](contract-v2.md) §4, §18). **The DSL above is
+v1's, and E11a deleted it.** v2 writes a process as two Spark DSLs: `use EhOsContract.Domain` — contexts,
+actors, subjects, values, entities, externals, relations — and `use EhOsContract.Contract` — units that
+decide (`aggregate`, `dcb`) with their commands, events and invariants, consumers (`policy`, `effect`,
+`process_manager`, `read_model`, `query`), one `process` with its `promise`s, and `scenario`s. There is no
+`owner:`: an implementation names the declaration it implements (`use C, aggregate: :x`), never the other
+way round. `retain:` became `personal:` with crypto-shredding (E8). Every key is in the reference generated
+from the extensions, `packages/eh_os_contract/docs/dsl/`.
+
 The Polish is not a placeholder — `label`, `source`, and the two `example` titles above are read
 by a real accountant, in the language the workshop was run in, and the engine passes them
 through untouched (see `docs/contract.md`'s note on `event`'s `label`). The English comments
@@ -327,6 +336,12 @@ end
 - checks `:order_approved` exists in the contract
 - checks `publishes:` against the contract
 - registers the edge in the registry, which is where the static graph comes from
+
+*Corrected 29 September 2026, v2 plan E11* ([contract v2](contract-v2.md) §6). **`use PNS.Handler` is v1's,
+and gone.** v2 enforces in five layers: Spark's schema (L1), the rules of one module (L2), a Mix compiler for
+the rules between modules (L3, `compile.eh_os_contract`), the implementation macros at the call that breaks
+them (L4), and `mix eh_os_contract.check` (L5). Every refusal of L2–L4 is listed by its code in
+`packages/eh_os_contract/docs/contract.md`, and a test holds that list to the code.
 
 A compilation tracer (as `boundary` uses) sees every remote call, so a direct call into another
 process's module is a compile error. Every implementation must also pass a shared
@@ -983,6 +998,13 @@ conventional — the same position brokers hold, allowed outside and not inside.
 the same author as the governance critique cited in the ADR. It can consume AsyncAPI, but a
 renderer reading the contract directly is the shorter path and keeps ADR §2 intact.
 
+*Corrected 29 September 2026, v2 plan E11* ([contract v2](contract-v2.md) §2, §16, §18). **ESDM joined this
+list, and outranks it**: v2 takes [ESDM](https://www.esdm.io)'s modelling vocabulary and its linter's rules,
+without integrating ESDM itself. The renderer reading the contract directly is built — the graphs (EG),
+`mix eh_os_contract.pages`, the dashboard (E10). AsyncAPI describes what a contract `publish`es, since D11
+gives it the real edge this section waited for. Commanded is still not a dependency, but its shape is no
+longer rejected: v2 is event-sourced, on the engine's own store and dispatch.
+
 ## 13. Library decisions
 
 | Concern | Choice | Note |
@@ -1001,6 +1023,11 @@ renderer reading the contract directly is the shorter path and keeps ADR §2 int
 
 The line that decides whether this is upgradable in three years: **what should be updatable is a
 dependency; what the client will edit is generated.** Phoenix is a dependency; the router is yours.
+
+*Corrected 29 September 2026, v2 plan E11* ([contract v2](contract-v2.md) §2, §10, §18). The DSL is on
+**Spark**; event emission became the engine's own **store and dispatch**, not a layer modelled on
+`oban-events`; `:telemetry` is no longer a direct dependency, since nothing emits it after v1's handler
+spans went (E11a); Igniter is not used. Oban stays for what is delivered at least once — effects and timers.
 
 ## 14. Known risks
 

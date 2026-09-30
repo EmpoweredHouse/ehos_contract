@@ -4,10 +4,11 @@ defmodule EhOsContract.UniversalityGateTest do
   `UniversalityGate.TreatmentEpisode` is compiled by `mix compile` from
   `test/support/`, like a consumer's contract, and describes a domain with nothing
   to do with accounting in the words `vocabulary/0` pins
-  (`contract_vocabulary_test.exs`) — none added for it.
+  (`contract_vocabulary_test.exs`) — none added for it, counted since 29 September 2026
+  from that literal (its note says why not from v1's keys).
 
-  One test here does by hand what a Mix compiler will do in E5 (L3, X2–X4): every
-  actor, value, subject and external the contract names is declared by its domain.
+  One test here does by hand what the Mix compiler also does (L3, X2–X4): every actor,
+  value, subject and external the contract names is declared by its domain.
   """
 
   use ExUnit.Case, async: true

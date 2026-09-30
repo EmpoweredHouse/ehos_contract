@@ -71,7 +71,7 @@ mix eh_os_contract.manifest --output ehos.manifest.json
 # Add --domain taxvision when the host registers more than one domain.
 ```
 
-The task reads the v2 contracts registered through `config :eh_os_contract, applications:` and emits
+The task reads the contracts registered through `config :eh_os_contract, applications:` and emits
 strict `ehos.manifest/v1`: human command capabilities and the human actors that hold at least one of
 them as roles. It deliberately omits system actors, actors with no command capability, queries,
 recordings, scopes, publications and private metadata. Manifest v1 has no fields for those, and EHOS

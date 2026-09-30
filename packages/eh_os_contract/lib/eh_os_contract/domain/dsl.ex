@@ -1,6 +1,6 @@
 defmodule EhOsContract.Domain.Dsl do
   @moduledoc """
-  The Spark extension behind `use EhOsContract.Domain` (v2 §4.1–4.3).
+  The Spark extension behind `use EhOsContract.Domain`.
 
   One top-level section, so every entity is written straight into the module body:
   subdomains, contexts with their glossary, actors, subjects of personal data, value types,
@@ -137,13 +137,13 @@ defmodule EhOsContract.Domain.Dsl do
     args: [:text],
     schema: [
       text: [type: :string, required: true, doc: "The word to avoid."],
-      reason: [type: :string, doc: "Why it must not be used (plan EL2)."]
+      reason: [type: :string, doc: "Why it must not be used."]
     ]
   }
 
   @translation %Spark.Dsl.Entity{
     name: :translation,
-    describe: "The term in another language, with what it means there (plan EL2, as in ESDM).",
+    describe: "The term in another language, with what it means there, as in ESDM.",
     target: Translation,
     args: [:language, :text],
     entities: [avoid: [@avoid]],
@@ -169,7 +169,7 @@ defmodule EhOsContract.Domain.Dsl do
 
   @subdomain %Spark.Dsl.Entity{
     name: :subdomain,
-    describe: "A part of the business the domain covers, named, with its kind (plan EL2).",
+    describe: "A part of the business the domain covers, named, with its kind.",
     target: Subdomain,
     args: [:name, :label],
     schema: [
@@ -213,14 +213,14 @@ defmodule EhOsContract.Domain.Dsl do
       scope: [
         type: {:wrap_list, :atom},
         default: [],
-        doc: "The fields a grant to this actor narrows query answers by (D10)."
+        doc: "The fields a grant to this actor narrows query answers by."
       ]
     ]
   }
 
   @subject %Spark.Dsl.Entity{
     name: :subject,
-    describe: "A kind of person whose personal data may be erased (v2 §14).",
+    describe: "A kind of person whose personal data may be erased.",
     target: Subject,
     args: [:name, :label],
     schema: [
@@ -244,7 +244,7 @@ defmodule EhOsContract.Domain.Dsl do
       default: [type: :any, doc: "Only in a contract's state."],
       issued_by: [
         type: :atom,
-        doc: "The external of this domain that gives this value (plan EL2)."
+        doc: "The external of this domain that gives this value."
       ]
     ]
   }

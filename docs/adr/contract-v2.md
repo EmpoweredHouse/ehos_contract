@@ -1021,6 +1021,17 @@ CREATE TABLE eh_os_contract_erasures (subject_type text, subject_id text, erased
 Recovering a test database that leaked rows (the `MIX_ENV=test mix run` trap in `CLAUDE.md`) stays
 `ecto.drop`: the append-only trigger rules out `DELETE`.
 
+> **29 September 2026, E11c — the collapse as built.** `EhOsContract.Migrations.V01` creates this shape in
+> one step and `current_version/0` is 1 (D2). Where it differs from the sketch above: (1) times are Ecto's
+> `utc_datetime_usec`, `timestamp` without a zone, as every earlier version had them, not `timestamptz` — the
+> engine writes and reads UTC only, and changing the type was not part of the collapse; (2) there is no
+> `_effect_runs`: an effect delivered `:at_least_once` runs as an Oban job (`EhOsContract.EffectJob`), and
+> `_event_handlings` and `_handler_failures` are not created; (3) no snapshot table, as the E8a note below
+> says. The v1 indexes on `type`, `causation_id`, `instance_id` and `(process, instance_id)` are not created
+> either: runs are read through `_event_runs`, and `(type, position)` covers `type`. Nothing migrates from
+> before the cut — there was no consumer, so a database with an older schema is recreated (decision of the
+> user, 29 September; `PLAN.md`, "E11c — co wyszło").
+
 ### 10.4 Appends
 
 ```sql
@@ -1597,6 +1608,9 @@ Each correction is a dated note under the original claim, added in the stage who
 
 Still valid: §2 — the contract is code and the only source, with no YAML beside it; §5–6; §11–12; §13's three
 layers; and [identity seam](identity-seam.md) — ESDM's actors are roles, not identities.
+
+> *29 September 2026, E11d.* Every row above has its dated note: the last, technology-notes §1, §2, §12 and
+> §13, went in with the cut, which deleted the v1 code those sections describe.
 
 ## 19. Open questions
 

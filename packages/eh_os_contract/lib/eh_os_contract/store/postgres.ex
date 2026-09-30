@@ -1,6 +1,6 @@
 defmodule EhOsContract.Store.Postgres do
   @moduledoc """
-  `EhOsContract.Store` on the table migration V03 builds (v2 §10.2–10.4).
+  `EhOsContract.Store` on the table migration V01 builds (v2 §10.2–10.4).
 
   Every append takes `eh_os_contract_append_lock()`, a transaction-scoped advisory
   lock with one fixed key. The table's own trigger takes the same lock for inserts

@@ -5,7 +5,7 @@ defmodule EhOsContract.CommitRepo do
 
   `EhOsContract.TestRepo` wraps every test in a transaction that rolls back, and
   that is exactly what these tests cannot have. A committed row in the log can never
-  be deleted, because V03 makes the table append-only. So these tests get their own
+  be deleted, because V01 makes the table append-only. So these tests get their own
   database, never the sandbox's, and it is emptied by migrating it down and up
   before each run rather than by deleting anything.
 

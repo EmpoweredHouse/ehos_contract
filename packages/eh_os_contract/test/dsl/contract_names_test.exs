@@ -181,6 +181,28 @@ defmodule EhOsContract.ContractNamesTest do
 
       assert message =~ "N1: two effects are named :notify (kinds.ex:11)"
     end
+
+    # v1 refused two commands of one name; v2's namespace is shared, so the second
+    # is refused as a clash with the first (plan E11a, the gates only partly ported).
+    test "two commands of one name" do
+      message =
+        refuse_contract("TwoCommands", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+            command :close_visit, "Zamknięcie wizyty 2", by: :reception, emits: :visit_closed
+            event :visit_closed, "Wizyta zamknięta", terminal: true
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      assert message =~
+               "N1: command :close_visit has the name of a command; commands, events, timers and " <>
+                 "consumed events share one namespace (two_commands.ex:7)"
+    end
   end
 
   describe "N2: reserved words and Kernel clashes" do

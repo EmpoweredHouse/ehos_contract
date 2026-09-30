@@ -26,9 +26,10 @@ TaxVision i Rehmed są **danymi testowymi** — materiałem, na którym sprawdza
 notatek o kliencie, i dlatego kontrakt, którego nie da się napisać, jest **lepszym** wynikiem niż
 kontrakt napisany obok materiału.
 
-Od 18 sierpnia dane testowe są z dwóch domen. `sandbox/lib/taxvision/` to pełna aplikacja — schematy,
-handlery, repo. `sandbox/lib/rehmed/` to **wyłącznie kontrakty**: Rehmed nie ma tu kodu i nie będzie miał,
-bo do sprawdzenia DSL kod nie jest potrzebny. Trzecia domena medyczna, `UniversalityGate.TreatmentEpisode`,
+Od 18 sierpnia dane testowe są z dwóch domen, TaxVision (`sandbox/lib/taxvision/`) i Rehmed
+(`sandbox/lib/rehmed/`): każda ma domenę, kontrakty v2 i implementacje, które decydują i reagują. Rehmed miał
+być wyłącznie kontraktami — od E6 ma kod, bo bez niego dispatch i raport nie miałyby czego sprawdzać
+(poprawka z 29 września, E11d). Trzecia domena medyczna, `UniversalityGate.TreatmentEpisode`,
 jest w `packages/eh_os_contract/test/support/`, bo jest **zmyślona** — i sama to o sobie mówi w pierwszej
 linii.
 
@@ -38,7 +39,8 @@ linii.
 | --- | --- |
 | Plan pracy, etapy, kryteria odbioru, **stan** | [`PLAN.md`](PLAN.md) |
 | Czym jest to repozytorium, brama, struktura | [`README.md`](README.md) |
-| **Jak napisać kontrakt** — klucze, wymagane/opcjonalne, co się nie skompiluje | [`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
+| **Jak napisać domenę i kontrakt** — co się nie skompiluje, każda odmowa z kodem | [`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
+| Każdy klucz obu DSL-i — typ, wymagany/opcjonalny, domyślna wartość (generowane) | [`packages/eh_os_contract/docs/dsl/`](packages/eh_os_contract/docs/dsl) |
 | **Założenia początkowe, 18 decyzji, `§N` z komentarzy w kodzie** | [`docs/adr/architecture.md`](docs/adr/architecture.md) |
 | Kształty kodu, schematy, pułapki, biblioteki — `notes §N` z komentarzy | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |
 | Co każda decyzja pobiła, odrzucone alternatywy | [`docs/adr/design-rationale.md`](docs/adr/design-rationale.md) |
@@ -69,8 +71,11 @@ idzie do `docs/adr/` — nie do komentarza obchodzącego problem.
 
 ## Czym biblioteka jest, a czym nie
 
-Dwie połowy na jednym kontrakcie. **Zdarzenia**: `emit` odrzuca to, czego kontrakt nie deklaruje, handlery
-synchroniczne jadą w transakcji emisji, asynchroniczne przez Obana wstawionego w tę samą transakcję. W planie:
+Dwie połowy na jednym modelu — domenie i kontraktach (DSL v2, na wzór ESDM). **Zdarzenia**: `dispatch` pyta,
+czy aktor może wydać komendę, sprawdza pola, czyta historię jednostki z logu, pozwala implementacji
+zdecydować i dopisuje tylko to, co kontrakt deklaruje; log jest własny silnika (event sourcing). Reakcje —
+read modele, polityki, process managery, efekty — jadą w transakcji dispatchu (`:in_transaction`) albo po
+niej (`:at_least_once`: subskrypcja z logu, efekt przez Obana wstawionego w tę samą transakcję). W planie:
 wiele aplikacji OTP wymieniających zdarzenia przez broker (JetStream) — **jeszcze niezbudowane**, a
 `docs/adr/architecture.md` §9–10 mówi dziś „bez zewnętrznego brokera”, więc przy tej pracy idzie tam
 poprawka z datą. **Zgodność** odpowiada na jedno pytanie:
@@ -78,12 +83,13 @@ poprawka z datą. **Zgodność** odpowiada na jedno pytanie:
 > Czy wdrożony kod robi to, co mówi zdefiniowany proces?
 
 Ekran ma **cztery pytania i ani jednego więcej**: które zadeklarowane ścieżki nigdy nie zostały przejechane,
-które przejścia nie są zadeklarowane, które assercje `trace` są naruszane, która wersja kontraktu jest
+które przejścia nie są zadeklarowane, które obietnice (`promise`) są łamane, która wersja kontraktu jest
 wdrożona i od kiedy.
 
 Wszystko inne ma właściciela: wydajność to GCP, błędy to Datadog, **stan biznesu to aplikacja klienta**.
 Kiedy EhOsContract zacznie odpowiadać „która firma nie ma otwartego lipca", staje się drugim, gorszym ekranem
-aplikacji klienta.
+aplikacji klienta. Od v2 biblioteka prowadzi read modele i query klienta — to jego stan, deklarowany w
+kontrakcie — ale dashboard go nie pokazuje: pokazuje zgodność.
 
 ## Brama
 
@@ -93,8 +99,9 @@ docker compose up -d && cd sandbox && mix ecto.setup && mix check
 
 `mix check` w `sandbox/` to `format --check-formatted`, `compile --force --warnings-as-errors`,
 `eh_os_contract.check`, testy sandboxa, a potem `mix check` każdego pakietu osobnym wywołaniem —
-`packages/eh_os_contract` (z `eh_os_contract.docs --check`, które pilnuje, że referencja kluczy w jego
-`docs/contract.md` jest wygenerowana z `EhOsContract.Contract.schema/0`, a nie pisana ręcznie),
+`packages/eh_os_contract` (z `eh_os_contract.docs --check` i `eh_os_contract.rules --check`, które pilnują,
+że referencja obu DSL-i w jego `docs/dsl/` i katalog reguł w `docs/rules.md` są wygenerowane z kodu, a nie
+pisane ręcznie; a `test/docs_test.exs` trzyma przy kodzie przykłady i tabelę odmów w `docs/contract.md`),
 `packages/eh_os_contract_web` i `packages/eh_os_contract_auth`. **Musi przechodzić.** Osobne wywołania, nie umbrella — pakiet ma stać sam,
 i to jest własność, której pilnujemy. Brama mieszka w `sandbox/`, bo tylko on widzi wszystkie projekty;
 każdy pakiet ma też własne `mix check`, które przechodzi bez niego.
@@ -120,19 +127,23 @@ mix ecto.migrate`.
 
 - **`boundary`: moduły procesowe są rodzeństwem, nie hierarchią.** Dostęp do cudzych tabel wymaga jawnego
   `deps`. Pierwsza wersja miała `Taxvision` zależny od własnych dzieci i `boundary` słusznie ją odrzucił.
-- **Reguła wskazuje MFA, nigdy capture.** Capture zrobiłby z kontraktu zależność kompilacyjną od domeny, a
-  handlery zależą od kontraktu — więc każda zmiana domeny rekompilowałaby wszystko.
+- **Implementacje wskazują kontrakt, nigdy odwrotnie** (`use Kontrakt, aggregate: :x`). Kontrakt, który
+  nazywałby swój kod, byłby od niego zależny kompilacyjnie, a kod zależy od kontraktu — każda zmiana kodu
+  rekompilowałaby kontrakt i wszystko po nim. Z tego samego powodu kontrakt wskazuje domenę przez `domain:`
+  bez zależności kompilacyjnej, a związki między nimi sprawdza kompilator Mixa (L3). Do E11 ta reguła
+  brzmiała „reguła wskazuje MFA, nigdy capture” — to był jej kształt w v1.
 - **Sprawdzenia w ciele makra, nie w `quote`.** To tworzy zależność kompilacyjną i sprawia, że błąd wskazuje
-  handler, nie bibliotekę.
-- **Nazwy zdarzeń to literały.** Publikacja dynamiczna jest nielegalna, bo od tego zależy, czy graf statyczny
-  jest faktem, czy heurystyką.
+  implementację, nie bibliotekę.
+- **Zdarzenia i komendy to literały.** `emit/1` i `issue/1` biorą literały struktur (I4), bo od tego
+  zależy, czy graf statyczny jest faktem, czy heurystyką.
 - **Kod jest po angielsku. Bez wyjątków.** Identyfikatory, moduledoki, `@doc`, komentarze, nazwy testów,
   komunikaty błędów kompilacji i stringi wypisywane na wyjście. **Zakres to wszystko w `packages/` i
   `sandbox/`** — `lib/`, `test/` z fikstrami, `config/`, `priv/repo/migrations/`, `mix.exs` — oraz `docs/`.
   `config/`, migracje i `mix.exs` zostały przy pierwszym sprzątaniu pominięte, bo nikt o nich nie pomyślał.
 - **Po polsku jest wyłącznie to, co klient czyta zdaniami, i tylko w stringu** — nigdy w komentarzu,
-  moduledoku ani nazwie. Konkretnie: `label`, opisy `example`, `source` i `unavailable_looks_like` w
-  kontrakcie, nazwy tasków, temat powiadomienia. **Od v2 (etap E3, 25 września) także:** w domenie
+  moduledoku ani nazwie. Konkretnie: `label` i `source` w domenie i kontrakcie, nazwy tasków, temat
+  powiadomienia (klucze v1 — opisy `example`, `unavailable_looks_like` — zniknęły w E11). **Od v2 (etap E3,
+  25 września) także:** w domenie
   tekst `term`, jego `definition`, `avoid` i tekst tłumaczenia (`translation`), a w kontrakcie v2 prozę
   `where` przy `consults` i opisy scenariuszy — to słownik i przypadki, które właściciel procesu czyta
   zdaniami. Poza tymi miejscami polski string też jest błędem.
