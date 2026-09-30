@@ -72,6 +72,7 @@ defmodule EhOsContract.DomainRulesTest do
           value :"a/b", :integer
           external :"registry-v2", "Rejestr", direction: :outbound
           subdomain true, "Prawda", type: :generic
+          context :"desk#{"\\n"}", "Recepcja 2", subdomain: :supporting
           context :settlement, "Rozliczenia", subdomain: :supporting
           actor :Reception, :human, "Recepcja"
 
@@ -86,7 +87,8 @@ defmodule EhOsContract.DomainRulesTest do
             {"value", ~s|:"a/b"|, 6},
             {"external", ~s|:"registry-v2"|, 7},
             {"subdomain", "true", 8},
-            {"entity", ":Invoice", 12}
+            {"context", ~s|:"desk\\n"|, 9},
+            {"entity", ":Invoice", 13}
           ] do
         assert message =~
                  "D1: #{kind} #{name} is not snake_case, as every name of a domain is " <>
@@ -128,13 +130,18 @@ defmodule EhOsContract.DomainRulesTest do
         refused("BuiltInName", """
           value :map, :string
           value :integer, :integer
+          value :bool, :boolean
+          value :var, :string
+          value :char_list, :string
         """)
 
       assert message =~
                "D1: value :map is named after a type Elixir builds in, and its @type could not " <>
                  "be defined; name it after what it holds (built_in_name.ex:4)"
 
-      assert message =~ "D1: value :integer is named after a type Elixir builds in"
+      for name <- [:integer, :bool, :var, :char_list],
+          do:
+            assert(message =~ "D1: value #{inspect(name)} is named after a type Elixir builds in")
 
       compiles("NotBuiltInName", """
         context :front_desk2, "Recepcja", subdomain: :supporting

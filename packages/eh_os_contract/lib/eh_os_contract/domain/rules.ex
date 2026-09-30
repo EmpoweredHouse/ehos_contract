@@ -121,13 +121,9 @@ defmodule EhOsContract.Domain.Rules do
 
   # --- D1: names are snake_case, and unique per kind -----------------------------
 
-  # The built-in types `@type` refuses to redefine, as of Elixir 1.18.
-  @elixir_types ~w(any none atom map pid port reference struct tuple float integer neg_integer
-                   non_neg_integer pos_integer list nonempty_list maybe_improper_list
-                   nonempty_maybe_improper_list term arity binary nonempty_binary bitstring
-                   nonempty_bitstring boolean byte char charlist nonempty_charlist function
-                   identifier iodata iolist keyword module mfa no_return node number timeout
-                   string nonempty_string dynamic)a
+  # The types `@type` refuses to redefine are Erlang's, which the running OTP answers
+  # for, and these, which Elixir adds (`Kernel.Typespec`).
+  @elixir_types ~w(char_list charlist struct nonempty_charlist keyword var)a
 
   @kinds [
     {Subdomain, "subdomain"},
@@ -199,7 +195,7 @@ defmodule EhOsContract.Domain.Rules do
       end
 
     types =
-      for %Value{name: name} = value <- values, name in @elixir_types do
+      for %Value{name: name} = value <- values, built_in_type?(name) do
         {"D1: value #{inspect(name)} is named after a type Elixir builds in, and its @type " <>
            "could not be defined; name it after what it holds", value}
       end
@@ -208,6 +204,8 @@ defmodule EhOsContract.Domain.Rules do
   end
 
   defp camelize(name), do: name |> Atom.to_string() |> Macro.camelize()
+
+  defp built_in_type?(name), do: :erl_internal.is_type(name, 0) or name in @elixir_types
 
   # --- D2: one translation per language, none into the term's own ----------------
 
