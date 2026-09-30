@@ -257,9 +257,17 @@ defmodule EhOsContract.Bus.LocalTest do
       assert_receive {:configured, ^sent}
     end
 
-    test "a value that is neither is refused" do
+    test "a value that is neither is refused, by its shape and never its value" do
       Application.put_env(:eh_os_contract, :bus, "Local")
-      assert_raise ArgumentError, ~r/is not a module or \{module, opts\}/, &Bus.adapter/0
+
+      assert_raise ArgumentError,
+                   ~r/must be a module or \{module, opts\}.*got a string/,
+                   &Bus.adapter/0
+
+      Application.put_env(:eh_os_contract, :bus, {Local, %{token: "nats-secret-token"}})
+      error = assert_raise ArgumentError, &Bus.adapter/0
+      assert error.message =~ "got {EhOsContract.Bus.Local, a map}"
+      refute error.message =~ "nats-secret-token"
     end
   end
 

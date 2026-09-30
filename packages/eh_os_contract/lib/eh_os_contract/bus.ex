@@ -100,11 +100,20 @@ defmodule EhOsContract.Bus do
       module when is_atom(module) ->
         {module, []}
 
+      # The shape only: the value may hold a broker's credentials.
       other ->
         raise ArgumentError,
-              "config :eh_os_contract, bus: #{inspect(other)} is not a module or {module, opts}"
+              "config :eh_os_contract, bus: must be a module or {module, opts} with opts a " <>
+                "keyword list, got #{shape(other)}"
     end
   end
+
+  defp shape({module, %{}}) when is_atom(module), do: "{#{inspect(module)}, a map}"
+  defp shape(value) when is_tuple(value), do: "a tuple of #{tuple_size(value)}"
+  defp shape(value) when is_map(value), do: "a map"
+  defp shape(value) when is_binary(value), do: "a string"
+  defp shape(value) when is_list(value), do: "a list"
+  defp shape(_value), do: "another term"
 
   @doc "`c:publish/2` on the configured adapter."
   @spec publish([Message.t()]) :: :ok | {:error, term()}
