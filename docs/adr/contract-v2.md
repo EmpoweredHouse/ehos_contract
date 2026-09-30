@@ -1661,6 +1661,26 @@ policy :invoice_on_visit_close, "Faktura po zamknięciu wizyty",
 >   and the reverse would break every subscriber that relied on it; so a later `ordered_by:` goes in beside,
 >   and an adapter that cannot keep it refuses the publication instead of dropping the order silently.
 
+> **1 October 2026, E12b, as built — the relay.** `EhOsContract.Relay`: one ordered subscription per `publish`,
+> keyed `"<contract>:relay:<name>"`, fed by the same runner and rows as a policy, reading up to 100 events of
+> the one type it publishes. Four things the text above left open:
+>
+> - **The id's second half is the versioned name** (`as:`, `"rehmed.visit.closed.v1"`), not the declaration's
+>   name, which stays inside the publisher as its source event does (`eh-os` D-41 leaves the source out of the
+>   manifest for that reason). Two publications of one event — `v1` beside `v2` while consumers move — still
+>   get two ids.
+> - **`{:error, reason}` from the transport is not a failure of the event**: no attempt is counted, the position
+>   holds, and the runner tries again after five seconds. Counted like a policy's, a broker outage of a few
+>   seconds would leave the relay `failing` for a person to restart, and skipping would lose the event. A raise
+>   is a defect and is counted; three, and the relay stops at that position.
+> - **With no bus configured, the relay waits.** Its row is written at the first boot and its position holds,
+>   so configuring a bus later publishes everything since. *Rejected:* refusing to boot — a host that publishes
+>   but runs no broker in development could not start; registering the relay only once a bus exists — it would
+>   start at the head then, and what was appended in between would never leave.
+> - **It starts at the head of the log**, as a policy does: a `publish` added to a contract with history does
+>   not publish that history. A rebuild moves it to position 0, and it publishes the log again under the same
+>   ids.
+
 ## 17. Risks
 
 | Risk | Mitigation |

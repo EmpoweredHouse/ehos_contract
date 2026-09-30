@@ -115,7 +115,8 @@ end
 What reacts to events is declared beside the units: a `policy` issues a command of this contract, an
 `effect` calls an external system, a `process_manager` steers a run with its own state and timers, and a
 `read_model` projects rows that a `query` reads. `consumes` takes a sibling contract's events, and
-`publish` lets one leave the application.
+`publish` lets one leave the application: its relay (`EhOsContract.Relay`) hands it to the configured
+`EhOsContract.Bus`, from the first deploy of the `publish` on.
 
 ## The code that decides
 
