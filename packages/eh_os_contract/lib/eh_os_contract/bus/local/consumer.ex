@@ -103,7 +103,8 @@ defmodule EhOsContract.Bus.Local.Consumer do
 
   defp failed(consumer, message, what) do
     Logger.warning(
-      "bus consumer #{consumer.name}: #{message.name} #{message.id} is delivered again later, " <>
+      "bus consumer #{inspect(consumer.name)}: #{inspect(message.name)} #{inspect(message.id)} " <>
+        "is delivered again later, " <>
         "its handler #{what}"
     )
 

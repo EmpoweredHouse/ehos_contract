@@ -121,6 +121,22 @@ defmodule EhOsContract.Bus.LocalTest do
       assert Process.alive?(pid)
     end
 
+    test "a failure's log line quotes the message's id, so a received id cannot forge a line" do
+      name = bus_name("forged")
+      consumer = bus_name("consumer")
+      bus_consume(consumer, [name], bus_first_time(fn -> raise "handler defect" end))
+      sent = %{bus_message(name) | id: "id\n[error] forged line"}
+
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          bus_publish([sent])
+          assert [^sent, ^sent] = bus_received(consumer, 2)
+        end)
+
+      assert log =~ inspect(sent.id)
+      refute log =~ "\n[error] forged line"
+    end
+
     test "a consumer stops when the broker does" do
       consumer = bus_name("consumer")
       pid = bus_consume(consumer, [bus_name("gone")])
