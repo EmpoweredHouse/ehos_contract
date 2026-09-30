@@ -607,6 +607,13 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Fixed
 
+- **An append waits only for appends to the same log.** The append lock had one fixed key, and an advisory
+  lock belongs to the whole database: where applications share one, each in a schema of its own, as EHOS
+  keeps them (`eh-os` D-54), every application's appends waited for every other's. V01's lock now has two
+  integers, the engine's and one derived from the schema's name, written into `eh_os_contract_append_lock()`
+  and the log's trigger at migration, so neither resolves anything through the `search_path` at run time.
+  V01 is changed in place, as before 0.3.0 is first released: a database migrated earlier keeps the old key
+  until it is created again, which is still correct, only shared.
 - **The storage works in a schema other than `public`** (issue #51; `eh-os` D-54, D-56).
   `EhOsContract.Migrations` read and wrote its version on `public.eh_os_contract_events` by name, while the
   tables were created unqualified, in the connection's `search_path`. In a schema of the application's own,
