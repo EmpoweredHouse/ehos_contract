@@ -1,249 +1,158 @@
 ---
 name: review-pr
-description: DRAFT, not yet reviewed, and describes the v1 DSL only. Before approving or sending back a PR generated for this repository — a new event, a new handler, a contract edit, or anything touching packages/eh_os_contract/lib/eh_os_contract/, sandbox/lib/taxvision/, or sandbox/lib/rehmed/ — separate what `mix check` already guarantees (so review attention does not waste itself re-deriving a compile refusal) from what only a human judgment call can catch: an unexplained `mix eh_os_contract.check` warning, an invented-looking `rule`/`example`, a silent edit to an existing contract's `identity`/`instance`/`retain`/`trace`, a missing "verified in reverse" claim, Polish text outside the narrow allowed surface, or a diff too large for its stated scope. Use for any PR review in this repo, whether by a human or an agent reviewing on a human's behalf. Does not replace the compiler, `mix check`, or `packages/eh_os_contract/docs/contract.md`'s compile-gate table — it tells you which parts of those you never need to re-check by hand.
+description: Before approving or sending back a pull request to this repository — a new declaration, a decider or a reaction, a contract edit, or anything under packages/eh_os_contract/lib/, sandbox/lib/taxvision/ or sandbox/lib/rehmed/ — separate what `mix check` already guarantees (the compile refusals with their codes, the scenarios as tests) from what only a person can catch: a new `mix eh_os_contract.check` warning left unexplained, a decision or a scenario that reads invented, an edit to a contract with history that `change-contract`'s table flags, a fix without a reverse check, Polish outside the allowed strings, a verdict-moving change without a CHANGELOG line, a diff larger than its stated scope. Use for any review here, by a person or by an agent on a person's behalf. Not for your own change before its pull request — that is `pre-pr-review`.
 ---
 
-# Reviewing a generated PR
+# Reviewing a pull request
 
-> **Describes v1** (26 September 2026, v2 plan E6). This skill was written for v1's
-> `EhOsContract.Contract` and `EhOsContract.Handler`. From E6 a contract may be written in the v2 DSL
-> (`EhOsContract.Next.Contract`, [`docs/adr/contract-v2.md`](../../../docs/adr/contract-v2.md)), and
-> `Rehmed.Contracts.VisitSettlement` is. For a v2 contract the keys, gates and runtime described below do
-> not apply. The skill is rewritten at the cut (E11).
-
-DRAFT — not yet run against a real PR review. Review before trusting it. Every claim below about
-what `mix check` refuses, what `mix eh_os_contract.check` only warns or informs about, and what
-`EhOsContract.Deployment.diff/2` / `EhOsContract.Trace.evaluate/3` do or do not track was checked against this
-package's source (`packages/eh_os_contract/lib/mix/tasks/eh_os_contract.check.ex`, `packages/eh_os_contract/docs/contract.md`) on 21 August
-2026, not assumed — file and line references are given so the next reader can re-check rather than
-take it on faith.
+Checked on 30 September 2026 (plan E11e) against `CLAUDE.md`, `packages/eh_os_contract/docs/contract.md`,
+`packages/eh_os_contract/docs/rules.md` and the gate's aliases in `sandbox/mix.exs`. Not yet run on a real pull request in
+this form.
 
 ## Where this sits
 
-The other skills in this repository write something: `module-boundary-check` decides whether a new
-action needs EhOsContract at all, `contract-distillation` turns workshop material into the categories a
-contract needs, `change-contract` classifies the risk of editing a contract that already exists,
-and `add-event`/`write-handler` (the two `PLAN.md` Etap 3 names alongside `change-contract`, under
-`.claude/skills/add-event/` and `.claude/skills/write-handler/`) produce the actual event
-declaration and handler module. All five are for the agent about to write code.
+`module-boundary-check`, `contract-distillation`, `add-event`, `change-contract`, `write-decider` and
+`write-reaction` are for whoever writes. `pre-pr-review` is the author reviewing their own change
+before the pull request. This skill is for the person who receives it and has to approve it or send
+it back — the gate `CLAUDE.md` names ("Człowiek jest bramą"). When the change edits a contract that
+may have history, it does not re-derive the risk: it opens `change-contract`'s table and holds the
+change to it, row by row.
 
-This skill is for the other side of that exchange: the human — or an agent standing in for one —
-who receives the PR those skills produced and has to approve it or send it back. `PLAN.md` names it
-plainly: *"Notatki §8 wymieniają osiem skilli i wszystkie są dla agenta, który pisze — a bramą jest
-recenzent"* (`PLAN.md:1343`) — the eight skills in `docs/adr/technology-notes.md` §8 are all for the
-writer; the reviewer is the gate, and had nothing written for it until now. When the PR under review
-is a contract edit specifically, this skill does not re-derive risk — it points at
-`change-contract`'s delta-classification table (`.claude/skills/change-contract/SKILL.md`, the
-`## Delta classification` section) and expects the reviewer to open that table, not re-think it from
-scratch.
+## 1 — What not to re-check, because the gate did
 
-## Part 1 — what NOT to re-check, because the gate already did
+`docker compose up -d && cd sandbox && mix ecto.setup && mix check` runs formatting,
+`compile --force --warnings-as-errors`, `eh_os_contract.check`, the sandbox's tests, and each
+package's own `mix check` — the engine's with `eh_os_contract.docs --check` and
+`eh_os_contract.rules --check`. **If it is not green, there is nothing to review yet.** Ask for the
+exit code itself; `mix check | tail -4` reports `tail`'s, which is always zero (`CLAUDE.md`, 6
+August: 24 failures committed behind it). The safe form ends in `echo "EXIT=$rc"`.
 
-`docker compose up -d && cd sandbox && mix ecto.setup && mix check` runs, in this order: formatting,
-`compile --force --warnings-as-errors`, `eh_os_contract.check`, the sandbox's tests, and then each
-package's own `mix check` as a separate invocation — `packages/eh_os_contract`'s includes
-`eh_os_contract.docs --check` (`CLAUDE.md`). **If this did
-not run green, there is nothing to review yet.** Ask for the real exit code, not a description of
-one. Never accept `mix check | tail -4` as evidence: piping to `tail` reports `tail`'s exit code,
-which is always zero, and this repository has already committed 24 real failures behind exactly that
-green-looking terminal on 6 August (`CLAUDE.md`'s own warning, and the concrete incident it names).
-The safe form, if the output has to be shortened, is `out=$(mix check 2>&1); rc=$?; echo "$out" |
-tail -4; echo "EXIT=$rc"` — insist on the `EXIT=` line if a shortened log is all that's offered.
+Given a green gate, three things are closed:
 
-Given a genuinely green gate, two categories are already closed and do not deserve review attention:
+- **Every compile refusal** — `packages/eh_os_contract/docs/contract.md`, "What will not compile": `N`, `F`, `A`, `C`, `P`,
+  `R`, `K`, `S`, `D`, `X` and `I` codes, layers L1–L4. Among them: an event outside a command's
+  `emits:`, a refusal outside its `rejects:` (`I4`, `I5`), an invariant with no `rejected` scenario
+  (`S8`), a sibling's field used and removed (`X6`), an `:at_least_once` reaction without
+  `idempotency` (`P3`).
+- **The scenarios, as tests.** `EhOsContract.ScenarioCase` makes each one a test against the
+  implementation, so "the code does what the scenario says" is closed. Whether the scenario says the
+  right thing is not (below).
+- **The generated documentation is current**: `packages/eh_os_contract/docs/dsl/` and `packages/eh_os_contract/docs/rules.md` against the code,
+  `packages/eh_os_contract/docs/contract.md`'s examples and refusal table against the code (`test/docs_test.exs`).
 
-**1a. Compile-time refusals** — `packages/eh_os_contract/docs/contract.md`'s ["What refuses to
-compile"](../../../packages/eh_os_contract/docs/contract.md) table, pinned by `test/compile_gates_test.exs`. If the PR
-compiled, none of these apply:
+## 2 — Where attention earns its cost
 
-| Refused | Why |
+### New `check` lines
+
+`mix eh_os_contract.check` prints warnings and notices on every run, and **the gate does not fail on
+them**: the sandbox runs it without `--warnings-as-errors`, and the counts are recorded in
+`PLAN.md`'s handoff (30 September: sandbox 0 errors, 29 warnings, 9 notices; engine 0 / 66 / 5).
+Compare the pull request's counts with those. Every new line needs a sentence from its author —
+"expected, because…" or a fix. `packages/eh_os_contract/docs/rules.md` says what each rule means; the ones that most often
+hide a mistake:
+
+| Rule | Ask |
 | --- | --- |
-| An unknown key in any declaration | the vocabulary is fixed |
-| A `payload` field with a type outside the closed set (`:id`, `:string`, `:integer`, `:timestamp`, `:enum`) | a type naming a thing rather than a shape is the library knowing one client's domain |
-| `rule` without an `example` | a rule without a case is prose |
-| `rule` with a capture instead of an MFA tuple | would make the contract depend on the domain at compile time |
-| `trace` naming an event that does not exist, or missing `from`/`eventually` | half an assertion has nothing an observed run could satisfy |
-| `trace` with a calendar unit in `within`, or spanning two processes | the evaluator cannot compute it / each process has its own run identity |
-| `process` without `instance` | nothing about the run could be counted |
-| A staged event without `stage`, a `stage` naming an undeclared phase, `stage`/`terminal` without `process`, a `process:` naming a process that does not exist | structural nonsense the compiler already refuses |
-| `identity`/`instance`/`retain` naming a field absent from `payload`, or `identity`/`instance` on a `retain: :drop` field | the key could not be computed, or would vanish with the field |
-| `depends_on` naming an undeclared `external` | — |
-| The same event declared twice, a handler on an undeclared event, a handler publishing an undeclared event, an async handler on an event without `identity` | — |
+| `no-contracts` | Always a blocker on a change that touches a contract: `config :eh_os_contract, applications:` is wrong. |
+| `emits-never-produced` | Is the declaration wider than the decision, or does the code return an event around `emit/1`? |
+| `competing-in-transaction-consumers` | Does one reaction depend on the other's order? Then it should react to what the other decides. |
+| `in-transaction-policy-fan-out` | Every other append waits for the whole list. Should it be `:at_least_once`? |
+| `free-text-not-personal` | Is the `:string` really free text that may stay after erasure, or personal data, or a code with a type of its own? |
+| `unverified-declaration` | Is the change relying on an `unverified: true` number as if it were confirmed? |
+| `consults-without-match` | A boundary reading every event of a type conflicts under load. |
+| `backward-edge` | A new one on a real contract is an ordering mistake or an undeclared loop. |
+| `declaration-without-implementation` | Declared, not built — intended in this pull request, or forgotten? |
 
-**1b. `mix eh_os_contract.check`'s own `:error` findings** — not a macro-time refusal, but a whole-program check
-that fails the same run (`report/1`, `eh_os_contract.check.ex:368`: any `:error` count above zero exits
-`{:shutdown, 1}`, which fails `mix check`). If the gate is green, none of these are present either:
-an event or process name declared by two contracts (`eh_os_contract.check.ex:81-100`), a `rule` naming an MFA
-that does not exist or export the given arity (`eh_os_contract.check.ex:161-177`), a `trace` naming an event
-that does not resolve (`eh_os_contract.check.ex:179-195` — a second-layer check behind the compile gate, since a
-contract can only see its own module at compile time), or an identity-vendor name leaking into the
-engine's config (`eh_os_contract.check.ex:334-347`). All four are enforced automatically; spending review time
-re-deriving them is exactly the waste this skill exists to prevent.
+### Where the randomness is
 
-## Part 2 — where review attention actually earns its cost
+`CLAUDE.md`: review attention goes to what decides; skeleton, migrations and boundaries are reviewed
+once per pattern. In a pull request here that is:
 
-### 2. `mix eh_os_contract.check`'s `:warn`/`:info` findings — visible in CI, not gate-enforced, need your judgment
+- **A decider's clauses** — the branch that chooses, not the binding around it. A clause that
+  encodes an assumption nobody stated should say so in the moduledoc (`write-decider`, step 8).
+- **A reaction's `delivery`** and what a failure then leaves in the log (`write-reaction`).
+- **Scenario data, invariant labels, `source:`** — does it read like a case from the material, with
+  real numbers and a citation, or invented? A scenario that compiles can still be a number nobody
+  said, and it is the specification the code was written against.
+- **Any edit to a declaration that may have history** — a field, a type, an enum, `personal:`, a
+  unit's identity, `correlate`, a promise, a deadline, a command's name or `by:`. Open
+  `change-contract`'s table and match each change to its row. A required field added to an event
+  with rows, a renamed event or unit, a flipped `personal:` — each compiles, passes the gate and
+  breaks the stream it touches. The author should have counted the rows of the type; ask for the
+  count.
+- **A host-visible shape** — a capability (a command's or query's name), a command's fields, a
+  query's parameters, a publication, configuration, a status. These go to the user before they
+  change (`PLAN.md`, stage 6 strategy).
 
-These print in every `mix check` run but never fail it (`eh_os_contract.check.ex:349-368` only counts `:error`
-toward the exit code). Each one needs a human to decide "expected here" vs. "regression":
+### Verified in reverse
 
-| Finding | Level | Source | What to decide |
-| --- | --- | --- | --- |
-| No contracts found in the configured applications | `:warn` | `eh_os_contract.check.ex:57-72` | Should never appear on a PR that touches a contract. If it does, `config :eh_os_contract, applications: [...]` is wrong — this is close to a hard blocker, not a judgment call |
-| A declared event has no handler and is not `terminal` | `:info` | `eh_os_contract.check.ex:103-129` | "Declared, never observed" is this repo's normal, deliberate mid-rollout state (every Rehmed event is in this state on purpose — `PLAN.md`). Ask: did the PR mean to leave this unhandled, or did it forget a handler it clearly intended to write? |
-| An `owner:` module does not exist | `:info` | `eh_os_contract.check.ex:143-158` | Same "mid-rollout is normal" reasoning — but check the named module is a real, planned owner, not a typo nobody will ever fill in |
-| Backward edge between stages | `:warn` | `eh_os_contract.check.ex:200-209` | This repo keeps two of these deliberately as acceptance-criteria fixtures (`PLAN.md`, "Stan na 6 sierpnia"). A **new** backward edge on a real contract or handler is a genuine ordering mistake — check which case this is before waving it through |
-| N synchronous handlers on one event, ordered alphabetically | `:warn` | `eh_os_contract.check.ex:211-224` | Alphabetical order "reproduces but says nothing about the process." If the PR's own logic depends on which handler runs first, that dependency is invisible to the engine — ask whether it should be, or whether one handler should instead publish an event the other subscribes to |
-| `:string` payload field with no `retain` policy | `:info` | `eh_os_contract.check.ex:237-251` | Reaches the log verbatim. Sometimes correct on purpose (Rehmed's exclusion-reason string, kept readable deliberately, per `PLAN.md`'s payer-settlement notes) — but check it isn't PII or free text that should have been `:hash`/`:drop` |
-| Assertion finer than its run | `:warn` | `eh_os_contract.check.ex:261-274` | Since 21 August this is quantified per item, not a false-satisfied bug — but it still needs `eventually`/`or_else` to carry the same `identity` field values as `from`, or a hit cannot resolve any item and the run stays open. Check the PR's `eventually`/`or_else` payloads actually carry those fields |
-| Fact not keyed by its own run (`identity` missing a field `instance` requires) | `:warn` | `eh_os_contract.check.ex:282-295` | Two facts in two different runs then share one idempotency key, and the second's handler silently never runs. Confirm this is either impossible for this event or genuinely intended |
-| `trace` with no `within` | `:info` | `eh_os_contract.check.ex:302-313` | No failing case exists; a run with nothing satisfying it stays `:pending` forever. Ask whether a number was simply never agreed, or whether one exists and was dropped |
-| `process.unverified` names a field | `:warn` | `eh_os_contract.check.ex:318-331` | The declaration exists but does not count toward the evidence report. Check the PR is not quietly relying on an `unverified:` number as if it were confirmed — and note separately that `unverified` never covers `trace` itself (`PLAN.md`'s open item, "`unverified` nie obejmuje `trace`") |
+For a fix, the author reverted it and watched the one test meant to catch it go red, and no other
+(`pre-pr-review`, step 4). The pull request says which test and how many failed, in the shape "with
+the fix reverted, N of M tests in `<file>` fail, all of them about <the case>". Its absence is
+not a rejection by itself, but it is a question to ask before trusting that the fix is the thing
+that was broken.
 
-### 3. Where the randomness in the diff actually lives
+### The language boundary
 
-`CLAUDE.md`'s own rule: review attention goes to decision functions, once per pattern for skeleton
-and migrations, but every occurrence for anything that decides something. In a generated PR that is
-concretely:
+Code is English, without exceptions, in everything under `packages/` and `sandbox/` and in `docs/`.
+Polish is allowed only inside the strings `CLAUDE.md` lists ("Po polsku jest wyłącznie…"): labels
+and `source:` in a domain and a contract, a term's text, its definition, `avoid` and translation,
+`where` prose at `consults`, scenario descriptions, task names, a notification subject. Everywhere
+else — identifiers, moduledocs, `@doc`, comments, test names, error messages — it is a defect.
+**Grepping for `[ąćęłńóśźż]` is not enough**: much of Polish has no diacritics, and a word such as
+`rejestry` once survived a full file-by-file rewrite that way. Read the strings.
 
-- A `rule`'s `given`/`example` pair — does the example read like a case the workshop actually
-  produced (real numbers, a `source:` or a dated confirmation), or does it read invented? A rule
-  without an example does not compile, but an example that compiles can still be a number nobody
-  said.
-- A handler's decision logic — the branch that actually chooses, not the dispatch boilerplate around
-  it.
-- Any edit to an **existing** contract's `identity:`, `instance:`, `retain:`, or a `trace`'s
-  `from`/`eventually`/`or_else`/`within`. These are exactly the rows in `change-contract`'s delta
-  table with **zero `EhOsContract.Deployment.diff/2` support** — the diff tool cannot flag them, so the review
-  is the only check left. Open `.claude/skills/change-contract/SKILL.md`'s delta-classification table
-  and match the PR's change against it row by row rather than reasoning about the risk from scratch;
-  in particular, a changed `trace` timing parameter silently reinterprets **every past run** the
-  moment it deploys (`EhOsContract.Trace.evaluate/3` always reads the contract as compiled now, with no
-  versioned history), so a PR bumping one of these without a `since:` note for future reports is
-  incomplete even if it compiles and passes.
+### Dated corrections, not silent rewrites
 
-### 4. "Verified in reverse," not just green
+A change to what `docs/adr/` assumes or `PLAN.md` decided comes as a dated note, never a quiet edit
+that erases what was believed before (`CLAUDE.md`, "Zanim cokolwiek zmienisz"). For a change to
+contract semantics or to a check's meaning, look for the note in the same pull request.
 
-This repository's own convention, used repeatedly in `PLAN.md`: for a correctness-sensitive fix, the
-author disables the fix and confirms the *specific* test meant to catch it goes red — not merely that
-the suite is green with the fix in. Four worked examples, for calibration on what this looks like in
-a PR description:
+### A verdict-moving change without a CHANGELOG line
 
-- *"Zweryfikowane odwrotnie — po zneutralizowaniu reguły pada cztery z ośmiu testów"* (`PLAN.md:983`)
-- *"Zweryfikowane odwrotnie: po zneutralizowaniu walidacji pada siedem z piętnastu testów tego pliku"*
-  (`PLAN.md:1062`)
-- *"Zweryfikowane odwrotnie: po wyłączeniu zapisu padają trzy z dwudziestu trzech testów"*
-  (`PLAN.md:1159`)
-- *"wyłączenie kwantyfikacji, przestawienie priorytetu `:violated`/`:pending` i zepsucie gałęzi ...
-  każde osobno wywaliło dokładnie ten test, który miało wywalić — nie sąsiedni, nie żaden"*
-  (`PLAN.md:65-68`, the trace-granularity fix)
+`packages/eh_os_contract/CHANGELOG.md`: a change that can move a verdict raises the minor version and
+gets a line. A verdict is anything the conformance report prints as a number or a state. Nothing
+mechanical enforces it, and this list of files that trigger the question lives here and only here:
 
-For any PR claiming to fix a bug or close a `known_defect`, check the description for this shape —
-a named test, a named failure count, before-and-after. Its absence is not automatically a rejection,
-but it is a question to ask before trusting the fix is actually the thing that was broken.
+`packages/eh_os_contract/lib/eh_os_contract/` — `conformance.ex`, `conformance/`, `trace.ex`,
+`run.ex`, `paths.ex`, `coverage.ex`, `event_run.ex`, `deployment.ex`, `dependency.ex`, `digest.ex`,
+`contract/build.ex` (the contract's version and its declarations' digests), `duration.ex`,
+`report.ex`, `report/`, `graph.ex`, `graph/` — and, where the change touches runs, keys or failure
+labels, `store/postgres.ex`, `key.ex` and `dispatcher.ex`.
 
-### 5. The language boundary, exactly as stated, not loosened
+A diff touching one of these without a CHANGELOG entry goes back, or its author writes in the pull
+request why it cannot move a verdict. That answer is often right; it should be written, not assumed.
 
-`CLAUDE.md` is specific: code is English, no exceptions, and the scope is not just `packages/eh_os_contract/lib/eh_os_contract/` but
-also everything else under `packages/` and `sandbox/` — `lib/`, `test/` with fixtures, `config/`,
-`priv/repo/migrations/`, `mix.exs` — and `docs/`. The only Polish allowed anywhere in that scope is
-inside a string a client actually reads: `label`, `example` prose, `source:`, `unavailable_looks_like`
-in a contract, task names, a notification subject. Everywhere else — identifiers, moduledocs, `@doc`,
-comments, test names, compiler error strings — a Polish string is a defect, however small.
+### Diff size
 
-**Grepping for `[ąćęłńóśźż]` is not sufficient**, and this repository has the concrete counter-example
-already checked into it: `rejestry` in `sandbox/lib/taxvision/registry_check.ex:66` carries zero diacritics
-and survived a full file-by-file rewrite meant to close exactly this class of finding — confirmed
-present in the tree today. Reviewing for the language boundary means reading the diff's strings for
-Polish words, not running a diacritics grep and calling it done.
-
-### 6. Dated corrections, not silent rewrites
-
-When an assumption in `docs/adr/` or a decision in `PLAN.md` turns out wrong, this repository's
-convention is a dated correction — a new "Dopisek" entry, or a dated note inside the ADR file itself
-— never a quiet edit that erases what was believed before. Two closed examples for calibration:
-
-- The `%7C`/`%3A` escaping defect, closed 21 August with a `psql` count proving the migration cost
-  was zero today (`PLAN.md`, "Dopisek 21 sierpnia (4)").
-- The trace-quantification fix, closed the same day, with its own moduledoc and warning-message
-  rewrite recorded as a correction rather than a silent behavior change (`PLAN.md`, "Dopisek 21
-  sierpnia (5)").
-
-For any PR that changes contract semantics, a check's meaning, or something `docs/adr/` already
-describes, expect a matching dated note somewhere in the same PR. Its absence is a flag to ask about
-— "where's the correction for this?" — not proof the PR silently rewrote history, but not something
-to let pass unasked either.
-
-### 7. A verdict-moving change without a CHANGELOG entry
-
-`packages/eh_os_contract/CHANGELOG.md` carries a rule: a change that can move a verdict raises the minor
-version and gets a line there. A verdict is anything the conformance report prints as a number or a
-state — an overlay edge's state, a `trace` verdict, a path counted as untraversed, a run counted as
-exceeding a deadline, a declaration counted as changed. Wording, docstrings, tests and fixtures do
-not.
-
-**Nothing mechanical enforces this and nothing can**, which is why it is a reviewer's line rather
-than a check. The mechanical part — that the report states which engine computed it — is pinned by
-`EhOsContract.VersionTest`, and on its own it is decoration: a version number nobody can attribute to a
-behaviour is worse than no version, because it reads as provenance.
-
-The trigger is narrow, so it can be applied without judgment: a diff touching
-`packages/eh_os_contract/lib/eh_os_contract/{trace,graph,conformance,deployment,report,run}.ex` with no entry in
-`CHANGELOG.md` goes back to its author. If the author's answer is "this cannot move a verdict", that
-answer belongs in the PR description, and it is usually right — but it should be written down rather
-than assumed, because the alternative is two clients on two versions getting two answers to the same
-question with nothing to explain the difference.
-
-### 8. Diff size as its own signal
-
-`change-contract`'s non-negotiables state the rule for the writer: work from an actual diff, never
-regenerate a whole module, because a full regeneration risks silently dropping an existing
-`unverified:`, `source:`, or dated comment. The reviewer's job is the mirror check: if the PR's
-stated change is "one field, one value" but the diff touches the whole file, that mismatch is the
-signal to ask why — not a large diff to review line by line hoping nothing was lost, but a question
-to send back before reviewing it at all.
+A stated change of "one field" in a diff that rewrites the whole module is a question to send back
+before reviewing it: a regenerated module drops a `source:`, an `unverified: true` or a dated
+comment, and nobody sees it go. `CLAUDE.md`: a pull request that cannot be read with attention is
+not reviewed, only stamped.
 
 ## Non-negotiables
 
-- **Never approve a PR that writes to `~/Projects/ai/empowered-house-context`** — a commit, a branch,
-  or an edited file there, no exceptions, regardless of how the PR frames the reason (`CLAUDE.md`,
-  `PLAN.md`'s "Rekord" section).
-- **Never approve a PR that silently rewrites an existing dated `docs/adr/` or `PLAN.md` correction**
-  instead of adding a new one — a rewritten "Dopisek" or ADR paragraph with no new date is the thing
-  this convention exists to prevent.
-- **Never approve on a gate that is not verifiably green**, and never accept a `tail`-piped result as
-  that verification.
-- **Never wave through Polish text outside `label`/`example` prose/`source:`/
-  `unavailable_looks_like`/task names/notification subjects** on the strength of a diacritics grep
-  alone.
+- **Never approve a change that writes to `~/Projects/ai/empowered-house-context`** — a commit, a
+  branch or a file, whatever the reason given.
+- **Never approve a rewritten dated correction** in `docs/adr/` or `PLAN.md` in place of a new one.
+- **Never approve on a gate that is not verifiably green**, and never on a `tail`-piped log.
+- **Never let Polish outside the allowed strings through** on the strength of a diacritics grep.
 
 ## Procedure
 
-1. Confirm the gate: get the real exit code of `mix check`, not a tail'd log. If it is not green,
-   stop — there is nothing to review yet.
-2. Read every `mix eh_os_contract.check` finding in the CI output. Anything at `:error` is already
-   gate-enforced — skip it. For every `:warn`/`:info` touched or newly introduced by this diff, use
-   the table in Part 2.2 to decide expected vs. regression.
-3. Read the diff itself for where the randomness is: `rule`/`example` pairs, handler decision
-   branches, and any edit to an existing contract's `identity`/`instance`/`retain`/`trace` fields —
-   for the last group, open `change-contract`'s delta table and check the PR's own stated reasoning
-   against it, row by row.
-4. For anything claiming to fix a bug, check the PR description for a "verified in reverse" claim —
-   a named test, a named failure count with the fix reverted.
-5. Grep the diff's strings for Polish outside the allowed surface — read for words, not only for
-   diacritics.
-6. If the PR changes contract semantics or something `docs/adr/`/`PLAN.md` already describes, look
-   for the matching dated correction. Ask if it's missing.
-7. Compare the diff's size against the PR's stated scope. A one-field change spread across a fully
-   rewritten module is a question to send back, not a longer review.
-8. Approve, or send back naming the specific finding, row, or line — never a general "looks fine."
+1. Get the gate's exit code. Not green → stop.
+2. Compare the `check` counts with `PLAN.md`'s last recorded ones; for each new line, find the
+   author's sentence or ask for one.
+3. Read the deciders' clauses, the reactions' `delivery`, the scenarios' data.
+4. For each edited declaration, find its row in `change-contract`'s table and the author's row count.
+5. For each fix, find the reverse check.
+6. Read the strings for Polish.
+7. Look for the dated note, and for the CHANGELOG line if a file above is touched.
+8. Compare the diff's size with its stated scope.
+9. Approve, or send back naming the finding, the row or the line — never "looks fine".
 
-## What this does not do
+## Not this skill
 
-Does not replace `mix check` — a red gate is never something to review past, only something to stop
-at. Does not decide contract-semantics correctness by itself: that judgment belongs to
-`change-contract`'s delta table and, beyond it, to whoever actually confirmed the process with the
-client — this skill only makes sure the reviewer opens that table instead of re-deriving its
-reasoning from memory. Is not a substitute for the process owner's confirmation on `unverified:`
-declarations — no PR can un-mark something as unverified by asserting it in a commit message; only
-the process owner's own word does that, and that word does not show up in a diff.
+Replacing the gate: a red gate is where review stops, not something to review past. Deciding
+whether the modelled process is right — that is whoever confirmed it with the client, and
+`unverified: true` goes away only on their word, which no diff carries.

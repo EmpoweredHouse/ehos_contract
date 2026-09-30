@@ -1,121 +1,114 @@
 ---
 name: change-contract
-description: DRAFT, not yet reviewed, and describes the v1 DSL only. Before editing an EhOsContract.Contract module that already has declared events, processes, or trace assertions — adding, renaming, or removing a declaration, or changing identity, instance, retain, a payload type, or a trace's from/eventually/or_else/within — classify what the change actually risks before touching code: a compile gate that catches it for free, a change EhOsContract.Deployment's own diff mechanism cannot see at all, a retroactive reinterpretation of history, or a redaction that quietly stops applying. Produces a written impact analysis and the smallest edit that satisfies it, not a full regeneration of the file. Use when modifying a contract that already has declarations; not when writing the first version of a contract (see contract-distillation) or deciding whether something belongs in EhOsContract at all (see module-boundary-check, which explicitly hands off here for that case).
+description: Before editing a contract whose units, events or reactions may already have rows in the log — renaming, adding or removing a field, changing a type or an enum, `personal:`, a unit's identity, the process's `correlate`, a promise, a deadline, a command's name or `by:`, a reaction's declaration — classify what the change risks before touching code. The compiler catches one class for free; the rest compiles and still breaks history, because every stored event is decoded again by today's declaration whenever its stream is folded, and upcasters are not built. Produces a written impact analysis and the smallest edit that satisfies it. Use when modifying a contract that has declarations; not for its first version (see `contract-distillation` and `add-event`) and not for deciding whether something belongs in a contract at all (see `module-boundary-check`).
 ---
 
 # Changing a contract that already exists
 
-> **Describes v1** (26 September 2026, v2 plan E6). This skill was written for v1's
-> `EhOsContract.Contract` and `EhOsContract.Handler`. From E6 a contract may be written in the v2 DSL
-> (`EhOsContract.Next.Contract`, [`docs/adr/contract-v2.md`](../../../docs/adr/contract-v2.md)), and
-> `Rehmed.Contracts.VisitSettlement` is. For a v2 contract the keys, gates and runtime described below do
-> not apply. The skill is rewritten at the cut (E11).
+Checked on 30 September 2026 (plan E11e) against the engine's source —
+`EhOsContract.Codec.decode/4`, `EhOsContract.Consumer.decode!/1`, `EhOsContract.Deployment`,
+`EhOsContract.Conformance`, `EhOsContract.Subscription` — and `docs/adr/contract-v2.md` §7, §10.6 and
+§13. Not yet run on a real change: read what it says against those before trusting it.
 
-DRAFT — not yet run against a real contract change. Review before trusting it. Every claim below
-about what compiles, what `EhOsContract.Deployment.diff/2` tracks, and what `retain`/`identity`/`instance`
-actually do at runtime was checked against this package's source on 21 August 2026, not assumed —
-file and line references are given so the next reader can re-check rather than take it on faith.
+## Why this runs before the code
 
-## Where this sits, and why it is the one skill that runs before the code
+The log cannot be edited, only added to, and it is the source of the state: **an old row is read
+again, by today's declaration, every time its stream is folded for a decision, every time an ordered
+subscription, a process manager or an effect job takes it**. A row that no longer fits is not
+skipped: decoding raises "no longer fits". Every command on that aggregate's stream fails — every
+decision of a boundary that consults the type, whatever stream the row is in; an ordered
+subscription stops at that position, `failing`; an effect job is retried three times and
+discarded. Only a unit with no `evolve/2` never reads its history back. `schema_version` exists on
+every event, but **no upcaster is built** (§10.6 describes one; nothing calls it), so there is no
+way yet to carry old rows across a breaking change. By the time the compiler runs, the file already
+says whatever it says — which is why the analysis comes first.
 
-`module-boundary-check` decides whether a new thing should be an EhOsContract event at all, and says outright
-that editing an already-declared contract "has its own workflow" — this is that workflow.
-`contract-distillation` produces the input for a contract that does not exist yet. Both stop before
-the one question this skill exists to answer: **an existing contract already has a log behind it,
-and a log cannot be edited — only added to.**
+## What the compiler already catches
 
-`mix check` enforces a real list of compile-time refusals (below), and enforcing them after the
-edit is exactly what a linter is for. What no lint can enforce is *doing the impact analysis before
-the edit*, because by the time the compiler runs, the file already says whatever it says. That
-ordering — think, then write — is the entire reason this skill exists rather than a paragraph in
-`packages/eh_os_contract/docs/contract.md`.
+`packages/eh_os_contract/docs/contract.md`, "What will not compile", is the complete list with codes.
+The ones a change most often trips, so you know not to reason about them:
 
-## The compile gate already covers one whole category — do not re-derive it
+- a reference to what the change removed — `emits:`, `rejects:`, `handles:`, `consults`, a promise's
+  events, a scenario's data (`A1`, `A3`, `P1`, `A4`, `R5`, `S3`–`S5`);
+- a sibling that uses a field the change removed or retyped in `correlate`, `match` or `include`
+  (`X6`), and every implementation that matches on the changed struct, since expanding a struct is a
+  compile dependency (§7);
+- an invariant without a `rejected` scenario (`S8`).
 
-`packages/eh_os_contract/docs/contract.md`'s ["What refuses to compile"](../../../packages/eh_os_contract/docs/contract.md) table is the complete,
-tested list (`test/compile_gates_test.exs`, in the package). An unknown key, a payload type outside
-`EhOsContract.Contract.payload_types/0`, a `trace` naming an event that does not exist, a handler on an
-undeclared event, an async handler on an event without `identity` — all of these fail loudly at
-`mix compile --warnings-as-errors`, before this skill's judgement is even needed. Run the compiler;
-do not spend the impact analysis below on anything from that table.
+Everything in the table below compiles.
 
-This skill is for what is left once the compiler is satisfied: changes that compile cleanly and are
-still not safe.
+## The table
 
-## Delta classification: what each kind of change actually risks
+"Seen" says whether the next deploy's `EhOsContract.Deployment.diff/2` names it. Every declaration
+has its own digest there (`declarations: added / removed / changed`, keyed `"<kind>:<name>"`), and
+any edit — a label and a `source:` included — moves the contract's version. The diff is only as good
+as its rows: before `declaration_digests` were recorded it answers `:not_recorded`.
 
-The compiler is not the only thing that is supposed to know a contract changed — `EhOsContract.Contract.version/0`
-hashes every declaration, and `EhOsContract.Deployment` records that hash per deploy. But `EhOsContract.Deployment.diff/2`
-(`packages/eh_os_contract/lib/eh_os_contract/deployment.ex`) only ever computes `events_added`, `events_removed`, `paths_added`,
-`paths_removed` from event names and `publishes:` edges — checked directly in the source, not
-assumed. **Everything else that changes the hash — a trace's own timing, `retain`, `identity`,
-`instance`, a payload type, `owner`, a label — bumps `contract_version` with zero diff support.**
-That gap is what this table exists to cover by hand.
+| Change | Seen | What it does to history |
+| --- | --- | --- |
+| A label, `source:`, a scenario's description | `changed` | Nothing functional. A version moved by wording alone is not a red flag. |
+| A new unit, command, event, reaction, read model | `added` | Additive. A new policy starts at the head and does not react to history; a new ordered read model projects it from position 0 (`write-reaction`). |
+| A new **optional** field on an event | `changed` | Compatible: old rows read back with `nil`. |
+| A new **required** field on an event | `changed` | **Every old row of that type fails to decode** (`:required`), with the consequences above. With history: make it optional, or a new event. |
+| A field removed from an event | `changed` | Old rows still decode — an undeclared key is ignored on read. Personal values stay sealed in the log until their subject is erased. |
+| A field's type changed; an enum member removed | `changed` | Old rows fail to decode (`:type`; a member the contract no longer declares does not fit) — unless every stored value also fits the new type: `:integer` to `:decimal`, `:id` to `:string`, a value of the same base type. Adding an enum member is compatible. |
+| `personal:` added to, or removed from, a field | `changed` | Old rows fail to decode: clear text where a sealed value is expected, or the reverse. |
+| An event renamed, removed, or moved to another contract | `removed` + `added` | The log stores the type as `"<process>.<event>"`. Folding a stream that holds the old type raises ("declares no event of type"); the report loses its runs. Renaming the process renames every type. An event a person records has a capability, `<domain>.<event>`, and a rename withdraws its grant (see the command row). |
+| A unit renamed | `removed` + `added` | An aggregate reads its stream by id, the unit's name and its key values: old streams are left under their old ids, and the unit decides from an empty state — silently. A boundary reads by types and tags, not by its name. |
+| A unit's `identity` changed | `changed` | For an aggregate, the same as a rename: new stream ids, an empty state. For a boundary, it now reads what the new tags select. |
+| The contract module renamed | — | Every row records the contract's module name, and an ordered subscription, a process manager and an effect job resolve the declaration through it; the subscriptions' keys carry it too, so a policy starts again at the head. Treat it as a change with history. |
+| The process's `correlate` | `changed` | Runs are computed at append and stored; old events keep the runs they were given. A report across the change counts two keying schemes as one. |
+| A new invariant or constraint | `changed` | History is never checked against it; a command that passed before may now be refused. `S8` asks for its `rejected` scenario. |
+| A new invariant of a domain **value** | the domain's | History is not held to it, but a policy or a process manager that builds a command from an old event's value is refused, and the refusal rolls back the command that set it off, or stops an ordered consumer at that event (§6, D9). Look at the values in the log first. |
+| A promise's `from`, `eventually`, `within` or `or_else` | `changed` | The report splits the runs judged under the earlier declaration from the deploy that changed it (`under_earlier_declaration`, `declaration_changed_at`). `unverified` and `source` do not move that boundary. |
+| `deadline` | `changed` | No boundary: every past run is judged by the new number. Bound a report across the change by the deploy date. |
+| `cadence` | `changed` | Shown in the report, not judged: nothing in the log changes meaning. |
+| A command's `emits:`, a reaction's `handles:` or `issues:`, a timer | `changed`, paths | The declared paths change: a path removed stops being counted untraversed, a new one starts at zero runs. |
+| Stages | `changed` | Nothing in the log; the order of stages decides what `backward-edge` warns of. |
+| A read model's or a process manager's declaration, or the events it takes | `changed` | Its subscription is `stale`. A read model is rebuilt through its `reset/0`, and without one it stays stale; a process manager is rebuilt at boot, since the library owns its table. |
+| A command renamed, or its `by:` changed | `removed` + `added`, or `changed` | Commands leave no payload in the log, so history is untouched — but a command a person may issue has a capability, `<domain>.<command>`, which EHOS grants to roles. A rename withdraws a grant every role has today; a changed `by:` changes who is given it. Host-visible: to the user first. |
+| A required field added to a command | `changed` | No history, but every caller — the host's code, an HTTP client — is refused until it sends the field. |
+| A `publish` changed | `changed` | Nothing refuses the edit, but a publication is another application's input: a changed field is a new versioned name, not an edit (`docs/adr/contract-v2.md` §7). |
 
-| Change | Compiles? | `EhOsContract.Deployment.diff/2` sees it? | The actual risk |
-| --- | --- | --- | --- |
-| `label`, `example`'s prose, `source:` | yes | no | None functional — these are read by a person, not a mechanism. A bumped `contract_version` from a pure wording edit is not a red flag by itself. |
-| `owner:` | yes | no | None functional today — only an `info` line in `mix eh_os_contract.check`, grouped by module. |
-| Adding a new event, process, or trace | yes | events_added, yes | Additive and safe by construction — nothing historical referenced it, so nothing historical can disagree with it. |
-| Removing an event still named by a handler or a `trace` | **refused** | n/a | Caught for you — "handler on an event the contract does not declare" / "trace naming an event that does not exist." |
-| Removing an event nothing else names | yes | events_removed, yes | The one removal case the diff tooling actually tracks well. Old rows stay in the log under their old `contract_version`, read defensively (nothing re-validates on read). |
-| **Renaming an event** (remove old name, add new, same commit) | yes, once every handler's `event:` and every `trace` reference is updated to match — compile-refused otherwise | shows as one `events_removed` + one unrelated `events_added`, never "renamed" | A queued job resolves its handler module fine, then reads `meta.event` **fresh from the handler's current compiled metadata**, not from what was true when the job was enqueued (`packages/eh_os_contract/lib/eh_os_contract/job.ex:63`, `meta.event`). A job enqueued before the rename but run after it casts its old payload against the **new** event's schema, silently, if the handler was already recompiled to point at the new name. Deploy the handler-side rename and let every already-queued job for it drain first, or accept the mismatch window. |
-| Adding a **required** field to an existing event's `payload` | yes — a call site is a function call, not statically checked against the schema | no | Breaks **every existing `EhOsContract.emit!`/`emit`** call site for that event **at runtime**, the first time it runs, because `EhOsContract.Payload.validate!/4` refuses a declared field that is missing. `mix check`'s test suite catches it only if a test actually exercises that call site. `grep -rn ":event_name" lib/` for every emit call before relying on this. |
-| Removing a `payload` field | yes, and a call site still supplying that key keeps working — an undeclared extra key is accepted, not refused (confirmed: `EhOsContract.Payload.validate!/4`, and pinned by `test/payload_test.exs`) | no | **If the removed field had `retain: :hash` or `retain: :drop`, removing its declaration does not stop it reaching the log unredacted.** `apply_retain/2` only ever walks `event_def.retain` (`packages/eh_os_contract/lib/eh_os_contract/emitter.ex:504-513`) — a field no longer named there is not touched, however sensitive the value, as long as some call site still passes it. Grep call sites *before* removing a retained field's declaration, not after. |
-| Changing a `payload` field's type | yes, if the new type is still in the closed set | no | Changes what `validate!/4` accepts on **new** emissions only; old rows keep their old encoding and are never re-validated on read. Re-check any `rule`'s `given`/`example` written against the old type — nothing forces them to still make sense. |
-| Changing `identity:` on an event | yes, as long as the fields still exist in `payload` | no | Changes the **future** shape of the async idempotency key (`EhOsContract.Job.idempotency_key/3`) and of anything else keyed by identity going forward. Never touches history. Before assuming this is free, check whether the affected table actually holds data that would collide under the old *or* the new key — a `psql` count, not a guess. `PLAN.md`'s 21 August closure of the `%7C`/`%3A` escaping defect is the worked example of that check, including what "the database turned out to be empty" is worth as evidence. |
-| Changing `instance:` on a process | yes | no | **The highest blast radius in this table.** `instance_id` is computed once, at emit time, and stored on the row (`EhOsContract.Instance.key/3`) — it is never recomputed. Changing `instance:` only affects events emitted *after* the change; every existing row keeps the run identity it was given under the old definition. A `trace` evaluation or a report spanning the change is silently reading two different keying schemes as if they were one. Same "check the real data first" discipline as `identity:`, and for the same reason — this is a run-identity change, not a cosmetic one. |
-| Changing a `trace`'s `from`, `eventually`, `or_else`, or `within` | yes, as long as the named events still exist | **no — not even partially.** `diff/2` has no field for it | `EhOsContract.Trace.evaluate/3` (`packages/eh_os_contract/lib/eh_os_contract/trace.ex`) always reads `contract.traces()` **as compiled right now** — there is no versioned, historical snapshot of what a trace promised at any earlier date. The moment this deploys, every past run matching that trace name is reinterpreted under the new definition, and nothing in the log or the deployment table distinguishes a verdict computed under the old promise from one computed under the new one. A report spanning the change is not wrong exactly — it is answering a question that changed meaning partway through the period it covers. Bound it with `since:` at or after the deploy, or say plainly that the comparison does not hold. |
-| Adding or removing `external:` / `depends_on:` | yes, unless `depends_on` names an undeclared `external` (refused) | no | Changes which outage can produce `:suspended` for which assertion. Low risk on its own; re-read whether the dependency choice still matches "the ones declared by the events that did not arrive" (`EhOsContract.Trace` moduledoc) if it is being narrowed or widened. |
+## Check the data before calling a change free
+
+For every row in the table that says "old rows", count them. The development database is the one to
+read (`CLAUDE.md`: never `MIX_ENV=test mix run`):
+
+```bash
+docker compose exec -T postgres psql -U eh_os -d eh_os_contract_host_dev -c "select type, count(*) from eh_os_contract_events group by type order by type;"
+```
+
+Zero rows of the type means the change is still additive in fact. Anything else is a decision for the
+user, with the count: a new event instead of a changed one, an optional field instead of a required
+one, or data work written down in `PLAN.md` before the change.
 
 ## Non-negotiables
 
-- **Work from an actual diff, not from memory or a full rewrite.** State the change as "this
-  declaration, this key, old value → new value." Regenerating the whole module risks silently
-  dropping an existing `unverified:`, a `source:`, or a comment recording a dated decision — this
-  repository has several, and losing one is how a resolved question quietly reopens.
-- **Never fold "there's no key for this" into an existing key's meaning.** A category the DSL has
-  no word for is a vocabulary decision, not a formatting choice — same rule `module-boundary-check`
-  and `contract-distillation` already carry.
-- **Grep every emit call site for the event before touching its `payload`, `identity`, or a
-  required field** — the compile gate does not check a call site against the schema, only the
-  declaration against itself.
-- **For `identity:` or `instance:` changes, check real data before assuming the change is free.**
-  A row count against the actual table, not an assumption either way.
+- **Work from a diff, not a regeneration.** State the change as "this declaration, this key, old
+  value → new value". A rewritten module drops a `source:`, an `unverified: true` or a dated comment,
+  and a resolved question quietly reopens.
+- **No new key to paper over a missing one.** A category the DSL has no word for is a vocabulary
+  decision for the user, with an example.
+- **Host-visible shapes go to the user before they change**: a capability, a command's fields, a
+  publication, a query's parameters (`PLAN.md`, strategy of stage 6).
 - **Never write into `~/Projects/ai/empowered-house-context`.**
 
 ## Procedure
 
-1. State the change as a diff against the currently committed declaration — not a description of
-   the desired end state, the actual before/after of the specific key.
-2. Run `mix compile --warnings-as-errors` first. Anything the compile gate refuses is answered;
-   stop reading this skill for that part of the change.
-3. For everything that compiled, classify each changed key against the table above.
-4. For anything in the "no" column of `EhOsContract.Deployment.diff/2`: write the consequence down,
-   explicitly, in the commit message — this repository's own convention for a decision that would
-   otherwise only live in someone's head (see any "Dopisek" entry in `PLAN.md` for the shape of
-   that note: what changed, why, what it costs).
-5. For `identity:` or `instance:` specifically: run the real-data check before writing a word about
-   cost — `docker compose exec -T postgres psql -U eh_os -d eh_os_contract_host_dev -c "select count(*) from
-   eh_os_contract_events;"` (and the `_test` database too) is cheaper than the conversation about whether a
-   migration is needed, and is exactly what closed the `%7C`/`%3A` defect on 21 August.
-6. For a new required `payload` field, a removed field with a `retain` policy, or a changed type:
-   grep every call site (`EhOsContract.emit!`, `emit`) for that event across `lib/`, and update them in the
-   same change — do not leave this for the test suite to discover by accident.
-7. For a `trace` timing/routing change: note the deploy boundary in the same commit message, so
-   whoever later runs a report across it knows to bound it with `since:`.
-8. Make the smallest edit that satisfies steps 3–7 — the existing file, in place, not a
-   regenerated module. A diff a reviewer can read with attention is the functional requirement
-   `CLAUDE.md` names for anything a human has to review.
-9. Run the full gate (`mix check`) last, as confirmation — not as a substitute for steps 3–7, since
-   everything in the "no" column above will pass it silently by construction.
+1. Write the change as a diff against the committed declaration.
+2. Compile. Whatever `packages/eh_os_contract/docs/contract.md`'s codes refuse is answered; fix it or drop that part.
+3. Classify every changed key against the table.
+4. For each row that touches history, count the rows of the type (above). For each host-visible
+   row, ask the user.
+5. Write the consequence into the commit message — what changed, what it costs, which deploy draws
+   the boundary — so whoever reads a report across it knows.
+6. Make the smallest edit, in the existing file.
+7. Run the scenarios of the contract and the gate from `sandbox/`. Both pass silently on everything
+   in the table, by construction: they are confirmation, not the analysis.
 
-## What this does not do
+## Not this skill
 
-Does not replace `mix eh_os_contract.check`'s compile-time gates for what they already catch — read those
-messages, do not re-derive them here. Does not decide whether a change is the *right* modelling
-call — whether `instance` should really be keyed differently, whether a promise is actually owed —
-that belongs to whoever confirmed the process, the same authority `contract-distillation` defers
-to. Does not build a versioned history for `trace` semantics, which the table above shows does not
-exist; recording that gap accurately is this skill's job, closing it is a `PLAN.md` item if it ever
-becomes one.
+Whether the changed model is the right one — that belongs to whoever confirmed the process.
+Building upcasters, or a versioned history of deadlines — plan items, if they are ever needed; this
+skill records that they do not exist.

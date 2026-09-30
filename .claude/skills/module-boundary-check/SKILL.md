@@ -1,211 +1,119 @@
 ---
 name: module-boundary-check
-description: DRAFT, not yet reviewed, and describes the v1 DSL only. Before adding a new business entity, action, or CRUD screen to this application, decide (1) whether the action should dispatch through EhOsContract's event/handler mechanism at all, (1a) if not, whether it should still use an internal untracked event/handler shape for decoupling versus a direct function call, and (2) if it does go through EhOsContract, separately whether it needs structural tracking (process, instance, stages — for drift/untraversed-path detection, no timing required) and/or a timed promise (trace, cadence, deadline) — then check what already exists before generating anything. Use when about to add a new module, table, or action to sandbox/lib/taxvision/ (or a future client tree) — not when editing an already-declared contract, which has its own workflow (see change-contract).
+description: Before adding a new business entity, action, screen or table to a client tree (`sandbox/lib/taxvision/`, `sandbox/lib/rehmed/`, or a future one), decide (1) whether it goes through a contract at all or is plain application code, (1a) if not, whether a plain function call or an internal, untracked signal, and (2) if it does, which declaration it is — a command to a unit, a fact recorded without a decision, a reaction, a read model with its query — and separately whether the process owes a promise about it; then check what already exists before generating anything. Use when about to add a module, a table or an action; not when editing a contract that already has declarations (see `change-contract`).
 ---
 
 # Deciding where a new feature lives, before writing it
 
-> **Describes v1** (26 September 2026, v2 plan E6). This skill was written for v1's
-> `EhOsContract.Contract` and `EhOsContract.Handler`. From E6 a contract may be written in the v2 DSL
-> (`EhOsContract.Next.Contract`, [`docs/adr/contract-v2.md`](../../../docs/adr/contract-v2.md)), and
-> `Rehmed.Contracts.VisitSettlement` is. For a v2 contract the keys, gates and runtime described below do
-> not apply. The skill is rewritten at the cut (E11).
-
-DRAFT — not yet run against a real feature addition. Review before trusting it on real code. A
-revision below corrected an earlier version that conflated two separate decisions; see
-"Revision" for why that distinction matters.
+Checked on 30 September 2026 (plan E11e) against `packages/eh_os_contract/docs/contract.md`,
+`packages/eh_os_contract/docs/rules.md` and `CLAUDE.md`, "Czym biblioteka jest, a czym nie". Not yet run on a real feature:
+read what it says against those before trusting it.
 
 ## The decision this closes
 
-The engine's contract machinery and the application's ordinary CRUD code live in the **same
-app**, and that is fine — `boundary` is what makes mixing them safe, because a module that
-reaches somewhere it should not is a compile error, not a discovery made later in a join.
-What `boundary` does not do is tell you, before you write anything, *which kind of code you are
-about to write*. Guessing wrong is expensive in both directions — wrapping a database write in
-contract ceremony it does not need, or leaving an automated reaction unverified because it
-looked like "just a field update."
+The client's ordinary code and the code a contract governs live in the same application, and that
+is fine: `boundary` makes a module that reaches where it should not a compile error. What `boundary`
+does not say is *which kind of code you are about to write*. Guessing wrong costs in both
+directions: contract ceremony around a plain write, or a rule, a reaction or a promise the
+conformance report never sees because it looked like "just a field update".
 
-## Revision: this is two questions, not one
+## Question 1 — does it go through a contract at all?
 
-The first version of this skill asked a single litmus test and treated its "yes" branch as one
-thing: "contract territory." That conflated **using the event/handler mechanism** with
-**attaching verification machinery** (`process`, `instance`, `trace`, `cadence`, `deadline`) —
-and they are independently decidable, confirmed against a coupling analysis of event-driven
-design (["Events and different kinds of coupling"](https://mkaszubowski.com/2019/06/28/events-and-different-kinds-of-coupling.html)):
-decoupling modules with an event can be done **synchronously and transactionally**, inside one
-ACID transaction, which is exactly EhOsContract's sync dispatch path — it costs no queue, no eventual
-consistency, and (confirmed against `EhOsContract.Contract`) no `instance`/`identity` either, because
-those are only required once an event joins a `process:`. A bare event with a handler, and
-nothing else declared, is cheap. What is *not* free is `trace`/`cadence`/`deadline` — that
-machinery answers a different question (is a *promise* being kept), and earns its cost only
-when a promise actually exists.
+> **Does anything outside the calling code depend on it having happened, or on it being refused?**
 
-So: ask both questions below, separately, and answer the second even when the first is "no
-event needed" is the wrong reflex just because nothing looked "process-shaped."
+A rule the business states about when it may happen (an invariant), another actor or module that
+reacts to it, a promise that runs from it, a run it ends. Any of these → contract. None of them →
+plain application code: a function, a table, a screen. That is a real and common answer, not a
+failure to find a contract angle. `contract-distillation`'s first step asks the same thing of a
+workshop sticky, and on Rehmed it rejected 15 of 22 candidates: most "actions" were fields somebody
+fills in.
 
-## Question 1 — does this go through the event/handler mechanism at all?
+A contract is also not where the client's state is answered from. A read model and its query may
+hold that state, but the dashboard shows conformance, never "which company has no open July"
+(`CLAUDE.md`).
 
-> **Does another module need to react to this without the calling code knowing or depending on
-> it?**
+## Question 1a — only if 1 was "no": a direct call, or an internal signal?
 
-Yes → dispatch it as an event, sync (same transaction) by default; async only if the reaction
-genuinely needs to be decoupled operationally (a slow call, a different failure domain). This
-is the actual claim of that analysis: events reduce *logical* coupling between modules, and that
-reduction does not require a queue. `dodano_klienta` triggering a welcome notification from a
-different module is exactly this case, with **no** `instance`, no `identity`, no `process` —
-just an event, a payload, a handler.
+> **Does the caller's own correctness depend on what the other side does?**
 
-No (the calling code itself performs the whole effect, nothing else needs to react) → a plain
-function call. No event. Stop — Question 1a and Question 2 below do not apply.
+- **Yes** → a direct function call. An event would hide that coupling, not remove it.
+- **No** — the caller only announces something, and who reacts is none of its business → an
+  internal signal: a plain module with a list of callbacks, called synchronously in the same
+  function. It is not an EhOsContract feature and does not belong in `packages/`: it earns nothing
+  from the library, whose value is the tracking this skips. Name it so nobody mistakes it for a
+  contract's event, and say in its moduledoc: *internal only, not tracked by a contract, see
+  `module-boundary-check`*. Its shape is still a public interface: treat a change to it as one.
 
-## Question 1a — only if Question 1 was "no": direct call, or an internal decoupling signal?
+**Graduation.** When a rule, a reaction someone must be able to see, or a promise appears for it,
+move it to Question 2: declare it in the contract and keep the callback's body as far as possible.
 
-A "no" to Question 1 does not always mean "call the other module's function directly." There is
-a middle option: an **internal, untracked signal** — same event/handler *shape* for code
-organization, dispatched entirely outside EhOsContract (no contract, no registry, no graph, no drift
-check). This is not an EhOsContract feature and does not belong in `packages/eh_os_contract/lib/eh_os_contract/` — it earns nothing from the
-library, because the whole value of EhOsContract is the tracking this deliberately skips. It is plain
-Elixir: a module holding a list of subscriber callbacks, invoked in the same function, same
-transaction, by default. Reach for `Phoenix.PubSub` or a queue only if there is a concrete reason
-to decouple operationally — that reason is itself a sign this might actually belong back in
-Question 1 as a real EhOsContract event.
+## Question 2 — only if 1 was "yes": which declaration?
 
-Decide with that same distinction, not taste:
+Pick by what the business says, not by what the code will look like:
 
-> **Does the calling module's own correctness depend on what the other side does with this fact?**
+| The business says | Declaration | Next skill |
+| --- | --- | --- |
+| "X may only happen if…", someone asks and can be refused | a `command` to a unit, its `invariant`s, and the event it decides | `add-event`, `write-decider` |
+| the rule spans facts of several units ("every visit of the payer in the period is invoiced or excluded") | a `dcb` that `consults` them | `add-event`, `write-decider` |
+| "it is noted that…", an observation, an external system's answer | an event with `recorded_by:`, entered with `EhOsContract.record/3` | `add-event` |
+| "whenever X, then Y" | a `policy` issuing a command | `write-reaction` |
+| "tell / send / ask system S" | an `effect` that `calls:` S | `write-reaction` |
+| "if Y has not happened a day after X, chase it" | a `process_manager` with a timer | `write-reaction` |
+| "reception sees the day's totals" | a `read_model` and the `query` that reads it | `write-reaction` |
 
-Yes (real functional coupling — the caller needs the result, an error, or a specific ordering to
-proceed correctly) → **direct function call.** An event would not remove this coupling, only hide
-it — the canonical example is a shipping deadline that is equally hard to satisfy whether it is
-wired as a function call or an event.
+- A contract holds **one process** (`R1`), and every local event belongs to its runs (`R2`: every
+  event carries the process's `correlate` fields). There is no event outside a run, so the
+  question is never whether it needs a process, only *which* process: the one whose
+  contract belongs to the context the fact is born in. A fact born in a sibling process is
+  `consumes`d and `include`d, never declared twice.
+- A new context, actor, value or external goes into the **domain** first (`use EhOsContract.Domain`);
+  the contract names them (`X1`–`X4`). An actor with nothing to do is `orphan-actor`; a context no
+  contract uses is `bounded-context-without-content`.
 
-No (the caller only announces a fact; who reacts, how many react, and whether anyone reacts yet
-are none of its business — and that list is expected to grow without editing the caller) →
-**internal signal.** Keep it boring: a plain module, a plain list of callbacks, called
-synchronously. Name it so nobody mistakes it for a governed EhOsContract event — a suffix or namespace
-distinct from anything with a `payload:`/`label:` declaration, and a one-line moduledoc note:
-*"internal only, not tracked by EhOsContract, see `module-boundary-check`."*
+## Question 3 — does the process owe a promise about it?
 
-**Semantic coupling still applies even though nothing is tracked.** The same analysis's warning
-that events increase semantic coupling is not conditional on a formal contract — the moment a second
-module depends on a signal's name and payload shape, changing that shape is a breaking change
-whether or not `EhOsContract.Contract` knows about it. Treat the signal's shape as deliberate from the
-first version, the same discipline as a public function signature.
+> **Did someone confirm "after A, within N, B follows, or else C", and does it matter if it breaks?**
 
-**Graduation path.** If a real promise later shows up for this fact ("after this, within N, that
-must follow, or else..."), that is the signal to move it into Question 1's "yes" branch — add the
-contract declaration, switch the dispatch call from the internal signal to `EhOsContract.emit`, and keep
-the handler function itself unchanged as far as possible so the move is cheap.
+- **Yes** → a `promise` in the process, with the number that was stated, and `unverified: true`
+  until the process owner confirms it (`unverified-declaration`). Its `from`, `eventually` and
+  `or_else` are events of the run (`R5`).
+- **No** → the structure stands on its own, and that is a complete answer. Stages, `terminal:` and
+  the declared paths already give the report untraversed paths and drift without any clock
+  (`contract-distillation`, step 7). A promise with no agreed number is written without `within`,
+  and `promise-without-within` says so rather than letting it read as kept.
+- A reminder *before* a scheduled moment is not a promise — a promise runs forward from an observed
+  fact. It is a process manager's timer at a `:timestamp` of its state, or the client's own
+  scheduling.
 
-## Question 2 — only if Question 1 was "yes": does this event need verification machinery?
+## Non-negotiables
 
-**This is two separate criteria, not one — an earlier version of this section conflated them.**
-Getting this wrong reads as "does it need a `trace`", which skips right past the cheaper,
-independently useful criterion below.
-
-**Criterion A — structural (`process` + `instance` + `stages`, no `trace` needed):**
-
-> **Is this one step in a multi-step run, where it matters whether the declared step actually
-> gets exercised across every run, and whether anything happens that was never declared?**
-
-Yes → give it `process:`/`stage:`, and give the process `instance`. This alone buys
-`EhOsContract.Conformance.untraversed_paths` (a declared step that silently never fires for anyone) and
-drift detection (something happening that was never declared) — **no timing relationship between
-events is required for either.** `sandbox/lib/taxvision/contracts/accounting_month.ex` has three events
-declared exactly this way today — `bank_statement_received`, `turnover_matched_with_invoice`,
-`month_closed` — deliberately with handlers, on purpose, as a live demonstration of "declared,
-never observed."
-
-**Criterion B — a promise (`trace`, layered on top of Criterion A):**
-
-> **Is there additionally a specific commitment — "after A, within N, B follows, or else C" —
-> that someone confirmed and that matters if it breaks?**
-
-Yes → `trace` assertion, same shape as `data_completeness_confirmed → accounting_month_opened
-within 2 days`. No → the process stands on Criterion A alone; that is a complete, legitimate
-answer, not a placeholder for a `trace` someone forgot to write. There is effectively no such
-thing as B without A — `trace` is evaluated within `instance`, so a promise needs a process to
-live in; the reverse is common and fine.
-
-If Question 1 was "yes" but neither A nor B applies at all, that is a bare event — see the
-procedure below.
-
-**The mistake to watch for is now the opposite of the first version's warning**: not "avoid
-events for CRUD," but "don't skip Criterion A because there's no obvious `trace`" — a lot of real
-verification value (silent step failure, undeclared drift) lives in A alone, and reaching straight
-for "is there a timing promise" undercounts it.
-
-## Non-negotiables, carried over from this repo's own rules
-
-- **EhOsContract knows nothing about companies or business entities, no exceptions.** A CRUD context
-  does not get engine-level awareness just because it is declared next to a contract. If a
-  litmus-test answer implies EhOsContract needs to know "which client this is" as a structured field,
-  that is a sign the action is not contract territory after all — see `claims: %{}` in `Taxvision.Identity.Actor`.
-- **Every new module declares `use Boundary` explicitly**, deps and exports named — even
-  `deps: [], exports: []`. No module rides along under an existing boundary by omission; that is
-  how a join or a hidden dependency gets in.
-- **Never invent event or contract vocabulary to make a CRUD action feel more rigorous.** If the
-  litmus test is genuinely unclear, say so and ask, rather than adding a word to the DSL that
-  nobody from the workshop said.
+- **The library knows nothing about companies or business entities.** If the answer implies the
+  engine needs to know "which client this is" as a structured field, it is not contract territory.
+- **Every new module declares `use Boundary`**, with `deps` and `exports` named, even empty ones.
+  Contexts are siblings, not a hierarchy (`CLAUDE.md`).
+- **No new DSL word to make an action feel more rigorous.** If none fits, say so and ask; a new word
+  goes to the user with an example.
 - **Never write into `~/Projects/ai/empowered-house-context`.**
 
 ## Procedure
 
-1. **Name the concrete action**, not the entity — "edit a client's VAT status" and "list clients"
-   are two different questions even though both touch `clients`, and can land on different
-   answers to both questions above.
+1. **Name the concrete action**, not the entity: "change a client's VAT status" and "list clients"
+   are two questions even though both touch `clients`.
+2. **Answer Question 1, then 1a or 2 and 3, and write the answers down before searching** — otherwise
+   the search below gets read to justify the answer that is less work.
+3. **Look for what exists.** For plain code: the exports of the context modules
+   (`sandbox/lib/taxvision/*.ex`, `sandbox/lib/rehmed/*.ex`) and existing migrations. For a
+   declaration: the contract of the context (`sandbox/lib/*/contracts/`), the domain, and
+   `mix eh_os_contract.check` — a `declaration-without-implementation` or
+   `contract-without-implementation` line means "declared, not built", not "missing".
+4. **Plain code** → scaffold it after an existing sibling context, with `exports: []` and a narrow
+   public function, not an exported schema. **Internal signal** → the same, named and documented as
+   untracked. **A declaration** → the skill in the table.
+5. **Record the answers** in the new module's moduledoc, one line per question that applied, so the
+   next reader does not run this triage again.
 
-2. **Answer Question 1 first, then Question 1a (if "no") or Question 2 (if "yes"), and commit
-   before checking anything else** — otherwise the discovery step below gets read selectively to
-   justify whichever answer feels like less work. "No event," "direct call," and "no promise" are
-   real, common outcomes, not a failure to find a contract angle.
+## Not this skill
 
-3. **If Question 1 is "no", answer Question 1a before writing anything:**
-   - Direct call → `grep` for an existing owner before creating a new one — exports lists in
-     `packages/eh_os_contract/lib/eh_os_contract.ex` and every `sandbox/lib/taxvision/*.ex`, and existing migrations for the table.
-     Duplicating an existing context is the same mistake the no-join rule exists to prevent, one
-     layer up. Scaffold with an explicit `use Boundary, deps: [...], exports: [...]`, following
-     the shape of an existing sibling context (e.g. `Taxvision.Periods`) rather than a generic
-     Phoenix tutorial pattern — this codebase's convention for a private table is `exports: []`
-     plus a narrow public function, not an exported schema. No event, no payload type, nothing in
-     the contract.
-   - Internal signal → same `boundary` discipline for whichever module owns the subscriber list;
-     name and moduledoc it as explicitly untracked (see Question 1a); treat its shape as a
-     deliberate, stable contract even though EhOsContract never sees it.
-
-4. **If Question 1 is "yes" but neither Criterion A nor B applies (bare event):**
-   - Declare the event with `payload`, `label`, `owner`, and `identity` only if retries need
-     deduplication — no `process:`, no `instance`, no `trace`.
-   - Still check `packages/eh_os_contract/docs/contract.md`/`mix eh_os_contract.check` for an existing owner of this fact before
-     adding a new one, same as any other declaration.
-   - Watch the payload type dictionary here specifically: `[:id, :string, :integer, :timestamp,
-     :enum]` has no decimal/float type, so a monetary field (an invoice amount, for instance)
-     does not fit cleanly and needs a deliberate convention (e.g. integer cents), not a silent
-     choice made once and forgotten.
-
-5. **If Criterion A applies (structural, whether or not Criterion B also does):**
-   - Check whether the event, process, or assertion already exists: `packages/eh_os_contract/docs/contract.md`,
-     `mix eh_os_contract.check` (an `info` line naming an event with no handler, or an owner module that
-     does not exist yet, both mean "declared but not built" rather than "does not exist").
-   - Give the event `process:` and `stage:`, and give the process `instance` — this alone is
-     enough to get untraversed-path and drift signal; a `trace` (Criterion B) is an addition on
-     top, not a requirement to unlock A.
-   - Do not invent the trigger condition, the timing, the stage boundaries, or the label — those
-     come from whoever confirmed the process, the same rule `contract-distillation` applies before
-     a contract gets written. Mark a guessed number `unverified` rather than asserting it.
-   - For the event declaration itself, use `add-event` (`.claude/skills/add-event/`); for the
-     handler that reacts to it, use `write-handler` (`.claude/skills/write-handler/`) — both built
-     21 August 2026. Neither one re-decides what this skill already settled; they pick up from
-     here.
-
-6. **Record the decision where the next reader will see it** — a one-line moduledoc note on
-   *the answers to every question that applied and why* — so the next person or agent does not
-   re-run this triage from scratch on the same action.
-
-## What this does not do
-
-Does not generate the CRUD code or the contract code — it is the triage step before either, not
-a replacement for `mix eh_os_contract.check`'s compile-time gates or for a human reviewing the result.
-Does not resolve genuinely ambiguous cases on its own: if either question's answer is unclear
-after step 2, that is a real open question, not a bug in this skill, and it should be asked
-rather than guessed past.
+Writing the declaration or the code — the skills in the table. Editing a declaration that exists —
+`change-contract`. A case that stays unclear after step 2 is an open question for the user, not
+something to guess past.
