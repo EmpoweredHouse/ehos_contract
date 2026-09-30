@@ -276,7 +276,8 @@ defmodule EhOsContract.Subscription do
     end
   end
 
-  # A raise is a defect; an exit is an adapter breaking `c:EhOsContract.Bus.publish/2`'s
+  # A raise is a defect, and so is a throw, recorded as an `ErlangError` without the
+  # thrown value; an exit is an adapter breaking `c:EhOsContract.Bus.publish/2`'s
   # promise to return an error instead.
   defp relay(consumer, events) do
     Bus.publish(Enum.map(events, &Relay.message(consumer, &1)))
@@ -284,6 +285,7 @@ defmodule EhOsContract.Subscription do
     exception -> {:raised, exception}
   catch
     :exit, _reason -> {:error, :exit}
+    :throw, _value -> {:raised, %ErlangError{original: :nocatch}}
   end
 
   defp advance!(repo, row, position) do

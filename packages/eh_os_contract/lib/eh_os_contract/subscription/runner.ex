@@ -88,13 +88,19 @@ defmodule EhOsContract.Subscription.Runner do
         end
     end
   rescue
-    exception ->
-      Logger.error(
-        "subscription #{state.key}: the runner failed outside a step " <>
-          "(#{inspect(exception.__struct__)}); it runs again in #{@after_crash} ms"
-      )
+    exception -> crashed(state, inspect(exception.__struct__))
+  catch
+    # The kind only: a thrown value or an exit's reason may carry what was read.
+    kind, _reason -> crashed(state, inspect(kind))
+  end
 
-      %{schedule(state, @after_crash) | resting: true}
+  defp crashed(state, what) do
+    Logger.error(
+      "subscription #{state.key}: the runner failed outside a step " <>
+        "(#{what}); it runs again in #{@after_crash} ms"
+    )
+
+    %{schedule(state, @after_crash) | resting: true}
   end
 
   # Steps until there is nothing to read; returns how long to wait before the next.

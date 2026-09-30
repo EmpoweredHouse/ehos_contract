@@ -24,7 +24,7 @@ defmodule EhOsContract.RelayTest do
 
     # Runs in the process that drains, so the test steers it through its own
     # dictionary: `:relay_test_answer` is `:ok` (the default), `{:error, reason}`,
-    # `:raise`, `{:raise_on, total}`, which raises for a batch holding an order of that
+    # `:raise`, `:throw`, `{:raise_on, total}`, which raises for a batch holding an order of that
     # total, or `{:during, fun}`, which runs `fun` and then answers `:ok`.
     @impl true
     def publish(opts, messages) do
@@ -33,6 +33,9 @@ defmodule EhOsContract.RelayTest do
       case Process.get(:relay_test_answer, :ok) do
         :raise ->
           raise "transport defect"
+
+        :throw ->
+          throw(:transport_closed)
 
         {:raise_on, total} ->
           if Enum.any?(messages, &(&1.payload["total"] == total)), do: raise("defect"), else: :ok
@@ -178,6 +181,15 @@ defmodule EhOsContract.RelayTest do
 
     assert %{status: "failing", position: ^before, attempts: 3, failure: "RuntimeError"} = row()
     assert row().failed_position == placed("o-1").position
+  end
+
+  test "a transport that throws fails the event too, without the thrown value" do
+    deploy()
+    place("o-1")
+    Process.put(:relay_test_answer, :throw)
+
+    assert %{failing: [@relay]} = Testing.drain(only: @relay)
+    assert %{status: "failing", failure: "ErlangError"} = row()
   end
 
   test "a raise in a batch is pinned on its event in one pass, not one pass per event before it" do
