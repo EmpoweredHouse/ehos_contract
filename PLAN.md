@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 30 września (E0–E11, #50–#56 w `main`)
+## Handoff — stan na 1 października (E0–E11, #50–#56 w `main`; E12 w toku)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -17,15 +17,17 @@ Po E11 w `main` są: #53 (tabele poza `public`, #51), #54 (klucz blokady dopisu 
 przestrzeni nazw) i **#56 — każda nazwa w formie**: `name:` domeny jako segment przestrzeni nazw (D11), `\z`
 zamiast `$` we wzorcach nazw (N1, D9, strony, dziesiętna scenariusza), nazwy aktorów (D4) i pozostałych elementów
 domeny (D1, z kolizją wartości po `Macro.camelize` i nazwami typów wbudowanych), kolizja nazw kontraktu po
-`camelize` (N1, N2 dla `State`/`Row`), nazwy pól i `identity` (F1, D3, D6). **Nic nie jest w toku.** Następny etap
-wybiera użytkownik.
+`camelize` (N1, N2 dla `State`/`Row`), nazwy pól i `identity` (F1, D3, D6). **W toku: E12** (wybór użytkownika z
+1 października, „Przed E12 — decyzje użytkownika”); **E12a** — `EhOsContract.Bus`, adapter lokalny, suita — jest
+gotowe, przejrzane i wystawione jako PR z gałęzi `dsl-v2/e12-bus`; E12b (relay) po komentarzach CodeRabbita.
 
 ### Stan repozytorium
 
 - **`origin/main` = `6e1658a`** (merge #56, 30 września; przedtem `0e6e10f` — merge #55, `0ca5383` — merge #54,
   `50eb771` — merge #53). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
-- **`dsl-v2/handoff-after-56`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `6e1658a`, jeden commit: ten zapis;
-  **niewypchnięta** — push (fast-forward `main` albo PR) na polecenie użytkownika.
+- **`dsl-v2/e12-bus`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `6e1658a`: handoff po #56 (`2d870ee`, z
+  gałęzi `dsl-v2/handoff-after-56`, która zostaje w całości w tej), decyzje przed E12, E12a i poprawki z przeglądu;
+  PR do `main` na polecenie użytkownika z 1 października.
 - **Otwarte na GitHubie:** tylko **issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza
   repozytorium; zaparkowane 30 września, z propozycją `EmpoweredHouse/eh-os-contract-sandbox`. Otwartych PR-ów brak.
 - **Lokalne gałęzie w całości w `main`** — kilkadziesiąt, w tym wszystkie `dsl-v2/e*`, `dsl-v2/d11-dashed-namespace`,
@@ -41,9 +43,9 @@ wybiera użytkownik.
 
 ### Co zostało — i czyje to jest
 
-- **Wybór następnego etapu — użytkownika.** Kandydaci, każdy z tym, co go blokuje:
-  - **E12 — integracja między aplikacjami** (`EhOsContract.Bus`, relay, inbox) — opis w „Etapach”. Przestrzeń
-    nazw publikacji jest od #56 domknięta (nazwa domeny to jeden segment), więc nazwy mogą stać się tematami.
+- **E12 — w toku** (asystenta): po merge'u E12a — E12b (relay), E12c (inbox, `.subscribe`, test dwóch aplikacji),
+  E12d (publiczne wejście), E12e (dokumentacja); podział w „Przed E12 — decyzje użytkownika”.
+- **Kandydaci na później** (wybór użytkownika), każdy z tym, co go blokuje:
   - **„Po E11” z planu: kontrakty sandboxa jako fikstury akceptacyjne pakietu, potem manifest v2** (po akceptacji
     D-51/D-52 w `eh-os`). **Fikstury kolidują z #49**: kontrakty klientów w pakiecie to dokładnie to, czego #49 chce
     uniknąć — do rozstrzygnięcia przed startem (propozycja z E11: zmyślone odpowiedniki tego samego kształtu).
@@ -119,12 +121,15 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 1 października, na `fb6bf46`** (głowa kodu E12a po przeglądzie): brama z `sandbox/` → **EXIT=0** —
+  sandbox 144, `check` 0 / 29 / 9; silnik **1059** (1028 + 31 testów `Bus.Local` i suity), `check` 0 / 66 / 5; web
+  52; auth 66. Te same liczby `check`, co przed E12a. Commity poprawek między `5ce8c90` a `fb6bf46` sprawdzane
+  testem `bus_local_test.exs` i kompilacją z `--warnings-as-errors`, pełna brama na `5ce8c90` i na `fb6bf46`.
 - **Lokalnie, 30 września, na `main` = `6e1658a`** (po merge'u #56): brama z `sandbox/` → **EXIT=0** — sandbox 144
   testy, `eh_os_contract.check` 0 / 29 / 9; silnik **1028**, `check` 0 / 66 / 5; web 52; auth 66; `docs/dsl` i
   `docs/rules.md` aktualne. Drzewo `6e1658a` jest identyczne z głową #56 (`e002519`).
 - **CI:** PR #56 na `e002519` (przebieg `36778876263`, job `check`) — `success`; `main` na `0e6e10f`
-  (`36761436783`) — `success`; `main` na `6e1658a` (`36779783368`) — w toku w chwili zapisu
-  (`gh run view 36779783368 --json jobs`).
+  (`36761436783`) — `success`; `main` na `6e1658a` (`36779783368`) — `success`.
 - **Dwie bramy naraz z dwóch worktree gryzą się o wspólne bazy** — 30 września pierwsza brama tej sesji padła na
   `too_many_connections`, bo w tej samej minucie bramę puszczała sesja PR-a #53. Przed bramą sprawdzić, czy żaden
   inny BEAM z worktree tego repozytorium nie chodzi.
@@ -3303,6 +3308,66 @@ wyjścia rozproszony po zadaniach zamiast jednej pozycji. Ten sam dopisek w §16
 - **E12d** — publiczne wejście dla surowych danych, Plug na nim, bez `Dispatcher.permit_undecoded/5`;
 - **E12e** — poprawka z datą `architecture.md` §9–10, `docs/contract.md`, CHANGELOG, skill `write-reaction`,
   handoff.
+
+### E12a — co wyszło (1 października)
+
+**Co jest** (gałąź `dsl-v2/e12-bus`, od `2d870ee`): `EhOsContract.Bus` z dwoma callbackami — `publish(opts,
+messages)` (`:ok`, gdy transport trzyma całą partię; `{:error, _}` dla transportu niedostępnego, wyjątek dla
+wiadomości, której żaden transport nie przeniesie) i `consumer(opts, consumer)` (dziecko trwałego konsumenta, którego
+handler odpowiada `:ack` albo `:nack`); `EhOsContract.Bus.Message` z czterema polami (`id`, `name`,
+`correlation_id`, `payload` jako JSON); `EhOsContract.Bus.Local` w pamięci jednego BEAM-a; `EhOsContract.Bus.Suite`
+w `lib/`, jak `Store.Suite`. Konfiguracja `config :eh_os_contract, bus: {Adapter, opts}`, domyślnie żadna. Nic
+jeszcze przez `Bus` nie publikuje.
+
+**Wybory asystenta:**
+- **Ack jako odpowiedź handlera, nie osobne wywołanie** — ADR wymienia trzy operacje (publikacja, subskrypcja,
+  potwierdzenie); tu potwierdzenie to wartość, którą handler zwraca. Tak wygląda `Gnat.Jetstream.PullConsumer`
+  (`handle_message/2` zwraca `:ack`/`:nack`), a runner inboxu (E12c) i tak potwierdza dopiero po commicie, w tym
+  samym miejscu. *Odrzucone:* model pull z `fetch/2` i `ack/2` — cztery operacje zamiast dwóch i dzierżawa
+  wiadomości w każdym adapterze; model push na pid — adapter musiałby sam pilnować, kto żyje.
+- **Adapter lokalny w pamięci, nie na Postgresie** — ADR: „dla testów i jednej aplikacji”; wersja na bazie udawałaby
+  broker między aplikacjami, czego D-41 nie chce (tabela u EHOS-a odrzucona).
+- **Lokalny nie odrzuca duplikatów** — test inboxu w E12c potrzebuje drugiego doręczenia, a suita deduplikacji nie
+  wymaga.
+- **Payload przez JSON w lokalnym** — term, którego transport nie przeniesie (krotka, atom jako klucz), pada w
+  teście, a nie na produkcji.
+- **Domyślnie żaden adapter** — lokalny jako domyślny oznaczałby produkcję, która po cichu gubi wiadomości przy
+  restarcie.
+
+**Przegląd** (`code-review high` i bezpieczeństwo/wydajność, równolegle, na `2d870ee..5ce8c90`; żaden nie znalazł
+utraty wiadomości przy żywej subskrypcji):
+- linkowany proces handlera, który pada, zabijał konsumenta z pełnym powodem w logu nadzorcy — *poprawione*
+  (`9499087`): wyjścia łapane na czas handlera, jak w `EffectJob`; dekodowanie payloadu w tym samym miejscu
+  (nieosiągalne w lokalnym, więc bez testu);
+- wiadomość zabitego konsumenta wracała na początek kolejki od razu — jedna trująca wiadomość przekraczała limit
+  restartów nadzorcy — *poprawione* (`9a95887`): wraca po `retry_after`;
+- obcy `DOWN` albo komunikat z handlera zatrzymywał konsumenta — *poprawione* (`7e9952f`);
+- `id` i nazwa wiadomości surowo w logu — *poprawione* (`07e6053`), `inspect`;
+- `take` dla nieznanej nazwy wywracał brokera przez `Map.fetch!` (z mapą kolejek w komunikacie) — *poprawione*
+  (`a7697c5`);
+- `:sys.get_status/1` i raport padnięcia z payloadami — *poprawione* (`df67523`), `format_status/1`;
+- powrót z węższą listą nazw zostawiał w kolejce wiadomości porzuconych nazw — *poprawione* (`cae1d5d`);
+- identyfikator dziecka konsumenta bez nazwy brokera — *poprawione* (`0a028bb`);
+- `:name` spoza atomów uruchamiał brokera, do którego żaden konsument się nie podłączy — *poprawione* (`cdf12d7`);
+- `publish` wychodził exitem zamiast `{:error, _}`, z wiadomościami w powodzie — *poprawione* (`5f08f3c`);
+  doc callbacku mówi, czego relay może się spodziewać;
+- suita za ostra wobec „co najmniej raz” (dokładne liczby doręczeń; test potwierdzenia zatrzymywał konsumenta przed
+  `:ack`) — *poprawione* (`921dc71`); lokalny zmutowany na podwójne doręczenie: stara suita pada na trzech testach,
+  nowa przechodzi;
+- `publish` przebudowywał mapę konsumentów na każdą wiadomość, zbędny zbiór monitorów — *poprawione* (`fc52afa`);
+- test „konsument staje, gdy broker staje” zostawiał pętlę restartów — *poprawione* (`5adea29`);
+- ADR „nigdy zero razy” bez zastrzeżenia o konsumencie późniejszym niż publikacja; moduledoc `Bus` przypisywał suicie
+  więcej, niż widzi — *poprawione* (`fb6bf46`);
+- brak terminu potwierdzenia, limitu prób i usuwania subskrypcji w lokalnym; trwali konsumenci suity na brokerze —
+  *pominięte w kodzie, opisane* (`fb6bf46`): adapter deweloperski, a limit prób należy do transportu albo inboxu;
+- `Bus.adapter/0` przyjmuje dowolny atom — *bez zmiany*: konfiguracja hosta, błąd przy pierwszym użyciu.
+
+**Do E12b i E12c z przeglądu:**
+- relay: wyjątek z `publish` to defekt wydawcy, `{:error, _}` — ponowienie bez przesunięcia checkpointu; loguje
+  tylko rodzaj (`Protocol.UndefinedError` Jasona niesie w komunikacie wartość, której nie zakodował);
+- **otwarte do E12c:** kiedy powstaje konsument subskrybenta względem relaya wydawcy — lokalny daje nowemu
+  konsumentowi tylko to, co opublikowano po jego pierwszej subskrypcji, więc relay uruchomiony wcześniej publikuje
+  w próżnię (dwie aplikacje w jednym BEAM-ie w developmencie).
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
