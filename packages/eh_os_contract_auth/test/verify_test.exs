@@ -152,6 +152,9 @@ defmodule EhOsContract.Auth.VerifyTest do
       # them, sharing its idempotency keys and so its receipts.
       assert Auth.verify(credential(pair, %{"sub" => ""}), keys: keys) == {:error, :bad_signature}
 
+      assert Auth.verify(credential(pair, %{"sub" => " "}), keys: keys) ==
+               {:error, :bad_signature}
+
       assert Auth.verify(credential(pair, %{"cap" => "all"}), keys: keys) ==
                {:error, :bad_signature}
 
