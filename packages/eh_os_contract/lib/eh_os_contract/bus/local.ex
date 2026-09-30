@@ -55,7 +55,7 @@ defmodule EhOsContract.Bus.Local do
   @spec consumer(keyword(), EhOsContract.Bus.consumer()) :: Supervisor.child_spec()
   def consumer(opts, consumer) do
     %{
-      id: {__MODULE__.Consumer, consumer.name},
+      id: {__MODULE__.Consumer, server(opts), consumer.name},
       start: {__MODULE__.Consumer, :start_link, [server(opts), consumer]}
     }
   end

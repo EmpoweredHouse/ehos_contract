@@ -171,6 +171,20 @@ defmodule EhOsContract.Bus.LocalTest do
       bus_nothing_more(consumer)
     end
 
+    test "one consumer name on two brokers is two children of one supervisor" do
+      other = [name: __MODULE__.Other]
+      start_supervised!({Local, other})
+
+      consumer = %{
+        name: bus_name("consumer"),
+        names: [bus_name("two")],
+        handler: fn _ -> :ack end
+      }
+
+      start_supervised!(Local.consumer(@opts, consumer))
+      start_supervised!(Local.consumer(other, consumer))
+    end
+
     test "a consumer stops when the broker does" do
       consumer = bus_name("consumer")
       pid = bus_consume(consumer, [bus_name("gone")])
