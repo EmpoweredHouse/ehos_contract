@@ -1,0 +1,4 @@
+pre-pr-review of origin/main(0ca5383)..HEAD, #50, after rebase onto #54.
+The code commits are unchanged from the reviewed range 50eb771..668538a: both reviews (code-review high; security and performance) found no defect in the change; fixed in 7bff29f (refusal text, moduledoc on underscore, consumes from: doc, CHANGELOG placement) and 6086fd3 (PLAN.md); skipped: unchecked domain name: (to the user); no change: u flag.
+The rebase conflicted only in PLAN.md (handoff and the #54 record); resolved by keeping both records and marking the append lock key as done in #54.
+Gate from sandbox/ on this tree: EXIT=0; sandbox 144 (check 0/29/9), engine 1012 (check 0/66/5), web 52, auth 66.
