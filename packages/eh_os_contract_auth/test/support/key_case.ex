@@ -89,7 +89,7 @@ defmodule EhOsContract.Auth.KeyCase do
   @doc """
   Starts a key process fetching from `ehos`, under a name of its own, and waits
   until its start — the table loaded, the first fetch done — has run.
-  `cacertfile:` and `cacerts:` go to it as they are.
+  `cacertfile:` and `cacerts:` go to it as they are, and `repo:` replaces `TestRepo`.
   """
   def start_keys(ehos, opts \\ []) do
     name = Keyword.get_lazy(opts, :name, fn -> :"keys_#{System.unique_integer([:positive])}" end)
@@ -100,7 +100,7 @@ defmodule EhOsContract.Auth.KeyCase do
        [
          name: name,
          url: "https://ehos.test/.well-known/jwks.json",
-         repo: TestRepo,
+         repo: Keyword.get(opts, :repo, TestRepo),
          plug: &serve(ehos, &1),
          clock: fn -> Agent.get(clock, & &1) end
        ] ++ Keyword.take(opts, [:cacertfile, :cacerts])}

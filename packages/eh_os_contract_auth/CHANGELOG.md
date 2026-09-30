@@ -7,6 +7,13 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **The tables work in a schema other than `public`** (issue #51; `eh-os` D-54, D-56).
+  `EhOsContract.Auth.Migrations` read and wrote its version on `public.eh_os_contract_auth_keys` by name, and
+  in a schema of the application's own failed or, where `public` had the tables, created nothing. It now
+  resolves the table through the connection's `search_path`, as the key store and the decisions table
+  already did. The role the application runs as needs only `SELECT`, `INSERT`, `UPDATE` and `DELETE` on the
+  tables and `USAGE` on the sequences.
+
 - **E11: the manifest reads `EhOsContract.Registry.contracts/0`**, the engine's one list of contracts from its
   0.3.0; `Manifest.build/2` raises "has no contracts" for a domain with none.
 
