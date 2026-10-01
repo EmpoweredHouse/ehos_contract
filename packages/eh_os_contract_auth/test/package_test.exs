@@ -8,9 +8,17 @@ defmodule EhOsContract.Auth.PackageTest do
   test "what the package calls directly is declared, not inherited through the engine" do
     declared = Mix.Project.config()[:deps] |> Enum.map(&elem(&1, 0))
 
-    for dep <- [:jason, :ecto_sql, :postgrex, :joken, :req] do
+    for dep <- [:jason, :ecto_sql, :postgrex, :joken, :req, :yamerl, :jsv] do
       assert dep in declared, "#{dep} is called here directly and must be a direct dependency"
     end
+  end
+
+  test "the package carries the ehos.yaml schemas it validates with, and not its test migrations" do
+    files = Mix.Project.config()[:package][:files]
+
+    assert "priv/schemas" in files
+    refute "priv" in files
+    assert File.exists?("priv/schemas/ehos.yaml/v1.json")
   end
 
   test "the metadata Hex would need is present, though publication is not decided" do

@@ -67,8 +67,9 @@ defmodule EhOsContract.Auth.MixProject do
         "GitHub" => @source_url,
         "Changelog" => "#{@source_url}/blob/main/packages/eh_os_contract_auth/CHANGELOG.md"
       },
-      # Not `priv/`: the only thing there is this package's own test migration.
-      files: ~w(lib .formatter.exs mix.exs README.md CHANGELOG.md LICENSE)
+      # `priv/schemas/`, EHOS's `ehos.yaml` schemas the reader validates with, and not the rest of
+      # `priv/`, which is this package's own test migration.
+      files: ~w(lib priv/schemas .formatter.exs mix.exs README.md CHANGELOG.md LICENSE)
     ]
   end
 

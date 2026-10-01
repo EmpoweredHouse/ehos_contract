@@ -1,0 +1,8 @@
+schema: ehos.yaml/v1
+needs:
+  database:
+    version: ">= 16"
+health:
+  port: 4001
+  ready: /health/ready
+  live: /health/live

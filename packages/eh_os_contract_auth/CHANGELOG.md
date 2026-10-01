@@ -13,6 +13,12 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   values by YAML 1.2's core schema, so `yes` is a string. Each reason has the value's path in EHOS's notation and
   its line. New dependencies: `yamerl` and `jsv`, the reader and the validator EHOS uses.
 
+- **EH2: a file that reads is validated against EHOS's own JSON Schema of its version**, copied unchanged into
+  `priv/schemas/ehos.yaml/v1.json` (from `eh-os` `eeb732a`) and carried in the package. A file without `schema`,
+  or with a version the package has no copy of, is refused before any schema reads it; `EhosYaml.versions/0`
+  lists those it has. No default is filled in. The rules EHOS checks beside its schema, such as unique names and
+  ports in `serves`, are left to EHOS.
+
 - **E12c: `assert_every_entry_refuses/3` asks for no entry for `<name>.subscribe`.** The engine derives that
   capability for an event a contract consumes from another application and a policy handles; it is the
   application's, in no person's credential, and has no door. A map that names it now fails the check as a key

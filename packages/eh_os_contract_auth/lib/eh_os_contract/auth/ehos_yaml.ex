@@ -11,12 +11,18 @@ defmodule EhOsContract.Auth.EhosYaml do
   more than one document, and a number such as `.inf`. Plain values are read by
   YAML 1.2's core schema, so `yes` and `on` are strings, not `true`.
 
+  A file that reads is then validated against the JSON Schema of the version its
+  `schema` names, EHOS's own file, copied unchanged into this package
+  (`versions/0`). The rules EHOS checks beside its schema, such as unique names and
+  ports in `serves`, are left to EHOS, which refuses them when the manifest is
+  deployed.
+
   A refusal is a list of reasons, each at the path of the value it is about, in
   EHOS's notation (`serves[0].port`, `""` for the file as a whole), with the line
   when it is known.
   """
 
-  alias EhOsContract.Auth.EhosYaml.Reader
+  alias EhOsContract.Auth.EhosYaml.{Reader, Schema}
 
   @typedoc "One reason a file is refused."
   @type error :: %{path: String.t(), line: pos_integer() | nil, message: String.t()}
@@ -24,15 +30,50 @@ defmodule EhOsContract.Auth.EhosYaml do
   @doc """
   Reads `ehos.yaml` from its text.
 
-  Returns the file in JSON's data model, keys as strings, or every reason it is
-  refused, sorted by line, those without one first.
+  Returns the file in JSON's data model, keys as strings, as it is written: no
+  default is filled in. Otherwise every reason it is refused, sorted by line, those
+  without one first.
   """
   @spec read(binary()) :: {:ok, map()} | {:error, [error()]}
   def read(text) when is_binary(text) do
-    case Reader.decode(text) do
-      {:ok, %{} = data, _lines} -> {:ok, data}
-      {:ok, _data, _lines} -> refused([%{path: [], line: 1, message: "must be a mapping"}])
+    with {:ok, data, lines} <- Reader.decode(text),
+         {:ok, data} <- mapping(data),
+         :ok <- validate(data, lines) do
+      {:ok, data}
+    else
       {:error, errors} -> refused(errors)
+    end
+  end
+
+  @doc """
+  The versions of `ehos.yaml` this package can read and carry into a manifest.
+
+  Each is EHOS's own JSON Schema, copied unchanged into this package's `priv/schemas/`.
+  """
+  @spec versions() :: [String.t()]
+  def versions, do: Schema.versions()
+
+  defp mapping(%{} = data), do: {:ok, data}
+  defp mapping(_data), do: {:error, [%{path: [], line: 1, message: "must be a mapping"}]}
+
+  # A reason from the schema has no line of its own: it is given the line of the value's key, or,
+  # for a key that is missing, of the mapping that should hold it.
+  defp validate(data, lines) do
+    case Schema.validate(data) do
+      :ok ->
+        :ok
+
+      {:error, errors} ->
+        {:error, Enum.map(errors, &%{&1 | line: line(lines, &1.path)})}
+    end
+  end
+
+  defp line(_lines, []), do: nil
+
+  defp line(lines, path) do
+    case Map.fetch(lines, path) do
+      {:ok, line} -> line
+      :error -> if length(path) > 1, do: Map.get(lines, Enum.drop(path, -1))
     end
   end
 
