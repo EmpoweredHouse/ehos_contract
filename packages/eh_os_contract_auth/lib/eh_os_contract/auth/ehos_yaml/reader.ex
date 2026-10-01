@@ -11,8 +11,11 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
   # directives, which its tree no longer does, and its detailed tree keeps every key of a mapping
   # with its line.
   #
-  # EHOS's bounds on time, memory and nesting are not carried over: they guard a server against
-  # files from anyone, and this reads the developer's own file in their CI.
+  # Two of EHOS's bounds are rules a valid file can break, and are kept: at most 64 KiB, and at most
+  # 256 of `[` and `{` anywhere in the text, quoted strings included. Its budgets of time and memory,
+  # and its bounds on nesting and on a list's length, are not carried over: they guard a server
+  # against files from anyone, a file the schema accepts never reaches them, and this reads the
+  # developer's own file in their CI.
 
   @type path :: [String.t() | non_neg_integer()]
   @type error :: %{path: path(), line: pos_integer() | nil, message: String.t()}
@@ -22,6 +25,8 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
   @construction [:detailed_constr, {:schema, :core}, {:keep_duplicate_keys, true}]
   @directives [:yamerl_yaml_directive, :yamerl_tag_directive, :yamerl_reserved_directive]
   @only_json "ehos.yaml holds only what JSON can"
+  @max_bytes 65_536
+  @max_flow 256
 
   @spec decode(binary()) :: {:ok, term(), lines()} | {:error, [error()]}
   def decode(text) when is_binary(text) do
@@ -36,12 +41,23 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
   end
 
   # yamerl stops at a raw NUL with a function clause error, and reads bytes that are not UTF-8 as
-  # Latin-1; both are refused before it reads anything.
+  # Latin-1; both are refused before it reads anything, as are EHOS's two bounds above.
   defp readable(text) do
     cond do
-      not String.valid?(text) -> refuse(nil, "the file is not UTF-8 text")
-      String.contains?(text, <<0>>) -> refuse(nil, nul())
-      true -> :ok
+      byte_size(text) > @max_bytes ->
+        refuse(nil, "the file is #{byte_size(text)} bytes; EHOS reads at most #{@max_bytes}")
+
+      not String.valid?(text) ->
+        refuse(nil, "the file is not UTF-8 text")
+
+      String.contains?(text, <<0>>) ->
+        refuse(nil, nul())
+
+      length(:binary.matches(text, ["[", "{"])) > @max_flow ->
+        refuse(nil, "the file holds more than #{@max_flow} of [ and {, which EHOS does not read")
+
+      true ->
+        :ok
     end
   end
 

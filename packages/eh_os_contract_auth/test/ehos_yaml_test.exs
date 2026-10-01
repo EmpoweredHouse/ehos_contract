@@ -142,6 +142,44 @@ defmodule EhOsContract.Auth.EhosYamlTest do
     end
   end
 
+  describe "EHOS's bounds that a valid file can break" do
+    test "a file of more than 64 KiB is refused, though comments are all that make it large" do
+      text = "schema: ehos.yaml/v1\n" <> @health <> String.duplicate("# padding\n", 6554)
+
+      assert byte_size(text) > 65_536
+
+      assert EhosYaml.read(text) ==
+               {:error,
+                [
+                  %{
+                    path: "",
+                    line: nil,
+                    message: "the file is #{byte_size(text)} bytes; EHOS reads at most 65536"
+                  }
+                ]}
+    end
+
+    test "more than 256 of [ and { are refused, inside a quoted string too" do
+      migrate = fn braces ->
+        "schema: ehos.yaml/v1\nneeds:\n  database:\n    engine: postgres\n" <>
+          "    migrate: [\"/app/bin/migrate\", \"#{String.duplicate("{", braces)}\"]\n" <> @health
+      end
+
+      # The list itself is one `[`.
+      assert {:ok, _data} = EhosYaml.read(migrate.(255))
+
+      assert EhosYaml.read(migrate.(256)) ==
+               {:error,
+                [
+                  %{
+                    path: "",
+                    line: nil,
+                    message: "the file holds more than 256 of [ and {, which EHOS does not read"
+                  }
+                ]}
+    end
+  end
+
   test "every reason the reader finds is reported, sorted by line, those without one first" do
     text = "a: 1\na: 2\nb: .inf\nc: .nan\n"
 
