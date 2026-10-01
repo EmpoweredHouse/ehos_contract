@@ -270,6 +270,10 @@ defmodule EhOsContract.InboxTest do
       # The keeper tries again after a pause; the test does not wait it out.
       start_supervised!({Bus.Local, opts})
       send(keeper, :start)
+      # Handled once the keeper answers: its consumer is subscribed before the relay
+      # publishes, which a fresh broker would otherwise drop.
+      assert %{child: child} = :sys.get_state(keeper)
+      assert is_pid(child)
 
       place("o-1")
       assert eventually(fn -> length(reserved()) == 1 end)
