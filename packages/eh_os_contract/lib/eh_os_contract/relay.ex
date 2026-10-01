@@ -65,17 +65,45 @@ defmodule EhOsContract.Relay do
   `name` is the versioned name the publication declares, its correlation the
   event's, and its payload the declared `fields` of the event, as stored, and nothing
   else. A field the event does not carry is `nil`.
+
+  Its key is what the subscriber's inbox tells one fact by (`EhOsContract.Bus.Message`):
+  the SHA-256 of the name and the `idempotent_on:` values, so a second event with the
+  same values — a fact recorded twice, or a log moved under new ids — has the key of
+  the first. Without such fields, or with one of them `nil`, the key is the id.
   """
   @spec message(map(), Event.t()) :: Bus.Message.t()
   def message(%{publication: publication}, %Event{} = event) do
-    payload = event.payload || %{}
+    stored = event.payload || %{}
+
+    payload =
+      Map.new(publication.fields, &{Atom.to_string(&1), Map.get(stored, Atom.to_string(&1))})
+
+    id = "#{event.id}/#{publication.as}"
 
     %Bus.Message{
-      id: "#{event.id}/#{publication.as}",
+      id: id,
+      key: key(publication, payload) || id,
       name: publication.as,
       correlation_id: event.correlation_id,
-      payload:
-        Map.new(publication.fields, &{Atom.to_string(&1), Map.get(payload, Atom.to_string(&1))})
+      payload: payload
     }
+  end
+
+  # The full digest, not `EhOsContract.Digest.hash/1`'s twelve characters: two facts
+  # whose keys collide are one fact to the inbox, and the second is dropped.
+  defp key(%{idempotent_on: []}, _payload), do: nil
+
+  defp key(publication, payload) do
+    values =
+      Enum.map(
+        publication.idempotent_on,
+        &{Atom.to_string(&1), Map.get(payload, Atom.to_string(&1))}
+      )
+
+    if Enum.all?(values, fn {_field, value} -> value != nil end) do
+      :sha256
+      |> :crypto.hash(EhOsContract.Digest.canonical([publication.as, values]))
+      |> Base.encode16(case: :lower)
+    end
   end
 end

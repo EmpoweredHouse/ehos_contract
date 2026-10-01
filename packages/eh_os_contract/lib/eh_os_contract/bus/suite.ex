@@ -50,8 +50,11 @@ defmodule EhOsContract.Bus.Suite do
       defp bus_name(tag), do: "bus-suite.#{tag}.#{System.unique_integer([:positive])}.v1"
 
       defp bus_message(name, payload \\ %{"n" => 1}) do
+        id = "#{Ecto.UUID.generate()}/#{name}"
+
         %Message{
-          id: "#{Ecto.UUID.generate()}/#{name}",
+          id: id,
+          key: id,
           name: name,
           correlation_id: Ecto.UUID.generate(),
           payload: payload

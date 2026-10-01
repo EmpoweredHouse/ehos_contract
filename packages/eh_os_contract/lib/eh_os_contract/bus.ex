@@ -31,7 +31,7 @@ defmodule EhOsContract.Bus do
     one. The relay publishes in log order, but nothing downstream may rely on it
     (v2 §16, the note of 1 October 2026).
   - **No deduplication is required.** A message published twice may arrive twice. The
-    inbox drops the second one by its id, so a transport that deduplicates (JetStream's
+    inbox drops the second one by its key, so a transport that deduplicates (JetStream's
     `Nats-Msg-Id`) saves work and changes no result.
   - **Where a new consumer starts** is the adapter's, beyond one thing: it gets what is
     published after it first subscribed. `EhOsContract.Bus.Local` gives it nothing
@@ -47,11 +47,12 @@ defmodule EhOsContract.Bus do
 
   ## A message
 
-  `EhOsContract.Bus.Message` carries four things: the id, the versioned name, the
-  correlation and the payload. **The payload is JSON**: string keys, and values a JSON
-  encoder turns into text and back — what arrives is what `Jason` decodes, not the
-  Elixir terms that were sent. `EhOsContract.Bus.Local` encodes and decodes it on the
-  way, so a term a real transport could not carry fails in a test and not in production.
+  `EhOsContract.Bus.Message` carries five things: the id, the key that tells one fact
+  from another, the versioned name, the correlation and the payload. **The payload is
+  JSON**: string keys, and values a JSON encoder turns into text and back — what
+  arrives is what `Jason` decodes, not the Elixir terms that were sent.
+  `EhOsContract.Bus.Local` encodes and decodes it on the way, so a term a real
+  transport could not carry fails in a test and not in production.
   """
 
   alias EhOsContract.Bus.Message
