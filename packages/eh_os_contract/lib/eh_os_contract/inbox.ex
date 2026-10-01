@@ -32,10 +32,13 @@ defmodule EhOsContract.Inbox do
   taken.
 
   **When it subscribes.** The engine's tree starts every inbox before any relay
-  (`EhOsContract.Supervisor`), and an adapter's consumer is subscribed once its
-  child has started, so in one node — two applications side by side on
+  (`EhOsContract.Supervisor`), each through an `EhOsContract.Inbox.Keeper` that
+  starts the adapter's consumer in its own `init`, and a consumer is subscribed once
+  its child has started, so in one node — two applications side by side on
   `EhOsContract.Bus.Local` — nothing a relay publishes is published before its
-  subscriber is listening. Between nodes the durable consumer is the transport's,
+  subscriber is listening. A transport that is down at boot, or goes down, stops
+  neither the boot nor the runners: the keeper logs it and starts the consumer again
+  later. Between nodes the durable consumer is the transport's,
   created when EHOS grants the capability `<name>.subscribe` (`eh-os` D-41), and
   what was published before that is the publisher's history, which a subscriber
   asks its owner for, not the bus.

@@ -67,7 +67,10 @@ defmodule EhOsContract.Bus do
 
   @typedoc """
   A durable consumer: its `name`, unique on the transport and kept across restarts; the
-  message names it takes; and the handler each delivery goes to.
+  message names it takes; and the handler each delivery goes to. The engine names an
+  inbox's consumer `"<contract>:inbox:<name>"`, with the dots of a module's name in it;
+  an adapter whose transport takes fewer characters in a consumer's name (JetStream's
+  durable names take no `.`) maps it, the same way every time.
   """
   @type consumer :: %{name: String.t(), names: [String.t(), ...], handler: handler()}
 
