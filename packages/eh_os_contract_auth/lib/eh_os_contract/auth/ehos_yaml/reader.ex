@@ -225,11 +225,15 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
 
   # A NUL written as an escape, `"\0"`, reaches the string; EHOS refuses it as well.
   defp node({:yamerl_str, _module, _tag, _position, chars} = str, path, acc) do
-    string = List.to_string(chars)
+    case text(chars) do
+      :error ->
+        {nil, add(acc, error(path, line(str), "holds a character that is not Unicode"))}
 
-    if String.contains?(string, <<0>>),
-      do: {string, add(acc, error(path, line(str), "holds a NUL character"))},
-      else: {string, acc}
+      string ->
+        if String.contains?(string, <<0>>),
+          do: {string, add(acc, error(path, line(str), "holds a NUL character"))},
+          else: {string, acc}
+    end
   end
 
   defp node({:yamerl_null, _module, _tag, _position}, _path, acc), do: {nil, acc}
@@ -246,10 +250,14 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
 
   defp pair({:yamerl_str, _module, _tag, _position, chars} = key, value, path, state) do
     {entries, seen, acc} = state
-    name = List.to_string(chars)
+    name = text(chars)
     child = path ++ [name]
 
     cond do
+      name == :error ->
+        message = "has a key that holds a character that is not Unicode"
+        {entries, seen, add(acc, error(path, line(key), message))}
+
       String.contains?(name, <<0>>) ->
         {entries, seen, add(acc, error(path, line(key), "has a key that holds a NUL character"))}
 
@@ -265,6 +273,15 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
 
   defp pair(key, _value, path, {entries, seen, acc}),
     do: {entries, seen, add(acc, error(path, line(key), "has a key that is not a string"))}
+
+  # yamerl takes an escape such as `"\U00110000"`, past Unicode's last code point, and hands it on
+  # as a character; JSON has no such character, and List.to_string/1 raises on it.
+  defp text(chars) do
+    case :unicode.characters_to_binary(chars) do
+      string when is_binary(string) -> string
+      _error -> :error
+    end
+  end
 
   defp at(acc, _path, nil), do: acc
   defp at({lines, errors}, path, line), do: {Map.put(lines, path, line), errors}

@@ -207,6 +207,22 @@ defmodule EhOsContract.Auth.EhosYamlTest do
     end
   end
 
+  test "an escape past Unicode's last code point is refused, in a value or a key" do
+    assert EhosYaml.read(~S(schema: "\U00110000") <> "\n") ==
+             {:error,
+              [%{path: "schema", line: 1, message: "holds a character that is not Unicode"}]}
+
+    assert EhosYaml.read(~S("\U00110000": 1) <> "\n") ==
+             {:error,
+              [
+                %{
+                  path: "",
+                  line: 1,
+                  message: "has a key that holds a character that is not Unicode"
+                }
+              ]}
+  end
+
   test "a file that is not a mapping is refused at the line it begins on, not at a comment" do
     assert EhosYaml.read("# ehos.yaml\n# for the ledger\n- schema: ehos.yaml/v1\n") ==
              {:error, [%{path: "", line: 3, message: "must be a mapping"}]}
