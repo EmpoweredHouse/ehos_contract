@@ -40,9 +40,11 @@ defmodule EhOsContract.Inbox do
   starts the adapter's consumer in its own `init`, and a consumer is subscribed once
   its child has started, so in one node — two applications side by side on
   `EhOsContract.Bus.Local` — nothing a relay publishes is published before its
-  subscriber is listening. A transport that is down at boot, or goes down, stops
-  neither the boot nor the runners: the keeper logs it and starts the consumer again
-  later. Between nodes the durable consumer is the transport's,
+  subscriber is listening. A transport that refuses, at boot or later, stops neither
+  the boot nor the runners: the keeper logs it and starts the consumer again later. A
+  broker of `EhOsContract.Bus.Local` that restarts knows no consumer until the keeper
+  has started its own again, at once, and what a relay publishes in between is lost,
+  as everything that broker held is. Between nodes the durable consumer is the transport's,
   created when EHOS grants the capability `<name>.subscribe` (`eh-os` D-41), and
   what was published before that is the publisher's history, which a subscriber
   asks its owner for, not the bus.

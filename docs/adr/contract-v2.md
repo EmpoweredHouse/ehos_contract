@@ -1724,9 +1724,11 @@ policy :invoice_on_visit_close, "Faktura po zamknięciu wizyty",
 >   for a new consumer — a subscriber deployed later would react to the publisher's history, where nothing
 >   new reacts to history by itself (§12).
 > - **A transport that is down stops nothing.** Each inbox is kept by `EhOsContract.Inbox.Keeper`, which
->   starts the consumer in its own `init`, so the order above holds when the bus is up, and logs a consumer
->   that does not start or stops and starts it again later: the boot does not fail, and the supervisor's
->   restart intensity does not take the runners and relays down, as a relay with no bus waits.
+>   starts the consumer in its own `init`, so the order above holds when the bus is up; starts one that
+>   stopped after running again at once, as a supervisor would; and logs one that does not start, or stops
+>   again at once, and starts it five seconds later: a transport that refuses does not fail the boot, and the
+>   supervisor's restart intensity does not take the runners and relays down, as a relay with no bus waits.
+>   An adapter's start has to return quickly for this to hold, since the boot waits for it.
 > - **Who may publish is the transport's.** The inbox takes what its consumer is delivered, key and
 >   correlation included; the grant that limits who publishes under a name is the transport's, by the same
 >   D-41 that limits who subscribes.

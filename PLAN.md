@@ -31,9 +31,8 @@ Przed E12d — pytanie do użytkownika, czy jego przesłanka jeszcze stoi („Ot
 - **`dsl-v2/handoff-after-58`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `842a2f1`, jeden commit: ten zapis;
   **niewypchnięta** — push (fast-forward `main` albo PR) na polecenie użytkownika; E12c może wyjść od niej.
   `dsl-v2/e12-bus`, `dsl-v2/e12b-relay` i `dsl-v2/handoff-after-56` są w całości w `main`.
-- **`dsl-v2/e12c-inbox`** (ten sam worktree) — od `66c3637`: trzy commity kodu E12c, commit zapisu, cztery
-  poprawki z przeglądu i commit zapisu przeglądu; **niewypchnięta**; notatka przeglądu (`refs/notes/review`) na
-  głowie. Zawiera `66c3637`, więc PR E12c niesie też przepisany handoff.
+- **`dsl-v2/e12c-inbox`** (ten sam worktree) — od `66c3637`: trzy commity kodu E12c, commit zapisu, poprawki
+  dwóch rund przeglądu i ich zapisy; notatka przeglądu (`refs/notes/review`) na głowie; wypchnięta z PR-em E12c. Zawiera `66c3637`, więc PR E12c niesie też przepisany handoff.
 - **Otwarte na GitHubie:** tylko **issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza
   repozytorium; zaparkowane 30 września, z propozycją `EmpoweredHouse/eh-os-contract-sandbox`. Otwartych PR-ów brak.
 - **Lokalne gałęzie w całości w `main`** — 56 (`git branch --merged origin/main`, 1 października, bez wyciągniętych
@@ -3568,8 +3567,8 @@ kolizję klucza):
   skonfigurowanym, a leżącym silnik nie wstawał (i host z nim), a broker, który padł później, przekraczał limit
   restartów i zatrzymywał wszystkie runnery i relaye (poprawność) — *poprawione* (`c82a97d`):
   `EhOsContract.Inbox.Keeper` startuje konsumenta w swoim `init` (D2 trzyma się, gdy bus działa), loguje rodzaj
-  błędu i próbuje znowu po 5 s; z wycofaną poprawką padają dwa testy z 15 (`inbox_test.exs` i `boot_test.exs`):
-  nowy i test kolejności, który pyta teraz o identyfikator keepera;
+  błędu i próbuje znowu po 5 s; z wycofaną poprawką padają dwa z 15 testów `inbox_test.exs` i `boot_test.exs`, oba
+  w `inbox_test.exs`: nowy i test kolejności, który pyta teraz o identyfikator keepera;
 - **`.subscribe` bez inboxu** — capability dla każdego `consumes`, a inbox tylko dla obsłużonego przez politykę;
   grant bez czytelnika zostawiłby na brokerze konsumenta, któremu rosną wiadomości (poprawność) — *poprawione*
   (`bab57b3`), ten sam warunek co inbox; z wycofaną poprawką pada jeden test (`contract_test.exs`, capability
@@ -3591,6 +3590,23 @@ kolizję klucza):
   segmenty, capability komendy dwa;
 - runnery nie są budzone po commicie inboxu (do 1 s opóźnienia, `@poll`) i tabela inboxu rośnie bez końca —
   *pominięte*, niżej; zgodność nie widzi polityki inboxu — już otwarte.
+
+**Druga runda przeglądu** (oba przeglądy na poprawkach, `5e15711..02345b3`; nic blokującego):
+- keeper nie czekał na konsumenta przy zatrzymaniu (doręczenie w toku przeżywało repo hosta; dziecko-supervisor
+  traciło `shutdown: :infinity`), restartował po 5 s także konsumenta, który działał (na `Bus.Local` relay
+  publikujący w tej przerwie trafia w brokera bez konsumentów), a `{:ok, pid, info}` i `:ignore` brał za porażkę
+  (oba przeglądy) — *poprawione* (`c253f1f`): `terminate/2` czeka tyle, ile mówi `shutdown` dziecka, restart od
+  razu, a po 5 s tylko gdy dziecko padnie znowu w przerwie; z wycofaną poprawką padają cztery nowe testy
+  `inbox_keeper_test.exs` (test restartu — strukturalnie, stary stan nie ma `started_at`);
+- test z brokerem podniesionym w trakcie ścigał się z keeperem — *poprawione* (`4686811`);
+- `document_hash/1` kopiował potok `document_digest/1` — *poprawione* (`2629a7b`), wynik ten sam;
+- test pomocnika auth pokrywał tylko pustą mapę — *poprawione* (`5e66eb8`);
+- obietnice ponad to, co keeper kontroluje — *opisane* (commit zapisu drugiej rundy): start adaptera, który czeka
+  na sieć, wstrzymuje boot (boot czeka na każdego keepera po kolei), a logi OTP dziecka adaptera są adaptera —
+  wymagania w doc `c:EhOsContract.Bus.consumer/2`; mapowanie nazwy konsumenta ma być różnowartościowe;
+  restart brokera `Bus.Local` gubi to, co relay opublikuje, zanim keeper wróci — w `Inbox`;
+- stała przerwa 5 s bez narastania i rozrzutu (ok. 720 ostrzeżeń na godzinę awarii na inbox) — *pominięte*: tak
+  samo relay; `Enum.any?` w `capabilities/1` na każdy dispatch — *bez zmiany*, pomijalne.
 
 **Do E12d i E12e, i otwarte:**
 - **retencja `eh_os_contract_inbox`** — wiersz na fakt na inbox, na zawsze; czyszczenie po wieku skraca okno, w

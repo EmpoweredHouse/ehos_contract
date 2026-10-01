@@ -70,7 +70,9 @@ defmodule EhOsContract.Bus do
   message names it takes; and the handler each delivery goes to. The engine names an
   inbox's consumer `"<contract>:inbox:<name>"`, with the dots of a module's name in it;
   an adapter whose transport takes fewer characters in a consumer's name (JetStream's
-  durable names take no `.`) maps it, the same way every time.
+  durable names take no `.`) maps it, the same way every time and never two names to
+  one: `Shop.Stock` and `Shop_Stock` sharing a durable consumer would each get only
+  part of the messages.
   """
   @type consumer :: %{name: String.t(), names: [String.t(), ...], handler: handler()}
 
@@ -102,6 +104,16 @@ defmodule EhOsContract.Bus do
   **It is subscribed once its start has returned.** The engine starts every inbox
   before any relay, and relies on this for nothing a relay publishes to be published,
   in one node, before the inbox that takes it listens (`EhOsContract.Inbox`).
+
+  **Its start returns quickly**, subscribed or failed: the engine's boot waits for it,
+  one inbox after another, so a start that waits on a transport that does not answer
+  holds the host's boot for as long. A transport that is down is an error at once; the
+  engine starts the child again later (`EhOsContract.Inbox.Keeper`).
+
+  **Its state and its exit reasons carry no credentials.** What OTP reports of a
+  process that stops — its last state and its reason, in the log — is the adapter's,
+  out of the engine's reach: keep a connection's secrets out of the reason, and out of
+  the state with `format_status/1`.
   """
   @callback consumer(opts :: keyword(), consumer()) :: Supervisor.child_spec()
 

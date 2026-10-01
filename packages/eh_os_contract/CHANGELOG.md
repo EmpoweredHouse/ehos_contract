@@ -236,9 +236,11 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 - **E12c: another application's published event arrives in an inbox (D12).** For every `consumes
   "<name>"` a policy handles, the engine starts a durable consumer on the configured `EhOsContract.Bus`,
-  `"<contract>:inbox:<name>"`, before any relay, through `EhOsContract.Inbox.Keeper`: a consumer that cannot
-  reach its transport, at boot or later, is logged and started again five seconds later, and stops neither
-  the boot nor any runner. Each delivery is decoded into the contract's received
+  `"<contract>:inbox:<name>"`, before any relay, through `EhOsContract.Inbox.Keeper`: a consumer whose transport refuses it, at boot or later, is logged and
+  started again five seconds later, and stops neither the boot nor any runner; one that stops after running
+  is started again at once. **For a transport adapter:** a consumer's start returns quickly, subscribed or
+  failed, since the boot waits for it; its state and exit reasons hold no credentials; and a consumer name
+  the transport cannot take is mapped one to one. Each delivery is decoded into the contract's received
   struct and, in one transaction, written to `eh_os_contract_inbox` and handed to the policies, whose
   commands carry the message's correlation and name the inbox row as their cause; it is acknowledged after
   the commit. A row exists per message key, so a redelivery, or the same fact published again under a new
