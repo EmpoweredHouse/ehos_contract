@@ -31,7 +31,8 @@ nasz generator ma dać dokładnie ten dokument.
 - **`origin/main` = `aadcbd1`** (merge #70, 1 października; przedtem `c9af0ef` — #69, `12d3cf4` — #68, `827184d` —
   #67, `3b77622` — #62, E12e). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe. CI `main` na `aadcbd1`
   (przebieg `36860580158`) — `success`.
-- **`eh/eh2-ehos-yaml`** (główny checkout) — od `aadcbd1`: EH2; push i PR na polecenie użytkownika.
+- **`eh/eh2-ehos-yaml`** (główny checkout) — od `aadcbd1`: plan, EH2a, EH2b i poprawki po dwóch przeglądach („EH2 —
+  co wyszło”); push i PR na polecenie użytkownika.
 - **Lokalnie poza tym:** `main`, `plan/eh-os-issues` (w `main`) i worktree `merge-pr-55-next-stage-ad84a2`
   (odłączony na `aadcbd1`). Sprzątanie z 1 października skasowało resztę starych worktree i gałęzi.
 - **Otwarte na GitHubie:** **issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza repozytorium;
@@ -148,6 +149,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 1 października, na `ee67995`** (EH2 po trzech rundach przeglądu, `eh/eh2-ehos-yaml`): brama z
+  `sandbox/` → **EXIT=0** — sandbox 144, `check` 0 / 29 / 9; silnik 1104, `check` 0 / 68 / 6; web 52; auth **115**.
 - **Lokalnie, 1 października, na `main` = `aadcbd1`** (baza EH, przed pierwszym commitem `eh/eh2-ehos-yaml`): brama z
   `sandbox/` → **EXIT=0** — sandbox 144, `check` **0 / 29 / 9**; silnik **1104**, `check` **0 / 68 / 6**; web 52;
   auth **71**. CI `main` na `aadcbd1` (przebieg `36860580158`, job `check`) — `success`.
@@ -2705,6 +2708,58 @@ JSV w czasie kompilacji, z `@external_resource`; `priv/schemas` dochodzi do `fil
 
 **Poza EH, bez zmian:** zapytania, nagrania, zakresy, `consumes` i publikacje w `offers` (v2 ich nie unosi — #93,
 #94, #96); `contracts` (#92); bump `ehos-ledger` i porównanie z `ledger.v2.json` w ich CI (EH4).
+
+### EH2 — co wyszło (1 października)
+
+Na `eh/eh2-ehos-yaml`, od `aadcbd1`, niewypchnięte: plan (`0e4e501`), EH2a — czytnik (`50e0551`), EH2b — schemat
+(`6fc82fa`), poprawki po przeglądzie EH2a (`c72bb37`, `d29fbca`, `8694165`, `2b045f7`, `a3e1fac`) i po przeglądzie
+EH2b (`53954b4`, `bdf7650`, `ee67995`). Pełna brama po każdym commicie: `EXIT=0`. Auth **71 → 115** testów; sandbox 144, silnik
+1104, web 52 i liczby `check` (0 / 29 / 9, 0 / 68 / 6) bez zmian.
+
+**Co jest.** `EhOsContract.Auth.EhosYaml.read/1`: tekst `ehos.yaml` → dane JSON-a albo lista powodów
+`%{path, line, message}` (ścieżka w zapisie EHOS-a, `serves[0].port`), posortowana po linii; `versions/0` i
+`format_error/1`. Czytnik (`EhosYaml.Reader`, prywatny) idzie za `lib/ehos/applications/ehos_yaml/yaml.ex` w `eh-os`
+na `f7b2330`; schemat (`EhosYaml.Schema`, prywatny) — kopia `priv/schemas/ehos.yaml/v1.json` z `eh-os` `eeb732a`,
+SHA-256 `5dd7ad34…515b` przypięty testem, ten sam co w `.ehos/` ledgera. Korpus odmów: 23 pliki, jedna odmowa na
+plik, i dwa pliki przyjęte (przykład z `docs/ehos-yaml.md` i `ehos.yaml` ledgera).
+
+**Co wyszło inaczej niż w planie, i dlaczego.**
+- **`yamerl` (`~> 0.10.0`) i `jsv` (`~> 0.25.0`) są `runtime: false`**, nie zwykłymi zależnościami. Służą tylko
+  taskowi manifestu w CI aplikacji, a jako zwykłe startowałyby supervisor yamerla w każdym hoście i jechały do jego
+  release'u obok Pluga. Skutek: czytnik sam ładuje yamerla (`Application.load/1`), bo yamerl czyta opcje ze
+  środowiska aplikacji, a poza Mixem `read/1` odmawia wyjątkiem z wyjaśnieniem. yamerl przypięty do 0.10.x, bo
+  czytnik dopasowuje kształt jego tokenów i węzłów.
+- **Schemat JSV budowany przy każdym odczycie**, nie w czasie kompilacji: zbudowany schemat trzyma skompilowane
+  wzorce (referencje), których atrybut modułu nie przyjmie. Plik schematu jest czytany w czasie kompilacji, z
+  `@external_resource`. Cache w `:persistent_term` był i wypadł po przeglądzie — trzymał stary schemat po
+  odświeżeniu kopii.
+- **Granice EHOS-a są, bez jego budżetów czasu i pamięci.** Plan mówił „nie przenosimy”, a przeglądy pokazały dwa
+  powody, by je mieć: plik do 64 KiB i do 256 znaków `[`/`{` to reguły, które poprawny według schematu plik może złamać
+  (EHOS na stronie sprawdzania go odmawia, a generator napisałby z niego manifest); głębokość do 16 i lista do 256
+  pozycji ograniczają pracę samego czytnika, która rosła z kwadratem głębokości — `- - - … x` na 8000 poziomów (16
+  KB) to 4,7 s, pełne 64 KiB ok. 100 s i 20 GB, zanim schemat cokolwiek odmówił.
+- **Wartości czyta wyłącznie schemat `core`**: węzeł zbudowany przez moduł spoza niego (`config :yamerl, node_mods:`
+  hosta albo innej zależności) jest odmawiany — z `yamerl_node_bool_ext` `public: yes` przechodziło jako `true`.
+
+**Przeglądy.** EH2a: dwa (poprawność, bezpieczeństwo i wydajność), 10 ustaleń — 6 poprawionych (granice, `node_mods`,
+`runtime: false` z ładowaniem yamerla, węższy `rescue`, linia pliku, który nie jest mapowaniem, źródło czytnika), 4
+bez zmian (goły tag `!` — EHOS czyta tak samo, a schemat odmawia złego typu; ostrzeżenia yamerla obok błędu; cięcie
+ścieżki do 64 znaków — tylko wyświetlanie; brak linii przy powtórzonym kluczu — yamerl zawsze ją daje). EH2b razem z
+poprawkami: dwa przeglądy, 13 ustaleń — 8 poprawionych (głębokość i lista, przypięcie yamerla, cache, wyjątek poza
+Mixem, komentarz `rescue`, CHANGELOG, ten zapis), 4 bez zmian (`allOf` filtrowany jak u EHOS-a i nieobecny w v1;
+brak linii przy brakującym kluczu najwyższego poziomu; klucz z obcego modułu węzła z ogólnym komunikatem; anchor na
+pustej wartości — yamerl nie daje tokenu, aliasy odmawiane), 1 pominięte — niżej. Trzecia runda, na samych
+poprawkach (`a3e1fac..bdf7650`): bez defektu; dołożony test pliku płytkiego z wieloma kolekcjami (bez klauzuli
+`collection_end` czerwony), lista granic w CHANGELOG. **Zostaje świadomie:** szeroka kolekcja flow w korzeniu pliku
+(`[a: ,a: ,…]`) rośnie kwadratowo w parserze yamerla — 64 KiB to ok. 45 s; przed tym chroni EHOS-a budżet czasu,
+którego nie przenosimy. Ma znaczenie tylko, gdyby task czytał `ehos.yaml`, którego deweloper nie napisał (np. PR z
+forka w CI).
+
+**Do decyzji użytkownika — kandydat na issue w `eh-os`:** `port: 4001.0` przechodzi schemat (JSON Schema liczy
+`4001.0` jako liczbę całkowitą), u nas i u EHOS-a tak samo, i trafia do manifestu jako float. Sprawdzenie EHOS-a obok
+schematu (port health spoza `serves`, `v1.ex`) porównuje przez dopasowanie, więc `health.port: 4001.0` przy `serves`
+na 4001 przechodzi. U nas nic nie zmieniamy (generator ma czytać jak EHOS); po stronie EHOS-a — odmowa albo
+normalizacja liczby całkowitej zapisanej jako float.
 
 ### Przed E11 — podział i decyzje użytkownika (29 września)
 
