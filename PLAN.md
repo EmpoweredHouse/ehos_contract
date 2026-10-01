@@ -30,14 +30,19 @@ użytkownik („Co zostało”).
   `67253bf` — #59, E12c, i `842a2f1` — #58, E12b). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
 - **`dsl-v2/e12e-docs`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `7aa0496`: E12e; push i PR na polecenie
   użytkownika. `dsl-v2/handoff-after-58`, `dsl-v2/e12c-inbox` i `dsl-v2/e12d-call` są w całości w `main`.
-- **Otwarte na GitHubie:** tylko **issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza
-  repozytorium; zaparkowane 30 września, z propozycją `EmpoweredHouse/eh-os-contract-sandbox`. Otwartych PR-ów brak.
+- **Otwarte na GitHubie:** **issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza repozytorium;
+  zaparkowane 30 września, z propozycją `EmpoweredHouse/eh-os-contract-sandbox`; **#63–#66** — pytania otwarte po
+  E12, założone 1 października na polecenie użytkownika („Otwarte pytania”). Otwartych PR-ów brak.
   **W `EmpoweredHouse/eh-os`: #91–#96** — nasze potrzeby wobec EHOS-a, założone 1 października („Dopisek 1
   października”).
-- **Lokalne gałęzie w całości w `main`** — 56 (`git branch --merged origin/main`, 1 października, bez wyciągniętych
-  w worktree; worktree jest 12), w tym wszystkie `dsl-v2/e*`, `dsl-v2/d11-dashed-namespace`,
-  `dsl-v2/domain-name-check`, `dsl-v2/domain-names-snake-case` (`git branch --merged origin/main`). Do skasowania;
-  część jest wyciągnięta w innych worktree (`git worktree list`), więc najpierw worktree.
+- **Posprzątane 1 października, na zgodę użytkownika:** 6 worktree i 67 lokalnych gałęzi w całości w `main` (albo,
+  jak `dsl-v2/e7c-dev-port`, z treścią w `main` według `git cherry`); lokalne `main` przesunięte do `origin/main`.
+  **Zostały, do decyzji użytkownika:** worktree `contract-linking-entity-definition-c94951`
+  (`claude/ehos-context-adr-13a8bc`, w `main`, ale z niezacommitowanymi +130 liniami `PLAN.md` z 29 września);
+  worktree trzech starych handoffów spoza `main` — `dsl-v2/e9-handoff-after-em`, `dsl-v2/e10-handoff`,
+  `dsl-v2/el-handoff`, po jednym commicie `PLAN.md`, każdy zastąpiony późniejszym handoffem; gałęzie bez worktree
+  spoza `main` — `claude/infallible-nightingale-fe5392`, `dsl-v2/ea-authorize`, `dsl-v2/el-glossary`,
+  `e9c-before-rebase`, `fix/auth-refuse-unsafe-req-options`. Główny checkout stoi na `plan/eh-os-issues` (w `main`).
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
   `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`) i mają schemat V01.
   **Indeks idempotencji w nich przebudowano ręcznie w E11f** na `(issued_by, idempotency_key)`, jak w dzisiejszym V01
@@ -56,9 +61,10 @@ użytkownik („Co zostało”).
 
 - **PR E12e** (`dsl-v2/e12e-docs`) — push i PR użytkownika, na polecenie; PR wystawiany z worktree przez `gh api`
   (hook sprawdza `HEAD` głównego checkoutu, „Pułapki”).
-- **Z E12, do decyzji użytkownika** („Otwarte pytania”): kształt `call/3` przy drugich drzwiach („Do powrotu” w
-  „E12d — co wyszło”), retencja `eh_os_contract_inbox`, zgodność, która nie widzi polityki inboxu, surowa wartość
-  zakresu w decyzjach auth; kto może publikować — [eh-os#96](https://github.com/EmpoweredHouse/eh-os/issues/96).
+- **Z E12, do decyzji użytkownika** („Otwarte pytania”), każde jako issue: kształt `call/3` przy drugich drzwiach
+  — [#63](https://github.com/EmpoweredHouse/eh-os-contract/issues/63); retencja `eh_os_contract_inbox` — [#64](https://github.com/EmpoweredHouse/eh-os-contract/issues/64); zgodność, która nie widzi polityki inboxu —
+  [#65](https://github.com/EmpoweredHouse/eh-os-contract/issues/65); surowa wartość zakresu w decyzjach auth — [#66](https://github.com/EmpoweredHouse/eh-os-contract/issues/66); kto może publikować —
+  [eh-os#96](https://github.com/EmpoweredHouse/eh-os/issues/96).
 - **Kandydaci na później** (wybór użytkownika), każdy z tym, co go blokuje:
   - **„Po E11” z planu: kontrakty sandboxa jako fikstury akceptacyjne pakietu, potem manifest v2** (po akceptacji
     D-51/D-52 w `eh-os`). **Fikstury kolidują z #49**: kontrakty klientów w pakiecie to dokładnie to, czego #49 chce
@@ -183,20 +189,20 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Otwarte pytania
 
-- **Surowa wartość zakresu w decyzjach auth** (z przeglądu E12d, sprzed niego): wartość pola zakresu „jak wysłana”
+- **Surowa wartość zakresu w decyzjach auth** — [#66](https://github.com/EmpoweredHouse/eh-os-contract/issues/66) (z przeglądu E12d, sprzed niego): wartość pola zakresu „jak wysłana”
   idzie do kolumny `scope_value` (`text`) decyzji `eh_os_contract_auth`; znak `\u0000` z JSON-a albo zły UTF-8 z
   query stringa (`%FF`) wywraca zapis decyzji — 500 zamiast odmowy; długi napis — wiersz na żądanie. Możliwe:
   odmowa wartości spoza UTF-8 bez NUL przed pytaniem `Authorizer`, limit długości — nowy powód odmowy, do decyzji.
-- **Retencja `eh_os_contract_inbox`** (z E12c): wiersz na fakt na inbox, na zawsze; czyszczenie po wieku skraca
+- **Retencja `eh_os_contract_inbox`** — [#64](https://github.com/EmpoweredHouse/eh-os-contract/issues/64) (z E12c): wiersz na fakt na inbox, na zawsze; czyszczenie po wieku skraca
   okno, w którym ten sam fakt pod nowym id (FM-08) jest rozpoznany — granica do decyzji użytkownika.
-- **Kształt `EhOsContract.call/3` do sprawdzenia przy drugich prawdziwych drzwiach** (z E12d) — zbudowany na
+- **Kształt `EhOsContract.call/3` do sprawdzenia przy drugich prawdziwych drzwiach** — [#63](https://github.com/EmpoweredHouse/eh-os-contract/issues/63) (z E12d) — zbudowany na
   zapas z jednego użytkownika (Plug), wbrew zasadzie z 27 września, z wyboru użytkownika. Wyzwalacz: pierwsze inne
   drzwi dla surowych danych z credentialem (formularz LiveView, job z credentialem osoby, MCP), przed ich
   produkcją i najlepiej przed wydaniem 0.3.0; lista pytań — „E12d — co wyszło”, „Do powrotu”.
 - *Rozstrzygnięte 1 października („Przed E12d”): E12d teraz.* Opis sprzed decyzji: **czy publiczne wejście dla
   surowych danych robić teraz** — termin z 27 września stał na przesłance, że inbox to drugie drzwi dla surowych
   danych; zbudowany inbox nie autoryzuje i dekoduje sam, a komendy wydaje polityka strukturą.
-- **Zgodność nie widzi polityki inboxu** (z E12c): `Paths` nie ma kroku dla zdarzenia odebranego, więc ekran nie
+- **Zgodność nie widzi polityki inboxu** — [#65](https://github.com/EmpoweredHouse/eh-os-contract/issues/65) (z E12c): `Paths` nie ma kroku dla zdarzenia odebranego, więc ekran nie
   mówi, czy polityka na nim była przejechana. Możliwe: krok liczony z komend `policy:<nazwa>`, których przyczyna
   jest w `eh_os_contract_inbox`; albo zostawić — do decyzji użytkownika.
 - *Rozstrzygnięte 1 października (D1, „Przed E12c”): wiadomość niesie klucz z `idempotent_on`.* Opis sprzed
