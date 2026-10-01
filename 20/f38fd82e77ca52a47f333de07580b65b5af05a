@@ -1,0 +1,4 @@
+pre-pr-review of E12d, 27175a0..HEAD (dsl-v2/e12d-call). Correctness (code-review high) and security/performance (engineering:code-review) in parallel on 27175a0..9540ab9. Permission-first holds; one Authorizer decision per path.
+Fixed with reverse checks: Plug read and decoded the body before the actor check (8153fbc; reverted, 1 of 14 in plug_test.exs fails); 16-byte correlation ids passing Ecto.UUID.cast (500 instead of 400), dropped min_position:/wait: for queries, map opts, precise spec (8506b2b; reverted, 3 of 9 in call_test.exs fail).
+Recorded for the next door (PLAN.md "Do powrotu"): scope value as sent only for strings, default contracts:. Skipped to open questions: raw scope value into auth decision rows (NUL/invalid UTF-8 -> 500), double routing cost. No change: idempotency_key type (as dispatch/3), Plug answer/7 readability.
+Gate on 9d1ae58 code: EXIT=0 - sandbox 144 (0/29/9), engine 1104 (0/68/6), web 52, auth 68.
