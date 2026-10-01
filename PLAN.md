@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 1 października (E0–E11, #50–#58 w `main`; E12 w toku, E12c zbudowane na gałęzi)
+## Handoff — stan na 1 października (E0–E11, #50–#60 w `main`; E12 w toku, E12d zbudowane na gałęzi)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -19,10 +19,9 @@ zamiast `$` we wzorcach nazw (N1, D9, strony, dziesiętna scenariusza), nazwy ak
 domeny (D1, z kolizją wartości po `Macro.camelize` i nazwami typów wbudowanych), kolizja nazw kontraktu po
 `camelize` (N1, N2 dla `State`/`Row`), nazwy pól i `identity` (F1, D3, D6). **W toku: E12** — integracja między
 aplikacjami (wybór użytkownika z 1 października, „Przed E12 — decyzje użytkownika”). W `main` są **E12a**
-(#57: `EhOsContract.Bus`, `Bus.Local`, `Bus.Suite`) i **E12b** (#58: relay, `EhOsContract.Relay`). **E12c (inbox,
-`.subscribe`, test dwóch aplikacji) jest zbudowane na `dsl-v2/e12c-inbox`** — po decyzjach użytkownika D1 i D2
-(„Przed E12c — decyzje użytkownika”), z bramą zieloną i po przeglądzie `pre-pr-review` („E12c — co wyszło”).
-Przed E12d — pytanie do użytkownika, czy jego przesłanka jeszcze stoi („Otwarte pytania”).
+(#57: `EhOsContract.Bus`, `Bus.Local`, `Bus.Suite`), **E12b** (#58: relay, `EhOsContract.Relay`) i **E12c** (#59:
+inbox, `.subscribe`, test dwóch aplikacji). **E12d (`EhOsContract.call/3`, Plug na nim) jest zbudowane na
+`dsl-v2/e12d-call`** — po decyzji użytkownika („Przed E12d — decyzja użytkownika”); zostaje E12e.
 
 ### Stan repozytorium
 
@@ -57,10 +56,9 @@ Przed E12d — pytanie do użytkownika, czy jego przesłanka jeszcze stoi („Ot
 
 ### Co zostało — i czyje to jest
 
-- **PR E12c** — przegląd zrobiony (notatka na głowie); push i PR — użytkownika, na polecenie. PR wystawiany z
-  worktree przez `gh api` (hook sprawdza `HEAD` głównego checkoutu, „Pułapki”).
-- **E12d** (publiczne wejście dla surowych danych, Plug na nim, bez `Dispatcher.permit_undecoded/5`) — **najpierw
-  decyzja użytkownika, czy teraz** („Otwarte pytania”), potem asystenta. **E12e** (poprawka z datą
+- **PR E12d** (`dsl-v2/e12d-call`, od `27175a0`) — push i PR użytkownika, na polecenie; PR wystawiany z worktree
+  przez `gh api` (hook sprawdza `HEAD` głównego checkoutu, „Pułapki”).
+- **E12e** (poprawka z datą
   `architecture.md` §9–10, `docs/contract.md` o inboxie, CHANGELOG, skille `write-reaction` — tylko polityka na
   zdarzeniu odebranym — i `change-contract` — zmiana nazwy i usunięcie `publish`) — asystenta.
 - **Kandydaci na później** (wybór użytkownika), każdy z tym, co go blokuje:
@@ -183,10 +181,13 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Otwarte pytania
 
-- **E12d, przed startem — decyzja użytkownika: czy publiczne wejście dla surowych danych robić teraz.** Termin z
-  27 września stał na przesłance, że inbox to drugie drzwi dla surowych danych; zbudowany inbox nie autoryzuje i
-  dekoduje sam, a komendy wydaje polityka strukturą („E12c — co wyszło”). Możliwe: teraz (jedno wejście dla Pluga
-  i przyszłych drzwi, `permit_undecoded/5` znika) albo przy drugich prawdziwych drzwiach.
+- **Kształt `EhOsContract.call/3` do sprawdzenia przy drugich prawdziwych drzwiach** (z E12d) — zbudowany na
+  zapas z jednego użytkownika (Plug), wbrew zasadzie z 27 września, z wyboru użytkownika. Wyzwalacz: pierwsze inne
+  drzwi dla surowych danych z credentialem (formularz LiveView, job z credentialem osoby, MCP), przed ich
+  produkcją i najlepiej przed wydaniem 0.3.0; lista pytań — „E12d — co wyszło”, „Do powrotu”.
+- *Rozstrzygnięte 1 października („Przed E12d”): E12d teraz.* Opis sprzed decyzji: **czy publiczne wejście dla
+  surowych danych robić teraz** — termin z 27 września stał na przesłance, że inbox to drugie drzwi dla surowych
+  danych; zbudowany inbox nie autoryzuje i dekoduje sam, a komendy wydaje polityka strukturą.
 - **Zgodność nie widzi polityki inboxu** (z E12c): `Paths` nie ma kroku dla zdarzenia odebranego, więc ekran nie
   mówi, czy polityka na nim była przejechana. Możliwe: krok liczony z komend `policy:<nazwa>`, których przyczyna
   jest w `eh_os_contract_inbox`; albo zostawić — do decyzji użytkownika.
@@ -3680,6 +3681,57 @@ kolizję klucza):
   wejście dla Pluga i przyszłych drzwi) czy odłożyć do drugich prawdziwych drzwi;
 - E12e: `docs/contract.md` o inboxie i `consumes "<nazwa>"`, skill `write-reaction` (tylko polityka na zdarzeniu
   odebranym, `D12`), poprawka `architecture.md` §9–10.
+
+### Przed E12d — decyzja użytkownika (1 października)
+
+**E12d teraz, mimo że przesłanka odpadła** (wybór użytkownika; asystent rekomendował odłożenie). Inbox E12c nie
+okazał się drugimi drzwiami dla surowych danych („E12c — co wyszło”), więc jedynymi drzwiami jest dalej Plug, a
+wspólne wejście powstaje na zapas, z kształtem ustalonym na jednym użytkowniku. *Odrzucone:* **odłożyć do drugich
+prawdziwych drzwi** (formularz LiveView, job z credentialem) — kształt z dwóch przypadków zamiast zgadywanego z
+jednego, kosztem `permit_undecoded/5` i kolejności „najpierw uprawnienie” pilnowanej przez każde nowe drzwi samo.
+
+**Kształt** (wybór użytkownika, rekomendacje asystenta przyjęte): **`EhOsContract.call/3`**, obok `dispatch/3`,
+`record/3` i `query/3`, adresowane **nazwą capability** — `{:command, "rehmed.record_payment"}` — jak EHOS,
+credential i Plug. *Odrzucone:* osobny moduł `EhOsContract.Entry.call/3`; adres kontraktem i nazwą deklaracji (jak
+`dispatch/3`) — drzwi musiałyby znać moduł kontraktu.
+
+### E12d — co wyszło (1 października)
+
+**Co jest** (gałąź `dsl-v2/e12d-call`, od `27175a0`): `EhOsContract.call/3` → `Dispatcher.call/3` — routing po
+capability (`Dispatcher.route/3`, publiczne: formularz potrzebuje deklaracji), aktor musi być credentialem,
+dekodowanie (`Codec.decode/4`, dla query wartości tekstem), sprawdzenie `correlation_id`; przy każdym problemie
+najpierw pytanie o uprawnienie (dawne `permit_undecoded/5`, teraz prywatne), potem `dispatch/3`, `record/3` albo
+`query/3`. `EhOsContract.Plug` czyta już tylko HTTP (ciało, query string, nagłówki) i tłumaczy odpowiedź na status;
+statusy i treści bez zmian — `plug_test.exs` (13) przechodzi bez zmiany linijki.
+
+**Wybory asystenta:**
+- **`:system` nie wchodzi przez `call/3`** (`{:error, :no_actor}`) — to kod aplikacji, który wydaje struktury
+  przez `dispatch/3`; tak samo odmawiał Plug;
+- **`contracts:` opcjonalne**, domyślnie wszystkie z rejestru — Plug podaje swoje, jak dotąd;
+- **co jest nie tak z ciałem HTTP wie tylko Plug** — `call/3` mówi `:not_an_object`, a Plug odpowiada
+  `unreadable_body` albo `body_is_not_a_json_object`, jak dotąd;
+- zły `correlation_id` jest problemem tylko dla komendy i nagrania, jak dotąd (query go nie bierze).
+
+**Próba odwrotna:** `call/3` bez pytania o uprawnienie przed problemem — padają 2 z 6 testów `call_test.exs` i 4
+z 13 `plug_test.exs`.
+
+**Do powrotu — kształt `call/3` jest zgadnięty z jednego użytkownika.** Problem, dla którego wejście miało czekać
+(decyzja z 27 września), nie zniknął, tylko został świadomie przyjęty: jedyne drzwi, z których kształt wyprowadzono,
+to Plug, a Plug ma swoje przyzwyczajenia — mapę z kluczami-napisami jak z JSON-a, wartości query jako tekst jak z
+query stringa, błędy ciała opisywane przez siebie. **Kiedy wrócić:** przy pierwszych prawdziwych drugich drzwiach
+dla surowych danych z credentialem — formularzu LiveView w aplikacji klienta albo w EHOS Console, jobie, który niesie
+credential osoby, wejściu MCP — i **zanim** te drzwi pójdą na produkcję, bo po pierwszym hoście zmiana kształtu
+publicznej funkcji jest zmianą łamiącą. **Co sprawdzić na nich:**
+- czy wejście to dalej mapa z kluczami-napisami — formularz LiveView daje napisy wszędzie, także dla komend, więc
+  opcja „wartości tekstem” może być potrzebna nie tylko dla query (dziś `strings: kind == :query`);
+- czy wystarcza `{:error, :not_an_object}` i `{:invalid, problemy}` — formularz chce błąd przy polu, job może
+  chcieć ponowić tylko część odmów;
+- czy drzwi potrzebują deklaracji, zanim zawołają (`Dispatcher.route/3` jest publiczne z myślą o formularzu — jeśli
+  nikt go nie użyje, może wrócić do środka);
+- czy `contracts:` z domyślnym „wszystkie z rejestru” jest bezpieczne dla drzwi, które powinny widzieć tylko część;
+- czy odmowa `:system` (`:no_actor`) pasuje do joba, który działa w imieniu aplikacji, a dane ma surowe.
+Jeśli coś z tego się nie zgadza — poprawka kształtu przed wydaniem 0.3.0 kosztuje jeden PR; po nim — wpis „host
+musi działać” w CHANGELOG-u.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
