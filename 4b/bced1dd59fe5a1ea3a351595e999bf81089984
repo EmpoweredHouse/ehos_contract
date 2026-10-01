@@ -1,0 +1,4 @@
+Two reviews in parallel on origin/main..2f23318 (correctness also saw 5abb6b9).
+Security and performance: no security finding. Runner ran one step per queued notification and now notified itself per dispatching event -> fixed (5abb6b9, test counts 1 step not 5). One pg_notify per dispatching step in a backlog -> skipped (same as host dispatches; receivers coalesce).
+Correctness: no defect in the mark lifecycle. Personal.erase/3 woke inside a host transaction -> fixed (810c549, reverse check: one test red). Tests did not tell a wake before commit, once, host transaction -> fixed (844a44e, notify/0 in TimerJob turns the timer test red). Handler match on metadata -> fixed. Stale notify/0 doc, long lines, sleep in runner test (and read_timer 0 race) -> fixed (4bbced1, 20/20 green). CHANGELOG E7a wording -> no change, still true.
+Gate from sandbox/: EXIT=0; sandbox 145, check 0/29/9; engine 1114, check 0/68/6; web 52; auth 138 + 1 property.
