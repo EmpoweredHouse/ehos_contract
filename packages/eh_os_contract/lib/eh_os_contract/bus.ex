@@ -38,7 +38,9 @@ defmodule EhOsContract.Bus do
     older.
   - **No bound on redelivery.** A message whose handler never succeeds comes again for
     as long as the transport keeps it. What stops it is the transport's own limit
-    (JetStream's `MaxDeliver`) or the subscriber's inbox (E12c), not this behaviour.
+    (JetStream's `MaxDeliver`), not this behaviour, nor the inbox, which answers
+    `:nack` to what it cannot take, so that nothing is lost while it is put right
+    (`EhOsContract.Inbox`).
 
   Who may consume a name is not the engine's question either. The subscriber's
   `consumes` derives the capability `<name>.subscribe`, EHOS grants it per environment,
@@ -93,6 +95,10 @@ defmodule EhOsContract.Bus do
   @doc """
   The child that runs `consumer`: started, it subscribes under the consumer's name, and
   delivers to its handler until it is stopped.
+
+  **It is subscribed once its start has returned.** The engine starts every inbox
+  before any relay, and relies on this for nothing a relay publishes to be published,
+  in one node, before the inbox that takes it listens (`EhOsContract.Inbox`).
   """
   @callback consumer(opts :: keyword(), consumer()) :: Supervisor.child_spec()
 

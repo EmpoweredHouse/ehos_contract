@@ -28,12 +28,20 @@ defmodule EhOsContract.Supervisor do
 
   defp subscribe!(repo) do
     consumers = Implementations.subscribed()
+    inboxes = Implementations.inboxes()
 
     if EhOsContract.Bus.adapter() == nil do
       for %{kind: :relay, key: key} <- consumers do
         Logger.warning(
           "subscription #{key}: no bus is configured (config :eh_os_contract, bus:), so " <>
             "its relay publishes nothing and waits at its position"
+        )
+      end
+
+      for %{key: key} <- inboxes do
+        Logger.warning(
+          "inbox #{key}: no bus is configured (config :eh_os_contract, bus:), so nothing " <>
+            "it consumes arrives"
         )
       end
     end
@@ -51,6 +59,15 @@ defmodule EhOsContract.Supervisor do
       end
     end
 
-    Enum.map(consumers, &{Subscription.Runner, &1.key})
+    inboxes(inboxes) ++ Enum.map(consumers, &{Subscription.Runner, &1.key})
+  end
+
+  # Before every runner, so before every relay (plan, E12c): an inbox's consumer is
+  # subscribed once its child has started, and in one node nothing a relay publishes
+  # is published before the inbox that takes it listens.
+  defp inboxes(inboxes) do
+    if EhOsContract.Bus.adapter() == nil,
+      do: [],
+      else: Enum.map(inboxes, &EhOsContract.Bus.consumer(EhOsContract.Inbox.consumer(&1)))
   end
 end

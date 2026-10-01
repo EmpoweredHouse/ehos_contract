@@ -122,7 +122,9 @@ defmodule EhOsContract.Bus.Suite do
       end
 
       describe "#{inspect(elem(@bus_suite_bus, 0))}: delivering" do
-        test "a message published after the consumer subscribed arrives as it was sent" do
+        # Published as soon as the consumer's child has started: it is subscribed by
+        # then, which is what the engine's order of inboxes before relays relies on.
+        test "a message published once the consumer has started arrives as it was sent" do
           name = bus_name("intact")
           consumer = bus_name("consumer")
           bus_consume(consumer, [name])

@@ -82,6 +82,7 @@ defmodule EhOsContract.SchemaTest do
     eh_os_contract_erasures
     eh_os_contract_event_runs
     eh_os_contract_events
+    eh_os_contract_inbox
     eh_os_contract_process_managers
     eh_os_contract_subject_keys
     eh_os_contract_subscriptions
