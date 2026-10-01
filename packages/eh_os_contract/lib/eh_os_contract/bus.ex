@@ -31,14 +31,16 @@ defmodule EhOsContract.Bus do
     one. The relay publishes in log order, but nothing downstream may rely on it
     (v2 §16, the note of 1 October 2026).
   - **No deduplication is required.** A message published twice may arrive twice. The
-    inbox drops the second one by its id, so a transport that deduplicates (JetStream's
+    inbox drops the second one by its key, so a transport that deduplicates (JetStream's
     `Nats-Msg-Id`) saves work and changes no result.
   - **Where a new consumer starts** is the adapter's, beyond one thing: it gets what is
     published after it first subscribed. `EhOsContract.Bus.Local` gives it nothing
     older.
   - **No bound on redelivery.** A message whose handler never succeeds comes again for
     as long as the transport keeps it. What stops it is the transport's own limit
-    (JetStream's `MaxDeliver`) or the subscriber's inbox (E12c), not this behaviour.
+    (JetStream's `MaxDeliver`), not this behaviour, nor the inbox, which answers
+    `:nack` to what it cannot take, so that nothing is lost while it is put right
+    (`EhOsContract.Inbox`).
 
   Who may consume a name is not the engine's question either. The subscriber's
   `consumes` derives the capability `<name>.subscribe`, EHOS grants it per environment,
@@ -47,11 +49,12 @@ defmodule EhOsContract.Bus do
 
   ## A message
 
-  `EhOsContract.Bus.Message` carries four things: the id, the versioned name, the
-  correlation and the payload. **The payload is JSON**: string keys, and values a JSON
-  encoder turns into text and back — what arrives is what `Jason` decodes, not the
-  Elixir terms that were sent. `EhOsContract.Bus.Local` encodes and decodes it on the
-  way, so a term a real transport could not carry fails in a test and not in production.
+  `EhOsContract.Bus.Message` carries five things: the id, the key that tells one fact
+  from another, the versioned name, the correlation and the payload. **The payload is
+  JSON**: string keys, and values a JSON encoder turns into text and back — what
+  arrives is what `Jason` decodes, not the Elixir terms that were sent.
+  `EhOsContract.Bus.Local` encodes and decodes it on the way, so a term a real
+  transport could not carry fails in a test and not in production.
   """
 
   alias EhOsContract.Bus.Message
@@ -64,7 +67,12 @@ defmodule EhOsContract.Bus do
 
   @typedoc """
   A durable consumer: its `name`, unique on the transport and kept across restarts; the
-  message names it takes; and the handler each delivery goes to.
+  message names it takes; and the handler each delivery goes to. The engine names an
+  inbox's consumer `"<contract>:inbox:<name>"`, with the dots of a module's name in it;
+  an adapter whose transport takes fewer characters in a consumer's name (JetStream's
+  durable names take no `.`) maps it, the same way every time and never two names to
+  one: `Shop.Stock` and `Shop_Stock` sharing a durable consumer would each get only
+  part of the messages.
   """
   @type consumer :: %{name: String.t(), names: [String.t(), ...], handler: handler()}
 
@@ -92,6 +100,20 @@ defmodule EhOsContract.Bus do
   @doc """
   The child that runs `consumer`: started, it subscribes under the consumer's name, and
   delivers to its handler until it is stopped.
+
+  **It is subscribed once its start has returned.** The engine starts every inbox
+  before any relay, and relies on this for nothing a relay publishes to be published,
+  in one node, before the inbox that takes it listens (`EhOsContract.Inbox`).
+
+  **Its start returns quickly**, subscribed or failed: the engine's boot waits for it,
+  one inbox after another, so a start that waits on a transport that does not answer
+  holds the host's boot for as long. A transport that is down is an error at once; the
+  engine starts the child again later (`EhOsContract.Inbox.Keeper`).
+
+  **Its state and its exit reasons carry no credentials.** What OTP reports of a
+  process that stops — its last state and its reason, in the log — is the adapter's,
+  out of the engine's reach: keep a connection's secrets out of the reason, and out of
+  the state with `format_status/1`.
   """
   @callback consumer(opts :: keyword(), consumer()) :: Supervisor.child_spec()
 

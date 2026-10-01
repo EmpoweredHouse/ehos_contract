@@ -135,6 +135,33 @@ defmodule EhOsContract.Implementations do
   @spec subscribed() :: [consumer()]
   def subscribed, do: index(nil).subscribed
 
+  @typedoc """
+  What takes another application's published event (D12, v2 §16): one per
+  `consumes "<name>"` that a policy of the contract handles. `from` is the versioned
+  name it takes from `EhOsContract.Bus`, `name` the event's name in the contract,
+  `fields` what the contract reads of it, and `policies` the policies that handle it,
+  each as it takes the event, in the order of their modules' names. `key`,
+  `"<contract>:inbox:<name>"`, names its rows in `eh_os_contract_inbox` and its
+  durable consumer on the transport.
+  """
+  @type inbox :: %{
+          kind: :inbox,
+          contract: module(),
+          name: atom(),
+          from: String.t(),
+          fields: [map()],
+          policies: [inline()],
+          key: String.t()
+        }
+
+  @doc """
+  Every inbox of the host's applications, the configured ones as for `subscribed/0`,
+  in the order of their keys. A received event no policy handles has none: nothing
+  would react to it, so nothing subscribes to it.
+  """
+  @spec inboxes() :: [inbox()]
+  def inboxes, do: index(nil).inboxes
+
   @doc """
   Whether any consumer is fed from the log after the transaction, in the
   applications dispatch of `contract` looks in: what a runner would wake up for.
@@ -174,6 +201,7 @@ defmodule EhOsContract.Implementations do
           effects: %{String.t() => [inline()]},
           consumers: [consumer()],
           subscribed: [consumer()],
+          inboxes: [inbox()],
           included: %{String.t() => [%{name: atom(), correlate: [atom()]}]}
         }
   def index(contract) do
@@ -234,8 +262,52 @@ defmodule EhOsContract.Implementations do
           &(&1.kind != :effect and (&1.delivery == :at_least_once or &1.kind == :read_model))
         )
         |> Enum.sort_by(& &1.key),
+      inboxes:
+        contracts
+        |> Enum.flat_map(&inboxes(&1, declarations))
+        |> Enum.sort_by(& &1.key),
       included: included(contracts)
     }
+  end
+
+  defp inboxes(model, declarations) do
+    for %{kind: :published, from: from, as: as, fields: fields} <- model.consumes,
+        policies = received_by(model, declarations, from, as),
+        policies != [] do
+      %{
+        kind: :inbox,
+        contract: model.module,
+        name: as,
+        from: from,
+        fields: fields,
+        policies: policies,
+        key: "#{inspect(model.module)}:inbox:#{as}"
+      }
+    end
+  end
+
+  # The policies of `model` that handle the received event `as`, each as it takes it:
+  # its callback is the event's name in the contract, and its type the name it was
+  # published under, which names the policy's link in a chain.
+  defp received_by(model, declarations, from, as) do
+    for policy <- model.policies, as in policy.handles do
+      %{
+        kind: :policy,
+        contract: model.module,
+        name: policy.name,
+        type: from,
+        callback: as,
+        module: implemented(declarations, model, :policy, policy.name)
+      }
+    end
+    |> Enum.sort_by(&{inspect(&1.module), &1.name})
+  end
+
+  defp implemented(declarations, model, kind, name) do
+    case Map.get(declarations, {model.module, kind, name}) do
+      [module] -> module
+      _none_or_many -> nil
+    end
   end
 
   # A process includes a sibling's event by the name it consumes it under, and the
@@ -307,11 +379,7 @@ defmodule EhOsContract.Implementations do
   end
 
   defp reacting(model, declarations, kind, declaration, events) do
-    module =
-      case Map.get(declarations, {model.module, kind, declaration.name}) do
-        [module] -> module
-        _none_or_many -> nil
-      end
+    module = implemented(declarations, model, kind, declaration.name)
 
     # Received from another application: into an inbox, never this log (D12).
     taken =

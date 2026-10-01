@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 1 października (E0–E11, #50–#57 w `main`; E12 w toku)
+## Handoff — stan na 1 października (E0–E11, #50–#58 w `main`; E12 w toku, E12c zbudowane na gałęzi)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -17,20 +17,26 @@ Po E11 w `main` są: #53 (tabele poza `public`, #51), #54 (klucz blokady dopisu 
 przestrzeni nazw) i **#56 — każda nazwa w formie**: `name:` domeny jako segment przestrzeni nazw (D11), `\z`
 zamiast `$` we wzorcach nazw (N1, D9, strony, dziesiętna scenariusza), nazwy aktorów (D4) i pozostałych elementów
 domeny (D1, z kolizją wartości po `Macro.camelize` i nazwami typów wbudowanych), kolizja nazw kontraktu po
-`camelize` (N1, N2 dla `State`/`Row`), nazwy pól i `identity` (F1, D3, D6). **W toku: E12** (wybór użytkownika z
-1 października, „Przed E12 — decyzje użytkownika”); **E12a** — `EhOsContract.Bus`, adapter lokalny, suita — w
-`main` (#57); **E12b** — relay — gotowe, przejrzane i wystawione jako PR z gałęzi `dsl-v2/e12b-relay`.
+`camelize` (N1, N2 dla `State`/`Row`), nazwy pól i `identity` (F1, D3, D6). **W toku: E12** — integracja między
+aplikacjami (wybór użytkownika z 1 października, „Przed E12 — decyzje użytkownika”). W `main` są **E12a**
+(#57: `EhOsContract.Bus`, `Bus.Local`, `Bus.Suite`) i **E12b** (#58: relay, `EhOsContract.Relay`). **E12c (inbox,
+`.subscribe`, test dwóch aplikacji) jest zbudowane na `dsl-v2/e12c-inbox`** — po decyzjach użytkownika D1 i D2
+(„Przed E12c — decyzje użytkownika”), z bramą zieloną i po przeglądzie `pre-pr-review` („E12c — co wyszło”).
+Przed E12d — pytanie do użytkownika, czy jego przesłanka jeszcze stoi („Otwarte pytania”).
 
 ### Stan repozytorium
 
-- **`origin/main` = `7e4e4cc`** (merge #57, E12a, 1 października; przedtem `6e1658a` — merge #56, `0e6e10f` —
-  merge #55). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
-- **`dsl-v2/e12b-relay`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `7e4e4cc`: relay, poprawki z przeglądu,
-  ten zapis; PR do `main` na polecenie użytkownika. `dsl-v2/e12-bus` i `dsl-v2/handoff-after-56` są w całości w
-  `main`.
+- **`origin/main` = `842a2f1`** (merge #58, E12b, 1 października; przedtem `7e4e4cc` — merge #57, E12a, i
+  `6e1658a` — merge #56). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
+- **`dsl-v2/handoff-after-58`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `842a2f1`, jeden commit: ten zapis;
+  **niewypchnięta** — push (fast-forward `main` albo PR) na polecenie użytkownika; E12c może wyjść od niej.
+  `dsl-v2/e12-bus`, `dsl-v2/e12b-relay` i `dsl-v2/handoff-after-56` są w całości w `main`.
+- **`dsl-v2/e12c-inbox`** (ten sam worktree) — od `66c3637`: trzy commity kodu E12c, commit zapisu, poprawki
+  dwóch rund przeglądu i ich zapisy; notatka przeglądu (`refs/notes/review`) na głowie; wypchnięta z PR-em E12c. Zawiera `66c3637`, więc PR E12c niesie też przepisany handoff.
 - **Otwarte na GitHubie:** tylko **issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza
   repozytorium; zaparkowane 30 września, z propozycją `EmpoweredHouse/eh-os-contract-sandbox`. Otwartych PR-ów brak.
-- **Lokalne gałęzie w całości w `main`** — kilkadziesiąt, w tym wszystkie `dsl-v2/e*`, `dsl-v2/d11-dashed-namespace`,
+- **Lokalne gałęzie w całości w `main`** — 56 (`git branch --merged origin/main`, 1 października, bez wyciągniętych
+  w worktree; worktree jest 12), w tym wszystkie `dsl-v2/e*`, `dsl-v2/d11-dashed-namespace`,
   `dsl-v2/domain-name-check`, `dsl-v2/domain-names-snake-case` (`git branch --merged origin/main`). Do skasowania;
   część jest wyciągnięta w innych worktree (`git worktree list`), więc najpierw worktree.
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
@@ -40,12 +46,21 @@ domeny (D1, z kolizją wartości po `Macro.camelize` i nazwami typów wbudowanyc
   `ecto.drop` dalej poprawny, tylko wspólny. **Worktree na kodzie sprzed E11c nie wolno migrować wspólnych baz** —
   dołoży swoje V02–V05 (`ecto.drop` naprawia). Baza dev ma dane sprzed E11c w nowym schemacie; przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
+- **Tabela `eh_os_contract_inbox` (E12c, V01 w miejscu) dołożona ręcznie 1 października** do `…_host_dev`,
+  `…_host_test`, `eh_os_contract_test`, `…_test_commits` i `eh_os_contract_web_test` (`CREATE TABLE IF NOT EXISTS`
+  w kształcie V01). **Worktree na kodzie sprzed E12c ma przez nią trzy padnięcia `MigrationsTest`** (lista tabel w
+  `…_test_commits`) — oczekiwane, nie regresja; `DROP TABLE eh_os_contract_inbox` w tej bazie albo `ecto.drop`
+  przywraca stan sprzed E12c. Bazy `eh_os_contract_host_test_commits_<liczba>` to resztki przebiegów sandboxa,
+  tworzone z migracji.
 
 ### Co zostało — i czyje to jest
 
-- **E12 — w toku** (asystenta): po merge'u E12b — E12c (inbox, `.subscribe`, test dwóch aplikacji), E12d
-  (publiczne wejście), E12e (dokumentacja); podział w „Przed E12 — decyzje użytkownika”, sprawy przeniesione do
-  E12c i E12e w „E12a — co wyszło” i „E12b — co wyszło”.
+- **PR E12c** — przegląd zrobiony (notatka na głowie); push i PR — użytkownika, na polecenie. PR wystawiany z
+  worktree przez `gh api` (hook sprawdza `HEAD` głównego checkoutu, „Pułapki”).
+- **E12d** (publiczne wejście dla surowych danych, Plug na nim, bez `Dispatcher.permit_undecoded/5`) — **najpierw
+  decyzja użytkownika, czy teraz** („Otwarte pytania”), potem asystenta. **E12e** (poprawka z datą
+  `architecture.md` §9–10, `docs/contract.md` o inboxie, CHANGELOG, skille `write-reaction` — tylko polityka na
+  zdarzeniu odebranym — i `change-contract` — zmiana nazwy i usunięcie `publish`) — asystenta.
 - **Kandydaci na później** (wybór użytkownika), każdy z tym, co go blokuje:
   - **„Po E11” z planu: kontrakty sandboxa jako fikstury akceptacyjne pakietu, potem manifest v2** (po akceptacji
     D-51/D-52 w `eh-os`). **Fikstury kolidują z #49**: kontrakty klientów w pakiecie to dokładnie to, czego #49 chce
@@ -62,14 +77,17 @@ domeny (D1, z kolizją wartości po `Macro.camelize` i nazwami typów wbudowanyc
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach (także w
    fiksturach testów: `label` po polsku jest dozwolony — CodeRabbit to już przyjął), wyrażenia regularne z flagą `u`
    i `[0-9]`, zsh bez dzielenia słów.
-2. `PLAN.md`: cztery ostatnie zapisy „co wyszło” — „`name:` domeny jako przestrzeń nazw”, „`$` w nazwach i nazwy
-   aktorów”, „Nazwy elementów domeny”, „Kolizja nazw kontraktu i nazwy pól” — decyzje z odrzuconymi opcjami.
-3. `PLAN.md`, „Otwarte pytania” — co zostało z przeglądów #56 (etykiety Mermaida, kolizja stron, pole `scope:`,
-   mapa capability) i starsze pozycje bez decyzji.
-4. `PLAN.md`, „Etapy” — opis E12 i „Po E11”, żeby ocenić kandydatów; `gh issue view 49`.
-5. `packages/eh_os_contract/docs/contract.md` (tabela odmów z kodami) i `.claude/skills/` — DSL i skille, z których
-   pisze się kod.
-6. `.claude/skills/pre-pr-review/SKILL.md` — przed PR-em; przegląd po każdej części etapu, nie tylko przed PR-em.
+2. `PLAN.md`: „Przed E12 — decyzje użytkownika”, „E12a — co wyszło”, „E12b — co wyszło” — decyzje E12 z
+   odrzuconymi opcjami (brak kolejności w `Bus`, relay nie przez Obana, broker w transakcji z limitem czasu) i
+   to, co przeglądy przeniosły do E12c i E12e.
+3. `docs/adr/contract-v2.md` §16 — D11 i D12 (relay, inbox, `Bus`) i trzy dopiski z 1 października; to jest
+   specyfikacja inboxu, który buduje E12c.
+4. `lib/eh_os_contract/bus.ex`, `bus/suite.ex`, `relay.ex` i `subscription.ex` w pakiecie silnika — kształt, na
+   którym E12c stoi; `test/support/bus_rig/` — fikstura, do której dojdzie odbiorca.
+5. `PLAN.md`, „Etapy” — opis E12 z kryteriami odbioru; „Otwarte pytania”. Do odczytu (nie pisać):
+   `~/Projects/ai/eh-os/docs/adr/0041-integration-events-publish-consumes-and-inbox.md` — połowa EHOS-a.
+6. `packages/eh_os_contract/docs/contract.md` (tabela odmów z kodami) i `.claude/skills/` — DSL i skille, z których
+   pisze się kod; `.claude/skills/pre-pr-review/SKILL.md` — przegląd po każdej części etapu, przed PR-em.
 
 ### Komendy
 
@@ -117,11 +135,27 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 - `\n` w heredocu `"""` testu z fiksturą to prawdziwa nowa linia w kompilowanym źródle — atom `:"x\n"` zajmuje
   wtedy dwie linie i przesuwa numery linii w asercjach; nazwę z nową linią pisz `#{"\\n"}` albo licz linie od nowa;
 - `for` w Elixirze musi zaczynać się generatorem — filtr (`kind != …`, `:x in list`) idzie po generatorze;
+- **hook `gh pr create` sprawdza notatkę przeglądu na `HEAD` głównego checkoutu** (`$CLAUDE_PROJECT_DIR`), nie
+  worktree, z którego idzie PR — z worktree odmawia mimo notatki na głowie gałęzi. #57 i #58 wystawione przez
+  `gh api repos/EmpoweredHouse/eh-os-contract/pulls -f base=main -f head=<gałąź> -f title=… -F body=@<plik>` po
+  sprawdzeniu `git notes --ref=review show HEAD` w worktree; użytkownik o tym wie;
 - `git grep -E` na tej maszynie nie rozumie `\b` i milczy, zamiast odmówić (w E11b `git grep -iP` też raz dał zero
   przy 38 plikach z trafieniem) — wynik „nic nie zostało” potwierdzać drugim narzędziem (`grep -rE`, `git grep -w`).
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 1 października, na `0038a71`** (E12c po dwóch rundach przeglądu): brama z `sandbox/` → **EXIT=0** —
+  sandbox 144, `check` 0 / 29 / 9; silnik **1094** (+4 testy keepera), `check` **0 / 68 / 6**; web 52; auth **68**.
+- **Lokalnie, 1 października, na `da2b841`** (E12c po pierwszej rundzie przeglądu, głowa kodu `bab57b3`): brama z `sandbox/` →
+  **EXIT=0** — sandbox 144, `check` 0 / 29 / 9; silnik **1090** (1088 + kolizja klucza 1 + broker leżący przy
+  starcie 1), `check` **0 / 68 / 6**; web 52; auth **67** (+1, pomocnik testów i `.subscribe`).
+- **Lokalnie, 1 października, na drzewie kodu `0692740`** (głowa kodu E12c przed przeglądem): brama z `sandbox/` → **EXIT=0** —
+  sandbox 144, `check` 0 / 29 / 9; silnik **1088**, `check` **0 / 68 / 6**; web 52; auth 66. Szczegóły i commity
+  pośrednie — „E12c — co wyszło”. Brama bazowa tej sesji na `66c3637` — te same liczby co niżej dla `842a2f1`.
+- **Lokalnie, 1 października, na `main` = `842a2f1`** (po merge'u #58; drzewo kodu jak `25e51d5`): brama z
+  `sandbox/` → **EXIT=0** — sandbox 144, `check` 0 / 29 / 9; silnik **1073**, `check` 0 / 67 / 6; web 52; auth 66.
+- **CI:** PR #58 (`check`, przebieg `36791662027`) — `success`; `main` na `7e4e4cc` (`36788298869`) — `success`;
+  `main` na `842a2f1` (`36825204797`, job `check`) — `success`.
 - **Lokalnie, 1 października, na `25e51d5`** (głowa kodu E12b po przeglądzie): brama z `sandbox/` → **EXIT=0** —
   sandbox 144, `check` 0 / 29 / 9; silnik **1073** (1059 + 14: relay 12, runner na `CommitRepo` 1, `--reset`
   relaya 1), `check` **0 / 67 / 6** — o jedno ostrzeżenie i jedną uwagę więcej, obie z fikstury `BusRig` i
@@ -145,6 +179,24 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Otwarte pytania
 
+- **E12d, przed startem — decyzja użytkownika: czy publiczne wejście dla surowych danych robić teraz.** Termin z
+  27 września stał na przesłance, że inbox to drugie drzwi dla surowych danych; zbudowany inbox nie autoryzuje i
+  dekoduje sam, a komendy wydaje polityka strukturą („E12c — co wyszło”). Możliwe: teraz (jedno wejście dla Pluga
+  i przyszłych drzwi, `permit_undecoded/5` znika) albo przy drugich prawdziwych drzwiach.
+- **Zgodność nie widzi polityki inboxu** (z E12c): `Paths` nie ma kroku dla zdarzenia odebranego, więc ekran nie
+  mówi, czy polityka na nim była przejechana. Możliwe: krok liczony z komend `policy:<nazwa>`, których przyczyna
+  jest w `eh_os_contract_inbox`; albo zostawić — do decyzji użytkownika.
+- *Rozstrzygnięte 1 października (D1, „Przed E12c”): wiadomość niesie klucz z `idempotent_on`.* Opis sprzed
+  decyzji: **E12c, przed startem — decyzja użytkownika: czy wiadomość niesie wartości `idempotent_on`.** Inbox kluczuje
+  `(nazwa, id wiadomości)`, a id to `<id zdarzenia>/<nazwa wersjonowana>`, więc dwa zdarzenia o tych samych
+  wartościach `idempotent_on` (np. `visit_id`) to dwie wiadomości i dwie reakcje; `eh-os` FM-08 chce jednej. Możliwe:
+  piąte pole `Bus.Message` z wartościami (inbox kluczuje po nich), albo nic (subskrybent sam w swojej jednostce).
+- *Rozstrzygnięte 1 października (D2, „Przed E12c”): kolejność w drzewie silnika.* Opis sprzed decyzji: **E12c,
+  przed startem — decyzja użytkownika: kiedy powstaje konsument odbiorcy względem relaya wydawcy.**
+  `Bus.Local` daje nowemu konsumentowi tylko to, co opublikowano po jego pierwszej subskrypcji, a relay wydawcy
+  startuje od głowy logu — w dwóch aplikacjach w jednym BEAM-ie relay uruchomiony przed konsumentem publikuje w
+  próżnię. Możliwe: kolejność startu w drzewie hosta, konsument rejestrowany przy pierwszym boocie jak wiersz relaya,
+  albo zostawić to transportowi (JetStream trzyma strumień).
 - **H177** z materiału Rehmedu przeczy DEC-18 — czeka na klienta.
 - **Runner read modelu `:in_transaction`** odpytuje co sekundę — wraca przy pomiarze; tam też nakładka na `/graph`
   bez granicy czasu, podwójny mount, koszt raportu z całej historii przebiegów i 17 s testu skali (niezłapane;
@@ -223,7 +275,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 **Ten blok jest do skasowania. Skasowanie go cofa uprawnienie — nie migruje ono samo między sesjami.**
 
-W sesjach E11b–E11f (29–30 września) i w sesji #56 (30 września) użytkownik potwierdzał: commity bez pytania na gałęziach etapu przy zielonej
+W sesjach E11b–E11f (29–30 września), w sesji #56 (30 września), w sesji E12a–E12b i w sesji E12c (1 października)
+użytkownik potwierdzał: commity bez pytania na gałęziach etapu przy zielonej
 bramie na każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. **W nowej sesji obowiązuje to
 dopiero po ponownym potwierdzeniu przez użytkownika.** Push, PR, merge, tag i Hex — tylko na wyraźne polecenie,
 przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie piszemy nigdy; do
@@ -3438,6 +3491,144 @@ zgubionej wiadomości poza zamierzonym `--skip` i zmianą nazwy `publish`):
 - E12c: inbox kluczuje `(nazwa, id wiadomości)`; `idempotent_on` (FM-08 w `eh-os`: ta sama treść pod nowym id) — do
   rozstrzygnięcia, czy wiadomość ma je nieść; kiedy powstaje konsument odbiorcy (z „E12a — co wyszło”);
 - E12e: `change-contract` o zmianie nazwy i usunięciu `publish`; poprawka `architecture.md` §9–10.
+
+### Przed E12c — decyzje użytkownika (1 października)
+
+**D1 — wiadomość niesie klucz z wartości `idempotent_on`** (rekomendacja asystenta przyjęta). Relay liczy klucz:
+SHA-256 nazwy wersjonowanej i wartości `idempotent_on`, piąte pole `Bus.Message`; inbox jest unikalny po
+`(inbox, klucz)`, a bez `idempotent_on` (albo z wartością `nil`) klucz to id wiadomości. Przykład: sklep zapisuje
+drugi `placed` dla `O-1` (błąd, log przeniesiony z nowymi id) — wiadomość `e2/…` ma klucz `e1/…`, magazyn
+rezerwuje raz (FM-08 w `eh-os`). *Odrzucone:* **(B) nic, inbox po id** — FM-08 do jednostki odbiorcy, każdy
+odbiorca pisze to samo sprawdzenie, a `idempotent_on` wydawcy nikomu nie służy; **(C) `idempotent_on` w
+`consumes`** — druga kopia deklaracji wydawcy, która może się rozjechać. Cena: wydawca z za wąskim
+`idempotent_on` po cichu traci drugi, prawdziwy fakt.
+
+**D2 — konsument odbiorcy powstaje przed relayem przez kolejność w drzewie silnika** (rekomendacja asystenta
+przyjęta). Supervisor startuje inboxy przed runnerami, a dziecko `Bus.consumer/2` jest zasubskrybowane, gdy jego
+start wróci (obietnica dopisana w doc callbacku i w nazwie pierwszego testu suity). Przykład: relay sklepu wstaje
+z zaległościami i publikuje od razu — w jednym BEAM-ie na `Bus.Local` konsument magazynu już słucha. Na produkcji
+konsumenta zakłada EHOS przy grancie (D-41), a to, co opublikowano przed grantem, to historia z API właściciela
+(D-03). *Odrzucone:* **(B) rejestracja przy pierwszym boocie** (trzeci callback `Bus`) — aplikacja sama
+zakładałaby konsumenta, którego ma kontrolować grant; **(C) zostawić transportowi** (`Bus.Local` trzyma wszystko
+dla nowego konsumenta) — subskrybent wdrożony później reagowałby na historię wydawcy.
+
+### E12c — co wyszło (1 października)
+
+**Co jest** (gałąź `dsl-v2/e12c-inbox`, od `66c3637`, trzy commity kodu i jeden zapisu):
+- `1fa8f65` — `Bus.Message.key` (wymagany), liczony w `Relay.message/2`; pełny SHA-256, nie 12 znaków
+  `Digest.hash/1` (kolizja = zgubiony fakt);
+- `bb1f688` — `EhOsContract.Inbox` i `InboxRecord`, tabela `eh_os_contract_inbox` w V01 (w miejscu),
+  `Implementations.inboxes/0` (jeden inbox na `consumes "<nazwa>"`, który obsługuje jakaś polityka; klucz
+  `"<kontrakt>:inbox:<nazwa>"`), inboxy przed runnerami w `EhOsContract.Supervisor`, capability
+  `<nazwa>.subscribe` w `Model.capabilities/1`; w `BusRig` zmyślony magazyn (`Warehouse`, `Stock`, decyzja
+  `Reservation`, polityka `ReserveForOrder`), który rezerwuje towar dla zamówień sklepu;
+- `0692740` — odmowa `D12` dla read modelu, efektu i process managera na zdarzeniu odebranym.
+
+**Wybory asystenta** (dopisek „as built” w v2 §16):
+- **przyczyną komendy jest wiersz inboxu, nie wiadomość** — ADR mówi „`causation_id` = id wiadomości”, ale
+  przyczyna to UUID w obu tabelach (`causation_id`, `causation_event_id`), a id wiadomości to `<uuid>/<nazwa>`;
+  wiersz ma własne `id` (UUID) i trzyma `message_id`. *Odrzucone:* kolumna przyczyny jako `text` (zmiana typu w
+  dwóch tabelach V01 i we wspólnych bazach), id zdarzenia wydawcy wycięte z id wiadomości (wiązałoby inbox z
+  formatem id, którego `Bus` nie obiecuje parsować);
+- **tylko polityka bierze zdarzenie odebrane (`D12`)** — ADR nazywa tylko politykę; read model jest odbudowywany
+  z logu, a efekt i process manager czytają swoje z logu, gdzie zdarzenia odebranego nigdy nie ma — do dziś się
+  kompilowały i nigdy by go nie dostały. *Odrzucone:* zbudować inbox także dla nich (read model zgubiłby te
+  wiersze przy odbudowie, zadanie efektu i process manager stoją na wierszu logu); zostawić (cicha luka).
+  Fikstura `contract_generate_test` przeniosła zdarzenie odebrane z efektu i process managera do polityki;
+- **czego inbox nie potwierdza**: payload niezgodny z polami `consumes` i polityka, która rzuca — rollback,
+  `:nack`, log z nazwą, id i rodzajem błędu, bez wartości; **inbox nie liczy prób** — limit to `MaxDeliver`
+  transportu. *Odrzucone:* licznik prób i stan `failing` w tabeli inboxu z taskiem do pomijania (jak
+  subskrypcje) — większy diff, a `Bus.Local` to adapter deweloperski;
+- **`<nazwa>.subscribe` bez wersji** — jak przykład w v2 §16 i w `eh-os` 0041 (`rehmed.visit.closed.subscribe`);
+  rodzaj `:subscribe`, `roles: []`; Dispatcher, Plug, OpenAPI i manifest v1 filtrują po rodzaju, więc nic w
+  silniku o nią nie pyta;
+- **`__meta__` zdarzenia odebranego**: `id` wiersza i korelacja wiadomości; bez pozycji, aktora i czasu, których
+  wiadomość nie niesie;
+- **scenariusz polityki na zdarzeniu odebranym** (`on :order_placed` → `issues :reserve_stock`) działa bez zmian
+  w `ScenarioCase`; `BusRig` dostał plik scenariuszy obu kontraktów (sklep też go nie miał).
+
+**Próby odwrotne:** inboxy po runnerach → pada test kolejności startu; inbox kluczowany po id → padają test
+FM-08 i test klucza w wierszu; polityka wydająca `total + 1` → pada scenariusz magazynu.
+
+**Weryfikacja:** brama z `sandbox/` na drzewie `0692740` (przed commitami, to samo drzewo kodu) → **EXIT=0** —
+sandbox 144, `check` 0 / 29 / 9; silnik **1088** (1073 + 15: inbox 10, relay 1, scenariusze `BusRig` 3, D12 1),
+`check` **0 / 68 / 6** — o jedno ostrzeżenie więcej, zamierzone (`event-without-consumer` dla `:reserved`
+magazynu, jak `:cancelled` sklepu); web 52; auth 66. Commity pośrednie w tymczasowym worktree: `bb1f688` —
+silnik 1087, 0 padnięć, kompilacja z `--warnings-as-errors`, format; `1fa8f65` — silnik 1074, trzy padnięcia
+`MigrationsTest`, wyłącznie dlatego, że wspólna baza `…_test_commits` ma już ręcznie dołożoną tabelę inboxu,
+której V01 z `1fa8f65` nie zna (sprawdzone: różnicą jest tylko ta tabela).
+
+**Przegląd** (`code-review high` i bezpieczeństwo/wydajność, równolegle, na `66c3637..5e15711`; oba znalazły
+kolizję klucza):
+- **klucz wiadomości kolidował** — `Digest.canonical/1` łączy napisy separatorami bez długości, więc przy
+  `idempotent_on: [:a, :b]` pary `"x),(s:b,s:y"`/`"z"` i `"x"`/`"y),(s:b,s:z"` dawały ten sam klucz i inbox
+  odrzucał drugi, prawdziwy fakt (oba przeglądy) — *poprawione* (`479aeeb`): `Digest.document_digest/1`, pełny
+  SHA-256 kodowania z długościami, którego `document_hash/1` używa z tego samego powodu; z wycofaną poprawką pada
+  jeden test z 14 w `relay_test.exs`;
+- **broker niedostępny kładł silnik** — konsument `Bus.Local` bez brokera wychodzi w `init`, więc przy busie
+  skonfigurowanym, a leżącym silnik nie wstawał (i host z nim), a broker, który padł później, przekraczał limit
+  restartów i zatrzymywał wszystkie runnery i relaye (poprawność) — *poprawione* (`c82a97d`):
+  `EhOsContract.Inbox.Keeper` startuje konsumenta w swoim `init` (D2 trzyma się, gdy bus działa), loguje rodzaj
+  błędu i próbuje znowu po 5 s; z wycofaną poprawką padają dwa z 15 testów `inbox_test.exs` i `boot_test.exs`, oba
+  w `inbox_test.exs`: nowy i test kolejności, który pyta teraz o identyfikator keepera;
+- **`.subscribe` bez inboxu** — capability dla każdego `consumes`, a inbox tylko dla obsłużonego przez politykę;
+  grant bez czytelnika zostawiłby na brokerze konsumenta, któremu rosną wiadomości (poprawność) — *poprawione*
+  (`bab57b3`), ten sam warunek co inbox; z wycofaną poprawką pada jeden test (`contract_test.exs`, capability
+  `Named`);
+- **pomocnik testów auth żądał wejścia dla `.subscribe`** — `assert_every_entry_refuses/3` brał wszystkie
+  capability, więc host z `consumes` dostałby „no entry for” (bezpieczeństwo, przy okazji) — *poprawione*
+  (`0b14c73`); z wycofaną poprawką pada jeden test z 67 pakietu auth; wpis w CHANGELOG-u auth doszedł w commicie
+  zapisu, nie w tym samym;
+- nazwa trwałego konsumenta z kropkami (JetStream ich nie przyjmuje) — *opisane* w `Bus` (`c82a97d`): adapter ją
+  mapuje; test przywracał `:manual` zamiast poprzedniej wartości i dwa sprawdzenia busa w supervisorze —
+  *poprawione* (`c82a97d`);
+- inbox nie sprawdza, kto opublikował (klucz, korelacja i nazwa z wiadomości) — *opisane* w `Inbox` i v2 §16: to
+  grant transportu (D-41), jak przy subskrypcji; capability `<nazwa>.publish` — do użytkownika i EHOS-a (niżej);
+- wiadomość, która nigdy nie przejdzie (zły payload, korelacja spoza UUID), wraca bez końca na `Bus.Local` —
+  *bez zmiany*: wybór z E12c (nic nie ginie, `MaxDeliver` transportu); polityka bez modułu w inboxie — *bez
+  zmiany*: to samo, co rzucająca polityka, a `check` ostrzega `declaration-without-implementation`;
+- transakcja inboxu trzyma blokadę dopisu, gdy liczą się kolejne polityki — *bez zmiany*: tak samo polityka
+  `:in_transaction`; kolizja nazw capability w `Map.merge` — *bez zmiany*: `.subscribe` ma co najmniej cztery
+  segmenty, capability komendy dwa;
+- runnery nie są budzone po commicie inboxu (do 1 s opóźnienia, `@poll`) i tabela inboxu rośnie bez końca —
+  *pominięte*, niżej; zgodność nie widzi polityki inboxu — już otwarte.
+
+**Druga runda przeglądu** (oba przeglądy na poprawkach, `5e15711..02345b3`; nic blokującego):
+- keeper nie czekał na konsumenta przy zatrzymaniu (doręczenie w toku przeżywało repo hosta; dziecko-supervisor
+  traciło `shutdown: :infinity`), restartował po 5 s także konsumenta, który działał (na `Bus.Local` relay
+  publikujący w tej przerwie trafia w brokera bez konsumentów), a `{:ok, pid, info}` i `:ignore` brał za porażkę
+  (oba przeglądy) — *poprawione* (`c253f1f`): `terminate/2` czeka tyle, ile mówi `shutdown` dziecka, restart od
+  razu, a po 5 s tylko gdy dziecko padnie znowu w przerwie; z wycofaną poprawką padają cztery nowe testy
+  `inbox_keeper_test.exs` (test restartu — strukturalnie, stary stan nie ma `started_at`);
+- test z brokerem podniesionym w trakcie ścigał się z keeperem — *poprawione* (`4686811`);
+- `document_hash/1` kopiował potok `document_digest/1` — *poprawione* (`2629a7b`), wynik ten sam;
+- test pomocnika auth pokrywał tylko pustą mapę — *poprawione* (`5e66eb8`);
+- obietnice ponad to, co keeper kontroluje — *opisane* (commit zapisu drugiej rundy): start adaptera, który czeka
+  na sieć, wstrzymuje boot (boot czeka na każdego keepera po kolei), a logi OTP dziecka adaptera są adaptera —
+  wymagania w doc `c:EhOsContract.Bus.consumer/2`; mapowanie nazwy konsumenta ma być różnowartościowe;
+  restart brokera `Bus.Local` gubi to, co relay opublikuje, zanim keeper wróci — w `Inbox`;
+- stała przerwa 5 s bez narastania i rozrzutu (ok. 720 ostrzeżeń na godzinę awarii na inbox) — *pominięte*: tak
+  samo relay; `Enum.any?` w `capabilities/1` na każdy dispatch — *bez zmiany*, pomijalne.
+
+**Do E12d i E12e, i otwarte:**
+- **retencja `eh_os_contract_inbox`** — wiersz na fakt na inbox, na zawsze; czyszczenie po wieku skraca okno, w
+  którym ten sam fakt pod nowym id (FM-08) jest rozpoznany — granica do decyzji użytkownika;
+- **kto może publikować pod nazwą** — silnik wyprowadza `<nazwa>.subscribe`, a nie `<nazwa>.publish`; czy
+  manifest ma nieść prawo publikacji, to sprawa EHOS-a (D-41) — do użytkownika, na liście zmian do `eh-os`;
+- runnery po commicie inboxu nie dostają powiadomienia (dispatch w cudzej transakcji go nie wysyła) — czekają do
+  sekundy; do pomiaru razem z runnerem read modelu;
+- **zgodność nie widzi polityki inboxu** — `Paths` bierze kroki tylko dla zdarzeń z typem w logu
+  (`type_of/2` daje `nil` dla odebranego), więc ekran nie pokazuje tej ścieżki ani jako przejechanej, ani jako
+  nieprzejechanej; da się ją liczyć z komend `policy:<nazwa>`, których przyczyna jest w `eh_os_contract_inbox` —
+  do decyzji użytkownika (czwarte pytanie ekranu obejmuje ścieżki zadeklarowane);
+- **przesłanka E12d nie potwierdziła się w zbudowanym kształcie** — decyzja z 27 września dawała wejściu termin
+  „E12, bo inbox to drugie drzwi dla surowych danych”. Inbox nie autoryzuje (to konsument aplikacji, nie aktor z
+  credentialem), sam dekoduje payload przez `Codec.decode/4` do struktury odebranej, a komendy wydaje polityka
+  zwykłym `dispatch` ze strukturą — nie przechodzi przez „uprawnienie → dekodowanie → dispatch”. Drzwi dla
+  surowych danych z credentialem są dalej jedne (Plug). Do decyzji użytkownika przed E12d: robić teraz (jedno
+  wejście dla Pluga i przyszłych drzwi) czy odłożyć do drugich prawdziwych drzwi;
+- E12e: `docs/contract.md` o inboxie i `consumes "<nazwa>"`, skill `write-reaction` (tylko polityka na zdarzeniu
+  odebranym, `D12`), poprawka `architecture.md` §9–10.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 

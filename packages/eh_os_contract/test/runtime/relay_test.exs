@@ -100,6 +100,7 @@ defmodule EhOsContract.RelayTest do
 
     assert message == %Bus.Message{
              id: "#{event.id}/#{@name}",
+             key: message.key,
              name: @name,
              correlation_id: event.correlation_id,
              payload: %{"order_id" => "o-1", "total" => 120}
@@ -226,12 +227,49 @@ defmodule EhOsContract.RelayTest do
     assert id in published_ids()
   end
 
-  test "a field the event does not carry is nil in the message" do
+  test "a field the event does not carry is nil in the message, and its key is its id" do
     event = %Event{id: Ecto.UUID.generate(), correlation_id: Ecto.UUID.generate(), payload: %{}}
     relay = EhOsContract.Implementations.consumer(@relay)
 
-    assert %Bus.Message{payload: %{"order_id" => nil, "total" => nil}} =
+    assert %Bus.Message{id: id, key: id, payload: %{"order_id" => nil, "total" => nil}} =
              Relay.message(relay, event)
+  end
+
+  test "two events with the idempotent_on values of one fact give messages of one key" do
+    relay = EhOsContract.Implementations.consumer(@relay)
+
+    message = fn order_id, total ->
+      Relay.message(relay, %Event{
+        id: Ecto.UUID.generate(),
+        correlation_id: Ecto.UUID.generate(),
+        payload: %{"order_id" => order_id, "total" => total, "note" => "n"}
+      })
+    end
+
+    first = message.("o-1", 120)
+    again = message.("o-1", 90)
+
+    assert first.id != again.id
+    assert first.key == again.key
+    assert first.key =~ ~r/\A[0-9a-f]{64}\z/
+    assert message.("o-2", 120).key != first.key
+  end
+
+  test "values that only a delimiter tells apart give two keys, not one" do
+    publication = %{as: "bus_rig_shop.pair.v1", fields: [:a, :b], idempotent_on: [:a, :b]}
+
+    message = fn payload ->
+      Relay.message(%{publication: publication}, %Event{
+        id: Ecto.UUID.generate(),
+        correlation_id: Ecto.UUID.generate(),
+        payload: payload
+      })
+    end
+
+    first = message.(%{"a" => "x),(s:b,s:y", "b" => "z"})
+    second = message.(%{"a" => "x", "b" => "y),(s:b,s:z"})
+
+    assert first.key != second.key
   end
 
   describe "through the local bus" do

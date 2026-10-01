@@ -50,8 +50,11 @@ defmodule EhOsContract.Bus.Suite do
       defp bus_name(tag), do: "bus-suite.#{tag}.#{System.unique_integer([:positive])}.v1"
 
       defp bus_message(name, payload \\ %{"n" => 1}) do
+        id = "#{Ecto.UUID.generate()}/#{name}"
+
         %Message{
-          id: "#{Ecto.UUID.generate()}/#{name}",
+          id: id,
+          key: id,
           name: name,
           correlation_id: Ecto.UUID.generate(),
           payload: payload
@@ -119,7 +122,9 @@ defmodule EhOsContract.Bus.Suite do
       end
 
       describe "#{inspect(elem(@bus_suite_bus, 0))}: delivering" do
-        test "a message published after the consumer subscribed arrives as it was sent" do
+        # Published as soon as the consumer's child has started: it is subscribed by
+        # then, which is what the engine's order of inboxes before relays relies on.
+        test "a message published once the consumer has started arrives as it was sent" do
           name = bus_name("intact")
           consumer = bus_name("consumer")
           bus_consume(consumer, [name])

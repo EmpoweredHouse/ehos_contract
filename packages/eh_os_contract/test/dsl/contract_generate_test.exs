@@ -53,7 +53,7 @@ defmodule EhOsContract.ContractGenerateTest do
       starts_on :payment_recorded, sets: :later
       on :visit_booked, issues: :record_payment
       timer :later, wait: {1, :day}, issues: :record_payment
-      ends_on :visit_closed
+      ends_on :rebooked
     end
 
     read_model :payments, "Płatności", projects: :payment_recorded do
@@ -66,8 +66,8 @@ defmodule EhOsContract.ContractGenerateTest do
       param :since, :date, optional: true
     end
 
-    policy :remind, "Przypomnij", handles: :rebooked, issues: :record_payment
-    effect :notify, "Powiadom", handles: [:payment_recorded, :visit_closed], idempotency: :downstream
+    policy :remind, "Przypomnij", handles: [:rebooked, :visit_closed], issues: :record_payment
+    effect :notify, "Powiadom", handles: :payment_recorded, idempotency: :downstream
   """
 
   setup_all do
@@ -215,8 +215,8 @@ defmodule EhOsContract.ContractGenerateTest do
     end
 
     test "a reaction has one per event it handles, a process manager one per reaction that issues" do
-      assert callbacks([Policies, Remind]) == [rebooked: 1]
-      assert callbacks([Effects, Notify]) == [payment_recorded: 1, visit_closed: 1]
+      assert callbacks([Policies, Remind]) == [rebooked: 1, visit_closed: 1]
+      assert callbacks([Effects, Notify]) == [payment_recorded: 1]
       assert callbacks([ProcessManagers, Chase]) == [evolve: 2, later: 1, visit_booked: 2]
       assert callbacks([ReadModels, Payments]) == [forget: 2, payment_recorded: 1, reset: 0]
     end
@@ -251,7 +251,11 @@ defmodule EhOsContract.ContractGenerateTest do
       assert spec(binaries, [ProcessManagers, Chase], :evolve) =~
                "EhOsContract.Fixtures.Generated.Events.PaymentRecorded.t() | " <>
                  "EhOsContract.Fixtures.Booking.Events.VisitBooked.t() | " <>
-                 "EhOsContract.Fixtures.Generated.Received.VisitClosed.t()"
+                 "EhOsContract.Fixtures.Booking.Events.VisitMoved.t()"
+
+      # Another application's event only a policy takes (D12).
+      assert spec(binaries, [Policies, Remind], :visit_closed) =~
+               "EhOsContract.Fixtures.Generated.Received.VisitClosed.t()"
 
       assert spec(binaries, [Queries, PaymentsOf], :payments_of) =~
                ":: [EhOsContract.Fixtures.Generated.ReadModels.Payments.Row.t()]"

@@ -48,6 +48,7 @@ defmodule EhOsContract.Migrations.V01 do
     event_runs()
     commands()
     subscriptions()
+    inbox()
     process_managers()
     subject_keys()
     erasures()
@@ -64,6 +65,7 @@ defmodule EhOsContract.Migrations.V01 do
     drop table(:eh_os_contract_erasures)
     drop table(:eh_os_contract_subject_keys)
     drop table(:eh_os_contract_process_managers)
+    drop table(:eh_os_contract_inbox)
     drop table(:eh_os_contract_subscriptions)
     drop table(:eh_os_contract_commands)
     drop table(:eh_os_contract_event_runs)
@@ -275,6 +277,22 @@ defmodule EhOsContract.Migrations.V01 do
     create constraint(:eh_os_contract_subscriptions, :eh_os_contract_subscriptions_mode,
              check: "mode IN ('inline', 'ordered')"
            )
+  end
+
+  # One row per fact another application published that an inbox took (D12, v2 §16):
+  # `consumer` is the inbox, `"<contract>:inbox:<name>"`, and `key` the message's
+  # key, so a second delivery, or the same fact under a new message id, finds the row
+  # and is dropped. The row commits with what the inbox's policies dispatched, whose
+  # commands name `id` as their cause, a UUID as every cause is; `message_id` is the
+  # message it came in.
+  defp inbox do
+    create table(:eh_os_contract_inbox, primary_key: false) do
+      add :consumer, :text, primary_key: true
+      add :key, :text, primary_key: true
+      add :id, :binary_id, null: false
+      add :message_id, :text, null: false
+      add :received_at, :utc_datetime_usec, null: false, default: fragment("clock_timestamp()")
+    end
   end
 
   # One row per running process manager: its state, its timers, the last event it took.

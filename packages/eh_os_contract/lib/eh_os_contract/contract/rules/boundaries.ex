@@ -30,6 +30,13 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
   - `consumes "<name>"` names such a versioned name, gives it a local name with
     `as:`, and lists the fields it reads; it lists no events, since the name is one.
 
+  **D12, another application's event is a policy's.** An event received through
+  `consumes "<name>"` arrives in an inbox and never enters this log
+  (`EhOsContract.Inbox`), so only a policy takes it: a read model is rebuilt from the
+  log, an effect's job and a process manager read theirs from it, and none of them
+  would ever see it. One that reacts to such an event takes what a policy's command
+  records instead.
+
   Two checks of the same decisions need the domain, and a Mix compiler has it (L3):
   that every actor in a scoped query's or command's `by:` declares its scope, and that a publication's
   name is under the application's own namespace.
@@ -60,8 +67,26 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
       for(u <- declarations.units, c <- u.commands, v <- command(c, u), do: v),
       Enum.flat_map(declarations.publishes, &publish(&1, events, identity, unit_of)),
       shared_names(declarations.publishes),
-      for(%{from: from} = c <- declarations.consumes, is_binary(from), v <- published(c), do: v)
+      for(%{from: from} = c <- declarations.consumes, is_binary(from), v <- published(c), do: v),
+      received_beyond_policies(declarations)
     ])
+  end
+
+  defp received_beyond_policies(declarations) do
+    received = Rules.received(declarations)
+
+    takers =
+      for(r <- declarations.read_models, e <- r.projects, do: {"read model", r, e, r}) ++
+        for(e <- declarations.effects, h <- e.handles, do: {"effect", e, h, e}) ++
+        for pm <- declarations.process_managers,
+            d <- pm.starts_on ++ pm.on ++ pm.ends_on,
+            do: {"process manager", pm, d.event, d}
+
+    for {kind, taker, event, at} <- takers, MapSet.member?(received, event) do
+      {"D12: #{kind} #{inspect(taker.name)} takes #{inspect(event)}, which arrives from " <>
+         "another application into an inbox and never enters this log, so only a policy " <>
+         "reacts to it; take the event its command records instead", at}
+    end
   end
 
   defp query(query, read_models) do

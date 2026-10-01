@@ -74,6 +74,17 @@ defmodule EhOsContract.Model do
       %{"rehmed.record_payment" =>
           %{kind: :command, name: :record_payment, roles: ["rehmed.reception"], scope: nil}}
 
+  **One more, which is the application's: `<name>.subscribe`** for each event it
+  consumes from another application and a policy handles (D11, `eh-os` D-41), under
+  the publisher's name
+  without its version — `consumes "rehmed.visit.closed.v1"` asks for
+  `rehmed.visit.closed.subscribe` — with the event's name in the contract and no
+  roles: EHOS grants it to the application per environment, never to a person, and
+  the transport delivers by the grant. Nothing in this engine asks for it.
+
+      %{"rehmed.visit.closed.subscribe" =>
+          %{kind: :subscribe, name: :visit_closed, roles: [], scope: nil}}
+
   Derived from the declarations, never written down. The domain's name is read from
   the compiled domain at the call, since a contract records no compile dependency on
   its domain (v2 §8); a domain that is not compiled is refused by name, and so is a
@@ -81,7 +92,7 @@ defmodule EhOsContract.Model do
   """
   @spec capabilities(contract() | module()) :: %{
           String.t() => %{
-            kind: :command | :query | :record,
+            kind: :command | :query | :record | :subscribe,
             name: atom(),
             roles: [String.t()],
             scope: atom() | nil
@@ -116,15 +127,32 @@ defmodule EhOsContract.Model do
         # code does — a reaction's command, an integration's recording — is not
         # grantable at all: a credential granted it by mistake could otherwise write
         # "sent to P1" without a send (plan, E9a review).
-        for {capability, declared} <- commands ++ queries ++ records,
-            {by, declared} = Map.pop!(declared, :by),
-            humans = Enum.filter(by, &MapSet.member?(people, &1)),
-            humans != [],
-            into: %{},
-            do: {capability, Map.put(declared, :roles, humans |> Enum.map(role) |> Enum.sort())}
+        granted =
+          for {capability, declared} <- commands ++ queries ++ records,
+              {by, declared} = Map.pop!(declared, :by),
+              humans = Enum.filter(by, &MapSet.member?(people, &1)),
+              humans != [],
+              into: %{},
+              do: {capability, Map.put(declared, :roles, humans |> Enum.map(role) |> Enum.sort())}
+
+        Map.merge(granted, subscriptions(model))
 
       %{kind: kind, module: module} ->
         raise ArgumentError, "#{inspect(module)} is a #{kind}, not a contract"
+    end
+  end
+
+  # The publisher's name, which D11 versions, less its version: the grant is to take
+  # the event, whichever version a consumer reads. Only for an event a policy handles,
+  # since only then is there an inbox to take it (`EhOsContract.Implementations.inboxes/0`):
+  # a grant with nothing behind it would leave a durable consumer on the transport
+  # that nobody reads.
+  defp subscriptions(model) do
+    for %{kind: :published, from: from, as: as} <- model.consumes,
+        Enum.any?(model.policies, &(as in &1.handles)),
+        into: %{} do
+      {String.replace(from, ~r/\.v[0-9]+\z/, "") <> ".subscribe",
+       %{kind: :subscribe, name: as, roles: [], scope: nil}}
     end
   end
 

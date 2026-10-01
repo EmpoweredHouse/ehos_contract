@@ -30,7 +30,9 @@ defmodule EhOsContract.Auth.Testing do
   `missing_capability` in `eh_os_contract_auth_decisions`, and nothing new in the
   engine's log or in `eh_os_contract_commands`. A capability the contracts declare
   and the map does not name fails the check, and so does a key the contracts do not
-  declare, so a new command cannot be added unchecked. It proves that each door
+  declare, so a new command cannot be added unchecked. `<name>.subscribe`, which a
+  contract derives for each event it consumes from another application, is not a
+  person's and has no door: it needs no entry, and takes none. It proves that each door
   refuses, not that every path into the domain passes through one.
 
   **The test key.** `credential/3` signs with an Ed25519 key made once per test run
@@ -109,12 +111,15 @@ defmodule EhOsContract.Auth.Testing do
           keyword()
         ) :: :ok
   def assert_every_entry_refuses(contracts, entries, opts \\ []) when is_map(entries) do
+    # `<name>.subscribe` is the application's, granted to it and never in a person's
+    # credential, and no door of the host takes it.
     declared =
       contracts
       |> List.wrap()
       |> Enum.map(&EhOsContract.Model.capabilities/1)
       |> Enum.reduce(%{}, &Map.merge(&2, &1))
-      |> Map.keys()
+      |> Enum.reject(fn {_capability, access} -> access.kind == :subscribe end)
+      |> Enum.map(&elem(&1, 0))
       |> Enum.sort()
 
     missing = declared -- Map.keys(entries)
