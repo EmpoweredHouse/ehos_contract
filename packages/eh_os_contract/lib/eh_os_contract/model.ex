@@ -75,7 +75,8 @@ defmodule EhOsContract.Model do
           %{kind: :command, name: :record_payment, roles: ["rehmed.reception"], scope: nil}}
 
   **One more, which is the application's: `<name>.subscribe`** for each event it
-  consumes from another application (D11, `eh-os` D-41), under the publisher's name
+  consumes from another application and a policy handles (D11, `eh-os` D-41), under
+  the publisher's name
   without its version — `consumes "rehmed.visit.closed.v1"` asks for
   `rehmed.visit.closed.subscribe` — with the event's name in the contract and no
   roles: EHOS grants it to the application per environment, never to a person, and
@@ -142,9 +143,14 @@ defmodule EhOsContract.Model do
   end
 
   # The publisher's name, which D11 versions, less its version: the grant is to take
-  # the event, whichever version a consumer reads.
+  # the event, whichever version a consumer reads. Only for an event a policy handles,
+  # since only then is there an inbox to take it (`EhOsContract.Implementations.inboxes/0`):
+  # a grant with nothing behind it would leave a durable consumer on the transport
+  # that nobody reads.
   defp subscriptions(model) do
-    for %{kind: :published, from: from, as: as} <- model.consumes, into: %{} do
+    for %{kind: :published, from: from, as: as} <- model.consumes,
+        Enum.any?(model.policies, &(as in &1.handles)),
+        into: %{} do
       {String.replace(from, ~r/\.v[0-9]+\z/, "") <> ".subscribe",
        %{kind: :subscribe, name: as, roles: [], scope: nil}}
     end

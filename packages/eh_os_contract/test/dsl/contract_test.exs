@@ -317,6 +317,14 @@ defmodule EhOsContract.ContractTest do
           domain: EhOsContract.ContractTest.ClinicDomain,
           context: :settlement
 
+        consumes "rehmed.visit.closed.v1", as: :closed_elsewhere do
+          field :visit_id, :id
+        end
+
+        consumes "rehmed.visit.opened.v1", as: :opened_elsewhere do
+          field :visit_id, :id
+        end
+
         aggregate :visit, "Wizyta" do
           identity :visit_id
           command :close, "Zamknięcie", by: [:reception, :manager, :registry], emits: :closed
@@ -327,7 +335,9 @@ defmodule EhOsContract.ContractTest do
           event :reported, "Zgłoszono", recorded_by: :registry
         end
 
-        policy :remind_on_close, "Przypomnienie po zamknięciu", handles: :closed, issues: :remind
+        policy :remind_on_close, "Przypomnienie po zamknięciu",
+          handles: [:closed, :closed_elsewhere],
+          issues: :remind
 
         process :visit, "Wizyta" do
           correlate :visit_id
@@ -346,8 +356,16 @@ defmodule EhOsContract.ContractTest do
 
       # Only what a person may do is a capability, and its roles are the people's: the
       # system actor is not a role of :close, and :remind (a reaction's) and :reported
-      # (the registry's) have none (plan, E9a review).
+      # (the registry's) have none (plan, E9a review). Besides, the application's
+      # `<name>.subscribe`, without its version, for an event a policy handles, and none
+      # for :opened_elsewhere, which nothing handles and no inbox would take (E12c).
       assert Model.capabilities(EhOsContract.ContractTest.Named) == %{
+               "rehmed.visit.closed.subscribe" => %{
+                 kind: :subscribe,
+                 name: :closed_elsewhere,
+                 roles: [],
+                 scope: nil
+               },
                "clinic.close" => %{
                  kind: :command,
                  name: :close,
