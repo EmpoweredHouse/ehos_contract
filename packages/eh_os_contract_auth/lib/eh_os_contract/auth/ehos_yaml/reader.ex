@@ -42,6 +42,10 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
 
   @spec decode(binary()) :: {:ok, term(), lines()} | {:error, [error()]}
   def decode(text) when is_binary(text) do
+    # yamerl reads its options from its application's environment, so it is loaded, though it is
+    # never started (`runtime: false`).
+    :ok = ensure_loaded()
+
     with :ok <- readable(text),
          :ok <- plain(text),
          {:ok, root} <- construct(text) do
@@ -50,6 +54,13 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
   rescue
     # yamerl raises on some text it cannot read, such as a file that starts with `:`.
     _exception -> refuse(nil, "the file is not YAML that can be read")
+  end
+
+  defp ensure_loaded do
+    case Application.load(:yamerl) do
+      :ok -> :ok
+      {:error, {:already_loaded, :yamerl}} -> :ok
+    end
   end
 
   # yamerl stops at a raw NUL with a function clause error, and reads bytes that are not UTF-8 as

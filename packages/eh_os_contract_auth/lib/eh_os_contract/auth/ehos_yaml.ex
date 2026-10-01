@@ -20,6 +20,10 @@ defmodule EhOsContract.Auth.EhosYaml do
   A refusal is a list of reasons, each at the path of the value it is about, in
   EHOS's notation (`serves[0].port`, `""` for the file as a whole), with the line
   when it is known.
+
+  It reads the developer's own file, in a Mix task. Nothing bounds the time a file
+  takes to read, so it is not for a file that arrives with a request; and its
+  dependencies, yamerl and JSV, are `runtime: false`, so a release has neither.
   """
 
   alias EhOsContract.Auth.EhosYaml.{Reader, Schema}

@@ -11,7 +11,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   manifest v2 to carry its keys unchanged. It refuses what YAML can say and JSON cannot — an anchor or an alias, a
   tag, a directive, a key given twice, a key that is not a string, a second document, `.inf` — and resolves plain
   values by YAML 1.2's core schema, so `yes` is a string. Each reason has the value's path in EHOS's notation and
-  its line. New dependencies: `yamerl` and `jsv`, the reader and the validator EHOS uses.
+  its line. New dependencies: `yamerl` and `jsv`, the reader and the validator EHOS uses, both `runtime: false`:
+  only the manifest task reads `ehos.yaml`, so neither starts with the host or goes into its release.
 
 - **EH2: a file that reads is validated against EHOS's own JSON Schema of its version**, copied unchanged into
   `priv/schemas/ehos.yaml/v1.json` (from `eh-os` `eeb732a`) and carried in the package. A file without `schema`,

@@ -203,9 +203,10 @@ end
 
 defmodule EhOsContract.Auth.EhosYamlNodeModsTest do
   @moduledoc """
-  A host's `config :yamerl, node_mods:` adds to the core schema in every read in the
-  VM, so a value is read as EHOS would not read it; such a node is refused. Not
-  async: it changes yamerl's environment.
+  yamerl's application environment: a host's `config :yamerl, node_mods:` adds to the
+  core schema in every read in the VM, so a value is read as EHOS would not read it,
+  and such a node is refused; and yamerl reads its options from there, so it must be
+  loaded, though nothing starts it. Not async: it changes yamerl's environment.
   """
 
   use ExUnit.Case, async: false
@@ -223,6 +224,15 @@ defmodule EhOsContract.Auth.EhosYamlNodeModsTest do
         :error -> Application.delete_env(:yamerl, :node_mods)
       end
     end)
+  end
+
+  test "a file reads though yamerl was never loaded, as in a Mix task, where it is not started" do
+    assert :ok = Application.unload(:yamerl)
+
+    assert {:ok, %{"health" => %{"port" => 4001}}} =
+             EhosYaml.read(
+               "schema: ehos.yaml/v1\nhealth:\n  port: 4001\n  ready: /health/ready\n  live: /health/live\n"
+             )
   end
 
   test "a value another node module reads is refused, not read as true" do

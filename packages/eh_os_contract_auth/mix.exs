@@ -108,9 +108,11 @@ defmodule EhOsContract.Auth.MixProject do
       # suite also plays EHOS's JWKS endpoint as a function plug handed to Req.
       {:plug, "~> 1.16"},
       # `ehos.yaml` is read and validated as EHOS reads it (`eh-os` D-51): yamerl with YAML
-      # 1.2's core schema, then JSV against the schema EHOS publishes, copied into `priv/`.
-      {:yamerl, "~> 0.10"},
-      {:jsv, "~> 0.25.0"}
+      # 1.2's core schema, then JSV against the schema EHOS publishes, copied into `priv/`. Only
+      # `mix eh_os_contract.manifest` reads it, in the application's CI, so neither is started
+      # with the host or carried into its release.
+      {:yamerl, "~> 0.10", runtime: false},
+      {:jsv, "~> 0.25.0", runtime: false}
     ]
   end
 end
