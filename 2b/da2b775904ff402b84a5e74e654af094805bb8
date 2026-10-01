@@ -1,0 +1,1 @@
+CodeRabbit review of 3263d1d: 1 finding outside the diff, valid, fixed here - "\U00110000" in a value or key raised UnicodeConversionError from List.to_string/1; now refused at path and line (test red on old code). Gate from sandbox/: EXIT=0 - sandbox 145, engine 1104, web 52, auth 138 + 1 property.
