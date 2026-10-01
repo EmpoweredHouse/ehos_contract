@@ -38,7 +38,9 @@ defmodule EhOsContract.Auth.Manifest do
   `EhOsContract.Auth.EhosYaml.read/1`, the registered domains and the registered
   contracts.
 
-  Only the contracts of the selected domain are read. Raises `ArgumentError`, with
+  The map is taken as `read/1` returns it, already refused when EHOS would refuse
+  it; a key `read/1` would refuse goes into the manifest. Only the contracts of the
+  selected domain are read. Raises `ArgumentError`, with
   what to change, when no domain or more than one fits, when the domain's name is
   not one EHOS takes for an application, or when the domain offers no human command.
   """

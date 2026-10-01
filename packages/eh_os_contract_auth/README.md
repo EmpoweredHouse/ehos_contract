@@ -64,19 +64,75 @@ EhOsContract.Auth.verify(token)
 
 ## Generating the EHOS application manifest
 
-At build time, write the authority EHOS will version:
+EHOS deploys an image with its `ehos.manifest/v2` (`eh-os` D-52): the application's `ehos.yaml`, which
+says what the workload needs, extended with what its contracts offer. In CI, beside the image:
 
 ```bash
 mix eh_os_contract.manifest --output ehos.manifest.json
-# Add --domain taxvision when the host registers more than one domain.
+# --ehos-yaml deploy/ehos.yaml when the file is not ehos.yaml in the project's directory
 ```
 
-The task reads the contracts registered through `config :eh_os_contract, applications:` and emits
-strict `ehos.manifest/v1`: human command capabilities and the human actors that hold at least one of
-them as roles. It deliberately omits system actors, actors with no command capability, queries,
-recordings, scopes, publications and private metadata. Manifest v1 has no fields for those, and EHOS
-rejects unknown fields; they need the later EHOS schema rather than an extension invented by this
-package.
+`ehos.yaml` is EHOS's format alone (`eh-os` D-51, `docs/ehos-yaml.md` there), and the task reads it as
+EHOS reads it: YAML 1.2's core schema, no anchor, alias, tag or repeated key, validated against
+EHOS's own JSON Schema, which this package carries unchanged. A file EHOS would refuse is refused here,
+with every reason, its path and its line, and no manifest is written:
+
+```yaml
+schema: ehos.yaml/v1
+needs:
+  database:
+    engine: postgres
+    version: ">= 16"
+    migrate: [/app/bin/migrate]
+serves:
+  - name: web
+    port: 4000
+    public: true
+health:
+  port: 4001
+  ready: /health/ready
+  live: /health/live
+```
+
+Every key of it but `schema` is in the manifest at the same path with the same value, and no default
+is filled in. The task adds:
+
+- `application`, the contracts' domain's `name:`. A project with more than one domain names the one
+  the image is in `ehos.yaml`, as `application: <name>`. EHOS takes lowercase letters, digits and
+  dashes, so a domain named with `_` is refused, with the name to use;
+- `offers`, the human command capabilities and the human actors that hold at least one of them, as
+  roles. System actors, actors with no command, queries, recordings, scopes and publications are
+  absent: the manifest has no field for them yet, and EHOS refuses a field it does not know;
+- `engine`, the `eh_os_contract` version that wrote it.
+
+`contracts` is not written: EHOS counts it in the authority digest, and a contract's version moves
+with any edit, so a new label would ask for `ehos.application.register` at every deploy (`eh-os`
+issue #92). yamerl and JSV, which read and validate the file, are `runtime: false`: a release carries
+neither.
+
+## Configuration from EHOS's environment
+
+EHOS starts the workload with its settings in the environment (`eh-os` D-56), and the package reads no
+variable itself. `config/runtime.exs` and the supervision tree map them:
+
+```elixir
+# config/runtime.exs
+if config_env() == :prod do
+  config :eh_os_contract_auth,
+    # EHOS's public address, the issuer its credentials carry.
+    issuer: System.fetch_env!("EHOS_ISSUER"),
+    # <application>/<environment>, the audience of the credentials the application accepts.
+    audience: System.fetch_env!("EHOS_AUDIENCE")
+end
+
+# the supervision tree: EHOS_CA_FILE is set when the installation's authority is its own.
+auth = if ca = System.get_env("EHOS_CA_FILE"), do: [cacertfile: ca], else: []
+children = [MyApp.Repo, EhOsContract, {EhOsContract.Auth, auth}]
+```
+
+`EHOS_CLIENT_ID` and `EHOS_CLIENT_KEY_FILE` (`eh-os` D-64) are for signing people in to the
+application in a browser, through EHOS. This package does not do that yet (`eh-os` issue #95), so
+it reads neither.
 
 ## Deciding, and recording every decision
 

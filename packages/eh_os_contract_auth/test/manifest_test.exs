@@ -370,7 +370,7 @@ defmodule EhOsContract.Auth.ManifestTest do
     end
   end
 
-  describe "every valid ehos.yaml" do
+  describe "every ehos.yaml its schema accepts" do
     property "comes through unchanged: every key but schema at its path, nothing added" do
       check all(file <- ehos_yaml()) do
         # Written as JSON, which is YAML 1.2, so the file goes through the reader as well.
@@ -389,8 +389,9 @@ defmodule EhOsContract.Auth.ManifestTest do
     end
   end
 
-  # Valid ehos.yaml/v1 files, from its schema: each optional key present or absent, and no
-  # default ever written.
+  # ehos.yaml/v1 files its schema accepts: each optional key present or absent, and no default
+  # ever written. Not all are files EHOS accepts: it refuses repeated names and ports beside the
+  # schema, and the generator carries them as they are.
   defp ehos_yaml do
     gen all(
           needs <- optional(needs()),
@@ -442,8 +443,9 @@ defmodule EhOsContract.Auth.ManifestTest do
     end
   end
 
+  # The schema's paths: a slash, then printable ASCII without spaces.
   defp path do
-    gen all(segment <- string(Enum.concat([?a..?z, ?0..?9, [?-, ?_, ?.]]), max_length: 20)) do
+    gen all(segment <- string(?!..?~, max_length: 60)) do
       "/" <> segment
     end
   end

@@ -147,7 +147,9 @@ defmodule EhOsContractHost.E10OutputsTest do
   @tag :tmp_dir
   test "the manifest task refuses to guess between TaxVision and Rehmed", %{tmp_dir: dir} do
     unnamed = Path.join(dir, "ehos.yaml")
-    File.write!(unnamed, String.replace(File.read!("ehos.yaml"), "application: taxvision\n", ""))
+    named = File.read!("ehos.yaml")
+    assert named =~ "application: taxvision\n"
+    File.write!(unnamed, String.replace(named, "application: taxvision\n", ""))
 
     for args <- [["--ehos-yaml", unnamed], ["--domain", "taxvision"]] do
       Mix.Task.reenable("eh_os_contract.manifest")

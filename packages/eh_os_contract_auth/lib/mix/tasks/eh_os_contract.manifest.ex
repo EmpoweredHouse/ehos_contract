@@ -15,6 +15,10 @@ defmodule Mix.Tasks.EhOsContract.Manifest do
   `config :eh_os_contract, applications:`. A project with more than one domain
   names the one this image is in `ehos.yaml`, as `application: <name>`. What the
   manifest holds is `EhOsContract.Auth.Manifest`'s.
+
+  EHOS keeps every manifest it is given, for good, and every key of `ehos.yaml` is in
+  it as written: `ehos.yaml` holds no secret, such as a password in a `migrate`
+  argument. What the workload needs at run time comes from its environment.
   """
 
   use Boundary, classify_to: EhOsContract.Auth
