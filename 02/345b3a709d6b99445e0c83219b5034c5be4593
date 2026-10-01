@@ -1,0 +1,11 @@
+pre-pr-review of E12c, 66c3637..HEAD (dsl-v2/e12c-inbox).
+Correctness (code-review high) and security/performance (engineering:code-review) ran in parallel on 66c3637..5e15711.
+Fixed, each with a test that fails on the old code:
+- message key collided: Digest.canonical/1 has no length framing (both reviews) -> 479aeeb, Digest.document_digest/1; reverted: 1 of 14 in relay_test.exs fails.
+- a bus down at boot or later took the engine tree (and the host boot) down via the consumer child -> c82a97d, EhOsContract.Inbox.Keeper; reverted: 2 of 15 (new test, boot-order test now asking for the keeper id).
+- <name>.subscribe derived without an inbox behind it -> bab57b3; reverted: 1 test in contract_test.exs.
+- auth Testing.assert_every_entry_refuses/3 wanted a door for .subscribe -> 0b14c73; reverted: 1 of 67 in the auth suite.
+- consumer name with dots documented for adapters; test env restore and double adapter check (c82a97d).
+No change: poison message redelivered (deliberate, MaxDeliver); unimplemented policy in an inbox (same as a raising policy, check warns); append lock held across policies (as :in_transaction); capability Map.merge collision (impossible by segment count).
+Skipped, recorded in PLAN.md for the user: publisher authorization / a .publish capability (transport grant, D-41; documented), inbox retention, runners not notified after an inbox commit (<=1 s poll), conformance not seeing inbox policies.
+Gate on da2b841 code (bab57b3 tree): EXIT=0 - sandbox 144 (check 0/29/9), engine 1090 (check 0/68/6), web 52, auth 67. Intermediate commits 1fa8f65 and bb1f688 checked in a temporary worktree (engine tests; 1fa8f65 only fails MigrationsTest on the manually added inbox table).
