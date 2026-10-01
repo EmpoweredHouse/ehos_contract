@@ -192,6 +192,9 @@ retried, reads at most 64 KB, and waits two seconds to connect and three for eac
 answer, and Req has options that would undo each of these, or the check of the certificate. An
 option the package does not take fails the boot. A proxy or a client certificate is not supported.
 
+However long each part takes, a fetch that has not finished in five seconds is abandoned as a failed
+one, and the keys in force stay.
+
 Req still merges an application's own `config :req, default_options` into this request, under the
 package's options: what the package sets — the connection with its authority, the timeouts,
 retries and redirects — replaces the application's, and the rest reaches the fetch. A global

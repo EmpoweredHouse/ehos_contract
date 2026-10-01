@@ -5165,6 +5165,55 @@ weryfikuje (uwaga z przeglądu ostatniego commita). Do zadania z limitem pobrani
 (`request_timeout` Req to `:infinity`), `refresh/1` bez `catch` i sygnał starego zestawu kluczy. **Znane ograniczenie:** proxy ani certyfikatu klienta (mTLS) nie da się podać; host, który ich
 potrzebuje, prosi, i dochodzi jedna nazwana opcja.
 
+**Poprawka 28 września (2) — jeden termin na całe pobranie klucza, 5 s.** Punkt (1) z pominiętych wyżej. Timeouty Req
+ograniczają pojedyncze kroki: `receive_timeout` liczy się od nowa przy każdym odczycie, `:ssl.connect` wydaje
+timeout połączenia dwa razy (TCP, potem uzgadnianie TLS), a `request_timeout` Finch sprawdza dopiero, gdy odczyt
+wróci, i nie obejmuje ani łączenia, ani pobrania połączenia z puli. Teraz `Keys` puszcza żądanie w osobnym
+`Task`, czeka `Task.yield/2` 5 s, potem `Task.shutdown(:brutal_kill)`: pobranie, które nie skończyło się w 5 s, jest
+nieudanym pobraniem (`{:error, :timeout}`), klucze w mocy zostają. 5 s to połowa `@call_timeout` (10 s), więc
+wołający na nieznanym `kid` dostaje odpowiedź, a `connect_options: [timeout: 30_000]` hosta nie wydłuża już
+niczego ponad termin. Przy okazji `exit` z wnętrza Req (np. timeout puli Finch) jest nieudanym pobraniem, a nie
+wywrotką procesu: wcześniej `rescue` go nie łapał. *Odrzucone:* `request_timeout:` jako domyślna opcja Req —
+najgorszy przypadek to termin plus `receive_timeout`, bez łączenia i puli, i działa tylko z adapterem Finch.
+**Decyzja użytkownika: termin stały, host go nie zmienia.** Przegrały: opcja `:fetch_timeout` z górną granicą
+(start pada `ArgumentError` przy wartości za bliskiej 10 s) i opcja bez granicy — jedyny powód, żeby ją
+podnieść, to podejście pod `@call_timeout`, czyli przywrócenie błędu; klucz to kilkaset bajtów. Koszt: test
+czeka pełne 5 s. Test w `keys_test` na prawdziwym gniazdzie `127.0.0.1` (nie plug — chodzi o zachowanie Finch):
+nagłówki, potem bajt co sekundę, poniżej 3 s `receive_timeout`; start procesu kończy się w 5–6 s, klucz z tabeli
+zostaje. Sprawdzony wstecz: bez terminu proces po 10 s dalej wisi. Komentarz przy `refetch/1` poprawiony, linia
+w `CHANGELOG.md`, zdanie w README i w `@doc` `start_link/1`. Gałąź na PR #35 (te same linie `keys.ex`).
+*Przegląd* (dwa równolegle na `fix/auth-connect-timeout-merge..HEAD`): poprawione — `throw` z pluga albo adaptera
+hosta dalej wywracał proces kluczy przez link z taskiem (łapany był tylko `exit`), teraz każdy rodzaj (test na
+`exit` i na `throw`, plugiem zamiast przestarzałego adaptera-funkcji; sprawdzony wstecz: przy `catch :exit` pada
+tylko test `throw`); `case` na wyniku taska dostał klauzulę `{:exit, _}` (dziś nieosiągalna, bo proces nie łapie
+exitów); komentarz przy `catch` mówił odwrotnie, po co jest link; dokumentacja obiecywała, że termin obejmuje całe
+pobranie, a `store/2` idzie po nim, poza terminem — sformułowania zawężone do żądania; moduledoc `KeyCase` („no
+port is opened”) nieaktualny; górna granica testu 6 s → 8 s (zmierzone 5,003 s, ale wlicza start i odczyt tabeli).
+Bez zmian — suma timeoutów kroków (2 s TCP + 2 s TLS + 3 s odczytu) przekracza 5 s: tak ma być, termin jest
+granicą; log odróżnia go (`(:timeout)`) od timeoutu kroku (`%Req.TransportError{reason: :timeout}`). Zwolnienie
+gniazda i połączenia z puli po zabiciu taska sprawdzone w źródłach Finch/NimblePool (HTTP/1: gniazdo należy do
+taska; HTTP/2: pula anuluje strumienie na DOWN). **Pominięte, sprzed tej zmiany, do użytkownika:** (1) `store/2`
+i `load/1` idą z domyślnym timeoutem repo (15 s), poza terminem — zablokowana tabela (migracja, `VACUUM FULL`)
+trzyma proces dłużej niż `@call_timeout`, a przy starcie każde żądanie z pierwszych sekund czeka i dostaje
+`:no_keys`; krótki `timeout:` na wywołaniach repo to osobna decyzja. (2) `refetch_at_most_every` nie ma dolnej
+granicy, a `fetched_at` jest stemplowane na starcie pobrania: host z wartością poniżej 5 s dostaje pobrania
+jedno za drugim i rosnącą skrzynkę przy atakującym z nieznanymi `kid`. Walidacja przy starcie zmienia kształt
+widoczny dla hosta. (3) Cztery testy PR #35 z adapterem-funkcją wypisują ostrzeżenie o przestarzałości Req.
+
+*Odzyskane 1 października.* Ta poprawka nigdy nie trafiła do `main`: PR #36 miał za bazę gałąź PR-a #35
+(`fix/auth-connect-timeout-merge`), a zmergowany został o 12:44, dziewięć minut po tym, jak #35 wszedł do `main` —
+więc do gałęzi, której nikt już nie mergował (pułapka z `pre-pr-review`: commit na gałęzi zmergowanego PR-a nie
+dociera do `main`). Znalezione przy sprzątaniu gałęzi; cztery commity nałożone na `main` od nowa, dopasowane do
+opcji z #38 (`plug:` i `url:` w miejsce zniesionego `req_options:`, także w `KeyCase`), na polecenie użytkownika.
+Zapis wyżej jest sprzed #38 i zostaje jak był: jego „(2)” powtarza numer poprawki o `req_options` (to trzecia z 28
+września), `connect_options` hosta już nie istnieje, „gałąź na PR #35” to stara baza, a pominięte (3) — testy z
+adapterem-funkcją — zniknęło razem z `req_options`. Otwarte zostają: (1) i (2) wyżej, `refresh/1` bez `catch` i
+sygnał starego zestawu kluczy z notki nad nim. *Przegląd odzyskania* (dwa równolegle): gwarancje #38 nietknięte,
+wycieku po zabiciu taska brak; poprawione dwa komentarze `keys.ex` (o `:req_options` i o zwalnianym połączeniu, które
+dotyczy HTTP/1); pominięte — task jest linkowany, więc sygnał wyjścia z zewnątrz (padający proces pomocniczy pluga
+albo adaptera) dalej zabija proces kluczy, a klauzula `{:exit, _}` jest nieosiągalna; `Task.Supervisor.async_nolink`
+by to zamknął, dziś nic takiego sygnału nie wysyła.
+
 **Skill `pre-pr-review` odpala od teraz oba przeglądy równolegle** (prośba użytkownika): dwa subagenty w jednej
 wiadomości, `code-review high` i `engineering:code-review` z naciskiem na bezpieczeństwo i wydajność, wspólna pula
 uwag; plus dwa nowe rodzaje problemów i ostrzeżenie o mutacjach, które stosują się w połowie.
