@@ -268,17 +268,165 @@ defmodule EhOsContract.Dispatcher do
     end
   end
 
+  # --- from outside ------------------------------------------------------------------
+
+  @typedoc "What `call/3` is asked: a command, a recording or a query, by its capability."
+  @type call :: {:command | :record | :query, String.t()}
+
+  @doc """
+  The contract and the declaration `capability` names among `contracts`: a command,
+  a recording or a query, as `kind` says, under the name EHOS grants it by
+  (`EhOsContract.Model.capabilities/1`). `{:error, :not_found}` for a name none of
+  them declares as that kind — `<name>.subscribe` among them, which no caller
+  calls.
+  """
+  @spec route([module()], :command | :record | :query, String.t()) ::
+          {:ok, Model.t(), map()} | {:error, :not_found}
+  def route(contracts, kind, capability) do
+    Enum.find_value(contracts, {:error, :not_found}, fn contract ->
+      model = Model.fetch(contract)
+
+      case Map.get(Model.capabilities(model), capability) do
+        %{kind: ^kind, name: name} ->
+          declarations =
+            case kind do
+              :command -> model.commands
+              :record -> model.events
+              :query -> model.queries
+            end
+
+          {:ok, model, Enum.find(declarations, &(&1.name == name))}
+
+        _other ->
+          nil
+      end
+    end)
+  end
+
+  @doc """
+  The one way in for what arrives from outside the application's code: a capability's
+  name and the data as a caller sent it, with the credential it came with
+  (plan E12d). `EhOsContract.Plug` is one door onto it; a form, or a job that carries
+  a person's credential, is another.
+
+      EhOsContract.call(
+        {:command, "rehmed.record_payment"},
+        %{"visit_id" => "w-1", "method" => "card", "amount" => 20000},
+        actor: actor, idempotency_key: "req-81"
+      )
+
+  **Whether the caller may is answered first.** Data that is not a map, fields that do
+  not decode against the declaration, a correlation id that is not a UUID: each is
+  asked of the `EhOsContract.Authorizer` as the call would have been, so a caller
+  without the capability is refused whatever it sent, and learns nothing about the
+  declaration's fields; one with it is told what is wrong. Then it goes through
+  `dispatch/3`, `record/3` or `query/3`, so everything they check is checked here
+  the same way.
+
+  `input` is a map with string keys, as JSON decodes; a query's values may come as
+  text, as a query string carries them. `opts`: `actor:`, a credential's
+  `EhOsContract.Actor`, required — a `:system` actor is the application's own code,
+  which dispatches structs; `contracts:`, the contracts this door serves (every
+  registered one by default); for a command or a recording `idempotency_key:` and
+  `correlation_id:`, the latter a UUID's text; for a query `min_position:` and `wait:`,
+  to read a write, as `query/3` takes them — set by the door's own code, an integer
+  each, never taken from the caller: `wait:` bounds how long the call polls.
+
+  Besides what those three answer: `{:error, :not_found}` for a capability none of
+  the contracts declares as that kind, `{:error, :no_actor}` without a credential,
+  and, once the caller may, `{:error, :not_an_object}` and
+  `{:error, :correlation_id_is_not_a_uuid}`.
+  """
+  @spec call(call(), term(), keyword() | map()) ::
+          {:ok, Receipt.t() | [struct()] | struct() | nil}
+          | {:error,
+             Rejection.t()
+             | refusal()
+             | :not_created
+             | :not_found
+             | :no_actor
+             | :not_an_object
+             | :correlation_id_is_not_a_uuid}
+  def call({kind, capability}, input, opts)
+      when kind in [:command, :record, :query] and is_binary(capability) do
+    opts = Enum.to_list(opts)
+    contracts = Keyword.get_lazy(opts, :contracts, &EhOsContract.Registry.contracts/0)
+
+    with {:ok, model, declaration} <- route(contracts, kind, capability),
+         {:ok, actor} <- credential(Keyword.get(opts, :actor)) do
+      case prepare(model, kind, declaration, input, opts) do
+        {:ok, struct} ->
+          run_call(kind, model, struct, actor, opts)
+
+        {:error, problem} ->
+          sent = if is_map(input), do: input, else: %{}
+
+          case permit_undecoded(model, kind, declaration, actor, sent) do
+            :ok -> {:error, problem}
+            refused -> refused
+          end
+      end
+    end
+  end
+
+  defp credential(%Actor{kind: :credential} = actor), do: {:ok, actor}
+  defp credential(_none_or_not_a_credential), do: {:error, :no_actor}
+
+  # The struct dispatch or query takes, or what is wrong with what was sent.
+  defp prepare(_model, _kind, _declaration, input, _opts) when not is_map(input),
+    do: {:error, :not_an_object}
+
+  defp prepare(model, kind, declaration, input, opts) do
+    fields = if kind == :query, do: declaration.params, else: declaration.fields
+    values = Codec.values(model.domain)
+
+    with {:ok, decoded} <- decoded(fields, input, values, kind),
+         :ok <- correlation(kind, Keyword.get(opts, :correlation_id)) do
+      generated = if kind == :record, do: :event, else: kind
+      {:ok, struct!(Model.module_for(model, generated, declaration.name), decoded)}
+    end
+  end
+
+  defp decoded(fields, input, values, kind) do
+    case Codec.decode(fields, input, values, strings: kind == :query) do
+      {:ok, decoded} -> {:ok, decoded}
+      {:error, problems} -> {:error, {:invalid, problems}}
+    end
+  end
+
+  defp correlation(:query, _id), do: :ok
+  defp correlation(_kind, nil), do: :ok
+
+  # The text form only: `Ecto.UUID.cast/1` also takes any sixteen bytes as a raw UUID,
+  # which the log's column then refuses inside the transaction.
+  defp correlation(_kind, id) when is_binary(id) and byte_size(id) == 36 do
+    case Ecto.UUID.cast(id) do
+      {:ok, _uuid} -> :ok
+      :error -> {:error, :correlation_id_is_not_a_uuid}
+    end
+  end
+
+  defp correlation(_kind, _id), do: {:error, :correlation_id_is_not_a_uuid}
+
+  defp run_call(:query, model, params, actor, opts),
+    do: query(model.module, params, [actor: actor] ++ Keyword.take(opts, [:min_position, :wait]))
+
+  defp run_call(kind, model, struct, actor, opts) do
+    opts = [actor: actor] ++ Keyword.take(opts, [:idempotency_key, :correlation_id])
+
+    if kind == :command,
+      do: dispatch(model.module, struct, opts),
+      else: record(model.module, struct, opts)
+  end
+
   # --- who ---------------------------------------------------------------------------
 
-  # `EhOsContract.Plug`'s question when a request fails before dispatch or query would
-  # run — a body that is not an object, fields that do not decode, a correlation id
-  # that is not a UUID: the request either of them would make, with a scope value as
-  # it was sent. Asked first, a caller without the capability learns nothing about
-  # the declaration's fields, and every request is still one decision (v2 §11).
-  @doc false
-  @spec permit_undecoded(Model.t(), :command | :record | :query, map(), Actor.t(), map()) ::
-          :ok | {:error, Authorizer.reason()}
-  def permit_undecoded(model, :command, declaration, actor, input) do
+  # `call/3`'s question when what it was given fails before dispatch or query would
+  # run — not an object, fields that do not decode, a correlation id that is not a
+  # UUID: the request either of them would make, with a scope value as it was sent.
+  # Asked first, a caller without the capability learns nothing about the
+  # declaration's fields, and every request is still one decision (v2 §11).
+  defp permit_undecoded(model, :command, declaration, actor, input) do
     scope =
       case Map.get(declaration, :scope) do
         nil -> nil
@@ -288,13 +436,13 @@ defmodule EhOsContract.Dispatcher do
     permit(model, declaration, actor, scope)
   end
 
-  def permit_undecoded(model, :record, declaration, actor, _input),
+  defp permit_undecoded(model, :record, declaration, actor, _input),
     do: permit_record(model, declaration, actor)
 
-  def permit_undecoded(model, :query, %{scope: nil} = declaration, actor, _input),
+  defp permit_undecoded(model, :query, %{scope: nil} = declaration, actor, _input),
     do: permit_query(model, declaration, actor, nil)
 
-  def permit_undecoded(model, :query, declaration, actor, input) do
+  defp permit_undecoded(model, :query, declaration, actor, input) do
     permit_query(
       model,
       declaration,

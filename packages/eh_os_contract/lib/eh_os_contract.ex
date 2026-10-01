@@ -146,6 +146,24 @@ defmodule EhOsContract do
           | {:error, EhOsContract.Dispatcher.refusal() | :not_created}
   defdelegate record(contract, event, opts), to: EhOsContract.Dispatcher
 
+  @doc """
+  Takes a command, a recording or a query by its capability's name, with the data as a
+  caller sent it and the credential it came with: the one way in for a door onto the
+  application, which asks whether the caller may before it says what is wrong with
+  what was sent (`EhOsContract.Dispatcher.call/3`).
+  """
+  @spec call(EhOsContract.Dispatcher.call(), term(), keyword() | map()) ::
+          {:ok, EhOsContract.Receipt.t() | [struct()] | struct() | nil}
+          | {:error,
+             EhOsContract.Rejection.t()
+             | EhOsContract.Dispatcher.refusal()
+             | :not_created
+             | :not_found
+             | :no_actor
+             | :not_an_object
+             | :correlation_id_is_not_a_uuid}
+  defdelegate call(call, input, opts), to: EhOsContract.Dispatcher
+
   @doc "Asks a query of a contract (`EhOsContract.Dispatcher.query/3`)."
   @spec query(module(), struct(), keyword() | map()) ::
           {:ok, [struct()] | struct() | nil} | {:error, EhOsContract.Dispatcher.refusal()}
