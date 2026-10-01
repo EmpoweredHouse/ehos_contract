@@ -3743,7 +3743,14 @@ publicznej funkcji jest zmianą łamiącą. **Co sprawdzić na nich:**
   E12d, z przeglądu E12d);
 - czy domyślne `contracts:` ma zostać — bez `config :eh_os_contract, applications:` rejestr rzuca wyjątek, a drzwi,
   które zapomną `contracts:`, wystawiają każdą capability (ogranicza je tylko grant credentiala); alternatywa:
-  `contracts:` wymagane, jak w `EhOsContract.Plug.init/1`.
+  `contracts:` wymagane, jak w `EhOsContract.Plug.init/1`;
+- czy `min_position:` i `wait:` (dla query) mają sprawdzenie typu i górną granicę — dziś napis jako `min_position`
+  po cichu pomija czekanie, napis jako `wait` rzuca wyjątek, a `wait` bez granicy trzyma proces (i połączenie, jeśli
+  drzwi wołają w transakcji); doc mówi, że ustawia je kod drzwi, nie wywołujący — formularz LiveView będzie
+  pierwszym, który zechce je przekazać (druga runda przeglądu E12d);
+- czy sprawdzenie `correlation_id` (tekst UUID) przenieść z `call/3` do `dispatch/3` i `record/3`, które dalej
+  biorą 16 surowych bajtów i wywracają zapis, i czy przekazywać dalej postać znormalizowaną przez `Ecto.UUID.cast/1`
+  (wielkie litery dziś zostają w `__meta__` komendy, a z logu wracają małymi).
 Jeśli coś z tego się nie zgadza — poprawka kształtu przed wydaniem 0.3.0 kosztuje jeden PR; po nim — wpis „host
 musi działać” w CHANGELOG-u.
 
@@ -3754,8 +3761,9 @@ uprawnienie” trzyma — każda ścieżka to jedna decyzja `Authorizer`, nikt b
   *poprawione* (`8153fbc`); z wycofaną poprawką pada jeden test z 14 w `plug_test.exs`;
 - **`x-correlation-id` z 16 dowolnych bajtów** przechodził `Ecto.UUID.cast/1` (surowy UUID) i wywracał zapis —
   500 zamiast 400 (sprzed E12d) — *poprawione* (`8506b2b`), tylko tekstowa postać UUID;
-- **`call/3` gubił `min_position:` i `wait:`** dla query — drzwi czytające swój zapis dostawały stare wiersze —
-  *poprawione* (`8506b2b`); opcje jako mapa (jak w `dispatch/3`) i dokładny `@spec` `EhOsContract.call/3` — też
+- **`call/3` gubił `min_position:` i `wait:`** dla query — drzwi czytające swój zapis przez `call/3` dostawały stare
+  wiersze — *poprawione* (`8506b2b`); Plug nie ma na to nagłówka i nie miał go przed E12d, więc klient HTTP dalej
+  nie czyta swojego zapisu z read modelu `:at_least_once` — bez zmiany, druga runda to wskazała; opcje jako mapa (jak w `dispatch/3`) i dokładny `@spec` `EhOsContract.call/3` — też
   `8506b2b`; z wycofanymi poprawkami padają trzy z dziewięciu testów `call_test.exs`;
 - zakres „jak wysłany” tylko dla napisów i domyślne `contracts:` — *do powrotu* (wyżej);
 - surowa wartość zakresu trafia do `scope_value` w decyzjach pakietu auth — znak `\u0000` albo zły UTF-8 z query
@@ -3765,6 +3773,12 @@ uprawnienie” trzyma — każda ścieżka to jedna decyzja `Authorizer`, nikt b
   mikrosekundy; indeks capability w `:persistent_term` przy pomiarze, razem z runnerem read modelu;
 - `answer/7` w Plugu z siedmioma argumentami i prywatne `call/4` obok `Plug.call/2` — *bez zmiany*: czytelność,
   nie poprawność.
+
+**Druga runda** (oba przeglądy na `9540ab9..20f38fd`, na samych poprawkach; nic blokującego): strażnik 401 w Plugu
+zgadza się z `credential/1` dla każdego aktora, a 404 dalej przed 401; tekst UUID i opcje mapą — bez uwag. Opis
+tej listy obiecywał „read your writes” także dla HTTP — *poprawione* w zapisie; tabela statusów Pluga bez wierszy
+400 — *poprawione*; `wait:`/`min_position:`, sprawdzenie UUID poza `call/3` — *do powrotu* (wyżej); klauzula
+`:no_actor` w Plugu nieosiągalna i dwie kopie typu błędów `call/3` — *bez zmiany*: zabezpieczenie i czytelność.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 

@@ -329,7 +329,8 @@ defmodule EhOsContract.Dispatcher do
   which dispatches structs; `contracts:`, the contracts this door serves (every
   registered one by default); for a command or a recording `idempotency_key:` and
   `correlation_id:`, the latter a UUID's text; for a query `min_position:` and `wait:`,
-  to read a write, as `query/3` takes them.
+  to read a write, as `query/3` takes them — set by the door's own code, an integer
+  each, never taken from the caller: `wait:` bounds how long the call polls.
 
   Besides what those three answer: `{:error, :not_found}` for a capability none of
   the contracts declares as that kind, `{:error, :no_actor}` without a credential,
