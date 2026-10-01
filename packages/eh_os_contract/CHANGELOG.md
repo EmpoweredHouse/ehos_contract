@@ -52,6 +52,15 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Changed — a host has to act
 
+- **E12c, D12: only a policy takes an event another application publishes.** A read model, an effect or a
+  process manager that names a `consumes "<name>"` event no longer compiles: the event arrives in an inbox and
+  never enters the log they read, so none of them would ever have been given it. React with a policy, and take
+  the event its command records.
+- **E12c: V01 creates one more table, `eh_os_contract_inbox`.** V01 is changed in place, as before 0.3.0 is
+  first released: a database migrated earlier has no inbox. Recreate it, or create the table V01 now creates.
+- **E12c: an `EhOsContract.Bus.Message` has a fifth field, `key`, and it is required.** A transport adapter
+  carries it as it carries the id; a test that builds a message gives it one.
+
 - **D11: a domain's `name:` is one segment of an application's namespace.** It begins every name the domain's
   contracts publish and every capability, and nothing checked it: `name: :"acme.billing"` published
   `"acme.billing.x.v1"`, which passed both D11 checks and lies in the namespace of an application `acme`. A
@@ -225,6 +234,18 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Added
 
+- **E12c: another application's published event arrives in an inbox (D12).** For every `consumes
+  "<name>"` a policy handles, the engine starts a durable consumer on the configured `EhOsContract.Bus`,
+  `"<contract>:inbox:<name>"`, before any relay. Each delivery is decoded into the contract's received
+  struct and, in one transaction, written to `eh_os_contract_inbox` and handed to the policies, whose
+  commands carry the message's correlation and name the inbox row as their cause; it is acknowledged after
+  the commit. A row exists per message key, so a redelivery, or the same fact published again under a new
+  id, reacts once: the relay gives a message the SHA-256 of its name and its `idempotent_on:` values as its
+  key, or its id when the publication declares none (`eh-os` FM-04, FM-08). A message that does not fit what
+  the contract consumes, or whose policy raises, is not acknowledged and comes again. With no `bus:`
+  configured the boot logs a warning for each inbox. `Model.capabilities/1` has one more capability per
+  consumed name, `<name>.subscribe`, without the name's version, of kind `:subscribe` and with no roles: the
+  application's, granted by EHOS, never a person's.
 - **E12b: a `publish` leaves the application through its relay.** `EhOsContract.Relay` is one ordered
   subscription per `publish`, `"<contract>:relay:<name>"` in `eh_os_contract_subscriptions` and in
   `mix eh_os_contract.subscriptions`, which reads the events it publishes and hands each to the configured
@@ -241,7 +262,7 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   callbacks: `publish/2` hands a batch of `EhOsContract.Bus.Message`s to a transport, and `consumer/2`
   gives the child that runs a durable consumer, whose handler answers `:ack` or `:nack`. It promises
   at-least-once delivery and no order, and requires no deduplication: the inbox (E12c) drops a second
-  delivery by the message's id. `EhOsContract.Bus.Local` runs it inside one BEAM, for tests and
+  delivery by the message's key. `EhOsContract.Bus.Local` runs it inside one BEAM, for tests and
   development, and sends the payload through JSON so a term no transport could carry fails in a test.
   `EhOsContract.Bus.Suite` holds the tests every adapter has to pass, for the transport adapters EHOS
   writes. Nothing publishes or consumes through it yet: the relay is E12b. Configured with

@@ -1689,6 +1689,49 @@ policy :invoice_on_visit_close, "Faktura po zamknięciu wizyty",
 > - **`{:error, _}` is only for what retrying fixes.** An adapter raises for a message the broker refuses for
 >   good (over its size limit, say), so the relay stops at it instead of retrying it forever out of sight.
 
+> **1 October 2026, E12c, as built — the inbox.** `EhOsContract.Inbox`: one durable consumer per
+> `consumes "<name>"` that a policy handles, `"<contract>:inbox:<name>"`, which decodes each delivery into the
+> contract's received struct and, in one transaction, writes its row to `eh_os_contract_inbox` and runs the
+> policies, acknowledging after the commit. Where the text above was not enough:
+>
+> - **A row is keyed by the message's key, not its id**, and the key travels with the message, a fifth field
+>   of `EhOsContract.Bus.Message`: the SHA-256 of the versioned name and the `idempotent_on:` values, which the
+>   relay computes. A redelivery and the same fact under a new id (`eh-os` FM-04 and FM-08) find the row. The
+>   id stands in for the key when a publication declares no `idempotent_on:`, or one of its values is `nil`,
+>   which identifies nothing. The publisher's declaration says what one fact is, as D-04 has it, and a
+>   publisher whose `idempotent_on:` is too narrow loses a second, real fact to it. *Rejected, by the user:*
+>   keying by the id alone and leaving FM-08 to the subscriber's unit — every subscriber writes the same check,
+>   and the publisher's `idempotent_on:` serves no one; an `idempotent_on:` of the subscriber's own on
+>   `consumes` — a second copy of the publisher's declaration, free to drift from it.
+> - **The cause is the inbox row, not the message.** The text says the command's `causation_id` is the
+>   message id; a cause is a UUID in both tables that hold one, and a message id, `<event id>/<name>`, is
+>   not. The policy's commands name the row's id, and the row holds the message id.
+> - **Only a policy takes a received event**, which the text implied by naming only the policy. A read model,
+>   an effect or a process manager that names one is refused (`D12`): a read model is rebuilt from the log and
+>   the other two read theirs from it, where the event never is. One that reacts to such an event takes what a
+>   policy's command records; that is also how a subscriber waits for two messages with a process manager, as
+>   the note on order above says it does.
+> - **When the consumer exists**, which the note before E12 left open. The engine starts every inbox before
+>   any relay, and `EhOsContract.Bus.consumer/2`'s child is subscribed once it has started, so in one node —
+>   two applications on `EhOsContract.Bus.Local` — nothing a relay publishes, its backlog at boot included, is
+>   published before its subscriber listens. Between nodes the durable consumer is the transport's, created
+>   when EHOS grants `<name>.subscribe` (`eh-os` D-41), and what was published before the grant is history,
+>   which comes from the owner, not the bus (`eh-os` D-03). *Rejected, by the user:* a durable consumer
+>   registered at the first boot, through a third callback of `Bus` — the application would create the
+>   consumer the grant is meant to control; leaving it to the transport, with `Bus.Local` keeping everything
+>   for a new consumer — a subscriber deployed later would react to the publisher's history, where nothing
+>   new reacts to history by itself (§12).
+> - **What it does not acknowledge.** A message that does not fit the fields the contract consumes, and one
+>   whose policy raises, rolls back and is answered `:nack`, logged by name, id and kind of failure: nothing is
+>   lost while the declaration or the code is put right. The inbox counts no attempts; the transport's limit
+>   (JetStream's `MaxDeliver`) stops a message that never succeeds.
+> - **`<name>.subscribe` drops the version**, as the example above has it: `consumes "rehmed.visit.closed.v1"`
+>   asks for `rehmed.visit.closed.subscribe`. It is in `EhOsContract.Model.capabilities/1` with no roles, the
+>   application's and never a person's, and nothing in the engine asks for it.
+> - **What the policy is told.** The received struct's `__meta__` has the message's correlation, so the
+>   subscriber's facts join the publisher's run, and the row's id; no position, no actor and no time, which the
+>   message does not carry.
+
 ## 17. Risks
 
 | Risk | Mitigation |
