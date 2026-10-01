@@ -145,7 +145,10 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
-- **Lokalnie, 1 października, na drzewie kodu `0692740`** (głowa kodu E12c): brama z `sandbox/` → **EXIT=0** —
+- **Lokalnie, 1 października, na `da2b841`** (E12c po przeglądzie, głowa kodu `bab57b3`): brama z `sandbox/` →
+  **EXIT=0** — sandbox 144, `check` 0 / 29 / 9; silnik **1090** (1088 + kolizja klucza 1 + broker leżący przy
+  starcie 1), `check` **0 / 68 / 6**; web 52; auth **67** (+1, pomocnik testów i `.subscribe`).
+- **Lokalnie, 1 października, na drzewie kodu `0692740`** (głowa kodu E12c przed przeglądem): brama z `sandbox/` → **EXIT=0** —
   sandbox 144, `check` 0 / 29 / 9; silnik **1088**, `check` **0 / 68 / 6**; web 52; auth 66. Szczegóły i commity
   pośrednie — „E12c — co wyszło”. Brama bazowa tej sesji na `66c3637` — te same liczby co niżej dla `842a2f1`.
 - **Lokalnie, 1 października, na `main` = `842a2f1`** (po merge'u #58; drzewo kodu jak `25e51d5`): brama z
