@@ -95,13 +95,7 @@ defmodule EhOsContract.Digest do
   string cannot make two different values canonicalise alike.
   """
   @spec document_hash(term()) :: String.t()
-  def document_hash(term) do
-    term
-    |> document_canonical()
-    |> then(&:crypto.hash(:sha256, &1))
-    |> Base.encode16(case: :lower)
-    |> binary_part(0, 12)
-  end
+  def document_hash(term), do: term |> document_digest() |> binary_part(0, 12)
 
   @doc """
   The full SHA-256, in hex, of the same length-prefixed encoding `document_hash/1`
