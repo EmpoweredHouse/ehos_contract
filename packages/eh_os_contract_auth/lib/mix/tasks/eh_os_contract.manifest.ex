@@ -10,7 +10,8 @@ defmodule Mix.Tasks.EhOsContract.Manifest do
 
   `ehos.yaml` is read from the project's directory unless `--ehos-yaml` names
   another file, and is read as EHOS reads it (`EhOsContract.Auth.EhosYaml`): a file
-  EHOS would refuse is refused here, with every reason, its path and its line.
+  EHOS would refuse is refused here, with every reason, its path, and its line when
+  it is known.
   Domains and contracts are found among modules of
   `config :eh_os_contract, applications:`. A project with more than one domain
   with contracts names the one this image is in `ehos.yaml`, as

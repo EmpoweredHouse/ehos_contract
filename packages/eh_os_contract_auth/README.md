@@ -75,7 +75,8 @@ mix eh_os_contract.manifest --output ehos.manifest.json
 `ehos.yaml` is EHOS's format alone (`eh-os` D-51, `docs/ehos-yaml.md` there), and the task reads it as
 EHOS reads it: YAML 1.2's core schema, no anchor, alias, tag or repeated key, validated against
 EHOS's own JSON Schema, which this package carries unchanged. A file EHOS's reader or schema would
-refuse is refused here, with every reason, its path and its line, and no manifest is written. The
+refuse is refused here, with every reason, its path, and its line when it is known, and no manifest
+is written. The
 rules EHOS checks beside its schema — names and ports unique in `serves`, the health port not among
 them — are not repeated: EHOS refuses those when the manifest is deployed.
 

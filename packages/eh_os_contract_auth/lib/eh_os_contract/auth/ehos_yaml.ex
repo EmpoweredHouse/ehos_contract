@@ -12,8 +12,8 @@ defmodule EhOsContract.Auth.EhosYaml do
   YAML 1.2's core schema, so `yes` and `on` are strings, not `true`.
 
   A file that reads is then validated against the JSON Schema of the version its
-  `schema` names, EHOS's own file, copied unchanged into this package
-  (`versions/0`). The rules EHOS checks beside its schema, such as unique names and
+  `schema` names, EHOS's own file, copied unchanged into this package's
+  `priv/schemas/`; `versions/0` lists the versions there. The rules EHOS checks beside its schema, such as unique names and
   ports in `serves`, are left to EHOS, which refuses them when the manifest is
   deployed.
 
