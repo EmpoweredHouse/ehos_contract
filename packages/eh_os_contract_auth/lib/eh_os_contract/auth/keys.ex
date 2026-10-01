@@ -65,8 +65,8 @@ defmodule EhOsContract.Auth.Keys do
   # starts again with every read, so an answer trickled a byte at a time never trips
   # it, and the connect timeout is spent once on TCP and again on the TLS handshake.
   # This bounds the request whole, whatever Req's own `config :req, default_options`
-  # adds to it, and stays well inside `@call_timeout`. Writing the table after it is outside the deadline,
-  # bounded by the repo's own timeouts.
+  # adds to it, and stays well inside `@call_timeout`. Writing the table after it is
+  # outside the deadline, bounded by the repo's own timeouts.
   @fetch_deadline 5_000
   @call_timeout 10_000
   # The one entry of the table that is not a key: `{@next, clock, at}`, when the next

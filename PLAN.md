@@ -66,6 +66,9 @@ użytkownik („Co zostało”).
   [#65](https://github.com/EmpoweredHouse/eh-os-contract/issues/65); surowa wartość zakresu w decyzjach auth — [#66](https://github.com/EmpoweredHouse/eh-os-contract/issues/66); kto może publikować —
   [eh-os#96](https://github.com/EmpoweredHouse/eh-os/issues/96).
 - **Kandydaci na później** (wybór użytkownika), każdy z tym, co go blokuje:
+  - **Manifest v2 — pilniejszy, niż plan zakładał:** EHOS przyjmuje v2 i odmawia v1 przy wdrożeniu, a `ehos-ledger`
+    publikuje v1 z naszego generatora, więc krok 6c EHOS-a czeka na nas („EH — odpowiedź EHOS-a”, notka z 1
+    października, z listą decyzji przed startem).
   - **„Po E11” z planu: kontrakty sandboxa jako fikstury akceptacyjne pakietu, potem manifest v2.** D-51/D-52 są w
     `eh-os` przyjęte (29 września); plan generatora — „EH — odpowiedź EHOS-a” (odzyskany 1 października), uwagi
     do nich — `eh-os` #91–#96. **Fikstury kolidują z #49**: kontrakty klientów w pakiecie to dokładnie to, czego #49 chce
@@ -2605,6 +2608,30 @@ szablon i ledger) czeka na EH1 i EH3; E11 nie czeka na nic.
 
 **Zostaje u nas, bez zmian:** operacje `receive` w AsyncAPI z `consumes`, capabilities w OpenAPI tylko po nazwie i
 digest modelu na każdym wygenerowanym dokumencie (sekcja wyżej).
+
+*Sprawdzone 1 października wobec `main` (`c9af0ef`) i `eh-os` `main` (`cfe3883`), na polecenie użytkownika.* Sekcja
+wyżej zostaje jak była; co z niej dziś stoi:
+- **Już nieprawda:** „krok 2 EHOS-a jeszcze nie ruszył” — v2 przyjęty w `eh-os` PR #62 (`27c4645`), fixture
+  `ledger.v2.json` jest, **bez `engine` i `contracts`**, a digest autoryzacji v2 równa się v1; „`ehos-ledger` jest
+  puste” — wygenerowane przez `ehosctl init`, CI puszcza `mix eh_os_contract.manifest` i publikuje **v1, którego
+  wdrożenie odmawia**; krok 6c EHOS-a wdraża ręcznie pisany v2, **dopóki nasz generator nie pisze v2**; ledger przypina
+  `eh-os-contract` na `50eb771` (merge #53, przed #54 — baza zmigrowana wtedy ma stary klucz blokady). Odwołania
+  audytu do plików (`v03.ex`, `migrations.ex:114`, `graph.ex:244`…) wskazują kod naprawiony albo usunięty.
+- **Zrobione:** EH1 (schemat inny niż `public`) w #53 i #54 — poza przykładem zmiennych D-56 w README auth; zapytania
+  do Obana z `prefix:`; V01 zmieniany w miejscu zamiast nowej wersji. „Kolejność względem E11” — nieaktualne, E11
+  jest w `main`.
+- **Stoi:** D-51 i D-52 przyjęte (z dopiskami D-63/D-64: nazwa schematu `ehos_<app>_<env>`, nowe zmienne D-56, druga
+  wersja `ehos.yaml` w przyszłości); schemat `priv/schemas/ehos.yaml/v1.json` w `eh-os` (zamarza z EHOS 0.3.0);
+  sprzeczność 1 (`contracts` w digeście autoryzacji) — `eh-os#92`, bez odpowiedzi; EH2 i EH3 — nie zaczęte.
+- **Zmienione:** sprzeczność 2 — EHOS nie wymaga formatu `sha256:` dla `contracts[].digest`, a pełny SHA-256 mamy
+  (`Digest.document_digest/1`); EH3 — EHOS już przyjmuje v2 i odmawia v1 przy wdrożeniu, a `Manifest.V2` bierze tylko
+  `needs.database` i odmawia nieznanych kluczy (więc bez `consumes`, `.subscribe`, zakresów i publikacji — #93, #94,
+  #96 otwarte). **Nowa niezgodność:** wzorzec nazwy aplikacji EHOS-a nie dopuszcza `_`, a nasze D11 dopuszcza.
+- **Decyzje użytkownika przed startem:** czy v2 niesie `contracts` przy otwartym #92 (każda zmiana etykiety rusza
+  digest autoryzacji); jaki `contracts[].digest` (`document_digest/1` dokumentu modelu czy 12-znakowe `version`); v1
+  skasować czy zostawić za flagą; gdzie kopia schematu `ehos.yaml` (`priv/` biblioteki czy `.ehos/` aplikacji, jak w
+  D-51 i szablonie); odmowa `name:` domeny z `_` przy generowaniu; kolejność wobec fikstur i #49 — **EHOS 6c czeka na
+  ten generator**.
 
 ### Przed E11 — podział i decyzje użytkownika (29 września)
 
