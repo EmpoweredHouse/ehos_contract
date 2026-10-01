@@ -78,7 +78,9 @@ defmodule EhOsContract.Auth do
   get credentials from `EhOsContract.Auth.Testing`.
   """
 
-  use Boundary, deps: [EhOsContract], exports: [Keys, Manifest, Migrations, Plug, Testing]
+  use Boundary,
+    deps: [EhOsContract],
+    exports: [EhosYaml, Keys, Manifest, Migrations, Plug, Testing]
 
   @behaviour EhOsContract.Authorizer
 

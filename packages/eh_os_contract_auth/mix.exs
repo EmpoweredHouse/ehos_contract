@@ -105,7 +105,11 @@ defmodule EhOsContract.Auth.MixProject do
       {:boundary, "~> 0.10", runtime: false},
       # `EhOsContract.Auth.Plug`, the bearer plug in front of `EhOsContract.Plug`. The
       # suite also plays EHOS's JWKS endpoint as a function plug handed to Req.
-      {:plug, "~> 1.16"}
+      {:plug, "~> 1.16"},
+      # `ehos.yaml` is read and validated as EHOS reads it (`eh-os` D-51): yamerl with YAML
+      # 1.2's core schema, then JSV against the schema EHOS publishes, copied into `priv/`.
+      {:yamerl, "~> 0.10"},
+      {:jsv, "~> 0.25.0"}
     ]
   end
 end

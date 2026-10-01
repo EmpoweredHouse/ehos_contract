@@ -7,6 +7,12 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **EH2: `EhOsContract.Auth.EhosYaml.read/1` reads `ehos.yaml` as EHOS reads it** (`eh-os` D-51), for the
+  manifest v2 to carry its keys unchanged. It refuses what YAML can say and JSON cannot — an anchor or an alias, a
+  tag, a directive, a key given twice, a key that is not a string, a second document, `.inf` — and resolves plain
+  values by YAML 1.2's core schema, so `yes` is a string. Each reason has the value's path in EHOS's notation and
+  its line. New dependencies: `yamerl` and `jsv`, the reader and the validator EHOS uses.
+
 - **E12c: `assert_every_entry_refuses/3` asks for no entry for `<name>.subscribe`.** The engine derives that
   capability for an event a contract consumes from another application and a policy handles; it is the
   application's, in no person's credential, and has no door. A map that names it now fails the check as a key

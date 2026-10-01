@@ -1,0 +1,202 @@
+defmodule EhOsContract.Auth.EhosYaml.Reader do
+  @moduledoc false
+  # `eh-os` D-51: `ehos.yaml` is read into JSON's data model before its schema sees it, and
+  # whatever JSON cannot say is refused, as EHOS's own reader refuses it: an anchor or an alias, a
+  # tag, a directive, a key given twice, a key that is not a string, a second document, and a
+  # number JSON cannot hold. Plain values are resolved by YAML 1.2's core schema, so `yes` is a
+  # string. A reader that took the last of two keys, or expanded an alias, would write a manifest
+  # from a file EHOS's checking page refuses.
+  #
+  # yamerl reads twice, as in EHOS: its parser's tokens show anchors, aliases, tags and
+  # directives, which its tree no longer does, and its detailed tree keeps every key of a mapping
+  # with its line.
+  #
+  # EHOS's bounds on time, memory and nesting are not carried over: they guard a server against
+  # files from anyone, and this reads the developer's own file in their CI.
+
+  @type path :: [String.t() | non_neg_integer()]
+  @type error :: %{path: path(), line: pos_integer() | nil, message: String.t()}
+  @typedoc "The line each value is on, by its path: for a mapping's value, the line of its key."
+  @type lines :: %{path() => pos_integer()}
+
+  @construction [:detailed_constr, {:schema, :core}, {:keep_duplicate_keys, true}]
+  @directives [:yamerl_yaml_directive, :yamerl_tag_directive, :yamerl_reserved_directive]
+  @only_json "ehos.yaml holds only what JSON can"
+
+  @spec decode(binary()) :: {:ok, term(), lines()} | {:error, [error()]}
+  def decode(text) when is_binary(text) do
+    with :ok <- readable(text),
+         :ok <- plain(text),
+         {:ok, root} <- construct(text) do
+      data(root)
+    end
+  rescue
+    # yamerl raises on some text it cannot read, such as a file that starts with `:`.
+    _exception -> refuse(nil, "the file is not YAML that can be read")
+  end
+
+  # yamerl stops at a raw NUL with a function clause error, and reads bytes that are not UTF-8 as
+  # Latin-1; both are refused before it reads anything.
+  defp readable(text) do
+    cond do
+      not String.valid?(text) -> refuse(nil, "the file is not UTF-8 text")
+      String.contains?(text, <<0>>) -> refuse(nil, nul())
+      true -> :ok
+    end
+  end
+
+  defp plain(text) do
+    _ = :yamerl_parser.string(text, [{:token_fun, token_fun(0)}])
+    :ok
+  catch
+    {__MODULE__, error} -> {:error, [error]}
+    {:yamerl_exception, errors} -> {:error, Enum.map(errors, &parsing_error/1)}
+  end
+
+  # The token function carries how many documents the parser has begun, so a second one is
+  # refused as soon as it is reached.
+  defp token_fun(documents), do: &{:ok, next(&1, documents)}
+
+  defp next({:yamerl_doc_start, line, _column, _version, _tags}, 1),
+    do: throw_refusal(line, "the file holds more than one YAML document")
+
+  defp next({:yamerl_doc_start, _line, _column, _version, _tags}, documents),
+    do: token_fun(documents + 1)
+
+  defp next({:yamerl_collection_start, _line, _column, tag, _style, _kind}, documents) do
+    untagged(tag)
+    token_fun(documents)
+  end
+
+  defp next(token, documents) do
+    plain_token(token)
+    token_fun(documents)
+  end
+
+  defp plain_token({:yamerl_anchor, line, _column, name}),
+    do: throw_refusal(line, "an anchor (&#{name}) is refused: #{@only_json}")
+
+  defp plain_token({:yamerl_alias, line, _column, name}),
+    do: throw_refusal(line, "an alias (*#{name}) is refused: #{@only_json}")
+
+  defp plain_token(token) when elem(token, 0) in @directives,
+    do: throw_refusal(elem(token, 1), "a directive is refused: ehos.yaml is YAML 1.2 as it is")
+
+  defp plain_token({:yamerl_scalar, _line, _column, tag, _style, _substyle, _text}),
+    do: untagged(tag)
+
+  defp plain_token(_token), do: :ok
+
+  # A node written without a tag has a non-specific one: `?` when plain, `!` when quoted.
+  defp untagged({:yamerl_tag, _line, _column, {:non_specific, _}}), do: :ok
+
+  defp untagged({:yamerl_tag, line, _column, uri}),
+    do: throw_refusal(line, "a tag (#{uri}) is refused: #{@only_json}")
+
+  # yamerl calls the token function for each token as it parses; throwing is how it stops.
+  @spec throw_refusal(term(), String.t()) :: no_return()
+  defp throw_refusal(line, message), do: throw({__MODULE__, error([], position(line), message)})
+
+  defp parsing_error({:yamerl_parsing_error, _type, text, line, _column, _name, _token, _extra}),
+    do: error([], position(line), "the file is not YAML: #{text}")
+
+  defp construct(text) do
+    case :yamerl_constr.string(text, @construction) do
+      [] -> refuse(nil, "the file holds no YAML document")
+      # A second document has been refused by the token function.
+      [{:yamerl_doc, root}] -> {:ok, root}
+    end
+  catch
+    {:yamerl_exception, errors} -> {:error, Enum.map(errors, &parsing_error/1)}
+  end
+
+  defp data(root) do
+    {data, {lines, errors}} = node(root, [], at({%{}, []}, [], line(root)))
+
+    case errors do
+      [] -> {:ok, data, lines}
+      errors -> {:error, Enum.reverse(errors)}
+    end
+  end
+
+  defp node({:yamerl_map, _module, _tag, _position, pairs}, path, acc) do
+    {entries, _seen, acc} =
+      Enum.reduce(pairs, {[], %{}, acc}, fn {key, value}, state ->
+        pair(key, value, path, state)
+      end)
+
+    {Map.new(entries), acc}
+  end
+
+  defp node({:yamerl_seq, _module, _tag, _position, items, _count}, path, acc) do
+    items
+    |> Enum.with_index()
+    |> Enum.map_reduce(acc, fn {item, index}, acc ->
+      node(item, path ++ [index], at(acc, path ++ [index], line(item)))
+    end)
+  end
+
+  # A NUL written as an escape, `"\0"`, reaches the string; EHOS refuses it as well.
+  defp node({:yamerl_str, _module, _tag, _position, chars} = str, path, acc) do
+    string = List.to_string(chars)
+
+    if String.contains?(string, <<0>>),
+      do: {string, add(acc, error(path, line(str), "holds a NUL character"))},
+      else: {string, acc}
+  end
+
+  defp node({:yamerl_null, _module, _tag, _position}, _path, acc), do: {nil, acc}
+
+  defp node({kind, _module, _tag, _position, value}, _path, acc)
+       when (kind == :yamerl_int and is_integer(value)) or
+              (kind == :yamerl_float and is_float(value)) or
+              (kind == :yamerl_bool and is_boolean(value)),
+       do: {value, acc}
+
+  # `.inf` and `.nan` are floats to YAML and nothing to JSON.
+  defp node(other, path, acc),
+    do: {nil, add(acc, error(path, line(other), "is a number JSON cannot hold"))}
+
+  defp pair({:yamerl_str, _module, _tag, _position, chars} = key, value, path, state) do
+    {entries, seen, acc} = state
+    name = List.to_string(chars)
+    child = path ++ [name]
+
+    cond do
+      String.contains?(name, <<0>>) ->
+        {entries, seen, add(acc, error(path, line(key), "has a key that holds a NUL character"))}
+
+      Map.has_key?(seen, name) ->
+        message = "is given twice in one mapping; the first is on line #{seen[name]}"
+        {entries, seen, add(acc, error(child, line(key), message))}
+
+      true ->
+        {data, acc} = node(value, child, at(acc, child, line(key)))
+        {[{name, data} | entries], Map.put(seen, name, line(key)), acc}
+    end
+  end
+
+  defp pair(key, _value, path, {entries, seen, acc}),
+    do: {entries, seen, add(acc, error(path, line(key), "has a key that is not a string"))}
+
+  defp at(acc, _path, nil), do: acc
+  defp at({lines, errors}, path, line), do: {Map.put(lines, path, line), errors}
+
+  defp add({lines, errors}, error), do: {lines, [error | errors]}
+
+  defp line(node) do
+    case elem(node, 3) do
+      position when is_list(position) -> position(Keyword.get(position, :line))
+      _other -> nil
+    end
+  end
+
+  defp position(line) when is_integer(line) and line > 0, do: line
+  defp position(_line), do: nil
+
+  defp nul, do: "the file holds a NUL character"
+
+  defp refuse(line, message), do: {:error, [error([], line, message)]}
+
+  defp error(path, line, message), do: %{path: path, line: line, message: message}
+end
