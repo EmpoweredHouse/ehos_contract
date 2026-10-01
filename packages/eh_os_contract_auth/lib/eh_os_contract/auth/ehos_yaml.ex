@@ -41,7 +41,7 @@ defmodule EhOsContract.Auth.EhosYaml do
   @spec read(binary()) :: {:ok, map()} | {:error, [error()]}
   def read(text) when is_binary(text) do
     with {:ok, data, lines} <- Reader.decode(text),
-         {:ok, data} <- mapping(data),
+         {:ok, data} <- mapping(data, lines),
          :ok <- validate(data, lines) do
       {:ok, data}
     else
@@ -57,8 +57,10 @@ defmodule EhOsContract.Auth.EhosYaml do
   @spec versions() :: [String.t()]
   def versions, do: Schema.versions()
 
-  defp mapping(%{} = data), do: {:ok, data}
-  defp mapping(_data), do: {:error, [%{path: [], line: 1, message: "must be a mapping"}]}
+  defp mapping(%{} = data, _lines), do: {:ok, data}
+
+  defp mapping(_data, lines),
+    do: {:error, [%{path: [], line: Map.get(lines, []), message: "must be a mapping"}]}
 
   # A reason from the schema has no line of its own: it is given the line of the value's key, or,
   # for a key that is missing, of the mapping that should hold it.

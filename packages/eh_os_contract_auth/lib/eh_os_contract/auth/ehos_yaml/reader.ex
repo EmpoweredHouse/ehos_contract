@@ -9,7 +9,9 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
   #
   # yamerl reads twice, as in EHOS: its parser's tokens show anchors, aliases, tags and
   # directives, which its tree no longer does, and its detailed tree keeps every key of a mapping
-  # with its line.
+  # with its line. The rules and their words follow EHOS's reader,
+  # `lib/ehos/applications/ehos_yaml/yaml.ex` in `eh-os` at `f7b2330`; a change there is a change
+  # to carry here.
   #
   # Two of EHOS's bounds are rules a valid file can break, and are kept: at most 64 KiB, and at most
   # 256 of `[` and `{` anywhere in the text, quoted strings included. Its budgets of time and memory,

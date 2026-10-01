@@ -180,6 +180,11 @@ defmodule EhOsContract.Auth.EhosYamlTest do
     end
   end
 
+  test "a file that is not a mapping is refused at the line it begins on, not at a comment" do
+    assert EhosYaml.read("# ehos.yaml\n# for the ledger\n- schema: ehos.yaml/v1\n") ==
+             {:error, [%{path: "", line: 3, message: "must be a mapping"}]}
+  end
+
   test "text yamerl raises on is refused with what it raised" do
     assert EhosYaml.read(":") ==
              {:error,
