@@ -66,8 +66,9 @@ użytkownik („Co zostało”).
   [#65](https://github.com/EmpoweredHouse/eh-os-contract/issues/65); surowa wartość zakresu w decyzjach auth — [#66](https://github.com/EmpoweredHouse/eh-os-contract/issues/66); kto może publikować —
   [eh-os#96](https://github.com/EmpoweredHouse/eh-os/issues/96).
 - **Kandydaci na później** (wybór użytkownika), każdy z tym, co go blokuje:
-  - **„Po E11” z planu: kontrakty sandboxa jako fikstury akceptacyjne pakietu, potem manifest v2** (po akceptacji
-    D-51/D-52 w `eh-os`). **Fikstury kolidują z #49**: kontrakty klientów w pakiecie to dokładnie to, czego #49 chce
+  - **„Po E11” z planu: kontrakty sandboxa jako fikstury akceptacyjne pakietu, potem manifest v2.** D-51/D-52 są w
+    `eh-os` przyjęte (29 września); plan generatora — „EH — odpowiedź EHOS-a” (odzyskany 1 października), uwagi
+    do nich — `eh-os` #91–#96. **Fikstury kolidują z #49**: kontrakty klientów w pakiecie to dokładnie to, czego #49 chce
     uniknąć — do rozstrzygnięcia przed startem (propozycja z E11: zmyślone odpowiedniki tego samego kształtu).
   - **Drobne reguły z „Otwartych pytań”**, każda nowym powodem odmowy albo pomiarem — do decyzji użytkownika.
 - **Poza etapami, bez zmian** — użytkownika: proces na porcie 4000, wdrożenie E8 u hosta, publikacja na Hex, F1/F2
@@ -2472,6 +2473,138 @@ najważniejszej:
 **Decyzja użytkownika (29 września): manifest v2 po E11**, po akceptacji D-51 i D-52 — pisany na ostatecznych
 nazwach, bez `Next`. *Odrzucone:* mały etap przed E11 — skróciłby czekanie Stage 5, ale kod manifestu czyta model
 przez moduły, które E11 przemianowuje, więc byłby ruszany dwa razy.
+
+### EH — odpowiedź EHOS-a: D-51, D-52 i plan generatora `ehos.manifest/v2` (29 września)
+
+*Odzyskane 1 października z niezacommitowanego `PLAN.md` w worktree `contract-linking-entity-definition-c94951`
+(sesja z 29 września), na polecenie użytkownika, bez zmian treści. Od tamtej pory: tabele poza `public` (D-54, #51)
+weszły w #53 i #54, a potrzeby wobec EHOS-a — w tym uwagi do D-51/D-52 — są w `eh-os` #91–#96 (#60); co z planu EH
+jeszcze stoi, trzeba sprawdzić przed startem.*
+
+**Skąd.** EHOS przejął propozycję z sekcji wyżej i zapisał ją w dwóch przyjętych rekordach, zmergowanych w `eh-os`
+(PR #58, `9be1faf`): **D-51** — `ehos.yaml` definiuje wyłącznie EHOS, jako wersjonowany JSON Schema;
+**D-52** — manifest `ehos.manifest/v2` to `ehos.yaml` rozszerzony o to, co oferują kontrakty. Kontekst przysłał
+użytkownik; rekordy przeczytane z `origin/main` `eh-os` (`85fc336`), razem z D-54, D-56 i planem Stage 5. **Krok 1
+Stage 5 jest już zmergowany (#59):** schemat leży w `eh-os` pod `priv/schemas/ehos.yaml/v1.json`, więc walidację
+można podłączyć od razu, a nie „gdy krok 1 się zmerguje”. EHOS czyta plik przez yamerl (dwa przebiegi, schemat
+`core`, `keep_duplicate_keys`) i waliduje JSV 0.25 (draft 2020-12). Po stronie EHOS krok 2 (przyjęcie v2, dwa
+digesty, ręczny `ledger.v2.json`) jeszcze nie ruszył. `EmpoweredHouse/ehos-ledger` jest pustym repozytorium.
+
+**Co się zmienia względem naszej propozycji.** `serves` jest na najwyższym poziomie, nie w `offers`, żeby klucze
+dewelopera miały w manifeście te same ścieżki. Nazwa aplikacji dalej pochodzi z `name:` domeny, a przy kilku
+domenach z pola `application` w `ehos.yaml`, które zastępuje flagę `--domain`. Digestów nie liczymy: liczy je EHOS.
+
+**Przykład, jak to wygląda dla dewelopera.** Deweloper ledgera pisze `ehos.yaml` z przykładu D-51 (baza, `web` na
+4000, health na 4001). CI uruchamia `mix eh_os_contract.manifest --output ehos.manifest.json`. Generator zamienia
+`schema: ehos.yaml/v1` na `"schema": "ehos.manifest/v2"` i `"ehos_yaml": "ehos.yaml/v1"`, przepisuje `needs`,
+`serves` i `health` bez zmian i dokłada `application: "ledger"` z domeny, `engine`, `contracts` oraz `offers` z
+capability `ledger.record_entry` i rolami `ledger.clerk` i `ledger.auditor`. `public: false` się w nim nie pojawia,
+jeśli deweloper go nie napisał.
+
+**Audyt biblioteki pod D-54 i D-56 (29 września, tylko odczyt kodu).**
+
+- **`public` jest zaszyty w dwóch modułach migracji i łamie migracje w innym schemacie.**
+  `EhOsContract.Migrations` (`migrations.ex:114-120`, `:145`) i `EhOsContract.Auth.Migrations`
+  (`auth/migrations.ex:63-69`, `:93`) czytają wersję z `pg_namespace.nspname = 'public'` i piszą
+  `COMMENT ON TABLE "public".…`. Tabele przez `search_path` trafią do `ledger_production`, ale `COMMENT` padnie, bo
+  `public.eh_os_contract_events` nie istnieje. A gdyby nie padł, odczyt wersji dawałby 0 i następne `up()`
+  tworzyłoby wszystko od nowa. Reszta biblioteki (Ecto, surowe SQL w V03, funkcje i triggery, `insert_all` po
+  nazwie tabeli) nie kwalifikuje nazw, więc działa przez `search_path`. Opcji `prefix` nie ma nigdzie i nie jest
+  potrzebna, bo D-56 każe aplikacji ustawić `search_path` na `DATABASE_SCHEMA`.
+- **Klucz advisory locka dopisywania jest globalny.** `v03.ex:39` ma stały klucz `pg_advisory_xact_lock`, bez
+  schematu. Wszystkie aplikacje na jednej bazie `apps` serializowałyby sobie nawzajem dopisywanie do logu. Wynik
+  byłby poprawny, ale jedna aplikacja spowalniałaby wszystkie. EHOS prosi wprost o klucz ze schematem.
+- **LISTEN/NOTIFY idzie tylko przez notifier Obana**, z pustym payloadem (`subscription/runner.ex:42`). Kanał to
+  `"<prefix Obana>.oban_eh_os_contract"`, więc zawiera schemat, gdy aplikacja da Obanowi prefix `DATABASE_SCHEMA`
+  (D-56 tego wymaga). Cztery bezpośrednie zapytania biblioteki o `Oban.Job` (`graph.ex:244`, `paths.ex:395,410`,
+  `process_manager.ex:265`) idą bez `prefix:` przez `search_path`. Przy D-56 to ten sam schemat, ale nigdzie tego
+  nie przypinamy.
+- **DDL w runtime: brak.** Każde `CREATE`, `ALTER`, `DROP` i `COMMENT` jest w migracjach. Rola runtime z samym
+  DML wystarczy.
+- **Zmienne D-56: biblioteka nie czyta żadnych zmiennych** (jedyna to `PORT` w `sandbox/config/dev.exs`).
+  `eh_os_contract_auth` bierze `:issuer`/`:audience` z konfiguracji aplikacji, a CA z opcji `cacertfile:` child
+  spec. Mapowanie `EHOS_ISSUER`, `EHOS_AUDIENCE` i `EHOS_CA_FILE` należy do `config/runtime.exs` aplikacji, czyli do
+  szablonu w `ehos-tools`. U nas wystarczy przykład w README pakietu auth.
+
+**Dwie sprzeczności z D-52 i jedna luka w D-51. Zgłoszone użytkownikowi; zmiana przyjętego rekordu to nowy rekord
+w `eh-os`, nie nasza poprawka.**
+
+1. **`contracts` w formie uprawnień.** D-52 liczy digest uprawnień z `application`, `contracts`, `capabilities` i
+   `roles`, a `contracts` niesie `version` i `digest` każdego kontraktu. Nasza `version` to hash całego kontraktu,
+   scenariuszy i zdarzeń wewnętrznych też. *Przykład:* poprawka opisu scenariusza w `Entries` zmienia `version`,
+   więc zmienia digest uprawnień, a wtedy `ehos.platform_operator` (ma `deploy`, nie ma `register`) nie może tego
+   wdrożyć, choć niczyje uprawnienia się nie zmieniły. To stoi w sprzeczności z własnym zdaniem D-52, że forma
+   uprawnień obejmuje to, co dokument mówi o uprawnieniach. W E10 zrobiliśmy odwrotnie z tego samego powodu:
+   manifest v1 pomija `engine` i `contracts`, „więc metadane nie ruszają digestu autoryzacji”. Stąd druga
+   konsekwencja: nasz v1 (bez `contracts`) i nasz v2 (z `contracts`) oferujące to samo **nie** mają tego samego
+   digestu uprawnień, a D-52 to obiecuje w potwierdzeniu.
+2. **`contracts[].digest` jako `sha256:…`.** Taki digest kontraktu dziś u nas nie istnieje. Digest dokumentu
+   `/model` (`Digest.document_hash/1`) i `version` mają po 12 znaków hex (48 bitów). Da się dodać pełny SHA-256
+   dokumentu `/model` kontraktu. To wybór po naszej stronie, byle opisany. Porównanie z `/model` działającej
+   instancji (D-16, Stage 8) wymaga wtedy tej samej wartości w eksporcie.
+3. **Luka w D-51: ścisłe czytanie YAML-a.** D-51 mówi, że generator waliduje schematem i „nie pisze drugiej
+   implementacji” reguł spoza schematu. Tylko że odmowa aliasów, anchorów, tagów i powtórzonych kluczy nie siedzi w
+   schemacie: EHOS robi ją w czytniku, zanim schemat cokolwiek zobaczy. Generator z luźnym parserem (`yaml_elixir`
+   domyślnie bierze ostatni z powtórzonych kluczy i rozwija aliasy) zapisałby poprawny JSON z pliku, który EHOS na
+   stronie sprawdzania odrzuca. Wtedy „ta sama wartość pod tą samą ścieżką” traci sens. Generator musi więc czytać
+   YAML tak ściśle jak EHOS, z tym samym rozwiązywaniem skalarów (YAML 1.2 `core`: `yes` to string). To jest druga
+   implementacja czytnika, ale nie reguł. Reguł spoza schematu (unikalne nazwy i porty w `serves`, port health spoza
+   `serves`) nie piszemy: łapie je EHOS przy sprawdzeniu wdrożenia (krok 2).
+
+**Plan — etap EH, trzy części, każda z `pre-pr-review` przed następną.** Wszystko w pakietach, więc brama
+`mix check` jest bez zmian.
+
+- **EH1 — biblioteka w schemacie innym niż `public` (D-54, D-56).** Oba moduły migracji czytają i piszą wersję w
+  `current_schema()` zamiast `'public'`. Klucz locka dopisywania bierze się ze schematu, w którym biegnie migracja:
+  funkcja `eh_os_contract_append_lock()` liczy go z `current_schema()` albo migracja wpisuje go na stałe. Wybór
+  zapada w EH1, a zmiana idzie nową wersją migracji, nie edycją V03. *Odbiór:* testy silnika i auth na drugim
+  schemacie, np. `app_test` z `search_path` i prefiksem Obana: `up()` dwa razy jest idempotentne, `down()` sprząta,
+  dispatch, subskrypcja i nagranie działają. Rola z samym DML (bez `CREATE`) przechodzi ścieżkę runtime. Dwa
+  schematy w jednej bazie nie dzielą klucza locka. *Kontrola:* przed poprawką test na drugim schemacie pada na
+  `COMMENT`. Przy okazji przykład w README auth: `EHOS_ISSUER` → `:issuer`, `EHOS_AUDIENCE` → `:audience`,
+  `EHOS_CA_FILE` → `cacertfile:`.
+- **EH2 — czytanie i walidacja `ehos.yaml` (D-51).** W `eh_os_contract_auth`, bo tam jest task manifestu:
+  - ścisły czytnik na yamerl z opcjami EHOS-a (`detailed_constr`, `{:schema, :core}`, `keep_duplicate_keys`),
+    który odmawia anchora, aliasu, tagu, dyrektywy, powtórzonego klucza, klucza niebędącego stringiem i drugiego
+    dokumentu. Budżetów czasu i pamięci EHOS-a nie przenosimy: generator czyta plik dewelopera w jego własnym CI,
+    nie dane z sieci;
+  - walidacja JSV (draft 2020-12) względem kopii `ehos.yaml/v1.json` w `priv/` pakietu, bez zmian, z zapisanym
+    źródłem (`eh-os` `85fc336`) i SHA-256 przypiętym testem. Kopia jest w bibliotece, a nie w `.ehos/` aplikacji,
+    bo wersja manifestu i tak musi wiedzieć, które wersje `ehos.yaml` może nieść;
+  - błędy ze ścieżką, jak na stronie sprawdzania EHOS-a.
+
+  *Odbiór:* korpus odmów, jedna na plik: brak `schema`, brak `health`, `database` bez `engine`, nieznany klucz,
+  powtórzony klucz, alias, port 80, `version: 16` jako liczba. Przykład z D-51 przechodzi. Każdy fixture
+  `ehos.yaml` w repozytorium waliduje się tą kopią (potwierdzenie D-51 „w Waszym CI”).
+- **EH3 — `ehos.manifest/v2` (D-52).** Task czyta `ehos.yaml` (domyślnie z katalogu projektu, `--ehos-yaml` do
+  zmiany) i pisze v2:
+  - każdy klucz poza `schema` bez zmian, `ehos_yaml` z `schema`;
+  - `application` z domeny albo z pola: przy kilku domenach bez pola odmowa, a pole niebędące nazwą żadnej domeny też
+    odmowa;
+  - `offers.capabilities` i `offers.roles` jak w v1;
+  - `engine` z `EhOsContract.version/0`, a `contracts` z `name`, `version` i digestem ustalonym w punkcie 2 wyżej.
+
+  Flaga `--domain` znika. v1 zostaje za `--schema ehos.manifest/v1`, dopóki EHOS nie przyjmuje v2 (krok 2 Stage 5),
+  potem wycinamy. *Odbiór:*
+  - test property (StreamData, generator poprawnych `ehos.yaml` ze schematu v1): każdy klucz poza `schema` ma w
+    manifeście tę samą wartość pod tą samą ścieżką, `ehos_yaml` = `schema`, a generator nie dopisuje wartości
+    domyślnych;
+  - odmowy: kilka domen bez `application`, `application` spoza domen, `ehos.yaml` niespełniający schematu;
+  - manifest sandboxa: sandbox ma TaxVision i Rehmed, więc jego `ehos.yaml` musi nazwać `application`, i to jest
+    test odmowy za darmo.
+
+  *Kontrola:* zmiana w `ehos.yaml` samego `serves` nie rusza `offers`, `contracts` ani `application`.
+- **EH4 — ledger, po stronie `ehos-ledger` i `eh-os`.** Manifest wygenerowany w CI `ehos-ledger` równy
+  `ledger.v2.json` w `eh-os`. `contracts` i `engine` w ręcznym fixturze nie mogą zgadnąć naszych hashy, więc albo
+  fixture powstaje z generatora, albo porównanie je pomija. To do ustalenia z `eh-os` przy ich kroku 2. TaxVision
+  względem `taxvision.json`: bez zmian, znany rozjazd z „E10 — co wyszło”.
+
+**Kolejność względem E11 — do decyzji użytkownika.** E11 zwija migracje (D2), a EH1 je poprawia. Zrobione przed
+E11, poprawka `public` trafi do zwiniętej migracji przy cięciu, bez utraty pracy. Stage 5 `eh-os` (krok 3,
+szablon i ledger) czeka na EH1 i EH3; E11 nie czeka na nic.
+
+**Zostaje u nas, bez zmian:** operacje `receive` w AsyncAPI z `consumes`, capabilities w OpenAPI tylko po nazwie i
+digest modelu na każdym wygenerowanym dokumencie (sekcja wyżej).
 
 ### Przed E11 — podział i decyzje użytkownika (29 września)
 
