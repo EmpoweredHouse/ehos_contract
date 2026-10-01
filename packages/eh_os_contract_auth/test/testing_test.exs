@@ -46,4 +46,15 @@ defmodule EhOsContract.Auth.TestingTest do
 
     assert EhOsContract.Auth.Testing.assert_every_entry_refuses(Stock, %{}) == :ok
   end
+
+  test "and a door named for it is one the contracts do not declare" do
+    error =
+      assert_raise ExUnit.AssertionError, fn ->
+        EhOsContract.Auth.Testing.assert_every_entry_refuses(Stock, %{
+          "other_shop.order.placed.subscribe" => fn _token -> :ok end
+        })
+      end
+
+    assert error.message =~ "not declared: other_shop.order.placed.subscribe"
+  end
 end
