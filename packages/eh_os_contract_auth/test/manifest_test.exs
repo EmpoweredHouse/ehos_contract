@@ -104,6 +104,63 @@ defmodule EhOsContract.Auth.ManifestTest do
     end
   end
 
+  defmodule TrailingDomain do
+    @moduledoc false
+    use EhOsContract.Domain, name: :shop_, language: :en
+
+    subdomain(:core, "Core", type: :core)
+    context(:work, "Work", subdomain: :core)
+    actor(:clerk, :human, "Clerk")
+  end
+
+  defmodule TrailingWork do
+    @moduledoc false
+    use EhOsContract.Contract, domain: TrailingDomain, context: :work
+
+    aggregate :job, "Job" do
+      identity(:job_id)
+      command(:start_job, "Start a job", by: :clerk, emits: :job_started)
+      event(:job_started, "Job started", terminal: true)
+    end
+
+    process :work, "Work" do
+      correlate(:job_id)
+    end
+  end
+
+  # Names and labels the engine takes and EHOS does not: past 63 characters, or empty.
+  defmodule LongDomain do
+    @moduledoc false
+    use EhOsContract.Domain, name: :"long-rig", language: :en
+
+    subdomain(:core, "Core", type: :core)
+    context(:work, "Work", subdomain: :core)
+    actor(:clerk_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, :human, "Clerk")
+    actor(:auditor, :human, "")
+  end
+
+  defmodule LongWork do
+    @moduledoc false
+    use EhOsContract.Contract, domain: LongDomain, context: :work
+
+    aggregate :job, "Job" do
+      identity(:job_id)
+
+      command(:record_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb, "Record",
+        by: :clerk_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+        emits: :job_started
+      )
+
+      command(:flag_job, "", by: :auditor, emits: :job_flagged)
+      event(:job_started, "Job started")
+      event(:job_flagged, "Job flagged", terminal: true)
+    end
+
+    process :work, "Work" do
+      correlate(:job_id)
+    end
+  end
+
   # Made up in the shape of `ehos-ledger`'s offers: a clerk records an entry, an auditor flags one.
   defmodule Ledger do
     @moduledoc false
@@ -221,7 +278,7 @@ defmodule EhOsContract.Auth.ManifestTest do
 
     test "must be named in ehos.yaml when there are several domains" do
       assert_raise ArgumentError,
-                   ~r/2 domains; say which one this image is in ehos.yaml, as application: <name>.*ledger \(.*Ledger\), manifest-rig/,
+                   ~r/2 domains with contracts; say which one this image is in ehos.yaml, as application: <name>.*ledger \(.*Ledger\), manifest-rig/,
                    fn -> Manifest.build(@file_v1, [Domain, Ledger], [Work, Entries]) end
     end
 
@@ -237,8 +294,31 @@ defmodule EhOsContract.Auth.ManifestTest do
       file = Map.put(@file_v1, "application", "manifest-rig")
 
       assert_raise ArgumentError,
-                   ~r/domain "manifest-rig" is ambiguous.*Domain.*DuplicateDomain/s,
+                   ~r/domain "manifest-rig" is ambiguous.*Domain.*DuplicateDomain.*give one of them another name:/s,
                    fn -> Manifest.build(file, [Domain, DuplicateDomain], [Work]) end
+    end
+
+    test "suggests no name that EHOS would refuse too" do
+      error =
+        assert_raise ArgumentError, fn ->
+          Manifest.build(@file_v1, [TrailingDomain], [TrailingWork])
+        end
+
+      assert error.message =~ ~s(Rename the domain, such as name: :"shop")
+      refute error.message =~ ~s(:"shop-")
+    end
+
+    test "counts only domains with contracts" do
+      assert %{"application" => "ledger"} =
+               Manifest.build(@file_v1, [Domain, Ledger], [Entries])
+    end
+
+    test "named in ehos.yaml as EHOS spells it, finds the domain named with _, and says to rename it" do
+      file = Map.put(@file_v1, "application", "manifest-rig")
+
+      assert_raise ArgumentError, ~r/name: :manifest_rig is not a name EHOS takes/, fn ->
+        Manifest.build(file, [SnakeDomain, Ledger], [SnakeWork, Entries])
+      end
     end
 
     test "is refused when the domain's name is not one EHOS takes, with the name to use" do
@@ -248,9 +328,37 @@ defmodule EhOsContract.Auth.ManifestTest do
     end
   end
 
+  describe "names and labels EHOS refuses" do
+    test "are refused here, each named, rather than at deploy" do
+      error =
+        assert_raise ArgumentError, fn -> Manifest.build(@file_v1, [LongDomain], [LongWork]) end
+
+      assert error.message =~ "EHOS would refuse what the contracts offer"
+
+      assert error.message =~
+               "command :record_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb is 64 characters; EHOS takes at most 63"
+
+      assert error.message =~
+               "actor :clerk_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa is 64 characters; EHOS takes at most 63"
+
+      assert error.message =~ "command :flag_job has an empty label"
+      assert error.message =~ "actor :auditor has an empty label"
+    end
+  end
+
   test "refuses a domain with no contracts instead of writing a manifest that offers nothing" do
-    assert_raise ArgumentError, ~r/has no contracts/, fn ->
+    assert_raise ArgumentError, ~r/no registered domain has contracts/, fn ->
       Manifest.build(@file_v1, [Ledger], [Work])
+    end
+
+    assert_raise ArgumentError, ~r/Ledger has no contracts/, fn ->
+      Manifest.build(Map.put(@file_v1, "application", "ledger"), [Domain, Ledger], [Work])
+    end
+  end
+
+  test "refuses a map that is not a read ehos.yaml, as an argument error" do
+    assert_raise ArgumentError, ~r/EhOsContract.Auth.EhosYaml.read\/1/, fn ->
+      Manifest.build(%{"health" => @health}, [Ledger], [Entries])
     end
   end
 

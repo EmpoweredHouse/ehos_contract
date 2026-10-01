@@ -15,6 +15,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   domain names the image's in `ehos.yaml`, as `application: <name>`. A domain whose `name:` EHOS does not take for an
   application — with `_`, longer than 63 characters, or `ehos` — is refused, with the name to use. A key of
   `ehos.yaml` the generator writes is refused rather than overwritten (`eh-os` issue #93).
+  A command or a role's actor past 63 characters, or with an empty label, is refused, each named: the engine takes
+  them, EHOS does not. Only domains with contracts are counted when `ehos.yaml` names none.
   `EhOsContract.Auth.Manifest.build/3` takes the read `ehos.yaml`, the domains and the contracts; `build/2` is gone.
 
 - **EH2: `EhOsContract.Auth.EhosYaml.read/1` reads `ehos.yaml` as EHOS reads it** (`eh-os` D-51), for the
