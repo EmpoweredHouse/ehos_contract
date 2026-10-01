@@ -51,9 +51,6 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
          {:ok, root} <- construct(text) do
       data(root)
     end
-  rescue
-    # yamerl raises on some text it cannot read, such as a file that starts with `:`.
-    _exception -> refuse(nil, "the file is not YAML that can be read")
   end
 
   defp ensure_loaded do
@@ -87,10 +84,17 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
   defp plain(text) do
     _ = :yamerl_parser.string(text, [{:token_fun, token_fun(0)}])
     :ok
+  rescue
+    exception -> unreadable(exception)
   catch
     {__MODULE__, error} -> {:error, [error]}
     {:yamerl_exception, errors} -> {:error, Enum.map(errors, &parsing_error/1)}
   end
+
+  # yamerl raises on some text it cannot read, such as a file that starts with `:`. Only its own
+  # calls are rescued, so a defect of this module is not taken for a file that is not YAML.
+  defp unreadable(exception),
+    do: refuse(nil, "the file is not YAML that can be read: #{Exception.message(exception)}")
 
   # The token function carries how many documents the parser has begun, so a second one is
   # refused as soon as it is reached.
@@ -145,6 +149,8 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
       # A second document has been refused by the token function.
       [{:yamerl_doc, root}] -> {:ok, root}
     end
+  rescue
+    exception -> unreadable(exception)
   catch
     {:yamerl_exception, errors} -> {:error, Enum.map(errors, &parsing_error/1)}
   end

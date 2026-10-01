@@ -180,6 +180,20 @@ defmodule EhOsContract.Auth.EhosYamlTest do
     end
   end
 
+  test "text yamerl raises on is refused with what it raised" do
+    assert EhosYaml.read(":") ==
+             {:error,
+              [
+                %{
+                  path: "",
+                  line: nil,
+                  message:
+                    "the file is not YAML that can be read: no function clause matching in " <>
+                      ":yamerl_parser.parse_mapping_value/5"
+                }
+              ]}
+  end
+
   test "every reason the reader finds is reported, sorted by line, those without one first" do
     text = "a: 1\na: 2\nb: .inf\nc: .nan\n"
 
