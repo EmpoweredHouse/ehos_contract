@@ -197,6 +197,7 @@ defmodule EhOsContract.ProcessManagerTest do
 
       assert [_firing] = firings()
       assert_received :runners_woken
+      refute_received :runners_woken
     end
 
     test "are woken once a step whose process manager dispatched commits" do
@@ -211,6 +212,7 @@ defmodule EhOsContract.ProcessManagerTest do
 
       assert [_flag] = flags()
       assert_received :runners_woken
+      refute_received :runners_woken
     end
   end
 

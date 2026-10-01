@@ -120,6 +120,14 @@ defmodule EhOsContract.InboxTest do
     refute_received :runners_woken
   end
 
+  test "a message taken in a transaction the host owns wakes nothing before it commits" do
+    watch_wakes()
+
+    {:ok, :ack} = Repo.transaction(fn -> Inbox.take(inbox(), message("o-1", 120)) end)
+    refute_received :runners_woken_in_transaction
+    refute_received :runners_woken
+  end
+
   test "control: a message taken before wakes nothing" do
     sent = message("o-1", 120)
     assert Inbox.take(inbox(), sent) == :ack

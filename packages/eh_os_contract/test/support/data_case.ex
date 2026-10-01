@@ -39,7 +39,9 @@ defmodule EhOsContract.DataCase do
   @doc """
   Sends the calling test `:runners_woken` for every wake of the runners
   (`EhOsContract.Subscription.Runner.notify/0`) sent from its own process, until the
-  test exits. A wake from another process — a runner, another test — is not reported.
+  test exits — or `:runners_woken_in_transaction` for one sent before the transaction
+  it announces has committed, which a runner would wake for and find nothing. A wake
+  from another process — a runner, another test — is not reported.
   """
   @spec watch_wakes() :: :ok
   def watch_wakes do
@@ -50,13 +52,23 @@ defmodule EhOsContract.DataCase do
       :telemetry.attach(
         id,
         [:oban, :notifier, :notify, :start],
-        fn _, _, %{channel: channel}, _ ->
-          if channel == :eh_os_contract and self() == test, do: send(test, :runners_woken)
-        end,
-        nil
+        &__MODULE__.woken/4,
+        test
       )
 
     ExUnit.Callbacks.on_exit(fn -> :telemetry.detach(id) end)
+  end
+
+  @doc false
+  @spec woken(list(), map(), map(), pid()) :: :ok
+  def woken(_event, _measurements, metadata, test) do
+    cond do
+      metadata[:channel] != :eh_os_contract or self() != test -> :ok
+      EhOsContract.TestRepo.in_transaction?() -> send(test, :runners_woken_in_transaction)
+      true -> send(test, :runners_woken)
+    end
+
+    :ok
   end
 
   @doc """
