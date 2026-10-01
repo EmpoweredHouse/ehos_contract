@@ -273,6 +273,28 @@ reason. **Whether the caller may is answered first:** a request whose body or fi
 asked of the `Authorizer` all the same, so a caller without the capability gets 403 and learns nothing
 about the declaration's fields, and every request is one decision, recorded by the auth package.
 
+## Another door
+
+The plug is one door onto `EhOsContract.call/3`, and a host's other doors — a form, a job that carries a
+person's credential — call it the same way: the capability's name, the data as it was sent, the
+credential's actor.
+
+```elixir
+EhOsContract.call(
+  {:command, "rehmed.record_payment"},
+  %{"visit_id" => "w-1", "method" => "card", "amount" => 20000},
+  actor: actor, idempotency_key: "req-81"
+)
+#=> {:ok, %EhOsContract.Receipt{...}}
+```
+
+It asks the `Authorizer` before it says what is wrong with what was sent, as the plug does, and answers
+as `dispatch/3`, `record/3` or `query/3` would, or `{:error, :not_found}` for a capability the contracts it
+serves (`contracts:`, every registered one by default) do not declare as that kind, `{:error, :no_actor}`
+without a credential's actor, and, once the caller may, `{:error, :not_an_object}` or
+`{:error, :correlation_id_is_not_a_uuid}`. A door that builds structs itself goes around that order, which
+is why the plug no longer does.
+
 ## Calling it from code
 
 ```elixir

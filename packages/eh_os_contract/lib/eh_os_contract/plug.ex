@@ -17,19 +17,21 @@ if Code.ensure_loaded?(Plug.Conn) do
     answer is 401. A `:system` actor is the application's own code and never comes
     over HTTP, so one found there is refused too.
 
-    The body, or the query string, is decoded against the declaration's fields
-    (`EhOsContract.Codec`), and the call goes through `EhOsContract.dispatch/3` or
-    `EhOsContract.query/3`, so everything they check is checked here the same way.
+    It reads the body, or the query string, and the headers, and hands them to
+    `EhOsContract.call/3`, which decodes them against the declaration's fields and
+    goes through `EhOsContract.dispatch/3`, `EhOsContract.record/3` or
+    `EhOsContract.query/3`, so everything they check is checked here the same way;
+    what is left to this module is HTTP.
     An `idempotency-key` header becomes the command's idempotency key — the
     caller's own, since a key belongs to the actor who sent it — and an
     `x-correlation-id` header its correlation.
 
-    **Whether the caller may make the call is answered first.** A request that fails
-    before dispatch or query would run — a body that is not an object, fields that do
-    not decode, a correlation id that is not a UUID — is asked of the
-    `EhOsContract.Authorizer` all the same, as the call would have been: a caller
-    without the capability gets 403, not a description of the declaration's fields,
-    and every request is one decision for the `Authorizer` to record.
+    **Whether the caller may make the call is answered first**, by `call/3`. A
+    request that fails before dispatch or query would run — a body that is not an
+    object, fields that do not decode, a correlation id that is not a UUID — is asked
+    of the `EhOsContract.Authorizer` all the same, as the call would have been: a
+    caller without the capability gets 403, not a description of the declaration's
+    fields, and every request is one decision for the `Authorizer` to record.
 
     | Outcome | Status | Body |
     | --- | --- | --- |
@@ -53,7 +55,7 @@ if Code.ensure_loaded?(Plug.Conn) do
 
     import Plug.Conn
 
-    alias EhOsContract.{Actor, Codec, Dispatcher, Model, Receipt, Rejection}
+    alias EhOsContract.{Codec, Dispatcher, Model, Receipt, Rejection}
 
     @doc "Takes `contracts:`, the contracts whose commands, recordings and queries it serves."
     @impl true
@@ -76,99 +78,72 @@ if Code.ensure_loaded?(Plug.Conn) do
     end
 
     defp serve(conn, contracts, kind, capability) do
-      with {:ok, model, declaration} <- route(contracts, kind, capability),
-           {:ok, actor} <- actor(conn) do
-        values = Codec.values(model.domain)
+      case Dispatcher.route(contracts, kind, capability) do
+        {:ok, model, declaration} ->
+          values = Codec.values(model.domain)
+          fields = if kind == :query, do: declaration.params, else: declaration.fields
+          {conn, input, unread} = input(conn, kind, fields, values)
 
-        case prepare(conn, model, kind, declaration, values) do
-          {:ok, conn, struct} ->
-            respond(conn, kind, model, declaration, struct, actor, values)
+          opts =
+            [actor: conn.assigns[:eh_os_contract_actor], contracts: [model.module]]
+            |> headers(conn, kind)
 
-          # Whether the caller may make this call is answered before what is wrong
-          # with it, so a refusal is a refusal whatever was sent, and has its row.
-          {:error, conn, input, status, body} ->
-            case Dispatcher.permit_undecoded(model, kind, declaration, actor, input) do
-              :ok -> reply(conn, status, body)
-              {:error, reason} -> refused(conn, reason)
-            end
-        end
-      else
-        {:error, status, body} -> reply(conn, status, body)
+          answer(
+            conn,
+            kind,
+            model,
+            declaration,
+            values,
+            unread,
+            call(kind, capability, input, opts)
+          )
+
+        {:error, :not_found} ->
+          reply(conn, 404, %{error: "not_found"})
       end
     end
 
-    # The request as dispatch or query takes it, or what is wrong with it and the
-    # input as it was sent.
-    defp prepare(conn, model, kind, declaration, values) do
-      fields = if kind == :query, do: declaration.params, else: declaration.fields
+    # Whether the caller may is answered inside, before what is wrong with what it sent.
+    defp call(kind, capability, input, opts),
+      do: EhOsContract.call({kind, capability}, input, opts)
 
-      with {:ok, conn, input} <- input(conn, kind, fields, values),
-           {:ok, decoded} <- decode(conn, fields, input, values, kind),
-           :ok <- correlation(conn, input, kind) do
-        generated = if kind == :record, do: :event, else: kind
-        {:ok, conn, struct!(Model.module_for(model, generated, declaration.name), decoded)}
-      end
+    defp headers(opts, _conn, :query), do: opts
+
+    defp headers(opts, conn, _command_or_record) do
+      opts
+      |> put_header(conn, :idempotency_key, "idempotency-key")
+      |> put_header(conn, :correlation_id, "x-correlation-id")
     end
 
-    defp decode(conn, fields, input, values, kind) do
-      case Codec.decode(fields, input, values, strings: kind == :query) do
-        {:ok, decoded} -> {:ok, decoded}
-        {:error, problems} -> {:error, conn, input, 422, %{invalid: Map.new(problems)}}
-      end
+    defp answer(conn, :query, model, declaration, values, _unread, {:ok, answer}) do
+      read_model = Enum.find(model.read_models, &(&1.name == declaration.reads))
+      encode = &Codec.encode(read_model.fields, &1, values)
+
+      if declaration.returns == :one,
+        do: reply(conn, 200, %{row: answer && encode.(answer)}),
+        else: reply(conn, 200, %{rows: Enum.map(answer, encode)})
     end
 
-    defp correlation(conn, input, :command) do
-      case get_req_header(conn, "x-correlation-id") do
-        [] ->
-          :ok
+    defp answer(conn, _kind, _model, _declaration, _values, _unread, {:error, :no_actor}),
+      do: reply(conn, 401, %{error: "no_actor"})
 
-        [id | _] ->
-          case Ecto.UUID.cast(id) do
-            {:ok, _} -> :ok
-            :error -> {:error, conn, input, 400, %{error: "correlation_id_is_not_a_uuid"}}
-          end
-      end
-    end
+    # What the body was, which only this door knows: unreadable, or not a JSON object.
+    defp answer(conn, _kind, _model, _declaration, _values, unread, {:error, :not_an_object}),
+      do: reply(conn, 400, %{error: unread || "body_is_not_a_json_object"})
 
-    defp correlation(conn, input, :record), do: correlation(conn, input, :command)
-    defp correlation(_conn, _input, :query), do: :ok
+    defp answer(
+           conn,
+           _kind,
+           _model,
+           _declaration,
+           _values,
+           _unread,
+           {:error, :correlation_id_is_not_a_uuid}
+         ),
+         do: reply(conn, 400, %{error: "correlation_id_is_not_a_uuid"})
 
-    defp respond(conn, :command, model, _declaration, command, actor, _values) do
-      opts =
-        [actor: actor]
-        |> put_header(conn, :idempotency_key, "idempotency-key")
-        |> put_header(conn, :correlation_id, "x-correlation-id")
-
-      dispatch(conn, model, command, opts)
-    end
-
-    defp respond(conn, :record, model, _declaration, event, actor, _values) do
-      opts =
-        [actor: actor]
-        |> put_header(conn, :idempotency_key, "idempotency-key")
-        |> put_header(conn, :correlation_id, "x-correlation-id")
-
-      conn
-      |> reply_to(model, EhOsContract.record(model.module, event, opts))
-    end
-
-    defp respond(conn, :query, model, declaration, params, actor, values) do
-      case EhOsContract.query(model.module, params, actor: actor) do
-        {:ok, answer} ->
-          read_model = Enum.find(model.read_models, &(&1.name == declaration.reads))
-          encode = &Codec.encode(read_model.fields, &1, values)
-
-          if declaration.returns == :one,
-            do: reply(conn, 200, %{row: answer && encode.(answer)}),
-            else: reply(conn, 200, %{rows: Enum.map(answer, encode)})
-
-        {:error, reason} ->
-          refused(conn, reason)
-      end
-    end
-
-    defp dispatch(conn, model, command, opts),
-      do: reply_to(conn, model, EhOsContract.dispatch(model.module, command, opts))
+    defp answer(conn, _kind, model, _declaration, _values, _unread, result),
+      do: reply_to(conn, model, result)
 
     defp reply_to(conn, model, result) do
       case result do
@@ -220,57 +195,30 @@ if Code.ensure_loaded?(Plug.Conn) do
 
     defp refused(conn, reason), do: reply(conn, 403, %{refused: reason})
 
-    # The declaration a capability names, among the contracts this plug serves.
-    defp route(contracts, kind, capability) do
-      Enum.find_value(contracts, {:error, 404, %{error: "not_found"}}, fn contract ->
-        model = Model.fetch(contract)
-
-        case Map.get(Model.capabilities(model), capability) do
-          %{kind: ^kind, name: name} ->
-            declarations =
-              case kind do
-                :command -> model.commands
-                :record -> model.events
-                :query -> model.queries
-              end
-
-            {:ok, model, Enum.find(declarations, &(&1.name == name))}
-
-          _ ->
-            nil
-        end
-      end)
-    end
-
-    defp actor(conn) do
-      case conn.assigns[:eh_os_contract_actor] do
-        %Actor{kind: :credential} = actor -> {:ok, actor}
-        _none_or_not_a_credential -> {:error, 401, %{error: "no_actor"}}
-      end
-    end
-
+    # The input as this door read it, and, when it could not read an object, what the
+    # body was instead, for the answer once the caller may know it.
     defp input(conn, :query, fields, values) do
       {conn, input} = decode_query_params(conn, fields, values)
-      {:ok, conn, input}
+      {conn, input, nil}
     end
 
     defp input(%{body_params: %Plug.Conn.Unfetched{}} = conn, :command, _fields, _values) do
       case read_body(conn) do
         {:ok, "", conn} ->
-          {:ok, conn, %{}}
+          {conn, %{}, nil}
 
         {:ok, body, conn} ->
           case Jason.decode(body) do
-            {:ok, %{} = decoded} -> {:ok, conn, decoded}
-            _ -> {:error, conn, %{}, 400, %{error: "body_is_not_a_json_object"}}
+            {:ok, %{} = decoded} -> {conn, decoded, nil}
+            _not_an_object -> {conn, nil, "body_is_not_a_json_object"}
           end
 
-        _ ->
-          {:error, conn, %{}, 400, %{error: "unreadable_body"}}
+        _unreadable ->
+          {conn, nil, "unreadable_body"}
       end
     end
 
-    defp input(conn, :command, _fields, _values), do: {:ok, conn, conn.body_params}
+    defp input(conn, :command, _fields, _values), do: {conn, conn.body_params, nil}
     defp input(conn, :record, fields, values), do: input(conn, :command, fields, values)
 
     @doc false
