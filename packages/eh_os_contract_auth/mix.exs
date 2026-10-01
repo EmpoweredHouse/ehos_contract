@@ -113,7 +113,9 @@ defmodule EhOsContract.Auth.MixProject do
       # with the host or carried into its release. yamerl is held to 0.10.x because the reader
       # matches the shape of its tokens and nodes.
       {:yamerl, "~> 0.10.0", runtime: false},
-      {:jsv, "~> 0.25.0", runtime: false}
+      {:jsv, "~> 0.25.0", runtime: false},
+      # The manifest's property: every key of any valid ehos.yaml comes through unchanged.
+      {:stream_data, "~> 1.1", only: :test}
     ]
   end
 end

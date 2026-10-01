@@ -1,28 +1,33 @@
 defmodule Mix.Tasks.EhOsContract.Manifest do
-  @shortdoc "Writes an EHOS application manifest from contracts"
+  @shortdoc "Writes the EHOS application manifest from ehos.yaml and the contracts"
 
   @moduledoc """
-  Writes the selected domain's human command capabilities and roles as the strict
-  `ehos.manifest/v1` document accepted by EHOS.
+  Writes `ehos.manifest/v2`, the application's `ehos.yaml` extended with what its
+  contracts offer (`eh-os` D-52), for EHOS to deploy with the image.
 
       mix eh_os_contract.manifest --output ehos.manifest.json
-      mix eh_os_contract.manifest --domain taxvision --output ehos.manifest.json
+      mix eh_os_contract.manifest --ehos-yaml deploy/ehos.yaml --output ehos.manifest.json
 
+  `ehos.yaml` is read from the project's directory unless `--ehos-yaml` names
+  another file, and is read as EHOS reads it (`EhOsContract.Auth.EhosYaml`): a file
+  EHOS would refuse is refused here, with every reason, its path and its line.
   Domains and contracts are found among modules of
-  `config :eh_os_contract, applications:`. `--domain` is required only when more
-  than one registered domain exists. The output is UTF-8 JSON with only fields the
-  v1 schema permits; query and record capabilities need a later EHOS schema.
+  `config :eh_os_contract, applications:`. A project with more than one domain
+  names the one this image is in `ehos.yaml`, as `application: <name>`. What the
+  manifest holds is `EhOsContract.Auth.Manifest`'s.
   """
 
   use Boundary, classify_to: EhOsContract.Auth
   use Mix.Task
 
-  alias EhOsContract.Auth.Manifest
+  alias EhOsContract.Auth.{EhosYaml, Manifest}
 
   @impl Mix.Task
   def run(args) do
-    {opts, rest} = OptionParser.parse!(args, strict: [output: :string, domain: :string])
-    if rest != [], do: Mix.raise("unexpected arguments: #{Enum.join(rest, " ")}")
+    {opts, rest, invalid} =
+      OptionParser.parse(args, strict: [output: :string, ehos_yaml: :string])
+
+    refuse_arguments!(rest, invalid)
 
     output =
       case opts[:output] do
@@ -30,19 +35,19 @@ defmodule Mix.Tasks.EhOsContract.Manifest do
         output -> output
       end
 
+    ehos_yaml = read_ehos_yaml!(opts[:ehos_yaml] || "ehos.yaml")
+
     Mix.Task.run("compile")
     Application.load(:eh_os_contract)
     EhOsContract.Registry.load!()
 
-    domain = select_domain!(EhOsContract.Registry.domains(), opts[:domain])
-    domain_module = domain.module
+    document =
+      Manifest.build(
+        ehos_yaml,
+        EhOsContract.Registry.domains(),
+        EhOsContract.Registry.contracts()
+      )
 
-    contracts =
-      Enum.filter(EhOsContract.Registry.contracts(), fn contract ->
-        EhOsContract.Model.fetch(contract).domain == domain_module
-      end)
-
-    document = Manifest.build(domain, contracts)
     File.mkdir_p!(Path.dirname(output))
     File.write!(output, Jason.encode_to_iodata!(document, pretty: true) ++ ["\n"])
     Mix.shell().info("written: #{output}")
@@ -50,36 +55,46 @@ defmodule Mix.Tasks.EhOsContract.Manifest do
     error in ArgumentError -> Mix.raise(Exception.message(error))
   end
 
-  @doc false
-  def select_domain!([], _wanted), do: Mix.raise("no EhOsContract.Domain is registered")
+  # `--domain` chose the domain until the manifest was v2; `ehos.yaml` says it now.
+  defp refuse_arguments!(rest, invalid) do
+    cond do
+      Enum.any?(invalid, fn {option, _value} -> option == "--domain" end) ->
+        Mix.raise(
+          "--domain is gone: a project with more than one domain names the one this image is " <>
+            "in ehos.yaml, as application: <name>"
+        )
 
-  def select_domain!(domains, nil) do
-    case Enum.map(domains, &EhOsContract.Model.fetch/1) do
-      [domain] -> domain
-      many -> Mix.raise("choose a domain with --domain: #{known_domains(many)}")
+      invalid != [] ->
+        Mix.raise("unknown options: #{Enum.map_join(invalid, " ", &elem(&1, 0))}")
+
+      rest != [] ->
+        Mix.raise("unexpected arguments: #{Enum.join(rest, " ")}")
+
+      true ->
+        :ok
     end
   end
 
-  def select_domain!(domains, wanted) do
-    models = Enum.map(domains, &EhOsContract.Model.fetch/1)
+  defp read_ehos_yaml!(path) do
+    text =
+      case File.read(path) do
+        {:ok, text} ->
+          text
 
-    case Enum.filter(models, &(to_string(&1.name) == wanted)) do
-      [domain] ->
-        domain
+        {:error, reason} ->
+          Mix.raise(
+            "cannot read #{path}: #{:file.format_error(reason)}. The manifest is ehos.yaml " <>
+              "extended with what the contracts offer; name another file with --ehos-yaml"
+          )
+      end
 
-      [] ->
-        Mix.raise("no domain #{inspect(wanted)}. Registered: #{known_domains(models)}")
+    case EhosYaml.read(text) do
+      {:ok, ehos_yaml} ->
+        ehos_yaml
 
-      many ->
-        modules = many |> Enum.map(&inspect(&1.module)) |> Enum.sort() |> Enum.join(", ")
-        Mix.raise("domain #{inspect(wanted)} is ambiguous; matching modules: #{modules}")
+      {:error, errors} ->
+        reasons = Enum.map_join(errors, "\n", &"  #{EhosYaml.format_error(&1)}")
+        Mix.raise("#{path} is refused, as EHOS would refuse it:\n#{reasons}")
     end
-  end
-
-  defp known_domains(models) do
-    models
-    |> Enum.map(&"#{&1.name} (#{inspect(&1.module)})")
-    |> Enum.sort()
-    |> Enum.join(", ")
   end
 end

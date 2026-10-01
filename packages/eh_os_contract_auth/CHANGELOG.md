@@ -7,6 +7,16 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **EH3: `mix eh_os_contract.manifest` writes `ehos.manifest/v2`, and v1 is gone** (`eh-os` D-52; EHOS deploys only
+  v2). The task reads the project's `ehos.yaml` (`--ehos-yaml` names another), refuses it with every reason as EHOS
+  would, and writes it extended with `application`, `offers` and `engine`: every key but `schema` unchanged, `schema`
+  as `ehos_yaml`, no default filled in. `offers` holds v1's capabilities and roles. `contracts` is not written while
+  EHOS counts it in the authority digest (`eh-os` issue #92). **`--domain` is removed:** a project with more than one
+  domain names the image's in `ehos.yaml`, as `application: <name>`. A domain whose `name:` EHOS does not take for an
+  application — with `_`, longer than 63 characters, or `ehos` — is refused, with the name to use. A key of
+  `ehos.yaml` the generator writes is refused rather than overwritten (`eh-os` issue #93).
+  `EhOsContract.Auth.Manifest.build/3` takes the read `ehos.yaml`, the domains and the contracts; `build/2` is gone.
+
 - **EH2: `EhOsContract.Auth.EhosYaml.read/1` reads `ehos.yaml` as EHOS reads it** (`eh-os` D-51), for the
   manifest v2 to carry its keys unchanged. It refuses what YAML can say and JSON cannot — an anchor or an alias, a
   tag, a directive, a key given twice, a key that is not a string, a second document, `.inf` — and resolves plain
