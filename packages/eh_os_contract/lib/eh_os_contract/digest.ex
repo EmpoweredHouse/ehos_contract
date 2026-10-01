@@ -103,6 +103,19 @@ defmodule EhOsContract.Digest do
     |> binary_part(0, 12)
   end
 
+  @doc """
+  The full SHA-256, in hex, of the same length-prefixed encoding `document_hash/1`
+  takes twelve characters of: for what tells two facts apart, where a collision would
+  make them one (`EhOsContract.Bus.Message`'s key).
+  """
+  @spec document_digest(term()) :: String.t()
+  def document_digest(term) do
+    term
+    |> document_canonical()
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+  end
+
   defp document_canonical(nil), do: "z"
   defp document_canonical(false), do: "b0"
   defp document_canonical(true), do: "b1"

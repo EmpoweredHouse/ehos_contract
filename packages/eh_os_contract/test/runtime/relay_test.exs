@@ -255,6 +255,23 @@ defmodule EhOsContract.RelayTest do
     assert message.("o-2", 120).key != first.key
   end
 
+  test "values that only a delimiter tells apart give two keys, not one" do
+    publication = %{as: "bus_rig_shop.pair.v1", fields: [:a, :b], idempotent_on: [:a, :b]}
+
+    message = fn payload ->
+      Relay.message(%{publication: publication}, %Event{
+        id: Ecto.UUID.generate(),
+        correlation_id: Ecto.UUID.generate(),
+        payload: payload
+      })
+    end
+
+    first = message.(%{"a" => "x),(s:b,s:y", "b" => "z"})
+    second = message.(%{"a" => "x", "b" => "y),(s:b,s:z"})
+
+    assert first.key != second.key
+  end
+
   describe "through the local bus" do
     setup do
       opts = [name: __MODULE__.Bus]

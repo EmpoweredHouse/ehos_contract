@@ -89,8 +89,10 @@ defmodule EhOsContract.Relay do
     }
   end
 
-  # The full digest, not `EhOsContract.Digest.hash/1`'s twelve characters: two facts
-  # whose keys collide are one fact to the inbox, and the second is dropped.
+  # Two facts whose keys collide are one fact to the inbox, and the second is dropped:
+  # so the full digest, not twelve characters, of an encoding that prefixes each
+  # string with its length, so a delimiter inside a value cannot make two lists of
+  # values encode alike.
   defp key(%{idempotent_on: []}, _payload), do: nil
 
   defp key(publication, payload) do
@@ -100,10 +102,7 @@ defmodule EhOsContract.Relay do
         &{Atom.to_string(&1), Map.get(payload, Atom.to_string(&1))}
       )
 
-    if Enum.all?(values, fn {_field, value} -> value != nil end) do
-      :sha256
-      |> :crypto.hash(EhOsContract.Digest.canonical([publication.as, values]))
-      |> Base.encode16(case: :lower)
-    end
+    if Enum.all?(values, fn {_field, value} -> value != nil end),
+      do: EhOsContract.Digest.document_digest([publication.as, values])
   end
 end
