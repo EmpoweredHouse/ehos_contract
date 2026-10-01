@@ -152,6 +152,14 @@ defmodule EhOsContract.PlugTest do
     assert Repo.aggregate(Event, :count) == 1
   end
 
+  test "without a credential's actor the body is not read: 401 costs no parsing" do
+    body = Jason.encode!(%{account_id: "a-1", amount: 1})
+    conn = call(conn(:post, "/commands/dispatch_rig.deposit", body), nil)
+
+    assert conn.status == 401
+    assert {:ok, ^body, _conn} = read_body(conn)
+  end
+
   test "a query answers the rows the credential grants, and refuses another branch" do
     conn = call(conn(:get, "/queries/#{@query}?branch_id=b-7"))
     assert conn.status == 200

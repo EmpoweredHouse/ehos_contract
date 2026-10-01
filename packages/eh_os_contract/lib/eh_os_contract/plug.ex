@@ -55,7 +55,7 @@ if Code.ensure_loaded?(Plug.Conn) do
 
     import Plug.Conn
 
-    alias EhOsContract.{Codec, Dispatcher, Model, Receipt, Rejection}
+    alias EhOsContract.{Actor, Codec, Dispatcher, Model, Receipt, Rejection}
 
     @doc "Takes `contracts:`, the contracts whose commands, recordings and queries it serves."
     @impl true
@@ -78,8 +78,13 @@ if Code.ensure_loaded?(Plug.Conn) do
     end
 
     defp serve(conn, contracts, kind, capability) do
-      case Dispatcher.route(contracts, kind, capability) do
-        {:ok, model, declaration} ->
+      case {Dispatcher.route(contracts, kind, capability), conn.assigns[:eh_os_contract_actor]} do
+        # Before the body is read: a caller without a credential costs no parsing.
+        {{:ok, _model, _declaration}, actor}
+        when not is_struct(actor, Actor) or actor.kind != :credential ->
+          reply(conn, 401, %{error: "no_actor"})
+
+        {{:ok, model, declaration}, _actor} ->
           values = Codec.values(model.domain)
           fields = if kind == :query, do: declaration.params, else: declaration.fields
           {conn, input, unread} = input(conn, kind, fields, values)
@@ -98,7 +103,7 @@ if Code.ensure_loaded?(Plug.Conn) do
             call(kind, capability, input, opts)
           )
 
-        {:error, :not_found} ->
+        {{:error, :not_found}, _actor} ->
           reply(conn, 404, %{error: "not_found"})
       end
     end
