@@ -23,6 +23,18 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
   @type lines :: %{path() => pos_integer()}
 
   @construction [:detailed_constr, {:schema, :core}, {:keep_duplicate_keys, true}]
+  # yamerl adds the node modules `config :yamerl, node_mods:` names to the core schema's, in every
+  # read in the VM, and one of those reads `yes` as `true` or `512M` as a number. A node only these
+  # build is read.
+  @core_nodes [
+    :yamerl_node_map,
+    :yamerl_node_seq,
+    :yamerl_node_str,
+    :yamerl_node_null,
+    :yamerl_node_bool,
+    :yamerl_node_int,
+    :yamerl_node_float
+  ]
   @directives [:yamerl_yaml_directive, :yamerl_tag_directive, :yamerl_reserved_directive]
   @only_json "ehos.yaml holds only what JSON can"
   @max_bytes 65_536
@@ -133,6 +145,14 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
       [] -> {:ok, data, lines}
       errors -> {:error, Enum.reverse(errors)}
     end
+  end
+
+  defp node(node, path, acc) when elem(node, 1) not in @core_nodes do
+    message =
+      "is read by #{inspect(elem(node, 1))}, not by YAML 1.2's core schema: remove it from " <>
+        "config :yamerl, node_mods"
+
+    {nil, add(acc, error(path, line(node), message))}
   end
 
   defp node({:yamerl_map, _module, _tag, _position, pairs}, path, acc) do

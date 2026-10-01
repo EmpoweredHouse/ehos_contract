@@ -200,3 +200,46 @@ defmodule EhOsContract.Auth.EhosYamlTest do
              "is not UTF-8"
   end
 end
+
+defmodule EhOsContract.Auth.EhosYamlNodeModsTest do
+  @moduledoc """
+  A host's `config :yamerl, node_mods:` adds to the core schema in every read in the
+  VM, so a value is read as EHOS would not read it; such a node is refused. Not
+  async: it changes yamerl's environment.
+  """
+
+  use ExUnit.Case, async: false
+
+  alias EhOsContract.Auth.EhosYaml
+
+  setup do
+    Application.load(:yamerl)
+    previous = Application.fetch_env(:yamerl, :node_mods)
+    Application.put_env(:yamerl, :node_mods, [:yamerl_node_bool_ext])
+
+    on_exit(fn ->
+      case previous do
+        {:ok, mods} -> Application.put_env(:yamerl, :node_mods, mods)
+        :error -> Application.delete_env(:yamerl, :node_mods)
+      end
+    end)
+  end
+
+  test "a value another node module reads is refused, not read as true" do
+    text =
+      "schema: ehos.yaml/v1\nserves:\n  - name: web\n    port: 4000\n    public: yes\n" <>
+        "health:\n  port: 4001\n  ready: /health/ready\n  live: /health/live\n"
+
+    assert EhosYaml.read(text) ==
+             {:error,
+              [
+                %{
+                  path: "serves[0].public",
+                  line: 5,
+                  message:
+                    "is read by :yamerl_node_bool_ext, not by YAML 1.2's core schema: remove it " <>
+                      "from config :yamerl, node_mods"
+                }
+              ]}
+  end
+end
