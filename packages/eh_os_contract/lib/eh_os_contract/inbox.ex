@@ -17,6 +17,10 @@ defmodule EhOsContract.Inbox do
   published again under a new id (`eh-os` FM-04, FM-08), find the row: the inbox
   acknowledges and writes nothing.
 
+  **Who may publish is the transport's to enforce.** The inbox takes what its
+  consumer is delivered, key and correlation as they come: that only the publisher
+  publishes under its name is the grant's, on the transport (`eh-os` D-41).
+
   **What the policy is told.** The received struct's `__meta__` holds the
   correlation the message carried, so the subscriber's facts join the publisher's
   run, and as `id` the row's, which is what the policy's commands name as their

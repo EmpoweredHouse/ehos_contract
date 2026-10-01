@@ -1696,7 +1696,9 @@ policy :invoice_on_visit_close, "Faktura po zamknięciu wizyty",
 >
 > - **A row is keyed by the message's key, not its id**, and the key travels with the message, a fifth field
 >   of `EhOsContract.Bus.Message`: the SHA-256 of the versioned name and the `idempotent_on:` values, which the
->   relay computes. A redelivery and the same fact under a new id (`eh-os` FM-04 and FM-08) find the row. The
+>   relay computes over an encoding that frames each value by its length (`Digest.document_digest/1`), so a
+>   delimiter inside a value cannot give two facts one key. A redelivery and the same fact under a new id
+>   (`eh-os` FM-04 and FM-08) find the row. The
 >   id stands in for the key when a publication declares no `idempotent_on:`, or one of its values is `nil`,
 >   which identifies nothing. The publisher's declaration says what one fact is, as D-04 has it, and a
 >   publisher whose `idempotent_on:` is too narrow loses a second, real fact to it. *Rejected, by the user:*
@@ -1721,13 +1723,21 @@ policy :invoice_on_visit_close, "Faktura po zamknięciu wizyty",
 >   consumer the grant is meant to control; leaving it to the transport, with `Bus.Local` keeping everything
 >   for a new consumer — a subscriber deployed later would react to the publisher's history, where nothing
 >   new reacts to history by itself (§12).
+> - **A transport that is down stops nothing.** Each inbox is kept by `EhOsContract.Inbox.Keeper`, which
+>   starts the consumer in its own `init`, so the order above holds when the bus is up, and logs a consumer
+>   that does not start or stops and starts it again later: the boot does not fail, and the supervisor's
+>   restart intensity does not take the runners and relays down, as a relay with no bus waits.
+> - **Who may publish is the transport's.** The inbox takes what its consumer is delivered, key and
+>   correlation included; the grant that limits who publishes under a name is the transport's, by the same
+>   D-41 that limits who subscribes.
 > - **What it does not acknowledge.** A message that does not fit the fields the contract consumes, and one
 >   whose policy raises, rolls back and is answered `:nack`, logged by name, id and kind of failure: nothing is
 >   lost while the declaration or the code is put right. The inbox counts no attempts; the transport's limit
 >   (JetStream's `MaxDeliver`) stops a message that never succeeds.
 > - **`<name>.subscribe` drops the version**, as the example above has it: `consumes "rehmed.visit.closed.v1"`
 >   asks for `rehmed.visit.closed.subscribe`. It is in `EhOsContract.Model.capabilities/1` with no roles, the
->   application's and never a person's, and nothing in the engine asks for it.
+>   application's and never a person's, and nothing in the engine asks for it; only for an event a policy
+>   handles, since only then is there an inbox to read what the grant delivers.
 > - **What the policy is told.** The received struct's `__meta__` has the message's correlation, so the
 >   subscriber's facts join the publisher's run, and the row's id; no position, no actor and no time, which the
 >   message does not carry.

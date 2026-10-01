@@ -7,6 +7,11 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **E12c: `assert_every_entry_refuses/3` asks for no entry for `<name>.subscribe`.** The engine derives that
+  capability for an event a contract consumes from another application and a policy handles; it is the
+  application's, in no person's credential, and has no door. A map that names it now fails the check as a key
+  the contracts do not declare.
+
 - **`up/1` and `down/1` run what the host's migration queued before them first**, as the engine's do: a
   `CREATE SCHEMA` queued ahead of them left the version to be read in `public`, and with `search_path:
   "ledger, public"` nothing was created in `ledger`.

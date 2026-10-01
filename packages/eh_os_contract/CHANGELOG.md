@@ -236,16 +236,19 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 - **E12c: another application's published event arrives in an inbox (D12).** For every `consumes
   "<name>"` a policy handles, the engine starts a durable consumer on the configured `EhOsContract.Bus`,
-  `"<contract>:inbox:<name>"`, before any relay. Each delivery is decoded into the contract's received
+  `"<contract>:inbox:<name>"`, before any relay, through `EhOsContract.Inbox.Keeper`: a consumer that cannot
+  reach its transport, at boot or later, is logged and started again five seconds later, and stops neither
+  the boot nor any runner. Each delivery is decoded into the contract's received
   struct and, in one transaction, written to `eh_os_contract_inbox` and handed to the policies, whose
   commands carry the message's correlation and name the inbox row as their cause; it is acknowledged after
   the commit. A row exists per message key, so a redelivery, or the same fact published again under a new
-  id, reacts once: the relay gives a message the SHA-256 of its name and its `idempotent_on:` values as its
-  key, or its id when the publication declares none (`eh-os` FM-04, FM-08). A message that does not fit what
+  id, reacts once: the relay gives a message the SHA-256 of its name and its `idempotent_on:` values, each
+  framed by its length, as its key, or its id when the publication declares none (`eh-os` FM-04, FM-08). A message that does not fit what
   the contract consumes, or whose policy raises, is not acknowledged and comes again. With no `bus:`
   configured the boot logs a warning for each inbox. `Model.capabilities/1` has one more capability per
-  consumed name, `<name>.subscribe`, without the name's version, of kind `:subscribe` and with no roles: the
-  application's, granted by EHOS, never a person's.
+  consumed name a policy handles, `<name>.subscribe`, without the name's version, of kind `:subscribe` and
+  with no roles: the application's, granted by EHOS, never a person's. Who may publish under a name is the
+  transport's to enforce: the inbox takes what its consumer is delivered.
 - **E12b: a `publish` leaves the application through its relay.** `EhOsContract.Relay` is one ordered
   subscription per `publish`, `"<contract>:relay:<name>"` in `eh_os_contract_subscriptions` and in
   `mix eh_os_contract.subscriptions`, which reads the events it publishes and hands each to the configured

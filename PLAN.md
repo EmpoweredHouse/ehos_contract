@@ -21,7 +21,7 @@ domeny (D1, z kolizją wartości po `Macro.camelize` i nazwami typów wbudowanyc
 aplikacjami (wybór użytkownika z 1 października, „Przed E12 — decyzje użytkownika”). W `main` są **E12a**
 (#57: `EhOsContract.Bus`, `Bus.Local`, `Bus.Suite`) i **E12b** (#58: relay, `EhOsContract.Relay`). **E12c (inbox,
 `.subscribe`, test dwóch aplikacji) jest zbudowane na `dsl-v2/e12c-inbox`** — po decyzjach użytkownika D1 i D2
-(„Przed E12c — decyzje użytkownika”), z bramą zieloną; czeka na przegląd `pre-pr-review` („E12c — co wyszło”).
+(„Przed E12c — decyzje użytkownika”), z bramą zieloną i po przeglądzie `pre-pr-review` („E12c — co wyszło”).
 Przed E12d — pytanie do użytkownika, czy jego przesłanka jeszcze stoi („Otwarte pytania”).
 
 ### Stan repozytorium
@@ -31,8 +31,9 @@ Przed E12d — pytanie do użytkownika, czy jego przesłanka jeszcze stoi („Ot
 - **`dsl-v2/handoff-after-58`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `842a2f1`, jeden commit: ten zapis;
   **niewypchnięta** — push (fast-forward `main` albo PR) na polecenie użytkownika; E12c może wyjść od niej.
   `dsl-v2/e12-bus`, `dsl-v2/e12b-relay` i `dsl-v2/handoff-after-56` są w całości w `main`.
-- **`dsl-v2/e12c-inbox`** (ten sam worktree) — od `66c3637`: trzy commity kodu E12c i commit zapisu;
-  **niewypchnięta**. Zawiera `66c3637`, więc PR E12c niesie też przepisany handoff.
+- **`dsl-v2/e12c-inbox`** (ten sam worktree) — od `66c3637`: trzy commity kodu E12c, commit zapisu, cztery
+  poprawki z przeglądu i commit zapisu przeglądu; **niewypchnięta**; notatka przeglądu (`refs/notes/review`) na
+  głowie. Zawiera `66c3637`, więc PR E12c niesie też przepisany handoff.
 - **Otwarte na GitHubie:** tylko **issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza
   repozytorium; zaparkowane 30 września, z propozycją `EmpoweredHouse/eh-os-contract-sandbox`. Otwartych PR-ów brak.
 - **Lokalne gałęzie w całości w `main`** — 56 (`git branch --merged origin/main`, 1 października, bez wyciągniętych
@@ -55,8 +56,8 @@ Przed E12d — pytanie do użytkownika, czy jego przesłanka jeszcze stoi („Ot
 
 ### Co zostało — i czyje to jest
 
-- **Przegląd E12c** (`pre-pr-review` na `66c3637..` głowy `dsl-v2/e12c-inbox`) — asystenta, przed E12d; push i PR
-  — użytkownika, na polecenie.
+- **PR E12c** — przegląd zrobiony (notatka na głowie); push i PR — użytkownika, na polecenie. PR wystawiany z
+  worktree przez `gh api` (hook sprawdza `HEAD` głównego checkoutu, „Pułapki”).
 - **E12d** (publiczne wejście dla surowych danych, Plug na nim, bez `Dispatcher.permit_undecoded/5`) — **najpierw
   decyzja użytkownika, czy teraz** („Otwarte pytania”), potem asystenta. **E12e** (poprawka z datą
   `architecture.md` §9–10, `docs/contract.md` o inboxie, CHANGELOG, skille `write-reaction` — tylko polityka na
@@ -3553,7 +3554,48 @@ silnik 1087, 0 padnięć, kompilacja z `--warnings-as-errors`, format; `1fa8f65`
 `MigrationsTest`, wyłącznie dlatego, że wspólna baza `…_test_commits` ma już ręcznie dołożoną tabelę inboxu,
 której V01 z `1fa8f65` nie zna (sprawdzone: różnicą jest tylko ta tabela).
 
+**Przegląd** (`code-review high` i bezpieczeństwo/wydajność, równolegle, na `66c3637..5e15711`; oba znalazły
+kolizję klucza):
+- **klucz wiadomości kolidował** — `Digest.canonical/1` łączy napisy separatorami bez długości, więc przy
+  `idempotent_on: [:a, :b]` pary `"x),(s:b,s:y"`/`"z"` i `"x"`/`"y),(s:b,s:z"` dawały ten sam klucz i inbox
+  odrzucał drugi, prawdziwy fakt (oba przeglądy) — *poprawione* (`479aeeb`): `Digest.document_digest/1`, pełny
+  SHA-256 kodowania z długościami, którego `document_hash/1` używa z tego samego powodu; z wycofaną poprawką pada
+  jeden test z 14 w `relay_test.exs`;
+- **broker niedostępny kładł silnik** — konsument `Bus.Local` bez brokera wychodzi w `init`, więc przy busie
+  skonfigurowanym, a leżącym silnik nie wstawał (i host z nim), a broker, który padł później, przekraczał limit
+  restartów i zatrzymywał wszystkie runnery i relaye (poprawność) — *poprawione* (`c82a97d`):
+  `EhOsContract.Inbox.Keeper` startuje konsumenta w swoim `init` (D2 trzyma się, gdy bus działa), loguje rodzaj
+  błędu i próbuje znowu po 5 s; z wycofaną poprawką padają dwa testy z 15 (`inbox_test.exs` i `boot_test.exs`):
+  nowy i test kolejności, który pyta teraz o identyfikator keepera;
+- **`.subscribe` bez inboxu** — capability dla każdego `consumes`, a inbox tylko dla obsłużonego przez politykę;
+  grant bez czytelnika zostawiłby na brokerze konsumenta, któremu rosną wiadomości (poprawność) — *poprawione*
+  (`bab57b3`), ten sam warunek co inbox; z wycofaną poprawką pada jeden test (`contract_test.exs`, capability
+  `Named`);
+- **pomocnik testów auth żądał wejścia dla `.subscribe`** — `assert_every_entry_refuses/3` brał wszystkie
+  capability, więc host z `consumes` dostałby „no entry for” (bezpieczeństwo, przy okazji) — *poprawione*
+  (`0b14c73`); z wycofaną poprawką pada jeden test z 67 pakietu auth; wpis w CHANGELOG-u auth doszedł w commicie
+  zapisu, nie w tym samym;
+- nazwa trwałego konsumenta z kropkami (JetStream ich nie przyjmuje) — *opisane* w `Bus` (`c82a97d`): adapter ją
+  mapuje; test przywracał `:manual` zamiast poprzedniej wartości i dwa sprawdzenia busa w supervisorze —
+  *poprawione* (`c82a97d`);
+- inbox nie sprawdza, kto opublikował (klucz, korelacja i nazwa z wiadomości) — *opisane* w `Inbox` i v2 §16: to
+  grant transportu (D-41), jak przy subskrypcji; capability `<nazwa>.publish` — do użytkownika i EHOS-a (niżej);
+- wiadomość, która nigdy nie przejdzie (zły payload, korelacja spoza UUID), wraca bez końca na `Bus.Local` —
+  *bez zmiany*: wybór z E12c (nic nie ginie, `MaxDeliver` transportu); polityka bez modułu w inboxie — *bez
+  zmiany*: to samo, co rzucająca polityka, a `check` ostrzega `declaration-without-implementation`;
+- transakcja inboxu trzyma blokadę dopisu, gdy liczą się kolejne polityki — *bez zmiany*: tak samo polityka
+  `:in_transaction`; kolizja nazw capability w `Map.merge` — *bez zmiany*: `.subscribe` ma co najmniej cztery
+  segmenty, capability komendy dwa;
+- runnery nie są budzone po commicie inboxu (do 1 s opóźnienia, `@poll`) i tabela inboxu rośnie bez końca —
+  *pominięte*, niżej; zgodność nie widzi polityki inboxu — już otwarte.
+
 **Do E12d i E12e, i otwarte:**
+- **retencja `eh_os_contract_inbox`** — wiersz na fakt na inbox, na zawsze; czyszczenie po wieku skraca okno, w
+  którym ten sam fakt pod nowym id (FM-08) jest rozpoznany — granica do decyzji użytkownika;
+- **kto może publikować pod nazwą** — silnik wyprowadza `<nazwa>.subscribe`, a nie `<nazwa>.publish`; czy
+  manifest ma nieść prawo publikacji, to sprawa EHOS-a (D-41) — do użytkownika, na liście zmian do `eh-os`;
+- runnery po commicie inboxu nie dostają powiadomienia (dispatch w cudzej transakcji go nie wysyła) — czekają do
+  sekundy; do pomiaru razem z runnerem read modelu;
 - **zgodność nie widzi polityki inboxu** — `Paths` bierze kroki tylko dla zdarzeń z typem w logu
   (`type_of/2` daje `nil` dla odebranego), więc ekran nie pokazuje tej ścieżki ani jako przejechanej, ani jako
   nieprzejechanej; da się ją liczyć z komend `policy:<nazwa>`, których przyczyna jest w `eh_os_contract_inbox` —
