@@ -3806,7 +3806,7 @@ wdrożeniu — *poprawione* w `change-contract`; brakujący wiersz: nowe `as:` p
 nazwy — *poprawione*; „nic, na czym kontrakt polega, nie jedzie transportem, który gubi” — *zawężone* do logu;
 „Co przeczytać najpierw” sprzed E12c i retencja inboxu poza „Otwartymi pytaniami” — *poprawione*.
 **`CLAUDE.md`** („Czym biblioteka jest”) mówi dalej, że broker „jeszcze niezbudowane”, a §9–10 „mówi dziś «bez
-zewnętrznego brokera»” — po E12 nieprawda; poprawka do `CLAUDE.md` czeka na zgodę użytkownika.
+zewnętrznego brokera»” — po E12 nieprawda; *poprawione* na polecenie użytkownika, w tym samym PR-ze.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
