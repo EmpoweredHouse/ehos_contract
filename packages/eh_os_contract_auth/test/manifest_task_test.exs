@@ -39,6 +39,35 @@ defmodule EhOsContract.Auth.ManifestTaskTest do
     assert File.read!(ehos_yaml) == "schema: ehos.yaml/v1\n"
   end
 
+  test "the manifest is never written over ehos.yaml through a link or another case", %{
+    tmp_dir: dir
+  } do
+    ehos_yaml = Path.join(dir, "ehos.yaml")
+    File.write!(ehos_yaml, "schema: ehos.yaml/v1\n")
+    link = Path.join(dir, "manifest.json")
+    File.ln_s!(ehos_yaml, link)
+
+    assert run!(["--ehos-yaml", ehos_yaml, "--output", link]) =~
+             "--output names the ehos.yaml it is made from"
+
+    assert File.read!(ehos_yaml) == "schema: ehos.yaml/v1\n"
+  end
+
+  test "an empty --ehos-yaml is refused as --output's is", %{tmp_dir: dir} do
+    assert run!(["--ehos-yaml", "", "--output", Path.join(dir, "m.json")]) ==
+             "say which ehos.yaml to read: --ehos-yaml <file>, or leave it out for the project's"
+  end
+
+  test "a file that cannot be read is refused, not raised", %{tmp_dir: dir} do
+    locked = Path.join(dir, "ehos.yaml")
+    File.write!(locked, "schema: ehos.yaml/v1\n")
+    File.chmod!(locked, 0o000)
+    on_exit(fn -> File.chmod(locked, 0o600) end)
+
+    assert run!(["--ehos-yaml", locked, "--output", Path.join(dir, "m.json")]) ==
+             "cannot read #{locked}: permission denied"
+  end
+
   test "a missing ehos.yaml named by --ehos-yaml is said to be missing", %{tmp_dir: dir} do
     missing = Path.join(dir, "deploy.yaml")
 

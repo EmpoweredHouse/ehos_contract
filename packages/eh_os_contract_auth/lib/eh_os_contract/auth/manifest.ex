@@ -8,8 +8,9 @@ defmodule EhOsContract.Auth.Manifest do
   becomes `ehos_yaml`, the version the file is written in. The generator adds:
 
     * `application`, the contracts' domain's `name:`. A project with one domain
-      takes it from there. A project with several says which one the image is in
-      `ehos.yaml`'s `application`, which must be one of their names.
+      takes it from there; a domain without contracts is not counted. A project with
+      several says which one the image is in `ehos.yaml`'s `application`, which must
+      be one of their names, in EHOS's spelling.
     * `offers`, the human command capabilities and, as roles, the human actors that
       hold at least one of them. Queries, recordings, scopes and publications are
       absent: EHOS's manifest has no field for them yet, and adding one would make
@@ -41,8 +42,10 @@ defmodule EhOsContract.Auth.Manifest do
   The map is taken as `read/1` returns it, already refused when EHOS would refuse
   it; a key `read/1` would refuse goes into the manifest. Only the contracts of the
   selected domain are read. Raises `ArgumentError`, with
-  what to change, when no domain or more than one fits, when the domain's name is
-  not one EHOS takes for an application, or when the domain offers no human command.
+  what to change, when the map is not a read `ehos.yaml`, when no domain or more than
+  one fits, when the domain's name is not one EHOS takes for an application, when a
+  command or a role's actor is past 63 characters or has an empty label, or when the
+  domain offers no human command.
   """
   @spec build(map(), [module() | map()], [module() | map()]) :: map()
   def build(%{"schema" => ehos_yaml} = file, domains, contracts) do

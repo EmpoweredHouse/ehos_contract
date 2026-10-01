@@ -97,13 +97,18 @@ health:
 Every key of it but `schema` is in the manifest at the same path with the same value, and no default
 is filled in. The task adds:
 
-- `application`, the contracts' domain's `name:`. A project with more than one domain names the one
-  the image is in `ehos.yaml`, as `application: <name>`. EHOS takes lowercase letters, digits and
-  dashes, so a domain named with `_` is refused, with the name to use;
+- `application`, the contracts' domain's `name:`. A project with more than one domain with contracts
+  names the one the image is in `ehos.yaml`, as `application: <name>`. EHOS takes lowercase letters,
+  digits and dashes, so a domain named with `_` is refused, with a name to use when there is one EHOS
+  takes;
 - `offers`, the human command capabilities and the human actors that hold at least one of them, as
   roles. System actors, actors with no command, queries, recordings, scopes and publications are
   absent: the manifest has no field for them yet, and EHOS refuses a field it does not know;
 - `engine`, the `eh_os_contract` version that wrote it.
+
+**`ehos.yaml` must hold no secret.** EHOS keeps every manifest it is given, for good, with every key
+of `ehos.yaml` as written, a `migrate` argument too; what the workload needs at run time comes from
+its environment, below.
 
 `contracts` is not written: EHOS counts it in the authority digest, and a contract's version moves
 with any edit, so a new label would ask for `ehos.application.register` at every deploy (`eh-os`
