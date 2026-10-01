@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 1 października (E0–E12 w `main`; EH — manifest v2 — w toku)
+## Handoff — stan na 1 października (E0–E12 i EH w `main`; następny etap — wybór użytkownika)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -19,32 +19,28 @@ dokumentacja); pytania, które zostawiło, to issues #63–#66 (#67). Po E12 w `
 manifestu v2 odzyskany z worktree (#68), termin pobierania kluczy w auth (#69, odzyskany z #36) i sprawdzenie planu
 EH wobec dzisiejszego kodu (#70).
 
-**Bieżący etap: EH — generator `ehos.manifest/v2`** w `eh_os_contract_auth`, w miejsce v1. Decyzje użytkownika
-z 1 października i plan EH2 + EH3 — „Przed EH2 i EH3 — decyzje użytkownika” i „EH2 i EH3 — plan” pod sekcją „EH —
-odpowiedź EHOS-a”. Pilny, bo EHOS przy wdrożeniu przyjmuje tylko v2, a CI `ehos-ledger` publikuje v1 z naszego
-generatora. **Krok 6c EHOS-a jest już zmergowany** (`eh-os` #99, `f7b2330`): wdraża ledger z ręcznie pisanym
-`ledger.v2.json`, sprawdzonym przez EHOS jako `ehos.yaml` ledgera (`341fc19`) plus `offers` z naszego v1 — więc
-nasz generator ma dać dokładnie ten dokument.
+**EH — generator `ehos.manifest/v2` — jest zamknięty i w `main`** (#73, merge `743e91d`, z EH3 wmergowanym do
+niego jako #74): `EhOsContract.Auth.EhosYaml.read/1` czyta `ehos.yaml` jak EHOS, a `mix eh_os_contract.manifest`
+pisze z niego v2 w miejsce v1 — „EH2 — co wyszło” i „EH3 — co wyszło” pod „EH — odpowiedź EHOS-a”. Krok 6c EHOS-a
+wdraża ledgera z ręcznego `ledger.v2.json`; nasz generator daje dla ledgera ten sam dokument z dołożonym `engine`.
+Następny etap wybiera użytkownik („Co zostało”).
 
 ### Stan repozytorium
 
-- **`origin/main` = `aadcbd1`** (merge #70, 1 października; przedtem `c9af0ef` — #69, `12d3cf4` — #68, `827184d` —
-  #67, `3b77622` — #62, E12e). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe. CI `main` na `aadcbd1`
-  (przebieg `36860580158`) — `success`.
-- **`eh/eh2-ehos-yaml`** (główny checkout) — od `aadcbd1`: plan, EH2a, EH2b i poprawki po trzech rundach przeglądu
-  („EH2 — co wyszło”), a w nim **`eh/eh3-manifest-v2`** — EH3a, poprawki, EH3b („EH3 — co wyszło”), zmergowane przez
-  użytkownika jako [#74](https://github.com/EmpoweredHouse/eh-os-contract/pull/74). Całość idzie do `main` jednym PR-em,
-  [#73](https://github.com/EmpoweredHouse/eh-os-contract/pull/73), otwartym; merge po komentarzach CodeRabbita, na
-  polecenie użytkownika z 1 października.
+- **`origin/main` = `743e91d`** (merge #73, EH, 1 października; przedtem `aadcbd1` — #70). Historia `main` z
+  merge'ami PR-ów; gałęzie etapów liniowe. CI `main` na `743e91d` — w toku w chwili zapisu, sprawdzić
+  (`gh run list --repo EmpoweredHouse/eh-os-contract --branch main --limit 1`); na `aadcbd1` — `success`.
+- **`plan/eh-merged`** (główny checkout) — od `743e91d`: ten handoff; PR na polecenie użytkownika.
 - **Lokalnie poza tym:** `main`, `plan/eh-os-issues` (w `main`) i worktree `merge-pr-55-next-stage-ad84a2`
-  (odłączony na `aadcbd1`). Sprzątanie z 1 października skasowało resztę starych worktree i gałęzi.
+  (odłączony na `aadcbd1`). `eh/eh2-ehos-yaml` i `eh/eh3-manifest-v2` skasowane lokalnie po merge'u, na zgodę
+  użytkownika; na GitHubie zostały.
 - **Otwarte na GitHubie:** **issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza repozytorium;
   zaparkowane 30 września, z propozycją `EmpoweredHouse/eh-os-contract-sandbox`; **#63–#66** — pytania otwarte po
-  E12 („Otwarte pytania”). Otwarty PR: #73 (EH). **W `EmpoweredHouse/eh-os`: #91–#96** — nasze potrzeby wobec
-  EHOS-a („Dopisek 1 października”); dla manifestu ważne #91, #92, #93, #94, #96.
+  E12 („Otwarte pytania”). Otwartych PR-ów brak poza tym handoffem. **W `EmpoweredHouse/eh-os`: #91–#96 i #111** —
+  nasze potrzeby wobec EHOS-a („Dopisek 1 października”); dla manifestu ważne #91, #92, #93, #94, #96, #111.
 - **`ehos-ledger`** (`main` = `341fc19`) przypina `eh-os-contract` na `50eb771` (merge #53, przed #54), ma
   `ehos.yaml` i jego schemat w `.ehos/`, a CI puszcza `mix eh_os_contract.manifest --output ehos.manifest.json`.
-  Bump przypięcia — w tamtym repozytorium, nie tutaj.
+  **Bump przypięcia na `743e91d` użytkownik zlecił 1 października w tamtym repozytorium** — w toku, nie tutaj.
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
   `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`) i mają schemat V01.
   **Indeks idempotencji w nich przebudowano ręcznie w E11f** na `(issued_by, idempotency_key)`, jak w dzisiejszym V01
@@ -61,10 +57,12 @@ nasz generator ma dać dokładnie ten dokument.
 
 ### Co zostało — i czyje to jest
 
-- **EH2 i EH3** — asystenta, według planu („EH2 i EH3 — plan”), z `pre-pr-review` po każdej części; push, PR i merge
-  — użytkownika, na wyraźne polecenie.
-- **Po EH, poza tym repozytorium:** bump przypięcia w `ehos-ledger` i porównanie jego manifestu z `ledger.v2.json`
-  w `eh-os` (EH4) — tamte repozytoria.
+- **Następny etap — wybór użytkownika.** Kandydaci niżej: fikstury akceptacyjne (po #49), drobne reguły z „Otwartych
+  pytań”, E13.
+- **Po EH, poza tym repozytorium:** bump przypięcia w `ehos-ledger` (zlecony, w toku) i porównanie jego manifestu z
+  `ledger.v2.json` w `eh-os` (EH4) — tamte repozytoria. Port `4001.0`, który przechodzi sprawdzenia EHOS-a obok
+  schematu — [eh-os#111](https://github.com/EmpoweredHouse/eh-os/issues/111), założony 1 października na polecenie
+  użytkownika.
 - **Z E12, do decyzji użytkownika**, każde jako issue: kształt `call/3` przy drugich drzwiach —
   [#63](https://github.com/EmpoweredHouse/eh-os-contract/issues/63); retencja `eh_os_contract_inbox` —
   [#64](https://github.com/EmpoweredHouse/eh-os-contract/issues/64); zgodność, która nie widzi polityki inboxu —
@@ -79,15 +77,16 @@ nasz generator ma dać dokładnie ten dokument.
 - **Lista zmian do `eh-os`** — od 1 października jako issues
   [eh-os#91](https://github.com/EmpoweredHouse/eh-os/issues/91)–[#96](https://github.com/EmpoweredHouse/eh-os/issues/96);
   tabela z tym, co jest załatwione, a co otwarte: „Dopisek 1 października”. Nowa potrzeba: wiersz w tabeli i issue.
-- **E13** (graf jako API, renderer w miejsce Mermaida) — po EH.
+- **E13** (graf jako API, renderer w miejsce Mermaida) — kandydat na następny etap.
 
 ### Co przeczytać najpierw
 
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach (także w
    fiksturach testów: `label` po polsku jest dozwolony — CodeRabbit to już przyjął), wyrażenia regularne z flagą `u`
    i `[0-9]`, zsh bez dzielenia słów.
-2. `PLAN.md`: „EH — odpowiedź EHOS-a” z notką „Sprawdzone 1 października”, a pod nią „Przed EH2 i EH3 — decyzje
-   użytkownika” i „EH2 i EH3 — plan”; „D-51 i D-52 w `eh-os` — uwagi przed akceptacją” nad nimi.
+2. `PLAN.md`: „Przed EH2 i EH3 — decyzje użytkownika”, „EH2 — co wyszło” i „EH3 — co wyszło” — decyzje z
+   odrzuconymi opcjami i to, co przeglądy zostawiły świadomie; „Otwarte pytania”, z których wybiera się następny
+   etap.
 3. `packages/eh_os_contract_auth/lib/eh_os_contract/auth/manifest.ex` i `lib/mix/tasks/eh_os_contract.manifest.ex`
    — generator v1, który v2 zastępuje.
 4. W `eh-os` czytaj `main` z GitHuba (`gh api …/contents/<ścieżka>?ref=main -H 'Accept:
@@ -152,6 +151,9 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **`main` = `743e91d`** (merge #73, EH): drzewo jak `2bda2b7`, ostatni commit PR-a; lokalnie na `2bda2b7` brama z
+  `sandbox/` → **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1104, `check` 0 / 68 / 6; web 52; auth **138** + 1
+  property. CI PR-a na `3263d1d` — `success`; CI `main` na `743e91d` — sprawdzić.
 - **Lokalnie, 1 października, na `ac8d694`** (EH3 po trzech rundach przeglądu, `eh/eh3-manifest-v2`): brama z
   `sandbox/` → **EXIT=0** — sandbox **145**, `check` 0 / 29 / 9; silnik 1104, `check` 0 / 68 / 6; web 52; auth
   **137** + 1 property.
@@ -347,6 +349,7 @@ stała na `e77f44e`, więc czytany był świeży klon w scratchpadzie.
 | D10–D12: D-01, D-15, D-03 i „Outbox rows”, G-16 | wszystkie mają notkę z datą (D-40, D-41). Pytanie „co przenosi wiadomość między kontenerami” EHOS trzyma jako otwarte w G-16 | — |
 | D14: D-34 „a call, not a gate”, „five tables”, test odmowy z D-40 | załatwione przez D-43 (`accepted`, 27 września) | — |
 | D14: plan etapu 4, kroki 6–8 | nieaktualne: etap 4 zamknięty, trwa etap 5 | — |
+| Port `4001.0` przechodzi sprawdzenia EHOS-a obok schematu `ehos.yaml` (EH2, „EH2 — co wyszło”) | `beside_the_schema/1` porównuje porty przez dopasowanie i klucz mapy, więc `4001.0` ≠ `4001` | [eh-os#111](https://github.com/EmpoweredHouse/eh-os/issues/111) |
 | Pytanie o CSP (EG3) | rozstrzygnięte bez pytania: konsola nie ma `report-uri`/`report-to` ani RUM, a EHOS nie ustawia CSP aplikacjom klienckim | — |
 
 **Co zostaje po naszej stronie, gdy EHOS odpowie:** przy #94 — capability ze `scope` i wymiarem w
@@ -2761,7 +2764,7 @@ poprawkach (`a3e1fac..bdf7650`): bez defektu; dołożony test pliku płytkiego z
 którego nie przenosimy. Ma znaczenie tylko, gdyby task czytał `ehos.yaml`, którego deweloper nie napisał (np. PR z
 forka w CI).
 
-**Do decyzji użytkownika — kandydat na issue w `eh-os`:** `port: 4001.0` przechodzi schemat (JSON Schema liczy
+**Kandydat na issue w `eh-os` — założony 1 października jako [eh-os#111](https://github.com/EmpoweredHouse/eh-os/issues/111):** `port: 4001.0` przechodzi schemat (JSON Schema liczy
 `4001.0` jako liczbę całkowitą), u nas i u EHOS-a tak samo, i trafia do manifestu jako float. Sprawdzenie EHOS-a obok
 schematu (port health spoza `serves`, `v1.ex`) porównuje przez dopasowanie, więc `health.port: 4001.0` przy `serves`
 na 4001 przechodzi. U nas nic nie zmieniamy (generator ma czytać jak EHOS); po stronie EHOS-a — odmowa albo
