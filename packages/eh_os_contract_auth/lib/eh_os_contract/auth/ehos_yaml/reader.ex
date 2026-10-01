@@ -49,6 +49,9 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
   # The longest list the schema allows has 32 entries; a reason about an entry finds it by index.
   @max_items 256
 
+  @spec max_bytes() :: pos_integer()
+  def max_bytes, do: @max_bytes
+
   @spec decode(binary()) :: {:ok, term(), lines()} | {:error, [error()]}
   def decode(text) when is_binary(text) do
     # yamerl reads its options from its application's environment, so it is loaded, though it is

@@ -83,6 +83,10 @@ defmodule EhOsContract.Auth.EhosYaml do
     end
   end
 
+  @doc "The largest file EHOS reads, in bytes: 64 KiB."
+  @spec max_bytes() :: pos_integer()
+  def max_bytes, do: Reader.max_bytes()
+
   @doc "One reason as a line of text: `line 7: serves[0].port: must be at least 1024`."
   @spec format_error(error()) :: String.t()
   def format_error(%{path: path, line: line, message: message}) do

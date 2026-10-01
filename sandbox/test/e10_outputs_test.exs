@@ -80,64 +80,87 @@ defmodule EhOsContractHost.E10OutputsTest do
     assert operation["x-eh-os-contract-roles"] == ["taxvision.accountant"]
   end
 
+  # The sandbox's `ehos.yaml` names TaxVision, since Rehmed is registered beside it.
   @tag :tmp_dir
-  test "the manifest task writes TaxVision's current command authority", %{tmp_dir: dir} do
+  test "the manifest task extends ehos.yaml with TaxVision's command authority", %{tmp_dir: dir} do
     path = Path.join(dir, "taxvision.json")
     Mix.Task.reenable("eh_os_contract.manifest")
 
-    output =
-      capture_io(fn ->
-        Mix.Tasks.EhOsContract.Manifest.run(["--domain", "taxvision", "--output", path])
-      end)
+    output = capture_io(fn -> Mix.Tasks.EhOsContract.Manifest.run(["--output", path]) end)
 
     assert output =~ "written: #{path}"
 
     assert Jason.decode!(File.read!(path)) == %{
-             "schema" => "ehos.manifest/v1",
+             "schema" => "ehos.manifest/v2",
+             "ehos_yaml" => "ehos.yaml/v1",
              "application" => "taxvision",
-             "capabilities" => [
-               %{
-                 "name" => "taxvision.complete_company_profile",
-                 "command" => "complete_company_profile",
-                 "label" => "Uzupełnij profil firmy",
-                 "process" => "client",
-                 "principals" => ["human"]
-               },
-               %{
-                 "name" => "taxvision.ingest_bank_statement",
-                 "command" => "ingest_bank_statement",
-                 "label" => "Wgraj wyciąg bankowy",
-                 "process" => "accounting_month",
-                 "principals" => ["human"]
-               },
-               %{
-                 "name" => "taxvision.open_month",
-                 "command" => "open_month",
-                 "label" => "Otwórz miesiąc księgowy",
-                 "process" => "accounting_month",
-                 "principals" => ["human"]
-               },
-               %{
-                 "name" => "taxvision.retrigger_verification",
-                 "command" => "retrigger_verification",
-                 "label" => "Ponów weryfikację",
-                 "process" => "client",
-                 "principals" => ["human"]
-               }
-             ],
-             "roles" => [
-               %{
-                 "name" => "taxvision.accountant",
-                 "label" => "Księgowa",
-                 "capabilities" => [
-                   "taxvision.complete_company_profile",
-                   "taxvision.ingest_bank_statement",
-                   "taxvision.open_month",
-                   "taxvision.retrigger_verification"
-                 ]
-               }
-             ]
+             "engine" => %{"name" => "eh_os_contract", "version" => EhOsContract.version()},
+             "serves" => [%{"name" => "web", "port" => 4010}],
+             "health" => %{"port" => 4011, "ready" => "/health/ready", "live" => "/health/live"},
+             "offers" => %{
+               "capabilities" => [
+                 %{
+                   "name" => "taxvision.complete_company_profile",
+                   "command" => "complete_company_profile",
+                   "label" => "Uzupełnij profil firmy",
+                   "process" => "client",
+                   "principals" => ["human"]
+                 },
+                 %{
+                   "name" => "taxvision.ingest_bank_statement",
+                   "command" => "ingest_bank_statement",
+                   "label" => "Wgraj wyciąg bankowy",
+                   "process" => "accounting_month",
+                   "principals" => ["human"]
+                 },
+                 %{
+                   "name" => "taxvision.open_month",
+                   "command" => "open_month",
+                   "label" => "Otwórz miesiąc księgowy",
+                   "process" => "accounting_month",
+                   "principals" => ["human"]
+                 },
+                 %{
+                   "name" => "taxvision.retrigger_verification",
+                   "command" => "retrigger_verification",
+                   "label" => "Ponów weryfikację",
+                   "process" => "client",
+                   "principals" => ["human"]
+                 }
+               ],
+               "roles" => [
+                 %{
+                   "name" => "taxvision.accountant",
+                   "label" => "Księgowa",
+                   "capabilities" => [
+                     "taxvision.complete_company_profile",
+                     "taxvision.ingest_bank_statement",
+                     "taxvision.open_month",
+                     "taxvision.retrigger_verification"
+                   ]
+                 }
+               ]
+             }
            }
+  end
+
+  @tag :tmp_dir
+  test "the manifest task refuses to guess between TaxVision and Rehmed", %{tmp_dir: dir} do
+    unnamed = Path.join(dir, "ehos.yaml")
+    named = File.read!("ehos.yaml")
+    assert named =~ "application: taxvision\n"
+    File.write!(unnamed, String.replace(named, "application: taxvision\n", ""))
+
+    for args <- [["--ehos-yaml", unnamed], ["--domain", "taxvision"]] do
+      Mix.Task.reenable("eh_os_contract.manifest")
+      output = ["--output", Path.join(dir, "manifest.json") | args]
+
+      error = assert_raise Mix.Error, fn -> Mix.Tasks.EhOsContract.Manifest.run(output) end
+
+      assert error.message =~ "application: <name>"
+    end
+
+    refute File.exists?(Path.join(dir, "manifest.json"))
   end
 
   @tag :tmp_dir

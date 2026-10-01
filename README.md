@@ -231,7 +231,7 @@ boundaries below would be documentation rather than a check.
 | `mix eh_os_contract.subscriptions` | where each subscription stands, and a way past a poison event |
 | `mix eh_os_contract.rewrap` | rewraps the subjects' data keys with the vault's current master key |
 | `mix eh_os_contract.docs` / `rules` | inside `packages/eh_os_contract` only: regenerate `docs/dsl/` and `docs/rules.md` |
-| `mix eh_os_contract.manifest --domain <domain>` | from `eh_os_contract_auth`: the EHOS application manifest |
+| `mix eh_os_contract.manifest --output <file>` | from `eh_os_contract_auth`: the EHOS application manifest, `ehos.yaml` extended with what the contracts offer |
 
 ## The repository
 
