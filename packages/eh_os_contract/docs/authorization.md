@@ -64,8 +64,8 @@ sequenceDiagram
 ```
 
 1. **Deployment.** The application sends EHOS a manifest with its capabilities and roles, derived from
-   its contracts, beside what its `ehos.yaml` says it needs (`mix eh_os_contract.manifest` in
-   `eh_os_contract_auth`, `ehos.manifest/v2`).
+   its contracts, beside what its `ehos.yaml` says it needs: `ehos.manifest/v2`, which
+   `mix eh_os_contract.manifest --output ehos.manifest.json` in `eh_os_contract_auth` writes.
 2. **Binding.** An EHOS administrator binds a person to a role, per application and environment,
    optionally with scope values ("clinic 7").
 3. **Sign-in.** The person signs in to EHOS and receives a credential: a JWT signed with Ed25519, valid

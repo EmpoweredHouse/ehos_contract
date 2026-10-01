@@ -31,15 +31,16 @@ nasz generator ma dać dokładnie ten dokument.
 - **`origin/main` = `aadcbd1`** (merge #70, 1 października; przedtem `c9af0ef` — #69, `12d3cf4` — #68, `827184d` —
   #67, `3b77622` — #62, E12e). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe. CI `main` na `aadcbd1`
   (przebieg `36860580158`) — `success`.
-- **`eh/eh2-ehos-yaml`** — od `aadcbd1`: plan, EH2a, EH2b i poprawki po trzech rundach przeglądu („EH2 — co
-  wyszło”); **`eh/eh3-manifest-v2`** (główny checkout) — od głowy EH2: EH3a, poprawki, EH3b („EH3 — co wyszło”).
-  Push i PR-y na polecenie użytkownika z 1 października: EH2 —
-  [#73](https://github.com/EmpoweredHouse/eh-os-contract/pull/73); EH3 — PR na bazie `eh/eh2-ehos-yaml`.
+- **`eh/eh2-ehos-yaml`** (główny checkout) — od `aadcbd1`: plan, EH2a, EH2b i poprawki po trzech rundach przeglądu
+  („EH2 — co wyszło”), a w nim **`eh/eh3-manifest-v2`** — EH3a, poprawki, EH3b („EH3 — co wyszło”), zmergowane przez
+  użytkownika jako [#74](https://github.com/EmpoweredHouse/eh-os-contract/pull/74). Całość idzie do `main` jednym PR-em,
+  [#73](https://github.com/EmpoweredHouse/eh-os-contract/pull/73), otwartym; merge po komentarzach CodeRabbita, na
+  polecenie użytkownika z 1 października.
 - **Lokalnie poza tym:** `main`, `plan/eh-os-issues` (w `main`) i worktree `merge-pr-55-next-stage-ad84a2`
   (odłączony na `aadcbd1`). Sprzątanie z 1 października skasowało resztę starych worktree i gałęzi.
 - **Otwarte na GitHubie:** **issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza repozytorium;
   zaparkowane 30 września, z propozycją `EmpoweredHouse/eh-os-contract-sandbox`; **#63–#66** — pytania otwarte po
-  E12 („Otwarte pytania”). Otwartych PR-ów brak. **W `EmpoweredHouse/eh-os`: #91–#96** — nasze potrzeby wobec
+  E12 („Otwarte pytania”). Otwarty PR: #73 (EH). **W `EmpoweredHouse/eh-os`: #91–#96** — nasze potrzeby wobec
   EHOS-a („Dopisek 1 października”); dla manifestu ważne #91, #92, #93, #94, #96.
 - **`ehos-ledger`** (`main` = `341fc19`) przypina `eh-os-contract` na `50eb771` (merge #53, przed #54), ma
   `ehos.yaml` i jego schemat w `.ehos/`, a CI puszcza `mix eh_os_contract.manifest --output ehos.manifest.json`.

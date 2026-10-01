@@ -151,16 +151,21 @@ defmodule EhOsContractHost.E10OutputsTest do
     assert named =~ "application: taxvision\n"
     File.write!(unnamed, String.replace(named, "application: taxvision\n", ""))
 
-    for args <- [["--ehos-yaml", unnamed], ["--domain", "taxvision"]] do
-      Mix.Task.reenable("eh_os_contract.manifest")
-      output = ["--output", Path.join(dir, "manifest.json") | args]
+    output = ["--output", Path.join(dir, "manifest.json")]
 
-      error = assert_raise Mix.Error, fn -> Mix.Tasks.EhOsContract.Manifest.run(output) end
+    assert refusal(output ++ ["--ehos-yaml", unnamed]) =~
+             "domains with contracts; say which one this image is in ehos.yaml, as application: <name>"
 
-      assert error.message =~ "application: <name>"
-    end
+    # --domain chose the domain before v2, and is refused before any file is read.
+    assert refusal(output ++ ["--domain", "taxvision"]) =~ "--domain is gone"
 
     refute File.exists?(Path.join(dir, "manifest.json"))
+  end
+
+  defp refusal(args) do
+    Mix.Task.reenable("eh_os_contract.manifest")
+    error = assert_raise Mix.Error, fn -> Mix.Tasks.EhOsContract.Manifest.run(args) end
+    error.message
   end
 
   @tag :tmp_dir
