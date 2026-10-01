@@ -31,8 +31,10 @@ nasz generator ma dać dokładnie ten dokument.
 - **`origin/main` = `aadcbd1`** (merge #70, 1 października; przedtem `c9af0ef` — #69, `12d3cf4` — #68, `827184d` —
   #67, `3b77622` — #62, E12e). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe. CI `main` na `aadcbd1`
   (przebieg `36860580158`) — `success`.
-- **`eh/eh2-ehos-yaml`** (główny checkout) — od `aadcbd1`: plan, EH2a, EH2b i poprawki po dwóch przeglądach („EH2 —
-  co wyszło”); push i PR na polecenie użytkownika.
+- **`eh/eh2-ehos-yaml`** — od `aadcbd1`: plan, EH2a, EH2b i poprawki po trzech rundach przeglądu („EH2 — co
+  wyszło”); **`eh/eh3-manifest-v2`** (główny checkout) — od głowy EH2: EH3a, poprawki, EH3b („EH3 — co wyszło”).
+  Push i PR-y na polecenie użytkownika z 1 października: EH2 —
+  [#73](https://github.com/EmpoweredHouse/eh-os-contract/pull/73); EH3 — PR na bazie `eh/eh2-ehos-yaml`.
 - **Lokalnie poza tym:** `main`, `plan/eh-os-issues` (w `main`) i worktree `merge-pr-55-next-stage-ad84a2`
   (odłączony na `aadcbd1`). Sprzątanie z 1 października skasowało resztę starych worktree i gałęzi.
 - **Otwarte na GitHubie:** **issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza repozytorium;
@@ -149,6 +151,9 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 1 października, na `ac8d694`** (EH3 po trzech rundach przeglądu, `eh/eh3-manifest-v2`): brama z
+  `sandbox/` → **EXIT=0** — sandbox **145**, `check` 0 / 29 / 9; silnik 1104, `check` 0 / 68 / 6; web 52; auth
+  **137** + 1 property.
 - **Lokalnie, 1 października, na `ee67995`** (EH2 po trzech rundach przeglądu, `eh/eh2-ehos-yaml`): brama z
   `sandbox/` → **EXIT=0** — sandbox 144, `check` 0 / 29 / 9; silnik 1104, `check` 0 / 68 / 6; web 52; auth **115**.
 - **Lokalnie, 1 października, na `main` = `aadcbd1`** (baza EH, przed pierwszym commitem `eh/eh2-ehos-yaml`): brama z
@@ -2760,6 +2765,43 @@ forka w CI).
 schematu (port health spoza `serves`, `v1.ex`) porównuje przez dopasowanie, więc `health.port: 4001.0` przy `serves`
 na 4001 przechodzi. U nas nic nie zmieniamy (generator ma czytać jak EHOS); po stronie EHOS-a — odmowa albo
 normalizacja liczby całkowitej zapisanej jako float.
+
+### EH3 — co wyszło (1 października)
+
+Na `eh/eh3-manifest-v2`, od `50cea3d` (głowa EH2), niewypchnięte: EH3a — generator i task (`1eea9a8`), poprawki po
+przeglądzie (`6bbf5be`, `73c7183`), EH3b — dokumentacja i drobiazgi z przeglądu (`c807d61`), poprawki po dwóch
+kolejnych rundach (`21f4aff`, `ac8d694`). Pełna brama po każdym commicie: `EXIT=0`. Auth **115 → 137** testów i jedno
+property; sandbox **144 → 145**; silnik 1104, web 52, liczby
+`check` bez zmian.
+
+**Co jest.** `mix eh_os_contract.manifest --output <plik> [--ehos-yaml <plik>]` czyta `ehos.yaml` projektu (obok
+jego `mix.exs`) przez `EhosYaml.read/1` i pisze `ehos.manifest/v2`: każdy klucz poza `schema` bez zmian, `schema`
+jako `ehos_yaml`, bez wartości domyślnych, plus `application`, `offers` (kapabilności i role jak w v1) i `engine`;
+bez `contracts` (decyzja 1). v1, `Manifest.build/2` i `--domain` zniknęły (decyzja 2); `--domain` odmawia z
+podpowiedzią. `Manifest.build/3` (przeczytany `ehos.yaml`, domeny, kontrakty). **Odbiór:** zmyślona domena `ledger`
+o ofercie ledgera z `ehos.yaml` ledgera daje `ledger.v2.json` EHOS-a (kopia z `eh-os` `f7b2330`, ostatnia zmiana
+`ff1388e`) z dołożonym `engine`; property na StreamData — każdy `ehos.yaml`, który przyjmuje schemat v1, zapisany
+jako JSON i przeczytany z powrotem, przechodzi do manifestu bez zmian; dwie mutacje (zgubione `serves`, dopisane
+`health`) — czerwone. Sandbox ma `ehos.yaml` z `application: taxvision`; bez nazwy task odmawia wyboru między
+TaxVision a Rehmedem. Na żywo: `MIX_ENV=dev mix eh_os_contract.manifest` w `sandbox/` pisze v2 TaxVision (cztery
+kapabilności, rola `taxvision.accountant`, `engine` `0.3.0-dev`).
+
+**Co wyszło inaczej niż w planie.** Task i test sandboxa weszły już do EH3a, nie do EH3b: bez `build/2` brama byłaby
+czerwona. EH3b to sama dokumentacja. Poza planem, z przeglądów: generator odmawia tego, czego odmówiłby EHOS w
+`offers` — komendy i aktora roli ponad 63 znaki (D-48) i pustej etykiety — zamiast 422 przy wdrożeniu; przy kilku
+domenach liczy tylko te z kontraktami; `application:` w zapisie EHOS-a (`manifest-rig`) znajduje domenę nazwaną z
+`_` i każe ją przemianować; podpowiedź nazwy tylko wtedy, gdy EHOS ją przyjmie. Task patrzy na plik (`File.stat`)
+przed odczytem — FIFO bez pisarza zawieszało maszynę wirtualną — i odmawia `--output` równego plikowi wejściowemu.
+
+**Przeglądy EH3a** (poprawność, bezpieczeństwo i wydajność): bez eskalacji uprawnień i bez ujawnienia danych; 14
+ustaleń, wszystkie poprawione (lista w notatce przeglądu i w commitach `6bbf5be`, `73c7183`, `c807d61`). **Runda na
+poprawkach:** bez defektu wysokiego ani średniego; poprawione — plik bez prawa odczytu (surowy `File.Error`),
+`--output` przez dowiązanie albo inną wielkość liter na APFS nadpisujące `ehos.yaml` (porównanie urządzenia i
+inode'a), puste `--ehos-yaml`, odczyt przez uchwyt najwyżej o bajt dalej niż EHOS, opis reguły wyboru domeny i
+„musi nie mieć sekretów” w README (`21f4aff`). **Runda na `21f4aff`:** poprawione — Windows ma każdy inode równy 0
+(porównujemy tylko niezerowe), ponowne sprawdzenie `--output` tuż przed zapisem, test `chmod 000` pomijany jako root
+(`ac8d694`). **Zostaje świadomie:** ścieżka podmieniona na FIFO między `stat` a otwarciem może zawiesić task —
+Erlang nie otwiera pliku bez blokowania.
 
 ### Przed E11 — podział i decyzje użytkownika (29 września)
 
