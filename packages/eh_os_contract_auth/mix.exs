@@ -110,8 +110,9 @@ defmodule EhOsContract.Auth.MixProject do
       # `ehos.yaml` is read and validated as EHOS reads it (`eh-os` D-51): yamerl with YAML
       # 1.2's core schema, then JSV against the schema EHOS publishes, copied into `priv/`. Only
       # `mix eh_os_contract.manifest` reads it, in the application's CI, so neither is started
-      # with the host or carried into its release.
-      {:yamerl, "~> 0.10", runtime: false},
+      # with the host or carried into its release. yamerl is held to 0.10.x because the reader
+      # matches the shape of its tokens and nodes.
+      {:yamerl, "~> 0.10.0", runtime: false},
       {:jsv, "~> 0.25.0", runtime: false}
     ]
   end

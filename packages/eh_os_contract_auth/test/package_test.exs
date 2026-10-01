@@ -13,6 +13,10 @@ defmodule EhOsContract.Auth.PackageTest do
     end
   end
 
+  test "yamerl is held to the minor version whose tokens and nodes the reader matches" do
+    assert {:yamerl, "~> 0.10.0", runtime: false} in Mix.Project.config()[:deps]
+  end
+
   test "the package carries the ehos.yaml schemas it validates with, and not its test migrations" do
     files = Mix.Project.config()[:package][:files]
 

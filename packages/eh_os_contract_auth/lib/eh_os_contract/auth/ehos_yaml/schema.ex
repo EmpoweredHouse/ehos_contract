@@ -71,20 +71,8 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
        [error(["schema"], "is required: it names the version of ehos.yaml the file is in")]}
 
   # JSV's built schema holds compiled patterns, which a module attribute cannot, so it is built at
-  # the first read and kept for the node's lifetime.
-  defp root(version) do
-    key = {__MODULE__, version}
-
-    case :persistent_term.get(key, nil) do
-      nil ->
-        root = JSV.build!(Map.fetch!(@schemas, version))
-        :persistent_term.put(key, root)
-        root
-
-      root ->
-        root
-    end
-  end
+  # each read: once in a run of the manifest task, and in milliseconds.
+  defp root(version), do: JSV.build!(Map.fetch!(@schemas, version))
 
   defp reasons(unit, data, schema) do
     path = from_pointer(unit.instanceLocation, data)

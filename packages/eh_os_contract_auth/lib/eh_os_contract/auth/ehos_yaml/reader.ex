@@ -64,8 +64,15 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
 
   defp ensure_loaded do
     case Application.load(:yamerl) do
-      :ok -> :ok
-      {:error, {:already_loaded, :yamerl}} -> :ok
+      :ok ->
+        :ok
+
+      {:error, {:already_loaded, :yamerl}} ->
+        :ok
+
+      {:error, reason} ->
+        raise "yamerl cannot be loaded (#{inspect(reason)}): ehos.yaml is read in a Mix task, " <>
+                "and a release does not carry yamerl"
     end
   end
 
@@ -100,8 +107,9 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
     {:yamerl_exception, errors} -> {:error, Enum.map(errors, &parsing_error/1)}
   end
 
-  # yamerl raises on some text it cannot read, such as a file that starts with `:`. Only its own
-  # calls are rescued, so a defect of this module is not taken for a file that is not YAML.
+  # yamerl raises on some text it cannot read, such as a file that starts with `:`. Only the two
+  # calls into yamerl are rescued, not the conversion of its tree, so a defect there is not taken
+  # for a file that is not YAML; the token function yamerl calls back is inside the first one.
   defp unreadable(exception),
     do: refuse(nil, "the file is not YAML that can be read: #{Exception.message(exception)}")
 
