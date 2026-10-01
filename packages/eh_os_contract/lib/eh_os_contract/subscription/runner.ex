@@ -114,9 +114,23 @@ defmodule EhOsContract.Subscription.Runner do
   def handle_info({:notification, @channel, _payload}, %{resting: true} = state),
     do: {:noreply, state}
 
-  def handle_info({:notification, @channel, _payload}, state), do: {:noreply, run(state)}
+  # One run reads everything the notifications waiting behind this one announce: a
+  # runner catching up on a backlog is sent one per commit, its own among them.
+  def handle_info({:notification, @channel, _payload}, state) do
+    flush_notifications()
+    {:noreply, run(state)}
+  end
+
   def handle_info(:run, state), do: {:noreply, run(%{state | timer: nil, resting: false})}
   def handle_info(_other, state), do: {:noreply, state}
+
+  defp flush_notifications do
+    receive do
+      {:notification, @channel, _payload} -> flush_notifications()
+    after
+      0 -> :ok
+    end
+  end
 
   defp run(state) do
     case Implementations.consumer(state.key) do

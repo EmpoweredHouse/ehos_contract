@@ -70,4 +70,35 @@ defmodule EhOsContract.RelayCommitsTest do
 
     refute_receive {:attempt, _}, 500
   end
+
+  # A runner catching up is sent a notification per commit, its own among them; a
+  # step each would be as many transactions finding nothing. With no bus the relay's
+  # step reads nothing, so only the number of steps is counted.
+  test "a runner takes the notifications waiting for it in one run" do
+    Application.delete_env(:eh_os_contract, :bus)
+    runner = start_supervised!({Subscription.Runner, @relay})
+    # Its first run, at start, is over before it is held.
+    Process.sleep(50)
+    :ok = :sys.suspend(runner)
+
+    :erlang.trace_pattern({Subscription, :step, 2}, true, [])
+    on_exit(fn -> :erlang.trace_pattern({Subscription, :step, 2}, false, []) end)
+    1 = :erlang.trace(runner, true, [:call])
+
+    for _ <- 1..5, do: send(runner, {:notification, :eh_os_contract, %{}})
+    :ok = :sys.resume(runner)
+    _ = :sys.get_state(runner)
+
+    ref = :erlang.trace_delivered(runner)
+    assert_receive {:trace_delivered, ^runner, ^ref}
+    assert steps(runner) == 1
+  end
+
+  defp steps(runner) do
+    receive do
+      {:trace, ^runner, :call, {Subscription, :step, _}} -> 1 + steps(runner)
+    after
+      0 -> 0
+    end
+  end
 end
