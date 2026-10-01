@@ -146,6 +146,10 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 1 października, na `9d1ae58`** (E12d po przeglądzie, `dsl-v2/e12d-call`): brama z `sandbox/` →
+  **EXIT=0** — sandbox 144, `check` 0 / 29 / 9; silnik **1104** (1094 + `call_test.exs` 9 + Plug 1), `check`
+  **0 / 68 / 6**; web 52; auth 68. CI `main` na `67253bf` (merge #59) — sprawdzić
+  (`gh run list --repo EmpoweredHouse/eh-os-contract --branch main --limit 2`).
 - **Lokalnie, 1 października, na `0038a71`** (E12c po dwóch rundach przeglądu): brama z `sandbox/` → **EXIT=0** —
   sandbox 144, `check` 0 / 29 / 9; silnik **1094** (+4 testy keepera), `check` **0 / 68 / 6**; web 52; auth **68**.
 - **Lokalnie, 1 października, na `da2b841`** (E12c po pierwszej rundzie przeglądu, głowa kodu `bab57b3`): brama z `sandbox/` →
