@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 1 października (E0–E11, #50–#57 w `main`; E12 w toku)
+## Handoff — stan na 1 października (E0–E11, #50–#58 w `main`; E12 w toku, E12c następne)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -17,20 +17,23 @@ Po E11 w `main` są: #53 (tabele poza `public`, #51), #54 (klucz blokady dopisu 
 przestrzeni nazw) i **#56 — każda nazwa w formie**: `name:` domeny jako segment przestrzeni nazw (D11), `\z`
 zamiast `$` we wzorcach nazw (N1, D9, strony, dziesiętna scenariusza), nazwy aktorów (D4) i pozostałych elementów
 domeny (D1, z kolizją wartości po `Macro.camelize` i nazwami typów wbudowanych), kolizja nazw kontraktu po
-`camelize` (N1, N2 dla `State`/`Row`), nazwy pól i `identity` (F1, D3, D6). **W toku: E12** (wybór użytkownika z
-1 października, „Przed E12 — decyzje użytkownika”); **E12a** — `EhOsContract.Bus`, adapter lokalny, suita — w
-`main` (#57); **E12b** — relay — gotowe, przejrzane i wystawione jako PR z gałęzi `dsl-v2/e12b-relay`.
+`camelize` (N1, N2 dla `State`/`Row`), nazwy pól i `identity` (F1, D3, D6). **W toku: E12** — integracja między
+aplikacjami (wybór użytkownika z 1 października, „Przed E12 — decyzje użytkownika”). W `main` są **E12a**
+(#57: `EhOsContract.Bus`, `Bus.Local`, `Bus.Suite`) i **E12b** (#58: relay, `EhOsContract.Relay`). **Nic nie jest w
+toku między częściami**; następna jest **E12c** (inbox, `.subscribe`, test dwóch aplikacji) — zaczyna się od dwóch
+decyzji użytkownika („Otwarte pytania”, pierwsze dwa punkty).
 
 ### Stan repozytorium
 
-- **`origin/main` = `7e4e4cc`** (merge #57, E12a, 1 października; przedtem `6e1658a` — merge #56, `0e6e10f` —
-  merge #55). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
-- **`dsl-v2/e12b-relay`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `7e4e4cc`: relay, poprawki z przeglądu,
-  ten zapis; PR do `main` na polecenie użytkownika. `dsl-v2/e12-bus` i `dsl-v2/handoff-after-56` są w całości w
-  `main`.
+- **`origin/main` = `842a2f1`** (merge #58, E12b, 1 października; przedtem `7e4e4cc` — merge #57, E12a, i
+  `6e1658a` — merge #56). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
+- **`dsl-v2/handoff-after-58`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `842a2f1`, jeden commit: ten zapis;
+  **niewypchnięta** — push (fast-forward `main` albo PR) na polecenie użytkownika; E12c może wyjść od niej.
+  `dsl-v2/e12-bus`, `dsl-v2/e12b-relay` i `dsl-v2/handoff-after-56` są w całości w `main`.
 - **Otwarte na GitHubie:** tylko **issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza
   repozytorium; zaparkowane 30 września, z propozycją `EmpoweredHouse/eh-os-contract-sandbox`. Otwartych PR-ów brak.
-- **Lokalne gałęzie w całości w `main`** — kilkadziesiąt, w tym wszystkie `dsl-v2/e*`, `dsl-v2/d11-dashed-namespace`,
+- **Lokalne gałęzie w całości w `main`** — 56 (`git branch --merged origin/main`, 1 października, bez wyciągniętych
+  w worktree; worktree jest 12), w tym wszystkie `dsl-v2/e*`, `dsl-v2/d11-dashed-namespace`,
   `dsl-v2/domain-name-check`, `dsl-v2/domain-names-snake-case` (`git branch --merged origin/main`). Do skasowania;
   część jest wyciągnięta w innych worktree (`git worktree list`), więc najpierw worktree.
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
@@ -43,9 +46,13 @@ domeny (D1, z kolizją wartości po `Macro.camelize` i nazwami typów wbudowanyc
 
 ### Co zostało — i czyje to jest
 
-- **E12 — w toku** (asystenta): po merge'u E12b — E12c (inbox, `.subscribe`, test dwóch aplikacji), E12d
-  (publiczne wejście), E12e (dokumentacja); podział w „Przed E12 — decyzje użytkownika”, sprawy przeniesione do
-  E12c i E12e w „E12a — co wyszło” i „E12b — co wyszło”.
+- **E12c — następne** (asystenta, po dwóch decyzjach użytkownika z „Otwartych pytań”): inbox (tabela `(nazwa, id
+  wiadomości)`, jedna transakcja z polityką i faktem odbiorcy, ack po commicie), runner subskrybenta na
+  `EhOsContract.Bus.consumer/1`, capability `<nazwa>.subscribe` w `Model.capabilities/1`, test dwóch aplikacji na
+  `Bus.Local` — w `BusRig` drugi, zmyślony odbiorca (magazyn). Kryteria odbioru E12 — „Etapy”, opis E12.
+- **E12d** (publiczne wejście dla surowych danych, Plug na nim, bez `Dispatcher.permit_undecoded/5`) i **E12e**
+  (poprawka z datą `architecture.md` §9–10, `docs/contract.md`, CHANGELOG, skille `write-reaction` i
+  `change-contract` — zmiana nazwy i usunięcie `publish`) — asystenta, po E12c.
 - **Kandydaci na później** (wybór użytkownika), każdy z tym, co go blokuje:
   - **„Po E11” z planu: kontrakty sandboxa jako fikstury akceptacyjne pakietu, potem manifest v2** (po akceptacji
     D-51/D-52 w `eh-os`). **Fikstury kolidują z #49**: kontrakty klientów w pakiecie to dokładnie to, czego #49 chce
@@ -62,14 +69,17 @@ domeny (D1, z kolizją wartości po `Macro.camelize` i nazwami typów wbudowanyc
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach (także w
    fiksturach testów: `label` po polsku jest dozwolony — CodeRabbit to już przyjął), wyrażenia regularne z flagą `u`
    i `[0-9]`, zsh bez dzielenia słów.
-2. `PLAN.md`: cztery ostatnie zapisy „co wyszło” — „`name:` domeny jako przestrzeń nazw”, „`$` w nazwach i nazwy
-   aktorów”, „Nazwy elementów domeny”, „Kolizja nazw kontraktu i nazwy pól” — decyzje z odrzuconymi opcjami.
-3. `PLAN.md`, „Otwarte pytania” — co zostało z przeglądów #56 (etykiety Mermaida, kolizja stron, pole `scope:`,
-   mapa capability) i starsze pozycje bez decyzji.
-4. `PLAN.md`, „Etapy” — opis E12 i „Po E11”, żeby ocenić kandydatów; `gh issue view 49`.
-5. `packages/eh_os_contract/docs/contract.md` (tabela odmów z kodami) i `.claude/skills/` — DSL i skille, z których
-   pisze się kod.
-6. `.claude/skills/pre-pr-review/SKILL.md` — przed PR-em; przegląd po każdej części etapu, nie tylko przed PR-em.
+2. `PLAN.md`: „Przed E12 — decyzje użytkownika”, „E12a — co wyszło”, „E12b — co wyszło” — decyzje E12 z
+   odrzuconymi opcjami (brak kolejności w `Bus`, relay nie przez Obana, broker w transakcji z limitem czasu) i
+   to, co przeglądy przeniosły do E12c i E12e.
+3. `docs/adr/contract-v2.md` §16 — D11 i D12 (relay, inbox, `Bus`) i trzy dopiski z 1 października; to jest
+   specyfikacja inboxu, który buduje E12c.
+4. `lib/eh_os_contract/bus.ex`, `bus/suite.ex`, `relay.ex` i `subscription.ex` w pakiecie silnika — kształt, na
+   którym E12c stoi; `test/support/bus_rig/` — fikstura, do której dojdzie odbiorca.
+5. `PLAN.md`, „Etapy” — opis E12 z kryteriami odbioru; „Otwarte pytania”. Do odczytu (nie pisać):
+   `~/Projects/ai/eh-os/docs/adr/0041-integration-events-publish-consumes-and-inbox.md` — połowa EHOS-a.
+6. `packages/eh_os_contract/docs/contract.md` (tabela odmów z kodami) i `.claude/skills/` — DSL i skille, z których
+   pisze się kod; `.claude/skills/pre-pr-review/SKILL.md` — przegląd po każdej części etapu, przed PR-em.
 
 ### Komendy
 
@@ -117,11 +127,20 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 - `\n` w heredocu `"""` testu z fiksturą to prawdziwa nowa linia w kompilowanym źródle — atom `:"x\n"` zajmuje
   wtedy dwie linie i przesuwa numery linii w asercjach; nazwę z nową linią pisz `#{"\\n"}` albo licz linie od nowa;
 - `for` w Elixirze musi zaczynać się generatorem — filtr (`kind != …`, `:x in list`) idzie po generatorze;
+- **hook `gh pr create` sprawdza notatkę przeglądu na `HEAD` głównego checkoutu** (`$CLAUDE_PROJECT_DIR`), nie
+  worktree, z którego idzie PR — z worktree odmawia mimo notatki na głowie gałęzi. #57 i #58 wystawione przez
+  `gh api repos/EmpoweredHouse/eh-os-contract/pulls -f base=main -f head=<gałąź> -f title=… -F body=@<plik>` po
+  sprawdzeniu `git notes --ref=review show HEAD` w worktree; użytkownik o tym wie;
 - `git grep -E` na tej maszynie nie rozumie `\b` i milczy, zamiast odmówić (w E11b `git grep -iP` też raz dał zero
   przy 38 plikach z trafieniem) — wynik „nic nie zostało” potwierdzać drugim narzędziem (`grep -rE`, `git grep -w`).
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 1 października, na `main` = `842a2f1`** (po merge'u #58; drzewo kodu jak `25e51d5`): brama z
+  `sandbox/` → **EXIT=0** — sandbox 144, `check` 0 / 29 / 9; silnik **1073**, `check` 0 / 67 / 6; web 52; auth 66.
+- **CI:** PR #58 (`check`, przebieg `36791662027`) — `success`; `main` na `7e4e4cc` (`36788298869`) — `success`;
+  `main` na `842a2f1` (`36825204797`, job `check`) — w toku w chwili zapisu
+  (`gh run view 36825204797 --repo EmpoweredHouse/eh-os-contract --json jobs`).
 - **Lokalnie, 1 października, na `25e51d5`** (głowa kodu E12b po przeglądzie): brama z `sandbox/` → **EXIT=0** —
   sandbox 144, `check` 0 / 29 / 9; silnik **1073** (1059 + 14: relay 12, runner na `CommitRepo` 1, `--reset`
   relaya 1), `check` **0 / 67 / 6** — o jedno ostrzeżenie i jedną uwagę więcej, obie z fikstury `BusRig` i
@@ -145,6 +164,15 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Otwarte pytania
 
+- **E12c, przed startem — decyzja użytkownika: czy wiadomość niesie wartości `idempotent_on`.** Inbox kluczuje
+  `(nazwa, id wiadomości)`, a id to `<id zdarzenia>/<nazwa wersjonowana>`, więc dwa zdarzenia o tych samych
+  wartościach `idempotent_on` (np. `visit_id`) to dwie wiadomości i dwie reakcje; `eh-os` FM-08 chce jednej. Możliwe:
+  piąte pole `Bus.Message` z wartościami (inbox kluczuje po nich), albo nic (subskrybent sam w swojej jednostce).
+- **E12c, przed startem — decyzja użytkownika: kiedy powstaje konsument odbiorcy względem relaya wydawcy.**
+  `Bus.Local` daje nowemu konsumentowi tylko to, co opublikowano po jego pierwszej subskrypcji, a relay wydawcy
+  startuje od głowy logu — w dwóch aplikacjach w jednym BEAM-ie relay uruchomiony przed konsumentem publikuje w
+  próżnię. Możliwe: kolejność startu w drzewie hosta, konsument rejestrowany przy pierwszym boocie jak wiersz relaya,
+  albo zostawić to transportowi (JetStream trzyma strumień).
 - **H177** z materiału Rehmedu przeczy DEC-18 — czeka na klienta.
 - **Runner read modelu `:in_transaction`** odpytuje co sekundę — wraca przy pomiarze; tam też nakładka na `/graph`
   bez granicy czasu, podwójny mount, koszt raportu z całej historii przebiegów i 17 s testu skali (niezłapane;
@@ -223,7 +251,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 **Ten blok jest do skasowania. Skasowanie go cofa uprawnienie — nie migruje ono samo między sesjami.**
 
-W sesjach E11b–E11f (29–30 września) i w sesji #56 (30 września) użytkownik potwierdzał: commity bez pytania na gałęziach etapu przy zielonej
+W sesjach E11b–E11f (29–30 września), w sesji #56 (30 września) i w sesji E12a–E12b (1 października) użytkownik
+potwierdzał: commity bez pytania na gałęziach etapu przy zielonej
 bramie na każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. **W nowej sesji obowiązuje to
 dopiero po ponownym potwierdzeniu przez użytkownika.** Push, PR, merge, tag i Hex — tylko na wyraźne polecenie,
 przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie piszemy nigdy; do
