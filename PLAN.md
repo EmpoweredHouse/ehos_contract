@@ -5067,6 +5067,12 @@ granicy, a `fetched_at` jest stemplowane na starcie pobrania: host z wartością
 jedno za drugim i rosnącą skrzynkę przy atakującym z nieznanymi `kid`. Walidacja przy starcie zmienia kształt
 widoczny dla hosta. (3) Cztery testy PR #35 z adapterem-funkcją wypisują ostrzeżenie o przestarzałości Req.
 
+*Odzyskane 1 października.* Ta poprawka nigdy nie trafiła do `main`: PR #36 miał za bazę gałąź PR-a #35
+(`fix/auth-connect-timeout-merge`), a zmergowany został o 12:44, dziewięć minut po tym, jak #35 wszedł do `main` —
+więc do gałęzi, której nikt już nie mergował (pułapka z `pre-pr-review`: commit na gałęzi zmergowanego PR-a nie
+dociera do `main`). Znalezione przy sprzątaniu gałęzi; cztery commity nałożone na `main` od nowa, dopasowane do
+opcji z #38 (`plug:` i `url:` w miejsce zniesionego `req_options:`, także w `KeyCase`), na polecenie użytkownika.
+
 **Skill `pre-pr-review` odpala od teraz oba przeglądy równolegle** (prośba użytkownika): dwa subagenty w jednej
 wiadomości, `code-review high` i `engineering:code-review` z naciskiem na bezpieczeństwo i wydajność, wspólna pula
 uwag; plus dwa nowe rodzaje problemów i ostrzeżenie o mutacjach, które stosują się w połowie.
