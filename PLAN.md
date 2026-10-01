@@ -35,6 +35,8 @@ Przed E12d — pytanie do użytkownika, czy jego przesłanka jeszcze stoi („Ot
   dwóch rund przeglądu i ich zapisy; notatka przeglądu (`refs/notes/review`) na głowie; wypchnięta z PR-em E12c. Zawiera `66c3637`, więc PR E12c niesie też przepisany handoff.
 - **Otwarte na GitHubie:** tylko **issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza
   repozytorium; zaparkowane 30 września, z propozycją `EmpoweredHouse/eh-os-contract-sandbox`. Otwartych PR-ów brak.
+  **W `EmpoweredHouse/eh-os`: #91–#96** — nasze potrzeby wobec EHOS-a, założone 1 października („Dopisek 1
+  października”).
 - **Lokalne gałęzie w całości w `main`** — 56 (`git branch --merged origin/main`, 1 października, bez wyciągniętych
   w worktree; worktree jest 12), w tym wszystkie `dsl-v2/e*`, `dsl-v2/d11-dashed-namespace`,
   `dsl-v2/domain-name-check`, `dsl-v2/domain-names-snake-case` (`git branch --merged origin/main`). Do skasowania;
@@ -66,9 +68,11 @@ Przed E12d — pytanie do użytkownika, czy jego przesłanka jeszcze stoi („Ot
     D-51/D-52 w `eh-os`). **Fikstury kolidują z #49**: kontrakty klientów w pakiecie to dokładnie to, czego #49 chce
     uniknąć — do rozstrzygnięcia przed startem (propozycja z E11: zmyślone odpowiedniki tego samego kształtu).
   - **Drobne reguły z „Otwartych pytań”**, każda nowym powodem odmowy albo pomiarem — do decyzji użytkownika.
-- **Poza etapami, bez zmian** — użytkownika: proces na porcie 4000, wdrożenie E8 u hosta, lista zmian do `eh-os` (w
-  tym fixture manifestu TaxVision z „E10 — co wyszło” i uwagi do D-51/D-52 — komentarz do PR-a w `eh-os` tylko na
-  polecenie), publikacja na Hex, F1/F2 i dziesięć usterek, pytanie do EHOS-a o CSP (EG3).
+- **Poza etapami, bez zmian** — użytkownika: proces na porcie 4000, wdrożenie E8 u hosta, publikacja na Hex, F1/F2
+  i dziesięć usterek.
+- **Lista zmian do `eh-os`** — od 1 października jako issues
+  [eh-os#91](https://github.com/EmpoweredHouse/eh-os/issues/91)–[#96](https://github.com/EmpoweredHouse/eh-os/issues/96);
+  tabela z tym, co jest załatwione, a co otwarte: „Dopisek 1 października”. Pytanie o CSP (EG3) rozstrzygnięte tam.
 - **E13** (graf jako API, renderer w miejsce Mermaida) — po E12.
 - **Sprzątanie gałęzi i worktree** w całości w `main` — asystenta, na zgodę użytkownika (kasowanie).
 
@@ -286,6 +290,43 @@ przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie p
 
 Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty, commity, opisy PR, `docs/adr/`,
 `README.md` — po angielsku; `PLAN.md` i `CLAUDE.md` po polsku. Pełna reguła — `CLAUDE.md`.
+
+## Dopisek 1 października — lista zmian do `eh-os` jako issues w `EmpoweredHouse/eh-os`
+
+**Decyzja użytkownika (1 października):** potrzebę zapisujemy tutaj, a opis zadania i wymagania lądują w issue
+w `EmpoweredHouse/eh-os`, gdzie da się je podjąć. *Odrzucone:* lista tylko w `PLAN.md`, jak dotąd. Punkty były
+rozsiane po sekcjach „co wyszło”, szukało się ich grepem, a po stronie EHOS-a nikt ich nie widział. Uwagi do
+D-51/D-52 nie trafiły do nich przed akceptacją rekordów. Issue zakładamy przez `gh` i nie piszemy nic do
+repozytorium `eh-os`, więc reguła „tylko czytanie” stoi.
+
+Pytanie, od którego to wyszło: czy aplikacja kliencka może logować użytkowników tożsamością EHOS-a. **Dziś nie
+może.** EHOS loguje tylko do własnej konsoli (`phx.gen.auth`). Credential osoba kopiuje ze strony `/credentials`
+i nie ma endpointu, który by go wydawał. D-24 wyklucza bycie dostawcą OIDC dla innych aplikacji, a logowanie
+przeglądarkowe do aplikacji jest u nich „osobnym etapem”, na razie bez rekordu.
+
+Każdy punkt listy sprawdzony 1 października na `eh-os` `main` = `c2ea39f`. Lokalna kopia `~/Projects/ai/eh-os`
+stała na `e77f44e`, więc czytany był świeży klon w scratchpadzie.
+
+| Punkt (gdzie w tym pliku) | Stan po stronie EHOS-a | Issue |
+| --- | --- | --- |
+| Logowanie frontendu aplikacji (E6) i użytkownicy końcowi, którzy nie są ludźmi konsoli | niezaprojektowane: D-24, G-3, „osobny etap” w `ROADMAP.md` | [eh-os#95](https://github.com/EmpoweredHouse/eh-os/issues/95) |
+| `scp` w credentialu (D10, D-15 zawężone przez D-40) | D-40 dalej `proposed`, `Ehos.Credentials` nie wydaje `scp`, więc każde query ze `scope:` odpada z prawdziwym credentialem (`:unscoped_grant`) | [eh-os#94](https://github.com/EmpoweredHouse/eh-os/issues/94) |
+| Fixture manifestu TaxVision (E10, „Rozjazd odbioru manifestu”) | fixture bez zmian: dwie komendy, stare etykiety | [eh-os#91](https://github.com/EmpoweredHouse/eh-os/issues/91) |
+| Kto może publikować pod nazwą (E12c, „Do E12d i E12e, i otwarte”) | D-41 (`proposed`) sprawdza `publishes` tylko przy rejestracji (C-2), w transporcie nic nie zatrzymuje cudzej nazwy, a inbox ufa wiadomości | [eh-os#96](https://github.com/EmpoweredHouse/eh-os/issues/96) |
+| D-51/D-52, uwaga 1: `contracts` w digeście uprawnień | D-52 przyjęty z `contracts` w digeście uprawnień | [eh-os#92](https://github.com/EmpoweredHouse/eh-os/issues/92) |
+| D-51/D-52, uwaga 4: rozłączne ścieżki dewelopera i generatora | D-52 przyjęty bez tej reguły | [eh-os#93](https://github.com/EmpoweredHouse/eh-os/issues/93) |
+| D-51/D-52, uwagi 2, 3, 5 | załatwione w przyjętych rekordach: przypięta kopia schematu w każdym wydaniu (D-51), YAML 1.2 core i odmowa duplikatów i aliasów (D-51, `docs/ehos-yaml.md`), `schema` jako jedyny podmieniany klucz (D-52) | — |
+| D-51/D-52, uwagi 6, 7 | nieaktualne: manifest `ledger` generuje i publikuje CI `ehos-ledger` (D-52); kolejność rozstrzygnęliśmy 29 września | — |
+| D10–D12: D-01, D-15, D-03 i „Outbox rows”, G-16 | wszystkie mają notkę z datą (D-40, D-41). Pytanie „co przenosi wiadomość między kontenerami” EHOS trzyma jako otwarte w G-16 | — |
+| D14: D-34 „a call, not a gate”, „five tables”, test odmowy z D-40 | załatwione przez D-43 (`accepted`, 27 września) | — |
+| D14: plan etapu 4, kroki 6–8 | nieaktualne: etap 4 zamknięty, trwa etap 5 | — |
+| Pytanie o CSP (EG3) | rozstrzygnięte bez pytania: konsola nie ma `report-uri`/`report-to` ani RUM, a EHOS nie ustawia CSP aplikacjom klienckim | — |
+
+**Co zostaje po naszej stronie, gdy EHOS odpowie:** przy #94 — capability ze `scope` i wymiarem w
+`mix eh_os_contract.manifest` z manifestem v2. Przy #93 — generator odmawia, gdy `ehos.yaml` ma już ścieżkę, którą
+on pisze. Przy #95 — drugi Plug w `eh_os_contract_auth`: sesja przeglądarki i odnawianie credentiala. Przy #92 —
+ewentualnie węższy digest kontraktu. Przy #96 — `<nazwa>.publish` wyprowadzany z `publish`, jeśli manifest ma go
+nieść. Nowa potrzeba wobec `eh-os` od teraz: wiersz w tej tabeli i issue.
 
 ## Dopisek 28 września — dashboard na design systemie EmpoweredHouse
 
@@ -1630,7 +1671,9 @@ na każdym commicie. Silnik 1217 → **1219**, web 41 → **43**, `check` bez zm
   etykiet); `securityLevel: "sandbox"` (iframe dziedziczy politykę, `render` zwraca wtedy inny kształt).
   Wyciszenie wszystkich wymagałoby łatania wywołań DOM Mermaida. **Pytanie do EHOS-a (użytkownika):** jeśli
   EHOS ma `report-uri`/`report-to` albo Datadog RUM zbiera `securitypolicyviolation`, każde wejście na ekran
-  grafu wyśle kilkaset zgłoszeń.
+  grafu wyśle kilkaset zgłoszeń. *1 października, sprawdzone w `eh-os` `c2ea39f`:* konsola nie ma `report-uri`,
+  `report-to` ani RUM (`lib/ehos_web/router.ex`), a EHOS nie ustawia CSP aplikacjom klienckim. Zgłoszeń nie będzie,
+  dopóki host sam ich nie włączy.
 - **Sprawdzone w przeglądarce** (testy tego nie widzą): trzy diagramy z kolorami i układem jak bez polityki,
   żadna z 20 etykiet nie wystaje, przełączenie procesu i zmiana motywu bez pustego bloku w żadnej chwili, trzy
   arkusze przez cały czas, zepsuty diagram pokazuje zdanie w swoim bloku, a dwa pozostałe zostają.
@@ -2250,7 +2293,8 @@ pozostają ręcznym, przypiętym wersją pomiarem poza repozytorium i bramą —
 
 **Rozjazd odbioru manifestu.** Wymaganie „równy fixture'owi TaxVision w `eh-os`” nie zachodzi po E9 i nie da się go
 spełnić wierną projekcją obecnego modelu. Fixture z 25 września ma dwie komendy; model ma cztery. Do listy zmian po
-stronie `eh-os`:
+stronie `eh-os` (*1 października:* [eh-os#91](https://github.com/EmpoweredHouse/eh-os/issues/91), z pełnym
+manifestem wygenerowanym na `6e1658a`):
 
 1. dodać `taxvision.complete_company_profile` (`Uzupełnij profil firmy`, proces `client`) i
    `taxvision.ingest_bank_statement` (`Wgraj wyciąg bankowy`, proces `accounting_month`);
@@ -2348,8 +2392,9 @@ repozytoriach i rozjechałaby się przy pierwszej zmianie reguł, więc wyprowad
 przetrwa następny build.
 
 **Czyje to jest.** Schemat deskryptora jest EHOS-a: `ehos.manifest/v1` (D-32, D-38) i `ehos.yaml` (§5.1) są ich.
-Na liście zmian do `eh-os` jest propozycja: jeden deskryptor z `offers`/`needs` i digestem uprawnień liczonym z
-`offers`, najlepiej razem z ich planowanym manifestem v2 (D-40/D-41), który i tak ma dołożyć query, scope i
+Na liście zmian do `eh-os` jest propozycja (*1 października:* przyjęta jako D-51/D-52, ale digest uprawnień
+obejmuje też `contracts`, [eh-os#92](https://github.com/EmpoweredHouse/eh-os/issues/92)): jeden deskryptor z
+`offers`/`needs` i digestem uprawnień liczonym z `offers`, najlepiej razem z ich planowanym manifestem v2 (D-40/D-41), który i tak ma dołożyć query, scope i
 `publish`/`consumes`. Dziś po naszej stronie nic się nie zmienia: `mix eh_os_contract.manifest` pisze v1, dopóki
 EHOS przyjmuje v1. Etap w kolejności — do ustalenia po odpowiedzi EHOS-a.
 
@@ -2367,6 +2412,11 @@ EHOS zapisał kierunek z sekcji wyżej w dwóch rekordach, oba `proposed`, na ga
 najwyższym poziomie, a nie w `offers`, żeby klucze dewelopera miały te same ścieżki — przyjmujemy bez uwag.
 **Nic nie implementujemy przed akceptacją rekordów.** Przeczytane w `eh-os` (tylko do czytania); nic tam nie
 zapisano, komentarz do ich PR-a — na polecenie użytkownika.
+
+*1 października:* oba rekordy są `accepted` (29 września), a uwagi nie zostały do nich wysłane. Uwagi 2, 3 i 5 są
+załatwione w przyjętej treści, 6 i 7 są nieaktualne. Uwaga 1 to
+[eh-os#92](https://github.com/EmpoweredHouse/eh-os/issues/92), uwaga 4 to
+[eh-os#93](https://github.com/EmpoweredHouse/eh-os/issues/93). Szczegóły w „Dopisku 1 października”.
 
 **Z modelem v2 nic nie jest sprzeczne.** `application` to `name:` domeny (task już bierze `--domain`),
 `offers` to dzisiejsze capability i role, a `consumes` dojdzie jako własny klucz w `needs` po D-41. Uwagi, od
@@ -3614,7 +3664,8 @@ kolizję klucza):
 - **retencja `eh_os_contract_inbox`** — wiersz na fakt na inbox, na zawsze; czyszczenie po wieku skraca okno, w
   którym ten sam fakt pod nowym id (FM-08) jest rozpoznany — granica do decyzji użytkownika;
 - **kto może publikować pod nazwą** — silnik wyprowadza `<nazwa>.subscribe`, a nie `<nazwa>.publish`; czy
-  manifest ma nieść prawo publikacji, to sprawa EHOS-a (D-41) — do użytkownika, na liście zmian do `eh-os`;
+  manifest ma nieść prawo publikacji, to sprawa EHOS-a (D-41) — do użytkownika, na liście zmian do `eh-os`
+  (*1 października:* [eh-os#96](https://github.com/EmpoweredHouse/eh-os/issues/96));
 - runnery po commicie inboxu nie dostają powiadomienia (dispatch w cudzej transakcji go nie wysyła) — czekają do
   sekundy; do pomiaru razem z runnerem read modelu;
 - **zgodność nie widzi polityki inboxu** — `Paths` bierze kroki tylko dla zdarzeń z typem w logu
@@ -3648,6 +3699,10 @@ domenowego. Zmienione wyżej: E4, E5, E6, E10; dodany E12.
 - G-16 — punkt egzekucji autoryzacji subskrypcji w v1 to relay EHOS-a z tablicą routingu z grantów.
 - Pytanie otwarte: co w v1 przenosi wiadomość między dwoma kontenerami, skoro D-03 mówi o relayu „in-process”.
 
+*1 października:* wszystkie punkty są już w `eh-os`, z notkami z datą przy D-01, D-15, D-03 i ARCHITECTURE (D-40,
+D-41) i z G-16 zaprojektowanym przez D-41. Pytanie o transport EHOS trzyma jako otwarte w G-16. Wyjątek to „grant
+musi umieć nieść wartości zakresu”: [eh-os#94](https://github.com/EmpoweredHouse/eh-os/issues/94).
+
 ### D14 — autoryzacja: kontrakt deklaruje, osobny pakiet weryfikuje (25 września)
 
 Z przeglądu zgodności z etapem 4 EHOS-a (`eh-os` `docs/plans/stage-4-identity-and-console.md`, krok 7, oraz
@@ -3673,6 +3728,9 @@ jednego faktu. Rozstrzyga EA.
   sandboxa równy fixture'owi” jest możliwy dopiero po E9. Krok 8: sandbox dostanie aktorów v2 dopiero w E9, więc
   wcześniej krok 8 potrzebuje minimalnej aplikacji z jednym kontraktem v2 i pakietem auth.
 - Handoff planu etapu 4 opisuje krok 6 jako otwarty PR, a jest zmergowany (#35, `5fe898b`).
+
+*1 października:* trzy pierwsze punkty załatwił D-43 (`accepted`, 27 września), a punkty o planie etapu 4 są
+nieaktualne, bo etap 4 jest zamknięty. Issue niepotrzebne.
 
 ### E1 — co szew ujawnił (25 września)
 
@@ -4232,7 +4290,8 @@ z egzekwowaniem mocniejszym niż w typowej aplikacji, bo w jednym miejscu w disp
 wierszy query. Słabsze strony, świadomie przyjęte: do 10 minut po odebraniu roli, bearer bez wiązania z
 urządzeniem (DPoP/mTLS), do 5 minut po usunięciu klucza, `scope` jako jedno pole, audyt bez ochrony przed
 podmianą, własna pamięć JWKS. **Do `eh-os`, przez użytkownika:** logowanie frontendu zwykłej aplikacji nie
-jest tam zaprojektowane (najbliżej G-3), a od niego zależy reszta.
+jest tam zaprojektowane (najbliżej G-3), a od niego zależy reszta. *1 października:*
+[eh-os#95](https://github.com/EmpoweredHouse/eh-os/issues/95).
 
 **Stan.** Dziewiętnaście commitów, brama zielona na każdym: zapis ustaleń (`bbad60c`); `Actor` i `Authorizer`
 (`04952ec`); `Codec` i `Key` (`4290aca`); `dispatch/3` z `Implementations`, `CommandRecord` i `Receipt`
