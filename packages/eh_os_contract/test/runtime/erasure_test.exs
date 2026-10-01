@@ -182,6 +182,35 @@ defmodule EhOsContract.ErasureTest do
       assert names() == [{"member-bartek", "Bartek Nowak"}]
     end
 
+    test "an erasure wakes the runners once it commits" do
+      two_members!()
+      watch_wakes()
+
+      {:ok, :erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)
+      assert_received :runners_woken
+      refute_received :runners_woken
+    end
+
+    test "an erasure in a transaction the host owns wakes nothing before it commits" do
+      two_members!()
+      watch_wakes()
+
+      {:ok, {:ok, :erased}} =
+        Repo.transaction(fn -> EhOsContract.erase(:member, "member-anna", actor: @officer) end)
+
+      refute_received :runners_woken_in_transaction
+      refute_received :runners_woken
+    end
+
+    test "control: a second erasure appends nothing and wakes nothing" do
+      two_members!()
+      {:ok, :erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)
+      watch_wakes()
+
+      {:ok, :already_erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)
+      refute_received :runners_woken
+    end
+
     test "a rebuilt read model replays the erasure too, and keeps nothing of the subject" do
       two_members!()
       {:ok, :erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)
