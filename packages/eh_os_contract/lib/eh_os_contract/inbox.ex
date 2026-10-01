@@ -10,8 +10,8 @@ defmodule EhOsContract.Inbox do
   writes its row in `eh_os_contract_inbox` and runs each policy that handles it,
   whose commands are dispatched as a policy's always are. Only once that commits does
   it answer `:ack`, and wake the runners if those commands appended what one reads
-  (`EhOsContract.Subscription.Runner.transaction/2`). A consumer that stops in between gets the message again, and finds
-  either nothing written or the row.
+  (`EhOsContract.Subscription.Runner.transaction/2`). A consumer that stops in
+  between gets the message again, and finds either nothing written or the row.
 
   **One fact, one reaction.** The row is keyed by the inbox and the message's key
   (`EhOsContract.Bus.Message`), so a second delivery of a message, and the same fact

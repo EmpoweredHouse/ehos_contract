@@ -77,8 +77,8 @@ defmodule EhOsContract.RelayCommitsTest do
   test "a runner takes the notifications waiting for it in one run" do
     Application.delete_env(:eh_os_contract, :bus)
     runner = start_supervised!({Subscription.Runner, @relay})
-    # Its first run, at start, is over before it is held.
-    Process.sleep(50)
+    # Its first run, at start, is over before it is held: then its timer is the poll's.
+    wait_for_poll(runner)
     :ok = :sys.suspend(runner)
 
     :erlang.trace_pattern({Subscription, :step, 2}, true, [])
@@ -92,6 +92,18 @@ defmodule EhOsContract.RelayCommitsTest do
     ref = :erlang.trace_delivered(runner)
     assert_receive {:trace_delivered, ^runner, ^ref}
     assert steps(runner) == 1
+  end
+
+  # The first run's timer, set for 0 ms, reads 0 until it fires; the poll's reads more.
+  defp wait_for_poll(runner) do
+    case Process.read_timer(:sys.get_state(runner).timer) do
+      left when is_integer(left) and left > 0 ->
+        :ok
+
+      _not_yet ->
+        Process.sleep(5)
+        wait_for_poll(runner)
+    end
   end
 
   defp steps(runner) do

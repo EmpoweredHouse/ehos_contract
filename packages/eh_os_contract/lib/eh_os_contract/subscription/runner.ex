@@ -40,9 +40,9 @@ defmodule EhOsContract.Subscription.Runner do
   def child_spec(key), do: %{id: {__MODULE__, key}, start: {__MODULE__, :start_link, [key]}}
 
   @doc """
-  Wakes every runner, on every node, through Oban's notifier. Dispatch calls it after
-  a commit it owns, and `transaction/2` after one that marked an append. A host without a running notifier loses nothing but the wake:
-  runners poll.
+  Wakes every runner, on every node, through Oban's notifier. `transaction/2` calls it
+  once a transaction that marked an append commits. A host without a running notifier
+  loses nothing but the wake: runners poll.
   """
   @spec notify() :: :ok
   def notify do

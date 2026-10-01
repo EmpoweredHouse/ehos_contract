@@ -152,7 +152,7 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 ### Ostatnia pełna weryfikacja
 
 - **Lokalnie, 2 października, na `claude/issue-72-assessment-923997`** (#72, od `01ac970`): brama z `sandbox/` →
-  **EXIT=0** — sandbox 145; silnik **1108** (+4, budzenie runnerów); web 52; auth 138 + 1 property.
+  **EXIT=0** — sandbox 145; silnik **1114** (+10, budzenie runnerów); web 52; auth 138 + 1 property.
 - **`main` = `743e91d`** (merge #73, EH): drzewo jak `2bda2b7`, ostatni commit PR-a; lokalnie na `2bda2b7` brama z
   `sandbox/` → **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1104, `check` 0 / 68 / 6; web 52; auth **138** + 1
   property. CI PR-a na `3263d1d` — `success`; CI `main` na `743e91d` — sprawdzić.
@@ -4182,8 +4182,28 @@ przyjęciu wiadomości, a po wiadomości wziętej wcześniej nie; timer budzi po
 miejsce `Runner.transaction` w inboxie, kroku i timerze padają dokładnie trzy nowe testy „budzi”. CHANGELOG bez
 wpisu — żaden werdykt się nie rusza, zmienia się tylko opóźnienie.
 
-Brama z `sandbox/` na gałęzi `claude/issue-72-assessment-923997` → **EXIT=0** — sandbox 145; silnik **1108**
-(+4); web 52; auth 138 + 1 property.
+**Przegląd** (oba równolegle na `01ac970..2f23318`, poprawności także na `5abb6b9`; nic w bezpieczeństwie):
+- runner nie łączył powiadomień czekających w skrzynce, a od tej zmiany sam je sobie wysyła — po jednym na każde
+  zdarzenie, na którym polityka albo process manager dispatchuje; po nadrobieniu zaległości robił krok na każde
+  (10 tys. zdarzeń — 10 tys. pustych transakcji na każdym runnerze, polityki w kolejce do blokady dopisu) —
+  *poprawione* (`5abb6b9`): powiadomienie zabiera te, które czekają za nim; bez tego test liczy 5 kroków zamiast 1;
+- `Personal.erase/3` budził sam, po swojej transakcji — także zagnieżdżonej w transakcji hosta, czyli przed jej
+  commitem (wzorzec, który ta zmiana odrzuciła) — *poprawione* (`810c549`): ten sam mechanizm;
+- testy nie odróżniały budzenia po commicie od budzenia w transakcji, nie mówiły „raz” i nie sprawdzały transakcji
+  hosta — *poprawione* (`844a44e`): `watch_wakes/0` zgłasza budzenie w transakcji osobno; z `notify/0` w miejsce
+  `notify_on_commit/0` w `TimerJob` pada test timera; `dispatch_effects_test.exs` traci własną kopię handlera;
+- handler telemetrii dopasowywał `%{channel: _}` (zmiana metadanych Obana odłączyłaby go po cichu, a `refute`
+  przechodziłyby na pusto) — *poprawione* razem z poprzednim; nieaktualny doc `notify/0`, za długie linie
+  moduledoków, `Process.sleep(50)` w teście runnera — *poprawione*; `Process.read_timer/1` czyta 0 dla timera
+  startowego, który jeszcze nie odpalił, więc pierwsza wersja oczekiwania przepuszczała — test padał 7 razy na 10,
+  po poprawce 20 na 20 zielonych;
+- jedno powiadomienie na każdy krok, który coś dopisał, przy nadrabianiu zaległości polityki — *pominięte*: tyle
+  samo kosztuje ta sama liczba dispatchów z kodu hosta, a odbiorców łączy już `5abb6b9`; budzenie raz na końcu
+  `catch_up/2` opóźniałoby następnych konsumentów do końca zaległości;
+- `CHANGELOG.md` (E7a) mówi, że runnery budzi dispatch — *bez zmiany*: to wpis etapu i dalej prawdziwy.
+
+Brama z `sandbox/` na gałęzi `claude/issue-72-assessment-923997` → **EXIT=0** — sandbox 145; silnik **1114**
+(+10); web 52; auth 138 + 1 property.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
