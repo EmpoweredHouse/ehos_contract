@@ -95,8 +95,9 @@ reviewer read, such as `:event_id`. The library does part of it itself, and the 
 - **A read model writes the host's tables.** Key its rows by the event (`on_conflict: :nothing` on
   the event's id, as `DailyTotals` does), or a replay double-counts.
 - **Another application's event is deduplicated by the inbox**, by the message's key: the
-  publisher's `idempotent_on:` values, or the message id when it declares none. A redelivery, and the
-  same fact published again under a new id, react once. A publisher whose `idempotent_on:` is too
+  publisher's `idempotent_on:` values, or the message id when it declares none. A redelivery reacts
+  once either way; the same fact published again under a new id reacts once only when the publisher
+  declares `idempotent_on:`. A publisher whose `idempotent_on:` is too
   narrow makes two real facts one: when you write the `publish`, name the fields that make one fact,
   not merely some that identify it.
 

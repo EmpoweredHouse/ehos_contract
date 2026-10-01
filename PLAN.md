@@ -77,13 +77,11 @@ użytkownik („Co zostało”).
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach (także w
    fiksturach testów: `label` po polsku jest dozwolony — CodeRabbit to już przyjął), wyrażenia regularne z flagą `u`
    i `[0-9]`, zsh bez dzielenia słów.
-2. `PLAN.md`: „Przed E12 — decyzje użytkownika”, „E12a — co wyszło”, „E12b — co wyszło” — decyzje E12 z
-   odrzuconymi opcjami (brak kolejności w `Bus`, relay nie przez Obana, broker w transakcji z limitem czasu) i
-   to, co przeglądy przeniosły do E12c i E12e.
-3. `docs/adr/contract-v2.md` §16 — D11 i D12 (relay, inbox, `Bus`) i trzy dopiski z 1 października; to jest
-   specyfikacja inboxu, który buduje E12c.
-4. `lib/eh_os_contract/bus.ex`, `bus/suite.ex`, `relay.ex` i `subscription.ex` w pakiecie silnika — kształt, na
-   którym E12c stoi; `test/support/bus_rig/` — fikstura, do której dojdzie odbiorca.
+2. `PLAN.md`: „Przed E12 — decyzje użytkownika” i „E12a”–„E12e — co wyszło” (z „Przed E12c” i „Przed E12d”) —
+   decyzje E12 z odrzuconymi opcjami i to, co przeglądy zostawiły otwarte; „Do powrotu” w „E12d — co wyszło”.
+3. `docs/adr/contract-v2.md` §16 — D11 i D12 i dopiski „as built” z 1 października (relay, inbox).
+4. `lib/eh_os_contract/bus.ex`, `relay.ex`, `inbox.ex`, `inbox/keeper.ex`, `dispatcher.ex` (`call/3`) w pakiecie
+   silnika; `test/support/bus_rig/` — dwie zmyślone aplikacje, sklep i magazyn.
 5. `PLAN.md`, „Etapy” — opis E12 z kryteriami odbioru; „Otwarte pytania”. Do odczytu (nie pisać):
    `~/Projects/ai/eh-os/docs/adr/0041-integration-events-publish-consumes-and-inbox.md` — połowa EHOS-a.
 6. `packages/eh_os_contract/docs/contract.md` (tabela odmów z kodami) i `.claude/skills/` — DSL i skille, z których
@@ -144,6 +142,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 1 października, na `dsl-v2/e12e-docs`** (E12e po przeglądzie; sama dokumentacja): brama z `sandbox/`
+  → **EXIT=0**, liczby jak dla E12d niżej. CI `main` na `7aa0496` (merge #61) — sprawdzić.
 - **Lokalnie, 1 października, na `9d1ae58`** (E12d po przeglądzie, `dsl-v2/e12d-call`): brama z `sandbox/` →
   **EXIT=0** — sandbox 144, `check` 0 / 29 / 9; silnik **1104** (1094 + `call_test.exs` 9 + Plug 1), `check`
   **0 / 68 / 6**; web 52; auth 68. CI `main` na `67253bf` (merge #59) — sprawdzić
@@ -187,6 +187,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
   idzie do kolumny `scope_value` (`text`) decyzji `eh_os_contract_auth`; znak `\u0000` z JSON-a albo zły UTF-8 z
   query stringa (`%FF`) wywraca zapis decyzji — 500 zamiast odmowy; długi napis — wiersz na żądanie. Możliwe:
   odmowa wartości spoza UTF-8 bez NUL przed pytaniem `Authorizer`, limit długości — nowy powód odmowy, do decyzji.
+- **Retencja `eh_os_contract_inbox`** (z E12c): wiersz na fakt na inbox, na zawsze; czyszczenie po wieku skraca
+  okno, w którym ten sam fakt pod nowym id (FM-08) jest rozpoznany — granica do decyzji użytkownika.
 - **Kształt `EhOsContract.call/3` do sprawdzenia przy drugich prawdziwych drzwiach** (z E12d) — zbudowany na
   zapas z jednego użytkownika (Plug), wbrew zasadzie z 27 września, z wyboru użytkownika. Wyzwalacz: pierwsze inne
   drzwi dla surowych danych z credentialem (formularz LiveView, job z credentialem osoby, MCP), przed ich
@@ -3782,7 +3784,7 @@ tej listy obiecywał „read your writes” także dla HTTP — *poprawione* w z
 
 **Co jest** (gałąź `dsl-v2/e12e-docs`, od `7aa0496`; sama dokumentacja i skille):
 - `docs/contract.md` — akapit o odbieraniu: `consumes "<nazwa>"` z polityką, inbox, `D12`, klucz z `idempotent_on`,
-  capability `<nazwa>.subscribe` (przykład na `Lending`, jak reszta strony);
+  capability `<nazwa>.subscribe` (przykład: `Loans` publikuje, kontrakt innej aplikacji odbiera);
 - skill `write-reaction` — zdarzenie odebrane bierze tylko polityka (`D12`), `delivery:` nic dla niego nie zmienia;
   deduplikacja w inboxie po kluczu i cena za wąskiego `idempotent_on`; historia innej aplikacji nie przychodzi
   busem (D-03);
@@ -3793,6 +3795,18 @@ tej listy obiecywał „read your writes” także dla HTTP — *poprawione* w z
   między aplikacjami `publish`, `Bus`, relay i inbox, idempotencja dalej deklaracją wydawcy.
 
 CHANGELOG nie dostaje wpisu: nic z tego nie zmienia werdyktu ani zachowania, a E12a–E12d mają swoje.
+
+**Przegląd** (dwa równolegle na `7aa0496..d17206e`: twierdzenia przeciw kodowi oraz język i konwencje; żadne
+twierdzenie fałszywe): przykład w `contract.md` nazywał zdarzenie własnej aplikacji strony „innej aplikacji”, a
+polityka wydawała komendę spoza strony — *poprawione* (`Loans` publikuje, kontrakt innej aplikacji odbiera);
+„ten sam fakt pod nowym id” odrzucany tylko przy zadeklarowanym `idempotent_on` — *poprawione* w `contract.md`,
+`write-reaction` i `architecture.md`; zmienione `idempotent_on` daje nowy klucz tylko wiadomościom zbudowanym po
+wdrożeniu — *poprawione* w `change-contract`; brakujący wiersz: nowe `as:` przy `consumes` to nowy trwały konsument
+(zaległe nieprzeczytane, deduplikacja od zera) — *dodane*; `.subscribe` zostaje, gdy polityka obsługuje inną wersję
+nazwy — *poprawione*; „nic, na czym kontrakt polega, nie jedzie transportem, który gubi” — *zawężone* do logu;
+„Co przeczytać najpierw” sprzed E12c i retencja inboxu poza „Otwartymi pytaniami” — *poprawione*.
+**`CLAUDE.md`** („Czym biblioteka jest”) mówi dalej, że broker „jeszcze niezbudowane”, a §9–10 „mówi dziś «bez
+zewnętrznego brokera»” — po E12 nieprawda; poprawka do `CLAUDE.md` czeka na zgodę użytkownika.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 

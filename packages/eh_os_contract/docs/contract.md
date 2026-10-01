@@ -118,24 +118,26 @@ What reacts to events is declared beside the units: a `policy` issues a command 
 `publish` lets one leave the application: its relay (`EhOsContract.Relay`) hands it to the configured
 `EhOsContract.Bus`, from the first deploy of the `publish` on.
 
-Another application's event comes in by its published name, with the fields this contract reads:
+If `Loans` publishes its loans — `publish :loan_opened, as: "lending.loan.opened.v1", from: :loan_opened,
+fields: [:loan_id, :copy_id], idempotent_on: [:loan_id]` — a contract of **another application**, a
+reservations service say, takes the event by that name, with the fields it reads:
 
 ```elixir
-consumes "lending.loan.opened.v1", as: :loan_opened do
+consumes "lending.loan.opened.v1", as: :copy_lent do
   field :loan_id, :id
   field :copy_id, :id
 end
 
-policy :reserve_copy, "Reserve the copy of an opened loan", handles: :loan_opened, issues: :reserve
+policy :release_hold, "Release the hold on a lent copy", handles: :copy_lent, issues: :release_hold
 ```
 
-It never enters this log. It arrives in an inbox (`EhOsContract.Inbox`), which commits its row with what the
-policy dispatched and only then acknowledges, so **only a policy takes it** (`D12`): a read model, an effect
-or a process manager reads the log, and would never be given it — react to what the policy's command
-records instead. One fact reacts once: the publisher's `idempotent_on:` makes the message's key, and a
-second delivery, or the same fact published again under a new id, finds the inbox row and is dropped. The
-contract asks for the capability `lending.loan.opened.subscribe`, the application's, which EHOS grants and
-the transport delivers by.
+The event never enters the subscriber's log: it arrives in an inbox (`EhOsContract.Inbox`), which commits its
+row with what the policy dispatched and only then acknowledges. Since a read model, an effect and a process
+manager read the log, **only a policy takes it** (`D12`); they react to what the policy's command records
+instead. A second delivery finds the inbox row and is dropped, and so does the same fact published again
+under a new id when the publisher declares `idempotent_on:`, whose values make the message's key. The
+subscriber asks for the capability `lending.loan.opened.subscribe`, the application's, which EHOS grants
+and the transport delivers by.
 
 ## The code that decides
 

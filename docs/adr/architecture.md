@@ -200,9 +200,11 @@ log is the outbox: a relay is one more ordered subscription, which advances only
 the batch, so a message may come twice and never without its fact; `Bus` promises no order. A received
 event goes to an inbox, never into the log, and only a policy takes it, in one transaction with the
 inbox's row, acknowledged after the commit. Idempotency across the boundary is the publisher's
-declaration, as this decision has it for one application: `idempotent_on:` makes the message's key, and
-the inbox takes one fact once. What `Phoenix.PubSub` and `GenStage` were rejected for still holds: nothing
-the contract asserts on travels over a transport that may lose it.
+declaration, as this decision first had it for an event: `idempotent_on:` makes the message's key, and the
+inbox takes a fact once when the publisher declares it, a delivery once in any case. What `Phoenix.PubSub`
+and `GenStage` were rejected for still holds for the log: no fact is lost on the way to it, and a message
+the bus does not deliver — to a consumer subscribed after it was published, past a transport's limit on
+deliveries, through a restarted `Bus.Local` — leaves the publisher's log and the subscriber's as they were.
 
 **11–12. External systems are adapters, the contract declares the dependency, and swapping is separate
 from configuring.** Events are named after the business fact, never the vendor.
