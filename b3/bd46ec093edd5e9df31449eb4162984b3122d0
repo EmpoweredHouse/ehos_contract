@@ -1,0 +1,1 @@
+pre-pr-review: a comment rewrap in keys.ex (no code change; auth mix check EXIT=0) and a dated note in PLAN.md from a check of the EH plan against main c9af0ef and eh-os main cfe3883 (read only). Second review round of 193cfec: every claim holds; this rewrap is its one finding.
