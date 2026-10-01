@@ -225,6 +225,18 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Added
 
+- **E12b: a `publish` leaves the application through its relay.** `EhOsContract.Relay` is one ordered
+  subscription per `publish`, `"<contract>:relay:<name>"` in `eh_os_contract_subscriptions` and in
+  `mix eh_os_contract.subscriptions`, which reads the events it publishes and hands each to the configured
+  `EhOsContract.Bus` as a message of the declared `fields` only, with the id `<event id>/<versioned name>`
+  and the event's correlation. It advances only once the bus holds the batch; an `{:error, _}` from the bus
+  counts no attempt, a raise fails the event as a policy's does. Like a policy it starts at the head of the
+  log, so a `publish` deployed onto history publishes none of it; a reset publishes the log again. With no
+  `bus:` configured the relay waits at its position, and the boot logs a warning for each one. A host that
+  declares a `publish` gets the row and the warning on its next boot. **For a transport adapter:**
+  `Bus.publish/2` runs inside the relay's database transaction and has to return within seconds, well under
+  the repo's timeout, and answers `{:error, _}` only for what retrying fixes; anything else raises, so the
+  relay stops at that event.
 - **E12a: `EhOsContract.Bus`, the seam between two applications (D11, D12).** A behaviour with two
   callbacks: `publish/2` hands a batch of `EhOsContract.Bus.Message`s to a transport, and `consumer/2`
   gives the child that runs a durable consumer, whose handler answers `:ack` or `:nack`. It promises

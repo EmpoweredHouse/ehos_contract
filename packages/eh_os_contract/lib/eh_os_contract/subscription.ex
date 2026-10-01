@@ -1,7 +1,8 @@
 defmodule EhOsContract.Subscription do
   @moduledoc """
   A consumer fed from the log in order (v2 §12): a read model or a policy delivered
-  `:at_least_once`, and a read model delivered `:in_transaction` while it is rebuilt.
+  `:at_least_once`, a process manager, a `publish`'s relay (`EhOsContract.Relay`),
+  and a read model delivered `:in_transaction` while it is rebuilt.
   Its row in `eh_os_contract_subscriptions` holds the position of the last event it
   applied.
 
@@ -49,7 +50,8 @@ defmodule EhOsContract.Subscription do
 
   import Ecto.Query
 
-  alias EhOsContract.{Consumer, Implementations, ProcessManager, Store, SubscriptionRecord}
+  alias EhOsContract.{Bus, Consumer, Implementations, ProcessManager, Relay, Store}
+  alias EhOsContract.SubscriptionRecord
 
   require Logger
 
@@ -58,8 +60,15 @@ defmodule EhOsContract.Subscription do
   # A stale subscription goes on taking events: it only waits to be rebuilt.
   @fed ~w(running stale rebuilding)
 
-  @typedoc "What one step did."
-  @type step :: :idle | {:applied, pos_integer()} | {:failed, pos_integer()}
+  @typedoc """
+  What one step did. `{:unavailable, position}` is a relay's: the transport did not
+  take the batch from `position` on, and nothing moved (`EhOsContract.Relay`).
+  """
+  @type step ::
+          :idle
+          | {:applied, pos_integer()}
+          | {:failed, pos_integer()}
+          | {:unavailable, pos_integer()}
 
   @doc """
   Writes a row for every consumer in `consumers` that has none, and marks a read
@@ -103,9 +112,10 @@ defmodule EhOsContract.Subscription do
   defp mode(_ordered), do: "ordered"
 
   # A policy starts at the head as an inline read model does, for another reason: what
-  # is in the log is history, and it reacts to none of it (see the moduledoc).
+  # is in the log is history, and it reacts to none of it (see the moduledoc). So does
+  # a relay: nothing publishes history by itself.
   defp start(repo, consumer)
-       when consumer.delivery == :in_transaction or consumer.kind == :policy,
+       when consumer.delivery == :in_transaction or consumer.kind in [:policy, :relay],
        do: repo.one(from(e in EhOsContract.Event, select: coalesce(max(e.position), 0)))
 
   defp start(_repo, _ordered), do: 0
@@ -122,6 +132,14 @@ defmodule EhOsContract.Subscription do
   """
   @spec step(module(), Implementations.consumer()) :: step()
   def step(repo, consumer) do
+    # A relay with no bus has nothing to do, and needs no transaction and no lock on
+    # its row to find that out, every second and on every dispatch.
+    if consumer.kind == :relay and Bus.adapter() == nil,
+      do: :idle,
+      else: stepped(repo, consumer)
+  end
+
+  defp stepped(repo, consumer) do
     result =
       repo.transaction(fn ->
         case take(repo, consumer.key, fed(consumer)) do
@@ -134,12 +152,45 @@ defmodule EhOsContract.Subscription do
       {:ok, :at_head} ->
         caught_up!(repo, consumer)
 
+      # A relay's batch went one event at a time: what passed is committed, and the
+      # event that raised is recorded as a failure of its own.
+      {:ok, {:applied_then_failed, _applied, position, exception}} ->
+        failed!(repo, consumer, position, exception)
+        {:failed, position}
+
       {:ok, step} ->
         step
 
       {:error, {:failed, position, exception}} ->
         failed!(repo, consumer, position, exception)
         {:failed, position}
+    end
+  end
+
+  # A relay publishes what it read, and moves only once the transport holds it
+  # (`EhOsContract.Relay`); `step/2` has already seen that a bus is configured.
+  defp apply_next(repo, %{kind: :relay} = consumer, row) do
+    with [first | _] = events <-
+           fenced(
+             Store.read_all(repo, row.position, Relay.batch(), Map.keys(consumer.callbacks)),
+             row
+           ) do
+      case relay(consumer, events) do
+        :ok ->
+          advance!(repo, row, List.last(events).position)
+          {:applied, length(events)}
+
+        {:error, _reason} ->
+          {:unavailable, first.position}
+
+        {:raised, exception} when length(events) == 1 ->
+          repo.rollback({:failed, first.position, exception})
+
+        {:raised, _exception} ->
+          one_by_one(repo, consumer, row, events, 0)
+      end
+    else
+      _nothing -> :idle
     end
   end
 
@@ -204,6 +255,44 @@ defmodule EhOsContract.Subscription do
     end
   rescue
     exception -> repo.rollback({:failed, row.position, exception})
+  end
+
+  # A batch that raised says nothing of which event is at fault, so it goes again one
+  # event at a time: those before the culprit are published and passed, and the
+  # culprit is the failure, counted where it is, as a policy's is.
+  defp one_by_one(repo, consumer, row, [event | rest], applied) do
+    case relay(consumer, [event]) do
+      :ok ->
+        advance!(repo, row, event.position)
+
+        if rest == [],
+          do: {:applied, applied + 1},
+          else: one_by_one(repo, consumer, row, rest, applied + 1)
+
+      {:error, _reason} when applied > 0 ->
+        {:applied, applied}
+
+      {:error, _reason} ->
+        {:unavailable, event.position}
+
+      {:raised, exception} when applied > 0 ->
+        {:applied_then_failed, applied, event.position, exception}
+
+      {:raised, exception} ->
+        repo.rollback({:failed, event.position, exception})
+    end
+  end
+
+  # A raise is a defect, and so is a throw, recorded as an `ErlangError` without the
+  # thrown value; an exit is an adapter breaking `c:EhOsContract.Bus.publish/2`'s
+  # promise to return an error instead.
+  defp relay(consumer, events) do
+    Bus.publish(Enum.map(events, &Relay.message(consumer, &1)))
+  rescue
+    exception -> {:raised, exception}
+  catch
+    :exit, _reason -> {:error, :exit}
+    :throw, _value -> {:raised, %ErlangError{original: :nocatch}}
   end
 
   defp advance!(repo, row, position) do
@@ -333,8 +422,9 @@ defmodule EhOsContract.Subscription do
                   "rebuilding"
 
                 # Nothing to empty: its keys keep what it already issued from being
-                # issued again.
-                %{kind: :policy} ->
+                # issued again, and a relay's ids what it already published from
+                # counting twice at the subscriber.
+                %{kind: kind} when kind in [:policy, :relay] ->
                   "running"
 
                 _ordered ->

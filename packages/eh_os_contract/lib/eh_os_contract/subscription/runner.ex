@@ -12,6 +12,8 @@ defmodule EhOsContract.Subscription.Runner do
   An event that fails is retried after a pause that doubles with each attempt, and
   a step that raises for another reason — the database gone, say — is logged and
   retried after five seconds, so a runner never takes the host's tree down with it.
+  A relay whose transport does not take a batch tries again after five seconds too,
+  with no attempt counted (`EhOsContract.Relay`).
   """
 
   use GenServer
@@ -23,6 +25,7 @@ defmodule EhOsContract.Subscription.Runner do
   @channel :eh_os_contract
   @poll 1_000
   @after_crash 5_000
+  @unavailable 5_000
 
   @doc false
   @spec start_link(String.t()) :: GenServer.on_start()
@@ -46,7 +49,7 @@ defmodule EhOsContract.Subscription.Runner do
   end
 
   @typedoc false
-  @type state :: %{key: String.t(), timer: reference() | nil}
+  @type state :: %{key: String.t(), timer: reference() | nil, resting: boolean()}
 
   @doc "Listens for dispatch's notification, and runs the subscription `key` at once."
   @impl GenServer
@@ -58,29 +61,46 @@ defmodule EhOsContract.Subscription.Runner do
       _kind, _reason -> :ok
     end
 
-    {:ok, schedule(%{key: key, timer: nil}, 0)}
+    {:ok, schedule(%{key: key, timer: nil, resting: false}, 0)}
   end
 
   @doc "Runs the subscription on a notification or its own timer; ignores anything else."
   @impl GenServer
   @spec handle_info(term(), state()) :: {:noreply, state()}
+  # A runner that paused after a failure or an unreachable transport waits the pause
+  # out: every dispatch notifies, and would otherwise make it try again at once.
+  def handle_info({:notification, @channel, _payload}, %{resting: true} = state),
+    do: {:noreply, state}
+
   def handle_info({:notification, @channel, _payload}, state), do: {:noreply, run(state)}
-  def handle_info(:run, state), do: {:noreply, run(%{state | timer: nil})}
+  def handle_info(:run, state), do: {:noreply, run(%{state | timer: nil, resting: false})}
   def handle_info(_other, state), do: {:noreply, state}
 
   defp run(state) do
     case Implementations.consumer(state.key) do
-      nil -> state
-      consumer -> schedule(state, catch_up(consumer, repo()))
+      nil ->
+        state
+
+      consumer ->
+        case catch_up(consumer, repo()) do
+          {:rest, after_ms} -> %{schedule(state, after_ms) | resting: true}
+          after_ms -> schedule(state, after_ms)
+        end
     end
   rescue
-    exception ->
-      Logger.error(
-        "subscription #{state.key}: the runner failed outside a step " <>
-          "(#{inspect(exception.__struct__)}); it runs again in #{@after_crash} ms"
-      )
+    exception -> crashed(state, inspect(exception.__struct__))
+  catch
+    # The kind only: a thrown value or an exit's reason may carry what was read.
+    kind, _reason -> crashed(state, inspect(kind))
+  end
 
-      schedule(state, @after_crash)
+  defp crashed(state, what) do
+    Logger.error(
+      "subscription #{state.key}: the runner failed outside a step " <>
+        "(#{what}); it runs again in #{@after_crash} ms"
+    )
+
+    %{schedule(state, @after_crash) | resting: true}
   end
 
   # Steps until there is nothing to read; returns how long to wait before the next.
@@ -96,7 +116,17 @@ defmodule EhOsContract.Subscription.Runner do
             nil -> 1
           end
 
-        min(100 * Integer.pow(2, attempts), 30_000)
+        {:rest, min(100 * Integer.pow(2, attempts), 30_000)}
+
+      # A relay whose transport did not take the batch: nothing moved, and no attempt
+      # is counted, so it tries again after a pause rather than stopping.
+      {:unavailable, position} ->
+        Logger.warning(
+          "subscription #{consumer.key}: the bus did not take the batch from position " <>
+            "#{position}; it tries again in #{@unavailable} ms"
+        )
+
+        {:rest, @unavailable}
 
       :idle ->
         @poll

@@ -59,7 +59,9 @@ defmodule EhOsContract.Implementations do
 
   @typedoc """
   A declaration that reacts to events: a read model, a policy or an effect of a v2
-  contract of the host's applications.
+  contract of the host's applications — or a `publish`, whose relay takes the events
+  it publishes and hands them to `EhOsContract.Bus` (v2 §16). A relay is implemented
+  by the engine, so its `module` is `nil`, and it carries its `publication`.
 
   `callbacks` maps each stored type it takes to its callback: the event's name in the
   consumer's contract, which differs from the publisher's when `as:` renames it. A
@@ -73,15 +75,16 @@ defmodule EhOsContract.Implementations do
   takes, so a read model whose event gained a field is stale too.
   """
   @type consumer :: %{
-          kind: :read_model | :policy | :process_manager | :effect,
-          contract: module(),
-          name: atom(),
-          delivery: :in_transaction | :at_least_once,
-          module: module() | nil,
-          callbacks: %{String.t() => atom()},
-          forgets: MapSet.t(atom()),
-          key: String.t(),
-          version: String.t()
+          required(:kind) => :read_model | :policy | :process_manager | :effect | :relay,
+          optional(:publication) => map(),
+          required(:contract) => module(),
+          required(:name) => atom(),
+          required(:delivery) => :in_transaction | :at_least_once,
+          required(:module) => module() | nil,
+          required(:callbacks) => %{String.t() => atom()},
+          required(:forgets) => MapSet.t(atom()),
+          required(:key) => String.t(),
+          required(:version) => String.t()
         }
 
   @typedoc "A consumer as it takes one stored `type`, with the `callback` for it."
@@ -122,8 +125,8 @@ defmodule EhOsContract.Implementations do
 
   @doc """
   Every consumer that keeps a row in `eh_os_contract_subscriptions`, in the order of
-  their keys: read models and policies delivered `:at_least_once` and process
-  managers, which a runner feeds in order, and read models delivered `:in_transaction`, whose
+  their keys: read models and policies delivered `:at_least_once`, process managers
+  and relays, which a runner feeds in order, and read models delivered `:in_transaction`, whose
   row lets them be rebuilt. The host's applications are the configured ones:
   unlike dispatch, a boot does not know which contract will be dispatched, so an
   ordered consumer of a contract outside `config :eh_os_contract, applications:` gets
@@ -252,13 +255,15 @@ defmodule EhOsContract.Implementations do
 
   @doc """
   The order of kinds of consumer: in the dispatch transaction, read models, then
-  policies, then effects; in the index, where a process manager sorts with policies.
+  policies, then effects; in the index, where a process manager sorts with policies
+  and a relay, which never runs in the transaction, comes last.
   """
-  @spec order(:read_model | :policy | :process_manager | :effect) :: 0 | 1 | 2
+  @spec order(:read_model | :policy | :process_manager | :effect | :relay) :: 0 | 1 | 2 | 3
   def order(:read_model), do: 0
   def order(:policy), do: 1
   def order(:process_manager), do: 1
   def order(:effect), do: 2
+  def order(:relay), do: 3
 
   defp by_type(consumers) do
     consumers
@@ -272,57 +277,85 @@ defmodule EhOsContract.Implementations do
     effects = for e <- model.effects, do: {:effect, e, e.handles}
     managers = for pm <- model.process_managers, do: {:process_manager, pm, triggers(pm)}
 
-    for {kind, declaration, events} <- read_models ++ policies ++ effects ++ managers do
-      module =
-        case Map.get(declarations, {model.module, kind, declaration.name}) do
-          [module] -> module
-          _none_or_many -> nil
-        end
+    reacting =
+      for {kind, declaration, events} <- read_models ++ policies ++ effects ++ managers,
+          do: reacting(model, declarations, kind, declaration, events)
 
-      # Received from another application: into an inbox, never this log (D12).
-      taken =
-        for event <- events,
-            {type, digest} = stored(model, event),
-            type,
-            do: {type, event, digest}
+    reacting ++ Enum.map(model.publishes, &relay(model, &1))
+  end
 
-      # A process manager also takes its own timers' firings, one type for all of them.
-      timers =
-        if kind == :process_manager,
-          do: %{EhOsContract.ProcessManager.elapsed() => :timer_elapsed},
-          else: %{}
+  # A publish's relay: one ordered subscription over the one type it publishes.
+  defp relay(model, publication) do
+    {type, digest} = stored(model, publication.from)
 
-      # A read model that projects personal data also takes every erasure, and
-      # forgets a subject of the types it holds (v2 §14).
-      subjects =
-        if kind == :read_model,
-          do: Enum.reduce(events, MapSet.new(), &MapSet.union(&2, subjects(model, &1))),
-          else: MapSet.new()
+    %{
+      kind: :relay,
+      contract: model.module,
+      name: publication.name,
+      delivery: :at_least_once,
+      module: nil,
+      callbacks: %{type => publication.from},
+      forgets: MapSet.new(),
+      publication: publication,
+      key: "#{inspect(model.module)}:relay:#{publication.name}",
+      version:
+        EhOsContract.Digest.hash([
+          Map.fetch!(model.digests, "publish:#{publication.name}"),
+          digest
+        ])
+    }
+  end
 
-      forgets =
-        if MapSet.size(subjects) > 0,
-          do: %{EhOsContract.Personal.erased_type() => :forget},
-          else: %{}
+  defp reacting(model, declarations, kind, declaration, events) do
+    module =
+      case Map.get(declarations, {model.module, kind, declaration.name}) do
+        [module] -> module
+        _none_or_many -> nil
+      end
 
-      %{
-        kind: kind,
-        contract: model.module,
-        name: declaration.name,
-        delivery: declaration.delivery,
-        module: module,
-        callbacks:
-          Map.new(taken, fn {type, event, _} -> {type, event} end)
-          |> Map.merge(timers)
-          |> Map.merge(forgets),
-        forgets: subjects,
-        key: "#{inspect(model.module)}:#{kind}:#{declaration.name}",
-        version:
-          EhOsContract.Digest.hash([
-            Map.fetch!(model.digests, "#{kind}:#{declaration.name}")
-            | Enum.map(taken, &elem(&1, 2))
-          ])
-      }
-    end
+    # Received from another application: into an inbox, never this log (D12).
+    taken =
+      for event <- events,
+          {type, digest} = stored(model, event),
+          type,
+          do: {type, event, digest}
+
+    # A process manager also takes its own timers' firings, one type for all of them.
+    timers =
+      if kind == :process_manager,
+        do: %{EhOsContract.ProcessManager.elapsed() => :timer_elapsed},
+        else: %{}
+
+    # A read model that projects personal data also takes every erasure, and
+    # forgets a subject of the types it holds (v2 §14).
+    subjects =
+      if kind == :read_model,
+        do: Enum.reduce(events, MapSet.new(), &MapSet.union(&2, subjects(model, &1))),
+        else: MapSet.new()
+
+    forgets =
+      if MapSet.size(subjects) > 0,
+        do: %{EhOsContract.Personal.erased_type() => :forget},
+        else: %{}
+
+    %{
+      kind: kind,
+      contract: model.module,
+      name: declaration.name,
+      delivery: declaration.delivery,
+      module: module,
+      callbacks:
+        Map.new(taken, fn {type, event, _} -> {type, event} end)
+        |> Map.merge(timers)
+        |> Map.merge(forgets),
+      forgets: subjects,
+      key: "#{inspect(model.module)}:#{kind}:#{declaration.name}",
+      version:
+        EhOsContract.Digest.hash([
+          Map.fetch!(model.digests, "#{kind}:#{declaration.name}")
+          | Enum.map(taken, &elem(&1, 2))
+        ])
+    }
   end
 
   # The subject types whose personal data an event a contract names, its own or a
