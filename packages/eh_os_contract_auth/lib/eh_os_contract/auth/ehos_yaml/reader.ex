@@ -13,10 +13,11 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
   # `lib/ehos/applications/ehos_yaml/yaml.ex` in `eh-os` at `f7b2330`; a change there is a change
   # to carry here.
   #
-  # Two of EHOS's bounds are rules a valid file can break, and are kept: at most 64 KiB, and at most
-  # 256 of `[` and `{` anywhere in the text, quoted strings included. Its budgets of time and memory,
-  # and its bounds on nesting and on a list's length, are not carried over: they guard a server
-  # against files from anyone, a file the schema accepts never reaches them, and this reads the
+  # EHOS's bounds are kept but its budgets: at most 64 KiB, at most 256 of `[` and `{` anywhere in
+  # the text, quoted strings included, nesting at most 16 levels, and no list of more than 256
+  # entries. The first two are rules a valid file can break; the other two keep the reader's own
+  # work small, before the schema refuses what they refuse. EHOS's budgets of time and memory are
+  # not carried over: they guard a server against files from anyone, and this reads the
   # developer's own file in their CI.
 
   @type path :: [String.t() | non_neg_integer()]
@@ -41,6 +42,12 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
   @only_json "ehos.yaml holds only what JSON can"
   @max_bytes 65_536
   @max_flow 256
+  # The schema nests four levels deep, and the reader's work grows with the square of how deep a
+  # file nests: 8000 levels of `- `, 16 KB with no bracket, took it seconds. A deeper file is
+  # refused as the parser reaches the limit, as EHOS refuses it.
+  @max_depth 16
+  # The longest list the schema allows has 32 entries; a reason about an entry finds it by index.
+  @max_items 256
 
   @spec decode(binary()) :: {:ok, term(), lines()} | {:error, [error()]}
   def decode(text) when is_binary(text) do
@@ -84,7 +91,7 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
   end
 
   defp plain(text) do
-    _ = :yamerl_parser.string(text, [{:token_fun, token_fun(0)}])
+    _ = :yamerl_parser.string(text, [{:token_fun, token_fun(0, 0)}])
     :ok
   rescue
     exception -> unreadable(exception)
@@ -98,24 +105,30 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
   defp unreadable(exception),
     do: refuse(nil, "the file is not YAML that can be read: #{Exception.message(exception)}")
 
-  # The token function carries how many documents the parser has begun, so a second one is
-  # refused as soon as it is reached.
-  defp token_fun(documents), do: &{:ok, next(&1, documents)}
+  # The token function carries how deep the parser is and how many documents it has begun, so a
+  # second document, or a collection past the limit, is refused as soon as the parser reaches it.
+  defp token_fun(depth, documents), do: &{:ok, next(&1, depth, documents)}
 
-  defp next({:yamerl_doc_start, line, _column, _version, _tags}, 1),
+  defp next({:yamerl_doc_start, line, _column, _version, _tags}, _depth, 1),
     do: throw_refusal(line, "the file holds more than one YAML document")
 
-  defp next({:yamerl_doc_start, _line, _column, _version, _tags}, documents),
-    do: token_fun(documents + 1)
+  defp next({:yamerl_doc_start, _line, _column, _version, _tags}, depth, documents),
+    do: token_fun(depth, documents + 1)
 
-  defp next({:yamerl_collection_start, _line, _column, tag, _style, _kind}, documents) do
+  defp next({:yamerl_collection_start, line, _column, tag, _style, _kind}, depth, documents) do
     untagged(tag)
-    token_fun(documents)
+
+    if depth == @max_depth,
+      do: throw_refusal(line, "nests deeper than #{@max_depth} levels"),
+      else: token_fun(depth + 1, documents)
   end
 
-  defp next(token, documents) do
+  defp next({:yamerl_collection_end, _line, _column, _style, _kind}, depth, documents),
+    do: token_fun(depth - 1, documents)
+
+  defp next(token, depth, documents) do
     plain_token(token)
-    token_fun(documents)
+    token_fun(depth, documents)
   end
 
   defp plain_token({:yamerl_anchor, line, _column, name}),
@@ -181,6 +194,14 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
       end)
 
     {Map.new(entries), acc}
+  end
+
+  # The line of the list's key, where there is one, as for every other reason.
+  defp node({:yamerl_seq, _module, _tag, _position, _items, count} = seq, path, acc)
+       when count > @max_items do
+    {lines, _errors} = acc
+    line = Map.get(lines, path, line(seq))
+    {[], add(acc, error(path, line, "lists more than #{@max_items} entries"))}
   end
 
   defp node({:yamerl_seq, _module, _tag, _position, items, _count}, path, acc) do

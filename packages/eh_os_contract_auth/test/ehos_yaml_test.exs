@@ -142,7 +142,7 @@ defmodule EhOsContract.Auth.EhosYamlTest do
     end
   end
 
-  describe "EHOS's bounds that a valid file can break" do
+  describe "EHOS's bounds, kept without its budgets" do
     test "a file of more than 64 KiB is refused, though comments are all that make it large" do
       text = "schema: ehos.yaml/v1\n" <> @health <> String.duplicate("# padding\n", 6554)
 
@@ -157,6 +157,25 @@ defmodule EhOsContract.Auth.EhosYamlTest do
                     message: "the file is #{byte_size(text)} bytes; EHOS reads at most 65536"
                   }
                 ]}
+    end
+
+    test "nesting deeper than 16 levels is refused as the parser reaches it, as EHOS refuses it" do
+      # Block sequences need no bracket, and the reader's work grew with the square of the depth:
+      # 8000 levels, 16 KB, took seconds before the file was refused.
+      assert EhosYaml.read(String.duplicate("- ", 16) <> "x\n") ==
+               {:error, [%{path: "", line: 1, message: "must be a mapping"}]}
+
+      for depth <- [17, 8000] do
+        assert EhosYaml.read(String.duplicate("- ", depth) <> "x\n") ==
+                 {:error, [%{path: "", line: 1, message: "nests deeper than 16 levels"}]}
+      end
+    end
+
+    test "a list of more than 256 entries is refused whole, not entry by entry" do
+      text = "schema: ehos.yaml/v1\nserves:\n" <> String.duplicate("  - 1\n", 257) <> @health
+
+      assert EhosYaml.read(text) ==
+               {:error, [%{path: "serves", line: 2, message: "lists more than 256 entries"}]}
     end
 
     test "more than 256 of [ and { are refused, inside a quoted string too" do
