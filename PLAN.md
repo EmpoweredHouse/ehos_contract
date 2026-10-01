@@ -5,44 +5,42 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 1 października (E0–E11, #50–#61 w `main`; E12 domknięte na gałęzi E12e)
+## Handoff — stan na 1 października (E0–E12 w `main`; EH — manifest v2 — w toku)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
 
 Repozytorium biblioteki `eh_os_contract` (kontrakt procesu, dispatch zdarzeń, sprawdzanie zgodności), jej
 dashboardu i pakietu `eh_os_contract_auth`; `sandbox/` to dane testowe. Pivot do v2 (DSL na Sparku, model domeny w
-stylu ESDM, event sourcing na własnym magazynie, crypto-shredding) **ma za sobą E0–E11: wszystko jest w `main`**.
-Po E11 w `main` są: #53 (tabele poza `public`, #51), #54 (klucz blokady dopisu per schemat), #55 (#50, myślnik w
-przestrzeni nazw) i **#56 — każda nazwa w formie**: `name:` domeny jako segment przestrzeni nazw (D11), `\z`
-zamiast `$` we wzorcach nazw (N1, D9, strony, dziesiętna scenariusza), nazwy aktorów (D4) i pozostałych elementów
-domeny (D1, z kolizją wartości po `Macro.camelize` i nazwami typów wbudowanych), kolizja nazw kontraktu po
-`camelize` (N1, N2 dla `State`/`Row`), nazwy pól i `identity` (F1, D3, D6). **E12** — integracja między
-aplikacjami (wybór użytkownika z 1 października, „Przed E12 — decyzje użytkownika”): w `main` są **E12a**
-(#57: `EhOsContract.Bus`, `Bus.Local`, `Bus.Suite`), **E12b** (#58: relay), **E12c** (#59: inbox, `.subscribe`,
-test dwóch aplikacji) i **E12d** (#61: `EhOsContract.call/3`, Plug na nim). **E12e (dokumentacja, skille, poprawka
-`architecture.md` §9–10) jest na `dsl-v2/e12e-docs`** — po jej merge'u E12 jest zamknięte; następny etap wybiera
-użytkownik („Co zostało”).
+stylu ESDM, event sourcing na własnym magazynie, crypto-shredding) **ma za sobą E0–E11**, a po nich #53–#56 (tabele
+poza `public`, klucz blokady per schemat, każda nazwa w formie). **E12 — integracja między aplikacjami — jest
+zamknięte i w `main`**: E12a (#57, `Bus`), E12b (#58, relay), E12c (#59, inbox), E12d (#61, `call/3`), E12e (#62,
+dokumentacja); pytania, które zostawiło, to issues #63–#66 (#67). Po E12 w `main` są jeszcze: plan generatora
+manifestu v2 odzyskany z worktree (#68), termin pobierania kluczy w auth (#69, odzyskany z #36) i sprawdzenie planu
+EH wobec dzisiejszego kodu (#70).
+
+**Bieżący etap: EH — generator `ehos.manifest/v2`** w `eh_os_contract_auth`, w miejsce v1. Decyzje użytkownika
+z 1 października i plan EH2 + EH3 — „Przed EH2 i EH3 — decyzje użytkownika” i „EH2 i EH3 — plan” pod sekcją „EH —
+odpowiedź EHOS-a”. Pilny, bo EHOS przy wdrożeniu przyjmuje tylko v2, a CI `ehos-ledger` publikuje v1 z naszego
+generatora. **Krok 6c EHOS-a jest już zmergowany** (`eh-os` #99, `f7b2330`): wdraża ledger z ręcznie pisanym
+`ledger.v2.json`, sprawdzonym przez EHOS jako `ehos.yaml` ledgera (`341fc19`) plus `offers` z naszego v1 — więc
+nasz generator ma dać dokładnie ten dokument.
 
 ### Stan repozytorium
 
-- **`origin/main` = `7aa0496`** (merge #61, E12d, 1 października; przedtem `27175a0` — #60, potrzeby wobec `eh-os`,
-  `67253bf` — #59, E12c, i `842a2f1` — #58, E12b). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
-- **`dsl-v2/e12e-docs`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `7aa0496`: E12e; push i PR na polecenie
-  użytkownika. `dsl-v2/handoff-after-58`, `dsl-v2/e12c-inbox` i `dsl-v2/e12d-call` są w całości w `main`.
+- **`origin/main` = `aadcbd1`** (merge #70, 1 października; przedtem `c9af0ef` — #69, `12d3cf4` — #68, `827184d` —
+  #67, `3b77622` — #62, E12e). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe. CI `main` na `aadcbd1`
+  (przebieg `36860580158`) — `success`.
+- **`eh/eh2-ehos-yaml`** (główny checkout) — od `aadcbd1`: EH2; push i PR na polecenie użytkownika.
+- **Lokalnie poza tym:** `main`, `plan/eh-os-issues` (w `main`) i worktree `merge-pr-55-next-stage-ad84a2`
+  (odłączony na `aadcbd1`). Sprzątanie z 1 października skasowało resztę starych worktree i gałęzi.
 - **Otwarte na GitHubie:** **issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza repozytorium;
   zaparkowane 30 września, z propozycją `EmpoweredHouse/eh-os-contract-sandbox`; **#63–#66** — pytania otwarte po
-  E12, założone 1 października na polecenie użytkownika („Otwarte pytania”). Otwartych PR-ów brak.
-  **W `EmpoweredHouse/eh-os`: #91–#96** — nasze potrzeby wobec EHOS-a, założone 1 października („Dopisek 1
-  października”).
-- **Posprzątane 1 października, na zgodę użytkownika:** 6 worktree i 67 lokalnych gałęzi w całości w `main` (albo,
-  jak `dsl-v2/e7c-dev-port`, z treścią w `main` według `git cherry`); lokalne `main` przesunięte do `origin/main`.
-  **Zostały, do decyzji użytkownika:** worktree `contract-linking-entity-definition-c94951`
-  (`claude/ehos-context-adr-13a8bc`, w `main`, ale z niezacommitowanymi +130 liniami `PLAN.md` z 29 września);
-  worktree trzech starych handoffów spoza `main` — `dsl-v2/e9-handoff-after-em`, `dsl-v2/e10-handoff`,
-  `dsl-v2/el-handoff`, po jednym commicie `PLAN.md`, każdy zastąpiony późniejszym handoffem; gałęzie bez worktree
-  spoza `main` — `claude/infallible-nightingale-fe5392`, `dsl-v2/ea-authorize`, `dsl-v2/el-glossary`,
-  `e9c-before-rebase`, `fix/auth-refuse-unsafe-req-options`. Główny checkout stoi na `plan/eh-os-issues` (w `main`).
+  E12 („Otwarte pytania”). Otwartych PR-ów brak. **W `EmpoweredHouse/eh-os`: #91–#96** — nasze potrzeby wobec
+  EHOS-a („Dopisek 1 października”); dla manifestu ważne #91, #92, #93, #94, #96.
+- **`ehos-ledger`** (`main` = `341fc19`) przypina `eh-os-contract` na `50eb771` (merge #53, przed #54), ma
+  `ehos.yaml` i jego schemat w `.ehos/`, a CI puszcza `mix eh_os_contract.manifest --output ehos.manifest.json`.
+  Bump przypięcia — w tamtym repozytorium, nie tutaj.
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
   `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`) i mają schemat V01.
   **Indeks idempotencji w nich przebudowano ręcznie w E11f** na `(issued_by, idempotency_key)`, jak w dzisiejszym V01
@@ -59,43 +57,41 @@ użytkownik („Co zostało”).
 
 ### Co zostało — i czyje to jest
 
-- **PR E12e** (`dsl-v2/e12e-docs`) — push i PR użytkownika, na polecenie; PR wystawiany z worktree przez `gh api`
-  (hook sprawdza `HEAD` głównego checkoutu, „Pułapki”).
-- **Z E12, do decyzji użytkownika** („Otwarte pytania”), każde jako issue: kształt `call/3` przy drugich drzwiach
-  — [#63](https://github.com/EmpoweredHouse/eh-os-contract/issues/63); retencja `eh_os_contract_inbox` — [#64](https://github.com/EmpoweredHouse/eh-os-contract/issues/64); zgodność, która nie widzi polityki inboxu —
-  [#65](https://github.com/EmpoweredHouse/eh-os-contract/issues/65); surowa wartość zakresu w decyzjach auth — [#66](https://github.com/EmpoweredHouse/eh-os-contract/issues/66); kto może publikować —
+- **EH2 i EH3** — asystenta, według planu („EH2 i EH3 — plan”), z `pre-pr-review` po każdej części; push, PR i merge
+  — użytkownika, na wyraźne polecenie.
+- **Po EH, poza tym repozytorium:** bump przypięcia w `ehos-ledger` i porównanie jego manifestu z `ledger.v2.json`
+  w `eh-os` (EH4) — tamte repozytoria.
+- **Z E12, do decyzji użytkownika**, każde jako issue: kształt `call/3` przy drugich drzwiach —
+  [#63](https://github.com/EmpoweredHouse/eh-os-contract/issues/63); retencja `eh_os_contract_inbox` —
+  [#64](https://github.com/EmpoweredHouse/eh-os-contract/issues/64); zgodność, która nie widzi polityki inboxu —
+  [#65](https://github.com/EmpoweredHouse/eh-os-contract/issues/65); surowa wartość zakresu w decyzjach auth —
+  [#66](https://github.com/EmpoweredHouse/eh-os-contract/issues/66); kto może publikować —
   [eh-os#96](https://github.com/EmpoweredHouse/eh-os/issues/96).
-- **Kandydaci na później** (wybór użytkownika), każdy z tym, co go blokuje:
-  - **Manifest v2 — pilniejszy, niż plan zakładał:** EHOS przyjmuje v2 i odmawia v1 przy wdrożeniu, a `ehos-ledger`
-    publikuje v1 z naszego generatora, więc krok 6c EHOS-a czeka na nas („EH — odpowiedź EHOS-a”, notka z 1
-    października, z listą decyzji przed startem).
-  - **„Po E11” z planu: kontrakty sandboxa jako fikstury akceptacyjne pakietu, potem manifest v2.** D-51/D-52 są w
-    `eh-os` przyjęte (29 września); plan generatora — „EH — odpowiedź EHOS-a” (odzyskany 1 października), uwagi
-    do nich — `eh-os` #91–#96. **Fikstury kolidują z #49**: kontrakty klientów w pakiecie to dokładnie to, czego #49 chce
-    uniknąć — do rozstrzygnięcia przed startem (propozycja z E11: zmyślone odpowiedniki tego samego kształtu).
-  - **Drobne reguły z „Otwartych pytań”**, każda nowym powodem odmowy albo pomiarem — do decyzji użytkownika.
+- **Po EH (wybór użytkownika z 1 października):** kontrakty sandboxa jako fikstury akceptacyjne pakietu — kolidują
+  z #49, do rozstrzygnięcia przed startem (propozycja z E11: zmyślone odpowiedniki tego samego kształtu).
+- **Drobne reguły z „Otwartych pytań”**, każda nowym powodem odmowy albo pomiarem — do decyzji użytkownika.
 - **Poza etapami, bez zmian** — użytkownika: proces na porcie 4000, wdrożenie E8 u hosta, publikacja na Hex, F1/F2
   i dziesięć usterek.
 - **Lista zmian do `eh-os`** — od 1 października jako issues
   [eh-os#91](https://github.com/EmpoweredHouse/eh-os/issues/91)–[#96](https://github.com/EmpoweredHouse/eh-os/issues/96);
-  tabela z tym, co jest załatwione, a co otwarte: „Dopisek 1 października”. Pytanie o CSP (EG3) rozstrzygnięte tam.
-- **E13** (graf jako API, renderer w miejsce Mermaida) — po E12.
-- **Sprzątanie gałęzi i worktree** w całości w `main` — asystenta, na zgodę użytkownika (kasowanie).
+  tabela z tym, co jest załatwione, a co otwarte: „Dopisek 1 października”. Nowa potrzeba: wiersz w tabeli i issue.
+- **E13** (graf jako API, renderer w miejsce Mermaida) — po EH.
 
 ### Co przeczytać najpierw
 
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach (także w
    fiksturach testów: `label` po polsku jest dozwolony — CodeRabbit to już przyjął), wyrażenia regularne z flagą `u`
    i `[0-9]`, zsh bez dzielenia słów.
-2. `PLAN.md`: „Przed E12 — decyzje użytkownika” i „E12a”–„E12e — co wyszło” (z „Przed E12c” i „Przed E12d”) —
-   decyzje E12 z odrzuconymi opcjami i to, co przeglądy zostawiły otwarte; „Do powrotu” w „E12d — co wyszło”.
-3. `docs/adr/contract-v2.md` §16 — D11 i D12 i dopiski „as built” z 1 października (relay, inbox).
-4. `lib/eh_os_contract/bus.ex`, `relay.ex`, `inbox.ex`, `inbox/keeper.ex`, `dispatcher.ex` (`call/3`) w pakiecie
-   silnika; `test/support/bus_rig/` — dwie zmyślone aplikacje, sklep i magazyn.
-5. `PLAN.md`, „Etapy” — opis E12 z kryteriami odbioru; „Otwarte pytania”. Do odczytu (nie pisać):
-   `~/Projects/ai/eh-os/docs/adr/0041-integration-events-publish-consumes-and-inbox.md` — połowa EHOS-a.
-6. `packages/eh_os_contract/docs/contract.md` (tabela odmów z kodami) i `.claude/skills/` — DSL i skille, z których
-   pisze się kod; `.claude/skills/pre-pr-review/SKILL.md` — przegląd po każdej części etapu, przed PR-em.
+2. `PLAN.md`: „EH — odpowiedź EHOS-a” z notką „Sprawdzone 1 października”, a pod nią „Przed EH2 i EH3 — decyzje
+   użytkownika” i „EH2 i EH3 — plan”; „D-51 i D-52 w `eh-os` — uwagi przed akceptacją” nad nimi.
+3. `packages/eh_os_contract_auth/lib/eh_os_contract/auth/manifest.ex` i `lib/mix/tasks/eh_os_contract.manifest.ex`
+   — generator v1, który v2 zastępuje.
+4. W `eh-os` czytaj `main` z GitHuba (`gh api …/contents/<ścieżka>?ref=main -H 'Accept:
+   application/vnd.github.raw'`), nie lokalny checkout: `docs/manifest.md`, `docs/ehos-yaml.md`,
+   `priv/schemas/ehos.yaml/v1.json`, `lib/ehos/applications/ehos_yaml/yaml.ex`,
+   `lib/ehos/applications/manifest/v2.ex`, `test/support/fixtures/manifests/ledger.v2.json`, `docs/adr/0051`,
+   `0052`, `0056`, `0064`. Do `~/Projects/ai/eh-os` i `empowered-house-context` nie piszemy.
+5. `.claude/skills/pre-pr-review/SKILL.md` — przegląd po każdej części etapu, przed PR-em.
 
 ### Komendy
 
@@ -152,6 +148,9 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 1 października, na `main` = `aadcbd1`** (baza EH, przed pierwszym commitem `eh/eh2-ehos-yaml`): brama z
+  `sandbox/` → **EXIT=0** — sandbox 144, `check` **0 / 29 / 9**; silnik **1104**, `check` **0 / 68 / 6**; web 52;
+  auth **71**. CI `main` na `aadcbd1` (przebieg `36860580158`, job `check`) — `success`.
 - **Lokalnie, 1 października, na `dsl-v2/e12e-docs`** (E12e po przeglądzie; sama dokumentacja): brama z `sandbox/`
   → **EXIT=0**, liczby jak dla E12d niżej. CI `main` na `7aa0496` (merge #61) — sprawdzić.
 - **Lokalnie, 1 października, na `9d1ae58`** (E12d po przeglądzie, `dsl-v2/e12d-call`): brama z `sandbox/` →
@@ -298,9 +297,9 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 **Ten blok jest do skasowania. Skasowanie go cofa uprawnienie — nie migruje ono samo między sesjami.**
 
-W sesjach E11b–E11f (29–30 września), w sesji #56 (30 września), w sesji E12a–E12b i w sesji E12c (1 października)
-użytkownik potwierdzał: commity bez pytania na gałęziach etapu przy zielonej
-bramie na każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. **W nowej sesji obowiązuje to
+W sesjach E11b–E11f (29–30 września), w sesji #56 (30 września), w sesji E12a–E12b, w sesji E12c i w sesji EH
+(1 października) użytkownik potwierdzał: commity bez pytania na gałęziach etapu przy zielonej bramie
+na każdym commicie; zapis stanu do `PLAN.md` i założeń z datą do `docs/adr/`. **W nowej sesji obowiązuje to
 dopiero po ponownym potwierdzeniu przez użytkownika.** Push, PR, merge, tag i Hex — tylko na wyraźne polecenie,
 przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie piszemy nigdy; do
 `~/Projects/ai/eh-os` też nie (tylko czytanie).
@@ -2632,6 +2631,80 @@ wyżej zostaje jak była; co z niej dziś stoi:
   skasować czy zostawić za flagą; gdzie kopia schematu `ehos.yaml` (`priv/` biblioteki czy `.ehos/` aplikacji, jak w
   D-51 i szablonie); odmowa `name:` domeny z `_` przy generowaniu; kolejność wobec fikstur i #49 — **EHOS 6c czeka na
   ten generator**.
+
+### Przed EH2 i EH3 — decyzje użytkownika (1 października)
+
+Stan przed decyzjami sprawdzony 1 października wobec `eh-os` `main` = `f7b2330` (merge #99, krok 6c: ledger
+wdrożony z ręcznego `ledger.v2.json`) i `ehos-ledger` `main` = `341fc19`. Każda decyzja z przykładem w rozmowie;
+tu z opcjami, które przegrały.
+
+1. **v2 niesie `engine`, a `contracts` nie — dopóki [eh-os#92](https://github.com/EmpoweredHouse/eh-os/issues/92)
+   nie odpowie.** `engine` jest tylko w digeście manifestu; digest autoryzacji zostaje równy v1 i ręcznemu
+   `ledger.v2.json`, więc wdrożenie ledgera z generatora nie wymaga `register`. *Odrzucone:* bez obu — manifest
+   równy fixture'owi co do danych, ale bez śladu generatora, a `engine` niczyich uprawnień nie rusza; z obydwoma,
+   jak przykład D-52 — każda poprawka etykiety albo scenariusza (`version` to hash całego kontraktu) zmieniałaby
+   digest autoryzacji i wymagała `register` przy wdrożeniu, choć niczyje uprawnienia się nie zmieniły. **Format
+   `contracts[].digest`** (`sha256:` z `Digest.document_digest/1` dokumentu modelu czy 12-znakowe `version`) — do
+   rozstrzygnięcia dopiero, gdy `contracts` wejdą.
+2. **v1 kasujemy:** task pisze tylko v2, `Manifest.build` v1 i flaga `--domain` znikają. *Odrzucone:* v1 za
+   `--schema ehos.manifest/v1` do samej rejestracji — wdrożenie i tak odmawia v1, zgodności wstecz nie trzymamy
+   (kierunek z 25 września), a jedyni użytkownicy v1 to CI ledgera (ma `ehos.yaml`) i test sandboxa.
+3. **Kopia schematu `ehos.yaml/v1.json` w `priv/` pakietu auth**, bez zmian, ze źródłem (commit `eh-os`) i SHA-256
+   przypiętym testem. Biblioteka wie, które wersje `ehos.yaml` umie przenieść do manifestu, a kopii w aplikacji nikt
+   nie pilnuje. *Odrzucone:* kopia z `.ehos/` aplikacji, jak w szablonie `ehos-tools` i u ledgera — generator
+   walidowałby tym, co aplikacja ma, w tym wersją edytowaną albo inną niż ta, którą umie nieść. Schemat zamarza
+   dopiero z EHOS 0.3.0, więc kopię odświeżamy świadomie.
+4. **Generator odmawia, gdy `name:` domeny nie jest nazwą aplikacji EHOS-a** (`^[a-z]([-a-z0-9]*[a-z0-9])?$`, do 63
+   znaków, nie `ehos` — w v1 i v2 tak samo), z komunikatem, co zmienić. Dotyczy nazwy wziętej z domeny; `application`
+   z `ehos.yaml` ma ten wzorzec w schemacie. *Odrzucone:* zaostrzenie D11 w silniku — psuje fikstury
+   (`:dispatch_rig`) i każdą domenę nazwaną po aplikacji OTP, a D11 mówi o przestrzeni nazw publikacji, nie o EHOS-ie;
+   nic — odmówiłby dopiero EHOS, po buildzie i przy wdrożeniu.
+5. **Kolejność: najpierw EH2 i EH3, fikstury akceptacyjne i #49 osobno, potem.** Testy generatora stoją na
+   zmyślonych domenach w pakiecie auth. *Odrzucone:* najpierw fikstury — #49 nierozstrzygnięte, a ledger czeka na v2.
+6. **Blok „Zgoda i stałe uprawnienia” potwierdzony na tę sesję.**
+
+### EH2 i EH3 — plan (1 października)
+
+Zastępuje EH2 i EH3 z sekcji „EH — odpowiedź EHOS-a” (EH1 zrobione w #53 i #54, EH4 jest poza tym
+repozytorium). Wszystko w `eh_os_contract_auth`, poza `ehos.yaml` i testem sandboxa; brama bez zmian. Po każdej
+części `pre-pr-review` przed następną. Gałęzie: `eh/eh2-ehos-yaml` (EH2a, EH2b — jeden PR) i `eh/eh3-manifest-v2`
+(EH3a, EH3b — jeden PR). **Wybory mechaniki (asystenta):** nowe zależności pakietu auth — `yamerl` (ten sam czytnik
+co EHOS) i `jsv` (ten sam walidator, draft 2020-12) w runtime, `stream_data` tylko w testach; schemat budowany przez
+JSV w czasie kompilacji, z `@external_resource`; `priv/schemas` dochodzi do `files:` pakietu.
+
+- **EH2a — ścisły czytnik `ehos.yaml`.** `EhOsContract.Auth.EhosYaml`: tekst → dane JSON-a albo lista błędów
+  `%{path, line, message}` ze ścieżką w zapisie EHOS-a (`serves[0].port`, `""` dla całego pliku). yamerl dwa razy,
+  jak EHOS: tokeny parsera (anchor, alias, tag, dyrektywa, drugi dokument) i drzewo `detailed_constr` ze schematem
+  `core` i `keep_duplicate_keys` (powtórzony klucz, klucz niebędący stringiem, `.inf`/`.nan`, linia każdego klucza).
+  Przed parserem: UTF-8 i brak NUL-a. Budżetów czasu i rozmiaru EHOS-a nie przenosimy — generator czyta plik
+  dewelopera w jego CI, a listy ogranicza schemat. *Odbiór:* korpus odmów, jedna na plik — alias, anchor, tag,
+  dyrektywa, dwa dokumenty, powtórzony klucz, klucz liczbowy, `.inf`, zły UTF-8; `public: yes` czytane jako string
+  (YAML 1.2 `core`). *Kontrola:* bez `keep_duplicate_keys` test powtórzonego klucza robi się czerwony.
+- **EH2b — schemat i walidacja.** `priv/schemas/ehos.yaml/v1.json` z `eh-os`, test na SHA-256 i źródło w
+  moduledoku; `EhosYaml.read/1` waliduje JSV i zwraca błędy w tym samym kształcie, z linią z drzewa yamerla, gdy jest.
+  *Odbiór:* odmowy — brak `schema`, brak `health`, `database` bez `engine`, nieznany klucz (na każdym poziomie), port
+  80, `version: 16` jako liczba, `public: yes`; przechodzą przykład z `docs/ehos-yaml.md` i `ehos.yaml` ledgera.
+  *Kontrola:* kopia schematu z jednym zmienionym bajtem — test SHA-256 czerwony.
+- **EH3a — `Manifest.build/3` dla v2.** Z przeczytanego `ehos.yaml`, domen i kontraktów: każdy klucz poza `schema`
+  bez zmian, `ehos_yaml` z `schema`, `application` z `ehos.yaml` albo z jedynej domeny, `offers` jak dziś w v1
+  (`capabilities`, `roles`), `engine` z `EhOsContract.version/0`, bez `contracts` (decyzja 1). Odmowy: kilka domen bez
+  `application`, `application` spoza domen, nazwa domeny spoza wzorca EHOS-a (decyzja 4), brak kapabilności albo ról.
+  v1 znika (decyzja 2). *Odbiór:* test property (StreamData, generator poprawnych `ehos.yaml` według schematu v1) —
+  każdy klucz poza `schema` pod tą samą ścieżką z tą samą wartością, `ehos_yaml` = `schema`, żadnej wartości
+  domyślnej; zmyślona domena `ledger` o ofercie ledgera z `ehos.yaml` ledgera daje `ledger.v2.json` z `eh-os` (kopia
+  w testach, ze źródłem) z dołożonym `engine`. *Kontrola:* zmiana samego `serves` nie rusza `offers` ani
+  `application`.
+- **EH3b — task, sandbox, dokumentacja.** `mix eh_os_contract.manifest --output <plik> [--ehos-yaml <plik>]`
+  (domyślnie `ehos.yaml` w katalogu projektu); odmowa wypisuje każdy błąd ze ścieżką i linią; `--domain` odmawia z
+  podpowiedzią, że nazwę daje teraz `application` w `ehos.yaml`. `sandbox/ehos.yaml` z `application: taxvision`
+  (sandbox ma dwie domeny) i test: bez `application` odmowa z listą domen, z nim manifest v2. README pakietu auth:
+  manifest v2 i przykład `config/runtime.exs` ze zmiennymi D-56 (`EHOS_ISSUER` → `:issuer`, `EHOS_AUDIENCE` →
+  `:audience`, `EHOS_CA_FILE` → `cacertfile:`) oraz zdanie, że `EHOS_CLIENT_ID` i `EHOS_CLIENT_KEY_FILE` z D-64
+  dotyczą logowania przeglądarkowego, którego pakiet nie robi ([eh-os#95](https://github.com/EmpoweredHouse/eh-os/issues/95)).
+  CHANGELOG pakietu auth; odwołania do v1 w dokumentacji repozytorium.
+
+**Poza EH, bez zmian:** zapytania, nagrania, zakresy, `consumes` i publikacje w `offers` (v2 ich nie unosi — #93,
+#94, #96); `contracts` (#92); bump `ehos-ledger` i porównanie z `ledger.v2.json` w ich CI (EH4).
 
 ### Przed E11 — podział i decyzje użytkownika (29 września)
 
