@@ -405,6 +405,39 @@ defmodule EhOsContract.ContractBoundariesTest do
     end
   end
 
+  describe "D12: another application's event is a policy's" do
+    test "a read model, an effect or a process manager taking one" do
+      message =
+        refuse_contract("ReceivedTakenWrong", """
+          consumes "rehmed.visit.closed.v1", as: :visit_closed_elsewhere do
+            field :visit_id, :id
+          end
+
+        #{@unit}
+          read_model :remote_closings, "Zamknięcia gdzie indziej",
+            projects: :visit_closed_elsewhere do
+            field :visit_id, :id
+          end
+
+          effect :notify_remote, "Powiadom", handles: :visit_closed_elsewhere
+
+          process_manager :follow_up, "Dalszy ciąg", correlate: [:visit_id] do
+            starts_on :visit_closed
+            ends_on :visit_closed_elsewhere
+          end
+        """)
+
+      assert message =~
+               "D12: read model :remote_closings takes :visit_closed_elsewhere, which arrives " <>
+                 "from another application into an inbox and never enters this log, so only a " <>
+                 "policy reacts to it; take the event its command records instead " <>
+                 "(received_taken_wrong.ex:"
+
+      assert message =~ "D12: effect :notify_remote takes :visit_closed_elsewhere"
+      assert message =~ "D12: process manager :follow_up takes :visit_closed_elsewhere"
+    end
+  end
+
   describe "D10 in the domain" do
     test "an actor carries the scope dimensions a grant narrows by" do
       compile("""
