@@ -171,6 +171,14 @@ defmodule EhOsContract.Auth.EhosYamlTest do
       end
     end
 
+    test "depth is how deep a file nests, not how many collections it holds" do
+      # 40 serves, each a mapping in a list, beside the rest: 44 collections, four levels deep.
+      serves = Enum.map_join(1..40, "", &"  - name: web#{&1}\n    port: #{4100 + &1}\n")
+      text = "schema: ehos.yaml/v1\nserves:\n" <> serves <> @health
+
+      assert {:error, [%{path: "serves", message: "must list at most 16"}]} = EhosYaml.read(text)
+    end
+
     test "a list of more than 256 entries is refused whole, not entry by entry" do
       text = "schema: ehos.yaml/v1\nserves:\n" <> String.duplicate("  - 1\n", 257) <> @health
 

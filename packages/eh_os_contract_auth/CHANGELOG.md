@@ -10,8 +10,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **EH2: `EhOsContract.Auth.EhosYaml.read/1` reads `ehos.yaml` as EHOS reads it** (`eh-os` D-51), for the
   manifest v2 to carry its keys unchanged. It refuses what YAML can say and JSON cannot — an anchor or an alias, a
   tag, a directive, a key given twice, a key that is not a string, a second document, `.inf` — and resolves plain
-  values by YAML 1.2's core schema, so `yes` is a string. Each reason has the value's path in EHOS's notation and
-  its line. New dependencies: `yamerl` and `jsv`, the reader and the validator EHOS uses, both `runtime: false`:
+  values by YAML 1.2's core schema, so `yes` is a string, refusing a node `config :yamerl, node_mods:` adds. It keeps
+  EHOS's bounds: at most 64 KiB, 256 of `[` and `{`, 16 levels of nesting and 256 entries in a list. Each reason has
+  the value's path in EHOS's notation and its line. New dependencies: `yamerl` and `jsv`, the reader and the validator EHOS uses, both `runtime: false`:
   `ehos.yaml` is read for `mix eh_os_contract.manifest` (EH3), in the application's CI, so neither starts with the
   host or goes into its release. yamerl is held to 0.10.x, whose tokens and nodes the reader matches.
 

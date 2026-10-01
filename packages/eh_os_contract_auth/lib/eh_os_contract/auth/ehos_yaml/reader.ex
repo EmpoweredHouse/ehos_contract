@@ -71,8 +71,8 @@ defmodule EhOsContract.Auth.EhosYaml.Reader do
         :ok
 
       {:error, reason} ->
-        raise "yamerl cannot be loaded (#{inspect(reason)}): ehos.yaml is read in a Mix task, " <>
-                "and a release does not carry yamerl"
+        raise "yamerl cannot be loaded (#{inspect(reason)}): ehos.yaml is read in a Mix task " <>
+                "with the package's dependencies fetched; a release does not carry yamerl"
     end
   end
 
