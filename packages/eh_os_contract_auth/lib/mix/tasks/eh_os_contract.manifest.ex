@@ -12,13 +12,14 @@ defmodule Mix.Tasks.EhOsContract.Manifest do
   another file, and is read as EHOS reads it (`EhOsContract.Auth.EhosYaml`): a file
   EHOS would refuse is refused here, with every reason, its path and its line.
   Domains and contracts are found among modules of
-  `config :eh_os_contract, applications:`. A project with more than one domain with
-  contracts names the one this image is in `ehos.yaml`, as `application: <name>`. What the
-  manifest holds is `EhOsContract.Auth.Manifest`'s.
+  `config :eh_os_contract, applications:`. A project with more than one domain
+  with contracts names the one this image is in `ehos.yaml`, as
+  `application: <name>`. What the manifest holds is `EhOsContract.Auth.Manifest`'s.
 
   EHOS keeps every manifest it is given, for good, and every key of `ehos.yaml` is in
   it as written: `ehos.yaml` must hold no secret, such as a password in a `migrate`
-  argument. Nothing here can tell one. What the workload needs at run time comes from its environment.
+  argument. Nothing here can tell one. What the workload needs at run time comes
+  from its environment.
   """
 
   use Boundary, classify_to: EhOsContract.Auth
@@ -69,6 +70,11 @@ defmodule Mix.Tasks.EhOsContract.Manifest do
         EhOsContract.Registry.contracts()
       )
 
+    # Again, just before the write: a link made to ehos.yaml while the project compiled, or an
+    # output that did not exist when it was first looked at, is judged now.
+    if same_file?(output, source),
+      do: Mix.raise("--output names the ehos.yaml it is made from: #{source}")
+
     File.mkdir_p!(Path.dirname(output))
     File.write!(output, Jason.encode_to_iodata!(document, pretty: true) ++ ["\n"])
     Mix.shell().info("written: #{output}")
@@ -112,18 +118,23 @@ defmodule Mix.Tasks.EhOsContract.Manifest do
   end
 
   # By name, and, when both exist, by the file they are: a link, or another case of the name on a
-  # file system that ignores case, is the same ehos.yaml.
+  # file system that ignores case, is the same ehos.yaml. Windows reports every inode as 0, so
+  # there only the name is compared.
   defp same_file?(output, source) do
     Path.expand(output) == Path.expand(source) or
       case {File.stat(output), File.stat(source)} do
-        {{:ok, out}, {:ok, src}} -> {out.major_device, out.inode} == {src.major_device, src.inode}
-        _missing -> false
+        {{:ok, %{inode: inode} = out}, {:ok, %{inode: inode} = src}} when inode != 0 ->
+          out.major_device == src.major_device
+
+        _other ->
+          false
       end
   end
 
   # A FIFO with no writer, or a device, would hold the task for ever or fill its memory, so the
-  # file is looked at before it is read, read only when EHOS would read it, and read no further
-  # than EHOS reads, however it has grown since.
+  # file is looked at before it is read, and read no further than one byte past what EHOS reads,
+  # however it has grown since; the reader refuses that byte. A path swapped for a FIFO between
+  # the look and the open can still hold the task: Erlang opens nothing without blocking.
   defp read_ehos_yaml!(path, default?) do
     max = EhosYaml.max_bytes()
 
@@ -153,13 +164,10 @@ defmodule Mix.Tasks.EhOsContract.Manifest do
         {:ok, :eof} ->
           ""
 
-        {:ok, text} when is_binary(text) and byte_size(text) <= max ->
+        {:ok, text} when is_binary(text) ->
           text
 
-        {:ok, text} when is_binary(text) ->
-          Mix.raise("#{path} is larger than EHOS reads, #{max} bytes")
-
-        {:ok, {:error, reason}} ->
+        {_open, {:error, reason}} ->
           Mix.raise("cannot read #{path}: #{:file.format_error(reason)}")
 
         {:error, reason} ->

@@ -39,9 +39,7 @@ defmodule EhOsContract.Auth.ManifestTaskTest do
     assert File.read!(ehos_yaml) == "schema: ehos.yaml/v1\n"
   end
 
-  test "the manifest is never written over ehos.yaml through a link or another case", %{
-    tmp_dir: dir
-  } do
+  test "the manifest is never written over ehos.yaml through a link", %{tmp_dir: dir} do
     ehos_yaml = Path.join(dir, "ehos.yaml")
     File.write!(ehos_yaml, "schema: ehos.yaml/v1\n")
     link = Path.join(dir, "manifest.json")
@@ -58,6 +56,8 @@ defmodule EhOsContract.Auth.ManifestTaskTest do
              "say which ehos.yaml to read: --ehos-yaml <file>, or leave it out for the project's"
   end
 
+  # root reads a file whatever its mode.
+  @tag skip: System.cmd("id", ["-u"]) |> elem(0) |> String.trim() == "0" && "run as root"
   test "a file that cannot be read is refused, not raised", %{tmp_dir: dir} do
     locked = Path.join(dir, "ehos.yaml")
     File.write!(locked, "schema: ehos.yaml/v1\n")
