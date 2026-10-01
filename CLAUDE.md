@@ -75,10 +75,13 @@ Dwie połowy na jednym modelu — domenie i kontraktach (DSL v2, na wzór ESDM).
 czy aktor może wydać komendę, sprawdza pola, czyta historię jednostki z logu, pozwala implementacji
 zdecydować i dopisuje tylko to, co kontrakt deklaruje; log jest własny silnika (event sourcing). Reakcje —
 read modele, polityki, process managery, efekty — jadą w transakcji dispatchu (`:in_transaction`) albo po
-niej (`:at_least_once`: subskrypcja z logu, efekt przez Obana wstawionego w tę samą transakcję). W planie:
-wiele aplikacji OTP wymieniających zdarzenia przez broker (JetStream) — **jeszcze niezbudowane**, a
-`docs/adr/architecture.md` §9–10 mówi dziś „bez zewnętrznego brokera”, więc przy tej pracy idzie tam
-poprawka z datą. **Zgodność** odpowiada na jedno pytanie:
+niej (`:at_least_once`: subskrypcja z logu, efekt przez Obana wstawionego w tę samą transakcję). **Między
+aplikacjami** (E12, od 1 października): zdarzenie wychodzi tylko przez `publish` — relay czyta log i oddaje je
+behaviourowi `EhOsContract.Bus` — a przychodzi do inboxu, który bierze tylko polityka (`D12`), nigdy do logu
+odbiorcy. Adaptery transportu (JetStream przez `gnat`, relay EHOS-a) są po stronie EHOS-a; biblioteka ma tylko
+`Bus.Local` do testów i jednego węzła i od żadnego brokera nie zależy (`docs/adr/architecture.md` §9–10, poprawka
+z 1 października). Dane spoza kodu aplikacji — surowe, z credentialem — wchodzą przez `EhOsContract.call/3`, na
+którym stoi Plug. **Zgodność** odpowiada na jedno pytanie:
 
 > Czy wdrożony kod robi to, co mówi zdefiniowany proces?
 
