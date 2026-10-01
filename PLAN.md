@@ -181,6 +181,10 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Otwarte pytania
 
+- **Surowa wartość zakresu w decyzjach auth** (z przeglądu E12d, sprzed niego): wartość pola zakresu „jak wysłana”
+  idzie do kolumny `scope_value` (`text`) decyzji `eh_os_contract_auth`; znak `\u0000` z JSON-a albo zły UTF-8 z
+  query stringa (`%FF`) wywraca zapis decyzji — 500 zamiast odmowy; długi napis — wiersz na żądanie. Możliwe:
+  odmowa wartości spoza UTF-8 bez NUL przed pytaniem `Authorizer`, limit długości — nowy powód odmowy, do decyzji.
 - **Kształt `EhOsContract.call/3` do sprawdzenia przy drugich prawdziwych drzwiach** (z E12d) — zbudowany na
   zapas z jednego użytkownika (Plug), wbrew zasadzie z 27 września, z wyboru użytkownika. Wyzwalacz: pierwsze inne
   drzwi dla surowych danych z credentialem (formularz LiveView, job z credentialem osoby, MCP), przed ich
@@ -3729,9 +3733,34 @@ publicznej funkcji jest zmianą łamiącą. **Co sprawdzić na nich:**
 - czy drzwi potrzebują deklaracji, zanim zawołają (`Dispatcher.route/3` jest publiczne z myślą o formularzu — jeśli
   nikt go nie użyje, może wrócić do środka);
 - czy `contracts:` z domyślnym „wszystkie z rejestru” jest bezpieczne dla drzwi, które powinny widzieć tylko część;
-- czy odmowa `:system` (`:no_actor`) pasuje do joba, który działa w imieniu aplikacji, a dane ma surowe.
+- czy odmowa `:system` (`:no_actor`) pasuje do joba, który działa w imieniu aplikacji, a dane ma surowe;
+- czy wartość zakresu „jak wysłana” wystarcza — dziś tylko napis pod kluczem-napisem; liczba (`"clinic_id": 7`)
+  albo klucze-atomy z formularza dają przy błędzie w innym polu `:outside_scope` zamiast `{:invalid, …}` (sprzed
+  E12d, z przeglądu E12d);
+- czy domyślne `contracts:` ma zostać — bez `config :eh_os_contract, applications:` rejestr rzuca wyjątek, a drzwi,
+  które zapomną `contracts:`, wystawiają każdą capability (ogranicza je tylko grant credentiala); alternatywa:
+  `contracts:` wymagane, jak w `EhOsContract.Plug.init/1`.
 Jeśli coś z tego się nie zgadza — poprawka kształtu przed wydaniem 0.3.0 kosztuje jeden PR; po nim — wpis „host
 musi działać” w CHANGELOG-u.
+
+**Przegląd** (`code-review high` i bezpieczeństwo/wydajność, równolegle, na `27175a0..9540ab9`; gwarancja „najpierw
+uprawnienie” trzyma — każda ścieżka to jedna decyzja `Authorizer`, nikt bez capability nie widzi problemu z polami):
+- **Plug czytał i dekodował ciało przed sprawdzeniem aktora** (oba przeglądy) — anonimowe żądanie do ~8 MB
+  (domyślne `read_body`) było czytane i parsowane, zanim dostało 401, a przed E12d dostawało je za darmo —
+  *poprawione* (`8153fbc`); z wycofaną poprawką pada jeden test z 14 w `plug_test.exs`;
+- **`x-correlation-id` z 16 dowolnych bajtów** przechodził `Ecto.UUID.cast/1` (surowy UUID) i wywracał zapis —
+  500 zamiast 400 (sprzed E12d) — *poprawione* (`8506b2b`), tylko tekstowa postać UUID;
+- **`call/3` gubił `min_position:` i `wait:`** dla query — drzwi czytające swój zapis dostawały stare wiersze —
+  *poprawione* (`8506b2b`); opcje jako mapa (jak w `dispatch/3`) i dokładny `@spec` `EhOsContract.call/3` — też
+  `8506b2b`; z wycofanymi poprawkami padają trzy z dziewięciu testów `call_test.exs`;
+- zakres „jak wysłany” tylko dla napisów i domyślne `contracts:` — *do powrotu* (wyżej);
+- surowa wartość zakresu trafia do `scope_value` w decyzjach pakietu auth — znak `\u0000` albo zły UTF-8 z query
+  stringa daje 500 przy zapisie decyzji (sprzed E12d) — *pominięte*, w „Otwartych pytaniach”;
+- `idempotency_key:` bez sprawdzenia typu z drzwi spoza HTTP — *bez zmiany*: tak samo `dispatch/3`;
+- Plug routuje dwa razy, a `Model.capabilities/1` i `Codec.values/1` liczą się 2–3 razy na żądanie — *pominięte*:
+  mikrosekundy; indeks capability w `:persistent_term` przy pomiarze, razem z runnerem read modelu;
+- `answer/7` w Plugu z siedmioma argumentami i prywatne `call/4` obok `Plug.call/2` — *bez zmiany*: czytelność,
+  nie poprawność.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 

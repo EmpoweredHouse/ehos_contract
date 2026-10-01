@@ -240,7 +240,9 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   then goes through `dispatch/3`, `record/3` or `query/3`. `EhOsContract.Plug` is now one door onto it, with
   the same statuses and bodies as before; `EhOsContract.Dispatcher.route/3` names the contract and the
   declaration a capability names, for a door that needs the declaration (a form's fields).
-  `Dispatcher.permit_undecoded/5`, undocumented, is gone.
+  `Dispatcher.permit_undecoded/5`, undocumented, is gone. One answer changes: an `x-correlation-id` of sixteen
+  bytes that are not a UUID's text, which `Ecto.UUID.cast/1` took as a raw UUID and the log then refused with a
+  500, is a 400 `correlation_id_is_not_a_uuid` like any other.
 - **E12c: another application's published event arrives in an inbox (D12).** For every `consumes
   "<name>"` a policy handles, the engine starts a durable consumer on the configured `EhOsContract.Bus`,
   `"<contract>:inbox:<name>"`, before any relay, through `EhOsContract.Inbox.Keeper`: a consumer whose transport refuses it, at boot or later, is logged and
