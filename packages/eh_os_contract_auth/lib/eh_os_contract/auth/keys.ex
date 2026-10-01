@@ -64,8 +64,8 @@ defmodule EhOsContract.Auth.Keys do
   # The request timeouts above bound a single step, not the fetch: `receive_timeout`
   # starts again with every read, so an answer trickled a byte at a time never trips
   # it, and the connect timeout is spent once on TCP and again on the TLS handshake.
-  # This bounds the request whole, a host's `:req_options` included, and stays well
-  # inside `@call_timeout`. Writing the table after it is outside the deadline,
+  # This bounds the request whole, whatever Req's own `config :req, default_options`
+  # adds to it, and stays well inside `@call_timeout`. Writing the table after it is outside the deadline,
   # bounded by the repo's own timeouts.
   @fetch_deadline 5_000
   @call_timeout 10_000
@@ -370,8 +370,8 @@ defmodule EhOsContract.Auth.Keys do
   end
 
   # The request runs in a task of its own, so a fetch that outlives the deadline is
-  # killed rather than waited for, whichever step it is stuck in. Its socket, and its
-  # connection from the pool, go with it.
+  # killed rather than waited for, whichever step it is stuck in. Over HTTP/1, which
+  # the fetch uses, its socket and its pooled connection go with it.
   defp get(state) do
     task = Task.async(fn -> request(state) end)
 

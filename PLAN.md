@@ -5072,6 +5072,14 @@ widoczny dla hosta. (3) Cztery testy PR #35 z adapterem-funkcją wypisują ostrz
 więc do gałęzi, której nikt już nie mergował (pułapka z `pre-pr-review`: commit na gałęzi zmergowanego PR-a nie
 dociera do `main`). Znalezione przy sprzątaniu gałęzi; cztery commity nałożone na `main` od nowa, dopasowane do
 opcji z #38 (`plug:` i `url:` w miejsce zniesionego `req_options:`, także w `KeyCase`), na polecenie użytkownika.
+Zapis wyżej jest sprzed #38 i zostaje jak był: jego „(2)” powtarza numer poprawki o `req_options` (to trzecia z 28
+września), `connect_options` hosta już nie istnieje, „gałąź na PR #35” to stara baza, a pominięte (3) — testy z
+adapterem-funkcją — zniknęło razem z `req_options`. Otwarte zostają: (1) i (2) wyżej, `refresh/1` bez `catch` i
+sygnał starego zestawu kluczy z notki nad nim. *Przegląd odzyskania* (dwa równolegle): gwarancje #38 nietknięte,
+wycieku po zabiciu taska brak; poprawione dwa komentarze `keys.ex` (o `:req_options` i o zwalnianym połączeniu, które
+dotyczy HTTP/1); pominięte — task jest linkowany, więc sygnał wyjścia z zewnątrz (padający proces pomocniczy pluga
+albo adaptera) dalej zabija proces kluczy, a klauzula `{:exit, _}` jest nieosiągalna; `Task.Supervisor.async_nolink`
+by to zamknął, dziś nic takiego sygnału nie wysyła.
 
 **Skill `pre-pr-review` odpala od teraz oba przeglądy równolegle** (prośba użytkownika): dwa subagenty w jednej
 wiadomości, `code-review high` i `engineering:code-review` z naciskiem na bezpieczeństwo i wydajność, wspólna pula
