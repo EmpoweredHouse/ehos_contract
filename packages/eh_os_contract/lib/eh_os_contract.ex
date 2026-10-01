@@ -152,9 +152,16 @@ defmodule EhOsContract do
   application, which asks whether the caller may before it says what is wrong with
   what was sent (`EhOsContract.Dispatcher.call/3`).
   """
-  @spec call(EhOsContract.Dispatcher.call(), term(), keyword()) ::
+  @spec call(EhOsContract.Dispatcher.call(), term(), keyword() | map()) ::
           {:ok, EhOsContract.Receipt.t() | [struct()] | struct() | nil}
-          | {:error, term()}
+          | {:error,
+             EhOsContract.Rejection.t()
+             | EhOsContract.Dispatcher.refusal()
+             | :not_created
+             | :not_found
+             | :no_actor
+             | :not_an_object
+             | :correlation_id_is_not_a_uuid}
   defdelegate call(call, input, opts), to: EhOsContract.Dispatcher
 
   @doc "Asks a query of a contract (`EhOsContract.Dispatcher.query/3`)."

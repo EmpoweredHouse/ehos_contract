@@ -327,15 +327,16 @@ defmodule EhOsContract.Dispatcher do
   text, as a query string carries them. `opts`: `actor:`, a credential's
   `EhOsContract.Actor`, required — a `:system` actor is the application's own code,
   which dispatches structs; `contracts:`, the contracts this door serves (every
-  registered one by default); and for a command or a recording `idempotency_key:` and
-  `correlation_id:`.
+  registered one by default); for a command or a recording `idempotency_key:` and
+  `correlation_id:`, the latter a UUID's text; for a query `min_position:` and `wait:`,
+  to read a write, as `query/3` takes them.
 
   Besides what those three answer: `{:error, :not_found}` for a capability none of
   the contracts declares as that kind, `{:error, :no_actor}` without a credential,
   and, once the caller may, `{:error, :not_an_object}` and
   `{:error, :correlation_id_is_not_a_uuid}`.
   """
-  @spec call(call(), term(), keyword()) ::
+  @spec call(call(), term(), keyword() | map()) ::
           {:ok, Receipt.t() | [struct()] | struct() | nil}
           | {:error,
              Rejection.t()
@@ -347,6 +348,7 @@ defmodule EhOsContract.Dispatcher do
              | :correlation_id_is_not_a_uuid}
   def call({kind, capability}, input, opts)
       when kind in [:command, :record, :query] and is_binary(capability) do
+    opts = Enum.to_list(opts)
     contracts = Keyword.get_lazy(opts, :contracts, &EhOsContract.Registry.contracts/0)
 
     with {:ok, model, declaration} <- route(contracts, kind, capability),
@@ -394,15 +396,19 @@ defmodule EhOsContract.Dispatcher do
   defp correlation(:query, _id), do: :ok
   defp correlation(_kind, nil), do: :ok
 
-  defp correlation(_kind, id) do
+  # The text form only: `Ecto.UUID.cast/1` also takes any sixteen bytes as a raw UUID,
+  # which the log's column then refuses inside the transaction.
+  defp correlation(_kind, id) when is_binary(id) and byte_size(id) == 36 do
     case Ecto.UUID.cast(id) do
       {:ok, _uuid} -> :ok
       :error -> {:error, :correlation_id_is_not_a_uuid}
     end
   end
 
-  defp run_call(:query, model, params, actor, _opts),
-    do: query(model.module, params, actor: actor)
+  defp correlation(_kind, _id), do: {:error, :correlation_id_is_not_a_uuid}
+
+  defp run_call(:query, model, params, actor, opts),
+    do: query(model.module, params, [actor: actor] ++ Keyword.take(opts, [:min_position, :wait]))
 
   defp run_call(kind, model, struct, actor, opts) do
     opts = [actor: actor] ++ Keyword.take(opts, [:idempotency_key, :correlation_id])

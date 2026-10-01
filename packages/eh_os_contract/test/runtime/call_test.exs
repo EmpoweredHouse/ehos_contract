@@ -78,6 +78,37 @@ defmodule EhOsContract.CallTest do
              {:error, :no_actor}
   end
 
+  test "a correlation id is a UUID's text, not any sixteen bytes" do
+    assert deposit(%{"account_id" => "a-1", "amount" => 1}, @clerk,
+             correlation_id: "0123456789abcdef"
+           ) == {:error, :correlation_id_is_not_a_uuid}
+
+    assert {:ok, %Receipt{}} =
+             deposit(%{"account_id" => "a-1", "amount" => 1}, @clerk,
+               correlation_id: Ecto.UUID.generate()
+             )
+  end
+
+  test "a query reads its writes through call/3 as through query/3" do
+    # Over a read model projected after the transaction, which nothing drains here.
+    auditor = Actor.credential("u-3", ["dispatch_rig.lines_of"])
+
+    assert EhOsContract.call({:query, "dispatch_rig.lines_of"}, %{"account_id" => "a-1"},
+             actor: auditor,
+             min_position: 1_000_000,
+             wait: 0
+           ) == {:error, :not_caught_up}
+  end
+
+  test "options may come as a map, as dispatch/3 takes them" do
+    assert {:ok, %Receipt{}} =
+             EhOsContract.call(
+               {:command, "dispatch_rig.deposit"},
+               %{"account_id" => "a-1", "amount" => 1},
+               %{actor: @clerk}
+             )
+  end
+
   describe "whether the caller may is answered first" do
     test "not an object, fields that do not decode, a correlation that is not a UUID" do
       for {input, opts, problem} <- [
