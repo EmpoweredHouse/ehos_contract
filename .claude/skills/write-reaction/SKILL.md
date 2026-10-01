@@ -32,7 +32,11 @@ by a module with `use <Contract>, <kind>: :name`. Pick the kind by what the reac
 - A read model is the client's state, projected. It holds no decision: a rule about what may happen
   belongs to a unit's invariant, never to a projection someone reads before deciding.
 - An event of a sibling contract is taken through `consumes Sibling, [:event]` (K1, X5). An event of
-  another application arrives through `consumes "<name>.vN"` with the fields it reads (D11).
+  another application arrives through `consumes "<name>.vN"` with the fields it reads (D11), into an
+  inbox and never into this log (`EhOsContract.Inbox`), so **only a policy takes it** (`D12`): a
+  read model, an effect or a process manager that needs it takes the event the policy's command
+  records. Its `delivery:` changes nothing for that event — the inbox runs it in the transaction that
+  writes its row — and the contract then asks for `<name>.subscribe`, the application's capability.
 
 ## Delivery: what a failure leaves behind
 
@@ -90,6 +94,11 @@ reviewer read, such as `:event_id`. The library does part of it itself, and the 
   `"p1-report-sent:#{meta.id}"`. The far end is where a duplicate e-mail is sent.
 - **A read model writes the host's tables.** Key its rows by the event (`on_conflict: :nothing` on
   the event's id, as `DailyTotals` does), or a replay double-counts.
+- **Another application's event is deduplicated by the inbox**, by the message's key: the
+  publisher's `idempotent_on:` values, or the message id when it declares none. A redelivery, and the
+  same fact published again under a new id, react once. A publisher whose `idempotent_on:` is too
+  narrow makes two real facts one: when you write the `publish`, name the fields that make one fact,
+  not merely some that identify it.
 
 ## Where a new consumer starts
 
@@ -110,6 +119,11 @@ history by itself (`EhOsContract.Subscription`, "Where a new consumer starts"):
 
 Reacting to history is a person's `--reset`, never a side effect of a deploy. If the change needs
 it, say so in the pull request.
+
+Another application's history does not come over the bus at all: an inbox's consumer gets what is
+published once the transport delivers to it — between nodes, from EHOS's grant of `<name>.subscribe`
+on — and the engine starts every inbox before any relay, so in one node nothing is published past
+it. What was published before is asked of its owner (`eh-os` D-03).
 
 ## A process manager, in particular
 

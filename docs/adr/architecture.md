@@ -192,6 +192,18 @@ jobs, so a read model after the transaction answers read-after-write through `mi
 **"No external broker" is still true** here; it changes with integration between applications (E12,
 `docs/adr/contract-v2.md` §15–16), where a dated note will say so.
 
+*Corrected 1 October 2026, v2 plan E12* ([contract v2](contract-v2.md) §16, D11–D12). **"No external
+broker" holds inside one application only.** Between applications an event leaves through a `publish` and
+`EhOsContract.Bus`, a behaviour whose transport adapters — JetStream through `gnat`, EHOS's relay — are
+EHOS's; the library ships `EhOsContract.Bus.Local` for tests and one node, and depends on no broker. The
+log is the outbox: a relay is one more ordered subscription, which advances only once the transport holds
+the batch, so a message may come twice and never without its fact; `Bus` promises no order. A received
+event goes to an inbox, never into the log, and only a policy takes it, in one transaction with the
+inbox's row, acknowledged after the commit. Idempotency across the boundary is the publisher's
+declaration, as this decision has it for one application: `idempotent_on:` makes the message's key, and
+the inbox takes one fact once. What `Phoenix.PubSub` and `GenStage` were rejected for still holds: nothing
+the contract asserts on travels over a transport that may lose it.
+
 **11–12. External systems are adapters, the contract declares the dependency, and swapping is separate
 from configuring.** Events are named after the business fact, never the vendor.
 *Instead of:* calling vendors from domain code, after which a check cannot tell "we broke the rule" from

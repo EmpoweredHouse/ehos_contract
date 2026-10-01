@@ -118,6 +118,25 @@ What reacts to events is declared beside the units: a `policy` issues a command 
 `publish` lets one leave the application: its relay (`EhOsContract.Relay`) hands it to the configured
 `EhOsContract.Bus`, from the first deploy of the `publish` on.
 
+Another application's event comes in by its published name, with the fields this contract reads:
+
+```elixir
+consumes "lending.loan.opened.v1", as: :loan_opened do
+  field :loan_id, :id
+  field :copy_id, :id
+end
+
+policy :reserve_copy, "Reserve the copy of an opened loan", handles: :loan_opened, issues: :reserve
+```
+
+It never enters this log. It arrives in an inbox (`EhOsContract.Inbox`), which commits its row with what the
+policy dispatched and only then acknowledges, so **only a policy takes it** (`D12`): a read model, an effect
+or a process manager reads the log, and would never be given it — react to what the policy's command
+records instead. One fact reacts once: the publisher's `idempotent_on:` makes the message's key, and a
+second delivery, or the same fact published again under a new id, finds the inbox row and is dropped. The
+contract asks for the capability `lending.loan.opened.subscribe`, the application's, which EHOS grants and
+the transport delivers by.
+
 ## The code that decides
 
 A contract names no implementation. A module binds to one of its declarations, and the contract generates
