@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 1 października (E0–E11, #50–#60 w `main`; E12 w toku, E12d zbudowane na gałęzi)
+## Handoff — stan na 1 października (E0–E11, #50–#61 w `main`; E12 domknięte na gałęzi E12e)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -17,21 +17,19 @@ Po E11 w `main` są: #53 (tabele poza `public`, #51), #54 (klucz blokady dopisu 
 przestrzeni nazw) i **#56 — każda nazwa w formie**: `name:` domeny jako segment przestrzeni nazw (D11), `\z`
 zamiast `$` we wzorcach nazw (N1, D9, strony, dziesiętna scenariusza), nazwy aktorów (D4) i pozostałych elementów
 domeny (D1, z kolizją wartości po `Macro.camelize` i nazwami typów wbudowanych), kolizja nazw kontraktu po
-`camelize` (N1, N2 dla `State`/`Row`), nazwy pól i `identity` (F1, D3, D6). **W toku: E12** — integracja między
-aplikacjami (wybór użytkownika z 1 października, „Przed E12 — decyzje użytkownika”). W `main` są **E12a**
-(#57: `EhOsContract.Bus`, `Bus.Local`, `Bus.Suite`), **E12b** (#58: relay, `EhOsContract.Relay`) i **E12c** (#59:
-inbox, `.subscribe`, test dwóch aplikacji). **E12d (`EhOsContract.call/3`, Plug na nim) jest zbudowane na
-`dsl-v2/e12d-call`** — po decyzji użytkownika („Przed E12d — decyzja użytkownika”); zostaje E12e.
+`camelize` (N1, N2 dla `State`/`Row`), nazwy pól i `identity` (F1, D3, D6). **E12** — integracja między
+aplikacjami (wybór użytkownika z 1 października, „Przed E12 — decyzje użytkownika”): w `main` są **E12a**
+(#57: `EhOsContract.Bus`, `Bus.Local`, `Bus.Suite`), **E12b** (#58: relay), **E12c** (#59: inbox, `.subscribe`,
+test dwóch aplikacji) i **E12d** (#61: `EhOsContract.call/3`, Plug na nim). **E12e (dokumentacja, skille, poprawka
+`architecture.md` §9–10) jest na `dsl-v2/e12e-docs`** — po jej merge'u E12 jest zamknięte; następny etap wybiera
+użytkownik („Co zostało”).
 
 ### Stan repozytorium
 
-- **`origin/main` = `842a2f1`** (merge #58, E12b, 1 października; przedtem `7e4e4cc` — merge #57, E12a, i
-  `6e1658a` — merge #56). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
-- **`dsl-v2/handoff-after-58`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `842a2f1`, jeden commit: ten zapis;
-  **niewypchnięta** — push (fast-forward `main` albo PR) na polecenie użytkownika; E12c może wyjść od niej.
-  `dsl-v2/e12-bus`, `dsl-v2/e12b-relay` i `dsl-v2/handoff-after-56` są w całości w `main`.
-- **`dsl-v2/e12c-inbox`** (ten sam worktree) — od `66c3637`: trzy commity kodu E12c, commit zapisu, poprawki
-  dwóch rund przeglądu i ich zapisy; notatka przeglądu (`refs/notes/review`) na głowie; wypchnięta z PR-em E12c. Zawiera `66c3637`, więc PR E12c niesie też przepisany handoff.
+- **`origin/main` = `7aa0496`** (merge #61, E12d, 1 października; przedtem `27175a0` — #60, potrzeby wobec `eh-os`,
+  `67253bf` — #59, E12c, i `842a2f1` — #58, E12b). Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
+- **`dsl-v2/e12e-docs`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `7aa0496`: E12e; push i PR na polecenie
+  użytkownika. `dsl-v2/handoff-after-58`, `dsl-v2/e12c-inbox` i `dsl-v2/e12d-call` są w całości w `main`.
 - **Otwarte na GitHubie:** tylko **issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza
   repozytorium; zaparkowane 30 września, z propozycją `EmpoweredHouse/eh-os-contract-sandbox`. Otwartych PR-ów brak.
   **W `EmpoweredHouse/eh-os`: #91–#96** — nasze potrzeby wobec EHOS-a, założone 1 października („Dopisek 1
@@ -56,11 +54,11 @@ inbox, `.subscribe`, test dwóch aplikacji). **E12d (`EhOsContract.call/3`, Plug
 
 ### Co zostało — i czyje to jest
 
-- **PR E12d** (`dsl-v2/e12d-call`, od `27175a0`) — push i PR użytkownika, na polecenie; PR wystawiany z worktree
-  przez `gh api` (hook sprawdza `HEAD` głównego checkoutu, „Pułapki”).
-- **E12e** (poprawka z datą
-  `architecture.md` §9–10, `docs/contract.md` o inboxie, CHANGELOG, skille `write-reaction` — tylko polityka na
-  zdarzeniu odebranym — i `change-contract` — zmiana nazwy i usunięcie `publish`) — asystenta.
+- **PR E12e** (`dsl-v2/e12e-docs`) — push i PR użytkownika, na polecenie; PR wystawiany z worktree przez `gh api`
+  (hook sprawdza `HEAD` głównego checkoutu, „Pułapki”).
+- **Z E12, do decyzji użytkownika** („Otwarte pytania”): kształt `call/3` przy drugich drzwiach („Do powrotu” w
+  „E12d — co wyszło”), retencja `eh_os_contract_inbox`, zgodność, która nie widzi polityki inboxu, surowa wartość
+  zakresu w decyzjach auth; kto może publikować — [eh-os#96](https://github.com/EmpoweredHouse/eh-os/issues/96).
 - **Kandydaci na później** (wybór użytkownika), każdy z tym, co go blokuje:
   - **„Po E11” z planu: kontrakty sandboxa jako fikstury akceptacyjne pakietu, potem manifest v2** (po akceptacji
     D-51/D-52 w `eh-os`). **Fikstury kolidują z #49**: kontrakty klientów w pakiecie to dokładnie to, czego #49 chce
@@ -3779,6 +3777,22 @@ zgadza się z `credential/1` dla każdego aktora, a 404 dalej przed 401; tekst U
 tej listy obiecywał „read your writes” także dla HTTP — *poprawione* w zapisie; tabela statusów Pluga bez wierszy
 400 — *poprawione*; `wait:`/`min_position:`, sprawdzenie UUID poza `call/3` — *do powrotu* (wyżej); klauzula
 `:no_actor` w Plugu nieosiągalna i dwie kopie typu błędów `call/3` — *bez zmiany*: zabezpieczenie i czytelność.
+
+### E12e — co wyszło (1 października)
+
+**Co jest** (gałąź `dsl-v2/e12e-docs`, od `7aa0496`; sama dokumentacja i skille):
+- `docs/contract.md` — akapit o odbieraniu: `consumes "<nazwa>"` z polityką, inbox, `D12`, klucz z `idempotent_on`,
+  capability `<nazwa>.subscribe` (przykład na `Lending`, jak reszta strony);
+- skill `write-reaction` — zdarzenie odebrane bierze tylko polityka (`D12`), `delivery:` nic dla niego nie zmienia;
+  deduplikacja w inboxie po kluczu i cena za wąskiego `idempotent_on`; historia innej aplikacji nie przychodzi
+  busem (D-03);
+- skill `change-contract` — wiersze tabeli: zmienione `idempotent_on` (nowy klucz, fakt wzięty raz jeszcze),
+  zmiana nazwy i usunięcie `publish` (wiersz relaya po nazwie deklaracji, C-4), usunięcie `consumes` albo jego
+  polityki (inbox i `.subscribe` znikają, C-3);
+- `docs/adr/architecture.md` §9–10 — poprawka z datą: „bez zewnętrznego brokera” trzyma się w jednej aplikacji;
+  między aplikacjami `publish`, `Bus`, relay i inbox, idempotencja dalej deklaracją wydawcy.
+
+CHANGELOG nie dostaje wpisu: nic z tego nie zmienia werdyktu ani zachowania, a E12a–E12d mają swoje.
 
 ### D10–D12 — skąd się wzięły i co zmieniają (25 września, po E1)
 
