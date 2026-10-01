@@ -112,6 +112,23 @@ defmodule EhOsContract.InboxTest do
     assert [_one] = Repo.all(InboxRecord)
   end
 
+  test "a message taken wakes the runners once what its policy appended commits" do
+    watch_wakes()
+
+    assert Inbox.take(inbox(), message("o-1", 120)) == :ack
+    assert_received :runners_woken
+    refute_received :runners_woken
+  end
+
+  test "control: a message taken before wakes nothing" do
+    sent = message("o-1", 120)
+    assert Inbox.take(inbox(), sent) == :ack
+    watch_wakes()
+
+    assert Inbox.take(inbox(), sent) == :ack
+    refute_received :runners_woken
+  end
+
   test "the same fact under a new message id is taken once (eh-os FM-08)" do
     first = message("o-1", 120)
     again = message("o-1", 120)

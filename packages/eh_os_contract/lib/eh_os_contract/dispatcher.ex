@@ -100,6 +100,8 @@ defmodule EhOsContract.Dispatcher do
     SubscriptionRecord
   }
 
+  alias EhOsContract.Subscription.Runner
+
   @attempts 3
 
   @typedoc "What dispatch refuses a command with, before or instead of deciding."
@@ -663,7 +665,7 @@ defmodule EhOsContract.Dispatcher do
     if repo.in_transaction?() do
       case attempt(job, repo) do
         :conflict -> {:error, :conflict}
-        result -> result
+        result -> marked(job, result)
       end
     else
       owned(job, repo, 1)
@@ -675,10 +677,10 @@ defmodule EhOsContract.Dispatcher do
 
     result =
       try do
-        repo.transaction(fn ->
+        Runner.transaction(repo, fn ->
           case attempt(job, repo) do
             :conflict -> repo.rollback(:conflict)
-            result -> result
+            result -> marked(job, result)
           end
         end)
       rescue
@@ -690,7 +692,6 @@ defmodule EhOsContract.Dispatcher do
 
     case result do
       {:ok, result} ->
-        notify(job, result)
         result
 
       {:error, :conflict} when attempt < @attempts ->
@@ -702,14 +703,17 @@ defmodule EhOsContract.Dispatcher do
     end
   end
 
-  # Committed: the runners can read what was appended (v2 §11). Only when something
-  # was, and something reads it after the transaction — with Oban's Postgres
-  # notifier every notification is a query.
-  defp notify(job, {:ok, %Receipt{duplicate: false, events: [_ | _]}}) do
-    if Implementations.ordered?(job.model.module), do: EhOsContract.Subscription.Runner.notify()
+  # Once committed, the runners can read what was appended (v2 §11): the transaction
+  # is marked to wake them only when something was, and something reads it after the
+  # transaction — with Oban's Postgres notifier every notification is a query. Whoever
+  # owns the transaction, dispatch included, wakes them once it commits, however many
+  # dispatches inside marked it.
+  defp marked(job, {:ok, %Receipt{duplicate: false, events: [_ | _]}} = result) do
+    if Implementations.ordered?(job.model.module), do: Runner.notify_on_commit()
+    result
   end
 
-  defp notify(_job, _nothing_appended), do: :ok
+  defp marked(_job, nothing_appended), do: nothing_appended
 
   # One try: `{:ok, receipt}`, `{:error, _}`, or `:conflict` when the stream moved.
   defp attempt(%{kind: :record} = job, repo) do

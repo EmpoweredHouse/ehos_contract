@@ -9,7 +9,8 @@ defmodule EhOsContract.Inbox do
   contract's received struct, `C.Received.X`, and in one transaction the inbox
   writes its row in `eh_os_contract_inbox` and runs each policy that handles it,
   whose commands are dispatched as a policy's always are. Only once that commits does
-  it answer `:ack`. A consumer that stops in between gets the message again, and finds
+  it answer `:ack`, and wake the runners if those commands appended what one reads
+  (`EhOsContract.Subscription.Runner.transaction/2`). A consumer that stops in between gets the message again, and finds
   either nothing written or the row.
 
   **One fact, one reaction.** The row is keyed by the inbox and the message's key
@@ -51,6 +52,7 @@ defmodule EhOsContract.Inbox do
   """
 
   alias EhOsContract.{Bus, Codec, Consumer, Implementations, InboxRecord, Meta, Model}
+  alias EhOsContract.Subscription.Runner
 
   require Logger
 
@@ -80,7 +82,7 @@ defmodule EhOsContract.Inbox do
     repo = Application.fetch_env!(:eh_os_contract, :repo)
 
     {:ok, _} =
-      repo.transaction(fn ->
+      Runner.transaction(repo, fn ->
         row = %{
           consumer: inbox.key,
           key: message.key,

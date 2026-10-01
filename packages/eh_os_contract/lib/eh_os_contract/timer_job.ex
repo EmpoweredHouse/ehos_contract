@@ -7,9 +7,9 @@ defmodule EhOsContract.TimerJob do
   one or none — and appends `eh_os_contract.timer_elapsed` to the run's own stream,
   `$pm:<key>:<correlation>`. The process manager reacts when its runner reaches that
   event, in order with everything else, so a replay sees the firing where it
-  happened. A job that runs twice may append two firings; the process manager takes
-  the first, which removes the token, and ignores the second, so the timer's commands
-  are dispatched once.
+  happened; the runners are woken once the firing commits. A job that runs twice may
+  append two firings; the process manager takes the first, which removes the token,
+  and ignores the second, so the timer's commands are dispatched once.
 
   **Due by `EhOsContract.Clock.now/0`.** Oban runs the job at its `scheduled_at`; a
   job run earlier than the timer's time — a test draining the queue, or a clock
@@ -32,6 +32,7 @@ defmodule EhOsContract.TimerJob do
   import Ecto.Query
 
   alias EhOsContract.{Clock, Implementations, Model, ProcessManager, ProcessManagerRecord, Store}
+  alias EhOsContract.Subscription.Runner
 
   @doc "The job for `timer` of the run `correlation` of process manager `key`, due `at`."
   @spec job(String.t(), String.t(), String.t(), map()) :: Oban.Job.changeset()
@@ -81,7 +82,7 @@ defmodule EhOsContract.TimerJob do
     repo = Application.fetch_env!(:eh_os_contract, :repo)
 
     {:ok, :ok} =
-      repo.transaction(fn ->
+      Runner.transaction(repo, fn ->
         :ok = Store.lock(repo)
 
         case repo.one(
@@ -125,6 +126,7 @@ defmodule EhOsContract.TimerJob do
         {:stream, stream, version}
       )
 
-    :ok
+    # The process manager's runner reads it, so it is woken once this commits.
+    Runner.notify_on_commit()
   end
 end

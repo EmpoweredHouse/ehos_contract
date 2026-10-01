@@ -37,6 +37,29 @@ defmodule EhOsContract.DataCase do
   end
 
   @doc """
+  Sends the calling test `:runners_woken` for every wake of the runners
+  (`EhOsContract.Subscription.Runner.notify/0`) sent from its own process, until the
+  test exits. A wake from another process — a runner, another test — is not reported.
+  """
+  @spec watch_wakes() :: :ok
+  def watch_wakes do
+    test = self()
+    id = "wakes-#{System.unique_integer([:positive])}"
+
+    :ok =
+      :telemetry.attach(
+        id,
+        [:oban, :notifier, :notify, :start],
+        fn _, _, %{channel: channel}, _ ->
+          if channel == :eh_os_contract and self() == test, do: send(test, :runners_woken)
+        end,
+        nil
+      )
+
+    ExUnit.Callbacks.on_exit(fn -> :telemetry.detach(id) end)
+  end
+
+  @doc """
   Writes one row to the log directly, bypassing dispatch: an event from an
   older contract version, one the contract never declared, or one dated in the past.
 

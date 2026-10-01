@@ -3,9 +3,12 @@ defmodule EhOsContract.Subscription.Runner do
   The process that feeds one subscription (v2 §12), on every node: it runs
   `EhOsContract.Subscription.step/2` until there is nothing to read, then waits.
 
-  It wakes on dispatch's notification after a commit, on Oban's notifier, and polls
-  every second besides, which covers a transaction the caller owned (dispatch sends
-  no notification from inside it) and a notification lost on the way. Two nodes
+  It wakes on a notification after a commit, on Oban's notifier, and polls every
+  second besides, which covers a transaction the host's code owned and a notification
+  lost on the way. Dispatch sends one after a transaction it owns; inside a
+  transaction the engine owns — an inbox taking a message, a runner's step, a timer
+  firing — what was appended is marked (`notify_on_commit/0`), and the engine's
+  `transaction/2` sends it once that commits. Two nodes
   running the same subscription do not collide: a step takes the row `FOR UPDATE
   SKIP LOCKED`, and the node that gets nothing waits for the next wake.
 
@@ -23,6 +26,7 @@ defmodule EhOsContract.Subscription.Runner do
   require Logger
 
   @channel :eh_os_contract
+  @pending {__MODULE__, :notify_on_commit}
   @poll 1_000
   @after_crash 5_000
   @unavailable 5_000
@@ -37,7 +41,7 @@ defmodule EhOsContract.Subscription.Runner do
 
   @doc """
   Wakes every runner, on every node, through Oban's notifier. Dispatch calls it after
-  a commit it owns. A host without a running notifier loses nothing but the wake:
+  a commit it owns, and `transaction/2` after one that marked an append. A host without a running notifier loses nothing but the wake:
   runners poll.
   """
   @spec notify() :: :ok
@@ -46,6 +50,44 @@ defmodule EhOsContract.Subscription.Runner do
     :ok
   catch
     _kind, _reason -> :ok
+  end
+
+  @doc """
+  Marks that the transaction this process is in appended something a runner reads, so
+  that `transaction/2` around it wakes the runners once it commits. Inside a
+  transaction the host's code owns the mark is never read: the runners poll.
+  """
+  @spec notify_on_commit() :: :ok
+  def notify_on_commit do
+    Process.put(@pending, true)
+    :ok
+  end
+
+  @doc """
+  Runs `fun` in a transaction of `repo`, as `c:Ecto.Repo.transaction/2`, and wakes
+  every runner once it commits if anything inside marked an append
+  (`notify_on_commit/0`). Inside another transaction it only runs `fun`: the mark is
+  left to whoever commits.
+  """
+  @spec transaction(module(), (-> result)) :: {:ok, result} | {:error, term()}
+        when result: term()
+  def transaction(repo, fun) do
+    if repo.in_transaction?() do
+      repo.transaction(fun)
+    else
+      # A mark left by a transaction that never came here — the host's own, or one
+      # rolled back — is not this one's.
+      Process.delete(@pending)
+
+      try do
+        with {:ok, _} = committed <- repo.transaction(fun) do
+          if Process.get(@pending), do: notify()
+          committed
+        end
+      after
+        Process.delete(@pending)
+      end
+    end
   end
 
   @typedoc false
