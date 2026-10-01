@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=.ehos/ehos.yaml.v1.json
+schema: ehos.yaml/v1
+needs:
+  database:
+    engine: postgres
+    version: ">= 16"
+    migrate: [/app/bin/migrate]   # run before the workload starts, as the schema's owner
+serves:
+  - name: web
+    port: 4000
+    public: true                  # a request; EHOS decides whether to expose it
+health:
+  port: 4001                      # never exposed
+  ready: /health/ready
+  live: /health/live

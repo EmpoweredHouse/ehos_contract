@@ -67,8 +67,9 @@ defmodule EhOsContract.Auth.MixProject do
         "GitHub" => @source_url,
         "Changelog" => "#{@source_url}/blob/main/packages/eh_os_contract_auth/CHANGELOG.md"
       },
-      # Not `priv/`: the only thing there is this package's own test migration.
-      files: ~w(lib .formatter.exs mix.exs README.md CHANGELOG.md LICENSE)
+      # `priv/schemas/`, EHOS's `ehos.yaml` schemas the reader validates with, and not the rest of
+      # `priv/`, which is this package's own test migration.
+      files: ~w(lib priv/schemas .formatter.exs mix.exs README.md CHANGELOG.md LICENSE)
     ]
   end
 
@@ -105,7 +106,16 @@ defmodule EhOsContract.Auth.MixProject do
       {:boundary, "~> 0.10", runtime: false},
       # `EhOsContract.Auth.Plug`, the bearer plug in front of `EhOsContract.Plug`. The
       # suite also plays EHOS's JWKS endpoint as a function plug handed to Req.
-      {:plug, "~> 1.16"}
+      {:plug, "~> 1.16"},
+      # `ehos.yaml` is read and validated as EHOS reads it (`eh-os` D-51): yamerl with YAML
+      # 1.2's core schema, then JSV against the schema EHOS publishes, copied into `priv/`. Only
+      # `mix eh_os_contract.manifest` reads it, in the application's CI, so neither is started
+      # with the host or carried into its release. yamerl is held to 0.10.x because the reader
+      # matches the shape of its tokens and nodes.
+      {:yamerl, "~> 0.10.0", runtime: false},
+      {:jsv, "~> 0.25.0", runtime: false},
+      # The manifest's property: every key of any valid ehos.yaml comes through unchanged.
+      {:stream_data, "~> 1.1", only: :test}
     ]
   end
 end

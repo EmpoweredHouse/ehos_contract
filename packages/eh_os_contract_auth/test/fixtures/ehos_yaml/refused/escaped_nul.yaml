@@ -1,0 +1,5 @@
+schema: ehos.yaml/v1
+health:
+  port: 4001
+  ready: "/r\0"
+  live: /l

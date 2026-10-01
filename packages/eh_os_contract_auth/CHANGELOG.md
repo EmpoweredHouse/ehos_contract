@@ -7,6 +7,34 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **EH3: `mix eh_os_contract.manifest` writes `ehos.manifest/v2`, and v1 is gone** (`eh-os` D-52; EHOS deploys only
+  v2). The task reads the project's `ehos.yaml` (`--ehos-yaml` names another), refuses it with every reason as EHOS
+  would, and writes it extended with `application`, `offers` and `engine`: every key but `schema` unchanged, `schema`
+  as `ehos_yaml`, no default filled in. `offers` holds v1's capabilities and roles. `contracts` is not written while
+  EHOS counts it in the authority digest (`eh-os` issue #92). **`--domain` is removed:** a project with more than one
+  domain names the image's in `ehos.yaml`, as `application: <name>`. A domain whose `name:` EHOS does not take for an
+  application — with `_`, longer than 63 characters, or `ehos` — is refused, with the name to use. A key of
+  `ehos.yaml` the generator writes is refused rather than overwritten (`eh-os` issue #93).
+  A command or a role's actor past 63 characters, or with an empty label, is refused, each named: the engine takes
+  them, EHOS does not. Only domains with contracts are counted when `ehos.yaml` names none.
+  `EhOsContract.Auth.Manifest.build/3` takes the read `ehos.yaml`, the domains and the contracts; `build/2` is gone.
+
+- **EH2: `EhOsContract.Auth.EhosYaml.read/1` reads `ehos.yaml` as EHOS reads it** (`eh-os` D-51), for the
+  manifest v2 to carry its keys unchanged. It refuses what YAML can say and JSON cannot — an anchor or an alias, a
+  tag, a directive, a key given twice, a key that is not a string, a second document, `.inf`, an escape past Unicode's
+  last code point — and resolves plain
+  values by YAML 1.2's core schema, so `yes` is a string, refusing a node `config :yamerl, node_mods:` adds. It keeps
+  EHOS's bounds: at most 64 KiB, 256 of `[` and `{`, 16 levels of nesting and 256 entries in a list. Each reason has
+  the value's path in EHOS's notation, and its line when it is known. New dependencies: `yamerl` and `jsv`, the reader and the validator EHOS uses, both `runtime: false`:
+  `ehos.yaml` is read for `mix eh_os_contract.manifest` (EH3), in the application's CI, so neither starts with the
+  host or goes into its release. yamerl is held to 0.10.x, whose tokens and nodes the reader matches.
+
+- **EH2: a file that reads is validated against EHOS's own JSON Schema of its version**, copied unchanged into
+  `priv/schemas/ehos.yaml/v1.json` (from `eh-os` `eeb732a`) and carried in the package. A file without `schema`,
+  or with a version the package has no copy of, is refused before any schema reads it; `EhosYaml.versions/0`
+  lists those it has. No default is filled in. The rules EHOS checks beside its schema, such as unique names and
+  ports in `serves`, are left to EHOS.
+
 - **E12c: `assert_every_entry_refuses/3` asks for no entry for `<name>.subscribe`.** The engine derives that
   capability for an event a contract consumes from another application and a policy handles; it is the
   application's, in no person's credential, and has no door. A map that names it now fails the check as a key

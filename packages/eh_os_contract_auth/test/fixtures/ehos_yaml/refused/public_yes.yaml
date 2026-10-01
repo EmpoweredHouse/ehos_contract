@@ -1,0 +1,9 @@
+schema: ehos.yaml/v1
+serves:
+  - name: web
+    port: 4000
+    public: yes
+health:
+  port: 4001
+  ready: /health/ready
+  live: /health/live

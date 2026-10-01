@@ -3,6 +3,8 @@ sandbox/cover/
 sandbox/deps/
 sandbox/doc/
 sandbox/tmp/
+# ExUnit's `@tag :tmp_dir` in the auth package's manifest task tests.
+packages/eh_os_contract_auth/tmp/
 # The package builds and fetches on its own when it is the top-level project —
 # `cd packages/eh_os_contract && mix test` is the proof that the seam is real, and it
 # produces a build tree of its own. Root-anchored patterns do not reach it.

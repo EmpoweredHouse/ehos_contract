@@ -1,0 +1,5 @@
+schema: ehos.yaml/v1
+health:
+  port: .inf
+  ready: /r
+  live: /l

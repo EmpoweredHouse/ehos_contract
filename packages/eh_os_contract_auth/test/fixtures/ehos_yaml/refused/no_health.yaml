@@ -1,0 +1,4 @@
+schema: ehos.yaml/v1
+serves:
+  - name: web
+    port: 4000
