@@ -1,0 +1,1 @@
+pre-pr-review: documentation only (PLAN.md, which no part of mix check reads); no code reviews. Links #63-#66 checked to exist; cleanup counts from the deletion run (6 worktrees, 67 branches).
