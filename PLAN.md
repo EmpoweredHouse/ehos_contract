@@ -648,8 +648,37 @@ Gałąź `eb/eb2a-session-store`, od `ef0e94d` (merge #84).
 - **Credential po adresie, nie po nazwie aplikacji.** `credential/2` w EB3 przyjmie nazwę i zamieni ją na adres z
   `applications`; tabela trzyma to, co poszło do EHOS-a.
 
-**Przeniesione do EB2b:** `ClientStore`, opcje wywołań z S6 w jednym miejscu (dziś test wymiany kodu podaje je
-sam), README „Signing people in” do końca.
+**Przegląd przed PR-em**, dwa równolegle. Oba znalazły to samo najpoważniejsze:
+- **Klucz szyfru i tokeny EHOS-a w raporcie z awarii.** `create/2` dopasowywał argument w nagłówku funkcji, a
+  `MessageEncryptor.encrypt/4` sprawdza typ strażnikiem poza swoim `rescue`. Wystarczył `nil` w miejscu refresh
+  tokenu (`oidcc` daje `refresh: :none`), żeby w górnej ramce stał klucz, albo brak pola, żeby `KeyError` wypisał
+  wszystkie tokeny. Teraz najpierw jest sprawdzany kształt, a odmowa wymienia tylko nazwy pól i typy.
+  „Klucz nigdy w argumentach” z pierwszej wersji tego zapisu było więc nieprawdą; poprawione też w ADR-ze.
+
+Poprawione, każde z testem, który bez poprawki pada:
+- `fetch/2` oddawał sesję starszą niż 12 h, póki nikt inny się nie zalogował (oba przeglądy). Teraz limit jest
+  sprawdzany też przy odczycie.
+- `subject`, `sid` i `auth_time` były jawne i poza danymi powiązanymi (oba przeglądy), więc ktoś z prawem zapisu
+  do tabeli mógł przepisać wiersz na inną osobę. Teraz są w danych powiązanych ID tokenu.
+- Czyszczenie po 12 h szło w transakcji nowego logowania. Teraz to osobna instrukcja przed nią.
+- Test czyszczenia logował dwie pierwsze sesje na prawdziwym zegarze, więc nie pokazywał, który zegar czyta
+  czyszczenie. Teraz wszystko idzie pod `Clock.at`, w czasie, do którego prawdziwy zegar nie doszedł.
+- `client_context/1` czytał to, co trzyma dziecko, dwa razy. Teraz czyta raz (bez testu: wyścig co 5 minut).
+- `plug_crypto` nie był zadeklarowany, a `plug` przyjmuje też 1.x, czyli AES-GCM. Teraz `~> 2.0`.
+- Drobne: opis `FakeEhos.grant/4`, nieużywany `signer/1`, pusty `case` w `Cipher.decrypt/3`, asercja o
+  skasowanym wierszu w teście credentialu.
+
+Bez zmian:
+- dwa zapytania i kopia konfiguracji na odczyt sesji — oba po indeksie, a ścieżkę na każdą stronę układa
+  dopiero EB2b;
+- pomocnicze funkcje testów skopiowane z `sign_in_test.exs` — wspólny moduł, gdy dojdzie trzeci plik (EB2b).
+
+**Przeniesione do EB2b:**
+- `ClientStore`;
+- opcje wywołań z S6 w jednym miejscu, z `preferred_auth_methods: [:private_key_jwt]`. Bez nich `oidcc` po cichu
+  wysłałby losowy sekret, gdyby dokument wymienił metodę `client_secret_*` (przegląd bezpieczeństwa);
+- `actor/1` bierze aktora z credentialu sprawdzonego `verify/2`, nigdy z kolumny `subject`;
+- README „Signing people in” do końca.
 
 **Weryfikacja:** każde zabezpieczenie ma próbę odwrotną (mutacja w kopii, `cp`, `cmp`). Sprawdzone mutacje: stały
 sekret, kontekst bez klucza klienta, dane powiązane bez kolumny, bez wiersza, credential bez adresu, brak

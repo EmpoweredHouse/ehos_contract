@@ -192,8 +192,12 @@ given to something other than the workload.
   a credential moved to another application's row of the same session does not decrypt either.
 - **When the key is derived.** Once, when the sign-in child starts, with a salt of the package's own. The child
   holds it beside the client key, left out of every inspection.
-- **Where it is read.** The storage functions read it from the child by its name, so it is never an argument of
-  a frame a crash would print.
+- **Where it is read.** The storage functions read it from the child by its name, and check what they are
+  given before encrypting it. `Plug.Crypto.MessageEncryptor.encrypt/4` guards on a binary outside its own
+  rescue, so a value of another type would otherwise print the key as its argument.
+- **Whose session a row is.** The ID token's associated data also holds the row's `subject`, `sid` and
+  `auth_time`. A writer who changes one of them makes a row that does not decrypt, not another person's
+  session. S3 is about readers; this costs nothing and keeps a writer from turning a row into someone else's.
 
 ### S4 — One renewal per session: a lease on the session's row, taken and released by single statements
 
@@ -401,6 +405,11 @@ A session's row is deleted at sign-out, at `invalid_grant` and when its lease is
 absolute limit (12 hours from `auth_time`, D-66) are deleted by the next sign-in, as EHOS prunes its
 refresh store. No job renews or cleans: D-64 forbids renewing without the person, and a cleanup job would
 be the first job this package asks a host to run.
+
+*Amended, 2 October 2026, at EB2a's review:* a session past the absolute limit is also refused when it is read,
+whether or not a sign-in has deleted its row yet. Otherwise, on a quiet deployment, an old cookie would name a
+person for as long as nobody else signed in. The deletion at the next sign-in is a statement of its own, outside
+the new sign-in's transaction.
 
 ## Not decided here
 
