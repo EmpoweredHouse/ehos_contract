@@ -412,7 +412,11 @@ defmodule EhOsContract.Auth.Keys do
 
   # The request runs in a task of its own, so a fetch that outlives the deadline is
   # killed rather than waited for, whichever step it is stuck in. Over HTTP/1, which
-  # the fetch uses, its socket and its pooled connection go with it.
+  # the fetch uses, its socket and its pooled connection go with it. The task is
+  # linked: an exit signal sent to it from outside would take this process and its
+  # table along, and `{:exit, _}` below is reached only by an unlinked task. Nothing
+  # in the fetch links to it today — Finch and NimblePool monitor, Mint links
+  # nothing — so this is left as it is (#71).
   defp get(state) do
     task = Task.async(fn -> request(state) end)
 
