@@ -18,6 +18,19 @@ defmodule EhOsContract.Inbox do
   published again under a new id (`eh-os` FM-04, FM-08), find the row: the inbox
   acknowledges and writes nothing.
 
+  **What it keeps, and for how long: every row, for good** (#64). The row is what
+  drops a second delivery and the same fact published again under a new id, so a row
+  removed is a fact that can be taken twice: a window would bound `eh-os` FM-08 by
+  its length. Until the transport says how long it can deliver a message again
+  (JetStream's stream retention, EHOS's), nothing is pruned. A row is about 250 bytes
+  with its key's index, one per fact per inbox; what the table holds is the host's to
+  watch with its database's own measures:
+
+      SELECT consumer, count(*), min(received_at)
+      FROM eh_os_contract_inbox GROUP BY consumer;
+
+      SELECT pg_size_pretty(pg_total_relation_size('eh_os_contract_inbox'));
+
   **Who may publish is the transport's to enforce.** The inbox takes what its
   consumer is delivered, key and correlation as they come: that only the publisher
   publishes under its name is the grant's, on the transport (`eh-os` D-41).
