@@ -1,0 +1,5 @@
+EB2b, two reviews of origin/main..HEAD in parallel.
+Fixed (each with a test failing without it, reverse-checked by mutation): callback did not verify the credential -> sign-in loop through SSO (High/Medium); planted CSRF token survived sign-in, renew only re-signs (both); re-sign-in left old row valid (both); empty sub/sid/refresh or bad auth_time gave 500 (correctness); fetch() GET redirected cross-origin (correctness); plug redirected on any refusal (security); actor(conn) re-read session; Authorize.Error -> 503 (no test, race); non-UTF-8 return_to; token dropped from conn.private; dead checks.
+No change: log volume on bare callbacks; two queries + decrypt per request (EB3); duplicated response helpers; actor/2 raising on unfetched session (documented).
+Recorded as known limits in S7: parallel sign-ins in two tabs; sign-out with EHOS unavailable is local only.
+Gate from sandbox EXIT=0; check counts 0/29/9 and 0/68/6 unchanged; auth 233 + 1 property.
