@@ -87,9 +87,7 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
   defp freshness(session, resource) do
     case Map.get(session.credentials, resource) do
       %{refused_until: %DateTime{} = until} = credential ->
-        if DateTime.compare(until, now()) == :gt,
-          do: :refused,
-          else: freshness_of(%{credential | refused_until: nil})
+        if DateTime.compare(until, now()) == :gt, do: :refused, else: freshness_of(credential)
 
       credential ->
         freshness_of(credential)
@@ -258,8 +256,14 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
        do: ended(renewal.session, :invalid_grant)
 
   # D-64: not for this application. EHOS consumed nothing, so the refresh token stays, and the
-  # session lives on for every other application. A lease lost meanwhile is a session ended.
-  defp outcome({:error, {:http_error, 400, %{"error" => "invalid_target"}}}, renewal) do
+  # session lives on for every other application. A lease lost meanwhile is a session ended. For
+  # the client's own application, which names no `resource`, EHOS never answers it; one that did
+  # is any other error response, so the own application is never remembered as refused.
+  defp outcome(
+         {:error, {:http_error, 400, %{"error" => "invalid_target"}}},
+         %{at: %{resource: resource}, config: %{address: address}} = renewal
+       )
+       when resource != address do
     until = DateTime.add(now(), @refused_ms, :millisecond)
 
     case Sessions.refused(renewal.session, renewal.holder, renewal.at.resource, until) do
@@ -372,6 +376,7 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
 
     case freshness(session, resource) do
       :expired -> {:error, :ehos_unavailable}
+      :refused -> {:error, :refused}
       {_fresh_or_usable, token} -> {:ok, token}
     end
   end

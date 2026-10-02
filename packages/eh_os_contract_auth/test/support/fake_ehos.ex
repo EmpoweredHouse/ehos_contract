@@ -123,8 +123,9 @@ defmodule EhOsContract.Auth.FakeEhos do
   `:no_refresh_token`, `:expires_in_30`, `:jwt` (a body that is not JSON), `:huge` (past
   the transport's limit), `:foreign_audience` (a credential for another application).
   `:short_exp` is a usable 200 whose credential's `exp` is 100 seconds away though
-  `expires_in` says 600; with `:exp_in_20`, 20 seconds away. None of these rotates the refresh
-  token but the 200s, which do, as EHOS would before answering.
+  `expires_in` says 600; with `:exp_in_20`, 20 seconds away. `:invalid_target` refuses every
+  renewal so, with or without a `resource`. None of these rotates the refresh token but the
+  200s, which do, as EHOS would before answering.
   """
   def refresh_answer(ehos, answer), do: Agent.update(ehos, &%{&1 | refresh_answer: answer})
 
@@ -276,7 +277,7 @@ defmodule EhOsContract.Auth.FakeEhos do
         Agent.update(ehos, &%{&1 | revoked: MapSet.put(&1.revoked, record.family)})
         invalid_grant(conn)
 
-      seen == :invalid_target ->
+      seen == :invalid_target or state.refresh_answer == :invalid_target ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.send_resp(400, Jason.encode!(%{"error" => "invalid_target"}))
@@ -307,7 +308,7 @@ defmodule EhOsContract.Auth.FakeEhos do
 
   # An answer of no response or an error status consumes nothing, as at EHOS.
   defp consume(state, presented, record) do
-    if state.refresh_answer == :reset or is_tuple(state.refresh_answer),
+    if state.refresh_answer in [:reset, :invalid_target] or is_tuple(state.refresh_answer),
       do: {{record, :fresh}, state},
       else: {{record, :fresh}, put_in(state, [:refresh, presented, :consumed], true)}
   end

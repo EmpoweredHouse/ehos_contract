@@ -454,6 +454,32 @@ defmodule EhOsContract.Auth.RenewalTest do
       assert credential(context, "billing", 0) == {:error, :signed_out}
     end
 
+    # EHOS never answers invalid_target to a renewal that names no resource; were it to, the
+    # session's own application must not be remembered as refused, and answer 401 for 10 minutes.
+    test "invalid_target for the own application is no remembered refusal", context do
+      FakeEhos.refresh_answer(context.ehos, :invalid_target)
+
+      assert renew(context) == {:error, :ehos_unavailable}
+
+      assert CommitRepo.query!(
+               "SELECT refused_until FROM eh_os_contract_auth_session_credentials"
+             ).rows == [[nil]]
+
+      {:ok, session} = Sessions.fetch(context.name, context.token)
+      assert session.refresh_token == context.session.refresh_token
+    end
+
+    test "no response for another application keeps the refresh token and the session",
+         context do
+      FakeEhos.refresh_answer(context.ehos, :reset)
+
+      assert credential(context, "ledger", 0) == {:error, :ehos_unavailable}
+
+      {:ok, session} = Sessions.fetch(context.name, context.token)
+      assert session.refresh_token == context.session.refresh_token
+      refute Map.has_key?(session.credentials, @ledger)
+    end
+
     test "a refusal drops the credential held for that application", context do
       assert {:ok, _ledger} = credential(context, "ledger", 0)
       FakeEhos.applications(context.ehos, &Map.delete(&1, @ledger))
