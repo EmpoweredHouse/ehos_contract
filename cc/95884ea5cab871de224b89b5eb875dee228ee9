@@ -1,0 +1,5 @@
+Two reviews in parallel on 65d7caf..d343aa9.
+Security/perf: no security defect. Floor of 5 s still allowed back-to-back fetches (interval from fetch start) -> fixed (6f614cc, test with a 20 s fetch fails on the old count). Table bound client-side and partial (SET/BEGIN/COMMIT at 15 s) -> fixed (cc95884, statement_timeout server-side, client backstop).
+Correctness: same two findings -> fixed. lock_table! release registered late, Postgrex conn not stopped -> fixed. refresh/1 :not_running covers crash -> doc. Stale comment, start_link doc on :clock -> fixed. SET LOCAL lasting to test end in sandbox -> no change (production outermost). Revoked key returning on restart, wider window -> skipped (existing gap, commented).
+Not done by decision: fetch task stays linked (#71 point 4).
+Gate from sandbox/: EXIT=0; sandbox 145, check 0/29/9; engine 1114, check 0/68/6; web 52; auth 149 + 1 property.
