@@ -65,9 +65,9 @@ defmodule EhOsContract.Auth do
   acceptance (`eh-os` D-34, FM-21): who, which capability, which contract and
   version, the scope value asked for, the outcome and the reason.
 
-  A scope value a text column cannot hold (invalid UTF-8, a NUL), or one past 256 bytes,
-  is recorded as `sha256:` and its hex digest; the decision is `check/2`'s, as for any
-  other value.
+  A scope value a text column cannot hold (invalid UTF-8, a NUL), one past 256 bytes,
+  or one that starts `sha256:` is recorded as `sha256:` and its hex digest; the decision
+  is `check/2`'s, as for any other value.
 
   The row records the authorization, not the command. A command allowed here may
   still be rejected on an invariant or fail in code, and what became of it is the
@@ -229,11 +229,12 @@ defmodule EhOsContract.Auth do
 
   # #66: the scope value as it was asked for, unless a text column cannot hold it (invalid UTF-8,
   # a NUL) or it is past 256 bytes. Then its SHA-256: the insert would fail, or store a request's
-  # body, and a refusal would become a 500. Only what is recorded changes; the decision is
+  # body, and a refusal would become a 500. A value that reads as a digest is digested too, so a
+  # recorded `sha256:` is always this function's. Only what is recorded changes; the decision is
   # `check/2`'s.
   defp recorded(value) when is_binary(value) do
     if byte_size(value) <= @max_scope_value and String.valid?(value) and
-         not String.contains?(value, <<0>>),
+         not String.contains?(value, <<0>>) and not String.starts_with?(value, "sha256:"),
        do: value,
        else: "sha256:" <> Base.encode16(:crypto.hash(:sha256, value), case: :lower)
   end
@@ -280,7 +281,10 @@ defmodule EhOsContract.Auth do
   # The claims' shapes are checked here, and the members' by `Actor.credential/3`,
   # whose ArgumentError is the one thing rescued: any other exception is a defect in
   # this code, not a credential to refuse.
+  # A subject with a NUL is not EHOS's either: no text column holds it, and it names the actor
+  # in every row (#66).
   defp actor(%{"sub" => sub, "cap" => cap} = claims) when is_binary(sub) and is_list(cap) do
+    if String.contains?(sub, <<0>>), do: raise(ArgumentError, "a NUL in sub")
     {:ok, Actor.credential(sub, cap, Map.get(claims, "scp", %{}))}
   rescue
     ArgumentError -> {:error, :bad_signature}

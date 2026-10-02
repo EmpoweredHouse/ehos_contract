@@ -104,20 +104,27 @@ defmodule EhOsContract.Auth.AuthorizeTest do
     actor =
       Actor.credential("u-anna", [capability], %{capability => %{"clinic_id" => ["krakow"]}})
 
-    for value <- [<<0xFF>>, "krakow" <> <<0>>, String.duplicate("k", 257)] do
+    # A value that reads as a digest is digested too, so a recorded `sha256:` is always one.
+    planted = "sha256:" <> String.duplicate("0", 64)
+    values = [<<0xFF>>, "krakow" <> <<0>>, String.duplicate("k", 257), planted]
+
+    for value <- values do
       assert Auth.authorize(actor, request(capability, kind: :query, scope: {"clinic_id", value})) ==
                {:error, :outside_scope}
     end
 
-    digests =
-      for value <- [<<0xFF>>, "krakow" <> <<0>>, String.duplicate("k", 257)],
-          do: "sha256:" <> Base.encode16(:crypto.hash(:sha256, value), case: :lower)
-
-    assert Enum.map(rows(), &Enum.at(&1, 6)) == digests
+    assert Enum.map(rows(), &Enum.at(&1, 6)) ==
+             Enum.map(
+               values,
+               &("sha256:" <> Base.encode16(:crypto.hash(:sha256, &1), case: :lower))
+             )
 
     # The control: 256 bytes of valid text are recorded as they are.
     value = String.duplicate("k", 256)
-    Auth.authorize(actor, request(capability, kind: :query, scope: {"clinic_id", value}))
+
+    assert Auth.authorize(actor, request(capability, kind: :query, scope: {"clinic_id", value})) ==
+             {:error, :outside_scope}
+
     assert rows() |> List.last() |> Enum.at(6) == value
   end
 

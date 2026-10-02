@@ -315,7 +315,9 @@ that arrives with a credential. It decides with `EhOsContract.Authorizer.check/2
 capability in `cap`, a scoped value among the values in `scp` — and writes one row to
 `eh_os_contract_auth_decisions` for every decision, a refusal as carefully as an acceptance (`eh-os`
 D-34): who, which capability, which contract and version, the scope value asked for, `allowed` or
-`refused`, and the reason.
+`refused`, and the reason. A scope value the table cannot hold (invalid UTF-8, a NUL), one past 256
+bytes, or one that starts `sha256:` is recorded as `sha256:` and its hex digest, so a crafted value is
+refused like any other instead of failing the request.
 
 The row records the authorization, not the command. A command allowed here may still be rejected on
 an invariant, and that is the engine's row in `eh_os_contract_commands`: two facts, two rows. The row
