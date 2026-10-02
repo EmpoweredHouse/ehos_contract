@@ -146,13 +146,47 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
       end
     end
 
-    # S2: a token planted in the session before sign-in names nothing after it.
-    test "each sign-in writes a new session token, and renews the Plug session", context do
+    # S2: nothing put in the session before sign-in, by the person or by someone who could set
+    # its cookie, names anything after it.
+    test "each sign-in starts an empty session with a new token", context do
       planted = Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false)
       browser = sign_in(context, "/", planted: planted)
+      session = session(context, browser)
 
-      refute session_token(context, browser) == planted
+      refute session[Session.session_key()] == planted
+      refute Map.has_key?(session, "planted")
+      refute session["_csrf_token"] == "planted-csrf"
       assert rows() == 1
+    end
+
+    test "signing in again in a signed-in browser ends the session it had", context do
+      first = sign_in(context, "/")
+      old = session_token(context, first)
+
+      second = sign_in(context, "/", browser: first)
+
+      assert rows() == 1
+      refute session_token(context, second) == old
+      assert EhOsContract.Auth.SignIn.Sessions.fetch(context.name, old) == {:error, :signed_out}
+    end
+
+    # A credential every page would refuse would send the browser round and round EHOS.
+    test "a credential verify/2 refuses, or of another person, refuses the sign-in", context do
+      for grant <- [%{"audience" => "ledger/test"}, %{"credential_sub" => "u-bartek"}] do
+        browser = sign_in(context, "/", grant: grant)
+
+        assert browser.status == 401, inspect(grant)
+        assert rows() == 0
+      end
+    end
+
+    test "a token response missing what a session needs refuses the sign-in", context do
+      for grant <- [%{"sid" => ""}, %{"sub" => ""}, %{"auth_time" => 999_999_999_999_999}] do
+        browser = sign_in(context, "/", grant: grant)
+
+        assert browser.status == 401, inspect(grant)
+        assert rows() == 0
+      end
     end
 
     test "is unavailable, with 503 and no redirect, while EHOS cannot be signed in with",
@@ -247,11 +281,19 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
     started = start_sign_in(context, return_to, opts)
     query = authorization_query(started)
 
-    FakeEhos.grant(context.ehos, "code-1", "rehmed/test", %{
-      "nonce" => query["nonce"],
-      "code_challenge" => query["code_challenge"],
-      "redirect_uri" => query["redirect_uri"]
-    })
+    FakeEhos.grant(
+      context.ehos,
+      "code-1",
+      "rehmed/test",
+      Map.merge(
+        %{
+          "nonce" => query["nonce"],
+          "code_challenge" => query["code_challenge"],
+          "redirect_uri" => query["redirect_uri"]
+        },
+        Keyword.get(opts, :grant, %{})
+      )
+    )
 
     callback(context, started, query["state"], Keyword.get(opts, :iss, "https://ehos.test"))
   end
@@ -261,7 +303,7 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
 
     previous =
       case Keyword.get(opts, :planted) do
-        nil -> nil
+        nil -> Keyword.get(opts, :browser)
         planted -> plant(context, planted)
       end
 
@@ -307,15 +349,20 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
   end
 
   defp route(%Plug.Conn{path_info: ["auth", "ehos" | rest]} = conn, context),
-    do: Plug.forward(conn, rest, Router, Router.init(sign_in: context.name))
+    do: Plug.forward(conn, rest, Router, Router.init(sign_in: context.name, keys: context.keys))
 
   defp route(%Plug.Conn{path_info: ["csrf"]} = conn, _context) do
     conn = Plug.CSRFProtection.call(conn, Plug.CSRFProtection.init([]))
     send_resp(conn, 200, Plug.CSRFProtection.get_csrf_token())
   end
 
-  defp route(%Plug.Conn{path_info: ["plant", token]} = conn, _context),
-    do: conn |> put_session(Session.session_key(), token) |> send_resp(200, "")
+  defp route(%Plug.Conn{path_info: ["plant", token]} = conn, _context) do
+    conn
+    |> put_session(Session.session_key(), token)
+    |> put_session("_csrf_token", "planted-csrf")
+    |> put_session("planted", "by someone else")
+    |> send_resp(200, "")
+  end
 
   defp route(%Plug.Conn{path_info: ["session"]} = conn, _context),
     do: send_resp(conn, 200, :erlang.term_to_binary(get_session(conn)))

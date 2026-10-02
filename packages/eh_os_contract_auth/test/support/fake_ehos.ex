@@ -59,7 +59,7 @@ defmodule EhOsContract.Auth.FakeEhos do
   @doc """
   Makes `code` one the token endpoint exchanges, for a person signed in to `client_id`:
   `claims` replace the ID token's `"sub"`, `"sid"`, `"auth_time"` and `"nonce"`, and
-  `"audience"` the credential's `aud`. With `"code_challenge"` (S256) and
+  `"audience"` the credential's `aud` and `"credential_sub"` its `sub`. With `"code_challenge"` (S256) and
   `"redirect_uri"`, the exchange is refused, as EHOS refuses it, unless its
   `code_verifier` and `redirect_uri` match.
   """
@@ -211,7 +211,7 @@ defmodule EhOsContract.Auth.FakeEhos do
     credential =
       sign(signer, %{
         "iss" => @issuer,
-        "sub" => grant["sub"],
+        "sub" => Map.get(grant, "credential_sub", grant["sub"]),
         "aud" => grant["audience"],
         "iat" => now,
         "exp" => now + 600,

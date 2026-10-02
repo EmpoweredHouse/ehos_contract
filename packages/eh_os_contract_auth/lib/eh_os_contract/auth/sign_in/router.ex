@@ -47,10 +47,12 @@ defmodule EhOsContract.Auth.SignIn.Router do
   alias EhOsContract.Auth.SignIn.{ClientStore, Sessions}
   alias Oidcc.Plug.{AuthorizationCallback, Authorize}
 
-  @doc "Keeps `sign_in:`, and raises on any other option."
+  @verify_opts [:keys, :audience, :issuer]
+
+  @doc "Keeps `sign_in:` and `verify/2`'s `:keys`, `:audience` and `:issuer`; raises on any other."
   @impl Plug
   @spec init(keyword()) :: keyword()
-  def init(opts), do: Keyword.validate!(opts, sign_in: SignIn)
+  def init(opts), do: Keyword.validate!(opts, [sign_in: SignIn] ++ @verify_opts)
 
   @doc "Serves `GET /sign-in`, `GET /callback` and `POST /sign-out`; 404 otherwise."
   @impl Plug
@@ -61,7 +63,7 @@ defmodule EhOsContract.Auth.SignIn.Router do
 
     case {conn.method, conn.path_info} do
       {"GET", ["sign-in"]} -> sign_in(conn, name)
-      {"GET", ["callback"]} -> callback(conn, name)
+      {"GET", ["callback"]} -> callback(conn, name, verify_opts(opts))
       {"POST", ["sign-out"]} -> sign_out(conn, name)
       _other -> conn |> send_resp(404, "") |> halt()
     end
@@ -95,7 +97,7 @@ defmodule EhOsContract.Auth.SignIn.Router do
     end
   end
 
-  defp callback(conn, name) do
+  defp callback(conn, name, verify_opts) do
     conn = conn |> fetch_session() |> fetch_query_params()
     config = SignIn.config(name)
 
@@ -118,12 +120,22 @@ defmodule EhOsContract.Auth.SignIn.Router do
       )
 
     conn = AuthorizationCallback.call(conn, opts)
+    result = conn.private[AuthorizationCallback]
+    # It holds every token of the exchange; nothing after this reads it.
+    conn = put_private(conn, AuthorizationCallback, nil)
 
-    with {:ok, {token, _userinfo}} <- conn.private[AuthorizationCallback],
-         {:ok, signed_in} <- signed_in(token, config) do
+    with {:ok, {token, _userinfo}} <- result,
+         {:ok, signed_in} <- signed_in(token, config),
+         :ok <- verified(signed_in, verify_opts) do
+      # A sign-in in a browser already signed in ends the session it had, so its row cannot be
+      # used again; and the Plug session starts empty, so nothing put in it before sign-in, a
+      # planted CSRF token for one, outlives it (S2).
+      :ok = Sessions.delete(get_session(conn, Session.session_key()))
       {:ok, browser_token} = Sessions.create(name, signed_in)
+      Plug.CSRFProtection.delete_csrf_token()
 
       conn
+      |> clear_session()
       |> configure_session(renew: true)
       |> put_session(Session.session_key(), browser_token)
       |> redirect(local_path(conn.private[Authorize.State]))
@@ -143,14 +155,15 @@ defmodule EhOsContract.Auth.SignIn.Router do
          %Oidcc.Token.Refresh{token: refresh_token} <- token.refresh,
          true <- is_integer(expires_in) and expires_in > 0,
          %{"sub" => subject, "sid" => sid, "auth_time" => auth_time} <- claims,
-         true <- is_binary(subject) and is_binary(sid) and is_integer(auth_time) do
+         true <- Enum.all?([subject, sid, refresh_token, id_token, credential], &text?/1),
+         {:ok, auth_time} <- DateTime.from_unix(auth_time) do
       now = EhOsContract.Clock.now()
 
       {:ok,
        %{
          subject: subject,
          sid: sid,
-         auth_time: DateTime.from_unix!(auth_time),
+         auth_time: auth_time,
          refresh_token: refresh_token,
          id_token: id_token,
          credential: %{
@@ -163,6 +176,22 @@ defmodule EhOsContract.Auth.SignIn.Router do
       _incomplete -> {:error, :incomplete_token_response}
     end
   end
+
+  defp text?(value), do: is_binary(value) and value != ""
+
+  # The credential is checked here as every request will check it, so one that can never pass
+  # (another audience, keys not yet held) refuses this sign-in instead of sending the browser
+  # round and round EHOS; and it must be the person the ID token names.
+  defp verified(signed_in, verify_opts) do
+    case EhOsContract.Auth.verify(signed_in.credential.token, verify_opts) do
+      {:ok, %{subject: subject}} when subject == signed_in.subject -> :ok
+      {:ok, _other} -> {:error, :subject_mismatch}
+      {:error, reason} -> {:error, {:credential_refused, reason}}
+    end
+  end
+
+  defp verify_opts(opts),
+    do: opts |> Keyword.take(@verify_opts) |> Enum.reject(&is_nil(elem(&1, 1)))
 
   defp sign_out(conn, name) do
     conn = conn |> fetch_session() |> Plug.CSRFProtection.call(Plug.CSRFProtection.init([]))
@@ -192,8 +221,9 @@ defmodule EhOsContract.Auth.SignIn.Router do
   # A path of this application, never a URL or a path a browser reads as another host's
   # (`//host`, `/\host`): the callback is not an open redirect.
   defp local_path(path) when is_binary(path) do
-    with "/" <> rest <- path,
-         false <- String.starts_with?(rest, ["/", "\\"]),
+    with true <- String.valid?(path),
+         "/" <> rest <- path,
+         false <- String.starts_with?(rest, "/"),
          false <- String.match?(path, ~r/[\x00-\x1f\x7f\\]/u),
          %URI{scheme: nil, host: nil} <- URI.parse(path) do
       path
@@ -219,8 +249,10 @@ defmodule EhOsContract.Auth.SignIn.Router do
   end
 
   # A reason's name, never its value: some of `oidcc`'s carry the token they refused.
+  defp describe({:credential_refused, reason}) when is_atom(reason),
+    do: "credential_refused (#{reason})"
+
   defp describe(reason) when is_atom(reason), do: Atom.to_string(reason)
-  defp describe({reason, _detail}) when is_atom(reason), do: Atom.to_string(reason)
 
   defp describe(reason) when is_tuple(reason) and is_atom(elem(reason, 0)),
     do: Atom.to_string(elem(reason, 0))
