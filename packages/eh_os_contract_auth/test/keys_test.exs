@@ -445,6 +445,10 @@ defmodule EhOsContract.Auth.KeysTest do
     refute Auth.ready?(keys: :not_started)
   end
 
+  test "a refresh of a key process that is not running says so, and does not raise" do
+    assert Keys.refresh(:not_started) == {:error, :not_running}
+  end
+
   test "a malformed entry costs itself, not the keys beside it, nor the process" do
     good = key_pair()
 

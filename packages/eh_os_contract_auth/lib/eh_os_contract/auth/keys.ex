@@ -174,9 +174,18 @@ defmodule EhOsContract.Auth.Keys do
   @doc """
   Fetches now, as the scheduled refresh does, and answers `:ok` or why the fetch
   failed. Not rate-limited: this is the scheduled path, called directly.
+
+  A process that does not answer in ten seconds — busy with fetches queued before
+  this one — is `{:error, :timeout}`, and one that is not running
+  `{:error, :not_running}`: the caller is told, not taken down.
   """
   @spec refresh(atom()) :: :ok | {:error, term()}
-  def refresh(name \\ __MODULE__), do: GenServer.call(name, :refresh, @call_timeout)
+  def refresh(name \\ __MODULE__) do
+    GenServer.call(name, :refresh, @call_timeout)
+  catch
+    :exit, {:timeout, _call} -> {:error, :timeout}
+    :exit, _reason -> {:error, :not_running}
+  end
 
   @doc """
   Trusts the public key `jwk` in memory until the process stops, through every
