@@ -81,7 +81,7 @@ refuse is refused here, with every reason, its path, and its line when it is kno
 is written. The
 rules EHOS checks beside its schema — names and ports unique in `serves`, the health port not among
 them — are not repeated: EHOS refuses those when the manifest is deployed. The two of `sign_in` are
-checked here, since adding `sign_in` alone breaks them (below).
+checked here, since adding `sign_in` alone breaks them (below), once the schema has passed.
 
 ```yaml
 schema: ehos.yaml/v1
@@ -124,6 +124,10 @@ serves:
     port: 4000
     public: true       # sign-in returns here, so sign_in needs it
 sign_in: {}            # this application only; or applications: [billing] for others its pages call
+health:
+  port: 4001
+  ready: /health/ready
+  live: /health/live
 ```
 
 `sign_in` is refused without an entry `web` that is `public: true`, and its `applications` are

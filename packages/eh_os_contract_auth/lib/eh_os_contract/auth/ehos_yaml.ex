@@ -39,7 +39,9 @@ defmodule EhOsContract.Auth.EhosYaml do
 
   Returns the file in JSON's data model, keys as strings, as it is written: no
   default is filled in. Otherwise every reason it is refused, sorted by line, those
-  without one first.
+  without one first. The two rules of `sign_in` are checked once the reader and the
+  schema have passed, as EHOS checks them, so a file the schema refuses is told only
+  the schema's reasons.
   """
   @spec read(binary()) :: {:ok, map()} | {:error, [error()]}
   def read(text) when is_binary(text) do
