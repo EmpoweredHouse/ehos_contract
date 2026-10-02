@@ -85,7 +85,7 @@ defmodule EhOsContract.Auth do
   @behaviour EhOsContract.Authorizer
 
   alias EhOsContract.{Actor, Authorizer}
-  alias EhOsContract.Auth.Keys
+  alias EhOsContract.Auth.{Address, Keys}
 
   @decisions "eh_os_contract_auth_decisions"
   @max_lifetime 15 * 60
@@ -102,7 +102,9 @@ defmodule EhOsContract.Auth do
   repo: `EhOsContract.Auth` in the list of children.
 
   It reads `:issuer` and `:jwks_url` from `config :eh_os_contract_auth`, and raises
-  at boot without an issuer, or when the key set would be fetched over anything but
+  at boot without an issuer, on an issuer EHOS would not start with (`https://<host>[:port]`
+  alone, or `http://` on loopback, as every parser reads it), or when the key set would be
+  fetched over anything but
   https (plain http is allowed for `localhost`, `127.0.0.1` and `::1` only), or from an
   address not every parser reads as written. `opts` go to
   `EhOsContract.Auth.Keys.start_link/1`, which raises on one it does not take; the
@@ -126,9 +128,17 @@ defmodule EhOsContract.Auth do
               "the only iss a credential may carry, and the default place of its keys"
     end
 
-    url =
-      config[:jwks_url] ||
-        String.trim_trailing(config[:issuer], "/") <> "/.well-known/jwks.json"
+    # Compared with each credential's `iss` as a string, so one EHOS would never start with is
+    # refused here, rather than every credential at `verify/2` (#89, eh-os#118).
+    if Address.check(config[:issuer], plain_on_loopback: true, path: false) == :error do
+      raise ArgumentError,
+            "config :eh_os_contract_auth, issuer: is #{Address.shown(config[:issuer])}, which " <>
+              "EHOS would not start with: https://<host>[:port] alone, or http:// on " <>
+              "localhost, 127.0.0.1 or ::1, as every parser reads it, so no credential's iss " <>
+              "could equal it"
+    end
+
+    url = config[:jwks_url] || config[:issuer] <> "/.well-known/jwks.json"
 
     # The address is the configuration's, which the check holds to https: a `url:`
     # here replaced it after the check.

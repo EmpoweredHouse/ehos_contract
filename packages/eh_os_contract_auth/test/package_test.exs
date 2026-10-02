@@ -64,6 +64,53 @@ defmodule EhOsContract.Auth.PackageTest do
       assert opts[:cacertfile] == "/etc/ca.pem"
     end
 
+    # #89: the issuer is compared with each credential's iss as a string, so one EHOS could
+    # never publish fails the boot, whichever address the keys come from (EHOS's rule, eh-os#118).
+    test "fails the boot on an issuer EHOS would not start with, a jwks_url beside it or not" do
+      Application.put_env(:eh_os_contract_auth, :jwks_url, "https://keys.ehos.test/jwks.json")
+
+      for issuer <- [
+            "https://EHOS.example.com",
+            "https://ehos.example.com?x=1",
+            "https://ehos.example.com/",
+            "https://ehos.example.com/ehos",
+            "http://ehos.example.com",
+            "https://evil.example\\@ehos.example.com",
+            "https://127.1"
+          ] do
+        Application.put_env(:eh_os_contract_auth, :issuer, issuer)
+
+        assert_raise ArgumentError, ~r/issuer: is .* which EHOS would not start with/, fn ->
+          EhOsContract.Auth.child_spec([])
+        end
+      end
+
+      # EHOS takes plain http on loopback for its issuer, as in development.
+      for issuer <- [
+            "http://localhost:4000",
+            "http://127.0.0.1:4000",
+            "https://ehos.example.com:8443"
+          ] do
+        Application.put_env(:eh_os_contract_auth, :issuer, issuer)
+        assert %{start: _} = EhOsContract.Auth.child_spec([]), issuer
+      end
+    end
+
+    # EHOS's own start never shows a refused issuer's user, path, query or fragment.
+    test "a refused address is shown without what may hold a secret" do
+      for {key, value} <- [
+            jwks_url: "https://svc:hunter2@keys.ehos.test/jwks.json",
+            issuer: "https://svc:hunter2@ehos.example.com"
+          ] do
+        Application.put_env(:eh_os_contract_auth, key, value)
+        error = assert_raise ArgumentError, fn -> EhOsContract.Auth.child_spec([]) end
+        refute error.message =~ "hunter2"
+        assert error.message =~ "with more, not shown"
+        Application.delete_env(:eh_os_contract_auth, key)
+        Application.put_env(:eh_os_contract_auth, :issuer, "https://ehos.test")
+      end
+    end
+
     test "fails the boot when keys would be fetched over anything but https" do
       for url <- ["http://ehos.example.com/jwks.json", "ftp://ehos.example.com/jwks.json", "ehos"] do
         Application.put_env(:eh_os_contract_auth, :jwks_url, url)

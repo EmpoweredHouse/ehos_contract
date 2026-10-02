@@ -7,14 +7,20 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
-- **#89: EHOS's addresses are taken only as every parser reads them.** The key set's address, and sign-in's
-  `issuer`, must read back as written (`URI.new/1`, then `URI.to_string/1`), with a lowercase DNS name, an IPv4
-  address in its dotted form or `::1` as the host, a port from 1 to 65535, and no user, query or fragment, as
-  EHOS requires of its issuer (`Ehos.Credentials.check_issuer/1`, eh-os#118).
-  - **Changed:** an address of another shape now refuses the boot. One such was
-    `http://evil.example\@localhost/...`: `URI.parse/1` read its host as `localhost`, so the key set was
-    fetched over plain http, while a browser reads its host as `evil.example`.
-  - Plain http is still allowed on `localhost`, `127.0.0.1` and `::1` for the key set only.
+- **#89: addresses are taken only as every parser reads them.** EHOS's rule for its issuer
+  (`Ehos.Credentials.check_issuer/1`, eh-os#118): the address reads back as written (`URI.new/1`, then
+  `URI.to_string/1`), with a lowercase DNS name, an IPv4 address in its dotted form or `::1` as the host, a port
+  from 1 to 65535, and no user, query or fragment. It holds for:
+  - **the key set's address**, with a path; plain http on `localhost`, `127.0.0.1` and `::1`;
+  - **`issuer`**, with no path, for the key set and for sign-in. It is now checked at boot even when `jwks_url`
+    is set, since it is compared with each credential's `iss` as a string. Sign-in still takes https only;
+  - **sign-in's `address` and the addresses in `applications`**.
+
+  **Changed:** an address of another shape now refuses the boot. One such was `http://evil.example\@localhost/...`:
+  `URI.parse/1` read its host as `localhost` and passed the loopback exception, while EHOS and a browser read
+  its host as `evil.example`. So is an issuer with a path or a trailing slash, which EHOS never publishes. A
+  refused address is shown by its scheme, host and port only, as EHOS shows its own, since a user or a query can
+  hold a secret.
 
 - **EB3b (#78): other applications' credentials.** `Session.credential/3` takes the session (a connection or a
   LiveView's session map) and an application's name in `sign_in: [applications: ...]`, and returns the person's

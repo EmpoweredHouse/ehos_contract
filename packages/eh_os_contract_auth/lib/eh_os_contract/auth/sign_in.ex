@@ -29,8 +29,8 @@ defmodule EhOsContract.Auth.SignIn do
 
     * `config :eh_os_contract_auth, :sign_in` is missing or not a keyword list, or has a
       key it does not take;
-    * the top-level `:issuer` is not `https://<host>[/<path>]` without a query, a
-      fragment or credentials;
+    * the top-level `:issuer` is not `https://<host>[:port]` alone, as every parser
+      reads it: a lowercase host, and no user, path, query or fragment (#89);
     * `client_id` is not a non-empty string;
     * `address`, or an address in `applications`, is not exactly `https://<host>`, in
       lower case: no port, no path, no trailing slash, no query (`eh-os` D-68);
@@ -520,16 +520,14 @@ defmodule EhOsContract.Auth.SignIn do
   # `https://<host>`, exactly: an application's address for `resource` and the base of
   # this one's callback and post-logout addresses (eh-os D-68), which EHOS compares as
   # strings, so no port and no upper case either.
+  # Read alike by every parser too (#89), so a browser goes where the comparison says.
   defp origin!(what, value) when is_binary(value) do
-    case URI.parse(value) do
-      %URI{scheme: "https", host: host, path: nil, query: nil, fragment: nil, userinfo: nil}
-      when is_binary(host) and host != "" ->
-        if value == "https://" <> host and host == String.downcase(host),
-          do: value,
-          else: origin_refused!(what, value)
-
-      _other ->
-        origin_refused!(what, value)
+    with :ok <- Address.check(value, plain_on_loopback: false, path: false),
+         %URI{host: host} <- URI.parse(value),
+         true <- value == "https://" <> host do
+      value
+    else
+      _refused -> origin_refused!(what, value)
     end
   end
 
@@ -538,22 +536,23 @@ defmodule EhOsContract.Auth.SignIn do
   defp origin_refused!(what, value) do
     raise ArgumentError,
           "sign_in: #{what} must be https://<host>, in lower case, with no port, no path, " <>
-            "no trailing slash and no query (eh-os D-68), and is #{inspect(value)}"
+            "no trailing slash and no query (eh-os D-68), as every parser reads it, and is " <>
+            Address.shown(value)
   end
 
   # Discovery and the token endpoint are what a sign-in trusts, and `oidcc` refuses an
   # http document's endpoints anyway, so https without exception; and what `oidcc`
   # would refuse in an issuer is refused here, at boot, rather than retried for ever.
   defp issuer!(issuer) when is_binary(issuer) do
-    case Address.check(issuer, plain_on_loopback: false) do
+    case Address.check(issuer, plain_on_loopback: false, path: false) do
       :ok ->
         issuer
 
       :error ->
         raise ArgumentError,
-              "sign-in asks EHOS at #{inspect(issuer)}, which is not https://<host>, or " <>
-                "has a query, a fragment or credentials in it, or is not an address every " <>
-                "parser reads as written, with a lowercase host"
+              "sign-in asks EHOS at #{Address.shown(issuer)}, which is not https://<host>[:port] " <>
+                "alone, as every parser reads it: a lowercase host, and no user, path, query " <>
+                "or fragment, as EHOS's issuer never has"
     end
   end
 

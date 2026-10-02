@@ -94,6 +94,12 @@ defmodule EhOsContract.Auth.SignInTest do
             "https://rehmed.test:8443",
             "https://Rehmed.test",
             "http://rehmed.test",
+            # #89: what a browser reads as another address.
+            "https://127.1",
+            "https://0x7f000001",
+            "https://rehmed.test\\evil",
+            "https://rehmed.test%2fevil",
+            "https://rehmed.test.",
             "rehmed.test",
             nil
           ] do
@@ -140,13 +146,27 @@ defmodule EhOsContract.Auth.SignInTest do
             "https://ehos.test?tenant=1",
             "https://ehos.test#x",
             "https://user:pass@ehos.test",
-            # #89: what parsers read differently, as for the key set's address.
+            # #89: what parsers read differently, as for the key set's address, and a path,
+            # which EHOS's issuer never has (RFC 8414 §2).
             "https://evil.example\\@ehos.test",
             "https://EHOS.test",
-            "https://127.1"
+            "https://127.1",
+            "https://ehos.test/",
+            "https://ehos.test/ehos",
+            "https://ehos.test:0443"
           ] do
         Application.put_env(:eh_os_contract_auth, :issuer, issuer)
         assert_raise ArgumentError, ~r/is not https:\/\/<host>/, fn -> SignIn.child_spec([]) end
+      end
+
+      # What EHOS starts with, beside loopback's plain http, which sign-in never takes.
+      for issuer <- [
+            "https://ehos.example.com:8443",
+            "https://ehos.test:443",
+            "https://[::1]:4443"
+          ] do
+        Application.put_env(:eh_os_contract_auth, :issuer, issuer)
+        assert %{id: SignIn} = SignIn.child_spec([]), issuer
       end
 
       Application.put_env(:eh_os_contract_auth, :issuer, ~c"https://ehos.test")
