@@ -380,7 +380,10 @@ października):
   wołają, wbrew „on demand only” z D-64.
 - **Refresh token, ID token i credentiale bez szyfrowania w tabeli** (S3), z ADR-em. Bez klucza prywatnego
   klienta (`private_key_jwt`, plik w workloadzie, nigdy w bazie) refresh token niczego nie odnowi.
-  *Odrzucone:*
+  **Ryzyko przyjęte jawnie** (po komentarzu CodeRabbita do #79): kto czyta tabelę, może odtworzyć każdy
+  credential, póki nie wygaśnie — najwyżej 10 minut. Dotyczy to też credentiali innych aplikacji, które strony
+  wołają (S8). Szyfrowanie nie zatrzyma czytelnika, który ma workload, a EHOS nie unieważnia credentiali
+  (D-33). *Odrzucone:*
   - szyfrowanie kluczem z `SECRET_KEY_BASE` — chroni tylko zrzut bazy, a jego rotacja wylogowuje wszystkich;
   - vault silnika — jest od crypto-shreddingu danych osobowych.
 - **Decyzje pakietu idą do ADR-a** (`docs/adr/browser-session.md`), nie tylko tutaj. Zapisuje je z odrzuconymi

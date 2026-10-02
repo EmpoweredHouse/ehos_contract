@@ -97,8 +97,15 @@ Chosen by the user, 2 October 2026. The refresh token alone does not renew anyth
 - **The private key is needed too.** EHOS's token endpoint authenticates the client with `private_key_jwt`,
   and the private key is a file the operator mounts in the workload (`EHOS_CLIENT_KEY_FILE`). It is never
   in the database.
-- **So reading the table gives little.** Someone who reads the table gets credentials that expire within ten
-  minutes, ID tokens that grant nothing, and refresh tokens they cannot present.
+- **What a reader of the table can still do: replay credentials.** ID tokens grant nothing, and refresh
+  tokens cannot be presented. But every credential in the table is a bearer credential. Until it expires,
+  within ten minutes, it can be replayed as the person whose session holds it. That applies to this
+  application, and to every other application the pages call (S8).
+- **That risk is accepted, not mitigated.** A reader of this table reads the application's own tables beside
+  it already. What it gains here ends with each credential's ten minutes, and it cannot renew. A reader that
+  holds the workload would get through encryption too (next point). And EHOS cannot revoke a credential
+  once issued (D-33), so no mitigation inside the application shortens the window. Only a shorter credential
+  would, which D-64 rejected.
 - **Encryption would add little.** Encrypting with a key the same process holds protects only a copy of the
   database taken without the workload: a dump or a backup. In exchange, it would bind every session to that
   key's rotation.
@@ -151,7 +158,8 @@ call's timeout must be shorter than the lease.
 | Renewed | the new one | renewed, lease released | the new credential |
 | `invalid_target` (D-64: not for this application) | kept, unchanged — EHOS did not consume it | lives on; the refusal for that application is remembered for 10 minutes | `{:error, :refused}` for that application only |
 | `invalid_grant` (the sign-in is over for this client) | — | deleted, with its credentials | `{:error, :signed_out}`; a page is sent to sign in |
-| Timeout, connection reset, or 5xx | kept — whether EHOS rotated is unknown | lives on, lease released | the held credential while it is unexpired, else `{:error, :ehos_unavailable}` |
+| Timeout, connection reset, 5xx, or another error response (logged) | kept — whether EHOS rotated is unknown, and an error response consumes nothing | lives on, lease released | the held credential while it is unexpired, else `{:error, :ehos_unavailable}` |
+| A 2xx response that `oidcc` refuses (`sub_invalid`, an ID token that does not validate) | lost — EHOS rotated it, and the successor is in the refused response | deleted | `{:error, :signed_out}` |
 | The lease was lost before the write | the new one is in hand but cannot be stored safely | deleted | `{:error, :signed_out}` |
 | A waiter gave up | — | unchanged | `{:error, :renewal_busy}` |
 
@@ -264,8 +272,9 @@ form POST through Req, and the credential checked by `verify/2`. It would not wa
 protocol code that D-64 gives to a certified library into code written here, and departs from D-64 as
 written.
 
-*Until #133 is merged,* any error from `refresh_token/5` that comes after a response is treated as
-`invalid_grant`: the session ends, and the old token is never presented again.
+*Until #133 is merged,* every renewal ends in S5's row for a 2xx response that `oidcc` refuses. The session
+ends, and the old token is never presented again. An error response or a 5xx keeps S5's own rows: EHOS
+consumed nothing.
 
 ### S11 — Rows end with the sign-in, without a job
 
