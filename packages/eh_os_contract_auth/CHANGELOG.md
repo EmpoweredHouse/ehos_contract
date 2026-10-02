@@ -7,6 +7,20 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **EB2b (#78): signing a browser in through EHOS and out.**
+  - **`EhOsContract.Auth.SignIn.Router`**, forwarded at `/auth/ehos`:
+    - `GET /sign-in` redirects to EHOS with PKCE, and answers 503 while EHOS cannot be signed in with;
+    - `GET /callback` checks EHOS's `iss`, exchanges the code with `private_key_jwt` only, writes a new session
+      and returns to a local `return_to`;
+    - `POST /sign-out`, behind CSRF protection, ends the session and redirects to EHOS's end session with
+      `id_token_hint` and exactly `address <> "/"` (`eh-os` D-68).
+  - **`EhOsContract.Auth.Session`**, a plug, lets a signed-in person through with
+    `conn.assigns.eh_os_contract_session`, or redirects a page request to sign in. With `assign_actor: true` it
+    also sets `conn.assigns.eh_os_contract_actor`.
+  - **`Session.actor/2`** takes a connection or a LiveView's session map, and verifies the person's credential
+    as a bearer one.
+  - **Exported** from the package's boundary: `EhOsContract.Auth.Session` and `EhOsContract.Auth.SignIn.Router`.
+
 - **EB2a (#78): where a person signed in through EHOS is kept.** **Migration version 3**: a host adds a
   migration calling `EhOsContract.Auth.Migrations.up(version: 3)`.
   - **Two tables:** `eh_os_contract_auth_sessions` (the browser token's SHA-256, `subject`, `sid`, `auth_time`,

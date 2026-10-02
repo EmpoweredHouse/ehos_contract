@@ -235,8 +235,45 @@ end
   a dump holds nothing that can be presented.
 - **Rotating `SECRET_KEY_BASE`** signs everybody out, as it already does through the cookie session.
 
-The routes that sign a browser in and out, and the plug that reads the session, are the next part of this work
-([#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78)). What the package decides beside D-64 is in
+**The routes and the session plug.**
+
+```elixir
+# endpoint.ex: the cookie session is encrypted, since oidcc_plug keeps the
+# request's state, nonce and PKCE verifier in it between redirect and callback
+plug Plug.Session, store: :cookie, key: "_my_app", signing_salt: "...", encryption_salt: "..."
+
+# router.ex
+scope "/" do
+  pipe_through :browser            # fetches the session, protects from forgery
+  forward "/auth/ehos", EhOsContract.Auth.SignIn.Router
+end
+
+pipeline :signed_in do
+  plug EhOsContract.Auth.Session   # assign_actor: true for a pipeline to EhOsContract.Plug
+end
+
+# a controller; a LiveView passes the session map mount/3 is given
+{:ok, actor} = EhOsContract.Auth.Session.actor(conn)
+```
+
+- **`GET /auth/ehos/sign-in?return_to=/visits/7`** sends the browser to EHOS, with PKCE and a nonce. While EHOS
+  cannot be signed in with, it answers 503.
+- **`GET /auth/ehos/callback`** is where EHOS returns. EHOS's `iss` is checked, and the code is exchanged with
+  `private_key_jwt` only. Then:
+  - the person gets a new session token, and the Plug session is renewed;
+  - the browser goes back to `return_to` when it is a path of this application, and to `/` otherwise;
+  - a callback that signs nobody in answers 401.
+- **`POST /auth/ehos/sign-out`**, behind CSRF protection, ends the session and sends the browser to EHOS's
+  end-session endpoint with `id_token_hint`, and back to exactly `address <> "/"`.
+- **`EhOsContract.Auth.Session`**, the plug, lets a signed-in person through, with
+  `conn.assigns.eh_os_contract_session` (`subject`, `sid`, `auth_time`). Otherwise a page request is redirected
+  to sign in and back, and any other request answers 401.
+- **`Session.actor/2`** is the actor of the person's credential for this application, verified as a bearer
+  credential is.
+
+Renewing a credential that has expired, and credentials for other applications, are the last part of this work
+([#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78)). Until then, `actor/2` gives
+`{:error, :expired}` ten minutes after sign-in. What the package decides beside D-64 is in
 [`docs/adr/browser-session.md`](../../docs/adr/browser-session.md).
 
 ## Deciding, and recording every decision
