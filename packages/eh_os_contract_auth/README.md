@@ -216,7 +216,9 @@ signed in with what is held. It refuses, naming each thing that fails, a documen
 - `private_key_jwt`.
 
 It also refuses a document that names a symmetric algorithm or `none` for ID tokens. `oidcc` would quietly do
-without each of these, or accept such a token.
+without each of these, or accept such a token. A document whose endpoints are not at the issuer's own origin,
+or not read alike by every parser (#89), is not held at all: nobody can sign in until EHOS serves one that is,
+and the log says which endpoints it refused.
 
 **Where a signed-in person is kept.** Version 3 of the package's tables holds them (`eh-os` D-64, S2 and S3).
 A host that migrated earlier versions adds one migration, as for every version:

@@ -420,6 +420,27 @@ defmodule EhOsContract.Auth.SignInTest do
       assert SignIn.refresh(name) == :ok
     end
 
+    # EHOS serves every endpoint at its issuer. One elsewhere would be posted the code, the PKCE
+    # verifier and the client's assertion, or be where the browser signs in.
+    for {field, endpoint} <- [
+          {"token_endpoint", "https://other.example/oauth/token"},
+          {"token_endpoint", "https://ehos.test:8443/oauth/token"},
+          {"authorization_endpoint", "https://ehos.test/oauth/authorize?tenant=1"},
+          {"jwks_uri", "https://svc:secret@ehos.test/.well-known/jwks.json"},
+          {"jwks_uri", "https://evil.example\\@ehos.test/.well-known/jwks.json"}
+        ] do
+      test "a document with #{field} #{endpoint} is not held", %{ehos: ehos} do
+        FakeEhos.discovery(ehos, fn _ ->
+          Map.put(FakeEhos.discovery(), unquote(field), unquote(endpoint))
+        end)
+
+        name = start!(ehos)
+
+        assert SignIn.refresh(name) ==
+                 {:error, {:endpoints_refused, [String.to_existing_atom(unquote(field))]}}
+      end
+    end
+
     # oidcc's decoder raises `case_clause` on a relative URI where it wants https.
     test "a document oidcc's decoder raises on is refused, and the process lives on",
          %{ehos: ehos} do
@@ -563,6 +584,13 @@ defmodule EhOsContract.Auth.SignInTest do
       assert SignIn.Http.request(:get, {"http://ehos.test/x", []}, [timeout: 1_000], [], %{
                plug: FakeEhos.plug(ehos)
              }) == {:error, {:not_https, "http://ehos.test/x"}}
+
+      # Whichever field of the document a call's address came from (#89).
+      for url <- ["https://EHOS.test/x", "https://127.1/x", "https://ehos.test/x?y=1"] do
+        assert SignIn.Http.request(:get, {url, []}, [timeout: 1_000], [], %{
+                 plug: FakeEhos.plug(ehos)
+               }) == {:error, {:not_https, url}}
+      end
 
       assert FakeEhos.requests(ehos) == []
     end
