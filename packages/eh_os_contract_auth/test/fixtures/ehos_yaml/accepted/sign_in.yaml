@@ -1,0 +1,13 @@
+# A workload that signs people in through EHOS, to its own application and to two others whose
+# pages it calls (eh-os D-69).
+schema: ehos.yaml/v2
+serves:
+  - name: web
+    port: 4000
+    public: true
+sign_in:
+  applications: [pages, billing]
+health:
+  port: 4001
+  ready: /health/ready
+  live: /health/live

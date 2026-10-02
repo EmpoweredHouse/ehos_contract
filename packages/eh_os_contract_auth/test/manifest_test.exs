@@ -7,6 +7,10 @@ defmodule EhOsContract.Auth.ManifestTest do
   `ehos-ledger`, unchanged: `eh-os` `test/support/fixtures/manifests/ledger.v2.json`,
   last changed in `ff1388e`, read at `f7b2330`. EHOS deploys ledger with it (step 6c)
   until this generator writes it.
+
+  `test/fixtures/manifests/ledger_sign_in.v2.json` is the same ledger written by hand
+  from `ehos_yaml/accepted/sign_in.yaml`, an `ehos.yaml/v2` that signs people in
+  (`eh-os` D-69, issue #83).
   """
 
   use ExUnit.Case, async: true
@@ -218,6 +222,43 @@ defmodule EhOsContract.Auth.ManifestTest do
 
       assert later["serves"] == [%{"name" => "web", "port" => 4400}]
       assert Map.drop(later, ["serves"]) == Map.drop(before, ["serves"])
+    end
+  end
+
+  describe "sign_in, from ehos.yaml/v2" do
+    test "is carried as written, beside the rest, into the manifest written by hand" do
+      expected =
+        @fixtures
+        |> Path.join("manifests/ledger_sign_in.v2.json")
+        |> File.read!()
+        |> Jason.decode!()
+
+      manifest =
+        Manifest.build(ehos_yaml!("ehos_yaml/accepted/sign_in.yaml"), [Ledger], [Entries])
+
+      assert manifest == Map.put(expected, "engine", @engine)
+    end
+
+    # `{}` asks for the application's own sign-in only, and EHOS reads its presence (D-69).
+    test "is kept when empty" do
+      file = %{"schema" => "ehos.yaml/v2", "health" => @health, "sign_in" => %{}}
+
+      assert %{"ehos_yaml" => "ehos.yaml/v2", "sign_in" => %{}} =
+               Manifest.build(file, [Ledger], [Entries])
+    end
+
+    # `ehos.yaml` seldom names its application, so the reader cannot see this; EHOS refuses the
+    # manifest for it at deploy (`Ehos.Applications.Manifest.V2`).
+    test "never names the application the manifest is of" do
+      file = %{
+        "schema" => "ehos.yaml/v2",
+        "health" => @health,
+        "sign_in" => %{"applications" => ["pages", "ledger"]}
+      }
+
+      assert_raise ArgumentError,
+                   ~r/sign_in\.applications names ledger, the application this manifest is of/,
+                   fn -> Manifest.build(file, [Ledger], [Entries]) end
     end
   end
 

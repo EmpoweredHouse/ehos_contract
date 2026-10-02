@@ -7,6 +7,14 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **#83: `ehos.yaml/v2` is read, and its `sign_in` goes into the manifest** (`eh-os` D-69).
+  - `EhOsContract.Auth.EhosYaml.read/1` takes v1 and v2, each against EHOS's own schema, copied unchanged.
+  - **Beside the schema,** as EHOS checks it, `sign_in` is refused without an entry `web` with `public: true`,
+    and when its `applications` name the file's own `application`.
+  - `mix eh_os_contract.manifest` carries `sign_in` as written, `{}` included, with `ehos_yaml: "ehos.yaml/v2"`, and
+    refuses `applications` that name the application it finds.
+  - A file whose `schema` is neither version is refused with both named.
+
 - **EB1 (#78): `EhOsContract.Auth.SignIn`, the application's client for signing people in through EHOS**
   (`eh-os` D-64, D-68).
   - **Configuration:** a child for the supervision tree, configured by `config :eh_os_contract_auth, sign_in:`

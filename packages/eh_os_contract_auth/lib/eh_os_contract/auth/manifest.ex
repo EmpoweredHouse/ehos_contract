@@ -5,7 +5,9 @@ defmodule EhOsContract.Auth.Manifest do
 
   Every key of `ehos.yaml` but `schema` is in the manifest at the same path with the
   same value, and nothing is added to them: no default is filled in. `schema`
-  becomes `ehos_yaml`, the version the file is written in. The generator adds:
+  becomes `ehos_yaml`, the version the file is written in. From `ehos.yaml/v2`, that
+  includes `sign_in`, empty or not (`eh-os` D-69), whose `applications` must not name
+  the application the generator finds below. The generator adds:
 
     * `application`, the contracts' domain's `name:`. A project with one domain
       takes it from there; a domain without contracts is not counted. A project with
@@ -55,6 +57,7 @@ defmodule EhOsContract.Auth.Manifest do
     contracts = Enum.map(contracts, &Model.fetch/1)
     domain = select_domain!(domains, contracts, file["application"])
     application = application!(domain)
+    not_its_own!(file, application)
     models = Enum.filter(contracts, &(&1.domain == domain.module))
     if models == [], do: raise(ArgumentError, "#{inspect(domain.module)} has no contracts")
 
@@ -155,6 +158,18 @@ defmodule EhOsContract.Auth.Manifest do
               suggestion(name)
     end
   end
+
+  # `eh-os` D-66, D-69: the list names the other applications; its own it always signs in to. The
+  # reader checks it against an `application` the file names, and this against the one found.
+  defp not_its_own!(%{"sign_in" => %{"applications" => applications}}, application) do
+    if application in applications do
+      raise ArgumentError,
+            "ehos.yaml's sign_in.applications names #{application}, the application this " <>
+              "manifest is of; it signs people in to its own application without naming it"
+    end
+  end
+
+  defp not_its_own!(_file, _application), do: :ok
 
   defp application?(name),
     do:

@@ -13,9 +13,12 @@ defmodule EhOsContract.Auth.EhosYaml do
 
   A file that reads is then validated against the JSON Schema of the version its
   `schema` names, EHOS's own file, copied unchanged into this package's
-  `priv/schemas/`; `versions/0` lists the versions there. The rules EHOS checks beside its schema, such as unique names and
-  ports in `serves`, are left to EHOS, which refuses them when the manifest is
-  deployed.
+  `priv/schemas/`; `versions/0` lists the versions there. The rules EHOS checks beside
+  its schema, such as unique names and ports in `serves`, are left to EHOS, which
+  refuses them when the manifest is deployed, but for the two of `ehos.yaml/v2`'s
+  `sign_in` (`eh-os` D-69), which adding `sign_in` alone breaks: it needs an entry of
+  `serves` named `web` with `public: true`, where sign-in returns, and its
+  `applications` never name the `application` the file names.
 
   A refusal is a list of reasons, each at the path of the value it is about, in
   EHOS's notation (`serves[0].port`, `""` for the file as a whole), with the line
@@ -42,7 +45,8 @@ defmodule EhOsContract.Auth.EhosYaml do
   def read(text) when is_binary(text) do
     with {:ok, data, lines} <- Reader.decode(text),
          {:ok, data} <- mapping(data, lines),
-         :ok <- validate(data, lines) do
+         :ok <- validate(data, lines),
+         :ok <- sign_in(data, lines) do
       {:ok, data}
     else
       {:error, errors} -> refused(errors)
@@ -73,6 +77,39 @@ defmodule EhOsContract.Auth.EhosYaml do
         {:error, Enum.map(errors, &%{&1 | line: line(lines, &1.path)})}
     end
   end
+
+  # `eh-os` D-69, as `Ehos.Applications.EhosYaml.V2` checks it beside the schema: sign-in returns
+  # to the host of the public entry `web` (D-68), and the list names the other applications only.
+  # `public` is false when it is not written, as the schema's default says.
+  defp sign_in(%{"sign_in" => sign_in} = data, lines) do
+    public_web =
+      data
+      |> Map.get("serves", [])
+      |> Enum.any?(&(&1["name"] == "web" and &1["public"] == true))
+
+    web =
+      if public_web,
+        do: [],
+        else: [
+          error(
+            ["sign_in"],
+            lines,
+            "needs an entry of serves named web with public: true, where sign-in returns"
+          )
+        ]
+
+    own =
+      for {name, index} <- Enum.with_index(Map.get(sign_in, "applications", [])),
+          name == data["application"],
+          do:
+            error(["sign_in", "applications", index], lines, "is the application this file names")
+
+    if web ++ own == [], do: :ok, else: {:error, web ++ own}
+  end
+
+  defp sign_in(_data, _lines), do: :ok
+
+  defp error(path, lines, message), do: %{path: path, line: line(lines, path), message: message}
 
   defp line(_lines, []), do: nil
 

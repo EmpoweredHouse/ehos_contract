@@ -1,0 +1,14 @@
+schema: ehos.yaml/v2
+application: ledger
+serves:
+  - name: web
+    port: 4000
+    public: true
+sign_in:
+  applications:
+    - pages
+    - ledger
+health:
+  port: 4001
+  ready: /health/ready
+  live: /health/live

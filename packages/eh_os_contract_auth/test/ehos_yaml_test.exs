@@ -5,7 +5,8 @@ defmodule EhOsContract.Auth.EhosYamlTest do
 
   The corpus is one file per refusal, in `test/fixtures/ehos_yaml/refused/`. The
   accepted files are the example of `eh-os` `docs/ehos-yaml.md` (at `f7b2330`) and
-  the `ehos.yaml` of `EmpoweredHouse/ehos-ledger` (at `341fc19`), unchanged.
+  the `ehos.yaml` of `EmpoweredHouse/ehos-ledger` (at `341fc19`), unchanged, and a
+  made-up `ehos.yaml/v2` with `sign_in` (`eh-os` D-69).
   """
 
   use ExUnit.Case, async: true
@@ -39,7 +40,7 @@ defmodule EhOsContract.Auth.EhosYamlTest do
       {"schema", nil, "is required: it names the version of ehos.yaml the file is in"},
     "unknown_version.yaml" =>
       {"schema", 1,
-       ~s(must be a version of ehos.yaml this generator knows: ehos.yaml/v1; "ehos.yaml/v9" is not one)},
+       ~s(must be a version of ehos.yaml this generator knows: ehos.yaml/v1, ehos.yaml/v2; "ehos.yaml/v9" is not one)},
     "no_health.yaml" => {"health", nil, "is required"},
     "database_without_engine.yaml" => {"needs.database.engine", 3, "is required"},
     "unknown_key.yaml" => {"replicas", 6, "is not a field of ehos.yaml/v1"},
@@ -47,7 +48,15 @@ defmodule EhOsContract.Auth.EhosYamlTest do
     "port_80.yaml" => {"serves[0].port", 4, "must be at least 1024"},
     "version_as_number.yaml" => {"needs.database.version", 5, "must be a string"},
     "public_yes.yaml" => {"serves[0].public", 5, "must be true or false"},
-    "application_ehos.yaml" => {"application", 2, "must not be ehos"}
+    "application_ehos.yaml" => {"application", 2, "must not be ehos"},
+    # `eh-os` D-69: what v2 adds, by its schema and the two rules EHOS checks beside it.
+    "sign_in_in_v1.yaml" => {"sign_in", 6, "is not a field of ehos.yaml/v1"},
+    "sign_in_named_twice.yaml" => {"sign_in.applications", 7, "must list each value once"},
+    "sign_in_without_public_web.yaml" =>
+      {"sign_in", 5,
+       "needs an entry of serves named web with public: true, where sign-in returns"},
+    "sign_in_own_application.yaml" =>
+      {"sign_in.applications[1]", 10, "is the application this file names"}
   }
 
   describe "the corpus of refusals" do
@@ -96,6 +105,17 @@ defmodule EhOsContract.Auth.EhosYamlTest do
       end
     end
 
+    test "in ehos.yaml/v2 has its sign_in read as it is written" do
+      text = File.read!(Path.join([@fixtures, "accepted", "sign_in.yaml"]))
+
+      assert {:ok, %{"schema" => "ehos.yaml/v2", "sign_in" => sign_in}} = EhosYaml.read(text)
+      assert sign_in == %{"applications" => ["pages", "billing"]}
+
+      # `{}` asks for the file's own application only, so it is kept as it is, not dropped.
+      own = String.replace(text, "sign_in:\n  applications: [pages, billing]\n", "sign_in: {}\n")
+      assert {:ok, %{"sign_in" => %{}}} = EhosYaml.read(own)
+    end
+
     test "has its plain values resolved by YAML 1.2's core schema, where yes is a string" do
       text = "a: yes\nb: on\nc: true\nd: 16\ne: ~\nf: '16'\n"
 
@@ -117,8 +137,19 @@ defmodule EhOsContract.Auth.EhosYamlTest do
       assert Jason.decode!(document)["title"] == "ehos.yaml/v1"
     end
 
-    test "is the only version read" do
-      assert EhosYaml.versions() == ["ehos.yaml/v1"]
+    test "is EHOS's ehos.yaml/v2, byte for byte" do
+      # `eh-os` `priv/schemas/ehos.yaml/v2.json`, added in `99e036b` (D-69), read at `2cd95cb`
+      # (2 October 2026), in no release yet. A new hash here is a new copy of EHOS's file.
+      document = File.read!(EhOsContract.Auth.EhosYaml.Schema.file("ehos.yaml/v2"))
+
+      assert :crypto.hash(:sha256, document) |> Base.encode16(case: :lower) ==
+               "de533072d4c617aee4dfdaee71cf736feed2939a7446e8a52ee8d96879788c38"
+
+      assert Jason.decode!(document)["title"] == "ehos.yaml/v2"
+    end
+
+    test "are v1 and v2" do
+      assert EhosYaml.versions() == ["ehos.yaml/v1", "ehos.yaml/v2"]
     end
 
     test "fills in no default: public is absent when the file does not write it" do
