@@ -764,7 +764,7 @@ małego diffu:
 **Co jest:**
 - **`SignIn.Renewal`** (wewnętrzny) — S4 krok po kroku:
   - szybka ścieżka przy więcej niż 30 s ważności;
-  - dzierżawa jednym `UPDATE` na zegarze bazy, na 15 s;
+  - dzierżawa jednym `UPDATE` na zegarze bazy, na 15 s (po drugim przeglądzie 30 s, niżej);
   - ponowny odczyt wiersza;
   - `Oidcc.Token.refresh/3` bez mocka, z `private_key_jwt` i terminem 10 s;
   - zapis z odbiorem dzierżawy w jednej transakcji, strzeżonej `lease_holder`;
@@ -825,6 +825,27 @@ Bez zmian:
 - ponowny odczyt po wzięciu dzierżawy bez testu — wyścig nie do ustawienia deterministycznie.
 
 Auth: 248 → 260 testów.
+
+**Drugi przegląd** (samych poprawek, jeden przebieg; pierwszy padł na błędzie połączenia z API). Poprawione, każde
+z testem, który bez poprawki pada, poza dzierżawą 30 s (stała):
+- **Dzierżawa 15 s była za krótka**: wywołanie (10 s), ponowne pobranie kluczy przy nieznanym `kid` (do 30 s) i
+  własne pobranie kluczy przez `verify/2` (10 s). Przy rotacji klucza pod obciążeniem groziło masowe wylogowanie
+  przez „przejęcie”. Teraz dzierżawa 30 s i czekanie na klucze najwyżej 5 s (`SignIn.refresh/2`).
+- **`verify/2` odmawiający z naszego powodu** (`:unknown_key`, `:no_keys`) kończył sesję mimo dobrego tokenu.
+  Teraz odnowienie jest zapisywane; test rotacji przechodzi bez ręcznego `Keys.refresh`.
+- **Margines sprawdzany na `expires_in`, a nie na przyciętym `expires_at`.** Teraz `beyond_margin?/1`, także przy
+  callbacku.
+- **`:busy` przy skasowanym wierszu oddawał credential sesji, która już się skończyła**, a `lease_holder` był
+  sprzed dzierżawy. Teraz świeży odczyt.
+- `exit` i `throw` z `oidcc` łapane (bez testu: żadna ścieżka `oidcc` ich dziś nie rzuca); wynik w nieznanym
+  kształcie traktowany jak błąd; asercja czasu `< 150` ms usunięta (niestabilna, a równość wystarcza).
+- ADR: S5 przy timeoucie (pauza, nie zwolnienie), dzierżawa 30 s i co znaczy „prezentowany raz” — po timeoucie
+  ten sam token idzie ponownie po pauzie, co D-64 akceptuje.
+
+Bez zmian: wyjątek przed wywołaniem `oidcc` zostawia dzierżawę, a sesja kończy się po 30 s jako przejęcie —
+ostrożne i rzadkie; podwójne `verify/2` przy odnawiającym żądaniu.
+
+Auth: 260 → 263 testów.
 
 ## Dopisek 1 października — lista zmian do `eh-os` jako issues w `EmpoweredHouse/eh-os`
 

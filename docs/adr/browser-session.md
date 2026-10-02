@@ -242,6 +242,21 @@ call's timeout must be shorter than the lease.
     `verify/2` and of the session's person, the ID token's `sid` and `auth_time` the sign-in's, and `expires_in`
     above the 30-second margin. The stored expiry never passes the credential's own `exp`.
   - **An exception `oidcc` raises on a 2xx body is a 2xx `oidcc` refuses** (S5): the session ends.
+- **Amended a third time, at the second review of EB3a, the same day:**
+  - **The lease is 30 seconds, not 15.** Between taking it and writing, a holder may spend the call (10
+    seconds), a refetch of EHOS's keys for an unknown `kid` (waited for at most 5 seconds) and `verify/2`'s own
+    refetch (10 seconds). At 15 seconds a key rotation at EHOS under load would have let leases expire under
+    their holders, and every such session would have ended as an overrun. Waiters still give up after 15 seconds.
+  - **S5's timeout row:** the lease is not released, it becomes the 5-second pause, as above.
+  - **A lost lease** means the holder overran 30 seconds, not 15.
+  - **A refusal of `verify/2` for keys this application does not hold** (`:unknown_key`, `:no_keys`) is not a
+    refused credential. The renewal is stored and the rotated refresh token kept; each request's `verify/2`
+    decides.
+  - **The 30-second margin is checked on the stored expiry**, bounded by `exp`, not on `expires_in`; the
+    callback checks it too.
+  - **What "presented once" covers.** The package never presents a refresh token another holder may have
+    presented. After a timeout it presents the same token again, once the pause is over: whether EHOS consumed
+    it is unknown, and D-64 accepts that a response lost in transit can end the sign-in.
 
 *Rejected:*
 
