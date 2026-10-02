@@ -41,11 +41,14 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
   @poll_ms 200
   @wait_ms 15_000
   @pause_ms 5_000
+  # S5: a refusal for one application is remembered for a credential's lifetime, so a person with
+  # no role there does not leave a refused request, and an audit row at EHOS, on every page.
+  @refused_ms 10 * 60 * 1000
   @paused "paused after a failed renewal"
   @verify_opts [:keys, :audience, :issuer]
 
   @typedoc "Why there is no credential."
-  @type refusal :: :signed_out | :ehos_unavailable | :renewal_busy
+  @type refusal :: :signed_out | :ehos_unavailable | :renewal_busy | :refused
 
   @doc false
   # The credential for `resource`, an application's address, in the session `browser_token`
@@ -73,14 +76,28 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
     with {:ok, session} <- session do
       case freshness(session, resource) do
         {:fresh, token} -> {:ok, token}
+        :refused -> {:error, :refused}
         _stale -> lead_or_wait(session, at)
       end
     end
   end
 
-  # `{:fresh, token}` past the margin, `{:usable, token}` inside it but unexpired, `:expired`.
+  # `{:fresh, token}` past the margin, `{:usable, token}` inside it but unexpired, `:expired`, or
+  # `:refused` while EHOS's refusal for that application is remembered.
   defp freshness(session, resource) do
     case Map.get(session.credentials, resource) do
+      %{refused_until: %DateTime{} = until} = credential ->
+        if DateTime.compare(until, now()) == :gt,
+          do: :refused,
+          else: freshness_of(%{credential | refused_until: nil})
+
+      credential ->
+        freshness_of(credential)
+    end
+  end
+
+  defp freshness_of(credential) do
+    case credential do
       %{token: token, expires_at: %DateTime{} = expires_at} when is_binary(token) ->
         cond do
           DateTime.compare(expires_at, DateTime.add(now(), @margin_seconds)) == :gt ->
@@ -115,6 +132,7 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
       case freshness(session, at.resource) do
         {:fresh, token} -> {:ok, token}
         {:usable, token} -> {:ok, token}
+        :refused -> {:error, :refused}
         :expired when session.lease_holder == @paused -> {:error, :ehos_unavailable}
         :expired -> wait(at)
       end
@@ -128,6 +146,10 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
         {:fresh, token} ->
           :ok = Sessions.release(session, holder)
           {:ok, token}
+
+        :refused ->
+          :ok = Sessions.release(session, holder)
+          {:error, :refused}
 
         _stale ->
           renew(session, holder, at)
@@ -144,24 +166,32 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
       with {:ok, session} <- Sessions.fetch(at.name, at.browser_token) do
         case freshness(session, at.resource) do
           {:fresh, token} -> {:ok, token}
+          :refused -> {:error, :refused}
           _stale -> lead_or_wait(session, at)
         end
       end
     end
   end
 
-  # Step 4. The renewal is for the client's own application; another's is `resource` (EB3b).
+  # Step 4. For the client's own application the request names no `resource`; for another, its
+  # address (D-64, D-68).
   defp renew(session, holder, at) do
     config = SignIn.config(at.name)
 
     case SignIn.client_context(at.name) do
       {:ok, context} ->
-        opts = %{
-          expected_subject: session.subject,
-          preferred_auth_methods: [:private_key_jwt],
-          request_opts: config.request_opts,
-          refresh_jwks: refresh_jwks(at.name)
-        }
+        opts =
+          %{
+            expected_subject: session.subject,
+            preferred_auth_methods: [:private_key_jwt],
+            request_opts: config.request_opts,
+            refresh_jwks: refresh_jwks(at.name)
+          }
+          |> then(fn opts ->
+            if at.resource == config.address,
+              do: opts,
+              else: Map.put(opts, :body_extension, [{"resource", at.resource}])
+          end)
 
         started = now()
         :ok = Http.forget_status()
@@ -226,6 +256,14 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
   defp outcome({:error, {:http_error, status, %{"error" => "invalid_grant"}}}, renewal)
        when status in [400, 401],
        do: ended(renewal.session, :invalid_grant)
+
+  # D-64: not for this application. EHOS consumed nothing, so the refresh token stays, and the
+  # session lives on for every other application.
+  defp outcome({:error, {:http_error, 400, %{"error" => "invalid_target"}}}, renewal) do
+    until = DateTime.add(now(), @refused_ms, :millisecond)
+    :ok = Sessions.refused(renewal.session, renewal.holder, renewal.at.resource, until)
+    {:error, :refused}
+  end
 
   # A shape outside `oidcc`'s spec is read as any other error.
   defp outcome(result, renewal) when not is_tuple(result) or elem(result, 0) not in [:ok, :error],

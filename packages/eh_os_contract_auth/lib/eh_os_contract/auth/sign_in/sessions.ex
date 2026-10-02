@@ -260,6 +260,36 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
   end
 
   @doc false
+  # Remembers EHOS's refusal of `resource` until `until`, and releases `holder`'s lease. A
+  # credential still held for it is dropped: EHOS has just refused to issue one.
+  @spec refused(t(), String.t(), String.t(), DateTime.t()) :: :ok
+  def refused(%__MODULE__{} = session, holder, resource, until) do
+    repo = repo()
+
+    {:ok, :ok} =
+      repo.transaction(fn ->
+        repo.insert_all(
+          @credentials,
+          [
+            %{
+              session_id: session.id,
+              resource: resource,
+              token: nil,
+              expires_at: nil,
+              refused_until: until
+            }
+          ],
+          on_conflict: {:replace, [:token, :expires_at, :refused_until]},
+          conflict_target: [:session_id, :resource]
+        )
+
+        :ok = release(session, holder)
+      end)
+
+    :ok
+  end
+
+  @doc false
   # Ends a session by its row: at `invalid_grant`, a lost refresh token or a lost lease (S5, S11).
   @spec end_session(t()) :: :ok
   def end_session(%__MODULE__{id: id}) do

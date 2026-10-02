@@ -1,8 +1,8 @@
 defmodule EhOsContract.Auth.Session do
   @moduledoc """
   A person signed in through EHOS (`EhOsContract.Auth.SignIn.Router`), for the pages
-  that need one: a plug, and `actor/2` for a controller or a LiveView (S7 in
-  docs/adr/browser-session.md).
+  that need one: a plug, `actor/2` for a controller or a LiveView, and `credential/3`
+  for calling another application as the person (S7 in docs/adr/browser-session.md).
 
       # in the host's router
       pipeline :signed_in do
@@ -11,6 +11,9 @@ defmodule EhOsContract.Auth.Session do
 
       # a controller; a LiveView passes the session map `mount/3` is given
       {:ok, actor} = EhOsContract.Auth.Session.actor(conn)
+
+      # another application, by its name in `sign_in: [applications: ...]`
+      {:ok, token} = EhOsContract.Auth.Session.credential(conn, "ledger")
 
   **The plug.** A request whose session names a person signed in goes on with
   `conn.assigns.eh_os_contract_session`: their `subject`, `sid` and `auth_time`, and
@@ -35,8 +38,14 @@ defmodule EhOsContract.Auth.Session do
   the session's refresh token (S4, S10); renewing is the only thing these two
   functions do beyond reading, and nothing renews without a request asking.
 
-  Both take `sign_in:`, the name of the `EhOsContract.Auth.SignIn` child, and
-  `verify/2`'s `:keys`, `:audience` and `:issuer`.
+  **Another application's credential.** `credential/3` is the credential EHOS issues
+  the person for an application named in `sign_in: [applications: ...]`, renewed the
+  same way, with that application's address as `resource` (`eh-os` D-64, D-68). It is
+  handed out as EHOS issued it, to be sent to that application as a bearer token, which
+  verifies it (S8): its `aud` is that application's, not this one's.
+
+  Both take `sign_in:`, the name of the `EhOsContract.Auth.SignIn` child; `actor/2`
+  also `verify/2`'s `:keys`, `:audience` and `:issuer`.
   """
 
   @behaviour Plug
@@ -121,6 +130,44 @@ defmodule EhOsContract.Auth.Session do
     name = Keyword.get(opts, :sign_in, SignIn)
 
     verified(Map.get(session, @session_key), name, opts, [])
+  end
+
+  @doc """
+  The credential for `application`, a name in `sign_in: [applications: ...]`, of the
+  person `session` names: a `Plug.Conn` with its session fetched, or the session map a
+  LiveView's `mount/3` is given. It is EHOS's token as issued, not verified here (S8),
+  for the application to verify; renewed first when it is good for less than 30
+  seconds, as `actor/2`'s is.
+
+  `{:error, :refused}` when EHOS refused the person a credential there (`invalid_target`:
+  no role, or the application is outside the sign-in's granted set). The refusal is
+  remembered for 10 minutes, and EHOS is not asked again until then; the session and
+  every other application's credential go on. The other refusals are `actor/2`'s:
+  `:signed_out`, `:ehos_unavailable`, `:renewal_busy`.
+
+  Raises `ArgumentError` for a name `applications` does not have: a typo in the host's
+  code, not something a person can change by signing in again.
+  """
+  @spec credential(Plug.Conn.t() | map(), String.t(), keyword()) ::
+          {:ok, String.t()} | {:error, Renewal.refusal()}
+  def credential(session, application, opts \\ [])
+
+  def credential(%Plug.Conn{} = conn, application, opts),
+    do: credential(get_session(conn), application, opts)
+
+  def credential(session, application, opts) when is_map(session) do
+    name = Keyword.get(opts, :sign_in, SignIn)
+    applications = SignIn.config(name).applications
+
+    case Map.fetch(applications, application) do
+      {:ok, address} ->
+        Renewal.credential(name, Map.get(session, @session_key), address)
+
+      :error ->
+        raise ArgumentError,
+              "no application named #{inspect(application)} in sign_in: applications, " <>
+                "which names #{inspect(Enum.sort(Map.keys(applications)))}"
+    end
   end
 
   # The session the plug has read goes along, so the renewal's fast path does not read it again.
