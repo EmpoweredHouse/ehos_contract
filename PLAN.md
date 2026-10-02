@@ -372,6 +372,39 @@ Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty, commi
 - Testy: plik v2 przyjęty; odmowy w korpusie (`sign_in` bez publicznego `web`, `sign_in` w v1, powtórzona nazwa,
   własna aplikacja); manifest z `sign_in` równy napisanemu ręcznie.
 
+### #83 — co wyszło (2 października)
+
+Gałąź `eh/issue-83-ehos-yaml-v2`, od `7a2bcb7`. Zrobione według planu wyżej:
+- `ehos.yaml/v2.json` jest kopią z przypiętym SHA-256 `de53…8c38` (blob `750773f`, ten sam co w `main` EHOS-a).
+- Czytnik sprawdza obie reguły `sign_in` po schemacie, jak EHOS. Plik, który odrzuca schemat, dostaje tylko powody
+  schematu.
+- Generator odrzuca `applications` z nazwą aplikacji, którą znalazł.
+- Nowy powód dla `uniqueItems`: „must list each value once”.
+- Auth: 180 → 191 testów.
+
+**Przegląd przed PR-em**, dwa równolegle:
+- **Bezpieczeństwo i wydajność:** nic istotnego. Nowy kod widzi tylko plik, który przeszedł schemat; `sign_in` nie
+  niesie sekretu; kopia schematu zgadza się bajt w bajt.
+- **Poprawność:** zachowanie zgodne z EHOS-em w każdym sprawdzonym przypadku. Poprawione:
+  - dwie asercje, które pasowały do każdej mapy;
+  - brakujące przypadki: `web` z `public: false` obok publicznego `api` i plik łamiący obie reguły naraz;
+  - `@doc` `read/1` obiecywał „każdy powód”, choć reguły `sign_in` działają dopiero po schemacie;
+  - przykład v2 w README bez `health`.
+
+  Każdy nowy test ma próbę odwrotną.
+- **Bez zmian:**
+  - `Manifest.build/3` na `applications`, które nie jest listą, rzuca `Protocol.UndefinedError` (zgłosiły oba
+    przeglądy). `build/3` bierze mapę z `read/1`, a task zawsze ją tak buduje;
+  - reguły `sign_in` nie są związane z wersją. Pozwala na nie tylko v2, a v3 to nowa kopia i nowy przegląd;
+  - manifest oczekiwany napisany ręcznie z tego samego pliku. EHOS nie ma fikstury manifestu z `sign_in`; kształt
+    sprawdzony w `Manifest.V2`.
+- Informacyjnie: EHOS liczy `sign_in` do skrótu manifestu, nie do skrótu uprawnień, więc dopisanie aplikacji nie
+  wymaga `ehos.application.register`. Zgoda drugiej strony to D-64, po stronie EHOS-a.
+
+**Sprawdzone na żywo:** `mix eh_os_contract.manifest` w `MIX_ENV=dev` w `sandbox/` na pliku v2 ze scratchpada.
+`application: rehmed` z `sign_in.applications: [taxvision]` daje manifest z `ehos_yaml: "ehos.yaml/v2"` i tym samym
+`sign_in`. Z `[rehmed]` task odmawia z linią 8 i ścieżką `sign_in.applications[0]`.
+
 ## Dopisek 2 października — EB: sesja przeglądarki w `eh_os_contract_auth` (#78), plan
 
 [#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78): drugi Plug w `eh_os_contract_auth`, dla sesji
