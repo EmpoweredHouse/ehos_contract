@@ -193,7 +193,7 @@ The child checks this at boot and refuses to start otherwise:
 - `address`, and each address in `applications`, is `https://<host>` in lower case, with no port, no path and no
   trailing slash;
 - no address in `applications` is `address`: they are the other applications (`eh-os` D-69);
-- the issuer is https;
+- the issuer is `https://<host>[:port]` alone, as every parser reads it (#89);
 - `secret_key_base` has at least 64 bytes.
 
 Nothing it raises carries a secret. The callback is `address <> "/auth/ehos/callback"`, and a sign-out returns
@@ -433,8 +433,13 @@ the global defaults.
 Certificate verification cannot be turned off through the package, so a first integration cannot
 be made to work that way: the keys would then come from whoever answers. For the same reason the package refuses to boot
 when the key set would be fetched over anything but `https` (plain `http` is allowed for
-`localhost` only), whether `EhOsContract.Auth` starts the key process or the application lists
-`EhOsContract.Auth.Keys` itself, and takes the address only from the configuration.
+`localhost`, `127.0.0.1` and `::1` only), whether `EhOsContract.Auth` starts the key process or the
+application lists `EhOsContract.Auth.Keys` itself, and takes the address only from the configuration.
+The address, `issuer` and sign-in's addresses must also be ones every parser reads alike, as EHOS
+requires of its issuer: each reads back as written, with a lowercase host and no user, query or
+fragment, and `issuer` has no path. Otherwise `http://evil.example\@localhost` would pass as
+`localhost`, while EHOS and a browser read its host as `evil.example`. `issuer` is checked at boot even
+beside `jwks_url`, since each credential's `iss` must equal it.
 
 **What the application configures, and nothing else:** `issuer`, which must be exactly the `iss`
 EHOS writes, `audience` (`<application>/<environment>`, exactly the `aud` EHOS issues for this
