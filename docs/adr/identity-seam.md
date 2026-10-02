@@ -33,8 +33,10 @@
 > **2 October 2026 — a browser session, through EHOS.** `eh-os` D-64 makes EHOS an OpenID Connect provider
 > for the workloads it deploys, and `eh_os_contract_auth` gains a second Plug that signs a browser in and keeps
 > a credential per application behind the session. `oidcc` is a dependency again, of the package this time;
-> the engine does not use it. The engine still verifies nothing, and still gets the actor `verify/2` builds. What the package
-> decides beside D-64 is in [browser-session.md](browser-session.md).
+> the engine does not use it. The engine still verifies nothing, and still gets the actor `verify/2` builds.
+> What the package decides beside D-64 is in [browser-session.md](browser-session.md). "The one rule" below
+> is read as it has been since 23 September: the discovery URL, the client and the token's verification
+> belong to `eh_os_contract_auth`, not to "the engine's domain code".
 
 # Identity — the boundary, before any decision
 

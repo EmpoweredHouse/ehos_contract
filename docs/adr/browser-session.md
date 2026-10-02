@@ -90,34 +90,63 @@ can anything that reads the cookie. The README therefore tells the host to encry
   hold the credentials of several applications.
 - **The token stored as it is.** It would make the table a list of live sessions.
 
-### S3 — The refresh token, the ID token and the credentials are stored as they are, without encryption
+### S3 — The refresh token, the ID token and the credentials are encrypted with a key from `SECRET_KEY_BASE`
 
-Chosen by the user, 2 October 2026. The refresh token alone does not renew anything:
+Chosen by the user, 2 October 2026. It replaces "stored as they are", which the user chose first and which
+the review of this record's pull request (#79) reopened.
 
-- **The private key is needed too.** EHOS's token endpoint authenticates the client with `private_key_jwt`,
-  and the private key is a file the operator mounts in the workload (`EHOS_CLIENT_KEY_FILE`). It is never
-  in the database.
-- **What a reader of the table can still do: replay credentials.** ID tokens grant nothing, and refresh
-  tokens cannot be presented. But every credential in the table is a bearer credential. Until it expires,
-  within ten minutes, it can be replayed as the person whose session holds it. That applies to this
-  application, and to every other application the pages call (S8).
-- **That risk is accepted, not mitigated.** A reader of this table reads the application's own tables beside
-  it already. What it gains here ends with each credential's ten minutes, and it cannot renew. A reader that
-  holds the workload would get through encryption too (next point). And EHOS cannot revoke a credential
-  once issued (D-33), so no mitigation inside the application shortens the window. Only a shorter credential
-  would, which D-64 rejected.
-- **Encryption would add little.** Encrypting with a key the same process holds protects only a copy of the
-  database taken without the workload: a dump or a backup. In exchange, it would bind every session to that
-  key's rotation.
+**Why encrypt.**
+
+- **The credentials can be replayed.** Every credential in the table is a bearer credential. A reader of the
+  table could replay it as the person whose session holds it until it expires, within ten minutes. That
+  applies to this application, and to every other application the pages call (S8).
+- **Nothing else shortens that window.** EHOS cannot revoke a credential once issued (D-33). Short of a
+  shorter credential, which D-64 rejected, only keeping the reader from the plaintext does anything.
+- **The refresh token alone is worth less.** EHOS authenticates the client with `private_key_jwt`, and the
+  private key is a file mounted in the workload (`EHOS_CLIENT_KEY_FILE`), never in the database. It is
+  encrypted anyway, because it costs nothing more.
+
+**How.**
+
+- **The key.** It is derived from the host's `SECRET_KEY_BASE`, which EHOS gives every workload (D-56), with
+  `Plug.Crypto.KeyGenerator` and a salt of this package's own. `plug_crypto` already comes with `plug`, so
+  this adds no dependency.
+- **The cipher.** Each value is encrypted with `Plug.Crypto.MessageEncryptor` (AES-256-GCM). The associated
+  data is its row's session hash and its column, so a ciphertext copied to another row or column does not
+  decrypt.
+- **What stays plain.** The session hash, `subject`, `sid`, `auth_time`, the lease columns and the expiry
+  times stay plain. The package selects, locks and expires by them.
+- **A value that does not decrypt** is a session that is over. Its row is deleted, and the caller gets
+  `{:error, :signed_out}`.
+- **The host passes the secret** as `secret_key_base:` among the sign-in options (S7). The sign-in child
+  refuses to start without it, or with one shorter than 64 bytes, Phoenix's own minimum.
+
+**What it protects, and what it does not.**
+
+- **It protects** against anyone who has the database without the workload:
+  - a backup, which may leave the environment's namespace;
+  - a replica or a dump;
+  - an SQL injection elsewhere in the application that reads any table.
+
+  Those are the readers who would otherwise get other applications' credentials.
+- **It does not protect** against anyone who holds the workload, since the workload holds the key.
+
+**Rotating `SECRET_KEY_BASE` signs everybody out.** That costs nothing new. The cookie session that carries
+the session token (S2) is signed with the same secret, so rotating it already ends every session. For the
+same reason, no list of older keys is kept.
 
 *Rejected:*
 
-- **Encryption with a key derived from `SECRET_KEY_BASE`.** Rotating `SECRET_KEY_BASE` would then sign
-  everybody out. For the thin protection above, it adds a key to manage and a failure to explain.
+- **Stored as they are.** Chosen first, on the argument that the refresh token cannot be presented without
+  the client key. That argument holds for the refresh token only. It left the credentials replayable from
+  any copy of the database. It also counted the rotation above as a new cost, and it is not one.
+- **A key of its own**, for example a further variable from EHOS. It would mean a second secret to deliver
+  and rotate, for no reader that `SECRET_KEY_BASE` does not already keep out.
 - **The engine's vault.** It exists to crypto-shred personal data (v2 §17), which is not this.
+- **`pgcrypto`.** The key would travel to the database with every query, and appear in its logs.
 
-*Revisit if* EHOS ever accepts a refresh without client authentication, or the database's backups leave the
-environment's namespace while the client key does not.
+*Revisit if* EHOS ever accepts a refresh without client authentication, or if `SECRET_KEY_BASE` is ever
+given to something other than the workload.
 
 ### S4 — One renewal per session: a lease on the session's row, taken and released by single statements
 
@@ -203,10 +232,15 @@ down (driver 4).
 ```elixir
 # config/runtime.exs
 config :eh_os_contract_auth,
+  # the verifier's, as today: sign-in verifies this application's credential with them
+  issuer: System.fetch_env!("EHOS_ISSUER"),
+  audience: System.fetch_env!("EHOS_AUDIENCE"),
   sign_in: [
     client_id: System.fetch_env!("EHOS_CLIENT_ID"),
     client_key_file: System.fetch_env!("EHOS_CLIENT_KEY_FILE"),
     address: "https://" <> System.fetch_env!("PHX_HOST"),
+    # what the stored tokens are encrypted with (S3)
+    secret_key_base: System.fetch_env!("SECRET_KEY_BASE"),
     # other applications the pages call, by name: their addresses (eh-os#134)
     applications: %{"ledger" => "https://ledger.production.example.com"}
   ]
@@ -314,5 +348,9 @@ through `oidcc`'s HTTP adapter (no port, no network):
 - **ID tokens and `client_id`.** An ID token presented as a bearer credential is refused (S9). A credential
   carrying `client_id` is accepted.
 - **Sign-out.** It redirects to `end_session` with `id_token_hint`, and the row is gone.
+- **Encryption (S3).**
+  - No refresh token, ID token or credential appears in plain text in the table.
+  - A ciphertext moved to another row does not decrypt.
+  - A session whose values do not decrypt under the configured `secret_key_base` is signed out.
 - **The overrides.** A discovery document without `authorization_response_iss_parameter_supported`, or
   without `S256`, refuses sign-in (S6).

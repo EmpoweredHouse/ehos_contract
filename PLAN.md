@@ -378,14 +378,22 @@ października):
 
   *Odrzucone:* plug, który odnawia przy każdym żądaniu strony. Odnawiałby także dla stron, które niczego nie
   wołają, wbrew „on demand only” z D-64.
-- **Refresh token, ID token i credentiale bez szyfrowania w tabeli** (S3), z ADR-em. Bez klucza prywatnego
-  klienta (`private_key_jwt`, plik w workloadzie, nigdy w bazie) refresh token niczego nie odnowi.
-  **Ryzyko przyjęte jawnie** (po komentarzu CodeRabbita do #79): kto czyta tabelę, może odtworzyć każdy
-  credential, póki nie wygaśnie — najwyżej 10 minut. Dotyczy to też credentiali innych aplikacji, które strony
-  wołają (S8). Szyfrowanie nie zatrzyma czytelnika, który ma workload, a EHOS nie unieważnia credentiali
-  (D-33). *Odrzucone:*
-  - szyfrowanie kluczem z `SECRET_KEY_BASE` — chroni tylko zrzut bazy, a jego rotacja wylogowuje wszystkich;
-  - vault silnika — jest od crypto-shreddingu danych osobowych.
+- **Refresh token, ID token i credentiale szyfrowane w tabeli kluczem z `SECRET_KEY_BASE`** (S3), z ADR-em —
+  decyzja zmieniona tego samego dnia.
+  - **Jak:** `Plug.Crypto.KeyGenerator` i `MessageEncryptor` (AES-256-GCM); dane powiązane to hash sesji i
+    kolumna; opcja `secret_key_base:` w `sign_in:`.
+  - **Pierwszy wybór był inny:** bez szyfrowania, bo bez klucza prywatnego klienta (`private_key_jwt`) refresh
+    token niczego nie odnowi.
+  - **Dlaczego zmiana:** komentarz CodeRabbita do #79 pokazał, że credentiale da się odtworzyć z każdej kopii
+    bazy, póki nie wygasną (do 10 minut), także credentiale innych aplikacji (S8). A argument „rotacja
+    `SECRET_KEY_BASE` wylogowuje wszystkich” był chybiony: ciasteczko sesji podpisuje ten sam klucz, więc jego
+    rotacja i tak wylogowuje. Koszt: około 50–80 linii z testami w EB2.
+
+  *Odrzucone:*
+  - bez szyfrowania — zostawia credentiale w backupie, replice i zrzucie;
+  - osobny klucz od EHOS-a — drugi sekret do dostarczania bez zysku;
+  - vault silnika — jest od crypto-shreddingu danych osobowych;
+  - `pgcrypto` — klucz jechałby do bazy z każdym zapytaniem.
 - **Decyzje pakietu idą do ADR-a** (`docs/adr/browser-session.md`), nie tylko tutaj. Zapisuje je z odrzuconymi
   opcjami: S1 zależności, S2 ciasteczko, S4 dzierżawa, S5 skutki odmów, S6 nadpisane domyślne, S8 credential
   innej aplikacji, S9 ID token jako bearer, S11 bez joba. Status `proposed`, do akceptacji przez właściciela
@@ -404,7 +412,7 @@ października):
 | Część | Zakres | Czeka na |
 | --- | --- | --- |
 | **EB1** | Testy: ID token jako bearer odrzucony (`:bad_signature`), credential z `client_id` przyjęty. Zależności `oidcc ~> 3.9`, `oidcc_plug ~> 0.5.1`. `EhOsContract.Auth.SignIn`: konfiguracja, klucz klienta (PEM i JWK), worker dostawcy, sprawdzenie discovery przed pierwszym logowaniem. README: OTP 27. | — |
-| **EB2** | Migracja V03: `eh_os_contract_auth_sessions` (hash tokenu sesji, `subject`, `sid`, `auth_time`, `refresh_token`, `id_token`, kolumny dzierżawy) i `eh_os_contract_auth_session_credentials` (`session_id`, `resource`, `token`, `expires_at`, `refused_until`). Router: logowanie, callback, wylogowanie. Plug `Session`, `actor/1` na credentialu z wymiany kodu. Fałszywy EHOS jako adapter `oidcc` w `test/support/`. | — |
+| **EB2** | Migracja V03: `eh_os_contract_auth_sessions` (hash tokenu sesji, `subject`, `sid`, `auth_time`, `refresh_token`, `id_token`, kolumny dzierżawy) i `eh_os_contract_auth_session_credentials` (`session_id`, `resource`, `token`, `expires_at`, `refused_until`); tokeny szyfrowane (S3). Router: logowanie, callback, wylogowanie. Plug `Session`, `actor/1` na credentialu z wymiany kodu. Fałszywy EHOS jako adapter `oidcc` w `test/support/`. | — |
 | **EB3** | Dzierżawa i `refresh_token/5`, `resource` dla innych aplikacji, `credential/2`, skutki z S5, timeouty. `CommitRepo` i baza `eh_os_contract_auth_test_commits` do testów na prawdziwych commitach (współbieżność, brak transakcji). | eh-os#133 |
 
 Do każdej części: CHANGELOG, README („Signing people in”), `@doc` i `@spec`, eksporty `Boundary`, przegląd
