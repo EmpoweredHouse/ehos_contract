@@ -6,7 +6,10 @@ defmodule EhOsContract.Codec do
 
   **Types.** `:string` is text and `:id` non-empty text, where text is valid UTF-8 with no
   NUL: the log's JSON cannot carry invalid UTF-8, and Postgres holds a NUL neither in `jsonb`
-  nor in `text`, so such a value does not fit, rather than failing the write.
+  nor in `text`, so such a value does not fit, rather than failing the write. Decoding
+  with `open:`, which reads the log back, does not ask again: what is read back was
+  written, and a sealed personal value holds, inside its ciphertext, what was let in
+  before the rule.
   `:integer` and `:boolean` what they
   say, `:decimal` a `Decimal`, `:date` a `Date`, `:timestamp` a `DateTime` in UTC,
   `{:enum, members}` one of the member atoms, `{:list, type}` a list of them. A
@@ -416,18 +419,18 @@ defmodule EhOsContract.Codec do
   end
 
   # A sealed personal field is opened first; its value is then decoded as any other,
-  # and nothing inside it was sealed again.
+  # and nothing inside it was sealed again: `:opened` reads the log back, opening nothing.
   defp decode_field(field, raw, fields, external, values, open, path) do
     here = path ++ [Atom.to_string(field.name)]
     target = Map.get(field, :personal)
 
     cond do
-      target != nil and open != nil and sealed?(raw) ->
+      target != nil and is_function(open) and sealed?(raw) ->
         %{subject: subject} = Enum.find(fields, &(&1.name == target))
 
         with id when is_binary(id) <- fetch(external, target),
              {:ok, opened} <- open.(Enum.join(here, "."), {subject, id}, raw) do
-          decode_value(field.type, opened, values, nil, here)
+          decode_value(field.type, opened, values, :opened, here)
         else
           :erased -> {:ok, %Erased{subject: subject, id: fetch(external, target)}}
           _ -> :error
@@ -435,7 +438,7 @@ defmodule EhOsContract.Codec do
 
       # Clear text where the log holds a seal: written around the sealing, and it
       # would outlive an erasure.
-      target != nil and open != nil and raw != nil ->
+      target != nil and is_function(open) and raw != nil ->
         :error
 
       # A seal, and nothing to open it with: never read as the value it hides.
@@ -525,8 +528,8 @@ defmodule EhOsContract.Codec do
 
   defp decode_value(_type, nil, _values, _open, _path), do: {:ok, nil}
 
-  defp decode_value(type, value, _values, _open, _path) when type in [:id, :string] do
-    if text?(value), do: {:ok, value}, else: :error
+  defp decode_value(type, value, _values, open, _path) when type in [:id, :string] do
+    if text?(value) or (open != nil and is_binary(value)), do: {:ok, value}, else: :error
   end
 
   defp decode_value(:integer, value, _values, _open, _path) when is_integer(value),
@@ -596,9 +599,11 @@ defmodule EhOsContract.Codec do
 
   defp decode_value(_type, _value, _values, _open, _path), do: :error
 
+  @doc false
   # What the log's JSON and Postgres's `jsonb` and `text` can hold: a request's `%00` or
   # `"\u0000"`, or bytes a direct caller passed, would otherwise fail the write.
-  defp text?(value),
+  @spec text?(term()) :: boolean()
+  def text?(value),
     do: is_binary(value) and String.valid?(value) and not String.contains?(value, <<0>>)
 
   # An enum's members: atoms, or `atom: label` pairs.

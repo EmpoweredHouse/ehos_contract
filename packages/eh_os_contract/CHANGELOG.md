@@ -74,13 +74,21 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
       string, and Jason in a body.
     - Reachable from a direct caller of `call/3` or `dispatch/3` with any bytes.
     - The answer is `{:error, {:invalid, [{field, :type}]}}`, or 422 `{"invalid": {"<field>": "type"}}`, at any
-      depth of a domain value. A query's parameter is held to it too, and so is a published event an inbox takes:
-      one that does not fit is delivered again, as before, when it failed.
+      depth of a domain value. A query's parameter is held to it too.
+    - A published event an inbox takes is held to it as well. One that does not fit is delivered again, also when
+      no policy would have stored the field.
+    - A scope value that is not text is asked of the `Authorizer` as none (`nil`), so it is refused
+      `:outside_scope` and never reaches a decision row.
+    - Reading the log back does not ask again: a sealed personal value written before the rule still opens.
   - **A caller's idempotency key must be printable ASCII (`0x21`–`0x7E`) of at most 255 bytes.**
     - Otherwise the answer is `{:error, :idempotency_key_invalid}`, or 400 `{"error": "idempotency_key_invalid"}`.
       This is a new refusal.
-    - The key is stored, indexed and copied into the event's metadata. A space, a byte above `0x7E`, or a key long
-      enough to break the unique index's btree entry failed the write.
+    - The rule is stricter than the key's columns need, so a key never depends on what a text column, `jsonb` and
+      an index entry happen to hold.
+      - What failed the write before was a NUL, invalid UTF-8, or a key past about 2.7 KB.
+      - These were accepted before and are refused now: a space, other non-ASCII UTF-8 such as `zamówienie-1`, a
+        key of 256 bytes to 2.7 KB, and an empty `idempotency-key` header.
+    - The OpenAPI document gives the header's pattern.
     - A reaction's key is the library's own and is not checked.
 
 - **E12c, D12: only a policy takes an event another application publishes.** A read model, an effect or a

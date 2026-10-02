@@ -1048,7 +1048,32 @@ indeksu unikalnego ma ~2,7 KB).
 - CHANGELOG w „Changed — a host has to act”.
 
 **Weryfikacja:** próby odwrotne — tekst jako dowolny binarny, NUL dozwolony, bez sprawdzenia klucza, bez limitu,
-nagranie bez sprawdzenia, Plug bez 400. Każda wywraca co najmniej jeden test. Silnik: 1114 → 1120.
+nagranie bez sprawdzenia, Plug bez 400. Każda wywraca co najmniej jeden test.
+
+**Przegląd przed PR-em**, dwa równolegle. Poprawione, każde z testem:
+- **zapieczętowana wartość osobowa z NUL, zapisana przed regułą, przestałaby się otwierać** (poprawność) — odczyt
+  logu (`:opened`) nie sprawdza tekstu ponownie;
+- **wartość zakresu z NUL dalej szła „jak wysłana” do `Authorizer`**, a `eh_os_contract_auth` zapisuje ją w kolumnie
+  tekstowej (oba) — teraz `nil`, więc `:outside_scope`, niezależnie od #66;
+- CHANGELOG i doc: reguła klucza surowsza, niż wymagają kolumny, a pusty nagłówek to teraz 400; inbox odrzuca
+  wiadomość także o pole, którego polityka nie zapisuje;
+- OpenAPI: wzorzec nagłówka i opis 400; wyrażenie klucza `{1,255}` z komentarzem, czemu bez `u`;
+- testy: nagranie, pusty nagłówek, lista.
+
+Bez zmian w tym PR-ze — **znalezione przez przegląd bezpieczeństwa, każde to nowa odmowa, do decyzji
+użytkownika**:
+- `:decimal` z ogromnym wykładnikiem — `"1E1000000000"` (25 bajtów) przy zapisie w formie `:normal` buduje ~16 GB
+  (HIGH, uśpione: żaden kontrakt sandboxa nie ma `:decimal`); także `NaN`, `Infinity`;
+- `:id` bez limitu długości przy indeksach btree i GIN (~2,7 KB) — 500;
+- `:integer` bez zakresu — przepełnienie `numeric` w `jsonb`, `bigint` w read modelu hosta, bignum w zapytaniu;
+- `:date` i `:timestamp` poza zakresem Postgresa;
+- zły UTF-8 w query stringu — `Plug.Conn.InvalidQueryError` (Phoenix: 400, goły Plug: 500).
+
+Poza zakresem, informacyjnie: `correlation_id`/`causation_id` od bezpośredniego wywołującego `dispatch/3`, podmiot
+`Actor.credential/3` z NUL, klucz wiadomości inboxu od transportu; furtka reakcji (`%Actor{kind: :reaction}`) jest
+publiczną strukturą — klucze biblioteki i tak przechodzą regułę.
+
+Silnik: 1114 → 1124.
 
 ### EB3b — co wyszło (2 października)
 

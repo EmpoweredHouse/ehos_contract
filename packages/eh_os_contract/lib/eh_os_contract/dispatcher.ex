@@ -22,8 +22,9 @@ defmodule EhOsContract.Dispatcher do
      with `{field, :generated}` when it brings one of its own, and with
      `{:error, :idempotency_key_required}` without an idempotency key (plan EM3).
      A caller's idempotency key is printable ASCII (`0x21`–`0x7E`) of at most 255
-     bytes, or `{:error, :idempotency_key_invalid}`: the key is stored and indexed,
-     and other bytes would fail the write.
+     bytes, or `{:error, :idempotency_key_invalid}`: stricter than the key's columns
+     need, so a key never depends on what a text column, `jsonb` and an index entry
+     happen to hold.
   3. **Once.** A key belongs to the actor who sent it: another actor's command
      with the same key is its own, and never sees the first one's receipt. An
      idempotency key the actor already had accepted for the same command returns
@@ -459,12 +460,11 @@ defmodule EhOsContract.Dispatcher do
     )
   end
 
-  # A scope value as the request sent it, when it is a string.
+  # A scope value as the request sent it, when it is text: one with a NUL or invalid UTF-8 is
+  # no value any grant holds, and the `Authorizer` may record what it is asked.
   defp sent(input, dimension) do
-    case Map.get(input, Atom.to_string(dimension)) do
-      value when is_binary(value) -> value
-      _missing_or_not_a_string -> nil
-    end
+    value = Map.get(input, Atom.to_string(dimension))
+    if Codec.text?(value), do: value
   end
 
   defp permit(model, declaration, actor), do: permit(model, declaration, actor, nil)
@@ -665,7 +665,8 @@ defmodule EhOsContract.Dispatcher do
   defp keyed(%{actor: %Actor{kind: :reaction}}), do: :ok
 
   defp keyed(%{idempotency_key: key}) do
-    if is_binary(key) and byte_size(key) in 1..255 and key =~ ~r/\A[\x21-\x7E]+\z/,
+    # Bytes, not characters, so no `u`: a binary that is not UTF-8 is refused byte by byte.
+    if is_binary(key) and key =~ ~r/\A[\x21-\x7E]{1,255}\z/,
       do: :ok,
       else: {:error, :idempotency_key_invalid}
   end

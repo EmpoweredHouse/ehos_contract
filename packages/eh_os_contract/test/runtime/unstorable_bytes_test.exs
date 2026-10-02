@@ -3,7 +3,8 @@ defmodule EhOsContract.UnstorableBytesTest do
   Request bytes the log's tables cannot hold — a NUL in a text field (jsonb refuses
   `\\u0000`), invalid UTF-8 (a text column refuses it, and JSON cannot carry it), an
   idempotency key outside printable ASCII — are a refusal of the request, never an
-  exception: the same class #66 closed for the decisions of `eh_os_contract_auth`.
+  exception: the class #66 closes for the decisions of `eh_os_contract_auth`, here in
+  the engine.
   """
 
   use EhOsContract.DataCase, async: false
@@ -83,6 +84,34 @@ defmodule EhOsContract.UnstorableBytesTest do
 
     assert {conn.status, Jason.decode!(conn.resp_body)} ==
              {422, %{"invalid" => %{"account_id" => "type"}}}
+  end
+
+  test "a recording's text is held to it, and an empty idempotency-key header is a 400" do
+    auditor = Actor.credential("u-2", ["dispatch_rig.balance_confirmed"])
+
+    assert EhOsContract.call(
+             {:record, "dispatch_rig.balance_confirmed"},
+             %{"account_id" => "a-1" <> <<0>>},
+             actor: auditor
+           ) == {:error, {:invalid, [account_id: :type]}}
+
+    conn =
+      http("/commands/dispatch_rig.deposit", %{account_id: "a-1", amount: 1}, [
+        {"idempotency-key", ""}
+      ])
+
+    assert {conn.status, Jason.decode!(conn.resp_body)} ==
+             {400, %{"error" => "idempotency_key_invalid"}}
+  end
+
+  test "text inside a list is held to it as at the top" do
+    fields = [%{name: :tags, type: {:list, :string}, optional: false}]
+
+    assert EhOsContract.Codec.decode(fields, %{"tags" => ["a", "b" <> <<0>>]}, %{}) ==
+             {:error, [tags: :type]}
+
+    assert {:ok, %{tags: ["a", "b"]}} =
+             EhOsContract.Codec.decode(fields, %{"tags" => ["a", "b"]}, %{})
   end
 
   test "a struct the host's code built is held to the same: {:invalid, problems}, not a raise" do
