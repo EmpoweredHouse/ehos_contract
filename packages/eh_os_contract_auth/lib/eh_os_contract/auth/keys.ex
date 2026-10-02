@@ -96,9 +96,10 @@ defmodule EhOsContract.Auth.Keys do
   default), fetching from `:url`.
 
   `:repo` defaults to the engine's (`config :eh_os_contract, :repo`). The intervals,
-  `:refresh_every` and `:refetch_at_most_every`, are in milliseconds, measured by
-  `:clock`, which defaults to the monotonic clock, and are at least five seconds, the
-  most a fetch may take: a shorter one would fetch back to back.
+  `:refresh_every` and `:refetch_at_most_every`, are in milliseconds, each counted
+  from the end of the fetch before, and are at least five seconds, the most a fetch
+  may take. `:refetch_at_most_every` is measured by `:clock`, which defaults to the
+  monotonic clock.
   EHOS's certificate is checked against the system's authorities, or against the
   one `:cacertfile` (a PEM file) or `:cacerts` (DER certificates) names. The fetch
   follows no redirect, is not retried, and waits two seconds to connect and three
@@ -273,9 +274,10 @@ defmodule EhOsContract.Auth.Keys do
                 "may be plain http"
     end
 
-    # An interval shorter than a fetch may take fetches back to back, and an early
-    # fetch asked for by every unknown `kid` an attacker sends would reach EHOS each
-    # time, with the calls that waited for it piling up behind.
+    # An interval shorter than a fetch may take would leave the process fetching for
+    # most of its time: the early fetch every unknown `kid` an attacker sends asks for
+    # would reach EHOS almost as soon as the last one ended, with the calls that
+    # waited for it piling up behind.
     for key <- [:refresh_every, :refetch_at_most_every], Keyword.has_key?(opts, key) do
       case Keyword.fetch!(opts, key) do
         ms when is_integer(ms) and ms >= @fetch_deadline ->
@@ -285,7 +287,7 @@ defmodule EhOsContract.Auth.Keys do
           raise ArgumentError,
                 "eh_os_contract_auth takes #{key}: in milliseconds, at least " <>
                   "#{@fetch_deadline}, the most a fetch may take, and got #{inspect(other)}: " <>
-                  "a shorter interval would fetch back to back"
+                  "a shorter interval would let fetches follow one another almost without a pause"
       end
     end
 
@@ -390,24 +392,36 @@ defmodule EhOsContract.Auth.Keys do
       )
   end
 
+  # The interval runs from when a fetch ends, its table written, not from when it
+  # began: a fetch may take as long as the interval, and one counted from its start
+  # would let the next begin the moment it ended. Closed from the start too, so no
+  # caller asks while it runs.
   defp fetch_now(state) do
+    close_early_fetch(state)
+
+    result =
+      case get(state) do
+        {:ok, keys} ->
+          store(state, keys)
+          :ok
+
+        {:error, reason} = error ->
+          Logger.warning(
+            "eh_os_contract_auth could not fetch the key set from #{state.url} (#{inspect(reason)}); " <>
+              "#{held(state.name)} keys stay in force"
+          )
+
+          error
+      end
+
+    {result, %{state | fetched_at: close_early_fetch(state)}}
+  end
+
+  # Opens the early fetch again an interval from now; answers now.
+  defp close_early_fetch(state) do
     now = state.clock.()
     :ets.insert(state.name, {@next, state.clock, now + state.refetch_at_most_every})
-    state = %{state | fetched_at: now}
-
-    case get(state) do
-      {:ok, keys} ->
-        store(state, keys)
-        {:ok, state}
-
-      {:error, reason} = error ->
-        Logger.warning(
-          "eh_os_contract_auth could not fetch the key set from #{state.url} (#{inspect(reason)}); " <>
-            "#{held(state.name)} keys stay in force"
-        )
-
-        {error, state}
-    end
+    now
   end
 
   # The request runs in a task of its own, so a fetch that outlives the deadline is

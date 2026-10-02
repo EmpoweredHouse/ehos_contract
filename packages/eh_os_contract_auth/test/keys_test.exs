@@ -347,6 +347,32 @@ defmodule EhOsContract.Auth.KeysTest do
     assert requests(ehos) == 3
   end
 
+  test "an unknown kid waits the interval from the end of the last fetch, not its start" do
+    pair = key_pair()
+    clock = clock()
+    test = self()
+
+    # A fetch that takes twenty seconds of the key process's clock.
+    slow = fn conn ->
+      send(test, :fetched)
+      advance(clock, :timer.seconds(20))
+      Req.Test.json(conn, %{"keys" => [Map.put(pair.public, "kid", pair.kid)]})
+    end
+
+    keys = start_keys(nil, clock: clock, plug: slow)
+    assert_received :fetched
+
+    # Thirty-five seconds after the start's fetch began, fifteen after it ended.
+    advance(clock, :timer.seconds(15))
+    assert Auth.verify(credential(key_pair()), keys: keys) == {:error, :unknown_key}
+    refute_received :fetched
+
+    # The control: thirty after it ended.
+    advance(clock, :timer.seconds(15))
+    assert Auth.verify(credential(key_pair()), keys: keys) == {:error, :unknown_key}
+    assert_received :fetched
+  end
+
   test "a known kid fetches nothing" do
     pair = key_pair()
     ehos = ehos({:keys, [pair]})
