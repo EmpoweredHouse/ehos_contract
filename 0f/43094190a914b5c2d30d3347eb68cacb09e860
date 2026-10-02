@@ -1,0 +1,4 @@
+#89 pre-PR review: /code-review high (correctness) and engineering:code-review (security and performance) in parallel on d68aa78, then one pass (both foci) on the fix 13f18a5.
+Fixed with tests: issuer with a path, and unchecked in child_spec beside jwks_url; origin!/2 still on URI.parse (https://127.1 passed); a password from a refused address in the error (shown/1, as EHOS); CHANGELOG overstated the bug; applications of the wrong type printed whole; CHANGELOG on who checks the issuer; README boot list; dead trim_trailing.
+Skipped: discovery endpoints checked by prefix only (needs a compromised EHOS over TLS); ::1 unreachable without inet6 (pre-existing, fails closed); shown/1 reading with URI.parse (no secret, as EHOS); default port written out in an issuer (EHOS's rule takes it); https://[::1] as sign-in address (pre-existing).
+Gate from sandbox/: EXIT=0 - sandbox 145, check 0/29/9; engine 1114, check 0/68/6; web 52; auth 278 + 1 property.
