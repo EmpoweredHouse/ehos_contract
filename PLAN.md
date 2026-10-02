@@ -52,6 +52,9 @@ kluczem `sign_in` (`eh-os` D-69) w czytniku i generatorze (#84, merge `ef0e94d`)
   `ecto.drop` dalej poprawny, tylko wspólny. **Worktree na kodzie sprzed E11c nie wolno migrować wspólnych baz** —
   dołoży swoje V02–V05 (`ecto.drop` naprawia). Baza dev ma dane sprzed E11c w nowym schemacie; przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
+- **Baza `eh_os_contract_auth_test` jest od 2 października na V03** (EB2a; `mix test` pakietu auth migruje ją sam).
+  Worktree na kodzie sprzed EB2a ma przez to padnięcia `SchemaTest`, bo `public` mówi tam „3”. To oczekiwane, nie
+  regresja; `MIX_ENV=test mix ecto.drop` w pakiecie auth przywraca stan.
 - **Tabela `eh_os_contract_inbox` (E12c, V01 w miejscu) dołożona ręcznie 1 października** do `…_host_dev`,
   `…_host_test`, `eh_os_contract_test`, `…_test_commits` i `eh_os_contract_web_test` (`CREATE TABLE IF NOT EXISTS`
   w kształcie V01). **Worktree na kodzie sprzed E12c ma przez nią trzy padnięcia `MigrationsTest`** (lista tabel w
@@ -612,6 +615,46 @@ Kontekst klienta w EB2 powstanie z `Oidcc.ClientContext.from_manual/5` i trafi d
   https endpointów, porównanie issuera, algorytmy symetryczne, jednorazowy log, podwajanie backoffu.
 - Wcześniej, w `53f941d` i `10685d2`: ID token, `client_id`, `backoff_type`, sprawdzenie discovery, `x`
   wobec `d`.
+
+### EB2a — co wyszło (2 października)
+
+Gałąź `eb/eb2a-session-store`, od `ef0e94d` (merge #84).
+
+**Co jest:**
+- **V03:** `eh_os_contract_auth_sessions` i `eh_os_contract_auth_session_credentials`, od razu z kolumnami
+  dzierżawy, żeby EB3 nie potrzebował V04. Credential jest kluczowany adresem aplikacji, tym, który EHOS dostaje w
+  `resource`, także dla własnej aplikacji (`address`).
+- **`SignIn.Sessions`** (wewnętrzny): `create/2`, `fetch/2`, `delete/1`.
+  - Przeglądarka dostaje 32 losowe bajty, tabela ich SHA-256.
+  - Refresh token, ID token i credentiale są zaszyfrowane (`SignIn.Cipher`, XChaCha20-Poly1305 z `plug_crypto`
+    2.2). Klucz jest wyprowadzony raz przy starcie dziecka; dane powiązane to hash wiersza i kolumna, a dla
+    credentialu kolumna z adresem aplikacji.
+  - Wartość, która się nie odszyfrowuje, kończy sesję i kasuje wiersz.
+  - `create/2` kasuje w tej samej transakcji sesje starsze niż 12 h od `auth_time` (S11).
+- **`SignIn.client_context/1`:** kontekst `oidcc` z tego, co trzyma dziecko, budowany na wywołanie.
+- **Losowy `client_secret`** przy każdym starcie, poza `inspect`.
+- **`FakeEhos` ma endpoint tokenu** w kształcie `Ehos.SignIn.Token` dla wymiany kodu.
+- Auth: 191 → 206 testów.
+
+**Decyzje asystenta:**
+- **Klucz prywatny w kontekście klienta.** Ani struct `oidcc`, ani `JOSE.JWK` nie chowa go przed `inspect`, więc
+  „klucz nigdy w argumentach czegoś, co może paść” da się zapewnić tylko w naszym kodzie. Funkcje biorą nazwę
+  dziecka i czytają klucz w środku; kontekst powstaje na wywołanie i nie jest nigdzie trzymany. Zostaje to, co
+  wypisze sam `oidcc`, gdy padnie — poza naszym zasięgiem; zapisane w ADR-ze (S1, poprawka z datą).
+  *Odrzucone:* opakowanie klucza w domknięcie (`oidcc` bierze `client_jwks` jako rekord JOSE i z domknięciem nie
+  ruszy); kontekst w `conn.assigns` (każdy crash Plug wypisuje `conn`).
+- **`ClientStore` dla `oidcc_plug` przechodzi do EB2b**, bo bez routera nikt go nie woła. Bez `refresh_jwks/1`:
+  callback dostaje tylko kontekst i nie zna nazwy dziecka, a dziecko i tak odświeża klucze co 5 minut.
+- **Credential po adresie, nie po nazwie aplikacji.** `credential/2` w EB3 przyjmie nazwę i zamieni ją na adres z
+  `applications`; tabela trzyma to, co poszło do EHOS-a.
+
+**Przeniesione do EB2b:** `ClientStore`, opcje wywołań z S6 w jednym miejscu (dziś test wymiany kodu podaje je
+sam), README „Signing people in” do końca.
+
+**Weryfikacja:** każde zabezpieczenie ma próbę odwrotną (mutacja w kopii, `cp`, `cmp`). Sprawdzone mutacje: stały
+sekret, kontekst bez klucza klienta, dane powiązane bez kolumny, bez wiersza, credential bez adresu, brak
+szyfrowania, surowy token zamiast hasha, brak czyszczenia po 12 h i wiersz, który zostaje po nieudanym
+odszyfrowaniu. Każda wywraca właściwe testy.
 
 ## Dopisek 1 października — lista zmian do `eh-os` jako issues w `EmpoweredHouse/eh-os`
 

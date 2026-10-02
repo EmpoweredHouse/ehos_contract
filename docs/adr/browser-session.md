@@ -102,6 +102,12 @@ EB2 builds the client context from what is held, with `Oidcc.ClientContext.from_
 to `oidcc_plug` through its `client_store`. `oidcc`'s protocol code is used as before; only the keeping of
 the provider is the package's.
 
+*Amended, 2 October 2026, at EB2a:* the context holds the client's private key, and neither `oidcc`'s struct
+nor `JOSE.JWK` leaves the key out of an inspection. So `EhOsContract.Auth.SignIn.client_context/1` builds the
+context for the call that needs it, from the child's name. It is never kept, logged or assigned to a
+connection. What `oidcc` itself prints when it fails is outside the package's reach, and is the one place the
+key could still appear.
+
 ### S2 — The browser holds one opaque token, and the table holds its hash
 
 - **What the cookie carries.** The host's cookie session carries one random 32-byte token under one key, and
@@ -179,6 +185,15 @@ same reason, no list of older keys is kept.
 
 *Revisit if* EHOS ever accepts a refresh without client authentication, or if `SECRET_KEY_BASE` is ever
 given to something other than the workload.
+
+*Amended, 2 October 2026, at EB2a:*
+
+- **What the associated data is.** A credential's column is named with the application's address it is for, so
+  a credential moved to another application's row of the same session does not decrypt either.
+- **When the key is derived.** Once, when the sign-in child starts, with a salt of the package's own. The child
+  holds it beside the client key, left out of every inspection.
+- **Where it is read.** The storage functions read it from the child by its name, so it is never an argument of
+  a frame a crash would print.
 
 ### S4 — One renewal per session: a lease on the session's row, taken and released by single statements
 
