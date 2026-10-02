@@ -273,9 +273,21 @@ end
 - **`Session.actor/2`** is the actor of the person's credential for this application, verified as a bearer
   credential is.
 
-Renewing a credential that has expired, and credentials for other applications, are the last part of this work
-([#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78)). Until then, `actor/2` gives
-`{:error, :expired}` ten minutes after sign-in. What the package decides beside D-64 is in
+**Renewal.** A credential lives ten minutes. When one is good for less than 30 seconds, `actor/2`, and the plug
+with `assign_actor: true`, renew it through EHOS with the session's refresh token (`Oidcc.Token.refresh/3`).
+Nothing renews unless a request asks.
+
+- **One renewal per session.** However many requests of the session ask at once, one takes a lease on the
+  session's row, by the database's clock, and renews. The others wait for its credential, for at most 15 seconds.
+- **No transaction is open while EHOS is called.**
+- **What a failure leaves.**
+  - Sign-in over at EHOS: the session ends, and a page is sent to sign in.
+  - EHOS down or slow: the held credential is used while it is unexpired. After that the request answers 503,
+    and the refresh token is kept.
+  - A response that cannot be used: the session ends, since EHOS has rotated the refresh token.
+
+Credentials for other applications are the last part of this work
+([#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78)). What the package decides beside D-64 is in
 [`docs/adr/browser-session.md`](../../docs/adr/browser-session.md).
 
 ## Deciding, and recording every decision

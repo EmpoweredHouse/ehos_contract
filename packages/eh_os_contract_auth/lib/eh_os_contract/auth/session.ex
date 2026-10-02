@@ -20,18 +20,20 @@ defmodule EhOsContract.Auth.Session do
 
   **When it stops a request.** A browser's navigation (`GET` or `HEAD` with
   `sec-fetch-mode: navigate`, or one that accepts `text/html`) without a session, or
-  whose credential has expired, is redirected to sign in and come back
+  whose sign-in has ended (at EHOS, or at renewal), is redirected to sign in and come back
   (`sign_in_path:`, `/auth/ehos/sign-in` by default). Any other such request, a
   `fetch()` from a page for one, answers 401: a redirect would take it to EHOS, across
   origins. A credential `verify/2` refuses for any other reason answers 401 and is
   logged: signing in again would get the same credential, and the browser would go
-  round EHOS for ever.
+  round EHOS for ever. While EHOS cannot renew an expired credential, or another
+  request of the session is renewing past 15 seconds, the request answers 503.
 
   **The actor.** `actor/2` is the actor of the person's credential for this
   application, verified by `EhOsContract.Auth.verify/2` against its own audience
   (S8), as a bearer credential is: the person is never read from the session's row's
-  plain columns. Until renewal comes (EB3), a credential past its expiry gives
-  `{:error, :expired}`.
+  plain columns. A credential about to expire is renewed first, through EHOS, with
+  the session's refresh token (S4, S10); renewing is the only thing these two
+  functions do beyond reading, and nothing renews without a request asking.
 
   Both take `sign_in:`, the name of the `EhOsContract.Auth.SignIn` child, and
   `verify/2`'s `:keys`, `:audience` and `:issuer`.
@@ -45,13 +47,13 @@ defmodule EhOsContract.Auth.Session do
 
   alias EhOsContract.Actor
   alias EhOsContract.Auth.SignIn
-  alias EhOsContract.Auth.SignIn.Sessions
+  alias EhOsContract.Auth.SignIn.{Renewal, Sessions}
 
   @session_key "eh_os_contract_auth_session"
   @verify_opts [:keys, :audience, :issuer]
 
   @typedoc "Why there is no actor."
-  @type refusal :: :signed_out | EhOsContract.Auth.reason()
+  @type refusal :: Renewal.refusal() | EhOsContract.Auth.reason()
 
   @doc "The key under which the Plug session holds the token naming the person's session."
   @spec session_key() :: String.t()
@@ -76,11 +78,20 @@ defmodule EhOsContract.Auth.Session do
     with {:ok, session} <- Sessions.fetch(opts[:sign_in], get_session(conn, @session_key)),
          conn =
            assign(conn, :eh_os_contract_session, Map.take(session, [:subject, :sid, :auth_time])),
-         {:ok, conn} <- maybe_actor(conn, session, opts) do
+         {:ok, conn} <- maybe_actor(conn, get_session(conn, @session_key), opts) do
       conn
     else
       {:error, reason} when reason in [:signed_out, :expired] ->
         not_signed_in(conn, opts)
+
+      # Signing in again would not help: EHOS is down, or another request of this session is
+      # renewing and did not finish in time.
+      {:error, reason} when reason in [:ehos_unavailable, :renewal_busy] ->
+        Logger.warning(
+          "eh_os_contract_auth could not renew a signed-in person's credential: #{reason}"
+        )
+
+        unavailable(conn)
 
       {:error, reason} ->
         Logger.warning("eh_os_contract_auth refused a signed-in person's credential: #{reason}")
@@ -90,9 +101,12 @@ defmodule EhOsContract.Auth.Session do
 
   @doc """
   The actor of the person `session` names: a `Plug.Conn` with its session fetched, or
-  the session map a LiveView's `mount/3` is given. `{:error, :signed_out}` when it
-  names nobody, `{:error, :expired}` when the credential has expired, and
-  `verify/2`'s refusal otherwise. On a connection the plug has already given an actor
+  the session map a LiveView's `mount/3` is given. A credential good for less than 30
+  seconds is renewed first, once for the session however many requests ask at
+  once (S4). `{:error, :signed_out}` when the session names nobody or ended at
+  renewal, `{:error, :ehos_unavailable}` when EHOS cannot renew an expired one,
+  `{:error, :renewal_busy}` when another request's renewal did not finish within
+  15 seconds, and `verify/2`'s refusal otherwise. On a connection the plug has already given an actor
   (`assign_actor: true`), that actor, without reading the session again.
   """
   @spec actor(Plug.Conn.t() | map(), keyword()) :: {:ok, Actor.t()} | {:error, refusal()}
@@ -106,14 +120,12 @@ defmodule EhOsContract.Auth.Session do
   def actor(session, opts) when is_map(session) do
     name = Keyword.get(opts, :sign_in, SignIn)
 
-    with {:ok, row} <- Sessions.fetch(name, Map.get(session, @session_key)) do
-      verified(row, name, opts)
-    end
+    verified(Map.get(session, @session_key), name, opts)
   end
 
-  defp maybe_actor(conn, session, opts) do
+  defp maybe_actor(conn, browser_token, opts) do
     if opts[:assign_actor] do
-      with {:ok, actor} <- verified(session, opts[:sign_in], opts) do
+      with {:ok, actor} <- verified(browser_token, opts[:sign_in], opts) do
         {:ok, assign(conn, :eh_os_contract_actor, actor)}
       end
     else
@@ -121,17 +133,13 @@ defmodule EhOsContract.Auth.Session do
     end
   end
 
-  defp verified(session, name, opts) do
+  # The credential for this application, renewed when it is stale (S4), verified as a bearer
+  # credential is (S8).
+  defp verified(browser_token, name, opts) do
     address = SignIn.config(name).address
 
-    # `verify/2` refuses a credential past its `exp` by `EhOsContract.Clock`, so the row's
-    # `expires_at` is not read here; renewal (EB3) reads it, ahead of the expiry.
-    case Map.get(session.credentials, address) do
-      %{token: token} when is_binary(token) ->
-        EhOsContract.Auth.verify(token, opts |> Keyword.take(@verify_opts) |> drop_nil())
-
-      _none ->
-        {:error, :signed_out}
+    with {:ok, token} <- Renewal.credential(name, browser_token, address) do
+      EhOsContract.Auth.verify(token, opts |> Keyword.take(@verify_opts) |> drop_nil())
     end
   end
 
@@ -159,6 +167,13 @@ defmodule EhOsContract.Auth.Session do
     conn
     |> put_resp_header("location", location)
     |> send_resp(302, "")
+    |> halt()
+  end
+
+  defp unavailable(conn) do
+    conn
+    |> put_resp_content_type("text/plain")
+    |> send_resp(503, "Signing in through EHOS is unavailable. Try again shortly.")
     |> halt()
   end
 

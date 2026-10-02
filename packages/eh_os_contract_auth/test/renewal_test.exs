@@ -1,0 +1,320 @@
+defmodule EhOsContract.Auth.RenewalTest do
+  @moduledoc """
+  EB3a (#78, #80): a signed-in person's credential renewed through EHOS (S4, S5 and S10
+  in docs/adr/browser-session.md). Every test runs against committed data, in
+  `EhOsContract.Auth.CommitRepo`'s database, because the lease is taken and released
+  by statements in autocommit, two renewals meet only across connections, and a
+  renewal must hold no transaction while it calls EHOS.
+
+  EHOS is `EhOsContract.Auth.FakeEhos`: strict rotation, a refresh token presented
+  twice revokes its family, and a renewal returns an ID token in the shape #80 lists.
+
+  Not async: the tests change `config :eh_os_contract_auth` and the engine's repo.
+  """
+
+  use ExUnit.Case, async: false
+
+  import EhOsContract.Auth.KeyCase, only: [key_pair: 0, start_keys: 1, ehos: 1]
+
+  alias EhOsContract.Auth.{CommitRepo, FakeEhos, SignIn}
+  alias EhOsContract.Auth.SignIn.{Renewal, Sessions}
+
+  @moduletag :tmp_dir
+
+  @address "https://rehmed.test"
+
+  setup %{tmp_dir: dir} do
+    previous = Application.get_all_env(:eh_os_contract_auth)
+    repo = Application.fetch_env!(:eh_os_contract, :repo)
+    Application.put_env(:eh_os_contract, :repo, CommitRepo)
+
+    on_exit(fn ->
+      Application.put_env(:eh_os_contract, :repo, repo)
+      restore(previous)
+      CommitRepo.query!("DELETE FROM eh_os_contract_auth_sessions")
+    end)
+
+    {key_file, _key} = FakeEhos.client_key_file(dir)
+
+    Application.put_env(:eh_os_contract_auth, :sign_in,
+      client_id: "rehmed/test",
+      client_key_file: key_file,
+      address: @address,
+      secret_key_base: String.duplicate("s", 64),
+      applications: %{}
+    )
+
+    pair = key_pair()
+    ehos = FakeEhos.start(signer: pair.private)
+    name = start!(ehos)
+    {token, session} = signed_in!(ehos, name)
+
+    %{
+      ehos: ehos,
+      name: name,
+      token: token,
+      session: session,
+      keys: start_keys(ehos({:keys, [pair]}))
+    }
+  end
+
+  test "a credential good for more than 30 seconds is used, and EHOS is not asked", context do
+    assert Renewal.credential(context.name, context.token, @address) ==
+             {:ok, context.session.credentials[@address].token}
+
+    assert refreshes(context) == 0
+  end
+
+  # The confirmation's "past ten minutes, under EhOsContract.Clock.at/2", and #80: renewal goes
+  # through Oidcc.Token.refresh/3, unmocked, on a response whose ID token has exactly #80's claims.
+  test "past ten minutes, the credential is renewed and the refresh token rotated", context do
+    later = minutes_later(context, 11)
+
+    assert {:ok, renewed} =
+             EhOsContract.Clock.at(later, fn ->
+               Renewal.credential(context.name, context.token, @address)
+             end)
+
+    refute renewed == context.session.credentials[@address].token
+
+    assert {:ok, %{subject: "u-anna"}} =
+             EhOsContract.Clock.at(later, fn ->
+               EhOsContract.Auth.verify(renewed, keys: context.keys)
+             end)
+
+    assert [form] = refresh_requests(context)
+    assert form["refresh_token"] == context.session.refresh_token
+    assert form["client_assertion_type"] =~ "jwt-bearer"
+    refute Map.has_key?(form, "resource")
+
+    {:ok, session} = Sessions.fetch(context.name, context.token)
+    refute session.refresh_token == context.session.refresh_token
+    refute session.id_token == context.session.id_token
+
+    assert session.id_token
+           |> JOSE.JWT.peek_payload()
+           |> Map.get(:fields)
+           |> Map.keys()
+           |> Enum.sort() ==
+             ~w(aud auth_time exp iat iss sid sub)
+
+    assert lease(context) == [nil, nil]
+  end
+
+  test "two processes of one session, whose credential is stale, make one renewal", context do
+    later = minutes_later(context, 11)
+    FakeEhos.on_refresh(context.ehos, fn -> Process.sleep(500) end)
+
+    results =
+      1..2
+      |> Enum.map(fn _ ->
+        Task.async(fn ->
+          EhOsContract.Clock.at(later, fn ->
+            Renewal.credential(context.name, context.token, @address)
+          end)
+        end)
+      end)
+      |> Task.await_many(10_000)
+
+    assert [{:ok, token}, {:ok, token}] = results
+    assert refreshes(context) == 1
+    assert {:ok, _session} = Sessions.fetch(context.name, context.token)
+  end
+
+  # D-64: no transaction across the call. Seen from the database, while EHOS is answering.
+  test "no connection is idle in a transaction while EHOS is called", context do
+    test = self()
+
+    FakeEhos.on_refresh(context.ehos, fn ->
+      %{rows: [[count]]} =
+        CommitRepo.query!(
+          "SELECT count(*) FROM pg_stat_activity " <>
+            "WHERE datname = current_database() AND state LIKE 'idle in transaction%'"
+        )
+
+      send(test, {:idle_in_transaction, count})
+    end)
+
+    {:ok, _token} =
+      EhOsContract.Clock.at(minutes_later(context, 11), fn ->
+        Renewal.credential(context.name, context.token, @address)
+      end)
+
+    assert_received {:idle_in_transaction, 0}
+  end
+
+  test "EHOS's fake revokes the sign-in when a refresh token is presented twice", context do
+    {:ok, client} = SignIn.client_context(context.name)
+    opts = %{expected_subject: "u-anna", request_opts: SignIn.config(context.name).request_opts}
+
+    assert {:ok, %Oidcc.Token{refresh: %{token: next}}} =
+             Oidcc.Token.refresh(context.session.refresh_token, client, opts)
+
+    assert {:error, {:http_error, 400, %{"error" => "invalid_grant"}}} =
+             Oidcc.Token.refresh(context.session.refresh_token, client, opts)
+
+    assert {:error, {:http_error, 400, %{"error" => "invalid_grant"}}} =
+             Oidcc.Token.refresh(next, client, opts)
+  end
+
+  describe "what each outcome of a renewal leaves (S5)" do
+    test "invalid_grant ends the session", context do
+      {:ok, client} = SignIn.client_context(context.name)
+      opts = %{expected_subject: "u-anna", request_opts: SignIn.config(context.name).request_opts}
+      # Presented once here, so the renewal presents it a second time.
+      {:ok, _token} = Oidcc.Token.refresh(context.session.refresh_token, client, opts)
+
+      assert renew(context) == {:error, :signed_out}
+      assert rows() == 0
+    end
+
+    for {answer, label} <- [{:reset, "no response"}, {{:status, 503}, "a 503"}] do
+      test "#{label} keeps the refresh token, and the held credential while it is unexpired",
+           context do
+        FakeEhos.refresh_answer(context.ehos, unquote(Macro.escape(answer)))
+        held = context.session.credentials[@address].token
+
+        # Stale (inside the 30-second margin) but unexpired: the held credential.
+        assert EhOsContract.Clock.at(seconds_later(context, 590), fn ->
+                 Renewal.credential(context.name, context.token, @address)
+               end) == {:ok, held}
+
+        assert refreshes(context) == 1
+
+        # Expired: none.
+        assert renew(context) == {:error, :ehos_unavailable}
+
+        {:ok, session} = Sessions.fetch(context.name, context.token)
+        assert session.refresh_token == context.session.refresh_token
+        assert lease(context) == [nil, nil]
+      end
+    end
+
+    for {answer, label} <- [
+          {:no_id_token, "without an ID token"},
+          {:foreign_sub, "for another sub"}
+        ] do
+      test "a 200 oidcc refuses, #{label}, ends the session: its rotated token is lost",
+           context do
+        FakeEhos.refresh_answer(context.ehos, unquote(answer))
+
+        assert renew(context) == {:error, :signed_out}
+        assert rows() == 0
+      end
+    end
+
+    test "a lease lost before the write ends the session", context do
+      FakeEhos.on_refresh(context.ehos, fn ->
+        CommitRepo.query!("UPDATE eh_os_contract_auth_sessions SET lease_holder = 'another'")
+      end)
+
+      assert renew(context) == {:error, :signed_out}
+      assert rows() == 0
+    end
+
+    test "a waiter gives up when the lease is not released in time", context do
+      CommitRepo.query!(
+        "UPDATE eh_os_contract_auth_sessions " <>
+          "SET lease_holder = 'another', lease_until = clock_timestamp() + interval '1 hour'"
+      )
+
+      assert EhOsContract.Clock.at(minutes_later(context, 11), fn ->
+               Renewal.credential(context.name, context.token, @address,
+                 wait_ms: 500,
+                 poll_ms: 50
+               )
+             end) == {:error, :renewal_busy}
+
+      assert refreshes(context) == 0
+      assert rows() == 1
+    end
+
+    test "a lease past its time is taken over", context do
+      CommitRepo.query!(
+        "UPDATE eh_os_contract_auth_sessions " <>
+          "SET lease_holder = 'another', lease_until = clock_timestamp() - interval '1 second'"
+      )
+
+      assert {:ok, _token} = renew(context)
+      assert refreshes(context) == 1
+    end
+  end
+
+  defp renew(context) do
+    EhOsContract.Clock.at(minutes_later(context, 11), fn ->
+      Renewal.credential(context.name, context.token, @address)
+    end)
+  end
+
+  # EHOS's clock moves with the engine's, so what it issues then is good then.
+  defp minutes_later(context, minutes), do: seconds_later(context, minutes * 60)
+
+  defp seconds_later(context, seconds) do
+    FakeEhos.advance(context.ehos, seconds - Agent.get(context.ehos, & &1.offset))
+    DateTime.add(DateTime.utc_now(), seconds)
+  end
+
+  defp refresh_requests(context),
+    do:
+      context.ehos
+      |> FakeEhos.token_requests()
+      |> Enum.filter(&(&1["grant_type"] == "refresh_token"))
+
+  defp refreshes(context), do: length(refresh_requests(context))
+
+  defp rows,
+    do:
+      CommitRepo.query!("SELECT count(*) FROM eh_os_contract_auth_sessions").rows |> hd() |> hd()
+
+  defp lease(_context) do
+    CommitRepo.query!("SELECT lease_holder, lease_until FROM eh_os_contract_auth_sessions").rows
+    |> hd()
+  end
+
+  # A code exchange through EHOS's fake, written as the callback writes it.
+  defp signed_in!(ehos, name) do
+    config = SignIn.config(name)
+    FakeEhos.grant(ehos, "code-1", "rehmed/test", %{"nonce" => "n-1"})
+    {:ok, context} = SignIn.client_context(name)
+
+    {:ok, token} =
+      Oidcc.Token.retrieve("code-1", context, %{
+        redirect_uri: config.redirect_uri,
+        nonce: "n-1",
+        preferred_auth_methods: [:private_key_jwt],
+        request_opts: config.request_opts
+      })
+
+    {:ok, browser_token} =
+      Sessions.create(name, %{
+        subject: token.id.claims["sub"],
+        sid: token.id.claims["sid"],
+        auth_time: DateTime.from_unix!(token.id.claims["auth_time"]),
+        refresh_token: token.refresh.token,
+        id_token: token.id.token,
+        credential: %{
+          resource: @address,
+          token: token.access.token,
+          expires_at: DateTime.add(DateTime.utc_now(), token.access.expires)
+        }
+      })
+
+    {:ok, session} = Sessions.fetch(name, browser_token)
+    {browser_token, session}
+  end
+
+  defp start!(ehos) do
+    name = :"sign_in_#{System.unique_integer([:positive])}"
+    start_supervised!({SignIn, [name: name, plug: FakeEhos.plug(ehos)]})
+    :sys.get_state(name)
+    name
+  end
+
+  defp restore(previous) do
+    for {key, _value} <- Application.get_all_env(:eh_os_contract_auth),
+        not Keyword.has_key?(previous, key),
+        do: Application.delete_env(:eh_os_contract_auth, key)
+
+    for {key, value} <- previous, do: Application.put_env(:eh_os_contract_auth, key, value)
+  end
+end

@@ -248,13 +248,46 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
       assert {:ok, %Actor{subject: "u-anna"}} = Session.actor(page, sign_in: context.name)
     end
 
-    test "gives no actor once the credential has expired, until renewal comes", context do
+    # S4: renewing is the only thing actor/2 and the plug do beyond reading.
+    test "renews an expired credential through EHOS, and gives the person's actor", context do
       browser = sign_in(context, "/")
-      later = DateTime.add(DateTime.utc_now(), 601)
+      FakeEhos.advance(context.ehos, 660)
+      later = DateTime.add(DateTime.utc_now(), 660)
 
-      assert EhOsContract.Clock.at(later, fn ->
-               Session.actor(session(context, browser), sign_in: context.name, keys: context.keys)
-             end) == {:error, :expired}
+      assert {:ok, %Actor{subject: "u-anna"}} =
+               EhOsContract.Clock.at(later, fn ->
+                 Session.actor(session(context, browser),
+                   sign_in: context.name,
+                   keys: context.keys
+                 )
+               end)
+
+      page = EhOsContract.Clock.at(later, fn -> get(context, "/visits/7", browser) end)
+      assert page.status == 200
+      assert %Actor{subject: "u-anna"} = page.assigns.eh_os_contract_actor
+    end
+
+    test "answers 503, not a redirect, while EHOS cannot renew an expired credential", context do
+      browser = sign_in(context, "/")
+      FakeEhos.refresh_answer(context.ehos, {:status, 503})
+      later = DateTime.add(DateTime.utc_now(), 660)
+
+      page = EhOsContract.Clock.at(later, fn -> get(context, "/visits/7", browser) end)
+
+      assert page.status == 503
+      assert get_resp_header(page, "location") == []
+      assert rows() == 1
+    end
+
+    test "sends a browser whose sign-in ended at renewal to sign in again", context do
+      browser = sign_in(context, "/")
+      FakeEhos.refresh_answer(context.ehos, :no_id_token)
+      later = DateTime.add(DateTime.utc_now(), 660)
+
+      page = EhOsContract.Clock.at(later, fn -> get(context, "/visits/7", browser) end)
+
+      assert redirected_to(page) =~ "/auth/ehos/sign-in?"
+      assert rows() == 0
     end
 
     test "actor/2 reads a LiveView's session map as it reads a connection", context do
