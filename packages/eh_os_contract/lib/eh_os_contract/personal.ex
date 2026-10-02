@@ -48,6 +48,8 @@ defmodule EhOsContract.Personal do
     Vault
   }
 
+  alias EhOsContract.Subscription.Runner
+
   @keys "eh_os_contract_subject_keys"
   @erasures "eh_os_contract_erasures"
   @erased "eh_os_contract.subject_erased"
@@ -212,7 +214,7 @@ defmodule EhOsContract.Personal do
     type = Atom.to_string(subject)
 
     {:ok, found} =
-      repo.transaction(fn ->
+      Runner.transaction(repo, fn ->
         :ok = Store.lock(repo)
 
         if MapSet.size(erased_among(repo, [{subject, id}])) == 0 do
@@ -251,14 +253,15 @@ defmodule EhOsContract.Personal do
             )
 
           forget_inline!(repo, row, %Erased{subject: subject, id: id})
+
+          if Enum.any?(Implementations.subscribed(), &forgets_after?/1),
+            do: Runner.notify_on_commit()
+
           if deleted > 0, do: :erased, else: :no_data
         else
           :already_erased
         end
       end)
-
-    if found != :already_erased and Enum.any?(Implementations.subscribed(), &forgets_after?/1),
-      do: EhOsContract.Subscription.Runner.notify()
 
     {:ok, found}
   end

@@ -52,6 +52,7 @@ defmodule EhOsContract.Subscription do
 
   alias EhOsContract.{Bus, Consumer, Implementations, ProcessManager, Relay, Store}
   alias EhOsContract.SubscriptionRecord
+  alias EhOsContract.Subscription.Runner
 
   require Logger
 
@@ -139,9 +140,10 @@ defmodule EhOsContract.Subscription do
       else: stepped(repo, consumer)
   end
 
+  # A policy's or a process manager's commands wake the runners once the step commits.
   defp stepped(repo, consumer) do
     result =
-      repo.transaction(fn ->
+      Runner.transaction(repo, fn ->
         case take(repo, consumer.key, fed(consumer)) do
           nil -> :idle
           row -> apply_next(repo, consumer, row)

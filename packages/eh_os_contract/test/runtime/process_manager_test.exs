@@ -186,6 +186,36 @@ defmodule EhOsContract.ProcessManagerTest do
     end
   end
 
+  describe "the runners" do
+    test "are woken once a timer's firing commits, which only its runner reads" do
+      open()
+      drain_at(0)
+      [job] = timer_jobs()
+      watch_wakes()
+
+      at(25, fn -> assert TimerJob.perform(job) == :ok end)
+
+      assert [_firing] = firings()
+      assert_received :runners_woken
+      refute_received :runners_woken
+    end
+
+    test "are woken once a step whose process manager dispatched commits" do
+      open()
+      drain_at(0)
+      [job] = timer_jobs()
+      at(25, fn -> assert TimerJob.perform(job) == :ok end)
+      consumer = EhOsContract.Implementations.consumer(@chase)
+      watch_wakes()
+
+      assert {:applied, 1} = at(25, fn -> Subscription.step(Repo, consumer) end)
+
+      assert [_flag] = flags()
+      assert_received :runners_woken
+      refute_received :runners_woken
+    end
+  end
+
   describe "a timer fired twice" do
     test "dispatches once" do
       open()
@@ -211,10 +241,12 @@ defmodule EhOsContract.ProcessManagerTest do
       [job] = timer_jobs()
 
       drain_at(25)
+      watch_wakes()
       at(26, fn -> assert TimerJob.perform(job) == :ok end)
 
       assert length(firings()) == 1
       assert length(flags()) == 1
+      refute_received :runners_woken
     end
 
     test "is cancelled when its process manager is no longer deployed" do
