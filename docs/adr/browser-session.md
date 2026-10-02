@@ -335,6 +335,17 @@ pipeline :signed_in, do: plug EhOsContract.Auth.Session  # or a redirect to sign
 
 *Accepted by the user, 2 October 2026.*
 
+*Amended, 2 October 2026, at EB2b:*
+
+- **The routes** are `GET /sign-in?return_to=<path>`, `GET /callback` and `POST /sign-out` under the forward.
+  `GET /sign-in` answers 503 while `provider/1` refuses.
+- **The plug** assigns `eh_os_contract_session` with the session's `subject`, `sid` and `auth_time`, and nothing
+  of EHOS's tokens. A request without a session is redirected to sign in when it is a `GET` or `HEAD`, and
+  answers 401 otherwise.
+- **Sign-out** wraps itself in `Plug.CSRFProtection`, so it is protected even in a pipeline without
+  `protect_from_forgery`.
+- **`actor/2`** takes the session map or the connection, and an option list (`sign_in:` and `verify/2`'s).
+
 *Amended, 2 October 2026:* the key file, the post-logout address and `EHOS_SIGN_IN_APPLICATIONS` follow
 `eh-os` D-68. It answers [eh-os#134](https://github.com/EmpoweredHouse/eh-os/issues/134) and
 [#135](https://github.com/EmpoweredHouse/eh-os/issues/135) (eh-os-contract#81), and was accepted by the user
