@@ -258,11 +258,14 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
        do: ended(renewal.session, :invalid_grant)
 
   # D-64: not for this application. EHOS consumed nothing, so the refresh token stays, and the
-  # session lives on for every other application.
+  # session lives on for every other application. A lease lost meanwhile is a session ended.
   defp outcome({:error, {:http_error, 400, %{"error" => "invalid_target"}}}, renewal) do
     until = DateTime.add(now(), @refused_ms, :millisecond)
-    :ok = Sessions.refused(renewal.session, renewal.holder, renewal.at.resource, until)
-    {:error, :refused}
+
+    case Sessions.refused(renewal.session, renewal.holder, renewal.at.resource, until) do
+      :ok -> {:error, :refused}
+      :lost -> {:error, :signed_out}
+    end
   end
 
   # A shape outside `oidcc`'s spec is read as any other error.

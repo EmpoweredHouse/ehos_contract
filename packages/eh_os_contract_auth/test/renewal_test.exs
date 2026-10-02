@@ -444,6 +444,16 @@ defmodule EhOsContract.Auth.RenewalTest do
       assert refreshes(context) == 2
     end
 
+    # Signed out in another tab while EHOS was refusing: nothing is written for a session gone.
+    test "a refusal for a session ended during the call is no refusal, but signed out",
+         context do
+      FakeEhos.on_refresh(context.ehos, fn ->
+        CommitRepo.query!("DELETE FROM eh_os_contract_auth_sessions")
+      end)
+
+      assert credential(context, "billing", 0) == {:error, :signed_out}
+    end
+
     test "a refusal drops the credential held for that application", context do
       assert {:ok, _ledger} = credential(context, "ledger", 0)
       FakeEhos.applications(context.ehos, &Map.delete(&1, @ledger))
