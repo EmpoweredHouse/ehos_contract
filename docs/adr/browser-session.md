@@ -291,24 +291,43 @@ A `verify/2` that skips `aud` is the one switch this package must never offer.
 - **The `client_id` claim** (RFC 9068 §2.2) in a credential issued through sign-in is ignored, and a test
   pins that it is accepted. Recording it in decision rows is G-3's, later.
 
-### S10 — Renewal goes through `Oidcc.refresh_token/5`, once EHOS returns an ID token on refresh
+### S10 — Renewal goes through `Oidcc.refresh_token/5`, and EHOS returns an ID token on refresh
 
-`oidcc` refuses a refresh response without an ID token. It returns `{error, sub_invalid}`, after the HTTP
-call, so the rotated refresh token in that response is lost. EHOS sends no ID token on refresh, so every
-session would end at its first renewal.
+**The problem.** `oidcc` refuses a refresh response without an ID token. It returns `{error, sub_invalid}`
+after the HTTP call, so the rotated refresh token in that response is lost. When this record was written,
+EHOS sent no ID token on refresh, so every session would have ended at its first renewal.
 
-Asked of EHOS in [eh-os#133](https://github.com/EmpoweredHouse/eh-os/issues/133): return one, as OpenID
-Connect Core §12.2 allows. Chosen by the user, 2 October 2026. The renewal part of the work waits for it.
-Sign-in, storage and sign-out do not.
+**Asked of EHOS** in [eh-os#133](https://github.com/EmpoweredHouse/eh-os/issues/133): return one, as OpenID
+Connect Core §12.2 allows. Chosen by the user, 2 October 2026.
 
-*Rejected: sending the refresh request ourselves.* That means a `private_key_jwt` assertion through JOSE, a
-form POST through Req, and the credential checked by `verify/2`. It would not wait for EHOS, but it moves
-protocol code that D-64 gives to a certified library into code written here, and departs from D-64 as
-written.
+*Rejected: sending the refresh request ourselves.* That would mean:
 
-*Until #133 is merged,* every renewal ends in S5's row for a 2xx response that `oidcc` refuses. The session
-ends, and the old token is never presented again. An error response or a 5xx keeps S5's own rows: EHOS
-consumed nothing.
+- a `private_key_jwt` assertion through JOSE;
+- a form POST through Req;
+- the credential checked by `verify/2`.
+
+It would not have waited for EHOS. But it moves protocol code that D-64 gives to a certified library into
+code written here, and departs from D-64 as written.
+
+*Done, 2 October 2026:* EHOS returns the ID token since
+[eh-os#137](https://github.com/EmpoweredHouse/eh-os/pull/137) (`801f758`, in `main`, in no release yet:
+`v0.3.0` lacks it), as eh-os-contract#80 describes. The token is minted as the code exchange's:
+
+- `iss`, `sub` and `aud` (the `client_id`) are the code exchange's;
+- `auth_time` and `sid` are the sign-in's;
+- `iat` is new, and it lives 600 s;
+- it carries no `nonce` and no `at_hash`;
+- it is signed `Ed25519`.
+
+A renewal for another application returns the same kind of token, with `aud` still the `client_id`. So:
+
+- **Renewal no longer waits.** The work tests against EHOS's `main` until a release carries #137.
+- **The session keeps each renewal's ID token.** Keeping the first would work as well, because EHOS checks
+  an `id_token_hint`'s `sub`, `sid` and `auth_time`, never its `iat` or `exp` (#80). Replacing it costs
+  nothing and keeps the row's one ID token the latest one EHOS signed.
+- **S5's row for a 2xx response that `oidcc` refuses stays**, as a defence. It can still happen, for example
+  when the clocks disagree past `oidcc`'s leeway. The session ends there, and the old token is never
+  presented again.
 
 ### S11 — Rows end with the sign-in, without a job
 
@@ -321,10 +340,12 @@ be the first job this package asks a host to run.
 
 - **The client recorded in an application's decision rows** — G-3, later (Stage 9's "Deliberately later").
 - **Back-channel logout** — deferred by D-64. Other applications' sessions end at their next renewal.
-- **How a workload learns other applications' addresses** — [eh-os#134](https://github.com/EmpoweredHouse/eh-os/issues/134).
-  Until then, configuration.
-- **The client key file's format and the post-logout address** — [eh-os#135](https://github.com/EmpoweredHouse/eh-os/issues/135).
-  Until then, PEM and JWK are both read.
+- **How a workload learns other applications' addresses** — [eh-os#134](https://github.com/EmpoweredHouse/eh-os/issues/134),
+  answered by `eh-os` D-68, which is still *proposed* (eh-os-contract#81). Until it is accepted, the
+  addresses come from configuration.
+- **The client key file's format and the post-logout address** — [eh-os#135](https://github.com/EmpoweredHouse/eh-os/issues/135),
+  also answered by D-68, still *proposed*. Until it is accepted, PEM and JWK are both read, and the
+  post-logout address is a configuration option.
 - **A LiveView `on_mount` hook in the package** — only if a second host writes the same one.
 
 ## Confirmation
@@ -339,6 +360,10 @@ through `oidcc`'s HTTP adapter (no port, no network):
   - Two processes of one session, on separate connections, whose credentials expire together, make exactly
     one refresh, and the sign-in survives.
   - EHOS's fake revokes the sign-in when a refresh token is presented twice.
+  - An unmocked `Oidcc.refresh_token/5` returns `{:ok, %Oidcc.Token{}}` for a refresh response whose ID token
+    has exactly the claims eh-os-contract#80 lists (S10). This is the test #133 left to this suite. Its proof
+    stops at the shape of the response: the fake mints the token, not EHOS. EHOS's own endpoint is proven by
+    Stage 9's closing test, step 8, on a cluster.
 - **No transaction during the call.** When the fake EHOS is called, the caller is not in a transaction, and
   no connection of the repo is `idle in transaction`. The tests that check this, and the concurrency tests,
   run against committed data, outside the Ecto sandbox.
