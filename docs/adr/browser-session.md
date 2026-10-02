@@ -229,6 +229,19 @@ call's timeout must be shorter than the lease.
   (EHOS rotated, the successor is lost) or whether none came (the old token is kept). `oidcc` returns both as an
   error. The package's own transport records the last response's status in the calling process, and the
   renewal reads it.
+- **Amended again at EB3a's review, the same day:**
+  - **A lease past its time but never released ends the session.** Its holder overran it or died mid-call, so
+    whether the refresh token was presented is unknown, and presenting it again would revoke the sign-in in
+    every application. Taking it over, as step 2 first said, risked exactly that.
+  - **Step 6, the waiter, uses a credential still unexpired at once,** and waits only for an expired one, so a
+    slow EHOS delays nobody whose credential is good.
+  - **After EHOS did not answer, the lease is kept for 5 seconds as a pause.** The session's other requests use
+    the held credential, or answer `:ehos_unavailable`, instead of each calling EHOS in turn. A pause past its
+    time is taken like a free lease.
+  - **Step 5 checks what EHOS returned before writing it,** as the callback checks a sign-in: the credential by
+    `verify/2` and of the session's person, the ID token's `sid` and `auth_time` the sign-in's, and `expires_in`
+    above the 30-second margin. The stored expiry never passes the credential's own `exp`.
+  - **An exception `oidcc` raises on a 2xx body is a 2xx `oidcc` refuses** (S5): the session ends.
 
 *Rejected:*
 

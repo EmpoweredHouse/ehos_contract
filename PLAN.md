@@ -782,7 +782,7 @@ małego diffu:
   - ID token przy odnowieniu dokładnie z claimami z #80;
   - własny zegar (`advance/2`), hak `on_refresh/2` i odpowiedzi, których EHOS nie daje (`refresh_answer/2`).
 - **`CommitRepo`** i baza `eh_os_contract_auth_test_commits` dla testów na zatwierdzonych danych.
-- Auth: 233 → 248 testów.
+- Auth: 233 → 248 testów przed przeglądem.
 
 **Decyzje asystenta:**
 - **Liczby jako stałe, nie opcje.** S4 mówił „opcje ze sprawdzeniem przy starcie”; żaden host ich nie potrzebuje.
@@ -798,6 +798,33 @@ sesję, zapis bez strażnika dzierżawy, brak zwolnienia dzierżawy, margines 0,
 dzierżawa ignorująca zegar bazy, brak 503 w plugu. Każda wywraca właściwe testy. Jedno miejsce bez testu:
 ponowny odczyt wiersza po wzięciu dzierżawy (S4, krok 3) chroni przed wyścigiem, którego nie da się ustawić
 deterministycznie.
+
+**Przegląd przed PR-em**, dwa równolegle. Poprawione, każde z testem, który bez poprawki pada:
+- **Odnowiony credential zapisywany bez kontroli z callbacku** (poprawność). Credential odrzucany przez
+  `verify/2` dawał 401 przez 10 minut, a credential innej osoby — jej aktora. Teraz sprawdzane są `verify/2`,
+  `sub`, a w ID tokenie `sid` i `auth_time`; inaczej koniec sesji.
+- **Przejęcie przeterminowanej, niezwolnionej dzierżawy** (bezpieczeństwo). Nowy właściciel prezentował token,
+  który poprzedni mógł już zużyć, a to unieważnia logowanie w każdej aplikacji. Teraz koniec sesji. `take_lease/3`
+  zwraca poprzedniego właściciela (CTE z `FOR UPDATE`).
+- **Wyjątek `oidcc` na treści 2xx** (JWT zamiast JSON, JSON, który nie jest obiektem) zostawiał zużyty token
+  (poprawność). Teraz `rescue` → koniec sesji, a wyjątek nigdy nie jest wypisywany.
+- **Brak przerwy po nieudanym odnowieniu** (oba). Każde żądanie sesji wołało EHOS po kolei, każde do 10 s, a
+  czekający blokowali mimo ważnego credentialu. Teraz pauza 5 s w dzierżawie; ważny credential oddawany od razu.
+- **`last_status` z poprzedniego żądania** (oba). `oidcc` potrafi odmówić przed jakimkolwiek wywołaniem, a wtedy
+  liczył się status sprzed niego. Teraz `forget_status/0` tuż przed wywołaniem.
+- **2xx ponad 64 KiB liczone jako brak odpowiedzi** (oba). Teraz status jest zapisywany przed limitem.
+- **`expires_at` z lokalnego zegara po odpowiedzi** (oba). Teraz najwyżej `exp` credentialu, od chwili startu
+  wywołania, także przy callbacku. `expires_in` ≤ 30 s → koniec sesji (odnawianie na każde żądanie).
+- **Zmiana klucza w EHOS-ie kończyła sesje** (poprawność). Teraz `refresh_jwks` raz na odnowienie.
+- **Plug czytał sesję dwa razy** (oba). Teraz przekazuje odczytaną do szybkiej ścieżki.
+- **Wpis w CHANGELOG** zgubiony przez błąd w moim skrypcie (poprawność). Dopisany.
+- **`FakeEhos`:** sprawdzenie i oznaczenie zużytego tokenu w jednym kroku `Agent`.
+
+Bez zmian:
+- odpytywanie co 200 ms czekających — tylko przy wygasłym credentialu i trwającym odnowieniu (najwyżej 10 s);
+- ponowny odczyt po wzięciu dzierżawy bez testu — wyścig nie do ustawienia deterministycznie.
+
+Auth: 248 → 260 testów.
 
 ## Dopisek 1 października — lista zmian do `eh-os` jako issues w `EmpoweredHouse/eh-os`
 
