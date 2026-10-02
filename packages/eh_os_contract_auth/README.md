@@ -193,7 +193,7 @@ The child checks this at boot and refuses to start otherwise:
 - `address`, and each address in `applications`, is `https://<host>` in lower case, with no port, no path and no
   trailing slash;
 - no address in `applications` is `address`: they are the other applications (`eh-os` D-69);
-- the issuer is https;
+- the issuer is `https://<host>[:port]` alone, as every parser reads it (#89);
 - `secret_key_base` has at least 64 bytes.
 
 Nothing it raises carries a secret. The callback is `address <> "/auth/ehos/callback"`, and a sign-out returns

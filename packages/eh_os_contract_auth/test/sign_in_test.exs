@@ -118,8 +118,12 @@ defmodule EhOsContract.Auth.SignInTest do
         SignIn.child_spec([])
       end
 
-      put_sign_in(applications: [{"ledger", "https://ledger.test.ehos.test"}])
-      assert_raise ArgumentError, ~r/applications must map/, fn -> SignIn.child_spec([]) end
+      put_sign_in(applications: [{"ledger", "https://svc:hunter2@ledger.test.ehos.test"}])
+
+      error =
+        assert_raise ArgumentError, ~r/applications must map/, fn -> SignIn.child_spec([]) end
+
+      refute error.message =~ "hunter2"
     end
 
     # eh-os D-69: applications names the other applications. Under the own address,

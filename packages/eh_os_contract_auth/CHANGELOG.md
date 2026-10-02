@@ -12,8 +12,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `URI.to_string/1`), with a lowercase DNS name, an IPv4 address in its dotted form or `::1` as the host, a port
   from 1 to 65535, and no user, query or fragment. It holds for:
   - **the key set's address**, with a path; plain http on `localhost`, `127.0.0.1` and `::1`;
-  - **`issuer`**, with no path, for the key set and for sign-in. It is now checked at boot even when `jwks_url`
-    is set, since it is compared with each credential's `iss` as a string. Sign-in still takes https only;
+  - **`issuer`**, with no path, in `EhOsContract.Auth.child_spec/1` and in sign-in. The child checks it at boot
+    even when `jwks_url` is set, since it is compared with each credential's `iss` as a string; an `issuer:`
+    given to `verify/2` or a plug is not checked. Sign-in still takes https only;
   - **sign-in's `address` and the addresses in `applications`**.
 
   **Changed:** an address of another shape now refuses the boot. One such was `http://evil.example\@localhost/...`:

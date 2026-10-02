@@ -306,7 +306,7 @@ defmodule EhOsContract.Auth.SignIn do
   end
 
   defp fetch(state) do
-    url = String.trim_trailing(state.issuer, "/") <> "/.well-known/openid-configuration"
+    url = state.issuer <> "/.well-known/openid-configuration"
 
     with {:ok, document} <- Http.get_json(url, state.http),
          {:ok, configuration} <- decode(document),
@@ -511,11 +511,16 @@ defmodule EhOsContract.Auth.SignIn do
     end)
   end
 
+  # Not printed: unchecked, it may hold an address with a password in it.
   defp applications!(other, _own) do
     raise ArgumentError,
           "sign_in: applications must map application names to their addresses " <>
-            "(EHOS_SIGN_IN_APPLICATIONS, decoded), and is #{inspect(other)}"
+            "(EHOS_SIGN_IN_APPLICATIONS, decoded), and is #{kind(other)}"
   end
+
+  defp kind(value) when is_list(value), do: "a list"
+  defp kind(value) when is_binary(value), do: "a string"
+  defp kind(_value), do: "neither a map nor a list"
 
   # `https://<host>`, exactly: an application's address for `resource` and the base of
   # this one's callback and post-logout addresses (eh-os D-68), which EHOS compares as
