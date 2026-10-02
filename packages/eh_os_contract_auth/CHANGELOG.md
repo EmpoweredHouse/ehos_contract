@@ -7,6 +7,12 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **#66: a scope value the decisions table cannot hold is recorded as its digest.** A value as sent that is not
+  valid UTF-8 (`%FF` in a query string), holds a NUL (JSON's `"\u0000"`), or is past 256 bytes is written to
+  `eh_os_contract_auth_decisions.scope_value` as `sha256:<hex>`. Until now Postgres refused the insert, and any
+  holder of a credential could turn a refusal into a 500. The decision is `check/2`'s as before, and every other
+  value is recorded as it was asked for.
+
 - **The discovery document's endpoints by #89's rule, at the issuer's origin.** A document is held only when each
   endpoint is held to the rule the configured addresses are, and at the issuer's own scheme, host and port, where
   EHOS serves every one. The rule: https, read back as written, a lowercase DNS name, an IPv4 address in its

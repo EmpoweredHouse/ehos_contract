@@ -95,6 +95,32 @@ defmodule EhOsContract.Auth.AuthorizeTest do
            ]
   end
 
+  # #66: a value as sent that a text column cannot hold, invalid UTF-8 from `%FF` in a query
+  # string or a NUL from JSON's "\u0000", made the insert fail and the request answer 500
+  # instead of a refusal. Its SHA-256 is recorded instead, and the decision stands.
+  test "a scope value a text column cannot hold, or past 256 bytes, is recorded as its digest" do
+    capability = "rehmed.open_visits_for_clinic"
+
+    actor =
+      Actor.credential("u-anna", [capability], %{capability => %{"clinic_id" => ["krakow"]}})
+
+    for value <- [<<0xFF>>, "krakow" <> <<0>>, String.duplicate("k", 257)] do
+      assert Auth.authorize(actor, request(capability, kind: :query, scope: {"clinic_id", value})) ==
+               {:error, :outside_scope}
+    end
+
+    digests =
+      for value <- [<<0xFF>>, "krakow" <> <<0>>, String.duplicate("k", 257)],
+          do: "sha256:" <> Base.encode16(:crypto.hash(:sha256, value), case: :lower)
+
+    assert Enum.map(rows(), &Enum.at(&1, 6)) == digests
+
+    # The control: 256 bytes of valid text are recorded as they are.
+    value = String.duplicate("k", 256)
+    Auth.authorize(actor, request(capability, kind: :query, scope: {"clinic_id", value}))
+    assert rows() |> List.last() |> Enum.at(6) == value
+  end
+
   test "it never widens what check/2 answers" do
     for {capabilities, capability} <- [
           {["rehmed.record_payment"], "rehmed.record_payment"},

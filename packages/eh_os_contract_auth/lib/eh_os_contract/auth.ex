@@ -65,6 +65,10 @@ defmodule EhOsContract.Auth do
   acceptance (`eh-os` D-34, FM-21): who, which capability, which contract and
   version, the scope value asked for, the outcome and the reason.
 
+  A scope value a text column cannot hold (invalid UTF-8, a NUL), or one past 256 bytes,
+  is recorded as `sha256:` and its hex digest; the decision is `check/2`'s, as for any
+  other value.
+
   The row records the authorization, not the command. A command allowed here may
   still be rejected on an invariant or fail in code, and what became of it is the
   engine's row in `eh_os_contract_commands`: two facts, two rows. The engine asks
@@ -88,6 +92,7 @@ defmodule EhOsContract.Auth do
   alias EhOsContract.Auth.{Address, Keys}
 
   @decisions "eh_os_contract_auth_decisions"
+  @max_scope_value 256
   @max_lifetime 15 * 60
 
   @typedoc "Why a credential is refused."
@@ -213,7 +218,7 @@ defmodule EhOsContract.Auth do
       contract: inspect(request.contract),
       contract_version: request.version,
       scope_dimension: dimension,
-      scope_value: value,
+      scope_value: recorded(value),
       outcome: if(decision == :ok, do: "allowed", else: "refused"),
       reason: with({:error, reason} <- decision, do: Atom.to_string(reason), else: (_ -> nil))
     }
@@ -221,6 +226,19 @@ defmodule EhOsContract.Auth do
     {1, _} = Application.fetch_env!(:eh_os_contract, :repo).insert_all(@decisions, [row])
     decision
   end
+
+  # #66: the scope value as it was asked for, unless a text column cannot hold it (invalid UTF-8,
+  # a NUL) or it is past 256 bytes. Then its SHA-256: the insert would fail, or store a request's
+  # body, and a refusal would become a 500. Only what is recorded changes; the decision is
+  # `check/2`'s.
+  defp recorded(value) when is_binary(value) do
+    if byte_size(value) <= @max_scope_value and String.valid?(value) and
+         not String.contains?(value, <<0>>),
+       do: value,
+       else: "sha256:" <> Base.encode16(:crypto.hash(:sha256, value), case: :lower)
+  end
+
+  defp recorded(nil), do: nil
 
   defp config!(key), do: Application.fetch_env!(:eh_os_contract_auth, key)
 
