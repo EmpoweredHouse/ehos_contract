@@ -16,8 +16,8 @@ defmodule EhOsContract.Auth.KeysTest do
 
   defmodule HeldRepo do
     @moduledoc false
-    # The test repo, whose transactions wait for the test's word while a test holds
-    # them (`hold_writes/0`).
+    # The test repo, whose transactions wait for the test's word while the test is
+    # named in `config :eh_os_contract_auth, HeldRepo`.
     alias EhOsContract.Auth.TestRepo
 
     def transaction(fun, opts \\ []) do
@@ -246,7 +246,9 @@ defmodule EhOsContract.Auth.KeysTest do
   end
 
   # A connection of its own, outside the sandbox, holds the table as a migration or
-  # `VACUUM FULL` does, until the test ends, and commits nothing.
+  # `VACUUM FULL` does, until the test ends, and commits nothing. Called before the
+  # key process starts: the sandbox's transaction holds what that process touched
+  # until the test ends, so a lock asked for after it would never be granted.
   defp lock_table! do
     test = self()
 
@@ -274,10 +276,11 @@ defmodule EhOsContract.Auth.KeysTest do
           end,
           timeout: :infinity
         )
+
+        GenServer.stop(conn)
       end)
 
-    assert_receive :locked, 5_000
-
+    # Registered before the lock is waited for, so a lock taken late is released too.
     # Run by another process than the test's, so it watches the holder itself.
     on_exit(fn ->
       ref = Process.monitor(holder)
@@ -287,6 +290,8 @@ defmodule EhOsContract.Auth.KeysTest do
         {:DOWN, ^ref, :process, ^holder, _reason} -> :ok
       end
     end)
+
+    assert_receive :locked, 5_000
   end
 
   # Accepts one fetch, answers with headers promising a body, and sends it a byte a

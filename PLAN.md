@@ -155,7 +155,7 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 ### Ostatnia pełna weryfikacja
 
 - **Lokalnie, 2 października, na `auth/issue-71-keys-hardening`** (#71, od `65d7caf`): brama z `sandbox/` →
-  **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1114, `check` 0 / 68 / 6; web 52; auth **148** + 1 property.
+  **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1114, `check` 0 / 68 / 6; web 52; auth **149** + 1 property.
 - **Lokalnie, 2 października, na `claude/issue-72-assessment-923997`** (#72, od `01ac970`): brama z `sandbox/` →
   **EXIT=0** — sandbox 145; silnik **1114** (+10, budzenie runnerów); web 52; auth 138 + 1 property.
 - **`main` = `743e91d`** (merge #73, EH): drzewo jak `2bda2b7`, ostatni commit PR-a; lokalnie na `2bda2b7` brama z
@@ -4180,21 +4180,40 @@ nie wymieniało. Żadnej z dwóch opcji nie ustawia ani README, ani sandbox, ani
   widoczny dla hosta — dla zagrożenia, którego nic nie wywołuje. Komentarz w `get/1` mówi to przy kodzie.
 
 **Co jest** (gałąź `auth/issue-71-keys-hardening`, od `65d7caf`):
-- (1) odczyt i zapis tabeli w transakcji z `SET LOCAL lock_timeout = '1s'` i `timeout: 2_000` na każdej instrukcji;
-  `lock_timeout`, bo kończy czekanie błędem Postgresa i połączenie zostaje w puli — timeout klienta by je zamknął (w
-  testach razem z transakcją sandboxa). Pobranie 5 s plus dwie instrukcje po 2 s mieszczą się w 10 s wywołania.
-  Klucze do pamięci przed tabelą. Testy: drugie połączenie spoza sandboxa trzyma `ACCESS EXCLUSIVE` na tabeli —
+- (1) odczyt i zapis tabeli w transakcji z `SET LOCAL statement_timeout = '1s'` (Postgres kończy każdą instrukcję,
+  czekanie na blokadę też, a połączenie zostaje w puli) i `timeout: 2_000` klienta na każdym wywołaniu, `BEGIN` i
+  `COMMIT` też — zapasowo, bo ten zamyka połączenie (w testach razem z transakcją sandboxa). Zapis na zablokowanej
+  tabeli trwa sekundę, więc wcześniejsze pobranie (5 s) mieści się w 10 s wywołania; czekanie na połączenie z puli
+  zostaje sprawą repo hosta. Klucze do pamięci przed tabelą. Testy: drugie połączenie spoza sandboxa trzyma `ACCESS EXCLUSIVE` na tabeli —
   start i wcześniejsze pobranie po rotacji kończą się poniżej 4 s, klucz z rotacji przechodzi; repo, które wstrzymuje
   zapis na słowo testu — w czasie zapisu nowy klucz już jest w pamięci. Na kodzie z `main` padają oba, i tylko one
   (start: `:sys.get_state` po 10 s nie dostaje odpowiedzi);
 - (3) `refresh/1` łapie wyjście: `{:error, :timeout}` albo `{:error, :not_running}`, w `@spec`, który był. Test
   na procesie, który nie działa; gałąź timeoutu bez testu — kosztowałby 10 s czekania na tę samą klauzulę `catch`;
 - (2) `check!/1` (więc i `child_spec/1`) odmawia `refresh_every:` i `refetch_at_most_every:` poniżej 5 000 albo nie
-  całkowitych; testy na 0, 4 999 i 5 000.0 dla obu, kontrola na 5 000 i minucie; na starym kodzie pada sześć.
+  całkowitych; testy na 0, 4 999 i 5 000.0 dla obu, kontrola na 5 000 i minucie; na starym kodzie pada sześć. Okno
+  wcześniejszego pobrania liczy się od **końca** pobrania z zapisem, nie od startu — inaczej przy granicy 5 s
+  następne pobranie wolno by zacząć w chwili, gdy poprzednie się skończyło (oba przeglądy).
 - Wpisy w `CHANGELOG.md` pakietu w commitach zmian, zdanie w README („How the key store behaves”).
 
+**Przegląd** (dwa równolegle na `65d7caf..d343aa9`; nic w bezpieczeństwie):
+- granica 5 s nie wykluczała pobrań jedno po drugim, bo okno liczyło się od startu pobrania (oba) — *poprawione*:
+  od końca; test z pobraniem, które zabiera 20 s zegara, pada na starym liczeniu;
+- `timeout: 2_000` to timeout klienta, nie Postgresa — zamyka połączenie, a `SET`, `BEGIN` i `COMMIT` miały 15 s
+  repo, więc zdanie o mieszczeniu się w 10 s nie było prawdą (oba) — *poprawione*: `statement_timeout` po stronie
+  Postgresa, zapasowy timeout klienta na transakcji, opis budżetu uczciwy;
+- `lock_table!` rejestrował zwolnienie blokady po `assert_receive` (spóźniona blokada zostałaby na zawsze), a
+  połączenie Postgrex nie było zamykane — *poprawione*; komentarz wskazywał nieistniejące `hold_writes/0`, doc
+  `start_link/1` mówił, że oba interwały mierzy `:clock` — *poprawione*; `refresh/1` każde wyjście poza timeoutem
+  nazywa `:not_running`, także padnięcie w trakcie — *opisane* w docu, crash loguje supervisor;
+- `SET LOCAL` w sandboxie trwa po `RELEASE SAVEPOINT` do końca testu — *bez zmiany*: w produkcji transakcja jest
+  najbardziej zewnętrzna, w testach sekunda na instrukcję nikomu nie przeszkadza;
+- pamięć przed tabelą i sekunda na zablokowanej tabeli poszerzają znane okno: klucz cofnięty przez EHOS, którego
+  zapis nie przeszedł, wraca po restarcie przy niedostępnym EHOS-ie — *pominięte*: luka była (każdy nieudany zapis),
+  komentarz w `store/2` ją nazywa, a stary kod czekał do 15 s, trzymając wołającego.
+
 Brama z `sandbox/` → **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1114, `check` 0 / 68 / 6; web 52; auth
-**148** (+10) + 1 property.
+**149** (+11) + 1 property.
 
 ### #72 — runnery budzone po commicie, którego dispatch nie zamyka — co wyszło (2 października)
 

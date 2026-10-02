@@ -70,11 +70,15 @@ defmodule EhOsContract.Auth.Keys do
   # adds to it, and stays well inside `@call_timeout`.
   @fetch_deadline 5_000
   @call_timeout 10_000
-  # Reading and writing the table are bounded apart from the fetch: a lock held on it
-  # (a migration, `VACUUM FULL`) is waited for a second, and any statement two, so
-  # the fetch and the two statements of a write stay inside `@call_timeout`.
-  @lock_timeout "1s"
-  @statement_timeout 2_000
+  # Reading and writing the table are bounded apart from the fetch. Postgres ends
+  # any statement, a wait for a lock held on the table (a migration, `VACUUM FULL`)
+  # included, after a second, and the connection stays in the pool; the client gives
+  # up on a call — the connection, `BEGIN`, `COMMIT` — after two, and closes it. A
+  # write on a locked table thus takes a second, and an early fetch with it stays
+  # inside `@call_timeout`; only the wait for a connection from the pool is the
+  # repo's own.
+  @statement_timeout "1s"
+  @call_bound 2_000
   # The one entry of the table that is not a key: `{@next, clock, at}`, when the next
   # early fetch is allowed, by the process's clock.
   @next :next_early_fetch
@@ -180,8 +184,9 @@ defmodule EhOsContract.Auth.Keys do
   failed. Not rate-limited: this is the scheduled path, called directly.
 
   A process that does not answer in ten seconds — busy with fetches queued before
-  this one — is `{:error, :timeout}`, and one that is not running
-  `{:error, :not_running}`: the caller is told, not taken down.
+  this one — is `{:error, :timeout}`, and one that is not running, or stops during
+  the call, `{:error, :not_running}`: the caller is told, not taken down, and a crash
+  is the supervisor's to log.
   """
   @spec refresh(atom()) :: :ok | {:error, term()}
   def refresh(name \\ __MODULE__) do
@@ -380,7 +385,7 @@ defmodule EhOsContract.Auth.Keys do
       bounded(state.repo, fn ->
         state.repo.query!("SELECT kid, jwk FROM #{@table}", [],
           log: false,
-          timeout: @statement_timeout
+          timeout: @call_bound
         ).rows
       end)
 
@@ -529,8 +534,8 @@ defmodule EhOsContract.Auth.Keys do
 
     try do
       bounded(state.repo, fn ->
-        state.repo.delete_all(@table, timeout: @statement_timeout)
-        state.repo.insert_all(@table, rows, timeout: @statement_timeout)
+        state.repo.delete_all(@table, timeout: @call_bound)
+        state.repo.insert_all(@table, rows, timeout: @call_bound)
       end)
     rescue
       exception ->
@@ -540,13 +545,18 @@ defmodule EhOsContract.Auth.Keys do
     end
   end
 
-  # A transaction that waits for no lock longer than `@lock_timeout`. Postgres ends
-  # the wait with an error, so the connection stays in the pool, where a client-side
-  # timeout would close it.
+  # A transaction whose every statement Postgres ends after `@statement_timeout`.
   defp bounded(repo, fun) do
-    repo.transaction(fn ->
-      repo.query!("SET LOCAL lock_timeout = '#{@lock_timeout}'", [], log: false)
-      fun.()
-    end)
+    repo.transaction(
+      fn ->
+        repo.query!("SET LOCAL statement_timeout = '#{@statement_timeout}'", [],
+          log: false,
+          timeout: @call_bound
+        )
+
+        fun.()
+      end,
+      timeout: @call_bound
+    )
   end
 end
