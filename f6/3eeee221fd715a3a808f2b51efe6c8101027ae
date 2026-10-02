@@ -1,0 +1,5 @@
+Two reviews of origin/main..HEAD (#83), in parallel.
+Security and performance (engineering:code-review): nothing at medium or above; low: Manifest.build/3 raises Protocol.UndefinedError on non-list applications from a map not read by read/1 -> no change needed (build/3 takes read/1 output; the task always reads first).
+Correctness (code-review high): no divergence from EHOS. Fixed: two assertions matching any map; missing cases (web public: false beside public api, both rules at once); read/1 doc promised every reason; README v2 example lacked health. Each new test reverse-checked by mutation. No change needed: same non-list finding; rules not tied to version (only v2 allows sign_in); hand-written manifest fixture (EHOS has none with sign_in).
+Gate from sandbox: EXIT=0; check counts 0/29/9 and 0/68/6 unchanged; auth 191 + 1 property.
+Live: mix eh_os_contract.manifest MIX_ENV=dev on a v2 file: manifest carries sign_in; own application refused at line 8.
