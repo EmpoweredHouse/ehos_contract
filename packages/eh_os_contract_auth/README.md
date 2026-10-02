@@ -192,6 +192,7 @@ The child checks this at boot and refuses to start otherwise:
   refused;
 - `address`, and each address in `applications`, is `https://<host>` in lower case, with no port, no path and no
   trailing slash;
+- no address in `applications` is `address`: they are the other applications (`eh-os` D-69);
 - the issuer is https;
 - `secret_key_base` has at least 64 bytes.
 
