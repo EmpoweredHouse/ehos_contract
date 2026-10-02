@@ -78,7 +78,7 @@ defmodule EhOsContract.Auth.Session do
     with {:ok, session} <- Sessions.fetch(opts[:sign_in], get_session(conn, @session_key)),
          conn =
            assign(conn, :eh_os_contract_session, Map.take(session, [:subject, :sid, :auth_time])),
-         {:ok, conn} <- maybe_actor(conn, get_session(conn, @session_key), opts) do
+         {:ok, conn} <- maybe_actor(conn, session, opts) do
       conn
     else
       {:error, reason} when reason in [:signed_out, :expired] ->
@@ -120,12 +120,15 @@ defmodule EhOsContract.Auth.Session do
   def actor(session, opts) when is_map(session) do
     name = Keyword.get(opts, :sign_in, SignIn)
 
-    verified(Map.get(session, @session_key), name, opts)
+    verified(Map.get(session, @session_key), name, opts, [])
   end
 
-  defp maybe_actor(conn, browser_token, opts) do
+  # The session the plug has read goes along, so the renewal's fast path does not read it again.
+  defp maybe_actor(conn, session, opts) do
     if opts[:assign_actor] do
-      with {:ok, actor} <- verified(browser_token, opts[:sign_in], opts) do
+      browser_token = get_session(conn, @session_key)
+
+      with {:ok, actor} <- verified(browser_token, opts[:sign_in], opts, session: session) do
         {:ok, assign(conn, :eh_os_contract_actor, actor)}
       end
     else
@@ -135,11 +138,12 @@ defmodule EhOsContract.Auth.Session do
 
   # The credential for this application, renewed when it is stale (S4), verified as a bearer
   # credential is (S8).
-  defp verified(browser_token, name, opts) do
+  defp verified(browser_token, name, opts, read) do
     address = SignIn.config(name).address
+    verify_opts = opts |> Keyword.take(@verify_opts) |> drop_nil()
 
-    with {:ok, token} <- Renewal.credential(name, browser_token, address) do
-      EhOsContract.Auth.verify(token, opts |> Keyword.take(@verify_opts) |> drop_nil())
+    with {:ok, token} <- Renewal.credential(name, browser_token, address, verify_opts ++ read) do
+      EhOsContract.Auth.verify(token, verify_opts)
     end
   end
 

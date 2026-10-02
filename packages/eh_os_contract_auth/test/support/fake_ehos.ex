@@ -98,11 +98,17 @@ defmodule EhOsContract.Auth.FakeEhos do
 
   @doc """
   Has `ehos` answer refresh requests with what EHOS does not answer, or `nil`:
-  `:reset` (no response), `{:status, code}` (an error response), or a 200 that `oidcc`
-  refuses, `:no_id_token` or `:foreign_sub`. None of these rotates the refresh token
-  but the 200s, which do, as EHOS would before answering.
+  `:reset` (no response), `{:status, code}` (an error response), or a 200 that cannot be
+  used: `:no_id_token`, `:foreign_sub` and `:foreign_sid` in its ID token,
+  `:no_refresh_token`, `:expires_in_30`, `:jwt` (a body that is not JSON), `:huge` (past
+  the transport's limit). `:short_exp` is a usable 200 whose credential's `exp` is
+  100 seconds away though `expires_in` says 600. None of these rotates the refresh
+  token but the 200s, which do, as EHOS would before answering.
   """
   def refresh_answer(ehos, answer), do: Agent.update(ehos, &%{&1 | refresh_answer: answer})
+
+  @doc "Has `ehos` sign with `signer`, a private Ed25519 JWK, from now on, as after a key rotation."
+  def rotate_signer(ehos, signer), do: Agent.update(ehos, &%{&1 | signer: signer})
 
   @doc "The forms of the token requests `ehos` was sent, oldest first."
   def token_requests(ehos), do: Agent.get(ehos, &Enum.reverse(&1.token_requests))
@@ -213,7 +219,22 @@ defmodule EhOsContract.Auth.FakeEhos do
   # `Ehos.SignIn.Token`'s renewal: strict rotation, a token presented twice revokes its family
   # (the revocation kept though the request fails), and an ID token as eh-os-contract#80 lists it.
   defp refreshed(ehos, state, conn, presented) do
-    record = Map.get(state.refresh, presented)
+    # Looked up and marked in one step, so two presentations at once cannot both pass.
+    {record, seen} =
+      Agent.get_and_update(ehos, fn state ->
+        case Map.get(state.refresh, presented) do
+          # An answer of no response or an error status consumes nothing, as at EHOS.
+          %{consumed: false} = record
+          when not (state.refresh_answer == :reset or is_tuple(state.refresh_answer)) ->
+            {{record, :fresh}, put_in(state, [:refresh, presented, :consumed], true)}
+
+          %{} = record ->
+            {{record, if(record.consumed, do: :consumed, else: :fresh)}, state}
+
+          nil ->
+            {{nil, :unknown}, state}
+        end
+      end)
 
     cond do
       state.refresh_answer == :reset ->
@@ -223,33 +244,56 @@ defmodule EhOsContract.Auth.FakeEhos do
         {:status, status} = state.refresh_answer
         Plug.Conn.send_resp(conn, status, "")
 
-      record == nil or MapSet.member?(state.revoked, record.family) ->
+      seen == :unknown or MapSet.member?(state.revoked, record.family) ->
         invalid_grant(conn)
 
-      record.consumed ->
+      seen == :consumed ->
         Agent.update(ehos, &%{&1 | revoked: MapSet.put(&1.revoked, record.family)})
         invalid_grant(conn)
 
       true ->
-        body = issue(ehos, state, record.grant, record.family, renewal: true)
-        Agent.update(ehos, &put_in(&1, [:refresh, presented, :consumed], true))
+        grant =
+          if state.refresh_answer == :short_exp,
+            do: Map.put(record.grant, "credential_lifetime", 100),
+            else: record.grant
 
-        body =
-          case state.refresh_answer do
-            :no_id_token ->
-              Map.delete(body, "id_token")
+        body = issue(ehos, state, grant, record.family, renewal: true)
+        answer(conn, state, record.grant, body)
+    end
+  end
 
-            :foreign_sub ->
-              Map.put(
-                body,
-                "id_token",
-                id_token(state, %{record.grant | "sub" => "u-bartek"}, true)
-              )
+  defp answer(conn, state, grant, body) do
+    case state.refresh_answer do
+      :no_id_token ->
+        Req.Test.json(conn, Map.delete(body, "id_token"))
 
-            nil ->
-              body
-          end
+      :foreign_sub ->
+        Req.Test.json(conn, %{
+          body
+          | "id_token" => id_token(state, %{grant | "sub" => "u-bartek"}, true)
+        })
 
+      :foreign_sid ->
+        Req.Test.json(conn, %{
+          body
+          | "id_token" => id_token(state, %{grant | "sid" => "sid-other"}, true)
+        })
+
+      :no_refresh_token ->
+        Req.Test.json(conn, Map.delete(body, "refresh_token"))
+
+      :expires_in_30 ->
+        Req.Test.json(conn, %{body | "expires_in" => 30})
+
+      :jwt ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/jwt")
+        |> Plug.Conn.send_resp(200, body["id_token"])
+
+      :huge ->
+        Req.Test.json(conn, Map.put(body, "padding", String.duplicate("x", 70_000)))
+
+      _usable ->
         Req.Test.json(conn, body)
     end
   end
@@ -294,7 +338,7 @@ defmodule EhOsContract.Auth.FakeEhos do
         "sub" => Map.get(grant, "credential_sub", grant["sub"]),
         "aud" => grant["audience"],
         "iat" => now,
-        "exp" => now + 600,
+        "exp" => now + Map.get(grant, "credential_lifetime", 600),
         "jti" => Ecto.UUID.generate(),
         "cap" => [],
         "client_id" => grant["client_id"]

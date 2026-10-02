@@ -180,6 +180,16 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
       end
     end
 
+    test "the credential's own exp bounds when it is renewed first", context do
+      browser = sign_in(context, "/", grant: %{"credential_lifetime" => 100})
+
+      {:ok, session} =
+        EhOsContract.Auth.SignIn.Sessions.fetch(context.name, session_token(context, browser))
+
+      expires_at = session.credentials["https://rehmed.test"].expires_at
+      assert DateTime.diff(expires_at, DateTime.utc_now()) in 90..101
+    end
+
     test "a token response missing what a session needs refuses the sign-in", context do
       for grant <- [%{"sid" => ""}, %{"sub" => ""}, %{"auth_time" => 999_999_999_999_999}] do
         browser = sign_in(context, "/", grant: grant)

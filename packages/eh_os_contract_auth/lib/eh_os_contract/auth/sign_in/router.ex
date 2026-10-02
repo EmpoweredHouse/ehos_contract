@@ -44,7 +44,7 @@ defmodule EhOsContract.Auth.SignIn.Router do
 
   alias EhOsContract.Auth.Session
   alias EhOsContract.Auth.SignIn
-  alias EhOsContract.Auth.SignIn.{ClientStore, Sessions}
+  alias EhOsContract.Auth.SignIn.{ClientStore, Renewal, Sessions}
   alias Oidcc.Plug.{AuthorizationCallback, Authorize}
 
   @verify_opts [:keys, :audience, :issuer]
@@ -179,7 +179,7 @@ defmodule EhOsContract.Auth.SignIn.Router do
          credential: %{
            resource: config.address,
            token: credential,
-           expires_at: DateTime.add(now, expires_in)
+           expires_at: Renewal.expires_at(credential, now, expires_in)
          }
        }}
     else

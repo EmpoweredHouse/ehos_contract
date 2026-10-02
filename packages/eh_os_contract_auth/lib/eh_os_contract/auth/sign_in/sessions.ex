@@ -40,6 +40,7 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
     :auth_time,
     :refresh_token,
     :id_token,
+    :lease_holder,
     credentials: %{}
   ]
 
@@ -59,6 +60,7 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
           auth_time: DateTime.t(),
           refresh_token: String.t(),
           id_token: String.t(),
+          lease_holder: String.t() | nil,
           credentials: %{String.t() => credential()}
         }
 
@@ -146,19 +148,43 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
   @doc false
   # S4, step 2: takes the session's lease for `holder`, in one statement in autocommit, when it is
   # free or past its time by the database's clock, so replicas whose clocks disagree still agree.
-  @spec take_lease(t(), String.t(), pos_integer()) :: boolean()
+  # `{:taken, previous}` names who held it before, `nil` when nobody did: a lease past its time
+  # and never released is a holder that overran it or died mid-call, and whether its refresh token
+  # was presented is unknown.
+  @spec take_lease(t(), String.t(), pos_integer()) :: {:taken, String.t() | nil} | :busy
   def take_lease(%__MODULE__{id: id}, holder, lease_ms) do
-    %{num_rows: rows} =
+    %{rows: rows} =
       repo().query!(
         """
-        UPDATE #{@sessions}
+        WITH previous AS (SELECT id, lease_holder FROM #{@sessions} WHERE id = $1 FOR UPDATE)
+        UPDATE #{@sessions} AS s
         SET lease_holder = $2, lease_until = clock_timestamp() + $3 * interval '1 millisecond'
-        WHERE id = $1 AND (lease_until IS NULL OR lease_until < clock_timestamp())
+        FROM previous
+        WHERE s.id = previous.id AND (s.lease_until IS NULL OR s.lease_until < clock_timestamp())
+        RETURNING previous.lease_holder
         """,
         [id, holder, lease_ms]
       )
 
-    rows == 1
+    case rows do
+      [[previous]] -> {:taken, previous}
+      [] -> :busy
+    end
+  end
+
+  @doc false
+  # After a renewal EHOS did not answer, the lease stays held under `as` for `ms`, so the session's
+  # other requests do not each call EHOS again at once; it is released by expiring.
+  @spec hold_off(t(), String.t(), String.t(), pos_integer()) :: :ok
+  def hold_off(%__MODULE__{id: id}, holder, as, ms) do
+    repo().query!(
+      "UPDATE #{@sessions} SET lease_holder = $3, " <>
+        "lease_until = clock_timestamp() + $4 * interval '1 millisecond' " <>
+        "WHERE id = $1 AND lease_holder = $2",
+      [id, holder, as, ms]
+    )
+
+    :ok
   end
 
   @doc false
@@ -283,7 +309,8 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
         sid: s.sid,
         auth_time: type(s.auth_time, :utc_datetime),
         refresh_token: s.refresh_token,
-        id_token: s.id_token
+        id_token: s.id_token,
+        lease_holder: s.lease_holder
       }
     )
   end
@@ -315,6 +342,7 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
          auth_time: row.auth_time,
          refresh_token: refresh_token,
          id_token: id_token,
+         lease_holder: row.lease_holder,
          credentials: credentials
        }}
     else

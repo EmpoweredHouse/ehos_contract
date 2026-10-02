@@ -278,12 +278,13 @@ with `assign_actor: true`, renew it through EHOS with the session's refresh toke
 Nothing renews unless a request asks.
 
 - **One renewal per session.** However many requests of the session ask at once, one takes a lease on the
-  session's row, by the database's clock, and renews. The others wait for its credential, for at most 15 seconds.
+  session's row, by the database's clock, and renews. The others use the credential they hold while it is
+  unexpired, and wait for the renewal, for at most 15 seconds, only when it has expired.
 - **No transaction is open while EHOS is called.**
 - **What a failure leaves.**
   - Sign-in over at EHOS: the session ends, and a page is sent to sign in.
   - EHOS down or slow: the held credential is used while it is unexpired. After that the request answers 503,
-    and the refresh token is kept.
+    the refresh token is kept, and the session does not call EHOS again for 5 seconds.
   - A response that cannot be used: the session ends, since EHOS has rotated the refresh token.
 
 Credentials for other applications are the last part of this work

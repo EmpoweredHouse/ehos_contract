@@ -42,6 +42,12 @@ defmodule EhOsContract.Auth.SignIn.Http do
           Process.put(@status, status)
           result
 
+        # The status is known though the body is refused: a 2xx past the limit is still a
+        # response EHOS acted on.
+        {:ok, {:too_large, status}} ->
+          Process.put(@status, status)
+          {:error, :response_too_large}
+
         {:ok, result} ->
           result
 
@@ -60,6 +66,15 @@ defmodule EhOsContract.Auth.SignIn.Http do
   # whose rotated refresh token is lost, from one that never came (S5).
   @spec last_status() :: non_neg_integer() | nil
   def last_status, do: Process.get(@status)
+
+  @doc false
+  # Forgets the last status, before a call whose classification must not read an earlier one's:
+  # `oidcc` can fail before it makes any request.
+  @spec forget_status() :: :ok
+  def forget_status do
+    Process.delete(@status)
+    :ok
+  end
 
   @doc false
   # A GET of a JSON object, for the discovery document and the key set.
@@ -118,8 +133,8 @@ defmodule EhOsContract.Auth.SignIn.Http do
       |> Kernel.++(Keyword.take(Map.to_list(config), [:plug]))
 
     case Req.request(options) do
-      {:ok, %Req.Response{body: :too_large}} ->
-        {:error, :response_too_large}
+      {:ok, %Req.Response{body: :too_large, status: status}} ->
+        {:too_large, status}
 
       {:ok, %Req.Response{} = response} ->
         {:ok,

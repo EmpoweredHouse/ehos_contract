@@ -14,7 +14,7 @@ defmodule EhOsContract.Auth.RenewalTest do
 
   use ExUnit.Case, async: false
 
-  import EhOsContract.Auth.KeyCase, only: [key_pair: 0, start_keys: 1, ehos: 1]
+  import EhOsContract.Auth.KeyCase, only: [key_pair: 0, start_keys: 2, ehos: 1]
 
   alias EhOsContract.Auth.{CommitRepo, FakeEhos, SignIn}
   alias EhOsContract.Auth.SignIn.{Renewal, Sessions}
@@ -48,18 +48,21 @@ defmodule EhOsContract.Auth.RenewalTest do
     ehos = FakeEhos.start(signer: pair.private)
     name = start!(ehos)
     {token, session} = signed_in!(ehos, name)
+    key_endpoint = ehos({:keys, [pair]})
 
     %{
       ehos: ehos,
       name: name,
       token: token,
       session: session,
-      keys: start_keys(ehos({:keys, [pair]}))
+      pair: pair,
+      key_endpoint: key_endpoint,
+      keys: start_keys(key_endpoint, repo: CommitRepo)
     }
   end
 
   test "a credential good for more than 30 seconds is used, and EHOS is not asked", context do
-    assert Renewal.credential(context.name, context.token, @address) ==
+    assert Renewal.credential(context.name, context.token, @address, keys: context.keys) ==
              {:ok, context.session.credentials[@address].token}
 
     assert refreshes(context) == 0
@@ -72,7 +75,7 @@ defmodule EhOsContract.Auth.RenewalTest do
 
     assert {:ok, renewed} =
              EhOsContract.Clock.at(later, fn ->
-               Renewal.credential(context.name, context.token, @address)
+               Renewal.credential(context.name, context.token, @address, keys: context.keys)
              end)
 
     refute renewed == context.session.credentials[@address].token
@@ -110,7 +113,7 @@ defmodule EhOsContract.Auth.RenewalTest do
       |> Enum.map(fn _ ->
         Task.async(fn ->
           EhOsContract.Clock.at(later, fn ->
-            Renewal.credential(context.name, context.token, @address)
+            Renewal.credential(context.name, context.token, @address, keys: context.keys)
           end)
         end)
       end)
@@ -137,7 +140,7 @@ defmodule EhOsContract.Auth.RenewalTest do
 
     {:ok, _token} =
       EhOsContract.Clock.at(minutes_later(context, 11), fn ->
-        Renewal.credential(context.name, context.token, @address)
+        Renewal.credential(context.name, context.token, @address, keys: context.keys)
       end)
 
     assert_received {:idle_in_transaction, 0}
@@ -176,7 +179,7 @@ defmodule EhOsContract.Auth.RenewalTest do
 
         # Stale (inside the 30-second margin) but unexpired: the held credential.
         assert EhOsContract.Clock.at(seconds_later(context, 590), fn ->
-                 Renewal.credential(context.name, context.token, @address)
+                 Renewal.credential(context.name, context.token, @address, keys: context.keys)
                end) == {:ok, held}
 
         assert refreshes(context) == 1
@@ -186,7 +189,10 @@ defmodule EhOsContract.Auth.RenewalTest do
 
         {:ok, session} = Sessions.fetch(context.name, context.token)
         assert session.refresh_token == context.session.refresh_token
-        assert lease(context) == [nil, nil]
+        # Held a moment as a pause, so the session's other requests do not call EHOS at once.
+        assert [paused, %NaiveDateTime{}] = lease(context)
+        assert paused =~ "paused"
+        assert refreshes(context) == 1
       end
     end
 
@@ -229,20 +235,114 @@ defmodule EhOsContract.Auth.RenewalTest do
       assert rows() == 1
     end
 
-    test "a lease past its time is taken over", context do
+    # S5: a holder that overran its lease or died mid-call may have presented the refresh token,
+    # and presenting it again would revoke the sign-in everywhere.
+    test "a lease another holder never released ends the session, and EHOS is not asked",
+         context do
       CommitRepo.query!(
         "UPDATE eh_os_contract_auth_sessions " <>
           "SET lease_holder = 'another', lease_until = clock_timestamp() - interval '1 second'"
       )
 
+      assert renew(context) == {:error, :signed_out}
+      assert refreshes(context) == 0
+      assert rows() == 0
+    end
+
+    test "a pause past its time is a lease like a free one", context do
+      CommitRepo.query!(
+        "UPDATE eh_os_contract_auth_sessions SET lease_holder = $1, " <>
+          "lease_until = clock_timestamp() - interval '1 second'",
+        [paused()]
+      )
+
       assert {:ok, _token} = renew(context)
       assert refreshes(context) == 1
     end
+
+    test "while another request renews, a credential still unexpired is used at once", context do
+      CommitRepo.query!(
+        "UPDATE eh_os_contract_auth_sessions " <>
+          "SET lease_holder = 'another', lease_until = clock_timestamp() + interval '1 hour'"
+      )
+
+      started = System.monotonic_time(:millisecond)
+
+      assert EhOsContract.Clock.at(seconds_later(context, 590), fn ->
+               Renewal.credential(context.name, context.token, @address, keys: context.keys)
+             end) == {:ok, context.session.credentials[@address].token}
+
+      assert System.monotonic_time(:millisecond) - started < 150
+      assert refreshes(context) == 0
+    end
+
+    for answer <- [:no_refresh_token, :expires_in_30, :foreign_sid, :jwt, :huge] do
+      test "a 200 that cannot be used (#{answer}) ends the session", context do
+        FakeEhos.refresh_answer(context.ehos, unquote(answer))
+
+        assert renew(context) == {:error, :signed_out}
+        assert rows() == 0
+      end
+    end
+
+    # As the callback checks a sign-in: a credential every request would refuse is no renewal.
+    test "a renewed credential verify/2 refuses ends the session", context do
+      FakeEhos.rotate_signer(context.ehos, JOSE.JWK.generate_key({:okp, :Ed25519}))
+
+      assert renew(context) == {:error, :signed_out}
+      assert rows() == 0
+    end
+
+    # oidcc asks the child for keys once when an ID token names a kid it does not hold.
+    test "after a key rotation at EHOS, the renewal fetches the new keys and goes on", context do
+      new = key_pair()
+      FakeEhos.rotate_signer(context.ehos, new.private)
+      EhOsContract.Auth.KeyCase.answer(context.key_endpoint, {:keys, [context.pair, new]})
+      :ok = EhOsContract.Auth.Keys.refresh(context.keys)
+
+      assert {:ok, _token} = renew(context)
+      assert rows() == 1
+    end
+
+    test "the credential's own exp bounds when it is renewed next", context do
+      FakeEhos.refresh_answer(context.ehos, :short_exp)
+      later = minutes_later(context, 11)
+
+      {:ok, _token} =
+        EhOsContract.Clock.at(later, fn ->
+          Renewal.credential(context.name, context.token, @address, keys: context.keys)
+        end)
+
+      {:ok, session} = Sessions.fetch(context.name, context.token)
+      expires_at = session.credentials[@address].expires_at
+      assert DateTime.diff(expires_at, later) in 90..110
+    end
+
+    # oidcc fails before any request when the document offers no refresh grant; the status of an
+    # earlier request of this process (the code exchange in setup) must not be read as its answer.
+    test "a refusal before any request keeps the session, whatever this process asked before",
+         context do
+      FakeEhos.discovery(
+        context.ehos,
+        &Map.put(&1, "grant_types_supported", ["authorization_code"])
+      )
+
+      :ok = SignIn.refresh(context.name)
+
+      assert renew(context) == {:error, :ehos_unavailable}
+      assert rows() == 1
+      assert refreshes(context) == 0
+    end
+  end
+
+  defp paused do
+    # What Renewal holds the lease as after a failed renewal.
+    CommitRepo.query!("SELECT 'paused after a failed renewal'").rows |> hd() |> hd()
   end
 
   defp renew(context) do
     EhOsContract.Clock.at(minutes_later(context, 11), fn ->
-      Renewal.credential(context.name, context.token, @address)
+      Renewal.credential(context.name, context.token, @address, keys: context.keys)
     end)
   end
 
