@@ -7,6 +7,12 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **#71: the key process waits for a locked `eh_os_contract_auth_keys` at most a second.** Reading and writing
+  the table run with `lock_timeout` of one second and a two-second statement timeout, and a fetched key set goes into
+  memory before the table. A table held by a migration or `VACUUM FULL` no longer keeps the start, or the early
+  fetch a new `kid` asks for, past the ten-second call: the read or write fails, is logged, and the keys from EHOS
+  are in force anyway.
+
 - **EH3: `mix eh_os_contract.manifest` writes `ehos.manifest/v2`, and v1 is gone** (`eh-os` D-52; EHOS deploys only
   v2). The task reads the project's `ehos.yaml` (`--ehos-yaml` names another), refuses it with every reason as EHOS
   would, and writes it extended with `application`, `offers` and `engine`: every key but `schema` unchanged, `schema`

@@ -18,7 +18,9 @@ defmodule EhOsContract.Auth.Keys do
       a failed fetch too: replacing the keys with nothing would lock everyone out on
       one bad answer. So is a request not finished in five seconds, whatever the
       request options say, so no answer can hold this process for longer.
-    * **A successful fetch** replaces the set in the table and in memory.
+    * **A successful fetch** replaces the set in memory, then in the table. A table
+      locked for longer than a second is not waited for: the write is logged as
+      failed, and the next fetch writes it again.
 
   A key is known by its RFC 7638 thumbprint, computed here, never by the `kid` the
   JWKS writes beside it: the thumbprint is what EHOS puts in a credential's header
@@ -65,10 +67,14 @@ defmodule EhOsContract.Auth.Keys do
   # starts again with every read, so an answer trickled a byte at a time never trips
   # it, and the connect timeout is spent once on TCP and again on the TLS handshake.
   # This bounds the request whole, whatever Req's own `config :req, default_options`
-  # adds to it, and stays well inside `@call_timeout`. Writing the table after it is
-  # outside the deadline, bounded by the repo's own timeouts.
+  # adds to it, and stays well inside `@call_timeout`.
   @fetch_deadline 5_000
   @call_timeout 10_000
+  # Reading and writing the table are bounded apart from the fetch: a lock held on it
+  # (a migration, `VACUUM FULL`) is waited for a second, and any statement two, so
+  # the fetch and the two statements of a write stay inside `@call_timeout`.
+  @lock_timeout "1s"
+  @statement_timeout 2_000
   # The one entry of the table that is not a key: `{@next, clock, at}`, when the next
   # early fetch is allowed, by the process's clock.
   @next :next_early_fetch
@@ -155,10 +161,10 @@ defmodule EhOsContract.Auth.Keys do
     ArgumentError -> false
   end
 
-  # The request is bounded by `@fetch_deadline`, well inside this, so the call
-  # outlives it unless writing the table is slow too. Should the process not answer
-  # — too slow, or not running — the credential is refused with what memory holds
-  # rather than taking the caller down.
+  # The request is bounded by `@fetch_deadline` and writing the table by its own
+  # timeouts, together inside this. Should the process not answer — too slow, or not
+  # running — the credential is refused with what memory holds rather than taking
+  # the caller down.
   defp refetch(name) do
     GenServer.call(name, :refetch, @call_timeout)
   catch
@@ -337,10 +343,17 @@ defmodule EhOsContract.Auth.Keys do
     state
   end
 
-  # The last good set, from the table. A table that cannot be read leaves memory
-  # empty and says so: the fetch after it may still succeed.
+  # The last good set, from the table. A table that cannot be read in time leaves
+  # memory empty and says so: the fetch after it may still succeed.
   defp load(state) do
-    %{rows: rows} = state.repo.query!("SELECT kid, jwk FROM #{@table}", [], log: false)
+    {:ok, rows} =
+      bounded(state.repo, fn ->
+        state.repo.query!("SELECT kid, jwk FROM #{@table}", [],
+          log: false,
+          timeout: @statement_timeout
+        ).rows
+      end)
+
     :ets.insert(state.name, for([kid, jwk] <- rows, do: {kid, signer(jwk)}))
   rescue
     exception ->
@@ -456,17 +469,22 @@ defmodule EhOsContract.Auth.Keys do
   # Parsed once, when the key enters memory, not once per credential.
   defp signer(jwk), do: Joken.Signer.create("Ed25519", jwk)
 
-  # The table first, so memory never holds a set the next start would not load.
-  # When the table cannot be written the keys still go into memory: they are good,
-  # and the next fetch tries the table again.
+  # Memory first: the keys are good whatever the table does, and a caller whose
+  # early fetch outlived its call finds them when it looks again. When the table
+  # cannot be written in time the next fetch tries it again; until then a restart
+  # loads the set before this one.
   defp store(state, keys) do
+    keep = Map.merge(keys, state.pinned)
+    for kid <- kids(state.name), not Map.has_key?(keep, kid), do: :ets.delete(state.name, kid)
+    :ets.insert(state.name, for({kid, jwk} <- keys, do: {kid, signer(jwk)}))
+
     now = DateTime.utc_now()
     rows = for {kid, jwk} <- keys, do: %{kid: kid, jwk: jwk, fetched_at: now}
 
     try do
-      state.repo.transaction(fn ->
-        state.repo.delete_all(@table)
-        state.repo.insert_all(@table, rows)
+      bounded(state.repo, fn ->
+        state.repo.delete_all(@table, timeout: @statement_timeout)
+        state.repo.insert_all(@table, rows, timeout: @statement_timeout)
       end)
     rescue
       exception ->
@@ -474,9 +492,15 @@ defmodule EhOsContract.Auth.Keys do
           "eh_os_contract_auth could not write #{@table}: #{Exception.message(exception)}"
         )
     end
+  end
 
-    keep = Map.merge(keys, state.pinned)
-    for kid <- kids(state.name), not Map.has_key?(keep, kid), do: :ets.delete(state.name, kid)
-    :ets.insert(state.name, for({kid, jwk} <- keys, do: {kid, signer(jwk)}))
+  # A transaction that waits for no lock longer than `@lock_timeout`. Postgres ends
+  # the wait with an error, so the connection stays in the pool, where a client-side
+  # timeout would close it.
+  defp bounded(repo, fun) do
+    repo.transaction(fn ->
+      repo.query!("SET LOCAL lock_timeout = '#{@lock_timeout}'", [], log: false)
+      fun.()
+    end)
   end
 end

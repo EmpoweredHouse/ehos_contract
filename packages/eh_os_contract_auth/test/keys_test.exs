@@ -14,6 +14,29 @@ defmodule EhOsContract.Auth.KeysTest do
 
   import ExUnit.CaptureLog, only: [with_log: 1]
 
+  defmodule HeldRepo do
+    @moduledoc false
+    # The test repo, whose transactions wait for the test's word while a test holds
+    # them (`hold_writes/0`).
+    alias EhOsContract.Auth.TestRepo
+
+    def transaction(fun, opts \\ []) do
+      with test when is_pid(test) <- Application.get_env(:eh_os_contract_auth, __MODULE__) do
+        send(test, {:writing, self()})
+
+        receive do
+          :go -> :ok
+        end
+      end
+
+      TestRepo.transaction(fun, opts)
+    end
+
+    defdelegate query!(sql, params, opts), to: TestRepo
+    defdelegate delete_all(queryable, opts), to: TestRepo
+    defdelegate insert_all(source, rows, opts), to: TestRepo
+  end
+
   test "a key removed from the JWKS is refused after the next refresh" do
     kept = key_pair()
     removed = key_pair()
@@ -151,6 +174,97 @@ defmodule EhOsContract.Auth.KeysTest do
       assert Keys.refresh(keys) == {:error, {unquote(kind), :pool_timeout}}
       assert {:ok, _} = Auth.verify(credential(pair), keys: keys)
     end
+  end
+
+  test "a locked table holds neither the start nor an early fetch past the call" do
+    pair = key_pair()
+    ehos = ehos({:keys, [pair]})
+    clock = clock()
+    lock_table!()
+
+    {elapsed, {keys, log}} =
+      :timer.tc(fn -> with_log(fn -> start_keys(ehos, clock: clock) end) end, :millisecond)
+
+    assert log =~ "could not read eh_os_contract_auth_keys"
+    assert log =~ "could not write eh_os_contract_auth_keys"
+    assert elapsed < 4_000, "took #{elapsed} ms"
+    assert {:ok, _} = Auth.verify(credential(pair), keys: keys)
+
+    # EHOS rotates while the table is still held: the first credential signed with
+    # the new key gets in, on the early fetch it asked for.
+    rotated = key_pair()
+    answer(ehos, {:keys, [rotated]})
+    advance(clock, :timer.seconds(30))
+
+    {elapsed, {verified, _log}} =
+      :timer.tc(
+        fn -> with_log(fn -> Auth.verify(credential(rotated), keys: keys) end) end,
+        :millisecond
+      )
+
+    assert {:ok, _} = verified
+    assert elapsed < 4_000, "took #{elapsed} ms"
+  end
+
+  test "a key fetched is in force before the table is written" do
+    ehos = ehos({:keys, [key_pair()]})
+    keys = start_keys(ehos, repo: HeldRepo)
+    rotated = key_pair()
+    answer(ehos, {:keys, [rotated]})
+
+    Application.put_env(:eh_os_contract_auth, HeldRepo, self())
+    on_exit(fn -> Application.delete_env(:eh_os_contract_auth, HeldRepo) end)
+    refresh = Task.async(fn -> Keys.refresh(keys) end)
+
+    assert_receive {:writing, writer}, 5_000
+    assert Keys.kids(keys) == [rotated.kid]
+
+    send(writer, :go)
+    assert Task.await(refresh) == :ok
+  end
+
+  # A connection of its own, outside the sandbox, holds the table as a migration or
+  # `VACUUM FULL` does, until the test ends, and commits nothing.
+  defp lock_table! do
+    test = self()
+
+    connection =
+      Repo.config() |> Keyword.take([:hostname, :port, :username, :password, :database])
+
+    holder =
+      spawn(fn ->
+        {:ok, conn} = Postgrex.start_link(connection)
+
+        Postgrex.transaction(
+          conn,
+          fn conn ->
+            Postgrex.query!(
+              conn,
+              "LOCK TABLE eh_os_contract_auth_keys IN ACCESS EXCLUSIVE MODE",
+              []
+            )
+
+            send(test, :locked)
+
+            receive do
+              :release -> Postgrex.rollback(conn, :released)
+            end
+          end,
+          timeout: :infinity
+        )
+      end)
+
+    assert_receive :locked, 5_000
+
+    # Run by another process than the test's, so it watches the holder itself.
+    on_exit(fn ->
+      ref = Process.monitor(holder)
+      send(holder, :release)
+
+      receive do
+        {:DOWN, ^ref, :process, ^holder, _reason} -> :ok
+      end
+    end)
   end
 
   # Accepts one fetch, answers with headers promising a body, and sends it a byte a
