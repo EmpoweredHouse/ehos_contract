@@ -80,7 +80,8 @@ EHOS's own JSON Schema, which this package carries unchanged. A file EHOS's read
 refuse is refused here, with every reason, its path, and its line when it is known, and no manifest
 is written. The
 rules EHOS checks beside its schema — names and ports unique in `serves`, the health port not among
-them — are not repeated: EHOS refuses those when the manifest is deployed.
+them — are not repeated: EHOS refuses those when the manifest is deployed. The two of `sign_in` are
+checked here, since adding `sign_in` alone breaks them (below), once the schema has passed.
 
 ```yaml
 schema: ehos.yaml/v1
@@ -110,6 +111,28 @@ is filled in. The task adds:
   roles. System actors, actors with no command, queries, recordings, scopes and publications are
   absent: the manifest has no field for them yet, and EHOS refuses a field it does not know;
 - `engine`, the `eh_os_contract` version that wrote it.
+
+**An application that signs people in through EHOS** writes `ehos.yaml/v2`, which is v1 and one more
+key, `sign_in` (`eh-os` D-69). Its presence is what makes EHOS give the workload its client
+(`EHOS_CLIENT_ID`, `EHOS_CLIENT_KEY_FILE`, D-68), and the manifest carries it as written, `{}`
+included:
+
+```yaml
+schema: ehos.yaml/v2
+serves:
+  - name: web
+    port: 4000
+    public: true       # sign-in returns here, so sign_in needs it
+sign_in: {}            # this application only; or applications: [billing] for others its pages call
+health:
+  port: 4001
+  ready: /health/ready
+  live: /health/live
+```
+
+`sign_in` is refused without an entry `web` that is `public: true`, and its `applications` are
+other applications, each once, never this one: neither the `application` the file names nor the
+domain's name the task finds.
 
 **`ehos.yaml` must hold no secret.** EHOS keeps every manifest it is given, for good, with every key
 of `ehos.yaml` as written, a `migrate` argument too; what the workload needs at run time comes from

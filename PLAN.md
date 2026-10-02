@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 2 października (E0–E12, EH i #72 w `main`; następny etap — wybór użytkownika)
+## Handoff — stan na 2 października (E0–E12, EH, #72 i EB1 w `main`; w toku #83, potem EB2a i EB2b)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -21,29 +21,28 @@ EH wobec dzisiejszego kodu (#70).
 
 **EH — generator `ehos.manifest/v2` — jest zamknięty i w `main`** (#73, merge `743e91d`, z EH3 wmergowanym do
 niego jako #74): `EhOsContract.Auth.EhosYaml.read/1` czyta `ehos.yaml` jak EHOS, a `mix eh_os_contract.manifest`
-pisze z niego v2 w miejsce v1 — „EH2 — co wyszło” i „EH3 — co wyszło” pod „EH — odpowiedź EHOS-a”. Krok 6c EHOS-a
-wdraża ledgera z ręcznego `ledger.v2.json`; nasz generator daje dla ledgera ten sam dokument z dołożonym `engine`.
-Następny etap wybiera użytkownik („Co zostało”).
+pisze z niego v2 w miejsce v1 — „EH2 — co wyszło” i „EH3 — co wyszło” pod „EH — odpowiedź EHOS-a”.
+
+**EB — logowanie przeglądarki przez EHOS w `eh_os_contract_auth`** ([#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78))
+— plan w „Dopisek 2 października — EB”, specyfikacja w `docs/adr/browser-session.md`. **EB1 jest w `main`** (#82,
+merge `7a2bcb7`). Przed EB2 idzie [#83](https://github.com/EmpoweredHouse/eh-os-contract/issues/83): `ehos.yaml/v2`
+z kluczem `sign_in` (`eh-os` D-69) w czytniku i generatorze — „Dopisek 2 października (2)”.
 
 ### Stan repozytorium
 
-- **`origin/main` = `65d7caf`** (merge #76, 2 października: runnery budzone po każdej transakcji silnika, która
-  coś dopisała — #72, „#72 — co wyszło”; przedtem `01ac970` — #75, ten handoff po EH, i `743e91d` — #73, EH).
-  Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe. CI `main` na `65d7caf` — w toku w chwili zapisu,
-  sprawdzić (`gh run list --repo EmpoweredHouse/eh-os-contract --branch main --limit 1`); PR #76 na `4bbced1` —
-  `success`.
-- **`auth/issue-71-keys-hardening`** (worktree `issue-72-assessment-923997`) — od `65d7caf`: #71, proces kluczy
-  w `eh_os_contract_auth`, i ten zapis.
-- **Lokalnie poza tym:** `main`, `plan/eh-os-issues` (w `main`) i worktree `merge-pr-55-next-stage-ad84a2`
-  (odłączony na `aadcbd1`). `eh/eh2-ehos-yaml` i `eh/eh3-manifest-v2` skasowane lokalnie po merge'u, na zgodę
-  użytkownika; na GitHubie zostały.
-- **Otwarte na GitHubie:** **issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza repozytorium;
-  zaparkowane 30 września, z propozycją `EmpoweredHouse/eh-os-contract-sandbox`; **#63–#66** — pytania otwarte po
-  E12 („Otwarte pytania”); **#71** — w toku na `auth/issue-71-keys-hardening`. Otwartych PR-ów brak poza nim. **W `EmpoweredHouse/eh-os`: #91–#96 i #111** —
-  nasze potrzeby wobec EHOS-a („Dopisek 1 października”); dla manifestu ważne #91, #92, #93, #94, #96, #111.
-- **`ehos-ledger`** (`main` = `341fc19`) przypina `eh-os-contract` na `50eb771` (merge #53, przed #54), ma
-  `ehos.yaml` i jego schemat w `.ehos/`, a CI puszcza `mix eh_os_contract.manifest --output ehos.manifest.json`.
-  **Bump przypięcia na `743e91d` użytkownik zlecił 1 października w tamtym repozytorium** — w toku, nie tutaj.
+- **`origin/main` = `7a2bcb7`** (merge #82, EB1). CI `main` na `7a2bcb7` — `success`. Historia `main` z merge'ami
+  PR-ów; gałęzie etapów liniowe.
+- **`eh/issue-83-ehos-yaml-v2`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `7a2bcb7`: #83 i ten zapis.
+- **Lokalnie poza tym:** `main`; zmergowane już `eb/eb1-sign-in-config` (worktree `issue-78-implementation-plan-3ae6a4`)
+  i `auth/issue-71-keys-hardening` (worktree `issue-72-assessment-923997`).
+- **Otwarte na GitHubie:** [#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78) (zamyka EB3),
+  [#80](https://github.com/EmpoweredHouse/eh-os-contract/issues/80) (odnawianie, EB3),
+  [#81](https://github.com/EmpoweredHouse/eh-os-contract/issues/81) (D-68, domyka EB2b),
+  [#83](https://github.com/EmpoweredHouse/eh-os-contract/issues/83) (w toku); **#49** — materiał klientów poza
+  repozytorium, zaparkowane 30 września; **#63–#66** — pytania otwarte po E12 („Otwarte pytania”). Otwartych PR-ów
+  brak. **W `EmpoweredHouse/eh-os`: #91–#96 i #111** — nasze potrzeby wobec EHOS-a („Dopisek 1 października”).
+- **`ehos-ledger`** przypina `eh-os-contract` i puszcza w CI `mix eh_os_contract.manifest`; bump przypięcia na
+  `743e91d` użytkownik zlecił 1 października w tamtym repozytorium — nie tutaj.
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
   `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`) i mają schemat V01.
   **Indeks idempotencji w nich przebudowano ręcznie w E11f** na `(issued_by, idempotency_key)`, jak w dzisiejszym V01
@@ -60,18 +59,20 @@ Następny etap wybiera użytkownik („Co zostało”).
 
 ### Co zostało — i czyje to jest
 
-- **EB — sesja przeglądarki w `eh_os_contract_auth`** ([#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78)),
-  zaplanowane 2 października: „Dopisek 2 października” i `docs/adr/browser-session.md` (`proposed`). EB1 i EB2 mogą
-  ruszyć — **EB1 zrobione** na `eb/eb1-sign-in-config` („EB1 — co wyszło”), PR do wystawienia. EB3 (odnawianie) już nie czeka: eh-os#133 jest w `main` EHOS-a (`801f758`), choć w żadnym wydaniu
-  ([#80](https://github.com/EmpoweredHouse/eh-os-contract/issues/80)). D-68 w EHOS-ie odpowiada na #134 i #135 i jest
-  przyjęte przez użytkownika ([#81](https://github.com/EmpoweredHouse/eh-os-contract/issues/81); akceptacja w
-  eh-os#141) — EB1 robi je od razu, bez stanu przejściowego.
-- **Następny etap — wybór użytkownika.** Kandydaci niżej: fikstury akceptacyjne (po #49), drobne reguły z „Otwartych
-  pytań”, E13.
-- **Po EH, poza tym repozytorium:** bump przypięcia w `ehos-ledger` (zlecony, w toku) i porównanie jego manifestu z
-  `ledger.v2.json` w `eh-os` (EH4) — tamte repozytoria. Port `4001.0`, który przechodzi sprawdzenia EHOS-a obok
-  schematu — [eh-os#111](https://github.com/EmpoweredHouse/eh-os/issues/111), założony 1 października na polecenie
-  użytkownika.
+- **#83 — asystenta, teraz.** Czytnik przyjmuje `ehos.yaml/v2`, generator przenosi `sign_in`. Osobny mały PR przed
+  EB2a (decyzja użytkownika, „Dopisek 2 października (2)”).
+- **EB2a, potem EB2b — asystenta**, dwa PR-y (decyzja użytkownika, tamże): EB2a — przechowywanie (V03, szyfrowanie
+  z S3, kontekst klienta, losowy `client_secret`, klucz JWK poza argumentami, `kid` w asercji); EB2b — przeglądarka
+  (router, plug `Session`, `actor/1`), zamyka #81.
+- **EB3 — asystenta**, po EB2b: dzierżawa, odnawianie, `credential/2`, `resource`, testy na prawdziwych commitach;
+  zamyka #78 i #80.
+- **Merge każdego PR-a — użytkownika.**
+- **Zgłoszenie czterech wad `oidcc` 3.9.0 w `erlef/oidcc`** („EB1 — co wyszło”) — do decyzji użytkownika; nasz kod
+  ich już nie potrzebuje.
+- **Po stronie EHOS-a, nie tutaj:** szablon `ehos_app` (krok 7) i test na klastrze (krok 8); bump w `ehos-ledger` i
+  porównanie jego manifestu z `ledger.v2.json` (EH4). Port `4001.0` —
+  [eh-os#111](https://github.com/EmpoweredHouse/eh-os/issues/111).
+- **Po EB — wybór użytkownika:** fikstury akceptacyjne (po #49), drobne reguły z „Otwartych pytań”, E13.
 - **Z E12, do decyzji użytkownika**, każde jako issue: kształt `call/3` przy drugich drzwiach —
   [#63](https://github.com/EmpoweredHouse/eh-os-contract/issues/63); retencja `eh_os_contract_inbox` —
   [#64](https://github.com/EmpoweredHouse/eh-os-contract/issues/64); zgodność, która nie widzi polityki inboxu —
@@ -93,16 +94,16 @@ Następny etap wybiera użytkownik („Co zostało”).
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach (także w
    fiksturach testów: `label` po polsku jest dozwolony — CodeRabbit to już przyjął), wyrażenia regularne z flagą `u`
    i `[0-9]`, zsh bez dzielenia słów.
-2. `PLAN.md`: „Przed EH2 i EH3 — decyzje użytkownika”, „EH2 — co wyszło” i „EH3 — co wyszło” — decyzje z
-   odrzuconymi opcjami i to, co przeglądy zostawiły świadomie; „Otwarte pytania”, z których wybiera się następny
-   etap.
-3. `packages/eh_os_contract_auth/lib/eh_os_contract/auth/manifest.ex` i `lib/mix/tasks/eh_os_contract.manifest.ex`
-   — generator v1, który v2 zastępuje.
+2. `PLAN.md`: „Dopisek 2 października (2)” (#83, podział EB2) i „Dopisek 2 października — EB” razem z „EB1 — co
+   wyszło” — decyzje z odrzuconymi opcjami i to, co przegląd EB1 przeniósł do EB2.
+3. `docs/adr/browser-session.md` — S1–S11 z datowanymi poprawkami, specyfikacja EB2 i EB3; „Confirmation” to lista
+   testów. Kod: `packages/eh_os_contract_auth/lib/eh_os_contract/auth/sign_in.ex`, `sign_in/http.ex` i
+   `test/support/fake_ehos.ex`.
 4. W `eh-os` czytaj `main` z GitHuba (`gh api …/contents/<ścieżka>?ref=main -H 'Accept:
    application/vnd.github.raw'`), nie lokalny checkout: `docs/manifest.md`, `docs/ehos-yaml.md`,
-   `priv/schemas/ehos.yaml/v1.json`, `lib/ehos/applications/ehos_yaml/yaml.ex`,
+   `priv/schemas/ehos.yaml/v2.json`, `lib/ehos/applications/ehos_yaml/v2.ex`, `lib/ehos/sign_in/token.ex`,
    `lib/ehos/applications/manifest/v2.ex`, `test/support/fixtures/manifests/ledger.v2.json`, `docs/adr/0051`,
-   `0052`, `0056`, `0064`. Do `~/Projects/ai/eh-os` i `empowered-house-context` nie piszemy.
+   `0052`, `0056`, `0064`, `0068`, `0069`. Do `~/Projects/ai/eh-os` i `empowered-house-context` nie piszemy.
 5. `.claude/skills/pre-pr-review/SKILL.md` — przegląd po każdej części etapu, przed PR-em.
 
 ### Komendy
@@ -332,6 +333,77 @@ przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie p
 
 Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty, commity, opisy PR, `docs/adr/`,
 `README.md` — po angielsku; `PLAN.md` i `CLAUDE.md` po polsku. Pełna reguła — `CLAUDE.md`.
+
+## Dopisek 2 października (2) — #83: `ehos.yaml/v2` i `sign_in`; podział EB2
+
+**Decyzje użytkownika (2 października, wieczorem):**
+
+- **EB2 to dwa PR-y**: EB2a — przechowywanie (V03, szyfrowanie z S3, kontekst klienta z `from_manual/5`, losowy
+  `client_secret`, klucz JWK poza argumentami funkcji, które mogą paść, endpoint tokenu w `FakeEhos` i `kid` w
+  asercji), EB2b — przeglądarka (router, plug `Session`, `actor/1`, wylogowanie), domyka #81. *Odrzucone:* jeden PR,
+  jak w tabeli części — diff za duży, żeby go przeczytać z uwagą.
+- **[#83](https://github.com/EmpoweredHouse/eh-os-contract/issues/83) idzie przed EB2a**, osobnym małym PR-em.
+  *Odrzucone:* po EB2a albo po całym EB. #83 nie zależy od EB, a bez niego nic nie zaloguje nikogo na klastrze: EHOS
+  daje workloadowi `EHOS_CLIENT_ID` i klucz klienta tylko wtedy, gdy manifest ma `sign_in` (D-69).
+- **Zgłoszenie wad `oidcc` w `erlef/oidcc`** — pytanie do użytkownika zostaje otwarte, wyjaśnione prościej: to
+  przysługa dla innych użytkowników biblioteki, nasz kod od tego nie zależy.
+
+**Co ustalono przy czytaniu EHOS-a** (`main` = `2cd95cb`; `ehos.yaml/v2` z
+[eh-os#147](https://github.com/EmpoweredHouse/eh-os/pull/147), `99e036b`, w żadnym wydaniu):
+
+- **Schemat v2 to v1 plus jedno**: klucz `sign_in`, obiekt z opcjonalnym `applications` — najwyżej 16 różnych nazw
+  aplikacji w regule EHOS-a (`$defs.application`). `const` i `title` mówią `v2`.
+- **Obok schematu EHOS sprawdza dwie rzeczy** (`Ehos.Applications.EhosYaml.V2`):
+  - `sign_in` wymaga wpisu `serves` o nazwie `web` z `public: true` (domyślnie `public` to `false`);
+  - `applications` nie wymienia aplikacji, którą nazywa plik; w manifeście — aplikacji manifestu
+    (`Manifest.V2.own_application/2`).
+- **Manifest trzyma `sign_in` w tym samym miejscu**, także puste, bo `sign_in: {}` coś znaczy. Generator już dziś
+  przenosi każdy klucz `ehos.yaml` bez zmian, więc `sign_in` przejdzie sam, gdy czytnik przyjmie v2.
+
+**Plan #83** (gałąź `eh/issue-83-ehos-yaml-v2`, od `7a2bcb7`):
+
+- `priv/schemas/ehos.yaml/v2.json` — kopia pliku EHOS-a bajt w bajt, z przypiętym SHA-256 jak v1; `versions/0` daje
+  obie wersje.
+- **Dwie reguły EHOS-a obok schematu, tylko te od `sign_in`, sprawdzane tutaj.** Czytnik odrzuca `sign_in` bez
+  publicznego `web` i `applications` z nazwą z `application` pliku; generator odrzuca `applications` z nazwą
+  aplikacji, którą sam wyliczył z domeny, bo `ehos.yaml` zwykle jej nie pisze. Wybór asystenta, jak prosi #83.
+  *Odrzucone:* zostawić je EHOS-owi, jak unikalne nazwy i porty w `serves`. Tamte łamie literówka, którą widać w
+  pliku; te dwie łamie samo dopisanie `sign_in`, a odmowa przy wdrożeniu przychodzi dopiero po zbudowaniu obrazu.
+- Testy: plik v2 przyjęty; odmowy w korpusie (`sign_in` bez publicznego `web`, `sign_in` w v1, powtórzona nazwa,
+  własna aplikacja); manifest z `sign_in` równy napisanemu ręcznie.
+
+### #83 — co wyszło (2 października)
+
+Gałąź `eh/issue-83-ehos-yaml-v2`, od `7a2bcb7`. Zrobione według planu wyżej:
+- `ehos.yaml/v2.json` jest kopią z przypiętym SHA-256 `de53…8c38` (blob `750773f`, ten sam co w `main` EHOS-a).
+- Czytnik sprawdza obie reguły `sign_in` po schemacie, jak EHOS. Plik, który odrzuca schemat, dostaje tylko powody
+  schematu.
+- Generator odrzuca `applications` z nazwą aplikacji, którą znalazł.
+- Nowy powód dla `uniqueItems`: „must list each value once”.
+- Auth: 180 → 191 testów.
+
+**Przegląd przed PR-em**, dwa równolegle:
+- **Bezpieczeństwo i wydajność:** nic istotnego. Nowy kod widzi tylko plik, który przeszedł schemat; `sign_in` nie
+  niesie sekretu; kopia schematu zgadza się bajt w bajt.
+- **Poprawność:** zachowanie zgodne z EHOS-em w każdym sprawdzonym przypadku. Poprawione:
+  - dwie asercje, które pasowały do każdej mapy;
+  - brakujące przypadki: `web` z `public: false` obok publicznego `api` i plik łamiący obie reguły naraz;
+  - `@doc` `read/1` obiecywał „każdy powód”, choć reguły `sign_in` działają dopiero po schemacie;
+  - przykład v2 w README bez `health`.
+
+  Każdy nowy test ma próbę odwrotną.
+- **Bez zmian:**
+  - `Manifest.build/3` na `applications`, które nie jest listą, rzuca `Protocol.UndefinedError` (zgłosiły oba
+    przeglądy). `build/3` bierze mapę z `read/1`, a task zawsze ją tak buduje;
+  - reguły `sign_in` nie są związane z wersją. Pozwala na nie tylko v2, a v3 to nowa kopia i nowy przegląd;
+  - manifest oczekiwany napisany ręcznie z tego samego pliku. EHOS nie ma fikstury manifestu z `sign_in`; kształt
+    sprawdzony w `Manifest.V2`.
+- Informacyjnie: EHOS liczy `sign_in` do skrótu manifestu, nie do skrótu uprawnień, więc dopisanie aplikacji nie
+  wymaga `ehos.application.register`. Zgoda drugiej strony to D-64, po stronie EHOS-a.
+
+**Sprawdzone na żywo:** `mix eh_os_contract.manifest` w `MIX_ENV=dev` w `sandbox/` na pliku v2 ze scratchpada.
+`application: rehmed` z `sign_in.applications: [taxvision]` daje manifest z `ehos_yaml: "ehos.yaml/v2"` i tym samym
+`sign_in`. Z `[rehmed]` task odmawia z linią 8 i ścieżką `sign_in.applications[0]`.
 
 ## Dopisek 2 października — EB: sesja przeglądarki w `eh_os_contract_auth` (#78), plan
 
