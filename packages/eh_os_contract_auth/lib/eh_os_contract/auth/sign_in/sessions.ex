@@ -64,14 +64,15 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
 
   @doc false
   # Writes a new session and its first credential, and returns the token for the browser. Rows
-  # past the absolute limit go in the same transaction (S11): no job cleans them.
+  # past the absolute limit are deleted first, by a statement of their own (S11): no job cleans
+  # them, and a wait on them does not hold the new sign-in's transaction.
   @spec create(atom(), signed_in()) :: {:ok, String.t()}
   def create(name, signed_in) do
     %{credential: credential} = signed_in = checked!(signed_in)
     key = SignIn.config(name).cipher_key
     token = :crypto.strong_rand_bytes(@token_bytes)
     hash = :crypto.hash(:sha256, token)
-    limit = DateTime.add(EhOsContract.Clock.now(), -@absolute_limit_seconds)
+    limit = limit()
     repo = repo()
 
     session = %{
@@ -80,12 +81,13 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
       sid: signed_in.sid,
       auth_time: DateTime.truncate(signed_in.auth_time, :second),
       refresh_token: seal(signed_in.refresh_token, key, hash, "refresh_token"),
-      id_token: seal(signed_in.id_token, key, hash, "id_token")
+      id_token: seal(signed_in.id_token, key, hash, id_token_column(signed_in))
     }
+
+    repo.delete_all(from(s in @sessions, where: s.auth_time < ^limit))
 
     {:ok, :ok} =
       repo.transaction(fn ->
-        repo.delete_all(from(s in @sessions, where: s.auth_time < ^limit))
         {1, [%{id: id}]} = repo.insert_all(@sessions, [session], returning: [:id])
 
         {1, _rows} =
@@ -106,12 +108,13 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
 
   @doc false
   # The session the browser's token names, decrypted. `{:error, :signed_out}` when there is none,
-  # when the token is not one this package made, or when a value does not decrypt under the
-  # child's key, a rotated `SECRET_KEY_BASE` for one; that row is deleted.
+  # when the token is not one this package made, when it is past the absolute limit (D-66), the
+  # next sign-in deleting its row, or when a value does not decrypt under the child's key, a
+  # rotated `SECRET_KEY_BASE` for one, or for the row's plain columns; that row is deleted.
   @spec fetch(atom(), term()) :: {:ok, t()} | {:error, :signed_out}
   def fetch(name, token) do
     with {:ok, hash} <- hash(token),
-         [row] <- repo().all(session_query(hash)) do
+         [row] <- repo().all(session_query(hash, limit())) do
       decrypt(row, credentials(row.id), SignIn.config(name).cipher_key, hash)
     else
       _none -> {:error, :signed_out}
@@ -163,9 +166,9 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
 
   defp hash(_token), do: :error
 
-  defp session_query(hash) do
+  defp session_query(hash, limit) do
     from(s in @sessions,
-      where: s.token_hash == ^hash,
+      where: s.token_hash == ^hash and s.auth_time >= ^limit,
       select: %{
         id: s.id,
         subject: s.subject,
@@ -193,7 +196,7 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
 
   defp decrypt(row, credentials, key, hash) do
     with {:ok, refresh_token} <- open(row.refresh_token, key, hash, "refresh_token"),
-         {:ok, id_token} <- open(row.id_token, key, hash, "id_token"),
+         {:ok, id_token} <- open(row.id_token, key, hash, id_token_column(row)),
          {:ok, credentials} <- open_credentials(credentials, key, hash) do
       {:ok,
        %__MODULE__{
@@ -232,6 +235,15 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
 
   defp open(value, key, hash, column),
     do: Cipher.decrypt(value, key, Cipher.bound_to(hash, column))
+
+  # The ID token is bound to the plain columns that say whose session the row is, so a writer who
+  # changes `subject`, `sid` or `auth_time` makes it a row that does not decrypt, not someone else's.
+  defp id_token_column(%{subject: subject, sid: sid, auth_time: auth_time}) do
+    seconds = auth_time |> DateTime.truncate(:second) |> DateTime.to_unix()
+    "id_token " <> Jason.encode!([subject, sid, seconds])
+  end
+
+  defp limit, do: DateTime.add(EhOsContract.Clock.now(), -@absolute_limit_seconds)
 
   # A credential is bound to the application it is for, so one moved to another application's
   # row does not decrypt either.

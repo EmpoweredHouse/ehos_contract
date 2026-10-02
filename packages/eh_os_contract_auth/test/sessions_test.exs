@@ -205,21 +205,69 @@ defmodule EhOsContract.Auth.SessionsTest do
     end
   end
 
-  # D-66: twelve hours from `auth_time`, renewed or not. No job deletes them: the next sign-in does.
-  test "a new sign-in deletes the sessions past the absolute limit, and only those (S11)",
-       %{name: name} do
-    now = ~U[2026-10-02 12:00:00.000000Z]
+  describe "the absolute limit, twelve hours from auth_time (D-66)" do
+    # Every step under `EhOsContract.Clock`, at a time the real clock has not reached, so the test
+    # also shows which clock is read.
+    @now ~U[2030-01-01 12:00:00.000000Z]
 
-    {:ok, old} =
-      Sessions.create(name, signed_in(auth_time: DateTime.add(now, -12 * 3600 - 1)))
+    test "a session past it is not read, though its row waits for the next sign-in",
+         %{name: name} do
+      {old, recent} =
+        at(-3600, fn ->
+          {:ok, old} = Sessions.create(name, signed_in(auth_time: at_offset(-12 * 3600 - 1)))
+          {:ok, recent} = Sessions.create(name, signed_in(auth_time: at_offset(-11 * 3600)))
+          {old, recent}
+        end)
 
-    {:ok, recent} = Sessions.create(name, signed_in(auth_time: DateTime.add(now, -11 * 3600)))
-    {:ok, _new} = EhOsContract.Clock.at(now, fn -> Sessions.create(name, signed_in()) end)
+      at(0, fn ->
+        assert Sessions.fetch(name, old) == {:error, :signed_out}
+        assert {:ok, _session} = Sessions.fetch(name, recent)
+      end)
 
-    assert Sessions.fetch(name, old) == {:error, :signed_out}
-    assert {:ok, _session} = Sessions.fetch(name, recent)
-    assert count("eh_os_contract_auth_sessions") == 2
+      assert count("eh_os_contract_auth_sessions") == 2
+    end
+
+    # No job deletes them: the next sign-in does (S11).
+    test "a new sign-in deletes the sessions past it, and only those", %{name: name} do
+      at(-3600, fn ->
+        {:ok, _old} = Sessions.create(name, signed_in(auth_time: at_offset(-12 * 3600 - 1)))
+
+        {:ok, _recent} =
+          Sessions.create(name, signed_in(subject: "u-bartek", auth_time: at_offset(-11 * 3600)))
+      end)
+
+      assert count("eh_os_contract_auth_sessions") == 2
+
+      at(0, fn ->
+        {:ok, _new} = Sessions.create(name, signed_in(subject: "u-celina", auth_time: @now))
+      end)
+
+      assert column("subject") == ["u-bartek", "u-celina"]
+    end
   end
+
+  # S3 keeps a reader of the database out; these keep a writer from making a row someone else's.
+  describe "a plain column changed in the table makes its session one that does not decrypt" do
+    for {column, value} <- [
+          {"subject", "'u-bartek'"},
+          {"sid", "'sid-other'"},
+          {"auth_time", "auth_time + interval '1 hour'"}
+        ] do
+      test "for #{column}", %{name: name} do
+        {:ok, token} = Sessions.create(name, signed_in())
+
+        TestRepo.query!(
+          "UPDATE eh_os_contract_auth_sessions SET #{unquote(column)} = #{unquote(value)}"
+        )
+
+        assert Sessions.fetch(name, token) == {:error, :signed_out}
+        assert count("eh_os_contract_auth_sessions") == 0
+      end
+    end
+  end
+
+  defp at(offset, fun), do: EhOsContract.Clock.at(DateTime.add(@now, offset), fun)
+  defp at_offset(offset), do: DateTime.add(@now, offset)
 
   defp signed_in(overrides \\ []) do
     secret = fn -> Base.url_encode64(:crypto.strong_rand_bytes(24), padding: false) end
