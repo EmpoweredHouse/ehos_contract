@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 2 października (E0–E12, EH, #72, EB1, #83, EB2a i EB2b w `main`; w toku EB3a, potem EB3b)
+## Handoff — stan na 2 października (E0–E12, EH, #72, EB1, #83, EB2a, EB2b i EB3a w `main`; w toku EB3b)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -30,20 +30,21 @@ kluczem `sign_in` (`eh-os` D-69) w czytniku i generatorze (#84, merge `ef0e94d`)
 
 ### Stan repozytorium
 
-- **`origin/main` = `6b280dd`** (merge #86, EB2b; przedtem `445be88` — #85, EB2a, `ef0e94d` — #84, #83, i
-  `7a2bcb7` — #82, EB1). CI
-  `main` — sprawdzić (`gh run list --repo EmpoweredHouse/eh-os-contract --branch main --limit 1`). Historia `main` z
-  merge'ami PR-ów; gałęzie etapów liniowe.
-- **`eb/eb3a-renewal`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `6b280dd`: EB3a i ten zapis. Gałęzie
-  #83, EB2a i EB2b zmergowane.
+- **`origin/main` = `499ea0b`** (merge #87, EB3a; przedtem `6b280dd` — #86, EB2b, `445be88` — #85, EB2a,
+  `ef0e94d` — #84, #83, i `7a2bcb7` — #82, EB1). CI `main` na `499ea0b` — `success` (run `37051635922`). Historia
+  `main` z merge'ami PR-ów; gałęzie etapów liniowe.
+- **`eb/eb3b-applications`** — od `499ea0b`: EB3b i ten zapis; pracowana w worktree `eb3b-applications-4567c7` na
+  gałęzi `claude/eb3b-applications-4567c7`, wypychana pod `eb/eb3b-applications`. Lokalna gałąź
+  `eb/eb3b-applications` w worktree `merge-pr-55-next-stage-ad84a2` trzyma tylko WIP `020a3a5`, który wszedł tu
+  w zwykłe commity. Gałęzie #83, EB2a, EB2b i EB3a zmergowane.
 - **Nowa baza testowa `eh_os_contract_auth_test_commits`** (EB3a, `CommitRepo` pakietu auth) — tworzy ją
   `mix test` pakietu, a czyści migracja w dół i w górę przed każdym przebiegiem.
 - **Lokalnie poza tym:** `main`; zmergowane już `eb/eb1-sign-in-config` (worktree `issue-78-implementation-plan-3ae6a4`)
   i `auth/issue-71-keys-hardening` (worktree `issue-72-assessment-923997`).
-- **Otwarte na GitHubie:** [#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78) (zamyka EB3),
-  [#80](https://github.com/EmpoweredHouse/eh-os-contract/issues/80) (odnawianie, EB3),
-  [#81](https://github.com/EmpoweredHouse/eh-os-contract/issues/81) (D-68, domyka EB2b),
-  **#49** — materiał klientów poza
+- **[#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78) jest zamknięty (16:35:58Z), choć EB3b nie
+  jest skończone** — zamknęło go „closes #78” w opisie PR-a #86. Otworzyć ponownie albo tylko podlinkować EB3b —
+  decyzja użytkownika. #80 i #81 zamknięte (EB3a, EB2b).
+- **Otwarte na GitHubie:** **#49** — materiał klientów poza
   repozytorium, zaparkowane 30 września; **#63–#66** — pytania otwarte po E12 („Otwarte pytania”). Otwartych PR-ów
   brak. **W `EmpoweredHouse/eh-os`: #91–#96 i #111** — nasze potrzeby wobec EHOS-a („Dopisek 1 października”).
 - **`ehos-ledger`** przypina `eh-os-contract` i puszcza w CI `mix eh_os_contract.manifest`; bump przypięcia na
@@ -67,8 +68,9 @@ kluczem `sign_in` (`eh-os` D-69) w czytniku i generatorze (#84, merge `ef0e94d`)
 
 ### Co zostało — i czyje to jest
 
-- **EB3a — asystenta, w toku**: odnawianie własnego credentialu; zamyka #80.
-- **EB3b — asystenta**, po EB3a: `credential/2` dla innych aplikacji, `resource`, `invalid_target`; zamyka #78.
+- **EB3b — asystenta, w toku**: `Session.credential/3` dla innych aplikacji, `resource`, `invalid_target`
+  („EB3b — co wyszło”). Ostatnia część EB.
+- **#78 — użytkownika**: otworzyć ponownie i zamknąć PR-em EB3b, czy zostawić zamknięty z linkiem.
 - **Merge każdego PR-a — użytkownika.**
 - **Wady `oidcc` 3.9.0** — zgłoszone 2 października jako erlef/oidcc#552–#555 („EB1 — co wyszło”); nasz kod ich
   nie potrzebuje, więc nic tu na nie nie czeka.
