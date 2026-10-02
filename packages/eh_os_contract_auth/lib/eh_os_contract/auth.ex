@@ -103,7 +103,8 @@ defmodule EhOsContract.Auth do
 
   It reads `:issuer` and `:jwks_url` from `config :eh_os_contract_auth`, and raises
   at boot without an issuer, or when the key set would be fetched over anything but
-  https (plain http is allowed for `localhost` only). `opts` go to
+  https (plain http is allowed for `localhost`, `127.0.0.1` and `::1` only), or from an
+  address not every parser reads as written. `opts` go to
   `EhOsContract.Auth.Keys.start_link/1`, which raises on one it does not take; the
   address is the configuration's, and `url:` among them is refused. `:audience` and
   `:issuer` are read by `verify/2` on every credential, and are checked here too, so

@@ -61,7 +61,7 @@ defmodule EhOsContract.Auth.SignIn do
 
   require Logger
 
-  alias EhOsContract.Auth.Keys
+  alias EhOsContract.Auth.{Address, Keys}
   alias EhOsContract.Auth.SignIn.{Cipher, ClientKey, Http}
 
   @timeout 10_000
@@ -545,15 +545,15 @@ defmodule EhOsContract.Auth.SignIn do
   # http document's endpoints anyway, so https without exception; and what `oidcc`
   # would refuse in an issuer is refused here, at boot, rather than retried for ever.
   defp issuer!(issuer) when is_binary(issuer) do
-    case URI.parse(issuer) do
-      %URI{scheme: "https", host: host, query: nil, fragment: nil, userinfo: nil}
-      when is_binary(host) and host != "" ->
+    case Address.check(issuer, plain_on_loopback: false) do
+      :ok ->
         issuer
 
-      _other ->
+      :error ->
         raise ArgumentError,
               "sign-in asks EHOS at #{inspect(issuer)}, which is not https://<host>, or " <>
-                "has a query, a fragment or credentials in it"
+                "has a query, a fragment or credentials in it, or is not an address every " <>
+                "parser reads as written, with a lowercase host"
     end
   end
 

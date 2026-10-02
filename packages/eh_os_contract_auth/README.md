@@ -433,8 +433,12 @@ the global defaults.
 Certificate verification cannot be turned off through the package, so a first integration cannot
 be made to work that way: the keys would then come from whoever answers. For the same reason the package refuses to boot
 when the key set would be fetched over anything but `https` (plain `http` is allowed for
-`localhost` only), whether `EhOsContract.Auth` starts the key process or the application lists
-`EhOsContract.Auth.Keys` itself, and takes the address only from the configuration.
+`localhost`, `127.0.0.1` and `::1` only), whether `EhOsContract.Auth` starts the key process or the
+application lists `EhOsContract.Auth.Keys` itself, and takes the address only from the configuration.
+The address, and sign-in's `issuer`, must also be one every parser reads alike, as EHOS requires of
+its issuer: it reads back as written, with a lowercase host and no user, query or fragment. Otherwise
+`http://evil.example\@localhost` would pass as `localhost`, while a browser reads its host as
+`evil.example`.
 
 **What the application configures, and nothing else:** `issuer`, which must be exactly the `iss`
 EHOS writes, `audience` (`<application>/<environment>`, exactly the `aud` EHOS issues for this

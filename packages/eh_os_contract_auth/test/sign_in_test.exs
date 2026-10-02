@@ -139,7 +139,11 @@ defmodule EhOsContract.Auth.SignInTest do
             "http://localhost:4000",
             "https://ehos.test?tenant=1",
             "https://ehos.test#x",
-            "https://user:pass@ehos.test"
+            "https://user:pass@ehos.test",
+            # #89: what parsers read differently, as for the key set's address.
+            "https://evil.example\\@ehos.test",
+            "https://EHOS.test",
+            "https://127.1"
           ] do
         Application.put_env(:eh_os_contract_auth, :issuer, issuer)
         assert_raise ArgumentError, ~r/is not https:\/\/<host>/, fn -> SignIn.child_spec([]) end

@@ -45,6 +45,8 @@ defmodule EhOsContract.Auth.Keys do
 
   require Logger
 
+  alias EhOsContract.Auth.Address
+
   @table "eh_os_contract_auth_keys"
   @refresh_every :timer.minutes(5)
   @refetch_at_most_every :timer.seconds(30)
@@ -118,7 +120,9 @@ defmodule EhOsContract.Auth.Keys do
   failed one.
 
   It raises on an option it does not take, when `:url` is not https (plain http is
-  allowed for `localhost` only), on an interval shorter than five seconds, and on
+  allowed for `localhost`, `127.0.0.1` and `::1` only) or not an address every parser
+  reads as written (a lowercase host, no user, query or fragment), on an interval
+  shorter than five seconds, and on
   `:plug` anywhere but a test.
   """
   @spec start_link([option()]) :: GenServer.on_start()
@@ -264,19 +268,17 @@ defmodule EhOsContract.Auth.Keys do
 
     # The key set is what every credential is trusted by, and over plain HTTP anyone
     # on the path could hand it keys of their own. Only a machine's own loopback may
-    # be plain, for development.
-    case URI.parse(url) do
-      %URI{scheme: "https", host: host} when is_binary(host) and host != "" ->
+    # be plain, for development, and only as every parser reads the address (#89).
+    case Address.check(url, plain_on_loopback: true) do
+      :ok ->
         :ok
 
-      %URI{scheme: "http", host: host} when host in ["localhost", "127.0.0.1", "::1"] ->
-        :ok
-
-      _other ->
+      :error ->
         raise ArgumentError,
               "eh_os_contract_auth fetches EHOS's keys from #{inspect(url)}, which is not " <>
-                "https: keys fetched in the clear can be replaced on the way. Only localhost " <>
-                "may be plain http"
+                "https, or not an address every parser reads as written (a lowercase host, " <>
+                "no user, query or fragment): keys fetched in the clear can be replaced on " <>
+                "the way. Only localhost, 127.0.0.1 and ::1 may be plain http"
     end
 
     # An interval shorter than a fetch may take would leave the process fetching for

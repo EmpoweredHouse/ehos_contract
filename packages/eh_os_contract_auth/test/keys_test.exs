@@ -120,6 +120,57 @@ defmodule EhOsContract.Auth.KeysTest do
       end
     end
 
+    # #89: an address is taken only as every parser reads it, so the loopback exception cannot
+    # be reached by one a browser or Node's URL reads as another host. The rule is EHOS's own
+    # (`Ehos.Credentials.check_issuer/1`, eh-os#118), with a path, since this is the key set's.
+    test "takes https, or plain http on loopback, only as every parser reads it" do
+      for url <- [
+            "https://ehos.example.com/.well-known/jwks.json",
+            "https://ehos.example.com:8443/.well-known/jwks.json",
+            "https://ehos.example.com:443/.well-known/jwks.json",
+            "https://10.0.0.1/jwks.json",
+            "https://[::1]:4443/jwks.json",
+            "https://ehos.example.com",
+            "http://localhost:4000/.well-known/jwks.json",
+            "http://localhost:80/jwks.json",
+            "http://127.0.0.1:4000/jwks.json",
+            "http://[::1]:4000/jwks.json"
+          ] do
+        assert Keys.check!(url: url) == :ok, url
+      end
+    end
+
+    test "refuses an address parsers read differently, or with a user, a query or a fragment" do
+      for url <- [
+            # A browser takes the host to be evil.example; URI.parse/1 takes it to be localhost.
+            "http://evil.example\\@localhost/.well-known/jwks.json",
+            "http://user:secret@localhost/jwks.json",
+            "https://user@ehos.example.com/jwks.json",
+            "http://LOCALHOST/jwks.json",
+            "http://ehos.localhost/jwks.json",
+            "https://EHOS.example.com/jwks.json",
+            "https://ehos.example.com/jwks.json?x=1",
+            "https://ehos.example.com/jwks.json#x",
+            # Hosts a browser reads as another address: 127.0.0.1, and 8.0.0.1 in octal.
+            "https://127.1/jwks.json",
+            "https://0x7f000001/jwks.json",
+            "https://2130706433/jwks.json",
+            "https://010.0.0.1/jwks.json",
+            # Read back otherwise than written: a scheme in capitals, a port with a leading
+            # zero, or an empty one.
+            "HTTPS://ehos.example.com/jwks.json",
+            "https://ehos.example.com:0443/jwks.json",
+            "https://ehos.example.com:/jwks.json",
+            "http://localhost:0/jwks.json",
+            "https://ehos.example.com:99999/jwks.json",
+            "https://localhost:4000/jwks.json\n",
+            "https://",
+            "ehos.example.com/jwks.json"
+          ] do
+        assert_raise ArgumentError, ~r/not https/, fn -> Keys.check!(url: url) end
+      end
+    end
+
     for key <- [:refresh_every, :refetch_at_most_every],
         value <- [0, 4_999, 5_000.0] do
       test "refuses #{key}: #{inspect(value)}, shorter than a fetch may take or not milliseconds" do
