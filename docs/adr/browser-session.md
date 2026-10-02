@@ -111,9 +111,9 @@ the review of this record's pull request (#79) reopened.
 - **The key.** It is derived from the host's `SECRET_KEY_BASE`, which EHOS gives every workload (D-56), with
   `Plug.Crypto.KeyGenerator` and a salt of this package's own. `plug_crypto` already comes with `plug`, so
   this adds no dependency.
-- **The cipher.** Each value is encrypted with `Plug.Crypto.MessageEncryptor` (AES-256-GCM). The associated
-  data is its row's session hash and its column, so a ciphertext copied to another row or column does not
-  decrypt.
+- **The cipher.** Each value is encrypted with `Plug.Crypto.MessageEncryptor`, which in `plug_crypto` 2.x
+  is XChaCha20-Poly1305. The associated data is its row's session hash and its column, so a ciphertext
+  copied to another row or column does not decrypt.
 - **What stays plain.** The session hash, `subject`, `sid`, `auth_time`, the lease columns and the expiry
   times stay plain. The package selects, locks and expires by them.
 - **A value that does not decrypt** is a session that is over. Its row is deleted, and the caller gets

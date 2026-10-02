@@ -380,8 +380,8 @@ października):
   wołają, wbrew „on demand only” z D-64.
 - **Refresh token, ID token i credentiale szyfrowane w tabeli kluczem z `SECRET_KEY_BASE`** (S3), z ADR-em —
   decyzja zmieniona tego samego dnia.
-  - **Jak:** `Plug.Crypto.KeyGenerator` i `MessageEncryptor` (AES-256-GCM); dane powiązane to hash sesji i
-    kolumna; opcja `secret_key_base:` w `sign_in:`.
+  - **Jak:** `Plug.Crypto.KeyGenerator` i `MessageEncryptor` (w `plug_crypto` 2.x XChaCha20-Poly1305); dane
+    powiązane to hash sesji i kolumna; opcja `secret_key_base:` w `sign_in:`.
   - **Pierwszy wybór był inny:** bez szyfrowania, bo bez klucza prywatnego klienta (`private_key_jwt`) refresh
     token niczego nie odnowi.
   - **Dlaczego zmiana:** komentarz CodeRabbita do #79 pokazał, że credentiale da się odtworzyć z każdej kopii
