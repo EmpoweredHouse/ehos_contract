@@ -55,8 +55,8 @@ defmodule EhOsContract.Auth.FakeEhos do
 
   @doc """
   Makes `code` one the token endpoint exchanges, for a person signed in to `client_id`:
-  `claims` replace the ID token's `sub`, `sid`, `auth_time` and `nonce`, and `aud:`
-  the credential's audience.
+  `claims` replace the ID token's `"sub"`, `"sid"`, `"auth_time"` and `"nonce"`, and
+  `"audience"` the credential's `aud`.
   """
   def grant(ehos, code, client_id, claims \\ %{}) do
     grant =
@@ -76,9 +76,6 @@ defmodule EhOsContract.Auth.FakeEhos do
 
   @doc "The forms of the token requests `ehos` was sent, oldest first."
   def token_requests(ehos), do: Agent.get(ehos, &Enum.reverse(&1.token_requests))
-
-  @doc "The key `ehos` signs its credentials and ID tokens with, public half."
-  def signer(ehos), do: Agent.get(ehos, &JOSE.JWK.to_public(&1.signer))
 
   @doc "The paths `ehos` was asked for, oldest first."
   def requests(ehos), do: Agent.get(ehos, &Enum.reverse(&1.requests))

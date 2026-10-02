@@ -212,8 +212,9 @@ defmodule EhOsContract.Auth.SignIn do
   """
   @spec client_context(atom()) :: {:ok, Oidcc.ClientContext.t()} | {:error, unavailable()}
   def client_context(name \\ __MODULE__) do
-    with {:ok, configuration} <- provider(name),
-         {:ok, {_configuration, jwks, _reasons}} <- held(name, :provider),
+    # One read of what is held, so a refetch in between cannot pair one document with
+    # another's keys.
+    with {:ok, {configuration, jwks, []}} <- held(name, :provider),
          {:ok, config} <- held(name, :config) do
       {:ok,
        Oidcc.ClientContext.from_manual(
@@ -224,7 +225,7 @@ defmodule EhOsContract.Auth.SignIn do
          %{client_jwks: config.client_key}
        )}
     else
-      {:error, reason} -> {:error, reason}
+      {:ok, {_configuration, _jwks, reasons}} -> {:error, {:unsupported_provider, reasons}}
       :error -> {:error, :ehos_unavailable}
     end
   end

@@ -30,10 +30,7 @@ defmodule EhOsContract.Auth.SignIn.Cipher do
   @doc false
   @spec decrypt(String.t(), binary(), binary()) :: {:ok, String.t()} | :error
   def decrypt(ciphertext, key, bound_to) do
-    case MessageEncryptor.decrypt(ciphertext, bound_to, key, key) do
-      {:ok, value} -> {:ok, value}
-      :error -> :error
-    end
+    MessageEncryptor.decrypt(ciphertext, bound_to, key, key)
   end
 
   @doc "What a value of `column` in the row of `token_hash` is bound to."

@@ -191,6 +191,7 @@ defmodule EhOsContract.Auth.SessionsTest do
       )
 
       assert Sessions.fetch(name, token) == {:error, :signed_out}
+      assert count("eh_os_contract_auth_sessions") == 0
     end
 
     test "when secret_key_base is not the one it was written under", %{name: name} do
