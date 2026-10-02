@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 1 października (E0–E12 i EH w `main`; następny etap — wybór użytkownika)
+## Handoff — stan na 2 października (E0–E12, EH i #72 w `main`; następny etap — wybór użytkownika)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -27,16 +27,19 @@ Następny etap wybiera użytkownik („Co zostało”).
 
 ### Stan repozytorium
 
-- **`origin/main` = `743e91d`** (merge #73, EH, 1 października; przedtem `aadcbd1` — #70). Historia `main` z
-  merge'ami PR-ów; gałęzie etapów liniowe. CI `main` na `743e91d` — w toku w chwili zapisu, sprawdzić
-  (`gh run list --repo EmpoweredHouse/eh-os-contract --branch main --limit 1`); na `aadcbd1` — `success`.
-- **`plan/eh-merged`** (główny checkout) — od `743e91d`: ten handoff; PR na polecenie użytkownika.
+- **`origin/main` = `65d7caf`** (merge #76, 2 października: runnery budzone po każdej transakcji silnika, która
+  coś dopisała — #72, „#72 — co wyszło”; przedtem `01ac970` — #75, ten handoff po EH, i `743e91d` — #73, EH).
+  Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe. CI `main` na `65d7caf` — w toku w chwili zapisu,
+  sprawdzić (`gh run list --repo EmpoweredHouse/eh-os-contract --branch main --limit 1`); PR #76 na `4bbced1` —
+  `success`.
+- **`auth/issue-71-keys-hardening`** (worktree `issue-72-assessment-923997`) — od `65d7caf`: #71, proces kluczy
+  w `eh_os_contract_auth`, i ten zapis.
 - **Lokalnie poza tym:** `main`, `plan/eh-os-issues` (w `main`) i worktree `merge-pr-55-next-stage-ad84a2`
   (odłączony na `aadcbd1`). `eh/eh2-ehos-yaml` i `eh/eh3-manifest-v2` skasowane lokalnie po merge'u, na zgodę
   użytkownika; na GitHubie zostały.
 - **Otwarte na GitHubie:** **issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza repozytorium;
   zaparkowane 30 września, z propozycją `EmpoweredHouse/eh-os-contract-sandbox`; **#63–#66** — pytania otwarte po
-  E12 („Otwarte pytania”). Otwartych PR-ów brak poza tym handoffem. **W `EmpoweredHouse/eh-os`: #91–#96 i #111** —
+  E12 („Otwarte pytania”); **#71** — w toku na `auth/issue-71-keys-hardening`. Otwartych PR-ów brak poza nim. **W `EmpoweredHouse/eh-os`: #91–#96 i #111** —
   nasze potrzeby wobec EHOS-a („Dopisek 1 października”); dla manifestu ważne #91, #92, #93, #94, #96, #111.
 - **`ehos-ledger`** (`main` = `341fc19`) przypina `eh-os-contract` na `50eb771` (merge #53, przed #54), ma
   `ehos.yaml` i jego schemat w `.ehos/`, a CI puszcza `mix eh_os_contract.manifest --output ehos.manifest.json`.
