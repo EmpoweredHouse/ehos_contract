@@ -34,7 +34,7 @@ defmodule EhOsContract.Auth.SchemaTest do
   and `USAGE` on its sequences, by default privileges, and nothing else. Both reach
   the schema only through the connection's `search_path`.
 
-  `public` of this database already holds the package's tables at version 2, and
+  `public` of this database already holds the package's tables at their current version, and
   that is what the defect hid behind: the version was read from `public` by name.
 
   Migrations commit, so the setup runs on a connection of its own as the database's
@@ -48,7 +48,13 @@ defmodule EhOsContract.Auth.SchemaTest do
   alias EhOsContract.Auth.{Keys, SchemaRepo, TestRepo}
   alias EhOsContract.Auth.SchemaTest.{Host, HostCreatingSchema}
 
-  @tables ["eh_os_contract_auth_decisions", "eh_os_contract_auth_keys", "schema_migrations"]
+  @tables [
+    "eh_os_contract_auth_decisions",
+    "eh_os_contract_auth_keys",
+    "eh_os_contract_auth_session_credentials",
+    "eh_os_contract_auth_sessions",
+    "schema_migrations"
+  ]
 
   setup do
     schema =
@@ -157,9 +163,9 @@ defmodule EhOsContract.Auth.SchemaTest do
 
     migrate(:up)
     assert tables(schema) == @tables
-    assert version(schema) == "2"
+    assert version(schema) == "3"
 
-    # A host's second call reads the schema's "2", and creates nothing twice.
+    # A host's second call reads the schema's "3", and creates nothing twice.
     assert Ecto.Migrator.up(SchemaRepo, 2, Host, log: false) == :ok
     admin!(["DELETE FROM #{schema}.schema_migrations WHERE version = 2"])
 
@@ -168,11 +174,11 @@ defmodule EhOsContract.Auth.SchemaTest do
 
     migrate(:up)
     assert tables(schema) == @tables
-    assert version(schema) == "2"
+    assert version(schema) == "3"
     assert tables("public") == public
   end
 
-  # `public` holds the package's tables at "2" here, and the owner may read them.
+  # `public` holds the package's tables at "3" here, and the owner may read them.
   test "with public on the path too, the version is the schema's, and public is left alone",
        %{schema: schema, owner: owner} = context do
     public = tables("public")
@@ -180,16 +186,16 @@ defmodule EhOsContract.Auth.SchemaTest do
 
     migrate(:up)
     assert tables(schema) == @tables
-    assert version(schema) == "2"
+    assert version(schema) == "3"
 
     migrate(:down)
     assert tables(schema) == ["schema_migrations"]
     assert tables("public") == public
-    assert version("public") == "2"
+    assert version("public") == "3"
   end
 
   # As the database's superuser, since the owner may not create a schema. `public` is
-  # on the path and holds the tables at "2". Ecto records the migration in
+  # on the path and holds the tables at "3". Ecto records the migration in
   # `public.schema_migrations`, since it reads its table before the schema exists, so
   # the version is one of the test's own and its row goes after it.
   test "a schema the host's own migration creates gets the tables" do
@@ -210,7 +216,7 @@ defmodule EhOsContract.Auth.SchemaTest do
     Ecto.Migrator.run(SchemaRepo, [{version, HostCreatingSchema}], :up, all: true, log: false)
 
     assert tables(new) == @tables -- ["schema_migrations"]
-    assert version(new) == "2"
+    assert version(new) == "3"
   end
 
   test "the role the application runs as keeps the keys and records the decisions",

@@ -60,7 +60,7 @@ defmodule EhOsContract.Auth.SignIn do
   require Logger
 
   alias EhOsContract.Auth.Keys
-  alias EhOsContract.Auth.SignIn.{ClientKey, Http}
+  alias EhOsContract.Auth.SignIn.{Cipher, ClientKey, Http}
 
   @timeout 10_000
   @refresh_every :timer.minutes(5)
@@ -76,7 +76,7 @@ defmodule EhOsContract.Auth.SignIn do
     :end_session_endpoint
   ]
 
-  @derive {Inspect, except: [:client_key, :secret_key_base]}
+  @derive {Inspect, except: [:client_key, :secret_key_base, :cipher_key]}
   @enforce_keys [
     :name,
     :issuer,
@@ -87,13 +87,15 @@ defmodule EhOsContract.Auth.SignIn do
     :post_logout_redirect_uri,
     :applications,
     :secret_key_base,
+    :cipher_key,
     :request_opts
   ]
   defstruct @enforce_keys
 
   @typedoc """
-  The application's client, as `config/1` returns it. `client_key` and
-  `secret_key_base` are left out of its inspection.
+  The application's client, as `config/1` returns it. `client_key`, `secret_key_base`
+  and `cipher_key`, the key the session's tokens are encrypted with (S3), are left out
+  of its inspection.
   """
   @type t :: %__MODULE__{
           name: atom(),
@@ -105,6 +107,7 @@ defmodule EhOsContract.Auth.SignIn do
           post_logout_redirect_uri: String.t(),
           applications: %{String.t() => String.t()},
           secret_key_base: String.t(),
+          cipher_key: binary(),
           request_opts: map()
         }
 
@@ -399,6 +402,7 @@ defmodule EhOsContract.Auth.SignIn do
 
     issuer = issuer!(env[:issuer])
     address = origin!("address", sign_in[:address])
+    secret_key_base = secret_key_base!(sign_in[:secret_key_base])
 
     %__MODULE__{
       name: name,
@@ -409,7 +413,8 @@ defmodule EhOsContract.Auth.SignIn do
       redirect_uri: address <> "/auth/ehos/callback",
       post_logout_redirect_uri: address <> "/",
       applications: applications!(Keyword.get(sign_in, :applications, %{})),
-      secret_key_base: secret_key_base!(sign_in[:secret_key_base]),
+      secret_key_base: secret_key_base,
+      cipher_key: Cipher.key(secret_key_base),
       request_opts: %{timeout: @timeout, http_adapter: {Http, http!(opts)}}
     }
   end

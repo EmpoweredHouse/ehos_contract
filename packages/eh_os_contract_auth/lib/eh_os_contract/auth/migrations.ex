@@ -25,7 +25,7 @@ defmodule EhOsContract.Auth.Migrations do
   use Ecto.Migration
 
   @initial_version 1
-  @current_version 2
+  @current_version 3
 
   @doc "The oldest version this module can create."
   @spec initial_version() :: pos_integer()

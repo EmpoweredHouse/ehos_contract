@@ -7,6 +7,15 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **EB2a (#78): where a person signed in through EHOS is kept.** **Migration version 3**: a host adds a
+  migration calling `EhOsContract.Auth.Migrations.up(version: 3)`.
+  - **Two tables:** `eh_os_contract_auth_sessions` (the browser token's SHA-256, `subject`, `sid`, `auth_time`,
+    the lease columns) and `eh_os_contract_auth_session_credentials` (one row per application's address).
+  - **Encryption:** the refresh token, the ID token and every credential are stored encrypted with
+    XChaCha20-Poly1305. The key is derived from `secret_key_base`, and each ciphertext is bound to its row and
+    column. A value that does not decrypt, under a rotated `SECRET_KEY_BASE` for one, ends that session.
+  - **Pruning:** sessions past twelve hours from `auth_time` are deleted by the next sign-in, with no job.
+
 - **#83: `ehos.yaml/v2` is read, and its `sign_in` goes into the manifest** (`eh-os` D-69).
   - `EhOsContract.Auth.EhosYaml.read/1` takes v1 and v2, each against EHOS's own schema, copied unchanged.
   - **Beside the schema,** as EHOS checks it, `sign_in` is refused without an entry `web` with `public: true`,
