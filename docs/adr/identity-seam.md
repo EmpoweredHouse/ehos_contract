@@ -29,6 +29,12 @@
 > published, why the TLS certificate of EHOS's URL is the trust anchor, what an application configures at
 > integration and how rotation reaches it: `packages/eh_os_contract_auth/README.md`, "Where the keys come
 > from, and what to configure at integration". Nothing is delivered to an application but EHOS's address.
+>
+> **2 October 2026 — a browser session, through EHOS.** `eh-os` D-64 makes EHOS an OpenID Connect provider
+> for the workloads it deploys, and `eh_os_contract_auth` gains a second Plug that signs a browser in and keeps
+> a credential per application behind the session. `oidcc` returns, this time in the package and not in the
+> engine. The engine still verifies nothing, and still gets the actor `verify/2` builds. What the package
+> decides beside D-64 is in [browser-session.md](browser-session.md).
 
 # Identity — the boundary, before any decision
 

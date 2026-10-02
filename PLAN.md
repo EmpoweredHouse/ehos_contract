@@ -60,6 +60,9 @@ Następny etap wybiera użytkownik („Co zostało”).
 
 ### Co zostało — i czyje to jest
 
+- **EB — sesja przeglądarki w `eh_os_contract_auth`** ([#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78)),
+  zaplanowane 2 października: „Dopisek 2 października” i `docs/adr/browser-session.md` (`proposed`). EB1 i EB2 mogą
+  ruszyć. EB3 (odnawianie) czeka na [eh-os#133](https://github.com/EmpoweredHouse/eh-os/issues/133).
 - **Następny etap — wybór użytkownika.** Kandydaci niżej: fikstury akceptacyjne (po #49), drobne reguły z „Otwartych
   pytań”, E13.
 - **Po EH, poza tym repozytorium:** bump przypięcia w `ehos-ledger` (zlecony, w toku) i porównanie jego manifestu z
@@ -327,6 +330,86 @@ przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie p
 Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty, commity, opisy PR, `docs/adr/`,
 `README.md` — po angielsku; `PLAN.md` i `CLAUDE.md` po polsku. Pełna reguła — `CLAUDE.md`.
 
+## Dopisek 2 października — EB: sesja przeglądarki w `eh_os_contract_auth` (#78), plan
+
+[#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78): drugi Plug w `eh_os_contract_auth`, dla sesji
+przeglądarki zamiast tokenu bearer. To krok 6 etapu 9 EHOS-a i odpowiedź na
+[eh-os#95](https://github.com/EmpoweredHouse/eh-os/issues/95). Protokół rozstrzygają `eh-os` D-64 i D-66. To, co
+zostawiają pakietowi, jest w **[`docs/adr/browser-session.md`](docs/adr/browser-session.md)** (S1–S11, `proposed`).
+Ten dopisek zapisuje plan i decyzje użytkownika.
+
+**Co ustalono przy czytaniu źródeł** (`oidcc` 3.9.0, `oidcc_plug` 0.5.1, `jose` 1.11.12; EHOS `main` z 2
+października):
+
+- **Refresh przez `Oidcc.refresh_token/5` nie działa z EHOS-em w dzisiejszej postaci.** EHOS odpowiada na refresh
+  bez ID tokenu (`response(issued, rotated.token, nil)` w `lib/ehos/sign_in/token.ex`). `oidcc_token:refresh/3`
+  zwraca wtedy `{error, sub_invalid}`, i to **po** wywołaniu, więc zrotowany refresh token przepada. Każda sesja
+  skończyłaby się przy pierwszym odnowieniu.
+- **`oidcc` po cichu słabnie**, gdy discovery czegoś nie mówi. `iss` jest sprawdzany tylko przy
+  `authorization_response_iss_parameter_supported: true`. PKCE znika bez `code_challenge_methods_supported`. Z
+  `private_key_jwt` spada na kolejną metodę. Discovery EHOS-a dziś mówi wszystko, czego trzeba, ale pakiet
+  wymusza te rzeczy sam (S6).
+- **`oidcc_plug` 0.5.1 wymaga `oidcc ~> 3.7`.** CVE-2026-75759 naprawia dopiero 3.9.0, więc `oidcc` przypinamy
+  osobno. `oidcc` wymaga OTP 27; CI ma 27.2.
+- **`oidcc_plug` trzyma nonce i weryfikator PKCE w sesji Plug**, czyli w ciasteczku hosta. Host musi je szyfrować
+  (S2).
+- **`oidcc` ma wymienny adapter HTTP** (`oidcc_http_adapter`), więc testy grają EHOS-a funkcją, bez portu, jak
+  JWKS w `KeyCase`.
+- **Luki po stronie EHOS-a:**
+  - workload nie zna adresów innych aplikacji, a `resource` to adres — `sign_in.applications` podaje nazwy;
+  - format `EHOS_CLIENT_KEY_FILE` nie jest ustalony;
+  - `post_logout_redirect_uri` nie jest wyliczany.
+
+**Decyzje użytkownika (2 października):**
+
+- **Refresh: EHOS zwraca ID token także przy refreshu** — [eh-os#133](https://github.com/EmpoweredHouse/eh-os/issues/133)
+  (S10). *Odrzucone:* własne żądanie odnowienia — asercja `private_key_jwt` przez JOSE, POST przez Req,
+  credential sprawdzany `verify/2`. Nie czekałoby na EHOS, ale przenosi kod protokołu z certyfikowanej biblioteki
+  do naszego i odchodzi od D-64.
+- **Luki jako issues w `eh-os`:** adresy innych aplikacji —
+  [eh-os#134](https://github.com/EmpoweredHouse/eh-os/issues/134); format klucza klienta i
+  `post_logout_redirect_uri` — [eh-os#135](https://github.com/EmpoweredHouse/eh-os/issues/135). Do czasu odpowiedzi
+  obie rzeczy są w konfiguracji.
+- **Interfejs** (S7):
+  - dziecko `EhOsContract.Auth.SignIn` z `config :eh_os_contract_auth, sign_in: [...]`;
+  - `forward "/auth/ehos", EhOsContract.Auth.SignIn.Router` (logowanie, callback, wylogowanie);
+  - plug `EhOsContract.Auth.Session`;
+  - `Session.actor/1` i `Session.credential/2` — tylko w tych dwóch funkcjach odbywa się odnawianie.
+
+  *Odrzucone:* plug, który odnawia przy każdym żądaniu strony. Odnawiałby także dla stron, które niczego nie
+  wołają, wbrew „on demand only” z D-64.
+- **Refresh token, ID token i credentiale bez szyfrowania w tabeli** (S3), z ADR-em. Bez klucza prywatnego
+  klienta (`private_key_jwt`, plik w workloadzie, nigdy w bazie) refresh token niczego nie odnowi.
+  *Odrzucone:*
+  - szyfrowanie kluczem z `SECRET_KEY_BASE` — chroni tylko zrzut bazy, a jego rotacja wylogowuje wszystkich;
+  - vault silnika — jest od crypto-shreddingu danych osobowych.
+- **Decyzje pakietu idą do ADR-a** (`docs/adr/browser-session.md`), nie tylko tutaj. Zapisuje je z odrzuconymi
+  opcjami: S1 zależności, S2 ciasteczko, S4 dzierżawa, S5 skutki odmów, S6 nadpisane domyślne, S8 credential
+  innej aplikacji, S9 ID token jako bearer, S11 bez joba. Status `proposed`, do akceptacji przez właściciela
+  produktu.
+
+**Mechanika rozstrzygnięta przez asystenta** (wyjaśnienie i odrzucone opcje w ADR-ze):
+
+- dzierżawa w kolumnach wiersza sesji, brana jednym `UPDATE … RETURNING` z zegarem bazy, zapis po wywołaniu z
+  `WHERE lease_holder = $me`;
+- liczby: 30 s zapasu ważności, 15 s dzierżawy, 10 s timeoutu wywołania, czekający co 200 ms najwyżej 15 s;
+- `invalid_target` zapamiętany na 10 minut;
+- `check_peer_ip: false` (ingress z kilkoma podami) i `retrieve_userinfo: false`.
+
+**Części** (gałęzie od `main`, jak EA — każda następna od poprzedniej):
+
+| Część | Zakres | Czeka na |
+| --- | --- | --- |
+| **EB1** | Testy: ID token jako bearer odrzucony (`:bad_signature`), credential z `client_id` przyjęty. Zależności `oidcc ~> 3.9`, `oidcc_plug ~> 0.5.1`. `EhOsContract.Auth.SignIn`: konfiguracja, klucz klienta (PEM i JWK), worker dostawcy, sprawdzenie discovery przed pierwszym logowaniem. README: OTP 27. | — |
+| **EB2** | Migracja V03: `eh_os_contract_auth_sessions` (hash tokenu sesji, `subject`, `sid`, `auth_time`, `refresh_token`, `id_token`, kolumny dzierżawy) i `eh_os_contract_auth_session_credentials` (`session_id`, `resource`, `token`, `expires_at`, `refused_until`). Router: logowanie, callback, wylogowanie. Plug `Session`, `actor/1` na credentialu z wymiany kodu. Fałszywy EHOS jako adapter `oidcc` w `test/support/`. | — |
+| **EB3** | Dzierżawa i `refresh_token/5`, `resource` dla innych aplikacji, `credential/2`, skutki z S5, timeouty. `CommitRepo` i baza `eh_os_contract_auth_test_commits` do testów na prawdziwych commitach (współbieżność, brak transakcji). | eh-os#133 |
+
+Do każdej części: CHANGELOG, README („Signing people in”), `@doc` i `@spec`, eksporty `Boundary`, przegląd
+`pre-pr-review`. Sandbox bez zmian — nie ma w nim EHOS-a. Pierwszym konsumentem jest szablon `ehos_app`
+(krok 7 EHOS-a), a dowodem całości jego test klastrowy (krok 8).
+
+*Odbiór:* kryteria z #78, każde testem — mapa w „Confirmation” ADR-a.
+
 ## Dopisek 1 października — lista zmian do `eh-os` jako issues w `EmpoweredHouse/eh-os`
 
 **Decyzja użytkownika (1 października):** potrzebę zapisujemy tutaj, a opis zadania i wymagania lądują w issue
@@ -357,6 +440,9 @@ stała na `e77f44e`, więc czytany był świeży klon w scratchpadzie.
 | D14: D-34 „a call, not a gate”, „five tables”, test odmowy z D-40 | załatwione przez D-43 (`accepted`, 27 września) | — |
 | D14: plan etapu 4, kroki 6–8 | nieaktualne: etap 4 zamknięty, trwa etap 5 | — |
 | Port `4001.0` przechodzi sprawdzenia EHOS-a obok schematu `ehos.yaml` (EH2, „EH2 — co wyszło”) | `beside_the_schema/1` porównuje porty przez dopasowanie i klucz mapy, więc `4001.0` ≠ `4001` | [eh-os#111](https://github.com/EmpoweredHouse/eh-os/issues/111) |
+| Refresh bez ID tokenu, którego `oidcc` nie przyjmuje (EB, „Dopisek 2 października”) | `Ehos.SignIn.Token` przy refreshu nie zwraca `id_token`, a `oidcc_token:refresh/3` daje wtedy `sub_invalid` po zrotowaniu tokenu | [eh-os#133](https://github.com/EmpoweredHouse/eh-os/issues/133) |
+| Adresy innych aplikacji dla `resource` (EB) | `sign_in.applications` podaje nazwy, D-56 nie daje adresów | [eh-os#134](https://github.com/EmpoweredHouse/eh-os/issues/134) |
+| Format `EHOS_CLIENT_KEY_FILE` i wyliczany `post_logout_redirect_uri` (EB) | nieustalone do kroku 2 etapu 9; klienty z konfiguracji, w testach `https://<host>/` | [eh-os#135](https://github.com/EmpoweredHouse/eh-os/issues/135) |
 | Pytanie o CSP (EG3) | rozstrzygnięte bez pytania: konsola nie ma `report-uri`/`report-to` ani RUM, a EHOS nie ustawia CSP aplikacjom klienckim | — |
 
 **Co zostaje po naszej stronie, gdy EHOS odpowie:** przy #94 — capability ze `scope` i wymiarem w
