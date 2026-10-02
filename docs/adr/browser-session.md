@@ -335,6 +335,33 @@ pipeline :signed_in, do: plug EhOsContract.Auth.Session  # or a redirect to sign
 
 *Accepted by the user, 2 October 2026.*
 
+*Amended, 2 October 2026, at EB2b:*
+
+- **The routes** are `GET /sign-in?return_to=<path>`, `GET /callback` and `POST /sign-out` under the forward.
+  `GET /sign-in` answers 503 while `provider/1` refuses.
+- **The plug** assigns `eh_os_contract_session` with the session's `subject`, `sid` and `auth_time`, and nothing
+  of EHOS's tokens. A request without a session is redirected to sign in when it is a `GET` or `HEAD`, and
+  answers 401 otherwise.
+- **Sign-out** wraps itself in `Plug.CSRFProtection`, so it is protected even in a pipeline without
+  `protect_from_forgery`.
+- **`actor/2`** takes the session map or the connection, and an option list (`sign_in:` and `verify/2`'s).
+
+*Amended again at EB2b's review, the same day:*
+
+- **The callback verifies the credential** as every request will, and requires it to name the person the ID
+  token names. Otherwise a credential every page refuses (another audience, keys not yet held) sends the
+  browser round EHOS's single sign-on for ever.
+- **A new sign-in starts the Plug session empty and ends the browser's previous session.** `renew: true` alone
+  re-signs the cookie store's cookie with every key kept, a planted CSRF token included. This is what S2 meant
+  by "renews the Plug session".
+- **The plug redirects only a browser's navigation**, and only when signing in helps (no session, or an expired
+  credential). A page's `fetch()` gets 401, not a redirect across origins to EHOS.
+- **Known limits:**
+  - two sign-ins begun in one browser at once, in two tabs, overwrite each other's request in `oidcc_plug`'s
+    single session entry, and the earlier callback is refused with 401;
+  - a sign-out while EHOS's document is not held ends the session here only, so the next sign-in at EHOS is
+    silent.
+
 *Amended, 2 October 2026:* the key file, the post-logout address and `EHOS_SIGN_IN_APPLICATIONS` follow
 `eh-os` D-68. It answers [eh-os#134](https://github.com/EmpoweredHouse/eh-os/issues/134) and
 [#135](https://github.com/EmpoweredHouse/eh-os/issues/135) (eh-os-contract#81), and was accepted by the user

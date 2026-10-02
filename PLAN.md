@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 2 października (E0–E12, EH, #72, EB1 i #83 w `main`; w toku EB2a, potem EB2b)
+## Handoff — stan na 2 października (E0–E12, EH, #72, EB1, #83 i EB2a w `main`; w toku EB2b, potem EB3)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -30,11 +30,11 @@ kluczem `sign_in` (`eh-os` D-69) w czytniku i generatorze (#84, merge `ef0e94d`)
 
 ### Stan repozytorium
 
-- **`origin/main` = `ef0e94d`** (merge #84, #83; przedtem `7a2bcb7` — #82, EB1). CI `main` na `ef0e94d` — w toku w
-  chwili zapisu, sprawdzić (`gh run list --repo EmpoweredHouse/eh-os-contract --branch main --limit 1`); PR #84 —
-  `success`. Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
-- **`eb/eb2a-session-store`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `ef0e94d`: EB2a i ten zapis.
-  `eh/issue-83-ehos-yaml-v2` zmergowane.
+- **`origin/main` = `445be88`** (merge #85, EB2a; przedtem `ef0e94d` — #84, #83, i `7a2bcb7` — #82, EB1). CI
+  `main` — sprawdzić (`gh run list --repo EmpoweredHouse/eh-os-contract --branch main --limit 1`). Historia `main` z
+  merge'ami PR-ów; gałęzie etapów liniowe.
+- **`eb/eb2b-browser-routes`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `445be88`: EB2b i ten zapis.
+  `eh/issue-83-ehos-yaml-v2` i `eb/eb2a-session-store` zmergowane.
 - **Lokalnie poza tym:** `main`; zmergowane już `eb/eb1-sign-in-config` (worktree `issue-78-implementation-plan-3ae6a4`)
   i `auth/issue-71-keys-hardening` (worktree `issue-72-assessment-923997`).
 - **Otwarte na GitHubie:** [#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78) (zamyka EB3),
@@ -64,9 +64,7 @@ kluczem `sign_in` (`eh-os` D-69) w czytniku i generatorze (#84, merge `ef0e94d`)
 
 ### Co zostało — i czyje to jest
 
-- **EB2a, potem EB2b — asystenta**, dwa PR-y (decyzja użytkownika, tamże): EB2a — przechowywanie (V03, szyfrowanie
-  z S3, kontekst klienta, losowy `client_secret`, klucz JWK poza argumentami, `kid` w asercji); EB2b — przeglądarka
-  (router, plug `Session`, `actor/1`), zamyka #81.
+- **EB2b — asystenta, w toku** (EB2a w `main`, #85): router, plug `Session`, `actor/2`; zamyka #81.
 - **EB3 — asystenta**, po EB2b: dzierżawa, odnawianie, `credential/2`, `resource`, testy na prawdziwych commitach;
   zamyka #78 i #80.
 - **Merge każdego PR-a — użytkownika.**
@@ -684,6 +682,72 @@ Bez zmian:
 sekret, kontekst bez klucza klienta, dane powiązane bez kolumny, bez wiersza, credential bez adresu, brak
 szyfrowania, surowy token zamiast hasha, brak czyszczenia po 12 h i wiersz, który zostaje po nieudanym
 odszyfrowaniu. Każda wywraca właściwe testy.
+
+### EB2b — co wyszło (2 października)
+
+Gałąź `eb/eb2b-browser-routes`, od `445be88` (merge #85).
+
+**Co jest:**
+- **`SignIn.Router`** pod `/auth/ehos`, na `Authorize` i `AuthorizationCallback` z `oidcc_plug` przez
+  `SignIn.ClientStore`:
+  - `GET /sign-in` — PKCE wymagane, 503 przy dostawcy, z którym nie da się zalogować;
+  - `GET /callback` — opcje z S6 w jednym miejscu: `preferred_auth_methods: [:private_key_jwt]`,
+    `check_peer_ip: false`, `retrieve_userinfo: false`, transport pakietu. Potem nowy token sesji w odnowionej
+    sesji Plug i powrót tylko na ścieżkę lokalną;
+  - `POST /sign-out` — `Plug.CSRFProtection` w środku, `Oidcc.Logout.initiate_url/3` z `id_token_hint` i
+    adresem po wylogowaniu wyliczonym z `address`.
+- **`Session`** (plug) i **`Session.actor/2`** — aktor zawsze z credentialu sprawdzonego `verify/2`, nigdy z
+  kolumny `subject`.
+- **`FakeEhos`** podpisuje podanym kluczem i sprawdza PKCE oraz `redirect_uri`.
+- Eksport z granicy pakietu: `Session`, `SignIn.Router`.
+- Auth: 212 → 227 testów przed przeglądem.
+
+**Decyzje asystenta:**
+- **Router jako zwykły `Plug`, nie `Plug.Router`.** Trzy trasy i nazwa dziecka z opcji, bez makr.
+- **Plug przypisuje tylko `subject`, `sid` i `auth_time`.** Każdy crash Plug wypisuje `conn`, a z nim
+  `assigns`.
+- **Bez własnej kontroli `expires_at` w `actor/2`.** `verify/2` odrzuca wygasły credential według
+  `EhOsContract.Clock`; mutacja, która usuwała moją kontrolę, przeżyła, więc była zbędna. `expires_at` odczyta
+  odnawianie (EB3), z zapasem 30 s.
+- **Ścieżki tras** — `sign-in`, `callback`, `sign-out`; ADR (S7) mówił tylko „logowanie, callback,
+  wylogowanie”, więc poprawka z datą.
+- **Odmowa przy callbacku jest logowana samą nazwą powodu.** Niektóre powody `oidcc` niosą token, który
+  odrzucił.
+
+**Zamyka [#81](https://github.com/EmpoweredHouse/eh-os-contract/issues/81):** JWK z D-68 (EB1), adres po
+wylogowaniu dokładnie `https://<host>/` (test tutaj), `EHOS_SIGN_IN_APPLICATIONS` mapowane przez hosta (EB1).
+
+**Weryfikacja:** próby odwrotne — otwarte przekierowanie, brak adresu po wylogowaniu, brak CSRF, zachowany
+podrzucony token, `check_peer_ip: true`. Każda wywraca dokładnie swój test.
+
+**Przegląd przed PR-em**, dwa równolegle. Poprawione, każde z testem, który bez poprawki pada:
+- **Pętla logowania** (poprawność: High, bezpieczeństwo: Medium). Callback nie sprawdzał credentialu, więc taki,
+  którego każda strona odmawia (inna publiczność, brak kluczy), kręcił przeglądarką przez SSO EHOS-a bez końca i
+  przy każdym obrocie pisał wiersz. Teraz `verify/2` przy callbacku, a `sub` credentialu musi być tym z ID
+  tokenu. Do tego plug przekierowuje tylko przy braku sesji albo wygasłym credentialu; inna odmowa daje 401.
+- **Podrzucony token CSRF przeżywał logowanie** (oba). `renew: true` przy sesji w ciasteczku tylko podpisuje je
+  na nowo, z każdym kluczem. Teraz `clear_session/1` i `delete_csrf_token/0`, jak `renew_session` w
+  `phx.gen.auth`.
+- **Ponowne logowanie zostawiało stary wiersz ważny przez 12 h** (oba). Teraz jest kasowany.
+- **Pusty `sub`, `sid` albo refresh token, albo `auth_time` poza zakresem, dawały 500** (poprawność). Teraz 401.
+- **`fetch()` strony po wygaśnięciu dostawał 302 do EHOS-a, przez granicę originów** (poprawność). Teraz
+  przekierowanie dostaje tylko nawigacja (`sec-fetch-mode: navigate` albo `Accept` z `text/html`).
+- `actor(conn)` po plugu z `assign_actor: true` czyta przypisanego aktora zamiast drugiego odczytu z bazy;
+  `Authorize.Error` z `oidcc_plug` daje 503 (bez testu: wyścig co 5 minut); `return_to`, który nie jest UTF-8,
+  wraca na `/`; odpowiedź tokenu znika z `conn.private` po odczycie; dwie martwe kontrole usunięte.
+
+Bez zmian:
+- logi przy callbacku bez sesji i przy niedostępnym EHOS-ie — sama objętość logu, bez bazy i bez EHOS-a;
+- dwa zapytania i odszyfrowanie całej sesji na każde żądanie — do EB3, które i tak czyta `expires_at`;
+- zdublowane pomocnicze funkcje odpowiedzi w routerze i plugu;
+- `actor/2` na `conn` bez pobranej sesji rzuca wyjątek — opisane w `@doc`, to błąd okablowania hosta.
+
+Zapisane jako znane granice (ADR, S7): dwa logowania naraz w dwóch kartach (jedno miejsce w sesji
+`oidcc_plug`) i wylogowanie przy niedostępnym EHOS-ie, które kończy sesję tylko tutaj. Informacyjnie:
+`return_to` z zapytaniem trafia w `state` do logów EHOS-a; aktor zawsze z credentialu, więc host, który
+autoryzowałby po `assigns.eh_os_contract_session.subject`, polega na tym, że EHOS trzyma `sub` równe.
+
+Auth: 212 → 233 testów.
 
 ## Dopisek 1 października — lista zmian do `eh-os` jako issues w `EmpoweredHouse/eh-os`
 
