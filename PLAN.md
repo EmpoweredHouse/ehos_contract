@@ -634,7 +634,7 @@ Gałąź `eb/eb2a-session-store`, od `ef0e94d` (merge #84).
 - **`SignIn.client_context/1`:** kontekst `oidcc` z tego, co trzyma dziecko, budowany na wywołanie.
 - **Losowy `client_secret`** przy każdym starcie, poza `inspect`.
 - **`FakeEhos` ma endpoint tokenu** w kształcie `Ehos.SignIn.Token` dla wymiany kodu.
-- Auth: 191 → 206 testów.
+- Auth: 191 → 212 testów (206 przed poprawkami z przeglądu).
 
 **Decyzje asystenta:**
 - **Klucz prywatny w kontekście klienta.** Ani struct `oidcc`, ani `JOSE.JWK` nie chowa go przed `inspect`, więc
