@@ -60,7 +60,7 @@ defmodule EhOsContract.Auth.SignIn do
   require Logger
 
   alias EhOsContract.Auth.Keys
-  alias EhOsContract.Auth.SignIn.{ClientKey, Http}
+  alias EhOsContract.Auth.SignIn.{Cipher, ClientKey, Http}
 
   @timeout 10_000
   @refresh_every :timer.minutes(5)
@@ -76,7 +76,7 @@ defmodule EhOsContract.Auth.SignIn do
     :end_session_endpoint
   ]
 
-  @derive {Inspect, except: [:client_key, :secret_key_base]}
+  @derive {Inspect, except: [:client_key, :client_secret, :secret_key_base, :cipher_key]}
   @enforce_keys [
     :name,
     :issuer,
@@ -87,13 +87,20 @@ defmodule EhOsContract.Auth.SignIn do
     :post_logout_redirect_uri,
     :applications,
     :secret_key_base,
+    :cipher_key,
     :request_opts
   ]
-  defstruct @enforce_keys
+  defstruct [:client_secret | @enforce_keys]
 
   @typedoc """
-  The application's client, as `config/1` returns it. `client_key` and
-  `secret_key_base` are left out of its inspection.
+  The application's client, as `config/1` returns it. `client_key`, `client_secret`,
+  `secret_key_base` and `cipher_key`, the key the session's tokens are encrypted with
+  (S3), are left out of its inspection.
+
+  `client_secret` is random, made at each start and never written down (S6). EHOS
+  takes `private_key_jwt` alone, so it authenticates nothing; it is there because
+  `oidcc` refuses every other method without one, and it is random because `oidcc`
+  turns it into a key for any `HS*` algorithm a document names.
   """
   @type t :: %__MODULE__{
           name: atom(),
@@ -105,6 +112,8 @@ defmodule EhOsContract.Auth.SignIn do
           post_logout_redirect_uri: String.t(),
           applications: %{String.t() => String.t()},
           secret_key_base: String.t(),
+          cipher_key: binary(),
+          client_secret: String.t() | nil,
           request_opts: map()
         }
 
@@ -192,6 +201,36 @@ defmodule EhOsContract.Auth.SignIn do
   end
 
   @doc """
+  The client context `oidcc` calls EHOS with: the document and keys held, when a
+  person can be signed in with them (`provider/1`), the client's id, its random
+  secret and its private key (`Oidcc.ClientContext.from_manual/5`, S1 as amended).
+
+  It holds the private key, and neither `oidcc`'s struct nor `JOSE.JWK` leaves it
+  out of an inspection. So it is built for the call that needs it, from the process's
+  name, and is never kept, logged, assigned to a connection or passed to anything
+  but `oidcc`. The same errors as `provider/1`; never fetches, waits or raises.
+  """
+  @spec client_context(atom()) :: {:ok, Oidcc.ClientContext.t()} | {:error, unavailable()}
+  def client_context(name \\ __MODULE__) do
+    # One read of what is held, so a refetch in between cannot pair one document with
+    # another's keys.
+    with {:ok, {configuration, jwks, []}} <- held(name, :provider),
+         {:ok, config} <- held(name, :config) do
+      {:ok,
+       Oidcc.ClientContext.from_manual(
+         configuration,
+         jwks,
+         config.client_id,
+         config.client_secret,
+         %{client_jwks: config.client_key}
+       )}
+    else
+      {:ok, {_configuration, _jwks, reasons}} -> {:error, {:unsupported_provider, reasons}}
+      :error -> {:error, :ehos_unavailable}
+    end
+  end
+
+  @doc """
   Fetches EHOS's document and keys now, and answers how it went. What was held is kept
   when the fetch fails. For operations and tests; the process refetches on its own.
   """
@@ -215,7 +254,7 @@ defmodule EhOsContract.Auth.SignIn do
 
   @impl GenServer
   def init(opts) do
-    config = build!(opts)
+    config = %{build!(opts) | client_secret: random_secret()}
     :ets.new(config.name, [:named_table, :protected, :set, read_concurrency: true])
     true = :ets.insert(config.name, {:config, config})
 
@@ -399,6 +438,7 @@ defmodule EhOsContract.Auth.SignIn do
 
     issuer = issuer!(env[:issuer])
     address = origin!("address", sign_in[:address])
+    secret_key_base = secret_key_base!(sign_in[:secret_key_base])
 
     %__MODULE__{
       name: name,
@@ -409,10 +449,13 @@ defmodule EhOsContract.Auth.SignIn do
       redirect_uri: address <> "/auth/ehos/callback",
       post_logout_redirect_uri: address <> "/",
       applications: applications!(Keyword.get(sign_in, :applications, %{})),
-      secret_key_base: secret_key_base!(sign_in[:secret_key_base]),
+      secret_key_base: secret_key_base,
+      cipher_key: Cipher.key(secret_key_base),
       request_opts: %{timeout: @timeout, http_adapter: {Http, http!(opts)}}
     }
   end
+
+  defp random_secret, do: 32 |> :crypto.strong_rand_bytes() |> Base.url_encode64(padding: false)
 
   defp not_a_keyword_list! do
     raise ArgumentError, "config :eh_os_contract_auth, sign_in: must be a keyword list"

@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 2 października (E0–E12, EH, #72 i EB1 w `main`; w toku #83, potem EB2a i EB2b)
+## Handoff — stan na 2 października (E0–E12, EH, #72, EB1 i #83 w `main`; w toku EB2a, potem EB2b)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -25,20 +25,22 @@ pisze z niego v2 w miejsce v1 — „EH2 — co wyszło” i „EH3 — co wysz�
 
 **EB — logowanie przeglądarki przez EHOS w `eh_os_contract_auth`** ([#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78))
 — plan w „Dopisek 2 października — EB”, specyfikacja w `docs/adr/browser-session.md`. **EB1 jest w `main`** (#82,
-merge `7a2bcb7`). Przed EB2 idzie [#83](https://github.com/EmpoweredHouse/eh-os-contract/issues/83): `ehos.yaml/v2`
-z kluczem `sign_in` (`eh-os` D-69) w czytniku i generatorze — „Dopisek 2 października (2)”.
+merge `7a2bcb7`), a po nim [#83](https://github.com/EmpoweredHouse/eh-os-contract/issues/83): `ehos.yaml/v2` z
+kluczem `sign_in` (`eh-os` D-69) w czytniku i generatorze (#84, merge `ef0e94d`) — „Dopisek 2 października (2)”.
 
 ### Stan repozytorium
 
-- **`origin/main` = `7a2bcb7`** (merge #82, EB1). CI `main` na `7a2bcb7` — `success`. Historia `main` z merge'ami
-  PR-ów; gałęzie etapów liniowe.
-- **`eh/issue-83-ehos-yaml-v2`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `7a2bcb7`: #83 i ten zapis.
+- **`origin/main` = `ef0e94d`** (merge #84, #83; przedtem `7a2bcb7` — #82, EB1). CI `main` na `ef0e94d` — w toku w
+  chwili zapisu, sprawdzić (`gh run list --repo EmpoweredHouse/eh-os-contract --branch main --limit 1`); PR #84 —
+  `success`. Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe.
+- **`eb/eb2a-session-store`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `ef0e94d`: EB2a i ten zapis.
+  `eh/issue-83-ehos-yaml-v2` zmergowane.
 - **Lokalnie poza tym:** `main`; zmergowane już `eb/eb1-sign-in-config` (worktree `issue-78-implementation-plan-3ae6a4`)
   i `auth/issue-71-keys-hardening` (worktree `issue-72-assessment-923997`).
 - **Otwarte na GitHubie:** [#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78) (zamyka EB3),
   [#80](https://github.com/EmpoweredHouse/eh-os-contract/issues/80) (odnawianie, EB3),
   [#81](https://github.com/EmpoweredHouse/eh-os-contract/issues/81) (D-68, domyka EB2b),
-  [#83](https://github.com/EmpoweredHouse/eh-os-contract/issues/83) (w toku); **#49** — materiał klientów poza
+  **#49** — materiał klientów poza
   repozytorium, zaparkowane 30 września; **#63–#66** — pytania otwarte po E12 („Otwarte pytania”). Otwartych PR-ów
   brak. **W `EmpoweredHouse/eh-os`: #91–#96 i #111** — nasze potrzeby wobec EHOS-a („Dopisek 1 października”).
 - **`ehos-ledger`** przypina `eh-os-contract` i puszcza w CI `mix eh_os_contract.manifest`; bump przypięcia na
@@ -50,6 +52,9 @@ z kluczem `sign_in` (`eh-os` D-69) w czytniku i generatorze — „Dopisek 2 pa�
   `ecto.drop` dalej poprawny, tylko wspólny. **Worktree na kodzie sprzed E11c nie wolno migrować wspólnych baz** —
   dołoży swoje V02–V05 (`ecto.drop` naprawia). Baza dev ma dane sprzed E11c w nowym schemacie; przed
   `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
+- **Baza `eh_os_contract_auth_test` jest od 2 października na V03** (EB2a; `mix test` pakietu auth migruje ją sam).
+  Worktree na kodzie sprzed EB2a ma przez to padnięcia `SchemaTest`, bo `public` mówi tam „3”. To oczekiwane, nie
+  regresja; `MIX_ENV=test mix ecto.drop` w pakiecie auth przywraca stan.
 - **Tabela `eh_os_contract_inbox` (E12c, V01 w miejscu) dołożona ręcznie 1 października** do `…_host_dev`,
   `…_host_test`, `eh_os_contract_test`, `…_test_commits` i `eh_os_contract_web_test` (`CREATE TABLE IF NOT EXISTS`
   w kształcie V01). **Worktree na kodzie sprzed E12c ma przez nią trzy padnięcia `MigrationsTest`** (lista tabel w
@@ -59,16 +64,14 @@ z kluczem `sign_in` (`eh-os` D-69) w czytniku i generatorze — „Dopisek 2 pa�
 
 ### Co zostało — i czyje to jest
 
-- **#83 — asystenta, teraz.** Czytnik przyjmuje `ehos.yaml/v2`, generator przenosi `sign_in`. Osobny mały PR przed
-  EB2a (decyzja użytkownika, „Dopisek 2 października (2)”).
 - **EB2a, potem EB2b — asystenta**, dwa PR-y (decyzja użytkownika, tamże): EB2a — przechowywanie (V03, szyfrowanie
   z S3, kontekst klienta, losowy `client_secret`, klucz JWK poza argumentami, `kid` w asercji); EB2b — przeglądarka
   (router, plug `Session`, `actor/1`), zamyka #81.
 - **EB3 — asystenta**, po EB2b: dzierżawa, odnawianie, `credential/2`, `resource`, testy na prawdziwych commitach;
   zamyka #78 i #80.
 - **Merge każdego PR-a — użytkownika.**
-- **Zgłoszenie czterech wad `oidcc` 3.9.0 w `erlef/oidcc`** („EB1 — co wyszło”) — do decyzji użytkownika; nasz kod
-  ich już nie potrzebuje.
+- **Wady `oidcc` 3.9.0** — zgłoszone 2 października jako erlef/oidcc#552–#555 („EB1 — co wyszło”); nasz kod ich
+  nie potrzebuje, więc nic tu na nie nie czeka.
 - **Po stronie EHOS-a, nie tutaj:** szablon `ehos_app` (krok 7) i test na klastrze (krok 8); bump w `ehos-ledger` i
   porównanie jego manifestu z `ledger.v2.json` (EH4). Port `4001.0` —
   [eh-os#111](https://github.com/EmpoweredHouse/eh-os/issues/111).
@@ -345,8 +348,7 @@ Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty, commi
 - **[#83](https://github.com/EmpoweredHouse/eh-os-contract/issues/83) idzie przed EB2a**, osobnym małym PR-em.
   *Odrzucone:* po EB2a albo po całym EB. #83 nie zależy od EB, a bez niego nic nie zaloguje nikogo na klastrze: EHOS
   daje workloadowi `EHOS_CLIENT_ID` i klucz klienta tylko wtedy, gdy manifest ma `sign_in` (D-69).
-- **Zgłoszenie wad `oidcc` w `erlef/oidcc`** — pytanie do użytkownika zostaje otwarte, wyjaśnione prościej: to
-  przysługa dla innych użytkowników biblioteki, nasz kod od tego nie zależy.
+- **Zgłoszenie wad `oidcc` w `erlef/oidcc`** — użytkownik zlecił je asystentowi, tego samego dnia: erlef/oidcc#552–#555.
 
 **Co ustalono przy czytaniu EHOS-a** (`main` = `2cd95cb`; `ehos.yaml/v2` z
 [eh-os#147](https://github.com/EmpoweredHouse/eh-os/pull/147), `99e036b`, w żadnym wydaniu):
@@ -597,11 +599,15 @@ Kontekst klienta w EB2 powstanie z `Oidcc.ClientContext.from_manual/5` i trafi d
   rosnącej tabeli;
 - czytanie wewnętrznej tabeli workera po nazwie — zależy od nieopisanego szczegółu `oidcc`.
 
-**Do zgłoszenia w `erlef/oidcc`** — na zgodę użytkownika, bo to repozytorium zewnętrzne:
-- brak ponowienia kluczy po udanym dokumencie;
-- `bag` w tabeli workera;
-- `case_clause` w `parse_setting_uri_https`;
-- dolna granica `random_exponential`.
+**Zgłoszone w `erlef/oidcc`** 2 października, na polecenie użytkownika, każde z odtworzeniem na 3.9.0 (kod w ich
+`main` na `4914d8d` bez zmian) przez fałszywego dostawcę w adapterze HTTP:
+- brak ponowienia kluczy po udanym dokumencie — [erlef/oidcc#552](https://github.com/erlef/oidcc/issues/552);
+  przy okazji wyszło, że `refresh_jwks_for_unknown_kid/2` przy `jwks = undefined` kładzie worker `function_clause`;
+- `bag` w tabeli workera — [erlef/oidcc#553](https://github.com/erlef/oidcc/issues/553);
+- `case_clause` w `parse_setting_uri_https` — [erlef/oidcc#554](https://github.com/erlef/oidcc/issues/554). Dotyczy
+  `userinfo_endpoint`, `end_session_endpoint`, `pushed_authorization_request_endpoint` i `mtls_endpoint_aliases`;
+  `token_endpoint` i `jwks_uri` idą przez `parse_setting_uri`, który nie sprawdza schematu wcale;
+- dolna granica `random_exponential` — [erlef/oidcc#555](https://github.com/erlef/oidcc/issues/555).
 
 **Weryfikacja:**
 - Każde nowe zabezpieczenie ma próbę odwrotną: mutacja w kopii, test, `cp` z kopii i `cmp`. Każda wywraca
@@ -609,6 +615,75 @@ Kontekst klienta w EB2 powstanie z `Oidcc.ClientContext.from_manual/5` i trafi d
   https endpointów, porównanie issuera, algorytmy symetryczne, jednorazowy log, podwajanie backoffu.
 - Wcześniej, w `53f941d` i `10685d2`: ID token, `client_id`, `backoff_type`, sprawdzenie discovery, `x`
   wobec `d`.
+
+### EB2a — co wyszło (2 października)
+
+Gałąź `eb/eb2a-session-store`, od `ef0e94d` (merge #84).
+
+**Co jest:**
+- **V03:** `eh_os_contract_auth_sessions` i `eh_os_contract_auth_session_credentials`, od razu z kolumnami
+  dzierżawy, żeby EB3 nie potrzebował V04. Credential jest kluczowany adresem aplikacji, tym, który EHOS dostaje w
+  `resource`, także dla własnej aplikacji (`address`).
+- **`SignIn.Sessions`** (wewnętrzny): `create/2`, `fetch/2`, `delete/1`.
+  - Przeglądarka dostaje 32 losowe bajty, tabela ich SHA-256.
+  - Refresh token, ID token i credentiale są zaszyfrowane (`SignIn.Cipher`, XChaCha20-Poly1305 z `plug_crypto`
+    2.2). Klucz jest wyprowadzony raz przy starcie dziecka; dane powiązane to hash wiersza i kolumna, a dla
+    credentialu kolumna z adresem aplikacji.
+  - Wartość, która się nie odszyfrowuje, kończy sesję i kasuje wiersz.
+  - `create/2` kasuje w tej samej transakcji sesje starsze niż 12 h od `auth_time` (S11).
+- **`SignIn.client_context/1`:** kontekst `oidcc` z tego, co trzyma dziecko, budowany na wywołanie.
+- **Losowy `client_secret`** przy każdym starcie, poza `inspect`.
+- **`FakeEhos` ma endpoint tokenu** w kształcie `Ehos.SignIn.Token` dla wymiany kodu.
+- Auth: 191 → 212 testów (206 przed poprawkami z przeglądu).
+
+**Decyzje asystenta:**
+- **Klucz prywatny w kontekście klienta.** Ani struct `oidcc`, ani `JOSE.JWK` nie chowa go przed `inspect`, więc
+  „klucz nigdy w argumentach czegoś, co może paść” da się zapewnić tylko w naszym kodzie. Funkcje biorą nazwę
+  dziecka i czytają klucz w środku; kontekst powstaje na wywołanie i nie jest nigdzie trzymany. Zostaje to, co
+  wypisze sam `oidcc`, gdy padnie — poza naszym zasięgiem; zapisane w ADR-ze (S1, poprawka z datą).
+  *Odrzucone:* opakowanie klucza w domknięcie (`oidcc` bierze `client_jwks` jako rekord JOSE i z domknięciem nie
+  ruszy); kontekst w `conn.assigns` (każdy crash Plug wypisuje `conn`).
+- **`ClientStore` dla `oidcc_plug` przechodzi do EB2b**, bo bez routera nikt go nie woła. Bez `refresh_jwks/1`:
+  callback dostaje tylko kontekst i nie zna nazwy dziecka, a dziecko i tak odświeża klucze co 5 minut.
+- **Credential po adresie, nie po nazwie aplikacji.** `credential/2` w EB3 przyjmie nazwę i zamieni ją na adres z
+  `applications`; tabela trzyma to, co poszło do EHOS-a.
+
+**Przegląd przed PR-em**, dwa równolegle. Oba znalazły to samo najpoważniejsze:
+- **Klucz szyfru i tokeny EHOS-a w raporcie z awarii.** `create/2` dopasowywał argument w nagłówku funkcji, a
+  `MessageEncryptor.encrypt/4` sprawdza typ strażnikiem poza swoim `rescue`. Wystarczył `nil` w miejscu refresh
+  tokenu (`oidcc` daje `refresh: :none`), żeby w górnej ramce stał klucz, albo brak pola, żeby `KeyError` wypisał
+  wszystkie tokeny. Teraz najpierw jest sprawdzany kształt, a odmowa wymienia tylko nazwy pól i typy.
+  „Klucz nigdy w argumentach” z pierwszej wersji tego zapisu było więc nieprawdą; poprawione też w ADR-ze.
+
+Poprawione, każde z testem, który bez poprawki pada:
+- `fetch/2` oddawał sesję starszą niż 12 h, póki nikt inny się nie zalogował (oba przeglądy). Teraz limit jest
+  sprawdzany też przy odczycie.
+- `subject`, `sid` i `auth_time` były jawne i poza danymi powiązanymi (oba przeglądy), więc ktoś z prawem zapisu
+  do tabeli mógł przepisać wiersz na inną osobę. Teraz są w danych powiązanych ID tokenu.
+- Czyszczenie po 12 h szło w transakcji nowego logowania. Teraz to osobna instrukcja przed nią.
+- Test czyszczenia logował dwie pierwsze sesje na prawdziwym zegarze, więc nie pokazywał, który zegar czyta
+  czyszczenie. Teraz wszystko idzie pod `Clock.at`, w czasie, do którego prawdziwy zegar nie doszedł.
+- `client_context/1` czytał to, co trzyma dziecko, dwa razy. Teraz czyta raz (bez testu: wyścig co 5 minut).
+- `plug_crypto` nie był zadeklarowany, a `plug` przyjmuje też 1.x, czyli AES-GCM. Teraz `~> 2.0`.
+- Drobne: opis `FakeEhos.grant/4`, nieużywany `signer/1`, pusty `case` w `Cipher.decrypt/3`, asercja o
+  skasowanym wierszu w teście credentialu.
+
+Bez zmian:
+- dwa zapytania i kopia konfiguracji na odczyt sesji — oba po indeksie, a ścieżkę na każdą stronę układa
+  dopiero EB2b;
+- pomocnicze funkcje testów skopiowane z `sign_in_test.exs` — wspólny moduł, gdy dojdzie trzeci plik (EB2b).
+
+**Przeniesione do EB2b:**
+- `ClientStore`;
+- opcje wywołań z S6 w jednym miejscu, z `preferred_auth_methods: [:private_key_jwt]`. Bez nich `oidcc` po cichu
+  wysłałby losowy sekret, gdyby dokument wymienił metodę `client_secret_*` (przegląd bezpieczeństwa);
+- `actor/1` bierze aktora z credentialu sprawdzonego `verify/2`, nigdy z kolumny `subject`;
+- README „Signing people in” do końca.
+
+**Weryfikacja:** każde zabezpieczenie ma próbę odwrotną (mutacja w kopii, `cp`, `cmp`). Sprawdzone mutacje: stały
+sekret, kontekst bez klucza klienta, dane powiązane bez kolumny, bez wiersza, credential bez adresu, brak
+szyfrowania, surowy token zamiast hasha, brak czyszczenia po 12 h i wiersz, który zostaje po nieudanym
+odszyfrowaniu. Każda wywraca właściwe testy.
 
 ## Dopisek 1 października — lista zmian do `eh-os` jako issues w `EmpoweredHouse/eh-os`
 

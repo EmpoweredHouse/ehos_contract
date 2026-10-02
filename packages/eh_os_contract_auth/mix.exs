@@ -107,6 +107,9 @@ defmodule EhOsContract.Auth.MixProject do
       # `EhOsContract.Auth.Plug`, the bearer plug in front of `EhOsContract.Plug`. The
       # suite also plays EHOS's JWKS endpoint as a function plug handed to Req.
       {:plug, "~> 1.16"},
+      # The session's tokens are encrypted with `Plug.Crypto.MessageEncryptor` (S3), which is
+      # XChaCha20-Poly1305 from 2.0; `plug` alone would also take 1.x, which is AES-GCM.
+      {:plug_crypto, "~> 2.0"},
       # Signing a browser in through EHOS (`eh-os` D-64; S1 in docs/adr/browser-session.md).
       # `oidcc` is pinned here because `oidcc_plug` accepts `~> 3.7`, and only 3.9.0 fixes
       # CVE-2026-75759; `oidcc_plug` 0.5.1 fixes CVE-2026-66883 and CVE-2026-66884. `oidcc`

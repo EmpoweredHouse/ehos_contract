@@ -102,6 +102,12 @@ EB2 builds the client context from what is held, with `Oidcc.ClientContext.from_
 to `oidcc_plug` through its `client_store`. `oidcc`'s protocol code is used as before; only the keeping of
 the provider is the package's.
 
+*Amended, 2 October 2026, at EB2a:* the context holds the client's private key, and neither `oidcc`'s struct
+nor `JOSE.JWK` leaves the key out of an inspection. So `EhOsContract.Auth.SignIn.client_context/1` builds the
+context for the call that needs it, from the child's name. It is never kept, logged or assigned to a
+connection. What `oidcc` itself prints when it fails is outside the package's reach, and is the one place the
+key could still appear.
+
 ### S2 — The browser holds one opaque token, and the table holds its hash
 
 - **What the cookie carries.** The host's cookie session carries one random 32-byte token under one key, and
@@ -179,6 +185,19 @@ same reason, no list of older keys is kept.
 
 *Revisit if* EHOS ever accepts a refresh without client authentication, or if `SECRET_KEY_BASE` is ever
 given to something other than the workload.
+
+*Amended, 2 October 2026, at EB2a:*
+
+- **What the associated data is.** A credential's column is named with the application's address it is for, so
+  a credential moved to another application's row of the same session does not decrypt either.
+- **When the key is derived.** Once, when the sign-in child starts, with a salt of the package's own. The child
+  holds it beside the client key, left out of every inspection.
+- **Where it is read.** The storage functions read it from the child by its name, and check what they are
+  given before encrypting it. `Plug.Crypto.MessageEncryptor.encrypt/4` guards on a binary outside its own
+  rescue, so a value of another type would otherwise print the key as its argument.
+- **Whose session a row is.** The ID token's associated data also holds the row's `subject`, `sid` and
+  `auth_time`. A writer who changes one of them makes a row that does not decrypt, not another person's
+  session. S3 is about readers; this costs nothing and keeps a writer from turning a row into someone else's.
 
 ### S4 — One renewal per session: a lease on the session's row, taken and released by single statements
 
@@ -386,6 +405,11 @@ A session's row is deleted at sign-out, at `invalid_grant` and when its lease is
 absolute limit (12 hours from `auth_time`, D-66) are deleted by the next sign-in, as EHOS prunes its
 refresh store. No job renews or cleans: D-64 forbids renewing without the person, and a cleanup job would
 be the first job this package asks a host to run.
+
+*Amended, 2 October 2026, at EB2a's review:* a session past the absolute limit is also refused when it is read,
+whether or not a sign-in has deleted its row yet. Otherwise, on a quiet deployment, an old cookie would name a
+person for as long as nobody else signed in. The deletion at the next sign-in is a statement of its own, outside
+the new sign-in's transaction.
 
 ## Not decided here
 

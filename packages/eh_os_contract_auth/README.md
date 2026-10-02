@@ -217,7 +217,25 @@ signed in with what is held. It refuses, naming each thing that fails, a documen
 It also refuses a document that names a symmetric algorithm or `none` for ID tokens. `oidcc` would quietly do
 without each of these, or accept such a token.
 
-The routes that sign a browser in and out, and the session behind them, are the next part of this work
+**Where a signed-in person is kept.** Version 3 of the package's tables holds them (`eh-os` D-64, S2 and S3).
+A host that migrated earlier versions adds one migration, as for every version:
+
+```elixir
+defmodule MyApp.Repo.Migrations.UpgradeEhOsContractAuthToV3 do
+  use Ecto.Migration
+
+  def up, do: EhOsContract.Auth.Migrations.up(version: 3)
+  def down, do: EhOsContract.Auth.Migrations.down(version: 3)
+end
+```
+
+- **The browser** holds a random token, and the table only its SHA-256.
+- **EHOS's tokens** — the refresh token, the ID token and every credential — are stored encrypted. The key is
+  derived from `secret_key_base`, and each ciphertext is bound to its row and column, so a backup, a replica or
+  a dump holds nothing that can be presented.
+- **Rotating `SECRET_KEY_BASE`** signs everybody out, as it already does through the cookie session.
+
+The routes that sign a browser in and out, and the plug that reads the session, are the next part of this work
 ([#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78)). What the package decides beside D-64 is in
 [`docs/adr/browser-session.md`](../../docs/adr/browser-session.md).
 

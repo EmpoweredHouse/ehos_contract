@@ -11,6 +11,12 @@ defmodule EhOsContract.Auth.FakeEhos do
   for everything or `:keys` for the key set only), or have it answer what no EHOS
   does (`answer/2`): `:redirect` to plain http, or `:huge`, a body past the limit.
   The client's key file is written in the shape `eh-os` D-68 fixes.
+
+  Its token endpoint answers a code exchange as `Ehos.SignIn.Token` does on `eh-os`'s
+  `main` of 2 October 2026: a credential in EHOS's form for the client's own
+  application, carrying `client_id`, an ID token whose `aud` is the `client_id`, and a
+  refresh token. A code is one `grant/3` made, and each token request is kept with
+  its form (`token_requests/1`), the client's assertion included.
   """
 
   @issuer "https://ehos.test"
@@ -21,7 +27,15 @@ defmodule EhOsContract.Auth.FakeEhos do
 
     {:ok, ehos} =
       Agent.start_link(fn ->
-        %{discovery: discovery(), down: false, answer: nil, signer: jwk, requests: []}
+        %{
+          discovery: discovery(),
+          down: false,
+          answer: nil,
+          signer: jwk,
+          requests: [],
+          grants: %{},
+          token_requests: []
+        }
       end)
 
     ehos
@@ -38,6 +52,30 @@ defmodule EhOsContract.Auth.FakeEhos do
 
   @doc "Has `ehos` answer the discovery document with `:redirect` or `:huge`, or `nil`."
   def answer(ehos, answer), do: Agent.update(ehos, &%{&1 | answer: answer})
+
+  @doc """
+  Makes `code` one the token endpoint exchanges, for a person signed in to `client_id`:
+  `claims` replace the ID token's `"sub"`, `"sid"`, `"auth_time"` and `"nonce"`, and
+  `"audience"` the credential's `aud`.
+  """
+  def grant(ehos, code, client_id, claims \\ %{}) do
+    grant =
+      Map.merge(
+        %{
+          "sub" => "u-anna",
+          "sid" => "sid-" <> Integer.to_string(System.unique_integer([:positive])),
+          "auth_time" => System.os_time(:second),
+          "audience" => "rehmed/test",
+          "client_id" => client_id
+        },
+        Map.new(claims)
+      )
+
+    Agent.update(ehos, &put_in(&1, [:grants, code], grant))
+  end
+
+  @doc "The forms of the token requests `ehos` was sent, oldest first."
+  def token_requests(ehos), do: Agent.get(ehos, &Enum.reverse(&1.token_requests))
 
   @doc "The paths `ehos` was asked for, oldest first."
   def requests(ehos), do: Agent.get(ehos, &Enum.reverse(&1.requests))
@@ -116,8 +154,80 @@ defmodule EhOsContract.Auth.FakeEhos do
         key = Map.merge(public, %{"kid" => JOSE.JWK.thumbprint(state.signer), "alg" => "Ed25519"})
         Req.Test.json(conn, %{"keys" => [key]})
 
+      {_down, _answer, "/oauth/token"} ->
+        token(ehos, state, conn)
+
       {_down, _answer, _path} ->
         Plug.Conn.send_resp(conn, 404, "")
     end
+  end
+
+  defp token(ehos, state, conn) do
+    {:ok, body, conn} = Plug.Conn.read_body(conn)
+    form = URI.decode_query(body)
+    Agent.update(ehos, &%{&1 | token_requests: [form | &1.token_requests]})
+
+    case {form["grant_type"], Map.get(state.grants, form["code"])} do
+      {"authorization_code", %{} = grant} ->
+        Agent.update(ehos, &%{&1 | grants: Map.delete(&1.grants, form["code"])})
+        Req.Test.json(conn, exchanged(state.signer, grant))
+
+      _other ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(400, Jason.encode!(%{"error" => "invalid_grant"}))
+    end
+  end
+
+  # `Ehos.SignIn.Token.response/3`: the credential and the ID token live ten minutes.
+  defp exchanged(signer, grant) do
+    now = System.os_time(:second)
+
+    credential =
+      sign(signer, %{
+        "iss" => @issuer,
+        "sub" => grant["sub"],
+        "aud" => grant["audience"],
+        "iat" => now,
+        "exp" => now + 600,
+        "jti" => Ecto.UUID.generate(),
+        "cap" => [],
+        "client_id" => grant["client_id"]
+      })
+
+    id_token =
+      sign(
+        signer,
+        Map.merge(
+          %{
+            "iss" => @issuer,
+            "sub" => grant["sub"],
+            "aud" => grant["client_id"],
+            "iat" => now,
+            "exp" => now + 600,
+            "auth_time" => grant["auth_time"],
+            "sid" => grant["sid"]
+          },
+          Map.take(grant, ["nonce"])
+        )
+      )
+
+    %{
+      "access_token" => credential,
+      "token_type" => "Bearer",
+      "expires_in" => 600,
+      "refresh_token" => Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false),
+      "scope" => "openid",
+      "id_token" => id_token
+    }
+  end
+
+  defp sign(signer, claims) do
+    header = %{"kid" => JOSE.JWK.thumbprint(signer)}
+
+    {:ok, token, _claims} =
+      Joken.encode_and_sign(claims, Joken.Signer.create("Ed25519", signer, header))
+
+    token
   end
 end
