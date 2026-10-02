@@ -20,6 +20,7 @@ defmodule EhOsContract.Auth.SignIn.Http do
   @connect_timeout 5_000
   @max_body 64 * 1024
   @default_deadline 10_000
+  @status {__MODULE__, :last_status}
 
   @doc false
   @impl :oidcc_http_adapter
@@ -31,15 +32,48 @@ defmodule EhOsContract.Auth.SignIn.Http do
     {url, headers, body} = split(request)
     deadline = Keyword.get(http_options, :timeout, @default_deadline)
 
+    Process.delete(@status)
+
     with :ok <- https(url) do
       task = Task.async(fn -> send_request(method, url, headers, body, deadline, config) end)
 
       case Task.yield(task, deadline) || Task.shutdown(task, :brutal_kill) do
-        {:ok, result} -> result
-        nil -> {:error, :timeout}
-        {:exit, reason} -> {:error, {:exit, reason}}
+        {:ok, {:ok, {{_version, status, _reason}, _headers, _body}} = result} ->
+          Process.put(@status, status)
+          result
+
+        # The status is known though the body is refused: a 2xx past the limit is still a
+        # response EHOS acted on.
+        {:ok, {:too_large, status}} ->
+          Process.put(@status, status)
+          {:error, :response_too_large}
+
+        {:ok, result} ->
+          result
+
+        nil ->
+          {:error, :timeout}
+
+        {:exit, reason} ->
+          {:error, {:exit, reason}}
       end
     end
+  end
+
+  @doc false
+  # The status of the last response this process got, or nil when the last request got none:
+  # a timeout, a reset, a refused call. Renewal reads it to tell a response `oidcc` refused,
+  # whose rotated refresh token is lost, from one that never came (S5).
+  @spec last_status() :: non_neg_integer() | nil
+  def last_status, do: Process.get(@status)
+
+  @doc false
+  # Forgets the last status, before a call whose classification must not read an earlier one's:
+  # `oidcc` can fail before it makes any request.
+  @spec forget_status() :: :ok
+  def forget_status do
+    Process.delete(@status)
+    :ok
   end
 
   @doc false
@@ -99,8 +133,8 @@ defmodule EhOsContract.Auth.SignIn.Http do
       |> Kernel.++(Keyword.take(Map.to_list(config), [:plug]))
 
     case Req.request(options) do
-      {:ok, %Req.Response{body: :too_large}} ->
-        {:error, :response_too_large}
+      {:ok, %Req.Response{body: :too_large, status: status}} ->
+        {:too_large, status}
 
       {:ok, %Req.Response{} = response} ->
         {:ok,

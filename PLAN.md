@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 2 października (E0–E12, EH, #72, EB1, #83 i EB2a w `main`; w toku EB2b, potem EB3)
+## Handoff — stan na 2 października (E0–E12, EH, #72, EB1, #83, EB2a i EB2b w `main`; w toku EB3a, potem EB3b)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -30,11 +30,14 @@ kluczem `sign_in` (`eh-os` D-69) w czytniku i generatorze (#84, merge `ef0e94d`)
 
 ### Stan repozytorium
 
-- **`origin/main` = `445be88`** (merge #85, EB2a; przedtem `ef0e94d` — #84, #83, i `7a2bcb7` — #82, EB1). CI
+- **`origin/main` = `6b280dd`** (merge #86, EB2b; przedtem `445be88` — #85, EB2a, `ef0e94d` — #84, #83, i
+  `7a2bcb7` — #82, EB1). CI
   `main` — sprawdzić (`gh run list --repo EmpoweredHouse/eh-os-contract --branch main --limit 1`). Historia `main` z
   merge'ami PR-ów; gałęzie etapów liniowe.
-- **`eb/eb2b-browser-routes`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `445be88`: EB2b i ten zapis.
-  `eh/issue-83-ehos-yaml-v2` i `eb/eb2a-session-store` zmergowane.
+- **`eb/eb3a-renewal`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `6b280dd`: EB3a i ten zapis. Gałęzie
+  #83, EB2a i EB2b zmergowane.
+- **Nowa baza testowa `eh_os_contract_auth_test_commits`** (EB3a, `CommitRepo` pakietu auth) — tworzy ją
+  `mix test` pakietu, a czyści migracja w dół i w górę przed każdym przebiegiem.
 - **Lokalnie poza tym:** `main`; zmergowane już `eb/eb1-sign-in-config` (worktree `issue-78-implementation-plan-3ae6a4`)
   i `auth/issue-71-keys-hardening` (worktree `issue-72-assessment-923997`).
 - **Otwarte na GitHubie:** [#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78) (zamyka EB3),
@@ -64,9 +67,8 @@ kluczem `sign_in` (`eh-os` D-69) w czytniku i generatorze (#84, merge `ef0e94d`)
 
 ### Co zostało — i czyje to jest
 
-- **EB2b — asystenta, w toku** (EB2a w `main`, #85): router, plug `Session`, `actor/2`; zamyka #81.
-- **EB3 — asystenta**, po EB2b: dzierżawa, odnawianie, `credential/2`, `resource`, testy na prawdziwych commitach;
-  zamyka #78 i #80.
+- **EB3a — asystenta, w toku**: odnawianie własnego credentialu; zamyka #80.
+- **EB3b — asystenta**, po EB3a: `credential/2` dla innych aplikacji, `resource`, `invalid_target`; zamyka #78.
 - **Merge każdego PR-a — użytkownika.**
 - **Wady `oidcc` 3.9.0** — zgłoszone 2 października jako erlef/oidcc#552–#555 („EB1 — co wyszło”); nasz kod ich
   nie potrzebuje, więc nic tu na nie nie czeka.
@@ -748,6 +750,102 @@ Zapisane jako znane granice (ADR, S7): dwa logowania naraz w dwóch kartach (jed
 autoryzowałby po `assigns.eh_os_contract_session.subject`, polega na tym, że EHOS trzyma `sub` równe.
 
 Auth: 212 → 233 testów.
+
+### EB3a — co wyszło (2 października)
+
+Gałąź `eb/eb3a-renewal`, od `6b280dd` (merge #86). **EB3 podzielone przez asystenta na dwa PR-y**, jak EB2, dla
+małego diffu:
+- **EB3a** — odnawianie własnego credentialu; zamyka #80;
+- **EB3b** — `credential/2` dla innych aplikacji (`resource`, odmowa `invalid_target` zapamiętana na 10 minut,
+  dwa `resource` → dwa credentiale); zamyka #78.
+
+*Odrzucone:* jeden PR, jak w tabeli części.
+
+**Co jest:**
+- **`SignIn.Renewal`** (wewnętrzny) — S4 krok po kroku:
+  - szybka ścieżka przy więcej niż 30 s ważności;
+  - dzierżawa jednym `UPDATE` na zegarze bazy, na 15 s (po drugim przeglądzie 30 s, niżej);
+  - ponowny odczyt wiersza;
+  - `Oidcc.Token.refresh/3` bez mocka, z `private_key_jwt` i terminem 10 s;
+  - zapis z odbiorem dzierżawy w jednej transakcji, strzeżonej `lease_holder`;
+  - czekający co 200 ms, najwyżej 15 s.
+
+  Skutki z S5 wiersz po wierszu, bez `invalid_target`, który należy do EB3b.
+- **`Sessions`:** `take_lease/3`, `release/2`, `renewed/4`, `end_session/1`; `token_hash` w strukturze (poza
+  `inspect`) dla danych powiązanych przy ponownym szyfrowaniu.
+- **`SignIn.Http.last_status/0`** — status ostatniej odpowiedzi w procesie wołającym. Bez niego odpowiedź 2xx
+  odrzucona przez `oidcc` (token przepadł) i brak odpowiedzi (token zostaje) wyglądają tak samo.
+- **`Session`:** `actor/2` i plug z `assign_actor: true` odnawiają. `:ehos_unavailable` i `:renewal_busy` dają
+  503; sesja zakończona przy odnawianiu — przekierowanie do logowania.
+- **`FakeEhos`:**
+  - refresh w kształcie `Ehos.SignIn.Token`: ścisła rotacja, drugi raz ten sam token unieważnia rodzinę;
+  - ID token przy odnowieniu dokładnie z claimami z #80;
+  - własny zegar (`advance/2`), hak `on_refresh/2` i odpowiedzi, których EHOS nie daje (`refresh_answer/2`).
+- **`CommitRepo`** i baza `eh_os_contract_auth_test_commits` dla testów na zatwierdzonych danych.
+- Auth: 233 → 248 testów przed przeglądem.
+
+**Decyzje asystenta:**
+- **Liczby jako stałe, nie opcje.** S4 mówił „opcje ze sprawdzeniem przy starcie”; żaden host ich nie potrzebuje.
+  Poprawka z datą w ADR-ze. *Odrzucone:* opcje teraz — sprawdzenie kolejności i konfiguracja bez użytkownika.
+- **Status ostatniej odpowiedzi w słowniku procesu.** *Odrzucone:*
+  - rozpoznawanie po kształcie błędu `oidcc` — lista powodów 2xx jest długa i może się zmienić;
+  - własne żądanie refresh — S10 odrzucił.
+- **Czas czekającego jako wewnętrzna opcja `Renewal.credential/4`**, tylko dla testów. Bez niej test
+  „czekający się poddaje” trwałby 15 s.
+
+**Weryfikacja:** próby odwrotne — brak dzierżawy, 2xx traktowane jak brak odpowiedzi, każdy błąd kończący
+sesję, zapis bez strażnika dzierżawy, brak zwolnienia dzierżawy, margines 0, wygasły credential oddany,
+dzierżawa ignorująca zegar bazy, brak 503 w plugu. Każda wywraca właściwe testy. Jedno miejsce bez testu:
+ponowny odczyt wiersza po wzięciu dzierżawy (S4, krok 3) chroni przed wyścigiem, którego nie da się ustawić
+deterministycznie.
+
+**Przegląd przed PR-em**, dwa równolegle. Poprawione, każde z testem, który bez poprawki pada:
+- **Odnowiony credential zapisywany bez kontroli z callbacku** (poprawność). Credential odrzucany przez
+  `verify/2` dawał 401 przez 10 minut, a credential innej osoby — jej aktora. Teraz sprawdzane są `verify/2`,
+  `sub`, a w ID tokenie `sid` i `auth_time`; inaczej koniec sesji.
+- **Przejęcie przeterminowanej, niezwolnionej dzierżawy** (bezpieczeństwo). Nowy właściciel prezentował token,
+  który poprzedni mógł już zużyć, a to unieważnia logowanie w każdej aplikacji. Teraz koniec sesji. `take_lease/3`
+  zwraca poprzedniego właściciela (CTE z `FOR UPDATE`).
+- **Wyjątek `oidcc` na treści 2xx** (JWT zamiast JSON, JSON, który nie jest obiektem) zostawiał zużyty token
+  (poprawność). Teraz `rescue` → koniec sesji, a wyjątek nigdy nie jest wypisywany.
+- **Brak przerwy po nieudanym odnowieniu** (oba). Każde żądanie sesji wołało EHOS po kolei, każde do 10 s, a
+  czekający blokowali mimo ważnego credentialu. Teraz pauza 5 s w dzierżawie; ważny credential oddawany od razu.
+- **`last_status` z poprzedniego żądania** (oba). `oidcc` potrafi odmówić przed jakimkolwiek wywołaniem, a wtedy
+  liczył się status sprzed niego. Teraz `forget_status/0` tuż przed wywołaniem.
+- **2xx ponad 64 KiB liczone jako brak odpowiedzi** (oba). Teraz status jest zapisywany przed limitem.
+- **`expires_at` z lokalnego zegara po odpowiedzi** (oba). Teraz najwyżej `exp` credentialu, od chwili startu
+  wywołania, także przy callbacku. `expires_in` ≤ 30 s → koniec sesji (odnawianie na każde żądanie).
+- **Zmiana klucza w EHOS-ie kończyła sesje** (poprawność). Teraz `refresh_jwks` raz na odnowienie.
+- **Plug czytał sesję dwa razy** (oba). Teraz przekazuje odczytaną do szybkiej ścieżki.
+- **Wpis w CHANGELOG** zgubiony przez błąd w moim skrypcie (poprawność). Dopisany.
+- **`FakeEhos`:** sprawdzenie i oznaczenie zużytego tokenu w jednym kroku `Agent`.
+
+Bez zmian:
+- odpytywanie co 200 ms czekających — tylko przy wygasłym credentialu i trwającym odnowieniu (najwyżej 10 s);
+- ponowny odczyt po wzięciu dzierżawy bez testu — wyścig nie do ustawienia deterministycznie.
+
+Auth: 248 → 260 testów.
+
+**Drugi przegląd** (samych poprawek, jeden przebieg; pierwszy padł na błędzie połączenia z API). Poprawione, każde
+z testem, który bez poprawki pada, poza dzierżawą 30 s (stała):
+- **Dzierżawa 15 s była za krótka**: wywołanie (10 s), ponowne pobranie kluczy przy nieznanym `kid` (do 30 s) i
+  własne pobranie kluczy przez `verify/2` (10 s). Przy rotacji klucza pod obciążeniem groziło masowe wylogowanie
+  przez „przejęcie”. Teraz dzierżawa 30 s i czekanie na klucze najwyżej 5 s (`SignIn.refresh/2`).
+- **`verify/2` odmawiający z naszego powodu** (`:unknown_key`, `:no_keys`) kończył sesję mimo dobrego tokenu.
+  Teraz odnowienie jest zapisywane; test rotacji przechodzi bez ręcznego `Keys.refresh`.
+- **Margines sprawdzany na `expires_in`, a nie na przyciętym `expires_at`.** Teraz `beyond_margin?/1`, także przy
+  callbacku.
+- **`:busy` przy skasowanym wierszu oddawał credential sesji, która już się skończyła**, a `lease_holder` był
+  sprzed dzierżawy. Teraz świeży odczyt.
+- `exit` i `throw` z `oidcc` łapane (bez testu: żadna ścieżka `oidcc` ich dziś nie rzuca); wynik w nieznanym
+  kształcie traktowany jak błąd; asercja czasu `< 150` ms usunięta (niestabilna, a równość wystarcza).
+- ADR: S5 przy timeoucie (pauza, nie zwolnienie), dzierżawa 30 s i co znaczy „prezentowany raz” — po timeoucie
+  ten sam token idzie ponownie po pauzie, co D-64 akceptuje.
+
+Bez zmian: wyjątek przed wywołaniem `oidcc` zostawia dzierżawę, a sesja kończy się po 30 s jako przejęcie —
+ostrożne i rzadkie; podwójne `verify/2` przy odnawiającym żądaniu.
+
+Auth: 260 → 263 testów.
 
 ## Dopisek 1 października — lista zmian do `eh-os` jako issues w `EmpoweredHouse/eh-os`
 

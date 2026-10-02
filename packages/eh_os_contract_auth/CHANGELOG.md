@@ -7,6 +7,36 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **EB3a (#78, #80): renewal.** `Session.actor/2`, and the plug with `assign_actor: true`, renew a credential
+  good for less than 30 seconds through EHOS with `Oidcc.Token.refresh/3`. The refresh token is rotated, and the
+  newest ID token is kept.
+  - **One renewal per session:** a lease on the session's row, taken by one statement on the database's clock
+    for 30 seconds, longer than a holder can spend before writing, and released with the write.
+    - While it is held, another request uses a credential still unexpired; an expired one waits, for at most 15
+      seconds.
+    - A lease never released by its holder ends the session instead of being taken over, since that holder may
+      have presented the refresh token.
+  - **No transaction is held across the call to EHOS.** The call ends after 10 seconds.
+  - **What is checked before a renewal is stored,** as the callback checks a sign-in:
+    - the credential, by `verify/2`, and of the session's person;
+    - the ID token's `sid` and `auth_time`, the sign-in's;
+    - a stored expiry past the 30-second margin, bounded by the credential's own `exp`.
+
+    A refusal of `verify/2` for keys this application does not hold yet (`:unknown_key`, `:no_keys`) keeps the
+    renewal.
+
+    The callback checks the margin and the `exp` bound too.
+  - **What a failure leaves:**
+    - `invalid_grant`: the session ends.
+    - A timeout, a reset or an error response: the refresh token is kept, the held credential is used while
+      unexpired, and the session's other requests do not call EHOS again for 5 seconds.
+    - A 2xx response that cannot be used, or that `oidcc` refuses or raises on: the session ends, since the
+      rotated token is lost.
+    - A lease lost before the write: the session ends.
+  - **Keys:** an ID token signed with a key the sign-in child does not hold yet makes it refetch EHOS's keys once.
+  - **New refusals:** `{:error, :ehos_unavailable}` and `{:error, :renewal_busy}`. The plug answers both with 503.
+  - **Changed:** an expired credential is no longer a redirect to sign in, but a renewal.
+
 - **EB2b (#78): signing a browser in through EHOS and out.**
   - **`EhOsContract.Auth.SignIn.Router`**, forwarded at `/auth/ehos`:
     - `GET /sign-in` redirects to EHOS with PKCE, and answers 503 while EHOS cannot be signed in with;

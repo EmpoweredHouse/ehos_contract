@@ -32,7 +32,17 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
   @absolute_limit_seconds 12 * 60 * 60
 
   @derive {Inspect, only: [:id, :subject, :sid, :auth_time]}
-  defstruct [:id, :subject, :sid, :auth_time, :refresh_token, :id_token, credentials: %{}]
+  defstruct [
+    :id,
+    :token_hash,
+    :subject,
+    :sid,
+    :auth_time,
+    :refresh_token,
+    :id_token,
+    :lease_holder,
+    credentials: %{}
+  ]
 
   @typedoc "A credential held for an application, by its address, or a refusal remembered."
   @type credential :: %{
@@ -44,11 +54,13 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
   @typedoc "A session, decrypted. Only its id, subject, sid and auth_time are inspected."
   @type t :: %__MODULE__{
           id: pos_integer(),
+          token_hash: binary(),
           subject: String.t(),
           sid: String.t(),
           auth_time: DateTime.t(),
           refresh_token: String.t(),
           id_token: String.t(),
+          lease_holder: String.t() | nil,
           credentials: %{String.t() => credential()}
         }
 
@@ -133,6 +145,128 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
     :ok
   end
 
+  @doc false
+  # S4, step 2: takes the session's lease for `holder`, in one statement in autocommit, when it is
+  # free or past its time by the database's clock, so replicas whose clocks disagree still agree.
+  # `{:taken, previous}` names who held it before, `nil` when nobody did: a lease past its time
+  # and never released is a holder that overran it or died mid-call, and whether its refresh token
+  # was presented is unknown.
+  @spec take_lease(t(), String.t(), pos_integer()) :: {:taken, String.t() | nil} | :busy
+  def take_lease(%__MODULE__{id: id}, holder, lease_ms) do
+    %{rows: rows} =
+      repo().query!(
+        """
+        WITH previous AS (SELECT id, lease_holder FROM #{@sessions} WHERE id = $1 FOR UPDATE)
+        UPDATE #{@sessions} AS s
+        SET lease_holder = $2, lease_until = clock_timestamp() + $3 * interval '1 millisecond'
+        FROM previous
+        WHERE s.id = previous.id AND (s.lease_until IS NULL OR s.lease_until < clock_timestamp())
+        RETURNING previous.lease_holder
+        """,
+        [id, holder, lease_ms]
+      )
+
+    case rows do
+      [[previous]] -> {:taken, previous}
+      [] -> :busy
+    end
+  end
+
+  @doc false
+  # After a renewal EHOS did not answer, the lease stays held under `as` for `ms`, so the session's
+  # other requests do not each call EHOS again at once; it is released by expiring.
+  @spec hold_off(t(), String.t(), String.t(), pos_integer()) :: :ok
+  def hold_off(%__MODULE__{id: id}, holder, as, ms) do
+    repo().query!(
+      "UPDATE #{@sessions} SET lease_holder = $3, " <>
+        "lease_until = clock_timestamp() + $4 * interval '1 millisecond' " <>
+        "WHERE id = $1 AND lease_holder = $2",
+      [id, holder, as, ms]
+    )
+
+    :ok
+  end
+
+  @doc false
+  # Releases the lease `holder` holds, and nothing when another holds it now.
+  @spec release(t(), String.t()) :: :ok
+  def release(%__MODULE__{id: id}, holder) do
+    repo().query!(
+      "UPDATE #{@sessions} SET lease_holder = NULL, lease_until = NULL " <>
+        "WHERE id = $1 AND lease_holder = $2",
+      [id, holder]
+    )
+
+    :ok
+  end
+
+  @doc false
+  # S4, step 5: writes a renewal and releases the lease in one short transaction, guarded by the
+  # lease: `:lost` when `holder` no longer holds it, and then nothing is written. The ID token stays
+  # bound to the row's subject, sid and auth_time, which a renewal does not change.
+  @spec renewed(atom(), t(), String.t(), %{
+          refresh_token: String.t(),
+          id_token: String.t(),
+          resource: String.t(),
+          token: String.t(),
+          expires_at: DateTime.t()
+        }) :: :ok | :lost
+  def renewed(name, %__MODULE__{} = session, holder, renewal) do
+    key = SignIn.config(name).cipher_key
+    hash = session.token_hash
+    repo = repo()
+
+    refresh_token = seal(renewal.refresh_token, key, hash, "refresh_token")
+    id_token = seal(renewal.id_token, key, hash, id_token_column(session))
+    credential = seal(renewal.token, key, hash, credential_column(renewal.resource))
+
+    result =
+      repo.transaction(fn ->
+        {rows, _} =
+          repo.update_all(
+            from(s in @sessions, where: s.id == ^session.id and s.lease_holder == ^holder),
+            set: [
+              refresh_token: refresh_token,
+              id_token: id_token,
+              lease_holder: nil,
+              lease_until: nil
+            ]
+          )
+
+        if rows == 0, do: repo.rollback(:lost)
+
+        repo.insert_all(
+          @credentials,
+          [
+            %{
+              session_id: session.id,
+              resource: renewal.resource,
+              token: credential,
+              expires_at: renewal.expires_at,
+              refused_until: nil
+            }
+          ],
+          on_conflict: {:replace, [:token, :expires_at, :refused_until]},
+          conflict_target: [:session_id, :resource]
+        )
+
+        :ok
+      end)
+
+    case result do
+      {:ok, :ok} -> :ok
+      {:error, :lost} -> :lost
+    end
+  end
+
+  @doc false
+  # Ends a session by its row: at `invalid_grant`, a lost refresh token or a lost lease (S5, S11).
+  @spec end_session(t()) :: :ok
+  def end_session(%__MODULE__{id: id}) do
+    repo().delete_all(from(s in @sessions, where: s.id == ^id))
+    :ok
+  end
+
   defp checked!(signed_in) do
     credential = if is_map(signed_in), do: Map.get(signed_in, :credential)
 
@@ -175,7 +309,8 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
         sid: s.sid,
         auth_time: type(s.auth_time, :utc_datetime),
         refresh_token: s.refresh_token,
-        id_token: s.id_token
+        id_token: s.id_token,
+        lease_holder: s.lease_holder
       }
     )
   end
@@ -201,11 +336,13 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
       {:ok,
        %__MODULE__{
          id: row.id,
+         token_hash: hash,
          subject: row.subject,
          sid: row.sid,
          auth_time: row.auth_time,
          refresh_token: refresh_token,
          id_token: id_token,
+         lease_holder: row.lease_holder,
          credentials: credentials
        }}
     else
