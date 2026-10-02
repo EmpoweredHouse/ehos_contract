@@ -1023,6 +1023,33 @@ Bez zmian:
 
 Auth: 274 → 278 testów.
 
+### Bajty, których tabele silnika nie utrzymają (3 października)
+
+Zadanie zgłoszone w przeglądzie #66 i uruchomione przez użytkownika. Gałąź `engine/unstorable-bytes`, od `762521e`.
+Wszystkie trzy przypadki odtworzone testem (`test/runtime/unstorable_bytes_test.exs`) jako `Postgrex.Error`, czyli
+500. Do tego dwa nowe: NUL w parametrze query (`%00`) i klucz idempotencji bez limitu długości (wpis btree
+indeksu unikalnego ma ~2,7 KB).
+
+**Decyzje użytkownika (3 października), za rekomendacją:**
+- **Tekst z NUL albo złym UTF-8 w polu `:string`/`:id` nie pasuje do typu** — istniejący problem `:type`, 422
+  `{"invalid": {"<pole>": "type"}}`. *Odrzucone:*
+  - nowy rodzaj problemu (`:not_text`) — nowa wartość dla klientów;
+  - ciche usunięcie NUL — zmienia dane bez słowa.
+- **Klucz idempotencji wywołującego: drukowalne ASCII `0x21`–`0x7E`, najwyżej 255 bajtów**, inaczej nowy powód
+  `:idempotency_key_invalid` (Plug: 400). *Odrzucone:*
+  - skrót klucza jak w #66 — chowa błąd klienta, kolumna z dwoma rodzajami wartości;
+  - samo ASCII bez limitu — zostawia 500 dla długiego klucza.
+
+**Co jest:**
+- `Codec`: `text?/1` w `decode` i `fits?`, więc jedna zmiana obejmuje każdą drogę: HTTP, `call/3`, query, `dispatch/3`
+  ze struktury i inbox.
+- `Dispatcher.keyed/1` w `dispatch/3` i `record/3`, po autoryzacji i polach. Klucz reakcji (biblioteki) zwolniony.
+- Plug: 400 i wiersz w tabeli.
+- CHANGELOG w „Changed — a host has to act”.
+
+**Weryfikacja:** próby odwrotne — tekst jako dowolny binarny, NUL dozwolony, bez sprawdzenia klucza, bez limitu,
+nagranie bez sprawdzenia, Plug bez 400. Każda wywraca co najmniej jeden test. Silnik: 1114 → 1120.
+
 ### EB3b — co wyszło (2 października)
 
 Gałąź `eb/eb3b-applications`, od `499ea0b` (merge #87). Ostatnia część EB. WIP `020a3a5` z poprzedniej sesji

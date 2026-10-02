@@ -4,7 +4,10 @@ defmodule EhOsContract.Codec do
   §11): what the compiler cannot check, since a struct can be built with any value
   in any field.
 
-  **Types.** `:string` is a binary and `:id` a non-empty one, `:integer` and `:boolean` what they
+  **Types.** `:string` is text and `:id` non-empty text, where text is valid UTF-8 with no
+  NUL: the log's JSON cannot carry invalid UTF-8, and Postgres holds a NUL neither in `jsonb`
+  nor in `text`, so such a value does not fit, rather than failing the write.
+  `:integer` and `:boolean` what they
   say, `:decimal` a `Decimal`, `:date` a `Date`, `:timestamp` a `DateTime` in UTC,
   `{:enum, members}` one of the member atoms, `{:list, type}` a list of them. A
   domain value is its own type: an alias of a type (`value :money, :integer`), or a
@@ -138,10 +141,10 @@ defmodule EhOsContract.Codec do
 
   defp broken(_type, _value, _values, _domain), do: nil
 
-  defp fits?(:string, value, _values), do: is_binary(value)
+  defp fits?(:string, value, _values), do: text?(value)
   # An empty identifier names nothing: it would key a stream, a tag and a run with
   # nothing after the colon, one for every caller that forgot to fill it in.
-  defp fits?(:id, value, _values), do: is_binary(value) and value != ""
+  defp fits?(:id, value, _values), do: text?(value) and value != ""
   # An entity's identifier where the model keeps the declared type: a function's result.
   defp fits?({:id, _entity}, value, values), do: fits?(:id, value, values)
   defp fits?(:integer, value, _values), do: is_integer(value)
@@ -522,9 +525,9 @@ defmodule EhOsContract.Codec do
 
   defp decode_value(_type, nil, _values, _open, _path), do: {:ok, nil}
 
-  defp decode_value(type, value, _values, _open, _path)
-       when type in [:id, :string] and is_binary(value),
-       do: {:ok, value}
+  defp decode_value(type, value, _values, _open, _path) when type in [:id, :string] do
+    if text?(value), do: {:ok, value}, else: :error
+  end
 
   defp decode_value(:integer, value, _values, _open, _path) when is_integer(value),
     do: {:ok, value}
@@ -592,6 +595,11 @@ defmodule EhOsContract.Codec do
   end
 
   defp decode_value(_type, _value, _values, _open, _path), do: :error
+
+  # What the log's JSON and Postgres's `jsonb` and `text` can hold: a request's `%00` or
+  # `"\u0000"`, or bytes a direct caller passed, would otherwise fail the write.
+  defp text?(value),
+    do: is_binary(value) and String.valid?(value) and not String.contains?(value, <<0>>)
 
   # An enum's members: atoms, or `atom: label` pairs.
   defp names(members),

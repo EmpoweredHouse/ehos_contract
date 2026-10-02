@@ -66,6 +66,23 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
     untraversed, not as failing, and the policy's own failures on the log are not counted against it.
   - The inbox now writes `received_at` by `EhOsContract.Clock`, as dispatch writes an event's `occurred_at`, so
     a report's bounds read both alike.
+
+- **Request bytes the log cannot hold are a refusal, not an exception.** Until now each of these made Postgres
+  refuse the write, and a request answered 500:
+  - **Text in a `:string` or `:id` field holding a NUL, or invalid UTF-8, does not fit its type.**
+    - Reachable over HTTP: `"\u0000"` in JSON, `%00` in a query string. Plug refuses invalid UTF-8 in a query
+      string, and Jason in a body.
+    - Reachable from a direct caller of `call/3` or `dispatch/3` with any bytes.
+    - The answer is `{:error, {:invalid, [{field, :type}]}}`, or 422 `{"invalid": {"<field>": "type"}}`, at any
+      depth of a domain value. A query's parameter is held to it too, and so is a published event an inbox takes:
+      one that does not fit is delivered again, as before, when it failed.
+  - **A caller's idempotency key must be printable ASCII (`0x21`–`0x7E`) of at most 255 bytes.**
+    - Otherwise the answer is `{:error, :idempotency_key_invalid}`, or 400 `{"error": "idempotency_key_invalid"}`.
+      This is a new refusal.
+    - The key is stored, indexed and copied into the event's metadata. A space, a byte above `0x7E`, or a key long
+      enough to break the unique index's btree entry failed the write.
+    - A reaction's key is the library's own and is not checked.
+
 - **E12c, D12: only a policy takes an event another application publishes.** A read model, an effect or a
   process manager that names a `consumes "<name>"` event no longer compiles: the event arrives in an inbox and
   never enters the log they read, so none of them would ever have been given it. React with a policy, and take

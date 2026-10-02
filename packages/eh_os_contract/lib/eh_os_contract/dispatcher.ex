@@ -21,6 +21,9 @@ defmodule EhOsContract.Dispatcher do
      an aggregate whose identity is generated gets a UUIDv7 here, and is refused
      with `{field, :generated}` when it brings one of its own, and with
      `{:error, :idempotency_key_required}` without an idempotency key (plan EM3).
+     A caller's idempotency key is printable ASCII (`0x21`–`0x7E`) of at most 255
+     bytes, or `{:error, :idempotency_key_invalid}`: the key is stored and indexed,
+     and other bytes would fail the write.
   3. **Once.** A key belongs to the actor who sent it: another actor's command
      with the same key is its own, and never sees the first one's receipt. An
      idempotency key the actor already had accepted for the same command returns
@@ -111,6 +114,7 @@ defmodule EhOsContract.Dispatcher do
           | {:invalid, [Codec.problem() | {atom(), :generated}]}
           | :idempotency_key_reused
           | :idempotency_key_required
+          | :idempotency_key_invalid
           | :conflict
           | :not_caught_up
           | :subject_erased
@@ -138,6 +142,7 @@ defmodule EhOsContract.Dispatcher do
              scope(declaration, declaration.fields, command, values)
            ),
          :ok <- valid(declaration.fields, command, values, model.domain),
+         :ok <- keyed(ctx),
          {:ok, command} <- generate_identity(model, declaration, command, ctx) do
       job = %{
         kind: :command,
@@ -181,7 +186,8 @@ defmodule EhOsContract.Dispatcher do
     values = Codec.values(model.domain)
 
     with :ok <- permit_record(model, declaration, ctx.actor),
-         :ok <- valid(declaration.fields, event, values, model.domain) do
+         :ok <- valid(declaration.fields, event, values, model.domain),
+         :ok <- keyed(ctx) do
       job = %{
         kind: :record,
         type: "record:#{declaration.name}",
@@ -651,6 +657,18 @@ defmodule EhOsContract.Dispatcher do
   end
 
   defp generate_identity(_model, _declaration, command, _ctx), do: {:ok, command}
+
+  # A caller's key is stored in `eh_os_contract_commands` and its unique index, and in the
+  # event's metadata: printable ASCII that a text column, `jsonb` and a btree entry all hold.
+  # A reaction's is the library's own (`EhOsContract.Consumer`).
+  defp keyed(%{idempotency_key: nil}), do: :ok
+  defp keyed(%{actor: %Actor{kind: :reaction}}), do: :ok
+
+  defp keyed(%{idempotency_key: key}) do
+    if is_binary(key) and byte_size(key) in 1..255 and key =~ ~r/\A[\x21-\x7E]+\z/,
+      do: :ok,
+      else: {:error, :idempotency_key_invalid}
+  end
 
   defp valid(fields, struct, values, domain) do
     case Codec.problems(fields, struct, values, domain) do

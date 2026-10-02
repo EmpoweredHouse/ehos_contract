@@ -38,12 +38,13 @@ if Code.ensure_loaded?(Plug.Conn) do
     | accepted | 200 | `command_id`, `identity` (the unit's, the one the library gave when the command created it), `positions`, `position`, `duplicate`, and each event's `type` and `position` |
     | query answered | 200 | `rows`, or `row`, in the log's form; an erased personal field is `null` |
     | rejected on an invariant | 422 | `{"rejected": "<invariant>"}` |
-    | fields that do not fit | 422 | `{"invalid": {"<field>": "required" \\| "type" \\| "generated" \\| "<invariant>"}}` — `generated` for an identity sent with a command that creates its aggregate, which the library gives; an invariant's name for a value that breaks it (plan EL2b) |
+    | fields that do not fit | 422 | `{"invalid": {"<field>": "required" \\| "type" \\| "generated" \\| "<invariant>"}}` — `generated` for an identity sent with a command that creates its aggregate, which the library gives; an invariant's name for a value that breaks it (plan EL2b); `type` also for text holding a NUL (`"\\u0000"`, `%00`) |
     | a body that is not a JSON object, or cannot be read | 400 | `{"error": "body_is_not_a_json_object"}`, `{"error": "unreadable_body"}` |
     | an `x-correlation-id` that is not a UUID's text | 400 | `{"error": "correlation_id_is_not_a_uuid"}` |
     | refused | 403 | `{"refused": "<reason>"}` |
     | no actor | 401 | `{"error": "no_actor"}` |
     | a command that creates its aggregate, without an `idempotency-key` | 422 | `{"error": "idempotency_key_required"}` |
+    | an `idempotency-key` that is not printable ASCII of at most 255 bytes | 400 | `{"error": "idempotency_key_invalid"}` |
     | conflict, or a reused key | 409 | `{"error": "<reason>"}` |
     | personal data of an erased subject | 410 | `{"error": "subject_erased"}` |
     | a recording for a unit no command created (its identity is the library's) | 404 | `{"error": "not_created"}` |
@@ -190,6 +191,9 @@ if Code.ensure_loaded?(Plug.Conn) do
 
     defp refused(conn, :idempotency_key_required),
       do: reply(conn, 422, %{error: :idempotency_key_required})
+
+    defp refused(conn, :idempotency_key_invalid),
+      do: reply(conn, 400, %{error: :idempotency_key_invalid})
 
     defp refused(conn, reason) when reason in [:conflict, :idempotency_key_reused],
       do: reply(conn, 409, %{error: reason})
