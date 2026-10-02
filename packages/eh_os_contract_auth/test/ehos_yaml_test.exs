@@ -55,6 +55,9 @@ defmodule EhOsContract.Auth.EhosYamlTest do
     "sign_in_without_public_web.yaml" =>
       {"sign_in", 5,
        "needs an entry of serves named web with public: true, where sign-in returns"},
+    "sign_in_web_not_public.yaml" =>
+      {"sign_in", 9,
+       "needs an entry of serves named web with public: true, where sign-in returns"},
     "sign_in_own_application.yaml" =>
       {"sign_in.applications[1]", 10, "is the application this file names"}
   }
@@ -113,7 +116,9 @@ defmodule EhOsContract.Auth.EhosYamlTest do
 
       # `{}` asks for the file's own application only, so it is kept as it is, not dropped.
       own = String.replace(text, "sign_in:\n  applications: [pages, billing]\n", "sign_in: {}\n")
-      assert {:ok, %{"sign_in" => %{}}} = EhosYaml.read(own)
+      assert own != text
+      assert {:ok, %{"sign_in" => own_sign_in}} = EhosYaml.read(own)
+      assert own_sign_in == %{}
     end
 
     test "has its plain values resolved by YAML 1.2's core schema, where yes is a string" do
@@ -269,6 +274,28 @@ defmodule EhOsContract.Auth.EhosYamlTest do
                   message:
                     "the file is not YAML that can be read: no function clause matching in " <>
                       ":yamerl_parser.parse_mapping_value/5"
+                }
+              ]}
+  end
+
+  # Both of `sign_in`'s rules, once the schema has passed: neither stops the other.
+  test "sign_in breaking both its rules is refused for each" do
+    text =
+      "schema: ehos.yaml/v2\napplication: ledger\nsign_in:\n  applications: [ledger]\n" <> @health
+
+    assert EhosYaml.read(text) ==
+             {:error,
+              [
+                %{
+                  path: "sign_in",
+                  line: 3,
+                  message:
+                    "needs an entry of serves named web with public: true, where sign-in returns"
+                },
+                %{
+                  path: "sign_in.applications[0]",
+                  line: 4,
+                  message: "is the application this file names"
                 }
               ]}
   end

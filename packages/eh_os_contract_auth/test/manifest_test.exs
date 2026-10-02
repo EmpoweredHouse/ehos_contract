@@ -243,8 +243,9 @@ defmodule EhOsContract.Auth.ManifestTest do
     test "is kept when empty" do
       file = %{"schema" => "ehos.yaml/v2", "health" => @health, "sign_in" => %{}}
 
-      assert %{"ehos_yaml" => "ehos.yaml/v2", "sign_in" => %{}} =
-               Manifest.build(file, [Ledger], [Entries])
+      manifest = Manifest.build(file, [Ledger], [Entries])
+      assert manifest["ehos_yaml"] == "ehos.yaml/v2"
+      assert manifest["sign_in"] == %{}
     end
 
     # `ehos.yaml` seldom names its application, so the reader cannot see this; EHOS refuses the
