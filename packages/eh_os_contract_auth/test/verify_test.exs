@@ -163,6 +163,41 @@ defmodule EhOsContract.Auth.VerifyTest do
     end
   end
 
+  describe "the tokens sign-in brings (eh-os D-64)" do
+    # An ID token is signed with the credentials' key and, for an application's own
+    # client, carries its audience: only the missing `cap` tells it from a credential.
+    # D-64 makes that refusal a security property, so it is pinned here (S9 in
+    # docs/adr/browser-session.md).
+    test "an ID token presented as a bearer credential is refused", %{pair: pair, keys: keys} do
+      id_token =
+        credential(
+          pair,
+          %{
+            "aud" => "rehmed/test",
+            "auth_time" => DateTime.to_unix(DateTime.utc_now()) - 60,
+            "sid" => "s-81",
+            "nonce" => "n-81"
+          },
+          drop: ["cap", "jti"]
+        )
+
+      assert Auth.verify(id_token, keys: keys) == {:error, :bad_signature}
+
+      # Control: the same claims with a `cap` are a credential.
+      with_cap = credential(pair, %{"sid" => "s-81", "nonce" => "n-81"}, drop: ["jti"])
+      assert {:ok, _} = Auth.verify(with_cap, keys: keys)
+    end
+
+    # RFC 9068 §2.2: a credential issued through sign-in names the client it was
+    # issued to. The verifier ignores the claim; recording it is G-3's, later.
+    test "a credential that names its client_id is accepted as it is", %{pair: pair, keys: keys} do
+      token = credential(pair, %{"client_id" => "rehmed-pages/test"})
+
+      assert {:ok, %Actor{subject: "u-anna"} = actor} = Auth.verify(token, keys: keys)
+      assert actor.capabilities == MapSet.new(["rehmed.record_payment"])
+    end
+  end
+
   test "a credential signed by the previous key verifies while the JWKS publishes both",
        %{pair: previous, ehos: ehos, keys: keys} do
     current = key_pair()
