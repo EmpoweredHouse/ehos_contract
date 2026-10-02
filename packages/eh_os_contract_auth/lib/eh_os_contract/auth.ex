@@ -80,7 +80,7 @@ defmodule EhOsContract.Auth do
 
   use Boundary,
     deps: [EhOsContract],
-    exports: [EhosYaml, Keys, Manifest, Migrations, Plug, Testing]
+    exports: [EhosYaml, Keys, Manifest, Migrations, Plug, SignIn, Testing]
 
   @behaviour EhOsContract.Authorizer
 
