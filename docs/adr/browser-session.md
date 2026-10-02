@@ -220,6 +220,16 @@ call. Concretely:
 The numbers are the package's defaults and are options. The order between them is checked at boot: the
 call's timeout must be shorter than the lease.
 
+*Amended, 2 October 2026, at EB3a:*
+
+- **The numbers are constants for now, not options.** No host has asked for others, and fixed values keep the
+  order (a 10-second call inside a 15-second lease) true without a boot check. They become options, with the
+  check, when one does.
+- **Telling a refused response from no response.** S5 needs to know whether a response `oidcc` refused was a 2xx
+  (EHOS rotated, the successor is lost) or whether none came (the old token is kept). `oidcc` returns both as an
+  error. The package's own transport records the last response's status in the calling process, and the
+  renewal reads it.
+
 *Rejected:*
 
 - **`SELECT … FOR UPDATE` around the call.** It holds a transaction and a lock across the call, which D-64
