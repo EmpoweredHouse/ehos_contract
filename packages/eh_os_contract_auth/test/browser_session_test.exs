@@ -212,11 +212,40 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
       assert redirected_to(conn) == "/auth/ehos/sign-in?return_to=%2Fvisits%2F7%3Ftab%3Dpayments"
     end
 
-    test "answers 401 to any other request without a session", context do
-      conn = request(context, conn(:post, "/visits/7", %{}))
+    test "answers 401 to any other request without a session, a page's fetch() too", context do
+      for conn <- [
+            conn(:post, "/visits/7", %{}),
+            conn(:get, "/visits/7") |> put_req_header("accept", "application/json")
+          ] do
+        conn = request(context, conn)
+
+        assert conn.status == 401
+        assert conn.halted
+        assert get_resp_header(conn, "location") == []
+      end
+    end
+
+    test "redirects a navigation a browser marks as one, whatever it accepts", context do
+      conn = conn(:get, "/visits/7") |> put_req_header("sec-fetch-mode", "navigate")
+
+      assert redirected_to(request(context, conn)) =~ "/auth/ehos/sign-in?"
+    end
+
+    # Signing in again would get the same credential, and the browser would go round EHOS for ever.
+    test "answers 401, not a redirect, to a credential refused for another reason", context do
+      browser = sign_in(context, "/")
+      conn = get(context, "/strict", browser)
 
       assert conn.status == 401
-      assert conn.halted
+      assert get_resp_header(conn, "location") == []
+    end
+
+    test "actor/2 on a connection the plug gave an actor reads no session again", context do
+      browser = sign_in(context, "/")
+      page = get(context, "/visits/7", browser)
+      :ok = EhOsContract.Auth.SignIn.Sessions.delete(session_token(context, browser))
+
+      assert {:ok, %Actor{subject: "u-anna"}} = Session.actor(page, sign_in: context.name)
     end
 
     test "gives no actor once the credential has expired, until renewal comes", context do
@@ -315,7 +344,11 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
     request(context, conn(:get, "/auth/ehos/callback?" <> query), started)
   end
 
-  defp get(context, path, previous), do: request(context, conn(:get, path), previous)
+  # A browser's navigation, as a browser sends it.
+  defp get(context, path, previous) do
+    conn = conn(:get, path) |> put_req_header("accept", "text/html,application/xhtml+xml")
+    request(context, conn, previous)
+  end
 
   defp authorization_query(conn) do
     [location] = get_resp_header(conn, "location")
@@ -366,6 +399,16 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
 
   defp route(%Plug.Conn{path_info: ["session"]} = conn, _context),
     do: send_resp(conn, 200, :erlang.term_to_binary(get_session(conn)))
+
+  defp route(%Plug.Conn{path_info: ["strict"]} = conn, context) do
+    opts =
+      Session.init(sign_in: context.name, assign_actor: true, keys: context.keys, audience: "x/y")
+
+    case Session.call(conn, opts) do
+      %Plug.Conn{halted: true} = conn -> conn
+      conn -> send_resp(conn, 200, "a page")
+    end
+  end
 
   defp route(conn, context) do
     opts = Session.init(sign_in: context.name, assign_actor: true, keys: context.keys)

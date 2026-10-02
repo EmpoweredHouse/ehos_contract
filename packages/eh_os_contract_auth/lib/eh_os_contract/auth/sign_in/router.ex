@@ -89,12 +89,22 @@ defmodule EhOsContract.Auth.SignIn.Router do
             request_opts: config.request_opts
           )
 
-        conn |> Authorize.call(opts) |> halt()
+        try do
+          conn |> Authorize.call(opts) |> halt()
+        rescue
+          # `oidcc_plug` raises when the client store answers an error: the held document went
+          # between `provider/1` and the redirect.
+          Authorize.Error -> unavailable(conn, :ehos_unavailable)
+        end
 
       {:error, reason} ->
-        Logger.warning("eh_os_contract_auth cannot sign anyone in: #{describe(reason)}")
-        conn |> text(503, "Signing in through EHOS is unavailable. Try again shortly.")
+        unavailable(conn, reason)
     end
+  end
+
+  defp unavailable(conn, reason) do
+    Logger.warning("eh_os_contract_auth cannot sign anyone in: #{describe(reason)}")
+    text(conn, 503, "Signing in through EHOS is unavailable. Try again shortly.")
   end
 
   defp callback(conn, name, verify_opts) do

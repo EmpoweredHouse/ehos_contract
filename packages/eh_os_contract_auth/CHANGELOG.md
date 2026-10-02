@@ -15,8 +15,11 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     - `POST /sign-out`, behind CSRF protection, ends the session and redirects to EHOS's end session with
       `id_token_hint` and exactly `address <> "/"` (`eh-os` D-68).
   - **`EhOsContract.Auth.Session`**, a plug, lets a signed-in person through with
-    `conn.assigns.eh_os_contract_session`, or redirects a page request to sign in. With `assign_actor: true` it
-    also sets `conn.assigns.eh_os_contract_actor`.
+    `conn.assigns.eh_os_contract_session`. Without a session, or with an expired credential, it redirects a
+    browser's navigation to sign in and answers 401 otherwise; any other refusal is 401. With
+    `assign_actor: true` it also sets `conn.assigns.eh_os_contract_actor`.
+  - **The callback** verifies the credential before signing anyone in, ends the session a signed-in browser
+    had, and starts the Plug session empty.
   - **`Session.actor/2`** takes a connection or a LiveView's session map, and verifies the person's credential
     as a bearer one.
   - **Exported** from the package's boundary: `EhOsContract.Auth.Session` and `EhOsContract.Auth.SignIn.Router`.

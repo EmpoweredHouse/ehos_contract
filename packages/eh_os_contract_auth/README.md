@@ -262,12 +262,14 @@ end
   `private_key_jwt` only. Then:
   - the person gets a new session token, and the Plug session is renewed;
   - the browser goes back to `return_to` when it is a path of this application, and to `/` otherwise;
-  - a callback that signs nobody in answers 401.
+  - a callback that signs nobody in answers 401, and so does one whose credential `verify/2` refuses;
+  - signing in again in a signed-in browser ends the session it had, and the Plug session starts empty.
 - **`POST /auth/ehos/sign-out`**, behind CSRF protection, ends the session and sends the browser to EHOS's
   end-session endpoint with `id_token_hint`, and back to exactly `address <> "/"`.
 - **`EhOsContract.Auth.Session`**, the plug, lets a signed-in person through, with
-  `conn.assigns.eh_os_contract_session` (`subject`, `sid`, `auth_time`). Otherwise a page request is redirected
-  to sign in and back, and any other request answers 401.
+  `conn.assigns.eh_os_contract_session` (`subject`, `sid`, `auth_time`). Otherwise a browser's navigation is
+  redirected to sign in and back, and any other request, a page's `fetch()` for one, answers 401. A credential
+  refused for anything but its expiry answers 401 too, since signing in again would not help.
 - **`Session.actor/2`** is the actor of the person's credential for this application, verified as a bearer
   credential is.
 

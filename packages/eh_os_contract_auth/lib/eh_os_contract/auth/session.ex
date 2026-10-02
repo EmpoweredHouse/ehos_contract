@@ -14,11 +14,18 @@ defmodule EhOsContract.Auth.Session do
 
   **The plug.** A request whose session names a person signed in goes on with
   `conn.assigns.eh_os_contract_session`: their `subject`, `sid` and `auth_time`, and
-  nothing of EHOS's tokens. Otherwise a `GET` or `HEAD` is redirected to sign in and
-  come back (`sign_in_path:`, `/auth/ehos/sign-in` by default), and any other request
-  answers 401. With `assign_actor: true`, the plug also sets
+  nothing of EHOS's tokens. With `assign_actor: true`, the plug also sets
   `conn.assigns.eh_os_contract_actor`, as `EhOsContract.Auth.Plug` does for a bearer
   token, so a pipeline that forwards to `EhOsContract.Plug` serves the person.
+
+  **When it stops a request.** A browser's navigation (`GET` or `HEAD` with
+  `sec-fetch-mode: navigate`, or one that accepts `text/html`) without a session, or
+  whose credential has expired, is redirected to sign in and come back
+  (`sign_in_path:`, `/auth/ehos/sign-in` by default). Any other such request, a
+  `fetch()` from a page for one, answers 401: a redirect would take it to EHOS, across
+  origins. A credential `verify/2` refuses for any other reason answers 401 and is
+  logged: signing in again would get the same credential, and the browser would go
+  round EHOS for ever.
 
   **The actor.** `actor/2` is the actor of the person's credential for this
   application, verified by `EhOsContract.Auth.verify/2` against its own audience
@@ -33,6 +40,8 @@ defmodule EhOsContract.Auth.Session do
   @behaviour Plug
 
   import Plug.Conn
+
+  require Logger
 
   alias EhOsContract.Actor
   alias EhOsContract.Auth.SignIn
@@ -70,7 +79,12 @@ defmodule EhOsContract.Auth.Session do
          {:ok, conn} <- maybe_actor(conn, session, opts) do
       conn
     else
-      {:error, _reason} -> not_signed_in(conn, opts)
+      {:error, reason} when reason in [:signed_out, :expired] ->
+        not_signed_in(conn, opts)
+
+      {:error, reason} ->
+        Logger.warning("eh_os_contract_auth refused a signed-in person's credential: #{reason}")
+        refuse(conn)
     end
   end
 
@@ -78,10 +92,14 @@ defmodule EhOsContract.Auth.Session do
   The actor of the person `session` names: a `Plug.Conn` with its session fetched, or
   the session map a LiveView's `mount/3` is given. `{:error, :signed_out}` when it
   names nobody, `{:error, :expired}` when the credential has expired, and
-  `verify/2`'s refusal otherwise.
+  `verify/2`'s refusal otherwise. On a connection the plug has already given an actor
+  (`assign_actor: true`), that actor, without reading the session again.
   """
   @spec actor(Plug.Conn.t() | map(), keyword()) :: {:ok, Actor.t()} | {:error, refusal()}
   def actor(session, opts \\ [])
+
+  def actor(%Plug.Conn{assigns: %{eh_os_contract_actor: %Actor{} = actor}}, _opts),
+    do: {:ok, actor}
 
   def actor(%Plug.Conn{} = conn, opts), do: actor(get_session(conn), opts)
 
@@ -119,7 +137,18 @@ defmodule EhOsContract.Auth.Session do
 
   defp drop_nil(opts), do: Enum.reject(opts, fn {_key, value} -> is_nil(value) end)
 
-  defp not_signed_in(%Plug.Conn{method: method} = conn, opts) when method in ["GET", "HEAD"] do
+  defp not_signed_in(conn, opts) do
+    if navigation?(conn), do: to_sign_in(conn, opts), else: refuse(conn)
+  end
+
+  defp navigation?(%Plug.Conn{method: method} = conn) when method in ["GET", "HEAD"] do
+    get_req_header(conn, "sec-fetch-mode") == ["navigate"] or
+      Enum.any?(get_req_header(conn, "accept"), &String.contains?(&1, "text/html"))
+  end
+
+  defp navigation?(_conn), do: false
+
+  defp to_sign_in(conn, opts) do
     return_to =
       if conn.query_string == "",
         do: conn.request_path,
@@ -133,7 +162,7 @@ defmodule EhOsContract.Auth.Session do
     |> halt()
   end
 
-  defp not_signed_in(conn, _opts) do
+  defp refuse(conn) do
     conn
     |> put_resp_content_type("text/plain")
     |> send_resp(401, "Sign in through EHOS first.")
