@@ -15,6 +15,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     XChaCha20-Poly1305. The key is derived from `secret_key_base`, and each ciphertext is bound to its row and
     column. A value that does not decrypt, under a rotated `SECRET_KEY_BASE` for one, ends that session.
   - **Pruning:** sessions past twelve hours from `auth_time` are deleted by the next sign-in, with no job.
+  - **`EhOsContract.Auth.SignIn.client_context/1`:** the context `oidcc` calls EHOS with, built from what the
+    child holds and the client's key.
+  - **The client secret** is now random, made at each start, and never inspected (S6).
 
 - **#83: `ehos.yaml/v2` is read, and its `sign_in` goes into the manifest** (`eh-os` D-69).
   - `EhOsContract.Auth.EhosYaml.read/1` takes v1 and v2, each against EHOS's own schema, copied unchanged.

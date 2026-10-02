@@ -405,6 +405,79 @@ defmodule EhOsContract.Auth.SignInTest do
     end
   end
 
+  describe "the client context (EB2a)" do
+    # S6, as amended at EB1's review: a fixed secret would be an `oct` key anyone knows for
+    # any `HS*` algorithm a document named.
+    test "the client secret is random, made at each start, and never inspected", %{ehos: ehos} do
+      first = SignIn.config(start!(ehos))
+      second = SignIn.config(start!(ehos))
+
+      assert byte_size(first.client_secret) >= 43
+      refute first.client_secret == second.client_secret
+      refute inspect(first) =~ first.client_secret
+      refute inspect(first) =~ Base.encode64(first.cipher_key)
+    end
+
+    test "is built from what is held, with the client's own key", %{ehos: ehos, key: key} do
+      name = start!(ehos)
+
+      assert {:ok, %Oidcc.ClientContext{} = context} = SignIn.client_context(name)
+      assert context.client_id == "rehmed/test"
+      assert context.client_secret == SignIn.config(name).client_secret
+      assert %JOSE.JWK{fields: %{"kid" => kid}} = context.client_jwks
+      assert kid == key["kid"]
+      assert context.provider_configuration.issuer == "https://ehos.test"
+    end
+
+    test "is unavailable as the provider is", %{ehos: ehos} do
+      FakeEhos.discovery(ehos, &Map.delete(&1, "code_challenge_methods_supported"))
+      name = start!(ehos)
+      assert SignIn.client_context(name) == {:error, {:unsupported_provider, [:no_s256]}}
+
+      :ok = stop_supervised(name)
+      assert SignIn.client_context(name) == {:error, :ehos_unavailable}
+    end
+
+    # eh-os D-68: EHOS checks an assertion only against the key its `kid` names.
+    test "a code exchange authenticates the client by its key alone, the assertion naming its kid",
+         %{ehos: ehos, key: key} do
+      name = start!(ehos)
+      config = SignIn.config(name)
+      FakeEhos.grant(ehos, "code-1", "rehmed/test", %{"nonce" => "n-1"})
+      {:ok, context} = SignIn.client_context(name)
+
+      assert {:ok, %Oidcc.Token{id: %Oidcc.Token.Id{claims: claims}}} =
+               Oidcc.Token.retrieve("code-1", context, %{
+                 redirect_uri: config.redirect_uri,
+                 nonce: "n-1",
+                 preferred_auth_methods: [:private_key_jwt],
+                 request_opts: config.request_opts
+               })
+
+      assert %{"sub" => "u-anna", "aud" => "rehmed/test"} = claims
+
+      assert [form] = FakeEhos.token_requests(ehos)
+
+      assert form["client_assertion_type"] ==
+               "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+
+      refute Map.has_key?(form, "client_secret")
+
+      assertion = form["client_assertion"]
+      header = assertion |> JOSE.JWS.peek_protected() |> Jason.decode!()
+      assert header["kid"] == key["kid"]
+      assert header["alg"] in ["Ed25519", "EdDSA"]
+
+      public = key |> JOSE.JWK.from_map() |> JOSE.JWK.to_public()
+
+      assert {true, %JOSE.JWT{fields: fields}, _jws} =
+               JOSE.JWT.verify_strict(public, [header["alg"]], assertion)
+
+      assert fields["iss"] == "rehmed/test"
+      assert fields["sub"] == "rehmed/test"
+    end
+  end
+
   describe "the transport" do
     test "a call over plain http is refused before it is made", %{ehos: ehos} do
       assert SignIn.Http.request(:get, {"http://ehos.test/x", []}, [timeout: 1_000], [], %{
