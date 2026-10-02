@@ -241,8 +241,9 @@ config :eh_os_contract_auth,
     address: "https://" <> System.fetch_env!("PHX_HOST"),
     # what the stored tokens are encrypted with (S3)
     secret_key_base: System.fetch_env!("SECRET_KEY_BASE"),
-    # other applications the pages call, by name: their addresses (eh-os#134)
-    applications: %{"ledger" => "https://ledger.production.example.com"}
+    # other applications the pages call, by name: their addresses (D-68),
+    # e.g. {"ledger": "https://ledger.production.ehos.localhost"}
+    applications: Jason.decode!(System.get_env("EHOS_SIGN_IN_APPLICATIONS", "{}"))
   ]
 
 children = [MyApp.Repo, EhOsContract, EhOsContract.Auth, EhOsContract.Auth.SignIn]
@@ -267,9 +268,24 @@ pipeline :signed_in, do: plug EhOsContract.Auth.Session  # or a redirect to sign
   callback is not an open redirect.
 - **Sign-out** is a `POST` behind CSRF protection. It deletes the row and redirects to EHOS's end-session
   endpoint, built by `Oidcc.initiate_logout_url/4` with `id_token_hint`. Its `post_logout_redirect_uri` is
-  EHOS's derived one (eh-os#135).
+  exactly `address <> "/"` (D-68). It is derived, never configured.
+- **The client key** (D-68) is the file at `EHOS_CLIENT_KEY_FILE`, one private Ed25519 JWK, loaded as it is
+  and handed to `oidcc` as `client_jwks`. Its `kid` and `use` are kept, because `oidcc` copies the `kid` into
+  every client assertion and EHOS checks an assertion only against the key with that `kid`. The sign-in
+  child refuses to start on a file of any other shape:
+  - a PEM;
+  - a JWK that lacks any of `kty: "OKP"`, `crv: "Ed25519"`, `x`, `d`, `use: "sig"`, `alg: "Ed25519"`;
+  - a `kid` that is not the RFC 7638 thumbprint of its public half.
+- **Environment variables.** The package reads none itself, as with `issuer` and `audience`. The host maps
+  `EHOS_SIGN_IN_APPLICATIONS` in `config/runtime.exs`, as above, and so does the `ehos_app` template.
 
 *Accepted by the user, 2 October 2026.*
+
+*Amended, 2 October 2026:* the key file, the post-logout address and `EHOS_SIGN_IN_APPLICATIONS` follow
+`eh-os` D-68. It answers [eh-os#134](https://github.com/EmpoweredHouse/eh-os/issues/134) and
+[#135](https://github.com/EmpoweredHouse/eh-os/issues/135) (eh-os-contract#81), and was accepted by the user
+that day; its acceptance is [eh-os#141](https://github.com/EmpoweredHouse/eh-os/pull/141). They replace the
+interim this section planned first: PEM or JWK, and the post-logout address as an option.
 
 ### S8 — Another application's credential is handed out as it is, not verified here
 
@@ -340,12 +356,6 @@ be the first job this package asks a host to run.
 
 - **The client recorded in an application's decision rows** — G-3, later (Stage 9's "Deliberately later").
 - **Back-channel logout** — deferred by D-64. Other applications' sessions end at their next renewal.
-- **How a workload learns other applications' addresses** — [eh-os#134](https://github.com/EmpoweredHouse/eh-os/issues/134),
-  answered by `eh-os` D-68, which is still *proposed* (eh-os-contract#81). Until it is accepted, the
-  addresses come from configuration.
-- **The client key file's format and the post-logout address** — [eh-os#135](https://github.com/EmpoweredHouse/eh-os/issues/135),
-  also answered by D-68, still *proposed*. Until it is accepted, PEM and JWK are both read, and the
-  post-logout address is a configuration option.
 - **A LiveView `on_mount` hook in the package** — only if a second host writes the same one.
 
 ## Confirmation
@@ -377,5 +387,9 @@ through `oidcc`'s HTTP adapter (no port, no network):
   - No refresh token, ID token or credential appears in plain text in the table.
   - A ciphertext moved to another row does not decrypt.
   - A session whose values do not decrypt under the configured `secret_key_base` is signed out.
+- **D-68.**
+  - A key file of exactly D-68's shape loads, and the client assertion's header carries its `kid`.
+  - A PEM is refused at boot, and so is a JWK without `use` or whose `kid` is not its thumbprint.
+  - Sign-out sends exactly `https://<host>/`.
 - **The overrides.** A discovery document without `authorization_response_iss_parameter_supported`, or
   without `S256`, refuses sign-in (S6).
