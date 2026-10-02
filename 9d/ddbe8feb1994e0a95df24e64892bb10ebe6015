@@ -1,0 +1,5 @@
+Discovery endpoints (after #89): /code-review high and engineering:code-review (security and performance) in parallel on 3163161.
+Fixed with tests: endpoints off the issuer's origin were held (code, PKCE verifier, assertion could go elsewhere); the transport guard read with URI.parse and the scheme alone; query, user and \@ cases pinned. Plus: the list's comment on mtls_endpoint_aliases, function names, the rule's wording in the docs, README.
+Skipped: PAR's client authentication not pinned to private_key_jwt (oidcc_plug drops preferred_auth_methods; EHOS has no PAR) - recorded in ADR S6.
+Note: one review subagent ran mix test in the auth package during the gate despite being told not to; the gate passed then, and was rerun after the fixes.
+Gate from sandbox/: EXIT=0 - sandbox 145, check 0/29/9; engine 1114, check 0/68/6; web 52; auth 284 + 1 property.
