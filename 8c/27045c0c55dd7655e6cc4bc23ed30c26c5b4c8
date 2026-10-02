@@ -1,0 +1,5 @@
+EB3b pre-PR review (origin/main..HEAD at 1e8e329, then fixes): /code-review high (correctness) and engineering:code-review (security and performance), in parallel.
+Fixed, each with a test that fails without it (kept/3 aside): refused/4 unguarded by the lease, FK error on a session ended mid-call (both); own address in applications handed out the own credential (both) - refused at boot; invalid_target for the own application remembered as refused (both) - clause limited to other applications; kept/3 total over :refused; dead refused_until reset; server-side note in @doc and README; test of another application's timeout.
+Skipped: credential/3 rereads the session per call (as actor/2 called directly); peeking aud/sub of another application's token (S8 rejects).
+No change needed: invalid_target on 401 (EHOS and RFC 6749 send 400); refused_until on the application clock (as expires_at).
+Gate from sandbox/: EXIT=0 - sandbox 145, check 0/29/9; engine 1114, check 0/68/6; web 52; auth 274 + 1 property.
