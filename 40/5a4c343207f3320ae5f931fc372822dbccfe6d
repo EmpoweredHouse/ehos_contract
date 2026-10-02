@@ -1,0 +1,6 @@
+Unstorable bytes: /code-review high (correctness) and engineering:code-review (security and performance) in parallel on 762521e..f8bb0f1.
+Fixed with tests: a sealed personal value with a NUL could no longer be read back (decode with open: no longer re-checks; opened values marked :opened); a scope value with a NUL still reached the Authorizer as sent (asked as nil now); CHANGELOG and doc on what the key rule refuses (space, non-ASCII, empty header), the inbox refusing unstored fields; OpenAPI header pattern and 400; the key regex; tests for a recording, an empty header and a list.
+Not in this PR, each a new refusal for the user to decide: :decimal with a huge exponent (memory, HIGH latent), NaN/Infinity; :id without a length bound vs btree/GIN entries; :integer without a range; dates outside Postgres's; invalid UTF-8 in a query string raising in Plug.
+Out of scope, noted: correlation/causation ids from a direct dispatch/3 caller, an Actor.credential/3 subject with NUL, the inbox's message key from a transport; the reaction-key exemption is a public struct but library keys pass the rule anyway.
+The fix commit 405a4c3 was not reviewed a second time.
+Gate from sandbox/: EXIT=0 - sandbox 145, check 0/29/9; engine 1124, check 0/68/6; web 52; auth 278 + 1 property.
