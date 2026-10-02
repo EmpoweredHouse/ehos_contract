@@ -21,9 +21,12 @@ defmodule EhOsContract.Auth.FakeEhos do
 
   @issuer "https://ehos.test"
 
-  @doc "An EHOS that is up and serves its own discovery document and one key."
-  def start do
-    jwk = JOSE.JWK.generate_key({:okp, :Ed25519})
+  @doc """
+  An EHOS that is up and serves its own discovery document and one key: `signer:`, a
+  private Ed25519 JWK such as `EhOsContract.Auth.KeyCase.key_pair/0`'s, or a new one.
+  """
+  def start(opts \\ []) do
+    jwk = Keyword.get_lazy(opts, :signer, fn -> JOSE.JWK.generate_key({:okp, :Ed25519}) end)
 
     {:ok, ehos} =
       Agent.start_link(fn ->
@@ -56,7 +59,9 @@ defmodule EhOsContract.Auth.FakeEhos do
   @doc """
   Makes `code` one the token endpoint exchanges, for a person signed in to `client_id`:
   `claims` replace the ID token's `"sub"`, `"sid"`, `"auth_time"` and `"nonce"`, and
-  `"audience"` the credential's `aud`.
+  `"audience"` the credential's `aud`. With `"code_challenge"` (S256) and
+  `"redirect_uri"`, the exchange is refused, as EHOS refuses it, unless its
+  `code_verifier` and `redirect_uri` match.
   """
   def grant(ehos, code, client_id, claims \\ %{}) do
     grant =
@@ -169,14 +174,34 @@ defmodule EhOsContract.Auth.FakeEhos do
 
     case {form["grant_type"], Map.get(state.grants, form["code"])} do
       {"authorization_code", %{} = grant} ->
-        Agent.update(ehos, &%{&1 | grants: Map.delete(&1.grants, form["code"])})
-        Req.Test.json(conn, exchanged(state.signer, grant))
+        token_for(ehos, state, conn, form, grant)
 
       _other ->
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(400, Jason.encode!(%{"error" => "invalid_grant"}))
+        invalid_grant(conn)
     end
+  end
+
+  defp token_for(ehos, state, conn, form, grant) do
+    verifier = form["code_verifier"] || ""
+    challenge = Base.url_encode64(:crypto.hash(:sha256, verifier), padding: false)
+
+    cond do
+      Map.has_key?(grant, "code_challenge") and grant["code_challenge"] != challenge ->
+        invalid_grant(conn)
+
+      Map.has_key?(grant, "redirect_uri") and grant["redirect_uri"] != form["redirect_uri"] ->
+        invalid_grant(conn)
+
+      true ->
+        Agent.update(ehos, &%{&1 | grants: Map.delete(&1.grants, form["code"])})
+        Req.Test.json(conn, exchanged(state.signer, grant))
+    end
+  end
+
+  defp invalid_grant(conn) do
+    conn
+    |> Plug.Conn.put_resp_content_type("application/json")
+    |> Plug.Conn.send_resp(400, Jason.encode!(%{"error" => "invalid_grant"}))
   end
 
   # `Ehos.SignIn.Token.response/3`: the credential and the ID token live ten minutes.
