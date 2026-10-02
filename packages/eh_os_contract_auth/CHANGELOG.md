@@ -7,6 +7,11 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **#71: `refresh_every:` and `refetch_at_most_every:` below five seconds are refused at boot**, by
+  `EhOsContract.Auth.child_spec/1` and `EhOsContract.Auth.Keys.start_link/1`, as is a value that is not whole
+  milliseconds. A shorter interval fetched back to back, and let every unknown `kid` reach EHOS. The defaults are
+  unchanged.
+
 - **#71: `EhOsContract.Auth.Keys.refresh/1` answers instead of exiting** when the key process does not answer in
   ten seconds (`{:error, :timeout}`) or is not running (`{:error, :not_running}`).
 

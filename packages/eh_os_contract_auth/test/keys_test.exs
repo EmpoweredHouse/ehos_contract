@@ -120,6 +120,28 @@ defmodule EhOsContract.Auth.KeysTest do
       end
     end
 
+    for key <- [:refresh_every, :refetch_at_most_every],
+        value <- [0, 4_999, 5_000.0] do
+      test "refuses #{key}: #{inspect(value)}, shorter than a fetch may take or not milliseconds" do
+        assert_raise ArgumentError, ~r/#{unquote(key)}: in milliseconds, at least 5000/, fn ->
+          Keys.start_link([
+            {:name, :"keys_#{unquote(key)}"},
+            {:url, "https://ehos.test/.well-known/jwks.json"},
+            {:repo, Repo},
+            {unquote(key), unquote(value)}
+          ])
+        end
+      end
+    end
+
+    test "control: takes intervals of five seconds and more" do
+      assert Keys.check!(
+               url: "https://ehos.test/.well-known/jwks.json",
+               refresh_every: 5_000,
+               refetch_at_most_every: :timer.minutes(1)
+             ) == :ok
+    end
+
     test "refuses an option it does not take, as req_options: from before" do
       assert_raise ArgumentError, ~r/unknown keys \[:req_options\]/, fn ->
         Keys.start_link(

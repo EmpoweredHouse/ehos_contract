@@ -88,15 +88,17 @@ defmodule EhOsContract.Auth.Keys do
           | {:cacerts, [binary()]}
           | {:plug, term()}
           | {:refresh_every, pos_integer()}
-          | {:refetch_at_most_every, non_neg_integer()}
+          | {:refetch_at_most_every, pos_integer()}
           | {:clock, (-> integer())}
 
   @doc """
   Starts the process and its table, named `:name` (`#{inspect(__MODULE__)}` by
   default), fetching from `:url`.
 
-  `:repo` defaults to the engine's (`config :eh_os_contract, :repo`). The intervals
-  are in milliseconds, measured by `:clock`, which defaults to the monotonic clock.
+  `:repo` defaults to the engine's (`config :eh_os_contract, :repo`). The intervals,
+  `:refresh_every` and `:refetch_at_most_every`, are in milliseconds, measured by
+  `:clock`, which defaults to the monotonic clock, and are at least five seconds, the
+  most a fetch may take: a shorter one would fetch back to back.
   EHOS's certificate is checked against the system's authorities, or against the
   one `:cacertfile` (a PEM file) or `:cacerts` (DER certificates) names. The fetch
   follows no redirect, is not retried, and waits two seconds to connect and three
@@ -111,7 +113,8 @@ defmodule EhOsContract.Auth.Keys do
   failed one.
 
   It raises on an option it does not take, when `:url` is not https (plain http is
-  allowed for `localhost` only), and on `:plug` anywhere but a test.
+  allowed for `localhost` only), on an interval shorter than five seconds, and on
+  `:plug` anywhere but a test.
   """
   @spec start_link([option()]) :: GenServer.on_start()
   def start_link(opts) do
@@ -268,6 +271,22 @@ defmodule EhOsContract.Auth.Keys do
               "eh_os_contract_auth fetches EHOS's keys from #{inspect(url)}, which is not " <>
                 "https: keys fetched in the clear can be replaced on the way. Only localhost " <>
                 "may be plain http"
+    end
+
+    # An interval shorter than a fetch may take fetches back to back, and an early
+    # fetch asked for by every unknown `kid` an attacker sends would reach EHOS each
+    # time, with the calls that waited for it piling up behind.
+    for key <- [:refresh_every, :refetch_at_most_every], Keyword.has_key?(opts, key) do
+      case Keyword.fetch!(opts, key) do
+        ms when is_integer(ms) and ms >= @fetch_deadline ->
+          :ok
+
+        other ->
+          raise ArgumentError,
+                "eh_os_contract_auth takes #{key}: in milliseconds, at least " <>
+                  "#{@fetch_deadline}, the most a fetch may take, and got #{inspect(other)}: " <>
+                  "a shorter interval would fetch back to back"
+      end
     end
 
     if Keyword.has_key?(opts, :plug) and not test_trust?() do
