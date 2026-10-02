@@ -137,7 +137,9 @@ defmodule EhOsContract.Auth.Session do
   person `session` names: a `Plug.Conn` with its session fetched, or the session map a
   LiveView's `mount/3` is given. It is EHOS's token as issued, not verified here (S8),
   for the application to verify; renewed first when it is good for less than 30
-  seconds, as `actor/2`'s is.
+  seconds, as `actor/2`'s is. Send it from the server and keep it there: in a
+  LiveView's assigns or a page, it reaches the browser, which the session keeps
+  EHOS's tokens from (S2).
 
   `{:error, :refused}` when EHOS refused the person a credential there (`invalid_target`:
   no role, or the application is outside the sign-in's granted set). The refusal is

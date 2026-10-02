@@ -295,7 +295,8 @@ Nothing renews unless a request asks.
 **Other applications.** `Session.credential/3` is the person's credential for an application named in
 `applications:`, issued by EHOS for that application's address (`resource`, `eh-os` D-64, D-68) and renewed
 like the application's own, under the same lease. It is handed out as EHOS issued it, not verified here: its
-`aud` is that application's, which verifies it.
+`aud` is that application's, which verifies it. Send it from the server and keep it there: a LiveView's assigns
+or a page would hand it to the browser, which the session otherwise keeps EHOS's tokens from.
 
 - **A name `applications:` does not have** raises `ArgumentError`.
 - **A person EHOS refuses there** (no role, or not in the sign-in's granted set: `invalid_target`) gets
