@@ -14,7 +14,8 @@ defmodule EhOsContract.Auth.RenewalTest do
 
   use ExUnit.Case, async: false
 
-  import EhOsContract.Auth.KeyCase, only: [key_pair: 0, start_keys: 2, ehos: 1]
+  import EhOsContract.Auth.KeyCase,
+    only: [key_pair: 0, start_keys: 2, ehos: 1, clock: 0, advance: 2]
 
   alias EhOsContract.Auth.{CommitRepo, FakeEhos, SignIn}
   alias EhOsContract.Auth.SignIn.{Renewal, Sessions}
@@ -49,6 +50,7 @@ defmodule EhOsContract.Auth.RenewalTest do
     name = start!(ehos)
     {token, session} = signed_in!(ehos, name)
     key_endpoint = ehos({:keys, [pair]})
+    key_clock = clock()
 
     %{
       ehos: ehos,
@@ -57,7 +59,8 @@ defmodule EhOsContract.Auth.RenewalTest do
       session: session,
       pair: pair,
       key_endpoint: key_endpoint,
-      keys: start_keys(key_endpoint, repo: CommitRepo)
+      key_clock: key_clock,
+      keys: start_keys(key_endpoint, repo: CommitRepo, clock: key_clock)
     }
   end
 
@@ -266,17 +269,28 @@ defmodule EhOsContract.Auth.RenewalTest do
           "SET lease_holder = 'another', lease_until = clock_timestamp() + interval '1 hour'"
       )
 
-      started = System.monotonic_time(:millisecond)
-
+      # Waiting would end in :renewal_busy, after 15 seconds.
       assert EhOsContract.Clock.at(seconds_later(context, 590), fn ->
                Renewal.credential(context.name, context.token, @address, keys: context.keys)
              end) == {:ok, context.session.credentials[@address].token}
 
-      assert System.monotonic_time(:millisecond) - started < 150
       assert refreshes(context) == 0
     end
 
-    for answer <- [:no_refresh_token, :expires_in_30, :foreign_sid, :jwt, :huge] do
+    # The holder ended the session (invalid_grant) after this request had read it.
+    test "a session ended while another held the lease is not served from an old read", context do
+      stale = context.session
+      CommitRepo.query!("DELETE FROM eh_os_contract_auth_sessions")
+
+      assert EhOsContract.Clock.at(seconds_later(context, 590), fn ->
+               Renewal.credential(context.name, context.token, @address,
+                 keys: context.keys,
+                 session: stale
+               )
+             end) == {:error, :signed_out}
+    end
+
+    for answer <- [:no_refresh_token, :expires_in_30, :exp_in_20, :foreign_sid, :jwt, :huge] do
       test "a 200 that cannot be used (#{answer}) ends the session", context do
         FakeEhos.refresh_answer(context.ehos, unquote(answer))
 
@@ -286,22 +300,42 @@ defmodule EhOsContract.Auth.RenewalTest do
     end
 
     # As the callback checks a sign-in: a credential every request would refuse is no renewal.
-    test "a renewed credential verify/2 refuses ends the session", context do
-      FakeEhos.rotate_signer(context.ehos, JOSE.JWK.generate_key({:okp, :Ed25519}))
+    test "a renewed credential verify/2 refuses for what it says ends the session", context do
+      FakeEhos.refresh_answer(context.ehos, :foreign_audience)
 
       assert renew(context) == {:error, :signed_out}
       assert rows() == 0
     end
 
-    # oidcc asks the child for keys once when an ID token names a kid it does not hold.
+    # The application's verifier does not hold EHOS's new key yet: nothing is wrong with the
+    # credential, and the rotated refresh token is kept.
+    test "a renewed credential under a key this application does not hold yet is kept",
+         context do
+      FakeEhos.rotate_signer(context.ehos, JOSE.JWK.generate_key({:okp, :Ed25519}))
+
+      assert {:ok, renewed} = renew(context)
+      {:ok, session} = Sessions.fetch(context.name, context.token)
+      assert session.credentials[@address].token == renewed
+      refute session.refresh_token == context.session.refresh_token
+    end
+
+    # oidcc asks the child for keys once when an ID token names a kid it does not hold, and the
+    # application's verifier refetches its own for the credential.
     test "after a key rotation at EHOS, the renewal fetches the new keys and goes on", context do
       new = key_pair()
       FakeEhos.rotate_signer(context.ehos, new.private)
       EhOsContract.Auth.KeyCase.answer(context.key_endpoint, {:keys, [context.pair, new]})
-      :ok = EhOsContract.Auth.Keys.refresh(context.keys)
 
-      assert {:ok, _token} = renew(context)
+      assert {:ok, renewed} = renew(context)
       assert rows() == 1
+
+      # The verifier refetches for an unknown kid at most every 30 seconds, and fetched at start.
+      advance(context.key_clock, 31_000)
+
+      assert {:ok, %{subject: "u-anna"}} =
+               EhOsContract.Clock.at(minutes_later(context, 11), fn ->
+                 EhOsContract.Auth.verify(renewed, keys: context.keys)
+               end)
     end
 
     test "the credential's own exp bounds when it is renewed next", context do

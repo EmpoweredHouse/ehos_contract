@@ -101,8 +101,9 @@ defmodule EhOsContract.Auth.FakeEhos do
   `:reset` (no response), `{:status, code}` (an error response), or a 200 that cannot be
   used: `:no_id_token`, `:foreign_sub` and `:foreign_sid` in its ID token,
   `:no_refresh_token`, `:expires_in_30`, `:jwt` (a body that is not JSON), `:huge` (past
-  the transport's limit). `:short_exp` is a usable 200 whose credential's `exp` is
-  100 seconds away though `expires_in` says 600. None of these rotates the refresh
+  the transport's limit), `:foreign_audience` (a credential for another application).
+  `:short_exp` is a usable 200 whose credential's `exp` is 100 seconds away though
+  `expires_in` says 600; with `:exp_in_20`, 20 seconds away. None of these rotates the refresh
   token but the 200s, which do, as EHOS would before answering.
   """
   def refresh_answer(ehos, answer), do: Agent.update(ehos, &%{&1 | refresh_answer: answer})
@@ -253,9 +254,12 @@ defmodule EhOsContract.Auth.FakeEhos do
 
       true ->
         grant =
-          if state.refresh_answer == :short_exp,
-            do: Map.put(record.grant, "credential_lifetime", 100),
-            else: record.grant
+          case state.refresh_answer do
+            :short_exp -> Map.put(record.grant, "credential_lifetime", 100)
+            :exp_in_20 -> Map.put(record.grant, "credential_lifetime", 20)
+            :foreign_audience -> Map.put(record.grant, "audience", "ledger/test")
+            _other -> record.grant
+          end
 
         body = issue(ehos, state, grant, record.family, renewal: true)
         answer(conn, state, record.grant, body)

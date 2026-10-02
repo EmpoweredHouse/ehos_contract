@@ -11,7 +11,7 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   good for less than 30 seconds through EHOS with `Oidcc.Token.refresh/3`. The refresh token is rotated, and the
   newest ID token is kept.
   - **One renewal per session:** a lease on the session's row, taken by one statement on the database's clock
-    for 15 seconds, and released with the write.
+    for 30 seconds, longer than a holder can spend before writing, and released with the write.
     - While it is held, another request uses a credential still unexpired; an expired one waits, for at most 15
       seconds.
     - A lease never released by its holder ends the session instead of being taken over, since that holder may
@@ -20,9 +20,12 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - **What is checked before a renewal is stored,** as the callback checks a sign-in:
     - the credential, by `verify/2`, and of the session's person;
     - the ID token's `sid` and `auth_time`, the sign-in's;
-    - an `expires_in` above 30 seconds.
+    - a stored expiry past the 30-second margin, bounded by the credential's own `exp`.
 
-    The stored expiry never passes the credential's own `exp`, at the callback too.
+    A refusal of `verify/2` for keys this application does not hold yet (`:unknown_key`, `:no_keys`) keeps the
+    renewal.
+
+    The callback checks the margin and the `exp` bound too.
   - **What a failure leaves:**
     - `invalid_grant`: the session ends.
     - A timeout, a reset or an error response: the refresh token is kept, the held credential is used while

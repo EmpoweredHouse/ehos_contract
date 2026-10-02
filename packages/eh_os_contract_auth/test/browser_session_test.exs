@@ -191,7 +191,13 @@ defmodule EhOsContract.Auth.BrowserSessionTest do
     end
 
     test "a token response missing what a session needs refuses the sign-in", context do
-      for grant <- [%{"sid" => ""}, %{"sub" => ""}, %{"auth_time" => 999_999_999_999_999}] do
+      for grant <- [
+            %{"sid" => ""},
+            %{"sub" => ""},
+            %{"auth_time" => 999_999_999_999_999},
+            # Within the renewal margin: every request would renew it.
+            %{"credential_lifetime" => 20}
+          ] do
         browser = sign_in(context, "/", grant: grant)
 
         assert browser.status == 401, inspect(grant)

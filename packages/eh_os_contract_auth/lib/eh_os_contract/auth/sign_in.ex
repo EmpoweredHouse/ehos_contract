@@ -232,11 +232,13 @@ defmodule EhOsContract.Auth.SignIn do
 
   @doc """
   Fetches EHOS's document and keys now, and answers how it went. What was held is kept
-  when the fetch fails. For operations and tests; the process refetches on its own.
+  when the fetch fails. For operations and tests, and for a renewal that meets a key it
+  does not hold; the process refetches on its own. `timeout` bounds the wait, not the
+  fetch, which goes on and is kept.
   """
-  @spec refresh(atom()) :: :ok | {:error, term()}
-  def refresh(name \\ __MODULE__) do
-    GenServer.call(name, :refresh, 3 * @timeout)
+  @spec refresh(atom(), timeout()) :: :ok | {:error, term()}
+  def refresh(name \\ __MODULE__, timeout \\ 3 * @timeout) do
+    GenServer.call(name, :refresh, timeout)
   catch
     :exit, {:timeout, _call} -> {:error, :timeout}
     :exit, _not_running -> {:error, :not_running}

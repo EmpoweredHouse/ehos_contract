@@ -7,7 +7,7 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
   # 1. **The fast path.** A credential good for more than 30 seconds by `EhOsContract.Clock` is
   #    used, and nothing is written.
   # 2. **The lease.** One renewal per session at a time: the lease is taken by one statement, on
-  #    the database's clock, for 15 seconds. A lease taken over from a holder that never released
+  #    the database's clock, for 30 seconds, longer than what a holder can spend before writing. A lease taken over from a holder that never released
   #    it ends the session instead: that holder may have presented the refresh token, and
   #    presenting it again would revoke the sign-in everywhere (S5).
   # 3. **The row read again.** A predecessor may have renewed meanwhile; then its credential is
@@ -34,7 +34,10 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
   alias EhOsContract.Auth.SignIn.{Http, Sessions}
 
   @margin_seconds 30
-  @lease_ms 15_000
+  # What a holder may spend between taking the lease and writing: the call (10 s), keys refetched
+  # once for an unknown `kid` (at most 5 s waited for) and `verify/2`'s own refetch (10 s).
+  @lease_ms 30_000
+  @jwks_wait_ms 5_000
   @poll_ms 200
   @wait_ms 15_000
   @pause_ms 5_000
@@ -101,15 +104,20 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
     case Sessions.take_lease(session, holder, @lease_ms) do
       {:taken, previous} when previous in [nil, @paused] -> lead(holder, at)
       {:taken, _overran} -> ended(session, :lease_overrun)
-      :busy -> busy(session, at)
+      :busy -> busy(at)
     end
   end
 
-  defp busy(session, at) do
-    case freshness(session, at.resource) do
-      {:usable, token} -> {:ok, token}
-      _expired when session.lease_holder == @paused -> {:error, :ehos_unavailable}
-      _expired -> wait(at)
+  # Read again: the row may be gone (the holder ended the session), or held now by another than
+  # when it was read.
+  defp busy(at) do
+    with {:ok, session} <- Sessions.fetch(at.name, at.browser_token) do
+      case freshness(session, at.resource) do
+        {:fresh, token} -> {:ok, token}
+        {:usable, token} -> {:ok, token}
+        :expired when session.lease_holder == @paused -> {:error, :ehos_unavailable}
+        :expired -> wait(at)
+      end
     end
   end
 
@@ -165,6 +173,8 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
             # `oidcc` raises on some 2xx bodies it cannot read (a JWT where it wants JSON, JSON
             # that is not an object); the exception is never printed, as it may hold the body.
             exception -> {:error, {:raised, exception.__struct__}}
+          catch
+            kind, _reason -> {:error, {:raised, kind}}
           end
 
         outcome(result, %{
@@ -185,7 +195,7 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
   # rotation at EHOS; once per renewal, since `oidcc` asks once.
   defp refresh_jwks(name) do
     fn _jwks, _kid ->
-      with :ok <- SignIn.refresh(name),
+      with :ok <- SignIn.refresh(name, @jwks_wait_ms),
            {:ok, context} <- SignIn.client_context(name) do
         # `oidcc` calls this from Erlang, and takes the key set as JOSE's record.
         {:ok, JOSE.JWK.to_record(context.jwks)}
@@ -217,6 +227,10 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
        when status in [400, 401],
        do: ended(renewal.session, :invalid_grant)
 
+  # A shape outside `oidcc`'s spec is read as any other error.
+  defp outcome(result, renewal) when not is_tuple(result) or elem(result, 0) not in [:ok, :error],
+    do: outcome({:error, :unexpected}, renewal)
+
   defp outcome({:error, reason}, renewal) do
     case Http.last_status() do
       # A 2xx response `oidcc` refused (`sub_invalid`, an ID token that does not validate, a body
@@ -238,13 +252,15 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
 
     with %Oidcc.Token.Access{token: credential, expires: expires_in} when is_binary(credential) <-
            token.access,
-         true <- is_integer(expires_in) and expires_in > @margin_seconds,
+         true <- is_integer(expires_in) and expires_in > 0,
          %Oidcc.Token.Refresh{token: refresh_token} when is_binary(refresh_token) <-
            token.refresh,
          %Oidcc.Token.Id{token: id_token, claims: claims} when is_binary(id_token) <- token.id,
          true <-
            claims["sid"] == session.sid and
              claims["auth_time"] == DateTime.to_unix(session.auth_time),
+         expires_at = expires_at(credential, renewal.started, expires_in),
+         true <- beyond_margin?(expires_at),
          :ok <- verified(credential, renewal) do
       {:ok,
        %{
@@ -252,7 +268,7 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
          id_token: id_token,
          resource: renewal.at.resource,
          token: credential,
-         expires_at: expires_at(credential, renewal.started, expires_in)
+         expires_at: expires_at
        }}
     else
       {:error, reason} -> {:error, reason}
@@ -267,6 +283,9 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
       case EhOsContract.Auth.verify(credential, renewal.at.verify) do
         {:ok, %{subject: subject}} when subject == renewal.session.subject -> :ok
         {:ok, _other} -> {:error, :subject_mismatch}
+        # This application does not hold EHOS's keys yet: nothing is wrong with the credential,
+        # and the rotated refresh token is kept; each request's `verify/2` decides.
+        {:error, reason} when reason in [:unknown_key, :no_keys] -> :ok
         {:error, reason} -> {:error, {:credential_refused, reason}}
       end
     else
@@ -275,7 +294,14 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
   end
 
   @doc false
-  # From when the call began, and never past the credential's own `exp`, so a slow answer or a
+  # Whether a credential expiring at `expires_at` is fresh past the margin: one that is not would
+  # be renewed again by every request, each rotating the refresh token.
+  @spec beyond_margin?(DateTime.t()) :: boolean()
+  def beyond_margin?(expires_at),
+    do: DateTime.compare(expires_at, DateTime.add(now(), @margin_seconds)) == :gt
+
+  @doc false
+  # From `started`, the time the call began, and never past the credential's own `exp`, so a slow answer or a
   # clock that runs behind EHOS's does not keep a credential past its life. The callback uses it
   # too.
   @spec expires_at(String.t(), DateTime.t(), pos_integer()) :: DateTime.t()

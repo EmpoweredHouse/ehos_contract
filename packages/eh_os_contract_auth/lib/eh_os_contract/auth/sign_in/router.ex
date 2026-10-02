@@ -166,9 +166,10 @@ defmodule EhOsContract.Auth.SignIn.Router do
          true <- is_integer(expires_in) and expires_in > 0,
          %{"sub" => subject, "sid" => sid, "auth_time" => auth_time} <- claims,
          true <- Enum.all?([subject, sid, refresh_token, id_token, credential], &text?/1),
-         {:ok, auth_time} <- DateTime.from_unix(auth_time) do
-      now = EhOsContract.Clock.now()
-
+         {:ok, auth_time} <- DateTime.from_unix(auth_time),
+         expires_at = Renewal.expires_at(credential, EhOsContract.Clock.now(), expires_in),
+         # A credential within the renewal margin would be renewed by every request.
+         true <- Renewal.beyond_margin?(expires_at) do
       {:ok,
        %{
          subject: subject,
@@ -179,7 +180,7 @@ defmodule EhOsContract.Auth.SignIn.Router do
          credential: %{
            resource: config.address,
            token: credential,
-           expires_at: Renewal.expires_at(credential, now, expires_in)
+           expires_at: expires_at
          }
        }}
     else
