@@ -7,6 +7,17 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **EB3b (#78): other applications' credentials.** `Session.credential/3` takes the session (a connection or a
+  LiveView's session map) and an application's name in `sign_in: [applications: ...]`, and returns the person's
+  credential for that application. It is renewed like the application's own, under the same lease, with the
+  application's address as `resource`, and handed out as EHOS issued it, unverified (S8).
+  - **New refusal:** `{:error, :refused}` when EHOS answers `invalid_target`. It is remembered for ten minutes,
+    and EHOS is not asked again until then. The refresh token is kept, the session goes on, and a credential
+    held for that application is dropped.
+  - **A name `applications` does not have** raises `ArgumentError`.
+  - **Changed:** the sign-in child refuses to start when an address in `applications` is the application's own
+    `address`, since `credential/3` would hand out its own credential as another's.
+
 - **EB3a (#78, #80): renewal.** `Session.actor/2`, and the plug with `assign_actor: true`, renew a credential
   good for less than 30 seconds through EHOS with `Oidcc.Token.refresh/3`. The refresh token is rotated, and the
   newest ID token is kept.

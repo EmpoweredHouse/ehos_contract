@@ -34,6 +34,8 @@ defmodule EhOsContract.Auth.SignIn do
     * `client_id` is not a non-empty string;
     * `address`, or an address in `applications`, is not exactly `https://<host>`, in
       lower case: no port, no path, no trailing slash, no query (`eh-os` D-68);
+    * an address in `applications` is `address` itself: they are the other
+      applications (`eh-os` D-69);
     * `secret_key_base` is shorter than 64 bytes, Phoenix's own minimum;
     * the file at `client_key_file` is not one private Ed25519 JWK with exactly
       `kty`, `crv`, `x`, `d`, `use: "sig"`, `alg: "Ed25519"` and a `kid` that is the
@@ -450,7 +452,7 @@ defmodule EhOsContract.Auth.SignIn do
       address: address,
       redirect_uri: address <> "/auth/ehos/callback",
       post_logout_redirect_uri: address <> "/",
-      applications: applications!(Keyword.get(sign_in, :applications, %{})),
+      applications: applications!(Keyword.get(sign_in, :applications, %{}), address),
       secret_key_base: secret_key_base,
       cipher_key: Cipher.key(secret_key_base),
       request_opts: %{timeout: @timeout, http_adapter: {Http, http!(opts)}}
@@ -487,10 +489,20 @@ defmodule EhOsContract.Auth.SignIn do
             "#{@min_secret} bytes; the session's tokens are encrypted with a key derived from it"
   end
 
-  defp applications!(applications) when is_map(applications) do
+  # eh-os D-69: the other applications, never this one. Under this application's own address,
+  # `Session.credential/3` would hand out its own credential as another's.
+  defp applications!(applications, own) when is_map(applications) do
     Map.new(applications, fn
       {name, address} when is_binary(name) and name != "" ->
-        {name, origin!("the address of #{inspect(name)} in applications", address)}
+        case origin!("the address of #{inspect(name)} in applications", address) do
+          ^own ->
+            raise ArgumentError,
+                  "sign_in: #{inspect(name)} in applications is this application's address, " <>
+                    "#{own}; applications names the other applications its pages call"
+
+          address ->
+            {name, address}
+        end
 
       {name, _address} ->
         raise ArgumentError,
@@ -499,7 +511,7 @@ defmodule EhOsContract.Auth.SignIn do
     end)
   end
 
-  defp applications!(other) do
+  defp applications!(other, _own) do
     raise ArgumentError,
           "sign_in: applications must map application names to their addresses " <>
             "(EHOS_SIGN_IN_APPLICATIONS, decoded), and is #{inspect(other)}"

@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 2 października (E0–E12, EH, #72, EB1, #83, EB2a i EB2b w `main`; w toku EB3a, potem EB3b)
+## Handoff — stan na 2 października (E0–E12, EH, #72, EB1, #83, EB2a, EB2b i EB3a w `main`; w toku EB3b)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -30,20 +30,21 @@ kluczem `sign_in` (`eh-os` D-69) w czytniku i generatorze (#84, merge `ef0e94d`)
 
 ### Stan repozytorium
 
-- **`origin/main` = `6b280dd`** (merge #86, EB2b; przedtem `445be88` — #85, EB2a, `ef0e94d` — #84, #83, i
-  `7a2bcb7` — #82, EB1). CI
-  `main` — sprawdzić (`gh run list --repo EmpoweredHouse/eh-os-contract --branch main --limit 1`). Historia `main` z
-  merge'ami PR-ów; gałęzie etapów liniowe.
-- **`eb/eb3a-renewal`** (worktree `merge-pr-55-next-stage-ad84a2`) — od `6b280dd`: EB3a i ten zapis. Gałęzie
-  #83, EB2a i EB2b zmergowane.
+- **`origin/main` = `499ea0b`** (merge #87, EB3a; przedtem `6b280dd` — #86, EB2b, `445be88` — #85, EB2a,
+  `ef0e94d` — #84, #83, i `7a2bcb7` — #82, EB1). CI `main` na `499ea0b` — `success` (run `37051635922`). Historia
+  `main` z merge'ami PR-ów; gałęzie etapów liniowe.
+- **`eb/eb3b-applications`** — od `499ea0b`: EB3b i ten zapis; pracowana w worktree `eb3b-applications-4567c7` na
+  gałęzi `claude/eb3b-applications-4567c7`, wypychana pod `eb/eb3b-applications`. Lokalna gałąź
+  `eb/eb3b-applications` w worktree `merge-pr-55-next-stage-ad84a2` trzyma tylko WIP `020a3a5`, który wszedł tu
+  w zwykłe commity. Gałęzie #83, EB2a, EB2b i EB3a zmergowane.
 - **Nowa baza testowa `eh_os_contract_auth_test_commits`** (EB3a, `CommitRepo` pakietu auth) — tworzy ją
   `mix test` pakietu, a czyści migracja w dół i w górę przed każdym przebiegiem.
 - **Lokalnie poza tym:** `main`; zmergowane już `eb/eb1-sign-in-config` (worktree `issue-78-implementation-plan-3ae6a4`)
   i `auth/issue-71-keys-hardening` (worktree `issue-72-assessment-923997`).
-- **Otwarte na GitHubie:** [#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78) (zamyka EB3),
-  [#80](https://github.com/EmpoweredHouse/eh-os-contract/issues/80) (odnawianie, EB3),
-  [#81](https://github.com/EmpoweredHouse/eh-os-contract/issues/81) (D-68, domyka EB2b),
-  **#49** — materiał klientów poza
+- **[#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78) jest zamknięty (16:35:58Z), choć EB3b nie
+  jest skończone** — zamknęło go „closes #78” w opisie PR-a #86. Otworzyć ponownie albo tylko podlinkować EB3b —
+  decyzja użytkownika. #80 i #81 zamknięte (EB3a, EB2b).
+- **Otwarte na GitHubie:** **#49** — materiał klientów poza
   repozytorium, zaparkowane 30 września; **#63–#66** — pytania otwarte po E12 („Otwarte pytania”). Otwartych PR-ów
   brak. **W `EmpoweredHouse/eh-os`: #91–#96 i #111** — nasze potrzeby wobec EHOS-a („Dopisek 1 października”).
 - **`ehos-ledger`** przypina `eh-os-contract` i puszcza w CI `mix eh_os_contract.manifest`; bump przypięcia na
@@ -67,8 +68,9 @@ kluczem `sign_in` (`eh-os` D-69) w czytniku i generatorze (#84, merge `ef0e94d`)
 
 ### Co zostało — i czyje to jest
 
-- **EB3a — asystenta, w toku**: odnawianie własnego credentialu; zamyka #80.
-- **EB3b — asystenta**, po EB3a: `credential/2` dla innych aplikacji, `resource`, `invalid_target`; zamyka #78.
+- **EB3b — asystenta, w toku**: `Session.credential/3` dla innych aplikacji, `resource`, `invalid_target`
+  („EB3b — co wyszło”). Ostatnia część EB.
+- **#78 — użytkownika**: otworzyć ponownie i zamknąć PR-em EB3b, czy zostawić zamknięty z linkiem.
 - **Merge każdego PR-a — użytkownika.**
 - **Wady `oidcc` 3.9.0** — zgłoszone 2 października jako erlef/oidcc#552–#555 („EB1 — co wyszło”); nasz kod ich
   nie potrzebuje, więc nic tu na nie nie czeka.
@@ -164,6 +166,9 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 2 października, na `f63596e`** (EB3b po przeglądzie, `eb/eb3b-applications`): brama z `sandbox/` →
+  **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1114, `check` 0 / 68 / 6; web 52; auth **274** + 1
+  property. CI `main` na `499ea0b` (EB3a) — `success`.
 - **Lokalnie, 2 października, na `auth/issue-71-keys-hardening`** (#71, od `65d7caf`): brama z `sandbox/` →
   **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1114, `check` 0 / 68 / 6; web 52; auth **149** + 1 property.
 - **Lokalnie, 2 października, na `claude/issue-72-assessment-923997`** (#72, od `01ac970`): brama z `sandbox/` →
@@ -846,6 +851,83 @@ Bez zmian: wyjątek przed wywołaniem `oidcc` zostawia dzierżawę, a sesja koń
 ostrożne i rzadkie; podwójne `verify/2` przy odnawiającym żądaniu.
 
 Auth: 260 → 263 testów.
+
+### EB3b — co wyszło (2 października)
+
+Gałąź `eb/eb3b-applications`, od `499ea0b` (merge #87). Ostatnia część EB. WIP `020a3a5` z poprzedniej sesji
+(`resource` i `invalid_target` w `Renewal`, `Sessions.refused/4`) wszedł w zwykłe commity.
+
+**Co jest:**
+- **`Session.credential/3`** — sesja (`conn` albo mapa sesji LiveView), nazwa aplikacji z
+  `sign_in: [applications: ...]`, opcje z `sign_in:`. Idzie przez `Renewal.credential/4` z adresem tej aplikacji,
+  pod tą samą dzierżawą co własny credential. Zwraca surowy token EHOS-a, bez `verify/2` (S8).
+- **`resource` w odnowieniu** innej aplikacji (`body_extension` w `Oidcc.Token.refresh/3`); własna go nie wysyła.
+- **`invalid_target`** → `{:error, :refused}`:
+  - zapamiętane w `refused_until` na 10 minut;
+  - refresh token zostaje, sesja żyje dla każdej innej aplikacji;
+  - dzierżawa zwolniona, a trzymany credential tej aplikacji skasowany — w jednej transakcji, strzeżonej
+    `lease_holder`.
+- **`FakeEhos`:**
+  - grant ma mapę `"applications"` (adres → `aud`);
+  - `resource` spoza niej to 400 `invalid_target` **przed** oznaczeniem tokenu jako zużytego — jak
+    `Ehos.SignIn.Token` na `main` EHOS-a;
+  - następca tokenu trzyma grant logowania, nie pojedynczego credentialu;
+  - `applications/2` — rola nadana albo zabrana w międzyczasie;
+  - `refresh_answer(:invalid_target)`.
+- **Przy starcie** dziecko odmawia adresu z `applications` równego własnemu `address` (D-69).
+- ADR: datowane poprawki w S5 i S7.
+- Auth: 263 → 270 testów przed przeglądem.
+
+**Decyzje asystenta:**
+- **Odmowa kasuje trzymany credential tej aplikacji.** *Odrzucone:* zostawić go, aż wygaśnie (pierwsza wersja
+  WIP-u) — `freshness/2` i tak by go nie oddał, a każda kopia w tabeli to kolejna do chronienia (S3).
+- **Nieznana nazwa → `ArgumentError`.** *Odrzucone:* `{:error, :unknown_application}` — to literówka w kodzie
+  hosta, nie stan osoby; krotka błędu byłaby obsłużona jak odmowa i schowałaby literówkę.
+- **`credential/3` bierze tylko `sign_in:`.** *Odrzucone:* opcje `verify/2` jak w `actor/2` — credential innej
+  aplikacji nie jest tu weryfikowany (S8).
+- **`invalid_target` dla własnej aplikacji to zwykła odpowiedź z błędem** (pauza, token zostaje). EHOS tak nie
+  odpowiada bez `resource`. *Odrzucone:* koniec sesji (propozycja przeglądu) — EHOS nic nie zużył, więc koniec
+  kosztowałby logowanie za nic; i zapamiętanie odmowy (pierwsza wersja) — każda strona sesji dawałaby 401 przez
+  10 minut.
+- **Własny adres w `applications` odrzucany przy starcie.** *Odrzucone:* odmowa przy każdym wywołaniu
+  `credential/3` — błąd konfiguracji wychodziłby dopiero na stronie.
+
+**Weryfikacja:** próby odwrotne (Python, `cp` z kopii):
+- bez `resource`;
+- `resource` zawsze;
+- bez klauzuli `invalid_target`;
+- odmowa niepamiętana, wieczna albo na 20 min;
+- odmowa zostawiająca token albo dzierżawę;
+- `credential/3` z własnym adresem;
+- fałszywy EHOS zużywający token przy `invalid_target`.
+
+Każda wywraca co najmniej jeden test EB3b.
+
+**Przegląd przed PR-em**, dwa równolegle. Poprawione, każde z testem, który bez poprawki pada (poza `kept/3`):
+- **Odmowa zapisywana bez dzierżawy** (oba). Wylogowanie w drugiej karcie w trakcie wywołania kończyło się
+  naruszeniem klucza obcego i 500. Teraz `refused/4` strzeżone `lease_holder` jak `renewed/4`; `:lost` →
+  `{:error, :signed_out}`.
+- **Adres własnej aplikacji w `applications`** (oba). `credential/3` oddawał jej własny credential jako cudzy.
+  Teraz odmowa przy starcie. Widoczne dla hosta, nowa odmowa konfiguracji — w CHANGELOG jako „Changed”.
+- **`invalid_target` dla własnej aplikacji** zapamiętywał odmowę (oba). Teraz klauzula tylko dla innej
+  aplikacji.
+- `kept/3` obsługuje `:refused` (poprawność; nieosiągalne, bez testu); martwe `refused_until: nil` usunięte;
+  zdanie w `@doc` i README, że token zostaje na serwerze (bezpieczeństwo). Dopisany test braku odpowiedzi dla
+  innej aplikacji (luka w testach).
+
+Bez zmian:
+- **`credential/3` czyta sesję przy każdym wywołaniu** (oba) — jak `actor/2` wołane wprost. Przekazanie sesji
+  z plugu to osobna zmiana.
+- **Bez podglądu `aud`/`sub` credentialu innej aplikacji** (bezpieczeństwo) — S8 to odrzuca.
+- **`invalid_target` tylko z 400** — EHOS i RFC 6749 dają 400.
+- **`refused_until` z zegara aplikacji, nie bazy** — jak `expires_at`.
+- **Dwie nazwy pod jednym adresem** dzielą wiersz. To ta sama aplikacja, więc nieszkodliwe.
+
+Auth: 270 → 274 testów.
+
+**Otwarte — użytkownika:** [#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78) zamknął opis PR-a
+#86. Otworzyć ponownie i zamknąć PR-em EB3b, czy zostawić zamknięty z linkiem? Opis PR-a EB3b nie zawiera
+„closes #78”.
 
 ## Dopisek 1 października — lista zmian do `eh-os` jako issues w `EmpoweredHouse/eh-os`
 

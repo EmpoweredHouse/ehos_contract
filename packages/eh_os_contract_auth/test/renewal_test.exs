@@ -1,7 +1,8 @@
 defmodule EhOsContract.Auth.RenewalTest do
   @moduledoc """
   EB3a (#78, #80): a signed-in person's credential renewed through EHOS (S4, S5 and S10
-  in docs/adr/browser-session.md). Every test runs against committed data, in
+  in docs/adr/browser-session.md); EB3b (#78): another application's, by `resource`
+  (S5, S7, S8). Every test runs against committed data, in
   `EhOsContract.Auth.CommitRepo`'s database, because the lease is taken and released
   by statements in autocommit, two renewals meet only across connections, and a
   renewal must hold no transaction while it calls EHOS.
@@ -17,12 +18,16 @@ defmodule EhOsContract.Auth.RenewalTest do
   import EhOsContract.Auth.KeyCase,
     only: [key_pair: 0, start_keys: 2, ehos: 1, clock: 0, advance: 2]
 
-  alias EhOsContract.Auth.{CommitRepo, FakeEhos, SignIn}
+  alias EhOsContract.Auth.{CommitRepo, FakeEhos, Session, SignIn}
   alias EhOsContract.Auth.SignIn.{Renewal, Sessions}
 
   @moduletag :tmp_dir
 
   @address "https://rehmed.test"
+  # Two applications in the sign-in's granted set, and one the person holds no role in.
+  @ledger "https://ledger.test"
+  @archive "https://archive.test"
+  @billing "https://billing.test"
 
   setup %{tmp_dir: dir} do
     previous = Application.get_all_env(:eh_os_contract_auth)
@@ -42,7 +47,7 @@ defmodule EhOsContract.Auth.RenewalTest do
       client_key_file: key_file,
       address: @address,
       secret_key_base: String.duplicate("s", 64),
-      applications: %{}
+      applications: %{"ledger" => @ledger, "archive" => @archive, "billing" => @billing}
     )
 
     pair = key_pair()
@@ -369,6 +374,166 @@ defmodule EhOsContract.Auth.RenewalTest do
     end
   end
 
+  describe "another application's credential (EB3b)" do
+    test "two resources give two credentials, each with one aud, and the own one stays",
+         context do
+      conn = Plug.Test.init_test_session(Plug.Test.conn(:get, "/"), browser(context))
+
+      assert {:ok, ledger} = Session.credential(conn, "ledger", sign_in: context.name)
+
+      assert {:ok, archive} =
+               Session.credential(browser(context), "archive", sign_in: context.name)
+
+      assert claims(ledger)["aud"] == "ledger/test"
+      assert claims(archive)["aud"] == "archive/test"
+      assert claims(ledger)["sub"] == "u-anna"
+
+      # Each renewal presented the refresh token the one before it returned, once.
+      assert [first, second] = refresh_requests(context)
+      assert first["resource"] == @ledger
+      assert second["resource"] == @archive
+      assert first["refresh_token"] == context.session.refresh_token
+      refute second["refresh_token"] == first["refresh_token"]
+
+      {:ok, session} = Sessions.fetch(context.name, context.token)
+      assert session.credentials[@ledger].token == ledger
+      assert session.credentials[@archive].token == archive
+
+      assert session.credentials[@address].token ==
+               context.session.credentials[@address].token
+
+      # Held, so asked again it is the same one, and EHOS is not called.
+      assert Session.credential(conn, "ledger", sign_in: context.name) == {:ok, ledger}
+      assert refreshes(context) == 2
+    end
+
+    test "after invalid_target, the same refresh token renews the own application", context do
+      assert Session.credential(browser(context), "billing", sign_in: context.name) ==
+               {:error, :refused}
+
+      assert [refused] = refresh_requests(context)
+      assert refused["resource"] == @billing
+
+      {:ok, session} = Sessions.fetch(context.name, context.token)
+      assert session.refresh_token == context.session.refresh_token
+      assert lease(context) == [nil, nil]
+
+      assert {:ok, _token} = renew(context)
+      assert [_refused, own] = refresh_requests(context)
+      assert own["refresh_token"] == context.session.refresh_token
+      refute Map.has_key?(own, "resource")
+      assert rows() == 1
+    end
+
+    test "a refusal is remembered for ten minutes, and EHOS is not asked again", context do
+      assert credential(context, "billing", 0) == {:error, :refused}
+      assert credential(context, "billing", 9 * 60) == {:error, :refused}
+      assert refreshes(context) == 1
+
+      # The session lives on for every other application.
+      assert {:ok, _ledger} = credential(context, "ledger", 9 * 60)
+    end
+
+    test "past ten minutes, EHOS is asked again, and a role granted meanwhile is seen",
+         context do
+      assert credential(context, "billing", 0) == {:error, :refused}
+      FakeEhos.applications(context.ehos, &Map.put(&1, @billing, "billing/test"))
+
+      assert {:ok, billing} = credential(context, "billing", 10 * 60 + 1)
+      assert claims(billing)["aud"] == "billing/test"
+      assert refreshes(context) == 2
+    end
+
+    # Signed out in another tab while EHOS was refusing: nothing is written for a session gone.
+    test "a refusal for a session ended during the call is no refusal, but signed out",
+         context do
+      FakeEhos.on_refresh(context.ehos, fn ->
+        CommitRepo.query!("DELETE FROM eh_os_contract_auth_sessions")
+      end)
+
+      assert credential(context, "billing", 0) == {:error, :signed_out}
+    end
+
+    # EHOS never answers invalid_target to a renewal that names no resource; were it to, the
+    # session's own application must not be remembered as refused, and answer 401 for 10 minutes.
+    test "invalid_target for the own application is no remembered refusal", context do
+      FakeEhos.refresh_answer(context.ehos, :invalid_target)
+
+      assert renew(context) == {:error, :ehos_unavailable}
+
+      assert CommitRepo.query!(
+               "SELECT refused_until FROM eh_os_contract_auth_session_credentials"
+             ).rows == [[nil]]
+
+      {:ok, session} = Sessions.fetch(context.name, context.token)
+      assert session.refresh_token == context.session.refresh_token
+    end
+
+    test "no response for another application keeps the refresh token and the session",
+         context do
+      FakeEhos.refresh_answer(context.ehos, :reset)
+
+      assert credential(context, "ledger", 0) == {:error, :ehos_unavailable}
+
+      {:ok, session} = Sessions.fetch(context.name, context.token)
+      assert session.refresh_token == context.session.refresh_token
+      refute Map.has_key?(session.credentials, @ledger)
+    end
+
+    test "a refusal drops the credential held for that application", context do
+      assert {:ok, _ledger} = credential(context, "ledger", 0)
+      FakeEhos.applications(context.ehos, &Map.delete(&1, @ledger))
+
+      # Stale, inside the 30-second margin: renewed, and refused.
+      assert credential(context, "ledger", 590) == {:error, :refused}
+
+      assert CommitRepo.query!(
+               "SELECT token, expires_at FROM eh_os_contract_auth_session_credentials " <>
+                 "WHERE resource = $1",
+               [@ledger]
+             ).rows == [[nil, nil]]
+    end
+
+    # One lease per session: the second waits, and presents the refresh token the first returned.
+    test "the own renewal and another application's at once present each token once", context do
+      later = minutes_later(context, 11)
+      FakeEhos.on_refresh(context.ehos, fn -> Process.sleep(300) end)
+
+      results =
+        [
+          fn -> Renewal.credential(context.name, context.token, @address, keys: context.keys) end,
+          fn -> Session.credential(browser(context), "ledger", sign_in: context.name) end
+        ]
+        |> Enum.map(fn call -> Task.async(fn -> EhOsContract.Clock.at(later, call) end) end)
+        |> Task.await_many(10_000)
+
+      assert [{:ok, _own}, {:ok, _ledger}] = results
+      assert [first, second] = refresh_requests(context)
+      refute first["refresh_token"] == second["refresh_token"]
+      assert rows() == 1
+    end
+
+    test "credential/3 raises for a name applications does not have", context do
+      assert_raise ArgumentError,
+                   ~r/no application named "ledgr".*\["archive", "billing", "ledger"\]/,
+                   fn ->
+                     Session.credential(browser(context), "ledgr", sign_in: context.name)
+                   end
+
+      assert refreshes(context) == 0
+    end
+  end
+
+  defp browser(context), do: %{Session.session_key() => context.token}
+
+  defp credential(context, application, seconds) do
+    EhOsContract.Clock.at(seconds_later(context, seconds), fn ->
+      Session.credential(browser(context), application, sign_in: context.name)
+    end)
+  end
+
+  defp claims(token), do: JOSE.JWT.peek_payload(token).fields
+
   defp paused do
     # What Renewal holds the lease as after a failed renewal.
     CommitRepo.query!("SELECT 'paused after a failed renewal'").rows |> hd() |> hd()
@@ -408,7 +573,12 @@ defmodule EhOsContract.Auth.RenewalTest do
   # A code exchange through EHOS's fake, written as the callback writes it.
   defp signed_in!(ehos, name) do
     config = SignIn.config(name)
-    FakeEhos.grant(ehos, "code-1", "rehmed/test", %{"nonce" => "n-1"})
+
+    FakeEhos.grant(ehos, "code-1", "rehmed/test", %{
+      "nonce" => "n-1",
+      "applications" => %{@ledger => "ledger/test", @archive => "archive/test"}
+    })
+
     {:ok, context} = SignIn.client_context(name)
 
     {:ok, token} =

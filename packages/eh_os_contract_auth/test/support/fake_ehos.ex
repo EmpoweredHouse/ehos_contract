@@ -16,7 +16,10 @@ defmodule EhOsContract.Auth.FakeEhos do
   `main` of 2 October 2026: a credential in EHOS's form for the client's own
   application, carrying `client_id`, an ID token whose `aud` is the `client_id`, and a
   refresh token. A code is one `grant/3` made, and each token request is kept with
-  its form (`token_requests/1`), the client's assertion included.
+  its form (`token_requests/1`), the client's assertion included. A renewal that names
+  a `resource` gets a credential for that application, if the grant has it in
+  `"applications"`, and `invalid_target` otherwise, consuming nothing, as
+  `Ehos.SignIn.Token` refuses a `resource` outside the sign-in's granted set.
   """
 
   @issuer "https://ehos.test"
@@ -67,7 +70,9 @@ defmodule EhOsContract.Auth.FakeEhos do
   `claims` replace the ID token's `"sub"`, `"sid"`, `"auth_time"` and `"nonce"`, and
   `"audience"` the credential's `aud` and `"credential_sub"` its `sub`. With `"code_challenge"` (S256) and
   `"redirect_uri"`, the exchange is refused, as EHOS refuses it, unless its
-  `code_verifier` and `redirect_uri` match.
+  `code_verifier` and `redirect_uri` match. `"applications"` maps the addresses a renewal
+  may name as `resource` to the `aud` of the credential it then gets: the sign-in's
+  granted set, where the person holds a role.
   """
   def grant(ehos, code, client_id, claims \\ %{}) do
     grant =
@@ -83,6 +88,21 @@ defmodule EhOsContract.Auth.FakeEhos do
       )
 
     Agent.update(ehos, &put_in(&1, [:grants, code], grant))
+  end
+
+  @doc """
+  Changes the `"applications"` of every sign-in `ehos` holds a refresh token for, by
+  `fun`: a role granted or taken away meanwhile.
+  """
+  def applications(ehos, fun) do
+    Agent.update(ehos, fn state ->
+      refresh =
+        Map.new(state.refresh, fn {token, record} ->
+          {token, update_in(record, [:grant, "applications"], &fun.(&1 || %{}))}
+        end)
+
+      %{state | refresh: refresh}
+    end)
   end
 
   @doc """
@@ -103,8 +123,9 @@ defmodule EhOsContract.Auth.FakeEhos do
   `:no_refresh_token`, `:expires_in_30`, `:jwt` (a body that is not JSON), `:huge` (past
   the transport's limit), `:foreign_audience` (a credential for another application).
   `:short_exp` is a usable 200 whose credential's `exp` is 100 seconds away though
-  `expires_in` says 600; with `:exp_in_20`, 20 seconds away. None of these rotates the refresh
-  token but the 200s, which do, as EHOS would before answering.
+  `expires_in` says 600; with `:exp_in_20`, 20 seconds away. `:invalid_target` refuses every
+  renewal so, with or without a `resource`. None of these rotates the refresh token but the
+  200s, which do, as EHOS would before answering.
   """
   def refresh_answer(ehos, answer), do: Agent.update(ehos, &%{&1 | refresh_answer: answer})
 
@@ -210,7 +231,7 @@ defmodule EhOsContract.Auth.FakeEhos do
 
       {"refresh_token", _grant} ->
         if state.on_refresh, do: state.on_refresh.()
-        refreshed(ehos, Agent.get(ehos, & &1), conn, form["refresh_token"])
+        refreshed(ehos, Agent.get(ehos, & &1), conn, form["refresh_token"], form["resource"])
 
       _other ->
         invalid_grant(conn)
@@ -219,15 +240,19 @@ defmodule EhOsContract.Auth.FakeEhos do
 
   # `Ehos.SignIn.Token`'s renewal: strict rotation, a token presented twice revokes its family
   # (the revocation kept though the request fails), and an ID token as eh-os-contract#80 lists it.
-  defp refreshed(ehos, state, conn, presented) do
+  # A `resource` outside the granted set is decided before anything is consumed.
+  defp refreshed(ehos, state, conn, presented, resource) do
     # Looked up and marked in one step, so two presentations at once cannot both pass.
     {record, seen} =
       Agent.get_and_update(ehos, fn state ->
         case Map.get(state.refresh, presented) do
-          # An answer of no response or an error status consumes nothing, as at EHOS.
-          %{consumed: false} = record
-          when not (state.refresh_answer == :reset or is_tuple(state.refresh_answer)) ->
-            {{record, :fresh}, put_in(state, [:refresh, presented, :consumed], true)}
+          %{consumed: false} = record when not is_nil(resource) ->
+            if Map.has_key?(Map.get(record.grant, "applications", %{}), resource),
+              do: consume(state, presented, record),
+              else: {{record, :invalid_target}, state}
+
+          %{consumed: false} = record ->
+            consume(state, presented, record)
 
           %{} = record ->
             {{record, if(record.consumed, do: :consumed, else: :fresh)}, state}
@@ -252,18 +277,40 @@ defmodule EhOsContract.Auth.FakeEhos do
         Agent.update(ehos, &%{&1 | revoked: MapSet.put(&1.revoked, record.family)})
         invalid_grant(conn)
 
+      seen == :invalid_target or state.refresh_answer == :invalid_target ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(400, Jason.encode!(%{"error" => "invalid_target"}))
+
       true ->
         grant =
-          case state.refresh_answer do
-            :short_exp -> Map.put(record.grant, "credential_lifetime", 100)
-            :exp_in_20 -> Map.put(record.grant, "credential_lifetime", 20)
-            :foreign_audience -> Map.put(record.grant, "audience", "ledger/test")
-            _other -> record.grant
+          case {state.refresh_answer, resource} do
+            {:short_exp, _} ->
+              Map.put(record.grant, "credential_lifetime", 100)
+
+            {:exp_in_20, _} ->
+              Map.put(record.grant, "credential_lifetime", 20)
+
+            {:foreign_audience, _} ->
+              Map.put(record.grant, "audience", "ledger/test")
+
+            {_other, nil} ->
+              record.grant
+
+            {_other, resource} ->
+              %{record.grant | "audience" => record.grant["applications"][resource]}
           end
 
-        body = issue(ehos, state, grant, record.family, renewal: true)
+        body = issue(ehos, state, grant, record.family, renewal: true, keeps: record.grant)
         answer(conn, state, record.grant, body)
     end
+  end
+
+  # An answer of no response or an error status consumes nothing, as at EHOS.
+  defp consume(state, presented, record) do
+    if state.refresh_answer in [:reset, :invalid_target] or is_tuple(state.refresh_answer),
+      do: {{record, :fresh}, state},
+      else: {{record, :fresh}, put_in(state, [:refresh, presented, :consumed], true)}
   end
 
   defp answer(conn, state, grant, body) do
@@ -327,13 +374,15 @@ defmodule EhOsContract.Auth.FakeEhos do
   end
 
   # `Ehos.SignIn.Token.response/3`: the credential and the ID token live ten minutes, and the
-  # refresh token is a new member of the sign-in's family.
-  defp issue(ehos, state, grant, family, renewal: renewal) do
+  # refresh token is a new member of the sign-in's family, which `keeps:` the sign-in's grant
+  # whatever this one credential was issued for.
+  defp issue(ehos, state, grant, family, opts) do
     now = System.os_time(:second) + state.offset
     refresh_token = Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false)
+    keeps = Keyword.get(opts, :keeps, grant)
 
     Agent.update(ehos, fn state ->
-      put_in(state, [:refresh, refresh_token], %{grant: grant, family: family, consumed: false})
+      put_in(state, [:refresh, refresh_token], %{grant: keeps, family: family, consumed: false})
     end)
 
     credential =
@@ -354,7 +403,7 @@ defmodule EhOsContract.Auth.FakeEhos do
       "expires_in" => 600,
       "refresh_token" => refresh_token,
       "scope" => "openid",
-      "id_token" => id_token(state, grant, renewal)
+      "id_token" => id_token(state, grant, Keyword.fetch!(opts, :renewal))
     }
   end
 

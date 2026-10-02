@@ -292,6 +292,15 @@ call's timeout must be shorter than the lease.
   Ending the session costs one sign-in. Guessing could revoke the sign-in in every application of that
   browser.
 
+*Amended, 2 October 2026, at EB3b:*
+
+- **`invalid_target` covers two refusals at EHOS**, and both are remembered alike: a `resource` outside the
+  sign-in's granted set, and one where the person holds no role (`Ehos.SignIn.Token` on `eh-os`'s `main`). EHOS
+  decides either before it consumes anything.
+- **A credential still held for that application is dropped** with the refusal. EHOS has just refused to issue
+  one, and a copy kept in the table is one more to protect (S3).
+- **The lease is released** in the transaction that writes the refusal.
+
 ### S6 — The defaults of `oidcc` and `oidcc_plug` that the package overrides
 
 | Option | Set to | Default, and why not |
@@ -405,6 +414,14 @@ pipeline :signed_in, do: plug EhOsContract.Auth.Session  # or a redirect to sign
 [#135](https://github.com/EmpoweredHouse/eh-os/issues/135) (eh-os-contract#81), and was accepted by the user
 that day; its acceptance is [eh-os#141](https://github.com/EmpoweredHouse/eh-os/pull/141). They replace the
 interim this section planned first: PEM or JWK, and the post-logout address as an option.
+
+*Amended, 2 October 2026, at EB3b:*
+
+- **`credential/2` is `credential/3`:** the session (a connection or a LiveView's session map), the application's
+  name, and an option list with `sign_in:`, as `actor/2` takes it.
+- **A name `applications` does not have raises `ArgumentError`.** It is a mistake in the host's code, not
+  something a person can change by signing in again.
+- **EHOS's refusal is `{:error, :refused}`**, beside `actor/2`'s refusals.
 
 ### S8 — Another application's credential is handed out as it is, not verified here
 

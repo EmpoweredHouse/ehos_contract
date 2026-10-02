@@ -116,6 +116,18 @@ defmodule EhOsContract.Auth.SignInTest do
       assert_raise ArgumentError, ~r/applications must map/, fn -> SignIn.child_spec([]) end
     end
 
+    # eh-os D-69: applications names the other applications. Under the own address,
+    # Session.credential/3 would hand out this application's own credential as another's.
+    test "an application at this application's own address is refused" do
+      put_sign_in(applications: %{"ledger" => "https://rehmed.test"})
+
+      assert_raise ArgumentError,
+                   ~r/"ledger" in applications is this application's address/,
+                   fn ->
+                     SignIn.child_spec([])
+                   end
+    end
+
     test "a secret_key_base shorter than 64 bytes is refused" do
       put_sign_in(secret_key_base: String.duplicate("s", 63))
       assert_raise ArgumentError, ~r/at least 64 bytes/, fn -> SignIn.child_spec([]) end

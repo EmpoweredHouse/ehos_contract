@@ -192,6 +192,7 @@ The child checks this at boot and refuses to start otherwise:
   refused;
 - `address`, and each address in `applications`, is `https://<host>` in lower case, with no port, no path and no
   trailing slash;
+- no address in `applications` is `address`: they are the other applications (`eh-os` D-69);
 - the issuer is https;
 - `secret_key_base` has at least 64 bytes.
 
@@ -254,6 +255,10 @@ end
 
 # a controller; a LiveView passes the session map mount/3 is given
 {:ok, actor} = EhOsContract.Auth.Session.actor(conn)
+
+# another application the page calls as the person, by its name in applications:
+{:ok, token} = EhOsContract.Auth.Session.credential(conn, "ledger")
+Req.get!("https://ledger.production.ehos.localhost/visits", auth: {:bearer, token})
 ```
 
 - **`GET /auth/ehos/sign-in?return_to=/visits/7`** sends the browser to EHOS, with PKCE and a nonce. While EHOS
@@ -287,9 +292,19 @@ Nothing renews unless a request asks.
     the refresh token is kept, and the session does not call EHOS again for 5 seconds.
   - A response that cannot be used: the session ends, since EHOS has rotated the refresh token.
 
-Credentials for other applications are the last part of this work
-([#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78)). What the package decides beside D-64 is in
-[`docs/adr/browser-session.md`](../../docs/adr/browser-session.md).
+**Other applications.** `Session.credential/3` is the person's credential for an application named in
+`applications:`, issued by EHOS for that application's address (`resource`, `eh-os` D-64, D-68) and renewed
+like the application's own, under the same lease. It is handed out as EHOS issued it, not verified here: its
+`aud` is that application's, which verifies it. Send it from the server and keep it there: a LiveView's assigns
+or a page would hand it to the browser, which the session otherwise keeps EHOS's tokens from.
+
+- **A name `applications:` does not have** raises `ArgumentError`.
+- **A person EHOS refuses there** (no role, or not in the sign-in's granted set: `invalid_target`) gets
+  `{:error, :refused}`. The refusal is remembered for ten minutes, a credential's lifetime, so EHOS is not asked
+  again on every page. The refresh token is kept, and the session goes on for this application and every other.
+- **The other refusals** are `actor/2`'s: `:signed_out`, `:ehos_unavailable`, `:renewal_busy`.
+
+What the package decides beside D-64 is in [`docs/adr/browser-session.md`](../../docs/adr/browser-session.md).
 
 ## Deciding, and recording every decision
 
