@@ -26,6 +26,9 @@ defmodule EhOsContract.Paths do
   step's type. Another application's event never enters this log (D12): a policy on
   it issued a command when the row names, as its cause, a row of
   `eh_os_contract_inbox` that the policy's inbox took, bounded by when it took it.
+  Such a step is never failing or waiting: a delivery its policy fails on is rolled
+  back and delivered again by the transport, and leaves nothing here, so a path that
+  always fails reads as untraversed (#65).
   An effect leaves nothing in the log when it acts, so whether it was
   taken is not known, and its `runs` is `nil`: never untraversed, only waiting or
   failing.
@@ -92,7 +95,7 @@ defmodule EhOsContract.Paths do
     process = model.process && Atom.to_string(model.process.name)
 
     emitted = if process, do: emitted(model, process, opts), else: %{}
-    issued = Map.merge(issued(model, opts), received(model, opts))
+    issued = Map.merge(issued(model, opts), received(model, steps, opts))
     of_runs = if process, do: runs_of(model, process, opts), else: 0
     lag = lag(steps)
     keys = for %{key: key} <- steps, uniq: true, do: key
@@ -115,7 +118,7 @@ defmodule EhOsContract.Paths do
         },
         failing: %{
           commands: failed_in_step(step, failed),
-          subscription: Map.get(stopped, key),
+          subscription: if(step[:inbox], do: nil, else: Map.get(stopped, key)),
           effects: Map.get(discarded_effects, {key, step.from_type}, 0)
         }
       })
@@ -378,21 +381,30 @@ defmodule EhOsContract.Paths do
 
   # Runs in which a policy's command was accepted or rejected, caused by a row its inbox took:
   # the cause a received event leaves, since the event is in no log here. Bounded by when the
-  # row was taken, as a stored event's step is by when the event occurred.
-  defp received(model, opts) do
-    from(c in CommandRecord,
-      join: i in InboxRecord,
-      on: i.id == c.causation_event_id,
-      where: c.contract == ^inspect(model.module),
-      where: c.outcome in ["accepted", "rejected"],
-      where: like(c.issued_by, "policy:%"),
-      where: like(i.consumer, ^(inspect(model.module) <> ":inbox:%")),
-      group_by: [c.issued_by, c.type, i.consumer],
-      select: {c.issued_by, c.type, i.consumer, count(c.instance_id, :distinct)}
-    )
-    |> received_between(opts)
-    |> repo().all()
-    |> Map.new(fn {by, command, inbox, runs} -> {{by, command, {:inbox, inbox}, nil}, runs} end)
+  # row was taken, as a stored event's step is by when the event occurred. By the inboxes' keys,
+  # the leading column of the inbox's key, and not at all for a contract with no inbox.
+  defp received(model, steps, opts) do
+    case for(%{inbox: inbox} <- steps, uniq: true, do: inbox) do
+      [] ->
+        %{}
+
+      inboxes ->
+        from(c in CommandRecord,
+          join: i in InboxRecord,
+          on: i.id == c.causation_event_id,
+          where: i.consumer in ^inboxes,
+          where: c.contract == ^inspect(model.module),
+          where: c.outcome in ["accepted", "rejected"],
+          where: like(c.issued_by, "policy:%"),
+          group_by: [c.issued_by, c.type, i.consumer],
+          select: {c.issued_by, c.type, i.consumer, count(c.instance_id, :distinct)}
+        )
+        |> received_between(opts)
+        |> repo().all()
+        |> Map.new(fn {by, command, inbox, runs} ->
+          {{by, command, {:inbox, inbox}, nil}, runs}
+        end)
+    end
   end
 
   defp received_between(query, opts) do
@@ -518,6 +530,10 @@ defmodule EhOsContract.Paths do
   # A failure inside a consumer's stage is that consumer's step, which is how dispatch
   # names the stage (`EhOsContract.Consumer.label/1`); anywhere else — the decision,
   # the fold, a read model — it is every step the command emits.
+  # A delivery the inbox's policy fails on is rolled back with its row, so a failed command named
+  # after the policy is the policy's on the log, not this step's.
+  defp failed_in_step(%{inbox: _inbox}, _failed), do: 0
+
   defp failed_in_step(%{via: %{kind: kind, name: name}}, failed) do
     label = "#{kind}:#{name}"
     failed |> Enum.filter(&(&1.failed_in == label)) |> distinct_runs()

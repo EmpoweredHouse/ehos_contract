@@ -23,7 +23,7 @@ defmodule EhOsContract.Inbox do
   removed is a fact that can be taken twice: a window would bound `eh-os` FM-08 by
   its length. Until the transport says how long it can deliver a message again
   (JetStream's stream retention, EHOS's), nothing is pruned. A row is about 250 bytes
-  with its key's index, one per fact per inbox; what the table holds is the host's to
+  with its key's index for a short key, one per fact per inbox; what the table holds is the host's to
   watch with its database's own measures:
 
       SELECT consumer, count(*), min(received_at)
@@ -96,11 +96,14 @@ defmodule EhOsContract.Inbox do
 
     {:ok, _} =
       Runner.transaction(repo, fn ->
+        # By the engine's clock, as the events its policies append, so a report's bounds
+        # read the two alike (`EhOsContract.Paths`).
         row = %{
           consumer: inbox.key,
           key: message.key,
           id: Ecto.UUID.generate(),
-          message_id: message.id
+          message_id: message.id,
+          received_at: EhOsContract.Clock.now()
         }
 
         case repo.insert_all(InboxRecord, [row], on_conflict: :nothing) do

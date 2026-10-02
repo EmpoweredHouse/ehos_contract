@@ -61,6 +61,11 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   - The step is one of the contract's edges, so its wiring version changes once, at the first boot on this
     version, with the path among the paths added (`EhOsContract.Deployment`).
   - The contract's graph draws the received event, and its edge to the policy.
+  - **What it does not see:** a delivery the policy fails on is rolled back with the inbox's row and delivered
+    again by the transport, so it leaves nothing in this database. A received path that always fails reads as
+    untraversed, not as failing, and the policy's own failures on the log are not counted against it.
+  - The inbox now writes `received_at` by `EhOsContract.Clock`, as dispatch writes an event's `occurred_at`, so
+    a report's bounds read both alike.
 - **E12c, D12: only a policy takes an event another application publishes.** A read model, an effect or a
   process manager that names a `consumes "<name>"` event no longer compiles: the event arrives in an inbox and
   never enters the log they read, so none of them would ever have been given it. React with a policy, and take

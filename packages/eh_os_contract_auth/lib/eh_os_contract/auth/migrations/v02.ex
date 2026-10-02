@@ -27,7 +27,8 @@ defmodule EhOsContract.Auth.Migrations.V02 do
       add :contract_version, :text, null: false
       # For a scoped query: the dimension, and the value asked for, as the credential
       # carries values — a string, or null when the parameter was missing; one the column
-      # cannot hold, or past 256 bytes, as `sha256:<hex>` (#66, written by `authorize/2`).
+      # cannot hold, past 256 bytes, or starting `sha256:`, as `sha256:<hex>` (#66, written
+      # by `authorize/2`).
       add :scope_dimension, :text
       add :scope_value, :text
       add :outcome, :text, null: false

@@ -209,6 +209,58 @@ defmodule EhOsContract.InboxTest do
                  Paths.observe(BusRig.Stock, until: before),
                do: step
              )
+
+    assert [%{runs: 2}] =
+             for(
+               %{from: %{name: :order_placed}} = step <-
+                 Paths.observe(BusRig.Stock, since: before),
+               do: step
+             )
+  end
+
+  # A fact taken under `EhOsContract.Clock.at/2`, as a backfill takes it, is bounded by that
+  # time, as the events its policy appends are, not by the database's clock.
+  test "a received step is bounded by the engine's clock, as every other step" do
+    july = ~U[2026-07-01 12:00:00.000000Z]
+    EhOsContract.Clock.at(july, fn -> :ack = Inbox.take(inbox(), message("o-1", 120)) end)
+
+    assert [%{runs: 1}] =
+             for(
+               %{from: %{name: :order_placed}} = step <-
+                 Paths.observe(BusRig.Stock, since: july, until: DateTime.add(july, 1)),
+               do: step
+             )
+  end
+
+  # The inbox is not the policy's subscription: one stopped on the log is no failure of the
+  # path from another application.
+  test "a received step does not take on the failures of the policy's own subscription" do
+    Repo.insert!(%EhOsContract.SubscriptionRecord{
+      name: "BusRig.Stock:policy:reserve_for_order",
+      kind: "policy",
+      mode: "ordered",
+      version: "v",
+      updated_at: DateTime.utc_now(),
+      position: 0,
+      status: "failing",
+      failed_position: 7,
+      failure: "raised"
+    })
+
+    Repo.insert!(%CommandRecord{
+      id: Ecto.UUID.generate(),
+      contract: "BusRig.Stock",
+      type: "reserve_stock",
+      outcome: "failed",
+      failed_in: "policy:reserve_for_order",
+      issued_by: "policy:reserve_for_order",
+      correlation_id: Ecto.UUID.generate(),
+      instance_id: "o-9",
+      recorded_at: DateTime.utc_now()
+    })
+
+    assert [%{failing: %{subscription: nil, commands: 0}}] =
+             for(%{from: %{name: :order_placed}} = step <- Paths.observe(BusRig.Stock), do: step)
   end
 
   test "a message that does not fit what the contract consumes is delivered again" do
