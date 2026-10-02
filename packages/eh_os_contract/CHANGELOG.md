@@ -52,6 +52,15 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Changed — a host has to act
 
+- **#65: a policy on another application's event is a path of the conformance screen. This moves verdicts.**
+  `EhOsContract.Paths` declares a step `received event → policy → command` for every `consumes "<name>"` event a
+  policy handles, and counts it taken in the runs whose commands that policy issued with a row of its inbox
+  (`eh_os_contract_inbox`) as their cause, bounded by when the inbox took the row.
+  - Until now such a reaction was neither traversed nor untraversed: the screen did not see it. A contract
+    whose reaction was declared and never ran now reports it as untraversed.
+  - The step is one of the contract's edges, so its wiring version changes once, at the first boot on this
+    version, with the path among the paths added (`EhOsContract.Deployment`).
+  - The contract's graph draws the received event, and its edge to the policy.
 - **E12c, D12: only a policy takes an event another application publishes.** A read model, an effect or a
   process manager that names a `consumes "<name>"` event no longer compiles: the event arrives in an inbox and
   never enters the log they read, so none of them would ever have been given it. React with a policy, and take
