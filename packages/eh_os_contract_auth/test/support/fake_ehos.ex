@@ -37,7 +37,13 @@ defmodule EhOsContract.Auth.FakeEhos do
           signer: jwk,
           requests: [],
           grants: %{},
-          token_requests: []
+          token_requests: [],
+          # refresh token => %{grant, family, consumed}; families revoked
+          refresh: %{},
+          revoked: MapSet.new(),
+          offset: 0,
+          on_refresh: nil,
+          refresh_answer: nil
         }
       end)
 
@@ -78,6 +84,25 @@ defmodule EhOsContract.Auth.FakeEhos do
 
     Agent.update(ehos, &put_in(&1, [:grants, code], grant))
   end
+
+  @doc """
+  Moves `ehos`'s clock `seconds` ahead of the real one, for what it issues from now on.
+  """
+  def advance(ehos, seconds), do: Agent.update(ehos, &%{&1 | offset: &1.offset + seconds})
+
+  @doc """
+  Runs `fun` inside each refresh request before it is answered, in the process the
+  request arrived in: a delay, or a look at the database while the client waits.
+  """
+  def on_refresh(ehos, fun), do: Agent.update(ehos, &%{&1 | on_refresh: fun})
+
+  @doc """
+  Has `ehos` answer refresh requests with what EHOS does not answer, or `nil`:
+  `:reset` (no response), `{:status, code}` (an error response), or a 200 that `oidcc`
+  refuses, `:no_id_token` or `:foreign_sub`. None of these rotates the refresh token
+  but the 200s, which do, as EHOS would before answering.
+  """
+  def refresh_answer(ehos, answer), do: Agent.update(ehos, &%{&1 | refresh_answer: answer})
 
   @doc "The forms of the token requests `ehos` was sent, oldest first."
   def token_requests(ehos), do: Agent.get(ehos, &Enum.reverse(&1.token_requests))
@@ -176,8 +201,56 @@ defmodule EhOsContract.Auth.FakeEhos do
       {"authorization_code", %{} = grant} ->
         token_for(ehos, state, conn, form, grant)
 
+      {"refresh_token", _grant} ->
+        if state.on_refresh, do: state.on_refresh.()
+        refreshed(ehos, Agent.get(ehos, & &1), conn, form["refresh_token"])
+
       _other ->
         invalid_grant(conn)
+    end
+  end
+
+  # `Ehos.SignIn.Token`'s renewal: strict rotation, a token presented twice revokes its family
+  # (the revocation kept though the request fails), and an ID token as eh-os-contract#80 lists it.
+  defp refreshed(ehos, state, conn, presented) do
+    record = Map.get(state.refresh, presented)
+
+    cond do
+      state.refresh_answer == :reset ->
+        Req.Test.transport_error(conn, :closed)
+
+      match?({:status, _}, state.refresh_answer) ->
+        {:status, status} = state.refresh_answer
+        Plug.Conn.send_resp(conn, status, "")
+
+      record == nil or MapSet.member?(state.revoked, record.family) ->
+        invalid_grant(conn)
+
+      record.consumed ->
+        Agent.update(ehos, &%{&1 | revoked: MapSet.put(&1.revoked, record.family)})
+        invalid_grant(conn)
+
+      true ->
+        body = issue(ehos, state, record.grant, record.family, renewal: true)
+        Agent.update(ehos, &put_in(&1, [:refresh, presented, :consumed], true))
+
+        body =
+          case state.refresh_answer do
+            :no_id_token ->
+              Map.delete(body, "id_token")
+
+            :foreign_sub ->
+              Map.put(
+                body,
+                "id_token",
+                id_token(state, %{record.grant | "sub" => "u-bartek"}, true)
+              )
+
+            nil ->
+              body
+          end
+
+        Req.Test.json(conn, body)
     end
   end
 
@@ -194,7 +267,8 @@ defmodule EhOsContract.Auth.FakeEhos do
 
       true ->
         Agent.update(ehos, &%{&1 | grants: Map.delete(&1.grants, form["code"])})
-        Req.Test.json(conn, exchanged(state.signer, grant))
+        family = Integer.to_string(System.unique_integer([:positive]))
+        Req.Test.json(conn, issue(ehos, state, grant, family, renewal: false))
     end
   end
 
@@ -204,12 +278,18 @@ defmodule EhOsContract.Auth.FakeEhos do
     |> Plug.Conn.send_resp(400, Jason.encode!(%{"error" => "invalid_grant"}))
   end
 
-  # `Ehos.SignIn.Token.response/3`: the credential and the ID token live ten minutes.
-  defp exchanged(signer, grant) do
-    now = System.os_time(:second)
+  # `Ehos.SignIn.Token.response/3`: the credential and the ID token live ten minutes, and the
+  # refresh token is a new member of the sign-in's family.
+  defp issue(ehos, state, grant, family, renewal: renewal) do
+    now = System.os_time(:second) + state.offset
+    refresh_token = Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false)
+
+    Agent.update(ehos, fn state ->
+      put_in(state, [:refresh, refresh_token], %{grant: grant, family: family, consumed: false})
+    end)
 
     credential =
-      sign(signer, %{
+      sign(state.signer, %{
         "iss" => @issuer,
         "sub" => Map.get(grant, "credential_sub", grant["sub"]),
         "aud" => grant["audience"],
@@ -220,31 +300,35 @@ defmodule EhOsContract.Auth.FakeEhos do
         "client_id" => grant["client_id"]
       })
 
-    id_token =
-      sign(
-        signer,
-        Map.merge(
-          %{
-            "iss" => @issuer,
-            "sub" => grant["sub"],
-            "aud" => grant["client_id"],
-            "iat" => now,
-            "exp" => now + 600,
-            "auth_time" => grant["auth_time"],
-            "sid" => grant["sid"]
-          },
-          Map.take(grant, ["nonce"])
-        )
-      )
-
     %{
       "access_token" => credential,
       "token_type" => "Bearer",
       "expires_in" => 600,
-      "refresh_token" => Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false),
+      "refresh_token" => refresh_token,
       "scope" => "openid",
-      "id_token" => id_token
+      "id_token" => id_token(state, grant, renewal)
     }
+  end
+
+  # At a renewal, eh-os-contract#80: `iss`, `sub` and `aud` the code exchange's, `auth_time` and
+  # `sid` the sign-in's, a new `iat`, 600 s, no `nonce` and no `at_hash`.
+  defp id_token(state, grant, renewal) do
+    now = System.os_time(:second) + state.offset
+
+    claims = %{
+      "iss" => @issuer,
+      "sub" => grant["sub"],
+      "aud" => grant["client_id"],
+      "iat" => now,
+      "exp" => now + 600,
+      "auth_time" => grant["auth_time"],
+      "sid" => grant["sid"]
+    }
+
+    sign(
+      state.signer,
+      if(renewal, do: claims, else: Map.merge(claims, Map.take(grant, ["nonce"])))
+    )
   end
 
   defp sign(signer, claims) do
