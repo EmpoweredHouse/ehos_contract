@@ -62,7 +62,7 @@ Następny etap wybiera użytkownik („Co zostało”).
 
 - **EB — sesja przeglądarki w `eh_os_contract_auth`** ([#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78)),
   zaplanowane 2 października: „Dopisek 2 października” i `docs/adr/browser-session.md` (`proposed`). EB1 i EB2 mogą
-  ruszyć. EB3 (odnawianie) już nie czeka: eh-os#133 jest w `main` EHOS-a (`801f758`), choć w żadnym wydaniu
+  ruszyć — **EB1 zrobione** na `eb/eb1-sign-in-config` („EB1 — co wyszło”), PR do wystawienia. EB3 (odnawianie) już nie czeka: eh-os#133 jest w `main` EHOS-a (`801f758`), choć w żadnym wydaniu
   ([#80](https://github.com/EmpoweredHouse/eh-os-contract/issues/80)). D-68 w EHOS-ie odpowiada na #134 i #135 i jest
   przyjęte przez użytkownika ([#81](https://github.com/EmpoweredHouse/eh-os-contract/issues/81); akceptacja w
   eh-os#141) — EB1 robi je od razu, bez stanu przejściowego.
@@ -450,6 +450,93 @@ Do każdej części: CHANGELOG, README („Signing people in”), `@doc` i `@spe
     z `EHOS_SIGN_IN_APPLICATIONS`. Pakiet nie czyta jednak żadnej zmiennej sam (README, „Configuration from
     EHOS's environment”), więc mapuje ją host w `config/runtime.exs`, tak jak `EHOS_ISSUER`, a szablon
     `ehos_app` robi to za niego. Skutek dla EHOS-a ten sam.
+
+### EB1 — co wyszło (2 października)
+
+Gałąź `eb/eb1-sign-in-config`, od `main` = `db07862` (merge #79).
+
+**Commity:**
+- `53f941d` — testy weryfikatora: ID token jako bearer odrzucony (`:bad_signature`), credential z `client_id`
+  przyjęty, `KeyCase.credential/3` z `drop:`.
+- `10685d2` — `EhOsContract.Auth.SignIn` na workerze `oidcc`.
+- Poprawki po przeglądzie (ten zapis): `SignIn` jako własny proces na wzór `Keys` i adapter `SignIn.Http`.
+
+**Co jest:**
+- `config :eh_os_contract_auth, sign_in:` sprawdzane przy starcie:
+  - klucz to dokładnie JWK z D-68 — PEM, nadmiarowy albo brakujący element, zły `use`, `alg`, `crv` lub `kty`,
+    `kid` niebędący odciskiem i `x` niepasujący do `d` — wszystko odrzucone;
+  - adres to `https://<host>` małymi literami, bez portu i ścieżki;
+  - issuer to https bez query, fragmentu i danych logowania — także bez wyjątku dla localhost, bo `oidcc` i tak
+    odrzuca endpointy http;
+  - `secret_key_base` ma co najmniej 64 bajty;
+  - `sign_in:` jako mapa jest odrzucane bez wypisywania jej treści.
+- Callback i adres po wylogowaniu są wyliczane z `address`.
+- Proces trzyma discovery i klucze razem albo wcale, odświeża co 5 minut, a przy błędzie ponawia od 1 do 30 s.
+- `provider/1` czyta z własnego ETS-u, nigdy nie czeka i nigdy nie rzuca.
+- `refresh/1` pobiera od razu.
+- Transport (`SignIn.Http`) idzie tylko przez https, bez przekierowań, czyta najwyżej 64 KiB i kończy wywołanie
+  po jednym terminie 10 s. Ten sam adapter dostaje `oidcc` do każdego swojego wywołania.
+
+**Przegląd przed PR-em:** dwa równolegle. Wszystkie znaleziska poprawione, z dwoma wyjątkami: jedno bez zmian,
+jedno przeniesione do EB2.
+
+Zgłoszone przez obydwa przeglądy:
+- **Worker `oidcc` przy domyślnym `backoff_type: :stop` kładzie aplikację, gdy EHOS leży.** Poprawione już w
+  `10685d2`, potem zastąpione własnym procesem.
+- **Dekoder `oidcc` rzuca `case_clause` na względnym URI**, poza backoffem — pętla awarii aż do drzewa hosta.
+  Teraz wyjątek to odrzucony dokument.
+- **Tabela workera to `bag`, który rośnie.** Po zmianie dokumentu każdy odczyt idzie wywołaniem do workera, z
+  czekaniem do 5 s. Teraz własny `set`.
+- **`provider/1` rzucał po zatrzymaniu dziecka, a `:persistent_term` zostawał.** Teraz tabela ginie z procesem,
+  a `config/1` i `refresh/1` odpowiadają jak dla niezaczętego.
+
+Tylko z przeglądu bezpieczeństwa:
+- **`httpc` szedł za przekierowaniem, także na http, i bez limitu rozmiaru.** Teraz własny transport.
+- **Endpointy discovery bez https przechodziły, a `HS*` obok `Ed25519` w algorytmach ID tokenu dawało klucz
+  `oct` z `client_secret`.** Teraz dokument z endpointem http nie jest trzymany, a `HS*` i `none` dają
+  `:symmetric_id_token_alg`.
+- **`sign_in:` jako mapa wypisywało `SECRET_KEY_BASE` w stacktrace startu.** Teraz odrzucane bez treści.
+
+Tylko z przeglądu poprawności:
+- **Nieudane pobranie kluczy przy starcie nie było ponawiane, a `provider/1` mówił `:ok`.** Teraz dokument bez
+  kluczy nie jest trzymany i oba pobierane są ponownie.
+- **`random_exponential` dawał 10–30 s zamiast 1–30 s.** Teraz własne podwajanie od 1 s.
+- **Adres z portem albo wielkimi literami przechodził**, a EHOS porównuje dokładnie. Teraz odrzucany.
+- **Asercja `cacerts != []` była pusta, a test TLS obiecywał więcej, niż sprawdzał.** Zastąpione testem tego,
+  co trafia do połączenia.
+- **Próba kontrolna ID tokenu nie miała `auth_time`.** Teraz ma te same claimy.
+
+Bez zmian:
+- **Ponowne czytanie pliku klucza przy restarcie.** Sekret jest zamontowany na cały czas życia poda, więc
+  restart czyta ten sam plik. Brak pliku w trakcie pracy to zepsute wdrożenie, które ma się pokazać, a nie
+  zostać przykryte.
+
+Przeniesione do EB2:
+- **Losowy `client_secret` przy każdym starcie.** W S6 zmienione z „fixed non-secret binary”.
+- **`JOSE.JWK` bez maskowania w `inspect`.** Klucz nie może trafić do argumentów niczego, co może paść.
+- **Test, że nagłówek asercji klienta niesie `kid` klucza.** Wymaga prawdziwego żądania tokenu.
+
+**Decyzja asystenta przy przeglądzie: własny proces zamiast workera `oidcc`** — dopisek z datą w S1 ADR-a.
+Kontekst klienta w EB2 powstanie z `Oidcc.ClientContext.from_manual/5` i trafi do `oidcc_plug` przez
+`client_store`.
+
+*Odrzucone:*
+- owinięcie workera opiekunem z opóźnionym restartem — nie naprawia kluczy niepobieranych ponownie ani
+  rosnącej tabeli;
+- czytanie wewnętrznej tabeli workera po nazwie — zależy od nieopisanego szczegółu `oidcc`.
+
+**Do zgłoszenia w `erlef/oidcc`** — na zgodę użytkownika, bo to repozytorium zewnętrzne:
+- brak ponowienia kluczy po udanym dokumencie;
+- `bag` w tabeli workera;
+- `case_clause` w `parse_setting_uri_https`;
+- dolna granica `random_exponential`.
+
+**Weryfikacja:**
+- Każde nowe zabezpieczenie ma próbę odwrotną: mutacja w kopii, test, `cp` z kopii i `cmp`. Każda wywraca
+  dokładnie jeden, właściwy test: przekierowanie, limit rozmiaru, http w adapterze, termin, wyjątek dekodera,
+  https endpointów, porównanie issuera, algorytmy symetryczne, jednorazowy log, podwajanie backoffu.
+- Wcześniej, w `53f941d` i `10685d2`: ID token, `client_id`, `backoff_type`, sprawdzenie discovery, `x`
+  wobec `d`.
 
 ## Dopisek 1 października — lista zmian do `eh-os` jako issues w `EmpoweredHouse/eh-os`
 

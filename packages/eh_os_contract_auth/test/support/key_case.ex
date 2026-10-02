@@ -40,7 +40,8 @@ defmodule EhOsContract.Auth.KeyCase do
 
   @doc """
   A credential signed by `pair`, with EHOS's claims for the test configuration and
-  `claims` over them. `header:` overrides the header EHOS writes.
+  `claims` over them. `header:` overrides the header EHOS writes, and `drop:` names
+  claims to leave out, as EHOS leaves `cap` out of an ID token.
   """
   def credential(pair, claims \\ %{}, opts \\ []) do
     header = Map.merge(%{"kid" => pair.kid}, Map.new(Keyword.get(opts, :header, %{})))
@@ -59,6 +60,7 @@ defmodule EhOsContract.Auth.KeyCase do
         },
         Map.new(claims)
       )
+      |> Map.drop(Keyword.get(opts, :drop, []))
 
     signer = Joken.Signer.create(alg, pair.private, Map.delete(header, "alg"))
     {:ok, token, _claims} = Joken.encode_and_sign(claims, signer)

@@ -107,6 +107,12 @@ defmodule EhOsContract.Auth.MixProject do
       # `EhOsContract.Auth.Plug`, the bearer plug in front of `EhOsContract.Plug`. The
       # suite also plays EHOS's JWKS endpoint as a function plug handed to Req.
       {:plug, "~> 1.16"},
+      # Signing a browser in through EHOS (`eh-os` D-64; S1 in docs/adr/browser-session.md).
+      # `oidcc` is pinned here because `oidcc_plug` accepts `~> 3.7`, and only 3.9.0 fixes
+      # CVE-2026-75759; `oidcc_plug` 0.5.1 fixes CVE-2026-66883 and CVE-2026-66884. `oidcc`
+      # needs OTP 27.
+      {:oidcc, "~> 3.9"},
+      {:oidcc_plug, "~> 0.5.1"},
       # `ehos.yaml` is read and validated as EHOS reads it (`eh-os` D-51): yamerl with YAML
       # 1.2's core schema, then JSV against the schema EHOS publishes, copied into `priv/`. Only
       # `mix eh_os_contract.manifest` reads it, in the application's CI, so neither is started

@@ -31,6 +31,8 @@ def deps do
 end
 ```
 
+It needs OTP 27 or later, which `oidcc`, the OpenID Connect client behind signing people in, requires.
+
 ## Wiring it
 
 ```elixir
@@ -138,9 +140,63 @@ auth = if ca = System.get_env("EHOS_CA_FILE"), do: [cacertfile: ca], else: []
 children = [MyApp.Repo, EhOsContract, {EhOsContract.Auth, auth}]
 ```
 
-`EHOS_CLIENT_ID` and `EHOS_CLIENT_KEY_FILE` (`eh-os` D-64) are for signing people in to the
-application in a browser, through EHOS. This package does not do that yet (`eh-os` issue #95), so
-it reads neither.
+`EHOS_CLIENT_ID`, `EHOS_CLIENT_KEY_FILE` and `EHOS_SIGN_IN_APPLICATIONS` (`eh-os` D-64, D-68) are for
+signing people in to the application in a browser, through EHOS: "Signing people in" below.
+
+## Signing people in
+
+A person signs in to the application's pages through EHOS, with OpenID Connect (`eh-os` D-64). The
+application is EHOS's client, and `EhOsContract.Auth.SignIn` holds it:
+
+```elixir
+# config/runtime.exs, beside issuer: and audience:
+config :eh_os_contract_auth,
+  sign_in: [
+    client_id: System.fetch_env!("EHOS_CLIENT_ID"),
+    client_key_file: System.fetch_env!("EHOS_CLIENT_KEY_FILE"),
+    address: "https://" <> System.fetch_env!("PHX_HOST"),
+    secret_key_base: System.fetch_env!("SECRET_KEY_BASE"),
+    applications: Jason.decode!(System.get_env("EHOS_SIGN_IN_APPLICATIONS", "{}"))
+  ]
+
+# the supervision tree, after EhOsContract.Auth; cacertfile: as for it
+children = [MyApp.Repo, EhOsContract, EhOsContract.Auth, EhOsContract.Auth.SignIn]
+```
+
+The child checks this at boot and refuses to start otherwise:
+
+- the key file is one private Ed25519 JWK, exactly as `eh-os` D-68 says the operator writes it, and a PEM is
+  refused;
+- `address`, and each address in `applications`, is `https://<host>` in lower case, with no port, no path and no
+  trailing slash;
+- the issuer is https;
+- `secret_key_base` has at least 64 bytes.
+
+Nothing it raises carries a secret. The callback is `address <> "/auth/ehos/callback"`, and a sign-out returns
+to `address <> "/"`. Both are derived, never configured, because EHOS compares them as exact strings.
+
+The child keeps EHOS's discovery document and keys, refetched every five minutes. It starts while EHOS is
+down, retrying after one second and doubling up to thirty. Every call to EHOS:
+
+- goes over https;
+- follows no redirect;
+- reads at most 64 KiB;
+- ends after ten seconds.
+
+These limits match the ones on the key set. `EhOsContract.Auth.SignIn.provider/1` says whether a person can be
+signed in with what is held. It refuses, naming each thing that fails, a document that lacks any of these:
+
+- the `iss` parameter in authorization responses;
+- PKCE with `S256`;
+- `Ed25519` ID tokens;
+- `private_key_jwt`.
+
+It also refuses a document that names a symmetric algorithm or `none` for ID tokens. `oidcc` would quietly do
+without each of these, or accept such a token.
+
+The routes that sign a browser in and out, and the session behind them, are the next part of this work
+([#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78)). What the package decides beside D-64 is in
+[`docs/adr/browser-session.md`](../../docs/adr/browser-session.md).
 
 ## Deciding, and recording every decision
 

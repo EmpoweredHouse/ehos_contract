@@ -70,6 +70,38 @@ code but runs none of it.
 *Cost:* `oidcc` needs OTP 27, so every host of this package does too, bearer-only ones included. This goes
 in the README's installation section.
 
+*Amended, 2 October 2026, at EB1's review: the package keeps the provider itself, not `oidcc`'s worker.*
+EB1 started `Oidcc.ProviderConfiguration.Worker`. Its two reviews found four defects in that worker, each
+read in its source (3.9.0):
+
+- **Its default backoff, `stop`, ends it at the first failed fetch.** With EHOS down, a few restarts would
+  take the application with it (FM-19).
+- **A relative URI makes it crash in a loop.** Its decoder raises `case_clause` on a relative URI where it
+  wants https, outside its backoff, so one malformed document crash-loops it up to the host's supervisor.
+- **A failed key-set fetch is never retried while the document is held.** The worker reports the provider
+  ready, and every token check fails with `provider_not_ready`.
+- **Its table is a `bag` that only grows.** After the document or keys change once, every read falls back
+  to a call into the worker. That call is serialized, waits up to five seconds while the worker fetches, and
+  answers "unavailable" although a document is held.
+
+It also fetches through `httpc`, which follows redirects (to plain http too), buffers a body of any size, and
+adds a connect timeout to each call's timeout.
+
+So `EhOsContract.Auth.SignIn` is itself the process that keeps the provider, on the pattern of
+`EhOsContract.Auth.Keys`:
+
+- **It fetches** the document and its key set through the package's own transport,
+  `EhOsContract.Auth.SignIn.Http`, which `oidcc` is also given as its HTTP adapter for every call. The
+  transport goes over https only, follows no redirect, reads at most 64 KiB, and ends a call at one deadline.
+- **It decodes** with `Oidcc.ProviderConfiguration.decode_configuration/2`, and an exception there is a
+  refused document, never a crash.
+- **It holds both, or neither,** in a table of its own, which goes with the process.
+- **It retries** from one second, doubling to thirty, and keeps what it holds when a refetch fails.
+
+EB2 builds the client context from what is held, with `Oidcc.ClientContext.from_manual/5`, and hands it
+to `oidcc_plug` through its `client_store`. `oidcc`'s protocol code is used as before; only the keeping of
+the provider is the package's.
+
 ### S2 — The browser holds one opaque token, and the table holds its hash
 
 - **What the cookie carries.** The host's cookie session carries one random 32-byte token under one key, and
@@ -209,10 +241,11 @@ call's timeout must be shorter than the lease.
 | --- | --- | --- |
 | `require_pkce` (`Authorize`) | `true` | `false`: without `code_challenge_methods_supported` in discovery, PKCE is silently omitted |
 | `preferred_auth_methods` (callback, refresh) | `[:private_key_jwt]` | all six: a failed `private_key_jwt` falls through to the next method silently |
-| `client_secret` | a fixed non-secret binary | `:unauthenticated` refuses every method but `none` |
+| `client_secret` | a random value made at each start, never written down (amended at EB1's review, 2 October 2026; first "a fixed non-secret binary") | `:unauthenticated` refuses every method but `none`. A fixed value would be worse than it looks: `oidcc` turns the client secret into an `oct` key for any `HS*` algorithm a document names, so an ID token signed with a publicly known secret would validate |
 | `check_peer_ip` (callback) | `false` | `true`: behind an ingress with several pods, the redirect and the callback may arrive from different peers, and an IP that changes refuses a real person. The user-agent check stays on. |
 | `retrieve_userinfo` (callback) | `false` | `true`: EHOS's userinfo says only `sub`, which the ID token already says, and that call ignores `request_opts`, so it waits up to 60 s |
-| `request_opts.timeout` (token calls, provider worker) | 10 s | 60 s, longer than the lease |
+| `request_opts.timeout` (every call) | 10 s, one deadline for the whole call | 60 s, longer than the lease, with a connect timeout on top |
+| `request_opts.http_adapter` (every call) | the package's own (S1, as amended) | `httpc`, which follows redirects and reads a body of any size |
 | client profiles | none | `fapi2_security_profile` would strip `Ed25519` from the ID token's algorithms |
 
 **The discovery document is checked before the first sign-in.** Whether `iss` is checked depends on
@@ -221,11 +254,13 @@ It refuses to sign anyone in, and logs why, unless the document has:
 
 - `authorization_response_iss_parameter_supported: true`;
 - `S256` among `code_challenge_methods_supported`;
-- `Ed25519` among `id_token_signing_alg_values_supported`;
+- `Ed25519` among `id_token_signing_alg_values_supported`, and no `none` or `HS*` beside it (added at EB1's
+  review, 2 October 2026: `oidcc` accepts an ID token in any algorithm the document names);
 - `private_key_jwt`, with `Ed25519` or `EdDSA`, for the token endpoint.
 
-The check runs on the provider worker's document, not at boot, so the application starts while EHOS is
-down (driver 4).
+The check runs on the document the package holds, not at boot, so the application starts while EHOS is down
+(driver 4). It is logged once for each document that changes the answer, not on every refused sign-in. A
+document whose `issuer` is not the configured one, or whose endpoints are not https, is not held at all.
 
 ### S7 — The interface: a child, a router, a plug and two functions
 

@@ -7,6 +7,24 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **EB1 (#78): `EhOsContract.Auth.SignIn`, the application's client for signing people in through EHOS**
+  (`eh-os` D-64, D-68).
+  - **Configuration:** a child for the supervision tree, configured by `config :eh_os_contract_auth, sign_in:`
+    with `client_id`, `client_key_file`, `address`, `secret_key_base` and `applications`.
+  - **What it refuses at boot,** with no secret in the message:
+    - a key file that is not exactly D-68's private Ed25519 JWK, a PEM included;
+    - an address that is not `https://<host>`;
+    - an issuer that is not https;
+    - a `secret_key_base` shorter than 64 bytes.
+  - **What it holds:** EHOS's discovery document and keys, fetched by the package's own transport, the one
+    `oidcc` uses too. That transport goes over https only, follows no redirect, reads at most 64 KiB and ends a
+    call after ten seconds.
+  - **While EHOS is down:** the child retries from one to thirty seconds and never stops the application.
+  - **`provider/1`** refuses a document that lacks the `iss` parameter, PKCE with `S256`, `Ed25519` ID tokens
+    or `private_key_jwt`, and one that allows a symmetric ID token algorithm.
+  - **New dependencies:** `oidcc ~> 3.9` and `oidcc_plug ~> 0.5.1`. **The package now needs OTP 27.**
+  - **Sign-in itself comes later:** the routes, the session and renewal are EB2 and EB3.
+
 - **#71: `refresh_every:` and `refetch_at_most_every:` below five seconds are refused at boot**, by
   `EhOsContract.Auth.child_spec/1` and `EhOsContract.Auth.Keys.start_link/1`, as is a value that is not whole
   milliseconds, and both intervals now count from the end of the fetch before, not its start. A shorter interval,
