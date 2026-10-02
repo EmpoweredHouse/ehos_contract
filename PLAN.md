@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 2 października (E0–E12, EH, #72, EB1, #83, EB2a, EB2b i EB3a w `main`; w toku EB3b)
+## Handoff — stan na 2 października (E0–E12, EH, #72, #83 i całe EB w `main`; w toku #89)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -27,24 +27,29 @@ pisze z niego v2 w miejsce v1 — „EH2 — co wyszło” i „EH3 — co wysz�
 — plan w „Dopisek 2 października — EB”, specyfikacja w `docs/adr/browser-session.md`. **EB1 jest w `main`** (#82,
 merge `7a2bcb7`), a po nim [#83](https://github.com/EmpoweredHouse/eh-os-contract/issues/83): `ehos.yaml/v2` z
 kluczem `sign_in` (`eh-os` D-69) w czytniku i generatorze (#84, merge `ef0e94d`) — „Dopisek 2 października (2)”.
+**EB jest zamknięte i w `main`**: EB2a (#85), EB2b (#86), EB3a (#87), EB3b (#88, merge `da9f56f`) — „EB3b — co
+wyszło”. Ekranów logowania biblioteka nie ma i mieć nie będzie: formularz logowania, odmowy i wylogowanie to strony
+EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko link „Zaloguj” i przycisk „Wyloguj”.
 
 ### Stan repozytorium
 
-- **`origin/main` = `499ea0b`** (merge #87, EB3a; przedtem `6b280dd` — #86, EB2b, `445be88` — #85, EB2a,
-  `ef0e94d` — #84, #83, i `7a2bcb7` — #82, EB1). CI `main` na `499ea0b` — `success` (run `37051635922`). Historia
-  `main` z merge'ami PR-ów; gałęzie etapów liniowe.
-- **`eb/eb3b-applications`** — od `499ea0b`: EB3b i ten zapis; pracowana w worktree `eb3b-applications-4567c7` na
-  gałęzi `claude/eb3b-applications-4567c7`, wypychana pod `eb/eb3b-applications`. Lokalna gałąź
-  `eb/eb3b-applications` w worktree `merge-pr-55-next-stage-ad84a2` trzyma tylko WIP `020a3a5`, który wszedł tu
-  w zwykłe commity. Gałęzie #83, EB2a, EB2b i EB3a zmergowane.
+- **`origin/main` = `da9f56f`** (merge #88, EB3b; przedtem `499ea0b` — #87, EB3a, `6b280dd` — #86, EB2b,
+  `445be88` — #85, EB2a, `ef0e94d` — #84, #83, i `7a2bcb7` — #82, EB1). CI `main` na `da9f56f` — sprawdzić
+  (`gh run list --repo EmpoweredHouse/eh-os-contract --branch main --limit 1`). Historia `main` z merge'ami PR-ów;
+  gałęzie etapów liniowe.
+- **`auth/issue-89-loopback`** (worktree `eb3b-applications-4567c7`) — od `da9f56f`: #89 i ten zapis. Gałęzie EB
+  zmergowane; lokalna `eb/eb3b-applications` w worktree `merge-pr-55-next-stage-ad84a2` trzyma tylko WIP
+  `020a3a5` (wszedł do `main` zwykłymi commitami) — do skasowania, za zgodą użytkownika, razem z innymi
+  zmergowanymi gałęziami EB.
 - **Nowa baza testowa `eh_os_contract_auth_test_commits`** (EB3a, `CommitRepo` pakietu auth) — tworzy ją
   `mix test` pakietu, a czyści migracja w dół i w górę przed każdym przebiegiem.
 - **Lokalnie poza tym:** `main`; zmergowane już `eb/eb1-sign-in-config` (worktree `issue-78-implementation-plan-3ae6a4`)
   i `auth/issue-71-keys-hardening` (worktree `issue-72-assessment-923997`).
-- **[#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78) jest zamknięty (16:35:58Z), choć EB3b nie
-  jest skończone** — zamknęło go „closes #78” w opisie PR-a #86. Otworzyć ponownie albo tylko podlinkować EB3b —
-  decyzja użytkownika. #80 i #81 zamknięte (EB3a, EB2b).
-- **Otwarte na GitHubie:** **#49** — materiał klientów poza
+- **[#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78) zamknięty** (zamknęło go za wcześnie
+  „closes #78” w opisie PR-a #86); EB3b (#88) tylko go linkuje, więc zakres #78 jest w `main`. #80 i #81
+  zamknięte.
+- **Otwarte na GitHubie:** **[#89](https://github.com/EmpoweredHouse/eh-os-contract/issues/89)** — w toku;
+  **#49** — materiał klientów poza
   repozytorium, zaparkowane 30 września; **#63–#66** — pytania otwarte po E12 („Otwarte pytania”). Otwartych PR-ów
   brak. **W `EmpoweredHouse/eh-os`: #91–#96 i #111** — nasze potrzeby wobec EHOS-a („Dopisek 1 października”).
 - **`ehos-ledger`** przypina `eh-os-contract` i puszcza w CI `mix eh_os_contract.manifest`; bump przypięcia na
@@ -68,9 +73,7 @@ kluczem `sign_in` (`eh-os` D-69) w czytniku i generatorze (#84, merge `ef0e94d`)
 
 ### Co zostało — i czyje to jest
 
-- **EB3b — asystenta, w toku**: `Session.credential/3` dla innych aplikacji, `resource`, `invalid_target`
-  („EB3b — co wyszło”). Ostatnia część EB.
-- **#78 — użytkownika**: otworzyć ponownie i zamknąć PR-em EB3b, czy zostawić zamknięty z linkiem.
+- **#89 — asystenta, w toku**: adresy brane tylko tak, jak czyta je każdy parser („#89 — co wyszło”).
 - **Merge każdego PR-a — użytkownika.**
 - **Wady `oidcc` 3.9.0** — zgłoszone 2 października jako erlef/oidcc#552–#555 („EB1 — co wyszło”); nasz kod ich
   nie potrzebuje, więc nic tu na nie nie czeka.
@@ -166,6 +169,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 2 października, na `56876b2`** (#89 po przeglądzie, `auth/issue-89-loopback`): brama z `sandbox/` →
+  **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1114, `check` 0 / 68 / 6; web 52; auth **278** + 1 property.
 - **Lokalnie, 2 października, na `f63596e`** (EB3b po przeglądzie, `eb/eb3b-applications`): brama z `sandbox/` →
   **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1114, `check` 0 / 68 / 6; web 52; auth **274** + 1
   property. CI `main` na `499ea0b` (EB3a) — `success`.
@@ -851,6 +856,72 @@ Bez zmian: wyjątek przed wywołaniem `oidcc` zostawia dzierżawę, a sesja koń
 ostrożne i rzadkie; podwójne `verify/2` przy odnawiającym żądaniu.
 
 Auth: 260 → 263 testów.
+
+### #89 — co wyszło (2 października)
+
+[#89](https://github.com/EmpoweredHouse/eh-os-contract/issues/89), założone przez użytkownika z przeglądu poprawki
+eh-os#118. Gałąź `auth/issue-89-loopback`, od `da9f56f` (merge #88).
+
+**Co było:** wyjątek dla pętli zwrotnej przy pobieraniu kluczy czytał hosta przez `URI.parse/1`, które pomija sposób
+zapisu części użytkownika. `http://evil.example\@localhost/...` miało dla niego hosta `localhost` i przechodziło po
+zwykłym http, a EHOS i przeglądarka czytają hosta jako `evil.example`. Finch też łączył się z `localhost`, więc wada
+to rozjazd z EHOS-em i przeglądarkami, nie pobieranie z `evil.example`.
+
+**Co jest:** `EhOsContract.Auth.Address` (wewnętrzny) — reguła EHOS-a dla jego issuera (`check_issuer/1`,
+eh-os#161, w chwili zapisu otwarty):
+- adres czyta się z powrotem tak, jak go zapisano (`URI.new/1` → `URI.to_string/1`), port schematu na boku;
+- bez użytkownika, zapytania i fragmentu;
+- host: DNS małymi literami, IPv4 w jedynej kropkowej postaci albo `::1`;
+- port 1–65535.
+
+Dwie rzeczy rozstrzyga wołający: `path:` i `plain_on_loopback:`.
+
+| Gdzie | Ścieżka | Zwykłe http na pętli |
+| --- | --- | --- |
+| adres zbioru kluczy (`Keys.check!/1`) | tak | tak |
+| `issuer` w `Auth.child_spec/1` (nowe, także obok `jwks_url`) | nie | tak, jak u EHOS-a |
+| `issuer` przy logowaniu (`SignIn`) | nie | nie (`oidcc`) |
+| `address` i `applications` logowania (`origin!/2`) | nie | nie |
+
+Odrzucony adres w komunikacie: sam schemat, host i port („with more, not shown”), jak `shown/1` u EHOS-a.
+
+**Decyzje asystenta:**
+- **Jeden moduł z regułą EHOS-a, dla wszystkich miejsc, które biorą adres.** *Odrzucone:* poprawka tylko w
+  `Keys.check!/1` (zakres issue) — `issuer` przy logowaniu i adresy logowania miałyby dalej starą regułę i ten sam
+  rozjazd.
+- **Ścieżka dozwolona tylko w adresie kluczy.** *Odrzucone:* kopia 1:1 bez ścieżki — `jwks_url` ma ścieżkę z
+  natury.
+- **`issuer` z ukośnikiem na końcu albo ścieżką odrzucany przy starcie.** Zmiana widoczna dla hosta, ale EHOS
+  takiego `iss` nigdy nie publikuje, więc żadna działająca konfiguracja nie pada; dotąd taka kończyła się
+  `:wrong_issuer` na każdym credentialu. *Odrzucone:* przycinanie ukośnika jak dotąd — ukrywało rozjazd z `iss`.
+
+**Weryfikacja:** próby odwrotne — bez kontroli użytkownika, bez odczytu wstecz, bez zakresu portu, bez kontroli
+hosta liczbowego, bez wyrażenia DNS, http wszędzie, http dla issuera logowania, bez postaci z portem schematu,
+ścieżka ignorowana, `shown/1` jako `inspect`, issuer niesprawdzany w `child_spec`, `origin!` bez reguły. Każda
+wywraca co najmniej jeden test; odczyt wstecz dopiero po dodaniu `HTTPS://`, `:0443` i `:/`.
+
+**Przegląd przed PR-em**, dwa równolegle, potem jeden przebieg samych poprawek. Poprawione, każde z testem:
+- **`issuer` ze ścieżką**, a w hoście tylko weryfikującym niesprawdzany wcale obok `jwks_url` (poprawność);
+- **adresy logowania nadal przez `URI.parse/1`** — `https://127.1` przechodziło (oba);
+- **hasło z adresu w komunikacie odmowy** (oba) — teraz `Address.shown/1`;
+- **CHANGELOG przesadzał** (bezpieczeństwo) — Finch łączył się z `localhost`.
+
+Przebieg samych poprawek (jeden, oba punkty widzenia) — same Low. Poprawione:
+- `applications`, które nie jest mapą, było wypisywane w całości razem z niesprawdzonymi adresami (z testem);
+- CHANGELOG mówi, że `issuer` sprawdza dziecko, a `issuer:` podany `verify/2` albo plugowi — nie;
+- README: lista sprawdzeń logowania przy starcie; martwe `trim_trailing` przy adresie discovery.
+
+Bez zmian:
+- **punkty końcowe z discovery** sprawdzane tylko prefiksem `https://` (bezpieczeństwo, Low) — wymagałoby
+  skompromitowanego EHOS-a po TLS;
+- **`::1` dozwolone, choć Mint bez `inet6` się z nim nie połączy** — było przedtem, odmawia bezpiecznie;
+- **`shown/1` czyta przez `URI.parse/1`**, więc przy `\@` pokazuje `localhost`, a przy `:0443` adres wygląda na
+  poprawny — sekretu nie ujawnia, a tak samo robi `shown/1` EHOS-a;
+- **issuer z jawnym portem domyślnym** (`https://ehos.test:443`) przechodzi, choć EHOS pisze `iss` bez niego —
+  reguła EHOS-a też go przyjmuje;
+- **`https://[::1]` odrzucane jako `address`** logowania — tak było przedtem; D-68 nie zna takich adresów.
+
+Auth: 274 → 278 testów.
 
 ### EB3b — co wyszło (2 października)
 
