@@ -19,7 +19,13 @@ defmodule EhOsContract.Auth.SignIn.Cipher do
 
   @doc false
   @spec encrypt(String.t(), binary(), binary()) :: String.t()
-  def encrypt(value, key, bound_to), do: MessageEncryptor.encrypt(value, bound_to, key, key)
+  def encrypt(value, key, bound_to) do
+    # `MessageEncryptor.encrypt/4` guards on a binary, and a failed guard prints the key as its
+    # argument; refused here, naming nothing.
+    if is_binary(value),
+      do: MessageEncryptor.encrypt(value, bound_to, key, key),
+      else: raise(ArgumentError, "only a string is encrypted")
+  end
 
   @doc false
   @spec decrypt(String.t(), binary(), binary()) :: {:ok, String.t()} | :error

@@ -7,9 +7,10 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
   # The browser holds 32 random bytes, and the row their SHA-256 (S2). The refresh token, the ID
   # token and each credential are encrypted with the sign-in child's key, bound to the row's hash
   # and their column (S3); a value that does not decrypt ends the session, and its row is
-  # deleted. The key is read from the child by its name inside each function, never passed in, so
-  # no frame a crash prints holds it. `create/2` is handed EHOS's tokens as the code exchange
-  # returned them; it matches nothing on them, and raises only when the database does.
+  # deleted. The key is read from the child by its name inside each function, never passed in.
+  # `create/2` is handed EHOS's tokens as the code exchange returned them, and checks their shape
+  # first, by name and type only: a failed match, a guard or a `KeyError` further down would print
+  # the map, or the key as an argument of `Plug.Crypto.MessageEncryptor.encrypt/4`.
 
   import Ecto.Query, only: [from: 2]
 
@@ -19,6 +20,14 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
   @sessions "eh_os_contract_auth_sessions"
   @credentials "eh_os_contract_auth_session_credentials"
   @token_bytes 32
+  @fields [
+    subject: "a string",
+    sid: "a string",
+    auth_time: "a DateTime",
+    refresh_token: "a string",
+    id_token: "a string"
+  ]
+  @credential_fields [resource: "a string", token: "a string", expires_at: "a DateTime"]
   # D-66: a sign-in lives at most twelve hours from `auth_time`, renewed or not.
   @absolute_limit_seconds 12 * 60 * 60
 
@@ -57,7 +66,8 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
   # Writes a new session and its first credential, and returns the token for the browser. Rows
   # past the absolute limit go in the same transaction (S11): no job cleans them.
   @spec create(atom(), signed_in()) :: {:ok, String.t()}
-  def create(name, %{credential: credential} = signed_in) do
+  def create(name, signed_in) do
+    %{credential: credential} = signed_in = checked!(signed_in)
     key = SignIn.config(name).cipher_key
     token = :crypto.strong_rand_bytes(@token_bytes)
     hash = :crypto.hash(:sha256, token)
@@ -119,6 +129,30 @@ defmodule EhOsContract.Auth.SignIn.Sessions do
 
     :ok
   end
+
+  defp checked!(signed_in) do
+    credential = if is_map(signed_in), do: Map.get(signed_in, :credential)
+
+    wrong =
+      wrong(signed_in, @fields) ++
+        Enum.map(wrong(credential, @credential_fields), &("credential." <> &1))
+
+    if wrong != [] do
+      raise ArgumentError,
+            "a session to write needs #{Enum.join(wrong, ", ")}; no value it was given is shown"
+    end
+
+    signed_in
+  end
+
+  defp wrong(map, fields) when is_map(map) do
+    for {field, type} <- fields, not type?(Map.get(map, field), type), do: "#{field} as #{type}"
+  end
+
+  defp wrong(_other, fields), do: Enum.map(fields, fn {field, type} -> "#{field} as #{type}" end)
+
+  defp type?(value, "a string"), do: is_binary(value) and value != ""
+  defp type?(value, "a DateTime"), do: match?(%DateTime{}, value)
 
   defp hash(token) when is_binary(token) do
     case Base.url_decode64(token, padding: false) do

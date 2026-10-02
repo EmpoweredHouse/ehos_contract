@@ -97,6 +97,55 @@ defmodule EhOsContract.Auth.SessionsTest do
       end
     end
 
+    # What a crash report would print: the message, and the stacktrace with any arguments it holds.
+    test "a malformed one is refused without the key or any token in what is raised",
+         %{name: name} do
+      signed_in = signed_in()
+      secrets = [signed_in.id_token, signed_in.credential.token, signed_in.sid]
+      key = SignIn.config(name).cipher_key
+
+      for broken <- [
+            %{signed_in | refresh_token: nil},
+            Map.delete(signed_in, :subject),
+            Map.delete(signed_in, :credential),
+            put_in(signed_in, [:credential, :token], :none),
+            :not_a_map
+          ] do
+        report =
+          try do
+            Sessions.create(name, broken)
+            flunk("created #{inspect(Map.keys(broken))}")
+          rescue
+            exception ->
+              assert %ArgumentError{} = exception
+              Exception.format(:error, exception, __STACKTRACE__)
+          end
+
+        refute String.contains?(report, secrets), report
+        refute report =~ inspect(key, limit: :infinity)
+        refute report =~ inspect(:binary.bin_to_list(key))
+      end
+
+      assert count("eh_os_contract_auth_sessions") == 0
+    end
+
+    # `Plug.Crypto.MessageEncryptor.encrypt/4` guards on a binary, and its failed guard would print
+    # the key as an argument.
+    test "the cipher refuses what is not a string without printing the key" do
+      key = :crypto.strong_rand_bytes(32)
+
+      report =
+        try do
+          EhOsContract.Auth.SignIn.Cipher.encrypt(nil, key, "h/refresh_token")
+        rescue
+          exception ->
+            assert %ArgumentError{} = exception
+            Exception.format(:error, exception, __STACKTRACE__)
+        end
+
+      refute report =~ inspect(key, limit: :infinity)
+    end
+
     test "deleted takes its credentials with it, and deleting it again is :ok", %{name: name} do
       {:ok, token} = Sessions.create(name, signed_in())
 
