@@ -296,6 +296,9 @@ longer has it.
 - a failed fetch changes nothing: it is logged and the last good set stays in force. A key set with
   no Ed25519 key in it counts as a failed fetch, and so does a redirect, a body over 64 KB and more
   than 16 keys — a rotation holds two;
+- a successful fetch puts the keys in force first, then writes the table, and a table locked by a
+  migration or `VACUUM FULL` is not waited for longer than a second: the write is logged as failed,
+  and the next fetch writes it again;
 - an application that has never seen a key set refuses every credential with `:no_keys`, and logs
   it at start. This is the one case where "EHOS is down" becomes "nobody gets in", and
   `EhOsContract.Auth.ready?/0` answers `false` for it, for the host's health check.

@@ -14,6 +14,29 @@ defmodule EhOsContract.Auth.KeysTest do
 
   import ExUnit.CaptureLog, only: [with_log: 1]
 
+  defmodule HeldRepo do
+    @moduledoc false
+    # The test repo, whose transactions wait for the test's word while the test is
+    # named in `config :eh_os_contract_auth, HeldRepo`.
+    alias EhOsContract.Auth.TestRepo
+
+    def transaction(fun, opts \\ []) do
+      with test when is_pid(test) <- Application.get_env(:eh_os_contract_auth, __MODULE__) do
+        send(test, {:writing, self()})
+
+        receive do
+          :go -> :ok
+        end
+      end
+
+      TestRepo.transaction(fun, opts)
+    end
+
+    defdelegate query!(sql, params, opts), to: TestRepo
+    defdelegate delete_all(queryable, opts), to: TestRepo
+    defdelegate insert_all(source, rows, opts), to: TestRepo
+  end
+
   test "a key removed from the JWKS is refused after the next refresh" do
     kept = key_pair()
     removed = key_pair()
@@ -97,6 +120,28 @@ defmodule EhOsContract.Auth.KeysTest do
       end
     end
 
+    for key <- [:refresh_every, :refetch_at_most_every],
+        value <- [0, 4_999, 5_000.0] do
+      test "refuses #{key}: #{inspect(value)}, shorter than a fetch may take or not milliseconds" do
+        assert_raise ArgumentError, ~r/#{unquote(key)}: in milliseconds, at least 5000/, fn ->
+          Keys.start_link([
+            {:name, :"keys_#{unquote(key)}"},
+            {:url, "https://ehos.test/.well-known/jwks.json"},
+            {:repo, Repo},
+            {unquote(key), unquote(value)}
+          ])
+        end
+      end
+    end
+
+    test "control: takes intervals of five seconds and more" do
+      assert Keys.check!(
+               url: "https://ehos.test/.well-known/jwks.json",
+               refresh_every: 5_000,
+               refetch_at_most_every: :timer.minutes(1)
+             ) == :ok
+    end
+
     test "refuses an option it does not take, as req_options: from before" do
       assert_raise ArgumentError, ~r/unknown keys \[:req_options\]/, fn ->
         Keys.start_link(
@@ -151,6 +196,102 @@ defmodule EhOsContract.Auth.KeysTest do
       assert Keys.refresh(keys) == {:error, {unquote(kind), :pool_timeout}}
       assert {:ok, _} = Auth.verify(credential(pair), keys: keys)
     end
+  end
+
+  test "a locked table holds neither the start nor an early fetch past the call" do
+    pair = key_pair()
+    ehos = ehos({:keys, [pair]})
+    clock = clock()
+    lock_table!()
+
+    {elapsed, {keys, log}} =
+      :timer.tc(fn -> with_log(fn -> start_keys(ehos, clock: clock) end) end, :millisecond)
+
+    assert log =~ "could not read eh_os_contract_auth_keys"
+    assert log =~ "could not write eh_os_contract_auth_keys"
+    assert elapsed < 4_000, "took #{elapsed} ms"
+    assert {:ok, _} = Auth.verify(credential(pair), keys: keys)
+
+    # EHOS rotates while the table is still held: the first credential signed with
+    # the new key gets in, on the early fetch it asked for.
+    rotated = key_pair()
+    answer(ehos, {:keys, [rotated]})
+    advance(clock, :timer.seconds(30))
+
+    {elapsed, {verified, _log}} =
+      :timer.tc(
+        fn -> with_log(fn -> Auth.verify(credential(rotated), keys: keys) end) end,
+        :millisecond
+      )
+
+    assert {:ok, _} = verified
+    assert elapsed < 4_000, "took #{elapsed} ms"
+  end
+
+  test "a key fetched is in force before the table is written" do
+    ehos = ehos({:keys, [key_pair()]})
+    keys = start_keys(ehos, repo: HeldRepo)
+    rotated = key_pair()
+    answer(ehos, {:keys, [rotated]})
+
+    Application.put_env(:eh_os_contract_auth, HeldRepo, self())
+    on_exit(fn -> Application.delete_env(:eh_os_contract_auth, HeldRepo) end)
+    refresh = Task.async(fn -> Keys.refresh(keys) end)
+
+    assert_receive {:writing, writer}, 5_000
+    assert Keys.kids(keys) == [rotated.kid]
+
+    send(writer, :go)
+    assert Task.await(refresh) == :ok
+  end
+
+  # A connection of its own, outside the sandbox, holds the table as a migration or
+  # `VACUUM FULL` does, until the test ends, and commits nothing. Called before the
+  # key process starts: the sandbox's transaction holds what that process touched
+  # until the test ends, so a lock asked for after it would never be granted.
+  defp lock_table! do
+    test = self()
+
+    connection =
+      Repo.config() |> Keyword.take([:hostname, :port, :username, :password, :database])
+
+    holder =
+      spawn(fn ->
+        {:ok, conn} = Postgrex.start_link(connection)
+
+        Postgrex.transaction(
+          conn,
+          fn conn ->
+            Postgrex.query!(
+              conn,
+              "LOCK TABLE eh_os_contract_auth_keys IN ACCESS EXCLUSIVE MODE",
+              []
+            )
+
+            send(test, :locked)
+
+            receive do
+              :release -> Postgrex.rollback(conn, :released)
+            end
+          end,
+          timeout: :infinity
+        )
+
+        GenServer.stop(conn)
+      end)
+
+    # Registered before the lock is waited for, so a lock taken late is released too.
+    # Run by another process than the test's, so it watches the holder itself.
+    on_exit(fn ->
+      ref = Process.monitor(holder)
+      send(holder, :release)
+
+      receive do
+        {:DOWN, ^ref, :process, ^holder, _reason} -> :ok
+      end
+    end)
+
+    assert_receive :locked, 5_000
   end
 
   # Accepts one fetch, answers with headers promising a body, and sends it a byte a
@@ -209,6 +350,32 @@ defmodule EhOsContract.Auth.KeysTest do
     advance(clock, :timer.seconds(1))
     assert {:ok, _} = Auth.verify(credential(added), keys: keys)
     assert requests(ehos) == 3
+  end
+
+  test "an unknown kid waits the interval from the end of the last fetch, not its start" do
+    pair = key_pair()
+    clock = clock()
+    test = self()
+
+    # A fetch that takes twenty seconds of the key process's clock.
+    slow = fn conn ->
+      send(test, :fetched)
+      advance(clock, :timer.seconds(20))
+      Req.Test.json(conn, %{"keys" => [Map.put(pair.public, "kid", pair.kid)]})
+    end
+
+    keys = start_keys(nil, clock: clock, plug: slow)
+    assert_received :fetched
+
+    # Thirty-five seconds after the start's fetch began, fifteen after it ended.
+    advance(clock, :timer.seconds(15))
+    assert Auth.verify(credential(key_pair()), keys: keys) == {:error, :unknown_key}
+    refute_received :fetched
+
+    # The control: thirty after it ended.
+    advance(clock, :timer.seconds(15))
+    assert Auth.verify(credential(key_pair()), keys: keys) == {:error, :unknown_key}
+    assert_received :fetched
   end
 
   test "a known kid fetches nothing" do
@@ -329,6 +496,10 @@ defmodule EhOsContract.Auth.KeysTest do
   test "a key process that is not running refuses with :no_keys, and does not raise" do
     assert Auth.verify(credential(key_pair()), keys: :not_started) == {:error, :no_keys}
     refute Auth.ready?(keys: :not_started)
+  end
+
+  test "a refresh of a key process that is not running says so, and does not raise" do
+    assert Keys.refresh(:not_started) == {:error, :not_running}
   end
 
   test "a malformed entry costs itself, not the keys beside it, nor the process" do

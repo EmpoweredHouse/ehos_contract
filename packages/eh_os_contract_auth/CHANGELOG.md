@@ -7,6 +7,21 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **#71: `refresh_every:` and `refetch_at_most_every:` below five seconds are refused at boot**, by
+  `EhOsContract.Auth.child_spec/1` and `EhOsContract.Auth.Keys.start_link/1`, as is a value that is not whole
+  milliseconds, and both intervals now count from the end of the fetch before, not its start. A shorter interval,
+  or one counted from the start, let fetches follow one another, each asked for by an unknown `kid`. The defaults
+  are unchanged.
+
+- **#71: `EhOsContract.Auth.Keys.refresh/1` answers instead of exiting** when the key process does not answer in
+  ten seconds (`{:error, :timeout}`) or is not running (`{:error, :not_running}`).
+
+- **#71: the key process waits for a locked `eh_os_contract_auth_keys` at most a second.** Reading and writing
+  the table run with Postgres's `statement_timeout` of one second, which ends a wait for a lock too, and the client
+  gives up on any call after two; a fetched key set goes into memory before the table. A table held by a migration
+  or `VACUUM FULL` no longer keeps the start, or the early fetch a new `kid` asks for, past the ten-second call: the
+  read or write fails, is logged, and the keys from EHOS are in force anyway.
+
 - **EH3: `mix eh_os_contract.manifest` writes `ehos.manifest/v2`, and v1 is gone** (`eh-os` D-52; EHOS deploys only
   v2). The task reads the project's `ehos.yaml` (`--ehos-yaml` names another), refuses it with every reason as EHOS
   would, and writes it extended with `application`, `offers` and `engine`: every key but `schema` unchanged, `schema`

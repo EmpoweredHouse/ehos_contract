@@ -18,7 +18,9 @@ defmodule EhOsContract.Auth.Keys do
       a failed fetch too: replacing the keys with nothing would lock everyone out on
       one bad answer. So is a request not finished in five seconds, whatever the
       request options say, so no answer can hold this process for longer.
-    * **A successful fetch** replaces the set in the table and in memory.
+    * **A successful fetch** replaces the set in memory, then in the table. A table
+      locked for longer than a second is not waited for: the write is logged as
+      failed, and the next fetch writes it again.
 
   A key is known by its RFC 7638 thumbprint, computed here, never by the `kid` the
   JWKS writes beside it: the thumbprint is what EHOS puts in a credential's header
@@ -65,10 +67,18 @@ defmodule EhOsContract.Auth.Keys do
   # starts again with every read, so an answer trickled a byte at a time never trips
   # it, and the connect timeout is spent once on TCP and again on the TLS handshake.
   # This bounds the request whole, whatever Req's own `config :req, default_options`
-  # adds to it, and stays well inside `@call_timeout`. Writing the table after it is
-  # outside the deadline, bounded by the repo's own timeouts.
+  # adds to it, and stays well inside `@call_timeout`.
   @fetch_deadline 5_000
   @call_timeout 10_000
+  # Reading and writing the table are bounded apart from the fetch. Postgres ends
+  # any statement, a wait for a lock held on the table (a migration, `VACUUM FULL`)
+  # included, after a second, and the connection stays in the pool; the client gives
+  # up on a call — the connection, `BEGIN`, `COMMIT` — after two, and closes it. A
+  # write on a locked table thus takes a second, and an early fetch with it stays
+  # inside `@call_timeout`; only the wait for a connection from the pool is the
+  # repo's own.
+  @statement_timeout "1s"
+  @call_bound 2_000
   # The one entry of the table that is not a key: `{@next, clock, at}`, when the next
   # early fetch is allowed, by the process's clock.
   @next :next_early_fetch
@@ -82,15 +92,18 @@ defmodule EhOsContract.Auth.Keys do
           | {:cacerts, [binary()]}
           | {:plug, term()}
           | {:refresh_every, pos_integer()}
-          | {:refetch_at_most_every, non_neg_integer()}
+          | {:refetch_at_most_every, pos_integer()}
           | {:clock, (-> integer())}
 
   @doc """
   Starts the process and its table, named `:name` (`#{inspect(__MODULE__)}` by
   default), fetching from `:url`.
 
-  `:repo` defaults to the engine's (`config :eh_os_contract, :repo`). The intervals
-  are in milliseconds, measured by `:clock`, which defaults to the monotonic clock.
+  `:repo` defaults to the engine's (`config :eh_os_contract, :repo`). The intervals,
+  `:refresh_every` and `:refetch_at_most_every`, are in milliseconds, each counted
+  from the end of the fetch before, and are at least five seconds, the most a fetch
+  may take. `:refetch_at_most_every` is measured by `:clock`, which defaults to the
+  monotonic clock.
   EHOS's certificate is checked against the system's authorities, or against the
   one `:cacertfile` (a PEM file) or `:cacerts` (DER certificates) names. The fetch
   follows no redirect, is not retried, and waits two seconds to connect and three
@@ -105,7 +118,8 @@ defmodule EhOsContract.Auth.Keys do
   failed one.
 
   It raises on an option it does not take, when `:url` is not https (plain http is
-  allowed for `localhost` only), and on `:plug` anywhere but a test.
+  allowed for `localhost` only), on an interval shorter than five seconds, and on
+  `:plug` anywhere but a test.
   """
   @spec start_link([option()]) :: GenServer.on_start()
   def start_link(opts) do
@@ -155,10 +169,10 @@ defmodule EhOsContract.Auth.Keys do
     ArgumentError -> false
   end
 
-  # The request is bounded by `@fetch_deadline`, well inside this, so the call
-  # outlives it unless writing the table is slow too. Should the process not answer
-  # — too slow, or not running — the credential is refused with what memory holds
-  # rather than taking the caller down.
+  # The request is bounded by `@fetch_deadline` and writing the table by its own
+  # timeouts, together inside this. Should the process not answer — too slow, or not
+  # running — the credential is refused with what memory holds rather than taking
+  # the caller down.
   defp refetch(name) do
     GenServer.call(name, :refetch, @call_timeout)
   catch
@@ -168,9 +182,19 @@ defmodule EhOsContract.Auth.Keys do
   @doc """
   Fetches now, as the scheduled refresh does, and answers `:ok` or why the fetch
   failed. Not rate-limited: this is the scheduled path, called directly.
+
+  A process that does not answer in ten seconds — busy with fetches queued before
+  this one — is `{:error, :timeout}`, and one that is not running, or stops during
+  the call, `{:error, :not_running}`: the caller is told, not taken down, and a crash
+  is the supervisor's to log.
   """
   @spec refresh(atom()) :: :ok | {:error, term()}
-  def refresh(name \\ __MODULE__), do: GenServer.call(name, :refresh, @call_timeout)
+  def refresh(name \\ __MODULE__) do
+    GenServer.call(name, :refresh, @call_timeout)
+  catch
+    :exit, {:timeout, _call} -> {:error, :timeout}
+    :exit, _reason -> {:error, :not_running}
+  end
 
   @doc """
   Trusts the public key `jwk` in memory until the process stops, through every
@@ -255,6 +279,23 @@ defmodule EhOsContract.Auth.Keys do
                 "may be plain http"
     end
 
+    # An interval shorter than a fetch may take would leave the process fetching for
+    # most of its time: the early fetch every unknown `kid` an attacker sends asks for
+    # would reach EHOS almost as soon as the last one ended, with the calls that
+    # waited for it piling up behind.
+    for key <- [:refresh_every, :refetch_at_most_every], Keyword.has_key?(opts, key) do
+      case Keyword.fetch!(opts, key) do
+        ms when is_integer(ms) and ms >= @fetch_deadline ->
+          :ok
+
+        other ->
+          raise ArgumentError,
+                "eh_os_contract_auth takes #{key}: in milliseconds, at least " <>
+                  "#{@fetch_deadline}, the most a fetch may take, and got #{inspect(other)}: " <>
+                  "a shorter interval would let fetches follow one another almost without a pause"
+      end
+    end
+
     if Keyword.has_key?(opts, :plug) and not test_trust?() do
       raise ArgumentError,
             "eh_os_contract_auth takes plug: only in a test: whatever it answers is trusted " <>
@@ -337,10 +378,17 @@ defmodule EhOsContract.Auth.Keys do
     state
   end
 
-  # The last good set, from the table. A table that cannot be read leaves memory
-  # empty and says so: the fetch after it may still succeed.
+  # The last good set, from the table. A table that cannot be read in time leaves
+  # memory empty and says so: the fetch after it may still succeed.
   defp load(state) do
-    %{rows: rows} = state.repo.query!("SELECT kid, jwk FROM #{@table}", [], log: false)
+    {:ok, rows} =
+      bounded(state.repo, fn ->
+        state.repo.query!("SELECT kid, jwk FROM #{@table}", [],
+          log: false,
+          timeout: @call_bound
+        ).rows
+      end)
+
     :ets.insert(state.name, for([kid, jwk] <- rows, do: {kid, signer(jwk)}))
   rescue
     exception ->
@@ -349,29 +397,45 @@ defmodule EhOsContract.Auth.Keys do
       )
   end
 
+  # The interval runs from when a fetch ends, its table written, not from when it
+  # began: a fetch may take as long as the interval, and one counted from its start
+  # would let the next begin the moment it ended. Closed from the start too, so no
+  # caller asks while it runs.
   defp fetch_now(state) do
+    close_early_fetch(state)
+
+    result =
+      case get(state) do
+        {:ok, keys} ->
+          store(state, keys)
+          :ok
+
+        {:error, reason} = error ->
+          Logger.warning(
+            "eh_os_contract_auth could not fetch the key set from #{state.url} (#{inspect(reason)}); " <>
+              "#{held(state.name)} keys stay in force"
+          )
+
+          error
+      end
+
+    {result, %{state | fetched_at: close_early_fetch(state)}}
+  end
+
+  # Opens the early fetch again an interval from now; answers now.
+  defp close_early_fetch(state) do
     now = state.clock.()
     :ets.insert(state.name, {@next, state.clock, now + state.refetch_at_most_every})
-    state = %{state | fetched_at: now}
-
-    case get(state) do
-      {:ok, keys} ->
-        store(state, keys)
-        {:ok, state}
-
-      {:error, reason} = error ->
-        Logger.warning(
-          "eh_os_contract_auth could not fetch the key set from #{state.url} (#{inspect(reason)}); " <>
-            "#{held(state.name)} keys stay in force"
-        )
-
-        {error, state}
-    end
+    now
   end
 
   # The request runs in a task of its own, so a fetch that outlives the deadline is
   # killed rather than waited for, whichever step it is stuck in. Over HTTP/1, which
-  # the fetch uses, its socket and its pooled connection go with it.
+  # the fetch uses, its socket and its pooled connection go with it. The task is
+  # linked: an exit signal sent to it from outside would take this process and its
+  # table along, and `{:exit, _}` below is reached only by an unlinked task. Nothing
+  # in the fetch links to it today — Finch and NimblePool monitor, Mint links
+  # nothing — so this is left as it is (#71).
   defp get(state) do
     task = Task.async(fn -> request(state) end)
 
@@ -456,17 +520,22 @@ defmodule EhOsContract.Auth.Keys do
   # Parsed once, when the key enters memory, not once per credential.
   defp signer(jwk), do: Joken.Signer.create("Ed25519", jwk)
 
-  # The table first, so memory never holds a set the next start would not load.
-  # When the table cannot be written the keys still go into memory: they are good,
-  # and the next fetch tries the table again.
+  # Memory first: the keys are good whatever the table does, and a caller whose
+  # early fetch outlived its call finds them when it looks again. When the table
+  # cannot be written in time the next fetch tries it again; until then a restart
+  # loads the set before this one.
   defp store(state, keys) do
+    keep = Map.merge(keys, state.pinned)
+    for kid <- kids(state.name), not Map.has_key?(keep, kid), do: :ets.delete(state.name, kid)
+    :ets.insert(state.name, for({kid, jwk} <- keys, do: {kid, signer(jwk)}))
+
     now = DateTime.utc_now()
     rows = for {kid, jwk} <- keys, do: %{kid: kid, jwk: jwk, fetched_at: now}
 
     try do
-      state.repo.transaction(fn ->
-        state.repo.delete_all(@table)
-        state.repo.insert_all(@table, rows)
+      bounded(state.repo, fn ->
+        state.repo.delete_all(@table, timeout: @call_bound)
+        state.repo.insert_all(@table, rows, timeout: @call_bound)
       end)
     rescue
       exception ->
@@ -474,9 +543,20 @@ defmodule EhOsContract.Auth.Keys do
           "eh_os_contract_auth could not write #{@table}: #{Exception.message(exception)}"
         )
     end
+  end
 
-    keep = Map.merge(keys, state.pinned)
-    for kid <- kids(state.name), not Map.has_key?(keep, kid), do: :ets.delete(state.name, kid)
-    :ets.insert(state.name, for({kid, jwk} <- keys, do: {kid, signer(jwk)}))
+  # A transaction whose every statement Postgres ends after `@statement_timeout`.
+  defp bounded(repo, fun) do
+    repo.transaction(
+      fn ->
+        repo.query!("SET LOCAL statement_timeout = '#{@statement_timeout}'", [],
+          log: false,
+          timeout: @call_bound
+        )
+
+        fun.()
+      end,
+      timeout: @call_bound
+    )
   end
 end

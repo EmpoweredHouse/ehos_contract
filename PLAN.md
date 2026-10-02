@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 1 października (E0–E12 i EH w `main`; następny etap — wybór użytkownika)
+## Handoff — stan na 2 października (E0–E12, EH i #72 w `main`; następny etap — wybór użytkownika)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -27,16 +27,19 @@ Następny etap wybiera użytkownik („Co zostało”).
 
 ### Stan repozytorium
 
-- **`origin/main` = `743e91d`** (merge #73, EH, 1 października; przedtem `aadcbd1` — #70). Historia `main` z
-  merge'ami PR-ów; gałęzie etapów liniowe. CI `main` na `743e91d` — w toku w chwili zapisu, sprawdzić
-  (`gh run list --repo EmpoweredHouse/eh-os-contract --branch main --limit 1`); na `aadcbd1` — `success`.
-- **`plan/eh-merged`** (główny checkout) — od `743e91d`: ten handoff; PR na polecenie użytkownika.
+- **`origin/main` = `65d7caf`** (merge #76, 2 października: runnery budzone po każdej transakcji silnika, która
+  coś dopisała — #72, „#72 — co wyszło”; przedtem `01ac970` — #75, ten handoff po EH, i `743e91d` — #73, EH).
+  Historia `main` z merge'ami PR-ów; gałęzie etapów liniowe. CI `main` na `65d7caf` — w toku w chwili zapisu,
+  sprawdzić (`gh run list --repo EmpoweredHouse/eh-os-contract --branch main --limit 1`); PR #76 na `4bbced1` —
+  `success`.
+- **`auth/issue-71-keys-hardening`** (worktree `issue-72-assessment-923997`) — od `65d7caf`: #71, proces kluczy
+  w `eh_os_contract_auth`, i ten zapis.
 - **Lokalnie poza tym:** `main`, `plan/eh-os-issues` (w `main`) i worktree `merge-pr-55-next-stage-ad84a2`
   (odłączony na `aadcbd1`). `eh/eh2-ehos-yaml` i `eh/eh3-manifest-v2` skasowane lokalnie po merge'u, na zgodę
   użytkownika; na GitHubie zostały.
 - **Otwarte na GitHubie:** **issue #49** — materiał klientów (TaxVision, Rehmed, warsztaty) poza repozytorium;
   zaparkowane 30 września, z propozycją `EmpoweredHouse/eh-os-contract-sandbox`; **#63–#66** — pytania otwarte po
-  E12 („Otwarte pytania”). Otwartych PR-ów brak poza tym handoffem. **W `EmpoweredHouse/eh-os`: #91–#96 i #111** —
+  E12 („Otwarte pytania”); **#71** — w toku na `auth/issue-71-keys-hardening`. Otwartych PR-ów brak poza nim. **W `EmpoweredHouse/eh-os`: #91–#96 i #111** —
   nasze potrzeby wobec EHOS-a („Dopisek 1 października”); dla manifestu ważne #91, #92, #93, #94, #96, #111.
 - **`ehos-ledger`** (`main` = `341fc19`) przypina `eh-os-contract` na `50eb771` (merge #53, przed #54), ma
   `ehos.yaml` i jego schemat w `.ehos/`, a CI puszcza `mix eh_os_contract.manifest --output ehos.manifest.json`.
@@ -151,6 +154,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 2 października, na `auth/issue-71-keys-hardening`** (#71, od `65d7caf`): brama z `sandbox/` →
+  **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1114, `check` 0 / 68 / 6; web 52; auth **149** + 1 property.
 - **Lokalnie, 2 października, na `claude/issue-72-assessment-923997`** (#72, od `01ac970`): brama z `sandbox/` →
   **EXIT=0** — sandbox 145; silnik **1114** (+10, budzenie runnerów); web 52; auth 138 + 1 property.
 - **`main` = `743e91d`** (merge #73, EH): drzewo jak `2bda2b7`, ostatni commit PR-a; lokalnie na `2bda2b7` brama z
@@ -4151,6 +4156,65 @@ nazwy — *poprawione*; „nic, na czym kontrakt polega, nie jedzie transportem,
 **`CLAUDE.md`** („Czym biblioteka jest”) mówi dalej, że broker „jeszcze niezbudowane”, a §9–10 „mówi dziś «bez
 zewnętrznego brokera»” — po E12 nieprawda; *poprawione* na polecenie użytkownika, w tym samym PR-ze.
 
+### #71 — proces kluczy w `eh_os_contract_auth`: tabela, interwały, `refresh/1` — co wyszło (2 października)
+
+**Problem** ([#71](https://github.com/EmpoweredHouse/eh-os-contract/issues/71)): cztery rzeczy, które termin
+pobrania kluczy (#69) zostawił otwarte w `EhOsContract.Auth.Keys` — „Poprawka 28 września (2) — jeden termin”
+niżej i jej odzyskanie z 1 października. Żadnej dziś nic nie wyzwala; to utwardzenie, nie błąd, który ktoś widział.
+
+**Analiza przed zmianą** — skutek (1) węższy, niż mówiło issue: przy zaplanowanym odświeżeniu nikt nie czeka, bo
+`fetch_now` zamyka okno wcześniejszego pobrania na 30 s, zanim pobierze, więc wołający z nieznanym `kid` nie wołają
+procesu. Czeka jeden — ten, którego `kid` wywołał pobranie (i każde żądanie przy starcie, gdy `load/1` wisi). Klucze
+szły do pamięci dopiero po tabeli, więc przy zablokowanej tabeli dostawał `:unknown_key` dla klucza, który EHOS
+właśnie przysłał. Zasada „najpierw tabela, żeby pamięć nie miała zestawu, którego następny start nie wczyta” nie
+trzymała się i tak: przy nieudanym zapisie klucze szły do pamięci. (2) dotyczy też `refresh_every`, którego issue
+nie wymieniało. Żadnej z dwóch opcji nie ustawia ani README, ani sandbox, ani testy.
+
+**Decyzje użytkownika** (rekomendacje asystenta przyjęte):
+- (2) **odmowa przy starcie** interwału poniżej 5 s (termin pobrania) albo nie w całych milisekundach, dla obu opcji.
+  Przegrały: usunięcie obu opcji (host nie mógłby pobierać rzadziej — nikt dziś nie chce, ale to uprawniony powód)
+  i ciche podniesienie do granicy (konfiguracja hosta ignorowana bez słowa);
+- (4) **pominięte**: task pobrania zostaje zlinkowany. Sygnał wyjścia z zewnątrz wysłany do taska zabiłby proces
+  kluczy i jego tabelę, ale nic w pobraniu się z taskiem nie linkuje (Finch i NimblePool monitorują, Mint nic nie
+  linkuje). `Task.Supervisor.async_nolink` zmieniałby `EhOsContract.Auth` z jednego workera w supervisor — kształt
+  widoczny dla hosta — dla zagrożenia, którego nic nie wywołuje. Komentarz w `get/1` mówi to przy kodzie.
+
+**Co jest** (gałąź `auth/issue-71-keys-hardening`, od `65d7caf`):
+- (1) odczyt i zapis tabeli w transakcji z `SET LOCAL statement_timeout = '1s'` (Postgres kończy każdą instrukcję,
+  czekanie na blokadę też, a połączenie zostaje w puli) i `timeout: 2_000` klienta na każdym wywołaniu, `BEGIN` i
+  `COMMIT` też — zapasowo, bo ten zamyka połączenie (w testach razem z transakcją sandboxa). Zapis na zablokowanej
+  tabeli trwa sekundę, więc wcześniejsze pobranie (5 s) mieści się w 10 s wywołania; czekanie na połączenie z puli
+  zostaje sprawą repo hosta. Klucze do pamięci przed tabelą. Testy: drugie połączenie spoza sandboxa trzyma `ACCESS EXCLUSIVE` na tabeli —
+  start i wcześniejsze pobranie po rotacji kończą się poniżej 4 s, klucz z rotacji przechodzi; repo, które wstrzymuje
+  zapis na słowo testu — w czasie zapisu nowy klucz już jest w pamięci. Na kodzie z `main` padają oba, i tylko one
+  (start: `:sys.get_state` po 10 s nie dostaje odpowiedzi);
+- (3) `refresh/1` łapie wyjście: `{:error, :timeout}` albo `{:error, :not_running}`, w `@spec`, który był. Test
+  na procesie, który nie działa; gałąź timeoutu bez testu — kosztowałby 10 s czekania na tę samą klauzulę `catch`;
+- (2) `check!/1` (więc i `child_spec/1`) odmawia `refresh_every:` i `refetch_at_most_every:` poniżej 5 000 albo nie
+  całkowitych; testy na 0, 4 999 i 5 000.0 dla obu, kontrola na 5 000 i minucie; na starym kodzie pada sześć. Okno
+  wcześniejszego pobrania liczy się od **końca** pobrania z zapisem, nie od startu — inaczej przy granicy 5 s
+  następne pobranie wolno by zacząć w chwili, gdy poprzednie się skończyło (oba przeglądy).
+- Wpisy w `CHANGELOG.md` pakietu w commitach zmian, zdanie w README („How the key store behaves”).
+
+**Przegląd** (dwa równolegle na `65d7caf..d343aa9`; nic w bezpieczeństwie):
+- granica 5 s nie wykluczała pobrań jedno po drugim, bo okno liczyło się od startu pobrania (oba) — *poprawione*:
+  od końca; test z pobraniem, które zabiera 20 s zegara, pada na starym liczeniu;
+- `timeout: 2_000` to timeout klienta, nie Postgresa — zamyka połączenie, a `SET`, `BEGIN` i `COMMIT` miały 15 s
+  repo, więc zdanie o mieszczeniu się w 10 s nie było prawdą (oba) — *poprawione*: `statement_timeout` po stronie
+  Postgresa, zapasowy timeout klienta na transakcji, opis budżetu uczciwy;
+- `lock_table!` rejestrował zwolnienie blokady po `assert_receive` (spóźniona blokada zostałaby na zawsze), a
+  połączenie Postgrex nie było zamykane — *poprawione*; komentarz wskazywał nieistniejące `hold_writes/0`, doc
+  `start_link/1` mówił, że oba interwały mierzy `:clock` — *poprawione*; `refresh/1` każde wyjście poza timeoutem
+  nazywa `:not_running`, także padnięcie w trakcie — *opisane* w docu, crash loguje supervisor;
+- `SET LOCAL` w sandboxie trwa po `RELEASE SAVEPOINT` do końca testu — *bez zmiany*: w produkcji transakcja jest
+  najbardziej zewnętrzna, w testach sekunda na instrukcję nikomu nie przeszkadza;
+- pamięć przed tabelą i sekunda na zablokowanej tabeli poszerzają znane okno: klucz cofnięty przez EHOS, którego
+  zapis nie przeszedł, wraca po restarcie przy niedostępnym EHOS-ie — *pominięte*: luka była (każdy nieudany zapis),
+  komentarz w `store/2` ją nazywa, a stary kod czekał do 15 s, trzymając wołającego.
+
+Brama z `sandbox/` → **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1114, `check` 0 / 68 / 6; web 52; auth
+**149** (+11) + 1 property.
+
 ### #72 — runnery budzone po commicie, którego dispatch nie zamyka — co wyszło (2 października)
 
 **Problem** ([#72](https://github.com/EmpoweredHouse/eh-os-contract/issues/72), z przeglądu E12c): dispatch budzi
@@ -5465,7 +5529,8 @@ dociera do `main`). Znalezione przy sprzątaniu gałęzi; cztery commity nałoż
 opcji z #38 (`plug:` i `url:` w miejsce zniesionego `req_options:`, także w `KeyCase`), na polecenie użytkownika.
 Zapis wyżej jest sprzed #38 i zostaje jak był: jego „(2)” powtarza numer poprawki o `req_options` (to trzecia z 28
 września), `connect_options` hosta już nie istnieje, „gałąź na PR #35” to stara baza, a pominięte (3) — testy z
-adapterem-funkcją — zniknęło razem z `req_options`. Otwarte zostają: (1) i (2) wyżej, `refresh/1` bez `catch` i
+adapterem-funkcją — zniknęło razem z `req_options`. Otwarte zostają (*2 października: zamknięte w #71 — „#71 — co
+wyszło”*): (1) i (2) wyżej, `refresh/1` bez `catch` i
 sygnał starego zestawu kluczy z notki nad nim. *Przegląd odzyskania* (dwa równolegle): gwarancje #38 nietknięte,
 wycieku po zabiciu taska brak; poprawione dwa komentarze `keys.ex` (o `:req_options` i o zwalnianym połączeniu, które
 dotyczy HTTP/1); pominięte — task jest linkowany, więc sygnał wyjścia z zewnątrz (padający proces pomocniczy pluga
