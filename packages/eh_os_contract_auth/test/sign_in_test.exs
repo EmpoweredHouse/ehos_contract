@@ -376,8 +376,48 @@ defmodule EhOsContract.Auth.SignInTest do
         })
       end)
 
-      assert SignIn.refresh(name) == {:error, {:not_https, [:token_endpoint, :jwks_uri]}}
+      assert SignIn.refresh(name) ==
+               {:error, {:endpoints_refused, [:token_endpoint, :jwks_uri]}}
+
       assert SignIn.provider(name) == {:error, :ehos_unavailable}
+    end
+
+    # The #89 rule for the document's endpoints too: the browser is sent to the authorization and
+    # end-session endpoints, and oidcc posts the client's assertion to a PAR endpoint the document
+    # names. Each must be where every parser reads it.
+    test "a document whose endpoints parsers read differently is not held", %{ehos: ehos} do
+      FakeEhos.discovery(ehos, fn _ ->
+        Map.merge(FakeEhos.discovery(), %{
+          # A browser goes to evil.example.
+          "authorization_endpoint" => "https://evil.example\\@ehos.test/oauth/authorize",
+          "end_session_endpoint" => "https://127.1/oauth/end_session",
+          "pushed_authorization_request_endpoint" => "https://EHOS.test/oauth/par"
+        })
+      end)
+
+      name = start!(ehos)
+
+      assert SignIn.refresh(name) ==
+               {:error,
+                {:endpoints_refused,
+                 [
+                   :authorization_endpoint,
+                   :end_session_endpoint,
+                   :pushed_authorization_request_endpoint
+                 ]}}
+
+      assert SignIn.provider(name) == {:error, :ehos_unavailable}
+
+      # The control: a PAR endpoint where every parser reads it is held.
+      FakeEhos.discovery(ehos, fn _ ->
+        Map.put(
+          FakeEhos.discovery(),
+          "pushed_authorization_request_endpoint",
+          "https://ehos.test/oauth/par"
+        )
+      end)
+
+      assert SignIn.refresh(name) == :ok
     end
 
     # oidcc's decoder raises `case_clause` on a relative URI where it wants https.

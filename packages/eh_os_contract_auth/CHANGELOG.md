@@ -7,6 +7,13 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **The discovery document's endpoints by #89's rule.** An endpoint is held only when it is https as every parser
+  reads it: a lowercase host, and no user, query or fragment. That includes the browser's authorization and
+  end-session endpoints, and **the PAR endpoint**, which `oidcc` posts the client's assertion to whenever the
+  document names one and which was not checked before.
+  - **Changed:** such a document is not held, and `SignIn.refresh/2` answers
+    `{:error, {:endpoints_refused, names}}` in place of `{:not_https, names}`.
+
 - **#89: addresses are taken only as every parser reads them.** EHOS's rule for its issuer
   (`Ehos.Credentials.check_issuer/1`, eh-os#118): the address reads back as written (`URI.new/1`, then
   `URI.to_string/1`), with a lowercase DNS name, an IPv4 address in its dotted form or `::1` as the host, a port

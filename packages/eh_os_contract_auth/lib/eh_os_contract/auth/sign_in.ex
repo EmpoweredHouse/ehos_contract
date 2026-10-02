@@ -50,7 +50,8 @@ defmodule EhOsContract.Auth.SignIn do
   EHOS goes over https, follows no redirect, reads at most 64 KiB and ends after ten
   seconds (S6); EHOS's certificate is checked against the system's authorities, or
   `cacertfile:` / `cacerts:` when given. A document is not held unless its `issuer` is
-  the configured one and its endpoints are https.
+  the configured one and its endpoints are https, as every parser reads them: a
+  lowercase host, and no user, query or fragment (#89).
 
   **What is held.** The client and the addresses derived from `address`, for the
   sign-in itself (`config/1`): the redirect URI is `address <> "/auth/ehos/callback"`
@@ -70,12 +71,15 @@ defmodule EhOsContract.Auth.SignIn do
   @retry_max 30_000
   @min_secret 64
   @sign_in_keys [:client_id, :client_key_file, :address, :secret_key_base, :applications]
+  # Every endpoint of the document `oidcc` calls or sends the browser to; a PAR endpoint is posted
+  # the client's assertion whenever the document names one.
   @endpoints [
     :authorization_endpoint,
     :token_endpoint,
     :jwks_uri,
     :userinfo_endpoint,
-    :end_session_endpoint
+    :end_session_endpoint,
+    :pushed_authorization_request_endpoint
   ]
 
   @derive {Inspect, except: [:client_key, :client_secret, :secret_key_base, :cipher_key]}
@@ -349,17 +353,21 @@ defmodule EhOsContract.Auth.SignIn do
   defp same_issuer(%{issuer: issuer}, issuer), do: :ok
   defp same_issuer(%{issuer: other}, _issuer), do: {:error, {:issuer_mismatch, other}}
 
+  # By the rule the configured addresses are held to (#89), so the browser and `oidcc` go where
+  # the check read: `https://evil.example\@ehos.test/...` passed a prefix, and a browser sent there
+  # goes to evil.example.
   defp https_endpoints(configuration) do
     case Enum.reject(@endpoints, &https_or_absent?(Map.get(configuration, &1))) do
       [] -> :ok
-      endpoints -> {:error, {:not_https, endpoints}}
+      endpoints -> {:error, {:endpoints_refused, endpoints}}
     end
   end
 
   defp https_or_absent?(:undefined), do: true
   defp https_or_absent?(nil), do: true
-  defp https_or_absent?("https://" <> _rest), do: true
-  defp https_or_absent?(_other), do: false
+
+  defp https_or_absent?(endpoint),
+    do: Address.check(endpoint, plain_on_loopback: false, path: true) == :ok
 
   defp key_set(%{"keys" => [_ | _]} = keys) do
     {:ok, JOSE.JWK.from_map(keys)}
