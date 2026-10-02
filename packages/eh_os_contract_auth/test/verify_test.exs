@@ -169,22 +169,18 @@ defmodule EhOsContract.Auth.VerifyTest do
     # D-64 makes that refusal a security property, so it is pinned here (S9 in
     # docs/adr/browser-session.md).
     test "an ID token presented as a bearer credential is refused", %{pair: pair, keys: keys} do
-      id_token =
-        credential(
-          pair,
-          %{
-            "aud" => "rehmed/test",
-            "auth_time" => DateTime.to_unix(DateTime.utc_now()) - 60,
-            "sid" => "s-81",
-            "nonce" => "n-81"
-          },
-          drop: ["cap", "jti"]
-        )
+      claims = %{
+        "aud" => "rehmed/test",
+        "auth_time" => DateTime.to_unix(DateTime.utc_now()) - 60,
+        "sid" => "s-81",
+        "nonce" => "n-81"
+      }
 
+      id_token = credential(pair, claims, drop: ["cap", "jti"])
       assert Auth.verify(id_token, keys: keys) == {:error, :bad_signature}
 
       # Control: the same claims with a `cap` are a credential.
-      with_cap = credential(pair, %{"sid" => "s-81", "nonce" => "n-81"}, drop: ["jti"])
+      with_cap = credential(pair, claims, drop: ["jti"])
       assert {:ok, _} = Auth.verify(with_cap, keys: keys)
     end
 

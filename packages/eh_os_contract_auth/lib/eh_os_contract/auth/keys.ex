@@ -306,9 +306,12 @@ defmodule EhOsContract.Auth.Keys do
     :ok
   end
 
+  @doc false
   # Whether this is where keys EHOS did not publish may be trusted: a pinned one, or
-  # whatever a plug in place of the network answers.
-  defp test_trust?, do: Application.get_env(:eh_os_contract_auth, :pin_keys, false) == true
+  # whatever a plug in place of the network answers. `EhOsContract.Auth.SignIn` asks
+  # the same of its own `plug:`.
+  @spec test_trust?() :: boolean()
+  def test_trust?, do: Application.get_env(:eh_os_contract_auth, :pin_keys, false) == true
 
   @impl GenServer
   def init(opts) do

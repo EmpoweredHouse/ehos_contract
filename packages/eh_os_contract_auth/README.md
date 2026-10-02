@@ -167,16 +167,32 @@ The child checks this at boot and refuses to start otherwise:
 
 - the key file is one private Ed25519 JWK, exactly as `eh-os` D-68 says the operator writes it, and a PEM is
   refused;
-- `address`, and each address in `applications`, is `https://<host>`, with no path and no trailing slash;
+- `address`, and each address in `applications`, is `https://<host>` in lower case, with no port, no path and no
+  trailing slash;
+- the issuer is https;
 - `secret_key_base` has at least 64 bytes.
 
 Nothing it raises carries a secret. The callback is `address <> "/auth/ehos/callback"`, and a sign-out returns
 to `address <> "/"`. Both are derived, never configured, because EHOS compares them as exact strings.
 
-The child keeps EHOS's discovery document, and starts while EHOS is down. `EhOsContract.Auth.SignIn.provider/1`
-says whether a person can be signed in with it. It refuses, naming what is missing, a document that lacks any
-of these: the `iss` parameter in authorization responses, PKCE with `S256`, `Ed25519` ID tokens, and
-`private_key_jwt`. `oidcc` would quietly do without each of them.
+The child keeps EHOS's discovery document and keys, refetched every five minutes. It starts while EHOS is
+down, retrying after one second and doubling up to thirty. Every call to EHOS:
+
+- goes over https;
+- follows no redirect;
+- reads at most 64 KiB;
+- ends after ten seconds.
+
+These limits match the ones on the key set. `EhOsContract.Auth.SignIn.provider/1` says whether a person can be
+signed in with what is held. It refuses, naming each thing that fails, a document that lacks any of these:
+
+- the `iss` parameter in authorization responses;
+- PKCE with `S256`;
+- `Ed25519` ID tokens;
+- `private_key_jwt`.
+
+It also refuses a document that names a symmetric algorithm or `none` for ID tokens. `oidcc` would quietly do
+without each of these, or accept such a token.
 
 The routes that sign a browser in and out, and the session behind them, are the next part of this work
 ([#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78)). What the package decides beside D-64 is in

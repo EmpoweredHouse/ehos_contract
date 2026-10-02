@@ -1,13 +1,17 @@
 defmodule EhOsContract.Auth.SignInTest do
   @moduledoc """
   EB1 (#78): the sign-in child — what it refuses at boot, the client key in the shape
-  `eh-os` D-68 fixes, and the check of EHOS's discovery document before any sign-in
-  (S6 in docs/adr/browser-session.md). The sign-in itself is EB2's.
+  `eh-os` D-68 fixes, and how it keeps EHOS's discovery document and keys: fetched
+  over a transport that follows no redirect and reads a bounded body, retried while
+  EHOS is down, and checked before any sign-in (S6 in docs/adr/browser-session.md).
+  The sign-in itself is EB2's.
 
   Not async: the tests change `config :eh_os_contract_auth`.
   """
 
   use ExUnit.Case, async: false
+
+  import ExUnit.CaptureLog
 
   alias EhOsContract.Auth.{FakeEhos, SignIn}
 
@@ -42,7 +46,9 @@ defmodule EhOsContract.Auth.SignInTest do
       # Exactly the string EHOS compares (eh-os D-68).
       assert config.post_logout_redirect_uri == "https://rehmed.test/"
       assert config.applications == %{"ledger" => "https://ledger.test.ehos.test"}
-      assert config.request_opts.timeout == 10_000
+
+      # Every call oidcc makes goes through the package's transport, with a deadline.
+      assert %{timeout: 10_000, http_adapter: {SignIn.Http, _http}} = config.request_opts
 
       # Handed to oidcc as it is: kid and use kept, for its client assertions.
       assert %JOSE.JWK{fields: %{"kid" => kid, "use" => "sig"}} = config.client_key
@@ -53,13 +59,22 @@ defmodule EhOsContract.Auth.SignInTest do
       refute inspect(config) =~ String.duplicate("s", 64)
     end
 
-    test "the client's sign_in: configuration is required, and takes only what it names" do
+    test "the client's sign_in: is required, a keyword list, and takes only what it names" do
       sign_in = Application.fetch_env!(:eh_os_contract_auth, :sign_in)
+
       Application.delete_env(:eh_os_contract_auth, :sign_in)
 
       assert_raise ArgumentError, ~r/sign_in: \[\.\.\.\] is missing/, fn ->
         SignIn.child_spec([])
       end
+
+      # A map is refused without being printed: it holds the secret.
+      Application.put_env(:eh_os_contract_auth, :sign_in, Map.new(sign_in))
+
+      error =
+        assert_raise ArgumentError, ~r/must be a keyword list/, fn -> SignIn.child_spec([]) end
+
+      refute error.message =~ String.duplicate("s", 64)
 
       Application.put_env(:eh_os_contract_auth, :sign_in, sign_in)
       put_sign_in(redirect_uri: "https://rehmed.test/elsewhere")
@@ -76,6 +91,8 @@ defmodule EhOsContract.Auth.SignInTest do
             "https://rehmed.test/",
             "https://rehmed.test/pages",
             "https://rehmed.test?x=1",
+            "https://rehmed.test:8443",
+            "https://Rehmed.test",
             "http://rehmed.test",
             "rehmed.test",
             nil
@@ -104,35 +121,44 @@ defmodule EhOsContract.Auth.SignInTest do
       assert_raise ArgumentError, ~r/at least 64 bytes/, fn -> SignIn.child_spec([]) end
     end
 
-    test "an issuer that is not https is refused, but for localhost" do
-      Application.put_env(:eh_os_contract_auth, :issuer, "http://ehos.test")
-      assert_raise ArgumentError, ~r/not https/, fn -> SignIn.child_spec([]) end
+    test "an issuer that is not https://<host>, localhost included, is refused at boot" do
+      for issuer <- [
+            "http://ehos.test",
+            "http://localhost:4000",
+            "https://ehos.test?tenant=1",
+            "https://ehos.test#x",
+            "https://user:pass@ehos.test"
+          ] do
+        Application.put_env(:eh_os_contract_auth, :issuer, issuer)
+        assert_raise ArgumentError, ~r/is not https:\/\/<host>/, fn -> SignIn.child_spec([]) end
+      end
 
-      Application.put_env(:eh_os_contract_auth, :issuer, "http://localhost:4000")
-      assert %{id: SignIn} = SignIn.child_spec([])
+      Application.put_env(:eh_os_contract_auth, :issuer, ~c"https://ehos.test")
+      assert_raise ArgumentError, ~r/issuer: must be a string/, fn -> SignIn.child_spec([]) end
     end
 
-    test "an HTTP adapter in place of EHOS is taken only where test keys may be pinned",
-         %{ehos: ehos} do
+    test "a plug in place of EHOS is taken only where test keys may be pinned", %{ehos: ehos} do
       Application.put_env(:eh_os_contract_auth, :pin_keys, false)
 
-      assert_raise ArgumentError, ~r/http_adapter: only in a test/, fn ->
-        SignIn.child_spec(http_adapter: FakeEhos.adapter(ehos))
+      assert_raise ArgumentError, ~r/plug: only in a test/, fn ->
+        SignIn.child_spec(plug: FakeEhos.plug(ehos))
       end
     end
 
-    test "EHOS's certificate is checked, against the authority given or the system's",
-         %{ehos: ehos} do
-      ssl = SignIn.config(start!(ehos)).request_opts.ssl
-      assert ssl[:verify] == :verify_peer
-      assert ssl[:customize_hostname_check]
-      assert ssl[:cacerts] != []
+    test "a name that is not an atom is refused" do
+      assert_raise ArgumentError, ~r/name: as an atom/, fn ->
+        SignIn.child_spec(name: {:global, :sign_in})
+      end
+    end
 
-      ssl = SignIn.config(start!(ehos, cacertfile: "/etc/ehos/ca.pem")).request_opts.ssl
-      assert ssl[:verify] == :verify_peer
-      assert ssl[:customize_hostname_check]
-      assert ssl[:cacertfile] == "/etc/ehos/ca.pem"
-      refute Keyword.has_key?(ssl, :cacerts)
+    test "the authority given is handed to every connection to EHOS", %{ehos: ehos} do
+      {SignIn.Http, http} = SignIn.config(start!(ehos)).request_opts.http_adapter
+      refute Map.has_key?(http, :cacertfile)
+
+      {SignIn.Http, http} =
+        SignIn.config(start!(ehos, cacertfile: "/etc/ehos/ca.pem")).request_opts.http_adapter
+
+      assert http.cacertfile == "/etc/ehos/ca.pem"
     end
   end
 
@@ -210,29 +236,120 @@ defmodule EhOsContract.Auth.SignInTest do
     end
   end
 
-  describe "EHOS's discovery document (S6)" do
-    test "EHOS's own document can be signed in with", %{ehos: ehos} do
+  describe "EHOS's discovery document and keys" do
+    test "EHOS's own document and keys can be signed in with", %{ehos: ehos} do
       name = start!(ehos)
 
       assert {:ok, %Oidcc.ProviderConfiguration{issuer: "https://ehos.test"}} =
                SignIn.provider(name)
+
+      assert FakeEhos.requests(ehos) == [
+               "/.well-known/openid-configuration",
+               "/.well-known/jwks.json"
+             ]
     end
 
-    test "while EHOS is down the child runs, and nobody can be signed in until it answers",
+    test "while EHOS is down the process runs, and retries after one second, doubling",
          %{ehos: ehos} do
       FakeEhos.down(ehos, true)
       name = start!(ehos)
 
       assert SignIn.provider(name) == {:error, :ehos_unavailable}
-      assert Process.alive?(Process.whereis(Module.concat(name, Provider)))
+      # The first retry is a second away, and the one after it two.
+      assert %{retry_in: 2_000, timer: timer} = :sys.get_state(name)
+      assert Process.read_timer(timer) in 1..1_000
 
       FakeEhos.down(ehos, false)
-
-      :ok =
-        Oidcc.ProviderConfiguration.Worker.refresh_configuration(Module.concat(name, Provider))
-
-      :sys.get_state(Module.concat(name, Provider))
+      # The retry the timer would send.
+      send(Process.whereis(name), :fetch)
+      :sys.get_state(name)
       assert {:ok, _configuration} = SignIn.provider(name)
+      assert %{retry_in: 1_000} = :sys.get_state(name)
+    end
+
+    test "a document without its keys is not held, and both are fetched again",
+         %{ehos: ehos} do
+      FakeEhos.down(ehos, :keys)
+      name = start!(ehos)
+
+      # The document alone signs nobody in: its ID tokens could not be checked.
+      assert SignIn.provider(name) == {:error, :ehos_unavailable}
+
+      FakeEhos.down(ehos, false)
+      assert SignIn.refresh(name) == :ok
+      assert {:ok, _configuration} = SignIn.provider(name)
+    end
+
+    test "a failed refetch keeps what is held", %{ehos: ehos} do
+      name = start!(ehos)
+      FakeEhos.down(ehos, true)
+
+      assert {:error, _reason} = SignIn.refresh(name)
+      assert {:ok, _configuration} = SignIn.provider(name)
+    end
+
+    test "a document that changes is read as it now is", %{ehos: ehos} do
+      name = start!(ehos)
+
+      for path <- ["/oauth/end_session/v2", "/oauth/end_session/v3"] do
+        FakeEhos.discovery(
+          ehos,
+          &Map.put(&1, "end_session_endpoint", "https://ehos.test" <> path)
+        )
+
+        assert SignIn.refresh(name) == :ok
+
+        assert {:ok, configuration} = SignIn.provider(name)
+        assert configuration.end_session_endpoint == "https://ehos.test" <> path
+      end
+    end
+
+    test "a redirect is not followed, and the document it names is never asked for",
+         %{ehos: ehos} do
+      FakeEhos.answer(ehos, :redirect)
+      name = start!(ehos)
+
+      assert SignIn.provider(name) == {:error, :ehos_unavailable}
+      assert SignIn.refresh(name) == {:error, {:status, 302}}
+      refute "/discovery" in FakeEhos.requests(ehos)
+    end
+
+    test "a document past 64 KiB is refused", %{ehos: ehos} do
+      FakeEhos.answer(ehos, :huge)
+      name = start!(ehos)
+
+      assert SignIn.refresh(name) == {:error, :response_too_large}
+      assert SignIn.provider(name) == {:error, :ehos_unavailable}
+    end
+
+    test "a document of another issuer, or with an endpoint over plain http, is not held",
+         %{ehos: ehos} do
+      FakeEhos.discovery(ehos, &Map.put(&1, "issuer", "https://elsewhere.test"))
+      name = start!(ehos)
+      assert SignIn.refresh(name) == {:error, {:issuer_mismatch, "https://elsewhere.test"}}
+      assert SignIn.provider(name) == {:error, :ehos_unavailable}
+
+      FakeEhos.discovery(ehos, fn _ ->
+        Map.merge(FakeEhos.discovery(), %{
+          "jwks_uri" => "http://ehos.test/.well-known/jwks.json",
+          "token_endpoint" => "http://ehos.test/oauth/token"
+        })
+      end)
+
+      assert SignIn.refresh(name) == {:error, {:not_https, [:token_endpoint, :jwks_uri]}}
+      assert SignIn.provider(name) == {:error, :ehos_unavailable}
+    end
+
+    # oidcc's decoder raises `case_clause` on a relative URI where it wants https.
+    test "a document oidcc's decoder raises on is refused, and the process lives on",
+         %{ehos: ehos} do
+      FakeEhos.discovery(ehos, &Map.put(&1, "userinfo_endpoint", "/oauth/userinfo"))
+      name = start!(ehos)
+      pid = Process.whereis(name)
+
+      assert {:error, {:invalid_document, _reason}} = SignIn.refresh(name)
+      assert Process.alive?(pid)
+      assert SignIn.provider(name) == {:error, :ehos_unavailable}
     end
 
     test "a document without what oidcc would otherwise do without is refused, each named",
@@ -246,6 +363,10 @@ defmodule EhOsContract.Auth.SignInTest do
             {&Map.put(&1, "code_challenge_methods_supported", ["plain"]), :no_s256},
             {&Map.put(&1, "id_token_signing_alg_values_supported", ["EdDSA"]),
              :no_ed25519_id_token},
+            {&Map.put(&1, "id_token_signing_alg_values_supported", ["Ed25519", "HS256"]),
+             :symmetric_id_token_alg},
+            {&Map.put(&1, "id_token_signing_alg_values_supported", ["Ed25519", "none"]),
+             :symmetric_id_token_alg},
             {&Map.put(&1, "token_endpoint_auth_methods_supported", ["client_secret_basic"]),
              :no_private_key_jwt},
             {&Map.put(&1, "token_endpoint_auth_signing_alg_values_supported", ["RS256"]),
@@ -258,21 +379,59 @@ defmodule EhOsContract.Auth.SignInTest do
       end
     end
 
-    test "a child that is not running cannot sign anyone in" do
-      assert SignIn.provider(:sign_in_never_started) == {:error, :ehos_unavailable}
+    test "a refused document is logged once, not on every refetch", %{ehos: ehos} do
+      FakeEhos.discovery(ehos, &Map.delete(&1, "code_challenge_methods_supported"))
 
-      assert_raise ArgumentError, ~r/is not started/, fn ->
-        SignIn.config(:sign_in_never_started)
-      end
+      log =
+        capture_log(fn ->
+          name = start!(ehos)
+          :ok = SignIn.refresh(name)
+          :ok = SignIn.refresh(name)
+        end)
+
+      assert length(String.split(log, "refuses to sign anyone in")) == 2
+    end
+
+    test "a child that has stopped, or never started, holds nothing", %{ehos: ehos} do
+      name = start!(ehos)
+      assert {:ok, _configuration} = SignIn.provider(name)
+      :ok = stop_supervised(name)
+
+      assert SignIn.provider(name) == {:error, :ehos_unavailable}
+      assert_raise ArgumentError, ~r/is not started/, fn -> SignIn.config(name) end
+      assert SignIn.refresh(name) == {:error, :not_running}
+
+      assert SignIn.provider(:sign_in_never_started) == {:error, :ehos_unavailable}
     end
   end
 
-  # Starts the child under a name of its own and waits until its worker's first fetch
-  # has run: a call is answered only after the worker's `handle_continue/2`.
+  describe "the transport" do
+    test "a call over plain http is refused before it is made", %{ehos: ehos} do
+      assert SignIn.Http.request(:get, {"http://ehos.test/x", []}, [timeout: 1_000], [], %{
+               plug: FakeEhos.plug(ehos)
+             }) == {:error, {:not_https, "http://ehos.test/x"}}
+
+      assert FakeEhos.requests(ehos) == []
+    end
+
+    test "a call ends at its deadline" do
+      slow = fn conn ->
+        Process.sleep(500)
+        Plug.Conn.send_resp(conn, 200, "")
+      end
+
+      assert SignIn.Http.request(:get, {"https://ehos.test/x", []}, [timeout: 50], [], %{
+               plug: slow
+             }) == {:error, :timeout}
+    end
+  end
+
+  # Starts the child under a name of its own and waits until its first fetch has run:
+  # a call is answered only after `handle_continue/2`.
   defp start!(ehos, opts \\ []) do
     name = :"sign_in_#{System.unique_integer([:positive])}"
-    start_supervised!({SignIn, [name: name, http_adapter: FakeEhos.adapter(ehos)] ++ opts})
-    :sys.get_state(Module.concat(name, Provider))
+    start_supervised!({SignIn, [name: name, plug: FakeEhos.plug(ehos)] ++ opts})
+    :sys.get_state(name)
     name
   end
 

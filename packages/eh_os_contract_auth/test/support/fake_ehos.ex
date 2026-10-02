@@ -1,33 +1,46 @@
 defmodule EhOsContract.Auth.FakeEhos do
   @moduledoc """
-  EHOS as `oidcc` sees it, played through `oidcc`'s HTTP adapter, so no port is
-  opened and `oidcc`'s own code — the request, the content type, the parsing — runs as
-  it does against EHOS.
+  EHOS as sign-in sees it: a function plug handed to `EhOsContract.Auth.SignIn` as
+  `plug:`, so no port is opened and the package's own transport
+  (`EhOsContract.Auth.SignIn.Http`) — the request, the status, the size, the
+  redirect — runs as it does against EHOS, as `EhOsContract.Auth.KeyCase` does for the
+  key set.
 
   The discovery document is the one `Ehos.SignIn.discovery/0` serves on `eh-os`'s
-  `main` of 2 October 2026, and a test can change it or take EHOS down. The client's
-  key file is written in the shape `eh-os` D-68 fixes.
+  `main` of 2 October 2026. A test can change it, take EHOS down (`down/2`, `true`
+  for everything or `:keys` for the key set only), or have it answer what no EHOS
+  does (`answer/2`): `:redirect` to plain http, or `:huge`, a body past the limit.
+  The client's key file is written in the shape `eh-os` D-68 fixes.
   """
-
-  @behaviour :oidcc_http_adapter
 
   @issuer "https://ehos.test"
 
   @doc "An EHOS that is up and serves its own discovery document and one key."
   def start do
     jwk = JOSE.JWK.generate_key({:okp, :Ed25519})
-    {:ok, ehos} = Agent.start_link(fn -> %{discovery: discovery(), down: false, signer: jwk} end)
+
+    {:ok, ehos} =
+      Agent.start_link(fn ->
+        %{discovery: discovery(), down: false, answer: nil, signer: jwk, requests: []}
+      end)
+
     ehos
   end
 
-  @doc "What `oidcc` takes as `request_opts.http_adapter`, for `ehos`."
-  def adapter(ehos), do: {__MODULE__, %{ehos: ehos}}
+  @doc "What `EhOsContract.Auth.SignIn` takes as `plug:`, for `ehos`."
+  def plug(ehos), do: &serve(ehos, &1)
 
   @doc "Changes the discovery document `ehos` serves."
   def discovery(ehos, fun), do: Agent.update(ehos, &%{&1 | discovery: fun.(&1.discovery)})
 
-  @doc "Takes `ehos` down (`true`) or brings it back."
-  def down(ehos, down?), do: Agent.update(ehos, &%{&1 | down: down?})
+  @doc "Takes `ehos` down: `true` for everything, `:keys` for the key set only, `false` up."
+  def down(ehos, down), do: Agent.update(ehos, &%{&1 | down: down})
+
+  @doc "Has `ehos` answer the discovery document with `:redirect` or `:huge`, or `nil`."
+  def answer(ehos, answer), do: Agent.update(ehos, &%{&1 | answer: answer})
+
+  @doc "The paths `ehos` was asked for, oldest first."
+  def requests(ehos), do: Agent.get(ehos, &Enum.reverse(&1.requests))
 
   @doc "EHOS's discovery document, as served on `main` (`Ehos.SignIn.discovery/0`)."
   def discovery do
@@ -74,30 +87,37 @@ defmodule EhOsContract.Auth.FakeEhos do
     {path, map}
   end
 
-  @impl :oidcc_http_adapter
-  def request(:get, {url, _headers}, _http_options, _request_options, %{ehos: ehos}) do
-    state = Agent.get(ehos, & &1)
+  defp serve(ehos, conn) do
+    state =
+      Agent.get_and_update(ehos, fn state ->
+        {state, %{state | requests: [conn.request_path | state.requests]}}
+      end)
 
-    case {state.down, URI.parse(to_string(url)).path} do
-      {true, _path} ->
-        {:error, :econnrefused}
+    case {state.down, state.answer, conn.request_path} do
+      {true, _answer, _path} ->
+        Req.Test.transport_error(conn, :econnrefused)
 
-      {false, "/.well-known/openid-configuration"} ->
-        json(state.discovery)
+      {_down, :redirect, "/.well-known/openid-configuration"} ->
+        conn
+        |> Plug.Conn.put_resp_header("location", "http://elsewhere.test/discovery")
+        |> Plug.Conn.send_resp(302, "")
 
-      {false, "/.well-known/jwks.json"} ->
+      {_down, :huge, "/.well-known/openid-configuration"} ->
+        Req.Test.json(conn, Map.put(state.discovery, "padding", String.duplicate("x", 70_000)))
+
+      {_down, _answer, "/.well-known/openid-configuration"} ->
+        Req.Test.json(conn, state.discovery)
+
+      {:keys, _answer, "/.well-known/jwks.json"} ->
+        Plug.Conn.send_resp(conn, 503, "")
+
+      {_down, _answer, "/.well-known/jwks.json"} ->
         {_, public} = state.signer |> JOSE.JWK.to_public() |> JOSE.JWK.to_map()
         key = Map.merge(public, %{"kid" => JOSE.JWK.thumbprint(state.signer), "alg" => "Ed25519"})
-        json(%{"keys" => [key]})
+        Req.Test.json(conn, %{"keys" => [key]})
 
-      {false, _other} ->
-        {:ok, {{~c"HTTP/1.1", 404, ~c"Not Found"}, [], ""}}
+      {_down, _answer, _path} ->
+        Plug.Conn.send_resp(conn, 404, "")
     end
-  end
-
-  defp json(body) do
-    {:ok,
-     {{~c"HTTP/1.1", 200, ~c"OK"}, [{~c"content-type", ~c"application/json"}],
-      Jason.encode!(body)}}
   end
 end

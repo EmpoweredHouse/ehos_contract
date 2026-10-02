@@ -14,11 +14,14 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - **What it refuses at boot,** with no secret in the message:
     - a key file that is not exactly D-68's private Ed25519 JWK, a PEM included;
     - an address that is not `https://<host>`;
+    - an issuer that is not https;
     - a `secret_key_base` shorter than 64 bytes.
-  - **What it runs:** `oidcc`'s provider worker, which keeps EHOS's discovery document, retries while EHOS is
-    down, and never stops the application.
+  - **What it holds:** EHOS's discovery document and keys, fetched by the package's own transport, the one
+    `oidcc` uses too. That transport goes over https only, follows no redirect, reads at most 64 KiB and ends a
+    call after ten seconds.
+  - **While EHOS is down:** the child retries from one to thirty seconds and never stops the application.
   - **`provider/1`** refuses a document that lacks the `iss` parameter, PKCE with `S256`, `Ed25519` ID tokens
-    or `private_key_jwt`.
+    or `private_key_jwt`, and one that allows a symmetric ID token algorithm.
   - **New dependencies:** `oidcc ~> 3.9` and `oidcc_plug ~> 0.5.1`. **The package now needs OTP 27.**
   - **Sign-in itself comes later:** the routes, the session and renewal are EB2 and EB3.
 
