@@ -586,6 +586,28 @@ Na `dsl/ep4-executable` (od `origin/main` = `8f685cf`, po #108).
 - `docs/contract.md` (akapit, wiersze P3 i S6), `docs/dsl/`, `.formatter.exs`, skill `write-reaction`.
 - **Brama zielona** przed przeglądem: **EXIT=0** — sandbox 148 (145 + 3 scenariusze stanu), `check` 0 / 29 / 9;
   silnik 1194 (1184 + 10), `check` 0 / 71 / 6 (bez zmian); web 52; auth 285 + 1 właściwość.
+- **Przegląd** (dwa równolegle). Poprawione, każde osobnym commitem ze sprawdzeniem odwrotnym:
+  - efekt z `owner: :infrastructure` kompilował się, a `@doc` obiecywał deduplikację przez silnik, której
+    `EffectJob` nie robi; `:infrastructure` z kluczem innym niż `:event_id` też. P3 odmawia obu;
+  - eksport modelu dla EHOS-a nie redagował `state` scenariusza;
+  - wartość korelacji podana w `state` budowała run, więc asercja nie mogła paść;
+  - runner składał stan także z kroku, którego silnik nie bierze (`given` przed startem runu, wyzwalacz po
+    `ends_on`); scenariusz ze `state` teraz na tym pada. Scenariusze bez `state` jak dotąd;
+  - CHANGELOG: nowy kształt `idempotency` w „Changed — a host has to act”.
+
+  Bez zmian:
+  - `send_p1_report` z `:downstream`, choć sandbox kluczuje zapis: deklaracja opisuje host z P1, a moduledoc mówi,
+    że sandbox P1 nie ma;
+  - zdublowane zdanie „holds …” w `pages` i `Doc` oraz drugie budowanie zdarzenia w `held!` — kosmetyka.
+
+  Pominięte, poza zakresem:
+  - `key` przy `:self`/`:downstream` to dowolny atom; sprawdzanie go wobec pól obsługiwanych zdarzeń to nowa
+    reguła;
+  - pole korelacji w S3 sprawdzane jak `:id` — wartość złego typu pada dopiero w teście, z nazwą pola.
+
+  Bezpieczeństwo i wydajność: poza powyższym bez defektu. Do stron trafiają tylko nazwy pól stanu, nie wartości.
+- **Brama zielona po przeglądzie:** **EXIT=0** — sandbox 148, `check` 0 / 29 / 9; silnik 1198, `check` 0 / 71 / 6;
+  web 52; auth 285 + 1 właściwość.
 
 ## Dopisek 2 października (2) — #83: `ehos.yaml/v2` i `sign_in`; podział EB2
 
