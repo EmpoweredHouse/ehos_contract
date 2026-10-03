@@ -63,8 +63,11 @@ defmodule AppuniteEquipment.Contracts.Computers do
     invariant :received_once, "Komputer spisuje się z faktury raz, po zamówieniu",
       source: "T l.88–90"
 
+    # The process owner said Innergo cleans the disk; that a repair erases it too is
+    # not stated. Every return from Innergo asks for the setup again, which costs a
+    # check of the MDM profile when the disk was kept.
     invariant :set_up_before_issue,
-              "Komputera bez standardowych ustawień nie wydaje się pracownikowi; po zwrocie, formatowaniu i czyszczeniu w Innergo ustawia się go od nowa",
+              "Komputera bez standardowych ustawień nie wydaje się pracownikowi; po zwrocie od pracownika, formatowaniu i powrocie z Innergo ustawia się go od nowa",
               source: "E"
 
     invariant :only_from_the_office,
