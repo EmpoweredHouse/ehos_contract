@@ -354,6 +354,15 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Added
 
+- **EP2: a reaction's rules, and the scenario that illustrates them.** `constraint` in a `policy`, an
+  `effect` and a `process_manager`, and `invariant` in a `process_manager`, as a command and a query name
+  theirs. A scenario names the rules of its target it shows in `illustrates:`; one its target does not have
+  fails the compile (S10), and so does any on a command's scenario, which shows its rules with `rejected`. A
+  process manager's constraints and invariants share one namespace (N1). `mix eh_os_contract.check` warns
+  `prose-without-scenario` of a constraint of a policy, a process manager or a query, or an invariant of a
+  process manager, that no scenario illustrates; an effect's constraint is prose alone, since no scenario
+  runs an effect. `mix eh_os_contract.pages` lists the rules and what each scenario illustrates. A
+  declaration or scenario without them keeps its digest.
 - **EP1: `source:` on every declaration** a workshop names — a policy, an effect, a process manager and its
   timers, a read model, a query and the process in a contract; an actor, a subject, a value, an external and a
   relation in a domain — where it comes from in the material. `mix eh_os_contract.pages` shows it. A

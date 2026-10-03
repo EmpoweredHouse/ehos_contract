@@ -10,7 +10,9 @@ defmodule EhOsContract.Contract.Rules.Names do
   take a command's name, since both become a capability `<domain>.<name>` (D14). Invariants and stage
   groups are unique within their unit, and the process's stages and promises within
   the process. A domain service's functions are unique within it, and a function's
-  rules within the function. Since the review of the domain's names, two names of one
+  rules within the function. A command's, a query's and a reaction's constraints are
+  unique within it, and a process manager's constraints and invariants together, since
+  a scenario `illustrates:` either by its name (plan EP2). Since the review of the domain's names, two names of one
   namespace that `Macro.camelize` alike — `:visit_closed` and `:visit_closed_`, `:x2`
   and `:x_2` — are refused as two of one name where the name becomes a module or an
   alias: a unit, a reaction, a read model, a query or a domain service is a module
@@ -70,6 +72,9 @@ defmodule EhOsContract.Contract.Rules.Names do
       for(c <- Rules.commands(d), do: {"command", c.name, c}),
       for(c <- Rules.commands(d), k <- c.constraints, do: {"constraint", k.name, k}),
       for(q <- d.queries, k <- q.constraints, do: {"constraint", k.name, k}),
+      for(r <- d.policies ++ d.effects, k <- r.constraints, do: {"constraint", k.name, k}),
+      for(pm <- d.process_managers, k <- pm.constraints, do: {"constraint", k.name, k}),
+      for(pm <- d.process_managers, i <- pm.invariants, do: {"invariant", i.name, i}),
       for(e <- Rules.local_events(d), do: {"event", e.name, e}),
       for(p <- d.policies, do: {"policy", p.name, p}),
       for(e <- d.effects, do: {"effect", e.name, e}),
@@ -151,13 +156,23 @@ defmodule EhOsContract.Contract.Rules.Names do
         invariants ++ stages
       end)
 
-    # Plan EL2: a command's constraints, and a query's, are named once each.
+    # Plan EL2: a command's constraints, and a query's, are named once each; plan EP2:
+    # a policy's and an effect's too, and a process manager's constraints and
+    # invariants together, which a scenario illustrates by name.
     constraints =
       for {kind, owner} <-
-            Enum.map(Rules.commands(d), &{"command", &1}) ++ Enum.map(d.queries, &{"query", &1}),
+            Enum.map(Rules.commands(d), &{"command", &1}) ++
+              Enum.map(d.queries, &{"query", &1}) ++
+              Enum.map(d.policies, &{"policy", &1}) ++ Enum.map(d.effects, &{"effect", &1}),
           k <- DslRules.duplicates(owner.constraints, & &1.name) do
         {"N1: #{kind} #{inspect(owner.name)} has two constraints named #{inspect(k.name)}", k}
-      end
+      end ++
+        for pm <- d.process_managers,
+            r <- DslRules.duplicates(pm.constraints ++ pm.invariants, & &1.name) do
+          {"N1: process manager #{inspect(pm.name)} has two rules named #{inspect(r.name)}; " <>
+             "its constraints and invariants are named apart, since a scenario illustrates " <>
+             "them by name", r}
+        end
 
     in_process =
       if process do

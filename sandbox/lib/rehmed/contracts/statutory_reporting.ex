@@ -102,7 +102,12 @@ defmodule Rehmed.Contracts.StatutoryReporting do
          "Zamknięcie kliniczne — zgłoszenie do P1 albo jego pominięcie",
          handles: :visit_closed_clinically,
          issues: [:queue_p1_report, :waive_p1_report],
-         source: "P-07"
+         source: "P-07" do
+    # The service's flag decides, "one flag, not two" (2026-08-17, `AGG-15`).
+    constraint :only_reported_services,
+               "Do P1 zgłaszamy tylko zamknięcia usług raportowanych do P1; pozostałe pomijamy",
+               source: "P-07"
+  end
 
   effect :send_p1_report, "Wyślij zgłoszenie do rejestru P1",
     handles: :p1_report_queued,
@@ -135,7 +140,8 @@ defmodule Rehmed.Contracts.StatutoryReporting do
     end
   end
 
-  scenario "fizjoterapia zamknięta klinicznie — zgłoszenie idzie do kolejki P1" do
+  scenario "fizjoterapia zamknięta klinicznie — zgłoszenie idzie do kolejki P1",
+    illustrates: :only_reported_services do
     scope :report_on_clinical_close
 
     on :visit_closed_clinically, %{
@@ -150,7 +156,8 @@ defmodule Rehmed.Contracts.StatutoryReporting do
     issues :queue_p1_report, %{pesel: "85010112345", icd10: "M54.5"}
   end
 
-  scenario "masaż zamknięty klinicznie — do P1 nic nie idzie" do
+  scenario "masaż zamknięty klinicznie — do P1 nic nie idzie",
+    illustrates: :only_reported_services do
     scope :report_on_clinical_close
 
     on :visit_closed_clinically, %{

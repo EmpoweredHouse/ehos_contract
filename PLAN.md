@@ -403,7 +403,8 @@ przeglądzie EP1: `view` jest drzewem struktury i nie pokazuje `source` żadnego
   funkcją w implementacji encji (nowy `use … entity:`); (b) odłożyć, póki materiał nie da przykładu.
 - Przykład docelowy: `constraint :only_reportable_services, "Do P1 zgłaszamy tylko usługi podlegające zgłoszeniu;
   pozostałe pomijamy", source: "P-07"` w `report_on_clinical_close` i `illustrates: :only_reportable_services` w
-  obu jej scenariuszach.
+  obu jej scenariuszach. *(W budowie, 3 października: nazwa wyszła `only_reported_services`, za etykietą pola
+  usługi „Raportowana do P1” (`AGG-15`) — „EP2 — co wyszło”.)*
 
 **EP3 — proza dociera do kodu.** Wygenerowane `@callback` dostają `@doc` złożony z kontraktu: etykieta deklaracji
 i wywołania, reguły, które go dotyczą (ze szczeblem), odmowy, które wolno zwrócić, tytuły scenariuszy, `source`.
@@ -464,6 +465,51 @@ Na `dsl/ep1-source` (od `origin/main` = `0b7bc84`, po rebase z `64f888b`), niewy
   dotychczasowe strony; identyfikatory w komentarzach zostają tam, gdzie komentarz coś wyjaśnia. Odłożone do EP3
   (skille): w `source` identyfikatory z materiału, nie nazwiska — `source` idzie do modelu dla EHOS-a i na
   strony, a nic nie sprawdza w nim danych osobowych.
+
+### Przed EP2 — decyzje użytkownika (3 października)
+
+- **`invariant` encji — odłożony** (opcja (b)). Encja nie ma implementacji ani scenariuszy, więc inwariant stałby na
+  szczeblu 0 bez drogi wyżej; wraca, gdy materiał da przykład. *Odrzucone:* (a) jak inwariant wartości, z
+  `violated_by`/`satisfied_by` i funkcją w implementacji encji (nowy `use … entity:` bez przykładu w materiale).
+- **`constraint` efektu — proza bez drogi wyżej.** Efekt nie jest celem scenariusza (S6: jego wynik jest poza
+  logiem), więc jego ograniczenie stoi na szczeblu 0 i `check` o nim nie ostrzega — jawny wyjątek od drabiny, opisany
+  w `docs/rules.md`, jak `reaction-without-scenario` pomija efekty. LLM dostaje regułę w EP3 (`@doc`). Przykład z
+  materiału: `look_up_registries`, „adapter trzyma limity i retry” (03 §4.2). *Odrzucone:* bez `constraint` na
+  efekcie (reguła zostaje w kodzie, poza kontraktem); scenariusze efektów najpierw (nowy mechanizm z fałszywym
+  adapterem — osobny, duży etap).
+
+### EP2 — co wyszło (3 października)
+
+Na `dsl/ep2-rules` (od `origin/main` = `b6a96dd`, po #101), niewypchnięte.
+- **DSL:** `constraint` w `policy`, `effect` i `process_manager`, `invariant` w `process_manager` (encja inwariantu
+  jednostki z innym opisem); `illustrates:` w scenariuszu (atom albo lista).
+- **S10** (nowa odmowa): `illustrates:` nazywa regułę, której cel scenariusza nie ma, albo jedną dwa razy; każde
+  `illustrates:` na scenariuszu komendy — ta pokazuje swoje reguły przez `rejected`. **N1** rozszerzone:
+  ograniczenia polityki i efektu raz każde, ograniczenia i inwarianty process managera razem.
+- **`prose-without-scenario`** (nowe ostrzeżenie `check`): ograniczenie polityki, process managera albo query,
+  inwariant process managera, którego żaden scenariusz deklaracji nie ilustruje. Bez efektu (decyzja wyżej) i bez
+  deklaracji, której żaden scenariusz nie uruchamia — tę zgłasza raz `reaction-without-scenario`. S10 i `check`
+  czytają jedną listę reguł, `Rules.Scenarios.illustratable/2`.
+- **Czytelnicy:** `pages` (sekcje „Constraints”/„Invariants”, „— illustrates …” przy scenariuszu), `view
+  --details` (reguły pod reakcją). `@doc` — EP3.
+- **Model:** nowe klucze tylko tam, gdzie zadeklarowane; wersje przypięte w EP1 dalej się zgadzają.
+- **Sandbox:** `report_on_clinical_close` ma `only_reported_services` (`P-07`), oba jej scenariusze je ilustrują;
+  `look_up_registries` ma `within_registry_limits` („adapter trzyma limity i retry”, 03 §4.2) — proza efektu.
+- **Przegląd** (dwa równolegle): poprawność — 10 uwag, poprawione: podwójne ostrzeżenie dla deklaracji bez
+  scenariusza, mylący komunikat S10 na scenariuszu komendy, powtórzona nazwa w `illustrates:`, `view --details`
+  bez reguł reakcji, powód „raport zgodności” podany też dla query w `rules.md`, zdublowana lista reguł w S10 i
+  `check`, trzy kopie sekcji „Constraints” na stronach, kopia encji inwariantu, nazwa przykładu w planie, braki
+  testów (query, timer, powtórzenie, linie fikstury liczone z treści). Bezpieczeństwo i wydajność — bez defektu;
+  etykiety reguł bez escapowania na stronach i w modelu dla EHOS-a jak dotychczasowe etykiety.
+- **Sprawdzenia odwrotne:** wyłączone S10, wyłączone ostrzeżenie, puste ograniczenia polityki w digeście, brak
+  filtra deklaracji bez scenariusza, brak odmowy powtórzeń, stary `view.ex` — każde wywraca dokładnie swoje testy.
+- **Brama zielona** na `e8c2b05`: **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1166, `check` 0 / 68 / 6
+  (bez zmian: żaden istniejący kontrakt nie dostał `prose-without-scenario`); web 52; auth 285 + 1 właściwość.
+  Wcześniejsze podejścia padały na `too_many_connections` albo stawały w testach silnika na wspólnym Postgresie
+  zajętym przez inne sesje; same testy silnika z `--trace` przechodziły w 64 s.
+- **Po rebase na `9b959e4`** (#103 — budżet bajtów klucza, #104): brama znowu zielona, **EXIT=0** — sandbox 145,
+  `check` 0 / 29 / 9; silnik 1179 (1170 z `main` + 9 z EP2), `check` 0 / 71 / 6 — trzy ostrzeżenia więcej
+  przyniósł #103 (tyle zapisuje plan na `main`), żadnego `prose-without-scenario`; web 52; auth 285 + 1 właściwość.
 
 ## Dopisek 2 października (2) — #83: `ehos.yaml/v2` i `sign_in`; podział EB2
 

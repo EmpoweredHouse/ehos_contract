@@ -735,7 +735,24 @@ defmodule EhOsContract.Pages do
       |> blank("as declared")
 
     given = if given == [], do: "", else: "given #{Enum.join(given, ", ")}; "
-    "#{given}#{trigger}; #{outcome}"
+
+    # The rules it shows (plan EP2), after what happens.
+    shows =
+      case Map.get(s, :illustrates, []) do
+        [] -> ""
+        names -> " — illustrates #{Enum.map_join(names, ", ", &code/1)}"
+      end
+
+    "#{given}#{trigger}; #{outcome}#{shows}"
+  end
+
+  # A declaration's rules: a command's and a query's constraints, and a reaction's
+  # constraints and a process manager's invariants (plan EP2).
+  defp rules(d) do
+    [
+      section("Constraints", Map.get(d, :constraints, []), &"- #{code(&1.name)} — #{&1.label}"),
+      section("Invariants", Map.get(d, :invariants, []), &"- #{code(&1.name)} — #{&1.label}")
+    ]
   end
 
   # --- one declaration -----------------------------------------------------------------
@@ -819,7 +836,7 @@ defmodule EhOsContract.Pages do
           do: "Creates its #{unit.kind}, whose identity the library gives."
         )
       ]),
-      section("Constraints", Map.get(c, :constraints, []), &"- #{code(&1.name)} — #{&1.label}"),
+      rules(c),
       issued_by_reactions(model, c),
       ["", "## Fields", "" | fields_table(site, c.fields)]
     ]
@@ -849,21 +866,27 @@ defmodule EhOsContract.Pages do
   end
 
   defp body(site, model, :policies, p) do
-    facts([
-      row(["Handles: " | joined(Enum.map(List.wrap(p.handles), &event_link(site, model, &1)))]),
-      row(["Issues: " | joined(Enum.map(List.wrap(p.issues), &command_link(model, &1)))]),
-      "Delivered #{code(p.delivery)}."
-    ])
+    [
+      facts([
+        row(["Handles: " | joined(Enum.map(List.wrap(p.handles), &event_link(site, model, &1)))]),
+        row(["Issues: " | joined(Enum.map(List.wrap(p.issues), &command_link(model, &1)))]),
+        "Delivered #{code(p.delivery)}."
+      ]),
+      rules(p)
+    ]
   end
 
   defp body(site, model, :effects, e) do
-    facts([
-      row(["Handles: " | joined(Enum.map(List.wrap(e.handles), &event_link(site, model, &1)))]),
-      if(e.calls not in [nil, []],
-        do: "Calls: #{Enum.map_join(List.wrap(e.calls), ", ", &code/1)}."
-      ),
-      "Delivered #{code(e.delivery)}."
-    ])
+    [
+      facts([
+        row(["Handles: " | joined(Enum.map(List.wrap(e.handles), &event_link(site, model, &1)))]),
+        if(e.calls not in [nil, []],
+          do: "Calls: #{Enum.map_join(List.wrap(e.calls), ", ", &code/1)}."
+        ),
+        "Delivered #{code(e.delivery)}."
+      ]),
+      rules(e)
+    ]
   end
 
   defp body(site, model, :process_managers, pm) do
@@ -894,6 +917,7 @@ defmodule EhOsContract.Pages do
         bullet(["#{code(t.name)} → " | joined(issues) ++ [source_note(t)]])
       end),
       section("Ends on", pm.ends_on, &bullet([event_link(site, model, &1)])),
+      rules(pm),
       ["", "## State", "" | fields_table(site, pm.state.fields)]
     ]
   end
@@ -927,7 +951,7 @@ defmodule EhOsContract.Pages do
         "Returns #{if q.returns == :one, do: "one row or none", else: "rows"}.",
         if(q.scope, do: "Narrowed by #{code(q.scope)}.")
       ]),
-      section("Constraints", Map.get(q, :constraints, []), &"- #{code(&1.name)} — #{&1.label}"),
+      rules(q),
       ["", "## Parameters", "" | fields_table(site, q.params)]
     ]
   end

@@ -66,8 +66,10 @@ defmodule EhOsContract.Contract.Build do
       units: Enum.map(units, &unit/1),
       commands: for(u <- units, c <- u.commands, do: command(u, c)),
       events: events,
-      policies: entities |> of(Dsl.Policy) |> Enum.map(&plain/1),
-      effects: entities |> of(Dsl.Effect) |> Enum.map(&plain/1),
+      policies:
+        entities |> of(Dsl.Policy) |> Enum.map(&(&1 |> plain() |> without_empty(:constraints))),
+      effects:
+        entities |> of(Dsl.Effect) |> Enum.map(&(&1 |> plain() |> without_empty(:constraints))),
       process_managers:
         entities |> of(Dsl.ProcessManager) |> Enum.map(&process_manager(&1, events)),
       read_models: entities |> of(Dsl.ReadModel) |> Enum.map(&plain/1),
@@ -199,6 +201,9 @@ defmodule EhOsContract.Contract.Build do
         Enum.map(pm.timers, &(&1 |> plain() |> Map.update!(:wait, fn w -> duration(w) end))),
       ends_on: Enum.map(pm.ends_on, & &1.event)
     })
+    # Plan EP2: kept only where declared, so no other manager's digest moves.
+    |> without_empty(:constraints)
+    |> without_empty(:invariants)
   end
 
   # Two shapes under one word: a sibling contract's events, by module, or another
@@ -266,7 +271,13 @@ defmodule EhOsContract.Contract.Build do
         _ -> %{}
       end
 
-    Map.merge(answers, %{
+    # Plan EP2: the rules it shows, kept only where it names some, for the same reason.
+    illustrates =
+      if scenario.illustrates == [], do: %{}, else: %{illustrates: scenario.illustrates}
+
+    answers
+    |> Map.merge(illustrates)
+    |> Map.merge(%{
       description: scenario.description,
       scope: scenario.scope,
       target: %{kind: kind, name: target.name},
@@ -407,7 +418,7 @@ defmodule EhOsContract.Contract.Build do
   # `correlate`, stages, givens and expectations keep their order.
   @sets ~w(fields params invariants consults starts_on on timers ends_on includes promises
            by emits rejects handles issues calls projects recorded_by match sets cancels events
-           idempotent_on answers functions rules constraints)a
+           idempotent_on answers functions rules constraints illustrates)a
 
   defp digest_form(%{} = declaration) do
     Map.new(declaration, fn

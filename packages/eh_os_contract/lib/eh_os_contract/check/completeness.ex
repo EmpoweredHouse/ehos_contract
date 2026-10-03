@@ -47,7 +47,8 @@ defmodule EhOsContract.Check.Completeness do
       in_transaction_fan_out(c),
       prefixed_event_names(c),
       consults_without_match(c),
-      without_scenario(c)
+      without_scenario(c),
+      unillustrated(c)
     ])
   end
 
@@ -245,6 +246,53 @@ defmodule EhOsContract.Check.Completeness do
           "nothing shows its implementation does what #{inspect(declaration.label)} says",
         at(declared, declaration.name)
       )
+    end
+  end
+
+  # The ladder's first step up (plan EP2): a rule of a policy, a process manager or a
+  # query that no scenario of that declaration `illustrates:`, so it is prose alone. An
+  # effect's constraint is left out, as `without_scenario/1` leaves out the effect: no
+  # scenario runs one (S6), so its prose has no rung above it (the user's choice of 3
+  # October 2026). So is a declaration no scenario runs at all, which
+  # `without_scenario/1` reports once, rather than once more per rule (the EP2 review).
+  defp unillustrated(%{model: model} = c) do
+    run = MapSet.new(model.scenarios, &{&1.target.kind, &1.target.name})
+
+    shown =
+      MapSet.new(
+        for s <- model.scenarios,
+            name <- Map.get(s, :illustrates, []),
+            do: {s.target.kind, s.target.name, name}
+      )
+
+    for {kind, what, declarations, declared} <- [
+          {:policy, "policy", model.policies, c.declarations.policies},
+          {:process_manager, "process manager", model.process_managers,
+           c.declarations.process_managers},
+          {:query, "query", model.queries, c.declarations.queries}
+        ],
+        declaration <- declarations,
+        MapSet.member?(run, {kind, declaration.name}),
+        {word, rule} <- Rules.Scenarios.illustratable(kind, declaration),
+        not MapSet.member?(shown, {kind, declaration.name, rule.name}) do
+      Finding.new(
+        "prose-without-scenario",
+        "#{word} #{inspect(rule.name)} of #{what} #{inspect(declaration.name)} of " <>
+          "#{inspect(model.module)} is prose alone: no scenario `illustrates:` it, so nothing " <>
+          "shows its implementation keeps #{inspect(rule.label)}",
+        rule_at(declared, kind, declaration.name, rule.name)
+      )
+    end
+  end
+
+  defp rule_at(declarations, kind, name, rule) do
+    with %{} = declaration <- Enum.find(declarations, &(&1.name == name)),
+         {_word, found} <-
+           Enum.find(
+             Rules.Scenarios.illustratable(kind, declaration),
+             fn {_word, r} -> r.name == rule end
+           ) do
+      Links.at(found)
     end
   end
 

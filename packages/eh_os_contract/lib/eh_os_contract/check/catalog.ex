@@ -256,6 +256,24 @@ defmodule EhOsContract.Check.Catalog do
       """
     },
     %{
+      id: "prose-without-scenario",
+      level: :warn,
+      esdm: nil,
+      summary:
+        "No scenario illustrates a constraint of a policy, a process manager or a query, or an " <>
+          "invariant of a process manager.",
+      text: """
+      The rule is prose alone, the first rung of the contract's ladder: it tells whoever writes the
+      implementation what to keep, and nothing shows the implementation keeps it. A scenario of the
+      declaration that names it in `illustrates:` is the test that would. An effect's constraint is
+      left out, as `reaction-without-scenario` leaves out the effect: no scenario runs an effect (S6),
+      so its prose has no rung above. So is a declaration no scenario runs at all, which
+      `reaction-without-scenario` reports already. A warning, not an error like S8: the prose still
+      tells the implementation what to keep, and a reaction is also checked on the log by the
+      conformance report.
+      """
+    },
+    %{
       id: "consults-without-match",
       level: :warn,
       esdm: nil,

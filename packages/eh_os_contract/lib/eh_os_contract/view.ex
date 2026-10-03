@@ -79,9 +79,9 @@ defmodule EhOsContract.View do
   # Each row under a contract with the name `path:` keeps it by.
   defp declarations(model, details?) do
     Enum.map(model.units, &{&1.name, unit(model, &1, details?)}) ++
-      Enum.map(model.policies, &{&1.name, policy(&1)}) ++
-      Enum.map(model.effects, &{&1.name, effect(&1)}) ++
-      Enum.map(model.process_managers, &{&1.name, process_manager(&1)}) ++
+      Enum.map(model.policies, &{&1.name, policy(&1, details?)}) ++
+      Enum.map(model.effects, &{&1.name, effect(&1, details?)}) ++
+      Enum.map(model.process_managers, &{&1.name, process_manager(&1, details?)}) ++
       Enum.map(model.read_models, &{&1.name, read_model(&1, details?)}) ++
       Enum.map(model.queries, &{&1.name, query(&1, details?)}) ++
       Enum.map(model.domain_services, &{&1.name, domain_service(&1, details?)})
@@ -146,18 +146,26 @@ defmodule EhOsContract.View do
   defp consults(%{where: where}) when is_binary(where), do: " where #{where}"
   defp consults(_consults), do: ""
 
-  defp policy(policy),
-    do: {"policy #{policy.name}  ← #{list(policy.handles)} → #{list(policy.issues)}", [], []}
+  # A reaction's rules (plan EP2) are its details, as a command's constraints are.
+  defp policy(policy, details?),
+    do:
+      {"policy #{policy.name}  ← #{list(policy.handles)} → #{list(policy.issues)}",
+       if(details?, do: constraints(policy), else: []), []}
 
-  defp effect(effect) do
+  defp effect(effect, details?) do
     calls = if effect.calls in [nil, []], do: "", else: " → #{list(effect.calls)}"
-    {"effect #{effect.name}  ← #{list(effect.handles)}#{calls}", [], []}
+
+    {"effect #{effect.name}  ← #{list(effect.handles)}#{calls}",
+     if(details?, do: constraints(effect), else: []), []}
   end
 
-  defp process_manager(pm) do
+  defp process_manager(pm, details?) do
     starts = Enum.map(pm.starts_on, & &1.event)
     ends = if pm.ends_on == [], do: "", else: " · ends on #{list(pm.ends_on)}"
-    {"process manager #{pm.name}  ← #{list(starts)}#{ends}", [], []}
+    invariants = for i <- Map.get(pm, :invariants, []), do: "invariant #{i.name} — #{i.label}"
+
+    {"process manager #{pm.name}  ← #{list(starts)}#{ends}",
+     if(details?, do: invariants ++ constraints(pm), else: []), []}
   end
 
   defp read_model(read_model, details?) do
