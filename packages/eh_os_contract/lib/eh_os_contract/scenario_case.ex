@@ -21,7 +21,7 @@ defmodule EhOsContract.ScenarioCase do
   was. It holds the fields the scenario names, and any others. Only a step the engine
   would take holds a state: a run starts on a `starts_on` event and takes nothing
   after an `ends_on` one, so a given before the start, or a trigger after the end,
-  fails the scenario.
+  fails the scenario; so do events whose correlation names two runs.
 
   **What it asserts keeps `ContractExample`'s semantics.** The events a scenario
   expects, and the commands it says are issued, **appear among those produced, in
@@ -567,6 +567,7 @@ defmodule EhOsContract.ScenarioCase do
     starts = Enum.map(pm.starts_on, & &1.event)
     ends = pm.ends_on
     timer? = Enum.any?(pm.timers, &(&1.name == scenario.trigger.name))
+    one_run!(pm, scenario, timer?)
 
     status =
       Enum.reduce(scenario.given, :none, fn given, status ->
@@ -600,6 +601,28 @@ defmodule EhOsContract.ScenarioCase do
            "the engine would not take #{inspect(scenario.trigger.name)}: the run of " <>
              "#{inspect(pm.name)} is #{if status == :ended, do: "ended", else: "not started"}, " <>
              "so it holds no state after it"
+  end
+
+  # The engine tells runs by their correlation, so events that give it two values
+  # are two runs, never one state. A value left out is the one the scenario gives
+  # elsewhere (`identity/1`). A timer delivers no event.
+  defp one_run!(pm, scenario, timer?) do
+    data =
+      Enum.map(scenario.given, & &1.data) ++ if(timer?, do: [], else: [scenario.trigger.data])
+
+    for field <- pm.correlate do
+      case data |> Enum.map(&Map.get(&1, field)) |> Enum.reject(&is_nil/1) |> Enum.uniq() do
+        [_, _ | _] = values ->
+          flunk(
+            "the scenario's events belong to more than one run of #{inspect(pm.name)}: " <>
+              "#{inspect(field)} is #{Enum.map_join(values, ", ", &inspect/1)}, and a state " <>
+              "is one run's"
+          )
+
+        _ ->
+          :ok
+      end
+    end
   end
 
   # What a scenario expects, with its data cast as the struct's would be.

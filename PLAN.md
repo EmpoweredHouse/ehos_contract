@@ -606,6 +606,9 @@ Na `dsl/ep4-executable` (od `origin/main` = `8f685cf`, po #108).
   - pole korelacji w S3 sprawdzane jak `:id` — wartość złego typu pada dopiero w teście, z nazwą pola.
 
   Bezpieczeństwo i wydajność: poza powyższym bez defektu. Do stron trafiają tylko nazwy pól stanu, nie wartości.
+- **CodeRabbit (#109), jedna uwaga — poprawiona:** scenariusz ze `state`, którego zdarzenia mają dwie wartości
+  korelacji (`given` wizyty A, wyzwalacz wizyty B), składał je w jeden stan, a runtime założyłby dwa runy. Taki
+  scenariusz teraz pada.
 - **Brama zielona po przeglądzie:** **EXIT=0** — sandbox 148, `check` 0 / 29 / 9; silnik 1198, `check` 0 / 71 / 6;
   web 52; auth 285 + 1 właściwość.
 

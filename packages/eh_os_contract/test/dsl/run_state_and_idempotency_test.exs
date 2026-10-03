@@ -84,6 +84,13 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
       state %{paid: 20}
     end
 
+    scenario "płatności dwóch wizyt" do
+      scope :chase
+      given :paid, %{visit_id: "w-1", amount: 30}
+      on :paid, %{visit_id: "w-2", amount: 20}
+      state %{paid: 50}
+    end
+
     scenario "przypomnienie — stan bez zmian" do
       scope :chase
       given :paid, %{amount: 30}
@@ -212,8 +219,8 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
       assert ExUnit.AssertionError.message(error) =~ ~s|visit_id: "scenario"|
     end
 
-    # What the engine would never take holds no state: a timer of an ended run, and a
-    # given before anything started the run.
+    # What the engine would never take holds no state: a timer of an ended run, a given
+    # before anything started the run, and events of two runs folded as one.
     test "fails on a step the engine would not take", %{model: model} do
       error =
         assert_raise ExUnit.AssertionError, fn ->
@@ -230,6 +237,14 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
 
       assert ExUnit.AssertionError.message(error) =~
                "given :reminded reaches no run: the engine starts a run of :chase only on [:paid]"
+
+      error =
+        assert_raise ExUnit.AssertionError, fn ->
+          run(model, "płatności dwóch wizyt", @right)
+        end
+
+      assert ExUnit.AssertionError.message(error) =~
+               ~s|belong to more than one run of :chase: :visit_id is "w-1", "w-2"|
     end
 
     test "S3 refuses a field the run does not have, and a value of the wrong type" do
