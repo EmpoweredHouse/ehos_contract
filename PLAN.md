@@ -82,6 +82,9 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
 - **Lista zmian do `eh-os`** — issues
   [eh-os#91](https://github.com/EmpoweredHouse/eh-os/issues/91)–[#96](https://github.com/EmpoweredHouse/eh-os/issues/96)
   i tabela w „Dopisek 1 października”. Nowa potrzeba: wiersz w tabeli i issue.
+- **EP — proza w kontrakcie** (decyzja użytkownika z 3 października): EP1 → EP2 → EP3, potem EP4 i EP5 po
+  decyzjach o kształcie — „Dopisek 3 października — EP”. **EP1 zrobione** na `dsl/ep1-source` (przegląd przed
+  EP2). Przed EP2 do rozstrzygnięcia `invariant` encji.
 
 ### Co przeczytać najpierw
 
@@ -341,6 +344,119 @@ przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie p
 
 Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty, commity, opisy PR, `docs/adr/`,
 `README.md` — po angielsku; `PLAN.md` i `CLAUDE.md` po polsku. Pełna reguła — `CLAUDE.md`.
+
+## Dopisek 3 października — EP: proza w kontrakcie, drabina od nazwy do testu
+
+**Porównanie z ESDM powtórzone 3 października.** `thenativeweb/esdm` na `295e1ca` (29 września): od `cf17780`,
+na którym stoi „Analiza pokrycia ESDM (27 września)”, zmieniły się tylko dwa pliki CI, więc model to nadal 0.15.0.
+Klucz po kluczu ze schematów `core` i `given-when-then` i reguła po regule (73): rodzaje, które przejęliśmy, są
+pokryte, scenariusze GWT też, narzędzia mają odpowiedniki (`check --format json`, `docs/rules.md`, `view`,
+`glossary`, `pages`, `graph`). Brakuje pól, które w ESDM są prozą albo metadanymi: `constraints` na `policy`,
+`event-handler` i `process-manager`; `invariants` na `process-manager` i `entity`; prozy `rule` przy reakcji process
+managera i opisu timera; `responsibilities` aktora; `category` i `capabilities` systemu zewnętrznego; `terms`
+relacji jako par (u nas płaska lista, także w relacji symetrycznej, gdzie ESDM ich nie ma); `paradigm`;
+`description` i `metadata` na każdym elemencie; `at-most-once` i `idempotency.owner`; tożsamości `static` i
+generatorów innych niż `:uuid`; oczekiwanego `state` w scenariuszu process managera i scenariusza read modelu ze
+zmaterializowanymi wierszami. Poza zakresem bez zmian: `feature` i Domain Storytelling.
+
+**Dlaczego proza się liczy** (użytkownik): droga to warsztat → kontrakt → aplikacja owinięta wokół kontraktu, a kod
+aplikacji generuje LLM. Proza kontraktu jest jego kontekstem, a później materiałem na sprawdzenia, które ograniczają
+niedeterminizm generowania. Przykład z materiału: reguła polityki `report_on_clinical_close` („do P1 zgłaszamy
+tylko usługi podlegające zgłoszeniu, resztę pomijamy”, `P-07`) żyje dziś w `@moduledoc` implementacji, a nie w
+kontrakcie; dwa scenariusze ją ilustrują, ale nic ich z nią nie wiąże; wygenerowane `@callback` nie mają `@doc`.
+
+**Decyzje użytkownika (3 października):**
+- **Drabina prozy jako reguła DSL-a.** Każda nowa proza ma nazwę i stoi na jednym ze szczebli: **0** — nazwana
+  proza (nazwa, tekst, `source`: kontekst dla LLM-a, kotwica strony, `@doc`, graf); **1** — zilustrowana
+  scenariuszem, który ją nazywa (test wykonywany, `check` ostrzega o regule bez scenariusza); **2** — wykonywana
+  (`reject`, walidator, przykłady — dziś inwariant, ograniczenie komendy, inwariant wartości, reguła serwisu).
+  Proza ze szczebla 0 może później wejść wyżej bez zmiany kształtu. *Odrzucone:* wolne `description:` na każdej
+  deklaracji, jak w ESDM (więcej kontekstu dla LLM-a, ale tekstu bez nazwy nie da się powiązać ze scenariuszem ani
+  do niego linkować — zostaje prozą na zawsze).
+- **Pierwsza runda: EP1 → EP2 → EP3**, każda część osobnym PR-em, każdy na gałęzi od poprzedniego, z
+  `pre-pr-review` po każdej. EP4 i EP5 — po EP3, niżej.
+- **Reguła bez scenariusza to ostrzeżenie, nie błąd** — jak `reaction-without-scenario`. *Odrzucone:* błąd jak S8
+  (scenariusz odmowy jest jedynym dowodem inwariantu; regułę reakcji sprawdza też raport zgodności na logu).
+
+**EP1 — `source:` na każdej deklaracji.** Dziś mają go agregat, granica, komenda, zdarzenie, inwariant,
+ograniczenie, encja, subdomena, kontekst, termin i serwis; nie mają `policy`, `effect`, `process_manager`, `timer`,
+`read_model`, `query`, `actor`, `external`, `value`, `relation`, `process`. Ślad z warsztatu do kontraktu, który
+`contract-distillation` i tak produkuje. Czytelnicy: `pages`, `@doc` (EP3). *(Poprawione 3 października po
+przeglądzie EP1: `view` jest drzewem struktury i nie pokazuje `source` żadnego rodzaju — nie jest czytelnikiem.)*
+
+**EP2 — nazwane reguły reakcji i scenariusz, który je ilustruje.**
+- `constraint` (kształt ograniczenia komendy) na `policy`, `effect` i `process_manager`; `invariant` na
+  `process_manager`.
+- Scenariusz `illustrates: :nazwa` (atom albo lista); nowa reguła `check` z ostrzeżeniem: ograniczenie reakcji,
+  ograniczenie query albo inwariant process managera bez scenariusza, który je ilustruje. Ograniczenie query wchodzi
+  tym samym ze szczebla 0 na 1 (scenariusz z `answers`).
+- Nowa odmowa kompilacji: `illustrates:` nazywa regułę, której cel scenariusza nie ma.
+- **Do decyzji przed budową — `invariant` encji.** Encja nie ma implementacji ani scenariuszy, więc na drabinie
+  stanęłaby na szczeblu 0 bez drogi wyżej. Opcje: (a) jak inwariant wartości, z `violated_by`/`satisfied_by` i
+  funkcją w implementacji encji (nowy `use … entity:`); (b) odłożyć, póki materiał nie da przykładu.
+- Przykład docelowy: `constraint :only_reportable_services, "Do P1 zgłaszamy tylko usługi podlegające zgłoszeniu;
+  pozostałe pomijamy", source: "P-07"` w `report_on_clinical_close` i `illustrates: :only_reportable_services` w
+  obu jej scenariuszach.
+
+**EP3 — proza dociera do kodu.** Wygenerowane `@callback` dostają `@doc` złożony z kontraktu: etykieta deklaracji
+i wywołania, reguły, które go dotyczą (ze szczeblem), odmowy, które wolno zwrócić, tytuły scenariuszy, `source`.
+Implementacje sandboxa przestają powtarzać regułę w `@moduledoc`. Skille `write-decider` i `write-reaction`
+startują od nazwanych reguł: każda ma scenariusz, zanim powstanie kod.
+
+**Po EP3 — EP4 i EP5, do decyzji przed budową** (propozycja asystenta):
+- **EP4 — co da się wykonywać:** oczekiwany `state` w scenariuszu process managera (po
+  `data_completeness_confirmed` stan `monthly_registry_check` ma `check_at`); scenariusz read modelu z oczekiwanymi
+  wierszami read modelu, nie tylko odpowiedzią query; `idempotency` z właścicielem (`:self` / `:downstream` /
+  `:infrastructure`), bo to różnica w kodzie efektu — przy `send_p1_report` z `:downstream` klucz idzie do P1.
+  Właściciel zmienia kształt `idempotency:` każdej reakcji, więc to osobna decyzja o kształcie.
+- **EP5 — systemy i granice, droga do sprawdzeń:** `capability` na `external` i `calls: {:p1, :submit_report}` w
+  efekcie (reguły: wywołanie niezadeklarowanej zdolności, zdolność nieużywana); `responsibility` aktora jako nazwana
+  proza; `terms` relacji jako pary słów z obu stron (czyta je słownik i reguła w duchu `label-with-avoided-term`;
+  `terms` w `partnership` Rehmedu — do rozstrzygnięcia, ESDM ich tam nie ma).
+
+**Odrzucone propozycje asystenta (3 października), każda z powodem:**
+- `at-most-once` — zgubione zdarzenie wygląda jak niezaszłe, raport zgodności przestaje mierzyć
+  (`docs/adr/technology-notes.md`, tabela transportów).
+- `paradigm` — magazyn read modelu jest hosta; byłaby tylko podpowiedzią.
+- `metadata` (`labels`, `annotations`) — bez czytelnika.
+- Generatory tożsamości poza `:uuid` — w ESDM to tylko nazwa, nic jej nie wykonuje.
+- `feature` i Domain Storytelling — bez zmian wobec 27 września.
+- Tożsamość `static` — dopiero z przykładem bytu w jednej instancji z materiału.
+- Sprawdzanie kodu wobec prozy przez LLM w CI — samo niedeterministyczne; najwyżej podpowiedź dla recenzenta,
+  nie brama. Na później.
+
+### EP1 — co wyszło (3 października)
+
+Na `dsl/ep1-source` (od `origin/main` = `0b7bc84`, po rebase z `64f888b`), niewypchnięte.
+- **`source:`** w kontrakcie na `policy`, `effect`, `process_manager`, `timer`, `read_model`, `query`, `process`;
+  w domenie na `actor`, `subject`, `value`, `external`, `relation`. `subject` ponad listę z planu
+  (rozstrzygnięcie asystenta: „pacjent” też jest z materiału, `A-01`). `consumes` i `publish` bez — to okablowanie
+  między kontraktami, nie fakt z warsztatu.
+- **Klucz w modelu zawsze, pusty poza digestem.** Kontrakt i domena bez `source:` mają te same wersje co przed
+  EP1 — test przypina dosłownie wersje policzone kodem z `origin/main` (`304120633fb2`, `6111225e8fc9`).
+  Pierwsza wersja usuwała pusty klucz z modelu (wzorzec z EM3); przegląd: to drugi kształt modelu obok rodzajów,
+  które `source` miały od początku, i EP3 czytające `policy.source` padłoby na `KeyError`. Teraz `nil` znika
+  dopiero w formie do digestu. Ustawienie albo zmiana źródła przesuwa digest deklaracji i wersję kontraktu, jak
+  etykieta — tak samo jak dotąd w zdarzeniu i komendzie.
+- **Czytelnik — `pages`:** `_Source: …_` na stronie deklaracji (polityka, efekt, process manager, read model,
+  query — przez istniejący nagłówek), w sekcji procesu i na stronie wartości; przy aktorze, podmiocie, systemie,
+  relacji i timerze w ich wierszu.
+- **Sandbox jako dane testowe:** źródła przeniesione z komentarzy tylko tam, gdzie identyfikator wskazuje jedną
+  deklarację — `P-07`, `A-01`, `X-01`, `X-02, X-03, X-04`, `E-55` w Rehmedzie; `03 §3` (dwie relacje),
+  `03 §4.10`, `03 §5, step 2`, `P6`, `03 §4.2` w TaxVision. Pominięte: `# A-02, A-03, A-05` nad trzema aktorami
+  (nie wiadomo, który do którego), relacje Rehmedu (komentarz nie mówi jednoznacznie, że opisuje każdą), aktorzy
+  integracji TaxVision (komentarz mówi, że materiał ich nie nazywa).
+- Słownik przypięty w obu testach słownictwa, `docs/dsl/` wygenerowane, linia w `CHANGELOG.md`.
+- **Brama zielona** na `a80905d` (po rebase na #100 i poprawce z przeglądu): **EXIT=0**, sandbox 145 testów,
+  `check` 0 / 29 / 9 (bez zmian); silnik 1157 (1135 przed rebase + testy #93–#100), `check` 0 / 68 / 6 (bez
+  zmian); web 52; auth 285 + 1 właściwość. Część podejść padła na `too_many_connections` — wspólny Postgres
+  zapchany przez procesy innej sesji, nie przez kod.
+- **Przegląd** (dwa równolegle): poprawność — 8 uwag, poprawione cztery (kształt modelu, test digestu, który nie
+  mógł paść, `view` w planie, relacja symetryczna bez testu); bezpieczeństwo i wydajność — bez defektu. Bez
+  zmian: zmiana źródła przesuwa wersję (jak etykieta i `source` zdarzenia); `_Source: …_` bez escapowania, jak
+  dotychczasowe strony; identyfikatory w komentarzach zostają tam, gdzie komentarz coś wyjaśnia. Odłożone do EP3
+  (skille): w `source` identyfikatory z materiału, nie nazwiska — `source` idzie do modelu dla EHOS-a i na
+  strony, a nic nie sprawdza w nim danych osobowych.
 
 ## Dopisek 2 października (2) — #83: `ehos.yaml/v2` i `sign_in`; podział EB2
 

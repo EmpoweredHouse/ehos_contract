@@ -167,15 +167,16 @@ defmodule Taxvision.Contracts.AccountingMonth do
     end
   end
 
-  # 03 §5, step 2.
   policy :month_opens_on_consistent_registry, "Zgodne rejestry — miesiąc się otwiera",
     handles: :registry_data_consistent,
-    issues: :open_month
+    issues: :open_month,
+    source: "03 §5, step 2"
 
   # P6: when a statement (CSV/MT940) is uploaded, parse it into turnovers and match them.
   policy :match_each_turnover, "Wyciąg wgrany — dopasuj każdy obrót",
     handles: :bank_turnover_list_created,
-    issues: :run_matching
+    issues: :run_matching,
+    source: "P6"
 
   publish :month_opened,
     as: "taxvision.accounting_month.opened.v1",

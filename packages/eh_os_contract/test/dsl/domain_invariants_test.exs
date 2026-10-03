@@ -72,7 +72,8 @@ defmodule EhOsContract.DomainInvariantsTest do
       [money] = model.values
 
       assert money.invariants == []
-      assert model.digests["value:money"] == Digest.hash(Map.delete(money, :invariants))
+      # A `nil` source stays out of the digest too (plan EP1).
+      assert model.digests["value:money"] == Digest.hash(Map.drop(money, [:invariants, :source]))
     end
 
     test "an invariant moves its value's digest, and the order of invariants does not" do

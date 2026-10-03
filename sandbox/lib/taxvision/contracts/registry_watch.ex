@@ -153,7 +153,8 @@ defmodule Taxvision.Contracts.RegistryWatch do
   effect :look_up_registries, "Zapytaj rejestry publiczne",
     handles: :data_completeness_confirmed,
     calls: :registries,
-    idempotency: :event_id
+    idempotency: :event_id,
+    source: "03 §4.2"
 
   policy :compare_with_registries, "Porównaj odpowiedź rejestrów z danymi firmy",
     handles: :registry_status_checked,

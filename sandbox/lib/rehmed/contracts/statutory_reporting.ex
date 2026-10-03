@@ -101,7 +101,8 @@ defmodule Rehmed.Contracts.StatutoryReporting do
   policy :report_on_clinical_close,
          "Zamknięcie kliniczne — zgłoszenie do P1 albo jego pominięcie",
          handles: :visit_closed_clinically,
-         issues: [:queue_p1_report, :waive_p1_report]
+         issues: [:queue_p1_report, :waive_p1_report],
+         source: "P-07"
 
   effect :send_p1_report, "Wyślij zgłoszenie do rejestru P1",
     handles: :p1_report_queued,

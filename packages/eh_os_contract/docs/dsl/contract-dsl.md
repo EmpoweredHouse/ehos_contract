@@ -923,6 +923,7 @@ Whenever an event happens, issue a command.
 | [`issues`](#contract-policy-issues){: #contract-policy-issues .spark-required} | `atom \| list(atom)` |  | The commands it may issue. |
 | [`delivery`](#contract-policy-delivery){: #contract-policy-delivery } | `:in_transaction \| :at_least_once` | `:in_transaction` | When it runs. |
 | [`idempotency`](#contract-policy-idempotency){: #contract-policy-idempotency } | `atom` |  | What makes a second delivery harmless. |
+| [`source`](#contract-policy-source){: #contract-policy-source } | `String.t` |  | Where the policy comes from in the material. |
 
 
 
@@ -955,6 +956,7 @@ A side effect on an event, outside the log.
 | [`calls`](#contract-effect-calls){: #contract-effect-calls } | `atom \| list(atom)` | `[]` | The external systems it calls. |
 | [`delivery`](#contract-effect-delivery){: #contract-effect-delivery } | `:in_transaction \| :at_least_once` | `:at_least_once` | When it runs. |
 | [`idempotency`](#contract-effect-idempotency){: #contract-effect-idempotency } | `atom` |  | What makes a second delivery harmless. |
+| [`source`](#contract-effect-source){: #contract-effect-source } | `String.t` |  | Where the effect comes from in the material. |
 
 
 
@@ -993,6 +995,7 @@ Steers a run: starts on an event, reacts, sets timers, ends.
 | [`correlate`](#contract-process_manager-correlate){: #contract-process_manager-correlate .spark-required} | `atom \| list(atom)` |  | The fields that tell which run an event belongs to. |
 | [`delivery`](#contract-process_manager-delivery){: #contract-process_manager-delivery } | `:in_transaction \| :at_least_once` | `:at_least_once` | When it runs. |
 | [`idempotency`](#contract-process_manager-idempotency){: #contract-process_manager-idempotency } | `atom` |  | What makes a second delivery harmless. |
+| [`source`](#contract-process_manager-source){: #contract-process_manager-source } | `String.t` |  | Where the process manager comes from in the material. |
 
 
 ### contract.process_manager.state
@@ -1129,6 +1132,7 @@ A timer of a process manager: after a wait, or at a time in its state.
 | [`wait`](#contract-process_manager-timer-wait){: #contract-process_manager-timer-wait } | `any` |  | How long after it is set it fires, `{n, unit}`. |
 | [`at`](#contract-process_manager-timer-at){: #contract-process_manager-timer-at } | `atom` |  | The `:timestamp` field of the state it fires at. |
 | [`issues`](#contract-process_manager-timer-issues){: #contract-process_manager-timer-issues } | `atom \| list(atom)` | `[]` | Commands it issues when it fires. |
+| [`source`](#contract-process_manager-timer-source){: #contract-process_manager-timer-source } | `String.t` |  | Where the timer comes from in the material. |
 
 
 
@@ -1189,6 +1193,7 @@ Rows projected from events, for queries to read.
 |------|------|---------|------|
 | [`projects`](#contract-read_model-projects){: #contract-read_model-projects .spark-required} | `atom \| list(atom)` |  | The events it projects. |
 | [`delivery`](#contract-read_model-delivery){: #contract-read_model-delivery } | `:in_transaction \| :at_least_once` | `:in_transaction` | When it is updated. |
+| [`source`](#contract-read_model-source){: #contract-read_model-source } | `String.t` |  | Where the read model comes from in the material. |
 
 
 ### contract.read_model.field
@@ -1258,6 +1263,7 @@ A question an actor may ask of a read model; a capability, like a command.
 | [`by`](#contract-query-by){: #contract-query-by } | `atom \| list(atom)` | `[]` | The actors who may ask it. |
 | [`returns`](#contract-query-returns){: #contract-query-returns } | `:many \| :one` | `:many` | Rows or one row. |
 | [`scope`](#contract-query-scope){: #contract-query-scope } | `atom` |  | The row field a grant narrows the answer to: a parameter and a scope of every actor. |
+| [`source`](#contract-query-source){: #contract-query-source } | `String.t` |  | Where the query comes from in the material. |
 
 
 ### contract.query.param
@@ -1601,6 +1607,7 @@ The one process the contract describes: its runs, stages and promises.
 |------|------|---------|------|
 | [`correlate`](#contract-process-correlate){: #contract-process-correlate .spark-required} | `atom \| list(atom)` |  | The fields that tell which run an event belongs to. |
 | [`accountable`](#contract-process-accountable){: #contract-process-accountable } | `atom` |  | The actor a finding about the process is addressed to. |
+| [`source`](#contract-process-source){: #contract-process-source } | `String.t` |  | Where the process comes from in the material. |
 
 
 ### contract.process.stage

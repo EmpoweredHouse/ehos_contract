@@ -283,7 +283,11 @@ defmodule EhOsContract.Pages do
         &bullet([link(code(&1.name), entity_path(&1.name)), " — #{&1.label}"])
       ),
       section("Actors", d.actors, &actor/1),
-      section("Subjects of personal data", d.subjects, &"- #{code(&1.name)} — #{&1.label}"),
+      section(
+        "Subjects of personal data",
+        d.subjects,
+        &"- #{code(&1.name)} — #{&1.label}#{source_note(&1)}"
+      ),
       section("External systems", d.externals, &external/1),
       section("Relations between contexts", d.relations, &relation(site, &1)),
       "",
@@ -312,7 +316,17 @@ defmodule EhOsContract.Pages do
       ]
       |> Enum.reject(&is_nil/1)
 
-    "- #{code(a.name)} — #{a.label} · #{a.kind}#{Enum.map_join(extra, "", &" · #{&1}")}"
+    "- #{code(a.name)} — #{a.label} · #{a.kind}#{Enum.map_join(extra, "", &" · #{&1}")}" <>
+      source_note(a)
+  end
+
+  # Where a declaration listed on another's page comes from, after its other facts (plan
+  # EP1). A declaration with a page of its own says it under its title instead.
+  defp source_note(declaration) do
+    case Map.get(declaration, :source) do
+      nil -> ""
+      source -> " · _source: #{cell(source)}_"
+    end
   end
 
   defp external(e) do
@@ -323,18 +337,24 @@ defmodule EhOsContract.Pages do
       ]
       |> Enum.reject(&is_nil/1)
 
-    "- #{code(e.name)} — #{e.label} · #{e.direction}#{Enum.map_join(extra, "", &" · #{&1}")}"
+    "- #{code(e.name)} — #{e.label} · #{e.direction}#{Enum.map_join(extra, "", &" · #{&1}")}" <>
+      source_note(e)
   end
 
-  defp relation(site, %{between: [_ | _] = between} = r),
-    do: bullet(["#{r.type} between " | joined(Enum.map(between, &context_or_external(site, &1)))])
+  defp relation(site, %{between: [_ | _] = between} = r) do
+    bullet(
+      ["#{r.type} between "] ++
+        joined(Enum.map(between, &context_or_external(site, &1))) ++ [source_note(r)]
+    )
+  end
 
   defp relation(site, r) do
     bullet([
       "#{r.type}: ",
       context_or_external(site, r.upstream),
       " upstream of ",
-      context_or_external(site, r.downstream)
+      context_or_external(site, r.downstream),
+      source_note(r)
     ])
   end
 
@@ -355,7 +375,8 @@ defmodule EhOsContract.Pages do
       facts([
         if(v.type, do: row(["Type: ", type_link(site, v.type)]), else: "A value with fields."),
         if(v.unit, do: "Unit: #{code(v.unit)}."),
-        if(v.context, do: row(["Context: ", link(code(v.context), context_path(v.context))]))
+        if(v.context, do: row(["Context: ", link(code(v.context), context_path(v.context))])),
+        if(Map.get(v, :source), do: "_Source: #{v.source}_")
       ]),
       if(v.fields != [], do: ["", "## Fields", "" | fields_table(site, v.fields)], else: []),
       invariants(v.invariants),
@@ -602,7 +623,8 @@ defmodule EhOsContract.Pages do
         "Runs are told by #{Enum.map_join(p.correlate, ", ", &code/1)}.",
         if(p.accountable, do: "Accountable: #{code(p.accountable)}."),
         if(p.deadline, do: "Deadline: #{duration(p.deadline)}."),
-        if(p.cadence, do: "Cadence: every #{duration(p.cadence)}.")
+        if(p.cadence, do: "Cadence: every #{duration(p.cadence)}."),
+        if(Map.get(p, :source), do: "_Source: #{p.source}_")
       ]),
       stages(site, model, p),
       section("Included from other contracts", elsewhere, & &1),
@@ -869,7 +891,7 @@ defmodule EhOsContract.Pages do
       section("Reacts to", pm.on, reaction),
       section("Timers", pm.timers, fn t ->
         issues = Enum.map(t.issues, &command_link(model, &1))
-        bullet(["#{code(t.name)} → " | joined(issues)])
+        bullet(["#{code(t.name)} → " | joined(issues) ++ [source_note(t)]])
       end),
       section("Ends on", pm.ends_on, &bullet([event_link(site, model, &1)])),
       ["", "## State", "" | fields_table(site, pm.state.fields)]
