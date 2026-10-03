@@ -11,8 +11,10 @@ reviews in parallel, settle what they find, pass the gate, record it. A Claude C
 refused until `HEAD` carries a note in `refs/notes/review`. The note belongs to one commit, so a
 new commit, amend or rebase leaves the new `HEAD` without one.
 
-The hook is a reminder for this workflow, not access control. It reads the local `HEAD`, not the
-branch the pull request will carry (`--head`), it does not see an invocation behind `env`,
+The hook is a reminder for this workflow, not access control. It reads the `HEAD` of the directory
+the command runs in — the one a leading `cd <dir> &&` names, else the session's working directory, so a
+worktree is checked as itself and not as the main checkout — not the branch the pull request will carry
+(`--head`), it does not see an invocation behind `env`,
 `bash -c` or a shell keyword, it lets everything through on a machine without `jq`, and it
 refuses `--help` too (`gh help pr create` works). Keeping to the steps is what makes the note
 mean something.
