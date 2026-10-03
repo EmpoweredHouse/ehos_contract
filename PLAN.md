@@ -658,6 +658,16 @@ Na `dsl/ep5a-capabilities` (od `origin/main` = `64a7864`, po #109).
 - **Sprawdzenia odwrotne:** bez ochrony digestu pada wersja domeny z EP1; bez X4 dla operacji — test odmów; bez
   ostrzeżenia — test `check`.
 - `docs/contract.md`, `docs/dsl/`, `docs/rules.md`, skille `write-reaction` i `contract-distillation`, CHANGELOG.
+- **Przegląd** (dwa równolegle). Poprawione, ze sprawdzeniem odwrotnym: powtórzone wywołanie
+  (`[{:p1, :a}, {:p1, :a}]`) dwa razy w modelu i dwie identyczne odmowy X4; `Enum.uniq` na `calls` także
+  efektów bez operacji (mógł przesunąć digest); ostrzeżenie o operacjach systemu, którego żaden efekt nie woła,
+  obok `orphan-external-system` — teraz tylko dla wołanego systemu; ostrzeżenie wskazywało linię systemu, nie
+  operacji; niezrozumiały komunikat dla `{:mail, :send}` przy systemie bez operacji; strona efektu traciła
+  dwukropek („Calls:”) także bez operacji; nawiasy przy `operation` w sandboxie. Bez zmian: etykieta operacji na
+  stronie bez escapowania (jak każda etykieta, string autora kontraktu); pojedyncze backticki (nazwy snake_case
+  z D1); P2 drukuje krotki w `calls` (tylko komunikat). Pominięte: operacje na systemie `:inbound` (ostrzeżenie je
+  pokaże; reguła byłaby nowa); graf i `view` bez operacji; test digestu porównuje dwie domeny nowym kodem —
+  przesunięcie łapie wersja przypięta w EP1.
 - **Brama zielona** przed przeglądem: **EXIT=0** — sandbox 148, `check` 0 / 29 / 9 (bez zmian: obie operacje
   sandboxa są wołane); silnik 1206 (1198 + 8), `check` 0 / 71 / 6; web 52; auth 285 + 1 właściwość.
 

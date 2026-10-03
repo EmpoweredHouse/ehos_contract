@@ -890,7 +890,7 @@ defmodule EhOsContract.Pages do
     [
       facts([
         row(["Handles: " | joined(Enum.map(List.wrap(e.handles), &event_link(site, model, &1)))]),
-        Doc.calls(e),
+        if(called = Doc.called(e), do: "Calls: #{called}."),
         "Delivered #{code(e.delivery)}.",
         Doc.idempotency(e)
       ]),

@@ -111,17 +111,19 @@ defmodule EhOsContract.Contract.Build do
   # read it, and the operations it names go under their own key, only where it names
   # some, so no effect written without one moves its digest.
   defp operations(%{calls: calls} = effect) do
-    named = for {external, operation} <- calls, do: %{external: external, name: operation}
+    case Enum.uniq(for {external, operation} <- calls, do: %{external: external, name: operation}) do
+      [] ->
+        effect
 
-    systems =
-      calls
-      |> Enum.map(fn
-        {external, _} -> external
-        external -> external
-      end)
+      named ->
+        systems =
+          Enum.map(calls, fn
+            {external, _} -> external
+            external -> external
+          end)
 
-    effect = %{effect | calls: Enum.uniq(systems)}
-    if named == [], do: effect, else: Map.put(effect, :operations, named)
+        Map.merge(effect, %{calls: Enum.uniq(systems), operations: named})
+    end
   end
 
   # `[key: :event_id, owner: :self]` as a map, as every other pair of the model is

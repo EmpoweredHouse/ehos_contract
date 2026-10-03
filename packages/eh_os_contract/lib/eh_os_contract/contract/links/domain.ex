@@ -304,13 +304,19 @@ defmodule EhOsContract.Contract.Links.Domain do
       )
 
     for effect <- d.effects,
-        call <- effect.calls,
+        call <- Enum.uniq(effect.calls),
         {:ok, operations} <- [Map.fetch(declared, system(call))],
         problem <- operation_problems(call, operations, domain) do
       {"X4: effect #{inspect(effect.name)}: calls #{inspect(call)}, " <> problem,
        Links.at(effect)}
     end
   end
+
+  defp operation_problems({external, _operation}, [], domain),
+    do: [
+      "and external #{inspect(external)} of #{inspect(domain.module)} declares no " <>
+        "operations, so the call names the system alone: #{inspect(external)}"
+    ]
 
   defp operation_problems({external, operation}, operations, domain) do
     if operation in operations,

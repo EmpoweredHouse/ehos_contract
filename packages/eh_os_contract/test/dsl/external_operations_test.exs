@@ -44,6 +44,10 @@ defmodule EhOsContract.ExternalOperationsTest do
 
         effect :notify, "Powiadom", handles: :queued, calls: :mail,
           idempotency: [key: :event_id, owner: :self]
+
+        effect :resend, "Wyślij ponownie", handles: :queued,
+          calls: [{:p1, :submit_report}, {:p1, :submit_report}],
+          idempotency: [key: :event_id, owner: :downstream]
       """),
       "operations_model.ex"
     )
@@ -164,6 +168,24 @@ defmodule EhOsContract.ExternalOperationsTest do
                  "{:p1, :submit_report}, {:p1, :withdraw_report}"
     end
 
+    test "refuses an operation of a system without any, and names a repeated call once" do
+      violations =
+        links("OperationsNone", """
+          effect :send, "Wyślij", handles: :queued, calls: [{:mail, :send}, :p1, :p1],
+            idempotency: [key: :event_id, owner: :downstream]
+        """)
+
+      assert [first, second] = Enum.sort_by(violations, & &1.message)
+
+      assert first.message =~
+               "calls :p1, and external :p1 declares what it does"
+
+      assert second.message =~
+               "calls {:mail, :send}, and external :mail of " <>
+                 "EhOsContract.ExternalOperationsTest.Clinic declares no operations, so the " <>
+                 "call names the system alone: :mail"
+    end
+
     test "names the system first when it is not one of the domain's" do
       violations =
         links("OperationsNoSystem", """
@@ -174,6 +196,48 @@ defmodule EhOsContract.ExternalOperationsTest do
       assert [%{message: message}] = violations
       assert message =~ "X4: effect :send: calls :p2 is not an external of"
     end
+  end
+
+  test "check says nothing of the operations of a system no effect calls" do
+    compile(
+      """
+      defmodule EhOsContract.ExternalOperationsTest.Quiet do
+        use EhOsContract.Domain, name: :quiet, language: :pl
+
+        subdomain :core, "Core", type: :core
+        context :reporting, "Zgłoszenia", subdomain: :core
+        actor :specialist, :human, "Specjalista"
+
+        external :p1, "Rejestr P1", direction: :bidirectional do
+          operation :submit_report, "Przyjmij zgłoszenie"
+        end
+      end
+
+      defmodule EhOsContract.ExternalOperationsTest.QuietReports do
+        use EhOsContract.Contract,
+          domain: EhOsContract.ExternalOperationsTest.Quiet,
+          context: :reporting
+
+        aggregate :report, "Zgłoszenie" do
+          identity :report_id
+          command :queue, "Zakolejkuj", by: :specialist, emits: :queued
+          event :queued, "Zakolejkowano"
+        end
+
+        process :report, "Zgłoszenie" do
+          correlate :report_id
+        end
+      end
+      """,
+      "operations_quiet.ex"
+    )
+
+    rules =
+      for f <- Completeness.findings([EhOsContract.ExternalOperationsTest.QuietReports]),
+          f.rule in ["orphan-external-system", "operation-never-called"],
+          do: f.rule
+
+    assert rules == ["orphan-external-system"]
   end
 
   describe "the model and its readers" do
@@ -192,6 +256,11 @@ defmodule EhOsContract.ExternalOperationsTest do
       assert send.operations == [%{external: :p1, name: :submit_report}]
       assert notify.calls == [:mail]
       refute Map.has_key?(notify, :operations)
+
+      # A call written twice is one call.
+      resend = Enum.find(model.effects, &(&1.name == :resend))
+      assert resend.calls == [:p1]
+      assert resend.operations == [%{external: :p1, name: :submit_report}]
     end
 
     test "the callback's doc and the pages say the operation", %{model: model} do
@@ -201,7 +270,7 @@ defmodule EhOsContract.ExternalOperationsTest do
       pages = Pages.render(Model.fetch(@domain), [model])
       text = pages |> Map.values() |> Enum.join("\n")
 
-      assert text =~ "Calls `p1` (`submit_report`), `mail`."
+      assert text =~ "Calls: `p1` (`submit_report`), `mail`."
 
       assert text =~
                "  - operation `submit_report` — Przyjmij zgłoszenie zdarzenia medycznego · " <>
@@ -219,6 +288,9 @@ defmodule EhOsContract.ExternalOperationsTest do
       assert finding.message =~
                "operation :withdraw_report of external :p1 of " <>
                  "EhOsContract.ExternalOperationsTest.Clinic is called by no effect"
+
+      # It points at the operation, not at its system.
+      assert EhOsContract.Check.Finding.place(finding) == {"operations_clinic.ex", 10}
     end
   end
 end

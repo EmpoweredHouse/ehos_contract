@@ -124,7 +124,7 @@ defmodule Rehmed.Domain do
     source: "X-01" do
     # Plan EP5a: the one thing the clinic asks of P1. Whether its answer tells one
     # accepted event from a delivered one is `H64`, still open.
-    operation(:submit_report, "Przyjmij zgłoszenie zdarzenia medycznego", source: "X-01, AGG-10")
+    operation :submit_report, "Przyjmij zgłoszenie zdarzenia medycznego", source: "X-01, AGG-10"
   end
 
   # X-02, X-03, X-04: LuxMed, Enelmed and TuZdrowie, which work identically
