@@ -162,15 +162,26 @@ defmodule EhOsContract.CodecTest do
       decoded
     end
 
-    test "negative, zero and an integer far beyond 64 bits come back as they went" do
+    test "negative, zero and the ends of 64 bits come back as they went" do
       # A correction or a reversal is counted negative, and zero is a value, not an
-      # absence. The column is JSON and the BEAM has bignums, so nothing truncates.
-      huge = 12_345_678_901_234_567_890_123_456_789
-
-      for amount <- [-1, 0, huge] do
+      # absence.
+      for amount <- [-1, 0, -9_223_372_036_854_775_808, 9_223_372_036_854_775_807] do
         assert Codec.problems(@edges, %{amount: amount}, %{}) == []
         assert round_trip(%{amount: amount}).amount == amount
       end
+    end
+
+    # Until 3 October an integer far beyond 64 bits was let in: the column is JSON and the
+    # BEAM has bignums. A host's read model holds a `bigint` at most, so the input is bounded
+    # now; one already in the log still reads back.
+    test "an integer beyond 64 bits does not fit, and one in the log still reads back" do
+      huge = 12_345_678_901_234_567_890_123_456_789
+
+      assert Codec.problems(@edges, %{amount: huge}, %{}) == [amount: :type]
+
+      stored = Codec.encode(@edges, %{amount: huge}, %{})
+      open = fn _path, _subject, value -> {:ok, value} end
+      assert {:ok, %{amount: ^huge}} = Codec.decode(@edges, stored, %{}, open: open)
     end
 
     test "before 1970 and far into the future both survive" do

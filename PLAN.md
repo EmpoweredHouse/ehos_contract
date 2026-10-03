@@ -1023,6 +1023,30 @@ Bez zmian:
 
 Auth: 274 → 278 testów.
 
+### Granice wartości z żądania (3 października)
+
+Pięć znalezisk przeglądu bezpieczeństwa #93; użytkownik przyjął wszystkie propozycje. Gałąź `engine/bounded-values`,
+na `engine/unstorable-bytes` (#93). Każda granica to `{pole, :type}` (422); odczyt logu nie pyta o żadną.
+
+**Decyzje użytkownika (3 października), z opcjami, które przegrały:**
+- **`:id` najwyżej 255 bajtów** — wpis btree/GIN ~2,7 KB. *Odrzucone:* sprawdzanie długości zbudowanego klucza
+  przed transakcją — późno i w jednym miejscu z wielu.
+- **`:integer` w int64 — odwraca decyzję z 29 września** (`763cec0`, zapisaną tylko w teście: „The column is JSON
+  and the BEAM has bignums, so nothing truncates”). Asystent pokazał konflikt przed zmianą; użytkownik wybrał
+  ograniczenie wejścia. *Odrzucone:*
+  - bignumy w logu, granica tylko dla parametrów zapytania — read model hosta z `bigint` dalej padałby na komendzie;
+  - bez granicy.
+- **`:decimal` skończony, wykładnik i współczynnik do tysiąca cyfr.** Przy pisaniu wyszło, że **Decimal 3.1.1 sam
+  zatrzymuje wybuch pamięci**, który zgłosił przegląd: tekst parsuje w granicach decimal128 (34 cyfry, wykładnik do
+  6144), a `:normal` powyżej 6178 cyfr rzuca `ArgumentError`. Zostały `NaN`/`Infinity` i struktura z kodu (500).
+- **`:date`/`:timestamp` w latach 1–9999.**
+- **Query string spoza UTF-8 to 400 `query_is_not_utf8`**, po autoryzacji. *Odrzucone:* zostawić Phoenixowi — goły
+  Plug daje 500.
+
+**Weryfikacja:** próby odwrotne, każda granica osobno, odczyt logu ograniczony i Plug bez `rescue`. Każda wywraca
+test. Granica `:id` w `decode/4` dostała osobny test, bo zapytanie i komenda łapią ją i tak w `fits?`. Silnik:
+1126 → 1134.
+
 ### Bajty, których tabele silnika nie utrzymają (3 października)
 
 Zadanie zgłoszone w przeglądzie #66 i uruchomione przez użytkownika. Gałąź `engine/unstorable-bytes`, od `762521e`.

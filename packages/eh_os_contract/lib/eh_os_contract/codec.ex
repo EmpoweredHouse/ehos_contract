@@ -10,6 +10,14 @@ defmodule EhOsContract.Codec do
   personal value, opened when the log is read back with `open:`, is not asked again:
   what is read back was written, and its ciphertext holds what was let in before the
   rule.
+
+  **Bounds.** What a request controls is bounded where what holds it is: an `:id` is
+  at most 255 bytes, which an index entry keys with room for the rest of a key; an
+  `:integer` is a signed 64-bit integer, what a `bigint` column holds; a `:decimal` is
+  finite, its exponent and coefficient of at most a thousand digits, so its log form
+  can be written; a `:date` and a `:timestamp` are within the years 1 to 9999, which
+  Postgres keeps. Past one a value does not fit its type. Reading the log back asks
+  none of them, so what was written before them still reads.
   `:integer` and `:boolean` what they
   say, `:decimal` a `Decimal`, `:date` a `Date`, `:timestamp` a `DateTime` in UTC,
   `{:enum, members}` one of the member atoms, `{:list, type}` a list of them. A
@@ -41,6 +49,11 @@ defmodule EhOsContract.Codec do
   """
 
   alias EhOsContract.Erased
+
+  @max_id 255
+  @int64 -9_223_372_036_854_775_808..9_223_372_036_854_775_807
+  @max_coefficient Integer.pow(10, 1000)
+  @years 1..9999
 
   @typedoc "A declared field, as a model carries it."
   @type field :: %{
@@ -147,16 +160,18 @@ defmodule EhOsContract.Codec do
   defp fits?(:string, value, _values), do: text?(value)
   # An empty identifier names nothing: it would key a stream, a tag and a run with
   # nothing after the colon, one for every caller that forgot to fill it in.
-  defp fits?(:id, value, _values), do: text?(value) and value != ""
+  defp fits?(:id, value, _values),
+    do: text?(value) and value != "" and byte_size(value) <= @max_id
+
   # An entity's identifier where the model keeps the declared type: a function's result.
   defp fits?({:id, _entity}, value, values), do: fits?(:id, value, values)
-  defp fits?(:integer, value, _values), do: is_integer(value)
+  defp fits?(:integer, value, _values), do: is_integer(value) and value in @int64
   defp fits?(:boolean, value, _values), do: is_boolean(value)
-  defp fits?(:decimal, value, _values), do: is_struct(value, Decimal)
-  defp fits?(:date, value, _values), do: is_struct(value, Date)
+  defp fits?(:decimal, value, _values), do: is_struct(value, Decimal) and bounded?(value)
+  defp fits?(:date, value, _values), do: is_struct(value, Date) and value.year in @years
 
   defp fits?(:timestamp, value, _values),
-    do: is_struct(value, DateTime) and value.time_zone == "Etc/UTC"
+    do: is_struct(value, DateTime) and value.time_zone == "Etc/UTC" and value.year in @years
 
   defp fits?({:enum, members}, value, _values), do: is_atom(value) and value in names(members)
 
@@ -538,33 +553,42 @@ defmodule EhOsContract.Codec do
   defp decode_value(_type, nil, _values, _open, _path), do: {:ok, nil}
 
   defp decode_value(type, value, _values, open, _path) when type in [:id, :string] do
-    if text?(value) or (open == :opened and is_binary(value)), do: {:ok, value}, else: :error
+    cond do
+      open == :opened and is_binary(value) -> {:ok, value}
+      not text?(value) -> :error
+      type == :id and input?(open) and byte_size(value) > @max_id -> :error
+      true -> {:ok, value}
+    end
   end
 
-  defp decode_value(:integer, value, _values, _open, _path) when is_integer(value),
-    do: {:ok, value}
+  defp decode_value(:integer, value, _values, open, _path) when is_integer(value) do
+    if input?(open) and value not in @int64, do: :error, else: {:ok, value}
+  end
 
   defp decode_value(:boolean, value, _values, _open, _path) when is_boolean(value),
     do: {:ok, value}
 
-  defp decode_value(:decimal, value, _values, _open, _path)
+  defp decode_value(:decimal, value, _values, open, _path)
        when is_binary(value) or is_integer(value) do
     case Decimal.cast(value) do
-      {:ok, decimal} -> {:ok, decimal}
-      :error -> :error
+      {:ok, decimal} ->
+        if input?(open) and not bounded?(decimal), do: :error, else: {:ok, decimal}
+
+      :error ->
+        :error
     end
   end
 
-  defp decode_value(:date, value, _values, _open, _path) when is_binary(value) do
+  defp decode_value(:date, value, _values, open, _path) when is_binary(value) do
     case Date.from_iso8601(value) do
-      {:ok, date} -> {:ok, date}
+      {:ok, date} -> if input?(open) and date.year not in @years, do: :error, else: {:ok, date}
       {:error, _} -> :error
     end
   end
 
-  defp decode_value(:timestamp, value, _values, _open, _path) when is_binary(value) do
+  defp decode_value(:timestamp, value, _values, open, _path) when is_binary(value) do
     case DateTime.from_iso8601(value) do
-      {:ok, at, _offset} -> {:ok, at}
+      {:ok, at, _offset} -> if input?(open) and at.year not in @years, do: :error, else: {:ok, at}
       {:error, _} -> :error
     end
   end
@@ -607,6 +631,13 @@ defmodule EhOsContract.Codec do
   end
 
   defp decode_value(_type, _value, _values, _open, _path), do: :error
+
+  # What comes in, as against the log read back with `open:`.
+  defp input?(open), do: is_nil(open)
+
+  # Finite, and small enough for `Decimal.to_string(_, :normal)`, the log's form, to write.
+  defp bounded?(%Decimal{coef: coef, exp: exp}),
+    do: is_integer(coef) and coef < @max_coefficient and abs(exp) <= 1000
 
   @doc """
   Whether `value` is text a `:string` or `:id` field takes: a binary of valid UTF-8 with

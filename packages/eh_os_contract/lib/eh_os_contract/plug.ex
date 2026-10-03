@@ -40,6 +40,7 @@ if Code.ensure_loaded?(Plug.Conn) do
     | rejected on an invariant | 422 | `{"rejected": "<invariant>"}` |
     | fields that do not fit | 422 | `{"invalid": {"<field>": "required" \\| "type" \\| "generated" \\| "<invariant>"}}` — `generated` for an identity sent with a command that creates its aggregate, which the library gives; an invariant's name for a value that breaks it (plan EL2b); `type` also for text holding a NUL (`"\\u0000"`, `%00`) |
     | a body that is not a JSON object, or cannot be read | 400 | `{"error": "body_is_not_a_json_object"}`, `{"error": "unreadable_body"}` |
+    | a query string that is not UTF-8 | 400 | `{"error": "query_is_not_utf8"}` |
     | an `x-correlation-id` that is not a UUID's text | 400 | `{"error": "correlation_id_is_not_a_uuid"}` |
     | refused | 403 | `{"refused": "<reason>"}` |
     | no actor | 401 | `{"error": "no_actor"}` |
@@ -208,9 +209,13 @@ if Code.ensure_loaded?(Plug.Conn) do
 
     # The input as this door read it, and, when it could not read an object, what the
     # body was instead, for the answer once the caller may know it.
+    # A query string that is not UTF-8 is refused by Plug as it is read: no input, and the
+    # answer once the caller may know it.
     defp input(conn, :query, fields, values) do
       {conn, input} = decode_query_params(conn, fields, values)
       {conn, input, nil}
+    rescue
+      Plug.Conn.InvalidQueryError -> {conn, nil, "query_is_not_utf8"}
     end
 
     defp input(%{body_params: %Plug.Conn.Unfetched{}} = conn, :command, _fields, _values) do

@@ -67,6 +67,23 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   - The inbox now writes `received_at` by `EhOsContract.Clock`, as dispatch writes an event's `occurred_at`, so
     a report's bounds read both alike.
 
+- **What a request controls is bounded where what holds it is.** Past a bound a value does not fit its type:
+  `{field, :type}`, or 422 over HTTP. Until now each of these failed a write or a host's read model later, a 500
+  or a stopped subscription. The bounds:
+  - **an `:id` is at most 255 bytes**, so an index entry keys it with room for the rest of a key;
+  - **an `:integer` is a signed 64-bit integer**, what a `bigint` column holds. Until now an integer far beyond 64
+    bits was let in, since the log's JSON and the BEAM hold it. **This reverses that**, by the user's decision;
+  - **a `:decimal` is finite, with an exponent and a coefficient of at most a thousand digits.** `NaN` and
+    `Infinity` were let in. A struct past the bounds failed at the append, where `Decimal.to_string(_, :normal)`
+    refuses past its digits. Decimal itself parses text only within decimal128;
+  - **a `:date` and a `:timestamp` are within the years 1 to 9999**, which Postgres keeps.
+
+  Reading the log back asks none of them, so what was written before them still reads.
+
+  Over HTTP, **a query string that is not UTF-8** is 400 `{"error": "query_is_not_utf8"}`, after the caller is
+  asked whether it may make the call. Until now Plug raised as it read the string: Phoenix answered 400 and a bare
+  Plug 500.
+
 - **Request bytes the log cannot hold are a refusal, not an exception.** Until now Postgres refused to store each
   of these, and a request answered 500. The rule for an idempotency key also refuses keys that were stored before
   (below):
