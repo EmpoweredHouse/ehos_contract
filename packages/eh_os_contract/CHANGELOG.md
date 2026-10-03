@@ -52,6 +52,18 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Changed — a host has to act
 
+- **#96: a run and a process manager are told only by an `:id`, and a key has at most six fields.** Two
+  contract shapes that compiled no longer do:
+  - **F8.** A field a process or a process manager `correlate`s on is an `:id`, `{:id, entity}` or a domain
+    value resting on `:id`, in every local event that carries it and in a manager's state. Its value is
+    part of the run's and the manager's index key, and only an `:id` is bounded (255 bytes). Until now
+    `correlate :invoice_number` on a `:string` compiled, and a request with 3 KB of text in it answered 500;
+    on a manager delivered `:at_least_once`, its subscription stalled. A contract correlating on another type
+    correlates on the identifier it stands for instead.
+  - **F9.** A unit's identity, a process's `correlate` and a process manager's `correlate` have at most six
+    fields. Seven `:id` fields at their bound, with `|` and `%` that escape to three bytes, overflow the 2704
+    bytes a btree entry holds, and the append failed.
+
 - **#65: a policy on another application's event is a path of the conformance screen. This moves verdicts.**
   `EhOsContract.Paths` declares a step `received event → policy → command` for every `consumes "<name>"` event a
   policy handles, and counts it taken in the runs whose commands that policy issued with a row of its inbox

@@ -45,6 +45,7 @@ defmodule EhOsContract.ContractLinksDomainTest do
 
       value :contact_ref, :contact
       value :clinic_ids, {:list, :id}
+      value :period_id, :id
       external :payer_registry, "Rejestr płatnika", direction: :outbound
 
       entity :clinic, "Przychodnia", context: :settlement, identified_by: :clinic_id do
@@ -335,6 +336,65 @@ defmodule EhOsContract.ContractLinksDomainTest do
 
       assert %{type: :id, refers_to: :clinic} = field
       assert EhOsContract.Key.tag_field?(field)
+    end
+  end
+
+  describe "F8: a correlation field of a domain value rests on :id" do
+    test "a value of another type, in an event and in a manager's state, is refused" do
+      body =
+        @body
+        |> String.replace(
+          "      field :patient_id, :id, subject: :patient\n    end\n  end",
+          "      field :patient_id, :id, subject: :patient\n      field :clinics, :clinic_ids\n" <>
+            "    end\n  end"
+        )
+        |> String.replace("correlate :visit_id\n", "correlate [:visit_id, :amount]\n")
+        |> Kernel.<>("""
+          process_manager :chase, "Pogoń" do
+            correlate [:visit_id, :clinics, :contact]
+
+            state do
+              field :contact, :contact
+            end
+
+            starts_on :payment_recorded
+          end
+        """)
+
+      violations = links("LinksTextCorrelation", body)
+
+      assert assert_linked(
+               violations,
+               "F8: event :payment_recorded, field :amount tells which run of process :visit",
+               "links_text_correlation.ex",
+               16
+             ) =~ "it is :money, which rests on :integer; correlate only on an :id"
+
+      assert assert_linked(
+               violations,
+               "field :clinics tells which run of process manager :chase",
+               "links_text_correlation.ex",
+               20
+             ) =~ "it is :clinic_ids, which rests on {:list, :id}"
+
+      assert assert_linked(
+               violations,
+               "F8: process manager :chase, state, field :contact is what it correlates on",
+               "links_text_correlation.ex"
+             ) =~ "it is :contact, which rests on fields of its own"
+    end
+
+    test "control: a value resting on :id is a correlation field" do
+      body =
+        @body
+        |> String.replace(
+          "      field :patient_id, :id, subject: :patient\n    end\n  end",
+          "      field :patient_id, :id, subject: :patient\n      field :period_id, :period_id\n" <>
+            "    end\n  end"
+        )
+        |> String.replace("correlate :visit_id\n", "correlate [:visit_id, :period_id]\n")
+
+      assert links("LinksIdCorrelation", body) == []
     end
   end
 

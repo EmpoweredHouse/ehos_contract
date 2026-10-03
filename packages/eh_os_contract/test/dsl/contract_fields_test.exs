@@ -233,6 +233,126 @@ defmodule EhOsContract.ContractFieldsTest do
     end
   end
 
+  describe "F8: a correlation field is an :id" do
+    test "an event's field, or a manager's state field, of another type is refused" do
+      message =
+        refuse_contract("TextCorrelation", """
+          aggregate :invoice, "Faktura" do
+            identity :invoice_id
+            command :record_invoice, "Faktura", by: :reception, emits: :invoice_recorded
+
+            event :invoice_recorded, "Zarejestrowano", terminal: true do
+              field :invoice_number, :string
+              field :batches, {:list, :id}
+            end
+          end
+
+          process :invoice, "Faktura" do
+            correlate [:invoice_id, :invoice_number]
+          end
+
+          process_manager :chase, "Pogoń" do
+            correlate [:batches, :reminder]
+
+            state do
+              field :reminder, {:enum, [:soft, :hard]}
+            end
+
+            starts_on :invoice_recorded
+            ends_on :invoice_recorded
+          end
+        """)
+
+      assert message =~
+               "F8: event :invoice_recorded, field :invoice_number tells which run of process " <>
+                 ":invoice the event belongs to, so its value is part of an index key, and it " <>
+                 "is :string; correlate only on an :id, whose length is bounded " <>
+                 "(text_correlation.ex:9)"
+
+      assert message =~ "field :batches tells which run of process manager :chase"
+      assert message =~ "is {:list, :id}; correlate only on an :id"
+
+      assert message =~
+               "F8: process manager :chase, state, field :reminder is what it correlates on"
+    end
+
+    test "control: an :id, an entity's identifier and a domain value compile here" do
+      assert %{} =
+               compile_contract("IdCorrelation", """
+                 aggregate :invoice, "Faktura" do
+                   identity :invoice_id
+                   command :record_invoice, "Faktura", by: :reception, emits: :invoice_recorded
+
+                   event :invoice_recorded, "Zarejestrowano", terminal: true do
+                     field :clinic_id, {:id, :clinic}
+                     field :period, :period
+                     field :batch_id, :id
+                   end
+                 end
+
+                 process :invoice, "Faktura" do
+                   correlate [:invoice_id, :clinic_id, :period, :batch_id]
+                 end
+               """)
+    end
+  end
+
+  describe "F9: a key of at most six fields" do
+    test "an identity, a process's correlate and a manager's correlate of seven are refused" do
+      seven = "[:a_id, :b_id, :c_id, :d_id, :e_id, :f_id, :g_id]"
+
+      message =
+        refuse_contract("SevenFields", """
+          aggregate :ledger, "Księga" do
+            identity #{seven}
+            command :open_ledger, "Otwarcie", by: :reception, emits: :ledger_opened
+            event :ledger_opened, "Otwarto", terminal: true
+          end
+
+          process :ledger, "Księga" do
+            correlate #{seven}
+          end
+
+          process_manager :chase, "Pogoń" do
+            correlate #{seven}
+            starts_on :ledger_opened
+            ends_on :ledger_opened
+          end
+        """)
+
+      assert message =~
+               "F9: aggregate :ledger: identity has 7 fields, and a key has at most 6: it is " <>
+                 "one index entry, which more fields of an :id at its bound would overflow " <>
+                 "(seven_fields.ex:4)"
+
+      assert message =~ "F9: process :ledger: correlate has 7 fields"
+      assert message =~ "F9: process manager :chase: correlate has 7 fields"
+    end
+
+    test "control: six fields compile" do
+      six = "[:a_id, :b_id, :c_id, :d_id, :e_id, :f_id]"
+
+      assert %{} =
+               compile_contract("SixFields", """
+                 aggregate :ledger, "Księga" do
+                   identity #{six}
+                   command :open_ledger, "Otwarcie", by: :reception, emits: :ledger_opened
+                   event :ledger_opened, "Otwarto", terminal: true
+                 end
+
+                 process :ledger, "Księga" do
+                   correlate #{six}
+                 end
+
+                 process_manager :chase, "Pogoń" do
+                   correlate #{six}
+                   starts_on :ledger_opened
+                   ends_on :ledger_opened
+                 end
+               """)
+    end
+  end
+
   describe "F5: personal data names a subject's identifier in the same struct" do
     test "a missing, optional or subject-less identifier is refused" do
       message =

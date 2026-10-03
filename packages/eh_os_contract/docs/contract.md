@@ -222,6 +222,8 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `F5` | L2, L3 | `personal:` naming what is not a required, non-personal `:id` field with `subject:` in the same struct; a domain value's field naming an undeclared subject; a personal field whose type holds personal data of its own |
 | `F6` | L2 | a unit's identity field declared again in its state, a command or an event |
 | `F7` | L2, L3 | a process manager's state field, or a command's or query's scope field, that is `personal:` (L2) or of a domain value holding personal data (L3) |
+| `F8` | L2, L3 | a field a run or a process manager's record is told by — an event's field a `correlate` names, or a process manager's state field its `correlate` names — that is not an `:id`, `{:id, entity}` or a domain value resting on `:id` (L3) |
+| `F9` | L2 | a unit's identity, a process's `correlate` or a process manager's `correlate` of more than six fields |
 | `A1` | L2 | a command with an empty `emits:`, or one naming an event of another unit |
 | `A2` | L2 | an event no command of its unit emits and that declares no `recorded_by:` |
 | `A3` | L2 | `rejects:` naming what is neither an invariant of the unit nor a constraint of the command |

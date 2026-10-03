@@ -15,6 +15,22 @@ defmodule EhOsContract.Key do
 
   @separator "|"
 
+  # Measured against Postgres 17 (issue #96, 3 October 2026). An entry is compressed only
+  # when that saves a quarter of it, so the worst value is not all `|` but printable text
+  # with about a quarter of `|` and `%`: each escapes to three bytes and the whole barely
+  # compresses. Seven such fields of 255 bytes, behind a name of 40, fail most inserts;
+  # six fail none, with about 50 bytes to spare under the 2704 a btree entry holds.
+  @max_fields 6
+
+  @doc """
+  How many fields a key is made of at most: a unit's identity, a process's or a process
+  manager's `correlate` (F9). Each is an `:id` of at most 255 bytes, and the key is a
+  btree entry of `eh_os_contract_events`, `eh_os_contract_event_runs` or
+  `eh_os_contract_process_managers`, which Postgres refuses past 2704 bytes.
+  """
+  @spec max_fields() :: pos_integer()
+  def max_fields, do: @max_fields
+
   @doc "Values joined with `|`, each escaped."
   @spec join([term()]) :: String.t()
   def join(values) when is_list(values), do: Enum.map_join(values, @separator, &escape/1)

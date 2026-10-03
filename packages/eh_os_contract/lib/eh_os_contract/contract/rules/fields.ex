@@ -1,6 +1,6 @@
 defmodule EhOsContract.Contract.Rules.Fields do
   @moduledoc """
-  F1–F6 of v2 §6: the fields of every struct a contract declares — a unit's or a
+  F1–F9 of v2 §6: the fields of every struct a contract declares — a unit's or a
   process manager's state, a command, an event, a read model's row, a query's
   parameters, and a published event this contract consumes.
 
@@ -30,6 +30,15 @@ defmodule EhOsContract.Contract.Rules.Fields do
     `scope` field, whose value goes into every authorization decision. A parameter
     takes no `personal:` at all, so here F7 refuses only a manager's state; a
     domain value holding personal data in either place is the domain's to see (L3).
+  - **F8** (issue #96). A field a run or a process manager's record is told by — an
+    event's field F4 names, and a process manager's state field its `correlate` names —
+    is an `:id`, `{:id, entity}` or a domain value resting on `:id`. Its value goes into
+    an index (`eh_os_contract_event_runs`, the process managers' primary key), and only
+    an `:id` has a length bound, 255 bytes. Here a built-in type or a list is refused;
+    a domain value is checked between modules, where the domain is known (L3).
+  - **F9** (issue #96). A unit's identity, a process's `correlate` and a process
+    manager's `correlate` each have at most `EhOsContract.Key.max_fields/0` fields: the
+    key they make is one btree entry, and seven `:id` fields at their bound overflow it.
   """
 
   alias EhOsContract.Domain
@@ -37,6 +46,8 @@ defmodule EhOsContract.Contract.Rules.Fields do
   alias EhOsContract.Contract.Rules
 
   require EhOsContract.Domain.Rules
+
+  @built_in Domain.Rules.built_in_types()
 
   @doc false
   @spec check(map()) :: [DslRules.violation()]
@@ -59,7 +70,66 @@ defmodule EhOsContract.Contract.Rules.Fields do
         {"F2: #{where} returns #{problem}", function.returns || function}
       end
 
-    structs ++ returns ++ identities(declarations) ++ outside_the_log(declarations)
+    structs ++
+      returns ++
+      identities(declarations) ++
+      outside_the_log(declarations) ++ correlation_types(declarations) ++ keys(declarations)
+  end
+
+  @doc """
+  Every field a run or a process manager's record is told by, as `{where, field}`: an
+  event's field that the process's `correlate`, or the `correlate` of a process manager
+  handling the event, names, and a process manager's state field its own `correlate`
+  names. F8 holds each to `:id`, here and, for a domain value, between modules (L3).
+  """
+  @spec correlation_fields(map()) :: [{String.t(), struct()}]
+  def correlation_fields(d) do
+    correlated = correlated(d)
+
+    events =
+      for u <- d.units,
+          e <- Rules.events(u),
+          f <- e.fields,
+          {name, by} <- Map.get(correlated, e.name, []),
+          f.name == name do
+        {"event #{inspect(e.name)}, field #{inspect(f.name)} tells which run of #{by} the " <>
+           "event belongs to", f}
+      end
+      # The process and a manager may both name a field: one finding for it.
+      |> Enum.uniq_by(fn {_where, f} -> f end)
+
+    managers =
+      for pm <- d.process_managers, f <- Rules.state_fields(pm.state), f.name in pm.correlate do
+        {"process manager #{inspect(pm.name)}, state, field #{inspect(f.name)} is what it " <>
+           "correlates on", f}
+      end
+
+    events ++ managers
+  end
+
+  # A domain value is the domain's to say, between modules; any other type is known here.
+  defp correlation_types(d) do
+    for {where, field} <- correlation_fields(d),
+        not Domain.Rules.is_id(field.type),
+        not (is_atom(field.type) and field.type not in @built_in) do
+      {"F8: #{where}, so its value is part of an index key, and it is #{inspect(field.type)}; " <>
+         "correlate only on an :id, whose length is bounded", field}
+    end
+  end
+
+  defp keys(d) do
+    max = EhOsContract.Key.max_fields()
+
+    keyed =
+      for(u <- d.units, do: {"#{u.kind} #{inspect(u.name)}: identity", u.identity, u}) ++
+        for(p <- d.processes, do: {"process #{inspect(p.name)}: correlate", p.correlate, p}) ++
+        for pm <- d.process_managers,
+            do: {"process manager #{inspect(pm.name)}: correlate", pm.correlate, pm}
+
+    for {where, fields, at} <- keyed, length(fields) > max do
+      {"F9: #{where} has #{length(fields)} fields, and a key has at most #{max}: it is one " <>
+         "index entry, which more fields of an :id at its bound would overflow", at}
+    end
   end
 
   # A unit's identity is a field injected into its state, commands and events, so its

@@ -26,6 +26,8 @@ defmodule EhOsContract.Contract.Links.Domain do
     scope dimension, `actor :reception, :human, "…", scope: [:clinic_id]`, since a
     grant to that actor carries the values the answer is narrowed to. The same for a
     scoped command's `by:` (plan E9c): the grant carries what it may be issued for.
+  - **F8**, the part that needs the domain: a field a run or a process manager's
+    record is told by, typed by a domain value, is of one resting on `:id`.
   - **D11.** A `publish` is named under the application's namespace, the domain's
     `name:`: `"rehmed.visit.closed.v1"` in the domain `:rehmed`.
   """
@@ -33,6 +35,7 @@ defmodule EhOsContract.Contract.Links.Domain do
   alias EhOsContract.Codec
   alias EhOsContract.Domain
   alias EhOsContract.DslRules
+  alias EhOsContract.Key
   alias EhOsContract.Contract.{Links, Rules}
 
   @built_in Domain.Rules.built_in_types()
@@ -57,6 +60,7 @@ defmodule EhOsContract.Contract.Links.Domain do
       entities(c),
       subjects(c),
       personal_values(c),
+      correlation_values(c),
       externals(c),
       scopes(c),
       namespaces(c)
@@ -172,6 +176,30 @@ defmodule EhOsContract.Contract.Links.Domain do
         subject not in subjects do
       {"X3: #{where}, field #{inspect(field.name)}: subject #{inspect(subject)} is not a subject " <>
          "of #{inspect(domain.module)}; #{suggest(subject, subjects)}", Links.at(field)}
+    end
+  end
+
+  # --- F8: what a run is told by, typed by a domain value -------------------------------
+
+  # A value the domain does not declare is X3's; one it does rests on a built-in type.
+  defp correlation_values(%{declarations: d, domain: domain}) do
+    values = Map.new(domain.values, &{&1.name, &1})
+
+    for {where, field} <- Rules.Fields.correlation_fields(d),
+        is_atom(field.type),
+        Map.has_key?(values, field.type),
+        (base = Key.base_type(field.type, values)) != :id do
+      {"F8: #{where}, so its value is part of an index key, and it is #{inspect(field.type)}, " <>
+         "which rests on #{rests_on(base, values)}; correlate only on an :id, whose length is " <>
+         "bounded", Links.at(field)}
+    end
+  end
+
+  defp rests_on(base, values) do
+    case values do
+      %{^base => %{type: nil}} -> "fields of its own"
+      %{^base => %{type: type}} -> inspect(type)
+      _ -> inspect(base)
     end
   end
 
