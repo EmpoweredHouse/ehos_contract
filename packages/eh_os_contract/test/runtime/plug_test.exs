@@ -278,6 +278,17 @@ defmodule EhOsContract.PlugTest do
       assert asked() == [{move, {"branch_id", nil}}]
     end
 
+    test "a scope value past 255 bytes is asked as none, so the Authorizer never records a body" do
+      move = "dispatch_rig.move_account"
+      clerk = Actor.credential("u-1", [move], %{move => %{"branch_id" => ["b-7"]}})
+      long = String.duplicate("b", 256)
+
+      conn = call(post("/commands/#{move}", %{account_id: "a-1", branch_id: long}), clerk)
+
+      assert {conn.status, json(conn)} == {403, %{"refused" => "outside_scope"}}
+      assert asked() == [{move, {"branch_id", nil}}]
+    end
+
     test "a scoped query that does not decode is asked with the value as it was sent" do
       # Without its scope parameter the query does not decode, and asks for no value
       # the grant holds: refused, as `EhOsContract.query/3` refuses it, not 422.

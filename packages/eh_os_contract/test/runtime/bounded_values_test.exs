@@ -149,6 +149,15 @@ defmodule EhOsContract.BoundedValuesTest do
 
     assert {:ok, %{value: value}} = Codec.decode(fields, stored, %{}, open: open)
     assert value == 2 ** 70
+
+    for {type, raw} <- [
+          {:decimal, "NaN"},
+          {:date, "0000-01-01"},
+          {:timestamp, "0000-01-01T00:00:00Z"}
+        ] do
+      assert {:ok, _} = Codec.decode(field(type), %{"value" => raw}, %{}, open: open), raw
+      assert decoded(type, raw) == {:error, [value: :type]}, raw
+    end
   end
 
   test "over HTTP, a query string that is not UTF-8 is a 400, after the caller may ask" do
@@ -160,7 +169,7 @@ defmodule EhOsContract.BoundedValuesTest do
       |> EhOsContract.Plug.call(@opts)
 
     assert {conn.status, Jason.decode!(conn.resp_body)} ==
-             {400, %{"error" => "query_is_not_utf8"}}
+             {400, %{"error" => "invalid_query_string"}}
 
     stranger =
       conn(:get, "/queries/dispatch_rig.balance_of?account_id=%FF")
@@ -168,5 +177,17 @@ defmodule EhOsContract.BoundedValuesTest do
       |> EhOsContract.Plug.call(@opts)
 
     assert stranger.status == 403
+
+    # Past Plug's length a query string is 414, as Plug says, not a 400.
+    long =
+      conn(
+        :get,
+        "/queries/dispatch_rig.balance_of?account_id=" <> String.duplicate("a", 1_000_001)
+      )
+      |> assign(:eh_os_contract_actor, auditor)
+      |> EhOsContract.Plug.call(@opts)
+
+    assert {long.status, Jason.decode!(long.resp_body)} ==
+             {414, %{"error" => "invalid_query_string"}}
   end
 end

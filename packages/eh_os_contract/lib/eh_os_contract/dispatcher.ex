@@ -460,11 +460,12 @@ defmodule EhOsContract.Dispatcher do
     )
   end
 
-  # A scope value as the request sent it, when it is text: one with a NUL or invalid UTF-8 is
-  # no value any grant holds, and the `Authorizer` may record what it is asked.
+  # A scope value as the request sent it, when it is text an identifier may be: one with a NUL,
+  # invalid UTF-8 or past 255 bytes is no value any grant holds, and the `Authorizer` may
+  # record what it is asked.
   defp sent(input, dimension) do
     value = Map.get(input, Atom.to_string(dimension))
-    if Codec.text?(value), do: value
+    if Codec.text?(value) and byte_size(value) <= 255, do: value
   end
 
   defp permit(model, declaration, actor), do: permit(model, declaration, actor, nil)

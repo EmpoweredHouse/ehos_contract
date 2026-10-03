@@ -71,17 +71,21 @@ defmodule EhOsContract.JsonSchema do
     end
   end
 
-  defp base_property(type, _values, _erased?) when type in [:id, :string, :decimal],
+  # The codec's bounds (`EhOsContract.Codec`), where JSON Schema has a word for them.
+  defp base_property(:id, _values, _erased?),
+    do: %{"type" => "string", "minLength" => 1, "maxLength" => 255}
+
+  defp base_property(type, _values, _erased?) when type in [:string, :decimal],
     do: %{"type" => "string"}
 
-  defp base_property(:integer, _values, _erased?), do: %{"type" => "integer"}
+  defp base_property(:integer, _values, _erased?), do: %{"type" => "integer", "format" => "int64"}
   defp base_property(:boolean, _values, _erased?), do: %{"type" => "boolean"}
   defp base_property(:date, _values, _erased?), do: %{"type" => "string", "format" => "date"}
 
   defp base_property(:timestamp, _values, _erased?),
     do: %{"type" => "string", "format" => "date-time"}
 
-  defp base_property({:id, _entity}, _values, _erased?), do: %{"type" => "string"}
+  defp base_property({:id, _entity}, values, erased?), do: base_property(:id, values, erased?)
 
   defp base_property({:enum, members}, _values, _erased?),
     do: %{"type" => "string", "enum" => Enum.map(members, &enum_name/1)}

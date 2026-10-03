@@ -1044,8 +1044,34 @@ na `engine/unstorable-bytes` (#93). Każda granica to `{pole, :type}` (422); odc
   Plug daje 500.
 
 **Weryfikacja:** próby odwrotne, każda granica osobno, odczyt logu ograniczony i Plug bez `rescue`. Każda wywraca
-test. Granica `:id` w `decode/4` dostała osobny test, bo zapytanie i komenda łapią ją i tak w `fits?`. Silnik:
-1126 → 1134.
+test. Granica `:id` w `decode/4` dostała osobny test, bo zapytanie i komenda łapią ją i tak w `fits?`.
+
+**Przegląd przed PR-em**, dwa równolegle. Poprawione, każde z testem:
+- `query_is_not_utf8` obejmował też za długi (Plug: 414) i za głęboki query string (oba) — teraz
+  `invalid_query_string` ze statusem Plug;
+- wartość zakresu do 8 MB dalej szła do `Authorizer` na ścieżce odmowy (oba) — `sent/2` do 255 bajtów;
+- JSON Schema (OpenAPI, AsyncAPI) bez granic (poprawność) — `minLength`/`maxLength`, `format: int64`;
+- granice zapisane dwa razy — jedno `within?/2`; akapit „Bounds” w złym miejscu; `@doc` `decode/4` mówi, kiedy
+  granice obowiązują.
+
+Zapisane, nie zmienione — **granice obowiązują wszędzie, gdzie wartość wchodzi do logu** (oba przeglądy):
+- inbox traktuje cudze opublikowane zdarzenie jak wejście;
+- komenda reakcji ze starego zdarzenia, zdarzenie decydenta ze stanu i usługa domenowa też są sprawdzane;
+- agregat z tożsamością ponad 255 bajtów nie przyjmie kolejnej komendy;
+- arytmetyka decydenta poza granicami kończy komendę błędem.
+
+Danych produkcyjnych nie ma, a zgodności wstecz biblioteka nie obiecuje (kierunek z 25 września), więc granica
+przy każdym zapisie. *Odrzucone:* granice tylko na wejściu z żądania — stara wartość wracałaby do logu bez
+sprawdzenia, a struktura z kodu hosta też. Węższe granice (`varchar(n)`, suma w read modelu) są domeny — jako
+niezmiennik wartości.
+
+**Do decyzji użytkownika** (nowe odmowy przy kompilacji, przegląd bezpieczeństwa):
+- `correlate` na polu `:string` buduje klucz btree bez granicy;
+- tożsamość lub korelacja z siedmiu i więcej pól `:id` przekracza ~2,7 KB wpisu.
+
+Pominięte: przykłady w scenariuszach nie są sprawdzane granicami przy kompilacji — padną w teście scenariusza.
+
+Silnik: 1126 → 1135.
 
 ### Bajty, których tabele silnika nie utrzymają (3 października)
 

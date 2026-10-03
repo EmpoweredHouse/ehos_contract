@@ -78,11 +78,26 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
     refuses past its digits. Decimal itself parses text only within decimal128;
   - **a `:date` and a `:timestamp` are within the years 1 to 9999**, which Postgres keeps.
 
-  Reading the log back asks none of them, so what was written before them still reads.
+  **They hold wherever a value enters the log:**
+  - a request, and another application's published event an inbox takes;
+  - a command a reaction issues, an event a decider emits, a domain service's arguments and result.
 
-  Over HTTP, **a query string that is not UTF-8** is 400 `{"error": "query_is_not_utf8"}`, after the caller is
-  asked whether it may make the call. Until now Plug raised as it read the string: Phoenix answered 400 and a bare
-  Plug 500.
+  Reading the log back asks none of them, so what was written before them still reads. Written again — copied by a
+  decider, re-issued by a reaction from an old event, published to another application — it is held to them:
+  - an aggregate whose identity is past 255 bytes takes no further command;
+  - a decider whose arithmetic leaves the bounds (two int64s summed past int64, a decimal's exponent past a
+    thousand) fails the command, as an event that does not fit always has.
+
+  A tighter bound — a `varchar(n)`, a `numeric(p, s)`, a sum a read model keeps — is the domain's to declare, as an
+  invariant of a value. The OpenAPI and AsyncAPI documents carry the bounds JSON Schema has words for: `:id`
+  `minLength`/`maxLength`, `:integer` `format: int64`.
+
+  Over HTTP, **a query string Plug cannot read** — not UTF-8, nested too deep — is 400 `{"error":
+  "invalid_query_string"}`, and one past Plug's length is 414. Either comes after the caller is asked whether it
+  may make the call. Until now Plug raised as it read the string: Phoenix answered 400 and a bare Plug 500.
+
+  A scope value past 255 bytes is asked of the `Authorizer` as none, so it is refused `:outside_scope` and never
+  recorded in full.
 
 - **Request bytes the log cannot hold are a refusal, not an exception.** Until now Postgres refused to store each
   of these, and a request answered 500. The rule for an idempotency key also refuses keys that were stored before

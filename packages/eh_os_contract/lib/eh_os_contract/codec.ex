@@ -9,20 +9,21 @@ defmodule EhOsContract.Codec do
   nor in `text`, so such a value does not fit, rather than failing the write. A sealed
   personal value, opened when the log is read back with `open:`, is not asked again:
   what is read back was written, and its ciphertext holds what was let in before the
-  rule.
-
-  **Bounds.** What a request controls is bounded where what holds it is: an `:id` is
-  at most 255 bytes, which an index entry keys with room for the rest of a key; an
-  `:integer` is a signed 64-bit integer, what a `bigint` column holds; a `:decimal` is
-  finite, its exponent and coefficient of at most a thousand digits, so its log form
-  can be written; a `:date` and a `:timestamp` are within the years 1 to 9999, which
-  Postgres keeps. Past one a value does not fit its type. Reading the log back asks
-  none of them, so what was written before them still reads.
-  `:integer` and `:boolean` what they
+  rule. `:integer` and `:boolean` what they
   say, `:decimal` a `Decimal`, `:date` a `Date`, `:timestamp` a `DateTime` in UTC,
   `{:enum, members}` one of the member atoms, `{:list, type}` a list of them. A
   domain value is its own type: an alias of a type (`value :money, :integer`), or a
   map of its fields.
+
+  **Bounds.** A value that enters the log is bounded where what holds it is: an `:id`
+  is at most 255 bytes, which an index entry keys with room for the rest of a key; an
+  `:integer` is a signed 64-bit integer, what a `bigint` column holds; a `:decimal` is
+  finite, its exponent and coefficient of at most a thousand digits, so its log form
+  can be written; a `:date` and a `:timestamp` are within the years 1 to 9999, which
+  Postgres keeps. Past one a value does not fit its type, wherever it comes from — a
+  request, another application's published event, a command a reaction issues, an
+  event a decider emits. Reading the log back asks none of them, so what was written
+  before them still reads; written again, it is held to them.
 
   **The log's form is JSON's.** A decimal is written as a string of digits, so no
   float ever stands between two sums; a date and a timestamp as ISO 8601; an enum
@@ -160,18 +161,19 @@ defmodule EhOsContract.Codec do
   defp fits?(:string, value, _values), do: text?(value)
   # An empty identifier names nothing: it would key a stream, a tag and a run with
   # nothing after the colon, one for every caller that forgot to fill it in.
-  defp fits?(:id, value, _values),
-    do: text?(value) and value != "" and byte_size(value) <= @max_id
+  defp fits?(:id, value, _values), do: text?(value) and value != "" and within?(:id, value)
 
   # An entity's identifier where the model keeps the declared type: a function's result.
   defp fits?({:id, _entity}, value, values), do: fits?(:id, value, values)
-  defp fits?(:integer, value, _values), do: is_integer(value) and value in @int64
+  defp fits?(:integer, value, _values), do: is_integer(value) and within?(:integer, value)
   defp fits?(:boolean, value, _values), do: is_boolean(value)
-  defp fits?(:decimal, value, _values), do: is_struct(value, Decimal) and bounded?(value)
-  defp fits?(:date, value, _values), do: is_struct(value, Date) and value.year in @years
+  defp fits?(:decimal, value, _values), do: is_struct(value, Decimal) and within?(:decimal, value)
+  defp fits?(:date, value, _values), do: is_struct(value, Date) and within?(:date, value)
 
   defp fits?(:timestamp, value, _values),
-    do: is_struct(value, DateTime) and value.time_zone == "Etc/UTC" and value.year in @years
+    do:
+      is_struct(value, DateTime) and value.time_zone == "Etc/UTC" and
+        within?(:timestamp, value)
 
   defp fits?({:enum, members}, value, _values), do: is_atom(value) and value in names(members)
 
@@ -400,7 +402,9 @@ defmodule EhOsContract.Codec do
 
   `open:` opens the personal fields `encode/4` sealed (`t:open/0`): a field whose
   subject is erased decodes to `EhOsContract.Erased`, and one holding clear text
-  does not fit. Without it, a sealed field does not fit.
+  does not fit. Without it, a sealed field does not fit. Without it the external form
+  is input, held to the bounds (see the module's doc); with it, the log read back,
+  held to none.
   """
   #
   # `strings: true` also reads an integer or a boolean written as text, as a query
@@ -556,13 +560,12 @@ defmodule EhOsContract.Codec do
     cond do
       open == :opened and is_binary(value) -> {:ok, value}
       not text?(value) -> :error
-      type == :id and input?(open) and byte_size(value) > @max_id -> :error
-      true -> {:ok, value}
+      true -> kept(type, value, open)
     end
   end
 
   defp decode_value(:integer, value, _values, open, _path) when is_integer(value) do
-    if input?(open) and value not in @int64, do: :error, else: {:ok, value}
+    kept(:integer, value, open)
   end
 
   defp decode_value(:boolean, value, _values, _open, _path) when is_boolean(value),
@@ -572,7 +575,7 @@ defmodule EhOsContract.Codec do
        when is_binary(value) or is_integer(value) do
     case Decimal.cast(value) do
       {:ok, decimal} ->
-        if input?(open) and not bounded?(decimal), do: :error, else: {:ok, decimal}
+        kept(:decimal, decimal, open)
 
       :error ->
         :error
@@ -581,14 +584,14 @@ defmodule EhOsContract.Codec do
 
   defp decode_value(:date, value, _values, open, _path) when is_binary(value) do
     case Date.from_iso8601(value) do
-      {:ok, date} -> if input?(open) and date.year not in @years, do: :error, else: {:ok, date}
+      {:ok, date} -> kept(:date, date, open)
       {:error, _} -> :error
     end
   end
 
   defp decode_value(:timestamp, value, _values, open, _path) when is_binary(value) do
     case DateTime.from_iso8601(value) do
-      {:ok, at, _offset} -> if input?(open) and at.year not in @years, do: :error, else: {:ok, at}
+      {:ok, at, _offset} -> kept(:timestamp, at, open)
       {:error, _} -> :error
     end
   end
@@ -632,12 +635,21 @@ defmodule EhOsContract.Codec do
 
   defp decode_value(_type, _value, _values, _open, _path), do: :error
 
-  # What comes in, as against the log read back with `open:`.
-  defp input?(open), do: is_nil(open)
+  # Input is held to the bounds; the log read back with `open:` is not.
+  defp kept(type, value, open),
+    do: if(is_nil(open) and not within?(type, value), do: :error, else: {:ok, value})
+
+  # The bounds, one place for `fits?/3` and decoding: what holds each type's value.
+  defp within?(:id, value), do: byte_size(value) <= @max_id
+  defp within?(:integer, value), do: value in @int64
+  defp within?(:date, value), do: value.year in @years
+  defp within?(:timestamp, value), do: value.year in @years
 
   # Finite, and small enough for `Decimal.to_string(_, :normal)`, the log's form, to write.
-  defp bounded?(%Decimal{coef: coef, exp: exp}),
+  defp within?(:decimal, %Decimal{coef: coef, exp: exp}),
     do: is_integer(coef) and coef < @max_coefficient and abs(exp) <= 1000
+
+  defp within?(_type, _value), do: true
 
   @doc """
   Whether `value` is text a `:string` or `:id` field takes: a binary of valid UTF-8 with
