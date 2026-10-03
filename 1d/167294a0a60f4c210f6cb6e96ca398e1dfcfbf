@@ -1,0 +1,8 @@
+EP4 pre-PR review, two in parallel on origin/main..HEAD.
+Correctness (code-review high) and security/performance (by hand; engineering:code-review not installed).
+Fixed, each in its own commit with a reverse check: engine-owned effect and engine-owned non-event key (P3);
+export did not redact a scenario's state; state seeded the run's correlation; runner folded steps the engine
+drops; breaking idempotency change filed under Added in CHANGELOG.
+No change: send_p1_report :downstream (declaration is the host's with P1; sandbox has none).
+Skipped: key not checked against handled events (new rule); correlation in state typed :id in S3; duplicated
+'holds' sentence. Gate EXIT=0: sandbox 148, check 0/29/9; engine 1198, check 0/71/6; web 52; auth 285+1.
