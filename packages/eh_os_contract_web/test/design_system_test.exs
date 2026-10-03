@@ -20,6 +20,10 @@ defmodule EhOsContract.Web.DesignSystemTest do
   @built Path.join(@root, "priv/static/assets/app.css")
   @script Path.join(@root, "assets/js/app.js")
   @fonts Path.join(@root, "priv/static/assets/fonts")
+  @package_tokens Path.join(
+                    @root,
+                    "deps/ehos_design/packages/ehos_design/priv/css/colors_and_type.css"
+                  )
 
   # The custom properties a stylesheet defines: `--name:` at the start of a declaration.
   defp defined_properties(css) do
@@ -104,8 +108,28 @@ defmodule EhOsContract.Web.DesignSystemTest do
       assert ["font/woff2" <> _] = Plug.Conn.get_resp_header(response, "content-type")
     end
 
-    assert File.exists?(Path.join(@fonts, "OFL-albert-sans.txt"))
-    assert File.exists?(Path.join(@fonts, "OFL-jetbrains-mono.txt"))
+    # `mix assets.build` only adds: a font a new ehos_design drops would stay here, served and
+    # shipped, and so would anything else that came along with the fonts.
+    licences = ["OFL-albert-sans.txt", "OFL-jetbrains-mono.txt"]
+    assert Enum.sort(File.ls!(@fonts)) == Enum.sort(licences ++ Enum.map(urls, &Path.basename/1))
+  end
+
+  # The package is a `:dev` dependency, so it is here only where someone fetched it — never in
+  # CI. Where it is, this catches a `ref:` moved without `mix assets.build`, and a layer that
+  # takes one of its names.
+  if File.exists?(@package_tokens) do
+    test "the build carries every token of the fetched ehos_design, and the layer takes none" do
+      package = @package_tokens |> File.read!() |> defined_properties()
+      built = @built |> File.read!() |> defined_properties()
+      layer = @layer |> File.read!() |> defined_properties()
+
+      assert MapSet.size(package) > 50
+
+      assert MapSet.difference(package, built) |> Enum.sort() == [],
+             "the built stylesheet lacks tokens of ehos_design; run `mix assets.build`"
+
+      assert MapSet.intersection(package, layer) |> Enum.sort() == []
+    end
   end
 
   test "the page loads its styles and scripts from the package's own assets" do
