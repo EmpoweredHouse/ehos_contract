@@ -355,6 +355,33 @@ przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie p
 Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty, commity, opisy PR, `docs/adr/`,
 `README.md` — po angielsku; `PLAN.md` i `CLAUDE.md` po polsku. Pełna reguła — `CLAUDE.md`.
 
+## Dopisek 3 października (2) — #94: style dashboardu z pakietu `ehos_design`, kopia usunięta
+
+`eh-os` D-72 przeniósł design system do pakietu `ehos_design` (EmpoweredHouse/ehos-tools, tag
+`ehos_design-v0.1.0` = `a65b9c86`). `eh_os_contract_web` bierze go jako zależność **tylko `:dev`,
+`runtime: false`**: `assets/css/app.css` importuje `deps/ehos_design/packages/ehos_design/priv/css/colors_and_type.css`
+(zwykłe tokeny, nie warstwę Tailwinda/daisyUI), a `mix assets.build` kopiuje fonty i teksty OFL do
+`priv/static/assets/fonts/`. Zbudowany `app.css` i fonty zostają w repo, więc host nic nowego nie pobiera.
+Usunięte: `assets/css/vendor/empoweredhouse/` z `SOURCE.md`, `.gitattributes` pakietu, skill
+`sync-design-system` — odświeżenie to teraz przesunięcie refa i przebudowa.
+
+**Sprawdzone:** plik tokenów i wszystkie 10 plików fontów w pakiecie są bajt w bajt identyczne z kopią, więc
+`mix assets.build` daje **identyczny** `priv/static/assets/app.css` (minifikacja wycina komentarze ze
+ścieżką, więc nawet one się nie różnią) i identyczne fonty.
+
+**Co wyszło przy pisaniu:**
+
+- **`ehos-tools` jest prywatne, a CI robi `mix deps.get` w pakiecie web, które pobiera też zależności
+  `:dev`.** Bez tokenu ten krok by padł. CI pobiera teraz `--only test`; brama zależności nie potrzebuje,
+  bo czyta tylko to, co zbudowane i scommitowane. Sandbox dostaje pakiet przez `path:` i zależności `:dev`
+  dziecka nie ciągnie (sprawdzone). Kto przebudowuje assety, potrzebuje dostępu do `ehos-tools`.
+- **Testy `design_system_test.exs` czytały kopię**, a w `MIX_ENV=test` pakietu nie ma. Test hasha i
+  `.gitattributes` zniknęły razem z kopią; tokeny design systemu to teraz to, co definiuje zbudowany
+  `app.css`, a nie warstwa. „Warstwa nie nadpisuje tokenu” sprawdza się po nazwie: warstwa definiuje
+  wyłącznie `--eh-os-contract-*`. Doszedł test, że warstwa importuje tokeny z `ehos_design`. Brama
+  pakietu przechodzi z `deps/ehos_design` i bez niego.
+- Poprawka z datą w `docs/adr/dashboard-design-system.md`.
+
 ## Dopisek 3 października — EP: proza w kontrakcie, drabina od nazwy do testu
 
 **Porównanie z ESDM powtórzone 3 października.** `thenativeweb/esdm` na `295e1ca` (29 września): od `cf17780`,
