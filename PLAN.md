@@ -1073,6 +1073,18 @@ Pominięte: przykłady w scenariuszach nie są sprawdzane granicami przy kompila
 
 Silnik: 1126 → 1135.
 
+
+**CodeRabbit, 3 października (po przestawieniu #95 i #97 na `main`)** — cztery komentarze do kodu #95, wszystkie
+wprowadzone:
+- `Codec.decode/4` przyjmował pusty `:id`, a `problems/4` go odrzucał; inbox bierze zdarzenie samym dekodowaniem,
+  więc pusty identyfikator docierał do polityki. Granica `:id` to teraz 1–255 bajtów w `within?/2`.
+- **Decimal ponad 34 cyfry nie czytał się z logu** (ważne): Decimal 3.1.1 parsuje tekst tylko w granicach decimal128,
+  a nasza granica to tysiąc cyfr — zdarzenie zapisane z kodu z 35 cyframi nie dałoby się złożyć. Kodek czyta teraz
+  zwykłą formę (`-123.456`), w której log zapisuje wartość, z zerami z końca z powrotem do wykładnika. *Odrzucone:*
+  zejście z granicą do 34 cyfr — zmienia to, co host może zapisać, a kłopot jest w odczycie, nie w granicy.
+- JSON Schema: `minimum`/`maximum` dla `:integer` (`format` tylko adnotuje) i `x-eh-os-contract-max-bytes` dla `:id`
+  (`maxLength` liczy znaki).
+
 ### Bajty, których tabele silnika nie utrzymają (3 października)
 
 Zadanie zgłoszone w przeglądzie #66 i uruchomione przez użytkownika. Gałąź `engine/unstorable-bytes`, od `762521e`.

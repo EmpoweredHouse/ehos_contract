@@ -79,6 +79,13 @@ defmodule EhOsContract.BoundedValuesTest do
 
       assert decoded(:id, long) == {:error, [value: :type]}
 
+      # Empty, decoding refuses it as `problems/4` does: an inbox takes a published event by
+      # decoding alone. The log read back still opens it.
+      assert decoded(:id, "") == {:error, [value: :type]}
+      assert Codec.problems(field(:id), %{value: ""}, %{}) == [value: :type]
+      open = fn _path, _subject, value -> {:ok, value} end
+      assert {:ok, %{value: ""}} = Codec.decode(field(:id), %{"value" => ""}, %{}, open: open)
+
       # And a query's parameter.
       auditor = Actor.credential("u-2", ["dispatch_rig.balance_of"])
 
@@ -135,6 +142,34 @@ defmodule EhOsContract.BoundedValuesTest do
       assert {:ok, _} = decoded(:timestamp, "9999-12-31T23:59:59Z")
       assert Codec.problems(field(:date), %{value: ~D[0000-01-01]}, %{}) == [value: :type]
     end
+  end
+
+  test "a decimal within the bounds reads back from the log, past what Decimal parses" do
+    # Decimal 3 parses text only within decimal128, 34 digits; the log writes a value in
+    # its plain form, which within the bounds can run to two thousand characters.
+    open = fn _path, _subject, value -> {:ok, value} end
+
+    for decimal <- [
+          Decimal.new(1, 10 ** 34, 0),
+          Decimal.new(-1, 10 ** 999 + 7, -3),
+          Decimal.new(1, 9, 1000),
+          Decimal.new(1, 10 ** 999, -1000)
+        ] do
+      [stored] = Codec.encode(field(:decimal), %{value: decimal}, %{}) |> Map.values()
+
+      assert {:ok, %{value: read}} =
+               Codec.decode(field(:decimal), %{"value" => stored}, %{}, open: open)
+
+      assert Decimal.equal?(read, decimal)
+      assert {:ok, %{value: input}} = decoded(:decimal, stored)
+      assert Decimal.equal?(input, decimal)
+    end
+
+    # Past the bounds, as text, it stays refused.
+    assert decoded(:decimal, "1" <> String.duplicate("0", 1001)) == {:error, [value: :type]}
+    assert decoded(:decimal, String.duplicate("1", 1001)) == {:error, [value: :type]}
+    assert decoded(:decimal, String.duplicate("1", 2003)) == {:error, [value: :type]}
+    assert decoded(:decimal, "1.5x") == {:error, [value: :type]}
   end
 
   test "reading the log back asks none of it" do
