@@ -687,7 +687,9 @@ where it helps; every violation is reported as a diagnostic before the single ra
 
   > *Corrected 3 October 2026, plan EP4.* `idempotency` is `[key:, owner:]`, and only an effect's owner is
   > `:downstream`: a policy and a process manager issue commands to this engine, never to a system that
-  > could keep a key.
+  > could keep a key. Nor is an effect's owner `:infrastructure`: the engine keys the commands a reaction
+  > issues, by the event's id (`Consumer.reaction_key/5`), and not an effect's call — so `:infrastructure`
+  > keys on `:event_id`.
 
 - *Process.* R1: exactly one `process`. R2: its `correlate` fields are present in every local event. R3: if
   the process declares stages, every local event sits in a stage group and every `include` has a stage; if

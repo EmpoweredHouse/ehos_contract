@@ -247,7 +247,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `C1` | L2 | a command nobody can issue: no `by:`, and no policy or process manager of the contract issues it |
 | `P1` | L2 | a policy or an effect handling an event neither local nor consumed; a policy issuing a command not of this contract |
 | `P2` | L2 | an effect with `calls:` delivered `:in_transaction` |
-| `P3` | L2 | a policy or an effect delivered `:at_least_once` without `idempotency`; an `idempotency` owned `:downstream` outside an effect |
+| `P3` | L2 | a policy or an effect delivered `:at_least_once` without `idempotency`; an `idempotency` owned `:downstream` outside an effect, owned `:infrastructure` by an effect or on a key other than `:event_id` |
 | `P4` | L2 | a process manager starting on nothing, with `correlate: []`, or `:in_transaction`; a trigger neither a local or consumed event nor (for `on`) its own timer; `sets`/`cancels` naming another timer; a timer without exactly one of `wait`/`at`, or `at` not a `:timestamp` state field; issuing a foreign command |
 | `P5` | L2 | a read model projecting an event neither local nor consumed; a query reading what is not a read model of this contract |
 | `R1` | L2 | a contract without exactly one `process` |

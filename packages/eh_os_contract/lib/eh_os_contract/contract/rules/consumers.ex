@@ -13,7 +13,9 @@ defmodule EhOsContract.Contract.Rules.Consumers do
     without `idempotency`, and this is why it compiles. `idempotency` names its
     `key` and its `owner` (plan EP4), and only an effect's owner is `:downstream`:
     a policy and a process manager issue commands to this engine, never to a
-    system that could keep a key.
+    system that could keep a key. An effect's owner is never `:infrastructure`:
+    the engine keys the commands a reaction issues, by the event's id, and an
+    effect's call is not one — so `:infrastructure` also keys on `:event_id`.
   - **P4.** A process manager starts on at least one event and correlates on at
     least one field: with none, every run would share one record, one state and
     one set of timers, and the first ending would end it for all. Its triggers are
@@ -68,7 +70,8 @@ defmodule EhOsContract.Contract.Rules.Consumers do
         ],
         else: []
 
-    handles(where, effect, effect.handles, events) ++ in_transaction ++ idempotent(where, effect)
+    handles(where, effect, effect.handles, events) ++
+      in_transaction ++ idempotent(where, effect) ++ not_infrastructure(where, effect)
   end
 
   defp process_manager(pm, events, commands) do
@@ -200,10 +203,31 @@ defmodule EhOsContract.Contract.Rules.Consumers do
   defp idempotent(_where, _declaration), do: []
 
   defp not_downstream(where, %{idempotency: idempotency} = declaration) do
-    if idempotency[:owner] == :downstream,
+    case idempotency && {idempotency[:owner], idempotency[:key]} do
+      {:downstream, _key} ->
+        [
+          {"P3: #{where} issues commands to this engine, so no system downstream keeps its " <>
+             "idempotency; its owner is :self or :infrastructure", declaration}
+        ]
+
+      {:infrastructure, key} when key != :event_id ->
+        [
+          {"P3: #{where} is kept idempotent by the engine, which keys what it issues by the " <>
+             "event's id; its key is :event_id, not #{inspect(key)}", declaration}
+        ]
+
+      _ ->
+        []
+    end
+  end
+
+  # The engine keys only the commands a reaction issues (`Consumer.reaction_key/5`);
+  # an effect's call goes to a system the engine knows nothing of.
+  defp not_infrastructure(where, %{idempotency: idempotency} = declaration) do
+    if idempotency[:owner] == :infrastructure,
       do: [
-        {"P3: #{where} issues commands to this engine, so no system downstream keeps its " <>
-           "idempotency; its owner is :self or :infrastructure", declaration}
+        {"P3: #{where} calls outside the engine, which keys only the commands a reaction " <>
+           "issues; its owner is :self or :downstream", declaration}
       ],
       else: []
   end

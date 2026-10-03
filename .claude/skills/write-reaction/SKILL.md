@@ -86,8 +86,9 @@ that calls out, fans out, or may be slow. The compiler and `check` push the same
 delivered so name `idempotency:`, what makes that harmless and who keeps it so —
 `[key: :event_id, owner: :self]` (plan EP4). The owner is the line of code it asks for: `:self`, this
 module keys what it writes; `:downstream`, an effect passes the key to the system it calls, which
-ignores a repeat (`P3` allows it on an effect only); `:infrastructure`, the engine keys it, as it does
-every command a policy issues. The callback's `@doc` repeats the owner's sentence. The library does
+ignores a repeat (`P3` allows it on an effect only); `:infrastructure`, the engine keys it by the
+event's id, as it does every command a policy issues (`P3` refuses it on an effect, whose call the
+engine does not key, and on any key but `:event_id`). The callback's `@doc` repeats the owner's sentence. The library does
 part of it itself, and the rest is yours:
 
 - **A command a reaction issues is keyed by its cause**: `"policy:<contract>:<name>:<event id>:

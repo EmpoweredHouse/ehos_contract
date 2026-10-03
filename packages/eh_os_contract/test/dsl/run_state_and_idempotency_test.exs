@@ -268,6 +268,37 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
       assert message =~ "P3: process manager :chase issues commands to this engine"
     end
 
+    test "P3 refuses the engine as an effect's owner, and on a key other than the event's id" do
+      message =
+        refuse_contract("InfrastructureEffect", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :pay, "Płatność", by: :reception, emits: :paid
+            command :remind, "Przypomnienie", emits: :reminded
+            event :paid, "Zapłacono"
+            event :reminded, "Przypomniano"
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+
+          effect :receipt, "Wyślij paragon", handles: :paid, calls: :mail,
+            idempotency: [key: :event_id, owner: :infrastructure]
+
+          policy :thank, "Podziękuj", handles: :paid, issues: :remind,
+            delivery: :at_least_once, idempotency: [key: :visit_id, owner: :infrastructure]
+        """)
+
+      assert message =~
+               "P3: effect :receipt calls outside the engine, which keys only the commands a " <>
+                 "reaction issues; its owner is :self or :downstream"
+
+      assert message =~
+               "P3: policy :thank is kept idempotent by the engine, which keys what it issues by " <>
+                 "the event's id; its key is :event_id, not :visit_id"
+    end
+
     test "an owner is required, and is one of three" do
       for idempotency <- ["[key: :event_id]", "[key: :event_id, owner: :somebody]", ":event_id"] do
         assert_raise Spark.Error.DslError, fn ->
