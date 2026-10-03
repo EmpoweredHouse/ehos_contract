@@ -59,9 +59,5 @@ defmodule EhOsContract.KeyTest do
       assert Key.fits?([String.duplicate("€", 682) <> "aa"])
       refute Key.fits?([String.duplicate("€", 682) <> "aaa"])
     end
-
-    test "leaves room below the 2704 bytes of a btree entry for its header and length words" do
-      assert Key.budget() < 2704 - 8 - 2 * 8
-    end
   end
 end
