@@ -36,6 +36,9 @@ defmodule EhOsContract.Contract.Generate do
   calls the implementation, and checks the result (`EhOsContract.DomainService`). Which callbacks, with which types, is
   `EhOsContract.Contract.Callbacks`: the same list the implementation macros
   check against.
+
+  Each behaviour's `@moduledoc` and each callback's `@doc` say what the contract says
+  of it, rules and scenarios included (plan EP3): `EhOsContract.Contract.Doc`.
   """
 
   use Spark.Dsl.Transformer
@@ -179,6 +182,9 @@ defmodule EhOsContract.Contract.Generate do
         "`#{inspect(name)}` of `#{inspect(model.module)}` defines, generated from its declaration. " <>
         "Bound with `use #{inspect(model.module)}, #{kind}: #{inspect(name)}`."
 
+    # Plan EP3: the declaration's label, source and rules follow the sentence.
+    doc = EhOsContract.Contract.Doc.moduledoc(model, kind, name, doc)
+
     quote do
       @moduledoc unquote(doc)
       unquote(callbacks(model, kind, name))
@@ -247,9 +253,19 @@ defmodule EhOsContract.Contract.Generate do
   defp callbacks(model, kind, name) do
     %{callbacks: callbacks, evolve: evolve} = Callbacks.of(model, kind, name)
 
+    # Plan EP3: each callback carries what the contract says of it, so whoever writes
+    # the implementation reads the rules where the code goes.
+    docs =
+      Enum.map(callbacks, &{&1, EhOsContract.Contract.Doc.callback(model, kind, name, &1.name)}) ++
+        if(evolve,
+          do: [{evolve.callback, EhOsContract.Contract.Doc.evolve(evolve.events)}],
+          else: []
+        )
+
     specs =
-      for c <- callbacks ++ if(evolve, do: [evolve.callback], else: []) do
+      for {c, doc} <- docs do
         quote do
+          @doc unquote(doc)
           @callback unquote(c.name)(unquote_splicing(c.args)) :: unquote(c.returns)
         end
       end

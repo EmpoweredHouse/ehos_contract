@@ -1,7 +1,9 @@
 defmodule Rehmed.StatutoryReporting.ReportOnClinicalClose do
   @moduledoc """
-  `P-07`: the clinical close of a service reported to P1 queues its report, with the
-  payload the close carries; any other close waives it.
+  The policy `report_on_clinical_close`. Its rule is the contract's constraint
+  `only_reported_services` (`P-07`), which the callback's generated doc carries with
+  the scenarios that illustrate it; the report is queued with the payload the close
+  carries.
   """
 
   use Rehmed.Contracts.StatutoryReporting, policy: :report_on_clinical_close
