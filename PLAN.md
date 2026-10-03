@@ -437,7 +437,7 @@ Usunięte: `assets/css/vendor/empoweredhouse/` z `SOURCE.md`, `.gitattributes` p
 Rozmowa Emila z osobą, która w AppUnite prowadzi komputery pracowników (zamówienie, wydanie, zwrot, Innergo,
 sprzedaż) — dziś w Excelu i Notion. Destylacja: `docs/appunite-equipment-2026-10-03-distillation.md`; Emil zna proces
 i odpowiadał na pytania zamiast rozmówczyni. Domena `AppuniteEquipment.Domain` i dwa kontrakty, `Computers` i
-`Assignments`, z implementacją, odczytem „Inventory” i 24 scenariuszami. Emil planuje osobne repozytorium dla tego
+`Assignments`, z implementacją, odczytem „Inventory” i 30 scenariuszami (11 reguł, każda z odmową). Emil planuje osobne repozytorium dla tego
 procesu; tu jest, dopóki go nie ma, na prawach danych testowych jak TaxVision i Rehmed.
 
 ### Decyzje
