@@ -155,8 +155,42 @@ defmodule EhOsContract.ActorsAndRelationsTest do
         "actors_relations_outside.ex"
       )
 
-      assert [%{terms: [["Zdarzenie medyczne", "Zgłoszenie"]]}] =
-               Model.fetch(EhOsContract.ActorsAndRelationsTest.Outside).relations
+      outside = Model.fetch(EhOsContract.ActorsAndRelationsTest.Outside)
+      assert [%{terms: [["Zdarzenie medyczne", "Zgłoszenie"]]}] = outside.relations
+
+      # The glossary says the other end is a system, not a context with a glossary.
+      assert Glossary.render(outside) =~
+               ~s|_In external `p1` (conformist): "Zdarzenie medyczne"._|
+    end
+
+    test "D5 reads a directed relation's pair as upstream, then downstream; D1 refuses a pair twice" do
+      message =
+        """
+        defmodule EhOsContract.ActorsAndRelationsTest.Directed do
+          use EhOsContract.Domain, name: :clinic, language: :pl
+
+          subdomain :core, "Core", type: :core
+
+          context :scheduling, "Umawianie", subdomain: :core do
+            term "Termin", definition: "Zarezerwowany czas"
+          end
+
+          context :settlement, "Rozliczenia", subdomain: :core do
+            term "Wizyta", definition: "Należna kwota"
+          end
+
+          relation :customer_supplier, upstream: :scheduling, downstream: :settlement,
+            terms: [{"Termin", "Wizyta"}, {"Termin", "Wizyta"}]
+        end
+        """
+        |> compile_error("actors_relations_directed.ex")
+        |> Exception.message()
+
+      assert message =~ ~s|D1: relation :customer_supplier pairs {"Termin", "Wizyta"} twice|
+
+      # "Termin" is the upstream's word and "Wizyta" the downstream's: read the other way
+      # round, both would be refused.
+      refute message =~ "is not in the glossary"
     end
 
     test "D1 refuses a responsibility named twice, and one not snake_case" do
@@ -192,6 +226,10 @@ defmodule EhOsContract.ActorsAndRelationsTest do
                  "jako liczbę · _source: P-25_"
 
       assert text =~ ~s|· terms: "Wizyta" ↔ "Wizyta"|
+
+      # A context's page carries the same line under the term as the glossary.
+      page = Pages.render(domain, []) |> Map.fetch!("scheduling/index.md")
+      assert page =~ ~s|_In `documentation` (partnership): "Wizyta"._|
     end
 
     test "the glossary says, under a term, what the other end calls it" do
@@ -200,6 +238,35 @@ defmodule EhOsContract.ActorsAndRelationsTest do
       assert glossary =~ "_In `documentation` (partnership): \"Wizyta\"._"
       assert glossary =~ "_In `scheduling` (partnership): \"Wizyta\"._"
       refute glossary =~ "### Epizod\n\nSeria wizyt jednego leczenia\n_In"
+
+      # Translated, the term keeps what the other end calls it.
+      compile(
+        """
+        defmodule EhOsContract.ActorsAndRelationsTest.Translated do
+          use EhOsContract.Domain, name: :clinic, language: :pl
+
+          subdomain :core, "Core", type: :core
+
+          context :scheduling, "Umawianie", subdomain: :core do
+            term "Wizyta", definition: "Termin" do
+              translation :en, "Visit", definition: "A held slot"
+            end
+          end
+
+          context :documentation, "Dokumentacja", subdomain: :core do
+            term "Wizyta", definition: "Spotkanie"
+          end
+
+          relation :partnership, between: [:scheduling, :documentation],
+            terms: [{"Wizyta", "Wizyta"}]
+        end
+        """,
+        "actors_relations_translated.ex"
+      )
+
+      english = Glossary.render(EhOsContract.ActorsAndRelationsTest.Translated, language: :en)
+      assert english =~ ~s|### Visit|
+      assert english =~ ~s|_Translates "Wizyta"._\n_In `documentation` (partnership): "Wizyta"._|
     end
   end
 end

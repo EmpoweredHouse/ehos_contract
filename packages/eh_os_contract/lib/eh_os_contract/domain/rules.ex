@@ -183,6 +183,12 @@ defmodule EhOsContract.Domain.Rules do
         end
 
     # Plan EP5b: an actor's responsibilities, named within the actor.
+    pairs =
+      for %Relation{} = relation <- entities,
+          duplicate <- Enum.uniq(duplicates(relation.terms, & &1)) do
+        {"D1: relation #{inspect(relation.type)} pairs #{inspect(duplicate)} twice", relation}
+      end
+
     responsibilities =
       for %Actor{} = actor <- entities,
           r <- actor.responsibilities,
@@ -257,7 +263,7 @@ defmodule EhOsContract.Domain.Rules do
 
     forms ++
       by_kind ++
-      modules ++ types ++ terms ++ operations ++ responsibilities ++ relations ++ both
+      modules ++ types ++ terms ++ operations ++ responsibilities ++ pairs ++ relations ++ both
   end
 
   defp built_in_type?(name), do: :erl_internal.is_type(name, 0) or name in @elixir_types
@@ -817,7 +823,7 @@ defmodule EhOsContract.Domain.Rules do
         do: [{"#{where} relates context #{inspect(hd(ends))} to itself", relation}],
         else: []
 
-    sides = if directed?, do: [relation.upstream, relation.downstream], else: relation.between
+    sides = EhOsContract.Domain.Build.sides(relation)
 
     terms =
       if roles == [] and unknown == [],

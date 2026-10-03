@@ -46,7 +46,7 @@ defmodule EhOsContract.Glossary do
           for term <- terms do
             if wanted in [nil, language],
               do: term(term, across(model, context.name, term.text)),
-              else: translated(term, wanted)
+              else: translated(term, wanted, across(model, context.name, term.text))
           end
       end
 
@@ -62,23 +62,29 @@ defmodule EhOsContract.Glossary do
     Enum.join(lines, "\n") <> "\n"
   end
 
-  # Plan EP5b: where a relation pairs this term with a word of the context at its
-  # other end, which may mean something else there.
-  defp across(model, name, text) do
+  @doc """
+  Plan EP5b: what the other end of each relation that pairs the term `text` of
+  context `name` calls it, one line each — the glossary's and a context page's.
+  An external end is said to be one, since it has no glossary of its own.
+  """
+  @spec across(map(), atom(), String.t()) :: [String.t()]
+  def across(model, name, text) do
+    externals = MapSet.new(model.externals, & &1.name)
+
     for relation <- model.relations,
-        sides = Enum.reject([relation.upstream, relation.downstream], &is_nil/1),
-        sides = if(sides == [], do: relation.between, else: sides),
+        [first_end, second_end] = EhOsContract.Domain.Build.sides(relation),
         [first, second] <- Map.get(relation, :terms, []),
         {own, word, other, other_word} <- [
-          {Enum.at(sides, 0), first, Enum.at(sides, 1), second},
-          {Enum.at(sides, 1), second, Enum.at(sides, 0), first}
+          {first_end, first, second_end, second},
+          {second_end, second, first_end, first}
         ],
         own == name and word == text do
-      ~s|_In `#{other}` (#{relation.type}): "#{other_word}"._|
+      where = if MapSet.member?(externals, other), do: "external `#{other}`", else: "`#{other}`"
+      ~s|_In #{where} (#{relation.type}): "#{other_word}"._|
     end
   end
 
-  defp translated(term, language) do
+  defp translated(term, language, across) do
     case Enum.find(term.translations, &(&1.language == language)) do
       nil ->
         "### #{term.text}\n\n_No translation into #{language}._\n"
@@ -86,7 +92,7 @@ defmodule EhOsContract.Glossary do
       translation ->
         lines =
           ["### #{translation.text}", "", translation.definition] ++
-            avoid(translation.avoid) ++ [~s|_Translates "#{term.text}"._|]
+            avoid(translation.avoid) ++ [~s|_Translates "#{term.text}"._|] ++ across
 
         Enum.join(lines, "\n") <> "\n"
     end

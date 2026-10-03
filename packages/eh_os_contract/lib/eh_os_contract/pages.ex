@@ -544,16 +544,16 @@ defmodule EhOsContract.Pages do
               do: bullet([link(code(inspect(m.module)), contract_path(m)), process_label(m)])
       end,
       section("Relations", relations, & &1),
-      glossary(c)
+      glossary(c, d)
     ]
   end
 
   defp process_label(%{process: %{label: label}}), do: " — #{label}"
   defp process_label(_model), do: ""
 
-  defp glossary(%{terms: []}), do: ["", "## Glossary", "", "_No terms._"]
+  defp glossary(%{terms: []}, _domain), do: ["", "## Glossary", "", "_No terms._"]
 
-  defp glossary(c) do
+  defp glossary(c, domain) do
     [
       "",
       "## Glossary",
@@ -564,6 +564,7 @@ defmodule EhOsContract.Pages do
           "",
           t.definition,
           avoid(t.avoid),
+          for(line <- EhOsContract.Glossary.across(domain, c.name, t.text), do: ["", line]),
           if(t.source, do: ["", "_Source: #{t.source}_"], else: []),
           for tr <- t.translations do
             ["", "_#{tr.language}_: **#{tr.text}** — #{tr.definition}", avoid(tr.avoid)]

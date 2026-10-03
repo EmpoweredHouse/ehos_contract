@@ -160,7 +160,7 @@ defmodule EhOsContract.Domain.Build do
          for(
            %{__struct__: _} = e <- entities,
            entity_name(e) == entity,
-           do: e |> plain() |> pairs()
+           do: if(entity == :relation, do: e |> plain() |> pairs(), else: plain(e))
          )}
       end
 
@@ -274,10 +274,15 @@ defmodule EhOsContract.Domain.Build do
 
   # Plan EP5b: a relation's terms are pairs, kept as two-element lists, the shape a
   # JSON reader of the model gets as well.
-  defp pairs(%{type: _, terms: terms} = relation),
+  defp pairs(%{terms: terms} = relation),
     do: %{relation | terms: Enum.map(terms, &Tuple.to_list/1)}
 
-  defp pairs(declaration), do: declaration
+  @doc false
+  # A relation's two ends in the order its pairs are read: upstream then downstream,
+  # or `between:` as written. D5 and the glossary read pairs through this one place.
+  @spec sides(map()) :: [atom()]
+  def sides(%{upstream: up, downstream: down}) when up != nil and down != nil, do: [up, down]
+  def sides(%{between: between}), do: between
 
   # A Spark struct becomes a plain map, recursively, without the struct tag and
   # without the source annotation.

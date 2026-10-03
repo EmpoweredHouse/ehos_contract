@@ -215,7 +215,7 @@ defmodule EhOsContract.Domain.Dsl do
   }
 
   # Plan EP5b: named prose, rung 0 of the ladder — what the material says the actor
-  # answers for. Nothing runs it; a page and the glossary read it.
+  # answers for. Nothing runs it; the domain's page reads it.
   @responsibility %Spark.Dsl.Entity{
     name: :responsibility,
     describe: "What the actor answers for, as the material says it: named prose.",

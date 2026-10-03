@@ -99,11 +99,9 @@ defmodule Rehmed.Domain do
 
   actor :manager, :human, "Manager gabinetu" do
     # Plan EP5b: the comment over the clinical visit's process, as named prose.
-    responsibility(
-      :overdue_reports,
-      "Dostaje przekroczenia terminu zgłoszenia; zaległa praca trafia do niego jako liczba",
-      source: "P-25"
-    )
+    responsibility :overdue_reports,
+                   "Dostaje przekroczenia terminu zgłoszenia; zaległa praca trafia do niego jako liczba",
+                   source: "P-25"
   end
 
   # The material names no actor for it: `AGG-10` has no commands and `X-01` answers
