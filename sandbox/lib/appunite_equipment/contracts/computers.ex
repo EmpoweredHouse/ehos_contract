@@ -979,4 +979,22 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
     rejected :only_from_the_office
   end
+
+  scenario "komputer sprzedany Pawłowi — jego rezerwacji już się nie zwalnia" do
+    given :ordered, %{profile: :developer}
+
+    given :received, %{
+      serial_number: "C02DX1ABQ6LR",
+      chip: :m1,
+      price: 899_900,
+      purchased_on: "2021-02-02",
+      invoice_number: "FV/2021/02/3"
+    }
+
+    given :listed_for_sale, %{asking_price: 210_000}
+    given :reserved, %{buyer_id: "employee-pawel"}
+    given :sold, %{price: 210_000, invoice_number: "FS/2026/10/2", channel: :marketplace}
+    command :drop_reservation
+    rejected :only_a_reservation_is_dropped
+  end
 end

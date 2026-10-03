@@ -108,6 +108,10 @@ defmodule AppuniteEquipment.Inventory.Computer do
   end
 
   @impl true
+  # Only while it is for sale: a sold computer keeps the reservation it was sold on.
+  def drop_reservation(_command, %State{status: status}) when status != :for_sale,
+    do: reject(:only_a_reservation_is_dropped)
+
   def drop_reservation(%DropReservation{computer_id: id}, %State{reserved: true}),
     do: emit(%ReservationDropped{computer_id: id})
 
