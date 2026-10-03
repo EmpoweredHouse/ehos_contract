@@ -1,0 +1,1 @@
+#105 review fix 2 (.claude/settings.json only). Pipe test, 18 cases all as wanted (scratchpad hook_test.sh); the previous hook fails exactly the three new positive cases: cd "$HOME/notedwt", cd $HOME/notedwt, cd "${HOME}/notedwt"; single-quoted '$HOME/...' and "$HOME" alone refuse, as before.
