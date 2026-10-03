@@ -507,6 +507,9 @@ Na `dsl/ep2-rules` (od `origin/main` = `b6a96dd`, po #101), niewypchnięte.
   (bez zmian: żaden istniejący kontrakt nie dostał `prose-without-scenario`); web 52; auth 285 + 1 właściwość.
   Wcześniejsze podejścia padały na `too_many_connections` albo stawały w testach silnika na wspólnym Postgresie
   zajętym przez inne sesje; same testy silnika z `--trace` przechodziły w 64 s.
+- **Po rebase na `9b959e4`** (#103 — budżet bajtów klucza, #104): brama znowu zielona, **EXIT=0** — sandbox 145,
+  `check` 0 / 29 / 9; silnik 1179 (1170 z `main` + 9 z EP2), `check` 0 / 71 / 6 — trzy ostrzeżenia więcej
+  przyniósł #103 (tyle zapisuje plan na `main`), żadnego `prose-without-scenario`; web 52; auth 285 + 1 właściwość.
 
 ## Dopisek 2 października (2) — #83: `ehos.yaml/v2` i `sign_in`; podział EB2
 
