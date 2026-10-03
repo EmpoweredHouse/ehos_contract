@@ -175,13 +175,17 @@ defmodule EhOsContract.AsyncAPITest do
       assert payload["required"] == ["amount", "branch_id", "transfer_id"]
       assert payload["additionalProperties"] == false
 
+      # The codec's bounds, where JSON Schema has a word for them.
       assert payload["properties"]["transfer_id"] == %{
                "type" => "string",
+               "minLength" => 1,
+               "maxLength" => 255,
                "x-eh-os-contract-type" => "id"
              }
 
       assert payload["properties"]["amount"] == %{
                "type" => "integer",
+               "format" => "int64",
                "x-eh-os-contract-type" => "integer"
              }
 

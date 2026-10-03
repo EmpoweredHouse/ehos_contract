@@ -40,6 +40,8 @@ if Code.ensure_loaded?(Plug.Conn) do
     | rejected on an invariant | 422 | `{"rejected": "<invariant>"}` |
     | fields that do not fit | 422 | `{"invalid": {"<field>": "required" \\| "type" \\| "generated" \\| "<invariant>"}}` — `generated` for an identity sent with a command that creates its aggregate, which the library gives; an invariant's name for a value that breaks it (plan EL2b); `type` also for text holding a NUL (`"\\u0000"`, `%00`) |
     | a body that is not a JSON object, or cannot be read | 400 | `{"error": "body_is_not_a_json_object"}`, `{"error": "unreadable_body"}` |
+    | a query string Plug cannot read: not UTF-8, nested too deep | 400 | `{"error": "invalid_query_string"}` |
+    | a query string past Plug's length | 414 | `{"error": "invalid_query_string"}` |
     | an `x-correlation-id` that is not a UUID's text | 400 | `{"error": "correlation_id_is_not_a_uuid"}` |
     | refused | 403 | `{"refused": "<reason>"}` |
     | no actor | 401 | `{"error": "no_actor"}` |
@@ -136,8 +138,12 @@ if Code.ensure_loaded?(Plug.Conn) do
       do: reply(conn, 401, %{error: "no_actor"})
 
     # What the body was, which only this door knows: unreadable, or not a JSON object.
-    defp answer(conn, _kind, _model, _declaration, _values, unread, {:error, :not_an_object}),
-      do: reply(conn, 400, %{error: unread || "body_is_not_a_json_object"})
+    defp answer(conn, _kind, _model, _declaration, _values, unread, {:error, :not_an_object}) do
+      case unread do
+        {status, error} -> reply(conn, status, %{error: error})
+        error -> reply(conn, 400, %{error: error || "body_is_not_a_json_object"})
+      end
+    end
 
     defp answer(
            conn,
@@ -208,9 +214,14 @@ if Code.ensure_loaded?(Plug.Conn) do
 
     # The input as this door read it, and, when it could not read an object, what the
     # body was instead, for the answer once the caller may know it.
+    # A query string Plug cannot read — not UTF-8, nested too deep, or too long (414) — is
+    # refused as it is read: no input, and the answer once the caller may know it.
     defp input(conn, :query, fields, values) do
       {conn, input} = decode_query_params(conn, fields, values)
       {conn, input, nil}
+    rescue
+      error in Plug.Conn.InvalidQueryError ->
+        {conn, nil, {error.plug_status || 400, "invalid_query_string"}}
     end
 
     defp input(%{body_params: %Plug.Conn.Unfetched{}} = conn, :command, _fields, _values) do
