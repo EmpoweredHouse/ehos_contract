@@ -537,6 +537,8 @@ Na `dsl/ep3-docs` (od `origin/main` = `24904b8`, po #105 i #106), niewypchnięte
   dosłownie, granica i query w skompilowanych chunkach). Bezpieczeństwo i wydajność — bez defektu; opisy
   scenariuszy trafiają teraz do dokumentacji, więc `contract-distillation` mówi, że opis nazywa przypadek, nigdy
   prawdziwą osobę. Każda poprawka sprawdzona odwrotnie.
+- **Brama zielona** na `c042d42`: **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1184 (1179 + 5), `check`
+  0 / 71 / 6 (bez zmian); web 52; auth 285 + 1 właściwość.
 
 ## Dopisek 2 października (2) — #83: `ehos.yaml/v2` i `sign_in`; podział EB2
 
