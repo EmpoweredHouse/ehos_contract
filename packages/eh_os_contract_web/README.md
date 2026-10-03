@@ -61,13 +61,17 @@ exception: the graph screen's diagrams need inline styles (see "Looks" below).
 
 The dashboard is styled from the EmpoweredHouse design system, the one the EHOS
 console uses: dark by default, light when the system prefers it. Its tokens and fonts
-come from the `ehos_design` package in
-[EmpoweredHouse/ehos-tools](https://github.com/EmpoweredHouse/ehos-tools/tree/main/packages/ehos_design),
-a `:dev` dependency pinned in `mix.exs`. `mix assets.build` imports the plain tokens,
+come from the `ehos_design` package of EmpoweredHouse's `ehos-tools` repository, a
+`:dev` dependency pinned in `mix.exs` to the commit tagged `ehos_design-v0.1.0`. `mix assets.build` imports the plain tokens,
 `priv/css/colors_and_type.css`, into the stylesheet and copies the fonts beside it.
 The built stylesheet and the fonts are committed under `priv/static/assets/`, so a host
 fetches nothing from that package; a new version of the design system reaches the
 dashboard by moving the pinned ref and rebuilding.
+
+`ehos-tools` is private, and a plain `mix deps.get` fetches every environment's
+dependencies, this one included. Without access to it, fetch with
+`mix deps.get --only test`: the tests read only the committed build, and only
+`mix assets.build` needs the package.
 
 A host cannot restyle it or pin its theme yet. The dashboard's root layout replaces
 the host's for these routes and loads only this package's stylesheet, so neither a
