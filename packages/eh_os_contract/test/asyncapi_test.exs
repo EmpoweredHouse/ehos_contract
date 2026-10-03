@@ -180,12 +180,15 @@ defmodule EhOsContract.AsyncAPITest do
                "type" => "string",
                "minLength" => 1,
                "maxLength" => 255,
+               "x-eh-os-contract-max-bytes" => 255,
                "x-eh-os-contract-type" => "id"
              }
 
       assert payload["properties"]["amount"] == %{
                "type" => "integer",
                "format" => "int64",
+               "minimum" => -9_223_372_036_854_775_808,
+               "maximum" => 9_223_372_036_854_775_807,
                "x-eh-os-contract-type" => "integer"
              }
 

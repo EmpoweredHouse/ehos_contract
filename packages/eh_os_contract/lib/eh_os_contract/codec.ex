@@ -54,6 +54,9 @@ defmodule EhOsContract.Codec do
   @max_id 255
   @int64 -9_223_372_036_854_775_808..9_223_372_036_854_775_807
   @max_coefficient Integer.pow(10, 1000)
+  # The longest plain form of a decimal within those bounds: a thousand digits and a
+  # thousand zeros, a sign and a point.
+  @max_decimal_text 2002
   @years 1..9999
 
   @typedoc "A declared field, as a model carries it."
@@ -159,9 +162,7 @@ defmodule EhOsContract.Codec do
   defp broken(_type, _value, _values, _domain), do: nil
 
   defp fits?(:string, value, _values), do: text?(value)
-  # An empty identifier names nothing: it would key a stream, a tag and a run with
-  # nothing after the colon, one for every caller that forgot to fill it in.
-  defp fits?(:id, value, _values), do: text?(value) and value != "" and within?(:id, value)
+  defp fits?(:id, value, _values), do: text?(value) and within?(:id, value)
 
   # An entity's identifier where the model keeps the declared type: a function's result.
   defp fits?({:id, _entity}, value, values), do: fits?(:id, value, values)
@@ -573,7 +574,7 @@ defmodule EhOsContract.Codec do
 
   defp decode_value(:decimal, value, _values, open, _path)
        when is_binary(value) or is_integer(value) do
-    case Decimal.cast(value) do
+    case cast_decimal(value) do
       {:ok, decimal} ->
         kept(:decimal, decimal, open)
 
@@ -635,12 +636,57 @@ defmodule EhOsContract.Codec do
 
   defp decode_value(_type, _value, _values, _open, _path), do: :error
 
+  # Decimal 3 parses text, and casts an integer, only within decimal128, 34 digits, while
+  # the log writes a value within the bounds in its plain form (`to_string(_, :normal)`),
+  # which runs to two thousand characters. Plain digits are read here, so whatever the log
+  # holds within the bounds reads back; `kept/3` holds input to them.
+  defp cast_decimal(value) when is_integer(value), do: {:ok, Decimal.new(value)}
+
+  defp cast_decimal(value) when byte_size(value) <= @max_decimal_text do
+    with :error <- Decimal.cast(value) do
+      case Regex.run(~r/\A(-?)([0-9]+)(?:\.([0-9]+))?\z/u, value, capture: :all_but_first) do
+        [sign, whole] -> {:ok, whole(sign, whole)}
+        [sign, whole, fraction] -> {:ok, fraction(sign, whole, fraction)}
+        nil -> :error
+      end
+    end
+  end
+
+  defp cast_decimal(_value), do: :error
+
+  # Trailing zeros back into the exponent they were written out of, up to its bound, so a
+  # value within the bounds reads back within them: 10 ** 999 * 10 ** 1000 is two thousand
+  # digits, and a coefficient of a thousand under an exponent of a thousand.
+  defp whole(sign, whole) do
+    digits = String.trim_trailing(whole, "0")
+    exp = min(byte_size(whole) - byte_size(digits), 1000)
+
+    if digits == "",
+      do: Decimal.new(sign(sign), 0, 0),
+      else:
+        Decimal.new(
+          sign(sign),
+          String.to_integer(binary_part(whole, 0, byte_size(whole) - exp)),
+          exp
+        )
+  end
+
+  defp fraction(sign, whole, fraction),
+    do: Decimal.new(sign(sign), String.to_integer(whole <> fraction), -byte_size(fraction))
+
+  defp sign("-"), do: -1
+  defp sign(""), do: 1
+
   # Input is held to the bounds; the log read back with `open:` is not.
   defp kept(type, value, open),
     do: if(is_nil(open) and not within?(type, value), do: :error, else: {:ok, value})
 
   # The bounds, one place for `fits?/3` and decoding: what holds each type's value.
-  defp within?(:id, value), do: byte_size(value) <= @max_id
+  # An empty identifier names nothing: it would key a stream, a tag and a run with
+  # nothing after the colon, one for every caller that forgot to fill it in. Held here,
+  # so decoding refuses it as `problems/4` does: an inbox takes a published event by
+  # decoding alone.
+  defp within?(:id, value), do: byte_size(value) in 1..@max_id
   defp within?(:integer, value), do: value in @int64
   defp within?(:date, value), do: value.year in @years
   defp within?(:timestamp, value), do: value.year in @years

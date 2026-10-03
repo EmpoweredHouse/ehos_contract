@@ -179,6 +179,8 @@ defmodule EhOsContract.OpenAPITest do
     assert schema["properties"]["amount"] == %{
              "type" => "integer",
              "format" => "int64",
+             "minimum" => -9_223_372_036_854_775_808,
+             "maximum" => 9_223_372_036_854_775_807,
              "x-eh-os-contract-type" => "amount"
            }
 
@@ -190,6 +192,8 @@ defmodule EhOsContract.OpenAPITest do
                    "amount" => %{
                      "type" => "integer",
                      "format" => "int64",
+                     "minimum" => -9_223_372_036_854_775_808,
+                     "maximum" => 9_223_372_036_854_775_807,
                      "x-eh-os-contract-type" => "amount"
                    },
                    "note" => %{

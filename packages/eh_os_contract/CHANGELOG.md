@@ -104,9 +104,15 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   - a decider whose arithmetic leaves the bounds (two int64s summed past int64, a decimal's exponent past a
     thousand) fails the command, as an event that does not fit always has.
 
+  A decimal within the bounds reads back whole, though Decimal 3 parses text, and casts an integer, only up to 34
+  digits: the codec reads the plain form the log writes, and a JSON number is held to the bounds as its text is. An empty `:id` is refused as it is decoded, as validation refused it: an inbox
+  takes a published event by decoding alone.
+
   A tighter bound — a `varchar(n)`, a `numeric(p, s)`, a sum a read model keeps — is the domain's to declare, as an
   invariant of a value. The OpenAPI and AsyncAPI documents carry the bounds JSON Schema has words for: `:id`
-  `minLength`/`maxLength`, `:integer` `format: int64`.
+  `minLength`/`maxLength` in characters and `x-eh-os-contract-max-bytes`, since the bound is in bytes; `:integer`
+  `minimum`/`maximum` beside `format: int64`, which only annotates. Every document with such a field gets a new
+  `x-eh-os-contract-digest`, though its contract did not change.
 
   Over HTTP, **a query string Plug cannot read** — not UTF-8, nested too deep — is 400 `{"error":
   "invalid_query_string"}`, and one past Plug's length is 414. Either comes after the caller is asked whether it
