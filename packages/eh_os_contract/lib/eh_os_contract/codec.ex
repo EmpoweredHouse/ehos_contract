@@ -636,10 +636,11 @@ defmodule EhOsContract.Codec do
 
   defp decode_value(_type, _value, _values, _open, _path), do: :error
 
-  # Decimal 3 parses text only within decimal128, 34 digits, while the log writes a value
-  # within the bounds in its plain form (`to_string(_, :normal)`), which runs to two
-  # thousand characters. Plain digits are read here, so what the log holds reads back.
-  defp cast_decimal(value) when is_integer(value), do: Decimal.cast(value)
+  # Decimal 3 parses text, and casts an integer, only within decimal128, 34 digits, while
+  # the log writes a value within the bounds in its plain form (`to_string(_, :normal)`),
+  # which runs to two thousand characters. Plain digits are read here, so whatever the log
+  # holds within the bounds reads back; `kept/3` holds input to them.
+  defp cast_decimal(value) when is_integer(value), do: {:ok, Decimal.new(value)}
 
   defp cast_decimal(value) when byte_size(value) <= @max_decimal_text do
     with :error <- Decimal.cast(value) do
@@ -653,15 +654,21 @@ defmodule EhOsContract.Codec do
 
   defp cast_decimal(_value), do: :error
 
-  # Trailing zeros back into the exponent they were written out of, so the coefficient is
-  # held to its bound as the value was.
+  # Trailing zeros back into the exponent they were written out of, up to its bound, so a
+  # value within the bounds reads back within them: 10 ** 999 * 10 ** 1000 is two thousand
+  # digits, and a coefficient of a thousand under an exponent of a thousand.
   defp whole(sign, whole) do
     digits = String.trim_trailing(whole, "0")
+    exp = min(byte_size(whole) - byte_size(digits), 1000)
 
     if digits == "",
       do: Decimal.new(sign(sign), 0, 0),
       else:
-        Decimal.new(sign(sign), String.to_integer(digits), byte_size(whole) - byte_size(digits))
+        Decimal.new(
+          sign(sign),
+          String.to_integer(binary_part(whole, 0, byte_size(whole) - exp)),
+          exp
+        )
   end
 
   defp fraction(sign, whole, fraction),

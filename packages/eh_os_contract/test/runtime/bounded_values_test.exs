@@ -153,7 +153,9 @@ defmodule EhOsContract.BoundedValuesTest do
           Decimal.new(1, 10 ** 34, 0),
           Decimal.new(-1, 10 ** 999 + 7, -3),
           Decimal.new(1, 9, 1000),
-          Decimal.new(1, 10 ** 999, -1000)
+          Decimal.new(1, 10 ** 999, -1000),
+          Decimal.new(1, 100, 999),
+          Decimal.new(-1, 10 ** 999, 1000)
         ] do
       [stored] = Codec.encode(field(:decimal), %{value: decimal}, %{}) |> Map.values()
 
@@ -165,8 +167,11 @@ defmodule EhOsContract.BoundedValuesTest do
       assert Decimal.equal?(input, decimal)
     end
 
+    # A JSON number past 34 digits is held to the bounds as its text is.
+    assert {:ok, %{value: number}} = decoded(:decimal, 10 ** 40)
+    assert Decimal.equal?(number, Decimal.new(1, 10 ** 40, 0))
+
     # Past the bounds, as text, it stays refused.
-    assert decoded(:decimal, "1" <> String.duplicate("0", 1001)) == {:error, [value: :type]}
     assert decoded(:decimal, String.duplicate("1", 1001)) == {:error, [value: :type]}
     assert decoded(:decimal, String.duplicate("1", 2003)) == {:error, [value: :type]}
     assert decoded(:decimal, "1.5x") == {:error, [value: :type]}
