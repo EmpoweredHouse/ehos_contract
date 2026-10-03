@@ -93,6 +93,10 @@ defmodule AppuniteEquipment.Contracts.Computers do
               "Po wystawieniu na Allegro ryneczek jest zamknięty",
               source: "E"
 
+    invariant :allegro_only_without_reservation,
+              "Na Allegro idzie komputer, którego nikt nie zarezerwował na ryneczku",
+              source: "E: „chyba że nikt się nie zgłasza, to wtedy Allegro”"
+
     invariant :only_a_reservation_is_dropped, "Zwolnić można tylko istniejącą rezerwację",
       source: "E"
 
@@ -193,7 +197,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
     command :list_externally, "Wystaw na Allegro",
       by: :equipment_manager,
       emits: :listed_externally,
-      rejects: :only_a_listed_computer_is_sold,
+      rejects: [:only_a_listed_computer_is_sold, :allegro_only_without_reservation],
       source: "E"
 
     command :sell_computer, "Odnotuj sprzedaż",
@@ -996,5 +1000,22 @@ defmodule AppuniteEquipment.Contracts.Computers do
     given :sold, %{price: 210_000, invoice_number: "FS/2026/10/2", channel: :marketplace}
     command :drop_reservation
     rejected :only_a_reservation_is_dropped
+  end
+
+  scenario "Paweł zarezerwował — komputer nie idzie na Allegro" do
+    given :ordered, %{profile: :developer}
+
+    given :received, %{
+      serial_number: "C02DX1ABQ6LR",
+      chip: :m1,
+      price: 899_900,
+      purchased_on: "2021-02-02",
+      invoice_number: "FV/2021/02/3"
+    }
+
+    given :listed_for_sale, %{asking_price: 210_000}
+    given :reserved, %{buyer_id: "employee-pawel"}
+    command :list_externally
+    rejected :allegro_only_without_reservation
   end
 end

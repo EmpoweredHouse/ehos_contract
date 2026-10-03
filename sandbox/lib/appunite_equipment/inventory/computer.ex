@@ -118,13 +118,16 @@ defmodule AppuniteEquipment.Inventory.Computer do
   def drop_reservation(_command, _state), do: reject(:only_a_reservation_is_dropped)
 
   @impl true
+  def list_externally(_command, %State{status: :for_sale, reserved: true}),
+    do: reject(:allegro_only_without_reservation)
+
   def list_externally(%ListExternally{computer_id: id}, %State{status: :for_sale}),
     do: emit(%ListedExternally{computer_id: id})
 
   def list_externally(_command, _state), do: reject(:only_a_listed_computer_is_sold)
 
-  # The channel is where the computer stood when it sold: listed on Allegro, or still
-  # on the marketplace.
+  # The channel is where the computer stood when it sold: listed on Allegro, which
+  # only a computer nobody reserved can be, or still on the marketplace.
   @impl true
   def sell_computer(%SellComputer{} = sale, %State{status: :for_sale} = state) do
     emit(%Sold{
