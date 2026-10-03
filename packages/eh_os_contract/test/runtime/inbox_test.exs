@@ -20,15 +20,18 @@ defmodule EhOsContract.InboxTest do
 
   alias BusRig.Orders
   alias BusRig.Orders.Commands.PlaceOrder
+  alias BusRig.Stock.Commands.ReserveStock
 
   alias EhOsContract.{
     Actor,
     Bus,
     CommandRecord,
+    Conformance,
     Event,
     Implementations,
     Inbox,
     InboxRecord,
+    Paths,
     Relay,
     Subscription,
     Testing
@@ -153,6 +156,111 @@ defmodule EhOsContract.InboxTest do
     assert Inbox.take(inbox(), message("o-2", 80)) == :ack
 
     assert [%{payload: %{"order_id" => "o-1"}}, %{payload: %{"order_id" => "o-2"}}] = reserved()
+  end
+
+  # #65: a policy on another application's event is a declared path of the conformance screen,
+  # untraversed until a command it issued names an inbox row of its consumer as its cause.
+  test "a policy on a received event is a path the screen counts, from the inbox" do
+    keeper = Actor.credential("u-2", ["bus_rig_warehouse.reserve_stock"])
+
+    {:ok, _} =
+      EhOsContract.dispatch(BusRig.Stock, %ReserveStock{order_id: "o-0", total: 5}, actor: keeper)
+
+    assert [received] =
+             for(%{from: %{name: :order_placed}} = step <- Paths.observe(BusRig.Stock), do: step)
+
+    assert %{
+             from: %{kind: :event, name: :order_placed},
+             via: %{kind: :policy, name: :reserve_for_order},
+             to: %{kind: :command, name: :reserve_stock},
+             mode: :async,
+             runs: 0,
+             of_runs: 1
+           } = received
+
+    assert [%{from: %{name: :order_placed}}] =
+             Conformance.report(BusRig.Stock)
+             |> Map.fetch!(:processes)
+             |> hd()
+             |> Map.fetch!(:untraversed)
+
+    assert "event:order_placed->policy:reserve_for_order->command:reserve_stock" in EhOsContract.Deployment.edge_labels(
+             BusRig.Stock
+           )
+
+    assert Inbox.take(inbox(), message("o-1", 120)) == :ack
+    assert Inbox.take(inbox(), message("o-2", 80)) == :ack
+
+    assert [%{runs: 2, of_runs: 3}] =
+             for(%{from: %{name: :order_placed}} = step <- Paths.observe(BusRig.Stock), do: step)
+
+    assert Conformance.report(BusRig.Stock)
+           |> Map.fetch!(:processes)
+           |> hd()
+           |> Map.fetch!(:untraversed) ==
+             []
+
+    # Bounded as every step is: by when the inbox took the fact.
+    before = DateTime.add(Repo.one!(from(i in InboxRecord, select: min(i.received_at))), -1)
+
+    assert [%{runs: 0}] =
+             for(
+               %{from: %{name: :order_placed}} = step <-
+                 Paths.observe(BusRig.Stock, until: before),
+               do: step
+             )
+
+    assert [%{runs: 2}] =
+             for(
+               %{from: %{name: :order_placed}} = step <-
+                 Paths.observe(BusRig.Stock, since: before),
+               do: step
+             )
+  end
+
+  # A fact taken under `EhOsContract.Clock.at/2`, as a backfill takes it, is bounded by that
+  # time, as the events its policy appends are, not by the database's clock.
+  test "a received step is bounded by the engine's clock, as every other step" do
+    july = ~U[2026-07-01 12:00:00.000000Z]
+    EhOsContract.Clock.at(july, fn -> :ack = Inbox.take(inbox(), message("o-1", 120)) end)
+
+    assert [%{runs: 1}] =
+             for(
+               %{from: %{name: :order_placed}} = step <-
+                 Paths.observe(BusRig.Stock, since: july, until: DateTime.add(july, 1)),
+               do: step
+             )
+  end
+
+  # The inbox is not the policy's subscription: one stopped on the log is no failure of the
+  # path from another application.
+  test "a received step does not take on the failures of the policy's own subscription" do
+    Repo.insert!(%EhOsContract.SubscriptionRecord{
+      name: "BusRig.Stock:policy:reserve_for_order",
+      kind: "policy",
+      mode: "ordered",
+      version: "v",
+      updated_at: DateTime.utc_now(),
+      position: 0,
+      status: "failing",
+      failed_position: 7,
+      failure: "raised"
+    })
+
+    Repo.insert!(%CommandRecord{
+      id: Ecto.UUID.generate(),
+      contract: "BusRig.Stock",
+      type: "reserve_stock",
+      outcome: "failed",
+      failed_in: "policy:reserve_for_order",
+      issued_by: "policy:reserve_for_order",
+      correlation_id: Ecto.UUID.generate(),
+      instance_id: "o-9",
+      recorded_at: DateTime.utc_now()
+    })
+
+    assert [%{failing: %{subscription: nil, commands: 0}}] =
+             for(%{from: %{name: :order_placed}} = step <- Paths.observe(BusRig.Stock), do: step)
   end
 
   test "a message that does not fit what the contract consumes is delivered again" do

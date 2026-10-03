@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 2 października (E0–E12, EH, #72, #83, całe EB i #89 w `main`; w toku punkty końcowe discovery, potem #63–#66)
+## Handoff — stan na 3 października (E0–E12, EH, #72, #83, całe EB i #89 w `main`; w PR-ach punkty końcowe discovery (#91) i #64–#66)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -37,8 +37,9 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
   `6b280dd` — #86, EB2b, `445be88` — #85, EB2a, `ef0e94d` — #84, #83, i `7a2bcb7` — #82, EB1). CI `main` —
   sprawdzić (`gh run list --repo EmpoweredHouse/eh-os-contract --branch main --limit 1`). Historia `main` z
   merge'ami PR-ów; gałęzie etapów liniowe.
-- **`auth/discovery-endpoints`** (worktree `eb3b-applications-4567c7`) — od `762521e`: punkty końcowe discovery i
-  ten zapis.
+- **`auth/discovery-endpoints`** (PR #91) — od `762521e`: punkty końcowe discovery.
+- **`engine/issue-65-received-paths`** (worktree `eb3b-applications-4567c7`) — na `auth/discovery-endpoints`:
+  #66, #65, #64 i ten zapis. PR celuje w gałąź #91, póki ta nie jest w `main`.
 - **Gałęzie lokalne posprzątane 2 października** (za zgodą użytkownika): zostały `main` i
   `claude/review-login-issues-eb9680` (worktree, być może innej sesji — nietknięty). Worktree
   `issue-72-…`, `issue-78-…` i `merge-pr-55-…` stoją na odłączonym HEAD, czyste. Na GitHubie 68 gałęzi poza `main`
@@ -74,10 +75,10 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
 
 ### Co zostało — i czyje to jest
 
-- **Punkty końcowe discovery — asystenta, w toku** (prośba użytkownika po #89): „Po #89 — punkty końcowe
-  discovery”.
-- **#63–#66 — następne, z polecenia użytkownika.** Każde wymaga jego decyzji o kształcie (piszą to same issues);
-  asystent przygotowuje propozycje z przykładem.
+- **Punkty końcowe discovery — PR #91**, czeka na merge użytkownika.
+- **#64–#66 — w PR-ze** po #91; #63 odłożone decyzją użytkownika („#63–#66 — decyzje i co wyszło”).
+- **Zadanie zgłoszone jako chip:** bajty, których tabele silnika nie utrzymają (NUL w polu `:string`, zły UTF-8,
+  `idempotency-key` spoza ASCII), dają 500 zamiast odmowy — z przeglądu #66, poza jego zakresem.
 - **Merge każdego PR-a — użytkownika.**
 - **Wady `oidcc` 3.9.0** — zgłoszone 2 października jako erlef/oidcc#552–#555 („EB1 — co wyszło”); nasz kod ich
   nie potrzebuje, więc nic tu na nie nie czeka.
@@ -234,20 +235,24 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Otwarte pytania
 
-- **Surowa wartość zakresu w decyzjach auth** — [#66](https://github.com/EmpoweredHouse/eh-os-contract/issues/66) (z przeglądu E12d, sprzed niego): wartość pola zakresu „jak wysłana”
+- *Rozstrzygnięte 3 października (#66): skrót zamiast wartości, której tabela nie utrzyma.* Opis sprzed decyzji:
+  **Surowa wartość zakresu w decyzjach auth** — [#66](https://github.com/EmpoweredHouse/eh-os-contract/issues/66) (z przeglądu E12d, sprzed niego): wartość pola zakresu „jak wysłana”
   idzie do kolumny `scope_value` (`text`) decyzji `eh_os_contract_auth`; znak `\u0000` z JSON-a albo zły UTF-8 z
   query stringa (`%FF`) wywraca zapis decyzji — 500 zamiast odmowy; długi napis — wiersz na żądanie. Możliwe:
   odmowa wartości spoza UTF-8 bez NUL przed pytaniem `Authorizer`, limit długości — nowy powód odmowy, do decyzji.
-- **Retencja `eh_os_contract_inbox`** — [#64](https://github.com/EmpoweredHouse/eh-os-contract/issues/64) (z E12c): wiersz na fakt na inbox, na zawsze; czyszczenie po wieku skraca
+- *Rozstrzygnięte 3 października (#64): wszystko zostaje, host mierzy; okno czeka na retencję transportu EHOS-a.*
+  Opis sprzed decyzji: **Retencja `eh_os_contract_inbox`** — [#64](https://github.com/EmpoweredHouse/eh-os-contract/issues/64) (z E12c): wiersz na fakt na inbox, na zawsze; czyszczenie po wieku skraca
   okno, w którym ten sam fakt pod nowym id (FM-08) jest rozpoznany — granica do decyzji użytkownika.
-- **Kształt `EhOsContract.call/3` do sprawdzenia przy drugich prawdziwych drzwiach** — [#63](https://github.com/EmpoweredHouse/eh-os-contract/issues/63) (z E12d) — zbudowany na
+- **Kształt `EhOsContract.call/3` do sprawdzenia przy drugich prawdziwych drzwiach** (3 października: odłożone
+  decyzją użytkownika do pierwszych innych drzwi) — [#63](https://github.com/EmpoweredHouse/eh-os-contract/issues/63) (z E12d) — zbudowany na
   zapas z jednego użytkownika (Plug), wbrew zasadzie z 27 września, z wyboru użytkownika. Wyzwalacz: pierwsze inne
   drzwi dla surowych danych z credentialem (formularz LiveView, job z credentialem osoby, MCP), przed ich
   produkcją i najlepiej przed wydaniem 0.3.0; lista pytań — „E12d — co wyszło”, „Do powrotu”.
 - *Rozstrzygnięte 1 października („Przed E12d”): E12d teraz.* Opis sprzed decyzji: **czy publiczne wejście dla
   surowych danych robić teraz** — termin z 27 września stał na przesłance, że inbox to drugie drzwi dla surowych
   danych; zbudowany inbox nie autoryzuje i dekoduje sam, a komendy wydaje polityka strukturą.
-- **Zgodność nie widzi polityki inboxu** — [#65](https://github.com/EmpoweredHouse/eh-os-contract/issues/65) (z E12c): `Paths` nie ma kroku dla zdarzenia odebranego, więc ekran nie
+- *Rozstrzygnięte 3 października (#65): krok liczony z inboxu.* Opis sprzed decyzji: **Zgodność nie widzi polityki
+  inboxu** — [#65](https://github.com/EmpoweredHouse/eh-os-contract/issues/65) (z E12c): `Paths` nie ma kroku dla zdarzenia odebranego, więc ekran nie
   mówi, czy polityka na nim była przejechana. Możliwe: krok liczony z komend `policy:<nazwa>`, których przyczyna
   jest w `eh_os_contract_inbox`; albo zostawić — do decyzji użytkownika.
 - *Rozstrzygnięte 1 października (D1, „Przed E12c”): wiadomość niesie klucz z `idempotent_on`.* Opis sprzed
@@ -860,6 +865,63 @@ Bez zmian: wyjątek przed wywołaniem `oidcc` zostawia dzierżawę, a sesja koń
 ostrożne i rzadkie; podwójne `verify/2` przy odnawiającym żądaniu.
 
 Auth: 260 → 263 testów.
+
+### #63–#66 — decyzje i co wyszło (3 października)
+
+Polecenie użytkownika po #89. Asystent przedstawił każde issue z przykładem i rekomendacją; **użytkownik przyjął
+wszystkie cztery rekomendacje.** Gałąź `engine/issue-65-received-paths`, na `auth/discovery-endpoints` (#91).
+
+**Decyzje użytkownika (3 października), z opcjami, które przegrały:**
+- **#66 — wartość zakresu, której tabela nie utrzyma, zapisana jako `sha256:<hex>`.** Dotyczy NUL, złego UTF-8 i
+  wartości ponad 256 bajtów; decyzja bez zmian. *Odrzucone:*
+  - nowy powód odmowy przed `Authorizer` — widoczny dla hosta;
+  - limit długości jako odmowa — to samo;
+  - skrót każdej wartości — gubi wartość audytu w każdym wierszu.
+- **#65 — krok `zdarzenie odebrane → polityka → komenda`, liczony z inboxu.** Przesuwa werdykt, stąd wpis w
+  CHANGELOG. *Odrzucone:* zostawić i napisać w raporcie, że reakcje na inne aplikacje nie są mierzone — jedno z
+  czterech pytań ekranu zostałoby bez odpowiedzi.
+- **#64 — wszystko zostaje; host mierzy tabelę swoimi narzędziami** (zapytania w doc `Inbox`); okno czeka na to,
+  jak długo transport EHOS-a może dostarczyć ponownie. *Odrzucone:*
+  - okno konfigurowane przez hosta — ogranicza FM-08 zgadywaną liczbą;
+  - czyszczenie według retencji transportu — EHOS-a, jeszcze nieznanej;
+  - widok rozmiaru na dashboardzie — dashboard pokazuje zgodność, nie operacje (CLAUDE.md).
+- **#63 — bez zmian do pierwszych innych drzwi** (formularz LiveView, job z credentialem, MCP). *Odrzucone:* zmiana
+  kształtu teraz — znów zgadywanie z jednego przypadku, przed czym ostrzega samo issue.
+
+**Co jest:**
+- **#66.** `Auth.authorize/2`: `recorded/1` — skrót dla NUL, złego UTF-8, ponad 256 bajtów i wartości zaczynającej się
+  od `sha256:` (żeby zapisany `sha256:` był zawsze skrótem biblioteki). Credential z NUL w `sub` to `:bad_signature`.
+- **#65.** `Paths`: krok dla każdego `consumes "<nazwa>"`, który obsługuje polityka:
+  - asynchroniczny;
+  - liczony z `eh_os_contract_commands` złączonych z `eh_os_contract_inbox` po `causation_event_id`, po dokładnych
+    kluczach inboxów;
+  - ograniczony `received_at`, które inbox pisze teraz zegarem silnika;
+  - bez przejmowania porażek subskrypcji polityki.
+
+  Graf rysuje zdarzenie odebrane; `wiring_version` zmienia się raz.
+- **#64.** Doc `Inbox`: co trzyma, dlaczego i jak to zmierzyć.
+
+**Przegląd przed PR-em** — #66 w jednym przebiegu (poprawność i bezpieczeństwo razem, zmiana na 20 linii), potem #65
+z poprawkami #66 w dwóch równoległych. Poprawione, każde z testem:
+- #66: wartość podrobiona na skrót; NUL w `sub`; przykład `%FF` w CHANGELOG nieprawdziwy dla HTTP (Plug go odrzuca;
+  wektorem jest NUL); README i komentarz kolumny;
+- #65:
+  - pełny skan inboxu w każdym raporcie (oba) — teraz dokładne klucze i nic dla kontraktu bez inboxu;
+  - `LIKE` z `_` w nazwie modułu (oba);
+  - porażki subskrypcji i komend polityki przypisane krokowi odebranemu;
+  - `received_at` z zegara bazy;
+  - test `since:`.
+
+Bez zmian:
+- **ścieżka odebrana, która zawsze pada, wygląda na nieprzejechaną** — inbox wycofuje porażkę razem z wierszem;
+  opisane w `Paths` i CHANGELOG. Naprawa (zapis porażki poza transakcją) to osobna decyzja;
+- **indeks na `inbox(id)` albo `commands(causation_event_id)`** — V01 zmieniany w miejscu, a bazy są wspólne; po
+  dokładnych kluczach strona inboxu idzie po kluczu głównym. `issued/2` skanuje komendy tak samo od E7c;
+- **NUL w `Actor.credential/3` w silniku**, nie tylko w auth — należy do zgłoszonego zadania o bajtach silnika;
+- **długość `sub`** — wymaga wycieku klucza EHOS-a.
+
+Auth: 284 → 285 testów; silnik: 1114 → 1117. Brama z `sandbox/` → **EXIT=0** — sandbox 145, `check` 0 / 29 / 9;
+silnik 1117, `check` 0 / 68 / 6; web 52; auth 285 + 1 property.
 
 ### Po #89 — punkty końcowe discovery (2 października)
 

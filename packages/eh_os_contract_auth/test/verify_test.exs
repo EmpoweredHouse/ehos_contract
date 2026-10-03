@@ -155,6 +155,11 @@ defmodule EhOsContract.Auth.VerifyTest do
       assert Auth.verify(credential(pair, %{"sub" => " "}), keys: keys) ==
                {:error, :bad_signature}
 
+      # JSON's "\u0000" decodes to a NUL, which no text column holds: a subject is the actor's
+      # name in every row, so one with a NUL would make every request a 500 (#66).
+      assert Auth.verify(credential(pair, %{"sub" => "u-anna" <> <<0>>}), keys: keys) ==
+               {:error, :bad_signature}
+
       assert Auth.verify(credential(pair, %{"cap" => "all"}), keys: keys) ==
                {:error, :bad_signature}
 
