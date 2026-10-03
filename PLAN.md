@@ -68,7 +68,9 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
 ### Co zostało — i czyje to jest
 
 - **Merge #93, #95 i #96 — użytkownika**, w tej kolejności, z przestawieniem bazy następnego na `main` po każdym.
-- **Dwa pytania z #96** — „#96 — co wyszło”, „Do decyzji użytkownika”.
+- **#98 — deterministyczny budżet bajtów klucza** (decyzja użytkownika z 3 października, opcja (c) z #96); przed
+  startem trzy pytania z issue: budżet, nazwa i status odmowy, los dostawy menedżera ponad budżet.
+- **Pytanie z #96 o pusty `:id` jako wartość pola korelacji** — „#96 — co wyszło”, „Do decyzji użytkownika”.
 - **Gałęzie na GitHubie poza tą pracą** (około 50 zmergowanych) — nieruszane; użytkownik wybrał 3 października
   usunięcie tylko gałęzi tej pracy.
 - **Zostawione świadomie:** #63, #64, #49 (wyżej).
@@ -1071,7 +1073,10 @@ bezpieczeństwa tego nie dowiódł ani nie obalił. Inny `default_toast_compress
   daje skrót albo `<uuid>/<nazwa>`, a kto publikuje, rozstrzyga grant transportu.
 
 **Do decyzji użytkownika:**
-1. **Czy sześć pól z próbki wystarczy.** Możliwe: (a) zostawić F9 = 6 i dodać limit nazwy procesu, jednostki i
+1. *Rozstrzygnięte 3 października: (c), issue [#98](https://github.com/EmpoweredHouse/eh-os-contract/issues/98) —
+   budżet bajtów klucza liczony przy dispatchu i w menedżerze; F9 = 6 zostaje. Odrzucone (a) — nie ogranicza modułu
+   w kluczu menedżera i dalej jest próbką; (b) — też próbka.* Opis sprzed decyzji:
+   **Czy sześć pól z próbki wystarczy.** Możliwe: (a) zostawić F9 = 6 i dodać limit nazwy procesu, jednostki i
    menedżera, np. 64 bajty (N1, nowy powód odmowy) — dla nazw do 60 bajtów próbka nie dała ani jednego padnięcia,
    ale **nie ogranicza to modułu w kluczu menedżera**; trzeba by go też skrócić (np. skrót modułu w kolumnie
    `name`, co zmienia klucz istniejących wierszy); (b) zejść do pięciu — pięć pól nie padło nigdzie do 140 bajtów
