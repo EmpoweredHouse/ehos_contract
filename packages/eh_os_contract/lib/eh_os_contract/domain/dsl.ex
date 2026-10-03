@@ -40,7 +40,12 @@ defmodule EhOsContract.Domain.Dsl do
   defmodule Actor do
     @moduledoc false
     defstruct [:name, :kind, :label, :backed_by, :context, :source, scope: []] ++
-                [__spark_metadata__: nil]
+                [responsibilities: [], __spark_metadata__: nil]
+  end
+
+  defmodule Responsibility do
+    @moduledoc false
+    defstruct [:name, :label, :source, __spark_metadata__: nil]
   end
 
   defmodule Subject do
@@ -209,11 +214,26 @@ defmodule EhOsContract.Domain.Dsl do
     ]
   }
 
+  # Plan EP5b: named prose, rung 0 of the ladder — what the material says the actor
+  # answers for. Nothing runs it; a page and the glossary read it.
+  @responsibility %Spark.Dsl.Entity{
+    name: :responsibility,
+    describe: "What the actor answers for, as the material says it: named prose.",
+    target: Responsibility,
+    args: [:name, :label],
+    schema: [
+      name: [type: :atom, required: true, doc: "The responsibility's name."],
+      label: [type: :string, required: true, doc: "What the actor answers for."],
+      source: [type: :string, doc: "Where it comes from in the material."]
+    ]
+  }
+
   @actor %Spark.Dsl.Entity{
     name: :actor,
     describe: "Who issues commands: a kind of person, or a system.",
     target: Actor,
     args: [:name, :kind, :label],
+    entities: [responsibilities: [@responsibility]],
     schema: [
       name: [type: :atom, required: true, doc: "The actor's name."],
       kind: [type: {:one_of, [:human, :system]}, required: true, doc: "A person or a system."],
@@ -379,9 +399,12 @@ defmodule EhOsContract.Domain.Dsl do
         doc: "The two contexts of a symmetric relation."
       ],
       terms: [
-        type: {:list, :string},
+        type: {:list, {:tuple, [:string, :string]}},
         default: [],
-        doc: "Terms the relation shares or translates."
+        doc:
+          "Terms the relation translates, as pairs: the word of the first end, upstream or " <>
+            "the first of `between:`, and the word of the second, each a term of its " <>
+            "context's glossary. `{\"Wizyta\", \"Wizyta\"}`."
       ],
       source: [type: :string, doc: "Where the relation comes from in the material."]
     ]

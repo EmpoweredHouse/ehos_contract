@@ -57,7 +57,20 @@ defmodule Taxvision.Domain do
   # not permissions"; the month and the check are the accountant's. The company is
   # the dimension a grant names (HS28, and the rule "the month is opened by the
   # accountant of this company", plan, 27 September).
-  actor :accountant, :human, "Księgowa", scope: [:company_id], source: "03 §4.10"
+  actor :accountant, :human, "Księgowa", scope: [:company_id], source: "03 §4.10" do
+    # Plan EP5b: what the material says the accountant answers for.
+    responsibility(
+      :company_month,
+      "Otwiera i prowadzi miesiąc księgowy firm, którymi się opiekuje",
+      source: "03 §4.10, HS28"
+    )
+
+    responsibility(
+      :registry_discrepancy,
+      "Dostaje rozjazd danych firmy z rejestrami i ponawia weryfikację",
+      source: "03 §4.2"
+    )
+  end
 
   # The material names no actor for it: 03 §4.2's port "adapter trzyma limity i
   # retry". It records what the registries answered (D6).

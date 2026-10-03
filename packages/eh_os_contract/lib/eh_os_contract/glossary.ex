@@ -29,12 +29,12 @@ defmodule EhOsContract.Glossary do
         name -> Enum.filter(model.contexts, &(&1.name == name))
       end
 
-    sections = Enum.map(contexts, &context(&1, model.language, wanted))
+    sections = Enum.map(contexts, &context(&1, model, wanted))
     Enum.join(["# Glossary of `#{model.name}`\n" | sections], "\n")
   end
 
-  defp context(context, domain_language, wanted) do
-    language = context.language || domain_language
+  defp context(context, model, wanted) do
+    language = context.language || model.language
     heading = "## #{context.label} (`#{context.name}`)\n"
 
     terms =
@@ -44,19 +44,38 @@ defmodule EhOsContract.Glossary do
 
         terms ->
           for term <- terms do
-            if wanted in [nil, language], do: term(term), else: translated(term, wanted)
+            if wanted in [nil, language],
+              do: term(term, across(model, context.name, term.text)),
+              else: translated(term, wanted)
           end
       end
 
     Enum.join([heading | terms], "\n")
   end
 
-  defp term(term) do
+  defp term(term, across) do
     lines =
       ["### #{term.text}", "", term.definition] ++
-        avoid(term.avoid) ++ if(term.source, do: ["_Source: #{term.source}_"], else: [])
+        avoid(term.avoid) ++
+        across ++ if(term.source, do: ["_Source: #{term.source}_"], else: [])
 
     Enum.join(lines, "\n") <> "\n"
+  end
+
+  # Plan EP5b: where a relation pairs this term with a word of the context at its
+  # other end, which may mean something else there.
+  defp across(model, name, text) do
+    for relation <- model.relations,
+        sides = Enum.reject([relation.upstream, relation.downstream], &is_nil/1),
+        sides = if(sides == [], do: relation.between, else: sides),
+        [first, second] <- Map.get(relation, :terms, []),
+        {own, word, other, other_word} <- [
+          {Enum.at(sides, 0), first, Enum.at(sides, 1), second},
+          {Enum.at(sides, 1), second, Enum.at(sides, 0), first}
+        ],
+        own == name and word == text do
+      ~s|_In `#{other}` (#{relation.type}): "#{other_word}"._|
+    end
   end
 
   defp translated(term, language) do

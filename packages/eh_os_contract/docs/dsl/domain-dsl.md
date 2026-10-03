@@ -26,6 +26,7 @@ The vocabulary contracts share.
        * avoid
      * avoid
  * [actor](#domain-actor)
+   * responsibility
  * [subject](#domain-subject)
  * [value](#domain-value)
    * field
@@ -234,6 +235,8 @@ actor name, kind, label
 
 Who issues commands: a kind of person, or a system.
 
+### Nested DSLs
+ * [responsibility](#domain-actor-responsibility)
 
 
 
@@ -253,6 +256,35 @@ Who issues commands: a kind of person, or a system.
 | [`context`](#domain-actor-context){: #domain-actor-context } | `atom` |  | The context the actor belongs to. |
 | [`scope`](#domain-actor-scope){: #domain-actor-scope } | `atom \| list(atom)` | `[]` | The fields a grant to this actor narrows query answers by. |
 | [`source`](#domain-actor-source){: #domain-actor-source } | `String.t` |  | Where the actor comes from in the material. |
+
+
+### domain.actor.responsibility
+```elixir
+responsibility name, label
+```
+
+
+What the actor answers for, as the material says it: named prose.
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#domain-actor-responsibility-name){: #domain-actor-responsibility-name .spark-required} | `atom` |  | The responsibility's name. |
+| [`label`](#domain-actor-responsibility-label){: #domain-actor-responsibility-label .spark-required} | `String.t` |  | What the actor answers for. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#domain-actor-responsibility-source){: #domain-actor-responsibility-source } | `String.t` |  | Where it comes from in the material. |
+
+
+
+
 
 
 
@@ -542,7 +574,7 @@ How two contexts relate: one of the eight context-mapping patterns.
 | [`upstream`](#domain-relation-upstream){: #domain-relation-upstream } | `atom` |  | The upstream context of a directed relation. |
 | [`downstream`](#domain-relation-downstream){: #domain-relation-downstream } | `atom` |  | The downstream context of a directed relation. |
 | [`between`](#domain-relation-between){: #domain-relation-between } | `list(atom)` | `[]` | The two contexts of a symmetric relation. |
-| [`terms`](#domain-relation-terms){: #domain-relation-terms } | `list(String.t)` | `[]` | Terms the relation shares or translates. |
+| [`terms`](#domain-relation-terms){: #domain-relation-terms } | `list({String.t, String.t})` | `[]` | Terms the relation translates, as pairs: the word of the first end, upstream or the first of `between:`, and the word of the second, each a term of its context's glossary. `{"Wizyta", "Wizyta"}`. |
 | [`source`](#domain-relation-source){: #domain-relation-source } | `String.t` |  | Where the relation comes from in the material. |
 
 
