@@ -267,8 +267,10 @@ defmodule EhOsContract.Check.Catalog do
       implementation what to keep, and nothing shows the implementation keeps it. A scenario of the
       declaration that names it in `illustrates:` is the test that would. An effect's constraint is
       left out, as `reaction-without-scenario` leaves out the effect: no scenario runs an effect (S6),
-      so its prose has no rung above. A warning, like `reaction-without-scenario`, not an error like
-      S8: a reaction is also checked on the log by the conformance report.
+      so its prose has no rung above. So is a declaration no scenario runs at all, which
+      `reaction-without-scenario` reports already. A warning, not an error like S8: the prose still
+      tells the implementation what to keep, and a reaction is also checked on the log by the
+      conformance report.
       """
     },
     %{

@@ -253,8 +253,11 @@ defmodule EhOsContract.Check.Completeness do
   # query that no scenario of that declaration `illustrates:`, so it is prose alone. An
   # effect's constraint is left out, as `without_scenario/1` leaves out the effect: no
   # scenario runs one (S6), so its prose has no rung above it (the user's choice of 3
-  # October 2026).
+  # October 2026). So is a declaration no scenario runs at all, which
+  # `without_scenario/1` reports once, rather than once more per rule (the EP2 review).
   defp unillustrated(%{model: model} = c) do
+    run = MapSet.new(model.scenarios, &{&1.target.kind, &1.target.name})
+
     shown =
       MapSet.new(
         for s <- model.scenarios,
@@ -269,29 +272,25 @@ defmodule EhOsContract.Check.Completeness do
           {:query, "query", model.queries, c.declarations.queries}
         ],
         declaration <- declarations,
-        {word, rule} <- rules(declaration),
+        MapSet.member?(run, {kind, declaration.name}),
+        {word, rule} <- Rules.Scenarios.illustratable(kind, declaration),
         not MapSet.member?(shown, {kind, declaration.name, rule.name}) do
       Finding.new(
         "prose-without-scenario",
         "#{word} #{inspect(rule.name)} of #{what} #{inspect(declaration.name)} of " <>
           "#{inspect(model.module)} is prose alone: no scenario `illustrates:` it, so nothing " <>
           "shows its implementation keeps #{inspect(rule.label)}",
-        rule_at(declared, declaration.name, rule.name)
+        rule_at(declared, kind, declaration.name, rule.name)
       )
     end
   end
 
-  defp rules(declaration) do
-    Enum.map(Map.get(declaration, :constraints, []), &{"constraint", &1}) ++
-      Enum.map(Map.get(declaration, :invariants, []), &{"invariant", &1})
-  end
-
-  defp rule_at(declarations, name, rule) do
+  defp rule_at(declarations, kind, name, rule) do
     with %{} = declaration <- Enum.find(declarations, &(&1.name == name)),
-         %{} = found <-
+         {_word, found} <-
            Enum.find(
-             Map.get(declaration, :constraints, []) ++ Map.get(declaration, :invariants, []),
-             &(&1.name == rule)
+             Rules.Scenarios.illustratable(kind, declaration),
+             fn {_word, r} -> r.name == rule end
            ) do
       Links.at(found)
     end
