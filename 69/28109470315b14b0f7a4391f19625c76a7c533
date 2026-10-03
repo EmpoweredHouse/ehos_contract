@@ -1,0 +1,5 @@
+EP2 (a reaction's rules and illustrates:), origin/main b6a96dd...HEAD.
+Gate: sandbox mix check EXIT=0 on e8c2b05 (sandbox 145, check 0/29/9; engine 1166, check 0/68/6; web 52; auth 285+1 property); HEAD adds PLAN.md only.
+Correctness review (code-review high), 10 findings, all fixed: double warning for a declaration with no scenario; misleading S10 message on a command's scenario; a name repeated in illustrates: not refused; view --details missing reaction rules; catalog gave the conformance report as the reason for queries; rule list duplicated between S10 and check (now Rules.Scenarios.illustratable/2); three copies of the Constraints page section; a copied invariant entity; the plan's example name; test gaps (query, timer, repeat, fixture lines from the fixture).
+Security/performance review: no defect; unescaped rule labels on pages and in the exported model, as existing labels (no change).
+Reverse checks: S10 off, warning off, empty policy constraints in the digest, no no-scenario filter, no repeat refusal, old view.ex — each fails exactly its own tests.
