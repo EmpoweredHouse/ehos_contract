@@ -38,10 +38,11 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
     `nil` only where the declaration says optional — and none twice, since each
     names its test. A value of a domain type is the Mix compiler's (X9), as a
     scenario's is.
-  - **S10.** `illustrates:` names a rule of the scenario's target that only a scenario
-    shows (plan EP2): a constraint of a policy, a process manager or a query, or an
-    invariant of a process manager. A unit's invariants and a command's constraints
-    are shown by `rejected` (S8), and an effect is no scenario's target.
+  - **S10.** `illustrates:` names rules of the scenario's target that only a scenario
+    shows (plan EP2), each once: a constraint of a policy, a process manager or a
+    query, or an invariant of a process manager. A command's scenario names none: a
+    unit's invariants and a command's constraints are shown by `rejected` (S8). An
+    effect is no scenario's target.
   """
 
   alias EhOsContract.DslRules
@@ -201,31 +202,42 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
   # S10 (plan EP2). An effect or a read model is refused as a target by S6 already.
   defp illustrated(_where, _scenario, kind, _target) when kind in [:effect, :read_model], do: []
 
+  defp illustrated(where, %{illustrates: [_ | _]} = scenario, kind, _target)
+       when kind in [:aggregate, :dcb] do
+    [
+      {"S10: #{where} names rules in illustrates:, but a command's scenario shows the rules " <>
+         "it is refused on with `rejected`", scenario}
+    ]
+  end
+
   defp illustrated(where, scenario, kind, target) do
-    rules = illustratable(kind, target)
+    rules = Enum.map(illustratable(kind, target), fn {_word, rule} -> rule.name end)
 
-    for name <- scenario.illustrates, name not in rules do
-      why =
-        if kind in [:aggregate, :dcb],
-          do: "a command's scenario shows the rules it is refused on with `rejected`",
-          else: "it illustrates #{rules_of(kind)} by name"
+    unknown =
+      for name <- scenario.illustrates, name not in rules do
+        {"S10: #{where} illustrates #{inspect(name)}, which is no rule of #{kind(kind)} " <>
+           "#{inspect(target.name)}: it illustrates #{rules_of(kind)} by name", scenario}
+      end
 
-      {"S10: #{where} illustrates #{inspect(name)}, which is no rule of #{kind(kind)} " <>
-         "#{inspect(target.name)}: #{why}", scenario}
-    end
+    twice =
+      for name <- scenario.illustrates |> DslRules.duplicates(& &1) |> Enum.uniq() do
+        {"S10: #{where} illustrates #{inspect(name)} twice", scenario}
+      end
+
+    unknown ++ twice
   end
 
   @doc """
-  The names of the rules of a scenario's target that a scenario `illustrates:` (plan
-  EP2): a policy's and a query's constraints, a process manager's constraints and
-  invariants. Nothing for any other kind.
+  The rules of a scenario's target that a scenario `illustrates:` (plan EP2), each with
+  its word: a policy's and a query's constraints, a process manager's constraints and
+  invariants. Nothing for any other kind. Takes a declaration or its model, where an
+  empty list is left out, so S10 and `mix eh_os_contract.check` read one list.
   """
-  @spec illustratable(atom(), map()) :: [atom()]
-  def illustratable(kind, target) when kind in [:policy, :query],
-    do: Enum.map(target.constraints, & &1.name)
-
-  def illustratable(:process_manager, pm),
-    do: Enum.map(pm.constraints ++ pm.invariants, & &1.name)
+  @spec illustratable(atom(), map()) :: [{String.t(), map()}]
+  def illustratable(kind, target) when kind in [:policy, :query, :process_manager] do
+    Enum.map(Map.get(target, :constraints, []), &{"constraint", &1}) ++
+      Enum.map(Map.get(target, :invariants, []), &{"invariant", &1})
+  end
 
   def illustratable(_kind, _target), do: []
 
