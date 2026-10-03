@@ -12,7 +12,8 @@ defmodule EhOsContract.Contract.Links.Siblings do
     `personal:`, since each tells which run or which boundary an event belongs to
     (F4): the process's `correlate` for every event it `include`s, a process
     manager's `correlate` for every event it handles, and a boundary's `match:` for
-    every event it `consults`. The error stands at the subscriber's declaration and
+    every event it `consults`. A `correlate` field no local event carries is an `:id`
+    there, as a run's key has to be (F8). The error stands at the subscriber's declaration and
     names the sibling's event, with its file and line.
 
   `projects` names an event and no field of it: which fields a projection reads is
@@ -108,7 +109,9 @@ defmodule EhOsContract.Contract.Links.Siblings do
         consumed = events[include.event],
         consumed != nil,
         field <- process.correlate,
-        problem <- problems(consumed, field, types[field], values) do
+        # With no local event carrying the field, the run's key is the sibling's value, so
+        # it is held to what a run's key may be: an :id (F8).
+        problem <- problems(consumed, field, Map.get(types, field, :id), values) do
       {"X6: process #{inspect(process.name)} includes #{inspect(include.event)} and correlates " <>
          "on #{inspect(field)}, #{problem}", Links.at(include)}
     end

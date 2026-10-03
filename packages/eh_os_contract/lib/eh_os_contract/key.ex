@@ -15,11 +15,13 @@ defmodule EhOsContract.Key do
 
   @separator "|"
 
-  # Measured against Postgres 17 (issue #96, 3 October 2026). An entry is compressed only
-  # when that saves a quarter of it, so the worst value is not all `|` but printable text
-  # with about a quarter of `|` and `%`: each escapes to three bytes and the whole barely
-  # compresses. Seven such fields of 255 bytes, behind a name of 40, fail most inserts;
-  # six fail none, with about 50 bytes to spare under the 2704 a btree entry holds.
+  # Measured against Postgres 17 (issue #96, 3 October 2026), by sampling, not proved. An
+  # entry is compressed only when that saves a quarter of it, so the worst value is not all
+  # `|` but printable text with about a quarter of `|` and `%`: each escapes to three bytes
+  # and the whole barely compresses. Seven such fields of 255 bytes fail most inserts. Six
+  # fail none while the name in front of the key is short: a run's key carries the process's
+  # name twice (its column and its prefix), and six fields began to fail behind a process
+  # name of about 100 bytes; a manager's key, whose name is once, held at 140.
   @max_fields 6
 
   @doc """

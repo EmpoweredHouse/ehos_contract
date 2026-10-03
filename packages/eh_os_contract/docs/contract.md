@@ -271,7 +271,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `X3` | L3 | a field or return type that is neither built in nor a value of the domain; `{:id, entity}` naming no entity of the domain; a `subject:` the domain does not declare |
 | `X4` | L3 | `depends_on`, `calls` or a field's `issued_by` naming no external of the domain |
 | `X5` | L3 | `consumes` naming what is not a compiled contract, a contract of another domain, or an event the sibling does not declare |
-| `X6` | L3 | a sibling event's field that a `correlate` (on an include or a handled event) or a boundary's `match` relies on, missing there, of another type, optional or personal |
+| `X6` | L3 | a sibling event's field that a `correlate` (on an include or a handled event) or a boundary's `match` relies on, missing there, of another type (an `:id` where no local event types it), optional or personal |
 | `X7` | L3 | two processes of the system with one name, and so one event type |
 | `X8` | L3 | a declaration with two implementations |
 | `X9` | L3 | a scenario value or a rule example not fitting its domain type; a sibling event's scenario data with unknown fields, missing required ones (in `given` or the trigger) or ill-typed values |

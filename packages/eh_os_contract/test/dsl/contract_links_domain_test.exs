@@ -46,6 +46,7 @@ defmodule EhOsContract.ContractLinksDomainTest do
       value :contact_ref, :contact
       value :clinic_ids, {:list, :id}
       value :period_id, :id
+      value :clinic_ref, {:id, :clinic}
       external :payer_registry, "Rejestr płatnika", direction: :outbound
 
       entity :clinic, "Przychodnia", context: :settlement, identified_by: :clinic_id do
@@ -368,7 +369,7 @@ defmodule EhOsContract.ContractLinksDomainTest do
                "F8: event :payment_recorded, field :amount tells which run of process :visit",
                "links_text_correlation.ex",
                16
-             ) =~ "it is :money, which rests on :integer; correlate only on an :id"
+             ) =~ "it is :money, which rests on :integer; correlate only on an identifier"
 
       assert assert_linked(
                violations,
@@ -384,15 +385,15 @@ defmodule EhOsContract.ContractLinksDomainTest do
              ) =~ "it is :contact, which rests on fields of its own"
     end
 
-    test "control: a value resting on :id is a correlation field" do
+    test "control: a value resting on :id, or on an entity's identifier, is a correlation field" do
       body =
         @body
         |> String.replace(
           "      field :patient_id, :id, subject: :patient\n    end\n  end",
           "      field :patient_id, :id, subject: :patient\n      field :period_id, :period_id\n" <>
-            "    end\n  end"
+            "      field :clinic, :clinic_ref\n    end\n  end"
         )
-        |> String.replace("correlate :visit_id\n", "correlate [:visit_id, :period_id]\n")
+        |> String.replace("correlate :visit_id\n", "correlate [:visit_id, :period_id, :clinic]\n")
 
       assert links("LinksIdCorrelation", body) == []
     end

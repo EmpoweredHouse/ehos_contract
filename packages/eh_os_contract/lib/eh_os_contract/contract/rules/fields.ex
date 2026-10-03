@@ -128,7 +128,7 @@ defmodule EhOsContract.Contract.Rules.Fields do
         not Domain.Rules.is_id(field.type),
         not (is_atom(field.type) and field.type not in @built_in) do
       {"F8: #{where}, so its value is part of an index key, and it is #{inspect(field.type)}; " <>
-         "correlate only on an :id, whose length is bounded", field}
+         "correlate only on an identifier, an :id of at most 255 bytes, as match: does", field}
     end
   end
 

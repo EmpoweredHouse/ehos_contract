@@ -190,8 +190,8 @@ defmodule EhOsContract.Contract.Links.Domain do
         Map.has_key?(values, field.type),
         (base = Key.base_type(field.type, values)) != :id do
       {"F8: #{where}, so its value is part of an index key, and it is #{inspect(field.type)}, " <>
-         "which rests on #{rests_on(base, values)}; correlate only on an :id, whose length is " <>
-         "bounded", Links.at(field)}
+         "which rests on #{rests_on(base, values)}; correlate only on an identifier, an :id of " <>
+         "at most 255 bytes, as match: does", Links.at(field)}
     end
   end
 

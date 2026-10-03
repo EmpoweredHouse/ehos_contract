@@ -1027,18 +1027,41 @@ Na `engine/issue-96-key-rules`, od `engine/bounded-values` (#95), bo limit sześ
 - *Pole stanu menedżera też.* `correlate` menedżera, który obsługuje tylko zdarzenia rodzeństwa, bierze typ z pola
   stanu, jeśli stan je deklaruje — bez tego `:string` w stanie przechodziłby X6.
 
-**Pomiar (Postgres 17, 3 października) — inny niż w issue.** Issue podało: cztery losowe pola po 255 bajtów i trzy
-pola samych `|` dają 3344 bajtów i odmowę. U nas pola samych `|` (`%7C` po escapowaniu) przechodzą, bo wpis indeksu
-jest kompresowany, gdy to oszczędza ćwierć. Najgorszy jest tekst losowy z około ćwiercią `|` i `%`: każdy daje trzy
-bajty, a całość prawie się nie kompresuje. Za nazwą 40 bajtów: **siedem takich pól pada w 32–59 próbach na 60, sześć
-w żadnej z 600** (indeksy `(process, instance_id)` i `(stream_id, stream_version)`). Zapas dla sześciu to około 50
-bajtów — nazwa jednostki albo procesu dłuższa niż około 90 bajtów zjada go. Komentarz przy `@max_fields` mówi to
-samo.
+**Pomiar (Postgres 17, 3 października) — inny niż w issue, i próbkowany, nie dowiedziony.** Issue podało: cztery
+losowe pola po 255 bajtów i trzy pola samych `|` dają 3344 bajtów i odmowę. U nas pola samych `|` (`%7C` po
+escapowaniu) przechodzą, bo wpis indeksu jest kompresowany, gdy to oszczędza ćwierć. Najgorszy jest tekst losowy z
+około ćwiercią `|` i `%`: każdy daje trzy bajty, a całość prawie się nie kompresuje. Wyniki (losowe nazwy, po 40–60
+prób na punkt):
+- **siedem pól** pada w 32–59 próbach na 60 już za nazwą 40 bajtów;
+- **sześć pól** nie padło ani razu za nazwą do 60 bajtów. Klucz przebiegu ma nazwę procesu dwa razy (kolumna
+  `process` i prefiks `instance_id`), więc za nazwą procesu około 100 bajtów zaczyna padać (2–19 na 40). Klucz
+  menedżera (`<Moduł>:process_manager:<nazwa>`, nazwa raz) wytrzymał 140 bajtów;
+- **pięć pól** nie padło nigdzie do 140 bajtów nazwy.
+
+Nazwa procesu to atom z kontraktu (`process :visit`), zwykle kilkanaście bajtów, więc dla prawdziwych kontraktów sześć
+trzyma. Ale to próbka: nieskompresowany najgorszy przypadek sześciu pól to 6×765+5 = 4595 bajtów, więc każdy klucz z
+dużą domieszką `|`/`%` wchodzi tylko dzięki kompresji, a ktoś, kto dobiera bajty, może celować w jej próg. Przegląd
+bezpieczeństwa tego nie dowiódł ani nie obalił. Inny `default_toast_compression` (`lz4`) nie był mierzony.
+
+**Przegląd (dwa równolegle, na `8d71afd`):**
+- *Poprawione:* (1) menedżer, którego stan nie deklaruje pola korelacji, bierze typ z pierwszego zdarzenia lokalnego z
+  tym polem, także nieobsługiwanego — F8 tego nie widział, a X6 porównywał potem rodzeństwo z tym typem; teraz F8
+  sprawdza każde takie zdarzenie (`42547fb`). (2) Kontrakt bez własnych jednostek, który tylko `include`-uje zdarzenia
+  rodzeństwa: X6 nie porównywał typu, bo żadne zdarzenie lokalne go nie nadawało — teraz porównuje z `:id`. (3)
+  Jedno znalezisko na pole, które nazywa i proces, i menedżer — z testem. (4) Komunikat F8 nie twierdzi już, że tylko
+  `:id` ma granicę długości (`:integer` też ma): „correlate only on an identifier, an :id of at most 255 bytes, as
+  match: does”. (5) Test L3 dla wartości `{:id, encja}`.
+- *Bez zmian:* F8 odmawia też `:integer`, `:date` i enuma, choć są krótkie — tak brzmiała przyjęta reguła („typ
+  bazowy `:id`, jak `match:`”). Treść komunikatu powtórzona w L2 i L3 — świadomie, jak przy F7.
+- *Pominięte, poza zakresem:* klucz inboxu (`Bus.Message.key`) bez granicy długości — sprzed tej zmiany; nasz relay
+  daje skrót albo `<uuid>/<nazwa>`, a kto publikuje, rozstrzyga grant transportu.
 
 **Do decyzji użytkownika:**
-1. **Nazwa zjada zapas.** Nazwa jest w kodzie, nie w żądaniu, ale `aggregate :<90 znaków>` z sześcioma polami
-   tożsamości przy wrogim żądaniu dalej da 500. Możliwe: limit długości nazwy jednostki, procesu i menedżera (np. 64
-   bajty — N1, nowy powód odmowy), albo zostawić z zapisem. Rekomendacja: limit 64 bajtów, osobnym issue.
+1. **Czy sześć pól z próbki wystarczy.** Możliwe: (a) zostawić F9 = 6 i dodać limit nazwy procesu, jednostki i
+   menedżera, np. 64 bajty (N1, nowy powód odmowy) — dla nazw do 60 bajtów próbka nie dała ani jednego padnięcia;
+   (b) zejść do pięciu; (c) deterministycznie: przy dispatchu policzyć długość klucza po escapowaniu i odmówić
+   ponad budżet (nowa odmowa 422 dla hosta). Rekomendacja: (a) teraz, osobnym issue, a (c) dopiero, gdyby host
+   chciał gwarancji, nie próbki.
 2. **Pusty `:string` jako wartość pola korelacji** (z E11a) — po F8 to pytanie o pusty `:id`; bez zmian.
 
 ### Granice wartości z żądania (3 października)

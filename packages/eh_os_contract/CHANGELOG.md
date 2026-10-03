@@ -59,7 +59,11 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
     part of the run's and the manager's index key, and only an `:id` is bounded (255 bytes). Until now
     `correlate :invoice_number` on a `:string` compiled, and a request with 3 KB of text in it answered 500;
     on a manager delivered `:at_least_once`, its subscription stalled. A contract correlating on another type
-    correlates on the identifier it stands for instead.
+    correlates on the identifier it stands for instead. A manager's correlation the state does not declare takes
+    its type from a local event, handled or not, so every local event carrying that field is held to F8.
+  - **X6, the part F8 needs between contracts.** A process that correlates on a field no local event carries — a
+    contract with no unit of its own, including a sibling's events — holds the sibling's field to `:id`. Until now
+    its type was not compared at all.
   - **F9.** A unit's identity, a process's `correlate` and a process manager's `correlate` have at most six
     fields. Seven `:id` fields at their bound, with `|` and `%` that escape to three bytes, overflow the 2704
     bytes a btree entry holds, and the append failed.

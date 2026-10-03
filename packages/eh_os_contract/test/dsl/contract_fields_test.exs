@@ -266,11 +266,11 @@ defmodule EhOsContract.ContractFieldsTest do
       assert message =~
                "F8: event :invoice_recorded, field :invoice_number tells which run of process " <>
                  ":invoice the event belongs to, so its value is part of an index key, and it " <>
-                 "is :string; correlate only on an :id, whose length is bounded " <>
-                 "(text_correlation.ex:9)"
+                 "is :string; correlate only on an identifier, an :id of at most 255 bytes, as " <>
+                 "match: does (text_correlation.ex:9)"
 
       assert message =~ "field :batches tells which run of process manager :chase"
-      assert message =~ "is {:list, :id}; correlate only on an :id"
+      assert message =~ "is {:list, :id}; correlate only on an identifier"
 
       assert message =~
                "F8: process manager :chase, state, field :reminder is what it correlates on"
