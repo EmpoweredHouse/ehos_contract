@@ -46,7 +46,8 @@ entries in `process`. An event born in a sibling process is not declared again: 
 
 - **From the material, never invented.** `CLAUDE.md` names TaxVision's source,
   `~/Projects/ai/taxvision-process-native/workshop_output/02-event-storming.md`; cite yours in
-  `source:` ("03 §4.2", "AG:694"), as the sandbox contracts do. With no material behind it, go back
+  `source:` ("03 §4.2", "AG:694"), as the sandbox contracts do — an identifier of the material,
+  never a person's name, since it goes into the exported model and the pages. With no material behind it, go back
   to `contract-distillation` rather than keep a plausible `snake_case`.
 - **Past tense** — no check reads the tense; **snake_case and unique** among the contract's
   commands, events, timers and consumed events together (`N1`); not a reserved word or a clash

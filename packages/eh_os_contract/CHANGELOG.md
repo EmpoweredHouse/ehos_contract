@@ -354,6 +354,12 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Added
 
+- **EP3: a generated behaviour documents what the contract says.** Each callback's `@doc` gives its
+  declaration's label and source, the events it may emit or the commands it may issue, the rules that hold
+  there — each with the scenario that refuses on it or illustrates it, or marked prose alone — and the
+  scenarios it runs; a consumed event says where it comes from. Each behaviour's `@moduledoc` adds the
+  declaration's label, source and rules (`EhOsContract.Contract.Doc`). `b <Behaviour>.<callback>` in IEx
+  prints it. No model, digest or version changes.
 - **EP2: a reaction's rules, and the scenario that illustrates them.** `constraint` in a `policy`, an
   `effect` and a `process_manager`, and `invariant` in a `process_manager`, as a command and a query name
   theirs. A scenario names the rules of its target it shows in `illustrates:`; one its target does not have

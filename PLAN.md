@@ -511,6 +511,35 @@ Na `dsl/ep2-rules` (od `origin/main` = `b6a96dd`, po #101), niewypchnięte.
   `check` 0 / 29 / 9; silnik 1179 (1170 z `main` + 9 z EP2), `check` 0 / 71 / 6 — trzy ostrzeżenia więcej
   przyniósł #103 (tyle zapisuje plan na `main`), żadnego `prose-without-scenario`; web 52; auth 285 + 1 właściwość.
 
+### EP3 — co wyszło (3 października)
+
+Na `dsl/ep3-docs` (od `origin/main` = `24904b8`, po #105 i #106), niewypchnięte.
+- **`EhOsContract.Contract.Doc`** składa z modelu kontraktu `@doc` każdego callbacku wygenerowanego behaviouru i
+  rozszerza jego `@moduledoc`: etykieta i źródło deklaracji, co wolno wyemitować albo wydać, reguły, które tam
+  obowiązują — każda ze szczeblem drabiny (scenariusz, który na niej odmawia albo ją ilustruje, albo „prose
+  alone”) — i scenariusze callbacku. Zdarzenie konsumowane mówi, skąd przychodzi: jego etykieta jest u
+  rodzeństwa albo w innej aplikacji, a kontrakt nie kompiluje się względem nich (rozstrzygnięcie asystenta: bez
+  zależności kompilacyjnej między kontraktami). `b <Behaviour>.<callback>` w IEx to wypisuje — sprawdzone na
+  `report_on_clinical_close`. Model, digest i wersje bez zmian.
+- **Sandbox:** `ReportOnClinicalClose` nie powtarza już reguły `P-07` w `@moduledoc`, tylko wskazuje
+  ograniczenie kontraktu.
+- **Skille:** `write-decider` i `write-reaction` startują od nazwanych reguł i ich scenariuszy, czytają `b`
+  callbacku i nie powtarzają reguły w moduledocu; `write-reaction` każe dać regule scenariusz z `illustrates:`
+  przed kodem. `contract-distillation` i `add-event`: w `source:` identyfikator materiału, nigdy nazwisko
+  (odłożone z przeglądu EP1).
+- `docs/contract.md` — akapit o dokumentacji callbacków; CHANGELOG.
+- **Przegląd** (dwa równolegle): poprawność — 9 uwag, wszystkie poprawione: callback komendy pisał „prose alone” o
+  inwariancie, na którym odmawia scenariusz innej komendy (sprzeczne z moduledociem, a S8 jest spełnione); moduł
+  query, będący też behaviourem, nie dostawał moduledocu z regułami; „Dcb” zamiast „Dynamic consistency
+  boundary”; timer bez źródła; reguły jednostki bez ograniczeń komend; `evolve` process managera mówiło o
+  „decision”; dopasowanie zdarzenia konsumowanego obok `Model.consumed/2` (przy przemianowaniu mogło wskazać nie
+  tego sąsiada); reguły serwisu poza wspólnym formatem; braki testów (reakcja process managera, serwis, timer
+  dosłownie, granica i query w skompilowanych chunkach). Bezpieczeństwo i wydajność — bez defektu; opisy
+  scenariuszy trafiają teraz do dokumentacji, więc `contract-distillation` mówi, że opis nazywa przypadek, nigdy
+  prawdziwą osobę. Każda poprawka sprawdzona odwrotnie.
+- **Brama zielona** na `c042d42`: **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1184 (1179 + 5), `check`
+  0 / 71 / 6 (bez zmian); web 52; auth 285 + 1 właściwość.
+
 ## Dopisek 2 października (2) — #83: `ehos.yaml/v2` i `sign_in`; podział EB2
 
 **Decyzje użytkownika (2 października, wieczorem):**

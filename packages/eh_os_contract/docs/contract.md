@@ -112,6 +112,11 @@ end
   use EhOsContract.ScenarioCase, contract: Lending.Contracts.Loans
   ```
 
+- **The implementation reads the contract where it is written.** Each callback of a generated behaviour
+  carries what the contract says of it: the declaration's label and source, what it may emit or issue,
+  the rules that hold there — each with the scenario that refuses on it or illustrates it, or marked
+  prose alone — and its scenarios. `b Lending.Contracts.Loans.Aggregates.Loan.open_loan` in IEx prints it.
+
 What reacts to events is declared beside the units: a `policy` issues a command of this contract, an
 `effect` calls an external system, a `process_manager` steers a run with its own state and timers, and a
 `read_model` projects rows that a `query` reads. A reaction names its rules as a command does, with

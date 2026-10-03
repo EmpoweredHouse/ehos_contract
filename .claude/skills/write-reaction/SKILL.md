@@ -143,16 +143,25 @@ it. What was published before is asked of its owner (`eh-os` D-03).
 
 ## Procedure
 
-1. Name what the reaction produces, and pick the kind from the table.
+1. Name what the reaction produces, and pick the kind from the table. Name the rules it keeps as
+   `constraint`s in its declaration (a process manager's also as `invariant`s), from the material
+   with `source:`, rather than leaving them in the label or the code (plan EP2).
 2. Pick `delivery` from what a failure must leave in the log. Write the reason in the moduledoc,
    one line, so the next reader does not re-derive it.
 3. If `:at_least_once`, name `idempotency`, and make the effect's or projection's own writes keyed by
    the event.
 4. Declare it in the contract, then a scenario for it: an `on` event with the `issues` it expects
    for a policy or a process manager, a `query` with `answers` for a read model
-   (`reaction-without-scenario`). An effect has no scenario (`S6`): its test is yours.
+   (`reaction-without-scenario`). Give every rule a scenario that names it in `illustrates:` —
+   one for each way the rule decides, as `report_on_clinical_close` has one for a reported service
+   and one for the rest — before the code: the scenario is the test the implementation is written
+   against, and a rule without one is prose alone (`prose-without-scenario`). An effect has no
+   scenario (`S6`): its constraints stay prose, and its test is yours.
 5. Bind the module (`use <Contract>, policy: :name`), compile, and add what `I2` asks for. `issue/1`
-   takes command struct literals within the declaration's `issues:` (`I4`, `I6`).
+   takes command struct literals within the declaration's `issues:` (`I4`, `I6`). Each callback's
+   generated doc (`b <Contract>.Policies.<Name>.<event>` in IEx) lists what it may issue, the rules it
+   keeps with the scenarios that illustrate them, and its scenarios (plan EP3); a rule it names is
+   not restated in the module's moduledoc.
 6. Test what runs after the commit with `config :eh_os_contract, subscriptions: :manual` and
    `EhOsContract.Testing.drain/1`. The first `drain/1` is the deploy. For a policy or a process
    manager, drain once before dispatching what it takes, or it treats that event as history and does

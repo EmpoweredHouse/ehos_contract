@@ -139,7 +139,10 @@ every event it `consults`, folded in the log's order. Two things differ:
 
 1. Read the unit's declaration: its `state`, every command's `emits:` and `rejects:`, the
    invariants' labels and their `rejected` scenarios. The scenarios are the specification the
-   callbacks are written against.
+   callbacks are written against. The generated behaviour says the same per callback (plan EP3):
+   `b <Contract>.Aggregates.<Name>.<command>` in IEx prints the command's label and source, what it emits,
+   every rule it refuses on with the scenario that refuses on it, and its scenarios. Write from the
+   named rules, not from the label: a rule is a clause, and its scenario is the test of that clause.
 2. Write `use <Contract>, aggregate: :name` (or `dcb:`), and compile: `I2` lists every callback to
    add.
 3. Write each callback as clauses, one per outcome: the refusals first, each on the state that makes
@@ -153,7 +156,8 @@ every event it `consults`, folded in the log's order. Two things differ:
 7. Run the gate from `sandbox/` (`CLAUDE.md`, "Brama") and read any new `emits-never-produced` line.
 8. If a clause encodes an assumption nobody stated — a partial payment refused rather than modelled
    — say so in the moduledoc, as `Rehmed.Settlement.VisitSettlement` does. That clause is where the
-   reviewer's attention goes.
+   reviewer's attention goes. A rule the contract names is not restated there: the contract says it,
+   and the generated docs carry it to the callback. Restated, it drifts from the contract.
 
 ## Not this skill
 
