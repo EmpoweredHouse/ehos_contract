@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 3 października, wieczór (E0–E12, EH, EB, #89, #91, #64–#66, #93, #95, #96 i #100 w `main`; otwartych PR-ów brak)
+## Handoff — stan na 3 października, noc (E0–E12, EH, EB, #89, #91, #64–#66, #93, #95, #96, #100, #101 i EP1 w `main`; PR z #98 otwarty)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -33,38 +33,41 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
 
 ### Stan repozytorium
 
-- **`origin/main` = `0b7bc84`** (merge #100: poprawki CodeRabbita do #95). Przedtem `b65b8b7` — #97 (#96, F8/F9),
-  `996d89f` — #95 (granice wartości), `64f888b` — #93 (bajty, których log nie utrzyma), `9e61834` — #92 (#64–#66),
-  `abb9b6c` — #91 (discovery). CI `main` na `0b7bc84` (przebieg `37121970051`, job `check`) — `success`. Historia
-  `main` z merge'ami PR-ów; gałęzie liniowe. **Otwartych PR-ów brak.**
+- **`origin/main` = `b6a96dd`** (merge #101: handoff po #96). Przedtem `90a83f2` — #102 (EP1, z sesji
+  `esdm-dsl-comparison`), `0b7bc84` — #100 (poprawki CodeRabbita do #95), `b65b8b7` — #97 (#96, F8/F9), `996d89f` —
+  #95 (granice wartości), `64f888b` — #93 (bajty, których log nie utrzyma). CI `main` na `90a83f2` — `success`; na
+  `b6a96dd` (przebieg `37135252351`) w toku przy pisaniu. Historia `main` z merge'ami PR-ów; gałęzie liniowe.
+- **Otwarty PR: #98** z gałęzi `engine/issue-98-key-budget` (od `b6a96dd`) — budżet bajtów klucza; czeka na merge
+  użytkownika. Co w nim — „#98 — co wyszło”.
 - **#95 zmergowano bez dwóch ostatnich commitów** (poprawek z komentarzy CodeRabbita) — przyszły osobno jako #100,
   razem z błędem, który przegląd w nich znalazł. W `main` jest wszystko; zapis w „Granice wartości z żądania”.
 - **Gałęzie:** gałęzie tej pracy usunięte na GitHubie i lokalnie 3 października, za zgodą użytkownika (EB, EH, #71,
   #89, discovery, #65, #93, #95, #96, #100, a także przypadkowy `revert-95-engine/bounded-values` — revert z przycisku
   GitHuba, bez PR-a). Zostało 59 innych gałęzi na GitHubie, zmergowanych dawno — nieruszane z wyboru użytkownika.
 - **Worktree innych sesji — nie ruszać:** `computer-ordering-process-f84437` (trzecia domena danych testowych,
-  issue #99; trzyma `phx.server` na wspólnym Postgresie), `esdm-dsl-comparison-d82750` (`dsl/ep1-source`),
+  issue #99; trzyma `phx.server` na wspólnym Postgresie), `esdm-dsl-comparison-d82750` (`dsl/ep2-rules`),
   `review-login-issues-eb9680`.
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
   `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`), schemat V01 z
   ręcznymi poprawkami z E11f i E12c, baza auth na V03. **Brama obok cudzego `phx.server` albo cudzych testów potrafi
-  paść na `too_many_connections`** (3 października: 9 padnięć silnika, sam silnik przechodził) — wtedy `mix check`
+  paść na `too_many_connections`** (3 października, dwa razy: 9 padnięć silnika w `SchemaTest` i `AppendLockTest`,
+  sam silnik przechodził) — wtedy `mix check`
   każdego pakietu osobno, po kolei, i zapisać, że tak było.
-- **Otwarte na GitHubie:** #98 (następna praca, niżej), #99 (cykl życia jednostek w pętli — z sesji
+- **Otwarte na GitHubie:** #98 (w PR-ze, wyżej), #99 (cykl życia jednostek w pętli — z sesji
   `computer-ordering-process`, nie z tej pracy), #94 (style dashboardu z `ehos_design`), #64 (okno retencji inboxu —
   czeka na EHOS), #63 (kształt `call/3` — do pierwszych innych drzwi), #49 (materiał klientów poza repozytorium).
   **W `EmpoweredHouse/eh-os`: #91–#96 i #111** — nasze potrzeby wobec EHOS-a („Dopisek 1 października”).
 - **`ehos-ledger`** przypina `eh-os-contract` i puszcza w CI `mix eh_os_contract.manifest`; bump przypięcia — w tamtym
   repozytorium. Od #95/#100 dokumenty OpenAPI i AsyncAPI z polem `:id` albo `:integer` mają nowy
-  `x-eh-os-contract-digest`.
+  `x-eh-os-contract-digest`; po #98 nowy ma dokument OpenAPI **każdego** kontraktu z komendą (opis odpowiedzi 422).
 
 ### Co zostało — i czyje to jest
 
-- **#98 — deterministyczny budżet bajtów klucza** (asystenta, gdy użytkownik rozstrzygnie): przy dispatchu i przy
-  zapisie menedżera liczyć długość klucza po escapowaniu razem z nazwą przed nim i odmawiać ponad budżet; F9 = 6
-  zostaje. **Przed startem — trzy decyzje użytkownika z issue:** budżet (jeden czy na tabelę), nazwa i status odmowy
-  (np. `:key_too_long` / 422), co menedżer robi z dostawą ponad budżet (pomija czy stoi). Pomiary — „#96 — co
-  wyszło”.
+- **Merge PR-a z #98** — użytkownika. Po nim: usunąć gałąź `engine/issue-98-key-budget` (za zgodą), zamknąć issue
+  #98, jeśli nie zamknie go merge.
+- **Ryzyka zostawione świadomie przy #98** (w PR-ze): zdarzenie przechodzi dispatch, a menedżer, który miałby
+  zacząć na nim przebieg, staje (wybór „stoi”); komenda wydana przez reakcję i odrzucona `:key_too_long` dalej się
+  wywraca; `issued_by` w indeksie idempotencji bez granicy długości (sprzed #98, wymaga credentialu wydawcy).
 - **Pytanie z #96 o pusty `:id` jako wartość pola korelacji** — od #100 pusty `:id` jest odmawiany także przy
   dekodowaniu, więc pytanie dotyczy już tylko starych wierszy logu.
 - **Zostawione świadomie:** #63, #64, #49, #94 (wyżej); #99 — sesji, która je założyła.
@@ -77,23 +80,21 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
   [eh-os#91](https://github.com/EmpoweredHouse/eh-os/issues/91)–[#96](https://github.com/EmpoweredHouse/eh-os/issues/96)
   i tabela w „Dopisek 1 października”. Nowa potrzeba: wiersz w tabeli i issue.
 - **EP — proza w kontrakcie** (decyzja użytkownika z 3 października): EP1 → EP2 → EP3, potem EP4 i EP5 po
-  decyzjach o kształcie — „Dopisek 3 października — EP”. **EP1 zrobione** na `dsl/ep1-source` (przegląd przed
-  EP2). Przed EP2 do rozstrzygnięcia `invariant` encji.
+  decyzjach o kształcie — „Dopisek 3 października — EP”. **EP1 w `main`** (#102); EP2 prowadzi sesja
+  `esdm-dsl-comparison` na `dsl/ep2-rules`.
 
 ### Co przeczytać najpierw
 
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach (`label` po
    polsku w fiksturach testów jest dozwolony), wyrażenia regularne z flagą `u` i `[0-9]`, zsh bez dzielenia słów.
-2. Issue [#98](https://github.com/EmpoweredHouse/eh-os-contract/issues/98) — następna praca: problem z pomiarami,
-   wybrana opcja (c), odrzucone (a), (b) i skrót, trzy pytania przed startem.
-3. `PLAN.md`: „#96 — co wyszło” (pomiar kompresji Postgresa, trzy rundy przeglądu, F8/F9/X6) i „Granice wartości z
-   żądania” (granice `:id`, `:integer`, `:decimal`, dat; komentarze CodeRabbita i #100).
-4. Kod kluczy: `packages/eh_os_contract/lib/eh_os_contract/key.ex` (`join/1`, `escape/1`, `max_fields/0` z
-   komentarzem o pomiarze), `dispatcher.ex` (`run_key/2`, `included_runs/3`, strumień przez `Key.stream`),
-   `process_manager.ex` (`handle!/5`) i `implementations.ex` (nazwa menedżera `<moduł>:process_manager:<nazwa>`);
-   tabele i indeksy — `migrations/v01.ex`.
-5. `packages/eh_os_contract/lib/eh_os_contract/codec.ex`, moduledoc „Types” i „Bounds” — co wejście trzyma, a czego
+2. `PLAN.md`: „#98 — co wyszło” (decyzje, przegląd, ryzyka), „#96 — co wyszło” (pomiar kompresji Postgresa,
+   F8/F9/X6) i „Granice wartości z żądania” (granice `:id`, `:integer`, `:decimal`, dat).
+3. Kod kluczy: `packages/eh_os_contract/lib/eh_os_contract/key.ex` (`budget/0`, `fits?/1`, `TooLongError`),
+   `dispatcher.ex` (`stream_fits/3`, `runs_fit/2`), `process_manager.ex` (`handle!/5`, `fits!/3`); test
+   `test/runtime/key_budget_test.exs` na rigu `test/support/key_rig/`.
+4. `packages/eh_os_contract/lib/eh_os_contract/codec.ex`, moduledoc „Types” i „Bounds” — co wejście trzyma, a czego
    odczyt logu (`open:`) nie.
+5. Następnej pracy z kodem nie wybrano — patrz „Wybór użytkownika na potem” wyżej.
 6. `.claude/skills/pre-pr-review/SKILL.md` — dwa przeglądy równolegle, próba odwrotna, notatka w
    `refs/notes/review`; hook czyta `HEAD` głównego checkoutu, więc PR-y tu idą przez `gh api …/pulls`.
 
@@ -152,6 +153,11 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **#98 @ `657e38c`** (przed rebase'em na `b6a96dd`; rebase dołożył tylko `PLAN.md` z #101 i EP1 z #102): pełna
+  brama padła na `too_many_connections` (9 testów silnika, cudzy `phx.server`); sandbox przeszedł w niej (145,
+  `check` 0 / 29 / 9), a `mix check` każdego pakietu osobno — EXIT=0: silnik **1164**, `check` 0 / **71** / 6 (+3
+  ostrzeżenia rigu `KeyRig`: `:loaded` bez odbiorcy, `:watch` bez `ends_on` i bez scenariusza); web 52; auth 285 +
+  1 property. Na `32187fc` (pierwszy commit) pełna brama z `sandbox/` — EXIT=0.
 - **Lokalnie, 3 października wieczorem, na `main` = `0b7bc84`** (główny checkout po `mix deps.get` w trzech pakietach
   i `sandbox/`): brama z `sandbox/` → **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik **1151**, `check` 0 / 68
   / 6; web 52; auth 285 + 1 property. CI `main` na `0b7bc84` — `success` (job `check`).
@@ -1124,6 +1130,42 @@ Bez zmian:
 - **`https://[::1]` odrzucane jako `address`** logowania — tak było przedtem; D-68 nie zna takich adresów.
 
 Auth: 274 → 278 testów.
+
+### #98 — co wyszło (3 października)
+
+Na `engine/issue-98-key-budget`. Klucz liczony po escapowaniu, razem z nazwą przed nim, przeciw
+`EhOsContract.Key.budget/0`; F9 = 6 zostaje jako odmowa kształtów przy kompilacji. Poprawka z datą w
+`docs/adr/contract-v2.md` (F9 był próbką), wpis w CHANGELOG („a host has to act”).
+
+**Decyzje użytkownika (3 października), z odrzuconymi opcjami:**
+1. *Budżet: jeden, 2048 bajtów* sumy kolumn tekstowych wpisu indeksu (strumień; `process` + `instance_id`; strumień
+   timerów menedżera `"$pm:<klucz>:<korelacja>"`, najdłuższy klucz przebiegu menedżera). Odrzucone: 2600 (zapas
+   tylko ~70 bajtów do ~2667, które zostają z 2704), budżet na tabelę (różnice kilka bajtów, trzy stałe).
+2. *Odmowa `{:error, :key_too_long}`, HTTP 422 `{"error": "key_too_long"}`*. Odrzucone: `{:invalid, pola}` (żadne
+   pole samo nie jest za długie), 413 (dotyczy rozmiaru ciała, a ciało może być małe).
+3. *Menedżer stoi*: `EhOsContract.Key.TooLongError` przed zapisem, subskrypcja `failing` na tym zdarzeniu do
+   ręcznego `skip` — jak każda awaria, zgodnie z „nigdy nie pomijaj” subskrypcji. Odrzucone: pomijanie z zapisem
+   (przebieg traci krok po cichu), stanie + sprawdzanie kluczy menedżerów przy dispatchu (komenda zależna od
+   istniejących reakcji, większy zakres).
+4. *#101 zmergowany przed #98* — PR startuje od `main` z aktualnym handoffem.
+
+**Decyzje techniczne (asystenta):** sprawdzenie strumienia przed transakcją (z tożsamości komendy, tylko agregat —
+boundary nie ma `stream_id`); przebiegi w `commit/3` przed `Personal.prepare` i `for_writing`, bo zwrócony błąd nie
+cofa transakcji i zostawiłby utworzone klucze podmiotów; odmowa bez wiersza w `_commands`, jak `:subject_erased`.
+Wyjątek `Key.TooLongError` zagnieżdżony i eksportowany jak `Authorizer.OutsideScopeError`. Rig `KeyRig` (trzy
+kontrakty), bo żaden istniejący nie ma klucza z trzech pól, a dopiero trzy pola `:id` przekraczają 2048.
+
+**Przegląd (dwa równolegle, na `32187fc`):**
+- *Poprawione:* (1) obaj: menedżer sprawdzał klucz przed odczytem rekordu, więc stawał na zdarzeniu, które i tak
+  by zignorował — jedno spreparowane żądanie zatrzymywało go dla wszystkich przebiegów, a replay starego logu też
+  stawał; teraz tylko przy `starts?` (`e3218b9`), test pada na starym miejscu (próba odwrotna: kod mutanta równy
+  `32187fc`, czerwony tylko ten test). (2) CHANGELOG obiecywał 422 także dla komendy wydanej przez reakcję — ta dalej
+  się wywraca (polityka `:in_transaction` → 500); (3) klucz ponad budżetem zapisany przed #98 jest teraz odmawiany —
+  CHANGELOG mówi, jak go znaleźć (`octet_length`). Usunięty test porównujący dwie stałe.
+- *Bez zmian:* `runs_fit` przed powtórnym sprawdzeniem idempotencji pod blokadą — kolejność celowa (przed
+  `for_writing`); powtórne liczenie przebiegów w `runs_fit` i `entry/4` — te same funkcje, nie rozjadą się.
+- *Pominięte, ryzyka:* wyżej, „Co zostało”. Tagi (GIN), inbox, `subject_keys`, argumenty Obana i zapas 2048 —
+  sprawdzone, w porządku.
 
 ### #96 — co wyszło (3 października)
 
