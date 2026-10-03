@@ -503,6 +503,10 @@ Na `dsl/ep2-rules` (od `origin/main` = `b6a96dd`, po #101), niewypchnięte.
   etykiety reguł bez escapowania na stronach i w modelu dla EHOS-a jak dotychczasowe etykiety.
 - **Sprawdzenia odwrotne:** wyłączone S10, wyłączone ostrzeżenie, puste ograniczenia polityki w digeście, brak
   filtra deklaracji bez scenariusza, brak odmowy powtórzeń, stary `view.ex` — każde wywraca dokładnie swoje testy.
+- **Brama zielona** na `e8c2b05`: **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1166, `check` 0 / 68 / 6
+  (bez zmian: żaden istniejący kontrakt nie dostał `prose-without-scenario`); web 52; auth 285 + 1 właściwość.
+  Wcześniejsze podejścia padały na `too_many_connections` albo stawały w testach silnika na wspólnym Postgresie
+  zajętym przez inne sesje; same testy silnika z `--trace` przechodziły w 64 s.
 
 ## Dopisek 2 października (2) — #83: `ehos.yaml/v2` i `sign_in`; podział EB2
 
