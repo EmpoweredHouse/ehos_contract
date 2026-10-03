@@ -154,7 +154,12 @@ defmodule Taxvision.Contracts.RegistryWatch do
     handles: :data_completeness_confirmed,
     calls: :registries,
     idempotency: :event_id,
-    source: "03 §4.2"
+    source: "03 §4.2" do
+    # Prose alone: no scenario runs an effect (plan EP2).
+    constraint :within_registry_limits,
+               "Adapter trzyma limity zapytań rejestrów i ponawia nieudane",
+               source: "03 §4.2"
+  end
 
   policy :compare_with_registries, "Porównaj odpowiedź rejestrów z danymi firmy",
     handles: :registry_status_checked,

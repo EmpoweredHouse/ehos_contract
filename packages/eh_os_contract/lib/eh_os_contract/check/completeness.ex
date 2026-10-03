@@ -47,7 +47,8 @@ defmodule EhOsContract.Check.Completeness do
       in_transaction_fan_out(c),
       prefixed_event_names(c),
       consults_without_match(c),
-      without_scenario(c)
+      without_scenario(c),
+      unillustrated(c)
     ])
   end
 
@@ -245,6 +246,54 @@ defmodule EhOsContract.Check.Completeness do
           "nothing shows its implementation does what #{inspect(declaration.label)} says",
         at(declared, declaration.name)
       )
+    end
+  end
+
+  # The ladder's first step up (plan EP2): a rule of a policy, a process manager or a
+  # query that no scenario of that declaration `illustrates:`, so it is prose alone. An
+  # effect's constraint is left out, as `without_scenario/1` leaves out the effect: no
+  # scenario runs one (S6), so its prose has no rung above it (the user's choice of 3
+  # October 2026).
+  defp unillustrated(%{model: model} = c) do
+    shown =
+      MapSet.new(
+        for s <- model.scenarios,
+            name <- Map.get(s, :illustrates, []),
+            do: {s.target.kind, s.target.name, name}
+      )
+
+    for {kind, what, declarations, declared} <- [
+          {:policy, "policy", model.policies, c.declarations.policies},
+          {:process_manager, "process manager", model.process_managers,
+           c.declarations.process_managers},
+          {:query, "query", model.queries, c.declarations.queries}
+        ],
+        declaration <- declarations,
+        {word, rule} <- rules(declaration),
+        not MapSet.member?(shown, {kind, declaration.name, rule.name}) do
+      Finding.new(
+        "prose-without-scenario",
+        "#{word} #{inspect(rule.name)} of #{what} #{inspect(declaration.name)} of " <>
+          "#{inspect(model.module)} is prose alone: no scenario `illustrates:` it, so nothing " <>
+          "shows its implementation keeps #{inspect(rule.label)}",
+        rule_at(declared, declaration.name, rule.name)
+      )
+    end
+  end
+
+  defp rules(declaration) do
+    Enum.map(Map.get(declaration, :constraints, []), &{"constraint", &1}) ++
+      Enum.map(Map.get(declaration, :invariants, []), &{"invariant", &1})
+  end
+
+  defp rule_at(declarations, name, rule) do
+    with %{} = declaration <- Enum.find(declarations, &(&1.name == name)),
+         %{} = found <-
+           Enum.find(
+             Map.get(declaration, :constraints, []) ++ Map.get(declaration, :invariants, []),
+             &(&1.name == rule)
+           ) do
+      Links.at(found)
     end
   end
 

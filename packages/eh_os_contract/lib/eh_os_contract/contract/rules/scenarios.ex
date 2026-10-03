@@ -1,6 +1,6 @@
 defmodule EhOsContract.Contract.Rules.Scenarios do
   @moduledoc """
-  S1–S8 of v2 §6: scenarios, the examples a process owner reads.
+  S1–S10 of v2 §6 and the plan: scenarios, the examples a process owner reads.
 
   - **S1.** A scenario has exactly one trigger — `command`, `on` or `query` — and
     it resolves to the declaration that answers it. No two scenarios have the same
@@ -38,6 +38,10 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
     `nil` only where the declaration says optional — and none twice, since each
     names its test. A value of a domain type is the Mix compiler's (X9), as a
     scenario's is.
+  - **S10.** `illustrates:` names a rule of the scenario's target that only a scenario
+    shows (plan EP2): a constraint of a policy, a process manager or a query, or an
+    invariant of a process manager. A unit's invariants and a command's constraints
+    are shown by `rejected` (S8), and an effect is no scenario's target.
   """
 
   alias EhOsContract.DslRules
@@ -188,10 +192,45 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
             ]
 
           {kind, target} ->
-            fits(where, scenario, trigger, kind, target, d)
+            fits(where, scenario, trigger, kind, target, d) ++
+              illustrated(where, scenario, kind, target)
         end
     end
   end
+
+  # S10 (plan EP2). An effect or a read model is refused as a target by S6 already.
+  defp illustrated(_where, _scenario, kind, _target) when kind in [:effect, :read_model], do: []
+
+  defp illustrated(where, scenario, kind, target) do
+    rules = illustratable(kind, target)
+
+    for name <- scenario.illustrates, name not in rules do
+      why =
+        if kind in [:aggregate, :dcb],
+          do: "a command's scenario shows the rules it is refused on with `rejected`",
+          else: "it illustrates #{rules_of(kind)} by name"
+
+      {"S10: #{where} illustrates #{inspect(name)}, which is no rule of #{kind(kind)} " <>
+         "#{inspect(target.name)}: #{why}", scenario}
+    end
+  end
+
+  @doc """
+  The names of the rules of a scenario's target that a scenario `illustrates:` (plan
+  EP2): a policy's and a query's constraints, a process manager's constraints and
+  invariants. Nothing for any other kind.
+  """
+  @spec illustratable(atom(), map()) :: [atom()]
+  def illustratable(kind, target) when kind in [:policy, :query],
+    do: Enum.map(target.constraints, & &1.name)
+
+  def illustratable(:process_manager, pm),
+    do: Enum.map(pm.constraints ++ pm.invariants, & &1.name)
+
+  def illustratable(_kind, _target), do: []
+
+  defp rules_of(:process_manager), do: "the process manager's constraints and invariants"
+  defp rules_of(kind), do: "the #{kind(kind)}'s constraints"
 
   defp candidates(%Dsl.Trigger{kind: :command, name: name}, d) do
     for unit <- d.units, Enum.any?(unit.commands, &(&1.name == name)), do: {unit.kind, unit}

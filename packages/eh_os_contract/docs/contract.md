@@ -114,7 +114,10 @@ end
 
 What reacts to events is declared beside the units: a `policy` issues a command of this contract, an
 `effect` calls an external system, a `process_manager` steers a run with its own state and timers, and a
-`read_model` projects rows that a `query` reads. `consumes` takes a sibling contract's events, and
+`read_model` projects rows that a `query` reads. A reaction names its rules as a command does, with
+`constraint`, and a process manager its `invariant`s too; a scenario that names one in `illustrates:`
+is the test that it holds, and `mix eh_os_contract.check` warns of one no scenario illustrates. An
+effect's constraint stays prose, since no scenario runs an effect. `consumes` takes a sibling contract's events, and
 `publish` lets one leave the application: its relay (`EhOsContract.Relay`) hands it to the configured
 `EhOsContract.Bus`, from the first deploy of the `publish` on.
 
@@ -213,7 +216,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 
 | Code | Layer | What is refused |
 | --- | --- | --- |
-| `N1` | L2 | a name not snake_case; a name twice among: declarations of one kind; a unit's invariants or stage groups; a command's or query's constraints; the process's stages or promises; a service's functions; a function's rules; commands, events, timers and consumed events together; a query named like a command; two names that camelize alike among units, reactions, read models, queries or services of one kind, or among commands, events and consumed events |
+| `N1` | L2 | a name not snake_case; a name twice among: declarations of one kind; a unit's invariants or stage groups; a command's, query's, policy's or effect's constraints; a process manager's constraints and invariants together; the process's stages or promises; a service's functions; a function's rules; commands, events, timers and consumed events together; a query named like a command; two names that camelize alike among units, reactions, read models, queries or services of one kind, or among commands, events and consumed events |
 | `N2` | L2 | a command, query, event, timer, consumed event or service function whose callback would be a reserved word, clash with `Kernel` or with `module_info`/`__info__`/`behaviour_info` at its arity, or take `evolve`; a command, query, event or consumed event named `state` or `row` |
 | `F1` | L2 | a field named twice in one struct, starting with `__`, or otherwise not snake_case |
 | `F2` | L2 | a malformed field type; an enum that is empty, has a member that is not an atom or `{atom, label}`, or repeats one; a domain service function without `returns`, or with a malformed return type |
@@ -253,6 +256,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `S7` | L2 | an `actor` outside the command's `by:`, or on a scenario whose trigger is not a command |
 | `S8` | L2 | an invariant, or a command's constraint, that no `rejected` scenario (of that command, for a constraint) covers |
 | `S9` | L2 | a domain service's rule without examples; an example not `{[argument, …], result}` of the function's arity, with an argument or result of the wrong built-in type or `nil` where not optional; an example given twice |
+| `S10` | L2 | `illustrates:` naming what is not a constraint of the scenario's policy, process manager or query, nor an invariant of its process manager; any `illustrates:` on a command's scenario, which shows its rules with `rejected` |
 | `D1` | L2 | a subdomain's, context's, subject's, value's, entity's or external's name not snake_case; two values that camelize alike; a value named after a type Elixir builds in or a built-in field type; two subdomains, contexts, actors, subjects, values, entities or externals of one name; a term defined twice in a context; a relation declared twice; a name that is both a context and an external |
 | `D2` | L2 | two translations of a term into one language, or one into the context's own |
 | `D3` | L2 | a value with both or neither of a type and fields; `unit` on a value that is not numeric; an undeclared `context:`; a malformed or unknown type, or a bad enum; values in a cycle; a value's field not snake_case, or named twice |

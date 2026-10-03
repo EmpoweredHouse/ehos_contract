@@ -61,6 +61,11 @@ defmodule EhOsContract.ContractVocabularyTest do
         [:process_manager, :on] => [:event, :issues, :sets, :cancels],
         [:process_manager, :timer] => [:name, :wait, :at, :issues, :source],
         [:process_manager, :ends_on] => [:event],
+        # Plan EP2: a reaction's rules, which a scenario illustrates.
+        [:policy, :constraint] => [:name, :label, :source],
+        [:effect, :constraint] => [:name, :label, :source],
+        [:process_manager, :constraint] => [:name, :label, :source],
+        [:process_manager, :invariant] => [:name, :label, :source],
         [:read_model] => [:name, :label, :projects, :delivery, :source],
         [:read_model, :field] => @field,
         [:query] => [:name, :label, :reads, :by, :returns, :scope, :source],
@@ -90,7 +95,7 @@ defmodule EhOsContract.ContractVocabularyTest do
           :unverified,
           :source
         ],
-        [:scenario] => [:description, :scope, :actor, :rejected, :ended],
+        [:scenario] => [:description, :scope, :actor, :rejected, :illustrates, :ended],
         [:scenario, :given] => [:event, :data],
         [:scenario, :command] => [:name, :data],
         [:scenario, :on] => [:name, :data],

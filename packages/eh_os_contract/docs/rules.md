@@ -216,6 +216,19 @@ since its outcome is outside the log and no scenario can name it (S6). A warning
 invariant without a rejecting scenario is an error (S8): the scenario is the only proof an
 invariant holds, and a reaction is also checked on the log by the conformance report.
 
+## `prose-without-scenario`
+
+**warning**
+
+No scenario illustrates a constraint of a policy, a process manager or a query, or an invariant of a process manager.
+
+The rule is prose alone, the first rung of the contract's ladder: it tells whoever writes the
+implementation what to keep, and nothing shows the implementation keeps it. A scenario of the
+declaration that names it in `illustrates:` is the test that would. An effect's constraint is
+left out, as `reaction-without-scenario` leaves out the effect: no scenario runs an effect (S6),
+so its prose has no rung above. A warning, like `reaction-without-scenario`, not an error like
+S8: a reaction is also checked on the log by the conformance report.
+
 ## `consults-without-match`
 
 **warning**

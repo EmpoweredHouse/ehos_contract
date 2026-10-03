@@ -100,14 +100,14 @@ defmodule EhOsContract.Contract.Dsl do
   defmodule Policy do
     @moduledoc false
     defstruct [:name, :label, :idempotency, :source, handles: [], issues: []] ++
-                [delivery: :in_transaction] ++
+                [delivery: :in_transaction, constraints: []] ++
                 [__spark_metadata__: nil]
   end
 
   defmodule Effect do
     @moduledoc false
     defstruct [:name, :label, :idempotency, :source, handles: [], calls: []] ++
-                [delivery: :at_least_once] ++
+                [delivery: :at_least_once, constraints: []] ++
                 [__spark_metadata__: nil]
   end
 
@@ -135,6 +135,7 @@ defmodule EhOsContract.Contract.Dsl do
     @moduledoc false
     defstruct [:name, :label, :idempotency, :source, correlate: [], delivery: :at_least_once] ++
                 [state: [], starts_on: [], on: [], timers: [], ends_on: []] ++
+                [constraints: [], invariants: []] ++
                 [__spark_metadata__: nil]
   end
 
@@ -250,6 +251,7 @@ defmodule EhOsContract.Contract.Dsl do
   defmodule Scenario do
     @moduledoc false
     defstruct [:description, :scope, :actor, :rejected, ended: false, given: [], trigger: []] ++
+                [illustrates: []] ++
                 [
                   expect: [],
                   issues: [],
@@ -316,13 +318,28 @@ defmodule EhOsContract.Contract.Dsl do
     ]
   }
 
+  # A process manager's invariant (plan EP2, ESDM's): what holds of every run. It
+  # refuses nothing, so a scenario that `illustrates:` it is what shows it holds.
+  @manager_invariant %Spark.Dsl.Entity{
+    name: :invariant,
+    describe: "What must stay true of every run of the process manager.",
+    target: Invariant,
+    args: [:name, :label],
+    schema: [
+      name: [type: :atom, required: true, doc: "The invariant's name."],
+      label: [type: :string, required: true, doc: "The rule, as the business states it."],
+      source: [type: :string, doc: "Where the rule comes from in the material."]
+    ]
+  }
+
   # ESDM's constraint (plan EL2): a named rule prose states. A command's is checked
   # as an invariant is — it is in `rejects:`, the implementation `reject/1`s on it, and
   # a scenario refuses the command on it — but it is about the command's data alone.
-  # A query's is prose: a query refuses nothing.
+  # A query's, a policy's and a process manager's is shown by a scenario that
+  # `illustrates:` it (plan EP2); an effect's is prose alone, since no scenario runs one.
   @constraint %Spark.Dsl.Entity{
     name: :constraint,
-    describe: "A rule the data of a command or a query must satisfy, as the business states it.",
+    describe: "A rule a command's data, a query or a reaction keeps, as the business states it.",
     target: Constraint,
     args: [:name, :label],
     schema: [
@@ -481,6 +498,7 @@ defmodule EhOsContract.Contract.Dsl do
     describe: "Whenever an event happens, issue a command.",
     target: Policy,
     args: [:name, :label],
+    entities: [constraints: [@constraint]],
     schema: [
       name: [type: :atom, required: true, doc: "The policy's name."],
       label: [type: :string, required: true, doc: "The rule, as the business states it."],
@@ -497,6 +515,7 @@ defmodule EhOsContract.Contract.Dsl do
     describe: "A side effect on an event, outside the log.",
     target: Effect,
     args: [:name, :label],
+    entities: [constraints: [@constraint]],
     schema: [
       name: [type: :atom, required: true, doc: "The effect's name."],
       label: [type: :string, required: true, doc: "What it does, as the business states it."],
@@ -565,7 +584,9 @@ defmodule EhOsContract.Contract.Dsl do
       starts_on: [@starts_on],
       on: [@on],
       timers: [@timer],
-      ends_on: [@ends_on]
+      ends_on: [@ends_on],
+      invariants: [@manager_invariant],
+      constraints: [@constraint]
     ],
     schema: [
       name: [type: :atom, required: true, doc: "The process manager's name."],
@@ -959,6 +980,13 @@ defmodule EhOsContract.Contract.Dsl do
       scope: [type: :atom, doc: "The unit, when the trigger does not say it."],
       actor: [type: :atom, doc: "The actor who issues the command."],
       rejected: [type: :atom, doc: "The invariant the command is refused on."],
+      illustrates: [
+        type: {:wrap_list, :atom},
+        default: [],
+        doc:
+          "The rules this case shows: a constraint of the policy, process manager or query, " <>
+            "or an invariant of the process manager."
+      ],
       ended: [type: :boolean, default: false, doc: "Whether the process manager ends."]
     ]
   }

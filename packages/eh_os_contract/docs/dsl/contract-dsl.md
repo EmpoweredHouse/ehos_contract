@@ -49,7 +49,9 @@ One process, and everything born in it.
      * event
        * field
  * [policy](#contract-policy)
+   * constraint
  * [effect](#contract-effect)
+   * constraint
  * [process_manager](#contract-process_manager)
    * state
      * field
@@ -57,6 +59,8 @@ One process, and everything born in it.
    * on
    * timer
    * ends_on
+   * invariant
+   * constraint
  * [read_model](#contract-read_model)
    * field
  * [query](#contract-query)
@@ -284,7 +288,7 @@ constraint name, label
 ```
 
 
-A rule the data of a command or a query must satisfy, as the business states it.
+A rule a command's data, a query or a reaction keeps, as the business states it.
 
 
 
@@ -701,7 +705,7 @@ constraint name, label
 ```
 
 
-A rule the data of a command or a query must satisfy, as the business states it.
+A rule a command's data, a query or a reaction keeps, as the business states it.
 
 
 
@@ -905,6 +909,8 @@ policy name, label
 
 Whenever an event happens, issue a command.
 
+### Nested DSLs
+ * [constraint](#contract-policy-constraint)
 
 
 
@@ -926,6 +932,35 @@ Whenever an event happens, issue a command.
 | [`source`](#contract-policy-source){: #contract-policy-source } | `String.t` |  | Where the policy comes from in the material. |
 
 
+### contract.policy.constraint
+```elixir
+constraint name, label
+```
+
+
+A rule a command's data, a query or a reaction keeps, as the business states it.
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#contract-policy-constraint-name){: #contract-policy-constraint-name .spark-required} | `atom` |  | The constraint's name. |
+| [`label`](#contract-policy-constraint-label){: #contract-policy-constraint-label .spark-required} | `String.t` |  | The rule, as the business states it. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#contract-policy-constraint-source){: #contract-policy-constraint-source } | `String.t` |  | Where the rule comes from in the material. |
+
+
+
+
+
+
 
 
 
@@ -938,6 +973,8 @@ effect name, label
 
 A side effect on an event, outside the log.
 
+### Nested DSLs
+ * [constraint](#contract-effect-constraint)
 
 
 
@@ -959,6 +996,35 @@ A side effect on an event, outside the log.
 | [`source`](#contract-effect-source){: #contract-effect-source } | `String.t` |  | Where the effect comes from in the material. |
 
 
+### contract.effect.constraint
+```elixir
+constraint name, label
+```
+
+
+A rule a command's data, a query or a reaction keeps, as the business states it.
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#contract-effect-constraint-name){: #contract-effect-constraint-name .spark-required} | `atom` |  | The constraint's name. |
+| [`label`](#contract-effect-constraint-label){: #contract-effect-constraint-label .spark-required} | `String.t` |  | The rule, as the business states it. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#contract-effect-constraint-source){: #contract-effect-constraint-source } | `String.t` |  | Where the rule comes from in the material. |
+
+
+
+
+
+
 
 
 
@@ -978,6 +1044,8 @@ Steers a run: starts on an event, reacts, sets timers, ends.
  * [on](#contract-process_manager-on)
  * [timer](#contract-process_manager-timer)
  * [ends_on](#contract-process_manager-ends_on)
+ * [invariant](#contract-process_manager-invariant)
+ * [constraint](#contract-process_manager-constraint)
 
 
 
@@ -1163,6 +1231,64 @@ An event that ends one process manager.
 
 
 
+### contract.process_manager.invariant
+```elixir
+invariant name, label
+```
+
+
+What must stay true of every run of the process manager.
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#contract-process_manager-invariant-name){: #contract-process_manager-invariant-name .spark-required} | `atom` |  | The invariant's name. |
+| [`label`](#contract-process_manager-invariant-label){: #contract-process_manager-invariant-label .spark-required} | `String.t` |  | The rule, as the business states it. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#contract-process_manager-invariant-source){: #contract-process_manager-invariant-source } | `String.t` |  | Where the rule comes from in the material. |
+
+
+
+
+
+
+### contract.process_manager.constraint
+```elixir
+constraint name, label
+```
+
+
+A rule a command's data, a query or a reaction keeps, as the business states it.
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#contract-process_manager-constraint-name){: #contract-process_manager-constraint-name .spark-required} | `atom` |  | The constraint's name. |
+| [`label`](#contract-process_manager-constraint-label){: #contract-process_manager-constraint-label .spark-required} | `String.t` |  | The rule, as the business states it. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#contract-process_manager-constraint-source){: #contract-process_manager-constraint-source } | `String.t` |  | Where the rule comes from in the material. |
+
+
+
+
+
+
 
 
 
@@ -1302,7 +1428,7 @@ constraint name, label
 ```
 
 
-A rule the data of a command or a query must satisfy, as the business states it.
+A rule a command's data, a query or a reaction keeps, as the business states it.
 
 
 
@@ -1820,6 +1946,7 @@ Given events, a trigger, and what follows: an example the process owner reads.
 | [`scope`](#contract-scenario-scope){: #contract-scenario-scope } | `atom` |  | The unit, when the trigger does not say it. |
 | [`actor`](#contract-scenario-actor){: #contract-scenario-actor } | `atom` |  | The actor who issues the command. |
 | [`rejected`](#contract-scenario-rejected){: #contract-scenario-rejected } | `atom` |  | The invariant the command is refused on. |
+| [`illustrates`](#contract-scenario-illustrates){: #contract-scenario-illustrates } | `atom \| list(atom)` | `[]` | The rules this case shows: a constraint of the policy, process manager or query, or an invariant of the process manager. |
 | [`ended`](#contract-scenario-ended){: #contract-scenario-ended } | `boolean` | `false` | Whether the process manager ends. |
 
 

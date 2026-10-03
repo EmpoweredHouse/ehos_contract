@@ -465,6 +465,19 @@ Na `dsl/ep1-source` (od `origin/main` = `0b7bc84`, po rebase z `64f888b`), niewy
   (skille): w `source` identyfikatory z materiału, nie nazwiska — `source` idzie do modelu dla EHOS-a i na
   strony, a nic nie sprawdza w nim danych osobowych.
 
+
+### Przed EP2 — decyzje użytkownika (3 października)
+
+- **`invariant` encji — odłożony** (opcja (b)). Encja nie ma implementacji ani scenariuszy, więc inwariant stałby na
+  szczeblu 0 bez drogi wyżej; wraca, gdy materiał da przykład. *Odrzucone:* (a) jak inwariant wartości, z
+  `violated_by`/`satisfied_by` i funkcją w implementacji encji (nowy `use … entity:` bez przykładu w materiale).
+- **`constraint` efektu — proza bez drogi wyżej.** Efekt nie jest celem scenariusza (S6: jego wynik jest poza
+  logiem), więc jego ograniczenie stoi na szczeblu 0 i `check` o nim nie ostrzega — jawny wyjątek od drabiny, opisany
+  w `docs/rules.md`, jak `reaction-without-scenario` pomija efekty. LLM dostaje regułę w EP3 (`@doc`). Przykład z
+  materiału: `look_up_registries`, „adapter trzyma limity i retry” (03 §4.2). *Odrzucone:* bez `constraint` na
+  efekcie (reguła zostaje w kodzie, poza kontraktem); scenariusze efektów najpierw (nowy mechanizm z fałszywym
+  adapterem — osobny, duży etap).
+
 ## Dopisek 2 października (2) — #83: `ehos.yaml/v2` i `sign_in`; podział EB2
 
 **Decyzje użytkownika (2 października, wieczorem):**
