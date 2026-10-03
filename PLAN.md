@@ -1035,11 +1035,13 @@ prób na punkt):
 - **siedem pól** pada w 32–59 próbach na 60 już za nazwą 40 bajtów;
 - **sześć pól** nie padło ani razu za nazwą do 60 bajtów. Klucz przebiegu ma nazwę procesu dwa razy (kolumna
   `process` i prefiks `instance_id`), więc za nazwą procesu około 100 bajtów zaczyna padać (2–19 na 40). Klucz
-  menedżera (`<Moduł>:process_manager:<nazwa>`, nazwa raz) wytrzymał 140 bajtów;
+  menedżera ma nazwę raz, ale jest nią `<pełny moduł kontraktu>:process_manager:<nazwa>` — w sandboxie już około 70
+  bajtów; wytrzymał 140, dalej nie mierzone;
 - **pięć pól** nie padło nigdzie do 140 bajtów nazwy.
 
-Nazwa procesu to atom z kontraktu (`process :visit`), zwykle kilkanaście bajtów, więc dla prawdziwych kontraktów sześć
-trzyma. Ale to próbka: nieskompresowany najgorszy przypadek sześciu pól to 6×765+5 = 4595 bajtów, więc każdy klucz z
+Nazwa procesu to atom z kontraktu (`process :visit`), zwykle kilkanaście bajtów, więc klucz przebiegu przy sześciu
+polach trzyma. Klucz menedżera nie jest tak bezpieczny: moduł kontraktu w zagnieżdżonej przestrzeni nazw hosta ma
+łatwo 100 bajtów i więcej. Ale to próbka: nieskompresowany najgorszy przypadek sześciu pól to 6×765+5 = 4595 bajtów, więc każdy klucz z
 dużą domieszką `|`/`%` wchodzi tylko dzięki kompresji, a ktoś, kto dobiera bajty, może celować w jej próg. Przegląd
 bezpieczeństwa tego nie dowiódł ani nie obalił. Inny `default_toast_compression` (`lz4`) nie był mierzony.
 
@@ -1051,17 +1053,30 @@ bezpieczeństwa tego nie dowiódł ani nie obalił. Inny `default_toast_compress
   Jedno znalezisko na pole, które nazywa i proces, i menedżer — z testem. (4) Komunikat F8 nie twierdzi już, że tylko
   `:id` ma granicę długości (`:integer` też ma): „correlate only on an identifier, an :id of at most 255 bytes, as
   match: does”. (5) Test L3 dla wartości `{:id, encja}`.
+- *Druga runda (na `45819c5`):* poprawka (1) sprawdzała **każde** zdarzenie lokalne z polem, a `Build` bierze typ
+  tylko z pierwszego — więc odmawiała poprawnego kontraktu (późniejsze, niezwiązane zdarzenie z `ref :string`).
+  Teraz F8 sprawdza dokładnie to pierwsze, w tej samej kolejności, w której czyta je `Build`; test kontrolny i test
+  na jedno znalezisko, gdy obsługiwane zdarzenie też nadaje typ (oba padają bez `uniq_by`). Wiersz F8 w tabeli
+  odmów mówi o tym przypadku. Klucz menedżera z pełnym modułem — wyżej, w pomiarze.
 - *Bez zmian:* F8 odmawia też `:integer`, `:date` i enuma, choć są krótkie — tak brzmiała przyjęta reguła („typ
   bazowy `:id`, jak `match:`”). Treść komunikatu powtórzona w L2 i L3 — świadomie, jak przy F7.
+- *Pominięte, sprzed tej zmiany:* X6 bierze typ lokalny z dowolnego zdarzenia lokalnego z polem, także
+  niewłączonego — szersze, niż trzeba, ale ten typ i tak trzyma F8; X6 odmawia dwóch różnych wartości domeny, obu na
+  `:id` (`same_type?`); pole komendy o nazwie pola korelacji trafia do nieindeksowanego `_commands.instance_id`, a
+  wartość bez `String.Chars` wywraca tam `Key.escape`. Gwarancje F8 i X6 zależą od kompilatora L3 u hosta
+  (`compilers: … ++ [:eh_os_contract]`); bez niego zostają ustaleniem `mix eh_os_contract.check`.
 - *Pominięte, poza zakresem:* klucz inboxu (`Bus.Message.key`) bez granicy długości — sprzed tej zmiany; nasz relay
   daje skrót albo `<uuid>/<nazwa>`, a kto publikuje, rozstrzyga grant transportu.
 
 **Do decyzji użytkownika:**
 1. **Czy sześć pól z próbki wystarczy.** Możliwe: (a) zostawić F9 = 6 i dodać limit nazwy procesu, jednostki i
-   menedżera, np. 64 bajty (N1, nowy powód odmowy) — dla nazw do 60 bajtów próbka nie dała ani jednego padnięcia;
-   (b) zejść do pięciu; (c) deterministycznie: przy dispatchu policzyć długość klucza po escapowaniu i odmówić
-   ponad budżet (nowa odmowa 422 dla hosta). Rekomendacja: (a) teraz, osobnym issue, a (c) dopiero, gdyby host
-   chciał gwarancji, nie próbki.
+   menedżera, np. 64 bajty (N1, nowy powód odmowy) — dla nazw do 60 bajtów próbka nie dała ani jednego padnięcia,
+   ale **nie ogranicza to modułu w kluczu menedżera**; trzeba by go też skrócić (np. skrót modułu w kolumnie
+   `name`, co zmienia klucz istniejących wierszy); (b) zejść do pięciu — pięć pól nie padło nigdzie do 140 bajtów
+   nazwy; (c) deterministycznie: przy dispatchu i przy zapisie menedżera policzyć długość klucza po escapowaniu i
+   odmówić ponad budżet (nowa odmowa 422 dla hosta, a dla menedżera — błąd zapisu z czytelnym powodem zamiast
+   wyjątku Postgresa). Rekomendacja: (c), osobnym issue — jako jedyna daje gwarancję, a nie próbkę, i pokrywa nazwę
+   modułu; F9 = 6 zostaje jako odmowa przy kompilacji kształtów, które i tak by padały.
 2. **Pusty `:string` jako wartość pola korelacji** (z E11a) — po F8 to pytanie o pusty `:id`; bez zmian.
 
 ### Granice wartości z żądania (3 października)

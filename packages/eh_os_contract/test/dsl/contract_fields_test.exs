@@ -310,6 +310,61 @@ defmodule EhOsContract.ContractFieldsTest do
                  "is :string"
     end
 
+    test "control: a later event's field gives a manager's undeclared correlation nothing" do
+      assert %{} =
+               compile_contract("LaterCorrelation", """
+                 aggregate :invoice, "Faktura" do
+                   identity :invoice_id
+                   command :record_invoice, "Faktura", by: :reception, emits: :invoice_recorded
+                   command :note_invoice, "Notatka", by: :reception, emits: :invoice_noted
+
+                   event :invoice_recorded, "Zarejestrowano", terminal: true do
+                     field :ref, :id
+                   end
+
+                   event :invoice_noted, "Notatka" do
+                     field :ref, :string
+                   end
+                 end
+
+                 process :invoice, "Faktura" do
+                   correlate :invoice_id
+                 end
+
+                 process_manager :chase, "Pogoń" do
+                   correlate :ref
+                   starts_on :invoice_recorded
+                   ends_on :invoice_recorded
+                 end
+               """)
+    end
+
+    test "a handled event that also types a manager's correlation is one finding" do
+      message =
+        refuse_contract("HandledAndTyping", """
+          aggregate :invoice, "Faktura" do
+            identity :invoice_id
+            command :record_invoice, "Faktura", by: :reception, emits: :invoice_recorded
+
+            event :invoice_recorded, "Zarejestrowano", terminal: true do
+              field :ref, :string
+            end
+          end
+
+          process :invoice, "Faktura" do
+            correlate :invoice_id
+          end
+
+          process_manager :chase, "Pogoń" do
+            correlate :ref
+            starts_on :invoice_recorded
+            ends_on :invoice_recorded
+          end
+        """)
+
+      assert [_one] = Regex.scan(~r/F8: event :invoice_recorded, field :ref/u, message)
+    end
+
     test "a field the process and a manager both correlate on is one finding" do
       message =
         refuse_contract("TwiceCorrelated", """

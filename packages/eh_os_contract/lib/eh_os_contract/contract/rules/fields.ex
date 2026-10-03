@@ -80,7 +80,7 @@ defmodule EhOsContract.Contract.Rules.Fields do
   Every field a run or a process manager's record is told by, as `{where, field}`: an
   event's field that the process's `correlate`, or the `correlate` of a process manager
   handling the event, names; a process manager's state field its own `correlate` names;
-  and, for one the state does not declare, every local event's field it may take its
+  and, for one the state does not declare, the first local event's field it takes its
   type from. Each field once, though several declarations name it. F8 holds each to
   `:id`, here and, for a domain value, between modules (L3).
   """
@@ -105,21 +105,31 @@ defmodule EhOsContract.Contract.Rules.Fields do
       end
 
     # A correlation field the state does not declare takes the type of the first local
-    # event carrying it, handled or not (`Contract.Build`), and X6 then holds a sibling's
-    # event to that type. So every local event carrying it is held to F8.
+    # event carrying it, handled or not, in the order `Contract.Build` reads them, and X6
+    # then holds a sibling's event to that type. That event is held to F8; a later one
+    # with the field gives the state nothing.
     injected =
       for pm <- d.process_managers,
           declared = MapSet.new(Rules.state_fields(pm.state), & &1.name),
           name <- pm.correlate,
           not MapSet.member?(declared, name),
-          e <- Rules.local_events(d),
-          f <- e.fields,
-          f.name == name do
+          {e, f} <- first_carrying(d, name) do
         {"event #{inspect(e.name)}, field #{inspect(f.name)} gives process manager " <>
            "#{inspect(pm.name)}'s state the type of what it correlates on", f}
       end
 
     Enum.uniq_by(events ++ managers ++ injected, fn {_where, f} -> f end)
+  end
+
+  defp first_carrying(d, name) do
+    d
+    |> Rules.local_events()
+    |> Enum.find_value([], fn e ->
+      case Enum.find(e.fields, &(&1.name == name)) do
+        nil -> nil
+        f -> [{e, f}]
+      end
+    end)
   end
 
   # A domain value is the domain's to say, between modules; any other type is known here.
