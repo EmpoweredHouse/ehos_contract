@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 3 października, noc (E0–E12, EH, EB, #89, #91, #64–#66, #93, #95, #96, #100, #101 i EP1 w `main`; PR z #98 otwarty)
+## Handoff — stan na 3 października, noc (E0–E12, EH, EB, #89, #91, #64–#66, #93, #95, #96, #100, #101, EP1 i #98 w `main`; otwartych PR-ów brak)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -33,17 +33,16 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
 
 ### Stan repozytorium
 
-- **`origin/main` = `b6a96dd`** (merge #101: handoff po #96). Przedtem `90a83f2` — #102 (EP1, z sesji
-  `esdm-dsl-comparison`), `0b7bc84` — #100 (poprawki CodeRabbita do #95), `b65b8b7` — #97 (#96, F8/F9), `996d89f` —
-  #95 (granice wartości), `64f888b` — #93 (bajty, których log nie utrzyma). CI `main` na `90a83f2` — `success`; na
-  `b6a96dd` (przebieg `37135252351`) w toku przy pisaniu. Historia `main` z merge'ami PR-ów; gałęzie liniowe.
-- **Otwarty PR: #98** z gałęzi `engine/issue-98-key-budget` (od `b6a96dd`) — budżet bajtów klucza; czeka na merge
-  użytkownika. Co w nim — „#98 — co wyszło”.
+- **`origin/main` = `eb0c8a1`** (merge #103: #98, budżet bajtów klucza — „#98 — co wyszło”). Przedtem `b6a96dd` —
+  #101 (handoff po #96), `90a83f2` — #102 (EP1, z sesji `esdm-dsl-comparison`), `0b7bc84` — #100 (poprawki
+  CodeRabbita do #95), `b65b8b7` — #97 (#96, F8/F9), `996d89f` — #95 (granice wartości). CI `main` na `90a83f2` —
+  `success`; na `eb0c8a1` (przebieg `37135771176`) w toku przy pisaniu. CI PR-a #103 — `success`, CodeRabbit bez
+  uwag. Historia `main` z merge'ami PR-ów; gałęzie liniowe. **Otwartych PR-ów brak** poza tym handoffem.
 - **#95 zmergowano bez dwóch ostatnich commitów** (poprawek z komentarzy CodeRabbita) — przyszły osobno jako #100,
   razem z błędem, który przegląd w nich znalazł. W `main` jest wszystko; zapis w „Granice wartości z żądania”.
 - **Gałęzie:** gałęzie tej pracy usunięte na GitHubie i lokalnie 3 października, za zgodą użytkownika (EB, EH, #71,
   #89, discovery, #65, #93, #95, #96, #100, a także przypadkowy `revert-95-engine/bounded-values` — revert z przycisku
-  GitHuba, bez PR-a). Zostało 59 innych gałęzi na GitHubie, zmergowanych dawno — nieruszane z wyboru użytkownika.
+  GitHuba, bez PR-a); `engine/issue-98-key-budget` (#103) — po merge'u, za zgodą użytkownika. Zostało 59 innych gałęzi na GitHubie, zmergowanych dawno — nieruszane z wyboru użytkownika.
 - **Worktree innych sesji — nie ruszać:** `computer-ordering-process-f84437` (trzecia domena danych testowych,
   issue #99; trzyma `phx.server` na wspólnym Postgresie), `esdm-dsl-comparison-d82750` (`dsl/ep2-rules`),
   `review-login-issues-eb9680`.
@@ -53,7 +52,7 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
   paść na `too_many_connections`** (3 października, dwa razy: 9 padnięć silnika w `SchemaTest` i `AppendLockTest`,
   sam silnik przechodził) — wtedy `mix check`
   każdego pakietu osobno, po kolei, i zapisać, że tak było.
-- **Otwarte na GitHubie:** #98 (w PR-ze, wyżej), #99 (cykl życia jednostek w pętli — z sesji
+- **Otwarte na GitHubie:** #99 (cykl życia jednostek w pętli — z sesji
   `computer-ordering-process`, nie z tej pracy), #94 (style dashboardu z `ehos_design`), #64 (okno retencji inboxu —
   czeka na EHOS), #63 (kształt `call/3` — do pierwszych innych drzwi), #49 (materiał klientów poza repozytorium).
   **W `EmpoweredHouse/eh-os`: #91–#96 i #111** — nasze potrzeby wobec EHOS-a („Dopisek 1 października”).
@@ -63,9 +62,8 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
 
 ### Co zostało — i czyje to jest
 
-- **Merge PR-a z #98** — użytkownika. Po nim: usunąć gałąź `engine/issue-98-key-budget` (za zgodą), zamknąć issue
-  #98, jeśli nie zamknie go merge.
-- **Ryzyka zostawione świadomie przy #98** (w PR-ze): zdarzenie przechodzi dispatch, a menedżer, który miałby
+- **Następna praca z kodem — niewybrana**; kandydaci w „Wybór użytkownika na potem” niżej.
+- **Ryzyka zostawione świadomie przy #98** (#103, issue zamknięte): zdarzenie przechodzi dispatch, a menedżer, który miałby
   zacząć na nim przebieg, staje (wybór „stoi”); komenda wydana przez reakcję i odrzucona `:key_too_long` dalej się
   wywraca; `issued_by` w indeksie idempotencji bez granicy długości (sprzed #98, wymaga credentialu wydawcy).
 - **Pytanie z #96 o pusty `:id` jako wartość pola korelacji** — od #100 pusty `:id` jest odmawiany także przy
@@ -153,6 +151,9 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **#98 @ `1b0816d`** (głowa #103, na `b6a96dd` z EP1): pełna brama znowu padła na `too_many_connections` (5 testów
+  `AppendLockTest`, 4 `SchemaTest`); sandbox 145 w niej, a pakiety osobno — EXIT=0: silnik **1170** (z testami EP1),
+  `check` 0 / 71 / 6; web 52; auth 285 + 1 property. CI PR-a — `success`.
 - **#98 @ `657e38c`** (przed rebase'em na `b6a96dd`; rebase dołożył tylko `PLAN.md` z #101 i EP1 z #102): pełna
   brama padła na `too_many_connections` (9 testów silnika, cudzy `phx.server`); sandbox przeszedł w niej (145,
   `check` 0 / 29 / 9), a `mix check` każdego pakietu osobno — EXIT=0: silnik **1164**, `check` 0 / **71** / 6 (+3
