@@ -616,6 +616,26 @@ Na `dsl/ep4-executable` (od `origin/main` = `8f685cf`, po #108).
 - **Brama zielona po przeglądzie:** **EXIT=0** — sandbox 148, `check` 0 / 29 / 9; silnik 1198, `check` 0 / 71 / 6;
   web 52; auth 285 + 1 właściwość.
 
+### Przed EP5 — decyzje użytkownika (3 października)
+
+- **`capability` systemu zewnętrznego — opcjonalna, ścisła, gdy jest.** System w domenie może zadeklarować
+  zdolności (`capability :submit_report, "…", source: "X-01"`); gdy je ma, każde `calls:` do niego nazywa jedną
+  (`calls: {:p1, :submit_report}`), a goły `:p1` jest odmową. Odmowa: zdolność, której system nie deklaruje;
+  ostrzeżenie `check`: zdolność, której nie woła żaden efekt. *Odrzucone:* zawsze wymagane (łamie każdy kontrakt
+  z `calls:`, a system tylko wejściowy, jak KSeF, musiałby coś deklarować); sama proza bez reguł (nic nie łączy
+  efektu z tym, o co prosi).
+- **`responsibility` aktora — nazwana proza, szczebel 0.** `responsibility :name, "tekst", source:` w aktorze;
+  czytają strony, słownik i `@doc` komend, które aktor wydaje. Przykład: 03 §4.10, „zakres pracy wynika z
+  obowiązków, nie uprawnień”. *Odrzucone:* powiązanie `fulfils:` w komendzie z ostrzeżeniem (nowe słowo bez
+  przykładu, który by go wymagał — kształt pozwala je dodać później); pominięcie.
+- **`terms` relacji — pary, także w partnerstwie.** `terms: [{"Wizyta", "Wizyta"}]`, słowo pierwszej i drugiej
+  strony, każde sprawdzane wobec słownika swojego kontekstu. Świadome odstępstwo od ESDM, który w relacji bez
+  kierunku terminów nie ma: Rehmed ich tam potrzebuje („Wizyta” znaczy co innego w umawianiu i w dokumentacji).
+  *Odrzucone:* pary tylko w relacjach z kierunkiem, jak ESDM (Rehmed traci terminy partnerstwa); płaska lista ze
+  sprawdzeniem (nie mówi, które słowo odpowiada któremu).
+- **Podział (rozstrzygnięcie asystenta):** EP5a — zdolności z regułami; EP5b — odpowiedzialność i pary terminów.
+  Dwa PR-y, bo zdolności dotykają domeny, kontraktu, wiązania między nimi i `check`.
+
 ## Dopisek 2 października (2) — #83: `ehos.yaml/v2` i `sign_in`; podział EB2
 
 **Decyzje użytkownika (2 października, wieczorem):**
