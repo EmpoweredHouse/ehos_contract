@@ -1,0 +1,10 @@
+pre-pr-review #96 (2091f64..7d3997e), 3 October 2026.
+Round 1 on 8d71afd: correctness (code-review high) + security/performance (self, plugin absent).
+- fixed: PM undeclared correlation typed by an unhandled local event passed F8 (42547fb, test reverse-checked)
+- fixed: unit-less contract including sibling events skipped X6's type check (45819c5, test failed before)
+- fixed: dedupe uncovered (test), F8 message claimed only :id is bounded, {:id, entity} value L3 test
+- no change: F8 refuses :integer/:date/enum, per the accepted rule; message duplicated L2/L3 like F7
+- skipped: inbox key unbounded (pre-existing); F9 is sampled not proved -> user decision in PLAN.md
+Round 2 on 45819c5: fix 1 over-refused (every event vs Build's first) -> fixed 8b881cd; F8 doc row; PM key carries the full module name -> PLAN.md corrected; X6 local_types breadth, same_type? on two :id values, commands.instance_id escape -> skipped, pre-existing, in PLAN.md.
+Round 3 on 8b881cd: identity of an earlier unit types the state :id but F8 checked a later event -> fixed 7d3997e (control test fails on 8b881cd).
+Gate on 7d3997e tree: EXIT=0; sandbox 145, check 0/29/9; engine 1150, check 0/68/6; web 52; auth 285 + 1 property.
