@@ -159,12 +159,25 @@ defmodule AppuniteEquipment.Inventory.Computer do
 
   def evolve(state, %ReturnStarted{}), do: %{state | status: :returning}
 
-  def evolve(state, %Returned{}),
-    do: %{state | status: :in_office, set_up: false, assignment_id: nil}
+  # The three observations are recorded, not decided, so nothing refuses one that
+  # makes no sense — a return of a sold computer, of another assignment, a computer
+  # back from Innergo it was never sent to. The log keeps them, and the report shows
+  # them off the declared path; the state does not move on them, so a sold computer
+  # is never issued again and an issued one never goes to a second employee.
+  def evolve(%State{status: :returning, assignment_id: assignment} = state, %Returned{
+        assignment_id: assignment
+      }),
+      do: %{state | status: :in_office, set_up: false, assignment_id: nil}
+
+  def evolve(state, %Returned{}), do: state
 
   def evolve(state, %Wiped{}), do: %{state | set_up: false}
   def evolve(state, %SentForService{}), do: %{state | status: :in_service}
-  def evolve(state, %ServiceReturned{}), do: %{state | status: :in_office, set_up: false}
+
+  def evolve(%State{status: :in_service} = state, %ServiceReturned{}),
+    do: %{state | status: :in_office, set_up: false}
+
+  def evolve(state, %ServiceReturned{}), do: state
   def evolve(state, %ListedForSale{}), do: %{state | status: :for_sale}
   def evolve(state, %Reserved{}), do: %{state | reserved: true}
   def evolve(state, %ReservationDropped{}), do: %{state | reserved: false}

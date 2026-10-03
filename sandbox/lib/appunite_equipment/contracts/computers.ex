@@ -889,4 +889,94 @@ defmodule AppuniteEquipment.Contracts.Computers do
       }
     ]
   end
+
+  scenario "sprzedany komputer, potem omyłkowo odnotowany zwrot — nie wraca do użytku" do
+    given :ordered, %{profile: :operations}
+
+    given :received, %{
+      serial_number: "C02XG2JHJGH5",
+      chip: :m2,
+      price: 549_900,
+      purchased_on: "2023-03-14",
+      invoice_number: "FV/2023/03/41"
+    }
+
+    given :listed_for_sale, %{asking_price: 250_000}
+    given :sold, %{price: 250_000, invoice_number: "FS/2026/10/2", channel: :marketplace}
+    given :returned, %{assignment_id: "assignment-ola-1"}
+    given :set_up
+
+    command :issue_computer, %{
+      assignment_id: "assignment-bartek-2",
+      employee_id: "employee-bartek",
+      shipped_on: "2026-10-02",
+      as_replacement: false
+    }
+
+    rejected :only_from_the_office
+  end
+
+  scenario "dotarł zwrot innego przydziału — komputer zostaje w drodze" do
+    given :ordered, %{profile: :developer}
+
+    given :received, %{
+      serial_number: "K7HQ2F9X4M",
+      chip: :m5,
+      price: 1_199_900,
+      purchased_on: "2026-09-29",
+      invoice_number: "FV/2026/09/118"
+    }
+
+    given :set_up
+
+    given :issued, %{
+      assignment_id: "assignment-ola-1",
+      employee_id: "employee-ola",
+      shipped_on: "2026-10-01",
+      as_replacement: false
+    }
+
+    given :return_started, %{
+      assignment_id: "assignment-ola-1",
+      reason: :exchange,
+      returned_on: "2027-03-31"
+    }
+
+    given :returned, %{assignment_id: "assignment-bartek-2"}
+    command :wipe_computer
+    rejected :only_from_the_office
+  end
+
+  scenario "komputer u pracownika, odnotowany powrót z Innergo — nie trafia do drugiej osoby" do
+    given :ordered, %{profile: :developer}
+
+    given :received, %{
+      serial_number: "K7HQ2F9X4M",
+      chip: :m5,
+      price: 1_199_900,
+      purchased_on: "2026-09-29",
+      invoice_number: "FV/2026/09/118"
+    }
+
+    given :set_up
+
+    given :issued, %{
+      assignment_id: "assignment-ola-1",
+      employee_id: "employee-ola",
+      shipped_on: "2026-10-01",
+      as_replacement: false
+    }
+
+    given :service_returned, %{diagnosis: "Wyczyszczony"}
+    given :set_up
+
+    command :issue_computer, %{
+      assignment_id: "assignment-bartek-2",
+      employee_id: "employee-bartek",
+      shipped_on: "2026-10-02",
+      as_replacement: false
+    }
+
+    rejected :only_from_the_office
+  end
 end
