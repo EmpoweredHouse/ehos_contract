@@ -62,6 +62,12 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
       state %{paid: 50}
     end
 
+    scenario "płatność — run innej wizyty" do
+      scope :chase
+      on :paid, %{amount: 20}
+      state %{visit_id: "w-9"}
+    end
+
     scenario "przypomnienie — stan bez zmian" do
       scope :chase
       given :paid, %{amount: 30}
@@ -175,6 +181,17 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
       assert message =~ "the scenario requires the run to hold, after :paid:"
       assert message =~ "%{paid: 50}"
       assert message =~ "paid: 0"
+    end
+
+    # What a scenario's state says is what it checks, never what it builds: a run
+    # correlated by it would hold it whatever the code does.
+    test "fails on a correlation no given or trigger gives the run", %{model: model} do
+      error =
+        assert_raise ExUnit.AssertionError, fn ->
+          run(model, "płatność — run innej wizyty", @right)
+        end
+
+      assert ExUnit.AssertionError.message(error) =~ ~s|visit_id: "scenario"|
     end
 
     test "S3 refuses a field the run does not have, and a value of the wrong type" do

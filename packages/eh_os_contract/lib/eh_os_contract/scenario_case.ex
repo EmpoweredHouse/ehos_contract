@@ -643,8 +643,7 @@ defmodule EhOsContract.ScenarioCase do
     data =
       Enum.map(scenario.given, & &1.data) ++
         [scenario.trigger.data] ++
-        Enum.map(scenario.expect, & &1.data) ++
-        Enum.map(scenario.issues, & &1.data) ++ [Map.get(scenario, :state, %{})]
+        Enum.map(scenario.expect, & &1.data) ++ Enum.map(scenario.issues, & &1.data)
 
     fn field -> Enum.find_value(data, &Map.get(&1, field)) end
   end
