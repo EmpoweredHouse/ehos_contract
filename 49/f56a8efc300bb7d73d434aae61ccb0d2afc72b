@@ -1,0 +1,3 @@
+EP2 (a reaction's rules and illustrates:), rebased onto origin/main 9b959e4 (#103, #104) without conflicts.
+Gate on the rebased branch: sandbox mix check EXIT=0 (sandbox 145, check 0/29/9; engine 1179, check 0/71/6 — +3 from #103 as main's PLAN records, no prose-without-scenario; web 52; auth 285+1 property); HEAD adds PLAN.md only.
+Reviews as on the pre-rebase head (note on 6928109): correctness, 10 findings, all fixed; security/performance, no defect; reverse checks fail exactly their own tests.
