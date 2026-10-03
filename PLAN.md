@@ -668,6 +668,9 @@ Na `dsl/ep5a-capabilities` (od `origin/main` = `64a7864`, po #109).
   z D1); P2 drukuje krotki w `calls` (tylko komunikat). Pominięte: operacje na systemie `:inbound` (ostrzeżenie je
   pokaże; reguła byłaby nowa); graf i `view` bez operacji; test digestu porównuje dwie domeny nowym kodem —
   przesunięcie łapie wersja przypięta w EP1.
+- **Brama zielona po przeglądzie:** **EXIT=0** — sandbox 148, `check` 0 / 29 / 9; silnik 1208, `check` 0 / 71 / 6;
+  web 52; auth 285 + 1 właściwość. Pierwsze podejście padło na formacie: stary `cached_dot_formatter` w
+  `_build/test` sprzed nowego słowa (pułapka opisana w `sandbox/mix.exs`); po jego usunięciu czysto.
 - **Brama zielona** przed przeglądem: **EXIT=0** — sandbox 148, `check` 0 / 29 / 9 (bez zmian: obie operacje
   sandboxa są wołane); silnik 1206 (1198 + 8), `check` 0 / 71 / 6; web 52; auth 285 + 1 właściwość.
 
