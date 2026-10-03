@@ -67,7 +67,7 @@ defmodule ShreddingRig.Members do
   effect :greet, "Greet a new member",
     handles: :joined,
     delivery: :at_least_once,
-    idempotency: :event_id
+    idempotency: [key: :event_id, owner: :self]
 
   process :membership, "Membership" do
     correlate :membership_id

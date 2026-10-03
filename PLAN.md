@@ -79,8 +79,8 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
   i tabela w „Dopisek 1 października”. Nowa potrzeba: wiersz w tabeli i issue.
 - **EP — proza w kontrakcie** (decyzja użytkownika z 3 października): EP1 → EP2 → EP3, potem EP4 i EP5 po
   decyzjach o kształcie — „Dopisek 3 października — EP”. **EP1–EP3 w `main`** (#102, #106, #107; poprawka
-  hooka przeglądu dla worktree — #105). **Następne: EP4** (oczekiwany `state` w scenariuszu process managera,
-  wiersze read modelu w scenariuszu, właściciel `idempotency`), potem **EP5** (`capability` systemu zewnętrznego,
+  hooka przeglądu dla worktree — #105). **EP4 na `dsl/ep4-executable`** (`state` w scenariuszu process managera,
+  właściciel `idempotency`; wiersze read modelu odrzucone — „Przed EP4”), potem **EP5** (`capability` systemu zewnętrznego,
   `responsibility` aktora, `terms` relacji jako pary) — przed każdym pytania do użytkownika o kształt, z
   przykładem z materiału.
 
@@ -542,6 +542,79 @@ Na `dsl/ep3-docs` (od `origin/main` = `24904b8`, po #105 i #106), niewypchnięte
   prawdziwą osobę. Każda poprawka sprawdzona odwrotnie.
 - **Brama zielona** na `c042d42`: **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1184 (1179 + 5), `check`
   0 / 71 / 6 (bez zmian); web 52; auth 285 + 1 właściwość.
+
+### Przed EP4 — decyzje użytkownika (3 października)
+
+- **Oczekiwany stan process managera — `state %{…}` w scenariuszu.** Nowy wynik obok `issues`/`sets`: pola, które
+  run trzyma po wyzwalaczu, porównane częściowo; odmowa, gdy pola nie ma w stanie. Przykład z materiału:
+  `monthly_registry_check` po `data_completeness_confirmed` ze stycznia ma `check_at` = 1 lutego, a gałęzi
+  `evolve`, w której potwierdzenie innego miesiąca zostawia datę, nic dziś nie sprawdza. *Odrzucone:* sama data
+  timera (`sets :next_month, at: …`) — węższe, nie złapie pola stanu, które nie jest datą timera; nic nie robić —
+  gałąź „inny miesiąc” zostaje bez testu.
+- **Wiersze read modelu w scenariuszu — odrzucone.** Magazyn read modelu jest hosta (ten sam powód co odrzucone
+  `paradigm`); wykonywalnym sprawdzeniem zostaje `answers` query. *Odrzucone:* `rows [...]` w scenariuszu
+  (nowy callback oddający wiersze silnikowi i deklaracja opisująca wiersze, nie odpowiedź); najpierw rozstrzygnąć,
+  co deklaruje `read_model`. **Ustalenie przy pytaniu:** `daily_totals` deklaruje `business_date, method, total`,
+  a `Rehmed.Settlement.DailyTotals` trzyma wiersz na płatność z `amount` — zadeklarowany kształt jest kształtem
+  odpowiedzi, nie wierszy. Osobna sprawa, bez etapu.
+- **`idempotency: [key: :event_id, owner: :self]`** — `owner` w `:self | :downstream | :infrastructure`, oba
+  wymagane; zmienia kształt każdej reakcji, bez zgodności wstecz. *Odrzucone:* osobny klucz `idempotency_owner:`
+  obok (bez zmiany deklaracji, ale dwa klucze, które znaczą razem, i właściciel opcjonalny); nic nie robić
+  (właściciel w kodzie i moduledocu).
+
+### EP4 — co wyszło (3 października)
+
+Na `dsl/ep4-executable` (od `origin/main` = `8f685cf`, po #108).
+- **`state` w scenariuszu process managera.** `ScenarioCase` składa krok tak jak runtime
+  (`EhOsContract.ProcessManager`): callback dostaje stan sprzed zdarzenia, potem `evolve/2` składa zdarzenie; po
+  timerze stan się nie zmienia. Porównanie na wymienionych polach, jak `expect`. S3: pole spoza stanu i
+  korelacji, wartość złego typu; S6: `state` dwa razy, `state` w scenariuszu komendy, polityki, query; sam `state`
+  wystarcza za wynik. W modelu tylko tam, gdzie jest — żadna inna wersja się nie rusza.
+- **Sandbox:** `monthly_registry_check` ma trzy scenariusze stanu — pierwsze potwierdzenie (1 lutego), sprawdzony
+  miesiąc przesuwa datę (1 marca), inny miesiąc jej nie rusza. Sprawdzenie odwrotne: gałąź „inny miesiąc”
+  przesuwająca datę wywraca scenariusz (i dwa starsze testy runtime `AccountingMonthTest`).
+- **`idempotency`:** w modelu mapa `%{key:, owner:}`. P3 odmawia `owner: :downstream` poza efektem — polityka i
+  process manager wydają komendy temu silnikowi, a ten kluczuje je sam (`Consumer.reaction_key/5`), więc
+  polityki w fiksturach dostały `:infrastructure`. `send_p1_report` — `:downstream` (P1 dostaje klucz;
+  sandbox bez P1 kluczuje zapis); `look_up_registries` — `:self`. Jedno zdanie o właścicielu w `@doc`
+  callbacku i na stronie reakcji (`Doc.idempotency/1`).
+- **Wersje:** każdy kontrakt z `idempotency` ma nową wersję. Przypięte wersje przesunięte świadomie, z
+  komentarzem: `sources_test` (`304120633fb2` → `0233079a0430`), księga `DispatchRig.Ledger` (`4e94b8af0057` →
+  `06808eb90e9f`). Linia w CHANGELOG.
+- **`docs/adr/contract-v2.md`:** poprawka z datą przy §4.6 (efekt z `idempotency: :downstream` — test kompiluje
+  tę sekcję dosłownie, więc linia przepisana) i przy P3.
+- `docs/contract.md` (akapit, wiersze P3 i S6), `docs/dsl/`, `.formatter.exs`, skill `write-reaction`.
+- **Brama zielona** przed przeglądem: **EXIT=0** — sandbox 148 (145 + 3 scenariusze stanu), `check` 0 / 29 / 9;
+  silnik 1194 (1184 + 10), `check` 0 / 71 / 6 (bez zmian); web 52; auth 285 + 1 właściwość.
+- **Przegląd** (dwa równolegle). Poprawione, każde osobnym commitem ze sprawdzeniem odwrotnym:
+  - efekt z `owner: :infrastructure` kompilował się, a `@doc` obiecywał deduplikację przez silnik, której
+    `EffectJob` nie robi; `:infrastructure` z kluczem innym niż `:event_id` też. P3 odmawia obu;
+  - eksport modelu dla EHOS-a nie redagował `state` scenariusza;
+  - wartość korelacji podana w `state` budowała run, więc asercja nie mogła paść;
+  - runner składał stan także z kroku, którego silnik nie bierze (`given` przed startem runu, wyzwalacz po
+    `ends_on`); scenariusz ze `state` teraz na tym pada. Scenariusze bez `state` jak dotąd;
+  - CHANGELOG: nowy kształt `idempotency` w „Changed — a host has to act”.
+
+  Bez zmian:
+  - `send_p1_report` z `:downstream`, choć sandbox kluczuje zapis: deklaracja opisuje host z P1, a moduledoc mówi,
+    że sandbox P1 nie ma;
+  - zdublowane zdanie „holds …” w `pages` i `Doc` oraz drugie budowanie zdarzenia w `held!` — kosmetyka.
+
+  Pominięte, poza zakresem:
+  - `key` przy `:self`/`:downstream` to dowolny atom; sprawdzanie go wobec pól obsługiwanych zdarzeń to nowa
+    reguła;
+  - pole korelacji w S3 sprawdzane jak `:id` — wartość złego typu pada dopiero w teście, z nazwą pola.
+
+  Bezpieczeństwo i wydajność: poza powyższym bez defektu. Do stron trafiają tylko nazwy pól stanu, nie wartości.
+- **CodeRabbit (#109), jedna uwaga — poprawiona:** scenariusz ze `state`, którego zdarzenia mają dwie wartości
+  korelacji (`given` wizyty A, wyzwalacz wizyty B), składał je w jeden stan, a runtime założyłby dwa runy. Taki
+  scenariusz teraz pada. Przegląd poprawki: to samo dotyczyło **każdego** scenariusza process managera (np. z
+  `issues`), więc sprawdzenie stoi przed składaniem stanu, dla wszystkich; linia w CHANGELOG. Bez zmian:
+  porównanie przed rzutowaniem (korelacja to `:id` albo identyfikator — F8 — więc surowe dane wystarczają).
+  Pominięte: pole korelacji spoza tożsamości jednostki, pominięte w danych — silnik nie bierze takiego zdarzenia,
+  runner je składa; sprzed EP4, osobna sprawa.
+- **Brama zielona po przeglądzie:** **EXIT=0** — sandbox 148, `check` 0 / 29 / 9; silnik 1198, `check` 0 / 71 / 6;
+  web 52; auth 285 + 1 właściwość.
 
 ## Dopisek 2 października (2) — #83: `ehos.yaml/v2` i `sign_in`; podział EB2
 

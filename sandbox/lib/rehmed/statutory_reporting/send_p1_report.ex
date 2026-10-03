@@ -6,8 +6,9 @@ defmodule Rehmed.StatutoryReporting.SendP1Report do
   **There is no P1 behind the sandbox**, so this send is the registry saying yes:
   it records `p1_report_sent` and nothing else. A host with the registry calls it
   here and records `p1_report_failed` on a rejection or a lost connection. The
-  event's identifier is the idempotency key, so a second delivery of the same
-  queued report records nothing new.
+  event's identifier is the idempotency key, and P1 keeps it (`owner: :downstream`):
+  a host passes it with the report, so a second delivery is not a second report.
+  Here it keys the recording, so a second delivery records nothing new.
   """
 
   use Rehmed.Contracts.StatutoryReporting, effect: :send_p1_report

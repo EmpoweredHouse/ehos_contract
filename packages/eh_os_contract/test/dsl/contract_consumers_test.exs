@@ -80,10 +80,13 @@ defmodule EhOsContract.ContractConsumersTest do
     end
 
     test "control: v2 §4.6's effect, and a process manager without idempotency, compile" do
-      assert %{effects: [%{idempotency: :downstream}], process_managers: [%{idempotency: nil}]} =
+      assert %{
+               effects: [%{idempotency: %{key: :event_id, owner: :downstream}}],
+               process_managers: [%{idempotency: nil}]
+             } =
                compile_contract("EffectRight", """
                #{@unit}
-                 effect :notify, "Powiadom", handles: :visit_closed, calls: :mail, idempotency: :downstream
+                 effect :notify, "Powiadom", handles: :visit_closed, calls: :mail, idempotency: [key: :event_id, owner: :downstream]
 
                  process_manager :chase, "Pogoń", correlate: :visit_id do
                    starts_on :visit_closed

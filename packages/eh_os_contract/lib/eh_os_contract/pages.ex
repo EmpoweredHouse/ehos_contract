@@ -28,6 +28,7 @@ defmodule EhOsContract.Pages do
   """
 
   alias EhOsContract.Model
+  alias EhOsContract.Contract.Doc
 
   # A contract's declarations with a page of their own: the model's key, the
   # directory, and the word for one.
@@ -728,7 +729,10 @@ defmodule EhOsContract.Pages do
           do: "cancels #{Enum.map_join(s.cancels, ", ", &code/1)}"
         ),
         if(Map.get(s, :ended), do: "ends the run"),
-        if(Map.has_key?(s, :answers), do: "answers #{length(List.wrap(s.answers))} row(s)")
+        if(Map.has_key?(s, :answers), do: "answers #{length(List.wrap(s.answers))} row(s)"),
+        if(Map.has_key?(s, :state),
+          do: "holds " <> (s.state |> Map.keys() |> Enum.sort() |> Enum.map_join(", ", &code/1))
+        )
       ]
       |> Enum.reject(&is_nil/1)
       |> Enum.join(", ")
@@ -870,7 +874,8 @@ defmodule EhOsContract.Pages do
       facts([
         row(["Handles: " | joined(Enum.map(List.wrap(p.handles), &event_link(site, model, &1)))]),
         row(["Issues: " | joined(Enum.map(List.wrap(p.issues), &command_link(model, &1)))]),
-        "Delivered #{code(p.delivery)}."
+        "Delivered #{code(p.delivery)}.",
+        Doc.idempotency(p)
       ]),
       rules(p)
     ]
@@ -883,7 +888,8 @@ defmodule EhOsContract.Pages do
         if(e.calls not in [nil, []],
           do: "Calls: #{Enum.map_join(List.wrap(e.calls), ", ", &code/1)}."
         ),
-        "Delivered #{code(e.delivery)}."
+        "Delivered #{code(e.delivery)}.",
+        Doc.idempotency(e)
       ]),
       rules(e)
     ]
@@ -909,7 +915,10 @@ defmodule EhOsContract.Pages do
     end
 
     [
-      facts(["Runs are told by #{Enum.map_join(pm.correlate, ", ", &code/1)}."]),
+      facts([
+        "Runs are told by #{Enum.map_join(pm.correlate, ", ", &code/1)}.",
+        Doc.idempotency(pm)
+      ]),
       section("Starts on", pm.starts_on, reaction),
       section("Reacts to", pm.on, reaction),
       section("Timers", pm.timers, fn t ->

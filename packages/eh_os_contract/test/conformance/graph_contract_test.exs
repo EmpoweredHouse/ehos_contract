@@ -64,7 +64,7 @@ defmodule EhOsContract.GraphContractTest do
           event :registry_checked, "Registry checked", recorded_by: :bot
         end
 
-        effect :mail_copy, "Mail a copy", handles: :sent, calls: :mail, idempotency: :draft_id
+        effect :mail_copy, "Mail a copy", handles: :sent, calls: :mail, idempotency: [key: :draft_id, owner: :self]
 
         process :draft, "Draft" do
           correlate :draft_id

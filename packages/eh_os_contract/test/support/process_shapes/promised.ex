@@ -60,7 +60,7 @@ defmodule ProcessShapes.Promised do
     handles: :request_refused,
     issues: :notify_refusal,
     delivery: :at_least_once,
-    idempotency: :event_id
+    idempotency: [key: :event_id, owner: :infrastructure]
 
   process :handling, "Request handling" do
     correlate :request_id

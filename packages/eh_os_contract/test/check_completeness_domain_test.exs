@@ -72,7 +72,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
           end
         end
 
-        effect :notify, "Powiadom", handles: :payment_recorded, calls: :sms, idempotency: :visit_id
+        effect :notify, "Powiadom", handles: :payment_recorded, calls: :sms, idempotency: [key: :visit_id, owner: :self]
 
         process :visit, "Wizyta" do
           correlate :visit_id
@@ -231,7 +231,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
           event :issued, "Wystawiono"
         end
 
-        effect :send, "Wyślij do KSeF", handles: :issued, calls: :ksef, idempotency: :invoice_id
+        effect :send, "Wyślij do KSeF", handles: :issued, calls: :ksef, idempotency: [key: :invoice_id, owner: :self]
 
         process :invoice, "Faktura" do
           correlate :invoice_id

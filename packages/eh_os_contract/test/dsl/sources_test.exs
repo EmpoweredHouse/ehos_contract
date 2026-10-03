@@ -12,7 +12,9 @@ defmodule EhOsContract.SourcesTest do
 
   # The versions of `@unsourced` and `@domain_unsourced` computed by the library before
   # EP1 (origin/main at 0b7bc84), which a contract or domain without `source:` keeps.
-  @unsourced_version "304120633fb2"
+  # The contract's moved once since, from 304120633fb2, with plan EP4: its effect's
+  # `idempotency` names a key and an owner, as every contract's with one does.
+  @unsourced_version "0233079a0430"
   @domain_unsourced_version "6111225e8fc9"
 
   @sourced """
@@ -30,7 +32,7 @@ defmodule EhOsContract.SourcesTest do
       handles: :visit_closed, issues: :report_visit, source: "P-07"
 
     effect :notify_registry, "Powiadom rejestr",
-      handles: :visit_reported, idempotency: :event_id, source: "P-08"
+      handles: :visit_reported, idempotency: [key: :event_id, owner: :self], source: "P-08"
 
     process_manager :chase, "Pogoń za zgłoszeniem", source: "P-09" do
       correlate :visit_id
@@ -66,7 +68,7 @@ defmodule EhOsContract.SourcesTest do
     policy :report_on_close, "Zamknięta wizyta jest zgłaszana",
       handles: :visit_closed, issues: :report_visit
 
-    effect :notify_registry, "Powiadom rejestr", handles: :visit_reported, idempotency: :event_id
+    effect :notify_registry, "Powiadom rejestr", handles: :visit_reported, idempotency: [key: :event_id, owner: :self]
 
     process_manager :chase, "Pogoń za zgłoszeniem" do
       correlate :visit_id

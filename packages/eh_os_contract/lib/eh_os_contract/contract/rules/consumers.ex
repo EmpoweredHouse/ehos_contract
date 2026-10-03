@@ -10,7 +10,12 @@ defmodule EhOsContract.Contract.Rules.Consumers do
     `idempotency`, what makes a second delivery harmless. A process manager does
     not: its commands and timers take keys the library derives from the run, so a
     replay or a second delivery repeats nothing (v2 §17). v2 §4.6 writes one
-    without `idempotency`, and this is why it compiles.
+    without `idempotency`, and this is why it compiles. `idempotency` names its
+    `key` and its `owner` (plan EP4), and only an effect's owner is `:downstream`:
+    a policy and a process manager issue commands to this engine, never to a
+    system that could keep a key. An effect's owner is never `:infrastructure`:
+    the engine keys the commands a reaction issues, by the event's id, and an
+    effect's call is not one — so `:infrastructure` also keys on `:event_id`.
   - **P4.** A process manager starts on at least one event and correlates on at
     least one field: with none, every run would share one record, one state and
     one set of timers, and the first ending would end it for all. Its triggers are
@@ -50,7 +55,8 @@ defmodule EhOsContract.Contract.Rules.Consumers do
     where = "policy #{inspect(policy.name)}"
 
     handles(where, policy, policy.handles, events) ++
-      issues("P1", where, policy, policy.issues, commands) ++ idempotent(where, policy)
+      issues("P1", where, policy, policy.issues, commands) ++
+      idempotent(where, policy) ++ not_downstream(where, policy)
   end
 
   defp effect(effect, events) do
@@ -64,7 +70,8 @@ defmodule EhOsContract.Contract.Rules.Consumers do
         ],
         else: []
 
-    handles(where, effect, effect.handles, events) ++ in_transaction ++ idempotent(where, effect)
+    handles(where, effect, effect.handles, events) ++
+      in_transaction ++ idempotent(where, effect) ++ not_infrastructure(where, effect)
   end
 
   defp process_manager(pm, events, commands) do
@@ -121,7 +128,9 @@ defmodule EhOsContract.Contract.Rules.Consumers do
         ],
         else: []
 
-    starts ++ uncorrelated ++ triggers ++ references ++ timer_shape ++ issued ++ delivery
+    starts ++
+      uncorrelated ++
+      triggers ++ references ++ timer_shape ++ issued ++ delivery ++ not_downstream(where, pm)
   end
 
   defp timer(where, timer, state) do
@@ -192,4 +201,34 @@ defmodule EhOsContract.Contract.Rules.Consumers do
   end
 
   defp idempotent(_where, _declaration), do: []
+
+  defp not_downstream(where, %{idempotency: idempotency} = declaration) do
+    case idempotency && {idempotency[:owner], idempotency[:key]} do
+      {:downstream, _key} ->
+        [
+          {"P3: #{where} issues commands to this engine, so no system downstream keeps its " <>
+             "idempotency; its owner is :self or :infrastructure", declaration}
+        ]
+
+      {:infrastructure, key} when key != :event_id ->
+        [
+          {"P3: #{where} is kept idempotent by the engine, which keys what it issues by the " <>
+             "event's id; its key is :event_id, not #{inspect(key)}", declaration}
+        ]
+
+      _ ->
+        []
+    end
+  end
+
+  # The engine keys only the commands a reaction issues (`Consumer.reaction_key/5`);
+  # an effect's call goes to a system the engine knows nothing of.
+  defp not_infrastructure(where, %{idempotency: idempotency} = declaration) do
+    if idempotency[:owner] == :infrastructure,
+      do: [
+        {"P3: #{where} calls outside the engine, which keys only the commands a reaction " <>
+           "issues; its owner is :self or :downstream", declaration}
+      ],
+      else: []
+  end
 end

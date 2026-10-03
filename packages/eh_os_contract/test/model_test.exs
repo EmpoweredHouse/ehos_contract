@@ -219,6 +219,33 @@ defmodule EhOsContract.ModelTest do
       assert data.member_id == "member-1"
     end
 
+    # Plan EP4: a process manager's scenario says the state its run holds, and the run's
+    # fields say which are personal; a key the state does not declare is dropped.
+    test "on a process manager's expected state" do
+      model = Model.fetch(PersonalExport)
+      [_profile_id, member_id, name, _contacts] = hd(model.events).fields
+
+      model =
+        model
+        |> Map.put(:process_managers, [
+          %{name: :welcome, state: %{fields: [member_id, name]}}
+        ])
+        |> Map.update!(:scenarios, fn [first | rest] ->
+          welcome = %{
+            first
+            | target: %{kind: :process_manager, name: :welcome},
+              expect: [],
+              trigger: %{kind: :on, name: :registered, data: %{}}
+          }
+
+          [Map.put(welcome, :state, %{member_id: "member-1", name: "Ada", nickname: "A"}) | rest]
+        end)
+
+      {redacted, _domain} = redact(model)
+
+      assert hd(redacted.scenarios).state == %{member_id: "member-1", name: nil, nickname: nil}
+    end
+
     test "on an answer whose query cannot be found" do
       model =
         update_scenario(PersonalExport, 1, fn scenario ->

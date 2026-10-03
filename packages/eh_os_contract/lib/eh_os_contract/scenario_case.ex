@@ -15,7 +15,14 @@ defmodule EhOsContract.ScenarioCase do
   event; to a process manager, its state folds the givens and the reaction's
   callback, or the timer's, is called with it. `sets`, `cancels` and `ended` are the
   declaration's, which S6 has already compared with the scenario when the contract
-  compiled; what runs is what the code decides.
+  compiled; what runs is what the code decides. A process manager's `state` (plan
+  EP4) is the run after the step, as the engine keeps it: the delivered event folded
+  through `evolve/2` after the reaction decided, and after a timer the state as it
+  was. It holds the fields the scenario names, and any others. Only a step the engine
+  would take holds a state: a run starts on a `starts_on` event and takes nothing
+  after an `ends_on` one, so a given before the start, or a trigger after the end,
+  fails the scenario. Any process manager's scenario whose events name two runs in
+  their correlation fails too, before anything is folded.
 
   **What it asserts keeps `ContractExample`'s semantics.** The events a scenario
   expects, and the commands it says are issued, **appear among those produced, in
@@ -484,6 +491,7 @@ defmodule EhOsContract.ScenarioCase do
     state =
       if kind == :process_manager do
         pm = Enum.find(model.process_managers, &(&1.name == name))
+        one_run!(pm, scenario, Enum.any?(pm.timers, &(&1.name == trigger)))
 
         domain = domain(model)
 
@@ -518,7 +526,105 @@ defmodule EhOsContract.ScenarioCase do
     produced =
       within!(model, :command, issued, allowed, "the reaction to #{inspect(trigger)} issues")
 
-    subsequence!(expected(model, :command, scenario.issues, & &1.command), :command, produced)
+    issued? =
+      subsequence!(expected(model, :command, scenario.issues, & &1.command), :command, produced)
+
+    if Map.has_key?(scenario, :state),
+      do: held!(model, scenario, impl, state, identity, now),
+      else: issued?
+  end
+
+  # Plan EP4: the run's state after the step. As `EhOsContract.ProcessManager` takes
+  # it, a delivered event is folded after the reaction decided; a timer's firing
+  # changes no state.
+  defp held!(model, %{target: %{name: name}} = scenario, impl, state, identity, now) do
+    pm = Enum.find(model.process_managers, &(&1.name == name))
+    trigger = scenario.trigger.name
+    taken!(pm, scenario)
+
+    after_step =
+      if Enum.any?(pm.timers, &(&1.name == trigger)),
+        do: state,
+        else:
+          fold(impl, state, [
+            message(model, :event, trigger, scenario.trigger.data, identity, now, nil)
+          ])
+
+    expected = cast_data(pm.state.fields, scenario.state, domain(model))
+
+    assert matches?(expected, after_step),
+           """
+           the scenario requires the run to hold, after #{inspect(trigger)}:
+             #{inspect(expected)}
+           and it holds:
+             #{inspect(Map.from_struct(after_step))}
+           """
+  end
+
+  # A state the engine could hold: as `EhOsContract.ProcessManager` takes events, a
+  # run starts on a `starts_on` event, takes nothing before that, and nothing after
+  # an `ends_on` one; a timer fires only in a running run. Asked of a scenario that
+  # says a state, since a run that never takes the step holds none.
+  defp taken!(pm, scenario) do
+    starts = Enum.map(pm.starts_on, & &1.event)
+    ends = pm.ends_on
+    timer? = Enum.any?(pm.timers, &(&1.name == scenario.trigger.name))
+
+    status =
+      Enum.reduce(scenario.given, :none, fn given, status ->
+        case status do
+          :none ->
+            assert given.event in starts,
+                   "given #{inspect(given.event)} reaches no run: the engine starts a run of " <>
+                     "#{inspect(pm.name)} only on #{inspect(starts)}"
+
+            if given.event in ends, do: :ended, else: :running
+
+          :running ->
+            if given.event in ends, do: :ended, else: :running
+
+          :ended ->
+            flunk(
+              "given #{inspect(given.event)} comes after the run of #{inspect(pm.name)} ended, " <>
+                "and the engine takes nothing then"
+            )
+        end
+      end)
+
+    taken =
+      case status do
+        :running -> true
+        :none -> not timer? and scenario.trigger.name in starts
+        :ended -> false
+      end
+
+    assert taken,
+           "the engine would not take #{inspect(scenario.trigger.name)}: the run of " <>
+             "#{inspect(pm.name)} is #{if status == :ended, do: "ended", else: "not started"}, " <>
+             "so it holds no state after it"
+  end
+
+  # The engine tells runs by their correlation, so events that give it two values
+  # are two runs, never one state: asked of every process manager's scenario, before
+  # anything is folded. A value left out is not compared — the unit's identity is
+  # filled in with the scenario's (`identity/1`). A timer delivers no event.
+  defp one_run!(pm, scenario, timer?) do
+    data =
+      Enum.map(scenario.given, & &1.data) ++ if(timer?, do: [], else: [scenario.trigger.data])
+
+    for field <- pm.correlate do
+      case data |> Enum.map(&Map.get(&1, field)) |> Enum.reject(&is_nil/1) |> Enum.uniq() do
+        [_, _ | _] = values ->
+          flunk(
+            "the scenario's events belong to more than one run of #{inspect(pm.name)}: " <>
+              "#{inspect(field)} is #{Enum.map_join(values, ", ", &inspect/1)}, and a state " <>
+              "is one run's"
+          )
+
+        _ ->
+          :ok
+      end
+    end
   end
 
   # What a scenario expects, with its data cast as the struct's would be.

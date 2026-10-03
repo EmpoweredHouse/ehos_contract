@@ -104,7 +104,8 @@ defmodule EhOsContract.ContractVocabularyTest do
         [:scenario, :issues] => [:command, :data],
         [:scenario, :sets] => [:timer],
         [:scenario, :cancels] => [:timer],
-        [:scenario, :answers] => [:rows]
+        [:scenario, :answers] => [:rows],
+        [:scenario, :state] => [:data]
       })
 
     assert EhOsContract.Contract.vocabulary() == expected

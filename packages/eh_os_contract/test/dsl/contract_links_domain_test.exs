@@ -104,7 +104,7 @@ defmodule EhOsContract.ContractLinksDomainTest do
     end
 
     effect :notify_payer, "Powiadom płatnika", handles: :payment_recorded,
-      calls: :payer_registry, idempotency: :visit_id
+      calls: :payer_registry, idempotency: [key: :visit_id, owner: :self]
 
     read_model :payments, "Płatności", projects: :payment_recorded do
       field :clinic_id, :id

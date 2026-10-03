@@ -49,7 +49,7 @@ defmodule EhOsContract.ViewTest do
         end
 
         policy :thank, "Podziękuj", handles: :paid, issues: :pay
-        effect :text, "SMS", handles: :paid, calls: :sms, idempotency: :visit_id
+        effect :text, "SMS", handles: :paid, calls: :sms, idempotency: [key: :visit_id, owner: :self]
 
         read_model :payments, "Płatności", projects: :paid do
           field :amount, :integer

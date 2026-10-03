@@ -44,7 +44,7 @@ defmodule EhOsContract.ImplementationTest do
     end
 
     policy :remind_on_payment, "Przypomnij po płatności", handles: :payment_recorded, issues: :remind
-    effect :notify, "Powiadom", handles: :closed, idempotency: :downstream
+    effect :notify, "Powiadom", handles: :closed, idempotency: [key: :event_id, owner: :downstream]
 
     # Marks time and issues nothing, so it has nothing to define.
     process_manager :watch, "Obserwacja" do

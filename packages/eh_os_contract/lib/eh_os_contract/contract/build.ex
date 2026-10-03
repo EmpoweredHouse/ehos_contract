@@ -66,10 +66,8 @@ defmodule EhOsContract.Contract.Build do
       units: Enum.map(units, &unit/1),
       commands: for(u <- units, c <- u.commands, do: command(u, c)),
       events: events,
-      policies:
-        entities |> of(Dsl.Policy) |> Enum.map(&(&1 |> plain() |> without_empty(:constraints))),
-      effects:
-        entities |> of(Dsl.Effect) |> Enum.map(&(&1 |> plain() |> without_empty(:constraints))),
+      policies: entities |> of(Dsl.Policy) |> Enum.map(&reaction/1),
+      effects: entities |> of(Dsl.Effect) |> Enum.map(&reaction/1),
       process_managers:
         entities |> of(Dsl.ProcessManager) |> Enum.map(&process_manager(&1, events)),
       read_models: entities |> of(Dsl.ReadModel) |> Enum.map(&plain/1),
@@ -105,6 +103,16 @@ defmodule EhOsContract.Contract.Build do
     do: if(Map.get(map, key) == [], do: Map.delete(map, key), else: map)
 
   # --- declarations as data --------------------------------------------------------
+
+  defp reaction(declaration),
+    do: declaration |> plain() |> without_empty(:constraints) |> idempotency()
+
+  # `[key: :event_id, owner: :self]` as a map, as every other pair of the model is
+  # (plan EP4).
+  defp idempotency(%{idempotency: [_ | _] = idempotency} = reaction),
+    do: %{reaction | idempotency: Map.new(idempotency)}
+
+  defp idempotency(reaction), do: reaction
 
   defp unit(%Dsl.Unit{} = unit) do
     %{
@@ -195,6 +203,7 @@ defmodule EhOsContract.Contract.Build do
 
     pm
     |> plain()
+    |> idempotency()
     |> Map.merge(%{
       state: %{fields: correlation ++ declared},
       timers:
@@ -275,8 +284,16 @@ defmodule EhOsContract.Contract.Build do
     illustrates =
       if scenario.illustrates == [], do: %{}, else: %{illustrates: scenario.illustrates}
 
+    # Plan EP4: a process manager's state after the trigger, where the scenario says it.
+    state =
+      case scenario.state do
+        [%Dsl.ExpectedState{data: data}] when kind == :process_manager -> %{state: data}
+        _ -> %{}
+      end
+
     answers
     |> Map.merge(illustrates)
+    |> Map.merge(state)
     |> Map.merge(%{
       description: scenario.description,
       scope: scenario.scope,

@@ -310,6 +310,8 @@ defmodule EhOsContract.ContractDomainServicesTest do
     # The version the invented ledger had before the kind existed, read on the
     # commit before EM2; the sandbox's Rehmed.Contracts.VisitSettlement kept its
     # recorded 2ae1d0074cbc the same way. An empty group hashed in would move both.
-    assert EhOsContract.Model.fetch(DispatchRig.Ledger).version == "4e94b8af0057"
+    # The ledger's moved once since, from 4e94b8af0057, with plan EP4: its reactions'
+    # `idempotency` names a key and an owner.
+    assert EhOsContract.Model.fetch(DispatchRig.Ledger).version == "06808eb90e9f"
   end
 end

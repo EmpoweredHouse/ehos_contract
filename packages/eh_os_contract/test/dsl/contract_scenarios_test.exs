@@ -354,7 +354,7 @@ defmodule EhOsContract.ContractScenariosTest do
         refuse_contract("ReactionOutcome", """
         #{@unit}
           policy :remind_on_close, "Przypomnij", handles: :closed, issues: :remind
-          effect :notify, "Powiadom", handles: :reminded, idempotency: :downstream
+          effect :notify, "Powiadom", handles: :reminded, idempotency: [key: :event_id, owner: :downstream]
 
           scenario "zamknięcie — nic" do
             on :closed

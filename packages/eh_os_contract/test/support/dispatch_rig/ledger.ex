@@ -112,13 +112,13 @@ defmodule DispatchRig.Ledger do
     handles: :withdrawn,
     issues: :flag_account,
     delivery: :at_least_once,
-    idempotency: :event_id
+    idempotency: [key: :event_id, owner: :infrastructure]
 
   policy :return_small_change, "Return one after a withdrawal of three",
     handles: :withdrawn,
     issues: :deposit,
     delivery: :at_least_once,
-    idempotency: :event_id
+    idempotency: [key: :event_id, owner: :infrastructure]
 
   process_manager :first_deposit_chase, "Chase an account's first deposit" do
     correlate :account_id
@@ -138,7 +138,7 @@ defmodule DispatchRig.Ledger do
 
   effect :notify_branch, "Tell the branch an account was flagged",
     handles: :account_flagged,
-    idempotency: :event_id
+    idempotency: [key: :event_id, owner: :self]
 
   effect :audit_withdrawal, "Audit a withdrawal", handles: :withdrawn, delivery: :in_transaction
 
