@@ -1,0 +1,1 @@
+#105 review fix (.claude/settings.json only; nothing mix check reads). Pipe test, 13 cases all as wanted, against worktrees with and without a note (scratchpad hook_test.sh); the previous hook fails exactly the three new ones: cd ~/notedwt refused, blank lines then cd noted refused, blank lines then cd unnoted from a noted cwd let through (the bypass CodeRabbit named).
