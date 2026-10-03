@@ -5,7 +5,9 @@ defmodule EhOsContract.JsonSchema do
   AsyncAPI and OpenAPI share this projection so an `:id`, a domain value or an
   optional field cannot mean one thing on the event side and another on the HTTP
   side. The `x-eh-os-contract-type` extension keeps the DSL type where JSON Schema
-  itself collapses distinctions such as `:id` and `:string`.
+  itself collapses distinctions such as `:id` and `:string`, and
+  `x-eh-os-contract-max-bytes` gives an `:id`'s bound in bytes, which JSON Schema counts
+  only in characters.
   """
 
   alias EhOsContract.Model
@@ -71,14 +73,29 @@ defmodule EhOsContract.JsonSchema do
     end
   end
 
-  # The codec's bounds (`EhOsContract.Codec`), where JSON Schema has a word for them.
+  # The codec's bounds (`EhOsContract.Codec`), where JSON Schema has a word for them. It
+  # counts an identifier's characters and the codec its UTF-8 bytes, so the bytes are
+  # given beside it: a hundred four-byte characters pass `maxLength` and not the codec.
   defp base_property(:id, _values, _erased?),
-    do: %{"type" => "string", "minLength" => 1, "maxLength" => 255}
+    do: %{
+      "type" => "string",
+      "minLength" => 1,
+      "maxLength" => 255,
+      "x-eh-os-contract-max-bytes" => 255
+    }
 
   defp base_property(type, _values, _erased?) when type in [:string, :decimal],
     do: %{"type" => "string"}
 
-  defp base_property(:integer, _values, _erased?), do: %{"type" => "integer", "format" => "int64"}
+  # `format` only annotates, so a validator would take 2 ** 63; the range asserts it.
+  defp base_property(:integer, _values, _erased?),
+    do: %{
+      "type" => "integer",
+      "format" => "int64",
+      "minimum" => -9_223_372_036_854_775_808,
+      "maximum" => 9_223_372_036_854_775_807
+    }
+
   defp base_property(:boolean, _values, _erased?), do: %{"type" => "boolean"}
   defp base_property(:date, _values, _erased?), do: %{"type" => "string", "format" => "date"}
 
