@@ -426,7 +426,7 @@ startują od nazwanych reguł: każda ma scenariusz, zanim powstanie kod.
 
 ### EP1 — co wyszło (3 października)
 
-Na `dsl/ep1-source` (od `origin/main` = `64f888b`), niewypchnięte.
+Na `dsl/ep1-source` (od `origin/main` = `0b7bc84`, po rebase z `64f888b`), niewypchnięte.
 - **`source:`** w kontrakcie na `policy`, `effect`, `process_manager`, `timer`, `read_model`, `query`, `process`;
   w domenie na `actor`, `subject`, `value`, `external`, `relation`. `subject` ponad listę z planu
   (rozstrzygnięcie asystenta: „pacjent” też jest z materiału, `A-01`). `consumes` i `publish` bez — to okablowanie
