@@ -33,7 +33,11 @@ defmodule EhOsContract.KeyBudgetTest do
   alias KeyRig.Bins.Commands.StockBin
   alias KeyRig.Shelves.Commands.StockShelf
 
-  @stocker Actor.credential("u-1", ["key_rig.stock_bin", "key_rig.stock_shelf"])
+  @stocker Actor.credential("u-1", [
+             "key_rig.stock_bin",
+             "key_rig.count_bin",
+             "key_rig.stock_shelf"
+           ])
   @watch "KeyRig.Bins:process_manager:watch"
 
   # A value whose escaped form is `bytes` long.
@@ -149,6 +153,15 @@ defmodule EhOsContract.KeyBudgetTest do
       assert Repo.aggregate(ProcessManagerRecord, :count) == 0
 
       assert :ok = Subscription.skip(Repo, @watch)
+      assert %{failing: []} = Testing.drain(only: @watch)
+      assert Repo.aggregate(ProcessManagerRecord, :count) == 0
+    end
+
+    test "over the budget on an event no run takes is taken as before, not a stop" do
+      # The watch reacts on a count, but only a restock starts a run: nothing to write.
+      count = %KeyRig.Bins.Commands.CountBin{site_id: @site, aisle_id: @aisle, bin_id: id(479)}
+      {:ok, _} = EhOsContract.dispatch(KeyRig.Bins, count, actor: @stocker)
+
       assert %{failing: []} = Testing.drain(only: @watch)
       assert Repo.aggregate(ProcessManagerRecord, :count) == 0
     end

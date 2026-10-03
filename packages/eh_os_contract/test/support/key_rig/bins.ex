@@ -19,6 +19,10 @@ defmodule KeyRig.Bins do
     event :restocked, "Bin restocked" do
       field :lot_id, :id
     end
+
+    command :count_bin, "Count a bin", by: :stocker, emits: :counted
+
+    event :counted, "Bin counted"
   end
 
   process :replenishment, "Replenishment", accountable: :stocker do
@@ -28,6 +32,7 @@ defmodule KeyRig.Bins do
   process_manager :watch, "Watch a stocked bin" do
     correlate [:site_id, :aisle_id, :bin_id]
     starts_on :restocked
+    on :counted
   end
 
   scenario "a bin is stocked" do
@@ -49,6 +54,15 @@ defmodule KeyRig.BinDecider do
         aisle_id: command.aisle_id,
         bin_id: command.bin_id,
         lot_id: command.lot_id
+      })
+
+  @impl true
+  def count_bin(%CountBin{} = command, _state),
+    do:
+      emit(%Counted{
+        site_id: command.site_id,
+        aisle_id: command.aisle_id,
+        bin_id: command.bin_id
       })
 end
 

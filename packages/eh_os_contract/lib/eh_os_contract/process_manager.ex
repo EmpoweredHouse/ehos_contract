@@ -26,10 +26,11 @@ defmodule EhOsContract.ProcessManager do
     forgets the token; any other firing is ignored, so a timer fired twice dispatches
     once.
 
-  **A run's key over `EhOsContract.Key.budget/0`** — its timer stream, the manager's
-  key and the correlation escaped — raises `EhOsContract.Key.TooLongError` before
-  anything is written, in place of Postgres refusing the entry: the subscription stops
-  at that event until someone skips it (issue #98).
+  **A run that would start with a key over `EhOsContract.Key.budget/0`** — its timer
+  stream, the manager's key and the correlation escaped — raises
+  `EhOsContract.Key.TooLongError` before anything is written, in place of Postgres
+  refusing the entry: the subscription stops at that event until someone skips it
+  (issue #98). An event no run takes is taken whatever its key's length, as before.
 
   **Replay.** A process manager being rebuilt takes the whole log again with its
   reactions suppressed: states and timers are recomputed, nothing is dispatched and no
@@ -100,10 +101,14 @@ defmodule EhOsContract.ProcessManager do
     # An event that does not say which run it belongs to belongs to none.
     if Enum.all?(values, &(&1 != nil)) do
       correlation = Key.join(values)
-      fits!(consumer, correlation, row)
       record = load(repo, consumer.key, correlation)
       starts? = record == nil and Enum.any?(pm.starts_on, &(&1.event == name))
       running? = record != nil and record.completed_at == nil
+
+      # Only a run that starts writes a new key: an event no run takes is read for
+      # nothing, which Postgres answers whatever its length, and a running run's key
+      # is already stored.
+      if starts?, do: fits!(consumer, correlation, row)
 
       if starts? or running? do
         step!(repo, consumer, {model, pm}, record, correlation, event, row, chain, replay?)
@@ -113,10 +118,10 @@ defmodule EhOsContract.ProcessManager do
     :ok
   end
 
-  # The run's timer stream, `"$pm:<key>:<correlation>"`, is the longest key the run
+  # The run's timer stream, `"$pm:<key>:<correlation>"`, is the longest key a run
   # writes, longer than its row's `name` and `correlation`: within the budget, both fit.
-  # Over it, the subscription stops here, as at any failure, until someone skips the
-  # event (issue #98).
+  # Over it, the run does not start and the subscription stops here, as at any failure,
+  # until someone skips the event (issue #98).
   defp fits!(consumer, correlation, row) do
     stream = stream(consumer.key, correlation)
 
