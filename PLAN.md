@@ -1075,7 +1075,11 @@ Poza zakresem, informacyjnie: `correlation_id`/`causation_id` od bezpośredniego
 
 **Uwagi CodeRabbita na #93**, trzy, wszystkie przyjęte, każda z testem tam, gdzie zmienia zachowanie: dowolne bajty
 tylko dla wartości otwartej z pieczęci (`:opened`), nie przy każdym `open:`; `@doc` dla publicznego
-`Codec.text?/1`; bez zwolnienia klucza reakcji.
+`Codec.text?/1`; bez zwolnienia klucza reakcji. Przegląd tej poprawki (jeden przebieg): klucz pochodny reakcji przy
+bardzo długich nazwach (ponad ~208 bajtów na kontrakt i nazwę) albo cytowanym module łamałby regułę i blokował
+reakcję — teraz taki jeden jest skrótem `<rodzaj>:sha256:<hex>`, a każdy inny zostaje w dawnej postaci, więc
+ponowne dostarczenie nie robi drugiej komendy; `open: :opened` od wywołującego wpuszczałby dowolne bajty — `decode/4`
+przyjmuje tylko funkcję albo `nil`; doc `dispatch/3` mówi o kluczu reakcji. Silnik: 1124 → 1126.
 
 Silnik: 1114 → 1124.
 

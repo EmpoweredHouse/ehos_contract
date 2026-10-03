@@ -21,8 +21,8 @@ defmodule EhOsContract.Dispatcher do
      an aggregate whose identity is generated gets a UUIDv7 here, and is refused
      with `{field, :generated}` when it brings one of its own, and with
      `{:error, :idempotency_key_required}` without an idempotency key (plan EM3).
-     A caller's idempotency key is printable ASCII (`0x21`–`0x7E`) of at most 255
-     bytes, or `{:error, :idempotency_key_invalid}`: stricter than the key's columns
+     An idempotency key, a caller's or a reaction's, is printable ASCII (`0x21`–`0x7E`)
+     of at most 255 bytes, or `{:error, :idempotency_key_invalid}`: stricter than the key's columns
      need, so a key never depends on what a text column, `jsonb` and an index entry
      happen to hold.
   3. **Once.** A key belongs to the actor who sent it: another actor's command
@@ -664,12 +664,14 @@ defmodule EhOsContract.Dispatcher do
   # derives (`EhOsContract.Consumer`) are of this form anyway.
   defp keyed(%{idempotency_key: nil}), do: :ok
 
-  defp keyed(%{idempotency_key: key}) do
-    # Bytes, not characters, so no `u`: a binary that is not UTF-8 is refused byte by byte.
-    if is_binary(key) and key =~ ~r/\A[\x21-\x7E]{1,255}\z/,
-      do: :ok,
-      else: {:error, :idempotency_key_invalid}
-  end
+  defp keyed(%{idempotency_key: key}),
+    do: if(idempotency_key?(key), do: :ok, else: {:error, :idempotency_key_invalid})
+
+  @doc false
+  # Printable ASCII of 1 to 255 bytes. Bytes, not characters, so no `u`: a binary that is not
+  # UTF-8 is refused byte by byte. `EhOsContract.Consumer.reaction_key/5` holds to it too.
+  @spec idempotency_key?(term()) :: boolean()
+  def idempotency_key?(key), do: is_binary(key) and key =~ ~r/\A[\x21-\x7E]{1,255}\z/
 
   defp valid(fields, struct, values, domain) do
     case Codec.problems(fields, struct, values, domain) do

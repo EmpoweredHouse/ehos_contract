@@ -394,7 +394,16 @@ defmodule EhOsContract.Codec do
   @spec decode([field()], map(), values(), keyword()) :: {:ok, map()} | {:error, [problem()]}
   def decode(fields, external, values, opts \\ []) when is_map(external) do
     strings = Keyword.get(opts, :strings, false)
-    open = Keyword.get(opts, :open)
+    # A function that opens a seal, or none: `:opened` is the codec's own mark for a value a
+    # seal held, never a caller's to give, since it lets any bytes in.
+    open =
+      case Keyword.get(opts, :open) do
+        open when is_nil(open) or is_function(open, 3) ->
+          open
+
+        other ->
+          raise ArgumentError, "open: takes a function of three arguments, not #{inspect(other)}"
+      end
 
     {decoded, problems} =
       Enum.reduce(fields, {%{}, []}, fn field, {decoded, problems} ->

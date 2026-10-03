@@ -114,6 +114,32 @@ defmodule EhOsContract.UnstorableBytesTest do
              EhOsContract.Codec.decode(fields, %{"tags" => ["a", "b"]}, %{})
   end
 
+  # The key a reaction is dispatched with keeps its form; only one that names would push past
+  # the rule is its digest, so no reaction is ever refused its own key.
+  test "a reaction's derived key holds to the rule however long its names are" do
+    id = Ecto.UUID.generate()
+
+    assert EhOsContract.Consumer.reaction_key(:policy, DispatchRig.Ledger, :echo_deposit, id, 0) ==
+             "policy:DispatchRig.Ledger:echo_deposit:#{id}:0"
+
+    long = Module.concat([String.duplicate("A", 240)])
+
+    for contract <- [long, :"Elixir.Foo Bar"] do
+      key = EhOsContract.Consumer.reaction_key(:policy, contract, :echo_deposit, id, 0)
+      assert "policy:sha256:" <> hex = key
+      assert byte_size(hex) == 64
+      assert EhOsContract.Dispatcher.idempotency_key?(key)
+    end
+  end
+
+  test "open: takes a function, never the codec's own mark that lets any bytes in" do
+    fields = [%{name: :name, type: :string, optional: false}]
+
+    assert_raise ArgumentError, ~r/open: takes a function/, fn ->
+      EhOsContract.Codec.decode(fields, %{"name" => "a" <> <<0>>}, %{}, open: :opened)
+    end
+  end
+
   test "a struct the host's code built is held to the same: {:invalid, problems}, not a raise" do
     assert EhOsContract.dispatch(
              DispatchRig.Ledger,
