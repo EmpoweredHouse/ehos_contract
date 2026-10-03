@@ -276,6 +276,66 @@ defmodule EhOsContract.ContractFieldsTest do
                "F8: process manager :chase, state, field :reminder is what it correlates on"
     end
 
+    test "a manager's undeclared correlation typed by an event it does not handle is refused" do
+      # The manager's state takes the type of the first local event with the field, handled
+      # or not, and a sibling's event with that field of that type then passes X6.
+      message =
+        refuse_contract("UnhandledCorrelation", """
+          aggregate :invoice, "Faktura" do
+            identity :invoice_id
+            command :record_invoice, "Faktura", by: :reception, emits: :invoice_recorded
+            command :note_invoice, "Notatka", by: :reception, emits: :invoice_noted
+
+            event :invoice_recorded, "Zarejestrowano", terminal: true
+
+            event :invoice_noted, "Notatka" do
+              field :ref, :string
+            end
+          end
+
+          process :invoice, "Faktura" do
+            correlate :invoice_id
+          end
+
+          process_manager :chase, "Pogoń" do
+            correlate :ref
+            starts_on :invoice_recorded
+            ends_on :invoice_recorded
+          end
+        """)
+
+      assert message =~
+               "F8: event :invoice_noted, field :ref gives process manager :chase's state the " <>
+                 "type of what it correlates on, so its value is part of an index key, and it " <>
+                 "is :string"
+    end
+
+    test "a field the process and a manager both correlate on is one finding" do
+      message =
+        refuse_contract("TwiceCorrelated", """
+          aggregate :invoice, "Faktura" do
+            identity :invoice_id
+            command :record_invoice, "Faktura", by: :reception, emits: :invoice_recorded
+
+            event :invoice_recorded, "Zarejestrowano", terminal: true do
+              field :invoice_number, :string
+            end
+          end
+
+          process :invoice, "Faktura" do
+            correlate [:invoice_id, :invoice_number]
+          end
+
+          process_manager :chase, "Pogoń" do
+            correlate :invoice_number
+            starts_on :invoice_recorded
+            ends_on :invoice_recorded
+          end
+        """)
+
+      assert [_one] = Regex.scan(~r/F8: event :invoice_recorded, field :invoice_number/u, message)
+    end
+
     test "control: an :id, an entity's identifier and a domain value compile here" do
       assert %{} =
                compile_contract("IdCorrelation", """

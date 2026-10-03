@@ -79,8 +79,10 @@ defmodule EhOsContract.Contract.Rules.Fields do
   @doc """
   Every field a run or a process manager's record is told by, as `{where, field}`: an
   event's field that the process's `correlate`, or the `correlate` of a process manager
-  handling the event, names, and a process manager's state field its own `correlate`
-  names. F8 holds each to `:id`, here and, for a domain value, between modules (L3).
+  handling the event, names; a process manager's state field its own `correlate` names;
+  and, for one the state does not declare, every local event's field it may take its
+  type from. Each field once, though several declarations name it. F8 holds each to
+  `:id`, here and, for a domain value, between modules (L3).
   """
   @spec correlation_fields(map()) :: [{String.t(), struct()}]
   def correlation_fields(d) do
@@ -95,8 +97,6 @@ defmodule EhOsContract.Contract.Rules.Fields do
         {"event #{inspect(e.name)}, field #{inspect(f.name)} tells which run of #{by} the " <>
            "event belongs to", f}
       end
-      # The process and a manager may both name a field: one finding for it.
-      |> Enum.uniq_by(fn {_where, f} -> f end)
 
     managers =
       for pm <- d.process_managers, f <- Rules.state_fields(pm.state), f.name in pm.correlate do
@@ -104,7 +104,22 @@ defmodule EhOsContract.Contract.Rules.Fields do
            "correlates on", f}
       end
 
-    events ++ managers
+    # A correlation field the state does not declare takes the type of the first local
+    # event carrying it, handled or not (`Contract.Build`), and X6 then holds a sibling's
+    # event to that type. So every local event carrying it is held to F8.
+    injected =
+      for pm <- d.process_managers,
+          declared = MapSet.new(Rules.state_fields(pm.state), & &1.name),
+          name <- pm.correlate,
+          not MapSet.member?(declared, name),
+          e <- Rules.local_events(d),
+          f <- e.fields,
+          f.name == name do
+        {"event #{inspect(e.name)}, field #{inspect(f.name)} gives process manager " <>
+           "#{inspect(pm.name)}'s state the type of what it correlates on", f}
+      end
+
+    Enum.uniq_by(events ++ managers ++ injected, fn {_where, f} -> f end)
   end
 
   # A domain value is the domain's to say, between modules; any other type is known here.
