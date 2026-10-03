@@ -381,7 +381,8 @@ kontrakcie; dwa scenariusze ją ilustrują, ale nic ich z nią nie wiąże; wyge
 **EP1 — `source:` na każdej deklaracji.** Dziś mają go agregat, granica, komenda, zdarzenie, inwariant,
 ograniczenie, encja, subdomena, kontekst, termin i serwis; nie mają `policy`, `effect`, `process_manager`, `timer`,
 `read_model`, `query`, `actor`, `external`, `value`, `relation`, `process`. Ślad z warsztatu do kontraktu, który
-`contract-distillation` i tak produkuje. Czytelnicy: `pages`, `view`, `@doc` (EP3).
+`contract-distillation` i tak produkuje. Czytelnicy: `pages`, `@doc` (EP3). *(Poprawione 3 października po
+przeglądzie EP1: `view` jest drzewem struktury i nie pokazuje `source` żadnego rodzaju — nie jest czytelnikiem.)*
 
 **EP2 — nazwane reguły reakcji i scenariusz, który je ilustruje.**
 - `constraint` (kształt ograniczenia komendy) na `policy`, `effect` i `process_manager`; `invariant` na
@@ -431,9 +432,12 @@ Na `dsl/ep1-source` (od `origin/main` = `0b7bc84`, po rebase z `64f888b`), niewy
   w domenie na `actor`, `subject`, `value`, `external`, `relation`. `subject` ponad listę z planu
   (rozstrzygnięcie asystenta: „pacjent” też jest z materiału, `A-01`). `consumes` i `publish` bez — to okablowanie
   między kontraktami, nie fakt z warsztatu.
-- **Klucz w modelu tylko tam, gdzie ustawiony** (wzorzec z EM3): kontrakt i domena bez `source:` mają te same
-  digesty co przed EP1, więc żadna wdrożona wersja się nie rusza. Rodzaje, które miały `source` od początku,
-  trzymają klucz jak dotąd, także `nil`. Test odwrotny: z wyłączonym usuwaniem test „no digest moves” pada.
+- **Klucz w modelu zawsze, pusty poza digestem.** Kontrakt i domena bez `source:` mają te same wersje co przed
+  EP1 — test przypina dosłownie wersje policzone kodem z `origin/main` (`304120633fb2`, `6111225e8fc9`).
+  Pierwsza wersja usuwała pusty klucz z modelu (wzorzec z EM3); przegląd: to drugi kształt modelu obok rodzajów,
+  które `source` miały od początku, i EP3 czytające `policy.source` padłoby na `KeyError`. Teraz `nil` znika
+  dopiero w formie do digestu. Ustawienie albo zmiana źródła przesuwa digest deklaracji i wersję kontraktu, jak
+  etykieta — tak samo jak dotąd w zdarzeniu i komendzie.
 - **Czytelnik — `pages`:** `_Source: …_` na stronie deklaracji (polityka, efekt, process manager, read model,
   query — przez istniejący nagłówek), w sekcji procesu i na stronie wartości; przy aktorze, podmiocie, systemie,
   relacji i timerze w ich wierszu.

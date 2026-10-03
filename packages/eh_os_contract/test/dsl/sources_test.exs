@@ -1,14 +1,19 @@
 defmodule EhOsContract.SourcesTest do
   @moduledoc """
   Plan EP1: **`source:` on every declaration** — where it comes from in the workshop
-  material, the first rung of the ladder from prose to a test. The kinds that had it
-  from the start keep it in the model `nil` or not; the kinds that took it in EP1 keep
-  it only where it is set, so no declaration written without it moves its digest.
+  material, the first rung of the ladder from prose to a test. Every kind keeps the key
+  in the model, `nil` or not; for the kinds that took it in EP1 a `nil` one is left out
+  of the digest, so no contract or domain written without it moves its version.
   """
 
   use EhOsContract.DslCase, async: false
 
-  alias EhOsContract.{Digest, Model, Pages}
+  alias EhOsContract.{Model, Pages}
+
+  # The versions of `@unsourced` and `@domain_unsourced` computed by the library before
+  # EP1 (origin/main at 0b7bc84), which a contract or domain without `source:` keeps.
+  @unsourced_version "304120633fb2"
+  @domain_unsourced_version "6111225e8fc9"
 
   @sourced """
     aggregate :visit, "Wizyta" do
@@ -108,6 +113,7 @@ defmodule EhOsContract.SourcesTest do
     value :money, :integer, unit: :grosze, source: "E-55"
     external :p1, "Rejestr P1", direction: :outbound, source: "Dz.U. 2025 poz. 866"
     relation :customer_supplier, upstream: :scheduling, downstream: :settlement, source: "W2"
+    relation :partnership, between: [:settlement, :scheduling], source: "W3"
   """
 
   @domain_unsourced """
@@ -145,7 +151,9 @@ defmodule EhOsContract.SourcesTest do
                {"R-01", "R-02", "W1 00:12:00"}
     end
 
-    test "leaves the key out where it is not set, so no digest moves", %{unsourced: model} do
+    test "without one, keeps the key as nil and the version it had before EP1", %{
+      unsourced: model
+    } do
       [pm] = model.process_managers
 
       for declaration <-
@@ -153,8 +161,10 @@ defmodule EhOsContract.SourcesTest do
               model.effects ++
               model.process_managers ++
               pm.timers ++ model.read_models ++ model.queries ++ [model.process] do
-        refute Map.has_key?(declaration, :source), inspect(declaration)
+        assert Map.fetch!(declaration, :source) == nil, inspect(declaration)
       end
+
+      assert model.version == @unsourced_version
     end
 
     test "a source moves the declaration's digest and nothing else's", %{
@@ -184,19 +194,18 @@ defmodule EhOsContract.SourcesTest do
       assert [%{source: "RODO"}] = model.subjects
       assert [%{source: "E-55"}] = model.values
       assert [%{source: "Dz.U. 2025 poz. 866"}] = model.externals
-      assert [%{source: "W2"}] = model.relations
+      assert [%{source: "W2"}, %{source: "W3"}] = model.relations
     end
 
-    test "leaves the key out where it is not set, so no digest moves" do
+    test "without one, keeps the key as nil and the version it had before EP1" do
       model = domain("Unsourced", @domain_unsourced)
 
       for declaration <-
             model.actors ++ model.subjects ++ model.values ++ model.externals ++ model.relations do
-        refute Map.has_key?(declaration, :source), inspect(declaration)
+        assert Map.fetch!(declaration, :source) == nil, inspect(declaration)
       end
 
-      [actor] = model.actors
-      assert model.digests["actor:reception"] == Digest.hash(actor)
+      assert model.version == @domain_unsourced_version
     end
   end
 
@@ -211,7 +220,8 @@ defmodule EhOsContract.SourcesTest do
       assert index =~ "- `reception` — Recepcja · human · _source: W1 00:03:10_"
       assert index =~ "- `patient` — Pacjent · _source: RODO_"
       assert index =~ "- `p1` — Rejestr P1 · outbound · _source: Dz.U. 2025 poz. 866_"
-      assert index =~ "· _source: W2_"
+      assert index =~ "[`settlement`](settlement/index.md) · _source: W2_"
+      assert index =~ "[`scheduling`](scheduling/index.md) · _source: W3_"
       assert pages["values/money.md"] =~ "_Source: E-55_"
 
       assert pages["#{dir}/policies/report_on_close.md"] =~ "_Source: P-07_"

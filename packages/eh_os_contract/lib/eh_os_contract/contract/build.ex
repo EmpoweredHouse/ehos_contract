@@ -66,15 +66,13 @@ defmodule EhOsContract.Contract.Build do
       units: Enum.map(units, &unit/1),
       commands: for(u <- units, c <- u.commands, do: command(u, c)),
       events: events,
-      policies: entities |> of(Dsl.Policy) |> Enum.map(&(&1 |> plain() |> sourced())),
-      effects: entities |> of(Dsl.Effect) |> Enum.map(&(&1 |> plain() |> sourced())),
+      policies: entities |> of(Dsl.Policy) |> Enum.map(&plain/1),
+      effects: entities |> of(Dsl.Effect) |> Enum.map(&plain/1),
       process_managers:
         entities |> of(Dsl.ProcessManager) |> Enum.map(&process_manager(&1, events)),
-      read_models: entities |> of(Dsl.ReadModel) |> Enum.map(&(&1 |> plain() |> sourced())),
+      read_models: entities |> of(Dsl.ReadModel) |> Enum.map(&plain/1),
       queries:
-        entities
-        |> of(Dsl.Query)
-        |> Enum.map(&(&1 |> plain() |> without_empty(:constraints) |> sourced())),
+        entities |> of(Dsl.Query) |> Enum.map(&(&1 |> plain() |> without_empty(:constraints))),
       domain_services: entities |> of(Dsl.DomainService) |> Enum.map(&plain/1),
       consumes: entities |> of(Dsl.Consumes) |> Enum.map(&consumes/1),
       publishes: entities |> of(Dsl.Publish) |> Enum.map(&plain/1),
@@ -103,12 +101,6 @@ defmodule EhOsContract.Contract.Build do
   # declaration written without it moves its digest (plan EL2's constraints).
   defp without_empty(map, key),
     do: if(Map.get(map, key) == [], do: Map.delete(map, key), else: map)
-
-  # `source:` came to reactions, read models, queries, timers and the process after the
-  # first contracts were digested (plan EP1), so it is kept only where it is set. The
-  # declarations that had it from the start keep it, `nil` or not.
-  defp sourced(%{source: nil} = map), do: Map.delete(map, :source)
-  defp sourced(map), do: map
 
   # --- declarations as data --------------------------------------------------------
 
@@ -201,14 +193,10 @@ defmodule EhOsContract.Contract.Build do
 
     pm
     |> plain()
-    |> sourced()
     |> Map.merge(%{
       state: %{fields: correlation ++ declared},
       timers:
-        Enum.map(
-          pm.timers,
-          &(&1 |> plain() |> sourced() |> Map.update!(:wait, fn w -> duration(w) end))
-        ),
+        Enum.map(pm.timers, &(&1 |> plain() |> Map.update!(:wait, fn w -> duration(w) end))),
       ends_on: Enum.map(pm.ends_on, & &1.event)
     })
   end
@@ -253,10 +241,9 @@ defmodule EhOsContract.Contract.Build do
       includes: includes,
       cadence: timed(process.cadence, :every),
       deadline: timed(process.deadline, :within),
-      promises: for(p <- process.promises, do: p |> plain() |> Map.update!(:within, &duration/1))
+      promises: for(p <- process.promises, do: p |> plain() |> Map.update!(:within, &duration/1)),
+      source: process.source
     }
-    |> Map.put(:source, process.source)
-    |> sourced()
   end
 
   defp timed([], _key), do: nil
@@ -345,13 +332,30 @@ defmodule EhOsContract.Contract.Build do
   # library moves no contract's version.
   @later [:domain_services]
 
+  # Kinds that took `source:` after the first contracts were digested (plan EP1), the
+  # process and a process manager's timers among them: a `nil` one is left out of the
+  # digest, so no declaration written without it moves. The model keeps the key, `nil`
+  # or not, as it does for every other kind, so a reader needs no second shape.
+  @sourced_later [:policies, :effects, :process_managers, :read_models, :queries]
+
+  defp digested(key, declaration) when key in @sourced_later, do: unsourced(declaration)
+  defp digested(_key, declaration), do: declaration
+
+  defp unsourced(%{timers: timers} = manager),
+    do: %{without_nil_source(manager) | timers: Enum.map(timers, &without_nil_source/1)}
+
+  defp unsourced(declaration), do: without_nil_source(declaration)
+
+  defp without_nil_source(%{source: nil} = declaration), do: Map.delete(declaration, :source)
+  defp without_nil_source(declaration), do: declaration
+
   defp version(own, process, collections) do
     Digest.hash_groups(
-      [contract: [own], process: List.wrap(process && digest_form(process))] ++
+      [contract: [own], process: List.wrap(process && digest_form(unsourced(process)))] ++
         for(
           {key, _} <- @collections,
           key not in @later or collections[key] != [],
-          do: {key, Enum.map(collections[key], &digest_form/1)}
+          do: {key, Enum.map(collections[key], &digest_form(digested(key, &1)))}
         ) ++
         [
           consumes: Enum.map(consumed(collections.consumes), &digest_form/1),
@@ -363,7 +367,7 @@ defmodule EhOsContract.Contract.Build do
   defp digests(own, process, collections) do
     declarations =
       for {key, kind} <- @collections, declaration <- collections[key] do
-        {"#{kind}:#{declaration.name}", Digest.hash(digest_form(declaration))}
+        {"#{kind}:#{declaration.name}", Digest.hash(digest_form(digested(key, declaration)))}
       end
 
     consumed =
@@ -371,7 +375,9 @@ defmodule EhOsContract.Contract.Build do
         {"consumes:#{declaration.as}", Digest.hash(digest_form(declaration))}
       end
 
-    process = if process, do: [{"process:#{process.name}", Digest.hash(digest_form(process))}]
+    process =
+      if process,
+        do: [{"process:#{process.name}", Digest.hash(digest_form(unsourced(process)))}]
 
     scenarios =
       if collections.scenarios != [],

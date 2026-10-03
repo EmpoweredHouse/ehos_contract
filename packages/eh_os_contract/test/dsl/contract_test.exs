@@ -174,7 +174,8 @@ defmodule EhOsContract.ContractTest do
                  includes: [],
                  cadence: nil,
                  deadline: nil,
-                 promises: []
+                 promises: [],
+                 source: nil
                },
                units: [
                  %{
