@@ -264,6 +264,36 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
       assert length(violations) == 3
     end
 
+    test "a contract with no unit of its own holds an included event's correlation to :id" do
+      # No local event types the field, so the sibling's is compared with :id, the type a
+      # run's key may hold (F8), as a manager's undeclared correlation is.
+      observer = """
+      defmodule #{inspect(@fixtures)}.SibObserver do
+        use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
+
+        consumes #{inspect(@fixtures)}.SibObservedBooking, :visit_booked
+
+        process :observed, "Obserwacja" do
+          correlate :room
+          include :visit_booked
+        end
+      end
+      """
+
+      violations =
+        links([
+          {"sib_observed_booking.ex", publisher("SibObservedBooking", @fields)},
+          {"sib_observer.ex", observer}
+        ])
+
+      assert assert_linked(
+               violations,
+               "X6: process :observed includes :visit_booked and correlates on :room",
+               "sib_observer.ex",
+               8
+             ) =~ "has as :string, not :id"
+    end
+
     test "a field made optional, or personal" do
       optional = pair("sib_optional", "      field :visit_id, :id, optional: true")
 

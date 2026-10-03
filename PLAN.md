@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 3 października (E0–E12, EH, #72, #83, całe EB i #89 w `main`; w PR-ach punkty końcowe discovery (#91) i #64–#66)
+## Handoff — stan na 3 października (E0–E12, EH, #72, #83, całe EB, #89, #91 i #64–#66 w `main`; w PR-ach bajty (#93), granice wartości (#95) i #96)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -33,74 +33,55 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
 
 ### Stan repozytorium
 
-- **`origin/main` = `762521e`** (merge #90, #89; przedtem `da9f56f` — #88, EB3b, `499ea0b` — #87, EB3a,
-  `6b280dd` — #86, EB2b, `445be88` — #85, EB2a, `ef0e94d` — #84, #83, i `7a2bcb7` — #82, EB1). CI `main` —
-  sprawdzić (`gh run list --repo EmpoweredHouse/eh-os-contract --branch main --limit 1`). Historia `main` z
-  merge'ami PR-ów; gałęzie etapów liniowe.
-- **`auth/discovery-endpoints`** (PR #91) — od `762521e`: punkty końcowe discovery.
-- **`engine/issue-65-received-paths`** (worktree `eb3b-applications-4567c7`) — na `auth/discovery-endpoints`:
-  #66, #65, #64 i ten zapis. PR celuje w gałąź #91, póki ta nie jest w `main`.
-- **Gałęzie lokalne posprzątane 2 października** (za zgodą użytkownika): zostały `main` i
-  `claude/review-login-issues-eb9680` (worktree, być może innej sesji — nietknięty). Worktree
-  `issue-72-…`, `issue-78-…` i `merge-pr-55-…` stoją na odłączonym HEAD, czyste. Na GitHubie 68 gałęzi poza `main`
-  — nieruszane, czekają na decyzję użytkownika.
-- **Nowa baza testowa `eh_os_contract_auth_test_commits`** (EB3a, `CommitRepo` pakietu auth) — tworzy ją
-  `mix test` pakietu, a czyści migracja w dół i w górę przed każdym przebiegiem.
-- **Lokalnie poza tym:** `main`; zmergowane już `eb/eb1-sign-in-config` (worktree `issue-78-implementation-plan-3ae6a4`)
-  i `auth/issue-71-keys-hardening` (worktree `issue-72-assessment-923997`).
-- **[#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78) zamknięty** (zamknęło go za wcześnie
-  „closes #78” w opisie PR-a #86); EB3b (#88) tylko go linkuje, więc zakres #78 jest w `main`. #80 i #81
-  zamknięte.
-- **Otwarte na GitHubie:** **#49** — materiał klientów poza
-  repozytorium, zaparkowane 30 września; **#63–#66** — pytania otwarte po E12 („Otwarte pytania”). Otwartych PR-ów
-  brak. **W `EmpoweredHouse/eh-os`: #91–#96 i #111** — nasze potrzeby wobec EHOS-a („Dopisek 1 października”).
-- **`ehos-ledger`** przypina `eh-os-contract` i puszcza w CI `mix eh_os_contract.manifest`; bump przypięcia na
-  `743e91d` użytkownik zlecił 1 października w tamtym repozytorium — nie tutaj.
+- **`origin/main` = `9e61834`** (merge #92: #64–#66; przedtem `abb9b6c` — #91, discovery, `762521e` — #90, #89,
+  `da9f56f` — #88, EB3b). CI `main` na `9e61834` (przebieg `37110230712`) — `success`. Historia `main` z merge'ami
+  PR-ów; gałęzie liniowe.
+- **Otwarte PR-y, w tej kolejności, każdy na poprzednim:**
+  - **#93** `engine/unstorable-bytes` @ `3a675bb` → `main` — bajty, których log nie utrzyma. 3 października
+    przeniesiony rebase'em na `9e61834` (konflikt w CHANGELOG z #92: oba wpisy zostały) i z poprawką ostatniej
+    uwagi CodeRabbita (`@doc` dla `Dispatcher.idempotency_key?/1`). `MERGEABLE`.
+  - **#95** `engine/bounded-values` @ `0446abd` → **`engine/unstorable-bytes`** — granice wartości. Po merge'u #93
+    przestawić bazę: `gh api -X PATCH repos/EmpoweredHouse/eh-os-contract/pulls/95 -f base=main`; wtedy przejrzy go
+    CodeRabbit (na bazie innej niż `main` go pomija) — jego uwagi przeczytać przed merge'em.
+  - **#96** `engine/issue-96-key-rules` → `engine/bounded-values` — F8 i F9 („#96 — co wyszło”). Po merge'u #95 —
+    to samo przestawienie bazy.
+- **Gałęzie posprzątane 3 października** (za zgodą użytkownika): na GitHubie usunięte dwanaście gałęzi tej pracy
+  (`eb/eb1…eb3b`, `eh/eh2-ehos-yaml`, `eh/eh3-manifest-v2`, `eh/issue-83-ehos-yaml-v2`,
+  `auth/issue-71-keys-hardening`, `auth/issue-89-loopback`, `auth/discovery-endpoints`,
+  `engine/issue-65-received-paths`), wszystkie zmergowane; zostało około 50 innych zmergowanych — nieruszane. Lokalnie
+  usunięte zmergowane `auth/discovery-endpoints`, `auth/issue-66-scope-value`, `engine/issue-65-received-paths`, a
+  trzy stare worktree (`issue-72-…`, `issue-78-…`, `merge-pr-55-…`) zdjęte. Gałęzie trzech PR-ów do usunięcia po ich
+  merge'ach.
+- **Worktree:** `eb3b-applications-4567c7` trzyma gałęzie PR-ów (ma `deps`); `review-login-issues-eb9680` i
+  `computer-ordering-process-f84437` należą do innych sesji — nietknięte.
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
-  `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`) i mają schemat V01.
-  **Indeks idempotencji w nich przebudowano ręcznie w E11f** na `(issued_by, idempotency_key)`, jak w dzisiejszym V01
-  (dane zostały). **Klucz blokady dopisu mają stary, jeden na bazę** — V01 zmieniony w #54 w miejscu, więc do
-  `ecto.drop` dalej poprawny, tylko wspólny. **Worktree na kodzie sprzed E11c nie wolno migrować wspólnych baz** —
-  dołoży swoje V02–V05 (`ecto.drop` naprawia). Baza dev ma dane sprzed E11c w nowym schemacie; przed
-  `mix phx.server` — `mix ecto.migrate` w `sandbox/`.
-- **Baza `eh_os_contract_auth_test` jest od 2 października na V03** (EB2a; `mix test` pakietu auth migruje ją sam).
-  Worktree na kodzie sprzed EB2a ma przez to padnięcia `SchemaTest`, bo `public` mówi tam „3”. To oczekiwane, nie
-  regresja; `MIX_ENV=test mix ecto.drop` w pakiecie auth przywraca stan.
-- **Tabela `eh_os_contract_inbox` (E12c, V01 w miejscu) dołożona ręcznie 1 października** do `…_host_dev`,
-  `…_host_test`, `eh_os_contract_test`, `…_test_commits` i `eh_os_contract_web_test` (`CREATE TABLE IF NOT EXISTS`
-  w kształcie V01). **Worktree na kodzie sprzed E12c ma przez nią trzy padnięcia `MigrationsTest`** (lista tabel w
-  `…_test_commits`) — oczekiwane, nie regresja; `DROP TABLE eh_os_contract_inbox` w tej bazie albo `ecto.drop`
-  przywraca stan sprzed E12c. Bazy `eh_os_contract_host_test_commits_<liczba>` to resztki przebiegów sandboxa,
-  tworzone z migracji.
+  `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`) i mają schemat V01
+  z poprawkami ręcznymi opisanymi w historii tego akapitu (indeks idempotencji z E11f, `eh_os_contract_inbox` z
+  E12c); baza auth jest na V03. Worktree na kodzie sprzed tych zmian ma przez to oczekiwane padnięcia, a
+  `ecto.drop` przywraca stan. Dwie bramy naraz z dwóch worktree gryzą się o te bazy.
+- **Otwarte na GitHubie:** #96 (zamknie go PR #96), #94 (style dashboardu z `ehos_design`, nie z tej pracy), #64
+  (okno retencji inboxu — czeka na retencję transportu EHOS-a), #63 (zaparkowane do pierwszych innych drzwi), #49.
+  **W `EmpoweredHouse/eh-os`: #91–#96 i #111** — nasze potrzeby wobec EHOS-a („Dopisek 1 października”).
+- **`ehos-ledger`** przypina `eh-os-contract` i puszcza w CI `mix eh_os_contract.manifest` — bump przypięcia robi się
+  w tamtym repozytorium.
 
 ### Co zostało — i czyje to jest
 
-- **Punkty końcowe discovery — PR #91**, czeka na merge użytkownika.
-- **#64–#66 — w PR-ze** po #91; #63 odłożone decyzją użytkownika („#63–#66 — decyzje i co wyszło”).
-- **Zadanie zgłoszone jako chip:** bajty, których tabele silnika nie utrzymają (NUL w polu `:string`, zły UTF-8,
-  `idempotency-key` spoza ASCII), dają 500 zamiast odmowy — z przeglądu #66, poza jego zakresem.
-- **Merge każdego PR-a — użytkownika.**
-- **Wady `oidcc` 3.9.0** — zgłoszone 2 października jako erlef/oidcc#552–#555 („EB1 — co wyszło”); nasz kod ich
-  nie potrzebuje, więc nic tu na nie nie czeka.
-- **Po stronie EHOS-a, nie tutaj:** szablon `ehos_app` (krok 7) i test na klastrze (krok 8); bump w `ehos-ledger` i
-  porównanie jego manifestu z `ledger.v2.json` (EH4). Port `4001.0` —
-  [eh-os#111](https://github.com/EmpoweredHouse/eh-os/issues/111).
-- **Po EB — wybór użytkownika:** fikstury akceptacyjne (po #49), drobne reguły z „Otwartych pytań”, E13.
-- **Z E12, do decyzji użytkownika**, każde jako issue: kształt `call/3` przy drugich drzwiach —
-  [#63](https://github.com/EmpoweredHouse/eh-os-contract/issues/63); retencja `eh_os_contract_inbox` —
-  [#64](https://github.com/EmpoweredHouse/eh-os-contract/issues/64); zgodność, która nie widzi polityki inboxu —
-  [#65](https://github.com/EmpoweredHouse/eh-os-contract/issues/65); surowa wartość zakresu w decyzjach auth —
-  [#66](https://github.com/EmpoweredHouse/eh-os-contract/issues/66); kto może publikować —
-  [eh-os#96](https://github.com/EmpoweredHouse/eh-os/issues/96).
-- **Po EH (wybór użytkownika z 1 października):** kontrakty sandboxa jako fikstury akceptacyjne pakietu — kolidują
-  z #49, do rozstrzygnięcia przed startem (propozycja z E11: zmyślone odpowiedniki tego samego kształtu).
-- **Drobne reguły z „Otwartych pytań”**, każda nowym powodem odmowy albo pomiarem — do decyzji użytkownika.
-- **Poza etapami, bez zmian** — użytkownika: proces na porcie 4000, wdrożenie E8 u hosta, publikacja na Hex, F1/F2
-  i dziesięć usterek.
-- **Lista zmian do `eh-os`** — od 1 października jako issues
-  [eh-os#91](https://github.com/EmpoweredHouse/eh-os/issues/91)–[#96](https://github.com/EmpoweredHouse/eh-os/issues/96);
-  tabela z tym, co jest załatwione, a co otwarte: „Dopisek 1 października”. Nowa potrzeba: wiersz w tabeli i issue.
-- **E13** (graf jako API, renderer w miejsce Mermaida) — kandydat na następny etap.
+- **Merge #93, #95 i #96 — użytkownika**, w tej kolejności, z przestawieniem bazy następnego na `main` po każdym.
+- **#98 — deterministyczny budżet bajtów klucza** (decyzja użytkownika z 3 października, opcja (c) z #96); przed
+  startem trzy pytania z issue: budżet, nazwa i status odmowy, los dostawy menedżera ponad budżet.
+- **Pytanie z #96 o pusty `:id` jako wartość pola korelacji** — „#96 — co wyszło”, „Do decyzji użytkownika”.
+- **Gałęzie na GitHubie poza tą pracą** (około 50 zmergowanych) — nieruszane; użytkownik wybrał 3 października
+  usunięcie tylko gałęzi tej pracy.
+- **Zostawione świadomie:** #63, #64, #49 (wyżej).
+- **Wady `oidcc` 3.9.0** — zgłoszone jako erlef/oidcc#552–#555; nasz kod ich nie potrzebuje.
+- **Po stronie EHOS-a, nie tutaj:** szablon `ehos_app` (krok 7) i test na klastrze (krok 8); bump w `ehos-ledger`;
+  port `4001.0` — [eh-os#111](https://github.com/EmpoweredHouse/eh-os/issues/111).
+- **Wybór użytkownika na potem:** fikstury akceptacyjne (po #49), drobne reguły z „Otwartych pytań”, E13 (graf jako
+  API), a poza etapami: proces na porcie 4000, wdrożenie E8 u hosta, publikacja na Hex.
+- **Lista zmian do `eh-os`** — issues
+  [eh-os#91](https://github.com/EmpoweredHouse/eh-os/issues/91)–[#96](https://github.com/EmpoweredHouse/eh-os/issues/96)
+  i tabela w „Dopisek 1 października”. Nowa potrzeba: wiersz w tabeli i issue.
 
 ### Co przeczytać najpierw
 
@@ -174,6 +155,9 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 3 października, po rebase'ach na `9e61834`:** brama z `sandbox/` → **EXIT=0** na każdej głowie —
+  #93 @ `3a675bb`: sandbox 145, silnik 1129, web 52, auth 285 + 1 property; #95 @ `0446abd`: silnik **1138**, reszta
+  jak wyżej. Liczby dla #96 — „#96 — co wyszło”.
 - **Lokalnie, 2 października, na `56876b2`** (#89 po przeglądzie, `auth/issue-89-loopback`): brama z `sandbox/` →
   **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik 1114, `check` 0 / 68 / 6; web 52; auth **278** + 1 property.
 - **Lokalnie, 2 października, na `f63596e`** (EB3b po przeglądzie, `eb/eb3b-applications`): brama z `sandbox/` →
@@ -318,6 +302,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
   ostatnią definicję przy `required` z pierwszej. (3) Etykiety krawędzi Mermaida nie są escapowane (`pipes/1`), a
   trafiają do nich nazwy pól kontraktu — (2) zamyka to przy okazji. (4) Kolizja stron `context :values` z
   `value :index` (`values/index.md`) — odmawia dopiero `mix eh_os_contract.pages`.
+- *Rozstrzygnięte 3 października: klucz to drukowalny ASCII do 255 bajtów (#93), a pole korelacji to `:id` do 255
+  bajtów, najwyżej sześć (#95, #96).* Opisy sprzed decyzji, dwa niżej.
 - **Z E11f, bez decyzji:** klucz idempotencji z etykietą aktora dłuższy niż ~2,7 KB daje 500 (limit długości byłby
   nowym powodem odmowy, widocznym dla hosta); ten sam aktor z tym samym kluczem dostaje stary paragon, także gdy nowa
   komenda ma inny zakres albo treść (opcja „skrót treści” odrzucona).
@@ -1022,6 +1008,83 @@ Bez zmian:
 - **`https://[::1]` odrzucane jako `address`** logowania — tak było przedtem; D-68 nie zna takich adresów.
 
 Auth: 274 → 278 testów.
+
+### #96 — co wyszło (3 października)
+
+Na `engine/issue-96-key-rules`, od `engine/bounded-values` (#95), bo limit sześciu pól liczy się z 255 bajtów na
+`:id`, które wprowadza dopiero #95. Dwie odmowy przy kompilacji, przyjęte przez użytkownika 3 października (#96):
+
+- **F8 — pole korelacji jest `:id`.** Pole zdarzenia, które nazywa `correlate` procesu albo menedżera procesu,
+  i pole stanu menedżera, które nazywa jego `correlate`, ma typ `:id`, `{:id, encja}` albo wartość domeny opartą na
+  `:id`. W L2 (`Rules.Fields`) odmowa dla typu wbudowanego, enuma i listy; wartość domeny w L3 (`Links.Domain`), gdzie
+  domena jest znana — odmowa mówi, na czym wartość stoi (`:money, which rests on :integer`).
+- **F9 — klucz ma najwyżej sześć pól**: tożsamość jednostki, `correlate` procesu, `correlate` menedżera
+  (`EhOsContract.Key.max_fields/0`).
+
+**Decyzje techniczne (asystenta), z odrzuconymi opcjami:**
+- *Nowe kody F8 i F9.* Odrzucone: dopisanie warunków do F4 (opcjonalne i osobowe), R2 i P4 — tabela odmów i
+  CHANGELOG pokazałyby wtedy zmianę starego kodu zamiast nowej odmowy, a host szuka nowej.
+- *F8 w L2 i L3.* Odrzucone: samo L2, ostrożnie jak A4 (każda wartość domeny odmówiona) — odrzuciłoby korelację na
+  wartości opartej na `:id`, jak okres w TaxVision (`value :period, :id`), czyli kształt, który jest poprawny.
+- *Pole stanu menedżera też.* `correlate` menedżera, który obsługuje tylko zdarzenia rodzeństwa, bierze typ z pola
+  stanu, jeśli stan je deklaruje — bez tego `:string` w stanie przechodziłby X6.
+
+**Pomiar (Postgres 17, 3 października) — inny niż w issue, i próbkowany, nie dowiedziony.** Issue podało: cztery
+losowe pola po 255 bajtów i trzy pola samych `|` dają 3344 bajtów i odmowę. U nas pola samych `|` (`%7C` po
+escapowaniu) przechodzą, bo wpis indeksu jest kompresowany, gdy to oszczędza ćwierć. Najgorszy jest tekst losowy z
+około ćwiercią `|` i `%`: każdy daje trzy bajty, a całość prawie się nie kompresuje. Wyniki (losowe nazwy, po 40–60
+prób na punkt):
+- **siedem pól** pada w 32–59 próbach na 60 już za nazwą 40 bajtów;
+- **sześć pól** nie padło ani razu za nazwą do 60 bajtów. Klucz przebiegu ma nazwę procesu dwa razy (kolumna
+  `process` i prefiks `instance_id`), więc za nazwą procesu około 100 bajtów zaczyna padać (2–19 na 40). Klucz
+  menedżera ma nazwę raz, ale jest nią `<pełny moduł kontraktu>:process_manager:<nazwa>` — w sandboxie już około 70
+  bajtów; wytrzymał 140, dalej nie mierzone;
+- **pięć pól** nie padło nigdzie do 140 bajtów nazwy.
+
+Nazwa procesu to atom z kontraktu (`process :visit`), zwykle kilkanaście bajtów, więc klucz przebiegu przy sześciu
+polach trzyma. Klucz menedżera nie jest tak bezpieczny: moduł kontraktu w zagnieżdżonej przestrzeni nazw hosta ma
+łatwo 100 bajtów i więcej. Ale to próbka: nieskompresowany najgorszy przypadek sześciu pól to 6×765+5 = 4595 bajtów, więc każdy klucz z
+dużą domieszką `|`/`%` wchodzi tylko dzięki kompresji, a ktoś, kto dobiera bajty, może celować w jej próg. Przegląd
+bezpieczeństwa tego nie dowiódł ani nie obalił. Inny `default_toast_compression` (`lz4`) nie był mierzony.
+
+**Przegląd (dwa równolegle, na `8d71afd`):**
+- *Poprawione:* (1) menedżer, którego stan nie deklaruje pola korelacji, bierze typ z pierwszego zdarzenia lokalnego z
+  tym polem, także nieobsługiwanego — F8 tego nie widział, a X6 porównywał potem rodzeństwo z tym typem; teraz F8
+  sprawdza każde takie zdarzenie (`42547fb`). (2) Kontrakt bez własnych jednostek, który tylko `include`-uje zdarzenia
+  rodzeństwa: X6 nie porównywał typu, bo żadne zdarzenie lokalne go nie nadawało — teraz porównuje z `:id`. (3)
+  Jedno znalezisko na pole, które nazywa i proces, i menedżer — z testem. (4) Komunikat F8 nie twierdzi już, że tylko
+  `:id` ma granicę długości (`:integer` też ma): „correlate only on an identifier, an :id of at most 255 bytes, as
+  match: does”. (5) Test L3 dla wartości `{:id, encja}`.
+- *Druga runda (na `45819c5`):* poprawka (1) sprawdzała **każde** zdarzenie lokalne z polem, a `Build` bierze typ
+  tylko z pierwszego — więc odmawiała poprawnego kontraktu (późniejsze, niezwiązane zdarzenie z `ref :string`).
+  Teraz F8 sprawdza dokładnie to pierwsze, w tej samej kolejności, w której czyta je `Build`, a jednostka, której
+  tożsamość ma to pole, nadaje `:id` i nic nie trzeba sprawdzać (trzecia runda, na `8b881cd`). Testy: dwa kontrolne
+  (późniejsze zdarzenie i wcześniejsza tożsamość — padają na wersji sprawdzającej każde zdarzenie) i jeden na jedno
+  znalezisko, gdy obsługiwane zdarzenie też nadaje typ (pada bez `uniq_by`). Wiersz F8 w tabeli
+  odmów mówi o tym przypadku. Klucz menedżera z pełnym modułem — wyżej, w pomiarze.
+- *Bez zmian:* F8 odmawia też `:integer`, `:date` i enuma, choć są krótkie — tak brzmiała przyjęta reguła („typ
+  bazowy `:id`, jak `match:`”). Treść komunikatu powtórzona w L2 i L3 — świadomie, jak przy F7.
+- *Pominięte, sprzed tej zmiany:* X6 bierze typ lokalny z dowolnego zdarzenia lokalnego z polem, także
+  niewłączonego — szersze, niż trzeba, ale ten typ i tak trzyma F8; X6 odmawia dwóch różnych wartości domeny, obu na
+  `:id` (`same_type?`); pole komendy o nazwie pola korelacji trafia do nieindeksowanego `_commands.instance_id`, a
+  wartość bez `String.Chars` wywraca tam `Key.escape`. Gwarancje F8 i X6 zależą od kompilatora L3 u hosta
+  (`compilers: … ++ [:eh_os_contract]`); bez niego zostają ustaleniem `mix eh_os_contract.check`.
+- *Pominięte, poza zakresem:* klucz inboxu (`Bus.Message.key`) bez granicy długości — sprzed tej zmiany; nasz relay
+  daje skrót albo `<uuid>/<nazwa>`, a kto publikuje, rozstrzyga grant transportu.
+
+**Do decyzji użytkownika:**
+1. *Rozstrzygnięte 3 października: (c), issue [#98](https://github.com/EmpoweredHouse/eh-os-contract/issues/98) —
+   budżet bajtów klucza liczony przy dispatchu i w menedżerze; F9 = 6 zostaje. Odrzucone (a) — nie ogranicza modułu
+   w kluczu menedżera i dalej jest próbką; (b) — też próbka.* Opis sprzed decyzji:
+   **Czy sześć pól z próbki wystarczy.** Możliwe: (a) zostawić F9 = 6 i dodać limit nazwy procesu, jednostki i
+   menedżera, np. 64 bajty (N1, nowy powód odmowy) — dla nazw do 60 bajtów próbka nie dała ani jednego padnięcia,
+   ale **nie ogranicza to modułu w kluczu menedżera**; trzeba by go też skrócić (np. skrót modułu w kolumnie
+   `name`, co zmienia klucz istniejących wierszy); (b) zejść do pięciu — pięć pól nie padło nigdzie do 140 bajtów
+   nazwy; (c) deterministycznie: przy dispatchu i przy zapisie menedżera policzyć długość klucza po escapowaniu i
+   odmówić ponad budżet (nowa odmowa 422 dla hosta, a dla menedżera — błąd zapisu z czytelnym powodem zamiast
+   wyjątku Postgresa). Rekomendacja: (c), osobnym issue — jako jedyna daje gwarancję, a nie próbkę, i pokrywa nazwę
+   modułu; F9 = 6 zostaje jako odmowa przy kompilacji kształtów, które i tak by padały.
+2. **Pusty `:string` jako wartość pola korelacji** (z E11a) — po F8 to pytanie o pusty `:id`; bez zmian.
 
 ### Granice wartości z żądania (3 października)
 

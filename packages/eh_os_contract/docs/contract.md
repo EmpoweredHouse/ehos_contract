@@ -222,6 +222,8 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `F5` | L2, L3 | `personal:` naming what is not a required, non-personal `:id` field with `subject:` in the same struct; a domain value's field naming an undeclared subject; a personal field whose type holds personal data of its own |
 | `F6` | L2 | a unit's identity field declared again in its state, a command or an event |
 | `F7` | L2, L3 | a process manager's state field, or a command's or query's scope field, that is `personal:` (L2) or of a domain value holding personal data (L3) |
+| `F8` | L2, L3 | a field a run or a process manager's record is told by — an event's field a `correlate` names, a process manager's state field its `correlate` names, or the first local event's field an undeclared one takes its type from — that is not an `:id`, `{:id, entity}` or a domain value resting on `:id` (L3) |
+| `F9` | L2 | a unit's identity, a process's `correlate` or a process manager's `correlate` of more than six fields |
 | `A1` | L2 | a command with an empty `emits:`, or one naming an event of another unit |
 | `A2` | L2 | an event no command of its unit emits and that declares no `recorded_by:` |
 | `A3` | L2 | `rejects:` naming what is neither an invariant of the unit nor a constraint of the command |
@@ -269,7 +271,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `X3` | L3 | a field or return type that is neither built in nor a value of the domain; `{:id, entity}` naming no entity of the domain; a `subject:` the domain does not declare |
 | `X4` | L3 | `depends_on`, `calls` or a field's `issued_by` naming no external of the domain |
 | `X5` | L3 | `consumes` naming what is not a compiled contract, a contract of another domain, or an event the sibling does not declare |
-| `X6` | L3 | a sibling event's field that a `correlate` (on an include or a handled event) or a boundary's `match` relies on, missing there, of another type, optional or personal |
+| `X6` | L3 | a sibling event's field that a `correlate` (on an include or a handled event) or a boundary's `match` relies on, missing there, of another type (an `:id` where no local event types it), optional or personal |
 | `X7` | L3 | two processes of the system with one name, and so one event type |
 | `X8` | L3 | a declaration with two implementations |
 | `X9` | L3 | a scenario value or a rule example not fitting its domain type; a sibling event's scenario data with unknown fields, missing required ones (in `given` or the trigger) or ill-typed values |

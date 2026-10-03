@@ -138,6 +138,8 @@ defmodule EhOsContract.ContractGenerateTest do
   end
 
   test "a process manager's correlation has the type a local event gives it" do
+    # A domain value, which F8 lets a correlation be when it rests on :id (L3); the
+    # domain here is not compiled, so only the generated type is under test.
     binaries =
       "Periods"
       |> contract("""
@@ -145,11 +147,11 @@ defmodule EhOsContract.ContractGenerateTest do
           identity :company_id
 
           command :open_month, "Otwarcie", by: :accountant, emits: :month_opened do
-            field :period, :integer
+            field :period, :period
           end
 
           event :month_opened, "Otwarto" do
-            field :period, :integer
+            field :period, :period
           end
         end
 
@@ -171,7 +173,7 @@ defmodule EhOsContract.ContractGenerateTest do
     type = t |> Code.Typespec.type_to_quoted() |> Macro.to_string()
 
     assert type =~ "company_id: String.t() | nil"
-    assert type =~ "period: integer() | nil"
+    assert type =~ "period: Clinic.Values.period() | nil"
   end
 
   describe "consumed events" do

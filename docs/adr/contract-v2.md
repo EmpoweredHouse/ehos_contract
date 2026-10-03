@@ -643,6 +643,15 @@ where it helps; every violation is reported as a diagnostic before the single ra
   > every decision. §14's gate list names the first and not the second; the second came from EA's security
   > review. A query's `param` takes no `personal:`, so at L2 F7 sees only a manager's state; a domain value
   > holding a personal field, at any depth, in either place is refused at L3, where the domain is known.
+
+  > *Added 3 October 2026, issue #96.* **F8**: a field a run or a process manager's record is told by — an
+  > event's field a `correlate` names, a manager's state field its own `correlate` names — is an `:id`,
+  > `{:id, entity}` or a domain value resting on `:id` (L3), as `match:` already was (A4). Its value is joined
+  > into an index key, and since the value bounds of 3 October only an `:id` has a length bound, 255 bytes;
+  > `correlate` on a `:string` let 3 KB of a request's text fail the append with a 500, or stall a manager's
+  > subscription. **F9**: a unit's identity and each `correlate` have at most six fields, measured against
+  > Postgres 17 (`EhOsContract.Key`). Hashing a key past a length would have needed no rule, and was rejected:
+  > a hashed stream or run key can no longer be read in the log or on the dashboard.
 - *Units.* A1: `emits` is non-empty and a subset of the unit's own events. A2: every event is emitted by at
   least one command of its unit **or declares `recorded_by`** — stricter than ESDM, because in an
   event-sourced system any other event can never occur. A3: `rejects` ⊆ the unit's invariants. A4: a DCB has
