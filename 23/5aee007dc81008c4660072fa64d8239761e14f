@@ -1,0 +1,4 @@
+EP3 (a generated behaviour documents what the contract says), origin/main 24904b8...HEAD.
+Gate: sandbox mix check EXIT=0 on c042d42 (sandbox 145, check 0/29/9; engine 1184, check 0/71/6; web 52; auth 285+1 property); HEAD adds PLAN.md only.
+Correctness review (code-review high), 9 findings, all fixed: a command's callback read "prose alone" for an invariant refused on in another command's scenario; a query's module got no rules moduledoc; "Dcb" heading; timer without source; unit rules without commands' constraints; PM evolve said "decision"; consumed-event match beside Model.consumed/2; service rules outside the common format; test gaps. Each fix reverse-checked: its mutation fails exactly its own test.
+Security/performance review: no defect; scenario descriptions now reach the docs, so contract-distillation says a description never names a real person.
