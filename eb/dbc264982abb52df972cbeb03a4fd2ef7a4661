@@ -1,0 +1,1 @@
+Documentation only: PLAN.md handoff after #103. Claims checked against gh (PR #103 merged, CI pass, CodeRabbit no comments, issue #98 closed, branch deleted) and git (origin/main eb0c8a1). No mix check needed: PLAN.md is read by no part of the gate.
