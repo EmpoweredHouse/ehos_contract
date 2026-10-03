@@ -67,8 +67,9 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   - The inbox now writes `received_at` by `EhOsContract.Clock`, as dispatch writes an event's `occurred_at`, so
     a report's bounds read both alike.
 
-- **Request bytes the log cannot hold are a refusal, not an exception.** Until now each of these made Postgres
-  refuse the write, and a request answered 500:
+- **Request bytes the log cannot hold are a refusal, not an exception.** Until now Postgres refused to store each
+  of these, and a request answered 500. The rule for an idempotency key also refuses keys that were stored before
+  (below):
   - **Text in a `:string` or `:id` field holding a NUL, or invalid UTF-8, does not fit its type.**
     - Reachable over HTTP: `"\u0000"` in JSON, `%00` in a query string. Plug refuses invalid UTF-8 in a query
       string, and Jason in a body.
