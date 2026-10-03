@@ -121,13 +121,19 @@ defmodule EhOsContract.Contract.Rules.Fields do
     Enum.uniq_by(events ++ managers ++ injected, fn {_where, f} -> f end)
   end
 
+  # `Build` puts a unit's identity on each of its events, so a unit whose identity has the
+  # name types the state `:id`, and there is nothing to hold.
   defp first_carrying(d, name) do
-    d
-    |> Rules.local_events()
-    |> Enum.find_value([], fn e ->
-      case Enum.find(e.fields, &(&1.name == name)) do
-        nil -> nil
-        f -> [{e, f}]
+    Enum.find_value(d.units, [], fn unit ->
+      if name in unit.identity do
+        if Rules.events(unit) != [], do: []
+      else
+        Enum.find_value(Rules.events(unit), fn e ->
+          case Enum.find(e.fields, &(&1.name == name)) do
+            nil -> nil
+            f -> [{e, f}]
+          end
+        end)
       end
     end)
   end

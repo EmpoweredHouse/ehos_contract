@@ -339,6 +339,39 @@ defmodule EhOsContract.ContractFieldsTest do
                """)
     end
 
+    test "control: an earlier unit's identity types a manager's undeclared correlation" do
+      assert %{} =
+               compile_contract("IdentityCorrelation", """
+                 aggregate :invoice, "Faktura" do
+                   identity :invoice_id
+                   command :record_invoice, "Faktura", by: :reception, emits: :invoice_recorded
+                   event :invoice_recorded, "Zarejestrowano", terminal: true do
+                     field :batch_id, :id
+                   end
+                 end
+
+                 aggregate :payment, "Płatność" do
+                   identity :payment_id
+                   command :record_payment, "Płatność", by: :reception, emits: :payment_recorded
+
+                   event :payment_recorded, "Zapłacono", terminal: true do
+                     field :batch_id, :id
+                     field :invoice_id, :string
+                   end
+                 end
+
+                 process :invoice, "Faktura" do
+                   correlate :batch_id
+                 end
+
+                 process_manager :chase, "Pogoń" do
+                   correlate :invoice_id
+                   starts_on :invoice_recorded
+                   ends_on :invoice_recorded
+                 end
+               """)
+    end
+
     test "a handled event that also types a manager's correlation is one finding" do
       message =
         refuse_contract("HandledAndTyping", """

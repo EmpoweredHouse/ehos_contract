@@ -1055,8 +1055,10 @@ bezpieczeństwa tego nie dowiódł ani nie obalił. Inny `default_toast_compress
   match: does”. (5) Test L3 dla wartości `{:id, encja}`.
 - *Druga runda (na `45819c5`):* poprawka (1) sprawdzała **każde** zdarzenie lokalne z polem, a `Build` bierze typ
   tylko z pierwszego — więc odmawiała poprawnego kontraktu (późniejsze, niezwiązane zdarzenie z `ref :string`).
-  Teraz F8 sprawdza dokładnie to pierwsze, w tej samej kolejności, w której czyta je `Build`; test kontrolny i test
-  na jedno znalezisko, gdy obsługiwane zdarzenie też nadaje typ (oba padają bez `uniq_by`). Wiersz F8 w tabeli
+  Teraz F8 sprawdza dokładnie to pierwsze, w tej samej kolejności, w której czyta je `Build`, a jednostka, której
+  tożsamość ma to pole, nadaje `:id` i nic nie trzeba sprawdzać (trzecia runda, na `8b881cd`). Testy: dwa kontrolne
+  (późniejsze zdarzenie i wcześniejsza tożsamość — padają na wersji sprawdzającej każde zdarzenie) i jeden na jedno
+  znalezisko, gdy obsługiwane zdarzenie też nadaje typ (pada bez `uniq_by`). Wiersz F8 w tabeli
   odmów mówi o tym przypadku. Klucz menedżera z pełnym modułem — wyżej, w pomiarze.
 - *Bez zmian:* F8 odmawia też `:integer`, `:date` i enuma, choć są krótkie — tak brzmiała przyjęta reguła („typ
   bazowy `:id`, jak `match:`”). Treść komunikatu powtórzona w L2 i L3 — świadomie, jak przy F7.
