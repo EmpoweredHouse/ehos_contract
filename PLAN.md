@@ -447,9 +447,16 @@ Na `dsl/ep1-source` (od `origin/main` = `0b7bc84`, po rebase z `64f888b`), niewy
   (nie wiadomo, który do którego), relacje Rehmedu (komentarz nie mówi jednoznacznie, że opisuje każdą), aktorzy
   integracji TaxVision (komentarz mówi, że materiał ich nie nazywa).
 - Słownik przypięty w obu testach słownictwa, `docs/dsl/` wygenerowane, linia w `CHANGELOG.md`.
-- **Brama zielona:** sandbox 145 testów, `check` 0 / 29 / 9 (bez zmian); silnik 1135, `check` 0 / 68 / 6 (bez
-  zmian); web 52; auth 285 + 1 właściwość. Trzy pierwsze podejścia padły na `too_many_connections` — wspólny
-  Postgres zapchany przez procesy innej sesji, nie przez kod.
+- **Brama zielona** na `a80905d` (po rebase na #100 i poprawce z przeglądu): **EXIT=0**, sandbox 145 testów,
+  `check` 0 / 29 / 9 (bez zmian); silnik 1157 (1135 przed rebase + testy #93–#100), `check` 0 / 68 / 6 (bez
+  zmian); web 52; auth 285 + 1 właściwość. Część podejść padła na `too_many_connections` — wspólny Postgres
+  zapchany przez procesy innej sesji, nie przez kod.
+- **Przegląd** (dwa równolegle): poprawność — 8 uwag, poprawione cztery (kształt modelu, test digestu, który nie
+  mógł paść, `view` w planie, relacja symetryczna bez testu); bezpieczeństwo i wydajność — bez defektu. Bez
+  zmian: zmiana źródła przesuwa wersję (jak etykieta i `source` zdarzenia); `_Source: …_` bez escapowania, jak
+  dotychczasowe strony; identyfikatory w komentarzach zostają tam, gdzie komentarz coś wyjaśnia. Odłożone do EP3
+  (skille): w `source` identyfikatory z materiału, nie nazwiska — `source` idzie do modelu dla EHOS-a i na
+  strony, a nic nie sprawdza w nim danych osobowych.
 
 ## Dopisek 2 października (2) — #83: `ehos.yaml/v2` i `sign_in`; podział EB2
 
