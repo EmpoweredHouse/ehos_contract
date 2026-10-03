@@ -89,7 +89,8 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
       - These were accepted before and are refused now: a space, other non-ASCII UTF-8 such as `zamówienie-1`, a
         key of 256 bytes to 2.7 KB, and an empty `idempotency-key` header.
     - The OpenAPI document gives the header's pattern.
-    - A reaction's key is the library's own and is not checked.
+    - A reaction's key is held to it too: the keys the library derives are of this form, and a reaction's actor is
+      a struct any caller can build.
 
 - **E12c, D12: only a policy takes an event another application publishes.** A read model, an effect or a
   process manager that names a `consumes "<name>"` event no longer compiles: the event arrives in an inbox and

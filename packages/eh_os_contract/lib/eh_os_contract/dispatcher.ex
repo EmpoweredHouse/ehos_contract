@@ -658,11 +658,11 @@ defmodule EhOsContract.Dispatcher do
 
   defp generate_identity(_model, _declaration, command, _ctx), do: {:ok, command}
 
-  # A caller's key is stored in `eh_os_contract_commands` and its unique index, and in the
-  # event's metadata: printable ASCII that a text column, `jsonb` and a btree entry all hold.
-  # A reaction's is the library's own (`EhOsContract.Consumer`).
+  # A key is stored in `eh_os_contract_commands` and its unique index, and in the event's
+  # metadata: printable ASCII that a text column, `jsonb` and a btree entry all hold. A
+  # reaction's too: its actor is a struct any caller can build, and the keys the library
+  # derives (`EhOsContract.Consumer`) are of this form anyway.
   defp keyed(%{idempotency_key: nil}), do: :ok
-  defp keyed(%{actor: %Actor{kind: :reaction}}), do: :ok
 
   defp keyed(%{idempotency_key: key}) do
     # Bytes, not characters, so no `u`: a binary that is not UTF-8 is refused byte by byte.

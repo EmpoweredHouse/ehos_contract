@@ -295,6 +295,14 @@ defmodule EhOsContract.CodecTest do
                %{}
              ) ==
                {:error, [name: :type]}
+
+      # So is a field no seal held, read with `open:` all the same: only an opened value is let in.
+      assert Codec.decode(
+               @personal,
+               %{"member_id" => "member-anna" <> <<0>>, "name" => nil},
+               %{},
+               open: Personal.opener(@read, "shredding_rig.joined")
+             ) == {:error, [member_id: :type, name: :required]}
     end
 
     test "a ciphertext moved to another event type, field or subject does not open" do

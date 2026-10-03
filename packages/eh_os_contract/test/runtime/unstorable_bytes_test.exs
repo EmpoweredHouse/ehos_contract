@@ -139,6 +139,15 @@ defmodule EhOsContract.UnstorableBytesTest do
     assert {:ok, _} = deposit.(String.duplicate("k", 255))
     assert {:ok, _} = deposit.("req-~!")
 
+    # A reaction's actor is a struct anyone can build, naming a policy the contract declares:
+    # its key is held to the rule as well.
+    assert EhOsContract.dispatch(
+             DispatchRig.Ledger,
+             %DispatchRig.Ledger.Commands.Deposit{account_id: "a-1", amount: 1},
+             actor: Actor.reaction(:policy, :echo_deposit),
+             idempotency_key: "policy:" <> <<0>>
+           ) == {:error, :idempotency_key_invalid}
+
     auditor = Actor.credential("u-2", ["dispatch_rig.balance_confirmed"])
 
     assert EhOsContract.call(

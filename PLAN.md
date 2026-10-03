@@ -1043,7 +1043,8 @@ indeksu unikalnego ma ~2,7 KB).
 **Co jest:**
 - `Codec`: `text?/1` w `decode` i `fits?`, więc jedna zmiana obejmuje każdą drogę: HTTP, `call/3`, query, `dispatch/3`
   ze struktury i inbox.
-- `Dispatcher.keyed/1` w `dispatch/3` i `record/3`, po autoryzacji i polach. Klucz reakcji (biblioteki) zwolniony.
+- `Dispatcher.keyed/1` w `dispatch/3` i `record/3`, po autoryzacji i polach. Klucz reakcji też (po uwadze
+  CodeRabbita: aktor reakcji to struktura, którą zbuduje każdy wywołujący; klucze biblioteki i tak przechodzą).
 - Plug: 400 i wiersz w tabeli.
 - CHANGELOG w „Changed — a host has to act”.
 
@@ -1070,8 +1071,11 @@ użytkownika**:
 - zły UTF-8 w query stringu — `Plug.Conn.InvalidQueryError` (Phoenix: 400, goły Plug: 500).
 
 Poza zakresem, informacyjnie: `correlation_id`/`causation_id` od bezpośredniego wywołującego `dispatch/3`, podmiot
-`Actor.credential/3` z NUL, klucz wiadomości inboxu od transportu; furtka reakcji (`%Actor{kind: :reaction}`) jest
-publiczną strukturą — klucze biblioteki i tak przechodzą regułę.
+`Actor.credential/3` z NUL, klucz wiadomości inboxu od transportu.
+
+**Uwagi CodeRabbita na #93**, trzy, wszystkie przyjęte, każda z testem tam, gdzie zmienia zachowanie: dowolne bajty
+tylko dla wartości otwartej z pieczęci (`:opened`), nie przy każdym `open:`; `@doc` dla publicznego
+`Codec.text?/1`; bez zwolnienia klucza reakcji.
 
 Silnik: 1114 → 1124.
 
