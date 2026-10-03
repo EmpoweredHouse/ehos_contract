@@ -52,6 +52,13 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Changed — a host has to act
 
+- **EP4: `idempotency` names its key and its owner.** `idempotency: :event_id` no longer compiles: it is
+  `[key: :event_id, owner: :self]`, the owner one of `:self` (the reaction's code keys what it writes),
+  `:downstream` (the system an effect calls is given the key) and `:infrastructure` (the engine keys the
+  commands a policy or a process manager issues, so the key is `:event_id`). P3 refuses `:downstream` outside
+  an effect and `:infrastructure` on one. The callback's `@doc` and the reaction's page say what the owner
+  asks of the code. **Moves the version** of every contract with an `idempotency`, which is a map in the model
+  and in its export (`eh_os_contract.model.v1`), no longer an atom.
 - **#98: a key past 2048 bytes is refused, not failed.** F9's six fields were measured, not proved: a key heavy
   in `|` and `%`, which escape to three bytes, or behind a long name, fit a btree entry only when Postgres
   compressed it. Now the key is counted after escaping, with the name in front of it, against
@@ -354,15 +361,12 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Added
 
-- **EP4: a process manager's state in a scenario, and who keeps a reaction idempotent.** A process
-  manager's scenario may say `state %{…}`, the fields its run holds after the trigger; `ScenarioCase`
-  folds the delivered event after the reaction, as the engine does (a timer folds none), and compares the
-  fields named. S3 and S6 refuse a state naming no field of the run or the correlation, said twice, or said
-  of anything but a process manager. **`idempotency` is now `[key: :event_id, owner: :self]`**, the owner
-  one of `:self`, `:downstream` and `:infrastructure`, both required; an atom no longer compiles, and P3
-  refuses `:downstream` outside an effect. The callback's `@doc` and the reaction's page say what the owner
-  asks of the code. **Moves the version** of every contract with an `idempotency`, which is now a map in
-  the model; a scenario's `state` is kept only where it is said, so no other version moves.
+- **EP4: a process manager's state in a scenario.** A process manager's scenario may say `state %{…}`, the
+  fields its run holds after the trigger; `ScenarioCase` folds the delivered event after the reaction, as the
+  engine does (a timer folds none), compares the fields named, and fails a step the engine would not take — a
+  given before the run starts, a trigger after it ends. S3 and S6 refuse a state naming no field of the run or
+  the correlation, said twice, or said of anything but a process manager. Kept in the model only where said,
+  and redacted in the export by the run's fields, so no other version moves.
 - **EP3: a generated behaviour documents what the contract says.** Each callback's `@doc` gives its
   declaration's label and source, the events it may emit or the commands it may issue, the rules that hold
   there — each with the scenario that refuses on it or illustrates it, or marked prose alone — and the

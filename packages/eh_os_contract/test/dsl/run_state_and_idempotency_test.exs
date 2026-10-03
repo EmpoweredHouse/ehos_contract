@@ -46,6 +46,7 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
       starts_on :paid, sets: :later
       on :paid
       timer :later, at: :remind_at, issues: :remind
+      ends_on :reminded
     end
 
     scenario "pierwsza płatność — termin przypomnienia" do
@@ -68,6 +69,21 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
       state %{visit_id: "w-9"}
     end
 
+    scenario "przypomnienie po zakończeniu" do
+      scope :chase
+      given :paid, %{amount: 30}
+      given :reminded
+      on :later
+      state %{paid: 30}
+    end
+
+    scenario "przypomniano, zanim cokolwiek zapłacono" do
+      scope :chase
+      given :reminded
+      on :paid, %{amount: 20}
+      state %{paid: 20}
+    end
+
     scenario "przypomnienie — stan bez zmian" do
       scope :chase
       given :paid, %{amount: 30}
@@ -87,6 +103,8 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
     @impl true
     def evolve(%State{paid: paid} = state, %Paid{amount: amount, __meta__: meta}),
       do: %{state | paid: paid + amount, remind_at: DateTime.add(meta.occurred_at, 1, :day)}
+
+    def evolve(state, %Reminded{}), do: state
   end
 
   defmodule EhOsContract.Fixtures.Implementations.RunStateForgetful do
@@ -192,6 +210,26 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
         end
 
       assert ExUnit.AssertionError.message(error) =~ ~s|visit_id: "scenario"|
+    end
+
+    # What the engine would never take holds no state: a timer of an ended run, and a
+    # given before anything started the run.
+    test "fails on a step the engine would not take", %{model: model} do
+      error =
+        assert_raise ExUnit.AssertionError, fn ->
+          run(model, "przypomnienie po zakończeniu", @right)
+        end
+
+      assert ExUnit.AssertionError.message(error) =~
+               "the engine would not take :later: the run of :chase is ended"
+
+      error =
+        assert_raise ExUnit.AssertionError, fn ->
+          run(model, "przypomniano, zanim cokolwiek zapłacono", @right)
+        end
+
+      assert ExUnit.AssertionError.message(error) =~
+               "given :reminded reaches no run: the engine starts a run of :chase only on [:paid]"
     end
 
     test "S3 refuses a field the run does not have, and a value of the wrong type" do

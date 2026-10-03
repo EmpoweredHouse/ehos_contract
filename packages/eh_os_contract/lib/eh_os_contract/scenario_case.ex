@@ -18,7 +18,10 @@ defmodule EhOsContract.ScenarioCase do
   compiled; what runs is what the code decides. A process manager's `state` (plan
   EP4) is the run after the step, as the engine keeps it: the delivered event folded
   through `evolve/2` after the reaction decided, and after a timer the state as it
-  was. It holds the fields the scenario names, and any others.
+  was. It holds the fields the scenario names, and any others. Only a step the engine
+  would take holds a state: a run starts on a `starts_on` event and takes nothing
+  after an `ends_on` one, so a given before the start, or a trigger after the end,
+  fails the scenario.
 
   **What it asserts keeps `ContractExample`'s semantics.** The events a scenario
   expects, and the commands it says are issued, **appear among those produced, in
@@ -535,6 +538,7 @@ defmodule EhOsContract.ScenarioCase do
   defp held!(model, %{target: %{name: name}} = scenario, impl, state, identity, now) do
     pm = Enum.find(model.process_managers, &(&1.name == name))
     trigger = scenario.trigger.name
+    taken!(pm, scenario)
 
     after_step =
       if Enum.any?(pm.timers, &(&1.name == trigger)),
@@ -553,6 +557,49 @@ defmodule EhOsContract.ScenarioCase do
            and it holds:
              #{inspect(Map.from_struct(after_step))}
            """
+  end
+
+  # A state the engine could hold: as `EhOsContract.ProcessManager` takes events, a
+  # run starts on a `starts_on` event, takes nothing before that, and nothing after
+  # an `ends_on` one; a timer fires only in a running run. Asked of a scenario that
+  # says a state, since a run that never takes the step holds none.
+  defp taken!(pm, scenario) do
+    starts = Enum.map(pm.starts_on, & &1.event)
+    ends = pm.ends_on
+    timer? = Enum.any?(pm.timers, &(&1.name == scenario.trigger.name))
+
+    status =
+      Enum.reduce(scenario.given, :none, fn given, status ->
+        case status do
+          :none ->
+            assert given.event in starts,
+                   "given #{inspect(given.event)} reaches no run: the engine starts a run of " <>
+                     "#{inspect(pm.name)} only on #{inspect(starts)}"
+
+            if given.event in ends, do: :ended, else: :running
+
+          :running ->
+            if given.event in ends, do: :ended, else: :running
+
+          :ended ->
+            flunk(
+              "given #{inspect(given.event)} comes after the run of #{inspect(pm.name)} ended, " <>
+                "and the engine takes nothing then"
+            )
+        end
+      end)
+
+    taken =
+      case status do
+        :running -> true
+        :none -> not timer? and scenario.trigger.name in starts
+        :ended -> false
+      end
+
+    assert taken,
+           "the engine would not take #{inspect(scenario.trigger.name)}: the run of " <>
+             "#{inspect(pm.name)} is #{if status == :ended, do: "ended", else: "not started"}, " <>
+             "so it holds no state after it"
   end
 
   # What a scenario expects, with its data cast as the struct's would be.
