@@ -1018,4 +1018,56 @@ defmodule AppuniteEquipment.Contracts.Computers do
     command :list_externally
     rejected :allegro_only_without_reservation
   end
+
+  scenario "Inventory: zamówienie dla nowej osoby, oddany komputer bez rezerwacji, sprzedany zostaje sprzedanym" do
+    given :ordered, %{
+      computer_id: "computer-1",
+      profile: :operations,
+      employee_id: "employee-ola"
+    }
+
+    given :ordered, %{computer_id: "computer-2", profile: :developer}
+
+    given :received, %{
+      computer_id: "computer-2",
+      serial_number: "C02DX1ABQ6LR",
+      chip: :m1,
+      price: 899_900,
+      purchased_on: "2021-02-02",
+      invoice_number: "FV/2021/02/3"
+    }
+
+    given :listed_for_sale, %{computer_id: "computer-2", asking_price: 210_000}
+    given :reserved, %{computer_id: "computer-2", buyer_id: "employee-pawel"}
+    given :donated, %{computer_id: "computer-2"}
+    given :ordered, %{computer_id: "computer-3", profile: :developer}
+
+    given :received, %{
+      computer_id: "computer-3",
+      serial_number: "C02XG2JHJGH5",
+      chip: :m2,
+      price: 549_900,
+      purchased_on: "2023-03-14",
+      invoice_number: "FV/2023/03/41"
+    }
+
+    given :listed_for_sale, %{computer_id: "computer-3", asking_price: 250_000}
+
+    given :sold, %{
+      computer_id: "computer-3",
+      price: 250_000,
+      invoice_number: "FS/2026/10/2",
+      channel: :marketplace
+    }
+
+    given :lost, %{computer_id: "computer-3"}
+    given :returned, %{computer_id: "computer-3", assignment_id: "assignment-ola-1"}
+    query :inventory_list
+
+    answers [
+      %{computer_id: "computer-1", status: :ordered, employee_id: "employee-ola"},
+      %{computer_id: "computer-2", status: :donated, reserved: false},
+      %{computer_id: "computer-3", status: :sold}
+    ]
+  end
 end

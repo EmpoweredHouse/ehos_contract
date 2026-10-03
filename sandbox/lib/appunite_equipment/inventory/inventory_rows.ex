@@ -11,9 +11,10 @@ defmodule AppuniteEquipment.Inventory.InventoryRows do
   import Ecto.Query
 
   @table "appunite_equipment_inventory"
+  @ended ["sold", "donated", "disposed", "lost"]
 
   @impl true
-  def ordered(%Ordered{computer_id: id, profile: profile}) do
+  def ordered(%Ordered{computer_id: id, profile: profile, employee_id: employee}) do
     repo().insert_all(
       @table,
       [
@@ -21,6 +22,7 @@ defmodule AppuniteEquipment.Inventory.InventoryRows do
           computer_id: id,
           profile: Atom.to_string(profile),
           status: "ordered",
+          employee_id: employee,
           set_up: false,
           reserved: false
         }
@@ -50,8 +52,11 @@ defmodule AppuniteEquipment.Inventory.InventoryRows do
   def return_started(%ReturnStarted{computer_id: id}), do: rewrite(id, status: "returning")
 
   @impl true
+  # As in the computer's own fold, an observation that does not fit leaves the row
+  # where it is: a return only of a computer being returned, a service return only
+  # of one in service, an end only of one that has not ended.
   def returned(%Returned{computer_id: id}),
-    do: rewrite(id, status: "in_office", set_up: false, employee_id: nil)
+    do: rewrite_when(id, ["returning"], status: "in_office", set_up: false, employee_id: nil)
 
   @impl true
   def wiped(%Wiped{computer_id: id}), do: rewrite(id, set_up: false)
@@ -61,7 +66,7 @@ defmodule AppuniteEquipment.Inventory.InventoryRows do
 
   @impl true
   def service_returned(%ServiceReturned{computer_id: id}),
-    do: rewrite(id, status: "in_office", set_up: false)
+    do: rewrite_when(id, ["in_service"], status: "in_office", set_up: false)
 
   @impl true
   def listed_for_sale(%ListedForSale{computer_id: id, asking_price: price}),
@@ -78,16 +83,19 @@ defmodule AppuniteEquipment.Inventory.InventoryRows do
   def listed_externally(%ListedExternally{}), do: :ok
 
   @impl true
-  def sold(%Sold{computer_id: id}), do: rewrite(id, status: "sold", reserved: false)
+  def sold(%Sold{computer_id: id}), do: rewrite_unless_ended(id, status: "sold", reserved: false)
 
   @impl true
-  def donated(%Donated{computer_id: id}), do: rewrite(id, status: "donated")
+  def donated(%Donated{computer_id: id}),
+    do: rewrite_unless_ended(id, status: "donated", reserved: false)
 
   @impl true
-  def disposed(%Disposed{computer_id: id}), do: rewrite(id, status: "disposed")
+  def disposed(%Disposed{computer_id: id}),
+    do: rewrite_unless_ended(id, status: "disposed", reserved: false)
 
   @impl true
-  def lost(%Lost{computer_id: id}), do: rewrite(id, status: "lost", employee_id: nil)
+  def lost(%Lost{computer_id: id}),
+    do: rewrite_unless_ended(id, status: "lost", employee_id: nil, reserved: false)
 
   @impl true
   def reset do
@@ -97,6 +105,24 @@ defmodule AppuniteEquipment.Inventory.InventoryRows do
 
   defp rewrite(id, fields) do
     repo().update_all(from(r in @table, where: r.computer_id == ^id), set: fields)
+    :ok
+  end
+
+  defp rewrite_when(id, statuses, fields) do
+    repo().update_all(
+      from(r in @table, where: r.computer_id == ^id and r.status in ^statuses),
+      set: fields
+    )
+
+    :ok
+  end
+
+  defp rewrite_unless_ended(id, fields) do
+    repo().update_all(
+      from(r in @table, where: r.computer_id == ^id and r.status not in ^@ended),
+      set: fields
+    )
+
     :ok
   end
 
