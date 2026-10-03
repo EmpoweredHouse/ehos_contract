@@ -78,8 +78,11 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
   [eh-os#91](https://github.com/EmpoweredHouse/eh-os/issues/91)–[#96](https://github.com/EmpoweredHouse/eh-os/issues/96)
   i tabela w „Dopisek 1 października”. Nowa potrzeba: wiersz w tabeli i issue.
 - **EP — proza w kontrakcie** (decyzja użytkownika z 3 października): EP1 → EP2 → EP3, potem EP4 i EP5 po
-  decyzjach o kształcie — „Dopisek 3 października — EP”. **EP1 w `main`** (#102); EP2 prowadzi sesja
-  `esdm-dsl-comparison` na `dsl/ep2-rules`.
+  decyzjach o kształcie — „Dopisek 3 października — EP”. **EP1–EP3 w `main`** (#102, #106, #107; poprawka
+  hooka przeglądu dla worktree — #105). **Następne: EP4** (oczekiwany `state` w scenariuszu process managera,
+  wiersze read modelu w scenariuszu, właściciel `idempotency`), potem **EP5** (`capability` systemu zewnętrznego,
+  `responsibility` aktora, `terms` relacji jako pary) — przed każdym pytania do użytkownika o kształt, z
+  przykładem z materiału.
 
 ### Co przeczytać najpierw
 
