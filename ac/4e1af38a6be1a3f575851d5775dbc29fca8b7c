@@ -1,0 +1,6 @@
+Value bounds: /code-review high and engineering:code-review (security and performance) in parallel on 1d07a71..be8f5ee.
+Fixed with tests: the 400 named query_is_not_utf8 for every InvalidQueryError (now invalid_query_string with Plug's status, 414 kept); an 8 MB scope value still asked of the Authorizer (sent/2 capped at 255); JSON Schema without the bounds (id min/maxLength, integer int64); bounds written twice (within?/2), the moduledoc paragraph's place, decode/4's doc.
+Documented, not changed: the bounds hold wherever a value enters the log (inbox, a reaction's command, a decider's event, a domain service): an identity past 255 bytes takes no further command, decider arithmetic past the bounds fails the command; no production data and no backward-compatibility promise.
+For the user (new compile refusals): correlate on a :string field; identities or correlations of 7+ :id fields past a btree entry.
+Skipped: scenario examples not bounded at compile time.
+Gate from sandbox/: EXIT=0 - sandbox 145, check 0/29/9; engine 1135, check 0/68/6; web 52; auth 278 + 1 property.
