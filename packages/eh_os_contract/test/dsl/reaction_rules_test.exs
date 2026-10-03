@@ -11,7 +11,7 @@ defmodule EhOsContract.ReactionRulesTest do
   use EhOsContract.DslCase, async: false
 
   alias EhOsContract.Check.{Completeness, Finding}
-  alias EhOsContract.{Model, Pages}
+  alias EhOsContract.{Model, Pages, View}
 
   @visits """
     aggregate :visit, "Wizyta" do
@@ -30,6 +30,10 @@ defmodule EhOsContract.ReactionRulesTest do
       handles: :closed, issues: [:report, :waive] do
       constraint :only_reportable, "Zgłaszamy tylko usługi podlegające zgłoszeniu", source: "P-07"
       constraint :one_answer, "Każde zamknięcie dostaje dokładnie jedną odpowiedź"
+    end
+
+    policy :remind_on_waive, "Pominięcie — przypomnienie", handles: :waived, issues: :report do
+      constraint :quiet_hours, "Nie przypominamy w nocy"
     end
 
     effect :send_report, "Wyślij zgłoszenie", handles: :reported, idempotency: :event_id do
@@ -70,15 +74,44 @@ defmodule EhOsContract.ReactionRulesTest do
       scope :chase
       sets :due
     end
+
+    scenario "przypomnienie — zgłoszenie", illustrates: :one_timer do
+      on :due
+      issues :report
+    end
+
+    scenario "wizyty recepcji" do
+      query :visits_of, %{visit_id: "visit-anna"}
+      answers []
+    end
   """
 
+  # The line of the contract's file where `text` is, the body starting at line 4.
+  defp line_of(text) do
+    @visits |> String.split("\n") |> Enum.find_index(&String.contains?(&1, text)) |> Kernel.+(4)
+  end
+
   setup_all do
-    %{model: compile_contract("ReactionRules", @visits)}
+    compile(
+      """
+      defmodule EhOsContract.ReactionRulesTest.Domain do
+        use EhOsContract.Domain, name: :clinic, language: :pl
+        subdomain :billing, "Rozliczenia", type: :supporting
+        context :settlement, "Rozliczenia", subdomain: :billing
+      end
+      """,
+      "reaction_rules_domain.ex"
+    )
+
+    %{
+      model: compile_contract("ReactionRules", @visits),
+      domain: Model.fetch(EhOsContract.ReactionRulesTest.Domain)
+    }
   end
 
   describe "the model" do
     test "keeps each reaction's rules, and each scenario what it illustrates", %{model: model} do
-      [policy] = model.policies
+      policy = Enum.find(model.policies, &(&1.name == :report_on_close))
       [effect] = model.effects
       [pm] = model.process_managers
 
@@ -192,8 +225,45 @@ defmodule EhOsContract.ReactionRulesTest do
           end
         """)
 
-      assert message =~ "S10:"
-      assert message =~ "a command's scenario shows the rules it is refused on with `rejected`"
+      assert message =~
+               ~s|S10: scenario "zamknięcie bez zapłaty" names rules in illustrates:, but a | <>
+                 "command's scenario shows the rules it is refused on with " <>
+                 "`rejected`"
+    end
+
+    test "refuses a rule a query does not have, and a rule named twice" do
+      message =
+        refuse_contract("IllustratesQuery", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            command :close, "Zamknij", by: :reception, emits: :closed
+            event :closed, "Zamknięto"
+          end
+
+          read_model :visits, "Wizyty", projects: :closed do
+            field :visit_id, :id
+          end
+
+          query :visits_of, "Wizyty", reads: :visits, by: :reception do
+            param :visit_id, :id
+            constraint :own_clinic, "Tylko swoja przychodnia"
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+
+          scenario "wizyty", illustrates: [:own_clinic, :own_clinic, :all_clinics] do
+            query :visits_of, %{visit_id: "visit-anna"}
+            answers []
+          end
+        """)
+
+      assert message =~
+               ~s|S10: scenario "wizyty" illustrates :all_clinics, which is no rule of query | <>
+                 ":visits_of: it illustrates the query's constraints by name"
+
+      assert message =~ ~s|S10: scenario "wizyty" illustrates :own_clinic twice|
     end
   end
 
@@ -223,33 +293,43 @@ defmodule EhOsContract.ReactionRulesTest do
   end
 
   test "check warns of each rule no scenario illustrates, at the rule, and not of an effect's" do
+    findings = Completeness.findings([EhOsContract.Fixtures.ReactionRules])
+
     found =
-      for %Finding{rule: "prose-without-scenario"} = f <-
-            Completeness.findings([EhOsContract.Fixtures.ReactionRules]),
+      for %Finding{rule: "prose-without-scenario"} = f <- findings,
           do: {f.message, Finding.place(f)}
+
+    one_answer = line_of("constraint :one_answer")
+    own_clinic = line_of("constraint :own_clinic")
 
     assert [
              {"constraint :one_answer of policy :report_on_close of " <> _,
-              {"reaction_rules.ex", 19}},
-             {"constraint :own_clinic of query :visits_of of " <> _, {"reaction_rules.ex", 41}}
+              {"reaction_rules.ex", ^one_answer}},
+             {"constraint :own_clinic of query :visits_of of " <> _,
+              {"reaction_rules.ex", ^own_clinic}}
            ] = Enum.sort_by(found, &elem(&1, 1))
+
+    # A policy no scenario runs is reported once, by `reaction-without-scenario`, not
+    # once more for its constraint (the EP2 review).
+    assert [{"policy :remind_on_waive of " <> _, _}] =
+             for(
+               %Finding{rule: "reaction-without-scenario"} = f <- findings,
+               do: {f.message, Finding.place(f)}
+             )
+  end
+
+  test "view --details lists each reaction's rules", %{model: model, domain: domain} do
+    tree = View.render(domain, [%{model | domain: domain.module}], details: true)
+
+    assert tree =~ "constraint only_reportable — Zgłaszamy tylko usługi podlegające zgłoszeniu"
+    assert tree =~ "constraint within_limits — Adapter pilnuje limitów zapytań i ponawia je"
+    assert tree =~ "invariant one_timer — Wizyta ma najwyżej jedno przypomnienie naraz"
   end
 
   test "the pages list each reaction's rules, and what a scenario illustrates", %{
-    model: model
+    model: model,
+    domain: domain
   } do
-    compile(
-      """
-      defmodule EhOsContract.ReactionRulesTest.Domain do
-        use EhOsContract.Domain, name: :clinic, language: :pl
-        subdomain :billing, "Rozliczenia", type: :supporting
-        context :settlement, "Rozliczenia", subdomain: :billing
-      end
-      """,
-      "reaction_rules_domain.ex"
-    )
-
-    domain = Model.fetch(EhOsContract.ReactionRulesTest.Domain)
     pages = Pages.render(domain, [%{model | domain: domain.module}])
     dir = "settlement/reaction_rules"
 

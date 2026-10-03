@@ -746,7 +746,8 @@ defmodule EhOsContract.Pages do
     "#{given}#{trigger}; #{outcome}#{shows}"
   end
 
-  # A reaction's rules (plan EP2), as a query's constraints are listed.
+  # A declaration's rules: a command's and a query's constraints, and a reaction's
+  # constraints and a process manager's invariants (plan EP2).
   defp rules(d) do
     [
       section("Constraints", Map.get(d, :constraints, []), &"- #{code(&1.name)} — #{&1.label}"),
@@ -835,7 +836,7 @@ defmodule EhOsContract.Pages do
           do: "Creates its #{unit.kind}, whose identity the library gives."
         )
       ]),
-      section("Constraints", Map.get(c, :constraints, []), &"- #{code(&1.name)} — #{&1.label}"),
+      rules(c),
       issued_by_reactions(model, c),
       ["", "## Fields", "" | fields_table(site, c.fields)]
     ]
@@ -950,7 +951,7 @@ defmodule EhOsContract.Pages do
         "Returns #{if q.returns == :one, do: "one row or none", else: "rows"}.",
         if(q.scope, do: "Narrowed by #{code(q.scope)}.")
       ]),
-      section("Constraints", Map.get(q, :constraints, []), &"- #{code(&1.name)} — #{&1.label}"),
+      rules(q),
       ["", "## Parameters", "" | fields_table(site, q.params)]
     ]
   end

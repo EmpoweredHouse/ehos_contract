@@ -320,16 +320,9 @@ defmodule EhOsContract.Contract.Dsl do
 
   # A process manager's invariant (plan EP2, ESDM's): what holds of every run. It
   # refuses nothing, so a scenario that `illustrates:` it is what shows it holds.
-  @manager_invariant %Spark.Dsl.Entity{
-    name: :invariant,
-    describe: "What must stay true of every run of the process manager.",
-    target: Invariant,
-    args: [:name, :label],
-    schema: [
-      name: [type: :atom, required: true, doc: "The invariant's name."],
-      label: [type: :string, required: true, doc: "The rule, as the business states it."],
-      source: [type: :string, doc: "Where the rule comes from in the material."]
-    ]
+  @manager_invariant %{
+    @invariant
+    | describe: "What must stay true of every run of the process manager."
   }
 
   # ESDM's constraint (plan EL2): a named rule prose states. A command's is checked
