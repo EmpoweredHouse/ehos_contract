@@ -21,7 +21,8 @@ defmodule EhOsContract.ScenarioCase do
   was. It holds the fields the scenario names, and any others. Only a step the engine
   would take holds a state: a run starts on a `starts_on` event and takes nothing
   after an `ends_on` one, so a given before the start, or a trigger after the end,
-  fails the scenario; so do events whose correlation names two runs.
+  fails the scenario. Any process manager's scenario whose events name two runs in
+  their correlation fails too, before anything is folded.
 
   **What it asserts keeps `ContractExample`'s semantics.** The events a scenario
   expects, and the commands it says are issued, **appear among those produced, in
@@ -490,6 +491,7 @@ defmodule EhOsContract.ScenarioCase do
     state =
       if kind == :process_manager do
         pm = Enum.find(model.process_managers, &(&1.name == name))
+        one_run!(pm, scenario, Enum.any?(pm.timers, &(&1.name == trigger)))
 
         domain = domain(model)
 
@@ -567,7 +569,6 @@ defmodule EhOsContract.ScenarioCase do
     starts = Enum.map(pm.starts_on, & &1.event)
     ends = pm.ends_on
     timer? = Enum.any?(pm.timers, &(&1.name == scenario.trigger.name))
-    one_run!(pm, scenario, timer?)
 
     status =
       Enum.reduce(scenario.given, :none, fn given, status ->
@@ -604,8 +605,9 @@ defmodule EhOsContract.ScenarioCase do
   end
 
   # The engine tells runs by their correlation, so events that give it two values
-  # are two runs, never one state. A value left out is the one the scenario gives
-  # elsewhere (`identity/1`). A timer delivers no event.
+  # are two runs, never one state: asked of every process manager's scenario, before
+  # anything is folded. A value left out is not compared — the unit's identity is
+  # filled in with the scenario's (`identity/1`). A timer delivers no event.
   defp one_run!(pm, scenario, timer?) do
     data =
       Enum.map(scenario.given, & &1.data) ++ if(timer?, do: [], else: [scenario.trigger.data])

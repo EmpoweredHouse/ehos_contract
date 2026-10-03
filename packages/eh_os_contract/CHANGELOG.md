@@ -364,7 +364,9 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 - **EP4: a process manager's state in a scenario.** A process manager's scenario may say `state %{…}`, the
   fields its run holds after the trigger; `ScenarioCase` folds the delivered event after the reaction, as the
   engine does (a timer folds none), compares the fields named, and fails a step the engine would not take — a
-  given before the run starts, a trigger after it ends. S3 and S6 refuse a state naming no field of the run or
+  given before the run starts, a trigger after it ends. **Any** process manager's scenario whose events
+  name two values of a correlation field now fails: the engine keeps two runs, and the runner had folded them
+  into one state. S3 and S6 refuse a state naming no field of the run or
   the correlation, said twice, or said of anything but a process manager. Kept in the model only where said,
   and redacted in the export by the run's fields, so no other version moves.
 - **EP3: a generated behaviour documents what the contract says.** Each callback's `@doc` gives its

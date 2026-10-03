@@ -91,6 +91,21 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
       state %{paid: 50}
     end
 
+    scenario "płatności dwóch wizyt — przypomnienie" do
+      scope :chase
+      given :paid, %{visit_id: "w-1", amount: 30}
+      given :paid, %{visit_id: "w-2", amount: 20}
+      on :later
+      issues :remind
+    end
+
+    scenario "druga płatność tej samej wizyty" do
+      scope :chase
+      given :paid, %{visit_id: "w-1", amount: 30}
+      on :paid, %{amount: 20}
+      state %{visit_id: "w-1", paid: 50}
+    end
+
     scenario "przypomnienie — stan bez zmian" do
       scope :chase
       given :paid, %{amount: 30}
@@ -245,6 +260,17 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
 
       assert ExUnit.AssertionError.message(error) =~
                ~s|belong to more than one run of :chase: :visit_id is "w-1", "w-2"|
+
+      # Any scenario of the process manager, not only one that says a state.
+      error =
+        assert_raise ExUnit.AssertionError, fn ->
+          run(model, "płatności dwóch wizyt — przypomnienie", @right)
+        end
+
+      assert ExUnit.AssertionError.message(error) =~ "belong to more than one run of :chase"
+
+      # Control: a value one event names and another leaves out is one run.
+      assert run(model, "druga płatność tej samej wizyty", @right)
     end
 
     test "S3 refuses a field the run does not have, and a value of the wrong type" do

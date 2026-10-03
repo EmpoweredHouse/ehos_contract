@@ -608,7 +608,11 @@ Na `dsl/ep4-executable` (od `origin/main` = `8f685cf`, po #108).
   Bezpieczeństwo i wydajność: poza powyższym bez defektu. Do stron trafiają tylko nazwy pól stanu, nie wartości.
 - **CodeRabbit (#109), jedna uwaga — poprawiona:** scenariusz ze `state`, którego zdarzenia mają dwie wartości
   korelacji (`given` wizyty A, wyzwalacz wizyty B), składał je w jeden stan, a runtime założyłby dwa runy. Taki
-  scenariusz teraz pada.
+  scenariusz teraz pada. Przegląd poprawki: to samo dotyczyło **każdego** scenariusza process managera (np. z
+  `issues`), więc sprawdzenie stoi przed składaniem stanu, dla wszystkich; linia w CHANGELOG. Bez zmian:
+  porównanie przed rzutowaniem (korelacja to `:id` albo identyfikator — F8 — więc surowe dane wystarczają).
+  Pominięte: pole korelacji spoza tożsamości jednostki, pominięte w danych — silnik nie bierze takiego zdarzenia,
+  runner je składa; sprzed EP4, osobna sprawa.
 - **Brama zielona po przeglądzie:** **EXIT=0** — sandbox 148, `check` 0 / 29 / 9; silnik 1198, `check` 0 / 71 / 6;
   web 52; auth 285 + 1 właściwość.
 
