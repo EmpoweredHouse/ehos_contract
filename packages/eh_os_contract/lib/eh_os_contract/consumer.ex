@@ -236,8 +236,7 @@ defmodule EhOsContract.Consumer do
         actor: Actor.reaction(kind, consumer.name),
         causation_id: source.id,
         correlation_id: source.correlation_id,
-        idempotency_key:
-          "#{kind}:#{inspect(consumer.contract)}:#{consumer.name}:#{source.id}:#{index}",
+        idempotency_key: reaction_key(kind, consumer.contract, consumer.name, source.id, index),
         chain: chain
       ]
 
@@ -277,4 +276,18 @@ defmodule EhOsContract.Consumer do
 
   defp describe(%module{}), do: "%#{inspect(module)}{}"
   defp describe(other), do: inspect(other)
+
+  @doc false
+  # The key a reaction's command is dispatched with: one per event and command, so a
+  # delivery again is the same command. Held to dispatch's rule as every key is; one that
+  # would break it — names past what 255 bytes leave, or a quoted module — is its SHA-256
+  # in the same form, and the key of every other reaction stays as it always was.
+  @spec reaction_key(atom(), module(), atom(), String.t(), non_neg_integer()) :: String.t()
+  def reaction_key(kind, contract, name, id, index) do
+    key = "#{kind}:#{inspect(contract)}:#{name}:#{id}:#{index}"
+
+    if Dispatcher.idempotency_key?(key),
+      do: key,
+      else: "#{kind}:sha256:" <> Base.encode16(:crypto.hash(:sha256, key), case: :lower)
+  end
 end

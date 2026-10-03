@@ -265,6 +265,19 @@ defmodule EhOsContract.PlugTest do
       assert asked() == [{move, {"branch_id", "b-9"}}]
     end
 
+    # The Authorizer may record what it is asked (`eh_os_contract_auth` does, in a text
+    # column): a value with a NUL is no value a grant holds, and is asked as none.
+    test "a scoped command whose scope value is not text is asked with no value" do
+      move = "dispatch_rig.move_account"
+      clerk = Actor.credential("u-1", [move], %{move => %{"branch_id" => ["b-7"]}})
+
+      conn =
+        call(post("/commands/#{move}", %{account_id: "a-1", branch_id: "b-7\u0000"}), clerk)
+
+      assert {conn.status, json(conn)} == {403, %{"refused" => "outside_scope"}}
+      assert asked() == [{move, {"branch_id", nil}}]
+    end
+
     test "a scoped query that does not decode is asked with the value as it was sent" do
       # Without its scope parameter the query does not decode, and asks for no value
       # the grant holds: refused, as `EhOsContract.query/3` refuses it, not 422.

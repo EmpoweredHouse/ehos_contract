@@ -66,6 +66,34 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
     untraversed, not as failing, and the policy's own failures on the log are not counted against it.
   - The inbox now writes `received_at` by `EhOsContract.Clock`, as dispatch writes an event's `occurred_at`, so
     a report's bounds read both alike.
+
+- **Request bytes the log cannot hold are a refusal, not an exception.** Until now Postgres refused to store each
+  of these, and a request answered 500. The rule for an idempotency key also refuses keys that were stored before
+  (below):
+  - **Text in a `:string` or `:id` field holding a NUL, or invalid UTF-8, does not fit its type.**
+    - Reachable over HTTP: `"\u0000"` in JSON, `%00` in a query string. Plug refuses invalid UTF-8 in a query
+      string, and Jason in a body.
+    - Reachable from a direct caller of `call/3` or `dispatch/3` with any bytes.
+    - The answer is `{:error, {:invalid, [{field, :type}]}}`, or 422 `{"invalid": {"<field>": "type"}}`, at any
+      depth of a domain value. A query's parameter is held to it too.
+    - A published event an inbox takes is held to it as well. One that does not fit is delivered again, also when
+      no policy would have stored the field.
+    - A scope value that is not text is asked of the `Authorizer` as none (`nil`), so it is refused
+      `:outside_scope` and never reaches a decision row.
+    - Reading the log back does not ask again: a sealed personal value written before the rule still opens.
+  - **A caller's idempotency key must be printable ASCII (`0x21`–`0x7E`) of at most 255 bytes.**
+    - Otherwise the answer is `{:error, :idempotency_key_invalid}`, or 400 `{"error": "idempotency_key_invalid"}`.
+      This is a new refusal.
+    - The rule is stricter than the key's columns need, so a key never depends on what a text column, `jsonb` and
+      an index entry happen to hold.
+      - What failed the write before was a NUL, invalid UTF-8, or a key past about 2.7 KB.
+      - These were accepted before and are refused now: a space, other non-ASCII UTF-8 such as `zamówienie-1`, a
+        key of 256 bytes to 2.7 KB, and an empty `idempotency-key` header.
+    - The OpenAPI document gives the header's pattern.
+    - A reaction's key is held to it too, since a reaction's actor is a struct any caller can build. The key the
+      library derives keeps its form, `<kind>:<contract>:<name>:<event id>:<n>`; one that would break the rule
+      (names past what 255 bytes leave, a quoted module) is `<kind>:sha256:<hex>` of it instead.
+
 - **E12c, D12: only a policy takes an event another application publishes.** A read model, an effect or a
   process manager that names a `consumes "<name>"` event no longer compiles: the event arrives in an inbox and
   never enters the log they read, so none of them would ever have been given it. React with a policy, and take

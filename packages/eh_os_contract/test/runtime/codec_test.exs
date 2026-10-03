@@ -272,6 +272,39 @@ defmodule EhOsContract.CodecTest do
                {:ok, %{member_id: "member-anna", name: "Anna Nowak", note: "n"}}
     end
 
+    # Inside a ciphertext the log holds any bytes JSON writes, and a NUL was let in before text
+    # had to be text: what is read back was written, so reading it back does not refuse it.
+    test "a sealed value with a NUL, written before the rule, is read back" do
+      stored =
+        Codec.encode(
+          @personal,
+          %{member_id: "member-anna", name: "Anna" <> <<0>>},
+          %{},
+          Personal.sealer(@keys, "shredding_rig.joined")
+        )
+
+      assert {:ok, %{name: "Anna" <> <<0>>}} =
+               Codec.decode(@personal, stored, %{},
+                 open: Personal.opener(@read, "shredding_rig.joined")
+               )
+
+      # What comes from outside is held to it.
+      assert Codec.decode(
+               @personal,
+               %{"member_id" => "member-anna", "name" => "Anna" <> <<0>>},
+               %{}
+             ) ==
+               {:error, [name: :type]}
+
+      # So is a field no seal held, read with `open:` all the same: only an opened value is let in.
+      assert Codec.decode(
+               @personal,
+               %{"member_id" => "member-anna" <> <<0>>, "name" => nil},
+               %{},
+               open: Personal.opener(@read, "shredding_rig.joined")
+             ) == {:error, [member_id: :type, name: :required]}
+    end
+
     test "a ciphertext moved to another event type, field or subject does not open" do
       stored = sealed("shredding_rig.joined")
       open = Personal.opener(@read, "shredding_rig.renamed")

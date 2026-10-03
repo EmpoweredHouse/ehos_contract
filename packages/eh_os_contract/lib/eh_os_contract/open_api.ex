@@ -153,8 +153,10 @@ defmodule EhOsContract.OpenAPI do
         "name" => "idempotency-key",
         "in" => "header",
         "required" => Map.get(command, :creates, false),
-        "schema" => %{"type" => "string"},
-        "description" => "Idempotency key; required when the command creates its aggregate."
+        "schema" => %{"type" => "string", "pattern" => "^[!-~]{1,255}$"},
+        "description" =>
+          "Idempotency key, printable ASCII of at most 255 bytes; required when the command " <>
+            "creates its aggregate."
       },
       %{
         "name" => "x-correlation-id",
@@ -194,7 +196,9 @@ defmodule EhOsContract.OpenAPI do
   defp command_responses do
     %{
       "200" => %{"description" => "Command accepted", "content" => json(receipt_schema())},
-      "400" => %{"description" => "Invalid JSON body or correlation identifier"},
+      "400" => %{
+        "description" => "Invalid JSON body, correlation identifier or idempotency key"
+      },
       "401" => %{"description" => "No verified actor"},
       "403" => %{"description" => "Capability or scope refused"},
       "404" => %{"description" => "Capability not found"},
