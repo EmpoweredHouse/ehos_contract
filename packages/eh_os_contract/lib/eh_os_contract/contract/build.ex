@@ -66,13 +66,15 @@ defmodule EhOsContract.Contract.Build do
       units: Enum.map(units, &unit/1),
       commands: for(u <- units, c <- u.commands, do: command(u, c)),
       events: events,
-      policies: entities |> of(Dsl.Policy) |> Enum.map(&plain/1),
-      effects: entities |> of(Dsl.Effect) |> Enum.map(&plain/1),
+      policies: entities |> of(Dsl.Policy) |> Enum.map(&(&1 |> plain() |> sourced())),
+      effects: entities |> of(Dsl.Effect) |> Enum.map(&(&1 |> plain() |> sourced())),
       process_managers:
         entities |> of(Dsl.ProcessManager) |> Enum.map(&process_manager(&1, events)),
-      read_models: entities |> of(Dsl.ReadModel) |> Enum.map(&plain/1),
+      read_models: entities |> of(Dsl.ReadModel) |> Enum.map(&(&1 |> plain() |> sourced())),
       queries:
-        entities |> of(Dsl.Query) |> Enum.map(&(&1 |> plain() |> without_empty(:constraints))),
+        entities
+        |> of(Dsl.Query)
+        |> Enum.map(&(&1 |> plain() |> without_empty(:constraints) |> sourced())),
       domain_services: entities |> of(Dsl.DomainService) |> Enum.map(&plain/1),
       consumes: entities |> of(Dsl.Consumes) |> Enum.map(&consumes/1),
       publishes: entities |> of(Dsl.Publish) |> Enum.map(&plain/1),
@@ -101,6 +103,12 @@ defmodule EhOsContract.Contract.Build do
   # declaration written without it moves its digest (plan EL2's constraints).
   defp without_empty(map, key),
     do: if(Map.get(map, key) == [], do: Map.delete(map, key), else: map)
+
+  # `source:` came to reactions, read models, queries, timers and the process after the
+  # first contracts were digested (plan EP1), so it is kept only where it is set. The
+  # declarations that had it from the start keep it, `nil` or not.
+  defp sourced(%{source: nil} = map), do: Map.delete(map, :source)
+  defp sourced(map), do: map
 
   # --- declarations as data --------------------------------------------------------
 
@@ -193,10 +201,14 @@ defmodule EhOsContract.Contract.Build do
 
     pm
     |> plain()
+    |> sourced()
     |> Map.merge(%{
       state: %{fields: correlation ++ declared},
       timers:
-        Enum.map(pm.timers, &(&1 |> plain() |> Map.update!(:wait, fn w -> duration(w) end))),
+        Enum.map(
+          pm.timers,
+          &(&1 |> plain() |> sourced() |> Map.update!(:wait, fn w -> duration(w) end))
+        ),
       ends_on: Enum.map(pm.ends_on, & &1.event)
     })
   end
@@ -243,6 +255,8 @@ defmodule EhOsContract.Contract.Build do
       deadline: timed(process.deadline, :within),
       promises: for(p <- process.promises, do: p |> plain() |> Map.update!(:within, &duration/1))
     }
+    |> Map.put(:source, process.source)
+    |> sourced()
   end
 
   defp timed([], _key), do: nil

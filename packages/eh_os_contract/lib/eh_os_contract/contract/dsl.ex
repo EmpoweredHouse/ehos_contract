@@ -99,13 +99,15 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule Policy do
     @moduledoc false
-    defstruct [:name, :label, :idempotency, handles: [], issues: [], delivery: :in_transaction] ++
+    defstruct [:name, :label, :idempotency, :source, handles: [], issues: []] ++
+                [delivery: :in_transaction] ++
                 [__spark_metadata__: nil]
   end
 
   defmodule Effect do
     @moduledoc false
-    defstruct [:name, :label, :idempotency, handles: [], calls: [], delivery: :at_least_once] ++
+    defstruct [:name, :label, :idempotency, :source, handles: [], calls: []] ++
+                [delivery: :at_least_once] ++
                 [__spark_metadata__: nil]
   end
 
@@ -121,7 +123,7 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule Timer do
     @moduledoc false
-    defstruct [:name, :wait, :at, issues: [], __spark_metadata__: nil]
+    defstruct [:name, :wait, :at, :source, issues: [], __spark_metadata__: nil]
   end
 
   defmodule EndsOn do
@@ -131,20 +133,20 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule ProcessManager do
     @moduledoc false
-    defstruct [:name, :label, :idempotency, correlate: [], delivery: :at_least_once] ++
+    defstruct [:name, :label, :idempotency, :source, correlate: [], delivery: :at_least_once] ++
                 [state: [], starts_on: [], on: [], timers: [], ends_on: []] ++
                 [__spark_metadata__: nil]
   end
 
   defmodule ReadModel do
     @moduledoc false
-    defstruct [:name, :label, projects: [], delivery: :in_transaction, fields: []] ++
+    defstruct [:name, :label, :source, projects: [], delivery: :in_transaction, fields: []] ++
                 [__spark_metadata__: nil]
   end
 
   defmodule Query do
     @moduledoc false
-    defstruct [:name, :label, :reads, :scope, by: [], returns: :many, params: []] ++
+    defstruct [:name, :label, :reads, :scope, :source, by: [], returns: :many, params: []] ++
                 [constraints: [], __spark_metadata__: nil]
   end
 
@@ -211,7 +213,7 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule ProcessDeclaration do
     @moduledoc false
-    defstruct [:name, :label, :accountable, correlate: [], stages: [], includes: []] ++
+    defstruct [:name, :label, :accountable, :source, correlate: [], stages: [], includes: []] ++
                 [cadence: [], deadline: [], promises: [], __spark_metadata__: nil]
   end
 
@@ -485,7 +487,8 @@ defmodule EhOsContract.Contract.Dsl do
       handles: [type: {:wrap_list, :atom}, required: true, doc: "The events it reacts to."],
       issues: [type: {:wrap_list, :atom}, required: true, doc: "The commands it may issue."],
       delivery: [type: @delivery, default: :in_transaction, doc: "When it runs."],
-      idempotency: [type: :atom, doc: "What makes a second delivery harmless."]
+      idempotency: [type: :atom, doc: "What makes a second delivery harmless."],
+      source: [type: :string, doc: "Where the policy comes from in the material."]
     ]
   }
 
@@ -500,7 +503,8 @@ defmodule EhOsContract.Contract.Dsl do
       handles: [type: {:wrap_list, :atom}, required: true, doc: "The events it reacts to."],
       calls: [type: {:wrap_list, :atom}, default: [], doc: "The external systems it calls."],
       delivery: [type: @delivery, default: :at_least_once, doc: "When it runs."],
-      idempotency: [type: :atom, doc: "What makes a second delivery harmless."]
+      idempotency: [type: :atom, doc: "What makes a second delivery harmless."],
+      source: [type: :string, doc: "Where the effect comes from in the material."]
     ]
   }
 
@@ -538,7 +542,8 @@ defmodule EhOsContract.Contract.Dsl do
       name: [type: :atom, required: true, doc: "The timer's name."],
       wait: [type: :any, doc: "How long after it is set it fires, `{n, unit}`."],
       at: [type: :atom, doc: "The `:timestamp` field of the state it fires at."],
-      issues: [type: {:wrap_list, :atom}, default: [], doc: "Commands it issues when it fires."]
+      issues: [type: {:wrap_list, :atom}, default: [], doc: "Commands it issues when it fires."],
+      source: [type: :string, doc: "Where the timer comes from in the material."]
     ]
   }
 
@@ -571,7 +576,8 @@ defmodule EhOsContract.Contract.Dsl do
         doc: "The fields that tell which run an event belongs to."
       ],
       delivery: [type: @delivery, default: :at_least_once, doc: "When it runs."],
-      idempotency: [type: :atom, doc: "What makes a second delivery harmless."]
+      idempotency: [type: :atom, doc: "What makes a second delivery harmless."],
+      source: [type: :string, doc: "Where the process manager comes from in the material."]
     ]
   }
 
@@ -587,7 +593,8 @@ defmodule EhOsContract.Contract.Dsl do
       name: [type: :atom, required: true, doc: "The read model's name."],
       label: [type: :string, required: true, doc: "What the business calls it."],
       projects: [type: {:wrap_list, :atom}, required: true, doc: "The events it projects."],
-      delivery: [type: @delivery, default: :in_transaction, doc: "When it is updated."]
+      delivery: [type: @delivery, default: :in_transaction, doc: "When it is updated."],
+      source: [type: :string, doc: "Where the read model comes from in the material."]
     ]
   }
 
@@ -607,7 +614,8 @@ defmodule EhOsContract.Contract.Dsl do
         type: :atom,
         doc:
           "The row field a grant narrows the answer to: a parameter and a scope of every actor."
-      ]
+      ],
+      source: [type: :string, doc: "Where the query comes from in the material."]
     ]
   }
 
@@ -826,7 +834,8 @@ defmodule EhOsContract.Contract.Dsl do
         required: true,
         doc: "The fields that tell which run an event belongs to."
       ],
-      accountable: [type: :atom, doc: "The actor a finding about the process is addressed to."]
+      accountable: [type: :atom, doc: "The actor a finding about the process is addressed to."],
+      source: [type: :string, doc: "Where the process comes from in the material."]
     ]
   }
 

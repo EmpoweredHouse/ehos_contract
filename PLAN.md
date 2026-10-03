@@ -83,7 +83,8 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
   [eh-os#91](https://github.com/EmpoweredHouse/eh-os/issues/91)–[#96](https://github.com/EmpoweredHouse/eh-os/issues/96)
   i tabela w „Dopisek 1 października”. Nowa potrzeba: wiersz w tabeli i issue.
 - **EP — proza w kontrakcie** (decyzja użytkownika z 3 października): EP1 → EP2 → EP3, potem EP4 i EP5 po
-  decyzjach o kształcie — „Dopisek 3 października — EP”. Przed EP2 do rozstrzygnięcia `invariant` encji.
+  decyzjach o kształcie — „Dopisek 3 października — EP”. **EP1 zrobione** na `dsl/ep1-source` (przegląd przed
+  EP2). Przed EP2 do rozstrzygnięcia `invariant` encji.
 
 ### Co przeczytać najpierw
 
@@ -422,6 +423,29 @@ startują od nazwanych reguł: każda ma scenariusz, zanim powstanie kod.
 - Tożsamość `static` — dopiero z przykładem bytu w jednej instancji z materiału.
 - Sprawdzanie kodu wobec prozy przez LLM w CI — samo niedeterministyczne; najwyżej podpowiedź dla recenzenta,
   nie brama. Na później.
+
+### EP1 — co wyszło (3 października)
+
+Na `dsl/ep1-source` (od `origin/main` = `64f888b`), niewypchnięte.
+- **`source:`** w kontrakcie na `policy`, `effect`, `process_manager`, `timer`, `read_model`, `query`, `process`;
+  w domenie na `actor`, `subject`, `value`, `external`, `relation`. `subject` ponad listę z planu
+  (rozstrzygnięcie asystenta: „pacjent” też jest z materiału, `A-01`). `consumes` i `publish` bez — to okablowanie
+  między kontraktami, nie fakt z warsztatu.
+- **Klucz w modelu tylko tam, gdzie ustawiony** (wzorzec z EM3): kontrakt i domena bez `source:` mają te same
+  digesty co przed EP1, więc żadna wdrożona wersja się nie rusza. Rodzaje, które miały `source` od początku,
+  trzymają klucz jak dotąd, także `nil`. Test odwrotny: z wyłączonym usuwaniem test „no digest moves” pada.
+- **Czytelnik — `pages`:** `_Source: …_` na stronie deklaracji (polityka, efekt, process manager, read model,
+  query — przez istniejący nagłówek), w sekcji procesu i na stronie wartości; przy aktorze, podmiocie, systemie,
+  relacji i timerze w ich wierszu.
+- **Sandbox jako dane testowe:** źródła przeniesione z komentarzy tylko tam, gdzie identyfikator wskazuje jedną
+  deklarację — `P-07`, `A-01`, `X-01`, `X-02, X-03, X-04`, `E-55` w Rehmedzie; `03 §3` (dwie relacje),
+  `03 §4.10`, `03 §5, step 2`, `P6`, `03 §4.2` w TaxVision. Pominięte: `# A-02, A-03, A-05` nad trzema aktorami
+  (nie wiadomo, który do którego), relacje Rehmedu (komentarz nie mówi jednoznacznie, że opisuje każdą), aktorzy
+  integracji TaxVision (komentarz mówi, że materiał ich nie nazywa).
+- Słownik przypięty w obu testach słownictwa, `docs/dsl/` wygenerowane, linia w `CHANGELOG.md`.
+- **Brama zielona:** sandbox 145 testów, `check` 0 / 29 / 9 (bez zmian); silnik 1135, `check` 0 / 68 / 6 (bez
+  zmian); web 52; auth 285 + 1 właściwość. Trzy pierwsze podejścia padły na `too_many_connections` — wspólny
+  Postgres zapchany przez procesy innej sesji, nie przez kod.
 
 ## Dopisek 2 października (2) — #83: `ehos.yaml/v2` i `sign_in`; podział EB2
 

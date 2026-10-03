@@ -23,9 +23,10 @@ defmodule EhOsContract.DomainVocabularyTest do
              [:context, :term, :translation] => [:language, :text, :definition],
              [:context, :term, :translation, :avoid] => [:text, :reason],
              [:context, :term, :avoid] => [:text, :reason],
-             [:actor] => [:name, :kind, :label, :backed_by, :context, :scope],
-             [:subject] => [:name, :label],
-             [:value] => [:name, :type, :unit, :label, :context],
+             # Plan EP1: `source` on every declaration, the first rung of the ladder.
+             [:actor] => [:name, :kind, :label, :backed_by, :context, :scope, :source],
+             [:subject] => [:name, :label, :source],
+             [:value] => [:name, :type, :unit, :label, :context, :source],
              [:value, :field] => @field,
              [:value, :invariant] => [:name, :label, :violated_by, :satisfied_by, :source],
              # Plan EM2: ESDM's entity, reference data a context owns.
@@ -36,9 +37,10 @@ defmodule EhOsContract.DomainVocabularyTest do
                :label,
                :direction,
                :unavailable_looks_like,
-               :expected_latency
+               :expected_latency,
+               :source
              ],
-             [:relation] => [:type, :upstream, :downstream, :between, :terms]
+             [:relation] => [:type, :upstream, :downstream, :between, :terms, :source]
            }
   end
 end

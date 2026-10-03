@@ -330,6 +330,10 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Added
 
+- **EP1: `source:` on every declaration** a workshop names — a policy, an effect, a process manager and its
+  timers, a read model, a query and the process in a contract; an actor, a subject, a value, an external and a
+  relation in a domain — where it comes from in the material. `mix eh_os_contract.pages` shows it. A
+  declaration without it keeps its digest.
 - **E12d: `EhOsContract.call/3`, the one way in for data from outside.** A command, a recording or a query
   by its capability's name (`{:command, "rehmed.record_payment"}`), with the data as a caller sent it and a
   credential's actor: it asks the `EhOsContract.Authorizer` before it says what is wrong with what was sent,

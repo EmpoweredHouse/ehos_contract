@@ -251,6 +251,7 @@ Who issues commands: a kind of person, or a system.
 | [`backed_by`](#domain-actor-backed_by){: #domain-actor-backed_by } | `atom` |  | The external system a system actor stands for. |
 | [`context`](#domain-actor-context){: #domain-actor-context } | `atom` |  | The context the actor belongs to. |
 | [`scope`](#domain-actor-scope){: #domain-actor-scope } | `atom \| list(atom)` | `[]` | The fields a grant to this actor narrows query answers by. |
+| [`source`](#domain-actor-source){: #domain-actor-source } | `String.t` |  | Where the actor comes from in the material. |
 
 
 
@@ -275,7 +276,11 @@ A kind of person whose personal data may be erased.
 |------|------|---------|------|
 | [`name`](#domain-subject-name){: #domain-subject-name .spark-required} | `atom` |  | The subject's name. |
 | [`label`](#domain-subject-label){: #domain-subject-label .spark-required} | `String.t` |  | What the business calls them. |
+### Options
 
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#domain-subject-source){: #domain-subject-source } | `String.t` |  | Where the subject comes from in the material. |
 
 
 
@@ -310,6 +315,7 @@ A value type: one built-in type with an optional unit, or a set of fields.
 | [`unit`](#domain-value-unit){: #domain-value-unit } | `atom` |  | What a number counts, e.g. `:grosze`. |
 | [`label`](#domain-value-label){: #domain-value-label } | `String.t` |  | What the business calls it. |
 | [`context`](#domain-value-context){: #domain-value-context } | `atom` |  | The context the value belongs to. |
+| [`source`](#domain-value-source){: #domain-value-source } | `String.t` |  | Where the value comes from in the material. |
 
 
 ### domain.value.field
@@ -473,6 +479,7 @@ An external system, named after the business fact rather than the vendor.
 | [`direction`](#domain-external-direction){: #domain-external-direction .spark-required} | `:inbound \| :outbound \| :bidirectional` |  | Which way data flows. |
 | [`unavailable_looks_like`](#domain-external-unavailable_looks_like){: #domain-external-unavailable_looks_like } | `String.t` |  | How an outage shows to the business. |
 | [`expected_latency`](#domain-external-expected_latency){: #domain-external-expected_latency } | `any` |  | How long an answer usually takes, `{n, unit}`. |
+| [`source`](#domain-external-source){: #domain-external-source } | `String.t` |  | Where the external comes from in the material. |
 
 
 
@@ -504,6 +511,7 @@ How two contexts relate: one of the eight context-mapping patterns.
 | [`downstream`](#domain-relation-downstream){: #domain-relation-downstream } | `atom` |  | The downstream context of a directed relation. |
 | [`between`](#domain-relation-between){: #domain-relation-between } | `list(atom)` | `[]` | The two contexts of a symmetric relation. |
 | [`terms`](#domain-relation-terms){: #domain-relation-terms } | `list(String.t)` | `[]` | Terms the relation shares or translates. |
+| [`source`](#domain-relation-source){: #domain-relation-source } | `String.t` |  | Where the relation comes from in the material. |
 
 
 

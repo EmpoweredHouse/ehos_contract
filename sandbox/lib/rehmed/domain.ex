@@ -102,7 +102,7 @@ defmodule Rehmed.Domain do
 
   # A-01. The patient never uses the system, and is the person whose data the
   # contracts carry: a PESEL and the codes of what was diagnosed.
-  subject :patient, "Pacjent"
+  subject :patient, "Pacjent", source: "A-01"
 
   # AGG-15. The one attribute the contracts read is the P1 flag, "one flag, not two"
   # (2026-08-17): whether a service is reported decides whether a visit is.
@@ -120,7 +120,8 @@ defmodule Rehmed.Domain do
   external :p1, "Rejestr zdarzeń medycznych P1",
     direction: :bidirectional,
     unavailable_looks_like:
-      "odrzucenie zgłoszenia albo brak łączności z rejestrem; certyfikat wygasł albo nie został wgrany"
+      "odrzucenie zgłoszenia albo brak łączności z rejestrem; certyfikat wygasł albo nie został wgrany",
+    source: "X-01"
 
   # X-02, X-03, X-04: LuxMed, Enelmed and TuZdrowie, which work identically
   # (2026-08-14), so one system with three configurations, not three. Nothing calls
@@ -130,11 +131,13 @@ defmodule Rehmed.Domain do
            "System rozliczeniowy płatnika zewnętrznego (LuxMed, Enelmed, TuZdrowie)",
            direction: :outbound,
            unavailable_looks_like:
-             "panel płatnika niedostępny albo wizyta nie została w nim odnotowana przez człowieka — czego nasz system nie widzi"
+             "panel płatnika niedostępny albo wizyta nie została w nim odnotowana przez człowieka — czego nasz system nie widzi",
+           source: "X-02, X-03, X-04"
 
   value :money, :integer, unit: :grosze, label: "Kwota"
 
   # E-55: "K / G / przelew / bon"
   value :payment_method,
-        {:enum, [card: "Karta", cash: "Gotówka", transfer: "Przelew", voucher: "Bon"]}
+        {:enum, [card: "Karta", cash: "Gotówka", transfer: "Przelew", voucher: "Bon"]},
+        source: "E-55"
 end

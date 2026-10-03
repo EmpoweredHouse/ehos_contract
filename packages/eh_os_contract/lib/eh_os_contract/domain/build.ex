@@ -156,7 +156,12 @@ defmodule EhOsContract.Domain.Build do
 
     collections =
       for {key, entity} <- @kinds, into: %{} do
-        {key, for(%{__struct__: _} = e <- entities, entity_name(e) == entity, do: plain(e))}
+        {key,
+         for(
+           %{__struct__: _} = e <- entities,
+           entity_name(e) == entity,
+           do: e |> plain() |> sourced(entity)
+         )}
       end
 
     # The domain's own options are part of the agreement too: `language` decides what
@@ -181,6 +186,16 @@ defmodule EhOsContract.Domain.Build do
       digests: Map.put(digests(collections), "domain:#{name}", Digest.hash(own))
     })
   end
+
+  # Kinds that took `source:` after their first domains were digested (plan EP1): the
+  # key is kept only where it is set, so no declaration written without it moves its
+  # digest. The kinds that had it from the start keep it, `nil` or not.
+  @sourced_later [:actor, :subject, :value, :external, :relation]
+
+  defp sourced(%{source: nil} = declaration, entity) when entity in @sourced_later,
+    do: Map.delete(declaration, :source)
+
+  defp sourced(declaration, _entity), do: declaration
 
   @spec digests(map()) :: %{String.t() => String.t()}
   defp digests(collections) do

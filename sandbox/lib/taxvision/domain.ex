@@ -41,17 +41,23 @@ defmodule Taxvision.Domain do
   # 03 §3 draws the arrow and names what crosses it, "RegistryDataConsistent /
   # DiscrepancyDetected", but gives it no pattern; the month is the customer of
   # those facts, so it is written as customer–supplier.
-  relation :customer_supplier, upstream: :client_lifecycle, downstream: :accounting_month
+  relation :customer_supplier,
+    upstream: :client_lifecycle,
+    downstream: :accounting_month,
+    source: "03 §3"
 
   # 03 §3's table: intake supplies canonical documents, deduplicated, and the month
   # is its customer.
-  relation :customer_supplier, upstream: :document_intake, downstream: :accounting_month
+  relation :customer_supplier,
+    upstream: :document_intake,
+    downstream: :accounting_month,
+    source: "03 §3"
 
   # 03 §4.10: one type of TaxVision employee, "because the work comes from duties,
   # not permissions"; the month and the check are the accountant's. The company is
   # the dimension a grant names (HS28, and the rule "the month is opened by the
   # accountant of this company", plan, 27 September).
-  actor :accountant, :human, "Księgowa", scope: [:company_id]
+  actor :accountant, :human, "Księgowa", scope: [:company_id], source: "03 §4.10"
 
   # The material names no actor for it: 03 §4.2's port "adapter trzyma limity i
   # retry". It records what the registries answered (D6).

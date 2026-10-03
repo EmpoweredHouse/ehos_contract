@@ -39,12 +39,13 @@ defmodule EhOsContract.Domain.Dsl do
 
   defmodule Actor do
     @moduledoc false
-    defstruct [:name, :kind, :label, :backed_by, :context, scope: [], __spark_metadata__: nil]
+    defstruct [:name, :kind, :label, :backed_by, :context, :source, scope: []] ++
+                [__spark_metadata__: nil]
   end
 
   defmodule Subject do
     @moduledoc false
-    defstruct [:name, :label, __spark_metadata__: nil]
+    defstruct [:name, :label, :source, __spark_metadata__: nil]
   end
 
   defmodule Field do
@@ -75,6 +76,7 @@ defmodule EhOsContract.Domain.Dsl do
       :unit,
       :label,
       :context,
+      :source,
       fields: [],
       invariants: [],
       __spark_metadata__: nil
@@ -102,13 +104,15 @@ defmodule EhOsContract.Domain.Dsl do
       :direction,
       :unavailable_looks_like,
       :expected_latency,
+      :source,
       __spark_metadata__: nil
     ]
   end
 
   defmodule Relation do
     @moduledoc false
-    defstruct [:type, :upstream, :downstream, between: [], terms: [], __spark_metadata__: nil]
+    defstruct [:type, :upstream, :downstream, :source, between: [], terms: []] ++
+                [__spark_metadata__: nil]
   end
 
   # The eight context-mapping patterns. Three are symmetric and are written
@@ -214,7 +218,8 @@ defmodule EhOsContract.Domain.Dsl do
         type: {:wrap_list, :atom},
         default: [],
         doc: "The fields a grant to this actor narrows query answers by."
-      ]
+      ],
+      source: [type: :string, doc: "Where the actor comes from in the material."]
     ]
   }
 
@@ -225,7 +230,8 @@ defmodule EhOsContract.Domain.Dsl do
     args: [:name, :label],
     schema: [
       name: [type: :atom, required: true, doc: "The subject's name."],
-      label: [type: :string, required: true, doc: "What the business calls them."]
+      label: [type: :string, required: true, doc: "What the business calls them."],
+      source: [type: :string, doc: "Where the subject comes from in the material."]
     ]
   }
 
@@ -290,7 +296,8 @@ defmodule EhOsContract.Domain.Dsl do
       type: [type: :any, doc: "The built-in type, when the value is not a set of fields."],
       unit: [type: :atom, doc: "What a number counts, e.g. `:grosze`."],
       label: [type: :string, doc: "What the business calls it."],
-      context: [type: :atom, doc: "The context the value belongs to."]
+      context: [type: :atom, doc: "The context the value belongs to."],
+      source: [type: :string, doc: "Where the value comes from in the material."]
     ]
   }
 
@@ -325,7 +332,8 @@ defmodule EhOsContract.Domain.Dsl do
         doc: "Which way data flows."
       ],
       unavailable_looks_like: [type: :string, doc: "How an outage shows to the business."],
-      expected_latency: [type: :any, doc: "How long an answer usually takes, `{n, unit}`."]
+      expected_latency: [type: :any, doc: "How long an answer usually takes, `{n, unit}`."],
+      source: [type: :string, doc: "Where the external comes from in the material."]
     ]
   }
 
@@ -351,7 +359,8 @@ defmodule EhOsContract.Domain.Dsl do
         type: {:list, :string},
         default: [],
         doc: "Terms the relation shares or translates."
-      ]
+      ],
+      source: [type: :string, doc: "Where the relation comes from in the material."]
     ]
   }
 
