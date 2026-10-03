@@ -47,4 +47,21 @@ defmodule EhOsContract.KeyTest do
     assert Key.base_type(:undeclared, @values) == :undeclared
     assert Key.base_type({:list, :id}, @values) == {:list, :id}
   end
+
+  describe "the budget (issue #98)" do
+    test "counts the bytes of every column of an entry together" do
+      assert Key.fits?([String.duplicate("a", 2000), String.duplicate("b", 48)])
+      refute Key.fits?([String.duplicate("a", 2000), String.duplicate("b", 49)])
+    end
+
+    test "counts bytes, not characters" do
+      # "€" is three bytes in UTF-8.
+      assert Key.fits?([String.duplicate("€", 682) <> "aa"])
+      refute Key.fits?([String.duplicate("€", 682) <> "aaa"])
+    end
+
+    test "leaves room below the 2704 bytes of a btree entry for its header and length words" do
+      assert Key.budget() < 2704 - 8 - 2 * 8
+    end
+  end
 end

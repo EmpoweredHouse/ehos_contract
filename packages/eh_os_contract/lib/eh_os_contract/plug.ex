@@ -46,6 +46,7 @@ if Code.ensure_loaded?(Plug.Conn) do
     | refused | 403 | `{"refused": "<reason>"}` |
     | no actor | 401 | `{"error": "no_actor"}` |
     | a command that creates its aggregate, without an `idempotency-key` | 422 | `{"error": "idempotency_key_required"}` |
+    | a unit's or a run's key over `EhOsContract.Key.budget/0` bytes, its name and its fields escaped | 422 | `{"error": "key_too_long"}` |
     | an `idempotency-key` that is not printable ASCII of at most 255 bytes | 400 | `{"error": "idempotency_key_invalid"}` |
     | conflict, or a reused key | 409 | `{"error": "<reason>"}` |
     | personal data of an erased subject | 410 | `{"error": "subject_erased"}` |
@@ -195,8 +196,8 @@ if Code.ensure_loaded?(Plug.Conn) do
       reply(conn, 422, %{invalid: invalid})
     end
 
-    defp refused(conn, :idempotency_key_required),
-      do: reply(conn, 422, %{error: :idempotency_key_required})
+    defp refused(conn, reason) when reason in [:idempotency_key_required, :key_too_long],
+      do: reply(conn, 422, %{error: reason})
 
     defp refused(conn, :idempotency_key_invalid),
       do: reply(conn, 400, %{error: :idempotency_key_invalid})

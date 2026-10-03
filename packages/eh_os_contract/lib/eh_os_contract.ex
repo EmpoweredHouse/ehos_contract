@@ -42,6 +42,7 @@ defmodule EhOsContract do
       Graph,
       Implementation,
       Key,
+      Key.TooLongError,
       Meta,
       Migrations,
       Model,

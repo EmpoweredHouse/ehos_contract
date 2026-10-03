@@ -652,6 +652,14 @@ where it helps; every violation is reported as a diagnostic before the single ra
   > subscription. **F9**: a unit's identity and each `correlate` have at most six fields, measured against
   > Postgres 17 (`EhOsContract.Key`). Hashing a key past a length would have needed no rule, and was rejected:
   > a hashed stream or run key can no longer be read in the log or on the dashboard.
+
+  > *Added 3 October 2026, issue #98.* **F9 was a sample, not a bound.** Six fields of 255 bytes are 4595
+  > bytes once `|` and `%` are escaped, past the 2704 a btree entry holds, and they fit only when Postgres
+  > compresses the entry, which it keeps only when that saves a quarter; nor did F9 count the name in front
+  > of the key, a module's in a process manager's. A key is now counted after escaping, with that name,
+  > against a budget of 2048 bytes (`EhOsContract.Key.budget/0`): dispatch refuses a command over it with
+  > `:key_too_long` (422), and a process manager stops at the event with `EhOsContract.Key.TooLongError`.
+  > F9 stays as the compile-time refusal of shapes that would mostly fail anyway.
 - *Units.* A1: `emits` is non-empty and a subset of the unit's own events. A2: every event is emitted by at
   least one command of its unit **or declares `recorded_by`** — stricter than ESDM, because in an
   event-sourced system any other event can never occur. A3: `rejects` ⊆ the unit's invariants. A4: a DCB has

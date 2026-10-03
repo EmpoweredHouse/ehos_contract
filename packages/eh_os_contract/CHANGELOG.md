@@ -52,6 +52,21 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Changed — a host has to act
 
+- **#98: a key past 2048 bytes is refused, not failed.** F9's six fields were measured, not proved: a key heavy
+  in `|` and `%`, which escape to three bytes, or behind a long name, fit a btree entry only when Postgres
+  compressed it. Now the key is counted after escaping, with the name in front of it, against
+  `EhOsContract.Key.budget/0`, 2048 bytes of the 2704 an entry holds:
+  - **dispatch** refuses a command whose aggregate's stream id, or a run's key an event belongs to — home or
+    included, the process's name and the instance id — is over it: `{:error, :key_too_long}`, or 422
+    `{"error": "key_too_long"}`, with nothing written. Until now Postgres refused the append, and the answer
+    was 500;
+  - **a process manager** raises `EhOsContract.Key.TooLongError` on an event whose run's key — its timer
+    stream, `"$pm:<manager>:<correlation>"` — is over it, before anything is written. Its subscription stops
+    at that event as at any failure, until someone skips it (`mix eh_os_contract.subscriptions`). Until now
+    it stopped on Postgres's exception, or did not, depending on compression.
+  - The 422 of every command in the OpenAPI document names the new reason, so its `x-eh-os-contract-digest`
+    changes.
+
 - **#96: a run and a process manager are told only by an `:id`, and a key has at most six fields.** Two
   contract shapes that compiled no longer do:
   - **F8.** A field a process or a process manager `correlate`s on is an `:id`, `{:id, entity}` or a domain
