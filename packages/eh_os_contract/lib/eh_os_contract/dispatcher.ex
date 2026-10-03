@@ -24,7 +24,9 @@ defmodule EhOsContract.Dispatcher do
      An idempotency key, a caller's or a reaction's, is printable ASCII (`0x21`–`0x7E`)
      of at most 255 bytes, or `{:error, :idempotency_key_invalid}`: stricter than the key's columns
      need, so a key never depends on what a text column, `jsonb` and an index entry
-     happen to hold.
+     happen to hold. An aggregate's stream id, its name and its identity escaped
+     (`EhOsContract.Key`), is at most `EhOsContract.Key.budget/0` bytes, or
+     `{:error, :key_too_long}` (issue #98).
   3. **Once.** A key belongs to the actor who sent it: another actor's command
      with the same key is its own, and never sees the first one's receipt. An
      idempotency key the actor already had accepted for the same command returns
@@ -51,7 +53,10 @@ defmodule EhOsContract.Dispatcher do
      personal fields are sealed with their subjects' keys (`EhOsContract.Personal`);
      an event carrying personal data of an erased subject is refused,
      `{:error, :subject_erased}`, before anything is sealed, and writes no row: the
-     decision was the unit's, the refusal is the erasure's.
+     decision was the unit's, the refusal is the erasure's. So is a run's key over
+     `EhOsContract.Key.budget/0`, the process's name and the instance id an event
+     belongs to, home or included: `{:error, :key_too_long}`, with no row, in place
+     of Postgres refusing the entry.
   7. **Inside the transaction** (v2 §12): every read model delivered
      `:in_transaction` projects the appended events, in order, then every such
      policy reacts, then every such effect acts (`EhOsContract.Consumer`). What a
@@ -119,6 +124,7 @@ defmodule EhOsContract.Dispatcher do
           | :conflict
           | :not_caught_up
           | :subject_erased
+          | :key_too_long
 
   @doc """
   Dispatches `command`, a struct a v2 contract generated, to `contract`.
@@ -144,7 +150,8 @@ defmodule EhOsContract.Dispatcher do
            ),
          :ok <- valid(declaration.fields, command, values, model.domain),
          :ok <- keyed(ctx),
-         {:ok, command} <- generate_identity(model, declaration, command, ctx) do
+         {:ok, command} <- generate_identity(model, declaration, command, ctx),
+         :ok <- stream_fits(model, declaration, command) do
       job = %{
         kind: :command,
         type: Atom.to_string(declaration.name),
@@ -188,7 +195,8 @@ defmodule EhOsContract.Dispatcher do
 
     with :ok <- permit_record(model, declaration, ctx.actor),
          :ok <- valid(declaration.fields, event, values, model.domain),
-         :ok <- keyed(ctx) do
+         :ok <- keyed(ctx),
+         :ok <- stream_fits(model, declaration, event) do
       job = %{
         kind: :record,
         type: "record:#{declaration.name}",
@@ -659,6 +667,17 @@ defmodule EhOsContract.Dispatcher do
 
   defp generate_identity(_model, _declaration, command, _ctx), do: {:ok, command}
 
+  # An aggregate's stream id is the first column of the log's unique index; a boundary's
+  # events have none (issue #98).
+  defp stream_fits(model, declaration, struct) do
+    case Enum.find(model.units, &(&1.name == declaration.unit)) do
+      %{kind: :aggregate} = unit -> fits([stream(unit, struct)])
+      _boundary -> :ok
+    end
+  end
+
+  defp fits(columns), do: if(Key.fits?(columns), do: :ok, else: {:error, :key_too_long})
+
   # A key is stored in `eh_os_contract_commands` and its unique index, and in the event's
   # metadata: printable ASCII that a text column, `jsonb` and a btree entry all hold. A
   # reaction's too: its actor is a struct any caller can build, and the keys the library
@@ -798,6 +817,12 @@ defmodule EhOsContract.Dispatcher do
   end
 
   defp commit(job, events, repo) do
+    # Before the subjects' keys, which `Personal.for_writing/2` may create and the
+    # refusal, returned rather than rolled back, would leave behind (issue #98).
+    with :ok <- runs_fit(job.model, events), do: append(job, events, repo)
+  end
+
+  defp append(job, events, repo) do
     # The subjects' keys are read and wrapped before the lock, where a vault's round
     # trip holds up no other writer, and stored under it (v2 §14).
     prepared = Personal.prepare(repo, subjects(job, events))
@@ -987,7 +1012,7 @@ defmodule EhOsContract.Dispatcher do
 
   # An aggregate reads its whole stream, whose version is the append's condition.
   defp read_unit(repo, _model, %{kind: :aggregate} = unit, command, _folded) do
-    stream = Key.stream(unit.name, Enum.map(unit.identity, &Map.fetch!(command, &1)))
+    stream = stream(unit, command)
     recorded = Store.read_stream(repo, stream, 0)
     version = if recorded == [], do: 0, else: List.last(recorded).stream_version
     {recorded, {:stream, stream, version}}
@@ -1000,6 +1025,9 @@ defmodule EhOsContract.Dispatcher do
     {recorded, head} = Store.read_query(repo, query)
     {recorded, {:dcb, query, head}}
   end
+
+  defp stream(unit, struct),
+    do: Key.stream(unit.name, Enum.map(unit.identity, &Map.fetch!(struct, &1)))
 
   defp boundary(model, unit, command) do
     tag = fn fields -> Enum.map(fields, &Key.tag(&1, Map.fetch!(command, &1))) end
@@ -1182,6 +1210,25 @@ defmodule EhOsContract.Dispatcher do
   defp run_key(process, struct) do
     values = Enum.map(process.correlate, &Map.get(struct, &1))
     if Enum.all?(values, &(&1 != nil)), do: Key.join([process.name | values])
+  end
+
+  # Every run the events belong to, as `eh_os_contract_event_runs` indexes it: the
+  # process's name and the instance id (issue #98).
+  defp runs_fit(model, events) do
+    runs =
+      Enum.flat_map(events, fn {declaration, event} ->
+        home =
+          case instance(model, event) do
+            nil -> []
+            key -> [{Atom.to_string(model.process.name), key}]
+          end
+
+        home ++ included_runs(model, declaration.type, event)
+      end)
+
+    if Enum.all?(runs, fn {process, key} -> Key.fits?([process, key]) end),
+      do: :ok,
+      else: {:error, :key_too_long}
   end
 
   # An event without the fields another process correlates on is in none of its runs,

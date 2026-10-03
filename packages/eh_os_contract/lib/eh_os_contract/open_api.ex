@@ -205,7 +205,8 @@ defmodule EhOsContract.OpenAPI do
       "409" => %{"description" => "Conflict or reused idempotency key"},
       "410" => %{"description" => "Personal-data subject erased"},
       "422" => %{
-        "description" => "Invalid fields, missing idempotency key, or invariant rejection"
+        "description" =>
+          "Invalid fields, missing idempotency key, key too long, or invariant rejection"
       }
     }
   end

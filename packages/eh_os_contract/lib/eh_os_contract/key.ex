@@ -21,7 +21,9 @@ defmodule EhOsContract.Key do
   # and the whole barely compresses. Seven such fields of 255 bytes fail most inserts. Six
   # fail none while the name in front of the key is short: a run's key carries the process's
   # name twice (its column and its prefix), and six fields began to fail behind a process
-  # name of about 100 bytes; a manager's key, whose name is once, held at 140.
+  # name of about 100 bytes; a manager's key, whose name is once, held at 140. Since #98
+  # `budget/0` is what bounds a key; this refuses at compile time the shapes that would
+  # mostly be over it.
   @max_fields 6
 
   @doc """
@@ -32,6 +34,27 @@ defmodule EhOsContract.Key do
   """
   @spec max_fields() :: pos_integer()
   def max_fields, do: @max_fields
+
+  # Postgres refuses a btree entry past 2704 bytes, its header, the columns' length words
+  # and their padding included: about 2667 bytes of text are left for the key's columns
+  # (issue #98). An entry under the budget fits whatever compression does, so the bound
+  # is no longer a sample (#96), and the margin leaves room for a column more.
+  @budget 2048
+
+  @doc """
+  How many bytes the text columns of one key's btree entry hold together at most: a
+  stream id, a run's process and instance id, a process manager's name and correlation,
+  counted after escaping and without compression. Dispatch refuses a command whose key
+  is over it with `:key_too_long`, and a process manager raises
+  `EhOsContract.Key.TooLongError`, both in place of Postgres's refusal (issue #98).
+  """
+  @spec budget() :: pos_integer()
+  def budget, do: @budget
+
+  @doc "Whether the columns of one key's entry, their bytes together, are within `budget/0`."
+  @spec fits?([String.t()]) :: boolean()
+  def fits?(columns) when is_list(columns),
+    do: columns |> Enum.map(&byte_size/1) |> Enum.sum() <= @budget
 
   @doc "Values joined with `|`, each escaped."
   @spec join([term()]) :: String.t()
@@ -98,5 +121,16 @@ defmodule EhOsContract.Key do
     |> to_string()
     |> String.replace("%", "%25")
     |> String.replace(@separator, "%7C")
+  end
+
+  defmodule TooLongError do
+    @moduledoc """
+    Raised when a process manager is delivered an event whose run's key is over
+    `EhOsContract.Key.budget/0`, in place of Postgres's refusal of the entry. Its
+    subscription stops at that event, as at any other failure, until someone skips it
+    (issue #98). The message names the manager and the bytes, never a value.
+    """
+
+    defexception [:message]
   end
 end

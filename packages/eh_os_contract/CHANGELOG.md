@@ -52,6 +52,30 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Changed — a host has to act
 
+- **#98: a key past 2048 bytes is refused, not failed.** F9's six fields were measured, not proved: a key heavy
+  in `|` and `%`, which escape to three bytes, or behind a long name, fit a btree entry only when Postgres
+  compressed it. Now the key is counted after escaping, with the name in front of it, against
+  `EhOsContract.Key.budget/0`, 2048 bytes of the 2704 an entry holds:
+  - **dispatch** refuses a command whose aggregate's stream id, or a run's key an event belongs to — home or
+    included, the process's name and the instance id — is over it: `{:error, :key_too_long}`, or 422
+    `{"error": "key_too_long"}`, with nothing written. Until now Postgres refused the append, and the answer
+    was 500;
+  - **a process manager** raises `EhOsContract.Key.TooLongError` on an event that would start a run whose
+    key — its timer stream, `"$pm:<manager>:<correlation>"` — is over it, before anything is written. Its
+    subscription stops at that event as at any failure, until someone skips it (`mix
+    eh_os_contract.subscriptions`). Until now it stopped on Postgres's exception, or did not, depending on
+    compression. An event no run takes is taken as before, whatever its key's length;
+  - **a command a reaction issues** and dispatch refuses with `:key_too_long` raises, as any refusal of such a
+    command other than a rejection does: a policy delivered `:in_transaction` rolls back the command that led
+    to it, and the caller still gets a 500; one delivered `:at_least_once`, and a process manager, stop at the
+    event. Only a command's own keys became a 422.
+  - **A key written before this change past the budget** is now refused: an aggregate whose stream id is longer
+    takes no further command, and a run is not started for it. A host finds them with
+    `octet_length(stream_id) > 2048` on `eh_os_contract_events` and `octet_length(process) +
+    octet_length(instance_id) > 2048` on `eh_os_contract_event_runs`.
+  - The 422 of every command in the OpenAPI document names the new reason, so its `x-eh-os-contract-digest`
+    changes.
+
 - **#96: a run and a process manager are told only by an `:id`, and a key has at most six fields.** Two
   contract shapes that compiled no longer do:
   - **F8.** A field a process or a process manager `correlate`s on is an `:id`, `{:id, entity}` or a domain
