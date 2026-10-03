@@ -34,11 +34,14 @@ defmodule EhOsContract.ContractDocTest do
 
       command :remind, "Przypomnienie", emits: :reminded
 
+      command :cancel, "Anulowanie", by: :reception, emits: :cancelled, rejects: :paid_in_full
+
       event :closed, "Zamknięto", terminal: true
       event :paid, "Zapłacono" do
         field :amount, :integer
       end
       event :reminded, "Przypomniano"
+      event :cancelled, "Anulowano"
     end
 
     policy :remind_on_arrival, "Przypomnij po przyjściu", handles: :arrived, issues: :remind,
@@ -53,8 +56,8 @@ defmodule EhOsContract.ContractDocTest do
 
     process_manager :chase, "Pogoń" do
       correlate :visit_id
-      starts_on :paid, sets: :due
-      timer :due, wait: {1, :day}, issues: :remind
+      starts_on :paid, sets: :due, issues: :remind
+      timer :due, wait: {1, :day}, issues: :remind, source: "H21"
       ends_on :closed
       invariant :one_timer, "Jedno przypomnienie naraz"
     end
@@ -68,12 +71,20 @@ defmodule EhOsContract.ContractDocTest do
       constraint :own_clinic, "Tylko swoja przychodnia"
     end
 
+    domain_service :pricing, "Cennik" do
+      function :price, "Cena" do
+        argument :minutes, :integer
+        returns :integer
+        rule :rounded, "Zaokrąglona", examples: [{[1], 1}, {[2], 2}]
+      end
+    end
+
     process :visit, "Wizyta" do
       correlate :visit_id
     end
 
-    scenario "niezapłacona — zamknięcie odrzucone" do
-      command :close
+    scenario "niezapłacona — anulowanie odrzucone" do
+      command :cancel
       rejected :paid_in_full
     end
 
@@ -93,6 +104,12 @@ defmodule EhOsContract.ContractDocTest do
       issues :remind
     end
 
+    scenario "zapłata — przypomnienie i licznik" do
+      on :paid, %{amount: 100}
+      sets :due
+      issues :remind
+    end
+
     scenario "przypomnienie po dniu", illustrates: :one_timer do
       on :due
       issues :remind
@@ -103,6 +120,8 @@ defmodule EhOsContract.ContractDocTest do
     %{model: compile_contract("DocVisits", @body)}
   end
 
+  # An invariant is shown by a scenario of any command refused on it (S8), so `close`,
+  # with no rejecting scenario of its own, points at `cancel`'s (the EP3 review).
   test "a command's callback: what it emits, the rules it refuses on and where, its scenarios",
        %{model: model} do
     assert Doc.callback(model, :aggregate, :visit, :close) == """
@@ -112,10 +131,9 @@ defmodule EhOsContract.ContractDocTest do
            - `closed` — "Zamknięto"
 
            Refuses with `reject/1` on:
-           - invariant `paid_in_full` — "Zapłacono całość" (source: E-12) — refused in "niezapłacona — zamknięcie odrzucone"
+           - invariant `paid_in_full` — "Zapłacono całość" (source: E-12) — refused in "niezapłacona — anulowanie odrzucone"
 
            Scenarios:
-           - "niezapłacona — zamknięcie odrzucone": rejected on `paid_in_full`
            - "zapłacona — zamknięta": emits `closed`\
            """
 
@@ -140,10 +158,31 @@ defmodule EhOsContract.ContractDocTest do
            """
   end
 
-  test "a process manager's timer, an effect, a read model, a query and evolve", %{model: model} do
-    timer = Doc.callback(model, :process_manager, :chase, :due)
-    assert timer =~ ~s|Fires on timer `due` of process manager `chase` — "Pogoń".|
-    assert timer =~ ~s|- invariant `one_timer` — "Jedno przypomnienie naraz" — illustrated by|
+  test "a process manager's timer and reaction, an effect, a read model, a query, a service and evolve",
+       %{model: model} do
+    assert Doc.callback(model, :process_manager, :chase, :due) == """
+           Fires on timer `due` (source: H21) of process manager `chase` — "Pogoń".
+
+           May issue:
+           - `remind` — "Przypomnienie"
+
+           Keeps:
+           - invariant `one_timer` — "Jedno przypomnienie naraz" — illustrated by "przypomnienie po dniu"
+
+           Scenarios:
+           - "przypomnienie po dniu": issues `remind`\
+           """
+
+    assert Doc.callback(model, :process_manager, :chase, :paid) =~
+             ~s|Reacts to `paid` — "Zapłacono", for process manager `chase` — "Pogoń".\n\n| <>
+               ~s|May issue:\n- `remind` — "Przypomnienie"|
+
+    assert Doc.callback(model, :domain_service, :pricing, :price) == """
+           Function `price` — "Cena" of domain service `pricing`.
+
+           Keeps:
+           - rule `rounded` — "Zaokrąglona" — 2 examples, each a test\
+           """
 
     assert Doc.callback(model, :effect, :notify, :closed) =~
              ~s|- constraint `limits` — "Adapter trzyma limity" — prose alone: no scenario runs an effect|
@@ -154,8 +193,11 @@ defmodule EhOsContract.ContractDocTest do
     assert Doc.callback(model, :query, :visits_of, :visits_of) =~
              ~s|- constraint `own_clinic` — "Tylko swoja przychodnia" — prose alone: no scenario shows it yet|
 
-    assert Doc.evolve([:closed, :paid]) ==
+    assert Doc.evolve(:aggregate, [:closed, :paid]) ==
              "Folds an event into the state, so the next decision sees it: `closed`, `paid`."
+
+    assert Doc.evolve(:process_manager, [:paid]) ==
+             "Folds an event into the state, so the next reaction sees it: `paid`."
   end
 
   test "a behaviour's moduledoc: the sentence, then the declaration and its rules", %{
@@ -167,7 +209,8 @@ defmodule EhOsContract.ContractDocTest do
            Aggregate `visit` — "Wizyta" (source: AGG-03).
 
            Rules:
-           - invariant `paid_in_full` — "Zapłacono całość" (source: E-12) — refused in "niezapłacona — zamknięcie odrzucone"\
+           - invariant `paid_in_full` — "Zapłacono całość" (source: E-12) — refused in "niezapłacona — anulowanie odrzucone"
+           - constraint `positive` — "Kwota jest dodatnia" — of command `pay`, refused in "zero zł — odmowa"\
            """
   end
 
@@ -180,5 +223,17 @@ defmodule EhOsContract.ContractDocTest do
     callback_docs = for {{:callback, _, _}, _, _, %{"en" => doc}, _} <- docs, do: doc
     assert callback_docs != []
     assert Enum.all?(callback_docs, &(&1 =~ ~r/^(Decides command|Folds an event)/))
+
+    # A boundary is named in words, and a query's module, which is its behaviour too,
+    # says what the contract says of the query (the EP3 review).
+    {:docs_v1, _, _, _, %{"en" => boundary}, _, _} =
+      Code.fetch_docs(BoundaryRig.Enrolment.Dcbs.Seat)
+
+    assert boundary =~ "Dynamic consistency boundary `seat`"
+
+    {:docs_v1, _, _, _, %{"en" => query}, _, _} =
+      Code.fetch_docs(DispatchRig.Ledger.Queries.BalancesForBranch)
+
+    assert query =~ ~s|Query `balances_for_branch` — "Balances of one branch"|
   end
 end

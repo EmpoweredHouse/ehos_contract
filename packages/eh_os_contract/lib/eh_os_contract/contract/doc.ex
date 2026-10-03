@@ -38,32 +38,13 @@ defmodule EhOsContract.Contract.Doc do
   def callback(model, kind, name, callback) when kind in [:aggregate, :dcb] do
     command = Enum.find(model.commands, &(&1.unit == name and &1.name == callback))
     unit = declaration(model, kind, name)
-
-    rules =
-      for(i <- unit.invariants, i.name in command.rejects, do: {"invariant", i}) ++
-        for c <- Map.get(command, :constraints, []), do: {"constraint", c}
-
-    refused = fn rule ->
-      for s <- model.scenarios,
-          s.trigger.kind == :command,
-          s.trigger.name == command.name,
-          s.rejected == rule.name,
-          do: s.description
-    end
+    own = for s <- model.scenarios, s.trigger.kind == :command, s.trigger.name == callback, do: s
 
     paragraphs([
       "Decides command `#{command.name}`#{label(command)}#{source(command)}.",
       list("Emits, when it accepts", Enum.map(command.emits, &event_line(model, &1))),
-      rules_section(
-        "Refuses with `reject/1` on",
-        for({word, rule} <- rules, do: {word, rule, shown(refused.(rule), "refused in")})
-      ),
-      scenarios(
-        for s <- model.scenarios,
-            s.trigger.kind == :command,
-            s.trigger.name == command.name,
-            do: s
-      )
+      rules_section("Refuses with `reject/1` on", command_rules(model, kind, unit, command)),
+      scenarios(own)
     ])
   end
 
@@ -77,7 +58,9 @@ defmodule EhOsContract.Contract.Doc do
 
     paragraphs([
       if(timer?,
-        do: "Fires on timer `#{callback}` of #{word(kind)} `#{name}`#{label(declaration)}.",
+        do:
+          "Fires on timer `#{callback}`#{timer_source(declaration, callback)} of #{word(kind)} " <>
+            "`#{name}`#{label(declaration)}#{source(declaration)}.",
         else:
           "Reacts to `#{callback}`#{event_label(model, callback)}, for #{word(kind)} " <>
             "`#{name}`#{label(declaration)}#{source(declaration)}."
@@ -126,23 +109,21 @@ defmodule EhOsContract.Contract.Doc do
     service = declaration(model, :domain_service, name)
     function = Enum.find(service.functions, &(&1.name == callback))
 
-    rules =
-      for r <- function.rules do
-        "- rule `#{r.name}`#{label(r)}#{source(r)} — #{examples(r)}"
-      end
-
     paragraphs([
       "Function `#{callback}`#{label(function)} of domain service `#{name}`.",
-      if(rules != [], do: Enum.join(["Keeps:" | rules], "\n"))
+      rules_section("Keeps", for(r <- function.rules, do: {"rule", r, examples(r)}))
     ])
   end
 
   @doc """
-  The `@doc` of `evolve/2`: which events it folds into the state.
+  The `@doc` of `evolve/2` of a declaration of `kind`: which events it folds into
+  the state, and what reads it next.
   """
-  @spec evolve([atom()]) :: String.t()
-  def evolve(events) do
-    "Folds an event into the state, so the next decision sees it: " <>
+  @spec evolve(atom(), [atom()]) :: String.t()
+  def evolve(kind, events) do
+    next = if kind == :process_manager, do: "reaction", else: "decision"
+
+    "Folds an event into the state, so the next #{next} sees it: " <>
       Enum.map_join(events, ", ", &"`#{&1}`") <> "."
   end
 
@@ -161,26 +142,39 @@ defmodule EhOsContract.Contract.Doc do
   defp collection(:query), do: :queries
   defp collection(:domain_service), do: :domain_services
 
+  defp word(:dcb), do: "dynamic consistency boundary"
   defp word(kind), do: kind |> Atom.to_string() |> String.replace("_", " ")
 
   defp labelled(kind, declaration),
     do:
       "#{String.capitalize(word(kind))} `#{declaration.name}`#{label(declaration)}#{source(declaration)}."
 
+  defp timer_source(pm, name) do
+    case Enum.find(pm.timers, &(&1.name == name)) do
+      %{source: source} when is_binary(source) -> " (source: #{source})"
+      _ -> ""
+    end
+  end
+
   # The rules of a declaration, each with the rung it stands on (plan EP2): a unit's
   # invariants are refused on in a scenario (S8); a reaction's and a query's rules are
   # illustrated by one, or are prose alone; an effect's are prose alone, since no
   # scenario runs an effect.
+  #
+  # An invariant is shown by any scenario of the unit refused on it, whichever command
+  # it runs (S8); a command's constraint by that command's (EP3 review: a callback's doc
+  # and the moduledoc read the same rung).
   defp rules(model, kind, unit) when kind in [:aggregate, :dcb] do
-    for i <- unit.invariants do
-      refused =
-        for s <- model.scenarios,
-            s.target == %{kind: kind, name: unit.name},
-            s.rejected == i.name,
-            do: s.description
+    invariants =
+      for i <- unit.invariants, do: {"invariant", i, refused_in(model, kind, unit, nil, i)}
 
-      {"invariant", i, shown(refused, "refused in")}
-    end
+    constraints =
+      for c <- model.commands,
+          c.unit == unit.name,
+          k <- Map.get(c, :constraints, []),
+          do: {"constraint", k, "of command `#{c.name}`, " <> refused_in(model, kind, unit, c, k)}
+
+    invariants ++ constraints
   end
 
   defp rules(_model, :effect, effect) do
@@ -201,6 +195,24 @@ defmodule EhOsContract.Contract.Doc do
   end
 
   defp rules(_model, _kind, _declaration), do: []
+
+  defp command_rules(model, kind, unit, command) do
+    for(
+      i <- unit.invariants,
+      i.name in command.rejects,
+      do: {"invariant", i, refused_in(model, kind, unit, nil, i)}
+    ) ++
+      for k <- Map.get(command, :constraints, []),
+          do: {"constraint", k, refused_in(model, kind, unit, command, k)}
+  end
+
+  defp refused_in(model, kind, unit, command, rule) do
+    model.scenarios
+    |> Enum.filter(&(&1.target == %{kind: kind, name: unit.name} and &1.rejected == rule.name))
+    |> Enum.filter(&(command == nil or &1.trigger.name == command.name))
+    |> Enum.map(& &1.description)
+    |> shown("refused in")
+  end
 
   defp shown([], _verb), do: "prose alone: no scenario shows it yet"
 
@@ -275,17 +287,19 @@ defmodule EhOsContract.Contract.Doc do
   end
 
   defp consumed_from(model, name) do
-    Enum.find_value(model.consumes, "", fn
-      %{kind: :published, as: ^name, from: from} ->
+    case EhOsContract.Model.consumed(model, name) do
+      {:contract, sibling, _original} ->
+        " (consumed from `#{inspect(sibling)}`)"
+
+      {:published, _fields} ->
+        from =
+          Enum.find_value(model.consumes, &(&1.kind == :published and &1.as == name and &1.from))
+
         " (received from another application as `#{from}`)"
 
-      %{kind: :contract, from: from} = sibling ->
-        if name in sibling.events or name in Map.values(sibling.renames),
-          do: " (consumed from `#{inspect(from)}`)"
-
-      _ ->
-        nil
-    end)
+      nil ->
+        ""
+    end
   end
 
   defp examples(rule) do

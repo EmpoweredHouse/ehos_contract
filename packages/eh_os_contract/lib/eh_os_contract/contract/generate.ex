@@ -64,7 +64,7 @@ defmodule EhOsContract.Contract.Generate do
 
     structs =
       for {module, what, fields, shape, key} <- structs(model) do
-        body = struct_body(model, what, fields, shape, values)
+        body = struct_body(model, what, fields, shape, values, key)
 
         # A query's parameters and its callback are one module: `use C, query: :q`
         # binds to it, and the implementation matches on the struct.
@@ -258,7 +258,7 @@ defmodule EhOsContract.Contract.Generate do
     docs =
       Enum.map(callbacks, &{&1, EhOsContract.Contract.Doc.callback(model, kind, name, &1.name)}) ++
         if(evolve,
-          do: [{evolve.callback, EhOsContract.Contract.Doc.evolve(evolve.events)}],
+          do: [{evolve.callback, EhOsContract.Contract.Doc.evolve(kind, evolve.events)}],
           else: []
         )
 
@@ -273,9 +273,17 @@ defmodule EhOsContract.Contract.Generate do
     quote(do: (unquote_splicing(specs)))
   end
 
-  defp struct_body(model, what, fields, shape, values) do
+  defp struct_body(model, what, fields, shape, values, key) do
     doc =
       "#{String.capitalize(what)} of `#{inspect(model.module)}`, generated from its declaration."
+
+    # A query's module is also its behaviour (its callback sits here), so its
+    # moduledoc says what the contract says of the query, as a behaviour's does (EP3).
+    doc =
+      case key do
+        {:query, name} -> EhOsContract.Contract.Doc.moduledoc(model, :query, name, doc)
+        _ -> doc
+      end
 
     defaults =
       for f <- fields, do: {f.name, if(shape == :state, do: Map.get(f, :default), else: nil)}

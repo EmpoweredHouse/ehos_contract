@@ -39,7 +39,8 @@ belong in the vocabulary: flag it, do not add it.
   speaker, a board reference, or "not stated". The contract will carry the same as `source:` and
   `unverified: true`. A `source:` is an identifier of the material — "W2 00:14:10", "P-07", "03
   §4.2" — never a person's name: it goes into the model sent to EHOS and onto the published pages,
-  and nothing checks it for personal data (EP1 review).
+  and nothing checks it for personal data (EP1 review). The same holds for a scenario's description,
+  which a generated callback's doc now carries too (EP3 review): it names a case, never a real person.
 - **The client's words for names and labels**, with a proposed technical name beside them, so the
   contract's `label` and `source:` trace back to what was said.
 - **Contradictions are kept**, tagged by speaker, never resolved silently.

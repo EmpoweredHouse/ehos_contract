@@ -528,6 +528,15 @@ Na `dsl/ep3-docs` (od `origin/main` = `24904b8`, po #105 i #106), niewypchnięte
   przed kodem. `contract-distillation` i `add-event`: w `source:` identyfikator materiału, nigdy nazwisko
   (odłożone z przeglądu EP1).
 - `docs/contract.md` — akapit o dokumentacji callbacków; CHANGELOG.
+- **Przegląd** (dwa równolegle): poprawność — 9 uwag, wszystkie poprawione: callback komendy pisał „prose alone” o
+  inwariancie, na którym odmawia scenariusz innej komendy (sprzeczne z moduledociem, a S8 jest spełnione); moduł
+  query, będący też behaviourem, nie dostawał moduledocu z regułami; „Dcb” zamiast „Dynamic consistency
+  boundary”; timer bez źródła; reguły jednostki bez ograniczeń komend; `evolve` process managera mówiło o
+  „decision”; dopasowanie zdarzenia konsumowanego obok `Model.consumed/2` (przy przemianowaniu mogło wskazać nie
+  tego sąsiada); reguły serwisu poza wspólnym formatem; braki testów (reakcja process managera, serwis, timer
+  dosłownie, granica i query w skompilowanych chunkach). Bezpieczeństwo i wydajność — bez defektu; opisy
+  scenariuszy trafiają teraz do dokumentacji, więc `contract-distillation` mówi, że opis nazywa przypadek, nigdy
+  prawdziwą osobę. Każda poprawka sprawdzona odwrotnie.
 
 ## Dopisek 2 października (2) — #83: `ehos.yaml/v2` i `sign_in`; podział EB2
 
