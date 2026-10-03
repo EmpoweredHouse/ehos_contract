@@ -432,6 +432,57 @@ Usunięte: `assets/css/vendor/empoweredhouse/` z `SOURCE.md`, `.gitattributes` p
   nie ma, więc tam ten test się nie definiuje; łapie lokalnie, u tego, kto ruszył ref.
 - Poprawka z datą w `docs/adr/dashboard-design-system.md`.
 
+## Dopisek 3 października — trzecie dane testowe: sprzęt AppUnite (`sandbox/lib/appunite_equipment/`)
+
+Rozmowa Emila z osobą, która w AppUnite prowadzi komputery pracowników (zamówienie, wydanie, zwrot, Innergo,
+sprzedaż) — dziś w Excelu i Notion. Destylacja: `docs/appunite-equipment-2026-10-03-distillation.md`; Emil zna proces
+i odpowiadał na pytania zamiast rozmówczyni. Domena `AppuniteEquipment.Domain` i dwa kontrakty, `Computers` i
+`Assignments`, z implementacją, odczytem „Inventory” i 24 scenariuszami. Emil planuje osobne repozytorium dla tego
+procesu; tu jest, dopóki go nie ma, na prawach danych testowych jak TaxVision i Rehmed.
+
+### Decyzje
+
+- **Kształt przebiegu — B: komputer jako agregat, przebieg per przydział** (Emil, 3 października). Przegrały:
+  **A** — jeden przebieg na całe życie komputera z etapami (przegrało tym, że etapy kontraktu twierdzą kolejność
+  tylko do przodu, a komputer latami chodzi w pętli wydany → zwrócony → Innergo → ustawiony → wydany; wymagałoby
+  zmiany w bibliotece; Emil „jeszcze się zastanawia”); **C** — przebieg per pobyt w biurze (nikt tak nie mówi).
+- **Jak B wyszło w kodzie** (rozstrzygnięte przy pisaniu, mechanika): wszystkie decyzje w jednym agregacie
+  `:computer` w `Computers`, bo każda reguła dotyczy jednego komputera; `Assignments` **nie ma żadnej jednostki** —
+  `consumes` trzy zdarzenia przydziału (`issued`, `return_started`, `returned`) i deklaruje ich kolejność w procesie
+  skorelowanym po `assignment_id`. Przegrało: `dcb` przydziału, który konsultuje zdarzenia komputera — decyzja
+  wydania musiałaby czytać cudzy strumień, a `Computers` z kolei potrzebowałby zdarzeń przydziału do „czy jest w
+  biurze”; dwa kontrakty konsumujące się nawzajem dla reguł, które są o jednej rzeczy. Kontrakt `Computers` musi i
+  tak mieć swój proces (R1).
+- **Proces komputera ma cztery etapy, `intake → use → sale → ending`, a cała pętla siedzi w `use`** (Emil, 3
+  października, po obejrzeniu grafów). Pierwsza wersja nie miała etapów, a jej kształt na dashboardzie był jednym
+  rzędem 17 pudełek, który nic nie mówił. Początek i koniec życia komputera idą tylko do przodu (nic się nie zamawia
+  po użyciu, nic nie schodzi ze sprzedaży), więc etapy twierdzą prawdę; wewnątrz `use` kolejności nie ma.
+  Przegrały: **widok cyklu życia w bibliotece** (statusy i przejścia, z krawędziami wstecz) — najbliższy temu, jak
+  myśli właściciel procesu, ale to nowe pojęcie w DSL-u, więc poszło jako issue
+  [#99](https://github.com/EmpoweredHouse/eh-os-contract/issues/99), nie do tego kontraktu; **ładniejsze rysowanie
+  procesu bez etapów** — nadal nic by nie twierdziło.
+- **Przydział ma trzy etapy, `issue → return → arrival`**, nie dwa: w jednym etapie `return` kolejność „zwrot
+  rozpoczęty → dotarł do biura” nie była twierdzona, więc paczka bez rozpoczętego zwrotu nie byłaby widoczna.
+- **Tożsamość komputera jest generowana przy zamówieniu, a numer seryjny jest polem z faktury.** Przegrało: numer
+  seryjny jako tożsamość — zamówiony komputer (status `New`) nie ma jeszcze numeru.
+
+### Ustalenia dla biblioteki
+
+1. **Kontrakt bez jednostek, tylko `consumes` i `process`, kompiluje się i przechodzi `check`.** Pierwszy taki w
+   repozytorium. Działa jako „soczewka”: drugi przebieg na zdarzeniach, które decyduje inny kontrakt. Nie ma testu
+   dispatchu, który pokazuje runy per przydział w raporcie — do dopisania, zanim się na tym oprze.
+2. **Komputer skradziony w trakcie przydziału zamyka komputer, a przydział zostaje otwarty.** `lost` nie niesie
+   `assignment_id`, a pole korelacji nie może być opcjonalne (F4). Raport pokaże taki przydział jako niedokończony.
+   Nierozstrzygnięte, czy to błąd modelu, czy brakująca konstrukcja (zakończenie przebiegu zdarzeniem bez jego
+   korelacji).
+3. **Lista wycofanych generacji (dziś `[:m1]`) nie ma domu w DSL-u.** To decyzja zespołu, która zmienia się z
+   rynkiem; siedzi w implementacji jako `@withdrawn`, a reguła w kontrakcie mówi o niej zdaniem. Wartość domeny
+   z danymi, które zmieniają się bez deployu, to coś, czego DSL dziś nie wyraża.
+4. **Statusy, którymi właściciel procesu myśli o procesie, nie mają w DSL-u słowa** — żyją w `evolve/2` i w enumie
+   odczytu. Etapy twierdzą kolejność tylko do przodu, więc pętla jest jednym etapem bez kolejności w środku.
+   Issue [#99](https://github.com/EmpoweredHouse/eh-os-contract/issues/99).
+5. **Zero obietnic czasowych** — trzecia domena sekwencyjna (por. Rehmed). Jedyna liczba, ~tydzień w Innergo, to
+   czas dostawcy, nie zobowiązanie AppUnite.
 ## Dopisek 3 października — EP: proza w kontrakcie, drabina od nazwy do testu
 
 **Porównanie z ESDM powtórzone 3 października.** `thenativeweb/esdm` na `295e1ca` (29 września): od `cf17780`,

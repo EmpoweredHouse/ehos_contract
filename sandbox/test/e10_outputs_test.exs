@@ -20,7 +20,7 @@ defmodule EhOsContractHost.E10OutputsTest do
     refute output =~
              "contract-without-implementation: Taxvision.Contracts.DocumentIntake"
 
-    assert output =~ "eh_os_contract.check: 0 errors, 29 warnings, 9 notices"
+    assert output =~ "eh_os_contract.check: 0 errors, 29 warnings, 10 notices"
   end
 
   # StatutoryReporting's policy scenarios start from ClinicalDocumentation's closing,
