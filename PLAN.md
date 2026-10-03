@@ -705,6 +705,8 @@ Na `dsl/ep5b-actors-relations` (od `dsl/ep5a-capabilities`, #111).
   słowniku jako czytelniku odpowiedzialności. CHANGELOG: kształt `terms` w eksporcie modelu. Bez zmian: etykiety
   i słowa bez escapowania na stronach (jak każda etykieta); stary płaski `terms` daje ogólny błąd Sparka, nie kod D
   (bez zgodności wstecz, jedno użycie w sandboxie).
+- **Brama zielona po przeglądzie:** **EXIT=0** — sandbox 148, `check` 0 / 29 / 9; silnik 1216, `check` 0 / 71 / 6;
+  web 52; auth 285 + 1 właściwość.
 
 ## Dopisek 2 października (2) — #83: `ehos.yaml/v2` i `sign_in`; podział EB2
 
