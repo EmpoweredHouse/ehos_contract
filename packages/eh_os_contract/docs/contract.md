@@ -118,7 +118,8 @@ end
   prose alone — and its scenarios. `b Lending.Contracts.Loans.Aggregates.Loan.open_loan` in IEx prints it.
 
 What reacts to events is declared beside the units: a `policy` issues a command of this contract, an
-`effect` calls an external system, a `process_manager` steers a run with its own state and timers, and a
+`effect` calls an external system — naming one of its `operation`s, `calls: {:p1, :submit_report}`, when
+the domain says what the system does — a `process_manager` steers a run with its own state and timers, and a
 `read_model` projects rows that a `query` reads. A reaction names its rules as a command does, with
 `constraint`, and a process manager its `invariant`s too; a scenario that names one in `illustrates:`
 is the test that it holds, and `mix eh_os_contract.check` warns of one no scenario illustrates. An
@@ -267,7 +268,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `S8` | L2 | an invariant, or a command's constraint, that no `rejected` scenario (of that command, for a constraint) covers |
 | `S9` | L2 | a domain service's rule without examples; an example not `{[argument, …], result}` of the function's arity, with an argument or result of the wrong built-in type or `nil` where not optional; an example given twice |
 | `S10` | L2 | `illustrates:` naming what is not a constraint of the scenario's policy, process manager or query, nor an invariant of its process manager, or naming one twice; any `illustrates:` on a command's scenario, which shows its rules with `rejected` |
-| `D1` | L2 | a subdomain's, context's, subject's, value's, entity's or external's name not snake_case; two values that camelize alike; a value named after a type Elixir builds in or a built-in field type; two subdomains, contexts, actors, subjects, values, entities or externals of one name; a term defined twice in a context; a relation declared twice; a name that is both a context and an external |
+| `D1` | L2 | a subdomain's, context's, subject's, value's, entity's or external's name not snake_case; two values that camelize alike; a value named after a type Elixir builds in or a built-in field type; two subdomains, contexts, actors, subjects, values, entities or externals of one name; an external's operation not snake_case or declared twice; a term defined twice in a context; a relation declared twice; a name that is both a context and an external |
 | `D2` | L2 | two translations of a term into one language, or one into the context's own |
 | `D3` | L2 | a value with both or neither of a type and fields; `unit` on a value that is not numeric; an undeclared `context:`; a malformed or unknown type, or a bad enum; values in a cycle; a value's field not snake_case, or named twice |
 | `D4` | L2 | an actor's name not snake_case; a human actor with `backed_by`; `backed_by` naming no external; an actor's `context:` the domain does not declare |
@@ -283,7 +284,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `X1` | L3 | `domain:` naming a module that is not a compiled domain, or `context:` naming none of its contexts |
 | `X2` | L3 | `by:`, `recorded_by:`, `accountable` or a scenario's `actor` naming no actor of the domain, or an actor of another context |
 | `X3` | L3 | a field or return type that is neither built in nor a value of the domain; `{:id, entity}` naming no entity of the domain; a `subject:` the domain does not declare |
-| `X4` | L3 | `depends_on`, `calls` or a field's `issued_by` naming no external of the domain |
+| `X4` | L3 | `depends_on`, `calls` or a field's `issued_by` naming no external of the domain; a call naming an operation its external does not declare, or naming none of an external that declares some |
 | `X5` | L3 | `consumes` naming what is not a compiled contract, a contract of another domain, or an event the sibling does not declare |
 | `X6` | L3 | a sibling event's field that a `correlate` (on an include or a handled event) or a boundary's `match` relies on, missing there, of another type (an `:id` where no local event types it), optional or personal |
 | `X7` | L3 | two processes of the system with one name, and so one event type |

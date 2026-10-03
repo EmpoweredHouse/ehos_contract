@@ -305,6 +305,7 @@ defmodule EhOsContract.Check.Completeness do
     Enum.concat([
       orphan_actors(model, declared, contracts),
       orphan_externals(model, declared, contracts),
+      uncalled_operations(model, declared, contracts),
       empty_contexts(model, declared, contracts),
       empty_subdomains(model, declared),
       orphan_relations(model, declared, contracts),
@@ -434,6 +435,29 @@ defmodule EhOsContract.Check.Completeness do
         "orphan-external-system",
         "external #{inspect(external.name)} of #{inspect(model.module)} backs no actor, ends no " <>
           "relation and issues no field, and no effect `calls:` it and no event `depends_on:` it",
+        at(declared.externals, external.name)
+      )
+    end
+  end
+
+  # Plan EP5a: an operation an external declares and no effect names in `calls:`.
+  defp uncalled_operations(model, declared, contracts) do
+    called =
+      MapSet.new(
+        for %{model: m} <- contracts,
+            effect <- m.effects,
+            operation <- Map.get(effect, :operations, []),
+            do: {operation.external, operation.name}
+      )
+
+    for external <- model.externals,
+        operation <- Map.get(external, :operations, []),
+        not MapSet.member?(called, {external.name, operation.name}) do
+      Finding.new(
+        "operation-never-called",
+        "operation #{inspect(operation.name)} of external #{inspect(external.name)} of " <>
+          "#{inspect(model.module)} is called by no effect: no `calls: " <>
+          "#{inspect({external.name, operation.name})}`",
         at(declared.externals, external.name)
       )
     end

@@ -72,6 +72,9 @@ projection that must be readable the moment the command returns, a policy whose 
 the same business step. `:at_least_once` when the reaction is a different failure domain — anything
 that calls out, fans out, or may be slow. The compiler and `check` push the same way:
 
+- `X4` refuses a bare `calls: :p1` when the domain says what `:p1` does (`operation`, plan EP5a):
+  name the one this effect asks for, `calls: {:p1, :submit_report}`; `check` warns of an operation
+  no effect calls (`operation-never-called`).
 - `P2` refuses an effect that `calls:` an external delivered `:in_transaction`: a call cannot be
   rolled back with the append.
 - `in-transaction-policy-fan-out` warns when a scenario shows an in-transaction policy issuing more

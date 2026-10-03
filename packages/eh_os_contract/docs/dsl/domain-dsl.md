@@ -33,6 +33,7 @@ The vocabulary contracts share.
  * [entity](#domain-entity)
    * field
  * [external](#domain-external)
+   * operation
  * [relation](#domain-relation)
 
 
@@ -462,6 +463,8 @@ external name, label
 
 An external system, named after the business fact rather than the vendor.
 
+### Nested DSLs
+ * [operation](#domain-external-operation)
 
 
 
@@ -480,6 +483,35 @@ An external system, named after the business fact rather than the vendor.
 | [`unavailable_looks_like`](#domain-external-unavailable_looks_like){: #domain-external-unavailable_looks_like } | `String.t` |  | How an outage shows to the business. |
 | [`expected_latency`](#domain-external-expected_latency){: #domain-external-expected_latency } | `any` |  | How long an answer usually takes, `{n, unit}`. |
 | [`source`](#domain-external-source){: #domain-external-source } | `String.t` |  | Where the external comes from in the material. |
+
+
+### domain.external.operation
+```elixir
+operation name, label
+```
+
+
+What the system does when an effect calls it; once a system declares one, every `calls:` to it names one, `calls: {:p1, :submit_report}`.
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#domain-external-operation-name){: #domain-external-operation-name .spark-required} | `atom` |  | The operation's name. |
+| [`label`](#domain-external-operation-label){: #domain-external-operation-label .spark-required} | `String.t` |  | What it does, as the business says it. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#domain-external-operation-source){: #domain-external-operation-source } | `String.t` |  | Where the operation comes from in the material. |
+
+
+
+
 
 
 

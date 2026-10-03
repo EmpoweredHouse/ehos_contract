@@ -618,10 +618,14 @@ Na `dsl/ep4-executable` (od `origin/main` = `8f685cf`, po #108).
 
 ### Przed EP5 — decyzje użytkownika (3 października)
 
-- **`capability` systemu zewnętrznego — opcjonalna, ścisła, gdy jest.** System w domenie może zadeklarować
-  zdolności (`capability :submit_report, "…", source: "X-01"`); gdy je ma, każde `calls:` do niego nazywa jedną
-  (`calls: {:p1, :submit_report}`), a goły `:p1` jest odmową. Odmowa: zdolność, której system nie deklaruje;
-  ostrzeżenie `check`: zdolność, której nie woła żaden efekt. *Odrzucone:* zawsze wymagane (łamie każdy kontrakt
+- **Operacje systemu zewnętrznego (ESDM: `capabilities`) — opcjonalne, ścisłe, gdy są.** System w domenie może
+  zadeklarować operacje (`operation :submit_report, "…", source: "X-01"`); gdy je ma, każde `calls:` do niego nazywa
+  jedną
+  (`calls: {:p1, :submit_report}`), a goły `:p1` jest odmową. Odmowa: operacja, której system nie deklaruje;
+  ostrzeżenie `check`: operacja, której nie woła żaden efekt. **Nazwa `operation`, nie `capability`** (decyzja
+  użytkownika, tego samego dnia): „capability” to w tej bibliotece uprawnienie aktora z EHOS-a
+  (`EhOsContract.Capability`, `Model.capabilities/1`). *Odrzucone:* `capability` jak ESDM (dwa znaczenia jednego
+  słowa w jednej bibliotece); `offers` (czasownik, słabo czyta się jako rzeczownik w modelu i komunikatach). *Odrzucone:* zawsze wymagane (łamie każdy kontrakt
   z `calls:`, a system tylko wejściowy, jak KSeF, musiałby coś deklarować); sama proza bez reguł (nic nie łączy
   efektu z tym, o co prosi).
 - **`responsibility` aktora — nazwana proza, szczebel 0.** `responsibility :name, "tekst", source:` w aktorze;
@@ -633,8 +637,29 @@ Na `dsl/ep4-executable` (od `origin/main` = `8f685cf`, po #108).
   kierunku terminów nie ma: Rehmed ich tam potrzebuje („Wizyta” znaczy co innego w umawianiu i w dokumentacji).
   *Odrzucone:* pary tylko w relacjach z kierunkiem, jak ESDM (Rehmed traci terminy partnerstwa); płaska lista ze
   sprawdzeniem (nie mówi, które słowo odpowiada któremu).
-- **Podział (rozstrzygnięcie asystenta):** EP5a — zdolności z regułami; EP5b — odpowiedzialność i pary terminów.
-  Dwa PR-y, bo zdolności dotykają domeny, kontraktu, wiązania między nimi i `check`.
+- **Podział (rozstrzygnięcie asystenta):** EP5a — operacje z regułami; EP5b — odpowiedzialność i pary terminów.
+  Dwa PR-y, bo operacje dotykają domeny, kontraktu, wiązania między nimi i `check`.
+
+### EP5a — co wyszło (3 października)
+
+Na `dsl/ep5a-capabilities` (od `origin/main` = `64a7864`, po #109).
+- **Domena:** `operation :name, "…", source:` w `external`; D1 — nazwa snake_case, raz w systemie. Model trzyma
+  `operations: []` zawsze, digest pomija pustą listę — wersje domen bez operacji bez zmian (pilnuje tego wersja
+  przypięta w EP1).
+- **Kontrakt:** `calls:` przyjmuje `:p1` albo `{:p1, :submit_report}`. W modelu `calls` zostaje listą systemów
+  (każdy dotychczasowy czytelnik — graf, `check`, zależności, raport — bez zmian), a nazwane operacje idą do
+  `operations` tylko tam, gdzie są.
+- **X4** (L3, bo kontrakt nie kompiluje się względem domeny): operacja, której system nie deklaruje (z podpowiedzią),
+  i goły `calls:` do systemu z operacjami (z listą do wyboru). **`operation-never-called`** — ostrzeżenie `check`.
+- **Czytelnicy:** `@doc` callbacku efektu i jego strona („Calls `p1` (`submit_report`).”, `Doc.calls/1`), strona
+  domeny — operacje pod systemem.
+- **Sandbox:** `:p1` — `submit_report` (`X-01, AGG-10`), `:registries` — `look_up_company` (03 §4.2); oba efekty
+  nazywają swoją. Na żywo: goły `calls: :p1` w Rehmedzie — kompilacja pada z X4 i podpowiedzią.
+- **Sprawdzenia odwrotne:** bez ochrony digestu pada wersja domeny z EP1; bez X4 dla operacji — test odmów; bez
+  ostrzeżenia — test `check`.
+- `docs/contract.md`, `docs/dsl/`, `docs/rules.md`, skille `write-reaction` i `contract-distillation`, CHANGELOG.
+- **Brama zielona** przed przeglądem: **EXIT=0** — sandbox 148, `check` 0 / 29 / 9 (bez zmian: obie operacje
+  sandboxa są wołane); silnik 1206 (1198 + 8), `check` 0 / 71 / 6; web 52; auth 285 + 1 właściwość.
 
 ## Dopisek 2 października (2) — #83: `ehos.yaml/v2` i `sign_in`; podział EB2
 

@@ -68,7 +68,14 @@ defmodule Taxvision.Domain do
   external :registries, "Rejestry publiczne: CEIDG/KRS, biały rejestr VAT, VIES",
     direction: :bidirectional,
     expected_latency: {10, :second},
-    unavailable_looks_like: "timeout albo pusta odpowiedź — weryfikacja zawieszona, nie negatywna"
+    unavailable_looks_like: "timeout albo pusta odpowiedź — weryfikacja zawieszona, nie negatywna" do
+    # Plan EP5a: 03 §4.2's statuses the registries are the source of truth for.
+    operation(
+      :look_up_company,
+      "Podaj formę prawną, status VAT i status VIES firmy",
+      source: "03 §4.2"
+    )
+  end
 
   # 03 §4.3's policy pulls from KSeF continuously, on a cron. The material names the
   # port, not an actor; it records the invoices KSeF gives (D6).

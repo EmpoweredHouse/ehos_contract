@@ -541,7 +541,13 @@ defmodule EhOsContract.Contract.Dsl do
       name: [type: :atom, required: true, doc: "The effect's name."],
       label: [type: :string, required: true, doc: "What it does, as the business states it."],
       handles: [type: {:wrap_list, :atom}, required: true, doc: "The events it reacts to."],
-      calls: [type: {:wrap_list, :atom}, default: [], doc: "The external systems it calls."],
+      calls: [
+        type: {:wrap_list, {:or, [:atom, {:tuple, [:atom, :atom]}]}},
+        default: [],
+        doc:
+          "The external systems it calls: `:p1`, or `{:p1, :submit_report}` naming one of the " <>
+            "system's operations, which a system that declares operations requires."
+      ],
       delivery: [type: @delivery, default: :at_least_once, doc: "When it runs."],
       idempotency: [type: @idempotency, doc: @idempotency_doc],
       source: [type: :string, doc: "Where the effect comes from in the material."]

@@ -67,7 +67,7 @@ defmodule EhOsContract.Contract.Build do
       commands: for(u <- units, c <- u.commands, do: command(u, c)),
       events: events,
       policies: entities |> of(Dsl.Policy) |> Enum.map(&reaction/1),
-      effects: entities |> of(Dsl.Effect) |> Enum.map(&reaction/1),
+      effects: entities |> of(Dsl.Effect) |> Enum.map(&(&1 |> reaction() |> operations())),
       process_managers:
         entities |> of(Dsl.ProcessManager) |> Enum.map(&process_manager(&1, events)),
       read_models: entities |> of(Dsl.ReadModel) |> Enum.map(&plain/1),
@@ -106,6 +106,23 @@ defmodule EhOsContract.Contract.Build do
 
   defp reaction(declaration),
     do: declaration |> plain() |> without_empty(:constraints) |> idempotency()
+
+  # Plan EP5a: `calls` keeps the systems an effect calls, as every reader has always
+  # read it, and the operations it names go under their own key, only where it names
+  # some, so no effect written without one moves its digest.
+  defp operations(%{calls: calls} = effect) do
+    named = for {external, operation} <- calls, do: %{external: external, name: operation}
+
+    systems =
+      calls
+      |> Enum.map(fn
+        {external, _} -> external
+        external -> external
+      end)
+
+    effect = %{effect | calls: Enum.uniq(systems)}
+    if named == [], do: effect, else: Map.put(effect, :operations, named)
+  end
 
   # `[key: :event_id, owner: :self]` as a map, as every other pair of the model is
   # (plan EP4).
@@ -435,7 +452,7 @@ defmodule EhOsContract.Contract.Build do
   # `correlate`, stages, givens and expectations keep their order.
   @sets ~w(fields params invariants consults starts_on on timers ends_on includes promises
            by emits rejects handles issues calls projects recorded_by match sets cancels events
-           idempotent_on answers functions rules constraints illustrates)a
+           idempotent_on answers functions rules constraints illustrates operations)a
 
   defp digest_form(%{} = declaration) do
     Map.new(declaration, fn

@@ -105,8 +105,14 @@ defmodule EhOsContract.Domain.Dsl do
       :unavailable_looks_like,
       :expected_latency,
       :source,
+      operations: [],
       __spark_metadata__: nil
     ]
+  end
+
+  defmodule Operation do
+    @moduledoc false
+    defstruct [:name, :label, :source, __spark_metadata__: nil]
   end
 
   defmodule Relation do
@@ -318,11 +324,28 @@ defmodule EhOsContract.Domain.Dsl do
     ]
   }
 
+  # Plan EP5a: what a system does when an effect calls it, ESDM's `capabilities`. Not
+  # named so here: a capability is what EHOS grants an actor (`EhOsContract.Capability`).
+  @operation %Spark.Dsl.Entity{
+    name: :operation,
+    describe:
+      "What the system does when an effect calls it; once a system declares one, every " <>
+        "`calls:` to it names one, `calls: {:p1, :submit_report}`.",
+    target: Operation,
+    args: [:name, :label],
+    schema: [
+      name: [type: :atom, required: true, doc: "The operation's name."],
+      label: [type: :string, required: true, doc: "What it does, as the business says it."],
+      source: [type: :string, doc: "Where the operation comes from in the material."]
+    ]
+  }
+
   @external %Spark.Dsl.Entity{
     name: :external,
     describe: "An external system, named after the business fact rather than the vendor.",
     target: External,
     args: [:name, :label],
+    entities: [operations: [@operation]],
     schema: [
       name: [type: :atom, required: true, doc: "The external's name."],
       label: [type: :string, required: true, doc: "What the business calls it."],

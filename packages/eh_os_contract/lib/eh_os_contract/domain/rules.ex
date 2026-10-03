@@ -6,6 +6,9 @@ defmodule EhOsContract.Domain.Rules do
   other end then a context; **D1** refuses a name that is both a context and an
   external.
 
+  **D1**, since plan EP5a: an external's operations are snake_case and named once
+  within it.
+
   **D1**, since the review of the actors' names: a subdomain's, context's, subject's,
   value's, entity's and external's name is snake_case, as an actor's is (D4) and a
   contract's (N1). The names become a value's module — `value :"a/b"` was
@@ -155,6 +158,26 @@ defmodule EhOsContract.Domain.Rules do
          duplicate}
       end
 
+    # Plan EP5a: an operation is named within its system, as `calls: {:p1, :name}` says.
+    operations =
+      for %External{} = external <- entities,
+          operation <- external.operations,
+          problem <-
+            [
+              unless(DslRules.name?(operation.name),
+                do: "is not snake_case, as every name of a domain is"
+              )
+            ],
+          problem != nil do
+        {"D1: operation #{inspect(operation.name)} of external #{inspect(external.name)} " <>
+           problem, operation}
+      end ++
+        for %External{} = external <- entities,
+            duplicate <- duplicates(external.operations, & &1.name) do
+          {"D1: external #{inspect(external.name)} declares the operation " <>
+             "#{inspect(duplicate.name)} twice", duplicate}
+        end
+
     # A relation has no name: it is its type and its two ends, a symmetric pair in
     # either order. Two of them would also share one key in the model's digests.
     relations =
@@ -214,7 +237,7 @@ defmodule EhOsContract.Domain.Rules do
       end
       |> Enum.reject(&is_nil/1)
 
-    forms ++ by_kind ++ modules ++ types ++ terms ++ relations ++ both
+    forms ++ by_kind ++ modules ++ types ++ terms ++ operations ++ relations ++ both
   end
 
   defp built_in_type?(name), do: :erl_internal.is_type(name, 0) or name in @elixir_types
