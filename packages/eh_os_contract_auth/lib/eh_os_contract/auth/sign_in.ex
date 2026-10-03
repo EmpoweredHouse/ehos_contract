@@ -50,7 +50,9 @@ defmodule EhOsContract.Auth.SignIn do
   EHOS goes over https, follows no redirect, reads at most 64 KiB and ends after ten
   seconds (S6); EHOS's certificate is checked against the system's authorities, or
   `cacertfile:` / `cacerts:` when given. A document is not held unless its `issuer` is
-  the configured one and its endpoints are https.
+  the configured one and its endpoints are at the issuer's own origin, held to the rule
+  the configured addresses are (#89): https, read back as written, with a lowercase
+  host, and no user, query or fragment.
 
   **What is held.** The client and the addresses derived from `address`, for the
   sign-in itself (`config/1`): the redirect URI is `address <> "/auth/ehos/callback"`
@@ -70,12 +72,17 @@ defmodule EhOsContract.Auth.SignIn do
   @retry_max 30_000
   @min_secret 64
   @sign_in_keys [:client_id, :client_key_file, :address, :secret_key_base, :applications]
+  # The endpoints of the document `oidcc` calls or sends the browser to; a PAR endpoint is posted
+  # the client's assertion whenever the document names one. `mtls_endpoint_aliases` would replace
+  # the token and PAR endpoints only for `tls_client_auth`, which needs `ssl:` in `request_opts`,
+  # and this client has none (`oidcc_auth_util:maybe_mtls_endpoint/4`).
   @endpoints [
     :authorization_endpoint,
     :token_endpoint,
     :jwks_uri,
     :userinfo_endpoint,
-    :end_session_endpoint
+    :end_session_endpoint,
+    :pushed_authorization_request_endpoint
   ]
 
   @derive {Inspect, except: [:client_key, :client_secret, :secret_key_base, :cipher_key]}
@@ -311,7 +318,7 @@ defmodule EhOsContract.Auth.SignIn do
     with {:ok, document} <- Http.get_json(url, state.http),
          {:ok, configuration} <- decode(document),
          :ok <- same_issuer(configuration, state.issuer),
-         :ok <- https_endpoints(configuration),
+         :ok <- endpoints_held(configuration, state.issuer),
          {:ok, keys} <- Http.get_json(configuration.jwks_uri, state.http),
          {:ok, jwks} <- key_set(keys) do
       reasons = unsupported(configuration)
@@ -349,17 +356,29 @@ defmodule EhOsContract.Auth.SignIn do
   defp same_issuer(%{issuer: issuer}, issuer), do: :ok
   defp same_issuer(%{issuer: other}, _issuer), do: {:error, {:issuer_mismatch, other}}
 
-  defp https_endpoints(configuration) do
-    case Enum.reject(@endpoints, &https_or_absent?(Map.get(configuration, &1))) do
+  # By the rule the configured addresses are held to (#89), so the browser and `oidcc` go where
+  # the check read: `https://evil.example\@ehos.test/...` passed a prefix, and a browser sent there
+  # goes to evil.example. And at the issuer's own origin, where EHOS serves every one: an endpoint
+  # elsewhere would be posted the code, the PKCE verifier and the client's assertion.
+  defp endpoints_held(configuration, issuer) do
+    case Enum.reject(@endpoints, &held_or_absent?(Map.get(configuration, &1), issuer)) do
       [] -> :ok
-      endpoints -> {:error, {:not_https, endpoints}}
+      endpoints -> {:error, {:endpoints_refused, endpoints}}
     end
   end
 
-  defp https_or_absent?(:undefined), do: true
-  defp https_or_absent?(nil), do: true
-  defp https_or_absent?("https://" <> _rest), do: true
-  defp https_or_absent?(_other), do: false
+  defp held_or_absent?(:undefined, _issuer), do: true
+  defp held_or_absent?(nil, _issuer), do: true
+
+  defp held_or_absent?(endpoint, issuer) do
+    Address.check(endpoint, plain_on_loopback: false, path: true) == :ok and
+      origin(endpoint) == origin(issuer)
+  end
+
+  defp origin(address) do
+    %URI{scheme: scheme, host: host, port: port} = URI.parse(address)
+    {scheme, host, port}
+  end
 
   defp key_set(%{"keys" => [_ | _]} = keys) do
     {:ok, JOSE.JWK.from_map(keys)}

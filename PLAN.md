@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 2 października (E0–E12, EH, #72, #83 i całe EB w `main`; w toku #89)
+## Handoff — stan na 2 października (E0–E12, EH, #72, #83, całe EB i #89 w `main`; w toku punkty końcowe discovery, potem #63–#66)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -33,14 +33,16 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
 
 ### Stan repozytorium
 
-- **`origin/main` = `da9f56f`** (merge #88, EB3b; przedtem `499ea0b` — #87, EB3a, `6b280dd` — #86, EB2b,
-  `445be88` — #85, EB2a, `ef0e94d` — #84, #83, i `7a2bcb7` — #82, EB1). CI `main` na `da9f56f` — sprawdzić
-  (`gh run list --repo EmpoweredHouse/eh-os-contract --branch main --limit 1`). Historia `main` z merge'ami PR-ów;
-  gałęzie etapów liniowe.
-- **`auth/issue-89-loopback`** (worktree `eb3b-applications-4567c7`) — od `da9f56f`: #89 i ten zapis. Gałęzie EB
-  zmergowane; lokalna `eb/eb3b-applications` w worktree `merge-pr-55-next-stage-ad84a2` trzyma tylko WIP
-  `020a3a5` (wszedł do `main` zwykłymi commitami) — do skasowania, za zgodą użytkownika, razem z innymi
-  zmergowanymi gałęziami EB.
+- **`origin/main` = `762521e`** (merge #90, #89; przedtem `da9f56f` — #88, EB3b, `499ea0b` — #87, EB3a,
+  `6b280dd` — #86, EB2b, `445be88` — #85, EB2a, `ef0e94d` — #84, #83, i `7a2bcb7` — #82, EB1). CI `main` —
+  sprawdzić (`gh run list --repo EmpoweredHouse/eh-os-contract --branch main --limit 1`). Historia `main` z
+  merge'ami PR-ów; gałęzie etapów liniowe.
+- **`auth/discovery-endpoints`** (worktree `eb3b-applications-4567c7`) — od `762521e`: punkty końcowe discovery i
+  ten zapis.
+- **Gałęzie lokalne posprzątane 2 października** (za zgodą użytkownika): zostały `main` i
+  `claude/review-login-issues-eb9680` (worktree, być może innej sesji — nietknięty). Worktree
+  `issue-72-…`, `issue-78-…` i `merge-pr-55-…` stoją na odłączonym HEAD, czyste. Na GitHubie 68 gałęzi poza `main`
+  — nieruszane, czekają na decyzję użytkownika.
 - **Nowa baza testowa `eh_os_contract_auth_test_commits`** (EB3a, `CommitRepo` pakietu auth) — tworzy ją
   `mix test` pakietu, a czyści migracja w dół i w górę przed każdym przebiegiem.
 - **Lokalnie poza tym:** `main`; zmergowane już `eb/eb1-sign-in-config` (worktree `issue-78-implementation-plan-3ae6a4`)
@@ -48,8 +50,7 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
 - **[#78](https://github.com/EmpoweredHouse/eh-os-contract/issues/78) zamknięty** (zamknęło go za wcześnie
   „closes #78” w opisie PR-a #86); EB3b (#88) tylko go linkuje, więc zakres #78 jest w `main`. #80 i #81
   zamknięte.
-- **Otwarte na GitHubie:** **[#89](https://github.com/EmpoweredHouse/eh-os-contract/issues/89)** — w toku;
-  **#49** — materiał klientów poza
+- **Otwarte na GitHubie:** **#49** — materiał klientów poza
   repozytorium, zaparkowane 30 września; **#63–#66** — pytania otwarte po E12 („Otwarte pytania”). Otwartych PR-ów
   brak. **W `EmpoweredHouse/eh-os`: #91–#96 i #111** — nasze potrzeby wobec EHOS-a („Dopisek 1 października”).
 - **`ehos-ledger`** przypina `eh-os-contract` i puszcza w CI `mix eh_os_contract.manifest`; bump przypięcia na
@@ -73,7 +74,10 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
 
 ### Co zostało — i czyje to jest
 
-- **#89 — asystenta, w toku**: adresy brane tylko tak, jak czyta je każdy parser („#89 — co wyszło”).
+- **Punkty końcowe discovery — asystenta, w toku** (prośba użytkownika po #89): „Po #89 — punkty końcowe
+  discovery”.
+- **#63–#66 — następne, z polecenia użytkownika.** Każde wymaga jego decyzji o kształcie (piszą to same issues);
+  asystent przygotowuje propozycje z przykładem.
 - **Merge każdego PR-a — użytkownika.**
 - **Wady `oidcc` 3.9.0** — zgłoszone 2 października jako erlef/oidcc#552–#555 („EB1 — co wyszło”); nasz kod ich
   nie potrzebuje, więc nic tu na nie nie czeka.
@@ -857,6 +861,39 @@ ostrożne i rzadkie; podwójne `verify/2` przy odnawiającym żądaniu.
 
 Auth: 260 → 263 testów.
 
+### Po #89 — punkty końcowe discovery (2 października)
+
+Prośba użytkownika po merge'u #90. Gałąź `auth/discovery-endpoints`, od `762521e`.
+
+**Co było:** dokument discovery był trzymany, gdy jego punkty końcowe zaczynały się od `https://`. Przechodziło
+`https://evil.example\@ehos.test/oauth/authorize`, a przeglądarka wysłana tam do logowania idzie do
+`evil.example`. Na liście w ogóle nie było `pushed_authorization_request_endpoint`, a `oidcc` wysyła tam żądanie
+z asercją klienta, gdy tylko dokument go podaje.
+
+**Co jest:**
+- każdy punkt końcowy z listy według reguły z #89 (`Address.check`, ze ścieżką, bez http) **i u źródła issuera**
+  (schemat, host, port), bo EHOS podaje wszystkie u siebie;
+- PAR na liście;
+- transport (`SignIn.Http`) według tej samej reguły dla każdego wywołania, niezależnie od pola dokumentu;
+- odmowa `{:endpoints_refused, nazwy}` w miejsce `{:not_https, nazwy}`;
+- ADR S6 z datowaną poprawką.
+
+**Decyzje asystenta:**
+- **Źródło issuera wymagane.** *Odrzucone:* sama reguła adresu — punkt końcowy na innym hoście dostałby kod,
+  weryfikator PKCE i asercję.
+- **Zapytanie w punkcie końcowym odrzucane.** *Odrzucone:* dopuszczenie, jak RFC 6749 §3.1 — EHOS go nie używa, a
+  reguła jest EHOS-a.
+- **`mtls_endpoint_aliases` poza listą** — `oidcc` sięga po nie tylko przy `tls_client_auth`, a ten wymaga `ssl:` w
+  `request_opts`, którego klient nie ma.
+
+**Przegląd przed PR-em**, dwa równolegle. Poprawione: źródło issuera (bezpieczeństwo), transport (oba), komentarz
+listy, nazwy funkcji, opis reguły w dokumentach, testy z zapytaniem, użytkownikiem i `\@` w punktach serwerowych.
+Bez zmian: uwierzytelnienie żądania PAR nieprzypięte do `private_key_jwt` — `oidcc_plug` nie przekazuje
+`preferred_auth_methods`, EHOS nie podaje PAR; zapisane w S6 jako znana granica. Podagent przeglądu uruchomił
+mimo zakazu `mix test` pakietu auth w trakcie bramy; brama i tak przeszła, a po poprawkach poszła ponownie.
+
+Auth: 278 → 284 testy.
+
 ### #89 — co wyszło (2 października)
 
 [#89](https://github.com/EmpoweredHouse/eh-os-contract/issues/89), założone przez użytkownika z przeglądu poprawki
@@ -913,7 +950,8 @@ Przebieg samych poprawek (jeden, oba punkty widzenia) — same Low. Poprawione:
 
 Bez zmian:
 - **punkty końcowe z discovery** sprawdzane tylko prefiksem `https://` (bezpieczeństwo, Low) — wymagałoby
-  skompromitowanego EHOS-a po TLS;
+  skompromitowanego EHOS-a po TLS; **załatwione zaraz potem**, na prośbę użytkownika — „Po #89 — punkty końcowe
+  discovery”;
 - **`::1` dozwolone, choć Mint bez `inet6` się z nim nie połączy** — było przedtem, odmawia bezpiecznie;
 - **`shown/1` czyta przez `URI.parse/1`**, więc przy `\@` pokazuje `localhost`, a przy `:0443` adres wygląda na
   poprawny — sekretu nie ujawnia, a tak samo robi `shown/1` EHOS-a;

@@ -17,6 +17,8 @@ defmodule EhOsContract.Auth.SignIn.Http do
 
   @behaviour :oidcc_http_adapter
 
+  alias EhOsContract.Auth.Address
+
   @connect_timeout 5_000
   @max_body 64 * 1024
   @default_deadline 10_000
@@ -106,10 +108,12 @@ defmodule EhOsContract.Auth.SignIn.Http do
     Enum.map(headers, fn {name, value} -> {to_string(name), IO.iodata_to_binary(value)} end)
   end
 
+  # By the rule the document's endpoints are held to (#89), for whichever field a call's address
+  # came from.
   defp https(url) do
-    case URI.parse(url) do
-      %URI{scheme: "https", host: host} when is_binary(host) and host != "" -> :ok
-      _other -> {:error, {:not_https, url}}
+    case Address.check(url, plain_on_loopback: false, path: true) do
+      :ok -> :ok
+      :error -> {:error, {:not_https, url}}
     end
   end
 

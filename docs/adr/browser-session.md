@@ -328,6 +328,24 @@ The check runs on the document the package holds, not at boot, so the applicatio
 (driver 4). It is logged once for each document that changes the answer, not on every refused sign-in. A
 document whose `issuer` is not the configured one, or whose endpoints are not https, is not held at all.
 
+*Amended, 2 October 2026, after eh-os-contract#89:*
+
+- **"https" means https as every parser reads it.** Each endpoint is held to the rule the configured addresses
+  are: it reads back as written, with a lowercase host and no user, query or fragment. A prefix let through
+  `https://evil.example\@ehos.test/oauth/authorize`, and a browser sent there goes to `evil.example`.
+- **The PAR endpoint is checked too.** `oidcc` posts the authorization request, with the client's assertion, to a
+  `pushed_authorization_request_endpoint` whenever the document names one, and it was not on the list.
+- **Endpoints with a query are refused.** RFC 6749 §3.1 allows one, but EHOS's have none, and the rule is EHOS's
+  own.
+- **Every endpoint is at the issuer's origin**, its scheme, host and port, as EHOS serves them. An endpoint
+  elsewhere would be posted the code, the PKCE verifier and the client's assertion, or be where the browser
+  signs in.
+- **The transport holds every call to the same rule**, whichever field of the document its address came from.
+- **Known limit:** a PAR request's client authentication is not pinned to `private_key_jwt`. `oidcc_plug`'s
+  `Authorize` does not pass `preferred_auth_methods` on, so `oidcc` would fall back to another method the document
+  advertises if signing the assertion failed. It needs EHOS's own document to advertise PAR and another method;
+  EHOS advertises neither.
+
 ### S7 — The interface: a child, a router, a plug and two functions
 
 ```elixir
