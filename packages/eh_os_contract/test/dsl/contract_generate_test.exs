@@ -67,7 +67,7 @@ defmodule EhOsContract.ContractGenerateTest do
     end
 
     policy :remind, "Przypomnij", handles: [:rebooked, :visit_closed], issues: :record_payment
-    effect :notify, "Powiadom", handles: :payment_recorded, idempotency: :downstream
+    effect :notify, "Powiadom", handles: :payment_recorded, idempotency: [key: :event_id, owner: :downstream]
   """
 
   setup_all do

@@ -90,7 +90,7 @@ defmodule EhOsContract.PromiseEdgesTest do
     effect :notify_closing, "Notify a closing",
       handles: :closed,
       calls: :notifier,
-      idempotency: :event_id
+      idempotency: [key: :event_id, owner: :self]
 
     process :edge, "Edge" do
       correlate :case_id

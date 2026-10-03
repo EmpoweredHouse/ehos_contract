@@ -238,6 +238,11 @@ defmodule EhOsContract.Contract.Dsl do
     defstruct [:rows, __spark_metadata__: nil]
   end
 
+  defmodule ExpectedState do
+    @moduledoc false
+    defstruct [:data, __spark_metadata__: nil]
+  end
+
   defmodule Issues do
     @moduledoc false
     defstruct [:command, data: %{}, __spark_metadata__: nil]
@@ -258,6 +263,7 @@ defmodule EhOsContract.Contract.Dsl do
                   sets: [],
                   cancels: [],
                   answers: [],
+                  state: [],
                   __spark_metadata__: nil
                 ]
   end
@@ -486,6 +492,28 @@ defmodule EhOsContract.Contract.Dsl do
 
   @delivery {:one_of, [:in_transaction, :at_least_once]}
 
+  # Plan EP4: what makes a second delivery harmless, and who keeps it so — ESDM's
+  # `idempotency` with its `owner`. The owner is a difference in the reaction's code:
+  # a key the called system dedups on has to be passed to it.
+  @idempotency {:keyword_list,
+                [
+                  key: [
+                    type: :atom,
+                    required: true,
+                    doc: "What tells a second delivery from a first: `:event_id` or a field."
+                  ],
+                  owner: [
+                    type: {:one_of, [:self, :downstream, :infrastructure]},
+                    required: true,
+                    doc:
+                      "Who keeps a second delivery harmless: the reaction's own code " <>
+                        "(`:self`), the system it calls, given the key (`:downstream`), or " <>
+                        "the engine, with no code (`:infrastructure`)."
+                  ]
+                ]}
+  @idempotency_doc "What makes a second delivery harmless, and who keeps it so: " <>
+                     "`[key: :event_id, owner: :self]`."
+
   @policy %Spark.Dsl.Entity{
     name: :policy,
     describe: "Whenever an event happens, issue a command.",
@@ -498,7 +526,7 @@ defmodule EhOsContract.Contract.Dsl do
       handles: [type: {:wrap_list, :atom}, required: true, doc: "The events it reacts to."],
       issues: [type: {:wrap_list, :atom}, required: true, doc: "The commands it may issue."],
       delivery: [type: @delivery, default: :in_transaction, doc: "When it runs."],
-      idempotency: [type: :atom, doc: "What makes a second delivery harmless."],
+      idempotency: [type: @idempotency, doc: @idempotency_doc],
       source: [type: :string, doc: "Where the policy comes from in the material."]
     ]
   }
@@ -515,7 +543,7 @@ defmodule EhOsContract.Contract.Dsl do
       handles: [type: {:wrap_list, :atom}, required: true, doc: "The events it reacts to."],
       calls: [type: {:wrap_list, :atom}, default: [], doc: "The external systems it calls."],
       delivery: [type: @delivery, default: :at_least_once, doc: "When it runs."],
-      idempotency: [type: :atom, doc: "What makes a second delivery harmless."],
+      idempotency: [type: @idempotency, doc: @idempotency_doc],
       source: [type: :string, doc: "Where the effect comes from in the material."]
     ]
   }
@@ -590,7 +618,7 @@ defmodule EhOsContract.Contract.Dsl do
         doc: "The fields that tell which run an event belongs to."
       ],
       delivery: [type: @delivery, default: :at_least_once, doc: "When it runs."],
-      idempotency: [type: :atom, doc: "What makes a second delivery harmless."],
+      idempotency: [type: @idempotency, doc: @idempotency_doc],
       source: [type: :string, doc: "Where the process manager comes from in the material."]
     ]
   }
@@ -954,6 +982,16 @@ defmodule EhOsContract.Contract.Dsl do
     ]
   }
 
+  @expected_state %Spark.Dsl.Entity{
+    name: :state,
+    describe:
+      "What the process manager's run holds after the trigger: the givens and the " <>
+        "delivered event folded, compared on the fields named (plan EP4).",
+    target: ExpectedState,
+    args: [:data],
+    schema: [data: [type: :map, required: true, doc: "Fields of the state it must hold."]]
+  }
+
   @scenario %Spark.Dsl.Entity{
     name: :scenario,
     describe: "Given events, a trigger, and what follows: an example the process owner reads.",
@@ -966,7 +1004,8 @@ defmodule EhOsContract.Contract.Dsl do
       issues: [@issues],
       sets: [@sets],
       cancels: [@cancels],
-      answers: [@answers]
+      answers: [@answers],
+      state: [@expected_state]
     ],
     schema: [
       description: [type: :string, required: true, doc: "The case, in the owner's words."],

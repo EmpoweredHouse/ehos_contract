@@ -151,7 +151,13 @@ defmodule EhOsContract.ContractExamplesTest do
         #{f.effect}
         """)
 
-      assert [%{calls: [:mail], delivery: :at_least_once, idempotency: :downstream}] =
+      assert [
+               %{
+                 calls: [:mail],
+                 delivery: :at_least_once,
+                 idempotency: %{key: :event_id, owner: :downstream}
+               }
+             ] =
                model.effects
     end
 

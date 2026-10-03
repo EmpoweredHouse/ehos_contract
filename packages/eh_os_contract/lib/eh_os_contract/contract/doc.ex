@@ -66,6 +66,7 @@ defmodule EhOsContract.Contract.Doc do
             "`#{name}`#{label(declaration)}#{source(declaration)}."
       ),
       list("May issue", issues),
+      unless(timer?, do: idempotency(declaration)),
       rules_section("Keeps", rules(model, kind, declaration)),
       scenarios(
         for s <- model.scenarios,
@@ -84,6 +85,7 @@ defmodule EhOsContract.Contract.Doc do
       "Reacts to `#{callback}`#{event_label(model, callback)}, for effect " <>
         "`#{name}`#{label(effect)}#{source(effect)}.",
       if(calls != [], do: "Calls #{Enum.join(calls, ", ")}."),
+      idempotency(effect),
       rules_section("Keeps", rules(model, :effect, effect))
     ])
   end
@@ -114,6 +116,23 @@ defmodule EhOsContract.Contract.Doc do
       rules_section("Keeps", for(r <- function.rules, do: {"rule", r, examples(r)}))
     ])
   end
+
+  @doc """
+  What a reaction's `idempotency` asks of its code (plan EP4): who keeps a second
+  delivery harmless, and on what key; `nil` for a reaction without one. The same
+  sentence is the reaction's page's.
+  """
+  @spec idempotency(map()) :: String.t() | nil
+  def idempotency(%{idempotency: %{key: key, owner: owner}}) do
+    "A second delivery is harmless on `#{key}`: " <>
+      case owner do
+        :self -> "this code keys what it writes by it."
+        :downstream -> "the system it calls is given the key and ignores a repeat."
+        :infrastructure -> "the engine keys what it does by it, with no code here."
+      end
+  end
+
+  def idempotency(_reaction), do: nil
 
   @doc """
   The `@doc` of `evolve/2` of a declaration of `kind`: which events it folds into
@@ -258,12 +277,15 @@ defmodule EhOsContract.Contract.Doc do
           do: "cancels " <> Enum.map_join(s.cancels, ", ", &"`#{&1}`")
         ),
         if(Map.get(s, :ended), do: "ends the run"),
-        if(Map.has_key?(s, :answers), do: "answers #{length(List.wrap(s.answers))} row(s)")
+        if(Map.has_key?(s, :answers), do: "answers #{length(List.wrap(s.answers))} row(s)"),
+        if(Map.has_key?(s, :state), do: "holds " <> fields(s.state))
       ]
       |> Enum.reject(&is_nil/1)
 
     if parts == [], do: "", else: ": " <> Enum.join(parts, ", ")
   end
+
+  defp fields(data), do: data |> Map.keys() |> Enum.sort() |> Enum.map_join(", ", &"`#{&1}`")
 
   defp names(items, key), do: Enum.map_join(items, ", ", &"`#{Map.fetch!(&1, key)}`")
 

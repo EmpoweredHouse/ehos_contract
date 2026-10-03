@@ -10,7 +10,10 @@ defmodule EhOsContract.Contract.Rules.Consumers do
     `idempotency`, what makes a second delivery harmless. A process manager does
     not: its commands and timers take keys the library derives from the run, so a
     replay or a second delivery repeats nothing (v2 §17). v2 §4.6 writes one
-    without `idempotency`, and this is why it compiles.
+    without `idempotency`, and this is why it compiles. `idempotency` names its
+    `key` and its `owner` (plan EP4), and only an effect's owner is `:downstream`:
+    a policy and a process manager issue commands to this engine, never to a
+    system that could keep a key.
   - **P4.** A process manager starts on at least one event and correlates on at
     least one field: with none, every run would share one record, one state and
     one set of timers, and the first ending would end it for all. Its triggers are
@@ -50,7 +53,8 @@ defmodule EhOsContract.Contract.Rules.Consumers do
     where = "policy #{inspect(policy.name)}"
 
     handles(where, policy, policy.handles, events) ++
-      issues("P1", where, policy, policy.issues, commands) ++ idempotent(where, policy)
+      issues("P1", where, policy, policy.issues, commands) ++
+      idempotent(where, policy) ++ not_downstream(where, policy)
   end
 
   defp effect(effect, events) do
@@ -121,7 +125,9 @@ defmodule EhOsContract.Contract.Rules.Consumers do
         ],
         else: []
 
-    starts ++ uncorrelated ++ triggers ++ references ++ timer_shape ++ issued ++ delivery
+    starts ++
+      uncorrelated ++
+      triggers ++ references ++ timer_shape ++ issued ++ delivery ++ not_downstream(where, pm)
   end
 
   defp timer(where, timer, state) do
@@ -192,4 +198,13 @@ defmodule EhOsContract.Contract.Rules.Consumers do
   end
 
   defp idempotent(_where, _declaration), do: []
+
+  defp not_downstream(where, %{idempotency: idempotency} = declaration) do
+    if idempotency[:owner] == :downstream,
+      do: [
+        {"P3: #{where} issues commands to this engine, so no system downstream keeps its " <>
+           "idempotency; its owner is :self or :infrastructure", declaration}
+      ],
+      else: []
+  end
 end

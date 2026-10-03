@@ -354,6 +354,15 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Added
 
+- **EP4: a process manager's state in a scenario, and who keeps a reaction idempotent.** A process
+  manager's scenario may say `state %{…}`, the fields its run holds after the trigger; `ScenarioCase`
+  folds the delivered event after the reaction, as the engine does (a timer folds none), and compares the
+  fields named. S3 and S6 refuse a state naming no field of the run or the correlation, said twice, or said
+  of anything but a process manager. **`idempotency` is now `[key: :event_id, owner: :self]`**, the owner
+  one of `:self`, `:downstream` and `:infrastructure`, both required; an atom no longer compiles, and P3
+  refuses `:downstream` outside an effect. The callback's `@doc` and the reaction's page say what the owner
+  asks of the code. **Moves the version** of every contract with an `idempotency`, which is now a map in
+  the model; a scenario's `state` is kept only where it is said, so no other version moves.
 - **EP3: a generated behaviour documents what the contract says.** Each callback's `@doc` gives its
   declaration's label and source, the events it may emit or the commands it may issue, the rules that hold
   there — each with the scenario that refuses on it or illustrates it, or marked prose alone — and the

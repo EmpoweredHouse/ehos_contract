@@ -20,8 +20,10 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
   - **S6.** Trigger and outcome fit the target. A command to a unit is followed by
     `expect` or by `rejected`, not both. An event delivered to a policy is followed
     by what it `issues`; to a process manager, by what it `issues`, `sets`,
-    `cancels` or whether it has `ended`, and each of those is one its declaration
-    allows; `on` may also name one of its timers, which then fires. A query is
+    `cancels`, whether it has `ended`, or the `state` its run holds after it (plan
+    EP4), and each of those is one its declaration allows — `state` once, naming
+    fields of the state or the correlation; `on` may also name one of its timers,
+    which then fires. Only a process manager's scenario says a `state`. A query is
     followed by one `answers`, ESDM's `result`: a list of rows when it returns
     many, one row or `nil` when it returns one, each row naming fields of the read
     model it reads. An effect's outcome is outside the log, so an effect is no
@@ -362,7 +364,7 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
 
     foreign =
       reactions_only(where, scenario, "a command to a unit") ++
-        actor(where, scenario, command)
+        no_state(where, scenario) ++ actor(where, scenario, command)
 
     givens ++ command_data ++ expected ++ rejected ++ outcome ++ foreign
   end
@@ -384,7 +386,8 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
       event_data(where, trigger, trigger.name, d) ++
       issued(where, scenario, policy.issues, d) ++
       decisions_only(where, scenario) ++
-      no_timers(where, scenario, "a policy") ++ outcome ++ no_actor(where, scenario)
+      no_timers(where, scenario, "a policy") ++
+      no_state(where, scenario) ++ outcome ++ no_actor(where, scenario)
   end
 
   defp fits(where, scenario, trigger, :process_manager, pm, d) do
@@ -419,12 +422,31 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
 
     outcome =
       if scenario.issues == [] and scenario.sets == [] and scenario.cancels == [] and
-           not scenario.ended,
+           scenario.state == [] and not scenario.ended,
          do: [
-           {"S6: #{where}: after an event, say what it issues, sets, cancels, or that it ended",
-            scenario}
+           {"S6: #{where}: after an event, say what it issues, sets, cancels, the state it " <>
+              "holds, or that it ended", scenario}
          ],
          else: []
+
+    state =
+      case scenario.state do
+        [] ->
+          []
+
+        [expected] ->
+          data(
+            where,
+            expected,
+            "the state of process manager #{inspect(pm.name)}",
+            Rules.state_fields(pm.state),
+            %{identity: pm.correlate},
+            required: false
+          )
+
+        [_, second | _] ->
+          [{"S6: #{where}: a scenario says the state once", second}]
+      end
 
     # A timer that fires delivers no event, so it has no data to check.
     delivered = if timer, do: [], else: event_data(where, trigger, trigger.name, d)
@@ -433,7 +455,8 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
     givens ++
       delivered ++
       issued(where, scenario, issues, d) ++
-      decisions_only(where, scenario) ++ timers ++ ended ++ outcome ++ no_actor(where, scenario)
+      decisions_only(where, scenario) ++
+      timers ++ ended ++ outcome ++ state ++ no_actor(where, scenario)
   end
 
   defp fits(where, scenario, trigger, :query, query, d) do
@@ -469,7 +492,7 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
     foreign =
       reactions_only(where, %{scenario | answers: []}, "a query") ++
         decisions_only(where, %{scenario | answers: []}) ++
-        no_actor(where, scenario)
+        no_state(where, scenario) ++ no_actor(where, scenario)
 
     givens ++ params ++ answered ++ foreign
   end
@@ -572,6 +595,12 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
       {"S6: #{where}: #{what} has no timers", ref}
     end ++
       if(scenario.ended, do: [{"S6: #{where}: #{what} does not end", scenario}], else: [])
+  end
+
+  defp no_state(where, scenario) do
+    for state <- scenario.state do
+      {"S6: #{where}: state belongs to a process manager's scenario", state}
+    end
   end
 
   defp actor(_where, %{actor: nil}, _command), do: []

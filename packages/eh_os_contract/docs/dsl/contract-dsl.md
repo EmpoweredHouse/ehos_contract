@@ -91,6 +91,7 @@ One process, and everything born in it.
    * sets
    * cancels
    * answers
+   * state
 
 
 
@@ -928,7 +929,7 @@ Whenever an event happens, issue a command.
 | [`handles`](#contract-policy-handles){: #contract-policy-handles .spark-required} | `atom \| list(atom)` |  | The events it reacts to. |
 | [`issues`](#contract-policy-issues){: #contract-policy-issues .spark-required} | `atom \| list(atom)` |  | The commands it may issue. |
 | [`delivery`](#contract-policy-delivery){: #contract-policy-delivery } | `:in_transaction \| :at_least_once` | `:in_transaction` | When it runs. |
-| [`idempotency`](#contract-policy-idempotency){: #contract-policy-idempotency } | `atom` |  | What makes a second delivery harmless. |
+| [`idempotency`](#contract-policy-idempotency){: #contract-policy-idempotency } | `[key: atom, owner: :self \| :downstream \| :infrastructure]` |  | What makes a second delivery harmless, and who keeps it so: `[key: :event_id, owner: :self]`. |
 | [`source`](#contract-policy-source){: #contract-policy-source } | `String.t` |  | Where the policy comes from in the material. |
 
 
@@ -992,7 +993,7 @@ A side effect on an event, outside the log.
 | [`handles`](#contract-effect-handles){: #contract-effect-handles .spark-required} | `atom \| list(atom)` |  | The events it reacts to. |
 | [`calls`](#contract-effect-calls){: #contract-effect-calls } | `atom \| list(atom)` | `[]` | The external systems it calls. |
 | [`delivery`](#contract-effect-delivery){: #contract-effect-delivery } | `:in_transaction \| :at_least_once` | `:at_least_once` | When it runs. |
-| [`idempotency`](#contract-effect-idempotency){: #contract-effect-idempotency } | `atom` |  | What makes a second delivery harmless. |
+| [`idempotency`](#contract-effect-idempotency){: #contract-effect-idempotency } | `[key: atom, owner: :self \| :downstream \| :infrastructure]` |  | What makes a second delivery harmless, and who keeps it so: `[key: :event_id, owner: :self]`. |
 | [`source`](#contract-effect-source){: #contract-effect-source } | `String.t` |  | Where the effect comes from in the material. |
 
 
@@ -1062,7 +1063,7 @@ Steers a run: starts on an event, reacts, sets timers, ends.
 |------|------|---------|------|
 | [`correlate`](#contract-process_manager-correlate){: #contract-process_manager-correlate .spark-required} | `atom \| list(atom)` |  | The fields that tell which run an event belongs to. |
 | [`delivery`](#contract-process_manager-delivery){: #contract-process_manager-delivery } | `:in_transaction \| :at_least_once` | `:at_least_once` | When it runs. |
-| [`idempotency`](#contract-process_manager-idempotency){: #contract-process_manager-idempotency } | `atom` |  | What makes a second delivery harmless. |
+| [`idempotency`](#contract-process_manager-idempotency){: #contract-process_manager-idempotency } | `[key: atom, owner: :self \| :downstream \| :infrastructure]` |  | What makes a second delivery harmless, and who keeps it so: `[key: :event_id, owner: :self]`. |
 | [`source`](#contract-process_manager-source){: #contract-process_manager-source } | `String.t` |  | Where the process manager comes from in the material. |
 
 
@@ -1930,6 +1931,7 @@ Given events, a trigger, and what follows: an example the process owner reads.
  * [sets](#contract-scenario-sets)
  * [cancels](#contract-scenario-cancels)
  * [answers](#contract-scenario-answers)
+ * [state](#contract-scenario-state)
 
 
 
@@ -2165,6 +2167,30 @@ What the query answers: the rows, or for a query that returns one, the row or ni
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`rows`](#contract-scenario-answers-rows){: #contract-scenario-answers-rows .spark-required} | `any` |  | Rows as maps of the fields they must carry; exactly as many as answered. |
+
+
+
+
+
+
+
+### contract.scenario.state
+```elixir
+state data
+```
+
+
+What the process manager's run holds after the trigger: the givens and the delivered event folded, compared on the fields named (plan EP4).
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`data`](#contract-scenario-state-data){: #contract-scenario-state-data .spark-required} | `map` |  | Fields of the state it must hold. |
 
 
 

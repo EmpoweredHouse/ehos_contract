@@ -153,7 +153,7 @@ defmodule Taxvision.Contracts.RegistryWatch do
   effect :look_up_registries, "Zapytaj rejestry publiczne",
     handles: :data_completeness_confirmed,
     calls: :registries,
-    idempotency: :event_id,
+    idempotency: [key: :event_id, owner: :self],
     source: "03 §4.2" do
     # Prose alone: no scenario runs an effect (plan EP2).
     constraint :within_registry_limits,
@@ -247,6 +247,29 @@ defmodule Taxvision.Contracts.RegistryWatch do
     given :data_completeness_confirmed, %{period_id: "2025-12"}
     on :next_month
     issues :check_registries, %{period_id: "2026-01"}
+  end
+
+  # Plan EP4: the run's date, after each kind of confirmation. A check of the month the
+  # date is for moves it on a month; a confirmation of any other month leaves it be.
+  scenario "pierwsze potwierdzenie w styczniu — następne sprawdzenie 1 lutego" do
+    scope :monthly_registry_check
+    on :data_completeness_confirmed, %{period_id: "2025-12"}
+    sets :next_month
+    state %{check_at: "2026-02-01T00:00:00Z"}
+  end
+
+  scenario "sprawdzony styczeń — następne sprawdzenie 1 marca" do
+    scope :monthly_registry_check
+    given :data_completeness_confirmed, %{period_id: "2025-12"}
+    on :data_completeness_confirmed, %{period_id: "2026-01"}
+    state %{check_at: "2026-03-01T00:00:00Z"}
+  end
+
+  scenario "ponowne sprawdzenie listopada nie przesuwa terminu" do
+    scope :monthly_registry_check
+    given :data_completeness_confirmed, %{period_id: "2025-12"}
+    on :data_completeness_confirmed, %{period_id: "2025-11"}
+    state %{check_at: "2026-02-01T00:00:00Z"}
   end
 
   # The timer checks the month before its own date. A node whose clock is still a

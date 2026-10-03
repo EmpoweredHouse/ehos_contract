@@ -15,7 +15,10 @@ defmodule EhOsContract.ScenarioCase do
   event; to a process manager, its state folds the givens and the reaction's
   callback, or the timer's, is called with it. `sets`, `cancels` and `ended` are the
   declaration's, which S6 has already compared with the scenario when the contract
-  compiled; what runs is what the code decides.
+  compiled; what runs is what the code decides. A process manager's `state` (plan
+  EP4) is the run after the step, as the engine keeps it: the delivered event folded
+  through `evolve/2` after the reaction decided, and after a timer the state as it
+  was. It holds the fields the scenario names, and any others.
 
   **What it asserts keeps `ContractExample`'s semantics.** The events a scenario
   expects, and the commands it says are issued, **appear among those produced, in
@@ -518,7 +521,38 @@ defmodule EhOsContract.ScenarioCase do
     produced =
       within!(model, :command, issued, allowed, "the reaction to #{inspect(trigger)} issues")
 
-    subsequence!(expected(model, :command, scenario.issues, & &1.command), :command, produced)
+    issued? =
+      subsequence!(expected(model, :command, scenario.issues, & &1.command), :command, produced)
+
+    if Map.has_key?(scenario, :state),
+      do: held!(model, scenario, impl, state, identity, now),
+      else: issued?
+  end
+
+  # Plan EP4: the run's state after the step. As `EhOsContract.ProcessManager` takes
+  # it, a delivered event is folded after the reaction decided; a timer's firing
+  # changes no state.
+  defp held!(model, %{target: %{name: name}} = scenario, impl, state, identity, now) do
+    pm = Enum.find(model.process_managers, &(&1.name == name))
+    trigger = scenario.trigger.name
+
+    after_step =
+      if Enum.any?(pm.timers, &(&1.name == trigger)),
+        do: state,
+        else:
+          fold(impl, state, [
+            message(model, :event, trigger, scenario.trigger.data, identity, now, nil)
+          ])
+
+    expected = cast_data(pm.state.fields, scenario.state, domain(model))
+
+    assert matches?(expected, after_step),
+           """
+           the scenario requires the run to hold, after #{inspect(trigger)}:
+             #{inspect(expected)}
+           and it holds:
+             #{inspect(Map.from_struct(after_step))}
+           """
   end
 
   # What a scenario expects, with its data cast as the struct's would be.
@@ -609,7 +643,8 @@ defmodule EhOsContract.ScenarioCase do
     data =
       Enum.map(scenario.given, & &1.data) ++
         [scenario.trigger.data] ++
-        Enum.map(scenario.expect, & &1.data) ++ Enum.map(scenario.issues, & &1.data)
+        Enum.map(scenario.expect, & &1.data) ++
+        Enum.map(scenario.issues, & &1.data) ++ [Map.get(scenario, :state, %{})]
 
     fn field -> Enum.find_value(data, &Map.get(&1, field)) end
   end

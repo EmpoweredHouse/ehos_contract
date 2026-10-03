@@ -278,8 +278,8 @@ defmodule EhOsContract.ContractNamesTest do
             event :visit_closed, "Wizyta zamknięta", terminal: true
           end
 
-          effect :notify, "Powiadom", handles: :visit_closed, calls: :mail, idempotency: :downstream
-          effect :notify, "Powiadom 2", handles: :visit_closed, calls: :mail, idempotency: :downstream
+          effect :notify, "Powiadom", handles: :visit_closed, calls: :mail, idempotency: [key: :event_id, owner: :downstream]
+          effect :notify, "Powiadom 2", handles: :visit_closed, calls: :mail, idempotency: [key: :event_id, owner: :downstream]
 
           process :visit, "Wizyta" do
             correlate :visit_id

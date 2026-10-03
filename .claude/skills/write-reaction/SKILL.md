@@ -83,15 +83,21 @@ that calls out, fans out, or may be slow. The compiler and `check` push the same
 ## Idempotency: a second delivery must change nothing
 
 `:at_least_once` means the reaction **will** see an event twice. `P3` makes a policy or an effect
-delivered so name `idempotency:`, what makes that harmless — an atom the process owner and the
-reviewer read, such as `:event_id`. The library does part of it itself, and the rest is yours:
+delivered so name `idempotency:`, what makes that harmless and who keeps it so —
+`[key: :event_id, owner: :self]` (plan EP4). The owner is the line of code it asks for: `:self`, this
+module keys what it writes; `:downstream`, an effect passes the key to the system it calls, which
+ignores a repeat (`P3` allows it on an effect only); `:infrastructure`, the engine keys it, as it does
+every command a policy issues. The callback's `@doc` repeats the owner's sentence. The library does
+part of it itself, and the rest is yours:
 
 - **A command a reaction issues is keyed by its cause**: `"policy:<contract>:<name>:<event id>:
   <index>"`, `"pm:<contract>:<name>:<source id>:<index>"`. A second delivery appends nothing, so a
   policy or a process manager needs nothing more — which is why `P3` does not ask a process manager.
 - **An effect's side effect is not keyed by the library.** Pass `event.__meta__.id` on to the system
-  called, or record the answer with an idempotency key derived from it, as `SendP1Report` does with
-  `"p1-report-sent:#{meta.id}"`. The far end is where a duplicate e-mail is sent.
+  called (`owner: :downstream`, as `send_p1_report` declares: P1 is where a second report would be
+  filed), or record the answer with an idempotency key derived from it (`owner: :self`), as
+  `LookUpRegistries` does with `"registry-status-checked:#{meta.id}"`. The far end is where a
+  duplicate e-mail is sent.
 - **A read model writes the host's tables.** Key its rows by the event (`on_conflict: :nothing` on
   the event's id, as `DailyTotals` does), or a replay double-counts.
 - **Another application's event is deduplicated by the inbox**, by the message's key: the
@@ -151,7 +157,10 @@ it. What was published before is asked of its owner (`eh-os` D-03).
 3. If `:at_least_once`, name `idempotency`, and make the effect's or projection's own writes keyed by
    the event.
 4. Declare it in the contract, then a scenario for it: an `on` event with the `issues` it expects
-   for a policy or a process manager, a `query` with `answers` for a read model
+   for a policy or a process manager — and for a process manager whose `evolve/2` decides something
+   no command shows, the `state` its run holds after the event, one scenario per branch, as
+   `monthly_registry_check` has for a date moved on and a date left be — a `query` with `answers`
+   for a read model
    (`reaction-without-scenario`). Give every rule a scenario that names it in `illustrates:` —
    one for each way the rule decides, as `report_on_clinical_close` has one for a reported service
    and one for the rest — before the code: the scenario is the test the implementation is written

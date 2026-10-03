@@ -50,7 +50,7 @@ defmodule EhOsContract.ContractDocTest do
       constraint :quiet, "Nie w nocy"
     end
 
-    effect :notify, "Powiadom", handles: :closed, idempotency: :event_id do
+    effect :notify, "Powiadom", handles: :closed, idempotency: [key: :event_id, owner: :self] do
       constraint :limits, "Adapter trzyma limity"
     end
 

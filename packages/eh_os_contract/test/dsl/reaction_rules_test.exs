@@ -36,7 +36,7 @@ defmodule EhOsContract.ReactionRulesTest do
       constraint :quiet_hours, "Nie przypominamy w nocy"
     end
 
-    effect :send_report, "Wyślij zgłoszenie", handles: :reported, idempotency: :event_id do
+    effect :send_report, "Wyślij zgłoszenie", handles: :reported, idempotency: [key: :event_id, owner: :self] do
       constraint :within_limits, "Adapter pilnuje limitów zapytań i ponawia je", source: "03 §4.2"
     end
 
@@ -142,7 +142,7 @@ defmodule EhOsContract.ReactionRulesTest do
           end
 
           policy :report_on_close, "Zamknięcie", handles: :closed, issues: :report
-          effect :send_report, "Wyślij", handles: :reported, idempotency: :event_id
+          effect :send_report, "Wyślij", handles: :reported, idempotency: [key: :event_id, owner: :self]
 
           process_manager :chase, "Pogoń" do
             correlate :visit_id

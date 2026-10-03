@@ -460,7 +460,8 @@ end
 
 # effect — side effects only; an external call cannot run in the transaction
 effect :notify_about_discrepancy, "Powiadom księgową o rozjeździe",
-  handles: :registry_discrepancy_detected, calls: :mail, idempotency: :downstream
+  handles: :registry_discrepancy_detected, calls: :mail,
+  idempotency: [key: :event_id, owner: :downstream]
 
 # a fact recorded rather than decided (D6): an observation, or an integration's answer
 event :visit_completed, "Pacjent wyszedł z gabinetu", recorded_by: :specialist do
@@ -532,6 +533,13 @@ EhOsContract.Model.capabilities(Rehmed.Contracts.VisitSettlement)
 with :ok <- EhOsContract.Capability.check(%RecordPayment{} = cmd, roles),
      do: EhOsContract.dispatch(cmd, actor: %{subject: user_id, roles: roles})   # dispatch checks again
 ```
+
+> *Corrected 3 October 2026, plan EP4.* The effect above first read `idempotency: :downstream`, one atom
+> that could be the key or who keeps it, and the sketch's other examples used it as the key
+> (`:event_id`). `idempotency` now names both, ESDM's `key` and `owner`: `:self` (the reaction's code keys
+> what it writes), `:downstream` (the system it calls is given the key) or `:infrastructure` (the engine
+> keys it, as it does a policy's commands). The line is rewritten because the test that compiles this
+> section reads it as written.
 
 ## 5. What a contract generates, and how an implementation binds to it
 
@@ -676,6 +684,10 @@ where it helps; every violation is reported as a diagnostic before the single ra
   > `:at_least_once` by default and names no `idempotency`, while E4's acceptance is that §4.6 compiles as
   > written. A process manager's commands and timers take keys the library derives from the run (§17,
   > "deterministic keys; timers as events"), so it has nothing to name. P3 applies to policies and effects.
+
+  > *Corrected 3 October 2026, plan EP4.* `idempotency` is `[key:, owner:]`, and only an effect's owner is
+  > `:downstream`: a policy and a process manager issue commands to this engine, never to a system that
+  > could keep a key.
 
 - *Process.* R1: exactly one `process`. R2: its `correlate` fields are present in every local event. R3: if
   the process declares stages, every local event sits in a stage group and every `include` has a stage; if

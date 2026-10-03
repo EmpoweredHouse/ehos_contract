@@ -122,7 +122,12 @@ What reacts to events is declared beside the units: a `policy` issues a command 
 `read_model` projects rows that a `query` reads. A reaction names its rules as a command does, with
 `constraint`, and a process manager its `invariant`s too; a scenario that names one in `illustrates:`
 is the test that it holds, and `mix eh_os_contract.check` warns of one no scenario illustrates. An
-effect's constraint stays prose, since no scenario runs an effect. `consumes` takes a sibling contract's events, and
+effect's constraint stays prose, since no scenario runs an effect. A process manager's scenario may also
+say the `state` its run holds after the trigger — `state %{check_at: "2026-02-01T00:00:00Z"}` — which
+`ScenarioCase` compares after folding the delivered event, as the engine does. A reaction delivered
+`:at_least_once` names what makes a second delivery harmless and who keeps it so, `idempotency: [key:
+:event_id, owner: :downstream]`: its own code (`:self`), the system an effect calls, given the key
+(`:downstream`), or the engine (`:infrastructure`), which keys the commands a policy issues. `consumes` takes a sibling contract's events, and
 `publish` lets one leave the application: its relay (`EhOsContract.Relay`) hands it to the configured
 `EhOsContract.Bus`, from the first deploy of the `publish` on.
 
@@ -242,7 +247,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `C1` | L2 | a command nobody can issue: no `by:`, and no policy or process manager of the contract issues it |
 | `P1` | L2 | a policy or an effect handling an event neither local nor consumed; a policy issuing a command not of this contract |
 | `P2` | L2 | an effect with `calls:` delivered `:in_transaction` |
-| `P3` | L2 | a policy or an effect delivered `:at_least_once` without `idempotency` |
+| `P3` | L2 | a policy or an effect delivered `:at_least_once` without `idempotency`; an `idempotency` owned `:downstream` outside an effect |
 | `P4` | L2 | a process manager starting on nothing, with `correlate: []`, or `:in_transaction`; a trigger neither a local or consumed event nor (for `on`) its own timer; `sets`/`cancels` naming another timer; a timer without exactly one of `wait`/`at`, or `at` not a `:timestamp` state field; issuing a foreign command |
 | `P5` | L2 | a read model projecting an event neither local nor consumed; a query reading what is not a read model of this contract |
 | `R1` | L2 | a contract without exactly one `process` |
@@ -257,7 +262,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `S3` | L2 | scenario data naming undeclared fields or of the wrong built-in type; a `given` or a trigger missing a required field (identity excepted) |
 | `S4` | L2 | `rejected` naming what the command does not `rejects:` |
 | `S5` | L2 | `expect` naming an event outside the command's `emits:` |
-| `S6` | L2 | an outcome unfit for the target: a command without exactly one of `expect`/`rejected`; a reaction with no outcome, or issuing, setting, cancelling or ending what it does not; a query without one `answers` shaped as it returns; another kind's outcome; an effect or read model as target |
+| `S6` | L2 | an outcome unfit for the target: a command without exactly one of `expect`/`rejected`; a reaction with no outcome, or issuing, setting, cancelling or ending what it does not; a `state` said twice, or of anything but a process manager; a query without one `answers` shaped as it returns; another kind's outcome; an effect or read model as target |
 | `S7` | L2 | an `actor` outside the command's `by:`, or on a scenario whose trigger is not a command |
 | `S8` | L2 | an invariant, or a command's constraint, that no `rejected` scenario (of that command, for a constraint) covers |
 | `S9` | L2 | a domain service's rule without examples; an example not `{[argument, …], result}` of the function's arity, with an argument or result of the wrong built-in type or `nil` where not optional; an example given twice |
