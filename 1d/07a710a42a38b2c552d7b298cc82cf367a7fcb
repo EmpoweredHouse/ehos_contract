@@ -1,0 +1,2 @@
+CodeRabbit on #93 (3 comments, all applied with tests: :opened only, @doc on text?/1, no reaction exemption), then one review pass of 584b123 (code-review high with security): derived reaction keys past the rule now digested in Consumer.reaction_key/5, open: only a function or nil, dispatch doc; all fixed with tests and reverse checks.
+Gate from sandbox/: EXIT=0 - sandbox 145, check 0/29/9; engine 1126, check 0/68/6; web 52; auth 278 + 1 property.
