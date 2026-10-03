@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 3 października (E0–E12, EH, #72, #83, całe EB, #89, #91 i #64–#66 w `main`; w PR-ach bajty (#93), granice wartości (#95) i #96)
+## Handoff — stan na 3 października, wieczór (E0–E12, EH, EB, #89, #91, #64–#66, #93, #95, #96 i #100 w `main`; otwartych PR-ów brak)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -33,47 +33,41 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
 
 ### Stan repozytorium
 
-- **`origin/main` = `9e61834`** (merge #92: #64–#66; przedtem `abb9b6c` — #91, discovery, `762521e` — #90, #89,
-  `da9f56f` — #88, EB3b). CI `main` na `9e61834` (przebieg `37110230712`) — `success`. Historia `main` z merge'ami
-  PR-ów; gałęzie liniowe.
-- **Otwarte PR-y, w tej kolejności, każdy na poprzednim:**
-  - **#93** `engine/unstorable-bytes` @ `3a675bb` → `main` — bajty, których log nie utrzyma. 3 października
-    przeniesiony rebase'em na `9e61834` (konflikt w CHANGELOG z #92: oba wpisy zostały) i z poprawką ostatniej
-    uwagi CodeRabbita (`@doc` dla `Dispatcher.idempotency_key?/1`). `MERGEABLE`.
-  - **#95** `engine/bounded-values` @ `0446abd` → **`engine/unstorable-bytes`** — granice wartości. Po merge'u #93
-    przestawić bazę: `gh api -X PATCH repos/EmpoweredHouse/eh-os-contract/pulls/95 -f base=main`; wtedy przejrzy go
-    CodeRabbit (na bazie innej niż `main` go pomija) — jego uwagi przeczytać przed merge'em.
-  - **#96** `engine/issue-96-key-rules` → `engine/bounded-values` — F8 i F9 („#96 — co wyszło”). Po merge'u #95 —
-    to samo przestawienie bazy.
-- **Gałęzie posprzątane 3 października** (za zgodą użytkownika): na GitHubie usunięte dwanaście gałęzi tej pracy
-  (`eb/eb1…eb3b`, `eh/eh2-ehos-yaml`, `eh/eh3-manifest-v2`, `eh/issue-83-ehos-yaml-v2`,
-  `auth/issue-71-keys-hardening`, `auth/issue-89-loopback`, `auth/discovery-endpoints`,
-  `engine/issue-65-received-paths`), wszystkie zmergowane; zostało około 50 innych zmergowanych — nieruszane. Lokalnie
-  usunięte zmergowane `auth/discovery-endpoints`, `auth/issue-66-scope-value`, `engine/issue-65-received-paths`, a
-  trzy stare worktree (`issue-72-…`, `issue-78-…`, `merge-pr-55-…`) zdjęte. Gałęzie trzech PR-ów do usunięcia po ich
-  merge'ach.
-- **Worktree:** `eb3b-applications-4567c7` trzyma gałęzie PR-ów (ma `deps`); `review-login-issues-eb9680` i
-  `computer-ordering-process-f84437` należą do innych sesji — nietknięte.
+- **`origin/main` = `0b7bc84`** (merge #100: poprawki CodeRabbita do #95). Przedtem `b65b8b7` — #97 (#96, F8/F9),
+  `996d89f` — #95 (granice wartości), `64f888b` — #93 (bajty, których log nie utrzyma), `9e61834` — #92 (#64–#66),
+  `abb9b6c` — #91 (discovery). CI `main` na `0b7bc84` (przebieg `37121970051`, job `check`) — `success`. Historia
+  `main` z merge'ami PR-ów; gałęzie liniowe. **Otwartych PR-ów brak.**
+- **#95 zmergowano bez dwóch ostatnich commitów** (poprawek z komentarzy CodeRabbita) — przyszły osobno jako #100,
+  razem z błędem, który przegląd w nich znalazł. W `main` jest wszystko; zapis w „Granice wartości z żądania”.
+- **Gałęzie:** gałęzie tej pracy usunięte na GitHubie i lokalnie 3 października, za zgodą użytkownika (EB, EH, #71,
+  #89, discovery, #65, #93, #95, #96, #100, a także przypadkowy `revert-95-engine/bounded-values` — revert z przycisku
+  GitHuba, bez PR-a). Zostało 59 innych gałęzi na GitHubie, zmergowanych dawno — nieruszane z wyboru użytkownika.
+- **Worktree innych sesji — nie ruszać:** `computer-ordering-process-f84437` (trzecia domena danych testowych,
+  issue #99; trzyma `phx.server` na wspólnym Postgresie), `esdm-dsl-comparison-d82750` (`dsl/ep1-source`),
+  `review-login-issues-eb9680`.
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
-  `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`) i mają schemat V01
-  z poprawkami ręcznymi opisanymi w historii tego akapitu (indeks idempotencji z E11f, `eh_os_contract_inbox` z
-  E12c); baza auth jest na V03. Worktree na kodzie sprzed tych zmian ma przez to oczekiwane padnięcia, a
-  `ecto.drop` przywraca stan. Dwie bramy naraz z dwóch worktree gryzą się o te bazy.
-- **Otwarte na GitHubie:** #96 (zamknie go PR #96), #94 (style dashboardu z `ehos_design`, nie z tej pracy), #64
-  (okno retencji inboxu — czeka na retencję transportu EHOS-a), #63 (zaparkowane do pierwszych innych drzwi), #49.
+  `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`), schemat V01 z
+  ręcznymi poprawkami z E11f i E12c, baza auth na V03. **Brama obok cudzego `phx.server` albo cudzych testów potrafi
+  paść na `too_many_connections`** (3 października: 9 padnięć silnika, sam silnik przechodził) — wtedy `mix check`
+  każdego pakietu osobno, po kolei, i zapisać, że tak było.
+- **Otwarte na GitHubie:** #98 (następna praca, niżej), #99 (cykl życia jednostek w pętli — z sesji
+  `computer-ordering-process`, nie z tej pracy), #94 (style dashboardu z `ehos_design`), #64 (okno retencji inboxu —
+  czeka na EHOS), #63 (kształt `call/3` — do pierwszych innych drzwi), #49 (materiał klientów poza repozytorium).
   **W `EmpoweredHouse/eh-os`: #91–#96 i #111** — nasze potrzeby wobec EHOS-a („Dopisek 1 października”).
-- **`ehos-ledger`** przypina `eh-os-contract` i puszcza w CI `mix eh_os_contract.manifest` — bump przypięcia robi się
-  w tamtym repozytorium.
+- **`ehos-ledger`** przypina `eh-os-contract` i puszcza w CI `mix eh_os_contract.manifest`; bump przypięcia — w tamtym
+  repozytorium. Od #95/#100 dokumenty OpenAPI i AsyncAPI z polem `:id` albo `:integer` mają nowy
+  `x-eh-os-contract-digest`.
 
 ### Co zostało — i czyje to jest
 
-- **Merge #93, #95 i #96 — użytkownika**, w tej kolejności, z przestawieniem bazy następnego na `main` po każdym.
-- **#98 — deterministyczny budżet bajtów klucza** (decyzja użytkownika z 3 października, opcja (c) z #96); przed
-  startem trzy pytania z issue: budżet, nazwa i status odmowy, los dostawy menedżera ponad budżet.
-- **Pytanie z #96 o pusty `:id` jako wartość pola korelacji** — „#96 — co wyszło”, „Do decyzji użytkownika”.
-- **Gałęzie na GitHubie poza tą pracą** (około 50 zmergowanych) — nieruszane; użytkownik wybrał 3 października
-  usunięcie tylko gałęzi tej pracy.
-- **Zostawione świadomie:** #63, #64, #49 (wyżej).
+- **#98 — deterministyczny budżet bajtów klucza** (asystenta, gdy użytkownik rozstrzygnie): przy dispatchu i przy
+  zapisie menedżera liczyć długość klucza po escapowaniu razem z nazwą przed nim i odmawiać ponad budżet; F9 = 6
+  zostaje. **Przed startem — trzy decyzje użytkownika z issue:** budżet (jeden czy na tabelę), nazwa i status odmowy
+  (np. `:key_too_long` / 422), co menedżer robi z dostawą ponad budżet (pomija czy stoi). Pomiary — „#96 — co
+  wyszło”.
+- **Pytanie z #96 o pusty `:id` jako wartość pola korelacji** — od #100 pusty `:id` jest odmawiany także przy
+  dekodowaniu, więc pytanie dotyczy już tylko starych wierszy logu.
+- **Zostawione świadomie:** #63, #64, #49, #94 (wyżej); #99 — sesji, która je założyła.
 - **Wady `oidcc` 3.9.0** — zgłoszone jako erlef/oidcc#552–#555; nasz kod ich nie potrzebuje.
 - **Po stronie EHOS-a, nie tutaj:** szablon `ehos_app` (krok 7) i test na klastrze (krok 8); bump w `ehos-ledger`;
   port `4001.0` — [eh-os#111](https://github.com/EmpoweredHouse/eh-os/issues/111).
@@ -88,20 +82,20 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
 
 ### Co przeczytać najpierw
 
-1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach (także w
-   fiksturach testów: `label` po polsku jest dozwolony — CodeRabbit to już przyjął), wyrażenia regularne z flagą `u`
-   i `[0-9]`, zsh bez dzielenia słów.
-2. `PLAN.md`: „Dopisek 2 października (2)” (#83, podział EB2) i „Dopisek 2 października — EB” razem z „EB1 — co
-   wyszło” — decyzje z odrzuconymi opcjami i to, co przegląd EB1 przeniósł do EB2.
-3. `docs/adr/browser-session.md` — S1–S11 z datowanymi poprawkami, specyfikacja EB2 i EB3; „Confirmation” to lista
-   testów. Kod: `packages/eh_os_contract_auth/lib/eh_os_contract/auth/sign_in.ex`, `sign_in/http.ex` i
-   `test/support/fake_ehos.ex`.
-4. W `eh-os` czytaj `main` z GitHuba (`gh api …/contents/<ścieżka>?ref=main -H 'Accept:
-   application/vnd.github.raw'`), nie lokalny checkout: `docs/manifest.md`, `docs/ehos-yaml.md`,
-   `priv/schemas/ehos.yaml/v2.json`, `lib/ehos/applications/ehos_yaml/v2.ex`, `lib/ehos/sign_in/token.ex`,
-   `lib/ehos/applications/manifest/v2.ex`, `test/support/fixtures/manifests/ledger.v2.json`, `docs/adr/0051`,
-   `0052`, `0056`, `0064`, `0068`, `0069`. Do `~/Projects/ai/eh-os` i `empowered-house-context` nie piszemy.
-5. `.claude/skills/pre-pr-review/SKILL.md` — przegląd po każdej części etapu, przed PR-em.
+1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach (`label` po
+   polsku w fiksturach testów jest dozwolony), wyrażenia regularne z flagą `u` i `[0-9]`, zsh bez dzielenia słów.
+2. Issue [#98](https://github.com/EmpoweredHouse/eh-os-contract/issues/98) — następna praca: problem z pomiarami,
+   wybrana opcja (c), odrzucone (a), (b) i skrót, trzy pytania przed startem.
+3. `PLAN.md`: „#96 — co wyszło” (pomiar kompresji Postgresa, trzy rundy przeglądu, F8/F9/X6) i „Granice wartości z
+   żądania” (granice `:id`, `:integer`, `:decimal`, dat; komentarze CodeRabbita i #100).
+4. Kod kluczy: `packages/eh_os_contract/lib/eh_os_contract/key.ex` (`join/1`, `escape/1`, `max_fields/0` z
+   komentarzem o pomiarze), `dispatcher.ex` (`run_key/2`, `included_runs/3`, strumień przez `Key.stream`),
+   `process_manager.ex` (`handle!/5`) i `implementations.ex` (nazwa menedżera `<moduł>:process_manager:<nazwa>`);
+   tabele i indeksy — `migrations/v01.ex`.
+5. `packages/eh_os_contract/lib/eh_os_contract/codec.ex`, moduledoc „Types” i „Bounds” — co wejście trzyma, a czego
+   odczyt logu (`open:`) nie.
+6. `.claude/skills/pre-pr-review/SKILL.md` — dwa przeglądy równolegle, próba odwrotna, notatka w
+   `refs/notes/review`; hook czyta `HEAD` głównego checkoutu, więc PR-y tu idą przez `gh api …/pulls`.
 
 ### Komendy
 
@@ -158,6 +152,12 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **Lokalnie, 3 października wieczorem, na `main` = `0b7bc84`** (główny checkout po `mix deps.get` w trzech pakietach
+  i `sandbox/`): brama z `sandbox/` → **EXIT=0** — sandbox 145, `check` 0 / 29 / 9; silnik **1151**, `check` 0 / 68
+  / 6; web 52; auth 285 + 1 property. CI `main` na `0b7bc84` — `success` (job `check`).
+- **#100 @ `2a7ebad`:** pełna brama padła na `too_many_connections` (cudzy `phx.server`); sandbox przeszedł w niej,
+  a `mix check` każdego pakietu osobno — EXIT=0 (silnik 1139, web 52, auth 285 + 1 property).
+- **#97 @ `7d3997e`:** brama z `sandbox/` → EXIT=0 — silnik 1150, reszta jak wyżej.
 - **Lokalnie, 3 października, po rebase'ach na `9e61834`:** brama z `sandbox/` → **EXIT=0** na każdej głowie —
   #93 @ `3a675bb`: sandbox 145, silnik 1129, web 52, auth 285 + 1 property; #95 @ `0446abd`: silnik **1138**, reszta
   jak wyżej. Liczby dla #96 — „#96 — co wyszło”.
