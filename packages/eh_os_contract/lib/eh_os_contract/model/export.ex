@@ -28,7 +28,22 @@ defmodule EhOsContract.Model.Export do
     |> update_many(:expect, &redact_event(&1, :event, model, values))
     |> update_many(:issues, &redact_named(&1, :command, model.commands, values))
     |> redact_answers(model, values)
+    |> redact_state(model, values)
   end
+
+  # A process manager's run, as a scenario expects it (plan EP4): its state's fields,
+  # correlation included, say which are personal.
+  defp redact_state(%{state: state, target: %{name: name}} = scenario, model, values) do
+    fields =
+      case Enum.find(model.process_managers, &(&1.name == name)) do
+        %{state: %{fields: fields}} -> fields
+        nil -> []
+      end
+
+    %{scenario | state: redact_fields(state, fields, values)}
+  end
+
+  defp redact_state(scenario, _model, _values), do: scenario
 
   defp redact_trigger(%{kind: :command} = trigger, model, values),
     do: redact_named(trigger, :name, model.commands, values)
