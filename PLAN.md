@@ -513,6 +513,12 @@ Na `sandbox/lc4a-appunite-lifecycle`, od `main` po #122. LC4 podzielone (rozstrz
   czy raport wystarczy.
 - **`evolve/2`** czyta status silnika (zwrot i powrót z Innergo zmieniają stan tylko z `:returning` i
   `:in_service`), nigdy go nie ustawia.
+- **Poprawka użytkownika (4 października, po obejrzeniu diagramu):** utrata tylko z `W użytku` — materiał zna jedną
+  („komputer u pracownika — skradziony”, E). Utrata z każdego statusu była uogólnieniem asystenta, spoza
+  materiału; na diagramie dawała sześć strzałek „zgubiony albo skradziony” i graf wyglądał, jakby opisywał głównie
+  utratę. Utrata odnotowana gdzie indziej jest dopisywana i raport pokazuje ją jako niezadeklarowaną; „Inventory”
+  rusza wiersz tylko z `issued`/`replacement`. *Do rozważenia przy bibliotece:* przejście z kilku statusów rysowane
+  jako osobna strzałka z każdego — czytelne przy dwóch, nie przy sześciu.
 - **Skill `change-contract`:** wiersz o dodaniu cyklu życia do agregatu z historią.
 - **Bez zmian:** enum statusu w read modelu „Inventory” powtarza etykiety cyklu życia — czytanie ich z cyklu życia
   byłoby nowym słowem DSL-a, bez drugiego przykładu.

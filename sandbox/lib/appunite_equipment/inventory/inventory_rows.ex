@@ -95,9 +95,16 @@ defmodule AppuniteEquipment.Inventory.InventoryRows do
   def disposed(%Disposed{computer_id: id}),
     do: rewrite_unless_ended(id, status: "disposed", reserved: false)
 
+  # As in the lifecycle, a loss is of a computer with an employee; one recorded
+  # anywhere else leaves the row where it is.
   @impl true
   def lost(%Lost{computer_id: id}),
-    do: rewrite_unless_ended(id, status: "lost", employee_id: nil, reserved: false)
+    do:
+      rewrite_when(id, ["issued", "replacement"],
+        status: "lost",
+        employee_id: nil,
+        reserved: false
+      )
 
   @impl true
   def reset do
