@@ -95,7 +95,7 @@ defmodule EhOsContract.Web.Live.Graph do
     # is connected: the first, static render draws them declared, and the mount that
     # follows lays the log over them (plan LC4b).
     lifecycles =
-      if connected?(socket) and Enum.any?(model.units, &EhOsContract.Lifecycle.of/1),
+      if connected?(socket) and Enum.any?(model.units, &Map.get(&1, :lifecycle)),
         do: EhOsContract.Conformance.lifecycles(model, [])
 
     units =
@@ -119,7 +119,7 @@ defmodule EhOsContract.Web.Live.Graph do
 
   defp lifecycle(contract, unit, lifecycles) do
     cond do
-      EhOsContract.Lifecycle.of(unit) == nil ->
+      Map.get(unit, :lifecycle) == nil ->
         nil
 
       lifecycles == nil ->
