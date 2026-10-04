@@ -44,8 +44,8 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule Command do
     @moduledoc false
-    defstruct [:name, :label, :source, :scope, by: [], emits: [], rejects: [], fields: []] ++
-                [constraints: [], creates: false, __spark_metadata__: nil]
+    defstruct [:name, :label, :source, :scope, :or_rejects, by: [], emits: [], rejects: []] ++
+                [fields: [], constraints: [], creates: false, from: [], __spark_metadata__: nil]
   end
 
   defmodule Generated do
@@ -91,10 +91,31 @@ defmodule EhOsContract.Contract.Dsl do
     defstruct [:event, :where, match: [], __spark_metadata__: nil]
   end
 
+  defmodule Status do
+    @moduledoc false
+    defstruct [:name, :label, :source, terminal: false, __spark_metadata__: nil]
+  end
+
+  defmodule Initial do
+    @moduledoc false
+    defstruct [:status, :on, :source, __spark_metadata__: nil]
+  end
+
+  defmodule Transition do
+    @moduledoc false
+    defstruct [:event, :to, :source, from: [], __spark_metadata__: nil]
+  end
+
+  defmodule Lifecycle do
+    @moduledoc false
+    defstruct statuses: [], initials: [], transitions: [], __spark_metadata__: nil
+  end
+
   defmodule Unit do
     @moduledoc false
     defstruct [:kind, :name, :label, :source, :generated, identity: [], consults: [], state: []] ++
-                [invariants: [], commands: [], events: [], stages: [], __spark_metadata__: nil]
+                [invariants: [], commands: [], events: [], stages: [], lifecycle: []] ++
+                [__spark_metadata__: nil]
   end
 
   defmodule Policy do
@@ -383,6 +404,26 @@ defmodule EhOsContract.Contract.Dsl do
     ]
   }
 
+  # Plan LC1: an aggregate's command may name the statuses of its lifecycle it is issued
+  # in. A boundary's may not: it has no lifecycle, and a word it has only to be refused
+  # would stand in its reference as if it meant something there.
+  @aggregate_command %{
+    @command
+    | schema:
+        @command.schema ++
+          [
+            from: [
+              type: {:wrap_list, :atom},
+              default: [],
+              doc: "The statuses of its aggregate's lifecycle it may be issued in."
+            ],
+            or_rejects: [
+              type: :atom,
+              doc: "The invariant of the unit it is refused on outside the statuses in `from:`."
+            ]
+          ]
+  }
+
   @event %Spark.Dsl.Entity{
     name: :event,
     describe: "A fact the unit records.",
@@ -433,6 +474,61 @@ defmodule EhOsContract.Contract.Dsl do
     ]
   }
 
+  # Plan LC1 (#99): an aggregate's lifecycle — the statuses its decisions depend on,
+  # in the client's words, and the events that move it between them. The engine
+  # computes the status from the stream's event types alone, so a transition has no
+  # condition on an event's fields: a rule about data is a decision's, or another
+  # aggregate's. A boundary has none, since it spans streams and has no one thing
+  # whose status it would be.
+  @status %Spark.Dsl.Entity{
+    name: :status,
+    describe: "One status of the aggregate's lifecycle.",
+    target: Status,
+    args: [:name, :label],
+    schema: [
+      name: [type: :atom, required: true, doc: "The status's name."],
+      label: [type: :string, required: true, doc: "What the business calls it."],
+      terminal: [
+        type: :boolean,
+        default: false,
+        doc: "Whether the aggregate's life ends in it: no transition leaves it."
+      ],
+      source: [type: :string, doc: "Where the status comes from in the material."]
+    ]
+  }
+
+  @initial %Spark.Dsl.Entity{
+    name: :initial,
+    describe: "The status a new aggregate takes with the first event of its stream.",
+    target: Initial,
+    args: [:status],
+    schema: [
+      status: [type: :atom, required: true, doc: "The status it starts in."],
+      on: [type: :atom, required: true, doc: "The event that starts it there."],
+      source: [type: :string, doc: "Where the start comes from in the material."]
+    ]
+  }
+
+  @transition %Spark.Dsl.Entity{
+    name: :transition,
+    describe: "An event that moves the aggregate from one status to another.",
+    target: Transition,
+    args: [:from, :event, :to],
+    schema: [
+      from: [type: {:wrap_list, :atom}, required: true, doc: "The statuses it leaves."],
+      event: [type: :atom, required: true, doc: "The event of the aggregate that moves it."],
+      to: [type: :atom, required: true, doc: "The status it enters."],
+      source: [type: :string, doc: "Where the transition comes from in the material."]
+    ]
+  }
+
+  @lifecycle %Spark.Dsl.Entity{
+    name: :lifecycle,
+    describe: "The aggregate's statuses and the events that move it between them.",
+    target: Lifecycle,
+    entities: [statuses: [@status], initials: [@initial], transitions: [@transition]]
+  }
+
   @unit_entities [
     state: [@state],
     invariants: [@invariant],
@@ -447,7 +543,8 @@ defmodule EhOsContract.Contract.Dsl do
     target: Unit,
     args: [:name, :label],
     auto_set_fields: [kind: :aggregate],
-    entities: @unit_entities,
+    entities:
+      Keyword.put(@unit_entities, :commands, [@aggregate_command]) ++ [lifecycle: [@lifecycle]],
     imports: [Generated],
     schema: [
       name: [type: :atom, required: true, doc: "The aggregate's name."],

@@ -429,6 +429,33 @@ agregatu w jednym kontekście — komputer i przydział to dwa cykle, bez skleja
 - **LC4** — diagram stanów w `graph` i na dashboardzie; `Computer` w AppUnite na cyklu życia (bez ręcznych
   strażników statusu); wiersz w skillu `change-contract`.
 
+### LC1 — co wyszło (4 października)
+
+Na `dsl/lc1-lifecycle`, na gałęzi LC0 (#120).
+- **Słowa:** `lifecycle do status …; initial :status, on: :event; transition from, :event, to end` w agregacie;
+  `from:` i `or_rejects:` w komendzie. Rozstrzygnięcia asystenta (mechanika): **`status`, nie `state`** —
+  `state do` to już pamięć agregatu; **`initial` jako osobne słowo** — przed pierwszym zdarzeniem agregatu nie ma,
+  więc start to przejście „znikąd”, jak pseudostan początkowy w UML; **`or_rejects:`** — w stylu `or_else`
+  obietnicy. *Odrzucone:* zarezerwowany status startowy w `transition` (np. `:none`) — nazwa, której klient nie
+  może użyć; `from: [in_office: :only_from_the_office]` — status i odmowa w jednej liście, nieczytelne.
+- **Reguły `T1`–`T4`** (L2): kształt, odwołania i determinizm (jedno zdarzenie z jednego statusu do jednego), graf
+  (każdy status osiągalny, tylko terminalny bez wyjścia; pętla w ten sam status nie jest wyjściem), `from:` z
+  `or_rejects:` i przejściami. **Świadomie poza regułami:** (1) zgodność stanów terminalnych z `terminal:`
+  zdarzeń — `terminal:` kończy przebieg procesu, a przebieg może mieć inną korelację niż agregat (`Assignments`
+  po przydziale); (2) wymóg, że z każdego statusu da się dojść do terminalnego — cykl życia bez końca jest
+  legalny (konto); (3) `from:` obowiązkowe przy komendzie, której zdarzenia wszystkie przesuwają status — bez
+  `from:` zła komenda w złym statusie będzie defektem w LC2, nie odmową; zostawione autorowi kontraktu.
+- **`lifecycle` w `dcb`** odrzuca L1 (błąd kompilacji „undefined function lifecycle/1”), nie kod `T`. *Odrzucone:*
+  słowo w `dcb` tylko po to, żeby je odrzucić — weszłoby do wygenerowanej dokumentacji granicy.
+- **Model:** `lifecycle` w jednostce oraz `from`/`or_rejects` w komendzie tylko tam, gdzie zadeklarowane — żaden
+  istniejący digest się nie rusza. Przejście z listy statusów to w modelu jedno przejście na status.
+- **Przegląd** (dwa równolegle): bezpieczeństwo i wydajność — pusty `from:` w przejściu znikał z modelu bez słowa
+  (poprawione, `T2`); poprawność — opis `from:` obiecywał odmowę, której silnik jeszcze nie robi (poprawione do
+  LC2), pętla w ten sam status liczona jako wyjście (poprawione), duplikaty `from:` (deduplikowane), mylący
+  komunikat przy dwóch identycznych `initial` (poprawiony), test `dcb` bez sprawdzenia komunikatu (poprawiony),
+  `source:` w `initial` (dodane, zanim ktoś go użyje). Bez zmian: powtarzane zbiory w `precondition/5` (kilka
+  komend na agregat), kolejna kopia `did_you_mean`.
+
 ## Dopisek 3 października (2) — #94: style dashboardu z pakietu `ehos_design`, kopia usunięta
 
 `eh-os` D-72 przeniósł design system do pakietu `ehos_design` (EmpoweredHouse/ehos-tools, tag

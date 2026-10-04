@@ -48,6 +48,15 @@ defmodule EhOsContract.ContractVocabularyTest do
       unit(:aggregate)
       # Plan EM3: a new aggregate's identity may be the library's to give.
       |> Map.put([:aggregate], [:name, :label, :identity, :generated, :source])
+      # Plan LC1 (#99): an aggregate's lifecycle, and the statuses its command may be issued
+      # in, with what it is refused on outside; a boundary has none of them.
+      |> Map.merge(%{
+        [:aggregate, :command] => @command ++ [:from, :or_rejects],
+        [:aggregate, :lifecycle] => [],
+        [:aggregate, :lifecycle, :status] => [:name, :label, :terminal, :source],
+        [:aggregate, :lifecycle, :initial] => [:status, :on, :source],
+        [:aggregate, :lifecycle, :transition] => [:from, :event, :to, :source]
+      })
       |> Map.merge(unit(:dcb))
       |> Map.merge(%{
         [:dcb, :consults] => [:event, :match, :where],
