@@ -35,6 +35,11 @@ namespace — lowercase letters, digits, `_` and `-`, starting with a letter and
 are written in — labels are the words of the people in the process, in their language, and the engine prints
 them as written.
 
+An actor may name what it answers for, `responsibility :overdue_reports, "…", source: "P-25"`, prose a page
+shows and nothing runs. A relation between contexts may pair the words each side uses for the same thing,
+`terms: [{"Visit", "Encounter"}]`, the first end's word and the second's, each a term of its context's
+glossary; the glossary shows, under a term, what the other end calls it.
+
 ## A contract
 
 A contract belongs to one context of one domain, and holds one process.
@@ -268,11 +273,11 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `S8` | L2 | an invariant, or a command's constraint, that no `rejected` scenario (of that command, for a constraint) covers |
 | `S9` | L2 | a domain service's rule without examples; an example not `{[argument, …], result}` of the function's arity, with an argument or result of the wrong built-in type or `nil` where not optional; an example given twice |
 | `S10` | L2 | `illustrates:` naming what is not a constraint of the scenario's policy, process manager or query, nor an invariant of its process manager, or naming one twice; any `illustrates:` on a command's scenario, which shows its rules with `rejected` |
-| `D1` | L2 | a subdomain's, context's, subject's, value's, entity's or external's name not snake_case; two values that camelize alike; a value named after a type Elixir builds in or a built-in field type; two subdomains, contexts, actors, subjects, values, entities or externals of one name; an external's operation not snake_case or declared twice; a term defined twice in a context; a relation declared twice; a name that is both a context and an external |
+| `D1` | L2 | a subdomain's, context's, subject's, value's, entity's or external's name not snake_case; two values that camelize alike; a value named after a type Elixir builds in or a built-in field type; two subdomains, contexts, actors, subjects, values, entities or externals of one name; an external's operation or an actor's responsibility not snake_case or declared twice; a term defined twice in a context; a relation declared twice; a name that is both a context and an external |
 | `D2` | L2 | two translations of a term into one language, or one into the context's own |
 | `D3` | L2 | a value with both or neither of a type and fields; `unit` on a value that is not numeric; an undeclared `context:`; a malformed or unknown type, or a bad enum; values in a cycle; a value's field not snake_case, or named twice |
 | `D4` | L2 | an actor's name not snake_case; a human actor with `backed_by`; `backed_by` naming no external; an actor's `context:` the domain does not declare |
-| `D5` | L2 | a relation whose roles do not fit its type (directed or symmetric); an end the domain does not declare; an external in a symmetric relation; a directed one with no context end; a context related to itself |
+| `D5` | L2 | a relation whose roles do not fit its type (directed or symmetric); an end the domain does not declare; an external in a symmetric relation; a directed one with no context end; a context related to itself; a word of a relation's `terms` pair that its context's glossary does not define |
 | `D6` | L2 | `{:id, entity}` naming an undeclared entity; an entity with an undeclared context, identified by what is not its own required, non-personal `:id` field, or with a field twice, not snake_case, malformed, of an undeclared subject, with `default:` or `personal:`, or holding personal data |
 | `D7` | L2 | a context in a subdomain the domain does not declare |
 | `D8` | L2 | a value's or entity's field `issued_by:` naming what is not an external of the domain |
