@@ -68,7 +68,8 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
   wywraca; `issued_by` w indeksie idempotencji bez granicy długości (sprzed #98, wymaga credentialu wydawcy).
 - **Pytanie z #96 o pusty `:id` jako wartość pola korelacji** — od #100 pusty `:id` jest odmawiany także przy
   dekodowaniu, więc pytanie dotyczy już tylko starych wierszy logu.
-- **Zostawione świadomie:** #63, #64, #49, #94 (wyżej); #99 — sesji, która je założyła.
+- **Zostawione świadomie:** #63, #64, #49, #94 (wyżej). **#99 — cykl życia agregatu:** propozycja i trzy pytania w
+  „Dopisek 4 października — #99”; budowa w nowej sesji, po odpowiedziach użytkownika.
 - **Wady `oidcc` 3.9.0** — zgłoszone jako erlef/oidcc#552–#555; nasz kod ich nie potrzebuje.
 - **Po stronie EHOS-a, nie tutaj:** szablon `ehos_app` (krok 7) i test na klastrze (krok 8); bump w `ehos-ledger`;
   port `4001.0` — [eh-os#111](https://github.com/EmpoweredHouse/eh-os/issues/111).
@@ -354,6 +355,47 @@ przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie p
 
 Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty, commity, opisy PR, `docs/adr/`,
 `README.md` — po angielsku; `PLAN.md` i `CLAUDE.md` po polsku. Pełna reguła — `CLAUDE.md`.
+
+## Dopisek 4 października — #99: cykl życia agregatu (stany i przejścia)
+
+**Skąd.** Trzecia domena testowa, sprzęt AppUnite (gałąź `claude/computer-ordering-process-f84437`, nie w `main`),
+ma komputer, który latami krąży w pętli: wydany → zwrot → w biurze → u resellera → w biurze → wydany… aż do
+sprzedaży, darowizny, utylizacji albo zgubienia. Właściciel procesu myśli statusami (arkusz: jedna kolumna, dziesięć
+wartości). DSL nie ma słowa na status: żyje w `evolve/2` (`:status` w stanie agregatu) i w enumie read modelu.
+`stage` mówi tylko o kolejności do przodu, więc pętla siedzi w jednym etapie (`:use`) jako niepołączone pudełka.
+
+**Komentarz użytkownika na #99 (zgodność z DDD), przyjęty jako warunki:** (1) status wynika ze zdarzeń, nikt go nie
+ustawia — żadnej komendy „ustaw status”; (2) w cyklu życia tylko stany, od których zależą decyzje — „Zastępczy”
+to cecha przydziału, „New” to „ordered”, kolumna „dalsze działania” to read model; (3) cykl życia należy do jednego
+agregatu w jednym kontekście — komputer i przydział to dwa cykle, bez sklejania między `Computers` i `Assignments`.
+
+**Propozycja asystenta (4 października, odpowiedź na #99) — do zatwierdzenia:**
+- **Przejścia deklarowane, status liczy silnik.** `lifecycle do state …; transition :in_office, :issued, :in_use
+  end` w agregacie. Status wynika z samych nazw zdarzeń, więc dispatch liczy go w tym samym przejściu po strumieniu i
+  wstrzykuje do `State` jako pole tylko do odczytu (jak tożsamość); `evolve/2` go nie liczy. Rozjazd niemożliwy z
+  konstrukcji. *Odrzucone (asystent):* kompilator sprawdza `evolve/2` względem deklaracji (opcja „declared” z
+  issue) — statycznie niewykonalne, `evolve/2` to dowolny kod; status wyprowadzany z istniejącego `evolve/2` bez
+  deklaracji (opcja „derived”) — dryfuje, nic go nie pilnuje.
+- **Szczebel 2 drabiny:** zdarzenie wyemitowane spoza grafu (np. `issued` z `:at_reseller`) to defekt jak zdarzenie
+  spoza `emits:` — wyjątek, nic nie dopisane.
+- **Zgodność bez piątego pytania:** przejścia nigdy nieprzejechane = „zadeklarowane ścieżki nigdy nie przejechane”
+  dla grafu z cyklami; przejścia niezadeklarowane — tylko w historii sprzed deklaracji, w istniejącym pytaniu.
+- **Obok etapów, nie zamiast:** etap to widok procesu (run, korelacja, obietnice), cykl życia — widok agregatu.
+- **Etykiety:** nazwa stanu po angielsku niesie znaczenie, `label` — słowo klienta; enum read modelu może czytać
+  etykiety z cyklu życia.
+- **Granice:** jedna oś (np. `set_up` w `Computer` zostaje flagą w `evolve/2`); zdarzenie spoza przejść dozwolone w
+  każdym stanie nieterminalnym i statusu nie zmienia; odczyt historii z przejściami spoza grafu się nie wywraca
+  (wiersz w skillu `change-contract`); tylko agregat, nie DCB; stany terminalne zgodne z `terminal:` zdarzeń.
+- **Rozmiar:** 3–4 PR-y — DSL i reguły (osiągalność, stan początkowy, terminalne), status w `State` i strażnik w
+  dispatchu, raport zgodności, diagram stanów w `graph` i na dashboardzie, sandbox.
+
+**Otwarte — decyzje użytkownika przed budową:**
+1. **Materiał:** czy sprzęt AppUnite wchodzi do `sandbox/` jako trzecia domena danych testowych (bez niej nie ma
+   przykładu, a bez przykładu z materiału nie budujemy).
+2. **Odmowy z cyklu życia:** komenda deklaruje stany, z których wolno ją wydać (`from: :in_office`), a dispatch
+   odmawia z wygenerowanym kodem przed decyzją — *albo* odmowy zostają ręczne w decyzji, a silnik pilnuje tylko
+   zdarzeń spoza grafu jako defektów.
+3. **Status wstrzykiwany do `State`** zamiast liczony w `evolve/2` — zgoda na zmianę roli `evolve/2`.
 
 ## Dopisek 3 października — EP: proza w kontrakcie, drabina od nazwy do testu
 
