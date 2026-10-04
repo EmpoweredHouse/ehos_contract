@@ -1,9 +1,9 @@
 defmodule EhOsContract.Web.DesignSystemTest do
   @moduledoc """
-  The dashboard is styled from a copy of the EmpoweredHouse design system, refreshed from
-  Claude Design and never edited by hand, and loads nothing from another origin
-  (docs/adr/dashboard-design-system.md, following eh-os D-42). The same checks as the
-  EHOS console's, with this package's paths.
+  The dashboard is styled from the EmpoweredHouse design system, whose tokens and fonts
+  `mix assets.build` takes from the `ehos_design` package (eh-os D-72), and loads nothing from
+  another origin (docs/adr/dashboard-design-system.md). The package is a dependency of the
+  build only, so these checks read what the build committed, not the package.
   """
 
   use EhOsContract.Web.TestHost.DataCase, async: false
@@ -16,12 +16,14 @@ defmodule EhOsContract.Web.DesignSystemTest do
   @endpoint EhOsContract.Web.TestHost.Endpoint
 
   @root Path.expand("..", __DIR__)
-  @copy Path.join(@root, "assets/css/vendor/empoweredhouse/colors_and_type.css")
-  @source Path.join(@root, "assets/css/vendor/empoweredhouse/SOURCE.md")
   @layer Path.join(@root, "assets/css/app.css")
   @built Path.join(@root, "priv/static/assets/app.css")
   @script Path.join(@root, "assets/js/app.js")
   @fonts Path.join(@root, "priv/static/assets/fonts")
+  @package_tokens Path.join(
+                    @root,
+                    "deps/ehos_design/packages/ehos_design/priv/css/colors_and_type.css"
+                  )
 
   # The custom properties a stylesheet defines: `--name:` at the start of a declaration.
   defp defined_properties(css) do
@@ -31,27 +33,22 @@ defmodule EhOsContract.Web.DesignSystemTest do
     |> MapSet.new()
   end
 
-  test "the copy is the file SOURCE.md records, so it has not been edited by hand" do
-    [recorded] =
-      Regex.run(~r/SHA-256 as committed \| `([0-9a-f]{64})`/, File.read!(@source),
-        capture: :all_but_first
-      )
-
-    actual = :crypto.hash(:sha256, File.read!(@copy)) |> Base.encode16(case: :lower)
-
-    assert actual == recorded,
-           "assets/css/vendor/empoweredhouse/colors_and_type.css differs from what SOURCE.md " <>
-             "records. Refresh it from Claude Design and update SOURCE.md, rather than editing it."
+  # The design system's tokens, as the build took them: what the built stylesheet defines that the
+  # layer does not.
+  defp design_system_properties do
+    MapSet.difference(
+      @built |> File.read!() |> defined_properties(),
+      @layer |> File.read!() |> defined_properties()
+    )
   end
 
-  test "git keeps the copy's bytes as they are, so its hash holds on every checkout" do
-    attributes = @root |> Path.join(".gitattributes") |> File.read!() |> String.split("\n")
-
-    assert "assets/css/vendor/empoweredhouse/colors_and_type.css -text" in attributes
+  test "the styles take the design system's tokens from the ehos_design package" do
+    assert File.read!(@layer) =~
+             ~s(@import "../../deps/ehos_design/packages/ehos_design/priv/css/colors_and_type.css";)
   end
 
-  test "neither the copy nor the dashboard's styles, as written or as built, name another origin" do
-    for path <- [@copy, @layer, @built], css = File.read!(path) do
+  test "the dashboard's styles, as written or as built, name no other origin" do
+    for path <- [@layer, @built], css = File.read!(path) do
       refute css =~ ~r/url\(\s*["']?(?:[a-z]+:)?\/\//i, "#{path} loads a url from another origin"
 
       refute css =~ ~r/@import\s+(?:url\()?\s*["']?(?:[a-z]+:)?\/\//i,
@@ -62,14 +59,10 @@ defmodule EhOsContract.Web.DesignSystemTest do
     end
   end
 
-  test "every token the dashboard's styles and scripts read is one the copy or the layer defines" do
-    # A refresh that renames a token breaks nothing loudly: CSS falls back to nothing, and the
-    # diagrams' theme gives up. This is where the rename shows.
-    defined =
-      MapSet.union(
-        @copy |> File.read!() |> defined_properties(),
-        @layer |> File.read!() |> defined_properties()
-      )
+  test "every token the dashboard's styles and scripts read is one the build defines" do
+    # A new version of ehos_design that renames a token breaks nothing loudly: CSS falls back to
+    # nothing, and the diagrams' theme gives up. This is where the rename shows.
+    defined = @built |> File.read!() |> defined_properties()
 
     read =
       for path <- [@layer, @script],
@@ -85,14 +78,15 @@ defmodule EhOsContract.Web.DesignSystemTest do
   end
 
   test "the dashboard's styles refer to the design system's tokens and never redefine one" do
-    copy = @copy |> File.read!() |> defined_properties()
+    # The package is not read here, so the check is by name: the layer defines only names under
+    # its own prefix, which the design system does not use.
     layer = @layer |> File.read!() |> defined_properties()
 
-    assert MapSet.size(copy) > 50
-    assert MapSet.intersection(copy, layer) |> Enum.sort() == []
+    assert MapSet.size(design_system_properties()) > 50
+    assert Enum.reject(layer, &String.starts_with?(&1, "--eh-os-contract-")) == []
   end
 
-  test "the built stylesheet carries the copy, so the tokens reach the page" do
+  test "the built stylesheet carries the design system's tokens, so they reach the page" do
     assert File.read!(@built) =~ "--surface-1:"
   end
 
@@ -114,8 +108,28 @@ defmodule EhOsContract.Web.DesignSystemTest do
       assert ["font/woff2" <> _] = Plug.Conn.get_resp_header(response, "content-type")
     end
 
-    assert File.exists?(Path.join(@fonts, "OFL-albert-sans.txt"))
-    assert File.exists?(Path.join(@fonts, "OFL-jetbrains-mono.txt"))
+    # `mix assets.build` only adds: a font a new ehos_design drops would stay here, served and
+    # shipped, and so would anything else that came along with the fonts.
+    licences = ["OFL-albert-sans.txt", "OFL-jetbrains-mono.txt"]
+    assert Enum.sort(File.ls!(@fonts)) == Enum.sort(licences ++ Enum.map(urls, &Path.basename/1))
+  end
+
+  # The package is a `:dev` dependency, so it is here only where someone fetched it — never in
+  # CI. Where it is, this catches a `ref:` moved without `mix assets.build`, and a layer that
+  # takes one of its names.
+  if File.exists?(@package_tokens) do
+    test "the build carries every token of the fetched ehos_design, and the layer takes none" do
+      package = @package_tokens |> File.read!() |> defined_properties()
+      built = @built |> File.read!() |> defined_properties()
+      layer = @layer |> File.read!() |> defined_properties()
+
+      assert MapSet.size(package) > 50
+
+      assert MapSet.difference(package, built) |> Enum.sort() == [],
+             "the built stylesheet lacks tokens of ehos_design; run `mix assets.build`"
+
+      assert MapSet.intersection(package, layer) |> Enum.sort() == []
+    end
   end
 
   test "the page loads its styles and scripts from the package's own assets" do

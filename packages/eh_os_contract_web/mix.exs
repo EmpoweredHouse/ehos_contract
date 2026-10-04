@@ -65,7 +65,9 @@ defmodule EhOsContract.Web.MixProject do
       # including `mix check` — uses. The vendored Mermaid build is a
       # straight copy, not an esbuild input: it needs to execute as a
       # classic global script (see app.js's own comment on why), which
-      # esbuild's bundling would break.
+      # esbuild's bundling would break. The fonts are copied from
+      # `ehos_design` beside the built stylesheet, whose relative url()s
+      # name them there.
       "assets.build": [
         "esbuild eh_os_contract_web",
         "esbuild eh_os_contract_web_css",
@@ -74,6 +76,19 @@ defmodule EhOsContract.Web.MixProject do
             Path.expand("assets/js/vendor/mermaid.min.js", __DIR__),
             Path.expand("priv/static/assets/mermaid.min.js", __DIR__)
           )
+
+          fonts =
+            Path.expand(
+              "deps/ehos_design/packages/ehos_design/priv/static/ehos_design/fonts",
+              __DIR__
+            )
+
+          target = Path.expand("priv/static/assets/fonts", __DIR__)
+          File.mkdir_p!(target)
+
+          for name <- File.ls!(fonts), Path.extname(name) in [".woff2", ".txt"] do
+            File.cp!(Path.join(fonts, name), Path.join(target, name))
+          end
         end
       ]
     ]
@@ -145,7 +160,19 @@ defmodule EhOsContract.Web.MixProject do
       # package never needs it: only whoever edits the JS itself runs
       # `mix assets.build` and commits the result, the same way a compiled
       # asset ships with any other Phoenix component library.
-      {:esbuild, "~> 0.9", runtime: false}
+      {:esbuild, "~> 0.9", runtime: false},
+      # The EmpoweredHouse design system's tokens and fonts, which `mix assets.build`
+      # reads from deps/ (eh-os D-72). Only there: the built stylesheet and the fonts
+      # are committed under priv/static/assets/, so a host fetches nothing from it,
+      # and Hex leaves a `:dev` dependency out of the published requirements. The
+      # ref is the commit tagged `ehos_design-v0.1.0`; a new version of the design
+      # system reaches the dashboard by moving it and rebuilding.
+      {:ehos_design, "~> 0.1.0",
+       github: "EmpoweredHouse/ehos-tools",
+       sparse: "packages/ehos_design",
+       ref: "a65b9c86d920b5566f1c085b2286a44da77505c9",
+       only: :dev,
+       runtime: false}
     ]
   end
 end

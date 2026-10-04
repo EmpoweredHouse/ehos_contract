@@ -53,7 +53,7 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
   sam silnik przechodził) — wtedy `mix check`
   każdego pakietu osobno, po kolei, i zapisać, że tak było.
 - **Otwarte na GitHubie:** #99 (cykl życia jednostek w pętli — z sesji
-  `computer-ordering-process`, nie z tej pracy), #94 (style dashboardu z `ehos_design`), #64 (okno retencji inboxu —
+  `computer-ordering-process`, nie z tej pracy), #64 (okno retencji inboxu —
   czeka na EHOS), #63 (kształt `call/3` — do pierwszych innych drzwi), #49 (materiał klientów poza repozytorium).
   **W `EmpoweredHouse/eh-os`: #91–#96 i #111** — nasze potrzeby wobec EHOS-a („Dopisek 1 października”).
 - **`ehos-ledger`** przypina `eh-os-contract` i puszcza w CI `mix eh_os_contract.manifest`; bump przypięcia — w tamtym
@@ -68,7 +68,7 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
   wywraca; `issued_by` w indeksie idempotencji bez granicy długości (sprzed #98, wymaga credentialu wydawcy).
 - **Pytanie z #96 o pusty `:id` jako wartość pola korelacji** — od #100 pusty `:id` jest odmawiany także przy
   dekodowaniu, więc pytanie dotyczy już tylko starych wierszy logu.
-- **Zostawione świadomie:** #63, #64, #49, #94 (wyżej). **#99 — cykl życia agregatu:** propozycja i trzy pytania w
+- **Zostawione świadomie:** #63, #64, #49 (wyżej). **#99 — cykl życia agregatu:** propozycja i trzy pytania w
   „Dopisek 4 października — #99”; budowa w nowej sesji, po odpowiedziach użytkownika.
 - **Wady `oidcc` 3.9.0** — zgłoszone jako erlef/oidcc#552–#555; nasz kod ich nie potrzebuje.
 - **Po stronie EHOS-a, nie tutaj:** szablon `ehos_app` (krok 7) i test na klastrze (krok 8); bump w `ehos-ledger`;
@@ -396,6 +396,40 @@ agregatu w jednym kontekście — komputer i przydział to dwa cykle, bez skleja
    odmawia z wygenerowanym kodem przed decyzją — *albo* odmowy zostają ręczne w decyzji, a silnik pilnuje tylko
    zdarzeń spoza grafu jako defektów.
 3. **Status wstrzykiwany do `State`** zamiast liczony w `evolve/2` — zgoda na zmianę roli `evolve/2`.
+
+## Dopisek 3 października (2) — #94: style dashboardu z pakietu `ehos_design`, kopia usunięta
+
+`eh-os` D-72 przeniósł design system do pakietu `ehos_design` (EmpoweredHouse/ehos-tools, tag
+`ehos_design-v0.1.0` = `a65b9c86`). `eh_os_contract_web` bierze go jako zależność **tylko `:dev`,
+`runtime: false`**: `assets/css/app.css` importuje `deps/ehos_design/packages/ehos_design/priv/css/colors_and_type.css`
+(zwykłe tokeny, nie warstwę Tailwinda/daisyUI), a `mix assets.build` kopiuje fonty i teksty OFL do
+`priv/static/assets/fonts/`. Zbudowany `app.css` i fonty zostają w repo, więc host nic nowego nie pobiera.
+Usunięte: `assets/css/vendor/empoweredhouse/` z `SOURCE.md`, `.gitattributes` pakietu, skill
+`sync-design-system` — odświeżenie to teraz przesunięcie refa i przebudowa.
+
+**Sprawdzone:** plik tokenów i wszystkie 10 plików fontów w pakiecie są bajt w bajt identyczne z kopią, więc
+`mix assets.build` daje **identyczny** `priv/static/assets/app.css` (minifikacja wycina komentarze ze
+ścieżką, więc nawet one się nie różnią) i identyczne fonty.
+
+**Co wyszło przy pisaniu:**
+
+- **`ehos-tools` jest prywatne, a CI robi `mix deps.get` w pakiecie web, które pobiera też zależności
+  `:dev`.** Bez tokenu ten krok by padł. CI pobiera teraz `--only test`; brama zależności nie potrzebuje,
+  bo czyta tylko to, co zbudowane i scommitowane. Sandbox dostaje pakiet przez `path:` i zależności `:dev`
+  dziecka nie ciągnie (sprawdzone). **Dostępu do `ehos-tools` potrzebuje każdy, kto robi zwykłe
+  `mix deps.get` w pakiecie web** (Mix pobiera zależności wszystkich środowisk), nie tylko ten, kto
+  przebudowuje assety — bez niego `mix deps.get --only test`, co mówi README pakietu.
+- **Testy `design_system_test.exs` czytały kopię**, a w `MIX_ENV=test` pakietu nie ma. Test hasha i
+  `.gitattributes` zniknęły razem z kopią; tokeny design systemu to teraz to, co definiuje zbudowany
+  `app.css`, a nie warstwa. „Warstwa nie nadpisuje tokenu” sprawdza się po nazwie: warstwa definiuje
+  wyłącznie `--eh-os-contract-*`. Doszedł test, że warstwa importuje tokeny z `ehos_design`. Brama
+  pakietu przechodzi z `deps/ehos_design` i bez niego.
+- **Przegląd przed PR** dołożył dwa testy w miejsce tego, co dawał hash kopii: katalog fontów trzyma
+  dokładnie osiem fontów i dwa teksty OFL (kopiowanie tylko dodaje, więc font usunięty w nowej wersji pakietu
+  zostałby serwowany), a gdy `deps/ehos_design` jest pobrane, zbudowany arkusz definiuje każdy token pakietu
+  i warstwa żadnego z nich nie nadpisuje — to łapie przesunięty `ref:` bez `mix assets.build`. W CI pakietu
+  nie ma, więc tam ten test się nie definiuje; łapie lokalnie, u tego, kto ruszył ref.
+- Poprawka z datą w `docs/adr/dashboard-design-system.md`.
 
 ## Dopisek 3 października — EP: proza w kontrakcie, drabina od nazwy do testu
 

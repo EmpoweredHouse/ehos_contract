@@ -9,6 +9,15 @@
 > — holds here unchanged and is not restated. This file records what is different about a mountable
 > library with a plain stylesheet.
 
+> **3 October 2026, issue #94 — the copy is gone.** `eh-os` D-72 moved the design system into a package,
+> `ehos_design` in EmpoweredHouse/ehos-tools, and the dashboard now builds from it: a `:dev` dependency
+> pinned to the commit tagged `ehos_design-v0.1.0`, whose `priv/css/colors_and_type.css` the layer imports
+> and whose fonts `mix assets.build` copies into `priv/static/assets/fonts/`. That file and those fonts were
+> byte-identical to the copy, so the built stylesheet did not change. What this file says below about the
+> copy — `SOURCE.md`, the hash test, `.gitattributes`, the refresh skill — describes the 28 September state;
+> all of it was deleted. A refresh is now a move of the pinned ref and a rebuild. The second "Bad" under
+> Consequences no longer holds: both repositories read the same package.
+
 ## The problem
 
 `packages/eh_os_contract_web` ships its own look: GitHub-like colours in `--eh-os-contract-*` properties,
@@ -90,6 +99,9 @@ for now.
 text), the brand book, Shugyo's screens and data.
 
 ## Refreshing the copy
+
+> **3 October 2026:** superseded — the skill below is deleted, and the tokens come from `ehos_design`
+> (see the note at the top).
 
 `.claude/skills/sync-design-system/SKILL.md`, adapted from `eh-os`: the source is always the
 design-system project named in `SOURCE.md`, the transcription is checked against the published size and

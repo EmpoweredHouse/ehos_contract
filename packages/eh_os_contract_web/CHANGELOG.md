@@ -8,6 +8,11 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **The design system's tokens and fonts come from the `ehos_design` package** (`ehos_design-v0.1.0`,
+  eh-os D-72) instead of a copy kept in `assets/css/vendor/empoweredhouse/`, which is gone. It is a
+  `:dev` dependency of the asset build only; the built stylesheet and fonts are unchanged, byte for byte,
+  and a host fetches nothing new.
+
 - **E11: the engine's first DSL is gone, and so is what the dashboard drew of it.** The `/graph` screen has no
   "every contract" panel, which drew the first DSL's handler graph, and every list — the contract status, the
   graphs, the API indexes — is of the engine's `Registry.contracts/0`, which from 0.3.0 of `eh_os_contract`

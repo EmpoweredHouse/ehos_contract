@@ -1,16 +1,16 @@
 /* The dashboard's own look, on the EmpoweredHouse design system
    (docs/adr/dashboard-design-system.md, following eh-os D-42).
 
-   The design system's tokens come first, from the copy in vendor/empoweredhouse/, which is never
-   edited here: this file refers to its custom properties and never defines one of the same name
-   (test/design_system_test.exs compares the two). What this file adds is named
-   --eh-os-contract-*.
+   The design system's tokens come first, from the ehos_design package (eh-os D-72), which is a
+   dependency of the build only: this file refers to its custom properties and never defines one of
+   the same name. What this file adds is named --eh-os-contract-*, and test/design_system_test.exs
+   holds it to that prefix (and, where the package is fetched, to its token names).
 
    Plain selectors on purpose, no framework: this page is the whole document (root_layout replaces
    the host's own layout for these routes), so tag selectors cannot leak anywhere else. */
 
 /* The tokens: dark by default, light under prefers-color-scheme, pinned by data-theme on <html>. */
-@import "./vendor/empoweredhouse/colors_and_type.css";
+@import "../../deps/ehos_design/packages/ehos_design/priv/css/colors_and_type.css";
 
 /* Fonts, served beside this stylesheet by the Plug.Static line the host already has. Relative
    URLs, so they follow wherever that line mounts the assets; the build leaves them as written
