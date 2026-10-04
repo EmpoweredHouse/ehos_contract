@@ -463,8 +463,8 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 
 | Etap | Fala | Zakres | Zależy od | Status |
 |---|---|---|---|---|
-| DD0 | 0 | program i postęp w `PLAN.md` | — | ◐ `docs/dd0-programme` (lokalnie, niewypchnięte) |
-| N1 | 1 | `final:`, `target`, `identity` encji, definicja encji | DD0 | ☐ |
+| DD0 | 0 | program i postęp w `PLAN.md` | — | ◐ `docs/dd0-programme`, PR #135 |
+| N1 | 1 | `final:`, `target`, `identity` encji, definicja encji | DD0 | ◐ `dsl/n1-names` (na DD0) |
 | N2 | 1 | `subscribe "<nazwa>"` | DD0 | ☐ |
 | N3 | 1 | etykieta timera (EP6) | DD0 | ☐ |
 | W1 | 1 | zapis `schema_version` | DD0 | ☐ |
