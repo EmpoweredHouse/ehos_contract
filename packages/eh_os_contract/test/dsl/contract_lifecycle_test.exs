@@ -488,11 +488,9 @@ defmodule EhOsContract.ContractLifecycleTest do
                "T4: command :reopen_visit or_rejects: :only_a_booked_visit, which is not in its " <>
                  "rejects:; add it there"
 
-      assert message =~
-               "T4: command :readmit is issued from :in_progress, and no event it emits has a " <>
-                 "transition out of it"
-
-      refute message =~ "T4: command :readmit is issued from :booked"
+      # Issued in a status none of its events leaves: there the decision refuses, on a
+      # rule finer than the status (plan LC4a).
+      refute message =~ "T4: command :readmit"
 
       assert message =~
                "T4: command :remind has or_rejects: without from:; name the statuses it may be " <>

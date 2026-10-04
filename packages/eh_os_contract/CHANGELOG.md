@@ -361,6 +361,10 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Added
 
+- **LC4a (#99): `T4` lets a command be issued where its decision only refuses.** A status in `from:` that
+  none of the command's events can leave is no longer refused: `from:` says where the decision runs, not where
+  it accepts, and a decision may refuse there on a rule finer than the status (AppUnite's
+  `:for_sale_not_issued`). An emitted event that no status in `from:` lets out is still refused.
 - **LC2 (#99): the engine keeps an aggregate's status.** For an aggregate with a `lifecycle`, dispatch
   and `ScenarioCase` compute the status from the names of the stream's events and put it into the state as
   `status` (before each event `evolve/2` folds, and after the last). **A command outside its `from:` is

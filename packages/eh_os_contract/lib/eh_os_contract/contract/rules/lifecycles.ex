@@ -16,8 +16,9 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
     other way round; no command is issued from a terminal status. A command that
     `creates:` its aggregate emits one of its initial events and has no `from:`, since
     a new aggregate has no status yet. An event the command emits that a transition
-    names leaves at least one status in `from:`, and every status in `from:` lets at
-    least one of the command's events in, or the decision could only ever be a defect.
+    names leaves at least one status in `from:`, or emitting it could only ever be a
+    defect. A status in `from:` that no event of the command leaves is allowed: there
+    the decision refuses, on a rule finer than the status.
     A boundary's command has no `from:` at all (L1): a boundary has no lifecycle.
 
   An event no transition names moves nothing: it is allowed in every status that is
@@ -300,31 +301,22 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
     ])
   end
 
-  # Whether the graph lets the command's decision in. Checked only once every status
-  # in `from:` is a declared one that is not terminal, which the checks above report,
-  # and an event that leaves none of them is reported before a status that lets none
-  # of the events out, which it usually is the cause of.
+  # Whether the graph lets the command's events out of the statuses it is issued in:
+  # each event a transition names leaves at least one of them. Checked only once every
+  # status in `from:` is a declared one that is not terminal, which the checks above
+  # report. A status in `from:` that none of the events can leave is allowed: `from:`
+  # says where the decision runs, not where it accepts, and a decision may refuse there
+  # on a rule finer than the status (plan LC4a, AppUnite's `:for_sale_not_issued`).
   defp graph(command, what, where, statuses, allowed, moving) do
     terminal = for s <- statuses, s.terminal, do: s.name
     names = Enum.map(statuses, & &1.name)
 
     if Enum.all?(command.from, &(&1 in names and &1 not in terminal)) and not command.creates do
-      dead =
-        for event <- moving,
-            not Enum.any?(command.from, &MapSet.member?(allowed, {&1, event})) do
-          {"T4: #{what} emits #{inspect(event)}, and no transition moves #{where} with it out " <>
-             "of #{inspect(command.from)}", command}
-        end
-
-      stuck =
-        for status <- command.from,
-            command.emits -- moving == [],
-            not Enum.any?(moving, &MapSet.member?(allowed, {status, &1})) do
-          {"T4: #{what} is issued from #{inspect(status)}, and no event it emits has a " <>
-             "transition out of it", command}
-        end
-
-      if dead == [], do: stuck, else: dead
+      for event <- moving,
+          not Enum.any?(command.from, &MapSet.member?(allowed, {&1, event})) do
+        {"T4: #{what} emits #{inspect(event)}, and no transition moves #{where} with it out " <>
+           "of #{inspect(command.from)}", command}
+      end
     else
       []
     end

@@ -6,7 +6,9 @@ defmodule AppuniteEquipment.Contracts.Computers do
   Written on 3 October 2026 from process 1 of
   `docs/appunite-equipment-2026-10-03-distillation.md`. The spreadsheet's two
   columns — where the computer is (`A:F`) and what is to be done with it in the
-  office (`A:G`) — are not fields here: both follow from the computer's history.
+  office (`A:G`) — are not fields here. Where it is is the lifecycle's, which the
+  engine follows from the events (#99); what is to be done follows from it and the
+  setup, and is the Inventory read model's.
 
   ## One aggregate, and a run per assignment
 
@@ -23,7 +25,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   is claimed. Its beginning and its end go only forwards — nothing is ordered after
   it was in use, and nothing takes a computer off sale — and that is what the
   stages claim. A first version had no stages at all, and its diagram was one row
-  of seventeen boxes that said nothing (3 October 2026).
+  of seventeen boxes that said nothing (3 October 2026). The order inside the loop is
+  the aggregate's lifecycle, not the process's (#99, 4 October 2026).
 
   ## What is left out, and why
 
@@ -49,10 +52,6 @@ defmodule AppuniteEquipment.Contracts.Computers do
     identity :computer_id, generated: :uuid
 
     state do
-      field :status,
-            {:enum, [:ordered, :in_office, :issued, :returning, :in_service, :for_sale, :ended]},
-            default: :ordered
-
       field :chip, :chip, optional: true
       field :assignment_id, :id, optional: true
       field :set_up, :boolean, default: false
@@ -103,6 +102,40 @@ defmodule AppuniteEquipment.Contracts.Computers do
     invariant :only_a_reservation_is_dropped, "Zwolnić można tylko istniejącą rezerwację",
       source: "E"
 
+    # Where the computer is, in the spreadsheet's own words (A:F), and the moves the
+    # team makes between them (plan LC4a, #99). The engine follows it from the events;
+    # nothing sets it. Only what a decision depends on: "Zastępczy" is the assignment's,
+    # and the setup is a flag beside it, since in the office a computer is either.
+    lifecycle do
+      status :ordered, "New"
+      status :in_office, "Office"
+      status :issued, "W użytku"
+      status :returning, "W trakcie zwrotu"
+      status :in_service, "Innergo spa"
+      status :for_sale, "For sale"
+      status :sold, "Sold", terminal: true
+      status :donated, "Charity", terminal: true
+      status :disposed, "Utylizacja", terminal: true
+      status :lost, "Lost", terminal: true
+
+      initial :ordered, on: :ordered
+      transition :ordered, :received, :in_office
+      transition :in_office, :issued, :issued
+      transition :issued, :return_started, :returning
+      transition :returning, :returned, :in_office
+      transition :in_office, :sent_for_service, :in_service
+      transition :in_service, :service_returned, :in_office
+      transition :in_office, :listed_for_sale, :for_sale
+      transition :for_sale, :sold, :sold
+      transition [:in_office, :for_sale], :donated, :donated
+      transition [:in_office, :for_sale], :disposed, :disposed
+
+      # A loss comes from wherever the computer was.
+      transition [:ordered, :in_office, :issued, :returning, :in_service, :for_sale],
+                 :lost,
+                 :lost
+    end
+
     # Ordered in the reseller's panel; the hire is known in advance (E).
     command :order_computer, "Zamów komputer",
       by: :equipment_manager,
@@ -116,6 +149,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
     command :receive_computer, "Spisz komputer z faktury",
       by: :equipment_manager,
       emits: :received,
+      from: :ordered,
+      or_rejects: :received_once,
       rejects: :received_once,
       source: "T l.88–90, E" do
       field :serial_number, :serial_number
@@ -128,12 +163,16 @@ defmodule AppuniteEquipment.Contracts.Computers do
     command :set_up_computer, "Ustaw komputer",
       by: :equipment_manager,
       emits: :set_up,
+      from: :in_office,
+      or_rejects: :only_from_the_office,
       rejects: :only_from_the_office,
       source: "A:G „Do ustawienia”, E"
 
     command :issue_computer, "Wydaj komputer pracownikowi",
       by: :equipment_manager,
       emits: :issued,
+      from: [:in_office, :for_sale],
+      or_rejects: :only_from_the_office,
       rejects: [
         :only_from_the_office,
         :set_up_before_issue,
@@ -151,6 +190,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
     command :start_return, "Rozpocznij zwrot",
       by: :equipment_manager,
       emits: :return_started,
+      from: :issued,
+      or_rejects: :only_an_issued_computer_returns,
       rejects: :only_an_issued_computer_returns,
       source: "A:F „W trakcie zwrotu”, T l.100" do
       field :reason, :return_reason
@@ -160,12 +201,16 @@ defmodule AppuniteEquipment.Contracts.Computers do
     command :wipe_computer, "Sformatuj komputer",
       by: :equipment_manager,
       emits: :wiped,
+      from: :in_office,
+      or_rejects: :only_from_the_office,
       rejects: :only_from_the_office,
       source: "A:G „Do wyczyszczenia”, E"
 
     command :send_for_service, "Wyślij do Innergo",
       by: :equipment_manager,
       emits: :sent_for_service,
+      from: :in_office,
+      or_rejects: :only_from_the_office,
       rejects: :only_from_the_office,
       source: "A:G „Wysłać do Innergo”, T l.106" do
       field :reason, :service_reason
@@ -174,6 +219,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
     command :put_up_for_sale, "Wystaw na sprzedaż",
       by: :equipment_manager,
       emits: :listed_for_sale,
+      from: :in_office,
+      or_rejects: :only_from_the_office,
       rejects: :only_from_the_office,
       source: "A:G „For sale”, E" do
       field :asking_price, :money
@@ -182,6 +229,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
     command :reserve_computer, "Zarezerwuj komputer z ryneczku",
       by: :equipment_manager,
       emits: :reserved,
+      from: :for_sale,
+      or_rejects: :only_a_listed_computer_is_sold,
       rejects: [
         :only_a_listed_computer_is_sold,
         :first_reservation_wins,
@@ -194,18 +243,24 @@ defmodule AppuniteEquipment.Contracts.Computers do
     command :drop_reservation, "Zwolnij rezerwację",
       by: :equipment_manager,
       emits: :reservation_dropped,
+      from: :for_sale,
+      or_rejects: :only_a_reservation_is_dropped,
       rejects: :only_a_reservation_is_dropped,
       source: "E"
 
     command :list_externally, "Wystaw na Allegro",
       by: :equipment_manager,
       emits: :listed_externally,
+      from: :for_sale,
+      or_rejects: :only_a_listed_computer_is_sold,
       rejects: [:only_a_listed_computer_is_sold, :allegro_only_without_reservation],
       source: "E"
 
     command :sell_computer, "Odnotuj sprzedaż",
       by: :equipment_manager,
       emits: :sold,
+      from: :for_sale,
+      or_rejects: :only_a_listed_computer_is_sold,
       rejects: :only_a_listed_computer_is_sold,
       source: "T l.110–112, E" do
       field :price, :money
@@ -215,12 +270,16 @@ defmodule AppuniteEquipment.Contracts.Computers do
     command :donate_computer, "Oddaj komputer",
       by: :equipment_manager,
       emits: :donated,
+      from: [:in_office, :for_sale],
+      or_rejects: :only_from_the_office,
       rejects: :only_from_the_office,
       source: "A:F „Charity”, E"
 
     command :dispose_computer, "Zutylizuj komputer",
       by: :equipment_manager,
       emits: :disposed,
+      from: [:in_office, :for_sale],
+      or_rejects: :only_from_the_office,
       rejects: :only_from_the_office,
       source: "A:F „Utylizacja”, E"
 
@@ -243,9 +302,9 @@ defmodule AppuniteEquipment.Contracts.Computers do
       end
     end
 
-    # The loop: issued, returned, cleaned, set up, issued again — for years. No order
-    # is claimed inside, and the assignment's own run (`Assignments`) claims the
-    # order of one issue and its return.
+    # The loop: issued, returned, cleaned, set up, issued again — for years. The run
+    # claims no order inside: the computer's lifecycle does, and the assignment's own
+    # run (`Assignments`) claims the order of one issue and its return.
     stage :use do
       event :set_up, "Komputer ustawiony (MDM, szyfrowanie dysku)", source: "E"
 
@@ -923,7 +982,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
     rejected :only_from_the_office
   end
 
-  scenario "dotarł zwrot innego przydziału — komputer zostaje w drodze" do
+  scenario "dotarł zwrot innego przydziału — komputer i tak jest w biurze" do
     given :ordered, %{profile: :developer}
 
     given :received, %{
@@ -951,7 +1010,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
     given :returned, %{assignment_id: "assignment-bartek-2"}
     command :wipe_computer
-    rejected :only_from_the_office
+    expect :wiped
   end
 
   scenario "komputer u pracownika, odnotowany powrót z Innergo — nie trafia do drugiej osoby" do
@@ -1074,7 +1133,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
     ]
   end
 
-  scenario "w Inventory zwrot innego przydziału zostawia komputer w drodze" do
+  scenario "w Inventory zwrot innego przydziału też jest w biurze" do
     given :ordered, %{profile: :developer}
 
     given :received, %{
@@ -1101,6 +1160,6 @@ defmodule AppuniteEquipment.Contracts.Computers do
     given :returned, %{assignment_id: "assignment-bartek-2"}
     query :inventory_list
 
-    answers [%{status: :returning, employee_id: "employee-ola"}]
+    answers [%{status: :in_office, employee_id: nil}]
   end
 end

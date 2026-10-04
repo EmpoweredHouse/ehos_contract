@@ -485,6 +485,31 @@ Na `dsl/lc2-lifecycle-dispatch`, na gałęzi LC1 (#121).
   przed dekodowaniem (poprawione). Bez zmian: koszt O(zdarzenia × przejścia) na komendę — pomijalny przy odczycie
   całego strumienia.
 
+### LC4a — co wyszło (4 października)
+
+Na `sandbox/lc4a-appunite-lifecycle`, od `main` po #122. LC4 podzielone (rozstrzygnięcie asystenta, mały diff):
+**LC4a** — AppUnite na cyklu życia i skill; **LC4b** — diagram stanów w `graph` i na dashboardzie, na LC3.
+- **`Computer` na cyklu życia:** dziesięć statusów słowami arkusza (`A:F`) — `New`, `Office`, `W użytku`,
+  `W trakcie zwrotu`, `Innergo spa`, `For sale` i cztery końce (`Sold`, `Charity`, `Utylizacja`, `Lost`, każdy
+  terminalny); `Zastępczy` zostaje cechą przydziału (warunek 2 użytkownika), `set_up` flagą. Utrata z każdego
+  statusu, który się nie skończył. Pole `:status` zniknęło ze stanu; każda komenda ma `from:` z inwariantem, który
+  już był; z decyzji zniknęło dziewięć ręcznych strażników statusu — zostały tylko odmowy drobniejsze niż status
+  (wycofana generacja, brak ustawień, rezerwacje, Allegro, „na sprzedaż”).
+- **Ustalenie dla biblioteki — `T4` był za ostry:** odrzucał status w `from:`, z którego żadne zdarzenie komendy
+  nie wychodzi. `issue_computer` musi być wydawane z `:for_sale`, żeby odmówić `:for_sale_not_issued` (osobna
+  reguła właściciela procesu, `A:G`), czego wymaga decyzja 2 („drobniejsze odmowy zostają w decyzji”). `from:` mówi,
+  gdzie decyzja się odbywa, nie gdzie przyjmuje — ta połowa `T4` usunięta; zostaje „emitowane zdarzenie, którego
+  żaden status z `from:` nie wypuszcza”. *Odrzucone:* usunąć `:for_sale_not_issued` z kontraktu — dopasowanie
+  przykładu do biblioteki, której reguła była błędna.
+- **Decyzja 3 w przykładzie:** zwrot innego przydziału przenosi komputer do biura — scenariusz „dotarł zwrot
+  innego przydziału” teraz oczekuje `wiped`, a odczyt „Inventory” wraca do warunku tylko na status (kolumna
+  przydziału z #120 usunięta nową migracją). Zgodność przydziałów to sprawa `Assignments`.
+- **`evolve/2`** czyta status silnika (zwrot i powrót z Innergo zmieniają stan tylko z `:returning` i
+  `:in_service`), nigdy go nie ustawia.
+- **Skill `change-contract`:** wiersz o dodaniu cyklu życia do agregatu z historią.
+- **Bez zmian:** enum statusu w read modelu „Inventory” powtarza etykiety cyklu życia — czytanie ich z cyklu życia
+  byłoby nowym słowem DSL-a, bez drugiego przykładu.
+
 ## Dopisek 3 października (2) — #94: style dashboardu z pakietu `ehos_design`, kopia usunięta
 
 `eh-os` D-72 przeniósł design system do pakietu `ehos_design` (EmpoweredHouse/ehos-tools, tag
