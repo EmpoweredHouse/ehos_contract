@@ -79,10 +79,10 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
   i tabela w „Dopisek 1 października”. Nowa potrzeba: wiersz w tabeli i issue.
 - **EP — proza w kontrakcie** (decyzja użytkownika z 3 października): EP1 → EP2 → EP3, potem EP4 i EP5 po
   decyzjach o kształcie — „Dopisek 3 października — EP”. **EP1–EP3 w `main`** (#102, #106, #107; poprawka
-  hooka przeglądu dla worktree — #105). **EP4 na `dsl/ep4-executable`** (`state` w scenariuszu process managera,
-  właściciel `idempotency`; wiersze read modelu odrzucone — „Przed EP4”), potem **EP5** (`capability` systemu zewnętrznego,
-  `responsibility` aktora, `terms` relacji jako pary) — przed każdym pytania do użytkownika o kształt, z
-  przykładem z materiału.
+  hooka przeglądu dla worktree — #105). **EP4 w `main`** (#109; wiersze read modelu odrzucone — „Przed EP4”).
+  **EP5a** — operacje systemów zewnętrznych, #111; **EP5b** — odpowiedzialność aktora i pary terminów relacji, PR
+  na gałęzi od EP5a. **Po EP5 plan EP nie ma kolejnej części**; odłożone z niego: `invariant` encji i tożsamość
+  `static` (każde dopiero z przykładem z materiału), sprawdzanie kodu wobec prozy przez LLM (na później).
 
 ### Co przeczytać najpierw
 
@@ -673,6 +673,40 @@ Na `dsl/ep5a-capabilities` (od `origin/main` = `64a7864`, po #109).
   `_build/test` sprzed nowego słowa (pułapka opisana w `sandbox/mix.exs`); po jego usunięciu czysto.
 - **Brama zielona** przed przeglądem: **EXIT=0** — sandbox 148, `check` 0 / 29 / 9 (bez zmian: obie operacje
   sandboxa są wołane); silnik 1206 (1198 + 8), `check` 0 / 71 / 6; web 52; auth 285 + 1 właściwość.
+
+### EP5b — co wyszło (4 października)
+
+Na `dsl/ep5b-actors-relations` (od `dsl/ep5a-capabilities`, #111).
+- **`responsibility`** w aktorze — `name`, `label`, `source`; D1: snake_case, raz w aktorze. Model trzyma listę
+  zawsze, digest pomija pustą. **Czytelnicy: strona domeny** (pod aktorem). **Odstępstwo od decyzji — `@doc`
+  komend nie czyta odpowiedzialności** (rozstrzygnięcie asystenta): `@doc` składa się przy kompilacji
+  kontraktu z jego modelu, a kontrakt nie kompiluje się względem domeny (v2 §8 — zależność kompilacyjna
+  rekompilowałaby każdy kontrakt przy zmianie domeny). Słownik też nie — jest per kontekst, a aktor nie
+  musi mieć kontekstu. Zostaje strona.
+- **`terms` relacji jako pary** `{"Wizyta", "Wizyta"}`, w modelu `[["Wizyta", "Wizyta"]]` (dla JSON-a). Pierwsze
+  słowo — upstream albo pierwszy z `between:`. **D5**: słowo końca-kontekstu musi być terminem jego słownika;
+  koniec-system (np. `upstream: :p1`) słownika nie ma, więc jego słowo nie jest sprawdzane. W relacji
+  symetrycznej digest czyta pary w kolejności posortowanych końców — `between` zapisane odwrotnie z
+  odwróconymi parami daje tę samą wersję.
+- **Słownik** pod terminem: „_In `clinical_documentation` (partnership): "Wizyta"._” — sprawdzone na Rehmedzie
+  (`mix eh_os_contract.glossary --domain rehmed`). **Strona domeny**: „· terms: "Wizyta" ↔ "Wizyta"” przy
+  relacji.
+- **Sandbox:** partnerstwo Rehmedu w parach; `manager` — `overdue_reports` (`P-25`); `accountant` w TaxVision —
+  `company_month` (03 §4.10, HS28) i `registry_discrepancy` (03 §4.2).
+- **Sprawdzenia odwrotne:** ochrona digestu odpowiedzialności (pada wersja domeny z EP1), kolejność par w
+  partnerstwie, D5, słownik — każde wywraca swój test.
+- `docs/contract.md`, `docs/dsl/`, skill `contract-distillation`, CHANGELOG.
+- **Przegląd** (dwa równolegle). Poprawione, ze sprawdzeniem odwrotnym: strona kontekstu nie pokazywała pary, którą
+  pokazuje słownik (teraz oba czytają `Glossary.across/3`); słownik przedstawiał koniec-system jak kontekst ze
+  słownikiem („_In external `p1`_”) i gubił parę w tłumaczeniu (`--language`); dwie kopie „który koniec pierwszy”
+  (teraz `Domain.Build.sides/1`); `pairs/1` rozpoznawało relację po kształcie mapy (teraz po rodzaju); powtórzona
+  para przechodziła (D1); test kierunku nie łapał zamiany końców (para lustrzana dawała te same komunikaty);
+  pomocnicze `digest_form` w `domain_rules_test` nie znało operacji, odpowiedzialności ani par; komentarz o
+  słowniku jako czytelniku odpowiedzialności. CHANGELOG: kształt `terms` w eksporcie modelu. Bez zmian: etykiety
+  i słowa bez escapowania na stronach (jak każda etykieta); stary płaski `terms` daje ogólny błąd Sparka, nie kod D
+  (bez zgodności wstecz, jedno użycie w sandboxie).
+- **Brama zielona po przeglądzie:** **EXIT=0** — sandbox 148, `check` 0 / 29 / 9; silnik 1216, `check` 0 / 71 / 6;
+  web 52; auth 285 + 1 właściwość.
 
 ## Dopisek 2 października (2) — #83: `ehos.yaml/v2` i `sign_in`; podział EB2
 
