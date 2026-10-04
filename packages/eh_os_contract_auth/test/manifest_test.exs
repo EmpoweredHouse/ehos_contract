@@ -263,7 +263,7 @@ defmodule EhOsContract.Auth.ManifestTest do
     end
   end
 
-  test "offers exactly the human command capabilities and the roles that hold them" do
+  test "offers the commands, queries and recordings a human holds, and the roles that hold them" do
     assert Manifest.build(@file_v1, [Domain], [Work]) == %{
              "schema" => "ehos.manifest/v2",
              "ehos_yaml" => "ehos.yaml/v1",
@@ -272,6 +272,20 @@ defmodule EhOsContract.Auth.ManifestTest do
              "health" => @health,
              "offers" => %{
                "capabilities" => [
+                 %{
+                   "name" => "manifest-rig.job_noted",
+                   "record" => "job_noted",
+                   "label" => "Job noted",
+                   "process" => "work",
+                   "principals" => ["human"]
+                 },
+                 %{
+                   "name" => "manifest-rig.jobs_in_branch",
+                   "query" => "jobs_in_branch",
+                   "label" => "Jobs in a branch",
+                   "process" => "work",
+                   "principals" => ["human"]
+                 },
                  %{
                    "name" => "manifest-rig.start_job",
                    "command" => "start_job",
@@ -284,19 +298,21 @@ defmodule EhOsContract.Auth.ManifestTest do
                  %{
                    "name" => "manifest-rig.clerk",
                    "label" => "Clerk",
-                   "capabilities" => ["manifest-rig.start_job"]
+                   "capabilities" => [
+                     "manifest-rig.job_noted",
+                     "manifest-rig.jobs_in_branch",
+                     "manifest-rig.start_job"
+                   ]
                  }
                ]
              }
            }
   end
 
-  test "invents no fields for queries, recordings, scope or system actors, nor contracts" do
+  test "invents no fields for scope, publications or system actors, nor contracts" do
     document = Manifest.build(@file_v1, [Domain], [Work])
     encoded = Jason.encode!(document)
 
-    refute encoded =~ "jobs_in_branch"
-    refute encoded =~ "job_noted"
     refute encoded =~ "branch_id"
     refute encoded =~ "scheduler"
     refute encoded =~ "observer"

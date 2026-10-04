@@ -13,10 +13,12 @@ defmodule EhOsContract.Auth.Manifest do
       takes it from there; a domain without contracts is not counted. A project with
       several says which one the image is in `ehos.yaml`'s `application`, which must
       be one of their names, in EHOS's spelling.
-    * `offers`, the human command capabilities and, as roles, the human actors that
-      hold at least one of them. Queries, recordings, scopes and publications are
-      absent: EHOS's manifest has no field for them yet, and adding one would make
-      it refuse the document.
+    * `offers`, the capabilities of the commands, queries and recordings a human actor
+      may make, and, as roles, the human actors that hold at least one of them. A
+      capability names its declaration as `command`, `query` or `record` (`eh-os`
+      D-73), which EHOS accepts from the release that decided it on; an earlier EHOS
+      refuses a manifest that offers a query or a recording. Scopes and publications are
+      absent: EHOS's manifest has no field for them yet.
     * `engine`, the `eh_os_contract` version that wrote it.
 
   `contracts` is not written. EHOS counts it in the manifest's authority digest, and
@@ -190,7 +192,7 @@ defmodule EhOsContract.Auth.Manifest do
   end
 
   defp offers(application, domain, models) do
-    declared = command_capabilities(application, domain, models)
+    declared = declared_capabilities(application, domain, models)
     ensure_unique!(declared)
 
     capabilities = declared |> Enum.map(& &1.capability) |> Enum.sort_by(& &1["name"])
@@ -200,7 +202,7 @@ defmodule EhOsContract.Auth.Manifest do
 
     if capabilities == [] or roles == [] do
       raise ArgumentError,
-            "#{inspect(domain.module)} has no human command capabilities, so it cannot offer " <>
+            "#{inspect(domain.module)} has no capabilities a human holds, so it cannot offer " <>
               "the capabilities and roles an ehos.manifest/v2 requires"
     end
 
@@ -208,10 +210,10 @@ defmodule EhOsContract.Auth.Manifest do
   end
 
   # EHOS's limits on what a manifest offers, which the engine's own names and labels do not keep:
-  # a command and the part of a role after the dot at most 63 characters (D-48), and a label a
+  # a declaration and the part of a role after the dot at most 63 characters (D-48), and a label a
   # person reads before binding a role, so never empty. Each is named here, not at deploy.
   defp ensure_ehos_takes!(domain, declared, roles) do
-    commands = Enum.map(declared, &{:command, &1.capability["command"], &1.capability["label"]})
+    commands = Enum.map(declared, &{&1.kind, &1.declaration, &1.capability["label"]})
 
     actors =
       for role <- roles,
@@ -236,13 +238,15 @@ defmodule EhOsContract.Auth.Manifest do
     end
   end
 
-  defp command_capabilities(application, domain, models) do
+  # A command, a query and a recording a human actor may make, each named by its declaration's
+  # kind (D-73). A capability no human holds is not offered: no role would hold it.
+  defp declared_capabilities(application, domain, models) do
     actors = Map.new(domain.actors, &{&1.name, &1})
 
     for model <- models,
         {name, access} <- Model.capabilities(model),
-        access.kind == :command do
-      command = Enum.find(model.commands, &(&1.name == access.name))
+        access.kind in [:command, :query, :record] do
+      declaration = declaration!(model, access)
 
       principals =
         access.roles
@@ -252,16 +256,29 @@ defmodule EhOsContract.Auth.Manifest do
         |> Enum.sort()
 
       %{
+        kind: access.kind,
+        declaration: to_string(declaration.name),
         capability: %{
+          Atom.to_string(access.kind) => to_string(declaration.name),
           "name" => name,
-          "command" => to_string(command.name),
-          "label" => command.label,
+          "label" => declaration.label,
           "process" => to_string(model.process.name),
           "principals" => principals
         },
         roles: access.roles
       }
     end
+  end
+
+  defp declaration!(model, %{kind: kind, name: name}) do
+    declarations =
+      case kind do
+        :command -> model.commands
+        :query -> model.queries
+        :record -> model.events
+      end
+
+    Enum.find(declarations, &(&1.name == name))
   end
 
   defp role_actor!(role, application, actors) do

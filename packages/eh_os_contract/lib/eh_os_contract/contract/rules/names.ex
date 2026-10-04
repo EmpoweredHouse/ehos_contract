@@ -210,15 +210,32 @@ defmodule EhOsContract.Contract.Rules.Names do
       callback_namespace(d) ++ capability_namespace(d) ++ in_process ++ constraints
   end
 
-  # A command and a query are both capabilities, named `<domain>.<name>` (D14), so a
-  # query may not take a command's name. Unique across the whole application is the
-  # Mix compiler's to check, since it sees every contract (L3).
+  # A command, a query and a recorded event are capabilities, named `<domain>.<name>`
+  # (D14), so a query may take neither a command's name nor that of an event an actor
+  # records: the manifest would offer one capability for both (`eh-os` D-73). Commands and
+  # events already share one namespace (`callback_namespace/1`). Unique across the whole
+  # application is the Mix compiler's to check, since it sees every contract (L3).
   defp capability_namespace(d) do
     commands = MapSet.new(Rules.commands(d), & &1.name)
 
-    for q <- d.queries, MapSet.member?(commands, q.name) do
-      {"N1: query #{inspect(q.name)} has the name of a command; both are capabilities named " <>
+    recorded =
+      for unit <- d.units,
+          event <- Rules.events(unit),
+          event.recorded_by not in [nil, []],
+          into: MapSet.new(),
+          do: event.name
+
+    for q <- d.queries, kind = taken(q.name, commands, recorded), kind != nil do
+      {"N1: query #{inspect(q.name)} has the name of #{kind}; both are capabilities named " <>
          "<domain>.#{q.name} (D14)", q}
+    end
+  end
+
+  defp taken(name, commands, recorded) do
+    cond do
+      MapSet.member?(commands, name) -> "a command"
+      MapSet.member?(recorded, name) -> "an event an actor records"
+      true -> nil
     end
   end
 

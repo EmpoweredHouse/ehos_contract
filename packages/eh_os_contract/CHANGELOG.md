@@ -23,7 +23,11 @@ against it.
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased — 0.3.0
+## Unreleased 
+- **N1 refuses a query named like an event an actor records.** Both are capabilities named `<domain>.<name>`
+  (D14), and since `eh-os` D-73 the manifest offers both: one name would grant the query and the recording at
+  once. A contract with such a pair stops compiling, with the query's line.
+— 0.3.0
 
 The move to the second contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`), from E1 to the cut, E11.
 **The first DSL is gone**: a contract written with `event`, `payload:`, `trace` and `EhOsContract.Handler`
