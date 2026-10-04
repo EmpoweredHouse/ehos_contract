@@ -267,6 +267,10 @@ defmodule EhOsContract.ActorsAndRelationsTest do
       english = Glossary.render(EhOsContract.ActorsAndRelationsTest.Translated, language: :en)
       assert english =~ ~s|### Visit|
       assert english =~ ~s|_Translates "Wizyta"._\n_In `documentation` (partnership): "Wizyta"._|
+
+      # An untranslated term keeps it too (CodeRabbit on #115).
+      assert english =~
+               ~s|_No translation into en._\n_In `scheduling` (partnership): "Wizyta"._|
     end
   end
 end
