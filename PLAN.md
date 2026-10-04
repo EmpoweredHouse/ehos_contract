@@ -59,7 +59,7 @@ diagramu) — „Dopisek 4 października — #99” i „LC… — co wyszło”
   paść na `too_many_connections`** (3 października, dwa razy: 9 padnięć silnika w `SchemaTest` i `AppendLockTest`,
   sam silnik przechodził) — wtedy `mix check`
   każdego pakietu osobno, po kolei, i zapisać, że tak było.
-- **Otwarte na GitHubie:** #99 (zrobione w kodzie, LC0–LC4b i #126; do zamknięcia przez użytkownika), #64 (okno retencji inboxu —
+- **Otwarte na GitHubie:** #64 (okno retencji inboxu —
   czeka na EHOS), #63 (kształt `call/3` — do pierwszych innych drzwi), #49 (materiał klientów poza repozytorium).
   **W `EmpoweredHouse/eh-os`: #91–#96 i #111** — nasze potrzeby wobec EHOS-a („Dopisek 1 października”).
 - **`ehos-ledger`** przypina `eh-os-contract` i puszcza w CI `mix eh_os_contract.manifest`; bump przypięcia — w tamtym
@@ -69,11 +69,11 @@ diagramu) — „Dopisek 4 października — #99” i „LC… — co wyszło”
 ### Co zostało — i czyje to jest
 
 - **Następna praca z kodem — niewybrana**; kandydaci w „Wybór użytkownika na potem” niżej.
-- **Po #99, decyzja użytkownika:** skutek decyzji 3 — zwrot odnotowany z błędnym przydziałem zwalnia komputer do
-  ponownego wydania, a prawdziwy przydział zostaje otwarty (`Assignments` niczego nie odrzuca; raport pokazuje
-  niedokończony przebieg). Opcje: raport wystarczy / agregat przydziału w `Assignments` z odmową zwrotu cudzego
-  przydziału / strażnik w `Computer` (reguła spoza materiału). Wątek CodeRabbita na #124 (`computer.ex`) czeka na
-  tę decyzję. Także: zamknięcie issue #99.
+- **Po #99, decyzja użytkownika (4 października): raport wystarczy.** Zwrot odnotowany z błędnym przydziałem
+  zwalnia komputer do ponownego wydania, a prawdziwy przydział zostaje otwarty — raport pokazuje jego niedokończony
+  przebieg i to jest odpowiedź. *Odrzucone:* agregat przydziału w `Assignments` z odmową zwrotu cudzego przydziału
+  (nowa jednostka bez reguły z materiału, która by jej wymagała); strażnik w `Computer` z komendą „uzgodnij zwrot”
+  (reguła spoza materiału). Wątek CodeRabbita na #124 zamknięty z tą odpowiedzią; issue #99 zamknięte.
 - **Po #99, biblioteka (bez przykładu, nie budujemy):** przejście z kilku statusów rysowane jako strzałka z
   każdego; `or_rejects:` per status zamiast odmowy w decyzji; enum read modelu czytający etykiety cyklu życia.
 - **Ryzyka zostawione świadomie przy #98** (#103, issue zamknięte): zdarzenie przechodzi dispatch, a menedżer, który miałby
