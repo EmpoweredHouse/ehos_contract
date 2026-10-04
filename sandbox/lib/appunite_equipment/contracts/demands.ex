@@ -40,7 +40,7 @@ defmodule AppuniteEquipment.Contracts.Demands do
     lifecycle do
       status :open, "Otwarte"
       status :ordered, "New"
-      status :fulfilled, "Zaspokojone", terminal: true
+      status :fulfilled, "Zaspokojone", final: true
 
       initial :open, on: :opened
       transition :open, :computer_ordered, :ordered

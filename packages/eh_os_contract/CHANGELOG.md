@@ -52,6 +52,10 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Changed — a host has to act
 
+- **N1: a status that ends an aggregate's life is `final:`, not `terminal:`.** `status :closed, "Closed",
+  terminal: true` no longer compiles; write `final: true`. `terminal:` stays an event's, where it ends a run of
+  the process, so one word no longer means two things in one contract. T3 and T4 and dispatch's refusal say
+  "final". **Moves the version** of every contract with a lifecycle, whose statuses carry the key in the model.
 - **EP4: `idempotency` names its key and its owner.** `idempotency: :event_id` no longer compiles: it is
   `[key: :event_id, owner: :self]`, the owner one of `:self` (the reaction's code keys what it writes),
   `:downstream` (the system an effect calls is given the key) and `:infrastructure` (the engine keys the

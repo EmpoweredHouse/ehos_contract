@@ -93,7 +93,7 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule Status do
     @moduledoc false
-    defstruct [:name, :label, :source, terminal: false, __spark_metadata__: nil]
+    defstruct [:name, :label, :source, final: false, __spark_metadata__: nil]
   end
 
   defmodule Initial do
@@ -490,7 +490,7 @@ defmodule EhOsContract.Contract.Dsl do
     schema: [
       name: [type: :atom, required: true, doc: "The status's name."],
       label: [type: :string, required: true, doc: "What the business calls it."],
-      terminal: [
+      final: [
         type: :boolean,
         default: false,
         doc: "Whether the aggregate's life ends in it: no transition leaves it."

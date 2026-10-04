@@ -23,8 +23,8 @@ defmodule LifecycleRig.Visits do
     lifecycle do
       status :booked, "Booked"
       status :in_progress, "In progress"
-      status :closed, "Closed", terminal: true
-      status :cancelled, "Cancelled", terminal: true
+      status :closed, "Closed", final: true
+      status :cancelled, "Cancelled", final: true
 
       initial :booked, on: :booked
       transition :booked, :patient_arrived, :in_progress

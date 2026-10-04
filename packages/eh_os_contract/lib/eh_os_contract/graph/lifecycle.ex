@@ -53,7 +53,7 @@ defmodule EhOsContract.Graph.Lifecycle do
           # One id for a status whatever its kind, so an arrow finds an end too.
           %{
             Mermaid.graph_node(:status, s.name, s.label)
-            | kind: if(s.terminal, do: :status_end, else: :status)
+            | kind: if(s.final, do: :status_end, else: :status)
           }
         end
 

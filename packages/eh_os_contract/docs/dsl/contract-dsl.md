@@ -528,7 +528,7 @@ One status of the aggregate's lifecycle.
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`terminal`](#contract-aggregate-lifecycle-status-terminal){: #contract-aggregate-lifecycle-status-terminal } | `boolean` | `false` | Whether the aggregate's life ends in it: no transition leaves it. |
+| [`final`](#contract-aggregate-lifecycle-status-final){: #contract-aggregate-lifecycle-status-final } | `boolean` | `false` | Whether the aggregate's life ends in it: no transition leaves it. |
 | [`source`](#contract-aggregate-lifecycle-status-source){: #contract-aggregate-lifecycle-status-source } | `String.t` |  | Where the status comes from in the material. |
 
 

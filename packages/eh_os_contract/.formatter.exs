@@ -80,6 +80,7 @@ spark_locals_without_parens = [
   field: 2,
   field: 3,
   fields: 1,
+  final: 1,
   from: 1,
   function: 2,
   function: 3,

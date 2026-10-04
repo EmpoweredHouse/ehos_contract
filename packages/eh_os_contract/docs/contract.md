@@ -106,13 +106,13 @@ end
 - **An aggregate may declare its lifecycle**: the statuses its decisions depend on, in the client's words,
   the `initial` one each first event starts it in, and the `transition`s events make between them —
   `transition :booked, :patient_arrived, :in_progress`. A transition names an event type and nothing about
-  its fields, so the graph is checked as it compiles: every status reached, only a `terminal:` one final.
+  its fields, so the graph is checked as it compiles: every status reached, and only a `final:` one without a way out.
   A command may name the statuses it is issued in, `from: :booked`, with the invariant it is refused on in
   any other, `or_rejects: :only_a_booked_visit`. **The engine computes the status** from the names of the
   stream's events and puts it into the state as `status`, which `evolve/2` reads and never sets. Dispatch
   refuses a command outside its `from:` before the decision; an event the decision emits that the graph does
   not allow from where the aggregate stands raises, as one outside `emits:` does, and nothing is appended.
-  An event no transition names is allowed in every status that is not terminal, once an initial event has
+  An event no transition names is allowed in every status that is not final, once an initial event has
   started the aggregate; a recorded event that does not fit is appended and moves nothing. A boundary has no
   lifecycle: it spans streams.
 - **A command names who may issue it** (`by:`), what it may emit, and which invariants it may refuse on.
@@ -264,8 +264,8 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `A7` | L2 | a command's constraint with the name of an invariant of its unit, or missing from the command's `rejects:` |
 | `T1` | L2 | an aggregate declaring `lifecycle` twice; a lifecycle without a status or an `initial`; a status named twice or not snake_case |
 | `T2` | L2 | a `transition` leaving no status; `initial` or `transition` naming a status the lifecycle does not declare or an event not of the aggregate; one event starting the aggregate in two statuses; one status and one event moving it twice |
-| `T3` | L2 | a status no `initial` reaches; a `terminal:` status a transition leaves; a status that is not terminal with no transition out |
-| `T4` | L2 | `from:` without `or_rejects:` or the other way round; `from:` naming an undeclared or terminal status, on an aggregate without a lifecycle, or on a command that `creates:` its aggregate; a command that `creates:` its aggregate and emits none of its initial events; `or_rejects:` naming what is not an invariant of the unit, or missing from `rejects:`; an emitted event no transition moves out of a status in `from:`; a status in `from:` none of the command's events leaves, when `rejects:` names no rule but `or_rejects:` |
+| `T3` | L2 | a status no `initial` reaches; a `final:` status a transition leaves; a status that is not final with no transition out |
+| `T4` | L2 | `from:` without `or_rejects:` or the other way round; `from:` naming an undeclared or final status, on an aggregate without a lifecycle, or on a command that `creates:` its aggregate; a command that `creates:` its aggregate and emits none of its initial events; `or_rejects:` naming what is not an invariant of the unit, or missing from `rejects:`; an emitted event no transition moves out of a status in `from:`; a status in `from:` none of the command's events leaves, when `rejects:` names no rule but `or_rejects:` |
 | `C1` | L2 | a command nobody can issue: no `by:`, and no policy or process manager of the contract issues it |
 | `P1` | L2 | a policy or an effect handling an event neither local nor consumed; a policy issuing a command not of this contract |
 | `P2` | L2 | an effect with `calls:` delivered `:in_transaction` |

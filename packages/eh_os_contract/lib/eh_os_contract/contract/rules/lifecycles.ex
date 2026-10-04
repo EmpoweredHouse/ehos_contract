@@ -8,12 +8,12 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
   - **T2.** `initial` and `transition` name statuses of the lifecycle and events of
     the aggregate; a transition leaves at least one status. The status an event moves the aggregate to is one: one `initial`
     per event, and one transition per status and event.
-  - **T3.** Every status is reached from an `initial`; a `terminal:` status has no
+  - **T3.** Every status is reached from an `initial`; a `final:` status has no
     transition out, and every other status has one, since an aggregate stuck in a
     status nobody called final is a lifecycle missing a transition.
   - **T4.** A command's `from:` names statuses of its aggregate's lifecycle and comes
     with `or_rejects:`, an invariant of the unit in the command's `rejects:`, and the
-    other way round; no command is issued from a terminal status. A command that
+    other way round; no command is issued from a final status. A command that
     `creates:` its aggregate emits one of its initial events and has no `from:`, since
     a new aggregate has no status yet. An event the command emits that a transition
     names leaves at least one status in `from:`, or emitting it could only ever be a
@@ -23,7 +23,7 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
     A boundary's command has no `from:` at all (L1): a boundary has no lifecycle.
 
   An event no transition names moves nothing: it is allowed in every status that is
-  not terminal, once an initial event has started the aggregate. Whether the run of the process ends with the aggregate's life is not
+  not final, once an initial event has started the aggregate. Whether the run of the process ends with the aggregate's life is not
   checked here: `terminal:` on an event ends a run, and a run may be correlated by
   other fields than the aggregate's identity.
   """
@@ -184,7 +184,7 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
     edges = for t <- lifecycle.transitions, from <- t.from, do: {from, t.to}
     reached = reached(Enum.map(lifecycle.initials, & &1.status), edges, MapSet.new())
     # A transition back into the same status leads nowhere: it neither gets the
-    # aggregate out of a status nor out of a terminal one.
+    # aggregate out of a status nor out of a final one.
     leaving = for {from, to} <- edges, from != to, into: MapSet.new(), do: from
 
     Enum.flat_map(Enum.uniq_by(lifecycle.statuses, & &1.name), fn status ->
@@ -199,12 +199,12 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
           ]
         ),
         cond do
-          status.terminal and MapSet.member?(leaving, status.name) ->
-            [{"T3: status #{name} of #{where} is terminal, and a transition leaves it", status}]
+          status.final and MapSet.member?(leaving, status.name) ->
+            [{"T3: status #{name} of #{where} is final, and a transition leaves it", status}]
 
-          not status.terminal and not MapSet.member?(leaving, status.name) ->
+          not status.final and not MapSet.member?(leaving, status.name) ->
             [
-              {"T3: status #{name} of #{where} has no transition out; mark it terminal: true " <>
+              {"T3: status #{name} of #{where} has no transition out; mark it final: true " <>
                  "if the aggregate's life ends there", status}
             ]
 
@@ -286,8 +286,8 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
         {"T4: #{what} is issued from status #{inspect(status)}, which the lifecycle of " <>
            "#{where} does not declare#{did_you_mean(status, statuses)}", command}
       end,
-      for status <- lifecycle.statuses, status.terminal, status.name in command.from do
-        {"T4: #{what} is issued from #{inspect(status.name)}, which is terminal: nothing is " <>
+      for status <- lifecycle.statuses, status.final, status.name in command.from do
+        {"T4: #{what} is issued from #{inspect(status.name)}, which is final: nothing is " <>
            "decided once the aggregate's life has ended", command}
       end,
       refusal(command, what, invariants),
@@ -306,13 +306,13 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
   # each event a transition names leaves at least one of them. A status in `from:`
   # that none of the events can leave is where the decision only refuses (plan LC4a,
   # AppUnite's `:for_sale_not_issued`), so it needs a rule of its own in `rejects:`.
-  # Checked only once every status in `from:` is a declared one that is not terminal,
+  # Checked only once every status in `from:` is a declared one that is not final,
   # which the checks above report.
   defp graph(command, what, where, statuses, allowed, moving) do
-    terminal = for s <- statuses, s.terminal, do: s.name
+    final = for s <- statuses, s.final, do: s.name
     names = Enum.map(statuses, & &1.name)
 
-    if Enum.all?(command.from, &(&1 in names and &1 not in terminal)) and not command.creates do
+    if Enum.all?(command.from, &(&1 in names and &1 not in final)) and not command.creates do
       dead =
         for event <- moving,
             not Enum.any?(command.from, &MapSet.member?(allowed, {&1, event})) do

@@ -23,8 +23,8 @@ defmodule EhOsContract.Web.TestHost.Fixtures.CaseHandling do
       status :open, "Open"
       status :approved, "Approved"
       status :rejected, "Rejected"
-      status :closed, "Closed", terminal: true
-      status :closed_rejected, "Closed as rejected", terminal: true
+      status :closed, "Closed", final: true
+      status :closed_rejected, "Closed as rejected", final: true
 
       initial :open, on: :case_opened
       transition :open, :case_approved, :approved

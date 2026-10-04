@@ -84,7 +84,7 @@ defmodule EhOsContract.DispatchLifecycleTest do
     assert {:ok, _} = issue(CloseVisit)
 
     assert_raise ArgumentError,
-                 ~r/command :add_note decided :note_added in status :closed, which is terminal/,
+                 ~r/command :add_note decided :note_added in status :closed, which is final/,
                  fn -> issue(AddNote) end
 
     assert log() == ["visit.booked", "visit.patient_arrived", "visit.closed"]
