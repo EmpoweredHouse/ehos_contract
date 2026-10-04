@@ -81,8 +81,9 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
 - **EP — proza w kontrakcie** (decyzja użytkownika z 3 października): EP1 → EP2 → EP3, potem EP4 i EP5 po
   decyzjach o kształcie — „Dopisek 3 października — EP”. **EP1–EP3 w `main`** (#102, #106, #107; poprawka
   hooka przeglądu dla worktree — #105). **EP4 w `main`** (#109; wiersze read modelu odrzucone — „Przed EP4”).
-  **EP5a** — operacje systemów zewnętrznych, #111; **EP5b** — odpowiedzialność aktora i pary terminów relacji, PR
-  na gałęzi od EP5a. **Po EP5 plan EP nie ma kolejnej części**; odłożone z niego: `invariant` encji i tożsamość
+  **EP5a w `main`** (#111, operacje systemów zewnętrznych). **EP5b w `main`** (#112, odpowiedzialność aktora i
+  pary terminów relacji; przypadkiem cofnięte w #114, przywrócone w #115 razem z poprawką słownika po przeglądzie
+  CodeRabbita). **Plan EP skończony**; odłożone z niego: `invariant` encji i tożsamość
   `static` (każde dopiero z przykładem z materiału), sprawdzanie kodu wobec prozy przez LLM (na później).
 
 ### Co przeczytać najpierw
@@ -752,7 +753,9 @@ Na `dsl/ep5a-capabilities` (od `origin/main` = `64a7864`, po #109).
 
 ### EP5b — co wyszło (4 października)
 
-Na `dsl/ep5b-actors-relations` (od `dsl/ep5a-capabilities`, #111).
+Na `dsl/ep5b-actors-relations` (od `dsl/ep5a-capabilities`, #111). W `main` przez #112; #114 cofnął je przypadkiem,
+#115 przywrócił (drzewo jak po #112) i dołożył poprawkę z przeglądu CodeRabbita: termin bez tłumaczenia na żądany
+język zachowuje w słowniku linię pary relacji.
 - **`responsibility`** w aktorze — `name`, `label`, `source`; D1: snake_case, raz w aktorze. Model trzyma listę
   zawsze, digest pomija pustą. **Czytelnicy: strona domeny** (pod aktorem). **Odstępstwo od decyzji — `@doc`
   komend nie czyta odpowiedzialności** (rozstrzygnięcie asystenta): `@doc` składa się przy kompilacji
