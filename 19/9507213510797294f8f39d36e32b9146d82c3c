@@ -1,0 +1,1 @@
+pre-pr-review of a sandbox-only correction (the user's, after seeing the diagram): loss only from :issued, as the material has it; Inventory aligned; a new scenario fails on the old projection. No library code. Gate on HEAD: mix check EXIT=0 (sandbox 187, engine 1254, web 52, auth 285+1 property).
