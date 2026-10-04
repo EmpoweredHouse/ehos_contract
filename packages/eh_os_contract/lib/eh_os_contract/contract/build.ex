@@ -162,7 +162,7 @@ defmodule EhOsContract.Contract.Build do
       statuses: plain(lifecycle.statuses),
       initial: for(i <- lifecycle.initials, do: %{status: i.status, on: i.on}),
       transitions:
-        for t <- lifecycle.transitions, from <- t.from do
+        for t <- lifecycle.transitions, from <- Enum.uniq(t.from) do
           %{from: from, event: t.event, to: t.to, source: t.source}
         end
     }

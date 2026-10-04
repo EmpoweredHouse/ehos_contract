@@ -257,7 +257,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `A6` | L2 | a generated identity of more than one field, or with no command that `creates:` it; `creates:` on a command whose unit's identity is not generated |
 | `A7` | L2 | a command's constraint with the name of an invariant of its unit, or missing from the command's `rejects:` |
 | `T1` | L2 | an aggregate declaring `lifecycle` twice; a lifecycle without a status or an `initial`; a status named twice or not snake_case |
-| `T2` | L2 | `initial` or `transition` naming a status the lifecycle does not declare or an event not of the aggregate; one event starting the aggregate in two statuses; one status and one event moving it twice |
+| `T2` | L2 | a `transition` leaving no status; `initial` or `transition` naming a status the lifecycle does not declare or an event not of the aggregate; one event starting the aggregate in two statuses; one status and one event moving it twice |
 | `T3` | L2 | a status no `initial` reaches; a `terminal:` status a transition leaves; a status that is not terminal with no transition out |
 | `T4` | L2 | `from:` without `or_rejects:` or the other way round; `from:` naming an undeclared or terminal status, on a unit without a lifecycle, or on a command that `creates:` its aggregate; `or_rejects:` naming what is not an invariant of the unit, or missing from `rejects:`; an emitted event no transition moves out of a status in `from:`, or a status in `from:` none of the command's events can leave |
 | `C1` | L2 | a command nobody can issue: no `by:`, and no policy or process manager of the contract issues it |

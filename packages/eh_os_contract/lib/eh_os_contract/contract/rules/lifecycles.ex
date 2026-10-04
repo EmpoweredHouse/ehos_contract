@@ -5,7 +5,7 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
   - **T1.** An aggregate declares `lifecycle` at most once; one has a status and an
     `initial`, and names each status once, in snake_case.
   - **T2.** `initial` and `transition` name statuses of the lifecycle and events of
-    the aggregate. The status an event moves the aggregate to is one: one `initial`
+    the aggregate; a transition leaves at least one status. The status an event moves the aggregate to is one: one `initial`
     per event, and one transition per status and event.
   - **T3.** Every status is reached from an `initial`; a `terminal:` status has no
     transition out, and every other status has one, since an aggregate stuck in a
@@ -114,7 +114,15 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
       Enum.flat_map(lifecycle.transitions, fn t ->
         what = "transition #{inspect(t.from)} --#{t.event}--> #{inspect(t.to)}"
 
-        Enum.flat_map(t.from, &status.(&1, what, t)) ++
+        # An empty `from:` passes Spark's schema and would leave the transition out of
+        # the model without a word, the event then moving nothing.
+        nowhere =
+          if t.from == [],
+            do: [{"T2: #{what} leaves no status; name the statuses it moves out of", t}],
+            else: []
+
+        nowhere ++
+          Enum.flat_map(t.from, &status.(&1, what, t)) ++
           status.(t.to, what, t) ++ event.(t.event, what, t)
       end)
 

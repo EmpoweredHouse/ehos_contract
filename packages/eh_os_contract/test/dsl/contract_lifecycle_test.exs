@@ -111,7 +111,7 @@ defmodule EhOsContract.ContractLifecycleTest do
               initial :booked, on: :visit_booked
               transition :booked, :visit_moved, :moved
               transition :moved, :visit_moved, :moved
-              transition [:booked, :moved], :visit_cancelled, :cancelled
+              transition [:booked, :moved, :booked], :visit_cancelled, :cancelled
             end
 
             command :book_visit, "Umówienie", by: :reception, emits: :visit_booked
@@ -132,6 +132,8 @@ defmodule EhOsContract.ContractLifecycleTest do
                transitions,
                &{&1.from, &1.event, &1.to}
              )
+
+      assert Enum.count(transitions, &(&1.event == :visit_cancelled)) == 2
 
       assert {:moved, :visit_cancelled, :cancelled} in Enum.map(
                transitions,
@@ -285,6 +287,7 @@ defmodule EhOsContract.ContractLifecycleTest do
               transition :booked, :visit_closed, :closed
               transition :booked, :visit_closed, :booked
               transition :open, :visit_closed, :closed
+              transition [], :visit_booked, :closed
             end
 
             command :book_visit, "Umówienie", by: :reception, emits: :visit_booked
@@ -307,6 +310,10 @@ defmodule EhOsContract.ContractLifecycleTest do
       assert message =~
                "T2: transition [:open] --visit_closed--> :closed names status :open, which the " <>
                  "lifecycle of aggregate :visit does not declare (lifecycle_names.ex:16)"
+
+      assert message =~
+               "T2: transition [] --visit_booked--> :closed leaves no status; name the statuses " <>
+                 "it moves out of (lifecycle_names.ex:17)"
 
       assert message =~
                "T2: event :visit_booked starts aggregate :visit in two statuses; an initial " <>
