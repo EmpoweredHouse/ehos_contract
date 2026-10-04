@@ -1,0 +1,1 @@
+Revert of the accidental revert #114. Tree identical to b31c92d (merge of #112): git diff b31c92d HEAD is empty. That content was reviewed (two reviews, recorded on #112), passed the local gate EXIT=0 and CI job check=success on c39dbec. No new review.
