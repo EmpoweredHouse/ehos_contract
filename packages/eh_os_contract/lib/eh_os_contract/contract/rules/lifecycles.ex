@@ -12,10 +12,12 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
     status nobody called final is a lifecycle missing a transition.
   - **T4.** A command's `from:` names statuses of its aggregate's lifecycle and comes
     with `or_rejects:`, an invariant of the unit in the command's `rejects:`, and the
-    other way round; a command that `creates:` its aggregate has no `from:`, since a
-    new aggregate has no status yet, and no command is issued from a terminal status. An event the command emits that a transition
+    other way round; no command is issued from a terminal status. A command that
+    `creates:` its aggregate emits one of its initial events and has no `from:`, since
+    a new aggregate has no status yet. An event the command emits that a transition
     names leaves at least one status in `from:`, and every status in `from:` lets at
     least one of the command's events in, or the decision could only ever be a defect.
+    A boundary's command has no `from:` at all (L1): a boundary has no lifecycle.
 
   An event no transition names moves nothing: it is allowed in every status that is
   not terminal. Whether the run of the process ends with the aggregate's life is not
@@ -211,6 +213,15 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
       what = "command #{inspect(command.name)}"
 
       cond do
+        # The one way a new aggregate gets a status is an initial event, and a command
+        # that creates it is the one that decides its first.
+        command.creates and lifecycle != nil and
+            not Enum.any?(lifecycle.initials, &(&1.on in command.emits)) ->
+          [
+            {"T4: #{what} creates: its aggregate, and emits none of its lifecycle's initial " <>
+               "events, so the aggregate it makes would have no status", command}
+          ] ++ precondition_if_declared(unit, where, lifecycle, command, what)
+
         command.from == [] and command.or_rejects == nil ->
           []
 
@@ -221,10 +232,7 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
           ]
 
         lifecycle == nil ->
-          [
-            {"T4: #{what} has from:, and #{where} declares no lifecycle#{boundary(unit)}",
-             command}
-          ]
+          [{"T4: #{what} has from:, and #{where} declares no lifecycle", command}]
 
         true ->
           precondition(unit, where, lifecycle, command, what)
@@ -232,8 +240,11 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
     end)
   end
 
-  defp boundary(%{kind: :dcb}), do: "; a boundary spans streams, so it has no status"
-  defp boundary(_aggregate), do: ""
+  defp precondition_if_declared(_unit, _where, _lifecycle, %{from: [], or_rejects: nil}, _what),
+    do: []
+
+  defp precondition_if_declared(unit, where, lifecycle, command, what),
+    do: precondition(unit, where, lifecycle, command, what)
 
   defp precondition(unit, where, lifecycle, command, what) do
     statuses = Enum.map(lifecycle.statuses, & &1.name)

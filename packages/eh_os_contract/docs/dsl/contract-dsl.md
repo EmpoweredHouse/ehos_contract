@@ -24,12 +24,12 @@ One process, and everything born in it.
 
 ### Nested DSLs
  * [aggregate](#contract-aggregate)
-   * state
-     * field
-   * invariant
    * command
      * field
      * constraint
+   * state
+     * field
+   * invariant
    * event
      * field
    * stage
@@ -110,12 +110,12 @@ aggregate name, label
 A unit that decides over one stream, identified by its identity.
 
 ### Nested DSLs
- * [state](#contract-aggregate-state)
-   * field
- * [invariant](#contract-aggregate-invariant)
  * [command](#contract-aggregate-command)
    * field
    * constraint
+ * [state](#contract-aggregate-state)
+   * field
+ * [invariant](#contract-aggregate-invariant)
  * [event](#contract-aggregate-event)
    * field
  * [stage](#contract-aggregate-stage)
@@ -142,6 +142,108 @@ A unit that decides over one stream, identified by its identity.
 | [`identity`](#contract-aggregate-identity){: #contract-aggregate-identity .spark-required} | `atom \| list(atom)` |  | The fields that identify one aggregate; injected into its state, commands and events. |
 | [`generated`](#contract-aggregate-generated){: #contract-aggregate-generated } | `:uuid` |  | That the library gives a new aggregate its identity, a UUIDv7, when a command that `creates:` it arrives without one; written `identity :booking_id, generated: :uuid`. |
 | [`source`](#contract-aggregate-source){: #contract-aggregate-source } | `String.t` |  | Where the aggregate comes from in the material. |
+
+
+### contract.aggregate.command
+```elixir
+command name, label
+```
+
+
+An intention an actor or a reaction issues to a unit.
+
+### Nested DSLs
+ * [field](#contract-aggregate-command-field)
+ * [constraint](#contract-aggregate-command-constraint)
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#contract-aggregate-command-name){: #contract-aggregate-command-name .spark-required} | `atom` |  | The command's name. |
+| [`label`](#contract-aggregate-command-label){: #contract-aggregate-command-label .spark-required} | `String.t` |  | What the business calls it. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`emits`](#contract-aggregate-command-emits){: #contract-aggregate-command-emits .spark-required} | `atom \| list(atom)` |  | The events of this unit it may produce. |
+| [`by`](#contract-aggregate-command-by){: #contract-aggregate-command-by } | `atom \| list(atom)` | `[]` | The actors who may issue it. |
+| [`rejects`](#contract-aggregate-command-rejects){: #contract-aggregate-command-rejects } | `atom \| list(atom)` | `[]` | The invariants of this unit, and the constraints of this command, it may refuse on. |
+| [`creates`](#contract-aggregate-command-creates){: #contract-aggregate-command-creates } | `boolean` | `false` | Whether it creates the aggregate, which the library then gives its generated identity. |
+| [`scope`](#contract-aggregate-command-scope){: #contract-aggregate-command-scope } | `atom` |  | The field a grant narrows it to: a field of the command, and a scope of every actor in `by:`. |
+| [`source`](#contract-aggregate-command-source){: #contract-aggregate-command-source } | `String.t` |  | Where the command comes from in the material. |
+| [`from`](#contract-aggregate-command-from){: #contract-aggregate-command-from } | `atom \| list(atom)` | `[]` | The statuses of its aggregate's lifecycle it may be issued in. |
+| [`or_rejects`](#contract-aggregate-command-or_rejects){: #contract-aggregate-command-or_rejects } | `atom` |  | The invariant of the unit it is refused on outside the statuses in `from:`. |
+
+
+### contract.aggregate.command.field
+```elixir
+field name, type
+```
+
+
+One field of a state, a command, an event or a read model's row.
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#contract-aggregate-command-field-name){: #contract-aggregate-command-field-name .spark-required} | `atom` |  | The field's name. |
+| [`type`](#contract-aggregate-command-field-type){: #contract-aggregate-command-field-type .spark-required} | `any` |  | A built-in type or a value of the domain. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`optional`](#contract-aggregate-command-field-optional){: #contract-aggregate-command-field-optional } | `boolean` | `false` | Whether the field may be absent. |
+| [`label`](#contract-aggregate-command-field-label){: #contract-aggregate-command-field-label } | `String.t` |  | What the business calls it. |
+| [`personal`](#contract-aggregate-command-field-personal){: #contract-aggregate-command-field-personal } | `atom` |  | The field holding the identifier of whose data this is. |
+| [`subject`](#contract-aggregate-command-field-subject){: #contract-aggregate-command-field-subject } | `atom` |  | The domain subject this identifier field identifies. |
+| [`default`](#contract-aggregate-command-field-default){: #contract-aggregate-command-field-default } | `any` |  | The initial value; only in a state. |
+| [`issued_by`](#contract-aggregate-command-field-issued_by){: #contract-aggregate-command-field-issued_by } | `atom` |  | The domain external that gives this value, e.g. a number another system assigns. |
+
+
+
+
+
+
+### contract.aggregate.command.constraint
+```elixir
+constraint name, label
+```
+
+
+A rule a command's data, a query or a reaction keeps, as the business states it.
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#contract-aggregate-command-constraint-name){: #contract-aggregate-command-constraint-name .spark-required} | `atom` |  | The constraint's name. |
+| [`label`](#contract-aggregate-command-constraint-label){: #contract-aggregate-command-constraint-label .spark-required} | `String.t` |  | The rule, as the business states it. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#contract-aggregate-command-constraint-source){: #contract-aggregate-command-constraint-source } | `String.t` |  | Where the rule comes from in the material. |
+
+
+
+
+
+
+
+
 
 
 ### contract.aggregate.state
@@ -218,108 +320,6 @@ What must stay true under every command of the unit.
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`source`](#contract-aggregate-invariant-source){: #contract-aggregate-invariant-source } | `String.t` |  | Where the rule comes from in the material. |
-
-
-
-
-
-
-### contract.aggregate.command
-```elixir
-command name, label
-```
-
-
-An intention an actor or a reaction issues to a unit.
-
-### Nested DSLs
- * [field](#contract-aggregate-command-field)
- * [constraint](#contract-aggregate-command-constraint)
-
-
-
-
-### Arguments
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`name`](#contract-aggregate-command-name){: #contract-aggregate-command-name .spark-required} | `atom` |  | The command's name. |
-| [`label`](#contract-aggregate-command-label){: #contract-aggregate-command-label .spark-required} | `String.t` |  | What the business calls it. |
-### Options
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`emits`](#contract-aggregate-command-emits){: #contract-aggregate-command-emits .spark-required} | `atom \| list(atom)` |  | The events of this unit it may produce. |
-| [`by`](#contract-aggregate-command-by){: #contract-aggregate-command-by } | `atom \| list(atom)` | `[]` | The actors who may issue it. |
-| [`rejects`](#contract-aggregate-command-rejects){: #contract-aggregate-command-rejects } | `atom \| list(atom)` | `[]` | The invariants of this unit, and the constraints of this command, it may refuse on. |
-| [`creates`](#contract-aggregate-command-creates){: #contract-aggregate-command-creates } | `boolean` | `false` | Whether it creates the aggregate, which the library then gives its generated identity. |
-| [`scope`](#contract-aggregate-command-scope){: #contract-aggregate-command-scope } | `atom` |  | The field a grant narrows it to: a field of the command, and a scope of every actor in `by:`. |
-| [`from`](#contract-aggregate-command-from){: #contract-aggregate-command-from } | `atom \| list(atom)` | `[]` | The statuses of its aggregate's lifecycle it may be issued in. |
-| [`or_rejects`](#contract-aggregate-command-or_rejects){: #contract-aggregate-command-or_rejects } | `atom` |  | The invariant of the unit it is refused on outside the statuses in `from:`. |
-| [`source`](#contract-aggregate-command-source){: #contract-aggregate-command-source } | `String.t` |  | Where the command comes from in the material. |
-
-
-### contract.aggregate.command.field
-```elixir
-field name, type
-```
-
-
-One field of a state, a command, an event or a read model's row.
-
-
-
-
-
-### Arguments
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`name`](#contract-aggregate-command-field-name){: #contract-aggregate-command-field-name .spark-required} | `atom` |  | The field's name. |
-| [`type`](#contract-aggregate-command-field-type){: #contract-aggregate-command-field-type .spark-required} | `any` |  | A built-in type or a value of the domain. |
-### Options
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`optional`](#contract-aggregate-command-field-optional){: #contract-aggregate-command-field-optional } | `boolean` | `false` | Whether the field may be absent. |
-| [`label`](#contract-aggregate-command-field-label){: #contract-aggregate-command-field-label } | `String.t` |  | What the business calls it. |
-| [`personal`](#contract-aggregate-command-field-personal){: #contract-aggregate-command-field-personal } | `atom` |  | The field holding the identifier of whose data this is. |
-| [`subject`](#contract-aggregate-command-field-subject){: #contract-aggregate-command-field-subject } | `atom` |  | The domain subject this identifier field identifies. |
-| [`default`](#contract-aggregate-command-field-default){: #contract-aggregate-command-field-default } | `any` |  | The initial value; only in a state. |
-| [`issued_by`](#contract-aggregate-command-field-issued_by){: #contract-aggregate-command-field-issued_by } | `atom` |  | The domain external that gives this value, e.g. a number another system assigns. |
-
-
-
-
-
-
-### contract.aggregate.command.constraint
-```elixir
-constraint name, label
-```
-
-
-A rule a command's data, a query or a reaction keeps, as the business states it.
-
-
-
-
-
-### Arguments
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`name`](#contract-aggregate-command-constraint-name){: #contract-aggregate-command-constraint-name .spark-required} | `atom` |  | The constraint's name. |
-| [`label`](#contract-aggregate-command-constraint-label){: #contract-aggregate-command-constraint-label .spark-required} | `String.t` |  | The rule, as the business states it. |
-### Options
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`source`](#contract-aggregate-command-constraint-source){: #contract-aggregate-command-constraint-source } | `String.t` |  | Where the rule comes from in the material. |
-
-
-
-
 
 
 
@@ -781,8 +781,6 @@ An intention an actor or a reaction issues to a unit.
 | [`rejects`](#contract-dcb-command-rejects){: #contract-dcb-command-rejects } | `atom \| list(atom)` | `[]` | The invariants of this unit, and the constraints of this command, it may refuse on. |
 | [`creates`](#contract-dcb-command-creates){: #contract-dcb-command-creates } | `boolean` | `false` | Whether it creates the aggregate, which the library then gives its generated identity. |
 | [`scope`](#contract-dcb-command-scope){: #contract-dcb-command-scope } | `atom` |  | The field a grant narrows it to: a field of the command, and a scope of every actor in `by:`. |
-| [`from`](#contract-dcb-command-from){: #contract-dcb-command-from } | `atom \| list(atom)` | `[]` | The statuses of its aggregate's lifecycle it may be issued in. |
-| [`or_rejects`](#contract-dcb-command-or_rejects){: #contract-dcb-command-or_rejects } | `atom` |  | The invariant of the unit it is refused on outside the statuses in `from:`. |
 | [`source`](#contract-dcb-command-source){: #contract-dcb-command-source } | `String.t` |  | Where the command comes from in the material. |
 
 

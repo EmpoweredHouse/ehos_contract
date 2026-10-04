@@ -489,25 +489,51 @@ defmodule EhOsContract.ContractLifecycleTest do
                "T4: command :open_room has from:, and aggregate :room declares no lifecycle"
     end
 
-    test "from: on a boundary says a boundary has no status" do
-      assert refuse_contract("LifecycleFromBoundary", """
-               dcb :seat, "Miejsce" do
-                 identity :seat_id
-                 consults :seat_taken, match: :seat_id
-                 invariant :free_seat, "Wolne miejsce"
+    test "from: is no word of a boundary's command (L1)" do
+      message =
+        refuse_contract("LifecycleFromBoundary", """
+          dcb :seat, "Miejsce" do
+            identity :seat_id
+            consults :seat_taken, match: :seat_id
+            invariant :free_seat, "Wolne miejsce"
 
-                 command :take_seat, "Zajęcie", by: :reception, emits: :seat_taken,
-                   from: :free, or_rejects: :free_seat, rejects: :free_seat
+            command :take_seat, "Zajęcie", by: :reception, emits: :seat_taken,
+              from: :free, or_rejects: :free_seat, rejects: :free_seat
 
-                 event :seat_taken, "Zajęto"
+            event :seat_taken, "Zajęto"
+          end
+
+          process :seat, "Miejsce" do
+            correlate :seat_id
+          end
+        """)
+
+      assert message =~ "from"
+      refute message =~ "T4:"
+    end
+
+    test "a creating command that emits no initial event is refused" do
+      assert refuse_contract("LifecycleCreates", """
+               aggregate :visit, "Wizyta" do
+                 identity :visit_id, generated: :uuid
+
+                 lifecycle do
+                   status :booked, "Umówiona", terminal: true
+                   initial :booked, on: :visit_booked
+                 end
+
+                 command :book_visit, "Umówienie", by: :reception, emits: :visit_booked
+                 command :draft_visit, "Szkic", by: :reception, emits: :drafted, creates: true
+
+                 event :visit_booked, "Umówiono"
+                 event :drafted, "Szkic"
                end
 
-               process :seat, "Miejsce" do
-                 correlate :seat_id
-               end
+             #{@process}
              """) =~
-               "T4: command :take_seat has from:, and dcb :seat declares no lifecycle; a " <>
-                 "boundary spans streams, so it has no status"
+               "T4: command :draft_visit creates: its aggregate, and emits none of its " <>
+                 "lifecycle's initial events, so the aggregate it makes would have no status " <>
+                 "(lifecycle_creates.ex:"
     end
   end
 end

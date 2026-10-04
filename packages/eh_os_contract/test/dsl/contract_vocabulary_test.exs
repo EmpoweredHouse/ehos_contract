@@ -23,8 +23,7 @@ defmodule EhOsContract.ContractVocabularyTest do
   # Plan EL2: `issued_by`, the external that gives a value.
   @field [:name, :type, :optional, :label, :personal, :subject, :default, :issued_by]
   @event [:name, :label, :terminal, :depends_on, :recorded_by, :schema_version, :source]
-  # Plan LC1: the statuses a command may be issued in, and what it is refused on outside.
-  @command [:name, :label, :by, :emits, :rejects, :creates, :scope, :from, :or_rejects, :source]
+  @command [:name, :label, :by, :emits, :rejects, :creates, :scope, :source]
 
   defp unit(kind) do
     %{
@@ -49,8 +48,10 @@ defmodule EhOsContract.ContractVocabularyTest do
       unit(:aggregate)
       # Plan EM3: a new aggregate's identity may be the library's to give.
       |> Map.put([:aggregate], [:name, :label, :identity, :generated, :source])
-      # Plan LC1 (#99): an aggregate's lifecycle; a boundary has none.
+      # Plan LC1 (#99): an aggregate's lifecycle, and the statuses its command may be issued
+      # in, with what it is refused on outside; a boundary has none of them.
       |> Map.merge(%{
+        [:aggregate, :command] => @command ++ [:from, :or_rejects],
         [:aggregate, :lifecycle] => [],
         [:aggregate, :lifecycle, :status] => [:name, :label, :terminal, :source],
         [:aggregate, :lifecycle, :initial] => [:status, :on, :source],

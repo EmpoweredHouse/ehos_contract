@@ -400,17 +400,28 @@ defmodule EhOsContract.Contract.Dsl do
         doc:
           "The field a grant narrows it to: a field of the command, and a scope of every actor in `by:`."
       ],
-      from: [
-        type: {:wrap_list, :atom},
-        default: [],
-        doc: "The statuses of its aggregate's lifecycle it may be issued in."
-      ],
-      or_rejects: [
-        type: :atom,
-        doc: "The invariant of the unit it is refused on outside the statuses in `from:`."
-      ],
       source: [type: :string, doc: "Where the command comes from in the material."]
     ]
+  }
+
+  # Plan LC1: an aggregate's command may name the statuses of its lifecycle it is issued
+  # in. A boundary's may not: it has no lifecycle, and a word it has only to be refused
+  # would stand in its reference as if it meant something there.
+  @aggregate_command %{
+    @command
+    | schema:
+        @command.schema ++
+          [
+            from: [
+              type: {:wrap_list, :atom},
+              default: [],
+              doc: "The statuses of its aggregate's lifecycle it may be issued in."
+            ],
+            or_rejects: [
+              type: :atom,
+              doc: "The invariant of the unit it is refused on outside the statuses in `from:`."
+            ]
+          ]
   }
 
   @event %Spark.Dsl.Entity{
@@ -532,7 +543,8 @@ defmodule EhOsContract.Contract.Dsl do
     target: Unit,
     args: [:name, :label],
     auto_set_fields: [kind: :aggregate],
-    entities: @unit_entities ++ [lifecycle: [@lifecycle]],
+    entities:
+      Keyword.put(@unit_entities, :commands, [@aggregate_command]) ++ [lifecycle: [@lifecycle]],
     imports: [Generated],
     schema: [
       name: [type: :atom, required: true, doc: "The aggregate's name."],

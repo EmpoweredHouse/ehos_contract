@@ -365,7 +365,8 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   initial :status, on: :event; transition from, :event, to end`, and a command `from:` statuses with
   `or_rejects:` an invariant. `T1`–`T4` refuse a lifecycle that does not hold together: an unknown status or
   event, a status no `initial` reaches, a terminal status left or a non-terminal one with no way out, a
-  `from:` no event of the command can leave. A unit's model has `lifecycle` and a command's `from` and
+  `from:` no event of the command can leave, a command that `creates:` the aggregate and emits no initial event.
+  `from:` and `or_rejects:` are words of an aggregate's command only. A unit's model has `lifecycle` and a command's `from` and
   `or_rejects` only where declared, so no version moves until one is; the exported model carries them. The
   engine does not act on them yet.
 - **EP5b: what an actor answers for, and the words a relation pairs.** An actor may name its
