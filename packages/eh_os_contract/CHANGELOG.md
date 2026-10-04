@@ -361,14 +361,21 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Added
 
+- **LC2 (#99): the engine keeps an aggregate's status.** For an aggregate with a `lifecycle`, dispatch
+  and `ScenarioCase` compute the status from the names of the stream's events and put it into the state as
+  `status` (before each event `evolve/2` folds, and after the last). **A command outside its `from:` is
+  refused on its `or_rejects:` before the decision** — a `rejected` row, as a decision's own refusal — and
+  an event the decision emits that the graph does not allow raises, with nothing appended. A recorded event
+  is never refused for not fitting. `T1` refuses a state or identity field named `:status` beside a
+  lifecycle. A contract without a lifecycle dispatches as before.
 - **LC1 (#99): an aggregate's lifecycle, declared.** An aggregate may declare `lifecycle do status …;
   initial :status, on: :event; transition from, :event, to end`, and a command `from:` statuses with
   `or_rejects:` an invariant. `T1`–`T4` refuse a lifecycle that does not hold together: an unknown status or
   event, a status no `initial` reaches, a terminal status left or a non-terminal one with no way out, a
-  `from:` no event of the command can leave, a command that `creates:` the aggregate and emits no initial event.
-  `from:` and `or_rejects:` are words of an aggregate's command only. A unit's model has `lifecycle` and a command's `from` and
-  `or_rejects` only where declared, so no version moves until one is; the exported model carries them. The
-  engine does not act on them yet.
+  `from:` no event of the command can leave, a command that `creates:` the aggregate and emits no initial
+  event. `from:` and `or_rejects:` are words of an aggregate's command only. A unit's model has `lifecycle`
+  and a command's `from` and `or_rejects` only where declared, so no version moves until one is; the exported
+  model carries them.
 - **EP5b: what an actor answers for, and the words a relation pairs.** An actor may name its
   `responsibility`s (named prose, shown on the domain's page). **A relation's `terms` are pairs**, `terms:
   [{"Wizyta", "Wizyta"}]` — the word of the first end (upstream, or the first of `between:`) and of the

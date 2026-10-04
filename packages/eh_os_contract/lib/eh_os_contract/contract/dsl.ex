@@ -415,7 +415,9 @@ defmodule EhOsContract.Contract.Dsl do
             from: [
               type: {:wrap_list, :atom},
               default: [],
-              doc: "The statuses of its aggregate's lifecycle it may be issued in."
+              doc:
+                "The statuses of its aggregate's lifecycle it may be issued in; dispatch " <>
+                  "refuses it in any other, before the decision, on `or_rejects:`."
             ],
             or_rejects: [
               type: :atom,

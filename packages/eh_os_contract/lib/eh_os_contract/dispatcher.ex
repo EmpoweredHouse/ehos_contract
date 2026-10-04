@@ -100,6 +100,7 @@ defmodule EhOsContract.Dispatcher do
     Event,
     Implementations,
     Key,
+    Lifecycle,
     Meta,
     Model,
     Personal,
@@ -787,32 +788,63 @@ defmodule EhOsContract.Dispatcher do
       impl = Implementations.fetch!(model, unit.kind, unit.name)
       folded = Implementations.folded_types(model, impl)
       {recorded, condition} = read_unit(repo, model, unit, command, folded)
-      state = fold(job, unit, impl, folded_only(recorded, model, unit, folded))
 
-      command = %{command | __meta__: meta(ctx)}
-      decision = stage("decider", fn -> apply(impl, declaration.name, [command, state]) end)
+      {state, status} =
+        fold(job, unit, impl, folded_only(recorded, model, unit, folded), recorded)
+
       job = Map.merge(job, %{condition: condition, given: recorded})
 
-      case decision do
-        {:ok, events} when is_list(events) ->
-          commit(job, stage("decider", fn -> emitted!(job, events) end), repo)
-
-        {:error, %Rejection{invariant: invariant} = rejection} ->
-          unless invariant in declaration.rejects do
-            raise ArgumentError,
-                  "command #{inspect(declaration.name)} of #{inspect(model.module)} was rejected " <>
-                    "on #{inspect(invariant)}, which is not among its rejects: " <>
-                    "#{inspect(declaration.rejects)}"
-          end
-
-          write_row!(repo, job, "rejected", %{invariant: Atom.to_string(invariant)})
-          {:error, rejection}
-
-        other ->
-          raise ArgumentError,
-                "the decision of command #{inspect(declaration.name)} returned #{inspect(other)}; " <>
-                  "a decision returns {:ok, events} or {:error, %EhOsContract.Rejection{}}"
+      if Lifecycle.admits?(declaration, status) do
+        decide(job, unit, impl, state, status, %{command | __meta__: meta(ctx)}, repo)
+      else
+        # Plan LC2: outside the statuses its `from:` names, the command is refused on
+        # its `or_rejects:` before the decision, as the decision would have refused it.
+        write_row!(repo, job, "rejected", %{invariant: Atom.to_string(declaration.or_rejects)})
+        {:error, %Rejection{invariant: declaration.or_rejects}}
       end
+    end
+  end
+
+  defp decide(job, unit, impl, state, status, command, repo) do
+    %{model: model, declaration: declaration} = job
+    decision = stage("decider", fn -> apply(impl, declaration.name, [command, state]) end)
+
+    case decision do
+      {:ok, events} when is_list(events) ->
+        emitted = stage("decider", fn -> emitted!(job, events) end)
+        stage("decider", fn -> lifecycle!(job, unit, status, emitted) end)
+        commit(job, emitted, repo)
+
+      {:error, %Rejection{invariant: invariant} = rejection} ->
+        unless invariant in declaration.rejects do
+          raise ArgumentError,
+                "command #{inspect(declaration.name)} of #{inspect(model.module)} was rejected " <>
+                  "on #{inspect(invariant)}, which is not among its rejects: " <>
+                  "#{inspect(declaration.rejects)}"
+        end
+
+        write_row!(repo, job, "rejected", %{invariant: Atom.to_string(invariant)})
+        {:error, rejection}
+
+      other ->
+        raise ArgumentError,
+              "the decision of command #{inspect(declaration.name)} returned #{inspect(other)}; " <>
+                "a decision returns {:ok, events} or {:error, %EhOsContract.Rejection{}}"
+    end
+  end
+
+  # What a decision emitted, held to its aggregate's lifecycle (plan LC2): an event the
+  # graph does not allow from where the aggregate stands is a defect, never a business
+  # outcome, and nothing is appended.
+  defp lifecycle!(job, unit, status, emitted) do
+    case Lifecycle.of(unit) do
+      nil ->
+        :ok
+
+      lifecycle ->
+        names = for {declaration, _event} <- emitted, do: declaration.name
+        Lifecycle.decided!(lifecycle, status, job.declaration.name, names)
+        :ok
     end
   end
 
@@ -1056,23 +1088,51 @@ defmodule EhOsContract.Dispatcher do
 
   # --- reading a stream --------------------------------------------------------------------
 
-  defp fold(job, unit, impl, recorded) do
+  # The unit's state and, for an aggregate with a lifecycle, its status (plan LC2):
+  # computed from the names of every event of the stream, `all`, not only those
+  # `evolve/2` folds, and put into the state before each folded event, so `evolve/2`
+  # sees where the aggregate stood when the event happened. Whatever `evolve/2` puts
+  # there is overwritten: the status is the engine's.
+  defp fold(job, unit, impl, recorded, all) do
     state =
       struct(
         Module.concat(Model.module_for(job.model, unit.kind, unit.name), State),
         Map.new(unit.identity, &{&1, Map.fetch!(job.command, &1)})
       )
 
-    if function_exported?(impl, :evolve, 2) do
-      # Reading the stream back — its keys too — is part of evolving, for the failed row.
-      events = stage("evolve", fn -> decode_all!(job, recorded) end)
+    {before, status} = statuses(job.model, Lifecycle.of(unit), all)
 
-      Enum.reduce(events, state, fn event, state ->
-        stage("evolve", fn -> impl.evolve(state, event) end)
-      end)
-    else
-      state
-    end
+    state =
+      if function_exported?(impl, :evolve, 2) do
+        # Reading the stream back — its keys too — is part of evolving, for the failed row.
+        rows = Enum.sort_by(recorded, & &1.position)
+        events = stage("evolve", fn -> decode_all!(job, recorded) end)
+
+        rows
+        |> Enum.zip(events)
+        |> Enum.reduce(state, fn {row, event}, state ->
+          state = with_status(state, unit, Map.get(before, row.position))
+          stage("evolve", fn -> impl.evolve(state, event) end)
+        end)
+      else
+        state
+      end
+
+    {with_status(state, unit, status), status}
+  end
+
+  # The status before each row, by position, and after the last.
+  defp statuses(_model, nil, _rows), do: {%{}, nil}
+
+  defp statuses(model, lifecycle, rows) do
+    names = Map.new(model.events, &{&1.type, &1.name})
+    rows = Enum.sort_by(rows, & &1.position)
+    {befores, status} = Lifecycle.walk(lifecycle, Enum.map(rows, &Map.get(names, &1.type)))
+    {Map.new(Enum.zip(Enum.map(rows, & &1.position), befores)), status}
+  end
+
+  defp with_status(state, unit, status) do
+    if Lifecycle.of(unit), do: %{state | status: status}, else: state
   end
 
   # A boundary reads events of the sibling contracts it consults too, and each is
