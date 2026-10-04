@@ -62,14 +62,14 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
 
 ### Co zostało — i czyje to jest
 
-- **Następna praca z kodem — niewybrana**; kandydaci w „Wybór użytkownika na potem” niżej.
+- **Następna praca z kodem — #99, cykl życia agregatu**, LC0–LC4 w „Dopisek 4 października — #99”.
 - **Ryzyka zostawione świadomie przy #98** (#103, issue zamknięte): zdarzenie przechodzi dispatch, a menedżer, który miałby
   zacząć na nim przebieg, staje (wybór „stoi”); komenda wydana przez reakcję i odrzucona `:key_too_long` dalej się
   wywraca; `issued_by` w indeksie idempotencji bez granicy długości (sprzed #98, wymaga credentialu wydawcy).
 - **Pytanie z #96 o pusty `:id` jako wartość pola korelacji** — od #100 pusty `:id` jest odmawiany także przy
   dekodowaniu, więc pytanie dotyczy już tylko starych wierszy logu.
-- **Zostawione świadomie:** #63, #64, #49 (wyżej). **#99 — cykl życia agregatu:** propozycja i trzy pytania w
-  „Dopisek 4 października — #99”; budowa w nowej sesji, po odpowiedziach użytkownika.
+- **Zostawione świadomie:** #63, #64, #49 (wyżej). **#99 — cykl życia agregatu:** decyzje użytkownika i kolejność
+  budowy w „Dopisek 4 października — #99”.
 - **Wady `oidcc` 3.9.0** — zgłoszone jako erlef/oidcc#552–#555; nasz kod ich nie potrzebuje.
 - **Po stronie EHOS-a, nie tutaj:** szablon `ehos_app` (krok 7) i test na klastrze (krok 8); bump w `ehos-ledger`;
   port `4001.0` — [eh-os#111](https://github.com/EmpoweredHouse/eh-os/issues/111).
@@ -359,7 +359,7 @@ Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty, commi
 
 ## Dopisek 4 października — #99: cykl życia agregatu (stany i przejścia)
 
-**Skąd.** Trzecia domena testowa, sprzęt AppUnite (gałąź `claude/computer-ordering-process-f84437`, nie w `main`),
+**Skąd.** Trzecia domena testowa, sprzęt AppUnite (`sandbox/lib/appunite_equipment/`, od LC0 w `main`),
 ma komputer, który latami krąży w pętli: wydany → zwrot → w biurze → u resellera → w biurze → wydany… aż do
 sprzedaży, darowizny, utylizacji albo zgubienia. Właściciel procesu myśli statusami (arkusz: jedna kolumna, dziesięć
 wartości). DSL nie ma słowa na status: żyje w `evolve/2` (`:status` w stanie agregatu) i w enumie read modelu.
@@ -390,13 +390,44 @@ agregatu w jednym kontekście — komputer i przydział to dwa cykle, bez skleja
 - **Rozmiar:** 3–4 PR-y — DSL i reguły (osiągalność, stan początkowy, terminalne), status w `State` i strażnik w
   dispatchu, raport zgodności, diagram stanów w `graph` i na dashboardzie, sandbox.
 
-**Otwarte — decyzje użytkownika przed budową:**
-1. **Materiał:** czy sprzęt AppUnite wchodzi do `sandbox/` jako trzecia domena danych testowych (bez niej nie ma
-   przykładu, a bez przykładu z materiału nie budujemy).
-2. **Odmowy z cyklu życia:** komenda deklaruje stany, z których wolno ją wydać (`from: :in_office`), a dispatch
-   odmawia z wygenerowanym kodem przed decyzją — *albo* odmowy zostają ręczne w decyzji, a silnik pilnuje tylko
-   zdarzeń spoza grafu jako defektów.
-3. **Status wstrzykiwany do `State`** zamiast liczony w `evolve/2` — zgoda na zmianę roli `evolve/2`.
+**Decyzje użytkownika (4 października):**
+1. **Materiał AppUnite wchodzi do `sandbox/`** jako trzecie dane testowe, na tych samych prawach co TaxVision i
+   Rehmed: kontekst do sprawdzania biblioteki, który z nią nie zostanie (#49 — przeniesienie do osobnego repo, a
+   docelowo usunięcie). *Odrzucone:* budowa bez materiału (nie budujemy bez przykładu); osobne repo przed #99
+   (blokowałoby #99 na #49).
+   **Reguła z tej odpowiedzi:** cykl życia ma być rozwiązaniem ogólnym, zgodnym z DDD; AppUnite jest przykładem,
+   który ma się zmieścić, nie kształtem, pod który budujemy. Gdy szczegół przykładu nie pasuje do ogólnego
+   rozwiązania, zmienia się przykład — i mówi się to w PR-ze.
+2. **Warunek wstępny komendy: `from:` z nazwanym inwariantem.** Komenda deklaruje stany, z których wolno ją wydać;
+   dispatch sprawdza je przed decyzją i odmawia kodem **zadeklarowanego `invariant`** (nazwa, etykieta, `source`,
+   scenariusz odmowy) — nie kodem wygenerowanym. Odmowy drobniejsze niż sam stan (w AppUnite wydanie komputera
+   wystawionego na sprzedaż, `:for_sale_not_issued`) zostają w decyzji. *Odrzucone:* wygenerowany wspólny kod
+   (gubi słowa klienta i scenariusze odmów); odmowy tylko ręczne (reguła „tylko z biura” powtórzona przy każdej
+   komendzie, nic jej nie wiąże z cyklem życia).
+3. **Status liczy silnik, z samych typów zdarzeń; przejścia bez warunków na polach zdarzenia.** Tylko taki graf da
+   się sprawdzić statycznie i narysować; warunek na danych to reguła biznesowa — decyzji albo innego agregatu.
+   *Odrzucone:* przejścia z warunkiem na polu (kod zamiast deklaracji, dla jednego przykładu); status w `evolve/2`.
+
+**Ustalenia z czytania kodu AppUnite (4 października), które poprawiają propozycję:**
+- **Zdarzenia rejestrowane (`recorded_by:`) nie są decyzjami.** `returned`, `service_returned` i `lost` wchodzą przez
+  `record/3`; zwrot sprzedanego komputera się wydarzył i odrzucić go nie można. Strażnik („spoza grafu to defekt”)
+  dotyczy więc tylko zdarzeń **decydowanych**; zdarzenie rejestrowane spoza grafu jest dopisywane, statusu nie
+  zmienia, a raport pokazuje je jako przejście niezadeklarowane — także w **nowym** logu, nie tylko w historii sprzed
+  deklaracji (poprawka punktu „Zgodność bez piątego pytania” wyżej).
+- **Status w AppUnite zależy od pola zdarzenia:** `returned` przenosi do biura tylko przy zgodnym `assignment_id`.
+  Z decyzji 3 zwrot przenosi do biura zawsze; zgodność przydziału to sprawa cyklu przydziału w `Assignments`
+  (warunek 3 użytkownika). Scenariusz zwrotu cudzego przydziału zmienia się w LC4.
+
+**Kolejność budowy** — każda część osobnym PR-em, z `pre-pr-review` przed następną:
+- **LC0** — materiał AppUnite w `sandbox/` bez zmian w bibliotece (przebazowany na `main`).
+- **LC1** — DSL `lifecycle` w agregacie i reguły: stan początkowy, osiągalność, stany terminalne zgodne z
+  `terminal:`, zdarzenia przejść należą do agregatu, `lifecycle` w `boundary` odrzucony; `from:` wskazuje stany i
+  inwariant. `docs/dsl/`, `docs/rules.md`, `CHANGELOG.md`.
+- **LC2** — status w `State` liczony przez dispatch i `ScenarioCase`; strażnik zdarzeń decydowanych; odmowy z
+  `from:`; zdarzenia rejestrowane spoza grafu dopisywane bez zmiany statusu.
+- **LC3** — raport zgodności: przejścia nigdy nieprzejechane, przejścia niezadeklarowane.
+- **LC4** — diagram stanów w `graph` i na dashboardzie; `Computer` w AppUnite na cyklu życia (bez ręcznych
+  strażników statusu); wiersz w skillu `change-contract`.
 
 ## Dopisek 3 października (2) — #94: style dashboardu z pakietu `ehos_design`, kopia usunięta
 
