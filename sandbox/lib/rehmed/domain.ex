@@ -79,12 +79,8 @@ defmodule Rehmed.Domain do
 
   # 30-contexts.md, "Context map": the relations between the declared contexts, as the
   # map types them. The partnership is the only one there: "the visit exists; the two
-  # closes are independent". Its word is the same on both sides and means something
-  # else on each (`CTX-01`, `CTX-03`), which is why it is a pair (plan EP5b).
-  relation :partnership,
-    between: [:scheduling, :clinical_documentation],
-    terms: [{"Wizyta", "Wizyta"}]
-
+  # closes are independent".
+  relation :partnership, between: [:scheduling, :clinical_documentation], terms: ["Wizyta"]
   relation :customer_supplier, upstream: :scheduling, downstream: :settlement
   relation :customer_supplier, upstream: :settlement, downstream: :external_payers
   relation :conformist, upstream: :clinical_documentation, downstream: :statutory_reporting
@@ -96,13 +92,7 @@ defmodule Rehmed.Domain do
   # A-02, A-03, A-05
   actor :reception, :human, "Recepcja"
   actor :specialist, :human, "Specjalista"
-
-  actor :manager, :human, "Manager gabinetu" do
-    # Plan EP5b: the comment over the clinical visit's process, as named prose.
-    responsibility :overdue_reports,
-                   "Dostaje przekroczenia terminu zgłoszenia; zaległa praca trafia do niego jako liczba",
-                   source: "P-25"
-  end
+  actor :manager, :human, "Manager gabinetu"
 
   # The material names no actor for it: `AGG-10` has no commands and `X-01` answers
   # the send. It is the integration that records what the registry answered (D6).

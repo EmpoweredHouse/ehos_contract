@@ -29,12 +29,12 @@ defmodule EhOsContract.Glossary do
         name -> Enum.filter(model.contexts, &(&1.name == name))
       end
 
-    sections = Enum.map(contexts, &context(&1, model, wanted))
+    sections = Enum.map(contexts, &context(&1, model.language, wanted))
     Enum.join(["# Glossary of `#{model.name}`\n" | sections], "\n")
   end
 
-  defp context(context, model, wanted) do
-    language = context.language || model.language
+  defp context(context, domain_language, wanted) do
+    language = context.language || domain_language
     heading = "## #{context.label} (`#{context.name}`)\n"
 
     terms =
@@ -44,47 +44,22 @@ defmodule EhOsContract.Glossary do
 
         terms ->
           for term <- terms do
-            if wanted in [nil, language],
-              do: term(term, across(model, context.name, term.text)),
-              else: translated(term, wanted, across(model, context.name, term.text))
+            if wanted in [nil, language], do: term(term), else: translated(term, wanted)
           end
       end
 
     Enum.join([heading | terms], "\n")
   end
 
-  defp term(term, across) do
+  defp term(term) do
     lines =
       ["### #{term.text}", "", term.definition] ++
-        avoid(term.avoid) ++
-        across ++ if(term.source, do: ["_Source: #{term.source}_"], else: [])
+        avoid(term.avoid) ++ if(term.source, do: ["_Source: #{term.source}_"], else: [])
 
     Enum.join(lines, "\n") <> "\n"
   end
 
-  @doc """
-  Plan EP5b: what the other end of each relation that pairs the term `text` of
-  context `name` calls it, one line each — the glossary's and a context page's.
-  An external end is said to be one, since it has no glossary of its own.
-  """
-  @spec across(map(), atom(), String.t()) :: [String.t()]
-  def across(model, name, text) do
-    externals = MapSet.new(model.externals, & &1.name)
-
-    for relation <- model.relations,
-        [first_end, second_end] = EhOsContract.Domain.Build.sides(relation),
-        [first, second] <- Map.get(relation, :terms, []),
-        {own, word, other, other_word} <- [
-          {first_end, first, second_end, second},
-          {second_end, second, first_end, first}
-        ],
-        own == name and word == text do
-      where = if MapSet.member?(externals, other), do: "external `#{other}`", else: "`#{other}`"
-      ~s|_In #{where} (#{relation.type}): "#{other_word}"._|
-    end
-  end
-
-  defp translated(term, language, across) do
+  defp translated(term, language) do
     case Enum.find(term.translations, &(&1.language == language)) do
       nil ->
         "### #{term.text}\n\n_No translation into #{language}._\n"
@@ -92,7 +67,7 @@ defmodule EhOsContract.Glossary do
       translation ->
         lines =
           ["### #{translation.text}", "", translation.definition] ++
-            avoid(translation.avoid) ++ [~s|_Translates "#{term.text}"._|] ++ across
+            avoid(translation.avoid) ++ [~s|_Translates "#{term.text}"._|]
 
         Enum.join(lines, "\n") <> "\n"
     end
