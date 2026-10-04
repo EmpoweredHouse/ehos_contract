@@ -18,21 +18,23 @@ defmodule AppuniteEquipment.Contracts.Computers do
   issue to the return (distillation, "Zanim przeczytasz", shape B). A contract holds
   one process and every local event must carry its correlation, so that run is a
   sibling contract, `AppuniteEquipment.Contracts.Assignments`, which consumes the
-  three events of an assignment. What is left here is the computer's own run, from
-  the order to one of its four ends, in four stages: intake, use, sale, ending.
+  events of an assignment. What is left here is the computer's own run, from
+  the invoice to one of its four ends, in four stages: intake, use, sale, ending.
   The computer goes round the same loop for years, and a contract's stages claim an
   order only forwards, so the whole loop is one stage, `:use`, inside which no order
-  is claimed. Its beginning and its end go only forwards — nothing is ordered after
-  it was in use, and nothing takes a computer off sale — and that is what the
+  is claimed. Its beginning and its end go only forwards — nothing is registered
+  after it was in use, and nothing takes a computer off sale — and that is what the
   stages claim. A first version had no stages at all, and its diagram was one row
   of seventeen boxes that said nothing (3 October 2026). The order inside the loop is
   the aggregate's lifecycle, not the process's (#99, 4 October 2026).
 
   ## What is left out, and why
 
-  - **The new hire** (`T l.58`). Recruitment enters the person in Notion after the
-    contract is signed; here the order names the employee it is for, and nothing in
-    this contract decides on the hire itself.
+  - **The order, and the person it is for** (`T l.58`, cf.pdf). A computer enters
+    this contract when it is registered from the reseller's invoice, with no one
+    yet (E, 4 October 2026: the computer is registered first, the person comes later).
+    Who needs a computer, and whether one was bought for them, is a demand's
+    (`AppuniteEquipment.Contracts.Demands`), and every issue answers one.
   - **The handover documents** (`T l.100–102`). The second person reads the serial
     number and the shipping date to write them, and nothing waits on the document.
   - **The sale invoice** is accounting's; the sale is recorded when it is issued.
@@ -40,15 +42,16 @@ defmodule AppuniteEquipment.Contracts.Computers do
     process owner was not sure of (`E`), not a rule.
   - **A replacement the employee keeps** needs no fact: it is an assignment that is
     never returned.
-  - **A stolen computer that was issued** ends the computer, and its assignment
-    stays open, because `lost` carries no assignment. Recorded as a finding.
+  - **A stolen computer** ends here; it carries its assignment, which it ends too
+    (`Assignments`), and its employee, who needs another computer (`Demands`).
   """
 
   use EhOsContract.Contract, domain: AppuniteEquipment.Domain, context: :equipment
 
   aggregate :computer, "Komputer" do
-    # The order creates the computer before it has a serial number: the spreadsheet's
-    # `New` is a computer ordered for someone and not yet delivered.
+    # Generated, not the serial number: an identity is an `:id`, and the serial
+    # number's own format is a value of the domain (`:serial_number`), checked on the
+    # field the invoice gives.
     identity :computer_id, generated: :uuid
 
     state do
@@ -58,9 +61,6 @@ defmodule AppuniteEquipment.Contracts.Computers do
       field :reserved, :boolean, default: false
       field :listed_externally, :boolean, default: false
     end
-
-    invariant :received_once, "Komputer spisuje się z faktury raz, po zamówieniu",
-      source: "T l.88–90"
 
     # The process owner said Innergo cleans the disk; that a repair erases it too is
     # not stated. Every return from Innergo asks for the setup again, which costs a
@@ -107,7 +107,6 @@ defmodule AppuniteEquipment.Contracts.Computers do
     # nothing sets it. Only what a decision depends on: "Zastępczy" is the assignment's,
     # and the setup is a flag beside it, since in the office a computer is either.
     lifecycle do
-      status :ordered, "New"
       status :in_office, "Office"
       status :issued, "W użytku"
       status :returning, "W trakcie zwrotu"
@@ -118,8 +117,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
       status :disposed, "Utylizacja", terminal: true
       status :lost, "Lost", terminal: true
 
-      initial :ordered, on: :ordered
-      transition :ordered, :received, :in_office
+      initial :in_office, on: :received
       transition :in_office, :issued, :issued
       transition :issued, :return_started, :returning
       transition :returning, :returned, :in_office
@@ -136,23 +134,14 @@ defmodule AppuniteEquipment.Contracts.Computers do
       transition :issued, :lost, :lost
     end
 
-    # Ordered in the reseller's panel; the hire is known in advance (E).
-    command :order_computer, "Zamów komputer",
-      by: :equipment_manager,
-      emits: :ordered,
-      creates: true,
-      source: "A:F „New”, E" do
-      field :profile, :hardware_profile
-      field :employee_id, :id, subject: :employee, optional: true
-    end
-
+    # The computer is born here, with what the invoice says it is (cf.pdf: "rejestracja
+    # komputera (inventory)" after the purchase).
     command :receive_computer, "Spisz komputer z faktury",
       by: :equipment_manager,
       emits: :received,
-      from: :ordered,
-      or_rejects: :received_once,
-      rejects: :received_once,
-      source: "T l.88–90, E" do
+      creates: true,
+      source: "T l.88–90, E, cf.pdf" do
+      field :profile, :hardware_profile
       field :serial_number, :serial_number
       field :chip, :chip
       field :price, :money
@@ -180,6 +169,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
         :for_sale_not_issued
       ],
       source: "T l.100–102, E" do
+      field :demand_id, :id
       field :assignment_id, :id
       field :employee_id, :id, subject: :employee
       field :shipped_on, :date
@@ -284,16 +274,12 @@ defmodule AppuniteEquipment.Contracts.Computers do
       source: "A:F „Utylizacja”, E"
 
     stage :intake do
-      event :ordered, "Zamówiono komputer", source: "A:F „New”, E" do
-        field :profile, :hardware_profile
-        field :employee_id, :id, subject: :employee, optional: true
-      end
-
       # The invoice gives the price, the purchase date — the warranty runs from it,
       # though the reseller keeps that register — and the serial number.
       event :received, "Komputer przyszedł i został spisany z faktury",
         depends_on: :apple_reseller,
-        source: "T l.88–90, E" do
+        source: "T l.88–90, E, cf.pdf" do
+        field :profile, :hardware_profile
         field :serial_number, :serial_number
         field :chip, :chip
         field :price, :money
@@ -310,7 +296,10 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
       # The handover document is written from the serial number and this date, which is
       # the shipping date (E). Picked up in person, it has no tracking number.
+      # Assigning the person, setting up their account, packing and calling the
+      # courier are one move (E, 4 October 2026), and it answers one demand.
       event :issued, "Wydano komputer pracownikowi", source: "T l.100–102, E" do
+        field :demand_id, :id
         field :assignment_id, :id
         field :employee_id, :id, subject: :employee
         field :shipped_on, :date
@@ -388,10 +377,16 @@ defmodule AppuniteEquipment.Contracts.Computers do
       event :disposed, "Komputer zutylizowany", terminal: true, source: "A:F „Utylizacja”"
 
       # One was stolen recently (E). Found again is "a small chance", and not modelled.
+      # Only from an employee (#126), so it names the assignment it ends and the person
+      # who now needs another computer (cf.pdf: a theft leads back to a purchase or the
+      # shelf).
       event :lost, "Komputer zgubiony albo skradziony",
         recorded_by: :equipment_manager,
         terminal: true,
-        source: "A:F „Lost”, E"
+        source: "A:F „Lost”, E, cf.pdf" do
+        field :assignment_id, :id
+        field :employee_id, :id, subject: :employee
+      end
     end
   end
 
@@ -401,7 +396,6 @@ defmodule AppuniteEquipment.Contracts.Computers do
   # the setup — none of them is a table of its own.
   read_model :inventory, "Inventory — wszystkie komputery i ich status",
     projects: [
-      :ordered,
       :received,
       :set_up,
       :issued,
@@ -427,7 +421,6 @@ defmodule AppuniteEquipment.Contracts.Computers do
     field :status,
           {:enum,
            [
-             ordered: "New",
              in_office: "Office",
              issued: "W użytku",
              replacement: "Zastępczy",
@@ -448,7 +441,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
   query :inventory_list, "Lista komputerów", reads: :inventory, by: :equipment_manager
 
-  process :computer, "Komputer: od zamówienia do sprzedaży, oddania, utylizacji albo utraty",
+  process :computer, "Komputer: od faktury do sprzedaży, oddania, utylizacji albo utraty",
     accountable: :equipment_manager do
     correlate :computer_id
     stage :intake
@@ -457,15 +450,9 @@ defmodule AppuniteEquipment.Contracts.Computers do
     stage :ending
   end
 
-  scenario "nowa osoba w zespole programistów — zamówiono MacBooka Pro" do
-    command :order_computer, %{profile: :developer, employee_id: "employee-ola"}
-    expect :ordered, %{profile: :developer}
-  end
-
-  scenario "zamówiony komputer przyszedł — spisany z faktury" do
-    given :ordered, %{profile: :developer}
-
+  scenario "komputer z faktury Innergo — spisany do inventory" do
     command :receive_computer, %{
+      profile: :developer,
       serial_number: "K7HQ2F9X4M",
       chip: :m5,
       price: 1_199_900,
@@ -476,32 +463,9 @@ defmodule AppuniteEquipment.Contracts.Computers do
     expect :received, %{serial_number: "K7HQ2F9X4M", chip: :m5}
   end
 
-  scenario "ta sama faktura spisana drugi raz — odmowa" do
-    given :ordered, %{profile: :developer}
-
-    given :received, %{
-      serial_number: "K7HQ2F9X4M",
-      chip: :m5,
-      price: 1_199_900,
-      purchased_on: "2026-09-29",
-      invoice_number: "FV/2026/09/118"
-    }
-
-    command :receive_computer, %{
-      serial_number: "K7HQ2F9X4M",
-      chip: :m5,
-      price: 1_199_900,
-      purchased_on: "2026-09-29",
-      invoice_number: "FV/2026/09/118"
-    }
-
-    rejected :received_once
-  end
-
   scenario "nowy komputer ustawiony — wydany nowej osobie, wysłany pocztą" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "K7HQ2F9X4M",
       chip: :m5,
       price: 1_199_900,
@@ -513,6 +477,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
     command :issue_computer, %{
       assignment_id: "assignment-ola-1",
+      demand_id: "demand-ola-1",
       employee_id: "employee-ola",
       shipped_on: "2026-10-01",
       tracking_number: "00759007731234567890",
@@ -523,9 +488,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "nowy komputer bez MDM i szyfrowania — nie wychodzi z biura" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "K7HQ2F9X4M",
       chip: :m5,
       price: 1_199_900,
@@ -535,6 +499,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
     command :issue_computer, %{
       assignment_id: "assignment-ola-1",
+      demand_id: "demand-ola-1",
       employee_id: "employee-ola",
       shipped_on: "2026-10-01",
       as_replacement: false
@@ -544,9 +509,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "komputer wrócił z Innergo po czyszczeniu — bez ponownego ustawienia nie jest wydawany" do
-    given :ordered, %{profile: :operations}
-
     given :received, %{
+      profile: :operations,
       serial_number: "C02XG2JHJGH5",
       chip: :m2,
       price: 549_900,
@@ -560,6 +524,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
     command :issue_computer, %{
       assignment_id: "assignment-bartek-2",
+      demand_id: "demand-bartek-2",
       employee_id: "employee-bartek",
       shipped_on: "2026-10-02",
       as_replacement: false
@@ -569,9 +534,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "komputer w Innergo — nie można go wydać jako zastępczego" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "C02XG2JHJGH5",
       chip: :m3,
       price: 1_049_900,
@@ -584,6 +548,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
     command :issue_computer, %{
       assignment_id: "assignment-maja-3",
+      demand_id: "demand-maja-3",
       employee_id: "employee-maja",
       shipped_on: "2026-10-02",
       as_replacement: true
@@ -593,9 +558,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "M1 w biurze, ustawiony — nie jest wydawany nowej osobie" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "C02DX1ABQ6LR",
       chip: :m1,
       price: 899_900,
@@ -607,6 +571,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
     command :issue_computer, %{
       assignment_id: "assignment-ola-1",
+      demand_id: "demand-ola-1",
       employee_id: "employee-ola",
       shipped_on: "2026-10-01",
       as_replacement: false
@@ -616,9 +581,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "komputer wystawiony na sprzedaż — nie jest wydawany" do
-    given :ordered, %{profile: :operations}
-
     given :received, %{
+      profile: :operations,
       serial_number: "C02XG2JHJGH5",
       chip: :m2,
       price: 549_900,
@@ -631,6 +595,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
     command :issue_computer, %{
       assignment_id: "assignment-ola-1",
+      demand_id: "demand-ola-1",
       employee_id: "employee-ola",
       shipped_on: "2026-10-01",
       as_replacement: false
@@ -640,9 +605,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "pracownik odchodzi — zwrot rozpoczęty" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "K7HQ2F9X4M",
       chip: :m5,
       price: 1_199_900,
@@ -654,6 +618,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
     given :issued, %{
       assignment_id: "assignment-ola-1",
+      demand_id: "demand-ola-1",
       employee_id: "employee-ola",
       shipped_on: "2026-10-01",
       as_replacement: false
@@ -664,9 +629,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "komputer leży w biurze — nie ma czego zwracać" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "K7HQ2F9X4M",
       chip: :m5,
       price: 1_199_900,
@@ -679,9 +643,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "zwrot w dobrym stanie — sformatowany przed odłożeniem na półkę" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "K7HQ2F9X4M",
       chip: :m5,
       price: 1_199_900,
@@ -693,6 +656,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
     given :issued, %{
       assignment_id: "assignment-ola-1",
+      demand_id: "demand-ola-1",
       employee_id: "employee-ola",
       shipped_on: "2026-10-01",
       as_replacement: false
@@ -710,9 +674,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "komputer w drodze od pracownika — jeszcze nie do sformatowania" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "K7HQ2F9X4M",
       chip: :m5,
       price: 1_199_900,
@@ -724,6 +687,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
     given :issued, %{
       assignment_id: "assignment-ola-1",
+      demand_id: "demand-ola-1",
       employee_id: "employee-ola",
       shipped_on: "2026-10-01",
       as_replacement: false
@@ -740,9 +704,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "M1 w biurze — wystawiony na ryneczek" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "C02DX1ABQ6LR",
       chip: :m1,
       price: 899_900,
@@ -755,9 +718,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "Paweł zgłasza się pierwszy — komputer zarezerwowany" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "C02DX1ABQ6LR",
       chip: :m1,
       price: 899_900,
@@ -771,9 +733,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "Paweł zarezerwował, zgłasza się Tadeusz — odmowa" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "C02DX1ABQ6LR",
       chip: :m1,
       price: 899_900,
@@ -788,9 +749,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "komputer już na Allegro — pracownik go nie rezerwuje" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "C02DX1ABQ6LR",
       chip: :m1,
       price: 899_900,
@@ -805,9 +765,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "komputer w biurze, niewystawiony — nie da się go zarezerwować" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "K7HQ2F9X4M",
       chip: :m5,
       price: 1_199_900,
@@ -820,9 +779,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "Paweł się rozmyślił — rezerwacja przepada" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "C02DX1ABQ6LR",
       chip: :m1,
       price: 899_900,
@@ -837,9 +795,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "nikt nie rezerwował — nie ma czego zwalniać" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "C02DX1ABQ6LR",
       chip: :m1,
       price: 899_900,
@@ -853,9 +810,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "Paweł kupuje zarezerwowany komputer — księgowość wystawiła fakturę" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "C02DX1ABQ6LR",
       chip: :m1,
       price: 899_900,
@@ -870,9 +826,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "nikt się nie zgłosił — sprzedany na Allegro" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "C02DX1ABQ6LR",
       chip: :m1,
       price: 899_900,
@@ -887,9 +842,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "komputer w biurze, niewystawiony — sprzedaży się nie odnotowuje" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "C02DX1ABQ6LR",
       chip: :m1,
       price: 899_900,
@@ -902,9 +856,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "Inventory: jeden komputer u Oli, jeden M1 na ryneczku" do
-    given :ordered, %{computer_id: "computer-1", profile: :developer, employee_id: "employee-ola"}
-
     given :received, %{
+      profile: :developer,
       computer_id: "computer-1",
       serial_number: "K7HQ2F9X4M",
       chip: :m5,
@@ -918,14 +871,14 @@ defmodule AppuniteEquipment.Contracts.Computers do
     given :issued, %{
       computer_id: "computer-1",
       assignment_id: "assignment-ola-1",
+      demand_id: "demand-ola-1",
       employee_id: "employee-ola",
       shipped_on: "2026-10-01",
       as_replacement: false
     }
 
-    given :ordered, %{computer_id: "computer-2", profile: :developer}
-
     given :received, %{
+      profile: :developer,
       computer_id: "computer-2",
       serial_number: "C02DX1ABQ6LR",
       chip: :m1,
@@ -957,9 +910,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "sprzedany komputer, potem omyłkowo odnotowany zwrot — nie wraca do użytku" do
-    given :ordered, %{profile: :operations}
-
     given :received, %{
+      profile: :operations,
       serial_number: "C02XG2JHJGH5",
       chip: :m2,
       price: 549_900,
@@ -974,6 +926,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
     command :issue_computer, %{
       assignment_id: "assignment-bartek-2",
+      demand_id: "demand-bartek-2",
       employee_id: "employee-bartek",
       shipped_on: "2026-10-02",
       as_replacement: false
@@ -983,9 +936,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "dotarł zwrot innego przydziału — komputer i tak jest w biurze" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "K7HQ2F9X4M",
       chip: :m5,
       price: 1_199_900,
@@ -997,6 +949,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
     given :issued, %{
       assignment_id: "assignment-ola-1",
+      demand_id: "demand-ola-1",
       employee_id: "employee-ola",
       shipped_on: "2026-10-01",
       as_replacement: false
@@ -1014,9 +967,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "komputer u pracownika, odnotowany powrót z Innergo — nie trafia do drugiej osoby" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "K7HQ2F9X4M",
       chip: :m5,
       price: 1_199_900,
@@ -1028,6 +980,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
     given :issued, %{
       assignment_id: "assignment-ola-1",
+      demand_id: "demand-ola-1",
       employee_id: "employee-ola",
       shipped_on: "2026-10-01",
       as_replacement: false
@@ -1038,6 +991,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
     command :issue_computer, %{
       assignment_id: "assignment-bartek-2",
+      demand_id: "demand-bartek-2",
       employee_id: "employee-bartek",
       shipped_on: "2026-10-02",
       as_replacement: false
@@ -1047,9 +1001,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "komputer sprzedany Pawłowi — jego rezerwacji już się nie zwalnia" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "C02DX1ABQ6LR",
       chip: :m1,
       price: 899_900,
@@ -1065,9 +1018,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
   end
 
   scenario "Paweł zarezerwował — komputer nie idzie na Allegro" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "C02DX1ABQ6LR",
       chip: :m1,
       price: 899_900,
@@ -1081,16 +1033,9 @@ defmodule AppuniteEquipment.Contracts.Computers do
     rejected :allegro_only_without_reservation
   end
 
-  scenario "Inventory: zamówienie dla nowej osoby, oddany komputer bez rezerwacji, sprzedany zostaje sprzedanym" do
-    given :ordered, %{
-      computer_id: "computer-1",
-      profile: :operations,
-      employee_id: "employee-ola"
-    }
-
-    given :ordered, %{computer_id: "computer-2", profile: :developer}
-
+  scenario "Inventory: oddany komputer bez rezerwacji, sprzedany zostaje sprzedanym" do
     given :received, %{
+      profile: :developer,
       computer_id: "computer-2",
       serial_number: "C02DX1ABQ6LR",
       chip: :m1,
@@ -1102,9 +1047,9 @@ defmodule AppuniteEquipment.Contracts.Computers do
     given :listed_for_sale, %{computer_id: "computer-2", asking_price: 210_000}
     given :reserved, %{computer_id: "computer-2", buyer_id: "employee-pawel"}
     given :donated, %{computer_id: "computer-2"}
-    given :ordered, %{computer_id: "computer-3", profile: :developer}
 
     given :received, %{
+      profile: :developer,
       computer_id: "computer-3",
       serial_number: "C02XG2JHJGH5",
       chip: :m2,
@@ -1122,21 +1067,24 @@ defmodule AppuniteEquipment.Contracts.Computers do
       channel: :marketplace
     }
 
-    given :lost, %{computer_id: "computer-3"}
+    given :lost, %{
+      computer_id: "computer-3",
+      assignment_id: "assignment-ola-1",
+      employee_id: "employee-ola"
+    }
+
     given :returned, %{computer_id: "computer-3", assignment_id: "assignment-ola-1"}
     query :inventory_list
 
     answers [
-      %{computer_id: "computer-1", status: :ordered, employee_id: "employee-ola"},
       %{computer_id: "computer-2", status: :donated, reserved: false},
       %{computer_id: "computer-3", status: :sold}
     ]
   end
 
   scenario "zgubienie odnotowane dla komputera w biurze — komputer zostaje w biurze" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "K7HQ2F9X4M",
       chip: :m5,
       price: 1_199_900,
@@ -1144,16 +1092,15 @@ defmodule AppuniteEquipment.Contracts.Computers do
       invoice_number: "FV/2026/09/118"
     }
 
-    given :lost
+    given :lost, %{assignment_id: "assignment-ola-1", employee_id: "employee-ola"}
     query :inventory_list
 
     answers [%{status: :in_office}]
   end
 
   scenario "w Inventory zwrot innego przydziału też jest w biurze" do
-    given :ordered, %{profile: :developer}
-
     given :received, %{
+      profile: :developer,
       serial_number: "K7HQ2F9X4M",
       chip: :m5,
       price: 1_199_900,
@@ -1163,6 +1110,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
     given :issued, %{
       assignment_id: "assignment-ola-1",
+      demand_id: "demand-ola-1",
       employee_id: "employee-ola",
       shipped_on: "2026-10-01",
       as_replacement: false

@@ -1,5 +1,8 @@
 defmodule AppuniteEquipment.Inventory.InventoryList do
-  @moduledoc "Answers the Inventory tab: every computer, in the order they were ordered."
+  @moduledoc """
+  Answers the Inventory tab: every computer, in the order they were registered —
+  generated identities are UUIDv7, which sort by time.
+  """
 
   use AppuniteEquipment.Contracts.Computers, query: :inventory_list
 

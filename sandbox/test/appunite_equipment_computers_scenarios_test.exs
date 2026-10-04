@@ -16,3 +16,12 @@ defmodule AppuniteEquipment.DomainValuesTest do
 
   use EhOsContract.ScenarioCase, domain: AppuniteEquipment.Domain
 end
+
+defmodule AppuniteEquipment.DemandsScenariosTest do
+  @moduledoc """
+  One test per scenario of `AppuniteEquipment.Contracts.Demands`, run against its
+  implementations in `AppuniteEquipment.Demanding`.
+  """
+
+  use EhOsContract.ScenarioCase, contract: AppuniteEquipment.Contracts.Demands
+end

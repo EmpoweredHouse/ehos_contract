@@ -28,8 +28,17 @@ defmodule AppuniteEquipment.Domain do
     end
 
     term "New",
-      definition: "Nowa osoba ma zamówiony komputer i czekamy na dostawę",
-      source: "A:F, E"
+      definition:
+        "Nowa osoba ma zamówiony komputer i czekamy na dostawę — stan zapotrzebowania, nie komputera",
+      source: "A:F, E (2026-10-03, 2026-10-04)"
+
+    # Our word, not the team's: the process owner's sketch of 4 October (cf.pdf) draws
+    # it as the two ways a person gets a computer — a purchase or the shelf — opened by
+    # a new person and by a theft, and the answers of that day add failure and exchange.
+    term "Zapotrzebowanie",
+      definition:
+        "Osoba potrzebuje komputera: nowa osoba, kradzież, awaria albo wymiana; kończy się wydaniem komputera z półki albo kupionego",
+      source: "cf.pdf (szkic właściciela procesu, 2026-10-04), E (2026-10-04)"
 
     term "Ustawienie",
       definition:
@@ -89,6 +98,11 @@ defmodule AppuniteEquipment.Domain do
         label: "Profil sprzętu"
 
   value :money, :integer, unit: :grosze, label: "Kwota"
+
+  value :demand_reason,
+        {:enum,
+         [new_hire: "Nowa osoba", theft: "Kradzież", failure: "Awaria", exchange: "Wymiana"]},
+        label: "Powód zapotrzebowania"
 
   value :return_reason,
         {:enum, [offboarding: "Odejście pracownika", exchange: "Wymiana", failure: "Awaria"]},

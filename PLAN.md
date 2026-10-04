@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 3 października, noc (E0–E12, EH, EB, #89, #91, #64–#66, #93, #95, #96, #100, #101, EP1 i #98 w `main`; otwartych PR-ów brak)
+## Handoff — stan na 5 października (E0–E12, EH, EB, EP, #99 i #128 w `main`; następny jest program DD; otwarty PR #134)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -35,11 +35,23 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
 trzecie dane testowe), LC1 #121 (DSL i reguły `T1`–`T4`), LC2 #122 (status w `State`, `from:`, strażnik w
 dispatchu), LC3 #123 (raport), LC4a #124 (`Computer` na cyklu życia, `T4` dla drobniejszych odmów), LC4b #125
 (diagram w `graph` i na dashboardzie), #126 (utrata tylko z `W użytku`, poprawka użytkownika po obejrzeniu
-diagramu) — „Dopisek 4 października — #99” i „LC… — co wyszło”.
+diagramu) — „Dopisek 4 października — #99” i „LC… — co wyszło”. Po nim #128 (AppUnite: zapotrzebowanie na
+komputer, kontrakt `Demands`) — „Dopisek 4 października (2)”.
+
+**Następna praca to program DD — „DDD sprawdzane przez kod”** (zatwierdzony przez użytkownika 5 października): 53
+etapy w pięciu falach. **Jedynym miejscem ze stanem programu jest tabela „Postęp” w „Dopisek 5 października — DD”**;
+tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka. Żaden etap z kodem
+nie jest zaczęty; pierwszy jest N1 (`final:`, `target`, `identity` encji).
 
 ### Stan repozytorium
 
-- **`origin/main` = `6ce4c30`** (merge #126, ostatni PR #99; 4 października). Wcześniej `eb0c8a1` (merge #103: #98,
+- **`origin/main` = `af59a48`** (merge #128, `Demands`; 4 października). CI `main` na `af59a48`: przebieg
+  `37234896301`, job `check` — `success`. **Otwarty PR:** [#134](https://github.com/EmpoweredHouse/eh-os-contract/pull/134)
+  (`auth/manifest-query-record`, manifest EHOS-a: query i nagrania) — z innej sesji.
+- **`docs/dd0-programme`** — DD0: dopisek DD w `PLAN.md`, z dwoma commitami trzeciej analizy ESDM
+  (`docs/esdm-analysis-oct4`, „Dopisek 4 października (3)”) i z `main` wmergowanym 5 października. Tylko lokalnie,
+  do pushu i PR-a na polecenie użytkownika.
+- Wcześniej `6ce4c30` (merge #126, ostatni PR #99). Przedtem `eb0c8a1` (merge #103: #98,
   budżet bajtów klucza — „#98 — co wyszło”). Przedtem `b6a96dd` —
   #101 (handoff po #96), `90a83f2` — #102 (EP1, z sesji `esdm-dsl-comparison`), `0b7bc84` — #100 (poprawki
   CodeRabbita do #95), `b65b8b7` — #97 (#96, F8/F9), `996d89f` — #95 (granice wartości). CI `main` na `90a83f2` —
@@ -50,9 +62,9 @@ diagramu) — „Dopisek 4 października — #99” i „LC… — co wyszło”
 - **Gałęzie:** gałęzie tej pracy usunięte na GitHubie i lokalnie 3 października, za zgodą użytkownika (EB, EH, #71,
   #89, discovery, #65, #93, #95, #96, #100, a także przypadkowy `revert-95-engine/bounded-values` — revert z przycisku
   GitHuba, bez PR-a); `engine/issue-98-key-budget` (#103) — po merge'u, za zgodą użytkownika. Zostało 59 innych gałęzi na GitHubie, zmergowanych dawno — nieruszane z wyboru użytkownika.
-- **Worktree innych sesji — nie ruszać:** `computer-ordering-process-f84437` (trzecia domena danych testowych,
-  issue #99; trzyma `phx.server` na wspólnym Postgresie), `esdm-dsl-comparison-d82750` (`dsl/ep2-rules`),
-  `review-login-issues-eb9680`.
+- **Worktree (5 października):** `computer-ordering-process-f84437` — sesja DD (`docs/dd0-programme`);
+  `esdm-dsl-comparison-d82750` (`auth/manifest-query-record`, PR #134) i `ep4-ep5-user-questions-95855b` — innych
+  sesji, nie ruszać.
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
   `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`), schemat V01 z
   ręcznymi poprawkami z E11f i E12c, baza auth na V03. **Brama obok cudzego `phx.server` albo cudzych testów potrafi
@@ -68,7 +80,16 @@ diagramu) — „Dopisek 4 października — #99” i „LC… — co wyszło”
 
 ### Co zostało — i czyje to jest
 
-- **Następna praca z kodem — niewybrana**; kandydaci w „Wybór użytkownika na potem” niżej.
+- **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
+  — DD”. Kolejno:
+  1. **Użytkownik:** push i PR `docs/dd0-programme` (DD0), przed nim `pre-pr-review` — na polecenie.
+  2. **Asystent:** N1 → N2 → N3, reszta fali 1 w dowolnej kolejności. Start etapu: ◐ i gałąź w tabeli; koniec:
+     „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
+  3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
+     V01 w miejscu przed T2a i P2h; etykieta timera albo zdanie z deklaracji przed N3); po każdej fali „dalej czy
+     stop” i kiedy podbić przypięcie w aplikacji AppUnite (`~/Projects/ai/appunite_equipment`) i `ehos-ledger`.
+- **AppUnite — zapotrzebowanie (`Demands`) jest w `main`** (#128); dwa pytania z przeglądu i etapy `Computers`
+  wobec cyklu życia czekają na użytkownika — „Dopisek 4 października (2)”, „Otwarte z przeglądu”.
 - **Po #99, decyzja użytkownika (4 października): raport wystarczy.** Zwrot odnotowany z błędnym przydziałem
   zwalnia komputer do ponownego wydania, a prawdziwy przydział zostaje otwarty — raport pokazuje jego niedokończony
   przebieg i to jest odpowiedź. *Odrzucone:* agregat przydziału w `Assignments` z odmową zwrotu cudzego przydziału
@@ -102,14 +123,13 @@ diagramu) — „Dopisek 4 października — #99” i „LC… — co wyszło”
 
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach (`label` po
    polsku w fiksturach testów jest dozwolony), wyrażenia regularne z flagą `u` i `[0-9]`, zsh bez dzielenia słów.
-2. `PLAN.md`: „#98 — co wyszło” (decyzje, przegląd, ryzyka), „#96 — co wyszło” (pomiar kompresji Postgresa,
-   F8/F9/X6) i „Granice wartości z żądania” (granice `:id`, `:integer`, `:decimal`, dat).
-3. Kod kluczy: `packages/eh_os_contract/lib/eh_os_contract/key.ex` (`budget/0`, `fits?/1`, `TooLongError`),
-   `dispatcher.ex` (`stream_fits/3`, `runs_fit/2`), `process_manager.ex` (`handle!/5`, `fits!/3`); test
-   `test/runtime/key_budget_test.exs` na rigu `test/support/key_rig/`.
-4. `packages/eh_os_contract/lib/eh_os_contract/codec.ex`, moduledoc „Types” i „Bounds” — co wejście trzyma, a czego
-   odczyt logu (`open:`) nie.
-5. Następnej pracy z kodem nie wybrano — patrz „Wybór użytkownika na potem” wyżej.
+2. `PLAN.md`, „Dopisek 5 października — DD” — decyzje, tabela „Postęp” (jedyne miejsce ze stanem programu) i
+   zasady jej prowadzenia, projekt etapu, który zaczynasz, „Konwencje każdego PR-a”, decyzje przed etapem, ryzyka.
+3. `PLAN.md`, „Dopisek 4 października — #99” i „LC… — co wyszło” — cykl życia (`from:`, `or_rejects:`), na którym
+   stoi program; „Dopisek 4 października (3)” — trzecia analiza ESDM i decyzja o etykiecie timera (N3).
+4. `packages/eh_os_contract/docs/contract.md`, tabela kodów odmów — pilnuje jej `test/docs_test.exs`; każdy nowy
+   kod tam trafia.
+5. Starsze ustalenia przy kluczach i wartościach: „#98 — co wyszło”, „#96 — co wyszło”, „Granice wartości z żądania”.
 6. `.claude/skills/pre-pr-review/SKILL.md` — dwa przeglądy równolegle, próba odwrotna, notatka w
    `refs/notes/review`; hook czyta `HEAD` głównego checkoutu, więc PR-y tu idą przez `gh api …/pulls`.
 
@@ -168,6 +188,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **5 października, `docs/dd0-programme` po merge'u `main`:** bramy nie uruchamiano — gałąź różni się od `main`
+  tylko `PLAN.md` (`git diff origin/main -- . ':!PLAN.md'` pusty). CI `main` na `af59a48` (#128) — `check` `success`.
 - **#98 @ `1b0816d`** (głowa #103, na `b6a96dd` z EP1): pełna brama znowu padła na `too_many_connections` (5 testów
   `AppendLockTest`, 4 `SchemaTest`); sandbox 145 w niej, a pakiety osobno — EXIT=0: silnik **1170** (z testami EP1),
   `check` 0 / 71 / 6; web 52; auth 285 + 1 property. CI PR-a — `success`.
@@ -773,7 +795,7 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
 - Czas bramy (PropertyCase — małe `max_runs`), koszt zapytań kolejności etapów (indeks `(process, instance_id)`).
 - Zakres: ~45 PR-ów. Po każdej fali decyzja „dalej czy stop” w `PLAN.md`.
 
-## Dopisek 4 października (2) — pokrycie ESDM po EP1–EP5 i #99
+## Dopisek 4 października (3) — pokrycie ESDM po EP1–EP5 i #99
 
 **Trzecia analiza, po „Analiza pokrycia ESDM (27 września)” i porównaniu z 3 października („Dopisek 3 października — EP”).**
 ESDM bez zmian: `thenativeweb/esdm` `main` = `295e1ca` (29 września), wydanie 0.15.0 — schematy `core`,
@@ -821,6 +843,51 @@ callbackach (EP3) i od #99 cykl życia agregatu (statusy i przejścia liczone pr
   jak ESDM `rule` (proza bez nazwy).
 - **Po tej decyzji pokrycie ESDM jest pełne** w tym sensie, że każda różnica jest decyzją z powodem albo czeka na
   przykład z materiału. Do zbudowania zostaje etykieta timera — mały etap (propozycja asystenta: **EP6**).
+
+## Dopisek 4 października (2) — AppUnite: zapotrzebowanie na komputer (`Demands`)
+
+**Skąd.** Emil rozpisał proces z głowy jeszcze raz (szkic `cf.pdf`, opisany w destylacji, dopisek 4 października) i
+odpowiedział na pytania o niego. Szkic zaczyna się od **osoby**: nowa osoba albo kradzież prowadzą do zakupu w
+Innergo albo do komputera z półki. Model tego nie miał — zamówienie było komputerem bez numeru seryjnego, z
+opcjonalnym „dla kogo”, a kradzież niczego nie otwierała.
+
+**Decyzje użytkownika (4 października):**
+1. **Komputer powstaje przy rejestracji z faktury, osoba przychodzi potem** („wolę, żeby był wprowadzony komputer, a
+   później przypisana osoba”). *Odrzucone:* komputer od zamówienia (stan „New” komputera) — tak było od #120.
+2. **Przypisanie, konto pracownika, paczka i kurier to jeden ruch z wydaniem.** *Odrzucone:* osobny status
+   „przypisany” i agregat przydziału — nie ma momentu między przypisaniem a wydaniem.
+3. **Zapotrzebowanie otwierają cztery powody:** nowa osoba, kradzież, awaria, wymiana; **zamyka je tylko wydanie**.
+
+**Rozstrzygnięcia asystenta (mechanika):**
+- **Nowy kontrakt `Demands`** z agregatem zapotrzebowania i cyklem życia `Otwarte → New → Zaspokojone` (osobny
+  przebieg, osobna korelacja — nie da się go zmieścić w `Computers`). `issued` niesie wymagane `demand_id`.
+- **Dwie polityki `:in_transaction`** na zdarzeniach `Computers`: wydanie zamyka zapotrzebowanie, kradzież otwiera
+  nowe dla tej osoby; nową osobę, awarię i wymianę otwiera Magda. *Odrzucone:* `:at_least_once` — skutek ma być
+  zdecydowany w transakcji zdarzenia. Wyjątek cofa oba; **odmowa już nie** (niżej, otwarte).
+- **Tożsamość komputera zostaje generowana.** *Odrzucone:* numer seryjny jako tożsamość — tożsamość to `:id`, więc
+  ginie sprawdzenie formatu Apple (wartość `:serial_number`). Niezmiennik `received_once` znika: pilnował tylko, że
+  zamówiony komputer spisuje się raz, a dziś spisanie go tworzy. **Numeru seryjnego dwa razy nie pilnował ani on, ani
+  nic dziś** (dwa zamówienia mogły dostać ten sam numer); spisanie, które tworzy komputer, wymaga klucza
+  idempotencji, więc ta sama faktura wysłana dwa razy z tym samym kluczem daje jeden komputer.
+- **`lost` niesie przydział i osobę** — utrata jest tylko od pracownika (#126), więc oba są znane. `Assignments`
+  kończy nim przydział: wczorajsze ustalenie „skradziony komputer zostawia przydział otwarty” jest rozwiązane.
+- **Odczyt „Zapotrzebowania”** (kto czeka, od kiedy, czy zamówiony); „Inventory” traci wiersze „New”.
+
+**Otwarte z przeglądu (do decyzji użytkownika):**
+1. **Wydanie na zapotrzebowanie, które nie czeka.** `issue_computer` z literówką w `demand_id`, z cudzym zapotrzebowaniem
+   albo z już zaspokojonym przechodzi: polityka dostaje odmowę (`from:`), a odmowa reakcji zostawia pierwszą komendę
+   (dispatcher, krok 7). Prawdziwe zapotrzebowanie zostaje na liście czekających. Opcje: (a) wydanie odmawia, gdy
+   zapotrzebowanie nie czeka albo jest kogoś innego — decyzja komputera musiałaby czytać zapotrzebowanie (granica
+   `dcb` nad dwoma kontraktami); (b) odmowa polityki `:in_transaction` cofa całe zdarzenie — zmiana semantyki
+   biblioteki; (c) raport wystarczy, jak przy zwrocie cudzego przydziału.
+2. **Kradzież odnotowana tam, gdzie jej być nie może, i tak otwiera zapotrzebowanie.** `lost` z biura albo drugi raz
+   dla tego samego komputera jest dopisywany (zdarzenie rejestrowane spoza cyklu życia) i polityka reaguje — z osobą
+   i przydziałem, które wpisał rejestrujący. Pytanie do biblioteki: czy reakcja ma widzieć zdarzenie rejestrowane,
+   którego cykl życia nie dopuszcza.
+
+**Otwarte:** etapy procesu `Computers` (`intake → use → sale → ending`) powtarzają kolejność, którą dziś mówi cykl
+życia, i nic nie sprawdza, że się zgadzają — do decyzji użytkownika (opcje: reguła w bibliotece, usunięcie etapów,
+bez zmian).
 
 ## Dopisek 4 października — #99: cykl życia agregatu (stany i przejścia)
 
