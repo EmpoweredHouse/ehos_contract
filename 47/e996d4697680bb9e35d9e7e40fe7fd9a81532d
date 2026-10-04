@@ -1,0 +1,1 @@
+CodeRabbit's two outside-diff comments on #125 (review 5407745922): --since kept its offset (with a test that fails on the old parsing; a time without an offset is UTC as before), and the contract screen's heading shows only over untraversed transitions. Gate on 47e996d: mix check EXIT=0 (sandbox 186, engine 1261, web 52, auth 285+1 property).
