@@ -369,6 +369,37 @@ przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie p
 Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty, commity, opisy PR, `docs/adr/`,
 `README.md` — po angielsku; `PLAN.md` i `CLAUDE.md` po polsku. Pełna reguła — `CLAUDE.md`.
 
+## Dopisek 4 października (2) — pokrycie ESDM po EP1–EP5 i #99
+
+**Trzecia analiza, po „Analiza pokrycia ESDM (27 września)” i porównaniu z 3 października („Dopisek 3 października — EP”).**
+ESDM bez zmian: `thenativeweb/esdm` `main` = `295e1ca` (29 września), wydanie 0.15.0 — schematy `core`,
+`given-when-then` i 73 reguły jak przy obu poprzednich analizach. Biblioteka na `303b418` (#127): referencja obu
+DSL-i (`docs/dsl/`), `docs/rules.md`, tabela odmów w `docs/contract.md`, decyzje w „EP4/EP5a/EP5b — co wyszło” i
+w dopisku o #99.
+
+**Domknięte od 3 października:** `constraints` polityki, efektu i process managera oraz `invariants` process
+managera (EP2 — szczebel 1 przez `illustrates:`, efekt prozą); oczekiwany `state` w scenariuszu process managera
+(EP4); `idempotency` z właścicielem `:self | :downstream | :infrastructure` (EP4, P3); `capabilities` systemu jako
+`operation` z X4 i `operation-never-called` (EP5a — nazwa inna, bo „capability” to uprawnienie aktora);
+`responsibilities` aktora jako `responsibility` (EP5b); `terms` mapowania jako pary sprawdzane wobec słowników, także
+w `partnership` (EP5b — świadome odstępstwo); `source:` na każdej deklaracji (EP1). Reguły lintera: 13 z nazwą ESDM
+bez zmian, doszły własne (`prose-without-scenario`, `operation-never-called`) i kody S10, T1–T4, F8–F9.
+
+**Różnice, które zostają:**
+- *Odrzucone, z powodem w tym pliku:* `at-most-once` i `owner: not-required` (zgodność nie odróżni zgubionego
+  zdarzenia od niezaszłego); `owner: none` (P3 wymaga idempotencji przy `:at_least_once` — celowo surowiej);
+  `paradigm`, `metadata`, wolne `description`, generatory poza `:uuid`; `feature` i Domain Storytelling; wiersze
+  read modelu w scenariuszu (EP4); `endsWhen` jako warunek prozą (u nas zdarzenie `ends_on`).
+- *Odłożone do przykładu z materiału:* `invariants` encji (decyzja (b) przed EP2); tożsamość `static`.
+- *Nigdy nierozstrzygnięte — jedyne luki:* `category` systemu zewnętrznego; opis timera (ESDM `timers{name,
+  description}`, u nas timer ma `source`, nie ma etykiety); proza przy pojedynczej reakcji process managera (ESDM
+  `reactions{when, rule}`; u nas reguły na całym process managerze, `on`/`starts_on` bez prozy). Wszystkie trzy —
+  szczebel 0 drabiny. Pytania o kształt zadane użytkownikowi 4 października.
+
+**Ponad ESDM:** wykonywanie modelu (dispatch, log, reakcje, inbox i publikacja), scenariusze jako testy i drabina
+prozy, proces z obietnicami, raport zgodności, crypto-shredding, wersja schematu zdarzenia, dokumentacja w
+callbackach (EP3) i od #99 cykl życia agregatu (statusy i przejścia liczone przez silnik) — ESDM go nie ma.
+
 ## Dopisek 4 października — #99: cykl życia agregatu (stany i przejścia)
 
 **Skąd.** Trzecia domena testowa, sprzęt AppUnite (`sandbox/lib/appunite_equipment/`, od LC0 w `main`),
