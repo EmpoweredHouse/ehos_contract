@@ -102,6 +102,22 @@ defmodule EhOsContract.Contract.Generate do
     {:ok, Transformer.eval(dsl, [], quote(do: (unquote_splicing(modules))))}
   end
 
+  # Plan LC2: an aggregate with a lifecycle has its status in its state, which the
+  # engine computes from the stream and puts there; it is not a field of the model's
+  # state, so declaring a lifecycle moves no field and `evolve/2` never sets it.
+  defp status(%{lifecycle: lifecycle}) do
+    [
+      %{
+        name: :status,
+        type: {:enum, Enum.map(lifecycle.statuses, & &1.name)},
+        optional: true,
+        default: nil
+      }
+    ]
+  end
+
+  defp status(_unit), do: []
+
   # `{module, what it is, fields, shape, location key}` for every struct.
   defp structs(model) do
     units =
@@ -109,7 +125,7 @@ defmodule EhOsContract.Contract.Generate do
         module = Model.module_for(model, unit.kind, unit.name)
 
         {Module.concat(module, State), "the state of #{unit.kind} #{inspect(unit.name)}",
-         unit.state.fields, :state, {:unit, unit.name}}
+         unit.state.fields ++ status(unit), :state, {:unit, unit.name}}
       end
 
     managers =

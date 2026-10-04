@@ -108,7 +108,13 @@ end
   `transition :booked, :patient_arrived, :in_progress`. A transition names an event type and nothing about
   its fields, so the graph is checked as it compiles: every status reached, only a `terminal:` one final.
   A command may name the statuses it is issued in, `from: :booked`, with the invariant it is refused on in
-  any other, `or_rejects: :only_a_booked_visit`. A boundary has no lifecycle: it spans streams.
+  any other, `or_rejects: :only_a_booked_visit`. **The engine computes the status** from the names of the
+  stream's events and puts it into the state as `status`, which `evolve/2` reads and never sets. Dispatch
+  refuses a command outside its `from:` before the decision; an event the decision emits that the graph does
+  not allow from where the aggregate stands raises, as one outside `emits:` does, and nothing is appended.
+  An event no transition names is allowed in every status that is not terminal, once an initial event has
+  started the aggregate; a recorded event that does not fit is appended and moves nothing. A boundary has no
+  lifecycle: it spans streams.
 - **A command names who may issue it** (`by:`), what it may emit, and which invariants it may refuse on.
   Dispatch refuses an actor outside `by:` before anything else. An event outside `emits:` after the
   decision raises: it is a defect in the code, never a business outcome, and nothing is appended.

@@ -3,7 +3,8 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
   T1–T4 (plan LC1, #99): an aggregate's lifecycle, and the commands it lets in.
 
   - **T1.** An aggregate declares `lifecycle` at most once; one has a status and an
-    `initial`, and names each status once, in snake_case.
+    `initial`, and names each status once, in snake_case. Its state and identity have
+    no field `:status`, which the engine fills with the status (plan LC2).
   - **T2.** `initial` and `transition` name statuses of the lifecycle and events of
     the aggregate; a transition leaves at least one status. The status an event moves the aggregate to is one: one `initial`
     per event, and one transition per status and event.
@@ -20,7 +21,7 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
     A boundary's command has no `from:` at all (L1): a boundary has no lifecycle.
 
   An event no transition names moves nothing: it is allowed in every status that is
-  not terminal. Whether the run of the process ends with the aggregate's life is not
+  not terminal, once an initial event has started the aggregate. Whether the run of the process ends with the aggregate's life is not
   checked here: `terminal:` on an event ends a run, and a run may be correlated by
   other fields than the aggregate's identity.
   """
@@ -42,14 +43,14 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
   end
 
   defp lifecycle(unit, where, lifecycle, again) do
-    shape(where, lifecycle, again) ++
+    shape(unit, where, lifecycle, again) ++
       references(unit, where, lifecycle) ++
       reach(where, lifecycle) ++ preconditions(unit, where, lifecycle)
   end
 
   # --- T1 -------------------------------------------------------------------------
 
-  defp shape(where, lifecycle, again) do
+  defp shape(unit, where, lifecycle, again) do
     twice =
       for second <- again,
           do: {"T1: #{where} declares lifecycle twice; one holds all its statuses", second}
@@ -79,7 +80,24 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
         {"T1: status #{inspect(status.name)} of #{where} is declared twice", status}
       end
 
-    twice ++ empty ++ names ++ repeated
+    twice ++ empty ++ names ++ repeated ++ status_field(where, unit)
+  end
+
+  # The engine puts the status into the state (plan LC2), so a field of that name
+  # would be overwritten, or would take the place of the status.
+  defp status_field(where, unit) do
+    fields =
+      for field <- Rules.state_fields(unit.state), field.name == :status do
+        {"T1: #{where} declares a state field :status, which its lifecycle's status takes; " <>
+           "drop it, or rename it", field}
+      end
+
+    identity =
+      if :status in List.wrap(unit.identity),
+        do: [{"T1: #{where} is identified by :status, which its lifecycle's status takes", unit}],
+        else: []
+
+    fields ++ identity
   end
 
   # --- T2 -------------------------------------------------------------------------

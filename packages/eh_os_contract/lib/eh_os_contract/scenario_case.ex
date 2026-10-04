@@ -75,7 +75,7 @@ defmodule EhOsContract.ScenarioCase do
 
   import ExUnit.Assertions
 
-  alias EhOsContract.{Meta, Model, Rejection}
+  alias EhOsContract.{Lifecycle, Meta, Model, Rejection}
   alias EhOsContract.Contract.{Callbacks, Data}
 
   @epoch ~U[2026-01-01 09:00:00Z]
@@ -445,25 +445,46 @@ defmodule EhOsContract.ScenarioCase do
     unit = Enum.find(model.units, &(&1.name == name))
     initial = Map.new(unit.identity, &{&1, identity.(&1) || @stream})
 
-    state =
-      fold(
-        impl,
-        struct(Module.concat(Model.module_for(model, kind, name), State), initial),
-        givens
-      )
-
     command = scenario.trigger.name
+    declaration = Enum.find(model.commands, &(&1.name == command))
+    {befores, status} = statuses(model, unit, givens)
 
     decided =
       message(model, :command, command, scenario.trigger.data, identity, now, scenario.actor)
 
-    result = apply(impl, command, [decided, state])
-    emits = Enum.find(model.commands, &(&1.name == command)).emits
+    # As dispatch does (plan LC2): outside its `from:`, the command is refused on its
+    # `or_rejects:` before anything is folded or decided.
+    result =
+      if Lifecycle.admits?(declaration, status) do
+        state =
+          fold_status(
+            unit,
+            impl,
+            struct(Module.concat(Model.module_for(model, kind, name), State), initial),
+            givens,
+            befores,
+            status
+          )
+
+        apply(impl, command, [decided, state])
+      else
+        {:refused_in, status, declaration.or_rejects}
+      end
+
+    emits = declaration.emits
 
     case {scenario.rejected, result} do
       {nil, {:ok, events}} ->
         produced = within!(model, :event, events, emits, "command #{inspect(command)} emits")
+        in_lifecycle!(unit, status, command, produced)
         subsequence!(expected(model, :event, scenario.expect, & &1.event), :event, produced)
+
+      {nil, {:refused_in, status, invariant}} ->
+        flunk(
+          "expected command #{inspect(command)} to emit events, and the engine refused it on " <>
+            "#{inspect(invariant)} before the decision: the givens leave the aggregate in " <>
+            "status #{inspect(status)}, outside its from: #{inspect(declaration.from)}"
+        )
 
       {nil, other} ->
         flunk(
@@ -472,6 +493,9 @@ defmodule EhOsContract.ScenarioCase do
 
       # The same variable twice: the invariant rejected on is the one expected.
       {invariant, {:error, %Rejection{invariant: invariant}}} ->
+        true
+
+      {invariant, {:refused_in, _status, invariant}} ->
         true
 
       {invariant, other} ->
@@ -659,6 +683,67 @@ defmodule EhOsContract.ScenarioCase do
     if function_exported?(impl, :evolve, 2),
       do: Enum.reduce(givens, state, &impl.evolve(&2, &1)),
       else: state
+  end
+
+  # A unit's status before each given event and after the last, as dispatch computes
+  # it (plan LC2): from the names of the given events alone. `{[], nil}` for a unit
+  # without a lifecycle.
+  defp statuses(model, unit, givens) do
+    case Lifecycle.of(unit) do
+      nil ->
+        {[], nil}
+
+      lifecycle ->
+        names = Map.new(model.events, &{Model.module_for(model, :event, &1.name), &1.name})
+        Lifecycle.walk(lifecycle, Enum.map(givens, &Map.get(names, &1.__struct__)))
+    end
+  end
+
+  # The fold, with the status put into the state before each given event and after the
+  # last, as dispatch puts it.
+  defp fold_status(unit, impl, state, givens, befores, status) do
+    if Lifecycle.of(unit) do
+      evolve? = function_exported?(impl, :evolve, 2)
+
+      state =
+        givens
+        |> Enum.zip(befores)
+        |> Enum.reduce(state, fn {event, before}, state ->
+          state = %{state | status: before}
+          if evolve?, do: evolved!(impl, state, event), else: state
+        end)
+
+      %{state | status: status}
+    else
+      fold(impl, state, givens)
+    end
+  end
+
+  # As dispatch: what `evolve/2` returns is the state, and the message names no value.
+  defp evolved!(impl, state, event) do
+    next = impl.evolve(state, event)
+
+    assert is_struct(next, state.__struct__),
+           "#{inspect(impl)}.evolve/2 returned what is not a %#{inspect(state.__struct__)}{}; " <>
+             "it returns the state it was given, changed"
+
+    next
+  end
+
+  # What the command emitted, held to the graph as dispatch holds it (plan LC2).
+  defp in_lifecycle!(unit, status, command, produced) do
+    case Lifecycle.of(unit) do
+      nil ->
+        :ok
+
+      lifecycle ->
+        try do
+          Lifecycle.decided!(lifecycle, status, command, Enum.map(produced, &elem(&1, 0)))
+          :ok
+        rescue
+          e in ArgumentError -> flunk(Exception.message(e))
+        end
+    end
   end
 
   # Every struct produced is one the declaration allows: the backstop v2 §5 keeps at

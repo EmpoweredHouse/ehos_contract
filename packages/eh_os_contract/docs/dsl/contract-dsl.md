@@ -175,7 +175,7 @@ An intention an actor or a reaction issues to a unit.
 | [`creates`](#contract-aggregate-command-creates){: #contract-aggregate-command-creates } | `boolean` | `false` | Whether it creates the aggregate, which the library then gives its generated identity. |
 | [`scope`](#contract-aggregate-command-scope){: #contract-aggregate-command-scope } | `atom` |  | The field a grant narrows it to: a field of the command, and a scope of every actor in `by:`. |
 | [`source`](#contract-aggregate-command-source){: #contract-aggregate-command-source } | `String.t` |  | Where the command comes from in the material. |
-| [`from`](#contract-aggregate-command-from){: #contract-aggregate-command-from } | `atom \| list(atom)` | `[]` | The statuses of its aggregate's lifecycle it may be issued in. |
+| [`from`](#contract-aggregate-command-from){: #contract-aggregate-command-from } | `atom \| list(atom)` | `[]` | The statuses of its aggregate's lifecycle it may be issued in; dispatch refuses it in any other, before the decision, on `or_rejects:`. |
 | [`or_rejects`](#contract-aggregate-command-or_rejects){: #contract-aggregate-command-or_rejects } | `atom` |  | The invariant of the unit it is refused on outside the statuses in `from:`. |
 
 

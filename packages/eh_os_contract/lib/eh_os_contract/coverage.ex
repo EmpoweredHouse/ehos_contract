@@ -58,8 +58,9 @@ defmodule EhOsContract.Coverage do
   end
 
   # A scenario in the log's terms: stored types, names as strings. Its `given` counts
-  # only the types its unit's `evolve/2` folds (plan E11f-5): a boundary reads, and
-  # records as the command's `given_types`, only those. An aggregate still records its
+  # only the types its unit's `evolve/2` folds (plan E11f-5), and those its lifecycle
+  # moves on (plan LC2): a boundary reads, and records as the command's `given_types`,
+  # only those. An aggregate still records its
   # whole stream, of which the folded types are a part, so the comparison stays a
   # subset, never an equality.
   defp expected(model, scenario, folded) do
@@ -86,7 +87,21 @@ defmodule EhOsContract.Coverage do
         _none_or_several -> nil
       end
 
-    EhOsContract.Implementations.folded_types(model, module)
+    case {EhOsContract.Implementations.folded_types(model, module), Map.get(unit, :lifecycle)} do
+      {:all, _lifecycle} ->
+        :all
+
+      {folded, nil} ->
+        folded
+
+      # Plan LC2: the status is computed from every event the lifecycle names, and it can
+      # refuse a command, so those count as given whether `evolve/2` folds them or not.
+      {folded, lifecycle} ->
+        moving =
+          Enum.map(lifecycle.initial, & &1.on) ++ Enum.map(lifecycle.transitions, & &1.event)
+
+        MapSet.union(folded, MapSet.new(moving, &type!(model, &1)))
+    end
   end
 
   defp type!(model, name) do

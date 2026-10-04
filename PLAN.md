@@ -456,6 +456,35 @@ Na `dsl/lc1-lifecycle`, na gałęzi LC0 (#120).
   `source:` w `initial` (dodane, zanim ktoś go użyje). Bez zmian: powtarzane zbiory w `precondition/5` (kilka
   komend na agregat), kolejna kopia `did_you_mean`.
 
+### LC2 — co wyszło (4 października)
+
+Na `dsl/lc2-lifecycle-dispatch`, na gałęzi LC1 (#121).
+- **`EhOsContract.Lifecycle`** — czyste funkcje: status z nazw zdarzeń (`walk/2`, `step/3`), `admits?/2` dla
+  `from:`, `decided!/4` dla tego, co zdecydowano. Dispatch i `ScenarioCase` czytają przez nie.
+- **Status w `State` jako pole `status`** (enum statusów), poza polami stanu w modelu — deklaracja cyklu życia
+  nie rusza digestu stanu. `T1` odmawia pola stanu albo tożsamości `:status` obok cyklu życia.
+- **Dispatch:** status z typów **wszystkich** wierszy strumienia (nie tylko tych, które składa `evolve/2`), liczony
+  przed dekodowaniem — komenda odrzucona przez `from:` niczego nie odszyfrowuje. `evolve/2` widzi status sprzed
+  każdego zdarzenia, a po ostatnim silnik nadpisuje to, co `evolve/2` zostawił. Odmowa z `or_rejects:` pisze
+  wiersz `rejected` jak odmowa decyzji. Zdarzenie zdecydowane spoza grafu — wyjątek, nic nie dopisane; **przed
+  startem agregatu wolno zdecydować tylko zdarzenie `initial`** (rozstrzygnięcie asystenta po przeglądzie:
+  inaczej agregat miałby historię bez statusu). Zdarzenie rejestrowane nigdy nie jest odrzucane za niepasowanie.
+- **Pokrycie scenariuszy:** `given` scenariusza agregatu z cyklem życia liczy też typy, na których status się
+  rusza — inaczej odmowa komendy na niezałożonej wizycie liczyła się jako scenariusz „pacjent już przyszedł”
+  (z przeglądu; test pada na starym kodzie).
+- **`@doc` callbacku** mówi, w jakich statusach komenda jest wydawana i na czym silnik ją odrzuca.
+- **Rig:** `LifecycleRig` (zmyślony, wizyta) — implementacja nie czyta statusu do odmów, a scenariusze odmów
+  przechodzą, bo odmawia silnik.
+- **Przegląd** (dwa równolegle): poprawność — pokrycie (wyżej, poprawione), zdarzenie spoza grafu przed startem
+  (poprawione), `ScenarioCase` składał stan przed sprawdzeniem `from:` (poprawione, teraz jak dispatch), komunikat
+  scenariusza ukrywał odmowę silnika (poprawiony). Bez zmian: składanie stanu zapisane dwa razy (dispatch i
+  `ScenarioCase` dzielą `walk`/`decided!`, nie samo składanie — różne źródła: wiersze i struktury), powtarzane
+  sortowania, `status/2` używany tylko w testach (zostaje dla LC3), brak testu `in_lifecycle!` w `ScenarioCase`
+  (ta sama `decided!`, testowana bezpośrednio). Bezpieczeństwo i wydajność — `evolve/2` zwracające nie-stan dawało
+  `KeyError` z całym stanem w komunikacie, czyli z danymi osobowymi (poprawione: komunikat nazywa moduł); status
+  przed dekodowaniem (poprawione). Bez zmian: koszt O(zdarzenia × przejścia) na komendę — pomijalny przy odczycie
+  całego strumienia.
+
 ## Dopisek 3 października (2) — #94: style dashboardu z pakietu `ehos_design`, kopia usunięta
 
 `eh-os` D-72 przeniósł design system do pakietu `ehos_design` (EmpoweredHouse/ehos-tools, tag

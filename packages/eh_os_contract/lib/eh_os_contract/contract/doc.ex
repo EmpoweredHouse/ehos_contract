@@ -43,6 +43,7 @@ defmodule EhOsContract.Contract.Doc do
     paragraphs([
       "Decides command `#{command.name}`#{label(command)}#{source(command)}.",
       list("Emits, when it accepts", Enum.map(command.emits, &event_line(model, &1))),
+      issued_in(command),
       rules_section("Refuses with `reject/1` on", command_rules(model, kind, unit, command)),
       scenarios(own)
     ])
@@ -165,6 +166,15 @@ defmodule EhOsContract.Contract.Doc do
   end
 
   # --- the parts --------------------------------------------------------------------
+
+  # Plan LC2: what the engine checks before the callback runs, so the code need not.
+  defp issued_in(%{from: [_ | _] = from, or_rejects: invariant}) do
+    "Issued only in status #{Enum.map_join(from, ", ", &"`#{&1}`")}: in any other the " <>
+      "engine refuses it on `#{invariant}` before this callback runs, and `state.status` " <>
+      "is one of these here."
+  end
+
+  defp issued_in(_command), do: nil
 
   defp declaration(model, kind, name) when kind in [:aggregate, :dcb],
     do: Enum.find(model.units, &(&1.name == name and &1.kind == kind))

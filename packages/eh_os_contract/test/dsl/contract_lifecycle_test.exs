@@ -95,6 +95,11 @@ defmodule EhOsContract.ContractLifecycleTest do
       assert %{from: [:booked], or_rejects: :only_a_booked_visit} = admit
       refute Map.has_key?(book, :from)
       refute Map.has_key?(book, :or_rejects)
+
+      # Plan LC2: the state holds the status, which the model's state does not list.
+      state = Module.concat([model.module, Aggregates, Visit, State])
+      assert Map.has_key?(struct(state), :status)
+      refute Enum.any?(hd(model.units).state.fields, &(&1.name == :status))
     end
 
     test "a transition from several statuses is one per status in the model" do
@@ -218,6 +223,10 @@ defmodule EhOsContract.ContractLifecycleTest do
           aggregate :room, "Gabinet" do
             identity :visit_id
 
+            state do
+              field :status, :string
+            end
+
             lifecycle do
             end
 
@@ -239,6 +248,10 @@ defmodule EhOsContract.ContractLifecycleTest do
                "T1: status :booked of aggregate :visit is declared twice (lifecycle_shape.ex:9)"
 
       assert message =~ "T1: the lifecycle of aggregate :room has no status"
+
+      assert message =~
+               "T1: aggregate :room declares a state field :status, which its lifecycle's " <>
+                 "status takes; drop it, or rename it"
 
       assert message =~
                "T1: the lifecycle of aggregate :room has no initial, so no aggregate would ever " <>
