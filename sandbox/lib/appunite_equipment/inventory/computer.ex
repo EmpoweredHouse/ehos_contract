@@ -1,9 +1,12 @@
 defmodule AppuniteEquipment.Inventory.Computer do
   @moduledoc """
-  Decides about one computer. Where it is follows from its history, and so does
-  whether it is set up: the setup is lost when it comes back from an employee, is
-  formatted, or is cleaned at the reseller, since every one of those erases the
-  disk and its MDM profile with it (distillation, finding 4).
+  Decides about one computer. Where it is is the engine's: the contract's lifecycle
+  follows it from the events, and refuses a command issued where it does not belong
+  before any of this runs (`from:`). What is left here are the rules finer than
+  where the computer is. Whether it is set up follows from its history: the setup is
+  lost when it comes back from an employee, is formatted, or is cleaned at the
+  reseller, since every one of those erases the disk and its MDM profile with it
+  (distillation, finding 4).
   """
 
   use AppuniteEquipment.Contracts.Computers, aggregate: :computer
@@ -22,7 +25,7 @@ defmodule AppuniteEquipment.Inventory.Computer do
   end
 
   @impl true
-  def receive_computer(%ReceiveComputer{} = invoice, %State{status: :ordered}) do
+  def receive_computer(%ReceiveComputer{} = invoice, _state) do
     emit(%Received{
       computer_id: invoice.computer_id,
       serial_number: invoice.serial_number,
@@ -33,19 +36,13 @@ defmodule AppuniteEquipment.Inventory.Computer do
     })
   end
 
-  def receive_computer(_invoice, _state), do: reject(:received_once)
+  @impl true
+  def set_up_computer(%SetUpComputer{computer_id: id}, _state), do: emit(%SetUp{computer_id: id})
 
   @impl true
-  def set_up_computer(%SetUpComputer{computer_id: id}, %State{status: :in_office}),
-    do: emit(%SetUp{computer_id: id})
-
-  def set_up_computer(_command, _state), do: reject(:only_from_the_office)
-
-  @impl true
+  # Issued from the office, and from sale only to be refused on its own rule: the
+  # process owner says "for sale" apart from "not in the office" (A:G).
   def issue_computer(_command, %State{status: :for_sale}), do: reject(:for_sale_not_issued)
-
-  def issue_computer(_command, %State{status: status}) when status != :in_office,
-    do: reject(:only_from_the_office)
 
   def issue_computer(_command, %State{chip: chip}) when chip in @withdrawn,
     do: reject(:withdrawn_generation_not_issued)
@@ -64,7 +61,7 @@ defmodule AppuniteEquipment.Inventory.Computer do
   end
 
   @impl true
-  def start_return(%StartReturn{} = return, %State{status: :issued, assignment_id: assignment}) do
+  def start_return(%StartReturn{} = return, %State{assignment_id: assignment}) do
     emit(%ReturnStarted{
       computer_id: return.computer_id,
       assignment_id: assignment,
@@ -73,31 +70,18 @@ defmodule AppuniteEquipment.Inventory.Computer do
     })
   end
 
-  def start_return(_command, _state), do: reject(:only_an_issued_computer_returns)
+  @impl true
+  def wipe_computer(%WipeComputer{computer_id: id}, _state), do: emit(%Wiped{computer_id: id})
 
   @impl true
-  def wipe_computer(%WipeComputer{computer_id: id}, %State{status: :in_office}),
-    do: emit(%Wiped{computer_id: id})
-
-  def wipe_computer(_command, _state), do: reject(:only_from_the_office)
-
-  @impl true
-  def send_for_service(%SendForService{} = send, %State{status: :in_office}),
+  def send_for_service(%SendForService{} = send, _state),
     do: emit(%SentForService{computer_id: send.computer_id, reason: send.reason})
 
-  def send_for_service(_command, _state), do: reject(:only_from_the_office)
+  @impl true
+  def put_up_for_sale(%PutUpForSale{} = sale, _state),
+    do: emit(%ListedForSale{computer_id: sale.computer_id, asking_price: sale.asking_price})
 
   @impl true
-  def put_up_for_sale(%PutUpForSale{} = sale, %State{status: :in_office}) do
-    emit(%ListedForSale{computer_id: sale.computer_id, asking_price: sale.asking_price})
-  end
-
-  def put_up_for_sale(_command, _state), do: reject(:only_from_the_office)
-
-  @impl true
-  def reserve_computer(_command, %State{status: status}) when status != :for_sale,
-    do: reject(:only_a_listed_computer_is_sold)
-
   def reserve_computer(_command, %State{listed_externally: true}),
     do: reject(:no_reservation_after_external_listing)
 
@@ -108,28 +92,24 @@ defmodule AppuniteEquipment.Inventory.Computer do
   end
 
   @impl true
-  # Only while it is for sale: a sold computer keeps the reservation it was sold on.
-  def drop_reservation(_command, %State{status: status}) when status != :for_sale,
-    do: reject(:only_a_reservation_is_dropped)
-
+  # Only while it is for sale (`from:`): a sold computer keeps the reservation it was
+  # sold on.
   def drop_reservation(%DropReservation{computer_id: id}, %State{reserved: true}),
     do: emit(%ReservationDropped{computer_id: id})
 
   def drop_reservation(_command, _state), do: reject(:only_a_reservation_is_dropped)
 
   @impl true
-  def list_externally(_command, %State{status: :for_sale, reserved: true}),
+  def list_externally(_command, %State{reserved: true}),
     do: reject(:allegro_only_without_reservation)
 
-  def list_externally(%ListExternally{computer_id: id}, %State{status: :for_sale}),
+  def list_externally(%ListExternally{computer_id: id}, _state),
     do: emit(%ListedExternally{computer_id: id})
-
-  def list_externally(_command, _state), do: reject(:only_a_listed_computer_is_sold)
 
   # The channel is where the computer stood when it sold: listed on Allegro, which
   # only a computer nobody reserved can be, or still on the marketplace.
   @impl true
-  def sell_computer(%SellComputer{} = sale, %State{status: :for_sale} = state) do
+  def sell_computer(%SellComputer{} = sale, state) do
     emit(%Sold{
       computer_id: sale.computer_id,
       price: sale.price,
@@ -138,59 +118,36 @@ defmodule AppuniteEquipment.Inventory.Computer do
     })
   end
 
-  def sell_computer(_command, _state), do: reject(:only_a_listed_computer_is_sold)
-
   # A computer for sale that nobody buys may still be given away or disposed of: it
-  # is in the office all the same.
+  # is in the office all the same (`from: [:in_office, :for_sale]`).
   @impl true
-  def donate_computer(%DonateComputer{computer_id: id}, %State{status: status})
-      when status in [:in_office, :for_sale],
-      do: emit(%Donated{computer_id: id})
-
-  def donate_computer(_command, _state), do: reject(:only_from_the_office)
+  def donate_computer(%DonateComputer{computer_id: id}, _state),
+    do: emit(%Donated{computer_id: id})
 
   @impl true
-  def dispose_computer(%DisposeComputer{computer_id: id}, %State{status: status})
-      when status in [:in_office, :for_sale],
-      do: emit(%Disposed{computer_id: id})
-
-  def dispose_computer(_command, _state), do: reject(:only_from_the_office)
+  def dispose_computer(%DisposeComputer{computer_id: id}, _state),
+    do: emit(%Disposed{computer_id: id})
 
   @impl true
-  def evolve(state, %Ordered{}), do: state
-  def evolve(state, %Received{chip: chip}), do: %{state | status: :in_office, chip: chip}
+  def evolve(state, %Received{chip: chip}), do: %{state | chip: chip}
   def evolve(state, %SetUp{}), do: %{state | set_up: true}
+  def evolve(state, %Issued{assignment_id: assignment}), do: %{state | assignment_id: assignment}
 
-  def evolve(state, %Issued{assignment_id: assignment}),
-    do: %{state | status: :issued, assignment_id: assignment}
-
-  def evolve(state, %ReturnStarted{}), do: %{state | status: :returning}
-
-  # The three observations are recorded, not decided, so nothing refuses one that
-  # makes no sense — a return of a sold computer, of another assignment, a computer
-  # back from Innergo it was never sent to. The log keeps them, and the report shows
-  # them off the declared path; the state does not move on them, so a sold computer
-  # is never issued again and an issued one never goes to a second employee.
-  def evolve(%State{status: :returning, assignment_id: assignment} = state, %Returned{
-        assignment_id: assignment
-      }),
-      do: %{state | status: :in_office, set_up: false, assignment_id: nil}
-
-  def evolve(state, %Returned{}), do: state
+  # The status before each event is the engine's, and an observation that does not
+  # fit it — a return of a sold computer, a computer back from Innergo it was never
+  # sent to — moves nothing and changes nothing here either. A return of another
+  # assignment does bring the computer to the office (#99, decision 3): whether the
+  # assignments match is the assignment's question, not the computer's.
+  def evolve(%State{status: :returning} = state, %Returned{}),
+    do: %{state | set_up: false, assignment_id: nil}
 
   def evolve(state, %Wiped{}), do: %{state | set_up: false}
-  def evolve(state, %SentForService{}), do: %{state | status: :in_service}
 
   def evolve(%State{status: :in_service} = state, %ServiceReturned{}),
-    do: %{state | status: :in_office, set_up: false}
+    do: %{state | set_up: false}
 
-  def evolve(state, %ServiceReturned{}), do: state
-  def evolve(state, %ListedForSale{}), do: %{state | status: :for_sale}
   def evolve(state, %Reserved{}), do: %{state | reserved: true}
   def evolve(state, %ReservationDropped{}), do: %{state | reserved: false}
   def evolve(state, %ListedExternally{}), do: %{state | listed_externally: true}
-  def evolve(state, %Sold{}), do: %{state | status: :ended}
-  def evolve(state, %Donated{}), do: %{state | status: :ended}
-  def evolve(state, %Disposed{}), do: %{state | status: :ended}
-  def evolve(state, %Lost{}), do: %{state | status: :ended}
+  def evolve(state, _event), do: state
 end
