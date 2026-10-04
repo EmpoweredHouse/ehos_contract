@@ -37,7 +37,7 @@ defmodule EhOsContract.ContractLifecycleTest do
       command :book_visit, "Umówienie", by: :reception, emits: :visit_booked
 
       command :admit_patient, "Przyjęcie", by: :reception, emits: :patient_arrived,
-        from: :booked, or_rejects: :only_a_booked_visit, rejects: :only_a_booked_visit
+        from: [:booked, :booked], or_rejects: :only_a_booked_visit, rejects: :only_a_booked_visit
 
       command :cancel_visit, "Odwołanie", by: :reception, emits: :visit_cancelled,
         from: :booked, or_rejects: :only_a_booked_visit, rejects: :only_a_booked_visit
@@ -81,7 +81,7 @@ defmodule EhOsContract.ContractLifecycleTest do
                {:cancelled, "Odwołana", true}
              ]
 
-      assert lifecycle.initial == [%{status: :booked, on: :visit_booked}]
+      assert lifecycle.initial == [%{status: :booked, on: :visit_booked, source: nil}]
 
       assert Enum.map(lifecycle.transitions, &{&1.from, &1.event, &1.to}) == [
                {:booked, :patient_arrived, :in_progress},
@@ -266,7 +266,12 @@ defmodule EhOsContract.ContractLifecycleTest do
           end
         """)
 
-      assert_raise CompileError, fn -> compile(source, "lifecycle_boundary.ex") end
+      log =
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          assert_raise CompileError, fn -> compile(source, "lifecycle_boundary.ex") end
+        end)
+
+      assert log =~ "undefined function lifecycle/1"
     end
   end
 
@@ -283,6 +288,7 @@ defmodule EhOsContract.ContractLifecycleTest do
 
               initial :booked, on: :visit_booked
               initial :closed, on: :visit_booked
+              initial :bookd, on: :visit_bookd
               initial :bookd, on: :visit_bookd
               transition :booked, :visit_closed, :closed
               transition :booked, :visit_closed, :booked
@@ -309,11 +315,16 @@ defmodule EhOsContract.ContractLifecycleTest do
 
       assert message =~
                "T2: transition [:open] --visit_closed--> :closed names status :open, which the " <>
-                 "lifecycle of aggregate :visit does not declare (lifecycle_names.ex:16)"
+                 "lifecycle of aggregate :visit does not declare (lifecycle_names.ex:17)"
 
       assert message =~
                "T2: transition [] --visit_booked--> :closed leaves no status; name the statuses " <>
-                 "it moves out of (lifecycle_names.ex:17)"
+                 "it moves out of (lifecycle_names.ex:18)"
+
+      assert message =~
+               "T2: initial :bookd on :visit_bookd of aggregate :visit is declared twice"
+
+      refute message =~ "T2: event :visit_bookd starts"
 
       assert message =~
                "T2: event :visit_booked starts aggregate :visit in two statuses; an initial " <>
@@ -321,7 +332,7 @@ defmodule EhOsContract.ContractLifecycleTest do
 
       assert message =~
                "T2: event :visit_closed moves aggregate :visit out of :booked twice; one status " <>
-                 "and one event lead to one status (lifecycle_names.ex:15)"
+                 "and one event lead to one status (lifecycle_names.ex:16)"
     end
   end
 
@@ -337,19 +348,25 @@ defmodule EhOsContract.ContractLifecycleTest do
               status :waiting, "Oczekuje"
               status :archived, "Zarchiwizowana"
               status :closed, "Zamknięta", terminal: true
+              status :cancelled_once, "Odwołana", terminal: true
 
               initial :booked, on: :visit_booked
               transition :booked, :visit_closed, :closed
               transition :closed, :visit_booked, :booked
               transition :archived, :visit_closed, :closed
               transition :booked, :note_added, :waiting
+              transition :waiting, :note_added, :waiting
+              transition :cancelled_once, :note_added, :cancelled_once
+              transition :booked, :visit_cancelled, :cancelled_once
             end
 
             command :book_visit, "Umówienie", by: :reception, emits: :visit_booked
             command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed
             command :add_note, "Notatka", by: :reception, emits: :note_added
+            command :cancel_visit, "Odwołanie", by: :reception, emits: :visit_cancelled
             event :visit_booked, "Umówiono"
             event :note_added, "Dodano notatkę"
+            event :visit_cancelled, "Odwołano", terminal: true
             event :visit_closed, "Zamknięto", terminal: true
           end
 
@@ -367,6 +384,9 @@ defmodule EhOsContract.ContractLifecycleTest do
       assert message =~
                "T3: status :waiting of aggregate :visit has no transition out; mark it " <>
                  "terminal: true if the aggregate's life ends there (lifecycle_reach.ex:9)"
+
+      # A transition back into the same status is no way out, and no way out of a terminal one.
+      refute message =~ "T3: status :cancelled_once"
     end
   end
 

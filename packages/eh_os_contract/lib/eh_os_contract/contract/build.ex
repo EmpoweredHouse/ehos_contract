@@ -160,7 +160,7 @@ defmodule EhOsContract.Contract.Build do
   defp lifecycle(%Dsl.Lifecycle{} = lifecycle) do
     %{
       statuses: plain(lifecycle.statuses),
-      initial: for(i <- lifecycle.initials, do: %{status: i.status, on: i.on}),
+      initial: for(i <- lifecycle.initials, do: %{status: i.status, on: i.on, source: i.source}),
       transitions:
         for t <- lifecycle.transitions, from <- Enum.uniq(t.from) do
           %{from: from, event: t.event, to: t.to, source: t.source}
@@ -182,7 +182,11 @@ defmodule EhOsContract.Contract.Build do
     # Kept only where it is set, for the same reason (plan E9c).
     |> then(&if command.scope, do: &1, else: Map.delete(&1, :scope))
     # And for a lifecycle's precondition (plan LC1).
-    |> then(&if command.from == [], do: Map.drop(&1, [:from, :or_rejects]), else: &1)
+    |> then(fn built ->
+      if command.from == [],
+        do: Map.drop(built, [:from, :or_rejects]),
+        else: %{built | from: Enum.uniq(command.from)}
+    end)
     |> without_empty(:constraints)
     |> Map.merge(%{unit: unit.name, fields: identity ++ plain(command.fields)})
   end

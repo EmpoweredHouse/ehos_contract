@@ -128,8 +128,14 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
 
     started =
       for initial <- DslRules.duplicates(lifecycle.initials, & &1.on) do
-        {"T2: event #{inspect(initial.on)} starts #{where} in two statuses; an initial event " <>
-           "starts it in one", initial}
+        if Enum.count(lifecycle.initials, &(&1.on == initial.on and &1.status == initial.status)) >
+             1,
+           do:
+             {"T2: initial #{inspect(initial.status)} on #{inspect(initial.on)} of #{where} is " <>
+                "declared twice", initial},
+           else:
+             {"T2: event #{inspect(initial.on)} starts #{where} in two statuses; an initial " <>
+                "event starts it in one", initial}
       end
 
     pairs = for t <- lifecycle.transitions, from <- Enum.uniq(t.from), do: {{from, t.event}, t}
@@ -155,7 +161,9 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
   defp reach(where, lifecycle) do
     edges = for t <- lifecycle.transitions, from <- t.from, do: {from, t.to}
     reached = reached(Enum.map(lifecycle.initials, & &1.status), edges, MapSet.new())
-    leaving = MapSet.new(edges, &elem(&1, 0))
+    # A transition back into the same status leads nowhere: it neither gets the
+    # aggregate out of a status nor out of a terminal one.
+    leaving = for {from, to} <- edges, from != to, into: MapSet.new(), do: from
 
     Enum.flat_map(Enum.uniq_by(lifecycle.statuses, & &1.name), fn status ->
       name = inspect(status.name)

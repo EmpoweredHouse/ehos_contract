@@ -254,8 +254,8 @@ An intention an actor or a reaction issues to a unit.
 | [`rejects`](#contract-aggregate-command-rejects){: #contract-aggregate-command-rejects } | `atom \| list(atom)` | `[]` | The invariants of this unit, and the constraints of this command, it may refuse on. |
 | [`creates`](#contract-aggregate-command-creates){: #contract-aggregate-command-creates } | `boolean` | `false` | Whether it creates the aggregate, which the library then gives its generated identity. |
 | [`scope`](#contract-aggregate-command-scope){: #contract-aggregate-command-scope } | `atom` |  | The field a grant narrows it to: a field of the command, and a scope of every actor in `by:`. |
-| [`from`](#contract-aggregate-command-from){: #contract-aggregate-command-from } | `atom \| list(atom)` | `[]` | The statuses of its aggregate's lifecycle it may be issued in; dispatch refuses it in any other, before the decision, on `or_rejects:`. |
-| [`or_rejects`](#contract-aggregate-command-or_rejects){: #contract-aggregate-command-or_rejects } | `atom` |  | The invariant of the unit dispatch refuses it on outside the statuses in `from:`. |
+| [`from`](#contract-aggregate-command-from){: #contract-aggregate-command-from } | `atom \| list(atom)` | `[]` | The statuses of its aggregate's lifecycle it may be issued in. |
+| [`or_rejects`](#contract-aggregate-command-or_rejects){: #contract-aggregate-command-or_rejects } | `atom` |  | The invariant of the unit it is refused on outside the statuses in `from:`. |
 | [`source`](#contract-aggregate-command-source){: #contract-aggregate-command-source } | `String.t` |  | Where the command comes from in the material. |
 
 
@@ -558,6 +558,7 @@ The status a new aggregate takes with the first event of its stream.
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`on`](#contract-aggregate-lifecycle-initial-on){: #contract-aggregate-lifecycle-initial-on .spark-required} | `atom` |  | The event that starts it there. |
+| [`source`](#contract-aggregate-lifecycle-initial-source){: #contract-aggregate-lifecycle-initial-source } | `String.t` |  | Where the start comes from in the material. |
 
 
 
@@ -780,8 +781,8 @@ An intention an actor or a reaction issues to a unit.
 | [`rejects`](#contract-dcb-command-rejects){: #contract-dcb-command-rejects } | `atom \| list(atom)` | `[]` | The invariants of this unit, and the constraints of this command, it may refuse on. |
 | [`creates`](#contract-dcb-command-creates){: #contract-dcb-command-creates } | `boolean` | `false` | Whether it creates the aggregate, which the library then gives its generated identity. |
 | [`scope`](#contract-dcb-command-scope){: #contract-dcb-command-scope } | `atom` |  | The field a grant narrows it to: a field of the command, and a scope of every actor in `by:`. |
-| [`from`](#contract-dcb-command-from){: #contract-dcb-command-from } | `atom \| list(atom)` | `[]` | The statuses of its aggregate's lifecycle it may be issued in; dispatch refuses it in any other, before the decision, on `or_rejects:`. |
-| [`or_rejects`](#contract-dcb-command-or_rejects){: #contract-dcb-command-or_rejects } | `atom` |  | The invariant of the unit dispatch refuses it on outside the statuses in `from:`. |
+| [`from`](#contract-dcb-command-from){: #contract-dcb-command-from } | `atom \| list(atom)` | `[]` | The statuses of its aggregate's lifecycle it may be issued in. |
+| [`or_rejects`](#contract-dcb-command-or_rejects){: #contract-dcb-command-or_rejects } | `atom` |  | The invariant of the unit it is refused on outside the statuses in `from:`. |
 | [`source`](#contract-dcb-command-source){: #contract-dcb-command-source } | `String.t` |  | Where the command comes from in the material. |
 
 

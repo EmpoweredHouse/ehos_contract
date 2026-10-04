@@ -53,7 +53,7 @@ defmodule EhOsContract.ContractVocabularyTest do
       |> Map.merge(%{
         [:aggregate, :lifecycle] => [],
         [:aggregate, :lifecycle, :status] => [:name, :label, :terminal, :source],
-        [:aggregate, :lifecycle, :initial] => [:status, :on],
+        [:aggregate, :lifecycle, :initial] => [:status, :on, :source],
         [:aggregate, :lifecycle, :transition] => [:from, :event, :to, :source]
       })
       |> Map.merge(unit(:dcb))

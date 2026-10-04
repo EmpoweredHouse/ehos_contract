@@ -98,7 +98,7 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule Initial do
     @moduledoc false
-    defstruct [:status, :on, __spark_metadata__: nil]
+    defstruct [:status, :on, :source, __spark_metadata__: nil]
   end
 
   defmodule Transition do
@@ -403,13 +403,11 @@ defmodule EhOsContract.Contract.Dsl do
       from: [
         type: {:wrap_list, :atom},
         default: [],
-        doc:
-          "The statuses of its aggregate's lifecycle it may be issued in; dispatch refuses " <>
-            "it in any other, before the decision, on `or_rejects:`."
+        doc: "The statuses of its aggregate's lifecycle it may be issued in."
       ],
       or_rejects: [
         type: :atom,
-        doc: "The invariant of the unit dispatch refuses it on outside the statuses in `from:`."
+        doc: "The invariant of the unit it is refused on outside the statuses in `from:`."
       ],
       source: [type: :string, doc: "Where the command comes from in the material."]
     ]
@@ -495,7 +493,8 @@ defmodule EhOsContract.Contract.Dsl do
     args: [:status],
     schema: [
       status: [type: :atom, required: true, doc: "The status it starts in."],
-      on: [type: :atom, required: true, doc: "The event that starts it there."]
+      on: [type: :atom, required: true, doc: "The event that starts it there."],
+      source: [type: :string, doc: "Where the start comes from in the material."]
     ]
   }
 
