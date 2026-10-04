@@ -15,7 +15,9 @@ defmodule EhOsContract.Web.Live.ContractStatus do
   No contract picker: the registry's contracts are the same source
   `mix eh_os_contract.report` reads, and this screen renders every contract it finds the
   same way that task does, one section per contract. A contract's report has its
-  steps, its promises, its wiring and its scenarios (v2 plan, E7c).
+  steps, its promises, its wiring and its scenarios (v2 plan, E7c), and for an
+  aggregate that declares a lifecycle, the same first two questions of its
+  transitions (plan LC4b).
   """
 
   use Phoenix.LiveView
@@ -98,6 +100,36 @@ defmodule EhOsContract.Web.Live.ContractStatus do
                   {qualification}
                 </p>
               </li>
+            </ul>
+          </div>
+        </section>
+
+        <section :for={lifecycle <- Map.get(report, :lifecycles, [])}>
+          <h3>Lifecycle: {lifecycle.label}</h3>
+          <p>Aggregates with an event in this period: {lifecycle.aggregates}.</p>
+          <p :if={lifecycle.aggregates == 0}>{Sentence.no_aggregates()}</p>
+
+          <div :if={lifecycle.aggregates > 0}>
+            <h4>Declared transitions never taken</h4>
+            <p :if={lifecycle.untraversed == [] and lifecycle.pending == []}>
+              {Sentence.all_transitions_taken()}
+            </p>
+            <ul :if={lifecycle.untraversed != []}>
+              <li :for={transition <- lifecycle.untraversed}>{Sentence.transition(transition)}</li>
+            </ul>
+
+            <div :if={lifecycle.pending != []}>
+              <h4>Not taken yet — an aggregate still stands where they can happen</h4>
+              <ul>
+                <li :for={transition <- lifecycle.pending}>{Sentence.transition(transition)}</li>
+              </ul>
+            </div>
+          </div>
+
+          <div :if={lifecycle.undeclared != []}>
+            <h4>Happened, though the lifecycle does not allow it there</h4>
+            <ul>
+              <li :for={move <- lifecycle.undeclared}>{Sentence.transition_undeclared(move)}</li>
             </ul>
           </div>
         </section>

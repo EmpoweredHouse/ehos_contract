@@ -361,6 +361,12 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Added
 
+- **LC4b (#99): an aggregate's lifecycle as a diagram.** `EhOsContract.Graph.lifecycle_to_mermaid/3` and
+  `mix eh_os_contract.graph --contract M --lifecycle NAME` draw where an aggregate starts, its statuses and ends,
+  and the transitions named by their events; with `overlay: true` / `--overlay` each arrow carries the report's
+  count, `not yet` or `never`, and a move the lifecycle does not allow is a dotted arrow.
+  `EhOsContract.Conformance.lifecycles/2` gives the report's `lifecycles` alone. The dashboard draws it beside
+  its unit, and the contract screen has the lifecycle's section in the report's sentences.
 - **LC3 (#99): the report asks the first two questions of a lifecycle.** For each aggregate that
   declares one, `EhOsContract.Conformance` reports under `lifecycles` how often each declared transition was
   taken in the period, which were never taken (none when no aggregate had an event) and which are only not

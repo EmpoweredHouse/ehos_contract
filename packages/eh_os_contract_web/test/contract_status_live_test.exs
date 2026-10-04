@@ -55,6 +55,11 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     assert html =~ "Met in all 1 runs."
     # A v2 contract's scenarios, in the report's words: this one declares none.
     assert html =~ EhOsContract.Report.Sentence.scenarios_observed(%{declared: 0})
+
+    # Plan LC4b: the case's lifecycle — closed, so the rejection is never taken.
+    assert html =~ "Lifecycle: Case"
+    assert html =~ "Aggregates with an event in this period: 1."
+    assert html =~ "Open → Rejected (on: Case rejected)"
   end
 
   test "every sentence on the screen is one EhOsContract.Report.Sentence produced" do

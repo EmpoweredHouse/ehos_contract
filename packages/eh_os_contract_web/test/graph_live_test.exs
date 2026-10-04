@@ -54,6 +54,10 @@ defmodule EhOsContract.Web.Live.GraphTest do
 
     assert [graph] = LazyHTML.attribute(unit, "data-graph")
     assert graph =~ ~r/^flowchart LR\n    state_\w+\["/
+
+    # Plan LC4b: the case declares a lifecycle, drawn beside it with the log over it.
+    assert html =~ ~s(id="lifecycle-graph-case")
+    assert html =~ "Lifecycle, declared versus observed"
     assert html =~ "Declared versus observed, this process"
   end
 

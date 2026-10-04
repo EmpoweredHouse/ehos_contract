@@ -485,6 +485,19 @@ Na `dsl/lc2-lifecycle-dispatch`, na gałęzi LC1 (#121).
   przed dekodowaniem (poprawione). Bez zmian: koszt O(zdarzenia × przejścia) na komendę — pomijalny przy odczycie
   całego strumienia.
 
+### LC4b — co wyszło (4 października)
+
+Na `graph/lc4b-lifecycle-diagram`, na gałęzi LC3 (#123).
+- **Diagram:** `Graph.Lifecycle` — start (czarna kropka), statusy w słowach klienta (kolor stanu agregatu), końce
+  grubszym obrysem, przejścia podpisane etykietą zdarzenia. Flowchart Mermaid, nie `stateDiagram`: te same dane
+  grafu co pozostałe obrazy i ten sam renderer na dashboardzie. Z logiem: liczby, „not yet”, „never” — z raportu
+  LC3 (`Conformance.lifecycles/2`, publiczne), nic liczone osobno; niezadeklarowane ruchy kropkowaną pętlą.
+- **`mix eh_os_contract.graph --contract M --lifecycle NAME [--overlay]`.**
+- **Dashboard:** na ekranie grafu diagram cyklu życia przy jednostce, z logiem; na ekranie kontraktu sekcja
+  „Lifecycle” zdaniami raportu. Fikstura dashboardu (`CaseHandling`) dostała cykl życia.
+- **Sprawdzone w przeglądarce:** diagram renderuje się na dashboardzie sandboxa przez Mermaid i jego sposób
+  wstawiania SVG (CSP — style przez CSSOM); polskie etykiety, kolory, pętla niezadeklarowanego ruchu.
+
 ### LC3 — co wyszło (4 października)
 
 Na `conformance/lc3-lifecycle`, od `main` po #122.

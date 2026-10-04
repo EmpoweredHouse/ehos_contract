@@ -25,7 +25,9 @@ defmodule EhOsContract.Web.Live.Graph do
   consumes from another, and the log over it (`EhOsContract.Graph.system_to_mermaid/3`).
   **Below both, the units** of the selected v2 process's contract, each its own
   picture (`EhOsContract.Graph.unit_to_mermaid/2`): state, commands, events,
-  invariants and the scenarios that pin each path. The map and the units describe
+  invariants and the scenarios that pin each path; an aggregate that declares a
+  lifecycle has it beside, with the log over it
+  (`EhOsContract.Graph.lifecycle_to_mermaid/3`, plan LC4b). The map and the units describe
   the model rather than the log; they are here since 28 September at the user's
   word, beside the pages `mix eh_os_contract.pages` writes (plan, "Przed EG").
 
@@ -92,7 +94,10 @@ defmodule EhOsContract.Web.Live.Graph do
           name: unit.name,
           label: unit.label,
           kind: unit.kind,
-          mermaid: EhOsContract.Graph.unit_to_mermaid(process.contract, unit.name)
+          mermaid: EhOsContract.Graph.unit_to_mermaid(process.contract, unit.name),
+          lifecycle:
+            Map.has_key?(unit, :lifecycle) &&
+              EhOsContract.Graph.lifecycle_to_mermaid(process.contract, unit.name, overlay: true)
         }
       end
 
@@ -182,6 +187,17 @@ defmodule EhOsContract.Web.Live.Graph do
           id={"unit-graph-#{unit.name}"}
           data-graph={unit.mermaid}
         ></pre>
+
+        <div :if={unit.lifecycle}>
+          <h4>Lifecycle, declared versus observed</h4>
+          <pre
+            class="mermaid"
+            phx-hook="MermaidRender"
+            phx-update="ignore"
+            id={"lifecycle-graph-#{unit.name}"}
+            data-graph={unit.lifecycle}
+          ></pre>
+        </div>
       </section>
     </div>
     """

@@ -296,8 +296,16 @@ defmodule EhOsContract.Conformance do
   # transition it can reach from where it stands, so those are "not yet", listed
   # apart, never "never" — a visit still booked will be admitted or cancelled.
 
-  @spec lifecycles(map(), keyword()) :: [map()]
-  defp lifecycles(model, opts) do
+  @doc """
+  The report's `lifecycles` alone, for `contract` over a period (`:since`, `:until`):
+  what a lifecycle's diagram lays over its transitions (plan LC4b) without computing
+  the rest of the report.
+  """
+  @spec lifecycles(module() | map(), keyword()) :: [map()]
+  def lifecycles(contract, opts) when is_atom(contract),
+    do: contract |> Model.fetch() |> lifecycles(opts)
+
+  def lifecycles(%{module: _} = model, opts) do
     for %{lifecycle: lifecycle} = unit <- model.units do
       events = for e <- model.events, e.unit == unit.name, do: e
       names = Map.new(events, &{&1.type, &1.name})
