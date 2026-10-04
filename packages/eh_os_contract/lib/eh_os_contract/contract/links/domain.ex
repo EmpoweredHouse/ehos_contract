@@ -14,7 +14,10 @@ defmodule EhOsContract.Contract.Links.Domain do
     a list as well; every `{:id, entity}` names an entity of the domain; every
     `subject:` is a subject of the domain.
   - **X4.** An event's `depends_on`, an effect's `calls` and, since plan EL2, a field's
-    `issued_by` name externals of the domain.
+    `issued_by` name externals of the domain. Since plan EP5a, a call that names an
+    operation, `{:p1, :submit_report}`, names one of that external's; and a call to an
+    external that declares operations names one, since what the effect asks of it is
+    what the operations are for.
   - **F7**, the part that needs the domain: a field F7 keeps from being personal
     is not of a domain value that holds personal data, at any depth.
   - **F5**, the part that needs the domain: a personal field is not of a type that
@@ -271,7 +274,7 @@ defmodule EhOsContract.Contract.Links.Domain do
         for(
           effect <- d.effects,
           x <- effect.calls,
-          do: {effect, "effect #{inspect(effect.name)}: calls", x}
+          do: {effect, "effect #{inspect(effect.name)}: calls", system(x)}
         ) ++
         for {where, fields, _injected, _kind} <- Rules.Fields.structs(d),
             field <- fields,
@@ -280,11 +283,57 @@ defmodule EhOsContract.Contract.Links.Domain do
             issuer != nil,
             do: {field, "#{where}, field #{inspect(field.name)}: issued_by", issuer}
 
-    for {declaration, where, name} <- named, name not in externals do
-      {"X4: #{where} #{inspect(name)} is not an external of #{inspect(domain.module)}; " <>
-         suggest(name, externals), Links.at(declaration)}
+    unknown =
+      for {declaration, where, name} <- named, name not in externals do
+        {"X4: #{where} #{inspect(name)} is not an external of #{inspect(domain.module)}; " <>
+           suggest(name, externals), Links.at(declaration)}
+      end
+
+    unknown ++ operations(d, domain)
+  end
+
+  defp system({external, _operation}), do: external
+  defp system(external), do: external
+
+  # Plan EP5a: what a call asks of a system that says what it does.
+  defp operations(d, domain) do
+    declared =
+      Map.new(
+        domain.externals,
+        &{&1.name, Enum.map(Map.get(&1, :operations, []), fn o -> o.name end)}
+      )
+
+    for effect <- d.effects,
+        call <- Enum.uniq(effect.calls),
+        {:ok, operations} <- [Map.fetch(declared, system(call))],
+        problem <- operation_problems(call, operations, domain) do
+      {"X4: effect #{inspect(effect.name)}: calls #{inspect(call)}, " <> problem,
+       Links.at(effect)}
     end
   end
+
+  defp operation_problems({external, _operation}, [], domain),
+    do: [
+      "and external #{inspect(external)} of #{inspect(domain.module)} declares no " <>
+        "operations, so the call names the system alone: #{inspect(external)}"
+    ]
+
+  defp operation_problems({external, operation}, operations, domain) do
+    if operation in operations,
+      do: [],
+      else: [
+        "and #{inspect(operation)} is not an operation of external #{inspect(external)} of " <>
+          "#{inspect(domain.module)}; " <> suggest(operation, operations)
+      ]
+  end
+
+  defp operation_problems(external, [_ | _] = operations, _domain),
+    do: [
+      "and external #{inspect(external)} declares what it does, so the call names one of " <>
+        "its operations: #{Enum.map_join(operations, ", ", &inspect({external, &1}))}"
+    ]
+
+  defp operation_problems(_external, [], _domain), do: []
 
   # --- D10, D11 ---------------------------------------------------------------------
 

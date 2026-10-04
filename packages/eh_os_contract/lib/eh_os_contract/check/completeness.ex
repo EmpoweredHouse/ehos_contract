@@ -305,6 +305,7 @@ defmodule EhOsContract.Check.Completeness do
     Enum.concat([
       orphan_actors(model, declared, contracts),
       orphan_externals(model, declared, contracts),
+      uncalled_operations(model, declared, contracts),
       empty_contexts(model, declared, contracts),
       empty_subdomains(model, declared),
       orphan_relations(model, declared, contracts),
@@ -436,6 +437,44 @@ defmodule EhOsContract.Check.Completeness do
           "relation and issues no field, and no effect `calls:` it and no event `depends_on:` it",
         at(declared.externals, external.name)
       )
+    end
+  end
+
+  # Plan EP5a: an operation an external declares and no effect names in `calls:`. An
+  # external no effect calls at all is `orphan-external-system`'s or simply unused:
+  # its operations are reported only once something calls the system.
+  defp uncalled_operations(model, declared, contracts) do
+    calling =
+      MapSet.new(for %{model: m} <- contracts, effect <- m.effects, x <- effect.calls, do: x)
+
+    called =
+      MapSet.new(
+        for %{model: m} <- contracts,
+            effect <- m.effects,
+            operation <- Map.get(effect, :operations, []),
+            do: {operation.external, operation.name}
+      )
+
+    for external <- model.externals,
+        MapSet.member?(calling, external.name),
+        operation <- Map.get(external, :operations, []),
+        not MapSet.member?(called, {external.name, operation.name}) do
+      Finding.new(
+        "operation-never-called",
+        "operation #{inspect(operation.name)} of external #{inspect(external.name)} of " <>
+          "#{inspect(model.module)} is called by no effect: no `calls: " <>
+          "#{inspect({external.name, operation.name})}`",
+        operation_at(declared.externals, external.name, operation.name)
+      )
+    end
+  end
+
+  defp operation_at(externals, external, name) do
+    with %{operations: operations} <- Enum.find(externals, &(&1.name == external)),
+         %{} = operation <- Enum.find(operations, &(&1.name == name)) do
+      Links.at(operation)
+    else
+      _ -> at(externals, external)
     end
   end
 

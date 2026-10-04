@@ -107,6 +107,8 @@ spark_locals_without_parens = [
   on: 1,
   on: 2,
   on: 3,
+  operation: 2,
+  operation: 3,
   optional: 1,
   or_else: 1,
   param: 2,

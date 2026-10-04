@@ -220,10 +220,15 @@ defmodule EhOsContract.Domain.Build do
   defp digest_form(%{invariants: []} = value),
     do: value |> Map.delete(:invariants) |> digest_form()
 
+  # The same for an external without operations (plan EP5a).
+  defp digest_form(%{operations: []} = external),
+    do: external |> Map.delete(:operations) |> digest_form()
+
   defp digest_form(%{} = declaration) do
     Map.new(declaration, fn
       {key, list}
-      when key in [:terms, :translations, :avoid, :fields, :invariants] and is_list(list) ->
+      when key in [:terms, :translations, :avoid, :fields, :invariants, :operations] and
+             is_list(list) ->
         {key, list |> Enum.map(&digest_form/1) |> Enum.sort_by(&Digest.canonical/1)}
 
       {:between, list} ->

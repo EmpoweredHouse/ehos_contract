@@ -79,12 +79,11 @@ defmodule EhOsContract.Contract.Doc do
 
   def callback(model, :effect, name, callback) do
     effect = declaration(model, :effect, name)
-    calls = Enum.map(List.wrap(effect.calls), &"`#{&1}`")
 
     paragraphs([
       "Reacts to `#{callback}`#{event_label(model, callback)}, for effect " <>
         "`#{name}`#{label(effect)}#{source(effect)}.",
-      if(calls != [], do: "Calls #{Enum.join(calls, ", ")}."),
+      if(called = called(effect), do: "Calls #{called}."),
       idempotency(effect),
       rules_section("Keeps", rules(model, :effect, effect))
     ])
@@ -116,6 +115,25 @@ defmodule EhOsContract.Contract.Doc do
       rules_section("Keeps", for(r <- function.rules, do: {"rule", r, examples(r)}))
     ])
   end
+
+  @doc """
+  What an effect calls (plan EP5a): each system, in backticks, with the operations the
+  effect names of it — "`p1` (`submit_report`), `mail`" — or `nil` for an effect that
+  calls nothing. The callback's doc and the effect's page put it in their sentences.
+  """
+  @spec called(map()) :: String.t() | nil
+  def called(%{calls: [_ | _] = calls} = effect) do
+    operations = Map.get(effect, :operations, [])
+
+    Enum.map_join(calls, ", ", fn system ->
+      case for(%{external: ^system, name: name} <- operations, do: "`#{name}`") do
+        [] -> "`#{system}`"
+        names -> "`#{system}` (#{Enum.join(names, ", ")})"
+      end
+    end)
+  end
+
+  def called(_effect), do: nil
 
   @doc """
   What a reaction's `idempotency` asks of its code (plan EP4): who keeps a second

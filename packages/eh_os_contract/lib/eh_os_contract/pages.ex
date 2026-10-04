@@ -338,8 +338,13 @@ defmodule EhOsContract.Pages do
       ]
       |> Enum.reject(&is_nil/1)
 
+    # Plan EP5a: what the system does when an effect calls it, one line each under it.
+    operations =
+      for o <- Map.get(e, :operations, []),
+          do: "\n  - operation #{code(o.name)} — #{o.label}#{source_note(o)}"
+
     "- #{code(e.name)} — #{e.label} · #{e.direction}#{Enum.map_join(extra, "", &" · #{&1}")}" <>
-      source_note(e)
+      source_note(e) <> Enum.join(operations)
   end
 
   defp relation(site, %{between: [_ | _] = between} = r) do
@@ -885,9 +890,7 @@ defmodule EhOsContract.Pages do
     [
       facts([
         row(["Handles: " | joined(Enum.map(List.wrap(e.handles), &event_link(site, model, &1)))]),
-        if(e.calls not in [nil, []],
-          do: "Calls: #{Enum.map_join(List.wrap(e.calls), ", ", &code/1)}."
-        ),
+        if(called = Doc.called(e), do: "Calls: #{called}."),
         "Delivered #{code(e.delivery)}.",
         Doc.idempotency(e)
       ]),

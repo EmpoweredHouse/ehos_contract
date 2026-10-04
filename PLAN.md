@@ -68,7 +68,8 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
   wywraca; `issued_by` w indeksie idempotencji bez granicy długości (sprzed #98, wymaga credentialu wydawcy).
 - **Pytanie z #96 o pusty `:id` jako wartość pola korelacji** — od #100 pusty `:id` jest odmawiany także przy
   dekodowaniu, więc pytanie dotyczy już tylko starych wierszy logu.
-- **Zostawione świadomie:** #63, #64, #49 (wyżej); #99 — sesji, która je założyła.
+- **Zostawione świadomie:** #63, #64, #49 (wyżej). **#99 — cykl życia agregatu:** propozycja i trzy pytania w
+  „Dopisek 4 października — #99”; budowa w nowej sesji, po odpowiedziach użytkownika.
 - **Wady `oidcc` 3.9.0** — zgłoszone jako erlef/oidcc#552–#555; nasz kod ich nie potrzebuje.
 - **Po stronie EHOS-a, nie tutaj:** szablon `ehos_app` (krok 7) i test na klastrze (krok 8); bump w `ehos-ledger`;
   port `4001.0` — [eh-os#111](https://github.com/EmpoweredHouse/eh-os/issues/111).
@@ -354,6 +355,47 @@ przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie p
 
 Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty, commity, opisy PR, `docs/adr/`,
 `README.md` — po angielsku; `PLAN.md` i `CLAUDE.md` po polsku. Pełna reguła — `CLAUDE.md`.
+
+## Dopisek 4 października — #99: cykl życia agregatu (stany i przejścia)
+
+**Skąd.** Trzecia domena testowa, sprzęt AppUnite (gałąź `claude/computer-ordering-process-f84437`, nie w `main`),
+ma komputer, który latami krąży w pętli: wydany → zwrot → w biurze → u resellera → w biurze → wydany… aż do
+sprzedaży, darowizny, utylizacji albo zgubienia. Właściciel procesu myśli statusami (arkusz: jedna kolumna, dziesięć
+wartości). DSL nie ma słowa na status: żyje w `evolve/2` (`:status` w stanie agregatu) i w enumie read modelu.
+`stage` mówi tylko o kolejności do przodu, więc pętla siedzi w jednym etapie (`:use`) jako niepołączone pudełka.
+
+**Komentarz użytkownika na #99 (zgodność z DDD), przyjęty jako warunki:** (1) status wynika ze zdarzeń, nikt go nie
+ustawia — żadnej komendy „ustaw status”; (2) w cyklu życia tylko stany, od których zależą decyzje — „Zastępczy”
+to cecha przydziału, „New” to „ordered”, kolumna „dalsze działania” to read model; (3) cykl życia należy do jednego
+agregatu w jednym kontekście — komputer i przydział to dwa cykle, bez sklejania między `Computers` i `Assignments`.
+
+**Propozycja asystenta (4 października, odpowiedź na #99) — do zatwierdzenia:**
+- **Przejścia deklarowane, status liczy silnik.** `lifecycle do state …; transition :in_office, :issued, :in_use
+  end` w agregacie. Status wynika z samych nazw zdarzeń, więc dispatch liczy go w tym samym przejściu po strumieniu i
+  wstrzykuje do `State` jako pole tylko do odczytu (jak tożsamość); `evolve/2` go nie liczy. Rozjazd niemożliwy z
+  konstrukcji. *Odrzucone (asystent):* kompilator sprawdza `evolve/2` względem deklaracji (opcja „declared” z
+  issue) — statycznie niewykonalne, `evolve/2` to dowolny kod; status wyprowadzany z istniejącego `evolve/2` bez
+  deklaracji (opcja „derived”) — dryfuje, nic go nie pilnuje.
+- **Szczebel 2 drabiny:** zdarzenie wyemitowane spoza grafu (np. `issued` z `:at_reseller`) to defekt jak zdarzenie
+  spoza `emits:` — wyjątek, nic nie dopisane.
+- **Zgodność bez piątego pytania:** przejścia nigdy nieprzejechane = „zadeklarowane ścieżki nigdy nie przejechane”
+  dla grafu z cyklami; przejścia niezadeklarowane — tylko w historii sprzed deklaracji, w istniejącym pytaniu.
+- **Obok etapów, nie zamiast:** etap to widok procesu (run, korelacja, obietnice), cykl życia — widok agregatu.
+- **Etykiety:** nazwa stanu po angielsku niesie znaczenie, `label` — słowo klienta; enum read modelu może czytać
+  etykiety z cyklu życia.
+- **Granice:** jedna oś (np. `set_up` w `Computer` zostaje flagą w `evolve/2`); zdarzenie spoza przejść dozwolone w
+  każdym stanie nieterminalnym i statusu nie zmienia; odczyt historii z przejściami spoza grafu się nie wywraca
+  (wiersz w skillu `change-contract`); tylko agregat, nie DCB; stany terminalne zgodne z `terminal:` zdarzeń.
+- **Rozmiar:** 3–4 PR-y — DSL i reguły (osiągalność, stan początkowy, terminalne), status w `State` i strażnik w
+  dispatchu, raport zgodności, diagram stanów w `graph` i na dashboardzie, sandbox.
+
+**Otwarte — decyzje użytkownika przed budową:**
+1. **Materiał:** czy sprzęt AppUnite wchodzi do `sandbox/` jako trzecia domena danych testowych (bez niej nie ma
+   przykładu, a bez przykładu z materiału nie budujemy).
+2. **Odmowy z cyklu życia:** komenda deklaruje stany, z których wolno ją wydać (`from: :in_office`), a dispatch
+   odmawia z wygenerowanym kodem przed decyzją — *albo* odmowy zostają ręczne w decyzji, a silnik pilnuje tylko
+   zdarzeń spoza grafu jako defektów.
+3. **Status wstrzykiwany do `State`** zamiast liczony w `evolve/2` — zgoda na zmianę roli `evolve/2`.
 
 ## Dopisek 3 października (2) — #94: style dashboardu z pakietu `ehos_design`, kopia usunięta
 
@@ -649,6 +691,64 @@ Na `dsl/ep4-executable` (od `origin/main` = `8f685cf`, po #108).
   runner je składa; sprzed EP4, osobna sprawa.
 - **Brama zielona po przeglądzie:** **EXIT=0** — sandbox 148, `check` 0 / 29 / 9; silnik 1198, `check` 0 / 71 / 6;
   web 52; auth 285 + 1 właściwość.
+
+### Przed EP5 — decyzje użytkownika (3 października)
+
+- **Operacje systemu zewnętrznego (ESDM: `capabilities`) — opcjonalne, ścisłe, gdy są.** System w domenie może
+  zadeklarować operacje (`operation :submit_report, "…", source: "X-01"`); gdy je ma, każde `calls:` do niego nazywa
+  jedną
+  (`calls: {:p1, :submit_report}`), a goły `:p1` jest odmową. Odmowa: operacja, której system nie deklaruje;
+  ostrzeżenie `check`: operacja, której nie woła żaden efekt. **Nazwa `operation`, nie `capability`** (decyzja
+  użytkownika, tego samego dnia): „capability” to w tej bibliotece uprawnienie aktora z EHOS-a
+  (`EhOsContract.Capability`, `Model.capabilities/1`). *Odrzucone:* `capability` jak ESDM (dwa znaczenia jednego
+  słowa w jednej bibliotece); `offers` (czasownik, słabo czyta się jako rzeczownik w modelu i komunikatach). *Odrzucone:* zawsze wymagane (łamie każdy kontrakt
+  z `calls:`, a system tylko wejściowy, jak KSeF, musiałby coś deklarować); sama proza bez reguł (nic nie łączy
+  efektu z tym, o co prosi).
+- **`responsibility` aktora — nazwana proza, szczebel 0.** `responsibility :name, "tekst", source:` w aktorze;
+  czytają strony, słownik i `@doc` komend, które aktor wydaje. Przykład: 03 §4.10, „zakres pracy wynika z
+  obowiązków, nie uprawnień”. *Odrzucone:* powiązanie `fulfils:` w komendzie z ostrzeżeniem (nowe słowo bez
+  przykładu, który by go wymagał — kształt pozwala je dodać później); pominięcie.
+- **`terms` relacji — pary, także w partnerstwie.** `terms: [{"Wizyta", "Wizyta"}]`, słowo pierwszej i drugiej
+  strony, każde sprawdzane wobec słownika swojego kontekstu. Świadome odstępstwo od ESDM, który w relacji bez
+  kierunku terminów nie ma: Rehmed ich tam potrzebuje („Wizyta” znaczy co innego w umawianiu i w dokumentacji).
+  *Odrzucone:* pary tylko w relacjach z kierunkiem, jak ESDM (Rehmed traci terminy partnerstwa); płaska lista ze
+  sprawdzeniem (nie mówi, które słowo odpowiada któremu).
+- **Podział (rozstrzygnięcie asystenta):** EP5a — operacje z regułami; EP5b — odpowiedzialność i pary terminów.
+  Dwa PR-y, bo operacje dotykają domeny, kontraktu, wiązania między nimi i `check`.
+
+### EP5a — co wyszło (3 października)
+
+Na `dsl/ep5a-capabilities` (od `origin/main` = `64a7864`, po #109).
+- **Domena:** `operation :name, "…", source:` w `external`; D1 — nazwa snake_case, raz w systemie. Model trzyma
+  `operations: []` zawsze, digest pomija pustą listę — wersje domen bez operacji bez zmian (pilnuje tego wersja
+  przypięta w EP1).
+- **Kontrakt:** `calls:` przyjmuje `:p1` albo `{:p1, :submit_report}`. W modelu `calls` zostaje listą systemów
+  (każdy dotychczasowy czytelnik — graf, `check`, zależności, raport — bez zmian), a nazwane operacje idą do
+  `operations` tylko tam, gdzie są.
+- **X4** (L3, bo kontrakt nie kompiluje się względem domeny): operacja, której system nie deklaruje (z podpowiedzią),
+  i goły `calls:` do systemu z operacjami (z listą do wyboru). **`operation-never-called`** — ostrzeżenie `check`.
+- **Czytelnicy:** `@doc` callbacku efektu i jego strona („Calls `p1` (`submit_report`).”, `Doc.calls/1`), strona
+  domeny — operacje pod systemem.
+- **Sandbox:** `:p1` — `submit_report` (`X-01, AGG-10`), `:registries` — `look_up_company` (03 §4.2); oba efekty
+  nazywają swoją. Na żywo: goły `calls: :p1` w Rehmedzie — kompilacja pada z X4 i podpowiedzią.
+- **Sprawdzenia odwrotne:** bez ochrony digestu pada wersja domeny z EP1; bez X4 dla operacji — test odmów; bez
+  ostrzeżenia — test `check`.
+- `docs/contract.md`, `docs/dsl/`, `docs/rules.md`, skille `write-reaction` i `contract-distillation`, CHANGELOG.
+- **Przegląd** (dwa równolegle). Poprawione, ze sprawdzeniem odwrotnym: powtórzone wywołanie
+  (`[{:p1, :a}, {:p1, :a}]`) dwa razy w modelu i dwie identyczne odmowy X4; `Enum.uniq` na `calls` także
+  efektów bez operacji (mógł przesunąć digest); ostrzeżenie o operacjach systemu, którego żaden efekt nie woła,
+  obok `orphan-external-system` — teraz tylko dla wołanego systemu; ostrzeżenie wskazywało linię systemu, nie
+  operacji; niezrozumiały komunikat dla `{:mail, :send}` przy systemie bez operacji; strona efektu traciła
+  dwukropek („Calls:”) także bez operacji; nawiasy przy `operation` w sandboxie. Bez zmian: etykieta operacji na
+  stronie bez escapowania (jak każda etykieta, string autora kontraktu); pojedyncze backticki (nazwy snake_case
+  z D1); P2 drukuje krotki w `calls` (tylko komunikat). Pominięte: operacje na systemie `:inbound` (ostrzeżenie je
+  pokaże; reguła byłaby nowa); graf i `view` bez operacji; test digestu porównuje dwie domeny nowym kodem —
+  przesunięcie łapie wersja przypięta w EP1.
+- **Brama zielona po przeglądzie:** **EXIT=0** — sandbox 148, `check` 0 / 29 / 9; silnik 1208, `check` 0 / 71 / 6;
+  web 52; auth 285 + 1 właściwość. Pierwsze podejście padło na formacie: stary `cached_dot_formatter` w
+  `_build/test` sprzed nowego słowa (pułapka opisana w `sandbox/mix.exs`); po jego usunięciu czysto.
+- **Brama zielona** przed przeglądem: **EXIT=0** — sandbox 148, `check` 0 / 29 / 9 (bez zmian: obie operacje
+  sandboxa są wołane); silnik 1206 (1198 + 8), `check` 0 / 71 / 6; web 52; auth 285 + 1 właściwość.
 
 ## Dopisek 2 października (2) — #83: `ehos.yaml/v2` i `sign_in`; podział EB2
 
