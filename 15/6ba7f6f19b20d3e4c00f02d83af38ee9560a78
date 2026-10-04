@@ -1,0 +1,1 @@
+pre-pr-review of a one-test change (CodeRabbit nitpick on #121): the dcb from: test asserted a word its file name holds; it now asserts Spark's exact refusal. Test-only; test/dsl/contract_lifecycle_test.exs 11 tests, 0 failures. The gate on b3c4901 covers the rest unchanged.
