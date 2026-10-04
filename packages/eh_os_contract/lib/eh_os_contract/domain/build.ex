@@ -156,12 +156,7 @@ defmodule EhOsContract.Domain.Build do
 
     collections =
       for {key, entity} <- @kinds, into: %{} do
-        {key,
-         for(
-           %{__struct__: _} = e <- entities,
-           entity_name(e) == entity,
-           do: if(entity == :relation, do: e |> plain() |> pairs(), else: plain(e))
-         )}
+        {key, for(%{__struct__: _} = e <- entities, entity_name(e) == entity, do: plain(e))}
       end
 
     # The domain's own options are part of the agreement too: `language` decides what
@@ -225,15 +220,6 @@ defmodule EhOsContract.Domain.Build do
   defp digest_form(%{invariants: []} = value),
     do: value |> Map.delete(:invariants) |> digest_form()
 
-  # Plan EP5b: an actor without responsibilities hashes as before it could have them.
-  defp digest_form(%{responsibilities: []} = actor),
-    do: actor |> Map.delete(:responsibilities) |> digest_form()
-
-  # A symmetric relation's ends are a set, so its pairs are read in the sorted ends'
-  # order: `between: [b, a]` with `{"y", "x"}` is `between: [a, b]` with `{"x", "y"}`.
-  defp digest_form(%{between: [a, b], terms: [_ | _] = terms} = relation) when a > b,
-    do: digest_form(%{relation | between: [b, a], terms: Enum.map(terms, &Enum.reverse/1)})
-
   # The same for an external without operations (plan EP5a).
   defp digest_form(%{operations: []} = external),
     do: external |> Map.delete(:operations) |> digest_form()
@@ -241,15 +227,7 @@ defmodule EhOsContract.Domain.Build do
   defp digest_form(%{} = declaration) do
     Map.new(declaration, fn
       {key, list}
-      when key in [
-             :terms,
-             :translations,
-             :avoid,
-             :fields,
-             :invariants,
-             :operations,
-             :responsibilities
-           ] and
+      when key in [:terms, :translations, :avoid, :fields, :invariants, :operations] and
              is_list(list) ->
         {key, list |> Enum.map(&digest_form/1) |> Enum.sort_by(&Digest.canonical/1)}
 
@@ -271,18 +249,6 @@ defmodule EhOsContract.Domain.Build do
   defp entity_name(%EhOsContract.Domain.Dsl.External{}), do: :external
   defp entity_name(%EhOsContract.Domain.Dsl.Relation{}), do: :relation
   defp entity_name(%EhOsContract.Domain.Dsl.Entity{}), do: :entity
-
-  # Plan EP5b: a relation's terms are pairs, kept as two-element lists, the shape a
-  # JSON reader of the model gets as well.
-  defp pairs(%{terms: terms} = relation),
-    do: %{relation | terms: Enum.map(terms, &Tuple.to_list/1)}
-
-  @doc false
-  # A relation's two ends in the order its pairs are read: upstream then downstream,
-  # or `between:` as written. D5 and the glossary read pairs through this one place.
-  @spec sides(map()) :: [atom()]
-  def sides(%{upstream: up, downstream: down}) when up != nil and down != nil, do: [up, down]
-  def sides(%{between: between}), do: between
 
   # A Spark struct becomes a plain map, recursively, without the struct tag and
   # without the source annotation.

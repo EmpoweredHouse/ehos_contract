@@ -953,19 +953,9 @@ defmodule EhOsContract.DomainRulesTest do
   defp digest_form(%{invariants: []} = value),
     do: value |> Map.delete(:invariants) |> digest_form()
 
-  # Plan EP5a and EP5b: an external without operations, an actor without
-  # responsibilities, as before either existed.
-  defp digest_form(%{operations: []} = external),
-    do: external |> Map.delete(:operations) |> digest_form()
-
-  defp digest_form(%{responsibilities: []} = actor),
-    do: actor |> Map.delete(:responsibilities) |> digest_form()
-
-  defp digest_form(declaration) when is_map(declaration) do
+  defp digest_form(declaration) do
     Map.new(declaration, fn
-      {key, list}
-      when key in [:terms, :translations, :avoid, :fields, :operations, :responsibilities] and
-             is_list(list) ->
+      {key, list} when key in [:terms, :translations, :avoid, :fields] and is_list(list) ->
         {key, list |> Enum.map(&digest_form/1) |> Enum.sort_by(&EhOsContract.Digest.canonical/1)}
 
       {:between, list} ->
@@ -975,9 +965,6 @@ defmodule EhOsContract.DomainRulesTest do
         other
     end)
   end
-
-  # A relation's pair is a list of two words, kept as written.
-  defp digest_form(other), do: other
 
   describe "the Spark schema (layer L1)" do
     test "an unknown option is refused with the file and line of the declaration" do

@@ -317,13 +317,8 @@ defmodule EhOsContract.Pages do
       ]
       |> Enum.reject(&is_nil/1)
 
-    # Plan EP5b: what the actor answers for, one line each under it.
-    responsibilities =
-      for r <- Map.get(a, :responsibilities, []),
-          do: "\n  - responsibility #{code(r.name)} — #{r.label}#{source_note(r)}"
-
     "- #{code(a.name)} — #{a.label} · #{a.kind}#{Enum.map_join(extra, "", &" · #{&1}")}" <>
-      source_note(a) <> Enum.join(responsibilities)
+      source_note(a)
   end
 
   # Where a declaration listed on another's page comes from, after its other facts (plan
@@ -355,8 +350,7 @@ defmodule EhOsContract.Pages do
   defp relation(site, %{between: [_ | _] = between} = r) do
     bullet(
       ["#{r.type} between "] ++
-        joined(Enum.map(between, &context_or_external(site, &1))) ++
-        [relation_terms(r), source_note(r)]
+        joined(Enum.map(between, &context_or_external(site, &1))) ++ [source_note(r)]
     )
   end
 
@@ -366,16 +360,9 @@ defmodule EhOsContract.Pages do
       context_or_external(site, r.upstream),
       " upstream of ",
       context_or_external(site, r.downstream),
-      relation_terms(r),
       source_note(r)
     ])
   end
-
-  # Plan EP5b: each pair as the first end's word and the second's.
-  defp relation_terms(%{terms: [_ | _] = terms}),
-    do: " · terms: " <> Enum.map_join(terms, ", ", fn [a, b] -> ~s|"#{a}" ↔ "#{b}"| end)
-
-  defp relation_terms(_relation), do: ""
 
   defp context_or_external(site, name) do
     if Enum.any?(site.domain.contexts, &(&1.name == name)),
@@ -544,16 +531,16 @@ defmodule EhOsContract.Pages do
               do: bullet([link(code(inspect(m.module)), contract_path(m)), process_label(m)])
       end,
       section("Relations", relations, & &1),
-      glossary(c, d)
+      glossary(c)
     ]
   end
 
   defp process_label(%{process: %{label: label}}), do: " — #{label}"
   defp process_label(_model), do: ""
 
-  defp glossary(%{terms: []}, _domain), do: ["", "## Glossary", "", "_No terms._"]
+  defp glossary(%{terms: []}), do: ["", "## Glossary", "", "_No terms._"]
 
-  defp glossary(c, domain) do
+  defp glossary(c) do
     [
       "",
       "## Glossary",
@@ -564,7 +551,6 @@ defmodule EhOsContract.Pages do
           "",
           t.definition,
           avoid(t.avoid),
-          for(line <- EhOsContract.Glossary.across(domain, c.name, t.text), do: ["", line]),
           if(t.source, do: ["", "_Source: #{t.source}_"], else: []),
           for tr <- t.translations do
             ["", "_#{tr.language}_: **#{tr.text}** — #{tr.definition}", avoid(tr.avoid)]

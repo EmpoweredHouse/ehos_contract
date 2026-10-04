@@ -25,8 +25,6 @@ defmodule EhOsContract.DomainVocabularyTest do
              [:context, :term, :avoid] => [:text, :reason],
              # Plan EP1: `source` on every declaration, the first rung of the ladder.
              [:actor] => [:name, :kind, :label, :backed_by, :context, :scope, :source],
-             # Plan EP5b: what an actor answers for, named prose.
-             [:actor, :responsibility] => [:name, :label, :source],
              [:subject] => [:name, :label, :source],
              [:value] => [:name, :type, :unit, :label, :context, :source],
              [:value, :field] => @field,
