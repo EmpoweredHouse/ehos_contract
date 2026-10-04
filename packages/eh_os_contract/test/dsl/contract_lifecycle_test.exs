@@ -511,7 +511,7 @@ defmodule EhOsContract.ContractLifecycleTest do
             invariant :free_seat, "Wolne miejsce"
 
             command :take_seat, "Zajęcie", by: :reception, emits: :seat_taken,
-              from: :free, or_rejects: :free_seat, rejects: :free_seat
+              from: :free, rejects: :free_seat
 
             event :seat_taken, "Zajęto"
           end
@@ -521,7 +521,7 @@ defmodule EhOsContract.ContractLifecycleTest do
           end
         """)
 
-      assert message =~ "from"
+      assert message =~ "unknown options [:from]"
       refute message =~ "T4:"
     end
 
