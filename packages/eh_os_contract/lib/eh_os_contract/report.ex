@@ -210,11 +210,27 @@ defmodule EhOsContract.Report do
         {0, _} ->
           ["  " <> Sentence.no_aggregates()]
 
-        {_, []} ->
+        {_, []} when l.pending == [] ->
           ["  " <> Sentence.all_transitions_taken()]
+
+        {_, []} ->
+          []
 
         {_, transitions} ->
           ["  Declared transitions never taken:"] ++
+            for t <- transitions, do: "    · " <> Sentence.transition(t)
+      end
+
+    pending =
+      case {l.aggregates, l.pending} do
+        {0, _} ->
+          []
+
+        {_, []} ->
+          []
+
+        {_, transitions} ->
+          ["  Not taken yet — an aggregate still stands where they can happen:"] ++
             for t <- transitions, do: "    · " <> Sentence.transition(t)
       end
 
@@ -229,7 +245,7 @@ defmodule EhOsContract.Report do
       end
 
     ["LIFECYCLE: #{l.label}", "  Aggregates with an event in this period: #{l.aggregates}."] ++
-      taken ++ undeclared ++ [""]
+      taken ++ pending ++ undeclared ++ [""]
   end
 
   @spec assertions([map()]) :: [String.t()]

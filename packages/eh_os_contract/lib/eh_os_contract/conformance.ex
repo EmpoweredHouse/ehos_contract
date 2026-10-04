@@ -286,24 +286,27 @@ defmodule EhOsContract.Conformance do
   # declared transitions no aggregate took, and which moves the graph does not allow
   # happened anyway. A process's steps go forward; an aggregate's statuses go round in
   # loops, so a path here is a transition, and what was not declared is what the status
-  # could not follow. The status is walked over each aggregate's whole stream, as
-  # dispatch walks it, and only the events of the period are counted. With no
-  # aggregate in the period nothing is untraversed, for the same reason as with no run.
+  # could not follow. The status is walked over each aggregate's whole stream, by the
+  # same graph dispatch holds it to, and only the events of the period are counted.
+  # A stream is this contract's rows, as `drift` reads them: one a renamed module
+  # wrote under its old name starts again from no status.
+  #
+  # Not lying here is the same as for a process. With no aggregate in the period
+  # nothing is untraversed. And an aggregate that has not ended can still take every
+  # transition it can reach from where it stands, so those are "not yet", listed
+  # apart, never "never" — a visit still booked will be admitted or cancelled.
 
   @spec lifecycles(map(), keyword()) :: [map()]
   defp lifecycles(model, opts) do
     for %{lifecycle: lifecycle} = unit <- model.units do
       events = for e <- model.events, e.unit == unit.name, do: e
       names = Map.new(events, &{&1.type, &1.name})
-      streams = streams(model, Map.keys(names), opts)
 
-      %{taken: taken, undeclared: undeclared} =
-        EhOsContract.Lifecycle.tally(
-          lifecycle,
-          for(rows <- streams, do: for({type, counted?} <- rows, do: {names[type], counted?}))
-        )
+      %{aggregates: aggregates, standing: standing, taken: taken, undeclared: undeclared} =
+        tally(model, lifecycle, names, opts)
 
-      aggregates = Enum.count(streams, fn rows -> Enum.any?(rows, &elem(&1, 1)) end)
+      reachable = reachable(lifecycle, standing)
+
       status = &status_ref(lifecycle, &1)
       event = &event_ref(events, &1)
 
@@ -326,38 +329,84 @@ defmodule EhOsContract.Conformance do
         label: unit.label,
         aggregates: aggregates,
         transitions: transitions,
-        untraversed: if(aggregates > 0, do: Enum.filter(transitions, &(&1.count == 0)), else: []),
+        untraversed:
+          if(aggregates > 0,
+            do: Enum.filter(transitions, &(&1.count == 0 and not pending?(&1, reachable))),
+            else: []
+          ),
+        pending: Enum.filter(transitions, &(&1.count == 0 and pending?(&1, reachable))),
         undeclared:
-          for {{from, on}, count} <- Enum.sort_by(undeclared, &elem(&1, 1), :desc) do
+          for {{from, on}, count} <-
+                Enum.sort_by(undeclared, fn {{from, on}, count} -> {-count, from, on} end) do
             %{from: status.(from), event: event.(on), count: count}
           end
       }
     end
   end
 
-  # Each aggregate's events of these types, in order, as `{type, counted?}`: counted
-  # when it happened in the period. The whole stream is read, since the status at the
-  # period's start is what its earlier events left.
-  defp streams(_model, [], _opts), do: []
+  # Every status an aggregate standing in `standing` can still get to.
+  defp reachable(lifecycle, standing) do
+    edges = for t <- lifecycle.transitions, do: {t.from, t.to}
+    grow(standing, edges)
+  end
 
-  defp streams(model, types, opts) do
+  defp grow(seen, edges) do
+    more = for {from, to} <- edges, from in seen, to not in seen, into: MapSet.new(), do: to
+    if MapSet.size(more) == 0, do: seen, else: grow(MapSet.union(seen, more), edges)
+  end
+
+  # An initial transition is never pending: an aggregate that will start has no
+  # stream yet, and the period cannot be waiting for one.
+  defp pending?(%{from: nil}, _reachable), do: false
+  defp pending?(%{from: %{name: from}}, reachable), do: MapSet.member?(reachable, from)
+
+  # The aggregates' streams, walked one at a time as the rows arrive: only those with
+  # an event of these types in the period, each read whole, since the status at the
+  # period's start is what its earlier events left. Rows without a stream belong to no
+  # aggregate. Memory is the longest stream, never the log.
+  defp tally(_model, lifecycle, names, _opts) when map_size(names) == 0,
+    do: EhOsContract.Lifecycle.tally(lifecycle, [])
+
+  defp tally(model, lifecycle, names, opts) do
     since = opts[:since]
     until = opts[:until]
+    types = Map.keys(names)
+    contract = inspect(model.module)
 
-    from(e in EhOsContract.Event,
-      where: e.contract == ^inspect(model.module) and e.type in ^types,
-      order_by: [e.stream_id, e.position],
-      select: {e.stream_id, e.type, e.occurred_at}
-    )
-    |> repo().all()
-    |> Enum.chunk_by(&elem(&1, 0))
-    |> Enum.map(fn rows ->
-      for {_stream, type, at} <- rows do
-        {type,
-         (since == nil or DateTime.compare(at, since) != :lt) and
-           (until == nil or DateTime.compare(at, until) != :gt)}
-      end
-    end)
+    of_these =
+      from(e in EhOsContract.Event,
+        where: e.contract == ^contract and e.type in ^types and not is_nil(e.stream_id)
+      )
+
+    in_period =
+      of_these
+      |> drift_bounds(opts)
+      |> select([e], e.stream_id)
+
+    query =
+      from(e in of_these,
+        where: e.stream_id in subquery(in_period),
+        order_by: [e.stream_id, e.stream_version],
+        select: {e.stream_id, e.type, e.occurred_at}
+      )
+
+    counted? = fn at ->
+      (since == nil or DateTime.compare(at, since) != :lt) and
+        (until == nil or DateTime.compare(at, until) != :gt)
+    end
+
+    {:ok, tally} =
+      repo().transaction(fn ->
+        query
+        |> repo().stream(max_rows: 5_000)
+        |> Stream.chunk_by(&elem(&1, 0))
+        |> Stream.map(fn rows ->
+          for {_stream, type, at} <- rows, do: {Map.get(names, type), counted?.(at)}
+        end)
+        |> then(&EhOsContract.Lifecycle.tally(lifecycle, &1))
+      end)
+
+    tally
   end
 
   # `nil` is where an aggregate stands before its first event: the start.

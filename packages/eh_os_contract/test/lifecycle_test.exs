@@ -71,10 +71,13 @@ defmodule EhOsContract.LifecycleTest do
         {:visit_closed, true},
         {:note_added, true}
       ],
-      [{:visit_booked, false}, {:visit_closed, true}, {:patient_arrived, true}, {nil, true}]
+      [{:visit_booked, false}, {:visit_closed, true}, {:patient_arrived, true}, {nil, true}],
+      [{:visit_booked, false}]
     ]
 
     assert Lifecycle.tally(@lifecycle, streams) == %{
+             aggregates: 2,
+             standing: MapSet.new([:in_progress]),
              taken: %{
                {nil, :visit_booked, :booked} => 1,
                {:booked, :patient_arrived, :in_progress} => 2,
@@ -82,5 +85,25 @@ defmodule EhOsContract.LifecycleTest do
              },
              undeclared: %{{:closed, :note_added} => 1, {:booked, :visit_closed} => 1}
            }
+  end
+
+  test "tally counts a self-loop, and an initial event that is a transition too, as dispatch moves" do
+    lifecycle = %{
+      statuses: [%{name: :open, terminal: false}, %{name: :done, terminal: true}],
+      initial: [%{status: :open, on: :noted}],
+      transitions: [
+        %{from: :open, event: :noted, to: :open},
+        %{from: :open, event: :finished, to: :done}
+      ]
+    }
+
+    assert %{
+             taken: %{{nil, :noted, :open} => 1, {:open, :noted, :open} => 2},
+             undeclared: %{},
+             standing: standing
+           } = Lifecycle.tally(lifecycle, [[{:noted, true}, {:noted, true}, {:noted, true}]])
+
+    assert standing == MapSet.new([:open])
+    assert Lifecycle.decided!(lifecycle, :open, :c, [:noted, :finished]) == :done
   end
 end

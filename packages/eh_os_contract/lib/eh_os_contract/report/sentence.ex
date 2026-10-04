@@ -231,8 +231,11 @@ defmodule EhOsContract.Report.Sentence do
   it happened, and the status did not follow it.
   """
   @spec transition_undeclared(map()) :: String.t()
+  def transition_undeclared(%{from: nil, event: event, count: count}),
+    do: "#{name(event)} before the aggregate started — no status followed  (#{count}x)"
+
   def transition_undeclared(%{from: from, event: event, count: count}),
-    do: "#{name(event)} in #{status(from)} — the status stayed  (#{count}x)"
+    do: "#{name(event)} in #{name(from)} — the status stayed  (#{count}x)"
 
   @doc false
   @spec no_aggregates() :: String.t()

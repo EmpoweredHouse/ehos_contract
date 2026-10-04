@@ -41,7 +41,7 @@ defmodule EhOsContract.LifecycleReportTest do
     assert %{aggregates: 0, untraversed: [], undeclared: []} = lifecycle()
   end
 
-  test "each declared transition with how often it was taken; those never taken listed apart" do
+  test "each declared transition with how often it was taken; one an open visit can still take is not yet" do
     issue(BookVisit, "v-1")
     issue(AdmitPatient, "v-1")
     issue(CloseVisit, "v-1")
@@ -62,8 +62,29 @@ defmodule EhOsContract.LifecycleReportTest do
                {:in_progress, :closed, :closed, 1}
              ]
 
-    assert moves(l.untraversed) == [{:booked, :cancelled, :cancelled}]
+    # v-2 is still booked, so it can still be cancelled: not yet, not never.
+    assert l.untraversed == []
+    assert moves(l.pending) == [{:booked, :cancelled, :cancelled}]
     assert l.undeclared == []
+  end
+
+  test "once no aggregate can take it any more, a transition never taken is never taken" do
+    issue(BookVisit, "v-1")
+    issue(AdmitPatient, "v-1")
+    issue(CloseVisit, "v-1")
+
+    l = lifecycle()
+    assert moves(l.untraversed) == [{:booked, :cancelled, :cancelled}]
+    assert l.pending == []
+  end
+
+  test "an event before the aggregate started is said so, not as a status" do
+    arrive("v-9")
+
+    assert [%{from: nil, event: %{name: :patient_arrived}, count: 1}] = lifecycle().undeclared
+
+    assert Report.render(Conformance.report(Visits)) =~
+             "    · Patient arrived before the aggregate started — no status followed  (1x)"
   end
 
   test "a recorded event that did not fit is counted where the aggregate stood" do
@@ -79,6 +100,8 @@ defmodule EhOsContract.LifecycleReportTest do
 
   test "only the period's events are counted, though earlier ones set the status" do
     issue(BookVisit, "v-1")
+    # Untouched in the period: not read, and not counted.
+    issue(BookVisit, "v-2")
     since = DateTime.utc_now()
     issue(AdmitPatient, "v-1")
 
