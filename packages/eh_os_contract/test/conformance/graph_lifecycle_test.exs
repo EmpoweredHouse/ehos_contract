@@ -59,6 +59,17 @@ defmodule EhOsContract.GraphLifecycleTest do
              ~s'status_closed -.->|"Patient arrived · not declared, 1x"| status_closed'
   end
 
+  test "given the report's lifecycles, it draws them without reading the log again" do
+    issue(BookVisit, "v-1")
+    lifecycles = EhOsContract.Conformance.lifecycles(Visits, [])
+    # Written after the report was computed: a drawing from it does not see it.
+    issue(BookVisit, "v-2")
+
+    text = Graph.lifecycle_to_mermaid(Visits, :visit, overlay: true, lifecycles: lifecycles)
+
+    assert text =~ ~s'start -->|"Visit booked · 1x"| status_booked'
+  end
+
   test "an aggregate without a lifecycle is refused, naming those with one" do
     error =
       assert_raise ArgumentError, fn ->
@@ -87,15 +98,25 @@ defmodule EhOsContract.GraphLifecycleTest do
 
     test "refuses an aggregate without one, a lifecycle without its contract, and both pictures" do
       assert_raise Mix.Error,
-                   ~r/DispatchRig\.Ledger has no aggregate account with a lifecycle/,
+                   ~r/LifecycleRig\.Visits has no aggregate nonesuch with a lifecycle\. With one: visit/,
                    fn ->
                      Mix.Tasks.EhOsContract.Graph.run(
-                       ~w(--contract DispatchRig.Ledger --lifecycle account)
+                       ~w(--contract LifecycleRig.Visits --lifecycle nonesuch)
                      )
                    end
 
       assert_raise Mix.Error, ~r/pass --contract too/, fn ->
         Mix.Tasks.EhOsContract.Graph.run(~w(--lifecycle visit))
+      end
+
+      assert_raise Mix.Error, ~r/--since applies to --overlay/, fn ->
+        Mix.Tasks.EhOsContract.Graph.run(
+          ~w(--contract LifecycleRig.Visits --lifecycle visit --since 2026-01-01T00:00:00)
+        )
+      end
+
+      assert_raise Mix.Error, ~r/BoundaryRig\.Waitlist declares no lifecycle/, fn ->
+        Mix.Tasks.EhOsContract.Graph.run(~w(--contract BoundaryRig.Waitlist --lifecycle entry))
       end
 
       assert_raise Mix.Error, ~r/--unit and --lifecycle draw different pictures/, fn ->

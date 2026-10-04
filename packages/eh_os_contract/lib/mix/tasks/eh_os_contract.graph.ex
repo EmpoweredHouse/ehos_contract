@@ -165,6 +165,11 @@ defmodule Mix.Tasks.EhOsContract.Graph do
       opts[:lifecycle] && !opts[:contract] ->
         Mix.raise("--lifecycle names an aggregate of a contract; pass --contract too")
 
+      opts[:lifecycle] && opts[:since] && !opts[:overlay] ->
+        Mix.raise(
+          "--lifecycle draws the declarations unless --overlay; --since applies to --overlay"
+        )
+
       opts[:lifecycle] && opts[:unit] ->
         Mix.raise("--unit and --lifecycle draw different pictures of a unit; pass one of them")
 
@@ -225,15 +230,22 @@ defmodule Mix.Tasks.EhOsContract.Graph do
         {nil, unit} ->
           with_lifecycle =
             for u <- EhOsContract.Model.fetch(contract).units,
-                Map.has_key?(u, :lifecycle),
+                EhOsContract.Lifecycle.of(u),
                 do: Atom.to_string(u.name)
 
-          unless unit in with_lifecycle,
-            do:
+          cond do
+            with_lifecycle == [] ->
+              Mix.raise("#{opts[:contract]} declares no lifecycle")
+
+            unit not in with_lifecycle ->
               Mix.raise(
                 "#{opts[:contract]} has no aggregate #{unit} with a lifecycle. With one: " <>
                   Enum.join(with_lifecycle, ", ")
               )
+
+            true ->
+              :ok
+          end
 
           EhOsContract.Graph.lifecycle_to_mermaid(contract, String.to_existing_atom(unit),
             overlay: opts[:overlay] || false,

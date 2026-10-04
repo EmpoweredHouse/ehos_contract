@@ -110,7 +110,9 @@ defmodule EhOsContract.Web.Live.ContractStatus do
           <p :if={lifecycle.aggregates == 0}>{Sentence.no_aggregates()}</p>
 
           <div :if={lifecycle.aggregates > 0}>
-            <h4>Declared transitions never taken</h4>
+            <h4 :if={lifecycle.untraversed != [] or lifecycle.pending == []}>
+              Declared transitions never taken
+            </h4>
             <p :if={lifecycle.untraversed == [] and lifecycle.pending == []}>
               {Sentence.all_transitions_taken()}
             </p>

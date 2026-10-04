@@ -497,6 +497,18 @@ Na `graph/lc4b-lifecycle-diagram`, na gałęzi LC3 (#123).
   „Lifecycle” zdaniami raportu. Fikstura dashboardu (`CaseHandling`) dostała cykl życia.
 - **Sprawdzone w przeglądarce:** diagram renderuje się na dashboardzie sandboxa przez Mermaid i jego sposób
   wstawiania SVG (CSP — style przez CSSOM); polskie etykiety, kolory, pętla niezadeklarowanego ruchu.
+- **Przegląd** (dwa równolegle): obie strony — ekran grafu czytał cały log raz na jednostkę z cyklem życia,
+  w kwadracie i dwa razy na wejście (poprawione: raport raz na kontrakt, `lifecycles:` do rysunku, tylko po
+  podłączeniu socketu; pierwszy, statyczny render rysuje deklarację). Poprawność — `--since` bez `--overlay`
+  przy `--lifecycle` (odrzucane), pusty nagłówek na ekranie kontraktu (warunkowy, jak w raporcie tekstowym), test
+  „każde zdanie z `Sentence`” bez cyklu życia (rozszerzony), komunikat zadania dla kontraktu bez cyklu życia,
+  `Lifecycle.of/1` zamiast `Map.has_key?`, moduledoc ekranu grafu, README. Bez zmian: strzałki budowane z
+  deklaracji i dopasowywane do raportu (poprawne; brak dopasowania → bez liczby, nie wyjątek); brak pamięci
+  podręcznej między wyborami procesów jednego kontraktu.
+- **Pułapka (4 października):** migracja z niezmergowanej gałęzi zmienia **wspólną** bazę testową sandboxa
+  (`eh_os_contract_host_test`, stała nazwa) wszystkim worktree. Migracja LC4a usunęła kolumnę, której `main` używa;
+  brama LC4b (na LC3, bez LC4a) padła na trzech scenariuszach Inventory. Przywrócone ręcznie (kolumna z
+  powrotem, wiersz migracji usunięty). Do przeniesienia do `CLAUDE.md`.
 
 ### LC3 — co wyszło (4 października)
 

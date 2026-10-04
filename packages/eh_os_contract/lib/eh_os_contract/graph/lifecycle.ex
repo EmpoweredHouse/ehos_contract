@@ -23,8 +23,10 @@ defmodule EhOsContract.Graph.Lifecycle do
   @doc """
   The lifecycle of aggregate `name` of `contract` as data:
   `EhOsContract.Graph.Mermaid.graph()`. `opts`: `overlay: true` lays the log over it,
-  over `:since` and `:until`. Raises when the contract has no such aggregate, or it
-  declares no lifecycle.
+  over `:since` and `:until`; `lifecycles:` gives the report's `lifecycles` already
+  computed (`EhOsContract.Conformance.lifecycles/2`), so a screen drawing several
+  reads the log once. Raises when the contract has no such aggregate, or it declares
+  no lifecycle.
   """
   @spec build(module() | map(), atom(), keyword()) :: Mermaid.graph()
   def build(contract, name, opts \\ []) do
@@ -37,10 +39,10 @@ defmodule EhOsContract.Graph.Lifecycle do
                 "it has #{inspect(Enum.map(model.units, & &1.name))}"
 
     lifecycle =
-      Map.get(unit, :lifecycle) ||
+      EhOsContract.Lifecycle.of(unit) ||
         raise ArgumentError,
               "unit #{inspect(name)} of #{inspect(model.module)} declares no lifecycle; " <>
-                "those that do: #{inspect(for u <- model.units, Map.has_key?(u, :lifecycle), do: u.name)}"
+                "those that do: #{inspect(for u <- model.units, EhOsContract.Lifecycle.of(u), do: u.name)}"
 
     labels = Map.new(for e <- model.events, e.unit == name, do: {e.name, e.label})
     observed = if Keyword.get(opts, :overlay, false), do: observed(model, name, opts)
@@ -85,8 +87,10 @@ defmodule EhOsContract.Graph.Lifecycle do
     do: contract |> build(name, opts) |> Mermaid.render("TB")
 
   defp observed(model, name, opts) do
-    model
-    |> EhOsContract.Conformance.lifecycles(Keyword.take(opts, [:since, :until]))
+    opts
+    |> Keyword.get_lazy(:lifecycles, fn ->
+      EhOsContract.Conformance.lifecycles(model, Keyword.take(opts, [:since, :until]))
+    end)
     |> Enum.find(&(&1.unit == name))
   end
 
@@ -99,6 +103,8 @@ defmodule EhOsContract.Graph.Lifecycle do
     transition = Enum.find(observed.transitions, same)
 
     cond do
+      # A report of another declaration than the one drawn: no number rather than a crash.
+      transition == nil -> nil
       transition.count > 0 -> "#{transition.count}x"
       Enum.any?(observed.pending, same) -> "not yet"
       Enum.any?(observed.untraversed, same) -> "never"

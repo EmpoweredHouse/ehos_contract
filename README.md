@@ -228,7 +228,7 @@ boundaries below would be documentation rather than a check.
 | `mix eh_os_contract.check` | whole-program checks over the contracts and their implementations, each finding under a stable name |
 | `mix eh_os_contract.report --since … --until …` | the conformance report for a period |
 | `mix eh_os_contract.graph --process <name> --mermaid [--overlay]` | one process's declared shape, no code required; with `--overlay`, its contract's full graph over the log |
-| `mix eh_os_contract.graph --contract <Module> [--overlay] [--unit <name>]` | a contract's full graph — steps, actors, read side, external systems — or one unit of it |
+| `mix eh_os_contract.graph --contract <Module> [--overlay] [--unit <name> \| --lifecycle <name>]` | a contract's full graph — steps, actors, read side, external systems — one unit of it, or an aggregate's lifecycle (with `--overlay`, the report's counts on its transitions) |
 | `mix eh_os_contract.graph --map <domain>` / `--system <domain> [--overlay]` | a domain's context map, or its contracts and what flows between them |
 | `mix eh_os_contract.view` / `glossary` / `pages` | the domain as a tree, its ubiquitous language, or Markdown pages, one per element |
 | `mix eh_os_contract.subscriptions` | where each subscription stands, and a way past a poison event |
