@@ -126,6 +126,17 @@ liczy rekordy. Ta sama pułapka, którą `EhOsContract.Deployment.record!` zasta
 używaj `MIX_ENV=dev`; jeśli już wpadniesz, ratuje `MIX_ENV=test mix ecto.drop && mix ecto.create &&
 mix ecto.migrate`.
 
+**Bazy Postgresa są wspólne dla wszystkich worktree** — nazwy są stałe (`eh_os_contract_host_test`, `…_dev`,
+`eh_os_contract_test` …). Z tego dwie pułapki, obie z 4 października:
+
+- **`too_many_connections`.** Brama obok cudzego `phx.server` albo cudzych testów pada na połączeniach, nie na
+  kodzie (`AppendLockTest`, `SchemaTest`). Nie ponawiaj w pętli: zatrzymaj własny serwer dev, poczekaj, aż
+  `lsof -nP -iTCP:5433 | awk 'NR>1 && $1 ~ /beam/' | wc -l` spadnie poniżej ~10, i puść bramę raz.
+- **Migracja z niezmergowanej gałęzi zmienia bazę testową wszystkim.** Brama LC4a usunęła kolumnę, której
+  `main` jeszcze używał, i testy na innych gałęziach padły. Po bramie na gałęzi z migracją, której nie ma w
+  `main`, przywróć schemat (`psql` w kontenerze: cofnij zmianę i usuń wiersz z `schema_migrations`) albo powiedz
+  o tym użytkownikowi.
+
 ## Konwencje, które łatwo złamać
 
 - **`boundary`: moduły procesowe są rodzeństwem, nie hierarchią.** Dostęp do cudzych tabel wymaga jawnego

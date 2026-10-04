@@ -31,9 +31,16 @@ kluczem `sign_in` (`eh-os` D-69) w czytniku i generatorze (#84, merge `ef0e94d`)
 wyszło”. Ekranów logowania biblioteka nie ma i mieć nie będzie: formularz logowania, odmowy i wylogowanie to strony
 EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko link „Zaloguj” i przycisk „Wyloguj”.
 
+**#99 — cykl życia agregatu — jest zamknięty w kodzie i w `main`** (4 października): LC0 #120 (sprzęt AppUnite jako
+trzecie dane testowe), LC1 #121 (DSL i reguły `T1`–`T4`), LC2 #122 (status w `State`, `from:`, strażnik w
+dispatchu), LC3 #123 (raport), LC4a #124 (`Computer` na cyklu życia, `T4` dla drobniejszych odmów), LC4b #125
+(diagram w `graph` i na dashboardzie), #126 (utrata tylko z `W użytku`, poprawka użytkownika po obejrzeniu
+diagramu) — „Dopisek 4 października — #99” i „LC… — co wyszło”.
+
 ### Stan repozytorium
 
-- **`origin/main` = `eb0c8a1`** (merge #103: #98, budżet bajtów klucza — „#98 — co wyszło”). Przedtem `b6a96dd` —
+- **`origin/main` = `6ce4c30`** (merge #126, ostatni PR #99; 4 października). Wcześniej `eb0c8a1` (merge #103: #98,
+  budżet bajtów klucza — „#98 — co wyszło”). Przedtem `b6a96dd` —
   #101 (handoff po #96), `90a83f2` — #102 (EP1, z sesji `esdm-dsl-comparison`), `0b7bc84` — #100 (poprawki
   CodeRabbita do #95), `b65b8b7` — #97 (#96, F8/F9), `996d89f` — #95 (granice wartości). CI `main` na `90a83f2` —
   `success`; na `eb0c8a1` (przebieg `37135771176`) w toku przy pisaniu. CI PR-a #103 — `success`, CodeRabbit bez
@@ -52,8 +59,7 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
   paść na `too_many_connections`** (3 października, dwa razy: 9 padnięć silnika w `SchemaTest` i `AppendLockTest`,
   sam silnik przechodził) — wtedy `mix check`
   każdego pakietu osobno, po kolei, i zapisać, że tak było.
-- **Otwarte na GitHubie:** #99 (cykl życia jednostek w pętli — z sesji
-  `computer-ordering-process`, nie z tej pracy), #64 (okno retencji inboxu —
+- **Otwarte na GitHubie:** #64 (okno retencji inboxu —
   czeka na EHOS), #63 (kształt `call/3` — do pierwszych innych drzwi), #49 (materiał klientów poza repozytorium).
   **W `EmpoweredHouse/eh-os`: #91–#96 i #111** — nasze potrzeby wobec EHOS-a („Dopisek 1 października”).
 - **`ehos-ledger`** przypina `eh-os-contract` i puszcza w CI `mix eh_os_contract.manifest`; bump przypięcia — w tamtym
@@ -62,14 +68,20 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
 
 ### Co zostało — i czyje to jest
 
-- **Następna praca z kodem — #99, cykl życia agregatu**, LC0–LC4 w „Dopisek 4 października — #99”.
+- **Następna praca z kodem — niewybrana**; kandydaci w „Wybór użytkownika na potem” niżej.
+- **Po #99, decyzja użytkownika (4 października): raport wystarczy.** Zwrot odnotowany z błędnym przydziałem
+  zwalnia komputer do ponownego wydania, a prawdziwy przydział zostaje otwarty — raport pokazuje jego niedokończony
+  przebieg i to jest odpowiedź. *Odrzucone:* agregat przydziału w `Assignments` z odmową zwrotu cudzego przydziału
+  (nowa jednostka bez reguły z materiału, która by jej wymagała); strażnik w `Computer` z komendą „uzgodnij zwrot”
+  (reguła spoza materiału). Wątek CodeRabbita na #124 zamknięty z tą odpowiedzią; issue #99 zamknięte.
+- **Po #99, biblioteka (bez przykładu, nie budujemy):** przejście z kilku statusów rysowane jako strzałka z
+  każdego; `or_rejects:` per status zamiast odmowy w decyzji; enum read modelu czytający etykiety cyklu życia.
 - **Ryzyka zostawione świadomie przy #98** (#103, issue zamknięte): zdarzenie przechodzi dispatch, a menedżer, który miałby
   zacząć na nim przebieg, staje (wybór „stoi”); komenda wydana przez reakcję i odrzucona `:key_too_long` dalej się
   wywraca; `issued_by` w indeksie idempotencji bez granicy długości (sprzed #98, wymaga credentialu wydawcy).
 - **Pytanie z #96 o pusty `:id` jako wartość pola korelacji** — od #100 pusty `:id` jest odmawiany także przy
   dekodowaniu, więc pytanie dotyczy już tylko starych wierszy logu.
-- **Zostawione świadomie:** #63, #64, #49 (wyżej). **#99 — cykl życia agregatu:** decyzje użytkownika i kolejność
-  budowy w „Dopisek 4 października — #99”.
+- **Zostawione świadomie:** #63, #64, #49 (wyżej).
 - **Wady `oidcc` 3.9.0** — zgłoszone jako erlef/oidcc#552–#555; nasz kod ich nie potrzebuje.
 - **Po stronie EHOS-a, nie tutaj:** szablon `ehos_app` (krok 7) i test na klastrze (krok 8); bump w `ehos-ledger`;
   port `4001.0` — [eh-os#111](https://github.com/EmpoweredHouse/eh-os/issues/111).
