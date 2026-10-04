@@ -33,8 +33,9 @@ defmodule EhOsContract.Conformance do
 
   A path is a step of `EhOsContract.Paths`, so the command is a node, and what
   waits and what fails is split by source; the assertions are the process's
-  `promises` (v2 §13, plan E7c). `as_data/2` names the shape
-  `eh_os_contract.conformance.v2`.
+  `promises` (v2 §13, plan E7c). An aggregate that declares its lifecycle adds the
+  first two questions for its transitions, under `lifecycles` (plan LC3). `as_data/2`
+  names the shape `eh_os_contract.conformance.v2`.
 
   ## The boundary
 
@@ -111,6 +112,7 @@ defmodule EhOsContract.Conformance do
       # wiring is its steps and the modules that implement them.
       wiring: %{version: deployment.deployed.wiring_version, since: deployment.deployed.since},
       processes: List.wrap(model.process && process_report(model, opts)),
+      lifecycles: lifecycles(model, opts),
       scenarios: EhOsContract.Coverage.of(model, opts),
       drift: drift(model, opts)
     }
@@ -277,6 +279,148 @@ defmodule EhOsContract.Conformance do
   end
 
   defp repo, do: Application.fetch_env!(:eh_os_contract, :repo)
+
+  # --- an aggregate's lifecycle (plan LC3, #99) -------------------------------------------
+  #
+  # The first two questions again, for an aggregate that declares its lifecycle: which
+  # declared transitions no aggregate took, and which moves the graph does not allow
+  # happened anyway. A process's steps go forward; an aggregate's statuses go round in
+  # loops, so a path here is a transition, and what was not declared is what the status
+  # could not follow. The status is walked over each aggregate's whole stream, by the
+  # same graph dispatch holds it to, and only the events of the period are counted.
+  # A stream is this contract's rows, as `drift` reads them: one a renamed module
+  # wrote under its old name starts again from no status.
+  #
+  # Not lying here is the same as for a process. With no aggregate in the period
+  # nothing is untraversed. And an aggregate that has not ended can still take every
+  # transition it can reach from where it stands, so those are "not yet", listed
+  # apart, never "never" — a visit still booked will be admitted or cancelled.
+
+  @spec lifecycles(map(), keyword()) :: [map()]
+  defp lifecycles(model, opts) do
+    for %{lifecycle: lifecycle} = unit <- model.units do
+      events = for e <- model.events, e.unit == unit.name, do: e
+      names = Map.new(events, &{&1.type, &1.name})
+
+      %{aggregates: aggregates, standing: standing, taken: taken, undeclared: undeclared} =
+        tally(model, lifecycle, names, opts)
+
+      reachable = reachable(lifecycle, standing)
+
+      status = &status_ref(lifecycle, &1)
+      event = &event_ref(events, &1)
+
+      declared =
+        for(i <- lifecycle.initial, do: {nil, i.on, i.status}) ++
+          for t <- lifecycle.transitions, do: {t.from, t.event, t.to}
+
+      transitions =
+        for {from, on, to} = key <- declared do
+          %{
+            from: status.(from),
+            event: event.(on),
+            to: status.(to),
+            count: Map.get(taken, key, 0)
+          }
+        end
+
+      %{
+        unit: unit.name,
+        label: unit.label,
+        aggregates: aggregates,
+        transitions: transitions,
+        untraversed:
+          if(aggregates > 0,
+            do: Enum.filter(transitions, &(&1.count == 0 and not pending?(&1, reachable))),
+            else: []
+          ),
+        pending: Enum.filter(transitions, &(&1.count == 0 and pending?(&1, reachable))),
+        undeclared:
+          for {{from, on}, count} <-
+                Enum.sort_by(undeclared, fn {{from, on}, count} -> {-count, from, on} end) do
+            %{from: status.(from), event: event.(on), count: count}
+          end
+      }
+    end
+  end
+
+  # Every status an aggregate standing in `standing` can still get to.
+  defp reachable(lifecycle, standing) do
+    edges = for t <- lifecycle.transitions, do: {t.from, t.to}
+    grow(standing, edges)
+  end
+
+  defp grow(seen, edges) do
+    more = for {from, to} <- edges, from in seen, to not in seen, into: MapSet.new(), do: to
+    if MapSet.size(more) == 0, do: seen, else: grow(MapSet.union(seen, more), edges)
+  end
+
+  # An initial transition is never pending: an aggregate that will start has no
+  # stream yet, and the period cannot be waiting for one.
+  defp pending?(%{from: nil}, _reachable), do: false
+  defp pending?(%{from: %{name: from}}, reachable), do: MapSet.member?(reachable, from)
+
+  # The aggregates' streams, walked one at a time as the rows arrive: only those with
+  # an event of these types in the period, each read whole, since the status at the
+  # period's start is what its earlier events left. Rows without a stream belong to no
+  # aggregate. Memory is the longest stream, never the log.
+  defp tally(_model, lifecycle, names, _opts) when map_size(names) == 0,
+    do: EhOsContract.Lifecycle.tally(lifecycle, [])
+
+  defp tally(model, lifecycle, names, opts) do
+    since = opts[:since]
+    until = opts[:until]
+    types = Map.keys(names)
+    contract = inspect(model.module)
+
+    of_these =
+      from(e in EhOsContract.Event,
+        where: e.contract == ^contract and e.type in ^types and not is_nil(e.stream_id)
+      )
+
+    in_period =
+      of_these
+      |> drift_bounds(opts)
+      |> select([e], e.stream_id)
+
+    query =
+      from(e in of_these,
+        where: e.stream_id in subquery(in_period),
+        order_by: [e.stream_id, e.stream_version],
+        select: {e.stream_id, e.type, e.occurred_at}
+      )
+
+    counted? = fn at ->
+      (since == nil or DateTime.compare(at, since) != :lt) and
+        (until == nil or DateTime.compare(at, until) != :gt)
+    end
+
+    {:ok, tally} =
+      repo().transaction(fn ->
+        query
+        |> repo().stream(max_rows: 5_000)
+        |> Stream.chunk_by(&elem(&1, 0))
+        |> Stream.map(fn rows ->
+          for {_stream, type, at} <- rows, do: {Map.get(names, type), counted?.(at)}
+        end)
+        |> then(&EhOsContract.Lifecycle.tally(lifecycle, &1))
+      end)
+
+    tally
+  end
+
+  # `nil` is where an aggregate stands before its first event: the start.
+  defp status_ref(_lifecycle, nil), do: nil
+
+  defp status_ref(lifecycle, name) do
+    label = Enum.find_value(lifecycle.statuses, &(&1.name == name && &1.label))
+    %{kind: :status, name: name, label: label || Atom.to_string(name)}
+  end
+
+  defp event_ref(events, name) do
+    label = Enum.find_value(events, &(&1.name == name && &1.label))
+    %{kind: :event, name: name, label: label || Atom.to_string(name)}
+  end
 
   # Runs that began before this assertion was last changed were judged under a
   # promise that is no longer the one declared, so they do not belong in the same
