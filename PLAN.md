@@ -485,6 +485,44 @@ Na `dsl/lc2-lifecycle-dispatch`, na gałęzi LC1 (#121).
   przed dekodowaniem (poprawione). Bez zmian: koszt O(zdarzenia × przejścia) na komendę — pomijalny przy odczycie
   całego strumienia.
 
+### LC4a — co wyszło (4 października)
+
+Na `sandbox/lc4a-appunite-lifecycle`, od `main` po #122. LC4 podzielone (rozstrzygnięcie asystenta, mały diff):
+**LC4a** — AppUnite na cyklu życia i skill; **LC4b** — diagram stanów w `graph` i na dashboardzie, na LC3.
+- **`Computer` na cyklu życia:** dziesięć statusów słowami arkusza (`A:F`) — `New`, `Office`, `W użytku`,
+  `W trakcie zwrotu`, `Innergo spa`, `For sale` i cztery końce (`Sold`, `Charity`, `Utylizacja`, `Lost`, każdy
+  terminalny); `Zastępczy` zostaje cechą przydziału (warunek 2 użytkownika), `set_up` flagą. Utrata z każdego
+  statusu, który się nie skończył. Pole `:status` zniknęło ze stanu; każda komenda ma `from:` z inwariantem, który
+  już był; z decyzji zniknęły strażniki statusu z trzynastu komend — zostały tylko odmowy drobniejsze niż status
+  (wycofana generacja, brak ustawień, rezerwacje, Allegro, „na sprzedaż”).
+- **Ustalenie dla biblioteki — `T4` był za ostry:** odrzucał status w `from:`, z którego żadne zdarzenie komendy
+  nie wychodzi. `issue_computer` musi być wydawane z `:for_sale`, żeby odmówić `:for_sale_not_issued` (osobna
+  reguła właściciela procesu, `A:G`), czego wymaga decyzja 2 („drobniejsze odmowy zostają w decyzji”). `from:` mówi,
+  gdzie decyzja się odbywa, nie gdzie przyjmuje — taki status jest dozwolony, **jeśli `rejects:` ma regułę inną niż
+  `or_rejects:`** (zawężone po przeglądzie: bez niej decyzja mogłaby tylko rzucić wyjątek); zostaje też „emitowane
+  zdarzenie, którego żaden status z `from:` nie wypuszcza”. *Odrzucone:* usunąć `:for_sale_not_issued` z kontraktu — dopasowanie
+  przykładu do biblioteki, której reguła była błędna.
+- **Decyzja 3 w przykładzie:** zwrot innego przydziału przenosi komputer do biura — scenariusz „dotarł zwrot
+  innego przydziału” teraz oczekuje `wiped`, a odczyt „Inventory” wraca do warunku tylko na status (kolumna
+  przydziału z #120 usunięta nową migracją). Zgodność przydziałów to sprawa `Assignments`.
+  **Otwarte — skutek decyzji 3 (z przeglądu):** zwrot zarejestrowany z błędnym przydziałem (literówka, spóźniona
+  paczka poprzedniego przydziału) przenosi komputer do biura i pozwala wydać go komuś innemu, a prawdziwy
+  przydział zostaje otwarty. `Assignments` dziś niczego nie odrzuca: widać to tylko w raporcie, jako przebieg
+  przydziału bez `returned`. Przed decyzją 3 chronił przed tym warunek w `evolve/2`. Do rozstrzygnięcia przez
+  użytkownika, czy `Assignments` ma dostać agregat przydziału (z cyklem życia i odmową zwrotu cudzego przydziału),
+  czy raport wystarczy.
+- **`evolve/2`** czyta status silnika (zwrot i powrót z Innergo zmieniają stan tylko z `:returning` i
+  `:in_service`), nigdy go nie ustawia.
+- **Skill `change-contract`:** wiersz o dodaniu cyklu życia do agregatu z historią.
+- **Bez zmian:** enum statusu w read modelu „Inventory” powtarza etykiety cyklu życia — czytanie ich z cyklu życia
+  byłoby nowym słowem DSL-a, bez drugiego przykładu.
+- **Przegląd** (dwa równolegle): poprawność — rozluźnienie `T4` za szerokie (zawężone), zdanie w skillu o raporcie
+  sprzed LC3 (oznaczone), migracja padała na bazie sprzed #120 (`remove_if_exists`), wpisy w CHANGELOG
+  (poprawione), „dziewięć” strażników (trzynaście komend). Bez zmian: wiersze „Inventory” z danych dev sprzed
+  zmiany nie są przeliczane, bo deklaracja read modelu się nie zmieniła (dane testowe; `reset/0` na żądanie);
+  odmowa `:for_sale` w decyzji zamiast `or_rejects:` per status — nowe słowo bez drugiego przykładu.
+  Bezpieczeństwo — każdy dawny strażnik ma odpowiednik, żadna komenda nie dociera do decyzji tam, gdzie wcześniej
+  nie docierała; skutek decyzji 3 wyżej, jako otwarte.
 ### LC3 — co wyszło (4 października)
 
 Na `conformance/lc3-lifecycle`, od `main` po #122.

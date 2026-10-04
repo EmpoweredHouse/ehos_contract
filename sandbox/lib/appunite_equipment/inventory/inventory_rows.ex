@@ -3,9 +3,9 @@ defmodule AppuniteEquipment.Inventory.InventoryRows do
   Projects the spreadsheet's Inventory tab into `appunite_equipment_inventory`: one
   row per computer, rewritten by every event of it. A row keeps what the tab shows
   — where the computer is, whether it is set up, who has it, its asking price —
-  and, beside it, the assignment it is out on, which the tab does not show and the
-  query leaves out: a return of another assignment moves nothing, as in the
-  computer's own fold.
+  and nothing the tab does not. Where it is follows the computer's lifecycle: a
+  return brings a computer being returned to the office, whatever assignment it
+  names (#99, decision 3).
   """
 
   use AppuniteEquipment.Contracts.Computers, read_model: :inventory
@@ -43,36 +43,22 @@ defmodule AppuniteEquipment.Inventory.InventoryRows do
   def set_up(%SetUp{computer_id: id}), do: rewrite(id, set_up: true)
 
   @impl true
-  def issued(%Issued{
-        computer_id: id,
-        assignment_id: assignment,
-        employee_id: employee,
-        as_replacement: replacement
-      }),
-      do:
-        rewrite(id,
-          status: if(replacement, do: "replacement", else: "issued"),
-          employee_id: employee,
-          assignment_id: assignment
-        )
+  def issued(%Issued{computer_id: id, employee_id: employee, as_replacement: replacement}),
+    do:
+      rewrite(id,
+        status: if(replacement, do: "replacement", else: "issued"),
+        employee_id: employee
+      )
 
   @impl true
   def return_started(%ReturnStarted{computer_id: id}), do: rewrite(id, status: "returning")
 
   @impl true
-  # As in the computer's own fold, an observation that does not fit leaves the row
-  # where it is: a return only of a computer being returned on that assignment, a
-  # service return only of one in service, an end only of one that has not ended.
-  def returned(%Returned{computer_id: id, assignment_id: assignment}) do
-    repo().update_all(
-      from(r in @table,
-        where: r.computer_id == ^id and r.status == "returning" and r.assignment_id == ^assignment
-      ),
-      set: [status: "in_office", set_up: false, employee_id: nil, assignment_id: nil]
-    )
-
-    :ok
-  end
+  # As in the computer's lifecycle, an observation that does not fit leaves the row
+  # where it is: a return only of a computer being returned, a service return only
+  # of one in service, an end only of one that has not ended.
+  def returned(%Returned{computer_id: id}),
+    do: rewrite_when(id, ["returning"], status: "in_office", set_up: false, employee_id: nil)
 
   @impl true
   def wiped(%Wiped{computer_id: id}), do: rewrite(id, set_up: false)
@@ -111,13 +97,7 @@ defmodule AppuniteEquipment.Inventory.InventoryRows do
 
   @impl true
   def lost(%Lost{computer_id: id}),
-    do:
-      rewrite_unless_ended(id,
-        status: "lost",
-        employee_id: nil,
-        assignment_id: nil,
-        reserved: false
-      )
+    do: rewrite_unless_ended(id, status: "lost", employee_id: nil, reserved: false)
 
   @impl true
   def reset do

@@ -488,9 +488,11 @@ defmodule EhOsContract.ContractLifecycleTest do
                "T4: command :reopen_visit or_rejects: :only_a_booked_visit, which is not in its " <>
                  "rejects:; add it there"
 
+      # Issued in a status none of its events leaves, with no rule but or_rejects: to
+      # refuse on there: the decision could only raise (plan LC4a).
       assert message =~
-               "T4: command :readmit is issued from :in_progress, and no event it emits has a " <>
-                 "transition out of it"
+               "T4: command :readmit is issued from :in_progress, which no event it emits " <>
+                 "leaves, and rejects: names no rule but its or_rejects: to refuse on there"
 
       refute message =~ "T4: command :readmit is issued from :booked"
 
@@ -547,6 +549,58 @@ defmodule EhOsContract.ContractLifecycleTest do
                "T4: command :draft_visit creates: its aggregate, and emits none of its " <>
                  "lifecycle's initial events, so the aggregate it makes would have no status " <>
                  "(lifecycle_creates.ex:"
+    end
+
+    test "control: a status no event leaves compiles when the decision has a rule to refuse on there" do
+      model =
+        compile_contract("LifecycleFiner", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+
+            invariant :only_a_booked_visit, "Tylko umówiona wizyta"
+            invariant :not_while_paid, "Nie po opłaceniu"
+
+            lifecycle do
+              status :booked, "Umówiona"
+              status :paid, "Opłacona"
+              status :closed, "Zamknięta", terminal: true
+
+              initial :booked, on: :visit_booked
+              transition :booked, :visit_paid, :paid
+              transition :booked, :visit_closed, :closed
+              transition :paid, :visit_closed, :closed
+            end
+
+            command :book_visit, "Umówienie", by: :reception, emits: :visit_booked
+            command :close_visit, "Zamknięcie", by: :reception, emits: :visit_closed
+
+            command :pay_visit, "Opłata", by: :reception, emits: :visit_paid,
+              from: [:booked, :paid], or_rejects: :only_a_booked_visit,
+              rejects: [:only_a_booked_visit, :not_while_paid]
+
+            event :visit_booked, "Umówiono"
+            event :visit_paid, "Opłacono"
+            event :visit_closed, "Zamknięto", terminal: true
+          end
+
+          scenario "a closed visit is not paid" do
+            given :visit_booked
+            given :visit_closed
+            command :pay_visit
+            rejected :only_a_booked_visit
+          end
+
+          scenario "a paid visit is not paid again" do
+            given :visit_booked
+            given :visit_paid
+            command :pay_visit
+            rejected :not_while_paid
+          end
+
+        #{@process}
+        """)
+
+      assert %{from: [:booked, :paid]} = Enum.find(model.commands, &(&1.name == :pay_visit))
     end
   end
 end
