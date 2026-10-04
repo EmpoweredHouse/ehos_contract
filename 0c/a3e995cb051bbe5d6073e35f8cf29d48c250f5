@@ -1,0 +1,1 @@
+Merge of origin/main into LC4a (after #123): conflicts only in PLAN.md and CHANGELOG.md, both sides kept (the LC4a and LC3 entries). No code conflict. Gate on 0ca3e99: mix check EXIT=0 (sandbox 186, engine 1254, web 52, auth 285+1 property); check 0/29/10, 0/74/6.
