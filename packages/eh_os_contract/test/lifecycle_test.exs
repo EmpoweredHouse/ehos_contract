@@ -52,6 +52,7 @@ defmodule EhOsContract.LifecycleTest do
           {:closed, [:note_added], "in status :closed, which is terminal"},
           {:booked, [:visit_booked], "it starts an aggregate, and this one has started"},
           {nil, [:patient_arrived], "before the aggregate has a status"},
+          {nil, [:note_added], "before the aggregate has a status"},
           {:booked, [:visit_closed], "in status :booked, which no transition leaves with it"}
         ] do
       error =

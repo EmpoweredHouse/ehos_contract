@@ -788,13 +788,12 @@ defmodule EhOsContract.Dispatcher do
       impl = Implementations.fetch!(model, unit.kind, unit.name)
       folded = Implementations.folded_types(model, impl)
       {recorded, condition} = read_unit(repo, model, unit, command, folded)
-
-      {state, status} =
-        fold(job, unit, impl, folded_only(recorded, model, unit, folded), recorded)
-
+      # The status needs only the rows' types, so a command refused on it decodes nothing.
+      {before, status} = statuses(model, Lifecycle.of(unit), recorded)
       job = Map.merge(job, %{condition: condition, given: recorded})
 
       if Lifecycle.admits?(declaration, status) do
+        state = fold(job, unit, impl, folded_only(recorded, model, unit, folded), before, status)
         decide(job, unit, impl, state, status, %{command | __meta__: meta(ctx)}, repo)
       else
         # Plan LC2: outside the statuses its `from:` names, the command is refused on
@@ -1023,7 +1022,8 @@ defmodule EhOsContract.Dispatcher do
   # none — appended only if nothing it reads was appended after the head it read to.
   # A row of a type the contract declares and `evolve/2` does not fold is not decoded
   # (plan E11f-5): the state is a function of the folded ones alone, so it can neither
-  # change a decision nor stop one. A type the contract no longer declares is still
+  # change a decision nor stop one — except through an aggregate's status (plan LC2),
+  # which is computed from every row's type, and needs no row decoded. A type the contract no longer declares is still
   # decoded, and stops the stream: that is history a changed contract left behind.
   defp folded_only(recorded, _model, _unit, :all), do: recorded
 
@@ -1088,19 +1088,17 @@ defmodule EhOsContract.Dispatcher do
 
   # --- reading a stream --------------------------------------------------------------------
 
-  # The unit's state and, for an aggregate with a lifecycle, its status (plan LC2):
-  # computed from the names of every event of the stream, `all`, not only those
-  # `evolve/2` folds, and put into the state before each folded event, so `evolve/2`
-  # sees where the aggregate stood when the event happened. Whatever `evolve/2` puts
-  # there is overwritten: the status is the engine's.
-  defp fold(job, unit, impl, recorded, all) do
+  # The unit's state. For an aggregate with a lifecycle (plan LC2) the status — from
+  # the names of every event of the stream, not only those `evolve/2` folds — is put
+  # into the state before each folded event, `before` by position, so `evolve/2` sees
+  # where the aggregate stood when the event happened, and `status` after the last.
+  # Whatever `evolve/2` puts there is overwritten: the status is the engine's.
+  defp fold(job, unit, impl, recorded, before, status) do
     state =
       struct(
         Module.concat(Model.module_for(job.model, unit.kind, unit.name), State),
         Map.new(unit.identity, &{&1, Map.fetch!(job.command, &1)})
       )
-
-    {before, status} = statuses(job.model, Lifecycle.of(unit), all)
 
     state =
       if function_exported?(impl, :evolve, 2) do
@@ -1112,13 +1110,23 @@ defmodule EhOsContract.Dispatcher do
         |> Enum.zip(events)
         |> Enum.reduce(state, fn {row, event}, state ->
           state = with_status(state, unit, Map.get(before, row.position))
-          stage("evolve", fn -> impl.evolve(state, event) end)
+          stage("evolve", fn -> state!(impl.evolve(state, event), state, impl) end)
         end)
       else
         state
       end
 
-    {with_status(state, unit, status), status}
+    with_status(state, unit, status)
+  end
+
+  # `evolve/2` returns the unit's state. Anything else is a defect, named without the
+  # value: a state holds decoded fields, personal ones among them (v2 §17).
+  defp state!(%module{} = next, %module{}, _impl), do: next
+
+  defp state!(_other, %module{}, impl) do
+    raise ArgumentError,
+          "#{inspect(impl)}.evolve/2 returned what is not a %#{inspect(module)}{}; it returns " <>
+            "the state it was given, changed"
   end
 
   # The status before each row, by position, and after the last.

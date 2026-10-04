@@ -78,7 +78,8 @@ defmodule EhOsContract.Lifecycle do
   `ArgumentError` naming `command`: an event of an aggregate whose life has ended, an
   event that starts an aggregate already started or one not yet started without
   starting it, or an event a transition names out of other statuses than this one.
-  An event no transition names is allowed in every status that is not terminal.
+  An event no transition names is allowed in every status that is not terminal, once
+  the aggregate has started: before, only an initial event may be decided.
   """
   @spec decided!(t(), status(), atom(), [atom()]) :: status()
   def decided!(lifecycle, status, command, events) do
@@ -108,11 +109,11 @@ defmodule EhOsContract.Lifecycle do
       status == nil and starts ->
         {:ok, step(lifecycle, nil, event)}
 
+      status == nil and not starts ->
+        {:error, "before the aggregate has a status; it is not an initial event"}
+
       starts and not moves ->
         {:error, "in status #{inspect(status)}; it starts an aggregate, and this one has started"}
-
-      status == nil and moves ->
-        {:error, "before the aggregate has a status; it is not an initial event"}
 
       moves ->
         case step(lifecycle, status, event) do

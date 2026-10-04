@@ -8,7 +8,7 @@ defmodule EhOsContract.DispatchLifecycleTest do
 
   use EhOsContract.DataCase, async: false
 
-  alias EhOsContract.{Actor, CommandRecord, Event, Rejection}
+  alias EhOsContract.{Actor, CommandRecord, Coverage, Event, Rejection}
   alias LifecycleRig.Visits
   alias LifecycleRig.Visits.Commands.{AddNote, AdmitPatient, BookVisit, CancelVisit, CloseVisit}
   alias LifecycleRig.Visits.Commands.ReopenVisit
@@ -46,7 +46,7 @@ defmodule EhOsContract.DispatchLifecycleTest do
     assert {:error, %Rejection{invariant: :only_a_booked_visit}} = issue(AdmitPatient)
     assert {:error, %Rejection{invariant: :only_a_booked_visit}} = issue(CancelVisit)
 
-    assert log() == ["visit.visit_booked", "visit.patient_arrived"]
+    assert log() == ["visit.booked", "visit.patient_arrived"]
 
     # Recorded as the decision's own refusal would be, with what the stream held.
     assert [
@@ -57,7 +57,7 @@ defmodule EhOsContract.DispatchLifecycleTest do
                from(c in CommandRecord, where: c.outcome == "rejected", order_by: c.recorded_at)
              )
 
-    assert given == ["visit.visit_booked", "visit.patient_arrived"]
+    assert given == ["visit.booked", "visit.patient_arrived"]
   end
 
   test "a command in its from: reaches the decision, whose state holds the status as it stood" do
@@ -87,13 +87,18 @@ defmodule EhOsContract.DispatchLifecycleTest do
                  ~r/command :add_note decided :note_added in status :closed, which is terminal/,
                  fn -> issue(AddNote) end
 
-    assert log() == ["visit.visit_booked", "visit.patient_arrived", "visit.visit_closed"]
+    assert log() == ["visit.booked", "visit.patient_arrived", "visit.closed"]
   end
 
   test "a command before the visit exists may only start it" do
     assert_raise ArgumentError,
                  ~r/command :reopen_visit decided :patient_arrived before the aggregate has a status/,
                  fn -> issue(ReopenVisit) end
+
+    # An event no transition names, too: the aggregate would have history and no status.
+    assert_raise ArgumentError,
+                 ~r/command :add_note decided :note_added before the aggregate has a status/,
+                 fn -> issue(AddNote) end
 
     assert log() == []
   end
@@ -108,10 +113,37 @@ defmodule EhOsContract.DispatchLifecycleTest do
                actor: Actor.system(:front_desk)
              )
 
-    assert log() == ["visit.visit_booked", "visit.visit_cancelled", "visit.patient_arrived"]
+    assert log() == ["visit.booked", "visit.cancelled", "visit.patient_arrived"]
 
     # Still cancelled: closing is refused as for any visit not in progress.
     assert {:error, %Rejection{invariant: :only_an_open_visit}} = issue(CloseVisit)
+  end
+
+  test "an evolve/2 returning what is not the state is named, without the state's values" do
+    assert {:ok, _} = issue(BookVisit)
+    assert {:ok, _} = issue(AddNote)
+    Process.put(:lifecycle_rig_evolve_returns_map, true)
+
+    error = assert_raise ArgumentError, fn -> issue(AddNote) end
+
+    assert error.message ==
+             "LifecycleRig.Visit.evolve/2 returned what is not a " <>
+               "%LifecycleRig.Visits.Aggregates.Visit.State{}; it returns the state it was " <>
+               "given, changed"
+  after
+    Process.delete(:lifecycle_rig_evolve_returns_map)
+  end
+
+  test "coverage counts a scenario only when the events that set the status were there" do
+    # Refused for a visit never booked: not the scenario of a visit the patient came to.
+    assert {:error, %Rejection{}} = issue(AdmitPatient)
+    scenario = "a visit the patient came to is not admitted again"
+    assert scenario in Coverage.of(Visits).never_observed
+
+    assert {:ok, _} = issue(BookVisit)
+    assert {:ok, _} = issue(AdmitPatient)
+    assert {:error, %Rejection{}} = issue(AdmitPatient)
+    refute scenario in Coverage.of(Visits).never_observed
   end
 
   test "the callback's @doc says where it is issued, and what it is refused on elsewhere" do

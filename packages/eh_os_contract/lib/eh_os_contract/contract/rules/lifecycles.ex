@@ -21,7 +21,7 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
     A boundary's command has no `from:` at all (L1): a boundary has no lifecycle.
 
   An event no transition names moves nothing: it is allowed in every status that is
-  not terminal. Whether the run of the process ends with the aggregate's life is not
+  not terminal, once an initial event has started the aggregate. Whether the run of the process ends with the aggregate's life is not
   checked here: `terminal:` on an event ends a run, and a run may be correlated by
   other fields than the aggregate's identity.
   """
