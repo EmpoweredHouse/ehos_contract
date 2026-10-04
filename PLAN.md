@@ -69,6 +69,7 @@ diagramu) — „Dopisek 4 października — #99” i „LC… — co wyszło”
 ### Co zostało — i czyje to jest
 
 - **Następna praca z kodem — niewybrana**; kandydaci w „Wybór użytkownika na potem” niżej.
+- **AppUnite — zapotrzebowanie (`Demands`)** na `sandbox/appunite-demands` — „Dopisek 4 października (2)”.
 - **Po #99, decyzja użytkownika (4 października): raport wystarczy.** Zwrot odnotowany z błędnym przydziałem
   zwalnia komputer do ponownego wydania, a prawdziwy przydział zostaje otwarty — raport pokazuje jego niedokończony
   przebieg i to jest odpowiedź. *Odrzucone:* agregat przydziału w `Assignments` z odmową zwrotu cudzego przydziału
@@ -368,6 +369,51 @@ przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie p
 
 Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty, commity, opisy PR, `docs/adr/`,
 `README.md` — po angielsku; `PLAN.md` i `CLAUDE.md` po polsku. Pełna reguła — `CLAUDE.md`.
+
+## Dopisek 4 października (2) — AppUnite: zapotrzebowanie na komputer (`Demands`)
+
+**Skąd.** Emil rozpisał proces z głowy jeszcze raz (szkic `cf.pdf`, opisany w destylacji, dopisek 4 października) i
+odpowiedział na pytania o niego. Szkic zaczyna się od **osoby**: nowa osoba albo kradzież prowadzą do zakupu w
+Innergo albo do komputera z półki. Model tego nie miał — zamówienie było komputerem bez numeru seryjnego, z
+opcjonalnym „dla kogo”, a kradzież niczego nie otwierała.
+
+**Decyzje użytkownika (4 października):**
+1. **Komputer powstaje przy rejestracji z faktury, osoba przychodzi potem** („wolę, żeby był wprowadzony komputer, a
+   później przypisana osoba”). *Odrzucone:* komputer od zamówienia (stan „New” komputera) — tak było od #120.
+2. **Przypisanie, konto pracownika, paczka i kurier to jeden ruch z wydaniem.** *Odrzucone:* osobny status
+   „przypisany” i agregat przydziału — nie ma momentu między przypisaniem a wydaniem.
+3. **Zapotrzebowanie otwierają cztery powody:** nowa osoba, kradzież, awaria, wymiana; **zamyka je tylko wydanie**.
+
+**Rozstrzygnięcia asystenta (mechanika):**
+- **Nowy kontrakt `Demands`** z agregatem zapotrzebowania i cyklem życia `Otwarte → New → Zaspokojone` (osobny
+  przebieg, osobna korelacja — nie da się go zmieścić w `Computers`). `issued` niesie wymagane `demand_id`.
+- **Dwie polityki `:in_transaction`** na zdarzeniach `Computers`: wydanie zamyka zapotrzebowanie, kradzież otwiera
+  nowe dla tej osoby; nową osobę, awarię i wymianę otwiera Magda. *Odrzucone:* `:at_least_once` — skutek ma być
+  zdecydowany w transakcji zdarzenia. Wyjątek cofa oba; **odmowa już nie** (niżej, otwarte).
+- **Tożsamość komputera zostaje generowana.** *Odrzucone:* numer seryjny jako tożsamość — tożsamość to `:id`, więc
+  ginie sprawdzenie formatu Apple (wartość `:serial_number`). Niezmiennik `received_once` znika: pilnował tylko, że
+  zamówiony komputer spisuje się raz, a dziś spisanie go tworzy. **Numeru seryjnego dwa razy nie pilnował ani on, ani
+  nic dziś** (dwa zamówienia mogły dostać ten sam numer); spisanie, które tworzy komputer, wymaga klucza
+  idempotencji, więc ta sama faktura wysłana dwa razy z tym samym kluczem daje jeden komputer.
+- **`lost` niesie przydział i osobę** — utrata jest tylko od pracownika (#126), więc oba są znane. `Assignments`
+  kończy nim przydział: wczorajsze ustalenie „skradziony komputer zostawia przydział otwarty” jest rozwiązane.
+- **Odczyt „Zapotrzebowania”** (kto czeka, od kiedy, czy zamówiony); „Inventory” traci wiersze „New”.
+
+**Otwarte z przeglądu (do decyzji użytkownika):**
+1. **Wydanie na zapotrzebowanie, które nie czeka.** `issue_computer` z literówką w `demand_id`, z cudzym zapotrzebowaniem
+   albo z już zaspokojonym przechodzi: polityka dostaje odmowę (`from:`), a odmowa reakcji zostawia pierwszą komendę
+   (dispatcher, krok 7). Prawdziwe zapotrzebowanie zostaje na liście czekających. Opcje: (a) wydanie odmawia, gdy
+   zapotrzebowanie nie czeka albo jest kogoś innego — decyzja komputera musiałaby czytać zapotrzebowanie (granica
+   `dcb` nad dwoma kontraktami); (b) odmowa polityki `:in_transaction` cofa całe zdarzenie — zmiana semantyki
+   biblioteki; (c) raport wystarczy, jak przy zwrocie cudzego przydziału.
+2. **Kradzież odnotowana tam, gdzie jej być nie może, i tak otwiera zapotrzebowanie.** `lost` z biura albo drugi raz
+   dla tego samego komputera jest dopisywany (zdarzenie rejestrowane spoza cyklu życia) i polityka reaguje — z osobą
+   i przydziałem, które wpisał rejestrujący. Pytanie do biblioteki: czy reakcja ma widzieć zdarzenie rejestrowane,
+   którego cykl życia nie dopuszcza.
+
+**Otwarte:** etapy procesu `Computers` (`intake → use → sale → ending`) powtarzają kolejność, którą dziś mówi cykl
+życia, i nic nie sprawdza, że się zgadzają — do decyzji użytkownika (opcje: reguła w bibliotece, usunięcie etapów,
+bez zmian).
 
 ## Dopisek 4 października — #99: cykl życia agregatu (stany i przejścia)
 

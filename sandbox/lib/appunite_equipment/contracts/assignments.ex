@@ -6,11 +6,12 @@ defmodule AppuniteEquipment.Contracts.Assignments do
 
   It decides nothing. Every decision about a computer is
   `AppuniteEquipment.Contracts.Computers`'s, because every rule is about one
-  computer; this contract takes the three events of an assignment from it and
+  computer; this contract takes the events of an assignment from it and
   declares their order, which the computer's own run cannot, since a computer goes
   round the loop many times. So the report can say, per assignment, which ones were
   issued and never came back, and which came back without a return being started.
 
+  A computer stolen from the employee ends the assignment too: `lost` names it.
   An assignment that is never returned is not a defect: an employee may keep a
   replacement (E), and an employee who stays keeps the computer for years.
   """
@@ -20,7 +21,8 @@ defmodule AppuniteEquipment.Contracts.Assignments do
   consumes AppuniteEquipment.Contracts.Computers, [
     :issued,
     :return_started,
-    :returned
+    :returned,
+    :lost
   ]
 
   process :assignment, "Przydział: od wydania komputera do jego powrotu do biura",
@@ -33,8 +35,10 @@ defmodule AppuniteEquipment.Contracts.Assignments do
 
     # Two stages, not one: a parcel that arrives with no return started is a path the
     # report should show, and inside one stage no order is claimed.
+    # A theft ends an assignment as a return does: the computer will not come back.
     stage :return do
       include :return_started
+      include :lost, terminal: true
     end
 
     stage :arrival do
