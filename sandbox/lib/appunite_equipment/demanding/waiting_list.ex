@@ -2,7 +2,8 @@ defmodule AppuniteEquipment.Demanding.WaitingList do
   @moduledoc """
   Answers who is waiting for a computer: the people starting soonest first, then
   those with no start date — a theft, a failure or an exchange, who are already
-  working — in the order their demands were opened.
+  working — in the order their demands were opened (generated identities are UUIDv7,
+  which sort by time).
   """
 
   use AppuniteEquipment.Contracts.Demands, query: :waiting_list

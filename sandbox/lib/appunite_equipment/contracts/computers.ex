@@ -18,7 +18,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
   issue to the return (distillation, "Zanim przeczytasz", shape B). A contract holds
   one process and every local event must carry its correlation, so that run is a
   sibling contract, `AppuniteEquipment.Contracts.Assignments`, which consumes the
-  three events of an assignment. What is left here is the computer's own run, from
+  events of an assignment. What is left here is the computer's own run, from
   the invoice to one of its four ends, in four stages: intake, use, sale, ending.
   The computer goes round the same loop for years, and a contract's stages claim an
   order only forwards, so the whole loop is one stage, `:use`, inside which no order
@@ -32,7 +32,7 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
   - **The order, and the person it is for** (`T l.58`, cf.pdf). A computer enters
     this contract when it is registered from the reseller's invoice, with no one
-    yet (E, 4 October 2026: "wprowadzony komputer, a później przypisana osoba").
+    yet (E, 4 October 2026: the computer is registered first, the person comes later).
     Who needs a computer, and whether one was bought for them, is a demand's
     (`AppuniteEquipment.Contracts.Demands`), and every issue answers one.
   - **The handover documents** (`T l.100–102`). The second person reads the serial
@@ -107,31 +107,31 @@ defmodule AppuniteEquipment.Contracts.Computers do
     # nothing sets it. Only what a decision depends on: "Zastępczy" is the assignment's,
     # and the setup is a flag beside it, since in the office a computer is either.
     lifecycle do
-      status(:in_office, "Office")
-      status(:issued, "W użytku")
-      status(:returning, "W trakcie zwrotu")
-      status(:in_service, "Innergo spa")
-      status(:for_sale, "For sale")
-      status(:sold, "Sold", terminal: true)
-      status(:donated, "Charity", terminal: true)
-      status(:disposed, "Utylizacja", terminal: true)
-      status(:lost, "Lost", terminal: true)
+      status :in_office, "Office"
+      status :issued, "W użytku"
+      status :returning, "W trakcie zwrotu"
+      status :in_service, "Innergo spa"
+      status :for_sale, "For sale"
+      status :sold, "Sold", terminal: true
+      status :donated, "Charity", terminal: true
+      status :disposed, "Utylizacja", terminal: true
+      status :lost, "Lost", terminal: true
 
-      initial(:in_office, on: :received)
-      transition(:in_office, :issued, :issued)
-      transition(:issued, :return_started, :returning)
-      transition(:returning, :returned, :in_office)
-      transition(:in_office, :sent_for_service, :in_service)
-      transition(:in_service, :service_returned, :in_office)
-      transition(:in_office, :listed_for_sale, :for_sale)
-      transition(:for_sale, :sold, :sold)
-      transition([:in_office, :for_sale], :donated, :donated)
-      transition([:in_office, :for_sale], :disposed, :disposed)
+      initial :in_office, on: :received
+      transition :in_office, :issued, :issued
+      transition :issued, :return_started, :returning
+      transition :returning, :returned, :in_office
+      transition :in_office, :sent_for_service, :in_service
+      transition :in_service, :service_returned, :in_office
+      transition :in_office, :listed_for_sale, :for_sale
+      transition :for_sale, :sold, :sold
+      transition [:in_office, :for_sale], :donated, :donated
+      transition [:in_office, :for_sale], :disposed, :disposed
 
       # The material knows one loss: a computer with an employee, stolen (E, "ostatnio
       # jeden został ukradziony"). A loss recorded anywhere else is still appended, and
       # the report shows it as a move the lifecycle does not allow.
-      transition(:issued, :lost, :lost)
+      transition :issued, :lost, :lost
     end
 
     # The computer is born here, with what the invoice says it is (cf.pdf: "rejestracja
@@ -378,8 +378,8 @@ defmodule AppuniteEquipment.Contracts.Computers do
 
       # One was stolen recently (E). Found again is "a small chance", and not modelled.
       # Only from an employee (#126), so it names the assignment it ends and the person
-      # who now needs another computer (cf.pdf: "ukradziono komputer" leads back to a
-      # purchase or the shelf).
+      # who now needs another computer (cf.pdf: a theft leads back to a purchase or the
+      # shelf).
       event :lost, "Komputer zgubiony albo skradziony",
         recorded_by: :equipment_manager,
         terminal: true,

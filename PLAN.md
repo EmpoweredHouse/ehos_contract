@@ -388,13 +388,28 @@ opcjonalnym „dla kogo”, a kradzież niczego nie otwierała.
 - **Nowy kontrakt `Demands`** z agregatem zapotrzebowania i cyklem życia `Otwarte → New → Zaspokojone` (osobny
   przebieg, osobna korelacja — nie da się go zmieścić w `Computers`). `issued` niesie wymagane `demand_id`.
 - **Dwie polityki `:in_transaction`** na zdarzeniach `Computers`: wydanie zamyka zapotrzebowanie, kradzież otwiera
-  nowe dla tej osoby. *Odrzucone:* `:at_least_once` — zamknięcie i otwarcie to ten sam krok biznesowy co zdarzenie.
+  nowe dla tej osoby; nową osobę, awarię i wymianę otwiera Magda. *Odrzucone:* `:at_least_once` — skutek ma być
+  zdecydowany w transakcji zdarzenia. Wyjątek cofa oba; **odmowa już nie** (niżej, otwarte).
 - **Tożsamość komputera zostaje generowana.** *Odrzucone:* numer seryjny jako tożsamość — tożsamość to `:id`, więc
-  ginie sprawdzenie formatu Apple (wartość `:serial_number`). Niezmiennik `received_once` znika bez straty: pilnował
-  tylko, że zamówiony komputer spisuje się raz, a dziś spisanie go tworzy.
+  ginie sprawdzenie formatu Apple (wartość `:serial_number`). Niezmiennik `received_once` znika: pilnował tylko, że
+  zamówiony komputer spisuje się raz, a dziś spisanie go tworzy. **Numeru seryjnego dwa razy nie pilnował ani on, ani
+  nic dziś** (dwa zamówienia mogły dostać ten sam numer); spisanie, które tworzy komputer, wymaga klucza
+  idempotencji, więc ta sama faktura wysłana dwa razy z tym samym kluczem daje jeden komputer.
 - **`lost` niesie przydział i osobę** — utrata jest tylko od pracownika (#126), więc oba są znane. `Assignments`
   kończy nim przydział: wczorajsze ustalenie „skradziony komputer zostawia przydział otwarty” jest rozwiązane.
 - **Odczyt „Zapotrzebowania”** (kto czeka, od kiedy, czy zamówiony); „Inventory” traci wiersze „New”.
+
+**Otwarte z przeglądu (do decyzji użytkownika):**
+1. **Wydanie na zapotrzebowanie, które nie czeka.** `issue_computer` z literówką w `demand_id`, z cudzym zapotrzebowaniem
+   albo z już zaspokojonym przechodzi: polityka dostaje odmowę (`from:`), a odmowa reakcji zostawia pierwszą komendę
+   (dispatcher, krok 7). Prawdziwe zapotrzebowanie zostaje na liście czekających. Opcje: (a) wydanie odmawia, gdy
+   zapotrzebowanie nie czeka albo jest kogoś innego — decyzja komputera musiałaby czytać zapotrzebowanie (granica
+   `dcb` nad dwoma kontraktami); (b) odmowa polityki `:in_transaction` cofa całe zdarzenie — zmiana semantyki
+   biblioteki; (c) raport wystarczy, jak przy zwrocie cudzego przydziału.
+2. **Kradzież odnotowana tam, gdzie jej być nie może, i tak otwiera zapotrzebowanie.** `lost` z biura albo drugi raz
+   dla tego samego komputera jest dopisywany (zdarzenie rejestrowane spoza cyklu życia) i polityka reaguje — z osobą
+   i przydziałem, które wpisał rejestrujący. Pytanie do biblioteki: czy reakcja ma widzieć zdarzenie rejestrowane,
+   którego cykl życia nie dopuszcza.
 
 **Otwarte:** etapy procesu `Computers` (`intake → use → sale → ending`) powtarzają kolejność, którą dziś mówi cykl
 życia, i nic nie sprawdza, że się zgadzają — do decyzji użytkownika (opcje: reguła w bibliotece, usunięcie etapów,

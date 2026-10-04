@@ -5,15 +5,17 @@ defmodule AppuniteEquipment.Contracts.Demands do
   Written on 4 October 2026 from the process owner's sketch of that day (cf.pdf)
   and their answers: a new person, a theft, a failure or an exchange opens a need,
   and it ends only when a computer is issued — from the shelf, or bought from the
-  reseller for it (E: "bez zamknięcia bez wydania"). The spreadsheet's `New`, a
+  reseller for it (E: never closed without an issue). The spreadsheet's `New`, a
   computer ordered for someone and not yet delivered, is this demand's status: the
   computer itself enters `AppuniteEquipment.Contracts.Computers` only when it is
   registered from the invoice, with no one yet.
 
-  Both ends of the run are policies on the computer's events, delivered
-  `:in_transaction`: an issue that answers a demand and a theft that leaves a
-  person without a computer are the same business step as the event, and neither
-  should stand if its consequence failed.
+  A new person, a failure and an exchange are opened by the person who manages the
+  equipment; a theft opens one by itself. Both policies on the computer's events
+  are delivered `:in_transaction`: the consequence is decided in the event's own
+  transaction, and a crash rolls both back. A refusal does not: an issue naming a
+  demand that is not open stands, and the demand stays on the waiting list — an open
+  question for the process owner (PLAN.md, 4 October (2)).
 
   What is left out: which computer the shelf holds for which demand. The person,
   the account and the courier are one move with the issue (E), so a demand is
@@ -36,13 +38,13 @@ defmodule AppuniteEquipment.Contracts.Demands do
               source: "E (2026-10-04): bez zamknięcia bez wydania"
 
     lifecycle do
-      status(:open, "Otwarte")
-      status(:ordered, "New")
-      status(:fulfilled, "Zaspokojone", terminal: true)
+      status :open, "Otwarte"
+      status :ordered, "New"
+      status :fulfilled, "Zaspokojone", terminal: true
 
-      initial(:open, on: :opened)
-      transition(:open, :computer_ordered, :ordered)
-      transition([:open, :ordered], :fulfilled, :fulfilled)
+      initial :open, on: :opened
+      transition :open, :computer_ordered, :ordered
+      transition [:open, :ordered], :fulfilled, :fulfilled
     end
 
     command :open_demand, "Otwórz zapotrzebowanie na komputer",
@@ -77,7 +79,7 @@ defmodule AppuniteEquipment.Contracts.Demands do
       field :computer_id, :id
     end
 
-    # A start date is known for a new person (T l.58: "kto jest z datą kiedy"), not
+    # A start date is known for a new person (T l.58: who comes, and when), not
     # for a theft or a failure.
     event :opened, "Otwarto zapotrzebowanie na komputer", source: "cf.pdf, E (2026-10-04)" do
       field :employee_id, :id, subject: :employee
