@@ -523,6 +523,32 @@ Na `sandbox/lc4a-appunite-lifecycle`, od `main` po #122. LC4 podzielone (rozstrz
   odmowa `:for_sale` w decyzji zamiast `or_rejects:` per status — nowe słowo bez drugiego przykładu.
   Bezpieczeństwo — każdy dawny strażnik ma odpowiednik, żadna komenda nie dociera do decyzji tam, gdzie wcześniej
   nie docierała; skutek decyzji 3 wyżej, jako otwarte.
+### LC3 — co wyszło (4 października)
+
+Na `conformance/lc3-lifecycle`, od `main` po #122.
+- **Raport, klucz `lifecycles`:** dla każdego agregatu z cyklem życia — ile agregatów miało zdarzenie w okresie,
+  każde zadeklarowane przejście (także start, `initial`) z liczbą przejechań, **nieprzejechane** (puste, gdy żaden
+  agregat nie miał zdarzenia — jak przy zerze przebiegów) i **niezadeklarowane**: zdarzenie, którego graf nie
+  dopuszcza tam, gdzie agregat stał (historia sprzed deklaracji, zarejestrowane, które nie pasowało, zdarzenie po
+  końcu), liczone po `(status, zdarzenie)`. To dwa pierwsze z czterech pytań, zadane przejściom — bez piątego.
+- **Liczenie:** `Lifecycle.tally/2`, czyste — status przez cały strumień, liczone tylko zdarzenia z okresu.
+  Niezadeklarowane statusu nie rusza, jak nie ruszyło go przy dopisaniu.
+- **„Jeszcze nie” zamiast „nigdy”** (z przeglądu): przejście osiągalne ze statusu, w którym stoi agregat, który
+  się nie skończył, idzie do `pending`, nie do nieprzejechanych — wizyta wciąż umówiona może zostać odwołana.
+  Ta sama reguła, co kroki w toku procesu. W grafie z pętlą (komputer) to znaczy: dopóki jakiś komputer żyje,
+  prawie nic nie jest „nigdy” — i to jest uczciwa odpowiedź, bo jeszcze może się stać.
+- **Wydajność** (z przeglądu): czytane są tylko strumienie agregatów ze zdarzeniem w okresie (podzapytanie), każdy
+  w całości, strumieniowo (`Repo.stream`) — pamięć to najdłuższy strumień, nie log. Wiersze bez `stream_id` nie
+  należą do żadnego agregatu. Graf indeksowany raz na wywołanie.
+- **Przegląd** (dwa równolegle): bezpieczeństwo i wydajność — nieograniczone czytanie całej historii (poprawione),
+  wiersze bez strumienia sklejane w jeden agregat (poprawione). Poprawność — „nigdy” dla przejść, które czekają
+  (poprawione, `pending`), powielona decyzja „czy przesunęło” (teraz `allowed/3` mówi `:moved`/`:stayed`),
+  kolejność niezadeklarowanych (stała), „in start” jak nazwa statusu (teraz „before the aggregate started”), testy
+  pętli i zdarzenia startowego, które jest też przejściem (dopisane). Bez zmian: filtr po nazwie kontraktu przy
+  przemianowanym module (jak `drift`, opisane w komentarzu), `NaiveDateTime` w `since:` (dziś nikt go nie podaje).
+- **Tekst raportu:** sekcja `LIFECYCLE: <etykieta agregatu>`; na wire klucz dopisany do
+  `eh_os_contract.conformance.v2` (addytywnie, bez nowej wersji kształtu), start to `null`.
+- **Poza LC3:** dashboard i diagram (LC4).
 
 ## Dopisek 3 października (2) — #94: style dashboardu z pakietu `ehos_design`, kopia usunięta
 

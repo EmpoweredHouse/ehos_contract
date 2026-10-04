@@ -83,51 +83,115 @@ defmodule EhOsContract.Lifecycle do
   """
   @spec decided!(t(), status(), atom(), [atom()]) :: status()
   def decided!(lifecycle, status, command, events) do
-    Enum.reduce(events, status, fn event, status ->
-      case allowed(lifecycle, status, event) do
-        {:ok, next} ->
-          next
+    graph = index(lifecycle)
 
+    Enum.reduce(events, status, fn event, status ->
+      case allowed(graph, status, event) do
         {:error, why} ->
           raise ArgumentError,
                 "command #{inspect(command)} decided #{inspect(event)} #{why}. Nothing was " <>
                   "appended."
+
+        {_moved_or_stayed, next} ->
+          next
       end
     end)
   end
 
-  defp allowed(lifecycle, status, event) do
-    terminal = for s <- lifecycle.statuses, s.terminal, do: s.name
-    starts = Enum.any?(lifecycle.initial, &(&1.on == event))
-    moves = Enum.any?(lifecycle.transitions, &(&1.event == event))
+  @doc """
+  What the aggregates' streams did with the lifecycle (plan LC3): each stream is its
+  events in order, as `{name, counted?}`, and only a counted event — one in the
+  report's period — is tallied, though every event moves the status. `streams` may be
+  a lazy `Stream`: it is read once, one stream at a time.
+
+  `aggregates` counts the streams with a counted event, and `standing` holds the
+  statuses those that have not ended stand in at their last event; `taken` counts each declared
+  move by `{from, event, to}`, an initial one with `from` `nil`; `undeclared` counts
+  by `{status, event}` each event the graph does not allow where the aggregate stood —
+  history from before the lifecycle was declared, a recorded event that did not fit,
+  an event after the aggregate's life ended. Such an event moves nothing, as it moved
+  nothing when it was appended. An event no transition names, in a status that is not
+  terminal, is neither. A `nil` name — a type the contract no longer declares — is
+  skipped.
+  """
+  @spec tally(t(), Enumerable.t()) :: %{
+          aggregates: non_neg_integer(),
+          standing: MapSet.t(atom()),
+          taken: %{{status(), atom(), atom()} => pos_integer()},
+          undeclared: %{{status(), atom()} => pos_integer()}
+        }
+  def tally(lifecycle, streams) do
+    graph = index(lifecycle)
+    empty = %{aggregates: 0, standing: MapSet.new(), taken: %{}, undeclared: %{}}
+
+    Enum.reduce(streams, empty, fn stream, acc ->
+      counted? = Enum.any?(stream, &elem(&1, 1))
+      acc = if counted?, do: %{acc | aggregates: acc.aggregates + 1}, else: acc
+
+      {acc, status} =
+        Enum.reduce(stream, {acc, nil}, fn
+          {nil, _counted?}, {acc, status} ->
+            {acc, status}
+
+          {event, counted?}, {acc, status} ->
+            case allowed(graph, status, event) do
+              {:moved, next} ->
+                acc = if counted?, do: bump(acc, :taken, {status, event, next}), else: acc
+                {acc, next}
+
+              {:stayed, status} ->
+                {acc, status}
+
+              {:error, _why} ->
+                acc = if counted?, do: bump(acc, :undeclared, {status, event}), else: acc
+                {acc, status}
+            end
+        end)
+
+      if counted? and status != nil and not MapSet.member?(graph.terminal, status),
+        do: %{acc | standing: MapSet.put(acc.standing, status)},
+        else: acc
+    end)
+  end
+
+  defp bump(acc, key, at), do: Map.update!(acc, key, &Map.update(&1, at, 1, fn n -> n + 1 end))
+
+  # The graph once per call, so a long stream does not scan the lifecycle per event.
+  defp index(lifecycle) do
+    %{
+      terminal: MapSet.new(for s <- lifecycle.statuses, s.terminal, do: s.name),
+      starts: Map.new(lifecycle.initial, &{&1.on, &1.status}),
+      moves: MapSet.new(lifecycle.transitions, & &1.event),
+      next: Map.new(lifecycle.transitions, &{{&1.from, &1.event}, &1.to})
+    }
+  end
+
+  defp allowed(graph, status, event) do
+    starts = Map.has_key?(graph.starts, event)
+    moves = MapSet.member?(graph.moves, event)
 
     cond do
-      status in terminal ->
+      MapSet.member?(graph.terminal, status) ->
         {:error,
          "in status #{inspect(status)}, which is terminal: the aggregate's life has ended"}
 
       status == nil and starts ->
-        {:ok, step(lifecycle, nil, event)}
+        {:moved, Map.fetch!(graph.starts, event)}
 
-      status == nil and not starts ->
+      status == nil ->
         {:error, "before the aggregate has a status; it is not an initial event"}
 
       starts and not moves ->
         {:error, "in status #{inspect(status)}; it starts an aggregate, and this one has started"}
 
       moves ->
-        case step(lifecycle, status, event) do
-          ^status ->
-            if Enum.any?(lifecycle.transitions, &(&1.from == status and &1.event == event)),
-              do: {:ok, status},
-              else: {:error, "in status #{inspect(status)}, which no transition leaves with it"}
-
-          next ->
-            {:ok, next}
+        case Map.fetch(graph.next, {status, event}) do
+          {:ok, next} -> {:moved, next}
+          :error -> {:error, "in status #{inspect(status)}, which no transition leaves with it"}
         end
 
       true ->
-        {:ok, status}
+        {:stayed, status}
     end
   end
 end
