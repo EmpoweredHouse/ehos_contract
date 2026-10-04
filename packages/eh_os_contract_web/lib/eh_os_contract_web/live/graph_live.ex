@@ -27,7 +27,10 @@ defmodule EhOsContract.Web.Live.Graph do
   picture (`EhOsContract.Graph.unit_to_mermaid/2`): state, commands, events,
   invariants and the scenarios that pin each path. The map and the units describe
   the model rather than the log; they are here since 28 September at the user's
-  word, beside the pages `mix eh_os_contract.pages` writes (plan, "Przed EG").
+  word, beside the pages `mix eh_os_contract.pages` writes (plan, "Przed EG"). An
+  aggregate that declares a lifecycle has it drawn beside its unit
+  (`EhOsContract.Graph.lifecycle_to_mermaid/3`, plan LC4b), with the log over it once
+  the socket is connected — the report's own counts, read once per contract.
 
   Rendering is client-side, through `app.js`'s `MermaidRender` hook: every
   diagram strings reach the template as plain data in a `data-graph`
@@ -86,13 +89,23 @@ defmodule EhOsContract.Web.Live.Graph do
   end
 
   defp select_process(socket, process) do
+    model = EhOsContract.Model.fetch(process.contract)
+
+    # The log under the lifecycles is read once per contract, and only once the socket
+    # is connected: the first, static render draws them declared, and the mount that
+    # follows lays the log over them (plan LC4b).
+    lifecycles =
+      if connected?(socket) and Enum.any?(model.units, &Map.get(&1, :lifecycle)),
+        do: EhOsContract.Conformance.lifecycles(model, [])
+
     units =
-      for unit <- EhOsContract.Model.fetch(process.contract).units do
+      for unit <- model.units do
         %{
           name: unit.name,
           label: unit.label,
           kind: unit.kind,
-          mermaid: EhOsContract.Graph.unit_to_mermaid(process.contract, unit.name)
+          mermaid: EhOsContract.Graph.unit_to_mermaid(process.contract, unit.name),
+          lifecycle: lifecycle(process.contract, unit, lifecycles)
         }
       end
 
@@ -102,6 +115,22 @@ defmodule EhOsContract.Web.Live.Graph do
       overlay_mermaid: EhOsContract.Graph.contract_to_mermaid(process.contract, overlay: true),
       units: units
     )
+  end
+
+  defp lifecycle(contract, unit, lifecycles) do
+    cond do
+      Map.get(unit, :lifecycle) == nil ->
+        nil
+
+      lifecycles == nil ->
+        EhOsContract.Graph.lifecycle_to_mermaid(contract, unit.name)
+
+      true ->
+        EhOsContract.Graph.lifecycle_to_mermaid(contract, unit.name,
+          overlay: true,
+          lifecycles: lifecycles
+        )
+    end
   end
 
   @impl true
@@ -182,6 +211,17 @@ defmodule EhOsContract.Web.Live.Graph do
           id={"unit-graph-#{unit.name}"}
           data-graph={unit.mermaid}
         ></pre>
+
+        <div :if={unit.lifecycle}>
+          <h4>Lifecycle, declared versus observed</h4>
+          <pre
+            class="mermaid"
+            phx-hook="MermaidRender"
+            phx-update="ignore"
+            id={"lifecycle-graph-#{unit.name}"}
+            data-graph={unit.lifecycle}
+          ></pre>
+        </div>
       </section>
     </div>
     """

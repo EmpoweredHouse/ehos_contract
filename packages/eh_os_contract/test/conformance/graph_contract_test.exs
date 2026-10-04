@@ -271,7 +271,7 @@ defmodule EhOsContract.GraphContractTest do
       diagram = Graph.unit_to_mermaid(EhOsContract.Fixtures.GraphMultiline, :visit)
 
       assert diagram =~
-               ~s(invariant_paid{"Paid in full ``` and 'nothing' owed "}:::invariant\n)
+               ~s(invariant_paid{"Paid in full ``` and #quot;nothing#quot; owed "}:::invariant\n)
 
       refute diagram =~ "\n```"
     end

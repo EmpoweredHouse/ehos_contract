@@ -485,6 +485,31 @@ Na `dsl/lc2-lifecycle-dispatch`, na gałęzi LC1 (#121).
   przed dekodowaniem (poprawione). Bez zmian: koszt O(zdarzenia × przejścia) na komendę — pomijalny przy odczycie
   całego strumienia.
 
+### LC4b — co wyszło (4 października)
+
+Na `graph/lc4b-lifecycle-diagram`, na gałęzi LC3 (#123).
+- **Diagram:** `Graph.Lifecycle` — start (czarna kropka), statusy w słowach klienta (kolor stanu agregatu), końce
+  grubszym obrysem, przejścia podpisane etykietą zdarzenia. Flowchart Mermaid, nie `stateDiagram`: te same dane
+  grafu co pozostałe obrazy i ten sam renderer na dashboardzie. Z logiem: liczby, „not yet”, „never” — z raportu
+  LC3 (`Conformance.lifecycles/2`, publiczne), nic liczone osobno; niezadeklarowane ruchy kropkowaną pętlą.
+- **`mix eh_os_contract.graph --contract M --lifecycle NAME [--overlay]`.**
+- **Dashboard:** na ekranie grafu diagram cyklu życia przy jednostce, z logiem; na ekranie kontraktu sekcja
+  „Lifecycle” zdaniami raportu. Fikstura dashboardu (`CaseHandling`) dostała cykl życia.
+- **Sprawdzone w przeglądarce:** diagram renderuje się na dashboardzie sandboxa przez Mermaid i jego sposób
+  wstawiania SVG (CSP — style przez CSSOM); polskie etykiety, kolory, pętla niezadeklarowanego ruchu.
+- **Przegląd** (dwa równolegle): obie strony — ekran grafu czytał cały log raz na jednostkę z cyklem życia,
+  w kwadracie i dwa razy na wejście (poprawione: raport raz na kontrakt, `lifecycles:` do rysunku, tylko po
+  podłączeniu socketu; pierwszy, statyczny render rysuje deklarację). Poprawność — `--since` bez `--overlay`
+  przy `--lifecycle` (odrzucane), pusty nagłówek na ekranie kontraktu (warunkowy, jak w raporcie tekstowym), test
+  „każde zdanie z `Sentence`” bez cyklu życia (rozszerzony), komunikat zadania dla kontraktu bez cyklu życia,
+  `Lifecycle.of/1` zamiast `Map.has_key?`, moduledoc ekranu grafu, README. Bez zmian: strzałki budowane z
+  deklaracji i dopasowywane do raportu (poprawne; brak dopasowania → bez liczby, nie wyjątek); brak pamięci
+  podręcznej między wyborami procesów jednego kontraktu.
+- **Pułapka (4 października):** migracja z niezmergowanej gałęzi zmienia **wspólną** bazę testową sandboxa
+  (`eh_os_contract_host_test`, stała nazwa) wszystkim worktree. Migracja LC4a usunęła kolumnę, której `main` używa;
+  brama LC4b (na LC3, bez LC4a) padła na trzech scenariuszach Inventory. Przywrócone ręcznie (kolumna z
+  powrotem, wiersz migracji usunięty). Do przeniesienia do `CLAUDE.md`.
+
 ### LC4a — co wyszło (4 października)
 
 Na `sandbox/lc4a-appunite-lifecycle`, od `main` po #122. LC4 podzielone (rozstrzygnięcie asystenta, mały diff):

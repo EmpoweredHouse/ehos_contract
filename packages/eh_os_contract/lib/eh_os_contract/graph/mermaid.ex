@@ -47,7 +47,8 @@ defmodule EhOsContract.Graph.Mermaid do
   # and a command's constraint a paler one;
   # an external system grey and dashed, as the declared shape draws it. On the maps
   # between them, a context is blue, a contract grey, and a publication on the wire
-  # teal.
+  # teal. An aggregate's statuses are its state's yellow, an end drawn heavier, and
+  # where a new aggregate starts is a black dot.
   @classes [
     command: "fill:#a7c7e7,stroke:#3b6ea5,color:#000",
     event: "fill:#ffb86c,stroke:#c46a00,color:#000",
@@ -64,7 +65,10 @@ defmodule EhOsContract.Graph.Mermaid do
     external: "fill:#eceff1,stroke:#546e7a,color:#000,stroke-dasharray: 4 3",
     context: "fill:#e3f2fd,stroke:#1565c0,color:#000",
     contract: "fill:#f5f5f5,stroke:#424242,color:#000",
-    publication: "fill:#e0f7fa,stroke:#00838f,color:#000"
+    publication: "fill:#e0f7fa,stroke:#00838f,color:#000",
+    status: "fill:#fff9c4,stroke:#f9a825,color:#000",
+    status_end: "fill:#fff9c4,stroke:#f9a825,color:#000,stroke-width:3px",
+    start: "fill:#212121,stroke:#212121,color:#fff"
   ]
 
   @doc """
@@ -131,8 +135,9 @@ defmodule EhOsContract.Graph.Mermaid do
   ends a quoted Mermaid label; a line break, which ends the line the label is on — and
   in a Markdown page, a line of three backticks after it would end the diagram's
   block; and `<`, `>` and `#`, which Mermaid would read as a tag or an entity, so
-  `a<b` and `Faktura #12;` print as written. The last three become Mermaid's own
-  entity codes.
+  `a<b` and `Faktura #12;` print as written. All four become Mermaid's own entity
+  codes, which it draws as the characters they stand for — a quote the client wrote
+  stays a quote (plan LC4b, CodeRabbit on #125: it used to become an apostrophe).
   """
   @spec escape(String.t()) :: String.t()
   def escape(label) do
@@ -140,7 +145,7 @@ defmodule EhOsContract.Graph.Mermaid do
     |> String.replace("#", "#35;")
     |> String.replace("<", "#lt;")
     |> String.replace(">", "#gt;")
-    |> String.replace(~s("), "'")
+    |> String.replace(~s("), "#quot;")
     |> String.replace(["\r\n", "\r", "\n"], " ")
   end
 
@@ -208,4 +213,7 @@ defmodule EhOsContract.Graph.Mermaid do
   defp shape(:context), do: {"(", ")"}
   defp shape(:contract), do: {"[", "]"}
   defp shape(:publication), do: {"[/", "\\]"}
+  defp shape(:status), do: {"(", ")"}
+  defp shape(:status_end), do: {"([", "])"}
+  defp shape(:start), do: {"((", "))"}
 end

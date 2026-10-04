@@ -361,6 +361,13 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Added
 
+- **LC4b (#99): an aggregate's lifecycle as a diagram.** `EhOsContract.Graph.lifecycle_to_mermaid/3` and
+  `mix eh_os_contract.graph --contract M --lifecycle NAME` draw where an aggregate starts, its statuses and ends,
+  and the transitions named by their events; with `overlay: true` / `--overlay` each arrow carries the report's
+  count, `not yet` or `never`, and a move the lifecycle does not allow is a dotted arrow.
+  `EhOsContract.Conformance.lifecycles/2` gives the report's `lifecycles` alone. The dashboard draws it beside
+  its unit, and the contract screen has the lifecycle's section in the report's sentences. A double quote in
+  any diagram's label is now Mermaid's `#quot;`, drawn as the quote the client wrote, not an apostrophe.
 - **LC4a (#99): `T4` lets a command be issued where its decision only refuses.** A status in `from:` that
   none of the command's events can leave is no longer refused when `rejects:` names a rule besides
   `or_rejects:`: `from:` says where the decision runs, not where it accepts, and a decision may refuse there on

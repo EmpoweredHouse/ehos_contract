@@ -17,6 +17,22 @@ defmodule EhOsContract.Web.TestHost.Fixtures.CaseHandling do
   aggregate :case, "Case" do
     identity :case_id
 
+    # Plan LC4b: a lifecycle for the screens to draw and report on. The suite only
+    # approves, so the rejection's transitions are never taken.
+    lifecycle do
+      status :open, "Open"
+      status :approved, "Approved"
+      status :rejected, "Rejected"
+      status :closed, "Closed", terminal: true
+      status :closed_rejected, "Closed as rejected", terminal: true
+
+      initial :open, on: :case_opened
+      transition :open, :case_approved, :approved
+      transition :open, :case_rejected, :rejected
+      transition :approved, :case_closed, :closed
+      transition :rejected, :case_closed_as_rejected, :closed_rejected
+    end
+
     command :open_case, "Open a case", by: :case_officer, emits: :case_opened
 
     command :decide_case, "Decide a case",

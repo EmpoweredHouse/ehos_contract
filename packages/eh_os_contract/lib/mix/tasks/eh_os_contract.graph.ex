@@ -15,11 +15,12 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   anything is built. With `--overlay` it is drawn as its contract's full graph
   instead, with the log laid over it (below).
 
-  ## `--contract` and `--unit`: a contract, whole or one unit of it
+  ## `--contract`, `--unit` and `--lifecycle`: a contract, whole or one unit of it
 
       mix eh_os_contract.graph --contract Rehmed.Contracts.VisitSettlement --output settlement.mmd
       mix eh_os_contract.graph --contract Rehmed.Contracts.VisitSettlement --overlay --output settlement.mmd
       mix eh_os_contract.graph --contract Rehmed.Contracts.VisitSettlement --unit visit_settlement --output unit.mmd
+      mix eh_os_contract.graph --contract AppuniteEquipment.Contracts.Computers --lifecycle computer --overlay --output computer.mmd
 
   `--contract` draws the contract's full graph (plan EG1,
   `EhOsContract.Graph.contract_to_mermaid/2`): commands, events, the consumers
@@ -27,8 +28,10 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   read models, queries and external systems around them. `--overlay` lays the log
   over its steps — runs per step, and what waits or fails there. `--unit` draws one
   unit instead (`EhOsContract.Graph.unit_to_mermaid/2`): its state, commands, events,
-  invariants, and how many scenarios pin each path. Both are Mermaid, so `--mermaid`
-  is not needed.
+  invariants, and how many scenarios pin each path. `--lifecycle` draws an
+  aggregate's lifecycle (`EhOsContract.Graph.lifecycle_to_mermaid/3`): where it
+  starts, its statuses and ends, the transitions between them; `--overlay` puts the
+  report's counts on them. All are Mermaid, so `--mermaid` is not needed.
 
   ## `--map` and `--system`: a domain
 
@@ -59,7 +62,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   mix eh_os_contract.graph draws one picture; name which:
 
       mix eh_os_contract.graph --process NAME --mermaid [--overlay [--since AT]]
-      mix eh_os_contract.graph --contract MODULE [--unit NAME | --overlay [--since AT]]
+      mix eh_os_contract.graph --contract MODULE [--unit NAME | --lifecycle NAME] [--overlay [--since AT]]
       mix eh_os_contract.graph --map DOMAIN
       mix eh_os_contract.graph --system DOMAIN [--overlay [--since AT]]
 
@@ -83,6 +86,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
           process: :string,
           contract: :string,
           unit: :string,
+          lifecycle: :string,
           map: :string,
           system: :string
         ]
@@ -158,6 +162,17 @@ defmodule Mix.Tasks.EhOsContract.Graph do
       opts[:unit] && (opts[:overlay] || opts[:since]) ->
         Mix.raise("--unit draws the declarations only; --overlay and --since apply to --contract")
 
+      opts[:lifecycle] && !opts[:contract] ->
+        Mix.raise("--lifecycle names an aggregate of a contract; pass --contract too")
+
+      opts[:lifecycle] && opts[:since] && !opts[:overlay] ->
+        Mix.raise(
+          "--lifecycle draws the declarations unless --overlay; --since applies to --overlay"
+        )
+
+      opts[:lifecycle] && opts[:unit] ->
+        Mix.raise("--unit and --lifecycle draw different pictures of a unit; pass one of them")
+
       opts[:map] && (opts[:overlay] || opts[:since]) ->
         Mix.raise(
           "--map draws the domain's declarations only; --overlay and --since apply to --system"
@@ -205,14 +220,39 @@ defmodule Mix.Tasks.EhOsContract.Graph do
     end
 
     text =
-      case opts[:unit] do
-        nil ->
+      case {opts[:unit], opts[:lifecycle]} do
+        {nil, nil} ->
           EhOsContract.Graph.contract_to_mermaid(contract,
             overlay: opts[:overlay] || false,
             since: since(opts)
           )
 
-        unit ->
+        {nil, unit} ->
+          with_lifecycle =
+            for u <- EhOsContract.Model.fetch(contract).units,
+                EhOsContract.Lifecycle.of(u),
+                do: Atom.to_string(u.name)
+
+          cond do
+            with_lifecycle == [] ->
+              Mix.raise("#{opts[:contract]} declares no lifecycle")
+
+            unit not in with_lifecycle ->
+              Mix.raise(
+                "#{opts[:contract]} has no aggregate #{unit} with a lifecycle. With one: " <>
+                  Enum.join(with_lifecycle, ", ")
+              )
+
+            true ->
+              :ok
+          end
+
+          EhOsContract.Graph.lifecycle_to_mermaid(contract, String.to_existing_atom(unit),
+            overlay: opts[:overlay] || false,
+            since: since(opts)
+          )
+
+        {unit, nil} ->
           units = Enum.map(EhOsContract.Model.fetch(contract).units, &Atom.to_string(&1.name))
 
           unless unit in units,
@@ -227,9 +267,22 @@ defmodule Mix.Tasks.EhOsContract.Graph do
     emit_output(text, opts)
   end
 
-  defp since(opts),
-    do:
-      opts[:since] && NaiveDateTime.from_iso8601!(opts[:since]) |> DateTime.from_naive!("Etc/UTC")
+  defp since(opts), do: opts[:since] && at(opts[:since])
+
+  # An offset is kept, so `+02:00` is the instant it names; a time written without
+  # one is UTC, as it always was here (`eh_os_contract.report` asks for the offset).
+  defp at(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, at, _offset} ->
+        at
+
+      _no_offset ->
+        case NaiveDateTime.from_iso8601(value) do
+          {:ok, naive} -> DateTime.from_naive!(naive, "Etc/UTC")
+          _ -> Mix.raise("--since needs an ISO8601 time, e.g. 2026-07-01T00:00:00Z")
+        end
+    end
+  end
 
   defp emit_output(text, opts) do
     case opts[:output] do

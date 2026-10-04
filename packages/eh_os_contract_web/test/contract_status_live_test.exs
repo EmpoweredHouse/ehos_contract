@@ -55,6 +55,11 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
     assert html =~ "Met in all 1 runs."
     # A v2 contract's scenarios, in the report's words: this one declares none.
     assert html =~ EhOsContract.Report.Sentence.scenarios_observed(%{declared: 0})
+
+    # Plan LC4b: the case's lifecycle — closed, so the rejection is never taken.
+    assert html =~ "Lifecycle: Case"
+    assert html =~ "Aggregates with an event in this period: 1."
+    assert html =~ "Open → Rejected (on: Case rejected)"
   end
 
   test "every sentence on the screen is one EhOsContract.Report.Sentence produced" do
@@ -100,6 +105,23 @@ defmodule EhOsContract.Web.Live.ContractStatusTest do
         assert html =~ escape(EhOsContract.Report.Sentence.rule(assertion))
         assert html =~ escape(EhOsContract.Report.Sentence.outcome(assertion))
       end
+    end
+
+    # Plan LC4b: the lifecycle's section, in the same sentences.
+    assert report.lifecycles != []
+
+    for lifecycle <- report.lifecycles do
+      if lifecycle.aggregates == 0,
+        do: assert(html =~ escape(EhOsContract.Report.Sentence.no_aggregates()))
+
+      if lifecycle.aggregates > 0 and lifecycle.untraversed == [] and lifecycle.pending == [],
+        do: assert(html =~ escape(EhOsContract.Report.Sentence.all_transitions_taken()))
+
+      for transition <- lifecycle.untraversed ++ lifecycle.pending,
+          do: assert(html =~ escape(EhOsContract.Report.Sentence.transition(transition)))
+
+      for move <- lifecycle.undeclared,
+          do: assert(html =~ escape(EhOsContract.Report.Sentence.transition_undeclared(move)))
     end
   end
 

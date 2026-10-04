@@ -1,8 +1,8 @@
 defmodule EhOsContract.Graph do
   @moduledoc """
   The contracts' graphs as Mermaid diagrams (notes §5, §9): one process's declared
-  shape, a contract's steps, one unit, a domain's context map and its contracts as
-  one system.
+  shape, a contract's steps, one unit, an aggregate's lifecycle, a domain's context
+  map and its contracts as one system.
 
   The picture of a contract and of a system can lay the log over the declarations:
   declared = possible (a superset), observed = actual (a weighted subset). **The
@@ -233,6 +233,16 @@ defmodule EhOsContract.Graph do
   """
   @spec unit_to_mermaid(module(), atom()) :: String.t()
   def unit_to_mermaid(contract, unit), do: EhOsContract.Graph.Unit.to_mermaid(contract, unit)
+
+  @doc """
+  An aggregate's lifecycle as a Mermaid diagram (plan LC4b): where it starts, its
+  statuses, its ends and the transitions between them; with `overlay: true` (and
+  `:since`, `:until`) the report's counts on each transition, and the moves it does
+  not allow as dotted arrows. See `EhOsContract.Graph.Lifecycle`.
+  """
+  @spec lifecycle_to_mermaid(module(), atom(), keyword()) :: String.t()
+  def lifecycle_to_mermaid(contract, unit, opts \\ []),
+    do: EhOsContract.Graph.Lifecycle.to_mermaid(contract, unit, opts)
 
   @doc """
   A domain's context map as a Mermaid diagram (plan EG2): its subdomains as groups of
