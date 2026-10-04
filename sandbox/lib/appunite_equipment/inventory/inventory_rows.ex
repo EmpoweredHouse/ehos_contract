@@ -15,16 +15,19 @@ defmodule AppuniteEquipment.Inventory.InventoryRows do
   @table "appunite_equipment_inventory"
   @ended ["sold", "donated", "disposed", "lost"]
 
+  # The row is born with the computer, at the invoice: an order for someone is a
+  # demand's, and shows in the demands' list, not here.
   @impl true
-  def ordered(%Ordered{computer_id: id, profile: profile, employee_id: employee}) do
+  def received(%Received{computer_id: id, profile: profile, serial_number: serial, chip: chip}) do
     repo().insert_all(
       @table,
       [
         %{
           computer_id: id,
           profile: Atom.to_string(profile),
-          status: "ordered",
-          employee_id: employee,
+          serial_number: serial,
+          chip: Atom.to_string(chip),
+          status: "in_office",
           set_up: false,
           reserved: false
         }
@@ -34,10 +37,6 @@ defmodule AppuniteEquipment.Inventory.InventoryRows do
 
     :ok
   end
-
-  @impl true
-  def received(%Received{computer_id: id, serial_number: serial, chip: chip}),
-    do: rewrite(id, serial_number: serial, chip: Atom.to_string(chip), status: "in_office")
 
   @impl true
   def set_up(%SetUp{computer_id: id}), do: rewrite(id, set_up: true)

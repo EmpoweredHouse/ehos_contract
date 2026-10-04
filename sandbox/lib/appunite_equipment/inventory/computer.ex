@@ -16,18 +16,10 @@ defmodule AppuniteEquipment.Inventory.Computer do
   @withdrawn [:m1]
 
   @impl true
-  def order_computer(%OrderComputer{} = order, _state) do
-    emit(%Ordered{
-      computer_id: order.computer_id,
-      profile: order.profile,
-      employee_id: order.employee_id
-    })
-  end
-
-  @impl true
   def receive_computer(%ReceiveComputer{} = invoice, _state) do
     emit(%Received{
       computer_id: invoice.computer_id,
+      profile: invoice.profile,
       serial_number: invoice.serial_number,
       chip: invoice.chip,
       price: invoice.price,
@@ -52,6 +44,7 @@ defmodule AppuniteEquipment.Inventory.Computer do
   def issue_computer(%IssueComputer{} = issue, _state) do
     emit(%Issued{
       computer_id: issue.computer_id,
+      demand_id: issue.demand_id,
       assignment_id: issue.assignment_id,
       employee_id: issue.employee_id,
       shipped_on: issue.shipped_on,
