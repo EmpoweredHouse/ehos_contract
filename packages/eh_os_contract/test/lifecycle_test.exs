@@ -62,4 +62,25 @@ defmodule EhOsContract.LifecycleTest do
       assert error.message =~ "Nothing was appended."
     end
   end
+
+  test "tally counts the moves taken and the events the graph did not allow, in the period only" do
+    streams = [
+      [
+        {:visit_booked, true},
+        {:patient_arrived, true},
+        {:visit_closed, true},
+        {:note_added, true}
+      ],
+      [{:visit_booked, false}, {:visit_closed, true}, {:patient_arrived, true}, {nil, true}]
+    ]
+
+    assert Lifecycle.tally(@lifecycle, streams) == %{
+             taken: %{
+               {nil, :visit_booked, :booked} => 1,
+               {:booked, :patient_arrived, :in_progress} => 2,
+               {:in_progress, :visit_closed, :closed} => 1
+             },
+             undeclared: %{{:closed, :note_added} => 1, {:booked, :visit_closed} => 1}
+           }
+  end
 end

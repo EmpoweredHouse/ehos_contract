@@ -361,6 +361,13 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Added
 
+- **LC3 (#99): the report asks the first two questions of a lifecycle.** For each aggregate that
+  declares one, `EhOsContract.Conformance` reports under `lifecycles` how often each declared transition was
+  taken in the period, which were never taken (none when no aggregate had an event), and which events the
+  lifecycle does not allow where the aggregate stood happened anyway — history from before the declaration,
+  a recorded event that did not fit, an event after the end. The status is walked over each aggregate's
+  whole stream; only the period's events are counted. The text report has a `LIFECYCLE` section; on the wire
+  the key is added to `eh_os_contract.conformance.v2`, and the start of an aggregate is `null`.
 - **LC2 (#99): the engine keeps an aggregate's status.** For an aggregate with a `lifecycle`, dispatch
   and `ScenarioCase` compute the status from the names of the stream's events and put it into the state as
   `status` (before each event `evolve/2` folds, and after the last). **A command outside its `from:` is

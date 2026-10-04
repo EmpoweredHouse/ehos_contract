@@ -219,6 +219,34 @@ defmodule EhOsContract.Report.Sentence do
   def all_steps_carried_out, do: "All agreed steps were carried out in this period."
 
   @doc """
+  A transition of an aggregate's lifecycle (plan LC3): the status it leaves, the event
+  that moves it, the status it enters. An aggregate with no status yet is at its start.
+  """
+  @spec transition(map()) :: String.t()
+  def transition(%{from: from, event: event, to: to}),
+    do: "#{status(from)} → #{name(to)} (on: #{name(event)})"
+
+  @doc """
+  An event the lifecycle does not allow where the aggregate stood, with how often:
+  it happened, and the status did not follow it.
+  """
+  @spec transition_undeclared(map()) :: String.t()
+  def transition_undeclared(%{from: from, event: event, count: count}),
+    do: "#{name(event)} in #{status(from)} — the status stayed  (#{count}x)"
+
+  @doc false
+  @spec no_aggregates() :: String.t()
+  def no_aggregates,
+    do: "The declared transitions cannot be judged: no aggregate had an event in this period."
+
+  @doc false
+  @spec all_transitions_taken() :: String.t()
+  def all_transitions_taken, do: "All declared transitions were taken in this period."
+
+  defp status(nil), do: "start"
+  defp status(ref), do: name(ref)
+
+  @doc """
   One thing that happened though it was not agreed: an event no declared command
   emits, by a command that does not emit it or written around dispatch.
   """

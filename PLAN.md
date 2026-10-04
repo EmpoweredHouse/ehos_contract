@@ -485,6 +485,20 @@ Na `dsl/lc2-lifecycle-dispatch`, na gałęzi LC1 (#121).
   przed dekodowaniem (poprawione). Bez zmian: koszt O(zdarzenia × przejścia) na komendę — pomijalny przy odczycie
   całego strumienia.
 
+### LC3 — co wyszło (4 października)
+
+Na `conformance/lc3-lifecycle`, od `main` po #122.
+- **Raport, klucz `lifecycles`:** dla każdego agregatu z cyklem życia — ile agregatów miało zdarzenie w okresie,
+  każde zadeklarowane przejście (także start, `initial`) z liczbą przejechań, **nieprzejechane** (puste, gdy żaden
+  agregat nie miał zdarzenia — jak przy zerze przebiegów) i **niezadeklarowane**: zdarzenie, którego graf nie
+  dopuszcza tam, gdzie agregat stał (historia sprzed deklaracji, zarejestrowane, które nie pasowało, zdarzenie po
+  końcu), liczone po `(status, zdarzenie)`. To dwa pierwsze z czterech pytań, zadane przejściom — bez piątego.
+- **Liczenie:** `Lifecycle.tally/2`, czyste — status przez cały strumień, liczone tylko zdarzenia z okresu.
+  Niezadeklarowane statusu nie rusza, jak nie ruszyło go przy dopisaniu.
+- **Tekst raportu:** sekcja `LIFECYCLE: <etykieta agregatu>`; na wire klucz dopisany do
+  `eh_os_contract.conformance.v2` (addytywnie, bez nowej wersji kształtu), start to `null`.
+- **Poza LC3:** dashboard i diagram (LC4).
+
 ## Dopisek 3 października (2) — #94: style dashboardu z pakietu `ehos_design`, kopia usunięta
 
 `eh-os` D-72 przeniósł design system do pakietu `ehos_design` (EmpoweredHouse/ehos-tools, tag

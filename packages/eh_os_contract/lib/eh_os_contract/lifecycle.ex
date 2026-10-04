@@ -96,6 +96,55 @@ defmodule EhOsContract.Lifecycle do
     end)
   end
 
+  @doc """
+  What the aggregates' streams did with the lifecycle (plan LC3): each stream is its
+  events in order, as `{name, counted?}`, and only a counted event — one in the
+  report's period — is tallied, though every event moves the status.
+
+  `taken` counts each declared move by `{from, event, to}`, an initial one with
+  `from` `nil`; `undeclared` counts by `{status, event}` each event the graph does not
+  allow where the aggregate stood — history from before the lifecycle was declared,
+  a recorded event that did not fit, an event after the aggregate's life ended. Such
+  an event moves nothing, as it moved nothing when it was appended. An event no
+  transition names, in a status that is not terminal, is neither.
+  """
+  @spec tally(t(), [[{atom() | nil, boolean()}]]) :: %{
+          taken: %{{status(), atom(), atom()} => pos_integer()},
+          undeclared: %{{status(), atom()} => pos_integer()}
+        }
+  def tally(lifecycle, streams) do
+    Enum.reduce(streams, %{taken: %{}, undeclared: %{}}, fn stream, acc ->
+      {acc, _status} =
+        Enum.reduce(stream, {acc, nil}, fn
+          {nil, _counted?}, {acc, status} ->
+            {acc, status}
+
+          {event, counted?}, {acc, status} ->
+            case allowed(lifecycle, status, event) do
+              {:ok, next} ->
+                moved? =
+                  if status == nil,
+                    do: true,
+                    else:
+                      Enum.any?(lifecycle.transitions, &(&1.from == status and &1.event == event))
+
+                acc =
+                  if moved? and counted?, do: bump(acc, :taken, {status, event, next}), else: acc
+
+                {acc, next}
+
+              {:error, _why} ->
+                acc = if counted?, do: bump(acc, :undeclared, {status, event}), else: acc
+                {acc, status}
+            end
+        end)
+
+      acc
+    end)
+  end
+
+  defp bump(acc, key, at), do: Map.update!(acc, key, &Map.update(&1, at, 1, fn n -> n + 1 end))
+
   defp allowed(lifecycle, status, event) do
     terminal = for s <- lifecycle.statuses, s.terminal, do: s.name
     starts = Enum.any?(lifecycle.initial, &(&1.on == event))

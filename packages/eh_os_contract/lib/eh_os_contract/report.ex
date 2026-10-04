@@ -30,6 +30,7 @@ defmodule EhOsContract.Report do
       header(report),
       deployment(report.deployment, report.wiring),
       Enum.map(report.processes, &process/1),
+      Enum.map(Map.get(report, :lifecycles, []), &lifecycle/1),
       scenarios(report.scenarios),
       drift(report.drift)
     ]
@@ -198,6 +199,37 @@ defmodule EhOsContract.Report do
   defp failing(steps) do
     ["  Agreed steps that are attempted and fail:"] ++
       for s <- steps, do: "    · " <> Sentence.step_failing(s)
+  end
+
+  # Plan LC3: an aggregate's lifecycle, under the same two questions as a process's
+  # paths — what was declared and never taken, what was taken and never declared.
+  @spec lifecycle(map()) :: [String.t()]
+  defp lifecycle(l) do
+    taken =
+      case {l.aggregates, l.untraversed} do
+        {0, _} ->
+          ["  " <> Sentence.no_aggregates()]
+
+        {_, []} ->
+          ["  " <> Sentence.all_transitions_taken()]
+
+        {_, transitions} ->
+          ["  Declared transitions never taken:"] ++
+            for t <- transitions, do: "    · " <> Sentence.transition(t)
+      end
+
+    undeclared =
+      case l.undeclared do
+        [] ->
+          []
+
+        moves ->
+          ["  Happened, though the lifecycle does not allow it there:"] ++
+            for m <- moves, do: "    · " <> Sentence.transition_undeclared(m)
+      end
+
+    ["LIFECYCLE: #{l.label}", "  Aggregates with an event in this period: #{l.aggregates}."] ++
+      taken ++ undeclared ++ [""]
   end
 
   @spec assertions([map()]) :: [String.t()]

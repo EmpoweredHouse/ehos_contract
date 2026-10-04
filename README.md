@@ -144,6 +144,9 @@ deliberately, and not one more:
 3. Which promises are being broken right now, and how often?
 4. Which contract version is deployed, and since when?
 
+For an aggregate that declares its lifecycle, the first two are asked of its transitions too: which
+declared transitions no aggregate took, and which moves the lifecycle does not allow happened anyway.
+
 Everything else already has an owner: performance is your APM's job, errors are your error
 tracker's job, **business state is the client application's job.** The library helps build that state —
 read models and queries are declared in the contract — but the dashboard never shows it. The day this library starts
