@@ -12,6 +12,7 @@ defmodule EhOsContractHost.Repo.Migrations.CreateAppuniteEquipmentInventory do
       add :status, :string, null: false
       add :set_up, :boolean, null: false
       add :employee_id, :string
+      add :assignment_id, :string
       add :asking_price, :bigint
       add :reserved, :boolean, null: false
     end

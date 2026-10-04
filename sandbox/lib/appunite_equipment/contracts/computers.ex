@@ -1073,4 +1073,34 @@ defmodule AppuniteEquipment.Contracts.Computers do
       %{computer_id: "computer-3", status: :sold}
     ]
   end
+
+  scenario "w Inventory zwrot innego przydziału zostawia komputer w drodze" do
+    given :ordered, %{profile: :developer}
+
+    given :received, %{
+      serial_number: "K7HQ2F9X4M",
+      chip: :m5,
+      price: 1_199_900,
+      purchased_on: "2026-09-29",
+      invoice_number: "FV/2026/09/118"
+    }
+
+    given :issued, %{
+      assignment_id: "assignment-ola-1",
+      employee_id: "employee-ola",
+      shipped_on: "2026-10-01",
+      as_replacement: false
+    }
+
+    given :return_started, %{
+      assignment_id: "assignment-ola-1",
+      reason: :exchange,
+      returned_on: "2027-03-31"
+    }
+
+    given :returned, %{assignment_id: "assignment-bartek-2"}
+    query :inventory_list
+
+    answers [%{status: :returning, employee_id: "employee-ola"}]
+  end
 end
