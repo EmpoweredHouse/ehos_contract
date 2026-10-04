@@ -267,9 +267,22 @@ defmodule Mix.Tasks.EhOsContract.Graph do
     emit_output(text, opts)
   end
 
-  defp since(opts),
-    do:
-      opts[:since] && NaiveDateTime.from_iso8601!(opts[:since]) |> DateTime.from_naive!("Etc/UTC")
+  defp since(opts), do: opts[:since] && at(opts[:since])
+
+  # An offset is kept, so `+02:00` is the instant it names; a time written without
+  # one is UTC, as it always was here (`eh_os_contract.report` asks for the offset).
+  defp at(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, at, _offset} ->
+        at
+
+      _no_offset ->
+        case NaiveDateTime.from_iso8601(value) do
+          {:ok, naive} -> DateTime.from_naive!(naive, "Etc/UTC")
+          _ -> Mix.raise("--since needs an ISO8601 time, e.g. 2026-07-01T00:00:00Z")
+        end
+    end
+  end
 
   defp emit_output(text, opts) do
     case opts[:output] do

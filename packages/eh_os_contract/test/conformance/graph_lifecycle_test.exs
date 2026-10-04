@@ -86,6 +86,36 @@ defmodule EhOsContract.GraphLifecycleTest do
     end
 
     @tag :tmp_dir
+    test "--since keeps the offset it is given, and reads a time without one as UTC", %{
+      tmp_dir: dir
+    } do
+      path = Path.join(dir, "since.mmd")
+      before = DateTime.utc_now()
+      {:ok, _} = EhOsContract.dispatch(Visits, %BookVisit{visit_id: "v-1"}, actor: reception())
+
+      # One hour after `before` on the clock of a zone two hours ahead: an hour before
+      # it in UTC, so the booking is in the period. Read without its offset, it would
+      # be an hour after, and the booking would not.
+      digits =
+        before |> DateTime.add(1, :hour) |> DateTime.to_naive() |> NaiveDateTime.to_iso8601()
+
+      draw = fn since ->
+        Mix.Tasks.EhOsContract.Graph.run(
+          ~w(--contract LifecycleRig.Visits --lifecycle visit --overlay --output) ++
+            [path, "--since", since]
+        )
+
+        File.read!(path)
+      end
+
+      assert draw.(digits <> "+02:00") =~ ~s'start -->|"Visit booked · 1x"| status_booked'
+      # The same digits without an offset are UTC: an hour after the booking.
+      assert draw.(digits) =~ ~s'start -->|"Visit booked · 0x"| status_booked'
+
+      assert_raise Mix.Error, ~r/--since needs an ISO8601 time/, fn -> draw.("yesterday") end
+    end
+
+    @tag :tmp_dir
     test "draws an aggregate's lifecycle", %{tmp_dir: dir} do
       path = Path.join(dir, "lifecycle.mmd")
 
