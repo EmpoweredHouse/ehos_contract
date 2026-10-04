@@ -991,7 +991,7 @@ A side effect on an event, outside the log.
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`handles`](#contract-effect-handles){: #contract-effect-handles .spark-required} | `atom \| list(atom)` |  | The events it reacts to. |
-| [`calls`](#contract-effect-calls){: #contract-effect-calls } | `atom \| list(atom)` | `[]` | The external systems it calls. |
+| [`calls`](#contract-effect-calls){: #contract-effect-calls } | `atom \| {atom, atom} \| list(atom \| {atom, atom})` | `[]` | The external systems it calls: `:p1`, or `{:p1, :submit_report}` naming one of the system's operations, which a system that declares operations requires. |
 | [`delivery`](#contract-effect-delivery){: #contract-effect-delivery } | `:in_transaction \| :at_least_once` | `:at_least_once` | When it runs. |
 | [`idempotency`](#contract-effect-idempotency){: #contract-effect-idempotency } | `[key: atom, owner: :self \| :downstream \| :infrastructure]` |  | What makes a second delivery harmless, and who keeps it so: `[key: :event_id, owner: :self]`. |
 | [`source`](#contract-effect-source){: #contract-effect-source } | `String.t` |  | Where the effect comes from in the material. |

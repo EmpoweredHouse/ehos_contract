@@ -111,7 +111,7 @@ defmodule Rehmed.Contracts.StatutoryReporting do
 
   effect :send_p1_report, "Wyślij zgłoszenie do rejestru P1",
     handles: :p1_report_queued,
-    calls: :p1,
+    calls: {:p1, :submit_report},
     idempotency: [key: :event_id, owner: :downstream]
 
   # The old watchdog "notified the manager at the moment the deadline had already

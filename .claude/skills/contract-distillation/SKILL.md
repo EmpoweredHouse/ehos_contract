@@ -74,7 +74,10 @@ confidence of everything downstream depends on it.
 6. **External systems**, named as a business fact ("the payer's eligibility system"), never by
    vendor: whether the application only sends to it, only receives, or both; what "unavailable"
    looks like, as a full sentence in the client's words; and whether "no answer" is the same as
-   "answered no" (it almost never is).
+   "answered no" (it almost never is). And what the application asks of it, where the material
+   names it — "accept a medical event report", "give the company's VAT status" — one operation
+   each, with its source (plan EP5a): once a system has operations, every effect that calls it
+   says which one.
 
 ## Each process
 

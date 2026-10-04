@@ -40,6 +40,8 @@ defmodule EhOsContract.DomainVocabularyTest do
                :expected_latency,
                :source
              ],
+             # Plan EP5a: what a system does when an effect calls it.
+             [:external, :operation] => [:name, :label, :source],
              [:relation] => [:type, :upstream, :downstream, :between, :terms, :source]
            }
   end

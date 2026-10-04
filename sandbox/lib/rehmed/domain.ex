@@ -121,7 +121,11 @@ defmodule Rehmed.Domain do
     direction: :bidirectional,
     unavailable_looks_like:
       "odrzucenie zgłoszenia albo brak łączności z rejestrem; certyfikat wygasł albo nie został wgrany",
-    source: "X-01"
+    source: "X-01" do
+    # Plan EP5a: the one thing the clinic asks of P1. Whether its answer tells one
+    # accepted event from a delivered one is `H64`, still open.
+    operation :submit_report, "Przyjmij zgłoszenie zdarzenia medycznego", source: "X-01, AGG-10"
+  end
 
   # X-02, X-03, X-04: LuxMed, Enelmed and TuZdrowie, which work identically
   # (2026-08-14), so one system with three configurations, not three. Nothing calls

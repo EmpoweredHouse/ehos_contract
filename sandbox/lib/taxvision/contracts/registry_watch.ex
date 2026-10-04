@@ -152,7 +152,7 @@ defmodule Taxvision.Contracts.RegistryWatch do
   # 03 §4.2, P: "kiedy 1. dzień miesiąca (cron) -> CheckRegistries".
   effect :look_up_registries, "Zapytaj rejestry publiczne",
     handles: :data_completeness_confirmed,
-    calls: :registries,
+    calls: {:registries, :look_up_company},
     idempotency: [key: :event_id, owner: :self],
     source: "03 §4.2" do
     # Prose alone: no scenario runs an effect (plan EP2).

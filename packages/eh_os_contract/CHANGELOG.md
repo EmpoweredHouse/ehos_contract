@@ -361,6 +361,13 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Added
 
+- **EP5a: what an external system does.** An `external` may declare `operation`s, ESDM's `capabilities`
+  (named otherwise, since a capability here is what EHOS grants an actor): `operation :submit_report,
+  "…", source: "X-01"`. Once it does, every effect's `calls:` to it names one, `calls: {:p1,
+  :submit_report}` (`X4`); `check` warns of an operation no effect calls (`operation-never-called`). The
+  effect's model keeps `calls` as the systems and adds `operations` only where named, and an external
+  without operations hashes as before, so no version moves until one is declared. The effect's `@doc`,
+  its page and the domain's page show them.
 - **EP4: a process manager's state in a scenario.** A process manager's scenario may say `state %{…}`, the
   fields its run holds after the trigger; `ScenarioCase` folds the delivered event after the reaction, as the
   engine does (a timer folds none), compares the fields named, and fails a step the engine would not take — a
