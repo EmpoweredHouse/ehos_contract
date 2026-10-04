@@ -135,8 +135,9 @@ defmodule EhOsContract.Graph.Mermaid do
   ends a quoted Mermaid label; a line break, which ends the line the label is on — and
   in a Markdown page, a line of three backticks after it would end the diagram's
   block; and `<`, `>` and `#`, which Mermaid would read as a tag or an entity, so
-  `a<b` and `Faktura #12;` print as written. The last three become Mermaid's own
-  entity codes.
+  `a<b` and `Faktura #12;` print as written. All four become Mermaid's own entity
+  codes, which it draws as the characters they stand for — a quote the client wrote
+  stays a quote (plan LC4b, CodeRabbit on #125: it used to become an apostrophe).
   """
   @spec escape(String.t()) :: String.t()
   def escape(label) do
@@ -144,7 +145,7 @@ defmodule EhOsContract.Graph.Mermaid do
     |> String.replace("#", "#35;")
     |> String.replace("<", "#lt;")
     |> String.replace(">", "#gt;")
-    |> String.replace(~s("), "'")
+    |> String.replace(~s("), "#quot;")
     |> String.replace(["\r\n", "\r", "\n"], " ")
   end
 
