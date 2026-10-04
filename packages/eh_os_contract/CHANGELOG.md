@@ -23,6 +23,13 @@ against it.
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+- **N1 refuses a query named like an event an actor records**, at the query's line. Both are capabilities named
+  `<domain>.<name>` (D14), and since `eh-os` D-73 the manifest offers both. L3's D14 already refused the pair when
+  the Mix compiler runs; N1 refuses it in the contract's own compile, before `Model.capabilities/1` could merge
+  the two into one capability.
+
 ## Unreleased — 0.3.0
 
 The move to the second contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`), from E1 to the cut, E11.

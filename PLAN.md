@@ -370,6 +370,35 @@ przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie p
 Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty, commity, opisy PR, `docs/adr/`,
 `README.md` — po angielsku; `PLAN.md` i `CLAUDE.md` po polsku. Pełna reguła — `CLAUDE.md`.
 
+## Dopisek 5 października — manifest oferuje query i zapisy (#133, `eh-os` D-73)
+
+**Skąd.** Test polowy (aplikacja `EmpoweredHouse/appunite-equipment`, z `ehosctl init`, wdrożona przez EHOS na
+lokalnym k3d): osoba z jedyną rolą aplikacji zalogowała się przez EHOS i dostała odmowę na pierwszej stronie —
+`missing_capability` na query `inventory_list`, w `eh_os_contract_auth_decisions`. `ehos.manifest/v2` znał tylko
+capability komendy, więc generator pomijał query i zapisy (`recorded_by:`), rola w EHOS ich nie miała, a credential
+też nie. Każda aplikacja, której ludzie czytają przez kontrakt, była na EHOS bezużyteczna.
+
+**Decyzja użytkownika (5 października): naprawić w bibliotekach, nie obchodzić w aplikacji.** Odrzucone:
+obejście w aplikacji (strony czytają tabele read modeli wprost przez Ecto — lista działa od razu, ale zapisy dalej
+odrzucone, a odczyt traci autoryzację kontraktu) i zatrzymanie testu na tym wyniku.
+
+**Kształt (decyzja użytkownika, zapisana w `eh-os` jako D-73, accepted):** capability ma dokładnie jeden z kluczy
+`command`, `query`, `record`, a `name` go powtarza. Odrzucone: `kind` + `declaration` (komenda staje się wyjątkiem albo
+przemianowanie zmienia digest każdego manifestu) i osobne listy `offers.queries`/`offers.records` (role, unikalność,
+diff i podgląd musiałyby znać trzy listy, a credential niesie i tak same nazwy).
+
+**Co zrobione tutaj:**
+
+- `mix eh_os_contract.manifest` emituje komendy, query i zapisy, które może wykonać ludzki aktor; role trzymają
+  wszystkie trzy. EHOS sprzed D-73 taki manifest odrzuci — najpierw wdraża się EHOS.
+- **N1 rozszerzone:** query nie może nosić nazwy zdarzenia, które zapisuje aktor. Obie są capability
+  `<domena>.<nazwa>`, a od D-73 manifest oferuje obie. Luki nie było — reguła L3 D14 odrzucała tę parę, gdy działa
+  kompilator Mixa — ale N1 odrzuca ją już przy kompilacji samego kontraktu, zanim `Model.capabilities/1` zlałby obie
+  w jedną capability.
+- **Query i komenda ze `scope:`** trafiają do manifestu bez wartości zakresu, więc każde wywołanie przez EHOS kończy
+  się `:unscoped_grant` (zamknięte, nic nie przyznaje), dopóki wiązanie nie umie nieść wartości (D-40).
+- Bez scope'ów: query ze `scope:` wychodzi jak komenda ze `scope:` dziś, a wiązanie wartości to D-40 (proposed).
+
 ## Dopisek 4 października (2) — AppUnite: zapotrzebowanie na komputer (`Demands`)
 
 **Skąd.** Emil rozpisał proces z głowy jeszcze raz (szkic `cf.pdf`, opisany w destylacji, dopisek 4 października) i
