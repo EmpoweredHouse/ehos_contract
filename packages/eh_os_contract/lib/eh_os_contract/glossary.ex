@@ -86,7 +86,8 @@ defmodule EhOsContract.Glossary do
 
   defp translated(term, language, across) do
     case Enum.find(term.translations, &(&1.language == language)) do
-      # The other end's word is the same whether or not this one is translated.
+      # The relation's line follows a term with or without a translation, and its word
+      # is the other end's as declared, in the client's language, as every pair is.
       nil ->
         Enum.join(["### #{term.text}", "", "_No translation into #{language}._" | across], "\n") <>
           "\n"
