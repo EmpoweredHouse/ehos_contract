@@ -17,8 +17,9 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
     `creates:` its aggregate emits one of its initial events and has no `from:`, since
     a new aggregate has no status yet. An event the command emits that a transition
     names leaves at least one status in `from:`, or emitting it could only ever be a
-    defect. A status in `from:` that no event of the command leaves is allowed: there
-    the decision refuses, on a rule finer than the status.
+    defect. A status in `from:` that no event of the command leaves is where the
+    decision refuses, on a rule finer than the status, so `rejects:` names one besides
+    `or_rejects:`.
     A boundary's command has no `from:` at all (L1): a boundary has no lifecycle.
 
   An event no transition names moves nothing: it is allowed in every status that is
@@ -302,21 +303,38 @@ defmodule EhOsContract.Contract.Rules.Lifecycles do
   end
 
   # Whether the graph lets the command's events out of the statuses it is issued in:
-  # each event a transition names leaves at least one of them. Checked only once every
-  # status in `from:` is a declared one that is not terminal, which the checks above
-  # report. A status in `from:` that none of the events can leave is allowed: `from:`
-  # says where the decision runs, not where it accepts, and a decision may refuse there
-  # on a rule finer than the status (plan LC4a, AppUnite's `:for_sale_not_issued`).
+  # each event a transition names leaves at least one of them. A status in `from:`
+  # that none of the events can leave is where the decision only refuses (plan LC4a,
+  # AppUnite's `:for_sale_not_issued`), so it needs a rule of its own in `rejects:`.
+  # Checked only once every status in `from:` is a declared one that is not terminal,
+  # which the checks above report.
   defp graph(command, what, where, statuses, allowed, moving) do
     terminal = for s <- statuses, s.terminal, do: s.name
     names = Enum.map(statuses, & &1.name)
 
     if Enum.all?(command.from, &(&1 in names and &1 not in terminal)) and not command.creates do
-      for event <- moving,
-          not Enum.any?(command.from, &MapSet.member?(allowed, {&1, event})) do
-        {"T4: #{what} emits #{inspect(event)}, and no transition moves #{where} with it out " <>
-           "of #{inspect(command.from)}", command}
-      end
+      dead =
+        for event <- moving,
+            not Enum.any?(command.from, &MapSet.member?(allowed, {&1, event})) do
+          {"T4: #{what} emits #{inspect(event)}, and no transition moves #{where} with it out " <>
+             "of #{inspect(command.from)}", command}
+        end
+
+      # A status none of the events leaves is where the decision refuses, so it needs
+      # a rule to refuse on besides `or_rejects:`, which the engine has already applied.
+      finer? = Enum.any?(command.rejects, &(&1 != command.or_rejects))
+
+      stuck =
+        for status <- command.from,
+            dead == [],
+            not finer?,
+            command.emits -- moving == [],
+            not Enum.any?(moving, &MapSet.member?(allowed, {status, &1})) do
+          {"T4: #{what} is issued from #{inspect(status)}, which no event it emits leaves, " <>
+             "and rejects: names no rule but its or_rejects: to refuse on there", command}
+        end
+
+      dead ++ stuck
     else
       []
     end

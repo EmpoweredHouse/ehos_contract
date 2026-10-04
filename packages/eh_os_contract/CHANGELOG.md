@@ -362,9 +362,10 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 ### Added
 
 - **LC4a (#99): `T4` lets a command be issued where its decision only refuses.** A status in `from:` that
-  none of the command's events can leave is no longer refused: `from:` says where the decision runs, not where
-  it accepts, and a decision may refuse there on a rule finer than the status (AppUnite's
-  `:for_sale_not_issued`). An emitted event that no status in `from:` lets out is still refused.
+  none of the command's events can leave is no longer refused when `rejects:` names a rule besides
+  `or_rejects:`: `from:` says where the decision runs, not where it accepts, and a decision may refuse there on
+  a rule finer than the status (AppUnite's `:for_sale_not_issued`). Without such a rule it is still refused, and
+  so is an emitted event that no status in `from:` lets out.
 - **LC2 (#99): the engine keeps an aggregate's status.** For an aggregate with a `lifecycle`, dispatch
   and `ScenarioCase` compute the status from the names of the stream's events and put it into the state as
   `status` (before each event `evolve/2` folds, and after the last). **A command outside its `from:` is
@@ -376,7 +377,7 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
   initial :status, on: :event; transition from, :event, to end`, and a command `from:` statuses with
   `or_rejects:` an invariant. `T1`–`T4` refuse a lifecycle that does not hold together: an unknown status or
   event, a status no `initial` reaches, a terminal status left or a non-terminal one with no way out, a
-  `from:` no event of the command can leave, a command that `creates:` the aggregate and emits no initial
+  `from:` an event of the command can leave from none of its statuses, a command that `creates:` the aggregate and emits no initial
   event. `from:` and `or_rejects:` are words of an aggregate's command only. A unit's model has `lifecycle`
   and a command's `from` and `or_rejects` only where declared, so no version moves until one is; the exported
   model carries them.
