@@ -146,6 +146,26 @@ defmodule EhOsContract.Contract.Build do
     }
     # Kept only where it is set, so no other unit's digest moves (plan EM3).
     |> then(&if unit.generated, do: Map.put(&1, :generated, unit.generated), else: &1)
+    # The same for a lifecycle (plan LC1).
+    |> then(fn built ->
+      case unit.lifecycle do
+        [lifecycle | _] -> Map.put(built, :lifecycle, lifecycle(lifecycle))
+        [] -> built
+      end
+    end)
+  end
+
+  # One transition per status it leaves, so a reader asking where an event moves the
+  # aggregate from a status finds one entry.
+  defp lifecycle(%Dsl.Lifecycle{} = lifecycle) do
+    %{
+      statuses: plain(lifecycle.statuses),
+      initial: for(i <- lifecycle.initials, do: %{status: i.status, on: i.on}),
+      transitions:
+        for t <- lifecycle.transitions, from <- t.from do
+          %{from: from, event: t.event, to: t.to, source: t.source}
+        end
+    }
   end
 
   # A command that creates its aggregate arrives without the generated identity, so
@@ -161,6 +181,8 @@ defmodule EhOsContract.Contract.Build do
     |> then(&if command.creates, do: &1, else: Map.delete(&1, :creates))
     # Kept only where it is set, for the same reason (plan E9c).
     |> then(&if command.scope, do: &1, else: Map.delete(&1, :scope))
+    # And for a lifecycle's precondition (plan LC1).
+    |> then(&if command.from == [], do: Map.drop(&1, [:from, :or_rejects]), else: &1)
     |> without_empty(:constraints)
     |> Map.merge(%{unit: unit.name, fields: identity ++ plain(command.fields)})
   end
@@ -454,7 +476,8 @@ defmodule EhOsContract.Contract.Build do
   # `correlate`, stages, givens and expectations keep their order.
   @sets ~w(fields params invariants consults starts_on on timers ends_on includes promises
            by emits rejects handles issues calls projects recorded_by match sets cancels events
-           idempotent_on answers functions rules constraints illustrates operations)a
+           idempotent_on answers functions rules constraints illustrates operations statuses from
+           initial transitions)a
 
   defp digest_form(%{} = declaration) do
     Map.new(declaration, fn

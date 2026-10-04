@@ -35,6 +35,10 @@ One process, and everything born in it.
    * stage
      * event
        * field
+   * lifecycle
+     * status
+     * initial
+     * transition
  * [dcb](#contract-dcb)
    * consults
    * state
@@ -117,6 +121,10 @@ A unit that decides over one stream, identified by its identity.
  * [stage](#contract-aggregate-stage)
    * event
      * field
+ * [lifecycle](#contract-aggregate-lifecycle)
+   * status
+   * initial
+   * transition
 
 
 
@@ -246,6 +254,8 @@ An intention an actor or a reaction issues to a unit.
 | [`rejects`](#contract-aggregate-command-rejects){: #contract-aggregate-command-rejects } | `atom \| list(atom)` | `[]` | The invariants of this unit, and the constraints of this command, it may refuse on. |
 | [`creates`](#contract-aggregate-command-creates){: #contract-aggregate-command-creates } | `boolean` | `false` | Whether it creates the aggregate, which the library then gives its generated identity. |
 | [`scope`](#contract-aggregate-command-scope){: #contract-aggregate-command-scope } | `atom` |  | The field a grant narrows it to: a field of the command, and a scope of every actor in `by:`. |
+| [`from`](#contract-aggregate-command-from){: #contract-aggregate-command-from } | `atom \| list(atom)` | `[]` | The statuses of its aggregate's lifecycle it may be issued in; dispatch refuses it in any other, before the decision, on `or_rejects:`. |
+| [`or_rejects`](#contract-aggregate-command-or_rejects){: #contract-aggregate-command-or_rejects } | `atom` |  | The invariant of the unit dispatch refuses it on outside the statuses in `from:`. |
 | [`source`](#contract-aggregate-command-source){: #contract-aggregate-command-source } | `String.t` |  | Where the command comes from in the material. |
 
 
@@ -481,6 +491,113 @@ One field of a state, a command, an event or a read model's row.
 
 
 
+### contract.aggregate.lifecycle
+
+
+The aggregate's statuses and the events that move it between them.
+
+### Nested DSLs
+ * [status](#contract-aggregate-lifecycle-status)
+ * [initial](#contract-aggregate-lifecycle-initial)
+ * [transition](#contract-aggregate-lifecycle-transition)
+
+
+
+
+
+
+### contract.aggregate.lifecycle.status
+```elixir
+status name, label
+```
+
+
+One status of the aggregate's lifecycle.
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#contract-aggregate-lifecycle-status-name){: #contract-aggregate-lifecycle-status-name .spark-required} | `atom` |  | The status's name. |
+| [`label`](#contract-aggregate-lifecycle-status-label){: #contract-aggregate-lifecycle-status-label .spark-required} | `String.t` |  | What the business calls it. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`terminal`](#contract-aggregate-lifecycle-status-terminal){: #contract-aggregate-lifecycle-status-terminal } | `boolean` | `false` | Whether the aggregate's life ends in it: no transition leaves it. |
+| [`source`](#contract-aggregate-lifecycle-status-source){: #contract-aggregate-lifecycle-status-source } | `String.t` |  | Where the status comes from in the material. |
+
+
+
+
+
+
+### contract.aggregate.lifecycle.initial
+```elixir
+initial status
+```
+
+
+The status a new aggregate takes with the first event of its stream.
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`status`](#contract-aggregate-lifecycle-initial-status){: #contract-aggregate-lifecycle-initial-status .spark-required} | `atom` |  | The status it starts in. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`on`](#contract-aggregate-lifecycle-initial-on){: #contract-aggregate-lifecycle-initial-on .spark-required} | `atom` |  | The event that starts it there. |
+
+
+
+
+
+
+### contract.aggregate.lifecycle.transition
+```elixir
+transition from, event, to
+```
+
+
+An event that moves the aggregate from one status to another.
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`from`](#contract-aggregate-lifecycle-transition-from){: #contract-aggregate-lifecycle-transition-from .spark-required} | `atom \| list(atom)` |  | The statuses it leaves. |
+| [`event`](#contract-aggregate-lifecycle-transition-event){: #contract-aggregate-lifecycle-transition-event .spark-required} | `atom` |  | The event of the aggregate that moves it. |
+| [`to`](#contract-aggregate-lifecycle-transition-to){: #contract-aggregate-lifecycle-transition-to .spark-required} | `atom` |  | The status it enters. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#contract-aggregate-lifecycle-transition-source){: #contract-aggregate-lifecycle-transition-source } | `String.t` |  | Where the transition comes from in the material. |
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -663,6 +780,8 @@ An intention an actor or a reaction issues to a unit.
 | [`rejects`](#contract-dcb-command-rejects){: #contract-dcb-command-rejects } | `atom \| list(atom)` | `[]` | The invariants of this unit, and the constraints of this command, it may refuse on. |
 | [`creates`](#contract-dcb-command-creates){: #contract-dcb-command-creates } | `boolean` | `false` | Whether it creates the aggregate, which the library then gives its generated identity. |
 | [`scope`](#contract-dcb-command-scope){: #contract-dcb-command-scope } | `atom` |  | The field a grant narrows it to: a field of the command, and a scope of every actor in `by:`. |
+| [`from`](#contract-dcb-command-from){: #contract-dcb-command-from } | `atom \| list(atom)` | `[]` | The statuses of its aggregate's lifecycle it may be issued in; dispatch refuses it in any other, before the decision, on `or_rejects:`. |
+| [`or_rejects`](#contract-dcb-command-or_rejects){: #contract-dcb-command-or_rejects } | `atom` |  | The invariant of the unit dispatch refuses it on outside the statuses in `from:`. |
 | [`source`](#contract-dcb-command-source){: #contract-dcb-command-source } | `String.t` |  | Where the command comes from in the material. |
 
 
