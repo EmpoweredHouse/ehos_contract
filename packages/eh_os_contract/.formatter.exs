@@ -91,7 +91,6 @@ spark_locals_without_parens = [
   handles: 1,
   idempotency: 1,
   idempotent_on: 1,
-  identified_by: 1,
   identity: 1,
   illustrates: 1,
   include: 1,

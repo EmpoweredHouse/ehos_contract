@@ -25,8 +25,7 @@ defmodule EhOsContract.CheckDirectionsTest do
         external :ksef, "KSeF", direction: :outbound
         external :p1, "P1", direction: :bidirectional
 
-        entity :invoice, "Faktura", context: :reporting, identified_by: :number do
-          field :number, :id, issued_by: :ksef
+        entity :invoice, "Faktura", context: :reporting, identity: :number, issued_by: :ksef do
         end
       end
 
@@ -69,7 +68,7 @@ defmodule EhOsContract.CheckDirectionsTest do
     assert [
              {"actor :bank_feed is backed_by: :ksef" <> _, {"clinic.ex", 7}},
              {"field :invoice_no is issued_by: :ksef" <> _, _command},
-             {"field :number is issued_by: :ksef" <> _, {"clinic.ex", 14}}
+             {"identity :number is issued_by: :ksef" <> _, {"clinic.ex", 13}}
            ] = Enum.sort(found)
   end
 end

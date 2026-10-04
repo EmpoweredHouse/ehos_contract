@@ -34,8 +34,7 @@ defmodule EhOsContract.GraphContractTest do
         external :registry, "Company registry", direction: :inbound
         external :mail, "Mail", direction: :outbound
 
-        entity :invoice, "Invoice", context: :invoicing, identified_by: :number do
-          field :number, :id, issued_by: :tax_office
+        entity :invoice, "Invoice", context: :invoicing, identity: :number, issued_by: :tax_office do
         end
       end
 

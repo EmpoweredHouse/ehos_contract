@@ -20,8 +20,7 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
         context :settlement, "Rozliczenia", subdomain: :core
         actor :reception, :human, "Recepcja"
 
-        entity :visit, "Wizyta", context: :settlement, identified_by: :visit_id do
-          field :visit_id, :id
+        entity :visit, "Wizyta", context: :settlement, identity: :visit_id do
         end
 
         value :visit_code, :id

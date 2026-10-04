@@ -160,7 +160,7 @@ defmodule EhOsContract.Domain.Build do
          for(
            %{__struct__: _} = e <- entities,
            entity_name(e) == entity,
-           do: if(entity == :relation, do: e |> plain() |> pairs(), else: plain(e))
+           do: built(entity, plain(e))
          )}
       end
 
@@ -185,6 +185,34 @@ defmodule EhOsContract.Domain.Build do
         ),
       digests: Map.put(digests(collections), "domain:#{name}", Digest.hash(own))
     })
+  end
+
+  defp built(:relation, relation), do: pairs(relation)
+  defp built(:entity, entity), do: identified(entity)
+  defp built(_kind, declaration), do: declaration
+
+  # Plan N1: an entity's identity is a field the library injects, as it injects a
+  # unit's: a required, non-personal `:id`, which the entity's `issued_by:` gives when
+  # it names an external. The model keeps the issuer on the field, where readers of an
+  # identifier look for it, and not twice.
+  defp identified(entity) do
+    field = %{
+      name: entity.identity,
+      type: :id,
+      optional: false,
+      label: nil,
+      personal: nil,
+      subject: nil,
+      default: nil
+    }
+
+    field =
+      case Map.fetch(entity, :issued_by) do
+        {:ok, issuer} -> Map.put(field, :issued_by, issuer)
+        :error -> field
+      end
+
+    entity |> Map.delete(:issued_by) |> Map.update!(:fields, &[field | &1])
   end
 
   # Kinds that took `source:` after their first domains were digested (plan EP1): a

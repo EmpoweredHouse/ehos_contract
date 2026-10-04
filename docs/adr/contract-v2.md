@@ -230,7 +230,12 @@ scenario        description!   scope · actor
 > `final: true`, not `terminal: true`: `terminal:` is an event's, where it ends a run of the process, and the two
 > meant different things in one contract. A **scenario** names the unit or reaction it is about with `target`,
 > not `scope`: `scope` is a command's and a query's, where it narrows a grant, and the model already called the
-> resolved declaration the scenario's `target`.
+> resolved declaration the scenario's `target`. An **entity** (EM2 above) declares `identity: :service_id`, not
+> `identified_by: :service_id` beside a field of that name: the library injects the field, a required, non-personal
+> `:id`, as it injects a unit's identity, and an identity some system gives says so on the entity with
+> `issued_by:`. The entity is one in Evans's sense — a thing with an identity whose lifecycle the application's code
+> or another system keeps, outside this log — and contracts point at it by that identity; EM2's "reference data"
+> was a narrower word for the same declaration.
 
 ### 4.3 Field types and options
 

@@ -35,7 +35,8 @@ defmodule EhOsContract.Domain.Rules do
   EHOS reads — `actor :"*", :human` would have been the role `"acme.*"` — and a
   system's is named in `by:` as a person's is.
 
-  **D8** (plan EL2): a field's `issued_by:` names an external of this domain.
+  **D8** (plan EL2): a field's `issued_by:` names an external of this domain, and so does
+  an entity's, which gives its injected identity (plan N1).
 
   **D9** (plan EL2b): a value's invariant is named as a function is — snake_case,
   once in its value, never clashing with what Elixir defines, as N2 holds a
@@ -51,7 +52,8 @@ defmodule EhOsContract.Domain.Rules do
   `subdomain :visits, "Wizyty", type: :core`; the kind is the subdomain's.
 
   **D6** (plan EM2): an entity belongs to a context this domain declares, and is
-  identified by one of its own fields, a required, non-personal `:id`. Its fields are
+  identified by its `identity`, a snake_case name the library injects as a required,
+  non-personal `:id` (plan N1), so no field of its own takes that name. Its fields are
   well formed and named once, as a value's are, each `subject:` a declared subject,
   and none is personal, nor of a value that holds personal data: an entity's rows are
   the application's, outside the log, where erasure cannot reach them. Every
@@ -515,21 +517,19 @@ defmodule EhOsContract.Domain.Rules do
         ]
 
     identity =
-      case Map.fetch(by_name, entity.identified_by) do
-        {:ok, %{type: :id, optional: false, personal: nil}} ->
+      cond do
+        not DslRules.name?(entity.identity) ->
+          [{"#{where}, identity #{inspect(entity.identity)} is not snake_case", entity}]
+
+        Map.has_key?(by_name, entity.identity) ->
+          [
+            {"#{where} declares field #{inspect(entity.identity)}, which is its identity; the " <>
+               "library injects it as a required, non-personal :id, so declare no field for it",
+             Map.fetch!(by_name, entity.identity)}
+          ]
+
+        true ->
           []
-
-        {:ok, _field} ->
-          [
-            {"#{where} is identified by #{inspect(entity.identified_by)}, which is not a " <>
-               "required, non-personal :id field", entity}
-          ]
-
-        :error ->
-          [
-            {"#{where} is identified by #{inspect(entity.identified_by)}, which is not one of its " <>
-               "fields", entity}
-          ]
       end
 
     names = MapSet.new(Map.keys(scope.values))
@@ -863,15 +863,28 @@ defmodule EhOsContract.Domain.Rules do
   defp d8(entities, _domain) do
     externals = for %External{name: name} <- entities, do: name
 
-    for %{__struct__: struct, fields: fields} = owner <- entities,
-        struct in [Value, Entity],
-        field <- fields,
-        field.issued_by != nil,
-        field.issued_by not in externals do
-      {"D8: #{describe(owner)}, field #{inspect(field.name)} is issued_by: " <>
-         "#{inspect(field.issued_by)}, which is not an external of this domain; " <>
-         suggest(field.issued_by, externals), field}
-    end
+    fields =
+      for %{__struct__: struct, fields: fields} = owner <- entities,
+          struct in [Value, Entity],
+          field <- fields,
+          field.issued_by != nil,
+          field.issued_by not in externals do
+        {"D8: #{describe(owner)}, field #{inspect(field.name)} is issued_by: " <>
+           "#{inspect(field.issued_by)}, which is not an external of this domain; " <>
+           suggest(field.issued_by, externals), field}
+      end
+
+    # Plan N1: an entity's identity is injected, so its issuer is the entity's option.
+    identities =
+      for %Entity{issued_by: issuer} = entity <- entities,
+          issuer != nil,
+          issuer not in externals do
+        {"D8: #{describe(entity)}, identity #{inspect(entity.identity)} is issued_by: " <>
+           "#{inspect(issuer)}, which is not an external of this domain; " <>
+           suggest(issuer, externals), entity}
+      end
+
+    fields ++ identities
   end
 
   # --- D9: a value's invariant is named as a function, with examples (plan EL2b) ----

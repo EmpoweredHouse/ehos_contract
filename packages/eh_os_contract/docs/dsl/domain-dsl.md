@@ -426,7 +426,7 @@ entity name, label
 ```
 
 
-Reference data with an identity that no event of this log changes: a period, an item of a catalogue. Its rows are the application's; a field names one as `{:id, entity}`.
+A thing with an identity whose lifecycle the application's code or another system keeps, outside this log: a period, an item of a catalogue. Contracts point at it by its identity, a field `{:id, entity}`.
 
 ### Nested DSLs
  * [field](#domain-entity-field)
@@ -445,7 +445,8 @@ Reference data with an identity that no event of this log changes: a period, an 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`context`](#domain-entity-context){: #domain-entity-context .spark-required} | `atom` |  | The context that owns it. |
-| [`identified_by`](#domain-entity-identified_by){: #domain-entity-identified_by .spark-required} | `atom` |  | The field that identifies it. |
+| [`identity`](#domain-entity-identity){: #domain-entity-identity .spark-required} | `atom` |  | The field that identifies it; injected into its fields as a required, non-personal `:id`. |
+| [`issued_by`](#domain-entity-issued_by){: #domain-entity-issued_by } | `atom` |  | The external of this domain that gives its identity. |
 | [`source`](#domain-entity-source){: #domain-entity-source } | `String.t` |  | Where the entity comes from in the material. |
 
 

@@ -76,8 +76,7 @@ defmodule EhOsContract.DomainRulesTest do
           context :settlement, "Rozliczenia", subdomain: :supporting
           actor :Reception, :human, "Recepcja"
 
-          entity :"Invoice", "Faktura", context: :settlement, identified_by: :invoice_no do
-            field :invoice_no, :id
+          entity :"Invoice", "Faktura", context: :settlement, identity: :invoice_no do
           end
         """)
 
@@ -625,8 +624,7 @@ defmodule EhOsContract.DomainRulesTest do
             field :street, :string, optional: true
           end
 
-          entity :invoice, "Faktura", context: :settlement, identified_by: :invoice_no do
-            field :invoice_no, :id
+          entity :invoice, "Faktura", context: :settlement, identity: :invoice_no do
             field :"Invoice No", :string
           end
         """)
@@ -635,34 +633,37 @@ defmodule EhOsContract.DomainRulesTest do
       assert message =~ "D3: value :address declares field :street twice (field_names.ex:9)"
 
       assert message =~
-               ~s|D6: entity :invoice, field :"Invoice No" is not snake_case (field_names.ex:14)|
+               ~s|D6: entity :invoice, field :"Invoice No" is not snake_case (field_names.ex:13)|
 
       refute message =~ ":invoice_no is not"
     end
   end
 
   describe "D8: a field's issuer is an external of this domain (plan EL2)" do
-    test "an entity's field issued by an unknown external is refused; control: a known one" do
+    test "an entity issued by an unknown external is refused, and its field; control: a known one" do
       message =
         refused("IssuedWrong", """
           context :settlement, "Rozliczenia", subdomain: :supporting
           external :ksef, "KSeF", direction: :outbound
 
-          entity :invoice, "Faktura", context: :settlement, identified_by: :invoice_no do
-            field :invoice_no, :id, issued_by: :kse
+          entity :invoice, "Faktura", context: :settlement, identity: :invoice_no, issued_by: :kse do
+            field :seller_id, :id, issued_by: :kse
           end
         """)
 
       assert message =~
-               "D8: entity :invoice, field :invoice_no is issued_by: :kse, which is not an external " <>
+               "D8: entity :invoice, identity :invoice_no is issued_by: :kse, which is not an " <>
+                 "external of this domain; did you mean :ksef? (issued_wrong.ex:7)"
+
+      assert message =~
+               "D8: entity :invoice, field :seller_id is issued_by: :kse, which is not an external " <>
                  "of this domain; did you mean :ksef? (issued_wrong.ex:8)"
 
       compiles("IssuedRight", """
         context :settlement, "Rozliczenia", subdomain: :supporting
         external :ksef, "KSeF", direction: :outbound
 
-        entity :invoice, "Faktura", context: :settlement, identified_by: :invoice_no do
-          field :invoice_no, :id, issued_by: :ksef
+        entity :invoice, "Faktura", context: :settlement, identity: :invoice_no, issued_by: :ksef do
         end
       """)
 
@@ -762,16 +763,15 @@ defmodule EhOsContract.DomainRulesTest do
           "EntityWrong",
           @periods <>
             """
-              entity :period, "Okres", context: :billing, identified_by: :period_key do
-                field :period_id, :id
+              entity :period, "Okres", context: :billing, identity: :"Period key" do
+                field :name, :string
               end
 
-              entity :service, "Usługa", context: :month, identified_by: :service_id do
+              entity :service, "Usługa", context: :month, identity: :service_id do
                 field :service_id, :id, optional: true
               end
 
-              entity :clinic, "Placówka", context: :month, identified_by: :clinic_id do
-                field :clinic_id, :id
+              entity :clinic, "Placówka", context: :month, identity: :clinic_id do
                 field :owner, :string, personal: :clinic_id
               end
             """
@@ -781,12 +781,12 @@ defmodule EhOsContract.DomainRulesTest do
                "D6: entity :period names context :billing, which this domain does not declare " <>
                  "(entity_wrong.ex:5)"
 
-      assert message =~
-               "D6: entity :period is identified by :period_key, which is not one of its fields"
+      assert message =~ ~s|D6: entity :period, identity :"Period key" is not snake_case|
 
       assert message =~
-               "D6: entity :service is identified by :service_id, which is not a required, " <>
-                 "non-personal :id field (entity_wrong.ex:9)"
+               "D6: entity :service declares field :service_id, which is its identity; the " <>
+                 "library injects it as a required, non-personal :id, so declare no field for it " <>
+                 "(entity_wrong.ex:10)"
 
       assert message =~
                "D6: entity :clinic, field :owner has personal:, and an entity's rows are the " <>
@@ -799,8 +799,7 @@ defmodule EhOsContract.DomainRulesTest do
           "ReferenceWrong",
           @periods <>
             """
-              entity :period, "Okres", context: :month, identified_by: :period_id do
-                field :period_id, :id
+              entity :period, "Okres", context: :month, identity: :period_id do
                 field :previous_id, {:id, :perod}
               end
 
@@ -814,15 +813,15 @@ defmodule EhOsContract.DomainRulesTest do
 
       assert message =~
                "D6: entity :period, field :previous_id: {:id, :perod} names an entity this " <>
-                 "domain does not declare (reference_wrong.ex:7)"
+                 "domain does not declare (reference_wrong.ex:6)"
 
       assert message =~
                "D6: value :line, field :service_id: {:id, :service} names an entity this domain " <>
-                 "does not declare (reference_wrong.ex:11)"
+                 "does not declare (reference_wrong.ex:10)"
 
       assert message =~
                "D6: value :clinic_ref is {:id, :clinic}, which names an entity this domain does " <>
-                 "not declare (reference_wrong.ex:14)"
+                 "not declare (reference_wrong.ex:13)"
     end
 
     test "the control: an entity, and fields naming it, compile into the model as :id" do
@@ -830,9 +829,8 @@ defmodule EhOsContract.DomainRulesTest do
         "EntityRight",
         @periods <>
           """
-            entity :period, "Okres", context: :month, identified_by: :period_id,
+            entity :period, "Okres", context: :month, identity: :period_id,
               source: "US-MON-01" do
-              field :period_id, :id
               field :name, :string
               field :ends_on, :date
               field :previous_id, {:id, :period}, optional: true
@@ -846,8 +844,16 @@ defmodule EhOsContract.DomainRulesTest do
 
       model = Module.concat(__MODULE__, EntityRight).__eh_os_contract_model__()
 
-      assert [%{name: :period, context: :month, identified_by: :period_id} = period] =
+      assert [%{name: :period, context: :month, identity: :period_id} = period] =
                model.entities
+
+      # Plan N1: the identity is injected first, as a unit's is.
+      assert [
+               %{name: :period_id, type: :id, optional: false, personal: nil, subject: nil}
+               | _
+             ] = period.fields
+
+      refute Map.has_key?(period, :issued_by)
 
       assert %{type: :id, refers_to: :period} =
                Enum.find(period.fields, &(&1.name == :previous_id))
@@ -873,16 +879,16 @@ defmodule EhOsContract.DomainRulesTest do
                 field :phone, :string, personal: :patient_id
               end
 
-              entity :card, "Karta", context: :month, identified_by: :card_id do
-                field :card_id, :id
-                field :card_id, :string
+              entity :card, "Karta", context: :month, identity: :card_id do
+                field :number, :string
+                field :number, :string
                 field :holder_id, :id, subject: :holder
                 field :contact, :contact
               end
             """
         )
 
-      assert message =~ "D6: entity :card declares field :card_id twice (entity_fields.ex:14)"
+      assert message =~ "D6: entity :card declares field :number twice (entity_fields.ex:14)"
 
       assert message =~
                "D6: entity :card, field :holder_id names subject :holder, which this domain does " <>
@@ -900,8 +906,7 @@ defmodule EhOsContract.DomainRulesTest do
           """
             subject :patient, "Pacjent"
 
-            entity :card, "Karta", context: :month, identified_by: :card_id do
-              field :card_id, :id
+            entity :card, "Karta", context: :month, identity: :card_id do
             end
 
             value :contact do

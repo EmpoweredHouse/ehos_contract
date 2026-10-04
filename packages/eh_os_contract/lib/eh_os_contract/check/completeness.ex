@@ -691,16 +691,21 @@ defmodule EhOsContract.Check.Completeness do
           field <- fields,
           do: field
 
+    # Plan N1: an entity's identity is injected, so its issuer is the entity's option.
+    issuers =
+      for(field <- domain_fields ++ contract_fields, do: {"field", field.name, field}) ++
+        for entity <- declared.entities, do: {"identity", entity.identity, entity}
+
     issued =
-      for field <- domain_fields ++ contract_fields,
-          external = Map.get(field, :issued_by),
+      for {what, name, at} <- issuers,
+          external = Map.get(at, :issued_by),
           direction[external] == :outbound do
         Finding.new(
           "external-direction-contradicted",
-          "field #{inspect(field.name)} is issued_by: #{inspect(external)}, which " <>
+          "#{what} #{inspect(name)} is issued_by: #{inspect(external)}, which " <>
             "#{inspect(model.module)} declares `direction: :outbound`: it only receives from this " <>
             "application",
-          Links.at(field)
+          Links.at(at)
         )
       end
 
