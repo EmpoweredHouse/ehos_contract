@@ -407,3 +407,37 @@ Brak. „Komputer czeka na pracownika" bez liczby (E).
   odczyty. Brak obietnic nie przeszkadza.
 - **Do decyzji przed pisaniem:** kształt przebiegu (A/B/C wyżej) — to praca nad biblioteką, do `PLAN.md`.
 - **Wymaga kolejnego przejścia:** proces 2 — czy to osobny kontrakt, czy tylko odczyt po pracowniku.
+
+---
+
+## Dopisek 4 października — szkic właściciela procesu (`cf.pdf`) i proces 2
+
+**Wejście:** szkic procesu rozpisany przez Emila z głowy (jedna strona, prostokąty i strzałki, `cf.pdf`, nie w repo)
+i jego odpowiedzi z tego dnia (`E2`). Waga: stakeholder-stated.
+
+Szkic, słowo w słowo: „Nowa osoba” → „zakup komputera z innergo” → „rejestracja komputera (inventory)” → „komputer
+PÓŁKA”, albo „Nowa osoba” → „komputer PÓŁKA” wprost. Z półki: „przypisanie pracownika oraz ustawienie komputera” →
+„wydanie komputera” → „komputer w użyciu” → „zwrot komputera” → „ocena potrzeby przekazania komputera do SPA innergo”
+→ „komputer w SPA” → półka, albo od razu na półkę. Z półki też: „sprzedaż komputera” → „wystawienie fv”. Z „komputer w
+użyciu”: „ukradziono komputer” → zakup albo półka (dla tej samej osoby).
+
+**Co szkic potwierdza:** pętlę z procesu 1 (zwrot → ocena → Innergo albo półka), sprzedaż kończoną fakturą, utratę
+tylko od pracownika.
+
+**Co szkic dokłada — proces 2 przestaje być otwarty.** Górna część szkicu jest o osobie, nie o komputerze: potrzeba
+komputera, zaspokajana zakupem albo półką. Odpowiedzi `E2`:
+
+| Pytanie | Odpowiedź |
+|---|---|
+| Czy przypisanie to osobny moment przed wydaniem? | Nie: Magda przypisuje osobę, pakuje komputer i zamawia kuriera naraz, „w podejściu atomicznym” |
+| Ustawienie po przypisaniu — pod osobę? | Tak, tworzone jest już konto pracownika (w tym samym ruchu) |
+| Co jeszcze otwiera potrzebę poza nową osobą i kradzieżą? | Awaria; wymiana — czwarty powód |
+| Komputer od zamówienia czy od rejestracji? | „Wolę, żeby był wprowadzony komputer, a później przypisana osoba” — od rejestracji |
+| Czy potrzeba może się zamknąć bez wydania? | Nie |
+| Charity, Utylizacja, Allegro, ryneczek, zastępczy, formatowanie — nie ma ich na szkicu | Skróty, obowiązują |
+
+Wynik: **zapotrzebowanie** (słowo nasze, nie zespołu) z czterema powodami, od otwarcia do wydania komputera;
+„New” (zamówiony dla osoby) to jego stan, nie komputera. Fakty: otwarto (osoba, powód, data startu przy nowej
+osobie), zamówiono w Innergo, zaspokojono wydaniem. Reguły: zamawia się raz i tylko dla czekającego; zamyka je jedno
+wydanie. Reakcje: wydanie zamyka zapotrzebowanie, na które odpowiada; kradzież otwiera nowe dla tej osoby. Odczyt:
+kto czeka na komputer (pytanie z `T l.78`, „dwa na półce, trzy onboardingi”).
