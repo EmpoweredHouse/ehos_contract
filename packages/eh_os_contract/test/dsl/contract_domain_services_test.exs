@@ -311,7 +311,8 @@ defmodule EhOsContract.ContractDomainServicesTest do
     # commit before EM2; the sandbox's Rehmed.Contracts.VisitSettlement kept its
     # recorded 2ae1d0074cbc the same way. An empty group hashed in would move both.
     # The ledger's moved once since, from 4e94b8af0057, with plan EP4: its reactions'
-    # `idempotency` names a key and an owner.
-    assert EhOsContract.Model.fetch(DispatchRig.Ledger).version == "06808eb90e9f"
+    # `idempotency` names a key and an owner; and from 06808eb90e9f with plan N1: its
+    # scenarios lost the raw `scope` key, keeping the resolved `target`.
+    assert EhOsContract.Model.fetch(DispatchRig.Ledger).version == "2d4f6e4d01fe"
   end
 end

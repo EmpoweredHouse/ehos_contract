@@ -225,6 +225,13 @@ scenario        description!   scope · actor
 > every identifier. Chosen over v4 for index locality in the log's `stream_id`; the rest is 74 random bits,
 > so identities are not guessable.
 
+> **5 October 2026, plan N1 — one word, one meaning, in both DSLs.** The reference above is left as written;
+> three of its words changed. A **status** that ends an aggregate's life (plan LC1, after this reference) is
+> `final: true`, not `terminal: true`: `terminal:` is an event's, where it ends a run of the process, and the two
+> meant different things in one contract. A **scenario** names the unit or reaction it is about with `target`,
+> not `scope`: `scope` is a command's and a query's, where it narrows a grant, and the model already called the
+> resolved declaration the scenario's `target`.
+
 ### 4.3 Field types and options
 
 - Built-in types: `:id :string :integer :decimal :boolean :date :timestamp {:enum, [...]} {:list, t}`, plus

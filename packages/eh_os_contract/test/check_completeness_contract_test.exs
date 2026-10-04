@@ -155,14 +155,14 @@ defmodule EhOsContract.CheckCompletenessContractTest do
         end
 
         scenario "dwa elementy" do
-          scope :handle_each
+          target :handle_each
           on :started
           issues :handle_item
           issues :handle_item
         end
 
         scenario "jeden element" do
-          scope :handle_one
+          target :handle_one
           on :started
           issues :handle_item
         end

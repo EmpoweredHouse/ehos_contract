@@ -202,7 +202,7 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
   end
 
   scenario "doba po wyjściu pacjenta bez zamknięcia — zadanie o zaległej dokumentacji" do
-    scope :documentation_chase
+    target :documentation_chase
     given :visit_completed
     on :documentation_due
     issues :create_documentation_overdue_task

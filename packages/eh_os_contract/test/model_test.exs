@@ -107,7 +107,7 @@ defmodule EhOsContract.ModelTest do
     end
 
     scenario "a sibling's registration carries direct and nested personal values" do
-      scope :welcome_registered
+      target(:welcome_registered)
 
       on :member_registered, %{
         profile_id: "profile-1",

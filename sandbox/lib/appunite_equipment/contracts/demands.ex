@@ -158,7 +158,7 @@ defmodule AppuniteEquipment.Contracts.Demands do
   end
 
   scenario "wydano komputer Oli — jej zapotrzebowanie się zamyka" do
-    scope :fulfil_on_issue
+    target :fulfil_on_issue
 
     on :issued, %{
       computer_id: "computer-1",
@@ -173,7 +173,7 @@ defmodule AppuniteEquipment.Contracts.Demands do
   end
 
   scenario "Bartkowi ukradziono komputer — Bartek czeka na nowy" do
-    scope :open_after_theft
+    target :open_after_theft
 
     on :lost, %{
       computer_id: "computer-1",

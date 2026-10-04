@@ -341,7 +341,6 @@ defmodule EhOsContract.Contract.Build do
     |> Map.merge(state)
     |> Map.merge(%{
       description: scenario.description,
-      scope: scenario.scope,
       target: %{kind: kind, name: target.name},
       actor: scenario.actor,
       given: plain(scenario.given),

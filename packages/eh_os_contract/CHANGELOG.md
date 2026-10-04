@@ -52,6 +52,10 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Changed — a host has to act
 
+- **N1: a scenario names what it is about with `target`, not `scope`.** `scope :remind_on_close` in a
+  `scenario` no longer compiles; write `target :remind_on_close`. `scope` stays a command's and a query's,
+  where it narrows a grant. S1 says "target". The model's scenario loses its raw `scope` key and keeps the
+  resolved `target`, so **the version moves** of every contract with a scenario.
 - **N1: a status that ends an aggregate's life is `final:`, not `terminal:`.** `status :closed, "Closed",
   terminal: true` no longer compiles; write `final: true`. `terminal:` stays an event's, where it ends a run of
   the process, so one word no longer means two things in one contract. T3 and T4 and dispatch's refusal say

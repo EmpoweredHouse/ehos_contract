@@ -229,7 +229,7 @@ defmodule Taxvision.Contracts.RegistryWatch do
   end
 
   scenario "odpowiedź rejestrów idzie do porównania" do
-    scope :compare_with_registries
+    target :compare_with_registries
 
     on :registry_status_checked, %{
       period_id: "2025-12",
@@ -243,7 +243,7 @@ defmodule Taxvision.Contracts.RegistryWatch do
 
   # A scenario's facts happen in January 2026, so the next check is on 1 February.
   scenario "sprawdzenie w styczniu — 1 lutego sprawdza się styczeń" do
-    scope :monthly_registry_check
+    target :monthly_registry_check
     given :data_completeness_confirmed, %{period_id: "2025-12"}
     on :next_month
     issues :check_registries, %{period_id: "2026-01"}
@@ -252,21 +252,21 @@ defmodule Taxvision.Contracts.RegistryWatch do
   # Plan EP4: the run's date, after each kind of confirmation. A check of the month the
   # date is for moves it on a month; a confirmation of any other month leaves it be.
   scenario "pierwsze potwierdzenie w styczniu — następne sprawdzenie 1 lutego" do
-    scope :monthly_registry_check
+    target :monthly_registry_check
     on :data_completeness_confirmed, %{period_id: "2025-12"}
     sets :next_month
     state %{check_at: "2026-02-01T00:00:00Z"}
   end
 
   scenario "sprawdzony styczeń — następne sprawdzenie 1 marca" do
-    scope :monthly_registry_check
+    target :monthly_registry_check
     given :data_completeness_confirmed, %{period_id: "2025-12"}
     on :data_completeness_confirmed, %{period_id: "2026-01"}
     state %{check_at: "2026-03-01T00:00:00Z"}
   end
 
   scenario "ponowne sprawdzenie listopada nie przesuwa terminu" do
-    scope :monthly_registry_check
+    target :monthly_registry_check
     given :data_completeness_confirmed, %{period_id: "2025-12"}
     on :data_completeness_confirmed, %{period_id: "2025-11"}
     state %{check_at: "2026-02-01T00:00:00Z"}

@@ -78,13 +78,13 @@ defmodule EhOsContract.ScenarioCaseTest do
     end
 
     scenario "płatność — przypomnienie" do
-      scope :remind_on_payment
+      target :remind_on_payment
       on :payment_recorded, %{amount: 1, paid_at: "2026-09-01T09:00:00Z"}
       issues :remind
     end
 
     scenario "pogoń — timer wydaje przypomnienie" do
-      scope :chase
+      target :chase
       given :payment_recorded, %{visit_id: "w-3", amount: 1, paid_at: "2026-09-01T09:00:00Z"}
       on :later
       issues :remind, %{visit_id: "w-3"}

@@ -173,6 +173,7 @@ spark_locals_without_parens = [
   subject: 1,
   subject: 2,
   subject: 3,
+  target: 1,
   term: 1,
   term: 2,
   terminal: 1,
