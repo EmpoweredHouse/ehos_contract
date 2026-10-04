@@ -63,9 +63,12 @@ confidence of everything downstream depends on it.
    with the definition people gave, words they said to avoid, translations if the team works in two
    languages.
 2. **Relations between contexts.** Who depends on whom, and how: one conforming to another, one
-   translating, two going separate ways. Only where the material says so.
+   translating, two going separate ways. Only where the material says so. Where the two sides
+   name one thing differently — or the same word means two things — the pair of words, each a
+   term of its side's glossary (plan EP5b).
 3. **Actors.** The roles that act (`:human`) and the systems that act on their own (`:system`,
-   backed by an external). Which context each belongs to.
+   backed by an external). Which context each belongs to, and what each answers for where the
+   material says it, one named responsibility each with its source (plan EP5b).
 4. **Subjects of personal data.** The kinds of person whose data may have to be erased — a patient,
    an employee — and which identifier names one.
 5. **Values.** Business quantities and codes that are not plain shapes: money and its unit, a

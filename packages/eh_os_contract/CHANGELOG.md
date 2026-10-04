@@ -361,6 +361,14 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Added
 
+- **EP5b: what an actor answers for, and the words a relation pairs.** An actor may name its
+  `responsibility`s (named prose, shown on the domain's page). **A relation's `terms` are pairs**, `terms:
+  [{"Wizyta", "Wizyta"}]` — the word of the first end (upstream, or the first of `between:`) and of the
+  second; a flat list of strings no longer compiles. D5 refuses a word of a context end that its glossary does
+  not define, and the glossary shows, under a term, what the other end calls it. Pairs are allowed in a
+  symmetric relation too, where ESDM has none. Moves the version of a domain whose relation has `terms`; an
+  actor without responsibilities hashes as before. **In the exported model** (`eh_os_contract.model.v1`) a
+  relation's `terms` is now a list of two-element lists of strings, no longer a list of strings.
 - **EP5a: what an external system does.** An `external` may declare `operation`s, ESDM's `capabilities`
   (named otherwise, since a capability here is what EHOS grants an actor): `operation :submit_report,
   "…", source: "X-01"`. Once it does, every effect's `calls:` to it names one, `calls: {:p1,

@@ -7,7 +7,11 @@ defmodule EhOsContract.Domain.Rules do
   external.
 
   **D1**, since plan EP5a: an external's operations are snake_case and named once
-  within it.
+  within it; since plan EP5b, so are an actor's responsibilities.
+
+  **D5**, since plan EP5b: a relation's `terms` are pairs, the word of its first end
+  and of its second, and each word of a context end is a term of that context's
+  glossary.
 
   **D1**, since the review of the actors' names: a subdomain's, context's, subject's,
   value's, entity's and external's name is snake_case, as an actor's is (D4) and a
@@ -178,6 +182,26 @@ defmodule EhOsContract.Domain.Rules do
              "#{inspect(duplicate.name)} twice", duplicate}
         end
 
+    # Plan EP5b: an actor's responsibilities, named within the actor.
+    pairs =
+      for %Relation{} = relation <- entities,
+          duplicate <- Enum.uniq(duplicates(relation.terms, & &1)) do
+        {"D1: relation #{inspect(relation.type)} pairs #{inspect(duplicate)} twice", relation}
+      end
+
+    responsibilities =
+      for %Actor{} = actor <- entities,
+          r <- actor.responsibilities,
+          not DslRules.name?(r.name) do
+        {"D1: responsibility #{inspect(r.name)} of actor #{inspect(actor.name)} is not " <>
+           "snake_case, as every name of a domain is", r}
+      end ++
+        for %Actor{} = actor <- entities,
+            duplicate <- duplicates(actor.responsibilities, & &1.name) do
+          {"D1: actor #{inspect(actor.name)} declares the responsibility " <>
+             "#{inspect(duplicate.name)} twice", duplicate}
+        end
+
     # A relation has no name: it is its type and its two ends, a symmetric pair in
     # either order. Two of them would also share one key in the model's digests.
     relations =
@@ -237,7 +261,9 @@ defmodule EhOsContract.Domain.Rules do
       end
       |> Enum.reject(&is_nil/1)
 
-    forms ++ by_kind ++ modules ++ types ++ terms ++ operations ++ relations ++ both
+    forms ++
+      by_kind ++
+      modules ++ types ++ terms ++ operations ++ responsibilities ++ pairs ++ relations ++ both
   end
 
   defp built_in_type?(name), do: :erl_internal.is_type(name, 0) or name in @elixir_types
@@ -729,13 +755,16 @@ defmodule EhOsContract.Domain.Rules do
     contexts = MapSet.new(for %Context{name: name} <- entities, do: name)
     externals = MapSet.new(for %External{name: name} <- entities, do: name)
 
+    glossaries =
+      Map.new(for %Context{} = c <- entities, do: {c.name, MapSet.new(c.terms, & &1.text)})
+
     for %Relation{} = relation <- entities,
-        violation <- relation_violations(relation, contexts, externals) do
+        violation <- relation_violations(relation, contexts, externals, glossaries) do
       violation
     end
   end
 
-  defp relation_violations(%Relation{type: type} = relation, contexts, externals) do
+  defp relation_violations(%Relation{type: type} = relation, contexts, externals, glossaries) do
     where = "D5: relation #{inspect(type)}"
     directed? = type in Dsl.directed_relations()
 
@@ -794,7 +823,27 @@ defmodule EhOsContract.Domain.Rules do
         do: [{"#{where} relates context #{inspect(hd(ends))} to itself", relation}],
         else: []
 
-    roles ++ unknown ++ outside ++ itself
+    sides = EhOsContract.Domain.Build.sides(relation)
+
+    terms =
+      if roles == [] and unknown == [],
+        do: term_violations(where, relation, sides, glossaries),
+        else: []
+
+    roles ++ unknown ++ outside ++ itself ++ terms
+  end
+
+  # Plan EP5b: each word of a pair is a term of its end's glossary. An external end
+  # has no glossary, so its word is the material's and nothing here checks it.
+  defp term_violations(where, relation, sides, glossaries) do
+    for {first, second} <- relation.terms,
+        {word, side} <- [{first, Enum.at(sides, 0)}, {second, Enum.at(sides, 1)}],
+        glossary = Map.get(glossaries, side),
+        glossary != nil,
+        not MapSet.member?(glossary, word) do
+      {"#{where}: the term #{inspect(word)} is not in the glossary of context " <>
+         "#{inspect(side)}; a relation's terms pair words its contexts define", relation}
+    end
   end
 
   # --- D7: a context belongs to a subdomain this domain declares (plan EL2) ---------
