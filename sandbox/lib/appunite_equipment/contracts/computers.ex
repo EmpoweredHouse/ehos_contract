@@ -130,10 +130,10 @@ defmodule AppuniteEquipment.Contracts.Computers do
       transition [:in_office, :for_sale], :donated, :donated
       transition [:in_office, :for_sale], :disposed, :disposed
 
-      # A loss comes from wherever the computer was.
-      transition [:ordered, :in_office, :issued, :returning, :in_service, :for_sale],
-                 :lost,
-                 :lost
+      # The material knows one loss: a computer with an employee, stolen (E, "ostatnio
+      # jeden został ukradziony"). A loss recorded anywhere else is still appended, and
+      # the report shows it as a move the lifecycle does not allow.
+      transition :issued, :lost, :lost
     end
 
     # Ordered in the reseller's panel; the hire is known in advance (E).
@@ -1131,6 +1131,23 @@ defmodule AppuniteEquipment.Contracts.Computers do
       %{computer_id: "computer-2", status: :donated, reserved: false},
       %{computer_id: "computer-3", status: :sold}
     ]
+  end
+
+  scenario "zgubienie odnotowane dla komputera w biurze — komputer zostaje w biurze" do
+    given :ordered, %{profile: :developer}
+
+    given :received, %{
+      serial_number: "K7HQ2F9X4M",
+      chip: :m5,
+      price: 1_199_900,
+      purchased_on: "2026-09-29",
+      invoice_number: "FV/2026/09/118"
+    }
+
+    given :lost
+    query :inventory_list
+
+    answers [%{status: :in_office}]
   end
 
   scenario "w Inventory zwrot innego przydziału też jest w biurze" do
