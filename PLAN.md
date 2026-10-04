@@ -394,11 +394,29 @@ bez zmian, doszły własne (`prose-without-scenario`, `operation-never-called`) 
 - *Nigdy nierozstrzygnięte — jedyne luki:* `category` systemu zewnętrznego; opis timera (ESDM `timers{name,
   description}`, u nas timer ma `source`, nie ma etykiety); proza przy pojedynczej reakcji process managera (ESDM
   `reactions{when, rule}`; u nas reguły na całym process managerze, `on`/`starts_on` bez prozy). Wszystkie trzy —
-  szczebel 0 drabiny. Pytania o kształt zadane użytkownikowi 4 października.
+  szczebel 0 drabiny. Pytania o kształt zadane użytkownikowi 4 października — decyzje niżej.
 
 **Ponad ESDM:** wykonywanie modelu (dispatch, log, reakcje, inbox i publikacja), scenariusze jako testy i drabina
 prozy, proces z obietnicami, raport zgodności, crypto-shredding, wersja schematu zdarzenia, dokumentacja w
 callbackach (EP3) i od #99 cykl życia agregatu (statusy i przejścia liczone przez silnik) — ESDM go nie ma.
+
+**Decyzje użytkownika (4 października):**
+- **Etykieta timera — wymagana, pozycyjna**, jak przy każdej innej deklaracji: `timer :documentation_due, "Doba na
+  dokumentację", wait: {24, :hour}, …`. Czytelnicy: strony, `@doc` callbacku timera, graf. Bez zgodności wstecz —
+  dwa timery sandboxa dostają etykietę z materiału. *Odrzucone:* etykieta opcjonalna (`label:` — timer bez niej
+  dalej jest samą nazwą i nic tego nie zgłasza); bez zmian (znaczenie timera tylko w etykiecie process managera i w
+  scenariuszach).
+- **`category` systemu zewnętrznego — pominięte.** Etykieta systemu już mówi, czym jest, a kategoria nie ma
+  czytelnika, który by na jej podstawie coś sprawdził albo narysował inaczej („rodzaj wchodzi z czytelnikiem”).
+  *Odrzucone:* atom z listy zamkniętej z grupowaniem w grafie i na stronie domeny (lista bez przykładu, który by jej
+  potrzebował); dowolny string jak w ESDM (proza bez nazwy i bez drogi wyżej — wbrew drabinie).
+- **Proza przy pojedynczej reakcji process managera — pominięta.** Reguły na process managerze i `illustrates:` w
+  scenariuszu konkretnego wyzwalacza już łączą regułę z reakcją i ją testują (np. trzy scenariusze `state`
+  `monthly_registry_check` z EP4); proza przy `on` byłaby drugim miejscem na to samo zdanie. *Odrzucone:* `keeps:`
+  w reakcji (nowe słowo wskazujące regułę — kształt pozwala je dodać, gdy przykład tego wymaga); etykieta reakcji
+  jak ESDM `rule` (proza bez nazwy).
+- **Po tej decyzji pokrycie ESDM jest pełne** w tym sensie, że każda różnica jest decyzją z powodem albo czeka na
+  przykład z materiału. Do zbudowania zostaje etykieta timera — mały etap (propozycja asystenta: **EP6**).
 
 ## Dopisek 4 października — #99: cykl życia agregatu (stany i przejścia)
 
