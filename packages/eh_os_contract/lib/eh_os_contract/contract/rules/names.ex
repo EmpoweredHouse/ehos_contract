@@ -7,7 +7,8 @@ defmodule EhOsContract.Contract.Rules.Names do
   callback of the same implementation: an aggregate has one per command, a process
   manager one per event and timer (v2 §5). Units are one namespace, whether
   aggregate or boundary; so is each other kind of declaration. A query does not
-  take a command's name, since both become a capability `<domain>.<name>` (D14). Invariants and stage
+  take a command's name, nor that of an event an actor records, since each becomes a
+  capability `<domain>.<name>` (D14). Invariants and stage
   groups are unique within their unit, and the process's stages and promises within
   the process. A domain service's functions are unique within it, and a function's
   rules within the function. A command's, a query's and a reaction's constraints are

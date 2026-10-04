@@ -392,8 +392,11 @@ diff i podgląd musiałyby znać trzy listy, a credential niesie i tak same nazw
 - `mix eh_os_contract.manifest` emituje komendy, query i zapisy, które może wykonać ludzki aktor; role trzymają
   wszystkie trzy. EHOS sprzed D-73 taki manifest odrzuci — najpierw wdraża się EHOS.
 - **N1 rozszerzone:** query nie może nosić nazwy zdarzenia, które zapisuje aktor. Obie są capability
-  `<domena>.<nazwa>`, a od D-73 manifest oferuje obie, więc jedna nazwa dawałaby oba uprawnienia naraz. Wyłapał to
-  przegląd bezpieczeństwa D-73.
+  `<domena>.<nazwa>`, a od D-73 manifest oferuje obie. Luki nie było — reguła L3 D14 odrzucała tę parę, gdy działa
+  kompilator Mixa — ale N1 odrzuca ją już przy kompilacji samego kontraktu, zanim `Model.capabilities/1` zlałby obie
+  w jedną capability.
+- **Query i komenda ze `scope:`** trafiają do manifestu bez wartości zakresu, więc każde wywołanie przez EHOS kończy
+  się `:unscoped_grant` (zamknięte, nic nie przyznaje), dopóki wiązanie nie umie nieść wartości (D-40).
 - Bez scope'ów: query ze `scope:` wychodzi jak komenda ze `scope:` dziś, a wiązanie wartości to D-40 (proposed).
 
 ## Dopisek 4 października (2) — AppUnite: zapotrzebowanie na komputer (`Demands`)

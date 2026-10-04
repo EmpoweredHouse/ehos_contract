@@ -18,7 +18,9 @@ defmodule EhOsContract.Auth.Manifest do
       capability names its declaration as `command`, `query` or `record` (`eh-os`
       D-73), which EHOS accepts from the release that decided it on; an earlier EHOS
       refuses a manifest that offers a query or a recording. Scopes and publications are
-      absent: EHOS's manifest has no field for them yet.
+      absent: EHOS's manifest has no field for them yet, so a scoped command or query is
+      offered, and every call to it through EHOS is refused `:unscoped_grant` until a
+      binding can carry scope values (`eh-os` D-40).
     * `engine`, the `eh_os_contract` version that wrote it.
 
   `contracts` is not written. EHOS counts it in the manifest's authority digest, and
@@ -48,8 +50,8 @@ defmodule EhOsContract.Auth.Manifest do
   selected domain are read. Raises `ArgumentError`, with
   what to change, when the map is not a read `ehos.yaml`, when no domain or more than
   one fits, when the domain's name is not one EHOS takes for an application, when a
-  command or a role's actor is past 63 characters or has an empty label, or when the
-  domain offers no human command.
+  command, query, recording or role's actor is past 63 characters or has an empty label,
+  or when no human holds any capability.
   """
   @spec build(map(), [module() | map()], [module() | map()]) :: map()
   def build(%{"schema" => ehos_yaml} = file, domains, contracts) do
