@@ -505,8 +505,8 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | N2 | 1 | `subscribe "<nazwa>"` | DD0 | ☑ #138 |
 | N3 | 1 | etykieta timera (EP6) | DD0 | ◐ `dsl/n3-timer-label`, PR #139 |
 | W1 | 1 | zapis `schema_version` | DD0 | ◐ `engine/w1-schema-version`, PR #142 (na #139) |
-| W2 | 1 | tagi dnia przy dopisie | DD0 | ◐ `engine/w2-day-tags` (na W1), gotowe do PR-a |
-| W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ☐ |
+| W2 | 1 | tagi dnia przy dopisie | DD0 | ◐ `engine/w2-day-tags`, PR #143 (na #142) |
+| W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ◐ `engine/w3-trace-core` (na W2) |
 | W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ☐ |
 | T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ☐ |
 | T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☐ |
