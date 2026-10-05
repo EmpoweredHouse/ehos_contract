@@ -517,7 +517,7 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | W1 | 1 | zapis `schema_version` | DD0 | ☑ #142 |
 | W2 | 1 | tagi dnia przy dopisie | DD0 | ☑ #143 |
 | W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ◐ `engine/w3-trace-core`, PR #145 |
-| W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ☐ |
+| W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ◐ `engine/w4-decision` (na W3) |
 | T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ☐ |
 | T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☐ |
 | X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ☐ |
