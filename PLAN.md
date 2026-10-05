@@ -39,9 +39,9 @@ diagramu) — „Dopisek 4 października — #99” i „LC… — co wyszło”
 komputer, kontrakt `Demands`) — „Dopisek 4 października (2)”.
 
 **Następna praca to program DD — „DDD sprawdzane przez kod”** (zatwierdzony przez użytkownika 5 października): 53
-etapy w pięciu falach. **Jedynym miejscem ze stanem programu jest tabela „Postęp” w „Dopisek 5 października — DD”**;
-tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka. Żaden etap z kodem
-nie jest zaczęty; pierwszy jest N1 (`final:`, `target`, `identity` encji).
+etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem programu jest tabela „Postęp” w „Dopisek 5
+października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
+Żaden etap z kodem nie jest zaczęty; pierwszy jest N1 (`final:`, `target`, `identity` encji).
 
 ### Stan repozytorium
 
@@ -678,6 +678,7 @@ zdarzeniach, `process :` i etapów w jednostkach = 0.
 | `anticorruption_layer` | zdarzenie dostawcy bierze tylko polityka (tłumacz) |
 | `open_host_service`, `published_language` | tylko zdarzenia, które dostawca `publish`uje, w kształcie publikacji |
 | `separate_ways` | nic |
+
 Kierunek i `separate_ways` awansują z L5 na L3; „brak relacji” zostaje ostrzeżeniem L5. Włączenie zdarzenia do
 modułu procesu nie jest referencją. Kod: nowa grupa L3 obok `crossings/2` (`completeness.ex` 722-745 rozwiązuje
 kontekst siostry). Sandbox: poprawić relacje albo kontrakty i powiedzieć to w PR.
