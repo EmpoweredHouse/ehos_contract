@@ -1071,6 +1071,24 @@ CHANGELOG („Added”). Czytelnik: S2 (scenariusze obietnic bez bazy).
   Handoffie — poprawiony razem z ☑ W2. Baza #145 przestawiona na `main`, `main` wmergowany.
 - **Dla aplikacji AppUnite i `ehos-ledger`:** nic do zmiany.
 
+### Przed T1 — decyzje użytkownika (5 października)
+
+Przykład, na którym padły: Rehmed `close_visit_clinically` ma pole `p1_reported`; wołający przez Plug wysyła
+`visit_id` i kody ICD, a to, czy zgłoszenie P1 poszło, host sprawdza u siebie.
+
+1. **Jedno wywołanie na komendę:** `supply(actor, %EhOsContract.Supplier.Request{…, fields: [:p1_reported], given:
+   %{visit_id: "w-1", …}})` → `{:ok, %{p1_reported: true}} | {:error, reason}`; `config :eh_os_contract, supplier:
+   MyApp.Supplier` jak `Authorizer`; silnik sprawdza, że wróciły dokładnie zamówione klucze i że wartości pasują do
+   typów, a błąd nazywa pole, nigdy wartość. *Odrzucone:* wywołanie na pole (`supply(field, actor, given)` — kilka
+   zapytań hosta na komendę i pola nie razem).
+2. **Bez skonfigurowanego `Supplier` węzeł nie startuje**, gdy którykolwiek kontrakt ma pole `supplied_by: :host`
+   (`Registry.load!`, z nazwą kontraktu i pola, jak strefa w W2). *Odrzucone:* odmowa w żądaniu (503) — brak
+   konfiguracji wychodziłby dopiero na produkcji.
+3. **Błąd `Supplier` → `{:error, {:not_supplied, reason}}`, w Plugu 503 `{"error": "not_supplied"}`** bez powodu w
+   treści; nic nie zapisane, bez wiersza w `_commands`, jak odmowa `Authorizer`; wołający może ponowić z tym samym
+   kluczem. *Odrzucone:* 422 `{"invalid": {"p1_reported": "not_supplied"}}` (sugeruje wołającemu, że to on źle
+   wysłał).
+
 ### W4 — co wyszło (5 października)
 
 Gałąź `engine/w4-decision` (na W3). Refaktor bez zmiany zachowania: reguły, którymi dispatch trzyma decyzję, są w
