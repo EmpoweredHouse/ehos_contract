@@ -2,9 +2,12 @@ name: check
 
 # Pull requests, not every push to `main`: that run checked a second time the
 # code its pull request had just passed — a third of all runs (5 October 2026).
-# `main` still runs when a lock file or this workflow changes, because a pull
-# request restores caches only from its own branch and from `main`: without a
-# run there, every new pull request would compile its dependencies cold.
+# `main` still runs when a lock file or this workflow changes, and once a week,
+# because a pull request restores caches only from its own branch and from
+# `main`: without a run there, and once GitHub evicts an entry unused for seven
+# days, every new pull request would compile its dependencies cold. The price is
+# that nothing checks `main` after a merge — two pull requests that each pass
+# can still break it together, and the first to see it is the next pull request.
 # `workflow_dispatch` runs the gate on any branch by hand.
 on:
   push:
@@ -13,6 +16,8 @@ on:
       - "sandbox/mix.lock"
       - "packages/*/mix.lock"
       - ".github/workflows/ci.yml"
+  schedule:
+    - cron: "0 4 * * 1"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     # Changes that touch only the team's working documents skip the gate. The
@@ -30,10 +35,15 @@ on:
       - "docs/adr/contract-v2.md"
   workflow_dispatch:
 
+# The job runs the branch's own code, so its token can read and nothing more.
+permissions:
+  contents: read
+
 # A new push to the same pull request cancels the run still checking the old one.
+# A run on `main` is never cancelled: it is the one that saves the caches.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
@@ -99,15 +109,26 @@ jobs:
       # Compiled dependencies, one cache per project. Without it every run
       # compiled ecto, postgrex, oban, plug and the rest from scratch four times
       # over — about three and a half of the five minutes `mix check` took. The
-      # key carries the toolchain and the lock file; an older build is restored
-      # on a lock change and Mix recompiles only what moved.
+      # key carries everything a compiled dependency depends on: the runner
+      # image, the toolchain, the lock files and the configuration, which can
+      # set a dependency's compile-time values. There are no `restore-keys` on
+      # purpose: after a lock change Mix recompiles the dependency that moved
+      # but not the ones built against its macros, so a partial hit could pass
+      # or fail where a clean build would not. A lock change compiles cold once.
       #
       # The repository's own applications — everything named eh_os_contract*,
       # which the sandbox and the packages also build as path dependencies — and
-      # the consolidated protocols are deleted after the restore, so they are
-      # always compiled fresh, exactly as before. That keeps the formatter-cache
-      # caveat at the `mix check` step below true: `_build` holds nothing of the
-      # repository's own between runs.
+      # the consolidated protocols are left out of the cache, and deleted after
+      # the restore in case an entry saved before that exclusion still holds
+      # them, so they are always compiled fresh, exactly as before. That keeps the
+      # formatter-cache caveat at the `mix check` step below true: `_build` holds
+      # nothing of the repository's own between runs.
+      # `ImageOS` (ubuntu24, …) is in the runner's environment, which the `env`
+      # context does not see.
+      - name: Name the runner image
+        id: image
+        run: echo "os=$ImageOS" >> "$GITHUB_OUTPUT"
+
       - name: Cache compiled deps
         uses: actions/cache@v4
         with:
@@ -116,8 +137,11 @@ jobs:
             packages/eh_os_contract/_build
             packages/eh_os_contract_web/_build
             packages/eh_os_contract_auth/_build
-          key: build-${{ runner.os }}-otp${{ steps.beam.outputs.otp-version }}-ex${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('sandbox/mix.lock', 'packages/*/mix.lock') }}
-          restore-keys: build-${{ runner.os }}-otp${{ steps.beam.outputs.otp-version }}-ex${{ steps.beam.outputs.elixir-version }}-
+            !sandbox/_build/*/lib/eh_os_contract*
+            !packages/*/_build/*/lib/eh_os_contract*
+            !sandbox/_build/*/consolidated
+            !packages/*/_build/*/consolidated
+          key: build-${{ steps.image.outputs.os }}-otp${{ steps.beam.outputs.otp-version }}-ex${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('sandbox/mix.lock', 'packages/*/mix.lock', 'sandbox/config/**', 'packages/*/config/**') }}
 
       - name: Drop the repository's own compiled applications
         run: |
