@@ -82,7 +82,8 @@ nie jest zaczęty; pierwszy jest N1 (`final:`, `target`, `identity` encji).
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
   1. **Użytkownik:** push i PR `docs/dd0-programme` (DD0), przed nim `pre-pr-review` — na polecenie.
-  2. **N1 — PR #137** (na #135; „N1 — co wyszło”). **Asystent:** N2 w toku na `dsl/n2-subscribe`, potem N3, reszta fali 1 w dowolnej kolejności. Start etapu: ◐ i gałąź w tabeli; koniec:
+  2. **N1 — PR #137** (na #135); **N2 gotowe na `dsl/n2-subscribe`** (na N1; push i PR na polecenie). **Asystent:**
+     następne N3 (najpierw decyzja: etykieta timera czy zdanie z deklaracji), potem reszta fali 1 w dowolnej kolejności. Start etapu: ◐ i gałąź w tabeli; koniec:
      „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; etykieta timera albo zdanie z deklaracji przed N3); po każdej fali „dalej czy
@@ -493,7 +494,7 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 |---|---|---|---|---|
 | DD0 | 0 | program i postęp w `PLAN.md` | — | ◐ `docs/dd0-programme`, PR #135 |
 | N1 | 1 | `final:`, `target`, `identity` encji, definicja encji | DD0 | ◐ `dsl/n1-names`, PR #137 (na #135) |
-| N2 | 1 | `subscribe "<nazwa>"` | DD0 | ◐ `dsl/n2-subscribe` (na N1) |
+| N2 | 1 | `subscribe "<nazwa>"` | DD0 | ◐ `dsl/n2-subscribe` (na N1), gotowe do PR-a |
 | N3 | 1 | etykieta timera (EP6) | DD0 | ☐ |
 | W1 | 1 | zapis `schema_version` | DD0 | ☐ |
 | W2 | 1 | tagi dnia przy dopisie | DD0 | ☐ |
@@ -854,6 +855,31 @@ na zielonej bramie, każde z wpisem w CHANGELOG („a host has to act”, przesu
   silnik 1261, web 51, auth 285 + 1 property.
 - **Dla aplikacji AppUnite i `ehos-ledger`:** `terminal: true` na statusie → `final: true`; `scope` w scenariuszu →
   `target`; `identified_by:` + pole → `identity:` (+ `issued_by:` na encji).
+
+### N2 — co wyszło (5 października)
+
+Gałąź `dsl/n2-subscribe` (na N1). `consumes "<nazwa>"` → `subscribe "<nazwa>", as: …`; `consumes` znaczy już
+tylko zdarzenia siostrzanego kontraktu z tego logu. Model bez zmian, więc **żadna wersja się nie przesuwa**; wpis w
+CHANGELOG („a host has to act”), dopisek z datą w ADR §4.2, `contract.md`, skille `change-contract` i
+`write-reaction`.
+
+- **Rozstrzygnięcia asystenta (mechanika):** obie encje Sparka budują tę samą strukturę `Consumes`, z
+  znacznikiem `via`, więc reguły (D11, D12, K1, N1), `Build` i model dalej rozróżniają je po typie `from`.
+  *Odrzucone:* osobna struktura i osobna kolekcja w modelu (większy diff i przesunięcie wersji każdego kontraktu
+  z subskrypcją, bez zysku dla hosta).
+- **Stara forma dostaje odmowę z podpowiedzią.** Pierwsza wersja zawęziła `from:` `consumes` do modułu w schemacie
+  — wtedy `consumes "…"` padało na „expected atom”, a pola i `as:` atomem na „undefined function field/2”.
+  Przegląd to złapał: teraz K1 odmawia `consumes "<nazwa>"` zdaniem z deklaracją `subscribe` do napisania, a D11
+  sprawdza tylko subskrypcje, więc stara forma jest odmówiona raz. *Odrzucone:* odmowa w schemacie (nie mówi, co
+  napisać). D11 nie odmawia już listy zdarzeń — `subscribe` jej nie przyjmuje.
+- **Przegląd** (`dsl/n1-names..dsl/n2-subscribe`). Poprawność: 6 uwag, wszystkie naprawione — odmowa starej formy
+  (`via` + K1; próba odwrotna: bez niej pada tylko jej test), N1/F nazywają zdarzenie z innej aplikacji „subscribed
+  event”, nieaktualne zdania w `dsl.ex`, `bus.ex`, `graph/system.ex`, `build.ex`, `consumes.ex`, `supervisor.ex`,
+  `inbox.ex`, lokalizacja w asercji D11, ten zapis. Bezpieczeństwo i wydajność: nic; żadna ścieżka nie czyta
+  zdarzenia opublikowanego jak siostrzanego ani odwrotnie, capability `<nazwa>.subscribe` i inboxy bez zmian.
+- **Brama:** EXIT=0; `check` sandboxa 0 / 29 / 10, silnika 0 / 74 / 6; sandbox 194, silnik 1263, web 51, auth 286 +
+  1 property.
+- **Dla aplikacji AppUnite i `ehos-ledger`:** `consumes "<nazwa>", as: …` → `subscribe "<nazwa>", as: …`.
 
 ## Dopisek 4 października (3) — pokrycie ESDM po EP1–EP5 i #99
 
