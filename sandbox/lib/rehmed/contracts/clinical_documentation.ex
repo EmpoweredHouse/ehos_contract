@@ -14,7 +14,9 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
   `visit_closed_clinically` carries what P1 needs, and whether the service is
   reported at all. The PESEL comes from the patient record and the flag from the
   catalogue (`AGG-15`, "one flag, not two"); the application reads both and puts
-  them on the command, because a decision reads no other context.
+  them on the command, because a decision reads no other context. The flag is the
+  host's to give, never the specialist's (`supplied_by: :host`, plan T1s): a request
+  that sends it is refused.
 
   **PESEL and the codes are the patient's personal data**, and so are sealed per
   patient (v2 §14). The distillation's hardest question stays open beside it:

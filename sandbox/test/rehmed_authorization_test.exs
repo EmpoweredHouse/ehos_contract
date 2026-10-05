@@ -166,6 +166,8 @@ defmodule Rehmed.AuthorizationTest do
     assert {sent.status, Jason.decode!(sent.resp_body)} ==
              {422, %{"invalid" => %{"p1_reported" => "supplied"}}}
 
+    assert Repo.all(from(e in Event, select: e.type)) == []
+
     # The control: without it, the host's answer for visit-anna is what was decided.
     closed = command(specialist, "rehmed.close_visit_clinically", @close)
     assert closed.status == 200
@@ -178,12 +180,48 @@ defmodule Rehmed.AuthorizationTest do
                )
              )
 
-    # A visit the host does not know is the host's to answer, not the caller's fault.
+    # A visit the host does not know is the host's to answer, not the caller's fault,
+    # and nothing of the refused request is written.
+    written = Repo.aggregate(Event, :count)
+
     unknown =
       command(specialist, "rehmed.close_visit_clinically", %{@close | visit_id: "visit-zofia"})
 
     assert {unknown.status, Jason.decode!(unknown.resp_body)} ==
              {503, %{"error" => "not_supplied"}}
+
+    assert Repo.aggregate(Event, :count) == written
+  end
+
+  test "a settlement's total is the host's too, by who pays" do
+    # Reception could otherwise settle for any amount: the payment lines are held to
+    # the total, and the total to nothing.
+    reception = credential("u-reception", ["rehmed.record_payment", "rehmed.close_settlement"])
+
+    paid =
+      command(reception, "rehmed.record_payment", %{
+        visit_id: "visit-anna",
+        method: "card",
+        amount: 20_000
+      })
+
+    assert paid.status == 200
+
+    sent = command(reception, "rehmed.close_settlement", %{visit_id: "visit-anna", total: 1})
+
+    assert {sent.status, Jason.decode!(sent.resp_body)} ==
+             {422, %{"invalid" => %{"total" => "supplied"}}}
+
+    closed = command(reception, "rehmed.close_settlement", @visit)
+    assert closed.status == 200
+
+    assert [%{"total" => 20_000}] =
+             Repo.all(
+               from(e in Event,
+                 where: e.type == "visit_settlement.visit_closed_commercially",
+                 select: e.payload
+               )
+             )
   end
 
   test "what only the application's own code does is not a door, whatever the credential names" do
