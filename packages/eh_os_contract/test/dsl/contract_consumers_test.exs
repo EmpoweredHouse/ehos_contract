@@ -113,6 +113,22 @@ defmodule EhOsContract.ContractConsumersTest do
                "P4: process manager :chase correlates on no field, so every run would share one record"
     end
 
+    # Plan N3: a timer says what it is for in the client's words, or does not compile.
+    test "a timer without a label is refused" do
+      message =
+        refuse_contract("TimerUnlabelled", """
+        #{@unit}
+          process_manager :chase, "Pogoń", correlate: :visit_id do
+            starts_on :visit_opened, sets: :later
+            timer :later, wait: {1, :day}
+          end
+        """)
+
+      assert message =~
+               "contract -> timer -> later defined in timer_unlabelled.ex:18::\n" <>
+                 "  required :label option not found"
+    end
+
     test "what it starts, reacts and ends on, sets, cancels and issues is its own" do
       message =
         refuse_contract("ManagerWrong", """

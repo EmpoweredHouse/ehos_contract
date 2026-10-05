@@ -210,7 +210,13 @@ defmodule EhOsContract.ContractExamplesTest do
         #{amend(f.process_manager)}
         """)
 
-      assert [%{timers: [%{name: :chase, wait: %{amount: 24, unit: :hour}}]}] =
+      assert [
+               %{
+                 timers: [
+                   %{name: :chase, label: "Termin dokumentacji", wait: %{amount: 24, unit: :hour}}
+                 ]
+               }
+             ] =
                model.process_managers
     end
 

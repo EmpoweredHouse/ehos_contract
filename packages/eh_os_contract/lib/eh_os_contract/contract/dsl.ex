@@ -687,7 +687,7 @@ defmodule EhOsContract.Contract.Dsl do
     schema: [
       name: [type: :atom, required: true, doc: "The timer's name."],
       # Plan N3, the user's decision: required, and it names what the timer is for,
-      # "Termin dokumentacji", not how long it waits, which `wait:` or `at:` says.
+      # "Documentation due", not how long it waits, which `wait:` or `at:` says.
       label: [
         type: :string,
         required: true,

@@ -322,8 +322,8 @@ defmodule EhOsContract.Report.Sentence do
       "here — they were judged under a different promise."
   end
 
-  # What the business calls a node, and its name when nothing does: a timer has no
-  # label of its own.
+  # What the business calls a node, and its name when nothing does. A timer has had a
+  # label since plan N3, so a timer's step reads in the client's words too.
   @spec name(map()) :: String.t()
   defp name(%{label: label}) when is_binary(label), do: label
   defp name(%{name: name}), do: Atom.to_string(name)
