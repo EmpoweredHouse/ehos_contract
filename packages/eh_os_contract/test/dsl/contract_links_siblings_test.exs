@@ -392,7 +392,43 @@ defmodule EhOsContract.ContractLinksSiblingsTest do
                "sib_x10_policy_billing.ex",
                16
              ) =~
-               "context :scheduling, not :settlement, and declares no delivery"
+               ":visit_booked of #{inspect(@fixtures)}.SibX10PolicyBooking (context :scheduling), " <>
+                 "not of context :settlement, and declares no delivery"
+    end
+
+    test "one error a reaction, naming each event it takes from another context by its local name" do
+      camel = "SibX10Renamed"
+
+      violations =
+        links([
+          {"sib_x10_renamed_booking.ex",
+           publisher("#{camel}Booking", @fields)
+           |> String.replace(":settlement", ":scheduling")
+           |> String.replace("emits: :visit_booked", "emits: [:visit_booked, :visit_moved]")
+           |> String.replace(
+             "    event :visit_booked,",
+             "    event :visit_moved, \"Wizyta przesunięta\"\n    event :visit_booked,"
+           )},
+          {"sib_x10_renamed_billing.ex",
+           reacting("#{camel}Billing", "#{camel}Booking", """
+             policy :bill_on_booking, "Rezerwacja — wizyta do rozliczenia",
+               handles: [:booked, :visit_billed, :visit_moved], issues: :bill_visit
+           """)
+           |> String.replace(
+             ", :visit_booked\n",
+             ", [:visit_booked, :visit_moved], as: [visit_booked: :booked]\n"
+           )}
+        ])
+
+      assert [%{message: message}] = Enum.filter(violations, &(&1.message =~ "X10"))
+
+      assert message =~
+               "takes :booked of #{inspect(@fixtures)}.#{camel}Booking (context :scheduling) and "
+
+      assert message =~
+               "and :visit_moved of #{inspect(@fixtures)}.#{camel}Booking (context :scheduling), not"
+
+      refute message =~ ":visit_billed"
     end
 
     test "a read model left without delivery on another context's event" do

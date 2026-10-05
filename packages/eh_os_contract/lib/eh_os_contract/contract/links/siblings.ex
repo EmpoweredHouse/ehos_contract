@@ -103,16 +103,24 @@ defmodule EhOsContract.Contract.Links.Siblings do
           {"read model", c.declarations.read_models, :projects}
         ],
         %{delivery: nil} = reaction <- reactions,
-        event <- List.wrap(Map.fetch!(reaction, takes)),
-        {:contract, from, _original} <- [Model.consumed(c.model, event)],
-        context = elsewhere[from],
-        context != nil do
-      {"X10: #{kind} #{inspect(reaction.name)} takes #{inspect(event)} of #{inspect(from)}, " <>
-         "context #{inspect(context)}, not #{inspect(c.model.context)}, and declares no " <>
-         "delivery; left out, it runs inside the transaction that records the event, so its " <>
-         "failure rolls the other context's fact back. Declare `delivery: :at_least_once`, or " <>
+        foreign = foreign(c, reaction, takes, elsewhere),
+        foreign != [] do
+      {"X10: #{kind} #{inspect(reaction.name)} takes #{Enum.join(foreign, " and ")}, not of " <>
+         "context #{inspect(c.model.context)}, and declares no delivery; left out, it runs " <>
+         "inside the transaction that records the event, so its failure rolls the other " <>
+         "context's fact back. Declare `delivery: :at_least_once`, or " <>
          "`delivery: :in_transaction` if the two have to commit together", Links.at(reaction)}
     end
+  end
+
+  # The events a reaction takes from a sibling of another context, under their local
+  # names, each with where it comes from: one error a reaction, however many it takes.
+  defp foreign(c, reaction, takes, elsewhere) do
+    for event <- List.wrap(Map.fetch!(reaction, takes)),
+        {:contract, from, _original} <- [Model.consumed(c.model, event)],
+        context = elsewhere[from],
+        context != nil,
+        do: "#{inspect(event)} of #{inspect(from)} (context #{inspect(context)})"
   end
 
   # --- X6 ---------------------------------------------------------------------------
