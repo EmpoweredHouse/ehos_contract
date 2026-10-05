@@ -27,12 +27,14 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed — a host has to act
 
-- **A blank label no longer compiles.** A label that is given and empty, or only whitespace (zero-width
-  characters included), is refused by N1 in a contract and by D1 in a domain, on every declaration that has one, a
-  field's included, and an enum member's by F2 and D3: `event :visit_closed, ""` compiled until now and left a
-  page, a graph's node and a report's sentence with nothing saying what the business calls it. An optional label
-  left out still passes, and a struct written as data, in a scenario's rows or an invariant's examples, is not
-  asked. No version moves: a contract that compiles is unchanged.
+- **A blank label no longer compiles.** A label is blank when it is empty or holds only Unicode whitespace and
+  invisible format characters (zero-width spaces, direction marks, the byte order mark). N1 refuses one on any
+  declaration of a contract, fields included; D1 does the same in a domain; F2 and D3 refuse a blank label of an
+  enum member. `event :visit_closed, ""` compiled until now and left a page, a graph's node and a report's
+  sentence with nothing saying what the business calls it. An optional label left out still passes, and a struct
+  written as data, in a scenario's rows or an invariant's examples, is not checked. An enum member named `true`,
+  `false` or `nil` is refused with a label too, as it already was without one. No version moves: a contract that
+  compiles is unchanged.
 - **W2: a required date or timestamp is tagged with its day when appended, in the domain's zone.** Every required,
   non-personal field of type `:date` or `:timestamp`, or of a domain value resting on one, adds a tag
   `<field>.day:YYYY-MM-DD` beside the `:id` tags: a date its own day, a timestamp the day it falls on in the

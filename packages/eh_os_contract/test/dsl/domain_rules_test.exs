@@ -40,6 +40,7 @@ defmodule EhOsContract.DomainRulesTest do
         refused("BlankLabels", """
           context :settlement, " ", subdomain: :supporting
           actor :reception, :human, ""
+          subject :patient, "\\u2066\\u200F\\u2069"
 
           entity :service, "Usługa", context: :settlement, identity: :service_id do
             field :name, :string, label: ""
@@ -51,6 +52,9 @@ defmodule EhOsContract.DomainRulesTest do
                  "(blank_labels.ex:4)"
 
       assert message =~ "D1: actor :reception has a blank label"
+      # A direction isolate and mark print as nothing, as a space does. Elixir takes an
+      # isolate only escaped in source, so the fixture carries the escape.
+      assert message =~ "D1: subject :patient has a blank label"
       assert message =~ "D1: field :name has a blank label"
     end
 
@@ -334,6 +338,7 @@ defmodule EhOsContract.DomainRulesTest do
           value :status, {:enum, [:open, :closed, :open]}
           value :flag, {:enum, [true]}
           value :method_blank, {:enum, [card: "Karta", cash: ""]}
+          value :flag_labelled, {:enum, [{false, ""}, {nil, "Brak"}]}
 
           value :line do
             field :amount, :cents
@@ -345,6 +350,8 @@ defmodule EhOsContract.DomainRulesTest do
       assert message =~ "value :status: an enum repeats a member: [:open, :closed, :open]"
       assert message =~ "value :flag: an enum member is an atom, or an atom with a label"
       assert message =~ "value :method_blank: an enum member's label is blank: :cash"
+      # `false` and `nil` are refused as names with a label as without one.
+      assert message =~ "value :flag_labelled: an enum member is an atom, or an atom with a label"
       assert message =~ "value :line, field :amount: type :cents is neither a built-in type"
     end
 

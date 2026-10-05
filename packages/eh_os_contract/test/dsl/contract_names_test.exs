@@ -72,7 +72,7 @@ defmodule EhOsContract.ContractNamesTest do
             end
 
             lifecycle do
-              status :open, "Otwarta"
+              status :open, "\u200E\u200F"
               status :closed, "", final: true
               initial :open, on: :visit_closed
             end
@@ -100,6 +100,8 @@ defmodule EhOsContract.ContractNamesTest do
       assert message =~ "N1: timer :nudge has a blank label"
       # A zero-width space and a no-break space print as nothing, as a space does.
       assert message =~ "N1: process :visit has a blank label"
+      # So do direction marks, left-to-right and right-to-left (Unicode Cf).
+      assert message =~ "N1: status :open has a blank label"
     end
 
     defmodule Row do

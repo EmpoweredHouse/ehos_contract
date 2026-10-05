@@ -637,8 +637,11 @@ defmodule EhOsContract.Domain.Rules do
       length(Enum.uniq(names)) != length(names) ->
         ["an enum repeats a member: #{inspect(names)}"]
 
-      blank = Enum.find_value(members, &blank_member/1) ->
-        ["an enum member's label is blank: #{inspect(blank)}; say what the business calls it"]
+      blank = Enum.find(members, &blank_member?/1) ->
+        [
+          "an enum member's label is blank: #{inspect(elem(blank, 0))}; say what the business " <>
+            "calls it"
+        ]
 
       true ->
         []
@@ -658,11 +661,13 @@ defmodule EhOsContract.Domain.Rules do
 
   def type_problems(other, _values), do: ["#{inspect(other)} is not a type"]
 
-  defp enum_member?({name, label}), do: is_atom(name) and is_binary(label)
+  # A member's name is the same atom whether it is written alone or with a label, so
+  # `true`, `false` and `nil` are refused in both forms.
+  defp enum_member?({name, label}), do: enum_member?(name) and is_binary(label)
   defp enum_member?(name), do: is_atom(name) and not is_boolean(name) and not is_nil(name)
 
-  defp blank_member({name, label}), do: if(DslRules.blank?(label), do: name)
-  defp blank_member(_name), do: nil
+  defp blank_member?({_name, label}), do: DslRules.blank?(label)
+  defp blank_member?(_name), do: false
 
   # A value that refers to itself, directly or through other values, has no finite
   # shape. Each cycle is reported once, at the first of its values in declaration

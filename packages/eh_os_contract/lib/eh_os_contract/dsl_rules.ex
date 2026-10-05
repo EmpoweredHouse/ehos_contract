@@ -129,11 +129,15 @@ defmodule EhOsContract.DslRules do
     end
   end
 
-  # Unicode whitespace, and the zero-width characters a copy from a board export
-  # brings along, which `String.trim/1` keeps and a page prints as nothing.
-  @blank ~r/\A[\s\x{200B}\x{200C}\x{200D}\x{2060}\x{FEFF}]*\z/u
+  # Unicode whitespace, and the format characters (Cf) a copy from a board export
+  # brings along — zero-width spaces and joiners, direction marks and isolates, the
+  # byte order mark — which `String.trim/1` keeps and a page prints as nothing.
+  @blank ~r/\A[\s\p{Cf}]*\z/u
 
-  @doc "Whether `text` is a string that says nothing: empty, or only whitespace."
+  @doc """
+  Whether `text` is a string that says nothing: empty, or only Unicode whitespace and
+  invisible format characters.
+  """
   @spec blank?(term()) :: boolean()
   def blank?(text), do: is_binary(text) and text =~ @blank
 
