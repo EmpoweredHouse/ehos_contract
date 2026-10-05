@@ -192,8 +192,11 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
-- **5 października, wieczór, `engine/w3-trace-core` @ `6a030c2`** (W3 z wmergowanym `main` = `6a236d5` i poprawką po
-  CodeRabbicie): `mix check` w `sandbox/` EXIT=0 — `check` 0 / 29 / 10 i 0 / 75 / 6; sandbox 194, silnik 1296, web 52,
+- **5 października, wieczór, `engine/w3-trace-core` @ `33eb982`** (druga poprawka po CodeRabbicie i jej przeglądzie):
+  `mix check` w `sandbox/` EXIT=0 — `check` 0 / 29 / 10 i 0 / 75 / 6; sandbox 194, silnik 1298, web 52, auth 286 + 1
+  property.
+- **5 października, wieczór, `engine/w3-trace-core` @ `6a030c2`** (W3 z wmergowanym `main` = `6a236d5` i pierwszą
+  poprawką po CodeRabbicie): `mix check` w `sandbox/` EXIT=0 — `check` 0 / 29 / 10 i 0 / 75 / 6; sandbox 194, silnik 1296, web 52,
   auth 286 + 1 property.
 - **5 października, wieczór, `engine/w3-trace-core` @ `96253a2`** (kod W3 po przeglądzie): `mix check` w `sandbox/`
   EXIT=0 — `check` sandboxa 0 / 29 / 10, silnika 0 / 75 / 6 (bez zmian); sandbox 194, silnik 1293 (+13,
@@ -1047,13 +1050,20 @@ CHANGELOG („Added”). Czytelnik: S2 (scenariusze obietnic bez bazy).
   (O(n), zostaje dla wołających spoza logu).
 - **Brama:** EXIT=0; `check` sandboxa 0 / 29 / 10, silnika 0 / 75 / 6; sandbox 194, silnik 1293, web 52, auth 286 +
   1 property.
-- **CodeRabbit na #145** (po merge'u `ccea0cd`): dwie uwagi, obie naprawione. Wystąpienie obietnicy per pozycję bez
-  pełnej tożsamości (brak pola albo `nil`) dostawało klucz z `nil` — `from` i trafienie, oba bez `item_no`, składały
-  między sobą spełnioną pozycję; teraz takie wystąpienie nie otwiera ani nie rozwiązuje żadnej (`6a030c2`, próba
-  odwrotna: pada tylko jego test). Na logu się nie zdarza (pola tożsamości są wymagane): stary i nowy `evaluate/3`
-  dalej równe na losowym logu, raport i grafy bajt w bajt (nowy punkt odniesienia po wmergowaniu `46b4e55`, który
-  zmienia etykietę timera TaxVision). Druga: nieaktualny wpis o `origin/main` w Handoffie — poprawiony razem z ☑ W2.
-  Baza #145 przestawiona na `main`, `main` wmergowany.
+- **CodeRabbit na #145** (po merge'u `ccea0cd`): dwie uwagi, obie naprawione. (1) Trafienie obietnicy per pozycję bez
+  pełnej tożsamości (brak pola albo `nil`) dostawało klucz z `nil` i składało spełnioną pozycję z `from`, któremu
+  brakowało tego samego pola — wbrew regule z moduledocu. Pierwsza poprawka (`6a030c2`) pomijała *każde* takie
+  wystąpienie; przegląd jej (dwa równolegle) złapał, że ginęło wtedy też `from`, czyli zobowiązanie (`:violated` → brak
+  werdyktu), także na wierszach logu sprzed rozszerzenia tożsamości jednostki. Ostatecznie (`33eb982`) pomijane jest
+  tylko trafienie, a `from` dalej otwiera pozycję. **Rozstrzygnięcie asystenta (mechanika):** *odrzucone* — pomijać
+  każde niepełne wystąpienie (sugestia CodeRabbita; gubi zobowiązania), odmowa `ArgumentError` przy niepełnym `from`
+  (wiersz logu sprzed zmiany tożsamości wywracałby raport), zostawić jak było (trafienie rozwiązywało pozycję, której
+  nie nazywa). Przesuwa werdykt tylko dla logu z wierszami sprzed rozszerzenia tożsamości (spełniony w ten sposób
+  przebieg → `:violated`) — linia w CHANGELOG „Fixed — can move a verdict”. Próby odwrotne: na kodzie sprzed poprawek
+  padają tylko dwa testy trafień, na `6a030c2` — także test `from`. Stary i nowy `evaluate/3` dalej równe na logu z
+  jedną tożsamością, raport i grafy bajt w bajt (nowy punkt odniesienia po wmergowaniu `46b4e55`, który zmienia
+  etykietę timera TaxVision). Przegląd bezpieczeństwa: nic od średniej wagi. (2) Nieaktualny wpis o `origin/main` w
+  Handoffie — poprawiony razem z ☑ W2. Baza #145 przestawiona na `main`, `main` wmergowany.
 - **Dla aplikacji AppUnite i `ehos-ledger`:** nic do zmiany.
 
 ## Dopisek 4 października (3) — pokrycie ESDM po EP1–EP5 i #99
