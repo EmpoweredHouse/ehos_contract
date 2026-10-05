@@ -81,11 +81,10 @@ października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każd
 
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
-  1. **Użytkownik:** merge stosu po kolei — #135 (DD0), #137 (N1), #138 (N2), #139 (N3); po każdym baza następnego
-     przechodzi na `main`.
-  2. **N1 — PR #137** (na #135); **N2 — PR #138** (na #137); **N3 — PR #139** (na #138). **W1 gotowe na `engine/w1-schema-version`** (na N3; push i PR
-     na polecenie). **Asystent:** dalej reszta fali 1 w dowolnej kolejności. Start etapu: ◐ i gałąź w tabeli; koniec:
-     „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
+  1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138). **Użytkownik:** merge #139 (N3, na `main`), potem #142 (W1, na
+     #139).
+  2. **Asystent:** W2 w toku na `engine/w2-day-tags` (na W1); dalej reszta fali 1 w dowolnej kolejności. Start
+     etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; potwierdzenie etykiet timerów sandboxa — „N3 — co wyszło”); po każdej fali „dalej czy
      stop” i kiedy podbić przypięcie w aplikacji AppUnite (`~/Projects/ai/appunite_equipment`) i `ehos-ledger`.
@@ -493,12 +492,12 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 
 | Etap | Fala | Zakres | Zależy od | Status |
 |---|---|---|---|---|
-| DD0 | 0 | program i postęp w `PLAN.md` | — | ◐ `docs/dd0-programme`, PR #135 |
-| N1 | 1 | `final:`, `target`, `identity` encji, definicja encji | DD0 | ◐ `dsl/n1-names`, PR #137 (na #135) |
-| N2 | 1 | `subscribe "<nazwa>"` | DD0 | ◐ `dsl/n2-subscribe`, PR #138 (na #137) |
-| N3 | 1 | etykieta timera (EP6) | DD0 | ◐ `dsl/n3-timer-label`, PR #139 (na #138) |
-| W1 | 1 | zapis `schema_version` | DD0 | ◐ `engine/w1-schema-version` (na N3), gotowe do PR-a |
-| W2 | 1 | tagi dnia przy dopisie | DD0 | ☐ |
+| DD0 | 0 | program i postęp w `PLAN.md` | — | ☑ #135 |
+| N1 | 1 | `final:`, `target`, `identity` encji, definicja encji | DD0 | ☑ #137 |
+| N2 | 1 | `subscribe "<nazwa>"` | DD0 | ☑ #138 |
+| N3 | 1 | etykieta timera (EP6) | DD0 | ◐ `dsl/n3-timer-label`, PR #139 |
+| W1 | 1 | zapis `schema_version` | DD0 | ◐ `engine/w1-schema-version`, PR #142 (na #139) |
+| W2 | 1 | tagi dnia przy dopisie | DD0 | ◐ `engine/w2-day-tags` (na W1) |
 | W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ☐ |
 | W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ☐ |
 | T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ☐ |
@@ -958,6 +957,13 @@ innym aplikacjom).
   1 property.
 - **Dla aplikacji AppUnite i `ehos-ledger`:** nic do zmiany w kodzie; przy wdrożeniu po kolei z podniesioną wersją
   zdarzenia subskrypcje starego węzła czekają (ostrzeżenie w logu) — nie `--skip`.
+
+### Przed W2 — decyzja użytkownika (5 października)
+
+**Tylko tagi dnia** (`<pole>.day:YYYY-MM-DD`, UTC), bez tagów miesiąca. Jedyny czytelnik w planie — B2, kubełek w
+`match:` (jedna wizyta naraz na specjalistę) — pyta o dzień; miesiąc wróci ze swoim czytelnikiem. *Odrzucone:* dzień i
+miesiąc od razu (dwa tagi więcej na każde pole daty bez czytelnika; za to wiersze sprzed dodania miesiąca go nie
+będą miały — to koszt świadomie przyjęty).
 
 ## Dopisek 4 października (3) — pokrycie ESDM po EP1–EP5 i #99
 
