@@ -1,0 +1,1 @@
+Documentation only (CHANGELOG, PLAN.md): CodeRabbit's third finding on #145, qualifying 'moves no verdict'; drops a CHANGELOG line about a bug in code that never shipped. docs_test passes (9 tests); no code changed since the gate at 1a0f5fb (EXIT=0).
