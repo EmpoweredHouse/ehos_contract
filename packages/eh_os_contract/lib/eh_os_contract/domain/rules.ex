@@ -35,6 +35,12 @@ defmodule EhOsContract.Domain.Rules do
   EHOS reads — `actor :"*", :human` would have been the role `"acme.*"` — and a
   system's is named in `by:` as a person's is.
 
+  **D1**, since the review of #139: a label given and blank, empty or only
+  whitespace, is refused on every declaration of the domain that has one, a field's
+  included (`EhOsContract.DslRules.blank_labels/2`), and **D3** refuses an enum
+  member's blank label. A label is what a page, a glossary and a report print in
+  place of the name.
+
   **D8** (plan EL2): a field's `issued_by:` names an external of this domain, and so does
   an entity's, which gives its injected identity (plan N1).
 
@@ -117,7 +123,8 @@ defmodule EhOsContract.Domain.Rules do
     )
   end
 
-  defp rules, do: [&d1/2, &d2/2, &d3/2, &d4/2, &d5/2, &d6/2, &d7/2, &d8/2, &d9/2]
+  defp rules,
+    do: [&d1/2, &d1_labels/2, &d2/2, &d3/2, &d4/2, &d5/2, &d6/2, &d7/2, &d8/2, &d9/2]
 
   # --- D11: the name is one segment of a namespace --------------------------------
 
@@ -167,6 +174,8 @@ defmodule EhOsContract.Domain.Rules do
     {Entity, "entity"},
     {External, "external"}
   ]
+
+  defp d1_labels(entities, _domain), do: DslRules.blank_labels(entities, "D1")
 
   defp d1(entities, _domain) do
     by_kind =
@@ -628,6 +637,12 @@ defmodule EhOsContract.Domain.Rules do
       length(Enum.uniq(names)) != length(names) ->
         ["an enum repeats a member: #{inspect(names)}"]
 
+      blank = Enum.find(members, &blank_member?/1) ->
+        [
+          "an enum member's label is blank: #{inspect(elem(blank, 0))}; say what the business " <>
+            "calls it"
+        ]
+
       true ->
         []
     end
@@ -646,8 +661,13 @@ defmodule EhOsContract.Domain.Rules do
 
   def type_problems(other, _values), do: ["#{inspect(other)} is not a type"]
 
-  defp enum_member?({name, label}), do: is_atom(name) and is_binary(label)
+  # A member's name is the same atom whether it is written alone or with a label, so
+  # `true`, `false` and `nil` are refused in both forms.
+  defp enum_member?({name, label}), do: enum_member?(name) and is_binary(label)
   defp enum_member?(name), do: is_atom(name) and not is_boolean(name) and not is_nil(name)
+
+  defp blank_member?({_name, label}), do: DslRules.blank?(label)
+  defp blank_member?(_name), do: false
 
   # A value that refers to itself, directly or through other values, has no finite
   # shape. Each cycle is reported once, at the first of its values in declaration
