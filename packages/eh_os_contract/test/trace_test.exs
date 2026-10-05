@@ -235,6 +235,21 @@ defmodule EhOsContract.TraceTest do
       end
     end
 
+    test "an identity field no atom is named after is read from its string key", %{trace: trace} do
+      # A trace handed in may name a field this node never made an atom of; asking
+      # whether the payload holds it under an atom key must not raise on that.
+      field = "lot_code_named_only_in_this_test"
+      assert_raise ArgumentError, fn -> String.to_existing_atom(field) end
+
+      trace = %{trace | identity: ["request_id", field]}
+      lot = &at("r", &1, &2, %{"request_id" => "r", field => "L-7"})
+
+      assert [%{instance_id: "r", verdict: :satisfied}] =
+               Trace.judge(trace, [lot.(:item_submitted, @from), lot.(:item_inspected, @inside)],
+                 now: @later
+               )
+    end
+
     test "an occurrence without its payload is refused, naming the identity", %{trace: trace} do
       occurrences = [%{instance_id: "r", type: "desk.item_submitted", occurred_at: @from}]
 

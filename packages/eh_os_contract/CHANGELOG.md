@@ -42,6 +42,10 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   promise's rule always said; a `from` like that still opens its item. Only a log whose rows predate a unit's
   identity growing can hold such events: a run there that was satisfied this way is now violated. A log written
   under one identity is judged as before.
+- **W3: a trace whose identity names a field no atom is named after is judged.** `Trace.judge/3` checks that a
+  payload does not hold an identity field under an atom key, and asked that with `String.to_existing_atom/1`,
+  which raised on a field this node had never made an atom of. A trace handed in from elsewhere could name one;
+  such a field is now read from its string key, as any other.
 
 ### Changed — a host has to act
 
