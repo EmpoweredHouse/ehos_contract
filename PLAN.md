@@ -81,10 +81,10 @@ nie jest zaczęty; pierwszy jest N1 (`final:`, `target`, `identity` encji).
 
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
-  1. **Użytkownik:** merge stosu po kolei — #135 (DD0), #137 (N1), #138 (N2); po każdym baza następnego
+  1. **Użytkownik:** merge stosu po kolei — #135 (DD0), #137 (N1), #138 (N2), #139 (N3); po każdym baza następnego
      przechodzi na `main`.
-  2. **N1 — PR #137** (na #135); **N2 — PR #138** (na #137); **N3 gotowe na `dsl/n3-timer-label`** (na N2; push i PR
-     na polecenie). **Asystent:** dalej reszta fali 1 w dowolnej kolejności. Start etapu: ◐ i gałąź w tabeli; koniec:
+  2. **N1 — PR #137** (na #135); **N2 — PR #138** (na #137); **N3 — PR #139** (na #138). **Asystent:** W1 w toku na
+     `engine/w1-schema-version`, dalej reszta fali 1 w dowolnej kolejności. Start etapu: ◐ i gałąź w tabeli; koniec:
      „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; potwierdzenie etykiet timerów sandboxa — „N3 — co wyszło”); po każdej fali „dalej czy
@@ -496,8 +496,8 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | DD0 | 0 | program i postęp w `PLAN.md` | — | ◐ `docs/dd0-programme`, PR #135 |
 | N1 | 1 | `final:`, `target`, `identity` encji, definicja encji | DD0 | ◐ `dsl/n1-names`, PR #137 (na #135) |
 | N2 | 1 | `subscribe "<nazwa>"` | DD0 | ◐ `dsl/n2-subscribe`, PR #138 (na #137) |
-| N3 | 1 | etykieta timera (EP6) | DD0 | ◐ `dsl/n3-timer-label` (na N2), gotowe do PR-a |
-| W1 | 1 | zapis `schema_version` | DD0 | ☐ |
+| N3 | 1 | etykieta timera (EP6) | DD0 | ◐ `dsl/n3-timer-label`, PR #139 (na #138) |
+| W1 | 1 | zapis `schema_version` | DD0 | ◐ `engine/w1-schema-version` (na N3) |
 | W2 | 1 | tagi dnia przy dopisie | DD0 | ☐ |
 | W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ☐ |
 | W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ☐ |
