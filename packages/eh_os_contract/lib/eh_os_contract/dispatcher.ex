@@ -1235,6 +1235,10 @@ defmodule EhOsContract.Dispatcher do
     %{
       id: Ecto.UUID.generate(),
       type: declaration.type,
+      # Plan W1: the version of the fields it was written with, so a reader running
+      # older code refuses it instead of misreading it, and an upcaster (V1) knows
+      # what it starts from. Until W1 every row said 1, the column's default.
+      schema_version: declaration.schema_version,
       contract: inspect(model.module),
       contract_version: model.version,
       tags: tags(declaration, event, values),

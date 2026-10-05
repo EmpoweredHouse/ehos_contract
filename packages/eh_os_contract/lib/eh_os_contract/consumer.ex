@@ -184,6 +184,18 @@ defmodule EhOsContract.Consumer do
               "which its log holds at position #{row.position}"
   end
 
+  # Plan W1: a row written with a newer version of the event's fields than this code
+  # declares is code older than the code that wrote it — a rollback, or a node not yet
+  # deployed — and its fields cannot be trusted to mean what this declaration says. An
+  # older version decodes as it always has, until upcasters exist (V1).
+  defp decode!(_model, _values, declaration, %{schema_version: written} = row, _open)
+       when is_integer(written) and written > declaration.schema_version do
+    raise ArgumentError,
+          "#{row.contract} holds #{inspect(row.type)} at position #{row.position} written " <>
+            "with schema version #{written}, newer than the #{declaration.schema_version} " <>
+            "this code declares: the code reading it is older than the code that wrote it"
+  end
+
   defp decode!(model, values, declaration, row, open) do
     case Codec.decode(declaration.fields, row.payload, values, open: open) do
       {:ok, fields} ->

@@ -59,6 +59,12 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Changed — a host has to act
 
+- **W1: a row of the log carries the schema version it was written with.** Dispatch writes the event's
+  `schema_version:` into `schema_version`, where every row said 1 until now, the column's default. Reading a row
+  written with a newer version than the running code declares raises, naming the row, instead of decoding it with
+  the older fields: during a rolling deploy, a node that has not been upgraded refuses what an upgraded one wrote.
+  Rows written before this version say 1 whatever their event declared; no contract has raised a version yet, so
+  none is misread. No upcasters yet (V1): an older row decodes as before. No contract version moves.
 - **N3: a timer has a label.** `timer :documentation_due, wait: {24, :hour}, …` no longer compiles; write
   `timer :documentation_due, "Termin dokumentacji", wait: {24, :hour}, …`. The label names what the timer is for,
   not how long it waits, which `wait:` or `at:` says. A process manager's page prints both, the callback's `@doc`
