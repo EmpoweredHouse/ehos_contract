@@ -113,6 +113,9 @@ EmpoweredHouse/eh-os#201) waits for a decision on where it goes.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; po każdej fali „dalej czy
      stop” i kiedy podbić przypięcie w aplikacji AppUnite (`~/Projects/ai/appunite_equipment`) i `ehos-ledger`.
+- **E13 — graf jako API i renderer — w toku** (decyzja użytkownika z 5 października, równolegle z DD): E13a
+  (`graph/e13a-document`) i E13b (`graph/e13b-renderer`), plan, decyzje, otwarte pytanie o strony modelu i tabela
+  „Postęp E13” — „Dopisek 5 października (3) — E13”.
 - **AppUnite — zapotrzebowanie (`Demands`) jest w `main`** (#128); dwa pytania z przeglądu i etapy `Computers`
   wobec cyklu życia czekają na użytkownika — „Dopisek 4 października (2)”, „Otwarte z przeglądu”.
 - **Po #99, decyzja użytkownika (4 października): raport wystarczy.** Zwrot odnotowany z błędnym przydziałem
@@ -435,6 +438,185 @@ przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie p
 Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty, commity, opisy PR, `docs/adr/`,
 `README.md` — po angielsku; `PLAN.md` i `CLAUDE.md` po polsku. Pełna reguła — `CLAUDE.md`.
 
+## Dopisek 5 października (3) — E13: plan budowy, szczegóły ekranu Graph, dwie gałęzie
+
+**Skąd.** Zadanie dla użytkownika: silnik ma wystawiać graf kontraktu jako API (JSON), a obok ma powstać
+biblioteka, która ten dokument rysuje — przy developmencie, żeby deweloper widział kontrakt w formie graficznej, i
+w EHOS Console, żeby CTO widział wszystkie procesy, jak w EventCatalogu. To jest E13 („Graf jako API i osobny
+renderer”, niżej w „Po E8”), dotąd bez miejsca w kolejności. Równolegle użytkownik spisał na gałęzi
+`web/dashboard-model-details` (`997bb0a`, plik roboczy `contract-web-improvement.md`) dwanaście usprawnień ekranu
+Graph, uzgodnionych przy przeglądaniu go na Rehmedzie — zanim wiedział o E13. Ten dopisek łączy jedno z drugim:
+**sposób prezentacji z planu roboczego, mechanizm z E13.** Treść planu roboczego jest niżej („Szczegóły ekranu”);
+plik nie trafia do `main`.
+
+Opis E13 niżej zostaje jako zapis; tam, gdzie się różnią, rację ma ten dopisek.
+
+### Sprawdzone przed planem (5 października)
+
+- **Grafów jest sześć, nie cztery.** Opis E13 wymienia pełny graf kontraktu, jednostkę, mapę kontekstów i system.
+  Doszły po nim diagram cyklu życia (`Graph.Lifecycle`, LC4b) i kształt zadeklarowany procesu
+  (`Graph.declared_to_mermaid/2`), którego lista wycinanego Mermaida nie wymienia.
+- **Szablon aplikacji nie montuje dashboardu.** `ehos_app` (`ehos-tools`) dokłada `eh_os_contract`,
+  `eh_os_contract_auth` i `ehos_design`, bez `eh_os_contract_web`; deweloper aplikacji z szablonu ma dziś obrazek
+  tylko przez `mix eh_os_contract.graph` → `.mmd`.
+- **`eh-os` nie zależy od `eh_os_contract`**, a Console jest na `phoenix_live_view ~> 1.1` — założenie E13, że
+  renderer to komponent LiveView wspólny dla dashboardu i Console, się trzyma.
+- **Console nie ma ekranu kontraktów, a roadmapa `eh-os` go nie przewiduje** (etapy 1–9 i „After that”). Jak
+  Console uwierzytelni się wobec `/graph` aplikacji — niezaprojektowane; endpointy są za tym samym `Resolver`em co
+  `/model`. Do zgłoszenia w `eh-os` po E13b (jak #91–#96).
+- **Strony modelu nie mają dziś czytelnika:** nie generuje ich szablon, nie czyta ich `eh-os`, w żadnym repozytorium
+  nie leżą wygenerowane strony. Mermaid jest w nich w dwóch miejscach: mapa kontekstów w `index.md` domeny i graf
+  jednostki na stronie agregatu.
+
+### Decyzje użytkownika (5 października)
+
+1. **Podział odpowiedzialności — jeden pakiet emituje, drugi prezentuje.**
+
+   | Pakiet | Odpowiada za | Nie wie o |
+   |---|---|---|
+   | `eh_os_contract` | **co** jest w grafie: węzły z rodzajem, krawędzie z rodzajem relacji, grupy, szczegóły węzłów do paneli, nakładka z logu; format `graph.v1` i jego JSON Schema | kolorach, kształtach, liniach, układzie |
+   | `eh_os_contract_web` | ekrany (Graph, Contract status), wybór kontraktu i procesu, autoryzacja (`Resolver`), endpointy HTTP; woła silnik i oddaje dokument komponentowi | tym, jak się rysuje |
+   | `eh_os_contract_graph` (nowy) | dokument (+ nakładka) → interaktywny graf i panele; paleta rodzajów, karty, układ | silniku — nie zależy od niego |
+
+   Format danych należy do silnika, bo to on go publikuje; wygląd — do renderera. *Odrzucone:* renderer w `eh-os`
+   (dashboard musiałby zależeć od platformy); renderer w `eh_os_contract_web` (Console ściągałaby przez web cały
+   silnik — Ecto, Oban, migracje — żeby narysować obrazek); osobny renderer w każdym z nich (ten sam graf w dwóch
+   implementacjach).
+2. **Panele biorą treść wyłącznie z `graph.v1`.** Szczegóły węzła liczy silnik, renderer ich nie wyprowadza.
+   *Odrzucone:* panel czytający `/model` — renderer rozumiałby drugi format, a Console robiłaby dwa wywołania.
+3. **Budowa na dzisiejszym `main`, bez zakładania DD.** Recenzja ma działać na tym, co jest; konflikty z DD —
+   przy merge'u. Gałąź startuje z `main` po N3, W1 i W2 (#139, #142, #143), więc etykieta timera już jest. Skutek
+   znany z góry: `id` węzłów zmienią się raz, przy ID3 (`graph.v1` nie jest nigdzie opublikowany, więc to nic nie kosztuje). *Odrzucone:* zakładać DD
+   zrobione (fale 2–5 to tygodnie, a recenzja nie miałaby czego uruchomić); czekać na DD.
+4. **Dwie gałęzie, dwa PR-y**: E13a — dokument i API, E13b — renderer i ekran (niżej). *Odrzucone:* jedna gałąź z
+   jednym PR-em (dane i obraz w jednym przeglądzie); PR na każdy krok kolejności E13 (0–5) — za drobno, żeby jedna
+   osoba trzymała całość w głowie.
+5. **Mermaid wypada też z `mix eh_os_contract.graph`** — task wypisuje dokument `graph.v1` (CI, porównania przed i
+   po, podgląd tego, co dostanie Console). *Odrzucone:* Mermaid z dokumentu tylko dla taska — trzecia droga do
+   obrazka obok dashboardu, a `mermaid.live` to wklejanie treści kontraktu na obcą stronę.
+6. **Obrazek dla dewelopera aplikacji z szablonu: szablon montuje dashboard** — zmiana w `ehos_app`, osobny PR w
+   `ehos-tools` po E13b. *Odrzucone:* `--html` z taska (task silnika nie może zależeć od renderera); nic do
+   pierwszej prośby.
+7. **Jeden widok dla wszystkich.** `delivery` i `idempotency` są w panelach, jak w planie roboczym; widok
+   właściciela (DD L4) kiedyś ukryje je w rendererze, bo dane i tak są w dokumencie. *Odrzucone:* przełącznik
+   deweloper / właściciel teraz.
+8. **Części dawnego `Brief`, których panele nie dają, idą na ekran Graph**, przy kształcie zadeklarowanym: tabela
+   wszystkich zdarzeń z kolumną „co od tego zależy” (pusta na czerwono) i obietnice zdaniami. *Odrzucone:* ekran
+   Contract status — `Brief` odpowiadał na „czy to jest ten proces” bez logu, a Contract status na „czy kod robi to,
+   co mówi proces” z logu (moduledoc `Brief`: inne pytanie, inny czytelnik, inny moment). Najwyżej przeniesiemy.
+9. **Renderer rozstrzyga prototyp** (krok 1 E13b), wybór zatwierdza użytkownik.
+
+**Otwarte — strony modelu** (`mix eh_os_contract.pages`), do decyzji przed E13b. Użytkownik: mogą się przydać jako
+„LLM wiki”, więc zostają i mają działać. Do wyboru: (a) Mermaid w Markdownie — `Graph.Mermaid` przepisany na
+dokument i przeniesiony pod strony (np. `EhOsContract.Pages.Mermaid`), kilka godzin; koszt: paleta w dwóch
+miejscach i wyjątek od „Mermaid wypada” zapisany z datą (E13 odrzuciło to samo dla `Brief`: „Mermaid w silniku dla
+jednego czytelnika”); (b) `graph.v1` jako osobne pliki obok stron (`docs/model/graph/<kontrakt>.json`, bez nakładki,
+z redakcją jak w API) i link ze strony — prawie zero kodu, Mermaid znika w całości, ale człowiek na GitHubie nie
+widzi rysunku; (c) strony bez rysunku.
+
+### Szczegóły ekranu Graph (plan roboczy użytkownika, 4 października)
+
+Źródła: `sandbox/lib/rehmed/domain.ex` i `sandbox/lib/rehmed/contracts/*.ex`. Mechanizm „flaga w `graph/*.ex`
+tylko dla webu” z planu roboczego (punkty 3, 5, 9) zastępuje decyzja 2: treść jest w dokumencie zawsze, renderer
+wybiera, co pokazać. Kliknięcia obsługuje komponent, nie Mermaid.
+
+**Pole — tak samo w każdym panelu, gdzie są pola** (komenda, zdarzenie, odpowiedź query, read model, stan): nazwa,
+typ, etykieta, wymagane, wartość domyślna; **dane osobowe** — „dane osobowe pacjenta — w logu szyfrowane, znikają
+po jego usunięciu” (`personal:`) albo „wskazuje pacjenta — w logu jawnie” (`subject:`), typ osoby z `subject` w
+domenie, zamiast osobnej listy danych osobowych domeny; **typ będący wartością domeny** — lista wartości z
+etykietami („Karta / Gotówka / Przelew / Bon”) i jednostka („Kwota, w groszach”) z `value`; **pole wskazujące
+encję** — „identyfikator: Usługa” z `{:id, :service}` i `entity`.
+
+| # | Gdzie i co | Źródło w kontrakcie lub domenie |
+|---|---|---|
+| 1 | **Mapa kontekstów — klik w kontekst** → panel: etykieta, poddomena, `source`; pojęcia (definicja, czego unikać i dlaczego, tłumaczenia); relacje z parami słów; kontrakty kontekstu; encje (np. „Usługa” z polem „Raportowana do P1”). **Klik w system zewnętrzny** → kierunek, jak wygląda niedostępność, operacje | `context`, `term`, `relation … terms:`, `entity`, `external`; `context:` kontraktu |
+| 2 | **Sekcja „Aktorzy” pod mapą** — tabela, ludzie i systemy osobno: aktor, rola w EHOS (`rehmed.reception`), za co odpowiada, `source`; system: za czym stoi i kontekst. Klik w wiersz albo w aktora na grafie procesu → panel: co rola może, po kontraktach (komendy, query, zapisywane fakty), nazwy uprawnień jak w EHOS-ie, procesy, za które odpowiada | `actor` (`responsibility`, `backed_by`); `by:`, `recorded_by:`, `accountable:` |
+| 3 | **Graf systemu — etykieta zdarzenia na strzałce** („Pacjent wyszedł z gabinetu” zamiast `visit_completed`) — jedyny tekst tego grafu, którego właściciel procesu nie przeczyta | etykieta `event` nadawcy; strzałka z subskrypcji odbiorcy |
+| 4 | **Contract status — co jest jednym przebiegiem**, obok „Runs in this period”: „one run = one visit (`visit_id`)”, „= payer × period”. Objaśnia odpowiedź, nie dodaje piątego pytania | `correlate` procesu |
+| 5 | **Pełny automat na grafie procesu:** strzałka „uruchamia” od zdarzenia startowego do process managera; pod zdarzeniem kończącym linijka „ends «…»” (bez strzałki wstecz); na pigułce zegara etykieta (N3) i czas — „documentation_due · after 24 h”, dla `at:` „next_month · at check_at”; każdy zegar osobno | `starts_on`, `ends_on`, `timer :name, "etykieta", wait:` / `at:` |
+| 6 | **Klik w komendę** → kto może wydać i nazwa uprawnienia w EHOS-ie (`rehmed.close_visit_clinically`), `scope:`, pola. **Klik w zdarzenie** → pola, kto je zapisuje, czy kończy przebieg, od jakiego systemu zależy, kto je odbiera, czy wychodzi do innej aplikacji. Bez `source`, bez listy `emits` (są strzałki), bez scenariuszy | `command` (`by:`, `scope:`); `event` (`recorded_by:`, `final`, `depends_on:`, `publish`), subskrypcje i reakcje |
+| 7 | **Polskie etykiety etapów w danych sandboxa** (`stage :documentation, "Dokumentacja"`), żeby „Declared shape” pokazywał „Wyjście pacjenta / Dokumentacja / Zamknięcie”. Silnik już pokazuje etykietę etapu | dane testowe |
+| 8 | **Klik w „N scenarios” na grafie jednostki** → scenariusze tej ścieżki z treścią: stan wyjściowy (zdarzenia z danymi), komenda z danymi, wynik (zdarzenia z danymi albo „odrzucone: <reguła>”). Przypisanie scenariuszy do ścieżki liczy silnik (dziś `graph/unit.ex`) i podaje w dokumencie, żeby liczba i lista się nie rozjechały | `scenario` |
+| 9 | **Process manager i polityka** — linijka „N scenarios” (także „0 scenarios”); klik → reguły (`constraint`, przy automacie też `invariant`, np. „Do P1 zgłaszamy tylko zamknięcia usług raportowanych do P1…”), dostarczenie i idempotencja jedną linijką (w transakcji czy później; po czym rozpoznaje powtórkę i kto pilnuje), scenariusze z treścią — automat pogrupowany po wyzwalaczu (start, zegar, zdarzenie w trakcie): stan, wynik (komenda z danymi / zegar nastawiony albo skasowany / koniec / co pamięta); polityka: zdarzenie z danymi → komenda z danymi albo nic, reguła, którą ilustruje. Scenariuszy reakcji nie ma dziś nigdzie | `process_manager`, `policy` (`delivery:`, `idempotency: [key:, owner:]`), `scenario` z celem na reakcji |
+| 10 | **Klik w query** (z „N scenarios”) → parametry (nazwa, typ, wymagany), kto może pytać i nazwa uprawnienia, z jakiego read modelu czyta, lista czy jeden wiersz, zawężenie, pola odpowiedzi (jak wyżej), scenariusze: parametry → oczekiwane wiersze. Parametry query nie są osobowe | `query` (`params`, `by:`, `reads:`, `returns:`, `scope:`) |
+| 11 | **Klik w efekt** → na jakie zdarzenie reaguje, który system i **którą operację** woła (`submit_report` w P1), reguły, dostarczenie i idempotencja. Efekt nie ma scenariuszy | `effect` (`handles:`, `calls:`, `idempotency:`, `delivery:`), operacje `external` |
+| 12 | **Klik w read model** → z jakich zdarzeń się buduje, pola, które query z niego czytają, dostarczenie | `read_model` (`projects:`, `field`, `delivery:`), `query … reads:` |
+
+Do tego z E13: krawędzie usług domenowych (dziś nie ma ich na żadnym grafie — „E9c-2 — co wyszło”) i z `Brief` (decyzja 8):
+dla każdego zdarzenia „co od niego zależy” — kończy proces; otwiera, spełnia albo zamyka zapasowo obietnicę; kto
+reaguje; od jakiego systemu zależy — oraz obietnice jako dane (`from`, `eventually`, `or_else`, `within`).
+
+### E13a — dokument i API (gałąź `graph/e13a-document`)
+
+Cel: każdy graf, który dziś rysuje Mermaid, i treść paneli istnieją jako dokument JSON ze schemą, dostępny z
+funkcji, przez HTTP i z taska. **Mermaid dalej rysuje dashboard** — ekran wygląda jak przed zmianą.
+
+1. **Neutralny model grafu** (np. `EhOsContract.Graph.Document`): typy węzła, krawędzi i grupy z
+   `graph/mermaid.ex`; stabilne `id` z jednej funkcji (`<rodzaj>:<kontrakt>:<nazwa>`, po ID3 z `id:` kontraktu), z
+   regułą na zderzenie nazw klienta (`visit.settled` i `visit_settled` — powód dzisiejszego `unique_ids/2`).
+2. **Rodzaj relacji zamiast wyglądu** w `build/*` (`contract.ex`, `unit.ex`, `system.ex`, `context_map.ex`,
+   `lifecycle.ex`, `graph.ex`): `emits`, `issues`, `subscribes`, `records`, `reads`, `projects`, `calls`,
+   `backed_by`, `gives`, `starts`, `ends`, `sets_timer` … — dokładna lista przy budowie, nazwy za DSL-em (`subscribe`
+   po N2, `final` po N1). `line` i `head` znikają z danych; `Graph.Mermaid` dostaje tymczasową tabelę „rodzaj →
+   linia i grot”, usuwaną w E13b.
+3. **Treść**: punkty 1–3, 5, 6, 8–12 i „Pole”; `correlate` procesu (punkt 4); „co od zdarzenia zależy” i obietnice
+   (`Brief`); krawędzie usług domenowych. **Scenariusze z danymi przechodzą tę samą redakcję danych osobowych co
+   `Model.to_data/1`** — test, że żaden dokument sandboxa nie niesie wartości osobowych Rehmedu.
+4. **Nakładka jako osobny dokument** — liczby z logu kluczowane tymi samymi `id`: przebiegi i wystąpienia, co czeka
+   i pada, ścieżki nigdy nieprzejechane. Dokument opisu nie zależy od bazy: ten sam kontrakt → te same bajty.
+5. **Schema** `priv/schema/graph.v1.json` i schema nakładki; test walidujący każdy dokument każdego kontraktu i
+   domeny sandboxa.
+6. **Endpointy w webie**, wzorem `/model` i `/asyncapi`, za tym samym `Resolver`em: `GET <mount>/graph` (indeks:
+   domeny z mapą kontekstów, systemem i aktorami), `GET <mount>/graph/:contract` z digestem w `ETag`,
+   `…/overlay?since=…`, odpowiedniki dla domeny; kontrakt spoza rejestru → 404, nie pusty graf.
+7. **Task**: `mix eh_os_contract.graph … --json`; flagi Mermaida zostają do E13b.
+8. **Dane sandboxa**: etykiety etapów (punkt 7), `responsibility` aktorów Rehmedu (dziś ma ją tylko Manager).
+9. Zapisy: CHANGELOG, README (API), „E13a — co wyszło”.
+
+*Odbiór E13a:* dokumenty i nakładki przechodzą schemę dla każdego kontraktu i domeny sandboxa; ten sam digest przed
+i po restarcie; dokument z `/graph/:contract` równy dokumentowi z funkcji; dashboard bez zmian; brama EXIT=0.
+
+### E13b — renderer i ekran (gałąź `graph/e13b-renderer`, z E13a)
+
+1. **Prototyp renderera** (½–1 dnia, niecommitowany): pełny graf jednego kontraktu Rehmedu w sandboxie w dwóch
+   wariantach — `@eventcatalog/visualiser` oraz `@xyflow/react` z dagre albo ELK i własnymi kartami; rozmiar
+   bundla, zero naruszeń CSP pod `default-src 'self'`. Wybór zatwierdza użytkownik.
+2. **Pakiet `packages/eh_os_contract_graph`**, zależny tylko od `phoenix_live_view`: LiveComponent (dokument +
+   nakładka → kontener z `phx-update="ignore"` i panel), **panele w HEEx** (klik w JS → zdarzenie do serwera),
+   paleta rodzajów w jednej tabeli (dzisiejsze `@classes` z `graph/mermaid.ex`, na tokenach `ehos_design`), hook JS,
+   bundle zbudowany esbuildem i commitowany w `priv/static`; testy na dokumentach-fiksturach, bez silnika. Brama
+   woła jego `mix check`.
+3. **Ekran Graph** na komponencie: punkty 1–3, 5, 6, 8–12, cykl życia, nakładka odróżniająca ścieżki
+   nieprzejechane; tabela zdarzeń i obietnice zdaniami (decyzja 8). **Contract status**: punkt 4.
+4. **Mermaid wycięty**: `graph/mermaid.ex` i każde `to_mermaid` / `*_to_mermaid`, `mermaid.min.js` i `NOTICE`, hook
+   `MermaidRender`, obejście CSP z EG3, motyw Mermaida, reset `pre.mermaid p`, zdanie o `style-src` w README, flagi
+   taska, asercje Mermaida w testach silnika, weba i sandboxa — z wyjątkiem stron, jeśli decyzja o nich wybierze (a).
+5. Strony modelu według decyzji.
+6. Weryfikacja w przeglądarce na hoście sandboxa (`:4010/dashboard/graph`, pod polityką EHOS-a), zrzuty; ten sam
+   ekran z dokumentu z funkcji i z dokumentu pobranego z `/graph/:contract`.
+7. Zapisy: CHANGELOG (host ma do zrobienia: nowa zależność), README pakietu, dopiski z datą w
+   `docs/adr/technology-notes.md` §12 i `docs/adr/contract-v2.md` §3, „E13b — co wyszło”; issue w `eh-os` o ekranie
+   procesów i uwierzytelnieniu Console wobec `/graph`; PR w `ehos-tools` (decyzja 6).
+
+*Odbiór E13b:* odbiór z opisu E13 („Po E8”) — `grep -ri mermaid packages sandbox` czysty poza `CHANGELOG.md` (i
+stronami, jeśli (a)) — oraz panele 1–12 działające na trzech domenach sandboxa.
+
+Szacunek (zgrubny, sprzed prototypu): E13a ~4–6 dni, E13b ~6–9 dni.
+
+### Postęp E13
+
+| Etap | Zakres | Gałąź | Status |
+|---|---|---|---|
+| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ plan (ten dopisek) |
+| E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ☐ |
+
+### Wobec programu DD
+
+DD buduje na Mermaidzie w dwóch miejscach; oba dostały dopisek z datą w swoim opisie: **P2e** buduje graf procesu
+jako `graph.v1` i rysuje go komponentem, a nie `Graph.process_to_mermaid/2`; weryfikacja refaktorów (W3, W4, P2a)
+porównuje dokument JSON zamiast `graph --overlay --mermaid`. Etap DD, który wejdzie przed E13a, robi to jeszcze po
+staremu (dokumentu nie ma), a E13b wytnie jego Mermaida razem z resztą.
+
 ## Dopisek 5 października (2) — manifest oferuje query i zapisy (#133, `eh-os` D-73)
 
 **Skąd.** Test polowy (aplikacja `EmpoweredHouse/appunite-equipment`, z `ehosctl init`, wdrożona przez EHOS na
@@ -740,6 +922,8 @@ their runs under the module's id (`included_runs/3`). No reader shows them yet (
 L5 po procesach (`deadline-without-terminal-event` = „bez `ends_on`”), zdarzenie czytane przez proces.
 **P2e — grafy i strony procesu**: `Graph.process_to_mermaid/2`, `graph --process <id>`, selektor w `graph_live`,
 `pages` `processes/<id>.md`, `View`.
+*5 października (E13):* graf procesu jako dokument `graph.v1` i komponent `eh_os_contract_graph` zamiast
+`Graph.process_to_mermaid/2`, jeśli E13a jest już w `main` — „Dopisek 5 października (3) — E13”.
 **P2f — procesy sandboxa jako moduły** (PR na domenę): `Rehmed.Processes.ClinicalVisit`,
 `Taxvision.Processes.AccountingMonth`, `AppuniteEquipment.Processes.Assignment` (kontrakt `Assignments` znika).
 **P2g — rigi i testy o procesach** (`ProcessShapes`, `DispatchRig.Branch`, `KeyRig.Audit`, `UniversalityGate`,
@@ -867,6 +1051,7 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
   (`DataCase`), scenariusze sandboxa.
 - Refaktory bez zmiany zachowania (W3, W4, P2a): `mix eh_os_contract.report` i `graph --overlay --mermaid` sandboxa
   bajt w bajt przed i po (skrypt w scratchpadzie).
+  *5 października (E13):* po E13b Mermaida nie ma — porównuje się dokument `graph --json` i jego nakładkę.
 - PR-y przesuwające werdykty (P1a, P2d, P2h, O1, X1): diff raportu i `check`; zmieniają się tylko zamierzone linie;
   każde nowe ostrzeżenie wyjaśnione.
 - Ekrany (P1a, P2e, O2): podgląd hosta sandboxa (`/dashboard`, port 4010), zrzut ekranu.
@@ -3689,6 +3874,9 @@ dopiero tutaj — inbox zamienia przychodzące wiadomości w komendy, czyli też
 zgadywany z jednego przypadku; (b) **wcale** — każde przyszłe wejście (LiveView, job z credentialem) musiałoby samo
 pamiętać o kolejności „najpierw uprawnienie, potem pola”. Jeśli drugie drzwi pojawią się przed E12, wejście wchodzi
 razem z nimi.
+
+*5 października: plan budowy, decyzje i szczegóły ekranu — „Dopisek 5 października (3) — E13”; gdzie się różnią,
+rację ma dopisek.*
 
 **E13 — Graf jako API i osobny renderer, w miejsce Mermaida.** Pomysł użytkownika z 28 września, **bez miejsca w
 kolejności**. To jest ponowne rozważenie, które EG odłożyło („interaktywny `/graph` z JSON-a (…) jak EventCatalog —
