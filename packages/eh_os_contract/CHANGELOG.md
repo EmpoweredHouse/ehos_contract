@@ -45,9 +45,10 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   older fields: it raises `EhOsContract.NewerSchemaError`, which names the row, never a value. During a rolling
   deploy, or after a rollback, that means on the older node:
   - a command whose stream holds such a row is refused, recorded `failed` with that error;
-  - a subscription, a process manager and a relay wait at the row: nothing moves, no attempt is counted, the
-    runner logs a warning and tries again every 5 s, and it goes on by itself once the node runs the newer code;
-    a subscription does not turn `failing` over it, so do not `--skip` it;
+  - a subscription, a process manager and a relay wait at the row: the events before it in the batch are
+    applied, the row itself moves nothing, no attempt is counted, the runner logs a warning and tries again every
+    5 s, and it goes on by itself once the node runs the newer code; a subscription does not turn `failing` over
+    it, so do not `--skip` it;
   - an effect's job is snoozed for 30 s, which Oban does not count against `max_attempts`, and its backoff after
     a real failure counts only the attempts that ran;
   - a message an inbox takes whose policy's command meets such a row is answered `:nack` and delivered again.
@@ -55,9 +56,10 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   none is misread. An older row decodes as before, until upcasters (V1). No contract version moves.
 - **N3: a timer has a label.** `timer :documentation_due, wait: {24, :hour}, …` no longer compiles; write
   `timer :documentation_due, "Termin dokumentacji", wait: {24, :hour}, …`. The label names what the timer is for,
-  not how long it waits, which `wait:` or `at:` says. A process manager's page prints both, the callback's `@doc`
-  and the graph's timer node carry the label, and so do the conformance report's and the dashboard's sentences
-  about a timer's step, which named the timer before. **Moves the version** of every contract with a timer.
+  not how long it waits, which `wait:` or `at:` says, and a blank one is refused (P4). A process manager's page
+  prints both, the callback's `@doc` and the graph's timer node carry the label, and so do the conformance report's
+  and the dashboard's sentences about a timer's step, which named the timer before. **Moves the version** of every
+  contract with a timer.
 - **N2: another application's event is `subscribe`d to, not `consumes`d.** `consumes "rehmed.visit.closed.v1",
   as: :visit_closed do … end` no longer compiles; write `subscribe "rehmed.visit.closed.v1", as: :visit_closed do
   … end`, the word its capability `<name>.subscribe` already used. `consumes` takes a sibling contract's module only

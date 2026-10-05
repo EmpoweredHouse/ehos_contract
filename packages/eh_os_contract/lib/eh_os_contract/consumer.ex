@@ -211,6 +211,27 @@ defmodule EhOsContract.Consumer do
 
   def current!(_declaration, _row), do: :ok
 
+  @doc false
+  # Plan W1: whether `row` was written with a newer version of its event's fields than
+  # this code declares, asked of a batch before it is applied, so that the events
+  # before a newer row commit instead of rolling back with it. A row this cannot place
+  # (erased, or of a contract or a type this node does not know) is left to
+  # `decode!/1`, which says why.
+  @spec newer?(Event.t()) :: boolean()
+  def newer?(%Event{type: type, schema_version: written} = row) when is_integer(written) do
+    with false <- type == Personal.erased_type(),
+         %{kind: :contract} = model <- Model.fetch(Module.safe_concat([row.contract])),
+         %{schema_version: declared} <- Enum.find(model.events, &(&1.type == type)) do
+      written > declared
+    else
+      _cannot_place -> false
+    end
+  rescue
+    ArgumentError -> false
+  end
+
+  def newer?(_row), do: false
+
   defp declaration!(model, row) do
     Enum.find(model.events, &(&1.type == row.type)) ||
       raise ArgumentError,

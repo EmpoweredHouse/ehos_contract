@@ -231,10 +231,18 @@ defmodule EhOsContract.Subscription do
         :idle
 
       events ->
-        Enum.each(events, &apply!(repo, consumer, &1, row.status))
-        last = List.last(events).position
-        advance!(repo, row, last)
-        {:applied, length(events)}
+        # Plan W1: a batch stops before a newer row, so what precedes it commits and
+        # the next step waits at it, as a relay does; rolled back with it, the same
+        # batch would be read and undone again until this node is upgraded.
+        case Enum.split_while(events, &(not Consumer.newer?(&1))) do
+          {[], [newer | _]} ->
+            repo.rollback({:waiting, newer.position})
+
+          {current, _rest} ->
+            Enum.each(current, &apply!(repo, consumer, &1, row.status))
+            advance!(repo, row, List.last(current).position)
+            {:applied, length(current)}
+        end
     end
   end
 
