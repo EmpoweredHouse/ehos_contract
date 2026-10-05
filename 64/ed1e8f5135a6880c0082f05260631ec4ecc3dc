@@ -1,0 +1,1 @@
+N1 reviewed at 0630932 (see that note): correctness /code-review high and security/performance, all findings settled (fixed 1b67089, 21a743e; two skipped, one no change). 64ed1e8 only merges docs/dd0-programme (main after #134, PLAN.md conflict resolved there). Gate EXIT=0 on 64ed1e8: sandbox check 0/29/10, 194; engine 0/74/6, 1262; web 51; auth 286 + 1 property.
