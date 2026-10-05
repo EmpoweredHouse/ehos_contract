@@ -11,8 +11,9 @@ defmodule EhOsContract.Contract.Rules.Consumes do
 
   Whether the sibling exists and has those events is the domain-wide view a Mix
   compiler has (L3, X5), not this one: the sibling is named without a compile
-  dependency (v2 §8). The other form, another application's published event by
-  name, follows D11 and has its own rules.
+  dependency (v2 §8). Another application's published event is `subscribe`d to,
+  by name, and follows D11; `consumes` given a name is refused here, with the
+  declaration to write instead (plan N2).
   """
 
   alias EhOsContract.DslRules
@@ -20,11 +21,19 @@ defmodule EhOsContract.Contract.Rules.Consumes do
   @doc false
   @spec check(map()) :: [DslRules.violation()]
   def check(declarations) do
-    for %{from: from} = consumes <- declarations.consumes,
-        is_atom(from),
-        violation <- violations(consumes, declarations.module) do
-      violation
-    end
+    named =
+      for %{from: from, via: :consumes} = consumes <- declarations.consumes, is_binary(from) do
+        {"K1: consumes #{inspect(from)} names another application's published event, which is " <>
+           "subscribed to: subscribe #{inspect(from)}, as: :name_here, with the fields it reads",
+         consumes}
+      end
+
+    named ++
+      for %{from: from} = consumes <- declarations.consumes,
+          is_atom(from),
+          violation <- violations(consumes, declarations.module) do
+        violation
+      end
   end
 
   defp violations(consumes, module) do

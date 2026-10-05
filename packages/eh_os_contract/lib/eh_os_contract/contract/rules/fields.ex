@@ -287,7 +287,7 @@ defmodule EhOsContract.Contract.Rules.Fields do
       for(
         c <- d.consumes,
         is_binary(c.from),
-        do: {"consumed event #{inspect(c.from)}", c.fields, [], :consumed}
+        do: {"subscribed event #{inspect(c.from)}", c.fields, [], :consumed}
       )
     ])
   end

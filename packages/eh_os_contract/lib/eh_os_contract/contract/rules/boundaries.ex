@@ -67,7 +67,12 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
       for(u <- declarations.units, c <- u.commands, v <- command(c, u), do: v),
       Enum.flat_map(declarations.publishes, &publish(&1, events, identity, unit_of)),
       shared_names(declarations.publishes),
-      for(%{from: from} = c <- declarations.consumes, is_binary(from), v <- published(c), do: v),
+      for(
+        %{from: from, via: :subscribe} = c <- declarations.consumes,
+        is_binary(from),
+        v <- published(c),
+        do: v
+      ),
       received_beyond_policies(declarations)
     ])
   end

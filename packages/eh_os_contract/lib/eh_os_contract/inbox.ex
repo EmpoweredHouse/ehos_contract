@@ -76,7 +76,7 @@ defmodule EhOsContract.Inbox do
   @doc """
   Takes one delivery of `message` into `inbox`: `:ack` once its row and what its
   policies dispatched are committed, or when the row was there already; `:nack` when
-  the message does not fit what the contract consumes, or a policy fails.
+  the message does not fit what the contract subscribes to, or a policy fails.
   """
   @spec take(Implementations.inbox(), Bus.Message.t()) :: Bus.verdict()
   def take(inbox, %Bus.Message{} = message) do

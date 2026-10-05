@@ -345,7 +345,10 @@ defmodule EhOsContract.ContractBoundariesTest do
                ~s|D11: subscribe "rehmed.visit.closed.v1" needs as: the name the event has in this | <>
                  "contract (consumes_by_name_wrong.ex:4)"
 
-      assert message =~ ~s|D11: subscribe "rehmed.visit.opened.v1" lists no fields|
+      assert message =~
+               ~s|D11: subscribe "rehmed.visit.opened.v1" lists no fields; declare the ones this | <>
+                 "contract reads (consumes_by_name_wrong.ex:8)"
+
       assert message =~ ~s|D11: subscribe "visit_moved": "visit_moved" is not a versioned name|
     end
 
@@ -353,14 +356,20 @@ defmodule EhOsContract.ContractBoundariesTest do
     test "consumes takes a sibling contract, not a published name" do
       message =
         refuse_contract("ConsumesAName", """
-          consumes "rehmed.visit.closed.v1", [:visit_closed]
+          consumes "rehmed.visit.closed.v1", as: :visit_closed do
+            field :visit_id, :id
+          end
 
         #{@unit}
         """)
 
       assert message =~
-               ~s|contract -> consumes defined in consumes_a_name.ex:4::\n| <>
-                 ~s|  invalid value for :from option: expected atom, got: "rehmed.visit.closed.v1"|
+               ~s|K1: consumes "rehmed.visit.closed.v1" names another application's published | <>
+                 ~s|event, which is subscribed to: subscribe "rehmed.visit.closed.v1", as: | <>
+                 ":name_here, with the fields it reads (consumes_a_name.ex:4)"
+
+      # The old form is refused once, here, not again by D11 as a subscription.
+      refute message =~ "D11:"
     end
 
     test "a dash only inside the namespace, as in a publication" do

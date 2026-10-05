@@ -109,6 +109,14 @@ defmodule EhOsContract.Contract.Rules do
         do: as
   end
 
+  @doc """
+  What a refusal calls an event `consumed/1` returns: a sibling's is consumed, another
+  application's subscribed to (plan N2).
+  """
+  @spec arrived(struct()) :: String.t()
+  def arrived(%Dsl.Consumes{from: from}) when is_binary(from), do: "subscribed event"
+  def arrived(%Dsl.Consumes{}), do: "consumed event"
+
   @doc "The fields of every state a unit or a process manager declares."
   @spec state_fields([struct()]) :: [struct()]
   def state_fields(states), do: Enum.flat_map(states, & &1.fields)

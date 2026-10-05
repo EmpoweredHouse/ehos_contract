@@ -260,8 +260,9 @@ defmodule EhOsContract.Contract.Build do
     |> without_empty(:invariants)
   end
 
-  # Two shapes under one word: a sibling contract's events, by module, or another
-  # application's published event, by name, with the fields this contract reads.
+  # Two words, one struct (plan N2): `consumes` a sibling contract's events, by module,
+  # or `subscribe` to another application's published event, by name, with the fields
+  # this contract reads.
   defp consumes(%Dsl.Consumes{from: from} = consumes) when is_binary(from) do
     %{
       kind: :published,

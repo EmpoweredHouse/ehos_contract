@@ -9,7 +9,8 @@ One top-level section, so every entity is written straight into the module body:
 the units that decide (aggregates and dynamic consistency boundaries) with their
 state, invariants, commands, events and stage groups; what reacts to events
 (policies, effects, process managers); what is read (read models, queries); what
-enters from elsewhere (`consumes`) and what leaves the application (`publish`);
+enters from elsewhere (`consumes` from a sibling contract, `subscribe` from another
+application) and what leaves the application (`publish`);
 the one process; and scenarios. The vocabulary is closed: a contract cannot add
 extensions.
 
@@ -1745,7 +1746,7 @@ A sibling contract's events, read from this log.
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`from`](#contract-consumes-from){: #contract-consumes-from .spark-required} | `atom` |  | The sibling contract. |
+| [`from`](#contract-consumes-from){: #contract-consumes-from .spark-required} | `atom \| String.t` |  | The sibling contract; a published name is `subscribe`d to. |
 | [`events`](#contract-consumes-events){: #contract-consumes-events } | `atom \| list(atom) \| keyword` | `[]` | The sibling contract's events. |
 ### Options
 

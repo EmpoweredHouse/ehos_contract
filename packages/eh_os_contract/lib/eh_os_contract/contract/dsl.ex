@@ -6,7 +6,8 @@ defmodule EhOsContract.Contract.Dsl do
   the units that decide (aggregates and dynamic consistency boundaries) with their
   state, invariants, commands, events and stage groups; what reacts to events
   (policies, effects, process managers); what is read (read models, queries); what
-  enters from elsewhere (`consumes`) and what leaves the application (`publish`);
+  enters from elsewhere (`consumes` from a sibling contract, `subscribe` from another
+  application) and what leaves the application (`publish`);
   the one process; and scenarios. The vocabulary is closed: a contract cannot add
   extensions.
 
@@ -199,7 +200,7 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule Consumes do
     @moduledoc false
-    defstruct [:from, :as, events: [], fields: [], __spark_metadata__: nil]
+    defstruct [:from, :as, via: :consumes, events: [], fields: [], __spark_metadata__: nil]
   end
 
   defmodule Publish do
@@ -851,11 +852,16 @@ defmodule EhOsContract.Contract.Dsl do
     target: Consumes,
     args: [:from, {:optional, :events}],
     no_depend_modules: [:from],
-    # Fields and an atom `as:` are refused by K1, which says why, rather than by the
-    # schema, which would only say that `field` is undefined.
+    # A published name, fields and an atom `as:` are refused by K1, which says why and
+    # what to write instead, rather than by the schema, which could only say that the
+    # value is not a module or that `field` is undefined.
     entities: [fields: [@field]],
     schema: [
-      from: [type: :atom, required: true, doc: "The sibling contract."],
+      from: [
+        type: {:or, [:atom, :string]},
+        required: true,
+        doc: "The sibling contract; a published name is `subscribe`d to."
+      ],
       events: [type: {:wrap_list, :atom}, default: [], doc: "The sibling contract's events."],
       as: [
         type: {:or, [:atom, :keyword_list]},
@@ -871,6 +877,7 @@ defmodule EhOsContract.Contract.Dsl do
         "fields this contract reads.",
     target: Consumes,
     args: [:from],
+    auto_set_fields: [via: :subscribe],
     entities: [fields: [@field]],
     schema: [
       from: [
