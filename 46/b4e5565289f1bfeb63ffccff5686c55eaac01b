@@ -1,0 +1,1 @@
+One sandbox label and a PLAN.md note, from a user decision on CodeRabbit's outside-diff comment. No code reviews run: no library code changed. Gate: sandbox mix check EXIT=0 — sandbox 194, engine 1264, web 52, auth 286 + 1 property; check 0/29/10 and 0/74/6.
