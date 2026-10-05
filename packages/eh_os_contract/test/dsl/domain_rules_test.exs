@@ -333,6 +333,7 @@ defmodule EhOsContract.DomainRulesTest do
           value :method, {:enum, []}
           value :status, {:enum, [:open, :closed, :open]}
           value :flag, {:enum, [true]}
+          value :method_blank, {:enum, [card: "Karta", cash: ""]}
 
           value :line do
             field :amount, :cents
@@ -343,6 +344,7 @@ defmodule EhOsContract.DomainRulesTest do
       assert message =~ "value :method: an enum is a non-empty list of members"
       assert message =~ "value :status: an enum repeats a member: [:open, :closed, :open]"
       assert message =~ "value :flag: an enum member is an atom, or an atom with a label"
+      assert message =~ "value :method_blank: an enum member's label is blank: :cash"
       assert message =~ "value :line, field :amount: type :cents is neither a built-in type"
     end
 

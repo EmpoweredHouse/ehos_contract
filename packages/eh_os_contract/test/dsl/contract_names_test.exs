@@ -84,7 +84,7 @@ defmodule EhOsContract.ContractNamesTest do
             ends_on :visit_closed
           end
 
-          process :visit, "Wizyta" do
+          process :visit, "\u200B\u00A0" do
             correlate :visit_id
           end
         """)
@@ -98,6 +98,26 @@ defmodule EhOsContract.ContractNamesTest do
       assert message =~ "N1: field :note has a blank label"
       assert message =~ "N1: status :closed has a blank label"
       assert message =~ "N1: timer :nudge has a blank label"
+      # A zero-width space and a no-break space print as nothing, as a space does.
+      assert message =~ "N1: process :visit has a blank label"
+    end
+
+    defmodule Row do
+      @moduledoc false
+      defstruct [:name, :label]
+    end
+
+    test "control: a struct in data is not a declaration, whatever its label" do
+      invariant = %EhOsContract.Domain.Dsl.ValueInvariant{
+        name: :named,
+        label: "Etykieta nie jest pusta",
+        violated_by: [%Row{name: :row, label: ""}]
+      }
+
+      assert EhOsContract.DslRules.blank_labels([invariant], "D1") == []
+
+      assert [{"D1: invariant :named has a blank label" <> _, _}] =
+               EhOsContract.DslRules.blank_labels([%{invariant | label: " "}], "D1")
     end
 
     test "control: an optional label left out passes, and so does one in Polish" do

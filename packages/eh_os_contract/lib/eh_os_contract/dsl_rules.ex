@@ -116,35 +116,53 @@ defmodule EhOsContract.DslRules do
   string, which `""` is, and a blank label leaves a page, a graph's node or a
   report's sentence with nothing saying what the business calls the declaration.
 
-  Every struct with a `label` is asked, so a declaration added to either DSL is
+  Every declaration of either DSL with a `label` is asked, so one added later is
   covered without being listed here. An optional label left out is `nil`, and passes.
+  Only the DSLs' own structs are walked: a struct in a scenario's rows or an
+  invariant's examples is data, and its fields are not declarations.
   """
   @spec blank_labels([struct()], String.t()) :: [violation()]
   def blank_labels(entities, code) do
-    for %{label: label} = declaration <- labelled(entities),
-        is_binary(label) and String.trim(label) == "",
-        uniq: true do
+    for %{label: label} = declaration <- labelled(entities), blank?(label), uniq: true do
       {"#{code}: #{kind(declaration)} #{inspect(Map.get(declaration, :name))} has a blank " <>
          "label; say what the business calls it", declaration}
     end
   end
 
+  # Unicode whitespace, and the zero-width characters a copy from a board export
+  # brings along, which `String.trim/1` keeps and a page prints as nothing.
+  @blank ~r/\A[\s\x{200B}\x{200C}\x{200D}\x{2060}\x{FEFF}]*\z/u
+
+  @doc "Whether `text` is a string that says nothing: empty, or only whitespace."
+  @spec blank?(term()) :: boolean()
+  def blank?(text), do: is_binary(text) and text =~ @blank
+
   defp labelled(list) when is_list(list), do: Enum.flat_map(list, &labelled/1)
 
-  defp labelled(%_{} = struct) do
-    own = if Map.has_key?(struct, :label), do: [struct], else: []
+  defp labelled(%struct{} = declaration) do
+    if declaration?(struct) do
+      own = if Map.has_key?(declaration, :label), do: [declaration], else: []
 
-    nested =
-      struct
-      |> Map.drop([:__struct__, :__spark_metadata__])
-      |> Map.values()
-      |> Enum.filter(&is_list/1)
-      |> Enum.flat_map(&labelled/1)
+      nested =
+        declaration
+        |> Map.drop([:__struct__, :__spark_metadata__])
+        |> Map.values()
+        |> Enum.flat_map(&labelled/1)
 
-    own ++ nested
+      own ++ nested
+    else
+      []
+    end
   end
 
   defp labelled(_other), do: []
+
+  defp declaration?(struct) do
+    case Module.split(struct) do
+      ["EhOsContract", dsl, "Dsl" | _] when dsl in ["Contract", "Domain"] -> true
+      _other -> false
+    end
+  end
 
   # What a refusal calls a declaration: its struct's name in words, where that is
   # not the word the DSL writes.
