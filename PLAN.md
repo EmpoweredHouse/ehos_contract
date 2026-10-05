@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 5 października, wieczór (DD0, N1–N3, W1–W3 w `main`; W4, T1+T1s w PR-ach #146, #148)
+## Handoff — stan na 5 października, późny wieczór (DD0, N1–N3, W1–W4, T1+T1s w `main`; X1 w toku)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -41,23 +41,23 @@ komputer, kontrakt `Demands`) — „Dopisek 4 października (2)”.
 **Następna praca to program DD — „DDD sprawdzane przez kod”** (zatwierdzony przez użytkownika 5 października): 53
 etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem programu jest tabela „Postęp” w „Dopisek 5
 października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
-Fala 1: N1, N2, N3, W1, W2, W3 w `main` (#137, #138, #139, #142, #143, #145); W4 (wspólne reguły decyzji) w PR-ze
-#146 (na `main`); T1+T1s (`supplied_by: :host`, `Supplier`, sandbox) w PR-ze #148 (na #146); potem X1, S4 w dowolnej
-kolejności.
+Fala 1: N1, N2, N3, W1, W2, W3, W4, T1, T1s w `main` (#137, #138, #139, #142, #143, #145, #146, #148); X1 w toku na
+`claude/dsl-x1-in-transaction-4447a3` (od `main`); po nim S4, ostatni etap fali 1.
 
 ### Stan repozytorium
 
-- **`origin/main` = `5be6358`** (merge #145, W3, z poprawką po trzeciej recenzji CodeRabbita `7a3bc49`; przed nim #147
+- **`origin/main` = `5576b99`** (merge #148, T1+T1s; przed nim `552b86f`, merge #146, W4; przed nim `5be6358`, merge #145,
+  W3, z poprawką po trzeciej recenzji CodeRabbita `7a3bc49`; przed nim #147
   `488f18e` — krótsze przebiegi CI, z innej sesji; przed nim `3508cb6`, merge #144, puste etykiety: N1/D1 odmawiają etykiety pustej albo z samych białych
   znaków i znaków formatu Unicode, F2/D3 — takiej etykiety członka enuma; spoza programu, z recenzji #139 — „N3 — co
   wyszło”; przed nim #143 W2 `6a236d5`, #142 W1 `3c7b29f`, #139 N3 `a568ce7` z poprawką etykiety timera TaxVision
   `46b4e55`, #138 N2 `f0e473d`; wcześniej #137 N1 i #135 DD0 — każdy z poprawką po przeglądzie CodeRabbita,
   `.coderabbit.yaml` dla PR-ów na dowolną gałąź).
-- **Otwarte PR-y — stos, merge po kolei:** [#146](https://github.com/EmpoweredHouse/eh-os-contract/pull/146) W4
-  (`engine/w4-decision`, na `main`, z `main` wmergowanym) → [#148](https://github.com/EmpoweredHouse/eh-os-contract/pull/148)
-  T1+T1s (`engine/t1-supplied-by-host`, na #146). CI stoi na billingu GitHub Actions (job nie startuje).
-  Stos N3 → W1 → W2 zmergowany po kolei; poza programem otwarte jeszcze #140
-  (`.coderabbit.yaml`, ten sam plik jest już w `main` — do zamknięcia).
+- **Otwartych PR-ów programu brak.** #146 (W4) i #148 (T1+T1s) zmergowane 5 października; gałęzie
+  `engine/w3-trace-core`, `engine/w4-decision`, `engine/t1-supplied-by-host` zmergowane, nieusunięte (sprzątanie na
+  polecenie użytkownika). **CI stoi na billingu GitHub Actions** (joby nie są przydzielane runnerowi): kod z `main`
+  przeszedł lokalną bramę, ale nie przeszedł jeszcze CI w całości — po naprawie `gh run rerun 37371291018`.
+  Poza programem otwarte jeszcze #140 (`.coderabbit.yaml`, ten sam plik jest już w `main` — do zamknięcia).
 - Wcześniej `6ce4c30` (merge #126, ostatni PR #99). Przedtem `eb0c8a1` (merge #103: #98,
   budżet bajtów klucza — „#98 — co wyszło”). Przedtem `b6a96dd` —
   #101 (handoff po #96), `90a83f2` — #102 (EP1, z sesji `esdm-dsl-comparison`), `0b7bc84` — #100 (poprawki
@@ -69,7 +69,9 @@ kolejności.
 - **Gałęzie:** gałęzie tej pracy usunięte na GitHubie i lokalnie 3 października, za zgodą użytkownika (EB, EH, #71,
   #89, discovery, #65, #93, #95, #96, #100, a także przypadkowy `revert-95-engine/bounded-values` — revert z przycisku
   GitHuba, bez PR-a); `engine/issue-98-key-budget` (#103) — po merge'u, za zgodą użytkownika. Zostało 59 innych gałęzi na GitHubie, zmergowanych dawno — nieruszane z wyboru użytkownika.
-- **Worktree (5 października, wieczór):** `w3-public-trace-core-c3ed23` — sesja W3 i W4 (`engine/w4-decision`);
+- **Worktree (5 października, późny wieczór):** `runner-usage-optimization-b60150` — sesja X1
+  (`claude/dsl-x1-in-transaction-4447a3`; katalog po sesji CI z #147); `w3-public-trace-core-c3ed23` — sesja W3, W4 i
+  T1 (`engine/t1-supplied-by-host`, zmergowana);
   `computer-ordering-process-f84437` — poprzednia sesja DD (`engine/w2-day-tags`);
   `plan-md-incomplete-actions-27a0e4` (trzyma `dsl/n2-subscribe` — tam powstały poprawki po przeglądach #135/#138),
   `esdm-dsl-comparison-d82750`, `ep4-ep5-user-questions-95855b` — innych sesji, nie ruszać.
@@ -90,10 +92,11 @@ kolejności.
 
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
-  1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138), N3 (#139), W1 (#142), W2 (#143), W3 (#145). **Użytkownik:**
-     merge #146 (W4), potem #148 (T1+T1s); po merge'u ☑ w tabeli robi asystent przy następnym etapie.
-  2. **Asystent:** W4 w PR-ze #146 (na `main`), T1+T1s w PR-ze #148 (na #146); potem X1, S4, każdy na gałęzi od
-     głowy stosu albo od `main` po merge'ach (tabela „Postęp” żyje na gałęzi etapu). Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
+  1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138), N3 (#139), W1 (#142), W2 (#143), W3 (#145), W4 (#146),
+     T1+T1s (#148).
+  2. **Asystent:** X1 na `claude/dsl-x1-in-transaction-4447a3` (worktree `runner-usage-optimization-b60150`), potem
+     S4 na gałęzi od `main` (tabela „Postęp” żyje na gałęzi etapu); po fali 1 notatka migracyjna dla AppUnite i
+     `ehos-ledger`. Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; po każdej fali „dalej czy
      stop” i kiedy podbić przypięcie w aplikacji AppUnite (`~/Projects/ai/appunite_equipment`) i `ehos-ledger`.
@@ -525,10 +528,10 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | W1 | 1 | zapis `schema_version` | DD0 | ☑ #142 |
 | W2 | 1 | tagi dnia przy dopisie | DD0 | ☑ #143 |
 | W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ☑ #145 |
-| W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ◐ `engine/w4-decision`, PR #146 |
-| T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ◐ `engine/t1-supplied-by-host`, PR #148 (na #146) |
-| T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ◐ `engine/t1-supplied-by-host`, PR #148 (z T1) |
-| X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ☐ |
+| W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ☑ #146 |
+| T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ☑ #148 |
+| T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☑ #148 |
+| X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ◐ `claude/dsl-x1-in-transaction-4447a3` |
 | S4 | 1 | `transition-without-scenario` | DD0 | ☐ |
 | ID1 | 2 | `id:` kontraktu deklarowany | N1 | ☐ |
 | ID2 | 2 | każdy kontrakt z `id:` | ID1 | ☐ |
