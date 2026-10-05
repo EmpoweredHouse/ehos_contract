@@ -82,8 +82,7 @@ nie jest zaczęty; pierwszy jest N1 (`final:`, `target`, `identity` encji).
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
   1. **Użytkownik:** push i PR `docs/dd0-programme` (DD0), przed nim `pre-pr-review` — na polecenie.
-  2. **N1 gotowe na `dsl/n1-names`** (przegląd i brama za nim — „N1 — co wyszło”); push i PR na polecenie użytkownika.
-     **Asystent:** dalej N2 → N3, reszta fali 1 w dowolnej kolejności. Start etapu: ◐ i gałąź w tabeli; koniec:
+  2. **N1 — PR #137** (na #135; „N1 — co wyszło”). **Asystent:** N2 w toku na `dsl/n2-subscribe`, potem N3, reszta fali 1 w dowolnej kolejności. Start etapu: ◐ i gałąź w tabeli; koniec:
      „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; etykieta timera albo zdanie z deklaracji przed N3); po każdej fali „dalej czy
@@ -493,8 +492,8 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | Etap | Fala | Zakres | Zależy od | Status |
 |---|---|---|---|---|
 | DD0 | 0 | program i postęp w `PLAN.md` | — | ◐ `docs/dd0-programme`, PR #135 |
-| N1 | 1 | `final:`, `target`, `identity` encji, definicja encji | DD0 | ◐ `dsl/n1-names` (na DD0), gotowe do PR-a |
-| N2 | 1 | `subscribe "<nazwa>"` | DD0 | ☐ |
+| N1 | 1 | `final:`, `target`, `identity` encji, definicja encji | DD0 | ◐ `dsl/n1-names`, PR #137 (na #135) |
+| N2 | 1 | `subscribe "<nazwa>"` | DD0 | ◐ `dsl/n2-subscribe` (na N1) |
 | N3 | 1 | etykieta timera (EP6) | DD0 | ☐ |
 | W1 | 1 | zapis `schema_version` | DD0 | ☐ |
 | W2 | 1 | tagi dnia przy dopisie | DD0 | ☐ |
