@@ -1,0 +1,4 @@
+pre-pr-review of origin/main..ce732cd (CI-only change).
+code-review high: 8 findings. Fixed in ce732cd: cache key ignores config (added config hash), restore-keys partial restore (dropped), main cache never refreshed (weekly schedule, no cancel on main), own apps uploaded then deleted (excluded from path), stale sandbox/mix.exs comment. Skipped: main unchecked after merge (user decision), 300-file paths limit (low risk), non-main bases build cold (minutes only).
+security/perf pass: no cache-poisoning path, no secrets. Fixed: permissions contents: read, runner image in key, main cache refresh.
+Gate: mix check in sandbox EXIT=0 on 2951ac1; ce732cd changes only ci.yml and a comment in sandbox/mix.exs (format-checked, actionlint clean).
