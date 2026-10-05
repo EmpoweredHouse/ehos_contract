@@ -164,9 +164,10 @@ defmodule EhOsContract.Check.Catalog do
       A policy, an effect or a read model declared `delivery: :in_transaction` on an event of a
       sibling contract of another context runs in the transaction that records the event, so the
       two contexts commit together and the reaction's failure rolls the other context's fact back.
-      Contexts usually agree eventually: `:at_least_once`, with its `idempotency`. Left without
-      `delivery`, such a reaction does not compile (X10), so this warning is only ever about one
-      declared on purpose; say why in the pull request.
+      Contexts usually agree eventually: `:at_least_once` — a policy and an effect with their
+      `idempotency` (P3), a read model with none. A policy or a read model left without `delivery`
+      there does not compile (X10), so for them this warning is only ever about one declared on
+      purpose; say why in the pull request.
       """
     },
     %{

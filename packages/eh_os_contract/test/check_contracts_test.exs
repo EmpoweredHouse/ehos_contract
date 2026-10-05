@@ -274,14 +274,19 @@ defmodule EhOsContract.CheckContractsTest do
              {"read model :booked", {"billing.ex", 18}}
            ]
 
-    [message | _] =
+    [policy, _effect, read_model] =
       for %Finding{rule: "in-transaction-across-contexts", message: m} <-
             Contracts.findings([EhOsContract.CheckContractsTest.Billing], []),
           do: m
 
-    assert message =~
-             "takes :booked of #{inspect(@visits)}, context :settlement, inside the transaction " <>
-               "that records it, so context :billing and :settlement commit together"
+    assert policy =~
+             "takes :booked of #{inspect(@visits)} (context :settlement) inside the transaction " <>
+               "that records it, so context :billing commits with another"
+
+    assert policy =~ "use `delivery: :at_least_once` with its `idempotency`"
+
+    # A read model takes no `idempotency`, so the advice does not ask for one.
+    assert read_model =~ ~r/use `delivery: :at_least_once`$/
 
     # The same reaction in the publisher's own context is not across anything.
     compile(

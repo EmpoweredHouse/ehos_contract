@@ -142,27 +142,43 @@ defmodule EhOsContract.Check.Contracts do
   end
 
   # X10 refuses such a reaction left without `delivery`, so every one found here was
-  # declared `:in_transaction` on purpose; the warning asks for the reason.
+  # declared `:in_transaction` on purpose; the warning asks for the reason. Each
+  # sibling is built once, for its context, and a reaction is named once, with every
+  # event it takes from another context.
   defp across_contexts(%{model: model} = c) do
-    for {kind, reactions, declared, takes} <- [
-          {"policy", model.policies, c.declarations.policies, :handles},
-          {"effect", model.effects, c.declarations.effects, :handles},
-          {"read model", model.read_models, c.declarations.read_models, :projects}
+    elsewhere =
+      for %{kind: :contract, from: from} <- model.consumes,
+          %{model: sibling} <- [Links.contract(from)],
+          sibling.domain == model.domain,
+          sibling.context != model.context,
+          into: %{},
+          do: {from, sibling.context}
+
+    for {kind, reactions, declared, takes, instead} <- [
+          {"policy", model.policies, c.declarations.policies, :handles,
+           "`delivery: :at_least_once` with its `idempotency`"},
+          {"effect", model.effects, c.declarations.effects, :handles,
+           "`delivery: :at_least_once` with its `idempotency`"},
+          {"read model", model.read_models, c.declarations.read_models, :projects,
+           "`delivery: :at_least_once`"}
         ],
         reaction <- reactions,
         reaction.delivery == :in_transaction,
-        event <- List.wrap(Map.fetch!(reaction, takes)),
-        {:contract, from, _original} <- [Model.consumed(model, event)],
-        %{model: sibling} <- [Links.contract(from)],
-        sibling.domain == model.domain,
-        sibling.context != model.context do
+        foreign =
+          for(
+            event <- List.wrap(Map.fetch!(reaction, takes)),
+            {:contract, from, _original} <- [Model.consumed(model, event)],
+            context = elsewhere[from],
+            context != nil,
+            do: "#{inspect(event)} of #{inspect(from)} (context #{inspect(context)})"
+          ),
+        foreign != [] do
       Finding.new(
         "in-transaction-across-contexts",
         "#{kind} #{inspect(reaction.name)} of #{inspect(model.module)} takes " <>
-          "#{inspect(event)} of #{inspect(from)}, context #{inspect(sibling.context)}, inside " <>
-          "the transaction that records it, so context #{inspect(model.context)} and " <>
-          "#{inspect(sibling.context)} commit together and its failure rolls the event back; " <>
-          "unless they have to, use `delivery: :at_least_once`",
+          "#{Enum.join(foreign, " and ")} inside the transaction that records it, so context " <>
+          "#{inspect(model.context)} commits with another and the reaction's failure rolls the " <>
+          "event back; unless they have to commit together, use #{instead}",
         at(declared, reaction.name)
       )
     end
