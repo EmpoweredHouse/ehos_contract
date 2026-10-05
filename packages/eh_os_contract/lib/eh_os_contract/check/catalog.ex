@@ -282,7 +282,8 @@ defmodule EhOsContract.Check.Catalog do
       the transition's `from` status, and which expects the event, is the test that would; one with
       `rejected` decides nothing and does not count. A transition from several statuses needs a
       scenario from each. A transition on an event no command of the unit emits is left out: it is
-      recorded, with no decision for a scenario to run. A warning: the dispatcher still holds every
+      recorded, with no decision for a scenario to run. So is a `from` status no such command's
+      `from:` admits: no scenario could start there. A warning: the dispatcher still holds every
       decision to the graph, and the conformance report counts each transition the log takes.
       """
     },

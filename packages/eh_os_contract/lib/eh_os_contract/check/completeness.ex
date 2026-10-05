@@ -290,18 +290,26 @@ defmodule EhOsContract.Check.Completeness do
   # Plan DD, S4: a declared transition no scenario takes. A command's scenario takes it
   # when its `given`, walked as dispatch walks a stream, leaves the unit in `from`, and
   # what it expects moves the unit out of `from` on the transition's event — the graph
-  # read with `Lifecycle.allowed/3`, the rule dispatch holds a decision to. A scenario
-  # with `rejected` expects nothing, so it takes nothing. A transition on an event no command of the unit
-  # emits is left out: a recorded event has no decision for a scenario to run.
+  # read by `Lifecycle.tally/2`, as the report reads the log, with the given events
+  # moving the status and only the expected ones counted. A scenario with `rejected`
+  # expects nothing, so it takes nothing. Left out: a transition on an event no command
+  # of the unit emits, which is recorded with no decision for a scenario to run, and a
+  # `from` no such command's `from:` admits, which no scenario could start in.
   defp untaken_transitions(%{model: model} = c) do
     for unit <- model.units,
         lifecycle = Lifecycle.of(unit),
         lifecycle != nil,
-        emitted = emitted(model, unit),
+        commands = Enum.filter(model.commands, &(&1.unit == unit.name)),
         taken = taken(model, unit, lifecycle),
         declared <- declared_transitions(c, unit.name),
-        declared.event in emitted,
-        untaken = Enum.reject(Enum.uniq(declared.from), &({&1, declared.event} in taken)),
+        emitting = Enum.filter(commands, &(declared.event in &1.emits)),
+        untaken =
+          for(
+            from <- Enum.uniq(declared.from),
+            Enum.any?(emitting, &Lifecycle.admits?(&1, from)),
+            not Map.has_key?(taken, {from, declared.event, declared.to}),
+            do: from
+          ),
         untaken != [] do
       Finding.new(
         "transition-without-scenario",
@@ -314,33 +322,16 @@ defmodule EhOsContract.Check.Completeness do
     end
   end
 
-  defp emitted(model, unit) do
-    for command <- model.commands, command.unit == unit.name, event <- command.emits, do: event
-  end
-
-  # `{from, event}` of every transition some command's scenario of `unit` takes.
+  # Every `{from, event, to}` some command's scenario of `unit` takes, as a map's keys.
   defp taken(model, unit, lifecycle) do
-    for scenario <- model.scenarios,
-        scenario.target == %{kind: unit.kind, name: unit.name},
-        {_befores, start} = Lifecycle.walk(lifecycle, Enum.map(scenario.given, & &1.event)),
-        move <- moves(lifecycle, start, Enum.map(scenario.expect, & &1.event)),
-        into: MapSet.new(),
-        do: move
-  end
+    streams =
+      for scenario <- model.scenarios,
+          scenario.target == %{kind: unit.kind, name: unit.name},
+          do:
+            Enum.map(scenario.given, &{&1.event, false}) ++
+              Enum.map(scenario.expect, &{&1.event, true})
 
-  # The declared moves the expected events make, from `status`, one after another.
-  defp moves(lifecycle, status, events) do
-    {moves, _status} =
-      Enum.flat_map_reduce(events, status, fn event, status ->
-        case Lifecycle.allowed(lifecycle, status, event) do
-          {:moved, next} when status != nil -> {[{status, event}], next}
-          {:moved, next} -> {[], next}
-          {:stayed, status} -> {[], status}
-          {:error, _why} -> {[], status}
-        end
-      end)
-
-    moves
+    Lifecycle.tally(lifecycle, streams).taken
   end
 
   defp declared_transitions(c, unit) do

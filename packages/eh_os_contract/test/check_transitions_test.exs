@@ -11,7 +11,7 @@ defmodule EhOsContract.CheckTransitionsTest do
 
   @loans EhOsContract.Fixtures.TransitionLoans
 
-  # The lifecycle's transitions are at lines 15–18 of the file (`contract/2` puts the
+  # The lifecycle's transitions are at lines 17–21 of the file (`contract/2` puts the
   # body at line 4).
   setup_all do
     compile(
@@ -20,22 +20,28 @@ defmodule EhOsContract.CheckTransitionsTest do
           identity :loan_id
 
           invariant :checked_before_return, "Zwrot przyjmuje się po sprawdzeniu sprzętu"
+          invariant :only_a_lent_loan, "Archiwizuje się tylko wypożyczony sprzęt"
 
           lifecycle do
             status :open, "Otwarte"
             status :lent, "Wypożyczone"
             status :closed, "Zamknięte", final: true
+            status :archived, "Zarchiwizowane", final: true
 
             initial :open, on: :opened
             transition :open, :lent, :lent
             transition [:open, :lent], :closed, :closed
             transition :lent, :returned, :open
             transition :lent, :noted, :open
+            transition [:open, :lent], :archived, :archived
           end
 
           command :open_loan, "Otwórz", by: :reception, emits: :opened
           command :lend, "Wypożycz", by: :reception, emits: :lent
           command :close_loan, "Zamknij", by: :reception, emits: :closed
+
+          command :archive_loan, "Archiwizuj", by: :reception, emits: :archived, from: :lent,
+            or_rejects: :only_a_lent_loan, rejects: :only_a_lent_loan
 
           command :return_loan, "Zwróć", by: :reception, emits: :returned,
             rejects: :checked_before_return
@@ -45,6 +51,7 @@ defmodule EhOsContract.CheckTransitionsTest do
           event :returned, "Zwrócono"
           event :noted, "Odnotowano", recorded_by: :reception
           event :closed, "Zamknięto", terminal: true
+          event :archived, "Zarchiwizowano", terminal: true
         end
 
         process :loan, "Wypożyczenie" do
@@ -62,6 +69,19 @@ defmodule EhOsContract.CheckTransitionsTest do
           given :lent
           command :close_loan
           expect :closed
+        end
+
+        scenario "wypożyczone — zarchiwizowane" do
+          given :opened
+          given :lent
+          command :archive_loan
+          expect :archived
+        end
+
+        scenario "otwarte — archiwizacja odrzucona" do
+          given :opened
+          command :archive_loan
+          rejected :only_a_lent_loan
         end
 
         scenario "wypożyczone — zwrot odrzucony" do
@@ -83,7 +103,7 @@ defmodule EhOsContract.CheckTransitionsTest do
   end
 
   test "each transition no scenario takes, from the statuses no scenario starts in" do
-    assert [{closed, {"transition_loans.ex", 16}}, {returned, {"transition_loans.ex", 17}}] =
+    assert [{closed, {"transition_loans.ex", 18}}, {returned, {"transition_loans.ex", 19}}] =
              findings()
 
     # Taken from :lent, not from :open: a transition from two statuses needs both.
@@ -96,8 +116,11 @@ defmodule EhOsContract.CheckTransitionsTest do
     assert returned =~ "moves from :lent to :open on :returned"
   end
 
-  test "control: a transition a scenario takes, and one on an event only recorded" do
+  test "control: a transition a scenario takes, one on an event only recorded, and a `from` no command admits" do
     messages = Enum.map(findings(), &elem(&1, 0))
+
+    # :archive_loan is issued only `from: :lent`, so no scenario could start in :open.
+    refute Enum.any?(messages, &(&1 =~ ":archived"))
 
     refute Enum.any?(messages, &(&1 =~ "on :lent,"))
     refute Enum.any?(messages, &(&1 =~ "from :lent to :closed"))
