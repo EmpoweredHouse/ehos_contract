@@ -96,6 +96,7 @@ defmodule EhOsContract.Dispatcher do
     Codec,
     CommandRecord,
     Consumer,
+    Decision,
     EffectJob,
     Event,
     Implementations,
@@ -810,8 +811,14 @@ defmodule EhOsContract.Dispatcher do
 
     case decision do
       {:ok, events} when is_list(events) ->
-        emitted = stage("decider", fn -> emitted!(job, events) end)
-        stage("decider", fn -> lifecycle!(job, unit, status, emitted) end)
+        # Held to its declaration and its unit's lifecycle (plan LC2, W4): an event the
+        # contract does not allow from where the unit stands is a defect, never a
+        # business outcome, and nothing is appended.
+        {emitted, _status} =
+          stage("decider", fn ->
+            Decision.held!(model, declaration, unit, status, job.command, events, job.values)
+          end)
+
         commit(job, emitted, repo)
 
       {:error, %Rejection{invariant: invariant} = rejection} ->
@@ -829,21 +836,6 @@ defmodule EhOsContract.Dispatcher do
         raise ArgumentError,
               "the decision of command #{inspect(declaration.name)} returned #{inspect(other)}; " <>
                 "a decision returns {:ok, events} or {:error, %EhOsContract.Rejection{}}"
-    end
-  end
-
-  # What a decision emitted, held to its aggregate's lifecycle (plan LC2): an event the
-  # graph does not allow from where the aggregate stands is a defect, never a business
-  # outcome, and nothing is appended.
-  defp lifecycle!(job, unit, status, emitted) do
-    case Lifecycle.of(unit) do
-      nil ->
-        :ok
-
-      lifecycle ->
-        names = for {declaration, _event} <- emitted, do: declaration.name
-        Lifecycle.decided!(lifecycle, status, job.declaration.name, names)
-        :ok
     end
   end
 
@@ -1175,45 +1167,6 @@ defmodule EhOsContract.Dispatcher do
       raise ArgumentError,
             "#{inspect(model.module)} neither declares nor consumes an event of type " <>
               "#{inspect(row.type)}, which it read at position #{row.position}"
-  end
-
-  # --- holding the decision to its declaration ----------------------------------------------
-
-  defp emitted!(job, events) do
-    %{model: model, declaration: declaration, values: values} = job
-    allowed = Map.new(declaration.emits, &{Model.module_for(model, :event, &1), &1})
-    unit = Enum.find(model.units, &(&1.name == declaration.unit))
-
-    for event <- events do
-      name =
-        (is_struct(event) && Map.get(allowed, event.__struct__)) ||
-          raise ArgumentError,
-                "command #{inspect(declaration.name)} of #{inspect(model.module)} decided " <>
-                  "#{describe(event)}, which is not among the events it emits: " <>
-                  "#{inspect(declaration.emits)}. Nothing was appended."
-
-      event_declaration = Enum.find(model.events, &(&1.name == name))
-
-      # The event joins the unit that decided it — its stream, or its boundary's own
-      # events — so it has to be about the same unit: one carrying another identity
-      # would be folded into this unit's state.
-      for field <- unit.identity, Map.fetch!(event, field) != Map.fetch!(job.command, field) do
-        raise ArgumentError,
-              "command #{inspect(declaration.name)} decided event #{inspect(name)} for another " <>
-                "unit: its #{field} is not the command's, and an event joins the stream of the " <>
-                "unit that decided it. Nothing was appended."
-      end
-
-      case Codec.problems(event_declaration.fields, event, values, model.domain) do
-        [] ->
-          {event_declaration, event}
-
-        problems ->
-          raise ArgumentError,
-                "command #{inspect(declaration.name)} decided event #{inspect(name)} with fields " <>
-                  "that do not fit: #{inspect(problems)}. Nothing was appended."
-      end
-    end
   end
 
   defp describe(%module{}), do: "%#{inspect(module)}{}"

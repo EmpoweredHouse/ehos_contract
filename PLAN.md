@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 5 października, wieczór (DD0, N1–N3, W1, W2 w `main`; W3 w PR-ze #145)
+## Handoff — stan na 5 października, wieczór (DD0, N1–N3, W1–W3 w `main`; W4 w PR-ze #146)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -41,18 +41,20 @@ komputer, kontrakt `Demands`) — „Dopisek 4 października (2)”.
 **Następna praca to program DD — „DDD sprawdzane przez kod”** (zatwierdzony przez użytkownika 5 października): 53
 etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem programu jest tabela „Postęp” w „Dopisek 5
 października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
-Fala 1: N1, N2, N3, W1, W2 w `main` (#137, #138, #139, #142, #143); W3 (publiczne, czyste jądro `Trace`) w PR-ze #145
-(na `main`); potem W4, T1+T1s, X1, S4 w dowolnej kolejności.
+Fala 1: N1, N2, N3, W1, W2, W3 w `main` (#137, #138, #139, #142, #143, #145); W4 (wspólne reguły decyzji) w PR-ze
+#146 (na `main`); potem T1+T1s, X1, S4 w dowolnej kolejności.
 
 ### Stan repozytorium
 
-- **`origin/main` = `3508cb6`** (merge #144, puste etykiety: N1/D1 odmawiają etykiety pustej albo z samych białych
+- **`origin/main` = `5be6358`** (merge #145, W3, z poprawką po trzeciej recenzji CodeRabbita `7a3bc49`; przed nim #147
+  `488f18e` — krótsze przebiegi CI, z innej sesji; przed nim `3508cb6`, merge #144, puste etykiety: N1/D1 odmawiają etykiety pustej albo z samych białych
   znaków i znaków formatu Unicode, F2/D3 — takiej etykiety członka enuma; spoza programu, z recenzji #139 — „N3 — co
   wyszło”; przed nim #143 W2 `6a236d5`, #142 W1 `3c7b29f`, #139 N3 `a568ce7` z poprawką etykiety timera TaxVision
   `46b4e55`, #138 N2 `f0e473d`; wcześniej #137 N1 i #135 DD0 — każdy z poprawką po przeglądzie CodeRabbita,
   `.coderabbit.yaml` dla PR-ów na dowolną gałąź).
-- **Otwarty PR:** [#145](https://github.com/EmpoweredHouse/eh-os-contract/pull/145) W3 (`engine/w3-trace-core`, na
-  `main`, z `main` wmergowanym). Stos N3 → W1 → W2 zmergowany po kolei; poza programem otwarte jeszcze #140
+- **Otwarty PR:** [#146](https://github.com/EmpoweredHouse/eh-os-contract/pull/146) W4 (`engine/w4-decision`, na
+  `main`, z `main` wmergowanym). CI stoi na billingu GitHub Actions (job nie startuje).
+  Stos N3 → W1 → W2 zmergowany po kolei; poza programem otwarte jeszcze #140
   (`.coderabbit.yaml`, ten sam plik jest już w `main` — do zamknięcia).
 - Wcześniej `6ce4c30` (merge #126, ostatni PR #99). Przedtem `eb0c8a1` (merge #103: #98,
   budżet bajtów klucza — „#98 — co wyszło”). Przedtem `b6a96dd` —
@@ -65,7 +67,7 @@ Fala 1: N1, N2, N3, W1, W2 w `main` (#137, #138, #139, #142, #143); W3 (publiczn
 - **Gałęzie:** gałęzie tej pracy usunięte na GitHubie i lokalnie 3 października, za zgodą użytkownika (EB, EH, #71,
   #89, discovery, #65, #93, #95, #96, #100, a także przypadkowy `revert-95-engine/bounded-values` — revert z przycisku
   GitHuba, bez PR-a); `engine/issue-98-key-budget` (#103) — po merge'u, za zgodą użytkownika. Zostało 59 innych gałęzi na GitHubie, zmergowanych dawno — nieruszane z wyboru użytkownika.
-- **Worktree (5 października, wieczór):** `w3-public-trace-core-c3ed23` — sesja W3 (`engine/w3-trace-core`);
+- **Worktree (5 października, wieczór):** `w3-public-trace-core-c3ed23` — sesja W3 i W4 (`engine/w4-decision`);
   `computer-ordering-process-f84437` — poprzednia sesja DD (`engine/w2-day-tags`);
   `plan-md-incomplete-actions-27a0e4` (trzyma `dsl/n2-subscribe` — tam powstały poprawki po przeglądach #135/#138),
   `esdm-dsl-comparison-d82750`, `ep4-ep5-user-questions-95855b` — innych sesji, nie ruszać.
@@ -86,9 +88,9 @@ Fala 1: N1, N2, N3, W1, W2 w `main` (#137, #138, #139, #142, #143); W3 (publiczn
 
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
-  1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138), N3 (#139), W1 (#142), W2 (#143). **Użytkownik:** merge #145
-     (W3); po merge'u ☑ w tabeli robi asystent przy następnym etapie.
-  2. **Asystent:** W3 w PR-ze #145 (na `main`); potem W4,
+  1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138), N3 (#139), W1 (#142), W2 (#143), W3 (#145). **Użytkownik:**
+     merge #146 (W4); po merge'u ☑ w tabeli robi asystent przy następnym etapie.
+  2. **Asystent:** W4 w PR-ze #146 (na `main`); potem
      T1+T1s, X1, S4, każdy na gałęzi od `main` albo od W3, jeśli #145 nie jest jeszcze zmergowany (tabela „Postęp” żyje
      na gałęzi etapu). Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
@@ -194,6 +196,9 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **5 października, wieczór, `engine/w4-decision` @ `8dd7970`** (W4 po przeglądzie): `mix check` w `sandbox/` EXIT=0 —
+  `check` 0 / 29 / 10 i 0 / 75 / 6 (bez zmian); sandbox 194, silnik 1312 (+14: `decision_test.exs`,
+  `contract_data_cast_test.exs`, dwa w `lifecycle_test.exs`), web 52, auth 286 + 1 property.
 - **5 października, wieczór, `engine/w3-trace-core` @ `33eb982`** (druga poprawka po CodeRabbicie i jej przeglądzie):
   `mix check` w `sandbox/` EXIT=0 — `check` 0 / 29 / 10 i 0 / 75 / 6; sandbox 194, silnik 1298, web 52, auth 286 + 1
   property.
@@ -518,8 +523,8 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | N3 | 1 | etykieta timera (EP6) | DD0 | ☑ #139 |
 | W1 | 1 | zapis `schema_version` | DD0 | ☑ #142 |
 | W2 | 1 | tagi dnia przy dopisie | DD0 | ☑ #143 |
-| W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ◐ `engine/w3-trace-core`, PR #145 |
-| W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ☐ |
+| W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ☑ #145 |
+| W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ◐ `engine/w4-decision`, PR #146 |
 | T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ☐ |
 | T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☐ |
 | X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ☐ |
@@ -1090,6 +1095,36 @@ na logu z wierszami sprzed rozszerzenia tożsamości jednostki (spełniony → `
   trzecia recenzja). Handoff znowu nieaktualny po merge'u #144 — poprawiony, `main`
   (`3508cb6`) wmergowany. Brama: EXIT=0; `check` 0 / 29 / 10 i 0 / 75 / 6; sandbox 194, silnik 1304, web 52, auth 286
   + 1 property.
+- **Dla aplikacji AppUnite i `ehos-ledger`:** nic do zmiany.
+
+### W4 — co wyszło (5 października)
+
+Gałąź `engine/w4-decision` (na W3). Refaktor bez zmiany zachowania: reguły, którymi dispatch trzyma decyzję, są w
+jednym module `EhOsContract.Decision` — `admitted/4` (struktury wśród `emits`/`issues`, `{:ok, pary} | {:error,
+powód}`), `held!/6` (wszystko, czego dispatch wymaga przed dopisem: `emits`, ta sama jednostka, pola, cykl życia;
+siódmy, opcjonalny argument — wartości domeny, które dispatch już ma) i `lifecycle!/4`. Dispatch woła `held!`,
+ScenarioCase — `admitted/4` i `lifecycle!/4` zamiast własnych kopii; każdy wołający mówi odmowę swoimi słowami, więc
+żaden komunikat się nie przesuwa. Publiczne `Lifecycle.allowed/3` i `Lifecycle.moves/3` (następne kroki legalnej
+historii — dla PC1) i `Contract.Data.cast/3` (z ScenarioCase). Raport i grafy bajt w bajt; bez wpisu w CHANGELOG
+(żaden werdykt, żaden kształt hosta).
+
+- **Rozstrzygnięcia asystenta (mechanika), odejścia od projektu:** `admitted/4`, nie `/5` — piąty argument
+  ScenarioCase to fragment komunikatu; *odrzucone:* przenieść go do API. „Publiczne” znaczy publiczne w pakiecie:
+  `Decision`, `Lifecycle` i `Contract.Data` nie są w eksportach `boundary`, bo czytelnicy z planu (PC1, PC2) są w
+  bibliotece; *odrzucone:* eksport (kształt widoczny dla hosta bez czytelnika). `Data.cast/3` zwraca `{:ok, v} |
+  {:error, problem}`, ScenarioCase rzuca dalej jak dotąd; *odrzucone:* publiczny `throw`.
+- **Zostawione świadomie (do decyzji, najpóźniej przy PC2):** ScenarioCase nie woła `held!/6`, więc scenariusz nie
+  sprawdza tożsamości jednostki ani dopasowania pól — decyzja może przejść scenariusz i paść w dispatchu (tak było
+  przed W4). Włączenie to zmiana zachowania (scenariusze ostrzejsze), nie refaktor; zapisane w moduledocu `Decision`.
+- **Przegląd** (`engine/w3-trace-core..engine/w4-decision`). Poprawność: bez zmiany zachowania (kolejność sprawdzeń,
+  komunikaty bajt w bajt, `stage("decider")`, `job.command`, `assert` → `flunk`, `throw` w `cast`); 8 uwag — naprawione
+  (`8dd7970`): moduledoc `Decision` obiecywał scenariuszowi te same reguły co dispatchowi, `@doc` `Data.cast/3` obiecywał
+  błąd dla każdej niepasującej wartości (rzutuje, nie sprawdza; przypadki brzegowe przypięte testem), `held!` budował
+  mapę `emits` na każde zdarzenie i czytał wartości domeny przy każdym dispatchu, kopia `Codec.values/1` w ScenarioCase;
+  bez zmian: eksporty (wyżej), szerszy `rescue` w ScenarioCase (nic w nim nie rzuca `ArgumentError`), kopia
+  `describe/1` w dispatcherze i `Decision`. Próby odwrotnej brak — poprawki nie zmieniają zachowania (opis, koszt).
+  Bezpieczeństwo i wydajność: nic od średniej wagi; żadne sprawdzenie nie zniknęło z dispatchu, komunikaty bez wartości.
+- **Brama:** EXIT=0; `check` 0 / 29 / 10, 0 / 75 / 6; sandbox 194, silnik 1312, web 52, auth 286 + 1 property.
 - **Dla aplikacji AppUnite i `ehos-ledger`:** nic do zmiany.
 
 ## Dopisek 4 października (3) — pokrycie ESDM po EP1–EP5 i #99

@@ -75,11 +75,10 @@ defmodule EhOsContract.ScenarioCase do
 
   import ExUnit.Assertions
 
-  alias EhOsContract.{Lifecycle, Meta, Model, Rejection}
+  alias EhOsContract.{Decision, Lifecycle, Meta, Model, Rejection}
   alias EhOsContract.Contract.{Callbacks, Data}
 
   @epoch ~U[2026-01-01 09:00:00Z]
-  @built_in EhOsContract.Domain.Rules.built_in_types()
 
   # The identity of a scenario's stream when the scenario gives none: it is one stream.
   @stream "scenario"
@@ -730,37 +729,26 @@ defmodule EhOsContract.ScenarioCase do
     next
   end
 
-  # What the command emitted, held to the graph as dispatch holds it (plan LC2).
+  # What the command emitted, held to the graph as dispatch holds it (plan LC2, W4).
   defp in_lifecycle!(unit, status, command, produced) do
-    case Lifecycle.of(unit) do
-      nil ->
-        :ok
-
-      lifecycle ->
-        try do
-          Lifecycle.decided!(lifecycle, status, command, Enum.map(produced, &elem(&1, 0)))
-          :ok
-        rescue
-          e in ArgumentError -> flunk(Exception.message(e))
-        end
-    end
+    Decision.lifecycle!(unit, status, command, Enum.map(produced, &elem(&1, 0)))
+    :ok
+  rescue
+    e in ArgumentError -> flunk(Exception.message(e))
   end
 
   # Every struct produced is one the declaration allows: the backstop v2 §5 keeps at
-  # run time, since a decision can build a struct the macros never saw.
+  # run time, since a decision can build a struct the macros never saw (W4).
   defp within!(model, kind, structs, allowed, what) do
-    modules = Map.new(allowed, &{Model.module_for(model, kind, &1), &1})
+    case Decision.admitted(model, kind, structs, allowed) do
+      {:ok, named} ->
+        named
 
-    for struct <- structs do
-      assert is_struct(struct),
-             "#{what} structs, and the code produced #{inspect(struct)}, which is not one"
+      {:error, {:not_a_struct, other}} ->
+        flunk("#{what} structs, and the code produced #{inspect(other)}, which is not one")
 
-      name = Map.get(modules, struct.__struct__)
-
-      assert name,
-             "#{inspect(struct.__struct__)} is not among what #{what}, #{inspect(allowed)}"
-
-      {name, struct}
+      {:error, {:not_allowed, struct}} ->
+        flunk("#{inspect(struct.__struct__)} is not among what #{what}, #{inspect(allowed)}")
     end
   end
 
@@ -870,53 +858,16 @@ defmodule EhOsContract.ScenarioCase do
     end
   end
 
-  defp domain(model) do
-    if Code.ensure_loaded?(model.domain) and
-         function_exported?(model.domain, :__eh_os_contract_model__, 0),
-       do: Map.new(model.domain.__eh_os_contract_model__().values, &{&1.name, &1}),
-       else: %{}
-  end
+  defp domain(model), do: EhOsContract.Codec.values(model.domain)
 
-  defp cast(_type, nil, _domain), do: nil
-
-  defp cast(type, value, domain)
-       when type in @built_in or (is_tuple(type) and elem(type, 0) == :enum) do
-    case Data.problems(type, value) do
-      [] -> built_in(type, value, domain)
-      [problem | _] -> throw({:unfit, problem})
+  # The scenario's data cast to the values its fields hold (`Data.cast/3`); what does
+  # not fit is thrown to the `catch` that names where the data was written.
+  defp cast(type, value, domain) do
+    case Data.cast(type, value, domain) do
+      {:ok, cast} -> cast
+      {:error, problem} -> throw({:unfit, problem})
     end
   end
-
-  defp cast({:list, inner}, values, domain) when is_list(values),
-    do: Enum.map(values, &cast(inner, &1, domain))
-
-  defp cast(type, value, domain) when is_atom(type) and is_map_key(domain, type) do
-    case Map.fetch!(domain, type) do
-      %{type: nil, fields: fields} when is_map(value) ->
-        types = Map.new(fields, &{&1.name, &1.type})
-        Map.new(value, fn {key, v} -> {key, cast(Map.get(types, key), v, domain)} end)
-
-      %{type: nil} ->
-        throw({:unfit, "#{inspect(value)} is not a map of the fields of #{inspect(type)}"})
-
-      %{type: inner} ->
-        cast(inner, value, domain)
-    end
-  end
-
-  defp cast(_type, value, _domain), do: value
-
-  defp built_in(:timestamp, value, _domain) when is_binary(value) do
-    {:ok, at, _offset} = DateTime.from_iso8601(value)
-    at
-  end
-
-  defp built_in(:date, value, _domain) when is_binary(value), do: Date.from_iso8601!(value)
-
-  defp built_in(:decimal, value, _domain) when is_binary(value) or is_integer(value),
-    do: Decimal.new(value)
-
-  defp built_in(_type, value, _domain), do: value
 
   # --- finding the implementation ---------------------------------------------------
 

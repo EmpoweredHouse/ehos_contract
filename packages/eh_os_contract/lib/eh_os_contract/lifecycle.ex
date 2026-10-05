@@ -86,7 +86,7 @@ defmodule EhOsContract.Lifecycle do
     graph = index(lifecycle)
 
     Enum.reduce(events, status, fn event, status ->
-      case allowed(graph, status, event) do
+      case allowed_in(graph, status, event) do
         {:error, why} ->
           raise ArgumentError,
                 "command #{inspect(command)} decided #{inspect(event)} #{why}. Nothing was " <>
@@ -96,6 +96,34 @@ defmodule EhOsContract.Lifecycle do
           next
       end
     end)
+  end
+
+  @doc """
+  What the graph does with `event` in `status`: `{:moved, next}` when it starts the
+  aggregate or a declared transition takes it out of `status`, `{:stayed, status}`
+  when no transition names it and the aggregate has started and not ended, and
+  `{:error, why}` when the graph does not allow it there — `why` completes a sentence
+  about the event, as `decided!/4` writes it.
+
+  This is the rule dispatch holds a decision to, one event at a time.
+  """
+  @spec allowed(t(), status(), atom()) ::
+          {:moved, atom()} | {:stayed, status()} | {:error, String.t()}
+  def allowed(lifecycle, status, event), do: lifecycle |> index() |> allowed_in(status, event)
+
+  @doc """
+  The events among `events` the graph allows in `status`, each with the status it
+  leaves the aggregate in, in the order given — the next steps of a legal history.
+  An aggregate whose life has ended has none.
+  """
+  @spec moves(t(), status(), [atom()]) :: [{atom(), status()}]
+  def moves(lifecycle, status, events) do
+    graph = index(lifecycle)
+
+    for event <- events,
+        {kind, next} <- [allowed_in(graph, status, event)],
+        kind != :error,
+        do: {event, next}
   end
 
   @doc """
@@ -134,7 +162,7 @@ defmodule EhOsContract.Lifecycle do
             {acc, status}
 
           {event, counted?}, {acc, status} ->
-            case allowed(graph, status, event) do
+            case allowed_in(graph, status, event) do
               {:moved, next} ->
                 acc = if counted?, do: bump(acc, :taken, {status, event, next}), else: acc
                 {acc, next}
@@ -166,7 +194,7 @@ defmodule EhOsContract.Lifecycle do
     }
   end
 
-  defp allowed(graph, status, event) do
+  defp allowed_in(graph, status, event) do
     starts = Map.has_key?(graph.starts, event)
     moves = MapSet.member?(graph.moves, event)
 

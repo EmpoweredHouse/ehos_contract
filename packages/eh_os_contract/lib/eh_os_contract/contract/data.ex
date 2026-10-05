@@ -135,6 +135,68 @@ defmodule EhOsContract.Contract.Data do
     unknown ++ missing ++ nested
   end
 
+  @doc """
+  `value`, written in a contract, as the value a field of `type` holds at run time: a
+  timestamp's ISO 8601 string as a `DateTime`, a date's as a `Date`, a decimal's
+  integer or string as a `Decimal`, through lists and a domain value's fields and the
+  built-in type it rests on. `domain` is the domain's values by name
+  (`EhOsContract.Codec.values/1`).
+
+  It casts; it does not check. `{:error, problem}` — the first, in the words of
+  `problems/2` — comes back only where casting needs the value to fit: a built-in or
+  enum value of the wrong form, a value already cast (a `Date`, a `Decimal`, which a
+  contract never holds), or a domain value with fields that is not a map. Anything
+  else is returned as written: a non-list for a list type, an `{:id, entity}`, a type
+  the domain does not name. Checking is `problems/2` and `problems/3`.
+  """
+  @spec cast(type(), term(), %{atom() => map()}) :: {:ok, term()} | {:error, String.t()}
+  def cast(type, value, domain) do
+    {:ok, cast!(type, value, domain)}
+  catch
+    {:unfit, problem} -> {:error, problem}
+  end
+
+  defp cast!(_type, nil, _domain), do: nil
+
+  defp cast!(type, value, _domain)
+       when type in @built_in or (is_tuple(type) and elem(type, 0) == :enum) do
+    case problems(type, value) do
+      [] -> built_in(type, value)
+      [problem | _] -> throw({:unfit, problem})
+    end
+  end
+
+  defp cast!({:list, inner}, values, domain) when is_list(values),
+    do: Enum.map(values, &cast!(inner, &1, domain))
+
+  defp cast!(type, value, domain) when is_atom(type) and is_map_key(domain, type) do
+    case Map.fetch!(domain, type) do
+      %{type: nil, fields: fields} when is_map(value) ->
+        types = Map.new(fields, &{&1.name, &1.type})
+        Map.new(value, fn {key, v} -> {key, cast!(Map.get(types, key), v, domain)} end)
+
+      %{type: nil} ->
+        throw({:unfit, "#{inspect(value)} is not a map of the fields of #{inspect(type)}"})
+
+      %{type: inner} ->
+        cast!(inner, value, domain)
+    end
+  end
+
+  defp cast!(_type, value, _domain), do: value
+
+  defp built_in(:timestamp, value) when is_binary(value) do
+    {:ok, at, _offset} = DateTime.from_iso8601(value)
+    at
+  end
+
+  defp built_in(:date, value) when is_binary(value), do: Date.from_iso8601!(value)
+
+  defp built_in(:decimal, value) when is_binary(value) or is_integer(value),
+    do: Decimal.new(value)
+
+  defp built_in(_type, value), do: value
+
   defp example(:date), do: ~s|an ISO 8601 date, "2026-09-01"|
   defp example(:timestamp), do: ~s|an ISO 8601 string, "2026-09-01T09:00:00Z"|
 
