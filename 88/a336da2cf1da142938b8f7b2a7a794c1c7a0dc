@@ -1,0 +1,1 @@
+Merge of origin/engine/w3-trace-core (1a0f5fb: c889a33 trace atom-key fix, main with #144, handoff) into W4. Only conflict: the handoff block in PLAN.md, resolved with W3s text plus #146 in the stack. W4 code untouched by the merge; its review (note on 3ab6917) stands. Gate at 88a336d: EXIT=0; check 0/29/10, 0/75/6; sandbox 194, engine 1318, web 52, auth 286+1 property.
