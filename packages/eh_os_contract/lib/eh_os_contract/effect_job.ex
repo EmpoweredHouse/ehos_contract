@@ -28,12 +28,27 @@ defmodule EhOsContract.EffectJob do
   insert it otherwise.
   """
 
-  use Oban.Worker, queue: :events, max_attempts: 3
+  @max_attempts 3
+
+  use Oban.Worker, queue: :events, max_attempts: @max_attempts
 
   # Seconds a job waits for a node that runs the code which wrote its event (plan W1).
   @newer_code_snooze 30
 
   alias EhOsContract.{Consumer, Event, Implementations}
+
+  @doc """
+  Oban's backoff over the attempts that ran (plan W1). A snooze raises `attempt` and
+  `max_attempts` by one each, and Oban's default backoff scales `attempt` by
+  `max_attempts` once that passes 20, so a job that waited out a long deploy would
+  retry a real failure after days instead of seconds.
+  """
+  @impl Oban.Worker
+  @spec backoff(Oban.Job.t()) :: pos_integer()
+  def backoff(%Oban.Job{attempt: attempt, max_attempts: max_attempts} = job) do
+    snoozed = max(max_attempts - @max_attempts, 0)
+    Oban.Worker.backoff(%{job | attempt: max(attempt - snoozed, 1), max_attempts: @max_attempts})
+  end
 
   @doc "The job for `effect`'s key and the event `event_id`."
   @spec job(String.t(), Ecto.UUID.t()) :: Oban.Job.changeset()

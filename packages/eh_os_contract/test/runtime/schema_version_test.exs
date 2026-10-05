@@ -131,6 +131,31 @@ defmodule EhOsContract.SchemaVersionTest do
     assert %{failing: []} = Testing.drain(only: flag)
   end
 
+  test "a process manager waits at a newer row, and keeps no state from it" do
+    chase = "DispatchRig.Ledger:process_manager:first_deposit_chase"
+    Subscription.register!(Repo, [Implementations.consumer(chase)])
+    Testing.drain(only: chase)
+
+    newer = newer!(DispatchRig.Ledger, :account_opened, {"account:a-9", 0})
+
+    assert {:waiting, position} = Subscription.step(Repo, Implementations.consumer(chase))
+    assert position == newer.position
+
+    assert %SubscriptionRecord{status: "running", attempts: 0} =
+             Repo.get!(SubscriptionRecord, chase)
+
+    assert [] = Repo.all(EhOsContract.ProcessManagerRecord)
+  end
+
+  test "an effect's backoff counts only the attempts that ran, not the snoozes" do
+    # The third real attempt after 40 snoozes backs off as the third after none would,
+    # within Oban's jitter, rather than as attempt 43 of 43.
+    snoozed = %Oban.Job{attempt: 43, max_attempts: 43}
+    fresh = %Oban.Job{attempt: 3, max_attempts: 3}
+    assert EffectJob.backoff(snoozed) < 2 * Oban.Worker.backoff(fresh) + 60
+    assert Oban.Worker.backoff(snoozed) > 100_000
+  end
+
   test "an effect's job on a newer row is snoozed, which Oban does not count" do
     newer =
       newer!(DispatchRig.Ledger, :account_flagged, {"account:a-9", 0})
@@ -166,6 +191,29 @@ defmodule EhOsContract.SchemaVersionTest do
           do: Application.put_env(:eh_os_contract, :bus, previous),
           else: Application.delete_env(:eh_os_contract, :bus)
       end)
+    end
+
+    test "publishes what comes before a newer row, and waits at it" do
+      relay = "BusRig.Orders:relay:order_placed"
+      Subscription.register!(Repo, [Implementations.consumer(relay)])
+      clerk = Actor.credential("u-1", ["bus_rig_shop.place_order"])
+
+      {:ok, _} =
+        EhOsContract.dispatch(
+          BusRig.Orders,
+          %BusRig.Orders.Commands.PlaceOrder{order_id: "o-1", total: 120, note: "gift wrap"},
+          actor: clerk
+        )
+
+      newer = newer!(BusRig.Orders, :placed, {"order:o-9", 0})
+
+      assert {:applied, 1} = Subscription.step(Repo, Implementations.consumer(relay))
+      assert_received {:published, ["bus_rig_shop.order.placed.v1"]}
+
+      assert {:waiting, position} = Subscription.step(Repo, Implementations.consumer(relay))
+      assert position == newer.position
+      refute_received {:published, _}
+      assert Repo.get!(SubscriptionRecord, relay).position == newer.position - 1
     end
 
     test "waits at a newer row, and publishes nothing of it" do

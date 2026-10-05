@@ -36,7 +36,9 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   - a subscription, a process manager and a relay wait at the row: nothing moves, no attempt is counted, the
     runner logs a warning and tries again every 5 s, and it goes on by itself once the node runs the newer code;
     a subscription does not turn `failing` over it, so do not `--skip` it;
-  - an effect's job is snoozed for 30 s, which Oban does not count against `max_attempts`.
+  - an effect's job is snoozed for 30 s, which Oban does not count against `max_attempts`, and its backoff after
+    a real failure counts only the attempts that ran;
+  - a message an inbox takes whose policy's command meets such a row is answered `:nack` and delivered again.
   Rows written before this version say 1 whatever their event declared; no contract has raised a version yet, so
   none is misread. An older row decodes as before, until upcasters (V1). No contract version moves.
 - **N3: a timer has a label.** `timer :documentation_due, wait: {24, :hour}, …` no longer compiles; write
@@ -65,7 +67,6 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   terminal: true` no longer compiles; write `final: true`. `terminal:` stays an event's, where it ends a run of
   the process, so one word no longer means two things in one contract. T3 and T4 and dispatch's refusal say
   "final". **Moves the version** of every contract with a lifecycle, whose statuses carry the key in the model.
-
 - **N1 refuses a query named like an event an actor records**, at the query's line. Both are capabilities named
   `<domain>.<name>` (D14), and since `eh-os` D-73 the manifest offers both. L3's D14 already refused the pair when
   the Mix compiler runs; N1 refuses it in the contract's own compile, before `Model.capabilities/1` could merge

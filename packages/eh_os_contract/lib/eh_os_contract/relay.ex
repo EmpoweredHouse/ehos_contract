@@ -22,8 +22,9 @@ defmodule EhOsContract.Relay do
     `failing` at that position until someone decides. Skipping the event is that
     decision, and it means the event never leaves.
   - **An event written by newer code waits** (plan W1): one whose fields are of a
-    newer version than this node declares holds the batch where it is, as an
-    unreachable transport does, until the node runs the newer code.
+    newer version than this node declares is not published. The events before it in
+    the batch go, one at a time, and the relay stops at it, counting no attempt, until
+    the node runs the newer code.
   - **With no bus configured, it waits.** The row is written at the first boot and
     its position holds, so once a bus is configured the relay publishes everything
     since, rather than starting over at the head.

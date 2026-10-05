@@ -200,7 +200,7 @@ defmodule EhOsContract.Consumer do
   # is code older than the code that wrote it — a rollback, or a node not yet
   # deployed — and its fields cannot be trusted to mean what this declaration says.
   def current!(%{schema_version: declared}, %{schema_version: written} = row)
-      when written > declared do
+      when is_integer(written) and written > declared do
     raise NewerSchemaError,
       contract: row.contract,
       type: row.type,
