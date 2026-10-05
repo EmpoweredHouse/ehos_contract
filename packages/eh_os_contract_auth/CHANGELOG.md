@@ -7,6 +7,13 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **eh-os-contract#133: the manifest offers queries and recordings.** `mix eh_os_contract.manifest` writes a
+  capability for every command, query and recording a human actor may make, each naming its declaration as
+  `command`, `query` or `record` (`eh-os` D-73), and the roles hold them all. Until now a deployed application's
+  people were refused every query their pages asked (`missing_capability`) and could record nothing.
+  - **Changed:** an EHOS before D-73 refuses such a manifest (`"query" is not a field of ehos.manifest/v2`);
+    deploy EHOS first.
+
 - **#66: a scope value the decisions table cannot hold is recorded as its digest.** A value as sent that holds a
   NUL (`%00` in a query string, JSON's `"\u0000"`), is not valid UTF-8 (from a caller of `call/3` or `dispatch/3`
   directly: Plug refuses it in a query string), is past 256 bytes, or starts `sha256:` is written to

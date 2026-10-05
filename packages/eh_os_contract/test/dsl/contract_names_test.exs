@@ -269,6 +269,30 @@ defmodule EhOsContract.ContractNamesTest do
                  "<domain>.close_visit (D14) (query_like_command.ex:14)"
     end
 
+    test "a query with the name of an event an actor records, since both are capabilities (D14)" do
+      message =
+        refuse_contract("QueryLikeRecording", """
+          aggregate :visit, "Wizyta" do
+            identity :visit_id
+            event :visit_noted, "Wizyta odnotowana", recorded_by: :reception
+          end
+
+          read_model :noted_visits, "Odnotowane wizyty", projects: :visit_noted do
+            field :visit_id, :id
+          end
+
+          query :visit_noted, "Odnotowane wizyty", reads: :noted_visits, by: :reception
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      assert message =~
+               "N1: query :visit_noted has the name of an event an actor records; both are " <>
+                 "capabilities named <domain>.visit_noted (D14) (query_like_recording.ex:13)"
+    end
+
     test "each other kind of declaration" do
       message =
         refuse_contract("Kinds", """

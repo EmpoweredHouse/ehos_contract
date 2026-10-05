@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 5 października (E0–E12, EH, EB, EP, #99 i #128 w `main`; następny jest program DD; otwarty PR #134)
+## Handoff — stan na 5 października (E0–E12, EH, EB, EP, #99, #128 i #134 w `main`; następny jest program DD; otwarty PR #135)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -45,12 +45,11 @@ nie jest zaczęty; pierwszy jest N1 (`final:`, `target`, `identity` encji).
 
 ### Stan repozytorium
 
-- **`origin/main` = `af59a48`** (merge #128, `Demands`; 4 października). CI `main` na `af59a48`: przebieg
-  `37234896301`, job `check` — `success`. **Otwarty PR:** [#134](https://github.com/EmpoweredHouse/eh-os-contract/pull/134)
-  (`auth/manifest-query-record`, manifest EHOS-a: query i nagrania) — z innej sesji.
+- **`origin/main` = `0afdd52`** (merge #134, manifest oferuje query i zapisy — „Dopisek 5 października (2)”); przed
+  nim `af59a48` (merge #128, `Demands`), CI `check` — `success`. **Otwarty PR:**
+  [#135](https://github.com/EmpoweredHouse/eh-os-contract/pull/135) (DD0).
 - **`docs/dd0-programme`** — DD0: dopisek DD w `PLAN.md`, z dwoma commitami trzeciej analizy ESDM
-  (`docs/esdm-analysis-oct4`, „Dopisek 4 października (3)”) i z `main` wmergowanym 5 października. Tylko lokalnie,
-  do pushu i PR-a na polecenie użytkownika.
+  (`docs/esdm-analysis-oct4`, „Dopisek 4 października (3)”) i z `main` wmergowanym 5 października (dwa razy: po #128 i po #134). PR #135.
 - Wcześniej `6ce4c30` (merge #126, ostatni PR #99). Przedtem `eb0c8a1` (merge #103: #98,
   budżet bajtów klucza — „#98 — co wyszło”). Przedtem `b6a96dd` —
   #101 (handoff po #96), `90a83f2` — #102 (EP1, z sesji `esdm-dsl-comparison`), `0b7bc84` — #100 (poprawki
@@ -63,7 +62,7 @@ nie jest zaczęty; pierwszy jest N1 (`final:`, `target`, `identity` encji).
   #89, discovery, #65, #93, #95, #96, #100, a także przypadkowy `revert-95-engine/bounded-values` — revert z przycisku
   GitHuba, bez PR-a); `engine/issue-98-key-budget` (#103) — po merge'u, za zgodą użytkownika. Zostało 59 innych gałęzi na GitHubie, zmergowanych dawno — nieruszane z wyboru użytkownika.
 - **Worktree (5 października):** `computer-ordering-process-f84437` — sesja DD (`docs/dd0-programme`);
-  `esdm-dsl-comparison-d82750` (`auth/manifest-query-record`, PR #134) i `ep4-ep5-user-questions-95855b` — innych
+  `esdm-dsl-comparison-d82750` (`auth/manifest-query-record`, PR #134 zmergowany) i `ep4-ep5-user-questions-95855b` — innych
   sesji, nie ruszać.
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
   `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`), schemat V01 z
@@ -390,6 +389,35 @@ przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie p
 
 Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty, commity, opisy PR, `docs/adr/`,
 `README.md` — po angielsku; `PLAN.md` i `CLAUDE.md` po polsku. Pełna reguła — `CLAUDE.md`.
+
+## Dopisek 5 października (2) — manifest oferuje query i zapisy (#133, `eh-os` D-73)
+
+**Skąd.** Test polowy (aplikacja `EmpoweredHouse/appunite-equipment`, z `ehosctl init`, wdrożona przez EHOS na
+lokalnym k3d): osoba z jedyną rolą aplikacji zalogowała się przez EHOS i dostała odmowę na pierwszej stronie —
+`missing_capability` na query `inventory_list`, w `eh_os_contract_auth_decisions`. `ehos.manifest/v2` znał tylko
+capability komendy, więc generator pomijał query i zapisy (`recorded_by:`), rola w EHOS ich nie miała, a credential
+też nie. Każda aplikacja, której ludzie czytają przez kontrakt, była na EHOS bezużyteczna.
+
+**Decyzja użytkownika (5 października): naprawić w bibliotekach, nie obchodzić w aplikacji.** Odrzucone:
+obejście w aplikacji (strony czytają tabele read modeli wprost przez Ecto — lista działa od razu, ale zapisy dalej
+odrzucone, a odczyt traci autoryzację kontraktu) i zatrzymanie testu na tym wyniku.
+
+**Kształt (decyzja użytkownika, zapisana w `eh-os` jako D-73, accepted):** capability ma dokładnie jeden z kluczy
+`command`, `query`, `record`, a `name` go powtarza. Odrzucone: `kind` + `declaration` (komenda staje się wyjątkiem albo
+przemianowanie zmienia digest każdego manifestu) i osobne listy `offers.queries`/`offers.records` (role, unikalność,
+diff i podgląd musiałyby znać trzy listy, a credential niesie i tak same nazwy).
+
+**Co zrobione tutaj:**
+
+- `mix eh_os_contract.manifest` emituje komendy, query i zapisy, które może wykonać ludzki aktor; role trzymają
+  wszystkie trzy. EHOS sprzed D-73 taki manifest odrzuci — najpierw wdraża się EHOS.
+- **N1 rozszerzone:** query nie może nosić nazwy zdarzenia, które zapisuje aktor. Obie są capability
+  `<domena>.<nazwa>`, a od D-73 manifest oferuje obie. Luki nie było — reguła L3 D14 odrzucała tę parę, gdy działa
+  kompilator Mixa — ale N1 odrzuca ją już przy kompilacji samego kontraktu, zanim `Model.capabilities/1` zlałby obie
+  w jedną capability.
+- **Query i komenda ze `scope:`** trafiają do manifestu bez wartości zakresu, więc każde wywołanie przez EHOS kończy
+  się `:unscoped_grant` (zamknięte, nic nie przyznaje), dopóki wiązanie nie umie nieść wartości (D-40).
+- Bez scope'ów: query ze `scope:` wychodzi jak komenda ze `scope:` dziś, a wiązanie wartości to D-40 (proposed).
 
 ## Dopisek 5 października — DD: DDD sprawdzane przez kod (program, decyzje, postęp)
 

@@ -107,9 +107,11 @@ is filled in. The task adds:
   names the one the image is in `ehos.yaml`, as `application: <name>`. EHOS takes lowercase letters,
   digits and dashes, so a domain named with `_` is refused, with a name to use when there is one EHOS
   takes;
-- `offers`, the human command capabilities and the human actors that hold at least one of them, as
-  roles. System actors, actors with no command, queries, recordings, scopes and publications are
-  absent: the manifest has no field for them yet, and EHOS refuses a field it does not know;
+- `offers`, the capabilities of the commands, queries and recordings a human actor may make, each naming its
+  declaration as `command`, `query` or `record` (`eh-os` D-73), and the human actors that hold at least one of
+  them, as roles. An EHOS before D-73 refuses a manifest that offers a query or a recording. System actors,
+  actors who hold nothing, scopes and publications are absent: the manifest has no field for them yet, and
+  EHOS refuses a field it does not know;
 - `engine`, the `eh_os_contract` version that wrote it.
 
 **An application that signs people in through EHOS** writes `ehos.yaml/v2`, which is v1 and one more
