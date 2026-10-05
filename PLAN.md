@@ -46,12 +46,14 @@ Fala 1: N1, N2, N3, W1, W2 w `main` (#137, #138, #139, #142, #143); W3 (publiczn
 
 ### Stan repozytorium
 
-- **`origin/main` = `6a236d5`** (merge #143, W2; przed nim #142 W1 `3c7b29f`, #139 N3 `a568ce7` z poprawką etykiety
-  timera TaxVision `46b4e55`, #138 N2 `f0e473d`; wcześniej #137 N1 i #135 DD0 — każdy z poprawką po przeglądzie
-  CodeRabbita, `.coderabbit.yaml` dla PR-ów na dowolną gałąź).
+- **`origin/main` = `3508cb6`** (merge #144, puste etykiety: N1/D1 odmawiają etykiety pustej albo z samych białych
+  znaków i znaków formatu Unicode, F2/D3 — takiej etykiety członka enuma; spoza programu, z recenzji #139 — „N3 — co
+  wyszło”; przed nim #143 W2 `6a236d5`, #142 W1 `3c7b29f`, #139 N3 `a568ce7` z poprawką etykiety timera TaxVision
+  `46b4e55`, #138 N2 `f0e473d`; wcześniej #137 N1 i #135 DD0 — każdy z poprawką po przeglądzie CodeRabbita,
+  `.coderabbit.yaml` dla PR-ów na dowolną gałąź).
 - **Otwarty PR:** [#145](https://github.com/EmpoweredHouse/eh-os-contract/pull/145) W3 (`engine/w3-trace-core`, na
-  `main`, z `main` wmergowanym). Stos N3 → W1 → W2 zmergowany po kolei; otwarte poza programem: #144 (puste
-  etykiety, innej sesji).
+  `main`, z `main` wmergowanym). Stos N3 → W1 → W2 zmergowany po kolei; poza programem otwarte jeszcze #140
+  (`.coderabbit.yaml`, ten sam plik jest już w `main` — do zamknięcia).
 - Wcześniej `6ce4c30` (merge #126, ostatni PR #99). Przedtem `eb0c8a1` (merge #103: #98,
   budżet bajtów klucza — „#98 — co wyszło”). Przedtem `b6a96dd` —
   #101 (handoff po #96), `90a83f2` — #102 (EP1, z sesji `esdm-dsl-comparison`), `0b7bc84` — #100 (poprawki
@@ -1075,6 +1077,15 @@ CHANGELOG („Added”). Czytelnik: S2 (scenariusze obietnic bez bazy).
   jedną tożsamością, raport i grafy bajt w bajt (nowy punkt odniesienia po wmergowaniu `46b4e55`, który zmienia
   etykietę timera TaxVision). Przegląd bezpieczeństwa: nic od średniej wagi. (2) Nieaktualny wpis o `origin/main` w
   Handoffie — poprawiony razem z ☑ W2. Baza #145 przestawiona na `main`, `main` wmergowany.
+- **Druga recenzja CodeRabbita na #145** (na `4393270`), jedna uwaga spoza diffu — naprawiona: `item_key/2` pytał, czy
+  payload trzyma pole tożsamości pod kluczem-atomem, przez `String.to_existing_atom/1`, a to rzuca na nazwie, z której
+  węzeł nigdy nie zrobił atomu — ślad podany do `judge/3` z zewnątrz wywracał wtedy osąd poprawnego payloadu z
+  kluczami-stringami. Nie ma atomu, więc payload nie może go trzymać jako klucza: sprawdzenie odpowiada wtedy `false`.
+  *Odrzucone (mechanika):* porównywać pole z nazwą każdego klucza (sugestia CodeRabbita; to samo, ale liniowo po
+  kluczach każdego wystąpienia). Test z polem, które nie jest atomem; próba odwrotna — bez `rescue` pada tylko on, z
+  „not an already existing atom”. Linia w CHANGELOG. Handoff znowu nieaktualny po merge'u #144 — poprawiony, `main`
+  (`3508cb6`) wmergowany. Brama: EXIT=0; `check` 0 / 29 / 10 i 0 / 75 / 6; sandbox 194, silnik 1304, web 52, auth 286
+  + 1 property.
 - **Dla aplikacji AppUnite i `ehos-ledger`:** nic do zmiany.
 
 ## Dopisek 4 października (3) — pokrycie ESDM po EP1–EP5 i #99
