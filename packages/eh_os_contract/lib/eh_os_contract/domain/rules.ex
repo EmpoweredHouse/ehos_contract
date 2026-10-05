@@ -59,6 +59,9 @@ defmodule EhOsContract.Domain.Rules do
   the application's, outside the log, where erasure cannot reach them. Every
   `{:id, entity}`, in a value's field or an entity's, names an entity of this domain.
 
+  **D13** (plan W2): the domain's `time_zone:` is a zone the time zone database
+  Elixir is configured with knows, since dispatch tags a timestamp's day there.
+
   **D11** (plan, after #50): the domain's `name:` is the application's namespace, the
   first segment of every name its contracts publish (`EhOsContract.Contract.Rules.Boundaries`)
   and of every capability, so it is such a segment: lowercase letters, digits, `_` and
@@ -110,7 +113,7 @@ defmodule EhOsContract.Domain.Rules do
     DslRules.result(
       dsl,
       [:domain],
-      d11(dsl, domain) ++ Enum.flat_map(rules(), & &1.(entities, domain))
+      d11(dsl, domain) ++ d13(dsl, domain) ++ Enum.flat_map(rules(), & &1.(entities, domain))
     )
   end
 
@@ -127,6 +130,25 @@ defmodule EhOsContract.Domain.Rules do
            "letters, digits, _ and -, starting with a letter and not ending with a dash, like " <>
            ":\"my-shop\"; it begins every name the domain's contracts publish", use_at(dsl)}
       ]
+  end
+
+  # --- D13: the time zone is one the configured database knows (plan W2) ---------
+
+  # Asked of the database Elixir is configured with, as dispatch will ask it: a zone
+  # it does not know would raise on the first append of a timestamp.
+  defp d13(dsl, %{time_zone: zone}) do
+    case is_binary(zone) && DateTime.shift_zone(~U[2026-01-01 00:00:00Z], zone) do
+      {:ok, _} ->
+        []
+
+      _unknown ->
+        [
+          {"D13: the domain's time_zone: #{inspect(zone)} is not a zone the configured time " <>
+             "zone database (#{inspect(Calendar.get_time_zone_database())}) knows; name an " <>
+             "IANA zone like \"Europe/Warsaw\", and configure a database such as Tz with " <>
+             "config :elixir, :time_zone_database", use_at(dsl)}
+        ]
+    end
   end
 
   defp use_at(dsl) do

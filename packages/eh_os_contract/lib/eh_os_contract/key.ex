@@ -109,17 +109,22 @@ defmodule EhOsContract.Key do
   def bucket_field?(_field, _values), do: false
 
   @doc """
-  A day tag: the field's name and `.day`, `:`, then the day in UTC, `YYYY-MM-DD`.
+  A day tag: the field's name and `.day`, `:`, then the day, `YYYY-MM-DD`. A
+  timestamp's day is the one it falls on in `zone`, the domain's `time_zone:`; a date
+  is its own day.
 
-      Key.day_tag(:scheduled_at, ~U[2026-10-05 23:30:00Z])   #=> "scheduled_at.day:2026-10-05"
+      Key.day_tag(:scheduled_at, ~U[2026-10-05 22:30:00Z])                    #=> "scheduled_at.day:2026-10-05"
+      Key.day_tag(:scheduled_at, ~U[2026-10-05 22:30:00Z], "Europe/Warsaw")   #=> "scheduled_at.day:2026-10-06"
 
   A field name is snake_case and has no `.`, so a day tag never reads as a field's tag.
   """
-  @spec day_tag(atom(), Date.t() | DateTime.t()) :: String.t()
-  def day_tag(field, %DateTime{} = at) when is_atom(field),
-    do: day_tag(field, at |> DateTime.shift_zone!("Etc/UTC") |> DateTime.to_date())
+  @spec day_tag(atom(), Date.t() | DateTime.t(), String.t()) :: String.t()
+  def day_tag(field, value, zone \\ "Etc/UTC")
 
-  def day_tag(field, %Date{} = day) when is_atom(field),
+  def day_tag(field, %DateTime{} = at, zone) when is_atom(field),
+    do: day_tag(field, at |> DateTime.shift_zone!(zone) |> DateTime.to_date(), zone)
+
+  def day_tag(field, %Date{} = day, _zone) when is_atom(field),
     do: tag(:"#{field}.day", Date.to_iso8601(day))
 
   @doc """

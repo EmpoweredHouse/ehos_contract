@@ -7,7 +7,9 @@ defmodule DispatchRig.Domain do
   command, which a credential cannot yet do (v2 §11, the note of 26 September).
   """
 
-  use EhOsContract.Domain, name: :dispatch_rig, language: :en
+  # Plan W2: the invented ledger keeps the days of Warsaw, so a timestamp's day tag is
+  # the day there, not in UTC.
+  use EhOsContract.Domain, name: :dispatch_rig, language: :en, time_zone: "Europe/Warsaw"
 
   context :ledger, "Ledger", subdomain: :core
 
@@ -16,4 +18,7 @@ defmodule DispatchRig.Domain do
   actor :nightly_import, :system, "Nightly import", scope: [:branch_id]
 
   subdomain :core, "Core", type: :core
+
+  # Plan W2: a value resting on a date is tagged with its day as a date is.
+  value :business_day, :date
 end

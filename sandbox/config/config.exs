@@ -2,6 +2,9 @@ import Config
 
 config :eh_os_contract_host, ecto_repos: [Taxvision.Repo]
 
+# The database the engine reads the domains' `time_zone:` with (plan W2).
+config :elixir, :time_zone_database, Tz.TimeZoneDatabase
+
 # The engine is its own application since 2026-08-20, so its configuration is
 # keyed by its own name. It reads the repo from configuration rather than
 # through a module reference — that is what keeps the package from depending on

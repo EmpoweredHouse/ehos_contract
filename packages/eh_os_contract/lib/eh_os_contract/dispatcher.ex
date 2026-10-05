@@ -1241,7 +1241,7 @@ defmodule EhOsContract.Dispatcher do
       schema_version: declaration.schema_version,
       contract: inspect(model.module),
       contract_version: model.version,
-      tags: tags(declaration, event, values),
+      tags: tags(declaration, event, values, time_zone(model)),
       process: model.process && Atom.to_string(model.process.name),
       instance_id: instance(model, event),
       # The runs of the processes that include it (D7), written with it.
@@ -1270,8 +1270,8 @@ defmodule EhOsContract.Dispatcher do
   # only the fields some boundary matches today would leave the events appended
   # before a new boundary untagged, and it would never see them. For the same reason
   # every required, non-personal date and timestamp is tagged with its day (plan W2),
-  # which a boundary bucketing by day reads (B2).
-  defp tags(declaration, event, values) do
+  # in the domain's time zone, which a boundary bucketing by day reads (B2).
+  defp tags(declaration, event, values, zone) do
     for(
       field <- declaration.fields,
       Key.tag_field?(field, values),
@@ -1279,7 +1279,15 @@ defmodule EhOsContract.Dispatcher do
     ) ++
       for field <- declaration.fields,
           Key.bucket_field?(field, values),
-          do: Key.day_tag(field.name, Map.fetch!(event, field.name))
+          do: Key.day_tag(field.name, Map.fetch!(event, field.name), zone)
+  end
+
+  # A contract may name a domain that is not loaded (v2 §8); its days are then UTC's.
+  defp time_zone(model) do
+    case model.domain && Code.ensure_loaded?(model.domain) && Model.fetch(model.domain) do
+      %{time_zone: zone} -> zone
+      _ -> "Etc/UTC"
+    end
   end
 
   # The run a struct belongs to: the process's name, then its correlation values.
