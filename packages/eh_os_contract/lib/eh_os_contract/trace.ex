@@ -148,8 +148,8 @@ defmodule EhOsContract.Trace do
 
   `identity` is `nil` for the ordinary promise, one of the thing per run. It belongs
   to the trace and not to the call because it is a fact about the contract: a caller
-  that could pass it would be able to judge a per-item promise per run, and get a
-  verdict the contract never asked for.
+  that had to pass it could leave it out, and judge a per-item promise per run without
+  meaning to.
   """
   @type trace :: %{
           from: String.t(),
@@ -204,7 +204,8 @@ defmodule EhOsContract.Trace do
   `from`'s event is strictly finer than the process's correlation, which is when the
   promise is made per item inside a run.
 
-  Raises `ArgumentError` when the contract declares no such promise.
+  Raises `ArgumentError` when the contract declares no such promise, and for a domain,
+  which declares none.
   """
   @spec trace(module() | map(), atom()) :: trace()
   def trace(contract, name) do
@@ -260,7 +261,11 @@ defmodule EhOsContract.Trace do
 
   @spec promise!(map(), atom()) :: map()
   defp promise!(model, name) do
-    (model.process && Enum.find(model.process.promises, &(&1.name == name))) ||
+    # `Map.get/2`, not `.process`: a domain's model has no process to ask, and is refused
+    # by name like a contract that declares no such promise.
+    process = Map.get(model, :process)
+
+    (process && Enum.find(process.promises, &(&1.name == name))) ||
       raise ArgumentError, "#{inspect(model.module)} does not declare promise #{inspect(name)}"
   end
 

@@ -113,9 +113,13 @@ defmodule EhOsContract.TraceTest do
                Trace.trace(Requests, :answered_in_a_day)
     end
 
-    test "refuses a promise the contract does not declare" do
+    test "refuses a promise the contract does not declare, and a domain" do
       assert_raise ArgumentError, ~r/does not declare promise :nope/, fn ->
         Trace.trace(Requests, :nope)
+      end
+
+      assert_raise ArgumentError, ~r/does not declare promise :answered_in_a_day/, fn ->
+        Trace.trace(Domain, :answered_in_a_day)
       end
     end
   end
@@ -163,8 +167,10 @@ defmodule EhOsContract.TraceTest do
     end
 
     test "verdicts come in the order their windows opened" do
-      verdicts = judge([at("second", :requested, @inside), at("first", :requested, @from)])
-      assert Enum.map(verdicts, & &1.instance_id) == ["first", "second"]
+      # Named against the order of their windows, so that the order of the keys
+      # cannot pass for it.
+      verdicts = judge([at("a", :requested, @inside), at("b", :requested, @from)])
+      assert Enum.map(verdicts, & &1.instance_id) == ["b", "a"]
     end
 
     test "the clock is the one it is given, never the wall's" do
