@@ -54,7 +54,8 @@ T1+T1s, X1, S4 w dowolnej kolejności.
   `.coderabbit.yaml` dla PR-ów na dowolną gałąź).
 - **Otwarte PR-y — stos, merge po kolei:** [#145](https://github.com/EmpoweredHouse/eh-os-contract/pull/145) W3
   (`engine/w3-trace-core`, na `main`, z `main` wmergowanym) → [#146](https://github.com/EmpoweredHouse/eh-os-contract/pull/146)
-  W4 (`engine/w4-decision`, na #145, z #145 wmergowanym). CI obu stoi na billingu GitHub Actions (job nie startuje).
+  W4 (`engine/w4-decision`, na #145, z #145 wmergowanym) → [#148](https://github.com/EmpoweredHouse/eh-os-contract/pull/148)
+  T1+T1s (`engine/t1-supplied-by-host`, na #146). CI stoi na billingu GitHub Actions (job nie startuje).
   Stos N3 → W1 → W2 zmergowany po kolei; poza programem otwarte jeszcze #140
   (`.coderabbit.yaml`, ten sam plik jest już w `main` — do zamknięcia).
 - Wcześniej `6ce4c30` (merge #126, ostatni PR #99). Przedtem `eb0c8a1` (merge #103: #98,
@@ -526,8 +527,8 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | W2 | 1 | tagi dnia przy dopisie | DD0 | ☑ #143 |
 | W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ◐ `engine/w3-trace-core`, PR #145 |
 | W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ◐ `engine/w4-decision`, PR #146 (na #145) |
-| T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ◐ `engine/t1-supplied-by-host` (na W4), gotowe do PR-a |
-| T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ◐ `engine/t1-supplied-by-host` (z T1), gotowe do PR-a |
+| T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ◐ `engine/t1-supplied-by-host`, PR #148 (na #146) |
+| T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ◐ `engine/t1-supplied-by-host`, PR #148 (z T1) |
 | X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ☐ |
 | S4 | 1 | `transition-without-scenario` | DD0 | ☐ |
 | ID1 | 2 | `id:` kontraktu deklarowany | N1 | ☐ |
