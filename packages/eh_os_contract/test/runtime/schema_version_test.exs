@@ -131,6 +131,38 @@ defmodule EhOsContract.SchemaVersionTest do
     assert %{failing: []} = Testing.drain(only: flag)
   end
 
+  test "a read model applies what comes before a newer row in its batch, and waits at it" do
+    lines = "DispatchRig.Ledger:read_model:ledger_lines"
+    Subscription.register!(Repo, [Implementations.consumer(lines)])
+    Testing.drain(only: lines)
+    before = Repo.get!(SubscriptionRecord, lines).position
+
+    clerk = Actor.credential("u-1", ~w(dispatch_rig.open_account dispatch_rig.deposit))
+    ledger = &EhOsContract.dispatch(DispatchRig.Ledger, &1, actor: clerk)
+
+    {:ok, _} =
+      ledger.(%DispatchRig.Ledger.Commands.OpenAccount{account_id: "a-1", branch_id: "b-7"})
+
+    {:ok, _} = ledger.(%DispatchRig.Ledger.Commands.Deposit{account_id: "a-1", amount: 10})
+    newer = newer!(DispatchRig.Ledger, :withdrawn, {"account:a-9", 0})
+
+    # One batch of 500 holds both; the deposit commits, and the step after waits.
+    assert {:applied, 1} = Subscription.step(Repo, Implementations.consumer(lines))
+
+    assert [{_position, 10}] =
+             Repo.all(from(l in "dispatch_rig_lines", select: {l.position, l.amount}))
+
+    for _ <- 1..2 do
+      assert {:waiting, position} = Subscription.step(Repo, Implementations.consumer(lines))
+      assert position == newer.position
+    end
+
+    assert %SubscriptionRecord{status: "running", attempts: 0, position: position} =
+             Repo.get!(SubscriptionRecord, lines)
+
+    assert before < position and position < newer.position
+  end
+
   test "a process manager waits at a newer row, and keeps no state from it" do
     chase = "DispatchRig.Ledger:process_manager:first_deposit_chase"
     Subscription.register!(Repo, [Implementations.consumer(chase)])

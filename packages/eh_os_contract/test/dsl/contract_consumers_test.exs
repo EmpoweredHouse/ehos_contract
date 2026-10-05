@@ -143,6 +143,7 @@ defmodule EhOsContract.ContractConsumersTest do
             timer :reminder_due, "Reminder due", wait: {1, :day}, at: :due_on, issues: :remind
             timer :deadline, "Deadline", at: :due_on
             timer :idle, "Idle"
+            timer :quiet, " ", wait: {1, :day}
             ends_on :visit_forgotten
           end
         """)
@@ -172,6 +173,10 @@ defmodule EhOsContract.ContractConsumersTest do
       assert message =~
                "P4: process manager :chase: timer :idle has neither wait: nor at:; give it exactly " <>
                  "one (manager_wrong.ex:25)"
+
+      assert message =~
+               "P4: process manager :chase: timer :quiet has a blank label; say what it is for, " <>
+                 "\"Documentation due\" (manager_wrong.ex:26)"
 
       refute message =~ "reacts on :reminder_due"
     end

@@ -16,9 +16,15 @@ defmodule EhOsContract.RegistryTimeZoneTest do
 
   setup do
     database = Calendar.get_time_zone_database()
+    exclude = Application.get_env(:eh_os_contract, :exclude)
 
     on_exit(fn ->
       Calendar.put_time_zone_database(database)
+
+      if exclude,
+        do: Application.put_env(:eh_os_contract, :exclude, exclude),
+        else: Application.delete_env(:eh_os_contract, :exclude)
+
       Registry.load!()
     end)
 
@@ -33,6 +39,16 @@ defmodule EhOsContract.RegistryTimeZoneTest do
     assert error.message =~
              ~s|DispatchRig.Domain keeps its days in "Europe/Warsaw", which the time zone | <>
                "database this node runs with (Calendar.UTCOnlyTimeZoneDatabase) does not know"
+  end
+
+  test "a contract's domain the scan did not find is asked too" do
+    # Dropped from the scan as a domain in another application would be; its contracts
+    # still dispatch, and tag with its zone.
+    Application.put_env(:eh_os_contract, :exclude, ["DispatchRig.Domain"])
+    Calendar.put_time_zone_database(Calendar.UTCOnlyTimeZoneDatabase)
+
+    error = assert_raise ArgumentError, fn -> Registry.load!() end
+    assert error.message =~ ~s|DispatchRig.Domain keeps its days in "Europe/Warsaw"|
   end
 
   test "a database configured but absent knows no zone, rather than raising" do

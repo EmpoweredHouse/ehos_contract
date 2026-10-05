@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 5 października, wieczór (DD0, N1, N2 w `main`; N3, W1, W2 w PR-ach; W3 gotowe do PR-a)
+## Handoff — stan na 5 października, wieczór (DD0, N1–N3, W1 w `main`; W2 i W3 w PR-ach #143, #145)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -41,18 +41,16 @@ komputer, kontrakt `Demands`) — „Dopisek 4 października (2)”.
 **Następna praca to program DD — „DDD sprawdzane przez kod”** (zatwierdzony przez użytkownika 5 października): 53
 etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem programu jest tabela „Postęp” w „Dopisek 5
 października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
-Fala 1: N1, N2 w `main` (#137, #138); N3, W1, W2 w otwartych PR-ach #139, #142, #143 (stos); W3 (publiczne,
-czyste jądro `Trace`) zrobione na `engine/w3-trace-core` (na W2), czeka na polecenie push i PR; potem W4, T1+T1s, X1,
-S4 w dowolnej kolejności.
+Fala 1: N1, N2, N3, W1 w `main` (#137, #138, #139, #142); W2 w PR-ze #143 (na `main`), W3 (publiczne, czyste jądro
+`Trace`) w PR-ze #145 (na #143); potem W4, T1+T1s, X1, S4 w dowolnej kolejności.
 
 ### Stan repozytorium
 
 - **`origin/main` = `f0e473d`** (merge #138, N2; przed nim #137 N1, #135 DD0, każdy z poprawką po przeglądzie
   CodeRabbita i `.coderabbit.yaml` dla PR-ów na dowolną gałąź).
-- **Otwarte PR-y — stos, merge po kolei:** [#139](https://github.com/EmpoweredHouse/eh-os-contract/pull/139) N3
-  (`dsl/n3-timer-label`, na `main`) → [#142](https://github.com/EmpoweredHouse/eh-os-contract/pull/142) W1
-  (`engine/w1-schema-version`, na #139) → [#143](https://github.com/EmpoweredHouse/eh-os-contract/pull/143) W2
-  (`engine/w2-day-tags`, na #142). Po merge'u jednego baza następnego przechodzi na `main` (albo `gh pr edit <n>
+- **Otwarte PR-y — stos, merge po kolei:** [#143](https://github.com/EmpoweredHouse/eh-os-contract/pull/143) W2
+  (`engine/w2-day-tags`, na `main`) → [#145](https://github.com/EmpoweredHouse/eh-os-contract/pull/145) W3
+  (`engine/w3-trace-core`, na #143). #139 (N3) i #142 (W1) zmergowane. Po merge'u jednego baza następnego przechodzi na `main` (albo `gh pr edit <n>
   --base main`); jeśli przyjdą poprawki do `main`, zmergować `main` w dół stosu — konflikt w CHANGELOG jest
   prawdopodobny, bo W1 przeniósł wpisy DD do górnej sekcji „Unreleased”.
 - Wcześniej `6ce4c30` (merge #126, ostatni PR #99). Przedtem `eb0c8a1` (merge #103: #98,
@@ -87,9 +85,9 @@ S4 w dowolnej kolejności.
 
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
-  1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138). **Użytkownik:** merge #139 (N3), potem #142 (W1), potem #143
-     (W2); po każdym ☑ w tabeli robi asystent przy następnym etapie.
-  2. **Asystent:** W3 zrobione na `engine/w3-trace-core` (na W2) — PR na polecenie użytkownika, na #143; potem W4,
+  1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138), N3 (#139), W1 (#142). **Użytkownik:** merge #143 (W2), potem
+     #145 (W3); po każdym ☑ w tabeli robi asystent przy następnym etapie.
+  2. **Asystent:** W3 w PR-ze #145 (na #143); potem W4,
      T1+T1s, X1, S4, każdy na gałęzi od głowy stosu (tabela „Postęp” żyje na stosie). Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; potwierdzenie etykiet timerów sandboxa — „N3 — co wyszło”); po każdej fali „dalej czy
@@ -509,10 +507,10 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | DD0 | 0 | program i postęp w `PLAN.md` | — | ☑ #135 |
 | N1 | 1 | `final:`, `target`, `identity` encji, definicja encji | DD0 | ☑ #137 |
 | N2 | 1 | `subscribe "<nazwa>"` | DD0 | ☑ #138 |
-| N3 | 1 | etykieta timera (EP6) | DD0 | ◐ `dsl/n3-timer-label`, PR #139 |
-| W1 | 1 | zapis `schema_version` | DD0 | ◐ `engine/w1-schema-version`, PR #142 (na #139) |
-| W2 | 1 | tagi dnia przy dopisie | DD0 | ◐ `engine/w2-day-tags`, PR #143 (na #142) |
-| W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ◐ `engine/w3-trace-core` (na W2), gotowe do PR-a |
+| N3 | 1 | etykieta timera (EP6) | DD0 | ☑ #139 |
+| W1 | 1 | zapis `schema_version` | DD0 | ☑ #142 |
+| W2 | 1 | tagi dnia przy dopisie | DD0 | ◐ `engine/w2-day-tags`, PR #143 |
+| W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ◐ `engine/w3-trace-core`, PR #145 (na #143) |
 | W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ☐ |
 | T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ☐ |
 | T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☐ |
