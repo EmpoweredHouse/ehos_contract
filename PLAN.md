@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 5 października (E0–E12, EH, EB, EP, #99, #128 i #134 w `main`; następny jest program DD; otwarty PR #135)
+## Handoff — stan na 5 października, wieczór (DD0, N1, N2 w `main`; N3, W1, W2 w PR-ach; następny jest W3)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -41,15 +41,19 @@ komputer, kontrakt `Demands`) — „Dopisek 4 października (2)”.
 **Następna praca to program DD — „DDD sprawdzane przez kod”** (zatwierdzony przez użytkownika 5 października): 53
 etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem programu jest tabela „Postęp” w „Dopisek 5
 października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
-Żaden etap z kodem nie jest zaczęty; pierwszy jest N1 (`final:`, `target`, `identity` encji).
+Fala 1: N1, N2 w `main` (#137, #138); N3, W1, W2 w otwartych PR-ach #139, #142, #143 (stos); następny jest W3
+(publiczne, czyste jądro `Trace`), potem W4, T1+T1s, X1, S4 w dowolnej kolejności.
 
 ### Stan repozytorium
 
-- **`origin/main` = `0afdd52`** (merge #134, manifest oferuje query i zapisy — „Dopisek 5 października (2)”); przed
-  nim `af59a48` (merge #128, `Demands`), CI `check` — `success`. **Otwarty PR:**
-  [#135](https://github.com/EmpoweredHouse/eh-os-contract/pull/135) (DD0).
-- **`docs/dd0-programme`** — DD0: dopisek DD w `PLAN.md`, z dwoma commitami trzeciej analizy ESDM
-  (`docs/esdm-analysis-oct4`, „Dopisek 4 października (3)”) i z `main` wmergowanym 5 października (dwa razy: po #128 i po #134). PR #135.
+- **`origin/main` = `f0e473d`** (merge #138, N2; przed nim #137 N1, #135 DD0, każdy z poprawką po przeglądzie
+  CodeRabbita i `.coderabbit.yaml` dla PR-ów na dowolną gałąź).
+- **Otwarte PR-y — stos, merge po kolei:** [#139](https://github.com/EmpoweredHouse/eh-os-contract/pull/139) N3
+  (`dsl/n3-timer-label`, na `main`) → [#142](https://github.com/EmpoweredHouse/eh-os-contract/pull/142) W1
+  (`engine/w1-schema-version`, na #139) → [#143](https://github.com/EmpoweredHouse/eh-os-contract/pull/143) W2
+  (`engine/w2-day-tags`, na #142). Po merge'u jednego baza następnego przechodzi na `main` (albo `gh pr edit <n>
+  --base main`); jeśli przyjdą poprawki do `main`, zmergować `main` w dół stosu — konflikt w CHANGELOG jest
+  prawdopodobny, bo W1 przeniósł wpisy DD do górnej sekcji „Unreleased”.
 - Wcześniej `6ce4c30` (merge #126, ostatni PR #99). Przedtem `eb0c8a1` (merge #103: #98,
   budżet bajtów klucza — „#98 — co wyszło”). Przedtem `b6a96dd` —
   #101 (handoff po #96), `90a83f2` — #102 (EP1, z sesji `esdm-dsl-comparison`), `0b7bc84` — #100 (poprawki
@@ -61,9 +65,9 @@ października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każd
 - **Gałęzie:** gałęzie tej pracy usunięte na GitHubie i lokalnie 3 października, za zgodą użytkownika (EB, EH, #71,
   #89, discovery, #65, #93, #95, #96, #100, a także przypadkowy `revert-95-engine/bounded-values` — revert z przycisku
   GitHuba, bez PR-a); `engine/issue-98-key-budget` (#103) — po merge'u, za zgodą użytkownika. Zostało 59 innych gałęzi na GitHubie, zmergowanych dawno — nieruszane z wyboru użytkownika.
-- **Worktree (5 października):** `computer-ordering-process-f84437` — sesja DD (`docs/dd0-programme`);
-  `esdm-dsl-comparison-d82750` (`auth/manifest-query-record`, PR #134 zmergowany) i `ep4-ep5-user-questions-95855b` — innych
-  sesji, nie ruszać.
+- **Worktree (5 października, wieczór):** `computer-ordering-process-f84437` — sesja DD (`engine/w2-day-tags`);
+  `plan-md-incomplete-actions-27a0e4` (trzyma `dsl/n2-subscribe` — tam powstały poprawki po przeglądach #135/#138),
+  `esdm-dsl-comparison-d82750`, `ep4-ep5-user-questions-95855b` — innych sesji, nie ruszać.
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
   `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`), schemat V01 z
   ręcznymi poprawkami z E11f i E12c, baza auth na V03. **Brama obok cudzego `phx.server` albo cudzych testów potrafi
@@ -81,10 +85,10 @@ października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każd
 
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
-  1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138). **Użytkownik:** merge #139 (N3, na `main`), potem #142 (W1, na
-     #139).
-  2. **W2 gotowe na `engine/w2-day-tags`** (na W1; push i PR na polecenie). **Asystent:** dalej reszta fali 1 w dowolnej kolejności. Start
-     etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
+  1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138). **Użytkownik:** merge #139 (N3), potem #142 (W1), potem #143
+     (W2); po każdym ☑ w tabeli robi asystent przy następnym etapie.
+  2. **Asystent:** W3 na nowej gałęzi od `engine/w2-day-tags` (tabela „Postęp” żyje na stosie); potem W4, T1+T1s, X1,
+     S4. Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; potwierdzenie etykiet timerów sandboxa — „N3 — co wyszło”); po każdej fali „dalej czy
      stop” i kiedy podbić przypięcie w aplikacji AppUnite (`~/Projects/ai/appunite_equipment`) i `ehos-ledger`.
@@ -188,6 +192,10 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **5 października, wieczór, `engine/w2-day-tags` @ `5c3a619`** (kod W2; głowa `586eb07` dokłada tylko `PLAN.md`):
+  `mix check` w `sandbox/` EXIT=0 — `check` sandboxa 0 / 29 / 10, silnika 0 / 75 / 6 (nowe ostrzeżenie:
+  `event-without-consumer` dla `:day_closed` rigu); sandbox 194, silnik 1280, web 51, auth 286 + 1 property. CI:
+  #139 @ `9c55d15` i #142 @ `0e0ac01` — job `check` success; #143 @ `586eb07` w toku przy pisaniu.
 - **5 października, `docs/dd0-programme` po merge'u `main`:** bramy nie uruchamiano — gałąź różni się od `main`
   tylko `PLAN.md` (`git diff origin/main -- . ':!PLAN.md'` pusty). CI `main` na `af59a48` (#128) — `check` `success`.
 - **#98 @ `1b0816d`** (głowa #103, na `b6a96dd` z EP1): pełna brama znowu padła na `too_many_connections` (5 testów
