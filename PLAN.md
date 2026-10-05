@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 5 października, wieczór (DD0, N1–N3, W1, W2 w `main`; W3 i W4 w PR-ach #145, #146)
+## Handoff — stan na 5 października, wieczór (DD0, N1–N3, W1–W3 w `main`; W4 w PR-ze #146)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -41,20 +41,19 @@ komputer, kontrakt `Demands`) — „Dopisek 4 października (2)”.
 **Następna praca to program DD — „DDD sprawdzane przez kod”** (zatwierdzony przez użytkownika 5 października): 53
 etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem programu jest tabela „Postęp” w „Dopisek 5
 października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
-Fala 1: N1, N2, N3, W1, W2 w `main` (#137, #138, #139, #142, #143); W3 (publiczne, czyste jądro `Trace`) w PR-ze #145
-(na `main`); W4 (wspólne reguły decyzji) w PR-ze #146 (na #145); potem
-T1+T1s, X1, S4 w dowolnej kolejności.
+Fala 1: N1, N2, N3, W1, W2, W3 w `main` (#137, #138, #139, #142, #143, #145); W4 (wspólne reguły decyzji) w PR-ze
+#146 (na `main`); potem T1+T1s, X1, S4 w dowolnej kolejności.
 
 ### Stan repozytorium
 
-- **`origin/main` = `3508cb6`** (merge #144, puste etykiety: N1/D1 odmawiają etykiety pustej albo z samych białych
+- **`origin/main` = `5be6358`** (merge #145, W3, z poprawką po trzeciej recenzji CodeRabbita `7a3bc49`; przed nim #147
+  `488f18e` — krótsze przebiegi CI, z innej sesji; przed nim `3508cb6`, merge #144, puste etykiety: N1/D1 odmawiają etykiety pustej albo z samych białych
   znaków i znaków formatu Unicode, F2/D3 — takiej etykiety członka enuma; spoza programu, z recenzji #139 — „N3 — co
   wyszło”; przed nim #143 W2 `6a236d5`, #142 W1 `3c7b29f`, #139 N3 `a568ce7` z poprawką etykiety timera TaxVision
   `46b4e55`, #138 N2 `f0e473d`; wcześniej #137 N1 i #135 DD0 — każdy z poprawką po przeglądzie CodeRabbita,
   `.coderabbit.yaml` dla PR-ów na dowolną gałąź).
-- **Otwarte PR-y — stos, merge po kolei:** [#145](https://github.com/EmpoweredHouse/eh-os-contract/pull/145) W3
-  (`engine/w3-trace-core`, na `main`, z `main` wmergowanym) → [#146](https://github.com/EmpoweredHouse/eh-os-contract/pull/146)
-  W4 (`engine/w4-decision`, na #145, z #145 wmergowanym). CI obu stoi na billingu GitHub Actions (job nie startuje).
+- **Otwarty PR:** [#146](https://github.com/EmpoweredHouse/eh-os-contract/pull/146) W4 (`engine/w4-decision`, na
+  `main`, z `main` wmergowanym). CI stoi na billingu GitHub Actions (job nie startuje).
   Stos N3 → W1 → W2 zmergowany po kolei; poza programem otwarte jeszcze #140
   (`.coderabbit.yaml`, ten sam plik jest już w `main` — do zamknięcia).
 - Wcześniej `6ce4c30` (merge #126, ostatni PR #99). Przedtem `eb0c8a1` (merge #103: #98,
@@ -89,9 +88,9 @@ T1+T1s, X1, S4 w dowolnej kolejności.
 
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
-  1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138), N3 (#139), W1 (#142), W2 (#143). **Użytkownik:** merge #145
-     (W3); po merge'u ☑ w tabeli robi asystent przy następnym etapie.
-  2. **Asystent:** W3 w PR-ze #145 (na `main`); W4 w PR-ze #146 (na #145); potem
+  1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138), N3 (#139), W1 (#142), W2 (#143), W3 (#145). **Użytkownik:**
+     merge #146 (W4); po merge'u ☑ w tabeli robi asystent przy następnym etapie.
+  2. **Asystent:** W4 w PR-ze #146 (na `main`); potem
      T1+T1s, X1, S4, każdy na gałęzi od `main` albo od W3, jeśli #145 nie jest jeszcze zmergowany (tabela „Postęp” żyje
      na gałęzi etapu). Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
@@ -524,8 +523,8 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | N3 | 1 | etykieta timera (EP6) | DD0 | ☑ #139 |
 | W1 | 1 | zapis `schema_version` | DD0 | ☑ #142 |
 | W2 | 1 | tagi dnia przy dopisie | DD0 | ☑ #143 |
-| W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ◐ `engine/w3-trace-core`, PR #145 |
-| W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ◐ `engine/w4-decision`, PR #146 (na #145) |
+| W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ☑ #145 |
+| W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ◐ `engine/w4-decision`, PR #146 |
 | T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ☐ |
 | T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☐ |
 | X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ☐ |
