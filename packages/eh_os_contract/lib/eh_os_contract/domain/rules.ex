@@ -918,7 +918,7 @@ defmodule EhOsContract.Domain.Rules do
 
   # What `EhOsContract.Codec` already reports for a field in the place an invariant's
   # name takes in `{:invalid, …}` and in a 422's body.
-  @refusals [:required, :type, :generated]
+  @refusals [:required, :type, :generated, :supplied]
 
   defp d9(entities, _domain) do
     values = Map.new(for(%Value{} = value <- entities, do: {value.name, value}))

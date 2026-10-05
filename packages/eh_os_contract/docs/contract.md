@@ -178,6 +178,15 @@ under a new id when the publisher declares `idempotent_on:`, whose values make t
 subscriber asks for the capability `lending.loan.opened.subscribe`, the application's, which EHOS grants
 and the transport delivers by.
 
+A field a decision depends on that is not the caller's to say — whether a loan's copy was scanned at the desk,
+which the desk's own system knows — is declared `supplied_by: :host`: `field :scanned, :boolean, supplied_by:
+:host`. Through `EhOsContract.call/3`, and so `EhOsContract.Plug`, a request that sends it at all is refused by
+name, `{:invalid, [scanned: :supplied]}`; once the caller is authorized, the configured `EhOsContract.Supplier`
+gives its value (`config :eh_os_contract, supplier: MyApp.Supplier`), and `{:not_supplied, reason}` — a 503 —
+when it cannot. The application's own `dispatch/3` is trusted, as every other field of its struct is. Only a
+command's field, or a recorded event's, takes it (`F10`), and a node with such a field and no supplier does not
+start.
+
 ## The code that decides
 
 A contract names no implementation. A module binds to one of its declarations, and the contract generates

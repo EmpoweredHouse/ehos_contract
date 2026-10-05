@@ -138,14 +138,16 @@ defmodule EhOsContract.OpenAPI do
     }
   end
 
-  defp command_fields(command, %{generated: generated, identity: identity})
-       when not is_nil(generated) do
-    if Map.get(command, :creates, false),
-      do: Enum.reject(command.fields, &(&1.name in identity)),
-      else: command.fields
-  end
+  # What a request sends: not an identity the library generates, and not a field the
+  # host supplies (plan T1), which a request that sends it is refused for.
+  defp command_fields(command, unit) do
+    generated =
+      if Map.get(unit, :generated) && Map.get(command, :creates, false),
+        do: unit.identity,
+        else: []
 
-  defp command_fields(command, _unit), do: command.fields
+    Enum.reject(command.fields, &(&1.name in generated or Map.get(&1, :supplied_by) == :host))
+  end
 
   defp command_headers(command) do
     [

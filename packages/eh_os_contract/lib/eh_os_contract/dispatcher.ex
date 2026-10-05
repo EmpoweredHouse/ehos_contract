@@ -108,6 +108,7 @@ defmodule EhOsContract.Dispatcher do
     Receipt,
     Rejection,
     Store,
+    Supplier,
     SubscriptionRecord
   }
 
@@ -119,7 +120,7 @@ defmodule EhOsContract.Dispatcher do
   @type refusal ::
           Authorizer.reason()
           | :not_declared
-          | {:invalid, [Codec.problem() | {atom(), :generated}]}
+          | {:invalid, [Codec.problem() | {atom(), :generated | :supplied}]}
           | :idempotency_key_reused
           | :idempotency_key_required
           | :idempotency_key_invalid
@@ -127,13 +128,17 @@ defmodule EhOsContract.Dispatcher do
           | :not_caught_up
           | :subject_erased
           | :key_too_long
+          | {:not_supplied, term()}
 
   @doc """
   Dispatches `command`, a struct a v2 contract generated, to `contract`.
 
   `opts`: `actor:` (an `EhOsContract.Actor`, required), `idempotency_key:` (opaque,
   never personal data), `correlation_id:` (a UUID; a new one when missing) and
-  `causation_id:`.
+  `causation_id:`. `supply: true`, which `call/3` sets, asks the
+  `EhOsContract.Supplier` for the fields declared `supplied_by: :host` once the actor
+  is authorized (plan T1); the application's own code leaves it out, and its struct
+  is trusted.
   """
   @spec dispatch(module(), struct(), keyword() | map()) ::
           {:ok, Receipt.t()} | {:error, Rejection.t() | refusal()}
@@ -150,6 +155,7 @@ defmodule EhOsContract.Dispatcher do
              ctx.actor,
              scope(declaration, declaration.fields, command, values)
            ),
+         {:ok, command} <- supplied(model, :command, declaration, ctx, command, values),
          :ok <- valid(declaration.fields, command, values, model.domain),
          :ok <- keyed(ctx),
          {:ok, command} <- generate_identity(model, declaration, command, ctx),
@@ -196,6 +202,7 @@ defmodule EhOsContract.Dispatcher do
     values = Codec.values(model.domain)
 
     with :ok <- permit_record(model, declaration, ctx.actor),
+         {:ok, event} <- supplied(model, :record, declaration, ctx, event, values),
          :ok <- valid(declaration.fields, event, values, model.domain),
          :ok <- keyed(ctx),
          :ok <- stream_fits(model, declaration, event) do
@@ -406,10 +413,17 @@ defmodule EhOsContract.Dispatcher do
     end
   end
 
+  # Plan T1: a field the host supplies is not the caller's to send — present at all,
+  # even as `null`, it is refused by name — and is not decoded from the request.
   defp decoded(fields, input, values, kind) do
-    case Codec.decode(fields, input, values, strings: kind == :query) do
-      {:ok, decoded} -> {:ok, decoded}
-      {:error, problems} -> {:error, {:invalid, problems}}
+    supplied = Supplier.fields(fields)
+    sent = for f <- supplied, Map.has_key?(input, Atom.to_string(f.name)), do: {f.name, :supplied}
+
+    case {Codec.decode(fields -- supplied, input, values, strings: kind == :query), sent} do
+      # `nil` until the host supplies it, once the caller is authorized.
+      {{:ok, decoded}, []} -> {:ok, Enum.into(supplied, decoded, &{&1.name, nil})}
+      {{:ok, _decoded}, sent} -> {:error, {:invalid, sent}}
+      {{:error, problems}, sent} -> {:error, {:invalid, problems ++ sent}}
     end
   end
 
@@ -431,7 +445,7 @@ defmodule EhOsContract.Dispatcher do
     do: query(model.module, params, [actor: actor] ++ Keyword.take(opts, [:min_position, :wait]))
 
   defp run_call(kind, model, struct, actor, opts) do
-    opts = [actor: actor] ++ Keyword.take(opts, [:idempotency_key, :correlation_id])
+    opts = [actor: actor, supply: true] ++ Keyword.take(opts, [:idempotency_key, :correlation_id])
 
     if kind == :command,
       do: dispatch(model.module, struct, opts),
@@ -698,6 +712,34 @@ defmodule EhOsContract.Dispatcher do
   # Bytes, not characters, so no `u`: a binary that is not UTF-8 is refused byte by byte.
   @spec idempotency_key?(term()) :: boolean()
   def idempotency_key?(key), do: is_binary(key) and key =~ ~r/\A[\x21-\x7E]{1,255}\z/
+
+  # Plan T1: the fields the host gives, asked of it after authorization, so a caller
+  # who may not issue the command never makes the host look anything up.
+  defp supplied(_model, _kind, _declaration, %{supply: false}, struct, _values),
+    do: {:ok, struct}
+
+  defp supplied(model, kind, declaration, ctx, struct, values) do
+    case Supplier.fields(declaration.fields) do
+      [] ->
+        {:ok, struct}
+
+      fields ->
+        names = Enum.map(fields, & &1.name)
+
+        request = %Supplier.Request{
+          kind: kind,
+          capability: capability(model, kind, declaration.name),
+          contract: model.module,
+          name: declaration.name,
+          fields: names,
+          given: struct |> Map.from_struct() |> Map.drop([:__meta__ | names])
+        }
+
+        with {:ok, given} <-
+               Supplier.run(ctx.actor, request, declaration.fields, values, model.domain),
+             do: {:ok, struct(struct, given)}
+    end
+  end
 
   defp valid(fields, struct, values, domain) do
     case Codec.problems(fields, struct, values, domain) do
@@ -1383,6 +1425,7 @@ defmodule EhOsContract.Dispatcher do
       idempotency_key: Map.get(opts, :idempotency_key),
       correlation_id: Map.get(opts, :correlation_id) || Ecto.UUID.generate(),
       causation_id: Map.get(opts, :causation_id),
+      supply: Map.get(opts, :supply, false) == true,
       now: Clock.now(),
       chain: Map.get(opts, :chain, [])
     }

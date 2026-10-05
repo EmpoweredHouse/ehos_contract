@@ -245,7 +245,8 @@ defmodule EhOsContract.Pages do
       if(Map.get(field, :optional), do: "optional"),
       if(p = Map.get(field, :personal), do: "personal to #{code(p)}"),
       if(s = Map.get(field, :subject), do: "identifies a #{code(s)}"),
-      if(i = Map.get(field, :issued_by), do: "issued by #{code(i)}")
+      if(i = Map.get(field, :issued_by), do: "issued by #{code(i)}"),
+      if(Map.get(field, :supplied_by) == :host, do: "supplied by the host")
     ]
     |> Enum.reject(&is_nil/1)
     |> Enum.join(", ")
