@@ -25,6 +25,15 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Added
+
+- **W3: a promise can be judged without a log.** `EhOsContract.Trace.trace/2` reads what a promise is judged on
+  from the contract — the stored types of its events, its window, and the item's identity for a promise made per
+  item inside a run — and `EhOsContract.Trace.judge/3` gives the verdicts for events handed to it, at the moment it
+  is given (`now:`, required) and with the outages it is given (`outages:`). It reads neither the log nor the
+  clock. `Trace.evaluate/3` is now the two over the log's rows, and moves no verdict: the report is byte for byte
+  the one before.
+
 ### Changed — a host has to act
 
 - **W2: a required date or timestamp is tagged with its day when appended, in the domain's zone.** Every required,
