@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 3 października, noc (E0–E12, EH, EB, #89, #91, #64–#66, #93, #95, #96, #100, #101, EP1 i #98 w `main`; otwartych PR-ów brak)
+## Handoff — stan na 5 października (E0–E12, EH, EB, EP, #99, #128 i #134 w `main`; następny jest program DD; otwarty PR #135)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -35,11 +35,22 @@ EHOS-a (`EhosWeb.SignInController`, `PersonLive.Login`); host dokłada tylko lin
 trzecie dane testowe), LC1 #121 (DSL i reguły `T1`–`T4`), LC2 #122 (status w `State`, `from:`, strażnik w
 dispatchu), LC3 #123 (raport), LC4a #124 (`Computer` na cyklu życia, `T4` dla drobniejszych odmów), LC4b #125
 (diagram w `graph` i na dashboardzie), #126 (utrata tylko z `W użytku`, poprawka użytkownika po obejrzeniu
-diagramu) — „Dopisek 4 października — #99” i „LC… — co wyszło”.
+diagramu) — „Dopisek 4 października — #99” i „LC… — co wyszło”. Po nim #128 (AppUnite: zapotrzebowanie na
+komputer, kontrakt `Demands`) — „Dopisek 4 października (2)”.
+
+**Następna praca to program DD — „DDD sprawdzane przez kod”** (zatwierdzony przez użytkownika 5 października): 53
+etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem programu jest tabela „Postęp” w „Dopisek 5
+października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
+Żaden etap z kodem nie jest zaczęty; pierwszy jest N1 (`final:`, `target`, `identity` encji).
 
 ### Stan repozytorium
 
-- **`origin/main` = `6ce4c30`** (merge #126, ostatni PR #99; 4 października). Wcześniej `eb0c8a1` (merge #103: #98,
+- **`origin/main` = `0afdd52`** (merge #134, manifest oferuje query i zapisy — „Dopisek 5 października (2)”); przed
+  nim `af59a48` (merge #128, `Demands`), CI `check` — `success`. **Otwarty PR:**
+  [#135](https://github.com/EmpoweredHouse/eh-os-contract/pull/135) (DD0).
+- **`docs/dd0-programme`** — DD0: dopisek DD w `PLAN.md`, z dwoma commitami trzeciej analizy ESDM
+  (`docs/esdm-analysis-oct4`, „Dopisek 4 października (3)”) i z `main` wmergowanym 5 października (dwa razy: po #128 i po #134). PR #135.
+- Wcześniej `6ce4c30` (merge #126, ostatni PR #99). Przedtem `eb0c8a1` (merge #103: #98,
   budżet bajtów klucza — „#98 — co wyszło”). Przedtem `b6a96dd` —
   #101 (handoff po #96), `90a83f2` — #102 (EP1, z sesji `esdm-dsl-comparison`), `0b7bc84` — #100 (poprawki
   CodeRabbita do #95), `b65b8b7` — #97 (#96, F8/F9), `996d89f` — #95 (granice wartości). CI `main` na `90a83f2` —
@@ -50,9 +61,9 @@ diagramu) — „Dopisek 4 października — #99” i „LC… — co wyszło”
 - **Gałęzie:** gałęzie tej pracy usunięte na GitHubie i lokalnie 3 października, za zgodą użytkownika (EB, EH, #71,
   #89, discovery, #65, #93, #95, #96, #100, a także przypadkowy `revert-95-engine/bounded-values` — revert z przycisku
   GitHuba, bez PR-a); `engine/issue-98-key-budget` (#103) — po merge'u, za zgodą użytkownika. Zostało 59 innych gałęzi na GitHubie, zmergowanych dawno — nieruszane z wyboru użytkownika.
-- **Worktree innych sesji — nie ruszać:** `computer-ordering-process-f84437` (trzecia domena danych testowych,
-  issue #99; trzyma `phx.server` na wspólnym Postgresie), `esdm-dsl-comparison-d82750` (`dsl/ep2-rules`),
-  `review-login-issues-eb9680`.
+- **Worktree (5 października):** `computer-ordering-process-f84437` — sesja DD (`docs/dd0-programme`);
+  `esdm-dsl-comparison-d82750` (`auth/manifest-query-record`, PR #134 zmergowany) i `ep4-ep5-user-questions-95855b` — innych
+  sesji, nie ruszać.
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
   `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`), schemat V01 z
   ręcznymi poprawkami z E11f i E12c, baza auth na V03. **Brama obok cudzego `phx.server` albo cudzych testów potrafi
@@ -68,8 +79,16 @@ diagramu) — „Dopisek 4 października — #99” i „LC… — co wyszło”
 
 ### Co zostało — i czyje to jest
 
-- **Następna praca z kodem — niewybrana**; kandydaci w „Wybór użytkownika na potem” niżej.
-- **AppUnite — zapotrzebowanie (`Demands`)** na `sandbox/appunite-demands` — „Dopisek 4 października (2)”.
+- **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
+  — DD”. Kolejno:
+  1. **Użytkownik:** push i PR `docs/dd0-programme` (DD0), przed nim `pre-pr-review` — na polecenie.
+  2. **Asystent:** N1 → N2 → N3, reszta fali 1 w dowolnej kolejności. Start etapu: ◐ i gałąź w tabeli; koniec:
+     „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
+  3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
+     V01 w miejscu przed T2a i P2h; etykieta timera albo zdanie z deklaracji przed N3); po każdej fali „dalej czy
+     stop” i kiedy podbić przypięcie w aplikacji AppUnite (`~/Projects/ai/appunite_equipment`) i `ehos-ledger`.
+- **AppUnite — zapotrzebowanie (`Demands`) jest w `main`** (#128); dwa pytania z przeglądu i etapy `Computers`
+  wobec cyklu życia czekają na użytkownika — „Dopisek 4 października (2)”, „Otwarte z przeglądu”.
 - **Po #99, decyzja użytkownika (4 października): raport wystarczy.** Zwrot odnotowany z błędnym przydziałem
   zwalnia komputer do ponownego wydania, a prawdziwy przydział zostaje otwarty — raport pokazuje jego niedokończony
   przebieg i to jest odpowiedź. *Odrzucone:* agregat przydziału w `Assignments` z odmową zwrotu cudzego przydziału
@@ -103,14 +122,13 @@ diagramu) — „Dopisek 4 października — #99” i „LC… — co wyszło”
 
 1. `CLAUDE.md` — brama bez `tail`, `MIX_ENV=test mix run`, polszczyzna tylko w wymienionych stringach (`label` po
    polsku w fiksturach testów jest dozwolony), wyrażenia regularne z flagą `u` i `[0-9]`, zsh bez dzielenia słów.
-2. `PLAN.md`: „#98 — co wyszło” (decyzje, przegląd, ryzyka), „#96 — co wyszło” (pomiar kompresji Postgresa,
-   F8/F9/X6) i „Granice wartości z żądania” (granice `:id`, `:integer`, `:decimal`, dat).
-3. Kod kluczy: `packages/eh_os_contract/lib/eh_os_contract/key.ex` (`budget/0`, `fits?/1`, `TooLongError`),
-   `dispatcher.ex` (`stream_fits/3`, `runs_fit/2`), `process_manager.ex` (`handle!/5`, `fits!/3`); test
-   `test/runtime/key_budget_test.exs` na rigu `test/support/key_rig/`.
-4. `packages/eh_os_contract/lib/eh_os_contract/codec.ex`, moduledoc „Types” i „Bounds” — co wejście trzyma, a czego
-   odczyt logu (`open:`) nie.
-5. Następnej pracy z kodem nie wybrano — patrz „Wybór użytkownika na potem” wyżej.
+2. `PLAN.md`, „Dopisek 5 października — DD” — decyzje, tabela „Postęp” (jedyne miejsce ze stanem programu) i
+   zasady jej prowadzenia, projekt etapu, który zaczynasz, „Konwencje każdego PR-a”, decyzje przed etapem, ryzyka.
+3. `PLAN.md`, „Dopisek 4 października — #99” i „LC… — co wyszło” — cykl życia (`from:`, `or_rejects:`), na którym
+   stoi program; „Dopisek 4 października (3)” — trzecia analiza ESDM i decyzja o etykiecie timera (N3).
+4. `packages/eh_os_contract/docs/contract.md`, tabela kodów odmów — pilnuje jej `test/docs_test.exs`; każdy nowy
+   kod tam trafia.
+5. Starsze ustalenia przy kluczach i wartościach: „#98 — co wyszło”, „#96 — co wyszło”, „Granice wartości z żądania”.
 6. `.claude/skills/pre-pr-review/SKILL.md` — dwa przeglądy równolegle, próba odwrotna, notatka w
    `refs/notes/review`; hook czyta `HEAD` głównego checkoutu, więc PR-y tu idą przez `gh api …/pulls`.
 
@@ -169,6 +187,8 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **5 października, `docs/dd0-programme` po merge'u `main`:** bramy nie uruchamiano — gałąź różni się od `main`
+  tylko `PLAN.md` (`git diff origin/main -- . ':!PLAN.md'` pusty). CI `main` na `af59a48` (#128) — `check` `success`.
 - **#98 @ `1b0816d`** (głowa #103, na `b6a96dd` z EP1): pełna brama znowu padła na `too_many_connections` (5 testów
   `AppendLockTest`, 4 `SchemaTest`); sandbox 145 w niej, a pakiety osobno — EXIT=0: silnik **1170** (z testami EP1),
   `check` 0 / 71 / 6; web 52; auth 285 + 1 property. CI PR-a — `success`.
@@ -370,7 +390,7 @@ przed PR skill `pre-pr-review`. Do `~/Projects/ai/empowered-house-context` nie p
 Rozmowa po polsku. Kod, moduledoki, komentarze, nazwy testów, komunikaty, commity, opisy PR, `docs/adr/`,
 `README.md` — po angielsku; `PLAN.md` i `CLAUDE.md` po polsku. Pełna reguła — `CLAUDE.md`.
 
-## Dopisek 5 października — manifest oferuje query i zapisy (#133, `eh-os` D-73)
+## Dopisek 5 października (2) — manifest oferuje query i zapisy (#133, `eh-os` D-73)
 
 **Skąd.** Test polowy (aplikacja `EmpoweredHouse/appunite-equipment`, z `ehosctl init`, wdrożona przez EHOS na
 lokalnym k3d): osoba z jedyną rolą aplikacji zalogowała się przez EHOS i dostała odmowę na pierwszej stronie —
@@ -398,6 +418,460 @@ diff i podgląd musiałyby znać trzy listy, a credential niesie i tak same nazw
 - **Query i komenda ze `scope:`** trafiają do manifestu bez wartości zakresu, więc każde wywołanie przez EHOS kończy
   się `:unscoped_grant` (zamknięte, nic nie przyznaje), dopóki wiązanie nie umie nieść wartości (D-40).
 - Bez scope'ów: query ze `scope:` wychodzi jak komenda ze `scope:` dziś, a wiązanie wartości to D-40 (proposed).
+
+## Dopisek 5 października — DD: DDD sprawdzane przez kod (program, decyzje, postęp)
+
+**Skąd.** Ocena biblioteki z perspektywy DDD (sesja 4–5 października) wskazała luki strukturalne:
+- kontrakt = jeden proces = jeden klucz (R1/R2) zamiast kontrakt = model kontekstu; sztuczne procesy (`ksef_intake`,
+  `client`); proces end-to-end `clinical_visit` mieszka w kontrakcie sprawozdawczości;
+- dane, na których stoi decyzja, przychodzą od wołającego (`p1_reported`, `total`), więc przez `EhOsContract.Plug`
+  da się je podrobić;
+- mapa kontekstów to etykiety (sprawdzany tylko kierunek); polityka domyślnie `:in_transaction` także między
+  kontekstami;
+- tożsamość zdarzeń i kontraktów pochodzi z nazw procesu i modułu; `schema_version` nigdy nie jest zapisywany,
+  upcasterów brak;
+- obietnice, przejścia cyklu życia i kolejność etapów nie mają scenariuszy ani zgodności na logu; dryf jest z
+  konstrukcji pusty; `cadence` nikt nie ocenia;
+- kolizje nazw: `terminal:` ×2, `scope` ×2, `consumes` dla dwóch mechanizmów, `identity` obok `identified_by`.
+
+Cel programu: każdą regułę DDD, którą da się zapisać, przypiąć do sprawdzającego — kompilator (L2/L3), `check`
+(L5), test generowany z kontraktu, dispatch albo raport zgodności. Plan zatwierdzony przez użytkownika
+5 października. **Ten dopisek jest źródłem prawdy o programie**; kopia sesyjna planu
+(`~/.claude/plans/przygotuj-plan-na-wprowadzenie-giggly-magpie.md`) nie jest aktualizowana.
+
+**Zasada nadrzędna (użytkownik, 4 października): ESDM to nie wyrocznia.** Nazwy i kształty DSL-a uzasadniamy
+merytorycznie: znaczenie w literaturze DDD (tak czytają je ludzie i LLM generujący kod), to, co robi silnik, jedno
+słowo = jedno znaczenie w obu DSL-ach, koszt zmiany. Zgodność z ESDM najwyżej rozstrzyga remis — i trzeba mówić,
+gdzie ESDM jest słaby (przykład: schemat process managera osadza go w domenie, a strona pojęcia — w kontekście).
+
+### Decyzje użytkownika (4–5 października)
+
+1. **Moduł procesu w dwóch krokach.** Najpierw `process` w kontrakcie opcjonalny (R2 tylko dla zdarzeń procesu),
+   potem `use EhOsContract.Process` łączący zdarzenia wielu kontraktów; `stage` i koniec przebiegu wychodzą z
+   jednostek. *Odrzucone:* tylko opcjonalny `process` (proces end-to-end zostałby w kontrakcie jednego kontekstu);
+   bez zmian.
+2. **Nazwy:** status `terminal:` → `final:`; scenariusz `scope` → `target`; `consumes "<nazwa>"` → `subscribe
+   "<nazwa>"`; encja `identified_by:` → `identity` (deklaruje i wstrzykuje pole `:id`, jak w jednostce).
+   *Odrzucone (asystent, po eksploracji):* przeniesienie `terminal:` zdarzeń do procesu od razu — około 130 miejsc
+   wobec około 10 przy statusie; `terminal:` zdarzeń znika w P2h razem z modułem procesu.
+3. **Zaufane wejścia:** najpierw `supplied_by: :host`, potem `reads:` z `given_entity`. *Odrzucone:* tylko
+   `supplied_by:`; od razu `reads:`.
+4. **Mapa kontekstów jako błędy L3.** *Odrzucone:* ostrzeżenia L5; bez wiązania.
+5. **DD0 na gałęzi od `docs/esdm-analysis-oct4`** (lokalna, niewypchnięta; jej dwa commity z trzecią analizą ESDM
+   wchodzą razem z DD0). *Odrzucone:* czekać na jej merge; pominąć ją.
+6. **Stałe uprawnienia sesji z 5 października:** commity bez pytania na gałęziach etapu przy zielonej bramie;
+   push, PR, merge i tag tylko na wyraźne polecenie. Obowiązuje tylko w tamtej sesji — patrz „Zgoda i stałe
+   uprawnienia”.
+
+Wycofane propozycje asystenta, po przeglądzie merytorycznym 4 października: zmiana nazwy `entity` (zostaje — to
+encja w sensie Evansa, z cyklem życia poza logiem; poprawia się definicja); osobny rodzaj dla jednostki bez decyzji
+(zamiast niego znacznik „tylko rejestruje” i reguła L5 w etapie L2 — osobny rodzaj zalegalizowałby jednostkę bez
+reguł, a `ksef_inbox` nie ma deduplikacji tylko dlatego, że nie miała czytelnika w E9); zmiana `process` /
+`process_manager` (oba terminy ustalone). Decyzja z gałęzi `docs/esdm-analysis-oct4` stoi: etykieta timera
+wymagana i pozycyjna (etap N3 = EP6). Uwaga asystenta do rozważenia przed N3: zdanie timera składane z deklaracji,
+jak zdanie obietnicy, nie dryfuje względem `wait:`; jeśli etykieta zostaje, nazywa cel („Termin dokumentacji”), nie
+czas („Doba na dokumentację”).
+
+### Postęp — jedyne miejsce, gdzie żyje stan programu
+
+Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan żyje tutaj, nie w rozmowie:
+- **Start etapu:** status ◐ i nazwa gałęzi w tabeli, w pierwszym commicie etapu.
+- **Pytanie z tabeli „Do decyzji przed etapem”:** odpowiedź użytkownika jako „### Przed <ID> — decyzje użytkownika
+  (data)”, z odrzuconymi opcjami.
+- **Koniec etapu:** „### <ID> — co wyszło (data)” pod tym dopiskiem (gałąź, rozstrzygnięcia mechaniki z
+  odrzuconymi, przegląd, brama); po merge'u status ☑ i numer PR-a.
+- **Koniec sesji:** tabela i blok „Handoff” na górze pliku pokazują następny etap; w rozmowie nie zostaje nic, czego
+  nie ma tutaj.
+- **Po każdej fali:** decyzja użytkownika „dalej czy stop”, tag wersji, notatka migracyjna dla aplikacji testowej
+  AppUnite (`~/Projects/ai/appunite_equipment`) i `ehos-ledger`.
+- **Kolejność w fali 1:** N1 → N2 → N3, reszta w dowolnej kolejności; etapy bez wspólnych plików mogą iść równolegle
+  w osobnych worktree.
+
+☐ nie zaczęte · ◐ w toku · ☑ w `main`
+
+| Etap | Fala | Zakres | Zależy od | Status |
+|---|---|---|---|---|
+| DD0 | 0 | program i postęp w `PLAN.md` | — | ◐ `docs/dd0-programme` (lokalnie, niewypchnięte) |
+| N1 | 1 | `final:`, `target`, `identity` encji, definicja encji | DD0 | ☐ |
+| N2 | 1 | `subscribe "<nazwa>"` | DD0 | ☐ |
+| N3 | 1 | etykieta timera (EP6) | DD0 | ☐ |
+| W1 | 1 | zapis `schema_version` | DD0 | ☐ |
+| W2 | 1 | tagi dnia przy dopisie | DD0 | ☐ |
+| W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ☐ |
+| W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ☐ |
+| T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ☐ |
+| T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☐ |
+| X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ☐ |
+| S4 | 1 | `transition-without-scenario` | DD0 | ☐ |
+| ID1 | 2 | `id:` kontraktu deklarowany | N1 | ☐ |
+| ID2 | 2 | każdy kontrakt z `id:` | ID1 | ☐ |
+| ID3 | 2 | `id:` wymagany, typ `"<id>.<zdarzenie>"` | ID2 | ☐ |
+| ID4 | 2 | wiersze i klucze po `id` | ID3 | ☐ |
+| P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3 | ☐ |
+| P1b | 2 | nic nie zakłada procesu | P1a | ☐ |
+| P1c | 2 | R1: najwyżej jeden proces | P1b | ☐ |
+| P1d | 2 | sandbox bez sztucznych procesów | P1c, decyzja o `cadence` | ☐ |
+| P1e | 2 | testy bez szablonowych procesów | P1c | ☐ |
+| P2a | 2 | jeden model procesu dla czytelników | P1d | ☐ |
+| P2b | 2 | DSL `EhOsContract.Process` | P2a | ☐ |
+| P2c | 2 | L3 procesu, `_event_runs` z indeksu | P2b, ID4 | ☐ |
+| P2d | 2 | raporty, wdrożenia, `check` po procesach | P2c | ☐ |
+| P2e | 2 | grafy i strony procesu | P2d | ☐ |
+| P2f | 2 | procesy sandboxa jako moduły | P2d | ☐ |
+| P2g | 2 | rigi i testy o procesach | P2d | ☐ |
+| P2h | 2 | stare słowa i kolumny znikają (migracja) | P2f, P2g | ☐ |
+| M1 | 3 | mapa kontekstów L3, wartości jako referencje | P2h | ☐ |
+| T2a | 3 | `reads:`, decyzja z trzema argumentami, `inputs` | N1 | ☐ |
+| T2b | 3 | `given_entity` | T2a | ☐ |
+| T2s | 3 | sandbox: `book_visit` czyta usługę | T2b | ☐ |
+| A1 | 3 | `actor_is` | T1 | ☐ |
+| A2 | 3 | Rehmed AGG-02 inw. 3 | A1, T2s | ☐ |
+| B2 | 3 | kubełek w `match:` | W2 | ☐ |
+| B3 | 3 | DCB z generowaną tożsamością | DD0 | ☐ |
+| B4 | 3 | Rehmed: rezerwacja jako DCB | B2, B3 | ☐ |
+| S2 | 3 | scenariusze obietnic | W3, P2b | ☐ |
+| S3 | 3 | sandbox: scenariusze obietnic | S2, P2f | ☐ |
+| O1 | 3 | kolejność etapów w przebiegu | P2d | ☐ |
+| O2 | 3 | ekran: kolejność etapów | O1 | ☐ |
+| V1 | 4 | upcasty deklaratywne | W1, P2h | ☐ |
+| V2 | 4 | upcast przez callback | V1 | ☐ |
+| V3 | 4 | zamek schematów | V1, przebudowy sandboxa | ☐ |
+| V4 | 4 | zamek wobec upcastów | V3 | ☐ |
+| V5 | 4 | wersja umowy i wersja tekstu | P2h | ☐ |
+| PC1 | 4 | generatory (StreamData opcjonalne) | W4 | ☐ |
+| PC2 | 4 | `PropertyCase` | PC1, T2a, A1 | ☐ |
+| L1 | 5 | słownik połączony z kodem | N1 | ☐ |
+| L2 | 5 | rdzeń: reguły i znacznik „tylko rejestruje” | DD0 | ☐ |
+| L3 | 5 | typowane referencje do agregatów | ID3 | ☐ |
+| L4 | 5 | widok właściciela bez adnotacji technicznych | P2e | ☐ |
+
+### Program — szczegóły etapów
+
+Numery linii w nawiasach odnoszą się do `origin/main` = `303b418` (4 października) i przesuwają się z kolejnymi
+zmianami — nazwa funkcji jest ważniejsza niż numer.
+
+#### Fala 1 — fundamenty (małe, niezależne)
+
+**N1 — zmiany nazw** (mechaniczne, jeden PR na słowo albo jeden ze słowami osobno w commitach)
+- Status `terminal:` → `final:`: `contract/dsl.ex` `@status` (493-497), `rules/lifecycles.ex` T3/T4,
+  `lifecycle.ex` `index/1`, `graph/lifecycle.ex`, `computers.ex` (4), web fixture `case_handling.ex`, testy LC.
+- Scenariusz `scope` → `target`: `dsl.ex` `Scenario` (277-290, schemat 1117), `rules/scenarios.ex` S1
+  (`target/2`, `resolved/4`), `build.ex` `scenario/2` (klucz surowy znika, zostaje rozwiązany `target`); sandbox 10,
+  testy 23.
+- Encja `identified_by:` → `identity` (wstrzykuje `:id`, wymagane, nieosobowe): `domain/dsl.ex` `@entity`
+  (330-345), `domain/rules.ex` D6 (`entity_shape/2` upraszcza się), `pages.ex`, `graph/contract.ex`; nowa
+  definicja: „encja, której cykl życia prowadzi kod aplikacji albo inny system, poza tym logiem; kontrakty
+  wskazują ją przez tożsamość”. `docs/contract.md` — zdanie, że to encja w sensie Evansa z cyklem życia poza logiem.
+- Każde słowo: `vocabulary` pin (`test/dsl/*_vocabulary_test.exs`), `.formatter.exs`, `docs/dsl/`, CHANGELOG
+  („a host has to act”), dopisek z datą w `docs/adr/contract-v2.md` §4.2.
+
+**N2 — `subscribe "<nazwa>"`**: osobna encja w `dsl.ex` (dziś jedna `@consumes` 844-867 z `from: atom | string`);
+`consumes` przyjmuje tylko moduł. Przepiąć `Rules.received/1` (rules.ex 104-110), D11/D12 (`rules/boundaries.ex`
+70-90, 224-264), A4/R4, `Build.consumes/1`, `Implementations.inboxes/2`, `Model.subscriptions/1` (capability
+`<nazwa>.subscribe` bez zmian). Sandbox 0, testy 13 + `bus_rig/stock.ex` + auth 1.
+
+**N3 — etykieta timera (EP6, decyzja z gałęzi)**: `@timer` z `args: [:name, :label]`; ~24 deklaracje w testach,
+2 w sandboxie (etykiety z materiału), przykład ADR §4.6 przez `@amendments` w `contract_examples_test.exs`.
+Wytyczna w skillu `write-reaction`: etykieta nazywa cel („Termin dokumentacji”), nie czas.
+
+**W1 — `schema_version` zapisywany**: `Dispatcher.entry/4` (1232-1262) ustawia `schema_version`;
+`Consumer.decode!/5` odmawia wiersza z wersją wyższą niż deklaracja. Bez zmian wersji kontraktów.
+
+**W2 — tagi dnia przy dopisie**: `Dispatcher.tags/3` (1268-1272) dodaje dla każdego wymaganego, nieosobowego pola
+`:date`/`:timestamp` tag `"<pole>.day:YYYY-MM-DD"` (UTC); `Key.bucket_field?/2`, `Key.day_tag/2`. Ten sam powód co
+EM1: log jest tylko do dopisywania, starsze zdarzenia nigdy nie dostaną tagu.
+
+**W3 — publiczne, czyste jądro `Trace`**: `Trace.trace/2` (z `evaluate_promise/3` 150-177) i
+`Trace.judge(trace, occurrences, now:, outages:, identity:)` nad prywatnymi `verdict/6` (344-371) i `aggregate/2`
+(276-288); `evaluate/3` = wiersze z bazy → `judge/3`. Test bez bazy. Raport bajt w bajt ten sam.
+
+**W4 — wspólne reguły decyzji**: publiczne `Lifecycle.allowed/3` i `Lifecycle.moves/3` (dziś prywatne `index/1`,
+`allowed/3` 160-176); moduł `EhOsContract.Decision` (`admitted/5`, `held!/6`) z kodu `emitted!/2` (1182-1217),
+`lifecycle!/4` i kopii w ScenarioCase (`within!/5`, `in_lifecycle!/4`); `Contract.Data.cast/3` z prywatnego
+`cast/3` ScenarioCase. Refaktor bez zmiany zachowania.
+
+**T1 — `supplied_by: :host`**
+- `dsl.ex` `Field` + `@field`; model trzyma klucz tylko gdy ustawiony.
+- **F10** (L2, `rules/fields.ex`): tylko pola komendy i zdarzenia z `recorded_by:`; nie na polu `scope:`.
+- Drzwi: `Dispatcher.prepare/5` (394-406) — pole obecne w wejściu (także `null`) to `{f, :supplied}` (422), po
+  `permit_undecoded/5` (403 przed 422). Wartość daje behaviour hosta `EhOsContract.Supplier` (`supply/2`, wzorzec
+  `Authorizer`: `impl/0` z konfiguracji, `run/4` sprawdza klucze i `Codec.problems/4`, błąd nazywa pole, nie wartość).
+  `dispatch/3` z kodu hosta ufa strukturze.
+- D9 `@refusals` (+ `:supplied`), `OpenAPI.command_fields/2` pomija pole, `json_schema.ex`, `pages.ex`.
+- **T1s** sandbox: `close_visit_clinically.p1_reported`, `close_settlement.total` + `SBX/lib/eh_os_contract_host/
+  supplier.ex`; `rehmed_authorization_test.exs` oczekuje `{"invalid": {"p1_reported": "supplied"}}`.
+
+**X1 — reakcja `:in_transaction` na zdarzeniu innego kontekstu**: L3 obok `x5/3` w `contract/links/siblings.ex`
+(kontekst siostry jest w `Links.contract/1`): błąd, gdy `delivery` niezadeklarowane (domyślne w `dsl.ex` 627, 743
+zmienić na `nil` rozwiązywane w `Build`), ostrzeżenie L5 `in-transaction-across-contexts`, gdy jawne. Sandbox:
+`report_on_clinical_close`, `month_opens_on_consistent_registry` dostają jawne `delivery:` (+ `idempotency` przy
+`:at_least_once`, P3).
+
+**S4 — `transition-without-scenario`** (L5): `check/catalog.ex` + `completeness.ex` `untaken_transitions/1` —
+przejście pokazane, gdy scenariusz komendy (nie `rejected`) z `given` dochodzącymi do `from` (`Lifecycle.walk/2`)
+oczekuje zdarzenia, które je wykonuje (`Lifecycle.decided!/4`); przejścia ze zdarzeń tylko rejestrowanych pomijane.
+AppUnite: dopisać scenariusze albo wyjaśnić ostrzeżenia w PR.
+
+#### Fala 2 — tożsamość i proces
+
+**ID1 — `id:` kontraktu, deklarowany i sprawdzany**: `use EhOsContract.Contract, id: "rehmed.settlement"`
+(`contract.ex` 44-68), poza digestem. D11 (L2 format: pierwszy segment = `name:` domeny, potem snake_case, bez
+`:`/`|`, ≤ ~100 B; L3 w `Links.Domain.namespaces/1`), X7 unikalność.
+**ID2 — każdy kontrakt nazywa `id:`** (mechaniczne, ~120 linii): `DslCase.contract/2` (`test/support/dsl_case.ex`
+42-51), rigi, 11 kontraktów sandboxa, fikstury web/auth, README, `docs/contract.md`.
+**ID3 — `id:` wymagany; typ zdarzenia `"<id>.<zdarzenie>"`**: jedno miejsce — `Build.event/4` (build.ex 200-209).
+Literały typów w `test/runtime/*` i `sandbox/test/*`, przepięcie dwóch wersji (`sources_test.exs:17`,
+`contract_domain_services_test.exs:315`), `@amendments` dla `use` z ADR §4.5. Dopisek do D1 w ADR §16.
+**ID4 — wiersze i klucze po `id`** zamiast `inspect(module)`: Dispatcher (`entry/4` 1238, `write_row!/4` 1320,
+`idempotent/2` 1004, klucz 260), `TimerJob` 116, `Personal` 243 (`"eh_os_contract"`), `Deployment` (133, 170, 293),
+`Dependency` (113, 143), `Paths` (340, 361, 396, 517), `Conformance` (252, 382), `Coverage` 114; klucze konsumentów
+`"<id>:<rodzaj>:<nazwa>"` (`implementations.ex` 284, 372, 420; `consumer.ex` 210, 287; `process_manager.ex` 150;
+`paths.ex` 277); `Consumer.decode!(consumer, row)` bez `row.contract`; API web po `id`.
+
+**P1a — kroki per kontrakt, procesy osobno** (przesuwa werdykty): `paths.ex` liczy wystąpienia, nie przebiegi
+(`runs` → `taken`, `Paths.activity/2`); `Conformance.from_model/2` → `%{contract, module, activity, paths,
+lifecycles, scenarios, drift}`, `Conformance.process/2` = dzisiejszy `process_report`; wire
+`eh_os_contract.conformance.v3`; `report.ex`, `report/sentence.ex`, graf, `contract_status_live.ex`.
+**P1b — nic nie zakłada procesu**: manifest auth (`manifest.ex:259`, pole `"process"` → id kontraktu + issue w
+`eh-os`), `graph_live.ex` 46-75, `events_without_consumer` liczy zdarzenia cyklu życia jako czytane.
+**P1c — R1: najwyżej jeden proces**; bez procesu grupa etapu albo `terminal:` zdarzenia odrzucone. Dopisek z datą
+do wymagania 7 (v2 §3).
+**P1d — sandbox bez sztucznych procesów** (PR na domenę): Rehmed `scheduling`, `clinical_documentation`,
+`settlement`; TaxVision `document_intake`, `registry_watch`; AppUnite `computers`, `demands`. Zostają:
+`clinical_visit`, `accounting_month`, `assignments`, `payer_settlement` (do decyzji o `cadence`). Każde nowe
+`event-without-consumer` wyjaśnione w PR.
+**P1e — testy deklarują proces tylko tam, gdzie są o procesie** (szablonowe bloki `process`/`terminal:`/`stage`;
+bez `sources_test`).
+
+**P2a — jeden model procesu dla czytelników** (refaktor): `Model.process/1`, `Model.process_events/1`; przepiąć
+`Run.runs_of/1`, `Trace`, `Paths.runs_of/3`, `Conformance.process/2`, `Graph.declared/2`, `Check.process_findings/1`,
+`Check.Contracts.backward/1`, `events_without_consumer`, `Deployment.row/2`, `Implementations.included/1`, `Pages`.
+Odbiór: raport i `graph --overlay` sandboxa bajt w bajt.
+**P2b — DSL `EhOsContract.Process`** (kompilacja): `lib/eh_os_contract/process.ex`, `process/{dsl,rules,build}.ex`;
+`use … id:, domain:, label:, accountable:, source:`; `correlate`, `stage name, label, include: [{Kontrakt, ev |
+[ev]}]` (`no_depend_modules` jak `consumes`), `ends_on [..]`, `promise`, `deadline`. L2: R2/R3/R5/R6/F9/D11/N1.
+`docs/dsl/process-dsl.md`, formatter, `docs_test` `@layers`. Uwaga: nigdy aliasować w bibliotece (kolizja z
+`Process` Elixira).
+**P2c — powiązania i przebiegi**: L3 `contract/links/processes.ex` (X1, X2, X5, X6 przez
+`Links.Siblings.problems/4`, X7, D11); indeks typ → procesy w `Implementations.build/1`; dispatch pisze
+`_event_runs` dla każdego procesu obejmującego zdarzenie (`included_runs/3`).
+**P2d — raporty, wdrożenia, `check` po procesach**: wiersz `Deployment` na proces (granice deklaracji obietnic),
+L5 po procesach (`deadline-without-terminal-event` = „bez `ends_on`”), zdarzenie czytane przez proces.
+**P2e — grafy i strony procesu**: `Graph.process_to_mermaid/2`, `graph --process <id>`, selektor w `graph_live`,
+`pages` `processes/<id>.md`, `View`.
+**P2f — procesy sandboxa jako moduły** (PR na domenę): `Rehmed.Processes.ClinicalVisit`,
+`Taxvision.Processes.AccountingMonth`, `AppuniteEquipment.Processes.Assignment` (kontrakt `Assignments` znika).
+**P2g — rigi i testy o procesach** (`ProcessShapes`, `DispatchRig.Branch`, `KeyRig.Audit`, `UniversalityGate`,
+`LifecycleRig`, fikstury web/auth).
+**P2h — stare słowa i kolumny znikają**: z DSL kontraktu `@process`, `@include`, etapy w jednostkach, `terminal:`
+zdarzenia; reguły R1/R4 i procesowe części R2–R6, `Rules.Fields.correlated/1`; **migracja** (V02 albo V01 w
+miejscu — decyzja niżej): usunąć `process`/`instance_id` z `_events` i `_commands`; `@amendments` ADR §4.5; dopiski z datą w ADR §10.3, §13, D5, D7;
+skille `add-event`, `change-contract`, `contract-distillation`, `module-boundary-check`. Odbiór: grep `terminal:` w
+zdarzeniach, `process :` i etapów w jednostkach = 0.
+
+#### Fala 3 — granice i decyzje
+
+**M1 — mapa kontekstów jako L3** (+ punkt 6: wartość z `context:` w innym kontekście = referencja)
+| Relacja | Co wolno odbiorcy (`consumes`) |
+|---|---|
+| `conformist`, `shared_kernel`, `partnership`, `customer_supplier` | wszystko jak dziś |
+| `anticorruption_layer` | zdarzenie dostawcy bierze tylko polityka (tłumacz) |
+| `open_host_service`, `published_language` | tylko zdarzenia, które dostawca `publish`uje, w kształcie publikacji |
+| `separate_ways` | nic |
+
+Kierunek i `separate_ways` awansują z L5 na L3; „brak relacji” zostaje ostrzeżeniem L5. Włączenie zdarzenia do
+modułu procesu nie jest referencją. Kod: nowa grupa L3 obok `crossings/2` (`completeness.ex` 722-745 rozwiązuje
+kontekst siostry). Sandbox: poprawić relacje albo kontrakty i powiedzieć to w PR.
+
+**T2a — `reads: [service: :service_id]`**: opcja komendy; **A8** (L2): pole komendy typu `{:id, encja}`;
+behaviour `EhOsContract.Entities` (`fetch/3`, `impl/0`, `UnfitRowError`); dispatch czyta raz na komendę (retry
+używa tych samych wierszy), `:not_found` → `{f, :unknown}` (422, D9); **decyzja dostaje trzeci argument**
+`(command, state, reads)` — `callbacks.ex` `of/3`, I2, `decide/7`; kolumna `inputs :map` w `_commands`
+(migracja jak w P2h) — encje nie mają pól osobowych (D6). *Odrzucone (mechanika):* `Meta.inputs` (Meta znaczy kto/kiedy i
+wraca z logiem), wstrzyknięcie do stanu.
+**T2b — `given_entity`**: encja scenariusza, **S12** (L2), rozszerzenie X9; gałąź agregatu w `scenario_case.ex`
+(443-507) woła z arnością 3.
+**T2s — sandbox**: `book_visit` czyta `:service` i utrwala flagę P1 w `visit_booked` (AGG-15, w chwili rezerwacji).
+
+**A1 — `actor_is`**: podencja komendy `actor_is :specialist_id, or_rejects: :inwariant`; **A9** (L2: pole stanu
+`:id`, nieosobowe; inwariant w `rejects:`; nie na `creates:`; komenda z `by:`); X2: `by:` ma aktora `:human`.
+Dispatch po `fold/6`, przed `decide/7` (attempt/2 783-805), tylko dla aktorów z credentialem (`:system` i reakcje
+przechodzą); odmowa jak bramka LC2 (wiersz `rejected`). Scenariusz `actor :specialist, as: "specialist-ewa"`
+(makro jak `Generated.identity/2`, nie `subject:`), S7 rozszerzone.
+**A2 — Rehmed AGG-02 inw. 3**: `visit_completed` dostaje `specialist_id` z `supplied_by: :host` (supplier wpisuje
+`actor.subject`); dokumentacja wizyty staje się DCB konsultującą `visit_completed` i `visit_booked` po `visit_id`
+(bez nowych nazw zdarzeń — nazwy tylko z warsztatu), więc stan zna specjalistę i flagę P1 utrwaloną przy
+rezerwacji (T2s): `close_visit_clinically` dostaje `actor_is`, a pole `p1_reported` znika z komendy. Zamknąć
+ustalenie z E9a.
+
+**B2 — kubełek w `match:`**: `consults :visit_booked, match: [:specialist_id, scheduled_at: :day], for:
+:book_visit`; `boundary/3` (1064-1075) liczy tag z pola komendy (`Key.day_tag/2`) — bez pola wyliczanego przez
+wołającego; A4/X6 rozszerzone.
+**B3 — DCB z generowaną tożsamością** (rozluźnić A6; `generate_identity/4` już czyta jednostkę).
+**B4 — Rehmed: rezerwacja jako DCB** `dcb :visit, identity :visit_id, generated: :uuid`, inwariant
+`:one_visit_at_a_time_per_specialist`, `ends_at` w rezerwacji; scenariusze: kolizja odrzucona, styk dozwolony,
+odwołany termin wolny, inny specjalista dozwolony; test wyścigu jak w EM1.
+
+**S2 — scenariusze obietnic** (w modułach procesu): wyzwalacz `promise :nazwa, at: "…"`, `given … at:`, `outage
+:p1, at:`, wynik `verdict:` (`:satisfied | :violated | :pending | :suspended`) i `via:`; S1/S2/S3 rozszerzone,
+**S11** (kształt), X4 (awaria systemu, od którego zależy zdarzenie); ScenarioCase woła `Trace.judge/3` (W3).
+**S3 — sandbox**: obietnica `medical_event_reported_within_statutory_window` (spełniona przez wysłanie, przez
+`or_else`, złamana po 2 dniach, zawieszona przy awarii P1); TaxVision `month_opens_or_is_blocked`.
+
+**O1 — kolejność etapów w przebiegu**: `lib/eh_os_contract/stage_order.ex` — pierwsze zdarzenie późniejszego
+etapu przed pierwszym zdarzeniem wcześniejszego (który w przebiegu wystąpił); pominięty etap nie jest ustaleniem;
+zapytanie po `_event_runs` ⋈ `_events` (min pozycja na przebieg i typ); klucz `out_of_order` w raporcie procesu,
+`Sentence.out_of_order/1`, wire addytywnie. **O2**: ekran statusu.
+
+#### Fala 4 — ewolucja modelu i testy właściwości
+
+**V1 — upcasty deklaratywne**: encja `upcast from, rename: [stare: :nowe], default: [pole: wartość]` w `event`;
+**V1** (L2, `rules/versions.ex`): `from` pokrywa `1..schema_version-1`, bez tożsamości, bez domyślnej wartości dla
+pola osobowego. `lib/eh_os_contract/upcast.ex` w `Consumer.decode_all!/3` (154-178) przed `Codec.subjects`
+(159); aliasy ścieżek dla `Personal.opener/3` (AAD = typ|ścieżka|…, personal.ex:594); obejścia: `Relay.message/2`
+(75-90), `Trace.item_occurrences/4` (tylko tożsamość, chroniona przez V1).
+**V2 — upcast przez callback** `with: :funkcja` w implementacji jednostki (I2), strażnik: zaplombowane wartości
+wychodzą nietknięte.
+**V3 — zamek schematów** `eh_os_contract.lock` w katalogu projektu hosta (obok `mix.lock`), JSON kluczowany typem
+zdarzenia; `mix eh_os_contract.schema [--check | --forget TYP]`; w bramie sandboxa po `eh_os_contract.check`;
+rigi biblioteki bez zamka (logika testowana na mapach w pamięci).
+**V4 — zamek wobec upcastów**: zmiany zgodne (pole opcjonalne dodane, usunięte, wymagane → opcjonalne, nowy członek
+enuma, `:integer` → `:decimal`) bez nowej wersji; reszta wymaga `rename:`/`default:`/`with:`; zmiany osobowości
+i tożsamości nieobsługiwane. Przykład z materiału: `amount_minor` → `amount` z wartością z `unit:` (TaxVision).
+**V5 — wersja umowy i wersja tekstu**: `version` (pola, komendy, `emits`/`rejects`/`by`, nazwy reguł, cykl życia,
+obietnice) i `text_digest` (etykiety, `source:`, scenariusze) w `Build.version/3`/`digests/3`; `Deployment` zapisuje
+obie; raport rozróżnia „zmieniła się umowa” od „zmieniły się słowa”.
+
+**PC1 — generatory** (`{:stream_data, "~> 1.1", optional: true}`, moduł w `if Code.ensure_loaded?(StreamData)`
+jak `plug.ex`): wartości w granicach `Codec`, wartości dziedziny z `satisfied_by`, `command/3`, `event/3`,
+`entity_row/3`, `history/3` (spacer po `Lifecycle.moves/3`).
+**PC2 — `use EhOsContract.PropertyCase, contract: C, max_runs: 50`**: `evolve/2` totalne na legalnych historiach;
+decyzja nie rzuca na legalnym wejściu i mieści się w `Decision.held!/6`; status zgodny z grafem; opcjonalne
+`holds?/2`. Odbiór: celowy defekt `reopen_visit` w `LifecycleRig` złapany; sandbox `rehmed_settlement` z `holds?/2`.
+
+#### Fala 5 — język i rdzeń
+
+**L1 — słownik połączony z kodem**: opcja domeny `code_language:` (domyślnie `:en`); tłumaczenie terminu na ten
+język wyznacza słowo identyfikatorów; strona słownika: termin → deklaracje; L5 `word-without-term` (notka, ranking
+po częstości), `term-of-another-context` (ostrzeżenie).
+**L2 — rdzeń**: L5 `core-command-never-refuses` (komenda kontekstu `:core` bez `rejects:`/`or_rejects:`, poza
+wydawanymi przez reakcje) i `core-unit-records-only`; znacznik „tylko rejestruje” na stronach i grafie.
+**L3 — typowane referencje do agregatów** `{:id, :visit}`: X3 przyjmuje nazwę jednostki domeny (nazwa musi być
+jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf je rysuje.
+**L4 — widok właściciela**: `pages` i graf procesu bez `delivery`, `idempotency`, F8/F9.
+
+---
+
+#### Konwencje każdego PR-a
+
+- Nowy klucz modelu tylko tam, gdzie ustawiony (`build.ex` `command/2` 174-192, `without_empty/2`), test, że
+  nietknięty kontrakt zachowuje wersję.
+- Nowy kod odmowy: komunikat `"KOD: "` w rules/links, wiersz w `docs/contract.md`, asercja w `test/dsl/**`
+  (`test/docs_test.exs` tego pilnuje). Nowe kody: F10, A8, A9, S11, S12, V1 (+ rozszerzenia S1–S3, S7, A4, A6, D9,
+  X2, X4, X6, X9).
+- Nowe słowo DSL-a: `doc:`, `MIX_ENV=test mix eh_os_contract.docs`, `mix spark.formatter --extensions …`, skasować
+  `cached_dot_formatter` w sandboxie i web.
+- Reguła L5: wpis w `check/catalog.ex`, funkcja w `check/completeness.ex` albo `check/contracts.ex`,
+  `mix eh_os_contract.rules`, test `test/check_*` z kontrolą.
+- `@doc` i `@spec` na publicznych funkcjach; eksporty `boundary`.
+- Zapisy: CHANGELOG (werdykt → MINOR; „a host has to act”), `PLAN.md` po polsku z odrzuconymi opcjami, dopiski z
+  datą w `docs/adr/contract-v2.md` (przykłady kompilowane — `@amendments`), skille.
+- Schemat bazy zmieniają tylko T2a i P2h (V02 albo V01 w miejscu): odtworzyć bazy testowe, przywrócić wspólną
+  bazę po bramie (pułapka z `CLAUDE.md`).
+- Skill `review-pr`: dopisać nowe pliki przesuwające werdykty (`stage_order.ex`, `upcast.ex`, `process/*`).
+
+#### Weryfikacja
+
+- Każdy PR: `mix check` pakietu i brama sandboxa (EXIT=0), testy odmów z kontrolą (`DslCase`), runtime
+  (`DataCase`), scenariusze sandboxa.
+- Refaktory bez zmiany zachowania (W3, W4, P2a): `mix eh_os_contract.report` i `graph --overlay --mermaid` sandboxa
+  bajt w bajt przed i po (skrypt w scratchpadzie).
+- PR-y przesuwające werdykty (P1a, P2d, P2h, O1, X1): diff raportu i `check`; zmieniają się tylko zamierzone linie;
+  każde nowe ostrzeżenie wyjaśnione.
+- Ekrany (P1a, P2e, O2): podgląd hosta sandboxa (`/dashboard`, port 4010), zrzut ekranu.
+- Odbiory fal: (1) Plug odrzuca `p1_reported` (422), dwie reakcje między kontekstami mają jawne `delivery`;
+  (2) `clinical_visit` jako moduł procesu, raport: kontrakty i procesy, zero `terminal:` w zdarzeniach;
+  (3) dziesięć rezerwacji tego samego terminu → jedna przyjęta; scenariusze obietnic bez bazy; rig z relacją ACL
+  odrzuca read model na zdarzeniu dostawcy (sandbox nie ma ACL między kontekstami); `close_visit_clinically` bez
+  pola `p1_reported`; (4) zmiana pól bez `schema_version` nie przechodzi
+  `eh_os_contract.schema --check`; `PropertyCase` łapie defekt rigu.
+
+#### Do decyzji przed etapem (rekomendacja domyślna)
+
+| Przed | Pytanie | Domyślnie |
+|---|---|---|
+| T2a, P2h | migracja: nowa wersja V02 czy edycja V01 w miejscu (od 4 października aplikacja testowa AppUnite ma bazę) | V02 |
+| P1d | `cadence`: oceniać (okno bez przebiegu) czy usunąć | usunąć; wraca z czytelnikiem |
+| P2b | `use EhOsContract.Process` wymaga `id:` i `label:` | tak |
+| P2b | `deadline` bez `ends_on` | błąd L2 w module procesu |
+| P1b | pole `"process"` w manifeście EHOS-a | id kontraktu + issue w `eh-os` |
+| P1e | sprzątanie szablonowych procesów w testach | tak |
+| W2 | tagi miesiąca obok tagów dnia | tylko dzień |
+| T2a | `reads:` po polu stanu, nie tylko komendy | później |
+| S2 | `at:` przy `given` poza scenariuszami obietnic | dozwolone |
+| A1 | wyjątek dla roli (menedżer) w `actor_is` | poza zakresem |
+| M1 | kształt konsumpcji `publish` w jednej aplikacji | `consumes` wskazuje publikację, silnik podaje kształt publikacji bez brokera |
+| V3 | plik zamka: nazwa i miejsce | `eh_os_contract.lock` w katalogu projektu |
+| L3 | składnia referencji do agregatu | `{:id, :visit}`, nazwa jednostki jednoznaczna w domenie |
+
+#### Ryzyka
+
+- Wspólny Postgres wszystkich worktree (migracje V01 w T2a i P2h, typy w ID3/ID4) — odtwarzać i przywracać bazy.
+- Aplikacja testowa AppUnite i `ehos-ledger` łamią się na falach 1–2 — notatka migracyjna i tag po każdej fali.
+- Proces dodany po historii nie ma przebiegów dla starych zdarzeń — zmierzyć zdarzenia bez wiersza `_event_runs`;
+  później `mix eh_os_contract.runs --rebuild`.
+- `EhOsContract.Process` obok `Process` Elixira — bez aliasu w bibliotece.
+- Czas bramy (PropertyCase — małe `max_runs`), koszt zapytań kolejności etapów (indeks `(process, instance_id)`).
+- Zakres: ~45 PR-ów. Po każdej fali decyzja „dalej czy stop” w `PLAN.md`.
+
+## Dopisek 4 października (3) — pokrycie ESDM po EP1–EP5 i #99
+
+**Trzecia analiza, po „Analiza pokrycia ESDM (27 września)” i porównaniu z 3 października („Dopisek 3 października — EP”).**
+ESDM bez zmian: `thenativeweb/esdm` `main` = `295e1ca` (29 września), wydanie 0.15.0 — schematy `core`,
+`given-when-then` i 73 reguły jak przy obu poprzednich analizach. Biblioteka na `303b418` (#127): referencja obu
+DSL-i (`docs/dsl/`), `docs/rules.md`, tabela odmów w `docs/contract.md`, decyzje w „EP4/EP5a/EP5b — co wyszło” i
+w dopisku o #99.
+
+**Domknięte od 3 października:** `constraints` polityki, efektu i process managera oraz `invariants` process
+managera (EP2 — szczebel 1 przez `illustrates:`, efekt prozą); oczekiwany `state` w scenariuszu process managera
+(EP4); `idempotency` z właścicielem `:self | :downstream | :infrastructure` (EP4, P3); `capabilities` systemu jako
+`operation` z X4 i `operation-never-called` (EP5a — nazwa inna, bo „capability” to uprawnienie aktora);
+`responsibilities` aktora jako `responsibility` (EP5b); `terms` mapowania jako pary sprawdzane wobec słowników, także
+w `partnership` (EP5b — świadome odstępstwo); `source:` na każdej deklaracji (EP1). Reguły lintera: 13 z nazwą ESDM
+bez zmian, doszły własne (`prose-without-scenario`, `operation-never-called`) i kody S10, T1–T4, F8–F9.
+
+**Różnice, które zostają:**
+- *Odrzucone, z powodem w tym pliku:* `at-most-once` i `owner: not-required` (zgodność nie odróżni zgubionego
+  zdarzenia od niezaszłego); `owner: none` (P3 wymaga idempotencji przy `:at_least_once` — celowo surowiej);
+  `paradigm`, `metadata`, wolne `description`, generatory poza `:uuid`; `feature` i Domain Storytelling; wiersze
+  read modelu w scenariuszu (EP4); `endsWhen` jako warunek prozą (u nas zdarzenie `ends_on`).
+- *Odłożone do przykładu z materiału:* `invariants` encji (decyzja (b) przed EP2); tożsamość `static`.
+- *Nigdy nierozstrzygnięte — jedyne luki:* `category` systemu zewnętrznego; opis timera (ESDM `timers{name,
+  description}`, u nas timer ma `source`, nie ma etykiety); proza przy pojedynczej reakcji process managera (ESDM
+  `reactions{when, rule}`; u nas reguły na całym process managerze, `on`/`starts_on` bez prozy). Wszystkie trzy —
+  szczebel 0 drabiny. Pytania o kształt zadane użytkownikowi 4 października — decyzje niżej.
+
+**Ponad ESDM:** wykonywanie modelu (dispatch, log, reakcje, inbox i publikacja), scenariusze jako testy i drabina
+prozy, proces z obietnicami, raport zgodności, crypto-shredding, wersja schematu zdarzenia, dokumentacja w
+callbackach (EP3) i od #99 cykl życia agregatu (statusy i przejścia liczone przez silnik) — ESDM go nie ma.
+
+**Decyzje użytkownika (4 października):**
+- **Etykieta timera — wymagana, pozycyjna**, jak przy każdej innej deklaracji: `timer :documentation_due, "Doba na
+  dokumentację", wait: {24, :hour}, …`. Czytelnicy: strony, `@doc` callbacku timera, graf. Bez zgodności wstecz —
+  dwa timery sandboxa dostają etykietę z materiału. *Odrzucone:* etykieta opcjonalna (`label:` — timer bez niej
+  dalej jest samą nazwą i nic tego nie zgłasza); bez zmian (znaczenie timera tylko w etykiecie process managera i w
+  scenariuszach).
+- **`category` systemu zewnętrznego — pominięte.** Etykieta systemu już mówi, czym jest, a kategoria nie ma
+  czytelnika, który by na jej podstawie coś sprawdził albo narysował inaczej („rodzaj wchodzi z czytelnikiem”).
+  *Odrzucone:* atom z listy zamkniętej z grupowaniem w grafie i na stronie domeny (lista bez przykładu, który by jej
+  potrzebował); dowolny string jak w ESDM (proza bez nazwy i bez drogi wyżej — wbrew drabinie).
+- **Proza przy pojedynczej reakcji process managera — pominięta.** Reguły na process managerze i `illustrates:` w
+  scenariuszu konkretnego wyzwalacza już łączą regułę z reakcją i ją testują (np. trzy scenariusze `state`
+  `monthly_registry_check` z EP4); proza przy `on` byłaby drugim miejscem na to samo zdanie. *Odrzucone:* `keeps:`
+  w reakcji (nowe słowo wskazujące regułę — kształt pozwala je dodać, gdy przykład tego wymaga); etykieta reakcji
+  jak ESDM `rule` (proza bez nazwy).
+- **Po tej decyzji pokrycie ESDM jest pełne** w tym sensie, że każda różnica jest decyzją z powodem albo czeka na
+  przykład z materiału. Do zbudowania zostaje etykieta timera — mały etap (propozycja asystenta: **EP6**).
 
 ## Dopisek 4 października (2) — AppUnite: zapotrzebowanie na komputer (`Demands`)
 
