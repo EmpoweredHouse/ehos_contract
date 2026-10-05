@@ -523,7 +523,7 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | W2 | 1 | tagi dnia przy dopisie | DD0 | ☑ #143 |
 | W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ◐ `engine/w3-trace-core`, PR #145 |
 | W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ◐ `engine/w4-decision`, PR #146 (na #145) |
-| T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ◐ `engine/t1-supplied-by-host` (na W4) |
+| T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ◐ `engine/t1-supplied-by-host` (na W4), gotowe do PR-a |
 | T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☐ |
 | X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ☐ |
 | S4 | 1 | `transition-without-scenario` | DD0 | ☐ |
@@ -1070,6 +1070,43 @@ CHANGELOG („Added”). Czytelnik: S2 (scenariusze obietnic bez bazy).
   etykietę timera TaxVision). Przegląd bezpieczeństwa: nic od średniej wagi. (2) Nieaktualny wpis o `origin/main` w
   Handoffie — poprawiony razem z ☑ W2. Baza #145 przestawiona na `main`, `main` wmergowany.
 - **Dla aplikacji AppUnite i `ehos-ledger`:** nic do zmiany.
+
+### T1 — co wyszło (5 października)
+
+Gałąź `engine/t1-supplied-by-host` (na W4). `field :p1_reported, :boolean, supplied_by: :host` — pole, którego wartość
+daje host, nie wołający. **F10** (L2): tylko pole komendy albo zdarzenia z `recorded_by:`, nie pole `scope` komendy.
+Model trzyma klucz tylko na polu, które go ustawia (wersje kontraktów bez zmian). Przez `call/3` i Plug pole wysłane w
+ogóle (także `null`, także pod kluczem-atomem) to `{:invalid, [p1_reported: :supplied]}` (422); po autoryzacji i po
+sprawdzeniu pól i klucza wołającego `EhOsContract.Supplier` (`supply(actor, %Supplier.Request{…})`, decyzja 1) daje
+wartość, trzymaną do dokładnie zamówionych pól, ich typów i inwariantów; `{:error, r}` → `{:not_supplied, r}`, 503
+bez powodu, nic nie zapisane (decyzja 3); ponowienie przyjętego żądania z tym samym kluczem dostaje paragon bez pytania
+hosta. `dispatch/3` z kodu hosta ufa strukturze. OpenAPI pomija pole w treści żądania i opisuje 503 tylko przy takiej
+komendzie; strona kontraktu pisze „supplied by the host”; D9 rezerwuje `:supplied`. Rig silnika `SupplyRig` z
+`SupplyRig.Supplier` w konfiguracji pakietu (czyta ją tylko suita pakietu); `check` silnika bez zmian (0 / 75 / 6).
+
+- **Rozstrzygnięcia asystenta (mechanika):** host pytany w `dispatch/3`/`record/3` przez wewnętrzną opcję `supply:
+  true`, którą ustawia `call/3` — po autoryzacji, więc wołający bez uprawnienia nigdy nie każe hostowi niczego szukać;
+  *odrzucone:* pytać w `call/3` przed dispatchem (przed autoryzacją, albo drugie pytanie `Authorizer`, czyli drugi
+  wiersz decyzji w `eh_os_contract_auth`). Wartość łamiąca inwariant domeny to defekt hosta (rzuca, 500), jak zły typ;
+  *odrzucone:* odmowa inwariantu dla wołającego (to nie jego wartość). Limit czasu wywołania — po stronie hosta.
+- **Odejście od decyzji 2 w szczególe, po przeglądzie:** węzeł nie startuje bez `Supplier` — sprawdzane przy starcie
+  silnika (`Supplier.check!/1` w `EhOsContract.Supervisor`), nie w `Registry.load!`, które wołają też zadania mixa
+  tylko czytające kontrakty (`check`, `report`, `graph`, `pages`): host z `supplier:` tylko w `prod.exs` nie mógłby ich
+  uruchomić. Sprawdza też, że moduł jest załadowany i eksportuje `supply/2`. Sens decyzji („brak konfiguracji widać
+  przy wdrożeniu”) bez zmian.
+- **Przegląd** (`engine/w4-decision..engine/t1-supplied-by-host`, dwa równolegle). Poprawność: 11 uwag — naprawione
+  (`632efa8`): ponowienie z kluczem dostawało 503 zamiast paragonu przy leżącym hoście; host pytany przed tanimi
+  odmowami (zły klucz → 503 zamiast 400); sprawdzenie przy starcie w zadaniach mixa i bez sprawdzenia modułu; klucz-atom
+  gubiony bez odmowy; OpenAPI bez 503; dokumentacja D9 bez `:supplied` (+ CHANGELOG „a host has to act”: inwariant o tej
+  nazwie przestaje się kompilować). Próba odwrotna każdej: pada tylko jej test. Bez zmian: `supplied_by:` na polu
+  tożsamości (nie do zadeklarowania — tożsamość jest wstrzykiwana, F6), wartość łamiąca inwariant (wyżej), capability
+  liczone dwa razy (koszt pomijalny). Bezpieczeństwo i wydajność: nic od średniej wagi; żadna droga wartości wołającego
+  do pola hosta, host poza transakcją dopisu i poza blokadą, błędy bez wartości, 503 bez powodu.
+- **Brama:** EXIT=0 na każdym commicie z kodem; `check` 0 / 29 / 10, 0 / 75 / 6; sandbox 194, silnik 1334, web 52,
+  auth 286 + 1 property. Pułapka po drodze: nowa opcja DSL-a wymaga `mix spark.formatter` i pinu słownika
+  (`contract_vocabulary_test.exs`) — brama padła na obu, poprawione w pierwszym commicie.
+- **Dla aplikacji AppUnite i `ehos-ledger`:** nic, dopóki żaden kontrakt nie deklaruje `supplied_by:`; inwariant domeny
+  o nazwie `:supplied` trzeba przemianować. **Następne: T1s** — sandbox (`p1_reported`, `total`) i supplier hosta.
 
 ### Przed T1 — decyzje użytkownika (5 października)
 
