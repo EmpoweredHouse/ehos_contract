@@ -522,10 +522,12 @@ defmodule EhOsContract.Domain.Rules do
           [{"#{where}, identity #{inspect(entity.identity)} is not snake_case", entity}]
 
         Map.has_key?(by_name, entity.identity) ->
+          field = Map.fetch!(by_name, entity.identity)
+
           [
             {"#{where} declares field #{inspect(entity.identity)}, which is its identity; the " <>
-               "library injects it as a required, non-personal :id, so declare no field for it",
-             Map.fetch!(by_name, entity.identity)}
+               "library injects it as a required, non-personal :id, so declare no field for it" <>
+               issuer_moves(field), field}
           ]
 
         true ->
@@ -857,6 +859,13 @@ defmodule EhOsContract.Domain.Rules do
        context}
     end
   end
+
+  # An identity that was a field with an issuer keeps the issuer on the entity, or
+  # deleting the field would lose it without a word.
+  defp issuer_moves(%{issued_by: nil}), do: ""
+
+  defp issuer_moves(%{issued_by: issuer}),
+    do: ", and write issued_by: #{inspect(issuer)} on the entity, which gives it"
 
   # --- D8: a field's issuer is an external of this domain (plan EL2) ---------------
 

@@ -771,6 +771,10 @@ defmodule EhOsContract.DomainRulesTest do
                 field :service_id, :id, optional: true
               end
 
+              entity :invoice, "Faktura", context: :month, identity: :number do
+                field :number, :id, issued_by: :ksef
+              end
+
               entity :clinic, "Placówka", context: :month, identity: :clinic_id do
                 field :owner, :string, personal: :clinic_id
               end
@@ -787,6 +791,12 @@ defmodule EhOsContract.DomainRulesTest do
                "D6: entity :service declares field :service_id, which is its identity; the " <>
                  "library injects it as a required, non-personal :id, so declare no field for it " <>
                  "(entity_wrong.ex:10)"
+
+      # Plan N1: a field that carried the issuer says where the issuer goes now.
+      assert message =~
+               "D6: entity :invoice declares field :number, which is its identity; the library " <>
+                 "injects it as a required, non-personal :id, so declare no field for it, and " <>
+                 "write issued_by: :ksef on the entity, which gives it (entity_wrong.ex:14)"
 
       assert message =~
                "D6: entity :clinic, field :owner has personal:, and an entity's rows are the " <>
