@@ -546,6 +546,48 @@ defmodule EhOsContract.DomainRulesTest do
     end
   end
 
+  describe "D13: the domain's days are in a zone the time zone database knows (plan W2)" do
+    defp zoned(module, zone) do
+      """
+      defmodule EhOsContract.DomainRulesTest.#{module} do
+        use EhOsContract.Domain, name: :clinic, language: :pl, time_zone: #{inspect(zone)}
+      end
+      """
+    end
+
+    test "a zone the database does not know is refused; control: Warsaw, and UTC by default" do
+      message = Exception.message(compile_error(zoned("ZoneWrong", "Europe/Warszawa"), "zone.ex"))
+
+      assert message =~
+               ~s|D13: the domain's time_zone: "Europe/Warszawa" is not a zone the configured | <>
+                 "time zone database (Tz.TimeZoneDatabase) knows"
+
+      Code.compile_string(zoned("ZoneRight", "Europe/Warsaw"))
+
+      assert Module.concat(__MODULE__, ZoneRight).__eh_os_contract_model__().time_zone ==
+               "Europe/Warsaw"
+    end
+
+    test "a domain that names no zone keeps UTC, and the version it had" do
+      Code.compile_string("""
+      defmodule EhOsContract.DomainRulesTest.ZoneDefault do
+        use EhOsContract.Domain, name: :clinic, language: :pl
+      end
+      """)
+
+      Code.compile_string("""
+      defmodule EhOsContract.DomainRulesTest.ZoneUtc do
+        use EhOsContract.Domain, name: :clinic, language: :pl, time_zone: "Etc/UTC"
+      end
+      """)
+
+      default = Module.concat(__MODULE__, ZoneDefault).__eh_os_contract_model__()
+      utc = Module.concat(__MODULE__, ZoneUtc).__eh_os_contract_model__()
+      assert default.time_zone == "Etc/UTC"
+      assert default.version == utc.version
+    end
+  end
+
   describe "D11: the domain's name is one segment of an application's namespace (after #50)" do
     defp named(module, name, body \\ "") do
       """

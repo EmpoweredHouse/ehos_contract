@@ -94,6 +94,40 @@ defmodule EhOsContract.Key do
   def tag_field?(_field, _values), do: false
 
   @doc """
+  Whether a declared field is tagged with its day when an event carrying it is
+  appended (plan W2): a required, non-personal `:date` or `:timestamp`, or a domain
+  value resting on one. The log only grows, so a tag added later would never reach
+  the events already in it; a boundary that buckets by day (B2) finds every event
+  that could fall on it.
+  """
+  @spec bucket_field?(map(), map()) :: boolean()
+  def bucket_field?(field, values \\ %{})
+
+  def bucket_field?(%{type: type, optional: false, personal: nil}, values) when is_atom(type),
+    do: base_type(type, values) in [:date, :timestamp]
+
+  def bucket_field?(_field, _values), do: false
+
+  @doc """
+  A day tag: the field's name and `.day`, `:`, then the day, `YYYY-MM-DD`. A
+  timestamp's day is the one it falls on in `zone`, the domain's `time_zone:`; a date
+  is its own day.
+
+      Key.day_tag(:scheduled_at, ~U[2026-10-05 22:30:00Z])                    #=> "scheduled_at.day:2026-10-05"
+      Key.day_tag(:scheduled_at, ~U[2026-10-05 22:30:00Z], "Europe/Warsaw")   #=> "scheduled_at.day:2026-10-06"
+
+  A field name is snake_case and has no `.`, so a day tag never reads as a field's tag.
+  """
+  @spec day_tag(atom(), Date.t() | DateTime.t(), String.t()) :: String.t()
+  def day_tag(field, value, zone \\ "Etc/UTC")
+
+  def day_tag(field, %DateTime{} = at, zone) when is_atom(field),
+    do: day_tag(field, at |> DateTime.shift_zone!(zone) |> DateTime.to_date(), zone)
+
+  def day_tag(field, %Date{} = day, _zone) when is_atom(field),
+    do: tag(:"#{field}.day", Date.to_iso8601(day))
+
+  @doc """
   The built-in type a field's type comes down to: a domain value's type followed to
   the built-in one it rests on, `value :fee, :amount` to `:amount`'s. A value made of
   fields, or a name the domain does not declare, comes down to itself.

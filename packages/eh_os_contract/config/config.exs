@@ -5,6 +5,10 @@ import Config
 # a consumer — which is the property that makes it safe for the engine to
 # configure itself as its own first consumer.
 
+# The time zone database a host configures for its domain's `time_zone:` (plan W2);
+# the invented fixtures' ledger keeps the days of Warsaw.
+config :elixir, :time_zone_database, Tz.TimeZoneDatabase
+
 config :eh_os_contract,
   ecto_repos: [EhOsContract.TestRepo, EhOsContract.CommitRepo],
   # The engine scans the binary that actually runs, and here that binary is its

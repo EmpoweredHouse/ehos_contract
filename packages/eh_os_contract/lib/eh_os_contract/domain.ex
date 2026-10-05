@@ -37,6 +37,10 @@ defmodule EhOsContract.Domain do
   namespace, the first segment of every name its contracts publish and of every
   capability, so it is one such segment: lowercase letters, digits, `_` and `-`,
   starting with a letter and not ending with a dash (D11, `EhOsContract.Domain.Rules`).
+  `time_zone:` is the zone its days are in, UTC unless it says otherwise: an event's
+  `:timestamp` is tagged with its day there when it is appended (plan W2), so a day
+  is the business's, not Greenwich's. A zone the configured time zone database does
+  not know does not compile (D13).
   """
 
   use Spark.Dsl,
@@ -53,6 +57,14 @@ defmodule EhOsContract.Domain do
         type: :atom,
         required: true,
         doc: "The language labels and terms are written in."
+      ],
+      time_zone: [
+        type: :string,
+        default: "Etc/UTC",
+        doc:
+          "The zone the business's days are in, like `\"Europe/Warsaw\"`: a `:timestamp` " <>
+            "is tagged with its day there (plan W2). Read with the time zone database the " <>
+            "host configures."
       ]
     ]
 
@@ -65,11 +77,30 @@ defmodule EhOsContract.Domain do
   @spec vocabulary() :: %{[atom()] => [atom()]}
   def vocabulary, do: EhOsContract.DslWrappers.vocabulary(EhOsContract.Domain.Dsl.sections())
 
+  @doc """
+  Whether `zone` is one the time zone database Elixir is configured with knows
+  (plan W2): asked as dispatch asks it, so a database module that is configured but
+  not there — `Tz.TimeZoneDatabase` without `{:tz, …}` — answers `false`, as an
+  unknown zone does, rather than raising.
+  """
+  @spec time_zone_known?(term()) :: boolean()
+  def time_zone_known?(zone) when is_binary(zone) do
+    match?({:ok, _}, DateTime.shift_zone(~U[2026-01-01 00:00:00Z], zone))
+  rescue
+    _undefined in UndefinedFunctionError -> false
+  end
+
+  def time_zone_known?(_zone), do: false
+
   @impl Spark.Dsl
   def handle_opts(opts) do
     quote do
       @persist {:eh_os_contract_domain,
-                %{name: unquote(opts[:name]), language: unquote(opts[:language])}}
+                %{
+                  name: unquote(opts[:name]),
+                  language: unquote(opts[:language]),
+                  time_zone: unquote(Keyword.get(opts, :time_zone, "Etc/UTC"))
+                }}
       @persist {:eh_os_contract_line, __ENV__.line}
     end
   end

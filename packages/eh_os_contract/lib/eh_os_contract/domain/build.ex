@@ -151,7 +151,10 @@ defmodule EhOsContract.Domain.Build do
   @doc false
   @spec model(map()) :: map()
   def model(dsl) do
-    %{name: name, language: language} = Transformer.get_persisted(dsl, :eh_os_contract_domain)
+    %{name: name, language: language} =
+      persisted = Transformer.get_persisted(dsl, :eh_os_contract_domain)
+
+    time_zone = Map.get(persisted, :time_zone, "Etc/UTC")
     entities = Transformer.get_entities(dsl, [:domain])
 
     collections =
@@ -166,7 +169,10 @@ defmodule EhOsContract.Domain.Build do
 
     # The domain's own options are part of the agreement too: `language` decides what
     # D2 accepts and which language every label and term is written in.
+    # `time_zone` too (plan W2), since it decides which day a timestamp is tagged with;
+    # kept out where it is UTC, the default, so no domain written without it moves.
     own = %{name: name, language: language}
+    own = if time_zone == "Etc/UTC", do: own, else: Map.put(own, :time_zone, time_zone)
 
     Map.merge(collections, %{
       format: 1,
@@ -174,6 +180,7 @@ defmodule EhOsContract.Domain.Build do
       module: Transformer.get_persisted(dsl, :module),
       name: name,
       language: language,
+      time_zone: time_zone,
       version:
         Digest.hash_groups(
           [domain: [own]] ++

@@ -150,6 +150,10 @@ defmodule EhOsContract.MixProject do
       # Spark's formatter task rewrites `.formatter.exs` through it. Only where that
       # task runs.
       {:sourceror, "~> 1.12", only: [:dev, :test], runtime: false},
+      # A domain's `time_zone:` other than UTC is read with the time zone database the
+      # host configures (plan W2); the package's own suite needs one, a host brings its
+      # own, so the package does not choose it for them.
+      {:tz, "~> 0.28", only: [:dev, :test]},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false}
     ]
   end

@@ -17,7 +17,7 @@ defmodule Rehmed.Domain do
   others, and nothing in the stage needs them (plan, the decisions before E9).
   """
 
-  use EhOsContract.Domain, name: :rehmed, language: :pl
+  use EhOsContract.Domain, name: :rehmed, language: :pl, time_zone: "Europe/Warsaw"
   use Boundary, deps: [EhOsContract], exports: [Values]
 
   # The map names no subdomain, only a classification per context (30-contexts.md,

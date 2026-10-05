@@ -41,6 +41,9 @@ defmodule EhOsContractHost.MixProject do
       # telemetry, so it depends on it — and a package whose dependency is satisfied
       # only because a neighbour happens to need it breaks when the neighbour goes.
       {:telemetry, "~> 1.3"},
+      # The time zone database the domains' `time_zone: "Europe/Warsaw"` is read with
+      # (plan W2): the engine asks the one the host configures, and this host is in Poland.
+      {:tz, "~> 0.28"},
       {:boundary, "~> 0.10", runtime: false},
       # The engine, extracted 2026-08-20. A path dependency rather than a copy:
       # the build system now enforces the boundary that `boundary` was enforcing
