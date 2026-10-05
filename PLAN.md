@@ -915,7 +915,12 @@ z deklaracji: „1 day after it is set”, „at `review_at`”), `@doc` callbac
 
 - **Etykiety sandboxa nie są z materiału** (wbrew projektowi etapu): „Termin dokumentacji” (Rehmed) to przykład
   użytkownika z decyzji przed N3, „Termin sprawdzenia rejestrów” (TaxVision) — propozycja asystenta z etykiety
-  process managera. Do potwierdzenia przez właściciela procesu; przegląd to złapał.
+  process managera. Do potwierdzenia przez właściciela procesu; przegląd to złapał. **Rozstrzygnięte 5 października**
+  (po recenzji CodeRabbita na #139), decyzja użytkownika: TaxVision → „Weryfikacja rejestrowa”, słowa materiału
+  (`02-event-storming.md` §3.1, „Otwarcie miesiąca: weryfikacja rejestrowa”), z `source:`; Rehmed zostaje przy
+  „Termin dokumentacji”, zatwierdzone przez użytkownika jako właściciela procesu danych testowych — materiał nie ma
+  tu polskiej nazwy (P-23 mówi o „statutory window”, klient proponował watchdog 48 h). *Odrzucone:* „Otwarcie
+  miesiąca” (nazwa fazy, nie tego, co timer wywołuje); zostawić obie etykiety otwarte.
 - **Przegląd** (`dsl/n2-subscribe..dsl/n3-timer-label`). Poprawność: 9 uwag — naprawione (`1523867`): CHANGELOG o
   zdaniach raportu i nieaktualny komentarz w `report/sentence.ex`, test odmowy timera bez etykiety i etykieta w
   asercji §4.6, polski przykład w komentarzu `dsl.ex`, porządek komentarzy i martwa gałąź w `pages.ex`, strzałka
