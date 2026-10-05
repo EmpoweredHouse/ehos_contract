@@ -1,0 +1,1 @@
+Config only (.coderabbit.yaml, 6 lines). Key and type checked against CodeRabbit schema.v2.json: reviews.auto_review.base_branches, array of regexes. YAML parses. /code-review and the gate not run: no code changed.
