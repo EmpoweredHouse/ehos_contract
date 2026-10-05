@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 5 października, wieczór (DD0, N1–N3, W1 w `main`; W2 i W3 w PR-ach #143, #145)
+## Handoff — stan na 5 października, wieczór (DD0, N1–N3, W1, W2 w `main`; W3 w PR-ze #145)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -41,18 +41,17 @@ komputer, kontrakt `Demands`) — „Dopisek 4 października (2)”.
 **Następna praca to program DD — „DDD sprawdzane przez kod”** (zatwierdzony przez użytkownika 5 października): 53
 etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem programu jest tabela „Postęp” w „Dopisek 5
 października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
-Fala 1: N1, N2, N3, W1 w `main` (#137, #138, #139, #142); W2 w PR-ze #143 (na `main`), W3 (publiczne, czyste jądro
-`Trace`) w PR-ze #145 (na #143); potem W4, T1+T1s, X1, S4 w dowolnej kolejności.
+Fala 1: N1, N2, N3, W1, W2 w `main` (#137, #138, #139, #142, #143); W3 (publiczne, czyste jądro `Trace`) w PR-ze #145
+(na `main`); potem W4, T1+T1s, X1, S4 w dowolnej kolejności.
 
 ### Stan repozytorium
 
-- **`origin/main` = `f0e473d`** (merge #138, N2; przed nim #137 N1, #135 DD0, każdy z poprawką po przeglądzie
-  CodeRabbita i `.coderabbit.yaml` dla PR-ów na dowolną gałąź).
-- **Otwarte PR-y — stos, merge po kolei:** [#143](https://github.com/EmpoweredHouse/eh-os-contract/pull/143) W2
-  (`engine/w2-day-tags`, na `main`) → [#145](https://github.com/EmpoweredHouse/eh-os-contract/pull/145) W3
-  (`engine/w3-trace-core`, na #143). #139 (N3) i #142 (W1) zmergowane. Po merge'u jednego baza następnego przechodzi na `main` (albo `gh pr edit <n>
-  --base main`); jeśli przyjdą poprawki do `main`, zmergować `main` w dół stosu — konflikt w CHANGELOG jest
-  prawdopodobny, bo W1 przeniósł wpisy DD do górnej sekcji „Unreleased”.
+- **`origin/main` = `6a236d5`** (merge #143, W2; przed nim #142 W1 `3c7b29f`, #139 N3 `a568ce7` z poprawką etykiety
+  timera TaxVision `46b4e55`, #138 N2 `f0e473d`; wcześniej #137 N1 i #135 DD0 — każdy z poprawką po przeglądzie
+  CodeRabbita, `.coderabbit.yaml` dla PR-ów na dowolną gałąź).
+- **Otwarty PR:** [#145](https://github.com/EmpoweredHouse/eh-os-contract/pull/145) W3 (`engine/w3-trace-core`, na
+  `main`, z `main` wmergowanym). Stos N3 → W1 → W2 zmergowany po kolei; otwarte poza programem: #144 (puste
+  etykiety, innej sesji).
 - Wcześniej `6ce4c30` (merge #126, ostatni PR #99). Przedtem `eb0c8a1` (merge #103: #98,
   budżet bajtów klucza — „#98 — co wyszło”). Przedtem `b6a96dd` —
   #101 (handoff po #96), `90a83f2` — #102 (EP1, z sesji `esdm-dsl-comparison`), `0b7bc84` — #100 (poprawki
@@ -85,12 +84,13 @@ Fala 1: N1, N2, N3, W1 w `main` (#137, #138, #139, #142); W2 w PR-ze #143 (na `m
 
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
-  1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138), N3 (#139), W1 (#142). **Użytkownik:** merge #143 (W2), potem
-     #145 (W3); po każdym ☑ w tabeli robi asystent przy następnym etapie.
-  2. **Asystent:** W3 w PR-ze #145 (na #143); potem W4,
-     T1+T1s, X1, S4, każdy na gałęzi od głowy stosu (tabela „Postęp” żyje na stosie). Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
+  1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138), N3 (#139), W1 (#142), W2 (#143). **Użytkownik:** merge #145
+     (W3); po merge'u ☑ w tabeli robi asystent przy następnym etapie.
+  2. **Asystent:** W3 w PR-ze #145 (na `main`); potem W4,
+     T1+T1s, X1, S4, każdy na gałęzi od `main` albo od W3, jeśli #145 nie jest jeszcze zmergowany (tabela „Postęp” żyje
+     na gałęzi etapu). Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
-     V01 w miejscu przed T2a i P2h; potwierdzenie etykiet timerów sandboxa — „N3 — co wyszło”); po każdej fali „dalej czy
+     V01 w miejscu przed T2a i P2h; po każdej fali „dalej czy
      stop” i kiedy podbić przypięcie w aplikacji AppUnite (`~/Projects/ai/appunite_equipment`) i `ehos-ledger`.
 - **AppUnite — zapotrzebowanie (`Demands`) jest w `main`** (#128); dwa pytania z przeglądu i etapy `Computers`
   wobec cyklu życia czekają na użytkownika — „Dopisek 4 października (2)”, „Otwarte z przeglądu”.
@@ -192,6 +192,9 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **5 października, wieczór, `engine/w3-trace-core` @ `6a030c2`** (W3 z wmergowanym `main` = `6a236d5` i poprawką po
+  CodeRabbicie): `mix check` w `sandbox/` EXIT=0 — `check` 0 / 29 / 10 i 0 / 75 / 6; sandbox 194, silnik 1296, web 52,
+  auth 286 + 1 property.
 - **5 października, wieczór, `engine/w3-trace-core` @ `96253a2`** (kod W3 po przeglądzie): `mix check` w `sandbox/`
   EXIT=0 — `check` sandboxa 0 / 29 / 10, silnika 0 / 75 / 6 (bez zmian); sandbox 194, silnik 1293 (+13,
   `trace_test.exs`), web 52, auth 286 + 1 property. Web 52 było już na W2 — „51” niżej to pomyłka zapisu (W3 nie
@@ -509,8 +512,8 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | N2 | 1 | `subscribe "<nazwa>"` | DD0 | ☑ #138 |
 | N3 | 1 | etykieta timera (EP6) | DD0 | ☑ #139 |
 | W1 | 1 | zapis `schema_version` | DD0 | ☑ #142 |
-| W2 | 1 | tagi dnia przy dopisie | DD0 | ◐ `engine/w2-day-tags`, PR #143 |
-| W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ◐ `engine/w3-trace-core`, PR #145 (na #143) |
+| W2 | 1 | tagi dnia przy dopisie | DD0 | ☑ #143 |
+| W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ◐ `engine/w3-trace-core`, PR #145 |
 | W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ☐ |
 | T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ☐ |
 | T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☐ |
@@ -1044,6 +1047,13 @@ CHANGELOG („Added”). Czytelnik: S2 (scenariusze obietnic bez bazy).
   (O(n), zostaje dla wołających spoza logu).
 - **Brama:** EXIT=0; `check` sandboxa 0 / 29 / 10, silnika 0 / 75 / 6; sandbox 194, silnik 1293, web 52, auth 286 +
   1 property.
+- **CodeRabbit na #145** (po merge'u `ccea0cd`): dwie uwagi, obie naprawione. Wystąpienie obietnicy per pozycję bez
+  pełnej tożsamości (brak pola albo `nil`) dostawało klucz z `nil` — `from` i trafienie, oba bez `item_no`, składały
+  między sobą spełnioną pozycję; teraz takie wystąpienie nie otwiera ani nie rozwiązuje żadnej (`6a030c2`, próba
+  odwrotna: pada tylko jego test). Na logu się nie zdarza (pola tożsamości są wymagane): stary i nowy `evaluate/3`
+  dalej równe na losowym logu, raport i grafy bajt w bajt (nowy punkt odniesienia po wmergowaniu `46b4e55`, który
+  zmienia etykietę timera TaxVision). Druga: nieaktualny wpis o `origin/main` w Handoffie — poprawiony razem z ☑ W2.
+  Baza #145 przestawiona na `main`, `main` wmergowany.
 - **Dla aplikacji AppUnite i `ehos-ledger`:** nic do zmiany.
 
 ## Dopisek 4 października (3) — pokrycie ESDM po EP1–EP5 i #99
