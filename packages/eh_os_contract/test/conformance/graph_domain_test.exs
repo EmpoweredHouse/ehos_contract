@@ -63,7 +63,7 @@ defmodule EhOsContract.GraphDomainTest do
         use EhOsContract.Contract, domain: #{inspect(@domain)}, context: :settlement
 
         consumes #{inspect(@scheduling)}, :booked
-        consumes "clinic.visit.booked.v1", as: :booked_elsewhere do
+        subscribe "clinic.visit.booked.v1", as: :booked_elsewhere do
           field :visit_id, :id
         end
 

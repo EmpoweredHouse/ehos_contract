@@ -234,7 +234,7 @@ defmodule EhOsContract.ContractProcessTest do
     test "neither a run nor a boundary can take it in" do
       message =
         refuse_contract("ReceivedInLog", """
-          consumes "rehmed.visit.closed.v1", as: :visit_closed_elsewhere do
+          subscribe "rehmed.visit.closed.v1", as: :visit_closed_elsewhere do
             field :visit_id, :id
           end
 

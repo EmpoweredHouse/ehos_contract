@@ -327,36 +327,46 @@ defmodule EhOsContract.ContractBoundariesTest do
     end
   end
 
-  describe "D11: another application's event is consumed by name" do
-    test "without a local name, with events, without fields, or with a bare name" do
+  describe "D11: another application's event is subscribed to by name" do
+    test "without a local name, without fields, or with a bare name" do
       message =
         refuse_contract("ConsumesByNameWrong", """
-          consumes "rehmed.visit.closed.v1" do
+          subscribe "rehmed.visit.closed.v1" do
             field :visit_id, :id
           end
 
-          consumes "rehmed.visit.opened.v1", [:visit_opened], as: :visit_opened
-          consumes "visit_moved", as: :visit_moved
+          subscribe "rehmed.visit.opened.v1", as: :visit_opened
+          subscribe "visit_moved", as: :visit_moved
 
         #{@unit}
         """)
 
       assert message =~
-               ~s|D11: consumes "rehmed.visit.closed.v1" needs as: the name the event has in this | <>
+               ~s|D11: subscribe "rehmed.visit.closed.v1" needs as: the name the event has in this | <>
                  "contract (consumes_by_name_wrong.ex:4)"
 
-      assert message =~
-               ~s|D11: consumes "rehmed.visit.opened.v1" lists events; a published name is one event, | <>
-                 "read by its fields (consumes_by_name_wrong.ex:8)"
+      assert message =~ ~s|D11: subscribe "rehmed.visit.opened.v1" lists no fields|
+      assert message =~ ~s|D11: subscribe "visit_moved": "visit_moved" is not a versioned name|
+    end
 
-      assert message =~ ~s|D11: consumes "rehmed.visit.opened.v1" lists no fields|
-      assert message =~ ~s|D11: consumes "visit_moved": "visit_moved" is not a versioned name|
+    # Plan N2: one word per mechanism. A published name is subscribed to, never consumed.
+    test "consumes takes a sibling contract, not a published name" do
+      message =
+        refuse_contract("ConsumesAName", """
+          consumes "rehmed.visit.closed.v1", [:visit_closed]
+
+        #{@unit}
+        """)
+
+      assert message =~
+               ~s|contract -> consumes defined in consumes_a_name.ex:4::\n| <>
+                 ~s|  invalid value for :from option: expected atom, got: "rehmed.visit.closed.v1"|
     end
 
     test "a dash only inside the namespace, as in a publication" do
       message =
         refuse_contract("ConsumesDashedWrong", """
-          consumes "shop-.visit.closed.v1", as: :visit_closed_elsewhere do
+          subscribe "shop-.visit.closed.v1", as: :visit_closed_elsewhere do
             field :visit_id, :id
           end
 
@@ -364,13 +374,13 @@ defmodule EhOsContract.ContractBoundariesTest do
         """)
 
       assert message =~
-               ~s|D11: consumes "shop-.visit.closed.v1": "shop-.visit.closed.v1" is not a|
+               ~s|D11: subscribe "shop-.visit.closed.v1": "shop-.visit.closed.v1" is not a|
     end
 
     test "control: another application's event, named under a namespace with a dash" do
       model =
         compile_contract("ConsumesDashedRight", """
-          consumes "my-shop.visit.closed.v1", as: :visit_closed_elsewhere do
+          subscribe "my-shop.visit.closed.v1", as: :visit_closed_elsewhere do
             field :visit_id, :id
           end
 
@@ -383,7 +393,7 @@ defmodule EhOsContract.ContractBoundariesTest do
     test "control: v2 §16's subscriber, with a policy on the consumed event" do
       model =
         compile_contract("ConsumesByNameRight", """
-          consumes "rehmed.visit.closed.v1", as: :visit_closed_elsewhere do
+          subscribe "rehmed.visit.closed.v1", as: :visit_closed_elsewhere do
             field :visit_id, :id
             field :closed_at, :timestamp
           end
@@ -409,7 +419,7 @@ defmodule EhOsContract.ContractBoundariesTest do
     test "a read model, an effect or a process manager taking one" do
       message =
         refuse_contract("ReceivedTakenWrong", """
-          consumes "rehmed.visit.closed.v1", as: :visit_closed_elsewhere do
+          subscribe "rehmed.visit.closed.v1", as: :visit_closed_elsewhere do
             field :visit_id, :id
           end
 

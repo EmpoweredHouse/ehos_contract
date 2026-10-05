@@ -32,7 +32,7 @@ by a module with `use <Contract>, <kind>: :name`. Pick the kind by what the reac
 - A read model is the client's state, projected. It holds no decision: a rule about what may happen
   belongs to a unit's invariant, never to a projection someone reads before deciding.
 - An event of a sibling contract is taken through `consumes Sibling, [:event]` (K1, X5). An event of
-  another application arrives through `consumes "<name>.vN"` with the fields it reads (D11), into an
+  another application arrives through `subscribe "<name>.vN"` with the fields it reads (D11), into an
   inbox and never into this log (`EhOsContract.Inbox`), so **only a policy takes it** (`D12`): a
   read model, an effect or a process manager that needs it takes the event the policy's command
   records. Its `delivery:` changes nothing for that event — the inbox runs it in the transaction that

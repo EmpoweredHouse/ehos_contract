@@ -10,7 +10,7 @@ defmodule BusRig.Stock do
 
   use EhOsContract.Contract, domain: BusRig.Warehouse, context: :stock
 
-  consumes "bus_rig_shop.order.placed.v1", as: :order_placed do
+  subscribe "bus_rig_shop.order.placed.v1", as: :order_placed do
     field :order_id, :id
     field :total, :integer
   end

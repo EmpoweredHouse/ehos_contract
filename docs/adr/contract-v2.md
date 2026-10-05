@@ -237,6 +237,13 @@ scenario        description!   scope · actor
 > or another system keeps, outside this log — and contracts point at it by that identity; EM2's "reference data"
 > was a narrower word for the same declaration.
 
+> **5 October 2026, plan N2 — `consumes` for a sibling, `subscribe` for another application.** `consumes` named two
+> mechanisms: a sibling contract's events, read from this log (`consumes Module, [:event]`), and another
+> application's published event, taken into an inbox by a policy only (`consumes "<name>", as: …`, D11, D12). The
+> second is now `subscribe "rehmed.visit.closed.v1", as: :visit_closed do … end`, the word its capability,
+> `<name>.subscribe`, already used; `consumes` takes a module only. The examples below that write `consumes "<name>"`
+> are left as written.
+
 ### 4.3 Field types and options
 
 - Built-in types: `:id :string :integer :decimal :boolean :date :timestamp {:enum, [...]} {:list, t}`, plus

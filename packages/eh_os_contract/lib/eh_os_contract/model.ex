@@ -75,9 +75,9 @@ defmodule EhOsContract.Model do
           %{kind: :command, name: :record_payment, roles: ["rehmed.reception"], scope: nil}}
 
   **One more, which is the application's: `<name>.subscribe`** for each event it
-  consumes from another application and a policy handles (D11, `eh-os` D-41), under
+  subscribes to from another application and a policy handles (D11, `eh-os` D-41), under
   the publisher's name
-  without its version — `consumes "rehmed.visit.closed.v1"` asks for
+  without its version — `subscribe "rehmed.visit.closed.v1"` asks for
   `rehmed.visit.closed.subscribe` — with the event's name in the contract and no
   roles: EHOS grants it to the application per environment, never to a person, and
   the transport delivers by the grant. Nothing in this engine asks for it.

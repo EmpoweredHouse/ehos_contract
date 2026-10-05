@@ -59,6 +59,12 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Changed — a host has to act
 
+- **N2: another application's event is `subscribe`d to, not `consumes`d.** `consumes "rehmed.visit.closed.v1",
+  as: :visit_closed do … end` no longer compiles; write `subscribe "rehmed.visit.closed.v1", as: :visit_closed do
+  … end`, the word its capability `<name>.subscribe` already used. `consumes` takes a sibling contract's module only
+  and reads its events from this log; a published name given to it is refused by its schema. D11 says
+  `subscribe`, and with no list of events to take, it no longer refuses one. The model is unchanged, so **no
+  version moves**.
 - **N1: an entity declares `identity`, and the library injects it.** `entity :service, "Usługa", context:
   :configuration, identified_by: :service_id` with a `field :service_id, :id` no longer compiles; write
   `identity: :service_id` and drop the field, which the library adds first among the entity's fields as a

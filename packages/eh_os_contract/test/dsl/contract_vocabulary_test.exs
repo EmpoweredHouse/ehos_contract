@@ -88,6 +88,8 @@ defmodule EhOsContract.ContractVocabularyTest do
         [:domain_service, :function, :rule] => [:name, :label, :examples, :source],
         [:consumes] => [:from, :events, :as],
         [:consumes, :field] => @field,
+        [:subscribe] => [:from, :as],
+        [:subscribe, :field] => @field,
         [:publish] => [:name, :as, :from, :fields, :idempotent_on],
         [:process] => [:name, :label, :correlate, :accountable, :source],
         [:process, :stage] => [:name, :label],

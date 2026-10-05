@@ -841,28 +841,46 @@ defmodule EhOsContract.Contract.Dsl do
     ]
   }
 
+  # Plan N2: two mechanisms, two words. `consumes` reads a sibling contract's events
+  # from this log; `subscribe` takes another application's published event into an
+  # inbox (D12). Both build a `Consumes`, so the rules and the model, which already
+  # told them apart by `from`, read one collection as before.
   @consumes %Spark.Dsl.Entity{
     name: :consumes,
-    describe:
-      "Events born elsewhere: a sibling contract's (a module), or another application's " <>
-        "published event (its name, with the fields read).",
+    describe: "A sibling contract's events, read from this log.",
     target: Consumes,
     args: [:from, {:optional, :events}],
     no_depend_modules: [:from],
+    # Fields and an atom `as:` are refused by K1, which says why, rather than by the
+    # schema, which would only say that `field` is undefined.
     entities: [fields: [@field]],
     schema: [
-      from: [
-        type: {:or, [:atom, :string]},
-        required: true,
-        doc:
-          "The sibling contract, or the published name, versioned as `publish as:` is, " <>
-            "like `\"my-shop.entry.recorded.v1\"`."
-      ],
+      from: [type: :atom, required: true, doc: "The sibling contract."],
       events: [type: {:wrap_list, :atom}, default: [], doc: "The sibling contract's events."],
       as: [
         type: {:or, [:atom, :keyword_list]},
-        doc: "A published event's local name, or renames of a sibling's events, `[old: :new]`."
+        doc: "Renames of the sibling's events, `[old: :new]`."
       ]
+    ]
+  }
+
+  @subscribe %Spark.Dsl.Entity{
+    name: :subscribe,
+    describe:
+      "Another application's published event, taken into an inbox by a policy, with the " <>
+        "fields this contract reads.",
+    target: Consumes,
+    args: [:from],
+    entities: [fields: [@field]],
+    schema: [
+      from: [
+        type: :string,
+        required: true,
+        doc:
+          "The published name, versioned as `publish as:` is, like " <>
+            "`\"my-shop.entry.recorded.v1\"`."
+      ],
+      as: [type: :atom, doc: "The event's name in this contract."]
     ]
   }
 
@@ -1146,6 +1164,7 @@ defmodule EhOsContract.Contract.Dsl do
                   @query,
                   @domain_service,
                   @consumes,
+                  @subscribe,
                   @publish,
                   @process,
                   @scenario

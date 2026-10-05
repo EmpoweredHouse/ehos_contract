@@ -9,7 +9,7 @@ defmodule EhOsContract.Contract.Generate do
   | --- | --- |
   | `C.Commands.RecordPayment` | a command |
   | `C.Events.PaymentRecorded` | an event of a unit |
-  | `C.Received.VisitClosed` | `consumes "<name>", as: :visit_closed`, with the fields declared there |
+  | `C.Received.VisitClosed` | `subscribe "<name>", as: :visit_closed`, with the fields declared there |
   | `C.Aggregates.VisitSettlement.State`, `C.Dcbs.*.State`, `C.ProcessManagers.*.State` | a state |
   | `C.ReadModels.DailyTotals.Row` | a read model's fields |
   | `C.Queries.DailyTotalsFor` | a query's parameters |

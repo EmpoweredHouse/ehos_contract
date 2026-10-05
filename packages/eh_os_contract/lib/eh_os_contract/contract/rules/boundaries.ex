@@ -27,11 +27,11 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
     keeps the underscore the pattern always allowed, so a domain named `:dispatch_rig`
     still publishes. The domain's `name:` is held to the same segment by the domain
     (`EhOsContract.Domain.Rules`), so the namespace is never more than one.
-  - `consumes "<name>"` names such a versioned name, gives it a local name with
-    `as:`, and lists the fields it reads; it lists no events, since the name is one.
+  - `subscribe "<name>"` names such a versioned name, gives it a local name with
+    `as:`, and lists the fields it reads.
 
   **D12, another application's event is a policy's.** An event received through
-  `consumes "<name>"` arrives in an inbox and never enters this log
+  `subscribe "<name>"` arrives in an inbox and never enters this log
   (`EhOsContract.Inbox`), so only a policy takes it: a read model is rebuilt from the
   log, an effect's job and a process manager read theirs from it, and none of them
   would ever see it. One that reacts to such an event takes what a policy's command
@@ -222,26 +222,19 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
   end
 
   defp published(consumes) do
-    where = "D11: consumes #{inspect(consumes.from)}"
+    where = "D11: subscribe #{inspect(consumes.from)}"
 
     as =
       if is_atom(consumes.as) and consumes.as != nil,
         do: [],
         else: [{"#{where} needs as: the name the event has in this contract", consumes}]
 
-    events =
-      if consumes.events == [],
-        do: [],
-        else: [
-          {"#{where} lists events; a published name is one event, read by its fields", consumes}
-        ]
-
     fields =
       if consumes.fields == [],
         do: [{"#{where} lists no fields; declare the ones this contract reads", consumes}],
         else: []
 
-    as ++ events ++ fields ++ name(where, consumes.from, consumes)
+    as ++ fields ++ name(where, consumes.from, consumes)
   end
 
   defp name(where, name, declaration) do

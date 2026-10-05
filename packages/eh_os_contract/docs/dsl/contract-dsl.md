@@ -77,6 +77,8 @@ One process, and everything born in it.
      * returns
  * [consumes](#contract-consumes)
    * field
+ * [subscribe](#contract-subscribe)
+   * field
  * [publish](#contract-publish)
  * [process](#contract-process)
    * stage
@@ -1731,7 +1733,7 @@ consumes from, events \\ nil
 ```
 
 
-Events born elsewhere: a sibling contract's (a module), or another application's published event (its name, with the fields read).
+A sibling contract's events, read from this log.
 
 ### Nested DSLs
  * [field](#contract-consumes-field)
@@ -1743,13 +1745,13 @@ Events born elsewhere: a sibling contract's (a module), or another application's
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`from`](#contract-consumes-from){: #contract-consumes-from .spark-required} | `atom \| String.t` |  | The sibling contract, or the published name, versioned as `publish as:` is, like `"my-shop.entry.recorded.v1"`. |
+| [`from`](#contract-consumes-from){: #contract-consumes-from .spark-required} | `atom` |  | The sibling contract. |
 | [`events`](#contract-consumes-events){: #contract-consumes-events } | `atom \| list(atom) \| keyword` | `[]` | The sibling contract's events. |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`as`](#contract-consumes-as){: #contract-consumes-as } | `atom \| keyword` |  | A published event's local name, or renames of a sibling's events, `[old: :new]`. |
+| [`as`](#contract-consumes-as){: #contract-consumes-as } | `atom \| keyword` |  | Renames of the sibling's events, `[old: :new]`. |
 
 
 ### contract.consumes.field
@@ -1780,6 +1782,70 @@ One field of a state, a command, an event or a read model's row.
 | [`subject`](#contract-consumes-field-subject){: #contract-consumes-field-subject } | `atom` |  | The domain subject this identifier field identifies. |
 | [`default`](#contract-consumes-field-default){: #contract-consumes-field-default } | `any` |  | The initial value; only in a state. |
 | [`issued_by`](#contract-consumes-field-issued_by){: #contract-consumes-field-issued_by } | `atom` |  | The domain external that gives this value, e.g. a number another system assigns. |
+
+
+
+
+
+
+
+
+
+
+### contract.subscribe
+```elixir
+subscribe from
+```
+
+
+Another application's published event, taken into an inbox by a policy, with the fields this contract reads.
+
+### Nested DSLs
+ * [field](#contract-subscribe-field)
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`from`](#contract-subscribe-from){: #contract-subscribe-from .spark-required} | `String.t` |  | The published name, versioned as `publish as:` is, like `"my-shop.entry.recorded.v1"`. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`as`](#contract-subscribe-as){: #contract-subscribe-as } | `atom` |  | The event's name in this contract. |
+
+
+### contract.subscribe.field
+```elixir
+field name, type
+```
+
+
+One field of a state, a command, an event or a read model's row.
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#contract-subscribe-field-name){: #contract-subscribe-field-name .spark-required} | `atom` |  | The field's name. |
+| [`type`](#contract-subscribe-field-type){: #contract-subscribe-field-type .spark-required} | `any` |  | A built-in type or a value of the domain. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`optional`](#contract-subscribe-field-optional){: #contract-subscribe-field-optional } | `boolean` | `false` | Whether the field may be absent. |
+| [`label`](#contract-subscribe-field-label){: #contract-subscribe-field-label } | `String.t` |  | What the business calls it. |
+| [`personal`](#contract-subscribe-field-personal){: #contract-subscribe-field-personal } | `atom` |  | The field holding the identifier of whose data this is. |
+| [`subject`](#contract-subscribe-field-subject){: #contract-subscribe-field-subject } | `atom` |  | The domain subject this identifier field identifies. |
+| [`default`](#contract-subscribe-field-default){: #contract-subscribe-field-default } | `any` |  | The initial value; only in a state. |
+| [`issued_by`](#contract-subscribe-field-issued_by){: #contract-subscribe-field-issued_by } | `atom` |  | The domain external that gives this value, e.g. a number another system assigns. |
 
 
 

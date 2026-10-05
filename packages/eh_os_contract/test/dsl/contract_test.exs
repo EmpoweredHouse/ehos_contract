@@ -317,11 +317,11 @@ defmodule EhOsContract.ContractTest do
           domain: EhOsContract.ContractTest.ClinicDomain,
           context: :settlement
 
-        consumes "rehmed.visit.closed.v1", as: :closed_elsewhere do
+        subscribe "rehmed.visit.closed.v1", as: :closed_elsewhere do
           field :visit_id, :id
         end
 
-        consumes "rehmed.visit.opened.v1", as: :opened_elsewhere do
+        subscribe "rehmed.visit.opened.v1", as: :opened_elsewhere do
           field :visit_id, :id
         end
 

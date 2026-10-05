@@ -22,7 +22,7 @@ defmodule EhOsContract.Auth.TestingTest do
     @moduledoc false
     use EhOsContract.Contract, domain: Domain, context: :stock
 
-    consumes "other_shop.order.placed.v1", as: :order_placed do
+    subscribe "other_shop.order.placed.v1", as: :order_placed do
       field(:order_id, :id)
     end
 

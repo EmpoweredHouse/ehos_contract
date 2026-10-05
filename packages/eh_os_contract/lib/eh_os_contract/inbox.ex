@@ -1,7 +1,7 @@
 defmodule EhOsContract.Inbox do
   @moduledoc """
   Where another application's published event arrives (v2 §16, D12): one durable
-  consumer on `EhOsContract.Bus` per `consumes "<name>"` that a policy handles
+  consumer on `EhOsContract.Bus` per `subscribe "<name>"` that a policy handles
   (`EhOsContract.Implementations.inboxes/0`). The event never enters this
   application's log; what its policies decide does.
 
@@ -42,7 +42,7 @@ defmodule EhOsContract.Inbox do
   no log here, no actor and no time of its own: the publisher's are not sent.
 
   **What is delivered again.** A message whose payload does not fit the fields the
-  contract consumes, and one whose policy raises, rolls back and is answered `:nack`,
+  subscription declares, and one whose policy raises, rolls back and is answered `:nack`,
   logged with the message's name and id and the kind of failure, never a value:
   nothing is lost while the subscriber's declaration or code is put right, and the
   transport's own limit on deliveries (JetStream's `MaxDeliver`) is what stops one
