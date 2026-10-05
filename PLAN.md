@@ -83,7 +83,7 @@ października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każd
   — DD”. Kolejno:
   1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138). **Użytkownik:** merge #139 (N3, na `main`), potem #142 (W1, na
      #139).
-  2. **Asystent:** W2 w toku na `engine/w2-day-tags` (na W1); dalej reszta fali 1 w dowolnej kolejności. Start
+  2. **W2 gotowe na `engine/w2-day-tags`** (na W1; push i PR na polecenie). **Asystent:** dalej reszta fali 1 w dowolnej kolejności. Start
      etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; potwierdzenie etykiet timerów sandboxa — „N3 — co wyszło”); po każdej fali „dalej czy
@@ -497,7 +497,7 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | N2 | 1 | `subscribe "<nazwa>"` | DD0 | ☑ #138 |
 | N3 | 1 | etykieta timera (EP6) | DD0 | ◐ `dsl/n3-timer-label`, PR #139 |
 | W1 | 1 | zapis `schema_version` | DD0 | ◐ `engine/w1-schema-version`, PR #142 (na #139) |
-| W2 | 1 | tagi dnia przy dopisie | DD0 | ◐ `engine/w2-day-tags` (na W1) |
+| W2 | 1 | tagi dnia przy dopisie | DD0 | ◐ `engine/w2-day-tags` (na W1), gotowe do PR-a |
 | W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ☐ |
 | W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ☐ |
 | T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ☐ |
@@ -964,6 +964,39 @@ innym aplikacjom).
 `match:` (jedna wizyta naraz na specjalistę) — pyta o dzień; miesiąc wróci ze swoim czytelnikiem. *Odrzucone:* dzień i
 miesiąc od razu (dwa tagi więcej na każde pole daty bez czytelnika; za to wiersze sprzed dodania miesiąca go nie
 będą miały — to koszt świadomie przyjęty).
+
+### W2 — co wyszło (5 października)
+
+Gałąź `engine/w2-day-tags` (na W1). Dispatch dokłada przy dopisie tag `<pole>.day:YYYY-MM-DD` dla każdego wymaganego,
+nieosobowego pola `:date` lub `:timestamp` (albo wartości domeny na nim opartej), obok tagów `:id`. Data ma swój
+dzień; znacznik czasu — dzień, na który przypada w strefie domeny. Nic tych tagów jeszcze nie czyta (czytelnik: B2).
+Rig `DispatchRig` rejestruje `:day_closed` (jedno `event-without-consumer` więcej w `check` silnika, 74 → 75) i ma
+wartość `:business_day`.
+
+**Decyzja użytkownika (5 października), po przeglądzie: dzień w strefie domeny, nie UTC.** Przykład z Rehmed: wizyta
+o 00:30 w Warszawie 6 października to 22:30 UTC 5 października — w dniu UTC nie zderzyłaby się w B2 z wizytą o 9:00
+6 października, a zapisanego tagu nie da się poprawić. Domena deklaruje `time_zone: "Europe/Warsaw"` (domyślnie
+`"Etc/UTC"`). *Odrzucone:* UTC, jak w decyzji przed W2 (dzień lokalny wymagałby innego tagu, którego historia nie
+będzie miała); odsunięcie W2 do B2 (historia sprzed B2 bez tagów).
+
+- **Rozstrzygnięcia asystenta (mechanika):** strefę czyta baza stref, którą konfiguruje host (`config :elixir,
+  :time_zone_database`) — pakiet nie przywozi żadnej, `tz` tylko w jego testach i w hoście sandboxa. *Odrzucone:*
+  `tzdata` (pobiera dane przez sieć w czasie działania), twarda zależność pakietu od `tz` (wybór za hosta). **D13**
+  (L2) odmawia strefy, której skonfigurowana baza nie zna, także gdy moduł bazy nie istnieje; **start węzła** odmawia,
+  gdy baza, z którą działa, nie zna strefy domeny (`Registry.load!`). Domena bez strefy zachowuje wersję; trzy domeny
+  sandboxa (Rehmed, TaxVision, AppUnite) są w Warszawie.
+- **Przegląd** (dwa przebiegi). Pierwszy (tagi): bez błędów; dane osobowe nieoznaczone `personal:` są już jawnie w
+  payloadzie, tag ich nie odsłania bardziej; ryzyko dnia UTC → decyzja wyżej; brakujący test wartości opartej na dacie
+  dodany; wpis CHANGELOG z działaniem hosta („ustaw `time_zone:` przed aktualizacją”). Drugi (strefa, `539f0ec`): bez
+  błędów; naprawione w `5c3a619` — sprawdzenie strefy przy starcie, D13 przy brakującym module bazy; bez zmian — alias
+  UTC (`"UTC"`) przesuwa wersję, choć dni są te same; niezaładowana domena liczy dni w UTC (v2 §8). Próba odwrotna
+  każdej poprawki: pada tylko jej test.
+- **Dla B2:** zdarzenia sprzed W2 (aplikacja AppUnite, `ehos-ledger`) nie mają tagów dnia — B2 potrzebuje reguły na
+  to (odmowa kubełka nad historią sprzed W2 albo udokumentowana data odcięcia).
+- **Brama:** EXIT=0; `check` sandboxa 0 / 29 / 10, silnika 0 / 75 / 6; sandbox 194, silnik 1280, web 51, auth 286 +
+  1 property.
+- **Dla aplikacji AppUnite i `ehos-ledger`:** ustawić `time_zone:` domeny **przed** podbiciem; strefa inna niż UTC
+  wymaga `{:tz, "~> 0.28"}` i `config :elixir, :time_zone_database, Tz.TimeZoneDatabase`.
 
 ## Dopisek 4 października (3) — pokrycie ESDM po EP1–EP5 i #99
 
