@@ -1,0 +1,1 @@
+Merge of engine/w4-decision (88a336d, with W3 1a0f5fb and main #144) into T1. Only conflict: CHANGELOG, two entries added at one place (T1 D9, #144 blank labels), both kept. T1 code untouched; review note on e026b50 stands. Gate at 50774e6: EXIT=0; check 0/29/10, 0/75/6; sandbox 194, engine 1340, web 52, auth 286+1 property.
