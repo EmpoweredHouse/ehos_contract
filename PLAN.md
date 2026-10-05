@@ -527,7 +527,7 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ◐ `engine/w3-trace-core`, PR #145 |
 | W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ◐ `engine/w4-decision`, PR #146 (na #145) |
 | T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ◐ `engine/t1-supplied-by-host` (na W4), gotowe do PR-a |
-| T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☐ |
+| T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ◐ `engine/t1-supplied-by-host` (z T1), gotowe do PR-a |
 | X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ☐ |
 | S4 | 1 | `transition-without-scenario` | DD0 | ☐ |
 | ID1 | 2 | `id:` kontraktu deklarowany | N1 | ☐ |
@@ -1133,7 +1133,34 @@ komendzie; strona kontraktu pisze „supplied by the host”; D9 rezerwuje `:sup
   auth 286 + 1 property. Pułapka po drodze: nowa opcja DSL-a wymaga `mix spark.formatter` i pinu słownika
   (`contract_vocabulary_test.exs`) — brama padła na obu, poprawione w pierwszym commicie.
 - **Dla aplikacji AppUnite i `ehos-ledger`:** nic, dopóki żaden kontrakt nie deklaruje `supplied_by:`; inwariant domeny
-  o nazwie `:supplied` trzeba przemianować. **Następne: T1s** — sandbox (`p1_reported`, `total`) i supplier hosta.
+  o nazwie `:supplied` trzeba przemianować.
+- **Merge'e w dół stosu (5 października):** W3 dostał w innej sesji poprawkę CodeRabbita (`c889a33`) i `main` z #144;
+  zmergowane do W4 (`88a336d`, konflikt tylko w Handoffie) i do T1 (`50774e6`, konflikt tylko w CHANGELOG — dwa wpisy
+  w jednym miejscu, oba zostają). Brama EXIT=0 na obu.
+
+### T1s — co wyszło (5 października)
+
+Na tej samej gałęzi co T1 (decyzja użytkownika: jeden PR „T1+T1s”). Rehmed: `close_visit_clinically.p1_reported`
+(flaga P1 usługi, `AGG-15`, rozstrzyga, czy kody są wymagane) i `close_settlement.total` (to, do czego mają się
+sumować płatności) — `supplied_by: :host`. Przesuwa wersję `ClinicalDocumentation` i `Settlement`; `check` sandboxa
+bez zmian (0 / 29 / 10). Testy przez `dispatch/3` (kod hosta) nietknięte — dają oba pola same.
+
+- **Rozstrzygnięcie asystenta (mechanika), odejście od projektu:** supplier to `Rehmed.Supplier` w drzewie Rehmedu,
+  nie `sandbox/lib/eh_os_contract_host/supplier.ex` — tylko Rehmed ma pola hosta, a zastępnik systemów klienta należy
+  do jego drzewa, obok efektu zastępującego rejestr P1. Jawny zastępnik (sandbox nie buduje integracji): tabela per
+  wizyta — flaga P1 i suma według płatnika (`P-31`: część pacjenta, gdy płatnik pokrywa wizytę częściowo); nieznana
+  wizyta, płatnik, inny kontrakt → `{:error, _}`, 503. *Odrzucone:* supplier hosta kierujący po kontrakcie (bez
+  drugiego kontraktu z polem hosta — kształt bez czytelnika); czytanie logu przez hosta (sandbox nie ma katalogu usług
+  ani cennika, z których liczyłby odpowiedź).
+- **`rehmed_authorization_test.exs`:** `p1_reported` i `total` wysłane → 422 `supplied`, nic nie zapisane; bez nich
+  → wartość hosta w zdarzeniu; nieznana wizyta → 503, nic nie zapisane. Test pól odrzucanych przed autoryzacją używa
+  `payer_id` (`total` nie jest już wołającego).
+- **Przegląd** (jeden, obie soczewki — mały commit sandboxa). 2 średnie, naprawione (`{code}`): suma zastępnika
+  wbrew `P-31` (wizyta mieszana odrzucona na `payment_lines_sum_to_total`), brak testu `total` przez Plug (próba
+  odwrotna: bez `supplied_by:` na `total` pada nowy test i test pól sprzed autoryzacji, który nie wysyła już
+  `total`). Niskie, naprawione: zastępnik rzucał (500) zamiast `{:error, _}` dla innych kształtów żądania; brak
+  asercji „nic nie zapisane”; zastrzeżenie o wizytach z hosta dev w moduledocu; dwa nieaktualne zdania.
+- **Brama:** EXIT=0; `check` 0 / 29 / 10, 0 / 75 / 6; sandbox 196, silnik 1340, web 52, auth 286 + 1 property.
 
 ### Przed T1 — decyzje użytkownika (5 października)
 
