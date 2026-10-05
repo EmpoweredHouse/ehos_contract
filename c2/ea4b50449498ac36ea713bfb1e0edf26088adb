@@ -1,0 +1,1 @@
+Merge of engine/w4-decision (680b637: main with #145 and #147) into T1. Conflicts only in PLAN.md (progress table, handoff), resolved with W3 merged, W4 #146, T1+T1s #148 on #146. T1/T1s code untouched; reviews on e026b50 and e3f46aa stand. Gate at c2ea4b5: EXIT=0; check 0/29/10, 0/75/6; sandbox 196, engine 1340, web 52, auth 286+1 property.
