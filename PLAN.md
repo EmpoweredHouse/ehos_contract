@@ -82,8 +82,8 @@ nie jest zaczęty; pierwszy jest N1 (`final:`, `target`, `identity` encji).
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
   1. **Użytkownik:** push i PR `docs/dd0-programme` (DD0), przed nim `pre-pr-review` — na polecenie.
-  2. **N1 — PR #137** (na #135); **N2 gotowe na `dsl/n2-subscribe`** (na N1; push i PR na polecenie). **Asystent:**
-     następne N3 (najpierw decyzja: etykieta timera czy zdanie z deklaracji), potem reszta fali 1 w dowolnej kolejności. Start etapu: ◐ i gałąź w tabeli; koniec:
+  2. **N1 — PR #137** (na #135); **N2 — PR #138** (na #137). **Asystent:** N3 w toku na
+     `dsl/n3-timer-label` („Przed N3”), potem reszta fali 1 w dowolnej kolejności. Start etapu: ◐ i gałąź w tabeli; koniec:
      „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; etykieta timera albo zdanie z deklaracji przed N3); po każdej fali „dalej czy
@@ -494,8 +494,8 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 |---|---|---|---|---|
 | DD0 | 0 | program i postęp w `PLAN.md` | — | ◐ `docs/dd0-programme`, PR #135 |
 | N1 | 1 | `final:`, `target`, `identity` encji, definicja encji | DD0 | ◐ `dsl/n1-names`, PR #137 (na #135) |
-| N2 | 1 | `subscribe "<nazwa>"` | DD0 | ◐ `dsl/n2-subscribe` (na N1), gotowe do PR-a |
-| N3 | 1 | etykieta timera (EP6) | DD0 | ☐ |
+| N2 | 1 | `subscribe "<nazwa>"` | DD0 | ◐ `dsl/n2-subscribe`, PR #138 (na #137) |
+| N3 | 1 | etykieta timera (EP6) | DD0 | ◐ `dsl/n3-timer-label` (na N2) |
 | W1 | 1 | zapis `schema_version` | DD0 | ☐ |
 | W2 | 1 | tagi dnia przy dopisie | DD0 | ☐ |
 | W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ☐ |
@@ -855,6 +855,15 @@ na zielonej bramie, każde z wpisem w CHANGELOG („a host has to act”, przesu
   silnik 1261, web 51, auth 285 + 1 property.
 - **Dla aplikacji AppUnite i `ehos-ledger`:** `terminal: true` na statusie → `final: true`; `scope` w scenariuszu →
   `target`; `identified_by:` + pole → `identity:` (+ `issued_by:` na encji).
+
+### Przed N3 — decyzje użytkownika (5 października)
+
+**Etykieta timera — wymagana, pozycyjna, i nazywa cel, nie czas:** `timer :documentation_due, "Termin
+dokumentacji", wait: {24, :hour}, …`. Czas mówi deklaracja (`wait:`/`at:`), a strony pokazują go obok etykiety, więc
+etykieta nie dryfuje, gdy ktoś zmieni `wait:` z doby na dwie. *Odrzucone:* dowolny tekst klienta, jak w decyzji z
+4 października („Doba na dokumentację” — dryfuje względem `wait:`); bez etykiety, ze zdaniem składanym przez silnik
+z `wait:`/`at:` i `issues:`, jak przy obietnicy (N3 stałby się etapem stron i grafu, a timer dalej nie miałby
+słowa klienta). Wytyczna „cel, nie czas” idzie do skilla `write-reaction`; sprawdzić jej nie da się.
 
 ### N2 — co wyszło (5 października)
 
