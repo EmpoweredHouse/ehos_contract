@@ -142,6 +142,9 @@ it. What was published before is asked of its owner (`eh-os` D-03).
   over, and nothing refuses it at compile time for a local event (`F4` only refuses them optional
   or personal; `X6` checks a sibling's): check each event it names carries them.
   Its state holds no personal data (`F7`): it lives outside the log, where erasure cannot reach.
+- A timer's label is required and names what the timer is for, "Termin dokumentacji", never how
+  long it waits, "Doba na dokumentację": `wait:` or `at:` says when, the pages print it beside the
+  label, and a label that says it drifts the day someone changes `wait:` (plan N3).
 - A timer fires `wait:` after the event that set it, or `at:` a `:timestamp` of its state. The
   firing is an event in the log, so a timer fired twice dispatches once, and a replay recomputes the
   same timers.

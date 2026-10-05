@@ -53,7 +53,7 @@ defmodule EhOsContract.CheckCompletenessContractTest do
         process_manager :reminder, "Przypomnienie" do
           correlate :visit_id
           starts_on :booked, sets: :remind
-          timer :remind, wait: {1, :day}
+          timer :remind, "Remind", wait: {1, :day}
         end
 
         process_manager :follow_up, "Kontrola" do

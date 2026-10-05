@@ -68,7 +68,7 @@ defmodule EhOsContract.ContractVocabularyTest do
         [:process_manager, :state, :field] => @field,
         [:process_manager, :starts_on] => [:event, :sets, :issues],
         [:process_manager, :on] => [:event, :issues, :sets, :cancels],
-        [:process_manager, :timer] => [:name, :wait, :at, :issues, :source],
+        [:process_manager, :timer] => [:name, :label, :wait, :at, :issues, :source],
         [:process_manager, :ends_on] => [:event],
         # Plan EP2: a reaction's rules, which a scenario illustrates.
         [:policy, :constraint] => [:name, :label, :source],

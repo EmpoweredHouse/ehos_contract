@@ -124,9 +124,9 @@ defmodule EhOsContract.ContractConsumersTest do
 
             starts_on :visit_opened, sets: :nudge
             on :reminder_due, issues: :call_patient, cancels: :later
-            timer :reminder_due, wait: {1, :day}, at: :due_on, issues: :remind
-            timer :deadline, at: :due_on
-            timer :idle
+            timer :reminder_due, "Reminder due", wait: {1, :day}, at: :due_on, issues: :remind
+            timer :deadline, "Deadline", at: :due_on
+            timer :idle, "Idle"
             ends_on :visit_forgotten
           end
         """)
@@ -199,8 +199,8 @@ defmodule EhOsContract.ContractConsumersTest do
 
                    starts_on :visit_closed, sets: [:chase, :at_time]
                    on :chase, issues: :remind, cancels: :at_time
-                   timer :chase, wait: {24, :hour}, issues: :remind
-                   timer :at_time, at: :remind_at
+                   timer :chase, "Chase", wait: {24, :hour}, issues: :remind
+                   timer :at_time, "At time", at: :remind_at
                    ends_on :reminded
                  end
                """)

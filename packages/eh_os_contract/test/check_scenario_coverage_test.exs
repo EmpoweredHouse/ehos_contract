@@ -28,7 +28,7 @@ defmodule EhOsContract.CheckScenarioCoverageTest do
         process_manager :chase, "Pogoń" do
           correlate :visit_id
           starts_on :booked, sets: :later
-          timer :later, wait: {1, :day}, issues: :remind
+          timer :later, "Later", wait: {1, :day}, issues: :remind
           ends_on :reminded
         end
 

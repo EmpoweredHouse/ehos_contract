@@ -195,7 +195,7 @@ defmodule EhOsContract.Paths do
     timers =
       for pm <- model.process_managers, timer <- pm.timers, command <- timer.issues do
         %{
-          from: ref(:timer, timer.name, nil),
+          from: ref(:timer, timer.name, timer.label),
           via: ref(:process_manager, pm.name, pm.label),
           to: ref(:command, command, command_label(model, command)),
           mode: :async,

@@ -43,7 +43,7 @@ defmodule EhOsContract.ReactionRulesTest do
     process_manager :chase, "Pogoń" do
       correlate :visit_id
       starts_on :closed, sets: :due
-      timer :due, wait: {1, :day}, issues: :report
+      timer :due, "Due", wait: {1, :day}, issues: :report
       ends_on :reported
       invariant :one_timer, "Wizyta ma najwyżej jedno przypomnienie naraz"
       constraint :business_days, "Przypomnienie przychodzi w dzień roboczy"

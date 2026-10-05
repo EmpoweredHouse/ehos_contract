@@ -45,7 +45,7 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
 
       starts_on :paid, sets: :later
       on :paid
-      timer :later, at: :remind_at, issues: :remind
+      timer :later, "Later", at: :remind_at, issues: :remind
       ends_on :reminded
     end
 
@@ -186,7 +186,7 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
           process_manager :chase, "Pogoń" do
             correlate :visit_id
             starts_on :paid, sets: :later
-            timer :later, wait: {1, :day}
+            timer :later, "Later", wait: {1, :day}
           end
 
           scenario "płatność — termin" do

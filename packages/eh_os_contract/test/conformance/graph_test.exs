@@ -22,7 +22,7 @@ defmodule EhOsContract.GraphTest do
     assert diagram =~
              ~s(process_manager_first_deposit_chase[["Chase an account's first deposit"]]:::process_manager)
 
-    assert diagram =~ ~s|timer_first_deposit_due(["first_deposit_due"]):::timer|
+    assert diagram =~ ~s|timer_first_deposit_due(["First deposit due"]):::timer|
     assert diagram =~ ~s(effect_notify_branch>"Tell the branch an account was flagged"]:::effect)
     assert diagram =~ "classDef command fill:#a7c7e7"
 

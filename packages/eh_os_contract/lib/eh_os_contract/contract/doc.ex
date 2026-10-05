@@ -60,7 +60,7 @@ defmodule EhOsContract.Contract.Doc do
     paragraphs([
       if(timer?,
         do:
-          "Fires on timer `#{callback}`#{timer_source(declaration, callback)} of #{word(kind)} " <>
+          "Fires on timer `#{callback}`#{timer_words(declaration, callback)} of #{word(kind)} " <>
             "`#{name}`#{label(declaration)}#{source(declaration)}.",
         else:
           "Reacts to `#{callback}`#{event_label(model, callback)}, for #{word(kind)} " <>
@@ -196,10 +196,10 @@ defmodule EhOsContract.Contract.Doc do
     do:
       "#{String.capitalize(word(kind))} `#{declaration.name}`#{label(declaration)}#{source(declaration)}."
 
-  defp timer_source(pm, name) do
+  defp timer_words(pm, name) do
     case Enum.find(pm.timers, &(&1.name == name)) do
-      %{source: source} when is_binary(source) -> " (source: #{source})"
-      _ -> ""
+      nil -> ""
+      timer -> "#{label(timer)}#{source(timer)}"
     end
   end
 

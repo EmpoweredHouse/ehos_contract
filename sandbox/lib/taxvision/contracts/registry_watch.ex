@@ -174,7 +174,7 @@ defmodule Taxvision.Contracts.RegistryWatch do
 
     starts_on :data_completeness_confirmed, sets: :next_month
     on :data_completeness_confirmed, sets: :next_month
-    timer :next_month, at: :check_at, issues: :check_registries
+    timer :next_month, "Termin sprawdzenia rejestrów", at: :check_at, issues: :check_registries
   end
 
   process :client, "Firma klienta: dane i zgodność z rejestrami", accountable: :accountant do

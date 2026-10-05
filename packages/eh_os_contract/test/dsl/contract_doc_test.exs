@@ -57,7 +57,7 @@ defmodule EhOsContract.ContractDocTest do
     process_manager :chase, "Pogoń" do
       correlate :visit_id
       starts_on :paid, sets: :due, issues: :remind
-      timer :due, wait: {1, :day}, issues: :remind, source: "H21"
+      timer :due, "Due", wait: {1, :day}, issues: :remind, source: "H21"
       ends_on :closed
       invariant :one_timer, "Jedno przypomnienie naraz"
     end
@@ -161,7 +161,7 @@ defmodule EhOsContract.ContractDocTest do
   test "a process manager's timer and reaction, an effect, a read model, a query, a service and evolve",
        %{model: model} do
     assert Doc.callback(model, :process_manager, :chase, :due) == """
-           Fires on timer `due` (source: H21) of process manager `chase` — "Pogoń".
+           Fires on timer `due` — "Due" (source: H21) of process manager `chase` — "Pogoń".
 
            May issue:
            - `remind` — "Przypomnienie"

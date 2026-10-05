@@ -391,7 +391,7 @@ defmodule EhOsContract.ContractScenariosTest do
             correlate :visit_id
             starts_on :payment_recorded, sets: :later
             on :reminded, cancels: :later
-            timer :later, wait: {1, :day}, issues: :remind
+            timer :later, "Later", wait: {1, :day}, issues: :remind
             ends_on :closed
           end
 
@@ -419,7 +419,7 @@ defmodule EhOsContract.ContractScenariosTest do
                    correlate :visit_id
                    starts_on :payment_recorded, sets: :later
                    on :reminded, cancels: :later
-                   timer :later, wait: {1, :day}, issues: :remind
+                   timer :later, "Later", wait: {1, :day}, issues: :remind
                    ends_on :closed
                  end
 

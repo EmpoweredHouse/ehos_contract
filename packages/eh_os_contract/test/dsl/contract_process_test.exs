@@ -298,7 +298,7 @@ defmodule EhOsContract.ContractProcessTest do
         #{@unit}
           process_manager :chase, "Pogoń", correlate: :visit_id do
             starts_on :visit_closed, sets: :reminder
-            timer :reminder, wait: {-1, :hour}
+            timer :reminder, "Reminder", wait: {-1, :hour}
             ends_on :visit_closed
           end
 

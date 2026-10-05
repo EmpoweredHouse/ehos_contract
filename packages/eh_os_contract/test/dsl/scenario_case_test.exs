@@ -50,7 +50,7 @@ defmodule EhOsContract.ScenarioCaseTest do
     process_manager :chase, "Pogoń" do
       correlate :visit_id
       starts_on :payment_recorded, sets: :later
-      timer :later, wait: {1, :day}, issues: :remind
+      timer :later, "Later", wait: {1, :day}, issues: :remind
       ends_on :closed
     end
 

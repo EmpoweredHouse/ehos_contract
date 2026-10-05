@@ -145,7 +145,7 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule Timer do
     @moduledoc false
-    defstruct [:name, :wait, :at, :source, issues: [], __spark_metadata__: nil]
+    defstruct [:name, :label, :wait, :at, :source, issues: [], __spark_metadata__: nil]
   end
 
   defmodule EndsOn do
@@ -683,9 +683,16 @@ defmodule EhOsContract.Contract.Dsl do
     name: :timer,
     describe: "A timer of a process manager: after a wait, or at a time in its state.",
     target: Timer,
-    args: [:name],
+    args: [:name, :label],
     schema: [
       name: [type: :atom, required: true, doc: "The timer's name."],
+      # Plan N3, the user's decision: required, and it names what the timer is for,
+      # "Termin dokumentacji", not how long it waits, which `wait:` or `at:` says.
+      label: [
+        type: :string,
+        required: true,
+        doc: "What the timer is for, as the business says it; `wait:` or `at:` says when."
+      ],
       wait: [type: :any, doc: "How long after it is set it fires, `{n, unit}`."],
       at: [type: :atom, doc: "The `:timestamp` field of the state it fires at."],
       issues: [type: {:wrap_list, :atom}, default: [], doc: "Commands it issues when it fires."],
