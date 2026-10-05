@@ -87,7 +87,16 @@ defmodule EhOsContract.Registry do
 
     # Plan W2: D13 asked the database configured when the domain compiled; a release
     # may run with another, or none, and then every append of a timestamp would raise.
-    for domain <- domains,
+    # A contract's domain is asked too when the scan did not find it — another
+    # application, or one `exclude:` drops — because dispatch tags with it all the same.
+    referenced =
+      for contract <- contracts,
+          domain = contract.__eh_os_contract_model__().domain,
+          Code.ensure_loaded?(domain),
+          function_exported?(domain, :__eh_os_contract_model__, 0),
+          do: domain
+
+    for domain <- Enum.uniq(domains ++ referenced),
         zone = domain.__eh_os_contract_model__().time_zone,
         not EhOsContract.Domain.time_zone_known?(zone) do
       raise ArgumentError,

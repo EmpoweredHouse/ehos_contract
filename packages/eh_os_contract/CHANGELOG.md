@@ -37,8 +37,9 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   configures (`config :elixir, :time_zone_database, Tz.TimeZoneDatabase`, with `{:tz, …}` among its
   dependencies): the package brings none, and **D13** refuses a zone that database does not know — also when the
   configured module is not there. A node that runs with another database than the domain compiled with, or none,
-  refuses to start, naming the domain and the zone, instead of raising on every append. Nothing reads the tags
-  yet. Only a domain that sets a zone moves its version.
+  refuses to start, naming the domain and the zone, instead of raising on every append; it asks the domain of
+  every contract it scans, also one in an application `applications:` does not list. Nothing reads the tags yet.
+  Only a domain that sets a zone moves its version.
 - **W1: a row of the log carries the schema version it was written with, and newer code's rows wait.**
   Dispatch writes the event's `schema_version:` into `schema_version`, where every row said 1 until now, the
   column's default. A row written with a newer version than the running code declares is never decoded with the
