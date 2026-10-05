@@ -1300,7 +1300,7 @@ A reaction of a running process manager to an event or its own timer.
 
 ### contract.process_manager.timer
 ```elixir
-timer name
+timer name, label
 ```
 
 
@@ -1315,6 +1315,7 @@ A timer of a process manager: after a wait, or at a time in its state.
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`name`](#contract-process_manager-timer-name){: #contract-process_manager-timer-name .spark-required} | `atom` |  | The timer's name. |
+| [`label`](#contract-process_manager-timer-label){: #contract-process_manager-timer-label .spark-required} | `String.t` |  | What the timer is for, as the business says it; `wait:` or `at:` says when. |
 ### Options
 
 | Name | Type | Default | Docs |

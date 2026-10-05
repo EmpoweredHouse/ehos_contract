@@ -52,7 +52,7 @@ defmodule EhOsContract.ContractGenerateTest do
 
       starts_on :payment_recorded, sets: :later
       on :visit_booked, issues: :record_payment
-      timer :later, wait: {1, :day}, issues: :record_payment
+      timer :later, "Later", wait: {1, :day}, issues: :record_payment
       ends_on :rebooked
     end
 

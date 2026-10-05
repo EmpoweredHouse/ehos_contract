@@ -96,7 +96,7 @@ defmodule EhOsContract.ContractNamesTest do
 
           process_manager :chase, "Pogoń", correlate: :visit_id do
             starts_on :visit_closed, sets: :visit_closed
-            timer :visit_closed, wait: {1, :day}
+            timer :visit_closed, "Visit closed", wait: {1, :day}
           end
 
           process :visit, "Wizyta" do

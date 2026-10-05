@@ -13,8 +13,9 @@ defmodule EhOsContract.SourcesTest do
   # The versions of `@unsourced` and `@domain_unsourced` computed by the library before
   # EP1 (origin/main at 0b7bc84), which a contract or domain without `source:` keeps.
   # The contract's moved once since, from 304120633fb2, with plan EP4: its effect's
-  # `idempotency` names a key and an owner, as every contract's with one does.
-  @unsourced_version "0233079a0430"
+  # `idempotency` names a key and an owner, as every contract's with one does; and
+  # from 0233079a0430 with plan N3: its timer has a label.
+  @unsourced_version "fbeab3316603"
   @domain_unsourced_version "6111225e8fc9"
 
   @sourced """
@@ -37,7 +38,7 @@ defmodule EhOsContract.SourcesTest do
     process_manager :chase, "Pogoń za zgłoszeniem", source: "P-09" do
       correlate :visit_id
       starts_on :visit_closed, sets: :due
-      timer :due, wait: {24, :hour}, issues: :report_visit, source: "H21"
+      timer :due, "Due", wait: {24, :hour}, issues: :report_visit, source: "H21"
       ends_on :visit_reported
     end
 
@@ -73,7 +74,7 @@ defmodule EhOsContract.SourcesTest do
     process_manager :chase, "Pogoń za zgłoszeniem" do
       correlate :visit_id
       starts_on :visit_closed, sets: :due
-      timer :due, wait: {24, :hour}, issues: :report_visit
+      timer :due, "Due", wait: {24, :hour}, issues: :report_visit
       ends_on :visit_reported
     end
 

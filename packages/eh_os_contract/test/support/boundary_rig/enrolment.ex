@@ -45,7 +45,7 @@ defmodule BoundaryRig.Enrolment do
   process_manager :course_review, "Review a course a month after it is defined" do
     correlate :course_id
     starts_on :course_defined, sets: :review
-    timer :review, wait: {1, :month}
+    timer :review, "Review", wait: {1, :month}
     ends_on :student_subscribed
   end
 

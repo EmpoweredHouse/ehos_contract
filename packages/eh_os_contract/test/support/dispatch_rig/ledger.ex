@@ -131,8 +131,8 @@ defmodule DispatchRig.Ledger do
     starts_on :account_opened, sets: :first_deposit_due
     on :deposited, cancels: :first_deposit_due, sets: :review
     on :interest_recorded, issues: :flag_account
-    timer :first_deposit_due, wait: {1, :day}, issues: :flag_account
-    timer :review, at: :review_at, issues: :flag_account
+    timer :first_deposit_due, "First deposit due", wait: {1, :day}, issues: :flag_account
+    timer :review, "Review", at: :review_at, issues: :flag_account
     ends_on :account_flagged
   end
 

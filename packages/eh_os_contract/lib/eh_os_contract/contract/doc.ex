@@ -51,23 +51,23 @@ defmodule EhOsContract.Contract.Doc do
 
   def callback(model, kind, name, callback) when kind in [:policy, :process_manager] do
     declaration = declaration(model, kind, name)
-    timer? = kind == :process_manager and Enum.any?(declaration.timers, &(&1.name == callback))
+    timer = kind == :process_manager && Enum.find(declaration.timers, &(&1.name == callback))
 
     issues =
       issued(kind, declaration, callback)
       |> Enum.map(&command_line(model, &1))
 
     paragraphs([
-      if(timer?,
+      if(timer,
         do:
-          "Fires on timer `#{callback}`#{timer_source(declaration, callback)} of #{word(kind)} " <>
+          "Fires on timer `#{callback}`#{label(timer)}#{source(timer)} of #{word(kind)} " <>
             "`#{name}`#{label(declaration)}#{source(declaration)}.",
         else:
           "Reacts to `#{callback}`#{event_label(model, callback)}, for #{word(kind)} " <>
             "`#{name}`#{label(declaration)}#{source(declaration)}."
       ),
       list("May issue", issues),
-      unless(timer?, do: idempotency(declaration)),
+      unless(timer, do: idempotency(declaration)),
       rules_section("Keeps", rules(model, kind, declaration)),
       scenarios(
         for s <- model.scenarios,
@@ -195,13 +195,6 @@ defmodule EhOsContract.Contract.Doc do
   defp labelled(kind, declaration),
     do:
       "#{String.capitalize(word(kind))} `#{declaration.name}`#{label(declaration)}#{source(declaration)}."
-
-  defp timer_source(pm, name) do
-    case Enum.find(pm.timers, &(&1.name == name)) do
-      %{source: source} when is_binary(source) -> " (source: #{source})"
-      _ -> ""
-    end
-  end
 
   # The rules of a declaration, each with the rung it stands on (plan EP2): a unit's
   # invariants are refused on in a scenario (S8); a reaction's and a query's rules are

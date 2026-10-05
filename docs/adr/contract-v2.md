@@ -244,6 +244,10 @@ scenario        description!   scope · actor
 > `<name>.subscribe`, already used; `consumes` takes a module only. The examples below that write `consumes "<name>"`
 > are left as written.
 
+> **5 October 2026, plan N3 — a timer has a label.** `timer :chase, "Termin dokumentacji", wait: {24, :hour}, …`:
+> required and positional, as every other declaration's, and naming what the timer is for, never how long it
+> waits — `wait:` or `at:` says that. §4.6's example below is left without one; its compiled copy adds it.
+
 ### 4.3 Field types and options
 
 - Built-in types: `:id :string :integer :decimal :boolean :date :timestamp {:enum, [...]} {:list, t}`, plus

@@ -50,7 +50,7 @@ defmodule EhOsContract.ImplementationTest do
     process_manager :watch, "Obserwacja" do
       correlate :visit_id
       starts_on :payment_recorded, sets: :look
-      timer :look, wait: {1, :day}
+      timer :look, "Look", wait: {1, :day}
       ends_on :closed
     end
 
@@ -62,7 +62,7 @@ defmodule EhOsContract.ImplementationTest do
       end
 
       starts_on :payment_recorded, sets: :later
-      timer :later, wait: {1, :day}, issues: :remind
+      timer :later, "Later", wait: {1, :day}, issues: :remind
       ends_on :closed
     end
 

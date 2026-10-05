@@ -127,7 +127,11 @@ defmodule EhOsContract.PagesTest do
     assert chase =~
              "- [`deposited`](../events/deposited.md) → sets timer `review`, cancels timer `first_deposit_due`"
 
-    assert chase =~ "- `first_deposit_due` → [`flag_account`](../commands/flag_account.md)"
+    assert chase =~
+             "- `first_deposit_due` — First deposit due (1 day after it is set) → " <>
+               "[`flag_account`](../commands/flag_account.md)"
+
+    assert chase =~ "- `review` — Review (at `review_at`) → "
   end
 
   # The EL3 review: the page stated a promise without its `or_else`, and left out

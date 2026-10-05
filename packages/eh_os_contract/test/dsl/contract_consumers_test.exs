@@ -113,6 +113,22 @@ defmodule EhOsContract.ContractConsumersTest do
                "P4: process manager :chase correlates on no field, so every run would share one record"
     end
 
+    # Plan N3: a timer says what it is for in the client's words, or does not compile.
+    test "a timer without a label is refused" do
+      message =
+        refuse_contract("TimerUnlabelled", """
+        #{@unit}
+          process_manager :chase, "Pogoń", correlate: :visit_id do
+            starts_on :visit_opened, sets: :later
+            timer :later, wait: {1, :day}
+          end
+        """)
+
+      assert message =~
+               "contract -> timer -> later defined in timer_unlabelled.ex:18::\n" <>
+                 "  required :label option not found"
+    end
+
     test "what it starts, reacts and ends on, sets, cancels and issues is its own" do
       message =
         refuse_contract("ManagerWrong", """
@@ -124,9 +140,10 @@ defmodule EhOsContract.ContractConsumersTest do
 
             starts_on :visit_opened, sets: :nudge
             on :reminder_due, issues: :call_patient, cancels: :later
-            timer :reminder_due, wait: {1, :day}, at: :due_on, issues: :remind
-            timer :deadline, at: :due_on
-            timer :idle
+            timer :reminder_due, "Reminder due", wait: {1, :day}, at: :due_on, issues: :remind
+            timer :deadline, "Deadline", at: :due_on
+            timer :idle, "Idle"
+            timer :quiet, " ", wait: {1, :day}
             ends_on :visit_forgotten
           end
         """)
@@ -156,6 +173,10 @@ defmodule EhOsContract.ContractConsumersTest do
       assert message =~
                "P4: process manager :chase: timer :idle has neither wait: nor at:; give it exactly " <>
                  "one (manager_wrong.ex:25)"
+
+      assert message =~
+               "P4: process manager :chase: timer :quiet has a blank label; say what it is for, " <>
+                 "\"Documentation due\" (manager_wrong.ex:26)"
 
       refute message =~ "reacts on :reminder_due"
     end
@@ -199,8 +220,8 @@ defmodule EhOsContract.ContractConsumersTest do
 
                    starts_on :visit_closed, sets: [:chase, :at_time]
                    on :chase, issues: :remind, cancels: :at_time
-                   timer :chase, wait: {24, :hour}, issues: :remind
-                   timer :at_time, at: :remind_at
+                   timer :chase, "Chase", wait: {24, :hour}, issues: :remind
+                   timer :at_time, "At time", at: :remind_at
                    ends_on :reminded
                  end
                """)

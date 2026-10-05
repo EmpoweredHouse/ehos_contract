@@ -135,7 +135,18 @@ defmodule EhOsContract.Contract.Rules.Consumers do
 
   defp timer(where, timer, state) do
     what = "#{where}: timer #{inspect(timer.name)}"
+    label(what, timer) ++ when_it_fires(what, timer, state)
+  end
 
+  # The schema takes any string, and a blank label would leave the timer's page
+  # with nothing saying what it is for.
+  defp label(what, timer) do
+    if String.trim(timer.label) == "",
+      do: [{"P4: #{what} has a blank label; say what it is for, \"Documentation due\"", timer}],
+      else: []
+  end
+
+  defp when_it_fires(what, timer, state) do
     case {timer.wait, timer.at} do
       {nil, nil} ->
         [{"P4: #{what} has neither wait: nor at:; give it exactly one", timer}]

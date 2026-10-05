@@ -38,7 +38,10 @@ defmodule EhOsContract.ContractExamplesTest do
      ~s|  subdomain :core, "Rdzeń", type: :core\n| <>
        ~s|  subdomain :supporting, "Wsparcie", type: :supporting\n| <>
        ~s|  context :scheduling, "Umawianie i zasoby", subdomain: :core|,
-     "plan EL2: a context names a subdomain the domain declares (D7)"}
+     "plan EL2: a context names a subdomain the domain declares (D7)"},
+    {"timer :chase, wait: {24, :hour}",
+     ~s|timer :chase, "Termin dokumentacji", wait: {24, :hour}|,
+     "plan N3: a timer's label is required, and names what the timer is for"}
   ]
 
   unless File.exists?(@adr),
@@ -204,10 +207,16 @@ defmodule EhOsContract.ContractExamplesTest do
             correlate :visit_id
           end
 
-        #{f.process_manager}
+        #{amend(f.process_manager)}
         """)
 
-      assert [%{timers: [%{name: :chase, wait: %{amount: 24, unit: :hour}}]}] =
+      assert [
+               %{
+                 timers: [
+                   %{name: :chase, label: "Termin dokumentacji", wait: %{amount: 24, unit: :hour}}
+                 ]
+               }
+             ] =
                model.process_managers
     end
 

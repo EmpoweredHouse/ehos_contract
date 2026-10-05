@@ -126,7 +126,11 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
   process_manager :documentation_chase, "Pogoń za dokumentacją wizyty" do
     correlate :visit_id
     starts_on :visit_completed, sets: :documentation_due
-    timer :documentation_due, wait: {24, :hour}, issues: :create_documentation_overdue_task
+
+    timer :documentation_due, "Termin dokumentacji",
+      wait: {24, :hour},
+      issues: :create_documentation_overdue_task
+
     ends_on :visit_closed_clinically
   end
 

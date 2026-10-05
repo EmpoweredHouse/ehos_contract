@@ -326,6 +326,12 @@ defmodule EhOsContract.Pages do
       source_note(a) <> Enum.join(responsibilities)
   end
 
+  # When a timer fires, from its declaration (plan N3): its label names what it is for,
+  # so the time is the declaration's words, never the label's. P4 holds a timer to
+  # exactly one of `wait:` and `at:`.
+  defp when_fires(%{wait: wait}) when wait != nil, do: "#{duration(wait)} after it is set"
+  defp when_fires(%{at: at}), do: "at #{code(at)}"
+
   # Where a declaration listed on another's page comes from, after its other facts (plan
   # EP1). A declaration with a page of its own says it under its title instead.
   defp source_note(declaration) do
@@ -940,7 +946,9 @@ defmodule EhOsContract.Pages do
       section("Reacts to", pm.on, reaction),
       section("Timers", pm.timers, fn t ->
         issues = Enum.map(t.issues, &command_link(model, &1))
-        bullet(["#{code(t.name)} → " | joined(issues) ++ [source_note(t)]])
+        arrow = if issues == [], do: [], else: [" → " | joined(issues)]
+
+        bullet(["#{code(t.name)} — #{t.label} (#{when_fires(t)})" | arrow ++ [source_note(t)]])
       end),
       section("Ends on", pm.ends_on, &bullet([event_link(site, model, &1)])),
       rules(pm),
