@@ -85,6 +85,18 @@ defmodule EhOsContract.Registry do
           match?(%{kind: :domain}, module.__eh_os_contract_model__())
       end)
 
+    # Plan W2: D13 asked the database configured when the domain compiled; a release
+    # may run with another, or none, and then every append of a timestamp would raise.
+    for domain <- domains,
+        zone = domain.__eh_os_contract_model__().time_zone,
+        not EhOsContract.Domain.time_zone_known?(zone) do
+      raise ArgumentError,
+            "#{inspect(domain)} keeps its days in #{inspect(zone)}, which the time zone " <>
+              "database this node runs with (#{inspect(Calendar.get_time_zone_database())}) " <>
+              "does not know: configure the one it compiled with " <>
+              "(config :elixir, :time_zone_database) and include it in the release"
+    end
+
     graph = %{contracts: contracts, domains: domains}
 
     :persistent_term.put(@key, graph)

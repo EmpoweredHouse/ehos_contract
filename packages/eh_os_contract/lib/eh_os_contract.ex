@@ -103,7 +103,8 @@ defmodule EhOsContract do
   The child is a supervisor. While it starts it does, in this order:
 
   1. `EhOsContract.Registry.load!/1` scans the running binary for contracts and
-     domains, and `EhOsContract.Deployment.record!/1` writes what that binary
+     domains, refusing to go on when a domain's `time_zone:` is one the time zone
+     database this node runs with does not know, and `EhOsContract.Deployment.record!/1` writes what that binary
      declared and since when. Forgetting the first leaves an empty graph;
      forgetting the second leaves the report unable to tell history from drift.
      Between the two, `EhOsContract.Vault.check!/1` refuses to go on when a v2

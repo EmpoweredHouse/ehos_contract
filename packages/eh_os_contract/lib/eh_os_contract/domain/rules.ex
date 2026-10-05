@@ -137,18 +137,14 @@ defmodule EhOsContract.Domain.Rules do
   # Asked of the database Elixir is configured with, as dispatch will ask it: a zone
   # it does not know would raise on the first append of a timestamp.
   defp d13(dsl, %{time_zone: zone}) do
-    case is_binary(zone) && DateTime.shift_zone(~U[2026-01-01 00:00:00Z], zone) do
-      {:ok, _} ->
-        []
-
-      _unknown ->
-        [
-          {"D13: the domain's time_zone: #{inspect(zone)} is not a zone the configured time " <>
-             "zone database (#{inspect(Calendar.get_time_zone_database())}) knows; name an " <>
-             "IANA zone like \"Europe/Warsaw\", and configure a database such as Tz with " <>
-             "config :elixir, :time_zone_database", use_at(dsl)}
-        ]
-    end
+    if EhOsContract.Domain.time_zone_known?(zone),
+      do: [],
+      else: [
+        {"D13: the domain's time_zone: #{inspect(zone)} is not a zone the configured time " <>
+           "zone database (#{inspect(Calendar.get_time_zone_database())}) knows; name an " <>
+           "IANA zone like \"Europe/Warsaw\", and configure a database such as Tz with " <>
+           "config :elixir, :time_zone_database", use_at(dsl)}
+      ]
   end
 
   defp use_at(dsl) do

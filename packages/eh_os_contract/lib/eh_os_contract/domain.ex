@@ -77,6 +77,21 @@ defmodule EhOsContract.Domain do
   @spec vocabulary() :: %{[atom()] => [atom()]}
   def vocabulary, do: EhOsContract.DslWrappers.vocabulary(EhOsContract.Domain.Dsl.sections())
 
+  @doc """
+  Whether `zone` is one the time zone database Elixir is configured with knows
+  (plan W2): asked as dispatch asks it, so a database module that is configured but
+  not there — `Tz.TimeZoneDatabase` without `{:tz, …}` — answers `false`, as an
+  unknown zone does, rather than raising.
+  """
+  @spec time_zone_known?(term()) :: boolean()
+  def time_zone_known?(zone) when is_binary(zone) do
+    match?({:ok, _}, DateTime.shift_zone(~U[2026-01-01 00:00:00Z], zone))
+  rescue
+    _undefined in UndefinedFunctionError -> false
+  end
+
+  def time_zone_known?(_zone), do: false
+
   @impl Spark.Dsl
   def handle_opts(opts) do
     quote do
