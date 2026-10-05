@@ -533,7 +533,7 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ☑ #148 |
 | T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☑ #148 |
 | X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ◐ `claude/dsl-x1-in-transaction-4447a3` |
-| S4 | 1 | `transition-without-scenario` | DD0 | ☐ |
+| S4 | 1 | `transition-without-scenario` | DD0 | ◐ `dsl/s4-transition-without-scenario` (na X1, #150) |
 | ID1 | 2 | `id:` kontraktu deklarowany | N1 | ☐ |
 | ID2 | 2 | każdy kontrakt z `id:` | ID1 | ☐ |
 | ID3 | 2 | `id:` wymagany, typ `"<id>.<zdarzenie>"` | ID2 | ☐ |

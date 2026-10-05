@@ -15,6 +15,7 @@ defmodule EhOsContract.Check.Completeness do
 
   alias EhOsContract.Check.Finding
   alias EhOsContract.Domain
+  alias EhOsContract.Lifecycle
   alias EhOsContract.Contract.{Links, Rules}
 
   @doc """
@@ -48,7 +49,8 @@ defmodule EhOsContract.Check.Completeness do
       prefixed_event_names(c),
       consults_without_match(c),
       without_scenario(c),
-      unillustrated(c)
+      unillustrated(c),
+      untaken_transitions(c)
     ])
   end
 
@@ -282,6 +284,69 @@ defmodule EhOsContract.Check.Completeness do
           "shows its implementation keeps #{inspect(rule.label)}",
         rule_at(declared, kind, declaration.name, rule.name)
       )
+    end
+  end
+
+  # Plan DD, S4: a declared transition no scenario takes. A command's scenario takes it
+  # when its `given`, walked as dispatch walks a stream, leaves the unit in `from`, and
+  # what it expects moves the unit out of `from` on the transition's event — the graph
+  # read with `Lifecycle.allowed/3`, the rule dispatch holds a decision to. A scenario
+  # with `rejected` expects nothing, so it takes nothing. A transition on an event no command of the unit
+  # emits is left out: a recorded event has no decision for a scenario to run.
+  defp untaken_transitions(%{model: model} = c) do
+    for unit <- model.units,
+        lifecycle = Lifecycle.of(unit),
+        lifecycle != nil,
+        emitted = emitted(model, unit),
+        taken = taken(model, unit, lifecycle),
+        declared <- declared_transitions(c, unit.name),
+        declared.event in emitted,
+        untaken = Enum.reject(Enum.uniq(declared.from), &({&1, declared.event} in taken)),
+        untaken != [] do
+      Finding.new(
+        "transition-without-scenario",
+        "#{unit.kind} #{inspect(unit.name)} of #{inspect(model.module)} moves from " <>
+          "#{Enum.map_join(untaken, " and ", &inspect/1)} to #{inspect(declared.to)} on " <>
+          "#{inspect(declared.event)}, and no scenario of a command starts there and expects " <>
+          "it, so nothing shows the implementation takes that transition",
+        Links.at(declared)
+      )
+    end
+  end
+
+  defp emitted(model, unit) do
+    for command <- model.commands, command.unit == unit.name, event <- command.emits, do: event
+  end
+
+  # `{from, event}` of every transition some command's scenario of `unit` takes.
+  defp taken(model, unit, lifecycle) do
+    for scenario <- model.scenarios,
+        scenario.target == %{kind: unit.kind, name: unit.name},
+        {_befores, start} = Lifecycle.walk(lifecycle, Enum.map(scenario.given, & &1.event)),
+        move <- moves(lifecycle, start, Enum.map(scenario.expect, & &1.event)),
+        into: MapSet.new(),
+        do: move
+  end
+
+  # The declared moves the expected events make, from `status`, one after another.
+  defp moves(lifecycle, status, events) do
+    {moves, _status} =
+      Enum.flat_map_reduce(events, status, fn event, status ->
+        case Lifecycle.allowed(lifecycle, status, event) do
+          {:moved, next} when status != nil -> {[{status, event}], next}
+          {:moved, next} -> {[], next}
+          {:stayed, status} -> {[], status}
+          {:error, _why} -> {[], status}
+        end
+      end)
+
+    moves
+  end
+
+  defp declared_transitions(c, unit) do
+    case declared_unit(c, unit) do
+      %{lifecycle: [lifecycle | _]} -> lifecycle.transitions
+      _ -> []
     end
   end
 
