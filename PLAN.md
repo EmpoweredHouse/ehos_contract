@@ -83,8 +83,8 @@ nie jest zaczęty; pierwszy jest N1 (`final:`, `target`, `identity` encji).
   — DD”. Kolejno:
   1. **Użytkownik:** merge stosu po kolei — #135 (DD0), #137 (N1), #138 (N2), #139 (N3); po każdym baza następnego
      przechodzi na `main`.
-  2. **N1 — PR #137** (na #135); **N2 — PR #138** (na #137); **N3 — PR #139** (na #138). **Asystent:** W1 w toku na
-     `engine/w1-schema-version`, dalej reszta fali 1 w dowolnej kolejności. Start etapu: ◐ i gałąź w tabeli; koniec:
+  2. **N1 — PR #137** (na #135); **N2 — PR #138** (na #137); **N3 — PR #139** (na #138). **W1 gotowe na `engine/w1-schema-version`** (na N3; push i PR
+     na polecenie). **Asystent:** dalej reszta fali 1 w dowolnej kolejności. Start etapu: ◐ i gałąź w tabeli; koniec:
      „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; potwierdzenie etykiet timerów sandboxa — „N3 — co wyszło”); po każdej fali „dalej czy
@@ -497,7 +497,7 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | N1 | 1 | `final:`, `target`, `identity` encji, definicja encji | DD0 | ◐ `dsl/n1-names`, PR #137 (na #135) |
 | N2 | 1 | `subscribe "<nazwa>"` | DD0 | ◐ `dsl/n2-subscribe`, PR #138 (na #137) |
 | N3 | 1 | etykieta timera (EP6) | DD0 | ◐ `dsl/n3-timer-label`, PR #139 (na #138) |
-| W1 | 1 | zapis `schema_version` | DD0 | ◐ `engine/w1-schema-version` (na N3) |
+| W1 | 1 | zapis `schema_version` | DD0 | ◐ `engine/w1-schema-version` (na N3), gotowe do PR-a |
 | W2 | 1 | tagi dnia przy dopisie | DD0 | ☐ |
 | W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ☐ |
 | W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ☐ |
@@ -915,6 +915,41 @@ z deklaracji: „1 day after it is set”, „at `review_at`”), `@doc` callbac
   1 property.
 - **Dla aplikacji AppUnite i `ehos-ledger`:** każdy `timer :x, wait:/at: …` → `timer :x, "<cel>", wait:/at: …`.
 - **Fala 1 po N3:** N1–N3 zrobione; zostają W1–W4, T1, T1s, X1, S4 w dowolnej kolejności.
+
+### W1 — co wyszło (5 października)
+
+Gałąź `engine/w1-schema-version` (na N3). Dispatch zapisuje `schema_version` zdarzenia w wierszu (do teraz każdy
+wiersz miał 1, domyślną kolumny); odczyt wiersza nowszej wersji niż deklaruje działający kod rzuca
+`EhOsContract.NewerSchemaError` (nazywa wiersz, nigdy wartość), sprawdzane przed czytaniem podmiotów z payloadu.
+Wiersz starszej wersji dekoduje się jak dotąd — do upcastów (V1). Żadna wersja kontraktu się nie przesuwa; rig
+`LifecycleRig` ma `:note_added` w wersji 2.
+
+**Decyzja użytkownika (5 października), po przeglądzie: kod starszy niż wiersz czeka.** Subskrypcja, process
+manager i relay stoją na wierszu nowym krokiem `{:waiting, position}` — nic się nie przesuwa, próba nie jest
+liczona, runner próbuje co 5 s i rusza sam po aktualizacji węzła; efekt dostaje `snooze` 30 s (Oban 2.23 podbija
+wtedy `max_attempts`, więc nie liczy); komenda na strumieniu z takim wierszem dalej odrzucona jako `failed`.
+*Odrzucone:* tylko nazwany wyjątek, z liczeniem prób jak dziś (rozbieżność wersji przy wdrożeniu po kolei kończy
+się subskrypcją `failing` na stałe, a wyjście przez `--skip` gubi reakcję, i odrzuconym zadaniem efektu); W1 tylko
+zapisuje wersję, a odmowa razem z V1 (stary węzeł dalej czyta nowe pola ze starym znaczeniem, a relay publikuje je
+innym aplikacjom).
+
+- **Rozstrzygnięcia asystenta (mechanika):** relay sprawdza wersję w `Subscription.relay/2`, nie w
+  `Relay.message/2` — ta zostaje czystą funkcją na zdarzeniu (testy budują je ręcznie); partia z nowszym zdarzeniem
+  idzie zdarzenie po zdarzeniu, a relay staje na nim. Wpisy CHANGELOG programu DD (N1–N3, W1) przeniesione do górnej
+  sekcji „Unreleased”, gdzie stoi wpis z #134 — wcześniej trafiały do sekcji 0.3.0.
+- **Przegląd** (`dsl/n3-timer-label..engine/w1-schema-version`). Poprawność: 9 uwag — naprawione: zatrzymanie
+  subskrypcji i odrzucanie efektów (decyzja wyżej), relay omijający sprawdzenie, nazwany wyjątek, sprawdzenie przed
+  podmiotami, testy ścieżek dispatchu, subskrypcji, efektu i relaya (próba odwrotna każdej: pada tylko jej test),
+  strażnik `is_integer` (kolumna jest `NOT NULL`), sekcja i treść CHANGELOG, `@doc` `decode!/1` i opis
+  `schema_version` w DSL-u. **Zostawione do V1/V3:** wiersz *starszej* wersji niż deklaracja dekoduje się bez
+  pytania — także każdy wiersz sprzed W1, który mówi 1 bez względu na deklarację; strażnikiem ma być reguła `check`
+  z ADR §10.6 (wiersze starszej wersji bez upcastu), której jeszcze nie ma — od W1 ma znaczenie. Bezpieczeństwo i
+  wydajność: ta sama uwaga o zatrzymaniu (średnia, naprawiona); komunikat bez wartości; wiersza nowszej wersji nie da
+  się wstrzyknąć przez inbox ani relay; koszt jednego porównania na wiersz.
+- **Brama:** EXIT=0; `check` sandboxa 0 / 29 / 10, silnika 0 / 74 / 6; sandbox 194, silnik 1270, web 51, auth 286 +
+  1 property.
+- **Dla aplikacji AppUnite i `ehos-ledger`:** nic do zmiany w kodzie; przy wdrożeniu po kolei z podniesioną wersją
+  zdarzenia subskrypcje starego węzła czekają (ostrzeżenie w logu) — nie `--skip`.
 
 ## Dopisek 4 października (3) — pokrycie ESDM po EP1–EP5 i #99
 
