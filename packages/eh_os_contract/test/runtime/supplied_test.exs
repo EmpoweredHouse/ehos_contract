@@ -62,6 +62,49 @@ defmodule EhOsContract.SuppliedTest do
       assert Process.get(:supply_rig_asked) == nil
     end
 
+    test "under an atom key, from Elixir code, the field is refused all the same" do
+      assert EhOsContract.call(
+               {:command, "supply_rig.close_visit"},
+               %{visit_id: "v-1", code: "A1", reported: true},
+               actor: @clerk
+             ) == {:error, {:invalid, [reported: :supplied]}}
+    end
+
+    test "what the caller sent is found sound before the host is asked" do
+      Process.put(:supply_rig_answer, {:error, :register_down})
+
+      assert close(%{"visit_id" => "v-1"}) == {:error, {:invalid, [code: :required]}},
+             "the caller's own mistake, not the host's 503"
+
+      assert EhOsContract.call(
+               {:command, "supply_rig.close_visit"},
+               %{"visit_id" => "v-1", "code" => "A1"},
+               actor: @clerk,
+               idempotency_key: "not a key"
+             ) == {:error, :idempotency_key_invalid}
+
+      assert Process.get(:supply_rig_asked) == nil
+    end
+
+    test "a retry of a request already accepted gets its receipt, and the host is not asked" do
+      send_it = fn ->
+        EhOsContract.call(
+          {:command, "supply_rig.close_visit"},
+          %{"visit_id" => "v-1", "code" => "A1"},
+          actor: @clerk,
+          idempotency_key: "req-1"
+        )
+      end
+
+      assert {:ok, %Receipt{duplicate: false, positions: [position]}} = send_it.()
+
+      Process.delete(:supply_rig_asked)
+      Process.put(:supply_rig_answer, {:error, :register_down})
+
+      assert {:ok, %Receipt{duplicate: true, positions: [^position]}} = send_it.()
+      assert Process.get(:supply_rig_asked) == nil
+    end
+
     test "the host's refusal is not_supplied, and nothing is written" do
       Process.put(:supply_rig_answer, {:error, :register_down})
 
@@ -144,6 +187,15 @@ defmodule EhOsContract.SuppliedTest do
       assert Jason.decode!(conn.resp_body) == %{"error" => "not_supplied"}
     end
 
+    test "the OpenAPI document says 503 only where the host supplies a field" do
+      responses = fn contract, path ->
+        EhOsContract.OpenAPI.document(contract)["paths"][path]["post"]["responses"]
+      end
+
+      assert responses.(SupplyRig.Desk, "/commands/supply_rig.close_visit")["503"]
+      refute responses.(DispatchRig.Ledger, "/commands/dispatch_rig.deposit")["503"]
+    end
+
     test "the OpenAPI document does not offer the field to send" do
       schema =
         EhOsContract.OpenAPI.document(SupplyRig.Desk)["paths"]["/commands/supply_rig.close_visit"][
@@ -155,15 +207,40 @@ defmodule EhOsContract.SuppliedTest do
     end
   end
 
-  test "a node with a supplied field and no supplier does not start, naming both" do
-    supplier = Application.fetch_env!(:eh_os_contract, :supplier)
-    Application.delete_env(:eh_os_contract, :supplier)
-    on_exit(fn -> Application.put_env(:eh_os_contract, :supplier, supplier) end)
+  describe "at boot" do
+    @models [EhOsContract.Model.fetch(SupplyRig.Desk)]
 
-    error = assert_raise ArgumentError, fn -> EhOsContract.Registry.load!(:eh_os_contract) end
+    setup do
+      supplier = Application.fetch_env!(:eh_os_contract, :supplier)
+      on_exit(fn -> Application.put_env(:eh_os_contract, :supplier, supplier) end)
+    end
 
-    assert error.message =~
-             "SupplyRig.Desk declares [:reported] of command :close_visit supplied_by: :host, " <>
-               "and no supplier is configured"
+    test "a supplied field and no supplier: the node does not start, naming both" do
+      Application.delete_env(:eh_os_contract, :supplier)
+      error = assert_raise ArgumentError, fn -> Supplier.check!(@models) end
+
+      assert error.message =~
+               "SupplyRig.Desk declares [:reported] of command :close_visit supplied_by: :host, " <>
+                 "and no supplier is configured"
+    end
+
+    test "a supplier that is no module exporting supply/2 is refused as well" do
+      for impl <- [SupplyRig.NoSuchSupplier, SupplyRig.Domain] do
+        Application.put_env(:eh_os_contract, :supplier, impl)
+        error = assert_raise ArgumentError, fn -> Supplier.check!(@models) end
+        assert error.message =~ "the configured supplier #{inspect(impl)} is not a module"
+      end
+    end
+
+    test "control: the suite's supplier, and the scan alone, which a Mix task makes" do
+      assert Supplier.check!(@models) == :ok
+
+      Application.delete_env(:eh_os_contract, :supplier)
+
+      assert %{contracts: contracts} = EhOsContract.Registry.load!(:eh_os_contract),
+             "reading the contracts asks for no supplier"
+
+      assert SupplyRig.Desk in contracts
+    end
   end
 end

@@ -27,10 +27,18 @@ defmodule EhOsContract.Supplier do
   its value. `{:error, reason}` — the register did not answer — refuses the request
   with `{:not_supplied, reason}`, and nothing is written.
 
+  The host is asked after the caller is authorized and after what the caller sent is
+  found sound — its own fields and its idempotency key — and not at all for a retry
+  of a request already accepted under its key, which gets its receipt. A value that
+  breaks a domain value's invariant is the host's defect, as one of the wrong type is,
+  and raises. The call has no time limit of the engine's: a register that may hang
+  is bounded by the implementation.
+
   `dispatch/3` and `record/3` from the application's own code are not asked: the
   struct it builds is trusted, as everything else in it is. A node with a contract
-  declaring a supplied field and no implementation configured does not start
-  (`EhOsContract.Registry.load!/1`).
+  declaring a supplied field does not start without an implementation configured,
+  one that is loaded and exports `supply/2` (`check!/1`, at the engine's boot); the
+  Mix tasks that only read contracts do not ask.
   """
 
   alias EhOsContract.{Actor, Codec}
@@ -66,6 +74,40 @@ defmodule EhOsContract.Supplier do
   """
   @spec impl() :: module() | nil
   def impl, do: Application.get_env(:eh_os_contract, :supplier)
+
+  @doc """
+  Refuses to go on when a contract of `models` declares a field `supplied_by: :host`
+  and the configured implementation is missing, not loaded, or does not export
+  `supply/2`: every request carrying the field would fail. Called when the engine
+  starts, so the configuration shows at deployment. Raises `ArgumentError` naming the
+  contract, the declaration and the fields.
+  """
+  @spec check!([map()]) :: :ok
+  def check!(models) do
+    impl = impl()
+
+    unless impl && Code.ensure_loaded?(impl) && function_exported?(impl, :supply, 2) do
+      for model <- models,
+          {kind, declaration} <-
+            Enum.map(model.commands, &{:command, &1}) ++
+              for(e <- model.events, e.recorded_by != [], do: {:event, e}),
+          [_ | _] = fields <- [fields(declaration.fields)] do
+        raise ArgumentError,
+              "#{inspect(model.module)} declares #{inspect(Enum.map(fields, & &1.name))} of " <>
+                "#{kind} #{inspect(declaration.name)} supplied_by: :host, and " <>
+                missing(impl) <>
+                ": implement EhOsContract.Supplier and set config :eh_os_contract, supplier: " <>
+                "MySupplier"
+      end
+    end
+
+    :ok
+  end
+
+  defp missing(nil), do: "no supplier is configured"
+
+  defp missing(impl),
+    do: "the configured supplier #{inspect(impl)} is not a module that exports supply/2"
 
   @doc "The fields of `fields` declared `supplied_by: :host`, in order."
   @spec fields([map()]) :: [map()]

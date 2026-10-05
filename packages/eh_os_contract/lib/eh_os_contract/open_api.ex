@@ -108,7 +108,7 @@ defmodule EhOsContract.OpenAPI do
                "application/json" => %{"schema" => JsonSchema.object(fields, domain)}
              }
            },
-           "responses" => command_responses()
+           "responses" => command_responses(command)
          })
      }}
   end
@@ -194,6 +194,17 @@ defmodule EhOsContract.OpenAPI do
   end
 
   defp query_shape(_type, _domain), do: :scalar
+
+  # Plan T1: a 503 only where the host supplies a field, so no other command's
+  # document, nor its digest, moves.
+  defp command_responses(command) do
+    if Enum.any?(command.fields, &(Map.get(&1, :supplied_by) == :host)),
+      do:
+        Map.put(command_responses(), "503", %{
+          "description" => "The host could not supply a field; nothing was written"
+        }),
+      else: command_responses()
+  end
 
   defp command_responses do
     %{

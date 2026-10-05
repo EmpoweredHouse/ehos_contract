@@ -137,8 +137,8 @@ defmodule EhOsContract.Dispatcher do
   never personal data), `correlation_id:` (a UUID; a new one when missing) and
   `causation_id:`. `supply: true`, which `call/3` sets, asks the
   `EhOsContract.Supplier` for the fields declared `supplied_by: :host` once the actor
-  is authorized (plan T1); the application's own code leaves it out, and its struct
-  is trusted.
+  is authorized (plan T1); the application's own code leaves it out, and then fills
+  those fields itself — its struct is trusted, and checked as every other field is.
   """
   @spec dispatch(module(), struct(), keyword() | map()) ::
           {:ok, Receipt.t()} | {:error, Rejection.t() | refusal()}
@@ -155,22 +155,16 @@ defmodule EhOsContract.Dispatcher do
              ctx.actor,
              scope(declaration, declaration.fields, command, values)
            ),
-         {:ok, command} <- supplied(model, :command, declaration, ctx, command, values),
-         :ok <- valid(declaration.fields, command, values, model.domain),
+         :ok <- valid(callers(declaration, ctx), command, values, model.domain),
          :ok <- keyed(ctx),
+         job = job(:command, model, declaration, command, ctx, values),
+         {:ok, command} <- supplied(job),
          {:ok, command} <- generate_identity(model, declaration, command, ctx),
          :ok <- stream_fits(model, declaration, command) do
-      job = %{
-        kind: :command,
-        type: Atom.to_string(declaration.name),
-        model: model,
-        declaration: declaration,
-        command: command,
-        ctx: ctx,
-        values: values
-      }
-
-      run(job, repo())
+      run(%{job | command: command}, repo())
+    else
+      {:replayed, receipt} -> {:ok, receipt}
+      refused -> refused
     end
   end
 
@@ -202,22 +196,32 @@ defmodule EhOsContract.Dispatcher do
     values = Codec.values(model.domain)
 
     with :ok <- permit_record(model, declaration, ctx.actor),
-         {:ok, event} <- supplied(model, :record, declaration, ctx, event, values),
-         :ok <- valid(declaration.fields, event, values, model.domain),
+         :ok <- valid(callers(declaration, ctx), event, values, model.domain),
          :ok <- keyed(ctx),
+         job = job(:record, model, declaration, event, ctx, values),
+         {:ok, event} <- supplied(job),
          :ok <- stream_fits(model, declaration, event) do
-      job = %{
-        kind: :record,
-        type: "record:#{declaration.name}",
-        model: model,
-        declaration: declaration,
-        command: event,
-        ctx: ctx,
-        values: values
-      }
-
-      run(job, repo())
+      run(%{job | command: event}, repo())
+    else
+      {:replayed, receipt} -> {:ok, receipt}
+      refused -> refused
     end
+  end
+
+  defp job(kind, model, declaration, struct, ctx, values) do
+    %{
+      kind: kind,
+      type:
+        if(kind == :command,
+          do: Atom.to_string(declaration.name),
+          else: "record:#{declaration.name}"
+        ),
+      model: model,
+      declaration: declaration,
+      command: struct,
+      ctx: ctx,
+      values: values
+    }
   end
 
   @doc """
@@ -417,7 +421,11 @@ defmodule EhOsContract.Dispatcher do
   # even as `null`, it is refused by name — and is not decoded from the request.
   defp decoded(fields, input, values, kind) do
     supplied = Supplier.fields(fields)
-    sent = for f <- supplied, Map.has_key?(input, Atom.to_string(f.name)), do: {f.name, :supplied}
+    # Under either key: `Codec.decode/4` reads an atom's too, from Elixir code.
+    sent =
+      for f <- supplied,
+          Map.has_key?(input, Atom.to_string(f.name)) or Map.has_key?(input, f.name),
+          do: {f.name, :supplied}
 
     case {Codec.decode(fields -- supplied, input, values, strings: kind == :query), sent} do
       # `nil` until the host supplies it, once the caller is authorized.
@@ -713,31 +721,50 @@ defmodule EhOsContract.Dispatcher do
   @spec idempotency_key?(term()) :: boolean()
   def idempotency_key?(key), do: is_binary(key) and key =~ ~r/\A[\x21-\x7E]{1,255}\z/
 
-  # Plan T1: the fields the host gives, asked of it after authorization, so a caller
-  # who may not issue the command never makes the host look anything up.
-  defp supplied(_model, _kind, _declaration, %{supply: false}, struct, _values),
-    do: {:ok, struct}
+  # Plan T1: what the caller's own fields are checked as before the host is asked —
+  # every field but the supplied ones, which the host has not given yet. The
+  # application's own struct is checked whole: it is not asked of the host.
+  defp callers(declaration, %{supply: true}),
+    do: declaration.fields -- Supplier.fields(declaration.fields)
 
-  defp supplied(model, kind, declaration, ctx, struct, values) do
+  defp callers(declaration, _ctx), do: declaration.fields
+
+  # Plan T1: the fields the host gives, asked of it last before the unit is read — after
+  # authorization, so a caller who may not issue the command never makes the host look
+  # anything up, and after what the caller sent is found sound, so a request refused
+  # for its own fields or key is refused as such. A retry of a request already
+  # accepted under its key gets its receipt without asking: the answer would be thrown
+  # away, and a host that is down would turn the receipt into a refusal. The host's
+  # answer is held to the fields' types and invariants (`Supplier.run/6`).
+  defp supplied(%{ctx: %{supply: false}, command: struct}), do: {:ok, struct}
+
+  defp supplied(job) do
+    %{model: model, declaration: declaration, ctx: ctx, command: struct} = job
+
     case Supplier.fields(declaration.fields) do
       [] ->
         {:ok, struct}
 
       fields ->
-        names = Enum.map(fields, & &1.name)
+        with :new <- idempotent(repo(), job) do
+          names = Enum.map(fields, & &1.name)
 
-        request = %Supplier.Request{
-          kind: kind,
-          capability: capability(model, kind, declaration.name),
-          contract: model.module,
-          name: declaration.name,
-          fields: names,
-          given: struct |> Map.from_struct() |> Map.drop([:__meta__ | names])
-        }
+          request = %Supplier.Request{
+            kind: job.kind,
+            capability: capability(model, job.kind, declaration.name),
+            contract: model.module,
+            name: declaration.name,
+            fields: names,
+            given: struct |> Map.from_struct() |> Map.drop([:__meta__ | names])
+          }
 
-        with {:ok, given} <-
-               Supplier.run(ctx.actor, request, declaration.fields, values, model.domain),
-             do: {:ok, struct(struct, given)}
+          with {:ok, given} <-
+                 Supplier.run(ctx.actor, request, declaration.fields, job.values, model.domain),
+               do: {:ok, struct(struct, given)}
+        else
+          {:ok, receipt} -> {:replayed, receipt}
+          refused -> refused
+        end
     end
   end
 

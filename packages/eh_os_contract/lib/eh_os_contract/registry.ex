@@ -106,34 +106,10 @@ defmodule EhOsContract.Registry do
               "(config :elixir, :time_zone_database) and include it in the release"
     end
 
-    supplied!(contracts)
-
     graph = %{contracts: contracts, domains: domains}
 
     :persistent_term.put(@key, graph)
     graph
-  end
-
-  # Plan T1: a field the host supplies, with nothing configured to supply it, would
-  # refuse every request that carries the command; a node that cannot serve them does
-  # not start, so the missing configuration shows at deployment.
-  defp supplied!(contracts) do
-    if EhOsContract.Supplier.impl() == nil do
-      for contract <- contracts,
-          model = contract.__eh_os_contract_model__(),
-          {kind, declaration} <-
-            Enum.map(model.commands, &{:command, &1}) ++
-              for(e <- model.events, e.recorded_by != [], do: {:event, e}),
-          [_ | _] = fields <- [EhOsContract.Supplier.fields(declaration.fields)] do
-        raise ArgumentError,
-              "#{inspect(contract)} declares #{inspect(Enum.map(fields, & &1.name))} of " <>
-                "#{kind} #{inspect(declaration.name)} supplied_by: :host, and no supplier is " <>
-                "configured: implement EhOsContract.Supplier and set " <>
-                "config :eh_os_contract, supplier: MySupplier"
-      end
-    end
-
-    :ok
   end
 
   @doc "The cached scan, loading it on first use."
