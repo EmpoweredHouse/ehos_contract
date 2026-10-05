@@ -607,8 +607,53 @@ Szacunek (zgrubny, sprzed prototypu): E13a ~4–6 dni, E13b ~6–9 dni.
 
 | Etap | Zakres | Gałąź | Status |
 |---|---|---|---|
-| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ plan (ten dopisek) |
+| E13a | dokument `graph.v1`, nakładka, schema, endpointy, task `--json`, dane sandboxa | `graph/e13a-document` | ◐ w toku — batch 1 z 5 (niżej) |
 | E13b | prototyp, `eh_os_contract_graph`, ekran Graph i panele, Mermaid wycięty | `graph/e13b-renderer` | ☐ |
+
+**E13a w batchach** (5 października, ustalone z użytkownikiem): jedna gałąź i jeden PR, pięć batchy po kolei —
+(1) neutralny model, rodzaje relacji, stabilne `id` (kroki 1–2); (2) koperta `graph.v1` z digestem, kształt
+zadeklarowany jako dane, schema i walidator w testach (kroki 1, 5); (3) treść paneli (krok 3); (4) nakładka jako
+osobny dokument (krok 4); (5) endpointy, `--json`, dane sandboxa, zapisy (kroki 6–9).
+
+### E13a, batch 1 — co wyszło (5 października)
+
+- **`EhOsContract.Graph.Document`**: typy węzła, krawędzi i grupy oraz `id/1`. `id` to rodzaj, moduł, do którego
+  należy nazwa, i nazwy, które wskazują deklarację, sklejone `:` — `event:Rehmed.Contracts.Scheduling:visit_booked`,
+  `constraint:<kontrakt>:<komenda>:<nazwa>`, `status:<kontrakt>:<agregat>:<status>`, `invariant:<kontrakt>:<jednostka>:<nazwa>`;
+  aktor, system zewnętrzny, kontekst, poddomena i publikacja — z modułem domeny. **Zdarzenie konsumowane albo
+  włączone należy na grafie kontraktu do tego kontraktu, pod nazwą lokalną** (rename może ją zmienić), więc to samo
+  zdarzenie ma inne `id` na grafie kontraktu, który je deklaruje — do pamiętania przy nakładce (batch 4), jeśli
+  ma łączyć się między grafami. Nazwa klienta nie jest
+  slugowana, więc `visit.settled` i `visit_settled` się nie spotykają i `unique_ids/2` zniknął z danych. `id` jest
+  nieprzezroczyste: nazwa może mieć `:`, więc nikt go nie rozbiera. Zmieni się raz przy ID3 (decyzja 3).
+- **Relacje** (decyzja asystenta, lista z kodu), czytane w kierunku krawędzi — „źródło *relacja* cel”: `emits`,
+  `handled_by` (zdarzenie → reakcja, od `handles:`), `issues` (aktor i reakcja → komenda), `fires` (zegar →
+  komenda), `sets_timer`, `records`, `asks`, `projected_into` (zdarzenie → read model), `reads`, `calls`,
+  `depends_on`, `backed_by`, `gives` (z `field`), `refused_on` (komenda → reguła), `builds` (zdarzenie → stan
+  agregatu), `consulted_by` (z `match`), `transition`, `undeclared`, `consumed_by` (kontrakt → konsument, z
+  `events`), `publishes`, `subscribed_by` (publikacja → kontrakt), i osiem wzorców mapy kontekstów pod własnymi
+  nazwami, od upstream do downstream. Pierwsza wersja miała `projects`, `consumes`, `subscribes`, `consulted`,
+  `may_refuse` — trzy czytały się wstecz wobec definicji; zmienione po przeglądzie, przed batchem 2, który
+  zamraża nazwy w schemie. `delivery: :inline | :async` zamiast stylu linii.
+- **Wygląd tylko w `Graph.Mermaid`**: tabela „relacja → linia, grot, słowa”, karta stanu z pól (`fields`), etykiety
+  grup, końcowy status (`final`) jako klasa `status_end`, mermaidowe `id` z rodzaju i nazwy jak dotąd. Publiczne
+  zostały `render/2` i `escape/1`.
+- **Nakładka w `build(…, overlay: true)` jest liczbami** (`overlay: %{runs, of_runs, waiting, failing}` na kroku,
+  `%{events, waiting, failing}` między kontraktami, `%{count, pending, untraversed}` na przejściu cyklu życia,
+  `runs` na kontrakcie) — wyjęcie do osobnego dokumentu to batch 4.
+- **Sprawdzone:** 227 diagramów sandboxa (każdy kontrakt z nakładką i bez, `since:`, kształty zadeklarowane,
+  jednostki, cykle życia z nakładką, mapy, systemy, strony z `Pages.render/2`) — przed i po identyczne bajt w bajt;
+  nakładki na danych z sześciu komend AppUnite w transakcji wycofanej po zrzucie. Dwa testy zmienione, bo czytały
+  dane Mermaida: karta stanu (to samo wyjście, wejście z `fields`) i zderzenie nazw w systemie (mermaidowe `id`
+  sprawdzane teraz na diagramie, dokumentowe — w danych). Nowe testy: na każdym grafie każdego kontraktu i domeny
+  (pełny, jednostki, cykle życia, mapa, system) `id` węzłów są unikalne, każda krawędź kończy się na węźle (to
+  pilnuje nowego `Map.fetch!` w Mermaidzie), a drugi `build` daje ten sam graf; dwie jednostki z niezmiennikiem
+  o jednej nazwie mają dwa `id`.
+- **Jedyna możliwa zmiana bajtu poza sandboxem:** mermaidowe `id` ograniczeń przechodzą teraz przez numerowanie,
+  więc para zmyślona (komenda `a_b` z ograniczeniem `c` i komenda `a` z `b_c`), dotąd sklejana w jeden węzeł, daje
+  dwa. Poprawka, nie regres.
+- **Przegląd przed commitem** (agent, diff batcha): podział i obietnica trzymają się; poprawione kierunki nazw
+  relacji, opis reguły `id` dla zdarzeń konsumowanych i słabe asercje nowego testu.
 
 ### Wobec programu DD
 

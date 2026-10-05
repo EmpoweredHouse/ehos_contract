@@ -179,23 +179,35 @@ defmodule EhOsContract.GraphDomainTest do
         "graph_domain_twins.ex"
       )
 
-      graph =
-        EhOsContract.Graph.System.build(@domain, [
-          EhOsContract.GraphDomainTest.VisitSettlement,
-          EhOsContract.GraphDomainTest.Visit.Settlement
-        ])
+      contracts = [
+        EhOsContract.GraphDomainTest.VisitSettlement,
+        EhOsContract.GraphDomainTest.Visit.Settlement
+      ]
 
-      ids = Enum.map(graph.nodes, & &1.id)
+      # The document's ids are the declarations' own, so they never meet (plan E13a).
+      graph = EhOsContract.Graph.System.build(@domain, contracts)
 
-      assert ids == [
-               "contract_eh_os_contract_graph_domain_test_visit_settlement",
-               "contract_eh_os_contract_graph_domain_test_visit_settlement_2",
-               "publication_clinic_visit_settled_v1",
-               "publication_clinic_visit_settled_v1_2"
+      assert Enum.map(graph.nodes, & &1.id) == [
+               "contract:EhOsContract.GraphDomainTest.VisitSettlement",
+               "contract:EhOsContract.GraphDomainTest.Visit.Settlement",
+               "publication:EhOsContract.GraphDomainTest.Clinic:clinic.visit.settled.v1",
+               "publication:EhOsContract.GraphDomainTest.Clinic:clinic.visit_settled.v1"
              ]
 
-      assert %{from: "contract_eh_os_contract_graph_domain_test_visit_settlement_2"} =
-               Enum.find(graph.edges, &(&1.to == "publication_clinic_visit_settled_v1_2"))
+      # Mermaid's are made from the names, and meet; the second takes a number.
+      diagram = Graph.system_to_mermaid(@domain, contracts)
+
+      for id <- [
+            "contract_eh_os_contract_graph_domain_test_visit_settlement[",
+            "contract_eh_os_contract_graph_domain_test_visit_settlement_2[",
+            "publication_clinic_visit_settled_v1[",
+            "publication_clinic_visit_settled_v1_2["
+          ] do
+        assert diagram =~ id
+      end
+
+      assert diagram =~
+               "contract_eh_os_contract_graph_domain_test_visit_settlement_2 -.->|publishes settled| publication_clinic_visit_settled_v1_2"
     end
 
     test "a contract naming another domain is left out, and so is a context with no contract" do

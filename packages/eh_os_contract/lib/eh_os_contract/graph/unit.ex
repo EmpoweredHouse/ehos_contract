@@ -18,14 +18,14 @@ defmodule EhOsContract.Graph.Unit do
   scenarios themselves, with their data, are on the unit's page.
   """
 
-  alias EhOsContract.Graph.Mermaid
+  alias EhOsContract.Graph.{Document, Mermaid}
   alias EhOsContract.Model
 
   @doc """
-  Unit `name` of `contract` as data: `EhOsContract.Graph.Mermaid.graph()`. Raises
+  Unit `name` of `contract` as data: `EhOsContract.Graph.Document.graph()`. Raises
   when the contract has no such unit.
   """
-  @spec build(module() | map(), atom()) :: Mermaid.graph()
+  @spec build(module() | map(), atom()) :: Document.graph()
   def build(contract, name) do
     model = Model.fetch(contract)
 
@@ -44,31 +44,41 @@ defmodule EhOsContract.Graph.Unit do
           s.trigger.kind == :command,
           do: s
 
-    state = state_node(unit)
+    contract = model.module
+    state = state_node(contract, unit)
 
     {built_from, from_elsewhere} = built_from(model, unit, events)
 
     nodes =
       [state] ++
-        Enum.map(commands, &graph_node(:command, &1.name, &1.label)) ++
-        Enum.map(events, &graph_node(:event, &1.name, &1.label)) ++
+        Enum.map(commands, &Document.graph_node(:command, contract, &1.name, &1.label)) ++
+        Enum.map(events, &Document.graph_node(:event, contract, &1.name, &1.label)) ++
         from_elsewhere ++
-        Enum.map(unit.invariants, &graph_node(:invariant, &1.name, &1.label)) ++
-        for(c <- commands, k <- Map.get(c, :constraints, []), do: constraint_node(c, k))
+        Enum.map(unit.invariants, &invariant_node(contract, unit, &1)) ++
+        for(
+          cmd <- commands,
+          k <- Map.get(cmd, :constraints, []),
+          do: constraint_node(contract, cmd, k)
+        )
 
     emits =
-      for c <- commands, event <- c.emits do
-        n = Enum.count(scenarios, &(&1.trigger.name == c.name and expects?(&1, event)))
-        Mermaid.edge(id(:command, c.name), id(:event, event), label: scenarios(n))
+      for cmd <- commands, event <- cmd.emits do
+        n = Enum.count(scenarios, &(&1.trigger.name == cmd.name and expects?(&1, event)))
+
+        Document.edge(id(contract, :command, cmd.name), id(contract, :event, event), :emits,
+          scenarios: scenarios(n)
+        )
       end
 
     refuses =
-      for c <- commands, rule <- c.rejects do
-        n = Enum.count(scenarios, &(&1.trigger.name == c.name and &1.rejected == rule))
+      for cmd <- commands, rule <- cmd.rejects do
+        n = Enum.count(scenarios, &(&1.trigger.name == cmd.name and &1.rejected == rule))
 
-        Mermaid.edge(id(:command, c.name), refused_on(unit, c, rule),
-          line: :dotted,
-          label: Enum.join(Enum.reject(["may be refused", scenarios(n)], &is_nil/1), " · ")
+        Document.edge(
+          id(contract, :command, cmd.name),
+          refused_on(contract, unit, cmd, rule),
+          :refused_on,
+          scenarios: scenarios(n)
         )
       end
 
@@ -81,49 +91,67 @@ defmodule EhOsContract.Graph.Unit do
 
   # A command may be refused on an invariant of its unit or on a constraint of its own
   # (plan EL2), and a constraint is the command's: two commands may name theirs alike.
-  defp refused_on(unit, command, rule) do
+  # An invariant is the unit's: two units may name theirs alike.
+  defp refused_on(contract, unit, command, rule) do
     if Enum.any?(unit.invariants, &(&1.name == rule)),
-      do: id(:invariant, rule),
-      else: constraint_id(command, rule)
+      do: Document.id([:invariant, contract, unit.name, rule]),
+      else: Document.id([:constraint, contract, command.name, rule])
   end
 
-  defp constraint_node(command, constraint) do
+  defp invariant_node(contract, unit, invariant) do
     %{
-      id: constraint_id(command, constraint.name),
-      kind: :constraint,
-      name: constraint.name,
-      label: constraint.label
+      id: Document.id([:invariant, contract, unit.name, invariant.name]),
+      kind: :invariant,
+      name: invariant.name,
+      label: invariant.label || to_string(invariant.name)
     }
   end
 
-  defp constraint_id(command, name), do: "constraint_#{command.name}_#{name}"
+  defp constraint_node(contract, command, constraint) do
+    %{
+      id: Document.id([:constraint, contract, command.name, constraint.name]),
+      kind: :constraint,
+      name: constraint.name,
+      label: constraint.label,
+      command: command.name
+    }
+  end
 
-  # The card: the unit's label and kind, then a line per field of its state.
-  defp state_node(unit) do
-    lines =
+  # The card: the unit's label and kind, and its state's fields.
+  defp state_node(contract, unit) do
+    fields =
       for field <- unit.state.fields do
-        notes =
-          [field.name in unit.identity && "identity", field.optional && "optional"]
-          |> Enum.filter(& &1)
-
-        suffix = if notes == [], do: "", else: " · " <> Enum.join(notes, ", ")
-        "#{field.name}: #{type(field.type)}#{suffix}"
+        %{
+          name: field.name,
+          type: field.type,
+          identity: field.name in unit.identity,
+          optional: field.optional
+        }
       end
 
-    label = ["#{unit.label} · #{unit.kind}" | lines]
-    %{id: id(:state, unit.name), kind: :state, name: unit.name, label: label}
+    %{
+      id: id(contract, :state, unit.name),
+      kind: :state,
+      name: unit.name,
+      label: unit.label,
+      unit_kind: unit.kind,
+      fields: fields
+    }
   end
 
   # What the state is built from: an aggregate's own events, or the events a dynamic
   # consistency boundary consults — nodes of their own when they are not the unit's.
   defp built_from(model, %{kind: :dcb} = unit, events) do
     own = MapSet.new(events, & &1.name)
+    contract = model.module
 
     edges =
       for c <- unit.consults do
-        Mermaid.edge(id(:event, c.event), id(:state, unit.name),
-          line: :dotted,
-          label: consulted(c)
+        Document.edge(
+          id(contract, :event, c.event),
+          id(contract, :state, unit.name),
+          :consulted_by,
+          match: match(c)
         )
       end
 
@@ -135,37 +163,33 @@ defmodule EhOsContract.Graph.Unit do
             nil -> nil
           end
 
-        graph_node(:event, c.event, label)
+        Document.graph_node(:event, contract, c.event, label)
       end
 
     {edges, elsewhere}
   end
 
-  defp built_from(_model, unit, events) do
+  defp built_from(model, unit, events) do
     edges =
       for e <- events,
-          do: Mermaid.edge(id(:event, e.name), id(:state, unit.name), line: :dotted)
+          do:
+            Document.edge(
+              id(model.module, :event, e.name),
+              id(model.module, :state, unit.name),
+              :builds
+            )
 
     {edges, []}
   end
 
-  defp consulted(%{match: [_ | _] = match}), do: "consulted by #{Enum.join(match, ", ")}"
-  defp consulted(_where_in_prose), do: "consulted, where stated in prose"
+  # The fields a consulted event is matched by, or none where `where` says it in prose.
+  defp match(%{match: [_ | _] = match}), do: match
+  defp match(_where_in_prose), do: nil
 
   defp expects?(scenario, event), do: Enum.any?(scenario.expect, &(&1.event == event))
 
   defp scenarios(0), do: nil
-  defp scenarios(1), do: "1 scenario"
-  defp scenarios(n), do: "#{n} scenarios"
+  defp scenarios(n), do: n
 
-  defp type({:list, inner}), do: "list of #{type(inner)}"
-  defp type({:enum, values}), do: "one of #{Enum.map_join(values, ", ", &enum_value/1)}"
-  defp type(type) when is_atom(type), do: Atom.to_string(type)
-  defp type(type), do: inspect(type)
-
-  defp enum_value({value, _label}), do: value
-  defp enum_value(value), do: value
-
-  defp graph_node(kind, name, label), do: Mermaid.graph_node(kind, name, label)
-  defp id(kind, name), do: Mermaid.id(kind, name)
+  defp id(contract, kind, name), do: Document.id([kind, contract, name])
 end

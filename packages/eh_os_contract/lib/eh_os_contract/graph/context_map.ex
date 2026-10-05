@@ -15,27 +15,39 @@ defmodule EhOsContract.Graph.ContextMap do
   is `EhOsContract.Graph.System`'s picture.
   """
 
-  alias EhOsContract.Graph.Mermaid
+  alias EhOsContract.Graph.{Document, Mermaid}
   alias EhOsContract.Model
 
-  @doc "The context map of `domain`, a domain module or its model, as data."
-  @spec build(module() | map()) :: Mermaid.graph()
+  @doc """
+  The context map of `domain`, a domain module or its model, as data:
+  `EhOsContract.Graph.Document.graph()`. Each relation is an edge of its pattern, from
+  the upstream to the downstream, or in the order `between` names a symmetric one's
+  two ends.
+  """
+  @spec build(module() | map()) :: Document.graph()
   def build(domain) do
     domain = Model.fetch(domain)
+    d = domain.module
     contexts = MapSet.new(domain.contexts, & &1.name)
-    node_id = fn name -> Mermaid.id(end_kind(contexts, name), name) end
+    node_id = fn name -> Document.id([end_kind(contexts, name), d, name]) end
 
-    context_nodes = Enum.map(domain.contexts, &Mermaid.graph_node(:context, &1.name, &1.label))
-    external_nodes = Enum.map(domain.externals, &Mermaid.graph_node(:external, &1.name, &1.label))
+    context_nodes =
+      Enum.map(domain.contexts, &Document.graph_node(:context, d, &1.name, &1.label))
+
+    external_nodes =
+      Enum.map(domain.externals, &Document.graph_node(:external, d, &1.name, &1.label))
 
     groups =
       for subdomain <- domain.subdomains,
           members = for(c <- domain.contexts, c.subdomain == subdomain.name, do: c),
           members != [] do
         %{
-          id: Mermaid.id(:subdomain, subdomain.name),
-          label: "#{subdomain.label} · #{subdomain.type}",
-          nodes: Enum.map(members, &Mermaid.id(:context, &1.name))
+          id: Document.id([:subdomain, d, subdomain.name]),
+          kind: :subdomain,
+          name: subdomain.name,
+          label: subdomain.label,
+          type: subdomain.type,
+          nodes: Enum.map(members, &Document.id([:context, d, &1.name]))
         }
       end
 
@@ -53,16 +65,9 @@ defmodule EhOsContract.Graph.ContextMap do
   defp end_kind(contexts, name),
     do: if(MapSet.member?(contexts, name), do: :context, else: :external)
 
-  defp relation(%{between: [a, b]} = r, node_id) do
-    Mermaid.edge(node_id.(a), node_id.(b),
-      line: if(r.type == :separate_ways, do: :dotted, else: :solid),
-      head: false,
-      label: words(r.type)
-    )
-  end
+  defp relation(%{between: [a, b]} = r, node_id),
+    do: Document.edge(node_id.(a), node_id.(b), r.type)
 
   defp relation(r, node_id),
-    do: Mermaid.edge(node_id.(r.upstream), node_id.(r.downstream), label: words(r.type))
-
-  defp words(type), do: type |> Atom.to_string() |> String.replace("_", " ")
+    do: Document.edge(node_id.(r.upstream), node_id.(r.downstream), r.type)
 end

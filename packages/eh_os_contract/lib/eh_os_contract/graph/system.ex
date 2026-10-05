@@ -24,13 +24,14 @@ defmodule EhOsContract.Graph.System do
   import Ecto.Query
 
   alias EhOsContract.{Event, Model, Paths}
-  alias EhOsContract.Graph.Mermaid
+  alias EhOsContract.Graph.{Document, Mermaid}
 
   @doc """
   The system of `domain`, a domain module or its model, over `contracts`, the v2
-  contract modules or models: those naming another domain are left out.
+  contract modules or models, as data: `EhOsContract.Graph.Document.graph()`. Those
+  naming another domain are left out.
   """
-  @spec build(module() | map(), [module() | map()], keyword()) :: Mermaid.graph()
+  @spec build(module() | map(), [module() | map()], keyword()) :: Document.graph()
   def build(domain, contracts, opts \\ []) do
     domain = Model.fetch(domain)
     overlay? = Keyword.get(opts, :overlay, false)
@@ -41,7 +42,7 @@ defmodule EhOsContract.Graph.System do
       |> Enum.filter(&(&1.domain == domain.module))
 
     here = MapSet.new(models, & &1.module)
-    ids = Mermaid.unique_ids(Enum.map(models, & &1.module), &("contract_" <> slug(&1)))
+    ids = Map.new(models, &{&1.module, Document.id([:contract, &1.module])})
 
     edges =
       for m <- models,
@@ -63,32 +64,40 @@ defmodule EhOsContract.Graph.System do
 
     contract_nodes =
       for m <- models do
-        node = %{id: ids[m.module], kind: :contract, name: m.module, label: contract_label(m)}
-        if overlay?, do: Map.put(node, :runs, runs(m, opts)), else: node
+        process = Model.process(m)
+
+        node = %{
+          id: ids[m.module],
+          kind: :contract,
+          name: m.module,
+          label: short(m.module),
+          process: process && process.label
+        }
+
+        runs = overlay? && runs(m, opts)
+        if runs, do: Map.put(node, :runs, runs), else: node
       end
 
     between =
       for {sibling, m, c} <- edges,
           do: consumed(ids, sibling, m, c, Map.get(observed, m.module), counts)
 
-    {topic_nodes, topic_edges} = publications(models, ids)
+    {topic_nodes, topic_edges} = publications(domain.module, models, ids)
 
     groups =
       for context <- domain.contexts,
           members = for(m <- models, m.context == context.name, do: m),
           members != [] do
         %{
-          id: Mermaid.id(:context, context.name),
-          label: "#{context.label} · context",
+          id: Document.id([:context, domain.module, context.name]),
+          kind: :context,
+          name: context.name,
+          label: context.label,
           nodes: Enum.map(members, &ids[&1.module])
         }
       end
 
-    %{
-      nodes: Enum.map(contract_nodes, &with_runs/1) ++ topic_nodes,
-      edges: between ++ topic_edges,
-      groups: groups
-    }
+    %{nodes: contract_nodes ++ topic_nodes, edges: between ++ topic_edges, groups: groups}
   end
 
   @doc "The system of `domain` as a Mermaid flowchart; arguments as `build/3`."
@@ -98,70 +107,36 @@ defmodule EhOsContract.Graph.System do
 
   # --- nodes ---------------------------------------------------------------------------
 
-  defp contract_label(%{module: module} = model) do
-    case Model.process(model) do
-      nil -> short(module)
-      process -> "#{short(module)} · #{process.label}"
-    end
-  end
-
   defp short(module), do: module |> Module.split() |> List.last()
-
-  # A module as a node id: every segment, so two contexts' `Settlement` stay apart;
-  # `Mermaid.unique_ids/2` keeps apart the rest, `A.BC` and `A.B.C`.
-  defp slug(module),
-    do: module |> Module.split() |> Enum.map_join("_", &Macro.underscore/1)
-
-  defp with_runs(%{runs: nil} = node), do: Map.delete(node, :runs)
-
-  defp with_runs(%{runs: runs} = node),
-    do: node |> Map.delete(:runs) |> Map.update!(:label, &"#{&1} (#{Mermaid.runs(runs)})")
-
-  defp with_runs(node), do: node
-
-  # A name on the wire as a node id, before `Mermaid.unique_ids/2`; the name itself is
-  # its label.
-  defp topic_id(name), do: "publication_" <> String.replace(name, ~r/[^A-Za-z0-9_]/u, "_")
 
   # --- edges ---------------------------------------------------------------------------
 
   defp consumed(ids, sibling, consumer, c, steps, counts) do
-    label = Enum.map_join(c.events, ", ", &Atom.to_string/1)
-
-    label =
-      if steps,
-        do: Enum.join([label | traffic(sibling, c, steps, counts)], " · "),
-        else: label
-
-    Mermaid.edge(ids[sibling.module], ids[consumer.module], label: label)
+    Document.edge(ids[sibling.module], ids[consumer.module], :consumed_by,
+      events: c.events,
+      overlay: steps && traffic(sibling, c, steps, counts)
+    )
   end
 
-  # Each `publish` into its publication, and each publication a `subscribe` reads.
-  defp publications(models, ids) do
+  # Each `publish` into its publication, and each publication a `subscribe` reads. A
+  # publication is the domain's: a name on the wire is one, whoever publishes it.
+  defp publications(domain, models, ids) do
     names =
       Enum.uniq(
         for(m <- models, p <- m.publishes, do: p.as) ++
           for(m <- models, %{kind: :published, from: name} <- m.consumes, do: name)
       )
 
-    topic = Mermaid.unique_ids(names, &topic_id/1)
+    topic = Map.new(names, &{&1, Document.id([:publication, domain, &1])})
 
     out =
       for m <- models, p <- m.publishes do
-        {p.as,
-         Mermaid.edge(ids[m.module], topic[p.as],
-           line: :dotted,
-           label: "publishes #{p.from}"
-         )}
+        {p.as, Document.edge(ids[m.module], topic[p.as], :publishes, event: p.from)}
       end
 
     into =
       for m <- models, %{kind: :published, from: name} = c <- m.consumes do
-        {name,
-         Mermaid.edge(topic[name], ids[m.module],
-           line: :dotted,
-           label: "as #{c.as}"
-         )}
+        {name, Document.edge(topic[name], ids[m.module], :subscribed_by, as: c.as)}
       end
 
     nodes = for name <- names, do: %{id: topic[name], kind: :publication, name: name, label: name}
@@ -216,8 +191,7 @@ defmodule EhOsContract.Graph.System do
         f.commands > 0 or f.effects > 0 or f.subscription != nil
       end)
 
-    ["#{count} events", waiting > 0 && "#{waiting} waiting", failing? && "failing"]
-    |> Enum.filter(& &1)
+    %{events: count, waiting: waiting, failing: failing?}
   end
 
   defp repo, do: EhOsContract.Config.fetch!(:repo)

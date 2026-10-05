@@ -15,20 +15,18 @@ defmodule EhOsContract.Graph.Lifecycle do
   are the report's: this module counts nothing of its own.
   """
 
-  alias EhOsContract.Graph.Mermaid
+  alias EhOsContract.Graph.{Document, Mermaid}
   alias EhOsContract.Model
-
-  @start "start"
 
   @doc """
   The lifecycle of aggregate `name` of `contract` as data:
-  `EhOsContract.Graph.Mermaid.graph()`. `opts`: `overlay: true` lays the log over it,
+  `EhOsContract.Graph.Document.graph()`. `opts`: `overlay: true` lays the log over it,
   over `:since` and `:until`; `lifecycles:` gives the report's `lifecycles` already
   computed (`EhOsContract.Conformance.lifecycles/2`), so a screen drawing several
   reads the log once. Raises when the contract has no such aggregate, or it declares
   no lifecycle.
   """
-  @spec build(module() | map(), atom(), keyword()) :: Mermaid.graph()
+  @spec build(module() | map(), atom(), keyword()) :: Document.graph()
   def build(contract, name, opts \\ []) do
     model = Model.fetch(contract)
 
@@ -47,14 +45,16 @@ defmodule EhOsContract.Graph.Lifecycle do
     labels = Map.new(for e <- model.events, e.unit == name, do: {e.name, e.label})
     observed = if Keyword.get(opts, :overlay, false), do: observed(model, name, opts)
 
+    # A lifecycle's statuses are its aggregate's: two aggregates may name theirs alike.
+    id = fn
+      nil -> Document.id([:start, model.module, name])
+      status -> Document.id([:status, model.module, name, status])
+    end
+
     nodes =
-      [%{id: @start, kind: :start, label: " "}] ++
+      [%{id: id.(nil), kind: :start, name: nil, label: nil}] ++
         for s <- lifecycle.statuses do
-          # One id for a status whatever its kind, so an arrow finds an end too.
-          %{
-            Mermaid.graph_node(:status, s.name, s.label)
-            | kind: if(s.final, do: :status_end, else: :status)
-          }
+          %{id: id.(s.name), kind: :status, name: s.name, label: s.label, final: s.final}
         end
 
     declared =
@@ -63,8 +63,10 @@ defmodule EhOsContract.Graph.Lifecycle do
 
     edges =
       for {from, event, to} <- declared do
-        Mermaid.edge(id(from), id(to),
-          label: label(labels, event, count(observed, from, event, to))
+        Document.edge(id.(from), id.(to), :transition,
+          event: event,
+          label: Map.get(labels, event, "#{event}"),
+          overlay: taken(observed, from, event, to)
         )
       end
 
@@ -72,9 +74,10 @@ defmodule EhOsContract.Graph.Lifecycle do
       for %{from: from, event: event, count: count} <- (observed && observed.undeclared) || [] do
         at = from && from.name
 
-        Mermaid.edge(id(at), id(at),
-          line: :dotted,
-          label: label(labels, event.name, "not declared, #{count}x")
+        Document.edge(id.(at), id.(at), :undeclared,
+          event: event.name,
+          label: Map.get(labels, event.name, "#{event.name}"),
+          overlay: %{count: count}
         )
       end
 
@@ -94,29 +97,24 @@ defmodule EhOsContract.Graph.Lifecycle do
     |> Enum.find(&(&1.unit == name))
   end
 
-  # How the report reads an arrow: taken so many times, not taken yet while an
-  # aggregate still stands where it can be, or never.
-  defp count(nil, _from, _event, _to), do: nil
+  # The report's reading of an arrow: how many times it was taken, and whether it is
+  # not taken yet while an aggregate still stands where it can be, or never.
+  defp taken(nil, _from, _event, _to), do: nil
 
-  defp count(observed, from, event, to) do
+  defp taken(observed, from, event, to) do
     same = fn t -> {t.from && t.from.name, t.event.name, t.to.name} == {from, event, to} end
-    transition = Enum.find(observed.transitions, same)
 
-    cond do
+    case Enum.find(observed.transitions, same) do
       # A report of another declaration than the one drawn: no number rather than a crash.
-      transition == nil -> nil
-      transition.count > 0 -> "#{transition.count}x"
-      Enum.any?(observed.pending, same) -> "not yet"
-      Enum.any?(observed.untraversed, same) -> "never"
-      true -> "0x"
+      nil ->
+        nil
+
+      transition ->
+        %{
+          count: transition.count,
+          pending: Enum.any?(observed.pending, same),
+          untraversed: Enum.any?(observed.untraversed, same)
+        }
     end
   end
-
-  defp id(nil), do: @start
-  defp id(status), do: Mermaid.id(:status, status)
-
-  defp label(labels, event, nil), do: ~s("#{Mermaid.escape(Map.get(labels, event, "#{event}"))}")
-
-  defp label(labels, event, count),
-    do: ~s("#{Mermaid.escape(Map.get(labels, event, "#{event}"))} · #{count}")
 end

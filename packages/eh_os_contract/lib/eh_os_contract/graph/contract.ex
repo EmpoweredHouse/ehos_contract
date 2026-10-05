@@ -25,14 +25,19 @@ defmodule EhOsContract.Graph.Contract do
   import Ecto.Query
 
   alias EhOsContract.{Event, Model, Paths}
-  alias EhOsContract.Graph.Mermaid
+  alias EhOsContract.Graph.{Document, Mermaid}
 
-  @doc "The full graph of `contract` as data: `EhOsContract.Graph.Mermaid.graph()`."
-  @spec build(module() | map(), keyword()) :: Mermaid.graph()
+  @doc """
+  The full graph of `contract` as data: `EhOsContract.Graph.Document.graph()`. Its
+  own declarations are scoped to the contract, the actors and externals to the
+  domain it names.
+  """
+  @spec build(module() | map(), keyword()) :: Document.graph()
   def build(contract, opts \\ []) do
     model = Model.fetch(contract)
     domain = domain(model.domain)
     overlay? = Keyword.get(opts, :overlay, false)
+    scope = %{contract: model.module, domain: model.domain}
 
     steps = if overlay?, do: Paths.observe(model, opts), else: Paths.declared(model)
     counts = if overlay?, do: event_counts(model, opts), else: %{}
@@ -42,36 +47,48 @@ defmodule EhOsContract.Graph.Contract do
 
     units =
       for unit <- model.units do
-        commands = for c <- model.commands, c.unit == unit.name, do: graph_node(:command, c)
-        events = for e <- model.events, e.unit == unit.name, do: graph_node(:event, e)
+        commands =
+          for c <- model.commands, c.unit == unit.name, do: graph_node(scope, :command, c)
+
+        events = for e <- model.events, e.unit == unit.name, do: graph_node(scope, :event, e)
         {unit, commands ++ events}
       end
 
     reactions =
-      for step <- steps, ref <- [step.from, step.via, step.to], ref != nil, do: graph_node(ref)
+      for step <- steps,
+          ref <- [step.from, step.via, step.to],
+          ref != nil,
+          do: graph_node(scope, ref.kind, ref)
 
     included =
       for %{included: true} = e <- Model.process_events(model),
-          do: graph_node(:event, %{e.declaration | name: e.name})
+          do: graph_node(scope, :event, %{e.declaration | name: e.name})
 
-    {read_nodes, read_edges} = read_side(model)
-    {actor_nodes, actor_edges} = actors(model, actors)
-    {external_nodes, external_edges} = externals(model, domain, actors, externals)
+    {read_nodes, read_edges} = read_side(model, scope)
+    {actor_nodes, actor_edges} = actors(model, scope, actors)
+    {external_nodes, external_edges} = externals(model, scope, domain, actors, externals)
 
     nodes =
       (Enum.flat_map(units, &elem(&1, 1)) ++
          reactions ++ included ++ read_nodes ++ actor_nodes ++ external_nodes)
       |> Enum.uniq_by(& &1.id)
-      |> Enum.map(&Map.put(&1, :counts, Map.get(counts, {&1.kind, &1.name})))
+      |> Enum.map(&with_counts(&1, Map.get(counts, {&1.kind, &1.name})))
 
     edges =
-      (Enum.flat_map(steps, &step_edges(&1, overlay?)) ++
+      (Enum.flat_map(steps, &step_edges(&1, scope, overlay?)) ++
          actor_edges ++ read_edges ++ external_edges)
       |> Enum.uniq()
 
     groups =
       for {unit, members} <- units, members != [] do
-        %{id: "unit_#{unit.name}", label: "#{unit.label} · #{unit.kind}", nodes: ids(members)}
+        %{
+          id: Document.id([:unit, model.module, unit.name]),
+          kind: :unit,
+          name: unit.name,
+          label: unit.label,
+          unit_kind: unit.kind,
+          nodes: Enum.map(members, & &1.id)
+        }
       end
 
     %{nodes: nodes, edges: edges, groups: groups}
@@ -91,135 +108,136 @@ defmodule EhOsContract.Graph.Contract do
 
   # --- nodes ---------------------------------------------------------------------------
 
-  defp graph_node(%{kind: kind, name: name, label: label}), do: graph_node(kind, name, label)
-  defp graph_node(kind, %{name: name, label: label}), do: graph_node(kind, name, label)
-  defp graph_node(kind, name, label), do: Mermaid.graph_node(kind, name, label)
+  defp graph_node(scope, kind, %{name: name, label: label}),
+    do: Document.graph_node(kind, scope_of(scope, kind), name, label)
 
-  defp id(kind, name), do: Mermaid.id(kind, name)
-  defp ids(nodes), do: Enum.map(nodes, & &1.id)
+  defp graph_node(scope, kind, name, label),
+    do: Document.graph_node(kind, scope_of(scope, kind), name, label)
+
+  defp with_counts(node, nil), do: node
+  defp with_counts(node, counts), do: Map.put(node, :counts, counts)
+
+  # An actor and an external system are the domain's; everything else on this graph is
+  # the contract's, an event it consumes included, under the name it has here.
+  defp scope_of(scope, kind) when kind in [:actor, :external], do: scope.domain
+  defp scope_of(scope, _kind), do: scope.contract
+
+  defp id(scope, kind, name), do: Document.id([kind, scope_of(scope, kind), name])
 
   # An event of this contract or of the one it consumes it from, with its label.
-  defp event_node(model, name) do
+  defp event_node(model, scope, name) do
     label =
       case Model.declaring(model, name) do
         {_contract, e} -> e.label
         nil -> nil
       end
 
-    graph_node(:event, name, label)
+    graph_node(scope, :event, name, label)
   end
 
   # --- the steps -----------------------------------------------------------------------
 
   # A step's own edge carries its counts; an event reaching its consumer is drawn
   # once, however many commands the consumer issues.
-  defp step_edges(%{via: nil} = step, overlay?),
-    do: [edge(step.from, step.to, :inline, label(step, overlay?))]
+  defp step_edges(%{via: nil} = step, scope, overlay?),
+    do: [step_edge(scope, step.from, step.to, :emits, step.mode, overlay(step, overlay?))]
 
   # A timer is the process manager's: it sets it, and the timer issues the command, so
   # the timer's counts do not share an edge with the manager's other reactions.
-  # Setting is ownership, not a delivery, so it is a plain line saying so.
-  defp step_edges(%{from: %{kind: :timer}} = step, overlay?) do
+  # Setting is ownership, not a delivery.
+  defp step_edges(%{from: %{kind: :timer}} = step, scope, overlay?) do
     [
-      Mermaid.edge(ref_id(step.via), ref_id(step.from),
-        line: :dotted,
-        head: false,
-        label: "sets"
-      ),
-      edge(step.from, step.to, :async, label(step, overlay?))
+      Document.edge(ref_id(scope, step.via), ref_id(scope, step.from), :sets_timer),
+      step_edge(scope, step.from, step.to, :fires, :async, overlay(step, overlay?))
     ]
   end
 
-  defp step_edges(%{to: nil} = step, overlay?),
-    do: [edge(step.from, step.via, step.mode, label(step, overlay?))]
+  defp step_edges(%{to: nil} = step, scope, overlay?),
+    do: [
+      step_edge(scope, step.from, step.via, :handled_by, step.mode, overlay(step, overlay?))
+    ]
 
-  defp step_edges(step, overlay?) do
+  defp step_edges(step, scope, overlay?) do
     [
-      edge(step.from, step.via, step.mode, nil),
-      edge(step.via, step.to, step.mode, label(step, overlay?))
+      step_edge(scope, step.from, step.via, :handled_by, step.mode, nil),
+      step_edge(scope, step.via, step.to, :issues, step.mode, overlay(step, overlay?))
     ]
   end
 
-  defp ref_id(ref), do: id(ref.kind, ref.name)
+  defp ref_id(scope, ref), do: id(scope, ref.kind, ref.name)
 
-  defp edge(from, to, mode, label) do
-    label =
-      if mode == :async,
-        do: Enum.join(Enum.reject(["async", label], &is_nil/1), " · "),
-        else: label
-
-    Mermaid.edge(ref_id(from), ref_id(to),
-      line: if(mode == :async, do: :dotted, else: :solid),
-      label: label
+  defp step_edge(scope, from, to, relation, mode, overlay) do
+    Document.edge(ref_id(scope, from), ref_id(scope, to), relation,
+      delivery: mode,
+      overlay: overlay
     )
   end
 
-  defp label(_step, false), do: nil
+  # The log over a step: how often it was taken, what waits there, and whether
+  # anything fails.
+  defp overlay(_step, false), do: nil
 
-  defp label(step, true) do
-    taken = if step.taken, do: "#{step.taken} taken", else: "taken unknown"
-    waiting = Enum.sum(Map.values(step.in_flight))
+  defp overlay(step, true) do
     f = step.failing
-    failing? = f.commands > 0 or f.effects > 0 or f.subscription != nil
 
-    [taken, waiting > 0 && "#{waiting} waiting", failing? && "failing"]
-    |> Enum.filter(& &1)
-    |> Enum.join(" · ")
+    %{
+      taken: step.taken,
+      waiting: Enum.sum(Map.values(step.in_flight)),
+      failing: f.commands > 0 or f.effects > 0 or f.subscription != nil
+    }
   end
 
   # --- who acts ------------------------------------------------------------------------
 
   # The actors that issue a command, record an event or ask a query, and those edges.
-  defp actors(model, actors) do
+  defp actors(model, scope, actors) do
     issue =
       for command <- model.commands, actor <- command.by do
-        {actor, Mermaid.edge(id(:actor, actor), id(:command, command.name))}
+        {actor,
+         Document.edge(id(scope, :actor, actor), id(scope, :command, command.name), :issues)}
       end
 
     record =
       for event <- model.events, actor <- event.recorded_by do
-        {actor, Mermaid.edge(id(:actor, actor), id(:event, event.name), label: "records")}
+        {actor, Document.edge(id(scope, :actor, actor), id(scope, :event, event.name), :records)}
       end
 
     ask =
       for query <- model.queries, actor <- List.wrap(query.by) do
-        {actor, Mermaid.edge(id(:actor, actor), id(:query, query.name))}
+        {actor, Document.edge(id(scope, :actor, actor), id(scope, :query, query.name), :asks)}
       end
 
     pairs = issue ++ record ++ ask
 
     nodes =
       for name <- pairs |> Enum.map(&elem(&1, 0)) |> Enum.uniq(),
-          do: graph_node(:actor, name, actors[name] && actors[name].label)
+          do: graph_node(scope, :actor, name, actors[name] && actors[name].label)
 
     {nodes, Enum.map(pairs, &elem(&1, 1))}
   end
 
   # --- who reads -----------------------------------------------------------------------
 
-  # Each read model with the events it projects, and each query with what it reads. A
-  # read model projected after the transaction is drawn as an asynchronous delivery.
-  defp read_side(model) do
+  # Each read model with the events it projects, in the transaction or after it, and
+  # each query with what it reads.
+  defp read_side(model, scope) do
     projected =
       for rm <- model.read_models, event <- List.wrap(rm.projects) do
-        {event_node(model, event),
-         edge(
-           %{kind: :event, name: event},
-           %{kind: :read_model, name: rm.name},
-           if(rm.delivery == :in_transaction, do: :inline, else: :async),
-           nil
+        {event_node(model, scope, event),
+         Document.edge(id(scope, :event, event), id(scope, :read_model, rm.name), :projected_into,
+           delivery: if(rm.delivery == :in_transaction, do: :inline, else: :async)
          )}
       end
 
     queries =
       for q <- model.queries do
-        {graph_node(:query, q),
-         Mermaid.edge(id(:query, q.name), id(:read_model, q.reads), label: "reads")}
+        {graph_node(scope, :query, q),
+         Document.edge(id(scope, :query, q.name), id(scope, :read_model, q.reads), :reads)}
       end
 
     nodes =
       Enum.map(projected, &elem(&1, 0)) ++
-        Enum.map(model.read_models, &graph_node(:read_model, &1)) ++
+        Enum.map(model.read_models, &graph_node(scope, :read_model, &1)) ++
         Enum.map(queries, &elem(&1, 0))
 
     {nodes, Enum.map(projected ++ queries, &elem(&1, 1))}
@@ -227,25 +245,22 @@ defmodule EhOsContract.Graph.Contract do
 
   # --- the outside world ---------------------------------------------------------------
 
-  # The domain's externals this contract touches. A dependency and an actor backing
-  # are relations, not deliveries, so they have no arrowhead, as the declared shape
-  # draws a dependency.
-  defp externals(model, domain, actors, externals) do
+  # The domain's externals this contract touches: what an effect calls, what an event
+  # rests on, what backs a system actor, and what gives a field its value.
+  defp externals(model, scope, domain, actors, externals) do
     calls =
       for effect <- model.effects, external <- List.wrap(effect.calls) do
         {external,
-         Mermaid.edge(id(:effect, effect.name), id(:external, external),
-           line: :dotted,
-           label: "calls"
-         )}
+         Document.edge(id(scope, :effect, effect.name), id(scope, :external, external), :calls)}
       end
 
     depends =
       for event <- model.events, event.depends_on do
         {event.depends_on,
-         Mermaid.edge(id(:event, event.name), id(:external, event.depends_on),
-           line: :dotted,
-           head: false
+         Document.edge(
+           id(scope, :event, event.name),
+           id(scope, :external, event.depends_on),
+           :depends_on
          )}
       end
 
@@ -261,10 +276,10 @@ defmodule EhOsContract.Graph.Contract do
           actor = actors[name],
           actor && actor.backed_by do
         {actor.backed_by,
-         Mermaid.edge(id(:actor, name), id(:external, actor.backed_by),
-           line: :dotted,
-           head: false,
-           label: "backed by"
+         Document.edge(
+           id(scope, :actor, name),
+           id(scope, :external, actor.backed_by),
+           :backed_by
          )}
       end
 
@@ -275,9 +290,8 @@ defmodule EhOsContract.Graph.Contract do
           external = issued_by(domain, field),
           external != nil do
         {external,
-         Mermaid.edge(id(:external, external), id(kind, declaration.name),
-           line: :dotted,
-           label: "gives #{field.name}"
+         Document.edge(id(scope, :external, external), id(scope, kind, declaration.name), :gives,
+           field: field.name
          )}
       end
 
@@ -285,7 +299,7 @@ defmodule EhOsContract.Graph.Contract do
 
     nodes =
       for name <- pairs |> Enum.map(&elem(&1, 0)) |> Enum.uniq(),
-          do: graph_node(:external, name, externals[name] && externals[name].label)
+          do: graph_node(scope, :external, name, externals[name] && externals[name].label)
 
     {nodes, Enum.map(pairs, &elem(&1, 1))}
   end

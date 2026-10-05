@@ -231,6 +231,92 @@ defmodule EhOsContract.GraphContractTest do
       for contract <- contracts, do: declared_ends!(EhOsContract.Graph.Contract.build(contract))
     end
 
+    test "every node of every graph has an id of its own, and every edge ends at one" do
+      contracts = EhOsContract.Registry.contracts() ++ [@contract, @constrained]
+      by_domain = Enum.group_by(contracts, &EhOsContract.Model.fetch(&1).domain)
+
+      build = fn ->
+        for(
+          contract <- contracts,
+          model = EhOsContract.Model.fetch(contract),
+          graph <-
+            [EhOsContract.Graph.Contract.build(contract)] ++
+              for(u <- model.units, do: EhOsContract.Graph.Unit.build(contract, u.name)) ++
+              for(
+                u <- model.units,
+                EhOsContract.Lifecycle.of(u),
+                do: EhOsContract.Graph.Lifecycle.build(contract, u.name)
+              ),
+          do: {contract, graph}
+        ) ++
+          for domain <- EhOsContract.Registry.domains(),
+              graph <- [
+                EhOsContract.Graph.ContextMap.build(domain),
+                EhOsContract.Graph.System.build(domain, Map.get(by_domain, domain, []))
+              ],
+              do: {domain, graph}
+      end
+
+      graphs = build.()
+
+      # Mermaid's ids were numbered where two met; the document's are the declarations'
+      # own, so two nodes meeting on one id would be two declarations drawn as one.
+      for {module, graph} <- graphs do
+        ids = Enum.map(graph.nodes, & &1.id)
+        assert ids == Enum.uniq(ids), "#{inspect(module)}: #{inspect(ids -- Enum.uniq(ids))}"
+        declared_ends!(graph)
+      end
+
+      # The same declarations, built again, give the same graphs.
+      assert build.() == graphs
+    end
+
+    test "two units' invariants of one name are two declarations, with two ids" do
+      compile(
+        contract("GraphTwinRules", ~S'''
+          aggregate :visit, "Visit" do
+            identity :visit_id
+            invariant :paid, "The visit is paid"
+            command :close_visit, "Close", by: :reception, emits: :visit_closed, rejects: :paid
+            event :visit_closed, "Closed"
+          end
+
+          # The order is the visit's, so the process correlates both by the visit.
+          aggregate :order, "Order" do
+            identity :visit_id
+            invariant :paid, "The order is paid"
+            command :ship_order, "Ship", by: :reception, emits: :order_shipped, rejects: :paid
+            event :order_shipped, "Shipped"
+          end
+
+          process :visit, "Visit" do
+            correlate :visit_id
+          end
+
+          scenario "unpaid visit" do
+            command :close_visit
+            rejected :paid
+          end
+
+          scenario "unpaid order" do
+            command :ship_order
+            rejected :paid
+          end
+        '''),
+        "graph_twin_rules.ex"
+      )
+
+      rule = fn unit ->
+        EhOsContract.Fixtures.GraphTwinRules
+        |> EhOsContract.Graph.Unit.build(unit)
+        |> Map.fetch!(:nodes)
+        |> Enum.find(&(&1.kind == :invariant))
+      end
+
+      assert rule.(:visit).id == "invariant:EhOsContract.Fixtures.GraphTwinRules:visit:paid"
+      assert rule.(:order).id == "invariant:EhOsContract.Fixtures.GraphTwinRules:order:paid"
+    end
+
     test "a label written over several lines stays on its node's line" do
       compile(
         contract("GraphMultiline", ~S'''
@@ -275,10 +361,17 @@ defmodule EhOsContract.GraphContractTest do
     end
 
     test "the state card's lines are broken by the renderer, and a field's text is escaped" do
-      node = %{id: "state_x", kind: :state, label: ["Wizyta · aggregate", "a<b: id"]}
+      node = %{
+        id: "state:X:x",
+        kind: :state,
+        name: :x,
+        label: "Wizyta",
+        unit_kind: :aggregate,
+        fields: [%{name: :"a<b", type: :id, identity: false, optional: false}]
+      }
 
-      assert EhOsContract.Graph.Mermaid.node_line(node) ==
-               ~s(state_x["Wizyta · aggregate<br/>a#lt;b: id"]:::state)
+      assert EhOsContract.Graph.Mermaid.render(%{nodes: [node], edges: []}) =~
+               ~s(\n    state_x["Wizyta · aggregate<br/>a#lt;b: id"]:::state\n)
     end
 
     test "a unit the contract does not have is refused, naming the ones it has" do
