@@ -26,6 +26,7 @@ defmodule EhOsContract.Consumer do
     Implementations,
     Meta,
     Model,
+    NewerSchemaError,
     Personal,
     Rejection
   }
@@ -120,7 +121,9 @@ defmodule EhOsContract.Consumer do
   @doc """
   An event as its consumers take it: the struct of the contract that declares its
   type, with `__meta__` from the row. Raises when no contract of the host declares the
-  type, or the payload no longer fits it.
+  type, or the payload no longer fits it, and with `EhOsContract.NewerSchemaError`
+  when the row was written with a newer version of the event's fields than this code
+  declares (plan W1).
 
   A personal field is opened with its subject's key, read for this row alone and
   only when the row has a sealed field; once the subject is erased it holds
@@ -152,7 +155,14 @@ defmodule EhOsContract.Consumer do
   # a stream folded for a decision is one query, not one per event.
   @spec decode_all!(map(), map(), [Event.t()]) :: [struct()]
   def decode_all!(model, values, rows) do
-    declared = Enum.map(rows, &{declaration!(model, &1), &1})
+    # The version first, before a newer payload is read for its subjects with fields it
+    # may no longer have.
+    declared =
+      Enum.map(rows, fn row ->
+        declaration = declaration!(model, row)
+        current!(declaration, row)
+        {declaration, row}
+      end)
 
     subjects =
       for {declaration, row} <- declared,
@@ -176,6 +186,51 @@ defmodule EhOsContract.Consumer do
       decode!(model, values, declaration, row, Personal.opener(keys, row.type, erased))
     end
   end
+
+  @doc """
+  Raises `EhOsContract.NewerSchemaError` when `row` was written with a newer version
+  of its event's fields than `model` declares (plan W1), for a reader that takes a
+  row's payload as stored rather than through `decode!/1`, as a relay does. An older
+  version passes, as it decodes, until upcasters exist (V1).
+  """
+  @spec current!(map(), Event.t()) :: :ok
+  def current!(%{kind: :contract} = model, row), do: current!(declaration!(model, row), row)
+
+  # A row written with a newer version of the event's fields than this code declares
+  # is code older than the code that wrote it — a rollback, or a node not yet
+  # deployed — and its fields cannot be trusted to mean what this declaration says.
+  def current!(%{schema_version: declared}, %{schema_version: written} = row)
+      when is_integer(written) and written > declared do
+    raise NewerSchemaError,
+      contract: row.contract,
+      type: row.type,
+      position: row.position,
+      written: written,
+      declared: declared
+  end
+
+  def current!(_declaration, _row), do: :ok
+
+  @doc false
+  # Plan W1: whether `row` was written with a newer version of its event's fields than
+  # this code declares, asked of a batch before it is applied, so that the events
+  # before a newer row commit instead of rolling back with it. A row this cannot place
+  # (erased, or of a contract or a type this node does not know) is left to
+  # `decode!/1`, which says why.
+  @spec newer?(Event.t()) :: boolean()
+  def newer?(%Event{type: type, schema_version: written} = row) when is_integer(written) do
+    with false <- type == Personal.erased_type(),
+         %{kind: :contract} = model <- Model.fetch(Module.safe_concat([row.contract])),
+         %{schema_version: declared} <- Enum.find(model.events, &(&1.type == type)) do
+      written > declared
+    else
+      _cannot_place -> false
+    end
+  rescue
+    ArgumentError -> false
+  end
+
+  def newer?(_row), do: false
 
   defp declaration!(model, row) do
     Enum.find(model.events, &(&1.type == row.type)) ||

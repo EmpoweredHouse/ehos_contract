@@ -25,6 +25,50 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Changed — a host has to act
+
+- **W1: a row of the log carries the schema version it was written with, and newer code's rows wait.**
+  Dispatch writes the event's `schema_version:` into `schema_version`, where every row said 1 until now, the
+  column's default. A row written with a newer version than the running code declares is never decoded with the
+  older fields: it raises `EhOsContract.NewerSchemaError`, which names the row, never a value. During a rolling
+  deploy, or after a rollback, that means on the older node:
+  - a command whose stream holds such a row is refused, recorded `failed` with that error;
+  - a subscription, a process manager and a relay wait at the row: the events before it in the batch are
+    applied, the row itself moves nothing, no attempt is counted, the runner logs a warning and tries again every
+    5 s, and it goes on by itself once the node runs the newer code; a subscription does not turn `failing` over
+    it, so do not `--skip` it;
+  - an effect's job is snoozed for 30 s, which Oban does not count against `max_attempts`, and its backoff after
+    a real failure counts only the attempts that ran;
+  - a message an inbox takes whose policy's command meets such a row is answered `:nack` and delivered again.
+  Rows written before this version say 1 whatever their event declared; no contract has raised a version yet, so
+  none is misread. An older row decodes as before, until upcasters (V1). No contract version moves.
+- **N3: a timer has a label.** `timer :documentation_due, wait: {24, :hour}, …` no longer compiles; write
+  `timer :documentation_due, "Termin dokumentacji", wait: {24, :hour}, …`. The label names what the timer is for,
+  not how long it waits, which `wait:` or `at:` says, and a blank one is refused (P4). A process manager's page
+  prints both, the callback's `@doc` and the graph's timer node carry the label, and so do the conformance report's
+  and the dashboard's sentences about a timer's step, which named the timer before. **Moves the version** of every
+  contract with a timer.
+- **N2: another application's event is `subscribe`d to, not `consumes`d.** `consumes "rehmed.visit.closed.v1",
+  as: :visit_closed do … end` no longer compiles; write `subscribe "rehmed.visit.closed.v1", as: :visit_closed do
+  … end`, the word its capability `<name>.subscribe` already used. `consumes` takes a sibling contract's module only
+  and reads its events from this log; a published name given to it is refused by K1, which says to write
+  `subscribe` instead. D11 says `subscribe`, and with no list of events to take, it no longer refuses one. The
+  model is unchanged, so **no version moves**.
+- **N1: an entity declares `identity`, and the library injects it.** `entity :service, "Usługa", context:
+  :configuration, identified_by: :service_id` with a `field :service_id, :id` no longer compiles; write
+  `identity: :service_id` and drop the field, which the library adds first among the entity's fields as a
+  required, non-personal `:id`, as it adds a unit's. An identity some system gives takes `issued_by:` on the
+  entity, `identity: :number, issued_by: :ksef`, and the model keeps it on the injected field. D6 refuses an
+  identity not in snake_case or declared again as a field; D8 holds an entity's `issued_by:` to the domain's
+  externals. **Moves the version** of every domain with an entity, whose model now says `identity`.
+- **N1: a scenario names what it is about with `target`, not `scope`.** `scope :remind_on_close` in a
+  `scenario` no longer compiles; write `target :remind_on_close`. `scope` stays a command's and a query's,
+  where it narrows a grant. S1 says "target". The model's scenario loses its raw `scope` key and keeps the
+  resolved `target`, so **the version moves** of every contract with a scenario.
+- **N1: a status that ends an aggregate's life is `final:`, not `terminal:`.** `status :closed, "Closed",
+  terminal: true` no longer compiles; write `final: true`. `terminal:` stays an event's, where it ends a run of
+  the process, so one word no longer means two things in one contract. T3 and T4 and dispatch's refusal say
+  "final". **Moves the version** of every contract with a lifecycle, whose statuses carry the key in the model.
 - **N1 refuses a query named like an event an actor records**, at the query's line. Both are capabilities named
   `<domain>.<name>` (D14), and since `eh-os` D-73 the manifest offers both. L3's D14 already refused the pair when
   the Mix compiler runs; N1 refuses it in the contract's own compile, before `Model.capabilities/1` could merge
@@ -59,33 +103,6 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Changed — a host has to act
 
-- **N3: a timer has a label.** `timer :documentation_due, wait: {24, :hour}, …` no longer compiles; write
-  `timer :documentation_due, "Termin dokumentacji", wait: {24, :hour}, …`. The label names what the timer is for,
-  not how long it waits, which `wait:` or `at:` says, and a blank one is refused (P4). A process manager's page
-  prints both, the callback's `@doc` and the graph's timer node carry the label, and so do the conformance report's
-  and the dashboard's sentences about a timer's step, which named the timer before. **Moves the version** of every
-  contract with a timer.
-- **N2: another application's event is `subscribe`d to, not `consumes`d.** `consumes "rehmed.visit.closed.v1",
-  as: :visit_closed do … end` no longer compiles; write `subscribe "rehmed.visit.closed.v1", as: :visit_closed do
-  … end`, the word its capability `<name>.subscribe` already used. `consumes` takes a sibling contract's module only
-  and reads its events from this log; a published name given to it is refused by K1, which says to write
-  `subscribe` instead. D11 says `subscribe`, and with no list of events to take, it no longer refuses one. The
-  model is unchanged, so **no version moves**.
-- **N1: an entity declares `identity`, and the library injects it.** `entity :service, "Usługa", context:
-  :configuration, identified_by: :service_id` with a `field :service_id, :id` no longer compiles; write
-  `identity: :service_id` and drop the field, which the library adds first among the entity's fields as a
-  required, non-personal `:id`, as it adds a unit's. An identity some system gives takes `issued_by:` on the
-  entity, `identity: :number, issued_by: :ksef`, and the model keeps it on the injected field. D6 refuses an
-  identity not in snake_case or declared again as a field; D8 holds an entity's `issued_by:` to the domain's
-  externals. **Moves the version** of every domain with an entity, whose model now says `identity`.
-- **N1: a scenario names what it is about with `target`, not `scope`.** `scope :remind_on_close` in a
-  `scenario` no longer compiles; write `target :remind_on_close`. `scope` stays a command's and a query's,
-  where it narrows a grant. S1 says "target". The model's scenario loses its raw `scope` key and keeps the
-  resolved `target`, so **the version moves** of every contract with a scenario.
-- **N1: a status that ends an aggregate's life is `final:`, not `terminal:`.** `status :closed, "Closed",
-  terminal: true` no longer compiles; write `final: true`. `terminal:` stays an event's, where it ends a run of
-  the process, so one word no longer means two things in one contract. T3 and T4 and dispatch's refusal say
-  "final". **Moves the version** of every contract with a lifecycle, whose statuses carry the key in the model.
 - **EP4: `idempotency` names its key and its owner.** `idempotency: :event_id` no longer compiles: it is
   `[key: :event_id, owner: :self]`, the owner one of `:self` (the reaction's code keys what it writes),
   `:downstream` (the system an effect calls is given the key) and `:infrastructure` (the engine keys the
