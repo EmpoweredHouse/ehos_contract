@@ -31,8 +31,9 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   from the contract — the stored types of its events, its window, and the item's identity for a promise made per
   item inside a run — and `EhOsContract.Trace.judge/3` gives the verdicts for events handed to it, at the moment it
   is given (`now:`, required) and with the outages it is given (`outages:`). It reads neither the log nor the
-  clock. `Trace.evaluate/3` is now the two over the log's rows, and moves no verdict: the report is byte for byte
-  the one before.
+  clock. `Trace.evaluate/3` is now the two over the log's rows. The split itself moves no verdict, and a log
+  written under one identity reports byte for byte as before; the one verdict W3 does move, on a log whose rows
+  predate a unit's identity growing, is under "Fixed" below.
 
 ### Fixed — can move a verdict
 
@@ -42,10 +43,6 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   promise's rule always said; a `from` like that still opens its item. Only a log whose rows predate a unit's
   identity growing can hold such events: a run there that was satisfied this way is now violated. A log written
   under one identity is judged as before.
-- **W3: a trace whose identity names a field no atom is named after is judged.** `Trace.judge/3` checks that a
-  payload does not hold an identity field under an atom key, and asked that with `String.to_existing_atom/1`,
-  which raised on a field this node had never made an atom of. A trace handed in from elsewhere could name one;
-  such a field is now read from its string key, as any other.
 
 ### Changed — a host has to act
 

@@ -1039,8 +1039,10 @@ będzie miała); odsunięcie W2 do B2 (historia sprzed B2 bez tagów).
 Gałąź `engine/w3-trace-core` (na W2). Refaktor bez zmiany zachowania: `EhOsContract.Trace.trace/2` czyta z kontraktu,
 na czym obietnica jest oceniana (typy trzech zdarzeń, okno, tożsamość pozycji dla obietnicy per pozycję), a
 `Trace.judge/3` daje werdykty dla podanych zdarzeń — czysta, nie czyta logu ani zegara (`now:` wymagane,
-`outages:` domyślnie puste). `evaluate/3` = zapytanie → `judge/3`. Żadna wersja ani werdykt się nie przesuwa; wpis w
-CHANGELOG („Added”). Czytelnik: S2 (scenariusze obietnic bez bazy).
+`outages:` domyślnie puste). `evaluate/3` = zapytanie → `judge/3`. Samo rozdzielenie nie przesuwa żadnej wersji ani
+werdyktu, a log zapisany pod jedną tożsamością daje raport bajt w bajt ten sam; jedyny werdykt, który W3 przesuwa —
+na logu z wierszami sprzed rozszerzenia tożsamości jednostki (spełniony → `:violated`) — opisuje „CodeRabbit na
+#145” niżej i CHANGELOG („Fixed — can move a verdict”). Wpis w CHANGELOG („Added”). Czytelnik: S2 (scenariusze obietnic bez bazy).
 
 - **Rozstrzygnięcie asystenta (mechanika), odejście od projektu etapu:** tożsamość pozycji jest polem `trace`, nie
   opcją `identity:` w `judge/3`. To fakt o kontrakcie; wołający, który musiałby ją podać, mógłby ją pominąć i ocenić
@@ -1083,7 +1085,9 @@ CHANGELOG („Added”). Czytelnik: S2 (scenariusze obietnic bez bazy).
   kluczami-stringami. Nie ma atomu, więc payload nie może go trzymać jako klucza: sprawdzenie odpowiada wtedy `false`.
   *Odrzucone (mechanika):* porównywać pole z nazwą każdego klucza (sugestia CodeRabbita; to samo, ale liniowo po
   kluczach każdego wystąpienia). Test z polem, które nie jest atomem; próba odwrotna — bez `rescue` pada tylko on, z
-  „not an already existing atom”. Linia w CHANGELOG. Handoff znowu nieaktualny po merge'u #144 — poprawiony, `main`
+  „not an already existing atom”. Bez linii w CHANGELOG: `judge/3` jest nowe w tym samym, niewydanym PR-ze, a raport
+  tego nie dotykał — pola logu pochodzą ze skompilowanego kontraktu, więc są atomami (linię dodaną w `c889a33` zdjęła
+  trzecia recenzja). Handoff znowu nieaktualny po merge'u #144 — poprawiony, `main`
   (`3508cb6`) wmergowany. Brama: EXIT=0; `check` 0 / 29 / 10 i 0 / 75 / 6; sandbox 194, silnik 1304, web 52, auth 286
   + 1 property.
 - **Dla aplikacji AppUnite i `ehos-ledger`:** nic do zmiany.
