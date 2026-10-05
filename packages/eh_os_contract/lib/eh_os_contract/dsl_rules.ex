@@ -110,6 +110,78 @@ defmodule EhOsContract.DslRules do
     |> elem(0)
   end
 
+  @doc """
+  Every declaration in `entities`, at any depth, whose label is given and blank —
+  empty, or only whitespace — refused under `code`. The schema of a label is a
+  string, which `""` is, and a blank label leaves a page, a graph's node or a
+  report's sentence with nothing saying what the business calls the declaration.
+
+  Every declaration of either DSL with a `label` is asked, so one added later is
+  covered without being listed here. An optional label left out is `nil`, and passes.
+  Only the DSLs' own structs are walked: a struct in a scenario's rows or an
+  invariant's examples is data, and its fields are not declarations.
+  """
+  @spec blank_labels([struct()], String.t()) :: [violation()]
+  def blank_labels(entities, code) do
+    for %{label: label} = declaration <- labelled(entities), blank?(label), uniq: true do
+      {"#{code}: #{kind(declaration)} #{inspect(Map.get(declaration, :name))} has a blank " <>
+         "label; say what the business calls it", declaration}
+    end
+  end
+
+  # Unicode whitespace, and the format characters (Cf) a copy from a board export
+  # brings along — zero-width spaces and joiners, direction marks and isolates, the
+  # byte order mark — which `String.trim/1` keeps and a page prints as nothing.
+  @blank ~r/\A[\s\p{Cf}]*\z/u
+
+  @doc """
+  Whether `text` is a string that says nothing: empty, or only Unicode whitespace and
+  invisible format characters.
+  """
+  @spec blank?(term()) :: boolean()
+  def blank?(text), do: is_binary(text) and text =~ @blank
+
+  defp labelled(list) when is_list(list), do: Enum.flat_map(list, &labelled/1)
+
+  defp labelled(%struct{} = declaration) do
+    if declaration?(struct) do
+      own = if Map.has_key?(declaration, :label), do: [declaration], else: []
+
+      nested =
+        declaration
+        |> Map.drop([:__struct__, :__spark_metadata__])
+        |> Map.values()
+        |> Enum.flat_map(&labelled/1)
+
+      own ++ nested
+    else
+      []
+    end
+  end
+
+  defp labelled(_other), do: []
+
+  defp declaration?(struct) do
+    case Module.split(struct) do
+      ["EhOsContract", dsl, "Dsl" | _] when dsl in ["Contract", "Domain"] -> true
+      _other -> false
+    end
+  end
+
+  # What a refusal calls a declaration: its struct's name in words, where that is
+  # not the word the DSL writes.
+  defp kind(%{__struct__: struct} = declaration) do
+    case {struct |> Module.split() |> List.last(), Map.get(declaration, :kind)} do
+      {"Unit", :aggregate} -> "aggregate"
+      {"Unit", :dcb} -> "dcb"
+      {"ProcessDeclaration", _} -> "process"
+      {"ProcessStage", _} -> "stage"
+      {"ServiceFunction", _} -> "function"
+      {"ValueInvariant", _} -> "invariant"
+      {name, _} -> name |> Macro.underscore() |> String.replace("_", " ")
+    end
+  end
+
   defp anno(%_{} = declaration), do: Spark.Dsl.Entity.anno(declaration)
   defp anno(anno), do: anno
 

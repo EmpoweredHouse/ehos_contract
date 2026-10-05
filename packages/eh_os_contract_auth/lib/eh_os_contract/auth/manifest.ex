@@ -211,9 +211,10 @@ defmodule EhOsContract.Auth.Manifest do
     %{"capabilities" => capabilities, "roles" => roles}
   end
 
-  # EHOS's limits on what a manifest offers, which the engine's own names and labels do not keep:
-  # a declaration and the part of a role after the dot at most 63 characters (D-48), and a label a
-  # person reads before binding a role, so never empty. Each is named here, not at deploy.
+  # EHOS's limits on what a manifest offers, which the engine's own names do not keep: a
+  # declaration and the part of a role after the dot at most 63 characters (D-48). A label a
+  # person reads before binding a role is never empty either; the DSLs refuse a blank one (N1,
+  # D1), and this still does for a model handed over as a map. Each is named here, not at deploy.
   defp ensure_ehos_takes!(domain, declared, roles) do
     commands = Enum.map(declared, &{&1.kind, &1.declaration, &1.capability["label"]})
 

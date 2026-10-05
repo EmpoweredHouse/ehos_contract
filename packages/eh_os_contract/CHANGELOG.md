@@ -49,6 +49,14 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed — a host has to act
 
+- **A blank label no longer compiles.** A label is blank when it is empty or holds only Unicode whitespace and
+  invisible format characters (zero-width spaces, direction marks, the byte order mark). N1 refuses one on any
+  declaration of a contract, fields included; D1 does the same in a domain; F2 and D3 refuse a blank label of an
+  enum member. `event :visit_closed, ""` compiled until now and left a page, a graph's node and a report's
+  sentence with nothing saying what the business calls it. An optional label left out still passes, and a struct
+  written as data, in a scenario's rows or an invariant's examples, is not checked. An enum member named `true`,
+  `false` or `nil` is refused with a label too, as it already was without one. No version moves: a contract that
+  compiles is unchanged.
 - **W2: a required date or timestamp is tagged with its day when appended, in the domain's zone.** Every required,
   non-personal field of type `:date` or `:timestamp`, or of a domain value resting on one, adds a tag
   `<field>.day:YYYY-MM-DD` beside the `:id` tags: a date its own day, a timestamp the day it falls on in the
@@ -79,7 +87,7 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   none is misread. An older row decodes as before, until upcasters (V1). No contract version moves.
 - **N3: a timer has a label.** `timer :documentation_due, wait: {24, :hour}, …` no longer compiles; write
   `timer :documentation_due, "Termin dokumentacji", wait: {24, :hour}, …`. The label names what the timer is for,
-  not how long it waits, which `wait:` or `at:` says, and a blank one is refused (P4). A process manager's page
+  not how long it waits, which `wait:` or `at:` says, and a blank one is refused (N1). A process manager's page
   prints both, the callback's `@doc` and the graph's timer node carry the label, and so do the conformance report's
   and the dashboard's sentences about a timer's step, which named the timer before. **Moves the version** of every
   contract with a timer.

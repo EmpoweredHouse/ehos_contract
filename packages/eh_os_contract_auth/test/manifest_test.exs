@@ -17,6 +17,7 @@ defmodule EhOsContract.Auth.ManifestTest do
   use ExUnitProperties
 
   alias EhOsContract.Auth.{EhosYaml, Manifest}
+  alias EhOsContract.Model
 
   @fixtures Path.expand("fixtures", __DIR__)
 
@@ -187,7 +188,8 @@ defmodule EhOsContract.Auth.ManifestTest do
     end
   end
 
-  # Names and labels the engine takes and EHOS does not: past 63 characters, or empty.
+  # Names the engine takes and EHOS does not, past 63 characters. An empty label the
+  # engine refuses too (N1, D1), so the test blanks two in the models it hands over.
   defmodule LongDomain do
     @moduledoc false
     use EhOsContract.Domain, name: :"long-rig", language: :en
@@ -195,7 +197,7 @@ defmodule EhOsContract.Auth.ManifestTest do
     subdomain(:core, "Core", type: :core)
     context(:work, "Work", subdomain: :core)
     actor(:clerk_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, :human, "Clerk")
-    actor(:auditor, :human, "")
+    actor(:auditor, :human, "Auditor")
   end
 
   defmodule LongWork do
@@ -210,7 +212,7 @@ defmodule EhOsContract.Auth.ManifestTest do
         emits: :job_started
       )
 
-      command(:flag_job, "", by: :auditor, emits: :job_flagged)
+      command(:flag_job, "Flag a job", by: :auditor, emits: :job_flagged)
       event(:job_started, "Job started")
       event(:job_flagged, "Job flagged", terminal: true)
     end
@@ -454,8 +456,15 @@ defmodule EhOsContract.Auth.ManifestTest do
 
   describe "names and labels EHOS refuses" do
     test "are refused here, each named, rather than at deploy" do
-      error =
-        assert_raise ArgumentError, fn -> Manifest.build(@file_v1, [LongDomain], [LongWork]) end
+      # A model handed over as a map, not compiled from the DSL, can still carry one.
+      blank = fn declarations, name ->
+        Enum.map(declarations, &if(&1.name == name, do: %{&1 | label: " "}, else: &1))
+      end
+
+      domain = Map.update!(Model.fetch(LongDomain), :actors, &blank.(&1, :auditor))
+      work = Map.update!(Model.fetch(LongWork), :commands, &blank.(&1, :flag_job))
+
+      error = assert_raise ArgumentError, fn -> Manifest.build(@file_v1, [domain], [work]) end
 
       assert error.message =~ "EHOS would refuse what the contracts offer"
 
