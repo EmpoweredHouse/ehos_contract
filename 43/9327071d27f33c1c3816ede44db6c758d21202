@@ -1,0 +1,5 @@
+Fix-ups on #145 after CodeRabbit, range 8fd113e..HEAD: merge of origin/main (6a236d5, incl. 46b4e55 timer label), 6a030c2 (first fix), 33eb982 (second fix), PLAN.md commits.
+CodeRabbit (1) trace.ex: a hit missing an identity field paired via nil with a from missing it - fixed. First fix 6a030c2 dropped every incomplete occurrence; its two parallel reviews: correctness found a dropped from loses an obligation (violated -> no verdict), also for log rows predating an identity change - fixed in 33eb982 (only hits are left out; from still opens its item; CHANGELOG "Fixed - can move a verdict"). Reverse checks: pre-fix code fails only the two hit tests; 6a030c2 code also fails the from test. Remaining low notes: empty string identity still a key (log cannot hold it) - no change; from incomplete still keyed with nil - intended. Security/perf: nothing medium+.
+CodeRabbit (2) PLAN.md stale origin/main - fixed.
+Old vs new evaluate equal on random log; sandbox report + overlays byte-identical vs new baseline after merging main.
+Gate at 33eb982: EXIT=0; check 0/29/10, 0/75/6; sandbox 194, engine 1298, web 52, auth 286+1 property. HEAD adds PLAN.md only.
