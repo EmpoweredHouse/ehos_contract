@@ -27,6 +27,11 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed — a host has to act
 
+- **W2: a required date or timestamp is tagged with its day when appended.** Every required, non-personal field of
+  type `:date` or `:timestamp`, or of a domain value resting on one, adds a tag `<field>.day:YYYY-MM-DD`, the day in
+  UTC, beside the `:id` tags, so a boundary that buckets by day (B2) will find every event appended from this
+  version on. Events appended before carry none, and none is added to them: the log only grows. No version moves,
+  and nothing reads the tags yet.
 - **W1: a row of the log carries the schema version it was written with, and newer code's rows wait.**
   Dispatch writes the event's `schema_version:` into `schema_version`, where every row said 1 until now, the
   column's default. A row written with a newer version than the running code declares is never decoded with the

@@ -313,7 +313,8 @@ defmodule EhOsContract.ContractDomainServicesTest do
     # The ledger's moved once since, from 4e94b8af0057, with plan EP4: its reactions'
     # `idempotency` names a key and an owner; and from 06808eb90e9f with plan N1: its
     # scenarios lost the raw `scope` key, keeping the resolved `target`; and from
-    # 2d4f6e4d01fe with plan N3: its timers have labels.
-    assert EhOsContract.Model.fetch(DispatchRig.Ledger).version == "ccaadcbebb04"
+    # 2d4f6e4d01fe with plan N3: its timers have labels; and from ccaadcbebb04 with plan
+    # W2: it records a day's close, the event its day tags are tested on.
+    assert EhOsContract.Model.fetch(DispatchRig.Ledger).version == "2175b381e4a6"
   end
 end

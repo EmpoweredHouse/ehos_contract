@@ -1268,11 +1268,18 @@ defmodule EhOsContract.Dispatcher do
   # Every required, non-personal `:id` field of the event, its unit's identity among
   # them, since that is what a consistency boundary may match on (A4, X6). Tagging
   # only the fields some boundary matches today would leave the events appended
-  # before a new boundary untagged, and it would never see them.
+  # before a new boundary untagged, and it would never see them. For the same reason
+  # every required, non-personal date and timestamp is tagged with its day (plan W2),
+  # which a boundary bucketing by day reads (B2).
   defp tags(declaration, event, values) do
-    for field <- declaration.fields,
-        Key.tag_field?(field, values),
-        do: Key.tag(field.name, Map.fetch!(event, field.name))
+    for(
+      field <- declaration.fields,
+      Key.tag_field?(field, values),
+      do: Key.tag(field.name, Map.fetch!(event, field.name))
+    ) ++
+      for field <- declaration.fields,
+          Key.bucket_field?(field, values),
+          do: Key.day_tag(field.name, Map.fetch!(event, field.name))
   end
 
   # The run a struct belongs to: the process's name, then its correlation values.
