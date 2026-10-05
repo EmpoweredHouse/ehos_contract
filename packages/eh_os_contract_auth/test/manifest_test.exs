@@ -83,6 +83,61 @@ defmodule EhOsContract.Auth.ManifestTest do
     end
   end
 
+  defmodule ReadDomain do
+    @moduledoc false
+    use EhOsContract.Domain, name: :"read-rig", language: :en
+
+    subdomain(:core, "Core", type: :core)
+    context(:work, "Work", subdomain: :core)
+    actor(:reader, :human, "Reader")
+    actor(:feeder, :system, "Feeder")
+  end
+
+  defmodule ReadWork do
+    @moduledoc false
+    use EhOsContract.Contract, domain: ReadDomain, context: :work
+
+    aggregate :job, "Job" do
+      identity(:job_id)
+      command(:open_job, "Open a job", by: :feeder, emits: :job_opened)
+      event(:job_opened, "Job opened")
+    end
+
+    read_model :jobs, "Jobs", projects: :job_opened do
+      field(:job_id, :id)
+    end
+
+    query(:open_jobs, "Open jobs", reads: :jobs, by: :reader)
+
+    process :work, "Work" do
+      correlate(:job_id)
+    end
+  end
+
+  defmodule MachineDomain do
+    @moduledoc false
+    use EhOsContract.Domain, name: :"machine-rig", language: :en
+
+    subdomain(:core, "Core", type: :core)
+    context(:work, "Work", subdomain: :core)
+    actor(:feeder, :system, "Feeder")
+  end
+
+  defmodule MachineWork do
+    @moduledoc false
+    use EhOsContract.Contract, domain: MachineDomain, context: :work
+
+    aggregate :job, "Job" do
+      identity(:job_id)
+      command(:open_job, "Open a job", by: :feeder, emits: :job_opened)
+      event(:job_opened, "Job opened")
+    end
+
+    process :work, "Work" do
+      correlate(:job_id)
+    end
+  end
+
   # A domain whose name the engine takes (D11) and EHOS does not.
   defmodule SnakeDomain do
     @moduledoc false
@@ -263,7 +318,7 @@ defmodule EhOsContract.Auth.ManifestTest do
     end
   end
 
-  test "offers exactly the human command capabilities and the roles that hold them" do
+  test "offers the commands, queries and recordings a human holds, and the roles that hold them" do
     assert Manifest.build(@file_v1, [Domain], [Work]) == %{
              "schema" => "ehos.manifest/v2",
              "ehos_yaml" => "ehos.yaml/v1",
@@ -272,6 +327,20 @@ defmodule EhOsContract.Auth.ManifestTest do
              "health" => @health,
              "offers" => %{
                "capabilities" => [
+                 %{
+                   "name" => "manifest-rig.job_noted",
+                   "record" => "job_noted",
+                   "label" => "Job noted",
+                   "process" => "work",
+                   "principals" => ["human"]
+                 },
+                 %{
+                   "name" => "manifest-rig.jobs_in_branch",
+                   "query" => "jobs_in_branch",
+                   "label" => "Jobs in a branch",
+                   "process" => "work",
+                   "principals" => ["human"]
+                 },
                  %{
                    "name" => "manifest-rig.start_job",
                    "command" => "start_job",
@@ -284,19 +353,32 @@ defmodule EhOsContract.Auth.ManifestTest do
                  %{
                    "name" => "manifest-rig.clerk",
                    "label" => "Clerk",
-                   "capabilities" => ["manifest-rig.start_job"]
+                   "capabilities" => [
+                     "manifest-rig.job_noted",
+                     "manifest-rig.jobs_in_branch",
+                     "manifest-rig.start_job"
+                   ]
                  }
                ]
              }
            }
   end
 
-  test "invents no fields for queries, recordings, scope or system actors, nor contracts" do
+  test "accepts a domain whose people only read, and refuses one where no human holds anything" do
+    readers = Manifest.build(@file_v1, [ReadDomain], [ReadWork])
+
+    assert [%{"name" => "read-rig.open_jobs", "query" => "open_jobs"}] =
+             readers["offers"]["capabilities"]
+
+    assert_raise ArgumentError, ~r/has no capabilities a human holds/, fn ->
+      Manifest.build(@file_v1, [MachineDomain], [MachineWork])
+    end
+  end
+
+  test "invents no fields for scope, publications or system actors, nor contracts" do
     document = Manifest.build(@file_v1, [Domain], [Work])
     encoded = Jason.encode!(document)
 
-    refute encoded =~ "jobs_in_branch"
-    refute encoded =~ "job_noted"
     refute encoded =~ "branch_id"
     refute encoded =~ "scheduler"
     refute encoded =~ "observer"
