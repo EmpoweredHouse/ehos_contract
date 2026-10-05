@@ -312,13 +312,11 @@ defmodule EhOsContract.Trace do
 
   @spec judge_per_run(trace(), [occurrence()], DateTime.t(), [DateTime.t()]) :: [verdict()]
   defp judge_per_run(trace, occurrences, now, outages) do
-    from_type = to_string(trace.from)
+    from_type = trace.from
 
     occurrences
-    |> Enum.group_by(& &1.instance_id, &{&1.type, &1.occurred_at})
-    |> Map.new(fn {instance, pairs} ->
-      {instance, Enum.group_by(pairs, &elem(&1, 0), &elem(&1, 1))}
-    end)
+    |> Enum.group_by(& &1.instance_id)
+    |> Map.new(fn {instance, rows} -> {instance, by_type(rows)} end)
     |> Enum.flat_map(fn {instance_id, by_type} ->
       case Map.get(by_type, from_type) do
         # A run with no `from` is not evaluated — the assertion is conditional.
@@ -339,7 +337,7 @@ defmodule EhOsContract.Trace do
   @spec judge_quantified(trace(), [occurrence()], [String.t()], DateTime.t(), [DateTime.t()]) ::
           [verdict()]
   defp judge_quantified(trace, occurrences, identity, now, outages) do
-    from_type = to_string(trace.from)
+    from_type = trace.from
 
     occurrences
     |> by_item(identity)
@@ -440,7 +438,7 @@ defmodule EhOsContract.Trace do
   @spec verdict(map(), String.t(), DateTime.t(), map(), DateTime.t(), [DateTime.t()]) :: verdict()
   defp verdict(trace, instance_id, from_at, by_type, now, outages) do
     deadline_at = trace.within && EhOsContract.Duration.shift(from_at, trace.within)
-    hit = fn name -> name && first_at_or_after(by_type[to_string(name)], from_at) end
+    hit = fn type -> type && first_at_or_after(by_type[type], from_at) end
 
     eventually_at = hit.(trace.eventually)
     or_else_at = hit.(trace.or_else)
@@ -509,12 +507,16 @@ defmodule EhOsContract.Trace do
     |> Map.new(fn {instance, rows} ->
       by_item =
         rows
-        |> Enum.group_by(&item_key(&1, identity), &{&1.type, &1.occurred_at})
-        |> Map.new(fn {key, pairs} -> {key, Enum.group_by(pairs, &elem(&1, 0), &elem(&1, 1))} end)
+        |> Enum.group_by(&item_key(&1, identity))
+        |> Map.new(fn {key, rows} -> {key, by_type(rows)} end)
 
       {instance, by_item}
     end)
   end
+
+  # Occurrences' moments, by their type, in the order they were given.
+  @spec by_type([occurrence()]) :: %{String.t() => [DateTime.t()]}
+  defp by_type(occurrences), do: Enum.group_by(occurrences, & &1.type, & &1.occurred_at)
 
   # A tuple of raw values, not a joined string: two payload fields have no separator
   # to escape or collide on if they are never joined in the first place, which is a
@@ -548,9 +550,7 @@ defmodule EhOsContract.Trace do
 
   @spec types(trace()) :: [String.t()]
   defp types(trace) do
-    [trace.from, trace.eventually, trace.or_else]
-    |> Enum.reject(&is_nil/1)
-    |> Enum.map(&to_string/1)
+    Enum.reject([trace.from, trace.eventually, trace.or_else], &is_nil/1)
   end
 
   # The rows a promise is judged on, as `occurrence()`s: the rows of
@@ -578,24 +578,16 @@ defmodule EhOsContract.Trace do
       )
       |> bounded(opts)
       |> maybe_instance(Keyword.get(opts, :instance))
+      |> select([run: r, event: e], %{
+        instance_id: r.instance_id,
+        type: e.type,
+        occurred_at: e.occurred_at
+      })
 
     query =
-      case trace.identity do
-        nil ->
-          select(query, [run: r, event: e], %{
-            instance_id: r.instance_id,
-            type: e.type,
-            occurred_at: e.occurred_at
-          })
-
-        _identity ->
-          select(query, [run: r, event: e], %{
-            instance_id: r.instance_id,
-            type: e.type,
-            occurred_at: e.occurred_at,
-            payload: e.payload
-          })
-      end
+      if trace.identity,
+        do: select_merge(query, [event: e], %{payload: e.payload}),
+        else: query
 
     repo().all(query)
   end
