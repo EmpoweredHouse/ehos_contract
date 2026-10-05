@@ -927,6 +927,17 @@ z deklaracji: „1 day after it is set”, „at `review_at`”), `@doc` callbac
 - **Brama:** EXIT=0; `check` sandboxa 0 / 29 / 10, silnika 0 / 74 / 6; sandbox 194, silnik 1264, web 51, auth 286 +
   1 property.
 - **Dla aplikacji AppUnite i `ehos-ledger`:** każdy `timer :x, wait:/at: …` → `timer :x, "<cel>", wait:/at: …`.
+- **Pusta etykieta (recenzja CodeRabbita na #139, potem gałąź `dsl/blank-labels`, na N3).** Schemat etykiety to
+  string, a `""` nim jest: `timer :later, "", …` się kompilował. #139 odmówił tego tylko timerowi, pod P4; ta sama
+  dziura była w każdej etykiecie obu DSL-i. Teraz **N1** (kontrakt) i **D1** (domena) odmawiają etykiety podanej i
+  pustej — także białych znaków Unicode i znaków zerowej szerokości — na każdej deklaracji, która ją ma, pole
+  włącznie; **F2/D3** odmawiają pustej etykiety członka enuma. Jedno przejście po strukturach DSL-i
+  (`DslRules.blank_labels/2`), nie po danych: struktura w `answers` scenariusza czy w `violated_by:` niezmiennika
+  nie jest deklaracją. Manifest EHOS-a zostaje przy własnym sprawdzeniu, dla modelu podanego jako mapa.
+  *Odrzucone (mechanika):* zostawić odmowę tylko timerowi pod P4 (dziura jest ta sama w każdej etykiecie); nowy kod
+  `N3`/`D12` (koliduje z nazwą etapu N3, a etykieta to nazwa w języku biznesu, więc należy do grupy nazw); ręczna
+  lista deklaracji z etykietą (deklaracja dodana później by umknęła); przejście po wszystkich strukturach (odmówiłoby
+  danym testowym i wpisałoby ich wartość do komunikatu, wbrew v2 §17).
 - **Fala 1 po N3:** N1–N3 zrobione; zostają W1–W4, T1, T1s, X1, S4 w dowolnej kolejności.
 
 ### W1 — co wyszło (5 października)

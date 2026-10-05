@@ -21,6 +21,12 @@ defmodule EhOsContract.Contract.Rules.Names do
   event's or a consumed event's struct as `<Camelized>`. `:visit_closed` beside
   `:visit_closed_` compiled with a warning that one struct redefined the other.
 
+  Since the review of #139, N1 also refuses a label given and blank, empty or only
+  whitespace, on every declaration that has one, a field's included
+  (`EhOsContract.DslRules.blank_labels/2`): the label is the name the business reads,
+  and the schema of one is a string, which `""` is. A timer's alone had been refused,
+  under P4.
+
   **N2.** No name is a word Elixir reserves, and none becomes a callback that
   clashes with a `Kernel` function or special form of the same arity (v2 §4.4): a
   command called `:send` would define `send/2`. Commands and queries are called
@@ -48,7 +54,14 @@ defmodule EhOsContract.Contract.Rules.Names do
   @doc false
   @spec check(map()) :: [DslRules.violation()]
   def check(declarations) do
-    snake_case(declarations) ++ unique(declarations) ++ callbacks(declarations)
+    snake_case(declarations) ++
+      unique(declarations) ++ callbacks(declarations) ++ labels(declarations)
+  end
+
+  # --- N1: a label says something ----------------------------------------------------
+
+  defp labels(d) do
+    d |> Map.delete(:module) |> Map.values() |> List.flatten() |> DslRules.blank_labels("N1")
   end
 
   # --- N1: snake_case ---------------------------------------------------------------
