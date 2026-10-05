@@ -11,7 +11,7 @@ defmodule Taxvision.Domain do
   before E9c-2).
   """
 
-  use EhOsContract.Domain, name: :taxvision, language: :pl
+  use EhOsContract.Domain, name: :taxvision, language: :pl, time_zone: "Europe/Warsaw"
   use Boundary, deps: [EhOsContract], exports: [{Values, []}]
 
   # 03 §2: the office wins on standardisation at scale, so the month is the core,

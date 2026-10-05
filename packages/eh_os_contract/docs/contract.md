@@ -33,7 +33,9 @@ end
 namespace — lowercase letters, digits, `_` and `-`, starting with a letter and not ending with a dash, like
 `:"my-shop"` — and a domain named otherwise does not compile (`D11`). `language:` is the language the labels
 are written in — labels are the words of the people in the process, in their language, and the engine prints
-them as written.
+them as written. `time_zone:`, UTC unless given, is the zone the business's days are in, like `"Europe/Warsaw"`:
+an event's required timestamps are tagged with the day they fall on there, which the host's configured time zone
+database answers (`config :elixir, :time_zone_database`); a zone it does not know does not compile (`D13`).
 
 An actor may name what it answers for, `responsibility :overdue_reports, "…", source: "P-25"`, prose a page
 shows and nothing runs. A relation between contexts may pair the words each side uses for the same thing,
@@ -307,6 +309,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `D10` | L2, L3 | a query without `by:`; a query scope not a same-typed read-model field and param; a command scope without `by:`, not its field or identity, optional, or a generated identity it creates; a list scope, or a value with fields; a `by:` actor not carrying the scope |
 | `D11` | L2, L3 | a domain's `name:` that is not one lowercase segment of letters, digits, `_` and `-`, starting with a letter and not ending with a dash; a publication from no local event, with no fields, unknown, personal or personal-data fields, or `idempotent_on:` outside them; a name unversioned, shared, or outside the domain's `name:`; `subscribe "<name>"` unversioned, without `as:`, or listing no fields |
 | `D12` | L2 | a read model, an effect or a process manager taking an event received from another application, which only a policy takes, in its inbox |
+| `D13` | L2 | a domain's `time_zone:` the time zone database Elixir is configured with does not know |
 | `D14` | L3 | two commands, queries or recorded events of one domain with the same name, and so the same capability |
 | `X1` | L3 | `domain:` naming a module that is not a compiled domain, or `context:` naming none of its contexts |
 | `X2` | L3 | `by:`, `recorded_by:`, `accountable` or a scenario's `actor` naming no actor of the domain, or an actor of another context |

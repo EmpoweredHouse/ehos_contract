@@ -64,6 +64,14 @@ defmodule DispatchRig.Ledger do
     end
 
     event :balance_confirmed, "Balance confirmed", recorded_by: :auditor
+
+    # Plan W2: required dates and timestamps are tagged with their day when appended,
+    # an optional one is not.
+    event :day_closed, "Day closed", recorded_by: :auditor do
+      field :closed_on, :business_day
+      field :closed_at, :timestamp
+      field :reopens_on, :date, optional: true
+    end
   end
 
   read_model :balances, "Balances",

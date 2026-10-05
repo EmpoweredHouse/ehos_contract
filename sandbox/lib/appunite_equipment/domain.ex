@@ -11,7 +11,7 @@ defmodule AppuniteEquipment.Domain do
   domain models.
   """
 
-  use EhOsContract.Domain, name: :appunite_equipment, language: :pl
+  use EhOsContract.Domain, name: :appunite_equipment, language: :pl, time_zone: "Europe/Warsaw"
   use Boundary, deps: [EhOsContract], exports: [{Values, []}]
 
   subdomain :supporting, "Wsparcie", type: :supporting, source: "distillation, Domain"

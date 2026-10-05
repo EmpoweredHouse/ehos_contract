@@ -356,7 +356,7 @@ A fact the unit records.
 | [`terminal`](#contract-aggregate-event-terminal){: #contract-aggregate-event-terminal } | `boolean` | `false` | Whether it ends a run of the process. |
 | [`depends_on`](#contract-aggregate-event-depends_on){: #contract-aggregate-event-depends_on } | `atom` |  | The external system the fact depends on. |
 | [`recorded_by`](#contract-aggregate-event-recorded_by){: #contract-aggregate-event-recorded_by } | `atom \| list(atom)` | `[]` | The actors who record it as an observation, when no command decides it. |
-| [`schema_version`](#contract-aggregate-event-schema_version){: #contract-aggregate-event-schema_version } | `pos_integer` | `1` | The version of its fields, raised with an upcaster when history exists. |
+| [`schema_version`](#contract-aggregate-event-schema_version){: #contract-aggregate-event-schema_version } | `pos_integer` | `1` | The version of its fields, raised with an upcaster when history exists; written into each row, and a row of a newer version than the code declares is not read. |
 | [`source`](#contract-aggregate-event-source){: #contract-aggregate-event-source } | `String.t` |  | Where the event comes from in the material. |
 
 
@@ -448,7 +448,7 @@ A fact the unit records.
 | [`terminal`](#contract-aggregate-stage-event-terminal){: #contract-aggregate-stage-event-terminal } | `boolean` | `false` | Whether it ends a run of the process. |
 | [`depends_on`](#contract-aggregate-stage-event-depends_on){: #contract-aggregate-stage-event-depends_on } | `atom` |  | The external system the fact depends on. |
 | [`recorded_by`](#contract-aggregate-stage-event-recorded_by){: #contract-aggregate-stage-event-recorded_by } | `atom \| list(atom)` | `[]` | The actors who record it as an observation, when no command decides it. |
-| [`schema_version`](#contract-aggregate-stage-event-schema_version){: #contract-aggregate-stage-event-schema_version } | `pos_integer` | `1` | The version of its fields, raised with an upcaster when history exists. |
+| [`schema_version`](#contract-aggregate-stage-event-schema_version){: #contract-aggregate-stage-event-schema_version } | `pos_integer` | `1` | The version of its fields, raised with an upcaster when history exists; written into each row, and a row of a newer version than the code declares is not read. |
 | [`source`](#contract-aggregate-stage-event-source){: #contract-aggregate-stage-event-source } | `String.t` |  | Where the event comes from in the material. |
 
 
@@ -881,7 +881,7 @@ A fact the unit records.
 | [`terminal`](#contract-dcb-event-terminal){: #contract-dcb-event-terminal } | `boolean` | `false` | Whether it ends a run of the process. |
 | [`depends_on`](#contract-dcb-event-depends_on){: #contract-dcb-event-depends_on } | `atom` |  | The external system the fact depends on. |
 | [`recorded_by`](#contract-dcb-event-recorded_by){: #contract-dcb-event-recorded_by } | `atom \| list(atom)` | `[]` | The actors who record it as an observation, when no command decides it. |
-| [`schema_version`](#contract-dcb-event-schema_version){: #contract-dcb-event-schema_version } | `pos_integer` | `1` | The version of its fields, raised with an upcaster when history exists. |
+| [`schema_version`](#contract-dcb-event-schema_version){: #contract-dcb-event-schema_version } | `pos_integer` | `1` | The version of its fields, raised with an upcaster when history exists; written into each row, and a row of a newer version than the code declares is not read. |
 | [`source`](#contract-dcb-event-source){: #contract-dcb-event-source } | `String.t` |  | Where the event comes from in the material. |
 
 
@@ -973,7 +973,7 @@ A fact the unit records.
 | [`terminal`](#contract-dcb-stage-event-terminal){: #contract-dcb-stage-event-terminal } | `boolean` | `false` | Whether it ends a run of the process. |
 | [`depends_on`](#contract-dcb-stage-event-depends_on){: #contract-dcb-stage-event-depends_on } | `atom` |  | The external system the fact depends on. |
 | [`recorded_by`](#contract-dcb-stage-event-recorded_by){: #contract-dcb-stage-event-recorded_by } | `atom \| list(atom)` | `[]` | The actors who record it as an observation, when no command decides it. |
-| [`schema_version`](#contract-dcb-stage-event-schema_version){: #contract-dcb-stage-event-schema_version } | `pos_integer` | `1` | The version of its fields, raised with an upcaster when history exists. |
+| [`schema_version`](#contract-dcb-stage-event-schema_version){: #contract-dcb-stage-event-schema_version } | `pos_integer` | `1` | The version of its fields, raised with an upcaster when history exists; written into each row, and a row of a newer version than the code declares is not read. |
 | [`source`](#contract-dcb-stage-event-source){: #contract-dcb-stage-event-source } | `String.t` |  | Where the event comes from in the material. |
 
 

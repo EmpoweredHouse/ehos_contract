@@ -60,7 +60,9 @@ defmodule LifecycleRig.Visits do
 
     event :booked, "Visit booked"
     event :patient_arrived, "Patient arrived", recorded_by: :front_desk
-    event :note_added, "Note added"
+    # Plan W1: a second version of its fields, so the log shows the version it was
+    # written with.
+    event :note_added, "Note added", schema_version: 2
     event :cancelled, "Visit cancelled", terminal: true
 
     event :closed, "Visit closed", terminal: true do

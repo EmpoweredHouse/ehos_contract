@@ -91,7 +91,12 @@ defmodule EhOsContract.Subscription.Runner do
   end
 
   @typedoc false
-  @type state :: %{key: String.t(), timer: reference() | nil, resting: boolean()}
+  @type state :: %{
+          key: String.t(),
+          timer: reference() | nil,
+          resting: boolean(),
+          waiting: pos_integer() | nil
+        }
 
   @doc "Listens for dispatch's notification, and runs the subscription `key` at once."
   @impl GenServer
@@ -103,7 +108,7 @@ defmodule EhOsContract.Subscription.Runner do
       _kind, _reason -> :ok
     end
 
-    {:ok, schedule(%{key: key, timer: nil, resting: false}, 0)}
+    {:ok, schedule(%{key: key, timer: nil, resting: false, waiting: nil}, 0)}
   end
 
   @doc "Runs the subscription on a notification or its own timer; ignores anything else."
@@ -139,8 +144,14 @@ defmodule EhOsContract.Subscription.Runner do
 
       consumer ->
         case catch_up(consumer, repo()) do
-          {:rest, after_ms} -> %{schedule(state, after_ms) | resting: true}
-          after_ms -> schedule(state, after_ms)
+          {:waiting, position} ->
+            %{schedule(waiting(state, position), @unavailable) | resting: true}
+
+          {:rest, after_ms} ->
+            %{schedule(state, after_ms) | resting: true, waiting: nil}
+
+          after_ms ->
+            %{schedule(state, after_ms) | waiting: nil}
         end
     end
   rescue
@@ -184,9 +195,28 @@ defmodule EhOsContract.Subscription.Runner do
 
         {:rest, @unavailable}
 
+      # Plan W1: newer code wrote the event; nothing moved and no attempt is counted,
+      # so it waits for this node to be upgraded rather than stopping.
+      {:waiting, position} ->
+        {:waiting, position}
+
       :idle ->
         @poll
     end
+  end
+
+  # Said once per position, not every 5 s: a node left on older code for a whole deploy
+  # would otherwise fill the log with one warning per consumer every few seconds.
+  defp waiting(%{waiting: position} = state, position), do: state
+
+  defp waiting(state, position) do
+    Logger.warning(
+      "subscription #{state.key}: the event at position #{position} was written by newer " <>
+        "code than this node runs (EhOsContract.NewerSchemaError); it waits there, trying " <>
+        "every #{@unavailable} ms, until this node runs that code"
+    )
+
+    %{state | waiting: position}
   end
 
   defp schedule(state, after_ms) do

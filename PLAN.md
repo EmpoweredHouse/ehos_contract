@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 5 października (E0–E12, EH, EB, EP, #99, #128 i #134 w `main`; następny jest program DD; otwarty PR #135)
+## Handoff — stan na 5 października, wieczór (DD0, N1, N2 w `main`; N3, W1, W2 w PR-ach; następny jest W3)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -41,15 +41,19 @@ komputer, kontrakt `Demands`) — „Dopisek 4 października (2)”.
 **Następna praca to program DD — „DDD sprawdzane przez kod”** (zatwierdzony przez użytkownika 5 października): 53
 etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem programu jest tabela „Postęp” w „Dopisek 5
 października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
-Żaden etap z kodem nie jest zaczęty; pierwszy jest N1 (`final:`, `target`, `identity` encji).
+Fala 1: N1, N2 w `main` (#137, #138); N3, W1, W2 w otwartych PR-ach #139, #142, #143 (stos); następny jest W3
+(publiczne, czyste jądro `Trace`), potem W4, T1+T1s, X1, S4 w dowolnej kolejności.
 
 ### Stan repozytorium
 
-- **`origin/main` = `0afdd52`** (merge #134, manifest oferuje query i zapisy — „Dopisek 5 października (2)”); przed
-  nim `af59a48` (merge #128, `Demands`), CI `check` — `success`. **Otwarty PR:**
-  [#135](https://github.com/EmpoweredHouse/eh-os-contract/pull/135) (DD0).
-- **`docs/dd0-programme`** — DD0: dopisek DD w `PLAN.md`, z dwoma commitami trzeciej analizy ESDM
-  (`docs/esdm-analysis-oct4`, „Dopisek 4 października (3)”) i z `main` wmergowanym 5 października (dwa razy: po #128 i po #134). PR #135.
+- **`origin/main` = `f0e473d`** (merge #138, N2; przed nim #137 N1, #135 DD0, każdy z poprawką po przeglądzie
+  CodeRabbita i `.coderabbit.yaml` dla PR-ów na dowolną gałąź).
+- **Otwarte PR-y — stos, merge po kolei:** [#139](https://github.com/EmpoweredHouse/eh-os-contract/pull/139) N3
+  (`dsl/n3-timer-label`, na `main`) → [#142](https://github.com/EmpoweredHouse/eh-os-contract/pull/142) W1
+  (`engine/w1-schema-version`, na #139) → [#143](https://github.com/EmpoweredHouse/eh-os-contract/pull/143) W2
+  (`engine/w2-day-tags`, na #142). Po merge'u jednego baza następnego przechodzi na `main` (albo `gh pr edit <n>
+  --base main`); jeśli przyjdą poprawki do `main`, zmergować `main` w dół stosu — konflikt w CHANGELOG jest
+  prawdopodobny, bo W1 przeniósł wpisy DD do górnej sekcji „Unreleased”.
 - Wcześniej `6ce4c30` (merge #126, ostatni PR #99). Przedtem `eb0c8a1` (merge #103: #98,
   budżet bajtów klucza — „#98 — co wyszło”). Przedtem `b6a96dd` —
   #101 (handoff po #96), `90a83f2` — #102 (EP1, z sesji `esdm-dsl-comparison`), `0b7bc84` — #100 (poprawki
@@ -61,9 +65,9 @@ października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każd
 - **Gałęzie:** gałęzie tej pracy usunięte na GitHubie i lokalnie 3 października, za zgodą użytkownika (EB, EH, #71,
   #89, discovery, #65, #93, #95, #96, #100, a także przypadkowy `revert-95-engine/bounded-values` — revert z przycisku
   GitHuba, bez PR-a); `engine/issue-98-key-budget` (#103) — po merge'u, za zgodą użytkownika. Zostało 59 innych gałęzi na GitHubie, zmergowanych dawno — nieruszane z wyboru użytkownika.
-- **Worktree (5 października):** `computer-ordering-process-f84437` — sesja DD (`docs/dd0-programme`);
-  `esdm-dsl-comparison-d82750` (`auth/manifest-query-record`, PR #134 zmergowany) i `ep4-ep5-user-questions-95855b` — innych
-  sesji, nie ruszać.
+- **Worktree (5 października, wieczór):** `computer-ordering-process-f84437` — sesja DD (`engine/w2-day-tags`);
+  `plan-md-incomplete-actions-27a0e4` (trzyma `dsl/n2-subscribe` — tam powstały poprawki po przeglądach #135/#138),
+  `esdm-dsl-comparison-d82750`, `ep4-ep5-user-questions-95855b` — innych sesji, nie ruszać.
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
   `eh_os_contract_test`, `…_test_commits`, `eh_os_contract_web_test`, `eh_os_contract_auth_test`), schemat V01 z
   ręcznymi poprawkami z E11f i E12c, baza auth na V03. **Brama obok cudzego `phx.server` albo cudzych testów potrafi
@@ -81,11 +85,10 @@ października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każd
 
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
-  1. **Użytkownik:** merge stosu po kolei — #135 (DD0), #137 (N1), #138 (N2); po każdym baza następnego
-     przechodzi na `main`.
-  2. **N1 — PR #137** (na #135); **N2 — PR #138** (na #137); **N3 gotowe na `dsl/n3-timer-label`** (na N2; push i PR
-     na polecenie). **Asystent:** dalej reszta fali 1 w dowolnej kolejności. Start etapu: ◐ i gałąź w tabeli; koniec:
-     „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
+  1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138). **Użytkownik:** merge #139 (N3), potem #142 (W1), potem #143
+     (W2); po każdym ☑ w tabeli robi asystent przy następnym etapie.
+  2. **Asystent:** W3 na nowej gałęzi od `engine/w2-day-tags` (tabela „Postęp” żyje na stosie); potem W4, T1+T1s, X1,
+     S4. Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; potwierdzenie etykiet timerów sandboxa — „N3 — co wyszło”); po każdej fali „dalej czy
      stop” i kiedy podbić przypięcie w aplikacji AppUnite (`~/Projects/ai/appunite_equipment`) i `ehos-ledger`.
@@ -189,6 +192,10 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **5 października, wieczór, `engine/w2-day-tags` @ `5c3a619`** (kod W2; głowa `586eb07` dokłada tylko `PLAN.md`):
+  `mix check` w `sandbox/` EXIT=0 — `check` sandboxa 0 / 29 / 10, silnika 0 / 75 / 6 (nowe ostrzeżenie:
+  `event-without-consumer` dla `:day_closed` rigu); sandbox 194, silnik 1280, web 51, auth 286 + 1 property. CI:
+  #139 @ `9c55d15` i #142 @ `0e0ac01` — job `check` success; #143 @ `586eb07` w toku przy pisaniu.
 - **5 października, `docs/dd0-programme` po merge'u `main`:** bramy nie uruchamiano — gałąź różni się od `main`
   tylko `PLAN.md` (`git diff origin/main -- . ':!PLAN.md'` pusty). CI `main` na `af59a48` (#128) — `check` `success`.
 - **#98 @ `1b0816d`** (głowa #103, na `b6a96dd` z EP1): pełna brama znowu padła na `too_many_connections` (5 testów
@@ -493,12 +500,12 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 
 | Etap | Fala | Zakres | Zależy od | Status |
 |---|---|---|---|---|
-| DD0 | 0 | program i postęp w `PLAN.md` | — | ◐ `docs/dd0-programme`, PR #135 |
-| N1 | 1 | `final:`, `target`, `identity` encji, definicja encji | DD0 | ◐ `dsl/n1-names`, PR #137 (na #135) |
-| N2 | 1 | `subscribe "<nazwa>"` | DD0 | ◐ `dsl/n2-subscribe`, PR #138 (na #137) |
-| N3 | 1 | etykieta timera (EP6) | DD0 | ◐ `dsl/n3-timer-label` (na N2), gotowe do PR-a |
-| W1 | 1 | zapis `schema_version` | DD0 | ☐ |
-| W2 | 1 | tagi dnia przy dopisie | DD0 | ☐ |
+| DD0 | 0 | program i postęp w `PLAN.md` | — | ☑ #135 |
+| N1 | 1 | `final:`, `target`, `identity` encji, definicja encji | DD0 | ☑ #137 |
+| N2 | 1 | `subscribe "<nazwa>"` | DD0 | ☑ #138 |
+| N3 | 1 | etykieta timera (EP6) | DD0 | ◐ `dsl/n3-timer-label`, PR #139 |
+| W1 | 1 | zapis `schema_version` | DD0 | ◐ `engine/w1-schema-version`, PR #142 (na #139) |
+| W2 | 1 | tagi dnia przy dopisie | DD0 | ◐ `engine/w2-day-tags`, PR #143 (na #142) |
 | W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ☐ |
 | W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ☐ |
 | T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ☐ |
@@ -904,7 +911,12 @@ z deklaracji: „1 day after it is set”, „at `review_at`”), `@doc` callbac
 
 - **Etykiety sandboxa nie są z materiału** (wbrew projektowi etapu): „Termin dokumentacji” (Rehmed) to przykład
   użytkownika z decyzji przed N3, „Termin sprawdzenia rejestrów” (TaxVision) — propozycja asystenta z etykiety
-  process managera. Do potwierdzenia przez właściciela procesu; przegląd to złapał.
+  process managera. Do potwierdzenia przez właściciela procesu; przegląd to złapał. **Rozstrzygnięte 5 października**
+  (po recenzji CodeRabbita na #139), decyzja użytkownika: TaxVision → „Weryfikacja rejestrowa”, słowa materiału
+  (`02-event-storming.md` §3.1, „Otwarcie miesiąca: weryfikacja rejestrowa”), z `source:`; Rehmed zostaje przy
+  „Termin dokumentacji”, zatwierdzone przez użytkownika jako właściciela procesu danych testowych — materiał nie ma
+  tu polskiej nazwy (P-23 mówi o „statutory window”, klient proponował watchdog 48 h). *Odrzucone:* „Otwarcie
+  miesiąca” (nazwa fazy, nie tego, co timer wywołuje); zostawić obie etykiety otwarte.
 - **Przegląd** (`dsl/n2-subscribe..dsl/n3-timer-label`). Poprawność: 9 uwag — naprawione (`1523867`): CHANGELOG o
   zdaniach raportu i nieaktualny komentarz w `report/sentence.ex`, test odmowy timera bez etykiety i etykieta w
   asercji §4.6, polski przykład w komentarzu `dsl.ex`, porządek komentarzy i martwa gałąź w `pages.ex`, strzałka
@@ -927,6 +939,88 @@ z deklaracji: „1 day after it is set”, „at `review_at`”), `@doc` callbac
   lista deklaracji z etykietą (deklaracja dodana później by umknęła); przejście po wszystkich strukturach (odmówiłoby
   danym testowym i wpisałoby ich wartość do komunikatu, wbrew v2 §17).
 - **Fala 1 po N3:** N1–N3 zrobione; zostają W1–W4, T1, T1s, X1, S4 w dowolnej kolejności.
+
+### W1 — co wyszło (5 października)
+
+Gałąź `engine/w1-schema-version` (na N3). Dispatch zapisuje `schema_version` zdarzenia w wierszu (do teraz każdy
+wiersz miał 1, domyślną kolumny); odczyt wiersza nowszej wersji niż deklaruje działający kod rzuca
+`EhOsContract.NewerSchemaError` (nazywa wiersz, nigdy wartość), sprawdzane przed czytaniem podmiotów z payloadu.
+Wiersz starszej wersji dekoduje się jak dotąd — do upcastów (V1). Żadna wersja kontraktu się nie przesuwa; rig
+`LifecycleRig` ma `:note_added` w wersji 2.
+
+**Decyzja użytkownika (5 października), po przeglądzie: kod starszy niż wiersz czeka.** Subskrypcja, process
+manager i relay stoją na wierszu nowym krokiem `{:waiting, position}` — nic się nie przesuwa, próba nie jest
+liczona, runner próbuje co 5 s i rusza sam po aktualizacji węzła; efekt dostaje `snooze` 30 s (Oban 2.23 podbija
+wtedy `max_attempts`, więc nie liczy); komenda na strumieniu z takim wierszem dalej odrzucona jako `failed`.
+*Odrzucone:* tylko nazwany wyjątek, z liczeniem prób jak dziś (rozbieżność wersji przy wdrożeniu po kolei kończy
+się subskrypcją `failing` na stałe, a wyjście przez `--skip` gubi reakcję, i odrzuconym zadaniem efektu); W1 tylko
+zapisuje wersję, a odmowa razem z V1 (stary węzeł dalej czyta nowe pola ze starym znaczeniem, a relay publikuje je
+innym aplikacjom).
+
+- **Rozstrzygnięcia asystenta (mechanika):** relay sprawdza wersję w `Subscription.relay/2`, nie w
+  `Relay.message/2` — ta zostaje czystą funkcją na zdarzeniu (testy budują je ręcznie); partia z nowszym zdarzeniem
+  idzie zdarzenie po zdarzeniu, a relay staje na nim. Wpisy CHANGELOG programu DD (N1–N3, W1) przeniesione do górnej
+  sekcji „Unreleased”, gdzie stoi wpis z #134 — wcześniej trafiały do sekcji 0.3.0.
+- **Przegląd** (`dsl/n3-timer-label..engine/w1-schema-version`). Poprawność: 9 uwag — naprawione: zatrzymanie
+  subskrypcji i odrzucanie efektów (decyzja wyżej), relay omijający sprawdzenie, nazwany wyjątek, sprawdzenie przed
+  podmiotami, testy ścieżek dispatchu, subskrypcji, efektu i relaya (próba odwrotna każdej: pada tylko jej test),
+  strażnik `is_integer` (kolumna jest `NOT NULL`), sekcja i treść CHANGELOG, `@doc` `decode!/1` i opis
+  `schema_version` w DSL-u. **Zostawione do V1/V3:** wiersz *starszej* wersji niż deklaracja dekoduje się bez
+  pytania — także każdy wiersz sprzed W1, który mówi 1 bez względu na deklarację; strażnikiem ma być reguła `check`
+  z ADR §10.6 (wiersze starszej wersji bez upcastu), której jeszcze nie ma — od W1 ma znaczenie. Bezpieczeństwo i
+  wydajność: ta sama uwaga o zatrzymaniu (średnia, naprawiona); komunikat bez wartości; wiersza nowszej wersji nie da
+  się wstrzyknąć przez inbox ani relay; koszt jednego porównania na wiersz.
+- **Drugi przegląd** (poprawka `746dbf7`): bez błędów w ścieżkach; naprawione (`417a501`) — ostrzeżenie o czekaniu raz
+  na pozycję zamiast co 5 s, backoff efektu po wielu `snooze` liczony z prób, które się odbyły (domyślny Obana
+  skalował przez `max_attempts` i po 9 minutach czekania dawał ponowienie po dniach), strażnik `is_integer`,
+  moduledoc relaya, testy relaya z nowszym wierszem za starszym i process managera (próba odwrotna każdego).
+  Pominięte: partia read modelu (do 499 zdarzeń) przeliczana i wycofywana co 5 s podczas czekania — koszt tylko na
+  czas wdrożenia. Odnotowane w CHANGELOG: inbox odpowiada `:nack` i wiadomość wraca. Czekanie bez końca po
+  wycofaniu wdrożenia widać tylko w logu i opóźnieniu pozycji — widoków operacyjnych nie budujemy (`CLAUDE.md`).
+- **Brama:** EXIT=0; `check` sandboxa 0 / 29 / 10, silnika 0 / 74 / 6; sandbox 194, silnik 1273, web 51, auth 286 +
+  1 property.
+- **Dla aplikacji AppUnite i `ehos-ledger`:** nic do zmiany w kodzie; przy wdrożeniu po kolei z podniesioną wersją
+  zdarzenia subskrypcje starego węzła czekają (ostrzeżenie w logu) — nie `--skip`.
+
+### Przed W2 — decyzja użytkownika (5 października)
+
+**Tylko tagi dnia** (`<pole>.day:YYYY-MM-DD`, UTC), bez tagów miesiąca. Jedyny czytelnik w planie — B2, kubełek w
+`match:` (jedna wizyta naraz na specjalistę) — pyta o dzień; miesiąc wróci ze swoim czytelnikiem. *Odrzucone:* dzień i
+miesiąc od razu (dwa tagi więcej na każde pole daty bez czytelnika; za to wiersze sprzed dodania miesiąca go nie
+będą miały — to koszt świadomie przyjęty).
+
+### W2 — co wyszło (5 października)
+
+Gałąź `engine/w2-day-tags` (na W1). Dispatch dokłada przy dopisie tag `<pole>.day:YYYY-MM-DD` dla każdego wymaganego,
+nieosobowego pola `:date` lub `:timestamp` (albo wartości domeny na nim opartej), obok tagów `:id`. Data ma swój
+dzień; znacznik czasu — dzień, na który przypada w strefie domeny. Nic tych tagów jeszcze nie czyta (czytelnik: B2).
+Rig `DispatchRig` rejestruje `:day_closed` (jedno `event-without-consumer` więcej w `check` silnika, 74 → 75) i ma
+wartość `:business_day`.
+
+**Decyzja użytkownika (5 października), po przeglądzie: dzień w strefie domeny, nie UTC.** Przykład z Rehmed: wizyta
+o 00:30 w Warszawie 6 października to 22:30 UTC 5 października — w dniu UTC nie zderzyłaby się w B2 z wizytą o 9:00
+6 października, a zapisanego tagu nie da się poprawić. Domena deklaruje `time_zone: "Europe/Warsaw"` (domyślnie
+`"Etc/UTC"`). *Odrzucone:* UTC, jak w decyzji przed W2 (dzień lokalny wymagałby innego tagu, którego historia nie
+będzie miała); odsunięcie W2 do B2 (historia sprzed B2 bez tagów).
+
+- **Rozstrzygnięcia asystenta (mechanika):** strefę czyta baza stref, którą konfiguruje host (`config :elixir,
+  :time_zone_database`) — pakiet nie przywozi żadnej, `tz` tylko w jego testach i w hoście sandboxa. *Odrzucone:*
+  `tzdata` (pobiera dane przez sieć w czasie działania), twarda zależność pakietu od `tz` (wybór za hosta). **D13**
+  (L2) odmawia strefy, której skonfigurowana baza nie zna, także gdy moduł bazy nie istnieje; **start węzła** odmawia,
+  gdy baza, z którą działa, nie zna strefy domeny (`Registry.load!`). Domena bez strefy zachowuje wersję; trzy domeny
+  sandboxa (Rehmed, TaxVision, AppUnite) są w Warszawie.
+- **Przegląd** (dwa przebiegi). Pierwszy (tagi): bez błędów; dane osobowe nieoznaczone `personal:` są już jawnie w
+  payloadzie, tag ich nie odsłania bardziej; ryzyko dnia UTC → decyzja wyżej; brakujący test wartości opartej na dacie
+  dodany; wpis CHANGELOG z działaniem hosta („ustaw `time_zone:` przed aktualizacją”). Drugi (strefa, `539f0ec`): bez
+  błędów; naprawione w `5c3a619` — sprawdzenie strefy przy starcie, D13 przy brakującym module bazy; bez zmian — alias
+  UTC (`"UTC"`) przesuwa wersję, choć dni są te same; niezaładowana domena liczy dni w UTC (v2 §8). Próba odwrotna
+  każdej poprawki: pada tylko jej test.
+- **Dla B2:** zdarzenia sprzed W2 (aplikacja AppUnite, `ehos-ledger`) nie mają tagów dnia — B2 potrzebuje reguły na
+  to (odmowa kubełka nad historią sprzed W2 albo udokumentowana data odcięcia).
+- **Brama:** EXIT=0; `check` sandboxa 0 / 29 / 10, silnika 0 / 75 / 6; sandbox 194, silnik 1280, web 51, auth 286 +
+  1 property.
+- **Dla aplikacji AppUnite i `ehos-ledger`:** ustawić `time_zone:` domeny **przed** podbiciem; strefa inna niż UTC
+  wymaga `{:tz, "~> 0.28"}` i `config :elixir, :time_zone_database, Tz.TimeZoneDatabase`.
 
 ## Dopisek 4 października (3) — pokrycie ESDM po EP1–EP5 i #99
 
