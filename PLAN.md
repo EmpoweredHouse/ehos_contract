@@ -81,12 +81,13 @@ nie jest zaczęty; pierwszy jest N1 (`final:`, `target`, `identity` encji).
 
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
-  1. **Użytkownik:** push i PR `docs/dd0-programme` (DD0), przed nim `pre-pr-review` — na polecenie.
-  2. **N1 — PR #137** (na #135); **N2 — PR #138** (na #137). **Asystent:** N3 w toku na
-     `dsl/n3-timer-label` („Przed N3”), potem reszta fali 1 w dowolnej kolejności. Start etapu: ◐ i gałąź w tabeli; koniec:
+  1. **Użytkownik:** merge stosu po kolei — #135 (DD0), #137 (N1), #138 (N2); po każdym baza następnego
+     przechodzi na `main`.
+  2. **N1 — PR #137** (na #135); **N2 — PR #138** (na #137); **N3 gotowe na `dsl/n3-timer-label`** (na N2; push i PR
+     na polecenie). **Asystent:** dalej reszta fali 1 w dowolnej kolejności. Start etapu: ◐ i gałąź w tabeli; koniec:
      „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
-     V01 w miejscu przed T2a i P2h; etykieta timera albo zdanie z deklaracji przed N3); po każdej fali „dalej czy
+     V01 w miejscu przed T2a i P2h; potwierdzenie etykiet timerów sandboxa — „N3 — co wyszło”); po każdej fali „dalej czy
      stop” i kiedy podbić przypięcie w aplikacji AppUnite (`~/Projects/ai/appunite_equipment`) i `ehos-ledger`.
 - **AppUnite — zapotrzebowanie (`Demands`) jest w `main`** (#128); dwa pytania z przeglądu i etapy `Computers`
   wobec cyklu życia czekają na użytkownika — „Dopisek 4 października (2)”, „Otwarte z przeglądu”.
@@ -495,7 +496,7 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | DD0 | 0 | program i postęp w `PLAN.md` | — | ◐ `docs/dd0-programme`, PR #135 |
 | N1 | 1 | `final:`, `target`, `identity` encji, definicja encji | DD0 | ◐ `dsl/n1-names`, PR #137 (na #135) |
 | N2 | 1 | `subscribe "<nazwa>"` | DD0 | ◐ `dsl/n2-subscribe`, PR #138 (na #137) |
-| N3 | 1 | etykieta timera (EP6) | DD0 | ◐ `dsl/n3-timer-label` (na N2) |
+| N3 | 1 | etykieta timera (EP6) | DD0 | ◐ `dsl/n3-timer-label` (na N2), gotowe do PR-a |
 | W1 | 1 | zapis `schema_version` | DD0 | ☐ |
 | W2 | 1 | tagi dnia przy dopisie | DD0 | ☐ |
 | W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ☐ |
@@ -889,6 +890,31 @@ CHANGELOG („a host has to act”), dopisek z datą w ADR §4.2, `contract.md`,
 - **Brama:** EXIT=0; `check` sandboxa 0 / 29 / 10, silnika 0 / 74 / 6; sandbox 194, silnik 1263, web 51, auth 286 +
   1 property.
 - **Dla aplikacji AppUnite i `ehos-ledger`:** `consumes "<nazwa>", as: …` → `subscribe "<nazwa>", as: …`.
+
+### N3 — co wyszło (5 października)
+
+Gałąź `dsl/n3-timer-label` (na N2). `timer :documentation_due, "Termin dokumentacji", wait: {24, :hour}, …` —
+etykieta wymagana, pozycyjna, nazywa cel (decyzja „Przed N3”). Czytelnicy: strona process managera (etykieta i czas
+z deklaracji: „1 day after it is set”, „at `review_at`”), `@doc` callbacku, węzeł timera w grafie, a przez
+`Paths` także zdania raportu zgodności i dashboardu o kroku timera. Przesuwa wersję każdego kontraktu z timerem
+(przypięte wersje: `DispatchRig.Ledger` `2d4f6e4d01fe` → `ccaadcbebb04`, `sources_test` `0233079a0430` →
+`fbeab3316603`). Wpis w CHANGELOG, dopisek z datą w ADR, przykład §4.6 przez `@amendments`, wytyczna w
+`write-reaction`.
+
+- **Etykiety sandboxa nie są z materiału** (wbrew projektowi etapu): „Termin dokumentacji” (Rehmed) to przykład
+  użytkownika z decyzji przed N3, „Termin sprawdzenia rejestrów” (TaxVision) — propozycja asystenta z etykiety
+  process managera. Do potwierdzenia przez właściciela procesu; przegląd to złapał.
+- **Przegląd** (`dsl/n2-subscribe..dsl/n3-timer-label`). Poprawność: 9 uwag — naprawione (`1523867`): CHANGELOG o
+  zdaniach raportu i nieaktualny komentarz w `report/sentence.ex`, test odmowy timera bez etykiety i etykieta w
+  asercji §4.6, polski przykład w komentarzu `dsl.ex`, porządek komentarzy i martwa gałąź w `pages.ex`, strzałka
+  przy timerze bez `issues:`, podwójne szukanie timera w `doc.ex`, ten zapis i nieaktualne pytanie w Handoffie;
+  pominięte: czas obok etykiety także w `@doc` i na grafie (rozszerzenie decyzji, nie jej wykonanie — do decyzji,
+  jeśli strona nie wystarczy). Bezpieczeństwo i wydajność: nic; etykieta escapowana jak każda inna, nie trafia do
+  harmonogramu, zadań Obana ani logu.
+- **Brama:** EXIT=0; `check` sandboxa 0 / 29 / 10, silnika 0 / 74 / 6; sandbox 194, silnik 1264, web 51, auth 286 +
+  1 property.
+- **Dla aplikacji AppUnite i `ehos-ledger`:** każdy `timer :x, wait:/at: …` → `timer :x, "<cel>", wait:/at: …`.
+- **Fala 1 po N3:** N1–N3 zrobione; zostają W1–W4, T1, T1s, X1, S4 w dowolnej kolejności.
 
 ## Dopisek 4 października (3) — pokrycie ESDM po EP1–EP5 i #99
 
