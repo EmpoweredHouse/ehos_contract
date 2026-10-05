@@ -523,7 +523,7 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | W2 | 1 | tagi dnia przy dopisie | DD0 | ☑ #143 |
 | W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ◐ `engine/w3-trace-core`, PR #145 |
 | W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ◐ `engine/w4-decision`, PR #146 (na #145) |
-| T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ☐ |
+| T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ◐ `engine/t1-supplied-by-host` (na W4) |
 | T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☐ |
 | X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ☐ |
 | S4 | 1 | `transition-without-scenario` | DD0 | ☐ |
