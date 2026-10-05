@@ -200,6 +200,43 @@ defmodule EhOsContract.TraceTest do
                Trace.judge(trace, inspected, now: @later)
     end
 
+    test "a payload keyed by atoms is refused, not read as carrying no item", %{trace: trace} do
+      # Read as missing, both items would share the key {nil, nil} and the one
+      # inspection would resolve them both.
+      occurrences = [
+        %{
+          instance_id: "r",
+          type: "desk.item_submitted",
+          occurred_at: @from,
+          payload: %{request_id: "r", item_no: 1}
+        },
+        %{
+          instance_id: "r",
+          type: "desk.item_submitted",
+          occurred_at: @from,
+          payload: %{request_id: "r", item_no: 2}
+        },
+        %{
+          instance_id: "r",
+          type: "desk.item_inspected",
+          occurred_at: @inside,
+          payload: %{request_id: "r", item_no: 1}
+        }
+      ]
+
+      assert_raise ArgumentError, ~r/request_id under an atom key/, fn ->
+        Trace.judge(trace, occurrences, now: @later)
+      end
+    end
+
+    test "an occurrence without its payload is refused, naming the identity", %{trace: trace} do
+      occurrences = [%{instance_id: "r", type: "desk.item_submitted", occurred_at: @from}]
+
+      assert_raise ArgumentError, ~r/needs its payload.*request_id, item_no/, fn ->
+        Trace.judge(trace, occurrences, now: @later)
+      end
+    end
+
     test "a hit resolves only the item its payload names", %{trace: trace} do
       occurrences = [item("r", :item_submitted, 1, @from), item("r", :item_inspected, 2, @inside)]
 

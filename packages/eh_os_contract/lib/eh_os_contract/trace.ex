@@ -162,7 +162,8 @@ defmodule EhOsContract.Trace do
   @typedoc """
   One event a promise is judged on, with the run it belongs to. `payload` is read only
   when the trace has an `identity`, to pair the event with its item, and may be left
-  out otherwise.
+  out otherwise. It is the payload as the log stores it, with string keys: an event
+  whose payload does not carry the identity's fields resolves no item.
   """
   @type occurrence :: %{
           required(:instance_id) => String.t(),
@@ -238,7 +239,11 @@ defmodule EhOsContract.Trace do
     unavailable; a window that closed empty with one inside it is `:suspended`.
     Defaults to none.
 
-  Occurrences of types other than the trace's three are ignored.
+  Occurrences of types other than the trace's three are ignored. For a trace with an
+  `identity`, every occurrence needs its `payload`, keyed by strings as the log stores
+  it; one without a payload, or with an identity field under an atom key, raises
+  `ArgumentError` naming the field — read as missing, it would pair every such event
+  with every other and resolve items it is not about.
   """
   @spec judge(trace(), [occurrence()], keyword()) :: [verdict()]
   def judge(trace, occurrences, opts) do
@@ -499,7 +504,7 @@ defmodule EhOsContract.Trace do
     |> Map.new(fn {instance, rows} ->
       by_item =
         rows
-        |> Enum.group_by(&item_key(&1.payload, identity), &{&1.type, &1.occurred_at})
+        |> Enum.group_by(&item_key(&1, identity), &{&1.type, &1.occurred_at})
         |> Map.new(fn {key, pairs} -> {key, Enum.group_by(pairs, &elem(&1, 0), &elem(&1, 1))} end)
 
       {instance, by_item}
@@ -509,9 +514,32 @@ defmodule EhOsContract.Trace do
   # A tuple of raw values, not a joined string: two payload fields have no separator
   # to escape or collide on if they are never joined in the first place, which is a
   # cheaper way to avoid a separator colliding with a value than escaping one.
-  @spec item_key(map(), [String.t()]) :: tuple()
-  defp item_key(payload, identity),
-    do: identity |> Enum.map(&Map.get(payload, &1)) |> List.to_tuple()
+  #
+  # The error names the field, never a value: a payload may hold personal data.
+  @spec item_key(occurrence(), [String.t()]) :: tuple()
+  defp item_key(%{payload: payload}, identity) when is_map(payload) do
+    identity
+    |> Enum.map(fn field ->
+      if Map.has_key?(payload, String.to_existing_atom(field)),
+        do:
+          raise(
+            ArgumentError,
+            "an occurrence's payload holds #{field} under an atom key; " <>
+              "give it as the log stores it, with string keys"
+          )
+
+      Map.get(payload, field)
+    end)
+    |> List.to_tuple()
+  end
+
+  defp item_key(_occurrence, identity),
+    do:
+      raise(
+        ArgumentError,
+        "an occurrence of a promise made per item needs its payload, " <>
+          "to pair it with its item by #{Enum.join(identity, ", ")}"
+      )
 
   @spec types(trace()) :: [String.t()]
   defp types(trace) do
