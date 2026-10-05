@@ -1,0 +1,5 @@
+Range origin/dsl/n3-timer-label..HEAD (a485d8f, d90a33f), stacked on #139.
+Correctness (code-review high): 10 findings. Fixed in d90a33f: walk entered user data (answers rows, violated_by:) and refused structs there; struct-valued fields skipped; zero-width-only labels passed trim; blank enum member label compiled (F2/D3); PLAN.md lacked the move with losing options; stale manifest comment; moduledocs. Skipped: parent declaration in the message (file:line is printed); second struct-to-word table (@kinds covers seven domain kinds only).
+Security/performance (no engineering:code-review plugin; reviewed by list): walk bounded and compile-time only; same data-walk finding (value could reach a message, v2 §17) — fixed in d90a33f. Manifest's runtime check kept for model maps.
+Reverse checks: each of the three code fixes mutated back, exactly its tests went red.
+Gate: sandbox mix check EXIT=0 — sandbox 194, engine 1269, web 52, auth 286 + 1 property; check 0/29/10 and 0/74/6, same as after N3.
