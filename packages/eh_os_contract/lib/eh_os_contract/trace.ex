@@ -163,7 +163,8 @@ defmodule EhOsContract.Trace do
   One event a promise is judged on, with the run it belongs to. `payload` is read only
   when the trace has an `identity`, to pair the event with its item, and may be left
   out otherwise. It is the payload as the log stores it, with string keys: an event
-  whose payload does not carry the identity's fields resolves no item.
+  whose payload does not carry every identity field, or carries one as `nil`, is about
+  no item — it neither opens one nor resolves one.
   """
   @type occurrence :: %{
           required(:instance_id) => String.t(),
@@ -508,6 +509,10 @@ defmodule EhOsContract.Trace do
       by_item =
         rows
         |> Enum.group_by(&item_key(&1, identity))
+        # An occurrence that does not carry every identity field is about no item:
+        # grouped under a key with `nil` in it, a `from` and a hit both missing the
+        # same field would pair with each other and resolve an item neither names.
+        |> Map.delete(:unresolved)
         |> Map.new(fn {key, rows} -> {key, by_type(rows)} end)
 
       {instance, by_item}
@@ -523,21 +528,22 @@ defmodule EhOsContract.Trace do
   # cheaper way to avoid a separator colliding with a value than escaping one.
   #
   # The error names the field, never a value: a payload may hold personal data.
-  @spec item_key(occurrence(), [String.t()]) :: tuple()
+  @spec item_key(occurrence(), [String.t()]) :: tuple() | :unresolved
   defp item_key(%{payload: payload}, identity) when is_map(payload) do
-    identity
-    |> Enum.map(fn field ->
-      if Map.has_key?(payload, String.to_existing_atom(field)),
-        do:
-          raise(
-            ArgumentError,
-            "an occurrence's payload holds #{field} under an atom key; " <>
-              "give it as the log stores it, with string keys"
-          )
+    values =
+      Enum.map(identity, fn field ->
+        if Map.has_key?(payload, String.to_existing_atom(field)),
+          do:
+            raise(
+              ArgumentError,
+              "an occurrence's payload holds #{field} under an atom key; " <>
+                "give it as the log stores it, with string keys"
+            )
 
-      Map.get(payload, field)
-    end)
-    |> List.to_tuple()
+        Map.get(payload, field)
+      end)
+
+    if nil in values, do: :unresolved, else: List.to_tuple(values)
   end
 
   defp item_key(_occurrence, identity),

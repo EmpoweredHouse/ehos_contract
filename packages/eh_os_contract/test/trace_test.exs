@@ -243,6 +243,23 @@ defmodule EhOsContract.TraceTest do
       end
     end
 
+    test "an occurrence missing an identity field is about no item", %{trace: trace} do
+      # A `from` and a hit that both lack `item_no` would share the key {"r", nil} and
+      # make up a satisfied item between them; item 1 is the one actually owed.
+      no_item = %{"request_id" => "r"}
+
+      occurrences = [
+        item("r", :item_submitted, 1, @from),
+        at("r", :item_submitted, @from, no_item),
+        at("r", :item_inspected, @inside, no_item)
+      ]
+
+      assert [%{verdict: :violated}] = Trace.judge(trace, occurrences, now: @later)
+
+      assert Trace.judge(trace, Enum.drop(occurrences, 1), now: @later) == [],
+             "with only incomplete occurrences no item is opened, so nothing is judged"
+    end
+
     test "a hit resolves only the item its payload names", %{trace: trace} do
       occurrences = [item("r", :item_submitted, 1, @from), item("r", :item_inspected, 2, @inside)]
 
