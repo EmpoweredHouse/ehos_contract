@@ -1,18 +1,62 @@
 name: check
 
+# Pull requests, not every push to `main`: that run checked a second time the
+# code its pull request had just passed — a third of all runs (5 October 2026).
+# `main` still runs when a lock file or this workflow changes, and once a week,
+# because a pull request restores caches only from its own branch and from
+# `main`: without a run there, and once GitHub evicts an entry unused for seven
+# days, every new pull request would compile its dependencies cold. The price is
+# that nothing checks `main` after a merge — two pull requests that each pass
+# can still break it together, and the first to see it is the next pull request.
+# `workflow_dispatch` runs the gate on any branch by hand.
 on:
   push:
     branches: [main]
+    paths:
+      - "sandbox/mix.lock"
+      - "packages/*/mix.lock"
+      - ".github/workflows/ci.yml"
+  schedule:
+    - cron: "0 4 * * 1"
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    # Changes that touch only the team's working documents skip the gate. The
+    # order matters: `!docs/**` drops the directory and the last line takes back
+    # the one file under it that a test reads — contract_examples_test.exs
+    # compiles the examples in docs/adr/contract-v2.md. Anything a test or a
+    # `--check` task reads elsewhere (packages/*/docs, packages/*/README.md) is
+    # not excluded.
+    paths:
+      - "**"
+      - "!PLAN.md"
+      - "!CLAUDE.md"
+      - "!README.md"
+      - "!docs/**"
+      - "docs/adr/contract-v2.md"
+  workflow_dispatch:
+
+# The job runs the branch's own code, so its token can read and nothing more.
+permissions:
+  contents: read
+
+# A new push to the same pull request cancels the run still checking the old one.
+# A run on `main` is never cancelled: it is the one that saves the caches.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
+    # A draft is not checked until it is marked ready for review; on a push
+    # there is no pull request and the condition holds.
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: erlef/setup-beam@v1
+        id: beam
         with:
           otp-version: "27.2"
           elixir-version: "1.18.4"
@@ -62,6 +106,48 @@ jobs:
           path: packages/eh_os_contract_auth/deps
           key: eh-os-contract-auth-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_auth/mix.lock') }}
 
+      # Compiled dependencies, one cache per project. Without it every run
+      # compiled ecto, postgrex, oban, plug and the rest from scratch four times
+      # over — about three and a half of the five minutes `mix check` took. The
+      # key carries everything a compiled dependency depends on: the runner
+      # image, the toolchain, the lock files and the configuration, which can
+      # set a dependency's compile-time values. There are no `restore-keys` on
+      # purpose: after a lock change Mix recompiles the dependency that moved
+      # but not the ones built against its macros, so a partial hit could pass
+      # or fail where a clean build would not. A lock change compiles cold once.
+      #
+      # The repository's own applications — everything named eh_os_contract*,
+      # which the sandbox and the packages also build as path dependencies — and
+      # the consolidated protocols are left out of the cache, and deleted after
+      # the restore in case an entry saved before that exclusion still holds
+      # them, so they are always compiled fresh, exactly as before. That keeps the
+      # formatter-cache caveat at the `mix check` step below true: `_build` holds
+      # nothing of the repository's own between runs.
+      # `ImageOS` (ubuntu24, …) is in the runner's environment, which the `env`
+      # context does not see.
+      - name: Name the runner image
+        id: image
+        run: echo "os=$ImageOS" >> "$GITHUB_OUTPUT"
+
+      - name: Cache compiled deps
+        uses: actions/cache@v4
+        with:
+          path: |
+            sandbox/_build
+            packages/eh_os_contract/_build
+            packages/eh_os_contract_web/_build
+            packages/eh_os_contract_auth/_build
+            !sandbox/_build/*/lib/eh_os_contract*
+            !packages/*/_build/*/lib/eh_os_contract*
+            !sandbox/_build/*/consolidated
+            !packages/*/_build/*/consolidated
+          key: build-${{ steps.image.outputs.os }}-otp${{ steps.beam.outputs.otp-version }}-ex${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('sandbox/mix.lock', 'packages/*/mix.lock', 'sandbox/config/**', 'packages/*/config/**') }}
+
+      - name: Drop the repository's own compiled applications
+        run: |
+          rm -rf sandbox/_build/*/lib/eh_os_contract* sandbox/_build/*/consolidated
+          rm -rf packages/*/_build/*/lib/eh_os_contract* packages/*/_build/*/consolidated
+
       - name: Install sandbox deps
         working-directory: sandbox
         run: mix deps.get
@@ -89,7 +175,8 @@ jobs:
       # documented local command is for a working dev database to poke at
       # afterward, not a precondition of the gate itself.
       #
-      # A fresh `_build` here, always — which matters for one step in particular.
+      # A fresh build of the repository's own code here, always (dependencies
+      # come compiled from the cache above) — which matters for one step in particular.
       # Mix caches the resolved formatter configuration and does not invalidate it
       # when a dependency's `.formatter.exs` changes, so a developer's machine can
       # disagree with this job about `format --check-formatted`. CI is the one that

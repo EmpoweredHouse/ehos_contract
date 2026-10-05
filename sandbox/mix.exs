@@ -93,8 +93,9 @@ defmodule EhOsContractHost.MixProject do
         # **A trap worth knowing:** Mix caches the resolved formatter configuration in
         # `_build/<env>/lib/<app>/.mix/cached_dot_formatter` and does not invalidate it
         # when a *dependency's* `.formatter.exs` changes. A machine whose cache predates
-        # such a change formats differently from CI, which always starts from an empty
-        # `_build`. If this step disagrees with what you see locally, delete that file.
+        # such a change formats differently from CI, which never keeps the repository's
+        # own applications in `_build` between runs. If this step disagrees with what
+        # you see locally, delete that file.
         "format --check-formatted",
         "compile --force --warnings-as-errors",
         "eh_os_contract.check",
