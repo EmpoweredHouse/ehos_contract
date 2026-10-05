@@ -50,27 +50,27 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
     end
 
     scenario "pierwsza płatność — termin przypomnienia" do
-      scope :chase
+      target :chase
       on :paid, %{visit_id: "w-1", amount: 30}
       sets :later
       state %{visit_id: "w-1", paid: 30, remind_at: "2026-01-02T09:00:00Z"}
     end
 
     scenario "druga płatność — suma rośnie" do
-      scope :chase
+      target :chase
       given :paid, %{amount: 30}
       on :paid, %{amount: 20}
       state %{paid: 50}
     end
 
     scenario "płatność — run innej wizyty" do
-      scope :chase
+      target :chase
       on :paid, %{amount: 20}
       state %{visit_id: "w-9"}
     end
 
     scenario "przypomnienie po zakończeniu" do
-      scope :chase
+      target :chase
       given :paid, %{amount: 30}
       given :reminded
       on :later
@@ -78,21 +78,21 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
     end
 
     scenario "przypomniano, zanim cokolwiek zapłacono" do
-      scope :chase
+      target :chase
       given :reminded
       on :paid, %{amount: 20}
       state %{paid: 20}
     end
 
     scenario "płatności dwóch wizyt" do
-      scope :chase
+      target :chase
       given :paid, %{visit_id: "w-1", amount: 30}
       on :paid, %{visit_id: "w-2", amount: 20}
       state %{paid: 50}
     end
 
     scenario "płatności dwóch wizyt — przypomnienie" do
-      scope :chase
+      target :chase
       given :paid, %{visit_id: "w-1", amount: 30}
       given :paid, %{visit_id: "w-2", amount: 20}
       on :later
@@ -100,14 +100,14 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
     end
 
     scenario "druga płatność tej samej wizyty" do
-      scope :chase
+      target :chase
       given :paid, %{visit_id: "w-1", amount: 30}
       on :paid, %{amount: 20}
       state %{visit_id: "w-1", paid: 50}
     end
 
     scenario "przypomnienie — stan bez zmian" do
-      scope :chase
+      target :chase
       given :paid, %{amount: 30}
       on :later
       issues :remind
@@ -278,7 +278,7 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
         refuse_contract("RunStateFields", """
         #{@contract}
           scenario "płatność — zła nazwa pola" do
-            scope :chase
+            target :chase
             on :paid, %{amount: 1}
             state %{owed: 1, paid: "dużo"}
           end
@@ -296,14 +296,14 @@ defmodule EhOsContract.RunStateAndIdempotencyTest do
         refuse_contract("RunStateWhere", """
         #{@contract}
           scenario "płatność — stan dwa razy" do
-            scope :chase
+            target :chase
             on :paid, %{amount: 1}
             state %{paid: 1}
             state %{paid: 1}
           end
 
           scenario "płatność — stan polityki" do
-            scope :thank
+            target :thank
             on :paid, %{amount: 1}
             issues :remind
             state %{paid: 1}

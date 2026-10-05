@@ -53,7 +53,7 @@ defmodule EhOsContract.ContractVocabularyTest do
       |> Map.merge(%{
         [:aggregate, :command] => @command ++ [:from, :or_rejects],
         [:aggregate, :lifecycle] => [],
-        [:aggregate, :lifecycle, :status] => [:name, :label, :terminal, :source],
+        [:aggregate, :lifecycle, :status] => [:name, :label, :final, :source],
         [:aggregate, :lifecycle, :initial] => [:status, :on, :source],
         [:aggregate, :lifecycle, :transition] => [:from, :event, :to, :source]
       })
@@ -104,7 +104,7 @@ defmodule EhOsContract.ContractVocabularyTest do
           :unverified,
           :source
         ],
-        [:scenario] => [:description, :scope, :actor, :rejected, :illustrates, :ended],
+        [:scenario] => [:description, :target, :actor, :rejected, :illustrates, :ended],
         [:scenario, :given] => [:event, :data],
         [:scenario, :command] => [:name, :data],
         [:scenario, :on] => [:name, :data],

@@ -501,7 +501,7 @@ defmodule EhOsContract.Pages do
       "",
       facts([
         row(["Context: ", link(code(e.context), context_path(e.context))]),
-        "Identified by #{code(e.identified_by)}.",
+        "Identified by #{code(e.identity)}.",
         if(e.source, do: "_Source: #{e.source}_")
       ]),
       "",

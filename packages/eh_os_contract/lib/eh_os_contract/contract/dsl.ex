@@ -93,7 +93,7 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule Status do
     @moduledoc false
-    defstruct [:name, :label, :source, terminal: false, __spark_metadata__: nil]
+    defstruct [:name, :label, :source, final: false, __spark_metadata__: nil]
   end
 
   defmodule Initial do
@@ -276,7 +276,7 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule Scenario do
     @moduledoc false
-    defstruct [:description, :scope, :actor, :rejected, ended: false, given: [], trigger: []] ++
+    defstruct [:description, :target, :actor, :rejected, ended: false, given: [], trigger: []] ++
                 [illustrates: []] ++
                 [
                   expect: [],
@@ -490,7 +490,7 @@ defmodule EhOsContract.Contract.Dsl do
     schema: [
       name: [type: :atom, required: true, doc: "The status's name."],
       label: [type: :string, required: true, doc: "What the business calls it."],
-      terminal: [
+      final: [
         type: :boolean,
         default: false,
         doc: "Whether the aggregate's life ends in it: no transition leaves it."
@@ -1114,7 +1114,10 @@ defmodule EhOsContract.Contract.Dsl do
     ],
     schema: [
       description: [type: :string, required: true, doc: "The case, in the owner's words."],
-      scope: [type: :atom, doc: "The unit, when the trigger does not say it."],
+      target: [
+        type: :atom,
+        doc: "The unit or reaction the case is about, when the trigger does not say which."
+      ],
       actor: [type: :atom, doc: "The actor who issues the command."],
       rejected: [type: :atom, doc: "The invariant the command is refused on."],
       illustrates: [

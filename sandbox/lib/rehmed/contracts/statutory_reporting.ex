@@ -142,7 +142,7 @@ defmodule Rehmed.Contracts.StatutoryReporting do
 
   scenario "fizjoterapia zamknięta klinicznie — zgłoszenie idzie do kolejki P1",
     illustrates: :only_reported_services do
-    scope :report_on_clinical_close
+    target :report_on_clinical_close
 
     on :visit_closed_clinically, %{
       patient_id: "patient-anna",
@@ -158,7 +158,7 @@ defmodule Rehmed.Contracts.StatutoryReporting do
 
   scenario "masaż zamknięty klinicznie — do P1 nic nie idzie",
     illustrates: :only_reported_services do
-    scope :report_on_clinical_close
+    target :report_on_clinical_close
 
     on :visit_closed_clinically, %{
       patient_id: "patient-anna",

@@ -257,7 +257,6 @@ defmodule EhOsContract.ContractTest do
                scenarios: [
                  %{
                    description: "zapłacono za mało — zamknięcie odrzucone",
-                   scope: nil,
                    target: %{kind: :aggregate, name: :visit},
                    actor: nil,
                    given: [%{event: :payment_recorded, data: %{amount: 100}}],

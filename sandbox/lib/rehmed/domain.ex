@@ -118,9 +118,8 @@ defmodule Rehmed.Domain do
   # (2026-08-17): whether a service is reported decides whether a visit is.
   entity :service, "Usługa",
     context: :configuration,
-    identified_by: :service_id,
+    identity: :service_id,
     source: "AGG-15" do
-    field :service_id, :id
     field :p1_reported, :boolean, label: "Raportowana do P1"
   end
 

@@ -674,7 +674,7 @@ defmodule EhOsContract.Check.Completeness do
   defp labelled(_other), do: []
 
   # The library's own (plan EL2, rule 3 of the prose review): an external's
-  # `direction:` and how the model uses it. A value `issued_by:` a system, and an actor
+  # `direction:` and how the model uses it. A field or an entity `issued_by:` a system, and an actor
   # `backed_by:` one, bring what it says into this application, so a system this
   # application only sends to (`:outbound`) can do neither. A call says nothing: an
   # effect calls to send, and to fetch what flows in.
@@ -691,16 +691,22 @@ defmodule EhOsContract.Check.Completeness do
           field <- fields,
           do: field
 
+    # Plan N1: an entity's identity is injected, so its issuer is the entity's option.
+    issuers =
+      for(field <- domain_fields ++ contract_fields, do: {"field", field.name, field}) ++
+        for entity <- declared.entities,
+            do: {"entity #{inspect(entity.name)}, identity", entity.identity, entity}
+
     issued =
-      for field <- domain_fields ++ contract_fields,
-          external = Map.get(field, :issued_by),
+      for {what, name, at} <- issuers,
+          external = Map.get(at, :issued_by),
           direction[external] == :outbound do
         Finding.new(
           "external-direction-contradicted",
-          "field #{inspect(field.name)} is issued_by: #{inspect(external)}, which " <>
+          "#{what} #{inspect(name)} is issued_by: #{inspect(external)}, which " <>
             "#{inspect(model.module)} declares `direction: :outbound`: it only receives from this " <>
             "application",
-          Links.at(field)
+          Links.at(at)
         )
       end
 

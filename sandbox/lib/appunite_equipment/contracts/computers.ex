@@ -112,10 +112,10 @@ defmodule AppuniteEquipment.Contracts.Computers do
       status :returning, "W trakcie zwrotu"
       status :in_service, "Innergo spa"
       status :for_sale, "For sale"
-      status :sold, "Sold", terminal: true
-      status :donated, "Charity", terminal: true
-      status :disposed, "Utylizacja", terminal: true
-      status :lost, "Lost", terminal: true
+      status :sold, "Sold", final: true
+      status :donated, "Charity", final: true
+      status :disposed, "Utylizacja", final: true
+      status :lost, "Lost", final: true
 
       initial :in_office, on: :received
       transition :in_office, :issued, :issued

@@ -82,7 +82,8 @@ października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każd
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
   1. **Użytkownik:** push i PR `docs/dd0-programme` (DD0), przed nim `pre-pr-review` — na polecenie.
-  2. **Asystent:** N1 → N2 → N3, reszta fali 1 w dowolnej kolejności. Start etapu: ◐ i gałąź w tabeli; koniec:
+  2. **N1 gotowe na `dsl/n1-names`** (przegląd i brama za nim — „N1 — co wyszło”); push i PR na polecenie użytkownika.
+     **Asystent:** dalej N2 → N3, reszta fali 1 w dowolnej kolejności. Start etapu: ◐ i gałąź w tabeli; koniec:
      „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; etykieta timera albo zdanie z deklaracji przed N3); po każdej fali „dalej czy
@@ -491,8 +492,8 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 
 | Etap | Fala | Zakres | Zależy od | Status |
 |---|---|---|---|---|
-| DD0 | 0 | program i postęp w `PLAN.md` | — | ◐ `docs/dd0-programme` (lokalnie, niewypchnięte) |
-| N1 | 1 | `final:`, `target`, `identity` encji, definicja encji | DD0 | ☐ |
+| DD0 | 0 | program i postęp w `PLAN.md` | — | ◐ `docs/dd0-programme`, PR #135 |
+| N1 | 1 | `final:`, `target`, `identity` encji, definicja encji | DD0 | ◐ `dsl/n1-names` (na DD0), gotowe do PR-a |
 | N2 | 1 | `subscribe "<nazwa>"` | DD0 | ☐ |
 | N3 | 1 | etykieta timera (EP6) | DD0 | ☐ |
 | W1 | 1 | zapis `schema_version` | DD0 | ☐ |
@@ -823,6 +824,38 @@ jednoznaczna w domenie), `refers_to` dla jednostek, `crossings/2` je liczy, graf
 - `EhOsContract.Process` obok `Process` Elixira — bez aliasu w bibliotece.
 - Czas bramy (PropertyCase — małe `max_runs`), koszt zapytań kolejności etapów (indeks `(process, instance_id)`).
 - Zakres: ~45 PR-ów. Po każdej fali decyzja „dalej czy stop” w `PLAN.md`.
+
+### N1 — co wyszło (5 października)
+
+Gałąź `dsl/n1-names` (na `docs/dd0-programme`, bo DD0 to jeszcze PR #135). Trzy słowa, każde osobnym commitem
+na zielonej bramie, każde z wpisem w CHANGELOG („a host has to act”, przesuwa wersję) i jednym dopiskiem z datą w
+`docs/adr/contract-v2.md` §4.2.
+
+- **`final:` na statusie** (`e7383ed`). `terminal:` zdarzenia zostaje do P2h. Komunikaty T3, T4 i odmowy
+  dispatchu mówią „final”. Przesuwa wersję każdego kontraktu z cyklem życia (AppUnite `Computers`, `Demands`).
+- **`target` w scenariuszu** (`d00921f`). Zamiana tylko w blokach `scenario` (skrypt z kontekstem; `scope`
+  komendy i query nietknięty, ~25 miejsc pominiętych świadomie). Model traci surowy klucz `scope`, zostaje
+  rozwiązany `target`. Przesuwa wersję każdego kontraktu ze scenariuszem; przypięta wersja `DispatchRig.Ledger`
+  `06808eb90e9f` → `2d4f6e4d01fe`.
+- **`identity` encji** (`e40ead9`): biblioteka wstrzykuje pole jako pierwsze w modelu encji (wymagane,
+  nieosobowe `:id`, kształt jak w jednostce); nowa definicja encji (Evans, cykl życia poza logiem) w opisie DSL-a,
+  `contract.md` i dopisku ADR. **Rozstrzygnięcie asystenta (mechanika):** encja dostaje opcję `issued_by:`, bo pole
+  tożsamości potrafiło mieć wydawcę (faktura z KSeF) i samo wstrzyknięcie by go zgubiło; model trzyma wydawcę na
+  wstrzykniętym polu, więc graf i `domain_issuers` czytają go bez zmian, a D8 i reguła kierunku sprawdzają opcję
+  encji. *Odrzucone:* makro `identity :x, issued_by: …` jak `generated:` w jednostce (więcej kształtu bez
+  potrzeby — opcje w nagłówku encji wystarczą); pole tożsamości deklarowane ręcznie obok `identity` (przeczy
+  decyzji 2 o wstrzyknięciu). D6: tożsamość w snake_case i bez pola o tej nazwie. Przesuwa wersję domeny Rehmed.
+- **Przegląd** (dwa przeglądy równolegle na `docs/dd0-programme..dsl/n1-names`). Poprawność: brak błędów; 7 uwag —
+  naprawione: odmowa D6 mówi, gdzie przenieść `issued_by:` pola, które było tożsamością (`1b67089`, próba odwrotna:
+  bez podpowiedzi pada tylko ten test), wydawca dopasowany na `nil`, ustalenie kierunku nazywa encję, tekst
+  katalogu reguł, nawiasy przy `target`, komentarz w teście słownika (`21a743e`); pominięte: wspólny helper
+  pola tożsamości dla jednostki i encji (refaktor poza zakresem zmiany nazw). Bezpieczeństwo i wydajność: nic od
+  średniej wagi; uwagi informacyjne — po zmianie wersji pusta lista dryfu (cecha każdego „Moves the version”, bez
+  zmian) i wstrzyknięte pole bez `label:` (pominięte — wróci z przykładem).
+- **Brama:** EXIT=0 na każdym commicie; `eh_os_contract.check` sandboxa 0 / 29 / 10, silnika 0 / 74 / 6; sandbox 194,
+  silnik 1261, web 51, auth 285 + 1 property.
+- **Dla aplikacji AppUnite i `ehos-ledger`:** `terminal: true` na statusie → `final: true`; `scope` w scenariuszu →
+  `target`; `identified_by:` + pole → `identity:` (+ `issued_by:` na encji).
 
 ## Dopisek 4 października (3) — pokrycie ESDM po EP1–EP5 i #99
 

@@ -5,7 +5,7 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
   - **S1.** A scenario has exactly one trigger — `command`, `on` or `query` — and
     it resolves to the declaration that answers it. No two scenarios have the same
     description, which is what names each one. A command belongs to one unit;
-    an event may be handled by several reactions, and then `scope:` names the one.
+    an event may be handled by several reactions, and then `target` names the one.
   - **S2.** `given` events are ones the target keeps its state from: a unit's own
     events, and for a boundary also the events it consults; a process manager's
     triggers; for a query, the events the read model it reads projects. A policy
@@ -149,8 +149,8 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
   @spec target(struct(), map()) :: {atom(), struct()} | nil
   def target(%Dsl.Scenario{trigger: [trigger]} = scenario, declarations) do
     case candidates(trigger, declarations) do
-      [one] when scenario.scope == nil -> one
-      many -> Enum.find(many, fn {_kind, d} -> d.name == scenario.scope end)
+      [one] when scenario.target == nil -> one
+      many -> Enum.find(many, fn {_kind, d} -> d.name == scenario.target end)
     end
   end
 
@@ -174,7 +174,7 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
   end
 
   defp resolved(where, scenario, trigger, d) do
-    case {candidates(trigger, d), scenario.scope} do
+    case {candidates(trigger, d), scenario.target} do
       {[], _} ->
         [{"S1: #{where}: #{unresolved(trigger)}", trigger}]
 
@@ -183,14 +183,14 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
 
         [
           {"S1: #{where}: #{inspect(trigger.name)} is handled by #{Enum.join(names, ", ")}; " <>
-             "name one with scope:", trigger}
+             "name one with target", trigger}
         ]
 
-      {many, scope} ->
-        case Enum.find(many, fn {_kind, x} -> scope == nil or x.name == scope end) do
+      {many, named} ->
+        case Enum.find(many, fn {_kind, x} -> named == nil or x.name == named end) do
           nil ->
             [
-              {"S1: #{where}: scope #{inspect(scope)} does not answer #{inspect(trigger.name)}",
+              {"S1: #{where}: target #{inspect(named)} does not answer #{inspect(trigger.name)}",
                scenario}
             ]
 

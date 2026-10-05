@@ -64,14 +64,14 @@ defmodule EhOsContract.ReactionRulesTest do
 
     scenario "fizjoterapia — zgłoszenie", illustrates: :only_reportable do
       on :closed, %{reportable: true}
-      scope :report_on_close
+      target :report_on_close
       issues :report
     end
 
     scenario "zamknięcie — przypomnienie za dzień",
       illustrates: [:one_timer, :business_days] do
       on :closed, %{reportable: true}
-      scope :chase
+      target :chase
       sets :due
     end
 
@@ -156,7 +156,7 @@ defmodule EhOsContract.ReactionRulesTest do
 
           scenario "zamknięcie — zgłoszenie" do
             on :closed
-            scope :report_on_close
+            target :report_on_close
             issues :report
           end
         """)

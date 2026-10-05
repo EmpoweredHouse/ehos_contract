@@ -7,9 +7,9 @@ defmodule EhOsContract.LifecycleTest do
 
   @lifecycle %{
     statuses: [
-      %{name: :booked, terminal: false},
-      %{name: :in_progress, terminal: false},
-      %{name: :closed, terminal: true}
+      %{name: :booked, final: false},
+      %{name: :in_progress, final: false},
+      %{name: :closed, final: true}
     ],
     initial: [%{status: :booked, on: :visit_booked}],
     transitions: [
@@ -49,7 +49,7 @@ defmodule EhOsContract.LifecycleTest do
     assert Lifecycle.decided!(@lifecycle, :booked, :note, [:note_added]) == :booked
 
     for {status, events, message} <- [
-          {:closed, [:note_added], "in status :closed, which is terminal"},
+          {:closed, [:note_added], "in status :closed, which is final"},
           {:booked, [:visit_booked], "it starts an aggregate, and this one has started"},
           {nil, [:patient_arrived], "before the aggregate has a status"},
           {nil, [:note_added], "before the aggregate has a status"},
@@ -89,7 +89,7 @@ defmodule EhOsContract.LifecycleTest do
 
   test "tally counts a self-loop, and an initial event that is a transition too, as dispatch moves" do
     lifecycle = %{
-      statuses: [%{name: :open, terminal: false}, %{name: :done, terminal: true}],
+      statuses: [%{name: :open, final: false}, %{name: :done, final: true}],
       initial: [%{status: :open, on: :noted}],
       transitions: [
         %{from: :open, event: :noted, to: :open},

@@ -258,8 +258,8 @@ it work is not written yet.
 
 An external system of the domain is used by nothing.
 
-No actor is `backed_by:` it, no relation ends at it, no field is `issued_by:` it, no effect
-`calls:` it and no event `depends_on:` it.
+No actor is `backed_by:` it, no relation ends at it, no field or entity is `issued_by:` it,
+no effect `calls:` it and no event `depends_on:` it.
 
 ## `operation-never-called`
 
@@ -335,7 +335,7 @@ The words a translation avoids are another language's, which labels are not writ
 
 An external this application only sends to issues a value or backs an actor.
 
-A value `issued_by:` a system, and an actor `backed_by:` one, bring what the system says into
+A value or an entity's identity `issued_by:` a system, and an actor `backed_by:` one, bring what the system says into
 this application, so a system declared `direction: :outbound`, one the application only sends
 to, can do neither. A system that also answers is `:bidirectional`: P1 is sent a report and
 answers with its number. A call says nothing either way, since an effect calls a system to send

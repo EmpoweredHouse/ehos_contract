@@ -39,8 +39,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
         external :sms, "Bramka SMS", direction: :outbound
         external :ledger, "Księga", direction: :outbound
 
-        entity :clinic, "Przychodnia", context: :scheduling, identified_by: :clinic_id do
-          field :clinic_id, :id
+        entity :clinic, "Przychodnia", context: :scheduling, identity: :clinic_id do
         end
 
         relation :customer_supplier, upstream: :scheduling, downstream: :settlement
@@ -184,7 +183,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
   end
 
   test "a relation nothing crosses; control: one an entity reference crosses" do
-    assert [{message, {"clinic.ex", 22}}] = findings("orphan-context-mapping")
+    assert [{message, {"clinic.ex", 21}}] = findings("orphan-context-mapping")
     assert message =~ "relation :partnership between :archive and :scheduling"
   end
 
@@ -200,7 +199,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
   end
 
   test "a subdomain no context belongs to; control: the three contexts name theirs" do
-    assert [{message, {"clinic.ex", 27}}] = findings("subdomain-without-bounded-context")
+    assert [{message, {"clinic.ex", 26}}] = findings("subdomain-without-bounded-context")
     assert message =~ "subdomain :legacy of #{inspect(@domain)} is the `subdomain:` of no context"
   end
 
@@ -312,8 +311,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
         relation :conformist, upstream: :ksef, downstream: :invoicing
         relation :conformist, upstream: :registry, downstream: :reports
 
-        entity :invoice, "Faktura", context: :invoicing, identified_by: :number do
-          field :number, :id, issued_by: :ksef
+        entity :invoice, "Faktura", context: :invoicing, identity: :number, issued_by: :ksef do
         end
       end
 

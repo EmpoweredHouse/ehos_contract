@@ -528,7 +528,7 @@ One status of the aggregate's lifecycle.
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`terminal`](#contract-aggregate-lifecycle-status-terminal){: #contract-aggregate-lifecycle-status-terminal } | `boolean` | `false` | Whether the aggregate's life ends in it: no transition leaves it. |
+| [`final`](#contract-aggregate-lifecycle-status-final){: #contract-aggregate-lifecycle-status-final } | `boolean` | `false` | Whether the aggregate's life ends in it: no transition leaves it. |
 | [`source`](#contract-aggregate-lifecycle-status-source){: #contract-aggregate-lifecycle-status-source } | `String.t` |  | Where the status comes from in the material. |
 
 
@@ -2063,7 +2063,7 @@ Given events, a trigger, and what follows: an example the process owner reads.
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`scope`](#contract-scenario-scope){: #contract-scenario-scope } | `atom` |  | The unit, when the trigger does not say it. |
+| [`target`](#contract-scenario-target){: #contract-scenario-target } | `atom` |  | The unit or reaction the case is about, when the trigger does not say which. |
 | [`actor`](#contract-scenario-actor){: #contract-scenario-actor } | `atom` |  | The actor who issues the command. |
 | [`rejected`](#contract-scenario-rejected){: #contract-scenario-rejected } | `atom` |  | The invariant the command is refused on. |
 | [`illustrates`](#contract-scenario-illustrates){: #contract-scenario-illustrates } | `atom \| list(atom)` | `[]` | The rules this case shows: a constraint of the policy, process manager or query, or an invariant of the process manager. |

@@ -78,7 +78,7 @@ defmodule EhOsContract.Lifecycle do
   `ArgumentError` naming `command`: an event of an aggregate whose life has ended, an
   event that starts an aggregate already started or one not yet started without
   starting it, or an event a transition names out of other statuses than this one.
-  An event no transition names is allowed in every status that is not terminal, once
+  An event no transition names is allowed in every status that is not final, once
   the aggregate has started: before, only an initial event may be decided.
   """
   @spec decided!(t(), status(), atom(), [atom()]) :: status()
@@ -111,7 +111,7 @@ defmodule EhOsContract.Lifecycle do
   history from before the lifecycle was declared, a recorded event that did not fit,
   an event after the aggregate's life ended. Such an event moves nothing, as it moved
   nothing when it was appended. An event no transition names, in a status that is not
-  terminal, is neither. A `nil` name — a type the contract no longer declares — is
+  final, is neither. A `nil` name — a type the contract no longer declares — is
   skipped.
   """
   @spec tally(t(), Enumerable.t()) :: %{
@@ -148,7 +148,7 @@ defmodule EhOsContract.Lifecycle do
             end
         end)
 
-      if counted? and status != nil and not MapSet.member?(graph.terminal, status),
+      if counted? and status != nil and not MapSet.member?(graph.final, status),
         do: %{acc | standing: MapSet.put(acc.standing, status)},
         else: acc
     end)
@@ -159,7 +159,7 @@ defmodule EhOsContract.Lifecycle do
   # The graph once per call, so a long stream does not scan the lifecycle per event.
   defp index(lifecycle) do
     %{
-      terminal: MapSet.new(for s <- lifecycle.statuses, s.terminal, do: s.name),
+      final: MapSet.new(for s <- lifecycle.statuses, s.final, do: s.name),
       starts: Map.new(lifecycle.initial, &{&1.on, &1.status}),
       moves: MapSet.new(lifecycle.transitions, & &1.event),
       next: Map.new(lifecycle.transitions, &{{&1.from, &1.event}, &1.to})
@@ -171,9 +171,8 @@ defmodule EhOsContract.Lifecycle do
     moves = MapSet.member?(graph.moves, event)
 
     cond do
-      MapSet.member?(graph.terminal, status) ->
-        {:error,
-         "in status #{inspect(status)}, which is terminal: the aggregate's life has ended"}
+      MapSet.member?(graph.final, status) ->
+        {:error, "in status #{inspect(status)}, which is final: the aggregate's life has ended"}
 
       status == nil and starts ->
         {:moved, Map.fetch!(graph.starts, event)}

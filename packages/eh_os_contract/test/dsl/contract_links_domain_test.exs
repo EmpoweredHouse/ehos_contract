@@ -49,8 +49,7 @@ defmodule EhOsContract.ContractLinksDomainTest do
       value :clinic_ref, {:id, :clinic}
       external :payer_registry, "Rejestr płatnika", direction: :outbound
 
-      entity :clinic, "Przychodnia", context: :settlement, identified_by: :clinic_id do
-        field :clinic_id, :id
+      entity :clinic, "Przychodnia", context: :settlement, identity: :clinic_id do
         field :city, :string
       end
 

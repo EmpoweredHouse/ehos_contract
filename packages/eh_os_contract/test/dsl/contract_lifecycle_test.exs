@@ -25,8 +25,8 @@ defmodule EhOsContract.ContractLifecycleTest do
       lifecycle do
         status :booked, "Umówiona"
         status :in_progress, "W trakcie"
-        status :closed, "Zamknięta", terminal: true
-        status :cancelled, "Odwołana", terminal: true
+        status :closed, "Zamknięta", final: true
+        status :cancelled, "Odwołana", final: true
 
         initial :booked, on: :visit_booked
         transition :booked, :patient_arrived, :in_progress
@@ -74,7 +74,7 @@ defmodule EhOsContract.ContractLifecycleTest do
 
       assert [%{lifecycle: lifecycle}] = model.units
 
-      assert Enum.map(lifecycle.statuses, &{&1.name, &1.label, &1.terminal}) == [
+      assert Enum.map(lifecycle.statuses, &{&1.name, &1.label, &1.final}) == [
                {:booked, "Umówiona", false},
                {:in_progress, "W trakcie", false},
                {:closed, "Zamknięta", true},
@@ -111,7 +111,7 @@ defmodule EhOsContract.ContractLifecycleTest do
             lifecycle do
               status :booked, "Umówiona"
               status :moved, "Przełożona"
-              status :cancelled, "Odwołana", terminal: true
+              status :cancelled, "Odwołana", final: true
 
               initial :booked, on: :visit_booked
               transition :booked, :visit_moved, :moved
@@ -180,7 +180,7 @@ defmodule EhOsContract.ContractLifecycleTest do
             identity :visit_id
 
             lifecycle do
-              status :closed, "Zamknięta", terminal: true
+              status :closed, "Zamknięta", final: true
               initial :closed, on: :visit_closed
             end
 
@@ -206,7 +206,7 @@ defmodule EhOsContract.ContractLifecycleTest do
             lifecycle do
               status :booked, "Umówiona"
               status :booked, "Umówiona"
-              status :Closed, "Zamknięta", terminal: true
+              status :Closed, "Zamknięta", final: true
               initial :booked, on: :visit_booked
               transition :booked, :visit_closed, :Closed
             end
@@ -266,7 +266,7 @@ defmodule EhOsContract.ContractLifecycleTest do
             consults :seat_taken, match: :seat_id
 
             lifecycle do
-              status :taken, "Zajęte", terminal: true
+              status :taken, "Zajęte", final: true
               initial :taken, on: :seat_taken
             end
 
@@ -297,7 +297,7 @@ defmodule EhOsContract.ContractLifecycleTest do
 
             lifecycle do
               status :booked, "Umówiona"
-              status :closed, "Zamknięta", terminal: true
+              status :closed, "Zamknięta", final: true
 
               initial :booked, on: :visit_booked
               initial :closed, on: :visit_booked
@@ -349,8 +349,8 @@ defmodule EhOsContract.ContractLifecycleTest do
     end
   end
 
-  describe "T3: every status is reached, and only a terminal one is final" do
-    test "an unreached status, a terminal one left and a dead end are refused" do
+  describe "T3: every status is reached, and only a final one has no way out" do
+    test "an unreached status, a final one left and a dead end are refused" do
       message =
         refuse_contract("LifecycleReach", """
           aggregate :visit, "Wizyta" do
@@ -360,8 +360,8 @@ defmodule EhOsContract.ContractLifecycleTest do
               status :booked, "Umówiona"
               status :waiting, "Oczekuje"
               status :archived, "Zarchiwizowana"
-              status :closed, "Zamknięta", terminal: true
-              status :cancelled_once, "Odwołana", terminal: true
+              status :closed, "Zamknięta", final: true
+              status :cancelled_once, "Odwołana", final: true
 
               initial :booked, on: :visit_booked
               transition :booked, :visit_closed, :closed
@@ -391,12 +391,12 @@ defmodule EhOsContract.ContractLifecycleTest do
                  "no aggregate could ever be in it (lifecycle_reach.ex:10)"
 
       assert message =~
-               "T3: status :closed of aggregate :visit is terminal, and a transition leaves it " <>
+               "T3: status :closed of aggregate :visit is final, and a transition leaves it " <>
                  "(lifecycle_reach.ex:11)"
 
       assert message =~
                "T3: status :waiting of aggregate :visit has no transition out; mark it " <>
-                 "terminal: true if the aggregate's life ends there (lifecycle_reach.ex:9)"
+                 "final: true if the aggregate's life ends there (lifecycle_reach.ex:9)"
 
       # A transition back into the same status is no way out, and no way out of a terminal one.
       refute message =~ "T3: status :cancelled_once"
@@ -415,7 +415,7 @@ defmodule EhOsContract.ContractLifecycleTest do
             lifecycle do
               status :booked, "Umówiona"
               status :in_progress, "W trakcie"
-              status :closed, "Zamknięta", terminal: true
+              status :closed, "Zamknięta", final: true
 
               initial :booked, on: :visit_booked
               transition :booked, :patient_arrived, :in_progress
@@ -481,7 +481,7 @@ defmodule EhOsContract.ContractLifecycleTest do
                  ":visit with it out of [:booked]"
 
       assert message =~
-               "T4: command :reopen_visit is issued from :closed, which is terminal: nothing is " <>
+               "T4: command :reopen_visit is issued from :closed, which is final: nothing is " <>
                  "decided once the aggregate's life has ended"
 
       assert message =~
@@ -533,7 +533,7 @@ defmodule EhOsContract.ContractLifecycleTest do
                  identity :visit_id, generated: :uuid
 
                  lifecycle do
-                   status :booked, "Umówiona", terminal: true
+                   status :booked, "Umówiona", final: true
                    initial :booked, on: :visit_booked
                  end
 
@@ -563,7 +563,7 @@ defmodule EhOsContract.ContractLifecycleTest do
             lifecycle do
               status :booked, "Umówiona"
               status :paid, "Opłacona"
-              status :closed, "Zamknięta", terminal: true
+              status :closed, "Zamknięta", final: true
 
               initial :booked, on: :visit_booked
               transition :booked, :visit_paid, :paid

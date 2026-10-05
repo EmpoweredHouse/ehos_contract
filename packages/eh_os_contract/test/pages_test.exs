@@ -255,7 +255,7 @@ defmodule EhOsContract.PagesTest do
       name: :clinic,
       label: "Clinic",
       context: :till,
-      identified_by: :clinic_id,
+      identity: :clinic_id,
       source: nil,
       fields: [field.(:clinic_id, :id, %{optional: false}), field.(:fee, :fee, %{})]
     }

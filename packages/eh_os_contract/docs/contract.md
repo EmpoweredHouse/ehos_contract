@@ -40,6 +40,12 @@ shows and nothing runs. A relation between contexts may pair the words each side
 `terms: [{"Visit", "Encounter"}]`, the first end's word and the second's, each a term of its context's
 glossary; the glossary shows, under a term, what the other end calls it.
 
+An entity is one in Evans's sense — a thing with an identity that lasts while its attributes change — whose
+lifecycle the application's code or another system keeps, outside this log; contracts point at it by its
+identity, as a field `{:id, :copy}`. `entity :copy, "Copy", context: :loans, identity: :copy_id` declares it,
+and the library injects `copy_id` into its fields as a required, non-personal `:id`, as it injects a unit's
+identity; `issued_by: :catalogue` names the external that gives it, when one does.
+
 ## A contract
 
 A contract belongs to one context of one domain, and holds one process.
@@ -106,13 +112,13 @@ end
 - **An aggregate may declare its lifecycle**: the statuses its decisions depend on, in the client's words,
   the `initial` one each first event starts it in, and the `transition`s events make between them —
   `transition :booked, :patient_arrived, :in_progress`. A transition names an event type and nothing about
-  its fields, so the graph is checked as it compiles: every status reached, only a `terminal:` one final.
+  its fields, so the graph is checked as it compiles: every status reached, and only a `final:` one without a way out.
   A command may name the statuses it is issued in, `from: :booked`, with the invariant it is refused on in
   any other, `or_rejects: :only_a_booked_visit`. **The engine computes the status** from the names of the
   stream's events and puts it into the state as `status`, which `evolve/2` reads and never sets. Dispatch
   refuses a command outside its `from:` before the decision; an event the decision emits that the graph does
   not allow from where the aggregate stands raises, as one outside `emits:` does, and nothing is appended.
-  An event no transition names is allowed in every status that is not terminal, once an initial event has
+  An event no transition names is allowed in every status that is not final, once an initial event has
   started the aggregate; a recorded event that does not fit is appended and moves nothing. A boundary has no
   lifecycle: it spans streams.
 - **A command names who may issue it** (`by:`), what it may emit, and which invariants it may refuse on.
@@ -264,8 +270,8 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `A7` | L2 | a command's constraint with the name of an invariant of its unit, or missing from the command's `rejects:` |
 | `T1` | L2 | an aggregate declaring `lifecycle` twice; a lifecycle without a status or an `initial`; a status named twice or not snake_case |
 | `T2` | L2 | a `transition` leaving no status; `initial` or `transition` naming a status the lifecycle does not declare or an event not of the aggregate; one event starting the aggregate in two statuses; one status and one event moving it twice |
-| `T3` | L2 | a status no `initial` reaches; a `terminal:` status a transition leaves; a status that is not terminal with no transition out |
-| `T4` | L2 | `from:` without `or_rejects:` or the other way round; `from:` naming an undeclared or terminal status, on an aggregate without a lifecycle, or on a command that `creates:` its aggregate; a command that `creates:` its aggregate and emits none of its initial events; `or_rejects:` naming what is not an invariant of the unit, or missing from `rejects:`; an emitted event no transition moves out of a status in `from:`; a status in `from:` none of the command's events leaves, when `rejects:` names no rule but `or_rejects:` |
+| `T3` | L2 | a status no `initial` reaches; a `final:` status a transition leaves; a status that is not final with no transition out |
+| `T4` | L2 | `from:` without `or_rejects:` or the other way round; `from:` naming an undeclared or final status, on an aggregate without a lifecycle, or on a command that `creates:` its aggregate; a command that `creates:` its aggregate and emits none of its initial events; `or_rejects:` naming what is not an invariant of the unit, or missing from `rejects:`; an emitted event no transition moves out of a status in `from:`; a status in `from:` none of the command's events leaves, when `rejects:` names no rule but `or_rejects:` |
 | `C1` | L2 | a command nobody can issue: no `by:`, and no policy or process manager of the contract issues it |
 | `P1` | L2 | a policy or an effect handling an event neither local nor consumed; a policy issuing a command not of this contract |
 | `P2` | L2 | an effect with `calls:` delivered `:in_transaction` |
@@ -279,7 +285,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `R5` | L2 | a promise's `from`, `eventually` or `or_else` naming neither a local event nor an included consumed one |
 | `R6` | L2 | a duration that is not `{count, unit}`, counts a negative or non-integer number, or has an unknown unit; a calendar unit in `within` or `deadline` (a timer's `wait` and `cadence` may use one); `cadence` or `deadline` declared twice |
 | `K1` | L2 | a sibling `consumes` of the contract itself, naming no events, renaming an event it does not consume, giving `as:` other than `[old: :new]`, or declaring fields |
-| `S1` | L2 | a scenario with no trigger or several; a trigger naming no command or query of the contract, or an event nothing handles; several handlers and no `scope:`, or a `scope:` that does not handle it; two scenarios with one description |
+| `S1` | L2 | a scenario with no trigger or several; a trigger naming no command or query of the contract, or an event nothing handles; several handlers and no `target`, or a `target` that does not handle it; two scenarios with one description |
 | `S2` | L2 | `given` outside the target's state: not the unit's own or consulted events, not a process manager's handled events, not events the query's read model projects; any `given` for a policy |
 | `S3` | L2 | scenario data naming undeclared fields or of the wrong built-in type; a `given` or a trigger missing a required field (identity excepted) |
 | `S4` | L2 | `rejected` naming what the command does not `rejects:` |
@@ -294,9 +300,9 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `D3` | L2 | a value with both or neither of a type and fields; `unit` on a value that is not numeric; an undeclared `context:`; a malformed or unknown type, or a bad enum; values in a cycle; a value's field not snake_case, or named twice |
 | `D4` | L2 | an actor's name not snake_case; a human actor with `backed_by`; `backed_by` naming no external; an actor's `context:` the domain does not declare |
 | `D5` | L2 | a relation whose roles do not fit its type (directed or symmetric); an end the domain does not declare; an external in a symmetric relation; a directed one with no context end; a context related to itself; a word of a relation's `terms` pair that its context's glossary does not define |
-| `D6` | L2 | `{:id, entity}` naming an undeclared entity; an entity with an undeclared context, identified by what is not its own required, non-personal `:id` field, or with a field twice, not snake_case, malformed, of an undeclared subject, with `default:` or `personal:`, or holding personal data |
+| `D6` | L2 | `{:id, entity}` naming an undeclared entity; an entity with an undeclared context, an `identity` not in snake_case or declared again as a field, or with a field twice, not snake_case, malformed, of an undeclared subject, with `default:` or `personal:`, or holding personal data |
 | `D7` | L2 | a context in a subdomain the domain does not declare |
-| `D8` | L2 | a value's or entity's field `issued_by:` naming what is not an external of the domain |
+| `D8` | L2 | a value's or entity's field `issued_by:`, or an entity's own, naming what is not an external of the domain |
 | `D9` | L2 | a value invariant not snake_case, clashing with Elixir at arity 1, named `:required`/`:type`/`:generated`, or twice; no `violated_by:` or `satisfied_by:` example; an example `nil`, not of the value's type, in both lists or twice in one; a satisfying example another invariant lists as violating |
 | `D10` | L2, L3 | a query without `by:`; a query scope not a same-typed read-model field and param; a command scope without `by:`, not its field or identity, optional, or a generated identity it creates; a list scope, or a value with fields; a `by:` actor not carrying the scope |
 | `D11` | L2, L3 | a domain's `name:` that is not one lowercase segment of letters, digits, `_` and `-`, starting with a letter and not ending with a dash; a publication from no local event, with no fields, unknown, personal or personal-data fields, or `idempotent_on:` outside them; a name unversioned, shared, or outside the domain's `name:`; `consumes "<name>"` unversioned, without `as:`, listing events, or listing no fields |

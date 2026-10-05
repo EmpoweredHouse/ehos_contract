@@ -347,7 +347,7 @@ defmodule Taxvision.Contracts.AccountingMonth do
   end
 
   scenario "wyciąg z dwoma obrotami — dwa dopasowania" do
-    scope :match_each_turnover
+    target :match_each_turnover
 
     on :bank_turnover_list_created, %{
       company_id: "c-1",
@@ -368,7 +368,7 @@ defmodule Taxvision.Contracts.AccountingMonth do
   end
 
   scenario "zgodne rejestry otwierają miesiąc" do
-    scope :month_opens_on_consistent_registry
+    target :month_opens_on_consistent_registry
     on :registry_data_consistent, %{company_id: "c-1", period_id: "2026-08"}
     issues :open_month, %{company_id: "c-1", period_id: "2026-08"}
   end

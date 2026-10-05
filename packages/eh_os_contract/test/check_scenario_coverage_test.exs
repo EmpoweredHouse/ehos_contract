@@ -48,7 +48,7 @@ defmodule EhOsContract.CheckScenarioCoverageTest do
 
         scenario "umówienie — przypomnienie" do
           on :booked
-          scope :remind_on_booking
+          target :remind_on_booking
           issues :remind
         end
 

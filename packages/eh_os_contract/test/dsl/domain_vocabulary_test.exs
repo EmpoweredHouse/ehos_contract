@@ -31,8 +31,8 @@ defmodule EhOsContract.DomainVocabularyTest do
              [:value] => [:name, :type, :unit, :label, :context, :source],
              [:value, :field] => @field,
              [:value, :invariant] => [:name, :label, :violated_by, :satisfied_by, :source],
-             # Plan EM2: ESDM's entity, reference data a context owns.
-             [:entity] => [:name, :label, :context, :identified_by, :source],
+             # Plan EM2: ESDM's entity; plan N1: its identity, injected, and who issues it.
+             [:entity] => [:name, :label, :context, :identity, :issued_by, :source],
              [:entity, :field] => @field,
              [:external] => [
                :name,

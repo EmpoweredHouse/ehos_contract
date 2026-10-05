@@ -298,7 +298,7 @@ defmodule EhOsContract.Graph.Contract do
         entity.name == Map.get(field, :refers_to) &&
           Enum.find_value(
             entity.fields,
-            &(&1.name == entity.identified_by && Map.get(&1, :issued_by))
+            &(&1.name == entity.identity && Map.get(&1, :issued_by))
           )
       end)
   end

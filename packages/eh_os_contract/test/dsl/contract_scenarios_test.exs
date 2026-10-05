@@ -88,9 +88,9 @@ defmodule EhOsContract.ContractScenariosTest do
                  "each case needs its own words (described_twice.ex:34)"
     end
 
-    test "an event two reactions handle needs scope:, and scope: must answer it" do
+    test "an event two reactions handle needs target, and target must answer it" do
       message =
-        refuse_contract("ScopeWrong", """
+        refuse_contract("TargetWrong", """
         #{@unit}
           policy :remind_on_close, "Przypomnij", handles: :closed, issues: :remind
           policy :remind_again, "Przypomnij znowu", handles: :closed, issues: :remind
@@ -101,7 +101,7 @@ defmodule EhOsContract.ContractScenariosTest do
           end
 
           scenario "zamknięcie — obca polityka" do
-            scope :visit
+            target :visit
             on :closed
             issues :remind
           end
@@ -109,22 +109,22 @@ defmodule EhOsContract.ContractScenariosTest do
 
       assert message =~
                ~s|S1: scenario "zamknięcie — przypomnienie": :closed is handled by policy | <>
-                 ":remind_on_close, policy :remind_again; name one with scope: (scope_wrong.ex:38)"
+                 ":remind_on_close, policy :remind_again; name one with target (target_wrong.ex:38)"
 
       assert message =~
-               ~s|S1: scenario "zamknięcie — obca polityka": scope :visit does not answer :closed | <>
-                 "(scope_wrong.ex:42)"
+               ~s|S1: scenario "zamknięcie — obca polityka": target :visit does not answer :closed | <>
+                 "(target_wrong.ex:42)"
     end
 
-    test "control: scope: picks the reaction, and the model keeps the one trigger and its target" do
+    test "control: target picks the reaction, and the model keeps the one trigger and its target" do
       model =
-        compile_contract("ScopeRight", """
+        compile_contract("TargetRight", """
         #{@unit}
           policy :remind_on_close, "Przypomnij", handles: :closed, issues: :remind
           policy :remind_again, "Przypomnij znowu", handles: :closed, issues: :remind
 
           scenario "zamknięcie — przypomnienie" do
-            scope :remind_again
+            target :remind_again
             on :closed
             issues :remind
           end

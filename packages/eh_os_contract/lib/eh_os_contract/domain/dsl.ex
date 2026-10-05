@@ -94,7 +94,8 @@ defmodule EhOsContract.Domain.Dsl do
       :name,
       :label,
       :context,
-      :identified_by,
+      :identity,
+      :issued_by,
       :source,
       fields: [],
       __spark_metadata__: nil
@@ -330,8 +331,9 @@ defmodule EhOsContract.Domain.Dsl do
   @entity %Spark.Dsl.Entity{
     name: :entity,
     describe:
-      "Reference data with an identity that no event of this log changes: a period, an item of " <>
-        "a catalogue. Its rows are the application's; a field names one as `{:id, entity}`.",
+      "A thing with an identity whose lifecycle the application's code or another system keeps, " <>
+        "outside this log: a period, an item of a catalogue. Contracts point at it by its " <>
+        "identity, a field `{:id, entity}`.",
     target: Entity,
     args: [:name, :label],
     entities: [fields: [@field]],
@@ -339,7 +341,13 @@ defmodule EhOsContract.Domain.Dsl do
       name: [type: :atom, required: true, doc: "The entity's name."],
       label: [type: :string, required: true, doc: "What the business calls it."],
       context: [type: :atom, required: true, doc: "The context that owns it."],
-      identified_by: [type: :atom, required: true, doc: "The field that identifies it."],
+      identity: [
+        type: :atom,
+        required: true,
+        doc:
+          "The field that identifies it; injected into its fields as a required, non-personal `:id`."
+      ],
+      issued_by: [type: :atom, doc: "The external of this domain that gives its identity."],
       source: [type: :string, doc: "Where the entity comes from in the material."]
     ]
   }
