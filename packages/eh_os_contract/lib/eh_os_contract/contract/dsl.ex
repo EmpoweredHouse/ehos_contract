@@ -622,7 +622,9 @@ defmodule EhOsContract.Contract.Dsl do
                 ]}
   # Plan DD, X1: a policy and a read model left without `delivery` run inside the
   # transaction that records the event, which a reaction to another context's event
-  # has to say out loud (X10), so the default is applied by `Build`, not here.
+  # has to say out loud (X10), so the default is applied by `Build`, not here. A
+  # declaration therefore holds `nil` for one left out: a rule asking how a policy or a
+  # read model is delivered reads the model, where `Build` has resolved it.
   @undeclared_delivery "; `:in_transaction` when left out, which a reaction to an event of " <>
                          "another context has to state (X10)."
 
