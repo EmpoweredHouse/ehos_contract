@@ -160,7 +160,7 @@ fields: [:loan_id, :copy_id], idempotent_on: [:loan_id]` — a contract of **ano
 reservations service say, takes the event by that name, with the fields it reads:
 
 ```elixir
-consumes "lending.loan.opened.v1", as: :copy_lent do
+subscribe "lending.loan.opened.v1", as: :copy_lent do
   field :loan_id, :id
   field :copy_id, :id
 end
@@ -284,7 +284,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `R4` | L2 | `include` naming a local event, an event received from another application, or one the contract does not consume |
 | `R5` | L2 | a promise's `from`, `eventually` or `or_else` naming neither a local event nor an included consumed one |
 | `R6` | L2 | a duration that is not `{count, unit}`, counts a negative or non-integer number, or has an unknown unit; a calendar unit in `within` or `deadline` (a timer's `wait` and `cadence` may use one); `cadence` or `deadline` declared twice |
-| `K1` | L2 | a sibling `consumes` of the contract itself, naming no events, renaming an event it does not consume, giving `as:` other than `[old: :new]`, or declaring fields |
+| `K1` | L2 | `consumes` given a published name, which is `subscribe`d to; a sibling `consumes` of the contract itself, naming no events, renaming an event it does not consume, giving `as:` other than `[old: :new]`, or declaring fields |
 | `S1` | L2 | a scenario with no trigger or several; a trigger naming no command or query of the contract, or an event nothing handles; several handlers and no `target`, or a `target` that does not handle it; two scenarios with one description |
 | `S2` | L2 | `given` outside the target's state: not the unit's own or consulted events, not a process manager's handled events, not events the query's read model projects; any `given` for a policy |
 | `S3` | L2 | scenario data naming undeclared fields or of the wrong built-in type; a `given` or a trigger missing a required field (identity excepted) |
@@ -305,7 +305,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `D8` | L2 | a value's or entity's field `issued_by:`, or an entity's own, naming what is not an external of the domain |
 | `D9` | L2 | a value invariant not snake_case, clashing with Elixir at arity 1, named `:required`/`:type`/`:generated`, or twice; no `violated_by:` or `satisfied_by:` example; an example `nil`, not of the value's type, in both lists or twice in one; a satisfying example another invariant lists as violating |
 | `D10` | L2, L3 | a query without `by:`; a query scope not a same-typed read-model field and param; a command scope without `by:`, not its field or identity, optional, or a generated identity it creates; a list scope, or a value with fields; a `by:` actor not carrying the scope |
-| `D11` | L2, L3 | a domain's `name:` that is not one lowercase segment of letters, digits, `_` and `-`, starting with a letter and not ending with a dash; a publication from no local event, with no fields, unknown, personal or personal-data fields, or `idempotent_on:` outside them; a name unversioned, shared, or outside the domain's `name:`; `consumes "<name>"` unversioned, without `as:`, listing events, or listing no fields |
+| `D11` | L2, L3 | a domain's `name:` that is not one lowercase segment of letters, digits, `_` and `-`, starting with a letter and not ending with a dash; a publication from no local event, with no fields, unknown, personal or personal-data fields, or `idempotent_on:` outside them; a name unversioned, shared, or outside the domain's `name:`; `subscribe "<name>"` unversioned, without `as:`, or listing no fields |
 | `D12` | L2 | a read model, an effect or a process manager taking an event received from another application, which only a policy takes, in its inbox |
 | `D14` | L3 | two commands, queries or recorded events of one domain with the same name, and so the same capability |
 | `X1` | L3 | `domain:` naming a module that is not a compiled domain, or `context:` naming none of its contexts |

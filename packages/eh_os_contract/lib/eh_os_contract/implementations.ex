@@ -137,7 +137,7 @@ defmodule EhOsContract.Implementations do
 
   @typedoc """
   What takes another application's published event (D12, v2 §16): one per
-  `consumes "<name>"` that a policy of the contract handles. `from` is the versioned
+  `subscribe "<name>"` that a policy of the contract handles. `from` is the versioned
   name it takes from `EhOsContract.Bus`, `name` the event's name in the contract,
   `fields` what the contract reads of it, and `policies` the policies that handle it,
   each as it takes the event, in the order of their modules' names. `key`,

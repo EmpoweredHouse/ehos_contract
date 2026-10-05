@@ -42,7 +42,7 @@ defmodule EhOsContract.Supervisor do
       for %{key: key} <- inboxes do
         Logger.warning(
           "inbox #{key}: no bus is configured (config :eh_os_contract, bus:), so nothing " <>
-            "it consumes arrives"
+            "it subscribes to arrives"
         )
       end
     end

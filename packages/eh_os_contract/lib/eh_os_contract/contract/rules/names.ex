@@ -93,7 +93,7 @@ defmodule EhOsContract.Contract.Rules.Names do
         do: {"argument", a.name, a}
       ),
       for(p <- d.publishes, do: {"publication", p.name, p}),
-      for({as, consumes} <- Rules.consumed(d), do: {"consumed event", as, consumes}),
+      for({as, consumes} <- Rules.consumed(d), do: {Rules.arrived(consumes), as, consumes}),
       for(p <- d.processes, do: {"process", p.name, p}),
       if(process, do: for(s <- process.stages, do: {"stage", s.name, s}), else: []),
       if(process, do: for(p <- process.promises, do: {"promise", p.name, p}), else: [])
@@ -278,7 +278,7 @@ defmodule EhOsContract.Contract.Rules.Names do
       for(c <- Rules.commands(d), do: {c.name, "command", c}),
       for(e <- Rules.local_events(d), do: {e.name, "event", e}),
       for(pm <- d.process_managers, t <- pm.timers, do: {t.name, "timer", t}),
-      for({as, consumes} <- Rules.consumed(d), do: {as, "consumed event", consumes})
+      for({as, consumes} <- Rules.consumed(d), do: {as, Rules.arrived(consumes), consumes})
     ])
   end
 
@@ -291,7 +291,10 @@ defmodule EhOsContract.Contract.Rules.Names do
         for(q <- d.queries, do: {"query", q.name, [2], q}),
         for(e <- Rules.local_events(d), do: {"event", e.name, [1, 2], e}),
         for(pm <- d.process_managers, t <- pm.timers, do: {"timer", t.name, [1, 2], t}),
-        for({as, consumes} <- Rules.consumed(d), do: {"consumed event", as, [1, 2], consumes}),
+        for(
+          {as, consumes} <- Rules.consumed(d),
+          do: {Rules.arrived(consumes), as, [1, 2], consumes}
+        ),
         for(
           s <- d.domain_services,
           f <- s.functions,

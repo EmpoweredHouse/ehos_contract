@@ -6,7 +6,8 @@ defmodule EhOsContract.Contract.Dsl do
   the units that decide (aggregates and dynamic consistency boundaries) with their
   state, invariants, commands, events and stage groups; what reacts to events
   (policies, effects, process managers); what is read (read models, queries); what
-  enters from elsewhere (`consumes`) and what leaves the application (`publish`);
+  enters from elsewhere (`consumes` from a sibling contract, `subscribe` from another
+  application) and what leaves the application (`publish`);
   the one process; and scenarios. The vocabulary is closed: a contract cannot add
   extensions.
 
@@ -199,7 +200,7 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule Consumes do
     @moduledoc false
-    defstruct [:from, :as, events: [], fields: [], __spark_metadata__: nil]
+    defstruct [:from, :as, via: :consumes, events: [], fields: [], __spark_metadata__: nil]
   end
 
   defmodule Publish do
@@ -841,28 +842,52 @@ defmodule EhOsContract.Contract.Dsl do
     ]
   }
 
+  # Plan N2: two mechanisms, two words. `consumes` reads a sibling contract's events
+  # from this log; `subscribe` takes another application's published event into an
+  # inbox (D12). Both build a `Consumes`, so the rules and the model, which already
+  # told them apart by `from`, read one collection as before.
   @consumes %Spark.Dsl.Entity{
     name: :consumes,
-    describe:
-      "Events born elsewhere: a sibling contract's (a module), or another application's " <>
-        "published event (its name, with the fields read).",
+    describe: "A sibling contract's events, read from this log.",
     target: Consumes,
     args: [:from, {:optional, :events}],
     no_depend_modules: [:from],
+    # A published name, fields and an atom `as:` are refused by K1, which says why and
+    # what to write instead, rather than by the schema, which could only say that the
+    # value is not a module or that `field` is undefined.
     entities: [fields: [@field]],
     schema: [
       from: [
         type: {:or, [:atom, :string]},
         required: true,
-        doc:
-          "The sibling contract, or the published name, versioned as `publish as:` is, " <>
-            "like `\"my-shop.entry.recorded.v1\"`."
+        doc: "The sibling contract; a published name is `subscribe`d to."
       ],
       events: [type: {:wrap_list, :atom}, default: [], doc: "The sibling contract's events."],
       as: [
         type: {:or, [:atom, :keyword_list]},
-        doc: "A published event's local name, or renames of a sibling's events, `[old: :new]`."
+        doc: "Renames of the sibling's events, `[old: :new]`."
       ]
+    ]
+  }
+
+  @subscribe %Spark.Dsl.Entity{
+    name: :subscribe,
+    describe:
+      "Another application's published event, taken into an inbox by a policy, with the " <>
+        "fields this contract reads.",
+    target: Consumes,
+    args: [:from],
+    auto_set_fields: [via: :subscribe],
+    entities: [fields: [@field]],
+    schema: [
+      from: [
+        type: :string,
+        required: true,
+        doc:
+          "The published name, versioned as `publish as:` is, like " <>
+            "`\"my-shop.entry.recorded.v1\"`."
+      ],
+      as: [type: :atom, doc: "The event's name in this contract."]
     ]
   }
 
@@ -1146,6 +1171,7 @@ defmodule EhOsContract.Contract.Dsl do
                   @query,
                   @domain_service,
                   @consumes,
+                  @subscribe,
                   @publish,
                   @process,
                   @scenario

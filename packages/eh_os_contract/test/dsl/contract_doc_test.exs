@@ -11,7 +11,7 @@ defmodule EhOsContract.ContractDocTest do
   alias EhOsContract.Contract.Doc
 
   @body """
-    consumes "rehmed.visit.arrived.v1", as: :arrived do
+    subscribe "rehmed.visit.arrived.v1", as: :arrived do
       field :visit_id, :id
     end
 

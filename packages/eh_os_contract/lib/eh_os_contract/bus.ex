@@ -43,7 +43,7 @@ defmodule EhOsContract.Bus do
     (`EhOsContract.Inbox`).
 
   Who may consume a name is not the engine's question either. The subscriber's
-  `consumes` derives the capability `<name>.subscribe`, EHOS grants it per environment,
+  `subscribe` derives the capability `<name>.subscribe`, EHOS grants it per environment,
   and the transport adapter routes by the grant (`eh-os` D-41). An adapter that cannot
   refuse an ungranted consumer grants every one.
 
