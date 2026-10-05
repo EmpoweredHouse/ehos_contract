@@ -946,7 +946,14 @@ innym aplikacjom).
   z ADR §10.6 (wiersze starszej wersji bez upcastu), której jeszcze nie ma — od W1 ma znaczenie. Bezpieczeństwo i
   wydajność: ta sama uwaga o zatrzymaniu (średnia, naprawiona); komunikat bez wartości; wiersza nowszej wersji nie da
   się wstrzyknąć przez inbox ani relay; koszt jednego porównania na wiersz.
-- **Brama:** EXIT=0; `check` sandboxa 0 / 29 / 10, silnika 0 / 74 / 6; sandbox 194, silnik 1270, web 51, auth 286 +
+- **Drugi przegląd** (poprawka `746dbf7`): bez błędów w ścieżkach; naprawione (`417a501`) — ostrzeżenie o czekaniu raz
+  na pozycję zamiast co 5 s, backoff efektu po wielu `snooze` liczony z prób, które się odbyły (domyślny Obana
+  skalował przez `max_attempts` i po 9 minutach czekania dawał ponowienie po dniach), strażnik `is_integer`,
+  moduledoc relaya, testy relaya z nowszym wierszem za starszym i process managera (próba odwrotna każdego).
+  Pominięte: partia read modelu (do 499 zdarzeń) przeliczana i wycofywana co 5 s podczas czekania — koszt tylko na
+  czas wdrożenia. Odnotowane w CHANGELOG: inbox odpowiada `:nack` i wiadomość wraca. Czekanie bez końca po
+  wycofaniu wdrożenia widać tylko w logu i opóźnieniu pozycji — widoków operacyjnych nie budujemy (`CLAUDE.md`).
+- **Brama:** EXIT=0; `check` sandboxa 0 / 29 / 10, silnika 0 / 74 / 6; sandbox 194, silnik 1273, web 51, auth 286 +
   1 property.
 - **Dla aplikacji AppUnite i `ehos-ledger`:** nic do zmiany w kodzie; przy wdrożeniu po kolei z podniesioną wersją
   zdarzenia subskrypcje starego węzła czekają (ostrzeżenie w logu) — nie `--skip`.
