@@ -19,7 +19,10 @@ config :eh_os_contract,
   repo: Taxvision.Repo,
   # Every command and query that arrives with a credential is decided, and recorded,
   # by the credential verifier's package (v2 stage EA).
-  authorizer: EhOsContract.Auth
+  authorizer: EhOsContract.Auth,
+  # Rehmed's `p1_reported` and `total` are the host's to give (plan T1s); a stand-in
+  # for its systems answers them.
+  supplier: Rehmed.Supplier
 
 # EHOS's address and this application's audience. There is no EHOS beside the
 # sandbox, and `.invalid` never resolves (RFC 6761), so the key store logs at boot

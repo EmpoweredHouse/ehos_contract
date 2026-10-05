@@ -178,6 +178,15 @@ under a new id when the publisher declares `idempotent_on:`, whose values make t
 subscriber asks for the capability `lending.loan.opened.subscribe`, the application's, which EHOS grants
 and the transport delivers by.
 
+A field a decision depends on that is not the caller's to say — whether a loan's copy was scanned at the desk,
+which the desk's own system knows — is declared `supplied_by: :host`: `field :scanned, :boolean, supplied_by:
+:host`. Through `EhOsContract.call/3`, and so `EhOsContract.Plug`, a request that sends it at all is refused by
+name, `{:invalid, [scanned: :supplied]}`; once the caller is authorized, the configured `EhOsContract.Supplier`
+gives its value (`config :eh_os_contract, supplier: MyApp.Supplier`), and `{:not_supplied, reason}` — a 503 —
+when it cannot. The application's own `dispatch/3` is trusted, as every other field of its struct is. Only a
+command's field, or a recorded event's, takes it (`F10`), and a node with such a field and no supplier does not
+start.
+
 ## The code that decides
 
 A contract names no implementation. A module binds to one of its declarations, and the contract generates
@@ -263,6 +272,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `F7` | L2, L3 | a process manager's state field, or a command's or query's scope field, that is `personal:` (L2) or of a domain value holding personal data (L3) |
 | `F8` | L2, L3 | a field a run or a process manager's record is told by — an event's field a `correlate` names, a process manager's state field its `correlate` names, or the first local event's field an undeclared one takes its type from — that is not an `:id`, `{:id, entity}` or a domain value resting on `:id` (L3) |
 | `F9` | L2 | a unit's identity, a process's `correlate` or a process manager's `correlate` of more than six fields |
+| `F10` | L2 | `supplied_by: :host` on a field no request fills — a state's, a read model's row, an event no actor records — or on a command's `scope` field |
 | `A1` | L2 | a command with an empty `emits:`, or one naming an event of another unit |
 | `A2` | L2 | an event no command of its unit emits and that declares no `recorded_by:` |
 | `A3` | L2 | `rejects:` naming what is neither an invariant of the unit nor a constraint of the command |
@@ -305,7 +315,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `D6` | L2 | `{:id, entity}` naming an undeclared entity; an entity with an undeclared context, an `identity` not in snake_case or declared again as a field, or with a field twice, not snake_case, malformed, of an undeclared subject, with `default:` or `personal:`, or holding personal data |
 | `D7` | L2 | a context in a subdomain the domain does not declare |
 | `D8` | L2 | a value's or entity's field `issued_by:`, or an entity's own, naming what is not an external of the domain |
-| `D9` | L2 | a value invariant not snake_case, clashing with Elixir at arity 1, named `:required`/`:type`/`:generated`, or twice; no `violated_by:` or `satisfied_by:` example; an example `nil`, not of the value's type, in both lists or twice in one; a satisfying example another invariant lists as violating |
+| `D9` | L2 | a value invariant not snake_case, clashing with Elixir at arity 1, named `:required`/`:type`/`:generated`/`:supplied`, or twice; no `violated_by:` or `satisfied_by:` example; an example `nil`, not of the value's type, in both lists or twice in one; a satisfying example another invariant lists as violating |
 | `D10` | L2, L3 | a query without `by:`; a query scope not a same-typed read-model field and param; a command scope without `by:`, not its field or identity, optional, or a generated identity it creates; a list scope, or a value with fields; a `by:` actor not carrying the scope |
 | `D11` | L2, L3 | a domain's `name:` that is not one lowercase segment of letters, digits, `_` and `-`, starting with a letter and not ending with a dash; a publication from no local event, with no fields, unknown, personal or personal-data fields, or `idempotent_on:` outside them; a name unversioned, shared, or outside the domain's `name:`; `subscribe "<name>"` unversioned, without `as:`, or listing no fields |
 | `D12` | L2 | a read model, an effect or a process manager taking an event received from another application, which only a policy takes, in its inbox |

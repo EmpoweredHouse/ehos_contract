@@ -500,14 +500,21 @@ defmodule EhOsContract.Contract.Build do
 
   # A Spark struct becomes a plain map, recursively, without the struct tag and
   # without the source annotation.
-  defp plain(%{__struct__: _} = struct) do
+  # Plan T1: `supplied_by` only where a field sets it, so no field written without it
+  # moves its contract's digest.
+  defp plain(%Dsl.Field{supplied_by: nil} = field),
+    do: field |> plain_struct() |> Map.delete(:supplied_by)
+
+  defp plain(%{__struct__: _} = struct), do: plain_struct(struct)
+
+  defp plain(list) when is_list(list), do: Enum.map(list, &plain/1)
+  defp plain(other), do: other
+
+  defp plain_struct(struct) do
     struct
     |> Map.from_struct()
     |> Map.delete(:__spark_metadata__)
     |> Map.new(fn {key, value} -> {key, plain(value)} end)
     |> EhOsContract.Domain.Build.reference()
   end
-
-  defp plain(list) when is_list(list), do: Enum.map(list, &plain/1)
-  defp plain(other), do: other
 end

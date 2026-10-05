@@ -62,6 +62,8 @@ defmodule EhOsContract do
       Subscription,
       Subscription.Runner,
       SubscriptionRecord,
+      Supplier,
+      Supplier.Request,
       Testing,
       EffectJob,
       TimerJob,

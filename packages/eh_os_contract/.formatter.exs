@@ -174,6 +174,7 @@ spark_locals_without_parens = [
   subject: 3,
   subscribe: 1,
   subscribe: 2,
+  supplied_by: 1,
   target: 1,
   term: 1,
   term: 2,

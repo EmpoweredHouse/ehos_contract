@@ -39,6 +39,11 @@ defmodule EhOsContract.Contract.Rules.Fields do
   - **F9** (issue #96). A unit's identity, a process's `correlate` and a process
     manager's `correlate` each have at most `EhOsContract.Key.max_fields/0` fields: the
     key they make is one btree entry, and seven `:id` fields at their bound overflow it.
+  - **F10** (plan T1). `supplied_by: :host` is taken only by a field a request would
+    otherwise fill: a command's, or an event's that an actor records (`recorded_by:`).
+    Anywhere else no request fills it, so there is nothing to keep the caller from.
+    Not on a command's `scope` field either: the authorization decision reads that
+    value before the host supplies anything.
   """
 
   alias EhOsContract.Domain
@@ -73,7 +78,8 @@ defmodule EhOsContract.Contract.Rules.Fields do
     structs ++
       returns ++
       identities(declarations) ++
-      outside_the_log(declarations) ++ correlation_types(declarations) ++ keys(declarations)
+      outside_the_log(declarations) ++
+      correlation_types(declarations) ++ keys(declarations) ++ supplied(declarations)
   end
 
   @doc """
@@ -146,6 +152,34 @@ defmodule EhOsContract.Contract.Rules.Fields do
       {"F8: #{where}, so its value is part of an index key, and it is #{inspect(field.type)}; " <>
          "correlate only on an identifier, an :id of at most 255 bytes, as match: does", field}
     end
+  end
+
+  defp supplied(d) do
+    recorded = for u <- d.units, e <- Rules.events(u), e.recorded_by != [], do: e.name
+
+    misplaced =
+      for {where, fields, _injected, kind} <- structs(d),
+          not (kind == :command or (match?({:event, _}, kind) and elem(kind, 1) in recorded)),
+          field <- fields,
+          Map.get(field, :supplied_by) != nil do
+        {"F10: #{where}, field #{inspect(field.name)} is supplied_by: :host, and only a " <>
+           "command's field or a recorded event's (recorded_by:) is one a request fills, " <>
+           "which the host can fill instead", field}
+      end
+
+    scopes =
+      for u <- d.units,
+          c <- u.commands,
+          c.scope != nil,
+          field <- c.fields,
+          field.name == c.scope,
+          field.supplied_by != nil do
+        {"F10: command #{inspect(c.name)}, field #{inspect(field.name)} is its scope, and is " <>
+           "supplied_by: :host: the authorization decision reads the scope's value before the " <>
+           "host supplies anything", field}
+      end
+
+    misplaced ++ scopes
   end
 
   defp keys(d) do

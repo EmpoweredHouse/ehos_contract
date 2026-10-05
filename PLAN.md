@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 5 października, wieczór (DD0, N1–N3, W1–W3 w `main`; W4 w PR-ze #146)
+## Handoff — stan na 5 października, wieczór (DD0, N1–N3, W1–W3 w `main`; W4, T1+T1s w PR-ach #146, #148)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -42,7 +42,8 @@ komputer, kontrakt `Demands`) — „Dopisek 4 października (2)”.
 etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem programu jest tabela „Postęp” w „Dopisek 5
 października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
 Fala 1: N1, N2, N3, W1, W2, W3 w `main` (#137, #138, #139, #142, #143, #145); W4 (wspólne reguły decyzji) w PR-ze
-#146 (na `main`); potem T1+T1s, X1, S4 w dowolnej kolejności.
+#146 (na `main`); T1+T1s (`supplied_by: :host`, `Supplier`, sandbox) w PR-ze #148 (na #146); potem X1, S4 w dowolnej
+kolejności.
 
 ### Stan repozytorium
 
@@ -52,8 +53,9 @@ Fala 1: N1, N2, N3, W1, W2, W3 w `main` (#137, #138, #139, #142, #143, #145); W4
   wyszło”; przed nim #143 W2 `6a236d5`, #142 W1 `3c7b29f`, #139 N3 `a568ce7` z poprawką etykiety timera TaxVision
   `46b4e55`, #138 N2 `f0e473d`; wcześniej #137 N1 i #135 DD0 — każdy z poprawką po przeglądzie CodeRabbita,
   `.coderabbit.yaml` dla PR-ów na dowolną gałąź).
-- **Otwarty PR:** [#146](https://github.com/EmpoweredHouse/eh-os-contract/pull/146) W4 (`engine/w4-decision`, na
-  `main`, z `main` wmergowanym). CI stoi na billingu GitHub Actions (job nie startuje).
+- **Otwarte PR-y — stos, merge po kolei:** [#146](https://github.com/EmpoweredHouse/eh-os-contract/pull/146) W4
+  (`engine/w4-decision`, na `main`, z `main` wmergowanym) → [#148](https://github.com/EmpoweredHouse/eh-os-contract/pull/148)
+  T1+T1s (`engine/t1-supplied-by-host`, na #146). CI stoi na billingu GitHub Actions (job nie startuje).
   Stos N3 → W1 → W2 zmergowany po kolei; poza programem otwarte jeszcze #140
   (`.coderabbit.yaml`, ten sam plik jest już w `main` — do zamknięcia).
 - Wcześniej `6ce4c30` (merge #126, ostatni PR #99). Przedtem `eb0c8a1` (merge #103: #98,
@@ -89,10 +91,9 @@ Fala 1: N1, N2, N3, W1, W2, W3 w `main` (#137, #138, #139, #142, #143, #145); W4
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
   1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138), N3 (#139), W1 (#142), W2 (#143), W3 (#145). **Użytkownik:**
-     merge #146 (W4); po merge'u ☑ w tabeli robi asystent przy następnym etapie.
-  2. **Asystent:** W4 w PR-ze #146 (na `main`); potem
-     T1+T1s, X1, S4, każdy na gałęzi od `main` albo od W3, jeśli #145 nie jest jeszcze zmergowany (tabela „Postęp” żyje
-     na gałęzi etapu). Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
+     merge #146 (W4), potem #148 (T1+T1s); po merge'u ☑ w tabeli robi asystent przy następnym etapie.
+  2. **Asystent:** W4 w PR-ze #146 (na `main`), T1+T1s w PR-ze #148 (na #146); potem X1, S4, każdy na gałęzi od
+     głowy stosu albo od `main` po merge'ach (tabela „Postęp” żyje na gałęzi etapu). Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; po każdej fali „dalej czy
      stop” i kiedy podbić przypięcie w aplikacji AppUnite (`~/Projects/ai/appunite_equipment`) i `ehos-ledger`.
@@ -525,8 +526,8 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | W2 | 1 | tagi dnia przy dopisie | DD0 | ☑ #143 |
 | W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ☑ #145 |
 | W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ◐ `engine/w4-decision`, PR #146 |
-| T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ☐ |
-| T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☐ |
+| T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ◐ `engine/t1-supplied-by-host`, PR #148 (na #146) |
+| T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ◐ `engine/t1-supplied-by-host`, PR #148 (z T1) |
 | X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ☐ |
 | S4 | 1 | `transition-without-scenario` | DD0 | ☐ |
 | ID1 | 2 | `id:` kontraktu deklarowany | N1 | ☐ |
@@ -1096,6 +1097,88 @@ na logu z wierszami sprzed rozszerzenia tożsamości jednostki (spełniony → `
   (`3508cb6`) wmergowany. Brama: EXIT=0; `check` 0 / 29 / 10 i 0 / 75 / 6; sandbox 194, silnik 1304, web 52, auth 286
   + 1 property.
 - **Dla aplikacji AppUnite i `ehos-ledger`:** nic do zmiany.
+
+### T1 — co wyszło (5 października)
+
+Gałąź `engine/t1-supplied-by-host` (na W4). `field :p1_reported, :boolean, supplied_by: :host` — pole, którego wartość
+daje host, nie wołający. **F10** (L2): tylko pole komendy albo zdarzenia z `recorded_by:`, nie pole `scope` komendy.
+Model trzyma klucz tylko na polu, które go ustawia (wersje kontraktów bez zmian). Przez `call/3` i Plug pole wysłane w
+ogóle (także `null`, także pod kluczem-atomem) to `{:invalid, [p1_reported: :supplied]}` (422); po autoryzacji i po
+sprawdzeniu pól i klucza wołającego `EhOsContract.Supplier` (`supply(actor, %Supplier.Request{…})`, decyzja 1) daje
+wartość, trzymaną do dokładnie zamówionych pól, ich typów i inwariantów; `{:error, r}` → `{:not_supplied, r}`, 503
+bez powodu, nic nie zapisane (decyzja 3); ponowienie przyjętego żądania z tym samym kluczem dostaje paragon bez pytania
+hosta. `dispatch/3` z kodu hosta ufa strukturze. OpenAPI pomija pole w treści żądania i opisuje 503 tylko przy takiej
+komendzie; strona kontraktu pisze „supplied by the host”; D9 rezerwuje `:supplied`. Rig silnika `SupplyRig` z
+`SupplyRig.Supplier` w konfiguracji pakietu (czyta ją tylko suita pakietu); `check` silnika bez zmian (0 / 75 / 6).
+
+- **Rozstrzygnięcia asystenta (mechanika):** host pytany w `dispatch/3`/`record/3` przez wewnętrzną opcję `supply:
+  true`, którą ustawia `call/3` — po autoryzacji, więc wołający bez uprawnienia nigdy nie każe hostowi niczego szukać;
+  *odrzucone:* pytać w `call/3` przed dispatchem (przed autoryzacją, albo drugie pytanie `Authorizer`, czyli drugi
+  wiersz decyzji w `eh_os_contract_auth`). Wartość łamiąca inwariant domeny to defekt hosta (rzuca, 500), jak zły typ;
+  *odrzucone:* odmowa inwariantu dla wołającego (to nie jego wartość). Limit czasu wywołania — po stronie hosta.
+- **Odejście od decyzji 2 w szczególe, po przeglądzie:** węzeł nie startuje bez `Supplier` — sprawdzane przy starcie
+  silnika (`Supplier.check!/1` w `EhOsContract.Supervisor`), nie w `Registry.load!`, które wołają też zadania mixa
+  tylko czytające kontrakty (`check`, `report`, `graph`, `pages`): host z `supplier:` tylko w `prod.exs` nie mógłby ich
+  uruchomić. Sprawdza też, że moduł jest załadowany i eksportuje `supply/2`. Sens decyzji („brak konfiguracji widać
+  przy wdrożeniu”) bez zmian.
+- **Przegląd** (`engine/w4-decision..engine/t1-supplied-by-host`, dwa równolegle). Poprawność: 11 uwag — naprawione
+  (`632efa8`): ponowienie z kluczem dostawało 503 zamiast paragonu przy leżącym hoście; host pytany przed tanimi
+  odmowami (zły klucz → 503 zamiast 400); sprawdzenie przy starcie w zadaniach mixa i bez sprawdzenia modułu; klucz-atom
+  gubiony bez odmowy; OpenAPI bez 503; dokumentacja D9 bez `:supplied` (+ CHANGELOG „a host has to act”: inwariant o tej
+  nazwie przestaje się kompilować). Próba odwrotna każdej: pada tylko jej test. Bez zmian: `supplied_by:` na polu
+  tożsamości (nie do zadeklarowania — tożsamość jest wstrzykiwana, F6), wartość łamiąca inwariant (wyżej), capability
+  liczone dwa razy (koszt pomijalny). Bezpieczeństwo i wydajność: nic od średniej wagi; żadna droga wartości wołającego
+  do pola hosta, host poza transakcją dopisu i poza blokadą, błędy bez wartości, 503 bez powodu.
+- **Brama:** EXIT=0 na każdym commicie z kodem; `check` 0 / 29 / 10, 0 / 75 / 6; sandbox 194, silnik 1334, web 52,
+  auth 286 + 1 property. Pułapka po drodze: nowa opcja DSL-a wymaga `mix spark.formatter` i pinu słownika
+  (`contract_vocabulary_test.exs`) — brama padła na obu, poprawione w pierwszym commicie.
+- **Dla aplikacji AppUnite i `ehos-ledger`:** nic, dopóki żaden kontrakt nie deklaruje `supplied_by:`; inwariant domeny
+  o nazwie `:supplied` trzeba przemianować.
+- **Merge'e w dół stosu (5 października):** W3 dostał w innej sesji poprawkę CodeRabbita (`c889a33`) i `main` z #144;
+  zmergowane do W4 (`88a336d`, konflikt tylko w Handoffie) i do T1 (`50774e6`, konflikt tylko w CHANGELOG — dwa wpisy
+  w jednym miejscu, oba zostają). Brama EXIT=0 na obu.
+
+### T1s — co wyszło (5 października)
+
+Na tej samej gałęzi co T1 (decyzja użytkownika: jeden PR „T1+T1s”). Rehmed: `close_visit_clinically.p1_reported`
+(flaga P1 usługi, `AGG-15`, rozstrzyga, czy kody są wymagane) i `close_settlement.total` (to, do czego mają się
+sumować płatności) — `supplied_by: :host`. Przesuwa wersję `ClinicalDocumentation` i `Settlement`; `check` sandboxa
+bez zmian (0 / 29 / 10). Testy przez `dispatch/3` (kod hosta) nietknięte — dają oba pola same.
+
+- **Rozstrzygnięcie asystenta (mechanika), odejście od projektu:** supplier to `Rehmed.Supplier` w drzewie Rehmedu,
+  nie `sandbox/lib/eh_os_contract_host/supplier.ex` — tylko Rehmed ma pola hosta, a zastępnik systemów klienta należy
+  do jego drzewa, obok efektu zastępującego rejestr P1. Jawny zastępnik (sandbox nie buduje integracji): tabela per
+  wizyta — flaga P1 i suma według płatnika (`P-31`: część pacjenta, gdy płatnik pokrywa wizytę częściowo); nieznana
+  wizyta, płatnik, inny kontrakt → `{:error, _}`, 503. *Odrzucone:* supplier hosta kierujący po kontrakcie (bez
+  drugiego kontraktu z polem hosta — kształt bez czytelnika); czytanie logu przez hosta (sandbox nie ma katalogu usług
+  ani cennika, z których liczyłby odpowiedź).
+- **`rehmed_authorization_test.exs`:** `p1_reported` i `total` wysłane → 422 `supplied`, nic nie zapisane; bez nich
+  → wartość hosta w zdarzeniu; nieznana wizyta → 503, nic nie zapisane. Test pól odrzucanych przed autoryzacją używa
+  `payer_id` (`total` nie jest już wołającego).
+- **Przegląd** (jeden, obie soczewki — mały commit sandboxa). 2 średnie, naprawione (`{code}`): suma zastępnika
+  wbrew `P-31` (wizyta mieszana odrzucona na `payment_lines_sum_to_total`), brak testu `total` przez Plug (próba
+  odwrotna: bez `supplied_by:` na `total` pada nowy test i test pól sprzed autoryzacji, który nie wysyła już
+  `total`). Niskie, naprawione: zastępnik rzucał (500) zamiast `{:error, _}` dla innych kształtów żądania; brak
+  asercji „nic nie zapisane”; zastrzeżenie o wizytach z hosta dev w moduledocu; dwa nieaktualne zdania.
+- **Brama:** EXIT=0; `check` 0 / 29 / 10, 0 / 75 / 6; sandbox 196, silnik 1340, web 52, auth 286 + 1 property.
+
+### Przed T1 — decyzje użytkownika (5 października)
+
+Przykład, na którym padły: Rehmed `close_visit_clinically` ma pole `p1_reported`; wołający przez Plug wysyła
+`visit_id` i kody ICD, a to, czy zgłoszenie P1 poszło, host sprawdza u siebie.
+
+1. **Jedno wywołanie na komendę:** `supply(actor, %EhOsContract.Supplier.Request{…, fields: [:p1_reported], given:
+   %{visit_id: "w-1", …}})` → `{:ok, %{p1_reported: true}} | {:error, reason}`; `config :eh_os_contract, supplier:
+   MyApp.Supplier` jak `Authorizer`; silnik sprawdza, że wróciły dokładnie zamówione klucze i że wartości pasują do
+   typów, a błąd nazywa pole, nigdy wartość. *Odrzucone:* wywołanie na pole (`supply(field, actor, given)` — kilka
+   zapytań hosta na komendę i pola nie razem).
+2. **Bez skonfigurowanego `Supplier` węzeł nie startuje**, gdy którykolwiek kontrakt ma pole `supplied_by: :host`
+   (`Registry.load!`, z nazwą kontraktu i pola, jak strefa w W2). *Odrzucone:* odmowa w żądaniu (503) — brak
+   konfiguracji wychodziłby dopiero na produkcji.
+3. **Błąd `Supplier` → `{:error, {:not_supplied, reason}}`, w Plugu 503 `{"error": "not_supplied"}`** bez powodu w
+   treści; nic nie zapisane, bez wiersza w `_commands`, jak odmowa `Authorizer`; wołający może ponowić z tym samym
+   kluczem. *Odrzucone:* 422 `{"invalid": {"p1_reported": "not_supplied"}}` (sugeruje wołającemu, że to on źle
+   wysłał).
 
 ### W4 — co wyszło (5 października)
 

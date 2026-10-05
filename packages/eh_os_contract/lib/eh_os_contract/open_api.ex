@@ -108,7 +108,7 @@ defmodule EhOsContract.OpenAPI do
                "application/json" => %{"schema" => JsonSchema.object(fields, domain)}
              }
            },
-           "responses" => command_responses()
+           "responses" => command_responses(command)
          })
      }}
   end
@@ -138,14 +138,16 @@ defmodule EhOsContract.OpenAPI do
     }
   end
 
-  defp command_fields(command, %{generated: generated, identity: identity})
-       when not is_nil(generated) do
-    if Map.get(command, :creates, false),
-      do: Enum.reject(command.fields, &(&1.name in identity)),
-      else: command.fields
-  end
+  # What a request sends: not an identity the library generates, and not a field the
+  # host supplies (plan T1), which a request that sends it is refused for.
+  defp command_fields(command, unit) do
+    generated =
+      if Map.get(unit, :generated) && Map.get(command, :creates, false),
+        do: unit.identity,
+        else: []
 
-  defp command_fields(command, _unit), do: command.fields
+    Enum.reject(command.fields, &(&1.name in generated or Map.get(&1, :supplied_by) == :host))
+  end
 
   defp command_headers(command) do
     [
@@ -192,6 +194,17 @@ defmodule EhOsContract.OpenAPI do
   end
 
   defp query_shape(_type, _domain), do: :scalar
+
+  # Plan T1: a 503 only where the host supplies a field, so no other command's
+  # document, nor its digest, moves.
+  defp command_responses(command) do
+    if Enum.any?(command.fields, &(Map.get(&1, :supplied_by) == :host)),
+      do:
+        Map.put(command_responses(), "503", %{
+          "description" => "The host could not supply a field; nothing was written"
+        }),
+      else: command_responses()
+  end
 
   defp command_responses do
     %{

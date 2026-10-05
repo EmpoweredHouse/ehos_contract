@@ -108,6 +108,7 @@ defmodule EhOsContract.Dispatcher do
     Receipt,
     Rejection,
     Store,
+    Supplier,
     SubscriptionRecord
   }
 
@@ -119,7 +120,7 @@ defmodule EhOsContract.Dispatcher do
   @type refusal ::
           Authorizer.reason()
           | :not_declared
-          | {:invalid, [Codec.problem() | {atom(), :generated}]}
+          | {:invalid, [Codec.problem() | {atom(), :generated | :supplied}]}
           | :idempotency_key_reused
           | :idempotency_key_required
           | :idempotency_key_invalid
@@ -127,13 +128,17 @@ defmodule EhOsContract.Dispatcher do
           | :not_caught_up
           | :subject_erased
           | :key_too_long
+          | {:not_supplied, term()}
 
   @doc """
   Dispatches `command`, a struct a v2 contract generated, to `contract`.
 
   `opts`: `actor:` (an `EhOsContract.Actor`, required), `idempotency_key:` (opaque,
   never personal data), `correlation_id:` (a UUID; a new one when missing) and
-  `causation_id:`.
+  `causation_id:`. `supply: true`, which `call/3` sets, asks the
+  `EhOsContract.Supplier` for the fields declared `supplied_by: :host` once the actor
+  is authorized (plan T1); the application's own code leaves it out, and then fills
+  those fields itself — its struct is trusted, and checked as every other field is.
   """
   @spec dispatch(module(), struct(), keyword() | map()) ::
           {:ok, Receipt.t()} | {:error, Rejection.t() | refusal()}
@@ -150,21 +155,16 @@ defmodule EhOsContract.Dispatcher do
              ctx.actor,
              scope(declaration, declaration.fields, command, values)
            ),
-         :ok <- valid(declaration.fields, command, values, model.domain),
+         :ok <- valid(callers(declaration, ctx), command, values, model.domain),
          :ok <- keyed(ctx),
+         job = job(:command, model, declaration, command, ctx, values),
+         {:ok, command} <- supplied(job),
          {:ok, command} <- generate_identity(model, declaration, command, ctx),
          :ok <- stream_fits(model, declaration, command) do
-      job = %{
-        kind: :command,
-        type: Atom.to_string(declaration.name),
-        model: model,
-        declaration: declaration,
-        command: command,
-        ctx: ctx,
-        values: values
-      }
-
-      run(job, repo())
+      run(%{job | command: command}, repo())
+    else
+      {:replayed, receipt} -> {:ok, receipt}
+      refused -> refused
     end
   end
 
@@ -196,21 +196,32 @@ defmodule EhOsContract.Dispatcher do
     values = Codec.values(model.domain)
 
     with :ok <- permit_record(model, declaration, ctx.actor),
-         :ok <- valid(declaration.fields, event, values, model.domain),
+         :ok <- valid(callers(declaration, ctx), event, values, model.domain),
          :ok <- keyed(ctx),
+         job = job(:record, model, declaration, event, ctx, values),
+         {:ok, event} <- supplied(job),
          :ok <- stream_fits(model, declaration, event) do
-      job = %{
-        kind: :record,
-        type: "record:#{declaration.name}",
-        model: model,
-        declaration: declaration,
-        command: event,
-        ctx: ctx,
-        values: values
-      }
-
-      run(job, repo())
+      run(%{job | command: event}, repo())
+    else
+      {:replayed, receipt} -> {:ok, receipt}
+      refused -> refused
     end
+  end
+
+  defp job(kind, model, declaration, struct, ctx, values) do
+    %{
+      kind: kind,
+      type:
+        if(kind == :command,
+          do: Atom.to_string(declaration.name),
+          else: "record:#{declaration.name}"
+        ),
+      model: model,
+      declaration: declaration,
+      command: struct,
+      ctx: ctx,
+      values: values
+    }
   end
 
   @doc """
@@ -406,10 +417,21 @@ defmodule EhOsContract.Dispatcher do
     end
   end
 
+  # Plan T1: a field the host supplies is not the caller's to send — present at all,
+  # even as `null`, it is refused by name — and is not decoded from the request.
   defp decoded(fields, input, values, kind) do
-    case Codec.decode(fields, input, values, strings: kind == :query) do
-      {:ok, decoded} -> {:ok, decoded}
-      {:error, problems} -> {:error, {:invalid, problems}}
+    supplied = Supplier.fields(fields)
+    # Under either key: `Codec.decode/4` reads an atom's too, from Elixir code.
+    sent =
+      for f <- supplied,
+          Map.has_key?(input, Atom.to_string(f.name)) or Map.has_key?(input, f.name),
+          do: {f.name, :supplied}
+
+    case {Codec.decode(fields -- supplied, input, values, strings: kind == :query), sent} do
+      # `nil` until the host supplies it, once the caller is authorized.
+      {{:ok, decoded}, []} -> {:ok, Enum.into(supplied, decoded, &{&1.name, nil})}
+      {{:ok, _decoded}, sent} -> {:error, {:invalid, sent}}
+      {{:error, problems}, sent} -> {:error, {:invalid, problems ++ sent}}
     end
   end
 
@@ -431,7 +453,7 @@ defmodule EhOsContract.Dispatcher do
     do: query(model.module, params, [actor: actor] ++ Keyword.take(opts, [:min_position, :wait]))
 
   defp run_call(kind, model, struct, actor, opts) do
-    opts = [actor: actor] ++ Keyword.take(opts, [:idempotency_key, :correlation_id])
+    opts = [actor: actor, supply: true] ++ Keyword.take(opts, [:idempotency_key, :correlation_id])
 
     if kind == :command,
       do: dispatch(model.module, struct, opts),
@@ -698,6 +720,53 @@ defmodule EhOsContract.Dispatcher do
   # Bytes, not characters, so no `u`: a binary that is not UTF-8 is refused byte by byte.
   @spec idempotency_key?(term()) :: boolean()
   def idempotency_key?(key), do: is_binary(key) and key =~ ~r/\A[\x21-\x7E]{1,255}\z/
+
+  # Plan T1: what the caller's own fields are checked as before the host is asked —
+  # every field but the supplied ones, which the host has not given yet. The
+  # application's own struct is checked whole: it is not asked of the host.
+  defp callers(declaration, %{supply: true}),
+    do: declaration.fields -- Supplier.fields(declaration.fields)
+
+  defp callers(declaration, _ctx), do: declaration.fields
+
+  # Plan T1: the fields the host gives, asked of it last before the unit is read — after
+  # authorization, so a caller who may not issue the command never makes the host look
+  # anything up, and after what the caller sent is found sound, so a request refused
+  # for its own fields or key is refused as such. A retry of a request already
+  # accepted under its key gets its receipt without asking: the answer would be thrown
+  # away, and a host that is down would turn the receipt into a refusal. The host's
+  # answer is held to the fields' types and invariants (`Supplier.run/6`).
+  defp supplied(%{ctx: %{supply: false}, command: struct}), do: {:ok, struct}
+
+  defp supplied(job) do
+    %{model: model, declaration: declaration, ctx: ctx, command: struct} = job
+
+    case Supplier.fields(declaration.fields) do
+      [] ->
+        {:ok, struct}
+
+      fields ->
+        with :new <- idempotent(repo(), job) do
+          names = Enum.map(fields, & &1.name)
+
+          request = %Supplier.Request{
+            kind: job.kind,
+            capability: capability(model, job.kind, declaration.name),
+            contract: model.module,
+            name: declaration.name,
+            fields: names,
+            given: struct |> Map.from_struct() |> Map.drop([:__meta__ | names])
+          }
+
+          with {:ok, given} <-
+                 Supplier.run(ctx.actor, request, declaration.fields, job.values, model.domain),
+               do: {:ok, struct(struct, given)}
+        else
+          {:ok, receipt} -> {:replayed, receipt}
+          refused -> refused
+        end
+    end
+  end
 
   defp valid(fields, struct, values, domain) do
     case Codec.problems(fields, struct, values, domain) do
@@ -1383,6 +1452,7 @@ defmodule EhOsContract.Dispatcher do
       idempotency_key: Map.get(opts, :idempotency_key),
       correlation_id: Map.get(opts, :correlation_id) || Ecto.UUID.generate(),
       causation_id: Map.get(opts, :causation_id),
+      supply: Map.get(opts, :supply, false) == true,
       now: Clock.now(),
       chain: Map.get(opts, :chain, [])
     }

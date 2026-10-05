@@ -46,7 +46,7 @@ defmodule EhOsContract.Domain.Rules do
 
   **D9** (plan EL2b): a value's invariant is named as a function is — snake_case,
   once in its value, never clashing with what Elixir defines, as N2 holds a
-  contract's names, and never `:required`, `:type` or `:generated`, the words a
+  contract's names, and never `:required`, `:type`, `:generated` or `:supplied`, the words a
   refusal already puts where an invariant's name goes — and shows itself on
   examples: `violated_by:` and `satisfied_by:` each give at least one, every one is
   plain data of the value's type, none is in both and none is in one twice, since
@@ -938,7 +938,7 @@ defmodule EhOsContract.Domain.Rules do
 
   # What `EhOsContract.Codec` already reports for a field in the place an invariant's
   # name takes in `{:invalid, …}` and in a 422's body.
-  @refusals [:required, :type, :generated]
+  @refusals [:required, :type, :generated, :supplied]
 
   defp d9(entities, _domain) do
     values = Map.new(for(%Value{} = value <- entities, do: {value.name, value}))

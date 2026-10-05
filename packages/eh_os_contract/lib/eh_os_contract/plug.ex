@@ -38,12 +38,13 @@ if Code.ensure_loaded?(Plug.Conn) do
     | accepted | 200 | `command_id`, `identity` (the unit's, the one the library gave when the command created it), `positions`, `position`, `duplicate`, and each event's `type` and `position` |
     | query answered | 200 | `rows`, or `row`, in the log's form; an erased personal field is `null` |
     | rejected on an invariant | 422 | `{"rejected": "<invariant>"}` |
-    | fields that do not fit | 422 | `{"invalid": {"<field>": "required" \\| "type" \\| "generated" \\| "<invariant>"}}` — `generated` for an identity sent with a command that creates its aggregate, which the library gives; an invariant's name for a value that breaks it (plan EL2b); `type` also for text holding a NUL (`"\\u0000"`, `%00`) |
+    | fields that do not fit | 422 | `{"invalid": {"<field>": "required" \\| "type" \\| "generated" \\| "supplied" \\| "<invariant>"}}` — `generated` for an identity sent with a command that creates its aggregate, which the library gives; `supplied` for a field the host supplies (`supplied_by: :host`, plan T1), sent at all; an invariant's name for a value that breaks it (plan EL2b); `type` also for text holding a NUL (`"\\u0000"`, `%00`) |
     | a body that is not a JSON object, or cannot be read | 400 | `{"error": "body_is_not_a_json_object"}`, `{"error": "unreadable_body"}` |
     | a query string Plug cannot read: not UTF-8, nested too deep | 400 | `{"error": "invalid_query_string"}` |
     | a query string past Plug's length | 414 | `{"error": "invalid_query_string"}` |
     | an `x-correlation-id` that is not a UUID's text | 400 | `{"error": "correlation_id_is_not_a_uuid"}` |
     | refused | 403 | `{"refused": "<reason>"}` |
+    | the host could not supply a field (`EhOsContract.Supplier`) | 503 | `{"error": "not_supplied"}`; nothing is written, so it may be sent again |
     | no actor | 401 | `{"error": "no_actor"}` |
     | a command that creates its aggregate, without an `idempotency-key` | 422 | `{"error": "idempotency_key_required"}` |
     | a unit's or a run's key over `EhOsContract.Key.budget/0` bytes, its name and its fields escaped | 422 | `{"error": "key_too_long"}` |
@@ -206,6 +207,11 @@ if Code.ensure_loaded?(Plug.Conn) do
       do: reply(conn, 409, %{error: reason})
 
     defp refused(conn, :subject_erased), do: reply(conn, 410, %{error: :subject_erased})
+
+    # Plan T1: the host could not give a field it supplies. The reason is the host's,
+    # and stays out of the answer; nothing was written, so the request may be sent again.
+    defp refused(conn, {:not_supplied, _reason}),
+      do: reply(conn, 503, %{error: :not_supplied})
 
     # A recording for a unit whose identity the library gives, and that no command
     # created: there is no such unit, which is not a refusal of the caller.

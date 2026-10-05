@@ -19,7 +19,10 @@ config :eh_os_contract,
   repo: EhOsContract.TestRepo,
   # Nothing runs by itself: the tests drain subscriptions and effect jobs in their
   # own sandbox transaction (`EhOsContract.Testing.drain/1`).
-  subscriptions: :manual
+  subscriptions: :manual,
+  # Plan T1: `SupplyRig` declares fields the host supplies, and a node with such a field
+  # and no supplier does not start.
+  supplier: SupplyRig.Supplier
 
 # The master key of the invented fixtures' personal fields (`ShreddingRig`). A test
 # key, in a file only this package's suite reads; a host's comes from its runtime

@@ -27,6 +27,20 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **T1: a field the host gives, not the caller.** `field :p1_reported, :boolean, supplied_by: :host`, on a
+  command's field or a recorded event's (**F10** refuses it anywhere else, and on a command's `scope` field).
+  Through `EhOsContract.call/3` — and `EhOsContract.Plug` — a request that sends it at all, even as `null`, is
+  refused by name, `{:invalid, [p1_reported: :supplied]}` (422 `{"invalid": {"p1_reported": "supplied"}}`). Once
+  the caller is authorized and what it sent — its fields, its idempotency key — is found sound, the new behaviour
+  `EhOsContract.Supplier` gives the value, one call per command with the fields the request gave, its answer held
+  to exactly the fields asked for, their types and invariants. Its `{:error, reason}` refuses the request with
+  `{:not_supplied, reason}` (503 `{"error": "not_supplied"}`, in the OpenAPI document of such a command only), and
+  nothing is written; a retry of a request already accepted under its key gets its receipt without asking.
+  `dispatch/3` and `record/3` from the application's own code are not asked. The OpenAPI document leaves the field
+  out of the request body. **A host that declares such a field configures `config :eh_os_contract, supplier:
+  MySupplier`, a module exporting `supply/2`: the engine does not start without one** (the Mix tasks that only read
+  contracts do not ask). A contract without the option keeps its version.
+
 - **W3: a promise can be judged without a log.** `EhOsContract.Trace.trace/2` reads what a promise is judged on
   from the contract — the stored types of its events, its window, and the item's identity for a promise made per
   item inside a run — and `EhOsContract.Trace.judge/3` gives the verdicts for events handed to it, at the moment it
@@ -45,6 +59,10 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   under one identity is judged as before.
 
 ### Changed — a host has to act
+
+- **T1: a domain value's invariant may no longer be named `:supplied`** (D9), the word a request's refusal now
+  puts where an invariant's name goes, as it already could not be `:required`, `:type` or `:generated`. Rename one
+  that was.
 
 - **A blank label no longer compiles.** A label is blank when it is empty or holds only Unicode whitespace and
   invisible format characters (zero-width spaces, direction marks, the byte order mark). N1 refuses one on any

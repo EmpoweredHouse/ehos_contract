@@ -210,6 +210,7 @@ One field of a state, a command, an event or a read model's row.
 | [`subject`](#contract-aggregate-command-field-subject){: #contract-aggregate-command-field-subject } | `atom` |  | The domain subject this identifier field identifies. |
 | [`default`](#contract-aggregate-command-field-default){: #contract-aggregate-command-field-default } | `any` |  | The initial value; only in a state. |
 | [`issued_by`](#contract-aggregate-command-field-issued_by){: #contract-aggregate-command-field-issued_by } | `atom` |  | The domain external that gives this value, e.g. a number another system assigns. |
+| [`supplied_by`](#contract-aggregate-command-field-supplied_by){: #contract-aggregate-command-field-supplied_by } | `:host` |  | Who gives this field's value instead of the caller: `:host`, through `EhOsContract.Supplier`, for a value a decision depends on that a request could otherwise forge. Only on a command's field, or a recorded event's (F10). |
 
 
 
@@ -290,6 +291,7 @@ One field of a state, a command, an event or a read model's row.
 | [`subject`](#contract-aggregate-state-field-subject){: #contract-aggregate-state-field-subject } | `atom` |  | The domain subject this identifier field identifies. |
 | [`default`](#contract-aggregate-state-field-default){: #contract-aggregate-state-field-default } | `any` |  | The initial value; only in a state. |
 | [`issued_by`](#contract-aggregate-state-field-issued_by){: #contract-aggregate-state-field-issued_by } | `atom` |  | The domain external that gives this value, e.g. a number another system assigns. |
+| [`supplied_by`](#contract-aggregate-state-field-supplied_by){: #contract-aggregate-state-field-supplied_by } | `:host` |  | Who gives this field's value instead of the caller: `:host`, through `EhOsContract.Supplier`, for a value a decision depends on that a request could otherwise forge. Only on a command's field, or a recorded event's (F10). |
 
 
 
@@ -388,6 +390,7 @@ One field of a state, a command, an event or a read model's row.
 | [`subject`](#contract-aggregate-event-field-subject){: #contract-aggregate-event-field-subject } | `atom` |  | The domain subject this identifier field identifies. |
 | [`default`](#contract-aggregate-event-field-default){: #contract-aggregate-event-field-default } | `any` |  | The initial value; only in a state. |
 | [`issued_by`](#contract-aggregate-event-field-issued_by){: #contract-aggregate-event-field-issued_by } | `atom` |  | The domain external that gives this value, e.g. a number another system assigns. |
+| [`supplied_by`](#contract-aggregate-event-field-supplied_by){: #contract-aggregate-event-field-supplied_by } | `:host` |  | Who gives this field's value instead of the caller: `:host`, through `EhOsContract.Supplier`, for a value a decision depends on that a request could otherwise forge. Only on a command's field, or a recorded event's (F10). |
 
 
 
@@ -480,6 +483,7 @@ One field of a state, a command, an event or a read model's row.
 | [`subject`](#contract-aggregate-stage-event-field-subject){: #contract-aggregate-stage-event-field-subject } | `atom` |  | The domain subject this identifier field identifies. |
 | [`default`](#contract-aggregate-stage-event-field-default){: #contract-aggregate-stage-event-field-default } | `any` |  | The initial value; only in a state. |
 | [`issued_by`](#contract-aggregate-stage-event-field-issued_by){: #contract-aggregate-stage-event-field-issued_by } | `atom` |  | The domain external that gives this value, e.g. a number another system assigns. |
+| [`supplied_by`](#contract-aggregate-stage-event-field-supplied_by){: #contract-aggregate-stage-event-field-supplied_by } | `:host` |  | Who gives this field's value instead of the caller: `:host`, through `EhOsContract.Supplier`, for a value a decision depends on that a request could otherwise forge. Only on a command's field, or a recorded event's (F10). |
 
 
 
@@ -715,6 +719,7 @@ One field of a state, a command, an event or a read model's row.
 | [`subject`](#contract-dcb-state-field-subject){: #contract-dcb-state-field-subject } | `atom` |  | The domain subject this identifier field identifies. |
 | [`default`](#contract-dcb-state-field-default){: #contract-dcb-state-field-default } | `any` |  | The initial value; only in a state. |
 | [`issued_by`](#contract-dcb-state-field-issued_by){: #contract-dcb-state-field-issued_by } | `atom` |  | The domain external that gives this value, e.g. a number another system assigns. |
+| [`supplied_by`](#contract-dcb-state-field-supplied_by){: #contract-dcb-state-field-supplied_by } | `:host` |  | Who gives this field's value instead of the caller: `:host`, through `EhOsContract.Supplier`, for a value a decision depends on that a request could otherwise forge. Only on a command's field, or a recorded event's (F10). |
 
 
 
@@ -815,6 +820,7 @@ One field of a state, a command, an event or a read model's row.
 | [`subject`](#contract-dcb-command-field-subject){: #contract-dcb-command-field-subject } | `atom` |  | The domain subject this identifier field identifies. |
 | [`default`](#contract-dcb-command-field-default){: #contract-dcb-command-field-default } | `any` |  | The initial value; only in a state. |
 | [`issued_by`](#contract-dcb-command-field-issued_by){: #contract-dcb-command-field-issued_by } | `atom` |  | The domain external that gives this value, e.g. a number another system assigns. |
+| [`supplied_by`](#contract-dcb-command-field-supplied_by){: #contract-dcb-command-field-supplied_by } | `:host` |  | Who gives this field's value instead of the caller: `:host`, through `EhOsContract.Supplier`, for a value a decision depends on that a request could otherwise forge. Only on a command's field, or a recorded event's (F10). |
 
 
 
@@ -913,6 +919,7 @@ One field of a state, a command, an event or a read model's row.
 | [`subject`](#contract-dcb-event-field-subject){: #contract-dcb-event-field-subject } | `atom` |  | The domain subject this identifier field identifies. |
 | [`default`](#contract-dcb-event-field-default){: #contract-dcb-event-field-default } | `any` |  | The initial value; only in a state. |
 | [`issued_by`](#contract-dcb-event-field-issued_by){: #contract-dcb-event-field-issued_by } | `atom` |  | The domain external that gives this value, e.g. a number another system assigns. |
+| [`supplied_by`](#contract-dcb-event-field-supplied_by){: #contract-dcb-event-field-supplied_by } | `:host` |  | Who gives this field's value instead of the caller: `:host`, through `EhOsContract.Supplier`, for a value a decision depends on that a request could otherwise forge. Only on a command's field, or a recorded event's (F10). |
 
 
 
@@ -1005,6 +1012,7 @@ One field of a state, a command, an event or a read model's row.
 | [`subject`](#contract-dcb-stage-event-field-subject){: #contract-dcb-stage-event-field-subject } | `atom` |  | The domain subject this identifier field identifies. |
 | [`default`](#contract-dcb-stage-event-field-default){: #contract-dcb-stage-event-field-default } | `any` |  | The initial value; only in a state. |
 | [`issued_by`](#contract-dcb-stage-event-field-issued_by){: #contract-dcb-stage-event-field-issued_by } | `atom` |  | The domain external that gives this value, e.g. a number another system assigns. |
+| [`supplied_by`](#contract-dcb-stage-event-field-supplied_by){: #contract-dcb-stage-event-field-supplied_by } | `:host` |  | Who gives this field's value instead of the caller: `:host`, through `EhOsContract.Supplier`, for a value a decision depends on that a request could otherwise forge. Only on a command's field, or a recorded event's (F10). |
 
 
 
@@ -1229,6 +1237,7 @@ One field of a state, a command, an event or a read model's row.
 | [`subject`](#contract-process_manager-state-field-subject){: #contract-process_manager-state-field-subject } | `atom` |  | The domain subject this identifier field identifies. |
 | [`default`](#contract-process_manager-state-field-default){: #contract-process_manager-state-field-default } | `any` |  | The initial value; only in a state. |
 | [`issued_by`](#contract-process_manager-state-field-issued_by){: #contract-process_manager-state-field-issued_by } | `atom` |  | The domain external that gives this value, e.g. a number another system assigns. |
+| [`supplied_by`](#contract-process_manager-state-field-supplied_by){: #contract-process_manager-state-field-supplied_by } | `:host` |  | Who gives this field's value instead of the caller: `:host`, through `EhOsContract.Supplier`, for a value a decision depends on that a request could otherwise forge. Only on a command's field, or a recorded event's (F10). |
 
 
 
@@ -1473,6 +1482,7 @@ One field of a state, a command, an event or a read model's row.
 | [`subject`](#contract-read_model-field-subject){: #contract-read_model-field-subject } | `atom` |  | The domain subject this identifier field identifies. |
 | [`default`](#contract-read_model-field-default){: #contract-read_model-field-default } | `any` |  | The initial value; only in a state. |
 | [`issued_by`](#contract-read_model-field-issued_by){: #contract-read_model-field-issued_by } | `atom` |  | The domain external that gives this value, e.g. a number another system assigns. |
+| [`supplied_by`](#contract-read_model-field-supplied_by){: #contract-read_model-field-supplied_by } | `:host` |  | Who gives this field's value instead of the caller: `:host`, through `EhOsContract.Supplier`, for a value a decision depends on that a request could otherwise forge. Only on a command's field, or a recorded event's (F10). |
 
 
 
@@ -1784,6 +1794,7 @@ One field of a state, a command, an event or a read model's row.
 | [`subject`](#contract-consumes-field-subject){: #contract-consumes-field-subject } | `atom` |  | The domain subject this identifier field identifies. |
 | [`default`](#contract-consumes-field-default){: #contract-consumes-field-default } | `any` |  | The initial value; only in a state. |
 | [`issued_by`](#contract-consumes-field-issued_by){: #contract-consumes-field-issued_by } | `atom` |  | The domain external that gives this value, e.g. a number another system assigns. |
+| [`supplied_by`](#contract-consumes-field-supplied_by){: #contract-consumes-field-supplied_by } | `:host` |  | Who gives this field's value instead of the caller: `:host`, through `EhOsContract.Supplier`, for a value a decision depends on that a request could otherwise forge. Only on a command's field, or a recorded event's (F10). |
 
 
 
@@ -1848,6 +1859,7 @@ One field of a state, a command, an event or a read model's row.
 | [`subject`](#contract-subscribe-field-subject){: #contract-subscribe-field-subject } | `atom` |  | The domain subject this identifier field identifies. |
 | [`default`](#contract-subscribe-field-default){: #contract-subscribe-field-default } | `any` |  | The initial value; only in a state. |
 | [`issued_by`](#contract-subscribe-field-issued_by){: #contract-subscribe-field-issued_by } | `atom` |  | The domain external that gives this value, e.g. a number another system assigns. |
+| [`supplied_by`](#contract-subscribe-field-supplied_by){: #contract-subscribe-field-supplied_by } | `:host` |  | Who gives this field's value instead of the caller: `:host`, through `EhOsContract.Supplier`, for a value a decision depends on that a request could otherwise forge. Only on a command's field, or a recorded event's (F10). |
 
 
 
