@@ -102,6 +102,8 @@ defmodule Rehmed.Contracts.StatutoryReporting do
          "Zamknięcie kliniczne — zgłoszenie do P1 albo jego pominięcie",
          handles: :visit_closed_clinically,
          issues: [:queue_p1_report, :waive_p1_report],
+         delivery: :at_least_once,
+         idempotency: [key: :event_id, owner: :infrastructure],
          source: "P-07" do
     # The service's flag decides, "one flag, not two" (2026-08-17, `AGG-15`).
     constraint :only_reported_services,

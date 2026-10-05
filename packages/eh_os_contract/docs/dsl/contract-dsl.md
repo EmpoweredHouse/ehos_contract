@@ -1057,7 +1057,7 @@ Whenever an event happens, issue a command.
 |------|------|---------|------|
 | [`handles`](#contract-policy-handles){: #contract-policy-handles .spark-required} | `atom \| list(atom)` |  | The events it reacts to. |
 | [`issues`](#contract-policy-issues){: #contract-policy-issues .spark-required} | `atom \| list(atom)` |  | The commands it may issue. |
-| [`delivery`](#contract-policy-delivery){: #contract-policy-delivery } | `:in_transaction \| :at_least_once` | `:in_transaction` | When it runs. |
+| [`delivery`](#contract-policy-delivery){: #contract-policy-delivery } | `:in_transaction \| :at_least_once` |  | When it runs; `:in_transaction` when left out, which a reaction to an event of another context has to state (X10). |
 | [`idempotency`](#contract-policy-idempotency){: #contract-policy-idempotency } | `[key: atom, owner: :self \| :downstream \| :infrastructure]` |  | What makes a second delivery harmless, and who keeps it so: `[key: :event_id, owner: :self]`. |
 | [`source`](#contract-policy-source){: #contract-policy-source } | `String.t` |  | Where the policy comes from in the material. |
 
@@ -1450,7 +1450,7 @@ Rows projected from events, for queries to read.
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`projects`](#contract-read_model-projects){: #contract-read_model-projects .spark-required} | `atom \| list(atom)` |  | The events it projects. |
-| [`delivery`](#contract-read_model-delivery){: #contract-read_model-delivery } | `:in_transaction \| :at_least_once` | `:in_transaction` | When it is updated. |
+| [`delivery`](#contract-read_model-delivery){: #contract-read_model-delivery } | `:in_transaction \| :at_least_once` |  | When it is updated; `:in_transaction` when left out, which a reaction to an event of another context has to state (X10). |
 | [`source`](#contract-read_model-source){: #contract-read_model-source } | `String.t` |  | Where the read model comes from in the material. |
 
 

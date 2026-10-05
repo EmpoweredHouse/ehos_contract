@@ -121,8 +121,8 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule Policy do
     @moduledoc false
-    defstruct [:name, :label, :idempotency, :source, handles: [], issues: []] ++
-                [delivery: :in_transaction, constraints: []] ++
+    defstruct [:name, :label, :idempotency, :source, :delivery, handles: [], issues: []] ++
+                [constraints: []] ++
                 [__spark_metadata__: nil]
   end
 
@@ -163,7 +163,7 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule ReadModel do
     @moduledoc false
-    defstruct [:name, :label, :source, projects: [], delivery: :in_transaction, fields: []] ++
+    defstruct [:name, :label, :source, :delivery, projects: [], fields: []] ++
                 [__spark_metadata__: nil]
   end
 
@@ -620,6 +620,12 @@ defmodule EhOsContract.Contract.Dsl do
                         "the engine, with no code (`:infrastructure`)."
                   ]
                 ]}
+  # Plan DD, X1: a policy and a read model left without `delivery` run inside the
+  # transaction that records the event, which a reaction to another context's event
+  # has to say out loud (X10), so the default is applied by `Build`, not here.
+  @undeclared_delivery "; `:in_transaction` when left out, which a reaction to an event of " <>
+                         "another context has to state (X10)."
+
   @idempotency_doc "What makes a second delivery harmless, and who keeps it so: " <>
                      "`[key: :event_id, owner: :self]`."
 
@@ -634,7 +640,7 @@ defmodule EhOsContract.Contract.Dsl do
       label: [type: :string, required: true, doc: "The rule, as the business states it."],
       handles: [type: {:wrap_list, :atom}, required: true, doc: "The events it reacts to."],
       issues: [type: {:wrap_list, :atom}, required: true, doc: "The commands it may issue."],
-      delivery: [type: @delivery, default: :in_transaction, doc: "When it runs."],
+      delivery: [type: @delivery, doc: "When it runs" <> @undeclared_delivery],
       idempotency: [type: @idempotency, doc: @idempotency_doc],
       source: [type: :string, doc: "Where the policy comes from in the material."]
     ]
@@ -757,7 +763,7 @@ defmodule EhOsContract.Contract.Dsl do
       name: [type: :atom, required: true, doc: "The read model's name."],
       label: [type: :string, required: true, doc: "What the business calls it."],
       projects: [type: {:wrap_list, :atom}, required: true, doc: "The events it projects."],
-      delivery: [type: @delivery, default: :in_transaction, doc: "When it is updated."],
+      delivery: [type: @delivery, doc: "When it is updated" <> @undeclared_delivery],
       source: [type: :string, doc: "Where the read model comes from in the material."]
     ]
   }

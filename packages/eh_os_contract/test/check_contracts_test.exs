@@ -3,7 +3,7 @@ defmodule EhOsContract.CheckContractsTest do
   Plan EL1: **the rules v1 contracts had, over v2 contracts**, and one only an
   implementation answers — a reaction back into an earlier stage, two reactions in
   one transaction, free text left unsealed, an event a command declares and never
-  emits. Each finding points at its declaration, with a control beside it.
+  emits; and plan DD, X1: a reaction to another context's event in its transaction. Each finding points at its declaration, with a control beside it.
   """
 
   use EhOsContract.DslCase, async: false
@@ -229,5 +229,89 @@ defmodule EhOsContract.CheckContractsTest do
 
     assert message =~ ":booked of #{inspect(@visits)} has 3 reactions"
     assert message =~ "policy :prepare_desk of EhOsContract.CheckContractsTest.Reception"
+  end
+
+  test "reactions declared :in_transaction on another context's event; control: :at_least_once" do
+    compile(
+      """
+      defmodule EhOsContract.CheckContractsTest.Billing do
+        use EhOsContract.Contract, domain: Clinic, context: :billing
+
+        consumes #{inspect(@visits)}, :booked
+
+        aggregate :bill, "Rachunek" do
+          identity :visit_id
+          command :open_bill, "Otwórz rachunek", by: :reception, emits: :bill_opened
+          event :bill_opened, "Rachunek otwarty"
+        end
+
+        policy :bill_on_booking, "Umówiono — rachunek", handles: :booked, issues: :open_bill,
+          delivery: :in_transaction
+        policy :bill_later, "Umówiono — rachunek później", handles: :booked, issues: :open_bill,
+          delivery: :at_least_once, idempotency: [key: :event_id, owner: :infrastructure]
+        effect :note_booking, "Zapis", handles: :booked, delivery: :in_transaction
+
+        read_model :booked, "Umówione", projects: :booked, delivery: :in_transaction do
+          field :visit_id, :id
+        end
+
+        process :bill, "Rachunek" do
+          correlate :visit_id
+        end
+      end
+      """,
+      "billing.ex"
+    )
+
+    found =
+      for %Finding{rule: "in-transaction-across-contexts"} = f <-
+            Contracts.findings([@visits, EhOsContract.CheckContractsTest.Billing], [@decider]),
+          do: {f.message |> String.split(" of ") |> hd(), Finding.place(f)}
+
+    assert found == [
+             {"policy :bill_on_booking", {"billing.ex", 12}},
+             {"effect :note_booking", {"billing.ex", 16}},
+             {"read model :booked", {"billing.ex", 18}}
+           ]
+
+    [message | _] =
+      for %Finding{rule: "in-transaction-across-contexts", message: m} <-
+            Contracts.findings([EhOsContract.CheckContractsTest.Billing], []),
+          do: m
+
+    assert message =~
+             "takes :booked of #{inspect(@visits)}, context :settlement, inside the transaction " <>
+               "that records it, so context :billing and :settlement commit together"
+
+    # The same reaction in the publisher's own context is not across anything.
+    compile(
+      """
+      defmodule EhOsContract.CheckContractsTest.Desk2 do
+        use EhOsContract.Contract, domain: Clinic, context: :settlement
+
+        consumes #{inspect(@visits)}, :booked
+
+        aggregate :desk, "Recepcja" do
+          identity :visit_id
+          command :prepare, "Przygotuj", by: :reception, emits: :prepared
+          event :prepared, "Przygotowano"
+        end
+
+        policy :prepare_desk, "Przygotowanie", handles: :booked, issues: :prepare,
+          delivery: :in_transaction
+
+        process :desk, "Recepcja" do
+          correlate :visit_id
+        end
+      end
+      """,
+      "desk2.ex"
+    )
+
+    assert for(
+             %Finding{rule: "in-transaction-across-contexts"} = f <-
+               Contracts.findings([EhOsContract.CheckContractsTest.Desk2], []),
+             do: f
+           ) == []
   end
 end
