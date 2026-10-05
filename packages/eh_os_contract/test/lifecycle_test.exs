@@ -63,6 +63,28 @@ defmodule EhOsContract.LifecycleTest do
     end
   end
 
+  test "allowed says what the graph does with one event: moves, stays, or refuses and why" do
+    assert Lifecycle.allowed(@lifecycle, nil, :visit_booked) == {:moved, :booked}
+    assert Lifecycle.allowed(@lifecycle, :booked, :patient_arrived) == {:moved, :in_progress}
+    assert Lifecycle.allowed(@lifecycle, :booked, :note_added) == {:stayed, :booked}
+
+    assert {:error, why} = Lifecycle.allowed(@lifecycle, :closed, :note_added)
+    assert why =~ "which is final"
+    assert {:error, _why} = Lifecycle.allowed(@lifecycle, nil, :note_added)
+  end
+
+  test "moves lists the next steps of a legal history, in the order the events are given" do
+    events = [:visit_booked, :patient_arrived, :note_added, :visit_closed]
+
+    assert Lifecycle.moves(@lifecycle, nil, events) == [{:visit_booked, :booked}]
+
+    assert Lifecycle.moves(@lifecycle, :booked, events) ==
+             [{:patient_arrived, :in_progress}, {:note_added, :booked}]
+
+    assert Lifecycle.moves(@lifecycle, :closed, events) == [],
+           "an aggregate whose life has ended has no next step"
+  end
+
   test "tally counts the moves taken and the events the graph did not allow, in the period only" do
     streams = [
       [
