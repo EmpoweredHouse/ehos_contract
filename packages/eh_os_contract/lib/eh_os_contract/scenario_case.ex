@@ -858,12 +858,7 @@ defmodule EhOsContract.ScenarioCase do
     end
   end
 
-  defp domain(model) do
-    if Code.ensure_loaded?(model.domain) and
-         function_exported?(model.domain, :__eh_os_contract_model__, 0),
-       do: Map.new(model.domain.__eh_os_contract_model__().values, &{&1.name, &1}),
-       else: %{}
-  end
+  defp domain(model), do: EhOsContract.Codec.values(model.domain)
 
   # The scenario's data cast to the values its fields hold (`Data.cast/3`); what does
   # not fit is thrown to the `catch` that names where the data was written.

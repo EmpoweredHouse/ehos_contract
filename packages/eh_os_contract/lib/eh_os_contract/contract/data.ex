@@ -140,10 +140,14 @@ defmodule EhOsContract.Contract.Data do
   timestamp's ISO 8601 string as a `DateTime`, a date's as a `Date`, a decimal's
   integer or string as a `Decimal`, through lists and a domain value's fields and the
   built-in type it rests on. `domain` is the domain's values by name
-  (`EhOsContract.Codec.values/1`); a type it does not name is left as written.
+  (`EhOsContract.Codec.values/1`).
 
-  `{:error, problem}` when a built-in value does not fit its type, or a domain value
-  with fields is not a map — the first problem, in the words of `problems/2`.
+  It casts; it does not check. `{:error, problem}` — the first, in the words of
+  `problems/2` — comes back only where casting needs the value to fit: a built-in or
+  enum value of the wrong form, a value already cast (a `Date`, a `Decimal`, which a
+  contract never holds), or a domain value with fields that is not a map. Anything
+  else is returned as written: a non-list for a list type, an `{:id, entity}`, a type
+  the domain does not name. Checking is `problems/2` and `problems/3`.
   """
   @spec cast(type(), term(), %{atom() => map()}) :: {:ok, term()} | {:error, String.t()}
   def cast(type, value, domain) do

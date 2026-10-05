@@ -816,7 +816,7 @@ defmodule EhOsContract.Dispatcher do
         # business outcome, and nothing is appended.
         {emitted, _status} =
           stage("decider", fn ->
-            Decision.held!(model, declaration, unit, status, job.command, events)
+            Decision.held!(model, declaration, unit, status, job.command, events, job.values)
           end)
 
         commit(job, emitted, repo)

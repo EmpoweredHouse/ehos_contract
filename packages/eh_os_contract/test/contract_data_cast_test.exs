@@ -45,7 +45,14 @@ defmodule EhOsContract.ContractDataCastTest do
              {:error, ~s|"2026-09" is not a map of the fields of :period|}
   end
 
-  test "a type the domain does not name is left as written" do
+  test "it casts and does not check: what needs no cast is left as written" do
     assert Data.cast(:unknown_value, "anything", %{}) == {:ok, "anything"}
+    assert Data.cast({:list, :date}, "2026-09-01", %{}) == {:ok, "2026-09-01"}
+    assert Data.cast({:id, :service}, "", %{}) == {:ok, ""}
+  end
+
+  test "a value already cast is refused, since a contract never holds one" do
+    assert {:error, _problem} = Data.cast(:date, ~D[2026-09-01], %{})
+    assert {:error, _problem} = Data.cast(:decimal, Decimal.new(1), %{})
   end
 end

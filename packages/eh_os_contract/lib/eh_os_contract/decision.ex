@@ -1,8 +1,13 @@
 defmodule EhOsContract.Decision do
   @moduledoc """
   What a decision has to be for the engine to append it (plan W4): the rules dispatch
-  holds a decision to, in one place, so that a scenario and — later — a property test
-  hold the implementation to the same ones.
+  holds a decision to, in one place, so that the code that checks a decision outside
+  dispatch — a scenario, later a property test — calls them rather than a copy.
+
+  Dispatch holds a decision to `held!/6`. `EhOsContract.ScenarioCase` holds it to
+  `admitted/4` and `lifecycle!/4` only: a scenario does not yet check that an event is
+  about the unit that decided it, or that its fields fit, so a decision can pass its
+  scenario and still be refused by dispatch.
 
   A decision is code, and code can build a struct the contract's macros never saw
   (v2 §5). So after it returns, everything it produced is held to its declaration:
@@ -53,21 +58,25 @@ defmodule EhOsContract.Decision do
   `declaration` is the command's, `unit` the unit that decided it, `status` where the
   unit stood (`nil` for a unit with no lifecycle, or one not yet started), `command`
   the command decided and `events` what the decision returned. Each event is returned
-  with its declaration, `{event_declaration, event}`, in order.
+  with its declaration, `{event_declaration, event}`, in order. `values`
+  are the domain's values by name (`EhOsContract.Codec.values/1`), read from the model's
+  domain when not given.
 
   Raises `ArgumentError` naming the command, and saying that nothing was appended,
   when an event is not among the command's `emits`, carries another unit's identity —
   it would be folded into this unit's stream — has fields that do not fit their
   types, or is one the lifecycle does not allow from `status` (`Lifecycle.decided!/4`).
   """
-  @spec held!(map(), map(), map(), Lifecycle.status(), struct(), [term()]) ::
+  @spec held!(map(), map(), map(), Lifecycle.status(), struct(), [term()], map() | nil) ::
           {[{map(), struct()}], Lifecycle.status()}
-  def held!(model, declaration, unit, status, command, events) do
-    values = Codec.values(model.domain)
+  def held!(model, declaration, unit, status, command, events, values \\ nil) do
+    # Dispatch has the domain's values already, and passes them; read them otherwise.
+    values = values || Codec.values(model.domain)
+    modules = Map.new(declaration.emits, &{Model.module_for(model, :event, &1), &1})
 
     emitted =
       for event <- events do
-        name = emitted_name!(model, declaration, event)
+        name = emitted_name!(model, declaration, modules, event)
         event_declaration = Enum.find(model.events, &(&1.name == name))
         same_unit!(declaration, unit, command, event, name)
         fits!(model, declaration, event_declaration, event, values, name)
@@ -90,17 +99,13 @@ defmodule EhOsContract.Decision do
     end
   end
 
-  defp emitted_name!(model, declaration, event) do
-    case admitted(model, :event, [event], declaration.emits) do
-      {:ok, [{name, _event}]} ->
-        name
-
-      {:error, _why} ->
-        raise ArgumentError,
-              "command #{inspect(declaration.name)} of #{inspect(model.module)} decided " <>
-                "#{describe(event)}, which is not among the events it emits: " <>
-                "#{inspect(declaration.emits)}. Nothing was appended."
-    end
+  # The same rule as `admitted/4`, with the map built once per decision, not per event.
+  defp emitted_name!(model, declaration, modules, event) do
+    (is_struct(event) && Map.get(modules, event.__struct__)) ||
+      raise ArgumentError,
+            "command #{inspect(declaration.name)} of #{inspect(model.module)} decided " <>
+              "#{describe(event)}, which is not among the events it emits: " <>
+              "#{inspect(declaration.emits)}. Nothing was appended."
   end
 
   # The event joins the unit that decided it — its stream, or its boundary's own
