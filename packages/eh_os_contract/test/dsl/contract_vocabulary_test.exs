@@ -20,8 +20,19 @@ defmodule EhOsContract.ContractVocabularyTest do
 
   use ExUnit.Case, async: true
 
-  # Plan EL2: `issued_by`, the external that gives a value.
-  @field [:name, :type, :optional, :label, :personal, :subject, :default, :issued_by]
+  # Plan EL2: `issued_by`, the external that gives a value; plan T1: `supplied_by`, who
+  # gives it instead of the caller.
+  @field [
+    :name,
+    :type,
+    :optional,
+    :label,
+    :personal,
+    :subject,
+    :default,
+    :issued_by,
+    :supplied_by
+  ]
   @event [:name, :label, :terminal, :depends_on, :recorded_by, :schema_version, :source]
   @command [:name, :label, :by, :emits, :rejects, :creates, :scope, :source]
 

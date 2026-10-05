@@ -19,7 +19,7 @@ defmodule EhOsContract.Contract.Dsl do
 
   defmodule Field do
     @moduledoc false
-    defstruct [:name, :type, :label, :personal, :subject, :default, :issued_by] ++
+    defstruct [:name, :type, :label, :personal, :subject, :default, :issued_by, :supplied_by] ++
                 [optional: false, __spark_metadata__: nil]
   end
 
@@ -308,6 +308,13 @@ defmodule EhOsContract.Contract.Dsl do
       issued_by: [
         type: :atom,
         doc: "The domain external that gives this value, e.g. a number another system assigns."
+      ],
+      supplied_by: [
+        type: {:in, [:host]},
+        doc:
+          "Who gives this field's value instead of the caller: `:host`, through " <>
+            "`EhOsContract.Supplier`, for a value a decision depends on that a request could " <>
+            "otherwise forge. Only on a command's field, or a recorded event's (F10)."
       ]
     ]
   }

@@ -1,7 +1,7 @@
 defmodule EhOsContract.ContractFieldsTest do
   @moduledoc """
   v2 plan, E4: **F1–F6 of v2 §6** — the fields of every struct a contract declares —
-  and F7 from E8.
+  F7 from E8 and F10 from T1.
   Each refusal names the declaration's file and line, and has a control beside it
   that compiles.
   """
@@ -668,6 +668,77 @@ defmodule EhOsContract.ContractFieldsTest do
       assert message =~ "(identity_again.ex:12)"
       assert message =~ "F6: event :visit_closed declares :visit_id"
       assert message =~ "(identity_again.ex:16)"
+    end
+  end
+
+  describe "F10: supplied_by: :host only where a request would fill the field" do
+    @supplied "supplied_by: :host"
+
+    # Line 4 of the file is the first line of the body: the state's field is at line 8,
+    # the scope at 13, the command's field at 14, the decided event's at 18 and the
+    # recorded event's at 22.
+    defp supplied(state, scope, command, decided, recorded) do
+      """
+        aggregate :visit, "Wizyta" do
+          identity :visit_id
+
+          state do
+            field :notes, :integer, default: 0#{state}
+          end
+
+          command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed,
+            scope: :clinic_id do
+            field :clinic_id, :id#{scope}
+            field :p1_reported, :boolean#{command}
+          end
+
+          event :visit_closed, "Wizyta zamknięta", terminal: true do
+            field :p1_reported, :boolean#{decided}
+          end
+
+          event :patient_arrived, "Pacjent przyszedł", recorded_by: :reception do
+            field :arrived_at, :timestamp#{recorded}
+          end
+        end
+
+        process :visit, "Wizyta" do
+          correlate :visit_id
+        end
+      """
+    end
+
+    test "a state's field, a command's scope, and an event no actor records" do
+      on = ", " <> @supplied
+      message = refuse_contract("SuppliedWrong", supplied(on, on, "", on, ""))
+
+      assert message =~
+               "F10: aggregate :visit, state, field :notes is supplied_by: :host, and only a " <>
+                 "command's field or a recorded event's (recorded_by:) is one a request fills, " <>
+                 "which the host can fill instead (supplied_wrong.ex:8)"
+
+      assert message =~
+               "F10: command :close_visit, field :clinic_id is its scope, and is supplied_by: " <>
+                 ":host: the authorization decision reads the scope's value before the host " <>
+                 "supplies anything (supplied_wrong.ex:13)"
+
+      assert message =~
+               "F10: event :visit_closed, field :p1_reported is supplied_by: :host, and only " <>
+                 "a command's field or a recorded event's (recorded_by:) is one a request fills, " <>
+                 "which the host can fill instead (supplied_wrong.ex:18)"
+    end
+
+    test "control: a command's field and a recorded event's, kept in the model only there" do
+      on = ", " <> @supplied
+      model = compile_contract("SuppliedRight", supplied("", "", on, "", on))
+
+      field = fn fields, name -> Enum.find(fields, &(&1.name == name)) end
+      [command] = model.commands
+      decided = Enum.find(model.events, &(&1.name == :visit_closed))
+
+      assert field.(command.fields, :p1_reported).supplied_by == :host
+
+      refute Map.has_key?(field.(decided.fields, :p1_reported), :supplied_by),
+             "a field without supplied_by: has no key, so no contract written before T1 moves"
     end
   end
 end
