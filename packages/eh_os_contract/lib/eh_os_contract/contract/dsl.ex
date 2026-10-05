@@ -446,7 +446,9 @@ defmodule EhOsContract.Contract.Dsl do
       schema_version: [
         type: :pos_integer,
         default: 1,
-        doc: "The version of its fields, raised with an upcaster when history exists."
+        doc:
+          "The version of its fields, raised with an upcaster when history exists; written " <>
+            "into each row, and a row of a newer version than the code declares is not read."
       ],
       source: [type: :string, doc: "Where the event comes from in the material."]
     ]

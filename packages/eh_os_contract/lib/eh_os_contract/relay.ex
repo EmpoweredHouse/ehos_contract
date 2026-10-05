@@ -21,6 +21,9 @@ defmodule EhOsContract.Relay do
     raise is a defect and is a failure like a policy's: three, and the relay is
     `failing` at that position until someone decides. Skipping the event is that
     decision, and it means the event never leaves.
+  - **An event written by newer code waits** (plan W1): one whose fields are of a
+    newer version than this node declares holds the batch where it is, as an
+    unreachable transport does, until the node runs the newer code.
   - **With no bus configured, it waits.** The row is written at the first boot and
     its position holds, so once a bus is configured the relay publishes everything
     since, rather than starting over at the head.
@@ -70,6 +73,9 @@ defmodule EhOsContract.Relay do
   the SHA-256 of the name and the `idempotent_on:` values, so a second event with the
   same values — a fact recorded twice, or a log moved under new ids — has the key of
   the first. Without such fields, or with one of them `nil`, the key is the id.
+
+  It takes the payload as stored, so the relay holds each event to the version its
+  fields were written with before it builds the message (plan W1).
   """
   @spec message(map(), Event.t()) :: Bus.Message.t()
   def message(%{publication: publication}, %Event{} = event) do

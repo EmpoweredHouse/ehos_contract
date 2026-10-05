@@ -184,6 +184,17 @@ defmodule EhOsContract.Subscription.Runner do
 
         {:rest, @unavailable}
 
+      # Plan W1: newer code wrote the event; nothing moved and no attempt is counted,
+      # so it waits for this node to be upgraded rather than stopping.
+      {:waiting, position} ->
+        Logger.warning(
+          "subscription #{consumer.key}: the event at position #{position} was written by " <>
+            "newer code than this node runs (EhOsContract.NewerSchemaError); it tries again " <>
+            "in #{@unavailable} ms"
+        )
+
+        {:rest, @unavailable}
+
       :idle ->
         @poll
     end

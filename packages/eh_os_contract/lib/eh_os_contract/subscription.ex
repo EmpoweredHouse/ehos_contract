@@ -50,7 +50,7 @@ defmodule EhOsContract.Subscription do
 
   import Ecto.Query
 
-  alias EhOsContract.{Bus, Consumer, Implementations, ProcessManager, Relay, Store}
+  alias EhOsContract.{Bus, Consumer, Implementations, Model, ProcessManager, Relay, Store}
   alias EhOsContract.SubscriptionRecord
   alias EhOsContract.Subscription.Runner
 
@@ -64,12 +64,16 @@ defmodule EhOsContract.Subscription do
   @typedoc """
   What one step did. `{:unavailable, position}` is a relay's: the transport did not
   take the batch from `position` on, and nothing moved (`EhOsContract.Relay`).
+  `{:waiting, position}`: the event at `position` was written with a newer version of
+  its fields than this node declares (`EhOsContract.NewerSchemaError`, plan W1), so
+  nothing moved and no attempt is counted until the node runs the newer code.
   """
   @type step ::
           :idle
           | {:applied, pos_integer()}
           | {:failed, pos_integer()}
           | {:unavailable, pos_integer()}
+          | {:waiting, pos_integer()}
 
   @doc """
   Writes a row for every consumer in `consumers` that has none, and marks a read
@@ -163,6 +167,9 @@ defmodule EhOsContract.Subscription do
       {:ok, step} ->
         step
 
+      {:error, {:waiting, position}} ->
+        {:waiting, position}
+
       {:error, {:failed, position, exception}} ->
         failed!(repo, consumer, position, exception)
         {:failed, position}
@@ -184,6 +191,13 @@ defmodule EhOsContract.Subscription do
 
         {:error, _reason} ->
           {:unavailable, first.position}
+
+        {:waiting, position} when position == first.position ->
+          {:waiting, position}
+
+        # Those before the newer event go, one at a time, and the relay waits at it.
+        {:waiting, _position} ->
+          one_by_one(repo, consumer, row, events, 0)
 
         {:raised, exception} when length(events) == 1 ->
           repo.rollback({:failed, first.position, exception})
@@ -256,6 +270,8 @@ defmodule EhOsContract.Subscription do
         raise ArgumentError, "#{Consumer.label(consumer)} answered #{inspect(reason)}"
     end
   rescue
+    # Plan W1: newer code wrote it; waiting is not a failure, and counts no attempt.
+    _newer in EhOsContract.NewerSchemaError -> repo.rollback({:waiting, row.position})
     exception -> repo.rollback({:failed, row.position, exception})
   end
 
@@ -277,6 +293,12 @@ defmodule EhOsContract.Subscription do
       {:error, _reason} ->
         {:unavailable, event.position}
 
+      {:waiting, _position} when applied > 0 ->
+        {:applied, applied}
+
+      {:waiting, position} ->
+        {:waiting, position}
+
       {:raised, exception} when applied > 0 ->
         {:applied_then_failed, applied, event.position, exception}
 
@@ -289,8 +311,13 @@ defmodule EhOsContract.Subscription do
   # thrown value; an exit is an adapter breaking `c:EhOsContract.Bus.publish/2`'s
   # promise to return an error instead.
   defp relay(consumer, events) do
+    # Plan W1: a message carries the payload as stored, so an event written with
+    # fields newer than this code declares would leave with the old meaning.
+    model = Model.fetch(consumer.contract)
+    Enum.each(events, &Consumer.current!(model, &1))
     Bus.publish(Enum.map(events, &Relay.message(consumer, &1)))
   rescue
+    newer in EhOsContract.NewerSchemaError -> {:waiting, newer.position}
     exception -> {:raised, exception}
   catch
     :exit, _reason -> {:error, :exit}
@@ -354,6 +381,9 @@ defmodule EhOsContract.Subscription do
     case result do
       {:ok, step} ->
         step
+
+      {:error, {:waiting, position}} ->
+        {:waiting, position}
 
       {:error, {:failed, position, exception}} ->
         failed!(repo, consumer, position, exception)

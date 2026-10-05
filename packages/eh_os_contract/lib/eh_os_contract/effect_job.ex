@@ -30,6 +30,9 @@ defmodule EhOsContract.EffectJob do
 
   use Oban.Worker, queue: :events, max_attempts: 3
 
+  # Seconds a job waits for a node that runs the code which wrote its event (plan W1).
+  @newer_code_snooze 30
+
   alias EhOsContract.{Consumer, Event, Implementations}
 
   @doc "The job for `effect`'s key and the event `event_id`."
@@ -38,11 +41,14 @@ defmodule EhOsContract.EffectJob do
 
   @doc """
   Runs the effect on the event, read from the log: `:ok`, `{:error, reason}` to be
-  retried, or `{:cancel, reason}` when the wiring the job was enqueued for is gone —
+  retried, `{:snooze, seconds}` when the event was written by newer code than this node
+  runs (`EhOsContract.NewerSchemaError`), or `{:cancel, reason}` when the wiring the
+  job was enqueued for is gone —
   no module implements the effect, or it no longer takes the event's type.
   """
   @impl Oban.Worker
-  @spec perform(Oban.Job.t()) :: :ok | {:error, term()} | {:cancel, String.t()}
+  @spec perform(Oban.Job.t()) ::
+          :ok | {:error, term()} | {:snooze, pos_integer()} | {:cancel, String.t()}
   def perform(%Oban.Job{args: %{"effect" => key, "event_id" => event_id}}) do
     with %{kind: :effect, module: module} = effect when module != nil <-
            Implementations.consumer(key),
@@ -81,6 +87,11 @@ defmodule EhOsContract.EffectJob do
       try do
         fun.()
       rescue
+        # Plan W1: newer code wrote the event. Snoozed, which Oban does not count against
+        # `max_attempts`, so the job runs once a node with that code takes it.
+        _newer in EhOsContract.NewerSchemaError ->
+          {:snooze, @newer_code_snooze}
+
         exception ->
           failed(key, row, "raised #{inspect(exception.__struct__)}", __STACKTRACE__)
       catch
