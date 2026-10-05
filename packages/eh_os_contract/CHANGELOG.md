@@ -25,6 +25,25 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Added
+
+- **W3: a promise can be judged without a log.** `EhOsContract.Trace.trace/2` reads what a promise is judged on
+  from the contract — the stored types of its events, its window, and the item's identity for a promise made per
+  item inside a run — and `EhOsContract.Trace.judge/3` gives the verdicts for events handed to it, at the moment it
+  is given (`now:`, required) and with the outages it is given (`outages:`). It reads neither the log nor the
+  clock. `Trace.evaluate/3` is now the two over the log's rows. The split itself moves no verdict, and a log
+  written under one identity reports byte for byte as before; the one verdict W3 does move, on a log whose rows
+  predate a unit's identity growing, is under "Fixed" below.
+
+### Fixed — can move a verdict
+
+- **W3: a hit that does not name its item resolves none.** For a promise made per item, an `eventually` or
+  `or_else` whose payload lacks one of the identity's fields, or carries it as `nil`, used to be paired by that
+  `nil` with a `from` missing the same field, and close an item neither named. It now resolves no item, as the
+  promise's rule always said; a `from` like that still opens its item. Only a log whose rows predate a unit's
+  identity growing can hold such events: a run there that was satisfied this way is now violated. A log written
+  under one identity is judged as before.
+
 ### Changed — a host has to act
 
 - **A blank label no longer compiles.** A label is blank when it is empty or holds only Unicode whitespace and

@@ -75,7 +75,7 @@ defmodule EhOsContract.Trace do
 
   When the unit identity of `from`'s event is strictly finer than the process's
   correlation, the run holds more than one of the thing the promise is about, and
-  `evaluate/3` switches modes:
+  `trace/2` sets its `identity` and `judge/3` switches modes:
 
   - **One item per distinct value of `from`'s `identity`** inside the run, each with
     its own window opened by its own earliest `from` and judged by the same rules as
@@ -106,6 +106,14 @@ defmodule EhOsContract.Trace do
   them correctly and the only way to test them. Notes §9 also foresee a
   single-run view — for debugging, "what happened to invoice 4712".
 
+  ## A pure core, and the log around it
+
+  The rules above live in `judge/3`, which takes a `trace/0` and the events to judge
+  and reads neither the log nor the clock. `trace/2` reads the trace from the
+  contract; `evaluate/3` is the two of them over the log's rows and the recorded
+  outages. So a verdict can be asked of events that never reached a log — a
+  scenario's, a test's — and it is the same verdict the report would give.
+
   ## The runs
 
   A contract declares `promise` in its one `process` (v2 §13, plan E7c). The runs
@@ -133,25 +141,78 @@ defmodule EhOsContract.Trace do
           resolved_at: DateTime.t() | nil
         }
 
+  @typedoc """
+  What a promise is judged on, read from the contract once by `trace/2`: the stored
+  types of its three events, its window, and — for a promise made per item inside a
+  run — the payload fields that tell one item from another.
+
+  `identity` is `nil` for the ordinary promise, one of the thing per run. It belongs
+  to the trace and not to the call because it is a fact about the contract: a caller
+  that had to pass it could leave it out, and judge a per-item promise per run without
+  meaning to.
+  """
+  @type trace :: %{
+          from: String.t(),
+          eventually: String.t(),
+          or_else: String.t() | nil,
+          within: {pos_integer(), atom()} | nil,
+          identity: [String.t()] | nil
+        }
+
+  @typedoc """
+  One event a promise is judged on, with the run it belongs to. `payload` is read only
+  when the trace has an `identity`, to pair the event with its item, and may be left
+  out otherwise. It is the payload as the log stores it, with string keys. An
+  `eventually` or `or_else` whose payload does not carry every identity field, or
+  carries one as `nil`, resolves no item; a `from` like that still opens one, so that
+  an obligation is never dropped for want of a field.
+  """
+  @type occurrence :: %{
+          required(:instance_id) => String.t(),
+          required(:type) => String.t(),
+          required(:occurred_at) => DateTime.t(),
+          optional(:payload) => map()
+        }
+
   @doc """
   Verdicts for every run in which this promise's `from` occurred.
 
   `now:` allows the promise to be evaluated at a given moment — without it the
-  difference between `:pending` and `:violated` could not be tested.
+  difference between `:pending` and `:violated` could not be tested. `since:`,
+  `until:` and `instance:` narrow the events read from the log.
+
+  This is `trace/2`, the log's rows and the recorded outages, handed to `judge/3`.
   """
   @spec evaluate(module(), atom(), keyword()) :: [verdict()]
-  def evaluate(contract, name, opts \\ []),
-    do: contract |> Model.fetch() |> evaluate_promise(name, opts)
+  def evaluate(contract, name, opts \\ []) do
+    model = Model.fetch(contract)
+    trace = trace(model, name)
 
-  # A contract's `promise` (v2 §13), over the runs of the contract's one process as
-  # `eh_os_contract_event_runs` records them, so an event another contract decided
-  # counts in a run that includes it (D7). Its events are named by their stored types,
-  # `"<process>.<event>"`, the sibling's for an included one.
-  @spec evaluate_promise(map(), atom(), keyword()) :: [verdict()]
-  defp evaluate_promise(model, name, opts) do
-    promise =
-      (model.process && Enum.find(model.process.promises, &(&1.name == name))) ||
-        raise ArgumentError, "#{inspect(model.module)} does not declare promise #{inspect(name)}"
+    judge(trace, occurrences(model, trace, opts),
+      now: Keyword.get(opts, :now) || DateTime.utc_now(),
+      # Deliberately **not** bounded by `opts` — an outage is dated by when it was
+      # observed, and a report for July has to see an outage observed in July even when
+      # the window it asks about was opened by an event from June.
+      outages: promised_outages(model, promise!(model, name))
+    )
+  end
+
+  @doc """
+  The trace of a contract's `promise` (v2 §13): what `judge/3` needs from the
+  contract, and nothing from the log.
+
+  Its events are named by their stored types, `"<process>.<event>"` — the sibling's
+  for an event the contract includes (D7). Its `identity` is set when the unit of
+  `from`'s event is strictly finer than the process's correlation, which is when the
+  promise is made per item inside a run.
+
+  Raises `ArgumentError` when the contract declares no such promise, and for a domain,
+  which declares none.
+  """
+  @spec trace(module() | map(), atom()) :: trace()
+  def trace(contract, name) do
+    model = Model.fetch(contract)
+    promise = promise!(model, name)
 
     trace = %{
       from: stored_type!(model, promise.from),
@@ -160,20 +221,55 @@ defmodule EhOsContract.Trace do
       within: promise.within && {promise.within.amount, promise.within.unit}
     }
 
-    now = Keyword.get(opts, :now) || DateTime.utc_now()
-
-    # Deliberately **not** bounded by `opts` — an outage is dated by when it was
-    # observed, and a report for July has to see an outage observed in July even when
-    # the window it asks about was opened by an event from June.
-    outages = promised_outages(model, promise)
-    source = {:runs, Atom.to_string(model.process.name)}
     identity = identity_of(model, promise.from)
 
-    if finer?(identity, model.process.correlate) do
-      evaluate_quantified(source, trace, identity, opts, now, outages)
-    else
-      evaluate_per_run(source, trace, opts, now, outages)
+    Map.put(
+      trace,
+      :identity,
+      if(finer?(identity, model.process.correlate), do: Enum.map(identity, &to_string/1))
+    )
+  end
+
+  @doc """
+  Verdicts for every run in `occurrences` in which the trace's `from` occurred — the
+  rules of this module, over events given rather than read. Pure: it reads neither
+  the log nor the clock, so the same events judged at the same moment always give
+  the same verdicts.
+
+  - `now:` (required) — the moment of judgement, which tells `:pending` from
+    `:violated`.
+  - `outages:` — the moments a dependency of `eventually` or `or_else` was seen
+    unavailable; a window that closed empty with one inside it is `:suspended`.
+    Defaults to none.
+
+  Occurrences of types other than the trace's three are ignored. For a trace with an
+  `identity`, every occurrence needs its `payload`, keyed by strings as the log stores
+  it; one without a payload, or with an identity field under an atom key, raises
+  `ArgumentError` naming the field — read as missing, it would pair every such event
+  with every other and resolve items it is not about. An `eventually` or `or_else`
+  without every identity field is about no item, and is left out.
+  """
+  @spec judge(trace(), [occurrence()], keyword()) :: [verdict()]
+  def judge(trace, occurrences, opts) do
+    now = Keyword.fetch!(opts, :now)
+    outages = Keyword.get(opts, :outages, [])
+    types = types(trace)
+    occurrences = Enum.filter(occurrences, &(&1.type in types))
+
+    case trace.identity do
+      nil -> judge_per_run(trace, occurrences, now, outages)
+      identity -> judge_quantified(trace, occurrences, identity, now, outages)
     end
+  end
+
+  @spec promise!(map(), atom()) :: map()
+  defp promise!(model, name) do
+    # `Map.get/2`, not `.process`: a domain's model has no process to ask, and is refused
+    # by name like a contract that declares no such promise.
+    process = Map.get(model, :process)
+
+    (process && Enum.find(process.promises, &(&1.name == name))) ||
+      raise ArgumentError, "#{inspect(model.module)} does not declare promise #{inspect(name)}"
   end
 
   @spec stored_type!(map(), atom()) :: String.t()
@@ -217,12 +313,13 @@ defmodule EhOsContract.Trace do
     end
   end
 
-  @spec evaluate_per_run(source(), map(), keyword(), DateTime.t(), [DateTime.t()]) :: [verdict()]
-  defp evaluate_per_run(source, trace, opts, now, outages) do
-    from_type = to_string(trace.from)
+  @spec judge_per_run(trace(), [occurrence()], DateTime.t(), [DateTime.t()]) :: [verdict()]
+  defp judge_per_run(trace, occurrences, now, outages) do
+    from_type = trace.from
 
-    source
-    |> occurrences(trace, opts)
+    occurrences
+    |> Enum.group_by(& &1.instance_id)
+    |> Map.new(fn {instance, rows} -> {instance, by_type(rows)} end)
     |> Enum.flat_map(fn {instance_id, by_type} ->
       case Map.get(by_type, from_type) do
         # A run with no `from` is not evaluated — the assertion is conditional.
@@ -240,13 +337,13 @@ defmodule EhOsContract.Trace do
     MapSet.subset?(instance, identity) and not MapSet.equal?(instance, identity)
   end
 
-  @spec evaluate_quantified(source(), map(), [atom()], keyword(), DateTime.t(), [DateTime.t()]) ::
+  @spec judge_quantified(trace(), [occurrence()], [String.t()], DateTime.t(), [DateTime.t()]) ::
           [verdict()]
-  defp evaluate_quantified(source, trace, identity, opts, now, outages) do
-    from_type = to_string(trace.from)
+  defp judge_quantified(trace, occurrences, identity, now, outages) do
+    from_type = trace.from
 
-    source
-    |> item_occurrences(trace, identity, opts)
+    occurrences
+    |> by_item(trace, identity)
     |> Enum.flat_map(fn {instance_id, by_item} ->
       item_verdicts =
         for {_item_key, by_type} <- by_item,
@@ -255,8 +352,8 @@ defmodule EhOsContract.Trace do
           verdict(trace, instance_id, Enum.min(times, DateTime), by_type, now, outages)
         end
 
-      # An instance can appear here with no item at all: `item_occurrences/3` groups
-      # every row it fetched, including one whose only rows are an `eventually` or
+      # An instance can appear here with no item at all: `by_item/3` groups every
+      # occurrence it keeps, including a run whose only ones are an `eventually` or
       # `or_else` that happens to share a run but not a single `from`. Same rule as the
       # ordinary path — no `from`, nothing to judge.
       case item_verdicts do
@@ -344,7 +441,7 @@ defmodule EhOsContract.Trace do
   @spec verdict(map(), String.t(), DateTime.t(), map(), DateTime.t(), [DateTime.t()]) :: verdict()
   defp verdict(trace, instance_id, from_at, by_type, now, outages) do
     deadline_at = trace.within && EhOsContract.Duration.shift(from_at, trace.within)
-    hit = fn name -> name && first_at_or_after(by_type[to_string(name)], from_at) end
+    hit = fn type -> type && first_at_or_after(by_type[type], from_at) end
 
     eventually_at = hit.(trace.eventually)
     or_else_at = hit.(trace.or_else)
@@ -402,68 +499,92 @@ defmodule EhOsContract.Trace do
     |> Enum.min(DateTime, fn -> nil end)
   end
 
-  @spec occurrences(source(), map(), keyword()) :: %{
-          String.t() => %{String.t() => [DateTime.t()]}
-        }
-  defp occurrences(source, trace, opts) do
-    source
-    |> rows(types(trace), opts, :times)
-    |> repo().all()
-    |> Enum.group_by(fn {instance, _t, _at} -> instance end, fn {_i, type, at} -> {type, at} end)
-    |> Map.new(fn {instance, pairs} ->
-      {instance, Enum.group_by(pairs, &elem(&1, 0), &elem(&1, 1))}
-    end)
-  end
-
-  # Same query shape as `occurrences/3`, deliberately not shared with it: this one
-  # also selects `payload`, because pairing an occurrence to an item needs the values
-  # of `from`'s identity fields wherever they appear. Folding that column into the
-  # ordinary query would make every non-quantified evaluation — the overwhelming
-  # majority — fetch a column it never reads.
-  @spec item_occurrences(source(), map(), [atom()], keyword()) ::
+  # Each run's occurrences grouped by item, then by type. An item is a tuple of the
+  # trace's identity values in the occurrence's own payload, so an `eventually` or
+  # `or_else` is paired to the item it carries and to no other.
+  @spec by_item([occurrence()], trace(), [String.t()]) ::
           %{String.t() => %{tuple() => %{String.t() => [DateTime.t()]}}}
-  defp item_occurrences(source, trace, identity, opts) do
-    identity = Enum.map(identity, &to_string/1)
-
-    source
-    |> rows(types(trace), opts, :payloads)
-    |> repo().all()
-    |> Enum.group_by(fn {instance, _t, _at, _p} -> instance end)
+  defp by_item(occurrences, trace, identity) do
+    occurrences
+    |> Enum.group_by(& &1.instance_id)
     |> Map.new(fn {instance, rows} ->
       by_item =
         rows
-        |> Enum.group_by(
-          fn {_i, _t, _at, payload} -> item_key(payload, identity) end,
-          fn {_i, type, at, _p} -> {type, at} end
-        )
-        |> Map.new(fn {key, pairs} -> {key, Enum.group_by(pairs, &elem(&1, 0), &elem(&1, 1))} end)
+        |> Enum.map(&{item_key(&1, identity), &1})
+        # A hit that does not name its item resolves none: grouped under a key with
+        # `nil` in it, it would pair with a `from` missing the same field and close an
+        # item neither names. A `from` like that still opens its item, as it always has,
+        # so the obligation is judged rather than dropped.
+        |> Enum.reject(fn {key, row} -> row.type != trace.from and nil in Tuple.to_list(key) end)
+        |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+        |> Map.new(fn {key, rows} -> {key, by_type(rows)} end)
 
       {instance, by_item}
     end)
   end
 
+  # Occurrences' moments, by their type, in the order they were given.
+  @spec by_type([occurrence()]) :: %{String.t() => [DateTime.t()]}
+  defp by_type(occurrences), do: Enum.group_by(occurrences, & &1.type, & &1.occurred_at)
+
   # A tuple of raw values, not a joined string: two payload fields have no separator
   # to escape or collide on if they are never joined in the first place, which is a
   # cheaper way to avoid a separator colliding with a value than escaping one.
-  @spec item_key(map(), [String.t()]) :: tuple()
-  defp item_key(payload, identity),
-    do: identity |> Enum.map(&Map.get(payload, &1)) |> List.to_tuple()
+  #
+  # The error names the field, never a value: a payload may hold personal data.
+  @spec item_key(occurrence(), [String.t()]) :: tuple()
+  defp item_key(%{payload: payload}, identity) when is_map(payload) do
+    identity
+    |> Enum.map(fn field ->
+      if atom_key?(payload, field),
+        do:
+          raise(
+            ArgumentError,
+            "an occurrence's payload holds #{field} under an atom key; " <>
+              "give it as the log stores it, with string keys"
+          )
 
-  @spec types(map()) :: [String.t()]
-  defp types(trace) do
-    [trace.from, trace.eventually, trace.or_else]
-    |> Enum.reject(&is_nil/1)
-    |> Enum.map(&to_string/1)
+      Map.get(payload, field)
+    end)
+    |> List.to_tuple()
   end
 
-  # The rows a promise is judged on, each with the run it belongs to: `{instance_id,
-  # type, occurred_at}`, and the payload after them for `:payloads`. The runs are the
-  # rows of `eh_os_contract_event_runs` for the process, whichever contract decided
-  # the event.
-  @typep source :: {:runs, String.t()}
+  defp item_key(_occurrence, identity),
+    do:
+      raise(
+        ArgumentError,
+        "an occurrence of a promise made per item needs its payload, " <>
+          "to pair it with its item by #{Enum.join(identity, ", ")}"
+      )
 
-  @spec rows(source(), [String.t()], keyword(), :times | :payloads) :: Ecto.Query.t()
-  defp rows({:runs, process}, types, opts, shape) do
+  # No atom of that name exists, so no payload holds it as a key: a trace handed to
+  # `judge/3` may name a field this node never made an atom of, and
+  # `String.to_existing_atom/1` would raise on it instead of reading the string key.
+  defp atom_key?(payload, field) do
+    Map.has_key?(payload, String.to_existing_atom(field))
+  rescue
+    ArgumentError -> false
+  end
+
+  @spec types(trace()) :: [String.t()]
+  defp types(trace) do
+    Enum.reject([trace.from, trace.eventually, trace.or_else], &is_nil/1)
+  end
+
+  # The rows a promise is judged on, as `occurrence()`s: the rows of
+  # `eh_os_contract_event_runs` for the contract's one process, whichever contract
+  # decided the event, so an event another contract decided counts in a run that
+  # includes it (D7).
+  #
+  # `payload` is selected only for a trace with an `identity`, because pairing an
+  # occurrence to an item needs the values of `from`'s identity fields wherever they
+  # appear. Selecting it always would make every ordinary evaluation — the
+  # overwhelming majority — fetch a column it never reads.
+  @spec occurrences(map(), trace(), keyword()) :: [occurrence()]
+  defp occurrences(model, trace, opts) do
+    process = Atom.to_string(model.process.name)
+    types = types(trace)
+
     query =
       from(r in EventRun,
         as: :run,
@@ -475,14 +596,18 @@ defmodule EhOsContract.Trace do
       )
       |> bounded(opts)
       |> maybe_instance(Keyword.get(opts, :instance))
+      |> select([run: r, event: e], %{
+        instance_id: r.instance_id,
+        type: e.type,
+        occurred_at: e.occurred_at
+      })
 
-    case shape do
-      :times ->
-        select(query, [run: r, event: e], {r.instance_id, e.type, e.occurred_at})
+    query =
+      if trace.identity,
+        do: select_merge(query, [event: e], %{payload: e.payload}),
+        else: query
 
-      :payloads ->
-        select(query, [run: r, event: e], {r.instance_id, e.type, e.occurred_at, e.payload})
-    end
+    repo().all(query)
   end
 
   @spec bounded(Ecto.Query.t(), keyword()) :: Ecto.Query.t()

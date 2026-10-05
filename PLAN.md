@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 5 października, wieczór (DD0, N1, N2 w `main`; N3, W1, W2 w PR-ach; następny jest W3)
+## Handoff — stan na 5 października, wieczór (DD0, N1–N3, W1, W2 w `main`; W3 w PR-ze #145)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -41,19 +41,19 @@ komputer, kontrakt `Demands`) — „Dopisek 4 października (2)”.
 **Następna praca to program DD — „DDD sprawdzane przez kod”** (zatwierdzony przez użytkownika 5 października): 53
 etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem programu jest tabela „Postęp” w „Dopisek 5
 października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
-Fala 1: N1, N2 w `main` (#137, #138); N3, W1, W2 w otwartych PR-ach #139, #142, #143 (stos); następny jest W3
-(publiczne, czyste jądro `Trace`), potem W4, T1+T1s, X1, S4 w dowolnej kolejności.
+Fala 1: N1, N2, N3, W1, W2 w `main` (#137, #138, #139, #142, #143); W3 (publiczne, czyste jądro `Trace`) w PR-ze #145
+(na `main`); potem W4, T1+T1s, X1, S4 w dowolnej kolejności.
 
 ### Stan repozytorium
 
-- **`origin/main` = `f0e473d`** (merge #138, N2; przed nim #137 N1, #135 DD0, każdy z poprawką po przeglądzie
-  CodeRabbita i `.coderabbit.yaml` dla PR-ów na dowolną gałąź).
-- **Otwarte PR-y — stos, merge po kolei:** [#139](https://github.com/EmpoweredHouse/eh-os-contract/pull/139) N3
-  (`dsl/n3-timer-label`, na `main`) → [#142](https://github.com/EmpoweredHouse/eh-os-contract/pull/142) W1
-  (`engine/w1-schema-version`, na #139) → [#143](https://github.com/EmpoweredHouse/eh-os-contract/pull/143) W2
-  (`engine/w2-day-tags`, na #142). Po merge'u jednego baza następnego przechodzi na `main` (albo `gh pr edit <n>
-  --base main`); jeśli przyjdą poprawki do `main`, zmergować `main` w dół stosu — konflikt w CHANGELOG jest
-  prawdopodobny, bo W1 przeniósł wpisy DD do górnej sekcji „Unreleased”.
+- **`origin/main` = `3508cb6`** (merge #144, puste etykiety: N1/D1 odmawiają etykiety pustej albo z samych białych
+  znaków i znaków formatu Unicode, F2/D3 — takiej etykiety członka enuma; spoza programu, z recenzji #139 — „N3 — co
+  wyszło”; przed nim #143 W2 `6a236d5`, #142 W1 `3c7b29f`, #139 N3 `a568ce7` z poprawką etykiety timera TaxVision
+  `46b4e55`, #138 N2 `f0e473d`; wcześniej #137 N1 i #135 DD0 — każdy z poprawką po przeglądzie CodeRabbita,
+  `.coderabbit.yaml` dla PR-ów na dowolną gałąź).
+- **Otwarty PR:** [#145](https://github.com/EmpoweredHouse/eh-os-contract/pull/145) W3 (`engine/w3-trace-core`, na
+  `main`, z `main` wmergowanym). Stos N3 → W1 → W2 zmergowany po kolei; poza programem otwarte jeszcze #140
+  (`.coderabbit.yaml`, ten sam plik jest już w `main` — do zamknięcia).
 - Wcześniej `6ce4c30` (merge #126, ostatni PR #99). Przedtem `eb0c8a1` (merge #103: #98,
   budżet bajtów klucza — „#98 — co wyszło”). Przedtem `b6a96dd` —
   #101 (handoff po #96), `90a83f2` — #102 (EP1, z sesji `esdm-dsl-comparison`), `0b7bc84` — #100 (poprawki
@@ -65,7 +65,8 @@ Fala 1: N1, N2 w `main` (#137, #138); N3, W1, W2 w otwartych PR-ach #139, #142, 
 - **Gałęzie:** gałęzie tej pracy usunięte na GitHubie i lokalnie 3 października, za zgodą użytkownika (EB, EH, #71,
   #89, discovery, #65, #93, #95, #96, #100, a także przypadkowy `revert-95-engine/bounded-values` — revert z przycisku
   GitHuba, bez PR-a); `engine/issue-98-key-budget` (#103) — po merge'u, za zgodą użytkownika. Zostało 59 innych gałęzi na GitHubie, zmergowanych dawno — nieruszane z wyboru użytkownika.
-- **Worktree (5 października, wieczór):** `computer-ordering-process-f84437` — sesja DD (`engine/w2-day-tags`);
+- **Worktree (5 października, wieczór):** `w3-public-trace-core-c3ed23` — sesja W3 (`engine/w3-trace-core`);
+  `computer-ordering-process-f84437` — poprzednia sesja DD (`engine/w2-day-tags`);
   `plan-md-incomplete-actions-27a0e4` (trzyma `dsl/n2-subscribe` — tam powstały poprawki po przeglądach #135/#138),
   `esdm-dsl-comparison-d82750`, `ep4-ep5-user-questions-95855b` — innych sesji, nie ruszać.
 - **Bazy Postgresa są wspólne dla wszystkich worktree** (`eh_os_contract_host_dev`, `…_host_test`,
@@ -85,12 +86,13 @@ Fala 1: N1, N2 w `main` (#137, #138); N3, W1, W2 w otwartych PR-ach #139, #142, 
 
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
-  1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138). **Użytkownik:** merge #139 (N3), potem #142 (W1), potem #143
-     (W2); po każdym ☑ w tabeli robi asystent przy następnym etapie.
-  2. **Asystent:** W3 na nowej gałęzi od `engine/w2-day-tags` (tabela „Postęp” żyje na stosie); potem W4, T1+T1s, X1,
-     S4. Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
+  1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138), N3 (#139), W1 (#142), W2 (#143). **Użytkownik:** merge #145
+     (W3); po merge'u ☑ w tabeli robi asystent przy następnym etapie.
+  2. **Asystent:** W3 w PR-ze #145 (na `main`); potem W4,
+     T1+T1s, X1, S4, każdy na gałęzi od `main` albo od W3, jeśli #145 nie jest jeszcze zmergowany (tabela „Postęp” żyje
+     na gałęzi etapu). Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
-     V01 w miejscu przed T2a i P2h; potwierdzenie etykiet timerów sandboxa — „N3 — co wyszło”); po każdej fali „dalej czy
+     V01 w miejscu przed T2a i P2h; po każdej fali „dalej czy
      stop” i kiedy podbić przypięcie w aplikacji AppUnite (`~/Projects/ai/appunite_equipment`) i `ehos-ledger`.
 - **AppUnite — zapotrzebowanie (`Demands`) jest w `main`** (#128); dwa pytania z przeglądu i etapy `Computers`
   wobec cyklu życia czekają na użytkownika — „Dopisek 4 października (2)”, „Otwarte z przeglądu”.
@@ -192,6 +194,16 @@ Praca przerwana w pół — patch w scratchpadzie albo commit WIP na własnej ga
 
 ### Ostatnia pełna weryfikacja
 
+- **5 października, wieczór, `engine/w3-trace-core` @ `33eb982`** (druga poprawka po CodeRabbicie i jej przeglądzie):
+  `mix check` w `sandbox/` EXIT=0 — `check` 0 / 29 / 10 i 0 / 75 / 6; sandbox 194, silnik 1298, web 52, auth 286 + 1
+  property.
+- **5 października, wieczór, `engine/w3-trace-core` @ `6a030c2`** (W3 z wmergowanym `main` = `6a236d5` i pierwszą
+  poprawką po CodeRabbicie): `mix check` w `sandbox/` EXIT=0 — `check` 0 / 29 / 10 i 0 / 75 / 6; sandbox 194, silnik 1296, web 52,
+  auth 286 + 1 property.
+- **5 października, wieczór, `engine/w3-trace-core` @ `96253a2`** (kod W3 po przeglądzie): `mix check` w `sandbox/`
+  EXIT=0 — `check` sandboxa 0 / 29 / 10, silnika 0 / 75 / 6 (bez zmian); sandbox 194, silnik 1293 (+13,
+  `trace_test.exs`), web 52, auth 286 + 1 property. Web 52 było już na W2 — „51” niżej to pomyłka zapisu (W3 nie
+  dotyka pakietu web). CI #143 @ `4f79df3` — `check` success.
 - **5 października, wieczór, `engine/w2-day-tags` @ `5c3a619`** (kod W2; głowa `586eb07` dokłada tylko `PLAN.md`):
   `mix check` w `sandbox/` EXIT=0 — `check` sandboxa 0 / 29 / 10, silnika 0 / 75 / 6 (nowe ostrzeżenie:
   `event-without-consumer` dla `:day_closed` rigu); sandbox 194, silnik 1280, web 51, auth 286 + 1 property. CI:
@@ -503,10 +515,10 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | DD0 | 0 | program i postęp w `PLAN.md` | — | ☑ #135 |
 | N1 | 1 | `final:`, `target`, `identity` encji, definicja encji | DD0 | ☑ #137 |
 | N2 | 1 | `subscribe "<nazwa>"` | DD0 | ☑ #138 |
-| N3 | 1 | etykieta timera (EP6) | DD0 | ◐ `dsl/n3-timer-label`, PR #139 |
-| W1 | 1 | zapis `schema_version` | DD0 | ◐ `engine/w1-schema-version`, PR #142 (na #139) |
-| W2 | 1 | tagi dnia przy dopisie | DD0 | ◐ `engine/w2-day-tags`, PR #143 (na #142) |
-| W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ☐ |
+| N3 | 1 | etykieta timera (EP6) | DD0 | ☑ #139 |
+| W1 | 1 | zapis `schema_version` | DD0 | ☑ #142 |
+| W2 | 1 | tagi dnia przy dopisie | DD0 | ☑ #143 |
+| W3 | 1 | publiczne, czyste jądro `Trace` | DD0 | ◐ `engine/w3-trace-core`, PR #145 |
 | W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ☐ |
 | T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ☐ |
 | T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☐ |
@@ -1021,6 +1033,64 @@ będzie miała); odsunięcie W2 do B2 (historia sprzed B2 bez tagów).
   1 property.
 - **Dla aplikacji AppUnite i `ehos-ledger`:** ustawić `time_zone:` domeny **przed** podbiciem; strefa inna niż UTC
   wymaga `{:tz, "~> 0.28"}` i `config :elixir, :time_zone_database, Tz.TimeZoneDatabase`.
+
+### W3 — co wyszło (5 października)
+
+Gałąź `engine/w3-trace-core` (na W2). Refaktor bez zmiany zachowania: `EhOsContract.Trace.trace/2` czyta z kontraktu,
+na czym obietnica jest oceniana (typy trzech zdarzeń, okno, tożsamość pozycji dla obietnicy per pozycję), a
+`Trace.judge/3` daje werdykty dla podanych zdarzeń — czysta, nie czyta logu ani zegara (`now:` wymagane,
+`outages:` domyślnie puste). `evaluate/3` = zapytanie → `judge/3`. Samo rozdzielenie nie przesuwa żadnej wersji ani
+werdyktu, a log zapisany pod jedną tożsamością daje raport bajt w bajt ten sam; jedyny werdykt, który W3 przesuwa —
+na logu z wierszami sprzed rozszerzenia tożsamości jednostki (spełniony → `:violated`) — opisuje „CodeRabbit na
+#145” niżej i CHANGELOG („Fixed — can move a verdict”). Wpis w CHANGELOG („Added”). Czytelnik: S2 (scenariusze obietnic bez bazy).
+
+- **Rozstrzygnięcie asystenta (mechanika), odejście od projektu etapu:** tożsamość pozycji jest polem `trace`, nie
+  opcją `identity:` w `judge/3`. To fakt o kontrakcie; wołający, który musiałby ją podać, mógłby ją pominąć i ocenić
+  obietnicę per pozycję jak per przebieg. *Odrzucone:* opcja `identity:` jak w projekcie. Wystąpienie to mapa
+  (`instance_id`, `type`, `occurred_at`, `payload` tylko przy tożsamości) — *odrzucone:* krotki z zapytania (publiczny
+  kształt nieczytelny).
+- **Weryfikacja bajt w bajt:** raport (`--output`, cały log i okres) i 14 grafów overlay sandboxa (11 `--process`, 3
+  `--system`) z bazy dev identyczne przed i po (skrypt w scratchpadzie, stdout z logami pominięty). Dane dev nie
+  dochodzą do `from` żadnej obietnicy, więc dodatkowo jednorazowy test (nie w repo): stary moduł obok nowego, 400
+  losowych zdarzeń, 2 obietnice × 3 chwile × 4 zawężenia — werdykty równe; powtórzony po poprawkach z przeglądu.
+- **Przegląd** (`engine/w2-day-tags..engine/w3-trace-core`). Poprawność: 8 uwag — naprawione: payload z kluczami
+  atomami sklejał pozycje (`{nil, nil}`) i dawał `:satisfied` zamiast `:violated`, a brak payloadu — goły `KeyError`;
+  teraz `ArgumentError` z nazwą pola, nigdy wartością (`e771fb1`); domena podana `trace/2` — `ArgumentError` zamiast
+  `KeyError`, test kolejności werdyktów przechodził bez sortowania (nazwy runów w kolejności kluczy), zdanie typedocu
+  (`ae3a3ee`); `to_string/1` po atomach, podwójne grupowanie, drugi `select` (`96253a2`). Próba odwrotna każdej
+  poprawki: pada tylko jej test. Bez zmian: test „log i pamięć dają to samo” (`evaluate/3` *jest* `judge/3` nad
+  wierszami; różnicę kluczy zamyka odmowa); podwójne `Model.fetch`/`promise!` w `evaluate/3` (czyste wyszukanie w tym
+  samym modelu). Bezpieczeństwo i wydajność: nic od średniej wagi — payload dalej tylko przy tożsamości, wartości nie
+  wychodzą w werdykcie ani w błędzie, jedno zapytanie jak przed; filtr typów w `judge/3` na ścieżce logu nadmiarowy
+  (O(n), zostaje dla wołających spoza logu).
+- **Brama:** EXIT=0; `check` sandboxa 0 / 29 / 10, silnika 0 / 75 / 6; sandbox 194, silnik 1293, web 52, auth 286 +
+  1 property.
+- **CodeRabbit na #145** (po merge'u `ccea0cd`): dwie uwagi, obie naprawione. (1) Trafienie obietnicy per pozycję bez
+  pełnej tożsamości (brak pola albo `nil`) dostawało klucz z `nil` i składało spełnioną pozycję z `from`, któremu
+  brakowało tego samego pola — wbrew regule z moduledocu. Pierwsza poprawka (`6a030c2`) pomijała *każde* takie
+  wystąpienie; przegląd jej (dwa równolegle) złapał, że ginęło wtedy też `from`, czyli zobowiązanie (`:violated` → brak
+  werdyktu), także na wierszach logu sprzed rozszerzenia tożsamości jednostki. Ostatecznie (`33eb982`) pomijane jest
+  tylko trafienie, a `from` dalej otwiera pozycję. **Rozstrzygnięcie asystenta (mechanika):** *odrzucone* — pomijać
+  każde niepełne wystąpienie (sugestia CodeRabbita; gubi zobowiązania), odmowa `ArgumentError` przy niepełnym `from`
+  (wiersz logu sprzed zmiany tożsamości wywracałby raport), zostawić jak było (trafienie rozwiązywało pozycję, której
+  nie nazywa). Przesuwa werdykt tylko dla logu z wierszami sprzed rozszerzenia tożsamości (spełniony w ten sposób
+  przebieg → `:violated`) — linia w CHANGELOG „Fixed — can move a verdict”. Próby odwrotne: na kodzie sprzed poprawek
+  padają tylko dwa testy trafień, na `6a030c2` — także test `from`. Stary i nowy `evaluate/3` dalej równe na logu z
+  jedną tożsamością, raport i grafy bajt w bajt (nowy punkt odniesienia po wmergowaniu `46b4e55`, który zmienia
+  etykietę timera TaxVision). Przegląd bezpieczeństwa: nic od średniej wagi. (2) Nieaktualny wpis o `origin/main` w
+  Handoffie — poprawiony razem z ☑ W2. Baza #145 przestawiona na `main`, `main` wmergowany.
+- **Druga recenzja CodeRabbita na #145** (na `4393270`), jedna uwaga spoza diffu — naprawiona: `item_key/2` pytał, czy
+  payload trzyma pole tożsamości pod kluczem-atomem, przez `String.to_existing_atom/1`, a to rzuca na nazwie, z której
+  węzeł nigdy nie zrobił atomu — ślad podany do `judge/3` z zewnątrz wywracał wtedy osąd poprawnego payloadu z
+  kluczami-stringami. Nie ma atomu, więc payload nie może go trzymać jako klucza: sprawdzenie odpowiada wtedy `false`.
+  *Odrzucone (mechanika):* porównywać pole z nazwą każdego klucza (sugestia CodeRabbita; to samo, ale liniowo po
+  kluczach każdego wystąpienia). Test z polem, które nie jest atomem; próba odwrotna — bez `rescue` pada tylko on, z
+  „not an already existing atom”. Bez linii w CHANGELOG: `judge/3` jest nowe w tym samym, niewydanym PR-ze, a raport
+  tego nie dotykał — pola logu pochodzą ze skompilowanego kontraktu, więc są atomami (linię dodaną w `c889a33` zdjęła
+  trzecia recenzja). Handoff znowu nieaktualny po merge'u #144 — poprawiony, `main`
+  (`3508cb6`) wmergowany. Brama: EXIT=0; `check` 0 / 29 / 10 i 0 / 75 / 6; sandbox 194, silnik 1304, web 52, auth 286
+  + 1 property.
+- **Dla aplikacji AppUnite i `ehos-ledger`:** nic do zmiany.
 
 ## Dopisek 4 października (3) — pokrycie ESDM po EP1–EP5 i #99
 
