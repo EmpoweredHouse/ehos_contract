@@ -60,6 +60,66 @@ defmodule EhOsContract.ContractNamesTest do
     end
   end
 
+  describe "N1: a label says something" do
+    test "a blank label is refused on every kind of declaration that has one" do
+      message =
+        refuse_contract("BlankLabels", """
+          aggregate :visit, "" do
+            identity :visit_id
+            command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+            event :visit_closed, "   ", terminal: true do
+              field :note, :string, label: ""
+            end
+
+            lifecycle do
+              status :open, "Otwarta"
+              status :closed, "", final: true
+              initial :open, on: :visit_closed
+            end
+          end
+
+          process_manager :chase, "Pogoń", correlate: :visit_id do
+            starts_on :visit_closed, sets: :nudge
+            timer :nudge, " ", wait: {1, :day}
+            ends_on :visit_closed
+          end
+
+          process :visit, "Wizyta" do
+            correlate :visit_id
+          end
+        """)
+
+      assert message =~
+               "N1: aggregate :visit has a blank label; say what the business calls it " <>
+                 "(blank_labels.ex:4)"
+
+      assert message =~ "N1: event :visit_closed has a blank label"
+
+      assert message =~ "N1: field :note has a blank label"
+      assert message =~ "N1: status :closed has a blank label"
+      assert message =~ "N1: timer :nudge has a blank label"
+    end
+
+    test "control: an optional label left out passes, and so does one in Polish" do
+      assert %{version: _} =
+               compile_contract("LabelsGiven", """
+                 aggregate :visit, "Wizyta" do
+                   identity :visit_id
+                   command :close_visit, "Zamknięcie wizyty", by: :reception, emits: :visit_closed
+
+                   event :visit_closed, "Wizyta zamknięta", terminal: true do
+                     field :note, :string
+                     field :reason, :string, label: "Przyczyna zakończenia"
+                   end
+                 end
+
+                 process :visit, "Wizyta" do
+                   correlate :visit_id
+                 end
+               """)
+    end
+  end
+
   describe "N1: one name per namespace" do
     test "two units of one name, an aggregate and a dcb" do
       message =

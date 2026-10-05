@@ -114,7 +114,8 @@ defmodule EhOsContract.Domain.Rules do
     )
   end
 
-  defp rules, do: [&d1/2, &d2/2, &d3/2, &d4/2, &d5/2, &d6/2, &d7/2, &d8/2, &d9/2]
+  defp rules,
+    do: [&d1/2, &d1_labels/2, &d2/2, &d3/2, &d4/2, &d5/2, &d6/2, &d7/2, &d8/2, &d9/2]
 
   # --- D11: the name is one segment of a namespace --------------------------------
 
@@ -149,6 +150,8 @@ defmodule EhOsContract.Domain.Rules do
     {Entity, "entity"},
     {External, "external"}
   ]
+
+  defp d1_labels(entities, _domain), do: DslRules.blank_labels(entities, "D1")
 
   defp d1(entities, _domain) do
     by_kind =

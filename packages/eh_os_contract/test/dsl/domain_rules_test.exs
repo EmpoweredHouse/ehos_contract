@@ -34,6 +34,34 @@ defmodule EhOsContract.DomainRulesTest do
     assert Module.concat(__MODULE__, name) in compiled
   end
 
+  describe "D1: a label says something" do
+    test "a blank label is refused, also on a nested declaration" do
+      message =
+        refused("BlankLabels", """
+          context :settlement, " ", subdomain: :supporting
+          actor :reception, :human, ""
+
+          entity :service, "Usługa", context: :settlement, identity: :service_id do
+            field :name, :string, label: ""
+          end
+        """)
+
+      assert message =~
+               "D1: context :settlement has a blank label; say what the business calls it " <>
+                 "(blank_labels.ex:4)"
+
+      assert message =~ "D1: actor :reception has a blank label"
+      assert message =~ "D1: field :name has a blank label"
+    end
+
+    test "control: a label in Polish passes" do
+      compiles("LabelsGiven", """
+        context :settlement, "Rozliczenia", subdomain: :supporting
+        actor :reception, :human, "Recepcja"
+      """)
+    end
+  end
+
   describe "D1: names are snake_case, and unique per kind" do
     test "two contexts of one name are refused at the second" do
       message =

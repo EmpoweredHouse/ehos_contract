@@ -110,6 +110,56 @@ defmodule EhOsContract.DslRules do
     |> elem(0)
   end
 
+  @doc """
+  Every declaration in `entities`, at any depth, whose label is given and blank —
+  empty, or only whitespace — refused under `code`. The schema of a label is a
+  string, which `""` is, and a blank label leaves a page, a graph's node or a
+  report's sentence with nothing saying what the business calls the declaration.
+
+  Every struct with a `label` is asked, so a declaration added to either DSL is
+  covered without being listed here. An optional label left out is `nil`, and passes.
+  """
+  @spec blank_labels([struct()], String.t()) :: [violation()]
+  def blank_labels(entities, code) do
+    for %{label: label} = declaration <- labelled(entities),
+        is_binary(label) and String.trim(label) == "",
+        uniq: true do
+      {"#{code}: #{kind(declaration)} #{inspect(Map.get(declaration, :name))} has a blank " <>
+         "label; say what the business calls it", declaration}
+    end
+  end
+
+  defp labelled(list) when is_list(list), do: Enum.flat_map(list, &labelled/1)
+
+  defp labelled(%_{} = struct) do
+    own = if Map.has_key?(struct, :label), do: [struct], else: []
+
+    nested =
+      struct
+      |> Map.drop([:__struct__, :__spark_metadata__])
+      |> Map.values()
+      |> Enum.filter(&is_list/1)
+      |> Enum.flat_map(&labelled/1)
+
+    own ++ nested
+  end
+
+  defp labelled(_other), do: []
+
+  # What a refusal calls a declaration: its struct's name in words, where that is
+  # not the word the DSL writes.
+  defp kind(%{__struct__: struct} = declaration) do
+    case {struct |> Module.split() |> List.last(), Map.get(declaration, :kind)} do
+      {"Unit", :aggregate} -> "aggregate"
+      {"Unit", :dcb} -> "dcb"
+      {"ProcessDeclaration", _} -> "process"
+      {"ProcessStage", _} -> "stage"
+      {"ServiceFunction", _} -> "function"
+      {"ValueInvariant", _} -> "invariant"
+      {name, _} -> name |> Macro.underscore() |> String.replace("_", " ")
+    end
+  end
+
   defp anno(%_{} = declaration), do: Spark.Dsl.Entity.anno(declaration)
   defp anno(anno), do: anno
 

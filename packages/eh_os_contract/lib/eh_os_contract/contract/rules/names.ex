@@ -48,7 +48,14 @@ defmodule EhOsContract.Contract.Rules.Names do
   @doc false
   @spec check(map()) :: [DslRules.violation()]
   def check(declarations) do
-    snake_case(declarations) ++ unique(declarations) ++ callbacks(declarations)
+    snake_case(declarations) ++
+      unique(declarations) ++ callbacks(declarations) ++ labels(declarations)
+  end
+
+  # --- N1: a label says something ----------------------------------------------------
+
+  defp labels(d) do
+    d |> Map.delete(:module) |> Map.values() |> List.flatten() |> DslRules.blank_labels("N1")
   end
 
   # --- N1: snake_case ---------------------------------------------------------------

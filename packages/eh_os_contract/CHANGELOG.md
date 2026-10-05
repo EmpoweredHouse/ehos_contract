@@ -59,9 +59,14 @@ and from E6 the second DSL ran beside it. The entries below each name their stag
 
 ### Changed — a host has to act
 
+- **A blank label no longer compiles.** A label that is given and empty, or only whitespace, is refused by N1 in
+  a contract and by D1 in a domain, on every declaration that has one, a field's included: `event :visit_closed,
+  ""` compiled until now and left a page, a graph's node and a report's sentence with nothing saying what the
+  business calls it. An optional label left out still passes. No version moves: a contract that compiles is
+  unchanged.
 - **N3: a timer has a label.** `timer :documentation_due, wait: {24, :hour}, …` no longer compiles; write
   `timer :documentation_due, "Termin dokumentacji", wait: {24, :hour}, …`. The label names what the timer is for,
-  not how long it waits, which `wait:` or `at:` says, and a blank one is refused (P4). A process manager's page
+  not how long it waits, which `wait:` or `at:` says, and a blank one is refused (N1). A process manager's page
   prints both, the callback's `@doc` and the graph's timer node carry the label, and so do the conformance report's
   and the dashboard's sentences about a timer's step, which named the timer before. **Moves the version** of every
   contract with a timer.
