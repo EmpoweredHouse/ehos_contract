@@ -243,21 +243,34 @@ defmodule EhOsContract.TraceTest do
       end
     end
 
-    test "an occurrence missing an identity field is about no item", %{trace: trace} do
-      # A `from` and a hit that both lack `item_no` would share the key {"r", nil} and
-      # make up a satisfied item between them; item 1 is the one actually owed.
+    test "a hit missing an identity field resolves no item", %{trace: trace} do
+      # Grouped under {"r", nil}, the inspection would close the submission that lacks
+      # the same field, and make up a satisfied item that neither names.
       no_item = %{"request_id" => "r"}
 
       occurrences = [
-        item("r", :item_submitted, 1, @from),
         at("r", :item_submitted, @from, no_item),
         at("r", :item_inspected, @inside, no_item)
       ]
 
       assert [%{verdict: :violated}] = Trace.judge(trace, occurrences, now: @later)
+    end
 
-      assert Trace.judge(trace, Enum.drop(occurrences, 1), now: @later) == [],
-             "with only incomplete occurrences no item is opened, so nothing is judged"
+    test "a hit carrying an identity field as nil resolves no item either", %{trace: trace} do
+      occurrences = [
+        item("r", :item_submitted, nil, @from),
+        item("r", :item_inspected, nil, @inside)
+      ]
+
+      assert [%{verdict: :violated}] = Trace.judge(trace, occurrences, now: @later)
+    end
+
+    test "a from missing an identity field still opens its item", %{trace: trace} do
+      # Dropping it would make an owed promise vanish from the report instead of being
+      # judged — the opposite of the conservative direction.
+      occurrences = [at("r", :item_submitted, @from, %{"request_id" => "r"})]
+
+      assert [%{verdict: :violated}] = Trace.judge(trace, occurrences, now: @later)
     end
 
     test "a hit resolves only the item its payload names", %{trace: trace} do

@@ -34,6 +34,15 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   clock. `Trace.evaluate/3` is now the two over the log's rows, and moves no verdict: the report is byte for byte
   the one before.
 
+### Fixed — can move a verdict
+
+- **W3: a hit that does not name its item resolves none.** For a promise made per item, an `eventually` or
+  `or_else` whose payload lacks one of the identity's fields, or carries it as `nil`, used to be paired by that
+  `nil` with a `from` missing the same field, and close an item neither named. It now resolves no item, as the
+  promise's rule always said; a `from` like that still opens its item. Only a log whose rows predate a unit's
+  identity growing can hold such events: a run there that was satisfied this way is now violated. A log written
+  under one identity is judged as before.
+
 ### Changed — a host has to act
 
 - **W2: a required date or timestamp is tagged with its day when appended, in the domain's zone.** Every required,

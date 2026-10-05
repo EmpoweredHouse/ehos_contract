@@ -162,9 +162,10 @@ defmodule EhOsContract.Trace do
   @typedoc """
   One event a promise is judged on, with the run it belongs to. `payload` is read only
   when the trace has an `identity`, to pair the event with its item, and may be left
-  out otherwise. It is the payload as the log stores it, with string keys: an event
-  whose payload does not carry every identity field, or carries one as `nil`, is about
-  no item — it neither opens one nor resolves one.
+  out otherwise. It is the payload as the log stores it, with string keys. An
+  `eventually` or `or_else` whose payload does not carry every identity field, or
+  carries one as `nil`, resolves no item; a `from` like that still opens one, so that
+  an obligation is never dropped for want of a field.
   """
   @type occurrence :: %{
           required(:instance_id) => String.t(),
@@ -245,7 +246,8 @@ defmodule EhOsContract.Trace do
   `identity`, every occurrence needs its `payload`, keyed by strings as the log stores
   it; one without a payload, or with an identity field under an atom key, raises
   `ArgumentError` naming the field — read as missing, it would pair every such event
-  with every other and resolve items it is not about.
+  with every other and resolve items it is not about. An `eventually` or `or_else`
+  without every identity field is about no item, and is left out.
   """
   @spec judge(trace(), [occurrence()], keyword()) :: [verdict()]
   def judge(trace, occurrences, opts) do
@@ -341,7 +343,7 @@ defmodule EhOsContract.Trace do
     from_type = trace.from
 
     occurrences
-    |> by_item(identity)
+    |> by_item(trace, identity)
     |> Enum.flat_map(fn {instance_id, by_item} ->
       item_verdicts =
         for {_item_key, by_type} <- by_item,
@@ -350,8 +352,8 @@ defmodule EhOsContract.Trace do
           verdict(trace, instance_id, Enum.min(times, DateTime), by_type, now, outages)
         end
 
-      # An instance can appear here with no item at all: `by_item/2` groups every
-      # occurrence it is given, including a run whose only ones are an `eventually` or
+      # An instance can appear here with no item at all: `by_item/3` groups every
+      # occurrence it keeps, including a run whose only ones are an `eventually` or
       # `or_else` that happens to share a run but not a single `from`. Same rule as the
       # ordinary path — no `from`, nothing to judge.
       case item_verdicts do
@@ -500,19 +502,21 @@ defmodule EhOsContract.Trace do
   # Each run's occurrences grouped by item, then by type. An item is a tuple of the
   # trace's identity values in the occurrence's own payload, so an `eventually` or
   # `or_else` is paired to the item it carries and to no other.
-  @spec by_item([occurrence()], [String.t()]) ::
+  @spec by_item([occurrence()], trace(), [String.t()]) ::
           %{String.t() => %{tuple() => %{String.t() => [DateTime.t()]}}}
-  defp by_item(occurrences, identity) do
+  defp by_item(occurrences, trace, identity) do
     occurrences
     |> Enum.group_by(& &1.instance_id)
     |> Map.new(fn {instance, rows} ->
       by_item =
         rows
-        |> Enum.group_by(&item_key(&1, identity))
-        # An occurrence that does not carry every identity field is about no item:
-        # grouped under a key with `nil` in it, a `from` and a hit both missing the
-        # same field would pair with each other and resolve an item neither names.
-        |> Map.delete(:unresolved)
+        |> Enum.map(&{item_key(&1, identity), &1})
+        # A hit that does not name its item resolves none: grouped under a key with
+        # `nil` in it, it would pair with a `from` missing the same field and close an
+        # item neither names. A `from` like that still opens its item, as it always has,
+        # so the obligation is judged rather than dropped.
+        |> Enum.reject(fn {key, row} -> row.type != trace.from and nil in Tuple.to_list(key) end)
+        |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
         |> Map.new(fn {key, rows} -> {key, by_type(rows)} end)
 
       {instance, by_item}
@@ -528,22 +532,21 @@ defmodule EhOsContract.Trace do
   # cheaper way to avoid a separator colliding with a value than escaping one.
   #
   # The error names the field, never a value: a payload may hold personal data.
-  @spec item_key(occurrence(), [String.t()]) :: tuple() | :unresolved
+  @spec item_key(occurrence(), [String.t()]) :: tuple()
   defp item_key(%{payload: payload}, identity) when is_map(payload) do
-    values =
-      Enum.map(identity, fn field ->
-        if Map.has_key?(payload, String.to_existing_atom(field)),
-          do:
-            raise(
-              ArgumentError,
-              "an occurrence's payload holds #{field} under an atom key; " <>
-                "give it as the log stores it, with string keys"
-            )
+    identity
+    |> Enum.map(fn field ->
+      if Map.has_key?(payload, String.to_existing_atom(field)),
+        do:
+          raise(
+            ArgumentError,
+            "an occurrence's payload holds #{field} under an atom key; " <>
+              "give it as the log stores it, with string keys"
+          )
 
-        Map.get(payload, field)
-      end)
-
-    if nil in values, do: :unresolved, else: List.to_tuple(values)
+      Map.get(payload, field)
+    end)
+    |> List.to_tuple()
   end
 
   defp item_key(_occurrence, identity),
