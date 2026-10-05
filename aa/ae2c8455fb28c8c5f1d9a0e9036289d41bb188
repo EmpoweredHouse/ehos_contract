@@ -1,0 +1,5 @@
+W3 review, range engine/w2-day-tags..aaae2c8 (stacked on #143).
+Correctness (code-review high): 8 findings. Fixed: atom-keyed or missing payload on a per-item trace silently merged items / bare KeyError -> ArgumentError naming the field (e771fb1, reverse check: only its two tests fail); domain given to trace/2 -> ArgumentError (ae3a3ee, reverse: only its test); order test passing without sort (ae3a3ee, reverse: only it fails); typedoc overclaim softened; to_string leftovers, duplicated grouping, second select (96253a2). No change: test comparing log vs in-memory paths (evaluate is judge over rows); double Model.fetch/promise! lookup (pure, same model).
+Security+performance: nothing medium or above; payload still only for identity traces, no values in verdicts or errors, one query as before; redundant type filter in judge on log path kept (O(n)).
+Behaviour: sandbox report + 14 overlay graphs byte-identical before/after; old vs new evaluate equal on 400 random events x 24 option sets (temporary test, not committed), rerun after fixes.
+Gate at 96253a2: EXIT=0; check 0/29/10, 0/75/6; sandbox 194, engine 1293, web 52, auth 286+1 property. aaae2c8 adds PLAN.md only.
