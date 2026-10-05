@@ -124,6 +124,7 @@ defmodule EhOsContract.ContractFieldsTest do
                 field :none, {:enum, []}
                 field :twice, {:list, {:enum, [:card, card: "Karta"]}}
                 field :number, 42
+                field :blank, {:enum, [:card, cash: " "]}
           """)
         )
 
@@ -132,6 +133,9 @@ defmodule EhOsContract.ContractFieldsTest do
 
       assert message =~
                "F2: command :close_visit, field :number: 42 is not a type (bad_types.ex:10)"
+
+      assert message =~
+               "F2: command :close_visit, field :blank: an enum member's label is blank: :cash"
     end
 
     test "control: built-in types, lists, labelled enums and domain values compile" do

@@ -536,7 +536,7 @@ defmodule EhOsContract.Trace do
   defp item_key(%{payload: payload}, identity) when is_map(payload) do
     identity
     |> Enum.map(fn field ->
-      if Map.has_key?(payload, String.to_existing_atom(field)),
+      if atom_key?(payload, field),
         do:
           raise(
             ArgumentError,
@@ -556,6 +556,15 @@ defmodule EhOsContract.Trace do
         "an occurrence of a promise made per item needs its payload, " <>
           "to pair it with its item by #{Enum.join(identity, ", ")}"
       )
+
+  # No atom of that name exists, so no payload holds it as a key: a trace handed to
+  # `judge/3` may name a field this node never made an atom of, and
+  # `String.to_existing_atom/1` would raise on it instead of reading the string key.
+  defp atom_key?(payload, field) do
+    Map.has_key?(payload, String.to_existing_atom(field))
+  rescue
+    ArgumentError -> false
+  end
 
   @spec types(trace()) :: [String.t()]
   defp types(trace) do

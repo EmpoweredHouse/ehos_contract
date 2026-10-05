@@ -662,6 +662,12 @@ where it helps; every violation is reported as a diagnostic before the single ra
 - *Names.* N1: snake_case; unique per namespace — units; commands, events, timers and consumed aliases
   together; invariants per unit; stages; promises. N2: no reserved words, no Kernel clash at the callback's
   arity.
+
+  > *Added 5 October 2026, after the review of #139.* **N1**, and **D1** in the domain, also refuse a label
+  > that is given and blank, empty or only whitespace, on every declaration that has one, a field's included.
+  > L1 could not: a label's schema is a string, and `""` is one. #139 refused it for a timer alone, under P4;
+  > the rule is one for every label, so it moved here. F2 and D3 refuse an enum member's blank label. A struct
+  > written as data, in a scenario's rows or an invariant's examples, is not a declaration and is not asked.
 - *Fields.* F1: unique in a struct, none starting with `__`. F2: well-formed types; an enum is a non-empty
   set with no member repeated (`:open` beside `"open"` counts). F3: `default:` only in `state`. F4: fields
   used as identity, correlation, `match` or tags are neither `optional:` nor `personal:`. F5: `personal: f`

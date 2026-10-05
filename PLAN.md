@@ -47,13 +47,16 @@ T1+T1s, X1, S4 w dowolnej kolejności.
 
 ### Stan repozytorium
 
-- **`origin/main` = `6a236d5`** (merge #143, W2; przed nim #142 W1 `3c7b29f`, #139 N3 `a568ce7` z poprawką etykiety
-  timera TaxVision `46b4e55`, #138 N2 `f0e473d`; wcześniej #137 N1 i #135 DD0 — każdy z poprawką po przeglądzie
-  CodeRabbita, `.coderabbit.yaml` dla PR-ów na dowolną gałąź).
+- **`origin/main` = `3508cb6`** (merge #144, puste etykiety: N1/D1 odmawiają etykiety pustej albo z samych białych
+  znaków i znaków formatu Unicode, F2/D3 — takiej etykiety członka enuma; spoza programu, z recenzji #139 — „N3 — co
+  wyszło”; przed nim #143 W2 `6a236d5`, #142 W1 `3c7b29f`, #139 N3 `a568ce7` z poprawką etykiety timera TaxVision
+  `46b4e55`, #138 N2 `f0e473d`; wcześniej #137 N1 i #135 DD0 — każdy z poprawką po przeglądzie CodeRabbita,
+  `.coderabbit.yaml` dla PR-ów na dowolną gałąź).
 - **Otwarte PR-y — stos, merge po kolei:** [#145](https://github.com/EmpoweredHouse/eh-os-contract/pull/145) W3
   (`engine/w3-trace-core`, na `main`, z `main` wmergowanym) → [#146](https://github.com/EmpoweredHouse/eh-os-contract/pull/146)
-  W4 (`engine/w4-decision`, na #145). CI obu stoi na billingu GitHub Actions (job nie startuje). Stos N3 → W1 → W2 zmergowany po kolei; otwarte poza programem: #144 (puste
-  etykiety, innej sesji).
+  W4 (`engine/w4-decision`, na #145, z #145 wmergowanym). CI obu stoi na billingu GitHub Actions (job nie startuje).
+  Stos N3 → W1 → W2 zmergowany po kolei; poza programem otwarte jeszcze #140
+  (`.coderabbit.yaml`, ten sam plik jest już w `main` — do zamknięcia).
 - Wcześniej `6ce4c30` (merge #126, ostatni PR #99). Przedtem `eb0c8a1` (merge #103: #98,
   budżet bajtów klucza — „#98 — co wyszło”). Przedtem `b6a96dd` —
   #101 (handoff po #96), `90a83f2` — #102 (EP1, z sesji `esdm-dsl-comparison`), `0b7bc84` — #100 (poprawki
@@ -942,6 +945,17 @@ z deklaracji: „1 day after it is set”, „at `review_at`”), `@doc` callbac
 - **Brama:** EXIT=0; `check` sandboxa 0 / 29 / 10, silnika 0 / 74 / 6; sandbox 194, silnik 1264, web 51, auth 286 +
   1 property.
 - **Dla aplikacji AppUnite i `ehos-ledger`:** każdy `timer :x, wait:/at: …` → `timer :x, "<cel>", wait:/at: …`.
+- **Pusta etykieta (recenzja CodeRabbita na #139, potem gałąź `dsl/blank-labels`, na N3).** Schemat etykiety to
+  string, a `""` nim jest: `timer :later, "", …` się kompilował. #139 odmówił tego tylko timerowi, pod P4; ta sama
+  dziura była w każdej etykiecie obu DSL-i. Teraz **N1** (kontrakt) i **D1** (domena) odmawiają etykiety podanej i
+  pustej — także białych znaków Unicode i znaków zerowej szerokości — na każdej deklaracji, która ją ma, pole
+  włącznie; **F2/D3** odmawiają pustej etykiety członka enuma. Jedno przejście po strukturach DSL-i
+  (`DslRules.blank_labels/2`), nie po danych: struktura w `answers` scenariusza czy w `violated_by:` niezmiennika
+  nie jest deklaracją. Manifest EHOS-a zostaje przy własnym sprawdzeniu, dla modelu podanego jako mapa.
+  *Odrzucone (mechanika):* zostawić odmowę tylko timerowi pod P4 (dziura jest ta sama w każdej etykiecie); nowy kod
+  `N3`/`D12` (koliduje z nazwą etapu N3, a etykieta to nazwa w języku biznesu, więc należy do grupy nazw); ręczna
+  lista deklaracji z etykietą (deklaracja dodana później by umknęła); przejście po wszystkich strukturach (odmówiłoby
+  danym testowym i wpisałoby ich wartość do komunikatu, wbrew v2 §17).
 - **Fala 1 po N3:** N1–N3 zrobione; zostają W1–W4, T1, T1s, X1, S4 w dowolnej kolejności.
 
 ### W1 — co wyszło (5 października)
@@ -1031,8 +1045,10 @@ będzie miała); odsunięcie W2 do B2 (historia sprzed B2 bez tagów).
 Gałąź `engine/w3-trace-core` (na W2). Refaktor bez zmiany zachowania: `EhOsContract.Trace.trace/2` czyta z kontraktu,
 na czym obietnica jest oceniana (typy trzech zdarzeń, okno, tożsamość pozycji dla obietnicy per pozycję), a
 `Trace.judge/3` daje werdykty dla podanych zdarzeń — czysta, nie czyta logu ani zegara (`now:` wymagane,
-`outages:` domyślnie puste). `evaluate/3` = zapytanie → `judge/3`. Żadna wersja ani werdykt się nie przesuwa; wpis w
-CHANGELOG („Added”). Czytelnik: S2 (scenariusze obietnic bez bazy).
+`outages:` domyślnie puste). `evaluate/3` = zapytanie → `judge/3`. Samo rozdzielenie nie przesuwa żadnej wersji ani
+werdyktu, a log zapisany pod jedną tożsamością daje raport bajt w bajt ten sam; jedyny werdykt, który W3 przesuwa —
+na logu z wierszami sprzed rozszerzenia tożsamości jednostki (spełniony → `:violated`) — opisuje „CodeRabbit na
+#145” niżej i CHANGELOG („Fixed — can move a verdict”). Wpis w CHANGELOG („Added”). Czytelnik: S2 (scenariusze obietnic bez bazy).
 
 - **Rozstrzygnięcie asystenta (mechanika), odejście od projektu etapu:** tożsamość pozycji jest polem `trace`, nie
   opcją `identity:` w `judge/3`. To fakt o kontrakcie; wołający, który musiałby ją podać, mógłby ją pominąć i ocenić
@@ -1069,6 +1085,17 @@ CHANGELOG („Added”). Czytelnik: S2 (scenariusze obietnic bez bazy).
   jedną tożsamością, raport i grafy bajt w bajt (nowy punkt odniesienia po wmergowaniu `46b4e55`, który zmienia
   etykietę timera TaxVision). Przegląd bezpieczeństwa: nic od średniej wagi. (2) Nieaktualny wpis o `origin/main` w
   Handoffie — poprawiony razem z ☑ W2. Baza #145 przestawiona na `main`, `main` wmergowany.
+- **Druga recenzja CodeRabbita na #145** (na `4393270`), jedna uwaga spoza diffu — naprawiona: `item_key/2` pytał, czy
+  payload trzyma pole tożsamości pod kluczem-atomem, przez `String.to_existing_atom/1`, a to rzuca na nazwie, z której
+  węzeł nigdy nie zrobił atomu — ślad podany do `judge/3` z zewnątrz wywracał wtedy osąd poprawnego payloadu z
+  kluczami-stringami. Nie ma atomu, więc payload nie może go trzymać jako klucza: sprawdzenie odpowiada wtedy `false`.
+  *Odrzucone (mechanika):* porównywać pole z nazwą każdego klucza (sugestia CodeRabbita; to samo, ale liniowo po
+  kluczach każdego wystąpienia). Test z polem, które nie jest atomem; próba odwrotna — bez `rescue` pada tylko on, z
+  „not an already existing atom”. Bez linii w CHANGELOG: `judge/3` jest nowe w tym samym, niewydanym PR-ze, a raport
+  tego nie dotykał — pola logu pochodzą ze skompilowanego kontraktu, więc są atomami (linię dodaną w `c889a33` zdjęła
+  trzecia recenzja). Handoff znowu nieaktualny po merge'u #144 — poprawiony, `main`
+  (`3508cb6`) wmergowany. Brama: EXIT=0; `check` 0 / 29 / 10 i 0 / 75 / 6; sandbox 194, silnik 1304, web 52, auth 286
+  + 1 property.
 - **Dla aplikacji AppUnite i `ehos-ledger`:** nic do zmiany.
 
 ### W4 — co wyszło (5 października)
