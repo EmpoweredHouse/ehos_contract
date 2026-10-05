@@ -674,7 +674,7 @@ defmodule EhOsContract.Check.Completeness do
   defp labelled(_other), do: []
 
   # The library's own (plan EL2, rule 3 of the prose review): an external's
-  # `direction:` and how the model uses it. A value `issued_by:` a system, and an actor
+  # `direction:` and how the model uses it. A field or an entity `issued_by:` a system, and an actor
   # `backed_by:` one, bring what it says into this application, so a system this
   # application only sends to (`:outbound`) can do neither. A call says nothing: an
   # effect calls to send, and to fetch what flows in.
@@ -694,7 +694,8 @@ defmodule EhOsContract.Check.Completeness do
     # Plan N1: an entity's identity is injected, so its issuer is the entity's option.
     issuers =
       for(field <- domain_fields ++ contract_fields, do: {"field", field.name, field}) ++
-        for entity <- declared.entities, do: {"identity", entity.identity, entity}
+        for entity <- declared.entities,
+            do: {"entity #{inspect(entity.name)}, identity", entity.identity, entity}
 
     issued =
       for {what, name, at} <- issuers,

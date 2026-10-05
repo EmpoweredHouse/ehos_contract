@@ -67,8 +67,8 @@ defmodule EhOsContract.CheckDirectionsTest do
 
     assert [
              {"actor :bank_feed is backed_by: :ksef" <> _, {"clinic.ex", 7}},
-             {"field :invoice_no is issued_by: :ksef" <> _, _command},
-             {"identity :number is issued_by: :ksef" <> _, {"clinic.ex", 13}}
+             {"entity :invoice, identity :number is issued_by: :ksef" <> _, {"clinic.ex", 13}},
+             {"field :invoice_no is issued_by: :ksef" <> _, _command}
            ] = Enum.sort(found)
   end
 end

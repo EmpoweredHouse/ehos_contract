@@ -206,10 +206,12 @@ defmodule EhOsContract.Domain.Build do
       default: nil
     }
 
+    # `plain/1` has already left out an `issued_by` that is `nil`; matched here too, so
+    # a field without an issuer never carries the key, whatever `plain/1` does.
     field =
-      case Map.fetch(entity, :issued_by) do
-        {:ok, issuer} -> Map.put(field, :issued_by, issuer)
-        :error -> field
+      case Map.get(entity, :issued_by) do
+        nil -> field
+        issuer -> Map.put(field, :issued_by, issuer)
       end
 
     entity |> Map.delete(:issued_by) |> Map.update!(:fields, &[field | &1])
