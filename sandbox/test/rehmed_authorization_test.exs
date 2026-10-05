@@ -74,11 +74,11 @@ defmodule Rehmed.AuthorizationTest do
       "rehmed.cancel_visit" => @visit,
       "rehmed.record_no_show" => @visit,
       "rehmed.code_diagnosis" => Map.take(@close, [:visit_id, :patient_id, :icd10, :icd9]),
-      "rehmed.close_visit_clinically" => Map.put(@close, :p1_reported, true),
+      "rehmed.close_visit_clinically" => @close,
       "rehmed.hand_over_visit" => @visit,
       "rehmed.add_service_line" => %{visit_id: "visit-anna", service_id: "usg"},
       "rehmed.record_payment" => %{visit_id: "visit-anna", method: "card", amount: 20_000},
-      "rehmed.close_settlement" => %{visit_id: "visit-anna", total: 20_000},
+      "rehmed.close_settlement" => @visit,
       "rehmed.book_correction" => %{visit_id: "visit-anna", delta: -1_000},
       "rehmed.mark_settled_with_payer" => Map.put(@payer_period, :visit_id, "visit-anna"),
       "rehmed.exclude_visit_from_invoice" =>
@@ -132,7 +132,7 @@ defmodule Rehmed.AuthorizationTest do
   end
 
   test "fields that do not fit are refused first to a credential without the capability" do
-    body = %{visit_id: "visit-anna", total: "a lot"}
+    body = %{visit_id: "visit-anna", payer_id: 7}
 
     stranger = credential("u-stranger", [])
     refused = command(stranger, "rehmed.close_settlement", body)
@@ -150,9 +150,40 @@ defmodule Rehmed.AuthorizationTest do
     invalid = command(reception, "rehmed.close_settlement", body)
 
     assert {invalid.status, Jason.decode!(invalid.resp_body)} ==
-             {422, %{"invalid" => %{"total" => "type"}}}
+             {422, %{"invalid" => %{"payer_id" => "type"}}}
 
     assert decisions("u-reception") == [["rehmed.close_settlement", "allowed", nil]]
+  end
+
+  test "what the host supplies is refused from the caller, and given by the host" do
+    # Plan T1s: whether the service is reported to P1 decides whether the codes are
+    # required, so a specialist who could send `false` could close without them.
+    specialist = credential("u-specialist", ["rehmed.close_visit_clinically"])
+
+    sent =
+      command(specialist, "rehmed.close_visit_clinically", Map.put(@close, :p1_reported, false))
+
+    assert {sent.status, Jason.decode!(sent.resp_body)} ==
+             {422, %{"invalid" => %{"p1_reported" => "supplied"}}}
+
+    # The control: without it, the host's answer for visit-anna is what was decided.
+    closed = command(specialist, "rehmed.close_visit_clinically", @close)
+    assert closed.status == 200
+
+    assert [%{"p1_reported" => true}] =
+             Repo.all(
+               from(e in Event,
+                 where: e.type == "visit_documentation.visit_closed_clinically",
+                 select: e.payload
+               )
+             )
+
+    # A visit the host does not know is the host's to answer, not the caller's fault.
+    unknown =
+      command(specialist, "rehmed.close_visit_clinically", %{@close | visit_id: "visit-zofia"})
+
+    assert {unknown.status, Jason.decode!(unknown.resp_body)} ==
+             {503, %{"error" => "not_supplied"}}
   end
 
   test "what only the application's own code does is not a door, whatever the credential names" do

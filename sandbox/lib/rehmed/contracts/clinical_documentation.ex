@@ -81,7 +81,9 @@ defmodule Rehmed.Contracts.ClinicalDocumentation do
       field :icd10, :string, personal: :patient_id, optional: true
       field :icd9, :string, personal: :patient_id, optional: true
       field :practitioner_number, :id
-      field :p1_reported, :boolean
+      # The service's P1 flag (`AGG-15`), not the specialist's to say: the host gives it
+      # (plan T1s, `Rehmed.Supplier`).
+      field :p1_reported, :boolean, supplied_by: :host
 
       constraint :codes_before_clinical_close,
                  "Wizyta z usługą raportowaną do P1 zamyka się klinicznie dopiero z kodami ICD-10 i ICD-9",

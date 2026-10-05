@@ -126,7 +126,9 @@ defmodule Rehmed.Contracts.Settlement do
         :payer_visit_names_its_period
       ],
       source: "C-30, aktor A-02" do
-      field :total, :money
+      # What the visit's priced services come to, not reception's to say: the host gives
+      # it (plan T1s, `Rehmed.Supplier`).
+      field :total, :money, supplied_by: :host
       field :payer_id, :id, optional: true
       field :period_id, :id, optional: true
 
