@@ -1,0 +1,1 @@
+Merge of origin/main (5be6358: #145 W3 with 7a3bc49, #147 CI) into W4, no conflicts; then PLAN.md: W3 marked merged, W4 as PR #146 on main. W4 code untouched; its review (note on 3ab6917) stands. Gate at 680b637: EXIT=0; check 0/29/10, 0/75/6; sandbox 194, engine 1318, web 52, auth 286+1 property.
