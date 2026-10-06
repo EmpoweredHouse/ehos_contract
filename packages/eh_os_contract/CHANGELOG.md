@@ -75,9 +75,13 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 - **Every contract names its `id:`, and an event's type is `"<id>.<event>"`** (plan DD, stage ID3, #173). A contract
   without `id:` no longer compiles (D11). The type stored with every event changes from `"<process>.<event>"` —
-  `"computer.issued"` — to `"<id>.<event>"` — `"appunite_equipment.computers.issued"`. **A host clears its event log
-  before upgrading:** events stored under the old types are not read, and no tool converts them (the user's decision;
-  rewriting stored types and reading old types as aliases were rejected). Every contract's version moves, so every
+  `"computer.issued"` — to `"<id>.<event>"` — `"appunite_equipment.computers.issued"`. **A host resets the engine's
+  schema before upgrading** (`EhOsContract.Migrations.down/up`, or a fresh database), not only the events table:
+  subscriptions, the relay, process managers, runs and the commands' idempotency rows all point into the old log.
+  Events stored under the old types are not read, and nothing reports them: an aggregate whose stream holds one
+  raises, but a boundary, a subscription, a read model and the report skip them silently — a boundary that allows
+  one booking per seat would accept a second for a seat booked before the upgrade. No tool converts them (the
+  user's decision; rewriting stored types and reading old types as aliases were rejected). Every contract's version moves, so every
   deployment counts as changed, and graphs and reports name events by the new types. Process names stay unique in
   the application: they key their runs.
 - **A policy or a read model taking an event of another context declares its `delivery`** (plan DD, stage X1;

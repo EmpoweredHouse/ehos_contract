@@ -52,8 +52,9 @@ identity; `issued_by: :catalogue` names the external that gives it, when one doe
 
 A contract belongs to one context of one domain, and holds one process. It names itself, `id: "lending.loans"` on its
 `use`: the domain's `name:`, then dotted snake_case segments, unique in the application. The id types every event the
-contract records — `"lending.loans.loan_opened"` — so renaming the module or the process changes nothing stored,
-and renaming the id makes a new contract as far as the log is concerned.
+contract records — `"lending.loans.loan_opened"`. Renaming the id, or moving an event to a contract with another id,
+changes the type of every event it covers, and the log's old rows are no longer read as those events; the module's
+name and the process's name are stored too, in each row and in each run, so neither is free to rename either.
 
 ```elixir
 defmodule Lending.Contracts.Loans do
@@ -334,7 +335,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `X5` | L3 | `consumes` naming what is not a compiled contract, a contract of another domain, or an event the sibling does not declare |
 | `X6` | L3 | a sibling event's field that a `correlate` (on an include or a handled event) or a boundary's `match` relies on, missing there, of another type (an `:id` where no local event types it), optional or personal |
 | `X10` | L3 | a policy or a read model taking an event of a sibling contract of another context without declaring `delivery` |
-| `X7` | L3 | two processes of the system with one name, and so one event type; two contracts with one `id:` |
+| `X7` | L3 | two processes of the system with one name, which keys their runs; two contracts with one `id:`, which types their events |
 | `X8` | L3 | a declaration with two implementations |
 | `X9` | L3 | a scenario value or a rule example not fitting its domain type; a sibling event's scenario data with unknown fields, missing required ones (in `given` or the trigger) or ill-typed values |
 | `I1` | L4 | `use` with an unknown kind, no declaration or several, or naming one that does not exist, is of another kind, or is a value without invariants; a module binding a second declaration |

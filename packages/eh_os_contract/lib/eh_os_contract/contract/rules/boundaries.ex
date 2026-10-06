@@ -237,9 +237,7 @@ defmodule EhOsContract.Contract.Rules.Boundaries do
   @doc false
   # Plan DD, ID1: D11 of the contract's `id:` (`Rules.contract_id/1`), which stands
   # beside the declarations rather than among them.
-  @spec contract_id(%{value: String.t(), at: term()} | nil) :: [{String.t(), term()}]
-  def contract_id(nil), do: []
-
+  @spec contract_id(%{value: String.t() | nil, at: term()}) :: [{String.t(), term()}]
   # Plan DD, ID3 (#173): the id labels every event the contract records, so there is no
   # contract without one.
   def contract_id(%{value: nil, at: at}) do

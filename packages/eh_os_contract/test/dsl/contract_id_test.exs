@@ -2,9 +2,9 @@ defmodule EhOsContract.ContractIdTest do
   @moduledoc """
   Plan DD, ID1: **a contract's `id:`**, declared on its `use` and checked — its shape by
   **D11** (L2), its namespace by D11 against the domain's `name:` (L3), and its
-  uniqueness by **X7**. It stays out of the version: naming a contract changes nothing
-  it decides or records — until ID3, which makes it required and the prefix of every event type.
-  Each refusal stands at the `use` line, with a control beside it.
+  uniqueness by **X7**. Since ID3 it is required and types every event the contract records,
+  so a contract without one is refused and renaming one moves the version. Each refusal
+  stands at the `use` line, with a control beside it.
   """
 
   use EhOsContract.DslCase, async: false

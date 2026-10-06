@@ -101,10 +101,9 @@ defmodule EhOsContract.Contract.Build do
     |> with_id(Map.get(persisted, :id))
   end
 
-  # Plan DD, ID1: the contract's `id:`, kept only where it names one, and outside the
-  # version and the declarations' digests: naming a contract changes nothing it decides
-  # or records. The exported model carries it, so the export's document digest moves.
-  defp with_id(model, nil), do: model
+  # Plan DD, ID1: the contract's `id:`. Since ID3 it is required (D11 refuses a contract
+  # without one before this runs) and types every event, so it reaches the version
+  # through the events' digests.
   defp with_id(model, id), do: Map.put(model, :id, id)
 
   defp of(entities, struct), do: for(%{__struct__: ^struct} = e <- entities, do: e)
@@ -220,7 +219,7 @@ defmodule EhOsContract.Contract.Build do
     |> plain()
     |> Map.merge(%{
       unit: unit.name,
-      type: prefix && "#{prefix}.#{event.name}",
+      type: "#{prefix}.#{event.name}",
       stage: stage,
       fields: identity_fields(unit) ++ plain(event.fields)
     })
