@@ -1,0 +1,1 @@
+Documentation only (CLAUDE.md, CONTRIBUTING.md, .claude/skills/stage-issue, .github/ISSUE_TEMPLATE/stage.md): nothing in mix check reads these files (grep of packages/*/test, sandbox/test, lib, mix.exs). Reviews of step 3 skipped per pre-pr-review; lychee offline on the changed Markdown: 0 errors.
