@@ -10,8 +10,9 @@ defmodule EhOsContract.Graph.Contract do
   in a group of the unit's own.
 
   `overlay: true` lays the log over the steps, as the graph of steps did (plan
-  E7c-2): on each event the occurrences and the runs it happened in, on each step
-  the runs that took it out of the process's runs, and what waits or fails there.
+  E7c-2): on each event how often it occurred, on each step how often it was taken,
+  and what waits or fails there. Occurrences, not runs, since plan DD, P1a (#183): a
+  step is the contract's, whether or not it has a process.
   The counts sit on the edge that is the step's own — the emit, or the consumer's
   command — since an event may reach one consumer that issues two commands.
   `since:` and `until:` bound the log, as in the report. Actors, read models,
@@ -23,7 +24,7 @@ defmodule EhOsContract.Graph.Contract do
 
   import Ecto.Query
 
-  alias EhOsContract.{Event, EventRun, Model, Paths}
+  alias EhOsContract.{Event, Model, Paths}
   alias EhOsContract.Graph.Mermaid
 
   @doc "The full graph of `contract` as data: `EhOsContract.Graph.Mermaid.graph()`."
@@ -157,7 +158,7 @@ defmodule EhOsContract.Graph.Contract do
   defp label(_step, false), do: nil
 
   defp label(step, true) do
-    taken = if step.runs, do: "#{step.runs}/#{step.of_runs} runs", else: "runs unknown"
+    taken = if step.taken, do: "#{step.taken} taken", else: "taken unknown"
     waiting = Enum.sum(Map.values(step.in_flight))
     f = step.failing
     failing? = f.commands > 0 or f.effects > 0 or f.subscription != nil
@@ -305,32 +306,31 @@ defmodule EhOsContract.Graph.Contract do
 
   # --- the log -------------------------------------------------------------------------
 
-  # Occurrences and runs of each event in the contract's process.
-  defp event_counts(%{process: nil}, _opts), do: %{}
-
+  # Occurrences of each event the contract records, and of each its process includes:
+  # counted in the log, whatever run, if any, they fall in (plan DD, P1a, #183).
   defp event_counts(model, opts) do
-    names =
-      Enum.map(model.events, & &1.name) ++ Enum.map(model.process.includes, & &1.event)
+    includes = (model.process && model.process.includes) || []
+    names = Enum.map(model.events, & &1.name) ++ Enum.map(includes, & &1.event)
 
+    # A sibling this node cannot load declares nothing here, and is left out.
     by_type =
-      Map.new(names, fn name ->
-        {_contract, e} = Model.declaring(model, name)
-        {e.type, name}
-      end)
+      for name <- names,
+          {_contract, e} <- [Model.declaring(model, name)],
+          into: %{},
+          do: {e.type, name}
 
     types = Map.keys(by_type)
 
-    from(r in EventRun,
-      join: e in Event,
+    from(e in Event,
       as: :event,
-      on: e.position == r.position,
-      where: r.process == ^Atom.to_string(model.process.name) and e.type in ^types,
+      where: e.type in ^types,
       group_by: e.type,
-      select: {e.type, count(e.id), count(r.instance_id, :distinct)}
+      # `position`, not `id`: the `(type, position)` index answers it alone.
+      select: {e.type, count(e.position)}
     )
     |> EhOsContract.Graph.bounded(opts)
     |> repo().all()
-    |> Map.new(fn {type, count, runs} -> {{:event, Map.fetch!(by_type, type)}, {count, runs}} end)
+    |> Map.new(fn {type, count} -> {{:event, Map.fetch!(by_type, type)}, count} end)
   end
 
   defp repo, do: Application.fetch_env!(:eh_os_contract, :repo)

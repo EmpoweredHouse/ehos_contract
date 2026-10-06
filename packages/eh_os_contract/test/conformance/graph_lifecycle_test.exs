@@ -101,7 +101,7 @@ defmodule EhOsContract.GraphLifecycleTest do
 
       draw = fn since ->
         Mix.Tasks.EhOsContract.Graph.run(
-          ~w(--contract LifecycleRig.Visits --lifecycle visit --overlay --output) ++
+          ~w(--contract lifecycle_rig.visits --lifecycle visit --overlay --output) ++
             [path, "--since", since]
         )
 
@@ -120,7 +120,7 @@ defmodule EhOsContract.GraphLifecycleTest do
       path = Path.join(dir, "lifecycle.mmd")
 
       Mix.Tasks.EhOsContract.Graph.run(
-        ~w(--contract LifecycleRig.Visits --lifecycle visit --output) ++ [path]
+        ~w(--contract lifecycle_rig.visits --lifecycle visit --output) ++ [path]
       )
 
       assert File.read!(path) =~ ~s'start -->|"Visit booked"| status_booked'
@@ -128,10 +128,10 @@ defmodule EhOsContract.GraphLifecycleTest do
 
     test "refuses an aggregate without one, a lifecycle without its contract, and both pictures" do
       assert_raise Mix.Error,
-                   ~r/LifecycleRig\.Visits has no aggregate nonesuch with a lifecycle\. With one: visit/,
+                   ~r/lifecycle_rig\.visits has no aggregate nonesuch with a lifecycle\. With one: visit/,
                    fn ->
                      Mix.Tasks.EhOsContract.Graph.run(
-                       ~w(--contract LifecycleRig.Visits --lifecycle nonesuch)
+                       ~w(--contract lifecycle_rig.visits --lifecycle nonesuch)
                      )
                    end
 
@@ -141,17 +141,17 @@ defmodule EhOsContract.GraphLifecycleTest do
 
       assert_raise Mix.Error, ~r/--since applies to --overlay/, fn ->
         Mix.Tasks.EhOsContract.Graph.run(
-          ~w(--contract LifecycleRig.Visits --lifecycle visit --since 2026-01-01T00:00:00)
+          ~w(--contract lifecycle_rig.visits --lifecycle visit --since 2026-01-01T00:00:00)
         )
       end
 
-      assert_raise Mix.Error, ~r/BoundaryRig\.Waitlist declares no lifecycle/, fn ->
-        Mix.Tasks.EhOsContract.Graph.run(~w(--contract BoundaryRig.Waitlist --lifecycle entry))
+      assert_raise Mix.Error, ~r/boundary_rig\.waitlist declares no lifecycle/, fn ->
+        Mix.Tasks.EhOsContract.Graph.run(~w(--contract boundary_rig.waitlist --lifecycle entry))
       end
 
       assert_raise Mix.Error, ~r/--unit and --lifecycle draw different pictures/, fn ->
         Mix.Tasks.EhOsContract.Graph.run(
-          ~w(--contract LifecycleRig.Visits --unit visit --lifecycle visit)
+          ~w(--contract lifecycle_rig.visits --unit visit --lifecycle visit)
         )
       end
     end

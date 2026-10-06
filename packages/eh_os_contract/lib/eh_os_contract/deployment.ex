@@ -266,7 +266,7 @@ defmodule EhOsContract.Deployment do
     in_log = versions_in_log(contract, opts)
 
     %{
-      contract: contract,
+      contract: Model.fetch(contract).id,
       deployed: %{
         contract_version: Model.version(contract),
         wiring_version: current && current.wiring_version,

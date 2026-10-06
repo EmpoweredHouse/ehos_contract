@@ -139,6 +139,15 @@ defmodule EhOsContract.Registry do
     :ok
   end
 
+  @doc """
+  The registered contract whose `id:` is `id`, or `nil`: what a caller outside the
+  code names a contract by (plan DD, P1a, #183). The whole id, never a prefix, and
+  never a module's name.
+  """
+  @spec contract(String.t()) :: module() | nil
+  def contract(id) when is_binary(id),
+    do: Enum.find(contracts(), &(EhOsContract.Model.fetch(&1).id == id))
+
   @doc "The cached scan, loading it on first use."
   @spec graph() :: %{contracts: [module()], domains: [module()]}
   def graph do

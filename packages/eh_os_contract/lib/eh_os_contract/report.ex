@@ -29,6 +29,7 @@ defmodule EhOsContract.Report do
     [
       header(report),
       deployment(report.deployment, report.wiring),
+      steps(report.activity, report.paths),
       Enum.map(report.processes, &process/1),
       Enum.map(Map.get(report, :lifecycles, []), &lifecycle/1),
       scenarios(report.scenarios),
@@ -99,7 +100,11 @@ defmodule EhOsContract.Report do
         _not_recorded -> []
       end
 
-    ["CONTRACT", "  Version #{deployment.deployed.contract_version}, #{since}."] ++
+    # Plan DD, P1a (#183): named by its id, so a report of several contracts tells them apart.
+    [
+      "CONTRACT: #{deployment.contract}",
+      "  Version #{deployment.deployed.contract_version}, #{since}."
+    ] ++
       wired ++ change ++ earlier ++ [""]
   end
 
@@ -151,9 +156,14 @@ defmodule EhOsContract.Report do
       ["  Runs in this period: #{p.runs}."] ++
       declarations(p.declarations) ++
       duration(p.duration) ++
-      paths(p) ++
       assertions(p.promises) ++
       [""]
+  end
+
+  # Plan DD, P1a (#183): the contract's steps, whether or not it has a process.
+  @spec steps(map(), map()) :: [String.t()]
+  defp steps(activity, p) do
+    ["STEPS", "  " <> Sentence.activity(activity)] ++ paths(activity, p) ++ [""]
   end
 
   # Confirmed declarations only. The 25-day deadline will not appear here until
@@ -161,22 +171,29 @@ defmodule EhOsContract.Report do
   @spec declarations([map()]) :: [String.t()]
   defp declarations(declared), do: for(d <- declared, do: "  " <> Sentence.declaration(d))
 
-  @spec paths(map()) :: [String.t()]
-  defp paths(%{runs: 0}), do: ["  " <> Sentence.no_runs()]
-
   # What waits has a heading of its own, never the list of what nobody did, and
   # "carried out" is said only when nothing waits either — a branch is several steps,
-  # and only its head waits in a queue.
-  defp paths(p) do
-    untraversed =
-      case {p.untraversed, p.in_flight} do
-        {[], []} ->
-          ["  " <> Sentence.all_steps_carried_out()]
+  # and only its head waits in a queue. With no event recorded nothing is judged
+  # untraversed, and what waits and what fails is still said.
+  @spec paths(map(), map()) :: [String.t()]
+  defp paths(_activity, %{steps: []}), do: ["  " <> Sentence.no_steps()]
 
-        {[], _waiting} ->
+  defp paths(activity, p) do
+    untraversed =
+      case {activity.events, p.untraversed, p.in_flight, p.failing} do
+        {0, _, [], []} ->
+          ["  " <> Sentence.no_activity()]
+
+        {0, _, _waiting, _failing} ->
           []
 
-        {steps, _waiting} ->
+        {_, [], [], _} ->
+          ["  " <> Sentence.all_steps_carried_out()]
+
+        {_, [], _waiting, _} ->
+          []
+
+        {_, steps, _waiting, _} ->
           ["  Agreed steps that were never carried out:"] ++
             for s <- steps, do: "    · " <> Sentence.step(s)
       end

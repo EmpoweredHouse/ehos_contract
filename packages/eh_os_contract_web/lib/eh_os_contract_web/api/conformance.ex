@@ -2,7 +2,7 @@ defmodule EhOsContract.Web.Api.Conformance do
   @moduledoc """
   The conformance report, as data, for one contract.
 
-  `GET <mount>/conformance?contract=My.Contract&since=…&until=…`
+  `GET <mount>/conformance?contract=<contract id>&since=…&until=…`
 
   The projection is `EhOsContract.Conformance.as_data/2` and lives in the engine, not here:
   the shape a consumer compares version to version is part of what the engine
@@ -64,8 +64,11 @@ defmodule EhOsContract.Web.Api.Conformance do
     end
   end
 
+  defp contract(name) when not is_binary(name),
+    do: {:error, "contract= takes one contract id"}
+
   defp contract(name) do
-    case Enum.find(EhOsContract.Registry.contracts(), &(inspect(&1) == name)) do
+    case EhOsContract.Registry.contract(name) do
       nil -> {:error, "unknown contract #{name}"}
       contract -> {:ok, contract}
     end
@@ -73,6 +76,7 @@ defmodule EhOsContract.Web.Api.Conformance do
 
   @spec at(String.t() | nil, String.t()) :: {:ok, DateTime.t() | nil} | {:error, String.t()}
   defp at(nil, _which), do: {:ok, nil}
+  defp at(value, which) when not is_binary(value), do: {:error, "#{which} takes one timestamp"}
 
   defp at(value, which) do
     case DateTime.from_iso8601(value) do

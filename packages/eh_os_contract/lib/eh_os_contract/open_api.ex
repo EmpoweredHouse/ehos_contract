@@ -41,12 +41,13 @@ defmodule EhOsContract.OpenAPI do
   @doc "Every registered contract, with its contract version and OpenAPI digest."
   @spec index() :: [map()]
   def index do
-    for contract <- EhOsContract.Registry.contracts() do
+    for contract <- EhOsContract.Registry.contracts(), model = Model.fetch(contract) do
       document = document(contract)
 
       %{
-        "contract" => inspect(contract),
-        "version" => Model.fetch(contract).version,
+        "contract" => model.id,
+        "module" => inspect(contract),
+        "version" => model.version,
         "digest" => document["info"]["x-eh-os-contract-digest"]
       }
     end
@@ -62,6 +63,8 @@ defmodule EhOsContract.OpenAPI do
       "jsonSchemaDialect" => "https://spec.openapis.org/oas/3.1/dialect/base",
       "info" => %{
         "title" => inspect(model.module),
+        # Plan DD, P1a (#183): the name the API is asked by, to join with the report.
+        "x-eh-os-contract-id" => model.id,
         "version" => model.version,
         "x-eh-os-contract-engine" => EhOsContract.version()
       },

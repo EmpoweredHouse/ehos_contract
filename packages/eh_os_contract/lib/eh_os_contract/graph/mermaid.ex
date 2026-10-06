@@ -4,7 +4,7 @@ defmodule EhOsContract.Graph.Mermaid do
   (plan EG). The v2 graphs are built first and drawn here, so a renderer other than
   Mermaid needs only the data.
 
-  A node is `%{id, kind, label}` and may carry `counts: {occurrences, runs}`; its
+  A node is `%{id, kind, label}` and may carry `counts`, its occurrences; its
   kind gives its shape and its class, in the Event Storming colours. An edge is
   `%{from, to, line, head, label}`: `line` is `:solid` or `:dotted`, and `head: false`
   is a relation that is not a delivery, drawn without an arrowhead. A group is
@@ -19,7 +19,7 @@ defmodule EhOsContract.Graph.Mermaid do
           required(:id) => String.t(),
           required(:kind) => atom(),
           required(:label) => String.t() | [String.t()],
-          optional(:counts) => {non_neg_integer(), non_neg_integer()} | nil
+          optional(:counts) => non_neg_integer() | nil
         }
 
   @typedoc "An edge of a graph built as data."
@@ -195,7 +195,7 @@ defmodule EhOsContract.Graph.Mermaid do
   defp pipes(label), do: "|#{label}|"
 
   defp count_suffix(nil), do: ""
-  defp count_suffix({count, instances}), do: " (#{count}x, #{runs(instances)})"
+  defp count_suffix(count), do: " (#{count}x)"
 
   defp shape(:command), do: {"[", "]"}
   defp shape(:event), do: {"[", "]"}

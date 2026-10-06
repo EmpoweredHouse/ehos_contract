@@ -15,12 +15,12 @@ defmodule EhOsContract.Paths do
   | an effect acts | the event | the effect | — |
 
   Each end is `%{kind, name, label}`, which is what `EhOsContract.Conformance`
-  hands on as `conformance.v2`, and what the graph draws.
+  hands on as `conformance.v3`, and what the graph draws.
 
   ## Taken, waiting, failing
 
-  **Taken** is counted in runs: the distinct runs of the contract's
-  process in which the step happened. A command emitted an event when the event's
+  **Taken** is counted in occurrences, whatever run, if any, each falls in (plan DD,
+  P1a, #183): a step is the contract's, which may have no process. A command emitted an event when the event's
   row names the command's row (`command_id`); a reaction issued a command when a row
   of `eh_os_contract_commands` names its actor and, as its cause, an event of the
   step's type. Another application's event never enters this log (D12): a policy on
@@ -30,7 +30,7 @@ defmodule EhOsContract.Paths do
   back and delivered again by the transport, and leaves nothing here, so a path that
   always fails reads as untraversed (#65).
   An effect leaves nothing in the log when it acts, so whether it was
-  taken is not known, and its `runs` is `nil`: never untraversed, only waiting or
+  taken is not known, and its `taken` is `nil`: never untraversed, only waiting or
   failing.
 
   **Waiting** — "not yet", never "never" — has three sources, each counted apart
@@ -39,7 +39,7 @@ defmodule EhOsContract.Paths do
   not run yet (`effects`).
 
   **Failing** has three too: commands that failed where the step runs, attributed
-  through the row's `failed_in` (`commands`, in runs); the consumer's subscription
+  through the row's `failed_in` (`commands`, each failed command once); the consumer's subscription
   stopped at an event it cannot apply (`subscription`); effect jobs Oban discarded
   (`effects`). A command that failed in its decision, or in a read model's
   projection, fails every step it emits: which of them it would have taken is not
@@ -69,8 +69,7 @@ defmodule EhOsContract.Paths do
           via: node_ref() | nil,
           to: node_ref() | nil,
           mode: :inline | :async,
-          runs: non_neg_integer() | nil,
-          of_runs: non_neg_integer(),
+          taken: non_neg_integer() | nil,
           in_flight: %{
             effects: non_neg_integer(),
             timers: non_neg_integer(),
@@ -92,11 +91,8 @@ defmodule EhOsContract.Paths do
   def observe(contract, opts \\ []) do
     model = Model.fetch(contract)
     steps = steps(model)
-    process = model.process && Atom.to_string(model.process.name)
-
-    emitted = if process, do: emitted(model, process, opts), else: %{}
+    emitted = emitted(model, opts)
     issued = Map.merge(issued(model, opts), received(model, steps, opts))
-    of_runs = if process, do: runs_of(model, process, opts), else: 0
     lag = lag(steps)
     keys = for %{key: key} <- steps, uniq: true, do: key
     timers = scheduled_timers(keys)
@@ -109,8 +105,7 @@ defmodule EhOsContract.Paths do
 
       step
       |> Map.merge(%{
-        runs: taken(step, emitted, issued),
-        of_runs: of_runs,
+        taken: taken(step, emitted, issued),
         in_flight: %{
           effects: Map.get(waiting_effects, {key, step.from_type}, 0),
           timers: Map.get(timers, {key, timer_name(step)}, 0),
@@ -225,8 +220,36 @@ defmodule EhOsContract.Paths do
   end
 
   @doc """
+  What happened in the contract in the period: its events, and its commands, whatever
+  their outcome — one that failed was attempted (plan DD, P1a, #183). A step's own
+  count is bounded by its cause's time, these by their own, so the two can disagree
+  at a period's edge.
+  """
+  @spec activity(map(), keyword()) :: %{
+          events: non_neg_integer(),
+          commands: non_neg_integer()
+        }
+  def activity(model, opts \\ []) do
+    events =
+      from(e in Event, as: :event, where: e.contract == ^model.id, select: count())
+      |> bounded(opts)
+      |> repo().one()
+
+    commands =
+      from(c in CommandRecord,
+        where: c.contract == ^model.id,
+        select: count()
+      )
+      |> bounded_rows(opts)
+      |> repo().one()
+
+    %{events: events, commands: commands}
+  end
+
+  @doc """
   Distinct runs of the contract's process in the period, over its own events' types
-  and the ones it includes: the denominator every step's `runs` is read against.
+  and the ones it includes. A process's own count: a step is counted in occurrences,
+  not runs (plan DD, P1a, #183).
   """
   @spec runs_of(map(), String.t(), keyword()) :: non_neg_integer()
   def runs_of(model, process, opts \\ []) do
@@ -326,30 +349,29 @@ defmodule EhOsContract.Paths do
 
   defp type(%{kind: :event, name: name}), do: name
 
-  # Runs in which a command's row names an event of the step's type, by the event's
-  # home run in this process.
-  defp emitted(model, process, opts) do
+  # Events of the step's type a command of the step's type appended: each one an
+  # occurrence, whatever run, if any, it belongs to (plan DD, P1a, #183).
+  defp emitted(model, opts) do
     names = Map.new(model.events, &{&1.type, &1.name})
 
     from(e in Event,
       as: :event,
       join: c in CommandRecord,
       on: c.id == e.command_id,
-      join: r in EventRun,
-      on: r.position == e.position and r.process == ^process,
       where: e.contract == ^model.id and c.contract == ^model.id,
       group_by: [c.type, e.type],
-      select: {c.type, e.type, count(r.instance_id, :distinct)}
+      select: {c.type, e.type, count(e.id)}
     )
     |> bounded(opts)
     |> repo().all()
-    |> Map.new(fn {command, type, runs} -> {{command, Map.get(names, type)}, runs} end)
+    |> Map.new(fn {command, type, taken} -> {{command, Map.get(names, type)}, taken} end)
   end
 
-  # Runs in which a reaction's command was accepted or rejected, caused by an event of
-  # the step's type; for a timer, by its firing.
+  # A reaction's commands, accepted or rejected, caused by an event of the step's type;
+  # for a timer, by its firing. One row is one occurrence: a redelivery the idempotency
+  # key turns away writes none (plan DD, P1a, #183).
   # A timer's firing names its timer in the payload; any other event's payload is the
-  # domain's, whose own `timer` field would split the runs, so it is read only there.
+  # domain's, whose own `timer` field would split the count, so it is read only there.
   defp issued(model, opts) do
     elapsed = ProcessManager.elapsed()
 
@@ -366,20 +388,20 @@ defmodule EhOsContract.Paths do
           command: c.type,
           type: e.type,
           timer: fragment("CASE WHEN ? = ? THEN ?->>'timer' END", e.type, ^elapsed, e.payload),
-          run: c.instance_id
+          id: c.id
         }
       )
       |> bounded(opts)
 
     from(r in subquery(reactions),
       group_by: [r.by, r.command, r.type, r.timer],
-      select: {r.by, r.command, r.type, r.timer, count(r.run, :distinct)}
+      select: {r.by, r.command, r.type, r.timer, count(r.id)}
     )
     |> repo().all()
-    |> Map.new(fn {by, command, type, timer, runs} -> {{by, command, type, timer}, runs} end)
+    |> Map.new(fn {by, command, type, timer, taken} -> {{by, command, type, timer}, taken} end)
   end
 
-  # Runs in which a policy's command was accepted or rejected, caused by a row its inbox took:
+  # A policy's commands, accepted or rejected, caused by a row its inbox took:
   # the cause a received event leaves, since the event is in no log here. Bounded by when the
   # row was taken, as a stored event's step is by when the event occurred. By the inboxes' keys,
   # the leading column of the inbox's key, and not at all for a contract with no inbox.
@@ -397,12 +419,12 @@ defmodule EhOsContract.Paths do
           where: c.outcome in ["accepted", "rejected"],
           where: like(c.issued_by, "policy:%"),
           group_by: [c.issued_by, c.type, i.consumer],
-          select: {c.issued_by, c.type, i.consumer, count(c.instance_id, :distinct)}
+          select: {c.issued_by, c.type, i.consumer, count(c.id)}
         )
         |> received_between(opts)
         |> repo().all()
-        |> Map.new(fn {by, command, inbox, runs} ->
-          {{by, command, {:inbox, inbox}, nil}, runs}
+        |> Map.new(fn {by, command, inbox, taken} ->
+          {{by, command, {:inbox, inbox}, nil}, taken}
         end)
     end
   end
@@ -519,7 +541,6 @@ defmodule EhOsContract.Paths do
         type: c.type,
         failed_in: c.failed_in,
         issued_by: c.issued_by,
-        run: c.instance_id,
         at: c.recorded_at
       }
     )
@@ -536,19 +557,15 @@ defmodule EhOsContract.Paths do
 
   defp failed_in_step(%{via: %{kind: kind, name: name}}, failed) do
     label = "#{kind}:#{name}"
-    failed |> Enum.filter(&(&1.failed_in == label)) |> distinct_runs()
+    Enum.count(failed, &(&1.failed_in == label))
   end
 
   defp failed_in_step(%{via: nil, command_type: command}, failed) do
-    failed
-    |> Enum.filter(&(&1.type == command and not consumer_stage?(&1.failed_in)))
-    |> distinct_runs()
+    Enum.count(failed, &(&1.type == command and not consumer_stage?(&1.failed_in)))
   end
 
   defp consumer_stage?(failed_in),
     do: String.starts_with?(failed_in || "", ["policy:", "process_manager:", "effect:"])
-
-  defp distinct_runs(rows), do: rows |> Enum.map(& &1.run) |> Enum.uniq() |> length()
 
   # By the consumers' keys, which the steps know, rather than by a pattern on the
   # contract's name: `_` in a module name is a wildcard to `LIKE`.

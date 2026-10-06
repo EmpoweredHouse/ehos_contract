@@ -92,6 +92,35 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed — a host has to act
 
+- **The conformance wire is `eh_os_contract.conformance.v3`, and v2 is not served** (plan DD, P1a, #183; the
+  user's decision). `report.contract` is the contract's `id:` (`"rehmed.settlement"`), as every row of the log names
+  it since ID4, with `report.module` beside it; `report.deployment.contract` is the id too. The steps sit at the
+  report's level, under `activity` and `paths` (`steps`, `untraversed`, `in_flight`, `failing`), and a step gives
+  `taken` where it gave `runs` and `of_runs`; `processes[]` keeps `runs`, `declarations`, `duration` and `promises`.
+  A reader of v2 moves to v3; EHOS is told in an issue in `eh-os`. The dashboard's screen heads each contract with
+  its id.
+- **The dashboard's APIs name a contract by its id** (plan DD, P1a, #183; the user's decision).
+  `GET <mount>/conformance?contract=rehmed.settlement`, `<mount>/model/rehmed.settlement`, `<mount>/openapi/…` and
+  `<mount>/asyncapi/…` take the `id:`; a module's name is an unknown contract. Their indexes list `"contract"` as the
+  id and add `"module"`; the model index is `eh_os_contract.model-index.v2`. `EhOsContract.Registry.contract/1`
+  finds a registered contract by its whole id. The OpenAPI and AsyncAPI documents keep the module as their title
+  and carry the id as `info.x-eh-os-contract-id`. `mix eh_os_contract.graph --contract` takes the id too, and the
+  text report heads each contract `CONTRACT: <id>`.
+- **A step counts how often it was taken, not the runs it was taken in** (plan DD, P1a, #183; moves verdicts).
+  `EhOsContract.Paths.observe/2` gives each step `taken` — the events its command appended, or the commands its
+  reaction issued, accepted or rejected — where it gave `runs` and `of_runs`; failed commands are counted the same
+  way. Two deposits on one account read "2 taken" on the graph, where they read "1/1 runs", and two failures of one
+  account are two. A contract's steps are counted whether or not it has a process, and an event's node on the graph
+  shows its occurrences without the runs. A process still counts its runs (`Paths.runs_of/3`).
+- **A contract's steps are its own block of the report, judged when it recorded an event** (plan DD, P1a, #183;
+  moves verdicts). `EhOsContract.Conformance.from_model/2` (now public) gives `activity` (the contract's events
+  and its commands, whatever their outcome, in the period) and `paths` (`steps`, `untraversed`, `in_flight`,
+  `failing`) at the report's level; a process (`Conformance.process/2`, now public) keeps its runs, declarations,
+  duration and promises, without lists of steps. "Never carried out" is listed when the contract recorded an event
+  in the period, where it was listed when its process had any run: a contract without a process is judged, and so
+  is one whose events belong to no run. What waits and what fails is listed whatever the activity. The text report
+  and the screen print a STEPS block before PROCESS; with no event it says "this contract recorded no event in this
+  period", and a contract with no steps says "The contract declares no steps."
 - **The engine's rows and keys name a contract by its `id:`, not its module** (plan DD, stage ID4, #178). The
   `contract` column of events, commands, deployments and dependency observations holds `"rehmed.scheduling"`
   where it held `"Rehmed.Contracts.Scheduling"`; so do the keys of subscriptions, relays, inboxes and process managers

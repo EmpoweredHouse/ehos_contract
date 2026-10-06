@@ -1,6 +1,6 @@
 defmodule EhOsContract.Conformance.WireReportTest do
   @moduledoc """
-  A v2 contract's report **as values that survive a wire** (`conformance.v2`).
+  A v2 contract's report **as values that survive a wire** (`conformance.v3`).
 
   The structural walk below is the point of this file. It does not assert on any
   particular key, so it covers the ones a later stage adds — and the v2 report already
@@ -81,7 +81,7 @@ defmodule EhOsContract.Conformance.WireReportTest do
       [p] = data["report"]["processes"]
       [promise] = p["promises"]
       assert {:ok, _, _} = DateTime.from_iso8601(promise["declaration_changed_at"])
-      assert [_waiting] = p["in_flight"]
+      assert [_waiting] = data["report"]["paths"]["in_flight"]
     end
 
     test "for a timed run, whose confirmed deadline is measured" do
@@ -116,11 +116,15 @@ defmodule EhOsContract.Conformance.WireReportTest do
   describe "the values a consumer joins on" do
     setup do: promised_with_history()
 
-    test "a contract module reads the same here as in the log" do
-      # `EhOsContract.Deployment` writes `inspect(contract)` into the log's `contract`
-      # column, so a consumer joining the two does not have to know that one side
-      # spells it differently.
-      assert Conformance.as_data(Promised)["report"]["contract"] == "ProcessShapes.Promised"
+    test "a contract reads as its id, as in the log, with its module beside it" do
+      # Plan DD, P1a (#183): every row of the log names a contract by its id (ID4,
+      # #178), so a consumer joining the two does not have to know that one side
+      # spells it differently. The module is the code's name, for a reader of it.
+      report = Conformance.as_data(Promised)["report"]
+
+      assert report["contract"] == "process_shapes.promised"
+      assert report["module"] == "ProcessShapes.Promised"
+      assert report["deployment"]["contract"] == "process_shapes.promised"
     end
 
     test "a duration is named, not positional" do

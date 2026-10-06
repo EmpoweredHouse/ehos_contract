@@ -17,10 +17,10 @@ defmodule Mix.Tasks.EhOsContract.Graph do
 
   ## `--contract`, `--unit` and `--lifecycle`: a contract, whole or one unit of it
 
-      mix eh_os_contract.graph --contract Rehmed.Contracts.VisitSettlement --output settlement.mmd
-      mix eh_os_contract.graph --contract Rehmed.Contracts.VisitSettlement --overlay --output settlement.mmd
-      mix eh_os_contract.graph --contract Rehmed.Contracts.VisitSettlement --unit visit_settlement --output unit.mmd
-      mix eh_os_contract.graph --contract AppuniteEquipment.Contracts.Computers --lifecycle computer --overlay --output computer.mmd
+      mix eh_os_contract.graph --contract rehmed.settlement --output settlement.mmd
+      mix eh_os_contract.graph --contract rehmed.settlement --overlay --output settlement.mmd
+      mix eh_os_contract.graph --contract rehmed.settlement --unit visit_settlement --output unit.mmd
+      mix eh_os_contract.graph --contract appunite_equipment.computers --lifecycle computer --overlay --output computer.mmd
 
   `--contract` draws the contract's full graph (plan EG1,
   `EhOsContract.Graph.contract_to_mermaid/2`): commands, events, the consumers
@@ -62,7 +62,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   mix eh_os_contract.graph draws one picture; name which:
 
       mix eh_os_contract.graph --process NAME --mermaid [--overlay [--since AT]]
-      mix eh_os_contract.graph --contract MODULE [--unit NAME | --lifecycle NAME] [--overlay [--since AT]]
+      mix eh_os_contract.graph --contract ID [--unit NAME | --lifecycle NAME] [--overlay [--since AT]]
       mix eh_os_contract.graph --map DOMAIN
       mix eh_os_contract.graph --system DOMAIN [--overlay [--since AT]]
 
@@ -211,11 +211,16 @@ defmodule Mix.Tasks.EhOsContract.Graph do
 
   # A v2 contract's full graph, or one of its units.
   defp contract(opts) do
-    contracts = EhOsContract.Registry.contracts()
-    contract = Enum.find(contracts, &(inspect(&1) == opts[:contract]))
+    # By the contract's id (plan DD, P1a, #183), as the dashboard's APIs name it.
+    contract = EhOsContract.Registry.contract(opts[:contract])
 
     unless contract do
-      known = contracts |> Enum.map(&inspect/1) |> Enum.sort() |> Enum.join(", ")
+      known =
+        EhOsContract.Registry.contracts()
+        |> Enum.map(&EhOsContract.Model.fetch(&1).id)
+        |> Enum.sort()
+        |> Enum.join(", ")
+
       Mix.raise("no contract #{opts[:contract]}. Registered: #{known}")
     end
 

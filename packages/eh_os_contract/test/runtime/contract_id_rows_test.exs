@@ -74,4 +74,12 @@ defmodule EhOsContract.ContractIdRowsTest do
     with_missing = %{branch | consumes: [missing | branch.consumes]}
     assert %{"dispatch_rig.ledger" => _} = Implementations.by_id([with_missing])
   end
+
+  # Plan DD, P1a (#183): what a caller outside the code names a contract by.
+  test "a registered contract is found by its whole id, never by a prefix or its module" do
+    assert Registry.contract("dispatch_rig.ledger") == Ledger
+
+    for other <- ["dispatch_rig", "dispatch_rig.ledger.x", "DispatchRig.Ledger", ""],
+        do: assert(Registry.contract(other) == nil, "#{other} found a contract")
+  end
 end

@@ -41,7 +41,7 @@ defmodule EhOsContract.Web.Live.ContractStatus do
       <p class="access-badge">Access: {access_label(@eh_os_contract_web_access)}</p>
 
       <div :for={report <- @reports}>
-        <h2>{inspect(report.contract)}</h2>
+        <h2>{report.contract}</h2>
 
         <section>
           <h3>Contract</h3>
@@ -53,6 +53,38 @@ defmodule EhOsContract.Web.Live.ContractStatus do
           <p :if={report.wiring.version}>Wiring {report.wiring.version}.</p>
         </section>
 
+        <section>
+          <h3>Steps</h3>
+          <p>{Sentence.activity(report.activity)}</p>
+
+          <p :if={report.paths.steps == []}>{Sentence.no_steps()}</p>
+          <p :if={report.paths.steps != [] and idle?(report)}>{Sentence.no_activity()}</p>
+
+          <div :if={report.paths.steps != []}>
+            <div :if={report.activity.events > 0}>
+              <h4>Declared paths never exercised</h4>
+              <p :if={carried_out?(report.paths)}>{Sentence.all_steps_carried_out()}</p>
+              <ul :if={report.paths.untraversed != []}>
+                <li :for={edge <- report.paths.untraversed}>{Sentence.step(edge)}</li>
+              </ul>
+            </div>
+
+            <div :if={report.paths.in_flight != []}>
+              <h4>Agreed steps whose work is queued</h4>
+              <ul>
+                <li :for={edge <- report.paths.in_flight}>{Sentence.step_in_flight(edge)}</li>
+              </ul>
+            </div>
+
+            <div :if={report.paths.failing != []}>
+              <h4>Agreed steps that are attempted and fail</h4>
+              <ul>
+                <li :for={edge <- report.paths.failing}>{Sentence.step_failing(edge)}</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
         <section :for={process <- report.processes}>
           <h3>{process.label}</h3>
           <p :if={Sentence.accountable(process.accountable)}>
@@ -62,30 +94,6 @@ defmodule EhOsContract.Web.Live.ContractStatus do
 
           <p :for={declaration <- process.declarations}>{Sentence.declaration(declaration)}</p>
           <p :for={line <- Sentence.duration(process.duration)}>{line}</p>
-
-          <p :if={process.runs == 0}>{Sentence.no_runs()}</p>
-
-          <div :if={process.runs > 0}>
-            <h4>Declared paths never exercised</h4>
-            <p :if={carried_out?(process)}>{Sentence.all_steps_carried_out()}</p>
-            <ul :if={process.untraversed != []}>
-              <li :for={edge <- process.untraversed}>{Sentence.step(edge)}</li>
-            </ul>
-
-            <div :if={process.in_flight != []}>
-              <h4>Agreed steps whose work is queued</h4>
-              <ul>
-                <li :for={edge <- process.in_flight}>{Sentence.step_in_flight(edge)}</li>
-              </ul>
-            </div>
-
-            <div :if={process.failing != []}>
-              <h4>Agreed steps that are attempted and fail</h4>
-              <ul>
-                <li :for={edge <- process.failing}>{Sentence.step_failing(edge)}</li>
-              </ul>
-            </div>
-          </div>
 
           <div :if={process.promises != []}>
             <h4>Promises</h4>
@@ -168,7 +176,15 @@ defmodule EhOsContract.Web.Live.ContractStatus do
   # As in the text report: a branch is several steps behind one queue, so "carried
   # out" is said only when nothing of it waits either.
   @spec carried_out?(map()) :: boolean()
-  defp carried_out?(process), do: process.untraversed == [] and process.in_flight == []
+  defp carried_out?(paths), do: paths.untraversed == [] and paths.in_flight == []
+
+  # Plan DD, P1a (#183): "never" is judged when the contract recorded an event; with
+  # none, and nothing waiting or failing, there is nothing to say about its steps.
+  @spec idle?(map()) :: boolean()
+  defp idle?(report),
+    do:
+      report.activity.events == 0 and report.paths.in_flight == [] and
+        report.paths.failing == []
 
   @spec access_label(:all | :read_only) :: String.t()
   defp access_label(:all), do: "all"

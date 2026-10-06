@@ -310,12 +310,12 @@ defmodule EhOsContract.GraphContractTest do
     test "--contract draws the full graph, and --unit one unit of it", %{tmp_dir: dir} do
       path = Path.join(dir, "graph.mmd")
 
-      Mix.Tasks.EhOsContract.Graph.run(["--contract", "DispatchRig.Ledger", "--output", path])
+      Mix.Tasks.EhOsContract.Graph.run(["--contract", "dispatch_rig.ledger", "--output", path])
       assert File.read!(path) =~ "actor_clerk --> command_open_account"
 
       Mix.Tasks.EhOsContract.Graph.run([
         "--contract",
-        "DispatchRig.Ledger",
+        "dispatch_rig.ledger",
         "--unit",
         "account",
         "--output",
@@ -327,28 +327,30 @@ defmodule EhOsContract.GraphContractTest do
 
     test "an unknown contract or unit, a unit without its contract, and a flag it would drop are refused" do
       assert_raise Mix.Error,
-                   ~r/no contract Nonesuch\. Registered: .*DispatchRig\.Ledger/,
+                   ~r/no contract Nonesuch\. Registered: .*dispatch_rig\.ledger/,
                    fn ->
                      Mix.Tasks.EhOsContract.Graph.run(["--contract", "Nonesuch"])
                    end
 
-      assert_raise Mix.Error, ~r/DispatchRig\.Ledger has no unit nonesuch\. Units: account/, fn ->
-        Mix.Tasks.EhOsContract.Graph.run([
-          "--contract",
-          "DispatchRig.Ledger",
-          "--unit",
-          "nonesuch"
-        ])
-      end
+      assert_raise Mix.Error,
+                   ~r/dispatch_rig\.ledger has no unit nonesuch\. Units: account/,
+                   fn ->
+                     Mix.Tasks.EhOsContract.Graph.run([
+                       "--contract",
+                       "dispatch_rig.ledger",
+                       "--unit",
+                       "nonesuch"
+                     ])
+                   end
 
       assert_raise Mix.Error, ~r/--unit draws the declarations only/, fn ->
         Mix.Tasks.EhOsContract.Graph.run(
-          ~w(--contract DispatchRig.Ledger --unit account --overlay)
+          ~w(--contract dispatch_rig.ledger --unit account --overlay)
         )
       end
 
       assert_raise Mix.Error, ~r/pass one of them/, fn ->
-        Mix.Tasks.EhOsContract.Graph.run(~w(--contract DispatchRig.Ledger --process ledger))
+        Mix.Tasks.EhOsContract.Graph.run(~w(--contract dispatch_rig.ledger --process ledger))
       end
 
       assert_raise Mix.Error, ~r/pass --contract too/, fn ->

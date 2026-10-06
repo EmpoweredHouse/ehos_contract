@@ -1,7 +1,7 @@
 defmodule EhOsContract.ReportTest do
   @moduledoc """
   The conformance report of a v2 contract (v2 §13, plan E7c): the four questions on
-  the new log, `conformance.v2` on the wire, and the sentences that say which source
+  the new log, `conformance.v3` on the wire, and the sentences that say which source
   waits and which fails.
 
   The first block pins the numbers v1 and v2 had in common — runs, promise
@@ -25,6 +25,7 @@ defmodule EhOsContract.ReportTest do
   defp data(opts \\ []), do: Conformance.report(Promised, opts)
   defp text(opts \\ []), do: opts |> data() |> Report.render()
   defp process(report), do: report.processes |> Enum.find(&(&1.process == :handling))
+  defp paths(report), do: report.paths
 
   defp names(steps),
     do: for(s <- steps, do: {s.from.name, s.via && s.via.name, s.to && s.to.name})
@@ -76,15 +77,15 @@ defmodule EhOsContract.ReportTest do
     end
   end
 
-  describe "the steps of a v2 process" do
+  describe "the steps of a contract" do
     setup do: Seed.deploy()
 
     test "50 runs, none refused: the refusal branch's three steps, each reported once" do
       for n <- 1..50, do: Seed.request("r-#{n}", :request_approved)
 
-      p = process(data())
-
-      assert p.runs == 50
+      report = data()
+      assert process(report).runs == 50
+      p = paths(report)
 
       assert names(p.untraversed) == [
                {:decide_request, nil, :request_refused},
@@ -92,7 +93,7 @@ defmodule EhOsContract.ReportTest do
                {:request_refused, :notify_on_refusal, :notify_refusal}
              ]
 
-      assert Enum.all?(p.untraversed, &(&1.runs == 0 and &1.of_runs == 50))
+      assert Enum.all?(p.untraversed, &(&1.taken == 0))
     end
 
     test "one run through the refusal branch: nothing untraversed" do
@@ -100,23 +101,24 @@ defmodule EhOsContract.ReportTest do
       Seed.request("r-50", :request_refused)
       Seed.run_queue()
 
-      p = process(data())
+      p = paths(data())
       assert p.untraversed == [] and p.in_flight == [] and p.failing == []
     end
 
-    test "zero runs is no basis, not nine findings" do
-      p = process(data())
+    # Plan DD, P1a (#183): the gate is the contract's activity, not its process's runs.
+    test "no activity is no basis, not nine findings" do
+      report = data()
 
-      assert p.runs == 0
-      assert p.untraversed == []
-      assert text() =~ "not a single run in this period"
+      assert report.activity == %{events: 0, commands: 0}
+      assert paths(report).untraversed == []
+      assert text() =~ "this contract recorded no event in this period"
     end
 
     test "not yet is not never: the refusal's step waits, and is never untraversed while it does" do
       Seed.request("r-1", :request_approved)
       Seed.request("r-2", :request_refused)
 
-      p = process(data())
+      p = paths(data())
 
       assert names(p.in_flight) == [{:request_refused, :notify_on_refusal, :notify_refusal}]
       refute {:request_refused, :notify_on_refusal, :notify_refusal} in names(p.untraversed)
@@ -132,8 +134,28 @@ defmodule EhOsContract.ReportTest do
       refute t =~ "All agreed steps were carried out"
 
       Seed.run_queue()
-      p = process(data())
+      p = paths(data())
       assert p.in_flight == [] and p.untraversed == []
+    end
+
+    # Plan DD, P1a (#183): the steps are the contract's, in a block of their own before
+    # the process, which keeps its runs and promises and no list of steps.
+    test "the steps are the contract's block, with its activity, before the process" do
+      Seed.request("r-1", :request_approved)
+
+      report = data()
+      assert %{events: events, commands: commands} = report.activity
+      assert events > 0 and commands > 0
+      refute Map.has_key?(process(report), :untraversed)
+
+      t = text()
+      [steps, process] = String.split(t, "PROCESS: ", parts: 2)
+
+      assert steps =~
+               "STEPS\n  Activity in this period: #{events} events, #{commands} commands.\n" <>
+                 "  Agreed steps that were never carried out:"
+
+      refute process =~ "Agreed steps"
     end
 
     test "untaken steps read with their business labels and the consumer they run through" do
@@ -175,19 +197,32 @@ defmodule EhOsContract.ReportTest do
         )
       end
 
-      [p] = Conformance.report(DispatchRig.Ledger).processes
+      report = Conformance.report(DispatchRig.Ledger)
+      p = report.paths
       assert [failing] = p.failing
       refute failing in p.untraversed
 
+      # Plan DD, P1a (#183): a contract that recorded nothing still says what fails.
+      idle = Report.render(%{report | activity: %{events: 0, commands: 1}})
+      assert idle =~ "Agreed steps that are attempted and fail:"
+      refute idle =~ "recorded no event"
+      refute idle =~ "never carried out"
+
+      # A contract that declares no step says so, not that all of them were taken.
+      none = Report.render(%{report | paths: %{p | steps: [], failing: []}})
+      assert none =~ "STEPS\n  Activity in this period: "
+      assert none =~ "The contract declares no steps."
+      refute none =~ "All agreed steps were carried out"
+
       assert Report.render(Conformance.report(DispatchRig.Ledger)) =~
-               "· Deposited → Flag the account for review (via: Flag an account on a large deposit) — failing: a command failed in 1 run"
+               "· Deposited → Flag the account for review (via: Flag an account on a large deposit) — failing: 1 command failed"
     end
 
     @tag :capture_log
-    test "count runs, not failures" do
-      # Two failures of one account are one run in trouble, and a second account is
-      # a second: the count answers how much of the business a broken step touches,
-      # and a retry loop hammering one run would otherwise read as a wide outage.
+    test "count failures, not runs" do
+      # Plan DD, P1a (#183): a step is the contract's and counts occurrences, so two
+      # failures of one account are two. Until P1a they were one run in trouble; a
+      # contract without a process has no runs to count them in.
       EhOsContract.Testing.drain()
 
       for account <- ["a-1", "a-2"] do
@@ -217,12 +252,12 @@ defmodule EhOsContract.ReportTest do
       fail.("a-1")
 
       assert Report.render(Conformance.report(DispatchRig.Ledger)) =~
-               step <> " — failing: a command failed in 1 run"
+               step <> " — failing: 2 commands failed"
 
       fail.("a-2")
 
       assert Report.render(Conformance.report(DispatchRig.Ledger)) =~
-               step <> " — failing: a command failed in 2 runs"
+               step <> " — failing: 3 commands failed"
     end
   end
 
@@ -282,16 +317,16 @@ defmodule EhOsContract.ReportTest do
   describe "on the wire" do
     setup do: Seed.deploy()
 
-    test "a v2 contract's report is conformance.v2, and Jason takes it" do
+    test "a v2 contract's report is conformance.v3, and Jason takes it" do
       Seed.request("r-1", :request_refused)
 
       wire = Conformance.as_data(ProcessShapes.Promised)
-      assert wire["schema"] == "eh_os_contract.conformance.v2"
+      assert wire["schema"] == "eh_os_contract.conformance.v3"
 
       assert {:ok, _json} = Jason.encode(wire)
 
       [p] = wire["report"]["processes"]
-      [step] = p["in_flight"]
+      [step] = wire["report"]["paths"]["in_flight"]
 
       assert step["from"] == %{
                "kind" => "event",
