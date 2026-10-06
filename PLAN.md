@@ -50,7 +50,7 @@ warning for undeclared types in the log) merged in #176. ID4 merged in #181 (iss
 contract by its id. Follow-up #179 (a start-up warning for rows filed under a contract name no contract has)
 merged in #182. P1a merged in #184 (issue #183): a contract's steps count occurrences, the conformance wire is
 v3, and contracts are named by id everywhere; EHOS reads v3 in EmpoweredHouse/eh-os#202. P1b (issue #186) on
-`dd/186-nothing-assumes-process`. #180 (the domain's name must equal the EHOS application's, with
+`dd/186-nothing-assumes-process`, PR #189. P1c (issue #190) on `dd/190-at-most-one-process`, branched from P1b. #180 (the domain's name must equal the EHOS application's, with
 EmpoweredHouse/eh-os#201) waits for a decision on where it goes.
 
 ### Stan repozytorium
@@ -562,7 +562,7 @@ etapów od razu (zakres etapu doprecyzowuje się dopiero przy starcie).
 | ID4 | 2 | wiersze i klucze po `id` | ID3 | ☑ #181 | [#178](https://github.com/EmpoweredHouse/eh-os-contract/issues/178) |
 | P1a | 2 | kroki per kontrakt, procesy osobno (wire v3) | ID3, ID4 | ☑ #184 | [#183](https://github.com/EmpoweredHouse/eh-os-contract/issues/183) |
 | P1b | 2 | nic nie zakłada procesu | P1a | ◐ `dd/186-nothing-assumes-process` | [#186](https://github.com/EmpoweredHouse/eh-os-contract/issues/186) |
-| P1c | 2 | R1: najwyżej jeden proces | P1b | ☐ | — |
+| P1c | 2 | R1: najwyżej jeden proces | P1b | ◐ `dd/190-at-most-one-process` | [#190](https://github.com/EmpoweredHouse/eh-os-contract/issues/190) |
 | P1d | 2 | sandbox bez sztucznych procesów | P1c, decyzja o `cadence` | ☐ | — |
 | P1e | 2 | testy bez szablonowych procesów | P1c | ☐ | — |
 | P2a | 2 | jeden model procesu dla czytelników | P1d | ☐ | — |
@@ -702,8 +702,10 @@ counting, report shape, wire, screen, APIs, graph. Depends on ID3, ID4.
 `"process"` only when its contract has one (EHOS reads it nowhere, eh-os#203); the graph page selects a contract by
 its id, a process's shape only when there is one; `event-without-consumer` counts an event a unit's lifecycle
 starts on or moves on as consumed (the report's lifecycle section reads it). Depends on P1a.
-**P1c — R1: najwyżej jeden proces**; bez procesu grupa etapu albo `terminal:` zdarzenia odrzucone. Dopisek z datą
-do wymagania 7 (v2 §3).
+**P1c — R1: at most one process** (#190; tightened 6 October 2026). R1 refuses a second process and, with none,
+a unit's `stage` group and a `terminal:` event. A real contract without a process in the engine's tests
+(`LifecycleRig.Rooms`) runs through dispatch, scenarios, the report and the graphs. A dated amendment to
+requirement 7 (v2 §3). Depends on P1b.
 **P1d — sandbox bez sztucznych procesów** (PR na domenę): Rehmed `scheduling`, `clinical_documentation`,
 `settlement`; TaxVision `document_intake`, `registry_watch`; AppUnite `computers`, `demands`. Zostają:
 `clinical_visit`, `accounting_month`, `assignments`, `payer_settlement` (do decyzji o `cadence`). Każde nowe

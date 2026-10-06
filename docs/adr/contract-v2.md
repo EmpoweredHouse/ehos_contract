@@ -78,6 +78,15 @@ In the product owner's words, turned into requirements:
     so the change is reflected there and consistent (§7).
 11. The whole is consumed by EHOS; an API will be needed later.
 
+> *Changed 6 October 2026, plan DD, P1c, in the programme the user approved on 5 October.* **Requirement 7
+> reads "one contract describes at most one process".** A contract is first the units of one context that
+> decide and record; a process is a run with steps and an end, and not every part of a business has one. An
+> equipment register — a computer bought, issued, returned — has a lifecycle per computer and no run, and the
+> test material gave such contracts an invented process only because R1 refused a contract without one. R1 now
+> refuses a second process, and, in a contract without one, what belongs to a run: a unit's `stage` group and a
+> `terminal:` event. Two processes in one contract stay refused: requirement 8 combines contracts, not
+> processes inside one. ([#190](https://github.com/EmpoweredHouse/eh-os-contract/issues/190))
+
 ## 4. The DSL
 
 ### 4.1 Two modules
