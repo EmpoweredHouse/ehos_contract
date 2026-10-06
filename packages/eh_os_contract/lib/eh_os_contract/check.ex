@@ -59,11 +59,10 @@ defmodule EhOsContract.Check do
         else: []
 
     unverified =
-      for key <- [:cadence, :deadline],
-          %{unverified: true} = value <- [Map.get(process, key)] do
+      for %{unverified: true} = value <- [process.deadline] do
         Finding.new(
           "unverified-declaration",
-          "process #{inspect(process.name)}: `#{key}` = #{inspect({value.amount, value.unit})} " <>
+          "process #{inspect(process.name)}: `deadline` = #{inspect({value.amount, value.unit})} " <>
             "is not confirmed by the process owner — it does not count towards the evidence report " <>
             "(#{name})",
           at

@@ -164,8 +164,8 @@ defmodule Rehmed.Contracts.ExternalPayers do
 
   # One run is one payer in one month; LuxMed, Enelmed and TuZdrowie settle
   # independently and identically (2026-08-14). Once a month the practice manager
-  # opens the module, verifies and invoices: human-initiated, so the cadence is a
-  # declaration nothing enforces.
+  # opens the module, verifies and invoices: human-initiated, and nothing here
+  # starts a run on a schedule.
   process :payer_settlement, "Miesięczne rozliczenie z płatnikiem zewnętrznym",
     accountable: :manager do
     correlate [:payer_id, :period_id]
@@ -176,7 +176,6 @@ defmodule Rehmed.Contracts.ExternalPayers do
 
     stage :reconciliation
     stage :invoicing
-    cadence {1, :month}
   end
 
   scenario "obie wizyty LuxMed z września oznaczone u płatnika — faktura wystawiona" do

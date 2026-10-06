@@ -201,8 +201,8 @@ defmodule Taxvision.Contracts.AccountingMonth do
     stage :opening
     stage :matching
 
-    # Settled a month behind, checked on the first [WF 00:34:40].
-    cadence {1, :month}
+    # A month is settled a month behind and checked on the first [WF 00:34:40]; the
+    # contract declares no schedule for it, since nothing would read one.
 
     # v1's `deadline {25, :day}` is not here: nothing ends a run until the month
     # closes, which is past E9c, so there is nothing for it to measure; and nobody

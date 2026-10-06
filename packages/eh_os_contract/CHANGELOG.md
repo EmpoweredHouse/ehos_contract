@@ -249,6 +249,16 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
   the Mix compiler runs; N1 refuses it in the contract's own compile, before `Model.capabilities/1` could merge
   the two into one capability.
 
+### Removed — a host has to act
+
+- **A process has no `cadence`** (plan DD, P1d, #195; the user's decision). It said how often a run is due
+  (`cadence {1, :month}`), and nothing acted on it: the report printed "Due: every …" among the process's
+  confirmed declarations, the pages "Cadence: every …", and the check noted an unconfirmed one
+  (`unverified-declaration`). A contract that declares it no longer compiles (`undefined function cadence/1`):
+  delete the line. The report's `declarations` hold at most the confirmed `deadline`. A process is digested as it
+  was with no cadence declared, so no other contract's version moves; one that declared it moves once, when the
+  line goes.
+
 ## Unreleased — 0.3.0
 
 The move to the second contract DSL (`PLAN.md`, `docs/adr/contract-v2.md`), from E1 to the cut, E11.

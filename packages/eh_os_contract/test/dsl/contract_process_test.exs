@@ -390,7 +390,6 @@ defmodule EhOsContract.ContractProcessTest do
           process :visit, "Wizyta" do
             correlate :visit_id
             deadline {1, :month}
-            cadence {1, :fortnight}
 
             promise :closed_quickly do
               from :visit_closed
@@ -405,9 +404,8 @@ defmodule EhOsContract.ContractProcessTest do
 
       assert message =~
                "R6: process :visit: deadline is in :month, a calendar unit, which only a timer's wait " <>
-                 "and cadence may use (durations.ex:18)"
+                 "may use (durations.ex:18)"
 
-      assert message =~ "R6: process :visit: cadence is in :fortnight, which is not one of"
       assert message =~ "R6: promise :closed_quickly: within is 24, which is not {count, unit}"
     end
 
@@ -428,16 +426,15 @@ defmodule EhOsContract.ContractProcessTest do
 
       assert message =~
                "R6: promise :closed_quickly: within is in :month, a calendar unit, which only a " <>
-                 "timer's wait and cadence may use"
+                 "timer's wait may use"
     end
 
-    test "control: a monthly cadence, a zero window and fixed units compile" do
+    test "control: a zero window and fixed units compile" do
       model =
         compile_contract("DurationsRight", """
         #{@unit}
           process :visit, "Wizyta" do
             correlate :visit_id
-            cadence {1, :month}, unverified: true
             deadline {30, :day}
 
             promise :closed_at_once do
@@ -448,9 +445,28 @@ defmodule EhOsContract.ContractProcessTest do
           end
         """)
 
-      assert model.process.cadence == %{amount: 1, unit: :month, unverified: true}
       assert model.process.deadline == %{amount: 30, unit: :day, unverified: false}
       assert [%{within: %{amount: 0, unit: :second}}] = model.process.promises
+    end
+
+    test "a process has no cadence: it said how often a run is due, and nothing read it" do
+      # Plan DD, P1d (#195): removed with nothing in its place, so a contract that still
+      # declares one is refused by the compiler rather than ignored.
+      source =
+        contract("CadenceGone", """
+        #{@unit}
+          process :visit, "Wizyta" do
+            correlate :visit_id
+            cadence {1, :month}
+          end
+        """)
+
+      log =
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          assert_raise CompileError, fn -> compile(source, "cadence_gone.ex") end
+        end)
+
+      assert log =~ "undefined function cadence/1"
     end
   end
 

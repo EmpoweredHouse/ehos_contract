@@ -81,9 +81,10 @@ defmodule EhOsContract.ReportRenderTest do
              "the unconfirmed deadline reached the report through some key other than " <>
                "`declarations` — which is exactly how this criterion was escaped once"
 
-      # The confirmed cadence is a tuple of the same kind and does reach it, so the walk
+      # A confirmed deadline is a tuple of the same kind and does reach it, so the walk
       # can see such a value at all.
-      assert {1, :day} in values(process)
+      [timed] = Conformance.report(ProcessShapes.Timed).processes
+      assert {1, :hour} in values(timed)
     end
   end
 

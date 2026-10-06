@@ -132,7 +132,7 @@ end
   decision raises: it is a defect in the code, never a business outcome, and nothing is appended.
 - **The process is the run**: `correlate` names the fields that make one run, `stage` groups its events
   when it has stages, and a `promise` is what the process owner agreed happens — from one event, eventually
-  another, within a time, or else a third. `deadline` and `cadence` bound the whole run. A contract whose
+  another, within a time, or else a third. `deadline` bounds the whole run. A contract whose
   units only decide and record — a register of equipment, of rooms — declares no process, and then nothing
   that belongs to a run: no `stage` group and no `terminal:` event (R1).
 - **A scenario is a test the contract carries** — given events, when a command, then events or a
@@ -304,7 +304,7 @@ Every refusal of L2–L4 starts with its code. The codes do not change between v
 | `R3` | L2 | with stages declared: an event outside a stage group, a process-level `include` outside a stage, or a group naming an undeclared stage; with no stages, any stage group |
 | `R4` | L2 | `include` naming a local event, an event received from another application, or one the contract does not consume |
 | `R5` | L2 | a promise's `from`, `eventually` or `or_else` naming neither a local event nor an included consumed one |
-| `R6` | L2 | a duration that is not `{count, unit}`, counts a negative or non-integer number, or has an unknown unit; a calendar unit in `within` or `deadline` (a timer's `wait` and `cadence` may use one); `cadence` or `deadline` declared twice |
+| `R6` | L2 | a duration that is not `{count, unit}`, counts a negative or non-integer number, or has an unknown unit; a calendar unit in `within` or `deadline` (a timer's `wait` may use one); `deadline` declared twice |
 | `K1` | L2 | `consumes` given a published name, which is `subscribe`d to; a sibling `consumes` of the contract itself, naming no events, renaming an event it does not consume, giving `as:` other than `[old: :new]`, or declaring fields |
 | `S1` | L2 | a scenario with no trigger or several; a trigger naming no command or query of the contract, or an event nothing handles; several handlers and no `target`, or a `target` that does not handle it; two scenarios with one description |
 | `S2` | L2 | `given` outside the target's state: not the unit's own or consulted events, not a process manager's handled events, not events the query's read model projects; any `given` for a policy |

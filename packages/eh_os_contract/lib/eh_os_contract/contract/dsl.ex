@@ -218,11 +218,6 @@ defmodule EhOsContract.Contract.Dsl do
     defstruct [:name, :label, includes: [], __spark_metadata__: nil]
   end
 
-  defmodule Cadence do
-    @moduledoc false
-    defstruct [:every, unverified: false, __spark_metadata__: nil]
-  end
-
   defmodule Deadline do
     @moduledoc false
     defstruct [:within, unverified: false, __spark_metadata__: nil]
@@ -237,7 +232,7 @@ defmodule EhOsContract.Contract.Dsl do
   defmodule ProcessDeclaration do
     @moduledoc false
     defstruct [:name, :label, :accountable, :source, correlate: [], stages: [], includes: []] ++
-                [cadence: [], deadline: [], promises: [], __spark_metadata__: nil]
+                [deadline: [], promises: [], __spark_metadata__: nil]
   end
 
   defmodule Given do
@@ -968,17 +963,6 @@ defmodule EhOsContract.Contract.Dsl do
     ]
   }
 
-  @cadence %Spark.Dsl.Entity{
-    name: :cadence,
-    describe: "How often a run is due; calendar units allowed.",
-    target: Cadence,
-    args: [:every],
-    schema: [
-      every: [type: :any, required: true, doc: "`{n, unit}`."],
-      unverified: [type: :boolean, default: false, doc: "Not confirmed by the process owner."]
-    ]
-  }
-
   @deadline %Spark.Dsl.Entity{
     name: :deadline,
     describe: "How long a run may take, from its first event to a terminal one.",
@@ -1015,7 +999,6 @@ defmodule EhOsContract.Contract.Dsl do
     entities: [
       stages: [@process_stage],
       includes: [@include],
-      cadence: [@cadence],
       deadline: [@deadline],
       promises: [@promise]
     ],

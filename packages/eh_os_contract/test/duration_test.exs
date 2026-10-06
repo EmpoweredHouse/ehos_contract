@@ -42,12 +42,12 @@ defmodule EhOsContract.DurationTest do
     end
 
     test "a count of one drops the numeral, because both callers put a word in front" do
-      # "Due: every month", not "Due: every 1 month".
+      # "within day", not "within 1 day".
       assert EhOsContract.Duration.humanize({1, :month}) == "month"
       assert EhOsContract.Duration.humanize({1, :day}) == "day"
     end
 
-    test "months are readable although `within` refuses them, because `cadence` takes them" do
+    test "months are readable although `within` refuses them, because a timer's wait takes them" do
       assert EhOsContract.Duration.humanize({3, :month}) == "3 months"
     end
   end

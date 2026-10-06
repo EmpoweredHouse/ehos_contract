@@ -171,9 +171,8 @@ defmodule EhOsContract.Conformance do
       accountable: actor_label(model, process.accountable),
       runs: runs,
       declarations:
-        for key <- [:cadence, :deadline],
-            %{unverified: false} = value <- [Map.get(process, key)] do
-          %{key: key, value: {value.amount, value.unit}}
+        for %{unverified: false} = value <- [process.deadline] do
+          %{key: :deadline, value: {value.amount, value.unit}}
         end,
       duration: duration(model, opts),
       promises: promises(model, opts)

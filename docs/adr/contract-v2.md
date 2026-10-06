@@ -187,6 +187,13 @@ scenario        description!   scope · actor
 > now came from the module and the process's name; `id` is the step towards an identity a rename of either does not
 > move. Optional in ID1 and outside the version; ID3 makes it required and the prefix of event types, which
 > amends D1 (§16).
+>
+> *Changed 7 October 2026, plan DD, P1d, the user's choice of 6 October.* **A process has no `cadence`.** It said how
+> often a run is due (`cadence {1, :month}`), and nothing acted on it: the report and the pages printed it, and the
+> warning it was declared for, a due run that never started, was rejected on 6 August, since it needs to know which
+> runs should exist and the log sees only what was recorded. A contract that declares it no longer compiles. A
+> process is digested as it was with none declared, so no other contract's version moves. It comes back with a
+> reader that knows what should exist. ([#195](https://github.com/EmpoweredHouse/eh-os-contract/issues/195))
 
 - **Identity is injected.** A unit's identity fields appear in its state, commands and events without being
   declared there; declaring one again is an error.

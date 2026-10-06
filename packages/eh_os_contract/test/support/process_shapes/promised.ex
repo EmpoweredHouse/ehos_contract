@@ -72,11 +72,10 @@ defmodule ProcessShapes.Promised do
     stage :decision
     stage :closing
 
-    # Confirmed, in the fiction of this fixture. The deadline is not, and is three
-    # days where the promise is two. Two numbers, so that a test can tell whether a
-    # value in the report came from the promise or from the deadline; unconfirmed, so
-    # that the evidence report has a declaration to leave out.
-    cadence {1, :day}
+    # Not confirmed, in the fiction of this fixture, and three days where the promise
+    # is two. Two numbers, so that a test can tell whether a value in the report came
+    # from the promise or from the deadline; unconfirmed, so that the evidence report
+    # has a declaration to leave out.
     deadline {3, :day}, unverified: true
 
     promise :completed_or_refusal_notified do

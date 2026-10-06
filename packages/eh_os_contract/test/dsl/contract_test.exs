@@ -176,7 +176,6 @@ defmodule EhOsContract.ContractTest do
                  accountable: nil,
                  stages: [%{name: :payment, label: nil}],
                  includes: [],
-                 cadence: nil,
                  deadline: nil,
                  promises: [],
                  source: nil

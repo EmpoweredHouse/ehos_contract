@@ -650,7 +650,6 @@ defmodule EhOsContract.Pages do
         "Runs are told by #{Enum.map_join(p.correlate, ", ", &code/1)}.",
         if(p.accountable, do: "Accountable: #{code(p.accountable)}."),
         if(p.deadline, do: "Deadline: #{duration(p.deadline)}."),
-        if(p.cadence, do: "Cadence: every #{duration(p.cadence)}."),
         if(Map.get(p, :source), do: "_Source: #{p.source}_")
       ]),
       stages(site, model, p),

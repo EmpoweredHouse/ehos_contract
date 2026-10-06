@@ -21,9 +21,9 @@ defmodule EhOsContract.Contract.Rules.Process do
     local events, and consumed events the process includes.
   - **R6.** `within` and `deadline` count a non-negative number of a fixed unit
     (`EhOsContract.Duration`), since the report measures elapsed time against them;
-    a timer's `wait` and `cadence` may also count weeks, months and years — a timer
-    by the calendar, the user's choice of 27 September 2026 (plan EM3), and
-    `cadence` because nothing computes a deadline from it.
+    a timer's `wait` may also count weeks, months and years — a timer by the
+    calendar, the user's choice of 27 September 2026 (plan EM3). A process declares
+    its `deadline` at most once.
   """
 
   alias EhOsContract.DslRules
@@ -186,14 +186,11 @@ defmodule EhOsContract.Contract.Rules.Process do
           do: {"process #{inspect(process.name)}: deadline", dl.within, dl}
         )
 
-    calendar =
-      for c <- process.cadence, do: {"process #{inspect(process.name)}: cadence", c.every, c}
-
     for(
       {what, duration, declaration} <- fixed,
       problem <- problems(duration, Duration.units()),
       do: {"R6: #{what} #{problem}", declaration}
-    ) ++ calendar(calendar) ++ waits(d) ++ once(process)
+    ) ++ waits(d) ++ once(process)
   end
 
   # A process manager's timer belongs to the process manager, not to the process, so
@@ -214,9 +211,8 @@ defmodule EhOsContract.Contract.Rules.Process do
   end
 
   defp once(process) do
-    for {key, [_ | again]} <- [cadence: process.cadence, deadline: process.deadline],
-        x <- again do
-      {"R6: process #{inspect(process.name)} declares #{key} twice", x}
+    for x <- Enum.drop(process.deadline, 1) do
+      {"R6: process #{inspect(process.name)} declares deadline twice", x}
     end
   end
 
@@ -233,7 +229,7 @@ defmodule EhOsContract.Contract.Rules.Process do
 
         unit in @calendar ->
           [
-            "is in #{inspect(unit)}, a calendar unit, which only a timer's wait and cadence may use"
+            "is in #{inspect(unit)}, a calendar unit, which only a timer's wait may use"
           ]
 
         true ->
