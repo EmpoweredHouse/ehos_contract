@@ -132,8 +132,6 @@ not reviewed, only stamped.
 
 ## Non-negotiables
 
-- **Never approve a change that writes to `~/Projects/ai/empowered-house-context`** — a commit, a
-  branch or a file, whatever the reason given.
 - **Never approve a rewritten dated correction** in `docs/adr/` or `PLAN.md` in place of a new one.
 - **Never approve on a gate that is not verifiably green**, and never on a `tail`-piped log.
 - **Never let Polish outside the allowed strings through** on the strength of a diacritics grep.
