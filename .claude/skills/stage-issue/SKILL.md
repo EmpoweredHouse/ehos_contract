@@ -12,8 +12,7 @@ had grown past 11 000 lines when this skill was written (6 October 2026), and a 
 
 **One rule keeps the two from drifting: status lives only in `PLAN.md`, reasons live only in the issue.**
 `PLAN.md` says ☐ / ◐ / ☑ and links the issue; the issue says what was decided and why. Copying either into
-the other makes two versions, one of which goes stale — the reason this repository does not write to the
-context repository (`CLAUDE.md`).
+the other makes two versions, and one of them goes stale.
 
 ## What goes where
 

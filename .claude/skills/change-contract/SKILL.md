@@ -98,7 +98,6 @@ one, or data work written down in `PLAN.md` before the change.
   decision for the user, with an example.
 - **Host-visible shapes go to the user before they change**: a capability, a command's fields, a
   publication, a query's parameters (`PLAN.md`, strategy of stage 6).
-- **Never write into `~/Projects/ai/empowered-house-context`.**
 
 ## Procedure
 
