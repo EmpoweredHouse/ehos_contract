@@ -38,6 +38,7 @@ linii.
 | Co | Gdzie |
 | --- | --- |
 | Plan pracy, etapy, kryteria odbioru, **stan** | [`PLAN.md`](PLAN.md) |
+| **Etap programu** (dziś DD): zakres, decyzje, przegląd, PR-y — w issue na GitHubie, po angielsku; `PLAN.md` trzyma status i link | skill [`stage-issue`](.claude/skills/stage-issue/SKILL.md) |
 | Czym jest to repozytorium, brama, struktura | [`README.md`](README.md) |
 | **Jak napisać domenę i kontrakt** — co się nie skompiluje, każda odmowa z kodem | [`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
 | Każdy klucz obu DSL-i — typ, wymagany/opcjonalny, domyślna wartość (generowane) | [`packages/eh_os_contract/docs/dsl/`](packages/eh_os_contract/docs/dsl) |
