@@ -1102,6 +1102,46 @@ are refused — merging them per pair makes it not matter.
     a consumed event, `stage` outside every stage, `included` when false. The catalogue's "null" wording reads as
     absent from here on.
 
+### E13a, before batches 4–6 — the user's decisions (6 October)
+
+1. **A process manager's scenario starts the run or arrives in it by the rule `ScenarioCase` and dispatch already
+   use**: it starts when its trigger is in `starts_on` and no `given` has started a run; otherwise it arrives during
+   it. *Rejected:* a key in the scenario (a DSL change for what the DSL already says); covering both phases (a false
+   "covered").
+2. **The overlay carries only the numbers the pictures and the report compute today** — runs and occurrences, a
+   step's runs, waiting and failing, a transition's count, "not yet" and "never", traffic between contracts, a
+   process's runs — and no new measure (the screen's four questions). Open to change later by its own decision.
+   *Rejected:* new measures now; raw counts with "untraversed" left to the renderer (that takes the report's
+   meaning, decision 2).
+3. **The overlay is maps keyed by id** — `nodes` and `relations`, id → numbers: it is joined onto the graph, never
+   listed. *Rejected:* lists with an `id` (an index rebuilt on every refresh); numbers written into a copy of the
+   facts (the facts document would lose its stable digest).
+4. **The overlay says its period, the contract version and the digest of the document it was computed against.**
+   The digest guards the join: ids change with the declarations and also with how the engine makes them — at ID3
+   they come from the contract's `id:`, which (ID1) moves no version, and a module rename moves ids too — so only
+   the digest changes whenever the ids do. The version is there for people and the report, which speak in versions.
+   A new contract version cuts the old overlay off, since it always moves the digest. Ids are built from the same
+   parts the log identifies rows by (contract module, kind, name), and the engine translates log rows to ids when it
+   computes the overlay; the renderer never sees the log's identities, which cover only events, commands and
+   reactions. *Rejected:* the version alone (misses an engine-side change of ids); the period alone.
+5. **A move a lifecycle does not allow is defined in the overlay in the facts' own shape** — grouped by type, each
+   with `id`, `from`, `to` and its event — and its numbers sit in the overlay's `relations` map with every other
+   relation's. *Rejected:* adding it to the facts document (the document would depend on the database); a map entry
+   carrying its own definition (two kinds of entry in one map); a list of its own shape.
+6. **No sandbox contract or domain is edited in E13a.** No stage of any sandbox process has a label (all 30 are
+   names alone), and of the actors only Rehmed's manager and TaxVision's accountant have responsibilities; adding
+   them moves the contracts' and domains' versions — a contract change the user did not plan for test data. Item 7 of
+   the user's working plan (Polish stage labels) moves to E13b's check in the browser, with responsibilities, if the
+   screen shows they are needed. An actor's panel is not empty without them: only that one list is.
+   **And a node's `label` is the client's words or null — never the name put in its place** (the user's correction):
+   every node carries `name` and `label`; "the label, or the name where there is none" is the renderer's rule,
+   since only the renderer chooses what to show. The same for kinds the DSL gives no label (a promise, a
+   publication, a contract on the domain's document): `label: null`, not the name or the module. Batch 3 put the
+   name in, and the module on a contract — fixed first in batch 4. This is no exception to "absent, not null": a
+   label applies to every node; null says it was declared without words.
+7. **E13a ends at the push of batch 6.** Merging `main` (DD has moved on, #174 among others), `pre-pr-review` and the
+   pull request are done with the user, after their approval.
+
 ### Wobec programu DD
 
 DD buduje na Mermaidzie w dwóch miejscach; oba dostały dopisek z datą w swoim opisie: **P2e** buduje graf procesu
