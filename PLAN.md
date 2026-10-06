@@ -712,9 +712,10 @@ requirement 7 (v2 §3). Depends on P1b.
 `clinical_visit`, `accounting_month`, `assignments`, `payer_settlement` (do decyzji o `cadence`). Każde nowe
 `event-without-consumer` wyjaśnione w PR.
 **P1e — test contracts declare a process only when the test is about one** (#192; tightened 6 October 2026).
-About 135 of the ~210 `process` blocks in the packages' tests are templates the old R1 asked for; they go, with the
+149 of the 210 `process` blocks in the packages' tests were templates the old R1 asked for; they go, with the
 `terminal:` and `stage` groups that came with them, in five commits: rigs, DSL tests, DSL tests whose expected lines
-move, check and conformance, web and auth. The ~75 that tests assert on stay for P2g. Not `sources_test`. Depends on P1c.
+move, check and conformance, auth (the web fixtures keep theirs). The 61 that tests assert on stay for P2g. Not
+`sources_test`. Depends on P1c.
 
 **P2a — jeden model procesu dla czytelników** (refaktor): `Model.process/1`, `Model.process_events/1`; przepiąć
 `Run.runs_of/1`, `Trace`, `Paths.runs_of/3`, `Conformance.process/2`, `Graph.declared/2`, `Check.process_findings/1`,
