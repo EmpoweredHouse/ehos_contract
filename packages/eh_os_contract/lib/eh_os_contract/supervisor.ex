@@ -18,7 +18,9 @@ defmodule EhOsContract.Supervisor do
     EhOsContract.Supplier.check!(models)
     EhOsContract.Personal.check_forgetting!(Implementations.index(nil).consumers)
     EhOsContract.Deployment.record!()
-    EhOsContract.UndeclaredTypes.warn(Application.fetch_env!(:eh_os_contract, :repo), models)
+    repo = Application.fetch_env!(:eh_os_contract, :repo)
+    EhOsContract.UndeclaredTypes.warn(repo, models)
+    EhOsContract.UndeclaredTypes.warn_contracts(repo, models)
 
     runners =
       case Application.get_env(:eh_os_contract, :subscriptions) do
