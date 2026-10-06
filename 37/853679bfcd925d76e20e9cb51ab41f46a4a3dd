@@ -1,0 +1,6 @@
+Review of 718e7a5..3785367 (CodeRabbit on #181, then code-review high and a security/performance pass on 718e7a5):
+- CodeRabbit, changelog: host read-model tables survive the engine reset -> fixed (718e7a5, wording 3785367).
+- CodeRabbit, refuse consumes across OTP applications in X5 -> not taken (no application at compile time; one EHOS app may be several OTP apps); consumed siblings are indexed by id instead (718e7a5), reverse-checked.
+- Both reviews: an unloadable sibling made every index build raise -> fixed, left out (3785367), reverse-checked.
+- Correctness: stale decode! doc/message, changelog wording -> fixed (3785367). by_id/1 public @doc false for its test, consumes mapping also in dispatcher -> no change (house pattern; pre-existing).
+Gate on 3785367: EXIT=0, check 0/33/10 and 0/76/6, engine 1375, sandbox 196, web 52, auth 286 + 1 property.
