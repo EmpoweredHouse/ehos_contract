@@ -5,7 +5,7 @@ Zakres produktu, warunki oceny i stan recenzji żyją w rekordzie:
 prototyp waliduje, są w [`docs/adr/architecture.md`](docs/adr/architecture.md). Ten plik to lista
 roboty i tylko tu jest aktualizowany stan.
 
-## Handoff — stan na 5 października, późny wieczór (DD0, N1–N3, W1–W4, T1+T1s w `main`; X1 gotowy na gałęzi)
+## Handoff — stan na 6 października (DD0, N1–N3, W1–W4, T1+T1s, X1 w `main`; S4 w PR-ze #151)
 
 Utrzymywany w miejscu, nie datowany dopisek: to jest stan **teraz**. Jeśli czytasz go i coś się nie
 zgadza z repozytorium, rację ma repozytorium — a ten akapit jest do przepisania.
@@ -41,20 +41,21 @@ komputer, kontrakt `Demands`) — „Dopisek 4 października (2)”.
 **Następna praca to program DD — „DDD sprawdzane przez kod”** (zatwierdzony przez użytkownika 5 października): 53
 etapy — DD0 w fali 0 i 52 w pięciu falach. **Jedynym miejscem ze stanem programu jest tabela „Postęp” w „Dopisek 5
 października — DD”**; tam też decyzje z odrzuconymi opcjami, projekt każdego etapu, decyzje przed etapami i ryzyka.
-Fala 1: N1, N2, N3, W1, W2, W3, W4, T1, T1s w `main` (#137, #138, #139, #142, #143, #145, #146, #148); X1 zrobiony
-na `claude/dsl-x1-in-transaction-4447a3` (od `main`, brama zielona, przegląd rozstrzygnięty — „X1 — co wyszło”),
-niewypchnięty; po nim S4, ostatni etap fali 1.
+Fala 1: N1, N2, N3, W1, W2, W3, W4, T1, T1s, X1 w `main` (#137, #138, #139, #142, #143, #145, #146, #148, #150);
+S4, ostatni etap fali 1, w PR-ze [#151](https://github.com/EmpoweredHouse/eh-os-contract/pull/151)
+(`dsl/s4-transition-without-scenario`, na `main`) — „X1 — co wyszło”, „S4 — co wyszło”. Po merge'u #151: pytanie do
+użytkownika „dalej czy stop”, tag, notatka migracyjna.
 
 ### Stan repozytorium
 
-- **`origin/main` = `5576b99`** (merge #148, T1+T1s; przed nim `552b86f`, merge #146, W4; przed nim `5be6358`, merge #145,
+- **`origin/main` = `2386feb`** (merge #150, X1, 6 października; przed nim `5576b99`, merge #148, T1+T1s; przed nim `552b86f`, merge #146, W4; przed nim `5be6358`, merge #145,
   W3, z poprawką po trzeciej recenzji CodeRabbita `7a3bc49`; przed nim #147
   `488f18e` — krótsze przebiegi CI, z innej sesji; przed nim `3508cb6`, merge #144, puste etykiety: N1/D1 odmawiają etykiety pustej albo z samych białych
   znaków i znaków formatu Unicode, F2/D3 — takiej etykiety członka enuma; spoza programu, z recenzji #139 — „N3 — co
   wyszło”; przed nim #143 W2 `6a236d5`, #142 W1 `3c7b29f`, #139 N3 `a568ce7` z poprawką etykiety timera TaxVision
   `46b4e55`, #138 N2 `f0e473d`; wcześniej #137 N1 i #135 DD0 — każdy z poprawką po przeglądzie CodeRabbita,
   `.coderabbit.yaml` dla PR-ów na dowolną gałąź).
-- **Otwartych PR-ów programu brak.** #146 (W4) i #148 (T1+T1s) zmergowane 5 października; gałęzie
+- **Otwarty PR programu: [#151](https://github.com/EmpoweredHouse/eh-os-contract/pull/151) (S4).** #150 (X1) zmergowany 6 października, #146 (W4) i #148 (T1+T1s) 5 października; gałęzie
   `engine/w3-trace-core`, `engine/w4-decision`, `engine/t1-supplied-by-host` zmergowane, nieusunięte (sprzątanie na
   polecenie użytkownika). **CI stoi na billingu GitHub Actions** (joby nie są przydzielane runnerowi): kod z `main`
   przeszedł lokalną bramę, ale nie przeszedł jeszcze CI w całości — po naprawie `gh run rerun 37371291018`.
@@ -94,10 +95,10 @@ niewypchnięty; po nim S4, ostatni etap fali 1.
 - **Program DD — następna praca z kodem.** Stan, kolejność i zależności: tabela „Postęp” w „Dopisek 5 października
   — DD”. Kolejno:
   1. **W `main`:** DD0 (#135), N1 (#137), N2 (#138), N3 (#139), W1 (#142), W2 (#143), W3 (#145), W4 (#146),
-     T1+T1s (#148).
-  2. **Użytkownik:** polecenie push i PR dla X1 (`claude/dsl-x1-in-transaction-4447a3`, worktree
-     `runner-usage-optimization-b60150`); po merge'u ☑ w tabeli. **Asystent:** S4 na gałęzi od `main` (tabela „Postęp” żyje na gałęzi etapu); po fali 1 notatka migracyjna dla AppUnite i
-     `ehos-ledger`. Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
+     T1+T1s (#148), X1 (#150).
+  2. **Użytkownik:** merge #151 (S4, `dsl/s4-transition-without-scenario`, worktree
+     `runner-usage-optimization-b60150`); po merge'u ☑ w tabeli. **Asystent:** po fali 1 tag wersji (na polecenie) i
+     notatka migracyjna dla AppUnite i `ehos-ledger`; potem fala 2 od ID1. Start etapu: ◐ i gałąź w tabeli; koniec: „### <ID> — co wyszło (data)”; po merge'u ☑ i numer PR-a.
   3. **Użytkownik, przy etapie:** pytania z „Do decyzji przed etapem” (pierwsze: `cadence` przed P1d; V02 albo
      V01 w miejscu przed T2a i P2h; po każdej fali „dalej czy
      stop” i kiedy podbić przypięcie w aplikacji AppUnite (`~/Projects/ai/appunite_equipment`) i `ehos-ledger`.
@@ -532,8 +533,8 @@ Zakres jest duży, a kontekst sesji będzie się często zmieniał, więc stan �
 | W4 | 1 | `Decision`, `Lifecycle.allowed/3`, `Lifecycle.moves/3` | DD0 | ☑ #146 |
 | T1 | 1 | `supplied_by: :host`, F10, `Supplier` | DD0 | ☑ #148 |
 | T1s | 1 | sandbox: `p1_reported`, `total` | T1 | ☑ #148 |
-| X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ◐ `claude/dsl-x1-in-transaction-4447a3` |
-| S4 | 1 | `transition-without-scenario` | DD0 | ☐ |
+| X1 | 1 | reakcja `:in_transaction` między kontekstami | DD0 | ☑ #150 |
+| S4 | 1 | `transition-without-scenario` | DD0 | ◐ `dsl/s4-transition-without-scenario`, PR #151 |
 | ID1 | 2 | `id:` kontraktu deklarowany | N1 | ☐ |
 | ID2 | 2 | każdy kontrakt z `id:` | ID1 | ☐ |
 | ID3 | 2 | `id:` wymagany, typ `"<id>.<zdarzenie>"` | ID2 | ☐ |
@@ -1261,6 +1262,47 @@ aplikacji (`consumes "<nazwa>"`) nie są objęte.
   polityką albo read modelem na zdarzeniu siostry z innego kontekstu bez `delivery:` przestaje się kompilować (X10):
   dopisać `delivery: :at_least_once` (polityka z `idempotency`, P3) albo `:in_transaction` z wyjaśnieniem ostrzeżenia.
   Efekt jawnie `:in_transaction` na takim zdarzeniu daje ostrzeżenie (czerwone przy `--warnings-as-errors`).
+
+### S4 — co wyszło (5 października)
+
+Gałąź `dsl/s4-transition-without-scenario` (od X1, `claude/dsl-x1-in-transaction-4447a3`, PR #150; po merge'u #150 z `main` wmergowanym), PR #151.
+**`transition-without-scenario`** (L5, `check/completeness.ex` `untaken_transitions/1`): ostrzeżenie przy
+zadeklarowanym `transition`, którego żaden scenariusz komendy jednostki nie wykonuje — takim, którego `given` zostawia
+jednostkę w `from`, a oczekiwane zdarzenia wyprowadzają ją z `from` zdarzeniem przejścia. Strumień liczy
+`Lifecycle.tally/2`, to samo, czym raport liczy log (`given` przesuwa status, liczone są tylko oczekiwane); jedno
+ostrzeżenie na deklarację, z listą niewykonanych `from`. Ostrzeżenie, nie odmowa: dispatch i tak trzyma każdą decyzję
+grafu, a raport liczy przejścia na logu. Werdykty bez zmian (raport i 11 grafów bajt w bajt).
+
+- **Rozstrzygnięcia asystenta (mechanika), z odrzuconymi:**
+  - liczą się tylko scenariusze **komendy** jednostki; *odrzucone:* scenariusz polityki, która wydaje komendę (pokazuje,
+    że polityka wydaje, nie że decyzja emituje zdarzenie z `from` — przegląd potwierdził na `Demands`);
+  - przejście z kilku `from` potrzebuje scenariusza z każdego; *odrzucone:* jeden scenariusz na deklarację (przejście
+    z `:for_sale` mogłoby nie mieć decyzji, a ostrzeżenie by milczało);
+  - pominięte: przejście na zdarzeniu, którego żadna komenda jednostki nie emituje (tylko rejestrowane — nie ma decyzji
+    do uruchomienia), oraz `from`, którego `from:` żadnej emitującej komendy nie dopuszcza (dispatch odmawia przed
+    decyzją, więc ostrzeżenia nie dałoby się wygasić); *odrzucone:* osobna reguła „martwe przejście” — bez przykładu;
+  - przejście `initial` nie jest objęte (plan mówi o przejściach; scenariusz pierwszej komendy pokazuje je i tak).
+  - scenariusz z `rejected` nie ma `expect` (S6), więc niczego nie wykonuje — bez osobnego filtra.
+- **Nowe ostrzeżenia, wyjaśnione** (sandbox `check` 0 / 29 / 10 → 0 / 33 / 10, silnik 0 / 75 / 6 → 0 / 76 / 6):
+  AppUnite `Computers` — `:disposed` i `:donated` z `:in_office` i `:for_sale`, `:sent_for_service` z `:in_office`;
+  `Demands` — `:fulfilled` z `:open` i `:ordered` (jedyny scenariusz `fulfil_demand` zaczyna w `:fulfilled`); silnik —
+  zmyślony `LifecycleRig.Visits`, `:cancelled` z `:booked`. Każde jest prawdziwą luką: żaden test nie pokazuje, że
+  decyzja emituje to zdarzenie z tego statusu. **Zostawione świadomie** — siedem scenariuszy AppUnite wymagałoby danych,
+  których materiał nie podaje; kopia AppUnite to dane testowe, a ostrzeżenie jest tym, co reguła ma pokazać. Do decyzji
+  użytkownika: scenariusze w aplikacji AppUnite (`~/Projects/ai/appunite_equipment`). Przypięta liczba ostrzeżeń w
+  `sandbox/test/e10_outputs_test.exs` 29 → 33.
+- **Przegląd** (`claude/dsl-x1-in-transaction-4447a3..HEAD`, dwa równolegle). Poprawność: 7 uwag — naprawione
+  (`6bcbfb0`): `from`, którego żadna komenda nie dopuszcza, dawał ostrzeżenie nie do wygaszenia (próba odwrotna: pada
+  test); własna kopia przejścia po strumieniu zamiast `Lifecycle.tally/2` (i z nią prywatne `moves/3` o nazwie
+  publicznej funkcji, i budowa indeksu grafu na każde zdarzenie); nagłówek CHANGELOG „S4:” mylony z kodem odmowy S4;
+  nowe ostrzeżenia i decyzje niezapisane w `PLAN.md` (ten wpis). Bez zmian: przejścia czytane z deklaracji (dla miejsca
+  w pliku) obok modelu — dziś równoważne. Bezpieczeństwo i wydajność: nic istotnego; komunikat bez wartości ze
+  scenariuszy.
+- **Brama:** EXIT=0; sandbox 196, silnik 1349 (+2), web 52, auth 286 + 1 property. Po drodze brama padła raz na
+  niewygenerowanym `docs/rules.md` po zmianie tekstu katalogu.
+- **Dla aplikacji AppUnite i `ehos-ledger`:** aplikacja AppUnite dostanie te same ostrzeżenia co kopia w sandboxie
+  (cztery, jeśli jej kontrakty się nie rozjechały) — czerwone przy `check --warnings-as-errors`; dopisać scenariusze
+  albo wyjaśnić.
 
 ## Dopisek 4 października (3) — pokrycie ESDM po EP1–EP5 i #99
 

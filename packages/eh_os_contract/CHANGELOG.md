@@ -27,6 +27,12 @@ package follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`mix eh_os_contract.check` warns of a lifecycle transition no scenario takes**
+  (`transition-without-scenario`, plan DD stage S4). A transition is taken by a scenario of a command whose `given` leaves the
+  unit in the transition's `from` status and which expects its event, the graph read as dispatch reads it; a
+  transition from several statuses needs a scenario from each, and one on an event no command of the unit
+  emits (recorded only), or from a status no such command's `from:` admits, is left out. A new warning only: no verdict moves, but a host running
+  `check --warnings-as-errors` with such a transition turns red until it adds the scenario.
 - **T1: a field the host gives, not the caller.** `field :p1_reported, :boolean, supplied_by: :host`, on a
   command's field or a recorded event's (**F10** refuses it anywhere else, and on a command's `scope` field).
   Through `EhOsContract.call/3` — and `EhOsContract.Plug` — a request that sends it at all, even as `null`, is

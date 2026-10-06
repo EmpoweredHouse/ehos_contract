@@ -272,6 +272,22 @@ defmodule EhOsContract.Check.Catalog do
       """
     },
     %{
+      id: "transition-without-scenario",
+      level: :warn,
+      esdm: nil,
+      summary: "No scenario takes a declared transition of a unit's lifecycle.",
+      text: """
+      The lifecycle says the unit moves from one status to another on an event, and nothing shows the
+      implementation decides that event there. A scenario of a command whose `given` leaves the unit in
+      the transition's `from` status, and which expects the event, is the test that would; one with
+      `rejected` decides nothing and does not count. A transition from several statuses needs a
+      scenario from each. A transition on an event no command of the unit emits is left out: it is
+      recorded, with no decision for a scenario to run. So is a `from` status no such command's
+      `from:` admits: no scenario could start there. A warning: the dispatcher still holds every
+      decision to the graph, and the conformance report counts each transition the log takes.
+      """
+    },
+    %{
       id: "prose-without-scenario",
       level: :warn,
       esdm: nil,
